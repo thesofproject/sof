@@ -262,13 +262,6 @@ SECTIONS
     _reset_rodata_end = ABSOLUTE(.);
   } >dram0_0_seg :dram0_0_phdr
 
-  .dramfwplatcfgslot0.data : ALIGN(4)
-  {
-    _dramfwplatcfgslot0_data_start = ABSOLUTE(.);
-    *(.dramfwplatcfgslot0.data)
-    _dramfwplatcfgslot0_data_end = ABSOLUTE(.);
-  } >dram0_1_seg :dram0_1_phdr
-
   .rodata : ALIGN(4)
   {
     _rodata_start = ABSOLUTE(.);
@@ -334,19 +327,6 @@ SECTIONS
     _lit4_end = ABSOLUTE(.);
   } >dram0_1_seg :dram0_1_phdr
 
-  .dramfwslot0.data : ALIGN(4)
-  {
-    _dramfwslot0_data_start = ABSOLUTE(.);
-    *(.dramfwslot0.data)
-    _dramfwslot0_data_end = ABSOLUTE(.);
-  } >dram0_1_seg :dram0_1_phdr
-
-  .dramfwslot1.data : ALIGN(4)
-  {
-    _dramfwslot1_data_start = ABSOLUTE(.);
-    *(.dramfwslot1.data)
-    _dramfwslot1_data_end = ABSOLUTE(.);
-  } >dram0_1_seg :dram0_1_phdr
 
   .bss (NOLOAD) : ALIGN(8)
   {
