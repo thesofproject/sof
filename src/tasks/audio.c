@@ -9,7 +9,7 @@
  * Generic audio task.
  */
 
-#include <task.h>
+#include <reef/task.h>
 
 int do_task(int argc, char *argv[])
 {

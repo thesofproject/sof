@@ -26,7 +26,8 @@ libhal_a_SOURCES = \
 	interrupts.c \
 	mem_ecc_parity.S \
 	state_asm.S \
-	state.c
+	state.c \
+	set_region_translate.c
 
 libhal_a_CFLAGS = \
 	$(XTENSA_INCDIR) \

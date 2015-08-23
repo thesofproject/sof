@@ -4,19 +4,16 @@
  * Copyright (c) 2015, Intel Corporation
  * All rights reserved.
  *
- * Authors:	Liam girdwood <liam.r.girdwood@linux.intel.com>
+ * Authors:	Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *
  * Xtensa architecture initialisation.
  */
 
-#include <init.h>
+#include <reef/init.h>
 #include <xtensa/xtruntime.h>
-
-#define  NULL ((void*)0)
-int *mailbox_get_exception_base(void)
-{
-	return NULL;
-}
+#include <platform/memory.h>
+#include <reef/mailbox.h>
+#include <reef/debug.h>
 
 static void exception(void)
 {
@@ -72,9 +69,18 @@ static void register_exceptions()
 
 int arch_init(int argc, char *argv[])
 {
-
+	dbg();
 	register_exceptions();
 
 	return 0;
+}
+
+/* called from assembler context with no return or func parameters */
+void __memmap_init(void)
+{
+	/* DRAM0_BASE must be aligned on 512MB boundary */
+	xthal_set_region_translation((void *)DRAM0_VBASE,
+		(void *)(DRAM0_BASE & 0xE0000000), DRAM0_SIZE,
+		XCHAL_CA_WRITEBACK, XTHAL_CAFLAG_NO_PARTIAL);
 }
 

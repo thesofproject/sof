@@ -10,8 +10,8 @@
  * initialisation functions. 
  */
 
-#include <init.h>
-#include <task.h>
+#include <reef/init.h>
+#include <reef/task.h>
 
 int main(int argc, char *argv[])
 {
