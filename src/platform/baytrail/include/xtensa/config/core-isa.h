@@ -47,7 +47,7 @@
   ----------------------------------------------------------------------*/
 
 #define XCHAL_HAVE_BE			0	/* big-endian byte ordering */
-#define XCHAL_HAVE_WINDOWED		1	/* windowed registers option */
+#define XCHAL_HAVE_WINDOWED		0	/* windowed registers option */
 #define XCHAL_NUM_AREGS			32	/* num of physical addr regs */
 #define XCHAL_NUM_AREGS_LOG2		5	/* log2(XCHAL_NUM_AREGS) */
 #define XCHAL_MAX_INSTRUCTION_SIZE	8	/* max instr bytes (3..8) */
@@ -63,7 +63,7 @@
 #define XCHAL_HAVE_MUL16		1	/* MUL16S/MUL16U instructions */
 #define XCHAL_HAVE_MUL32		1	/* MULL instruction */
 #define XCHAL_HAVE_MUL32_HIGH		0	/* MULUH/MULSH instructions */
-#define XCHAL_HAVE_DIV32		0	/* QUOS/QUOU/REMS/REMU instructions */
+#define XCHAL_HAVE_DIV32		1	/* QUOS/QUOU/REMS/REMU instructions */
 #define XCHAL_HAVE_L32R			1	/* L32R instruction */
 #define XCHAL_HAVE_ABSOLUTE_LITERALS	0	/* non-PC-rel (extended) L32R */
 #define XCHAL_HAVE_CONST16		0	/* CONST16 instruction */
@@ -110,7 +110,8 @@
 #define XCHAL_HAVE_HIFI3		0	/* HiFi3 Audio Engine pkg */
 #define XCHAL_HAVE_HIFI3_VFPU		0	/* HiFi3 Audio Engine VFPU option */
 #define XCHAL_HAVE_HIFI2		1	/* HiFi2 Audio Engine pkg */
-#define XCHAL_HAVE_HIFI2EP		0	/* HiFi2EP */
+#define XCHAL_HAVE_HIFI2EP		1	/* HiFi2EP */
+#define XCHAL_HAVE_HIFI2_MUL32X24	1	/* HiFi2 and 32x24 MACs */
 #define XCHAL_HAVE_HIFI_MINI		0	
 
 
@@ -173,7 +174,7 @@
 
 #define XCHAL_SW_VERSION		1100002	/* sw version of this header */
 
-#define XCHAL_CORE_ID			"hifi2_std"	/* alphanum core name
+#define XCHAL_CORE_ID			"hifiep_bd5"	/* alphanum core name
 						   (CoreID) set in the Xtensa
 						   Processor Generator */
 
@@ -183,7 +184,7 @@
  *  These definitions describe the hardware targeted by this software.
  */
 #define XCHAL_HW_CONFIGID0		0xC2B3DBFE	/* ConfigID hi 32 bits*/
-#define XCHAL_HW_CONFIGID1		0x1C85483B	/* ConfigID lo 32 bits*/
+#define XCHAL_HW_CONFIGID1		0x1C85483E	/* ConfigID lo 32 bits*/
 #define XCHAL_HW_VERSION_NAME		"LX6.0.2"	/* full version name */
 #define XCHAL_HW_VERSION_MAJOR		2600	/* major ver# of targeted hw */
 #define XCHAL_HW_VERSION_MINOR		2	/* minor ver# of targeted hw */
@@ -210,16 +211,16 @@
 #define XCHAL_ICACHE_LINEWIDTH		6	/* log2(I line size in bytes) */
 #define XCHAL_DCACHE_LINEWIDTH		6	/* log2(D line size in bytes) */
 
-#define XCHAL_ICACHE_SIZE		4096	/* I-cache size in bytes or 0 */
-#define XCHAL_DCACHE_SIZE		8192	/* D-cache size in bytes or 0 */
+#define XCHAL_ICACHE_SIZE		49152	/* I-cache size in bytes or 0 */
+#define XCHAL_DCACHE_SIZE		(16384 * 6)	/* D-cache size in bytes or 0 */
 
 #define XCHAL_DCACHE_IS_WRITEBACK	1	/* writeback feature */
 #define XCHAL_DCACHE_IS_COHERENT	0	/* MP coherence feature */
 
-#define XCHAL_HAVE_PREFETCH		0	/* PREFCTL register */
+#define XCHAL_HAVE_PREFETCH		1	/* PREFCTL register */
 #define XCHAL_HAVE_PREFETCH_L1		0	/* prefetch to L1 dcache */
-#define XCHAL_PREFETCH_CASTOUT_LINES	0	/* dcache pref. castout bufsz */
-#define XCHAL_PREFETCH_ENTRIES		0	/* cache prefetch entries */
+#define XCHAL_PREFETCH_CASTOUT_LINES	1	/* dcache pref. castout bufsz */
+#define XCHAL_PREFETCH_ENTRIES		8	/* cache prefetch entries */
 #define XCHAL_PREFETCH_BLOCK_ENTRIES	0	/* prefetch block streams */
 #define XCHAL_HAVE_CACHE_BLOCKOPS	0	/* block prefetch for caches */
 #define XCHAL_HAVE_ICACHE_TEST		1	/* Icache test instructions */
@@ -246,12 +247,12 @@
 /*  If present, cache size in bytes == (ways * 2^(linewidth + setwidth)).  */
 
 /*  Number of cache sets in log2(lines per way):  */
-#define XCHAL_ICACHE_SETWIDTH		5
-#define XCHAL_DCACHE_SETWIDTH		6
+#define XCHAL_ICACHE_SETWIDTH		7
+#define XCHAL_DCACHE_SETWIDTH		8
 
 /*  Cache set associativity (number of ways):  */
 #define XCHAL_ICACHE_WAYS		2
-#define XCHAL_DCACHE_WAYS		2
+#define XCHAL_DCACHE_WAYS		3
 
 /*  Cache features:  */
 #define XCHAL_ICACHE_LINE_LOCKABLE	1
@@ -283,7 +284,7 @@
 #define XCHAL_NUM_INSTROM		0	/* number of core instr. ROMs */
 #define XCHAL_NUM_INSTRAM		1	/* number of core instr. RAMs */
 #define XCHAL_NUM_DATAROM		0	/* number of core data ROMs */
-#define XCHAL_NUM_DATARAM		2	/* number of core data RAMs */
+#define XCHAL_NUM_DATARAM		1	/* number of core data RAMs */
 #define XCHAL_NUM_URAM			0	/* number of core unified RAMs*/
 #define XCHAL_NUM_XLMI			0	/* number of core XLMI ports */
 
@@ -300,12 +301,6 @@
 #define XCHAL_DATARAM0_ECC_PARITY	0	/* ECC/parity type, 0=none */
 #define XCHAL_DATARAM0_BANKS		1	/* number of banks */
 
-/*  Data RAM 1:  */
-#define XCHAL_DATARAM1_VADDR		0xC0000000	/* virtual address */
-#define XCHAL_DATARAM1_PADDR		0xC0000000	/* physical address */
-#define XCHAL_DATARAM1_SIZE		0x200000	/* size in bytes */
-#define XCHAL_DATARAM1_ECC_PARITY	0	/* ECC/parity type, 0=none */
-#define XCHAL_DATARAM1_BANKS		1	/* number of banks */
 
 #define XCHAL_HAVE_IMEM_LOADSTORE	1	/* can load/store to IROM/IRAM*/
 
