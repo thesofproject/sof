@@ -4,6 +4,9 @@
 *.a
 *.Tpo
 *.swp
+*.bin
+reef
+reef.map
 
 Makefile
 Makefile.in
