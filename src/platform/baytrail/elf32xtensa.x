@@ -72,6 +72,7 @@ PHDRS
 ENTRY(_ResetVector)
 _rom_store_table = 0;
 PROVIDE(_memmap_vecbase_reset = 0xff2c0400);
+
 /* Various memory-map dependent cache attribute settings: */
 _memmap_cacheattr_wb_base = 0x44024000;
 _memmap_cacheattr_wt_base = 0x11021000;
@@ -92,162 +93,6 @@ PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wb_trapnull);
 
 SECTIONS
 {
-
-  .ddrconf.rodata : ALIGN(4)
-  {
-    _ddrconf_rodata_start = ABSOLUTE(.);
-    *(.ddrconf.rodata)
-    _ddrconf_rodata_end = ABSOLUTE(.);
-  } >ddrconf0_seg :ddrconf0_phdr
-
-  .ddrconf.text : ALIGN(4)
-  {
-    _ddrconf_text_start = ABSOLUTE(.);
-    *(.ddrconf.literal .ddrconf.text)
-    _ddrconf_text_end = ABSOLUTE(.);
-  } >ddrconf0_seg :ddrconf0_phdr
-
-  .ddrconf.data : ALIGN(4)
-  {
-    _ddrconf_data_start = ABSOLUTE(.);
-    *(.ddrconf.data)
-    _ddrconf_data_end = ABSOLUTE(.);
-  } >ddrconf0_seg :ddrconf0_phdr
-
-  .ddrconf.bss (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (8);
-    _ddrconf_bss_start = ABSOLUTE(.);
-    *(.ddrconf.bss)
-    . = ALIGN (8);
-    _ddrconf_bss_end = ABSOLUTE(.);
-  } >ddrconf0_seg :ddrconf0_bss_phdr
-
-  .ddr.rodata : ALIGN(4)
-  {
-    _ddr_rodata_start = ABSOLUTE(.);
-    *(.ddr.rodata)
-    _ddr_rodata_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .ddr.text : ALIGN(4)
-  {
-    _ddr_text_start = ABSOLUTE(.);
-    *(.ddr.literal .ddr.text)
-    _ddr_text_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .ddr1.text : ALIGN(4)
-  {
-    _ddr1_text_start = ABSOLUTE(.);
-    *(.ddr1.literal .ddr1.text)
-    _ddr1_text_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .ddr.data : ALIGN(4)
-  {
-    _ddr_data_start = ABSOLUTE(.);
-    *(.ddr.data)
-    _ddr_data_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libdrc.text : ALIGN(4)
-  {
-    _libdrc_text_start = ABSOLUTE(.);
-    *(.libdrc.literal .libdrc.text)
-    _libdrc_text_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libdrc.data : ALIGN(4)
-  {
-    _libdrc_data_start = ABSOLUTE(.);
-    *(.libdrc.data)
-    _libdrc_data_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libdrc.rodata : ALIGN(4)
-  {
-    _libdrc_rodata_start = ABSOLUTE(.);
-    *(.libdrc.rodata)
-    _libdrc_rodata_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libstereo_equalizer.text : ALIGN(4)
-  {
-    _libstereo_equalizer_text_start = ABSOLUTE(.);
-    *(.libstereo_equalizer.literal .libstereo_equalizer.text)
-    _libstereo_equalizer_text_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libstereo_equalizer.data : ALIGN(4)
-  {
-    _libstereo_equalizer_data_start = ABSOLUTE(.);
-    *(.libstereo_equalizer.data)
-    _libstereo_equalizer_data_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libstereo_equalizer.rodata : ALIGN(4)
-  {
-    _libstereo_equalizer_rodata_start = ABSOLUTE(.);
-    *(.libstereo_equalizer.rodata)
-    _libstereo_equalizer_rodata_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libmono_equalizer.text : ALIGN(4)
-  {
-    _libmono_equalizer_text_start = ABSOLUTE(.);
-    *(.libmono_equalizer.literal .libmono_equalizer.text)
-    _libmono_equalizer_text_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libmono_equalizer.data : ALIGN(4)
-  {
-    _libmono_equalizer_data_start = ABSOLUTE(.);
-    *(.libmono_equalizer.data)
-    _libmono_equalizer_data_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libmono_equalizer.rodata : ALIGN(4)
-  {
-    _libmono_equalizer_rodata_start = ABSOLUTE(.);
-    *(.libmono_equalizer.rodata)
-    _libmono_equalizer_rodata_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libdc_removal.text : ALIGN(4)
-  {
-    _libdc_removal_text_start = ABSOLUTE(.);
-    *(.libdc_removal.literal .libdc_removal.text)
-    _libdc_removal_text_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libdc_removal.data : ALIGN(4)
-  {
-    _libdc_removal_data_start = ABSOLUTE(.);
-    *(.libdc_removal.data)
-    _libdc_removal_data_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .libdc_removal.rodata : ALIGN(4)
-  {
-    _libdc_removal_rodata_start = ABSOLUTE(.);
-    *(.libdc_removal.rodata)
-    _libdc_removal_rodata_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_phdr
-
-  .ddr.bss (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (8);
-    _ddr_bss_start = ABSOLUTE(.);
-    *(.ddr.bss)
-    *(.libdc_removal.bss)
-    *(libstereo_equalizer.bss)
-    *(.libmono_equalizer.bss)
-    *(.libdrc.bss)
-    . = ALIGN (8);
-    _ddr_bss_end = ABSOLUTE(.);
-  } >ddr0_seg :ddr0_bss_phdr
-
   .ResetVector.text : ALIGN(4)
   {
     _ResetVector_text_start = ABSOLUTE(.);
@@ -456,10 +301,6 @@ SECTIONS
     *(.gnu.version_d)
     . = ALIGN(4);		/* this table MUST be 4-byte aligned */
     _bss_table_start = ABSOLUTE(.);
-    LONG(_ddrconf_bss_start)
-    LONG(_ddrconf_bss_end)
-    LONG(_ddr_bss_start)
-    LONG(_ddr_bss_end)
     LONG(_bss_start)
     LONG(_bss_end)
     _bss_table_end = ABSOLUTE(.);
