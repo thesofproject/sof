@@ -26,8 +26,10 @@ reef_LDFLAGS = \
 	$(XTENSA_LDFLAGS) \
 	-T ../../platform/$(PLATFORM_DIR)/$(XTENSA_LDSCRIPT) \
 	$(REEF_LIBDIR)
-	
 
+bin-local: reef
+	$(OBJCOPY) -O binary reef reef.bin
 
-#reef_LINK =
+# xtensa-lx200-elf-objcopy -O binary src/arch/xtensa/reef reef.bin
+
 	
