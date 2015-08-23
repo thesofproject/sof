@@ -14,10 +14,11 @@
 #include <platform/memory.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
+#include <stdint.h>
 
 static void exception(void)
 {
-	int *dump = mailbox_get_exception_base();
+	uint32_t *dump = mailbox_get_exception_base();
 
 	/* Exception Vector number */
 	__asm__ __volatile__ ("rsr %0, EXCCAUSE" : "=a" (dump[0]) : : "memory");
@@ -69,7 +70,6 @@ static void register_exceptions()
 
 int arch_init(int argc, char *argv[])
 {
-	dbg();
 	register_exceptions();
 
 	return 0;

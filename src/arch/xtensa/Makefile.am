@@ -29,7 +29,4 @@ reef_LDFLAGS = \
 
 bin-local: reef
 	$(OBJCOPY) -O binary reef reef.bin
-
-# xtensa-lx200-elf-objcopy -O binary src/arch/xtensa/reef reef.bin
-
 	
