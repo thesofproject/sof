@@ -8,24 +8,31 @@ reef_SOURCES = \
 	init.c
 
 reef_CFLAGS = \
-	$(XTENSA_INCDIR) \
-	$(XTENSA_CFLAGS)
+	$(ARCH_INCDIR) \
+	$(ARCH_CFLAGS) \
+	$(REEF_INCDIR) \
+	$(PLATFORM_INCDIR)
 
 reef_CCASFLAGS = \
-	$(XTENSA_INCDIR) \
-	$(XTENSA_ASFLAGS)
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR)
 
 reef_LDADD = \
-	$(REEF_LIBS) \
-	-lgcc \
-	-lhal \
-	-lxtos
+	../../lib/libcore.a \
+	../../init/libinit.a \
+	../../ipc/libipc.a \
+	../../tasks/libtasks.a \
+	../../audio/libaudio.a \
+	../../drivers/libdrivers.a \
+	../../platform/$(PLATFORM)/libplatform.a \
+	hal/libhal.a \
+	xtos/libxtos.a \
+	-lgcc
 
 reef_LDFLAGS = \
-	$(XTENSA_LIBDIR) \
-	$(XTENSA_LDFLAGS) \
-	-T ../../platform/$(PLATFORM_DIR)/$(XTENSA_LDSCRIPT) \
-	$(REEF_LIBDIR)
+	$(ARCH_LDFLAGS) \
+	-T ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
 
 bin-local: reef
 	$(OBJCOPY) -O binary reef reef.bin

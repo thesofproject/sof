@@ -46,7 +46,7 @@
 #define XSHAL_USE_ABSOLUTE_LITERALS	0	/* (sw-only option, whether software uses absolute literals) */
 #define XSHAL_HAVE_TEXT_SECTION_LITERALS 1 /* Set if there is some memory that allows both code and literals.  */
 
-#define XSHAL_ABI			XTHAL_ABI_WINDOWED	/* (sw-only option, selected ABI) */
+#define XSHAL_ABI			XTHAL_ABI_CALL0	/* (sw-only option, selected ABI) */
 /*  The above maps to one of the following constants:  */
 #define XTHAL_ABI_WINDOWED		0
 #define XTHAL_ABI_CALL0			1

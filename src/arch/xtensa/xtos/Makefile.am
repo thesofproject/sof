@@ -1,10 +1,3 @@
-if HAVE_BAYTRAIL
-PLATFORM_SRC = 
-else
-PLATFORM_SRC =
-endif
-
-
 lib_LIBRARIES = libxtos.a
 
 libxtos_a_SOURCES = \
@@ -20,9 +13,11 @@ libxtos_a_SOURCES = \
 	interrupt-table.S
 
 libxtos_a_CFLAGS = \
-	$(XTENSA_CFLAGS) \
-	$(XTENSA_INCDIR)
+	$(ARCH_INCDIR) \
+	$(ARCH_CFLAGS) \
+	$(PLATFORM_INCDIR)
 
 libxtos_a_CCASFLAGS = \
-	$(XTENSA_INCDIR) \
-	$(XTENSA_ASFLAGS)
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR)

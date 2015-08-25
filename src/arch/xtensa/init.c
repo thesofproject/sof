@@ -18,7 +18,7 @@
 
 static void exception(void)
 {
-	uint32_t *dump = mailbox_get_exception_base();
+	uint32_t *dump = (uint32_t*) mailbox_get_exception_base();
 
 	/* Exception Vector number */
 	__asm__ __volatile__ ("rsr %0, EXCCAUSE" : "=a" (dump[0]) : : "memory");

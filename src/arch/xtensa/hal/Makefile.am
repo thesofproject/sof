@@ -1,10 +1,3 @@
-
-if HAVE_BAYTRAIL
-PLATFORM_SRC = 
-else
-PLATFORM_SRC =
-endif
-
 lib_LIBRARIES = libhal.a
 
 libhal_a_SOURCES = \
@@ -30,9 +23,11 @@ libhal_a_SOURCES = \
 	set_region_translate.c
 
 libhal_a_CFLAGS = \
-	$(XTENSA_INCDIR) \
-	$(XTENSA_CFLAGS)
+	$(ARCH_INCDIR) \
+	$(ARCH_CFLAGS) \
+	$(PLATFORM_INCDIR)
 
 libhal_a_CCASFLAGS = \
-	$(XTENSA_INCDIR) \
-	$(XTENSA_ASFLAGS)
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR)

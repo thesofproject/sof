@@ -4,5 +4,6 @@ libtasks_a_SOURCES = \
 	audio.c
 
 libtasks_a_CFLAGS = \
-	$(CFLAGS) \
-	$(XTENSA_CFLAGS)
+	$(ARCH_CFLAGS) \
+	$(REEF_INCDIR) \
+	$(PLATFORM_INCDIR)

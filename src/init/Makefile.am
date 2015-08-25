@@ -4,6 +4,6 @@ libinit_a_SOURCES = \
 	init.c
 
 libinit_a_CFLAGS = \
-	$(XTENSA_INCDIR) \
-	$(CFLAGS) \
-	$(XTENSA_CFLAGS)
+	$(ARCH_CFLAGS) \
+	$(REEF_INCDIR) \
+	$(PLATFORM_INCDIR)

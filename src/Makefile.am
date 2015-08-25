@@ -1,1 +1,1 @@
-SUBDIRS = init tasks arch
+SUBDIRS = init audio platform tasks drivers ipc lib arch

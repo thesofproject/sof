@@ -9,6 +9,22 @@
 #ifndef __INCLUDE_IPC__
 #define __INCLUDE_IPC__
 
+#include <stdint.h>
 
+struct ipc;
+
+struct ipc_msg {
+	uint32_t type;		/* specific to platform */
+	uint32_t size;		/* payload size in bytes */
+	uint32_t *data;		/* pointer to payload data */
+};
+
+struct ipc *ipc_init(int (*cb)(struct ipc_msg *msg));
+void ipc_free(struct ipc *ipc);
+
+int ipc_process_msg_queue(struct ipc *ipc);
+
+int ipc_send_msg(struct ipc *ipc, struct ipc_msg *msg);
+int ipc_send_short_msg(struct ipc *ipc, uint32_t msg);
 
 #endif
