@@ -9,11 +9,13 @@
  * Xtensa architecture initialisation.
  */
 
-#include <reef/init.h>
 #include <xtensa/xtruntime.h>
+#include <xtensa/hal.h>
 #include <platform/memory.h>
+#include <platform/interrupt.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
+#include <reef/init.h>
 #include <stdint.h>
 
 static void exception(void)
@@ -56,7 +58,7 @@ static void exception(void)
 	__asm__ __volatile__ ("rsr %0, DEPC" : "=a" (dump[16]) : : "memory");
 }
 
-static void register_exceptions()
+static void register_exceptions(void)
 {
 	_xtos_set_exception_handler(EXCCAUSE_ILLEGAL, (void*) &exception);
 	_xtos_set_exception_handler(EXCCAUSE_SYSCALL, (void*) &exception);
@@ -68,10 +70,29 @@ static void register_exceptions()
 	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void*) &exception);
 }
 
+static void irq_handler(void)
+{
+	dbg();
+}
+
+static void register_interrupt(void)
+{
+	/* register SW irq handler */
+	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE4, irq_handler);
+	xthal_set_intclear(IRQ_MASK_SOFTWARE4);
+	xthal_set_intenable(IRQ_MASK_SOFTWARE4);
+
+	/*enable the interrupts*/
+	_xtos_ints_on(IRQ_MASK_SOFTWARE4);
+}
+
 int arch_init(int argc, char *argv[])
 {
+dbg();
 	register_exceptions();
-
+dbg();
+	register_interrupt();
+dbg();
 	return 0;
 }
 
