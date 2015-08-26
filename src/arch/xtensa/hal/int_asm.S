@@ -47,7 +47,6 @@
 # define SYMBOL(x)  SYMT(x)
 #endif
 
-
 #if XCHAL_HAVE_INTERRUPTS
 /*  Offsets of XtHalVPriState structure members (Xthal_vpri_state variable):  */
 #define XTHAL_VPRI_VPRI_OFS		0x00
@@ -81,8 +80,8 @@ SYMT(xthal_get_intenable)
 	abi_return
 	endfunc
 
-
-#elif defined(__SPLIT__set_intenable)
+#endif
+#if defined(__SPLIT__set_intenable)
 
 // void xthal_set_intenable(unsigned)
 //
@@ -99,7 +98,8 @@ SYMT(xthal_set_intenable)
 // Access INTERRUPT, INTSET, INTCLEAR register from C
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__get_interrupt)
+#endif
+#if defined(__SPLIT__get_interrupt)
 
 // unsigned xthal_get_interrupt(void)
 //
@@ -114,7 +114,8 @@ SYMT(xthal_get_intread)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__set_intset)
+#endif
+#if defined(__SPLIT__set_intset)
 
 // void xthal_set_intset(unsigned)
 //
@@ -126,7 +127,8 @@ SYMT(xthal_set_intset)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__set_intclear)
+#endif
+#if defined(__SPLIT__set_intclear)
 
 // void xthal_set_intclear(unsigned)
 //
@@ -147,7 +149,8 @@ SYMT(xthal_set_intclear)
 //----------------------------------------------------------------------
 
 
-#elif defined(__SPLIT__get_vpri)
+#endif
+#if defined(__SPLIT__get_vpri)
 
 // unsigned xthal_get_vpri(void);
 
@@ -163,7 +166,8 @@ SYMBOL(xthal_get_vpri)
 	endfunc
 
 
-#elif defined(__SPLIT__get_vpri_nw)
+#endif
+#if defined(__SPLIT__get_vpri_nw)
 
 // unsigned xthal_get_vpri_nw(void);
 
@@ -179,7 +183,8 @@ SYM(xthal_get_vpri_nw)
 	endfunc
 
 
-#elif defined(__SPLIT__set_vpri_nw)
+#endif
+#if defined(__SPLIT__set_vpri_nw)
 
 // unsigned xthal_set_vpri_nw(unsigned)
 //
@@ -285,7 +290,8 @@ SYM(xthal_set_vpri_intlevel_nw)
 
 
 
-#elif defined(__SPLIT__set_vpri)
+#endif
+#if defined(__SPLIT__set_vpri)
 
 // unsigned  xthal_set_vpri (unsigned newvpri);
 //
@@ -385,7 +391,8 @@ SYMT(xthal_set_vpri_lock)
 
 
 
-#elif defined(__SPLIT__get_intpending_nw)
+#endif
+#if defined(__SPLIT__get_intpending_nw)
 
 // unsigned xthal_get_intpending_nw(void)
 //
@@ -574,7 +581,8 @@ gipfail:
 
 // -----------------------------------------------------------------
 
-#elif defined(__SPLIT__vpri_lock)
+#endif
+#if defined(__SPLIT__vpri_lock)
 
 // void xthal_vpri_lock()
 //
@@ -610,7 +618,8 @@ xthal_vpri_lock_done:
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__vpri_unlock)
+#endif
+#if defined(__SPLIT__vpri_unlock)
 
 // void xthal_vpri_unlock(void)
 //

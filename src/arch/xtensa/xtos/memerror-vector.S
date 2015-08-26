@@ -54,7 +54,8 @@ _MemErrorVector:
 	.end	literal_prefix
 
 
-# elif defined(__SPLIT__handler)
+#endif
+#if defined(__SPLIT__handler)
 
 /*
  *  Some rules and assumptions:

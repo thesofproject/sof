@@ -43,7 +43,8 @@ const unsigned char Xthal_op0_format_lengths[16] = {
 #endif
 
 
-#elif defined(__SPLIT__byte0_format_lengths)
+#endif
+#if defined(__SPLIT__byte0_format_lengths)
 
 /*  Instruction length in bytes as function of its first byte:  */
 const unsigned char Xthal_byte0_format_lengths[256] = {
@@ -51,7 +52,8 @@ const unsigned char Xthal_byte0_format_lengths[256] = {
 };
 
 
-#elif defined(__SPLIT__disassemble_size)
+#endif
+#if defined(__SPLIT__disassemble_size)
 
 //
 // Disassembly is currently not supported in xtensa hal.
@@ -74,7 +76,8 @@ int xthal_disassemble_size( unsigned char *instr_buf )
 }
 
 
-#elif defined(__SPLIT__disassemble)
+#endif
+#if defined(__SPLIT__disassemble)
 
 /*
  *  Note:  we make sure to avoid the use of library functions,

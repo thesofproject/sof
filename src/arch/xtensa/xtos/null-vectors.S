@@ -61,7 +61,8 @@ _UserExceptionVector:
 	.end	literal_prefix
 # endif
 
-#elif defined(__SPLIT__level1int)
+#endif
+#if defined(__SPLIT__level1int)
 
 	.text
 	.global	_xtos_l1int_handler
@@ -70,7 +71,8 @@ _xtos_l1int_handler:
 	jx	a3
 	.size	_xtos_l1int_handler, . - _xtos_l1int_handler
 
-#elif defined(__SPLIT__level2)
+#endif
+#if defined(__SPLIT__level2)
 
 # if (XCHAL_NUM_INTLEVELS >= 2) && (XCHAL_DEBUGLEVEL != 2)
 	.begin	literal_prefix	.Level2InterruptVector
@@ -92,7 +94,8 @@ _Level2Vector:
 # endif /* level 2 */
 
 
-#elif defined(__SPLIT__level3)
+#endif
+#if defined(__SPLIT__level3)
 
 # if (XCHAL_NUM_INTLEVELS >= 3) && (XCHAL_DEBUGLEVEL != 3)
 	.begin	literal_prefix	.Level3InterruptVector
@@ -114,7 +117,8 @@ _Level3Vector:
 # endif /* level 3 */
 
 
-#elif defined(__SPLIT__level4)
+#endif
+#if defined(__SPLIT__level4)
 
 # if (XCHAL_NUM_INTLEVELS >= 4) && (XCHAL_DEBUGLEVEL != 4)
 	.begin	literal_prefix	.Level4InterruptVector
@@ -136,7 +140,8 @@ _Level4Vector:
 # endif /* level 4 */
 
 
-#elif defined(__SPLIT__level5)
+#endif
+#if defined(__SPLIT__level5)
 
 # if (XCHAL_NUM_INTLEVELS >= 5) && (XCHAL_DEBUGLEVEL != 5)
 	.begin	literal_prefix	.Level5InterruptVector
@@ -158,7 +163,8 @@ _Level5Vector:
 # endif /* level 5 */
 
 
-#elif defined(__SPLIT__level6)
+#endif
+#if defined(__SPLIT__level6)
 
 # if (XCHAL_NUM_INTLEVELS >= 6) && (XCHAL_DEBUGLEVEL != 6)
 	.begin	literal_prefix	.Level6InterruptVector

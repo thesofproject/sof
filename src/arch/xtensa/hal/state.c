@@ -34,10 +34,12 @@
 // space for "extra" (user special registers and non-coprocessor TIE) state:
 const unsigned int Xthal_extra_size = XCHAL_NCP_SA_SIZE;
 
-#elif defined(__SPLIT__extra_align)
+#endif
+#if defined(__SPLIT__extra_align)
 const unsigned int Xthal_extra_align = XCHAL_NCP_SA_ALIGN;
 
-#elif defined(__SPLIT__cpregs_size)
+#endif
+#if defined(__SPLIT__cpregs_size)
 // space for state of TIE coprocessors:
 const unsigned int Xthal_cpregs_size[8] =
 	{
@@ -51,7 +53,8 @@ const unsigned int Xthal_cpregs_size[8] =
 	    XCHAL_CP7_SA_SIZE
 	};
 
-#elif defined(__SPLIT__cpregs_align)
+#endif
+#if defined(__SPLIT__cpregs_align)
 const unsigned int Xthal_cpregs_align[8] =
 	{
 	    XCHAL_CP0_SA_ALIGN,
@@ -64,7 +67,8 @@ const unsigned int Xthal_cpregs_align[8] =
 	    XCHAL_CP7_SA_ALIGN
 	};
 
-#elif defined(__SPLIT__cp_names)
+#endif
+#if defined(__SPLIT__cp_names)
 const char * const Xthal_cp_names[8] =
 	{
 	    XCHAL_CP0_NAME,
@@ -77,35 +81,42 @@ const char * const Xthal_cp_names[8] =
 	    XCHAL_CP7_NAME
 	};
 
-#elif defined(__SPLIT__all_extra_size)
+#endif
+#if defined(__SPLIT__all_extra_size)
 // total save area size (extra + all coprocessors + min 16-byte alignment everywhere)
 const unsigned int Xthal_all_extra_size = XCHAL_TOTAL_SA_SIZE;
 
-#elif defined(__SPLIT__all_extra_align)
+#endif
+#if defined(__SPLIT__all_extra_align)
 // maximum required alignment for the total save area (this might be useful):
 const unsigned int Xthal_all_extra_align = XCHAL_TOTAL_SA_ALIGN;
 
-#elif defined(__SPLIT__num_coprocessors)
+#endif
+#if defined(__SPLIT__num_coprocessors)
 // number of coprocessors starting contiguously from zero
 // (same as Xthal_cp_max, but included for Tornado2):
 const unsigned int Xthal_num_coprocessors = XCHAL_CP_MAX;
 
-#elif defined(__SPLIT__cp_num)
+#endif
+#if defined(__SPLIT__cp_num)
 // actual number of coprocessors:
 const unsigned char Xthal_cp_num    = XCHAL_CP_NUM;
 
-#elif defined(__SPLIT__cp_max)
+#endif
+#if defined(__SPLIT__cp_max)
 // index of highest numbered coprocessor, plus one:
 const unsigned char Xthal_cp_max    = XCHAL_CP_MAX;
 
 // index of highest allowed coprocessor number, per cfg, plus one:
 //const unsigned char Xthal_cp_maxcfg = XCHAL_CP_MAXCFG;
 
-#elif defined(__SPLIT__cp_mask)
+#endif
+#if defined(__SPLIT__cp_mask)
 // bitmask of which coprocessors are present:
 const unsigned int  Xthal_cp_mask   = XCHAL_CP_MASK;
 
-#elif defined(__SPLIT__cp_id_mappings)
+#endif
+#if defined(__SPLIT__cp_id_mappings)
 // Coprocessor ID from its name
 
 # ifdef XCHAL_CP0_IDENT
@@ -133,7 +144,8 @@ const unsigned char XCJOIN(Xthal_cp_id_,XCHAL_CP6_IDENT) = 6;
 const unsigned char XCJOIN(Xthal_cp_id_,XCHAL_CP7_IDENT) = 7;
 # endif
 
-#elif defined(__SPLIT__cp_mask_mappings)
+#endif
+#if defined(__SPLIT__cp_mask_mappings)
 // Coprocessor "mask" (1 << ID) from its name
 
 # ifdef XCHAL_CP0_IDENT
@@ -163,7 +175,8 @@ const unsigned int  XCJOIN(Xthal_cp_mask_,XCHAL_CP7_IDENT) = (1 << 7);
 
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__init_mem_extra)
+#endif
+#if defined(__SPLIT__init_mem_extra)
 // CMS: I have made the assumptions that 0's are safe initial
 // values. That may be wrong at some point.
 //
@@ -184,7 +197,8 @@ xthal_init_mem_extra(void *address)
     } 
 }
 
-#elif defined(__SPLIT__init_mem_cp)
+#endif
+#if defined(__SPLIT__init_mem_cp)
 // initialize the TIE coprocessor
 void
 xthal_init_mem_cp(void *address, int cp)

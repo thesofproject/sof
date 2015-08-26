@@ -26,8 +26,8 @@ reef_LDADD = \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../platform/$(PLATFORM)/libplatform.a \
-	hal/libhal.a \
 	xtos/libxtos.a \
+	hal/libhal.a \
 	-lgcc
 
 reef_LDFLAGS = \

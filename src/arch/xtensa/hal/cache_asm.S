@@ -71,7 +71,8 @@ SYMBOL(xthal_get_icacheattr)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__get_cacheattr_nw)
+#endif
+#if defined(__SPLIT__get_cacheattr_nw)
 
 SYM(xthal_get_cacheattr_nw)
 SYM(xthal_get_dcacheattr_nw)
@@ -82,7 +83,8 @@ SYM(xthal_get_icacheattr_nw)
 	ret
 	endfunc
 
-#elif defined(__SPLIT__get_icacheattr)
+#endif
+#if defined(__SPLIT__get_icacheattr)
 
 //  unsigned xthal_get_icacheattr(void);
 
@@ -94,7 +96,8 @@ SYMBOL(xthal_get_icacheattr)
 	endfunc
 # endif
 
-#elif defined(__SPLIT__get_icacheattr_nw)
+#endif
+#if defined(__SPLIT__get_icacheattr_nw)
 
 # if !XCHAL_HAVE_CACHEATTR	/* possibly independent CACHEATTR states used for I and D */
 SYM(xthal_get_icacheattr_nw)
@@ -131,7 +134,8 @@ SYMBOL(xthal_set_cacheattr)
 	endfunc
 
 
-#elif defined(__SPLIT__set_cacheattr_nw)
+#endif
+#if defined(__SPLIT__set_cacheattr_nw)
 
 #if XCHAL_HAVE_CACHEATTR	/* single CACHEATTR register used for both Instruction and Data accesses */
 SYM(xthal_set_icacheattr_nw)
@@ -168,14 +172,16 @@ SYMBOL(xthal_set_icacheattr)
 	abi_return
 	endfunc
 
-# elif defined(__SPLIT__set_icacheattr_nw)
+#endif
+#if defined(__SPLIT__set_icacheattr_nw)
 
 SYM(xthal_set_icacheattr_nw)
 	icacheattr_set
 	ret
 	endfunc
 
-# elif defined(__SPLIT__set_dcacheattr)
+#endif
+#if defined(__SPLIT__set_dcacheattr)
 
 SYMBOL(xthal_set_dcacheattr)
 	abi_entry
@@ -183,7 +189,8 @@ SYMBOL(xthal_set_dcacheattr)
 	abi_return
 	endfunc
 
-# elif defined(__SPLIT__set_dcacheattr_nw)
+#endif
+#if defined(__SPLIT__set_dcacheattr_nw)
 
 	.align	4
 SYM(xthal_set_dcacheattr_nw)
@@ -206,7 +213,8 @@ SYMBOL(xthal_set_dcacheattr)
 	abi_return
 	endfunc
 
-# elif defined(__SPLIT__set_idcacheattr_nw)
+#endif
+#if defined(__SPLIT__set_idcacheattr_nw)
 
 SYM(xthal_set_icacheattr_nw)
 SYM(xthal_set_dcacheattr_nw)
@@ -242,7 +250,8 @@ SYMBOL(xthal_dcache_is_enabled)
 	abi_return
 	endfunc
 
-# elif defined(__SPLIT__idcache_is_enabled_nw)
+#endif
+#if defined(__SPLIT__idcache_is_enabled_nw)
 
 SYM(xthal_icache_is_enabled_nw)
 SYM(xthal_dcache_is_enabled_nw)
@@ -268,7 +277,8 @@ SYMBOL(xthal_icache_is_enabled)
 	abi_return
 	endfunc
 
-# elif defined(__SPLIT__icache_is_enabled_nw)
+#endif
+#if defined(__SPLIT__icache_is_enabled_nw)
 
 SYM(xthal_icache_is_enabled_nw)
 	icacheattr_is_enabled	2f
@@ -278,7 +288,8 @@ SYM(xthal_icache_is_enabled_nw)
 	ret
 	endfunc
 
-# elif defined(__SPLIT__dcache_is_enabled)
+#endif
+#if defined(__SPLIT__dcache_is_enabled)
 
 SYMBOL(xthal_dcache_is_enabled)
 	abi_entry
@@ -289,7 +300,8 @@ SYMBOL(xthal_dcache_is_enabled)
 	abi_return
 	endfunc
 
-# elif defined(__SPLIT__dcache_is_enabled_nw)
+#endif
+#if defined(__SPLIT__dcache_is_enabled_nw)
 
 SYM(xthal_dcache_is_enabled_nw)
 	dcacheattr_is_enabled	2f
@@ -315,7 +327,8 @@ SYMBOL(xthal_dcache_is_enabled)
 	abi_return
 	endfunc
 
-# elif defined(__SPLIT__idcache_is_enabled_nw)
+#endif
+#if defined(__SPLIT__idcache_is_enabled_nw)
 
 SYM(xthal_icache_is_enabled_nw)
 SYM(xthal_dcache_is_enabled_nw)
@@ -344,7 +357,8 @@ SYMBOL(xthal_icache_all_invalidate)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_all_invalidate_nw)
+#endif
+#if defined(__SPLIT__icache_all_invalidate_nw)
 
 // void xthal_icache_all_invalidate_nw(void);
 
@@ -358,7 +372,8 @@ SYM(xthal_icache_all_invalidate_nw)
 // invalidate the dcache
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_all_invalidate)
+#endif
+#if defined(__SPLIT__dcache_all_invalidate)
 
 // void xthal_dcache_all_invalidate(void);
 
@@ -368,7 +383,8 @@ SYMBOL(xthal_dcache_all_invalidate)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_all_invalidate_nw)
+#endif
+#if defined(__SPLIT__dcache_all_invalidate_nw)
 
 // void xthal_dcache_all_invalidate_nw(void);
 
@@ -382,7 +398,8 @@ SYM(xthal_dcache_all_invalidate_nw)
 // write dcache dirty data
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_all_writeback)
+#endif
+#if defined(__SPLIT__dcache_all_writeback)
 
 // void xthal_dcache_all_writeback(void);
 
@@ -392,7 +409,8 @@ SYMBOL(xthal_dcache_all_writeback)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_all_writeback_nw)
+#endif
+#if defined(__SPLIT__dcache_all_writeback_nw)
 
 // void xthal_dcache_all_writeback_nw(void);
 
@@ -406,7 +424,8 @@ SYM(xthal_dcache_all_writeback_nw)
 // write dcache dirty data and invalidate
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_all_writeback_inv)
+#endif
+#if defined(__SPLIT__dcache_all_writeback_inv)
 
 // void xthal_dcache_all_writeback_inv(void);
 
@@ -416,7 +435,8 @@ SYMBOL(xthal_dcache_all_writeback_inv)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_all_writeback_inv_nw)
+#endif
+#if defined(__SPLIT__dcache_all_writeback_inv_nw)
 
 // void xthal_dcache_all_writeback_inv_nw(void);
 
@@ -430,7 +450,8 @@ SYM(xthal_dcache_all_writeback_inv_nw)
 // unlock instructions from icache
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_all_unlock)
+#endif
+#if defined(__SPLIT__icache_all_unlock)
 
 // void xthal_icache_all_unlock(void);
 
@@ -440,7 +461,8 @@ SYMBOL(xthal_icache_all_unlock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_all_unlock_nw)
+#endif
+#if defined(__SPLIT__icache_all_unlock_nw)
 
 // void xthal_icache_all_unlock_nw(void);
 
@@ -454,7 +476,8 @@ SYM(xthal_icache_all_unlock_nw)
 // unlock data from dcache
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_all_unlock)
+#endif
+#if defined(__SPLIT__dcache_all_unlock)
 
 // void xthal_dcache_all_unlock(void);
 
@@ -464,7 +487,8 @@ SYMBOL(xthal_dcache_all_unlock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_all_unlock_nw)
+#endif
+#if defined(__SPLIT__dcache_all_unlock_nw)
 
 // void xthal_dcache_all_unlock_nw(void);
 
@@ -478,7 +502,8 @@ SYM(xthal_dcache_all_unlock_nw)
 // invalidate the address range in the icache
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_region_invalidate)
+#endif
+#if defined(__SPLIT__icache_region_invalidate)
 
 // void xthal_icache_region_invalidate( void *addr, unsigned size );
 
@@ -489,7 +514,8 @@ SYMBOL(xthal_icache_region_invalidate)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_region_invalidate_nw)
+#endif
+#if defined(__SPLIT__icache_region_invalidate_nw)
 
 // void xthal_icache_region_invalidate_nw( void *addr, unsigned size );
 
@@ -503,7 +529,8 @@ SYM(xthal_icache_region_invalidate_nw)
 // invalidate the address range in the dcache
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_region_invalidate)
+#endif
+#if defined(__SPLIT__dcache_region_invalidate)
 
 // void xthal_dcache_region_invalidate( void *addr, unsigned size );
 
@@ -513,7 +540,8 @@ SYMBOL(xthal_dcache_region_invalidate)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_region_invalidate_nw)
+#endif
+#if defined(__SPLIT__dcache_region_invalidate_nw)
 
 // void xthal_dcache_region_invalidate_nw( void *addr, unsigned size );
 
@@ -527,7 +555,8 @@ SYM(xthal_dcache_region_invalidate_nw)
 // write dcache region dirty data
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_region_writeback)
+#endif
+#if defined(__SPLIT__dcache_region_writeback)
 
 // void xthal_dcache_region_writeback( void *addr, unsigned size );
 
@@ -537,7 +566,8 @@ SYMBOL(xthal_dcache_region_writeback)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_region_writeback_nw)
+#endif
+#if defined(__SPLIT__dcache_region_writeback_nw)
 
 // void xthal_dcache_region_writeback_nw( void *addr, unsigned size );
 
@@ -551,7 +581,8 @@ SYM(xthal_dcache_region_writeback_nw)
 // write dcache region dirty data and invalidate
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_region_writeback_inv)
+#endif
+#if defined(__SPLIT__dcache_region_writeback_inv)
 
 // void xthal_dcache_region_writeback_inv( void *addr, unsigned size );
 
@@ -561,7 +592,8 @@ SYMBOL(xthal_dcache_region_writeback_inv)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_region_writeback_inv_nw)
+#endif
+#if defined(__SPLIT__dcache_region_writeback_inv_nw)
 
 // void xthal_dcache_region_writeback_inv_nw( void *addr, unsigned size );
 
@@ -575,7 +607,8 @@ SYM(xthal_dcache_region_writeback_inv_nw)
 // lock instructions in icache region
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_region_lock)
+#endif
+#if defined(__SPLIT__icache_region_lock)
 
 // void xthal_icache_region_lock(void);
 
@@ -585,7 +618,8 @@ SYMBOL(xthal_icache_region_lock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_region_lock_nw)
+#endif
+#if defined(__SPLIT__icache_region_lock_nw)
 
 // void xthal_icache_region_lock_nw(void);
 
@@ -599,7 +633,8 @@ SYM(xthal_icache_region_lock_nw)
 // lock data in dcache region
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_region_lock)
+#endif
+#if defined(__SPLIT__dcache_region_lock)
 
 // void xthal_dcache_region_lock(void);
 
@@ -609,7 +644,8 @@ SYMBOL(xthal_dcache_region_lock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_region_lock_nw)
+#endif
+#if defined(__SPLIT__dcache_region_lock_nw)
 
 // void xthal_dcache_region_lock_nw(void);
 
@@ -623,7 +659,8 @@ SYM(xthal_dcache_region_lock_nw)
 // unlock instructions from icache region
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_region_unlock)
+#endif
+#if defined(__SPLIT__icache_region_unlock)
 
 // void xthal_icache_region_unlock(void);
 
@@ -633,7 +670,8 @@ SYMBOL(xthal_icache_region_unlock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_region_unlock_nw)
+#endif
+#if defined(__SPLIT__icache_region_unlock_nw)
 
 // void xthal_icache_region_unlock_nw(void);
 
@@ -647,7 +685,8 @@ SYM(xthal_icache_region_unlock_nw)
 // unlock data from dcache region
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_region_unlock)
+#endif
+#if defined(__SPLIT__dcache_region_unlock)
 
 // void xthal_dcache_region_unlock(void);
 
@@ -657,7 +696,8 @@ SYMBOL(xthal_dcache_region_unlock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_region_unlock_nw)
+#endif
+#if defined(__SPLIT__dcache_region_unlock_nw)
 
 // void xthal_dcache_region_unlock_nw(void);
 
@@ -671,7 +711,8 @@ SYM(xthal_dcache_region_unlock_nw)
 // invalidate single icache line
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_line_invalidate)
+#endif
+#if defined(__SPLIT__icache_line_invalidate)
 
 // void xthal_icache_line_invalidate(void *addr);
 
@@ -682,7 +723,8 @@ SYMBOL(xthal_icache_line_invalidate)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_line_invalidate_nw)
+#endif
+#if defined(__SPLIT__icache_line_invalidate_nw)
 
 // void xthal_icache_line_invalidate_nw(void *addr);
 
@@ -696,7 +738,8 @@ SYM(xthal_icache_line_invalidate_nw)
 // invalidate single dcache line
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_line_invalidate)
+#endif
+#if defined(__SPLIT__dcache_line_invalidate)
 
 // void xthal_dcache_line_invalidate(void *addr);
 
@@ -706,7 +749,8 @@ SYMBOL(xthal_dcache_line_invalidate)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_line_invalidate_nw)
+#endif
+#if defined(__SPLIT__dcache_line_invalidate_nw)
 
 // void xthal_dcache_line_invalidate_nw(void *addr);
 
@@ -720,7 +764,8 @@ SYM(xthal_dcache_line_invalidate_nw)
 // write single dcache line dirty data
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_line_writeback)
+#endif
+#if defined(__SPLIT__dcache_line_writeback)
 
 // void xthal_dcache_line_writeback(void *addr);
 
@@ -730,7 +775,8 @@ SYMBOL(xthal_dcache_line_writeback)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_line_writeback_nw)
+#endif
+#if defined(__SPLIT__dcache_line_writeback_nw)
 
 // void xthal_dcache_line_writeback_nw(void *addr);
 
@@ -744,7 +790,8 @@ SYM(xthal_dcache_line_writeback_nw)
 // write single dcache line dirty data and invalidate
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_line_writeback_inv)
+#endif
+#if defined(__SPLIT__dcache_line_writeback_inv)
 
 // void xthal_dcache_line_writeback_inv(void *addr);
 
@@ -754,7 +801,8 @@ SYMBOL(xthal_dcache_line_writeback_inv)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_line_writeback_inv_nw)
+#endif
+#if defined(__SPLIT__dcache_line_writeback_inv_nw)
 
 // void xthal_dcache_line_writeback_inv_nw(void *addr);
 
@@ -768,7 +816,8 @@ SYM(xthal_dcache_line_writeback_inv_nw)
 // lock instructions in icache line
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_line_lock)
+#endif
+#if defined(__SPLIT__icache_line_lock)
 
 // void xthal_icache_line_lock(void);
 
@@ -778,7 +827,8 @@ SYMBOL(xthal_icache_line_lock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_line_lock_nw)
+#endif
+#if defined(__SPLIT__icache_line_lock_nw)
 
 // void xthal_icache_line_lock_nw(void);
 
@@ -792,7 +842,8 @@ SYM(xthal_icache_line_lock_nw)
 // lock data in dcache line
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_line_lock)
+#endif
+#if defined(__SPLIT__dcache_line_lock)
 
 // void xthal_dcache_line_lock(void);
 
@@ -802,7 +853,8 @@ SYMBOL(xthal_dcache_line_lock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_line_lock_nw)
+#endif
+#if defined(__SPLIT__dcache_line_lock_nw)
 
 // void xthal_dcache_line_lock_nw(void);
 
@@ -816,7 +868,8 @@ SYM(xthal_dcache_line_lock_nw)
 // unlock instructions from icache line
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_line_unlock)
+#endif
+#if defined(__SPLIT__icache_line_unlock)
 
 // void xthal_icache_line_unlock(void);
 
@@ -826,7 +879,8 @@ SYMBOL(xthal_icache_line_unlock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_line_unlock_nw)
+#endif
+#if defined(__SPLIT__icache_line_unlock_nw)
 
 // void xthal_icache_line_unlock_nw(void);
 
@@ -840,7 +894,8 @@ SYM(xthal_icache_line_unlock_nw)
 // unlock data from dcache line
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_line_unlock)
+#endif
+#if defined(__SPLIT__dcache_line_unlock)
 
 // void xthal_dcache_line_unlock(void);
 
@@ -850,7 +905,8 @@ SYMBOL(xthal_dcache_line_unlock)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_line_unlock_nw)
+#endif
+#if defined(__SPLIT__dcache_line_unlock_nw)
 
 // void xthal_dcache_line_unlock_nw(void);
 
@@ -864,7 +920,8 @@ SYM(xthal_dcache_line_unlock_nw)
 // sync icache and memory (???)
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__icache_sync)
+#endif
+#if defined(__SPLIT__icache_sync)
 
 // void xthal_icache_sync(void);
 
@@ -875,7 +932,8 @@ SYMBOL(xthal_icache_sync)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__icache_sync_nw)
+#endif
+#if defined(__SPLIT__icache_sync_nw)
 
 // void xthal_icache_sync_nw(void);
 
@@ -889,7 +947,8 @@ SYM(xthal_icache_sync_nw)
 // sync dcache and memory (???)
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__dcache_sync)
+#endif
+#if defined(__SPLIT__dcache_sync)
 
 // void xthal_dcache_sync(void);
 
@@ -899,7 +958,8 @@ SYMBOL(xthal_dcache_sync)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__dcache_sync_nw)
+#endif
+#if defined(__SPLIT__dcache_sync_nw)
 
 // void xthal_dcache_sync_nw(void)
 
@@ -996,7 +1056,8 @@ SYM(xthal_dcache_set_ways_nw)
 // opt into and out of coherence
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__cache_coherence_on)
+#endif
+#if defined(__SPLIT__cache_coherence_on)
 
 // The opt-in routine assumes cache was initialized at reset,
 // so it's equivalent to the low-level coherence_on routine.
@@ -1011,7 +1072,8 @@ SYMBOL(xthal_cache_coherence_on)
 	abi_return
 	endfunc
 	
-#elif defined(__SPLIT__cache_coherence_on_nw)
+#endif
+#if defined(__SPLIT__cache_coherence_on_nw)
 
 // void xthal_cache_coherence_on_nw(void)
 
@@ -1020,7 +1082,8 @@ SYM(xthal_cache_coherence_on_nw)
 	ret
 	endfunc
 	
-#elif defined(__SPLIT__cache_coherence_off)
+#endif
+#if defined(__SPLIT__cache_coherence_off)
 
 // The coherence_off routines should not normally be called directly.
 // Use the xthal_cache_coherence_optout() C routine instead
@@ -1034,7 +1097,8 @@ SYMBOL(xthal_cache_coherence_off)
 	abi_return
 	endfunc
 	
-#elif defined(__SPLIT__cache_coherence_off_nw)
+#endif
+#if defined(__SPLIT__cache_coherence_off_nw)
 
 // void xthal_cache_coherence_on_nw
 
@@ -1047,7 +1111,8 @@ SYM(xthal_cache_coherence_off_nw)
 // Control cache prefetch
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__set_cache_prefetch_long)
+#endif
+#if defined(__SPLIT__set_cache_prefetch_long)
 
 # if XCHAL_HAVE_BE
 #  define aH a2	/* msb word = prefctl mask */
@@ -1094,7 +1159,8 @@ SYMBOL(xthal_set_cache_prefetch_long)
 
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__set_cache_prefetch_long_nw)
+#endif
+#if defined(__SPLIT__set_cache_prefetch_long_nw)
 
 # if XCHAL_HAVE_BE
 #  define aH a2	/* msb word = prefctl mask */
@@ -1136,7 +1202,8 @@ SYM(xthal_set_cache_prefetch_long_nw)
 
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__set_cache_prefetch)
+#endif
+#if defined(__SPLIT__set_cache_prefetch)
 
 // FOR BACKWARD COMPATIBILITY WITH PRE-RF RELEASE OBJECT CODE ONLY.
 // Set cache prefetch state (-1=enable, 0=disable, and see the
@@ -1171,7 +1238,8 @@ SYMBOL(xthal_set_cache_prefetch)
 
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__set_cache_prefetch_nw)
+#endif
+#if defined(__SPLIT__set_cache_prefetch_nw)
 
 // FOR BACKWARD COMPATIBILITY WITH PRE-RF RELEASE OBJECT CODE ONLY.
 // int  xthal_set_cache_prefetch_nw( int )
@@ -1201,7 +1269,8 @@ SYM(xthal_set_cache_prefetch_nw)
 
 //----------------------------------------------------------------------
 
-#elif defined(__SPLIT__get_cache_prefetch)
+#endif
+#if defined(__SPLIT__get_cache_prefetch)
 
 // Return current cache prefetch state.
 // int  xthal_get_cache_prefetch( void )
@@ -1215,7 +1284,8 @@ SYMBOL(xthal_get_cache_prefetch)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__get_cache_prefetch_nw)
+#endif
+#if defined(__SPLIT__get_cache_prefetch_nw)
 
 // int  xthal_get_cache_prefetch_nw( void )
 
@@ -1233,13 +1303,17 @@ SYM(xthal_get_cache_prefetch_nw)
 //----------------------------------------------------------------------
 	
 // Eventually these will move to their own file:
-#elif defined(__SPLIT__hw_configid0)
+#endif
+#if defined(__SPLIT__hw_configid0)
 	.set	xthals_hw_configid0, XCHAL_HW_CONFIGID0
-#elif defined(__SPLIT__hw_configid1)
+#endif
+#if defined(__SPLIT__hw_configid1)
 	.set	xthals_hw_configid1, XCHAL_HW_CONFIGID1
-#elif defined(__SPLIT__release_major)
+#endif
+#if defined(__SPLIT__release_major)
 	.set	xthals_release_major, XTHAL_RELEASE_MAJOR
-#elif defined(__SPLIT__release_minor)
+#endif
+#if defined(__SPLIT__release_minor)
 	.set	xthals_release_minor, XTHAL_RELEASE_MINOR
 
 #endif /*split*/

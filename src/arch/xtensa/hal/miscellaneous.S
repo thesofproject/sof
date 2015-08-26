@@ -72,7 +72,8 @@ SYMBOL(xthal_clear_regcached_code)
 	abi_return
 	endfunc
 
-#elif defined(__SPLIT__clear_regcached_code_nw)
+#endif
+#if defined(__SPLIT__clear_regcached_code_nw)
 
 SYM(xthal_clear_regcached_code_nw)
 # if XCHAL_HAVE_LOOPS
