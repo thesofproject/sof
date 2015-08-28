@@ -27,6 +27,11 @@ reef_LDADD = \
 	../../drivers/libdrivers.a \
 	../../platform/$(PLATFORM)/libplatform.a \
 	xtos/libxtos.a \
+	xtos/libxlevel2.a \
+	xtos/libxlevel3.a \
+	xtos/libxlevel4.a \
+	xtos/libxlevel5.a \
+	xtos/libxlevel6.a \
 	hal/libhal.a \
 	-lgcc
 
@@ -36,4 +41,5 @@ reef_LDFLAGS = \
 
 bin-local: reef
 	$(OBJCOPY) -O binary reef reef.bin
+	$(OBJDUMP) -D reef > reef.map
 	

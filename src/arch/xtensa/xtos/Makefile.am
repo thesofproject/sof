@@ -1,4 +1,10 @@
-lib_LIBRARIES = libxtos.a
+lib_LIBRARIES = \
+	libxtos.a \
+	libxlevel2.a \
+	libxlevel3.a \
+	libxlevel4.a \
+	libxlevel5.a \
+	libxlevel6.a
 
 VECTOR_DEFS = \
 	-D__SPLIT__vector \
@@ -14,25 +20,96 @@ VECTOR_DEFS = \
 
 
 if HAVE_BAYTRAIL
-PLATFORM_DEFS =
+PLATFORM_DEFS = $(VECTOR_DEFS)
 else
 PLATFORM_DEFS =
 endif
 
+LEVEL_SRC = \
+	int-handler.S \
+	int-vector.S \
+	int-initlevel.S
+
+libxlevel2_a_SOURCES = \
+	$(LEVEL_SRC)
+
+libxlevel2_a_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR) \
+	$(PLATFORM_DEFS) \
+	-D_INTERRUPT_LEVEL=2
+
+libxlevel3_a_SOURCES = \
+	$(LEVEL_SRC)
+
+libxlevel3_a_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR) \
+	$(PLATFORM_DEFS) \
+	-D_INTERRUPT_LEVEL=3
+
+libxlevel4_a_SOURCES = \
+	$(LEVEL_SRC)
+
+libxlevel4_a_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR) \
+	$(PLATFORM_DEFS) \
+	-D_INTERRUPT_LEVEL=4
+
+libxlevel5_a_SOURCES = \
+	$(LEVEL_SRC)
+
+libxlevel5_a_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR) \
+	$(PLATFORM_DEFS) \
+	-D_INTERRUPT_LEVEL=5
+
+libxlevel6_a_SOURCES = \
+	$(LEVEL_SRC)
+
+libxlevel6_a_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR) \
+	$(PLATFORM_DEFS) \
+	-D_INTERRUPT_LEVEL=6
+
 libxtos_a_SOURCES = \
-	exc-syscall-handler.S \
-	exc-syscall-c-handler.c \
-	exc-sethandler.c \
-	exc-table.S \
-	exc-unhandled.S \
+	core-restore.S \
+	core-save.S \
+	core-shutoff.S \
+	double-vector.S \
+	exc-alloca-handler.S \
 	exc-c-wrapper-handler.S \
 	exc-return.S \
-	user-vector.S \
-	int-lowpri-dispatcher.S \
+	exc-sethandler.c \
+	exc-syscall-c-handler.c \
+	exc-syscall-handler.S \
+	exc-table.S \
+	exc-unhandled.S \
+	init.c \
 	interrupt-table.S \
 	int-sethandler.c \
+	intlevel-restore.S \
+	intlevel-setmin.S \
+	intlevel-set.S \
+	int-lowpri-dispatcher.S \
+	ints-off.S \
 	ints-on.S \
-	ints-off.S
+	kernel-vector.S \
+	memep-enable.S \
+	memep-initrams.S \
+	memerror-vector.S \
+	nmi-vector.S \
+	null-vectors.S \
+	reloc-vectors.S \
+	user-vector.S
 
 libxtos_a_CFLAGS = \
 	$(ARCH_INCDIR) \

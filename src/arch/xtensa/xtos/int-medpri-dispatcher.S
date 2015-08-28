@@ -39,7 +39,7 @@
 
 #define INTERRUPT_MASK		XCHAL_INTLEVEL_MASK(_INTERRUPT_LEVEL)
 #define SINGLE_INTERRUPT	((INTERRUPT_MASK & (INTERRUPT_MASK - 1)) == 0)
-#define SINGLE_INT_NUM		XCHAL_INTLEVEL_NUM(_INTERRUPT_LEVEL)
+#define SINGLE_INT_NUM		_INTERRUPT_LEVEL
 
 
 //  Strict non-preemptive prioritization
@@ -133,7 +133,7 @@ LABEL(_Level,FromVector):
  * number and exception stack frame), then call the interrupt handler.
  * Note: The callx12 preserves the original user task's a4..a15.*/
 
-	movi	a12, _xtos_interrupt_table +  MAPINT(SINGLE_INT_NUM)*XIE_SIZE
+	movi	a12, _xtos_interrupt_table + (MAPINT(SINGLE_INT_NUM) * XIE_SIZE)
 	l32i	a13, a12, XIE_HANDLER
 # ifdef __XTENSA_CALL0_ABI__
 	l32i	a2, a12, XIE_ARG
