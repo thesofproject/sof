@@ -68,7 +68,7 @@ case "$with_platform" in
 	PLATFORM="baytrail"
 	AC_SUBST(PLATFORM)
 
-	XTENSA_CORE = hifi2_std
+	XTENSA_CORE="hifi2_std"
 	AC_SUBST(XTENSA_CORE)
     ;;
     *)
@@ -82,6 +82,7 @@ AM_PROG_AR
 AC_PROG_CC
 AC_PROG_RANLIB
 AC_CHECK_TOOL([OBJCOPY], [objcopy], [])
+AC_CHECK_TOOL([OBJDUMP], [objdump], [])
 
 AM_EXTRA_RECURSIVE_TARGETS([bin])
 
