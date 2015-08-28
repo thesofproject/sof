@@ -70,29 +70,26 @@ static void register_exceptions(void)
 	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void*) &exception);
 }
 
+/* test code to check working IRQ */
 static void irq_handler(void)
 {
+	xthal_set_intclear(IRQ_MASK_SOFTWARE1);
 	dbg();
 }
 
 static void register_interrupt(void)
 {
 	/* register SW irq handler */
-	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE4, irq_handler);
-	xthal_set_intclear(IRQ_MASK_SOFTWARE4);
-	xthal_set_intenable(IRQ_MASK_SOFTWARE4);
-
-	/*enable the interrupts*/
-	_xtos_ints_on(IRQ_MASK_SOFTWARE4);
+	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE1, irq_handler);
+	xthal_set_intclear(IRQ_MASK_SOFTWARE1);
+	xthal_set_intenable(IRQ_MASK_SOFTWARE1);
+	xthal_set_intset(IRQ_MASK_SOFTWARE1);
 }
 
 int arch_init(int argc, char *argv[])
 {
-dbg();
-	register_exceptions();
-dbg();
 	register_interrupt();
-dbg();
+	register_exceptions();
 	return 0;
 }
 
