@@ -107,7 +107,6 @@ libxtos_a_SOURCES = \
 	memep-initrams.S \
 	memerror-vector.S \
 	nmi-vector.S \
-	null-vectors.S \
 	reloc-vectors.S \
 	user-vector.S
 

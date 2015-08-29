@@ -88,8 +88,9 @@ static void register_interrupt(void)
 
 int arch_init(int argc, char *argv[])
 {
-	register_interrupt();
 	register_exceptions();
+	register_interrupt();
+
 	return 0;
 }
 
