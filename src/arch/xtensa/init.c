@@ -73,17 +73,17 @@ static void register_exceptions(void)
 /* test code to check working IRQ */
 static void irq_handler(void)
 {
-	xthal_set_intclear(IRQ_MASK_SOFTWARE1);
+	xthal_set_intclear(IRQ_MASK_SOFTWARE3);
 	dbg();
 }
 
 static void register_interrupt(void)
 {
 	/* register SW irq handler */
-	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE1, irq_handler);
-	xthal_set_intclear(IRQ_MASK_SOFTWARE1);
-	xthal_set_intenable(IRQ_MASK_SOFTWARE1);
-	xthal_set_intset(IRQ_MASK_SOFTWARE1);
+	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE3, irq_handler);
+	xthal_set_intclear(IRQ_MASK_SOFTWARE3);
+	xthal_set_intenable(IRQ_MASK_SOFTWARE3);
+	xthal_set_intset(IRQ_MASK_SOFTWARE3);
 }
 
 int arch_init(int argc, char *argv[])
