@@ -62,28 +62,30 @@ static void register_exceptions(void)
 {
 	_xtos_set_exception_handler(EXCCAUSE_ILLEGAL, (void*) &exception);
 	_xtos_set_exception_handler(EXCCAUSE_SYSCALL, (void*) &exception);
-	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_ERROR, (void*) &exception);
 	_xtos_set_exception_handler(EXCCAUSE_DIVIDE_BY_ZERO, (void*) &exception);
+
 	_xtos_set_exception_handler(EXCCAUSE_INSTR_DATA_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_DATA_ERROR, (void*) &exception);
 	_xtos_set_exception_handler(EXCCAUSE_INSTR_ADDR_ERROR, (void*) &exception);
+
+	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_ERROR, (void*) &exception);
 	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void*) &exception);
+	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_DATA_ERROR, (void*) &exception);
 }
 
 /* test code to check working IRQ */
 static void irq_handler(void)
 {
-	xthal_set_intclear(IRQ_MASK_SOFTWARE3);
 	dbg();
 }
 
 static void register_interrupt(void)
 {
 	/* register SW irq handler */
-	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE3, irq_handler);
-	xthal_set_intclear(IRQ_MASK_SOFTWARE3);
-	xthal_set_intenable(IRQ_MASK_SOFTWARE3);
-	xthal_set_intset(IRQ_MASK_SOFTWARE3);
+	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE4, irq_handler);
+	xthal_set_intclear(IRQ_MASK_SOFTWARE4);
+	xthal_set_intenable(IRQ_MASK_SOFTWARE4);
+
+	xthal_set_intset(IRQ_MASK_SOFTWARE4);
 }
 
 int arch_init(int argc, char *argv[])
