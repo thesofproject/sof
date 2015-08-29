@@ -20,7 +20,7 @@
 
 static void exception(void)
 {
-	uint32_t *dump = (uint32_t*) mailbox_get_exception_base();
+	volatile uint32_t *dump = (uint32_t*) mailbox_get_exception_base();
 
 	/* Exception Vector number */
 	__asm__ __volatile__ ("rsr %0, EXCCAUSE" : "=a" (dump[0]) : : "memory");
@@ -75,24 +75,50 @@ static void register_exceptions(void)
 /* test code to check working IRQ */
 static void irq_handler(void)
 {
+	xthal_set_intclear(IRQ_MASK_SOFTWARE4);
+	xthal_set_intenable(IRQ_MASK_SOFTWARE4 | IRQ_MASK_TIMER1);
 	dbg();
+}
+
+/* test code to check working IRQ */
+static void timer_handler(void)
+{
+	volatile uint32_t count;
+
+	xthal_set_intclear(IRQ_MASK_TIMER1);
+//	xthal_set_intenable(IRQ_MASK_SOFTWARE4 | IRQ_MASK_TIMER1);
+	
+
+	count = xthal_get_ccount();
+	dbg_val(count);
+//	count = xthal_get_ccompare(0);
+//	dbg_val(count);
+//	xthal_set_ccompare(0, count + 100000000);
+//	count = xthal_get_ccompare(0);
+//	dbg_val(count);
 }
 
 static void register_interrupt(void)
 {
 	/* register SW irq handler */
-	_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE4, irq_handler);
-	xthal_set_intclear(IRQ_MASK_SOFTWARE4);
-	xthal_set_intenable(IRQ_MASK_SOFTWARE4);
+	//_xtos_set_interrupt_handler(IRQ_NUM_SOFTWARE4, irq_handler);
+	_xtos_set_interrupt_handler(IRQ_NUM_TIMER1, timer_handler);
 
-	xthal_set_intset(IRQ_MASK_SOFTWARE4);
+	xthal_set_intclear(IRQ_MASK_SOFTWARE4 | IRQ_MASK_TIMER1);
+	xthal_set_intenable(IRQ_MASK_SOFTWARE4 | IRQ_MASK_TIMER1);
+
+	//xthal_set_intset(IRQ_MASK_SOFTWARE4);
 }
 
 int arch_init(int argc, char *argv[])
 {
+	volatile uint32_t count;
+
 	register_exceptions();
 	register_interrupt();
 
+	count = xthal_get_ccount();
+	xthal_set_ccompare(0, count + 100000000);
 	return 0;
 }
 
