@@ -35,7 +35,7 @@
 //#include <xtensa/../../src/xtos/xtos-internal.h>
 
 //.global	_ResetVector
-
+#if 0
 /*
  * Reset vector.
  * Only a trampoline to jump to _start
@@ -52,7 +52,7 @@ _ResetVector:
 2:	.long	_start
 1:	l32r	a2, 2b
 	jx	a2
-
+#endif
 
 // Exports
 .global _start
@@ -221,8 +221,9 @@ _start:
 	//  (ARG#).
 
 
-#if XCHAL_HAVE_HALT
+//#if XCHAL_HAVE_HALT
 
+#if 1
 	//  Assume minimalist environment for memory-constrained TX cores.
 	//  No C library or board initialization, no parameters passed to main
 	//  (assume declared as "void main(void)") and no call to exit().

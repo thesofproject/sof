@@ -476,7 +476,7 @@
 #define XCHAL_HAVE_XEA2			1	/* Exception Architecture 2 */
 #define XCHAL_HAVE_XEAX			0	/* External Exception Arch. */
 #define XCHAL_HAVE_EXCEPTIONS		1	/* exception option */
-#define XCHAL_HAVE_HALT			1	/* halt architecture option */
+#define XCHAL_HAVE_HALT			0	/* halt architecture option */
 #define XCHAL_HAVE_BOOTLOADER		0	/* boot loader (for TX) */
 #define XCHAL_HAVE_MEM_ECC_PARITY	0	/* local memory ECC/parity */
 #define XCHAL_HAVE_VECTOR_SELECT	1	/* relocatable vectors */

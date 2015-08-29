@@ -3,6 +3,18 @@ SUBDIRS = hal xtos include
 bin_PROGRAMS = \
 	reef
 
+noinst_LIBRARIES = \
+	libreset_a
+
+libreset_a_SOURCES = \
+	reset-vector.S
+
+libreset_a_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR) \
+	-mtext-section-literals
+
 reef_SOURCES = \
 	crt1-boards.S \
 	_vectors.S \
@@ -27,6 +39,7 @@ reef_LDADD = \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../platform/$(PLATFORM)/libplatform.a \
+	libreset_a \
 	xtos/libxtos.a \
 	xtos/libxlevel2.a \
 	xtos/libxlevel3.a \
