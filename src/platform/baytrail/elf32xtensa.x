@@ -348,6 +348,7 @@ SECTIONS
     . = ALIGN (8);
     _bss_end = ABSOLUTE(.);
   } >dram0_1_seg :dram0_1_bss_phdr
+
   _end = 0xff327000;
   PROVIDE(end = 0xff327000);
   _stack_sentry = 0xff327000;

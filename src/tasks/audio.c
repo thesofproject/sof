@@ -28,19 +28,14 @@ static void irq_handler(void *arg)
 /* test code to check working IRQ */
 static void timer_handler(void *arg)
 {
-	dbg();
 	ticks++;
 	dbg_val(ticks);
 }
-
-
 
 int do_task(int argc, char *argv[])
 {
 	int ret = 0;
 
-dbg();
-dbg_val(ticks);
 	timer_register(0, timer_handler, NULL);
 	timer_set(0, 10000000);
 	timer_enable(0);
@@ -49,8 +44,8 @@ dbg_val(ticks);
 	{
 	//	ipc_process_queue();
 
-		wait_for_interrupt(4);
-//dbg_val(ticks);
+		wait_for_interrupt(0);
+
 		timer_set(0, 10000000);
 		timer_enable(0);
 	}

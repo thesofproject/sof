@@ -75,7 +75,6 @@ static void register_exceptions(void)
 int arch_init(int argc, char *argv[])
 {
 	register_exceptions();
-
 	return 0;
 }
 
