@@ -56,6 +56,8 @@ static void exception(void)
 	__asm__ __volatile__ ("rsr %0, EPS7" : "=a" (dump[15]) : : "memory");
 	/* Double Exception program counter */
 	__asm__ __volatile__ ("rsr %0, DEPC" : "=a" (dump[16]) : : "memory");
+
+	while(1) {};
 }
 
 static void register_exceptions(void)
