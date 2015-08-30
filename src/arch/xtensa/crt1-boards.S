@@ -167,6 +167,7 @@ _start:
 	 *  The __memmap_init() function is optional.  It is marked as a
 	 *  weak symbol, so that it gets valued zero if not defined.
 	 */
+
 	.weak	__memmap_init
 	movi	a4, __memmap_init
 	beqz	a4, 1f
@@ -186,6 +187,7 @@ _start:
 	 *	a9 = end address of bytes to be zeroed
 	 *	a10 = length of bytes to be zeroed
 	 */
+	movi	a0, 0
 	movi 	a6, _bss_table_start
 	movi 	a7, _bss_table_end
 	bgeu  	a6, a7, .L3zte
