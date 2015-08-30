@@ -18,7 +18,11 @@ libreset_a_CCASFLAGS = \
 reef_SOURCES = \
 	crt1-boards.S \
 	_vectors.S \
-	init.c
+	init.c \
+	wait.S \
+	lock.c \
+	interrupt.c \
+	timer.c
 
 reef_CFLAGS = \
 	$(ARCH_INCDIR) \

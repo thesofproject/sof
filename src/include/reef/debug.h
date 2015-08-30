@@ -20,10 +20,10 @@
 		*m = __LINE__; \
 	} while (0)
 
-#define dbg_val(val) \
+#define dbg_val(_v) \
 	do { \
-		volatile uint32_t *m = (uint32_t*)mailbox_get_debug_base(); \
-		*m = val; \
+		volatile uint32_t *_m = (volatile uint32_t*)mailbox_get_debug_base(); \
+		*_m = _v; \
 	} while (0)
 
 
