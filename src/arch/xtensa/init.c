@@ -57,6 +57,8 @@ static void exception(void)
 	/* Double Exception program counter */
 	__asm__ __volatile__ ("rsr %0, DEPC" : "=a" (dump[16]) : : "memory");
 
+	/* atm we loop forever */
+	/* TODO: we should probably stall/HALT at this point or recover */
 	while(1) {};
 }
 
