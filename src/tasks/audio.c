@@ -24,12 +24,28 @@ static int ipc = 1000;
 
 static void do_cmd(void)
 {
+	uint32_t val;
 	dbg();
+
+	/* clear BUSY bit and set DONE bit - accept new messages */
+	val = shim_read(SHIM_IPCX);
+	val &= ~SHIM_IPCX_BUSY;
+	val |= SHIM_IPCX_DONE;
+	shim_write(SHIM_IPCX, val);
+
+	/* unmask busy interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
 }
 
 static void do_notify(void)
 {
 	dbg();
+
+	/* clear DONE bit - tell Host we have completed */
+	shim_write(SHIM_IPCD, shim_read(SHIM_IPCD) & ~SHIM_IPCD_DONE);
+
+	/* unmask Done interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
 }
 
 /* test code to check working IRQ */
