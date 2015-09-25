@@ -52,3 +52,4 @@ int ipc_process_msg_queue(struct ipc *ipc)
 int ipc_send_msg(struct ipc *ipc, struct ipc_msg *msg)
 {
 }
+

@@ -13,6 +13,7 @@
 #include <reef/init.h>
 #include <reef/task.h>
 #include <reef/debug.h>
+#include <platform/platform.h>
 
 int main(int argc, char *argv[])
 {
@@ -24,6 +25,10 @@ int main(int argc, char *argv[])
 		goto err_out;
 
 	dbg();
+
+	/* let host know DSP boot is complete */
+	platform_boot_complete(0);
+
 	/* should not return */
 	err = do_task(argc, argv);
 

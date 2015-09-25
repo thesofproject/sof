@@ -21,7 +21,7 @@ int platform_boot_complete(uint32_t boot_message)
 	obox[1] = inbox;
 
 	/* now interrupt host to tell it we are done booting */
-	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY | (outbox & 0x3fffffff));
+	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY | (0x1 << 29));//(outbox & 0x3fffffff));
 	return 0;
 }
 

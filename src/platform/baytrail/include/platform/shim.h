@@ -19,8 +19,8 @@
 #define SHIM_ISRD		0x20
 #define SHIM_IMRX		0x28
 #define SHIM_IMRD		0x30
-#define SHIM_IPCX		0x3C /* IPC IA -> SST */
-#define SHIM_IPCD		0x44 /* IPC SST -> IA */
+#define SHIM_IPCX		0x38 /* IPC IA -> SST */
+#define SHIM_IPCD		0x40 /* IPC SST -> IA */
 #define SHIM_ISRSC		0x48
 #define SHIM_ISRLPESC		0x50
 #define SHIM_IMRSC		0x58
