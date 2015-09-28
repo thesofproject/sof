@@ -10,6 +10,10 @@
 #define __INCLUDE_MAILBOX__
 
 #include <platform/mailbox.h>
+#include <stdint.h>
+
+/* 1k should be enough for everyone ..... */
+#define IPC_MAX_MAILBOX_BYTES 1024
 
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE
@@ -34,5 +38,17 @@
 
 #define mailbox_get_debug_size() \
 	MAILBOX_DEBUG_SIZE
+
+#define mailbox_outbox_write(dest, src, bytes) \
+	rmemcpy(MAILBOX_OUTBOX_BASE + dest, src, bytes);
+
+#define mailbox_outbox_read(dest, src, bytes) \
+	rmemcpy(dest, MAILBOX_OUTBOX_BASE + src, bytes);
+
+#define mailbox_inbox_write(dest, src, bytes) \
+	rmemcpy(MAILBOX_INBOX_BASE + dest, src, bytes);
+
+#define mailbox_inbox_read(dest, src, bytes) \
+	rmemcpy(dest, MAILBOX_INBOX_BASE + src, bytes);
 
 #endif

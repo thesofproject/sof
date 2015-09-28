@@ -11,6 +11,7 @@
 #define __INCLUDE_UAPI_INTEL_IPC_H__
 
 #include <stdint.h>
+#include <reef/mailbox.h>
 
 #define IPC_INTEL_NO_CHANNELS		4
 #define IPC_INTEL_MAX_DX_REGIONS		14
@@ -28,8 +29,164 @@
 #define IPC_INTEL_MAX_INFO_SIZE		64
 #define IPC_INTEL_BUILD_HASH_LENGTH	40
 #define IPC_INTEL_IPC_MAX_SHORT_PARAMETER_SIZE	500
-#define WAVES_PARAM_COUNT		128
-#define WAVES_PARAM_LINES		160
+
+/* Global Message - Generic */
+#define IPC_INTEL_GLB_TYPE_SHIFT	24
+#define IPC_INTEL_GLB_TYPE_MASK	(0x1f << IPC_INTEL_GLB_TYPE_SHIFT)
+#define IPC_INTEL_GLB_TYPE(x)		(x << IPC_INTEL_GLB_TYPE_SHIFT)
+
+/* Global Message - Reply */
+#define IPC_INTEL_GLB_REPLY_SHIFT	0
+#define IPC_INTEL_GLB_REPLY_MASK	(0x1f << IPC_INTEL_GLB_REPLY_SHIFT)
+#define IPC_INTEL_GLB_REPLY_TYPE(x)	(x << IPC_INTEL_GLB_REPLY_TYPE_SHIFT)
+
+/* Stream Message - Generic */
+#define IPC_INTEL_STR_TYPE_SHIFT	20
+#define IPC_INTEL_STR_TYPE_MASK	(0xf << IPC_INTEL_STR_TYPE_SHIFT)
+#define IPC_INTEL_STR_TYPE(x)		(x << IPC_INTEL_STR_TYPE_SHIFT)
+#define IPC_INTEL_STR_ID_SHIFT	16
+#define IPC_INTEL_STR_ID_MASK		(0xf << IPC_INTEL_STR_ID_SHIFT)
+#define IPC_INTEL_STR_ID(x)		(x << IPC_INTEL_STR_ID_SHIFT)
+
+/* Stream Message - Reply */
+#define IPC_INTEL_STR_REPLY_SHIFT	0
+#define IPC_INTEL_STR_REPLY_MASK	(0x1f << IPC_INTEL_STR_REPLY_SHIFT)
+
+/* Stream Stage Message - Generic */
+#define IPC_INTEL_STG_TYPE_SHIFT	12
+#define IPC_INTEL_STG_TYPE_MASK	(0xf << IPC_INTEL_STG_TYPE_SHIFT)
+#define IPC_INTEL_STG_TYPE(x)		(x << IPC_INTEL_STG_TYPE_SHIFT)
+#define IPC_INTEL_STG_ID_SHIFT	10
+#define IPC_INTEL_STG_ID_MASK		(0x3 << IPC_INTEL_STG_ID_SHIFT)
+#define IPC_INTEL_STG_ID(x)		(x << IPC_INTEL_STG_ID_SHIFT)
+
+/* Stream Stage Message - Reply */
+#define IPC_INTEL_STG_REPLY_SHIFT	0
+#define IPC_INTEL_STG_REPLY_MASK	(0x1f << IPC_INTEL_STG_REPLY_SHIFT)
+
+/* Debug Log Message - Generic */
+#define IPC_INTEL_LOG_OP_SHIFT	20
+#define IPC_INTEL_LOG_OP_MASK		(0xf << IPC_INTEL_LOG_OP_SHIFT)
+#define IPC_INTEL_LOG_OP_TYPE(x)	(x << IPC_INTEL_LOG_OP_SHIFT)
+#define IPC_INTEL_LOG_ID_SHIFT	16
+#define IPC_INTEL_LOG_ID_MASK		(0xf << IPC_INTEL_LOG_ID_SHIFT)
+#define IPC_INTEL_LOG_ID(x)		(x << IPC_INTEL_LOG_ID_SHIFT)
+
+/* Module Message */
+#define IPC_INTEL_MODULE_OPERATION_SHIFT	20
+#define IPC_INTEL_MODULE_OPERATION_MASK	(0xf << IPC_INTEL_MODULE_OPERATION_SHIFT)
+#define IPC_INTEL_MODULE_OPERATION(x)	(x << IPC_INTEL_MODULE_OPERATION_SHIFT)
+
+#define IPC_INTEL_MODULE_ID_SHIFT	16
+#define IPC_INTEL_MODULE_ID_MASK	(0xf << IPC_INTEL_MODULE_ID_SHIFT)
+#define IPC_INTEL_MODULE_ID(x)	(x << IPC_INTEL_MODULE_ID_SHIFT)
+
+/* IPC message timeout (msecs) */
+#define IPC_INTEL_TIMEOUT_MSECS	300
+
+
+/* Firmware Ready Message */
+#define IPC_INTEL_FW_READY		(0x1 << 29)
+#define IPC_INTL_STATUS_MASK		(0x3 << 30)
+
+#define IPC_EMPTY_LIST_SIZE	8
+#define IPC_MAX_STREAMS		4
+
+#define IPC_INTEL_INVALID_STREAM	0xffffffff
+
+/* Global Message - Types and Replies */
+enum ipc_glb_type {
+	IPC_INTEL_GLB_GET_FW_VERSION = 0,		/* Retrieves firmware version */
+	IPC_INTEL_GLB_PERFORMANCE_MONITOR = 1,	/* Performance monitoring actions */
+	IPC_INTEL_GLB_ALLOCATE_STREAM = 3,		/* Request to allocate new stream */
+	IPC_INTEL_GLB_FREE_STREAM = 4,		/* Request to free stream */
+	IPC_INTEL_GLB_GET_FW_CAPABILITIES = 5,	/* Retrieves firmware capabilities */
+	IPC_INTEL_GLB_STREAM_MESSAGE = 6,		/* Message directed to stream or its stages */
+	/* Request to store firmware context during D0->D3 transition */
+	IPC_INTEL_GLB_REQUEST_DUMP = 7,
+	/* Request to restore firmware context during D3->D0 transition */
+	IPC_INTEL_GLB_RESTORE_CONTEXT = 8,
+	IPC_INTEL_GLB_GET_DEVICE_FORMATS = 9,		/* Set device format */
+	IPC_INTEL_GLB_SET_DEVICE_FORMATS = 10,	/* Get device format */
+	IPC_INTEL_GLB_SHORT_REPLY = 11,
+	IPC_INTEL_GLB_ENTER_DX_STATE = 12,
+	IPC_INTEL_GLB_GET_MIXER_STREAM_INFO = 13,	/* Request mixer stream params */
+	IPC_INTEL_GLB_DEBUG_LOG_MESSAGE = 14,		/* Message to or from the debug logger. */
+	IPC_INTEL_GLB_MODULE_OPERATION = 15,		/* Message to loadable fw module */
+	IPC_INTEL_GLB_REQUEST_TRANSFER = 16, 		/* < Request Transfer for host */
+	IPC_INTEL_GLB_MAX_IPC_MESSAGE_TYPE = 17,	/* Maximum message number */
+};
+
+enum ipc_glb_reply {
+	IPC_INTEL_GLB_REPLY_SUCCESS = 0,		/* The operation was successful. */
+	IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM = 1,	/* Invalid parameter was passed. */
+	IPC_INTEL_GLB_REPLY_UNKNOWN_MESSAGE_TYPE = 2,	/* Uknown message type was resceived. */
+	IPC_INTEL_GLB_REPLY_OUT_OF_RESOURCES = 3,	/* No resources to satisfy the request. */
+	IPC_INTEL_GLB_REPLY_BUSY = 4,			/* The system or resource is busy. */
+	IPC_INTEL_GLB_REPLY_PENDING = 5,		/* The action was scheduled for processing.  */
+	IPC_INTEL_GLB_REPLY_FAILURE = 6,		/* Critical error happened. */
+	IPC_INTEL_GLB_REPLY_INVALID_REQUEST = 7,	/* Request can not be completed. */
+	IPC_INTEL_GLB_REPLY_STAGE_UNINITIALIZED = 8,	/* Processing stage was uninitialized. */
+	IPC_INTEL_GLB_REPLY_NOT_FOUND = 9,		/* Required resource can not be found. */
+	IPC_INTEL_GLB_REPLY_SOURCE_NOT_STARTED = 10,	/* Source was not started. */
+};
+
+enum ipc_module_operation {
+	IPC_INTEL_MODULE_NOTIFICATION = 0,
+	IPC_INTEL_MODULE_ENABLE = 1,
+	IPC_INTEL_MODULE_DISABLE = 2,
+	IPC_INTEL_MODULE_GET_PARAMETER = 3,
+	IPC_INTEL_MODULE_SET_PARAMETER = 4,
+	IPC_INTEL_MODULE_GET_INFO = 5,
+	IPC_INTEL_MODULE_MAX_MESSAGE
+};
+
+/* Stream Message - Types */
+enum ipc_str_operation {
+	IPC_INTEL_STR_RESET = 0,
+	IPC_INTEL_STR_PAUSE = 1,
+	IPC_INTEL_STR_RESUME = 2,
+	IPC_INTEL_STR_STAGE_MESSAGE = 3,
+	IPC_INTEL_STR_NOTIFICATION = 4,
+	IPC_INTEL_STR_MAX_MESSAGE
+};
+
+/* Stream Stage Message Types */
+enum ipc_stg_operation {
+	IPC_INTEL_STG_GET_VOLUME = 0,
+	IPC_INTEL_STG_SET_VOLUME,
+	IPC_INTEL_STG_SET_WRITE_POSITION,
+	IPC_INTEL_STG_SET_FX_ENABLE,
+	IPC_INTEL_STG_SET_FX_DISABLE,
+	IPC_INTEL_STG_SET_FX_GET_PARAM,
+	IPC_INTEL_STG_SET_FX_SET_PARAM,
+	IPC_INTEL_STG_SET_FX_GET_INFO,
+	IPC_INTEL_STG_MUTE_LOOPBACK,
+	IPC_INTEL_STG_MAX_MESSAGE
+};
+
+/* Stream Stage Message Types For Notification*/
+enum ipc_stg_operation_notify {
+	IPC_POSITION_CHANGED = 0,
+	IPC_INTEL_STG_GLITCH,
+	IPC_INTEL_STG_MAX_NOTIFY
+};
+
+enum ipc_glitch_type {
+	IPC_GLITCH_UNDERRUN = 1,
+	IPC_GLITCH_DECODER_ERROR,
+	IPC_GLITCH_DOUBLED_WRITE_POS,
+	IPC_GLITCH_MAX
+};
+
+/* Debug Control */
+enum ipc_debug_operation {
+	IPC_DEBUG_ENABLE_LOG = 0,
+	IPC_DEBUG_DISABLE_LOG = 1,
+	IPC_DEBUG_REQUEST_LOG_DUMP = 2,
+	IPC_DEBUG_NOTIFY_LOG_DUMP = 3,
+	IPC_DEBUG_MAX_DEBUG_LOG
+};
 
 /* Stream Allocate Path ID */
 enum ipc_intel_stream_path_id {
@@ -196,25 +353,25 @@ struct ipc_intel_transfer_parameter {
 
 /* SST firmware module info */
 struct ipc_intel_module_info {
-	u8 name[IPC_INTEL_MAX_INFO_SIZE];
-	u8 version[IPC_INTEL_MAX_INFO_SIZE];
+	uint8_t name[IPC_INTEL_MAX_INFO_SIZE];
+	uint8_t version[IPC_INTEL_MAX_INFO_SIZE];
 } __attribute__((packed));
 
 /* Module entry point */
 struct ipc_intel_module_entry {
 	enum ipc_intel_module_id module_id;
-	u32 entry_point;
+	uint32_t entry_point;
 } __attribute__((packed));
 
 /* Module map - alignement matches DSP */
 struct ipc_intel_module_map {
-	u8 module_entries_count;
+	uint8_t module_entries_count;
 	struct ipc_intel_module_entry module_entries[1];
 } __attribute__((packed));
 
 struct ipc_intel_memory_info {
-	u32 offset;
-	u32 size;
+	uint32_t offset;
+	uint32_t size;
 } __attribute__((packed));
 
 struct ipc_intel_fx_enable {
@@ -229,154 +386,165 @@ struct ipc_intel_ipc_module_config {
 } __attribute__((packed));
 
 struct ipc_intel_get_fx_param {
-	u32 parameter_id;
-	u32 param_size;
+	uint32_t parameter_id;
+	uint32_t param_size;
 } __attribute__((packed));
 
 struct ipc_intel_perf_action {
-	u32 action;
+	uint32_t action;
 } __attribute__((packed));
 
 struct ipc_intel_perf_data {
-	u64 timestamp;
-	u64 cycles;
-	u64 datatime;
+	uint64_t timestamp;
+	uint64_t cycles;
+	uint64_t datatime;
 } __attribute__((packed));
 
 /* FW version */
 struct ipc_intel_ipc_fw_version {
-	u8 build;
-	u8 minor;
-	u8 major;
-	u8 type;
-	u8 fw_build_hash[IPC_INTEL_BUILD_HASH_LENGTH];
-	u32 fw_log_providers_hash;
+	uint8_t build;
+	uint8_t minor;
+	uint8_t major;
+	uint8_t type;
+	uint8_t fw_build_hash[IPC_INTEL_BUILD_HASH_LENGTH];
+	uint32_t fw_log_providers_hash;
 } __attribute__((packed));
 
 /* Stream ring info */
 struct ipc_intel_ipc_stream_ring {
-	u32 ring_pt_address;
-	u32 num_pages;
-	u32 ring_size;
-	u32 ring_offset;
-	u32 ring_first_pfn;
+	uint32_t ring_pt_address;
+	uint32_t num_pages;
+	uint32_t ring_size;
+	uint32_t ring_offset;
+	uint32_t ring_first_pfn;
 } __attribute__((packed));
 
 /* Debug Dump Log Enable Request */
 struct ipc_intel_ipc_debug_log_enable_req {
 	struct ipc_intel_ipc_stream_ring ringinfo;
-	u32 config[IPC_INTEL_FW_LOG_CONFIG_DWORDS];
+	uint32_t config[IPC_INTEL_FW_LOG_CONFIG_DWORDS];
 } __attribute__((packed));
 
 /* Debug Dump Log Reply */
 struct ipc_intel_ipc_debug_log_reply {
-	u32 log_buffer_begining;
-	u32 log_buffer_size;
+	uint32_t log_buffer_begining;
+	uint32_t log_buffer_size;
 } __attribute__((packed));
 
 /* Stream glitch position */
 struct ipc_intel_ipc_stream_glitch_position {
-	u32 glitch_type;
-	u32 present_pos;
-	u32 write_pos;
+	uint32_t glitch_type;
+	uint32_t present_pos;
+	uint32_t write_pos;
 } __attribute__((packed));
 
 /* Stream get position */
 struct ipc_intel_ipc_stream_get_position {
-	u32 position;
-	u32 fw_cycle_count;
+	uint32_t position;
+	uint32_t fw_cycle_count;
 } __attribute__((packed));
 
 /* Stream set position */
 struct ipc_intel_ipc_stream_set_position {
-	u32 position;
-	u32 end_of_buffer;
+	uint32_t position;
+	uint32_t end_of_buffer;
 } __attribute__((packed));
 
 /* Stream Free Request */
 struct ipc_intel_ipc_stream_free_req {
-	u8 stream_id;
-	u8 reserved[3];
+	uint8_t stream_id;
+	uint8_t reserved[3];
 } __attribute__((packed));
 
 /* Set Volume Request */
 struct ipc_intel_ipc_volume_req {
-	u32 channel;
-	u32 target_volume;
-	u64 curve_duration;
-	u32 curve_type;
+	uint32_t channel;
+	uint32_t target_volume;
+	uint64_t curve_duration;
+	uint32_t curve_type;
 } __attribute__((packed));
 
 /* Device Configuration Request */
 struct ipc_intel_ipc_device_config_req {
-	u32 ssp_interface;
-	u32 clock_frequency;
-	u32 mode;
-	u16 clock_divider;
-	u8 channels;
-	u8 reserved;
+	uint32_t ssp_interface;
+	uint32_t clock_frequency;
+	uint32_t mode;
+	uint16_t clock_divider;
+	uint8_t channels;
+	uint8_t reserved;
 } __attribute__((packed));
 
 /* Audio Data formats */
 struct ipc_intel_audio_data_format_ipc {
-	u32 frequency;
-	u32 bitdepth;
-	u32 map;
-	u32 config;
-	u32 style;
-	u8 ch_num;
-	u8 valid_bit;
-	u8 reserved[2];
+	uint32_t frequency;
+	uint32_t bitdepth;
+	uint32_t map;
+	uint32_t config;
+	uint32_t style;
+	uint8_t ch_num;
+	uint8_t valid_bit;
+	uint8_t reserved[2];
 } __attribute__((packed));
 
 /* Stream Allocate Request */
 struct ipc_intel_ipc_stream_alloc_req {
-	u8 path_id;
-	u8 stream_type;
-	u8 format_id;
-	u8 reserved;
+	uint8_t path_id;
+	uint8_t stream_type;
+	uint8_t format_id;
+	uint8_t reserved;
 	struct ipc_intel_audio_data_format_ipc format;
 	struct ipc_intel_ipc_stream_ring ringinfo;
 	struct ipc_intel_module_map map;
 	struct ipc_intel_memory_info persistent_mem;
 	struct ipc_intel_memory_info scratch_mem;
-	u32 number_of_notifications;
+	uint32_t number_of_notifications;
 } __attribute__((packed));
 
 /* Stream Allocate Reply */
 struct ipc_intel_ipc_stream_alloc_reply {
-	u32 stream_hw_id;
-	u32 mixer_hw_id; // returns rate ????
-	u32 read_position_register_address;
-	u32 presentation_position_register_address;
-	u32 peak_meter_register_address[IPC_INTEL_NO_CHANNELS];
-	u32 volume_register_address[IPC_INTEL_NO_CHANNELS];
+	uint32_t stream_hw_id;
+	uint32_t mixer_hw_id; // returns rate ????
+	uint32_t read_position_register_address;
+	uint32_t presentation_position_register_address;
+	uint32_t peak_meter_register_address[IPC_INTEL_NO_CHANNELS];
+	uint32_t volume_register_address[IPC_INTEL_NO_CHANNELS];
 } __attribute__((packed));
 
 /* Get Mixer Stream Info */
 struct ipc_intel_ipc_stream_info_reply {
-	u32 mixer_hw_id;
-	u32 peak_meter_register_address[IPC_INTEL_NO_CHANNELS];
-	u32 volume_register_address[IPC_INTEL_NO_CHANNELS];
+	uint32_t mixer_hw_id;
+	uint32_t peak_meter_register_address[IPC_INTEL_NO_CHANNELS];
+	uint32_t volume_register_address[IPC_INTEL_NO_CHANNELS];
 } __attribute__((packed));
 
 /* DX State Request */
 struct ipc_intel_ipc_dx_req {
-	u8 state;
-	u8 reserved[3];
+	uint8_t state;
+	uint8_t reserved[3];
 } __attribute__((packed));
 
 /* DX State Reply Memory Info Item */
 struct ipc_intel_ipc_dx_memory_item {
-	u32 offset;
-	u32 size;
-	u32 source;
+	uint32_t offset;
+	uint32_t size;
+	uint32_t source;
 } __attribute__((packed));
 
 /* DX State Reply */
 struct ipc_intel_ipc_dx_reply {
-	u32 entries_no;
+	uint32_t entries_no;
 	struct ipc_intel_ipc_dx_memory_item mem_info[IPC_INTEL_MAX_DX_REGIONS];
 } __attribute__((packed));
+
+/* Firmware Ready */
+struct sst_hsw_ipc_fw_ready {
+	uint32_t inbox_offset;
+	uint32_t outbox_offset;
+	uint32_t inbox_size;
+	uint32_t outbox_size;
+	uint32_t fw_info_size;
+	uint8_t fw_info[IPC_MAX_MAILBOX_BYTES - 5 * sizeof(uint32_t)];
+} __attribute__((packed));
+
 
 #endif
