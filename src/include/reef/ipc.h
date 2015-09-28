@@ -11,12 +11,23 @@
 
 #include <stdint.h>
 
-struct ipc;
+#define MSG_QUEUE_SIZE		8
 
 struct ipc_msg {
 	uint32_t type;		/* specific to platform */
 	uint32_t size;		/* payload size in bytes */
 	uint32_t *data;		/* pointer to payload data */
+};
+
+struct ipc {
+	struct ipc_msg tx_queue[MSG_QUEUE_SIZE];
+	struct ipc_msg rx_msg[MSG_QUEUE_SIZE];
+
+	int tx_pending;
+	int rx_pending;
+
+	/* RX call back */
+	int (*cb)(struct ipc_msg *msg);
 };
 
 struct ipc *ipc_init(int (*cb)(struct ipc_msg *msg));
