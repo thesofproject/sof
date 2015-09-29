@@ -115,8 +115,8 @@ static void ipc_get_fw_version(void)
 {
 	struct sst_hsw_ipc_fw_ready ready;
 	
-	ready.inbox_offset = MAILBOX_INBOX_OFFSET;
-	ready.outbox_offset = MAILBOX_OUTBOX_OFFSET;
+	ready.inbox_offset = MAILBOX_INBOX_BASE;
+	ready.outbox_offset = MAILBOX_OUTBOX_BASE;
 	ready.inbox_size = MAILBOX_INBOX_SIZE;
 	ready.outbox_size = MAILBOX_OUTBOX_SIZE;
 	ready.fw_info_size = 0;
@@ -139,7 +139,8 @@ static void ipc_cmd(void)
 
 	switch (type) {
 	case IPC_INTEL_GLB_GET_FW_VERSION:
-		
+		ipc_get_fw_version();
+		break;
 	case IPC_INTEL_GLB_ALLOCATE_STREAM:
 	case IPC_INTEL_GLB_FREE_STREAM:
 	case IPC_INTEL_GLB_GET_FW_CAPABILITIES:
