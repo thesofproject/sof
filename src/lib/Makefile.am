@@ -5,5 +5,6 @@ libcore_a_SOURCES = \
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
+	$(ARCH_INCDIR) \
 	$(REEF_INCDIR) \
 	$(PLATFORM_INCDIR)

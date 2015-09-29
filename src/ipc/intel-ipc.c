@@ -14,6 +14,7 @@
 #include <reef/interrupt.h>
 #include <reef/ipc.h>
 #include <reef/mailbox.h>
+#include <reef/reef.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -121,7 +122,7 @@ static void ipc_get_fw_version(void)
 	ready.fw_info_size = 0;
 	//ready.fw_info[IPC_MAX_MAILBOX_BYTES - 5 * sizeof(uint32_t)];
 
-	
+	mailbox_outbox_write(0, &ready, sizeof(ready));	
 }
 
 static inline uint32_t msg_get_global_type(uint32_t msg)

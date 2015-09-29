@@ -10,13 +10,16 @@
  * initialisation functions. 
  */
 
+#include <stddef.h>
 #include <reef/init.h>
 #include <reef/task.h>
 #include <reef/debug.h>
+#include <reef/ipc.h>
 #include <platform/platform.h>
 
 int main(int argc, char *argv[])
 {
+	struct ipc *ipc_context;
 	int err;
 
 	dbg();
@@ -25,6 +28,11 @@ int main(int argc, char *argv[])
 		goto err_out;
 
 	dbg();
+
+	/* initialise the IPC mechanisms */
+	ipc_context = ipc_init(NULL);
+	if (ipc_context == NULL)
+		panic(0);
 
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);

@@ -40,15 +40,15 @@
 	MAILBOX_DEBUG_SIZE
 
 #define mailbox_outbox_write(dest, src, bytes) \
-	rmemcpy(MAILBOX_OUTBOX_BASE + dest, src, bytes);
+	rmemcpy((void*)(MAILBOX_OUTBOX_BASE + dest), src, bytes);
 
 #define mailbox_outbox_read(dest, src, bytes) \
-	rmemcpy(dest, MAILBOX_OUTBOX_BASE + src, bytes);
+	rmemcpy(dest, (void*)(MAILBOX_OUTBOX_BASE + src), bytes);
 
 #define mailbox_inbox_write(dest, src, bytes) \
-	rmemcpy(MAILBOX_INBOX_BASE + dest, src, bytes);
+	rmemcpy((void*)(MAILBOX_INBOX_BASE + dest), src, bytes);
 
 #define mailbox_inbox_read(dest, src, bytes) \
-	rmemcpy(dest, MAILBOX_INBOX_BASE + src, bytes);
+	rmemcpy(dest, (void*)(MAILBOX_INBOX_BASE + src), bytes);
 
 #endif

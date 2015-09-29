@@ -13,7 +13,9 @@
 #include <stdlib.h>
 #include <reef/reef.h>
 
-void rmemcpy(void *dest, void *src, size_t size)
+#if 0 // TODO: only compile if no arch memcpy is available.
+
+void cmemcpy(void *dest, void *src, size_t size)
 {
 	uint32_t *d32, *s32;
 	uint8_t *d8, *s8;
@@ -31,3 +33,4 @@ void rmemcpy(void *dest, void *src, size_t size)
 	for (i = 0; i <	r; i++)
 		d8[i] = s8[i];
 }
+#endif
