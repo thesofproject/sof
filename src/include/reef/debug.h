@@ -11,6 +11,7 @@
 
 #include <reef/mailbox.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define dbg() \
 	do { \
@@ -40,8 +41,10 @@
 	} while (0);
 
 #define panic(_p) \
-	dbg() \
-	dbg_val(_p) \
-	*((uint32_t*)0) = 0;
+	do { \
+		dbg() \
+		dbg_val(_p) \
+		while(1) {}; \
+	} while (0);
 
 #endif
