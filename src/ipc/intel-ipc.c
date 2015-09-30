@@ -113,16 +113,7 @@ static int hsw_process_reply(struct sst_hsw *hsw, u32 header)
 
 static void ipc_get_fw_version(void)
 {
-	struct sst_hsw_ipc_fw_ready ready;
-	
-	ready.inbox_offset = MAILBOX_INBOX_BASE;
-	ready.outbox_offset = MAILBOX_OUTBOX_BASE;
-	ready.inbox_size = MAILBOX_INBOX_SIZE;
-	ready.outbox_size = MAILBOX_OUTBOX_SIZE;
-	ready.fw_info_size = 0;
-	//ready.fw_info[IPC_MAX_MAILBOX_BYTES - 5 * sizeof(uint32_t)];
 
-	mailbox_outbox_write(0, &ready, sizeof(ready));	
 }
 
 static inline uint32_t msg_get_global_type(uint32_t msg)

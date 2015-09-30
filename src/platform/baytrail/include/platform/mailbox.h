@@ -11,6 +11,8 @@
 
 #include <platform/memory.h>
 
+#define MAILBOX_HOST_OFFSET	0x144000
+
 #define MAILBOX_OUTBOX_OFFSET	0x0
 #define MAILBOX_OUTBOX_SIZE	0x800
 #define MAILBOX_OUTBOX_BASE \
