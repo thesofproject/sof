@@ -25,9 +25,31 @@ static inline uint32_t msg_get_global_type(uint32_t msg)
 	return (msg & IPC_INTEL_GLB_TYPE_MASK) >> IPC_INTEL_GLB_TYPE_SHIFT;
 }
 
+static inline uint32_t msg_get_stream_type(uint32_t msg)
+{
+	return (msg & IPC_INTEL_STR_TYPE_MASK) >> IPC_INTEL_STR_TYPE_SHIFT;
+}
+
+static inline uint32_t msg_get_stage_type(uint32_t msg)
+{
+	return (msg & IPC_INTEL_STG_TYPE_MASK) >> IPC_INTEL_STG_TYPE_SHIFT;
+}
+
+/* TODO: pick values from autotools */
+static const struct ipc_intel_ipc_fw_version fw_version = {
+	.build = 1,
+	.minor = 2,
+	.major = 3,
+	.type = 4,
+	//.fw_build_hash[IPC_INTEL_BUILD_HASH_LENGTH];
+	.fw_log_providers_hash = 0,
+};
+
 static uint32_t ipc_fw_version(uint32_t header)
 {
 	dbg();
+
+	mailbox_outbox_write(0, &fw_version, sizeof(fw_version));
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -38,6 +60,32 @@ static uint32_t ipc_fw_caps(uint32_t header)
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
+
+#if 0
+/* Stream Allocate Request */
+struct ipc_intel_ipc_stream_alloc_req {
+	uint8_t path_id;
+	uint8_t stream_type;
+	uint8_t format_id;
+	uint8_t reserved;
+	struct ipc_intel_audio_data_format_ipc format;
+	struct ipc_intel_ipc_stream_ring ringinfo;
+	struct ipc_intel_module_map map;
+	struct ipc_intel_memory_info persistent_mem;
+	struct ipc_intel_memory_info scratch_mem;
+	uint32_t number_of_notifications;
+} __attribute__((packed));
+
+/* Stream Allocate Reply */
+struct ipc_intel_ipc_stream_alloc_reply {
+	uint32_t stream_hw_id;
+	uint32_t mixer_hw_id; // returns rate ????
+	uint32_t read_position_register_address;
+	uint32_t presentation_position_register_address;
+	uint32_t peak_meter_register_address[IPC_INTEL_NO_CHANNELS];
+	uint32_t volume_register_address[IPC_INTEL_NO_CHANNELS];
+} __attribute__((packed));
+#endif
 
 static uint32_t ipc_stream_alloc(uint32_t header)
 {
@@ -55,7 +103,17 @@ static uint32_t ipc_stream_free(uint32_t header)
 
 static uint32_t ipc_stream_info(uint32_t header)
 {
+	struct ipc_intel_ipc_stream_info_reply info;
+
 	dbg();
+
+	/* TODO: get data from topology */ 
+	info.mixer_hw_id = 1;
+	info.peak_meter_register_address[0] = 0;
+	info.peak_meter_register_address[1] = 0;
+	info.volume_register_address[0] = 0;
+	info.volume_register_address[1] = 0;
+	mailbox_outbox_write(0, &info, sizeof(info));
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -67,6 +125,17 @@ static uint32_t ipc_dump(uint32_t header)
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
+#if 0
+/* Device Configuration Request */
+struct ipc_intel_ipc_device_config_req {
+	uint32_t ssp_interface;
+	uint32_t clock_frequency;
+	uint32_t mode;
+	uint16_t clock_divider;
+	uint8_t channels;
+	uint8_t reserved;
+} __attribute__((packed));
+#endif
 static uint32_t ipc_device_get_formats(uint32_t header)
 {
 	dbg();
@@ -95,12 +164,109 @@ static uint32_t ipc_context_restore(uint32_t header)
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
+static uint32_t ipc_stage_set_volume(uint32_t header)
+{
+	dbg();
+
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
+static uint32_t ipc_stage_get_volume(uint32_t header)
+{
+	dbg();
+
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
+static uint32_t ipc_stage_write_pos(uint32_t header)
+{
+	dbg();
+
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
+static uint32_t ipc_stage_message(uint32_t header)
+{
+	uint32_t stg = msg_get_stage_type(header);
+
+	dbg();
+
+	switch (stg) {
+	case IPC_INTEL_STG_GET_VOLUME:
+		return ipc_stage_get_volume(header);
+	case IPC_INTEL_STG_SET_VOLUME:
+		return ipc_stage_set_volume(header);
+	case IPC_INTEL_STG_SET_WRITE_POSITION:
+		return ipc_stage_write_pos(header);
+	case IPC_INTEL_STG_MUTE_LOOPBACK:
+	case IPC_INTEL_STG_SET_FX_ENABLE:
+	case IPC_INTEL_STG_SET_FX_DISABLE:
+	case IPC_INTEL_STG_SET_FX_GET_PARAM:
+	case IPC_INTEL_STG_SET_FX_SET_PARAM:
+	case IPC_INTEL_STG_SET_FX_GET_INFO:
+	default:
+		return IPC_INTEL_GLB_REPLY_UNKNOWN_MESSAGE_TYPE;
+	}
+}
+
+static uint32_t ipc_stream_reset(uint32_t header)
+{
+	dbg();
+
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
+static uint32_t ipc_stream_pause(uint32_t header)
+{
+	dbg();
+
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
+static uint32_t ipc_stream_resume(uint32_t header)
+{
+	dbg();
+
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
+static uint32_t ipc_stream_notification(uint32_t header)
+{
+	dbg();
+
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
+static uint32_t ipc_stream_message(uint32_t header)
+{
+	uint32_t str = msg_get_stream_type(header);
+
+	dbg();
+
+	switch (str) {
+	case IPC_INTEL_STR_RESET:
+		return ipc_stream_reset(header);
+	case IPC_INTEL_STR_PAUSE:
+		return ipc_stream_pause(header);
+	case IPC_INTEL_STR_RESUME:
+		return ipc_stream_resume(header);
+	case IPC_INTEL_STR_STAGE_MESSAGE:
+		return ipc_stage_message(header);
+	case IPC_INTEL_STR_NOTIFICATION:
+		return ipc_stream_notification(header);
+	default:
+		return IPC_INTEL_GLB_REPLY_UNKNOWN_MESSAGE_TYPE;
+	}
+}
+
 static uint32_t ipc_cmd(void)
 {
 	uint32_t type, header;
 
-	header = shim_read(SHIM_IPCD);
+	header = shim_read(SHIM_IPCX);
 	type = msg_get_global_type(header);
+	dbg_val(type);
+	dbg();
 
 	switch (type) {
 	case IPC_INTEL_GLB_GET_FW_VERSION:
@@ -123,6 +289,8 @@ static uint32_t ipc_cmd(void)
 		return ipc_stream_info(header);
 	case IPC_INTEL_GLB_RESTORE_CONTEXT:
 		return ipc_context_restore(header);
+	case IPC_INTEL_GLB_STREAM_MESSAGE:
+		return ipc_stream_message(header);
 	default:
 		return IPC_INTEL_GLB_REPLY_UNKNOWN_MESSAGE_TYPE;
 	}
@@ -132,6 +300,7 @@ static void do_cmd(void)
 {
 	uint32_t status, ipcx;
 	
+	dbg();
 	status = ipc_cmd();
 
 	/* clear BUSY bit and set DONE bit - accept new messages */

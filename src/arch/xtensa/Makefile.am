@@ -4,7 +4,7 @@ bin_PROGRAMS = \
 	reef
 
 noinst_LIBRARIES = \
-	libreset_a
+	libreset.a
 
 libreset_a_SOURCES = \
 	reset-vector.S
@@ -43,7 +43,7 @@ reef_LDADD = \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../platform/$(PLATFORM)/libplatform.a \
-	libreset_a \
+	libreset.a \
 	xtos/libxtos.a \
 	xtos/libxlevel2.a \
 	xtos/libxlevel3.a \
@@ -60,4 +60,5 @@ reef_LDFLAGS = \
 bin-local: reef
 	$(OBJCOPY) -O binary reef reef.bin
 	$(OBJDUMP) -D reef > reef.map
+	rimage -i reef -o reef.ri -m byt
 	
