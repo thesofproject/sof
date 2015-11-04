@@ -2,7 +2,8 @@ noinst_LIBRARIES = libdrivers.a
 
 libdrivers_a_SOURCES = \
 	driver.c \
-	ssp.c
+	ssp.c \
+	byt-dma.c
 
 libdrivers_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
