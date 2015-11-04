@@ -19,6 +19,7 @@
 #include <reef/timer.h>
 #include <reef/interrupt.h>
 #include <stdint.h>
+#include <errno.h>
 
 static uint32_t _mask = 0, _enable = 0;
 
@@ -28,11 +29,11 @@ static int get_irq_from_timer(int timer)
 	case 0:
 		return IRQ_NUM_TIMER1;
 	case 1:
-		return IRQ_NUM_TIMER1;
+		return IRQ_NUM_TIMER2;
 	case 2:
-		return IRQ_NUM_TIMER1;
+		return IRQ_NUM_TIMER3;
 	default:
-		return -1;
+		return -ENODEV;
 	}
 }
 
@@ -87,4 +88,7 @@ void timer_set(int timer, unsigned int ticks)
 	xthal_set_ccompare(timer, count + ticks);
 }
 
+void timer_schedule_work(int timer, void(*work)(void*), void *data, int timeout)
+{
 
+}
