@@ -11,6 +11,7 @@
 #include <reef/io.h>
 #include <reef/stream.h>
 #include <reef/ssp.h>
+#include <reef/alloc.h>
 
 /* SSP register offsets */
 #define SSCR0		0x00
@@ -100,22 +101,22 @@ struct ssp_config {
 
 static int ssp_context_store(struct dai *dai)
 {
-	struct ssp_config *ssp = (struct ssp_config *)dai->data;
+	struct ssp_config *ssp = dai_get_drvdata(dai);
 
-	ssp->sscr0 = io_reg_read(dai->base + SSCR0);
-	ssp->sscr1 = io_reg_read(dai->base + SSCR1);
-	ssp->psp = io_reg_read(dai->base + SSPSP);
+	ssp->sscr0 = io_reg_read(dai_base(dai) + SSCR0);
+	ssp->sscr1 = io_reg_read(dai_base(dai) + SSCR1);
+	ssp->psp = io_reg_read(dai_base(dai) + SSPSP);
 
 	return 0;
 }
 
 static int ssp_context_restore(struct dai *dai)
 {
-	struct ssp_config *ssp = (struct ssp_config *)dai->data;
+	struct ssp_config *ssp = dai_get_drvdata(dai);
 
-	io_reg_write(dai->base + SSCR0, ssp->sscr0);
-	io_reg_write(dai->base + SSCR1, ssp->sscr1);
-	io_reg_write(dai->base + SSPSP, ssp->psp);
+	io_reg_write(dai_base(dai) + SSCR0, ssp->sscr0);
+	io_reg_write(dai_base(dai) + SSCR1, ssp->sscr1);
+	io_reg_write(dai_base(dai) + SSPSP, ssp->psp);
 
 	return 0;
 }
@@ -123,7 +124,7 @@ static int ssp_context_restore(struct dai *dai)
 /* Digital Audio interface formatting */
 static inline int ssp_set_fmt(struct dai *dai)
 {
-	struct ssp_config *ssp = (struct ssp_config *)dai->data;
+	struct ssp_config *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0, sscr1, sspsp;
 
 	/* reset SSP settings */
@@ -202,42 +203,42 @@ static inline int ssp_set_fmt(struct dai *dai)
 	else
 		sscr0 |= SSCR0_DSIZE(dai->config.frame_size);
 
-	io_reg_write(dai->base + SSCR0, sscr0);
-	io_reg_write(dai->base + SSCR1, sscr1);
-	io_reg_write(dai->base + SSPSP, sspsp);
+	io_reg_write(dai_base(dai) + SSCR0, sscr0);
+	io_reg_write(dai_base(dai) + SSCR1, sscr1);
+	io_reg_write(dai_base(dai) + SSPSP, sspsp);
 
 	return 0;
 }
 
 static void ssp_start(struct dai *dai, int direction)
 {
-	struct ssp_config *ssp = (struct ssp_config *)dai->data;
+	struct ssp_config *ssp = dai_get_drvdata(dai);
 
 	/* enable port */
-	io_reg_update_bits(dai->base + SSCR0, SSCR0_SSE, SSCR0_SSE);
+	io_reg_update_bits(dai_base(dai) + SSCR0, SSCR0_SSE, SSCR0_SSE);
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
-		io_reg_update_bits(dai->base + SSCR1, SSCR1_TSRE, SSCR1_TSRE);
+		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_TSRE, SSCR1_TSRE);
 	else
-		io_reg_update_bits(dai->base + SSCR1, SSCR1_RSRE, SSCR1_RSRE);
+		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_RSRE, SSCR1_RSRE);
 }
 
 static void ssp_stop(struct dai *dai, int direction)
 {
-	struct ssp_config *ssp = (struct ssp_config *)dai->data;
+	struct ssp_config *ssp = dai_get_drvdata(dai);
 	uint32_t sscr1;
 
 	/* disable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
-		io_reg_update_bits(dai->base + SSCR1, SSCR1_TSRE, 0);
+		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_TSRE, 0);
 	else
-		io_reg_update_bits(dai->base + SSCR1, SSCR1_RSRE, 0);
+		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_RSRE, 0);
 
 	/* disable port if no users */
-	sscr1 = io_reg_read(dai->base + SSCR1);
+	sscr1 = io_reg_read(dai_base(dai) + SSCR1);
 	if (!(sscr1 & SSCR1_TSRE | SSCR1_RSRE))
-		io_reg_update_bits(dai->base + SSCR0, SSCR0_SSE, 0);
+		io_reg_update_bits(dai_base(dai) + SSCR0, SSCR0_SSE, 0);
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
@@ -266,9 +267,23 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
+static void ssp_irq_handler(void *data)
+{
+
+}
+
+static int ssp_probe(struct dai *dai)
+{
+	struct ssp_config *ssp;
+
+	ssp = rmalloc(RZONE_DEV, sizeof(*ssp), RMOD_SYS);
+
+}
+
 const struct dai_ops ssp_ops = {
 	.trigger		= ssp_trigger,
 	.set_fmt		= ssp_set_fmt,
 	.pm_context_store	= ssp_context_store,
 	.pm_context_restore	= ssp_context_restore,
+	.probe			= ssp_probe,
 };

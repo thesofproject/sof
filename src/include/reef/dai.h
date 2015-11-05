@@ -57,6 +57,7 @@ struct dai_ops {
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
+	int (*probe)(struct dai *dai);
 };
 
 /* DAI runtime hardware configuration */
@@ -71,45 +72,63 @@ struct dai_config {
 	uint16_t clk_src;	/* DAI specific clk source */
 };
 
-struct dai {
+/* DAI platform data */
+struct dai_plat_data {
 	uint32_t base;
+	uint16_t irq;
+	uint16_t fifo_width;
+	uint16_t fifo_depth;
+	uint16_t fifo_tx_watermark;
+	uint16_t fifo_rx_watermark;
+	uint16_t flags;
+};
+
+struct dai {
+	struct dai_plat_data plat_data;
 	struct dai_config config;
 	const struct dai_ops *ops;
-	void *data;
+	void *private;
 };
 
 struct dai *dai_get(int dai_id);
 
+#define dai_set_drvdata(dai, data) \
+	dai->private = data
+#define dai_get_drvdata(dai) \
+	dai->private;
+#define dai_base(dai) \
+	dai->plat_data.base
+#define dai_irq(dai) \
+	dai->plat_data.irq
+
 /* Digital Audio interface formatting */
 static inline int dai_set_fmt(struct dai *dai)
 {
-	if (dai->ops->set_fmt)
-		return dai->ops->set_fmt(dai);
-	return 0;
+	return dai->ops->set_fmt(dai);
 }
 
-/* Digital Audio interface formatting */
+/* Digital Audio interface trigger */
 static inline int dai_trigger(struct dai *dai, int cmd, int direction)
 {
-	if (dai->ops->trigger)
-		return dai->ops->trigger(dai, cmd, direction);
-	return 0;
+	return dai->ops->trigger(dai, cmd, direction);
 }
 
-/* Digital Audio interface formatting */
+/* Digital Audio interface PM context store */
 static inline int dai_pm_context_store(struct dai *dai)
 {
-	if (dai->ops->pm_context_store)
-		return dai->ops->pm_context_store(dai);
-	return 0;
+	return dai->ops->pm_context_store(dai);
 }
 
-/* Digital Audio interface formatting */
+/* Digital Audio interface PM context restore */
 static inline int dai_pm_context_restore(struct dai *dai)
 {
-	if (dai->ops->pm_context_restore)
-		return dai->ops->pm_context_restore(dai);
-	return 0;
+	return dai->ops->pm_context_restore(dai);
+}
+
+/* Digital Audio interface Probe */
+static inline int dai_probe(struct dai *dai)
+{
+	return dai->ops->probe(dai);
 }
 
 #endif

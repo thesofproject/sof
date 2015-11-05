@@ -23,7 +23,7 @@
 
 
 /* channel registers */
-#define DW_MAX_CHAN		8
+#define DW_MAX_CHAN			8
 #define DW_CH_SIZE			0x58
 #define BYT_CHAN_OFFSET(chan) \
 	(DW_CH_SIZE * chan)
@@ -44,30 +44,30 @@
 	(0x0044 + BYT_CHAN_OFFSET(chan))
 
 /* registers */
-#define DW_STATUS_TFR		0x02E8
-#define DW_STATUS_BLOCK		0x02F0
-#define DW_STATUS_ERR		0x0308
+#define DW_STATUS_TFR			0x02E8
+#define DW_STATUS_BLOCK			0x02F0
+#define DW_STATUS_ERR			0x0308
 #define DW_RAW_TFR			0x02C0
-#define DW_RAW_BLOCK		0x02C8
+#define DW_RAW_BLOCK			0x02C8
 #define DW_RAW_ERR			0x02E0
-#define DW_MASK_TFR		0x0310
-#define DW_MASK_BLOCK		0x0318
+#define DW_MASK_TFR			0x0310
+#define DW_MASK_BLOCK			0x0318
 #define DW_MASK_SRC_TRAN		0x0320
 #define DW_MASK_DST_TRAN		0x0328
-#define DW_MASK_ERR		0x0330
-#define DW_CLEAR_TFR		0x0338
-#define DW_CLEAR_BLOCK		0x0340
+#define DW_MASK_ERR			0x0330
+#define DW_CLEAR_TFR			0x0338
+#define DW_CLEAR_BLOCK			0x0340
 #define DW_CLEAR_SRC_TRAN		0x0348
 #define DW_CLEAR_DST_TRAN		0x0350
-#define DW_CLEAR_ERR		0x0358
-#define DW_INTR_STATUS		0x0360
+#define DW_CLEAR_ERR			0x0358
+#define DW_INTR_STATUS			0x0360
 #define DW_DMA_CFG			0x0398
-#define DW_DMA_CHAN_EN		0x03A0
+#define DW_DMA_CHAN_EN			0x03A0
 #define DW_FIFO_PARTI0_LO		0x0400
 #define DW_FIFO_PART0_HI		0x0404
 #define DW_FIFO_PART1_LO		0x0408
 #define DW_FIFO_PART1_HI		0x040C
-#define DW_CH_SAI_ERR		0x0410
+#define DW_CH_SAI_ERR			0x0410
 
 /* channel bits */
 #define INT_MASK(chan)			(0x100 << chan)
@@ -76,9 +76,10 @@
 #define CHAN_DISABLE(chan)		(0x100 << chan)
 
 #define DW_CFG_CH_SUSPEND		0x100
-#define DW_CFG_CH_DRAIN		0x400
-#define DW_CFG_CH_FIFO_EMPTY	0x200
+#define DW_CFG_CH_DRAIN			0x400
+#define DW_CFG_CH_FIFO_EMPTY		0x200
 
+/* private data for DW DMA */
 struct dma_pdata {
 	uint8_t chan[DW_MAX_CHAN];
 };

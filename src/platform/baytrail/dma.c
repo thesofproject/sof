@@ -9,17 +9,24 @@
 #include <reef/dma.h>
 #include <reef/dw-dma.h>
 #include <platform/memory.h>
+#include <platform/interrupt.h>
 #include <platform/dma.h>
 #include <stdint.h>
 #include <string.h>
 
-static struct dma dma[2] = {
+static struct dma dma[] = {
 {
-	.base		= DMA0_BASE,
+	.plat_data = {
+		.base		= DMA0_BASE,
+		.irq		= IRQ_NUM_EXT_DMAC0,
+	},
 	.ops		= &dw_dma_ops1,
 },
 {
-	.base		= DMA1_BASE,
+	.plat_data = {
+		.base		= DMA1_BASE,
+		.irq		= IRQ_NUM_EXT_DMAC1,
+	},
 	.ops		= &dw_dma_ops1,
 },};
 

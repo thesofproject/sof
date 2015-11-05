@@ -65,17 +65,35 @@ struct dma_ops {
 	
 	int (*pm_context_restore)(struct dma *dma);
 	int (*pm_context_store)(struct dma *dma);
+
+	int (*probe)(struct dma *dma);
 };
 
-struct dma {
+/* DMA platform data */
+struct dma_plat_data {
 	uint32_t base;
 	uint16_t channels; 
 	uint16_t desc_per_chan;
+	uint16_t irq;
+	uint16_t capabilities;
+};
+
+struct dma {
+	struct dma_plat_data plat_data;
 	const struct dma_ops *ops;
-	void *data;
+	void *private;
 };
 
 struct dma *dma_get(int dmac_id);
+
+#define dma_set_drvdata(dma, data) \
+	dma->private = data
+#define dma_get_drvdata(dma) \
+	dma->private;
+#define dma_base(dma) \
+	dma->plat_data.base
+#define dma_irq(dma) \
+	dma->plat_data.irq
 
 /* DMA API
  * Programming flow is :-
@@ -91,74 +109,60 @@ struct dma *dma_get(int dmac_id);
 
 static inline int dma_channel_get(struct dma *dma)
 {
-	if (dma->ops->channel_get)
-		return dma->ops->channel_get(dma);
-	return 0;
+	return dma->ops->channel_get(dma);
 }
 
 static inline void dma_channel_put(struct dma *dma, int channel)
 {
-	if (dma->ops->channel_put)
-		dma->ops->channel_put(dma, channel);
+	dma->ops->channel_put(dma, channel);
 }
 
 static inline int dma_start(struct dma *dma, int channel)
 {
-	if (dma->ops->start)
-		return dma->ops->start(dma, channel);
-	return 0;
+	return dma->ops->start(dma, channel);
 }
 
 static inline int dma_stop(struct dma *dma, int channel)
 {
-	if (dma->ops->stop)
-		return dma->ops->stop(dma, channel);
-	return 0;
+	return dma->ops->stop(dma, channel);
 }
 
 static inline int dma_drain(struct dma *dma, int channel)
 {
-	if (dma->ops->drain)
-		return dma->ops->drain(dma, channel);
-	return 0;
+	return dma->ops->drain(dma, channel);
 }
 
 static inline int dma_status(struct dma *dma, int channel,
 	struct dma_chan_status *status)
 {
-	if (dma->ops->status)
-		return dma->ops->status(dma, channel, status);
-	return 0;
+	return dma->ops->status(dma, channel, status);
 }
 
 static inline int dma_set_config(struct dma *dma, int channel,
 	struct dma_chan_config *config)
 {
-	if (dma->ops->set_config)
-		return dma->ops->set_config(dma, channel, config);
-	return 0;
+	return dma->ops->set_config(dma, channel, config);
 }
 
 static inline int dma_set_desc(struct dma *dma, int channel,
 	struct dma_desc *desc)
 {
-	if (dma->ops->set_desc)
-		return dma->ops->set_desc(dma, channel, desc);
-	return 0;
+	return dma->ops->set_desc(dma, channel, desc);
 }
 
 static inline int dma_pm_context_restore(struct dma *dma)
 {
-	if (dma->ops->pm_context_restore)
-		return dma->ops->pm_context_restore(dma);
-	return 0;
+	return dma->ops->pm_context_restore(dma);
 }
 
 static inline int dma_pm_context_store(struct dma *dma)
 {
-	if (dma->ops->pm_context_store)
-		return dma->ops->pm_context_store(dma);
-	return 0;
+	return dma->ops->pm_context_store(dma);
+}
+
+static inline int dma_probe(struct dma *dma)
+{
+	return dma->ops->probe(dma);
 }
 
 #endif

@@ -9,17 +9,24 @@
 #include <reef/dai.h>
 #include <reef/ssp.h>
 #include <platform/memory.h>
+#include <platform/interrupt.h>
 #include <platform/dai.h>
 #include <stdint.h>
 #include <string.h>
 
 static struct dai ssp[2] = {
 {
-	.base		= SSP0_BASE,
+	.plat_data = {
+		.base		= SSP0_BASE,
+		.irq		= IRQ_NUM_EXT_SSP0,
+	},
 	.ops		= &ssp_ops,
 },
 {
-	.base		= SSP1_BASE,
+	.plat_data = {
+		.base		= SSP1_BASE,
+		.irq		= IRQ_NUM_EXT_SSP1,
+	},
 	.ops		= &ssp_ops,
 },};
 
