@@ -92,3 +92,8 @@ void timer_schedule_work(int timer, void(*work)(void*), void *data, int timeout)
 {
 
 }
+
+uint32_t timer_get_system(void)
+{
+	return xthal_get_ccount();
+}

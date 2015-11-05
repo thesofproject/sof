@@ -9,6 +9,8 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#define REEF_SYS_TIMER 	0
+
 struct ipc;
 
 /*

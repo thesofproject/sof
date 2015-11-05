@@ -7,7 +7,7 @@
  */
 
 #include <reef/dma.h>
-#include <reef/byt-dma.h>
+#include <reef/dw-dma.h>
 #include <platform/memory.h>
 #include <platform/dma.h>
 #include <stdint.h>
@@ -16,11 +16,11 @@
 static struct dma dma[2] = {
 {
 	.base		= DMA0_BASE,
-	.ops		= &byt_dma_ops,
+	.ops		= &dw_dma_ops1,
 },
 {
 	.base		= DMA1_BASE,
-	.ops		= &byt_dma_ops,
+	.ops		= &dw_dma_ops1,
 },};
 
 struct dma *dmac_get(int dmac_id)
