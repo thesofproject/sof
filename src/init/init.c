@@ -23,11 +23,18 @@ int main(int argc, char *argv[])
 	int err;
 
 	dbg();
+
+	/* init architecture */
 	err = arch_init(argc, argv);
 	if (err < 0)
 		goto err_out;
 
 	dbg();
+
+	/* init the platform */
+	err = platform_init(argc, argv);
+	if (err < 0)
+		goto err_out;
 
 	/* initialise the IPC mechanisms */
 	ipc_context = ipc_init(NULL);

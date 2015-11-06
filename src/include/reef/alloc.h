@@ -21,6 +21,11 @@
 #define RMOD_SYS	0	/* system module */
 #define RMOD(m)		(m + 16)	/* all other modules */
 
-void *rmalloc(int zone, size_t bytes, int module);
+void *rmalloc(int zone, int module, size_t bytes);
+
+/* allocates buffer on 4k boundary */
+void *rballoc(int zone, int module, size_t bytes);
+
+void rfree(int zone, int module, void *ptr);
 
 #endif

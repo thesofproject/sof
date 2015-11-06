@@ -276,7 +276,7 @@ static int ssp_probe(struct dai *dai)
 {
 	struct ssp_config *ssp;
 
-	ssp = rmalloc(RZONE_DEV, sizeof(*ssp), RMOD_SYS);
+	ssp = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*ssp));
 
 }
 

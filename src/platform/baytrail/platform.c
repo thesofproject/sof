@@ -9,8 +9,12 @@
 #include <platform/memory.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
+#include <platform/dma.h>
+#include <platform/dai.h>
 #include <uapi/intel-ipc.h>
 #include <reef/mailbox.h>
+#include <reef/dai.h>
+#include <reef/dma.h>
 #include <reef/reef.h>
 
 static const struct sst_hsw_ipc_fw_ready ready = {
@@ -34,3 +38,20 @@ int platform_boot_complete(uint32_t boot_message)
 	return 0;
 }
 
+int platform_init(int argc, char *argv[])
+{
+	struct dma *dmac0, *dmac1;
+	struct dai *ssp0, *ssp1;
+
+	dmac0 = dma_get(DMA_ID_DMAC0);
+	dma_probe(dmac0);
+
+	dmac1 = dma_get(DMA_ID_DMAC1);
+	dma_probe(dmac1);
+
+	ssp0 = dai_get(DAI_ID_SSP0);
+	dai_probe(ssp0);
+
+	ssp1 = dai_get(DAI_ID_SSP1);
+	dai_probe(ssp1);
+}

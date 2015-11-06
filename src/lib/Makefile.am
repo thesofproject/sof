@@ -1,7 +1,8 @@
 noinst_LIBRARIES = libcore.a
 
 libcore_a_SOURCES = \
-	lib.c
+	lib.c \
+	alloc.c
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

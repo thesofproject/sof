@@ -41,8 +41,8 @@ reef_LDADD = \
 	../../ipc/libipc.a \
 	../../tasks/libtasks.a \
 	../../audio/libaudio.a \
-	../../drivers/libdrivers.a \
 	../../platform/$(PLATFORM)/libplatform.a \
+	../../drivers/libdrivers.a \
 	libreset.a \
 	xtos/libxtos.a \
 	xtos/libxlevel2.a \

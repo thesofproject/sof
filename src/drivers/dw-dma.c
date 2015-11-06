@@ -87,7 +87,7 @@ struct dma_pdata {
 /* allocate next free DMA channel */
 static int dw_dma_channel_get(struct dma *dma)
 {
-	struct dma_pdata *p = dma->data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
 	int i;
 	
 	/* find first free non draining channel */
@@ -110,7 +110,7 @@ static int dw_dma_channel_get(struct dma *dma)
 
 static void dw_dma_channel_put(struct dma *dma, int channel)
 {
-	struct dma_pdata *p = dma->data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
 
 	p->chan[channel] |= DMA_STATUS_FREE;
 	// TODO: disable/reset any other channel config.
@@ -127,7 +127,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 static void dw_dma_fifo_work(void *data)
 {
 	struct dma *dma = (struct dma *)data;
-	struct dma_pdata *p = dma->data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
 	int i, schedule;
 	uint32_t cfg;
 
@@ -139,11 +139,11 @@ static void dw_dma_fifo_work(void *data)
 			continue;
 
 		/* check for FIFO empty */
-		cfg = io_reg_read(dma->base + DW_CFG_LOW(i));
+		cfg = io_reg_read(dma_base(dma) + DW_CFG_LOW(i));
 		if (cfg & DW_CFG_CH_FIFO_EMPTY) {
 
 			/* disable channel */
-			io_reg_update_bits(dma->base + DW_DMA_CHAN_EN,
+			io_reg_update_bits(dma_base(dma) + DW_DMA_CHAN_EN,
 				CHAN_DISABLE(i), CHAN_DISABLE(i));
 			p->chan[i] &= ~DMA_STATUS_DRAINING;
 		} else
@@ -157,10 +157,10 @@ static void dw_dma_fifo_work(void *data)
 
 static int dw_dma_stop(struct dma *dma, int channel)
 {
-	struct dma_pdata *p = dma->data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
 
 	/* suspend the channel */
-	io_reg_update_bits(dma->base + DW_CFG_LOW(channel),
+	io_reg_update_bits(dma_base(dma) + DW_CFG_LOW(channel),
 		DW_CFG_CH_SUSPEND, DW_CFG_CH_SUSPEND);
 
 	p->chan[channel] = DMA_STATUS_DRAINING;
@@ -172,10 +172,10 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 static int dw_dma_drain(struct dma *dma, int channel)
 {
-	struct dma_pdata *p = dma->data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
 
 	/* suspend the channel */
-	io_reg_update_bits(dma->base + DW_CFG_LOW(channel),
+	io_reg_update_bits(dma_base(dma) + DW_CFG_LOW(channel),
 		DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
 		DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
 
@@ -215,6 +215,11 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
+static int dw_dma_probe(struct dma *dma)
+{
+	return 0;
+}
+
 const struct dma_ops dw_dma_ops = {
 	.channel_get	= dw_dma_channel_get,
 	.channel_put	= dw_dma_channel_put,
@@ -226,5 +231,6 @@ const struct dma_ops dw_dma_ops = {
 	.set_desc	= dw_dma_set_desc,
 	.pm_context_restore		= dw_dma_pm_context_restore,
 	.pm_context_store		= dw_dma_pm_context_store,
+	.probe		= dw_dma_probe,
 };
 
