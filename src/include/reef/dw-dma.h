@@ -31,7 +31,6 @@ struct dw_lli2 {
 	uint32_t dstat;
 } __attribute__ ((packed));
 
-extern const struct dma_ops dw_dma_ops1;
-extern const struct dma_ops dw_dma_ops2;
+extern const struct dma_ops dw_dma_ops;
 
 #endif

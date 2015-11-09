@@ -36,13 +36,13 @@ reef_CCASFLAGS = \
 	$(PLATFORM_INCDIR)
 
 reef_LDADD = \
-	../../lib/libcore.a \
 	../../init/libinit.a \
 	../../ipc/libipc.a \
 	../../tasks/libtasks.a \
 	../../audio/libaudio.a \
 	../../platform/$(PLATFORM)/libplatform.a \
 	../../drivers/libdrivers.a \
+	../../lib/libcore.a \
 	libreset.a \
 	xtos/libxtos.a \
 	xtos/libxlevel2.a \
