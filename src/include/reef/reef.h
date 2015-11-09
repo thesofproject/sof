@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <arch/reef.h>
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 /* C memcpy for arch that dont have arch_memcpy() */
 void cmemcpy(void *dest, void *src, size_t size);
 

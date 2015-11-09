@@ -13,6 +13,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* panic reasons */
+#define PANIC_MEM	0
+#define PANIC_WORK	1
+
 #define dbg() \
 	do { \
 		volatile uint32_t *m = (uint32_t*)mailbox_get_debug_base(); \

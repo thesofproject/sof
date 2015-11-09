@@ -15,6 +15,8 @@
 #include <reef/io.h>
 #include <reef/stream.h>
 #include <reef/timer.h>
+#include <reef/alloc.h>
+#include <reef/interrupt.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <errno.h>
@@ -215,8 +217,21 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
+static void dw_dma_irq_handler(void *data)
+{
+
+}
+
 static int dw_dma_probe(struct dma *dma)
 {
+	struct dma_pdata *dw_pdata;
+
+	/* allocate private data */
+	dw_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*dw_pdata));
+	dma_set_drvdata(dma, dw_pdata);
+
+	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);
+
 	return 0;
 }
 

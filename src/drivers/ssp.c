@@ -12,6 +12,7 @@
 #include <reef/stream.h>
 #include <reef/ssp.h>
 #include <reef/alloc.h>
+#include <reef/interrupt.h>
 
 /* SSP register offsets */
 #define SSCR0		0x00
@@ -276,8 +277,13 @@ static int ssp_probe(struct dai *dai)
 {
 	struct ssp_config *ssp;
 
+	/* allocate private data */
 	ssp = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*ssp));
+	dai_set_drvdata(dai, ssp);
 
+	interrupt_register(dai_irq(dai), ssp_irq_handler, dai);
+
+	return 0;
 }
 
 const struct dai_ops ssp_ops = {

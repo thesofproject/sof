@@ -15,6 +15,7 @@
 #include <reef/task.h>
 #include <reef/debug.h>
 #include <reef/ipc.h>
+#include <reef/alloc.h>
 #include <platform/platform.h>
 
 int main(int argc, char *argv[])
@@ -29,6 +30,8 @@ int main(int argc, char *argv[])
 	if (err < 0)
 		goto err_out;
 
+	/* initialise the heap */
+	init_heap();
 	dbg();
 
 	/* init the platform */

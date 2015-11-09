@@ -28,4 +28,6 @@ void *rballoc(int zone, int module, size_t bytes);
 
 void rfree(int zone, int module, void *ptr);
 
+void init_heap(void);
+
 #endif
