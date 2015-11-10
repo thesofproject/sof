@@ -1,12 +1,10 @@
-/* This linker script generated from xt-genldscripts.tpp for LSP lsp_BYT_Android_Platform_ddr_stack */
-/* Linker Script for default link */
+/* Linker Script for baytrail - TODO: this should be run through the GCC
+   pre-processor to align heap and stack variables */
 
 OUTPUT_ARCH(xtensa)
 
 MEMORY
 {
-  ddrconf0_seg :                      	org = 0xC0000000, len = 0x1000
-  ddr0_seg :                          	org = 0xC0001000, len = 0x1FF000
   iram0_0_seg :                       	org = 0xFF2C0000, len = 0x2E0
   iram0_1_seg :                       	org = 0xFF2C02E0, len = 0x120
   iram0_2_seg :                       	org = 0xFF2C0400, len = 0x178
@@ -35,10 +33,6 @@ MEMORY
 
 PHDRS
 {
-  ddrconf0_phdr PT_LOAD;
-  ddrconf0_bss_phdr PT_LOAD;
-  ddr0_phdr PT_LOAD;
-  ddr0_bss_phdr PT_LOAD;
   iram0_0_phdr PT_LOAD;
   iram0_1_phdr PT_LOAD;
   iram0_2_phdr PT_LOAD;
