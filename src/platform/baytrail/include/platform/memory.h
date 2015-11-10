@@ -39,6 +39,8 @@
 #define SSP2_BASE	0xFF2A2000
 #define SSP2_SIZE	0x00001000
 
+/* HEAP Constants - WARNING this MUST be aligned with the lnker script */
+/* TODO:preproces linker script with this header to align automatically. */
 
 /* Heap section sizes for module pool */
 #define HEAP_MOD_COUNT8			0
@@ -50,7 +52,7 @@
 #define HEAP_MOD_COUNT512		8
 #define HEAP_MOD_COUNT1024		4
 
-/* total Heap for modules */
+/* total Heap for modules - must be aligned with linker script !!! */
 #define HEAP_MOD_SIZE \
 	(HEAP_MOD_COUNT8 * 8 + HEAP_MOD_COUNT16 * 16 + \
 	HEAP_MOD_COUNT32 * 32 + HEAP_MOD_COUNT64 * 64 + \
@@ -59,7 +61,7 @@
 
 /* Heap for buffers */
 #define HEAP_BUF_BLOCK_SIZE	1024
-#define HEAP_BUF_COUNT	120
+#define HEAP_BUF_COUNT	112
 #define HEAP_BUF_SIZE (HEAP_BUF_BLOCK_SIZE * HEAP_BUF_COUNT)
 
 /* Remaining DRAM for Stack, data and BSS. TODO: verify no overflow during build */

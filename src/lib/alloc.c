@@ -76,17 +76,19 @@ static struct block_map buf_heap_map[] = {
 	BLOCK_DEF(1024, HEAP_BUF_COUNT, buf_block1024),
 };
 
-/* system memory heap */
-uint32_t system_heap;
-uint32_t system_heap_end;
+/* memory heap start locations from linker */
+extern uint32_t _system_heap;
+extern uint32_t _module_heap;
+extern uint32_t _buffer_heap;
+extern uint32_t _stack_sentry;
 
-/* module heap */
-uint32_t module_heap;
-uint32_t module_heap_end;
-
-/* buffer heap */
-uint32_t buffer_heap;
-uint32_t buffer_heap_end;
+/* local heap locations */
+uint32_t system_heap = (uint32_t)&_system_heap;
+uint32_t system_heap_end = (uint32_t)&_module_heap;
+uint32_t module_heap = (uint32_t)&_module_heap;
+uint32_t module_heap_end = (uint32_t)&_buffer_heap;
+uint32_t buffer_heap = (uint32_t)&_buffer_heap;
+uint32_t buffer_heap_end = (uint32_t)&_stack_sentry;
 
 /* allocate from system memory pool */
 static void *rmalloc_dev(size_t bytes)

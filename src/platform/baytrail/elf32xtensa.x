@@ -349,11 +349,39 @@ SECTIONS
     _bss_end = ABSOLUTE(.);
   } >dram0_1_seg :dram0_1_bss_phdr
 
+/* TODO: need to clean up what we are using/not using here */
+/* TODO: need to run the pre-processor on this to align with C headers */
+
   _end = 0xff327000;
   PROVIDE(end = 0xff327000);
   _stack_sentry = 0xff327000;
  __stack = 0xff328000;
   _heap_sentry = 0xff328000;
+
+  /* The Heap and stack are organised like this :-
+   *
+   * DRAM start --------
+   *            RO Data
+   *            Data
+   *            BSS
+   *            System Heap
+   *            Module Heap
+   *            Module Buffers
+   *            Stack
+   * DRAM End   ---------
+   */
+
+  /* System Heap */
+  _system_heap = 0xff304000;
+
+
+  /* module heap */
+  _module_heap = 0xff304c00;
+
+  /* buffer heap */
+  _buffer_heap = 0xff30bc00;
+  _buffer_heap_end = _stack_sentry;
+
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }
   .debug_srcinfo  0 :  { *(.debug_srcinfo) }

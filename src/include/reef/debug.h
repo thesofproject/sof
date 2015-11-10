@@ -47,7 +47,7 @@
 #define panic(_p) \
 	do { \
 		dbg() \
-		dbg_val(_p) \
+		dbg_val(0xdead0000 | _p) \
 		while(1) {}; \
 	} while (0);
 
