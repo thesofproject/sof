@@ -23,8 +23,6 @@ unsigned int timer_get_count(int timer);
 
 unsigned int timer_get_count_delta(int timer);
 
-void timer_schedule_work(int timer, void(*work)(void*), void *data, int timeout);
-
 uint32_t timer_get_system(void);
 
 #endif

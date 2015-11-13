@@ -17,6 +17,7 @@
 #include <reef/timer.h>
 #include <reef/alloc.h>
 #include <reef/interrupt.h>
+#include <reef/work.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <errno.h>
@@ -84,6 +85,7 @@
 /* private data for DW DMA */
 struct dma_pdata {
 	uint8_t chan[DW_MAX_CHAN];
+	struct work work;
 };
 
 /* allocate next free DMA channel */
@@ -154,7 +156,7 @@ static void dw_dma_fifo_work(void *data)
 
 	/* still waiting on more FIFOs to drain ? */
 	if (schedule)
-		timer_schedule_work(REEF_SYS_TIMER, dw_dma_fifo_work, dma, 1);
+		work_schedule(&p->work, 1);
 }
 
 static int dw_dma_stop(struct dma *dma, int channel)
@@ -168,7 +170,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	p->chan[channel] = DMA_STATUS_DRAINING;
 	
 	/* FIFO cleanup done by general purpose timer */
-	timer_schedule_work(REEF_SYS_TIMER, dw_dma_fifo_work, dma, 1);
+	work_schedule(&p->work, 1);
 	return 0;
 }
 
@@ -184,7 +186,7 @@ static int dw_dma_drain(struct dma *dma, int channel)
 	p->chan[channel] = DMA_STATUS_DRAINING;
 
 	/* FIFO cleanup done by general purpose timer */
-	timer_schedule_work(REEF_SYS_TIMER, dw_dma_fifo_work, dma, 1);
+	work_schedule(&p->work, 1);
 	return 0;
 }
 
@@ -225,11 +227,17 @@ static void dw_dma_irq_handler(void *data)
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
+	struct work *work;
 
 	/* allocate private data */
 	dw_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
+	/* init work */
+	work = &dw_pdata->work;
+	work_init(work, dw_dma_fifo_work, dma);
+
+	/* register our IRQ handler */
 	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);
 
 	return 0;

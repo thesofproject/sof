@@ -15,6 +15,7 @@
 #include <platform/interrupt.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
+#include <reef/alloc.h>
 #include <reef/init.h>
 #include <reef/timer.h>
 #include <reef/interrupt.h>
@@ -86,11 +87,6 @@ void timer_set(int timer, unsigned int ticks)
 
 	count = xthal_get_ccount();
 	xthal_set_ccompare(timer, count + ticks);
-}
-
-void timer_schedule_work(int timer, void(*work)(void*), void *data, int timeout)
-{
-
 }
 
 uint32_t timer_get_system(void)
