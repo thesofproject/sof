@@ -103,7 +103,7 @@ void clock_register_notifier(int clock, struct notifier *notifier)
 
 }
 
-int clock_init(void)
+void init_platform_clocks(void)
 {
 	clk_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*clk_pdata));
 

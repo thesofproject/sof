@@ -54,4 +54,6 @@ int platform_init(int argc, char *argv[])
 
 	ssp1 = dai_get(DAI_ID_SSP1);
 	dai_probe(ssp1);
+
+	init_platform_clocks();
 }
