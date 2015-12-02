@@ -3,7 +3,8 @@ noinst_LIBRARIES = libcore.a
 libcore_a_SOURCES = \
 	lib.c \
 	alloc.c \
-	work.c
+	work.c \
+	notifier.c
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
