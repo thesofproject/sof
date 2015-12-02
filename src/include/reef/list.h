@@ -11,7 +11,7 @@
 #ifndef __INCLUDE_LIST__
 #define __INCLUDE_LIST__
 
-/* Really simple list manipulation - semantics same as Linux kernel lists */
+/* Really simple list manipulation - syntax same as Linux and ALSA lists */
 
 struct list_head;
 
@@ -50,5 +50,9 @@ static inline void list_del(struct list_head *entry)
 
 #define list_for_each(pos, list) \
 	for (pos = (list)->next; pos != (list); pos = pos->next)
+
+#define list_for_each_safe(pos, n, list) \
+	for (pos = (list)->next, n = pos->next; pos != (list); \
+		pos = n, n = pos->next)
 
 #endif
