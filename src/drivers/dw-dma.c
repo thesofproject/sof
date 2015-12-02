@@ -156,7 +156,7 @@ static void dw_dma_fifo_work(void *data)
 
 	/* still waiting on more FIFOs to drain ? */
 	if (schedule)
-		work_schedule(&p->work, 1);
+		work_schedule_default(&p->work, 1);
 }
 
 static int dw_dma_stop(struct dma *dma, int channel)
@@ -170,7 +170,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	p->chan[channel] = DMA_STATUS_DRAINING;
 	
 	/* FIFO cleanup done by general purpose timer */
-	work_schedule(&p->work, 1);
+	work_schedule_default(&p->work, 1);
 	return 0;
 }
 
@@ -186,7 +186,7 @@ static int dw_dma_drain(struct dma *dma, int channel)
 	p->chan[channel] = DMA_STATUS_DRAINING;
 
 	/* FIFO cleanup done by general purpose timer */
-	work_schedule(&p->work, 1);
+	work_schedule_default(&p->work, 1);
 	return 0;
 }
 
