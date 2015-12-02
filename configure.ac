@@ -11,7 +11,7 @@ dnl Initialize maintainer mode
 AM_MAINTAINER_MODE([enable])
 
 # General compiler flags
-CFLAGS="${CFLAGS:+$CFLAGS }-std=c99 -Os -O2 -g -Wpointer-arith -Werror -Wl,-EL -fno-inline-functions -nostdlib"
+CFLAGS="${CFLAGS:+$CFLAGS }-Os -O2 -g -Wpointer-arith -Werror -Wl,-EL -fno-inline-functions -nostdlib"
 
 # Cross compiler tool libgcc and headers
 AC_ARG_WITH([tool-dir],
