@@ -186,7 +186,7 @@ void work_schedule_default(struct work *w, int timeout)
 }
 
 //TODO: add notifier for clock changes in order to re-calc timeouts
-void sys_work_init(void)
+void init_system_workq(void)
 {
 	/* init system work queue */
 	queue_ = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*queue_));

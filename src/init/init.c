@@ -39,6 +39,10 @@ int main(int argc, char *argv[])
 	if (err < 0)
 		goto err_out;
 
+	/* init system work queue */
+	init_system_workq();
+	dbg();
+
 	/* initialise the IPC mechanisms */
 	ipc_context = ipc_init(NULL);
 	if (ipc_context == NULL)

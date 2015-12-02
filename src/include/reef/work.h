@@ -37,4 +37,7 @@ void work_schedule(struct work_queue *queue, struct work *w, int timeout);
 /* schedule work on default system work queue */
 void work_schedule_default(struct work *work, int timeout);
 
+/* init system workq */
+void init_system_workq(void);
+
 #endif
