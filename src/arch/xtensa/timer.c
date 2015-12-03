@@ -24,7 +24,7 @@
 
 static uint32_t _mask = 0, _enable = 0;
 
-static int get_irq_from_timer(int timer)
+int timer_get_irq(int timer)
 {
 	switch (timer) {
 	case 0:
@@ -42,7 +42,7 @@ int timer_register(int timer, void(*handler)(void *arg), void *arg)
 {
 	int irq;
 
-	irq = get_irq_from_timer(timer);
+	irq = timer_get_irq(timer);
 	if (irq < 0)
 		return irq;
 
@@ -53,7 +53,7 @@ void timer_unregister(int timer)
 {
 	int irq;
 
-	irq = get_irq_from_timer(timer);
+	irq = timer_get_irq(timer);
 	if (irq < 0)
 		return;
 	interrupt_unregister(irq);
@@ -63,7 +63,7 @@ void timer_enable(int timer)
 {
 	int irq;
 
-	irq = get_irq_from_timer(timer);
+	irq = timer_get_irq(timer);
 	if (irq < 0)
 		return;
 
@@ -74,7 +74,7 @@ void timer_disable(int timer)
 {
 	int irq;
 
-	irq = get_irq_from_timer(timer);
+	irq = timer_get_irq(timer);
 	if (irq < 0)
 		return;
 
