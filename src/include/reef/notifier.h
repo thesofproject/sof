@@ -11,16 +11,19 @@
 
 #include <reef/list.h>
 
+/* notifier general IDs */
+#define NOTIFIER_ID_CPU_FREQ	0
+
 struct notifier {
 	int id;
 	struct list_head list;
 	void *cb_data;
-	void (*cb)(int message, void *cb);
+	void (*cb)(int message, void *cb_data, void *event_data);
 };
 
 void notifier_register(struct notifier *notifier);
 void notifier_unregister(struct notifier *notifier);
 
-void notifier_event(int id, int message);
+void notifier_event(int id, int message, void *event_data);
 
 #endif
