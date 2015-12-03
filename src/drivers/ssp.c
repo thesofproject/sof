@@ -13,6 +13,7 @@
 #include <reef/ssp.h>
 #include <reef/alloc.h>
 #include <reef/interrupt.h>
+#include <reef/lock.h>
 
 /* SSP register offsets */
 #define SSCR0		0x00
@@ -94,15 +95,17 @@
 #define SSPSP_FSRT		(1 << 25)
 
 /* SSP private data */
-struct ssp_config {
+struct ssp_pdata {
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t psp;
+	spinlock_t lock;
 };
 
+/* save SSP context prior to entering D3 */
 static int ssp_context_store(struct dai *dai)
 {
-	struct ssp_config *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	ssp->sscr0 = io_reg_read(dai_base(dai) + SSCR0);
 	ssp->sscr1 = io_reg_read(dai_base(dai) + SSCR1);
@@ -111,9 +114,10 @@ static int ssp_context_store(struct dai *dai)
 	return 0;
 }
 
+/* restore SSP context after leaving D3 */
 static int ssp_context_restore(struct dai *dai)
 {
-	struct ssp_config *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	io_reg_write(dai_base(dai) + SSCR0, ssp->sscr0);
 	io_reg_write(dai_base(dai) + SSCR1, ssp->sscr1);
@@ -125,7 +129,7 @@ static int ssp_context_restore(struct dai *dai)
 /* Digital Audio interface formatting */
 static inline int ssp_set_fmt(struct dai *dai)
 {
-	struct ssp_config *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0, sscr1, sspsp;
 
 	/* reset SSP settings */
@@ -211,9 +215,10 @@ static inline int ssp_set_fmt(struct dai *dai)
 	return 0;
 }
 
+/* start the SSP for either playback or capture */
 static void ssp_start(struct dai *dai, int direction)
 {
-	struct ssp_config *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	/* enable port */
 	io_reg_update_bits(dai_base(dai) + SSCR0, SSCR0_SSE, SSCR0_SSE);
@@ -225,9 +230,10 @@ static void ssp_start(struct dai *dai, int direction)
 		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_RSRE, SSCR1_RSRE);
 }
 
+/* stop the SSP port stream DMA and disable SSP port if no users */
 static void ssp_stop(struct dai *dai, int direction)
 {
-	struct ssp_config *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr1;
 
 	/* disable DMA */
@@ -275,12 +281,14 @@ static void ssp_irq_handler(void *data)
 
 static int ssp_probe(struct dai *dai)
 {
-	struct ssp_config *ssp;
+	struct ssp_pdata *ssp;
 
 	/* allocate private data */
 	ssp = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
+	/* init driver */
+	spinlock_init(ssp->lock);
 	interrupt_register(dai_irq(dai), ssp_irq_handler, dai);
 
 	return 0;
