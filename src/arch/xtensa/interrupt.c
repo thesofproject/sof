@@ -59,3 +59,13 @@ void interrupt_clear(int irq)
 	xthal_set_intclear(0x1 << irq);
 }
 
+void interrupt_local_disable(uint32_t flags)
+{
+	flags = xthal_get_intenable();
+	xthal_set_intenable(0);
+}
+
+void interrupt_local_enable(uint32_t flags)
+{
+	xthal_set_intenable(flags);
+}

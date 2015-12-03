@@ -18,4 +18,7 @@ void interrupt_disable(int irq);
 void interrupt_set(int irq);
 void interrupt_clear(int irq);
 
+void interrupt_local_enable(uint32_t flags);
+void interrupt_local_disable(uint32_t flags);
+
 #endif
