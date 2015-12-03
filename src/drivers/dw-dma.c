@@ -18,6 +18,7 @@
 #include <reef/alloc.h>
 #include <reef/interrupt.h>
 #include <reef/work.h>
+#include <reef/lock.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <errno.h>
@@ -86,6 +87,7 @@
 struct dma_pdata {
 	uint8_t chan[DW_MAX_CHAN];
 	struct work work;
+	spinlock_t lock;
 };
 
 /* allocate next free DMA channel */
@@ -127,7 +129,11 @@ static int dw_dma_start(struct dma *dma, int channel)
 	return 0;
 }
 
-/* this tasklet is call by the general purpose timer */
+/*
+ * Wait for DMA drain completion using delayed work. This allows the stream
+ * IPC to return immediately without blocking the host. This work is called 
+ * by the general system timer.
+ */
 static void dw_dma_fifo_work(void *data)
 {
 	struct dma *dma = (struct dma *)data;
@@ -232,6 +238,8 @@ static int dw_dma_probe(struct dma *dma)
 	/* allocate private data */
 	dw_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
+
+	spinlock_init(dw_pdata->lock);
 
 	/* init work */
 	work = &dw_pdata->work;
