@@ -11,6 +11,8 @@
 #include <reef/reef.h>
 #include <reef/list.h>
 #include <reef/alloc.h>
+#include <reef/notifier.h>
+#include <reef/lock.h>
 #include <platform/clk.h>
 #include <platform/shim.h>
 #include <stdint.h>
@@ -20,7 +22,7 @@
 struct clk_data {
 	uint32_t freq;
 	uint32_t ticks_per_ms;
-	struct notifier *notifier;
+	spinlock_t lock;
 };
 
 struct clk_pdata {
@@ -70,22 +72,45 @@ void clock_disable(int clock)
 
 unsigned int clock_set_freq(int clock, unsigned int hz)
 {
-	uint32_t idx, freq;
+	struct clock_notify_data notify_data;
+	uint32_t idx, flags;
+
+	notify_data.old_freq = clock_get_freq(clock);
+
+	/* atomic context for chaning clocks */
+	spin_lock_irq(clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
 	case CLK_CPU:
+		/* get nearest frequency that is >= requested Hz */
 		idx = get_cpu_freq(hz);
+		notify_data.new_freq = cpu_freq[idx].freq;
+
+		/* tell anyone interested we are about to change CPU freq */
+		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
+			&notify_data);
+
+		/* change CPU frequency */
 		io_reg_update_bits(SHIM_BASE + SHIM_CSR,
 				SHIM_CSR_DCS_MASK, cpu_freq[idx].enc);
-		freq = cpu_freq[idx].enc;
+
+		/* update clock freqency */
+		clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
+		clk_pdata->clk[clock].ticks_per_ms = cpu_freq[idx].freq / 1000;
+
+		/* tell anyone interested we have now changed CPU freq */
+		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
+			&notify_data);
 		break;
 	case CLK_SSP0:
 	case CLK_SSP1:
-		freq = 0;
+		notify_data.new_freq = 0;
 		break;
 	}
 
-	return freq;
+	spin_unlock_irq(clk_pdata->clk[clock].lock, flags);
+
+	return notify_data.new_freq;
 }
 
 unsigned int clock_get_freq(int clock)
@@ -98,14 +123,13 @@ unsigned int clock_ms_to_ticks(int clock, int ms)
 	return clk_pdata->clk[clock].ticks_per_ms * ms;
 }
 
-void clock_register_notifier(int clock, struct notifier *notifier)
-{
-
-}
-
 void init_platform_clocks(void)
 {
 	clk_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*clk_pdata));
+
+	spinlock_init(&clk_pdata->clk[0].lock);
+	spinlock_init(&clk_pdata->clk[1].lock);
+	spinlock_init(&clk_pdata->clk[2].lock);
 
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
 }

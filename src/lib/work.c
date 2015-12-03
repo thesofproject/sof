@@ -14,6 +14,8 @@
 #include <reef/clock.h>
 #include <reef/alloc.h>
 #include <reef/reef.h>
+#include <reef/lock.h>
+#include <reef/notifier.h>
 #include <platform/clk.h>
 #include <platform/platform.h>
 
@@ -39,6 +41,9 @@ struct work_queue {
 	uint32_t timeout;		/* timeout for next queue run */
 	uint32_t window_size;		/* window size for pending work */
 	int timer;			/* timer this queue uses */
+	int irq;			/* IRQ this timer uses */
+	spinlock_t lock;
+	struct notifier notifier;	/* notify CPU freq changes */
 };
 
 /* generic system work queue */
@@ -151,6 +156,8 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 
+	spin_lock_local_irq(&queue->lock, queue->irq);
+
 	/* work can take variable time to complete so we re-check the
 	  queue after running all the pending work to make sure no new work
 	  is pending */
@@ -159,6 +166,13 @@ static void queue_run(void *data)
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
+
+	spin_unlock_local_irq(&queue_->lock, queue_->irq);
+}
+
+static void work_notify(int message, void *cb_data, void *event_data)
+{
+
 }
 
 void work_schedule(struct work_queue *queue, struct work *w, int timeout)
@@ -166,11 +180,15 @@ void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 	/* convert timeout millisecs to CPU clock ticks */
 	w->count = clock_ms_to_ticks(CLK_CPU, timeout);
 
+	spin_lock_local_irq(&queue->lock, queue->irq);
+
 	/* insert work into list */
 	list_add(&w->list, &queue->work);
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
+
+	spin_unlock_local_irq(&queue->lock, queue->irq);
 }
 
 void work_schedule_default(struct work *w, int timeout)
@@ -178,11 +196,15 @@ void work_schedule_default(struct work *w, int timeout)
 	/* convert timeout millisecs to CPU clock ticks */
 	w->count = clock_ms_to_ticks(CLK_CPU, timeout);
 
+	spin_lock_local_irq(&queue_->lock, queue_->irq);
+
 	/* insert work into list */
 	list_add(&w->list, &queue_->work);
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
+
+	spin_unlock_local_irq(&queue_->lock, queue_->irq);
 }
 
 //TODO: add notifier for clock changes in order to re-calc timeouts
@@ -191,8 +213,13 @@ void init_system_workq(void)
 	/* init system work queue */
 	queue_ = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*queue_));
 	queue_->timer = REEF_SYS_TIMER;
+	queue_->irq = timer_get_irq(REEF_SYS_TIMER);
 	queue_->window_size = REEF_WORK_WINDOW;
 	list_init(&queue_->work);
+	queue_->notifier.cb = work_notify;
+	queue_->notifier.cb_data = queue_;
+	queue_->notifier.id = NOTIFIER_ID_CPU_FREQ;
+	notifier_register(&queue_->notifier);
 
 	/* register system timer */
 	timer_register(REEF_SYS_TIMER, queue_run, queue_);

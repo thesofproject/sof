@@ -25,4 +25,6 @@ unsigned int timer_get_count_delta(int timer);
 
 uint32_t timer_get_system(void);
 
+int timer_get_irq(int timer);
+
 #endif
