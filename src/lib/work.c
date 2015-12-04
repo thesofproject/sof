@@ -19,6 +19,10 @@
 #include <platform/clk.h>
 #include <platform/platform.h>
 
+/* Add this to current timer to schedule immediate work. This gives time for
+   re-scheduling to complete before enabling timers again. */
+#define CLK_NEXT_TICKS	500
+
 /*
  * Generic delayed work queue support.
  *
@@ -115,6 +119,15 @@ static int run_work(struct work_queue *queue)
 	}
 }
 
+static inline uint32_t calc_delta_ticks(uint32_t current, uint32_t work)
+{
+	/* does work run in next cycle ? */
+	if (work < current)
+		return MAX_INT - current + work;
+	else
+		return work - current;
+}
+
 /* calculate next timeout */
 static uint32_t queue_get_next_timeout(struct work_queue *queue)
 {
@@ -129,12 +142,7 @@ static uint32_t queue_get_next_timeout(struct work_queue *queue)
 
 		work = container_of(wlist, struct work, list);
 
-		/* does work run in next cycle ? */
-		if (work->count < current) {
-			t = MAX_INT - current + work->count;
-		} else {
-			t = work->count - current;
-		}
+		t = calc_delta_ticks(current, work->count);
 
 		/* is work next ? */
 		if (t < ticks)
@@ -142,6 +150,32 @@ static uint32_t queue_get_next_timeout(struct work_queue *queue)
 	}
 
 	return ticks;
+}
+
+/* re calculate timers for queue after CPU frequency change */
+static void queue_recalc_timers(struct work_queue *queue,
+	struct clock_notify_data *clk_data)
+{
+	struct list_head *wlist;
+	struct work *work;
+	uint32_t delta_ticks, delta_msecs, current;
+
+	current = timer_get_system();
+
+	/* re calculate timers for each work item */
+	list_for_each(wlist, &queue->work) {
+
+		work = container_of(wlist, struct work, list);
+
+		delta_ticks = calc_delta_ticks(current, work->count);
+		delta_msecs = delta_ticks / clk_data->old_ticks_per_msec;
+
+		/* is work within next msec, then schedule it now */
+		if (delta_msecs > 0)
+			work->count = clock_ms_to_ticks(CLK_CPU, delta_msecs);
+		else
+			work->count = current + CLK_NEXT_TICKS;
+	}
 }
 
 static void queue_reschedule(struct work_queue *queue)
@@ -170,9 +204,22 @@ static void queue_run(void *data)
 	spin_unlock_local_irq(&queue_->lock, queue_->irq);
 }
 
-static void work_notify(int message, void *cb_data, void *event_data)
+/* notification of CPU frequency changes - atomic PRE and POST sequence */
+static void work_notify(int message, void *data, void *event_data)
 {
+	struct work_queue *queue = (struct work_queue *)data;
+	struct clock_notify_data *clk_data =
+		(struct clock_notify_data *)event_data;
 
+	/* we need to re-caclulate timer when CPU freqency changes */
+	if (message == CLOCK_NOTIFY_POST) {
+		/* CPU frequency update complete */
+		queue_recalc_timers(queue, clk_data);
+		queue_reschedule(queue);
+	} else if (message == CLOCK_NOTIFY_PRE) {
+		/* CPU frequency update pending */
+		timer_disable(queue->timer);
+	}
 }
 
 void work_schedule(struct work_queue *queue, struct work *w, int timeout)

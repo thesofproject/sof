@@ -17,7 +17,9 @@
 
 struct clock_notify_data {
 	uint32_t old_freq;
-	uint32_t new_freq;
+	uint32_t old_ticks_per_msec;
+	uint32_t freq;
+	uint32_t ticks_per_msec;
 };
 
 void clock_enable(int clock);
