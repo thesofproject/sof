@@ -49,6 +49,8 @@
 #define DAI_TRIGGER_SUSPEND	4
 #define DAI_TRIGGER_RESUME	5
 
+#define DAI_NUM_SLOT_MAPS	8
+
 struct dai;
 
 /* DAI operations - all optional */ 
@@ -60,12 +62,18 @@ struct dai_ops {
 	int (*probe)(struct dai *dai);
 };
 
+/* DAI slot map to audio channel */
+struct dai_slot_map {
+	uint8_t channel;	/* channel ID - CHAN_ID_ */
+	uint8_t slot;		/* physical slot index */
+};
+
 /* DAI runtime hardware configuration */
 struct dai_config {
 	uint16_t format;
 	uint16_t frame_size;	/* in BCLKs */
-	uint32_t tx_slot_map;
-	uint32_t rx_slot_map;
+	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
+	struct dai_slot_map rx_slot_map[DAI_NUM_SLOT_MAPS];
 	uint16_t bclk_fs;	/* ratio between frame size and BCLK */
 	uint16_t mclk_fs;	/* ratio between frame size and MCLK */
 	uint32_t mclk;		/* mclk frequency in Hz */
