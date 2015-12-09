@@ -34,16 +34,6 @@
 /* stream channels */
 #define STREAM_MAX_CHANNELS	8
 
-/* stream commands */
-#define STREAM_CMD_STOP			0
-#define STREAM_CMD_START		1
-#define STREAM_CMD_PAUSE		2
-#define STREAM_CMD_RELEASE		3
-#define STREAM_CMD_DRAIN		4
-#define STREAM_CMD_VOLUME		32
-#define STREAM_CMD_MUTE			33
-#define STREAM_CMD_ROUTE		64
-
 /* channel to stream position mapping */
 struct stream_channel {
 	uint16_t channel;
