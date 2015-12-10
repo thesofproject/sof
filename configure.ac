@@ -86,6 +86,8 @@ AC_CHECK_TOOL([OBJDUMP], [objdump], [])
 
 AM_EXTRA_RECURSIVE_TARGETS([bin])
 
+AM_EXTRA_RECURSIVE_TARGETS([vminstall])
+
 AC_OUTPUT([
 	Makefile
 	src/Makefile
