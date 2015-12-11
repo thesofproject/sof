@@ -83,10 +83,7 @@ void timer_disable(int timer)
 
 void timer_set(int timer, unsigned int ticks)
 {
-	uint32_t count;
-
-	count = xthal_get_ccount();
-	xthal_set_ccompare(timer, count + ticks);
+	xthal_set_ccompare(timer, ticks);
 }
 
 uint32_t timer_get_system(void)

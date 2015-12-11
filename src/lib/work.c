@@ -103,7 +103,7 @@ static int is_work_pending(struct work_queue *queue)
 }
 
 /* run all pending work */
-static int run_work(struct work_queue *queue)
+static void run_work(struct work_queue *queue)
 {
 	struct list_head *wlist, *tlist;
 	struct work *work;
@@ -192,8 +192,14 @@ static void queue_recalc_timers(struct work_queue *queue,
 static void queue_reschedule(struct work_queue *queue)
 {
 	queue->timeout = queue_get_next_timeout(queue);
-	queue_->window_size = clock_ms_to_ticks(CLK_CPU, 1) >> 1;
+
+	/* scale the window size to clock speed */
+	queue_->window_size = clock_ms_to_ticks(CLK_CPU, 1) >> 5;
+
 	timer_set(queue->timer, queue->timeout);
+
+	/* the interrupt may need to be re-enabled outside IRQ context.
+	 * wait_for_interrupt() will do this for us */
 	timer_enable(queue->timer);
 }
 
@@ -202,7 +208,6 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 
-	dbg_val(timer_get_system(););
 	spin_lock_local_irq(&queue->lock, queue->irq);
 
 	/* work can take variable time to complete so we re-check the
@@ -282,5 +287,5 @@ void init_system_workq(void)
 	notifier_register(&queue_->notifier);
 
 	/* register system timer */
-	timer_register(REEF_SYS_TIMER, queue_run, queue_);
+	timer_register(queue_->timer, queue_run, queue_);
 }

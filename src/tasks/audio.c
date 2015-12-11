@@ -22,23 +22,20 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
+// TODO: align Qemu clock with DSP.
+#define AUDIO_WORK_MSECS	125
+
 static int ticks = 0;
 
 static struct work audio_work;
-
-/* test code to check working IRQ */
-static void timer_handler(void *arg)
-{
-	ticks++;
-	dbg_val(ticks);
-}
 
 uint32_t work_handler(void *data)
 {
 	ticks++;
 	dbg_val(ticks);
 
-	return 500;
+	return AUDIO_WORK_MSECS;
 }
 
 int do_task(int argc, char *argv[])
@@ -48,21 +45,16 @@ int do_task(int argc, char *argv[])
 	/* init static pipeline */
 	init_static_pipeline();
 	
+	/* schedule our audio work */
 	work_init((&audio_work), work_handler, NULL);
-	work_schedule_default(&audio_work, 500);
+	work_schedule_default(&audio_work, AUDIO_WORK_MSECS);
 
-//	timer_register(0, timer_handler, NULL);
-//	timer_set(0, 10000000);
-//	timer_enable(0);
-
-	while (1)
-	{
+	while (1) {
 	//	ipc_process_queue();
 
+		// TODO: combine irq_syn into WFI()
 		wait_for_interrupt(0);
-
-//		timer_set(0, 10000000);
-//		timer_enable(0);
+		interrupt_enable_sync();
 	}
 
 	/* something bad happened */
