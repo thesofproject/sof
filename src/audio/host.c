@@ -13,46 +13,46 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static int endpoint_new(struct comp_dev *dev)
+static int host_new(struct comp_dev *dev)
 {
 
 	return 0;
 }
 
-static void endpoint_free(struct comp_dev *dev)
+static void host_free(struct comp_dev *dev)
 {
 
 }
 
 /* set component audio COMP paramters */
-static int endpoint_params(struct comp_dev *dev, struct stream_params *params)
+static int host_params(struct comp_dev *dev, struct stream_params *params)
 {
 
 	return 0;
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int endpoint_cmd(struct comp_dev *dev, int cmd, void *data)
+static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 
 	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
-static int endpoint_copy(struct comp_dev *sink, struct comp_dev *source)
+static int host_copy(struct comp_dev *sink, struct comp_dev *source)
 {
 
 	return 0;
 }
 
-struct comp_driver comp_endpoint_dai = {
-	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_EP_DAI),
+struct comp_driver comp_host = {
+	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST),
 	.ops	= {
-		.new		= endpoint_new,
-		.free		= endpoint_free,
-		.params		= endpoint_params,
-		.cmd		= endpoint_cmd,
-		.copy		= endpoint_copy,
+		.new		= host_new,
+		.free		= host_free,
+		.params		= host_params,
+		.cmd		= host_cmd,
+		.copy		= host_copy,
 	},
 };
 

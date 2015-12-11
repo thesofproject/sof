@@ -16,6 +16,8 @@
 #include <reef/interrupt.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
+#include <reef/audio/pipeline.h>
+#include <reef/debug.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -32,6 +34,9 @@ static void timer_handler(void *arg)
 int do_task(int argc, char *argv[])
 {
 	int ret = 0;
+
+	/* init static pipeline */
+	init_static_pipeline();
 
 	timer_register(0, timer_handler, NULL);
 	timer_set(0, 10000000);

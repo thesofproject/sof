@@ -39,7 +39,7 @@
 #define SSP2_BASE	0xFF2A2000
 #define SSP2_SIZE	0x00001000
 
-/* HEAP Constants - WARNING this MUST be aligned with the lnker script */
+/* HEAP Constants - WARNING this MUST be aligned with the linker script */
 /* TODO:preproces linker script with this header to align automatically. */
 
 /* Heap section sizes for module pool */

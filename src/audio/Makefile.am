@@ -6,10 +6,13 @@ libaudio_a_SOURCES = \
 	mux.c \
 	volume.c \
 	switch.c \
-	endpoint_dai.c \
-	endpoint_host.c
+	dai.c \
+	host.c \
+	pipeline.c \
+	pipeline_static.c
 
 libaudio_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(REEF_INCDIR) \
+	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR)

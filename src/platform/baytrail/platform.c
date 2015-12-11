@@ -10,12 +10,12 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
-#include <platform/dai.h>
 #include <uapi/intel-ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
 #include <reef/dma.h>
 #include <reef/reef.h>
+#include <reef/audio/component.h>
 
 static const struct sst_hsw_ipc_fw_ready ready = {
 	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,
@@ -49,10 +49,10 @@ int platform_init(int argc, char *argv[])
 	dmac1 = dma_get(DMA_ID_DMAC1);
 	dma_probe(dmac1);
 
-	ssp0 = dai_get(DAI_ID_SSP0);
+	ssp0 = dai_get(COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0));
 	dai_probe(ssp0);
 
-	ssp1 = dai_get(DAI_ID_SSP1);
+	ssp1 = dai_get(COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP1));
 	dai_probe(ssp1);
 
 	init_platform_clocks();

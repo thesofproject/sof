@@ -16,6 +16,7 @@
 #include <reef/debug.h>
 #include <reef/ipc.h>
 #include <reef/alloc.h>
+#include <reef/notifier.h>
 #include <platform/platform.h>
 
 int main(int argc, char *argv[])
@@ -23,25 +24,20 @@ int main(int argc, char *argv[])
 	struct ipc *ipc_context;
 	int err;
 
-	dbg();
-
 	/* init architecture */
 	err = arch_init(argc, argv);
 	if (err < 0)
 		goto err_out;
 
-	/* initialise the heap */
+	/* initialise system services */
 	init_heap();
-	dbg();
+	init_system_notify();
+	init_system_workq();
 
 	/* init the platform */
 	err = platform_init(argc, argv);
 	if (err < 0)
 		goto err_out;
-
-	/* init system work queue */
-	init_system_workq();
-	dbg();
 
 	/* initialise the IPC mechanisms */
 	ipc_context = ipc_init(NULL);
