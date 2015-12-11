@@ -17,12 +17,14 @@
 #include <platform/interrupt.h>
 #include <platform/shim.h>
 #include <reef/audio/pipeline.h>
+#include <reef/work.h>
 #include <reef/debug.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 static int ticks = 0;
 
+static struct work audio_work;
 
 /* test code to check working IRQ */
 static void timer_handler(void *arg)
@@ -31,16 +33,27 @@ static void timer_handler(void *arg)
 	dbg_val(ticks);
 }
 
+uint32_t work_handler(void *data)
+{
+	ticks++;
+	dbg_val(ticks);
+
+	return 500;
+}
+
 int do_task(int argc, char *argv[])
 {
 	int ret = 0;
 
 	/* init static pipeline */
 	init_static_pipeline();
+	
+	work_init((&audio_work), work_handler, NULL);
+	work_schedule_default(&audio_work, 500);
 
-	timer_register(0, timer_handler, NULL);
-	timer_set(0, 10000000);
-	timer_enable(0);
+//	timer_register(0, timer_handler, NULL);
+//	timer_set(0, 10000000);
+//	timer_enable(0);
 
 	while (1)
 	{
@@ -48,8 +61,8 @@ int do_task(int argc, char *argv[])
 
 		wait_for_interrupt(0);
 
-		timer_set(0, 10000000);
-		timer_enable(0);
+//		timer_set(0, 10000000);
+//		timer_enable(0);
 	}
 
 	/* something bad happened */

@@ -16,6 +16,7 @@
 #include <reef/reef.h>
 #include <reef/lock.h>
 #include <reef/notifier.h>
+#include <reef/debug.h>
 #include <platform/clk.h>
 #include <platform/platform.h>
 
@@ -82,6 +83,7 @@ static int is_work_pending(struct work_queue *queue)
 			}
 		}
 	} else {
+
 		/* mark each valid work item in this time period as pending */
 		list_for_each(wlist, &queue->work) {
 
@@ -105,6 +107,7 @@ static int run_work(struct work_queue *queue)
 {
 	struct list_head *wlist, *tlist;
 	struct work *work;
+	int reschedule_msecs;
 
 	/* check each work item in queue for pending */
 	list_for_each_safe(wlist, tlist, &queue->work) {
@@ -113,8 +116,14 @@ static int run_work(struct work_queue *queue)
 
 		/* run work if its pending and remove from the queue */
 		if (work->pending) {
-			work->cb(work->cb_data);
-			list_del(&work->list);
+			reschedule_msecs = work->cb(work->cb_data);
+
+			/* do we need reschedule this work ? */
+			if (reschedule_msecs == 0)
+				list_del(&work->list);
+			else
+				work->count = clock_ms_to_ticks(CLK_CPU,
+					reschedule_msecs) + timer_get_system();
 		}
 	}
 }
@@ -133,20 +142,22 @@ static uint32_t queue_get_next_timeout(struct work_queue *queue)
 {
 	struct list_head *wlist;
 	struct work *work;
-	uint32_t ticks = MAX_INT, current, t;
+	uint32_t delta = MAX_INT, current, d, ticks;
 
-	current = timer_get_system();
+	ticks = current = timer_get_system();
 
 	/* find time for next work */
 	list_for_each(wlist, &queue->work) {
 
 		work = container_of(wlist, struct work, list);
 
-		t = calc_delta_ticks(current, work->count);
+		d = calc_delta_ticks(current, work->count);
 
 		/* is work next ? */
-		if (t < ticks)
-			ticks = t;
+		if (d < delta) {
+			ticks = work->count;
+			delta = d;
+		}
 	}
 
 	return ticks;
@@ -181,6 +192,7 @@ static void queue_recalc_timers(struct work_queue *queue,
 static void queue_reschedule(struct work_queue *queue)
 {
 	queue->timeout = queue_get_next_timeout(queue);
+	queue_->window_size = clock_ms_to_ticks(CLK_CPU, 1) >> 1;
 	timer_set(queue->timer, queue->timeout);
 	timer_enable(queue->timer);
 }
@@ -190,6 +202,7 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 
+	dbg_val(timer_get_system(););
 	spin_lock_local_irq(&queue->lock, queue->irq);
 
 	/* work can take variable time to complete so we re-check the
@@ -225,7 +238,7 @@ static void work_notify(int message, void *data, void *event_data)
 void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 {
 	/* convert timeout millisecs to CPU clock ticks */
-	w->count = clock_ms_to_ticks(CLK_CPU, timeout);
+	w->count = clock_ms_to_ticks(CLK_CPU, timeout) + timer_get_system();
 
 	spin_lock_local_irq(&queue->lock, queue->irq);
 
@@ -240,8 +253,9 @@ void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 
 void work_schedule_default(struct work *w, int timeout)
 {
+
 	/* convert timeout millisecs to CPU clock ticks */
-	w->count = clock_ms_to_ticks(CLK_CPU, timeout);
+	w->count = clock_ms_to_ticks(CLK_CPU, timeout) + timer_get_system();
 
 	spin_lock_local_irq(&queue_->lock, queue_->irq);
 
@@ -254,7 +268,6 @@ void work_schedule_default(struct work *w, int timeout)
 	spin_unlock_local_irq(&queue_->lock, queue_->irq);
 }
 
-//TODO: add notifier for clock changes in order to re-calc timeouts
 void init_system_workq(void)
 {
 	/* init system work queue */

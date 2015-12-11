@@ -20,16 +20,16 @@
 struct work_queue;
 
 struct work {
-	void (*cb)(void*);
+	uint32_t (*cb)(void*);	/* returns reschedule timeout in msecs */
 	void *cb_data;
 	struct list_head list;
 	uint32_t count;
 	uint32_t pending;
 };
 
-#define work_init(work, x, xd) \
-	work->cb = x; \
-	work->cb_data = xd;
+#define work_init(w, x, xd) \
+	w->cb = x; \
+	w->cb_data = xd;
 
 /* schedule work on work queue */
 void work_schedule(struct work_queue *queue, struct work *w, int timeout);

@@ -134,7 +134,7 @@ static int dw_dma_start(struct dma *dma, int channel)
  * IPC to return immediately without blocking the host. This work is called 
  * by the general system timer.
  */
-static void dw_dma_fifo_work(void *data)
+static uint32_t dw_dma_fifo_work(void *data)
 {
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -162,7 +162,9 @@ static void dw_dma_fifo_work(void *data)
 
 	/* still waiting on more FIFOs to drain ? */
 	if (schedule)
-		work_schedule_default(&p->work, 1);
+		return 1;	/* reschedule this work in 1 msec */
+	else
+		return 0;
 }
 
 static int dw_dma_stop(struct dma *dma, int channel)
