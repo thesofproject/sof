@@ -61,4 +61,7 @@ bin-local: reef
 	$(OBJCOPY) -O binary reef reef.bin
 	$(OBJDUMP) -D reef > reef.map
 	rimage -i reef -o reef.ri -m byt
-	
+
+vminstall:
+	scp -P 5555 reef.ri root@localhost:/lib/firmware/intel/
+
