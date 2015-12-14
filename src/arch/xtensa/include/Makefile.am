@@ -4,4 +4,5 @@ noinst_HEADERS = \
 	xtensa/corebits.h \
 	xtensa/hal.h \
 	xtensa/xtensa-xer.h \
-	xtensa/config/core.h
+	xtensa/config/core.h \
+	arch/reef.h

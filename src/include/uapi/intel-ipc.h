@@ -537,13 +537,14 @@ struct ipc_intel_ipc_dx_reply {
 } __attribute__((packed));
 
 /* Firmware Ready */
+#define IPC_INTEL_FW_RDY_RSVD	16
 struct sst_hsw_ipc_fw_ready {
 	uint32_t inbox_offset;
 	uint32_t outbox_offset;
 	uint32_t inbox_size;
 	uint32_t outbox_size;
 	uint32_t fw_info_size;
-	uint8_t fw_info[IPC_MAX_MAILBOX_BYTES - 5 * sizeof(uint32_t)];
+	uint8_t fw_info[IPC_INTEL_FW_RDY_RSVD];
 } __attribute__((packed));
 
 

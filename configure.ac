@@ -99,6 +99,9 @@ AC_OUTPUT([
 	src/audio/Makefile
 	src/drivers/Makefile
 	src/include/Makefile
+	src/include/reef/Makefile
+	src/include/reef/audio/Makefile
+	src/include/uapi/Makefile
 	src/ipc/Makefile
 	src/lib/Makefile
 	src/platform/Makefile
