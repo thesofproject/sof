@@ -536,15 +536,26 @@ struct ipc_intel_ipc_dx_reply {
 	struct ipc_intel_ipc_dx_memory_item mem_info[IPC_INTEL_MAX_DX_REGIONS];
 } __attribute__((packed));
 
+
+/* FW info */
+struct fw_info {
+	uint8_t name[5];
+	uint8_t date[11];
+	uint8_t time[8];
+} __attribute__((packed));
+
 /* Firmware Ready */
-#define IPC_INTEL_FW_RDY_RSVD	16
+#define IPC_INTEL_FW_RDY_RSVD	32
 struct sst_hsw_ipc_fw_ready {
 	uint32_t inbox_offset;
 	uint32_t outbox_offset;
 	uint32_t inbox_size;
 	uint32_t outbox_size;
 	uint32_t fw_info_size;
-	uint8_t fw_info[IPC_INTEL_FW_RDY_RSVD];
+	union {
+		uint8_t rsvd[IPC_INTEL_FW_RDY_RSVD];
+		struct fw_info info;
+	};
 } __attribute__((packed));
 
 

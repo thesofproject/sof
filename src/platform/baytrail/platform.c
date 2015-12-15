@@ -22,8 +22,12 @@ static const struct sst_hsw_ipc_fw_ready ready = {
 	.outbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_OUTBOX_OFFSET,
 	.inbox_size = MAILBOX_INBOX_SIZE,
 	.outbox_size = MAILBOX_OUTBOX_SIZE,
-	.fw_info_size = 5,
-	.fw_info = {'R','E','E','F',0},
+	.fw_info_size = sizeof(struct fw_info),
+	.info = {
+		.name = "REEF",
+		.date = __DATE__,
+		.time = __TIME__,
+	},
 };
 
 int platform_boot_complete(uint32_t boot_message)
