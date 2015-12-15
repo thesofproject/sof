@@ -22,8 +22,6 @@
 #include <stdint.h>
 #include <errno.h>
 
-static uint32_t _mask = 0, _enable = 0;
-
 int timer_get_irq(int timer)
 {
 	switch (timer) {

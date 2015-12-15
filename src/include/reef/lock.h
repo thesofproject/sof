@@ -38,7 +38,7 @@ typedef uint32_t spinlock_t;
 
 /* disables all IRQ sources and tales lock - atomic context */
 #define spin_lock_irq(lock, flags) \
-	interrupt_global_disable(flags); \
+	flags = interrupt_global_disable(); \
 	spin_lock(lock);
 
 /* re-enables current IRQ sources and releases lock */

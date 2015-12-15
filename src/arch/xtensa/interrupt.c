@@ -69,10 +69,14 @@ void interrupt_clear(int irq)
 	xthal_set_intclear(0x1 << irq);
 }
 
-void interrupt_global_disable(uint32_t flags)
+uint32_t interrupt_global_disable(void)
 {
+	uint32_t flags;
+
 	flags = xthal_get_intenable();
 	xthal_set_intenable(0);
+
+	return flags;
 }
 
 void interrupt_global_enable(uint32_t flags)

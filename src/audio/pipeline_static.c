@@ -51,6 +51,7 @@ static struct spipe_link pipe_capture0[] = {
 	{SPIPE_DAI_SSP0(2), SPIPE_VOLUME(3), SPIPE_DAI_SSP0(2)},
 };
 
+#if 0
 /* 
  * Two PCMs mixed into single SSP output.
  *
@@ -88,6 +89,7 @@ static struct spipe_link pipe_play2[] = {
 static struct spipe_link pipe_capture2[] = {
 	{SPIPE_DAI_SSP0(11), SPIPE_VOLUME(8), SPIPE_HOST(0)},
 };
+#endif
 
 int init_static_pipeline(void)
 {
@@ -134,7 +136,7 @@ int init_static_pipeline(void)
 	}
 
 	/* initialise the pipeline */
-	err = pipeline_init(pl);
+	err = pipeline_prepare(pl);
 	if (err < 0)
 		goto err;
 

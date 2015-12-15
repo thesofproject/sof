@@ -26,4 +26,6 @@ void notifier_unregister(struct notifier *notifier);
 
 void notifier_event(int id, int message, void *event_data);
 
+void init_system_notify(void);
+
 #endif

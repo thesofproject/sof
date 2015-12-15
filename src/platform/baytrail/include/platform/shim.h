@@ -83,7 +83,7 @@ static inline uint32_t shim_read(uint32_t reg)
 	return *((volatile uint32_t*)(SHIM_BASE + reg));
 }
 
-static inline uint32_t shim_write(uint32_t reg, uint32_t val)
+static inline void shim_write(uint32_t reg, uint32_t val)
 {
 	*((volatile uint32_t*)(SHIM_BASE + reg)) = val;
 }

@@ -70,6 +70,9 @@ int pipeline_prepare(int pipeline_id);
 /* send pipeline a command */
 int pipeline_cmd(int pipeline_id, int cmd);
 
+/* initialise pipeline subsys */
+int pipeline_init(void);
+
 /* static pipeline creation */
 int init_static_pipeline(void);
 

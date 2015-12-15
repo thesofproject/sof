@@ -17,6 +17,7 @@
 #include <reef/ipc.h>
 #include <reef/alloc.h>
 #include <reef/notifier.h>
+#include <reef/work.h>
 #include <platform/platform.h>
 
 int main(int argc, char *argv[])

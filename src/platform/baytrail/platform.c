@@ -10,6 +10,7 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
+#include <platform/clk.h>
 #include <uapi/intel-ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
@@ -60,4 +61,6 @@ int platform_init(int argc, char *argv[])
 	dai_probe(ssp1);
 
 	init_platform_clocks();
+
+	return 0;
 }

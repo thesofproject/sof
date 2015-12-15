@@ -129,7 +129,7 @@ static int ssp_context_restore(struct dai *dai)
 /* Digital Audio interface formatting */
 static inline int ssp_set_fmt(struct dai *dai)
 {
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0, sscr1, sspsp;
 
 	/* reset SSP settings */
@@ -218,7 +218,7 @@ static inline int ssp_set_fmt(struct dai *dai)
 /* start the SSP for either playback or capture */
 static void ssp_start(struct dai *dai, int direction)
 {
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	/* enable port */
 	io_reg_update_bits(dai_base(dai) + SSCR0, SSCR0_SSE, SSCR0_SSE);
@@ -233,7 +233,7 @@ static void ssp_start(struct dai *dai, int direction)
 /* stop the SSP port stream DMA and disable SSP port if no users */
 static void ssp_stop(struct dai *dai, int direction)
 {
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr1;
 
 	/* disable DMA */
@@ -244,7 +244,7 @@ static void ssp_stop(struct dai *dai, int direction)
 
 	/* disable port if no users */
 	sscr1 = io_reg_read(dai_base(dai) + SSCR1);
-	if (!(sscr1 & SSCR1_TSRE | SSCR1_RSRE))
+	if (!(sscr1 & (SSCR1_TSRE | SSCR1_RSRE)))
 		io_reg_update_bits(dai_base(dai) + SSCR0, SSCR0_SSE, 0);
 }
 

@@ -25,4 +25,7 @@ uint32_t interrupt_get(void);
 void interrupt_local_enable(uint32_t flags);
 void interrupt_local_disable(uint32_t flags);
 
+uint32_t interrupt_global_disable(void);
+void interrupt_global_enable(uint32_t flags);
+
 #endif

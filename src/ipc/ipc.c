@@ -35,17 +35,23 @@ void ipc_free(struct ipc *ipc)
 	/* nothing todo here */
 }
 
+#if 0
 static int msg_add(struct ipc *ipc, struct ipc_msg *msg)
 {
 
+	return 0;
 }
+#endif
 
 int ipc_process_msg_queue(struct ipc *ipc)
 {
 
+	return 0;
 }
 
 int ipc_send_msg(struct ipc *ipc, struct ipc_msg *msg)
 {
+
+	return 0;
 }
 

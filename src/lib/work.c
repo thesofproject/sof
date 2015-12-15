@@ -60,7 +60,7 @@ static int is_work_pending(struct work_queue *queue)
 	struct list_head *wlist;
 	struct work *work;
 	uint32_t win_end, win_start;
-	int pending, pending_count = 0;
+	int pending_count = 0;
 
 	/* get the current valid window of work */
 	win_end = timer_get_system();
