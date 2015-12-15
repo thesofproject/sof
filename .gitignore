@@ -22,3 +22,5 @@ CHANGELOG
 
 autom4te*
 config.*
+*.gz
+src/arch/xtensa/reef
