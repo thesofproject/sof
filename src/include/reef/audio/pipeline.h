@@ -64,11 +64,17 @@ void pipeline_free(int pipeline_id);
 int pipeline_comp_connect(int pipeline_id, struct pipe_comp_desc *source_desc,
 	struct pipe_comp_desc *sink_desc);
 
+/* pipeline parameters */
+int pipeline_params_host(int pipeline_id, struct pipe_comp_desc *host_desc,
+	struct stream_params *params);
+int pipeline_params_dai(int pipeline_id, struct pipe_comp_desc *dai_desc,
+	struct stream_params *params);
+
 /* prepare the pipeline for usage */
 int pipeline_prepare(int pipeline_id);
 
 /* send pipeline a command */
-int pipeline_cmd(int pipeline_id, int cmd);
+int pipeline_cmd(int pipeline_id, struct pipe_comp_desc *host_desc, int cmd);
 
 /* initialise pipeline subsys */
 int pipeline_init(void);

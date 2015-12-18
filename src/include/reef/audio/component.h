@@ -18,6 +18,7 @@
 /* component 32bit UUID - type is COMP_TYPE_ or bespoke type */
 #define COMP_UUID(vendor, type)	\
 	(((vendor & 0xffff) << 16) | (type & 0xffff))
+#define COMP_TYPE(uuid) (uuid & 0xffff)
 
 /* component vendors */
 #define COMP_VENDOR_GENERIC	0		/* community */
@@ -61,12 +62,23 @@ struct comp_ops {
 	int (*copy)(struct comp_dev *sink, struct comp_dev *source);
 };
 
+/* component configuration */
+struct comp_config {
+
+};
+
+/* component capabilities */
+struct comp_caps {
+
+};
+
 /* audio component base driver "class" - used by all other component types */
 struct comp_driver {
 	uint32_t uuid;		/* UUID for component */
+	uint32_t module_id;
 
-	/* ops */
 	struct comp_ops ops;	/* component operations */
+	struct comp_caps caps;	/* component capabilities */
 
 	struct list_head list;	/* list of component drivers */
 };
@@ -75,7 +87,7 @@ struct comp_driver {
 struct comp_dev {
 
 	/* runtime */
-	uint8_t index;		/* index of component */
+	uint8_t id;		/* id of component */
 	uint8_t state;		/* COMP_STATE_ */
 	uint8_t is_endpoint;	/* is this component an endpoint ? */
 	uint8_t is_playback;	/* is the endpoint for playback or capture */
@@ -86,8 +98,8 @@ struct comp_dev {
 	/* lists */
 	struct list_head bsource_list;	/* list of source buffers */
 	struct list_head bsink_list;	/* list of sink buffers */
-	struct list_head pipeline_list;	/* list of pipeline component devs */
-	struct list_head endpoint_list;	/* list of pipeline endpoint devs */
+	struct list_head pipeline_list;	/* list in pipeline component devs */
+	struct list_head endpoint_list;	/* list in pipeline endpoint devs */
 };
 
 /* audio component buffer - connects 2 audio components together in pipeline */
@@ -106,7 +118,9 @@ struct comp_buffer {
 
 	/* lists */
 	struct list_head pipeline_list;	/* list of pipeline buffers */
-};	
+	struct list_head source_list;	/* list in comp buffers */
+	struct list_head sink_list;	/* list in comp buffers */
+};
 
 #define comp_set_drvdata(c, data) \
 	c->private = data

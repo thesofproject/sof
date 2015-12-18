@@ -29,6 +29,7 @@ static struct comp_dev *dai_new_ssp(uint32_t uuid, int id)
 		return NULL;
 
 	comp_set_drvdata(dev, ssp);
+	dev->id = id;
 	return dev;
 }
 

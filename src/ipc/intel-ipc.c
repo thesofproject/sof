@@ -18,6 +18,8 @@
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
+#include <reef/audio/component.h>
+#include <reef/audio/pipeline.h>
 #include <uapi/intel-ipc.h>
 
 static inline uint32_t msg_get_global_type(uint32_t msg)
@@ -91,6 +93,10 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 {
 	dbg();
 
+// call
+//int pipeline_params_host(int pipeline_id, struct pipe_comp_desc *host_desc,
+//	struct stream_params *params);
+
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
@@ -146,6 +152,10 @@ static uint32_t ipc_device_get_formats(uint32_t header)
 static uint32_t ipc_device_set_formats(uint32_t header)
 {
 	dbg();
+
+	// call
+	//int pipeline_params_dai(int pipeline_id, struct pipe_comp_desc *host_desc,
+	//struct stream_params *params);
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
