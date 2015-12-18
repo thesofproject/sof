@@ -43,6 +43,8 @@ static struct pipeline *pipeline_from_id(int id)
 	return NULL;
 }
 
+
+
 /* create new pipeline - returns pipeline id or negative error */
 int pipeline_new(void)
 {
@@ -65,6 +67,7 @@ int pipeline_new(void)
 void pipeline_free(int pipeline_id)
 {
 	struct pipeline *p;
+	struct list_head *clist;
 
 	spin_lock(&pipe_data->lock);
 
@@ -75,7 +78,12 @@ void pipeline_free(int pipeline_id)
 	}
 
 	/* free all components */
+	list_for_each(clist, &p->comp_list) {
+		struct comp_dev *comp;
 
+		comp = container_of(clist, struct comp_dev, pipeline_list);
+		comp_free(comp);
+	}
 
 	/* now free the pipeline */
 	list_del(&p->list);
@@ -117,5 +125,8 @@ int pipeline_init(void)
 {
 	pipe_data = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
+
+	/* init components */
+	sys_comp_init();
 	return 0;
 }

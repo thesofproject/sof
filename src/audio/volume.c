@@ -13,7 +13,7 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static int volume_new(struct comp_dev *dev)
+static struct comp_dev *volume_new(uint32_t uuid, int id)
 {
 
 	return 0;

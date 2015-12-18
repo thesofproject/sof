@@ -9,7 +9,8 @@ libaudio_a_SOURCES = \
 	dai.c \
 	host.c \
 	pipeline.c \
-	pipeline_static.c
+	pipeline_static.c \
+	component.c
 
 libaudio_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

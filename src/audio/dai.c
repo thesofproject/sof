@@ -10,10 +10,29 @@
 #include <stddef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
+#include <reef/dai.h>
+#include <reef/alloc.h>
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static int dai_new(struct comp_dev *dev)
+static struct comp_dev *dai_new_ssp(uint32_t uuid, int id)
+{
+	struct comp_dev *dev;
+	struct dai *ssp;
+
+	ssp = dai_get(COMP_UUID(COMP_VENDOR_INTEL, id));
+	if (ssp == NULL)
+		return NULL;
+
+	dev = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	if (dev == NULL)
+		return NULL;
+
+	comp_set_drvdata(dev, ssp);
+	return dev;
+}
+
+static struct comp_dev *dai_new_hda(uint32_t uuid, int id)
 {
 
 	return 0;
@@ -21,7 +40,7 @@ static int dai_new(struct comp_dev *dev)
 
 static void dai_free(struct comp_dev *dev)
 {
-
+	rfree(RZONE_MODULE, RMOD_SYS, dev);
 }
 
 /* set component audio COMP paramters */
@@ -34,6 +53,15 @@ static int dai_params(struct comp_dev *dev, struct stream_params *params)
 /* used to pass standard and bespoke commands (with data) to component */
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 {
+	struct dai *ssp = comp_get_drvdata(dev);
+
+	/* most pipeline commands can be directly passed to DAI driver */
+	switch (cmd) {
+	case PIPELINE_CMD_DRAIN:
+		break;
+	default:
+		return dai_trigger(ssp, cmd, dev->is_playback);
+	}
 
 	return 0;
 }
@@ -45,10 +73,21 @@ static int dai_copy(struct comp_dev *sink, struct comp_dev *source)
 	return 0;
 }
 
-struct comp_driver comp_dai = {
-	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_DAI),
+struct comp_driver comp_dai_ssp = {
+	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_DAI_SSP),
 	.ops	= {
-		.new		= dai_new,
+		.new		= dai_new_ssp,
+		.free		= dai_free,
+		.params		= dai_params,
+		.cmd		= dai_cmd,
+		.copy		= dai_copy,
+	},
+};
+
+struct comp_driver comp_dai_hda = {
+	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_DAI_HDA),
+	.ops	= {
+		.new		= dai_new_hda,
 		.free		= dai_free,
 		.params		= dai_params,
 		.cmd		= dai_cmd,

@@ -281,6 +281,7 @@ void init_system_workq(void)
 	queue_->irq = timer_get_irq(REEF_SYS_TIMER);
 	queue_->window_size = REEF_WORK_WINDOW;
 	list_init(&queue_->work);
+	spinlock_init(&queue_->lock);
 	queue_->notifier.cb = work_notify;
 	queue_->notifier.cb_data = queue_;
 	queue_->notifier.id = NOTIFIER_ID_CPU_FREQ;

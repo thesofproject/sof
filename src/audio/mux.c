@@ -13,7 +13,7 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static int mux_new(struct comp_dev *dev)
+static struct comp_dev *mux_new(uint32_t uuid, int id)
 {
 
 	return 0;
