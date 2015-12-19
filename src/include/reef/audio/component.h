@@ -62,14 +62,19 @@ struct comp_ops {
 	int (*copy)(struct comp_dev *sink, struct comp_dev *source);
 };
 
-/* component configuration */
-struct comp_config {
-
+/* component buffer data capabilities */
+struct comp_buffer_caps {
+	uint32_t formats;
+	uint32_t min_rate;
+	uint32_t max_rate;
+	uint16_t min_channels;
+	uint16_t max_channels;
 };
 
 /* component capabilities */
 struct comp_caps {
-
+	struct comp_buffer_caps sink;
+	struct comp_buffer_caps source;
 };
 
 /* audio component base driver "class" - used by all other component types */
@@ -92,6 +97,8 @@ struct comp_dev {
 	uint8_t is_endpoint;	/* is this component an endpoint ? */
 	uint8_t is_playback;	/* is the endpoint for playback or capture */
 	spinlock_t lock;	/* lock for this component */
+	uint32_t period_size;	/* move into params ??? */
+	struct stream_pcm_params params;
 	void *private;		/* private data */
 	struct comp_driver *drv;
 
@@ -111,6 +118,8 @@ struct comp_buffer {
 	uint8_t *r_ptr;		/* buffer read position */
 	uint8_t *addr;		/* buffer base address */
 	uint8_t connected;	/* connected in path */
+	uint16_t format;
+	uint16_t channels;
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
@@ -152,5 +161,13 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	return dev->drv->ops.cmd(dev, cmd, data);
 }
+
+/* default base component initialisations */
+void sys_comp_dai_init(void);
+void sys_comp_host_init(void);
+void sys_comp_mixer_init(void);
+void sys_comp_mux_init(void);
+void sys_comp_switch_init(void);
+void sys_comp_volume_init(void);
 
 #endif

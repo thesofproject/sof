@@ -74,7 +74,7 @@ static int dai_copy(struct comp_dev *sink, struct comp_dev *source)
 	return 0;
 }
 
-struct comp_driver comp_dai_ssp = {
+static struct comp_driver comp_dai_ssp = {
 	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_DAI_SSP),
 	.ops	= {
 		.new		= dai_new_ssp,
@@ -83,9 +83,25 @@ struct comp_driver comp_dai_ssp = {
 		.cmd		= dai_cmd,
 		.copy		= dai_copy,
 	},
+	.caps	= {
+		.source = {
+			.formats	= STREAM_FORMAT_S16_LE,
+			.min_rate	= 8000,
+			.max_rate	= 192000,
+			.min_channels	= 1,
+			.max_channels	= 2,
+		},
+		.sink = {
+			.formats	= STREAM_FORMAT_S16_LE,
+			.min_rate	= 8000,
+			.max_rate	= 192000,
+			.min_channels	= 1,
+			.max_channels	= 2,
+		},
+	},
 };
 
-struct comp_driver comp_dai_hda = {
+static struct comp_driver comp_dai_hda = {
 	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_DAI_HDA),
 	.ops	= {
 		.new		= dai_new_hda,
@@ -95,4 +111,10 @@ struct comp_driver comp_dai_hda = {
 		.copy		= dai_copy,
 	},
 };
+
+void sys_comp_dai_init(void)
+{
+	comp_register(&comp_dai_ssp);
+	comp_register(&comp_dai_hda);
+}
 

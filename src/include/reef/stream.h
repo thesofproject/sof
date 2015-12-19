@@ -16,11 +16,11 @@
 #define STREAM_TYPE_VORBIS	1
 /* other compressed stream types here if supported */
 
-/* supported formats */
+/* supported format masks */
 #define STREAM_FORMAT_S16_LE	1
 #define STREAM_FORMAT_S24_3LE	2
-#define STREAM_FORMAT_S24_4LE	3
-#define STREAM_FORMAT_S32_LE	4
+#define STREAM_FORMAT_S24_4LE	4
+#define STREAM_FORMAT_S32_LE	8
 
 /* supported channel mappings */
 #define STREAM_CHANNEL_MAP_MONO		0
@@ -43,7 +43,7 @@ struct stream_channel {
 /* PCM stream params */
 struct stream_pcm_params {
 	uint32_t rate;
-	uint16_t format;
+	uint16_t format_mask;
 	uint8_t channels;
 	uint8_t direction;
 	struct stream_channel channel_map[STREAM_MAX_CHANNELS];	

@@ -56,3 +56,8 @@ struct comp_driver comp_switch = {
 	},
 };
 
+void sys_comp_switch_init(void)
+{
+	comp_register(&comp_switch);
+}
+
