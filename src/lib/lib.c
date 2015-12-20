@@ -34,3 +34,10 @@ void cmemcpy(void *dest, void *src, size_t size)
 		d8[i] = s8[i];
 }
 #endif
+
+/* used by gcc - but uses arch_memcpy internally */
+void *memcpy(void *dest, const void *src, size_t n)
+{
+	arch_memcpy(dest, src, n);
+	return dest;
+}

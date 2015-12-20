@@ -43,9 +43,11 @@ struct stream_channel {
 /* PCM stream params */
 struct stream_pcm_params {
 	uint32_t rate;
-	uint16_t format_mask;
+	uint16_t format;
 	uint8_t channels;
 	uint8_t direction;
+	uint16_t period_frames;
+	uint16_t frame_size;
 	struct stream_channel channel_map[STREAM_MAX_CHANNELS];	
 };
 

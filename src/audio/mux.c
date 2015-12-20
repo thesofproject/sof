@@ -39,7 +39,7 @@ static int mux_cmd(struct comp_dev *dev, int cmd, void *data)
 }
 
 /* copy and process stream data from source to sink buffers */
-static int mux_copy(struct comp_dev *sink, struct comp_dev *source)
+static int mux_copy(struct comp_dev *dev)
 {
 
 	return 0;

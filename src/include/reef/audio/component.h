@@ -41,7 +41,13 @@
 /* standard component commands */
 #define COMP_CMD_VOLUME		1
 #define COMP_CMD_MUTE		2
-#define COMP_CMD_ROUTE		3
+#define COMP_CMD_UNMUTE		3
+#define COMP_CMD_ROUTE		4
+
+/* standard component command structures */
+struct comp_volume {
+	uint16_t volume[STREAM_MAX_CHANNELS];
+};
 
 struct comp_dev;
 struct comp_buffer;
@@ -58,8 +64,11 @@ struct comp_ops {
 	/* used to pass standard and bespoke commands (with data) to component */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
 
+	/* prepare component after params are set */
+	int (*prepare)(struct comp_dev *dev);
+
 	/* copy and process stream data from source to sink buffers */
-	int (*copy)(struct comp_dev *sink, struct comp_dev *source);
+	int (*copy)(struct comp_dev *dev);
 };
 
 /* component buffer data capabilities */
@@ -97,8 +106,7 @@ struct comp_dev {
 	uint8_t is_endpoint;	/* is this component an endpoint ? */
 	uint8_t is_playback;	/* is the endpoint for playback or capture */
 	spinlock_t lock;	/* lock for this component */
-	uint32_t period_size;	/* move into params ??? */
-	struct stream_pcm_params params;
+	struct stream_params params;
 	void *private;		/* private data */
 	struct comp_driver *drv;
 
@@ -118,12 +126,10 @@ struct comp_buffer {
 	uint8_t *r_ptr;		/* buffer read position */
 	uint8_t *addr;		/* buffer base address */
 	uint8_t connected;	/* connected in path */
-	uint16_t format;
-	uint16_t channels;
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
-	struct comp_dev *sink;	/* sink component */
+	struct comp_dev *sink;		/* sink component */
 
 	/* lists */
 	struct list_head pipeline_list;	/* list of pipeline buffers */
@@ -160,6 +166,12 @@ static inline int comp_params(struct comp_dev *dev,
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	return dev->drv->ops.cmd(dev, cmd, data);
+}
+
+/* prepare component */
+static inline int comp_prepare(struct comp_dev *dev)
+{
+	return dev->drv->ops.prepare(dev);
 }
 
 /* default base component initialisations */
