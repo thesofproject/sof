@@ -10,6 +10,7 @@
 #define __INCLUDE_STREAM__
 
 #include <stdint.h>
+#include <platform/platform.h>
 
 /* stream type */
 #define STREAM_TYPE_PCM		0
@@ -31,8 +32,8 @@
 #define STREAM_DIRECTION_PLAYBACK	0
 #define STREAM_DIRECTION_CAPTURE	1
 
-/* stream channels */
-#define STREAM_MAX_CHANNELS	8
+/* maximum stream channels */
+#define STREAM_MAX_CHANNELS	PLATFORM_MAX_CHANNELS
 
 /* channel to stream position mapping */
 struct stream_channel {

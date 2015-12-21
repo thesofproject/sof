@@ -28,8 +28,8 @@ struct work {
 };
 
 #define work_init(w, x, xd) \
-	w->cb = x; \
-	w->cb_data = xd;
+	(w)->cb = x; \
+	(w)->cb_data = xd;
 
 /* schedule work on work queue */
 void work_schedule(struct work_queue *queue, struct work *w, int timeout);

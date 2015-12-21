@@ -11,6 +11,8 @@
 
 #define REEF_SYS_TIMER 	0
 
+#define PLATFORM_MAX_CHANNELS	4
+
 struct ipc;
 
 /*

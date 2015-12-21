@@ -235,7 +235,6 @@ static void dw_dma_irq_handler(void *data)
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
-	struct work *work;
 
 	/* allocate private data */
 	dw_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*dw_pdata));
@@ -244,8 +243,7 @@ static int dw_dma_probe(struct dma *dma)
 	spinlock_init(dw_pdata->lock);
 
 	/* init work */
-	work = &dw_pdata->work;
-	work_init(work, dw_dma_fifo_work, dma);
+	work_init(&dw_pdata->work, dw_dma_fifo_work, dma);
 
 	/* register our IRQ handler */
 	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);
