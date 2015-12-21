@@ -52,10 +52,18 @@ struct comp_volume {
 struct comp_dev;
 struct comp_buffer;
 
+/*
+ * Pipeline component descriptor.
+ */
+struct comp_desc {
+	uint32_t uuid;
+	int id;
+};
+
 /* audio component operations - all mandatory */
 struct comp_ops {
 	/* component creation and destruction */
-	struct comp_dev *(*new)(uint32_t uuid, int id);
+	struct comp_dev *(*new)(struct comp_desc *desc);
 	void (*free)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
@@ -149,7 +157,7 @@ int comp_register(struct comp_driver *drv);
 void comp_unregister(struct comp_driver *drv);
 
 /* component creation and destruction */
-struct comp_dev *comp_new(uint32_t uuid, int id);
+struct comp_dev *comp_new(struct comp_desc *desc);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);

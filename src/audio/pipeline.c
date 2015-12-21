@@ -45,7 +45,7 @@ static struct pipeline *pipeline_from_id(int id)
 
 /* caller hold locks */
 static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
-	struct pipe_comp_desc *desc)
+	struct comp_desc *desc)
 {
 	struct comp_dev *cd;
 	struct list_head *clist;
@@ -125,7 +125,7 @@ void pipeline_free(int pipeline_id)
 }
 
 /* create a new component in the pipeline */
-int pipeline_comp_new(int pipeline_id, int comp_uuid, int comp_id)
+int pipeline_comp_new(int pipeline_id, struct comp_desc *desc)
 {
 	static struct pipeline *p;
 	struct comp_dev *cd;
@@ -134,7 +134,7 @@ int pipeline_comp_new(int pipeline_id, int comp_uuid, int comp_id)
 	if (p == NULL)
 		return -EINVAL;
 
-	cd = comp_new(comp_uuid, comp_id);
+	cd = comp_new(desc);
 	if (cd == NULL)
 		return -ENODEV;
 
@@ -144,24 +144,23 @@ int pipeline_comp_new(int pipeline_id, int comp_uuid, int comp_id)
 
 	spin_lock(&p->lock);
 
-	switch (COMP_TYPE(comp_uuid)) {
+	switch (COMP_TYPE(desc->uuid)) {
 	case COMP_TYPE_DAI_SSP:
 	case COMP_TYPE_DAI_HDA:
-		/* add to endpoint list */
-		list_add(&cd->pipeline_list, &p->comp_list);
+		/* add to endpoint list and to comp list*/
+		list_add(&cd->endpoint_list, &p->endpoint_list);
 	default:
 		/* add component dev to pipeline list */ 
-		list_add(&cd->endpoint_list, &p->endpoint_list);
+		list_add(&cd->pipeline_list, &p->comp_list);
 	}
 
 	spin_unlock(&pipe_data->lock);
-
 	return 0;
 }
 
 /* insert component in pipeline */
-int pipeline_comp_connect(int pipeline_id, struct pipe_comp_desc *source_desc,
-	struct pipe_comp_desc *sink_desc)
+int pipeline_comp_connect(int pipeline_id, struct comp_desc *source_desc,
+	struct comp_desc *sink_desc)
 {
 	static struct pipeline *p;
 	struct comp_dev *source, *sink;
@@ -201,29 +200,23 @@ int pipeline_comp_connect(int pipeline_id, struct pipe_comp_desc *source_desc,
 }
 
 /* prepare the pipeline for usage */
-int pipeline_prepare(int pipeline_id)
+int pipeline_prepare(int pipeline_id, struct comp_desc *host_desc)
 {
 	/* buffer allocated here as graph is walked */
 	return 0;
 }
 
-/* send pipeline a command */
-int pipeline_cmd(int pipeline_id, struct pipe_comp_desc *host_desc, int cmd)
+/* send pipeline component/endpoint a command */
+int pipeline_cmd(int pipeline_id, struct comp_desc *host_desc, int cmd)
 {
 	/* walk graph and send cmd to all components from host source */
 	return 0;
 }
 
-int pipeline_params_host(int pipeline_id, struct pipe_comp_desc *host_desc,
+/* send pipeline component/endpoint params */
+int pipeline_params(int pipeline_id, struct comp_desc *host_desc,
 	struct stream_params *params)
 {
-	return 0;
-}
-
-int pipeline_params_dai(int pipeline_id, struct pipe_comp_desc *dai_desc,
-	struct stream_params *params)
-{
-
 	return 0;
 }
 

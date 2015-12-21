@@ -33,6 +33,9 @@
 #define PIPELINE_CMD_SUSPEND	5	/* suspend pipeline */
 #define PIPELINE_CMD_RESUME	6	/* resume pipeline */
 
+/* static pipeline ID */
+extern int pipeline_static;
+
 /*
  * Audio pipeline.
  */
@@ -48,33 +51,25 @@ struct pipeline {
 	struct list_head list;			/* list in pipeline list */
 };
 
-/*
- * Pipeline component descriptor.
- */
-struct pipe_comp_desc {
-	uint32_t uuid;
-	int id;
-};
-
 /* create new pipeline - returns pipeline id */
 int pipeline_new(void);
 void pipeline_free(int pipeline_id);
 
+int pipeline_comp_new(int pipeline_id, struct comp_desc *desc);
+
 /* insert component in pipeline */
-int pipeline_comp_connect(int pipeline_id, struct pipe_comp_desc *source_desc,
-	struct pipe_comp_desc *sink_desc);
+int pipeline_comp_connect(int pipeline_id, struct comp_desc *source_desc,
+	struct comp_desc *sink_desc);
 
 /* pipeline parameters */
-int pipeline_params_host(int pipeline_id, struct pipe_comp_desc *host_desc,
-	struct stream_params *params);
-int pipeline_params_dai(int pipeline_id, struct pipe_comp_desc *dai_desc,
+int pipeline_params(int pipeline_id, struct comp_desc *desc,
 	struct stream_params *params);
 
 /* prepare the pipeline for usage */
-int pipeline_prepare(int pipeline_id);
+int pipeline_prepare(int pipeline_id, struct comp_desc *host_desc);
 
 /* send pipeline a command */
-int pipeline_cmd(int pipeline_id, struct pipe_comp_desc *host_desc, int cmd);
+int pipeline_cmd(int pipeline_id, struct comp_desc *host_desc, int cmd);
 
 /* initialise pipeline subsys */
 int pipeline_init(void);

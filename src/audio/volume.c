@@ -192,7 +192,7 @@ static uint32_t vol_work(void *data)
 		return 0;
 }
 
-static struct comp_dev *volume_new(uint32_t uuid, int id)
+static struct comp_dev *volume_new(struct comp_desc *desc)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
@@ -209,7 +209,7 @@ static struct comp_dev *volume_new(uint32_t uuid, int id)
 
 	comp_set_drvdata(dev, cd);
 	work_init(&cd->volwork, vol_work, dev);
-	dev->id = id;
+	dev->id = desc->id;
 	return dev;
 }
 

@@ -24,7 +24,7 @@ struct comp_data {
 
 static struct comp_data *cd;
 
-struct comp_dev *comp_new(uint32_t uuid, int id)
+struct comp_dev *comp_new(struct comp_desc *desc)
 {
 	struct list_head *clist;
 	struct comp_driver *drv;
@@ -35,8 +35,8 @@ struct comp_dev *comp_new(uint32_t uuid, int id)
 	list_for_each(clist, &cd->list) {
 
 		drv = container_of(clist, struct comp_driver, list);
-		if (drv->uuid == uuid) {
-			dev = drv->ops.new(uuid, id);
+		if (drv->uuid == desc->uuid) {
+			dev = drv->ops.new(desc);
 			goto out;
 		}
 	}

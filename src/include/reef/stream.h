@@ -35,6 +35,11 @@
 /* maximum stream channels */
 #define STREAM_MAX_CHANNELS	PLATFORM_MAX_CHANNELS
 
+/* stream params type */
+#define STREAM_PARAMS_TYPE_PCM		0
+#define STREAM_PARAMS_TYPE_DMA		1
+#define STREAM_PARAMS_TYPE_VORBIS	2
+
 /* channel to stream position mapping */
 struct stream_channel {
 	uint16_t channel;
@@ -52,6 +57,20 @@ struct stream_pcm_params {
 	struct stream_channel channel_map[STREAM_MAX_CHANNELS];	
 };
 
+/* DMA physical host ring buffer params */
+struct stream_dma_ring_params {
+	uint32_t ring_pt_address;
+	uint32_t num_pages;
+	uint32_t ring_size;
+	uint32_t ring_offset;
+	uint32_t ring_first_pfn;
+};
+
+/* DMA physical device params */
+struct stream_dma_dev_params {
+	uint32_t src;	/* TODO */
+};
+
 /* compressed vorbis stream params if required */
 struct stream_vorbis_params {
 	/* TODO */	
@@ -59,9 +78,11 @@ struct stream_vorbis_params {
 
 /* stream parameters */
 struct stream_params {
-	uint16_t type;		/* STREAM_TYPE_ */
+	uint16_t type;		/* STREAM_PARAMS_TYPE_ */
 	union {
 		struct stream_pcm_params pcm;
+		struct stream_dma_ring_params dma_ring;
+		struct stream_dma_dev_params dma_dev;
 		struct stream_vorbis_params vorbis;
 	};
 };

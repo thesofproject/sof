@@ -15,12 +15,12 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static struct comp_dev *dai_new_ssp(uint32_t uuid, int id)
+static struct comp_dev *dai_new_ssp(struct comp_desc *desc)
 {
 	struct comp_dev *dev;
 	struct dai *ssp;
 
-	ssp = dai_get(COMP_UUID(COMP_VENDOR_INTEL, id));
+	ssp = dai_get(COMP_UUID(COMP_VENDOR_INTEL, desc->id));
 	if (ssp == NULL)
 		return NULL;
 
@@ -29,11 +29,11 @@ static struct comp_dev *dai_new_ssp(uint32_t uuid, int id)
 		return NULL;
 
 	comp_set_drvdata(dev, ssp);
-	dev->id = id;
+	dev->id = desc->id;
 	return dev;
 }
 
-static struct comp_dev *dai_new_hda(uint32_t uuid, int id)
+static struct comp_dev *dai_new_hda(struct comp_desc *desc)
 {
 
 	return 0;

@@ -13,7 +13,7 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static struct comp_dev *switch_new(uint32_t uuid, int id)
+static struct comp_dev *switch_new(struct comp_desc *desc)
 {
 
 	return 0;

@@ -32,9 +32,9 @@
 
 /* static link between components using UUIDs and IDs */
 struct spipe_link {
-	struct pipe_comp_desc source;
-	struct pipe_comp_desc comp;
-	struct pipe_comp_desc sink;
+	struct comp_desc source;
+	struct comp_desc comp;
+	struct comp_desc sink;
 };
 
 /*
@@ -48,7 +48,7 @@ static struct spipe_link pipe_play0[] = {
 };
 
 static struct spipe_link pipe_capture0[] = {
-	{SPIPE_DAI_SSP0(2), SPIPE_VOLUME(3), SPIPE_DAI_SSP0(2)},
+	{SPIPE_DAI_SSP0(2), SPIPE_VOLUME(3), SPIPE_HOST(0)},
 };
 
 #if 0
@@ -91,6 +91,9 @@ static struct spipe_link pipe_capture2[] = {
 };
 #endif
 
+/* static pipeline ID */
+int pipeline_static;
+
 int init_static_pipeline(void)
 {
 	int pl, i, err;
@@ -104,6 +107,20 @@ int init_static_pipeline(void)
 	pl = pipeline_new();
 	if (pl < 0)
 		return pl;
+
+	/* create playback components in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
+		pipeline_comp_new(pl, &pipe_play0[i].source);
+		pipeline_comp_new(pl, &pipe_play0[i].comp);
+		pipeline_comp_new(pl, &pipe_play0[i].sink);
+	}
+
+	/* create capture components in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
+		pipeline_comp_new(pl, &pipe_capture0[i].source);
+		pipeline_comp_new(pl, &pipe_capture0[i].comp);
+		pipeline_comp_new(pl, &pipe_capture0[i].sink);
+	} 
 
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
@@ -135,11 +152,8 @@ int init_static_pipeline(void)
 			goto err;
 	}
 
-	/* initialise the pipeline */
-	err = pipeline_prepare(pl);
-	if (err < 0)
-		goto err;
-
+	/* pipeline now ready for params, prepare and cmds */
+	pipeline_static = pl;
 	return pl;
 
 err:
