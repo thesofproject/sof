@@ -101,6 +101,7 @@ struct dma_chan_data {
 	uint8_t status;
 	uint8_t reserved[3];
 	void (*cb)(void *data);	/* client callback function */
+	void *cb_data;		/* client callback data */
 };
 
 /* private data for DW DMA engine */
@@ -139,6 +140,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
 	p->chan[channel].status |= DMA_STATUS_FREE;
+	p->chan[channel].cb = NULL;
 	// TODO: disable/reset any other channel config.
 }
 
@@ -254,6 +256,15 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
+static void dw_dma_set_cb(struct dma *dma, int channel,
+		void (*cb)(void *data), void *data)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+
+	p->chan[channel].cb = cb;
+	p->chan[channel].cb_data = data;
+}
+
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
@@ -288,6 +299,7 @@ const struct dma_ops dw_dma_ops = {
 	.status		= dw_dma_status,
 	.set_config	= dw_dma_set_config,
 	.set_desc	= dw_dma_set_desc,
+	.set_cb		= dw_dma_set_cb,
 	.pm_context_restore		= dw_dma_pm_context_restore,
 	.pm_context_store		= dw_dma_pm_context_store,
 	.probe		= dw_dma_probe,

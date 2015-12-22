@@ -156,7 +156,6 @@ config:
 	wait_for_completion(&complete);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
-
 out:
 	dma_channel_put(dma, chan);
 	return ret;
@@ -240,11 +239,14 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	/* read in ringbuffer and send to host PCM */
+	/* read in compressed page table ringbuffer  */
 	err = get_page_desciptors(&req);
+	if (err < 0)
+		goto error;
 
-	params.dma_ring.ring_pt_address = req.ringinfo.ring_pt_address;
-	/* TODO: read rest of ring buffer */
+	/* now parse page tables and create audio DMA configuration and
+	descriptors for audio DMA buffer */
+	// TODO: complete this part.
 	err = pipeline_params(pipeline_static, &host, &params);	
 	if (err < 0)
 		goto error;

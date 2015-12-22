@@ -25,10 +25,10 @@
 	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_VOLUME), xid}
 #define SPIPE_SWITCH(xid) \
 	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_SWITCH), xid}
-#define SPIPE_DAI_SSP0(xid) \
-	{COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0), xid}
-#define SPIPE_HOST(xid) \
-	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST), xid}
+#define SPIPE_DAI_SSP0(xid, is_play) \
+	{COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0), xid, is_play}
+#define SPIPE_HOST(xid, is_play) \
+	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST), xid, is_play}
 
 /* static link between components using UUIDs and IDs */
 struct spipe_link {
@@ -44,11 +44,11 @@ struct spipe_link {
  * host PCM0(0) <--- volume(3) <--- SSP0(2)
  */
 static struct spipe_link pipe_play0[] = {
-	{SPIPE_HOST(0), SPIPE_VOLUME(1), SPIPE_DAI_SSP0(2)},
+	{SPIPE_HOST(0, 1), SPIPE_VOLUME(1), SPIPE_DAI_SSP0(2, 1)},
 };
 
 static struct spipe_link pipe_capture0[] = {
-	{SPIPE_DAI_SSP0(2), SPIPE_VOLUME(3), SPIPE_HOST(0)},
+	{SPIPE_DAI_SSP0(2, 0), SPIPE_VOLUME(3), SPIPE_HOST(0, 0)},
 };
 
 #if 0

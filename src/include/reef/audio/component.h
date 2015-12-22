@@ -57,7 +57,9 @@ struct comp_buffer;
  */
 struct comp_desc {
 	uint32_t uuid;
-	int id;
+	uint16_t id;
+	uint8_t is_ep_playback;	/* is endpoint playback or capture */
+	uint8_t reserved;
 };
 
 /* audio component operations - all mandatory */

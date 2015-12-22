@@ -73,7 +73,7 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	sink->w_ptr = (uint8_t*)dest;
 }
 
-/* copy and scale volume from 24 bit source buffer to 16 bit dest buffer */
+/* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
 static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source)
 {
@@ -96,7 +96,7 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	sink->w_ptr = (uint8_t*)dest;
 }
 
-/* copy and scale volume from 24 bit source buffer to 24 bit dest buffer */
+/* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
 static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source)
 {
