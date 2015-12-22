@@ -12,15 +12,18 @@
 #include <reef/audio/component.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
+#include <platform/dma.h>
 #include <stdint.h>
 #include <string.h>
 
-static struct dai ssp[2] = {
+static struct dai ssp[3] = {
 {
 	.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0),
 	.plat_data = {
 		.base		= SSP0_BASE,
 		.irq		= IRQ_NUM_EXT_SSP0,
+		.tx_handshake	= DMA_HANDSHAKE_SSP0_TX,
+		.rx_handshake	= DMA_HANDSHAKE_SSP0_RX,
 	},
 	.ops		= &ssp_ops,
 },
@@ -29,6 +32,18 @@ static struct dai ssp[2] = {
 	.plat_data = {
 		.base		= SSP1_BASE,
 		.irq		= IRQ_NUM_EXT_SSP1,
+		.tx_handshake	= DMA_HANDSHAKE_SSP1_TX,
+		.rx_handshake	= DMA_HANDSHAKE_SSP1_RX,
+	},
+	.ops		= &ssp_ops,
+},
+{
+	.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP2),
+	.plat_data = {
+		.base		= SSP2_BASE,
+		.irq		= IRQ_NUM_EXT_SSP2,
+		.tx_handshake	= DMA_HANDSHAKE_SSP2_TX,
+		.rx_handshake	= DMA_HANDSHAKE_SSP2_RX,
 	},
 	.ops		= &ssp_ops,
 },};

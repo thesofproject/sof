@@ -62,6 +62,9 @@ struct dma_ops {
 	int (*set_desc)(struct dma *dma, int channel, struct dma_desc *desc);
 	int (*set_config)(struct dma *dma, int channel,
 		struct dma_chan_config *config);
+
+	void (*set_cb)(struct dma *dma, int channel,
+		void (*cb)(void *data), void *data);
 	
 	int (*pm_context_restore)(struct dma *dma);
 	int (*pm_context_store)(struct dma *dma);
@@ -99,12 +102,13 @@ struct dma *dma_get(int dmac_id);
  * Programming flow is :-
  *
  * 1) dma_channel_get()
- * 2) dma_set_config()
- * 3) dma_set_desc()
- * 4) dma_start()
+ * 2) dma_set_cb()
+ * 3) dma_set_config()
+ * 4) dma_set_desc()
+ * 5) dma_start()
  *   ... DMA now running ...
- * 5) dma_stop()
- * 6) dma_channel_put()
+ * 6) dma_stop()
+ * 7) dma_channel_put()
  */
 
 static inline int dma_channel_get(struct dma *dma)
@@ -115,6 +119,12 @@ static inline int dma_channel_get(struct dma *dma)
 static inline void dma_channel_put(struct dma *dma, int channel)
 {
 	dma->ops->channel_put(dma, channel);
+}
+
+static inline void dma_set_cb(struct dma *dma, int channel,
+	void (*cb)(void *data), void *data)
+{
+	dma->ops->set_cb(dma, channel, cb, data);
 }
 
 static inline int dma_start(struct dma *dma, int channel)

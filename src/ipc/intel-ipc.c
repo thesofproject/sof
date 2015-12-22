@@ -17,13 +17,24 @@
 #include <reef/reef.h>
 #include <reef/stream.h>
 #include <reef/dai.h>
+#include <reef/dma.h>
+#include <reef/alloc.h>
+#include <reef/wait.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
+#include <platform/dma.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <uapi/intel-ipc.h>
 
+/* private data for IPC */
+struct ipc_data {
+	struct dma *dmac0, *dmac1;
+	uint8_t *page_table;
+};
+
+static struct ipc_data *_ipc;
 /*
  * BDW IPC dialect.
  *
@@ -74,6 +85,84 @@ static uint32_t ipc_fw_caps(uint32_t header)
 }
 
 #if 0
+/* Stream ring info */
+struct sst_hsw_ipc_stream_ring {
+	u32 ring_pt_address; // PHY address of page table
+	u32 num_pages;	// audio DMA buffer size in pages of 4K
+	u32 ring_size;	// audio DMA buffer size in bytes
+	u32 ring_offset; // always 0
+	u32 ring_first_pfn; //audio DMA buffer PHY address PFN
+} __attribute__((packed));
+#endif
+
+static void dma_complete(void *data)
+{
+	volatile int *complete = (int *)data;
+	*complete = 1;
+}
+
+/* this function copies the audio buffer page tables from the host to the DSP */
+/* the page table is a max of 4K */
+static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
+{
+	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
+	struct dma_chan_config config;
+	struct dma_desc desc;
+	struct dma *dma;
+	int chan, ret = 0, complete = 0;
+
+	/* get DMA channel from DMAC0 or DMAC1 */
+	chan = dma_channel_get(_ipc->dmac0);
+	if (chan >= 0) {
+		dma = _ipc->dmac0;
+		goto config;
+	} else
+		return chan;
+
+	chan = dma_channel_get(_ipc->dmac1);
+	if (chan >= 0) {
+		dma = _ipc->dmac1;
+		goto config;
+	} else
+		return chan;
+
+config:
+	/* set up DMA configuration */
+	config.direction = DMA_DIR_MEM_TO_MEM;
+	config.src_width = 4;
+	config.dest_width = 4;
+	//config.irq = ??  do we need this and burst size ??
+	//config.burst_size = ??
+	ret = dma_set_config(dma, chan, &config);
+	if (ret < 0)
+		goto out;
+
+	/* set up DMA desciptor */
+	desc.dest = (uint32_t)_ipc->page_table;
+	desc.src = ring->ring_pt_address;
+	desc.size = IPC_INTEL_PAGE_TABLE_SIZE;
+	desc.next = NULL;
+	ret = dma_set_desc(dma, chan, &desc);
+	if (ret < 0)
+		goto out;
+
+	/* set up callback */
+	dma_set_cb(dma, chan, dma_complete, &complete);
+
+	/* start the copy of page table to DSP */
+	dma_start(dma, chan);
+
+	/* wait for DMA to finish */
+	wait_for_completion(&complete);
+
+	/* compressed page tables now in buffer at _ipc->page_table */
+
+out:
+	dma_channel_put(dma, chan);
+	return ret;
+}
+
+#if 0
 /* Stream Allocate Request */
 struct ipc_intel_ipc_stream_alloc_req {
 	uint8_t path_id;
@@ -100,15 +189,6 @@ struct sst_hsw_audio_data_format_ipc {
 	u8 reserved[2];
 } __attribute__((packed));
 
-/* Stream ring info */
-struct sst_hsw_ipc_stream_ring {
-	u32 ring_pt_address;
-	u32 num_pages;
-	u32 ring_size;
-	u32 ring_offset;
-	u32 ring_first_pfn;
-} __attribute__((packed));
-
 /* Stream Allocate Reply */
 struct ipc_intel_ipc_stream_alloc_reply {
 	uint32_t stream_hw_id;
@@ -129,6 +209,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	int err;
 
 	dbg();
+
+	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(0, &req, sizeof(req));
 
 	/* path_id is always SSP0 */
@@ -159,6 +241,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 
 	/* read in ringbuffer and send to host PCM */
+	err = get_page_desciptors(&req);
+
 	params.dma_ring.ring_pt_address = req.ringinfo.ring_pt_address;
 	/* TODO: read rest of ring buffer */
 	err = pipeline_params(pipeline_static, &host, &params);	
@@ -451,6 +535,12 @@ static void irq_handler(void *arg)
 
 int platform_ipc_init(struct ipc *context)
 {
+	_ipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
+	_ipc->page_table = rmalloc(RZONE_DEV, RMOD_SYS,
+		IPC_INTEL_PAGE_TABLE_SIZE);
+	_ipc->dmac0 = dma_get(DMA_ID_DMAC0);
+	_ipc->dmac1 = dma_get(DMA_ID_DMAC1);
+
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, context);
 	interrupt_enable(IRQ_NUM_EXT_IA);
 

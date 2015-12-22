@@ -98,6 +98,8 @@ struct dai_plat_data {
 	uint16_t fifo_tx_watermark;
 	uint16_t fifo_rx_watermark;
 	uint16_t flags;
+	uint16_t tx_handshake;
+	uint16_t rx_handshake;
 };
 
 struct dai {

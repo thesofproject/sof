@@ -8,6 +8,19 @@
  *
  * DW DMA IP comes in several flavours each with different capabilities and
  * with register and bit changes between falvours.
+ *
+ * This driver API will only be called by 3 clients in reef :-
+ *
+ * 1. Host audio component. This component represents the ALSA PCM device
+ *    and involves copying data to/from the host ALSA audio buffer to/from the
+ *    the DSP buffer.
+ *
+ * 2. DAI audio component. This component represents physical DAIs and involves
+ *    copying data to/from the DSP buffers to/from the DAI FIFOs.
+ *
+ * 3. IPC Layer. Some IPC needs DMA to copy audio buffer page table information
+ *    from the host DRAM into DSP DRAM. This page table information is then
+ *    used to construct the DMA configuration for the host client 1 above. 
  */
 
 #include <reef/dma.h>
@@ -83,9 +96,16 @@
 #define DW_CFG_CH_DRAIN			0x400
 #define DW_CFG_CH_FIFO_EMPTY		0x200
 
-/* private data for DW DMA */
+/* data for each DMA channel */
+struct dma_chan_data {
+	uint8_t status;
+	uint8_t reserved[3];
+	void (*cb)(void *data);	/* client callback function */
+};
+
+/* private data for DW DMA engine */
 struct dma_pdata {
-	uint8_t chan[DW_MAX_CHAN];
+	struct dma_chan_data chan[DW_MAX_CHAN];
 	struct work work;
 	spinlock_t lock;
 };
@@ -100,12 +120,12 @@ static int dw_dma_channel_get(struct dma *dma)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		/* dont use any channels that are still draining */
-		if (p->chan[i] & DMA_STATUS_DRAINING)
+		if (p->chan[i].status & DMA_STATUS_DRAINING)
 			continue;
 
 		/* use channel if it's free */
-		if (p->chan[i] & DMA_STATUS_FREE) {
-			p->chan[i] = DMA_STATUS_IDLE;
+		if (p->chan[i].status & DMA_STATUS_FREE) {
+			p->chan[i].status = DMA_STATUS_IDLE;
 			return i;
 		}
 	}
@@ -118,7 +138,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	p->chan[channel] |= DMA_STATUS_FREE;
+	p->chan[channel].status |= DMA_STATUS_FREE;
 	// TODO: disable/reset any other channel config.
 }
 
@@ -145,7 +165,7 @@ static uint32_t dw_dma_fifo_work(void *data)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		/* only check channels that are still draining */
-		if (!(p->chan[i] & DMA_STATUS_DRAINING))
+		if (!(p->chan[i].status & DMA_STATUS_DRAINING))
 			continue;
 
 		/* check for FIFO empty */
@@ -155,7 +175,7 @@ static uint32_t dw_dma_fifo_work(void *data)
 			/* disable channel */
 			io_reg_update_bits(dma_base(dma) + DW_DMA_CHAN_EN,
 				CHAN_DISABLE(i), CHAN_DISABLE(i));
-			p->chan[i] &= ~DMA_STATUS_DRAINING;
+			p->chan[i].status &= ~DMA_STATUS_DRAINING;
 		} else
 			schedule = 1;
 	}
@@ -175,7 +195,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	io_reg_update_bits(dma_base(dma) + DW_CFG_LOW(channel),
 		DW_CFG_CH_SUSPEND, DW_CFG_CH_SUSPEND);
 
-	p->chan[channel] = DMA_STATUS_DRAINING;
+	p->chan[channel].status = DMA_STATUS_DRAINING;
 	
 	/* FIFO cleanup done by general purpose timer */
 	work_schedule_default(&p->work, 1);
@@ -191,13 +211,14 @@ static int dw_dma_drain(struct dma *dma, int channel)
 		DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
 		DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
 
-	p->chan[channel] = DMA_STATUS_DRAINING;
+	p->chan[channel].status = DMA_STATUS_DRAINING;
 
 	/* FIFO cleanup done by general purpose timer */
 	work_schedule_default(&p->work, 1);
 	return 0;
 }
 
+/* fill in "status" with current DMA channel state and position */
 static int dw_dma_status(struct dma *dma, int channel,
 	struct dma_chan_status *status)
 {
@@ -205,31 +226,38 @@ static int dw_dma_status(struct dma *dma, int channel,
 	return 0;
 }
 
+/* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dma_chan_config *config)
 {	
 	return 0;
 }
 
+/* set the DMA descriptor list based on buffer/source/target addresses */
 static int dw_dma_set_desc(struct dma *dma, int channel,
 	struct dma_desc *desc)
 {
+	/* we can maybe merge this with the set_config() above,
+	both are doing similar things... */
 	return 0;
 }
 
+/* restore DMA conext after leaving D3 */
 static int dw_dma_pm_context_restore(struct dma *dma)
 {
 	return 0;
 }
 
+/* store DMA conext after leaving D3 */
 static int dw_dma_pm_context_store(struct dma *dma)
 {
 	return 0;
 }
 
+/* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
-
+	/* we should inform the client that a period has been transfered */
 }
 
 static int dw_dma_probe(struct dma *dma)

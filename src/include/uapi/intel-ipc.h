@@ -21,6 +21,9 @@
 #define IPC_INTEL_FW_LOG_CONFIG_DWORDS	12
 #define IPC_INTEL_GLOBAL_LOG		15
 
+#define IPC_INTEL_PAGE_SIZE		4096
+#define IPC_INTEL_PAGE_TABLE_SIZE	IPC_INTEL_PAGE_SIZE
+
 /**
  * Upfront defined maximum message size that is
  * expected by the in/out communication pipes in FW.
