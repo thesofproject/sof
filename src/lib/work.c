@@ -256,9 +256,21 @@ void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 	spin_unlock_local_irq(&queue->lock, queue->irq);
 }
 
+void work_cancel(struct work_queue *queue, struct work *w)
+{
+	spin_lock_local_irq(&queue->lock, queue->irq);
+
+	/* remove work from list */
+	list_del(&w->list);
+
+	/* re-calc timer and re-arm */
+	queue_reschedule(queue);
+
+	spin_unlock_local_irq(&queue->lock, queue->irq);
+}
+
 void work_schedule_default(struct work *w, int timeout)
 {
-
 	/* convert timeout millisecs to CPU clock ticks */
 	w->count = clock_ms_to_ticks(CLK_CPU, timeout) + timer_get_system();
 
@@ -266,6 +278,19 @@ void work_schedule_default(struct work *w, int timeout)
 
 	/* insert work into list */
 	list_add(&w->list, &queue_->work);
+
+	/* re-calc timer and re-arm */
+	queue_reschedule(queue_);
+
+	spin_unlock_local_irq(&queue_->lock, queue_->irq);
+}
+
+void work_cancel_default(struct work *w)
+{
+	spin_lock_local_irq(&queue_->lock, queue_->irq);
+
+	/* remove work from list */
+	list_del(&w->list);
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);

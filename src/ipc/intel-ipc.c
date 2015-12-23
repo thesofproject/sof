@@ -32,6 +32,7 @@
 struct ipc_data {
 	struct dma *dmac0, *dmac1;
 	uint8_t *page_table;
+	completion_t complete;
 };
 
 static struct ipc_data *_ipc;
@@ -97,8 +98,9 @@ struct sst_hsw_ipc_stream_ring {
 
 static void dma_complete(void *data)
 {
-	volatile int *complete = (int *)data;
-	*complete = 1;
+	struct ipc_data *ipc = (struct ipc_data *)data;
+
+	wait_completed(&ipc->complete);
 }
 
 /* this function copies the audio buffer page tables from the host to the DSP */
@@ -109,7 +111,7 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	struct dma_chan_config config;
 	struct dma_desc desc;
 	struct dma *dma;
-	int chan, ret = 0, complete = 0;
+	int chan, ret = 0;
 
 	/* get DMA channel from DMAC0 or DMAC1 */
 	chan = dma_channel_get(_ipc->dmac0);
@@ -147,13 +149,14 @@ config:
 		goto out;
 
 	/* set up callback */
-	dma_set_cb(dma, chan, dma_complete, &complete);
+	dma_set_cb(dma, chan, dma_complete, _ipc);
+	wait_init(&_ipc->complete);
 
 	/* start the copy of page table to DSP */
 	dma_start(dma, chan);
 
-	/* wait for DMA to finish */
-	wait_for_completion(&complete);
+	/* wait 2 msecs for DMA to finish */
+	ret = wait_for_completion_timeout(&_ipc->complete, 2);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
