@@ -230,17 +230,8 @@ static int dw_dma_status(struct dma *dma, int channel,
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma *dma, int channel,
-	struct dma_chan_config *config)
+	struct dma_sg_config *config)
 {	
-	return 0;
-}
-
-/* set the DMA descriptor list based on buffer/source/target addresses */
-static int dw_dma_set_desc(struct dma *dma, int channel,
-	struct dma_desc *desc)
-{
-	/* we can maybe merge this with the set_config() above,
-	both are doing similar things... */
 	return 0;
 }
 
@@ -298,7 +289,6 @@ const struct dma_ops dw_dma_ops = {
 	.drain		= dw_dma_drain,
 	.status		= dw_dma_status,
 	.set_config	= dw_dma_set_config,
-	.set_desc	= dw_dma_set_desc,
 	.set_cb		= dw_dma_set_cb,
 	.pm_context_restore		= dw_dma_pm_context_restore,
 	.pm_context_store		= dw_dma_pm_context_store,

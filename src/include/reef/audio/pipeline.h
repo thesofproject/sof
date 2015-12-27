@@ -14,6 +14,7 @@
 #include <reef/lock.h>
 #include <reef/list.h>
 #include <reef/stream.h>
+#include <reef/dma.h>
 #include <reef/audio/component.h>
 
 /* pipeline states */
@@ -64,6 +65,10 @@ int pipeline_comp_connect(int pipeline_id, struct comp_desc *source_desc,
 /* pipeline parameters */
 int pipeline_params(int pipeline_id, struct comp_desc *desc,
 	struct stream_params *params);
+
+/* pipeline parameters */
+int pipeline_host_buffer(int pipeline_id, struct comp_desc *desc,
+	struct dma_sg_config *config);
 
 /* prepare the pipeline for usage */
 int pipeline_prepare(int pipeline_id, struct comp_desc *host_desc);

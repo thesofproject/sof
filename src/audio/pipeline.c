@@ -220,6 +220,14 @@ int pipeline_params(int pipeline_id, struct comp_desc *host_desc,
 	return 0;
 }
 
+/* configure pipelines host DMA buffer */
+int pipeline_host_buffer(int pipeline_id, struct comp_desc *desc,
+	struct dma_sg_config *config)
+{
+
+	return 0;
+}
+
 /* init pipeline */
 int pipeline_init(void)
 {

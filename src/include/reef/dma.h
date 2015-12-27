@@ -10,6 +10,7 @@
 #define __INCLUDE_DMA_H__
 
 #include <stdint.h>
+#include <reef/list.h>
 
 /* DMA directions */
 #define DMA_DIR_DEV_TO_MEM	0
@@ -23,21 +24,21 @@
 #define DMA_STATUS_DRAINING	4
 
 struct dma;
-struct dma_desc;
 
-struct dma_desc {
-	uint32_t src;
-	uint32_t dest;
+struct dma_sg_elem {
+	uint32_t *src;
+	uint32_t *dest;
 	uint32_t size;
-	struct dma_desc *next;
+	struct list_head list;
 };
 
-struct dma_chan_config {
-	uint16_t direction;
+/* DMA physical SG params */
+struct dma_sg_config {	
 	uint16_t src_width;
 	uint16_t dest_width;
-	uint16_t irq;
-	uint16_t burst_size;
+	uint16_t direction;
+	uint16_t reserved;
+	struct list_head elem_list;	/* list of dma_sg elems */
 };
 
 struct dma_chan_status {
@@ -59,9 +60,8 @@ struct dma_ops {
 	int (*status)(struct dma *dma, int channel,
 		struct dma_chan_status *status);
 	
-	int (*set_desc)(struct dma *dma, int channel, struct dma_desc *desc);
 	int (*set_config)(struct dma *dma, int channel,
-		struct dma_chan_config *config);
+		struct dma_sg_config *config);
 
 	void (*set_cb)(struct dma *dma, int channel,
 		void (*cb)(void *data), void *data);
@@ -104,11 +104,10 @@ struct dma *dma_get(int dmac_id);
  * 1) dma_channel_get()
  * 2) dma_set_cb()
  * 3) dma_set_config()
- * 4) dma_set_desc()
- * 5) dma_start()
+ * 4) dma_start()
  *   ... DMA now running ...
- * 6) dma_stop()
- * 7) dma_channel_put()
+ * 5) dma_stop()
+ * 6) dma_channel_put()
  */
 
 static inline int dma_channel_get(struct dma *dma)
@@ -149,15 +148,9 @@ static inline int dma_status(struct dma *dma, int channel,
 }
 
 static inline int dma_set_config(struct dma *dma, int channel,
-	struct dma_chan_config *config)
+	struct dma_sg_config *config)
 {
 	return dma->ops->set_config(dma, channel, config);
-}
-
-static inline int dma_set_desc(struct dma *dma, int channel,
-	struct dma_desc *desc)
-{
-	return dma->ops->set_desc(dma, channel, desc);
 }
 
 static inline int dma_pm_context_restore(struct dma *dma)

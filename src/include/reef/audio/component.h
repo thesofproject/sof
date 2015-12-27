@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
+#include <reef/dma.h>
 #include <reef/stream.h>
 
 /* component 32bit UUID - type is COMP_TYPE_ or bespoke type */
@@ -79,6 +80,9 @@ struct comp_ops {
 
 	/* copy and process stream data from source to sink buffers */
 	int (*copy)(struct comp_dev *dev);
+
+	/* host buffer config */
+	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_config *config);
 };
 
 /* component buffer data capabilities */
@@ -170,6 +174,13 @@ static inline int comp_params(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	return dev->drv->ops.params(dev, params);
+}
+
+/* component host buffer config */
+static inline int comp_host_buffer(struct comp_dev *dev,
+	struct dma_sg_config *config)
+{
+	return dev->drv->ops.host_buffer(dev, config);
 }
 
 /* send component command */

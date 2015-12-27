@@ -108,43 +108,31 @@ static void dma_complete(void *data)
 static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
-	struct dma_chan_config config;
-	struct dma_desc desc;
+	struct dma_sg_config config;
+	struct dma_sg_elem elem;
 	struct dma *dma;
 	int chan, ret = 0;
 
-	/* get DMA channel from DMAC0 or DMAC1 */
-	chan = dma_channel_get(_ipc->dmac0);
-	if (chan >= 0) {
-		dma = _ipc->dmac0;
-		goto config;
-	} else
-		return chan;
-
+	/* get DMA channel from DMAC1 */
 	chan = dma_channel_get(_ipc->dmac1);
-	if (chan >= 0) {
+	if (chan >= 0)
 		dma = _ipc->dmac1;
-		goto config;
-	} else
+	else
 		return chan;
 
-config:
 	/* set up DMA configuration */
 	config.direction = DMA_DIR_MEM_TO_MEM;
-	config.src_width = 4;
-	config.dest_width = 4;
-	//config.irq = ??  do we need this and burst size ??
-	//config.burst_size = ??
-	ret = dma_set_config(dma, chan, &config);
-	if (ret < 0)
-		goto out;
+	config.src_width = sizeof(uint32_t);
+	config.dest_width = sizeof(uint32_t);
+	list_init(&config.elem_list);
 
 	/* set up DMA desciptor */
-	desc.dest = (uint32_t)_ipc->page_table;
-	desc.src = ring->ring_pt_address;
-	desc.size = IPC_INTEL_PAGE_TABLE_SIZE;
-	desc.next = NULL;
-	ret = dma_set_desc(dma, chan, &desc);
+	elem.dest = (uint32_t *)_ipc->page_table;
+	elem.src = (uint32_t *)ring->ring_pt_address;
+	elem.size = IPC_INTEL_PAGE_TABLE_SIZE;
+	list_add(&elem.list, &config.elem_list);
+
+	ret = dma_set_config(dma, chan, &config);
 	if (ret < 0)
 		goto out;
 
@@ -202,10 +190,19 @@ struct ipc_intel_ipc_stream_alloc_reply {
 } __attribute__((packed));
 #endif
 
+/* TODO: now parse page tables and create audio DMA SG configuration and
+	for host audio DMA buffer. This involves creating a dma_sg_elem for each
+	page table entry and adding each elem to a list in struct dma_sg_config*/
+static int parse_page_descriptors(struct dma_sg_config *config)
+{
+	return 0;
+};
+
 static uint32_t ipc_stream_alloc(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_alloc_req req;
 	struct ipc_intel_ipc_stream_alloc_reply reply;
+	struct dma_sg_config config;
 	struct stream_params params;
 	struct comp_desc host, dai;
 	int err;
@@ -242,21 +239,29 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	/* read in compressed page table ringbuffer  */
+	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_desciptors(&req);
 	if (err < 0)
 		goto error;
 
-	/* now parse page tables and create audio DMA configuration and
-	descriptors for audio DMA buffer */
-	// TODO: complete this part.
+	/* TODO: now parse page tables and create audio DMA SG configuration and
+	for host audio DMA buffer. This involves creating a dma_sg_elem for each
+	page table entry and adding each elem to a list in struct dma_sg_config*/
+	err = parse_page_descriptors(&config);
+	if (err < 0)
+		goto error;
+
+	/* now pass the parsed page tables to the host audio DMA */
+	err = pipeline_host_buffer(pipeline_static, &host, &config);
+	if (err < 0)
+		goto error;
+
+	/* configure pipeline audio params */
 	err = pipeline_params(pipeline_static, &host, &params);	
 	if (err < 0)
 		goto error;
 
-	/* Configure SSP DMA and send to DAI*/
-	params.dma_dev.src = 0;
-	/* TODO: read rest of ring buffer */
+	/* Configure SSP and send to DAI*/
 	err = pipeline_params(pipeline_static, &dai, &params);	
 	if (err < 0)
 		goto error;
