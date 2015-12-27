@@ -26,7 +26,7 @@ struct pipeline_data {
 static struct pipeline_data *pipe_data;
 
 /* caller hold locks */
-static struct pipeline *pipeline_from_id(int id)
+struct pipeline *pipeline_from_id(int id)
 {
 	struct pipeline *p;
 	struct list_head *plist;
@@ -63,13 +63,13 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 }
 
 /* create new pipeline - returns pipeline id or negative error */
-int pipeline_new(void)
+struct pipeline *pipeline_new(void)
 {
 	struct pipeline *p;
 
 	p = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
 	if (p == NULL)
-		return -ENOMEM;
+		return NULL;
 
 	spin_lock(&pipe_data->lock);
 	p->id = pipe_data->next_id++;
@@ -82,22 +82,15 @@ int pipeline_new(void)
 	list_add(&p->list, &pipe_data->pipeline_list);
 	spin_unlock(&pipe_data->lock);
 
-	return p->id;
+	return p;
 }
 
 /* pipelines must be inactive */
-void pipeline_free(int pipeline_id)
+void pipeline_free(struct pipeline *p)
 {
-	struct pipeline *p;
 	struct list_head *clist, *t;
 
 	spin_lock(&pipe_data->lock);
-
-	p = pipeline_from_id(pipeline_id);
-	if (p == NULL) {
-		spin_unlock(&pipe_data->lock);
-		return;
-	}
 
 	/* free all components */
 	list_for_each_safe(clist, t, &p->comp_list) {
@@ -125,14 +118,9 @@ void pipeline_free(int pipeline_id)
 }
 
 /* create a new component in the pipeline */
-int pipeline_comp_new(int pipeline_id, struct comp_desc *desc)
+int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 {
-	static struct pipeline *p;
 	struct comp_dev *cd;
-
-	p = pipeline_from_id(pipeline_id);
-	if (p == NULL)
-		return -EINVAL;
 
 	cd = comp_new(desc);
 	if (cd == NULL)
@@ -159,16 +147,11 @@ int pipeline_comp_new(int pipeline_id, struct comp_desc *desc)
 }
 
 /* insert component in pipeline */
-int pipeline_comp_connect(int pipeline_id, struct comp_desc *source_desc,
+int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	struct comp_desc *sink_desc)
 {
-	static struct pipeline *p;
 	struct comp_dev *source, *sink;
 	struct comp_buffer *buffer;
-
-	p = pipeline_from_id(pipeline_id);
-	if (p == NULL)
-		return -EINVAL;
 
 	source = pipeline_comp_from_id(p, source_desc);
 	if (source == NULL)
@@ -200,32 +183,38 @@ int pipeline_comp_connect(int pipeline_id, struct comp_desc *source_desc,
 }
 
 /* prepare the pipeline for usage */
-int pipeline_prepare(int pipeline_id, struct comp_desc *host_desc)
+int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
 {
-	/* buffer allocated here as graph is walked */
+	/* buffer allocated here as graph is walked from host desc to
+	  sink/source component */
 	return 0;
 }
 
 /* send pipeline component/endpoint a command */
-int pipeline_cmd(int pipeline_id, struct comp_desc *host_desc, int cmd)
+int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd)
 {
 	/* walk graph and send cmd to all components from host source */
 	return 0;
 }
 
 /* send pipeline component/endpoint params */
-int pipeline_params(int pipeline_id, struct comp_desc *host_desc,
+int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 	struct stream_params *params)
 {
 	return 0;
 }
 
 /* configure pipelines host DMA buffer */
-int pipeline_host_buffer(int pipeline_id, struct comp_desc *desc,
+int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 	struct dma_sg_config *config)
 {
+	struct comp_dev *comp;
 
-	return 0;
+	comp = pipeline_comp_from_id(p, desc);
+	if (comp == NULL)
+		return -ENODEV;
+
+	return comp_host_buffer(comp, config);
 }
 
 /* init pipeline */

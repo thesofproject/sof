@@ -92,46 +92,46 @@ static struct spipe_link pipe_capture2[] = {
 #endif
 
 /* static pipeline ID */
-int pipeline_static;
+struct pipeline *pipeline_static;
 
-int init_static_pipeline(void)
+struct pipeline *init_static_pipeline(void)
 {
-	int pl, i, err;
+	int i, err;
 
 	/* init system pipeline core */
 	err = pipeline_init();
 	if (err < 0)
-		return err;
+		return NULL;
 
 	/* create the pipeline */
-	pl = pipeline_new();
-	if (pl < 0)
-		return pl;
+	pipeline_static = pipeline_new();
+	if (pipeline_static < 0)
+		return NULL;
 
 	/* create playback components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
-		pipeline_comp_new(pl, &pipe_play0[i].source);
-		pipeline_comp_new(pl, &pipe_play0[i].comp);
-		pipeline_comp_new(pl, &pipe_play0[i].sink);
+		pipeline_comp_new(pipeline_static, &pipe_play0[i].source);
+		pipeline_comp_new(pipeline_static, &pipe_play0[i].comp);
+		pipeline_comp_new(pipeline_static, &pipe_play0[i].sink);
 	}
 
 	/* create capture components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
-		pipeline_comp_new(pl, &pipe_capture0[i].source);
-		pipeline_comp_new(pl, &pipe_capture0[i].comp);
-		pipeline_comp_new(pl, &pipe_capture0[i].sink);
+		pipeline_comp_new(pipeline_static, &pipe_capture0[i].source);
+		pipeline_comp_new(pipeline_static, &pipe_capture0[i].comp);
+		pipeline_comp_new(pipeline_static, &pipe_capture0[i].sink);
 	} 
 
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
 		/* add source -> comp */
-		err = pipeline_comp_connect(pl, &pipe_play0[i].source,
+		err = pipeline_comp_connect(pipeline_static, &pipe_play0[i].source,
 			&pipe_play0[i].comp);
 		if (err < 0)
 			goto err;
 
 		/* add comp -> sink */
-		err = pipeline_comp_connect(pl, &pipe_play0[i].comp,
+		err = pipeline_comp_connect(pipeline_static, &pipe_play0[i].comp,
 			&pipe_play0[i].sink);
 		if (err < 0)
 			goto err;
@@ -140,23 +140,22 @@ int init_static_pipeline(void)
 	/* create components on capture pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_capture0); i++) {
 		/* add source -> comp */
-		err = pipeline_comp_connect(pl, &pipe_capture0[i].source,
+		err = pipeline_comp_connect(pipeline_static, &pipe_capture0[i].source,
 			&pipe_capture0[i].comp);
 		if (err < 0)
 			goto err;
 
 		/* add comp -> sink */
-		err = pipeline_comp_connect(pl, &pipe_capture0[i].comp,
+		err = pipeline_comp_connect(pipeline_static, &pipe_capture0[i].comp,
 			&pipe_capture0[i].sink);
 		if (err < 0)
 			goto err;
 	}
 
 	/* pipeline now ready for params, prepare and cmds */
-	pipeline_static = pl;
-	return pl;
+	return pipeline_static;
 
 err:
-	pipeline_free(pl);
-	return err;
+	pipeline_free(pipeline_static);
+	return NULL;
 }
