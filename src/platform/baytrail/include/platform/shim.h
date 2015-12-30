@@ -78,14 +78,14 @@
 #define SHIM_CLKCTL_SCOE1	(1 << 17)
 #define SHIM_CLKCTL_SCOE0	(1 << 16)
 
-static inline uint32_t shim_read(uint32_t reg)
+static inline uint64_t shim_read(uint32_t reg)
 {
-	return *((volatile uint32_t*)(SHIM_BASE + reg));
+	return *((volatile uint64_t*)(SHIM_BASE + reg));
 }
 
-static inline void shim_write(uint32_t reg, uint32_t val)
+static inline void shim_write(uint32_t reg, uint64_t val)
 {
-	*((volatile uint32_t*)(SHIM_BASE + reg)) = val;
+	*((volatile uint64_t*)(SHIM_BASE + reg)) = val;
 }
 
 
