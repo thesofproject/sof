@@ -61,7 +61,7 @@
 
 /* Heap for buffers */
 #define HEAP_BUF_BLOCK_SIZE	1024
-#define HEAP_BUF_COUNT	112
+#define HEAP_BUF_COUNT	111
 #define HEAP_BUF_SIZE (HEAP_BUF_BLOCK_SIZE * HEAP_BUF_COUNT)
 
 /* Remaining DRAM for Stack, data and BSS. TODO: verify no overflow during build */

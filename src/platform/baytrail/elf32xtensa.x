@@ -370,10 +370,10 @@ SECTIONS
 
 
   /* module heap */
-  _module_heap = 0xff304c00;
+  _module_heap = 0xff305000;
 
   /* buffer heap */
-  _buffer_heap = 0xff30bc00;
+  _buffer_heap = 0xff30c000;
   _buffer_heap_end = _stack_sentry;
 
   .debug  0 :  { *(.debug) }
