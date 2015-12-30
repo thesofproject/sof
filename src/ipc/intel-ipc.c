@@ -546,7 +546,7 @@ static void irq_handler(void *arg)
 int platform_ipc_init(struct ipc *context)
 {
 	_ipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
-	_ipc->page_table = rmalloc(RZONE_DEV, RMOD_SYS,
+	_ipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
 		IPC_INTEL_PAGE_TABLE_SIZE);
 	_ipc->dmac0 = dma_get(DMA_ID_DMAC0);
 	_ipc->dmac1 = dma_get(DMA_ID_DMAC1);
