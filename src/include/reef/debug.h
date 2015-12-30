@@ -46,8 +46,13 @@
 
 #define panic(_p) \
 	do { \
+		extern uint32_t __stack; \
+		uint32_t _stack_bottom = (uint32_t)&__stack; \
+		uint32_t _stack_top; \
+		__asm__ __volatile__ ("mov %0, a1" : "=a" (_stack_top) : : "memory"); \
 		dbg() \
 		dbg_val(0xdead0000 | _p) \
+		dump(_stack_top, _stack_bottom - _stack_top) \
 		while(1) {}; \
 	} while (0);
 
