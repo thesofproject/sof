@@ -64,12 +64,12 @@
 #define SHIM_IMRD_DMAC		(SHIM_IMRD_DMAC0 | SHIM_IMRD_DMAC1)
 
 /*  IPCX / IPCC */
-#define	SHIM_IPCX_DONE		(0x1 << 30)
-#define	SHIM_IPCX_BUSY		(0x1 << 31)
+#define	SHIM_IPCX_DONE		((uint64_t)0x1 << 62)
+#define	SHIM_IPCX_BUSY		((uint64_t)0x1 << 63)
 
 /*  IPCD */
-#define	SHIM_IPCD_DONE		(0x1 << 30)
-#define	SHIM_IPCD_BUSY		(0x1 << 31)
+#define	SHIM_IPCD_DONE		((uint64_t)0x1 << 62)
+#define	SHIM_IPCD_BUSY		((uint64_t)0x1 << 63)	
 
 /* CLKCTL */
 #define SHIM_CLKCTL_SMOS(x)	(x << 24)
