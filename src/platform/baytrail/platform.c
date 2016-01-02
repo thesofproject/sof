@@ -33,7 +33,7 @@ static const struct sst_hsw_ipc_fw_ready ready = {
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	uint32_t outbox = MAILBOX_HOST_OFFSET >> 3;
+	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
 	mailbox_outbox_write(0, &ready, sizeof(ready));
 
