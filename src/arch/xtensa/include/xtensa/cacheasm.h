@@ -463,7 +463,7 @@
 	//   external accesses are seen to follow that writeback, however that's outside
 	//   the scope of this macro)
 
-	//dsync
+	dsync
 #endif
 	.endm
 
