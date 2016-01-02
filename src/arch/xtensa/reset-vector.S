@@ -307,10 +307,9 @@ _ResetHandler:
 
 #if XCHAL_HAVE_PREFETCH
 	/* Enable cache prefetch if present.  */
-	movi	a2, XCHAL_CACHE_PREFCTL_DEFAULT
+	movi.n	a2, 68
 	wsr	a2, PREFCTL
 #endif
-
 	/*
 	 *  Now "enable" the caches.
 	 *  We do this ahead of unpacking, so it can proceed more efficiently.
