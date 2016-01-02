@@ -85,9 +85,5 @@ int arch_init(int argc, char *argv[])
 /* called from assembler context with no return or func parameters */
 void __memmap_init(void)
 {
-	/* DRAM0_BASE must be aligned on 512MB boundary */
-	xthal_set_region_translation((void *)DRAM0_VBASE,
-		(void *)(DRAM0_BASE & 0xE0000000), DRAM0_SIZE,
-		XCHAL_CA_WRITEBACK, XTHAL_CAFLAG_NO_PARTIAL);
 }
 
