@@ -20,7 +20,8 @@ void interrupt_enable_sync(void);
 
 void interrupt_set(int irq);
 void interrupt_clear(int irq);
-uint32_t interrupt_get(void);
+uint32_t interrupt_get_enabled(void);
+uint32_t interrupt_get_status(void);
 
 void interrupt_local_enable(uint32_t flags);
 void interrupt_local_disable(uint32_t flags);

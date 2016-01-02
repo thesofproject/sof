@@ -59,9 +59,14 @@ void interrupt_set(int irq)
 	xthal_set_intset(0x1 << irq);
 }
 
-uint32_t interrupt_get(void)
+uint32_t interrupt_get_enabled(void)
 {
 	return xthal_get_intenable();
+}
+
+uint32_t interrupt_get_status(void)
+{
+	return xthal_get_interrupt();
 }
 
 void interrupt_clear(int irq)
