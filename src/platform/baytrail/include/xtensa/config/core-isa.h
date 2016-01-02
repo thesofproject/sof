@@ -63,7 +63,7 @@
 #define XCHAL_HAVE_MUL16		1	/* MUL16S/MUL16U instructions */
 #define XCHAL_HAVE_MUL32		1	/* MULL instruction */
 #define XCHAL_HAVE_MUL32_HIGH		0	/* MULUH/MULSH instructions */
-#define XCHAL_HAVE_DIV32		1	/* QUOS/QUOU/REMS/REMU instructions */
+#define XCHAL_HAVE_DIV32		0	/* QUOS/QUOU/REMS/REMU instructions */
 #define XCHAL_HAVE_L32R			1	/* L32R instruction */
 #define XCHAL_HAVE_ABSOLUTE_LITERALS	0	/* non-PC-rel (extended) L32R */
 #define XCHAL_HAVE_CONST16		0	/* CONST16 instruction */
@@ -206,10 +206,10 @@
 				CACHE
   ----------------------------------------------------------------------*/
 
-#define XCHAL_ICACHE_LINESIZE		64	/* I-cache line size in bytes */
-#define XCHAL_DCACHE_LINESIZE		64	/* D-cache line size in bytes */
-#define XCHAL_ICACHE_LINEWIDTH		6	/* log2(I line size in bytes) */
-#define XCHAL_DCACHE_LINEWIDTH		6	/* log2(D line size in bytes) */
+#define XCHAL_ICACHE_LINESIZE		128	/* I-cache line size in bytes */
+#define XCHAL_DCACHE_LINESIZE		128	/* D-cache line size in bytes */
+#define XCHAL_ICACHE_LINEWIDTH		7	/* log2(I line size in bytes) */
+#define XCHAL_DCACHE_LINEWIDTH		7	/* log2(D line size in bytes) */
 
 #define XCHAL_ICACHE_SIZE		49152	/* I-cache size in bytes or 0 */
 #define XCHAL_DCACHE_SIZE		(16384 * 6)	/* D-cache size in bytes or 0 */
@@ -251,7 +251,7 @@
 #define XCHAL_DCACHE_SETWIDTH		8
 
 /*  Cache set associativity (number of ways):  */
-#define XCHAL_ICACHE_WAYS		2
+#define XCHAL_ICACHE_WAYS		3
 #define XCHAL_DCACHE_WAYS		3
 
 /*  Cache features:  */
@@ -487,8 +487,8 @@
 #define XCHAL_HAVE_MEM_ECC_PARITY	0	/* local memory ECC/parity */
 #define XCHAL_HAVE_VECTOR_SELECT	1	/* relocatable vectors */
 #define XCHAL_HAVE_VECBASE		1	/* relocatable vectors */
-#define XCHAL_VECBASE_RESET_VADDR	0xff2c0000  /* VECBASE reset value */
-#define XCHAL_VECBASE_RESET_PADDR	0xff2c0000
+#define XCHAL_VECBASE_RESET_VADDR	0xff2c0400  /* VECBASE reset value */
+#define XCHAL_VECBASE_RESET_PADDR	0xff2c0400
 #define XCHAL_RESET_VECBASE_OVERLAP	0
 
 #define XCHAL_RESET_VECTOR0_VADDR	0xff2c0000
@@ -578,7 +578,7 @@
 #define XCHAL_SPANNING_WAY		0	/* TLB spanning way number */
 #define XCHAL_HAVE_IDENTITY_MAP		1	/* vaddr == paddr always */
 #define XCHAL_HAVE_CACHEATTR		0	/* CACHEATTR register present */
-#define XCHAL_HAVE_MIMIC_CACHEATTR	1	/* region protection */
+#define XCHAL_HAVE_MIMIC_CACHEATTR	0	/* region protection */
 #define XCHAL_HAVE_XLT_CACHEATTR	0	/* region prot. w/translation */
 #define XCHAL_HAVE_PTP_MMU		0	/* full MMU (with page table
 						   [autorefill] and protection)
