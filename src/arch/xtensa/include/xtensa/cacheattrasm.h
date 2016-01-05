@@ -423,8 +423,8 @@
 #elif XCHAL_CA_8X512
 	//  DTLB and ITLB are independent, but to keep semantics
 	//  of this macro we simply write to both.
-	icacheattr_set
-	dcacheattr_set
+	//icacheattr_set
+	//dcacheattr_set
 #else
 	//  This macro isn't applicable to arbitrary MMU configurations.
 	//  Do nothing in this case.
