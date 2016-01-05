@@ -65,7 +65,9 @@ PHDRS
 /*  Default entry point:  */
 ENTRY(_ResetVector)
 _rom_store_table = 0;
-PROVIDE(_memmap_vecbase_reset = 0xff2c0400);
+
+/* ABI0 does not use Window base */
+PROVIDE(_memmap_vecbase_reset = 0xff2c0000);
 
 /* Various memory-map dependent cache attribute settings: */
 _memmap_cacheattr_wb_base = 0x44024000;
