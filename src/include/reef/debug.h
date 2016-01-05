@@ -27,6 +27,16 @@
 		*m = __LINE__; \
 	} while (0);
 
+#define dbg_at(__x) \
+	do { \
+		volatile uint32_t *m = (uint32_t*)mailbox_get_debug_base() + __x; \
+		*(m++) = (__FILE__[0] << 24) + (__FILE__[1] << 16) +\
+			 (__FILE__[2] << 8) + (__FILE__[3]); \
+		*(m++) = (__func__[0] << 24) + (__func__[1] << 16) + \
+			(__func__[2] << 8) + (__func__[3]); \
+		*m = __LINE__; \
+	} while (0);
+
 #define dbg_val(_v) \
 	do { \
 		volatile uint32_t *_m = \
@@ -34,6 +44,12 @@
 		*_m = _v; \
 	} while (0);
 
+#define dbg_val_at(_v, __x) \
+	do { \
+		volatile uint32_t *_m = \
+			(volatile uint32_t*)mailbox_get_debug_base() + __x; \
+		*_m = _v; \
+	} while (0);
 
 #define dump(addr, count) \
 	do { \
