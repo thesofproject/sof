@@ -19,8 +19,10 @@
 #define SHIM_ISRD		0x20
 #define SHIM_IMRX		0x28
 #define SHIM_IMRD		0x30
-#define SHIM_IPCX		0x38 /* IPC IA -> SST */
-#define SHIM_IPCD		0x40 /* IPC SST -> IA */
+#define SHIM_IPCXL		0x38 /* IPC IA -> SST */
+#define SHIM_IPCXH		0x3c /* IPC IA -> SST */
+#define SHIM_IPCDL		0x40 /* IPC SST -> IA */
+#define SHIM_IPCDH		0x44 /* IPC SST -> IA */
 #define SHIM_ISRSC		0x48
 #define SHIM_ISRLPESC		0x50
 #define SHIM_IMRSC		0x58
@@ -63,13 +65,13 @@
 #define SHIM_IMRD_DMAC1		(0x1 << 22)
 #define SHIM_IMRD_DMAC		(SHIM_IMRD_DMAC0 | SHIM_IMRD_DMAC1)
 
-/*  IPCX / IPCC */
-#define	SHIM_IPCX_DONE		((uint64_t)0x1 << 62)
-#define	SHIM_IPCX_BUSY		((uint64_t)0x1 << 63)
+/*  IPCX / IPCCH */
+#define	SHIM_IPCXH_DONE		(0x1 << 30)
+#define	SHIM_IPCXH_BUSY		(0x1 << 31)
 
-/*  IPCD */
-#define	SHIM_IPCD_DONE		((uint64_t)0x1 << 62)
-#define	SHIM_IPCD_BUSY		((uint64_t)0x1 << 63)	
+/*  IPCDH */
+#define	SHIM_IPCDH_DONE		(0x1 << 30)
+#define	SHIM_IPCDH_BUSY		(0x1 << 31)
 
 /* CLKCTL */
 #define SHIM_CLKCTL_SMOS(x)	(x << 24)
@@ -78,15 +80,14 @@
 #define SHIM_CLKCTL_SCOE1	(1 << 17)
 #define SHIM_CLKCTL_SCOE0	(1 << 16)
 
-static inline uint64_t shim_read(uint32_t reg)
+static inline uint32_t shim_read(uint32_t reg)
 {
-	return *((volatile uint64_t*)(SHIM_BASE + reg));
+	return *((volatile uint32_t*)(SHIM_BASE + reg));
 }
 
-static inline void shim_write(uint32_t reg, uint64_t val)
+static inline void shim_write(uint32_t reg, uint32_t val)
 {
-	*((volatile uint64_t*)(SHIM_BASE + reg)) = val;
+	*((volatile uint32_t*)(SHIM_BASE + reg)) = val;
 }
-
 
 #endif

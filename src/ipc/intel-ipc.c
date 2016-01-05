@@ -457,7 +457,7 @@ static uint32_t ipc_cmd(void)
 {
 	uint32_t type, header;
 
-	header = shim_read(SHIM_IPCX);
+	header = shim_read(SHIM_IPCXL);
 	type = msg_get_global_type(header);
 	dbg_val(type);
 	dbg();
@@ -492,16 +492,16 @@ static uint32_t ipc_cmd(void)
 
 static void do_cmd(void)
 {
-	uint32_t status, ipcx;
+	uint32_t ipcxh, status;
 	
 	dbg();
 	status = ipc_cmd();
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
-	ipcx = shim_read(SHIM_IPCX);
-	ipcx &= ~SHIM_IPCX_BUSY;
-	ipcx |= SHIM_IPCX_DONE | status;
-	shim_write(SHIM_IPCX, ipcx);
+	ipcxh = shim_read(SHIM_IPCXH);
+	ipcxh &= ~SHIM_IPCXH_BUSY;
+	ipcxh |= SHIM_IPCXH_DONE | status;
+	shim_write(SHIM_IPCXH, ipcxh);
 
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
@@ -512,11 +512,14 @@ static void do_notify(void)
 	dbg();
 
 	/* clear DONE bit - tell Host we have completed */
-	shim_write(SHIM_IPCD, shim_read(SHIM_IPCD) & ~SHIM_IPCD_DONE);
+	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
 
 	/* unmask Done interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
 }
+
+static volatile uint64_t *ipcd = (volatile uint64_t *)0xff340040;
+static int _count = 0;
 
 /* test code to check working IRQ */
 static void irq_handler(void *arg)
@@ -525,7 +528,7 @@ static void irq_handler(void *arg)
 
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);
-
+*ipcd = _count++;
 	if (isr & SHIM_ISRD_DONE) {
 
 		/* Mask Done interrupt before return */
@@ -545,6 +548,8 @@ static void irq_handler(void *arg)
 
 int platform_ipc_init(struct ipc *context)
 {
+	uint32_t imrd;
+
 	_ipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
 	_ipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
 		IPC_INTEL_PAGE_TABLE_SIZE);
@@ -553,6 +558,11 @@ int platform_ipc_init(struct ipc *context)
 
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, context);
 	interrupt_enable(IRQ_NUM_EXT_IA);
+
+	/* Unmask Busy and Done interrupts */
+	imrd = shim_read(SHIM_IMRD);
+	imrd &= ~(SHIM_IMRD_BUSY | SHIM_IMRD_DONE);
+	shim_write(SHIM_IMRD, imrd);
 
 	return 0;
 }
