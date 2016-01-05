@@ -19,27 +19,23 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-static uint32_t _mask = 0, _enable = 0;
+static volatile uint32_t _enable;
 
 int interrupt_register(int irq, void(*handler)(void *arg), void *arg)
 {
 	xthal_set_intclear(0x1 << irq);
 	_xtos_set_interrupt_handler_arg(irq, handler, arg);
-
-	_mask |= (0x1 << irq);
-
 	return 0;
 }
 
 void interrupt_unregister(int irq)
 {
 	_xtos_set_interrupt_handler_arg(irq, NULL, NULL);
-	_mask &= ~(0x1 << irq);
 }
 
 void interrupt_enable(int irq)
 {
-	_enable |= (0x1 << irq);
+	_enable = xthal_get_intenable() | (0x1 << irq);
 	xthal_set_intenable(_enable);
 }
 
@@ -50,7 +46,7 @@ void interrupt_enable_sync(void)
 
 void interrupt_disable(int irq)
 {
-	_enable &= ~(0x1 << irq);
+	_enable = xthal_get_intenable() & ~(0x1 << irq);
 	xthal_set_intenable(_enable);
 }
 
