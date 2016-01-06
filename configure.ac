@@ -31,7 +31,7 @@ case "$with_arch" in
     xtensa*)
 	AM_CONDITIONAL(HAVE_XTENSA, true)
 
-	ARCH_CFLAGS="-mtext-section-literals  -D__XTENSA_CALL0_ABI__"
+	ARCH_CFLAGS="-mtext-section-literals"
 	AC_SUBST(ARCH_CFLAGS)
 
 	ARCH_LDFLAGS="-nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static"
@@ -41,7 +41,7 @@ case "$with_arch" in
 	CFLAGS="${CFLAGS:+$CFLAGS }-mlongcalls"
 	LDFLAGS="${LDFLAGS:+$LDFLAGS }-nostdlib"
 
-	ARCH_ASFLAGS="-D__XTENSA_CALL0_ABI__"
+	#ARCH_ASFLAGS=""
 	AC_SUBST(ARCH_ASFLAGS)
 
 	ARCH="xtensa"

@@ -108,7 +108,8 @@ libxtos_a_SOURCES = \
 	memerror-vector.S \
 	nmi-vector.S \
 	reloc-vectors.S \
-	user-vector.S
+	user-vector.S \
+	window-vectors.S
 
 libxtos_a_CFLAGS = \
 	$(ARCH_INCDIR) \

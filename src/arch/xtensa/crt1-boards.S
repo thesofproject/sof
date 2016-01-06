@@ -28,8 +28,6 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#define __XTENSA_CALL0_ABI__ 1
-
 #include <xtensa/coreasm.h>
 // DF #include "xtos-internal.h"
 //#include <xtensa/../../src/xtos/xtos-internal.h>
@@ -171,7 +169,7 @@ _start:
 	.weak	__memmap_init
 	movi	a4, __memmap_init
 	beqz	a4, 1f
-	CALLX0	a4
+	CALLX12	a4
 1:
 
 #if !XCHAL_HAVE_BOOTLOADER	/* boot loader takes care of zeroing BSS */
