@@ -423,6 +423,8 @@
 #elif XCHAL_CA_8X512
 	//  DTLB and ITLB are independent, but to keep semantics
 	//  of this macro we simply write to both.
+// TODO: This is used by the MCG FW to init the D/I caches. It's not working here,
+// maybe due to differences in core-isa.h ????
 	//icacheattr_set
 	//dcacheattr_set
 #else
