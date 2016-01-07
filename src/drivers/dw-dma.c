@@ -262,6 +262,21 @@ static void dw_dma_irq_handler(void *data)
 	/* we should inform the client that a period has been transfered */
 }
 
+static int dw_dma_setup(struct dma *dma)
+{
+	/*mask all kinds of interrupts for all 8 channels*/
+	io_reg_write(dma_base(dma) + DW_MASK_TFR, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_BLOCK, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_SRC_TRAN, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_DST_TRAN, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_ERR, 0x0000ff00);
+
+	/*enable dma cntrl*/
+	io_reg_write(dma_base(dma) + DW_DMA_CFG, 1);
+
+	return 0;
+}
+
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
@@ -271,6 +286,7 @@ static int dw_dma_probe(struct dma *dma)
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(dw_pdata->lock);
+	dw_dma_setup(dma);
 
 	/* init work */
 	work_init(&dw_pdata->work, dw_dma_fifo_work, dma);
