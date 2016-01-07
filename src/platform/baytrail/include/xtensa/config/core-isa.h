@@ -62,7 +62,7 @@
 #define XCHAL_HAVE_CLAMPS		1	/* CLAMPS instruction */
 #define XCHAL_HAVE_MUL16		1	/* MUL16S/MUL16U instructions */
 #define XCHAL_HAVE_MUL32		1	/* MULL instruction */
-#define XCHAL_HAVE_MUL32_HIGH		0	/* MULUH/MULSH instructions */
+#define XCHAL_HAVE_MUL32_HIGH		1	/* MULUH/MULSH instructions */
 #define XCHAL_HAVE_DIV32		0	/* QUOS/QUOU/REMS/REMU instructions */
 #define XCHAL_HAVE_L32R			1	/* L32R instruction */
 #define XCHAL_HAVE_ABSOLUTE_LITERALS	0	/* non-PC-rel (extended) L32R */
@@ -79,7 +79,7 @@
 #define XCHAL_HAVE_SPECULATION		0	/* speculation */
 #define XCHAL_HAVE_FULL_RESET		1	/* all regs/state reset */
 #define XCHAL_NUM_CONTEXTS		1	/* */
-#define XCHAL_NUM_MISC_REGS		2	/* num of scratch regs (0..4) */
+#define XCHAL_NUM_MISC_REGS		0	/* num of scratch regs (0..4) */
 #define XCHAL_HAVE_TAP_MASTER		0	/* JTAG TAP control instr's */
 #define XCHAL_HAVE_PRID			1	/* processor ID register */
 #define XCHAL_HAVE_EXTERN_REGS		1	/* WER/RER instructions */
@@ -89,7 +89,7 @@
 #define XCHAL_HAVE_PSO			0	/* Power Shut-Off */
 #define XCHAL_HAVE_PSO_CDM		0	/* core/debug/mem pwr domains */
 #define XCHAL_HAVE_PSO_FULL_RETENTION	0	/* all regs preserved on PSO */
-#define XCHAL_HAVE_THREADPTR		0	/* THREADPTR register */
+#define XCHAL_HAVE_THREADPTR		1	/* THREADPTR register */
 #define XCHAL_HAVE_BOOLEANS		1	/* boolean registers */
 #define XCHAL_HAVE_CP			1	/* CPENABLE reg (coprocessor) */
 #define XCHAL_CP_MAXCFG			2	/* max allowed cp id plus one */
@@ -169,10 +169,10 @@
 #define XCHAL_CLOCK_GATING_GLOBAL	1	/* global clock gating */
 #define XCHAL_CLOCK_GATING_FUNCUNIT	1	/* funct. unit clock gating */
 /*  In T1050, applies to selected core load and store instructions (see ISA): */
-#define XCHAL_UNALIGNED_LOAD_EXCEPTION	1	/* unaligned loads cause exc. */
-#define XCHAL_UNALIGNED_STORE_EXCEPTION	1	/* unaligned stores cause exc.*/
-#define XCHAL_UNALIGNED_LOAD_HW		0	/* unaligned loads work in hw */
-#define XCHAL_UNALIGNED_STORE_HW	0	/* unaligned stores work in hw*/
+#define XCHAL_UNALIGNED_LOAD_EXCEPTION	0	/* unaligned loads cause exc. */
+#define XCHAL_UNALIGNED_STORE_EXCEPTION	0	/* unaligned stores cause exc.*/
+#define XCHAL_UNALIGNED_LOAD_HW		1	/* unaligned loads work in hw */
+#define XCHAL_UNALIGNED_STORE_HW	1	/* unaligned stores work in hw*/
 
 #define XCHAL_SW_VERSION		1100002	/* sw version of this header */
 
@@ -225,8 +225,8 @@
 #define XCHAL_PREFETCH_ENTRIES		8	/* cache prefetch entries */
 #define XCHAL_PREFETCH_BLOCK_ENTRIES	0	/* prefetch block streams */
 #define XCHAL_HAVE_CACHE_BLOCKOPS	0	/* block prefetch for caches */
-#define XCHAL_HAVE_ICACHE_TEST		1	/* Icache test instructions */
-#define XCHAL_HAVE_DCACHE_TEST		1	/* Dcache test instructions */
+#define XCHAL_HAVE_ICACHE_TEST		0	/* Icache test instructions */
+#define XCHAL_HAVE_DCACHE_TEST		0	/* Dcache test instructions */
 #define XCHAL_HAVE_ICACHE_DYN_WAYS	0	/* Icache dynamic way support */
 #define XCHAL_HAVE_DCACHE_DYN_WAYS	0	/* Dcache dynamic way support */
 
@@ -555,7 +555,7 @@
 #define XCHAL_HAVE_OCD			1	/* OnChipDebug option */
 #define XCHAL_NUM_IBREAK		2	/* number of IBREAKn regs */
 #define XCHAL_NUM_DBREAK		2	/* number of DBREAKn regs */
-#define XCHAL_HAVE_OCD_DIR_ARRAY	0	/* faster OCD option (to LX4) */
+#define XCHAL_HAVE_OCD_DIR_ARRAY	1	/* faster OCD option (to LX4) */
 #define XCHAL_HAVE_OCD_LS32DDR		1	/* L32DDR/S32DDR (faster OCD) */
 
 /*  TRAX (in core)  */
@@ -578,7 +578,7 @@
 #define XCHAL_HAVE_TLBS			1	/* inverse of HAVE_CACHEATTR */
 #define XCHAL_HAVE_SPANNING_WAY		1	/* one way maps I+D 4GB vaddr */
 #define XCHAL_SPANNING_WAY		0	/* TLB spanning way number */
-#define XCHAL_HAVE_IDENTITY_MAP		1	/* vaddr == paddr always */
+#define XCHAL_HAVE_IDENTITY_MAP		0	/* vaddr == paddr always */
 #define XCHAL_HAVE_CACHEATTR		0	/* CACHEATTR register present */
 #define XCHAL_HAVE_MIMIC_CACHEATTR	0	/* region protection */
 #define XCHAL_HAVE_XLT_CACHEATTR	1	/* region prot. w/translation */
