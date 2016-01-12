@@ -32,8 +32,9 @@
 #define STREAM_DIRECTION_PLAYBACK	0
 #define STREAM_DIRECTION_CAPTURE	1
 
-/* maximum stream channels */
+/* maximum streams and channels */
 #define STREAM_MAX_CHANNELS	PLATFORM_MAX_CHANNELS
+#define STREAM_MAX_STREAMS	PLATFORM_MAX_STREAMS
 
 /* stream params type */
 #define STREAM_PARAMS_TYPE_PCM		0

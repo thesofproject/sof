@@ -28,12 +28,30 @@
 #include <reef/audio/pipeline.h>
 #include <uapi/intel-ipc.h>
 
+/* memory mapped stream info for static pipeline - map to stream alloc reply */
+struct ipc_stream_data {
+	uint32_t rpos;	/* read_position_register_address */
+	uint32_t ppos;	/* presentation_position_register_address */
+	uint32_t peak[IPC_INTEL_NO_CHANNELS];	/* peak_meter_register_address */
+	uint32_t volume[IPC_INTEL_NO_CHANNELS];	/* register_address */
+};
+
+struct ipc_mixer_data {
+	uint32_t peak[IPC_INTEL_NO_CHANNELS];	/* peak_meter_register_address */
+	uint32_t volume[IPC_INTEL_NO_CHANNELS];	/* register_address */
+};
+
 /* private data for IPC */
 struct ipc_data {
 	struct dma *dmac0, *dmac1;
 	uint8_t *page_table;
 	completion_t complete;
+	struct ipc_stream_data *stream_data; /* points to mailbox */
+	struct ipc_mixer_data *mixer_data; /* points to mailbox */
 };
+
+#define to_host_offset(_s) \
+	(((uint32_t)&_s) - MAILBOX_BASE + MAILBOX_HOST_OFFSET)
 
 static struct ipc_data *_ipc;
 /*
@@ -112,7 +130,7 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	struct dma_sg_elem elem;
 	struct dma *dma;
 	int chan, ret = 0;
-
+return 0;
 	/* get DMA channel from DMAC1 */
 	chan = dma_channel_get(_ipc->dmac1);
 	if (chan >= 0)
@@ -205,7 +223,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	struct dma_sg_config config;
 	struct stream_params params;
 	struct comp_desc host, dai;
-	int err;
+	int i, err, stream_id = 0;
 
 	dbg();
 
@@ -272,12 +290,24 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 
 	/* at this point pipeline is ready for command so send stream reply */
-	reply.stream_hw_id = 0;
+	reply.stream_hw_id = stream_id;
 	reply.mixer_hw_id = 0; // returns rate ????
-	reply.read_position_register_address = 0; /* TODO: setup in mailbox */
-	reply.presentation_position_register_address = 0; /* TODO: setup in mailbox */
-	//reply.peak_meter_register_address[IPC_INTEL_NO_CHANNELS];
-	//reply.volume_register_address[IPC_INTEL_NO_CHANNELS];
+
+	/* set read pos and presentation pos address */
+	reply.read_position_register_address =
+		to_host_offset(_ipc->stream_data[stream_id].rpos);
+	reply.presentation_position_register_address =
+		to_host_offset(_ipc->stream_data[stream_id].ppos);
+
+	/* set volume address */
+	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
+		reply.peak_meter_register_address[i] =
+			to_host_offset(_ipc->stream_data[stream_id].peak[i]);
+		reply.volume_register_address[i] =
+			to_host_offset(_ipc->stream_data[stream_id].volume[i]);
+	}
+
+	/* write reply to mailbox */
 	mailbox_outbox_write(0, &reply, sizeof(reply));
 
 error:	/* TODO */
@@ -294,15 +324,20 @@ static uint32_t ipc_stream_free(uint32_t header)
 static uint32_t ipc_stream_info(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_info_reply info;
+	int i;
 
 	dbg();
 
 	/* TODO: get data from topology */ 
 	info.mixer_hw_id = 1;
-	info.peak_meter_register_address[0] = 0;
-	info.peak_meter_register_address[1] = 0;
-	info.volume_register_address[0] = 0;
-	info.volume_register_address[1] = 0;
+
+	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
+		info.peak_meter_register_address[i] =
+			to_host_offset(_ipc->mixer_data->peak[i]);
+		info.volume_register_address[i] =
+			to_host_offset(_ipc->mixer_data->volume[i]);
+	}
+
 	mailbox_outbox_write(0, &info, sizeof(info));
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
@@ -528,7 +563,6 @@ static void irq_handler(void *arg)
 
 	interrupt_clear(IRQ_NUM_EXT_IA);
 
-dbg_val(isr);
 	if (isr & SHIM_ISRD_DONE) {
 
 		/* Mask Done interrupt before return */
@@ -550,12 +584,21 @@ int platform_ipc_init(struct ipc *context)
 {
 	uint32_t imrd;
 
+	/* init ipc data */
 	_ipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
 	_ipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
 		IPC_INTEL_PAGE_TABLE_SIZE);
 	_ipc->dmac0 = dma_get(DMA_ID_DMAC0);
 	_ipc->dmac1 = dma_get(DMA_ID_DMAC1);
+	_ipc->stream_data =
+		(struct ipc_stream_data*)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET);
+	_ipc->mixer_data = (void*)_ipc->stream_data +
+		sizeof(struct ipc_stream_data) * STREAM_MAX_STREAMS;
+	bzero(_ipc->stream_data,
+		sizeof(struct ipc_stream_data) * STREAM_MAX_STREAMS +
+		sizeof(struct ipc_mixer_data));
 
+	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, context);
 	interrupt_enable(IRQ_NUM_EXT_IA);
 
