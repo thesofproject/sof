@@ -121,11 +121,11 @@ static int dw_dma_channel_get(struct dma *dma)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		/* dont use any channels that are still draining */
-		if (p->chan[i].status & DMA_STATUS_DRAINING)
+		if (p->chan[i].status == DMA_STATUS_DRAINING)
 			continue;
 
 		/* use channel if it's free */
-		if (p->chan[i].status & DMA_STATUS_FREE) {
+		if (p->chan[i].status == DMA_STATUS_FREE) {
 			p->chan[i].status = DMA_STATUS_IDLE;
 			return i;
 		}
