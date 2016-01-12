@@ -35,7 +35,7 @@ void interrupt_unregister(int irq)
 
 void interrupt_enable(int irq)
 {
-	_enable = xthal_get_intenable() | (0x1 << irq);
+	_enable |= (0x1 << irq);
 	xthal_set_intenable(_enable);
 }
 
@@ -46,7 +46,7 @@ void interrupt_enable_sync(void)
 
 void interrupt_disable(int irq)
 {
-	_enable = xthal_get_intenable() & ~(0x1 << irq);
+	_enable &= ~(0x1 << irq);
 	xthal_set_intenable(_enable);
 }
 
