@@ -277,6 +277,7 @@ static int dw_dma_probe(struct dma *dma)
 
 	/* register our IRQ handler */
 	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);
+	interrupt_enable(dma_irq(dma));
 
 	return 0;
 }
