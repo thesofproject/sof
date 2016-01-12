@@ -210,7 +210,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	dbg();
 
 	/* read alloc stream IPC from the inbox */
-	mailbox_inbox_read(0, &req, sizeof(req));
+	mailbox_inbox_read(&req, 0, sizeof(req));
 
 	/* path_id is always SSP0 */
 	dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0);
