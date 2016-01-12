@@ -518,9 +518,6 @@ static void do_notify(void)
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
 }
 
-static volatile uint64_t *ipcd = (volatile uint64_t *)0xff340040;
-static int _count = 0;
-
 /* test code to check working IRQ */
 static void irq_handler(void *arg)
 {
@@ -528,7 +525,10 @@ static void irq_handler(void *arg)
 
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);
-*ipcd = _count++;
+
+	interrupt_clear(IRQ_NUM_EXT_IA);
+
+dbg_val(isr);
 	if (isr & SHIM_ISRD_DONE) {
 
 		/* Mask Done interrupt before return */
@@ -543,7 +543,7 @@ static void irq_handler(void *arg)
 		do_cmd();
 	}
 
-	interrupt_clear(IRQ_NUM_EXT_IA);
+	interrupt_enable(IRQ_NUM_EXT_IA);
 }
 
 int platform_ipc_init(struct ipc *context)
