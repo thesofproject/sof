@@ -41,3 +41,32 @@ void *memcpy(void *dest, const void *src, size_t n)
 	arch_memcpy(dest, src, n);
 	return dest;
 }
+
+/* generic bzero - TODO: can be optimsed for ARCH ? */
+void bzero(void *s, size_t n)
+{
+	uint32_t *d32 = s;
+	uint8_t *d8;
+	int i, d = n >> 2, r = n % 4;
+
+	/* zero word at a time */
+	for (i = 0; i <	d; i++)
+		d32[i] = 0;
+
+	/* zer remaining bytes */
+	d8 = (uint8_t*) &d32[i];
+	for (i = 0; i <	r; i++)
+		d8[i] = 0;
+}
+
+/* generic memset - TODO: can be optimsed for ARCH ? */
+void *memset(void *s, int c, size_t n)
+{
+	uint8_t *d8 = s, v = c;
+	int i;
+
+	for (i = 0; i <	n; i++)
+		d8[i] = v;
+
+	return s;
+}

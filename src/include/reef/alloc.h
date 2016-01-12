@@ -30,4 +30,8 @@ void rfree(int zone, int module, void *ptr);
 
 void init_heap(void);
 
+void bzero(void *s, size_t n);
+
+void *memset(void *s, int c, size_t n);
+
 #endif
