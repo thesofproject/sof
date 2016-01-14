@@ -11,11 +11,15 @@
 
 #include <stdint.h>
 
-#define io_reg_read(reg) \
-	*((volatile uint32_t*)reg)
+static inline uint32_t io_reg_read(uint32_t reg)
+{
+	return *((volatile uint32_t*)reg);
+}
 
-#define io_reg_write(reg, val) \
-	*((volatile uint32_t*)reg) = val
+static inline void io_reg_write(uint32_t reg, uint32_t val)
+{
+	*((volatile uint32_t*)reg) = val;
+}
 
 static inline void io_reg_update_bits(uint32_t reg, uint32_t mask, uint32_t value)
 {
