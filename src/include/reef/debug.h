@@ -60,6 +60,12 @@
 			*(m++) = *(a++); \
 	} while (0);
 
+#define dump_object(__o) \
+	dump(&__o, sizeof(__o));
+
+#define dump_object_ptr(__o) \
+	dump(__o, sizeof(*__o));
+
 #define panic(_p) \
 	do { \
 		extern uint32_t __stack; \
