@@ -19,21 +19,19 @@
 #include <reef/audio/pipeline.h>
 #include <reef/work.h>
 #include <reef/debug.h>
+#include <reef/trace.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 /* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
 // TODO: align Qemu clock with DSP.
-#define AUDIO_WORK_MSECS	125
-
-static int ticks = 0;
+#define AUDIO_WORK_MSECS	500
 
 static struct work audio_work;
 
 uint32_t work_handler(void *data)
 {
-	ticks++;
-	dbg_val(ticks);
+	trace_pipe('t');
 
 	return AUDIO_WORK_MSECS;
 }
@@ -52,7 +50,7 @@ int do_task(int argc, char *argv[])
 	sys_comp_mux_init();
 	sys_comp_switch_init();
 	sys_comp_volume_init();
-	
+
 	/* schedule our audio work */
 	work_init((&audio_work), work_handler, NULL);
 	work_schedule_default(&audio_work, AUDIO_WORK_MSECS);
