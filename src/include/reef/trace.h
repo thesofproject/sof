@@ -18,6 +18,7 @@
 /* trace event classes - high 24 bits*/
 #define TRACE_CLASS_IRQ		(1 << 8)
 #define TRACE_CLASS_IPC		(1 << 9)
+#define TRACE_CLASS_PIPE	(1 << 10)
 
 /* move to config.h */
 #define TRACE	1

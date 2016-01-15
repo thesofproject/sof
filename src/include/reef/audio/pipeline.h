@@ -16,6 +16,9 @@
 #include <reef/stream.h>
 #include <reef/dma.h>
 #include <reef/audio/component.h>
+#include <reef/trace.h>
+
+#define trace_pipe(__e)	trace_event(TRACE_CLASS_PIPE | __e)
 
 /* pipeline states */
 #define PIPELINE_STATE_INIT	0	/* pipeline being initialised */
