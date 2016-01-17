@@ -8,4 +8,5 @@ libdrivers_a_SOURCES = \
 libdrivers_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(REEF_INCDIR) \
+	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR)
