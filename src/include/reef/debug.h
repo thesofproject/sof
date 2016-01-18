@@ -61,9 +61,11 @@
 	} while (0);
 
 #define dump_object(__o) \
+	dbg(); \
 	dump(&__o, sizeof(__o));
 
 #define dump_object_ptr(__o) \
+	dbg(); \
 	dump(__o, sizeof(*__o));
 
 #define panic(_p) \
