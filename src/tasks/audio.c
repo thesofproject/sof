@@ -40,9 +40,6 @@ int do_task(int argc, char *argv[])
 {
 	int ret = 0;
 
-	/* init static pipeline */
-	init_static_pipeline();
-
 	/* init default audio components */
 	sys_comp_dai_init();
 	sys_comp_host_init();
@@ -50,6 +47,9 @@ int do_task(int argc, char *argv[])
 	sys_comp_mux_init();
 	sys_comp_switch_init();
 	sys_comp_volume_init();
+
+	/* init static pipeline */
+	init_static_pipeline();
 
 	/* schedule our audio work */
 	work_init((&audio_work), work_handler, NULL);
