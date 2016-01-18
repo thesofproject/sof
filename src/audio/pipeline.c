@@ -14,6 +14,7 @@
 #include <reef/list.h>
 #include <reef/stream.h>
 #include <reef/alloc.h>
+#include <reef/debug.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
@@ -54,6 +55,7 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 	list_for_each(clist, &p->comp_list) {
 
 		cd = container_of(clist, struct comp_dev, pipeline_list);
+
 		if (cd->drv->uuid == desc->uuid && cd->id == desc->id)
 			return cd;
 	}
@@ -66,6 +68,8 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 struct pipeline *pipeline_new(void)
 {
 	struct pipeline *p;
+
+	trace_pipe('N');
 
 	p = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
 	if (p == NULL)
@@ -89,6 +93,8 @@ struct pipeline *pipeline_new(void)
 void pipeline_free(struct pipeline *p)
 {
 	struct list_head *clist, *t;
+
+	trace_pipe('F');
 
 	spin_lock(&pipe_data->lock);
 
@@ -122,6 +128,8 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 {
 	struct comp_dev *cd;
 
+	trace_pipe('n');
+
 	cd = comp_new(desc);
 	if (cd == NULL)
 		return -ENODEV;
@@ -153,6 +161,8 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	struct comp_dev *source, *sink;
 	struct comp_buffer *buffer;
 
+	trace_pipe('c');
+
 	source = pipeline_comp_from_id(p, source_desc);
 	if (source == NULL)
 		return -ENODEV;
@@ -182,17 +192,49 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	return 0;
 }
 
+static int buffer_prepare(struct pipeline *p, struct comp_buffer *buffer)
+{
+
+	return 0;
+}
+
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
 {
+	struct comp_dev *host;
+	struct list_head *clist;
+	int err;
+
+	trace_pipe('p');
+
+	host = pipeline_comp_from_id(p, host_desc);
+	if (host == NULL)
+		return -ENODEV;
+
+	spin_lock(&p->lock);
+
 	/* buffer allocated here as graph is walked from host desc to
-	  sink/source component */
+	  sink to all sink component */
+	list_for_each(clist, &host->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		err = buffer_prepare(p, buffer);
+		if (err < 0)
+			goto error;
+	}
+
+error:
+	spin_unlock(&p->lock);
 	return 0;
 }
 
 /* send pipeline component/endpoint a command */
 int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd)
 {
+	trace_pipe('C');
+
 	/* walk graph and send cmd to all components from host source */
 	return 0;
 }
@@ -201,6 +243,8 @@ int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd)
 int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 	struct stream_params *params)
 {
+	trace_pipe('P');
+
 	return 0;
 }
 
@@ -209,6 +253,8 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 	struct dma_sg_config *config)
 {
 	struct comp_dev *comp;
+
+	trace_pipe('B');
 
 	comp = pipeline_comp_from_id(p, desc);
 	if (comp == NULL)
@@ -220,6 +266,8 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 /* init pipeline */
 int pipeline_init(void)
 {
+	trace_pipe('I');
+
 	pipe_data = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
 
