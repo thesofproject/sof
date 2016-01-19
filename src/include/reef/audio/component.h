@@ -45,6 +45,13 @@
 #define COMP_CMD_UNMUTE		3
 #define COMP_CMD_ROUTE		4
 
+/* component operations */
+#define COMP_OPS_PARAMS		0
+#define COMP_OPS_CMD		1
+#define COMP_OPS_PREPARE	2
+#define COMP_OPS_COPY		3
+#define COMP_OPS_BUFFER		4
+
 /* standard component command structures */
 struct comp_volume {
 	uint16_t volume[STREAM_MAX_CHANNELS];
