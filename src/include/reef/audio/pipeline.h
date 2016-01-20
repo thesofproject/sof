@@ -65,7 +65,7 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc);
 
 /* insert component in pipeline */
 int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
-	struct comp_desc *sink_desc);
+	struct comp_desc *sink_desc, struct buffer_desc *buffer_desc);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_desc *desc,
@@ -79,7 +79,8 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc);
 
 /* send pipeline a command */
-int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd);
+int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd,
+	void *data);
 
 /* initialise pipeline subsys */
 int pipeline_init(void);

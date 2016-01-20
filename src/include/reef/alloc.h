@@ -23,7 +23,7 @@
 
 void *rmalloc(int zone, int module, size_t bytes);
 
-/* allocates buffer on 4k boundary */
+/* allocates buffer on 1k boundary */
 void *rballoc(int zone, int module, size_t bytes);
 
 void rfree(int zone, int module, void *ptr);

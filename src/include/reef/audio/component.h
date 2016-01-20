@@ -70,6 +70,25 @@ struct comp_desc {
 	uint8_t reserved;
 };
 
+/*
+ * Componnent period descriptors
+ */
+struct period_desc {
+	uint32_t size;	/* period size in bytes */
+	uint16_t number;
+	uint8_t no_irq;	/* dont send periodic IRQ to host/DSP */
+	uint8_t reserved;
+};
+
+/*
+ * Pipeline buffer descriptor.
+ */
+struct buffer_desc {
+	uint32_t size;		/* buffer size in bytes */
+	struct period_desc sink_period;
+	struct period_desc source_period;
+};
+
 /* audio component operations - all mandatory */
 struct comp_ops {
 	/* component creation and destruction */
@@ -140,8 +159,9 @@ struct comp_dev {
 
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
+	struct buffer_desc desc;
+
 	/* runtime data */
-	uint32_t size;		/* size of buffer in bytes */
 	uint32_t avail;		/* available bytes between R and W ptrs */
 	uint8_t *w_ptr;		/* buffer write pointer */
 	uint8_t *r_ptr;		/* buffer read position */
@@ -153,7 +173,7 @@ struct comp_buffer {
 	struct comp_dev *sink;		/* sink component */
 
 	/* lists */
-	struct list_head pipeline_list;	/* list of pipeline buffers */
+	struct list_head pipeline_list;	/* list in pipeline buffers */
 	struct list_head source_list;	/* list in comp buffers */
 	struct list_head sink_list;	/* list in comp buffers */
 };
@@ -200,6 +220,12 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 static inline int comp_prepare(struct comp_dev *dev)
 {
 	return dev->drv->ops.prepare(dev);
+}
+
+/* copy component buffers */
+static inline int comp_copy(struct comp_dev *dev)
+{
+	return dev->drv->ops.copy(dev);
 }
 
 /* default base component initialisations */

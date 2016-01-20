@@ -31,7 +31,6 @@ struct op_data {
 	struct stream_params *params;
 	int cmd;
 	void *cmd_data;
-	struct dma_sg_config *config;
 };
 
 static struct pipeline_data *pipe_data;
@@ -166,9 +165,9 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 	return 0;
 }
 
-/* insert component in pipeline */
+/* insert component in pipeline and allocate buffers */
 int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
-	struct comp_desc *sink_desc)
+	struct comp_desc *sink_desc, struct buffer_desc *buffer_desc)
 {
 	struct comp_dev *source, *sink;
 	struct comp_buffer *buffer;
@@ -183,11 +182,21 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	if (sink == NULL)
 		return -ENODEV;
 
-	/* buffer space allocated later */
+	/* allocate buffer */
 	buffer = rmalloc(RZONE_MODULE, RMOD(source->drv->module_id),
 		sizeof(*buffer));
 	if (buffer == NULL)
 		return -ENOMEM;
+	buffer->addr = rballoc(RZONE_MODULE, RMOD(source->drv->module_id),
+		buffer->desc.size);
+	if (buffer->addr == NULL) {
+		rfree(RZONE_MODULE, RMOD(source->drv->module_id), buffer);
+		return -ENOMEM;
+	}
+	buffer->w_ptr = buffer->r_ptr = buffer->addr;
+	buffer->avail = 0;
+	buffer->desc = *buffer_desc;
+	list_add(&buffer->pipeline_list, &p->buffer_list);
 
 	/* connect source to buffer */
 	spin_lock(&source->lock);
@@ -204,50 +213,40 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	return 0;
 }
 
-/* call op on all downstream buffers - locks held by caller */
-static int buffer_prepare(struct pipeline *p, struct comp_buffer *buffer)
-{
-	return 0;
-}
-
 /* call op on all downstream components - locks held by caller */
 static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 {
 	struct list_head *clist;
 	int err;
 
+	/* do operation on this component */
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
 		/* send params to the component */
-		err = comp->drv->ops.params(comp, op_data->params);
+		err = comp_params(comp, op_data->params);
 		break;
 	case COMP_OPS_CMD:
 		/* send command to the component */
-		err = comp->drv->ops.cmd(comp, op_data->cmd, op_data->cmd_data);
+		err = comp_cmd(comp, op_data->cmd, op_data->cmd_data);
 		break;
 	case COMP_OPS_PREPARE:
-		/* prepare the buffers first */
+		/* prepare the buffers first by clearing contents */
 		list_for_each(clist, &comp->bsink_list) {
 			struct comp_buffer *buffer;
 
 			buffer = container_of(clist, struct comp_buffer,
 				source_list);
-			err = buffer_prepare(op_data->p, buffer);
-			if (err < 0)
-				break;
+			bzero(buffer->addr, buffer->desc.size);
 		}
 
 		/* prepare the component */
-		err = comp->drv->ops.prepare(comp);
+		err = comp_prepare(comp);
 		break;
 	case COMP_OPS_COPY:
 		/* component should copy to buffers */
-		err = comp->drv->ops.copy(comp);
+		err = comp_copy(comp);
 		break;
-	case COMP_OPS_BUFFER:
-		/* set up host buffer for the component */
-		err = comp->drv->ops.host_buffer(comp, op_data->config);
-		break;
+	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
 		return -EINVAL;
 	}
@@ -257,26 +256,23 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 	if (err <= 0)
 		return err;
 
-	/* buffer allocated here as graph is walked from host desc to
-	  sink to all sink component */
+	/* now run this operation downstream */
 	list_for_each(clist, &comp->bsink_list) {
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
+		/* dont go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
 		err = component_op_sink(op_data, buffer->sink);
 		if (err < 0)
-			goto error;
+			break;
 	}
 
-error:
-	return 0;
+	return err;
 }
-
-
 
 /* call op on all upstream components - locks held by caller */
 static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
@@ -284,14 +280,15 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 	struct list_head *clist;
 	int err;
 
+	/* do operation on this component */
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
 		/* send params to the component */
-		err = comp->drv->ops.params(comp, op_data->params);
+		err = comp_params(comp, op_data->params);
 		break;
 	case COMP_OPS_CMD:
 		/* send command to the component */
-		err = comp->drv->ops.cmd(comp, op_data->cmd, op_data->cmd_data);
+		err = comp_cmd(comp, op_data->cmd, op_data->cmd_data);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the buffers first */
@@ -300,22 +297,17 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 
 			buffer = container_of(clist, struct comp_buffer,
 				source_list);
-			err = buffer_prepare(op_data->p, buffer);
-			if (err < 0)
-				break;
+			bzero(buffer->addr, buffer->desc.size);
 		}
 
 		/* prepare the component */
-		err = comp->drv->ops.prepare(comp);
+		err = comp_prepare(comp);
 		break;
 	case COMP_OPS_COPY:
 		/* component should copy to buffers */
-		err = comp->drv->ops.copy(comp);
+		err = comp_copy(comp);
 		break;
-	case COMP_OPS_BUFFER:
-		/* set up host buffer for the component */
-		err = comp->drv->ops.host_buffer(comp, op_data->config);
-		break;
+	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
 		return -EINVAL;
 	}
@@ -325,25 +317,23 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 	if (err <= 0)
 		return err;
 
-	/* buffer allocated here as graph is walked from host desc to
-	  sink to all sink component */
+	/* now run this operation downstream */
 	list_for_each(clist, &comp->bsink_list) {
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
+		/* dont go upstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
 		err = component_op_sink(op_data, buffer->sink);
 		if (err < 0)
-			goto error;
+			break;
 	}
 
-error:
-	return 0;
+	return err;
 }
-
 
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
@@ -366,27 +356,63 @@ int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
 		ret = component_op_sink(&op_data, host);
 	else
 		ret = component_op_source(&op_data, host);
-
 	spin_unlock(&p->lock);
 	return ret;
 }
 
 /* send pipeline component/endpoint a command */
-int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd)
+int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd,
+	void *data)
 {
+	struct comp_dev *host;
+	struct op_data op_data;
+	int ret;
+
 	trace_pipe('C');
 
-	/* walk graph and send cmd to all components from host source */
-	return 0;
+	host = pipeline_comp_from_id(p, host_desc);
+	if (host == NULL)
+		return -ENODEV;
+
+	op_data.p = p;
+	op_data.op = COMP_OPS_CMD;
+	op_data.cmd = cmd;
+	op_data.cmd_data = data;
+
+	spin_lock(&p->lock);
+	if (host->is_playback)
+		ret = component_op_sink(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
+	spin_unlock(&p->lock);
+	return ret;
 }
 
 /* send pipeline component/endpoint params */
 int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 	struct stream_params *params)
 {
+	struct comp_dev *host;
+	struct op_data op_data;
+	int ret;
+
 	trace_pipe('P');
 
-	return 0;
+	host = pipeline_comp_from_id(p, host_desc);
+	if (host == NULL)
+		return -ENODEV;
+
+	op_data.p = p;
+	op_data.op = COMP_OPS_PARAMS;
+	op_data.params = params;
+
+	spin_lock(&p->lock);
+	if (host->is_playback)
+		ret = component_op_sink(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
+	spin_unlock(&p->lock);
+	return ret;
 }
 
 /* configure pipelines host DMA buffer */

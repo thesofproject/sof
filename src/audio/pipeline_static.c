@@ -16,7 +16,7 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
-/* convenience component UUIDs */
+/* convenience component UUIDs and descriptors */
 #define SPIPE_MIXER(xid) \
 	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_MIXER), xid}
 #define SPIPE_MUX(xid) \
@@ -30,26 +30,48 @@
 #define SPIPE_HOST(xid, is_play) \
 	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST), xid, is_play}
 
+/* convenience buffer descriptors */
+#define SPIPE_BUFFER(xsize, xisize, xinum, xiirq, xosize, xonum, xoirq) \
+	{.size = xsize, \
+		.sink_period = {.size = xisize, .number = xinum, .no_irq = xiirq}, \
+		.source_period = {.size = xosize, .number = xonum, .no_irq = xoirq},}
+
+/* Host facing buffer */
+#define SPIPE_HOST_BUF \
+	SPIPE_BUFFER(PLAT_HOST_PERSIZE * PLAT_HOST_PERIODS, \
+		PLAT_HOST_PERSIZE * PLAT_HOST_PERIODS, PLAT_HOST_PERIODS, 0, \
+		-1, -1, 0)
+
+/* Device facing buffer */
+#define SPIPE_DEV_BUF \
+	SPIPE_BUFFER(PLAT_DEV_PERSIZE * PLAT_DEV_PERIODS, \
+		-1, -1, 0, \
+		PLAT_DEV_PERSIZE * PLAT_DEV_PERIODS, PLAT_DEV_PERIODS, 0)
+
 /* static link between components using UUIDs and IDs */
 struct spipe_link {
 	struct comp_desc source;
-	struct comp_desc comp;
+	struct buffer_desc buffer;
 	struct comp_desc sink;
 };
 
 /*
  * Straight through playback and capture pipes with simple volume.
  * 
- * host PCM0(0) ---> volume(1) ---> SSP0(2)
- * host PCM0(0) <--- volume(3) <--- SSP0(2)
+ * host PCM0(0) ---> B0 ---> volume(1) ---> B1 ---> SSP0(2)
+ * host PCM0(0) <--- B2 <--- volume(3) <--- B3 <--- SSP0(2)
  */
 static struct spipe_link pipe_play0[] = {
-	{SPIPE_HOST(0, 1), SPIPE_VOLUME(1), SPIPE_DAI_SSP0(2, 1)},
+	{SPIPE_HOST(0, 1), SPIPE_HOST_BUF, SPIPE_VOLUME(1)},
+	{SPIPE_VOLUME(1), SPIPE_DEV_BUF, SPIPE_DAI_SSP0(2, 1)},
 };
 
+
 static struct spipe_link pipe_capture0[] = {
-	{SPIPE_DAI_SSP0(2, 0), SPIPE_VOLUME(3), SPIPE_HOST(0, 0)},
+	{SPIPE_DAI_SSP0(2, 0), SPIPE_DEV_BUF, SPIPE_VOLUME(3)},
+	{SPIPE_VOLUME(3), SPIPE_HOST_BUF, SPIPE_HOST(0, 0)},
 };
+
 
 #if 0
 /* 
@@ -111,43 +133,29 @@ struct pipeline *init_static_pipeline(void)
 	/* create playback components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
 		pipeline_comp_new(pipeline_static, &pipe_play0[i].source);
-		pipeline_comp_new(pipeline_static, &pipe_play0[i].comp);
 		pipeline_comp_new(pipeline_static, &pipe_play0[i].sink);
 	}
 
 	/* create capture components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
 		pipeline_comp_new(pipeline_static, &pipe_capture0[i].source);
-		pipeline_comp_new(pipeline_static, &pipe_capture0[i].comp);
 		pipeline_comp_new(pipeline_static, &pipe_capture0[i].sink);
 	} 
 
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
-		/* add source -> comp */
+		/* add source -> sink */
 		err = pipeline_comp_connect(pipeline_static, &pipe_play0[i].source,
-			&pipe_play0[i].comp);
-		if (err < 0)
-			goto err;
-
-		/* add comp -> sink */
-		err = pipeline_comp_connect(pipeline_static, &pipe_play0[i].comp,
-			&pipe_play0[i].sink);
+			&pipe_play0[i].sink, &pipe_play0[i].buffer);
 		if (err < 0)
 			goto err;
 	}
 
 	/* create components on capture pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_capture0); i++) {
-		/* add source -> comp */
+		/* add source -> sink */
 		err = pipeline_comp_connect(pipeline_static, &pipe_capture0[i].source,
-			&pipe_capture0[i].comp);
-		if (err < 0)
-			goto err;
-
-		/* add comp -> sink */
-		err = pipeline_comp_connect(pipeline_static, &pipe_capture0[i].comp,
-			&pipe_capture0[i].sink);
+			&pipe_capture0[i].sink, &pipe_capture0[i].buffer);
 		if (err < 0)
 			goto err;
 	}

@@ -326,9 +326,9 @@ static int volume_copy(struct comp_dev *dev)
 	cd->scale_vol(dev, source, sink);
 
 	/* update buffer pointers for overflow */
-	if (source->r_ptr >= source->addr + source->size)
+	if (source->r_ptr >= source->addr + source->desc.size)
 		source->r_ptr = source->addr;
-	if (sink->w_ptr >= source->addr + sink->size)
+	if (sink->w_ptr >= source->addr + sink->desc.size)
 		sink->w_ptr = sink->addr;
 
 	/* number of frames sent downstream */
