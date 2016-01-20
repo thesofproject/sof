@@ -91,4 +91,7 @@ struct pipeline *init_static_pipeline(void);
 /* pipeline creation */
 int init_pipeline(void);
 
+/* pipeline work */
+void pipeline_do_work(void);
+
 #endif

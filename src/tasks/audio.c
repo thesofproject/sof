@@ -14,6 +14,7 @@
 #include <reef/debug.h>
 #include <reef/timer.h>
 #include <reef/interrupt.h>
+#include <reef/ipc.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
 #include <reef/audio/pipeline.h>
@@ -22,6 +23,7 @@
 #include <reef/trace.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 
 /* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
 // TODO: align Qemu clock with DSP.
@@ -29,17 +31,18 @@
 
 static struct work audio_work;
 
+/* TODO only run this work when we have active audio pipelines */
 uint32_t work_handler(void *data)
 {
-	trace_pipe('t');
+	/* process our audio pipelines */
+	pipeline_do_work();
 
+	/* TODO add support to scale clocks/wait time here */
 	return AUDIO_WORK_MSECS;
 }
 
-int do_task(int argc, char *argv[])
+int do_task(void)
 {
-	int ret = 0;
-
 	/* init default audio components */
 	sys_comp_dai_init();
 	sys_comp_host_init();
@@ -56,13 +59,14 @@ int do_task(int argc, char *argv[])
 	work_schedule_default(&audio_work, AUDIO_WORK_MSECS);
 
 	while (1) {
-	//	ipc_process_queue();
-
 		// TODO: combine irq_syn into WFI()
 		wait_for_interrupt(0);
 		interrupt_enable_sync();
+
+		/* now process any IPC messages from host */
+		ipc_process_msg_queue();
 	}
 
 	/* something bad happened */
-	return ret;
+	return -EIO;
 }

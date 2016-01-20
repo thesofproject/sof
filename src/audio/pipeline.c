@@ -442,3 +442,8 @@ int pipeline_init(void)
 	sys_comp_init();
 	return 0;
 }
+
+void pipeline_do_work(void)
+{
+
+}

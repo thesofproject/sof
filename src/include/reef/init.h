@@ -11,6 +11,6 @@
 
 int main(int argc, char *argv[]);
 
-int arch_init(int argc, char *argv[]);
+int arch_init(void);
 
 #endif

@@ -22,13 +22,12 @@
 
 int main(int argc, char *argv[])
 {
-	struct ipc *ipc_context;
 	int err;
 
 	/* init architecture */
-	err = arch_init(argc, argv);
+	err = arch_init();
 	if (err < 0)
-		goto err_out;
+		panic(PANIC_ARCH);
 
 	/* initialise system services */
 	init_heap();
@@ -36,22 +35,22 @@ int main(int argc, char *argv[])
 	init_system_workq();
 
 	/* init the platform */
-	err = platform_init(argc, argv);
+	err = platform_init();
 	if (err < 0)
-		goto err_out;
+		panic(PANIC_PLATFORM);
 
 	/* initialise the IPC mechanisms */
-	ipc_context = ipc_init(NULL);
-	if (ipc_context == NULL)
-		panic(0);
+	err = platform_ipc_init();
+	if (err < 0)
+		panic(PANIC_IPC);
 
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);
 
 	/* should not return */
-	err = do_task(argc, argv);
+	err = do_task();
 
-err_out:
-	dbg();
+	/* should never get here */
+	panic(PANIC_TASK);
 	return err;
 }

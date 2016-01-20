@@ -76,7 +76,7 @@ static void register_exceptions(void)
 	_xtos_set_exception_handler(EXCCAUSE_LOAD_STORE_DATA_ERROR, (void*) &exception);
 }
 
-int arch_init(int argc, char *argv[])
+int arch_init(void)
 {
 	register_exceptions();
 	return 0;

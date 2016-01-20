@@ -44,7 +44,7 @@ int platform_boot_complete(uint32_t boot_message)
 	return 0;
 }
 
-int platform_init(int argc, char *argv[])
+int platform_init(void)
 {
 	struct dma *dmac0, *dmac1;
 	struct dai *ssp0, *ssp1;

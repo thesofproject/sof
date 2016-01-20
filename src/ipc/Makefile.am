@@ -1,7 +1,6 @@
 noinst_LIBRARIES = libipc.a
 
 libipc_a_SOURCES = \
-	ipc.c \
 	intel-ipc.c
 
 libipc_a_CFLAGS = \

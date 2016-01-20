@@ -16,6 +16,10 @@
 /* panic reasons */
 #define PANIC_MEM	0
 #define PANIC_WORK	1
+#define PANIC_IPC	2
+#define PANIC_ARCH	3
+#define PANIC_PLATFORM	4
+#define PANIC_TASK	5
 
 #define dbg() \
 	do { \

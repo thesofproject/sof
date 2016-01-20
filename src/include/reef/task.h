@@ -9,6 +9,6 @@
 #ifndef __INCLUDE_TASK_H__
 #define __INCLUDE_TASK_H__
 
-int do_task(int argc, char *argv[]);
+int do_task(void);
 
 #endif

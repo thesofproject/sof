@@ -44,6 +44,8 @@ struct ipc_mixer_data {
 
 /* private data for IPC */
 struct ipc_data {
+	uint32_t host_msg;		/* current message from host */
+	uint32_t dsp_msg;		/* current message to host */
 	struct dma *dmac0, *dmac1;
 	uint8_t *page_table;
 	completion_t complete;
@@ -529,6 +531,8 @@ static void do_cmd(void)
 	
 	trace_ipc('c');
 
+	/* TODO: place message in Q and process later */
+	_ipc->host_msg = shim_read(SHIM_IPCXL);
 	status = ipc_cmd();
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
@@ -579,7 +583,20 @@ static void irq_handler(void *arg)
 	interrupt_enable(IRQ_NUM_EXT_IA);
 }
 
-int platform_ipc_init(struct ipc *context)
+/* process current message */
+int ipc_process_msg_queue(void)
+{
+
+	return 0;
+}
+
+int ipc_send_msg(struct ipc_msg *msg)
+{
+
+	return 0;
+}
+
+int platform_ipc_init(void)
 {
 	uint32_t imrd;
 
@@ -598,7 +615,7 @@ int platform_ipc_init(struct ipc *context)
 		sizeof(struct ipc_mixer_data));
 
 	/* configure interrupt */
-	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, context);
+	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, NULL);
 	interrupt_enable(IRQ_NUM_EXT_IA);
 
 	/* Unmask Busy and Done interrupts */

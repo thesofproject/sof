@@ -24,7 +24,6 @@
 #define PLAT_DEV_PERSIZE	256	/* must be multiple of DMA+DEV burst size */
 #define PLAT_DEV_PERIODS	3 	/* give enough latency for DMA refill */
 
-struct ipc;
 
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
@@ -32,8 +31,8 @@ struct ipc;
 
 int platform_boot_complete(uint32_t boot_message);
 
-int platform_ipc_init(struct ipc *context);
+int platform_ipc_init(void);
 
-int platform_init(int argc, char *argv[]);
+int platform_init(void);
 
 #endif
