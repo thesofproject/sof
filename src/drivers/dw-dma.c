@@ -368,7 +368,23 @@ static void dw_dma_set_cb(struct dma *dma, int channel,
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
+	struct dma *dma = (struct dma *)data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t status_block = 0;
+	int i = 0;
 	/* we should inform the client that a period has been transfered */
+	status_block = io_reg_read(dma_base(dma) + DW_STATUS_BLOCK);
+	/* Check if we have any interrupt from the DMAC */
+	if (!status_block)
+		return;
+
+	for (i = 0; i < DW_MAX_CHAN; i++) {
+		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)) {
+			io_reg_write(dma_base(dma) + DW_MASK_BLOCK, INT_MASK(i));
+			p->chan[i].cb(p->chan[i].cb_data);
+
+		}
+	}
 
 }
 
