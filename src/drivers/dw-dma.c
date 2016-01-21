@@ -131,8 +131,21 @@ static int dw_dma_channel_get(struct dma *dma)
 			continue;
 
 		/* use channel if it's free */
+		/* TODO: may need read Channel Enable register to choose a
+		free/disabled channel */
 		if (p->chan[i].status == DMA_STATUS_FREE) {
 			p->chan[i].status = DMA_STATUS_IDLE;
+
+			/* write interrupt clear registers for the channel:
+			ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr*/
+			io_reg_write(dma_base(dma) + DW_CLEAR_TFR, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_BLOCK, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_SRC_TRAN, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_DST_TRAN, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_ERR, 0x1 << i);
+
+			/* TODO: do we need read back Interrupt Raw Status and Interrupt
+			Status registers to confirm that all interrupts have been cleared? */
 
 			return i;
 		}
@@ -146,9 +159,10 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	p->chan[channel].status |= DMA_STATUS_FREE;
+	p->chan[channel].status = DMA_STATUS_FREE;
 	p->chan[channel].cb = NULL;
 	// TODO: disable/reset any other channel config.
+	/* free the lli allocated by set_config*/
 
 }
 
@@ -379,6 +393,7 @@ static int dw_dma_probe(struct dma *dma)
 
 	/* allocate private data */
 	dw_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*dw_pdata));
+	bzero(dw_pdata, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(dw_pdata->lock);
