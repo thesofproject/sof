@@ -43,6 +43,8 @@ uint32_t work_handler(void *data)
 
 int do_task(void)
 {
+	sys_comp_init();
+
 	/* init default audio components */
 	sys_comp_dai_init();
 	sys_comp_host_init();
