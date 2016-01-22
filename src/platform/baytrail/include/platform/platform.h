@@ -9,6 +9,8 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#include <platform/shim.h>
+
 /* Platform timer config */
 #define REEF_SYS_TIMER 	0
 
@@ -24,6 +26,9 @@
 #define PLAT_DEV_PERSIZE	256	/* must be multiple of DMA+DEV burst size */
 #define PLAT_DEV_PERIODS	3 	/* give enough latency for DMA refill */
 
+/* Platform define panic code */
+#define platform_panic(__x) \
+	shim_write(SHIM_IPCDL, __x)
 
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
