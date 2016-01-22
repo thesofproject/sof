@@ -61,6 +61,16 @@ struct spipe_link {
  * host PCM0(0) ---> B0 ---> volume(1) ---> B1 ---> SSP0(2)
  * host PCM0(0) <--- B2 <--- volume(3) <--- B3 <--- SSP0(2)
  */
+
+static struct comp_desc pipe0_comps[] = {
+	SPIPE_HOST(0, 1),
+	SPIPE_VOLUME(1),
+	SPIPE_DAI_SSP0(2, 1),
+	SPIPE_DAI_SSP0(2, 0),
+	SPIPE_VOLUME(3),
+	SPIPE_HOST(0, 0),
+};
+
 static struct spipe_link pipe_play0[] = {
 	{SPIPE_HOST(0, 1), SPIPE_HOST_BUF, SPIPE_VOLUME(1)},
 	{SPIPE_VOLUME(1), SPIPE_DEV_BUF, SPIPE_DAI_SSP0(2, 1)},
@@ -131,17 +141,9 @@ struct pipeline *init_static_pipeline(void)
 		return NULL;
 
 	/* create playback components in the pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
-		pipeline_comp_new(pipeline_static, &pipe_play0[i].source);
-		pipeline_comp_new(pipeline_static, &pipe_play0[i].sink);
+	for (i = 0; i < ARRAY_SIZE(pipe0_comps); i++) {
+		pipeline_comp_new(pipeline_static, &pipe0_comps[i]);
 	}
-
-	/* create capture components in the pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
-		pipeline_comp_new(pipeline_static, &pipe_capture0[i].source);
-		pipeline_comp_new(pipeline_static, &pipe_capture0[i].sink);
-	} 
-
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
 		/* add source -> sink */
