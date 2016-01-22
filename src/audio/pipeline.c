@@ -445,5 +445,5 @@ int pipeline_init(void)
 
 void pipeline_do_work(void)
 {
-
+	trace_pipe('W');
 }
