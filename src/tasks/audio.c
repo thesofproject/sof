@@ -43,20 +43,21 @@ uint32_t work_handler(void *data)
 
 int do_task(void)
 {
-	sys_comp_init();
+	struct pipeline *p;
 
 	/* init default audio components */
+	sys_comp_init();
 	sys_comp_dai_init();
 	sys_comp_host_init();
-	
+	sys_comp_mixer_init();
 	sys_comp_mux_init();
 	sys_comp_switch_init();
 	sys_comp_volume_init();
 
 	/* init static pipeline */
-	init_static_pipeline();
-
-sys_comp_mixer_init();
+	p = init_static_pipeline();
+	if (p == NULL)
+		panic(PANIC_TASK);
 
 	/* schedule our audio work */
 	work_init((&audio_work), work_handler, NULL);
@@ -64,18 +65,19 @@ sys_comp_mixer_init();
 
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);
-dbg();
+
+	/* main audio IPC processing loop */
 	while (1) {
-dbg();
+
 		// TODO: combine irq_syn into WFI()
 		wait_for_interrupt(0);
 		interrupt_enable_sync();
-dbg();
+
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
-dbg();
+
 	}
-dbg();
+
 	/* something bad happened */
 	return -EIO;
 }
