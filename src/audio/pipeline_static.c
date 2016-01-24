@@ -26,7 +26,7 @@
 #define SPIPE_SWITCH(xid) \
 	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_SWITCH), xid}
 #define SPIPE_DAI_SSP0(xid, is_play) \
-	{COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0), xid, is_play}
+	{COMP_UUID(COMP_VENDOR_INTEL, COMP_TYPE_DAI_SSP), xid, is_play}
 #define SPIPE_HOST(xid, is_play) \
 	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST), xid, is_play}
 
@@ -140,10 +140,11 @@ struct pipeline *init_static_pipeline(void)
 	if (pipeline_static < 0)
 		return NULL;
 
-	/* create playback components in the pipeline */
+	/* create components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_comps); i++) {
 		pipeline_comp_new(pipeline_static, &pipe0_comps[i]);
 	}
+
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
 		/* add source -> sink */
