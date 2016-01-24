@@ -23,6 +23,8 @@
 #define PANIC_TASK	5
 #define PANIC_EXCEPTION	6
 
+#ifdef DEBUG
+
 #define dbg() \
 	do { \
 		volatile uint32_t *__m = (uint32_t*)mailbox_get_debug_base(); \
@@ -73,6 +75,17 @@
 #define dump_object_ptr(__o) \
 	dbg(); \
 	dump(__o, sizeof(*__o) >> 2);
+
+#else
+
+#define dbg()
+#define dbg_at(__x)
+#define dbg_val(__v)
+#define dbg_val_at(__v, __x)
+#define dump(addr, count)
+#define dump_object(__o)
+#define dump_object_ptr(__o)
+#endif
 
 #define panic(_p) \
 	do { \
