@@ -12,6 +12,7 @@
 #include <xtensa/xtruntime.h>
 #include <xtensa/hal.h>
 #include <platform/memory.h>
+#include <reef/interrupt.h>
 #include <platform/interrupt.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
@@ -59,6 +60,7 @@ static void exception(void)
 
 	/* atm we loop forever */
 	/* TODO: we should probably stall/HALT at this point or recover */
+	interrupt_global_disable();
 	panic_dump_stack(PANIC_EXCEPTION);
 }
 
