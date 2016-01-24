@@ -44,9 +44,6 @@ int main(int argc, char *argv[])
 	if (err < 0)
 		panic(PANIC_IPC);
 
-	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
-
 	/* should not return */
 	err = do_task();
 

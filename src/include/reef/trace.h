@@ -40,9 +40,12 @@ static inline void trace_event(uint32_t event)
 		trace_pos = 0;
 }
 
+#define trace_value(x)	trace_event(x)
+
 #else
 
 #define trace_event(x)
+#define trace_value(x)
 
 #endif
 

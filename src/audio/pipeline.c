@@ -438,8 +438,6 @@ int pipeline_init(void)
 	pipe_data = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
 
-	/* init components */
-	sys_comp_init();
 	return 0;
 }
 

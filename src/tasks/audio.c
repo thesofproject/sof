@@ -27,7 +27,7 @@
 
 /* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
 // TODO: align Qemu clock with DSP.
-#define AUDIO_WORK_MSECS	500
+#define AUDIO_WORK_MSECS	50
 
 static struct work audio_work;
 
@@ -48,7 +48,7 @@ int do_task(void)
 	/* init default audio components */
 	sys_comp_dai_init();
 	sys_comp_host_init();
-	sys_comp_mixer_init();
+	
 	sys_comp_mux_init();
 	sys_comp_switch_init();
 	sys_comp_volume_init();
@@ -56,19 +56,26 @@ int do_task(void)
 	/* init static pipeline */
 	init_static_pipeline();
 
+sys_comp_mixer_init();
+
 	/* schedule our audio work */
 	work_init((&audio_work), work_handler, NULL);
 	work_schedule_default(&audio_work, AUDIO_WORK_MSECS);
 
+	/* let host know DSP boot is complete */
+	platform_boot_complete(0);
+dbg();
 	while (1) {
+dbg();
 		// TODO: combine irq_syn into WFI()
 		wait_for_interrupt(0);
 		interrupt_enable_sync();
-
+dbg();
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
+dbg();
 	}
-
+dbg();
 	/* something bad happened */
 	return -EIO;
 }

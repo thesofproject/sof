@@ -46,6 +46,8 @@ struct ipc_mixer_data {
 struct ipc_data {
 	uint32_t host_msg;		/* current message from host */
 	uint32_t dsp_msg;		/* current message to host */
+	uint16_t host_pending;
+	uint16_t dsp_pending;
 	struct dma *dmac0, *dmac1;
 	uint8_t *page_table;
 	completion_t complete;
@@ -494,7 +496,7 @@ static uint32_t ipc_cmd(void)
 {
 	uint32_t type, header;
 
-	header = shim_read(SHIM_IPCXL);
+	header = _ipc->host_msg;
 	type = msg_get_global_type(header);
 
 	switch (type) {
@@ -530,10 +532,10 @@ static void do_cmd(void)
 	uint32_t ipcxh, status;
 	
 	trace_ipc('c');
+	trace_value(_ipc->host_msg);
 
-	/* TODO: place message in Q and process later */
-	_ipc->host_msg = shim_read(SHIM_IPCXL);
 	status = ipc_cmd();
+	_ipc->host_pending = 0;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	ipcxh = shim_read(SHIM_IPCXH);
@@ -543,6 +545,8 @@ static void do_cmd(void)
 
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+
+	interrupt_enable(IRQ_NUM_EXT_IA);
 }
 
 static void do_notify(void)
@@ -561,6 +565,8 @@ static void irq_handler(void *arg)
 {
 	uint32_t isr;
 
+	trace_ipc('I');
+
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);
 
@@ -571,22 +577,24 @@ static void irq_handler(void *arg)
 		/* Mask Done interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
 		do_notify();
+		interrupt_enable(IRQ_NUM_EXT_IA);
 	}
 
 	if (isr & SHIM_ISRD_BUSY) {
 		
 		/* Mask Busy interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
-		do_cmd();
+		/* place message in Q and process later */
+		_ipc->host_msg = shim_read(SHIM_IPCXL);
+		_ipc->host_pending = 1;
 	}
-
-	interrupt_enable(IRQ_NUM_EXT_IA);
 }
 
 /* process current message */
 int ipc_process_msg_queue(void)
 {
-
+	if (_ipc->host_pending)
+		do_cmd();
 	return 0;
 }
 
@@ -606,6 +614,7 @@ int platform_ipc_init(void)
 		IPC_INTEL_PAGE_TABLE_SIZE);
 	_ipc->dmac0 = dma_get(DMA_ID_DMAC0);
 	_ipc->dmac1 = dma_get(DMA_ID_DMAC1);
+	_ipc->host_pending = 0;
 	_ipc->stream_data =
 		(struct ipc_stream_data*)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET);
 	_ipc->mixer_data = (void*)_ipc->stream_data +
