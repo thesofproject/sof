@@ -41,7 +41,7 @@ static inline void _trace_event(uint32_t event)
 }
 
 #define trace_event(__c, __e) \
-	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[0])
+	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 
 #define trace_value(x)	_trace_event(x)
 
