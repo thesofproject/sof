@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <reef/trace.h>
 
-#define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC | __e)
+#define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC, __e)
 
 #define MSG_QUEUE_SIZE		8
 

@@ -94,7 +94,7 @@ static const struct ipc_intel_ipc_fw_version fw_version = {
 
 static uint32_t ipc_fw_version(uint32_t header)
 {
-	trace_ipc('b');
+	trace_ipc("Ver");
 
 	mailbox_outbox_write(0, &fw_version, sizeof(fw_version));
 
@@ -103,7 +103,7 @@ static uint32_t ipc_fw_version(uint32_t header)
 
 static uint32_t ipc_fw_caps(uint32_t header)
 {
-	trace_ipc('d');
+	trace_ipc("Cap");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -230,7 +230,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	struct comp_desc host, dai;
 	int err, stream_id = 0, i;
 
-	trace_ipc('A');
+	trace_ipc("SAl");
 
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&req, 0, sizeof(req));
@@ -324,7 +324,7 @@ error:
 
 static uint32_t ipc_stream_free(uint32_t header)
 {
-	trace_ipc('a');
+	trace_ipc("SFr");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -334,7 +334,7 @@ static uint32_t ipc_stream_info(uint32_t header)
 	struct ipc_intel_ipc_stream_info_reply info;
 	int i;
 
-	trace_ipc('i');
+	trace_ipc("SIn");
 
 	/* TODO: get data from topology */ 
 	info.mixer_hw_id = 1;
@@ -353,7 +353,7 @@ static uint32_t ipc_stream_info(uint32_t header)
 
 static uint32_t ipc_dump(uint32_t header)
 {
-	trace_ipc('D');
+	trace_ipc("Dum");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -371,14 +371,14 @@ struct ipc_intel_ipc_device_config_req {
 #endif
 static uint32_t ipc_device_get_formats(uint32_t header)
 {
-	trace_ipc('f');
+	trace_ipc("DgF");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_device_set_formats(uint32_t header)
 {
-	trace_ipc('F');
+	trace_ipc("DsF");
 
 	// call
 	//int pipeline_params(int pipeline_id, struct pipe_comp_desc *host_desc,
@@ -389,35 +389,35 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 
 static uint32_t ipc_context_save(uint32_t header)
 {
-	trace_ipc('x');
+	trace_ipc("PMs");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_context_restore(uint32_t header)
 {
-	trace_ipc('X');
+	trace_ipc("PMr");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stage_set_volume(uint32_t header)
 {
-	trace_ipc('v');
+	trace_ipc("VoS");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stage_get_volume(uint32_t header)
 {
-	trace_ipc('V');
+	trace_ipc("VoG");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stage_write_pos(uint32_t header)
 {
-	trace_ipc('o');
+	trace_ipc("PoW");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -446,28 +446,28 @@ static uint32_t ipc_stage_message(uint32_t header)
 
 static uint32_t ipc_stream_reset(uint32_t header)
 {
-	trace_ipc('R');
+	trace_ipc("SRe");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stream_pause(uint32_t header)
 {
-	trace_ipc('P');
+	trace_ipc("SPa");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stream_resume(uint32_t header)
 {
-	trace_ipc('p');
+	trace_ipc("SRe");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stream_notification(uint32_t header)
 {
-	trace_ipc('n');
+	trace_ipc("SNo");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -531,7 +531,7 @@ static void do_cmd(void)
 {
 	uint32_t ipcxh, status;
 	
-	trace_ipc('c');
+	trace_ipc("Cmd");
 	trace_value(_ipc->host_msg);
 
 	status = ipc_cmd();
@@ -551,7 +551,7 @@ static void do_cmd(void)
 
 static void do_notify(void)
 {
-	trace_ipc('n');
+	trace_ipc("Not");
 
 	/* clear DONE bit - tell Host we have completed */
 	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
@@ -565,7 +565,7 @@ static void irq_handler(void *arg)
 {
 	uint32_t isr;
 
-	trace_ipc('I');
+	trace_ipc("IRQ");
 
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);

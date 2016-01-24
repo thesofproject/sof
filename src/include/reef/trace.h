@@ -15,10 +15,10 @@
 #include <reef/debug.h>
 #include <reef/timer.h>
 
-/* trace event classes - high 24 bits*/
-#define TRACE_CLASS_IRQ		(1 << 8)
-#define TRACE_CLASS_IPC		(1 << 9)
-#define TRACE_CLASS_PIPE	(1 << 10)
+/* trace event classes - high 8 bits*/
+#define TRACE_CLASS_IRQ		(1 << 24)
+#define TRACE_CLASS_IPC		(2 << 24)
+#define TRACE_CLASS_PIPE	(3 << 24)
 
 /* move to config.h */
 #define TRACE	1
@@ -26,7 +26,7 @@
 #if TRACE
 extern uint32_t trace_pos;
 
-static inline void trace_event(uint32_t event)
+static inline void _trace_event(uint32_t event)
 {
 	volatile uint32_t *t =
 		(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace_pos);
@@ -40,7 +40,10 @@ static inline void trace_event(uint32_t event)
 		trace_pos = 0;
 }
 
-#define trace_value(x)	trace_event(x)
+#define trace_event(__c, __e) \
+	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[0])
+
+#define trace_value(x)	_trace_event(x)
 
 #else
 

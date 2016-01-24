@@ -80,7 +80,7 @@ struct pipeline *pipeline_new(void)
 {
 	struct pipeline *p;
 
-	trace_pipe('N');
+	trace_pipe("PNw");
 
 	p = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
 	if (p == NULL)
@@ -105,7 +105,7 @@ void pipeline_free(struct pipeline *p)
 {
 	struct list_head *clist, *t;
 
-	trace_pipe('F');
+	trace_pipe("PFr");
 
 	spin_lock(&pipe_data->lock);
 
@@ -139,7 +139,7 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 {
 	struct comp_dev *cd;
 
-	trace_pipe('n');
+	trace_pipe("CNw");
 
 	cd = comp_new(desc);
 	if (cd == NULL)
@@ -172,7 +172,7 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	struct comp_dev *source, *sink;
 	struct comp_buffer *buffer;
 
-	trace_pipe('c');
+	trace_pipe("CCn");
 
 	source = pipeline_comp_from_id(p, source_desc);
 	if (source == NULL)
@@ -342,7 +342,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
 	struct op_data op_data;
 	int ret;
 
-	trace_pipe('p');
+	trace_pipe("Ppr");
 
 	host = pipeline_comp_from_id(p, host_desc);
 	if (host == NULL)
@@ -368,7 +368,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd,
 	struct op_data op_data;
 	int ret;
 
-	trace_pipe('C');
+	trace_pipe("PCm");
 
 	host = pipeline_comp_from_id(p, host_desc);
 	if (host == NULL)
@@ -396,7 +396,7 @@ int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 	struct op_data op_data;
 	int ret;
 
-	trace_pipe('P');
+	trace_pipe("Par");
 
 	host = pipeline_comp_from_id(p, host_desc);
 	if (host == NULL)
@@ -421,7 +421,7 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 {
 	struct comp_dev *comp;
 
-	trace_pipe('B');
+	trace_pipe("PBr");
 
 	comp = pipeline_comp_from_id(p, desc);
 	if (comp == NULL)
@@ -433,7 +433,7 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 /* init pipeline */
 int pipeline_init(void)
 {
-	trace_pipe('I');
+	trace_pipe("PIn");
 
 	pipe_data = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
@@ -443,5 +443,7 @@ int pipeline_init(void)
 
 void pipeline_do_work(void)
 {
-	trace_pipe('W');
+	trace_pipe("PWs");
+
+	trace_pipe("PWe");
 }
