@@ -24,6 +24,17 @@ struct comp_data {
 
 static struct comp_data *cd;
 
+static void comp_init(struct comp_dev *dev, struct comp_desc *desc,
+	struct comp_driver *drv)
+{
+	dev->id = desc->id;
+	dev->drv = drv;
+	dev->state = COMP_STATE_UNAVAIL;
+	spinlock_init(&dev->lock);
+	list_init(&dev->bsource_list);
+	list_init(&dev->bsink_list);
+}
+
 struct comp_dev *comp_new(struct comp_desc *desc)
 {
 	struct list_head *clist;
@@ -37,6 +48,7 @@ struct comp_dev *comp_new(struct comp_desc *desc)
 		drv = container_of(clist, struct comp_driver, list);
 		if (drv->uuid == desc->uuid) {
 			dev = drv->ops.new(desc);
+			comp_init(dev, desc, drv);
 			goto out;
 		}
 	}
