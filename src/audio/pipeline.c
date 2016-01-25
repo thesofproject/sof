@@ -145,10 +145,6 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 	if (cd == NULL)
 		return -ENODEV;
 
-	spinlock_init(&cd->lock);
-	list_init(&cd->bsource_list);
-	list_init(&cd->bsink_list);
-
 	spin_lock(&p->lock);
 
 	switch (COMP_TYPE(desc->uuid)) {

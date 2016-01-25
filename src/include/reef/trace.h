@@ -14,6 +14,7 @@
 #include <reef/mailbox.h>
 #include <reef/debug.h>
 #include <reef/timer.h>
+#include <platform/platform.h>
 
 /* trace event classes - high 8 bits*/
 #define TRACE_CLASS_IRQ		(1 << 24)
@@ -45,10 +46,13 @@ static inline void _trace_event(uint32_t event)
 
 #define trace_value(x)	_trace_event(x)
 
+#define trace_point(x) platform_trace_point(x)
+
 #else
 
 #define trace_event(x)
 #define trace_value(x)
+#define trace_point(x)
 
 #endif
 

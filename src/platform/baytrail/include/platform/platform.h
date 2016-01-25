@@ -26,8 +26,12 @@
 #define PLAT_DEV_PERSIZE	256	/* must be multiple of DMA+DEV burst size */
 #define PLAT_DEV_PERIODS	3 	/* give enough latency for DMA refill */
 
-/* Platform define panic code */
+/* Platform defined panic code */
 #define platform_panic(__x) \
+	shim_write(SHIM_IPCDL, shim_read(SHIM_IPCDL) | __x)
+
+/* Platform defined trace code */
+#define platform_trace_point(__x) \
 	shim_write(SHIM_IPCDL, __x)
 
 /*

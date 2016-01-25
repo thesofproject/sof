@@ -130,6 +130,8 @@ struct pipeline *init_static_pipeline(void)
 {
 	int i, err;
 
+	trace_point(0x2010);
+
 	/* init system pipeline core */
 	err = pipeline_init();
 	if (err < 0)
@@ -140,10 +142,14 @@ struct pipeline *init_static_pipeline(void)
 	if (pipeline_static < 0)
 		return NULL;
 
+	trace_point(0x2020);
+
 	/* create components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_comps); i++) {
 		pipeline_comp_new(pipeline_static, &pipe0_comps[i]);
 	}
+
+	trace_point(0x2030);
 
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
@@ -154,6 +160,8 @@ struct pipeline *init_static_pipeline(void)
 			goto err;
 	}
 
+	trace_point(0x2040);
+
 	/* create components on capture pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_capture0); i++) {
 		/* add source -> sink */
@@ -163,10 +171,13 @@ struct pipeline *init_static_pipeline(void)
 			goto err;
 	}
 
+	trace_point(0x2050);
+
 	/* pipeline now ready for params, prepare and cmds */
 	return pipeline_static;
 
 err:
+	trace_point(0x2060);
 	pipeline_free(pipeline_static);
 	return NULL;
 }

@@ -45,6 +45,8 @@ int do_task(void)
 {
 	struct pipeline *p;
 
+	trace_point(0x1000);
+
 	/* init default audio components */
 	sys_comp_init();
 	sys_comp_dai_init();
@@ -54,10 +56,14 @@ int do_task(void)
 	sys_comp_switch_init();
 	sys_comp_volume_init();
 
+	trace_point(0x2000);
+
 	/* init static pipeline */
 	p = init_static_pipeline();
 	if (p == NULL)
 		panic(PANIC_TASK);
+
+	trace_point(0x3000);
 
 	/* schedule our audio work */
 	work_init((&audio_work), work_handler, NULL);
