@@ -169,7 +169,7 @@ _start:
 	.weak	__memmap_init
 	movi	a4, __memmap_init
 	beqz	a4, 1f
-	CALLX12	a4
+	CALLX	a4
 1:
 
 #if !XCHAL_HAVE_BOOTLOADER	/* boot loader takes care of zeroing BSS */
@@ -221,15 +221,13 @@ _start:
 	//  (ARG#).
 
 
-//#if XCHAL_HAVE_HALT
-
-#if 1
+#if XCHAL_HAVE_HALT
 	//  Assume minimalist environment for memory-constrained TX cores.
 	//  No C library or board initialization, no parameters passed to main
 	//  (assume declared as "void main(void)") and no call to exit().
 
 	CALL	main
-	//halt
+	halt
 
 #else /* !HALT */
 
@@ -249,7 +247,7 @@ _start:
 	 */	
 
 	//  Pass an empty argv array, with an empty string as the program name.
-
+#if 0
 	movi	ARG1, _start_argc	// argc address
 	movi	ARG2, _start_argv	// argv = ["", 0]
 	movi	ARG3, _start_envp	// envp = [0]
@@ -257,7 +255,7 @@ _start:
 //  	movi	ARG5, _fini		// function that calls destructors
 	l32i	ARG1, ARG1, 0		// argc = 1
 	CALL	__clibrary_init
-
+#endif
 	//  Call:   int main(int argc, char ** argv, char ** environ);
 	movi	ARG1, _start_argc	// argc address
 	movi	ARG2, _start_argv	// argv = ["", 0]
@@ -265,7 +263,7 @@ _start:
 	l32i	ARG1, ARG1, 0		// argc = 1
 	CALL	main
 	//  The return value is the same register as the first outgoing argument.
-	CALL	exit			// exit with main's return value
+//	CALL	exit			// exit with main's return value
 	// Does not return here.
 
 	.data
