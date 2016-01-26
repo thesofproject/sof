@@ -155,6 +155,7 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 	default:
 		/* add component dev to pipeline list */ 
 		list_add(&cd->pipeline_list, &p->comp_list);
+		break;
 	}
 
 	spin_unlock(&pipe_data->lock);
@@ -183,12 +184,14 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 		sizeof(*buffer));
 	if (buffer == NULL)
 		return -ENOMEM;
+
 	buffer->addr = rballoc(RZONE_MODULE, RMOD(source->drv->module_id),
-		buffer->desc.size);
+		buffer_desc->size);
 	if (buffer->addr == NULL) {
 		rfree(RZONE_MODULE, RMOD(source->drv->module_id), buffer);
 		return -ENOMEM;
 	}
+
 	buffer->w_ptr = buffer->r_ptr = buffer->addr;
 	buffer->avail = 0;
 	buffer->desc = *buffer_desc;
