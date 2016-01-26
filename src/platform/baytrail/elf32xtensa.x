@@ -76,7 +76,7 @@ _memmap_cacheattr_bp_base = 0x22022000;
 _memmap_cacheattr_unused_mask = 0x00F00FFF;
 _memmap_cacheattr_wb_trapnull = 0x4422422F;
 _memmap_cacheattr_wba_trapnull = 0x4422422F;
-_memmap_cacheattr_wbna_trapnull = 0x5522522F;
+_memmap_cacheattr_wbna_trapnull = 0x25222222;
 _memmap_cacheattr_wt_trapnull = 0x1122122F;
 _memmap_cacheattr_bp_trapnull = 0x2222222F;
 _memmap_cacheattr_wb_strict = 0x44F24FFF;
@@ -85,7 +85,7 @@ _memmap_cacheattr_bp_strict = 0x22F22FFF;
 _memmap_cacheattr_wb_allvalid = 0x44224222;
 _memmap_cacheattr_wt_allvalid = 0x11221222;
 _memmap_cacheattr_bp_allvalid = 0x22222222;
-PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wb_trapnull);
+PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
 SECTIONS
 {

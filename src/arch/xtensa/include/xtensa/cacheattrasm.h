@@ -425,8 +425,8 @@
 	//  of this macro we simply write to both.
 // TODO: This is used by the MCG FW to init the D/I caches. It's not working here,
 // maybe due to differences in core-isa.h ????
-	//icacheattr_set
-	//dcacheattr_set
+	icacheattr_set
+	dcacheattr_set
 #else
 	//  This macro isn't applicable to arbitrary MMU configurations.
 	//  Do nothing in this case.
