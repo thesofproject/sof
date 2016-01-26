@@ -134,19 +134,17 @@ static void *alloc_cont_blocks(struct block_map *map, int module, size_t bytes)
 {
 	struct block_hdr *hdr = &map->block[map->first_free];
 	void *ptr;
-	int start, current;
-	size_t count = bytes / map->block_size;
-	int i;
-
+	unsigned int start, current, count = bytes / map->block_size;
+	unsigned int i, remaining = map->count - count, end;
 	if (bytes % map->block_size)
 		count++;
 
 	/* check for continious blocks from "start" */
-	for (start = map->first_free; start < map->count - count; start++) {
+	for (start = map->first_free; start < remaining; start++) {
 
 		/* check that we have enough free blocks from start pos */
-		for (current = start; current < start + count; current++) {
-
+		end = start + count;
+		for (current = start; current < end; current++) {
 			hdr = &map->block[current];
 
 			/* is block free */
@@ -155,7 +153,7 @@ static void *alloc_cont_blocks(struct block_map *map, int module, size_t bytes)
 		}
 
 		/* enough free blocks ? */
-		if (current == start + count)
+		if (current == end)
 			goto found;
 	}
 
@@ -170,7 +168,7 @@ found:
 	hdr->size = count;
 
 	/* allocate each block */
-	for (current = start; current < start + count; current++) {
+	for (current = start; current < end; current++) {
 		hdr = &map->block[current];
 		hdr->module = module;
 		hdr->flags = BLOCK_USED;
@@ -200,6 +198,10 @@ static void free_block(int module, void *ptr)
 	struct block_map *map;
 	struct block_hdr *hdr;
 	int i, block;
+
+	/* sanity check */
+	if (ptr == NULL)
+		return;
 
 	/* find block that ptr belongs to */
 	for (i = 0; i < ARRAY_SIZE(mod_heap_map) - 1; i ++) {
@@ -269,7 +271,7 @@ void *rballoc(int zone, int module, size_t bytes)
 	int i;
 
 	/* will request fit in single block */
-	for (i = 0; i < ARRAY_SIZE(buf_heap_map); i ++) {
+	for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
 
 		/* is block big enough */
 		if (buf_heap_map[i].block_size < bytes)
@@ -289,8 +291,9 @@ void *rballoc(int zone, int module, size_t bytes)
 	if (ARRAY_SIZE(buf_heap_map) == 1)
 		return alloc_cont_blocks(&buf_heap_map[0], module, bytes);
 	else {
+
 		/* find best block size for request */
-		for (i = 0; i < ARRAY_SIZE(buf_heap_map); i ++) {
+		for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
 
 			/* allocate is block size smaller than request */
 			if (buf_heap_map[i].block_size < bytes)
@@ -326,17 +329,17 @@ void init_heap(void)
 	omap = &buf_heap_map[0];
 	omap->base = buffer_heap;
 
-	for (i = 1; i < ARRAY_SIZE(buf_heap_map); i ++) {
+	for (i = 1; i < ARRAY_SIZE(buf_heap_map); i++) {
 		nmap = &buf_heap_map[i];
 		nmap->base = omap->base + omap->block_size * omap->count;
 		omap = &buf_heap_map[i];
 	}
 
-	/* initialise buffer map */
+	/* initialise module map */
 	omap = &mod_heap_map[0];
 	omap->base = module_heap;
 
-	for (i = 1; i < ARRAY_SIZE(mod_heap_map); i ++) {
+	for (i = 1; i < ARRAY_SIZE(mod_heap_map); i++) {
 		nmap = &mod_heap_map[i];
 		nmap->base = omap->base + omap->block_size * omap->count;
 		omap = &mod_heap_map[i];
