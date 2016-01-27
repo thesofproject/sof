@@ -210,6 +210,9 @@ static void queue_run(void *data)
 
 	spin_lock_local_irq(&queue->lock, queue->irq);
 
+	/* clear timer irq */
+	timer_set(queue->timer, timer_get_system() - 1);
+
 	/* work can take variable time to complete so we re-check the
 	  queue after running all the pending work to make sure no new work
 	  is pending */
