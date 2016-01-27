@@ -34,6 +34,7 @@
 #include <reef/interrupt.h>
 #include <reef/work.h>
 #include <reef/lock.h>
+#include <reef/trace.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <errno.h>
@@ -372,11 +373,17 @@ static void dw_dma_irq_handler(void *data)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t status_block = 0;
 	int i = 0;
+
+	trace_point(0x9999);
+
+	interrupt_disable(dma_irq(dma));
+
 	/* we should inform the client that a period has been transfered */
 	status_block = io_reg_read(dma_base(dma) + DW_STATUS_BLOCK);
+
 	/* Check if we have any interrupt from the DMAC */
 	if (!status_block)
-		return;
+		goto out;
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)) {
@@ -386,6 +393,9 @@ static void dw_dma_irq_handler(void *data)
 		}
 	}
 
+out:
+	interrupt_clear(dma_irq(dma));
+	interrupt_enable(dma_irq(dma));
 }
 
 static int dw_dma_setup(struct dma *dma)
