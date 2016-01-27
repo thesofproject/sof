@@ -13,6 +13,7 @@
 #include <reef/list.h>
 #include <reef/stream.h>
 #include <reef/alloc.h>
+#include <reef/trace.h>
 #include <reef/dma.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
@@ -23,13 +24,12 @@ struct host_data {
 	int chan;
 };
 
-#if 0
+
 /* this is called by DMA driver every time descriptor has completed */
 static void host_dma_cb(void *data)
 {
 	/* TODO: update the buffer rx/tx pointers and avail */
 }
-#endif
 
 static struct comp_dev *host_new(struct comp_desc *desc)
 {
@@ -47,7 +47,7 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 	}
 
 	comp_set_drvdata(dev, hd);
-#if 0
+
 	hd->dma = dma_get(DMA_ID_DMAC0);
 
 	/* get DMA channel from DMAC0 */
@@ -57,10 +57,9 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 
 	/* set up callback */
 	dma_set_cb(hd->dma, hd->chan, host_dma_cb, dev);
-#endif
 	return dev;
 
-//error:
+error:
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
 	return NULL;

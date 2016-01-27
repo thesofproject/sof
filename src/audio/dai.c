@@ -24,13 +24,11 @@ struct dai_data {
 	struct dai *ssp;
 };
 
-#if 0
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *data)
 {
 	/* TODO: update the buffer rx/tx pointers and avail */
 }
-#endif
 
 static struct comp_dev *dai_new_ssp(struct comp_desc *desc)
 {
@@ -48,9 +46,7 @@ static struct comp_dev *dai_new_ssp(struct comp_desc *desc)
 	}
 
 	comp_set_drvdata(dev, dd);
-#if 0
 	dd->ssp = dai_get(COMP_UUID(COMP_VENDOR_INTEL, desc->id));
-
 	dd->dma = dma_get(DMA_ID_DMAC1);
 
 	/* get DMA channel from DMAC1 */
@@ -60,10 +56,9 @@ static struct comp_dev *dai_new_ssp(struct comp_desc *desc)
 
 	/* set up callback */
 	dma_set_cb(dd->dma, dd->chan, dai_dma_cb, dev);
-#endif
 	return dev;
 
-//error:
+error:
 	rfree(RZONE_MODULE, RMOD_SYS, dd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
 	return NULL;
