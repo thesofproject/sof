@@ -23,6 +23,8 @@
  *    used to construct the DMA configuration for the host client 1 above. 
  */
 
+#include <reef/debug.h>
+#include <reef/reef.h>
 #include <reef/dma.h>
 #include <reef/dw-dma.h>
 #include <reef/io.h>
@@ -37,7 +39,6 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
-
 
 /* channel registers */
 #define DW_MAX_CHAN			8
@@ -100,6 +101,11 @@
 struct dma_chan_data {
 	uint8_t status;
 	uint8_t reserved[3];
+	struct dw_lli1 *lli;
+	int desc_count;
+	uint32_t cfg_lo;
+	uint32_t cfg_hi;
+
 	void (*cb)(void *data);	/* client callback function */
 	void *cb_data;		/* client callback data */
 };
@@ -125,8 +131,22 @@ static int dw_dma_channel_get(struct dma *dma)
 			continue;
 
 		/* use channel if it's free */
+		/* TODO: may need read Channel Enable register to choose a
+		free/disabled channel */
 		if (p->chan[i].status == DMA_STATUS_FREE) {
 			p->chan[i].status = DMA_STATUS_IDLE;
+
+			/* write interrupt clear registers for the channel:
+			ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr*/
+			io_reg_write(dma_base(dma) + DW_CLEAR_TFR, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_BLOCK, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_SRC_TRAN, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_DST_TRAN, 0x1 << i);
+			io_reg_write(dma_base(dma) + DW_CLEAR_ERR, 0x1 << i);
+
+			/* TODO: do we need read back Interrupt Raw Status and Interrupt
+			Status registers to confirm that all interrupts have been cleared? */
+
 			return i;
 		}
 	}
@@ -139,15 +159,41 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	p->chan[channel].status |= DMA_STATUS_FREE;
+	p->chan[channel].status = DMA_STATUS_FREE;
 	p->chan[channel].cb = NULL;
 	// TODO: disable/reset any other channel config.
+	/* free the lli allocated by set_config*/
+
 }
 
 
 static int dw_dma_start(struct dma *dma, int channel)
 {
-	
+	struct dma_pdata *p = dma_get_drvdata(dma);
+
+	/* write SARn, DARn */
+	io_reg_write(dma_base(dma) + DW_SAR(channel), p->chan[channel].lli->sar);
+	io_reg_write(dma_base(dma) + DW_DAR(channel), p->chan[channel].lli->dar);
+	io_reg_write(dma_base(dma) + DW_LLP(channel), p->chan[channel].lli->llp);
+
+	/* program CTLn and CFGn*/
+	io_reg_write(dma_base(dma) + DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
+	io_reg_write(dma_base(dma) + DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
+	io_reg_write(dma_base(dma) + DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
+	io_reg_write(dma_base(dma) + DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
+
+	p->chan[channel].status = DMA_STATUS_RUNNING;
+
+	/* unmask all kinds of interrupts for this channels */
+	io_reg_write(dma_base(dma) + DW_MASK_TFR, INT_UNMASK(channel));
+	io_reg_write(dma_base(dma) + DW_MASK_BLOCK, INT_UNMASK(channel));
+	io_reg_write(dma_base(dma) + DW_MASK_SRC_TRAN, INT_UNMASK(channel));
+	io_reg_write(dma_base(dma) + DW_MASK_DST_TRAN, INT_UNMASK(channel));
+	io_reg_write(dma_base(dma) + DW_MASK_ERR, INT_UNMASK(channel));
+
+	/* enable the channel */
+	io_reg_write(dma_base(dma) + DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
+
 	return 0;
 }
 
@@ -231,7 +277,70 @@ static int dw_dma_status(struct dma *dma, int channel,
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
-{	
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct list_head *plist, *nlist;
+	struct dma_sg_elem *sg_elem;
+	struct dw_lli1 *lli_desc;
+
+	list_for_each(plist, &config->elem_list) {
+		p->chan[channel].desc_count++;
+	}
+	p->chan[channel].lli = rmalloc(RZONE_DEV, RMOD_SYS,
+		sizeof(struct dw_lli1) * p->chan[channel].desc_count);
+	lli_desc = p->chan[channel].lli;
+
+	/* write CTL_LOn for the first lli */
+
+	lli_desc->ctrl_lo |= DWC_CTLL_FC(config->direction); /* config the transfer type */
+	lli_desc->ctrl_lo |= DWC_CTLL_SRC_WIDTH(config->src_width); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_DST_WIDTH(config->dest_width); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_SRC_MSIZE(0); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_DST_MSIZE(0); /* config the src/dest tr width */
+
+	/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
+	switch(config->direction) {
+	case DMA_DIR_MEM_TO_MEM:
+		lli_desc->ctrl_lo |= DWC_CTLL_SRC_INC | DWC_CTLL_DST_INC;
+		break;
+	case DMA_DIR_MEM_TO_DEV:
+		lli_desc->ctrl_lo |= DWC_CTLL_SRC_INC | DWC_CTLL_DST_FIX;
+		p->chan[channel].cfg_hi |= DWC_CFGH_DST_PER(0);//peripheral id
+		break;
+	case DMA_DIR_DEV_TO_MEM:
+		lli_desc->ctrl_lo |= DWC_CTLL_SRC_FIX | DWC_CTLL_DST_INC;
+		p->chan[channel].cfg_hi |= DWC_CFGH_SRC_PER(0);//peripheral id
+		break;
+	case DMA_DIR_DEV_TO_DEV:
+		lli_desc->ctrl_lo |= DWC_CTLL_SRC_FIX | DWC_CTLL_DST_FIX;
+		p->chan[channel].cfg_hi |= DWC_CFGH_SRC_PER(0) | DWC_CFGH_DST_PER(0);//peripheral id
+		break;
+	default:
+		break;
+	}
+
+	lli_desc->ctrl_hi &= ~DWC_CTLH_DONE; /* clear the done bit */
+
+	/* SSTATARn/DSTATARn for write back*/
+
+	/* fill in lli for the list */
+	list_for_each_safe(plist, nlist, &config->elem_list) {
+		sg_elem = container_of(plist, struct dma_sg_elem, list);
+		lli_desc->sar = (uint32_t)sg_elem->src;
+		lli_desc->dar = (uint32_t)sg_elem->dest;
+		if (nlist != &config->elem_list) {
+			sg_elem = container_of(nlist, struct dma_sg_elem, list);
+			lli_desc->llp = (uint32_t)(lli_desc + 1);
+			lli_desc->ctrl_lo |= DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN;
+		} else {
+			lli_desc->llp = 0;
+			lli_desc->ctrl_lo &= ~(DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN);
+			p->chan[channel].cfg_lo &= ~(DWC_CFGL_RELOAD_SAR | DWC_CFGL_RELOAD_DAR);//how about cfg_lo.reload_src/dst?
+		}
+
+		lli_desc++;
+	}
+
 	return 0;
 }
 
@@ -259,7 +368,39 @@ static void dw_dma_set_cb(struct dma *dma, int channel,
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
+	struct dma *dma = (struct dma *)data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t status_block = 0;
+	int i = 0;
 	/* we should inform the client that a period has been transfered */
+	status_block = io_reg_read(dma_base(dma) + DW_STATUS_BLOCK);
+	/* Check if we have any interrupt from the DMAC */
+	if (!status_block)
+		return;
+
+	for (i = 0; i < DW_MAX_CHAN; i++) {
+		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)) {
+			io_reg_write(dma_base(dma) + DW_MASK_BLOCK, INT_MASK(i));
+			p->chan[i].cb(p->chan[i].cb_data);
+
+		}
+	}
+
+}
+
+static int dw_dma_setup(struct dma *dma)
+{
+	/*mask all kinds of interrupts for all 8 channels*/
+	io_reg_write(dma_base(dma) + DW_MASK_TFR, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_BLOCK, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_SRC_TRAN, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_DST_TRAN, 0x0000ff00);
+	io_reg_write(dma_base(dma) + DW_MASK_ERR, 0x0000ff00);
+
+	/*enable dma cntrl*/
+	io_reg_write(dma_base(dma) + DW_DMA_CFG, 1);
+
+	return 0;
 }
 
 static int dw_dma_probe(struct dma *dma)
@@ -268,9 +409,11 @@ static int dw_dma_probe(struct dma *dma)
 
 	/* allocate private data */
 	dw_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*dw_pdata));
+	bzero(dw_pdata, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(dw_pdata->lock);
+	dw_dma_setup(dma);
 
 	/* init work */
 	work_init(&dw_pdata->work, dw_dma_fifo_work, dma);

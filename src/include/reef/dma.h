@@ -13,9 +13,10 @@
 #include <reef/list.h>
 
 /* DMA directions */
-#define DMA_DIR_DEV_TO_MEM	0
+#define DMA_DIR_MEM_TO_MEM	0
 #define DMA_DIR_MEM_TO_DEV	1
-#define DMA_DIR_MEM_TO_MEM	2
+#define DMA_DIR_DEV_TO_MEM	2
+#define DMA_DIR_DEV_TO_DEV	3
 
 /* DMA status flags - only DRAINING can be combined with others. */
 #define DMA_STATUS_FREE		0
