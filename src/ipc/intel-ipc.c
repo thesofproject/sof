@@ -123,7 +123,9 @@ static void dma_complete(void *data)
 {
 	struct ipc_data *ipc = (struct ipc_data *)data;
 
+	trace_point(0x9500);
 	wait_completed(&ipc->complete);
+	trace_point(0x9600);
 }
 
 /* this function copies the audio buffer page tables from the host to the DSP */
@@ -166,8 +168,10 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	/* start the copy of page table to DSP */
 	dma_start(dma, chan);
 
+
 	/* wait 2 msecs for DMA to finish */
-	ret = wait_for_completion_timeout(&_ipc->complete, 2);
+	//_ipc->complete.timeout = 2;
+	//ret = wait_for_completion_timeout(&_ipc->complete);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
@@ -268,6 +272,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	err = get_page_desciptors(&req);
 	if (err < 0)
 		goto error;
+return IPC_INTEL_GLB_REPLY_SUCCESS;
 
 	/* TODO: now parse page tables and create audio DMA SG configuration and
 	for host audio DMA buffer. This involves creating a dma_sg_elem for each
@@ -295,7 +300,6 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	err = pipeline_prepare(pipeline_static, &host);
 	if (err < 0)
 		goto error;
-error:
 
 	/* at this point pipeline is ready for command so send stream reply */
 	reply.stream_hw_id = stream_id;
@@ -319,6 +323,7 @@ error:
 	mailbox_outbox_write(0, &reply, sizeof(reply));
 
 	/* TODO */
+error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
@@ -545,8 +550,6 @@ static void do_cmd(void)
 
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
-
-	interrupt_enable(IRQ_NUM_EXT_IA);
 }
 
 static void do_notify(void)
@@ -570,14 +573,11 @@ static void irq_handler(void *arg)
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);
 
-	interrupt_clear(IRQ_NUM_EXT_IA);
-
 	if (isr & SHIM_ISRD_DONE) {
 
 		/* Mask Done interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
 		do_notify();
-		interrupt_enable(IRQ_NUM_EXT_IA);
 	}
 
 	if (isr & SHIM_ISRD_BUSY) {
