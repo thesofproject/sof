@@ -12,64 +12,66 @@
 #include <stdint.h>
 #include <errno.h>
 #include <reef/work.h>
+#include <reef/timer.h>
+#include <reef/interrupt.h>
 
-typedef volatile uint32_t completion_t;
+typedef struct {
+	volatile uint32_t c;
+	struct work work;
+	uint32_t timeout;
+} completion_t;
 
 void wait_for_interrupt(int level);
+void work_schedule_default1(struct work *w, int timeout);
 
-static inline void wait_completed(completion_t *c)
+static inline void wait_completed(completion_t *comp)
 {
-	*c = 1;
+	comp->c = 1;
 }
 
-static inline void wait_init(completion_t *c)
+static inline void wait_init(completion_t *comp)
 {
-	*c = 0;
+	comp->c = 0;
 }
 
 /* simple interrupt based wait for completion */
-static inline void wait_for_completion(completion_t *c)
+static inline void wait_for_completion(completion_t *comp)
 {
 	/* check for completion after every wake from IRQ */
-	while (*c == 0)
+	while (comp->c == 0)
 		wait_for_interrupt(0);
 }
 
-/* only used internally */
-struct _wait_completion {
-	completion_t c;
-};
-
+static uint32_t ticks1 = 0;
 static uint32_t _wait_cb(void *data)
 {
-	struct _wait_completion *wc = (struct _wait_completion*)data;
+	completion_t *wc = (completion_t*)data;
 
-	wait_completed(&wc->c);
+	dbg_val_at(ticks1++, 2);
+	wc->timeout = 1;
 	return 0;
 }
 
 /* simple interrupt based wait for completion with timeout */
-static inline int wait_for_completion_timeout(completion_t *c, int timeout)
+static inline int wait_for_completion_timeout(completion_t *comp)
 {
-	struct work work;
-	struct _wait_completion timed_out;
-
-	wait_init(&timed_out.c);
-	work_init(&work, _wait_cb, &timed_out);
-	work_schedule_default(&work, timeout);
+	wait_init(comp);
+	work_init(&comp->work, _wait_cb, comp);
+	work_schedule_default(&comp->work, comp->timeout);
+	comp->timeout = 0;
 
 	/* check for completion after every wake from IRQ */
-	while (*c == 0 && timed_out.c == 0)
+	while (comp->c == 0 && comp->timeout == 0) {
 		wait_for_interrupt(0);
+		interrupt_enable_sync();
+	}
 
 	/* did we timeout */
-	if (timed_out.c == 0) {
-
+	if (comp->timeout == 0) {
 		/* no timeout so cancel work and return 0 */
-		work_cancel_default(&work);
+		work_cancel_default(&comp->work);
 		return 0;
 	} else {
-
 		/* timeout */
 		return -ETIME;
 	}
