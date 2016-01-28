@@ -30,10 +30,13 @@
 #define AUDIO_WORK_MSECS	50
 
 static struct work audio_work;
+static uint32_t ticks = 0;
 
 /* TODO only run this work when we have active audio pipelines */
 uint32_t work_handler(void *data)
 {
+	dbg_val_at(ticks++, 20);
+
 	/* process our audio pipelines */
 	pipeline_do_work();
 
@@ -45,8 +48,6 @@ int do_task(void)
 {
 	struct pipeline *p;
 
-	trace_point(0x1000);
-
 	/* init default audio components */
 	sys_comp_init();
 	sys_comp_dai_init();
@@ -56,14 +57,10 @@ int do_task(void)
 	sys_comp_switch_init();
 	sys_comp_volume_init();
 
-	trace_point(0x2000);
-
 	/* init static pipeline */
 	p = init_static_pipeline();
 	if (p == NULL)
 		panic(PANIC_TASK);
-
-	trace_point(0x3000);
 
 	/* schedule our audio work */
 	work_init((&audio_work), work_handler, NULL);
@@ -77,6 +74,7 @@ int do_task(void)
 
 		// TODO: combine irq_syn into WFI()
 		wait_for_interrupt(0);
+		dbg_val_at(interrupt_get_status(), 21);
 		interrupt_enable_sync();
 
 		/* now process any IPC messages from host */
