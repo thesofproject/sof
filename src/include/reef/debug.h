@@ -23,6 +23,8 @@
 #define PANIC_TASK	5
 #define PANIC_EXCEPTION	6
 
+#define DEBUG
+
 #ifdef DEBUG
 
 #define dbg() \

@@ -57,9 +57,9 @@ static inline int wait_for_completion_timeout(completion_t *comp)
 {
 	wait_init(comp);
 	work_init(&comp->work, _wait_cb, comp);
-	work_schedule_default(&comp->work, comp->timeout);
+	work_schedule_default(&comp->work, 4000);
 	comp->timeout = 0;
-
+return 0;
 	/* check for completion after every wake from IRQ */
 	while (comp->c == 0 && comp->timeout == 0) {
 		wait_for_interrupt(0);

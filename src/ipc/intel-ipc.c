@@ -119,6 +119,7 @@ struct sst_hsw_ipc_stream_ring {
 } __attribute__((packed));
 #endif
 
+#if 0
 static void dma_complete(void *data)
 {
 	struct ipc_data *ipc = (struct ipc_data *)data;
@@ -127,17 +128,19 @@ static void dma_complete(void *data)
 	wait_completed(&ipc->complete);
 	trace_point(0x9600);
 }
+#endif
 
 /* this function copies the audio buffer page tables from the host to the DSP */
 /* the page table is a max of 4K */
 static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 {
-	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
-	struct dma_sg_config config;
-	struct dma_sg_elem elem;
-	struct dma *dma;
-	int chan, ret = 0;
-
+	//struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
+	//struct dma_sg_config config;
+	//struct dma_sg_elem elem;
+	//struct dma *dma;
+	//int chan, 
+	int ret = 0;
+#if 0
 	/* get DMA channel from DMAC1 */
 	chan = dma_channel_get(_ipc->dmac1);
 	if (chan >= 0)
@@ -163,19 +166,20 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 
 	/* set up callback */
 	dma_set_cb(dma, chan, dma_complete, _ipc);
+#endif
 	wait_init(&_ipc->complete);
 
 	/* start the copy of page table to DSP */
-	dma_start(dma, chan);
+//	dma_start(dma, chan);
 
 
 	/* wait 2 msecs for DMA to finish */
-	//_ipc->complete.timeout = 2;
-	//ret = wait_for_completion_timeout(&_ipc->complete);
+	_ipc->complete.timeout = 2;
+	ret = wait_for_completion_timeout(&_ipc->complete);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
-out:
-	dma_channel_put(dma, chan);
+//out:
+	//dma_channel_put(dma, chan);
 	return ret;
 }
 

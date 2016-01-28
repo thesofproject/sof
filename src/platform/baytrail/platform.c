@@ -17,6 +17,7 @@
 #include <reef/dma.h>
 #include <reef/reef.h>
 #include <reef/audio/component.h>
+#include <string.h>
 
 static const struct sst_hsw_ipc_fw_ready ready = {
 	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,
@@ -48,6 +49,9 @@ int platform_init(void)
 {
 	struct dma *dmac0, *dmac1;
 	struct dai *ssp0, *ssp1;
+
+	/* clear mailbox */
+	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	dmac0 = dma_get(DMA_ID_DMAC0);
 	dma_probe(dmac0);

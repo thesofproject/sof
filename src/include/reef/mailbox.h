@@ -12,8 +12,8 @@
 #include <platform/mailbox.h>
 #include <stdint.h>
 
-/* 1k should be enough for everyone ..... */
-#define IPC_MAX_MAILBOX_BYTES 1024
+/* almost 1k should be enough for everyone ..... */
+#define IPC_MAX_MAILBOX_BYTES 0xe80
 
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE

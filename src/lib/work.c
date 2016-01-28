@@ -144,6 +144,10 @@ static uint32_t queue_get_next_timeout(struct work_queue *queue)
 	struct work *work;
 	uint32_t delta = MAX_INT, current, d, ticks;
 
+	/* only recalc if work list not empty */
+	if (list_empty(&queue->work))
+		return 0;
+
 	ticks = current = timer_get_system();
 
 	/* find time for next work */
@@ -194,13 +198,9 @@ static void queue_reschedule(struct work_queue *queue)
 	queue->timeout = queue_get_next_timeout(queue);
 
 	/* scale the window size to clock speed */
-	queue_->window_size = clock_ms_to_ticks(CLK_CPU, 1) >> 5;
+	//queue_->window_size = clock_ms_to_ticks(CLK_CPU, 1) >> 5;
 
 	timer_set(queue->timer, queue->timeout);
-
-	/* the interrupt may need to be re-enabled outside IRQ context.
-	 * wait_for_interrupt() will do this for us */
-	timer_enable(queue->timer);
 }
 
 /* run the work queue */
@@ -208,10 +208,9 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 
-	spin_lock_local_irq(&queue->lock, queue->irq);
-
-	/* clear timer irq */
-	timer_set(queue->timer, timer_get_system() - 1);
+	/* clear and disable interrupt */
+	timer_set(queue->timer, 0);
+	timer_disable(queue->timer);
 
 	/* work can take variable time to complete so we re-check the
 	  queue after running all the pending work to make sure no new work
@@ -222,7 +221,9 @@ static void queue_run(void *data)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock_local_irq(&queue_->lock, queue_->irq);
+	/* the interrupt may need to be re-enabled outside IRQ context.
+	 * wait_for_interrupt() will do this for us */
+	timer_enable(queue->timer);
 }
 
 /* notification of CPU frequency changes - atomic PRE and POST sequence */
@@ -237,6 +238,7 @@ static void work_notify(int message, void *data, void *event_data)
 		/* CPU frequency update complete */
 		queue_recalc_timers(queue, clk_data);
 		queue_reschedule(queue);
+		timer_enable(queue->timer);
 	} else if (message == CLOCK_NOTIFY_PRE) {
 		/* CPU frequency update pending */
 		timer_disable(queue->timer);
@@ -248,7 +250,7 @@ void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 	/* convert timeout millisecs to CPU clock ticks */
 	w->count = clock_ms_to_ticks(CLK_CPU, timeout) + timer_get_system();
 
-	spin_lock_local_irq(&queue->lock, queue->irq);
+	timer_disable(queue->timer);
 
 	/* insert work into list */
 	list_add(&w->list, &queue->work);
@@ -256,12 +258,12 @@ void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock_local_irq(&queue->lock, queue->irq);
+	timer_enable(queue->timer);
 }
 
 void work_cancel(struct work_queue *queue, struct work *w)
 {
-	spin_lock_local_irq(&queue->lock, queue->irq);
+	timer_disable(queue->timer);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -269,7 +271,7 @@ void work_cancel(struct work_queue *queue, struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock_local_irq(&queue->lock, queue->irq);
+	timer_enable(queue->timer);
 }
 
 void work_schedule_default(struct work *w, int timeout)
@@ -277,7 +279,7 @@ void work_schedule_default(struct work *w, int timeout)
 	/* convert timeout millisecs to CPU clock ticks */
 	w->count = clock_ms_to_ticks(CLK_CPU, timeout) + timer_get_system();
 
-	spin_lock_local_irq(&queue_->lock, queue_->irq);
+	timer_disable(queue_->timer);
 
 	/* insert work into list */
 	list_add(&w->list, &queue_->work);
@@ -285,12 +287,12 @@ void work_schedule_default(struct work *w, int timeout)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
 
-	spin_unlock_local_irq(&queue_->lock, queue_->irq);
+	timer_enable(queue_->timer);
 }
 
 void work_cancel_default(struct work *w)
 {
-	spin_lock_local_irq(&queue_->lock, queue_->irq);
+	timer_disable(queue_->timer);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -298,7 +300,7 @@ void work_cancel_default(struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
 
-	spin_unlock_local_irq(&queue_->lock, queue_->irq);
+	timer_enable(queue_->timer);
 }
 
 void init_system_workq(void)

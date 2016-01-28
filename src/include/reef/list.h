@@ -55,4 +55,7 @@ static inline void list_del(struct list_head *entry)
 	for (pos = (list)->next, n = pos->next; pos != (list); \
 		pos = n, n = pos->next)
 
+#define list_empty(list) \
+       ((list)->next == (list)->prev)
+
 #endif

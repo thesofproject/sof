@@ -12,7 +12,7 @@
 #include <platform/memory.h>
 #include <stdint.h>
 
-#define SHIM_CSR			0x00
+#define SHIM_CSR		0x00
 #define SHIM_PISR		0x08
 #define SHIM_PIMR		0x10
 #define SHIM_ISRX		0x18
