@@ -19,6 +19,8 @@ void timer_set(int timer, unsigned int ticks);
 
 void timer_set_us(int timer, unsigned int ms);
 
+void timer_clear(int timer);
+
 unsigned int timer_get_count(int timer);
 
 unsigned int timer_get_count_delta(int timer);

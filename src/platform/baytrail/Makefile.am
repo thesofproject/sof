@@ -6,7 +6,8 @@ libplatform_a_SOURCES = \
 	platform.c \
 	dai.c \
 	dma.c \
-	clk.c
+	clk.c \
+	timer.c
 
 libplatform_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

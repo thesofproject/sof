@@ -124,6 +124,24 @@ unsigned int clock_set_freq(int clock, unsigned int hz)
 		break;
 	case CLK_SSP0:
 	case CLK_SSP1:
+		//TODO: currently hard coded for 25M
+		/* get nearest frequency that is >= requested Hz */
+		notify_data.freq = 25000000;
+
+		/* tell anyone interested we are about to change CPU freq */
+		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
+			&notify_data);
+
+		/* change CPU frequency */
+		// TODO
+
+		/* update clock freqency */
+		clk_pdata->clk[clock].freq = 25000000;
+		clk_pdata->clk[clock].ticks_per_msec = 25000;
+
+		/* tell anyone interested we have now changed CPU freq */
+		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
+			&notify_data);
 	default:
 		break;
 	}
@@ -153,4 +171,6 @@ void init_platform_clocks(void)
 
 	/* Set CPU to default frequency for booting */
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+	clock_set_freq(CLK_SSP0, 25000);
+	clock_set_freq(CLK_SSP1, 25000);
 }

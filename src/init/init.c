@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
 	/* initialise system services */
 	init_heap();
 	init_system_notify();
-	init_system_workq();
 
 	/* init the platform */
 	err = platform_init();

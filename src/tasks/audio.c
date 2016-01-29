@@ -27,7 +27,7 @@
 
 /* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
 // TODO: align Qemu clock with DSP.
-#define AUDIO_WORK_MSECS	50
+#define AUDIO_WORK_MSECS	25
 
 static struct work audio_work;
 static uint32_t ticks = 0;
@@ -74,7 +74,6 @@ int do_task(void)
 
 		// TODO: combine irq_syn into WFI()
 		wait_for_interrupt(0);
-		dbg_val_at(interrupt_get_status(), 21);
 		interrupt_enable_sync();
 
 		/* now process any IPC messages from host */

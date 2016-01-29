@@ -13,6 +13,7 @@
 #include <xtensa/hal.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
+#include <platform/timer.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
 #include <reef/alloc.h>
@@ -22,66 +23,46 @@
 #include <stdint.h>
 #include <errno.h>
 
-int timer_get_irq(int timer)
-{
-	switch (timer) {
-	case 0:
-		return IRQ_NUM_TIMER1;
-	case 1:
-		return IRQ_NUM_TIMER2;
-	case 2:
-		return IRQ_NUM_TIMER3;
-	default:
-		return -ENODEV;
-	}
-}
-
 int timer_register(int timer, void(*handler)(void *arg), void *arg)
 {
-	int irq;
-
-	irq = timer_get_irq(timer);
-	if (irq < 0)
-		return irq;
-
-	return interrupt_register(irq, handler, arg);
+	return interrupt_register(timer, handler, arg);
 }
 
 void timer_unregister(int timer)
 {
-	int irq;
-
-	irq = timer_get_irq(timer);
-	if (irq < 0)
-		return;
-	interrupt_unregister(irq);
+	interrupt_unregister(timer);
 }
 
 void timer_enable(int timer)
 {
-	int irq;
-
-	irq = timer_get_irq(timer);
-	if (irq < 0)
-		return;
-
-	interrupt_enable(irq);
+	interrupt_enable(timer);
 }
 
 void timer_disable(int timer)
 {
-	int irq;
+	interrupt_disable(timer);
+}
 
-	irq = timer_get_irq(timer);
-	if (irq < 0)
-		return;
-
-	interrupt_disable(irq);
+void timer_clear(int timer)
+{
+	interrupt_clear(timer);
 }
 
 void timer_set(int timer, unsigned int ticks)
 {
-	xthal_set_ccompare(timer, ticks);
+	switch (timer) {
+	case TIMER0:
+		xthal_set_ccompare(0, ticks);
+		break;
+	case TIMER1:
+		xthal_set_ccompare(1, ticks);
+		break;
+	case TIMER2:
+		xthal_set_ccompare(2, ticks);
+		break;
+	default:
+		break;
+	}
 }
 
 uint32_t timer_get_system(void)

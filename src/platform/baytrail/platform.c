@@ -11,11 +11,13 @@
 #include <platform/shim.h>
 #include <platform/dma.h>
 #include <platform/clk.h>
+#include <platform/timer.h>
 #include <uapi/intel-ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
 #include <reef/dma.h>
 #include <reef/reef.h>
+#include <reef/work.h>
 #include <reef/audio/component.h>
 #include <string.h>
 
@@ -30,6 +32,14 @@ static const struct sst_hsw_ipc_fw_ready ready = {
 		.date = __DATE__,
 		.time = __TIME__,
 	},
+};
+
+static const struct work_queue_timesource platform_generic_queue = {
+	.timer 		= TIMER3,	/* external timer */
+	.clk		= CLK_SSP0,
+	.timer_set	= platform_timer_set,
+	.timer_clear	= platform_timer_clear,
+	.timer_get	= platform_timer_get,
 };
 
 int platform_boot_complete(uint32_t boot_message)
@@ -53,6 +63,12 @@ int platform_init(void)
 	/* clear mailbox */
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
+	/* init work queues and clocks */
+	platform_timer_clear(TIMER3);
+	platform_timer_set(TIMER3, 0xffffffff);
+	init_system_workq(&platform_generic_queue);
+	init_platform_clocks();
+
 	dmac0 = dma_get(DMA_ID_DMAC0);
 	dma_probe(dmac0);
 
@@ -64,8 +80,6 @@ int platform_init(void)
 
 	ssp1 = dai_get(COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP1));
 	dai_probe(ssp1);
-
-	init_platform_clocks();
 
 	return 0;
 }

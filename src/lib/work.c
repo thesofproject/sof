@@ -45,26 +45,43 @@ struct work_queue {
 	struct list_head work;		/* list of work */
 	uint32_t timeout;		/* timeout for next queue run */
 	uint32_t window_size;		/* window size for pending work */
-	int timer;			/* timer this queue uses */
-	int irq;			/* IRQ this timer uses */
 	spinlock_t lock;
 	struct notifier notifier;	/* notify CPU freq changes */
+	const struct work_queue_timesource *ts;	/* time source for work queue */
 };
 
 /* generic system work queue */
 static struct work_queue *queue_;
 
+static inline void work_set_timer(struct work_queue *queue, uint32_t ticks)
+{
+	queue->ts->timer_set(queue->ts->timer, ticks);
+}
+
+static inline void work_clear_timer(struct work_queue *queue)
+{
+	queue->ts->timer_clear(queue->ts->timer);
+}
+
+static inline uint32_t work_get_timer(struct work_queue *queue)
+{
+	return queue->ts->timer_get(queue->ts->timer);
+}
+//static int ticks1 = 0, ticks2 = 0, ticks3 = 0;
 /* is there any work pending in the current time window ? */
 static int is_work_pending(struct work_queue *queue)
 {
 	struct list_head *wlist;
 	struct work *work;
 	uint32_t win_end, win_start;
-	int pending_count = 0;
+	int pending_count = 0, i = 0;
 
 	/* get the current valid window of work */
-	win_end = timer_get_system();
+	win_end = work_get_timer(queue);
 	win_start = win_end - queue->window_size;
+
+	dbg_val_at(win_start, 17);
+	dbg_val_at(win_end, 18);
 
 	/* correct the pending flag window for overflow */
 	if (win_end > win_start) {
@@ -73,7 +90,7 @@ static int is_work_pending(struct work_queue *queue)
 		list_for_each(wlist, &queue->work) {
 
 			work = container_of(wlist, struct work, list);
-
+dbg_val_at(work->count, 19 + i++);
 			/* if work has timed out then mark it as pending to run */
 			if (work->count >= win_start && work->count <= win_end) {
 				work->pending = 1;
@@ -88,7 +105,7 @@ static int is_work_pending(struct work_queue *queue)
 		list_for_each(wlist, &queue->work) {
 
 			work = container_of(wlist, struct work, list);
-
+dbg_val_at(work->count, 19 + i++);
 			/* if work has timed out then mark it as pending to run */
 			if (work->count >= win_start && work->count <= win_end) {
 				work->pending = 0;
@@ -122,8 +139,8 @@ static void run_work(struct work_queue *queue)
 			if (reschedule_msecs == 0)
 				list_del(&work->list);
 			else
-				work->count = clock_ms_to_ticks(CLK_CPU,
-					reschedule_msecs) + timer_get_system();
+				work->count = clock_ms_to_ticks(queue->ts->clk,
+					reschedule_msecs) + work_get_timer(queue);
 		}
 	}
 }
@@ -132,7 +149,7 @@ static inline uint32_t calc_delta_ticks(uint32_t current, uint32_t work)
 {
 	/* does work run in next cycle ? */
 	if (work < current)
-		return MAX_INT - current + work;
+		return (uint32_t)MAX_INT - current + work;
 	else
 		return work - current;
 }
@@ -148,7 +165,7 @@ static uint32_t queue_get_next_timeout(struct work_queue *queue)
 	if (list_empty(&queue->work))
 		return 0;
 
-	ticks = current = timer_get_system();
+	ticks = current = work_get_timer(queue);
 
 	/* find time for next work */
 	list_for_each(wlist, &queue->work) {
@@ -175,7 +192,7 @@ static void queue_recalc_timers(struct work_queue *queue,
 	struct work *work;
 	uint32_t delta_ticks, delta_msecs, current;
 
-	current = timer_get_system();
+	current = work_get_timer(queue);
 
 	/* re calculate timers for each work item */
 	list_for_each(wlist, &queue->work) {
@@ -187,7 +204,7 @@ static void queue_recalc_timers(struct work_queue *queue,
 
 		/* is work within next msec, then schedule it now */
 		if (delta_msecs > 0)
-			work->count = clock_ms_to_ticks(CLK_CPU, delta_msecs);
+			work->count = current + clock_ms_to_ticks(queue->ts->clk, delta_msecs);
 		else
 			work->count = current + CLK_NEXT_TICKS;
 	}
@@ -197,11 +214,10 @@ static void queue_reschedule(struct work_queue *queue)
 {
 	queue->timeout = queue_get_next_timeout(queue);
 
-	/* scale the window size to clock speed */
-	//queue_->window_size = clock_ms_to_ticks(CLK_CPU, 1) >> 5;
-
-	timer_set(queue->timer, queue->timeout);
+	work_set_timer(queue, queue->timeout);
 }
+
+
 
 /* run the work queue */
 static void queue_run(void *data)
@@ -209,8 +225,8 @@ static void queue_run(void *data)
 	struct work_queue *queue = (struct work_queue *)data;
 
 	/* clear and disable interrupt */
-	timer_set(queue->timer, 0);
-	timer_disable(queue->timer);
+	work_clear_timer(queue);
+	timer_disable(queue->ts->timer);
 
 	/* work can take variable time to complete so we re-check the
 	  queue after running all the pending work to make sure no new work
@@ -223,7 +239,7 @@ static void queue_run(void *data)
 
 	/* the interrupt may need to be re-enabled outside IRQ context.
 	 * wait_for_interrupt() will do this for us */
-	timer_enable(queue->timer);
+	timer_enable(queue->ts->timer);
 }
 
 /* notification of CPU frequency changes - atomic PRE and POST sequence */
@@ -235,22 +251,25 @@ static void work_notify(int message, void *data, void *event_data)
 
 	/* we need to re-caclulate timer when CPU freqency changes */
 	if (message == CLOCK_NOTIFY_POST) {
+
 		/* CPU frequency update complete */
+		/* scale the window size to clock speed */
+		queue->window_size = clock_ms_to_ticks(queue->ts->clk, 1) >> 5;
 		queue_recalc_timers(queue, clk_data);
 		queue_reschedule(queue);
-		timer_enable(queue->timer);
+		timer_enable(queue->ts->timer);
 	} else if (message == CLOCK_NOTIFY_PRE) {
 		/* CPU frequency update pending */
-		timer_disable(queue->timer);
+		timer_disable(queue->ts->timer);
 	}
 }
 
 void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 {
 	/* convert timeout millisecs to CPU clock ticks */
-	w->count = clock_ms_to_ticks(CLK_CPU, timeout) + timer_get_system();
+	w->count = clock_ms_to_ticks(queue->ts->clk, timeout) + work_get_timer(queue);
 
-	timer_disable(queue->timer);
+	spin_lock_local_irq(&queue->lock, queue->ts->timer);
 
 	/* insert work into list */
 	list_add(&w->list, &queue->work);
@@ -258,12 +277,12 @@ void work_schedule(struct work_queue *queue, struct work *w, int timeout)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	timer_enable(queue->timer);
+	spin_unlock_local_irq(&queue->lock, queue->ts->timer);
 }
 
 void work_cancel(struct work_queue *queue, struct work *w)
 {
-	timer_disable(queue->timer);
+	spin_lock_local_irq(&queue->lock, queue->ts->timer);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -271,15 +290,15 @@ void work_cancel(struct work_queue *queue, struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	timer_enable(queue->timer);
+	spin_unlock_local_irq(&queue->lock, queue->ts->timer);
 }
 
 void work_schedule_default(struct work *w, int timeout)
 {
 	/* convert timeout millisecs to CPU clock ticks */
-	w->count = clock_ms_to_ticks(CLK_CPU, timeout) + timer_get_system();
+	w->count = clock_ms_to_ticks(queue_->ts->clk, timeout) + work_get_timer(queue_);
 
-	timer_disable(queue_->timer);
+	spin_lock_local_irq(&queue_->lock, queue_->ts->timer);
 
 	/* insert work into list */
 	list_add(&w->list, &queue_->work);
@@ -287,12 +306,12 @@ void work_schedule_default(struct work *w, int timeout)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
 
-	timer_enable(queue_->timer);
+	spin_unlock_local_irq(&queue_->lock, queue_->ts->timer);
 }
 
 void work_cancel_default(struct work *w)
 {
-	timer_disable(queue_->timer);
+	spin_lock_local_irq(&queue_->lock, queue_->ts->timer);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -300,23 +319,34 @@ void work_cancel_default(struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
 
-	timer_enable(queue_->timer);
+	spin_unlock_local_irq(&queue_->lock, queue_->ts->timer);
 }
 
-void init_system_workq(void)
+struct work_queue *work_new_queue(const struct work_queue_timesource *ts)
 {
-	/* init system work queue */
-	queue_ = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*queue_));
-	queue_->timer = REEF_SYS_TIMER;
-	queue_->irq = timer_get_irq(REEF_SYS_TIMER);
-	queue_->window_size = REEF_WORK_WINDOW;
-	list_init(&queue_->work);
-	spinlock_init(&queue_->lock);
-	queue_->notifier.cb = work_notify;
-	queue_->notifier.cb_data = queue_;
-	queue_->notifier.id = NOTIFIER_ID_CPU_FREQ;
-	notifier_register(&queue_->notifier);
+	struct work_queue *queue;
+
+	/* init work queue */
+	queue = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*queue_));
+
+	queue->window_size = REEF_WORK_WINDOW;
+	list_init(&queue->work);
+	spinlock_init(&queue->lock);
+	queue->ts = ts;
+
+	/* notification of clk changes */
+	queue->notifier.cb = work_notify;
+	queue->notifier.cb_data = queue;
+	queue->notifier.id = NOTIFIER_ID_CPU_FREQ;
+	notifier_register(&queue->notifier);
 
 	/* register system timer */
-	timer_register(queue_->timer, queue_run, queue_);
+	timer_register(queue->ts->timer, queue_run, queue);
+
+	return queue;
+}
+
+void init_system_workq(const struct work_queue_timesource *ts)
+{
+	queue_ = work_new_queue(ts);
 }

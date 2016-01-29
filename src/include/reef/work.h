@@ -11,8 +11,9 @@
 #ifndef __INCLUDE_WORK__
 #define __INCLUDE_WORK__
 
-#include <reef/list.h>
 #include <stdint.h>
+#include <reef/list.h>
+#include <reef/timer.h>
 
 /* work queue pending window size. TODO: fine tune */
 #define REEF_WORK_WINDOW	100
@@ -27,6 +28,14 @@ struct work {
 	uint32_t pending;
 };
 
+struct work_queue_timesource {
+	int timer;
+	int clk;
+	void (*timer_set)(int timer, uint32_t ticks);
+	void (*timer_clear)(int timer);
+	uint32_t (*timer_get)(int timer);
+};
+
 #define work_init(w, x, xd) \
 	(w)->cb = x; \
 	(w)->cb_data = xd;
@@ -39,7 +48,10 @@ void work_cancel(struct work_queue *queue, struct work *work);
 void work_schedule_default(struct work *work, int timeout);
 void work_cancel_default(struct work *work);
 
+/* create new work queue */
+struct work_queue *work_new_queue(const struct work_queue_timesource *ts);
+
 /* init system workq */
-void init_system_workq(void);
+void init_system_workq(const struct work_queue_timesource *ts);
 
 #endif

@@ -31,6 +31,9 @@
 #define SHIM_IPCLPESC		0x70
 #define SHIM_CLKCTL		0x78
 #define SHIM_CSR2		0x80
+#define SHIM_EXT_TIMER_CNTLL	0xC0
+#define SHIM_EXT_TIMER_CNTLH	0xC4
+#define SHIM_EXT_TIMER_STAT	0xC8
 #define SHIM_LTRC		0xE0
 #define SHIM_HMDC		0xE8
 
@@ -44,6 +47,9 @@
 #define SHIM_CSR_PWAITMODE	(0x1 << 3)
 #define SHIM_CSR_DCS(x)		(x << 4)
 #define SHIM_CSR_DCS_MASK	(0x7 << 4)
+
+/* PISR */
+#define SHIM_PISR_EXT_TIMER	(1 << 10)
 
 /*  ISRX 0x18 */
 #define SHIM_ISRX_BUSY		(0x1 << 1)
@@ -79,6 +85,10 @@
 #define SHIM_CLKCTL_DCPLCG	(1 << 18)
 #define SHIM_CLKCTL_SCOE1	(1 << 17)
 #define SHIM_CLKCTL_SCOE0	(1 << 16)
+
+/* ext timer */
+#define SHIM_EXT_TIMER_RUN	(1 << 31)
+#define SHIM_EXT_TIMER_CLEAR	(1 << 30)
 
 static inline uint32_t shim_read(uint32_t reg)
 {

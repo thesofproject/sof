@@ -11,9 +11,6 @@
 
 #include <platform/shim.h>
 
-/* Platform timer config */
-#define REEF_SYS_TIMER 	0
-
 /* Platform stream capabilities */
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
