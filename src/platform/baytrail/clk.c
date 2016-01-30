@@ -171,6 +171,6 @@ void init_platform_clocks(void)
 
 	/* Set CPU to default frequency for booting */
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
-	clock_set_freq(CLK_SSP0, 25000);
-	clock_set_freq(CLK_SSP1, 25000);
+	clock_set_freq(CLK_SSP0, 25000000);
+	clock_set_freq(CLK_SSP1, 25000000);
 }

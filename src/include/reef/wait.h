@@ -22,7 +22,6 @@ typedef struct {
 } completion_t;
 
 void wait_for_interrupt(int level);
-void work_schedule_default1(struct work *w, int timeout);
 
 static inline void wait_completed(completion_t *comp)
 {
@@ -42,12 +41,10 @@ static inline void wait_for_completion(completion_t *comp)
 		wait_for_interrupt(0);
 }
 
-static uint32_t ticks1 = 0;
 static uint32_t _wait_cb(void *data)
 {
 	completion_t *wc = (completion_t*)data;
 
-	dbg_val_at(ticks1++, 2);
 	wc->timeout = 1;
 	return 0;
 }

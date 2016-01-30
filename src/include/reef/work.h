@@ -15,16 +15,13 @@
 #include <reef/list.h>
 #include <reef/timer.h>
 
-/* work queue pending window size. TODO: fine tune */
-#define REEF_WORK_WINDOW	100
-
 struct work_queue;
 
 struct work {
 	uint32_t (*cb)(void*);	/* returns reschedule timeout in msecs */
 	void *cb_data;
 	struct list_head list;
-	uint32_t count;
+	uint32_t timeout;
 	uint32_t pending;
 };
 

@@ -30,12 +30,10 @@
 #define AUDIO_WORK_MSECS	25
 
 static struct work audio_work;
-static uint32_t ticks = 0;
 
 /* TODO only run this work when we have active audio pipelines */
 uint32_t work_handler(void *data)
 {
-	dbg_val_at(ticks++, 20);
 
 	/* process our audio pipelines */
 	pipeline_do_work();

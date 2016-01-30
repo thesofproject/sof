@@ -15,21 +15,16 @@
 
 void platform_timer_set(int timer, uint32_t ticks)
 {
-	/* clear the clear bit */
-	//shim_write(SHIM_EXT_TIMER_CNTLH, 0);
-
 	/* set new value and run */
-	shim_write(SHIM_EXT_TIMER_CNTLL, ticks);
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
+	shim_write(SHIM_EXT_TIMER_CNTLL, ticks);
 }
 
 void platform_timer_clear(int timer)
 {
 	uint32_t pisr;
 
-	//shim_write(SHIM_EXT_TIMER_CNTLL, 0);
-	//shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_CLEAR);
-
+	/* we dont use the timer clear bit as we only need to clear the ISR */
 	pisr = shim_read(SHIM_PISR);
 	pisr |= SHIM_PISR_EXT_TIMER;
 	shim_write(SHIM_PISR, pisr);

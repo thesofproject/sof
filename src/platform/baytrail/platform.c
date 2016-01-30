@@ -64,7 +64,6 @@ int platform_init(void)
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	/* init work queues and clocks */
-	platform_timer_clear(TIMER3);
 	platform_timer_set(TIMER3, 0xffffffff);
 	init_system_workq(&platform_generic_queue);
 	init_platform_clocks();
