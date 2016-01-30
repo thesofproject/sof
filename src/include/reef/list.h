@@ -56,6 +56,6 @@ static inline void list_del(struct list_head *entry)
 		pos = n, n = pos->next)
 
 #define list_empty(list) \
-       ((list)->next == (list)->prev)
+       ((list)->next == list)
 
 #endif
