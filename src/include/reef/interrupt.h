@@ -10,26 +10,75 @@
 #define __INCLUDE_INTERRUPT__
 
 #include <stdint.h>
+#include <arch/interrupt.h>
 #include <reef/trace.h>
 
 #define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ | __e)
 
-int interrupt_register(int irq, void(*handler)(void *arg), void *arg);
-void interrupt_unregister(int irq);
+static inline int interrupt_register(int irq,
+	void(*handler)(void *arg), void *arg)
+{
+	return arch_interrupt_register(irq, handler, arg);
+}
 
-void interrupt_enable(int irq);
-void interrupt_disable(int irq);
-void interrupt_enable_sync(void);
+static inline void interrupt_unregister(int irq)
+{
+	arch_interrupt_unregister(irq);
+}
 
-void interrupt_set(int irq);
-void interrupt_clear(int irq);
-uint32_t interrupt_get_enabled(void);
-uint32_t interrupt_get_status(void);
+static inline void interrupt_enable(int irq)
+{
+	arch_interrupt_enable(irq);
+}
 
-void interrupt_local_enable(uint32_t flags);
-void interrupt_local_disable(uint32_t flags);
+static inline void interrupt_disable(int irq)
+{
+	arch_interrupt_disable(irq);
+}
 
-uint32_t interrupt_global_disable(void);
-void interrupt_global_enable(uint32_t flags);
+static inline void interrupt_enable_sync(void)
+{
+	arch_interrupt_enable_sync();
+}
+
+static inline void interrupt_set(int irq)
+{
+	arch_interrupt_set(irq);
+}
+
+static inline void interrupt_clear(int irq)
+{
+	arch_interrupt_clear(irq);
+}
+
+static inline uint32_t interrupt_get_enabled(void)
+{
+	return arch_interrupt_get_enabled();
+}
+
+static inline uint32_t interrupt_get_status(void)
+{
+	return arch_interrupt_get_status();
+}
+
+static inline void interrupt_local_enable(uint32_t flags)
+{
+	arch_interrupt_local_enable(flags);
+}
+
+static inline uint32_t interrupt_local_disable(void)
+{
+	return arch_interrupt_local_disable();
+}
+
+static inline uint32_t interrupt_global_disable(void)
+{
+	return arch_interrupt_global_disable();
+}
+
+static inline void interrupt_global_enable(uint32_t flags)
+{
+	arch_interrupt_global_enable(flags);
+}
 
 #endif

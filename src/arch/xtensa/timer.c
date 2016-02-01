@@ -11,44 +11,18 @@
 
 #include <xtensa/xtruntime.h>
 #include <xtensa/hal.h>
+#include <arch/timer.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/timer.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
-#include <reef/alloc.h>
-#include <reef/init.h>
 #include <reef/timer.h>
 #include <reef/interrupt.h>
 #include <stdint.h>
 #include <errno.h>
 
-int timer_register(int timer, void(*handler)(void *arg), void *arg)
-{
-	return interrupt_register(timer, handler, arg);
-}
-
-void timer_unregister(int timer)
-{
-	interrupt_unregister(timer);
-}
-
-void timer_enable(int timer)
-{
-	interrupt_enable(timer);
-}
-
-void timer_disable(int timer)
-{
-	interrupt_disable(timer);
-}
-
-void timer_clear(int timer)
-{
-	interrupt_clear(timer);
-}
-
-void timer_set(int timer, unsigned int ticks)
+void arch_timer_set(int timer, unsigned int ticks)
 {
 	switch (timer) {
 	case TIMER0:
@@ -65,7 +39,3 @@ void timer_set(int timer, unsigned int ticks)
 	}
 }
 
-uint32_t timer_get_system(void)
-{
-	return xthal_get_ccount();
-}

@@ -9,24 +9,49 @@
 #ifndef __INCLUDE_TIMER__
 #define __INCLUDE_TIMER__
 
-int timer_register(int timer, void(*handler)(void *arg), void *arg);
-void timer_unregister(int timer);
+#include <arch/timer.h>
+#include <stdint.h>
 
-void timer_enable(int timer);
-void timer_disable(int timer);
+static inline int timer_register(int timer,
+	void(*handler)(void *arg), void *arg)
+{
+	return arch_timer_register(timer, handler, arg);
+}
 
-void timer_set(int timer, unsigned int ticks);
+static inline void timer_unregister(int timer)
+{
+	arch_timer_unregister(timer);
+}
 
-void timer_set_us(int timer, unsigned int ms);
+static inline void timer_enable(int timer)
+{
+	arch_timer_enable(timer);
+}
 
-void timer_clear(int timer);
+static inline void timer_disable(int timer)
+{
+	arch_timer_disable(timer);
+}
+
+static inline void timer_set(int timer, unsigned int ticks)
+{
+	arch_timer_set(timer, ticks);
+}
+
+void timer_set_ms(int timer, unsigned int ms);
+
+static inline void timer_clear(int timer)
+{
+	arch_timer_clear(timer);
+}
 
 unsigned int timer_get_count(int timer);
 
 unsigned int timer_get_count_delta(int timer);
 
-uint32_t timer_get_system(void);
-
-int timer_get_irq(int timer);
+static inline uint32_t timer_get_system(void)
+{
+	return arch_timer_get_system();
+}
 
 #endif
