@@ -306,6 +306,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	lli_desc->ctrl_lo |= DWC_CTLL_DST_WIDTH(config->dest_width); /* config the src/dest tr width */
 	lli_desc->ctrl_lo |= DWC_CTLL_SRC_MSIZE(0); /* config the src/dest tr width */
 	lli_desc->ctrl_lo |= DWC_CTLL_DST_MSIZE(0); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_INT_EN; /* enable interrupt */
 
 	/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
 	switch(config->direction) {
@@ -346,6 +347,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo &= ~(DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN);
 			p->chan[channel].cfg_lo &= ~(DWC_CFGL_RELOAD_SAR | DWC_CFGL_RELOAD_DAR);//how about cfg_lo.reload_src/dst?
 		}
+
+		lli_desc->ctrl_hi |= sg_elem->size & DWC_CTLH_BLOCK_TS_MASK;
 
 		lli_desc++;
 	}
