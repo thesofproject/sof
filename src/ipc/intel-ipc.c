@@ -612,6 +612,9 @@ int platform_ipc_init(void)
 	_ipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
 	_ipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
 		IPC_INTEL_PAGE_TABLE_SIZE);
+	if (_ipc->page_table)
+		bzero(_ipc->page_table, IPC_INTEL_PAGE_TABLE_SIZE);
+
 	_ipc->dmac0 = dma_get(DMA_ID_DMAC0);
 	_ipc->dmac1 = dma_get(DMA_ID_DMAC1);
 	_ipc->host_pending = 0;
