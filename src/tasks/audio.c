@@ -27,7 +27,7 @@
 
 /* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
 // TODO: align Qemu clock with DSP.
-#define AUDIO_WORK_MSECS	25
+#define AUDIO_WORK_MSECS	1
 
 struct audio_data {
 	struct work audio_work;
