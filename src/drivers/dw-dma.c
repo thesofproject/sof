@@ -134,6 +134,9 @@ static int dw_dma_channel_get(struct dma *dma)
 		/* use channel if it's free */
 		/* TODO: may need read Channel Enable register to choose a
 		free/disabled channel */
+		if (io_reg_read(dma_base(dma) + DW_DMA_CHAN_EN) & (0x1 << i))
+			continue;
+
 		if (p->chan[i].status == DMA_STATUS_FREE) {
 			p->chan[i].status = DMA_STATUS_IDLE;
 
