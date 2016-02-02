@@ -163,10 +163,15 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	p->chan[channel].status = DMA_STATUS_FREE;
-	p->chan[channel].cb = NULL;
+	io_reg_write(dma_base(dma) + DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
+
 	// TODO: disable/reset any other channel config.
 	/* free the lli allocated by set_config*/
+	if (p->chan[channel].lli)
+		rfree(RZONE_MODULE, RMOD_SYS, p->chan[channel].lli);
+
+	p->chan[channel].status = DMA_STATUS_FREE;
+	p->chan[channel].cb = NULL;
 
 }
 
@@ -290,7 +295,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	list_for_each(plist, &config->elem_list) {
 		p->chan[channel].desc_count++;
 	}
-	p->chan[channel].lli = rmalloc(RZONE_DEV, RMOD_SYS,
+	p->chan[channel].lli = rmalloc(RZONE_MODULE, RMOD_SYS,
 		sizeof(struct dw_lli1) * p->chan[channel].desc_count);
 	lli_desc = p->chan[channel].lli;
 
