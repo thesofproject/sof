@@ -92,6 +92,6 @@ struct pipeline *init_static_pipeline(void);
 int init_pipeline(void);
 
 /* pipeline work */
-void pipeline_do_work(void);
+void pipeline_do_work(struct pipeline *p);
 
 #endif

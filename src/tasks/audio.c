@@ -29,14 +29,21 @@
 // TODO: align Qemu clock with DSP.
 #define AUDIO_WORK_MSECS	25
 
-static struct work audio_work;
+struct audio_data {
+	struct work audio_work;
+	uint32_t count;
+	struct pipeline *p;
+};
 
 /* TODO only run this work when we have active audio pipelines */
 uint32_t work_handler(void *data)
 {
+	struct audio_data *pdata = (struct audio_data*)data;
+
+	dbg_val_at(++pdata->count, 20);
 
 	/* process our audio pipelines */
-	pipeline_do_work();
+	pipeline_do_work(pdata->p);
 
 	/* TODO add support to scale clocks/wait time here */
 	return AUDIO_WORK_MSECS;
@@ -44,7 +51,7 @@ uint32_t work_handler(void *data)
 
 int do_task(void)
 {
-	struct pipeline *p;
+	struct audio_data pdata;
 
 	/* init default audio components */
 	sys_comp_init();
@@ -56,13 +63,13 @@ int do_task(void)
 	sys_comp_volume_init();
 
 	/* init static pipeline */
-	p = init_static_pipeline();
-	if (p == NULL)
+	pdata.p = init_static_pipeline();
+	if (pdata.p == NULL)
 		panic(PANIC_TASK);
 
 	/* schedule our audio work */
-	work_init((&audio_work), work_handler, NULL);
-	work_schedule_default(&audio_work, AUDIO_WORK_MSECS);
+	work_init((&pdata.audio_work), work_handler, &pdata);
+	work_schedule_default(&pdata.audio_work, AUDIO_WORK_MSECS);
 
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);

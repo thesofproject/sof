@@ -334,7 +334,7 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 	return err;
 }
 
-/* prepare the pipeline for usage */
+/* prepare the pipeline for usage - preload host buffers here */
 int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
 {
 	struct comp_dev *host;
@@ -429,6 +429,46 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 	return comp_host_buffer(comp, config);
 }
 
+/* called on timer tick to process pipeline data */
+void pipeline_do_work(struct pipeline *p)
+{
+	struct list_head *elist;
+	struct op_data op_data;
+
+	trace_pipe("PWs");
+
+	op_data.p = p;
+	op_data.op = COMP_OPS_COPY;
+
+	/* process capture streams in the pipeline */
+	list_for_each(elist, &p->endpoint_list) {
+		struct comp_dev *ep;
+
+		ep = container_of(elist, struct comp_dev, endpoint_list);
+
+		if (ep->is_playback)
+			continue;
+
+		/* process downstream */
+		component_op_sink(&op_data, ep);
+	}
+
+	/* now process playback streams in the pipeline */
+	list_for_each(elist, &p->endpoint_list) {
+		struct comp_dev *ep;
+
+		ep = container_of(elist, struct comp_dev, endpoint_list);
+
+		if (!ep->is_playback)
+			continue;
+
+		/* process downstream */
+		component_op_sink(&op_data, ep);
+	}
+
+	trace_pipe("PWe");
+}
+
 /* init pipeline */
 int pipeline_init(void)
 {
@@ -438,11 +478,4 @@ int pipeline_init(void)
 	list_init(&pipe_data->pipeline_list);
 
 	return 0;
-}
-
-void pipeline_do_work(void)
-{
-	trace_pipe("PWs");
-
-	trace_pipe("PWe");
 }
