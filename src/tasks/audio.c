@@ -40,8 +40,6 @@ uint32_t work_handler(void *data)
 {
 	struct audio_data *pdata = (struct audio_data*)data;
 
-	dbg_val_at(++pdata->count, 20);
-
 	/* process our audio pipelines */
 	pipeline_do_work(pdata->p);
 
