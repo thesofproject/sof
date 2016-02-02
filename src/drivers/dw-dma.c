@@ -297,6 +297,11 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	}
 	p->chan[channel].lli = rmalloc(RZONE_MODULE, RMOD_SYS,
 		sizeof(struct dw_lli1) * p->chan[channel].desc_count);
+
+	if (!p->chan[channel].lli)
+		return -ENOMEM;
+	bzero(p->chan[channel].lli, sizeof(struct dw_lli1) * p->chan[channel].desc_count);
+
 	lli_desc = p->chan[channel].lli;
 
 	/* write CTL_LOn for the first lli */
