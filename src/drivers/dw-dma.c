@@ -397,7 +397,8 @@ static void dw_dma_irq_handler(void *data)
 		goto out;
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
-		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)) {
+		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)
+					&& (status_block | i)) {
 			io_reg_write(dma_base(dma) + DW_MASK_BLOCK, INT_MASK(i));
 			p->chan[i].cb(p->chan[i].cb_data);
 
