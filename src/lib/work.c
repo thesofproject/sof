@@ -45,6 +45,7 @@ struct work_queue {
 	struct notifier notifier;	/* notify CPU freq changes */
 	const struct work_queue_timesource *ts;	/* time source for work queue */
 	uint32_t ticks_per_msec;	/* ticks per msec */
+	uint32_t run_ticks;	/* ticks when last run */
 };
 
 /* generic system work queue */
@@ -119,6 +120,7 @@ static void run_work(struct work_queue *queue)
 	struct list_head *wlist, *tlist;
 	struct work *work;
 	uint32_t reschedule_msecs;
+	uint32_t current;
 
 	/* check each work item in queue for pending */
 	list_for_each_safe(wlist, tlist, &queue->work) {
@@ -132,9 +134,19 @@ static void run_work(struct work_queue *queue)
 			/* do we need reschedule this work ? */
 			if (reschedule_msecs == 0)
 				list_del(&work->list);
-			else
+			else {
+				/* calc next run based on work request */
 				work->timeout = queue->ticks_per_msec *
-					reschedule_msecs + work_get_timer(queue);
+					reschedule_msecs + queue->run_ticks;
+
+				/* did work take too long ? */
+				current = work_get_timer(queue);
+				if (work->timeout <= current) {
+					/* TODO: inform users */
+					work->timeout = queue->ticks_per_msec *
+						reschedule_msecs + current;
+				}
+			}
 		}
 	}
 }
@@ -181,8 +193,7 @@ static void queue_get_next_timeout(struct work_queue *queue)
 		}
 	}
 
-	/* add 125 uS for processing cost */
-	queue->timeout = ticks + (queue->ticks_per_msec >> 3);
+	queue->timeout = ticks;
 }
 
 /* re calculate timers for queue after CPU frequency change */
@@ -193,8 +204,8 @@ static void queue_recalc_timers(struct work_queue *queue,
 	struct work *work;
 	uint32_t delta_ticks, delta_msecs, current;
 
-	/* get current time + 125 uS for list processing */
-	current = work_get_timer(queue) + (queue->ticks_per_msec >> 3);
+	/* get current time */
+	current = work_get_timer(queue);
 
 	/* re calculate timers for each work item */
 	list_for_each(wlist, &queue->work) {
@@ -208,7 +219,7 @@ static void queue_recalc_timers(struct work_queue *queue,
 		if (delta_msecs > 0)
 			work->timeout = current + queue->ticks_per_msec * delta_msecs;
 		else
-			work->timeout = current + (queue->ticks_per_msec >> 2);
+			work->timeout = current + (queue->ticks_per_msec >> 3);
 	}
 }
 
@@ -228,6 +239,8 @@ static void queue_run(void *data)
 	/* clear and disable interrupt */
 	work_clear_timer(queue);
 	timer_disable(queue->ts->timer);
+
+	queue->run_ticks = work_get_timer(queue);
 
 	/* work can take variable time to complete so we re-check the
 	  queue after running all the pending work to make sure no new work
