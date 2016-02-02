@@ -9,7 +9,6 @@ lib_LIBRARIES = \
 VECTOR_DEFS = \
 	-D__SPLIT__vector \
 	-D__SPLIT__handler \
-	-D__SPLIT__level1int \
 	-D__SPLIT__user \
 	-D__SPLIT__level1int \
 	-D__SPLIT__level2 \
