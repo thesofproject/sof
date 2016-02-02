@@ -11,10 +11,17 @@
 
 #include <platform/timer.h>
 #include <platform/shim.h>
+#include <reef/debug.h>
 #include <stdint.h>
+
+static int k = 12;
 
 void platform_timer_set(int timer, uint32_t ticks)
 {
+	/* a tick value of 0 will not generate an IRQ */
+	if (ticks == 0)
+		ticks = 1;
+
 	/* set new value and run */
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
 	shim_write(SHIM_EXT_TIMER_CNTLL, ticks);
