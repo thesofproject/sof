@@ -134,6 +134,9 @@ static int dw_dma_channel_get(struct dma *dma)
 		/* use channel if it's free */
 		/* TODO: may need read Channel Enable register to choose a
 		free/disabled channel */
+		if (io_reg_read(dma_base(dma) + DW_DMA_CHAN_EN) & (0x1 << i))
+			continue;
+
 		if (p->chan[i].status == DMA_STATUS_FREE) {
 			p->chan[i].status = DMA_STATUS_IDLE;
 
@@ -160,10 +163,15 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	p->chan[channel].status = DMA_STATUS_FREE;
-	p->chan[channel].cb = NULL;
+	io_reg_write(dma_base(dma) + DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
+
 	// TODO: disable/reset any other channel config.
 	/* free the lli allocated by set_config*/
+	if (p->chan[channel].lli)
+		rfree(RZONE_MODULE, RMOD_SYS, p->chan[channel].lli);
+
+	p->chan[channel].status = DMA_STATUS_FREE;
+	p->chan[channel].cb = NULL;
 
 }
 
@@ -287,8 +295,13 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	list_for_each(plist, &config->elem_list) {
 		p->chan[channel].desc_count++;
 	}
-	p->chan[channel].lli = rmalloc(RZONE_DEV, RMOD_SYS,
+	p->chan[channel].lli = rmalloc(RZONE_MODULE, RMOD_SYS,
 		sizeof(struct dw_lli1) * p->chan[channel].desc_count);
+
+	if (!p->chan[channel].lli)
+		return -ENOMEM;
+	bzero(p->chan[channel].lli, sizeof(struct dw_lli1) * p->chan[channel].desc_count);
+
 	lli_desc = p->chan[channel].lli;
 
 	/* write CTL_LOn for the first lli */
@@ -298,6 +311,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	lli_desc->ctrl_lo |= DWC_CTLL_DST_WIDTH(config->dest_width); /* config the src/dest tr width */
 	lli_desc->ctrl_lo |= DWC_CTLL_SRC_MSIZE(0); /* config the src/dest tr width */
 	lli_desc->ctrl_lo |= DWC_CTLL_DST_MSIZE(0); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_INT_EN; /* enable interrupt */
 
 	/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
 	switch(config->direction) {
@@ -338,6 +352,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo &= ~(DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN);
 			p->chan[channel].cfg_lo &= ~(DWC_CFGL_RELOAD_SAR | DWC_CFGL_RELOAD_DAR);//how about cfg_lo.reload_src/dst?
 		}
+
+		lli_desc->ctrl_hi |= sg_elem->size & DWC_CTLH_BLOCK_TS_MASK;
 
 		lli_desc++;
 	}
@@ -386,7 +402,8 @@ static void dw_dma_irq_handler(void *data)
 		goto out;
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
-		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)) {
+		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)
+					&& (status_block | i)) {
 			io_reg_write(dma_base(dma) + DW_MASK_BLOCK, INT_MASK(i));
 			p->chan[i].cb(p->chan[i].cb_data);
 
