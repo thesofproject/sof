@@ -14,8 +14,6 @@
 #include <reef/debug.h>
 #include <stdint.h>
 
-static int k = 12;
-
 void platform_timer_set(int timer, uint32_t ticks)
 {
 	/* a tick value of 0 will not generate an IRQ */
