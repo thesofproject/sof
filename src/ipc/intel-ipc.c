@@ -154,7 +154,9 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	/* set up DMA desciptor */
 	elem.dest = (uint32_t *)_ipc->page_table;
 	elem.src = (uint32_t *)ring->ring_pt_address;
-	elem.size = (ring->num_pages * 5 + 1) / 2;/* 20 bits for each page */
+
+	// TODO size is PAGE_SIZE (4096) * num_pages
+	elem.size = 4096;//(ring->num_pages * 5 + 1) / 2;/* 20 bits for each page */
 	list_add(&elem.list, &config.elem_list);
 
 	ret = dma_set_config(dma, chan, &config);

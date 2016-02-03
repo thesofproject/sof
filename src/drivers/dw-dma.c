@@ -182,11 +182,11 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 	if (p->chan[channel].lli)
 		rfree(RZONE_MODULE, RMOD_SYS, p->chan[channel].lli);
 
+	// TODO: fix status since it may still be draining
 	p->chan[channel].status = DMA_STATUS_FREE;
 	p->chan[channel].cb = NULL;
 
 }
-
 
 static int dw_dma_start(struct dma *dma, int channel)
 {
@@ -234,7 +234,7 @@ static uint32_t dw_dma_fifo_work(void *data)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		/* only check channels that are still draining */
-		if (!(p->chan[i].status & DMA_STATUS_DRAINING))
+		if (p->chan[i].status != DMA_STATUS_DRAINING)
 			continue;
 
 		/* check for FIFO empty */
@@ -244,7 +244,7 @@ static uint32_t dw_dma_fifo_work(void *data)
 			/* disable channel */
 			io_reg_update_bits(dma_base(dma) + DW_DMA_CHAN_EN,
 				CHAN_DISABLE(i), CHAN_DISABLE(i));
-			p->chan[i].status &= ~DMA_STATUS_DRAINING;
+			p->chan[i].status = DMA_STATUS_IDLE;
 		} else
 			schedule = 1;
 	}
@@ -307,6 +307,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	list_for_each(plist, &config->elem_list) {
 		p->chan[channel].desc_count++;
 	}
+
+	// TODO if (desc_count == 1) then do block transfer else lli transfer
+
 	p->chan[channel].lli = rmalloc(RZONE_MODULE, RMOD_SYS,
 		sizeof(struct dw_lli1) * p->chan[channel].desc_count);
 
@@ -318,11 +321,12 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	/* write CTL_LOn for the first lli */
 
+	// TODO: optimise the burst size.
 	lli_desc->ctrl_lo |= DWC_CTLL_FC(config->direction); /* config the transfer type */
-	lli_desc->ctrl_lo |= DWC_CTLL_SRC_WIDTH(config->src_width); /* config the src/dest tr width */
-	lli_desc->ctrl_lo |= DWC_CTLL_DST_WIDTH(config->dest_width); /* config the src/dest tr width */
-	lli_desc->ctrl_lo |= DWC_CTLL_SRC_MSIZE(0); /* config the src/dest tr width */
-	lli_desc->ctrl_lo |= DWC_CTLL_DST_MSIZE(0); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_SRC_WIDTH(2); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_DST_WIDTH(2); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_SRC_MSIZE(3); /* config the src/dest tr width */
+	lli_desc->ctrl_lo |= DWC_CTLL_DST_MSIZE(3); /* config the src/dest tr width */
 	lli_desc->ctrl_lo |= DWC_CTLL_INT_EN; /* enable interrupt */
 
 	/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
@@ -414,6 +418,7 @@ static inline void dw_do_irq_cb(struct dma *dma, uint32_t status,
 	}
 }
 
+static int k = 0;
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
@@ -431,6 +436,14 @@ static void dw_dma_irq_handler(void *data)
 	/* TODO: handle any error IRQs */
 	err = dw_read(dma, DW_STATUS_ERR);
 	dw_write(dma, DW_CLEAR_ERR, err);
+
+dbg_val_at(block, 10);
+dbg_val_at(k++, 11);
+dbg_val_at(tfr, k+12);
+//dbg_val_at(dw_read(dma, DW_STATUS_SRC_TRAN), 13);
+dbg_val_at(dw_read(dma, DW_STATUS_SRC_TRAN), k+16);
+//dbg_val_at(dw_read(dma, DW_STATUS_ERR), 15);
+
 
 	/* end of a block */
 	if (block) {
