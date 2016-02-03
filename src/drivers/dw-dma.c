@@ -118,6 +118,16 @@ struct dma_pdata {
 	spinlock_t lock;
 };
 
+static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
+{
+	io_reg_write(dma_base(dma) + reg, value);
+}
+
+static inline uint32_t dw_read(struct dma *dma, uint32_t reg)
+{
+	return io_reg_read(dma_base(dma) + reg);
+}
+
 /* allocate next free DMA channel */
 static int dw_dma_channel_get(struct dma *dma)
 {
@@ -134,7 +144,7 @@ static int dw_dma_channel_get(struct dma *dma)
 		/* use channel if it's free */
 		/* TODO: may need read Channel Enable register to choose a
 		free/disabled channel */
-		if (io_reg_read(dma_base(dma) + DW_DMA_CHAN_EN) & (0x1 << i))
+		if (dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << i))
 			continue;
 
 		if (p->chan[i].status == DMA_STATUS_FREE) {
@@ -142,11 +152,11 @@ static int dw_dma_channel_get(struct dma *dma)
 
 			/* write interrupt clear registers for the channel:
 			ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr*/
-			io_reg_write(dma_base(dma) + DW_CLEAR_TFR, 0x1 << i);
-			io_reg_write(dma_base(dma) + DW_CLEAR_BLOCK, 0x1 << i);
-			io_reg_write(dma_base(dma) + DW_CLEAR_SRC_TRAN, 0x1 << i);
-			io_reg_write(dma_base(dma) + DW_CLEAR_DST_TRAN, 0x1 << i);
-			io_reg_write(dma_base(dma) + DW_CLEAR_ERR, 0x1 << i);
+			dw_write(dma, DW_CLEAR_TFR, 0x1 << i);
+			dw_write(dma, DW_CLEAR_BLOCK, 0x1 << i);
+			dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << i);
+			dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << i);
+			dw_write(dma, DW_CLEAR_ERR, 0x1 << i);
 
 			/* TODO: do we need read back Interrupt Raw Status and Interrupt
 			Status registers to confirm that all interrupts have been cleared? */
@@ -163,7 +173,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	io_reg_write(dma_base(dma) + DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
+	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 
 	// TODO: disable/reset any other channel config.
 	/* free the lli allocated by set_config*/
@@ -181,27 +191,27 @@ static int dw_dma_start(struct dma *dma, int channel)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
 	/* write SARn, DARn */
-	io_reg_write(dma_base(dma) + DW_SAR(channel), p->chan[channel].lli->sar);
-	io_reg_write(dma_base(dma) + DW_DAR(channel), p->chan[channel].lli->dar);
-	io_reg_write(dma_base(dma) + DW_LLP(channel), p->chan[channel].lli->llp);
+	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
+	dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
+	dw_write(dma, DW_LLP(channel), p->chan[channel].lli->llp);
 
 	/* program CTLn and CFGn*/
-	io_reg_write(dma_base(dma) + DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
-	io_reg_write(dma_base(dma) + DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
-	io_reg_write(dma_base(dma) + DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
-	io_reg_write(dma_base(dma) + DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
+	dw_write(dma, DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
+	dw_write(dma, DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
+	dw_write(dma, DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
+	dw_write(dma, DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
 
 	p->chan[channel].status = DMA_STATUS_RUNNING;
 
 	/* unmask all kinds of interrupts for this channels */
-	io_reg_write(dma_base(dma) + DW_MASK_TFR, INT_UNMASK(channel));
-	io_reg_write(dma_base(dma) + DW_MASK_BLOCK, INT_UNMASK(channel));
-	io_reg_write(dma_base(dma) + DW_MASK_SRC_TRAN, INT_UNMASK(channel));
-	io_reg_write(dma_base(dma) + DW_MASK_DST_TRAN, INT_UNMASK(channel));
-	io_reg_write(dma_base(dma) + DW_MASK_ERR, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_SRC_TRAN, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_DST_TRAN, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
 
 	/* enable the channel */
-	io_reg_write(dma_base(dma) + DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
+	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 
 	return 0;
 }
@@ -226,7 +236,7 @@ static uint32_t dw_dma_fifo_work(void *data)
 			continue;
 
 		/* check for FIFO empty */
-		cfg = io_reg_read(dma_base(dma) + DW_CFG_LOW(i));
+		cfg = dw_read(dma, DW_CFG_LOW(i));
 		if (cfg & DW_CFG_CH_FIFO_EMPTY) {
 
 			/* disable channel */
@@ -382,21 +392,24 @@ static void dw_dma_set_cb(struct dma *dma, int channel,
 	p->chan[channel].cb_data = data;
 }
 
+static int k = 0;
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t status_block = 0;
+	uint32_t status_block = 0, pisr;
 	int i = 0;
 
 	trace_point(0x9999);
-
+dbg_val_at(interrupt_get_status(), 10);
+dbg_val_at(interrupt_get_enabled(), 11);
 	interrupt_disable(dma_irq(dma));
 
 	/* we should inform the client that a period has been transfered */
-	status_block = io_reg_read(dma_base(dma) + DW_STATUS_BLOCK);
-
+	status_block = dw_read(dma, DW_STATUS_BLOCK);
+dbg_val_at(status_block, 14);
+dbg_val_at(k++, 15);
 	/* Check if we have any interrupt from the DMAC */
 	if (!status_block)
 		goto out;
@@ -404,28 +417,35 @@ static void dw_dma_irq_handler(void *data)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)
 					&& (status_block | i)) {
-			io_reg_write(dma_base(dma) + DW_MASK_BLOCK, INT_MASK(i));
+			dw_write(dma, DW_MASK_BLOCK, INT_MASK(i));
 			p->chan[i].cb(p->chan[i].cb_data);
 
 		}
 	}
 
 out:
+
+	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
+	pisr = shim_read(SHIM_PISR);
+	pisr |= (1 << 26);
+	shim_write(SHIM_PISR, pisr);
 	interrupt_clear(dma_irq(dma));
 	interrupt_enable(dma_irq(dma));
+dbg_val_at(interrupt_get_status(), 12);
+dbg_val_at(interrupt_get_enabled(), 13);
 }
 
 static int dw_dma_setup(struct dma *dma)
 {
 	/*mask all kinds of interrupts for all 8 channels*/
-	io_reg_write(dma_base(dma) + DW_MASK_TFR, 0x0000ff00);
-	io_reg_write(dma_base(dma) + DW_MASK_BLOCK, 0x0000ff00);
-	io_reg_write(dma_base(dma) + DW_MASK_SRC_TRAN, 0x0000ff00);
-	io_reg_write(dma_base(dma) + DW_MASK_DST_TRAN, 0x0000ff00);
-	io_reg_write(dma_base(dma) + DW_MASK_ERR, 0x0000ff00);
+	dw_write(dma, DW_MASK_TFR, 0x0000ff00);
+	dw_write(dma, DW_MASK_BLOCK, 0x0000ff00);
+	dw_write(dma, DW_MASK_SRC_TRAN, 0x0000ff00);
+	dw_write(dma, DW_MASK_DST_TRAN, 0x0000ff00);
+	dw_write(dma, DW_MASK_ERR, 0x0000ff00);
 
 	/*enable dma cntrl*/
-	io_reg_write(dma_base(dma) + DW_DMA_CFG, 1);
+	dw_write(dma, DW_DMA_CFG, 1);
 
 	return 0;
 }
