@@ -24,6 +24,10 @@
 #define DMA_STATUS_RUNNING	2
 #define DMA_STATUS_DRAINING	4
 
+/* DMA IRQ types */
+#define DMA_IRQ_TYPE_BLOCK	0
+#define DMA_IRQ_TYPE_LLIST	1
+
 struct dma;
 
 struct dma_sg_elem {
@@ -65,7 +69,7 @@ struct dma_ops {
 		struct dma_sg_config *config);
 
 	void (*set_cb)(struct dma *dma, int channel,
-		void (*cb)(void *data), void *data);
+		void (*cb)(void *data, uint32_t type), void *data);
 	
 	int (*pm_context_restore)(struct dma *dma);
 	int (*pm_context_store)(struct dma *dma);
@@ -122,7 +126,7 @@ static inline void dma_channel_put(struct dma *dma, int channel)
 }
 
 static inline void dma_set_cb(struct dma *dma, int channel,
-	void (*cb)(void *data), void *data)
+	void (*cb)(void *data, uint32_t type), void *data)
 {
 	dma->ops->set_cb(dma, channel, cb, data);
 }

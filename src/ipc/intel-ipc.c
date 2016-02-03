@@ -119,7 +119,7 @@ struct sst_hsw_ipc_stream_ring {
 } __attribute__((packed));
 #endif
 
-static void dma_complete(void *data)
+static void dma_complete(void *data, uint32_t type)
 {
 	struct ipc_data *ipc = (struct ipc_data *)data;
 

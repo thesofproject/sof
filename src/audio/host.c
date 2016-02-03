@@ -26,7 +26,7 @@ struct host_data {
 
 
 /* this is called by DMA driver every time descriptor has completed */
-static void host_dma_cb(void *data)
+static void host_dma_cb(void *data, uint32_t type)
 {
 	/* TODO: update the buffer rx/tx pointers and avail */
 }

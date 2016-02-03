@@ -65,6 +65,8 @@
 /* registers */
 #define DW_STATUS_TFR			0x02E8
 #define DW_STATUS_BLOCK			0x02F0
+#define DW_STATUS_SRC_TRAN		0x02F8
+#define DW_STATUS_DST_TRAN		0x0300
 #define DW_STATUS_ERR			0x0308
 #define DW_RAW_TFR			0x02C0
 #define DW_RAW_BLOCK			0x02C8
@@ -107,7 +109,7 @@ struct dma_chan_data {
 	uint32_t cfg_lo;
 	uint32_t cfg_hi;
 
-	void (*cb)(void *data);	/* client callback function */
+	void (*cb)(void *data, uint32_t type);	/* client callback function */
 	void *cb_data;		/* client callback data */
 };
 
@@ -384,7 +386,7 @@ static int dw_dma_pm_context_store(struct dma *dma)
 }
 
 static void dw_dma_set_cb(struct dma *dma, int channel,
-		void (*cb)(void *data), void *data)
+		void (*cb)(void *data, uint32_t type), void *data)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -392,47 +394,65 @@ static void dw_dma_set_cb(struct dma *dma, int channel,
 	p->chan[channel].cb_data = data;
 }
 
-static int k = 0;
+
+static inline void dw_do_irq_cb(struct dma *dma, uint32_t status,
+	uint32_t type)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t mask;
+	int i;
+
+	for (i = 0; i < DW_MAX_CHAN; i++) {
+		mask = 1 << i;
+
+		if (!(status & mask))
+			continue;
+
+		if (p->chan[i].cb)
+			p->chan[i].cb(p->chan[i].cb_data, type);
+
+	}
+}
+
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
-	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t status_block = 0, pisr;
-	int i = 0;
+	uint32_t tfr, src_tran, dst_tran, block, err, pisr;
 
-	trace_point(0x9999);
-dbg_val_at(interrupt_get_status(), 10);
-dbg_val_at(interrupt_get_enabled(), 11);
 	interrupt_disable(dma_irq(dma));
 
-	/* we should inform the client that a period has been transfered */
-	status_block = dw_read(dma, DW_STATUS_BLOCK);
-dbg_val_at(status_block, 14);
-dbg_val_at(k++, 15);
-	/* Check if we have any interrupt from the DMAC */
-	if (!status_block)
-		goto out;
+	/* get the source of our IRQ. */
+	block = dw_read(dma, DW_STATUS_BLOCK);
+	tfr = dw_read(dma, DW_STATUS_TFR);
+	src_tran = dw_read(dma, DW_STATUS_SRC_TRAN);
+	dst_tran = dw_read(dma, DW_STATUS_DST_TRAN);
 
-	for (i = 0; i < DW_MAX_CHAN; i++) {
-		if ((p->chan[i].status != DMA_STATUS_FREE) && (p->chan[i].cb)
-					&& (status_block | i)) {
-			dw_write(dma, DW_MASK_BLOCK, INT_MASK(i));
-			p->chan[i].cb(p->chan[i].cb_data);
+	/* TODO: handle any error IRQs */
+	err = dw_read(dma, DW_STATUS_ERR);
+	dw_write(dma, DW_CLEAR_ERR, err);
 
-		}
+	/* end of a block */
+	if (block) {
+		dw_do_irq_cb(dma, block, DMA_IRQ_TYPE_BLOCK);
+		dw_write(dma, DW_CLEAR_BLOCK, block);
+	}
+	/* end of a transfer */
+	if (tfr) {
+		dw_do_irq_cb(dma, block, DMA_IRQ_TYPE_LLIST);
+		dw_write(dma, DW_CLEAR_TFR, tfr);
 	}
 
-out:
+	/* dont know what these are for and we appear to get them, mask them ?? */
+	dw_write(dma, DW_CLEAR_SRC_TRAN, src_tran);
+	dw_write(dma, DW_CLEAR_DST_TRAN, dst_tran);
 
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
 	pisr = shim_read(SHIM_PISR);
-	pisr |= (1 << 26);
+	pisr |= 0xff000000;
 	shim_write(SHIM_PISR, pisr);
-	interrupt_clear(dma_irq(dma));
+
 	interrupt_enable(dma_irq(dma));
-dbg_val_at(interrupt_get_status(), 12);
-dbg_val_at(interrupt_get_enabled(), 13);
 }
 
 static int dw_dma_setup(struct dma *dma)
