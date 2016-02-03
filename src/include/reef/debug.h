@@ -92,7 +92,7 @@
 #define panic(_p) \
 	do { \
 		dbg_val(0xdead0000 | _p) \
-		platform_panic(0xdead0000 | _p); \
+		platform_panic(_p); \
 		while(1) {}; \
 	} while (0);
 
@@ -106,7 +106,7 @@
 		\
 		__asm__ __volatile__ ("mov %0, a1" : "=a" (_stack_top) : : "memory"); \
 		dbg_val(0xdead0000 | _p) \
-		platform_panic(0xdead0000 | _p); \
+		platform_panic(_p); \
 		dbg_val(_stack_top) \
 		dbg_val(_stack_bottom) \
 		\
