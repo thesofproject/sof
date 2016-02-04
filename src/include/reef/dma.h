@@ -42,7 +42,7 @@ struct dma_sg_config {
 	uint16_t src_width;
 	uint16_t dest_width;
 	uint16_t direction;
-	uint16_t reserved;
+	uint16_t cyclic;		/* circular buffer */
 	struct list_head elem_list;	/* list of dma_sg elems */
 };
 
