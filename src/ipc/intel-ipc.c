@@ -136,7 +136,7 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	struct dma_sg_config config;
 	struct dma_sg_elem elem;
 	struct dma *dma;
-	int chan, ret = 0;
+	int i, chan, ret = 0;
 
 	/* get DMA channel from DMAC1 */
 	chan = dma_channel_get(_ipc->dmac1);
@@ -174,6 +174,9 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	/* wait 2 msecs for DMA to finish */
 	_ipc->complete.timeout = 2;
 	ret = wait_for_completion_timeout(&_ipc->complete);
+
+	for (i = 0; i < IPC_INTEL_PAGE_SIZE/400; i++)
+		dbg_val_at(*(uint32_t *)(_ipc->page_table + i * 4), i);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
