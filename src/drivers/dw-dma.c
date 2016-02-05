@@ -231,15 +231,14 @@ dbg_val_at(dw_read(dma, DW_CFG_HIGH(channel)), 26);
 	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
 	dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
 	dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
-	dw_write(dma, DW_MASK_SRC_TRAN, INT_UNMASK(channel));
-	dw_write(dma, DW_MASK_DST_TRAN, INT_UNMASK(channel));
+
 //dbg_val_at(dw_read(dma, DW_MASK_TFR), 27);
 //dbg_val_at(dw_read(dma, DW_MASK_BLOCK), 28);
 //dbg_val_at(dw_read(dma, DW_DMA_CFG), 18);
 
 	/* enable the channel */
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
-//dbg_val_at(dw_read(dma, DW_DMA_CHAN_EN), 19);
+dbg_val_at(dw_read(dma, DW_DMA_CHAN_EN), 19);
 	return 0;
 }
 
@@ -438,7 +437,7 @@ static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t status_tfr, status_block, status_err, status_intr, pisr, mask, src, dst;
+	uint32_t status_tfr, status_block, status_err, status_intr, pisr, mask;
 	int i;
 
 	interrupt_disable(dma_irq(dma));
@@ -452,8 +451,7 @@ dbg_val_at(++k, 11);
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
 	status_tfr = dw_read(dma, DW_STATUS_TFR);
-	src = dw_read(dma, DW_STATUS_SRC_TRAN);
-	dst = dw_read(dma, DW_STATUS_DST_TRAN);
+
 //dbg_val_at(status_block, 13);
 //dbg_val_at(status_tfr, 14);
 //dbg_val_at(src, 16);
@@ -480,8 +478,6 @@ dbg_val_at(++k, 11);
 
 	dw_write(dma, DW_CLEAR_TFR, status_tfr);
 	dw_write(dma, DW_CLEAR_BLOCK, status_block);
-	dw_write(dma, DW_CLEAR_SRC_TRAN, src);
-	dw_write(dma, DW_CLEAR_DST_TRAN, dst);
 
 out:
 
