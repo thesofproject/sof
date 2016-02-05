@@ -123,9 +123,7 @@ static void dma_complete(void *data, uint32_t type)
 {
 	struct ipc_data *ipc = (struct ipc_data *)data;
 
-	trace_point(0x9500);
 	wait_completed(&ipc->complete);
-	trace_point(0x9600);
 }
 
 /* this function copies the audio buffer page tables from the host to the DSP */
@@ -139,7 +137,7 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	int i, chan, ret = 0;
 
 	/* get DMA channel from DMAC1 */
-	chan = dma_channel_get(_ipc->dmac1);
+	chan = dma_channel_get(_ipc->dmac0);
 	if (chan >= 0)
 		dma = _ipc->dmac1;
 	else
@@ -149,14 +147,15 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	config.direction = DMA_DIR_MEM_TO_MEM;
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
+	config.cyclic = 0;
 	list_init(&config.elem_list);
 
 	/* set up DMA desciptor */
 	elem.dest = (uint32_t *)_ipc->page_table;
-	elem.src = (uint32_t *)ring->ring_pt_address;
+	elem.src = (uint32_t *)0xff300000;//(uint32_t *)ring->ring_pt_address;
 
 	// TODO size is PAGE_SIZE (4096) * num_pages
-	elem.size = 4096;//(ring->num_pages * 5 + 1) / 2;/* 20 bits for each page */
+	elem.size = (ring->num_pages * 5 + 1) / 2;/* 20 bits for each page */
 	list_add(&elem.list, &config.elem_list);
 
 	ret = dma_set_config(dma, chan, &config);
@@ -174,9 +173,9 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	/* wait 2 msecs for DMA to finish */
 	_ipc->complete.timeout = 2;
 	ret = wait_for_completion_timeout(&_ipc->complete);
-
-	for (i = 0; i < IPC_INTEL_PAGE_SIZE/400; i++)
-		dbg_val_at(*(uint32_t *)(_ipc->page_table + i * 4), i);
+dbg_val_at(ret, 10);
+	for (i = 0; i < 10; i++)
+		dbg_val_at(*(volatile uint32_t *)(_ipc->page_table + i * 4), i+20);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:

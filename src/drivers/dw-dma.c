@@ -193,6 +193,14 @@ static int dw_dma_start(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
+	/* write interrupt clear registers for the channel:
+	ClearTfr, ClearBlock, ClearErr*/
+	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << channel);
+
 	/* write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
 	dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
@@ -207,21 +215,31 @@ static int dw_dma_start(struct dma *dma, int channel)
 	//dw_write(dma, DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
 
 	p->chan[channel].status = DMA_STATUS_RUNNING;
+#if 0
+dbg_val_at(dw_read(dma, DW_SAR(channel)), 20);
+dbg_val_at(dw_read(dma, DW_DAR(channel)), 21);
+dbg_val_at(dw_read(dma, DW_LLP(channel)), 22);
+dbg_val_at(dw_read(dma, DW_CTRL_LOW(channel)), 23);
+dbg_val_at(dw_read(dma, DW_CTRL_HIGH(channel)), 24);
+dbg_val_at(dw_read(dma, DW_CFG_LOW(channel)), 25);
+dbg_val_at(dw_read(dma, DW_CFG_HIGH(channel)), 26);
+#endif
+
+
 
 	/* unmask all kinds of interrupts for this channels */
 	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
 	dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
 	dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
-
-	/* write interrupt clear registers for the channel:
-	ClearTfr, ClearBlock, ClearErr*/
-	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
+	dw_write(dma, DW_MASK_SRC_TRAN, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_DST_TRAN, INT_UNMASK(channel));
+//dbg_val_at(dw_read(dma, DW_MASK_TFR), 27);
+//dbg_val_at(dw_read(dma, DW_MASK_BLOCK), 28);
+//dbg_val_at(dw_read(dma, DW_DMA_CFG), 18);
 
 	/* enable the channel */
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
-
+dbg_val_at(dw_read(dma, DW_DMA_CHAN_EN), 19);
 	return 0;
 }
 
@@ -301,17 +319,18 @@ static int dw_dma_status(struct dma *dma, int channel,
 	
 	return 0;
 }
-
+//static int l = 0;
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct list_head *plist, *nlist;
+	struct list_head *plist;
 	struct dma_sg_elem *sg_elem;
-	struct dw_lli2 *lli_desc, *lli_desc_head;
+	struct dw_lli2 *lli_desc, *lli_desc_head, *lli_desc_tail;
 
 	/* get number of SG elems - TODO: add this count to struct */
+	p->chan[channel].desc_count = 0;
 	list_for_each(plist, &config->elem_list) {
 		p->chan[channel].desc_count++;
 	}
@@ -325,11 +344,12 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	bzero(p->chan[channel].lli, sizeof(struct dw_lli2) *
 		p->chan[channel].desc_count);
 	lli_desc = lli_desc_head = p->chan[channel].lli;
+	lli_desc_tail = p->chan[channel].lli + p->chan[channel].desc_count - 1;
 
 	/* SSTATARn/DSTATARn for write back*/
 
 	/* fill in lli for the elem in the list */
-	list_for_each_safe(plist, nlist, &config->elem_list) {
+	list_for_each(plist, &config->elem_list) {
 
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
@@ -382,10 +402,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	/* end of list or cyclic buffer ? */
 	if (config->cyclic) {
-		lli_desc->llp = (uint32_t)lli_desc_head;
+		lli_desc_tail->llp = (uint32_t)lli_desc_head;
 	} else {
-		lli_desc->llp = 0;
-		lli_desc->ctrl_lo &= ~(DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN);
+		lli_desc_tail->llp = 0;
+		lli_desc_tail->ctrl_lo &= ~(DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN);
 		//lli_desc->cfg_lo &= ~(DWC_CFGL_RELOAD_SAR | DWC_CFGL_RELOAD_DAR);//how about cfg_lo.reload_src/dst?
 	}
 
@@ -412,28 +432,36 @@ static void dw_dma_set_cb(struct dma *dma, int channel,
 	p->chan[channel].cb = cb;
 	p->chan[channel].cb_data = data;
 }
-
+static int k = 0;
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t status_tfr, status_block, status_err, status_intr, pisr, mask;
+	uint32_t status_tfr, status_block, status_err, status_intr, pisr, mask, src, dst;
 	int i;
 
 	interrupt_disable(dma_irq(dma));
-
+	
+dbg_val_at(++k, 11);
 	status_intr = dw_read(dma, DW_INTR_STATUS);
-	if (!status_intr)
-		goto out;
+dbg_val_at(status_intr, 12);
+	//if (!status_intr)
+	//	goto out;
 
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
 	status_tfr = dw_read(dma, DW_STATUS_TFR);
-
+	src = dw_read(dma, DW_STATUS_SRC_TRAN);
+	dst = dw_read(dma, DW_STATUS_DST_TRAN);
+dbg_val_at(status_block, 13);
+dbg_val_at(status_tfr, 14);
+dbg_val_at(src, 16);
+dbg_val_at(dst, 17);
 
 	/* TODO: handle errors, just clear them atm */
 	status_err = dw_read(dma, DW_STATUS_ERR);
+dbg_val_at(status_err, 15);
 	dw_write(dma, DW_CLEAR_ERR, status_err);
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -442,6 +470,7 @@ static void dw_dma_irq_handler(void *data)
 
 		/* end of a transfer */
 		if (status_tfr & mask) {
+dbg_val_at((uint32_t)p->chan[i].cb, 30+i);
 			if (p->chan[i].cb)
 				p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST);
@@ -452,8 +481,11 @@ static void dw_dma_irq_handler(void *data)
 
 	dw_write(dma, DW_CLEAR_TFR, status_tfr);
 	dw_write(dma, DW_CLEAR_BLOCK, status_block);
+	dw_write(dma, DW_CLEAR_SRC_TRAN, src);
+	dw_write(dma, DW_CLEAR_DST_TRAN, dst);
 
-out:
+//out:
+
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
 	pisr = shim_read(SHIM_PISR);
 	pisr |= 0xff000000;
