@@ -210,9 +210,13 @@ static int dw_dma_start(struct dma *dma, int channel)
 	/* unmask all kinds of interrupts for this channels */
 	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
 	dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
-	dw_write(dma, DW_MASK_SRC_TRAN, INT_UNMASK(channel));
-	dw_write(dma, DW_MASK_DST_TRAN, INT_UNMASK(channel));
 	dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
+
+	/* write interrupt clear registers for the channel:
+	ClearTfr, ClearBlock, ClearErr*/
+	io_reg_write(dma_base(dma) + DW_CLEAR_TFR, 0x1 << channel);
+	io_reg_write(dma_base(dma) + DW_CLEAR_BLOCK, 0x1 << channel);
+	io_reg_write(dma_base(dma) + DW_CLEAR_ERR, 0x1 << channel);
 
 	/* enable the channel */
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
