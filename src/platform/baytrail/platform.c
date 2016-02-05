@@ -22,10 +22,11 @@
 #include <string.h>
 
 static const struct sst_hsw_ipc_fw_ready ready = {
-	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,
-	.outbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_OUTBOX_OFFSET,
-	.inbox_size = MAILBOX_INBOX_SIZE,
-	.outbox_size = MAILBOX_OUTBOX_SIZE,
+	/* for host, we need exchange the naming of inxxx and outxxx */
+	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_OUTBOX_OFFSET,
+	.outbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,
+	.inbox_size = MAILBOX_OUTBOX_SIZE,
+	.outbox_size = MAILBOX_INBOX_SIZE,
 	.fw_info_size = sizeof(struct fw_info),
 	.info = {
 		.name = "REEF",
