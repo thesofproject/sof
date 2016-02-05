@@ -125,8 +125,8 @@ struct dw_dma_regs {
 #define DWC_CTLL_LLP_S_EN	(1 << 28)	/* src block chain */
 
 /* Bitfields in CTL_HI */
-#define DWC_CTLH_DONE		0x00001000
-#define DWC_CTLH_BLOCK_TS_MASK	0x00000fff
+#define DWC_CTLH_DONE		0x00020000
+#define DWC_CTLH_BLOCK_TS_MASK	0x0001ffff
 
 /* Bitfields in CFG_LO */
 #define DWC_CFGL_CH_PRIOR_MASK	(0x7 << 5)	/* priority mask */
