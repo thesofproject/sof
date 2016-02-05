@@ -134,10 +134,10 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	struct dma_sg_config config;
 	struct dma_sg_elem elem;
 	struct dma *dma;
-	int i, chan, ret = 0;
+	int chan, ret = 0, i;
 
 	/* get DMA channel from DMAC1 */
-	chan = dma_channel_get(_ipc->dmac0);
+	chan = dma_channel_get(_ipc->dmac1);
 	if (chan >= 0)
 		dma = _ipc->dmac1;
 	else
