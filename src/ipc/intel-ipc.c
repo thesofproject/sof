@@ -174,7 +174,7 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	_ipc->complete.timeout = 2;
 	ret = wait_for_completion_timeout(&_ipc->complete);
 dbg_val_at(ret, 10);
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < 8; i++)
 		dbg_val_at(*(volatile uint32_t *)(_ipc->page_table + i * 4), i+20);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
@@ -228,6 +228,7 @@ static int parse_page_descriptors(struct dma_sg_config *config)
 {
 	return 0;
 };
+static int __t = 0;
 
 static uint32_t ipc_stream_alloc(uint32_t header)
 {
@@ -239,7 +240,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	int err, stream_id = 0, i;
 
 	trace_ipc("SAl");
-
+if (__t++ > 0)
+return IPC_INTEL_GLB_REPLY_SUCCESS;
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&req, 0, sizeof(req));
 

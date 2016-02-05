@@ -239,7 +239,7 @@ dbg_val_at(dw_read(dma, DW_CFG_HIGH(channel)), 26);
 
 	/* enable the channel */
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
-dbg_val_at(dw_read(dma, DW_DMA_CHAN_EN), 19);
+//dbg_val_at(dw_read(dma, DW_DMA_CHAN_EN), 19);
 	return 0;
 }
 
@@ -445,23 +445,23 @@ static void dw_dma_irq_handler(void *data)
 	
 dbg_val_at(++k, 11);
 	status_intr = dw_read(dma, DW_INTR_STATUS);
-dbg_val_at(status_intr, 12);
-	//if (!status_intr)
-	//	goto out;
+//dbg_val_at(status_intr, 16);
+	if (!status_intr)
+		goto out;
 
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
 	status_tfr = dw_read(dma, DW_STATUS_TFR);
 	src = dw_read(dma, DW_STATUS_SRC_TRAN);
 	dst = dw_read(dma, DW_STATUS_DST_TRAN);
-dbg_val_at(status_block, 13);
-dbg_val_at(status_tfr, 14);
-dbg_val_at(src, 16);
-dbg_val_at(dst, 17);
+//dbg_val_at(status_block, 13);
+//dbg_val_at(status_tfr, 14);
+//dbg_val_at(src, 16);
+//dbg_val_at(dst, 17);
 
 	/* TODO: handle errors, just clear them atm */
 	status_err = dw_read(dma, DW_STATUS_ERR);
-dbg_val_at(status_err, 15);
+//dbg_val_at(status_err, 15);
 	dw_write(dma, DW_CLEAR_ERR, status_err);
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -470,7 +470,6 @@ dbg_val_at(status_err, 15);
 
 		/* end of a transfer */
 		if (status_tfr & mask) {
-dbg_val_at((uint32_t)p->chan[i].cb, 30+i);
 			if (p->chan[i].cb)
 				p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST);
@@ -484,7 +483,7 @@ dbg_val_at((uint32_t)p->chan[i].cb, 30+i);
 	dw_write(dma, DW_CLEAR_SRC_TRAN, src);
 	dw_write(dma, DW_CLEAR_DST_TRAN, dst);
 
-//out:
+out:
 
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
 	pisr = shim_read(SHIM_PISR);
