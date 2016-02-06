@@ -18,11 +18,13 @@
 #define DMA_DIR_DEV_TO_MEM	2
 #define DMA_DIR_DEV_TO_DEV	3
 
-/* DMA status flags - only DRAINING can be combined with others. */
+/* DMA status flags */
 #define DMA_STATUS_FREE		0
 #define DMA_STATUS_IDLE		1
 #define DMA_STATUS_RUNNING	2
 #define DMA_STATUS_DRAINING	4
+#define DMA_STATUS_CLOSING	5
+#define DMA_STATUS_PAUSED	6
 
 /* DMA IRQ types */
 #define DMA_IRQ_TYPE_BLOCK	0
@@ -42,6 +44,8 @@ struct dma_sg_config {
 	uint16_t src_width;
 	uint16_t dest_width;
 	uint16_t direction;
+	uint16_t src_dev;
+	uint16_t dest_dev;
 	uint16_t cyclic;		/* circular buffer */
 	struct list_head elem_list;	/* list of dma_sg elems */
 };
