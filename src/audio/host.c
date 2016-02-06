@@ -24,13 +24,11 @@ struct host_data {
 	int chan;
 };
 
-#if 0
 /* this is called by DMA driver every time descriptor has completed */
 static void host_dma_cb(void *data, uint32_t type)
 {
 	/* TODO: update the buffer rx/tx pointers and avail */
 }
-#endif
 
 static struct comp_dev *host_new(struct comp_desc *desc)
 {
@@ -52,15 +50,15 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 	hd->dma = dma_get(DMA_ID_DMAC0);
 
 	/* get DMA channel from DMAC0 */
-//	hd->chan = dma_channel_get(hd->dma);
-//	if (hd->chan < 0)
-//		goto error;
+	hd->chan = dma_channel_get(hd->dma);
+	if (hd->chan < 0)
+		goto error;
 
 	/* set up callback */
-//	dma_set_cb(hd->dma, hd->chan, host_dma_cb, dev);
+	dma_set_cb(hd->dma, hd->chan, host_dma_cb, dev);
 	return dev;
 
-//error:
+error:
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
 	return NULL;

@@ -152,10 +152,10 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 
 	/* set up DMA desciptor */
 	elem.dest = (uint32_t *)_ipc->page_table;
-	elem.src = (uint32_t *)0xff300000;//(uint32_t *)ring->ring_pt_address;
+	elem.src = (uint32_t *)ring->ring_pt_address;
 
-	// TODO size is PAGE_SIZE (4096) * num_pages
-	elem.size = (ring->num_pages * 5 + 1) / 2;/* 20 bits for each page */
+	/* source buffer size is always PAGE_SIZE bytes */
+	elem.size = ring->num_pages * 4; /* 20 bits for each page, round up to 32 */
 	list_add(&elem.list, &config.elem_list);
 
 	ret = dma_set_config(dma, chan, &config);
@@ -228,7 +228,6 @@ static int parse_page_descriptors(struct dma_sg_config *config)
 {
 	return 0;
 };
-static int __t = 0;
 
 static uint32_t ipc_stream_alloc(uint32_t header)
 {
@@ -240,8 +239,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	int err, stream_id = 0, i;
 
 	trace_ipc("SAl");
-if (__t++ > 0)
-return IPC_INTEL_GLB_REPLY_SUCCESS;
+
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&req, 0, sizeof(req));
 
