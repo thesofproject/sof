@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <reef/reef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
 #include <reef/stream.h>
@@ -22,6 +23,9 @@
 struct host_data {
 	struct dma *dma;
 	int chan;
+	struct dma_sg_config config;
+	struct list_head host_elem_list;
+	struct dma_sg_elem *elem;
 };
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -34,6 +38,7 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
+	struct dma_sg_elem *elem;
 
 	dev = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
 	if (dev == NULL)
@@ -45,8 +50,18 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 		return NULL;
 	}
 
-	comp_set_drvdata(dev, hd);
+	elem = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+	if (elem == NULL) {
+		rfree(RZONE_MODULE, RMOD_SYS, dev);
+		rfree(RZONE_MODULE, RMOD_SYS, hd);
+		return NULL;
+	}
 
+	comp_set_drvdata(dev, hd);
+	list_init(&hd->config.elem_list);
+	list_init(&hd->host_elem_list);
+	list_add(&elem->list, &hd->config.elem_list);
+	hd->elem = elem;
 	hd->dma = dma_get(DMA_ID_DMAC0);
 
 	/* get DMA channel from DMAC0 */
@@ -59,6 +74,7 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 	return dev;
 
 error:
+	rfree(RZONE_MODULE, RMOD_SYS, elem);
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
 	return NULL;
@@ -69,6 +85,7 @@ static void host_free(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	dma_channel_put(hd->dma, hd->chan);
+	rfree(RZONE_MODULE, RMOD_SYS, hd->elem);
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
 }
@@ -76,27 +93,24 @@ static void host_free(struct comp_dev *dev)
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev, struct stream_params *params)
 {
-#if 0
-		/* set up DMA configuration */
-	config.direction = DMA_DIR_MEM_TO_MEM;
-	config.src_width = 4;
-	config.dest_width = 4;
-	//config.irq = ??  do we need this and burst size ??
-	//config.burst_size = ??
-	ret = dma_set_config(dma, chan, &config);
-	if (ret < 0)
-		goto out;
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_config *config = &hd->config;
+	struct dma_sg_elem *elem = hd->elem, *host_elem;
+	int ret;
 
-	/* set up DMA desciptor */
-	desc.dest = (uint32_t)_ipc->page_table;
-	desc.src = ring->ring_pt_address;
-	desc.size = IPC_INTEL_PAGE_TABLE_SIZE;
-	desc.next = NULL;
-	ret = dma_set_desc(dma, chan, &desc);
-	if (ret < 0)
-		goto out;
-#endif
-	return 0;
+	/* set up DMA configuration */
+	config->direction = DMA_DIR_MEM_TO_MEM;
+	config->src_width = sizeof(uint32_t);
+	config->dest_width = sizeof(uint32_t);
+	config->cyclic = 0;
+
+	/* setup elem to point to first host page */
+	host_elem = container_of(&hd->host_elem_list, struct dma_sg_elem, list);
+	elem->src = host_elem->src;
+	//elem->dest = 
+	ret = dma_set_config(hd->dma, hd->chan, &hd->config);
+
+	return ret;
 }
 
 static int host_prepare(struct comp_dev *dev)
@@ -130,6 +144,23 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	return 0;
 }
 
+static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *e;
+
+	/* TODO: realloc elems if we are already prepared */
+
+	e = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*e));
+	if (e == NULL)
+		return -ENOMEM;
+
+	*e = *elem;
+	list_add(&e->list, &hd->host_elem_list);
+
+	return 0;
+}
+
 /* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
 {
@@ -146,6 +177,7 @@ struct comp_driver comp_host = {
 		.cmd		= host_cmd,
 		.copy		= host_copy,
 		.prepare	= host_prepare,
+		.host_buffer	= host_buffer,
 	},
 };
 

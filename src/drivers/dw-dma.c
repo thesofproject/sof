@@ -210,6 +210,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 	/* set new state */
 	p->chan[channel].status = DMA_STATUS_FREE;
 	p->chan[channel].cb = NULL;
+	p->chan[channel].desc_count = 0;
 
 out:
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
@@ -371,27 +372,32 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct list_head *plist;
 	struct dma_sg_elem *sg_elem;
 	struct dw_lli2 *lli_desc, *lli_desc_head, *lli_desc_tail;
+	uint32_t desc_count = 0;
 
 	spin_lock_local_irq(&dma->lock, dma_irq(dma));
 
 	/* default channel config */
-	p->chan[channel].desc_count = 0;
 	p->chan[channel].direction = config->direction;
 	p->chan[channel].cfg_lo = 0x00000203;
 	p->chan[channel].cfg_hi = 0x0;
 
 	/* get number of SG elems */
-	list_for_each(plist, &config->elem_list) {
-		p->chan[channel].desc_count++;
-	}
+	list_for_each(plist, &config->elem_list)
+		desc_count++;
 
-	/* allocate descriptors for channel */
-	if (p->chan[channel].lli)
-		rfree(RZONE_MODULE, RMOD_SYS, p->chan[channel].lli);
-	p->chan[channel].lli = rmalloc(RZONE_MODULE, RMOD_SYS,
-		sizeof(struct dw_lli2) * p->chan[channel].desc_count);
-	if (p->chan[channel].lli == NULL)
-		return -ENOMEM;
+	/* do we need to realloc descriptors */
+	if (desc_count != p->chan[channel].desc_count) {
+
+		p->chan[channel].desc_count = desc_count;
+
+		/* allocate descriptors for channel */
+		if (p->chan[channel].lli)
+			rfree(RZONE_MODULE, RMOD_SYS, p->chan[channel].lli);
+		p->chan[channel].lli = rmalloc(RZONE_MODULE, RMOD_SYS,
+			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
+		if (p->chan[channel].lli == NULL)
+			return -ENOMEM;
+	}
 
 	/* initialise descriptors */
 	bzero(p->chan[channel].lli, sizeof(struct dw_lli2) *
@@ -515,16 +521,20 @@ static void dw_dma_irq_handler(void *data)
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
+		if (p->chan[i].cb == NULL)
+			continue;
+
 		mask = 0x1 << i;
 
 		/* end of a transfer */
-		if (status_tfr & mask) {
-			if (p->chan[i].cb)
-				p->chan[i].cb(p->chan[i].cb_data,
+		if (status_tfr & mask)
+			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST);
-		}
 
-		/* TODO: end of a block */
+		/* end of a block */
+		if (status_block & mask)
+			p->chan[i].cb(p->chan[i].cb_data,
+					DMA_IRQ_TYPE_BLOCK);
 	}
 
 	dw_write(dma, DW_CLEAR_TFR, status_tfr);

@@ -416,7 +416,7 @@ int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 
 /* configure pipelines host DMA buffer */
 int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
-	struct dma_sg_config *config)
+	struct dma_sg_elem *elem)
 {
 	struct comp_dev *comp;
 
@@ -426,7 +426,7 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 	if (comp == NULL)
 		return -ENODEV;
 
-	return comp_host_buffer(comp, config);
+	return comp_host_buffer(comp, elem);
 }
 
 /* called on timer tick to process pipeline data */

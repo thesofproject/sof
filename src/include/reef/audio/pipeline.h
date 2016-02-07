@@ -73,7 +73,7 @@ int pipeline_params(struct pipeline *p, struct comp_desc *desc,
 
 /* pipeline parameters */
 int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
-	struct dma_sg_config *config);
+	struct dma_sg_elem *elem);
 
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc);

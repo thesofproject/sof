@@ -27,8 +27,9 @@
 
 /* audio component states */
 #define COMP_STATE_UNAVAIL	0	/* not ready for COMP ops */
-#define COMP_STATE_INACTIVE	1	/* ready for ops, but not used */
-#define COMP_STATE_ACTIVE	2	/* read and in use for COMP */
+#define COMP_STATE_IDLE		1	/* ready for ops, but not prepared */
+#define COMP_STATE_PREPARED	2	/* prepared for stream use */
+#define COMP_STATE_ACTIVE	3	/* actively in use by stream */
 
 /* standard audio component types */
 #define COMP_TYPE_HOST		0	/* host endpoint */
@@ -108,7 +109,7 @@ struct comp_ops {
 	int (*copy)(struct comp_dev *dev);
 
 	/* host buffer config */
-	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_config *config);
+	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem);
 };
 
 /* component buffer data capabilities */
@@ -205,9 +206,9 @@ static inline int comp_params(struct comp_dev *dev,
 
 /* component host buffer config */
 static inline int comp_host_buffer(struct comp_dev *dev,
-	struct dma_sg_config *config)
+	struct dma_sg_elem *elem)
 {
-	return dev->drv->ops.host_buffer(dev, config);
+	return dev->drv->ops.host_buffer(dev, elem);
 }
 
 /* send component command */
