@@ -65,6 +65,8 @@ struct dma_ops {
 
 	int (*start)(struct dma *dma, int channel);
 	int (*stop)(struct dma *dma, int channel);
+	int (*pause)(struct dma *dma, int channel);
+	int (*release)(struct dma *dma, int channel);
 	int (*drain)(struct dma *dma, int channel);
 	int (*status)(struct dma *dma, int channel,
 		struct dma_chan_status *status);
@@ -143,6 +145,16 @@ static inline int dma_start(struct dma *dma, int channel)
 static inline int dma_stop(struct dma *dma, int channel)
 {
 	return dma->ops->stop(dma, channel);
+}
+
+static inline int dma_pause(struct dma *dma, int channel)
+{
+	return dma->ops->pause(dma, channel);
+}
+
+static inline int dma_release(struct dma *dma, int channel)
+{
+	return dma->ops->release(dma, channel);
 }
 
 static inline int dma_drain(struct dma *dma, int channel)

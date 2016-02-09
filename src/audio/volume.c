@@ -60,8 +60,8 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < dev->params.pcm.channels; i++) {
-		for (j = 0; j < dev->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.pcm.channels; i++) {
+		for (j = 0; j < source->params.pcm.period_frames; j++) {
 			int32_t val = (int32_t)*src;
 			*dest = (val * cd->volume[i]) >> 16;
 			dest++;
@@ -69,8 +69,8 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 
-	source->r_ptr = (uint8_t*)src;
-	sink->w_ptr = (uint8_t*)dest;
+	source->r_ptr = src;
+	sink->w_ptr = dest;
 }
 
 /* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
@@ -83,8 +83,8 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < dev->params.pcm.channels; i++) {
-		for (j = 0; j < dev->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.pcm.channels; i++) {
+		for (j = 0; j < source->params.pcm.period_frames; j++) {
 			/* TODO: clamp when converting to int16_t */
 			*dest = (int16_t)((*src * cd->volume[i]) >> 16);
 			dest++;
@@ -92,8 +92,8 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 
-	source->r_ptr = (uint8_t*)src;
-	sink->w_ptr = (uint8_t*)dest;
+	source->r_ptr = src;
+	sink->w_ptr = dest;
 }
 
 /* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
@@ -106,16 +106,16 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < dev->params.pcm.channels; i++) {
-		for (j = 0; j < dev->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.pcm.channels; i++) {
+		for (j = 0; j < source->params.pcm.period_frames; j++) {
 			*dest = (*src * cd->volume[i]) >> 16;
 			dest++;
 			src++;
 		}
 	}
 
-	source->r_ptr = (uint8_t*)src;
-	sink->w_ptr = (uint8_t*)dest;
+	source->r_ptr = src;
+	sink->w_ptr = dest;
 }
 
 /* copy and scale volume from 16 bit source buffer to 16 bit dest buffer */
@@ -128,8 +128,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < dev->params.pcm.channels; i++) {
-		for (j = 0; j < dev->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.pcm.channels; i++) {
+		for (j = 0; j < source->params.pcm.period_frames; j++) {
 			int32_t val = (int32_t)*src;
 			/* TODO: clamp when converting to int16_t */
 			*dest = (int16_t)((val * cd->volume[i]) >> 16);
@@ -138,8 +138,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 
-	source->r_ptr = (uint8_t*)src;
-	sink->w_ptr = (uint8_t*)dest;
+	source->r_ptr = src;
+	sink->w_ptr = dest;
 }
 
 /* map of source and sink buffer formats to volume function */
@@ -155,10 +155,12 @@ static uint32_t vol_work(void *data)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *source = list_first_entry(&dev->bsource_list,
+		struct comp_buffer, sink_list);
 	int i, again = 0;
 
 	/* inc/dec each volume if it's not at target */ 
-	for (i = 0; i < dev->params.pcm.channels; i++) {
+	for (i = 0; i < source->params.pcm.channels; i++) {
 
 		/* skip if target reached */
 		if (cd->volume[i] == cd->tvolume[i])
@@ -224,29 +226,24 @@ static void volume_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int volume_params(struct comp_dev *dev, struct stream_params *params)
 {
-	/* just copy params atm */
-	dev->params = *params;
 	return 0;
 }
 
-static int volume_prepare(struct comp_dev *dev)
+static int volume_prepare(struct comp_dev *dev, struct stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	struct comp_dev *sink_dev, *source_dev;
 	int i;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
-	source = list_entry(&dev->bsource_list, struct comp_buffer, sink_list);
-	sink = list_entry(&dev->bsink_list, struct comp_buffer, source_list);
-	sink_dev = sink->sink;
-	source_dev = source->source;
+	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
+	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < ARRAY_SIZE(func_map); i++) {
-		if (source_dev->params.pcm.format != func_map[i].source)
+		if (source->params.pcm.format != func_map[i].source)
 			continue;
-		if (sink_dev->params.pcm.format != func_map[i].sink)
+		if (sink->params.pcm.format != func_map[i].sink)
 			continue;
 
 		cd->scale_vol = func_map[i].func;
@@ -279,7 +276,8 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
+static int volume_cmd(struct comp_dev *dev, struct stream_params *params,
+	int cmd, void *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_volume *cv = (struct comp_volume*)data;
@@ -287,19 +285,19 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	switch (cmd) {
 	case COMP_CMD_VOLUME:
-		for (i = 0; i < dev->params.pcm.channels; i++)
+		for (i = 0; i < params->pcm.channels; i++)
 			volume_set_chan(dev, i, cv->volume[i]);
 		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
 		break;
 	case COMP_CMD_MUTE:
-		for (i = 0; i < dev->params.pcm.channels; i++) {
+		for (i = 0; i < params->pcm.channels; i++) {
 			if (cv->volume[i])
 				volume_set_chan_mute(dev, i);
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
 		break;
 	case COMP_CMD_UNMUTE:
-		for (i = 0; i < dev->params.pcm.channels; i++) {
+		for (i = 0; i < params->pcm.channels; i++) {
 			if (cv->volume[i])
 				volume_set_chan_unmute(dev, i);
 		}
@@ -313,7 +311,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 }
 
 /* copy and process stream data from source to sink buffers */
-static int volume_copy(struct comp_dev *dev)
+static int volume_copy(struct comp_dev *dev, struct stream_params *params)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
@@ -332,7 +330,7 @@ static int volume_copy(struct comp_dev *dev)
 		sink->w_ptr = sink->addr;
 
 	/* number of frames sent downstream */
-	return dev->params.pcm.period_frames;
+	return source->params.pcm.period_frames;
 }
 
 struct comp_driver comp_volume = {

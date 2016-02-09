@@ -32,14 +32,15 @@ static int mixer_params(struct comp_dev *dev, struct stream_params *params)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
+static int mixer_cmd(struct comp_dev *dev, struct stream_params *params,
+	int cmd, void *data)
 {
 	/* mixer will use buffer "connected" status */
 	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
-static int mixer_copy(struct comp_dev *dev)
+static int mixer_copy(struct comp_dev *dev, struct stream_params *params)
 {
 
 	return 0;

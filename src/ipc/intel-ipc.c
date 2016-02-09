@@ -222,7 +222,7 @@ struct ipc_intel_ipc_stream_alloc_reply {
  for host audio DMA buffer. This involves creating a dma_sg_elem for each
  page table entry and adding each elem to a list in struct dma_sg_config*/
 static int parse_page_descriptors(struct ipc_intel_ipc_stream_alloc_req *req,
-	struct comp_desc *host)
+	struct comp_desc *host, struct stream_params *params)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
 	struct dma_sg_elem elem;
@@ -241,7 +241,7 @@ static int parse_page_descriptors(struct ipc_intel_ipc_stream_alloc_req *req,
 			elem.src <<= 12;
 		elem.src &= 0xfffff000;
 
-		err = pipeline_host_buffer(pipeline_static, host, &elem);
+		err = pipeline_host_buffer(pipeline_static, host, params, &elem);
 		if (err < 0)
 			return err;
 	}
@@ -271,10 +271,14 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	case IPC_INTEL_STREAM_TYPE_SYSTEM:
 		host.uuid = COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST);
 		host.id = 0;
+		params.pcm.direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_RENDER:
+		params.pcm.direction = STREAM_DIRECTION_PLAYBACK;
+		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
 	case IPC_INTEL_STREAM_TYPE_LOOPBACK:
+		params.pcm.direction = STREAM_DIRECTION_CAPTURE;
 	default:
 		/* TODO: use this as default atm */
 		host.uuid = COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST);
@@ -284,12 +288,17 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 
 	/* read in format to create params */
 	params.pcm.channels = req.format.ch_num;
-	/* TODO: rest of params */
+	params.pcm.rate = req.format.frequency;
 
-	/* set host PCM params */
-	err = pipeline_params(pipeline_static, &host, &params);	
-	if (err < 0)
-		goto error;
+	/* work out bitdepth and framesize */
+	switch (req.format.bitdepth) {
+	case 16:
+		params.pcm.format = STREAM_FORMAT_S16_LE;
+		params.pcm.frame_size = 2 * params.pcm.channels;
+		break;
+	}
+
+	params.pcm.period_frames = 4096 / params.pcm.frame_size;
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_desciptors(&req);
@@ -299,7 +308,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	/* TODO: now parse page tables and create audio DMA SG configuration and
 	for host audio DMA buffer. This involves creating a dma_sg_elem for each
 	page table entry and adding each elem to a list in struct dma_sg_config*/
-	err = parse_page_descriptors(&req, &host);
+	err = parse_page_descriptors(&req, &host, &params);
 	if (err < 0)
 		goto error;
 
@@ -314,7 +323,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 
 	/* initialise the pipeline */
-	err = pipeline_prepare(pipeline_static, &host);
+	err = pipeline_prepare(pipeline_static, &host, &params);
 	if (err < 0)
 		goto error;
 

@@ -48,6 +48,9 @@ static inline void list_del(struct list_head *entry)
 #define list_entry(pos, type, member) \
 	list_entry_offset(pos, type, offsetof(type, member))
 
+#define list_first_entry(pos, type, member) \
+	list_entry_offset((pos)->next, type, offsetof(type, member))
+
 #define list_for_each(pos, list) \
 	for (pos = (list)->next; pos != (list); pos = pos->next)
 

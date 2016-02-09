@@ -73,14 +73,15 @@ int pipeline_params(struct pipeline *p, struct comp_desc *desc,
 
 /* pipeline parameters */
 int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
-	struct dma_sg_elem *elem);
+	struct stream_params *params, struct dma_sg_elem *elem);
 
 /* prepare the pipeline for usage */
-int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc);
+int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc,
+	struct stream_params *params);
 
 /* send pipeline a command */
-int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd,
-	void *data);
+int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc,
+	struct stream_params *params, int cmd, void *data);
 
 /* initialise pipeline subsys */
 int pipeline_init(void);

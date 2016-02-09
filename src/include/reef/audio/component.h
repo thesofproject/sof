@@ -100,16 +100,21 @@ struct comp_ops {
 	int (*params)(struct comp_dev *dev, struct stream_params *params);
 
 	/* used to pass standard and bespoke commands (with data) to component */
-	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
+	int (*cmd)(struct comp_dev *dev, struct stream_params *params, 
+		int cmd, void *data);
 
 	/* prepare component after params are set */
-	int (*prepare)(struct comp_dev *dev);
+	int (*prepare)(struct comp_dev *dev, struct stream_params *params);
+
+	/* reset component */
+	int (*reset)(struct comp_dev *dev, struct stream_params *params);
 
 	/* copy and process stream data from source to sink buffers */
-	int (*copy)(struct comp_dev *dev);
+	int (*copy)(struct comp_dev *dev, struct stream_params *params);
 
 	/* host buffer config */
-	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem);
+	int (*host_buffer)(struct comp_dev *dev, struct stream_params *params,
+		struct dma_sg_elem *elem);
 };
 
 /* component buffer data capabilities */
@@ -136,7 +141,7 @@ struct comp_driver {
 	struct comp_caps caps;	/* component capabilities */
 
 	struct list_head list;	/* list of component drivers */
-};
+};	
 
 /* audio component base device "class" - used by other component types */
 struct comp_dev {
@@ -147,7 +152,6 @@ struct comp_dev {
 	uint8_t is_endpoint;	/* is this component an endpoint ? */
 	uint8_t is_playback;	/* is the endpoint for playback or capture */
 	spinlock_t lock;	/* lock for this component */
-	struct stream_params params;
 	void *private;		/* private data */
 	struct comp_driver *drv;
 
@@ -161,12 +165,14 @@ struct comp_dev {
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
 	struct buffer_desc desc;
+	struct stream_params params;
 
 	/* runtime data */
 	uint32_t avail;		/* available bytes between R and W ptrs */
-	uint8_t *w_ptr;		/* buffer write pointer */
-	uint8_t *r_ptr;		/* buffer read position */
-	uint8_t *addr;		/* buffer base address */
+	void *w_ptr;		/* buffer write pointer */
+	void *r_ptr;		/* buffer read position */
+	void *addr;		/* buffer base address */
+	void *end_addr;		/* buffer end address */
 	uint8_t connected;	/* connected in path */
 
 	/* connected components */
@@ -206,27 +212,36 @@ static inline int comp_params(struct comp_dev *dev,
 
 /* component host buffer config */
 static inline int comp_host_buffer(struct comp_dev *dev,
-	struct dma_sg_elem *elem)
+	struct stream_params *params, struct dma_sg_elem *elem)
 {
-	return dev->drv->ops.host_buffer(dev, elem);
+	return dev->drv->ops.host_buffer(dev, params, elem);
 }
 
 /* send component command */
-static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
+static inline int comp_cmd(struct comp_dev *dev, struct stream_params *params,
+	int cmd, void *data)
 {
-	return dev->drv->ops.cmd(dev, cmd, data);
+	return dev->drv->ops.cmd(dev, params, cmd, data);
 }
 
 /* prepare component */
-static inline int comp_prepare(struct comp_dev *dev)
+static inline int comp_prepare(struct comp_dev *dev,
+	struct stream_params *params)
 {
-	return dev->drv->ops.prepare(dev);
+	return dev->drv->ops.prepare(dev, params);
 }
 
 /* copy component buffers */
-static inline int comp_copy(struct comp_dev *dev)
+static inline int comp_copy(struct comp_dev *dev, struct stream_params *params)
 {
-	return dev->drv->ops.copy(dev);
+	return dev->drv->ops.copy(dev, params);
+}
+
+/* component reset and free runtime resources */
+static inline int comp_hw_reset(struct comp_dev *dev,
+	struct stream_params *params)
+{
+	return dev->drv->ops.reset(dev, params);
 }
 
 /* default base component initialisations */
@@ -236,5 +251,14 @@ void sys_comp_mixer_init(void);
 void sys_comp_mux_init(void);
 void sys_comp_switch_init(void);
 void sys_comp_volume_init(void);
+
+static inline void comp_update_avail(struct comp_buffer *buffer)
+{
+	if (buffer->r_ptr <= buffer->w_ptr)
+		buffer->avail = buffer->r_ptr - buffer->w_ptr;
+	else
+		buffer->avail = buffer->end_addr - buffer->w_ptr +
+			buffer->r_ptr - buffer->addr;
+}
 
 #endif

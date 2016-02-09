@@ -104,13 +104,14 @@ static int dai_params(struct comp_dev *dev, struct stream_params *params)
 	return 0;
 }
 
-static int dai_prepare(struct comp_dev *dev)
+static int dai_prepare(struct comp_dev *dev, struct stream_params *params)
 {
 	return 0;
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
+static int dai_cmd(struct comp_dev *dev, struct stream_params *params,
+	int cmd, void *data)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
@@ -139,7 +140,7 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 }
 
 /* copy and process stream data from source to sink buffers */
-static int dai_copy(struct comp_dev *dev)
+static int dai_copy(struct comp_dev *dev, struct stream_params *params)
 {
 	/* nothing todo here since DMA does our copies */
 	return 0;

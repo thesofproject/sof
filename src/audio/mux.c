@@ -32,14 +32,15 @@ static int mux_params(struct comp_dev *dev, struct stream_params *params)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int mux_cmd(struct comp_dev *dev, int cmd, void *data)
+static int mux_cmd(struct comp_dev *dev, struct stream_params *params,
+	int cmd, void *data)
 {
 	/* mux will use buffer "connected" status */
 	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
-static int mux_copy(struct comp_dev *dev)
+static int mux_copy(struct comp_dev *dev, struct stream_params *params)
 {
 
 	return 0;

@@ -70,8 +70,8 @@
 #define DW_STATUS_ERR			0x0308
 #define DW_RAW_TFR			0x02C0
 #define DW_RAW_BLOCK			0x02C8
-#define DW_RAW_SRC_TRAN                        0x02D0
-#define DW_RAW_DST_TRAN                        0x02D8
+#define DW_RAW_SRC_TRAN			0x02D0
+#define DW_RAW_DST_TRAN			0x02D8
 #define DW_RAW_ERR			0x02E0
 #define DW_MASK_TFR			0x0310
 #define DW_MASK_BLOCK			0x0318
@@ -101,6 +101,38 @@
 #define DW_CFG_CH_SUSPEND		0x100
 #define DW_CFG_CH_DRAIN			0x400
 #define DW_CFG_CH_FIFO_EMPTY		0x200
+
+/* CTL_LO */
+#define DW_CTLL_INT_EN			(1 << 0)
+#define DW_CTLL_DST_WIDTH(x)		(x << 1)
+#define DW_CTLL_SRC_WIDTH(x)		(x << 4)
+#define DW_CTLL_DST_INC			(0 << 7)
+#define DW_CTLL_DST_DEC			(1 << 7)
+#define DW_CTLL_DST_FIX			(2 << 7)
+#define DW_CTLL_SRC_INC			(0 << 9)
+#define DW_CTLL_SRC_DEC			(1 << 9)
+#define DW_CTLL_SRC_FIX			(2 << 9)
+#define DW_CTLL_DST_MSIZE(x)		(x << 11)
+#define DW_CTLL_SRC_MSIZE(x)		(x << 14)
+#define DW_CTLL_S_GATH_EN		(1 << 17)
+#define DW_CTLL_D_SCAT_EN		(1 << 18)
+#define DW_CTLL_FC(x)			(x << 20)
+#define DW_CTLL_FC_M2M			(0 << 20)
+#define DW_CTLL_FC_M2P			(1 << 20)
+#define DW_CTLL_FC_P2M			(2 << 20)
+#define DW_CTLL_FC_P2P			(3 << 20)
+#define DW_CTLL_DMS(x)			(x << 23)
+#define DW_CTLL_SMS(x)			(x << 25)
+#define DW_CTLL_LLP_D_EN		(1 << 27)
+#define DW_CTLL_LLP_S_EN		(1 << 28)
+
+/* CTL_HI */
+#define DW_CTLH_DONE			0x00020000
+#define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
+
+/* CFG_HI */
+#define DW_CFGH_SRC_PER(x)		(x << 7)
+#define DW_CFGH_DST_PER(x)		(x << 11)
 
 /* data for each DMA channel */
 struct dma_chan_data {
@@ -222,14 +254,6 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 	spin_lock_local_irq(&dma->lock, dma_irq(dma));
 
-	/* is the channel already paused ? */
-	if (p->chan[channel].status == DMA_STATUS_PAUSED) {
-
-		/* unpuase channel */
-		dw_update_bits(dma, DW_CFG_LOW(channel), DW_CFG_CH_SUSPEND, 0);
-		goto out;
-	}
-
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
 	dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
@@ -244,8 +268,36 @@ static int dw_dma_start(struct dma *dma, int channel)
 	/* enable the channel */
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 
-out:
 	p->chan[channel].status = DMA_STATUS_RUNNING;
+	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	return 0;
+}
+
+static int dw_dma_release(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+
+	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+
+	/* unpause channel */
+	dw_update_bits(dma, DW_CFG_LOW(channel), DW_CFG_CH_SUSPEND, 0);
+	p->chan[channel].status = DMA_STATUS_RUNNING;
+
+	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	return 0;
+}
+
+static int dw_dma_pause(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+
+	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+
+	dw_update_bits(dma, DW_CFG_LOW(channel),
+			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
+			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
+	p->chan[channel].status = DMA_STATUS_PAUSED;
+
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
 	return 0;
 }
@@ -410,36 +462,36 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
-		lli_desc->ctrl_hi &= ~DWC_CTLH_DONE; /* clear the done bit */
+		lli_desc->ctrl_hi &= ~DW_CTLH_DONE; /* clear the done bit */
 
 		/* write CTL_LOn for each lli */
-		lli_desc->ctrl_lo |= DWC_CTLL_FC(config->direction); /* config the transfer type */
-		lli_desc->ctrl_lo |= DWC_CTLL_SRC_WIDTH(2); /* config the src/dest tr width */
-		lli_desc->ctrl_lo |= DWC_CTLL_DST_WIDTH(2); /* config the src/dest tr width */
-		lli_desc->ctrl_lo |= DWC_CTLL_SRC_MSIZE(4); /* config the src/dest tr width */
-		lli_desc->ctrl_lo |= DWC_CTLL_DST_MSIZE(4); /* config the src/dest tr width */
-		lli_desc->ctrl_lo |= DWC_CTLL_INT_EN; /* enable interrupt */
+		lli_desc->ctrl_lo |= DW_CTLL_FC(config->direction); /* config the transfer type */
+		lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2); /* config the src/dest tr width */
+		lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2); /* config the src/dest tr width */
+		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(4); /* config the src/dest tr width */
+		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(4); /* config the src/dest tr width */
+		lli_desc->ctrl_lo |= DW_CTLL_INT_EN; /* enable interrupt */
 
 		/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
 		switch (config->direction) {
 		case DMA_DIR_MEM_TO_MEM:
-			lli_desc->ctrl_lo |= DWC_CTLL_SRC_INC | DWC_CTLL_DST_INC;
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_INC;
 			break;
 		case DMA_DIR_MEM_TO_DEV:
-			lli_desc->ctrl_lo |= DWC_CTLL_SRC_INC | DWC_CTLL_DST_FIX;
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_FIX;
 			p->chan[channel].cfg_hi |=
-				DWC_CFGH_DST_PER(config->dest_dev);
+				DW_CFGH_DST_PER(config->dest_dev);
 			break;
 		case DMA_DIR_DEV_TO_MEM:
-			lli_desc->ctrl_lo |= DWC_CTLL_SRC_FIX | DWC_CTLL_DST_INC;
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_FIX | DW_CTLL_DST_INC;
 			p->chan[channel].cfg_hi |=
-				DWC_CFGH_SRC_PER(config->src_dev);
+				DW_CFGH_SRC_PER(config->src_dev);
 			break;
 		case DMA_DIR_DEV_TO_DEV:
-			lli_desc->ctrl_lo |= DWC_CTLL_SRC_FIX | DWC_CTLL_DST_FIX;
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_FIX | DW_CTLL_DST_FIX;
 			p->chan[channel].cfg_hi |=
-				DWC_CFGH_SRC_PER(config->src_dev) |
-				DWC_CFGH_DST_PER(config->dest_dev);
+				DW_CFGH_SRC_PER(config->src_dev) |
+				DW_CFGH_DST_PER(config->dest_dev);
 			break;
 		default:
 			break;
@@ -450,11 +502,11 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		lli_desc->dar = (uint32_t)sg_elem->dest;
 
 		/* set transfer size of element */
-		lli_desc->ctrl_hi |= sg_elem->size & DWC_CTLH_BLOCK_TS_MASK;
+		lli_desc->ctrl_hi |= sg_elem->size & DW_CTLH_BLOCK_TS_MASK;
 
 		/* set next descriptor in list */
 		lli_desc->llp = (uint32_t)(lli_desc + 1);
-		lli_desc->ctrl_lo |= DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN;
+		lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 
 		/* next descriptor */
 		lli_desc++;
@@ -466,7 +518,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	} else {
 		lli_desc_tail->llp = 0x0;
 		lli_desc_tail->ctrl_lo &=
-			~(DWC_CTLL_LLP_S_EN | DWC_CTLL_LLP_D_EN);
+			~(DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN);
 	}
 
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
@@ -596,6 +648,8 @@ const struct dma_ops dw_dma_ops = {
 	.channel_put	= dw_dma_channel_put,
 	.start		= dw_dma_start,
 	.stop		= dw_dma_stop,
+	.pause		= dw_dma_pause,
+	.release	= dw_dma_release,
 	.drain		= dw_dma_drain,
 	.status		= dw_dma_status,
 	.set_config	= dw_dma_set_config,

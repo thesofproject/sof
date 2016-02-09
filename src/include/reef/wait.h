@@ -32,6 +32,13 @@ static uint32_t _wait_cb(void *data)
 	return 0;
 }
 
+static inline uint32_t wait_is_completed(completion_t *comp)
+{
+	volatile completion_t *c = (volatile completion_t *)comp;
+
+	return c->complete;
+}
+
 static inline void wait_completed(completion_t *comp)
 {
 	volatile completion_t *c = (volatile completion_t *)comp;

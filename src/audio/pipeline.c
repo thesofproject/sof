@@ -193,7 +193,8 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	}
 
 	buffer->w_ptr = buffer->r_ptr = buffer->addr;
-	buffer->avail = 0;
+	buffer->end_addr = buffer->addr + buffer_desc->size;
+	buffer->avail = buffer_desc->size;
 	buffer->desc = *buffer_desc;
 	list_add(&buffer->pipeline_list, &p->buffer_list);
 
@@ -226,7 +227,8 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_CMD:
 		/* send command to the component */
-		err = comp_cmd(comp, op_data->cmd, op_data->cmd_data);
+		err = comp_cmd(comp, op_data->params,
+			op_data->cmd, op_data->cmd_data);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the buffers first by clearing contents */
@@ -239,11 +241,11 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		}
 
 		/* prepare the component */
-		err = comp_prepare(comp);
+		err = comp_prepare(comp, op_data->params);
 		break;
 	case COMP_OPS_COPY:
 		/* component should copy to buffers */
-		err = comp_copy(comp);
+		err = comp_copy(comp, op_data->params);
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
@@ -287,7 +289,8 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_CMD:
 		/* send command to the component */
-		err = comp_cmd(comp, op_data->cmd, op_data->cmd_data);
+		err = comp_cmd(comp, op_data->params, 
+			op_data->cmd, op_data->cmd_data);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the buffers first */
@@ -300,11 +303,11 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		}
 
 		/* prepare the component */
-		err = comp_prepare(comp);
+		err = comp_prepare(comp, op_data->params);
 		break;
 	case COMP_OPS_COPY:
 		/* component should copy to buffers */
-		err = comp_copy(comp);
+		err = comp_copy(comp, op_data->params);
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
@@ -335,7 +338,8 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 }
 
 /* prepare the pipeline for usage - preload host buffers here */
-int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
+int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc,
+	struct stream_params *params)
 {
 	struct comp_dev *host;
 	struct op_data op_data;
@@ -349,6 +353,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PREPARE;
+	op_data.params = params;
 
 	spin_lock(&p->lock);
 	if (host->is_playback)
@@ -360,8 +365,8 @@ int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc)
 }
 
 /* send pipeline component/endpoint a command */
-int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd,
-	void *data)
+int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc,
+	struct stream_params *params, int cmd, void *data)
 {
 	struct comp_dev *host;
 	struct op_data op_data;
@@ -377,6 +382,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc, int cmd,
 	op_data.op = COMP_OPS_CMD;
 	op_data.cmd = cmd;
 	op_data.cmd_data = data;
+	op_data.params = params;
 
 	spin_lock(&p->lock);
 	if (host->is_playback)
@@ -416,7 +422,7 @@ int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 
 /* configure pipelines host DMA buffer */
 int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
-	struct dma_sg_elem *elem)
+	struct stream_params *params, struct dma_sg_elem *elem)
 {
 	struct comp_dev *comp;
 
@@ -426,8 +432,11 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 	if (comp == NULL)
 		return -ENODEV;
 
-	return comp_host_buffer(comp, elem);
+	return comp_host_buffer(comp, params, elem);
 }
+
+// TODO: create list of endpoints and streams
+struct stream_params *_params = NULL;
 
 /* called on timer tick to process pipeline data */
 void pipeline_do_work(struct pipeline *p)
@@ -439,6 +448,7 @@ void pipeline_do_work(struct pipeline *p)
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
+	op_data.params = _params;
 
 	/* process capture streams in the pipeline */
 	list_for_each(elist, &p->endpoint_list) {
