@@ -15,18 +15,6 @@
 #include <reef/interrupt.h>
 #include <reef/lock.h>
 
-/* SSP register offsets */
-#define SSCR0		0x00
-#define SSCR1		0x04
-#define SSSR		0x08
-#define SSITR		0x0C
-#define SSDR		0x10
-#define SSTO		0x28
-#define SSPSP		0x2C
-#define SSTSA		0x30
-#define SSRSA		0x34
-#define SSTSS		0x38
-
 /* SSCR0 bits */
 #define SSCR0_DSS_MASK	(0x0000000f)
 #define SSCR0_DSIZE(x)  ((x) - 1)

@@ -26,7 +26,6 @@
 
 struct host_stream {
 	/* local DMA config */
-	struct dma *dma;
 	int chan;
 	struct dma_sg_config config;
 	completion_t complete;
@@ -39,6 +38,7 @@ struct host_stream {
 };
 
 struct host_data {
+	struct dma *dma;
 	struct host_stream s[2];	/* playback and capture streams */	
 };
 
@@ -170,6 +170,7 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 	}
 
 	comp_set_drvdata(dev, hd);
+	hd->dma = dma_get(DMA_ID_DMAC0);
 
 	/* init playback stream */
 	hs = &hd->s[HOST_PLAYBACK_STREAM];
@@ -177,15 +178,14 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 	list_init(&hs->host_elem_list);
 	list_add(&elemp->list, &hs->config.elem_list);
 	hs->elem = elemp;
-	hs->dma = dma_get(DMA_ID_DMAC0);
 
 	/* get DMA channel from DMAC0 */
-	hs->chan = dma_channel_get(hs->dma);
+	hs->chan = dma_channel_get(hd->dma);
 	if (hs->chan < 0)
 		goto error;
 
 	/* set up callback */
-	dma_set_cb(hs->dma, hs->chan, host_playback_dma_cb, dev);
+	dma_set_cb(hd->dma, hs->chan, host_playback_dma_cb, dev);
 
 	/* init capture stream */
 	hs = &hd->s[HOST_CAPTURE_STREAM];
@@ -193,21 +193,20 @@ static struct comp_dev *host_new(struct comp_desc *desc)
 	list_init(&hs->host_elem_list);
 	list_add(&elemc->list, &hs->config.elem_list);
 	hs->elem = elemc;
-	hs->dma = dma_get(DMA_ID_DMAC0);
 
 	/* get DMA channel from DMAC0 */
-	hs->chan = dma_channel_get(hs->dma);
+	hs->chan = dma_channel_get(hd->dma);
 	if (hs->chan < 0)
 		goto capt_error;
 
 	/* set up callback */
-	dma_set_cb(hs->dma, hs->chan, host_capture_dma_cb, dev);
+	dma_set_cb(hd->dma, hs->chan, host_capture_dma_cb, dev);
 
 	return dev;
 
 capt_error:
 	hs = &hd->s[HOST_PLAYBACK_STREAM];
-	dma_channel_put(hs->dma, hs->chan);
+	dma_channel_put(hd->dma, hs->chan);
 error:
 	rfree(RZONE_MODULE, RMOD_SYS, elemp);
 	rfree(RZONE_MODULE, RMOD_SYS, elemc);
@@ -222,11 +221,11 @@ static void host_free(struct comp_dev *dev)
 	struct host_stream *hs;
 
 	hs = &hd->s[HOST_PLAYBACK_STREAM];
-	dma_channel_put(hs->dma, hs->chan);
+	dma_channel_put(hd->dma, hs->chan);
 	rfree(RZONE_MODULE, RMOD_SYS, hs->elem);
 
 	hs = &hd->s[HOST_CAPTURE_STREAM];
-	dma_channel_put(hs->dma, hs->chan);
+	dma_channel_put(hd->dma, hs->chan);
 	rfree(RZONE_MODULE, RMOD_SYS, hs->elem);
 
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
@@ -343,8 +342,8 @@ static int host_preload(struct comp_dev *dev, int count)
 
 		/* do DMA transfer */
 		wait_init(&hs->complete);
-		dma_set_config(hs->dma, hs->chan, &hs->config);
-		dma_start(hs->dma, hs->chan);
+		dma_set_config(hd->dma, hs->chan, &hs->config);
+		dma_start(hd->dma, hs->chan);
 
 		/* wait 1 msecs for DMA to finish */
 		hs->complete.timeout = 1;
@@ -385,18 +384,18 @@ static int host_cmd(struct comp_dev *dev, struct stream_params *params,
 
 	switch (cmd) {
 	case PIPELINE_CMD_PAUSE:
-		dma_pause(hs->dma, hs->chan);
+		dma_pause(hd->dma, hs->chan);
 		break;
 	case PIPELINE_CMD_STOP:
-		dma_stop(hs->dma, hs->chan);
+		dma_stop(hd->dma, hs->chan);
 		break;
 	case PIPELINE_CMD_RELEASE:
-		dma_release(hs->dma, hs->chan);
+		dma_release(hd->dma, hs->chan);
 		break;
 	case PIPELINE_CMD_START:
 		break;
 	case PIPELINE_CMD_DRAIN:
-		dma_drain(hs->dma, hs->chan);
+		dma_drain(hd->dma, hs->chan);
 		break;
 	case PIPELINE_CMD_SUSPEND:
 	case PIPELINE_CMD_RESUME:
@@ -470,8 +469,12 @@ static int host_copy(struct comp_dev *dev, struct stream_params *params)
 
 	/* start the DMA if there is enough local free space
 	   and previous DMA has completed */
-	if (dma_buffer->avail > dma_period_desc->size)
-		dma_start(hs->dma, hs->chan);
+	if (dma_buffer->avail > dma_period_desc->size) {
+		/* do DMA transfer */
+		wait_init(&hs->complete);
+		dma_set_config(hd->dma, hs->chan, &hs->config);
+		dma_start(hd->dma, hs->chan);
+	}
 
 	return 0;
 }

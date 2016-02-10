@@ -9,6 +9,7 @@
 #include <reef/reef.h>
 #include <reef/dai.h>
 #include <reef/ssp.h>
+#include <reef/stream.h>
 #include <reef/audio/component.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
@@ -22,8 +23,14 @@ static struct dai ssp[3] = {
 	.plat_data = {
 		.base		= SSP0_BASE,
 		.irq		= IRQ_NUM_EXT_SSP0,
-		.tx_handshake	= DMA_HANDSHAKE_SSP0_TX,
-		.rx_handshake	= DMA_HANDSHAKE_SSP0_RX,
+		.fifo[STREAM_DIRECTION_PLAYBACK] = {
+			.offset		= SSP0_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP0_TX,
+		},
+		.fifo[STREAM_DIRECTION_CAPTURE] = {
+			.offset		= SSP0_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP0_RX,
+		}
 	},
 	.ops		= &ssp_ops,
 },
@@ -32,8 +39,14 @@ static struct dai ssp[3] = {
 	.plat_data = {
 		.base		= SSP1_BASE,
 		.irq		= IRQ_NUM_EXT_SSP1,
-		.tx_handshake	= DMA_HANDSHAKE_SSP1_TX,
-		.rx_handshake	= DMA_HANDSHAKE_SSP1_RX,
+		.fifo[STREAM_DIRECTION_PLAYBACK] = {
+			.offset		= SSP1_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP1_TX,
+		},
+		.fifo[STREAM_DIRECTION_CAPTURE] = {
+			.offset		= SSP1_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP1_RX,
+		}
 	},
 	.ops		= &ssp_ops,
 },
@@ -42,8 +55,14 @@ static struct dai ssp[3] = {
 	.plat_data = {
 		.base		= SSP2_BASE,
 		.irq		= IRQ_NUM_EXT_SSP2,
-		.tx_handshake	= DMA_HANDSHAKE_SSP2_TX,
-		.rx_handshake	= DMA_HANDSHAKE_SSP2_RX,
+		.fifo[STREAM_DIRECTION_PLAYBACK] = {
+			.offset		= SSP2_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP2_TX,
+		},
+		.fifo[STREAM_DIRECTION_CAPTURE] = {
+			.offset		= SSP2_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP2_RX,
+		}
 	},
 	.ops		= &ssp_ops,
 },};

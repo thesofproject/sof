@@ -89,17 +89,20 @@ struct dai_config {
 	uint16_t clk_src;	/* DAI specific clk source */
 };
 
+struct dai_plat_fifo_data {
+	uint32_t offset;
+	uint16_t width;
+	uint16_t depth;
+	uint16_t watermark;
+	uint16_t handshake;
+};
+
 /* DAI platform data */
 struct dai_plat_data {
 	uint32_t base;
 	uint16_t irq;
-	uint16_t fifo_width;
-	uint16_t fifo_depth;
-	uint16_t fifo_tx_watermark;
-	uint16_t fifo_rx_watermark;
 	uint16_t flags;
-	uint16_t tx_handshake;
-	uint16_t rx_handshake;
+	struct dai_plat_fifo_data fifo[2];
 };
 
 struct dai {
@@ -120,6 +123,8 @@ struct dai *dai_get(uint32_t uuid);
 	dai->plat_data.base
 #define dai_irq(dai) \
 	dai->plat_data.irq
+#define dai_fifo(dai, direction) \
+	dai->plat_data.fifo[direction].offset
 
 /* Digital Audio interface formatting */
 static inline int dai_set_fmt(struct dai *dai)
