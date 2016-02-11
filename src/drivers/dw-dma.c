@@ -391,7 +391,6 @@ static int dw_dma_status(struct dma *dma, int channel,
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
 	status->state = p->chan[channel].status;
 
 	switch (p->chan[channel].direction) {
@@ -411,7 +410,6 @@ static int dw_dma_status(struct dma *dma, int channel,
 	}
 
 	status->timestamp = timer_get_system();
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
 
 	return 0;
 }

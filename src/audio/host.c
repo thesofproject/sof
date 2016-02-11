@@ -62,6 +62,7 @@ static void host_playback_dma_cb(void *data, uint32_t type)
 	struct dma_sg_elem *elem = hs->elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
+	struct dma_chan_status status;
 	
 	/*
 	 * Recalculate host side buffer information.
@@ -70,7 +71,7 @@ static void host_playback_dma_cb(void *data, uint32_t type)
 		struct comp_buffer, source_list);
 	dma_period_desc = &dma_buffer->desc.source_period;
 
-	/* update host side buffer elem and check for overflow */
+	/* update host side source buffer elem and check for overflow */
 	elem->src += dma_period_desc->size;
 	if (elem->src >= hs->current_host_end) {
 
@@ -80,13 +81,14 @@ static void host_playback_dma_cb(void *data, uint32_t type)
 		elem->src = host_elem->src;
 	}
 
-	/* update local buffer position and check for overflow */
-	dma_buffer->w_ptr += dma_period_desc->size;
-	if (dma_buffer->w_ptr >= dma_buffer->end_addr)
-		dma_buffer->w_ptr = dma_buffer->addr;
+	/* update host dest buffer position and check for overflow */
+	elem->dest += dma_period_desc->size;
+	if (elem->dest >= (uint32_t)dma_buffer->end_addr)
+		elem->dest = (uint32_t)dma_buffer->addr;
 
-	/* update DMA elem */
-	elem->dest = (uint32_t)dma_buffer->w_ptr;
+	/* update local buffer position */
+	dma_status(hd->dma, hs->chan, &status);
+	dma_buffer->w_ptr = (void*)status.position;
 
 	/* recalc available buffer space */
 	comp_update_avail(dma_buffer);
@@ -103,6 +105,7 @@ static void host_capture_dma_cb(void *data, uint32_t type)
 	struct dma_sg_elem *elem = hs->elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
+	struct dma_chan_status status;
 	
 	/*
 	 * Recalculate host side buffer information.
@@ -112,7 +115,7 @@ static void host_capture_dma_cb(void *data, uint32_t type)
 		struct comp_buffer, sink_list);
 	dma_period_desc = &dma_buffer->desc.sink_period;
 
-	/* update host side buffer elem and check for overflow */
+	/* update host side buffer dest elem and check for overflow */
 	elem->dest += dma_period_desc->size;
 	if (elem->dest >= hs->current_host_end) {
 
@@ -122,13 +125,14 @@ static void host_capture_dma_cb(void *data, uint32_t type)
 		elem->dest = host_elem->dest;
 	}
 
-	/* update local buffer position and check for overflow */
-	dma_buffer->r_ptr += dma_period_desc->size;
-	if (dma_buffer->r_ptr >= dma_buffer->end_addr)
-		dma_buffer->r_ptr = dma_buffer->addr;
+	/* update host buffer source position and check for overflow */
+	elem->src += dma_period_desc->size;
+	if (elem->src >= (uint32_t)dma_buffer->end_addr)
+		elem->src = (uint32_t)dma_buffer->addr;
 
-	/* update DMA elem */
-	elem->src = (uint32_t)dma_buffer->r_ptr;
+	/* update local buffer position */
+	dma_status(hd->dma, hs->chan, &status);
+	dma_buffer->r_ptr = (void*)status.position;
 
 	/* recalc available buffer space */
 	comp_update_avail(dma_buffer);

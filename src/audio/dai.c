@@ -43,16 +43,16 @@ static void dai_dma_playback_cb(void *data, uint32_t type)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dai_stream *ds = &dd->s[DAI_PLAYBACK_STREAM];
 	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
+	struct dma_chan_status status;
 
 	dma_buffer = list_first_entry(&dev->bsink_list,
 		struct comp_buffer, source_list);
-	dma_period_desc = &dma_buffer->desc.source_period;
 
-	/* update local buffer position and check for overflow */
-	dma_buffer->r_ptr += dma_period_desc->size;
-	if (dma_buffer->r_ptr >= dma_buffer->end_addr)
-		dma_buffer->r_ptr = dma_buffer->addr;
+	/* update local buffer position */
+	dma_status(dd->dma, ds->chan, &status);
+	dma_buffer->r_ptr = (void*)status.position;
+
+	// TODO: update presentation position for host
 
 	/* recalc available buffer space */
 	comp_update_avail(dma_buffer);
@@ -67,16 +67,14 @@ static void dai_dma_capture_cb(void *data, uint32_t type)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dai_stream *ds = &dd->s[DAI_CAPTURE_STREAM];
 	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
+	struct dma_chan_status status;
 	
 	dma_buffer = list_first_entry(&dev->bsink_list,
 		struct comp_buffer, source_list);
-	dma_period_desc = &dma_buffer->desc.source_period;
 
-	/* update local buffer position and check for overflow */
-	dma_buffer->w_ptr += dma_period_desc->size;
-	if (dma_buffer->w_ptr >= dma_buffer->end_addr)
-		dma_buffer->w_ptr = dma_buffer->addr;
+	/* update local buffer position */
+	dma_status(dd->dma, ds->chan, &status);
+	dma_buffer->w_ptr = (void*)status.position;
 
 	/* recalc available buffer space */
 	comp_update_avail(dma_buffer);
@@ -272,6 +270,9 @@ static int dai_prepare(struct comp_dev *dev, struct stream_params *params)
 
 static int dai_reset(struct comp_dev *dev, struct stream_params *params)
 {
+	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dai_stream *ds = &dd->s[params->pcm.direction];
+	struct dma_sg_config *config = &ds->config;
 	struct list_head *elist, *tlist;
 	struct dma_sg_elem *elem;
 
