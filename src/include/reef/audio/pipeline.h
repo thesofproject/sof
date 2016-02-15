@@ -60,6 +60,8 @@ struct pipeline *pipeline_new(void);
 void pipeline_free(struct pipeline *p);
 
 struct pipeline *pipeline_from_id(int id);
+struct comp_dev *pipeline_get_comp(struct pipeline *p,
+	struct comp_desc *desc);
 
 int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc);
 
@@ -77,6 +79,10 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
 
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc,
+	struct stream_params *params);
+
+/* reset the pipeline and free resources */
+int pipeline_reset(struct pipeline *p, struct comp_desc *host_desc,
 	struct stream_params *params);
 
 /* send pipeline a command */

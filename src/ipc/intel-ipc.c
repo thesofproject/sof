@@ -42,17 +42,39 @@ struct ipc_mixer_data {
 	uint32_t volume[IPC_INTEL_NO_CHANNELS];	/* register_address */
 };
 
+// TODO these should be added by static pipeline
+struct host_pcm_dev {
+	uint32_t pipeline_id;
+	struct pipeline *p;
+	struct stream_params params;
+	struct comp_desc desc;
+	struct ipc_stream_data *stream_data;
+	struct list_head list;		/* list in ipc data */
+};
+
+// TODO these should be added by static pipeline
+struct host_mixer_dev {
+	struct comp_desc desc;
+	struct ipc_mixer_data *mixer_data;
+	struct list_head list;		/* list in ipc data */
+};
+
 /* private data for IPC */
 struct ipc_data {
+	/* messaging */
 	uint32_t host_msg;		/* current message from host */
 	uint32_t dsp_msg;		/* current message to host */
 	uint16_t host_pending;
 	uint16_t dsp_pending;
+
+	/* DMA */
 	struct dma *dmac0, *dmac1;
 	uint8_t *page_table;
 	completion_t complete;
-	struct ipc_stream_data *stream_data; /* points to mailbox */
-	struct ipc_mixer_data *mixer_data; /* points to mailbox */
+
+	/* host mixers and pcms */
+	struct list_head pcm_list;	/* list of host pcm devices */
+	struct list_head mixer_list;	/* list of host mixers */
 };
 
 #define to_host_offset(_s) \
@@ -108,22 +130,43 @@ static uint32_t ipc_fw_caps(uint32_t header)
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
-#if 0
-/* Stream ring info */
-struct sst_hsw_ipc_stream_ring {
-	u32 ring_pt_address; // PHY address of page table
-	u32 num_pages;	// audio DMA buffer size in pages of 4K
-	u32 ring_size;	// audio DMA buffer size in bytes
-	u32 ring_offset; // always 0
-	u32 ring_first_pfn; //audio DMA buffer PHY address PFN
-} __attribute__((packed));
-#endif
-
 static void dma_complete(void *data, uint32_t type)
 {
 	struct ipc_data *ipc = (struct ipc_data *)data;
 
 	wait_completed(&ipc->complete);
+}
+
+static struct host_pcm_dev *get_pcm(uint32_t id)
+{
+	struct host_pcm_dev *pcm;
+	struct list_head *plist;
+
+	list_for_each(plist, &_ipc->pcm_list) {
+
+		pcm = container_of(plist, struct host_pcm_dev, list);
+
+		if (pcm->desc.id == id)
+			return pcm;
+	}
+
+	return NULL;
+}
+
+static struct host_mixer_dev *get_mixer(uint32_t id)
+{
+	struct host_mixer_dev *mixer;
+	struct list_head *mlist;
+
+	list_for_each(mlist, &_ipc->mixer_list) {
+
+		mixer = container_of(mlist, struct host_mixer_dev, list);
+
+		if (mixer->desc.id == id)
+			return mixer;
+	}
+
+	return NULL;
 }
 
 /* this function copies the audio buffer page tables from the host to the DSP */
@@ -180,44 +223,6 @@ out:
 	return ret;
 }
 
-#if 0
-/* Stream Allocate Request */
-struct ipc_intel_ipc_stream_alloc_req {
-	uint8_t path_id;
-	uint8_t stream_type;
-	uint8_t format_id;
-	uint8_t reserved;
-	struct ipc_intel_audio_data_format_ipc format;
-	struct ipc_intel_ipc_stream_ring ringinfo;
-	struct ipc_intel_module_map map;
-	struct ipc_intel_memory_info persistent_mem;
-	struct ipc_intel_memory_info scratch_mem;
-	uint32_t number_of_notifications;
-} __attribute__((packed));
-
-/* Audio Data formats */
-struct sst_hsw_audio_data_format_ipc {
-	u32 frequency;
-	u32 bitdepth;
-	u32 map;
-	u32 config;
-	u32 style;
-	u8 ch_num;
-	u8 valid_bit;
-	u8 reserved[2];
-} __attribute__((packed));
-
-/* Stream Allocate Reply */
-struct ipc_intel_ipc_stream_alloc_reply {
-	uint32_t stream_hw_id;
-	uint32_t mixer_hw_id; // returns rate ????
-	uint32_t read_position_register_address;
-	uint32_t presentation_position_register_address;
-	uint32_t peak_meter_register_address[IPC_INTEL_NO_CHANNELS];
-	uint32_t volume_register_address[IPC_INTEL_NO_CHANNELS];
-} __attribute__((packed));
-#endif
-
 /* now parse page tables and create the audio DMA SG configuration
  for host audio DMA buffer. This involves creating a dma_sg_elem for each
  page table entry and adding each elem to a list in struct dma_sg_config*/
@@ -253,14 +258,18 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_alloc_req req;
 	struct ipc_intel_ipc_stream_alloc_reply reply;
-	struct stream_params params;
-	struct comp_desc host, dai;
-	int err, stream_id = 0, i;
+	struct stream_params *params;
+	struct comp_desc dai, host;
+	struct host_pcm_dev *pcm_dev;
+	int err;
+	uint8_t direction;
 
 	trace_ipc("SAl");
 
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&req, 0, sizeof(req));
+
+	host.uuid = COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST);
 
 	/* path_id is always SSP0 */
 	dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0);
@@ -269,36 +278,47 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	/* format always PCM, now check source type */
 	switch (req.stream_type) {
 	case IPC_INTEL_STREAM_TYPE_SYSTEM:
-		host.uuid = COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST);
 		host.id = 0;
-		params.pcm.direction = STREAM_DIRECTION_PLAYBACK;
+		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_RENDER:
-		params.pcm.direction = STREAM_DIRECTION_PLAYBACK;
+		host.id = 1;
+		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
-	case IPC_INTEL_STREAM_TYPE_LOOPBACK:
-		params.pcm.direction = STREAM_DIRECTION_CAPTURE;
-	default:
-		/* TODO: use this as default atm */
-		host.uuid = COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST);
-		host.id = 0;
+		host.id = 2;
+		direction = STREAM_DIRECTION_CAPTURE;
 		break;
+	case IPC_INTEL_STREAM_TYPE_LOOPBACK:
+		host.id = 3;
+		direction = STREAM_DIRECTION_CAPTURE;
+	default:
+		goto error;
 	};
 
+	/* get the pcm_dev */
+	pcm_dev = get_pcm(host.id);
+	if (pcm_dev == NULL)
+		goto error; 
+
+	params = &pcm_dev->params;
+
 	/* read in format to create params */
-	params.pcm.channels = req.format.ch_num;
-	params.pcm.rate = req.format.frequency;
+	params->channels = req.format.ch_num;
+	params->pcm.rate = req.format.frequency;
+	params->direction = direction;
 
 	/* work out bitdepth and framesize */
 	switch (req.format.bitdepth) {
 	case 16:
-		params.pcm.format = STREAM_FORMAT_S16_LE;
-		params.pcm.frame_size = 2 * params.pcm.channels;
+		params->pcm.format = STREAM_FORMAT_S16_LE;
+		params->frame_size = 2 * params->channels;
 		break;
+	default:
+		goto error;
 	}
 
-	params.pcm.period_frames = 4096 / params.pcm.frame_size;
+	params->period_frames = 4096 / params->frame_size;
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_desciptors(&req);
@@ -308,42 +328,46 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	/* TODO: now parse page tables and create audio DMA SG configuration and
 	for host audio DMA buffer. This involves creating a dma_sg_elem for each
 	page table entry and adding each elem to a list in struct dma_sg_config*/
-	err = parse_page_descriptors(&req, &host, &params);
+	err = parse_page_descriptors(&req, &host, params);
 	if (err < 0)
 		goto error;
 
 	/* configure pipeline audio params */
-	err = pipeline_params(pipeline_static, &host, &params);	
+	err = pipeline_params(pipeline_static, &host, params);	
 	if (err < 0)
 		goto error;
 
 	/* Configure SSP and send to DAI*/
-	err = pipeline_params(pipeline_static, &dai, &params);	
+	err = pipeline_params(pipeline_static, &dai, params);	
 	if (err < 0)
 		goto error;
 
 	/* initialise the pipeline */
-	err = pipeline_prepare(pipeline_static, &host, &params);
+	err = pipeline_prepare(pipeline_static, &host, params);
 	if (err < 0)
 		goto error;
 
+
 	/* at this point pipeline is ready for command so send stream reply */
-	reply.stream_hw_id = stream_id;
+	reply.stream_hw_id = host.id;
 	reply.mixer_hw_id = 0; // returns rate ????
 
+// TODO: set up pointers to read data directly.
+#if 0
 	/* set read pos and presentation pos address */
 	reply.read_position_register_address =
-		to_host_offset(_ipc->stream_data[stream_id].rpos);
+		to_host_offset(pcm_dev->stream_data[stream_id].rpos);
 	reply.presentation_position_register_address =
-		to_host_offset(_ipc->stream_data[stream_id].ppos);
+		to_host_offset(pcm_dev->stream_data[stream_id].ppos);
 
 	/* set volume address */
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
 		reply.peak_meter_register_address[i] =
-			to_host_offset(_ipc->stream_data[stream_id].peak[i]);
+			to_host_offset(pcm_dev->stream_data[stream_id].peak[i]);
 		reply.volume_register_address[i] =
-			to_host_offset(_ipc->stream_data[stream_id].volume[i]);
+			to_host_offset(pcm_dev->stream_data[stream_id].volume[i]);
 	}
+#endif
 
 	/* write reply to mailbox */
 	mailbox_outbox_write(0, &reply, sizeof(reply));
@@ -355,30 +379,60 @@ error:
 
 static uint32_t ipc_stream_free(uint32_t header)
 {
+	struct ipc_intel_ipc_stream_free_req free_req;
+	struct host_pcm_dev *pcm_dev;
+	struct stream_params *params;
+	int err;
+
 	trace_ipc("SFr");
 
+	/* read alloc stream IPC from the inbox */
+	mailbox_inbox_read(&free_req, 0, sizeof(free_req));
+
+	/* get the pcm_dev */
+	pcm_dev = get_pcm(free_req.stream_id);
+	if (pcm_dev == NULL)
+		goto error; 
+
+	params = &pcm_dev->params;
+
+	/* initialise the pipeline */
+	err = pipeline_reset(pipeline_static, &pcm_dev->desc, params);
+	if (err < 0)
+		goto error;
+
+error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stream_info(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_info_reply info;
-	int i;
+	struct host_mixer_dev *mixer_dev;
+//	int i;
 
 	trace_ipc("SIn");
 
 	/* TODO: get data from topology */ 
 	info.mixer_hw_id = 1;
 
+	/* get the pcm_dev */
+	mixer_dev = get_mixer(info.mixer_hw_id);
+	if (mixer_dev == NULL)
+		goto error; 
+	
+#if 0
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
 		info.peak_meter_register_address[i] =
 			to_host_offset(_ipc->mixer_data->peak[i]);
 		info.volume_register_address[i] =
 			to_host_offset(_ipc->mixer_data->volume[i]);
 	}
-
+#endif
 	mailbox_outbox_write(0, &info, sizeof(info));
 
+// TODO: define error paths
+error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
@@ -644,13 +698,8 @@ int platform_ipc_init(void)
 	_ipc->dmac0 = dma_get(DMA_ID_DMAC0);
 	_ipc->dmac1 = dma_get(DMA_ID_DMAC1);
 	_ipc->host_pending = 0;
-	_ipc->stream_data =
-		(struct ipc_stream_data*)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET);
-	_ipc->mixer_data = (void*)_ipc->stream_data +
-		sizeof(struct ipc_stream_data) * STREAM_MAX_STREAMS;
-	bzero(_ipc->stream_data,
-		sizeof(struct ipc_stream_data) * STREAM_MAX_STREAMS +
-		sizeof(struct ipc_mixer_data));
+	list_init(&_ipc->pcm_list);
+	list_init(&_ipc->mixer_list);
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, NULL);

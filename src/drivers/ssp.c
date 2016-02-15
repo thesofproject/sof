@@ -90,14 +90,30 @@ struct ssp_pdata {
 	spinlock_t lock;
 };
 
+static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
+{
+	io_reg_write(dai_base(dai) + reg, value);
+}
+
+static inline uint32_t ssp_read(struct dai *dai, uint32_t reg)
+{
+	return io_reg_read(dai_base(dai) + reg);
+}
+
+static inline void ssp_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
+	uint32_t value)
+{
+	io_reg_update_bits(dai_base(dai) + reg, mask, value);
+}
+
 /* save SSP context prior to entering D3 */
 static int ssp_context_store(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	ssp->sscr0 = io_reg_read(dai_base(dai) + SSCR0);
-	ssp->sscr1 = io_reg_read(dai_base(dai) + SSCR1);
-	ssp->psp = io_reg_read(dai_base(dai) + SSPSP);
+	ssp->sscr0 = ssp_read(dai, SSCR0);
+	ssp->sscr1 = ssp_read(dai, SSCR1);
+	ssp->psp = ssp_read(dai, SSPSP);
 
 	return 0;
 }
@@ -107,15 +123,15 @@ static int ssp_context_restore(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	io_reg_write(dai_base(dai) + SSCR0, ssp->sscr0);
-	io_reg_write(dai_base(dai) + SSCR1, ssp->sscr1);
-	io_reg_write(dai_base(dai) + SSPSP, ssp->psp);
+	ssp_write(dai, SSCR0, ssp->sscr0);
+	ssp_write(dai, SSCR1, ssp->sscr1);
+	ssp_write(dai, SSPSP, ssp->psp);
 
 	return 0;
 }
 
 /* Digital Audio interface formatting */
-static inline int ssp_set_fmt(struct dai *dai)
+static inline int ssp_set_fmt(struct dai *dai, struct stream_params *params)
 {
 	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0, sscr1, sspsp;
@@ -196,63 +212,63 @@ static inline int ssp_set_fmt(struct dai *dai)
 	else
 		sscr0 |= SSCR0_DSIZE(dai->config.frame_size);
 
-	io_reg_write(dai_base(dai) + SSCR0, sscr0);
-	io_reg_write(dai_base(dai) + SSCR1, sscr1);
-	io_reg_write(dai_base(dai) + SSPSP, sspsp);
+	ssp_write(dai, SSCR0, sscr0);
+	ssp_write(dai, SSCR1, sscr1);
+	ssp_write(dai, SSPSP, sspsp);
 
 	return 0;
 }
 
 /* start the SSP for either playback or capture */
-static void ssp_start(struct dai *dai, int direction)
+static void ssp_start(struct dai *dai, struct stream_params *params)
 {
 	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	/* enable port */
-	io_reg_update_bits(dai_base(dai) + SSCR0, SSCR0_SSE, SSCR0_SSE);
+	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 
 	/* enable DMA */
-	if (direction == DAI_DIR_PLAYBACK)
-		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_TSRE, SSCR1_TSRE);
+	if (params->direction == DAI_DIR_PLAYBACK)
+		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
 	else
-		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_RSRE, SSCR1_RSRE);
+		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
 }
 
 /* stop the SSP port stream DMA and disable SSP port if no users */
-static void ssp_stop(struct dai *dai, int direction)
+static void ssp_stop(struct dai *dai, struct stream_params *params)
 {
 	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr1;
 
 	/* disable DMA */
-	if (direction == DAI_DIR_PLAYBACK)
-		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_TSRE, 0);
+	if (params->direction == DAI_DIR_PLAYBACK)
+		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 	else
-		io_reg_update_bits(dai_base(dai) + SSCR1, SSCR1_RSRE, 0);
+		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 
 	/* disable port if no users */
-	sscr1 = io_reg_read(dai_base(dai) + SSCR1);
+	sscr1 = ssp_read(dai, SSCR1);
 	if (!(sscr1 & (SSCR1_TSRE | SSCR1_RSRE)))
-		io_reg_update_bits(dai_base(dai) + SSCR0, SSCR0_SSE, 0);
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 }
 
-static int ssp_trigger(struct dai *dai, int cmd, int direction)
+static int ssp_trigger(struct dai *dai, int cmd, struct stream_params *params)
 {
 	switch (cmd) {
 	case DAI_TRIGGER_START:
 	case DAI_TRIGGER_PAUSE_RELEASE:
-		ssp_start(dai, direction);
+		ssp_start(dai, params);
 		break;
 	case DAI_TRIGGER_PAUSE_PUSH:
 	case DAI_TRIGGER_STOP:
-		ssp_stop(dai, direction);
+		ssp_stop(dai, params);
 		break;
 	case DAI_TRIGGER_RESUME:
 		ssp_context_restore(dai);
-		ssp_start(dai, direction);
+		ssp_start(dai, params);
 		break;
 	case DAI_TRIGGER_SUSPEND:
-		ssp_stop(dai, direction);
+		ssp_stop(dai, params);
 		ssp_context_store(dai);
 		break;
 	default:

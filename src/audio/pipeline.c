@@ -75,6 +75,17 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 	return NULL;
 }
 
+struct comp_dev *pipeline_get_comp(struct pipeline *p,
+	struct comp_desc *desc)
+{
+	struct comp_dev *cd;
+
+	spin_lock(&p->lock);
+	cd = pipeline_comp_from_id(p, desc);
+	spin_unlock(&p->lock);
+	return cd;
+}	
+
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(void)
 {
@@ -247,6 +258,10 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		/* component should copy to buffers */
 		err = comp_copy(comp, op_data->params);
 		break;
+	case COMP_OPS_RESET:
+		/* component should reset and free resources */
+		err = comp_reset(comp, op_data->params);
+		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
 		return -EINVAL;
@@ -308,6 +323,10 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 	case COMP_OPS_COPY:
 		/* component should copy to buffers */
 		err = comp_copy(comp, op_data->params);
+		break;
+	case COMP_OPS_RESET:
+		/* component should reset and free resources */
+		err = comp_reset(comp, op_data->params);
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
@@ -409,6 +428,33 @@ int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PARAMS;
+	op_data.params = params;
+
+	spin_lock(&p->lock);
+	if (host->is_playback)
+		ret = component_op_sink(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
+	spin_unlock(&p->lock);
+	return ret;
+}
+
+/* send pipeline component/endpoint params */
+int pipeline_reset(struct pipeline *p, struct comp_desc *host_desc,
+	struct stream_params *params)
+{
+	struct comp_dev *host;
+	struct op_data op_data;
+	int ret;
+
+	trace_pipe("PRe");
+
+	host = pipeline_comp_from_id(p, host_desc);
+	if (host == NULL)
+		return -ENODEV;
+
+	op_data.p = p;
+	op_data.op = COMP_OPS_RESET;
 	op_data.params = params;
 
 	spin_lock(&p->lock);

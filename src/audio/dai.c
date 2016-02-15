@@ -185,7 +185,7 @@ static int dai_playback_params(struct comp_dev *dev,
 		elem->size = dma_period_desc->size;
 		elem->src = (uint32_t)(dma_buffer->r_ptr) +
 			i * dma_period_desc->size;
-		elem->dest = dai_fifo(dd->ssp, params->pcm.direction);
+		elem->dest = dai_fifo(dd->ssp, params->direction);
 		list_add(&elem->list, &config->elem_list);
 	}
 
@@ -236,7 +236,7 @@ static int dai_capture_params(struct comp_dev *dev,
 		elem->size = dma_period_desc->size;
 		elem->dest = (uint32_t)(dma_buffer->w_ptr) +
 			i * dma_period_desc->size;
-		elem->src = dai_fifo(dd->ssp, params->pcm.direction);
+		elem->src = dai_fifo(dd->ssp, params->direction);
 		list_add(&elem->list, &config->elem_list);
 	}
 
@@ -257,7 +257,7 @@ err_unwind:
 static int dai_params(struct comp_dev *dev,
 	struct stream_params *params)
 {
-	if (params->pcm.direction == STREAM_DIRECTION_PLAYBACK)
+	if (params->direction == STREAM_DIRECTION_PLAYBACK)
 		return dai_playback_params(dev, params);
 	else
 		return dai_capture_params(dev, params);
@@ -271,7 +271,7 @@ static int dai_prepare(struct comp_dev *dev, struct stream_params *params)
 static int dai_reset(struct comp_dev *dev, struct stream_params *params)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_stream *ds = &dd->s[params->pcm.direction];
+	struct dai_stream *ds = &dd->s[params->direction];
 	struct dma_sg_config *config = &ds->config;
 	struct list_head *elist, *tlist;
 	struct dma_sg_elem *elem;
@@ -290,27 +290,27 @@ static int dai_cmd(struct comp_dev *dev, struct stream_params *params,
 	int cmd, void *data)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dai_stream *ds = &dd->s[params->pcm.direction];
+	struct dai_stream *ds = &dd->s[params->direction];
 
 	// TODO: wait on pause/stop/drain completions before SSP ops.
 	switch (cmd) {
 	case PIPELINE_CMD_PAUSE:
 		dma_pause(dd->dma, ds->chan);
-		dai_trigger(dd->ssp, cmd, params->pcm.direction);
+		dai_trigger(dd->ssp, cmd, params);
 	case PIPELINE_CMD_STOP:
 		dma_stop(dd->dma, ds->chan);
-		dai_trigger(dd->ssp, cmd, params->pcm.direction);
+		dai_trigger(dd->ssp, cmd, params);
 		break;
 	case PIPELINE_CMD_RELEASE:
 		dma_release(dd->dma, ds->chan);
-		dai_trigger(dd->ssp, cmd, params->pcm.direction);
+		dai_trigger(dd->ssp, cmd, params);
 	case PIPELINE_CMD_START:
 		dma_start(dd->dma, ds->chan);
-		dai_trigger(dd->ssp, cmd, params->pcm.direction);
+		dai_trigger(dd->ssp, cmd, params);
 		break;
 	case PIPELINE_CMD_DRAIN:
 		dma_drain(dd->dma, ds->chan);
-		dai_trigger(dd->ssp, cmd, params->pcm.direction);
+		dai_trigger(dd->ssp, cmd, params);
 		break;
 	case PIPELINE_CMD_SUSPEND:
 	case PIPELINE_CMD_RESUME:

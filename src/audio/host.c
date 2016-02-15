@@ -329,7 +329,7 @@ static int host_params_capture(struct comp_dev *dev,
 static int host_params(struct comp_dev *dev, struct stream_params *params)
 {
 	/* set up local and host DMA elems to reset values */
-	if (params->pcm.direction == STREAM_DIRECTION_PLAYBACK)
+	if (params->direction == STREAM_DIRECTION_PLAYBACK)
 		return host_params_playback(dev, params);
 	else
 		return host_params_capture(dev, params);
@@ -367,7 +367,7 @@ static int host_prepare(struct comp_dev *dev, struct stream_params *params)
 
 	/* preload PCM data */
 	/* TODO: determine how much pre-loading we can do */
-	if (params->pcm.direction == STREAM_DIRECTION_PLAYBACK) {
+	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
 
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
@@ -384,7 +384,7 @@ static int host_cmd(struct comp_dev *dev, struct stream_params *params,
 	int cmd, void *data)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->pcm.direction];
+	struct host_stream *hs = &hd->s[params->direction];
 
 	switch (cmd) {
 	case PIPELINE_CMD_PAUSE:
@@ -414,7 +414,7 @@ static int host_buffer(struct comp_dev *dev, struct stream_params *params,
 	struct dma_sg_elem *elem)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->pcm.direction];
+	struct host_stream *hs = &hd->s[params->direction];
 	struct dma_sg_elem *e;
 
 	/* allocate new host DMA elem and add it to our list */
@@ -431,7 +431,7 @@ static int host_buffer(struct comp_dev *dev, struct stream_params *params,
 static int host_reset(struct comp_dev *dev, struct stream_params *params)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->pcm.direction];
+	struct host_stream *hs = &hd->s[params->direction];
 	struct dma_sg_elem *e;
 	struct list_head *elist, *tlist;
 
@@ -450,7 +450,7 @@ static int host_reset(struct comp_dev *dev, struct stream_params *params)
 static int host_copy(struct comp_dev *dev, struct stream_params *params)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->pcm.direction];
+	struct host_stream *hs = &hd->s[params->direction];
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
 
@@ -459,7 +459,7 @@ static int host_copy(struct comp_dev *dev, struct stream_params *params)
 		return 0;
 
 	/* is there enough space in the buffer ? */
-	if (params->pcm.direction == STREAM_DIRECTION_PLAYBACK) {
+	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
 
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);

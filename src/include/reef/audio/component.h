@@ -52,6 +52,7 @@
 #define COMP_OPS_PREPARE	2
 #define COMP_OPS_COPY		3
 #define COMP_OPS_BUFFER		4
+#define COMP_OPS_RESET		5
 
 /* standard component command structures */
 struct comp_volume {
@@ -238,7 +239,7 @@ static inline int comp_copy(struct comp_dev *dev, struct stream_params *params)
 }
 
 /* component reset and free runtime resources */
-static inline int comp_hw_reset(struct comp_dev *dev,
+static inline int comp_reset(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	return dev->drv->ops.reset(dev, params);

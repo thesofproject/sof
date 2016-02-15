@@ -60,8 +60,8 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.pcm.channels; i++) {
-		for (j = 0; j < source->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.channels; i++) {
+		for (j = 0; j < source->params.period_frames; j++) {
 			int32_t val = (int32_t)*src;
 			*dest = (val * cd->volume[i]) >> 16;
 			dest++;
@@ -83,8 +83,8 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.pcm.channels; i++) {
-		for (j = 0; j < source->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.channels; i++) {
+		for (j = 0; j < source->params.period_frames; j++) {
 			/* TODO: clamp when converting to int16_t */
 			*dest = (int16_t)((*src * cd->volume[i]) >> 16);
 			dest++;
@@ -106,8 +106,8 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.pcm.channels; i++) {
-		for (j = 0; j < source->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.channels; i++) {
+		for (j = 0; j < source->params.period_frames; j++) {
 			*dest = (*src * cd->volume[i]) >> 16;
 			dest++;
 			src++;
@@ -128,8 +128,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.pcm.channels; i++) {
-		for (j = 0; j < source->params.pcm.period_frames; j++) {
+	for (i = 0; i < source->params.channels; i++) {
+		for (j = 0; j < source->params.period_frames; j++) {
 			int32_t val = (int32_t)*src;
 			/* TODO: clamp when converting to int16_t */
 			*dest = (int16_t)((val * cd->volume[i]) >> 16);
@@ -160,7 +160,7 @@ static uint32_t vol_work(void *data)
 	int i, again = 0;
 
 	/* inc/dec each volume if it's not at target */ 
-	for (i = 0; i < source->params.pcm.channels; i++) {
+	for (i = 0; i < source->params.channels; i++) {
 
 		/* skip if target reached */
 		if (cd->volume[i] == cd->tvolume[i])
@@ -285,19 +285,19 @@ static int volume_cmd(struct comp_dev *dev, struct stream_params *params,
 
 	switch (cmd) {
 	case COMP_CMD_VOLUME:
-		for (i = 0; i < params->pcm.channels; i++)
+		for (i = 0; i < params->channels; i++)
 			volume_set_chan(dev, i, cv->volume[i]);
 		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
 		break;
 	case COMP_CMD_MUTE:
-		for (i = 0; i < params->pcm.channels; i++) {
+		for (i = 0; i < params->channels; i++) {
 			if (cv->volume[i])
 				volume_set_chan_mute(dev, i);
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
 		break;
 	case COMP_CMD_UNMUTE:
-		for (i = 0; i < params->pcm.channels; i++) {
+		for (i = 0; i < params->channels; i++) {
 			if (cv->volume[i])
 				volume_set_chan_unmute(dev, i);
 		}
@@ -330,7 +330,7 @@ static int volume_copy(struct comp_dev *dev, struct stream_params *params)
 		sink->w_ptr = sink->addr;
 
 	/* number of frames sent downstream */
-	return source->params.pcm.period_frames;
+	return source->params.period_frames;
 }
 
 struct comp_driver comp_volume = {
