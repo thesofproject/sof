@@ -13,6 +13,7 @@
 #include <reef/list.h>
 #include <reef/stream.h>
 #include <reef/dai.h>
+#include <reef/ipc.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
@@ -125,6 +126,7 @@ static struct spipe_link pipe_capture2[] = {
 
 /* static pipeline ID */
 struct pipeline *pipeline_static;
+uint32_t pipeline_static_id = 0;
 
 struct pipeline *init_static_pipeline(void)
 {
@@ -136,20 +138,22 @@ struct pipeline *init_static_pipeline(void)
 		return NULL;
 
 	/* create the pipeline */
-	pipeline_static = pipeline_new();
+	pipeline_static = pipeline_new(pipeline_static_id);
 	if (pipeline_static < 0)
 		return NULL;
 
 	/* create components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_comps); i++) {
-		pipeline_comp_new(pipeline_static, &pipe0_comps[i]);
+		ipc_comp_new(pipeline_static_id, &pipe0_comps[i]);
 	}
 
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
 		/* add source -> sink */
-		err = pipeline_comp_connect(pipeline_static, &pipe_play0[i].source,
-			&pipe_play0[i].sink, &pipe_play0[i].buffer);
+		err = ipc_comp_connect(pipeline_static_id,
+			&pipe_play0[i].source,
+			&pipe_play0[i].sink,
+			&pipe_play0[i].buffer);
 		if (err < 0)
 			goto err;
 	}
@@ -157,8 +161,10 @@ struct pipeline *init_static_pipeline(void)
 	/* create components on capture pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_capture0); i++) {
 		/* add source -> sink */
-		err = pipeline_comp_connect(pipeline_static, &pipe_capture0[i].source,
-			&pipe_capture0[i].sink, &pipe_capture0[i].buffer);
+		err = ipc_comp_connect(pipeline_static_id,
+			&pipe_capture0[i].source,
+			&pipe_capture0[i].sink,
+			&pipe_capture0[i].buffer);
 		if (err < 0)
 			goto err;
 	}

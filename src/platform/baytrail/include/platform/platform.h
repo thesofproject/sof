@@ -11,6 +11,9 @@
 
 #include <platform/shim.h>
 
+/* Host page size */
+#define HOST_PAGE_SIZE		4096
+
 /* Platform stream capabilities */
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
@@ -25,11 +28,13 @@
 
 /* Platform defined panic code */
 #define platform_panic(__x) \
-	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) | ((0xdead000 | __x) & 0x3fffffff)))
+	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) |\
+		((0xdead000 | __x) & 0x3fffffff)))
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
-	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) | ((__x) & 0x3fffffff)))
+	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) |\
+		((__x) & 0x3fffffff)))
 
 /*
  * APIs declared here are defined for every platform and IPC mechanism.

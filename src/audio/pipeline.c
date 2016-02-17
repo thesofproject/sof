@@ -19,7 +19,6 @@
 #include <reef/audio/pipeline.h>
 
 struct pipeline_data {
-	uint16_t next_id;	/* next ID of new pipeline */
 	spinlock_t lock;
 	struct list_head pipeline_list;	/* list of all pipelines */
 };
@@ -75,6 +74,26 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 	return NULL;
 }
 
+/* caller hold locks */
+static struct comp_buffer *pipeline_buffer_from_id(struct pipeline *p,
+	struct buffer_desc *buffer)
+{
+	struct comp_buffer *b;
+	struct list_head *blist;
+
+	/* search for pipeline by id */
+	list_for_each(blist, &p->buffer_list) {
+
+		b = container_of(blist, struct comp_buffer, pipeline_list);
+
+		if (b->desc.uuid == buffer->uuid)
+			return b;
+	}
+
+	/* not found */
+	return NULL;
+}
+
 struct comp_dev *pipeline_get_comp(struct pipeline *p,
 	struct comp_desc *desc)
 {
@@ -87,7 +106,7 @@ struct comp_dev *pipeline_get_comp(struct pipeline *p,
 }	
 
 /* create new pipeline - returns pipeline id or negative error */
-struct pipeline *pipeline_new(void)
+struct pipeline *pipeline_new(uint16_t id)
 {
 	struct pipeline *p;
 
@@ -98,7 +117,7 @@ struct pipeline *pipeline_new(void)
 		return NULL;
 
 	spin_lock(&pipe_data->lock);
-	p->id = pipe_data->next_id++;
+	p->id = id;
 	p->state = PIPELINE_STATE_INIT;
 	list_init(&p->comp_list);
 	list_init(&p->endpoint_list);
@@ -173,6 +192,52 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 	return 0;
 }
 
+/* free component in the pipeline */
+int pipeline_comp_free(struct pipeline *p, struct comp_desc *desc)
+{
+	trace_pipe("CFr");
+	// TODO
+	return 0;
+}
+
+/* create a new component in the pipeline */
+int pipeline_buffer_new(struct pipeline *p, struct buffer_desc *desc)
+{
+	struct comp_buffer *buffer;
+
+	trace_pipe("BNw");
+
+	spin_lock(&p->lock);
+
+	/* allocate buffer */
+	buffer = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
+	if (buffer == NULL)
+		return -ENOMEM;
+
+	buffer->addr = rballoc(RZONE_MODULE, RMOD_SYS, desc->size);
+	if (buffer->addr == NULL) {
+		rfree(RZONE_MODULE, RMOD_SYS, buffer);
+		return -ENOMEM;
+	}
+
+	buffer->w_ptr = buffer->r_ptr = buffer->addr;
+	buffer->end_addr = buffer->addr + desc->size;
+	buffer->avail = desc->size;
+	buffer->desc = *desc;
+	list_add(&buffer->pipeline_list, &p->buffer_list);
+
+	spin_unlock(&pipe_data->lock);
+	return 0;
+}
+
+/* free component in the pipeline */
+int pipeline_buffer_free(struct pipeline *p, struct buffer_desc *desc)
+{
+	trace_pipe("BFr");
+	// TODO
+	return 0;
+}
+
 /* insert component in pipeline and allocate buffers */
 int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	struct comp_desc *sink_desc, struct buffer_desc *buffer_desc)
@@ -190,24 +255,9 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
 	if (sink == NULL)
 		return -ENODEV;
 
-	/* allocate buffer */
-	buffer = rmalloc(RZONE_MODULE, RMOD(source->drv->module_id),
-		sizeof(*buffer));
+	buffer = pipeline_buffer_from_id(p, buffer_desc);
 	if (buffer == NULL)
-		return -ENOMEM;
-
-	buffer->addr = rballoc(RZONE_MODULE, RMOD(source->drv->module_id),
-		buffer_desc->size);
-	if (buffer->addr == NULL) {
-		rfree(RZONE_MODULE, RMOD(source->drv->module_id), buffer);
-		return -ENOMEM;
-	}
-
-	buffer->w_ptr = buffer->r_ptr = buffer->addr;
-	buffer->end_addr = buffer->addr + buffer_desc->size;
-	buffer->avail = buffer_desc->size;
-	buffer->desc = *buffer_desc;
-	list_add(&buffer->pipeline_list, &p->buffer_list);
+		return -ENODEV;
 
 	/* connect source to buffer */
 	spin_lock(&source->lock);

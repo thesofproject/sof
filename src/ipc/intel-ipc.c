@@ -29,58 +29,43 @@
 #include <reef/audio/pipeline.h>
 #include <uapi/intel-ipc.h>
 
+/* Intel IPC stream states. TODO we have to manually track this atm as is
+does not align to ALSA. TODO align IPC with ALSA ops */
+#define INTEL_STREAM_ALLOC	0	/* stream has been alloced */
+#define INTEL_STREAM_RUNNING	1	/* stream is running */
+#define INTEL_STREAM_PAUSED	2	/* stream has been paused */
+#define INTEL_STREAM_RESET	3	/* stream has been reset */
+
 /* memory mapped stream info for static pipeline - map to stream alloc reply */
-struct ipc_stream_data {
+struct intel_stream_data {
 	uint32_t rpos;	/* read_position_register_address */
 	uint32_t ppos;	/* presentation_position_register_address */
 	uint32_t peak[IPC_INTEL_NO_CHANNELS];	/* peak_meter_register_address */
 	uint32_t volume[IPC_INTEL_NO_CHANNELS];	/* register_address */
+	uint32_t state;		/* INTEL_STREAM_ */
 };
 
-struct ipc_mixer_data {
+struct iintel_mixer_data {
 	uint32_t peak[IPC_INTEL_NO_CHANNELS];	/* peak_meter_register_address */
 	uint32_t volume[IPC_INTEL_NO_CHANNELS];	/* register_address */
 };
 
-// TODO these should be added by static pipeline
-struct host_pcm_dev {
-	uint32_t pipeline_id;
-	struct pipeline *p;
-	struct stream_params params;
-	struct comp_desc desc;
-	struct ipc_stream_data *stream_data;
-	struct list_head list;		/* list in ipc data */
-};
-
-// TODO these should be added by static pipeline
-struct host_mixer_dev {
-	struct comp_desc desc;
-	struct ipc_mixer_data *mixer_data;
-	struct list_head list;		/* list in ipc data */
-};
-
 /* private data for IPC */
-struct ipc_data {
-	/* messaging */
-	uint32_t host_msg;		/* current message from host */
-	uint32_t dsp_msg;		/* current message to host */
-	uint16_t host_pending;
-	uint16_t dsp_pending;
-
+struct intel_ipc_data {
 	/* DMA */
 	struct dma *dmac0, *dmac1;
 	uint8_t *page_table;
 	completion_t complete;
 
-	/* host mixers and pcms */
-	struct list_head pcm_list;	/* list of host pcm devices */
-	struct list_head mixer_list;	/* list of host mixers */
+	/* SSP port - TODO driver only support 1 atm */
+	struct comp_desc dai;
 };
 
 #define to_host_offset(_s) \
 	(((uint32_t)&_s) - MAILBOX_BASE + MAILBOX_HOST_OFFSET)
 
-static struct ipc_data *_ipc;
+static struct ipc *_ipc;
+
 /*
  * BDW IPC dialect.
  *
@@ -132,19 +117,19 @@ static uint32_t ipc_fw_caps(uint32_t header)
 
 static void dma_complete(void *data, uint32_t type)
 {
-	struct ipc_data *ipc = (struct ipc_data *)data;
+	struct intel_ipc_data *iipc = (struct intel_ipc_data *)data;
 
-	wait_completed(&ipc->complete);
+	wait_completed(&iipc->complete);
 }
 
-static struct host_pcm_dev *get_pcm(uint32_t id)
+static struct ipc_pcm_dev *get_pcm(uint32_t id)
 {
-	struct host_pcm_dev *pcm;
+	struct ipc_pcm_dev *pcm;
 	struct list_head *plist;
 
 	list_for_each(plist, &_ipc->pcm_list) {
 
-		pcm = container_of(plist, struct host_pcm_dev, list);
+		pcm = container_of(plist, struct ipc_pcm_dev, list);
 
 		if (pcm->desc.id == id)
 			return pcm;
@@ -153,14 +138,14 @@ static struct host_pcm_dev *get_pcm(uint32_t id)
 	return NULL;
 }
 
-static struct host_mixer_dev *get_mixer(uint32_t id)
+static struct ipc_mixer_dev *get_mixer(uint32_t id)
 {
-	struct host_mixer_dev *mixer;
+	struct ipc_mixer_dev *mixer;
 	struct list_head *mlist;
 
 	list_for_each(mlist, &_ipc->mixer_list) {
 
-		mixer = container_of(mlist, struct host_mixer_dev, list);
+		mixer = container_of(mlist, struct ipc_mixer_dev, list);
 
 		if (mixer->desc.id == id)
 			return mixer;
@@ -171,7 +156,8 @@ static struct host_mixer_dev *get_mixer(uint32_t id)
 
 /* this function copies the audio buffer page tables from the host to the DSP */
 /* the page table is a max of 4K */
-static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
+static int get_page_desciptors(struct intel_ipc_data *iipc, 
+	struct ipc_intel_ipc_stream_alloc_req *req)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
 	struct dma_sg_config config;
@@ -180,9 +166,9 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	int chan, ret = 0;
 
 	/* get DMA channel from DMAC1 */
-	chan = dma_channel_get(_ipc->dmac1);
+	chan = dma_channel_get(iipc->dmac1);
 	if (chan >= 0)
-		dma = _ipc->dmac1;
+		dma = iipc->dmac1;
 	else
 		return chan;
 
@@ -194,7 +180,7 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 	list_init(&config.elem_list);
 
 	/* set up DMA desciptor */
-	elem.dest = (uint32_t)_ipc->page_table;
+	elem.dest = (uint32_t)iipc->page_table;
 	elem.src = ring->ring_pt_address;
 
 	/* source buffer size is always PAGE_SIZE bytes */
@@ -206,16 +192,16 @@ static int get_page_desciptors(struct ipc_intel_ipc_stream_alloc_req *req)
 		goto out;
 
 	/* set up callback */
-	dma_set_cb(dma, chan, dma_complete, _ipc);
+	dma_set_cb(dma, chan, dma_complete, iipc);
 
-	wait_init(&_ipc->complete);
+	wait_init(&iipc->complete);
 
 	/* start the copy of page table to DSP */
 	dma_start(dma, chan);
 
 	/* wait 2 msecs for DMA to finish */
-	_ipc->complete.timeout = 2;
-	ret = wait_for_completion_timeout(&_ipc->complete);
+	iipc->complete.timeout = 2;
+	ret = wait_for_completion_timeout(&iipc->complete);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
@@ -226,7 +212,8 @@ out:
 /* now parse page tables and create the audio DMA SG configuration
  for host audio DMA buffer. This involves creating a dma_sg_elem for each
  page table entry and adding each elem to a list in struct dma_sg_config*/
-static int parse_page_descriptors(struct ipc_intel_ipc_stream_alloc_req *req,
+static int parse_page_descriptors(struct intel_ipc_data *iipc,
+	struct ipc_intel_ipc_stream_alloc_req *req,
 	struct comp_desc *host, struct stream_params *params)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
@@ -234,12 +221,12 @@ static int parse_page_descriptors(struct ipc_intel_ipc_stream_alloc_req *req,
 	int i, err;
 	uint32_t idx;
 
-	elem.size = 4096;
+	elem.size = HOST_PAGE_SIZE;
 
 	for (i = 0; i < ring->num_pages; i++) {
 		idx = (((i << 2) + i)) >> 1;
 
-		elem.src = *((uint32_t*)(_ipc->page_table + idx));
+		elem.src = *((uint32_t*)(iipc->page_table + idx));
 		if (i & 0x1)
 			elem.src <<= 8;
 		else
@@ -256,11 +243,13 @@ static int parse_page_descriptors(struct ipc_intel_ipc_stream_alloc_req *req,
 
 static uint32_t ipc_stream_alloc(uint32_t header)
 {
+	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct ipc_intel_ipc_stream_alloc_req req;
 	struct ipc_intel_ipc_stream_alloc_reply reply;
+	struct intel_stream_data *stream_data;
 	struct stream_params *params;
-	struct comp_desc dai, host;
-	struct host_pcm_dev *pcm_dev;
+	struct comp_desc host;
+	struct ipc_pcm_dev *pcm_dev;
 	int err;
 	uint8_t direction;
 
@@ -271,9 +260,6 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 
 	host.uuid = COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST);
 
-	/* path_id is always SSP0 */
-	dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0);
-	dai.id = 0;
 
 	/* format always PCM, now check source type */
 	switch (req.stream_type) {
@@ -301,7 +287,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (pcm_dev == NULL)
 		goto error; 
 
+	/* allocate stream datat */
+	stream_data = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*stream_data));
+	if (stream_data == NULL)
+		goto error;
+
 	params = &pcm_dev->params;
+	ipc_pcm_set_drvdata(pcm_dev, stream_data);
 
 	/* read in format to create params */
 	params->channels = req.format.ch_num;
@@ -318,17 +310,15 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 	}
 
-	params->period_frames = 4096 / params->frame_size;
+	params->period_frames = HOST_PAGE_SIZE / params->frame_size;
 
 	/* use DMA to read in compressed page table ringbuffer from host */
-	err = get_page_desciptors(&req);
+	err = get_page_desciptors(iipc, &req);
 	if (err < 0)
 		goto error;
 
-	/* TODO: now parse page tables and create audio DMA SG configuration and
-	for host audio DMA buffer. This involves creating a dma_sg_elem for each
-	page table entry and adding each elem to a list in struct dma_sg_config*/
-	err = parse_page_descriptors(&req, &host, params);
+	/* Parse host tables */
+	err = parse_page_descriptors(iipc, &req, &host, params);
 	if (err < 0)
 		goto error;
 
@@ -337,8 +327,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	/* Configure SSP and send to DAI*/
-	err = pipeline_params(pipeline_static, &dai, params);	
+	/* Configure SSP and send to DAI */
+	err = pipeline_params(pipeline_static, &iipc->dai, params);	
 	if (err < 0)
 		goto error;
 
@@ -372,17 +362,19 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	/* write reply to mailbox */
 	mailbox_outbox_write(0, &reply, sizeof(reply));
 
+	/* update stream state */
+	stream_data->state = INTEL_STREAM_ALLOC;
 	/* TODO */
 error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
+/* free stream resources */
 static uint32_t ipc_stream_free(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_free_req free_req;
-	struct host_pcm_dev *pcm_dev;
-	struct stream_params *params;
-	int err;
+	struct ipc_pcm_dev *pcm_dev;
+	struct intel_stream_data *stream_data;
 
 	trace_ipc("SFr");
 
@@ -394,12 +386,13 @@ static uint32_t ipc_stream_free(uint32_t header)
 	if (pcm_dev == NULL)
 		goto error; 
 
-	params = &pcm_dev->params;
-
-	/* initialise the pipeline */
-	err = pipeline_reset(pipeline_static, &pcm_dev->desc, params);
-	if (err < 0)
+	/* check stream state */
+	stream_data = ipc_pcm_get_drvdata(pcm_dev);
+	if (stream_data->state == INTEL_STREAM_RUNNING ||
+		stream_data->state == INTEL_STREAM_PAUSED)
 		goto error;
+
+	rfree(RZONE_MODULE, RMOD_SYS, stream_data);
 
 error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
@@ -408,7 +401,7 @@ error:
 static uint32_t ipc_stream_info(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_info_reply info;
-	struct host_mixer_dev *mixer_dev;
+	struct ipc_mixer_dev *mixer_dev;
 //	int i;
 
 	trace_ipc("SIn");
@@ -453,6 +446,18 @@ struct ipc_intel_ipc_device_config_req {
 	uint8_t channels;
 	uint8_t reserved;
 } __attribute__((packed));
+
+struct dai_config {
+	uint16_t format;
+	uint16_t frame_size;	/* in BCLKs */
+	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
+	struct dai_slot_map rx_slot_map[DAI_NUM_SLOT_MAPS];
+	uint16_t bclk_fs;	/* ratio between frame size and BCLK */
+	uint16_t mclk_fs;	/* ratio between frame size and MCLK */
+	uint32_t mclk;		/* mclk frequency in Hz */
+	uint16_t clk_src;	/* DAI specific clk source */
+};
+
 #endif
 static uint32_t ipc_device_get_formats(uint32_t header)
 {
@@ -463,13 +468,32 @@ static uint32_t ipc_device_get_formats(uint32_t header)
 
 static uint32_t ipc_device_set_formats(uint32_t header)
 {
+	struct ipc_intel_ipc_device_config_req config_req;
+	struct ipc_pcm_dev *pcm_dev;
+	struct intel_stream_data *stream_data;
+
 	trace_ipc("DsF");
 
-	// call
-	//int pipeline_params(int pipeline_id, struct pipe_comp_desc *host_desc,
-	//struct stream_params *params);
+	/* read alloc stream IPC from the inbox */
+	mailbox_inbox_read(&config_req, 0, sizeof(config_req));
 
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	/* get SSP port */
+	switch (config_req->ssp_interface) {
+	case IPC_INTEL_DEVICE_SSP_0:
+		dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0);
+		dai.id = 0;
+		break;
+	case IPC_INTEL_DEVICE_SSP_1:
+		dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP1);
+		dai.id = 0;
+		break;
+	};
+
+	/* get the pcm_dev */
+	pcm_dev = get_pcm(free_req.stream_id);
+	if (pcm_dev == NULL)
+		goto error; 
+
 }
 
 static uint32_t ipc_context_save(uint32_t header)
@@ -488,14 +512,55 @@ static uint32_t ipc_context_restore(uint32_t header)
 
 static uint32_t ipc_stage_set_volume(uint32_t header)
 {
+	struct ipc_mixer_dev *mixer_dev;
+	uint32_t stream_id;
+	int err;
+
 	trace_ipc("VoS");
 
+	/* the driver uses stream ID to also identify certain mixers */
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+
+	/* get the pcm_dev */
+	mixer_dev = get_mixer(stream_id);
+	if (mixer_dev == NULL)
+		goto error; 
+	
+	/* TODO: complete call with private volume data */
+	err = comp_cmd(mixer_dev->cd, NULL, COMP_CMD_VOLUME, NULL);
+	if (err < 0)
+		goto error;
+
+// TODO: define error paths
+error:
+
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
-}
 
 static uint32_t ipc_stage_get_volume(uint32_t header)
 {
+	struct ipc_mixer_dev *mixer_dev;
+	uint32_t stream_id;
+	int err;
+
 	trace_ipc("VoG");
+
+	/* the driver uses stream ID to also identify certain mixers */
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+
+	/* get the pcm_dev */
+	mixer_dev = get_mixer(stream_id);
+	if (mixer_dev == NULL)
+		goto error; 
+	
+	/* TODO: complete call with private volume data */
+	err = comp_cmd(mixer_dev->cd, NULL, COMP_CMD_VOLUME, NULL);
+	if (err < 0)
+		goto error;
+
+// TODO: define error paths
+error:
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
@@ -531,22 +596,94 @@ static uint32_t ipc_stage_message(uint32_t header)
 
 static uint32_t ipc_stream_reset(uint32_t header)
 {
+	struct ipc_pcm_dev *pcm_dev;
+	uint32_t stream_id;
+	int err;
+
 	trace_ipc("SRe");
 
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+
+	/* get the pcm_dev */
+	pcm_dev = get_pcm(stream_id);
+	if (pcm_dev == NULL)
+		goto error; 
+
+	/* initialise the pipeline */
+	err = pipeline_reset(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params);
+	if (err < 0)
+		goto error;
+
+error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stream_pause(uint32_t header)
 {
+	struct ipc_pcm_dev *pcm_dev;
+	struct intel_stream_data *stream_data;
+	uint32_t stream_id;
+	int err;
+
 	trace_ipc("SPa");
 
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+
+	/* get the pcm_dev */
+	pcm_dev = get_pcm(stream_id);
+	if (pcm_dev == NULL)
+		goto error; 
+
+	stream_data = ipc_pcm_get_drvdata(pcm_dev);
+
+	if (stream_data->state == INTEL_STREAM_ALLOC) {
+		err = pipeline_cmd(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params,
+			PIPELINE_CMD_PAUSE, NULL);
+		if (err < 0)
+			goto error;
+		stream_data->state = INTEL_STREAM_PAUSED;
+	} else {
+		err = pipeline_cmd(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params,
+			PIPELINE_CMD_START, NULL);
+		if (err < 0)
+			goto error;
+		stream_data->state = INTEL_STREAM_RUNNING;
+	}
+
+error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_stream_resume(uint32_t header)
 {
+	struct ipc_pcm_dev *pcm_dev;
+	struct intel_stream_data *stream_data;
+	uint32_t stream;
+	int err;
+
 	trace_ipc("SRe");
 
+	stream = header & IPC_INTEL_STR_ID_MASK;
+	stream >>= IPC_INTEL_STR_ID_SHIFT;
+
+	/* get the pcm_dev */
+	pcm_dev = get_pcm(stream);
+	if (pcm_dev == NULL)
+		goto error;
+
+	stream_data = ipc_pcm_get_drvdata(pcm_dev);
+
+	/* initialise the pipeline */
+	err = pipeline_cmd(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params,
+			PIPELINE_CMD_START, NULL);
+	if (err < 0)
+		goto error;
+
+	stream_data->state = INTEL_STREAM_RUNNING;
+
+error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
@@ -686,20 +823,26 @@ int ipc_send_msg(struct ipc_msg *msg)
 
 int platform_ipc_init(void)
 {
+	struct intel_ipc_data *iipc;
 	uint32_t imrd;
 
 	/* init ipc data */
 	_ipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
-	_ipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
-		IPC_INTEL_PAGE_TABLE_SIZE);
-	if (_ipc->page_table)
-		bzero(_ipc->page_table, IPC_INTEL_PAGE_TABLE_SIZE);
-
-	_ipc->dmac0 = dma_get(DMA_ID_DMAC0);
-	_ipc->dmac1 = dma_get(DMA_ID_DMAC1);
-	_ipc->host_pending = 0;
+	iipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
+	ipc_set_drvdata(_ipc, iipc);
 	list_init(&_ipc->pcm_list);
 	list_init(&_ipc->mixer_list);
+
+	/* allocate page table buffer */
+	iipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
+		IPC_INTEL_PAGE_TABLE_SIZE);
+	if (iipc->page_table)
+		bzero(iipc->page_table, IPC_INTEL_PAGE_TABLE_SIZE);
+
+	/* dma */
+	iipc->dmac0 = dma_get(DMA_ID_DMAC0);
+	iipc->dmac1 = dma_get(DMA_ID_DMAC1);
+	_ipc->host_pending = 0;
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, NULL);

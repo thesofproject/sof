@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef __INCLUDE_DAI__
-#define __INCLUDE_DAI__
+#ifndef __INCLUDE_DAI_H__
+#define __INCLUDE_DAI_H__
 
 #include <stdint.h>
 #include <reef/audio/pipeline.h>

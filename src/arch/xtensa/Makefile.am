@@ -42,6 +42,7 @@ reef_LDADD = \
 	../../platform/$(PLATFORM)/libplatform.a \
 	../../drivers/libdrivers.a \
 	../../lib/libcore.a \
+	../../ipc/libipc.a \
 	../../platform/$(PLATFORM)/libplatform.a \
 	libreset.a \
 	xtos/libxtos.a \

@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef __INCLUDE_AUDIO_COMPONENT__
-#define __INCLUDE_AUDIO_COMPONENT__
+#ifndef __INCLUDE_AUDIO_COMPONENT_H__
+#define __INCLUDE_AUDIO_COMPONENT_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -61,6 +61,7 @@ struct comp_volume {
 
 struct comp_dev;
 struct comp_buffer;
+struct dai_config;
 
 /*
  * Pipeline component descriptor.
@@ -86,6 +87,7 @@ struct period_desc {
  * Pipeline buffer descriptor.
  */
 struct buffer_desc {
+	uint32_t uuid;
 	uint32_t size;		/* buffer size in bytes */
 	struct period_desc sink_period;
 	struct period_desc source_period;

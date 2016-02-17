@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef __INCLUDE_AUDIO_PIPELINE__
-#define __INCLUDE_AUDIO_PIPELINE__
+#ifndef __INCLUDE_AUDIO_PIPELINE_H__
+#define __INCLUDE_AUDIO_PIPELINE_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -56,14 +56,20 @@ struct pipeline {
 extern struct pipeline *pipeline_static;
 
 /* create new pipeline - returns pipeline id */
-struct pipeline *pipeline_new(void);
+struct pipeline *pipeline_new(uint16_t id);
 void pipeline_free(struct pipeline *p);
 
 struct pipeline *pipeline_from_id(int id);
 struct comp_dev *pipeline_get_comp(struct pipeline *p,
 	struct comp_desc *desc);
 
+/* pipeline component creation and destruction */
 int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc);
+int pipeline_comp_free(struct pipeline *p, struct comp_desc *desc);
+
+/* pipeline buffer creation and destruction */
+int pipeline_buffer_new(struct pipeline *p, struct buffer_desc *desc);
+int pipeline_buffer_free(struct pipeline *p, struct buffer_desc *desc);
 
 /* insert component in pipeline */
 int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
