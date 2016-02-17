@@ -18,6 +18,7 @@
 #include <reef/alloc.h>
 #include <reef/notifier.h>
 #include <reef/work.h>
+#include <reef/ipc.h>
 #include <platform/platform.h>
 
 int main(int argc, char *argv[])
@@ -39,7 +40,7 @@ int main(int argc, char *argv[])
 		panic(PANIC_PLATFORM);
 
 	/* initialise the IPC mechanisms */
-	err = platform_ipc_init();
+	err = ipc_init();
 	if (err < 0)
 		panic(PANIC_IPC);
 

@@ -122,38 +122,6 @@ static void dma_complete(void *data, uint32_t type)
 	wait_completed(&iipc->complete);
 }
 
-static struct ipc_pcm_dev *get_pcm(uint32_t id)
-{
-	struct ipc_pcm_dev *pcm;
-	struct list_head *plist;
-
-	list_for_each(plist, &_ipc->pcm_list) {
-
-		pcm = container_of(plist, struct ipc_pcm_dev, list);
-
-		if (pcm->desc.id == id)
-			return pcm;
-	}
-
-	return NULL;
-}
-
-static struct ipc_mixer_dev *get_mixer(uint32_t id)
-{
-	struct ipc_mixer_dev *mixer;
-	struct list_head *mlist;
-
-	list_for_each(mlist, &_ipc->mixer_list) {
-
-		mixer = container_of(mlist, struct ipc_mixer_dev, list);
-
-		if (mixer->desc.id == id)
-			return mixer;
-	}
-
-	return NULL;
-}
-
 /* this function copies the audio buffer page tables from the host to the DSP */
 /* the page table is a max of 4K */
 static int get_page_desciptors(struct intel_ipc_data *iipc, 
@@ -283,7 +251,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	};
 
 	/* get the pcm_dev */
-	pcm_dev = get_pcm(host.id);
+	pcm_dev = ipc_get_pcm_comp(0, host.id);
 	if (pcm_dev == NULL)
 		goto error; 
 
@@ -293,7 +261,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 
 	params = &pcm_dev->params;
-	ipc_pcm_set_drvdata(pcm_dev, stream_data);
+	ipc_set_drvdata(&pcm_dev->dev, stream_data);
 
 	/* read in format to create params */
 	params->channels = req.format.ch_num;
@@ -382,12 +350,12 @@ static uint32_t ipc_stream_free(uint32_t header)
 	mailbox_inbox_read(&free_req, 0, sizeof(free_req));
 
 	/* get the pcm_dev */
-	pcm_dev = get_pcm(free_req.stream_id);
+	pcm_dev = ipc_get_pcm_comp(0, free_req.stream_id);
 	if (pcm_dev == NULL)
 		goto error; 
 
 	/* check stream state */
-	stream_data = ipc_pcm_get_drvdata(pcm_dev);
+	stream_data = ipc_get_drvdata(&pcm_dev->dev);
 	if (stream_data->state == INTEL_STREAM_RUNNING ||
 		stream_data->state == INTEL_STREAM_PAUSED)
 		goto error;
@@ -401,8 +369,7 @@ error:
 static uint32_t ipc_stream_info(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_info_reply info;
-	struct ipc_mixer_dev *mixer_dev;
-//	int i;
+	struct ipc_comp_dev *comp_dev;
 
 	trace_ipc("SIn");
 
@@ -410,8 +377,8 @@ static uint32_t ipc_stream_info(uint32_t header)
 	info.mixer_hw_id = 1;
 
 	/* get the pcm_dev */
-	mixer_dev = get_mixer(info.mixer_hw_id);
-	if (mixer_dev == NULL)
+	comp_dev = ipc_get_comp(0, info.mixer_hw_id);
+	if (comp_dev == NULL)
 		goto error; 
 	
 #if 0
@@ -469,8 +436,9 @@ static uint32_t ipc_device_get_formats(uint32_t header)
 static uint32_t ipc_device_set_formats(uint32_t header)
 {
 	struct ipc_intel_ipc_device_config_req config_req;
-	struct ipc_pcm_dev *pcm_dev;
-	struct intel_stream_data *stream_data;
+	struct ipc_dai_dev *dai_dev;
+//	struct intel_stream_data *stream_data;
+	struct comp_desc dai;
 
 	trace_ipc("DsF");
 
@@ -478,7 +446,7 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	mailbox_inbox_read(&config_req, 0, sizeof(config_req));
 
 	/* get SSP port */
-	switch (config_req->ssp_interface) {
+	switch (config_req.ssp_interface) {
 	case IPC_INTEL_DEVICE_SSP_0:
 		dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0);
 		dai.id = 0;
@@ -487,13 +455,24 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 		dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP1);
 		dai.id = 0;
 		break;
+	default:
+		goto error;
 	};
 
 	/* get the pcm_dev */
-	pcm_dev = get_pcm(free_req.stream_id);
-	if (pcm_dev == NULL)
-		goto error; 
+	dai_dev = ipc_get_dai_comp(0, dai.uuid);
+	if (dai_dev == NULL)
+		goto error;
 
+	/* setup the DAI HW config - TODO hard coded due to IPC limitations */
+	dai_dev->dai_config.mclk = config_req.clock_frequency;
+	dai_dev->dai_config.format = DAI_FMT_I2S;
+	dai_dev->dai_config.frame_size = 32;
+	dai_dev->dai_config.bclk_fs = 32;
+	dai_dev->dai_config.mclk_fs = 8;
+
+error:
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
 static uint32_t ipc_context_save(uint32_t header)
@@ -512,7 +491,7 @@ static uint32_t ipc_context_restore(uint32_t header)
 
 static uint32_t ipc_stage_set_volume(uint32_t header)
 {
-	struct ipc_mixer_dev *mixer_dev;
+	struct ipc_comp_dev *mixer_dev;
 	uint32_t stream_id;
 	int err;
 
@@ -523,7 +502,7 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	mixer_dev = get_mixer(stream_id);
+	mixer_dev = ipc_get_comp(0, stream_id);
 	if (mixer_dev == NULL)
 		goto error; 
 	
@@ -536,10 +515,11 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 error:
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
 
 static uint32_t ipc_stage_get_volume(uint32_t header)
 {
-	struct ipc_mixer_dev *mixer_dev;
+	struct ipc_comp_dev *mixer_dev;
 	uint32_t stream_id;
 	int err;
 
@@ -550,7 +530,7 @@ static uint32_t ipc_stage_get_volume(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	mixer_dev = get_mixer(stream_id);
+	mixer_dev = ipc_get_comp(0, stream_id);
 	if (mixer_dev == NULL)
 		goto error; 
 	
@@ -606,12 +586,13 @@ static uint32_t ipc_stream_reset(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	pcm_dev = get_pcm(stream_id);
+	pcm_dev = ipc_get_pcm_comp(0, stream_id);
 	if (pcm_dev == NULL)
 		goto error; 
 
 	/* initialise the pipeline */
-	err = pipeline_reset(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params);
+	err = pipeline_reset(pcm_dev->dev.p, &pcm_dev->dev.desc, 
+		&pcm_dev->params);
 	if (err < 0)
 		goto error;
 
@@ -632,21 +613,21 @@ static uint32_t ipc_stream_pause(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	pcm_dev = get_pcm(stream_id);
+	pcm_dev = ipc_get_pcm_comp(0, stream_id);
 	if (pcm_dev == NULL)
 		goto error; 
 
-	stream_data = ipc_pcm_get_drvdata(pcm_dev);
+	stream_data = ipc_get_drvdata(&pcm_dev->dev);
 
 	if (stream_data->state == INTEL_STREAM_ALLOC) {
-		err = pipeline_cmd(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params,
-			PIPELINE_CMD_PAUSE, NULL);
+		err = pipeline_cmd(pcm_dev->dev.p, &pcm_dev->dev.desc,
+			&pcm_dev->params, PIPELINE_CMD_PAUSE, NULL);
 		if (err < 0)
 			goto error;
 		stream_data->state = INTEL_STREAM_PAUSED;
 	} else {
-		err = pipeline_cmd(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params,
-			PIPELINE_CMD_START, NULL);
+		err = pipeline_cmd(pcm_dev->dev.p, &pcm_dev->dev.desc,
+			&pcm_dev->params, PIPELINE_CMD_START, NULL);
 		if (err < 0)
 			goto error;
 		stream_data->state = INTEL_STREAM_RUNNING;
@@ -660,23 +641,23 @@ static uint32_t ipc_stream_resume(uint32_t header)
 {
 	struct ipc_pcm_dev *pcm_dev;
 	struct intel_stream_data *stream_data;
-	uint32_t stream;
+	uint32_t stream_id;
 	int err;
 
 	trace_ipc("SRe");
 
-	stream = header & IPC_INTEL_STR_ID_MASK;
-	stream >>= IPC_INTEL_STR_ID_SHIFT;
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	pcm_dev = get_pcm(stream);
+	pcm_dev = ipc_get_pcm_comp(0, stream_id);
 	if (pcm_dev == NULL)
 		goto error;
 
-	stream_data = ipc_pcm_get_drvdata(pcm_dev);
+	stream_data = ipc_get_drvdata(&pcm_dev->dev);
 
 	/* initialise the pipeline */
-	err = pipeline_cmd(pcm_dev->p, &pcm_dev->desc, &pcm_dev->params,
+	err = pipeline_cmd(pcm_dev->dev.p, &pcm_dev->dev.desc, &pcm_dev->params,
 			PIPELINE_CMD_START, NULL);
 	if (err < 0)
 		goto error;
@@ -821,18 +802,17 @@ int ipc_send_msg(struct ipc_msg *msg)
 	return 0;
 }
 
-int platform_ipc_init(void)
+int platform_ipc_init(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc;
 	uint32_t imrd;
 
+	_ipc = ipc;
+
 	/* init ipc data */
-	_ipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
 	iipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
-	list_init(&_ipc->pcm_list);
-	list_init(&_ipc->mixer_list);
-
+	
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
 		IPC_INTEL_PAGE_TABLE_SIZE);
@@ -842,7 +822,6 @@ int platform_ipc_init(void)
 	/* dma */
 	iipc->dmac0 = dma_get(DMA_ID_DMAC0);
 	iipc->dmac1 = dma_get(DMA_ID_DMAC1);
-	_ipc->host_pending = 0;
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, NULL);

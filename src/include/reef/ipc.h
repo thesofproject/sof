@@ -11,37 +11,43 @@
 
 #include <stdint.h>
 #include <reef/trace.h>
+#include <reef/dai.h>
 #include <reef/audio/component.h>
 
 #define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC, __e)
 
 #define MSG_QUEUE_SIZE		8
 
-/* IPC FE PCM device - maps to host PCM */
-struct ipc_pcm_dev {
+/* IPC generic component device */
+struct ipc_comp_dev {
+	/* pipeline we belong to */
 	uint32_t pipeline_id;
 	struct pipeline *p;
-	struct stream_params params;
+
+	/* component data */
+	struct comp_dev *cd;
 	struct comp_desc desc;
+
 	struct list_head list;		/* list in ipc data */
 	void *private;
+};
+
+/* IPC FE PCM device - maps to host PCM */
+struct ipc_pcm_dev {
+
+	struct ipc_comp_dev dev;
+
+	/* runtime config */	
+	struct stream_params params;
 };
 
 /* IPC BE DAI device */ 
 struct ipc_dai_dev {
-	uint32_t pipeline_id;
-	struct pipeline *p;
-	struct stream_params params;
-	struct comp_desc desc;
-	struct list_head list;		/* list in ipc data */
-	void *private;
-};
 
-struct ipc_comp_dev {
-	struct comp_dev *cd;
-	struct comp_desc desc;
-	struct list_head list;		/* list in ipc data */
-	void *private;
+	struct ipc_comp_dev dev;
+
+	/* runtime config */
+	struct dai_config dai_config;
 };
 
 struct ipc_msg {
@@ -60,28 +66,26 @@ struct ipc {
 	/* RX call back */
 	int (*cb)(struct ipc_msg *msg);
 
-	/* host mixers and pcms */
-	struct list_head pcm_list;	/* list of host pcm devices */
-	struct list_head mixer_list;	/* list of host mixers */
+	/* mixers, dais and pcms */
+	struct list_head comp_list;	/* list of component devices */
 
 	void *private;
 };
 
 #define ipc_set_drvdata(ipc, data) \
-	ipc->private = data
+	(ipc)->private = data
 #define ipc_get_drvdata(ipc) \
-	ipc->private;
-#define ipc_pcm_set_drvdata(ipc, data) \
-	ipc->private = data
-#define ipc_pcm_get_drvdata(ipc) \
-	ipc->private;
-#define ipc_mixer_set_drvdata(ipc, data) \
-	ipc->private = data
-#define ipc_mixer_get_drvdata(ipc) \
-	ipc->private;
+	(ipc)->private;
+#define ipc_get_pcm_comp(pipeline_id, id) \
+	(struct ipc_pcm_dev *)ipc_get_comp(pipeline_id, id)
+#define ipc_get_dai_comp(pipeline_id, id) \
+	(struct ipc_dai_dev *)ipc_get_comp(pipeline_id, id)
 
 int ipc_init(void);
+int platform_ipc_init(struct ipc *ipc);
 void ipc_free(struct ipc *ipc);
+
+struct ipc_comp_dev *ipc_get_comp(int pipeline_id, uint32_t id);
 
 int ipc_process_msg_queue(void);
 

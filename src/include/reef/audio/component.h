@@ -102,6 +102,10 @@ struct comp_ops {
 	/* set component audio stream paramters */
 	int (*params)(struct comp_dev *dev, struct stream_params *params);
 
+	/* set component audio stream paramters */
+	int (*dai_config)(struct comp_dev *dev, struct stream_params *params,
+		struct dai_config *dai_config);
+
 	/* used to pass standard and bespoke commands (with data) to component */
 	int (*cmd)(struct comp_dev *dev, struct stream_params *params, 
 		int cmd, void *data);
@@ -245,6 +249,13 @@ static inline int comp_reset(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	return dev->drv->ops.reset(dev, params);
+}
+
+/* DAI configuration */
+static inline int comp_dai_config(struct comp_dev *dev,
+	struct stream_params *params, struct dai_config *dai_config)
+{
+	return dev->drv->ops.dai_config(dev, params, dai_config);
 }
 
 /* default base component initialisations */

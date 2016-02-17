@@ -42,8 +42,6 @@
 
 int platform_boot_complete(uint32_t boot_message);
 
-int platform_ipc_init(void);
-
 int platform_init(void);
 
 #endif
