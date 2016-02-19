@@ -66,8 +66,8 @@ int platform_init(void)
 
 	/* init work queues and clocks */
 	platform_timer_set(TIMER3, 0xffffffff);
-	init_system_workq(&platform_generic_queue);
 	init_platform_clocks();
+	init_system_workq(&platform_generic_queue);
 
 	dmac0 = dma_get(DMA_ID_DMAC0);
 	dma_probe(dmac0);
