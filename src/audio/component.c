@@ -24,10 +24,10 @@ struct comp_data {
 
 static struct comp_data *cd;
 
-static void comp_init(struct comp_dev *dev, struct comp_desc *desc,
+static void comp_init(struct comp_dev *dev, uint32_t id,
 	struct comp_driver *drv)
 {
-	dev->id = desc->id;
+	dev->id = id;
 	dev->drv = drv;
 	dev->state = COMP_STATE_UNAVAIL;
 	spinlock_init(&dev->lock);
@@ -35,7 +35,7 @@ static void comp_init(struct comp_dev *dev, struct comp_desc *desc,
 	list_init(&dev->bsink_list);
 }
 
-struct comp_dev *comp_new(struct comp_desc *desc)
+struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id)
 {
 	struct list_head *clist;
 	struct comp_driver *drv;
@@ -46,9 +46,9 @@ struct comp_dev *comp_new(struct comp_desc *desc)
 	list_for_each(clist, &cd->list) {
 
 		drv = container_of(clist, struct comp_driver, list);
-		if (drv->uuid == desc->uuid) {
-			dev = drv->ops.new(desc);
-			comp_init(dev, desc, drv);
+		if (drv->type == type) {
+			dev = drv->ops.new(type, index);
+			comp_init(dev, id, drv);
 			goto out;
 		}
 	}

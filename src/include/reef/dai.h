@@ -52,13 +52,6 @@
 
 #define DAI_NUM_SLOT_MAPS	8
 
-/* UUIDs for known DAIs */
-#define DAI_UUID_SSP0		0
-#define DAI_UUID_SSP1		1
-#define DAI_UUID_SSP2		2
-#define DAI_UUID_SSP3		3
-#define DAI_UUID_SSP4		4
-#define DAI_UUID_SSP5		5
 
 struct dai;
 
@@ -106,14 +99,15 @@ struct dai_plat_data {
 };
 
 struct dai {
-	uint32_t uuid;
+	uint32_t type;
+	uint32_t index;
 	struct dai_plat_data plat_data;
 	struct dai_config config;
 	const struct dai_ops *ops;
 	void *private;
 };
 
-struct dai *dai_get(uint32_t uuid);
+struct dai *dai_get(uint32_t type, uint32_t index);
 
 #define dai_set_drvdata(dai, data) \
 	dai->private = data

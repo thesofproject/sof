@@ -83,7 +83,7 @@ static void dai_dma_capture_cb(void *data, uint32_t type)
 	wait_completed(&ds->complete);
 }
 
-static struct comp_dev *dai_new_ssp(struct comp_desc *desc)
+static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index)
 {
 	struct comp_dev *dev;
 	struct dai_data *dd;
@@ -100,7 +100,7 @@ static struct comp_dev *dai_new_ssp(struct comp_desc *desc)
 	}
 
 	comp_set_drvdata(dev, dd);
-	dd->ssp = dai_get(COMP_UUID(COMP_VENDOR_INTEL, desc->id));
+	dd->ssp = dai_get(type, index);
 	dd->dma = dma_get(DMA_ID_DMAC1);
 
 	ds = &dd->s[DAI_PLAYBACK_STREAM];
@@ -131,7 +131,7 @@ error:
 	return NULL;
 }
 
-static struct comp_dev *dai_new_hda(struct comp_desc *desc)
+static struct comp_dev *dai_new_hda(uint32_t type, uint32_t index)
 {
 	return 0;
 }
@@ -329,7 +329,7 @@ static int dai_copy(struct comp_dev *dev, struct stream_params *params)
 }
 
 static struct comp_driver comp_dai_ssp = {
-	.uuid	= COMP_UUID(COMP_VENDOR_INTEL, COMP_TYPE_DAI_SSP),
+	.type	= COMP_TYPE_DAI_SSP,
 	.ops	= {
 		.new		= dai_new_ssp,
 		.free		= dai_free,
@@ -358,7 +358,7 @@ static struct comp_driver comp_dai_ssp = {
 };
 
 static struct comp_driver comp_dai_hda = {
-	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_DAI_HDA),
+	.type	= COMP_TYPE_DAI_HDA,
 	.ops	= {
 		.new		= dai_new_hda,
 		.free		= dai_free,

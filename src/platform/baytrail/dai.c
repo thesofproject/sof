@@ -19,7 +19,8 @@
 
 static struct dai ssp[3] = {
 {
-	.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0),
+	.type = COMP_TYPE_DAI_SSP,
+	.index = 0,
 	.plat_data = {
 		.base		= SSP0_BASE,
 		.irq		= IRQ_NUM_EXT_SSP0,
@@ -35,7 +36,8 @@ static struct dai ssp[3] = {
 	.ops		= &ssp_ops,
 },
 {
-	.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP1),
+	.type = COMP_TYPE_DAI_SSP,
+	.index = 1,
 	.plat_data = {
 		.base		= SSP1_BASE,
 		.irq		= IRQ_NUM_EXT_SSP1,
@@ -51,7 +53,8 @@ static struct dai ssp[3] = {
 	.ops		= &ssp_ops,
 },
 {
-	.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP2),
+	.type = COMP_TYPE_DAI_SSP,
+	.index = 2,
 	.plat_data = {
 		.base		= SSP2_BASE,
 		.irq		= IRQ_NUM_EXT_SSP2,
@@ -67,12 +70,12 @@ static struct dai ssp[3] = {
 	.ops		= &ssp_ops,
 },};
 
-struct dai *dai_get(uint32_t uuid)
+struct dai *dai_get(uint32_t type, uint32_t index)
 {
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
-		if (ssp[i].uuid == uuid)
+		if (ssp[i].type == type && ssp[i].index == index)
 			return &ssp[i];
 	}
 

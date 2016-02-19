@@ -75,10 +75,10 @@ int platform_init(void)
 	dmac1 = dma_get(DMA_ID_DMAC1);
 	dma_probe(dmac1);
 
-	ssp0 = dai_get(COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0));
+	ssp0 = dai_get(COMP_TYPE_DAI_SSP, 0);
 	dai_probe(ssp0);
 
-	ssp1 = dai_get(COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP1));
+	ssp1 = dai_get(COMP_TYPE_DAI_SSP, 1);
 	dai_probe(ssp1);
 
 	return 0;

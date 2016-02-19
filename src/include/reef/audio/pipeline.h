@@ -60,39 +60,40 @@ struct pipeline *pipeline_new(uint16_t id);
 void pipeline_free(struct pipeline *p);
 
 struct pipeline *pipeline_from_id(int id);
-struct comp_dev *pipeline_get_comp(struct pipeline *p,
-	struct comp_desc *desc);
+struct comp_dev *pipeline_get_comp(struct pipeline *p, uint32_t id);
 
 /* pipeline component creation and destruction */
-int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc);
-int pipeline_comp_free(struct pipeline *p, struct comp_desc *desc);
+struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
+	uint32_t index);
+int pipeline_comp_free(struct pipeline *p, struct comp_dev *cd);
 
 /* pipeline buffer creation and destruction */
-int pipeline_buffer_new(struct pipeline *p, struct buffer_desc *desc);
-int pipeline_buffer_free(struct pipeline *p, struct buffer_desc *desc);
+struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
+	struct buffer_desc *desc);
+int pipeline_buffer_free(struct pipeline *p, struct comp_buffer *buffer);
 
 /* insert component in pipeline */
-int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
-	struct comp_desc *sink_desc, struct buffer_desc *buffer_desc);
+int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_cd,
+	struct comp_dev *sink_cd, struct comp_buffer *buffer);
 
 /* pipeline parameters */
-int pipeline_params(struct pipeline *p, struct comp_desc *desc,
+int pipeline_params(struct pipeline *p, struct comp_dev *cd,
 	struct stream_params *params);
 
 /* pipeline parameters */
-int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
+int pipeline_host_buffer(struct pipeline *p, struct comp_dev *cd,
 	struct stream_params *params, struct dma_sg_elem *elem);
 
 /* prepare the pipeline for usage */
-int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc,
+int pipeline_prepare(struct pipeline *p, struct comp_dev *cd,
 	struct stream_params *params);
 
 /* reset the pipeline and free resources */
-int pipeline_reset(struct pipeline *p, struct comp_desc *host_desc,
+int pipeline_reset(struct pipeline *p, struct comp_dev *host_cd,
 	struct stream_params *params);
 
 /* send pipeline a command */
-int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc,
+int pipeline_cmd(struct pipeline *p, struct comp_dev *host_cd,
 	struct stream_params *params, int cmd, void *data);
 
 /* initialise pipeline subsys */

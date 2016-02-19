@@ -194,7 +194,7 @@ static uint32_t vol_work(void *data)
 		return 0;
 }
 
-static struct comp_dev *volume_new(struct comp_desc *desc)
+static struct comp_dev *volume_new(uint32_t type, uint32_t index)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
@@ -211,7 +211,6 @@ static struct comp_dev *volume_new(struct comp_desc *desc)
 
 	comp_set_drvdata(dev, cd);
 	work_init(&cd->volwork, vol_work, dev);
-	dev->id = desc->id;
 	return dev;
 }
 
@@ -334,7 +333,7 @@ static int volume_copy(struct comp_dev *dev, struct stream_params *params)
 }
 
 struct comp_driver comp_volume = {
-	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_VOLUME),
+	.type	= COMP_TYPE_VOLUME,
 	.ops	= {
 		.new		= volume_new,
 		.free		= volume_free,

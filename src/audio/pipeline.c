@@ -20,6 +20,7 @@
 
 struct pipeline_data {
 	spinlock_t lock;
+	uint32_t next_id;	/* monotonic ID counter */
 	struct list_head pipeline_list;	/* list of all pipelines */
 };
 
@@ -56,7 +57,7 @@ struct pipeline *pipeline_from_id(int id)
 
 /* caller hold locks */
 static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
-	struct comp_desc *desc)
+	uint32_t id)
 {
 	struct comp_dev *cd;
 	struct list_head *clist;
@@ -66,7 +67,7 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 
 		cd = container_of(clist, struct comp_dev, pipeline_list);
 
-		if (cd->drv->uuid == desc->uuid && cd->id == desc->id)
+		if (cd->id == id)
 			return cd;
 	}
 
@@ -74,33 +75,12 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 	return NULL;
 }
 
-/* caller hold locks */
-static struct comp_buffer *pipeline_buffer_from_id(struct pipeline *p,
-	struct buffer_desc *buffer)
-{
-	struct comp_buffer *b;
-	struct list_head *blist;
-
-	/* search for pipeline by id */
-	list_for_each(blist, &p->buffer_list) {
-
-		b = container_of(blist, struct comp_buffer, pipeline_list);
-
-		if (b->desc.uuid == buffer->uuid)
-			return b;
-	}
-
-	/* not found */
-	return NULL;
-}
-
-struct comp_dev *pipeline_get_comp(struct pipeline *p,
-	struct comp_desc *desc)
+struct comp_dev *pipeline_get_comp(struct pipeline *p, uint32_t id)
 {
 	struct comp_dev *cd;
 
 	spin_lock(&p->lock);
-	cd = pipeline_comp_from_id(p, desc);
+	cd = pipeline_comp_from_id(p, id);
 	spin_unlock(&p->lock);
 	return cd;
 }	
@@ -165,19 +145,22 @@ void pipeline_free(struct pipeline *p)
 }
 
 /* create a new component in the pipeline */
-int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
+struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
+	uint32_t index)
 {
 	struct comp_dev *cd;
 
 	trace_pipe("CNw");
 
-	cd = comp_new(desc);
-	if (cd == NULL)
-		return -ENODEV;
+	cd = comp_new(type, index, pipe_data->next_id++);
+	if (cd == NULL) {
+		pipe_data->next_id--;
+		return NULL;
+	}
 
 	spin_lock(&p->lock);
 
-	switch (COMP_TYPE(desc->uuid)) {
+	switch (type) {
 	case COMP_TYPE_DAI_SSP:
 	case COMP_TYPE_DAI_HDA:
 		/* add to endpoint list and to comp list*/
@@ -189,11 +172,11 @@ int pipeline_comp_new(struct pipeline *p, struct comp_desc *desc)
 	}
 
 	spin_unlock(&pipe_data->lock);
-	return 0;
+	return cd;
 }
 
 /* free component in the pipeline */
-int pipeline_comp_free(struct pipeline *p, struct comp_desc *desc)
+int pipeline_comp_free(struct pipeline *p, struct comp_dev *cd)
 {
 	trace_pipe("CFr");
 	// TODO
@@ -201,7 +184,8 @@ int pipeline_comp_free(struct pipeline *p, struct comp_desc *desc)
 }
 
 /* create a new component in the pipeline */
-int pipeline_buffer_new(struct pipeline *p, struct buffer_desc *desc)
+struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
+	struct buffer_desc *desc)
 {
 	struct comp_buffer *buffer;
 
@@ -212,26 +196,27 @@ int pipeline_buffer_new(struct pipeline *p, struct buffer_desc *desc)
 	/* allocate buffer */
 	buffer = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
 	if (buffer == NULL)
-		return -ENOMEM;
+		return NULL;
 
 	buffer->addr = rballoc(RZONE_MODULE, RMOD_SYS, desc->size);
 	if (buffer->addr == NULL) {
 		rfree(RZONE_MODULE, RMOD_SYS, buffer);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	buffer->w_ptr = buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + desc->size;
 	buffer->avail = desc->size;
 	buffer->desc = *desc;
+	buffer->id = pipe_data->next_id++;
 	list_add(&buffer->pipeline_list, &p->buffer_list);
 
 	spin_unlock(&pipe_data->lock);
-	return 0;
+	return buffer;
 }
 
 /* free component in the pipeline */
-int pipeline_buffer_free(struct pipeline *p, struct buffer_desc *desc)
+int pipeline_buffer_free(struct pipeline *p, struct comp_buffer *buffer)
 {
 	trace_pipe("BFr");
 	// TODO
@@ -239,25 +224,10 @@ int pipeline_buffer_free(struct pipeline *p, struct buffer_desc *desc)
 }
 
 /* insert component in pipeline and allocate buffers */
-int pipeline_comp_connect(struct pipeline *p, struct comp_desc *source_desc,
-	struct comp_desc *sink_desc, struct buffer_desc *buffer_desc)
+int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source,
+	struct comp_dev *sink, struct comp_buffer *buffer)
 {
-	struct comp_dev *source, *sink;
-	struct comp_buffer *buffer;
-
 	trace_pipe("CCn");
-
-	source = pipeline_comp_from_id(p, source_desc);
-	if (source == NULL)
-		return -ENODEV;
-
-	sink = pipeline_comp_from_id(p, sink_desc);
-	if (sink == NULL)
-		return -ENODEV;
-
-	buffer = pipeline_buffer_from_id(p, buffer_desc);
-	if (buffer == NULL)
-		return -ENODEV;
 
 	/* connect source to buffer */
 	spin_lock(&source->lock);
@@ -407,25 +377,20 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 }
 
 /* prepare the pipeline for usage - preload host buffers here */
-int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc,
+int pipeline_prepare(struct pipeline *p, struct comp_dev *host,
 	struct stream_params *params)
 {
-	struct comp_dev *host;
 	struct op_data op_data;
 	int ret;
 
 	trace_pipe("Ppr");
-
-	host = pipeline_comp_from_id(p, host_desc);
-	if (host == NULL)
-		return -ENODEV;
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PREPARE;
 	op_data.params = params;
 
 	spin_lock(&p->lock);
-	if (host->is_playback)
+	if (params->direction == STREAM_DIRECTION_PLAYBACK)
 		ret = component_op_sink(&op_data, host);
 	else
 		ret = component_op_source(&op_data, host);
@@ -434,18 +399,13 @@ int pipeline_prepare(struct pipeline *p, struct comp_desc *host_desc,
 }
 
 /* send pipeline component/endpoint a command */
-int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc,
+int pipeline_cmd(struct pipeline *p, struct comp_dev *host,
 	struct stream_params *params, int cmd, void *data)
 {
-	struct comp_dev *host;
 	struct op_data op_data;
 	int ret;
 
 	trace_pipe("PCm");
-
-	host = pipeline_comp_from_id(p, host_desc);
-	if (host == NULL)
-		return -ENODEV;
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_CMD;
@@ -454,7 +414,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc,
 	op_data.params = params;
 
 	spin_lock(&p->lock);
-	if (host->is_playback)
+	if (params->direction == STREAM_DIRECTION_PLAYBACK)
 		ret = component_op_sink(&op_data, host);
 	else
 		ret = component_op_source(&op_data, host);
@@ -463,25 +423,20 @@ int pipeline_cmd(struct pipeline *p, struct comp_desc *host_desc,
 }
 
 /* send pipeline component/endpoint params */
-int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
+int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	struct stream_params *params)
 {
-	struct comp_dev *host;
 	struct op_data op_data;
 	int ret;
 
 	trace_pipe("Par");
-
-	host = pipeline_comp_from_id(p, host_desc);
-	if (host == NULL)
-		return -ENODEV;
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PARAMS;
 	op_data.params = params;
 
 	spin_lock(&p->lock);
-	if (host->is_playback)
+	if (params->direction == STREAM_DIRECTION_PLAYBACK)
 		ret = component_op_sink(&op_data, host);
 	else
 		ret = component_op_source(&op_data, host);
@@ -490,25 +445,20 @@ int pipeline_params(struct pipeline *p, struct comp_desc *host_desc,
 }
 
 /* send pipeline component/endpoint params */
-int pipeline_reset(struct pipeline *p, struct comp_desc *host_desc,
+int pipeline_reset(struct pipeline *p, struct comp_dev *host,
 	struct stream_params *params)
 {
-	struct comp_dev *host;
 	struct op_data op_data;
 	int ret;
 
 	trace_pipe("PRe");
-
-	host = pipeline_comp_from_id(p, host_desc);
-	if (host == NULL)
-		return -ENODEV;
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_RESET;
 	op_data.params = params;
 
 	spin_lock(&p->lock);
-	if (host->is_playback)
+	if (params->direction == STREAM_DIRECTION_PLAYBACK)
 		ret = component_op_sink(&op_data, host);
 	else
 		ret = component_op_source(&op_data, host);
@@ -516,19 +466,13 @@ int pipeline_reset(struct pipeline *p, struct comp_desc *host_desc,
 	return ret;
 }
 
-/* configure pipelines host DMA buffer */
-int pipeline_host_buffer(struct pipeline *p, struct comp_desc *desc,
+/* TODO: remove ?? configure pipelines host DMA buffer */
+int pipeline_host_buffer(struct pipeline *p, struct comp_dev *host,
 	struct stream_params *params, struct dma_sg_elem *elem)
 {
-	struct comp_dev *comp;
-
 	trace_pipe("PBr");
 
-	comp = pipeline_comp_from_id(p, desc);
-	if (comp == NULL)
-		return -ENODEV;
-
-	return comp_host_buffer(comp, params, elem);
+	return comp_host_buffer(host, params, elem);
 }
 
 // TODO: create list of endpoints and streams
@@ -545,15 +489,15 @@ void pipeline_do_work(struct pipeline *p)
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
 	op_data.params = _params;
-
+// TODO: for each pipeline stream
 	/* process capture streams in the pipeline */
 	list_for_each(elist, &p->endpoint_list) {
 		struct comp_dev *ep;
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
 
-		if (ep->is_playback)
-			continue;
+		//if (ep->is_playback)
+		//	continue;
 
 		/* process downstream */
 		component_op_sink(&op_data, ep);
@@ -565,8 +509,8 @@ void pipeline_do_work(struct pipeline *p)
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
 
-		if (!ep->is_playback)
-			continue;
+		//if (!ep->is_playback)
+		//	continue;
 
 		/* process downstream */
 		component_op_sink(&op_data, ep);
@@ -582,6 +526,8 @@ int pipeline_init(void)
 
 	pipe_data = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
+	pipe_data->next_id = 0;
+	spinlock_init(&pipe_data->lock);
 
 	return 0;
 }

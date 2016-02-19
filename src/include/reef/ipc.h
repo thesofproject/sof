@@ -25,8 +25,11 @@ struct ipc_comp_dev {
 	struct pipeline *p;
 
 	/* component data */
-	struct comp_dev *cd;
-	struct comp_desc desc;
+	union {
+		struct comp_dev *cd;
+		struct comp_buffer *cb;
+	};
+	uint32_t type;
 
 	struct list_head list;		/* list in ipc data */
 	void *private;
@@ -50,6 +53,12 @@ struct ipc_dai_dev {
 	struct dai_config dai_config;
 };
 
+/* IPC buffer device */ 
+struct ipc_buffer_dev {
+
+	struct ipc_comp_dev dev;
+};
+
 struct ipc_msg {
 	uint32_t type;		/* specific to platform */
 	uint32_t size;		/* payload size in bytes */
@@ -67,7 +76,10 @@ struct ipc {
 	int (*cb)(struct ipc_msg *msg);
 
 	/* mixers, dais and pcms */
+	uint32_t next_comp_id;
+	uint32_t next_buffer_id;
 	struct list_head comp_list;	/* list of component devices */
+	struct list_head buffer_list;	/* list of buffer devices */
 
 	void *private;
 };
@@ -76,16 +88,16 @@ struct ipc {
 	(ipc)->private = data
 #define ipc_get_drvdata(ipc) \
 	(ipc)->private;
-#define ipc_get_pcm_comp(pipeline_id, id) \
-	(struct ipc_pcm_dev *)ipc_get_comp(pipeline_id, id)
-#define ipc_get_dai_comp(pipeline_id, id) \
-	(struct ipc_dai_dev *)ipc_get_comp(pipeline_id, id)
+#define ipc_get_pcm_comp(id) \
+	(struct ipc_pcm_dev *)ipc_get_comp(id)
+#define ipc_get_dai_comp(id) \
+	(struct ipc_dai_dev *)ipc_get_comp(id)
 
 int ipc_init(void);
 int platform_ipc_init(struct ipc *ipc);
 void ipc_free(struct ipc *ipc);
 
-struct ipc_comp_dev *ipc_get_comp(int pipeline_id, uint32_t id);
+struct ipc_comp_dev *ipc_get_comp(uint32_t id);
 
 int ipc_process_msg_queue(void);
 
@@ -93,13 +105,13 @@ int ipc_send_msg(struct ipc_msg *msg);
 int ipc_send_short_msg(uint32_t msg);
 
 /* dynamic pipeline API */
-int ipc_comp_new(int pipeline_id, struct comp_desc *desc);
-int ipc_comp_free(int pipeline_id, struct comp_desc *desc);
+int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index);
+void ipc_comp_free(uint32_t comp_id);
 
 int ipc_buffer_new(int pipeline_id, struct buffer_desc *buffer_desc);
-int ipc_buffer_free(int pipeline_id, struct buffer_desc *buffer_desc);
+void ipc_buffer_free(uint32_t buffer_id);
 
-int ipc_comp_connect(int pipeline_id, struct comp_desc *source_desc,
-	struct comp_desc *sink_desc, struct buffer_desc *buffer_desc);
+int ipc_comp_connect(uint32_t source_id, uint32_t sink_id,
+	uint32_t buffer_id);
 
 #endif

@@ -141,7 +141,7 @@ static void host_capture_dma_cb(void *data, uint32_t type)
 	wait_completed(&hs->complete);
 }
 
-static struct comp_dev *host_new(struct comp_desc *desc)
+static struct comp_dev *host_new(uint32_t type, uint32_t index)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
@@ -484,7 +484,7 @@ static int host_copy(struct comp_dev *dev, struct stream_params *params)
 }
 
 struct comp_driver comp_host = {
-	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST),
+	.type	= COMP_TYPE_HOST,
 	.ops	= {
 		.new		= host_new,
 		.free		= host_free,

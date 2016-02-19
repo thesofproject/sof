@@ -13,7 +13,7 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static struct comp_dev *mixer_new(struct comp_desc *desc)
+static struct comp_dev *mixer_new(uint32_t type, uint32_t index)
 {
 
 	return 0;
@@ -47,7 +47,7 @@ static int mixer_copy(struct comp_dev *dev, struct stream_params *params)
 }
 
 struct comp_driver comp_mixer = {
-	.uuid	= COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_MIXER),
+	.type	= COMP_TYPE_MIXER,
 	.ops	= {
 		.new		= mixer_new,
 		.free		= mixer_free,

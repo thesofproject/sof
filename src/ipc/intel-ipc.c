@@ -58,7 +58,7 @@ struct intel_ipc_data {
 	completion_t complete;
 
 	/* SSP port - TODO driver only support 1 atm */
-	struct comp_desc dai;
+	uint32_t dai;
 };
 
 #define to_host_offset(_s) \
@@ -182,7 +182,7 @@ out:
  page table entry and adding each elem to a list in struct dma_sg_config*/
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	struct ipc_intel_ipc_stream_alloc_req *req,
-	struct comp_desc *host, struct stream_params *params)
+	struct comp_dev *host, struct stream_params *params)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
 	struct dma_sg_elem elem;
@@ -216,8 +216,9 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	struct ipc_intel_ipc_stream_alloc_reply reply;
 	struct intel_stream_data *stream_data;
 	struct stream_params *params;
-	struct comp_desc host;
+	uint32_t host_id;
 	struct ipc_pcm_dev *pcm_dev;
+	struct ipc_dai_dev *dai_dev;
 	int err;
 	uint8_t direction;
 
@@ -226,33 +227,35 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&req, 0, sizeof(req));
 
-	host.uuid = COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST);
-
-
 	/* format always PCM, now check source type */
 	switch (req.stream_type) {
 	case IPC_INTEL_STREAM_TYPE_SYSTEM:
-		host.id = 0;
+		host_id = 0;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_RENDER:
-		host.id = 1;
+		host_id = 1;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
-		host.id = 2;
+		host_id = 2;
 		direction = STREAM_DIRECTION_CAPTURE;
 		break;
 	case IPC_INTEL_STREAM_TYPE_LOOPBACK:
-		host.id = 3;
+		host_id = 3;
 		direction = STREAM_DIRECTION_CAPTURE;
 	default:
 		goto error;
 	};
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(0, host.id);
+	pcm_dev = ipc_get_pcm_comp(host_id);
 	if (pcm_dev == NULL)
+		goto error; 
+
+	/* get the pcm_dev */
+	dai_dev = ipc_get_dai_comp(iipc->dai);
+	if (dai_dev == NULL)
 		goto error; 
 
 	/* allocate stream datat */
@@ -286,28 +289,28 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 
 	/* Parse host tables */
-	err = parse_page_descriptors(iipc, &req, &host, params);
+	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd, params);
 	if (err < 0)
 		goto error;
 
 	/* configure pipeline audio params */
-	err = pipeline_params(pipeline_static, &host, params);	
+	err = pipeline_params(pipeline_static, pcm_dev->dev.cd, params);	
 	if (err < 0)
 		goto error;
 
 	/* Configure SSP and send to DAI */
-	err = pipeline_params(pipeline_static, &iipc->dai, params);	
+	err = pipeline_params(pipeline_static, dai_dev->dev.cd, params);	
 	if (err < 0)
 		goto error;
 
 	/* initialise the pipeline */
-	err = pipeline_prepare(pipeline_static, &host, params);
+	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd, params);
 	if (err < 0)
 		goto error;
 
 
 	/* at this point pipeline is ready for command so send stream reply */
-	reply.stream_hw_id = host.id;
+	reply.stream_hw_id = host_id;
 	reply.mixer_hw_id = 0; // returns rate ????
 
 // TODO: set up pointers to read data directly.
@@ -350,7 +353,7 @@ static uint32_t ipc_stream_free(uint32_t header)
 	mailbox_inbox_read(&free_req, 0, sizeof(free_req));
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(0, free_req.stream_id);
+	pcm_dev = ipc_get_pcm_comp(free_req.stream_id);
 	if (pcm_dev == NULL)
 		goto error; 
 
@@ -377,7 +380,7 @@ static uint32_t ipc_stream_info(uint32_t header)
 	info.mixer_hw_id = 1;
 
 	/* get the pcm_dev */
-	comp_dev = ipc_get_comp(0, info.mixer_hw_id);
+	comp_dev = ipc_get_comp(info.mixer_hw_id);
 	if (comp_dev == NULL)
 		goto error; 
 	
@@ -437,8 +440,8 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 {
 	struct ipc_intel_ipc_device_config_req config_req;
 	struct ipc_dai_dev *dai_dev;
+	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 //	struct intel_stream_data *stream_data;
-	struct comp_desc dai;
 
 	trace_ipc("DsF");
 
@@ -448,19 +451,17 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	/* get SSP port */
 	switch (config_req.ssp_interface) {
 	case IPC_INTEL_DEVICE_SSP_0:
-		dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP0);
-		dai.id = 0;
+		iipc->dai = 3;
 		break;
 	case IPC_INTEL_DEVICE_SSP_1:
-		dai.uuid = COMP_UUID(COMP_VENDOR_INTEL, DAI_UUID_SSP1);
-		dai.id = 0;
+		iipc->dai = 4;
 		break;
 	default:
 		goto error;
 	};
 
 	/* get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(0, dai.uuid);
+	dai_dev = ipc_get_dai_comp(iipc->dai);
 	if (dai_dev == NULL)
 		goto error;
 
@@ -502,7 +503,7 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	mixer_dev = ipc_get_comp(0, stream_id);
+	mixer_dev = ipc_get_comp(stream_id);
 	if (mixer_dev == NULL)
 		goto error; 
 	
@@ -530,7 +531,7 @@ static uint32_t ipc_stage_get_volume(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	mixer_dev = ipc_get_comp(0, stream_id);
+	mixer_dev = ipc_get_comp(stream_id);
 	if (mixer_dev == NULL)
 		goto error; 
 	
@@ -586,12 +587,12 @@ static uint32_t ipc_stream_reset(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(0, stream_id);
+	pcm_dev = ipc_get_pcm_comp(stream_id);
 	if (pcm_dev == NULL)
 		goto error; 
 
 	/* initialise the pipeline */
-	err = pipeline_reset(pcm_dev->dev.p, &pcm_dev->dev.desc, 
+	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd, 
 		&pcm_dev->params);
 	if (err < 0)
 		goto error;
@@ -613,20 +614,20 @@ static uint32_t ipc_stream_pause(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(0, stream_id);
+	pcm_dev = ipc_get_pcm_comp(stream_id);
 	if (pcm_dev == NULL)
 		goto error; 
 
 	stream_data = ipc_get_drvdata(&pcm_dev->dev);
 
 	if (stream_data->state == INTEL_STREAM_ALLOC) {
-		err = pipeline_cmd(pcm_dev->dev.p, &pcm_dev->dev.desc,
+		err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
 			&pcm_dev->params, PIPELINE_CMD_PAUSE, NULL);
 		if (err < 0)
 			goto error;
 		stream_data->state = INTEL_STREAM_PAUSED;
 	} else {
-		err = pipeline_cmd(pcm_dev->dev.p, &pcm_dev->dev.desc,
+		err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
 			&pcm_dev->params, PIPELINE_CMD_START, NULL);
 		if (err < 0)
 			goto error;
@@ -650,14 +651,14 @@ static uint32_t ipc_stream_resume(uint32_t header)
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(0, stream_id);
+	pcm_dev = ipc_get_pcm_comp(stream_id);
 	if (pcm_dev == NULL)
 		goto error;
 
 	stream_data = ipc_get_drvdata(&pcm_dev->dev);
 
 	/* initialise the pipeline */
-	err = pipeline_cmd(pcm_dev->dev.p, &pcm_dev->dev.desc, &pcm_dev->params,
+	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd, &pcm_dev->params,
 			PIPELINE_CMD_START, NULL);
 	if (err < 0)
 		goto error;

@@ -18,24 +18,18 @@
 #include <reef/audio/pipeline.h>
 
 /* convenience component UUIDs and descriptors */
-#define SPIPE_MIXER(xid) \
-	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_MIXER), xid}
-#define SPIPE_MUX(xid) \
-	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_MUX), xid}
-#define SPIPE_VOLUME(xid) \
-	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_VOLUME), xid}
-#define SPIPE_SWITCH(xid) \
-	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_SWITCH), xid}
-#define SPIPE_DAI_SSP0(xid, is_play) \
-	{COMP_UUID(COMP_VENDOR_INTEL, COMP_TYPE_DAI_SSP), xid, is_play}
-#define SPIPE_HOST(xid, is_play) \
-	{COMP_UUID(COMP_VENDOR_GENERIC, COMP_TYPE_HOST), xid, is_play}
+#define SPIPE_MIXER {COMP_TYPE_MIXER, 0, 0}
+#define SPIPE_MUX {COMP_TYPE_MUX, 0, 0}
+#define SPIPE_VOLUME {COMP_TYPE_VOLUME, 0, 0}
+#define SPIPE_SWITCH {COMP_TYPE_SWITCH, 0, 0}
+#define SPIPE_DAI_SSP(xindex) {COMP_TYPE_DAI_SSP, xindex, 0}
+#define SPIPE_HOST(xindex) {COMP_TYPE_HOST, xindex, 0}
 
 /* convenience buffer descriptors */
 #define SPIPE_BUFFER(xsize, xisize, xinum, xiirq, xosize, xonum, xoirq) \
-	{.size = xsize, \
-		.sink_period = {.size = xisize, .number = xinum, .no_irq = xiirq}, \
-		.source_period = {.size = xosize, .number = xonum, .no_irq = xoirq},}
+	{.buffer = {.size = xsize, \
+	.sink_period = {.size = xisize, .number = xinum, .no_irq = xiirq}, \
+	.source_period = {.size = xosize, .number = xonum, .no_irq = xoirq},},}
 
 /* Host facing buffer */
 #define SPIPE_HOST_BUF \
@@ -49,12 +43,35 @@
 		-1, -1, 0, \
 		PLAT_DEV_PERSIZE * PLAT_DEV_PERIODS, PLAT_DEV_PERIODS, 0)
 
+struct spipe_comp {
+	uint32_t type;
+	uint32_t index;
+	uint32_t id;
+};
+
+struct spipe_buffer {
+	struct buffer_desc buffer;
+	uint32_t id;
+};
+
 /* static link between components using UUIDs and IDs */
 struct spipe_link {
-	struct comp_desc source;
-	struct buffer_desc buffer;
-	struct comp_desc sink;
+	struct spipe_comp *source;
+	struct spipe_buffer *buffer;
+	struct spipe_comp *sink;
 };
+
+static struct spipe_comp host_p = SPIPE_HOST(0);
+static struct spipe_comp host_c = SPIPE_HOST(0);
+static struct spipe_comp volume_p = SPIPE_VOLUME;
+static struct spipe_comp volume_c = SPIPE_VOLUME;
+static struct spipe_comp ssp_p = SPIPE_DAI_SSP(0);
+static struct spipe_comp ssp_c = SPIPE_DAI_SSP(0);
+
+static struct spipe_buffer host_buf_p = SPIPE_HOST_BUF;
+static struct spipe_buffer host_buf_c = SPIPE_HOST_BUF;
+static struct spipe_buffer dev_buf_p = SPIPE_DEV_BUF;
+static struct spipe_buffer dev_buf_c = SPIPE_DEV_BUF;
 
 /*
  * Straight through playback and capture pipes with simple volume.
@@ -63,24 +80,31 @@ struct spipe_link {
  * host PCM0(0) <--- B2 <--- volume(3) <--- B3 <--- SSP0(2)
  */
 
-static struct comp_desc pipe0_comps[] = {
-	SPIPE_HOST(0, 1),
-	SPIPE_VOLUME(1),
-	SPIPE_DAI_SSP0(2, 1),
-	SPIPE_DAI_SSP0(2, 0),
-	SPIPE_VOLUME(3),
-	SPIPE_HOST(0, 0),
+static struct spipe_comp *pipe0_comps[] = {
+	&host_p,
+	&volume_p,
+	&ssp_p,
+	&ssp_c,
+	&volume_c,
+	&host_c,
+};
+
+static struct spipe_buffer *pipe0_buffers[] = {
+	&host_buf_p,
+	&host_buf_c,
+	&dev_buf_p,
+	&dev_buf_c,
 };
 
 static struct spipe_link pipe_play0[] = {
-	{SPIPE_HOST(0, 1), SPIPE_HOST_BUF, SPIPE_VOLUME(1)},
-	{SPIPE_VOLUME(1), SPIPE_DEV_BUF, SPIPE_DAI_SSP0(2, 1)},
+	{&host_p, &host_buf_p, &volume_p},
+	{&volume_p, &dev_buf_p, &ssp_p},
 };
 
 
 static struct spipe_link pipe_capture0[] = {
-	{SPIPE_DAI_SSP0(2, 0), SPIPE_DEV_BUF, SPIPE_VOLUME(3)},
-	{SPIPE_VOLUME(3), SPIPE_HOST_BUF, SPIPE_HOST(0, 0)},
+	{&ssp_p, &dev_buf_c, &volume_c},
+	{&volume_c, &host_buf_c, &host_c},
 };
 
 
@@ -126,7 +150,7 @@ static struct spipe_link pipe_capture2[] = {
 
 /* static pipeline ID */
 struct pipeline *pipeline_static;
-uint32_t pipeline_static_id = 0;
+uint32_t pipeline_id = 0;
 
 struct pipeline *init_static_pipeline(void)
 {
@@ -138,22 +162,28 @@ struct pipeline *init_static_pipeline(void)
 		return NULL;
 
 	/* create the pipeline */
-	pipeline_static = pipeline_new(pipeline_static_id);
+	pipeline_static = pipeline_new(pipeline_id);
 	if (pipeline_static < 0)
 		return NULL;
 
 	/* create components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_comps); i++) {
-		ipc_comp_new(pipeline_static_id, &pipe0_comps[i]);
+		pipe0_comps[i]->id = ipc_comp_new(pipeline_id,
+			pipe0_comps[i]->type, pipe0_comps[i]->index);
+	}
+
+	/* create buffers in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe0_buffers); i++) {
+		pipe0_buffers[i]->id = ipc_buffer_new(pipeline_id,
+			&pipe0_buffers[i]->buffer);
 	}
 
 	/* create components on playback pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_play0); i++) {
 		/* add source -> sink */
-		err = ipc_comp_connect(pipeline_static_id,
-			&pipe_play0[i].source,
-			&pipe_play0[i].sink,
-			&pipe_play0[i].buffer);
+		err = ipc_comp_connect(pipe_play0[i].source->id,
+			pipe_play0[i].sink->id,
+			pipe_play0[i].buffer->id);
 		if (err < 0)
 			goto err;
 	}
@@ -161,10 +191,9 @@ struct pipeline *init_static_pipeline(void)
 	/* create components on capture pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe_capture0); i++) {
 		/* add source -> sink */
-		err = ipc_comp_connect(pipeline_static_id,
-			&pipe_capture0[i].source,
-			&pipe_capture0[i].sink,
-			&pipe_capture0[i].buffer);
+		err = ipc_comp_connect(pipe_capture0[i].source->id,
+			pipe_capture0[i].sink->id,
+			pipe_capture0[i].buffer->id);
 		if (err < 0)
 			goto err;
 	}

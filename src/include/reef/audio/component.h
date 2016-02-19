@@ -16,15 +16,6 @@
 #include <reef/dma.h>
 #include <reef/stream.h>
 
-/* component 32bit UUID - type is COMP_TYPE_ or bespoke type */
-#define COMP_UUID(vendor, type)	\
-	(((vendor & 0xffff) << 16) | (type & 0xffff))
-#define COMP_TYPE(uuid) (uuid & 0xffff)
-
-/* component vendors */
-#define COMP_VENDOR_GENERIC	0		/* community */
-#define COMP_VENDOR_INTEL	0x8086
-
 /* audio component states */
 #define COMP_STATE_UNAVAIL	0	/* not ready for COMP ops */
 #define COMP_STATE_IDLE		1	/* ready for ops, but not prepared */
@@ -63,15 +54,6 @@ struct comp_dev;
 struct comp_buffer;
 struct dai_config;
 
-/*
- * Pipeline component descriptor.
- */
-struct comp_desc {
-	uint32_t uuid;
-	uint16_t id;
-	uint8_t is_ep_playback;	/* is endpoint playback or capture */
-	uint8_t reserved;
-};
 
 /*
  * Componnent period descriptors
@@ -87,7 +69,6 @@ struct period_desc {
  * Pipeline buffer descriptor.
  */
 struct buffer_desc {
-	uint32_t uuid;
 	uint32_t size;		/* buffer size in bytes */
 	struct period_desc sink_period;
 	struct period_desc source_period;
@@ -96,7 +77,7 @@ struct buffer_desc {
 /* audio component operations - all mandatory */
 struct comp_ops {
 	/* component creation and destruction */
-	struct comp_dev *(*new)(struct comp_desc *desc);
+	struct comp_dev *(*new)(uint32_t type, uint32_t index);
 	void (*free)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
@@ -141,7 +122,7 @@ struct comp_caps {
 
 /* audio component base driver "class" - used by all other component types */
 struct comp_driver {
-	uint32_t uuid;		/* UUID for component */
+	uint32_t type;		/* COMP_TYPE_ for driver */
 	uint32_t module_id;
 
 	struct comp_ops ops;	/* component operations */
@@ -154,10 +135,9 @@ struct comp_driver {
 struct comp_dev {
 
 	/* runtime */
-	uint8_t id;		/* id of component */
+	uint32_t id;		/* runtime ID of component */
 	uint8_t state;		/* COMP_STATE_ */
-	uint8_t is_endpoint;	/* is this component an endpoint ? */
-	uint8_t is_playback;	/* is the endpoint for playback or capture */
+	uint8_t reserved[3];	/* reserved */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;
@@ -175,12 +155,14 @@ struct comp_buffer {
 	struct stream_params params;
 
 	/* runtime data */
+	uint32_t id;		/* runtime ID of buffer */
+	uint8_t connected;	/* connected in path */
+	uint8_t reserved[3];	/* reserved */
 	uint32_t avail;		/* available bytes between R and W ptrs */
 	void *w_ptr;		/* buffer write pointer */
 	void *r_ptr;		/* buffer read position */
 	void *addr;		/* buffer base address */
 	void *end_addr;		/* buffer end address */
-	uint8_t connected;	/* connected in path */
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
@@ -204,7 +186,7 @@ int comp_register(struct comp_driver *drv);
 void comp_unregister(struct comp_driver *drv);
 
 /* component creation and destruction */
-struct comp_dev *comp_new(struct comp_desc *desc);
+struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);
