@@ -234,15 +234,16 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_RENDER:
-		host_id = 1;
+		host_id = 0;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
-		host_id = 2;
-		direction = STREAM_DIRECTION_CAPTURE;
+		host_id = 0;
+		//direction = STREAM_DIRECTION_CAPTURE;
+		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_LOOPBACK:
-		host_id = 3;
+		host_id = 0;
 		direction = STREAM_DIRECTION_CAPTURE;
 	default:
 		goto error;
@@ -819,7 +820,7 @@ int platform_ipc_init(struct ipc *ipc)
 	/* init ipc data */
 	iipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
-	iipc->dai = 3;
+	iipc->dai = 2;
 	
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,

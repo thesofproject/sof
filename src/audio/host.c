@@ -245,9 +245,6 @@ static int host_params_playback(struct comp_dev *dev,
 	struct dma_sg_elem *elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
-	int ret;
-
-	//dev->params = *params;
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_MEM;
@@ -264,10 +261,10 @@ static int host_params_playback(struct comp_dev *dev,
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_entry(&dev->bsink_list,
 		struct comp_buffer, source_list);
-	dma_period_desc = &dma_buffer->desc.source_period;
+	dma_period_desc = &dma_buffer->desc.sink_period;
 
 	hs->current_host_end = host_elem->src + host_elem->size;
-	
+
 	elem->src = host_elem->src;
 	dma_buffer->w_ptr = dma_buffer->addr;
 
@@ -278,7 +275,7 @@ static int host_params_playback(struct comp_dev *dev,
 	/* element size */
 	elem->size = dma_period_desc->size;
 
-	return ret;
+	return 0;
 }
 
 static int host_params_capture(struct comp_dev *dev,
@@ -290,7 +287,6 @@ static int host_params_capture(struct comp_dev *dev,
 	struct dma_sg_elem *elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
-	int ret;
 
 	//dev->params = *params;
 
@@ -309,7 +305,7 @@ static int host_params_capture(struct comp_dev *dev,
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_entry(&dev->bsource_list,
 		struct comp_buffer, sink_list);
-	dma_period_desc = &dma_buffer->desc.sink_period;
+	dma_period_desc = &dma_buffer->desc.source_period;
 
 	hs->current_host_end = host_elem->dest + host_elem->size;
 	elem->dest = host_elem->dest;
@@ -322,7 +318,7 @@ static int host_params_capture(struct comp_dev *dev,
 	/* element size */
 	elem->size = dma_period_desc->size;
 
-	return ret;
+	return 0;
 }
 
 /* configure the DMA params and descriptors for host buffer IO */

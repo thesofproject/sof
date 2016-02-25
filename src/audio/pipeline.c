@@ -289,7 +289,7 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 
 	/* dont walk the graph any further if this component fails or
 	   doesnt copy any data */
-	if (err <= 0)
+	if (err < 0)
 		return err;
 
 	/* now run this operation downstream */
@@ -355,7 +355,7 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 
 	/* dont walk the graph any further if this component fails or
 	   doesnt copy any data */
-	if (err <= 0)
+	if (err < 0)
 		return err;
 
 	/* now run this operation downstream */

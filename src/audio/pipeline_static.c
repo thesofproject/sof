@@ -34,14 +34,14 @@
 /* Host facing buffer */
 #define SPIPE_HOST_BUF \
 	SPIPE_BUFFER(PLAT_HOST_PERSIZE * PLAT_HOST_PERIODS, \
-		PLAT_HOST_PERSIZE * PLAT_HOST_PERIODS, PLAT_HOST_PERIODS, 0, \
+		PLAT_HOST_PERSIZE, PLAT_HOST_PERIODS, 0, \
 		-1, -1, 0)
 
 /* Device facing buffer */
 #define SPIPE_DEV_BUF \
 	SPIPE_BUFFER(PLAT_DEV_PERSIZE * PLAT_DEV_PERIODS, \
 		-1, -1, 0, \
-		PLAT_DEV_PERSIZE * PLAT_DEV_PERIODS, PLAT_DEV_PERIODS, 0)
+		PLAT_DEV_PERSIZE, PLAT_DEV_PERIODS, 0)
 
 struct spipe_comp {
 	uint32_t type;
@@ -170,12 +170,16 @@ struct pipeline *init_static_pipeline(void)
 	for (i = 0; i < ARRAY_SIZE(pipe0_comps); i++) {
 		pipe0_comps[i]->id = ipc_comp_new(pipeline_id,
 			pipe0_comps[i]->type, pipe0_comps[i]->index);
+		if (pipe0_comps[i]->id < 0)
+			goto error;
 	}
 
 	/* create buffers in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_buffers); i++) {
 		pipe0_buffers[i]->id = ipc_buffer_new(pipeline_id,
 			&pipe0_buffers[i]->buffer);
+		if (pipe0_buffers[i]->id < 0)
+			goto error;
 	}
 
 	/* create components on playback pipeline */
@@ -185,7 +189,7 @@ struct pipeline *init_static_pipeline(void)
 			pipe_play0[i].sink->id,
 			pipe_play0[i].buffer->id);
 		if (err < 0)
-			goto err;
+			goto error;
 	}
 
 	/* create components on capture pipeline */
@@ -195,13 +199,13 @@ struct pipeline *init_static_pipeline(void)
 			pipe_capture0[i].sink->id,
 			pipe_capture0[i].buffer->id);
 		if (err < 0)
-			goto err;
+			goto error;
 	}
 
 	/* pipeline now ready for params, prepare and cmds */
 	return pipeline_static;
 
-err:
+error:
 	pipeline_free(pipeline_static);
 	return NULL;
 }
