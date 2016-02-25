@@ -27,7 +27,6 @@ static void mixer_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int mixer_params(struct comp_dev *dev, struct stream_params *params)
 {
-
 	return 0;
 }
 
@@ -42,7 +41,16 @@ static int mixer_cmd(struct comp_dev *dev, struct stream_params *params,
 /* copy and process stream data from source to sink buffers */
 static int mixer_copy(struct comp_dev *dev, struct stream_params *params)
 {
+	return 0;
+}
 
+static int mixer_reset(struct comp_dev *dev, struct stream_params *params)
+{
+	return 0;
+}
+
+static int mixer_prepare(struct comp_dev *dev, struct stream_params *params)
+{
 	return 0;
 }
 
@@ -52,8 +60,10 @@ struct comp_driver comp_mixer = {
 		.new		= mixer_new,
 		.free		= mixer_free,
 		.params		= mixer_params,
+		.prepare	= mixer_prepare,
 		.cmd		= mixer_cmd,
 		.copy		= mixer_copy,
+		.reset		= mixer_reset,
 	},
 };
 

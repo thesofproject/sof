@@ -332,6 +332,11 @@ static int volume_copy(struct comp_dev *dev, struct stream_params *params)
 	return source->params.period_frames;
 }
 
+static int volume_reset(struct comp_dev *dev, struct stream_params *params)
+{
+	return 0;
+}
+
 struct comp_driver comp_volume = {
 	.type	= COMP_TYPE_VOLUME,
 	.ops	= {
@@ -341,6 +346,7 @@ struct comp_driver comp_volume = {
 		.cmd		= volume_cmd,
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
+		.reset		= volume_reset,
 	},
 	.caps	= {
 		.source = {

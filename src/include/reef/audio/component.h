@@ -185,59 +185,65 @@ void sys_comp_init(void);
 int comp_register(struct comp_driver *drv);
 void comp_unregister(struct comp_driver *drv);
 
-/* component creation and destruction */
+/* component creation and destruction - mandatory */
 struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);
 }
 
-/* component parameter init */
+/* component parameter init - mandatory */
 static inline int comp_params(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	return dev->drv->ops.params(dev, params);
 }
 
-/* component host buffer config */
+/* component host buffer config
+ * mandatory for host components, optional for the others.
+ */
 static inline int comp_host_buffer(struct comp_dev *dev,
 	struct stream_params *params, struct dma_sg_elem *elem)
 {
-	return dev->drv->ops.host_buffer(dev, params, elem);
+	if (dev->drv->ops.host_buffer)
+		return dev->drv->ops.host_buffer(dev, params, elem);
+	return 0;
 }
 
-/* send component command */
+/* send component command - mandatory */
 static inline int comp_cmd(struct comp_dev *dev, struct stream_params *params,
 	int cmd, void *data)
 {
 	return dev->drv->ops.cmd(dev, params, cmd, data);
 }
 
-/* prepare component */
+/* prepare component - mandatory */
 static inline int comp_prepare(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	return dev->drv->ops.prepare(dev, params);
 }
 
-/* copy component buffers */
+/* copy component buffers - mandatory */
 static inline int comp_copy(struct comp_dev *dev, struct stream_params *params)
 {
 	return dev->drv->ops.copy(dev, params);
 }
 
-/* component reset and free runtime resources */
+/* component reset and free runtime resources -mandatory  */
 static inline int comp_reset(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	return dev->drv->ops.reset(dev, params);
 }
 
-/* DAI configuration */
+/* DAI configuration - only mandatory for DAI components */
 static inline int comp_dai_config(struct comp_dev *dev,
 	struct stream_params *params, struct dai_config *dai_config)
 {
-	return dev->drv->ops.dai_config(dev, params, dai_config);
+	if (dev->drv->ops.dai_config)
+		return dev->drv->ops.dai_config(dev, params, dai_config);
+	return 0;
 }
 
 /* default base component initialisations */

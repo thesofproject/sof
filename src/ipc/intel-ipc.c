@@ -498,6 +498,9 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 
 	trace_ipc("VoS");
 
+	// TODO: finish implementation, get correct ID from drv
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+
 	/* the driver uses stream ID to also identify certain mixers */
 	stream_id = header & IPC_INTEL_STR_ID_MASK;
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
@@ -525,6 +528,9 @@ static uint32_t ipc_stage_get_volume(uint32_t header)
 	int err;
 
 	trace_ipc("VoG");
+
+	// TODO: finish implementation, get correct ID from drv
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
 
 	/* the driver uses stream ID to also identify certain mixers */
 	stream_id = header & IPC_INTEL_STR_ID_MASK;
@@ -585,7 +591,7 @@ static uint32_t ipc_stream_reset(uint32_t header)
 
 	stream_id = header & IPC_INTEL_STR_ID_MASK;
 	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-
+return IPC_INTEL_GLB_REPLY_SUCCESS;
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
 	if (pcm_dev == NULL)
@@ -813,6 +819,7 @@ int platform_ipc_init(struct ipc *ipc)
 	/* init ipc data */
 	iipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
+	iipc->dai = 3;
 	
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,

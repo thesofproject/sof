@@ -99,7 +99,7 @@ static void exception(void)
 
 	/* atm we loop forever */
 	/* TODO: we should probably stall/HALT at this point or recover */
-	panic_dump_stack(PANIC_EXCEPTION);
+	panic(PANIC_EXCEPTION);
 }
 
 static void register_exceptions(void)

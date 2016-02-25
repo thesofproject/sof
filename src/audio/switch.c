@@ -46,6 +46,16 @@ static int switch_copy(struct comp_dev *dev, struct stream_params *params)
 	return 0;
 }
 
+static int switch_reset(struct comp_dev *dev, struct stream_params *params)
+{
+	return 0;
+}
+
+static int switch_prepare(struct comp_dev *dev, struct stream_params *params)
+{
+	return 0;
+}
+
 struct comp_driver comp_switch = {
 	.type	= COMP_TYPE_SWITCH,
 	.ops	= {
@@ -54,6 +64,8 @@ struct comp_driver comp_switch = {
 		.params		= switch_params,
 		.cmd		= switch_cmd,
 		.copy		= switch_copy,
+		.prepare	= switch_prepare,
+		.reset		= switch_reset,
 	},
 };
 

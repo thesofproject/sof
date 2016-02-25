@@ -15,6 +15,7 @@
 #include <reef/stream.h>
 #include <reef/alloc.h>
 #include <reef/ipc.h>
+#include <reef/debug.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
@@ -126,7 +127,7 @@ int ipc_buffer_new(int pipeline_id, struct buffer_desc *desc)
 	icb->pipeline_id = pipeline_id;
 	icb->p = p;
 
-	list_add(&icb->list, &_ipc->comp_list);
+	list_add(&icb->list, &_ipc->buffer_list);
 	return icb->cb->id;
 }
 

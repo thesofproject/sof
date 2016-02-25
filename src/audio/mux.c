@@ -46,6 +46,16 @@ static int mux_copy(struct comp_dev *dev, struct stream_params *params)
 	return 0;
 }
 
+static int mux_reset(struct comp_dev *dev, struct stream_params *params)
+{
+	return 0;
+}
+
+static int mux_prepare(struct comp_dev *dev, struct stream_params *params)
+{
+	return 0;
+}
+
 struct comp_driver comp_mux = {
 	.type	= COMP_TYPE_MUX,
 	.ops	= {
@@ -54,6 +64,8 @@ struct comp_driver comp_mux = {
 		.params		= mux_params,
 		.cmd		= mux_cmd,
 		.copy		= mux_copy,
+		.prepare	= mux_prepare,
+		.reset		= mux_reset,
 	},
 };
 
