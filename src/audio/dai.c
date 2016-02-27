@@ -100,10 +100,12 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index)
 	}
 
 	comp_set_drvdata(dev, dd);
+	comp_set_dai_ep(dev);
 	dd->ssp = dai_get(type, index);
 	dd->dma = dma_get(DMA_ID_DMAC1);
 
 	ds = &dd->s[DAI_PLAYBACK_STREAM];
+	list_init(&ds->config.elem_list);
 
 	/* get DMA channel from DMAC1 */
 	ds->chan = dma_channel_get(dd->dma);
@@ -114,6 +116,7 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index)
 	dma_set_cb(dd->dma, ds->chan, dai_dma_playback_cb, dev);
 
 	ds = &dd->s[DAI_CAPTURE_STREAM];
+	list_init(&ds->config.elem_list);
 
 	/* get DMA channel from DMAC1 */
 	ds->chan = dma_channel_get(dd->dma);
@@ -162,7 +165,7 @@ static int dai_playback_params(struct comp_dev *dev,
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
 	struct list_head *elist, *tlist;
-	int ret, i;
+	int i;
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
@@ -174,6 +177,7 @@ static int dai_playback_params(struct comp_dev *dev,
 	dma_buffer = list_first_entry(&dev->bsource_list,
 		struct comp_buffer, sink_list);
 	dma_period_desc = &dma_buffer->desc.sink_period;
+	dma_buffer->params = *params;
 
 	/* set up cyclic list of DMA elems */
 	for (i = 0; i < dma_period_desc->number; i++) {
@@ -185,14 +189,16 @@ static int dai_playback_params(struct comp_dev *dev,
 		elem->size = dma_period_desc->size;
 		elem->src = (uint32_t)(dma_buffer->r_ptr) +
 			i * dma_period_desc->size;
+
 		elem->dest = dai_fifo(dd->ssp, params->direction);
+
 		list_add(&elem->list, &config->elem_list);
 	}
 
 	/* set write pointer to start of buffer */
 	dma_buffer->w_ptr = dma_buffer->addr;
 
-	return ret;
+	return 0;
 
 err_unwind:
 	list_for_each_safe(elist, tlist, &config->elem_list) {
@@ -213,7 +219,7 @@ static int dai_capture_params(struct comp_dev *dev,
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
 	struct list_head *elist, *tlist;
-	int ret, i;
+	int i;
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
@@ -225,6 +231,7 @@ static int dai_capture_params(struct comp_dev *dev,
 	dma_buffer = list_first_entry(&dev->bsink_list,
 		struct comp_buffer, source_list);
 	dma_period_desc = &dma_buffer->desc.source_period;
+	dma_buffer->params = *params;
 
 	/* set up cyclic list of DMA elems */
 	for (i = 0; i < dma_period_desc->number; i++) {
@@ -243,7 +250,7 @@ static int dai_capture_params(struct comp_dev *dev,
 	/* set write pointer to start of buffer */
 	dma_buffer->r_ptr = dma_buffer->addr;
 
-	return ret;
+	return 0;
 
 err_unwind:
 	list_for_each_safe(elist, tlist, &config->elem_list) {
@@ -293,10 +300,12 @@ static int dai_cmd(struct comp_dev *dev, struct stream_params *params,
 	struct dai_stream *ds = &dd->s[params->direction];
 
 	// TODO: wait on pause/stop/drain completions before SSP ops.
+
 	switch (cmd) {
 	case PIPELINE_CMD_PAUSE:
 		dma_pause(dd->dma, ds->chan);
 		dai_trigger(dd->ssp, cmd, params);
+		break;
 	case PIPELINE_CMD_STOP:
 		dma_stop(dd->dma, ds->chan);
 		dai_trigger(dd->ssp, cmd, params);
@@ -304,6 +313,7 @@ static int dai_cmd(struct comp_dev *dev, struct stream_params *params,
 	case PIPELINE_CMD_RELEASE:
 		dma_release(dd->dma, ds->chan);
 		dai_trigger(dd->ssp, cmd, params);
+		break;
 	case PIPELINE_CMD_START:
 		dma_start(dd->dma, ds->chan);
 		dai_trigger(dd->ssp, cmd, params);

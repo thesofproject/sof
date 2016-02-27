@@ -250,6 +250,9 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 	struct list_head *clist;
 	int err;
 
+	trace_pipe("CO-");
+	trace_value(comp->id);
+
 	/* do operation on this component */
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
@@ -257,6 +260,7 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		err = comp_params(comp, op_data->params);
 		break;
 	case COMP_OPS_CMD:
+
 		/* send command to the component */
 		err = comp_cmd(comp, op_data->params,
 			op_data->cmd, op_data->cmd_data);
@@ -268,11 +272,13 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 
 			buffer = container_of(clist, struct comp_buffer,
 				source_list);
+
 			bzero(buffer->addr, buffer->desc.size);
 		}
 
 		/* prepare the component */
 		err = comp_prepare(comp, op_data->params);
+
 		break;
 	case COMP_OPS_COPY:
 		/* component should copy to buffers */
@@ -284,12 +290,13 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
+
 		return -EINVAL;
 	}
 
 	/* dont walk the graph any further if this component fails or
 	   doesnt copy any data */
-	if (err < 0)
+	if (err < 0 || comp->is_dai)
 		return err;
 
 	/* now run this operation downstream */
@@ -297,7 +304,6 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
-
 		/* dont go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
@@ -315,6 +321,9 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 {
 	struct list_head *clist;
 	int err;
+
+	trace_pipe("CO+");
+	trace_value(comp->id);
 
 	/* do operation on this component */
 	switch (op_data->op) {
@@ -355,20 +364,20 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 
 	/* dont walk the graph any further if this component fails or
 	   doesnt copy any data */
-	if (err < 0)
+	if (err < 0 || comp->is_host)
 		return err;
 
 	/* now run this operation downstream */
-	list_for_each(clist, &comp->bsink_list) {
+	list_for_each(clist, &comp->bsource_list) {
 		struct comp_buffer *buffer;
 
-		buffer = container_of(clist, struct comp_buffer, source_list);
+		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* dont go upstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
-		err = component_op_sink(op_data, buffer->sink);
+		err = component_op_source(op_data, buffer->source);
 		if (err < 0)
 			break;
 	}
@@ -395,6 +404,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *host,
 	else
 		ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
+
 	return ret;
 }
 
@@ -441,6 +451,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	else
 		ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
+
 	return ret;
 }
 
@@ -483,8 +494,8 @@ void pipeline_do_work(struct pipeline *p)
 {
 	struct list_head *elist;
 	struct op_data op_data;
-
-	trace_pipe("PWs");
+return;
+//	trace_pipe("PWs");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
@@ -516,7 +527,7 @@ void pipeline_do_work(struct pipeline *p)
 		component_op_sink(&op_data, ep);
 	}
 
-	trace_pipe("PWe");
+//	trace_pipe("PWe");
 }
 
 /* init pipeline */

@@ -32,10 +32,10 @@
 #define COMP_TYPE_DAI_HDA	6	/* SSP DAI endpoint */
 
 /* standard component commands */
-#define COMP_CMD_VOLUME		1
-#define COMP_CMD_MUTE		2
-#define COMP_CMD_UNMUTE		3
-#define COMP_CMD_ROUTE		4
+#define COMP_CMD_VOLUME		100
+#define COMP_CMD_MUTE		101
+#define COMP_CMD_UNMUTE		102
+#define COMP_CMD_ROUTE		103
 
 /* component operations */
 #define COMP_OPS_PARAMS		0
@@ -137,7 +137,9 @@ struct comp_dev {
 	/* runtime */
 	uint32_t id;		/* runtime ID of component */
 	uint8_t state;		/* COMP_STATE_ */
-	uint8_t reserved[3];	/* reserved */
+	uint8_t is_dai;		/* component is graph DAI endpoint */
+	uint8_t is_host;	/* component is graph host endpoint */
+	uint8_t reserved[1];	/* reserved */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;
@@ -261,6 +263,24 @@ static inline void comp_update_avail(struct comp_buffer *buffer)
 	else
 		buffer->avail = buffer->end_addr - buffer->w_ptr +
 			buffer->r_ptr - buffer->addr;
+}
+
+static inline void comp_set_host_ep(struct comp_dev *dev)
+{
+	dev->is_host = 1;
+	dev->is_dai = 0;
+}
+
+static inline void comp_set_dai_ep(struct comp_dev *dev)
+{
+	dev->is_host = 0;
+	dev->is_dai = 1;
+}
+
+static inline void comp_clear_ep(struct comp_dev *dev)
+{
+	dev->is_host = 0;
+	dev->is_dai = 0;
 }
 
 #endif

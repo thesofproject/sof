@@ -32,7 +32,6 @@ struct host_stream {
 
 	/* host buffer info */
 	struct list_head host_elem_list;
-	struct dma_sg_elem *elem;
 	struct list_head *current_host;
 	uint32_t current_host_end;
 };
@@ -59,11 +58,14 @@ static void host_playback_dma_cb(void *data, uint32_t type)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct host_stream *hs = &hd->s[HOST_PLAYBACK_STREAM];
-	struct dma_sg_elem *elem = hs->elem, *host_elem;
+	struct dma_sg_elem *local_elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
 	struct dma_chan_status status;
 	
+	local_elem = list_first_entry(&hs->config.elem_list,
+		struct dma_sg_elem, list);
+
 	/*
 	 * Recalculate host side buffer information.
 	 */
@@ -72,19 +74,19 @@ static void host_playback_dma_cb(void *data, uint32_t type)
 	dma_period_desc = &dma_buffer->desc.source_period;
 
 	/* update host side source buffer elem and check for overflow */
-	elem->src += dma_period_desc->size;
-	if (elem->src >= hs->current_host_end) {
+	local_elem->src += dma_period_desc->size;
+	if (local_elem->src >= hs->current_host_end) {
 
 		/* move onto next host side elem */
 		host_elem = next_host(hs);
 		hs->current_host_end = host_elem->src + host_elem->size;
-		elem->src = host_elem->src;
+		local_elem->src = host_elem->src;
 	}
 
 	/* update host dest buffer position and check for overflow */
-	elem->dest += dma_period_desc->size;
-	if (elem->dest >= (uint32_t)dma_buffer->end_addr)
-		elem->dest = (uint32_t)dma_buffer->addr;
+	local_elem->dest += dma_period_desc->size;
+	if (local_elem->dest >= (uint32_t)dma_buffer->end_addr)
+		local_elem->dest = (uint32_t)dma_buffer->addr;
 
 	/* update local buffer position */
 	dma_status(hd->dma, hs->chan, &status);
@@ -102,11 +104,14 @@ static void host_capture_dma_cb(void *data, uint32_t type)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct host_stream *hs = &hd->s[HOST_CAPTURE_STREAM];
-	struct dma_sg_elem *elem = hs->elem, *host_elem;
+	struct dma_sg_elem *local_elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
 	struct dma_chan_status status;
 	
+	local_elem = list_first_entry(&hs->config.elem_list,
+		struct dma_sg_elem, list);
+
 	/*
 	 * Recalculate host side buffer information.
 	 */
@@ -116,19 +121,19 @@ static void host_capture_dma_cb(void *data, uint32_t type)
 	dma_period_desc = &dma_buffer->desc.sink_period;
 
 	/* update host side buffer dest elem and check for overflow */
-	elem->dest += dma_period_desc->size;
-	if (elem->dest >= hs->current_host_end) {
+	local_elem->dest += dma_period_desc->size;
+	if (local_elem->dest >= hs->current_host_end) {
 
 		/* move onto next host side elem */
 		host_elem = next_host(hs);
 		hs->current_host_end = host_elem->dest + host_elem->size;
-		elem->dest = host_elem->dest;
+		local_elem->dest = host_elem->dest;
 	}
 
 	/* update host buffer source position and check for overflow */
-	elem->src += dma_period_desc->size;
-	if (elem->src >= (uint32_t)dma_buffer->end_addr)
-		elem->src = (uint32_t)dma_buffer->addr;
+	local_elem->src += dma_period_desc->size;
+	if (local_elem->src >= (uint32_t)dma_buffer->end_addr)
+		local_elem->src = (uint32_t)dma_buffer->addr;
 
 	/* update local buffer position */
 	dma_status(hd->dma, hs->chan, &status);
@@ -174,6 +179,7 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index)
 	}
 
 	comp_set_drvdata(dev, hd);
+	comp_set_host_ep(dev);
 	hd->dma = dma_get(DMA_ID_DMAC0);
 
 	/* init playback stream */
@@ -181,7 +187,6 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index)
 	list_init(&hs->config.elem_list);
 	list_init(&hs->host_elem_list);
 	list_add(&elemp->list, &hs->config.elem_list);
-	hs->elem = elemp;
 
 	/* get DMA channel from DMAC0 */
 	hs->chan = dma_channel_get(hd->dma);
@@ -196,7 +201,6 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index)
 	list_init(&hs->config.elem_list);
 	list_init(&hs->host_elem_list);
 	list_add(&elemc->list, &hs->config.elem_list);
-	hs->elem = elemc;
 
 	/* get DMA channel from DMAC0 */
 	hs->chan = dma_channel_get(hd->dma);
@@ -223,14 +227,19 @@ static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct host_stream *hs;
+	struct dma_sg_elem *local_elem;
 
 	hs = &hd->s[HOST_PLAYBACK_STREAM];
+	local_elem = list_first_entry(&hs->config.elem_list,
+		struct dma_sg_elem, list);
 	dma_channel_put(hd->dma, hs->chan);
-	rfree(RZONE_MODULE, RMOD_SYS, hs->elem);
+	rfree(RZONE_MODULE, RMOD_SYS, local_elem);
 
 	hs = &hd->s[HOST_CAPTURE_STREAM];
+	local_elem = list_first_entry(&hs->config.elem_list,
+		struct dma_sg_elem, list);
 	dma_channel_put(hd->dma, hs->chan);
-	rfree(RZONE_MODULE, RMOD_SYS, hs->elem);
+	rfree(RZONE_MODULE, RMOD_SYS, local_elem);
 
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
@@ -242,7 +251,7 @@ static int host_params_playback(struct comp_dev *dev,
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct host_stream *hs = &hd->s[HOST_PLAYBACK_STREAM];
 	struct dma_sg_config *config = &hs->config;
-	struct dma_sg_elem *elem, *host_elem;
+	struct dma_sg_elem *local_elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
 
@@ -256,24 +265,26 @@ static int host_params_playback(struct comp_dev *dev,
 	host_elem = list_first_entry(&hs->host_elem_list,
 		struct dma_sg_elem, list);
 	hs->current_host = &host_elem->list;
-	elem = hs->elem;
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_entry(&dev->bsink_list,
 		struct comp_buffer, source_list);
-	dma_period_desc = &dma_buffer->desc.sink_period;
+	dma_period_desc = &dma_buffer->desc.source_period;
+	dma_buffer->params = *params;
 
 	hs->current_host_end = host_elem->src + host_elem->size;
-
-	elem->src = host_elem->src;
 	dma_buffer->w_ptr = dma_buffer->addr;
 
 	/* component buffer size must be divisor of host buffer size */
 	if (host_elem->size % dma_period_desc->size)
 		return -EINVAL;
 
-	/* element size */
-	elem->size = dma_period_desc->size;
+	/* local element */
+	local_elem = list_first_entry(&hs->config.elem_list,
+		struct dma_sg_elem, list);
+	local_elem->src = host_elem->src;
+	local_elem->size = dma_period_desc->size;
+	local_elem->dest = (uint32_t)dma_buffer->addr;
 
 	return 0;
 }
@@ -284,11 +295,9 @@ static int host_params_capture(struct comp_dev *dev,
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct host_stream *hs = &hd->s[HOST_CAPTURE_STREAM];
 	struct dma_sg_config *config = &hs->config;
-	struct dma_sg_elem *elem, *host_elem;
+	struct dma_sg_elem *local_elem, *host_elem;
 	struct comp_buffer *dma_buffer;
 	struct period_desc *dma_period_desc;
-
-	//dev->params = *params;
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_MEM;
@@ -300,23 +309,26 @@ static int host_params_capture(struct comp_dev *dev,
 	host_elem = list_first_entry(&hs->host_elem_list,
 		struct dma_sg_elem, list);
 	hs->current_host = &host_elem->list;
-	elem = hs->elem;
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_entry(&dev->bsource_list,
 		struct comp_buffer, sink_list);
-	dma_period_desc = &dma_buffer->desc.source_period;
+	dma_period_desc = &dma_buffer->desc.sink_period;
+	dma_buffer->params = *params;
 
 	hs->current_host_end = host_elem->dest + host_elem->size;
-	elem->dest = host_elem->dest;
 	dma_buffer->r_ptr = dma_buffer->addr;
 
 	/* component buffer size must be divisor of host buffer size */
 	if (host_elem->size % dma_period_desc->size)
 		return -EINVAL;
 
-	/* element size */
-	elem->size = dma_period_desc->size;
+	/* local element */
+	local_elem = list_first_entry(&hs->config.elem_list,
+		struct dma_sg_elem, list);
+	local_elem->dest = host_elem->dest;
+	local_elem->size = dma_period_desc->size;
+	local_elem->src = (uint32_t)dma_buffer->addr;
 
 	return 0;
 }
@@ -365,13 +377,14 @@ static int host_prepare(struct comp_dev *dev, struct stream_params *params)
 	/* TODO: determine how much pre-loading we can do */
 	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
 
-		dma_buffer = list_first_entry(&dev->bsource_list,
-			struct comp_buffer, sink_list);
-		dma_period_desc = &dma_buffer->desc.sink_period;
+		dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		dma_period_desc = &dma_buffer->desc.source_period;
 
 		ret = host_preload(dev, dma_period_desc->number - 1);
 	}
-	
+// HACK for VM until DMA is working
+	ret = 0;
 	return ret;
 }
 
@@ -419,6 +432,7 @@ static int host_buffer(struct comp_dev *dev, struct stream_params *params,
 		return -ENOMEM;
 
 	*e = *elem;
+
 	list_add(&e->list, &hs->host_elem_list);
 
 	return 0;

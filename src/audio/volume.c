@@ -210,7 +210,9 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index)
 	}
 
 	comp_set_drvdata(dev, cd);
+	comp_clear_ep(dev);
 	work_init(&cd->volwork, vol_work, dev);
+
 	return dev;
 }
 
@@ -240,6 +242,7 @@ static int volume_prepare(struct comp_dev *dev, struct stream_params *params)
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < ARRAY_SIZE(func_map); i++) {
+
 		if (source->params.pcm.format != func_map[i].source)
 			continue;
 		if (sink->params.pcm.format != func_map[i].sink)
@@ -303,7 +306,7 @@ static int volume_cmd(struct comp_dev *dev, struct stream_params *params,
 		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
 		break;
 	default:
-		return -EINVAL;
+		break;
 	}
 
 	return 0;

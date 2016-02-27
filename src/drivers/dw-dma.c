@@ -254,6 +254,12 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 	spin_lock_local_irq(&dma->lock, dma_irq(dma));
 
+	/* valid stream ? */
+	if (p->chan[channel].lli == NULL) {
+		spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+		return -EINVAL;
+	}
+
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
 	dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
@@ -267,8 +273,8 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 	/* enable the channel */
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
-
 	p->chan[channel].status = DMA_STATUS_RUNNING;
+
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
 	return 0;
 }
@@ -434,6 +440,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	/* get number of SG elems */
 	list_for_each(plist, &config->elem_list)
 		desc_count++;
+
+	if (desc_count == 0)
+		return -EINVAL;
 
 	/* do we need to realloc descriptors */
 	if (desc_count != p->chan[channel].desc_count) {

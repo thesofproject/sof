@@ -58,7 +58,7 @@ struct intel_ipc_data {
 	completion_t complete;
 
 	/* SSP port - TODO driver only support 1 atm */
-	uint32_t dai;
+	uint32_t dai[2];
 };
 
 #define to_host_offset(_s) \
@@ -192,9 +192,10 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	elem.size = HOST_PAGE_SIZE;
 
 	for (i = 0; i < ring->num_pages; i++) {
-		idx = (((i << 2) + i)) >> 1;
 
+		idx = (((i << 2) + i)) >> 1;
 		elem.src = *((uint32_t*)(iipc->page_table + idx));
+
 		if (i & 0x1)
 			elem.src <<= 8;
 		else
@@ -216,7 +217,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	struct ipc_intel_ipc_stream_alloc_reply reply;
 	struct intel_stream_data *stream_data;
 	struct stream_params *params;
-	uint32_t host_id;
+	uint32_t host_id, dai_id;
 	struct ipc_pcm_dev *pcm_dev;
 	struct ipc_dai_dev *dai_dev;
 	int err;
@@ -230,23 +231,31 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	/* format always PCM, now check source type */
 	switch (req.stream_type) {
 	case IPC_INTEL_STREAM_TYPE_SYSTEM:
+	default:
 		host_id = 0;
+		dai_id = 2;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
+#if 0
 	case IPC_INTEL_STREAM_TYPE_RENDER:
 		host_id = 0;
+		dai_id = 2;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
 		host_id = 0;
+		//dai_id = 3;
 		//direction = STREAM_DIRECTION_CAPTURE;
 		direction = STREAM_DIRECTION_PLAYBACK;
+		dai_id = 2;
 		break;
 	case IPC_INTEL_STREAM_TYPE_LOOPBACK:
 		host_id = 0;
+		dai_id = 3;
 		direction = STREAM_DIRECTION_CAPTURE;
 	default:
 		goto error;
+#endif
 	};
 
 	/* get the pcm_dev */
@@ -255,7 +264,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error; 
 
 	/* get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(iipc->dai);
+	dai_dev = ipc_get_dai_comp(dai_id);
 	if (dai_dev == NULL)
 		goto error; 
 
@@ -286,8 +295,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_desciptors(iipc, &req);
-	if (err < 0)
-		goto error;
+	//if (err < 0)
+	//	goto error;
 
 	/* Parse host tables */
 	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd, params);
@@ -299,16 +308,10 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	/* Configure SSP and send to DAI */
-	err = pipeline_params(pipeline_static, dai_dev->dev.cd, params);	
-	if (err < 0)
-		goto error;
-
 	/* initialise the pipeline */
 	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd, params);
 	if (err < 0)
 		goto error;
-
 
 	/* at this point pipeline is ready for command so send stream reply */
 	reply.stream_hw_id = host_id;
@@ -352,6 +355,9 @@ static uint32_t ipc_stream_free(uint32_t header)
 
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&free_req, 0, sizeof(free_req));
+
+	// HACK - fix stream IDs
+	free_req.stream_id = 0;
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(free_req.stream_id);
@@ -452,17 +458,19 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	/* get SSP port */
 	switch (config_req.ssp_interface) {
 	case IPC_INTEL_DEVICE_SSP_0:
-		iipc->dai = 3;
+		iipc->dai[0] = 2;
+		iipc->dai[1] = 3;
 		break;
 	case IPC_INTEL_DEVICE_SSP_1:
-		iipc->dai = 4;
+		iipc->dai[0] = 2;
+		iipc->dai[1] = 3;
 		break;
 	default:
 		goto error;
 	};
 
 	/* get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(iipc->dai);
+	dai_dev = ipc_get_dai_comp(iipc->dai[0]);
 	if (dai_dev == NULL)
 		goto error;
 
@@ -588,11 +596,13 @@ static uint32_t ipc_stream_reset(uint32_t header)
 	uint32_t stream_id;
 	int err;
 
-	trace_ipc("SRe");
+	trace_ipc("SRt");
 
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-return IPC_INTEL_GLB_REPLY_SUCCESS;
+	// HACK - fix stream IDs
+	//stream_id = header & IPC_INTEL_STR_ID_MASK;
+	//stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	stream_id = 0;
+
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
 	if (pcm_dev == NULL)
@@ -617,8 +627,10 @@ static uint32_t ipc_stream_pause(uint32_t header)
 
 	trace_ipc("SPa");
 
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	// HACK - fix stream IDs
+//	stream_id = header & IPC_INTEL_STR_ID_MASK;
+//	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	stream_id = 0;
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
@@ -654,8 +666,10 @@ static uint32_t ipc_stream_resume(uint32_t header)
 
 	trace_ipc("SRe");
 
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	// HACK - fix stream IDs
+	//stream_id = header & IPC_INTEL_STR_ID_MASK;
+	//stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	stream_id = 0;
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
@@ -820,8 +834,9 @@ int platform_ipc_init(struct ipc *ipc)
 	/* init ipc data */
 	iipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
-	iipc->dai = 2;
-	
+	iipc->dai[0] = 2;
+	iipc->dai[1] = 3;
+
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
 		IPC_INTEL_PAGE_TABLE_SIZE);
