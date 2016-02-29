@@ -32,26 +32,25 @@ static int switch_params(struct comp_dev *dev, struct stream_params *params)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int switch_cmd(struct comp_dev *dev, struct stream_params *params,
-	int cmd, void *data)
+static int switch_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	/* switch will use buffer "connected" status */
 	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
-static int switch_copy(struct comp_dev *dev, struct stream_params *params)
+static int switch_copy(struct comp_dev *dev)
 {
 
 	return 0;
 }
 
-static int switch_reset(struct comp_dev *dev, struct stream_params *params)
+static int switch_reset(struct comp_dev *dev)
 {
 	return 0;
 }
 
-static int switch_prepare(struct comp_dev *dev, struct stream_params *params)
+static int switch_prepare(struct comp_dev *dev)
 {
 	return 0;
 }

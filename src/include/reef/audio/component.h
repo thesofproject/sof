@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
+#include <reef/reef.h>
 #include <reef/dma.h>
 #include <reef/stream.h>
 
@@ -84,25 +85,22 @@ struct comp_ops {
 	int (*params)(struct comp_dev *dev, struct stream_params *params);
 
 	/* set component audio stream paramters */
-	int (*dai_config)(struct comp_dev *dev, struct stream_params *params,
-		struct dai_config *dai_config);
+	int (*dai_config)(struct comp_dev *dev, struct dai_config *dai_config);
 
 	/* used to pass standard and bespoke commands (with data) to component */
-	int (*cmd)(struct comp_dev *dev, struct stream_params *params, 
-		int cmd, void *data);
+	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
 
 	/* prepare component after params are set */
-	int (*prepare)(struct comp_dev *dev, struct stream_params *params);
+	int (*prepare)(struct comp_dev *dev);
 
 	/* reset component */
-	int (*reset)(struct comp_dev *dev, struct stream_params *params);
+	int (*reset)(struct comp_dev *dev);
 
 	/* copy and process stream data from source to sink buffers */
-	int (*copy)(struct comp_dev *dev, struct stream_params *params);
+	int (*copy)(struct comp_dev *dev);
 
 	/* host buffer config */
-	int (*host_buffer)(struct comp_dev *dev, struct stream_params *params,
-		struct dma_sg_elem *elem);
+	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem);
 };
 
 /* component buffer data capabilities */
@@ -161,6 +159,7 @@ struct comp_buffer {
 	uint8_t connected;	/* connected in path */
 	uint8_t reserved[3];	/* reserved */
 	uint32_t avail;		/* available bytes between R and W ptrs */
+	uint32_t free;		/* free bytes between R and W ptrs */
 	void *w_ptr;		/* buffer write pointer */
 	void *r_ptr;		/* buffer read position */
 	void *addr;		/* buffer base address */
@@ -205,46 +204,43 @@ static inline int comp_params(struct comp_dev *dev,
  * mandatory for host components, optional for the others.
  */
 static inline int comp_host_buffer(struct comp_dev *dev,
-	struct stream_params *params, struct dma_sg_elem *elem)
+	struct dma_sg_elem *elem)
 {
 	if (dev->drv->ops.host_buffer)
-		return dev->drv->ops.host_buffer(dev, params, elem);
+		return dev->drv->ops.host_buffer(dev, elem);
 	return 0;
 }
 
 /* send component command - mandatory */
-static inline int comp_cmd(struct comp_dev *dev, struct stream_params *params,
-	int cmd, void *data)
+static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 {
-	return dev->drv->ops.cmd(dev, params, cmd, data);
+	return dev->drv->ops.cmd(dev, cmd, data);
 }
 
 /* prepare component - mandatory */
-static inline int comp_prepare(struct comp_dev *dev,
-	struct stream_params *params)
+static inline int comp_prepare(struct comp_dev *dev)
 {
-	return dev->drv->ops.prepare(dev, params);
+	return dev->drv->ops.prepare(dev);
 }
 
 /* copy component buffers - mandatory */
-static inline int comp_copy(struct comp_dev *dev, struct stream_params *params)
+static inline int comp_copy(struct comp_dev *dev)
 {
-	return dev->drv->ops.copy(dev, params);
+	return dev->drv->ops.copy(dev);
 }
 
 /* component reset and free runtime resources -mandatory  */
-static inline int comp_reset(struct comp_dev *dev,
-	struct stream_params *params)
+static inline int comp_reset(struct comp_dev *dev)
 {
-	return dev->drv->ops.reset(dev, params);
+	return dev->drv->ops.reset(dev);
 }
 
 /* DAI configuration - only mandatory for DAI components */
 static inline int comp_dai_config(struct comp_dev *dev,
-	struct stream_params *params, struct dai_config *dai_config)
+	struct dai_config *dai_config)
 {
 	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dev, params, dai_config);
+		return dev->drv->ops.dai_config(dev, dai_config);
 	return 0;
 }
 
@@ -256,13 +252,14 @@ void sys_comp_mux_init(void);
 void sys_comp_switch_init(void);
 void sys_comp_volume_init(void);
 
-static inline void comp_update_avail(struct comp_buffer *buffer)
+static inline void comp_update_buffer(struct comp_buffer *buffer)
 {
 	if (buffer->r_ptr <= buffer->w_ptr)
 		buffer->avail = buffer->r_ptr - buffer->w_ptr;
 	else
 		buffer->avail = buffer->end_addr - buffer->w_ptr +
 			buffer->r_ptr - buffer->addr;
+	buffer->free = buffer->desc.size - buffer->avail;
 }
 
 static inline void comp_set_host_ep(struct comp_dev *dev)
@@ -281,6 +278,19 @@ static inline void comp_clear_ep(struct comp_dev *dev)
 {
 	dev->is_host = 0;
 	dev->is_dai = 0;
+}
+
+static inline void comp_set_sink_params(struct comp_dev *dev,
+	struct stream_params *params)
+{
+	struct list_head *clist;
+	struct comp_buffer *sink;
+
+	list_for_each(clist, &dev->bsink_list) {
+
+		sink = container_of(clist, struct comp_buffer, source_list);
+		sink->params = *params;
+	}
 }
 
 #endif

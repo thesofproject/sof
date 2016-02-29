@@ -21,137 +21,95 @@
 #include <reef/audio/pipeline.h>
 #include <platform/dma.h>
 
-#define HOST_PLAYBACK_STREAM	0
-#define HOST_CAPTURE_STREAM	1
-
-struct host_stream {
-	/* local DMA config */
-	int chan;
-	struct dma_sg_config config;
-	completion_t complete;
-
+struct hc_buf {
 	/* host buffer info */
-	struct list_head host_elem_list;
-	struct list_head *current_host;
-	uint32_t current_host_end;
+	struct list_head elem_list;
+	struct list_head *current;
+	uint32_t current_end;
 };
 
 struct host_data {
+	/* local DMA config */
 	struct dma *dma;
-	struct host_stream s[2];	/* playback and capture streams */	
+	int chan;
+	struct dma_sg_config config;
+	completion_t complete;
+	struct period_desc *period;
+	struct comp_buffer *dma_buffer;
+
+	/* local and host DMA buffer info */
+	struct hc_buf host;
+	struct hc_buf local;
+	uint32_t host_size;
+
+	/* pointers set during params to host or local above */
+	struct hc_buf *source;
+	struct hc_buf *sink;
+
+	/* stream info */
+	struct stream_params params;
 };
 
-static inline struct dma_sg_elem *next_host(struct host_stream *hs)
+static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
-	struct dma_sg_elem *host_elem;
+	struct dma_sg_elem *elem;
 
-	host_elem = list_first_entry(hs->current_host,
-		struct dma_sg_elem, list);
-	hs->current_host = &host_elem->list;
+	elem = list_first_entry(hc->current, struct dma_sg_elem, list);
+	hc->current = &elem->list;
 
-	return host_elem;
+	return elem;
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static void host_playback_dma_cb(void *data, uint32_t type)
+static void host_dma_cb(void *data, uint32_t type)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[HOST_PLAYBACK_STREAM];
-	struct dma_sg_elem *local_elem, *host_elem;
-	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
+	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
 	struct dma_chan_status status;
 	
-	local_elem = list_first_entry(&hs->config.elem_list,
+	local_elem = list_first_entry(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
-	/*
-	 * Recalculate host side buffer information.
-	 */
-	dma_buffer = list_first_entry(&dev->bsink_list,
-		struct comp_buffer, source_list);
-	dma_period_desc = &dma_buffer->desc.source_period;
-
-	/* update host side source buffer elem and check for overflow */
-	local_elem->src += dma_period_desc->size;
-	if (local_elem->src >= hs->current_host_end) {
+	/* update source buffer elem and check for overflow */
+	local_elem->src += hd->period->size;
+	if (local_elem->src >= hd->source->current_end) {
 
 		/* move onto next host side elem */
-		host_elem = next_host(hs);
-		hs->current_host_end = host_elem->src + host_elem->size;
-		local_elem->src = host_elem->src;
+		source_elem = next_buffer(hd->source);
+		hd->source->current_end = source_elem->src + source_elem->size;
+		local_elem->src = source_elem->src;
 	}
 
-	/* update host dest buffer position and check for overflow */
-	local_elem->dest += dma_period_desc->size;
-	if (local_elem->dest >= (uint32_t)dma_buffer->end_addr)
-		local_elem->dest = (uint32_t)dma_buffer->addr;
-
-	/* update local buffer position */
-	dma_status(hd->dma, hs->chan, &status);
-	dma_buffer->w_ptr = (void*)status.position;
-
-	/* recalc available buffer space */
-	comp_update_avail(dma_buffer);
-
-	/* let any waiters know we have completed */
-	wait_completed(&hs->complete);
-}
-
-static void host_capture_dma_cb(void *data, uint32_t type)
-{
-	struct comp_dev *dev = (struct comp_dev *)data;
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[HOST_CAPTURE_STREAM];
-	struct dma_sg_elem *local_elem, *host_elem;
-	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
-	struct dma_chan_status status;
-	
-	local_elem = list_first_entry(&hs->config.elem_list,
-		struct dma_sg_elem, list);
-
-	/*
-	 * Recalculate host side buffer information.
-	 */
-
-	dma_buffer = list_first_entry(&dev->bsource_list,
-		struct comp_buffer, sink_list);
-	dma_period_desc = &dma_buffer->desc.sink_period;
-
-	/* update host side buffer dest elem and check for overflow */
-	local_elem->dest += dma_period_desc->size;
-	if (local_elem->dest >= hs->current_host_end) {
+	/* update sink buffer elem and check for overflow */
+	local_elem->dest += hd->period->size;
+	if (local_elem->src >= hd->sink->current_end) {
 
 		/* move onto next host side elem */
-		host_elem = next_host(hs);
-		hs->current_host_end = host_elem->dest + host_elem->size;
-		local_elem->dest = host_elem->dest;
+		sink_elem = next_buffer(hd->sink);
+		hd->sink->current_end = sink_elem->src + sink_elem->size;
+		local_elem->dest = sink_elem->dest;
 	}
 
-	/* update host buffer source position and check for overflow */
-	local_elem->src += dma_period_desc->size;
-	if (local_elem->src >= (uint32_t)dma_buffer->end_addr)
-		local_elem->src = (uint32_t)dma_buffer->addr;
-
 	/* update local buffer position */
-	dma_status(hd->dma, hs->chan, &status);
-	dma_buffer->r_ptr = (void*)status.position;
+	dma_status(hd->dma, hd->chan, &status);
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
+		hd->dma_buffer->w_ptr = (void*)status.position;
+	else
+		hd->dma_buffer->r_ptr = (void*)status.position;
 
 	/* recalc available buffer space */
-	comp_update_avail(dma_buffer);
+	comp_update_buffer(hd->dma_buffer);
 
 	/* let any waiters know we have completed */
-	wait_completed(&hs->complete);
+	wait_completed(&hd->complete);
 }
 
 static struct comp_dev *host_new(uint32_t type, uint32_t index)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
-	struct host_stream *hs;
-	struct dma_sg_elem *elemp, *elemc;
+	struct dma_sg_elem *elem;
 
 	dev = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
 	if (dev == NULL)
@@ -163,16 +121,8 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index)
 		return NULL;
 	}
 
-	elemp = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elemp));
-	if (elemp == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, dev);
-		rfree(RZONE_MODULE, RMOD_SYS, hd);
-		return NULL;
-	}
-
-	elemc = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elemc));
-	if (elemc == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, elemp);
+	elem = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+	if (elem == NULL) {
 		rfree(RZONE_MODULE, RMOD_SYS, dev);
 		rfree(RZONE_MODULE, RMOD_SYS, hd);
 		return NULL;
@@ -181,43 +131,26 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index)
 	comp_set_drvdata(dev, hd);
 	comp_set_host_ep(dev);
 	hd->dma = dma_get(DMA_ID_DMAC0);
+	hd->host_size = 0;
 
-	/* init playback stream */
-	hs = &hd->s[HOST_PLAYBACK_STREAM];
-	list_init(&hs->config.elem_list);
-	list_init(&hs->host_elem_list);
-	list_add(&elemp->list, &hs->config.elem_list);
+	/* init buffer elems */
+	list_init(&hd->config.elem_list);
+	list_init(&hd->host.elem_list);
+	list_init(&hd->local.elem_list);
+	list_add(&elem->list, &hd->config.elem_list);
 
 	/* get DMA channel from DMAC0 */
-	hs->chan = dma_channel_get(hd->dma);
-	if (hs->chan < 0)
+	hd->chan = dma_channel_get(hd->dma);
+	if (hd->chan < 0)
 		goto error;
 
 	/* set up callback */
-	dma_set_cb(hd->dma, hs->chan, host_playback_dma_cb, dev);
-
-	/* init capture stream */
-	hs = &hd->s[HOST_CAPTURE_STREAM];
-	list_init(&hs->config.elem_list);
-	list_init(&hs->host_elem_list);
-	list_add(&elemc->list, &hs->config.elem_list);
-
-	/* get DMA channel from DMAC0 */
-	hs->chan = dma_channel_get(hd->dma);
-	if (hs->chan < 0)
-		goto capt_error;
-
-	/* set up callback */
-	dma_set_cb(hd->dma, hs->chan, host_capture_dma_cb, dev);
+	dma_set_cb(hd->dma, hd->chan, host_dma_cb, dev);
 
 	return dev;
 
-capt_error:
-	hs = &hd->s[HOST_PLAYBACK_STREAM];
-	dma_channel_put(hd->dma, hs->chan);
 error:
-	rfree(RZONE_MODULE, RMOD_SYS, elemp);
-	rfree(RZONE_MODULE, RMOD_SYS, elemc);
+	rfree(RZONE_MODULE, RMOD_SYS, elem);
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
 	return NULL;
@@ -226,140 +159,136 @@ error:
 static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs;
-	struct dma_sg_elem *local_elem;
+	struct dma_sg_elem *elem;
 
-	hs = &hd->s[HOST_PLAYBACK_STREAM];
-	local_elem = list_first_entry(&hs->config.elem_list,
+	elem = list_first_entry(&hd->config.elem_list,
 		struct dma_sg_elem, list);
-	dma_channel_put(hd->dma, hs->chan);
-	rfree(RZONE_MODULE, RMOD_SYS, local_elem);
+	dma_channel_put(hd->dma, hd->chan);
 
-	hs = &hd->s[HOST_CAPTURE_STREAM];
-	local_elem = list_first_entry(&hs->config.elem_list,
-		struct dma_sg_elem, list);
-	dma_channel_put(hd->dma, hs->chan);
-	rfree(RZONE_MODULE, RMOD_SYS, local_elem);
-
+	rfree(RZONE_MODULE, RMOD_SYS, elem);
 	rfree(RZONE_MODULE, RMOD_SYS, hd);
 	rfree(RZONE_MODULE, RMOD_SYS, dev);
 }
 
-static int host_params_playback(struct comp_dev *dev,
+static int create_local_elems(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[HOST_PLAYBACK_STREAM];
-	struct dma_sg_config *config = &hs->config;
-	struct dma_sg_elem *local_elem, *host_elem;
-	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
+	struct dma_sg_elem *e;
+	struct list_head *elist, *tlist;
+	int i;
 
-	/* set up DMA configuration */
-	config->direction = DMA_DIR_MEM_TO_MEM;
-	config->src_width = sizeof(uint32_t);
-	config->dest_width = sizeof(uint32_t);
-	config->cyclic = 0;
+	for (i = 0; i < hd->period->number; i++) {
+		/* allocate new host DMA elem and add it to our list */
+		e = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*e));
+		if (e == NULL)
+			goto unwind;
 
-	/* setup elem to point to first host page */
-	host_elem = list_first_entry(&hs->host_elem_list,
-		struct dma_sg_elem, list);
-	hs->current_host = &host_elem->list;
+		if (params->direction == STREAM_DIRECTION_PLAYBACK)
+			e->dest = (uint32_t)hd->dma_buffer + i * hd->period->size;
+		else
+			e->src = (uint32_t)hd->dma_buffer + i * hd->period->size;
 
-	/* set up local and host DMA elems to reset values */
-	dma_buffer = list_first_entry(&dev->bsink_list,
-		struct comp_buffer, source_list);
-	dma_period_desc = &dma_buffer->desc.source_period;
-	dma_buffer->params = *params;
+		e->size = hd->period->size;
 
-	hs->current_host_end = host_elem->src + host_elem->size;
-	dma_buffer->w_ptr = dma_buffer->addr;
-
-	/* component buffer size must be divisor of host buffer size */
-	if (host_elem->size % dma_period_desc->size)
-		return -EINVAL;
-
-	/* local element */
-	local_elem = list_first_entry(&hs->config.elem_list,
-		struct dma_sg_elem, list);
-	local_elem->src = host_elem->src;
-	local_elem->size = dma_period_desc->size;
-	local_elem->dest = (uint32_t)dma_buffer->addr;
+		list_add(&e->list, &hd->local.elem_list);
+	}
 
 	return 0;
-}
 
-static int host_params_capture(struct comp_dev *dev,
-	struct stream_params *params)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[HOST_CAPTURE_STREAM];
-	struct dma_sg_config *config = &hs->config;
-	struct dma_sg_elem *local_elem, *host_elem;
-	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
+unwind:
+	list_for_each_safe(elist, tlist, &hd->local.elem_list) {
 
-	/* set up DMA configuration */
-	config->direction = DMA_DIR_MEM_TO_MEM;
-	config->src_width = sizeof(uint32_t);
-	config->dest_width = sizeof(uint32_t);
-	config->cyclic = 0;
-
-	/* setup elem to point to first host page */
-	host_elem = list_first_entry(&hs->host_elem_list,
-		struct dma_sg_elem, list);
-	hs->current_host = &host_elem->list;
-
-	/* set up local and host DMA elems to reset values */
-	dma_buffer = list_first_entry(&dev->bsource_list,
-		struct comp_buffer, sink_list);
-	dma_period_desc = &dma_buffer->desc.sink_period;
-	dma_buffer->params = *params;
-
-	hs->current_host_end = host_elem->dest + host_elem->size;
-	dma_buffer->r_ptr = dma_buffer->addr;
-
-	/* component buffer size must be divisor of host buffer size */
-	if (host_elem->size % dma_period_desc->size)
-		return -EINVAL;
-
-	/* local element */
-	local_elem = list_first_entry(&hs->config.elem_list,
-		struct dma_sg_elem, list);
-	local_elem->dest = host_elem->dest;
-	local_elem->size = dma_period_desc->size;
-	local_elem->src = (uint32_t)dma_buffer->addr;
-
-	return 0;
+		e = container_of(elist, struct dma_sg_elem, list);
+		list_del(&e->list);
+		rfree(RZONE_MODULE, RMOD_SYS, e);
+	}
+	return -ENOMEM;
 }
 
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev, struct stream_params *params)
 {
-	/* set up local and host DMA elems to reset values */
-	if (params->direction == STREAM_DIRECTION_PLAYBACK)
-		return host_params_playback(dev, params);
-	else
-		return host_params_capture(dev, params);
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_config *config = &hd->config;
+	struct dma_sg_elem *source_elem, *sink_elem, *local_elem;
+	int err;
+
+	/* set params */
+	hd->params = *params;
+	comp_set_sink_params(dev, params);
+
+	/* dteremine source and sink buffer elems */
+	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
+		hd->source = &hd->host;
+		hd->sink = &hd->local;
+		hd->dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		hd->period = &hd->dma_buffer->desc.source_period;
+	} else {
+		hd->source = &hd->local;
+		hd->sink = &hd->host;
+		hd->dma_buffer = list_first_entry(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+		hd->period = &hd->dma_buffer->desc.sink_period;
+	}
+
+	/* component buffer size must be divisor of host buffer size */
+	if (hd->host_size % hd->period->size)
+		return -EINVAL;
+
+	/* create SG DMA elems for local DMA buffer */
+	err = create_local_elems(dev, params);
+	if (err < 0)
+		return err;
+
+	hd->dma_buffer->r_ptr = hd->dma_buffer->addr;
+	hd->dma_buffer->w_ptr = hd->dma_buffer->addr;
+
+	/* set up DMA configuration */
+	config->direction = DMA_DIR_MEM_TO_MEM;
+	config->src_width = sizeof(uint32_t);
+	config->dest_width = sizeof(uint32_t);
+	config->cyclic = 0;
+
+	/* setup elem to point to first source elem */
+	source_elem = list_first_entry(&hd->source->elem_list,
+		struct dma_sg_elem, list);
+	hd->source->current = &source_elem->list;
+	hd->source->current_end = source_elem->dest + source_elem->size;
+
+	/* setup elem to point to first sink elem */
+	sink_elem = list_first_entry(&hd->sink->elem_list,
+		struct dma_sg_elem, list);
+	hd->sink->current = &sink_elem->list;
+	hd->sink->current_end = sink_elem->dest + sink_elem->size;
+
+	/* local element */
+	local_elem = list_first_entry(&hd->config.elem_list,
+		struct dma_sg_elem, list);
+	local_elem->dest = sink_elem->dest;
+	local_elem->size = hd->period->size;
+	local_elem->src = source_elem->src;
+
+	return 0;
 }
 
 /* preload the local buffers with available host data before start */
 static int host_preload(struct comp_dev *dev, int count)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[HOST_PLAYBACK_STREAM];
 	int ret, i;
 
 	for (i = 0; i < count; i++) {
 
 		/* do DMA transfer */
-		wait_init(&hs->complete);
-		dma_set_config(hd->dma, hs->chan, &hs->config);
-		dma_start(hd->dma, hs->chan);
+		wait_init(&hd->complete);
+		dma_set_config(hd->dma, hd->chan, &hd->config);
+		dma_start(hd->dma, hd->chan);
 
 		/* wait 1 msecs for DMA to finish */
-		hs->complete.timeout = 1;
-		ret = wait_for_completion_timeout(&hs->complete);
+		hd->complete.timeout = 1;
+		ret = wait_for_completion_timeout(&hd->complete);
 		if (ret < 0)
 			return ret;
 	}
@@ -367,21 +296,16 @@ static int host_preload(struct comp_dev *dev, int count)
 	return 0;
 }
 
-static int host_prepare(struct comp_dev *dev, struct stream_params *params)
+static int host_prepare(struct comp_dev *dev)
 {
-	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
+	struct host_data *hd = comp_get_drvdata(dev);
 	int ret = 0;
 
 	/* preload PCM data */
 	/* TODO: determine how much pre-loading we can do */
-	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
 
-		dma_buffer = list_first_entry(&dev->bsink_list,
-			struct comp_buffer, source_list);
-		dma_period_desc = &dma_buffer->desc.source_period;
-
-		ret = host_preload(dev, dma_period_desc->number - 1);
+		ret = host_preload(dev, hd->period->number - 1);
 	}
 // HACK for VM until DMA is working
 	ret = 0;
@@ -389,26 +313,26 @@ static int host_prepare(struct comp_dev *dev, struct stream_params *params)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int host_cmd(struct comp_dev *dev, struct stream_params *params,
-	int cmd, void *data)
+static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->direction];
 
 	switch (cmd) {
 	case PIPELINE_CMD_PAUSE:
-		dma_pause(hd->dma, hs->chan);
+		dma_pause(hd->dma, hd->chan);
 		break;
 	case PIPELINE_CMD_STOP:
-		dma_stop(hd->dma, hs->chan);
+		dma_stop(hd->dma, hd->chan);
 		break;
 	case PIPELINE_CMD_RELEASE:
-		dma_release(hd->dma, hs->chan);
+		dma_release(hd->dma, hd->chan);
 		break;
 	case PIPELINE_CMD_START:
+		/* already pre-loaded, dma will be staretd by cb */
+		// TODO: capture
 		break;
 	case PIPELINE_CMD_DRAIN:
-		dma_drain(hd->dma, hs->chan);
+		dma_drain(hd->dma, hd->chan);
 		break;
 	case PIPELINE_CMD_SUSPEND:
 	case PIPELINE_CMD_RESUME:
@@ -419,11 +343,9 @@ static int host_cmd(struct comp_dev *dev, struct stream_params *params,
 	return 0;
 }
 
-static int host_buffer(struct comp_dev *dev, struct stream_params *params,
-	struct dma_sg_elem *elem)
+static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->direction];
 	struct dma_sg_elem *e;
 
 	/* allocate new host DMA elem and add it to our list */
@@ -432,62 +354,65 @@ static int host_buffer(struct comp_dev *dev, struct stream_params *params,
 		return -ENOMEM;
 
 	*e = *elem;
+	
+	/* make sure all elements are the same size */
+	if (hd->host_size != 0 && hd->host_size != e->size)
+		return -EINVAL;
+	hd->host_size = e->size;
 
-	list_add(&e->list, &hs->host_elem_list);
-
+	list_add(&e->list, &hd->host.elem_list);
 	return 0;
 }
 
-static int host_reset(struct comp_dev *dev, struct stream_params *params)
+static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->direction];
 	struct dma_sg_elem *e;
 	struct list_head *elist, *tlist;
 
 	/* free all host DMA elements */
-	list_for_each_safe(elist, tlist, &hs->host_elem_list) {
+	list_for_each_safe(elist, tlist, &hd->host.elem_list) {
 
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_del(&e->list);
 		rfree(RZONE_MODULE, RMOD_SYS, e);
 	}
 
+	/* free all loacl DMA elements */
+	list_for_each_safe(elist, tlist, &hd->local.elem_list) {
+
+		e = container_of(elist, struct dma_sg_elem, list);
+		list_del(&e->list);
+		rfree(RZONE_MODULE, RMOD_SYS, e);
+	}
+
+	hd->host_size = 0;
+
 	return 0;
 }
 
 /* copy and process stream data from source to sink buffers */
-static int host_copy(struct comp_dev *dev, struct stream_params *params)
+static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct host_stream *hs = &hd->s[params->direction];
-	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
+	uint32_t size;
 
 	/* we can only copy new data is previous DMA request has completed */
-	if (!wait_is_completed(&hs->complete))
+	if (!wait_is_completed(&hd->complete))
 		return 0;
-
-	/* is there enough space in the buffer ? */
-	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
-
-		dma_buffer = list_first_entry(&dev->bsink_list,
-			struct comp_buffer, source_list);
-		dma_period_desc = &dma_buffer->desc.source_period;
-	} else {
-
-		dma_buffer = list_first_entry(&dev->bsource_list,
-			struct comp_buffer, sink_list);
-		dma_period_desc = &dma_buffer->desc.sink_period;
-	}
 
 	/* start the DMA if there is enough local free space
 	   and previous DMA has completed */
-	if (dma_buffer->avail > dma_period_desc->size) {
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
+		size = hd->dma_buffer->free;
+	else
+		size = hd->dma_buffer->avail;
+
+	if (size > hd->period->size) {
 		/* do DMA transfer */
-		wait_init(&hs->complete);
-		dma_set_config(hd->dma, hs->chan, &hs->config);
-		dma_start(hd->dma, hs->chan);
+		wait_init(&hd->complete);
+		dma_set_config(hd->dma, hd->chan, &hd->config);
+		dma_start(hd->dma, hd->chan);
 	}
 
 	return 0;

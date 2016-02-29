@@ -131,7 +131,7 @@ static int ssp_context_restore(struct dai *dai)
 }
 
 /* Digital Audio interface formatting */
-static inline int ssp_set_fmt(struct dai *dai, struct stream_params *params)
+static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 {
 	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0, sscr1, sspsp;
@@ -140,6 +140,7 @@ static inline int ssp_set_fmt(struct dai *dai, struct stream_params *params)
 	sscr0 = 0;
 	sscr1 = 0;
 	sspsp = 0;
+	dai->config = *dai_config;
 
 	/* clock masters */
 	switch (dai->config.format & DAI_FMT_MASTER_MASK) {
@@ -220,7 +221,7 @@ static inline int ssp_set_fmt(struct dai *dai, struct stream_params *params)
 }
 
 /* start the SSP for either playback or capture */
-static void ssp_start(struct dai *dai, struct stream_params *params)
+static void ssp_start(struct dai *dai, int direction)
 {
 	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
@@ -228,20 +229,20 @@ static void ssp_start(struct dai *dai, struct stream_params *params)
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 
 	/* enable DMA */
-	if (params->direction == DAI_DIR_PLAYBACK)
+	if (direction == DAI_DIR_PLAYBACK)
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
 	else
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
 }
 
 /* stop the SSP port stream DMA and disable SSP port if no users */
-static void ssp_stop(struct dai *dai, struct stream_params *params)
+static void ssp_stop(struct dai *dai, int direction)
 {
 	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr1;
 
 	/* disable DMA */
-	if (params->direction == DAI_DIR_PLAYBACK)
+	if (direction == DAI_DIR_PLAYBACK)
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 	else
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
@@ -252,23 +253,23 @@ static void ssp_stop(struct dai *dai, struct stream_params *params)
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 }
 
-static int ssp_trigger(struct dai *dai, int cmd, struct stream_params *params)
+static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	switch (cmd) {
 	case DAI_TRIGGER_START:
 	case DAI_TRIGGER_PAUSE_RELEASE:
-		ssp_start(dai, params);
+		ssp_start(dai, direction);
 		break;
 	case DAI_TRIGGER_PAUSE_PUSH:
 	case DAI_TRIGGER_STOP:
-		ssp_stop(dai, params);
+		ssp_stop(dai, direction);
 		break;
 	case DAI_TRIGGER_RESUME:
 		ssp_context_restore(dai);
-		ssp_start(dai, params);
+		ssp_start(dai, direction);
 		break;
 	case DAI_TRIGGER_SUSPEND:
-		ssp_stop(dai, params);
+		ssp_stop(dai, direction);
 		ssp_context_store(dai);
 		break;
 	default:
@@ -300,7 +301,7 @@ static int ssp_probe(struct dai *dai)
 
 const struct dai_ops ssp_ops = {
 	.trigger		= ssp_trigger,
-	.set_fmt		= ssp_set_fmt,
+	.set_config		= ssp_set_config,
 	.pm_context_store	= ssp_context_store,
 	.pm_context_restore	= ssp_context_restore,
 	.probe			= ssp_probe,

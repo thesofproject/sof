@@ -57,8 +57,8 @@ struct dai;
 
 /* DAI operations - all optional */ 
 struct dai_ops {
-	int (*set_fmt)(struct dai *dai, struct stream_params *params);
-	int (*trigger)(struct dai *dai, int cmd, struct stream_params *params);
+	int (*set_config)(struct dai *dai, struct dai_config *dai_config);
+	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
 	int (*probe)(struct dai *dai);
@@ -121,16 +121,15 @@ struct dai *dai_get(uint32_t type, uint32_t index);
 	dai->plat_data.fifo[direction].offset
 
 /* Digital Audio interface formatting */
-static inline int dai_set_fmt(struct dai *dai, struct stream_params *params)
+static inline int dai_set_config(struct dai *dai, struct dai_config *dai_config)
 {
-	return dai->ops->set_fmt(dai, params);
+	return dai->ops->set_config(dai, dai_config);
 }
 
 /* Digital Audio interface trigger */
-static inline int dai_trigger(struct dai *dai, int cmd,
-	struct stream_params *params)
+static inline int dai_trigger(struct dai *dai, int cmd, int direction)
 {
-	return dai->ops->trigger(dai, cmd, params);
+	return dai->ops->trigger(dai, cmd, direction);
 }
 
 /* Digital Audio interface PM context store */

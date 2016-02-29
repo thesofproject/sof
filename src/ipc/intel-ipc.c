@@ -53,7 +53,7 @@ struct iintel_mixer_data {
 /* private data for IPC */
 struct intel_ipc_data {
 	/* DMA */
-	struct dma *dmac0, *dmac1;
+	struct dma *dmac0;
 	uint8_t *page_table;
 	completion_t complete;
 
@@ -133,12 +133,11 @@ static int get_page_desciptors(struct intel_ipc_data *iipc,
 	struct dma *dma;
 	int chan, ret = 0;
 
-	/* get DMA channel from DMAC1 */
-	chan = dma_channel_get(iipc->dmac1);
-	if (chan >= 0)
-		dma = iipc->dmac1;
-	else
+	/* get DMA channel from DMAC0 */
+	chan = dma_channel_get(iipc->dmac0);
+	if (chan < 0)
 		return chan;
+	dma = iipc->dmac0;
 
 	/* set up DMA configuration */
 	config.direction = DMA_DIR_MEM_TO_MEM;
@@ -182,7 +181,7 @@ out:
  page table entry and adding each elem to a list in struct dma_sg_config*/
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	struct ipc_intel_ipc_stream_alloc_req *req,
-	struct comp_dev *host, struct stream_params *params)
+	struct comp_dev *host)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
 	struct dma_sg_elem elem;
@@ -202,7 +201,7 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 			elem.src <<= 12;
 		elem.src &= 0xfffff000;
 
-		err = pipeline_host_buffer(pipeline_static, host, params, &elem);
+		err = pipeline_host_buffer(pipeline_static, host, &elem);
 		if (err < 0)
 			return err;
 	}
@@ -299,7 +298,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	//	goto error;
 
 	/* Parse host tables */
-	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd, params);
+	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd);
 	if (err < 0)
 		goto error;
 
@@ -309,7 +308,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 
 	/* initialise the pipeline */
-	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd, params);
+	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
 	if (err < 0)
 		goto error;
 
@@ -520,7 +519,7 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 		goto error; 
 	
 	/* TODO: complete call with private volume data */
-	err = comp_cmd(mixer_dev->cd, NULL, COMP_CMD_VOLUME, NULL);
+	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, NULL);
 	if (err < 0)
 		goto error;
 
@@ -551,7 +550,7 @@ static uint32_t ipc_stage_get_volume(uint32_t header)
 		goto error; 
 	
 	/* TODO: complete call with private volume data */
-	err = comp_cmd(mixer_dev->cd, NULL, COMP_CMD_VOLUME, NULL);
+	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, NULL);
 	if (err < 0)
 		goto error;
 
@@ -609,8 +608,7 @@ static uint32_t ipc_stream_reset(uint32_t header)
 		goto error; 
 
 	/* initialise the pipeline */
-	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd, 
-		&pcm_dev->params);
+	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
 	if (err < 0)
 		goto error;
 
@@ -641,13 +639,13 @@ static uint32_t ipc_stream_pause(uint32_t header)
 
 	if (stream_data->state == INTEL_STREAM_ALLOC) {
 		err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-			&pcm_dev->params, PIPELINE_CMD_PAUSE, NULL);
+			PIPELINE_CMD_PAUSE, NULL);
 		if (err < 0)
 			goto error;
 		stream_data->state = INTEL_STREAM_PAUSED;
 	} else {
 		err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-			&pcm_dev->params, PIPELINE_CMD_START, NULL);
+			PIPELINE_CMD_START, NULL);
 		if (err < 0)
 			goto error;
 		stream_data->state = INTEL_STREAM_RUNNING;
@@ -679,7 +677,7 @@ static uint32_t ipc_stream_resume(uint32_t header)
 	stream_data = ipc_get_drvdata(&pcm_dev->dev);
 
 	/* initialise the pipeline */
-	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd, &pcm_dev->params,
+	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
 			PIPELINE_CMD_START, NULL);
 	if (err < 0)
 		goto error;
@@ -845,7 +843,6 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* dma */
 	iipc->dmac0 = dma_get(DMA_ID_DMAC0);
-	iipc->dmac1 = dma_get(DMA_ID_DMAC1);
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, NULL);
