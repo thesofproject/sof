@@ -18,6 +18,13 @@
 
 #define MSG_QUEUE_SIZE		8
 
+/* Intel IPC stream states. TODO we have to manually track this atm as is
+does not align to ALSA. TODO align IPC with ALSA ops */
+#define IPC_HOST_ALLOC		0	/* host stream has been alloced */
+#define IPC_HOST_RUNNING	1	/* host stream is running */
+#define IPC_HOST_PAUSED		2	/* host stream has been paused */
+#define IPC_HOST_RESET		3	/* host stream has been reset */
+
 /* IPC generic component device */
 struct ipc_comp_dev {
 	/* pipeline we belong to */
@@ -42,6 +49,7 @@ struct ipc_pcm_dev {
 
 	/* runtime config */	
 	struct stream_params params;
+	uint32_t state;
 };
 
 /* IPC BE DAI device */ 
@@ -105,7 +113,8 @@ int ipc_send_msg(struct ipc_msg *msg);
 int ipc_send_short_msg(uint32_t msg);
 
 /* dynamic pipeline API */
-int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index);
+int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index,
+	uint8_t direction);
 void ipc_comp_free(uint32_t comp_id);
 
 int ipc_buffer_new(int pipeline_id, struct buffer_desc *buffer_desc);

@@ -100,7 +100,8 @@ struct pipeline *pipeline_new(uint16_t id)
 	p->id = id;
 	p->state = PIPELINE_STATE_INIT;
 	list_init(&p->comp_list);
-	list_init(&p->endpoint_list);
+	list_init(&p->host_ep_list);
+	list_init(&p->dai_ep_list);
 	list_init(&p->buffer_list);
 
 	spinlock_init(&p->lock);
@@ -146,13 +147,13 @@ void pipeline_free(struct pipeline *p)
 
 /* create a new component in the pipeline */
 struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
-	uint32_t index)
+	uint32_t index, uint8_t direction)
 {
 	struct comp_dev *cd;
 
 	trace_pipe("CNw");
 
-	cd = comp_new(type, index, pipe_data->next_id++);
+	cd = comp_new(type, index, pipe_data->next_id++, direction);
 	if (cd == NULL) {
 		pipe_data->next_id--;
 		return NULL;
@@ -163,13 +164,19 @@ struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
 	switch (type) {
 	case COMP_TYPE_DAI_SSP:
 	case COMP_TYPE_DAI_HDA:
-		/* add to endpoint list and to comp list*/
-		list_add(&cd->endpoint_list, &p->endpoint_list);
+		/* add to DAI endpoint list and to list*/
+		list_add(&cd->endpoint_list, &p->dai_ep_list);
+		break;
+	case COMP_TYPE_HOST:
+		/* add to DAI endpoint list and to list*/
+		list_add(&cd->endpoint_list, &p->host_ep_list);
+		break;
 	default:
-		/* add component dev to pipeline list */ 
-		list_add(&cd->pipeline_list, &p->comp_list);
 		break;
 	}
+
+	/* add component dev to pipeline list */ 
+	list_add(&cd->pipeline_list, &p->comp_list);
 
 	spin_unlock(&pipe_data->lock);
 	return cd;
@@ -316,7 +323,6 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 	return err;
 }
 
-#if 0
 /* call op on all upstream components - locks held by caller */
 static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 {
@@ -384,7 +390,7 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 
 	return err;
 }
-#endif
+
 
 /* prepare the pipeline for usage - preload host buffers here */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *host)
@@ -398,7 +404,10 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *host)
 	op_data.op = COMP_OPS_PREPARE;
 
 	spin_lock(&p->lock);
-	ret = component_op_sink(&op_data, host);
+	if (host->direction == STREAM_DIRECTION_PLAYBACK)
+		ret = component_op_sink(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
 
 	return ret;
@@ -419,7 +428,10 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 	op_data.cmd_data = data;
 
 	spin_lock(&p->lock);
-	ret = component_op_sink(&op_data, host);
+	if (host->direction == STREAM_DIRECTION_PLAYBACK)
+		ret = component_op_sink(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
 	return ret;
 }
@@ -438,7 +450,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	op_data.params = params;
 
 	spin_lock(&p->lock);
-	ret = component_op_sink(&op_data, host);
+	if (host->direction == STREAM_DIRECTION_PLAYBACK)
+		ret = component_op_sink(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
 
 	return ret;
@@ -456,7 +471,10 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	op_data.op = COMP_OPS_RESET;
 
 	spin_lock(&p->lock);
-	ret = component_op_sink(&op_data, host);
+	if (host->direction == STREAM_DIRECTION_PLAYBACK)
+		ret = component_op_sink(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
 	return ret;
 }
@@ -476,39 +494,38 @@ void pipeline_do_work(struct pipeline *p)
 	struct list_head *elist;
 	struct op_data op_data;
 return;
-//	trace_pipe("PWs");
+	trace_pipe("PWs");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
 
-// TODO: for each pipeline stream
 	/* process capture streams in the pipeline */
-	list_for_each(elist, &p->endpoint_list) {
+	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
 
-		//if (ep->is_playback)
-		//	continue;
+		if (ep->direction == STREAM_DIRECTION_PLAYBACK)
+			continue;
 
 		/* process downstream */
 		component_op_sink(&op_data, ep);
 	}
 
 	/* now process playback streams in the pipeline */
-	list_for_each(elist, &p->endpoint_list) {
+	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
 
-		//if (!ep->is_playback)
-		//	continue;
+		if (ep->direction != STREAM_DIRECTION_PLAYBACK)
+			continue;
 
 		/* process downstream */
 		component_op_sink(&op_data, ep);
 	}
 
-//	trace_pipe("PWe");
+	trace_pipe("PWe");
 }
 
 /* init pipeline */

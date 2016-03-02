@@ -29,27 +29,6 @@
 #include <reef/audio/pipeline.h>
 #include <uapi/intel-ipc.h>
 
-/* Intel IPC stream states. TODO we have to manually track this atm as is
-does not align to ALSA. TODO align IPC with ALSA ops */
-#define INTEL_STREAM_ALLOC	0	/* stream has been alloced */
-#define INTEL_STREAM_RUNNING	1	/* stream is running */
-#define INTEL_STREAM_PAUSED	2	/* stream has been paused */
-#define INTEL_STREAM_RESET	3	/* stream has been reset */
-
-/* memory mapped stream info for static pipeline - map to stream alloc reply */
-struct intel_stream_data {
-	uint32_t rpos;	/* read_position_register_address */
-	uint32_t ppos;	/* presentation_position_register_address */
-	uint32_t peak[IPC_INTEL_NO_CHANNELS];	/* peak_meter_register_address */
-	uint32_t volume[IPC_INTEL_NO_CHANNELS];	/* register_address */
-	uint32_t state;		/* INTEL_STREAM_ */
-};
-
-struct iintel_mixer_data {
-	uint32_t peak[IPC_INTEL_NO_CHANNELS];	/* peak_meter_register_address */
-	uint32_t volume[IPC_INTEL_NO_CHANNELS];	/* register_address */
-};
-
 /* private data for IPC */
 struct intel_ipc_data {
 	/* DMA */
@@ -65,6 +44,10 @@ struct intel_ipc_data {
 	(((uint32_t)&_s) - MAILBOX_BASE + MAILBOX_HOST_OFFSET)
 
 static struct ipc *_ipc;
+
+/* hard coded stream offset TODO: make this into programmable map */
+static struct sst_intel_ipc_stream_data *_stream_data =
+	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET);
 
 /*
  * BDW IPC dialect.
@@ -214,7 +197,6 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct ipc_intel_ipc_stream_alloc_req req;
 	struct ipc_intel_ipc_stream_alloc_reply reply;
-	struct intel_stream_data *stream_data;
 	struct stream_params *params;
 	uint32_t host_id, dai_id;
 	struct ipc_pcm_dev *pcm_dev;
@@ -236,19 +218,19 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
 #if 0
-	case IPC_INTEL_STREAM_TYPE_RENDER:
+	case IPC_IPC_HOST_TYPE_RENDER:
 		host_id = 0;
 		dai_id = 2;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
-	case IPC_INTEL_STREAM_TYPE_CAPTURE:
+	case IPC_IPC_HOST_TYPE_CAPTURE:
 		host_id = 0;
 		//dai_id = 3;
 		//direction = STREAM_DIRECTION_CAPTURE;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		dai_id = 2;
 		break;
-	case IPC_INTEL_STREAM_TYPE_LOOPBACK:
+	case IPC_IPC_HOST_TYPE_LOOPBACK:
 		host_id = 0;
 		dai_id = 3;
 		direction = STREAM_DIRECTION_CAPTURE;
@@ -267,13 +249,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (dai_dev == NULL)
 		goto error; 
 
-	/* allocate stream datat */
-	stream_data = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*stream_data));
-	if (stream_data == NULL)
-		goto error;
-
 	params = &pcm_dev->params;
-	ipc_set_drvdata(&pcm_dev->dev, stream_data);
+	//ipc_set_drvdata(&pcm_dev->dev, stream_data);
 
 	/* read in format to create params */
 	params->channels = req.format.ch_num;
@@ -294,8 +271,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_desciptors(iipc, &req);
-	//if (err < 0)
-	//	goto error;
+	if (err < 0)
+		goto error;
 
 	/* Parse host tables */
 	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd);
@@ -312,18 +289,29 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (err < 0)
 		goto error;
 
+	/* pass the IPC presentation posn pointer to the DAI */
+	err = comp_cmd(dai_dev->dev.cd, COMP_CMD_IPC_MMAP_PPOS,
+		&_stream_data->presentation_posn);
+	if (err < 0)
+		goto error;
+
+	/* pass the IPC read posn pointer to the host */
+	err = comp_cmd(pcm_dev->dev.cd, COMP_CMD_IPC_MMAP_RPOS,
+		&_stream_data->read_posn);
+	if (err < 0)
+		goto error;
+
 	/* at this point pipeline is ready for command so send stream reply */
 	reply.stream_hw_id = host_id;
 	reply.mixer_hw_id = 0; // returns rate ????
 
-// TODO: set up pointers to read data directly.
-#if 0
 	/* set read pos and presentation pos address */
 	reply.read_position_register_address =
-		to_host_offset(pcm_dev->stream_data[stream_id].rpos);
+		to_host_offset(_stream_data->read_posn);
 	reply.presentation_position_register_address =
-		to_host_offset(pcm_dev->stream_data[stream_id].ppos);
+		to_host_offset(_stream_data->presentation_posn);
 
+#if 0
 	/* set volume address */
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
 		reply.peak_meter_register_address[i] =
@@ -337,10 +325,12 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	mailbox_outbox_write(0, &reply, sizeof(reply));
 
 	/* update stream state */
-	stream_data->state = INTEL_STREAM_ALLOC;
-	/* TODO */
-error:
+	pcm_dev->state = IPC_HOST_ALLOC;
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
+
+error:
+	pipeline_reset(pipeline_static, pcm_dev->dev.cd);
+	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 }
 
 /* free stream resources */
@@ -348,7 +338,6 @@ static uint32_t ipc_stream_free(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_free_req free_req;
 	struct ipc_pcm_dev *pcm_dev;
-	struct intel_stream_data *stream_data;
 
 	trace_ipc("SFr");
 
@@ -364,15 +353,14 @@ static uint32_t ipc_stream_free(uint32_t header)
 		goto error; 
 
 	/* check stream state */
-	stream_data = ipc_get_drvdata(&pcm_dev->dev);
-	if (stream_data->state == INTEL_STREAM_RUNNING ||
-		stream_data->state == INTEL_STREAM_PAUSED)
+	if (pcm_dev->state == IPC_HOST_RUNNING ||
+		pcm_dev->state == IPC_HOST_PAUSED)
 		goto error;
 
-	rfree(RZONE_MODULE, RMOD_SYS, stream_data);
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
 
 error:
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 }
 
 static uint32_t ipc_stream_info(uint32_t header)
@@ -447,7 +435,7 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	struct ipc_intel_ipc_device_config_req config_req;
 	struct ipc_dai_dev *dai_dev;
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
-//	struct intel_stream_data *stream_data;
+//	struct IPC_HOST_data *stream_data;
 
 	trace_ipc("DsF");
 
@@ -619,7 +607,6 @@ error:
 static uint32_t ipc_stream_pause(uint32_t header)
 {
 	struct ipc_pcm_dev *pcm_dev;
-	struct intel_stream_data *stream_data;
 	uint32_t stream_id;
 	int err;
 
@@ -635,21 +622,15 @@ static uint32_t ipc_stream_pause(uint32_t header)
 	if (pcm_dev == NULL)
 		goto error; 
 
-	stream_data = ipc_get_drvdata(&pcm_dev->dev);
+	/* driver IPC design is broken ... */
+	if (pcm_dev->state == IPC_HOST_ALLOC)
+		return IPC_INTEL_GLB_REPLY_SUCCESS;
 
-	if (stream_data->state == INTEL_STREAM_ALLOC) {
-		err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-			PIPELINE_CMD_PAUSE, NULL);
-		if (err < 0)
-			goto error;
-		stream_data->state = INTEL_STREAM_PAUSED;
-	} else {
-		err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-			PIPELINE_CMD_START, NULL);
-		if (err < 0)
-			goto error;
-		stream_data->state = INTEL_STREAM_RUNNING;
-	}
+	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
+		PIPELINE_CMD_PAUSE, NULL);
+	if (err < 0)
+		goto error;
+	pcm_dev->state = IPC_HOST_PAUSED;
 
 error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
@@ -658,7 +639,6 @@ error:
 static uint32_t ipc_stream_resume(uint32_t header)
 {
 	struct ipc_pcm_dev *pcm_dev;
-	struct intel_stream_data *stream_data;
 	uint32_t stream_id;
 	int err;
 
@@ -674,15 +654,13 @@ static uint32_t ipc_stream_resume(uint32_t header)
 	if (pcm_dev == NULL)
 		goto error;
 
-	stream_data = ipc_get_drvdata(&pcm_dev->dev);
-
 	/* initialise the pipeline */
 	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
 			PIPELINE_CMD_START, NULL);
 	if (err < 0)
 		goto error;
 
-	stream_data->state = INTEL_STREAM_RUNNING;
+	pcm_dev->state = IPC_HOST_RUNNING;
 
 error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;

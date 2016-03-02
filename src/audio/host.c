@@ -41,6 +41,7 @@ struct host_data {
 	struct hc_buf host;
 	struct hc_buf local;
 	uint32_t host_size;
+	volatile uint32_t *host_pos;
 
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
@@ -92,11 +93,12 @@ static void host_dma_cb(void *data, uint32_t type)
 	}
 
 	/* update local buffer position */
-	dma_status(hd->dma, hd->chan, &status);
+	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		hd->dma_buffer->w_ptr = (void*)status.position;
 	else
 		hd->dma_buffer->r_ptr = (void*)status.position;
+	*hd->host_pos = status.position;
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);
@@ -105,7 +107,8 @@ static void host_dma_cb(void *data, uint32_t type)
 	wait_completed(&hd->complete);
 }
 
-static struct comp_dev *host_new(uint32_t type, uint32_t index)
+static struct comp_dev *host_new(uint32_t type, uint32_t index,
+	uint8_t direction)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
@@ -307,8 +310,9 @@ static int host_prepare(struct comp_dev *dev)
 
 		ret = host_preload(dev, hd->period->number - 1);
 	}
-// HACK for VM until DMA is working
-	ret = 0;
+
+	hd->host_pos = 0;
+
 	return ret;
 }
 
@@ -317,6 +321,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
+	// TODO: align cmd macros.
 	switch (cmd) {
 	case PIPELINE_CMD_PAUSE:
 		dma_pause(hd->dma, hd->chan);
@@ -336,8 +341,12 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case PIPELINE_CMD_SUSPEND:
 	case PIPELINE_CMD_RESUME:
+		break;
+	case COMP_CMD_IPC_MMAP_RPOS:
+		hd->host_pos = data;
+		break;
 	default:
-		return -EINVAL;
+		break;
 	}
 
 	return 0;

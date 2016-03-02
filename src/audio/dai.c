@@ -32,6 +32,8 @@ struct dai_data {
 	int direction;
 	struct dai *ssp;
 	struct dma *dma;
+
+	volatile uint32_t *dai_pos;
 };
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -43,7 +45,7 @@ static void dai_dma_cb(void *data, uint32_t type)
 	struct dma_chan_status status;
 
 	/* update local buffer position */
-	dma_status(dd->dma, dd->chan, &status);
+	dma_status(dd->dma, dd->chan, &status, dd->direction);
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_entry(&dev->bsink_list,
@@ -64,7 +66,8 @@ static void dai_dma_cb(void *data, uint32_t type)
 	wait_completed(&dd->complete);
 }
 
-static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index)
+static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
+	uint8_t direction)
 {
 	struct comp_dev *dev;
 	struct dai_data *dd;
@@ -101,7 +104,8 @@ error:
 	return NULL;
 }
 
-static struct comp_dev *dai_new_hda(uint32_t type, uint32_t index)
+static struct comp_dev *dai_new_hda(uint32_t type, uint32_t index,
+	uint8_t direction)
 {
 	return 0;
 }
@@ -238,6 +242,8 @@ static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
+	dd->dai_pos = 0;
+
 	return dma_set_config(dd->dma, dd->chan, &dd->config);
 }
 
@@ -287,8 +293,12 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case PIPELINE_CMD_SUSPEND:
 	case PIPELINE_CMD_RESUME:
+		break;
+	case COMP_CMD_IPC_MMAP_RPOS:
+		dd->dai_pos = data;
+		break;
 	default:
-		return -EINVAL;
+		break;
 	}
 
 	return 0;
@@ -298,6 +308,11 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 static int dai_copy(struct comp_dev *dev)
 {
 	/* nothing todo here since DMA does our copies */
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	// TODO clean up.
+	*dd->dai_pos += 48 * 4;
+
 	return 0;
 }
 

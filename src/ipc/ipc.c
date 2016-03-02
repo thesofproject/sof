@@ -53,7 +53,8 @@ struct ipc_buffer_dev *ipc_get_buffer(uint32_t id)
 	return NULL;
 }
 
-int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index)
+int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index,
+	uint8_t direction)
 {
 	struct pipeline *p = pipeline_from_id(pipeline_id);
 	struct ipc_comp_dev *icd;
@@ -78,7 +79,7 @@ int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index)
 		return -ENOMEM;
 
 	/* register component with piepline */
-	icd->cd = pipeline_comp_new(p, type, index);
+	icd->cd = pipeline_comp_new(p, type, index, direction);
 	if (icd->cd == NULL) {
 		rfree(RZONE_MODULE, RMOD_SYS, icd);
 		return -ENOMEM;

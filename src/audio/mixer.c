@@ -13,7 +13,8 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static struct comp_dev *mixer_new(uint32_t type, uint32_t index)
+static struct comp_dev *mixer_new(uint32_t type, uint32_t index,
+	uint8_t direction)
 {
 
 	return 0;

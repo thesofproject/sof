@@ -25,17 +25,19 @@ struct comp_data {
 static struct comp_data *cd;
 
 static void comp_init(struct comp_dev *dev, uint32_t id,
-	struct comp_driver *drv)
+	struct comp_driver *drv, uint8_t direction)
 {
 	dev->id = id;
 	dev->drv = drv;
+	dev->direction = direction;
 	dev->state = COMP_STATE_UNAVAIL;
 	spinlock_init(&dev->lock);
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);
 }
 
-struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id)
+struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id,
+	uint8_t direction)
 {
 	struct list_head *clist;
 	struct comp_driver *drv;
@@ -47,8 +49,8 @@ struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id)
 
 		drv = container_of(clist, struct comp_driver, list);
 		if (drv->type == type) {
-			dev = drv->ops.new(type, index);
-			comp_init(dev, id, drv);
+			dev = drv->ops.new(type, index, direction);
+			comp_init(dev, id, drv, direction);
 			goto out;
 		}
 	}

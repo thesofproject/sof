@@ -46,7 +46,8 @@ struct pipeline {
 	spinlock_t lock;
 
 	/* lists */
-	struct list_head endpoint_list;		/* list of endpoints */
+	struct list_head host_ep_list;		/* list of host endpoints */
+	struct list_head dai_ep_list;		/* list of DAI endpoints */
 	struct list_head comp_list;		/* list of components */
 	struct list_head buffer_list;		/* list of buffers */
 	struct list_head list;			/* list in pipeline list */
@@ -64,7 +65,7 @@ struct comp_dev *pipeline_get_comp(struct pipeline *p, uint32_t id);
 
 /* pipeline component creation and destruction */
 struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
-	uint32_t index);
+	uint32_t index, uint8_t direction);
 int pipeline_comp_free(struct pipeline *p, struct comp_dev *cd);
 
 /* pipeline buffer creation and destruction */

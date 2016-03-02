@@ -69,7 +69,7 @@ struct dma_ops {
 	int (*release)(struct dma *dma, int channel);
 	int (*drain)(struct dma *dma, int channel);
 	int (*status)(struct dma *dma, int channel,
-		struct dma_chan_status *status);
+		struct dma_chan_status *status, uint8_t direction);
 	
 	int (*set_config)(struct dma *dma, int channel,
 		struct dma_sg_config *config);
@@ -163,9 +163,9 @@ static inline int dma_drain(struct dma *dma, int channel)
 }
 
 static inline int dma_status(struct dma *dma, int channel,
-	struct dma_chan_status *status)
+	struct dma_chan_status *status, uint8_t direction)
 {
-	return dma->ops->status(dma, channel, status);
+	return dma->ops->status(dma, channel, status, direction);
 }
 
 static inline int dma_set_config(struct dma *dma, int channel,

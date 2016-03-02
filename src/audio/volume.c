@@ -197,7 +197,8 @@ static uint32_t vol_work(void *data)
 		return 0;
 }
 
-static struct comp_dev *volume_new(uint32_t type, uint32_t index)
+static struct comp_dev *volume_new(uint32_t type, uint32_t index,
+	uint8_t direction)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;

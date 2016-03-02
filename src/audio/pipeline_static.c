@@ -80,10 +80,13 @@ static struct spipe_buffer dev_buf_c = SPIPE_DEV_BUF;
  * host PCM0(0) <--- B2 <--- volume(3) <--- B3 <--- SSP0(2)
  */
 
-static struct spipe_comp *pipe0_comps[] = {
+static struct spipe_comp *pipe0_play_comps[] = {
 	&host_p,
 	&volume_p,
 	&ssp_p,
+};
+
+static struct spipe_comp *pipe0_capt_comps[] = {
 	&ssp_c,
 	&volume_c,
 	&host_c,
@@ -166,11 +169,21 @@ struct pipeline *init_static_pipeline(void)
 	if (pipeline_static < 0)
 		return NULL;
 
-	/* create components in the pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe0_comps); i++) {
-		pipe0_comps[i]->id = ipc_comp_new(pipeline_id,
-			pipe0_comps[i]->type, pipe0_comps[i]->index);
-		if (pipe0_comps[i]->id < 0)
+	/* create playback components in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe0_play_comps); i++) {
+		pipe0_play_comps[i]->id = ipc_comp_new(pipeline_id,
+			pipe0_play_comps[i]->type, pipe0_play_comps[i]->index,
+			STREAM_DIRECTION_PLAYBACK);
+		if (pipe0_play_comps[i]->id < 0)
+			goto error;
+	}
+
+	/* create capture components in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe0_capt_comps); i++) {
+		pipe0_capt_comps[i]->id = ipc_comp_new(pipeline_id,
+			pipe0_capt_comps[i]->type, pipe0_capt_comps[i]->index,
+			STREAM_DIRECTION_CAPTURE);
+		if (pipe0_capt_comps[i]->id < 0)
 			goto error;
 	}
 

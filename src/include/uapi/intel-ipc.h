@@ -549,7 +549,8 @@ struct fw_info {
 
 /* Firmware Ready */
 #define IPC_INTEL_FW_RDY_RSVD	32
-struct sst_hsw_ipc_fw_ready {
+
+struct sst_intel_ipc_fw_ready {
 	uint32_t inbox_offset;
 	uint32_t outbox_offset;
 	uint32_t inbox_size;
@@ -561,5 +562,15 @@ struct sst_hsw_ipc_fw_ready {
 	};
 } __attribute__((packed));
 
+/* Stream data */
+struct sst_intel_ipc_stream_vol {
+	uint32_t peak;
+	uint32_t vol;
+} __attribute__((packed));
 
+struct sst_intel_ipc_stream_data {
+	uint32_t read_posn;
+	uint32_t presentation_posn;
+	struct sst_intel_ipc_stream_vol vol[IPC_INTEL_NO_CHANNELS];
+} __attribute__((packed));
 #endif

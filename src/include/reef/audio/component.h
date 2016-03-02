@@ -38,6 +38,10 @@
 #define COMP_CMD_UNMUTE		102
 #define COMP_CMD_ROUTE		103
 
+/* MMAP IPC status */
+#define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
+#define COMP_CMD_IPC_MMAP_PPOS	201	/* DAI presentation position */
+
 /* component operations */
 #define COMP_OPS_PARAMS		0
 #define COMP_OPS_CMD		1
@@ -78,7 +82,8 @@ struct buffer_desc {
 /* audio component operations - all mandatory */
 struct comp_ops {
 	/* component creation and destruction */
-	struct comp_dev *(*new)(uint32_t type, uint32_t index);
+	struct comp_dev *(*new)(uint32_t type, uint32_t index,
+		uint8_t direction);
 	void (*free)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
@@ -137,7 +142,7 @@ struct comp_dev {
 	uint8_t state;		/* COMP_STATE_ */
 	uint8_t is_dai;		/* component is graph DAI endpoint */
 	uint8_t is_host;	/* component is graph host endpoint */
-	uint8_t reserved[1];	/* reserved */
+	uint8_t direction;	/* STREAM_DIRECTION_ */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;
@@ -187,7 +192,8 @@ int comp_register(struct comp_driver *drv);
 void comp_unregister(struct comp_driver *drv);
 
 /* component creation and destruction - mandatory */
-struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id);
+struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id,
+	uint8_t direction);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);

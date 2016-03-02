@@ -21,7 +21,7 @@
 #include <reef/audio/component.h>
 #include <string.h>
 
-static const struct sst_hsw_ipc_fw_ready ready = {
+static const struct sst_intel_ipc_fw_ready ready = {
 	/* for host, we need exchange the naming of inxxx and outxxx */
 	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_OUTBOX_OFFSET,
 	.outbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,

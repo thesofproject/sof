@@ -393,7 +393,7 @@ static int dw_dma_drain(struct dma *dma, int channel)
 
 /* fill in "status" with current DMA channel state and position */
 static int dw_dma_status(struct dma *dma, int channel,
-	struct dma_chan_status *status)
+	struct dma_chan_status *status, uint8_t direction)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -401,7 +401,11 @@ static int dw_dma_status(struct dma *dma, int channel,
 
 	switch (p->chan[channel].direction) {
 	case DMA_DIR_MEM_TO_MEM:
-		status->position = dw_read(dma, DW_SAR(channel));
+		/* used for host <-> DSP transfers */
+		if (direction == STREAM_DIRECTION_PLAYBACK)
+			status->position = dw_read(dma, DW_SAR(channel));
+		else
+			status->position = dw_read(dma, DW_DAR(channel));
 		break;
 	case DMA_DIR_MEM_TO_DEV:
 		status->position = dw_read(dma, DW_SAR(channel));
