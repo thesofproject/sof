@@ -312,7 +312,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		to_host_offset(_stream_data->read_posn);
 	reply.presentation_position_register_address =
 		to_host_offset(_stream_data->presentation_posn);
-
+dbg_val_at(reply.read_position_register_address, 0);
+dbg_val_at(reply.presentation_position_register_address, 0);
 #if 0
 	/* set volume address */
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {

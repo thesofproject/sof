@@ -68,7 +68,7 @@ static void host_dma_cb(void *data, uint32_t type)
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
 	struct dma_chan_status status;
-	
+
 	local_elem = list_first_entry(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
@@ -94,6 +94,7 @@ static void host_dma_cb(void *data, uint32_t type)
 
 	/* update local buffer position */
 	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
+
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		hd->dma_buffer->w_ptr = (void*)status.position;
 	else
@@ -192,9 +193,9 @@ static int create_local_elems(struct comp_dev *dev,
 			goto unwind;
 
 		if (params->direction == STREAM_DIRECTION_PLAYBACK)
-			e->dest = (uint32_t)hd->dma_buffer + i * hd->period->size;
+			e->dest = (uint32_t)(hd->dma_buffer->addr) + i * hd->period->size;
 		else
-			e->src = (uint32_t)hd->dma_buffer + i * hd->period->size;
+			e->src = (uint32_t)(hd->dma_buffer->addr) + i * hd->period->size;
 
 		e->size = hd->period->size;
 
@@ -295,8 +296,10 @@ static int host_preload(struct comp_dev *dev, int count)
 		/* wait 1 msecs for DMA to finish */
 		hd->complete.timeout = 1;
 		ret = wait_for_completion_timeout(&hd->complete);
+
 		if (ret < 0)
 			return ret;
+
 	}
 
 	return 0;

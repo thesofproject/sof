@@ -213,7 +213,7 @@ static int dai_capture_params(struct comp_dev *dev,
 		elem->dest = (uint32_t)(dma_buffer->w_ptr) +
 			i * dma_period_desc->size;
 		elem->src = dai_fifo(dd->ssp, params->direction);
-		list_add(&elem->list, &config->elem_list);
+		list_add_tail(&elem->list, &config->elem_list);
 	}
 
 	/* set write pointer to start of buffer */
