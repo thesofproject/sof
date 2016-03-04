@@ -272,7 +272,6 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	local_elem->dest = sink_elem->dest;
 	local_elem->size = hd->period->size;
 	local_elem->src = source_elem->src;
-
 	return 0;
 }
 
@@ -369,7 +368,7 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem)
 		return -EINVAL;
 	hd->host_size = e->size;
 
-	list_add(&e->list, &hd->host.elem_list);
+	list_add_tail(&e->list, &hd->host.elem_list);
 	return 0;
 }
 

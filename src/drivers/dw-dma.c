@@ -600,8 +600,8 @@ static void dw_dma_irq_handler(void *data)
 					DMA_IRQ_TYPE_BLOCK);
 	}
 
-	dw_write(dma, DW_CLEAR_TFR, status_tfr);
 	dw_write(dma, DW_CLEAR_BLOCK, status_block);
+	dw_write(dma, DW_CLEAR_TFR, status_tfr);
 
 out:
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
