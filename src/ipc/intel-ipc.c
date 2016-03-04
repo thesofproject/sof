@@ -102,7 +102,8 @@ static void dma_complete(void *data, uint32_t type)
 {
 	struct intel_ipc_data *iipc = (struct intel_ipc_data *)data;
 
-	wait_completed(&iipc->complete);
+	if (type == DMA_IRQ_TYPE_LLIST)
+		wait_completed(&iipc->complete);
 }
 
 /* this function copies the audio buffer page tables from the host to the DSP */
@@ -176,7 +177,8 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	for (i = 0; i < ring->num_pages; i++) {
 
 		idx = (((i << 2) + i)) >> 1;
-		elem.src = *((uint32_t*)(iipc->page_table + idx));
+		elem.src = iipc->page_table[idx] | (iipc->page_table[idx + 1] << 8)
+				| (iipc->page_table[idx + 2] << 16);
 
 		if (i & 0x1)
 			elem.src <<= 8;
