@@ -87,6 +87,7 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 	dd->ssp = dai_get(type, index);
 	dd->dma = dma_get(DMA_ID_DMAC1);
 	list_init(&dd->config.elem_list);
+	dd->dai_pos = NULL;
 
 	/* get DMA channel from DMAC1 */
 	dd->chan = dma_channel_get(dd->dma);
@@ -159,7 +160,7 @@ static int dai_playback_params(struct comp_dev *dev,
 
 		elem->dest = dai_fifo(dd->ssp, params->direction);
 
-		list_add(&elem->list, &config->elem_list);
+		list_add_tail(&elem->list, &config->elem_list);
 	}
 
 	/* set write pointer to start of buffer */
@@ -242,7 +243,8 @@ static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	dd->dai_pos = 0;
+	if (dd->dai_pos != NULL)
+		dd->dai_pos = 0;
 
 	return dma_set_config(dd->dma, dd->chan, &dd->config);
 }
@@ -311,7 +313,8 @@ static int dai_copy(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	// TODO clean up.
-	*dd->dai_pos += 48 * 4;
+	if (dd->dai_pos)
+		*dd->dai_pos += 48 * 4;
 
 	return 0;
 }

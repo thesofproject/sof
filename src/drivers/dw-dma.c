@@ -406,6 +406,7 @@ static int dw_dma_status(struct dma *dma, int channel,
 			status->position = dw_read(dma, DW_SAR(channel));
 		else
 			status->position = dw_read(dma, DW_DAR(channel));
+
 		break;
 	case DMA_DIR_MEM_TO_DEV:
 		status->position = dw_read(dma, DW_SAR(channel));
@@ -594,10 +595,10 @@ static void dw_dma_irq_handler(void *data)
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST);
 
-		/* end of a block */
-		if (status_block & mask)
-			p->chan[i].cb(p->chan[i].cb_data,
-					DMA_IRQ_TYPE_BLOCK);
+		/* TODO: end of a block */
+		//if (status_block & mask)
+		//	p->chan[i].cb(p->chan[i].cb_data,
+		//			DMA_IRQ_TYPE_BLOCK);
 	}
 
 	dw_write(dma, DW_CLEAR_BLOCK, status_block);
@@ -605,6 +606,7 @@ static void dw_dma_irq_handler(void *data)
 
 out:
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
+	// TODO change this to platform clear IRQ
 	pisr = shim_read(SHIM_PISR);
 	pisr |= (dma->plat_data.irq == 13) ? 0x00ff0000 : 0xff000000;
 	shim_write(SHIM_PISR, pisr);

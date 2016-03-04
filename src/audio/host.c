@@ -98,7 +98,10 @@ static void host_dma_cb(void *data, uint32_t type)
 		hd->dma_buffer->w_ptr = (void*)status.position;
 	else
 		hd->dma_buffer->r_ptr = (void*)status.position;
-	*hd->host_pos = status.position;
+
+	/* update host position for drivers */
+	if (hd->host_pos)
+		*hd->host_pos = status.position;
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);
@@ -135,6 +138,7 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	comp_set_host_ep(dev);
 	hd->dma = dma_get(DMA_ID_DMAC0);
 	hd->host_size = 0;
+	hd->host_pos = NULL;
 
 	/* init buffer elems */
 	list_init(&hd->config.elem_list);
@@ -194,7 +198,7 @@ static int create_local_elems(struct comp_dev *dev,
 
 		e->size = hd->period->size;
 
-		list_add(&e->list, &hd->local.elem_list);
+		list_add_tail(&e->list, &hd->local.elem_list);
 	}
 
 	return 0;
@@ -221,7 +225,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	hd->params = *params;
 	comp_set_sink_params(dev, params);
 
-	/* dteremine source and sink buffer elems */
+	/* determine source and sink buffer elems */
 	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
 		hd->source = &hd->host;
 		hd->sink = &hd->local;
@@ -310,7 +314,8 @@ static int host_prepare(struct comp_dev *dev)
 		ret = host_preload(dev, hd->period->number - 1);
 	}
 
-	hd->host_pos = 0;
+	if (hd->host_pos)
+		*hd->host_pos = 0;
 
 	return ret;
 }

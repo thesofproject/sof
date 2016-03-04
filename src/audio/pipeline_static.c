@@ -34,14 +34,14 @@
 /* Host facing buffer */
 #define SPIPE_HOST_BUF \
 	SPIPE_BUFFER(PLAT_HOST_PERSIZE * PLAT_HOST_PERIODS, \
-		-1, -1, 0, \
+		PLAT_HOST_PERSIZE, PLAT_HOST_PERIODS, 0, \
 		PLAT_HOST_PERSIZE, PLAT_HOST_PERIODS, 0)
 
 /* Device facing buffer */
 #define SPIPE_DEV_BUF \
 	SPIPE_BUFFER(PLAT_DEV_PERSIZE * PLAT_DEV_PERIODS, \
 		PLAT_DEV_PERSIZE, PLAT_DEV_PERIODS, 0, \
-		-1, -1, 0)
+		PLAT_DEV_PERSIZE, PLAT_DEV_PERIODS, 0)
 
 struct spipe_comp {
 	uint32_t type;

@@ -76,7 +76,7 @@
 
 #define dump_object_ptr(__o) \
 	dbg(); \
-	dump(__o, sizeof(*__o) >> 2);
+	dump(__o, sizeof(*(__o)) >> 2);
 
 #else
 
