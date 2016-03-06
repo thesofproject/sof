@@ -493,12 +493,12 @@ void pipeline_do_work(struct pipeline *p)
 {
 	struct list_head *elist;
 	struct op_data op_data;
-return;
+
 	trace_pipe("PWs");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
-
+#if 0
 	/* process capture streams in the pipeline */
 	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
@@ -511,7 +511,7 @@ return;
 		/* process downstream */
 		component_op_sink(&op_data, ep);
 	}
-
+#endif
 	/* now process playback streams in the pipeline */
 	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
@@ -522,7 +522,7 @@ return;
 			continue;
 
 		/* process downstream */
-		component_op_sink(&op_data, ep);
+		component_op_source(&op_data, ep);
 	}
 
 	trace_pipe("PWe");

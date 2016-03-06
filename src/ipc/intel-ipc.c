@@ -305,7 +305,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 
 	/* at this point pipeline is ready for command so send stream reply */
 	reply.stream_hw_id = host_id;
-	reply.mixer_hw_id = 0; // returns rate ????
+	reply.mixer_hw_id = 48000; // returns rate ????
 
 	/* set read pos and presentation pos address */
 	reply.read_position_register_address =
