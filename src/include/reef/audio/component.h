@@ -18,10 +18,13 @@
 #include <reef/stream.h>
 
 /* audio component states */
-#define COMP_STATE_UNAVAIL	0	/* not ready for COMP ops */
-#define COMP_STATE_IDLE		1	/* ready for ops, but not prepared */
-#define COMP_STATE_PREPARED	2	/* prepared for stream use */
-#define COMP_STATE_ACTIVE	3	/* actively in use by stream */
+#define COMP_STATE_INIT		0	/* component being initialised */
+#define COMP_STATE_STOPPED	1	/* component inactive, but ready */
+#define COMP_STATE_RUNNING	2	/* component active */
+#define COMP_STATE_PAUSED	3	/* component paused */
+#define COMP_STATE_DRAINING	4	/* component draining */
+#define COMP_STATE_SUSPEND	5	/* component suspended */
+#define COMP_STATE_PREPARE	6	/* component prepared */
 
 /* standard audio component types */
 #define COMP_TYPE_HOST		0	/* host endpoint */
@@ -33,6 +36,15 @@
 #define COMP_TYPE_DAI_HDA	6	/* SSP DAI endpoint */
 
 /* standard component commands */
+
+#define COMP_CMD_STOP		0	/* stop component stream */
+#define COMP_CMD_START		1	/* start component stream */
+#define COMP_CMD_PAUSE		2	/* immediately pause the component stream */
+#define COMP_CMD_RELEASE	3	/* release paused component stream */
+#define COMP_CMD_DRAIN		4	/* drain component buffers */
+#define COMP_CMD_SUSPEND	5	/* suspend component */
+#define COMP_CMD_RESUME		6	/* resume component */
+
 #define COMP_CMD_VOLUME		100
 #define COMP_CMD_MUTE		101
 #define COMP_CMD_UNMUTE		102

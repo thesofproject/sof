@@ -330,24 +330,24 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	// TODO: align cmd macros.
 	switch (cmd) {
-	case PIPELINE_CMD_PAUSE:
+	case COMP_CMD_PAUSE:
 		dma_pause(hd->dma, hd->chan);
 		break;
-	case PIPELINE_CMD_STOP:
+	case COMP_CMD_STOP:
 		dma_stop(hd->dma, hd->chan);
 		break;
-	case PIPELINE_CMD_RELEASE:
+	case COMP_CMD_RELEASE:
 		dma_release(hd->dma, hd->chan);
 		break;
-	case PIPELINE_CMD_START:
+	case COMP_CMD_START:
 		/* already pre-loaded, dma will be staretd by cb */
 		// TODO: capture
 		break;
-	case PIPELINE_CMD_DRAIN:
+	case COMP_CMD_DRAIN:
 		dma_drain(hd->dma, hd->chan);
 		break;
-	case PIPELINE_CMD_SUSPEND:
-	case PIPELINE_CMD_RESUME:
+	case COMP_CMD_SUSPEND:
+	case COMP_CMD_RESUME:
 		break;
 	case COMP_CMD_IPC_MMAP_RPOS:
 		hd->host_pos = data;

@@ -273,28 +273,28 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	// TODO: wait on pause/stop/drain completions before SSP ops.
 
 	switch (cmd) {
-	case PIPELINE_CMD_PAUSE:
+	case COMP_CMD_PAUSE:
 		dma_pause(dd->dma, dd->chan);
 		dai_trigger(dd->ssp, cmd, dd->direction);
 		break;
-	case PIPELINE_CMD_STOP:
+	case COMP_CMD_STOP:
 		dma_stop(dd->dma, dd->chan);
 		dai_trigger(dd->ssp, cmd, dd->direction);
 		break;
-	case PIPELINE_CMD_RELEASE:
+	case COMP_CMD_RELEASE:
 		dma_release(dd->dma, dd->chan);
 		dai_trigger(dd->ssp, cmd, dd->direction);
 		break;
-	case PIPELINE_CMD_START:
+	case COMP_CMD_START:
 		dma_start(dd->dma, dd->chan);
 		dai_trigger(dd->ssp, cmd, dd->direction);
 		break;
-	case PIPELINE_CMD_DRAIN:
+	case COMP_CMD_DRAIN:
 		dma_drain(dd->dma, dd->chan);
 		dai_trigger(dd->ssp, cmd, dd->direction);
 		break;
-	case PIPELINE_CMD_SUSPEND:
-	case PIPELINE_CMD_RESUME:
+	case COMP_CMD_SUSPEND:
+	case COMP_CMD_RESUME:
 		break;
 	case COMP_CMD_IPC_MMAP_RPOS:
 		dd->dai_pos = data;

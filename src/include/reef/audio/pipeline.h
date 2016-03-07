@@ -20,29 +20,12 @@
 
 #define trace_pipe(__e)	trace_event(TRACE_CLASS_PIPE, __e)
 
-/* pipeline states */
-#define PIPELINE_STATE_INIT	0	/* pipeline being initialised */
-#define PIPELINE_STATE_STOPPED	1	/* pipeline inactive, but ready */
-#define PIPELINE_STATE_RUNNING	2	/* pipeline active */
-#define PIPELINE_STATE_PAUSED	3	/* pipeline paused */
-#define PIPELINE_STATE_DRAINING	4	/* pipeline draining */
-#define PIPELINE_STATE_SUSPEND	5	/* pipeline suspended */
-
-/* pipeline commands */
-#define PIPELINE_CMD_STOP	0	/* stop pipeline stream */
-#define PIPELINE_CMD_START	1	/* start pipeline stream */
-#define PIPELINE_CMD_PAUSE	2	/* immediately pause the pipeline stream */
-#define PIPELINE_CMD_RELEASE	3	/* release paused pipeline stream */
-#define PIPELINE_CMD_DRAIN	4	/* drain pipeline buffers */
-#define PIPELINE_CMD_SUSPEND	5	/* suspend pipeline */
-#define PIPELINE_CMD_RESUME	6	/* resume pipeline */
-
 /*
  * Audio pipeline.
  */
 struct pipeline {
 	uint16_t id;		/* id */
-	uint16_t state;		/* PIPELINE_STATE_ */ 
+	//uint16_t state;		/* PIPELINE_STATE_ */ 
 	spinlock_t lock;
 
 	/* lists */

@@ -432,6 +432,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 		ret = component_op_sink(&op_data, host);
 	else
 		ret = component_op_source(&op_data, host);
+
 	spin_unlock(&p->lock);
 	return ret;
 }
@@ -517,6 +518,9 @@ void pipeline_do_work(struct pipeline *p)
 		struct comp_dev *ep;
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
+
+		if (ep->state != COMP_STATE_RUNNING)
+			continue;
 
 		if (ep->direction != STREAM_DIRECTION_PLAYBACK)
 			continue;
