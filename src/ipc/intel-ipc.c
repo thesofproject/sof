@@ -286,11 +286,6 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	/* initialise the pipeline */
-	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
-	if (err < 0)
-		goto error;
-
 	/* pass the IPC presentation posn pointer to the DAI */
 	err = comp_cmd(dai_dev->dev.cd, COMP_CMD_IPC_MMAP_PPOS,
 		&_stream_data->presentation_posn);
@@ -655,6 +650,11 @@ static uint32_t ipc_stream_resume(uint32_t header)
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
 	if (pcm_dev == NULL)
+		goto error;
+
+	/* initialise the pipeline, preparing pcm data */
+	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
+	if (err < 0)
 		goto error;
 
 	/* initialise the pipeline */
