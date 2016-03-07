@@ -630,7 +630,7 @@ static uint32_t ipc_stream_pause(uint32_t header)
 		return IPC_INTEL_GLB_REPLY_SUCCESS;
 
 	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-		PIPELINE_CMD_PAUSE, NULL);
+		COMP_CMD_PAUSE, NULL);
 	if (err < 0)
 		goto error;
 	pcm_dev->state = IPC_HOST_PAUSED;
@@ -659,7 +659,7 @@ static uint32_t ipc_stream_resume(uint32_t header)
 
 	/* initialise the pipeline */
 	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-			PIPELINE_CMD_START, NULL);
+			COMP_CMD_START, NULL);
 	if (err < 0)
 		goto error;
 

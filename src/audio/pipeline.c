@@ -98,7 +98,7 @@ struct pipeline *pipeline_new(uint16_t id)
 
 	spin_lock(&pipe_data->lock);
 	p->id = id;
-	p->state = PIPELINE_STATE_INIT;
+	//p->state = PIPELINE_STATE_INIT;
 	list_init(&p->comp_list);
 	list_init(&p->host_ep_list);
 	list_init(&p->dai_ep_list);

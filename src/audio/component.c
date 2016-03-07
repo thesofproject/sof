@@ -30,7 +30,7 @@ static void comp_init(struct comp_dev *dev, uint32_t id,
 	dev->id = id;
 	dev->drv = drv;
 	dev->direction = direction;
-	dev->state = COMP_STATE_UNAVAIL;
+	dev->state = COMP_STATE_INIT;
 	spinlock_init(&dev->lock);
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);

@@ -289,6 +289,12 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
 		break;
+	case COMP_CMD_START:
+		dev->state = COMP_STATE_RUNNING;
+		break;
+	case COMP_CMD_STOP:
+		dev->state = COMP_STATE_STOPPED;
+		break;
 	default:
 		break;
 	}

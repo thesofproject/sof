@@ -335,6 +335,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_STOP:
 		dma_stop(hd->dma, hd->chan);
+		dev->state = COMP_STATE_STOPPED;
 		break;
 	case COMP_CMD_RELEASE:
 		dma_release(hd->dma, hd->chan);
@@ -342,6 +343,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_START:
 		/* already pre-loaded, dma will be staretd by cb */
 		// TODO: capture
+		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_DRAIN:
 		dma_drain(hd->dma, hd->chan);
