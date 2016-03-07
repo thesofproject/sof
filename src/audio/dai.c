@@ -48,13 +48,13 @@ static void dai_dma_cb(void *data, uint32_t type)
 	dma_status(dd->dma, dd->chan, &status, dd->direction);
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
-		dma_buffer = list_first_entry(&dev->bsink_list,
-			struct comp_buffer, source_list);
-		dma_buffer->r_ptr = (void*)status.position;
-	} else {
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
-		dma_buffer->w_ptr = (void*)status.position;
+		dma_buffer->r_ptr = (void*)status.r_pos;
+	} else {
+		dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		dma_buffer->w_ptr = (void*)status.w_pos;
 	}
 
 	// TODO: update presentation position for host
@@ -242,6 +242,19 @@ static int dai_params(struct comp_dev *dev,
 static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct comp_buffer *dma_buffer;
+
+	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
+		dma_buffer = list_first_entry(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+		dma_buffer->r_ptr = dma_buffer->addr;
+		dma_buffer->w_ptr = dma_buffer->addr;
+	} else {
+		dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		dma_buffer->r_ptr = dma_buffer->addr;
+		dma_buffer->w_ptr = dma_buffer->addr;
+	}
 
 	if (dd->dai_pos != NULL)
 		dd->dai_pos = 0;

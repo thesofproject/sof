@@ -95,14 +95,19 @@ static void host_dma_cb(void *data, uint32_t type)
 	/* update local buffer position */
 	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
 
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
-		hd->dma_buffer->w_ptr = (void*)status.position;
-	else
-		hd->dma_buffer->r_ptr = (void*)status.position;
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+		hd->dma_buffer->w_ptr = (void*)status.w_pos;
 
-	/* update host position for drivers */
-	if (hd->host_pos)
-		*hd->host_pos = status.position;
+		/* update host position for drivers */
+		if (hd->host_pos)
+			*hd->host_pos = status.r_pos;
+	} else {
+		hd->dma_buffer->r_ptr = (void*)status.r_pos;
+
+		/* update host position for drivers */
+		if (hd->host_pos)
+			*hd->host_pos = status.w_pos;
+	}
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);
@@ -308,7 +313,20 @@ static int host_preload(struct comp_dev *dev, int count)
 static int host_prepare(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct comp_buffer *dma_buffer;
 	int ret = 0;
+
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+		dma_buffer = list_first_entry(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+		dma_buffer->r_ptr = dma_buffer->addr;
+		dma_buffer->w_ptr = dma_buffer->addr;
+	} else {
+		dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		dma_buffer->r_ptr = dma_buffer->addr;
+		dma_buffer->w_ptr = dma_buffer->addr;
+	}
 
 	/* preload PCM data */
 	/* TODO: determine how much pre-loading we can do */
@@ -425,7 +443,7 @@ static int host_copy(struct comp_dev *dev)
 		size = hd->dma_buffer->free;
 	else
 		size = hd->dma_buffer->avail;
-
+dbg_val_at(size, 10);
 	if (size > hd->period->size) {
 		/* do DMA transfer */
 		wait_init(&hd->complete);

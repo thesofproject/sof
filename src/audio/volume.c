@@ -307,20 +307,45 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
+	int source_frames, sink_frames, cframes, frames_remaining = COPY_FRAMES;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
 
-	/* copy and scale volume */
-	cd->scale_vol(dev, sink, source, COPY_FRAMES);
+	while (frames_remaining) {
 
-	/* update buffer pointers for overflow */
-	if (source->r_ptr >= source->addr + source->desc.size)
-		source->r_ptr = source->addr;
-	if (sink->w_ptr >= sink->addr + sink->desc.size)
-		sink->w_ptr = sink->addr;
+		/* check source for overflow */
+		if (source->r_ptr + COPY_FRAMES > source->end_addr)
+			source_frames = source->end_addr - source->r_ptr;
+		else
+			source_frames = COPY_FRAMES;
 
+		/* check sink for overflow */
+		if (sink->w_ptr + COPY_FRAMES > sink->end_addr)
+			sink_frames = sink->end_addr - sink->w_ptr;
+		else
+			sink_frames = COPY_FRAMES;
+
+		/* choose minimum to avoid copy overflow */
+		if (sink_frames > source_frames)
+			cframes = source_frames;
+		else
+			cframes = sink_frames;
+
+		/* copy and scale volume */
+		cd->scale_vol(dev, sink, source, cframes);
+
+		/* update buffer pointers for overflow */
+		if (source->r_ptr >= source->end_addr)
+			source->r_ptr = source->addr;
+		if (sink->w_ptr >= sink->end_addr)
+			sink->w_ptr = sink->addr;
+
+		frames_remaining -= cframes;
+	}
+
+	/* calc new free and available */
 	comp_update_buffer(sink);
 	comp_update_buffer(source);
 
@@ -332,9 +357,22 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
+//	struct comp_buffer *dma_buffer;
 	uint32_t frame_bytes = 4 * COPY_FRAMES; // TODO: fix
 	int i;
-
+#if 0
+	if (cd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+		dma_buffer = list_first_entry(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+		dma_buffer->r_ptr = dma_buffer->addr;
+		dma_buffer->w_ptr = dma_buffer->addr;
+	} else {
+		dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		dma_buffer->r_ptr = dma_buffer->addr;
+		dma_buffer->w_ptr = dma_buffer->addr;
+	}
+#endif
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
@@ -348,12 +386,22 @@ static int volume_prepare(struct comp_dev *dev)
 			continue;
 
 		cd->scale_vol = func_map[i].func;
-		return 0;
+		goto found;
 	}
 
+	return -EINVAL;
+
+found:
 	/* copy avail data from source for playback */
-	while (source->avail >= frame_bytes && sink->free >= frame_bytes)
+dbg_val_at(0xceed, 2);
+dbg_val_at(frame_bytes, 2);
+	while (source->avail >= frame_bytes && sink->free >= frame_bytes) {
+dbg_val_at(source->avail, 0);
+dbg_val_at(sink->free, 0);
 		volume_copy(dev);
+dbg_val_at(source->avail, 1);
+dbg_val_at(sink->free, 1);
+	}
 
 	return 0;
 }

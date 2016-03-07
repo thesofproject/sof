@@ -53,7 +53,8 @@ struct dma_sg_config {
 struct dma_chan_status {
 	uint16_t state;
 	uint16_t flags;
-	uint32_t position;
+	uint32_t w_pos;
+	uint32_t r_pos;
 	uint32_t timestamp;
 };
 

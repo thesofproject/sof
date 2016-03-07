@@ -175,8 +175,8 @@ struct comp_buffer {
 	uint32_t id;		/* runtime ID of buffer */
 	uint8_t connected;	/* connected in path */
 	uint8_t reserved[3];	/* reserved */
-	uint32_t avail;		/* available bytes between R and W ptrs */
-	uint32_t free;		/* free bytes between R and W ptrs */
+	uint32_t avail;		/* available bytes for reading */
+	uint32_t free;		/* free bytes for writting */
 	void *w_ptr;		/* buffer write pointer */
 	void *r_ptr;		/* buffer read position */
 	void *addr;		/* buffer base address */
@@ -272,11 +272,13 @@ void sys_comp_volume_init(void);
 
 static inline void comp_update_buffer(struct comp_buffer *buffer)
 {
+dbg_val_at((uint32_t)buffer->r_ptr, 20);
+dbg_val_at((uint32_t)buffer->w_ptr, 21);
 	if (buffer->r_ptr <= buffer->w_ptr)
 		buffer->avail = buffer->w_ptr - buffer->r_ptr;
 	else
-		buffer->avail = buffer->end_addr - buffer->w_ptr +
-			buffer->r_ptr - buffer->addr;
+		buffer->avail = buffer->end_addr - buffer->r_ptr +
+			buffer->w_ptr - buffer->addr;
 	buffer->free = buffer->desc.size - buffer->avail;
 }
 

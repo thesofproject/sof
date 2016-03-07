@@ -398,28 +398,8 @@ static int dw_dma_status(struct dma *dma, int channel,
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
 	status->state = p->chan[channel].status;
-
-	switch (p->chan[channel].direction) {
-	case DMA_DIR_MEM_TO_MEM:
-		/* used for host <-> DSP transfers */
-		if (direction == STREAM_DIRECTION_PLAYBACK)
-			status->position = dw_read(dma, DW_DAR(channel));
-		else
-			status->position = dw_read(dma, DW_SAR(channel));
-
-		break;
-	case DMA_DIR_MEM_TO_DEV:
-		status->position = dw_read(dma, DW_SAR(channel));
-		break;
-	case DMA_DIR_DEV_TO_MEM:
-		status->position = dw_read(dma, DW_DAR(channel));
-		break;
-	case DMA_DIR_DEV_TO_DEV:
-	default:
-		status->position = 0;
-		break;
-	}
-
+	status->r_pos = dw_read(dma, DW_SAR(channel));
+	status->w_pos = dw_read(dma, DW_DAR(channel));
 	status->timestamp = timer_get_system();
 
 	return 0;

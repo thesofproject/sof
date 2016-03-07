@@ -297,7 +297,7 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
-
+		dbg_val_at(0xbeef, 0);
 		return -EINVAL;
 	}
 
@@ -365,6 +365,7 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
+		dbg_val_at(0xdead, 0);
 		return -EINVAL;
 	}
 
@@ -495,7 +496,7 @@ void pipeline_do_work(struct pipeline *p)
 	struct list_head *elist;
 	struct op_data op_data;
 
-	trace_pipe("PWs");
+//	trace_pipe("PWs");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
@@ -529,7 +530,7 @@ void pipeline_do_work(struct pipeline *p)
 		component_op_source(&op_data, ep);
 	}
 
-	trace_pipe("PWe");
+//	trace_pipe("PWe");
 }
 
 /* init pipeline */
