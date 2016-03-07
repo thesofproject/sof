@@ -106,7 +106,7 @@ static struct spipe_link pipe_play0[] = {
 
 
 static struct spipe_link pipe_capture0[] = {
-	{&ssp_p, &dev_buf_c, &volume_c},
+	{&ssp_c, &dev_buf_c, &volume_c},
 	{&volume_c, &host_buf_c, &host_c},
 };
 
