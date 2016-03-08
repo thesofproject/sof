@@ -273,7 +273,7 @@ void sys_comp_volume_init(void);
 static inline void comp_update_buffer(struct comp_buffer *buffer)
 {
 	if (buffer->r_ptr <= buffer->w_ptr)
-		buffer->avail = buffer->r_ptr - buffer->w_ptr;
+		buffer->avail = buffer->w_ptr - buffer->r_ptr;
 	else
 		buffer->avail = buffer->end_addr - buffer->w_ptr +
 			buffer->r_ptr - buffer->addr;
