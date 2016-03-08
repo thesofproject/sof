@@ -403,9 +403,9 @@ static int dw_dma_status(struct dma *dma, int channel,
 	case DMA_DIR_MEM_TO_MEM:
 		/* used for host <-> DSP transfers */
 		if (direction == STREAM_DIRECTION_PLAYBACK)
-			status->position = dw_read(dma, DW_SAR(channel));
-		else
 			status->position = dw_read(dma, DW_DAR(channel));
+		else
+			status->position = dw_read(dma, DW_SAR(channel));
 
 		break;
 	case DMA_DIR_MEM_TO_DEV:
