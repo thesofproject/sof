@@ -313,12 +313,12 @@ static int volume_copy(struct comp_dev *dev)
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* copy and scale volume */
-	cd->scale_vol(dev, source, sink, COPY_FRAMES);
+	cd->scale_vol(dev, sink, source, COPY_FRAMES);
 
 	/* update buffer pointers for overflow */
 	if (source->r_ptr >= source->addr + source->desc.size)
 		source->r_ptr = source->addr;
-	if (sink->w_ptr >= source->addr + sink->desc.size)
+	if (sink->w_ptr >= sink->addr + sink->desc.size)
 		sink->w_ptr = sink->addr;
 
 	comp_update_buffer(sink);
