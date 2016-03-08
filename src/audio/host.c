@@ -84,11 +84,11 @@ static void host_dma_cb(void *data, uint32_t type)
 
 	/* update sink buffer elem and check for overflow */
 	local_elem->dest += hd->period->size;
-	if (local_elem->src >= hd->sink->current_end) {
+	if (local_elem->dest >= hd->sink->current_end) {
 
 		/* move onto next host side elem */
 		sink_elem = next_buffer(hd->sink);
-		hd->sink->current_end = sink_elem->src + sink_elem->size;
+		hd->sink->current_end = sink_elem->dest + sink_elem->size;
 		local_elem->dest = sink_elem->dest;
 	}
 
