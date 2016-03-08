@@ -52,6 +52,12 @@ static inline void list_del(struct list_head *entry)
 	entry->prev->next = entry->next;
 }
 
+static inline int list_is_last(struct list_head *list,
+				struct list_head *head)
+{
+	return list->next == head;
+}
+
 #define list_entry_offset(pos, type, offset) \
 	((type *)((char *)(pos) - (offset)))
 
@@ -60,6 +66,9 @@ static inline void list_del(struct list_head *entry)
 
 #define list_first_entry(pos, type, member) \
 	list_entry_offset((pos)->next, type, offsetof(type, member))
+
+#define list_next_entry(pos, member) \
+	list_entry((pos)->member.next, typeof(*(pos)), member)
 
 #define list_for_each(pos, list) \
 	for (pos = (list)->next; pos != (list); pos = pos->next)

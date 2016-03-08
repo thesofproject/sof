@@ -95,7 +95,7 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 		goto error;
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, dai_dma_cb, dev);
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK, dai_dma_cb, dev);
 
 	return dev;
 
@@ -248,7 +248,6 @@ static int dai_prepare(struct comp_dev *dev)
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = dma_buffer->addr;
-		dma_buffer->w_ptr = dma_buffer->addr;
 	} else {
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);

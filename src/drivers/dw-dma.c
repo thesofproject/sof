@@ -146,6 +146,7 @@ struct dma_chan_data {
 
 	void (*cb)(void *data, uint32_t type);	/* client callback function */
 	void *cb_data;		/* client callback data */
+	int cb_type;		/* callback type */
 };
 
 /* private data for DW DMA engine */
@@ -530,7 +531,7 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static void dw_dma_set_cb(struct dma *dma, int channel,
+static void dw_dma_set_cb(struct dma *dma, int channel, int type,
 		void (*cb)(void *data, uint32_t type), void *data)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -538,6 +539,7 @@ static void dw_dma_set_cb(struct dma *dma, int channel,
 	spin_lock_local_irq(&dma->lock, dma_irq(dma));
 	p->chan[channel].cb = cb;
 	p->chan[channel].cb_data = data;
+	p->chan[channel].cb_type = type;
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
 }
 
@@ -571,14 +573,16 @@ static void dw_dma_irq_handler(void *data)
 		mask = 0x1 << i;
 
 		/* end of a transfer */
-		if (status_tfr & mask)
+		if (status_tfr & mask &&
+			p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST);
 
-		/* TODO: end of a block */
-		//if (status_block & mask)
-		//	p->chan[i].cb(p->chan[i].cb_data,
-		//			DMA_IRQ_TYPE_BLOCK);
+		/* end of a block */
+		if (status_block & mask &&
+			p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK)
+			p->chan[i].cb(p->chan[i].cb_data,
+					DMA_IRQ_TYPE_BLOCK);
 	}
 
 	dw_write(dma, DW_CLEAR_BLOCK, status_block);

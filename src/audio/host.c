@@ -55,9 +55,12 @@ static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
 	struct dma_sg_elem *elem;
 
-	elem = list_first_entry(hc->current, struct dma_sg_elem, list);
-	hc->current = &elem->list;
+	if (list_is_last(hc->current, &hc->elem_list))
+		elem = list_first_entry(&hc->elem_list, struct dma_sg_elem, list);
+	else
+		elem = list_first_entry(hc->current, struct dma_sg_elem, list);
 
+	hc->current = &elem->list;
 	return elem;
 }
 
@@ -158,7 +161,7 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 		goto error;
 
 	/* set up callback */
-	dma_set_cb(hd->dma, hd->chan, host_dma_cb, dev);
+	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST, host_dma_cb, dev);
 
 	return dev;
 

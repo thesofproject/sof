@@ -144,7 +144,7 @@ static int get_page_desciptors(struct intel_ipc_data *iipc,
 		goto out;
 
 	/* set up callback */
-	dma_set_cb(dma, chan, dma_complete, iipc);
+	dma_set_cb(dma, chan, DMA_IRQ_TYPE_LLIST, dma_complete, iipc);
 
 	wait_init(&iipc->complete);
 

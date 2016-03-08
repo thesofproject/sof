@@ -27,8 +27,8 @@
 #define DMA_STATUS_PAUSED	6
 
 /* DMA IRQ types */
-#define DMA_IRQ_TYPE_BLOCK	0
-#define DMA_IRQ_TYPE_LLIST	1
+#define DMA_IRQ_TYPE_BLOCK	(1 << 0)
+#define DMA_IRQ_TYPE_LLIST	(1 << 1)
 
 struct dma;
 
@@ -75,7 +75,7 @@ struct dma_ops {
 	int (*set_config)(struct dma *dma, int channel,
 		struct dma_sg_config *config);
 
-	void (*set_cb)(struct dma *dma, int channel,
+	void (*set_cb)(struct dma *dma, int channel, int type,
 		void (*cb)(void *data, uint32_t type), void *data);
 	
 	int (*pm_context_restore)(struct dma *dma);
@@ -132,10 +132,10 @@ static inline void dma_channel_put(struct dma *dma, int channel)
 	dma->ops->channel_put(dma, channel);
 }
 
-static inline void dma_set_cb(struct dma *dma, int channel,
+static inline void dma_set_cb(struct dma *dma, int channel, int type,
 	void (*cb)(void *data, uint32_t type), void *data)
 {
-	dma->ops->set_cb(dma, channel, cb, data);
+	dma->ops->set_cb(dma, channel, type, cb, data);
 }
 
 static inline int dma_start(struct dma *dma, int channel)
