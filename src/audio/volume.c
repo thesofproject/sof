@@ -309,8 +309,8 @@ static int volume_copy(struct comp_dev *dev)
 	struct comp_buffer *sink, *source;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
-	source = list_entry(&dev->bsource_list, struct comp_buffer, sink_list);
-	sink = list_entry(&dev->bsink_list, struct comp_buffer, source_list);
+	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
+	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* copy and scale volume */
 	cd->scale_vol(dev, source, sink, COPY_FRAMES);
