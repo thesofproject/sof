@@ -355,7 +355,7 @@ static int volume_prepare(struct comp_dev *dev)
 	while (source->avail >= frame_bytes && sink->free >= frame_bytes)
 		volume_copy(dev);
 
-	return -EINVAL;
+	return 0;
 }
 
 static int volume_reset(struct comp_dev *dev)
