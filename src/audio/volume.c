@@ -312,6 +312,8 @@ static int volume_copy(struct comp_dev *dev)
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
+	if (source->avail < COPY_FRAMES * 4 || sink->free < COPY_FRAMES * 4)
+		return 0;
 
 	while (frames_remaining) {
 
@@ -357,22 +359,9 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-//	struct comp_buffer *dma_buffer;
 	uint32_t frame_bytes = 4 * COPY_FRAMES; // TODO: fix
 	int i;
-#if 0
-	if (cd->params.direction == STREAM_DIRECTION_PLAYBACK) {
-		dma_buffer = list_first_entry(&dev->bsource_list,
-			struct comp_buffer, sink_list);
-		dma_buffer->r_ptr = dma_buffer->addr;
-		dma_buffer->w_ptr = dma_buffer->addr;
-	} else {
-		dma_buffer = list_first_entry(&dev->bsink_list,
-			struct comp_buffer, source_list);
-		dma_buffer->r_ptr = dma_buffer->addr;
-		dma_buffer->w_ptr = dma_buffer->addr;
-	}
-#endif
+
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
