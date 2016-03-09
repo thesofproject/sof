@@ -486,7 +486,7 @@ struct ipc_intel_audio_data_format_ipc {
 	uint32_t style;
 	uint8_t ch_num;
 	uint8_t valid_bit;
-	uint8_t reserved[2];
+	uint16_t period_pages;
 } __attribute__((packed));
 
 /* Stream Allocate Request */
