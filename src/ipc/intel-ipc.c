@@ -799,6 +799,28 @@ int ipc_process_msg_queue(void)
 	return 0;
 }
 
+/* Send stream command */
+int ipc_stream_send_notification(int stream_id)
+{
+	uint32_t header;
+	struct ipc_intel_ipc_stream_get_position msg;
+
+	msg.position = 100;/* this position looks not used in driver, it only care the pos registers */
+	msg.fw_cycle_count = 0;
+	mailbox_outbox_write(0, &msg, sizeof(msg));
+
+	header = IPC_INTEL_GLB_TYPE(IPC_INTEL_GLB_STREAM_MESSAGE) |
+		IPC_INTEL_STR_TYPE(IPC_INTEL_STR_NOTIFICATION) |
+		IPC_INTEL_STG_TYPE(IPC_POSITION_CHANGED) |
+		IPC_INTEL_STR_ID(stream_id);
+
+	/* now interrupt host to tell it we have message sent */
+	shim_write(SHIM_IPCDL, header);
+	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
+
+	return 0;
+}
+
 int ipc_send_msg(struct ipc_msg *msg)
 {
 

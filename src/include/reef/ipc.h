@@ -109,6 +109,7 @@ struct ipc_comp_dev *ipc_get_comp(uint32_t id);
 
 int ipc_process_msg_queue(void);
 
+int ipc_stream_send_notification(int stream_id);
 int ipc_send_msg(struct ipc_msg *msg);
 int ipc_send_short_msg(uint32_t msg);
 

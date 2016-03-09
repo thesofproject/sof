@@ -16,6 +16,7 @@
 #include <reef/alloc.h>
 #include <reef/trace.h>
 #include <reef/dma.h>
+#include <reef/ipc.h>
 #include <reef/wait.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
@@ -98,19 +99,26 @@ static void host_dma_cb(void *data, uint32_t type)
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
 		hd->dma_buffer->w_ptr = (void*)status.w_pos;
 
-		/* update host position for drivers */
+		/* update host position(in bytes offset) for drivers */
 		if (hd->host_pos)
-			*hd->host_pos = status.r_pos;
+			*hd->host_pos = hd->dma_buffer->w_ptr - hd->dma_buffer->addr;
 	} else {
 		hd->dma_buffer->r_ptr = (void*)status.r_pos;
 
-		/* update host position for drivers */
+		/* update host position(in bytes offset) for drivers */
 		if (hd->host_pos)
+			*hd->host_pos = hd->dma_buffer->r_ptr - hd->dma_buffer->addr;
 			*hd->host_pos = status.w_pos;
 	}
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);
+
+	/* send IPC message to driver if needed */
+	if (hd->dma_buffer->free >=
+		hd->params.period_frames * hd->params.frame_size) {
+		ipc_stream_send_notification(dev->id);
+	}
 
 	/* let any waiters know we have completed */
 	wait_completed(&hd->complete);
