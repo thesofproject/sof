@@ -135,7 +135,8 @@ static int get_page_desciptors(struct intel_ipc_data *iipc,
 	elem.src = ring->ring_pt_address;
 
 	/* source buffer size is always PAGE_SIZE bytes */
-	elem.size = ring->num_pages * 4; /* 20 bits for each page, round up to 32 */
+	/* 20 bits for each page, round up to 32 */
+	elem.size = (ring->num_pages * 5 * 16 + 31) / 32;
 	list_add(&elem.list, &config.elem_list);
 
 	ret = dma_set_config(dma, chan, &config);
