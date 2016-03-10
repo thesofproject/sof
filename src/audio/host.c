@@ -42,7 +42,8 @@ struct host_data {
 	struct hc_buf host;
 	struct hc_buf local;
 	uint32_t host_size;
-	volatile uint32_t *host_pos;
+	volatile uint32_t *host_pos;	/* points to mailbox */
+	uint32_t host_pos_blks;		/* position in bytes (nearest block) */
 
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
@@ -76,6 +77,11 @@ static void host_dma_cb(void *data, uint32_t type)
 	local_elem = list_first_entry(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
+	/* update host buffer position to nearest block */
+	hd->host_pos_blks += local_elem->size;
+	if (hd->host_pos_blks >= hd->host_size)
+		hd->host_pos_blks = 0;
+
 	/* update source buffer elem and check for overflow */
 	local_elem->src += hd->period->size;
 	if (local_elem->src >= hd->source->current_end) {
@@ -102,16 +108,25 @@ static void host_dma_cb(void *data, uint32_t type)
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
 		hd->dma_buffer->w_ptr = (void*)status.w_pos;
 
-		/* update host position(in bytes offset) for drivers */
-		if (hd->host_pos)
-			*hd->host_pos = hd->dma_buffer->w_ptr - hd->dma_buffer->addr;
-	} else {
-		hd->dma_buffer->r_ptr = (void*)status.r_pos;
+		/* check for end of buffer */
+		if (hd->dma_buffer->w_ptr >= hd->dma_buffer->end_addr)
+			hd->dma_buffer->w_ptr = hd->dma_buffer->addr;
 
 		/* update host position(in bytes offset) for drivers */
 		if (hd->host_pos)
-			*hd->host_pos = hd->dma_buffer->r_ptr - hd->dma_buffer->addr;
-			*hd->host_pos = status.w_pos;
+			*hd->host_pos = hd->host_pos_blks +
+				hd->dma_buffer->w_ptr - hd->dma_buffer->addr;
+	} else {
+		hd->dma_buffer->r_ptr = (void*)status.r_pos;
+
+		/* check for end of buffer */
+		if (hd->dma_buffer->r_ptr >= hd->dma_buffer->end_addr)
+			hd->dma_buffer->r_ptr = hd->dma_buffer->addr;
+
+		/* update host position(in bytes offset) for drivers */
+		if (hd->host_pos)
+			*hd->host_pos = hd->host_pos_blks +
+				hd->dma_buffer->r_ptr - hd->dma_buffer->addr;
 	}
 
 	/* recalc available buffer space */
@@ -348,6 +363,7 @@ static int host_prepare(struct comp_dev *dev)
 
 	if (hd->host_pos)
 		*hd->host_pos = 0;
+	hd->host_pos_blks = 0;
 
 	return ret;
 }

@@ -51,10 +51,19 @@ static void dai_dma_cb(void *data, uint32_t type)
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = (void*)status.r_pos;
+
+		/* check for end of buffer */
+		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
+			dma_buffer->r_ptr = dma_buffer->addr;
+
 	} else {
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = (void*)status.w_pos;
+
+		/* check for end of buffer */
+		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
+			dma_buffer->w_ptr = dma_buffer->addr;
 	}
 
 	// TODO: update presentation position for host
