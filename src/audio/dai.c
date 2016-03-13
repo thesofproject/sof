@@ -282,6 +282,7 @@ static int dai_reset(struct comp_dev *dev)
 		list_del(&elem->list);
 		rfree(RZONE_MODULE, RMOD_SYS, elem);
 	}
+	dev->state = COMP_STATE_INIT;
 
 	return 0;
 }

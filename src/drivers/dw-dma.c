@@ -565,6 +565,10 @@ static void dw_dma_irq_handler(void *data)
 	status_err = dw_read(dma, DW_STATUS_ERR);
 	dw_write(dma, DW_CLEAR_ERR, status_err);
 
+	/* clear interrupts */
+	dw_write(dma, DW_CLEAR_BLOCK, status_block);
+	dw_write(dma, DW_CLEAR_TFR, status_tfr);
+
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		if (p->chan[i].cb == NULL)
@@ -584,9 +588,6 @@ static void dw_dma_irq_handler(void *data)
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK);
 	}
-
-	dw_write(dma, DW_CLEAR_BLOCK, status_block);
-	dw_write(dma, DW_CLEAR_TFR, status_tfr);
 
 out:
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */

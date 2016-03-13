@@ -44,6 +44,7 @@ struct host_data {
 	uint32_t host_size;
 	volatile uint32_t *host_pos;	/* points to mailbox */
 	uint32_t host_pos_blks;		/* position in bytes (nearest block) */
+	int32_t host_not_count;		/* notify host when < 0 */
 
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
@@ -133,9 +134,11 @@ static void host_dma_cb(void *data, uint32_t type)
 	comp_update_buffer(hd->dma_buffer);
 
 	/* send IPC message to driver if needed */
-	if (hd->dma_buffer->free >=
-		hd->params.period_frames * hd->params.frame_size) {
+	hd->host_not_count -= local_elem->size;
+	if (hd->host_not_count < 0) {
 		ipc_stream_send_notification(dev->id);
+		hd->host_not_count =
+			hd->params.period_frames * hd->params.frame_size;
 	}
 
 	/* let any waiters know we have completed */
@@ -365,6 +368,8 @@ static int host_prepare(struct comp_dev *dev)
 		*hd->host_pos = 0;
 	hd->host_pos_blks = 0;
 
+	hd->host_not_count = hd->params.period_frames * hd->params.frame_size;
+
 	return ret;
 }
 
@@ -417,11 +422,7 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem)
 		return -ENOMEM;
 
 	*e = *elem;
-	
-	/* make sure all elements are the same size */
-	if (hd->host_size != 0 && hd->host_size != e->size)
-		return -EINVAL;
-	hd->host_size = e->size;
+	hd->host_size += e->size;
 
 	list_add_tail(&e->list, &hd->host.elem_list);
 	return 0;
@@ -450,6 +451,7 @@ static int host_reset(struct comp_dev *dev)
 	}
 
 	hd->host_size = 0;
+	dev->state = COMP_STATE_INIT;
 
 	return 0;
 }
@@ -470,7 +472,7 @@ static int host_copy(struct comp_dev *dev)
 		size = hd->dma_buffer->free;
 	else
 		size = hd->dma_buffer->avail;
-dbg_val_at(size, 10);
+
 	if (size > hd->period->size) {
 		/* do DMA transfer */
 		wait_init(&hd->complete);

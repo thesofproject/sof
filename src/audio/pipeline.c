@@ -297,7 +297,6 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
-		dbg_val_at(0xbeef, 0);
 		return -EINVAL;
 	}
 
@@ -365,7 +364,6 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
-		dbg_val_at(0xdead, 0);
 		return -EINVAL;
 	}
 

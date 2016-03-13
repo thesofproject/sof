@@ -131,11 +131,12 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.channels; i++) {
-		for (j = 0; j < frames; j++) {
+	for (i = 0; i < frames; i++) {
+		for (j = 0; j < source->params.channels; j++) {
 			int32_t val = (int32_t)*src;
 			/* TODO: clamp when converting to int16_t */
-			*dest = (int16_t)((val * cd->volume[i]) >> 16);
+			*dest = (int16_t)((val * cd->volume[j]) >> 16);
+
 			dest++;
 			src++;
 		}
@@ -202,6 +203,7 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index,
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	int i;
 
 	dev = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
 	if (dev == NULL)
@@ -216,6 +218,11 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index,
 	comp_set_drvdata(dev, cd);
 	comp_clear_ep(dev);
 	work_init(&cd->volwork, vol_work, dev);
+
+	/* set the default volumes */
+	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
+		cd->volume[i] = 1 << 16;
+	}
 
 	return dev;
 }
@@ -312,20 +319,21 @@ static int volume_copy(struct comp_dev *dev)
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
+
 	if (source->avail < COPY_FRAMES * 4 || sink->free < COPY_FRAMES * 4)
 		return 0;
 
 	while (frames_remaining) {
 
 		/* check source for overflow */
-		if (source->r_ptr + COPY_FRAMES > source->end_addr)
-			source_frames = source->end_addr - source->r_ptr;
+		if (source->r_ptr + COPY_FRAMES * 4 > source->end_addr)
+			source_frames = (source->end_addr - source->r_ptr) >> 2;
 		else
 			source_frames = COPY_FRAMES;
 
 		/* check sink for overflow */
-		if (sink->w_ptr + COPY_FRAMES > sink->end_addr)
-			sink_frames = sink->end_addr - sink->w_ptr;
+		if (sink->w_ptr + COPY_FRAMES * 4 > sink->end_addr)
+			sink_frames = (sink->end_addr - sink->w_ptr) >> 2;
 		else
 			sink_frames = COPY_FRAMES;
 
@@ -382,14 +390,8 @@ static int volume_prepare(struct comp_dev *dev)
 
 found:
 	/* copy avail data from source for playback */
-dbg_val_at(0xceed, 2);
-dbg_val_at(frame_bytes, 2);
 	while (source->avail >= frame_bytes && sink->free >= frame_bytes) {
-dbg_val_at(source->avail, 0);
-dbg_val_at(sink->free, 0);
 		volume_copy(dev);
-dbg_val_at(source->avail, 1);
-dbg_val_at(sink->free, 1);
 	}
 
 	return 0;
@@ -397,6 +399,7 @@ dbg_val_at(sink->free, 1);
 
 static int volume_reset(struct comp_dev *dev)
 {
+	dev->state = COMP_STATE_INIT;
 	return 0;
 }
 
