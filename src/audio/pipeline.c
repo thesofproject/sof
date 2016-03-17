@@ -372,7 +372,7 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 	if (err < 0 || comp->is_host)
 		return err;
 
-	/* now run this operation downstream */
+	/* now run this operation upstream */
 	list_for_each(clist, &comp->bsource_list) {
 		struct comp_buffer *buffer;
 
