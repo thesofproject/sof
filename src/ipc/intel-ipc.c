@@ -594,6 +594,13 @@ static uint32_t ipc_stream_reset(uint32_t header)
 	if (pcm_dev == NULL)
 		goto error; 
 
+	/* send stop TODO: this should be done in trigger */
+	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
+		COMP_CMD_STOP, NULL);
+	if (err < 0)
+		goto error;
+	pcm_dev->state = IPC_HOST_PAUSED; // TODO: fix to stopped
+
 	/* initialise the pipeline */
 	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
 	if (err < 0)
@@ -737,7 +744,7 @@ static void do_cmd(void)
 	uint32_t ipcxh, status;
 	
 	trace_ipc("Cmd");
-	trace_value(_ipc->host_msg);
+	//trace_value(_ipc->host_msg);
 
 	status = ipc_cmd();
 	_ipc->host_pending = 0;

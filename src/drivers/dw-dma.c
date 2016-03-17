@@ -370,7 +370,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
 	}
 
-	p->chan[channel].status = DMA_STATUS_PAUSED;
+	p->chan[channel].status = DMA_STATUS_IDLE;
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
 
 	return 0;
