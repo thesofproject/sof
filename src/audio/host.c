@@ -357,18 +357,18 @@ static int host_prepare(struct comp_dev *dev)
 		dma_buffer->w_ptr = dma_buffer->addr;
 	}
 
+	if (hd->host_pos)
+		*hd->host_pos = 0;
+	hd->host_pos_blks = 0;
+
+	hd->host_not_count = hd->params.period_frames * hd->params.frame_size;
+
 	/* preload PCM data */
 	/* TODO: determine how much pre-loading we can do */
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
 
 		ret = host_preload(dev, hd->period->number - 1);
 	}
-
-	if (hd->host_pos)
-		*hd->host_pos = 0;
-	hd->host_pos_blks = 0;
-
-	hd->host_not_count = hd->params.period_frames * hd->params.frame_size;
 
 	return ret;
 }

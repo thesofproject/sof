@@ -59,7 +59,7 @@ int platform_boot_complete(uint32_t boot_message)
 int platform_init(void)
 {
 	struct dma *dmac0, *dmac1;
-	struct dai *ssp0, *ssp1;
+	struct dai *ssp0, *ssp1, *ssp2;
 
 	/* clear mailbox */
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
@@ -80,6 +80,9 @@ int platform_init(void)
 
 	ssp1 = dai_get(COMP_TYPE_DAI_SSP, 1);
 	dai_probe(ssp1);
+
+	ssp2 = dai_get(COMP_TYPE_DAI_SSP, 2);
+	dai_probe(ssp2);
 
 	return 0;
 }

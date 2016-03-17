@@ -660,6 +660,7 @@ static uint32_t ipc_stream_resume(uint32_t header)
 	if (pcm_dev == NULL)
 		goto error;
 
+	/* TODO: add check if need prepare */
 	/* initialise the pipeline, preparing pcm data */
 	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
 	if (err < 0)
