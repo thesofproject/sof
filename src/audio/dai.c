@@ -93,7 +93,7 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 
 	comp_set_drvdata(dev, dd);
 	comp_set_dai_ep(dev);
-	dd->ssp = dai_get(type, index);
+	dd->ssp = dai_get(type, 2); /* use ssp2 for MB */
 	dd->dma = dma_get(DMA_ID_DMAC1);
 	list_init(&dd->config.elem_list);
 	dd->dai_pos = NULL;
@@ -149,6 +149,7 @@ static int dai_playback_params(struct comp_dev *dev,
 	config->src_width = sizeof(uint32_t);
 	config->dest_width = sizeof(uint32_t);
 	config->cyclic = 1;
+	config->dest_dev = dd->ssp->plat_data.fifo[0].handshake;
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_entry(&dev->bsource_list,
@@ -204,6 +205,7 @@ static int dai_capture_params(struct comp_dev *dev,
 	config->src_width = sizeof(uint32_t);
 	config->dest_width = sizeof(uint32_t);
 	config->cyclic = 1;
+	config->src_dev = dd->ssp->plat_data.fifo[1].handshake;
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_entry(&dev->bsink_list,
