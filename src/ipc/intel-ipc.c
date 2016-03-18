@@ -441,7 +441,7 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&config_req, 0, sizeof(config_req));
 
-	/* get SSP port */
+	/* get SSP port TODO: align ports*/
 	switch (config_req.ssp_interface) {
 	case IPC_INTEL_DEVICE_SSP_0:
 		iipc->dai[0] = 2;
@@ -450,6 +450,15 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	case IPC_INTEL_DEVICE_SSP_1:
 		iipc->dai[0] = 2;
 		iipc->dai[1] = 3;
+		break;
+	case IPC_INTEL_DEVICE_SSP_2:
+		iipc->dai[0] = 2;
+		iipc->dai[1] = 3;
+
+		/* set SSP M/N clock dividers TODO: program this from IPC */
+		shim_write(SHIM_SSP2_DIVL, 0x000061a8); // 1.536MHz
+		shim_write(SHIM_SSP2_DIVH, 0x60000600);
+
 		break;
 	default:
 		goto error;
@@ -465,7 +474,7 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	dai_dev->dai_config.format = DAI_FMT_I2S;
 	dai_dev->dai_config.frame_size = 32;
 	dai_dev->dai_config.bclk_fs = 32;
-	dai_dev->dai_config.mclk_fs = 8;
+	dai_dev->dai_config.mclk_fs = 256;
 
 error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;

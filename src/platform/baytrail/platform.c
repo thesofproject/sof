@@ -84,5 +84,9 @@ int platform_init(void)
 	ssp2 = dai_get(COMP_TYPE_DAI_SSP, 2);
 	dai_probe(ssp2);
 
+	/* set SSP defaults */
+	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
+	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
+
 	return 0;
 }

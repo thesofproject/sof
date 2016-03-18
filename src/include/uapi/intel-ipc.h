@@ -219,6 +219,7 @@ enum ipc_intel_stream_format {
 enum ipc_intel_device_id {
 	IPC_INTEL_DEVICE_SSP_0   = 0,
 	IPC_INTEL_DEVICE_SSP_1   = 1,
+	IPC_INTEL_DEVICE_SSP_2   = 2,
 };
 
 /* Device Master Clock Frequency */

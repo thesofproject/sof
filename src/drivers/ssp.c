@@ -188,6 +188,9 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		return -ENODEV;
 	}
 
+	/* TODO: clock frequency */
+	//scr = dai_config->mclk / (
+
 	/* format */
 	switch (dai->config.format & DAI_FMT_FORMAT_MASK) {
 	case DAI_FMT_I2S:
