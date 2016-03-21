@@ -131,8 +131,8 @@
 #define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
 
 /* CFG_HI */
-#define DW_CFGH_SRC_PER(x)		(x << 7)
-#define DW_CFGH_DST_PER(x)		(x << 11)
+#define DW_CFGH_SRC_PER(x)		(x << 0)
+#define DW_CFGH_DST_PER(x)		(x << 4)
 
 /* data for each DMA channel */
 struct dma_chan_data {
@@ -459,10 +459,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		/* write CTL_LOn for each lli */
 		lli_desc->ctrl_lo |= DW_CTLL_FC(config->direction); /* config the transfer type */
-		lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2); /* config the src/dest tr width */
-		lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2); /* config the src/dest tr width */
-		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(4); /* config the src/dest tr width */
-		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(4); /* config the src/dest tr width */
+		lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2); /* config the src tr width */
+		lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2); /* config the dest tr width */
+		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(4); /* config the src msize length 2^4 */
+		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(4); /* config the dest msize length 2^4 */
 		lli_desc->ctrl_lo |= DW_CTLL_INT_EN; /* enable interrupt */
 
 		/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
@@ -611,7 +611,7 @@ static void dw_dma_setup(struct dma *dma)
 	dw_write(dma, DW_MASK_DST_TRAN, 0x0000ff00);
 	dw_write(dma, DW_MASK_ERR, 0x0000ff00);
 
-	/* allocate FIFO partitions */
+	/* allocate FIFO partitions, 128 bytes for each ch */
 	dw_write(dma, DW_FIFO_PART1_LO, 0x100080);
 	dw_write(dma, DW_FIFO_PART1_HI, 0x100080);
 	dw_write(dma, DW_FIFO_PART0_HI, 0x100080);
