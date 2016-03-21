@@ -297,7 +297,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	source_elem = list_first_entry(&hd->source->elem_list,
 		struct dma_sg_elem, list);
 	hd->source->current = &source_elem->list;
-	hd->source->current_end = source_elem->dest + source_elem->size;
+	hd->source->current_end = source_elem->src + source_elem->size;
 
 	/* setup elem to point to first sink elem */
 	sink_elem = list_first_entry(&hd->sink->elem_list,
@@ -460,7 +460,24 @@ static int host_reset(struct comp_dev *dev)
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_chan_status status;
 	uint32_t size;
+
+	/* update host position(in bytes offset) for drivers */
+	if (hd->host_pos) {
+		/* update local buffer position */
+		dma_status(hd->dma, hd->chan, &status, hd->params.direction);
+
+		if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+		
+			*hd->host_pos = hd->host_pos_blks +
+				status.w_pos - (uint32_t)hd->dma_buffer->addr;
+		} else {
+
+			*hd->host_pos = hd->host_pos_blks +
+				status.r_pos - (uint32_t)hd->dma_buffer->addr;
+		}
+	}
 
 	/* we can only copy new data is previous DMA request has completed */
 	if (!wait_is_completed(&hd->complete))

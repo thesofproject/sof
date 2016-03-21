@@ -33,6 +33,8 @@ struct dai_data {
 	struct dai *ssp;
 	struct dma *dma;
 
+	uint32_t dai_pos_blks;		/* position in bytes (nearest block) */
+
 	volatile uint32_t *dai_pos;
 };
 
@@ -41,6 +43,7 @@ static void dai_dma_cb(void *data, uint32_t type)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct period_desc *dma_period_desc;
 	struct comp_buffer *dma_buffer;
 	struct dma_chan_status status;
 
@@ -51,22 +54,34 @@ static void dai_dma_cb(void *data, uint32_t type)
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = (void*)status.r_pos;
+		dma_period_desc = &dma_buffer->desc.sink_period;
 
 		/* check for end of buffer */
 		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
 			dma_buffer->r_ptr = dma_buffer->addr;
 
+		/* update host position(in bytes offset) for drivers */
+		dd->dai_pos_blks += dma_period_desc->size;
+		if (dd->dai_pos)
+			*dd->dai_pos = dd->dai_pos_blks +
+				dma_buffer->r_ptr - dma_buffer->addr;
+
 	} else {
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = (void*)status.w_pos;
+		dma_period_desc = &dma_buffer->desc.sink_period;
 
 		/* check for end of buffer */
 		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
 			dma_buffer->w_ptr = dma_buffer->addr;
-	}
 
-	// TODO: update presentation position for host
+		/* update host position(in bytes offset) for drivers */
+		dd->dai_pos_blks += dma_period_desc->size;
+		if (dd->dai_pos)
+			*dd->dai_pos = dd->dai_pos_blks +
+				dma_buffer->w_ptr - dma_buffer->addr;
+	}
 
 	/* recalc available buffer space */
 	comp_update_buffer(dma_buffer);
@@ -266,8 +281,9 @@ static int dai_prepare(struct comp_dev *dev)
 		dma_buffer->w_ptr = dma_buffer->addr;
 	}
 
-	if (dd->dai_pos != NULL)
-		dd->dai_pos = 0;
+	dd->dai_pos_blks = 0;
+	if (dd->dai_pos)
+		*dd->dai_pos = 0;
 
 	return dma_set_config(dd->dma, dd->chan, &dd->config);
 }
@@ -322,7 +338,7 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
 		break;
-	case COMP_CMD_IPC_MMAP_RPOS:
+	case COMP_CMD_IPC_MMAP_PPOS:
 		dd->dai_pos = data;
 		break;
 	default:
@@ -335,13 +351,29 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
-	/* nothing todo here since DMA does our copies */
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dma_chan_status status;
+	struct comp_buffer *dma_buffer;
 
-	// TODO clean up.
-	if (dd->dai_pos)
-		*dd->dai_pos += 48 * 4;
+	/* update host position(in bytes offset) for drivers */
+	if (dd->dai_pos) {
+		/* update local buffer position */
+		dma_status(dd->dma, dd->chan, &status, dd->direction);
 
+		if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
+			dma_buffer = list_first_entry(&dev->bsource_list,
+				struct comp_buffer, sink_list);
+		
+			*dd->dai_pos = dd->dai_pos_blks +
+				status.w_pos - (uint32_t)dma_buffer->addr;
+		} else {
+			dma_buffer = list_first_entry(&dev->bsink_list,
+				struct comp_buffer, source_list);
+
+			*dd->dai_pos = dd->dai_pos_blks +
+				status.r_pos - (uint32_t)dma_buffer->addr;
+		}
+	}
 	return 0;
 }
 
