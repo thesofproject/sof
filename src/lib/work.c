@@ -169,7 +169,7 @@ static void queue_get_next_timeout(struct work_queue *queue)
 {
 	struct list_head *wlist;
 	struct work *work;
-	uint32_t delta = MAX_INT, current, d, ticks;//, i = 0;
+	uint32_t delta = MAX_INT, current, d, ticks;
 
 	/* only recalc if work list not empty */
 	if (list_empty(&queue->work)) {
@@ -269,7 +269,7 @@ static void work_notify(int message, void *data, void *event_data)
 		/* CPU frequency update complete */
 		/* scale the window size to clock speed */
 		queue->ticks_per_msec = clock_ms_to_ticks(queue->ts->clk, 1);
-		queue->window_size = queue->ticks_per_msec >> 2;
+		queue->window_size = queue->ticks_per_msec * 2;
 		queue_recalc_timers(queue, clk_data);
 		queue_reschedule(queue);
 		timer_enable(queue->ts->timer);
@@ -348,7 +348,7 @@ struct work_queue *work_new_queue(const struct work_queue_timesource *ts)
 	spinlock_init(&queue->lock);
 	queue->ts = ts;
 	queue->ticks_per_msec = clock_ms_to_ticks(queue->ts->clk, 1);
-	queue->window_size = queue->ticks_per_msec >> 2;
+	queue->window_size = queue->ticks_per_msec * 2;
 
 	/* notification of clk changes */
 	queue->notifier.cb = work_notify;
