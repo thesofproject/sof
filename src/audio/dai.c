@@ -356,7 +356,7 @@ static int dai_copy(struct comp_dev *dev)
 	struct comp_buffer *dma_buffer;
 
 	/* update host position(in bytes offset) for drivers */
-	if (dd->dai_pos) {
+	if (dd->dai_pos && 0) {
 		/* update local buffer position */
 		dma_status(dd->dma, dd->chan, &status, dd->direction);
 
