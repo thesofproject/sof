@@ -131,8 +131,8 @@
 #define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
 
 /* CFG_HI */
-#define DW_CFGH_SRC_PER(x)		(x << 7)
-#define DW_CFGH_DST_PER(x)		(x << 11)
+#define DW_CFGH_SRC_PER(x)		(x << 0)
+#define DW_CFGH_DST_PER(x)		(x << 4)
 
 /* data for each DMA channel */
 struct dma_chan_data {
