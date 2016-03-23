@@ -56,6 +56,16 @@ int platform_boot_complete(uint32_t boot_message)
 	return 0;
 }
 
+/* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
+void platform_interrupt_mask_clear(uint32_t mask)
+{
+	uint32_t pisr;
+
+	pisr = 0;//shim_read(SHIM_PISR);
+	pisr |= mask;
+	shim_write(SHIM_PISR, pisr);
+}
+
 int platform_init(void)
 {
 	struct dma *dmac0, *dmac1;

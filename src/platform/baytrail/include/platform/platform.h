@@ -44,4 +44,6 @@ int platform_boot_complete(uint32_t boot_message);
 
 int platform_init(void);
 
+void platform_interrupt_mask_clear(uint32_t mask);
+
 #endif

@@ -591,10 +591,8 @@ static void dw_dma_irq_handler(void *data)
 
 out:
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
-	// TODO change this to platform clear IRQ
-	//pisr = shim_read(SHIM_PISR);
-	pisr = (dma->plat_data.irq == 13) ? 0x00ff0000 : 0xff000000;
-	shim_write(SHIM_PISR, pisr);
+	mask = (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0) ? 0x00ff0000 : 0xff000000;
+	platform_interrupt_mask_clear(mask);
 
 	interrupt_enable(dma_irq(dma));
 }
