@@ -28,6 +28,7 @@
 
 /* move to config.h */
 #define TRACE	1
+#define TRACEV	0
 
 #if TRACE
 extern uint32_t trace_pos;
@@ -52,6 +53,13 @@ static inline void _trace_event(uint32_t event)
 #define trace_value(x)	_trace_event(x)
 
 #define trace_point(x) platform_trace_point(x)
+
+/* verbose tracing */
+#if TRACEV
+#define tracev_event(__c, __e) trace_event(__c, __e)
+#else
+#define tracev_event(__c, __e)
+#endif
 
 #else
 

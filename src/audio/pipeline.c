@@ -494,7 +494,7 @@ void pipeline_do_work(struct pipeline *p)
 	struct list_head *elist;
 	struct op_data op_data;
 
-//	trace_pipe("PWs");
+	tracev_pipe("PWs");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
@@ -528,7 +528,7 @@ void pipeline_do_work(struct pipeline *p)
 		component_op_source(&op_data, ep);
 	}
 
-//	trace_pipe("PWe");
+	tracev_pipe("PWe");
 }
 
 /* init pipeline */
