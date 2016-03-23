@@ -145,7 +145,8 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	/* clock masters */
 	switch (dai->config.format & DAI_FMT_MASTER_MASK) {
 	case DAI_FMT_CBM_CFM:
-		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR | SSCR1_SCFR;
+		sscr1 &= ~(SSCR1_SCLKDIR | SSCR1_SFRMDIR);
+		sscr1 |= SSCR1_SCFR;
 		break;
 	case DAI_FMT_CBS_CFS:
 		break;

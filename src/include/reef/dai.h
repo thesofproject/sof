@@ -27,7 +27,7 @@
 #define DAI_FMT_IB_NF		(3 << 8) /* invert BCLK + nor FRM */
 #define DAI_FMT_IB_IF		(4 << 8) /* invert BCLK + FRM */
 
-#define DAI_FMT_CBM_CFM		(1 << 12) /* codec clk & FRM master */
+#define DAI_FMT_CBM_CFM		(0 << 12) /* codec clk & FRM master */
 #define DAI_FMT_CBS_CFM		(2 << 12) /* codec clk slave & FRM master */
 #define DAI_FMT_CBM_CFS		(3 << 12) /* codec clk master & frame slave */
 #define DAI_FMT_CBS_CFS		(4 << 12) /* codec clk & FRM slave */
