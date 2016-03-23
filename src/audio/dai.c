@@ -356,7 +356,7 @@ static int dai_copy(struct comp_dev *dev)
 	struct comp_buffer *dma_buffer;
 
 	/* update host position(in bytes offset) for drivers */
-	if (dd->dai_pos && 0) {
+	if (dd->dai_pos) {
 		/* update local buffer position */
 		dma_status(dd->dma, dd->chan, &status, dd->direction);
 
@@ -365,13 +365,13 @@ static int dai_copy(struct comp_dev *dev)
 				struct comp_buffer, sink_list);
 		
 			*dd->dai_pos = dd->dai_pos_blks +
-				status.w_pos - (uint32_t)dma_buffer->addr;
+				status.r_pos - (uint32_t)dma_buffer->addr;
 		} else {
 			dma_buffer = list_first_entry(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
 			*dd->dai_pos = dd->dai_pos_blks +
-				status.r_pos - (uint32_t)dma_buffer->addr;
+				status.w_pos - (uint32_t)dma_buffer->addr;
 		}
 	}
 	return 0;
