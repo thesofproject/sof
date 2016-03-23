@@ -20,7 +20,7 @@
 /* this should ramp from 0dB to mute in 64ms.
  * i.e 2^16 -> 0 in 32 * 2048 steps each lasting 2ms
  */
-#define VOL_RAMP_MS	2
+#define VOL_RAMP_US	2000
 #define VOL_RAMP_STEP	2048
 
 // TODO: make this programmable
@@ -193,7 +193,7 @@ static uint32_t vol_work(void *data)
 
 	/* do we need to continue ramping */
 	if (again)
-		return VOL_RAMP_MS;
+		return VOL_RAMP_US;
 	else
 		return 0;
 }
@@ -280,21 +280,21 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_VOLUME:
 		for (i = 0; i < params->channels; i++)
 			volume_set_chan(dev, i, cv->volume[i]);
-		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
+		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	case COMP_CMD_MUTE:
 		for (i = 0; i < params->channels; i++) {
 			if (cv->volume[i])
 				volume_set_chan_mute(dev, i);
 		}
-		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
+		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	case COMP_CMD_UNMUTE:
 		for (i = 0; i < params->channels; i++) {
 			if (cv->volume[i])
 				volume_set_chan_unmute(dev, i);
 		}
-		work_schedule_default(&cd->volwork, VOL_RAMP_MS);
+		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	case COMP_CMD_START:
 		dev->state = COMP_STATE_RUNNING;

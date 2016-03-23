@@ -37,6 +37,7 @@
 #include <reef/trace.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
+#include <platform/interrupt.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -225,7 +226,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 
 		/* free channel later */
 		p->chan[channel].status = DMA_STATUS_CLOSING;
-		work_schedule_default(&p->work, 1);
+		work_schedule_default(&p->work, 1000);
 		goto out;
 	}
 
@@ -388,7 +389,7 @@ static int dw_dma_drain(struct dma *dma, int channel)
 
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
 	/* FIFO cleanup done by general purpose timer */
-	work_schedule_default(&p->work, 1);
+	work_schedule_default(&p->work, 1000);
 	return 0;
 }
 
@@ -548,7 +549,7 @@ static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t status_tfr, status_block, status_err, status_intr, pisr, mask;
+	uint32_t status_tfr, status_block, status_err, status_intr, mask;
 	int i;
 
 	interrupt_disable(dma_irq(dma));

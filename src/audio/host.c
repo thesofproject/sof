@@ -328,7 +328,7 @@ static int host_preload(struct comp_dev *dev, int count)
 		dma_start(hd->dma, hd->chan);
 
 		/* wait 1 msecs for DMA to finish */
-		hd->complete.timeout = 1;
+		hd->complete.timeout = 1000;
 		ret = wait_for_completion_timeout(&hd->complete);
 
 		if (ret < 0)

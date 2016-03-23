@@ -27,7 +27,7 @@
 
 /* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
 // TODO: align Qemu clock with DSP.
-#define AUDIO_WORK_MSECS	1
+#define AUDIO_WORK_USECS	1000
 
 struct audio_data {
 	struct work audio_work;
@@ -44,7 +44,7 @@ uint32_t work_handler(void *data)
 	pipeline_do_work(pdata->p);
 
 	/* TODO add support to scale clocks/wait time here */
-	return AUDIO_WORK_MSECS;
+	return AUDIO_WORK_USECS;
 }
 
 int do_task(void)
@@ -67,7 +67,7 @@ int do_task(void)
 
 	/* schedule our audio work */
 	work_init((&pdata.audio_work), work_handler, &pdata);
-	work_schedule_default(&pdata.audio_work, AUDIO_WORK_MSECS);
+	work_schedule_default(&pdata.audio_work, AUDIO_WORK_USECS);
 
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);

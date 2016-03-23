@@ -38,11 +38,11 @@ struct work_queue_timesource {
 	(w)->cb_data = xd;
 
 /* schedule/cancel work on work queue */
-void work_schedule(struct work_queue *queue, struct work *w, int timeout);
+void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout);
 void work_cancel(struct work_queue *queue, struct work *work);
 
 /* schedule/cancel work on default system work queue */
-void work_schedule_default(struct work *work, int timeout);
+void work_schedule_default(struct work *work, uint32_t timeout);
 void work_cancel_default(struct work *work);
 
 /* create new work queue */

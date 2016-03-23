@@ -152,7 +152,7 @@ static int get_page_desciptors(struct intel_ipc_data *iipc,
 	dma_start(dma, chan);
 
 	/* wait 2 msecs for DMA to finish */
-	iipc->complete.timeout = 2;
+	iipc->complete.timeout = 2000;
 	ret = wait_for_completion_timeout(&iipc->complete);
 
 	/* compressed page tables now in buffer at _ipc->page_table */
