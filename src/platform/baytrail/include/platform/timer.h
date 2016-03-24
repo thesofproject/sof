@@ -24,6 +24,8 @@
 #define TIMER2		IRQ_NUM_TIMER3
 #define TIMER3		IRQ_NUM_EXT_TIMER
 
+#define TIMER_AUDIO	TIMER3
+
 void platform_timer_set(int timer, uint32_t ticks);
 void platform_timer_clear(int timer);
 uint32_t platform_timer_get(int timer);

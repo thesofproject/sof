@@ -489,7 +489,7 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_dev *host,
 }
 
 /* called on timer tick to process pipeline data */
-void pipeline_do_work(struct pipeline *p)
+void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 {
 	struct list_head *elist;
 	struct op_data op_data;

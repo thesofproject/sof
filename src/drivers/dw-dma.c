@@ -315,7 +315,7 @@ static int dw_dma_pause(struct dma *dma, int channel)
  * IPC to return immediately without blocking the host. This work is called 
  * by the general system timer.
  */
-static uint32_t dw_dma_fifo_work(void *data)
+static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 {
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -631,7 +631,7 @@ static int dw_dma_probe(struct dma *dma)
 	dw_dma_setup(dma);
 
 	/* init work */
-	work_init(&dw_pdata->work, dw_dma_fifo_work, dma);
+	work_init(&dw_pdata->work, dw_dma_fifo_work, dma, WORK_ASYNC);
 
 	/* register our IRQ handler */
 	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);

@@ -155,7 +155,7 @@ static const struct comp_func_map func_map[] = {
 };
 
 /* this ramps volume changes over time */
-static uint32_t vol_work(void *data)
+static uint32_t vol_work(void *data, uint32_t delay)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -217,7 +217,7 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index,
 
 	comp_set_drvdata(dev, cd);
 	comp_clear_ep(dev);
-	work_init(&cd->volwork, vol_work, dev);
+	work_init(&cd->volwork, vol_work, dev, WORK_ASYNC);
 
 	/* set the default volumes */
 	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {

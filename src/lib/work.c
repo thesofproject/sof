@@ -114,13 +114,25 @@ static int is_work_pending(struct work_queue *queue)
 	return pending_count;
 }
 
+static inline void work_next_timeout(struct work_queue *queue,
+	struct work *work, uint32_t reschedule_usecs)
+{
+	/* reschedule work */
+	if (work->flags & WORK_SYNC) {
+		work->timeout += queue->ticks_per_usec * reschedule_usecs;
+	} else {
+		/* calc next run based on work request */
+		work->timeout = queue->ticks_per_usec *
+			reschedule_usecs + queue->run_ticks;
+	}
+}
+
 /* run all pending work */
 static void run_work(struct work_queue *queue)
 {
 	struct list_head *wlist, *tlist;
 	struct work *work;
-	uint32_t reschedule_msecs;
-	uint32_t current;
+	uint32_t reschedule_usecs, current, udelay;
 
 	/* check each work item in queue for pending */
 	list_for_each_safe(wlist, tlist, &queue->work) {
@@ -129,22 +141,23 @@ static void run_work(struct work_queue *queue)
 
 		/* run work if its pending and remove from the queue */
 		if (work->pending) {
-			reschedule_msecs = work->cb(work->cb_data);
+
+			udelay = (work_get_timer(queue) - work->timeout) *
+				queue->ticks_per_usec;
+			reschedule_usecs = work->cb(work->cb_data, udelay);
 
 			/* do we need reschedule this work ? */
-			if (reschedule_msecs == 0)
+			if (reschedule_usecs == 0)
 				list_del(&work->list);
 			else {
-				/* calc next run based on work request */
-				work->timeout = queue->ticks_per_usec *
-					reschedule_msecs + queue->run_ticks;
+				/* get next work timeout */	
+				work_next_timeout(queue, work, reschedule_usecs);
 
 				/* did work take too long ? */
 				current = work_get_timer(queue);
 				if (work->timeout <= current) {
 					/* TODO: inform users */
-					work->timeout = queue->ticks_per_usec *
-						reschedule_msecs + current;
+					work->timeout = current;
 				}
 			}
 		}

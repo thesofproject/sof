@@ -24,7 +24,7 @@ typedef struct {
 
 void wait_for_interrupt(int level);
 
-static uint32_t _wait_cb(void *data)
+static uint32_t _wait_cb(void *data, uint32_t delay)
 {
 	volatile completion_t *wc = (volatile completion_t*)data;
 
@@ -51,7 +51,7 @@ static inline void wait_init(completion_t *comp)
 	volatile completion_t *c = (volatile completion_t *)comp;
 
 	c->complete = 0;
-	work_init(&comp->work, _wait_cb, comp);
+	work_init(&comp->work, _wait_cb, comp, WORK_ASYNC);
 }
 
 /* simple interrupt based wait for completion */

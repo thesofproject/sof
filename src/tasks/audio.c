@@ -36,12 +36,12 @@ struct audio_data {
 };
 
 /* TODO only run this work when we have active audio pipelines */
-uint32_t work_handler(void *data)
+uint32_t work_handler(void *data, uint32_t udelay)
 {
 	struct audio_data *pdata = (struct audio_data*)data;
 
 	/* process our audio pipelines */
-	pipeline_do_work(pdata->p);
+	pipeline_do_work(pdata->p, udelay);
 
 	/* TODO add support to scale clocks/wait time here */
 	return AUDIO_WORK_USECS;
@@ -66,7 +66,7 @@ int do_task(void)
 		panic(PANIC_TASK);
 
 	/* schedule our audio work */
-	work_init((&pdata.audio_work), work_handler, &pdata);
+	work_init((&pdata.audio_work), work_handler, &pdata, WORK_SYNC);
 	work_schedule_default(&pdata.audio_work, AUDIO_WORK_USECS);
 
 	/* let host know DSP boot is complete */

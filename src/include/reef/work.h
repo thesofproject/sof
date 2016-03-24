@@ -17,12 +17,17 @@
 
 struct work_queue;
 
+/* flags */
+#define WORK_ASYNC	(0 << 0)	/* default - work is scheduled asynchronously */
+#define WORK_SYNC	(1 << 0)	/* work is scheduled synchronously */
+
 struct work {
-	uint32_t (*cb)(void*);	/* returns reschedule timeout in msecs */
+	uint32_t (*cb)(void*, uint32_t udelay);	/* returns reschedule timeout in msecs */
 	void *cb_data;
 	struct list_head list;
 	uint32_t timeout;
 	uint32_t pending;
+	uint32_t flags;
 };
 
 struct work_queue_timesource {
@@ -33,9 +38,10 @@ struct work_queue_timesource {
 	uint32_t (*timer_get)(int timer);
 };
 
-#define work_init(w, x, xd) \
+#define work_init(w, x, xd, xflags) \
 	(w)->cb = x; \
-	(w)->cb_data = xd;
+	(w)->cb_data = xd; \
+	(w)->flags = xflags;
 
 /* schedule/cancel work on work queue */
 void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout);

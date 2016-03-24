@@ -89,6 +89,6 @@ struct pipeline *init_static_pipeline(void);
 int init_pipeline(void);
 
 /* pipeline work */
-void pipeline_do_work(struct pipeline *p);
+void pipeline_do_work(struct pipeline *p, uint32_t udelay);
 
 #endif
