@@ -15,16 +15,15 @@
 #include <reef/stream.h>
 #include <reef/alloc.h>
 #include <reef/work.h>
+#include <reef/clock.h>
 #include <reef/audio/component.h>
+#include <reef/audio/pipeline.h>
 
 /* this should ramp from 0dB to mute in 64ms.
  * i.e 2^16 -> 0 in 32 * 2048 steps each lasting 2ms
  */
 #define VOL_RAMP_US	2000
 #define VOL_RAMP_STEP	2048
-
-// TODO: make this programmable
-#define COPY_FRAMES	48
 
 /*
  * Simple volume control
@@ -44,6 +43,8 @@ struct comp_data {
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
 	struct work volwork;
+	uint32_t last_run;	/* clk when last run */
+	uint32_t frame_us;	/* frame time in usecs */
 };
 
 struct comp_func_map {
@@ -238,9 +239,12 @@ static void volume_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int volume_params(struct comp_dev *dev, struct stream_params *params)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	/* dont do any data transformation */
 	comp_set_sink_params(dev, params);
 
+	cd->frame_us = 1000000 / params->pcm.rate;
 	return 0;
 }
 
@@ -314,28 +318,47 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	int source_frames, sink_frames, cframes, frames_remaining = COPY_FRAMES;
+	uint32_t source_frames, sink_frames, cframes, frames_remaining;
+	uint32_t current, time_us, total_frames = 0;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
 
-	if (source->avail < COPY_FRAMES * 4 || sink->free < COPY_FRAMES * 4)
-		return 0;
+	if (dev->state == COMP_STATE_RUNNING) {
+
+		/* calculate in usecs time since we last were run */
+		time_us = clock_time_elapsed(dev->pipeline->clock, cd->last_run, &current);
+		cd->last_run = current;
+
+		/* caclculate how many frames to copy */
+		frames_remaining = time_us / cd->frame_us;
+	} else {
+		frames_remaining = 48;
+	}
+
+	/* copy less data if there is not enough space or available data */
+	if (source->avail < frames_remaining * 4 ||
+		sink->free < frames_remaining * 4) {
+		if (source->avail < sink->free)
+			frames_remaining = source->avail >> 2;
+		else
+			frames_remaining = sink->free >> 2;
+	};
 
 	while (frames_remaining) {
 
 		/* check source for overflow */
-		if (source->r_ptr + COPY_FRAMES * 4 > source->end_addr)
+		if (source->r_ptr + frames_remaining * 4 > source->end_addr)
 			source_frames = (source->end_addr - source->r_ptr) >> 2;
 		else
-			source_frames = COPY_FRAMES;
+			source_frames = frames_remaining;
 
 		/* check sink for overflow */
-		if (sink->w_ptr + COPY_FRAMES * 4 > sink->end_addr)
+		if (sink->w_ptr + frames_remaining * 4 > sink->end_addr)
 			sink_frames = (sink->end_addr - sink->w_ptr) >> 2;
 		else
-			sink_frames = COPY_FRAMES;
+			sink_frames = frames_remaining;
 
 		/* choose minimum to avoid copy overflow */
 		if (sink_frames > source_frames)
@@ -353,6 +376,7 @@ static int volume_copy(struct comp_dev *dev)
 			sink->w_ptr = sink->addr;
 
 		frames_remaining -= cframes;
+		total_frames += cframes;
 	}
 
 	/* calc new free and available */
@@ -360,14 +384,14 @@ static int volume_copy(struct comp_dev *dev)
 	comp_update_buffer(source);
 
 	/* number of frames sent downstream */
-	return COPY_FRAMES;
+	return total_frames;
 }
 
 static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t frame_bytes = 4 * COPY_FRAMES; // TODO: fix
+	uint32_t frames;
 	int i;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
@@ -390,9 +414,9 @@ static int volume_prepare(struct comp_dev *dev)
 
 found:
 	/* copy avail data from source for playback */
-	while (source->avail >= frame_bytes && sink->free >= frame_bytes) {
-		volume_copy(dev);
-	}
+	do {
+		frames = volume_copy(dev);
+	} while (frames > 0);
 
 	return 0;
 }

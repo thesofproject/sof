@@ -26,8 +26,11 @@
  */
 struct pipeline {
 	uint16_t id;		/* id */
-	//uint16_t state;		/* PIPELINE_STATE_ */ 
+	uint16_t clock;		/* clock use as pipeline time base */
 	spinlock_t lock;
+
+	/* work */
+	uint32_t work_freq;	/* how often pipeline work is called */
 
 	/* lists */
 	struct list_head host_ep_list;		/* list of host endpoints */
@@ -91,4 +94,10 @@ int init_pipeline(void);
 /* pipeline work */
 void pipeline_do_work(struct pipeline *p, uint32_t udelay);
 
+static inline void pipeline_set_work_freq(struct pipeline *p,
+	uint32_t work_freq, uint16_t clock)
+{
+	p->work_freq = work_freq;
+	p->clock = clock;
+}
 #endif

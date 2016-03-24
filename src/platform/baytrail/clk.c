@@ -15,6 +15,7 @@
 #include <reef/lock.h>
 #include <platform/clk.h>
 #include <platform/shim.h>
+#include <platform/timer.h>
 #include <stdint.h>
 
 #define NUM_CLOCKS	4
@@ -89,7 +90,7 @@ void clock_disable(int clock)
 	}
 }
 
-unsigned int clock_set_freq(int clock, unsigned int hz)
+uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
 	uint32_t idx, flags;
@@ -153,14 +154,41 @@ unsigned int clock_set_freq(int clock, unsigned int hz)
 	return clk_pdata->clk[clock].freq;
 }
 
-unsigned int clock_get_freq(int clock)
+uint32_t clock_get_freq(int clock)
 {
 	return clk_pdata->clk[clock].freq;
 }
 
-unsigned int clock_us_to_ticks(int clock, int us)
+uint32_t clock_us_to_ticks(int clock, uint32_t us)
 {
 	return clk_pdata->clk[clock].ticks_per_usec * us;
+}
+
+uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
+{
+	uint32_t _current;
+
+	// TODO: change timer APIs to clk APIs ??
+	switch (clock) {
+	case CLK_CPU:
+		_current = arch_timer_get_system();
+		break;
+	case CLK_SSP0:
+	case CLK_SSP1:
+	case CLK_SSP2:
+		_current = platform_timer_get(clock);
+		break;
+	default:
+		return 0;
+	}
+
+	*current = _current;
+	if (_current >= previous)
+		return (_current - previous) /
+			clk_pdata->clk[clock].ticks_per_usec;
+	else
+		return (_current + (MAX_INT - previous)) /
+			clk_pdata->clk[clock].ticks_per_usec;
 }
 
 void init_platform_clocks(void)

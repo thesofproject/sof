@@ -31,6 +31,7 @@ struct op_data {
 	struct stream_params *params;
 	int cmd;
 	void *cmd_data;
+	uint32_t copy_size;
 };
 
 static struct pipeline_data *pipe_data;
@@ -153,7 +154,7 @@ struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
 
 	trace_pipe("CNw");
 
-	cd = comp_new(type, index, pipe_data->next_id++, direction);
+	cd = comp_new(p, type, index, pipe_data->next_id++, direction);
 	if (cd == NULL) {
 		pipe_data->next_id--;
 		return NULL;

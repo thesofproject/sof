@@ -70,6 +70,7 @@ struct comp_volume {
 struct comp_dev;
 struct comp_buffer;
 struct dai_config;
+struct pipeline;
 
 
 /*
@@ -158,6 +159,7 @@ struct comp_dev {
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;
+	struct pipeline *pipeline;	/* pipeline we belong to */
 
 	/* lists */
 	struct list_head bsource_list;	/* list of source buffers */
@@ -204,8 +206,8 @@ int comp_register(struct comp_driver *drv);
 void comp_unregister(struct comp_driver *drv);
 
 /* component creation and destruction - mandatory */
-struct comp_dev *comp_new(uint32_t type, uint32_t index, uint32_t id,
-	uint8_t direction);
+struct comp_dev *comp_new(struct pipeline *p, uint32_t type, uint32_t index,
+	uint32_t id, uint8_t direction);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);

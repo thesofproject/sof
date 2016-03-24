@@ -14,6 +14,7 @@
 #include <reef/stream.h>
 #include <reef/dai.h>
 #include <reef/ipc.h>
+#include <platform/clk.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
@@ -168,6 +169,10 @@ struct pipeline *init_static_pipeline(void)
 	pipeline_static = pipeline_new(pipeline_id);
 	if (pipeline_static < 0)
 		return NULL;
+
+	// TODO: clock and DAI should come from topology
+	// TODO: rate should come from platform.h
+	pipeline_set_work_freq(pipeline_static, 1000, CLK_SSP2);
 
 	/* create playback components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_play_comps); i++) {
