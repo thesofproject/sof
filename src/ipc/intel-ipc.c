@@ -456,8 +456,8 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 		iipc->dai[1] = 3;
 
 		/* set SSP M/N clock dividers TODO: program this from IPC */
-		shim_write(SHIM_SSP2_DIVL, 0x000061a8); // 1.536MHz
-		shim_write(SHIM_SSP2_DIVH, 0x60000600);
+		shim_write(SHIM_SSP2_DIVL, 0x000061a8); // 3.072MHz
+		shim_write(SHIM_SSP2_DIVH, 0x60000c00);
 
 		break;
 	default:
