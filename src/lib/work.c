@@ -142,7 +142,7 @@ static void run_work(struct work_queue *queue)
 		/* run work if its pending and remove from the queue */
 		if (work->pending) {
 
-			udelay = (work_get_timer(queue) - work->timeout) *
+			udelay = (work_get_timer(queue) - work->timeout) /
 				queue->ticks_per_usec;
 			reschedule_usecs = work->cb(work->cb_data, udelay);
 
