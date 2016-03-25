@@ -2,7 +2,8 @@ noinst_LIBRARIES = libipc.a
 
 libipc_a_SOURCES = \
 	ipc.c \
-	intel-ipc.c
+	intel-ipc.c \
+	pmc-ipc.c
 
 libipc_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

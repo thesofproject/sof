@@ -25,12 +25,15 @@
 #define SHIM_IPCDH		0x44 /* IPC SST -> IA */
 #define SHIM_ISRSC		0x48
 #define SHIM_ISRLPESC		0x50
-#define SHIM_IMRSC		0x58
+#define SHIM_IMRSCL		0x58
+#define SHIM_IMRSCH		0x5c
 #define SHIM_IMRLPESC		0x60
-#define SHIM_IPCSC		0x68
-#define SHIM_IPCLPESC		0x70
+#define SHIM_IPCSCL		0x68
+#define SHIM_IPCSCH		0x6c
+#define SHIM_IPCLPESCL		0x70
+#define SHIM_IPCLPESCH		0x74
 #define SHIM_CLKCTL		0x78
-#define SHIM_CSR2		0x80
+#define SHIM_FR_LAT_REQ		0x80
 #define SHIM_EXT_TIMER_CNTLL	0xC0
 #define SHIM_EXT_TIMER_CNTLH	0xC4
 #define SHIM_EXT_TIMER_STAT	0xC8
@@ -83,6 +86,22 @@
 /*  IPCDH */
 #define	SHIM_IPCDH_DONE		(0x1 << 30)
 #define	SHIM_IPCDH_BUSY		(0x1 << 31)
+
+/* ISRLPESC */
+#define SHIM_ISRLPESC_DONE	(0x1 << 0)
+#define SHIM_ISRLPESC_BUSY	(0x1 << 1)
+
+/* IMRLPESC */
+#define	SHIM_IMRLPESC_BUSY	(0x1 << 1)
+#define	SHIM_IMRLPESC_DONE	(0x1 << 0)
+
+/* IPCSCH */
+#define SHIM_IPCSCH_DONE	(0x1 << 30)
+#define SHIM_IPCSCH_BUSY	(0x1 << 31)
+
+/* IPCLPESCH */
+#define SHIM_IPCLPESCH_DONE	(0x1 << 30)
+#define SHIM_IPCLPESCH_BUSY	(0x1 << 31)
 
 /* CLKCTL */
 #define SHIM_CLKCTL_SMOS(x)	(x << 24)
