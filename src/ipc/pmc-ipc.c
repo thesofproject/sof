@@ -27,6 +27,7 @@ struct intel_ipc_pmc_data {
 	uint32_t msg_l;
 	uint32_t msg_h;
 	uint32_t pending;
+	completion_t complete;
 };
 
 
@@ -37,7 +38,7 @@ static void do_cmd(void)
 	uint32_t ipcsc, status = 0;
 	
 	trace_ipc("SCm");
-	//trace_value(_ipc->host_msg);
+	trace_value(_pmc->msg_l);
 
 	//status = ipc_cmd();
 	_pmc->pending = 0;
@@ -70,6 +71,8 @@ static void do_notify(void)
 
 	/* unmask Done interrupt */
 	shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) & ~SHIM_IMRLPESC_DONE);
+
+	//wait_completed(&_pmc->complete);
 }
 
 static void irq_handler(void *arg)
@@ -100,17 +103,31 @@ static void irq_handler(void *arg)
 	}
 }
 
-// TODO implement driver like msg Q for sending messages.
-
 int ipc_pmc_send_msg(uint32_t message)
 {
+	uint32_t ipclpesch = shim_read(SHIM_IPCLPESCH);
+	int ret = 0;
 
-	shim_write(SHIM_IPCLPESCL, message);
-	shim_write(SHIM_IPCLPESCH, SHIM_IPCLPESCH_BUSY);
-	return 0;
+	trace_ipc("SMs");
+
+	/* we can only send new messages if the SC is not busy */
+	if (ipclpesch & SHIM_IPCLPESCH_BUSY)
+		return -EAGAIN;
+
+	wait_init(&_pmc->complete);
+
+	/* send the new message */
+	shim_write(SHIM_IPCLPESCL, 0);
+	shim_write(SHIM_IPCLPESCH, SHIM_IPCLPESCH_BUSY | message);
+
+	/* wait 200 msecs for SC to finish */
+	//_pmc->complete.timeout = 200000;
+	//ret = wait_for_completion_timeout(&_pmc->complete);
+
+	return ret;
 }
 
-int platform_ipc_pmc_init(struct ipc *ipc)
+int platform_ipc_pmc_init(void)
 {
 	uint32_t imrlpesc;
 

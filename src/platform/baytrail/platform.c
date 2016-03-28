@@ -12,6 +12,7 @@
 #include <platform/dma.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
+#include <platform/pmc.h>
 #include <uapi/intel-ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
@@ -37,7 +38,7 @@ static const struct sst_intel_ipc_fw_ready ready = {
 
 static const struct work_queue_timesource platform_generic_queue = {
 	.timer 		= TIMER3,	/* external timer */
-	.clk		= CLK_SSP0,
+	.clk		= CLK_SSP2,
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
@@ -69,6 +70,9 @@ int platform_init(void)
 
 	/* clear mailbox */
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
+
+	/* init PMC IPC */
+	platform_ipc_pmc_init();
 
 	/* init work queues and clocks */
 	platform_timer_set(TIMER3, 0xffffffff);

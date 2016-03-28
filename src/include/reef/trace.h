@@ -15,6 +15,7 @@
 #include <reef/debug.h>
 #include <reef/timer.h>
 #include <platform/platform.h>
+#include <platform/timer.h>
 
 /* trace event classes - high 8 bits*/
 #define TRACE_CLASS_IRQ		(1 << 24)
@@ -28,7 +29,7 @@
 
 /* move to config.h */
 #define TRACE	1
-#define TRACEV	0
+#define TRACEV	1
 
 #if TRACE
 extern uint32_t trace_pos;
@@ -39,7 +40,7 @@ static inline void _trace_event(uint32_t event)
 		(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace_pos);
 
 	/* write timestamp and event to trace buffer */
-	t[0] = timer_get_system();
+	t[0] = platform_timer_get(0);
 	t[1] = event;
 
 	trace_pos += (sizeof(uint32_t) * 2);

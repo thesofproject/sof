@@ -16,6 +16,7 @@
 #include <platform/clk.h>
 #include <platform/shim.h>
 #include <platform/timer.h>
+#include <platform/pmc.h>
 #include <stdint.h>
 
 #define NUM_CLOCKS	4
@@ -94,6 +95,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
 	uint32_t idx, flags;
+	int err;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
@@ -111,11 +113,20 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
 			&notify_data);
 
-		/* change CPU frequency */
-		io_reg_update_bits(SHIM_BASE + SHIM_CSR,
-				SHIM_CSR_DCS_MASK, cpu_freq[idx].enc);
+		/* set CPU frequency request for CCU */
+		io_reg_update_bits(SHIM_BASE + SHIM_FR_LAT_REQ,
+				SHIM_FR_LAT_CLK_MASK, cpu_freq[idx].enc);
+		
+		/* send freq request to SC */
+		err = ipc_pmc_send_msg(PMC_SET_LPECLK);
+		if (err < 0)
+			break;
 
-		/* update clock freqency */
+dbg_val_at(shim_read(SHIM_FR_LAT_REQ), 12);
+dbg_val_at(shim_read(SHIM_CLKCTL), 13);
+dbg_val_at(shim_read(SHIM_MISC), 14);
+
+		/* update clock frequency */
 		clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
 		clk_pdata->clk[clock].ticks_per_usec =
 			cpu_freq[idx].ticks_per_usec;
@@ -201,7 +212,7 @@ void init_platform_clocks(void)
 	spinlock_init(&clk_pdata->clk[3].lock);
 
 	/* Set CPU to default frequency for booting */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+	clock_set_freq(CLK_CPU, 343000000);
 	clock_set_freq(CLK_SSP0, 25000000);
 	clock_set_freq(CLK_SSP1, 25000000);
 	clock_set_freq(CLK_SSP2, 25000000);

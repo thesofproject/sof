@@ -15,6 +15,7 @@
 #include <reef/stream.h>
 #include <reef/alloc.h>
 #include <reef/debug.h>
+#include <platform/timer.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
