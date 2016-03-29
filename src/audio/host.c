@@ -78,6 +78,16 @@ static void host_dma_cb(void *data, uint32_t type)
 	local_elem = list_first_entry(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
+	/* update local buffer position */
+	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
+
+	/* new local period, update host buffer position blks */
+	hd->host_pos_blks += hd->period->size;
+	if (hd->host_pos_blks >= hd->host_size)
+		hd->host_pos_blks = 0;
+	if (hd->host_pos)
+		*hd->host_pos = hd->host_pos_blks;
+
 	/* update source buffer elem and check for overflow */
 	local_elem->src += hd->period->size;
 	if (local_elem->src >= hd->source->current_end) {
@@ -98,40 +108,10 @@ static void host_dma_cb(void *data, uint32_t type)
 		local_elem->dest = sink_elem->dest;
 	}
 
-	/* update local buffer position */
-	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
-
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		hd->dma_buffer->w_ptr = (void*)status.w_pos;
-
-		/* check for end of buffer */
-		if (hd->dma_buffer->w_ptr == hd->dma_buffer->addr) {
-			/* new loop, update host buffe position blks */
-			hd->host_pos_blks += hd->dma_buffer->desc.size;
-			if (hd->host_pos_blks >= hd->host_size)
-				hd->host_pos_blks = 0;
-		}
-
-		/* update host position(in bytes offset) for drivers */
-		if (hd->host_pos)
-			*hd->host_pos = hd->host_pos_blks +
-				hd->dma_buffer->w_ptr - hd->dma_buffer->addr;
-	} else {
+	else
 		hd->dma_buffer->r_ptr = (void*)status.r_pos;
-
-		/* check for end of buffer */
-		if (hd->dma_buffer->r_ptr == hd->dma_buffer->addr) {
-			/* new loop, update host buffe position blks */
-			hd->host_pos_blks += hd->dma_buffer->desc.size;
-			if (hd->host_pos_blks >= hd->host_size)
-				hd->host_pos_blks = 0;
-		}
-
-		/* update host position(in bytes offset) for drivers */
-		if (hd->host_pos)
-			*hd->host_pos = hd->host_pos_blks +
-				hd->dma_buffer->r_ptr - hd->dma_buffer->addr;
-	}
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);
