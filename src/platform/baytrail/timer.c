@@ -27,12 +27,8 @@ void platform_timer_set(int timer, uint32_t ticks)
 
 void platform_timer_clear(int timer)
 {
-	uint32_t pisr;
-
 	/* we dont use the timer clear bit as we only need to clear the ISR */
-	pisr = shim_read(SHIM_PISR);
-	pisr |= SHIM_PISR_EXT_TIMER;
-	shim_write(SHIM_PISR, pisr);
+	shim_write(SHIM_PISR, SHIM_PISR_EXT_TIMER);
 }
 
 uint32_t platform_timer_get(int timer)
