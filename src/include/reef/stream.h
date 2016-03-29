@@ -64,7 +64,7 @@ struct stream_params {
 	uint16_t type;		/* STREAM_PARAMS_TYPE_ */
 	uint8_t direction;
 	uint8_t channels;
-	uint16_t period_frames;
+	uint32_t period_frames;
 	uint16_t frame_size;
 	union {
 		struct stream_pcm_params pcm;

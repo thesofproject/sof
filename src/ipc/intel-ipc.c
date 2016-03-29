@@ -270,8 +270,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 	}
 
-	params->period_frames = req.format.period_pages * HOST_PAGE_SIZE
-		/ params->frame_size;
+	params->period_frames = req.format.period_frames;
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_desciptors(iipc, &req);
