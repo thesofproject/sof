@@ -445,7 +445,7 @@ static int host_reset(struct comp_dev *dev)
 		rfree(RZONE_MODULE, RMOD_SYS, e);
 	}
 
-	/* free all loacl DMA elements */
+	/* free all local DMA elements */
 	list_for_each_safe(elist, tlist, &hd->local.elem_list) {
 
 		e = container_of(elist, struct dma_sg_elem, list);
