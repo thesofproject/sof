@@ -122,10 +122,6 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		if (err < 0)
 			break;
 
-dbg_val_at(shim_read(SHIM_FR_LAT_REQ), 12);
-dbg_val_at(shim_read(SHIM_CLKCTL), 13);
-dbg_val_at(shim_read(SHIM_MISC), 14);
-
 		/* update clock frequency */
 		clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
 		clk_pdata->clk[clock].ticks_per_usec =
