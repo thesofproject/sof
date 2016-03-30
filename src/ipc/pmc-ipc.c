@@ -72,7 +72,7 @@ static void do_notify(void)
 	/* unmask Done interrupt */
 	shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) & ~SHIM_IMRLPESC_DONE);
 
-	//wait_completed(&_pmc->complete);
+	wait_completed(&_pmc->complete);
 }
 
 static void irq_handler(void *arg)
@@ -121,8 +121,8 @@ int ipc_pmc_send_msg(uint32_t message)
 	shim_write(SHIM_IPCLPESCH, SHIM_IPCLPESCH_BUSY | message);
 
 	/* wait 200 msecs for SC to finish */
-	//_pmc->complete.timeout = 200000;
-	//ret = wait_for_completion_timeout(&_pmc->complete);
+	_pmc->complete.timeout = 200000;
+	ret = wait_for_completion_timeout(&_pmc->complete);
 
 	return ret;
 }
@@ -133,7 +133,6 @@ int platform_ipc_pmc_init(void)
 
 	/* init ipc data */
 	_pmc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_pmc_data));
-	//ipc_set_drvdata(_ipc, iipc);
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_PMC, irq_handler, NULL);
