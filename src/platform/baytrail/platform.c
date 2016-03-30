@@ -39,7 +39,7 @@ static const struct sst_intel_ipc_fw_ready ready = {
 
 static const struct work_queue_timesource platform_generic_queue = {
 	.timer 		= TIMER3,	/* external timer */
-	.clk		= CLK_SSP2,
+	.clk		= CLK_SSP,
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
@@ -85,9 +85,9 @@ int platform_init(void)
 
 	/* Set CPU to default frequency for booting */
 	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
-	clock_set_freq(CLK_SSP0, 25000000);
-	clock_set_freq(CLK_SSP1, 25000000);
-	clock_set_freq(CLK_SSP2, 25000000);
+
+	/* set SSP clock to 25M */
+	clock_set_freq(CLK_SSP, 25000000);
 
 	/* init DMACs */
 	dmac0 = dma_get(DMA_ID_DMAC0);

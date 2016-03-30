@@ -51,18 +51,24 @@ static const struct freq_table cpu_freq[] = {
 	{343000000, 343, 0x7},
 };
 
-static uint32_t get_cpu_freq(unsigned int hz)
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19, PMC_SET_SSP_19M2},
+	{25000000, 25, PMC_SET_SSP_25M},
+};
+
+static inline uint32_t get_freq(const struct freq_table *table, int size,
+	unsigned int hz)
 {
 	uint32_t i;
 
 	/* find lowest available frequency that is >= requested hz */
-	for (i = 0; i < ARRAY_SIZE(cpu_freq); i++) {
-		if (hz <= cpu_freq[i].freq)
+	for (i = 0; i < size; i++) {
+		if (hz <= table[i].freq)
 			return i;
 	}
 
 	/* not found, so return max frequency */
-	return ARRAY_SIZE(cpu_freq) - 1;
+	return size - 1;
 }
 
 void clock_enable(int clock)
@@ -70,9 +76,7 @@ void clock_enable(int clock)
 	switch (clock) {
 	case CLK_CPU:
 		break;
-	case CLK_SSP0:
-	case CLK_SSP1:
-	case CLK_SSP2:
+	case CLK_SSP:
 	default:
 		break;
 	}
@@ -83,9 +87,7 @@ void clock_disable(int clock)
 	switch (clock) {
 	case CLK_CPU:
 		break;
-	case CLK_SSP0:
-	case CLK_SSP1:
-	case CLK_SSP2:
+	case CLK_SSP:
 	default:
 		break;
 	}
@@ -106,7 +108,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	switch (clock) {
 	case CLK_CPU:
 		/* get nearest frequency that is >= requested Hz */
-		idx = get_cpu_freq(hz);
+		idx = get_freq(cpu_freq, ARRAY_SIZE(cpu_freq), hz);
 		notify_data.freq = cpu_freq[idx].freq;
 
 		/* tell anyone interested we are about to change CPU freq */
@@ -131,23 +133,24 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
 			&notify_data);
 		break;
-	case CLK_SSP0:
-	case CLK_SSP1:
-	case CLK_SSP2:
-		//TODO: currently hard coded for 25M
+	case CLK_SSP:
 		/* get nearest frequency that is >= requested Hz */
-		notify_data.freq = 25000000;
+		idx = get_freq(cpu_freq, ARRAY_SIZE(ssp_freq), hz);
+		notify_data.freq = ssp_freq[idx].freq;
 
 		/* tell anyone interested we are about to change CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
 			&notify_data);
 
-		/* change CPU frequency */
-		// TODO
+		/* send SSP freq request to SC */
+		err = ipc_pmc_send_msg(ssp_freq[idx].enc);
+		if (err < 0)
+			break;
 
 		/* update clock freqency */
-		clk_pdata->clk[clock].freq = 25000000;
-		clk_pdata->clk[clock].ticks_per_usec = 25;
+		clk_pdata->clk[clock].freq = ssp_freq[idx].freq;
+		clk_pdata->clk[clock].ticks_per_usec =
+			ssp_freq[idx].ticks_per_usec;
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
@@ -180,9 +183,7 @@ uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
 	case CLK_CPU:
 		_current = arch_timer_get_system();
 		break;
-	case CLK_SSP0:
-	case CLK_SSP1:
-	case CLK_SSP2:
+	case CLK_SSP:
 		_current = platform_timer_get(clock);
 		break;
 	default:

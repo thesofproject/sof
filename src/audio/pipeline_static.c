@@ -172,7 +172,7 @@ struct pipeline *init_static_pipeline(void)
 
 	// TODO: clock and DAI should come from topology
 	// TODO: rate should come from platform.h
-	pipeline_set_work_freq(pipeline_static, 1000, CLK_SSP2);
+	pipeline_set_work_freq(pipeline_static, 1000, CLK_SSP);
 
 	/* create playback components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_play_comps); i++) {
