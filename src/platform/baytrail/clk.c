@@ -210,10 +210,4 @@ void init_platform_clocks(void)
 	spinlock_init(&clk_pdata->clk[1].lock);
 	spinlock_init(&clk_pdata->clk[2].lock);
 	spinlock_init(&clk_pdata->clk[3].lock);
-
-	/* Set CPU to default frequency for booting */
-	clock_set_freq(CLK_CPU, 343000000);
-	clock_set_freq(CLK_SSP0, 25000000);
-	clock_set_freq(CLK_SSP1, 25000000);
-	clock_set_freq(CLK_SSP2, 25000000);
 }

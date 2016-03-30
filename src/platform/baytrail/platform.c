@@ -19,6 +19,7 @@
 #include <reef/dma.h>
 #include <reef/reef.h>
 #include <reef/work.h>
+#include <reef/clock.h>
 #include <reef/audio/component.h>
 #include <string.h>
 
@@ -78,6 +79,12 @@ int platform_init(void)
 	platform_timer_set(TIMER3, 0xffffffff);
 	init_platform_clocks();
 	init_system_workq(&platform_generic_queue);
+
+	/* Set CPU to default frequency for booting */
+	clock_set_freq(CLK_CPU, 343000000);
+	clock_set_freq(CLK_SSP0, 25000000);
+	clock_set_freq(CLK_SSP1, 25000000);
+	clock_set_freq(CLK_SSP2, 25000000);
 
 	dmac0 = dma_get(DMA_ID_DMAC0);
 	dma_probe(dmac0);
