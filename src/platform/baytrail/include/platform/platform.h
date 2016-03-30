@@ -35,7 +35,6 @@
 #define platform_trace_point(__x) \
 	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) |\
 		((__x) & 0x3fffffff)))
-
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
  */

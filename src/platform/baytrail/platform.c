@@ -51,6 +51,9 @@ int platform_boot_complete(uint32_t boot_message)
 
 	mailbox_outbox_write(0, &ready, sizeof(ready));
 
+	/* boot now complete so we can relax the CPU */
+	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCDL, IPC_INTEL_FW_READY | outbox);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
@@ -69,7 +72,7 @@ int platform_init(void)
 	struct dma *dmac0, *dmac1;
 	struct dai *ssp0, *ssp1, *ssp2;
 
-	/* clear mailbox */
+	/* clear mailbox for early trace and debug */
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	/* init PMC IPC */
@@ -81,17 +84,19 @@ int platform_init(void)
 	init_system_workq(&platform_generic_queue);
 
 	/* Set CPU to default frequency for booting */
-	clock_set_freq(CLK_CPU, 343000000);
+	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
 	clock_set_freq(CLK_SSP0, 25000000);
 	clock_set_freq(CLK_SSP1, 25000000);
 	clock_set_freq(CLK_SSP2, 25000000);
 
+	/* init DMACs */
 	dmac0 = dma_get(DMA_ID_DMAC0);
 	dma_probe(dmac0);
 
 	dmac1 = dma_get(DMA_ID_DMAC1);
 	dma_probe(dmac1);
 
+	/* init SSP ports */
 	ssp0 = dai_get(COMP_TYPE_DAI_SSP, 0);
 	dai_probe(ssp0);
 
