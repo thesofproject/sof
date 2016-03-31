@@ -80,7 +80,7 @@ int platform_init(void)
 	platform_ipc_pmc_init();
 
 	/* init work queues and clocks */
-	platform_timer_set(TIMER3, 0xffffffff);
+	platform_timer_start(TIMER3);
 	init_platform_clocks();
 	init_system_workq(&platform_generic_queue);
 

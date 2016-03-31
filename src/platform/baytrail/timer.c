@@ -14,6 +14,13 @@
 #include <reef/debug.h>
 #include <stdint.h>
 
+void platform_timer_start(int timer)
+{
+	/* run timer */
+	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
+	shim_write(SHIM_EXT_TIMER_CNTLL, 0);
+}
+
 void platform_timer_set(int timer, uint32_t ticks)
 {
 	/* a tick value of 0 will not generate an IRQ */

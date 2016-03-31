@@ -29,6 +29,7 @@
 void platform_timer_set(int timer, uint32_t ticks);
 void platform_timer_clear(int timer);
 uint32_t platform_timer_get(int timer);
+void platform_timer_start(int timer);
 
 #endif
 
