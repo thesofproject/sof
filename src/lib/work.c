@@ -102,11 +102,12 @@ static int is_work_pending(struct work_queue *queue)
 			work = container_of(wlist, struct work, list);
 
 			/* if work has timed out then mark it as pending to run */
-			if (work->timeout >= win_start && work->timeout <= win_end) {
-				work->pending = 0;
-			} else {
+			if (work->timeout <= win_end || 
+				(work->timeout >= win_start && work->timeout < MAX_INT)) {
 				work->pending = 1;
 				pending_count++;
+			} else {
+				work->pending = 0;
 			}
 		}
 	}
@@ -132,8 +133,7 @@ static void run_work(struct work_queue *queue)
 {
 	struct list_head *wlist, *tlist;
 	struct work *work;
-	uint32_t reschedule_usecs, current, udelay;
-
+	uint32_t reschedule_usecs, udelay;
 	/* check each work item in queue for pending */
 	list_for_each_safe(wlist, tlist, &queue->work) {
 
@@ -152,13 +152,6 @@ static void run_work(struct work_queue *queue)
 			else {
 				/* get next work timeout */	
 				work_next_timeout(queue, work, reschedule_usecs);
-
-				/* did work take too long ? */
-				current = work_get_timer(queue);
-				if (work->timeout <= current) {
-					/* TODO: inform users */
-					work->timeout = current;
-				}
 			}
 		}
 	}
@@ -215,7 +208,7 @@ static void queue_recalc_timers(struct work_queue *queue,
 {
 	struct list_head *wlist;
 	struct work *work;
-	uint32_t delta_ticks, delta_msecs, current;
+	uint32_t delta_ticks, delta_usecs, current;
 
 	/* get current time */
 	current = work_get_timer(queue);
@@ -226,11 +219,11 @@ static void queue_recalc_timers(struct work_queue *queue,
 		work = container_of(wlist, struct work, list);
 
 		delta_ticks = calc_delta_ticks(current, work->timeout);
-		delta_msecs = delta_ticks / clk_data->old_ticks_per_usec;
+		delta_usecs = delta_ticks / clk_data->old_ticks_per_usec;
 
 		/* is work within next msec, then schedule it now */
-		if (delta_msecs > 0)
-			work->timeout = current + queue->ticks_per_usec * delta_msecs;
+		if (delta_usecs > 0)
+			work->timeout = current + queue->ticks_per_usec * delta_usecs;
 		else
 			work->timeout = current + (queue->ticks_per_usec >> 3);
 	}
@@ -296,7 +289,7 @@ void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 {
 	spin_lock_local_irq(&queue->lock, queue->ts->timer);
 
-	/* convert timeout millisecs to CPU clock ticks */
+	/* convert timeout microsecs to CPU clock ticks */
 	w->timeout = queue->ticks_per_usec * timeout + work_get_timer(queue);
 
 	/* insert work into list */
@@ -325,7 +318,7 @@ void work_schedule_default(struct work *w, uint32_t timeout)
 {
 	spin_lock_local_irq(&queue_->lock, queue_->ts->timer);
 
-	/* convert timeout millisecs to CPU clock ticks */
+	/* convert timeout microsecs to CPU clock ticks */
 	w->timeout = queue_->ticks_per_usec * timeout + work_get_timer(queue_);
 
 	/* insert work into list */
@@ -366,7 +359,7 @@ struct work_queue *work_new_queue(const struct work_queue_timesource *ts)
 	/* notification of clk changes */
 	queue->notifier.cb = work_notify;
 	queue->notifier.cb_data = queue;
-	queue->notifier.id = NOTIFIER_ID_CPU_FREQ;
+	queue->notifier.id = ts->notifier;
 	notifier_register(&queue->notifier);
 
 	/* register system timer */
