@@ -33,6 +33,7 @@ struct work {
 struct work_queue_timesource {
 	int timer;
 	int clk;
+	int notifier;
 	void (*timer_set)(int timer, uint32_t ticks);
 	void (*timer_clear)(int timer);
 	uint32_t (*timer_get)(int timer);

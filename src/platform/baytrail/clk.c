@@ -53,8 +53,11 @@ static const struct freq_table cpu_freq[] = {
 
 static const struct freq_table ssp_freq[] = {
 	{19200000, 19, PMC_SET_SSP_19M2},
-	{25000000, 25, PMC_SET_SSP_25M},
+	{25000000, 25, PMC_SET_SSP_25M},	/* default */
 };
+
+#define CPU_DEFAULT_IDX		3
+#define SSP_DEFAULT_IDX		1
 
 static inline uint32_t get_freq(const struct freq_table *table, int size,
 	unsigned int hz)
@@ -139,7 +142,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		notify_data.freq = ssp_freq[idx].freq;
 
 		/* tell anyone interested we are about to change CPU freq */
-		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
+		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_PRE,
 			&notify_data);
 
 		/* send SSP freq request to SC */
@@ -153,7 +156,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 			ssp_freq[idx].ticks_per_usec;
 
 		/* tell anyone interested we have now changed CPU freq */
-		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
+		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_POST,
 			&notify_data);
 	default:
 		break;
@@ -207,4 +210,12 @@ void init_platform_clocks(void)
 	spinlock_init(&clk_pdata->clk[1].lock);
 	spinlock_init(&clk_pdata->clk[2].lock);
 	spinlock_init(&clk_pdata->clk[3].lock);
+
+	/* set defaults */
+	clk_pdata->clk[CLK_CPU].freq = cpu_freq[CPU_DEFAULT_IDX].freq;
+	clk_pdata->clk[CLK_CPU].ticks_per_usec =
+			cpu_freq[CPU_DEFAULT_IDX].ticks_per_usec;
+	clk_pdata->clk[CLK_SSP].freq = ssp_freq[SSP_DEFAULT_IDX].freq;
+	clk_pdata->clk[CLK_SSP].ticks_per_usec =
+			ssp_freq[SSP_DEFAULT_IDX].ticks_per_usec;
 }

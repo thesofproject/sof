@@ -40,6 +40,7 @@ static const struct sst_intel_ipc_fw_ready ready = {
 static const struct work_queue_timesource platform_generic_queue = {
 	.timer 		= TIMER3,	/* external timer */
 	.clk		= CLK_SSP,
+	.notifier	= NOTIFIER_ID_SSP_FREQ,
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,

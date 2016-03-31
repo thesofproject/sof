@@ -13,6 +13,7 @@
 
 /* notifier general IDs */
 #define NOTIFIER_ID_CPU_FREQ	0
+#define NOTIFIER_ID_SSP_FREQ	1
 
 struct notifier {
 	int id;
