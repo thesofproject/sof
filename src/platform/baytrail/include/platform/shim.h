@@ -102,11 +102,11 @@
 #define SHIM_IPCLPESCH_BUSY	(0x1 << 31)
 
 /* CLKCTL */
-#define SHIM_CLKCTL_SMOS(x)	(x << 24)
-#define SHIM_CLKCTL_MASK		(3 << 24)
-#define SHIM_CLKCTL_DCPLCG	(1 << 18)
-#define SHIM_CLKCTL_SCOE1	(1 << 17)
-#define SHIM_CLKCTL_SCOE0	(1 << 16)
+#define SHIM_CLKCTL_SSP2_EN	(1 << 18)
+#define SHIM_CLKCTL_SSP1_EN	(1 << 17)
+#define SHIM_CLKCTL_SSP0_EN	(1 << 16)
+#define SHIM_CLKCTL_FRCHNGGO	(1 << 5)
+#define SHIM_CLKCTL_FRCHNGACK	(1 << 4)
 
 /* SHIM_FR_LAT_REQ */
 #define SHIM_FR_LAT_CLK_MASK	0x7
