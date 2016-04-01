@@ -102,27 +102,29 @@ static void irq_handler(void *arg)
 
 int ipc_pmc_send_msg(uint32_t message)
 {
-	uint32_t ipclpesch = shim_read(SHIM_IPCLPESCH), irq_mask;
-	int ret = 0;
+	uint32_t ipclpesch, irq_mask;
 
 	trace_ipc("SMs");
+
+	ipclpesch = shim_read(SHIM_IPCLPESCH);
 
 	/* we can only send new messages if the SC is not busy */
 	if (ipclpesch & SHIM_IPCLPESCH_BUSY)
 		return -EAGAIN;
 
 	/* disable all interrupts except for SCU */
-	irq_mask = arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_PMC);
+	irq_mask = arch_interrupt_get_enabled();
+	arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_PMC);
 
 	/* send the new message */
 	shim_write(SHIM_IPCLPESCL, 0);
 	shim_write(SHIM_IPCLPESCH, SHIM_IPCLPESCH_BUSY | message);
 
 	/* now wait for clock change */
-	wait_for_interrupt(0);
-	arch_interrupt_enable_mask(irq_mask);
+	//wait_for_interrupt(0);
 
-	return ret;
+	arch_interrupt_enable_mask(irq_mask);
+	return 0;
 }
 
 int platform_ipc_pmc_init(void)
