@@ -121,7 +121,7 @@ int ipc_pmc_send_msg(uint32_t message)
 	shim_write(SHIM_IPCLPESCH, SHIM_IPCLPESCH_BUSY | message);
 
 	/* now wait for clock change */
-	//wait_for_interrupt(0);
+	wait_for_interrupt(0);
 
 	arch_interrupt_enable_mask(irq_mask);
 	return 0;
