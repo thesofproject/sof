@@ -49,14 +49,9 @@ static inline void arch_interrupt_disable(int irq)
 	xthal_set_intenable(_arch_irq_enable);
 }
 
-static inline uint32_t arch_interrupt_enable_mask(uint32_t mask)
+static inline void arch_interrupt_enable_mask(uint32_t mask)
 {
-	uint32_t old_mask = xthal_get_intenable();
-
-	_arch_irq_enable = mask;
-	xthal_set_intenable(_arch_irq_enable);
-
-	return old_mask;
+	xthal_set_intenable(mask);
 }
 
 static inline void arch_interrupt_set(int irq)
