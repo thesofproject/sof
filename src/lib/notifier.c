@@ -41,6 +41,9 @@ void notifier_event(int id, int message, void *event_data)
 
 	spin_lock(&_notify.lock);
 
+	if (list_empty(&_notify.list))
+		goto out;
+
 	/* iterate through notifiers and send event to interested clients */
 	list_for_each(wlist, &_notify.list) {
 
@@ -49,6 +52,7 @@ void notifier_event(int id, int message, void *event_data)
 			n->cb(message, n->cb_data, event_data);
 	}
 
+out:
 	spin_unlock(&_notify.lock);
 }
 
