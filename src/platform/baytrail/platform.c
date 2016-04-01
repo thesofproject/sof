@@ -20,6 +20,7 @@
 #include <reef/reef.h>
 #include <reef/work.h>
 #include <reef/clock.h>
+#include <reef/ipc.h>
 #include <reef/audio/component.h>
 #include <string.h>
 
@@ -76,6 +77,9 @@ int platform_init(void)
 	/* clear mailbox for early trace and debug */
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
+	/* configure the shim */
+	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
+
 	/* init PMC IPC */
 	platform_ipc_pmc_init();
 
@@ -90,6 +94,8 @@ int platform_init(void)
 	/* set SSP clock to 25M */
 	clock_set_freq(CLK_SSP, 25000000);
 
+	/* initialise the host IPC mechanisms */
+	ipc_init();
 	/* init DMACs */
 	dmac0 = dma_get(DMA_ID_DMAC0);
 	dma_probe(dmac0);
@@ -97,6 +103,8 @@ int platform_init(void)
 	dmac1 = dma_get(DMA_ID_DMAC1);
 	dma_probe(dmac1);
 
+	/* mask SSP interrupts */
+	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
 	/* init SSP ports */
 	ssp0 = dai_get(COMP_TYPE_DAI_SSP, 0);
 	dai_probe(ssp0);
@@ -106,10 +114,5 @@ int platform_init(void)
 
 	ssp2 = dai_get(COMP_TYPE_DAI_SSP, 2);
 	dai_probe(ssp2);
-
-	/* set SSP defaults */
-	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
-	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
-
 	return 0;
 }
