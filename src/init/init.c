@@ -14,11 +14,9 @@
 #include <reef/init.h>
 #include <reef/task.h>
 #include <reef/debug.h>
-#include <reef/ipc.h>
 #include <reef/alloc.h>
 #include <reef/notifier.h>
 #include <reef/work.h>
-#include <reef/ipc.h>
 #include <platform/platform.h>
 
 int main(int argc, char *argv[])
@@ -38,11 +36,6 @@ int main(int argc, char *argv[])
 	err = platform_init();
 	if (err < 0)
 		panic(PANIC_PLATFORM);
-
-	/* initialise the IPC mechanisms */
-	err = ipc_init();
-	if (err < 0)
-		panic(PANIC_IPC);
 
 	/* should not return */
 	err = do_task();
