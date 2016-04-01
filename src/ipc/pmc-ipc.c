@@ -91,7 +91,7 @@ static void irq_handler(void *arg)
 	if (isrlpesc & SHIM_ISRLPESC_BUSY) {
 		
 		/* Mask Busy interrupt before return */
-		shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRD) | SHIM_IMRLPESC_BUSY);
+		shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) | SHIM_IMRLPESC_BUSY);
 
 		/* place message in Q and process later */
 		_pmc->msg_l = shim_read(SHIM_IPCSCL);
