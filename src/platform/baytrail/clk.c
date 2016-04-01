@@ -19,7 +19,7 @@
 #include <platform/pmc.h>
 #include <stdint.h>
 
-#define NUM_CLOCKS	4
+#define NUM_CLOCKS	2
 
 struct clk_data {
 	uint32_t freq;
@@ -100,7 +100,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
 	uint32_t idx, flags;
-	int err;
+	int err = 0;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
@@ -110,6 +110,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 
 	switch (clock) {
 	case CLK_CPU:
+
 		/* get nearest frequency that is >= requested Hz */
 		idx = get_freq(cpu_freq, ARRAY_SIZE(cpu_freq), hz);
 		notify_data.freq = cpu_freq[idx].freq;
@@ -124,13 +125,13 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		
 		/* send freq request to SC */
 		err = ipc_pmc_send_msg(PMC_SET_LPECLK);
-		if (err < 0)
-			break;
+		if (err == 0) {
 
-		/* update clock frequency */
-		clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
-		clk_pdata->clk[clock].ticks_per_usec =
-			cpu_freq[idx].ticks_per_usec;
+			/* update clock frequency */
+			clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
+			clk_pdata->clk[clock].ticks_per_usec =
+				cpu_freq[idx].ticks_per_usec;
+		}
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
@@ -147,23 +148,23 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 
 		/* send SSP freq request to SC */
 		err = ipc_pmc_send_msg(ssp_freq[idx].enc);
-		if (err < 0)
-			break;
+		if (err == 0) {
 
-		/* update clock freqency */
-		clk_pdata->clk[clock].freq = ssp_freq[idx].freq;
-		clk_pdata->clk[clock].ticks_per_usec =
-			ssp_freq[idx].ticks_per_usec;
+			/* update clock frequency */
+			clk_pdata->clk[clock].freq = ssp_freq[idx].freq;
+			clk_pdata->clk[clock].ticks_per_usec =
+				ssp_freq[idx].ticks_per_usec;
+		}
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_POST,
 			&notify_data);
+
 	default:
 		break;
 	}
 
 	spin_unlock_irq(clk_pdata->clk[clock].lock, flags);
-
 	return clk_pdata->clk[clock].freq;
 }
 
