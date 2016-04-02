@@ -204,7 +204,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	uint32_t host_id, dai_id;
 	struct ipc_pcm_dev *pcm_dev;
 	struct ipc_dai_dev *dai_dev;
-	int err;
+	int err, i;
 	uint8_t direction;
 
 	trace_ipc("SAl");
@@ -309,15 +309,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	reply.presentation_position_register_address =
 		to_host_offset(_stream_data->presentation_posn);
 
-#if 0
 	/* set volume address */
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
 		reply.peak_meter_register_address[i] =
-			to_host_offset(pcm_dev->stream_data[stream_id].peak[i]);
+			to_host_offset(_stream_data->vol[i].peak);
 		reply.volume_register_address[i] =
-			to_host_offset(pcm_dev->stream_data[stream_id].volume[i]);
+			to_host_offset(_stream_data->vol[i].vol);
 	}
-#endif
 
 	/* write reply to mailbox */
 	mailbox_outbox_write(0, &reply, sizeof(reply));
@@ -365,6 +363,7 @@ static uint32_t ipc_stream_info(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_info_reply info;
 	struct ipc_comp_dev *comp_dev;
+	int i;
 
 	trace_ipc("SIn");
 
@@ -376,14 +375,14 @@ static uint32_t ipc_stream_info(uint32_t header)
 	if (comp_dev == NULL)
 		goto error; 
 	
-#if 0
+	// TODO: this is duplicating standard stream alloc mixer 
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
 		info.peak_meter_register_address[i] =
-			to_host_offset(_ipc->mixer_data->peak[i]);
+			to_host_offset(_stream_data->vol[i].peak);
 		info.volume_register_address[i] =
-			to_host_offset(_ipc->mixer_data->volume[i]);
+			to_host_offset(_stream_data->vol[i].vol);
 	}
-#endif
+
 	mailbox_outbox_write(0, &info, sizeof(info));
 
 // TODO: define error paths
