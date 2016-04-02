@@ -29,7 +29,7 @@
 
 /* move to config.h */
 #define TRACE	1
-#define TRACEV	1
+#define TRACEV	0
 
 #if TRACE
 extern uint32_t trace_pos;
