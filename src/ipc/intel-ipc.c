@@ -38,6 +38,9 @@ struct intel_ipc_data {
 
 	/* SSP port - TODO driver only support 1 atm */
 	uint32_t dai[2];
+
+	/* PM */
+	int pm_prepare_D3;	/* do we need to prepare for D3 */
 };
 
 #define to_host_offset(_s) \
@@ -483,8 +486,24 @@ error:
 
 static uint32_t ipc_context_save(uint32_t header)
 {
+	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+	struct ipc_intel_ipc_dx_reply reply;
+
 	trace_ipc("PMs");
 
+	/* TODO: check we are inactive */
+
+	/* TODO: stop timers */
+
+	/* TODO: save the context */
+	reply.entries_no = 0;
+
+	/* mask all interrupts */
+	interrupt_global_disable();
+
+	mailbox_outbox_write(0, &reply, sizeof(reply));
+
+	iipc->pm_prepare_D3 = 1;
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
@@ -752,6 +771,7 @@ static uint32_t ipc_cmd(void)
 
 static void do_cmd(void)
 {
+	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	uint32_t ipcxh, status;
 	
 	trace_ipc("Cmd");
@@ -768,6 +788,10 @@ static void do_cmd(void)
 
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+
+	/* are we about to enter D3 ? */
+	if (iipc->pm_prepare_D3)
+		wait_for_interrupt(0);
 }
 
 static void do_notify(void)
@@ -865,6 +889,9 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* dma */
 	iipc->dmac0 = dma_get(DMA_ID_DMAC0);
+
+	/* PM */
+	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_IA, irq_handler, NULL);
