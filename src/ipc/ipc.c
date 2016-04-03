@@ -21,6 +21,7 @@
 
 static struct ipc *_ipc;
 
+/* each componnet has unique ID within the pipeline */
 struct ipc_comp_dev *ipc_get_comp(uint32_t id)
 {
 	struct ipc_comp_dev *icd;
@@ -37,6 +38,7 @@ struct ipc_comp_dev *ipc_get_comp(uint32_t id)
 	return NULL;
 }
 
+/* each buffer has unique ID within the pipeline */
 struct ipc_buffer_dev *ipc_get_buffer(uint32_t id)
 {
 	struct ipc_comp_dev *icd;
@@ -117,14 +119,14 @@ int ipc_buffer_new(int pipeline_id, struct buffer_desc *desc)
 	if (icb == NULL)
 		return -ENOMEM;
 
-	/* register component with piepline */
+	/* register buffer with piepline */
 	icb->cb = pipeline_buffer_new(p, desc);
 	if (icb->cb == NULL) {
 		rfree(RZONE_MODULE, RMOD_SYS, icb);
 		return -ENOMEM;
 	}
 
-	/* init IPC comp */
+	/* init IPC buffer */
 	icb->pipeline_id = pipeline_id;
 	icb->p = p;
 
