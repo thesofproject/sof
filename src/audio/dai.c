@@ -70,7 +70,7 @@ static void dai_dma_cb(void *data, uint32_t type)
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = (void*)status.w_pos;
-		dma_period_desc = &dma_buffer->desc.sink_period;
+		dma_period_desc = &dma_buffer->desc.source_period;
 
 		/* check for end of buffer */
 		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
@@ -277,7 +277,7 @@ static int dai_prepare(struct comp_dev *dev)
 	} else {
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);
-		dma_buffer->r_ptr = dma_buffer->addr;
+		//dma_buffer->r_ptr = dma_buffer->addr;
 		dma_buffer->w_ptr = dma_buffer->addr;
 	}
 
