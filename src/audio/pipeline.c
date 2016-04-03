@@ -304,7 +304,7 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 
 	/* dont walk the graph any further if this component fails or
 	   doesnt copy any data */
-	if (err < 0 || comp->is_dai)
+	if (err < 0 || comp->is_host)
 		return err;
 
 	/* now run this operation downstream */
@@ -500,7 +500,7 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
-#if 0
+
 	/* process capture streams in the pipeline */
 	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
@@ -513,7 +513,7 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 		/* process downstream */
 		component_op_sink(&op_data, ep);
 	}
-#endif
+
 	/* now process playback streams in the pipeline */
 	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
