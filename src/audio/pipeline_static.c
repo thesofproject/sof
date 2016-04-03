@@ -82,22 +82,22 @@ static struct spipe_buffer dev_buf_c = SPIPE_DEV_BUF;
  */
 
 static struct spipe_comp *pipe0_play_comps[] = {
-	&host_p,
-	&volume_p,
-	&ssp_p,
+	&host_p,	/* ID = 0 */
+	&volume_p,	/* ID = 1 */
+	&ssp_p,		/* ID = 2 */
 };
 
 static struct spipe_comp *pipe0_capt_comps[] = {
-	&ssp_c,
-	&volume_c,
-	&host_c,
+	&ssp_c,		/* ID = 3 */
+	&volume_c,	/* ID = 4 */
+	&host_c,	/* ID = 5 */
 };
 
 static struct spipe_buffer *pipe0_buffers[] = {
-	&host_buf_p,
-	&host_buf_c,
-	&dev_buf_p,
-	&dev_buf_c,
+	&host_buf_p,	/* ID = 6 */
+	&host_buf_c,	/* ID = 7 */
+	&dev_buf_p,	/* ID = 8 */
+	&dev_buf_c,	/* ID = 9 */
 };
 
 static struct spipe_link pipe_play0[] = {
