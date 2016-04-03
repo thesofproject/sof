@@ -216,44 +216,31 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	mailbox_inbox_read(&req, 0, sizeof(req));
 
 	/* format always PCM, now check source type */
+	/* host a & dai ID values are from hard coded static pipeline */ 
 	switch (req.stream_type) {
 	case IPC_INTEL_STREAM_TYPE_SYSTEM:
-	default:
 		host_id = 0;
 		dai_id = 2;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		break;
-#if 0
-	case IPC_IPC_HOST_TYPE_RENDER:
-		host_id = 0;
-		dai_id = 2;
-		direction = STREAM_DIRECTION_PLAYBACK;
-		break;
-	case IPC_IPC_HOST_TYPE_CAPTURE:
-		host_id = 0;
-		//dai_id = 3;
-		//direction = STREAM_DIRECTION_CAPTURE;
-		direction = STREAM_DIRECTION_PLAYBACK;
-		dai_id = 2;
-		break;
-	case IPC_IPC_HOST_TYPE_LOOPBACK:
-		host_id = 0;
+	case IPC_INTEL_STREAM_TYPE_CAPTURE:
+		host_id = 5;
 		dai_id = 3;
 		direction = STREAM_DIRECTION_CAPTURE;
+		break;
 	default:
-		goto error;
-#endif
+		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 	};
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(host_id);
 	if (pcm_dev == NULL)
-		goto error; 
+		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 
-	/* get the pcm_dev */
+	/* get the dai_dev */
 	dai_dev = ipc_get_dai_comp(dai_id);
 	if (dai_dev == NULL)
-		goto error; 
+		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
 
 	params = &pcm_dev->params;
 	//ipc_set_drvdata(&pcm_dev->dev, stream_data);
