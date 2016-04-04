@@ -507,6 +507,9 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
 
+		if (ep->state != COMP_STATE_RUNNING)
+			continue;
+
 		if (ep->direction == STREAM_DIRECTION_PLAYBACK)
 			continue;
 
