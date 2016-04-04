@@ -452,10 +452,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	op_data.params = params;
 
 	spin_lock(&p->lock);
-	if (host->direction == STREAM_DIRECTION_PLAYBACK)
+	//if (host->direction == STREAM_DIRECTION_PLAYBACK)
 		ret = component_op_sink(&op_data, host);
-	else
-		ret = component_op_source(&op_data, host);
+	//else
+	//	ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
 
 	return ret;
