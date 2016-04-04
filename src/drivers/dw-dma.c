@@ -352,7 +352,7 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 
 	/* still waiting on more FIFOs to drain ? */
 	if (schedule)
-		return 1;	/* reschedule this work in 1 msec */
+		return 1000;	/* reschedule this work in 1 msec */
 	else
 		return 0;
 }
