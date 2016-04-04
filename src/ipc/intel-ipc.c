@@ -229,18 +229,23 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		direction = STREAM_DIRECTION_CAPTURE;
 		break;
 	default:
+		trace_ipc_error("eAt");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 	};
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(host_id);
-	if (pcm_dev == NULL)
+	if (pcm_dev == NULL) {
+		trace_ipc_error("eAC");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+	}
 
 	/* get the dai_dev */
 	dai_dev = ipc_get_dai_comp(dai_id);
-	if (dai_dev == NULL)
+	if (dai_dev == NULL) {
+		trace_ipc_error("eAD");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
+	}
 
 	params = &pcm_dev->params;
 	//ipc_set_drvdata(&pcm_dev->dev, stream_data);
@@ -257,6 +262,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		params->frame_size = 2 * params->channels;
 		break;
 	default:
+		trace_ipc_error("eAb");
 		goto error;
 	}
 
@@ -264,30 +270,40 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_desciptors(iipc, &req);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eAp");
 		goto error;
+	}
 
 	/* Parse host tables */
 	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eAP");
 		goto error;
+	}
 
 	/* configure pipeline audio params */
 	err = pipeline_params(pipeline_static, pcm_dev->dev.cd, params);	
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eAa");
 		goto error;
+	}
 
 	/* pass the IPC presentation posn pointer to the DAI */
 	err = comp_cmd(dai_dev->dev.cd, COMP_CMD_IPC_MMAP_PPOS,
 		&_stream_data->presentation_posn);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eAr");
 		goto error;
+	}
 
 	/* pass the IPC read posn pointer to the host */
 	err = comp_cmd(pcm_dev->dev.cd, COMP_CMD_IPC_MMAP_RPOS,
 		&_stream_data->read_posn);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eAR");
 		goto error;
+	}
 
 	/* at this point pipeline is ready for command so send stream reply */
 	reply.stream_hw_id = host_id;
