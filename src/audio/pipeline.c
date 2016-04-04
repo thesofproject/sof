@@ -304,7 +304,7 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 
 	/* dont walk the graph any further if this component fails or
 	   doesnt copy any data */
-	if (err < 0 || comp->is_host)
+	if (err < 0 || comp->is_dai)
 		return err;
 
 	/* now run this operation downstream */
@@ -498,9 +498,13 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 
 	tracev_pipe("PWs");
 
+	if (list_empty(&p->dai_ep_list))
+		goto out;
+
 	op_data.p = p;
 	op_data.op = COMP_OPS_COPY;
 
+#if 0
 	/* process capture streams in the pipeline */
 	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
