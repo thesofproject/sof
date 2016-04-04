@@ -30,6 +30,7 @@
 /* move to config.h */
 #define TRACE	1
 #define TRACEV	0
+#define TRACEE	1
 
 #if TRACE
 extern uint32_t trace_pos;
@@ -43,7 +44,7 @@ static inline void _trace_event(uint32_t event)
 	t[0] = platform_timer_get(0);
 	t[1] = event;
 
-	trace_pos += (sizeof(uint32_t) * 2);
+	trace_pos += (sizeof(uint32_t) << 1);
 	if (trace_pos >= MAILBOX_TRACE_SIZE)
 		trace_pos = 0;
 }
@@ -60,6 +61,13 @@ static inline void _trace_event(uint32_t event)
 #define tracev_event(__c, __e) trace_event(__c, __e)
 #else
 #define tracev_event(__c, __e)
+#endif
+
+/* error tracing */
+#if TRACEE
+#define trace_error(__c, __e) trace_event(__c, __e)
+#else
+#define trace_error(__c, __e)
 #endif
 
 #else

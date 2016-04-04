@@ -15,6 +15,7 @@
 #include <reef/audio/component.h>
 
 #define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC, __e)
+#define trace_ipc_error(__e)	trace_error(TRACE_CLASS_IPC, __e)
 
 #define MSG_QUEUE_SIZE		8
 
