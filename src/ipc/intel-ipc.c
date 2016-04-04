@@ -616,10 +616,8 @@ static uint32_t ipc_stream_reset(uint32_t header)
 
 	trace_ipc("SRt");
 
-	// HACK - fix stream IDs
-	//stream_id = header & IPC_INTEL_STR_ID_MASK;
-	//stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-	stream_id = 0;
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
@@ -650,10 +648,8 @@ static uint32_t ipc_stream_pause(uint32_t header)
 
 	trace_ipc("SPa");
 
-	// HACK - fix stream IDs
-//	stream_id = header & IPC_INTEL_STR_ID_MASK;
-//	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-	stream_id = 0;
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
@@ -682,10 +678,8 @@ static uint32_t ipc_stream_resume(uint32_t header)
 
 	trace_ipc("SRe");
 
-	// HACK - fix stream IDs
-	//stream_id = header & IPC_INTEL_STR_ID_MASK;
-	//stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-	stream_id = 0;
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
