@@ -63,6 +63,64 @@ int platform_boot_complete(uint32_t boot_message)
 	return 0;
 }
 
+struct ssp_mn {
+	uint32_t source;
+	uint32_t bclk_fs;
+	uint32_t rate;
+	uint32_t m;
+	uint32_t n;
+};
+
+static const struct ssp_mn ssp_mn_conf[] = {
+	{25000000, 32, 48000, 1152, 25000}, 	/* 1.152MHz */
+	{25000000, 64, 48000, 3072, 25000}, 	/* 3.072MHz */
+	{25000000, 400, 48000, 96, 125}, 	/* 19.2MHz */
+	{25000000, 400, 44100, 441, 625}, 	/* 17.64MHz */
+};
+
+/* set the SSP M/N clock dividers */
+int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
+	uint32_t bclk_fs)
+{
+	int i;
+
+	/* check for matching config in the table */
+	for (i = 0; i < ARRAY_SIZE(ssp_mn_conf); i++) {
+
+		if (ssp_mn_conf[i].source != source)
+			continue;
+
+		if (ssp_mn_conf[i].rate != rate)
+			continue;
+
+		if (ssp_mn_conf[i].bclk_fs != bclk_fs)
+			continue;
+
+		/* match */
+		switch (ssp_port) {
+		case 0:
+			shim_write(SHIM_SSP0_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP0_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		case 1:
+			shim_write(SHIM_SSP1_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP1_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		case 2:
+			shim_write(SHIM_SSP2_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP2_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		default:
+			return -ENODEV;
+		}
+	}
+
+	return -EINVAL;
+}
+
 /* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
 void platform_interrupt_mask_clear(uint32_t mask)
 {

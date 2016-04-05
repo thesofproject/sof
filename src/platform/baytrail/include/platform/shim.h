@@ -115,6 +115,10 @@
 #define SHIM_EXT_TIMER_RUN	(1 << 31)
 #define SHIM_EXT_TIMER_CLEAR	(1 << 30)
 
+/* SSP M/N */
+#define SHIM_SSP_DIV_ENA	(1 << 30)
+#define SHIM_SSP_DIV_UPD	(1 << 29)
+
 static inline uint32_t shim_read(uint32_t reg)
 {
 	return *((volatile uint32_t*)(SHIM_BASE + reg));
