@@ -21,6 +21,7 @@
 #include <reef/alloc.h>
 #include <reef/wait.h>
 #include <reef/trace.h>
+#include <reef/ssp.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -433,12 +434,14 @@ static uint32_t ipc_device_get_formats(uint32_t header)
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
+
+
 static uint32_t ipc_device_set_formats(uint32_t header)
 {
 	struct ipc_intel_ipc_device_config_req config_req;
 	struct ipc_dai_dev *dai_dev;
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
-//	struct IPC_HOST_data *stream_data;
+	int err;
 
 	trace_ipc("DsF");
 
@@ -448,23 +451,25 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	/* get SSP port TODO: align ports*/
 	switch (config_req.ssp_interface) {
 	case IPC_INTEL_DEVICE_SSP_0:
+
+		/* TODO: hard coded atm */
 		iipc->dai[0] = 2;
 		iipc->dai[1] = 3;
 		break;
 	case IPC_INTEL_DEVICE_SSP_1:
+
+		/* TODO: hard coded atm */
 		iipc->dai[0] = 2;
 		iipc->dai[1] = 3;
 		break;
 	case IPC_INTEL_DEVICE_SSP_2:
+
+		/* TODO: hard coded atm */
 		iipc->dai[0] = 2;
 		iipc->dai[1] = 3;
-
-		/* set SSP M/N clock dividers TODO: program this from IPC */
-		shim_write(SHIM_SSP2_DIVL, 0x000061a8); // 3.072MHz
-		shim_write(SHIM_SSP2_DIVH, 0x60000c00);
-
 		break;
 	default:
+		/* TODO: */
 		goto error;
 	};
 
@@ -475,11 +480,19 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 
 	/* setup the DAI HW config - TODO hard coded due to IPC limitations */
 	dai_dev->dai_config.mclk = config_req.clock_frequency;
-	dai_dev->dai_config.format = DAI_FMT_I2S;
-	dai_dev->dai_config.frame_size = 32;
-	dai_dev->dai_config.bclk_fs = 32;
-	dai_dev->dai_config.mclk_fs = 256;
-	dai_dev->dai_config.clk_src = 0;// audio
+	dai_dev->dai_config.format = DAI_FMT_DSP_B | DAI_FMT_CONT |
+		DAI_FMT_NB_NF | DAI_FMT_CBS_CFS;
+	dai_dev->dai_config.frame_size = 32;	/* TODO 16bit stereo hard coded */
+	dai_dev->dai_config.bclk_fs = 32;	/* 32 BCLKs per frame - */
+	dai_dev->dai_config.mclk_fs = 256;	
+	dai_dev->dai_config.clk_src = SSP_CLK_EXT;
+
+	/* set SSP M/N dividers */
+	err = platform_ssp_set_mn(config_req.ssp_interface, 
+		25000000, 48000,
+		dai_dev->dai_config.bclk_fs);
+	if (err < 0)
+		goto error;
 
 	comp_dai_config(dai_dev->dev.cd, &dai_dev->dai_config);
 
@@ -497,6 +510,9 @@ static uint32_t ipc_context_save(uint32_t header)
 	/* TODO: check we are inactive */
 
 	/* TODO: stop timers */
+	platform_ssp_disable_mn(0);
+	platform_ssp_disable_mn(1);
+	platform_ssp_disable_mn(2);
 
 	/* TODO: save the context */
 	reply.entries_no = 0;
