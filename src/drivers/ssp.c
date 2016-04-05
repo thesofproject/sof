@@ -82,6 +82,10 @@
 #define SSPSP_DMYSTOP(x)	((x) << 23)
 #define SSPSP_FSRT		(1 << 25)
 
+/* SFIFOTT bits */
+#define SFIFOTT_TX(x)		(x - 1)
+#define SFIFOTT_RX(x)		((x - 1) << 16)
+
 /* SSP private data */
 struct ssp_pdata {
 	uint32_t sscr0;
@@ -134,7 +138,7 @@ static int ssp_context_restore(struct dai *dai)
 static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 {
 	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t sscr0, sscr1, sspsp;
+	uint32_t sscr0, sscr1, sspsp, sfifott;
 
 	/* reset SSP settings */
 	sscr0 = 0;
@@ -196,7 +200,7 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	switch (dai->config.format & DAI_FMT_FORMAT_MASK) {
 	case DAI_FMT_I2S:
 		sscr0 |= SSCR0_PSP;
-		sscr1 |= SSCR1_RWOT | SSCR1_TRAIL;
+		sscr1 |= SSCR1_TRAIL;
 		sspsp |= SSPSP_SFRMWDTH(dai->config.frame_size + 1);
 		sspsp |= SSPSP_SFRMDLY((dai->config.frame_size + 1) * 2);
 		sspsp |= SSPSP_DMYSTRT(1);
@@ -205,7 +209,7 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		sspsp |= SSPSP_FSRT;
 	case DAI_FMT_DSP_B:
 		sscr0 |= SSCR0_PSP;
-		sscr1 |= SSCR1_TRAIL | SSCR1_RWOT;
+		sscr1 |= SSCR1_TRAIL;
 		break;
 	default:
 		return -EINVAL;
@@ -217,9 +221,16 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	else
 		sscr0 |= SSCR0_DSIZE(dai->config.frame_size);
 
+	/* watermarks - TODO: do we still need old sscr1 method ?? */
+	sscr1 |= (SSCR1_TX(4) | SSCR1_RX(4));
+
+	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
+	sfifott = (SFIFOTT_TX(8) | SFIFOTT_RX(8));
+
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSPSP, sspsp);
+	ssp_write(dai, SFIFOTT, sfifott);
 
 	return 0;
 }

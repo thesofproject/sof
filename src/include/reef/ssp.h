@@ -27,6 +27,7 @@
 #define SSTSA		0x30
 #define SSRSA		0x34
 #define SSTSS		0x38
+#define SFIFOTT		0x6C
 
 extern const struct dai_ops ssp_ops;
 
