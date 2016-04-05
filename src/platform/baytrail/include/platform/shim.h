@@ -116,6 +116,7 @@
 #define SHIM_EXT_TIMER_CLEAR	(1 << 30)
 
 /* SSP M/N */
+#define SHIM_SSP_DIV_BYP	(1 << 31)
 #define SHIM_SSP_DIV_ENA	(1 << 30)
 #define SHIM_SSP_DIV_UPD	(1 << 29)
 

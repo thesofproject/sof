@@ -121,6 +121,24 @@ int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 	return -EINVAL;
 }
 
+void platform_ssp_disable_mn(uint32_t ssp_port)
+{
+	switch (ssp_port) {
+	case 0:
+		shim_write(SHIM_SSP0_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	case 1:
+		shim_write(SHIM_SSP1_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	case 2:
+		shim_write(SHIM_SSP2_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	}
+}
+
 /* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
 void platform_interrupt_mask_clear(uint32_t mask)
 {

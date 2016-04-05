@@ -48,4 +48,6 @@ void platform_interrupt_mask_clear(uint32_t mask);
 int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 	uint32_t bclk_fs);
 
+void platform_ssp_disable_mn(uint32_t ssp_port);
+
 #endif
