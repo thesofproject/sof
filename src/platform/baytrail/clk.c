@@ -139,7 +139,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		break;
 	case CLK_SSP:
 		/* get nearest frequency that is >= requested Hz */
-		idx = get_freq(cpu_freq, ARRAY_SIZE(ssp_freq), hz);
+		idx = get_freq(ssp_freq, ARRAY_SIZE(ssp_freq), hz);
 		notify_data.freq = ssp_freq[idx].freq;
 
 		/* tell anyone interested we are about to change CPU freq */
