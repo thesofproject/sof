@@ -21,6 +21,13 @@ void platform_timer_start(int timer)
 	shim_write(SHIM_EXT_TIMER_CNTLL, 0);
 }
 
+/* this seems to stop rebooting with RTD3 ???? */
+void platform_timer_stop(int timer)
+{
+	/* run timer */
+	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_CLEAR);
+}
+
 void platform_timer_set(int timer, uint32_t ticks)
 {
 	/* a tick value of 0 will not generate an IRQ */
