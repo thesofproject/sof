@@ -25,6 +25,7 @@ void platform_timer_start(int timer)
 void platform_timer_stop(int timer)
 {
 	/* run timer */
+	shim_write(SHIM_EXT_TIMER_CNTLL, 0);
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_CLEAR);
 }
 
