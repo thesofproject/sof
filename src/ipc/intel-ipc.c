@@ -50,9 +50,11 @@ struct intel_ipc_data {
 static struct ipc *_ipc;
 
 /* hard coded stream offset TODO: make this into programmable map */
-static struct sst_intel_ipc_stream_data *_stream_data =
+static struct sst_intel_ipc_stream_data *_stream_dataP =
 	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET);
-
+static struct sst_intel_ipc_stream_data *_stream_dataC =
+	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
+		sizeof(struct sst_intel_ipc_stream_data));
 /*
  * BDW IPC dialect.
  *
@@ -208,6 +210,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	uint32_t host_id, dai_id;
 	struct ipc_pcm_dev *pcm_dev;
 	struct ipc_dai_dev *dai_dev;
+	struct sst_intel_ipc_stream_data *_stream_data;
 	int err, i;
 	uint8_t direction;
 
@@ -223,11 +226,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		host_id = 0;
 		dai_id = 2;
 		direction = STREAM_DIRECTION_PLAYBACK;
+		_stream_data = _stream_dataP;
 		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
 		host_id = 5;
 		dai_id = 3;
 		direction = STREAM_DIRECTION_CAPTURE;
+		_stream_data = _stream_dataC;
 		break;
 	default:
 		trace_ipc_error("eAt");
@@ -249,7 +254,6 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	}
 
 	params = &pcm_dev->params;
-	//ipc_set_drvdata(&pcm_dev->dev, stream_data);
 
 	/* read in format to create params */
 	params->channels = req.format.ch_num;
@@ -348,7 +352,9 @@ static uint32_t ipc_stream_free(uint32_t header)
 	mailbox_inbox_read(&free_req, 0, sizeof(free_req));
 
 	// HACK - fix stream IDs
-	free_req.stream_id = 0;
+	//free_req.stream_id = 0;
+	//stream_id = header & IPC_INTEL_STR_ID_MASK;
+	//stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(free_req.stream_id);
@@ -385,9 +391,9 @@ static uint32_t ipc_stream_info(uint32_t header)
 	// TODO: this is duplicating standard stream alloc mixer 
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
 		info.peak_meter_register_address[i] =
-			to_host_offset(_stream_data->vol[i].peak);
+			to_host_offset(_stream_dataP->vol[i].peak);
 		info.volume_register_address[i] =
-			to_host_offset(_stream_data->vol[i].vol);
+			to_host_offset(_stream_dataP->vol[i].vol);
 	}
 
 	mailbox_outbox_write(0, &info, sizeof(info));
@@ -404,37 +410,12 @@ static uint32_t ipc_dump(uint32_t header)
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
-#if 0
-/* Device Configuration Request */
-struct ipc_intel_ipc_device_config_req {
-	uint32_t ssp_interface;
-	uint32_t clock_frequency;
-	uint32_t mode;
-	uint16_t clock_divider;
-	uint8_t channels;
-	uint8_t reserved;
-} __attribute__((packed));
-
-struct dai_config {
-	uint16_t format;
-	uint16_t frame_size;	/* in BCLKs */
-	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
-	struct dai_slot_map rx_slot_map[DAI_NUM_SLOT_MAPS];
-	uint16_t bclk_fs;	/* ratio between frame size and BCLK */
-	uint16_t mclk_fs;	/* ratio between frame size and MCLK */
-	uint32_t mclk;		/* mclk frequency in Hz */
-	uint16_t clk_src;	/* DAI specific clk source */
-};
-
-#endif
 static uint32_t ipc_device_get_formats(uint32_t header)
 {
 	trace_ipc("DgF");
 
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
-
-
 
 static uint32_t ipc_device_set_formats(uint32_t header)
 {
@@ -473,10 +454,12 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 		goto error;
 	};
 
-	/* get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(iipc->dai[0]);
-	if (dai_dev == NULL)
+	/* TODO: playback/capture DAI dev get the pcm_dev */
+	dai_dev = ipc_get_dai_comp(3);
+	if (dai_dev == NULL) {
+		trace_ipc_error("eDg");
 		goto error;
+	}
 
 	/* setup the DAI HW config - TODO hard coded due to IPC limitations */
 	dai_dev->dai_config.mclk = config_req.clock_frequency;
@@ -491,8 +474,10 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	err = platform_ssp_set_mn(config_req.ssp_interface, 
 		25000000, 48000,
 		dai_dev->dai_config.bclk_fs);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eDs");
 		goto error;
+	}
 
 	comp_dai_config(dai_dev->dev.cd, &dai_dev->dai_config);
 
@@ -511,6 +496,8 @@ static uint32_t ipc_context_save(uint32_t header)
 
 	/* mask all interrupts */
 	interrupt_global_disable();
+	platform_timer_stop(0);
+	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0xffff8438);
 
 	/* TODO: stop timers */
 	platform_ssp_disable_mn(0);
@@ -637,20 +624,27 @@ static uint32_t ipc_stream_reset(uint32_t header)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
-	if (pcm_dev == NULL)
+	if (pcm_dev == NULL) {
+		trace_ipc_error("erg");
 		goto error; 
+	}
 
 	/* send stop TODO: this should be done in trigger */
 	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
 		COMP_CMD_STOP, NULL);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("erc");
 		goto error;
+	}
+
 	pcm_dev->state = IPC_HOST_PAUSED; // TODO: fix to stopped
 
 	/* initialise the pipeline */
 	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("err");
 		goto error;
+	}
 
 error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
@@ -669,8 +663,10 @@ static uint32_t ipc_stream_pause(uint32_t header)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
-	if (pcm_dev == NULL)
-		goto error; 
+	if (pcm_dev == NULL) {
+		trace_ipc_error("ePg");
+		goto error;
+	}
 
 	/* driver IPC design is broken ... */
 	if (pcm_dev->state == IPC_HOST_ALLOC)
@@ -678,8 +674,11 @@ static uint32_t ipc_stream_pause(uint32_t header)
 
 	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
 		COMP_CMD_PAUSE, NULL);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("ePc");
 		goto error;
+	}
+
 	pcm_dev->state = IPC_HOST_PAUSED;
 
 error:
@@ -699,20 +698,26 @@ static uint32_t ipc_stream_resume(uint32_t header)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_pcm_comp(stream_id);
-	if (pcm_dev == NULL)
+	if (pcm_dev == NULL) {
+		trace_ipc_error("eRg");
 		goto error;
+	}
 
 	/* TODO: add check if need prepare */
 	/* initialise the pipeline, preparing pcm data */
 	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eRp");
 		goto error;
+	}
 
 	/* initialise the pipeline */
 	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
 			COMP_CMD_START, NULL);
-	if (err < 0)
+	if (err < 0) {
+		trace_ipc_error("eRc");
 		goto error;
+	}
 
 	pcm_dev->state = IPC_HOST_RUNNING;
 
