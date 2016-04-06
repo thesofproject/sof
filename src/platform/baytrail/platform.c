@@ -116,6 +116,8 @@ int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 		default:
 			return -ENODEV;
 		}
+
+		return 0;
 	}
 
 	return -EINVAL;
@@ -181,6 +183,7 @@ int platform_init(void)
 
 	/* mask SSP interrupts */
 	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
+
 	/* init SSP ports */
 	ssp0 = dai_get(COMP_TYPE_DAI_SSP, 0);
 	dai_probe(ssp0);
