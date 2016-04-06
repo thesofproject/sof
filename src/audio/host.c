@@ -329,13 +329,15 @@ static int host_prepare(struct comp_dev *dev)
 	int ret = 0;
 
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
-		dma_buffer = list_first_entry(&dev->bsource_list,
-			struct comp_buffer, sink_list);
+		dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+
 		dma_buffer->r_ptr = dma_buffer->addr;
 		dma_buffer->w_ptr = dma_buffer->addr;
 	} else {
-		dma_buffer = list_first_entry(&dev->bsink_list,
-			struct comp_buffer, source_list);
+		dma_buffer = list_first_entry(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+
 		dma_buffer->r_ptr = dma_buffer->addr;
 		dma_buffer->w_ptr = dma_buffer->addr;
 	}
