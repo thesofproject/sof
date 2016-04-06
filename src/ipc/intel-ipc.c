@@ -509,6 +509,9 @@ static uint32_t ipc_context_save(uint32_t header)
 
 	/* TODO: check we are inactive */
 
+	/* mask all interrupts */
+	interrupt_global_disable();
+
 	/* TODO: stop timers */
 	platform_ssp_disable_mn(0);
 	platform_ssp_disable_mn(1);
@@ -516,9 +519,6 @@ static uint32_t ipc_context_save(uint32_t header)
 
 	/* TODO: save the context */
 	reply.entries_no = 0;
-
-	/* mask all interrupts */
-	interrupt_global_disable();
 
 	mailbox_outbox_write(0, &reply, sizeof(reply));
 
