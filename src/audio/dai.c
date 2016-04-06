@@ -27,7 +27,6 @@ struct dai_data {
 	/* local DMA config */
 	int chan;
 	struct dma_sg_config config;
-	completion_t complete;
 
 	int direction;
 	struct dai *ssp;
@@ -85,9 +84,6 @@ static void dai_dma_cb(void *data, uint32_t type)
 
 	/* recalc available buffer space */
 	comp_update_buffer(dma_buffer);
-
-	/* let any waiters know we have completed */
-	wait_completed(&dd->complete);
 }
 
 static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
@@ -108,7 +104,7 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 
 	comp_set_drvdata(dev, dd);
 	comp_set_dai_ep(dev);
-	dd->ssp = dai_get(type, 2); /* use ssp2 for MB */
+	dd->ssp = dai_get(type, 2); /* TODO: get from IPC use ssp2 for MB */
 	dd->dma = dma_get(DMA_ID_DMAC1);
 	list_init(&dd->config.elem_list);
 	dd->dai_pos = NULL;
@@ -274,10 +270,10 @@ static int dai_prepare(struct comp_dev *dev)
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = dma_buffer->addr;
+
 	} else {
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);
-		//dma_buffer->r_ptr = dma_buffer->addr;
 		dma_buffer->w_ptr = dma_buffer->addr;
 	}
 
@@ -374,6 +370,7 @@ static int dai_copy(struct comp_dev *dev)
 				status.w_pos - (uint32_t)dma_buffer->addr;
 		}
 	}
+
 	return 0;
 }
 
