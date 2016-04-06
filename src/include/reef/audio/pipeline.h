@@ -19,6 +19,7 @@
 #include <reef/trace.h>
 
 #define trace_pipe(__e)	trace_event(TRACE_CLASS_PIPE, __e)
+#define trace_pipe_error(__e)	trace_error(TRACE_CLASS_PIPE, __e)
 #define tracev_pipe(__e)	tracev_event(TRACE_CLASS_PIPE, __e)
 
 /*

@@ -289,10 +289,6 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		err = comp_prepare(comp);
 
 		break;
-	case COMP_OPS_COPY:
-		/* component should copy to buffers */
-		err = comp_copy(comp);
-		break;
 	case COMP_OPS_RESET:
 		/* component should reset and free resources */
 		err = comp_reset(comp);
@@ -302,16 +298,21 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		return -EINVAL;
 	}
 
-	/* dont walk the graph any further if this component fails or
-	   doesnt copy any data */
-	if (err < 0 || comp->is_dai)
+	/* dont walk the graph any further if this component fails */
+	if (err < 0) {
+		trace_pipe_error("eOp");
 		return err;
+	}
+
+	if (comp->is_dai)
+		return 0;
 
 	/* now run this operation downstream */
 	list_for_each(clist, &comp->bsink_list) {
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
+
 		/* dont go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
@@ -356,10 +357,6 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		/* prepare the component */
 		err = comp_prepare(comp);
 		break;
-	case COMP_OPS_COPY:
-		/* component should copy to buffers */
-		err = comp_copy(comp);
-		break;
 	case COMP_OPS_RESET:
 		/* component should reset and free resources */
 		err = comp_reset(comp);
@@ -369,10 +366,14 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		return -EINVAL;
 	}
 
-	/* dont walk the graph any further if this component fails or
-	   doesnt copy any data */
-	if (err < 0 || comp->is_host)
+	/* dont walk the graph any further if this component fails */
+	if (err < 0) {
+		trace_pipe_error("eOp");
 		return err;
+	}
+
+	if (comp->is_dai)
+		return 0;
 
 	/* now run this operation upstream */
 	list_for_each(clist, &comp->bsource_list) {
@@ -452,10 +453,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	op_data.params = params;
 
 	spin_lock(&p->lock);
-	//if (host->direction == STREAM_DIRECTION_PLAYBACK)
+	if (host->direction == STREAM_DIRECTION_PLAYBACK)
 		ret = component_op_sink(&op_data, host);
-	//else
-	//	ret = component_op_source(&op_data, host);
+	else
+		ret = component_op_source(&op_data, host);
 	spin_unlock(&p->lock);
 
 	return ret;
@@ -490,21 +491,90 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_dev *host,
 	return comp_host_buffer(host, elem);
 }
 
+/* copy audio data from DAI buffer to host PCM buffer via pipeline */
+static int pipeline_copy_playback(struct comp_dev *comp)
+{
+	struct list_head *clist;
+	int err;
+
+	/* component should copy to buffers */
+	err = comp_copy(comp);
+
+	/* dont walk the graph any further if this component fails or
+	   doesnt copy any data */
+	if (err < 0) {
+		trace_pipe_error("ePc");
+		return err;
+	}
+
+	if (comp->is_host)
+		return 0;
+
+	/* now copy upstream */
+	list_for_each(clist, &comp->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* dont go upstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		err = pipeline_copy_playback(buffer->source);
+		if (err < 0)
+			break;
+	}
+
+	return err;
+}
+
+/* copy audio data from DAI buffer to host PCM buffer via pipeline */
+static int pipeline_copy_capture(struct comp_dev *comp)
+{
+	struct list_head *clist;
+	int err;
+
+	/* component should copy to buffers */
+	err = comp_copy(comp);
+
+	/* dont walk the graph any further if this component fails or
+	   doesnt copy any data */
+	if (err < 0) {
+		trace_pipe_error("ePc");
+		return err;
+	}
+
+	if (comp->is_host)
+		return 0;
+
+	/* now copy upstream */
+	list_for_each(clist, &comp->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* dont go upstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		err = pipeline_copy_capture(buffer->sink);
+		if (err < 0)
+			break;
+	}
+
+	return err;
+}
+
 /* called on timer tick to process pipeline data */
 void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 {
 	struct list_head *elist;
-	struct op_data op_data;
 
 	tracev_pipe("PWs");
 
 	if (list_empty(&p->dai_ep_list))
-		goto out;
+		return;
 
-	op_data.p = p;
-	op_data.op = COMP_OPS_COPY;
-
-#if 0
 	/* process capture streams in the pipeline */
 	list_for_each(elist, &p->dai_ep_list) {
 		struct comp_dev *ep;
@@ -518,7 +588,7 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 			continue;
 
 		/* process downstream */
-		component_op_sink(&op_data, ep);
+		pipeline_copy_capture(ep);
 	}
 
 	/* now process playback streams in the pipeline */
@@ -534,7 +604,7 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 			continue;
 
 		/* process downstream */
-		component_op_source(&op_data, ep);
+		pipeline_copy_playback(ep);
 	}
 
 	tracev_pipe("PWe");
