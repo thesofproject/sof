@@ -243,7 +243,7 @@ static int volume_params(struct comp_dev *dev, struct stream_params *params)
 
 	/* dont do any data transformation */
 	comp_set_sink_params(dev, params);
-
+	//TODO: add generic API to do a tabel lookup for this value;
 	cd->frame_us = 1000000 / params->pcm.rate;
 	return 0;
 }
@@ -318,8 +318,8 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t source_frames, sink_frames, cframes, frames_remaining;
-	uint32_t current, time_us, total_frames = 0;
+	uint32_t source_bytes, sink_bytes, cframes, frames_remaining;
+	uint32_t current, time_us, total_frames = 0, bytes_remaining;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
@@ -333,38 +333,50 @@ static int volume_copy(struct comp_dev *dev)
 
 		/* caclculate how many frames to copy */
 		frames_remaining = time_us / cd->frame_us;
+
 	} else {
+
 		frames_remaining = 48;
 	}
 
+	bytes_remaining = frames_remaining << 2;
+	trace_comp("CVs");
+	trace_value(bytes_remaining);
+	trace_value((uint32_t)(source->r_ptr - source->addr));
+	trace_value((uint32_t)(sink->w_ptr - sink->addr));
+
 	/* copy less data if there is not enough space or available data */
-	if (source->avail < frames_remaining * 4 ||
-		sink->free < frames_remaining * 4) {
+	if (source->avail < bytes_remaining ||
+		sink->free < bytes_remaining) {
 		if (source->avail < sink->free)
-			frames_remaining = source->avail >> 2;
+			bytes_remaining = source->avail;
 		else
-			frames_remaining = sink->free >> 2;
+			bytes_remaining = sink->free;
 	};
-
-	while (frames_remaining) {
-
+dbg_val_at(*(uint32_t*)source->addr, 22);
+dbg_val_at(*(uint32_t*)sink->addr, 23);
+	while (bytes_remaining) {
+trace_comp("Vvs");
+trace_value(bytes_remaining);
+trace_value((uint32_t)(source->r_ptr - source->addr));
+trace_value((uint32_t)(sink->w_ptr - sink->addr));
 		/* check source for overflow */
-		if (source->r_ptr + frames_remaining * 4 > source->end_addr)
-			source_frames = (source->end_addr - source->r_ptr) >> 2;
+		if (source->r_ptr + bytes_remaining > source->end_addr)
+			source_bytes = (source->end_addr - source->r_ptr);
 		else
-			source_frames = frames_remaining;
+			source_bytes = bytes_remaining;
 
 		/* check sink for overflow */
-		if (sink->w_ptr + frames_remaining * 4 > sink->end_addr)
-			sink_frames = (sink->end_addr - sink->w_ptr) >> 2;
+		if (sink->w_ptr + bytes_remaining > sink->end_addr)
+			sink_bytes = (sink->end_addr - sink->w_ptr);
 		else
-			sink_frames = frames_remaining;
+			sink_bytes = bytes_remaining;
 
 		/* choose minimum to avoid copy overflow */
-		if (sink_frames > source_frames)
-			cframes = source_frames;
+		if (sink_bytes > source_bytes)
+			cframes = source_bytes >> 2;
 		else
-			cframes = sink_frames;
+			cframes = sink_bytes >> 2;
 
 		/* copy and scale volume */
 		cd->scale_vol(dev, sink, source, cframes);
@@ -375,7 +387,8 @@ static int volume_copy(struct comp_dev *dev)
 		if (sink->w_ptr >= sink->end_addr)
 			sink->w_ptr = sink->addr;
 
-		frames_remaining -= cframes;
+		bytes_remaining -= cframes << 2;
+		//frames_remaining -= cframes;
 		total_frames += cframes;
 	}
 
