@@ -62,6 +62,10 @@
 #define COMP_OPS_BUFFER		4
 #define COMP_OPS_RESET		5
 
+#define trace_comp(__e)	trace_event(TRACE_CLASS_COMP, __e)
+#define trace_comp_error(__e)	trace_error(TRACE_CLASS_COMP, __e)
+#define tracev_comp(__e)	tracev_event(TRACE_CLASS_COMP, __e)
+
 /* standard component command structures */
 struct comp_volume {
 	uint16_t volume[STREAM_MAX_CHANNELS];

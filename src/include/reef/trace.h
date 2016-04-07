@@ -25,7 +25,7 @@
 #define TRACE_CLASS_DAI		(5 << 24)
 #define TRACE_CLASS_DMA		(6 << 24)
 #define TRACE_CLASS_SSP		(7 << 24)
-#define TRACE_CLASS_VOLUME	(8 << 24)
+#define TRACE_CLASS_COMP	(8 << 24)
 
 /* move to config.h */
 #define TRACE	1
