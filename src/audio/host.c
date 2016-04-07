@@ -80,6 +80,7 @@ static void host_dma_cb(void *data, uint32_t type)
 
 	/* update local buffer position */
 	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
+	trace_comp("CHs");
 
 	/* new local period, update host buffer position blks */
 	hd->host_pos_blks += hd->period->size;
@@ -108,10 +109,15 @@ static void host_dma_cb(void *data, uint32_t type)
 		local_elem->dest = sink_elem->dest;
 	}
 
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
 		hd->dma_buffer->w_ptr = (void*)status.w_pos;
-	else
+		trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
+	} else {
 		hd->dma_buffer->r_ptr = (void*)status.r_pos;
+		trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
+	}
+
+	dbg_val_at(*(uint32_t*)hd->dma_buffer->addr, 20);
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);
@@ -462,6 +468,7 @@ static int host_copy(struct comp_dev *dev)
 		/* do DMA transfer */
 		wait_init(&hd->complete);
 		dma_set_config(hd->dma, hd->chan, &hd->config);
+		trace_comp("CH+");
 		dma_start(hd->dma, hd->chan);
 	}
 
