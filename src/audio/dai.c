@@ -49,11 +49,16 @@ static void dai_dma_cb(void *data, uint32_t type)
 	/* update local buffer position */
 	dma_status(dd->dma, dd->chan, &status, dd->direction);
 
+	trace_comp("CDs");
+
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = (void*)status.r_pos;
 		dma_period_desc = &dma_buffer->desc.sink_period;
+
+		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
+		dbg_val_at(*(uint32_t*)dma_buffer->addr, 24);
 
 		/* check for end of buffer */
 		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
@@ -70,6 +75,9 @@ static void dai_dma_cb(void *data, uint32_t type)
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = (void*)status.w_pos;
 		dma_period_desc = &dma_buffer->desc.source_period;
+
+		trace_value((uint32_t)(dma_buffer->w_ptr - dma_buffer->addr));
+		dbg_val_at(*(uint32_t*)dma_buffer->addr, 21);
 
 		/* check for end of buffer */
 		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
