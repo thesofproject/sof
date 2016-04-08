@@ -232,7 +232,10 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 
 	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
 	sfifott = (SFIFOTT_TX(8) | SFIFOTT_RX(8));
-
+#if 0
+	/* test loopback */
+	sscr1 |= SSCR1_LBM;
+#endif
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSPSP, sspsp);
