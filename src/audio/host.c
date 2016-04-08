@@ -464,7 +464,9 @@ static int host_copy(struct comp_dev *dev)
 	else
 		size = hd->dma_buffer->avail;
 
-	if (size > hd->period->size) {
+	/* we do DMA copy only when the buffer is whole free atm, will fine tune
+	    the buffer later */
+	if (size > hd->period->size << 1) {
 		/* do DMA transfer */
 		wait_init(&hd->complete);
 		dma_set_config(hd->dma, hd->chan, &hd->config);
@@ -474,7 +476,6 @@ static int host_copy(struct comp_dev *dev)
 
 	return 0;
 }
-
 struct comp_driver comp_host = {
 	.type	= COMP_TYPE_HOST,
 	.ops	= {
