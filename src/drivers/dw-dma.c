@@ -462,8 +462,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		lli_desc->ctrl_lo |= DW_CTLL_FC(config->direction); /* config the transfer type */
 		lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2); /* config the src tr width */
 		lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2); /* config the dest tr width */
-		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(4); /* config the src msize length 2^4 */
-		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(4); /* config the dest msize length 2^4 */
+		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(2); /* config the src msize length 2^2 */
+		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(2); /* config the dest msize length 2^2 */
 		lli_desc->ctrl_lo |= DW_CTLL_INT_EN; /* enable interrupt */
 
 		/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
