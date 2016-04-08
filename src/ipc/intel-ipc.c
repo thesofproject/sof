@@ -172,26 +172,31 @@ out:
  page table entry and adding each elem to a list in struct dma_sg_config*/
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	struct ipc_intel_ipc_stream_alloc_req *req,
-	struct comp_dev *host)
+	struct comp_dev *host, uint8_t direction)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
 	struct dma_sg_elem elem;
 	int i, err;
-	uint32_t idx;
+	uint32_t idx, phy_addr;
 
 	elem.size = HOST_PAGE_SIZE;
 
 	for (i = 0; i < ring->num_pages; i++) {
 
 		idx = (((i << 2) + i)) >> 1;
-		elem.src = iipc->page_table[idx] | (iipc->page_table[idx + 1] << 8)
+		phy_addr = iipc->page_table[idx] | (iipc->page_table[idx + 1] << 8)
 				| (iipc->page_table[idx + 2] << 16);
 
 		if (i & 0x1)
-			elem.src <<= 8;
+			phy_addr <<= 8;
 		else
-			elem.src <<= 12;
-		elem.src &= 0xfffff000;
+			phy_addr <<= 12;
+		phy_addr &= 0xfffff000;
+
+		if (direction == STREAM_DIRECTION_PLAYBACK)
+			elem.src = phy_addr;
+		else
+			elem.dest = phy_addr;
 
 		err = pipeline_host_buffer(pipeline_static, host, &elem);
 		if (err < 0)
@@ -281,7 +286,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	}
 
 	/* Parse host tables */
-	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd);
+	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd, direction);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
