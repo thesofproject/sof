@@ -25,27 +25,9 @@
 #include <stdlib.h>
 #include <errno.h>
 
-/* not accurate on Qemu yet since Qemu clock is not aligned with firmware yet. */
-// TODO: align Qemu clock with DSP.
-#define AUDIO_WORK_USECS	1000
-
 struct audio_data {
-	struct work audio_work;
-	uint32_t count;
 	struct pipeline *p;
 };
-
-/* TODO only run this work when we have active audio pipelines */
-uint32_t work_handler(void *data, uint32_t udelay)
-{
-	struct audio_data *pdata = (struct audio_data*)data;
-
-	/* process our audio pipelines */
-	pipeline_do_work(pdata->p, udelay);
-
-	/* TODO add support to scale clocks/wait time here */
-	return AUDIO_WORK_USECS;
-}
 
 int do_task(void)
 {
@@ -65,10 +47,6 @@ int do_task(void)
 	if (pdata.p == NULL)
 		panic(PANIC_TASK);
 
-	/* schedule our audio work */
-	work_init((&pdata.audio_work), work_handler, &pdata, WORK_SYNC);
-	work_schedule_default(&pdata.audio_work, AUDIO_WORK_USECS);
-
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);
 
@@ -79,9 +57,11 @@ int do_task(void)
 		wait_for_interrupt(0);
 		interrupt_enable_sync();
 
+		/* do any pipeline work if any is scheduled */
+		pipeline_do_work(pdata.p, 0);
+
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
-
 	}
 
 	/* something bad happened */

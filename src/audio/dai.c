@@ -18,6 +18,7 @@
 #include <reef/wait.h>
 #include <reef/stream.h>
 #include <reef/audio/component.h>
+#include <reef/audio/pipeline.h>
 #include <platform/dma.h>
 
 #define DAI_PLAYBACK_STREAM	0
@@ -95,6 +96,14 @@ static void dai_dma_cb(void *data, uint32_t type)
 
 	/* recalc available buffer space */
 	comp_update_buffer(dma_buffer);
+
+	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
+		/* notify pipeline that DAI needs it's buffer filled */
+		pipeline_fill_buffer(dev->pipeline, dma_buffer);
+	} else {
+		/* notify pipeline that DAI needs it's buffer emptied */
+		pipeline_empty_buffer(dev->pipeline, dma_buffer);
+	}
 }
 
 static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
