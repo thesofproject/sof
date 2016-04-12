@@ -340,10 +340,14 @@ static int volume_copy(struct comp_dev *dev)
 	}
 
 	bytes_remaining = frames_remaining << 2;
+
+#if 0
+	// TODO: move this to new trace mechanism
 	trace_comp("CVs");
 	trace_value(bytes_remaining);
 	trace_value((uint32_t)(source->r_ptr - source->addr));
 	trace_value((uint32_t)(sink->w_ptr - sink->addr));
+#endif
 
 	/* copy less data if there is not enough space or available data */
 	if (source->avail < bytes_remaining ||
@@ -353,13 +357,10 @@ static int volume_copy(struct comp_dev *dev)
 		else
 			bytes_remaining = sink->free;
 	};
-dbg_val_at(*(uint32_t*)source->addr, 22);
-dbg_val_at(*(uint32_t*)sink->addr, 23);
+
+	// TODO: this can be simplified as copies will always be period size
 	while (bytes_remaining) {
-trace_comp("Vvs");
-trace_value(bytes_remaining);
-trace_value((uint32_t)(source->r_ptr - source->addr));
-trace_value((uint32_t)(sink->w_ptr - sink->addr));
+
 		/* check source for overflow */
 		if (source->r_ptr + bytes_remaining > source->end_addr)
 			source_bytes = (source->end_addr - source->r_ptr);

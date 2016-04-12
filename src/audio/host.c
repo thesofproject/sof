@@ -80,8 +80,11 @@ static void host_dma_cb(void *data, uint32_t type)
 
 	/* update local buffer position */
 	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
-	trace_comp("CHs");
 
+#if 0
+	// TODO: move this to new trace mechanism
+	trace_comp("CHs");
+#endif
 	/* new local period, update host buffer position blks */
 	hd->host_pos_blks += hd->period->size;
 	if (hd->host_pos_blks >= hd->host_size)
@@ -116,8 +119,6 @@ static void host_dma_cb(void *data, uint32_t type)
 		hd->dma_buffer->r_ptr = (void*)status.r_pos;
 		trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
 	}
-
-	dbg_val_at(*(uint32_t*)hd->dma_buffer->addr, 20);
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);

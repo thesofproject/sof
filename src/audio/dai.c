@@ -56,9 +56,10 @@ static void dai_dma_cb(void *data, uint32_t type)
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = (void*)status.r_pos;
 		dma_period_desc = &dma_buffer->desc.sink_period;
-
+#if 0
+		// TODO: move this to new trace mechanism
 		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
-		dbg_val_at(*(uint32_t*)dma_buffer->addr, 24);
+#endif
 
 		/* check for end of buffer */
 		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
@@ -76,8 +77,10 @@ static void dai_dma_cb(void *data, uint32_t type)
 		dma_buffer->w_ptr = (void*)status.w_pos;
 		dma_period_desc = &dma_buffer->desc.source_period;
 
+#if 0
+		// TODO: move this to new trace mechanism
 		trace_value((uint32_t)(dma_buffer->w_ptr - dma_buffer->addr));
-		dbg_val_at(*(uint32_t*)dma_buffer->addr, 21);
+#endif
 
 		/* check for end of buffer */
 		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
