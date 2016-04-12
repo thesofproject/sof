@@ -19,10 +19,15 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
+#define PIPELINE_COPY_IDLE	0
+#define PIPELINE_COPY_SCHEDULED	1
+#define PIPELINE_COPY_RUNNING	2
+
 struct pipeline_data {
 	spinlock_t lock;
 	uint32_t next_id;	/* monotonic ID counter */
 	struct list_head pipeline_list;	/* list of all pipelines */
+	uint32_t copy_status;	/* PIPELINE_COPY_ */
 };
 
 /* generic operation data used by op graph walk */
@@ -570,6 +575,11 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 {
 	struct list_head *elist;
 
+	if (pipe_data->copy_status != PIPELINE_COPY_SCHEDULED)
+		return;
+
+	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
+
 	tracev_pipe("PWs");
 
 	if (list_empty(&p->dai_ep_list))
@@ -608,6 +618,44 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 	}
 
 	tracev_pipe("PWe");
+
+	pipe_data->copy_status = PIPELINE_COPY_IDLE;
+}
+
+/* notify pipeline that this buffer needs filled */
+void pipeline_fill_buffer(struct pipeline *p, struct comp_buffer *buffer)
+{
+	uint32_t flags;
+
+	spin_lock_irq(pipe_data->lock, flags);
+
+	/* is buffer work already running or scheduled ? */
+	if (pipe_data->copy_status == PIPELINE_COPY_RUNNING ||
+		pipe_data->copy_status == PIPELINE_COPY_SCHEDULED)
+		goto out;
+
+	/* send software interrupt to pipeline */
+	pipe_data->copy_status = PIPELINE_COPY_SCHEDULED;
+out:
+	spin_unlock_irq(pipe_data->lock, flags);
+}
+
+/* notify pipeline that this buffer emptied */
+void pipeline_empty_buffer(struct pipeline *p, struct comp_buffer *buffer)
+{
+	uint32_t flags;
+
+	spin_lock_irq(pipe_data->lock, flags);
+
+	/* is buffer work already running or scheduled ? */
+	if (pipe_data->copy_status == PIPELINE_COPY_RUNNING ||
+		pipe_data->copy_status == PIPELINE_COPY_SCHEDULED)
+		goto out;
+
+	/* send software interrupt to pipeline */
+	pipe_data->copy_status = PIPELINE_COPY_SCHEDULED;
+out:
+	spin_unlock_irq(pipe_data->lock, flags);
 }
 
 /* init pipeline */
