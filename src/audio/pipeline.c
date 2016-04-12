@@ -575,6 +575,10 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 {
 	struct list_head *elist;
 
+	// TODO: locks.
+	// TODO: The list of buffers to be emptied and filled should be processed
+	// from DAI to host here.  
+
 	if (pipe_data->copy_status != PIPELINE_COPY_SCHEDULED)
 		return;
 
@@ -633,8 +637,8 @@ void pipeline_fill_buffer(struct pipeline *p, struct comp_buffer *buffer)
 	if (pipe_data->copy_status == PIPELINE_COPY_RUNNING ||
 		pipe_data->copy_status == PIPELINE_COPY_SCHEDULED)
 		goto out;
-
-	/* send software interrupt to pipeline */
+	
+	// TODO: buffer should be added to list of "to be filled" buffers
 	pipe_data->copy_status = PIPELINE_COPY_SCHEDULED;
 out:
 	spin_unlock_irq(pipe_data->lock, flags);
@@ -652,7 +656,7 @@ void pipeline_empty_buffer(struct pipeline *p, struct comp_buffer *buffer)
 		pipe_data->copy_status == PIPELINE_COPY_SCHEDULED)
 		goto out;
 
-	/* send software interrupt to pipeline */
+	// TODO: buffer should be added to list of "to be emptied" buffers
 	pipe_data->copy_status = PIPELINE_COPY_SCHEDULED;
 out:
 	spin_unlock_irq(pipe_data->lock, flags);
