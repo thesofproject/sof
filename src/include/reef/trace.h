@@ -32,22 +32,9 @@
 #define TRACEV	0
 #define TRACEE	1
 
+void _trace_event(uint32_t event);
+
 #if TRACE
-extern uint32_t trace_pos;
-
-static inline void _trace_event(uint32_t event)
-{
-	volatile uint32_t *t =
-		(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace_pos);
-
-	/* write timestamp and event to trace buffer */
-	t[0] = platform_timer_get(0);
-	t[1] = event;
-
-	trace_pos += (sizeof(uint32_t) << 1);
-	if (trace_pos >= MAILBOX_TRACE_SIZE)
-		trace_pos = 0;
-}
 
 #define trace_event(__c, __e) \
 	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])

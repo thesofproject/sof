@@ -4,7 +4,8 @@ libcore_a_SOURCES = \
 	lib.c \
 	alloc.c \
 	work.c \
-	notifier.c
+	notifier.c \
+	trace.c
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

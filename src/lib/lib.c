@@ -35,9 +35,6 @@ void cmemcpy(void *dest, void *src, size_t size)
 }
 #endif
 
-/* trace position */
-uint32_t trace_pos = 0;
-
 /* used by gcc - but uses arch_memcpy internally */
 void *memcpy(void *dest, const void *src, size_t n)
 {
