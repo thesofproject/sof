@@ -309,35 +309,27 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 }
 
 /* preload the local buffers with available host data before start */
-static int host_preload(struct comp_dev *dev, int count)
+static int host_preload(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	int ret, i;
+	int ret;
 
-	for (i = 0; i < count; i++) {
+	/* do DMA transfer */
+	wait_init(&hd->complete);
+	dma_set_config(hd->dma, hd->chan, &hd->config);
+	dma_start(hd->dma, hd->chan);
 
-		/* do DMA transfer */
-		wait_init(&hd->complete);
-		dma_set_config(hd->dma, hd->chan, &hd->config);
-		dma_start(hd->dma, hd->chan);
+	/* wait 1 msecs for DMA to finish */
+	hd->complete.timeout = 1000;
+	ret = wait_for_completion_timeout(&hd->complete);
 
-		/* wait 1 msecs for DMA to finish */
-		hd->complete.timeout = 1000;
-		ret = wait_for_completion_timeout(&hd->complete);
-
-		if (ret < 0)
-			return ret;
-
-	}
-
-	return 0;
+	return ret;
 }
 
 static int host_prepare(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
-	int ret = 0;
 
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_entry(&dev->bsink_list,
@@ -359,14 +351,9 @@ static int host_prepare(struct comp_dev *dev)
 
 	hd->host_not_count = hd->params.period_frames * hd->params.frame_size;
 
-	/* preload PCM data */
-	/* TODO: determine how much pre-loading we can do */
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+	// TODO: zero buffers
 
-		ret = host_preload(dev, hd->period->number - 1);
-	}
-
-	return ret;
+	return 0;
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
@@ -387,8 +374,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		dma_release(hd->dma, hd->chan);
 		break;
 	case COMP_CMD_START:
-		/* already pre-loaded, dma will be staretd by cb */
-		// TODO: capture
+		host_preload(dev);
 		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_DRAIN:
