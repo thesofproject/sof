@@ -318,94 +318,40 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t source_bytes, sink_bytes, cframes, frames_remaining;
-	uint32_t current, time_us, total_frames = 0, bytes_remaining;
+	uint32_t cframes = 64;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
 
-	if (dev->state == COMP_STATE_RUNNING) {
-
-		/* calculate in usecs time since we last were run */
-		time_us = clock_time_elapsed(dev->pipeline->clock, cd->last_run, &current);
-		cd->last_run = current;
-
-		/* caclculate how many frames to copy */
-		frames_remaining = time_us / cd->frame_us;
-
-	} else {
-
-		frames_remaining = 48;
-	}
-
-	bytes_remaining = frames_remaining << 2;
-
 #if 0
 	// TODO: move this to new trace mechanism
 	trace_comp("CVs");
-	trace_value(bytes_remaining);
 	trace_value((uint32_t)(source->r_ptr - source->addr));
 	trace_value((uint32_t)(sink->w_ptr - sink->addr));
 #endif
 
-	/* copy less data if there is not enough space or available data */
-	if (source->avail < bytes_remaining ||
-		sink->free < bytes_remaining) {
-		if (source->avail < sink->free)
-			bytes_remaining = source->avail;
-		else
-			bytes_remaining = sink->free;
-	};
+	/* copy and scale volume */
+	cd->scale_vol(dev, sink, source, cframes);
 
-	// TODO: this can be simplified as copies will always be period size
-	while (bytes_remaining) {
-
-		/* check source for overflow */
-		if (source->r_ptr + bytes_remaining > source->end_addr)
-			source_bytes = (source->end_addr - source->r_ptr);
-		else
-			source_bytes = bytes_remaining;
-
-		/* check sink for overflow */
-		if (sink->w_ptr + bytes_remaining > sink->end_addr)
-			sink_bytes = (sink->end_addr - sink->w_ptr);
-		else
-			sink_bytes = bytes_remaining;
-
-		/* choose minimum to avoid copy overflow */
-		if (sink_bytes > source_bytes)
-			cframes = source_bytes >> 2;
-		else
-			cframes = sink_bytes >> 2;
-
-		/* copy and scale volume */
-		cd->scale_vol(dev, sink, source, cframes);
-
-		/* update buffer pointers for overflow */
-		if (source->r_ptr >= source->end_addr)
-			source->r_ptr = source->addr;
-		if (sink->w_ptr >= sink->end_addr)
-			sink->w_ptr = sink->addr;
-
-		bytes_remaining -= cframes << 2;
-		//frames_remaining -= cframes;
-		total_frames += cframes;
-	}
+	/* update buffer pointers for overflow */
+	if (source->r_ptr >= source->end_addr)
+		source->r_ptr = source->addr;
+	if (sink->w_ptr >= sink->end_addr)
+		sink->w_ptr = sink->addr;
 
 	/* calc new free and available */
 	comp_update_buffer(sink);
 	comp_update_buffer(source);
 
 	/* number of frames sent downstream */
-	return total_frames;
+	return cframes;
 }
 
 static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t frames;
 	int i;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
@@ -427,10 +373,9 @@ static int volume_prepare(struct comp_dev *dev)
 	return -EINVAL;
 
 found:
-	/* copy avail data from source for playback */
-	do {
-		frames = volume_copy(dev);
-	} while (frames > 0);
+	/* copy avail data from source for playback. TODO pingpong macro */
+	for (i = 0; i < 2; i++)
+		volume_copy(dev);
 
 	return 0;
 }
