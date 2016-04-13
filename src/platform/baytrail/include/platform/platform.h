@@ -20,11 +20,11 @@
 
 /* Platform Host DMA buffer config - these should align with DMA engine */
 #define PLAT_HOST_PERSIZE	256	/* must be multiple of DMA burst size */
-#define PLAT_HOST_PERIODS	3 	/* give enough latency for DMA refill */
+#define PLAT_HOST_PERIODS	2	/* give enough latency for DMA refill */
 
 /* Platform Dev DMA buffer config - these should align with DMA engine */
 #define PLAT_DEV_PERSIZE	256	/* must be multiple of DMA+DEV burst size */
-#define PLAT_DEV_PERIODS	3 	/* give enough latency for DMA refill */
+#define PLAT_DEV_PERIODS	2 	/* give enough latency for DMA refill */
 
 /* Platform defined panic code */
 #define platform_panic(__x) \
