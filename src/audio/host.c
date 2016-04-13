@@ -45,6 +45,7 @@ struct host_data {
 	volatile uint32_t *host_pos;	/* points to mailbox */
 	uint32_t host_pos_blks;		/* position in bytes (nearest block) */
 	int32_t host_not_count;		/* notify host when < 0 */
+	uint32_t pp;	/* ping pong trace */
 
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
@@ -81,9 +82,12 @@ static void host_dma_cb(void *data, uint32_t type)
 	/* update local buffer position */
 	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
 
-#if 0
+#if 1
 	// TODO: move this to new trace mechanism
-	trace_comp("CHs");
+	if (hd->pp++ & 0x1)
+		trace_comp("HPo");
+	else
+		trace_comp("HPi");
 #endif
 	/* new local period, update host buffer position blks */
 	hd->host_pos_blks += hd->period->size;
@@ -348,7 +352,7 @@ static int host_prepare(struct comp_dev *dev)
 	if (hd->host_pos)
 		*hd->host_pos = 0;
 	hd->host_pos_blks = 0;
-
+	hd->pp = 0;
 	hd->host_not_count = hd->params.period_frames * hd->params.frame_size;
 
 	// TODO: zero buffers
@@ -433,6 +437,7 @@ static int host_reset(struct comp_dev *dev)
 	}
 
 	hd->host_size = 0;
+	hd->pp = 0;
 	dev->state = COMP_STATE_INIT;
 
 	return 0;
@@ -457,10 +462,16 @@ static int host_copy(struct comp_dev *dev)
 
 	/* we do DMA copy only when the buffer is whole free atm, will fine tune
 	    the buffer later */
-	if (size > hd->period->size << 1) {
+	if (size >= hd->period->size) {
 		/* do DMA transfer */
 		wait_init(&hd->complete);
 		dma_set_config(hd->dma, hd->chan, &hd->config);
+#if 1
+		if (hd->pp & 0x1)
+			trace_comp("HPO");
+		else
+			trace_comp("HPI");
+#endif
 		dma_start(hd->dma, hd->chan);
 	}
 

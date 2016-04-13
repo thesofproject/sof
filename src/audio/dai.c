@@ -34,6 +34,7 @@ struct dai_data {
 	struct dma *dma;
 
 	uint32_t dai_pos_blks;		/* position in bytes (nearest block) */
+	uint32_t pp;	/* ping or pong - trace */
 
 	volatile uint32_t *dai_pos;
 };
@@ -50,13 +51,17 @@ static void dai_dma_cb(void *data, uint32_t type)
 	/* update local buffer position */
 	dma_status(dd->dma, dd->chan, &status, dd->direction);
 
-#if 0
-	trace_comp("CDs");
+#if 1
+	if (dd->pp++ & 0x1)
+		trace_comp("DPo");
+	else
+		trace_comp("DPi");
 #endif
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
+
 		dma_buffer->r_ptr = (void*)status.r_pos;
 		dma_period_desc = &dma_buffer->desc.sink_period;
 #if 0
@@ -300,6 +305,7 @@ static int dai_prepare(struct comp_dev *dev)
 	}
 
 	dd->dai_pos_blks = 0;
+	dd->pp = 0;
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
 
@@ -319,6 +325,8 @@ static int dai_reset(struct comp_dev *dev)
 		rfree(RZONE_MODULE, RMOD_SYS, elem);
 	}
 	dev->state = COMP_STATE_INIT;
+	dd->dai_pos_blks = 0;
+	dd->pp = 0;
 
 	return 0;
 }

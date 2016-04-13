@@ -45,6 +45,7 @@ struct comp_data {
 	struct work volwork;
 	uint32_t last_run;	/* clk when last run */
 	uint32_t frame_us;	/* frame time in usecs */
+	uint32_t pp;		/* ping pong trace */
 };
 
 struct comp_func_map {
@@ -330,6 +331,13 @@ static int volume_copy(struct comp_dev *dev)
 	trace_value((uint32_t)(source->r_ptr - source->addr));
 	trace_value((uint32_t)(sink->w_ptr - sink->addr));
 #endif
+#if 1
+	// TODO: move this to new trace mechanism
+	if (cd->pp++ & 0x1)
+		trace_comp("VPo");
+	else
+		trace_comp("VPi");
+#endif
 
 	/* copy and scale volume */
 	cd->scale_vol(dev, sink, source, cframes);
@@ -373,6 +381,7 @@ static int volume_prepare(struct comp_dev *dev)
 	return -EINVAL;
 
 found:
+	cd->pp = 0;
 	/* copy avail data from source for playback. TODO pingpong macro */
 	for (i = 0; i < 2; i++)
 		volume_copy(dev);
@@ -382,7 +391,10 @@ found:
 
 static int volume_reset(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	dev->state = COMP_STATE_INIT;
+	cd->pp = 0;
 	return 0;
 }
 
