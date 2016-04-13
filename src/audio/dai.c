@@ -50,7 +50,9 @@ static void dai_dma_cb(void *data, uint32_t type)
 	/* update local buffer position */
 	dma_status(dd->dma, dd->chan, &status, dd->direction);
 
+#if 0
 	trace_comp("CDs");
+#endif
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_entry(&dev->bsource_list,
