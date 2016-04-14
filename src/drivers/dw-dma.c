@@ -126,6 +126,8 @@
 #define DW_CTLL_SMS(x)			(x << 25)
 #define DW_CTLL_LLP_D_EN		(1 << 27)
 #define DW_CTLL_LLP_S_EN		(1 << 28)
+#define DW_CTLL_RELOAD_SRC		(1 << 30)
+#define DW_CTLL_RELOAD_DST		(1 << 31)
 
 /* CTL_HI */
 #define DW_CTLH_DONE			0x00020000
@@ -509,6 +511,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	/* end of list or cyclic buffer ? */
 	if (config->cyclic) {
 		lli_desc_tail->llp = (uint32_t)lli_desc_head;
+		p->chan[channel].cfg_lo |=
+			(DW_CTLL_RELOAD_DST | DW_CTLL_RELOAD_SRC);
 	} else {
 		lli_desc_tail->llp = 0x0;
 		lli_desc_tail->ctrl_lo &=
@@ -566,10 +570,6 @@ static void dw_dma_irq_handler(void *data)
 	status_err = dw_read(dma, DW_STATUS_ERR);
 	dw_write(dma, DW_CLEAR_ERR, status_err);
 
-	/* clear interrupts */
-	dw_write(dma, DW_CLEAR_BLOCK, status_block);
-	dw_write(dma, DW_CLEAR_TFR, status_tfr);
-
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		if (p->chan[i].cb == NULL)
@@ -585,10 +585,16 @@ static void dw_dma_irq_handler(void *data)
 
 		/* end of a block */
 		if (status_block & mask &&
-			p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK)
+			p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
+			dbg_val_at(p->chan[i].lli->sar, 20 + i); 	
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK);
+		}
 	}
+
+	/* clear interrupts */
+	dw_write(dma, DW_CLEAR_BLOCK, status_block);
+	dw_write(dma, DW_CLEAR_TFR, status_tfr);
 
 out:
 	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
