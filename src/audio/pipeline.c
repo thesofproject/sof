@@ -234,7 +234,12 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 int pipeline_buffer_free(struct pipeline *p, struct comp_buffer *buffer)
 {
 	trace_pipe("BFr");
-	// TODO
+
+	spin_lock(&p->lock);
+	list_del(&buffer->pipeline_list);
+	rfree(RZONE_MODULE, RMOD_SYS, buffer->addr);
+	rfree(RZONE_MODULE, RMOD_SYS, buffer);
+	spin_unlock(&pipe_data->lock);
 	return 0;
 }
 
