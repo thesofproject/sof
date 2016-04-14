@@ -447,33 +447,15 @@ static int host_reset(struct comp_dev *dev)
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t size;
 
-	/* we can only copy new data is previous DMA request has completed */
-	if (!wait_is_completed(&hd->complete))
-		return 0;
-
-	/* start the DMA if there is enough local free space
-	   and previous DMA has completed */
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
-		size = hd->dma_buffer->free;
-	else
-		size = hd->dma_buffer->avail;
-
-	/* we do DMA copy only when the buffer is whole free atm, will fine tune
-	    the buffer later */
-	if (size >= hd->period->size) {
-		/* do DMA transfer */
-		wait_init(&hd->complete);
-		dma_set_config(hd->dma, hd->chan, &hd->config);
+	dma_set_config(hd->dma, hd->chan, &hd->config);
 #if 1
-		if (hd->pp & 0x1)
-			trace_comp("HPO");
-		else
-			trace_comp("HPI");
+	if (hd->pp & 0x1)
+		trace_comp("HPO");
+	else
+		trace_comp("HPI");
 #endif
-		dma_start(hd->dma, hd->chan);
-	}
+	dma_start(hd->dma, hd->chan);
 
 	return 0;
 }
