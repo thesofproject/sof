@@ -383,8 +383,8 @@ static int volume_prepare(struct comp_dev *dev)
 found:
 	cd->pp = 0;
 	/* copy avail data from source for playback. TODO pingpong macro */
-	for (i = 0; i < 2; i++)
-		volume_copy(dev);
+	//for (i = 0; i < 2; i++)
+	//	volume_copy(dev);
 
 	return 0;
 }
