@@ -125,8 +125,10 @@ static int get_page_desciptors(struct intel_ipc_data *iipc,
 
 	/* get DMA channel from DMAC0 */
 	chan = dma_channel_get(iipc->dmac0);
-	if (chan < 0)
+	if (chan < 0) {
+		trace_ipc_error("ePC");
 		return chan;
+	}
 	dma = iipc->dmac0;
 
 	/* set up DMA configuration */
@@ -146,8 +148,10 @@ static int get_page_desciptors(struct intel_ipc_data *iipc,
 	list_add(&elem.list, &config.elem_list);
 
 	ret = dma_set_config(dma, chan, &config);
-	if (ret < 0)
+	if (ret < 0) {
+		trace_ipc_error("ePs");
 		goto out;
+	}
 
 	/* set up callback */
 	dma_set_cb(dma, chan, DMA_IRQ_TYPE_LLIST, dma_complete, iipc);
@@ -199,8 +203,10 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 			elem.dest = phy_addr;
 
 		err = pipeline_host_buffer(pipeline_static, host, &elem);
-		if (err < 0)
+		if (err < 0) {
+			trace_ipc_error("ePb");
 			return err;
+		}
 	}
 
 	return 0;
