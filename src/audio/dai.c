@@ -64,7 +64,7 @@ static void dai_dma_cb(void *data, uint32_t type)
 
 		dma_buffer->r_ptr = (void*)status.r_pos;
 		dma_period_desc = &dma_buffer->desc.sink_period;
-#if 0
+#if 1
 		// TODO: move this to new trace mechanism
 		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
 #endif
@@ -377,6 +377,7 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
+#if 0
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_chan_status status;
 	struct comp_buffer *dma_buffer;
@@ -400,7 +401,7 @@ static int dai_copy(struct comp_dev *dev)
 				status.w_pos - (uint32_t)dma_buffer->addr;
 		}
 	}
-
+#endif
 	return 0;
 }
 
