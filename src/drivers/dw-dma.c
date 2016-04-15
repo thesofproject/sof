@@ -255,13 +255,20 @@ out:
 static int dw_dma_start(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	int ret = 0;
 
 	spin_lock_local_irq(&dma->lock, dma_irq(dma));
 
+	/* channel idle */
+	if (p->chan[channel].status != DMA_STATUS_IDLE) {
+		ret = -EBUSY;
+		goto out;
+	}
+
 	/* valid stream ? */
 	if (p->chan[channel].lli == NULL) {
-		spin_unlock_local_irq(&dma->lock, dma_irq(dma));
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* channel needs started from scratch, so write SARn, DARn */
@@ -279,8 +286,9 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 	p->chan[channel].status = DMA_STATUS_RUNNING;
 
+out:
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
-	return 0;
+	return ret;
 }
 
 static int dw_dma_release(struct dma *dma, int channel)
@@ -579,9 +587,11 @@ static void dw_dma_irq_handler(void *data)
 
 		/* end of a transfer */
 		if (status_tfr & mask &&
-			p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)
+			p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST) {
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST);
+			p->chan[i].status = DMA_STATUS_IDLE;
+		}
 
 		/* end of a block */
 		if (status_block & mask &&
