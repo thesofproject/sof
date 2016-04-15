@@ -282,27 +282,26 @@ err_unwind:
 static int dai_params(struct comp_dev *dev,
 	struct stream_params *params)
 {
-	if (params->direction == STREAM_DIRECTION_PLAYBACK)
+	struct comp_buffer *dma_buffer;
+
+	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
+		dma_buffer = list_first_entry(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+		dma_buffer->r_ptr = dma_buffer->addr;
+
 		return dai_playback_params(dev, params);
-	else
+	} else {
+		dma_buffer = list_first_entry(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		dma_buffer->w_ptr = dma_buffer->addr;
+
 		return dai_capture_params(dev, params);
+	}
 }
 
 static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct comp_buffer *dma_buffer;
-
-	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
-		dma_buffer = list_first_entry(&dev->bsource_list,
-			struct comp_buffer, sink_list);
-		dma_buffer->r_ptr = dma_buffer->addr;
-
-	} else {
-		dma_buffer = list_first_entry(&dev->bsink_list,
-			struct comp_buffer, source_list);
-		dma_buffer->w_ptr = dma_buffer->addr;
-	}
 
 	dd->dai_pos_blks = 0;
 	dd->pp = 0;
