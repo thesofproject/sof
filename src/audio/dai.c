@@ -105,6 +105,13 @@ static void dai_dma_cb(void *data, uint32_t type)
 	comp_update_buffer(dma_buffer);
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
+
+		if (dd->pp & 0x1 &&
+			(dma_buffer->r_ptr - dma_buffer->addr) > dma_period_desc->size) {
+				dd->pp--;
+				return;
+		}
+
 		/* notify pipeline that DAI needs it's buffer filled */
 		pipeline_fill_buffer(dev->pipeline, dma_buffer);
 	} else {
@@ -334,7 +341,6 @@ static int dai_reset(struct comp_dev *dev)
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-
 	// TODO: wait on pause/stop/drain completions before SSP ops.
 
 	switch (cmd) {
