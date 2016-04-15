@@ -192,14 +192,6 @@ static int dw_dma_channel_get(struct dma *dma)
 
 		p->chan[i].status = DMA_STATUS_IDLE;
 
-		/* write interrupt clear registers for the channel:
-		ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr*/
-		dw_write(dma, DW_CLEAR_TFR, 0x1 << i);
-		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << i);
-		dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << i);
-		dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << i);
-		dw_write(dma, DW_CLEAR_ERR, 0x1 << i);
-
 		/* unmask block, transfer and error interrupts for channel */
 		dw_write(dma, DW_MASK_TFR, INT_UNMASK(i));
 		dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(i));
@@ -255,6 +247,7 @@ out:
 static int dw_dma_start(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t mask;
 	int ret = 0;
 
 	spin_lock_local_irq(&dma->lock, dma_irq(dma));
@@ -270,6 +263,21 @@ static int dw_dma_start(struct dma *dma, int channel)
 		ret = -EINVAL;
 		goto out;
 	}
+
+	/* write interrupt clear registers for the channel:
+	ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr*/
+	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
+
+	/* clear platform interrupt */
+	if (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0)
+		mask = 1 << (16 + channel);
+	else
+		mask = 1 << (24 + channel);
+	platform_interrupt_mask_clear(mask);
 
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
