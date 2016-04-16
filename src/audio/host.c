@@ -82,7 +82,7 @@ static void host_dma_cb(void *data, uint32_t type)
 	/* update local buffer position */
 	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
 
-#if 1
+#if 0
 	// TODO: move this to new trace mechanism
 	if (hd->pp++ & 0x1)
 		trace_comp("HPo");
@@ -449,7 +449,7 @@ static int host_copy(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	dma_set_config(hd->dma, hd->chan, &hd->config);
-#if 1
+#if 0
 	if (hd->pp & 0x1)
 		trace_comp("HPO");
 	else

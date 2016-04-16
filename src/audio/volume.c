@@ -320,14 +320,8 @@ static int volume_copy(struct comp_dev *dev)
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_entry(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
-source->params.channels = 2;
+
 #if 0
-	// TODO: move this to new trace mechanism
-	trace_comp("CVs");
-	trace_value((uint32_t)(source->r_ptr - source->addr));
-	trace_value((uint32_t)(sink->w_ptr - sink->addr));
-#endif
-#if 1
 	// TODO: move this to new trace mechanism
 	if (cd->pp++ & 0x1)
 		trace_comp("VPo");
@@ -378,10 +372,6 @@ static int volume_prepare(struct comp_dev *dev)
 
 found:
 	cd->pp = 0;
-	/* copy avail data from source for playback. TODO pingpong macro */
-	//for (i = 0; i < 2; i++)
-	//	volume_copy(dev);
-
 	return 0;
 }
 
