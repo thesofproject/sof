@@ -125,20 +125,6 @@ struct comp_ops {
 	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem);
 };
 
-/* component buffer data capabilities */
-struct comp_buffer_caps {
-	uint32_t formats;
-	uint32_t min_rate;
-	uint32_t max_rate;
-	uint16_t min_channels;
-	uint16_t max_channels;
-};
-
-/* component capabilities */
-struct comp_caps {
-	struct comp_buffer_caps sink;
-	struct comp_buffer_caps source;
-};
 
 /* audio component base driver "class" - used by all other component types */
 struct comp_driver {
@@ -146,7 +132,6 @@ struct comp_driver {
 	uint32_t module_id;
 
 	struct comp_ops ops;	/* component operations */
-	struct comp_caps caps;	/* component capabilities */
 
 	struct list_head list;	/* list of component drivers */
 };	

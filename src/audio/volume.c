@@ -409,22 +409,6 @@ struct comp_driver comp_volume = {
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
 	},
-	.caps	= {
-		.source = {
-			.formats	= STREAM_FORMAT_S16_LE | STREAM_FORMAT_S32_LE,
-			.min_rate	= 8000,
-			.max_rate	= 192000,
-			.min_channels	= 1,
-			.max_channels	= STREAM_MAX_CHANNELS,
-		},
-		.sink = {
-			.formats	= STREAM_FORMAT_S16_LE | STREAM_FORMAT_S32_LE,
-			.min_rate	= 8000,
-			.max_rate	= 192000,
-			.min_channels	= 1,
-			.max_channels	= STREAM_MAX_CHANNELS,
-		},
-	},
 };
 
 void sys_comp_volume_init(void)

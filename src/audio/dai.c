@@ -424,22 +424,6 @@ static struct comp_driver comp_dai_ssp = {
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
 	},
-	.caps	= {
-		.source = {
-			.formats	= STREAM_FORMAT_S16_LE,
-			.min_rate	= 8000,
-			.max_rate	= 192000,
-			.min_channels	= 1,
-			.max_channels	= 2,
-		},
-		.sink = {
-			.formats	= STREAM_FORMAT_S16_LE,
-			.min_rate	= 8000,
-			.max_rate	= 192000,
-			.min_channels	= 1,
-			.max_channels	= 2,
-		},
-	},
 };
 
 static struct comp_driver comp_dai_hda = {
