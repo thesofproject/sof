@@ -113,6 +113,7 @@ static void *alloc_block(struct block_map *map, int module)
 	map->free_count--;
 	ptr = (void *)(map->base + map->first_free * map->block_size);
 	hdr->module = module;
+	hdr->size = 1;
 	hdr->flags = BLOCK_USED;
 
 	/* find next free */
