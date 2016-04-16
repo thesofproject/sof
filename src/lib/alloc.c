@@ -208,7 +208,7 @@ static void free_block(int module, void *ptr)
 
 		/* is ptr in this block */
 		if ((uint32_t)ptr >= mod_heap_map[i].base &&
-			(uint32_t)ptr >= mod_heap_map[i + 1].base)
+			(uint32_t)ptr < mod_heap_map[i + 1].base)
 			break;
 	}
 
