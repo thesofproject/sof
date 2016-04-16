@@ -604,7 +604,6 @@ static void dw_dma_irq_handler(void *data)
 		/* end of a block */
 		if (status_block & mask &&
 			p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
-			dbg_val_at(p->chan[i].lli->sar, 20 + i); 	
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK);
 		}
