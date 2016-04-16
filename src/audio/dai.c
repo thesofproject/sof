@@ -33,11 +33,26 @@ struct dai_data {
 	struct dai *ssp;
 	struct dma *dma;
 
-	uint32_t dai_pos_blks;		/* position in bytes (nearest block) */
+	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 	uint32_t pp;	/* ping or pong - trace */
 
 	volatile uint32_t *dai_pos;
 };
+
+/* the first DMA block IRQ sometimes goes missing so re-align if it does */
+static inline int dai_period_aligned(struct dai_data *dd,
+	void *ptr, void *base, uint32_t size)
+{
+	/* only applies to first period */
+	if (dd->pp != 0)
+		return 1;
+
+	/* is ptr in correct period for ping-pong */
+	if (ptr - base > size)
+		return 0;
+
+	return 1;
+}
 
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *data, uint32_t type)
@@ -51,8 +66,8 @@ static void dai_dma_cb(void *data, uint32_t type)
 	/* update local buffer position */
 	dma_status(dd->dma, dd->chan, &status, dd->direction);
 
-#if 1
-	if (dd->pp++ & 0x1)
+#if 0
+	if (dd->pp & 0x1)
 		trace_comp("DPo");
 	else
 		trace_comp("DPi");
@@ -64,7 +79,7 @@ static void dai_dma_cb(void *data, uint32_t type)
 
 		dma_buffer->r_ptr = (void*)status.r_pos;
 		dma_period_desc = &dma_buffer->desc.sink_period;
-#if 1
+#if 0
 		// TODO: move this to new trace mechanism
 		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
 #endif
@@ -106,18 +121,23 @@ static void dai_dma_cb(void *data, uint32_t type)
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
 
-		if (dd->pp & 0x1 &&
-			(dma_buffer->r_ptr - dma_buffer->addr) > dma_period_desc->size) {
-				dd->pp--;
-				return;
-		}
+		if (!dai_period_aligned(dd, dma_buffer->r_ptr,
+			dma_buffer->addr, dma_period_desc->size))
+			return;
 
 		/* notify pipeline that DAI needs it's buffer filled */
 		pipeline_fill_buffer(dev->pipeline, dma_buffer);
 	} else {
+
+		if (!dai_period_aligned(dd, dma_buffer->w_ptr,
+			dma_buffer->addr, dma_period_desc->size))
+			return;
+
 		/* notify pipeline that DAI needs it's buffer emptied */
 		pipeline_empty_buffer(dev->pipeline, dma_buffer);
 	}
+
+	dd->pp++;
 }
 
 static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
@@ -382,31 +402,6 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
-#if 0
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dma_chan_status status;
-	struct comp_buffer *dma_buffer;
-
-	/* update host position(in bytes offset) for drivers */
-	if (dd->dai_pos) {
-		/* update local buffer position */
-		dma_status(dd->dma, dd->chan, &status, dd->direction);
-
-		if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
-			dma_buffer = list_first_entry(&dev->bsource_list,
-				struct comp_buffer, sink_list);
-		
-			*dd->dai_pos = dd->dai_pos_blks +
-				status.r_pos - (uint32_t)dma_buffer->addr;
-		} else {
-			dma_buffer = list_first_entry(&dev->bsink_list,
-				struct comp_buffer, source_list);
-
-			*dd->dai_pos = dd->dai_pos_blks +
-				status.w_pos - (uint32_t)dma_buffer->addr;
-		}
-	}
-#endif
 	return 0;
 }
 
