@@ -44,7 +44,6 @@ struct comp_data {
 		struct comp_buffer *source, uint32_t frames);
 	struct work volwork;
 	uint32_t last_run;	/* clk when last run */
-	uint32_t frame_us;	/* frame time in usecs */
 	uint32_t pp;		/* ping pong trace */
 };
 
@@ -240,12 +239,9 @@ static void volume_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int volume_params(struct comp_dev *dev, struct stream_params *params)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-
 	/* dont do any data transformation */
 	comp_set_sink_params(dev, params);
-	//TODO: add generic API to do a tabel lookup for this value;
-	cd->frame_us = 1000000 / params->pcm.rate;
+
 	return 0;
 }
 
