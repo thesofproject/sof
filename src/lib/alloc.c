@@ -164,7 +164,7 @@ found:
 	/* found some free blocks */
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
-	hdr = &map->block[current];
+	hdr = &map->block[start];
 	hdr->size = count;
 
 	/* allocate each block */
