@@ -43,14 +43,18 @@ struct dai_data {
 static inline int dai_period_aligned(struct dai_data *dd,
 	void *ptr, void *base, uint32_t size)
 {
-	/* only applies to first period */
-	if (dd->pp != 0)
-		return 1;
+	if (dd->pp & 0x1) {
+		/* is ptr in correct period for pong */
+		if (ptr - base < size)
+			return 0;
 
-	/* is ptr in correct period for ping-pong */
-	if (ptr - base > size)
-		return 0;
+	} else {
+		/* is ptr in correct period for ping */
+		if (ptr - base > size)
+			return 0;
+	}
 
+	/* ping and pong aligned */
 	return 1;
 }
 
