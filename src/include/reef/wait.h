@@ -15,6 +15,13 @@
 #include <reef/work.h>
 #include <reef/timer.h>
 #include <reef/interrupt.h>
+#include <reef/trace.h>
+#include <platform/interrupt.h>
+
+#define trace_wait() \
+	trace_event(TRACE_CLASS_WAIT, "WFI"); \
+	trace_value(interrupt_get_enabled()); \
+	trace_value(platform_interrupt_get_enabled());
 
 typedef struct {
 	uint32_t complete;
@@ -22,7 +29,13 @@ typedef struct {
 	uint32_t timeout;
 } completion_t;
 
-void wait_for_interrupt(int level);
+void arch_wait_for_interrupt(int level);
+
+static inline void wait_for_interrupt(int level)
+{
+	trace_wait();
+	arch_wait_for_interrupt(level);
+}
 
 static uint32_t _wait_cb(void *data, uint32_t delay)
 {

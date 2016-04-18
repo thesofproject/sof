@@ -15,11 +15,11 @@
 
 	.text
 	.align 4
-	.global	wait_for_interrupt
-	.type	wait_for_interrupt,@function
-wait_for_interrupt:
+	.global	arch_wait_for_interrupt
+	.type	arch_wait_for_interrupt,@function
+arch_wait_for_interrupt:
 	abi_entry
 	waiti 0
 	abi_return
 
-	.size	wait_for_interrupt, . - wait_for_interrupt
+	.size	arch_wait_for_interrupt, . - arch_wait_for_interrupt
