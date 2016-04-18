@@ -29,9 +29,9 @@
 #define TRACE_CLASS_WAIT	(9 << 24)
 
 /* move to config.h */
-#define TRACE	1
+#define TRACE	0
 #define TRACEV	0
-#define TRACEE	1
+#define TRACEE	0
 
 void _trace_event(uint32_t event);
 
@@ -60,7 +60,8 @@ void _trace_event(uint32_t event);
 
 #else
 
-#define trace_event(x)
+#define trace_event(x, e)
+#define trace_error(c, e)
 #define trace_value(x)
 #define trace_point(x)
 
