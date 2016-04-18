@@ -148,6 +148,11 @@ void platform_interrupt_mask_clear(uint32_t mask)
 	shim_write(SHIM_PISR, mask);
 }
 
+uint32_t platform_interrupt_get_enabled(void)
+{
+	return shim_read(SHIM_PIMR);
+}
+
 int platform_init(void)
 {
 	struct dma *dmac0, *dmac1;

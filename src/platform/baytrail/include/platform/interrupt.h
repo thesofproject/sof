@@ -9,6 +9,8 @@
 #ifndef __INCLUDE_PLATFORM_INTERRUPT__
 #define __INCLUDE_PLATFORM_INTERRUPT__
 
+#include <stdint.h>
+
 /* IRQ numbers */
 #define IRQ_NUM_SOFTWARE0	0
 #define IRQ_NUM_TIMER1		1
@@ -49,5 +51,8 @@
 #define IRQ_MASK_EXT_SSP0 	(1 << IRQ_NUM_EXT_SSP0)
 #define IRQ_MASK_EXT_SSP1 	(1 << IRQ_NUM_EXT_SSP1)
 #define IRQ_MASK_EXT_SSP2 	(1 << IRQ_NUM_EXT_SSP2)
+
+uint32_t platform_interrupt_get_enabled(void);
+
 #endif
 
