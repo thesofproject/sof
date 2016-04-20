@@ -161,7 +161,7 @@ static int get_page_desciptors(struct intel_ipc_data *iipc,
 	/* start the copy of page table to DSP */
 	dma_start(dma, chan);
 
-	/* wait 2 msecs for DMA to finish */
+	/* TODO: longer timeout ?? wait 2 msecs for DMA to finish */
 	iipc->complete.timeout = 2000;
 	ret = wait_for_completion_timeout(&iipc->complete);
 
@@ -218,9 +218,10 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	struct ipc_intel_ipc_stream_alloc_req req;
 	struct ipc_intel_ipc_stream_alloc_reply reply;
 	struct stream_params *params;
-	uint32_t host_id, dai_id;
+	uint32_t host_id, dai_id, mixer_id;
 	struct ipc_pcm_dev *pcm_dev;
 	struct ipc_dai_dev *dai_dev;
+	struct ipc_comp_dev *mixer_dev;
 	struct sst_intel_ipc_stream_data *_stream_data;
 	int err, i;
 	uint8_t direction;
@@ -236,11 +237,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	case IPC_INTEL_STREAM_TYPE_SYSTEM:
 		host_id = 0;
 		dai_id = 2;
+		mixer_id = 1;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		_stream_data = _stream_dataP;
 		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
 		host_id = 5;
+		mixer_id = 4;
 		dai_id = 3;
 		direction = STREAM_DIRECTION_CAPTURE;
 		_stream_data = _stream_dataC;
@@ -261,6 +264,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	dai_dev = ipc_get_dai_comp(dai_id);
 	if (dai_dev == NULL) {
 		trace_ipc_error("eAD");
+		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
+	}
+
+	/* get the mixer_dev */
+	mixer_dev = ipc_get_comp(mixer_id);
+	if (mixer_dev == NULL) {
+		trace_ipc_error("eAM");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
 	}
 
@@ -321,9 +331,23 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		goto error;
 	}
 
+	/* pass the volume readback posn to the host */
+	err = comp_cmd(mixer_dev->cd, COMP_CMD_IPC_MMAP_VOL(0),
+		&_stream_data->vol[0].vol);
+	if (err < 0) {
+		trace_ipc_error("eAv");
+		goto error;
+	}
+	err = comp_cmd(mixer_dev->cd, COMP_CMD_IPC_MMAP_VOL(1),
+		&_stream_data->vol[1].vol);
+	if (err < 0) {
+		trace_ipc_error("eAv");
+		goto error;
+	}
+
 	/* at this point pipeline is ready for command so send stream reply */
 	reply.stream_hw_id = host_id;
-	reply.mixer_hw_id = 48000; // returns rate ????
+	reply.mixer_hw_id = mixer_id;
 
 	/* set read pos and presentation pos address */
 	reply.read_position_register_address =
@@ -515,6 +539,8 @@ static uint32_t ipc_context_save(uint32_t header)
 	platform_ssp_disable_mn(1);
 	platform_ssp_disable_mn(2);
 
+	/* TODO: disable SSP and DMA HW */
+
 	/* TODO: save the context */
 	reply.entries_no = 0;
 
@@ -534,63 +560,70 @@ static uint32_t ipc_context_restore(uint32_t header)
 static uint32_t ipc_stage_set_volume(uint32_t header)
 {
 	struct ipc_comp_dev *mixer_dev;
-	uint32_t stream_id;
+	struct ipc_intel_ipc_volume_req req;
+	struct comp_volume cv;
+	uint32_t mixer_id;
 	int err;
 
 	trace_ipc("VoS");
 
-	// TODO: finish implementation, get correct ID from drv
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	/* read volume from the inbox */
+	mailbox_inbox_read(&req, 0, sizeof(req));
+
+	if (req.channel > 1)
+		goto error;
+
+	/* TODO: add other channels */ 
+	memset(&cv, 0, sizeof(cv));
+	cv.volume[req.channel] = req.target_volume;
 
 	/* the driver uses stream ID to also identify certain mixers */
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	mixer_id = header & IPC_INTEL_STR_ID_MASK;
+	mixer_id >>= IPC_INTEL_STR_ID_SHIFT;
 
-	/* get the pcm_dev */
-	mixer_dev = ipc_get_comp(stream_id);
+	/* get the pcm_dev TODO: command for pipeline or mixer comp */
+	mixer_dev = ipc_get_comp(mixer_id);
 	if (mixer_dev == NULL)
 		goto error; 
-	
+
 	/* TODO: complete call with private volume data */
-	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, NULL);
+	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, &cv);
 	if (err < 0)
 		goto error;
 
-// TODO: define error paths
-error:
-
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
+
+error:
+	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 }
 
 static uint32_t ipc_stage_get_volume(uint32_t header)
 {
 	struct ipc_comp_dev *mixer_dev;
-	uint32_t stream_id;
+	struct comp_volume cv;
+	uint32_t mixer_id;
 	int err;
 
 	trace_ipc("VoG");
 
-	// TODO: finish implementation, get correct ID from drv
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-
 	/* the driver uses stream ID to also identify certain mixers */
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	mixer_id = header & IPC_INTEL_STR_ID_MASK;
+	mixer_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	mixer_dev = ipc_get_comp(stream_id);
+	mixer_dev = ipc_get_comp(mixer_id);
 	if (mixer_dev == NULL)
 		goto error; 
 	
 	/* TODO: complete call with private volume data */
-	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, NULL);
+	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, &cv);
 	if (err < 0)
 		goto error;
 
-// TODO: define error paths
-error:
-
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
+
+error:
+	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 }
 
 static uint32_t ipc_stage_write_pos(uint32_t header)
