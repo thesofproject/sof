@@ -21,6 +21,7 @@
 #include <reef/work.h>
 #include <reef/clock.h>
 #include <reef/ipc.h>
+#include <reef/trace.h>
 #include <reef/audio/component.h>
 #include <string.h>
 
@@ -158,29 +159,45 @@ int platform_init(void)
 	struct dma *dmac0, *dmac1;
 	struct dai *ssp0, *ssp1, *ssp2;
 
+	trace_point(TRACE_BOOT_PLATFORM_MBOX);
+
 	/* clear mailbox for early trace and debug */
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
+	trace_point(TRACE_BOOT_PLATFORM_SHIM);
+
 	/* configure the shim */
 	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
+
+	trace_point(TRACE_BOOT_PLATFORM_PMC);
 
 	/* init PMC IPC */
 	platform_ipc_pmc_init();
 
 	/* init work queues and clocks */
+	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(TIMER3);
+
+	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
+
+	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue);
 
 	/* Set CPU to default frequency for booting */
+	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
 	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
 
 	/* set SSP clock to 25M */
+	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
 	clock_set_freq(CLK_SSP, 25000000);
 
 	/* initialise the host IPC mechanisms */
+	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init();
+
 	/* init DMACs */
+	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	dmac0 = dma_get(DMA_ID_DMAC0);
 	dma_probe(dmac0);
 
@@ -191,6 +208,7 @@ int platform_init(void)
 	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
 
 	/* init SSP ports */
+	trace_point(TRACE_BOOT_PLATFORM_SSP);
 	ssp0 = dai_get(COMP_TYPE_DAI_SSP, 0);
 	dai_probe(ssp0);
 

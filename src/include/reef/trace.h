@@ -17,6 +17,28 @@
 #include <platform/platform.h>
 #include <platform/timer.h>
 
+/* general trace init codes - only used at boot when main trace is not availble */
+#define TRACE_BOOT_START	0x1000
+#define TRACE_BOOT_ARCH		0x2000
+#define TRACE_BOOT_SYS		0x3000
+#define TRACE_BOOT_PLATFORM	0x4000
+
+/* system specific codes */
+#define TRACE_BOOT_SYS_WORK		(TRACE_BOOT_SYS + 0x100)
+#define TRACE_BOOT_SYS_CPU_FREQ		(TRACE_BOOT_SYS + 0x101)
+
+/* platform/device specific codes */
+#define TRACE_BOOT_PLATFORM_MBOX	(TRACE_BOOT_PLATFORM + 0x100)
+#define TRACE_BOOT_PLATFORM_SHIM	(TRACE_BOOT_PLATFORM + 0x101)
+#define TRACE_BOOT_PLATFORM_PMC		(TRACE_BOOT_PLATFORM + 0x102)
+#define TRACE_BOOT_PLATFORM_TIMER	(TRACE_BOOT_PLATFORM + 0x103)
+#define TRACE_BOOT_PLATFORM_CLOCK	(TRACE_BOOT_PLATFORM + 0x104)
+#define TRACE_BOOT_PLATFORM_SSP_FREQ	(TRACE_BOOT_PLATFORM + 0x105)
+#define TRACE_BOOT_PLATFORM_IPC		(TRACE_BOOT_PLATFORM + 0x106)
+#define TRACE_BOOT_PLATFORM_DMA		(TRACE_BOOT_PLATFORM + 0x107)
+#define TRACE_BOOT_PLATFORM_SSP		(TRACE_BOOT_PLATFORM + 0x108)
+
+
 /* trace event classes - high 8 bits*/
 #define TRACE_CLASS_IRQ		(1 << 24)
 #define TRACE_CLASS_IPC		(2 << 24)
@@ -47,8 +69,10 @@ void _trace_event(uint32_t event);
 /* verbose tracing */
 #if TRACEV
 #define tracev_event(__c, __e) trace_event(__c, __e)
+#define tracev_value(x)	_trace_event(x)
 #else
 #define tracev_event(__c, __e)
+#define tracev_value(x)
 #endif
 
 /* error tracing */

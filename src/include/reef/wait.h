@@ -20,8 +20,8 @@
 
 #define trace_wait() \
 	trace_event(TRACE_CLASS_WAIT, "WFI"); \
-	trace_value(interrupt_get_enabled()); \
-	trace_value(platform_interrupt_get_enabled());
+	tracev_value(interrupt_get_enabled()); \
+	tracev_value(platform_interrupt_get_enabled());
 
 typedef struct {
 	uint32_t complete;
