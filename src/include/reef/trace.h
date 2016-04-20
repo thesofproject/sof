@@ -88,6 +88,8 @@ void _trace_event(uint32_t event);
 #define trace_error(c, e)
 #define trace_value(x)
 #define trace_point(x)
+#define tracev_event(__c, __e)
+#define tracev_value(x)
 
 #endif
 
