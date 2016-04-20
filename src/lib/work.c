@@ -287,7 +287,19 @@ static void work_notify(int message, void *data, void *event_data)
 
 void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 {
+	struct work *work;
+	struct list_head *wlist;
+
 	spin_lock_local_irq(&queue->lock, queue->ts->timer);
+
+	/* check to see if we are already scheduled ? */
+	list_for_each(wlist, &queue->work) {
+		work = container_of(wlist, struct work, list);
+
+		/* keep original timeout */
+		if (work == w)
+			goto out;
+	}
 
 	/* convert timeout microsecs to CPU clock ticks */
 	w->timeout = queue->ticks_per_usec * timeout + work_get_timer(queue);
@@ -298,6 +310,7 @@ void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
+out:
 	spin_unlock_local_irq(&queue->lock, queue->ts->timer);
 }
 
@@ -316,7 +329,19 @@ void work_cancel(struct work_queue *queue, struct work *w)
 
 void work_schedule_default(struct work *w, uint32_t timeout)
 {
+	struct work *work;
+	struct list_head *wlist;
+
 	spin_lock_local_irq(&queue_->lock, queue_->ts->timer);
+
+	/* check to see if we are already scheduled ? */
+	list_for_each(wlist, &queue_->work) {
+		work = container_of(wlist, struct work, list);
+
+		/* keep original timeout */
+		if (work == w)
+			goto out;
+	}
 
 	/* convert timeout microsecs to CPU clock ticks */
 	w->timeout = queue_->ticks_per_usec * timeout + work_get_timer(queue_);
@@ -327,6 +352,7 @@ void work_schedule_default(struct work *w, uint32_t timeout)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
 
+out:
 	spin_unlock_local_irq(&queue_->lock, queue_->ts->timer);
 }
 
