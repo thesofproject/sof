@@ -23,7 +23,7 @@
  * i.e 2^16 -> 0 in 32 * 2048 steps each lasting 2ms
  */
 #define VOL_RAMP_US	2000
-#define VOL_RAMP_STEP	2048
+#define VOL_RAMP_STEP	(1 << 11)
 
 /*
  * Simple volume control
@@ -35,6 +35,11 @@
  * TODO: Add 24 bit (4 byte aligned) support using HiFi2 EP SIMD.
  */
 
+struct sst_intel_ipc_stream_vol {
+	uint32_t peak;
+	uint32_t vol;
+} __attribute__((packed));
+
 /* volume component private data */
 struct comp_data {
 	uint32_t volume[STREAM_MAX_CHANNELS];	/* current volume */
@@ -45,6 +50,9 @@ struct comp_data {
 	struct work volwork;
 	uint32_t last_run;	/* clk when last run */
 	uint32_t pp;		/* ping pong trace */
+
+	/* host volume readback */
+	uint32_t *hvol[STREAM_MAX_CHANNELS];
 };
 
 struct comp_func_map {
@@ -160,23 +168,24 @@ static uint32_t vol_work(void *data, uint32_t delay)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source = list_first_entry(&dev->bsource_list,
-		struct comp_buffer, sink_list);
 	int i, again = 0;
 
 	/* inc/dec each volume if it's not at target */ 
-	for (i = 0; i < source->params.channels; i++) {
+	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
 
 		/* skip if target reached */
-		if (cd->volume[i] == cd->tvolume[i])
+		if (cd->volume[i] == cd->tvolume[i]) {
+			if (cd->hvol[i])
+				*cd->hvol[i] = cd->volume[i];
 			continue;
+		}
 
 		if (cd->volume[i] < cd->tvolume[i]) {
 			/* ramp up */
 			cd->volume[i] += VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (cd->volume[i] > cd->tvolume[i])
+			if (cd->volume[i] >= cd->tvolume[i])
 				cd->volume[i] = cd->tvolume[i];
 			else
 				again = 1;
@@ -185,7 +194,7 @@ static uint32_t vol_work(void *data, uint32_t delay)
 			cd->volume[i] -= VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (cd->volume[i] < cd->tvolume[i])
+			if (cd->volume[i] <= cd->tvolume[i])
 				cd->volume[i] = cd->tvolume[i];
 			else
 				again = 1;
@@ -223,6 +232,8 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index,
 	/* set the default volumes */
 	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
 		cd->volume[i] = 1 << 16;
+		cd->tvolume[i] = 1 << 16;
+		cd->hvol[i] = NULL;
 	}
 
 	return dev;
@@ -245,11 +256,13 @@ static int volume_params(struct comp_dev *dev, struct stream_params *params)
 	return 0;
 }
 
-static inline void volume_set_chan(struct comp_dev *dev, int chan, uint16_t vol)
+static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	cd->tvolume[chan] = vol;
+	/* TODO: ignore vol of 0 atm - bad IPC */
+	if (vol != 0)
+		cd->tvolume[chan] = vol;
 }
 
 static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
@@ -271,27 +284,31 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_volume *cv = (struct comp_volume*)data;
-	struct comp_buffer *buffer = 
-		list_entry(&dev->bsource_list, struct comp_buffer, sink_list);
-	struct stream_params *params = &buffer->params;
+	struct comp_volume *cv;
 	int i;
 
 	switch (cmd) {
 	case COMP_CMD_VOLUME:
-		for (i = 0; i < params->channels; i++)
+		cv = (struct comp_volume*)data;
+
+		for (i = 0; i < STREAM_MAX_CHANNELS; i++)
 			volume_set_chan(dev, i, cv->volume[i]);
+
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	case COMP_CMD_MUTE:
-		for (i = 0; i < params->channels; i++) {
+		cv = (struct comp_volume*)data;
+
+		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
 			if (cv->volume[i])
 				volume_set_chan_mute(dev, i);
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	case COMP_CMD_UNMUTE:
-		for (i = 0; i < params->channels; i++) {
+		cv = (struct comp_volume*)data;
+
+		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
 			if (cv->volume[i])
 				volume_set_chan_unmute(dev, i);
 		}
@@ -302,6 +319,9 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_STOP:
 		dev->state = COMP_STATE_STOPPED;
+		break;
+	case COMP_CMD_IPC_MMAP_VOL(0) ... COMP_CMD_IPC_MMAP_VOL(STREAM_MAX_CHANNELS - 1):
+		cd->hvol[cmd - COMP_CMD_IPC_MMAP_VOL(0)] = data;
 		break;
 	default:
 		break;
@@ -371,6 +391,10 @@ static int volume_prepare(struct comp_dev *dev)
 	return -EINVAL;
 
 found:
+	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
+		if (cd->hvol[i])
+			*cd->hvol[i] = cd->volume[i];
+	}
 	cd->pp = 0;
 	return 0;
 }
@@ -378,8 +402,13 @@ found:
 static int volume_reset(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	int i;
 
 	dev->state = COMP_STATE_INIT;
+
+	for (i = 0; i < STREAM_MAX_CHANNELS; i++)
+		cd->hvol[i] = NULL;
+
 	cd->pp = 0;
 	return 0;
 }
