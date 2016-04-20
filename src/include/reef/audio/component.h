@@ -54,6 +54,8 @@
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
 #define COMP_CMD_IPC_MMAP_PPOS	201	/* DAI presentation position */
 
+#define COMP_CMD_IPC_MMAP_VOL(chan)	(216 + chan)	/* Volume */
+
 /* component operations */
 #define COMP_OPS_PARAMS		0
 #define COMP_OPS_CMD		1
@@ -68,7 +70,7 @@
 
 /* standard component command structures */
 struct comp_volume {
-	uint16_t volume[STREAM_MAX_CHANNELS];
+	uint32_t volume[STREAM_MAX_CHANNELS];
 };
 
 struct comp_dev;
