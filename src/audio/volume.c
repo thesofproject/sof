@@ -24,6 +24,7 @@
  */
 #define VOL_RAMP_US	2000
 #define VOL_RAMP_STEP	(1 << 11)
+#define VOL_MAX		(1 << 16)
 
 /*
  * Simple volume control
@@ -34,11 +35,6 @@
  * 32 bit data is used in all other cases for overhead.
  * TODO: Add 24 bit (4 byte aligned) support using HiFi2 EP SIMD.
  */
-
-struct sst_intel_ipc_stream_vol {
-	uint32_t peak;
-	uint32_t vol;
-} __attribute__((packed));
 
 /* volume component private data */
 struct comp_data {
@@ -163,11 +159,20 @@ static const struct comp_func_map func_map[] = {
 	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S32_LE, vol_s32_to_s32},
 };
 
+static void vol_update(struct comp_data *cd, uint32_t chan)
+{
+	cd->volume[chan] = cd->tvolume[chan];
+
+	if (cd->hvol[chan])
+		*cd->hvol[chan] = cd->volume[chan];
+}
+
 /* this ramps volume changes over time */
 static uint32_t vol_work(void *data, uint32_t delay)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t vol;
 	int i, again = 0;
 
 	/* inc/dec each volume if it's not at target */ 
@@ -175,29 +180,33 @@ static uint32_t vol_work(void *data, uint32_t delay)
 
 		/* skip if target reached */
 		if (cd->volume[i] == cd->tvolume[i]) {
-			if (cd->hvol[i])
-				*cd->hvol[i] = cd->volume[i];
 			continue;
 		}
 
+		vol = cd->volume[i];
+
 		if (cd->volume[i] < cd->tvolume[i]) {
 			/* ramp up */
-			cd->volume[i] += VOL_RAMP_STEP;
+			vol += VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (cd->volume[i] >= cd->tvolume[i])
-				cd->volume[i] = cd->tvolume[i];
-			else
+			if (vol >= cd->tvolume[i] || vol >= VOL_MAX)
+				vol_update(cd, i);
+			else {
+				cd->volume[i] = vol;
 				again = 1;
+			}
 		} else {
 			/* ramp down */
-			cd->volume[i] -= VOL_RAMP_STEP;
+			vol -= VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (cd->volume[i] <= cd->tvolume[i])
-				cd->volume[i] = cd->tvolume[i];
-			else
+			if (vol <= cd->tvolume[i || vol >= VOL_MAX])
+				vol_update(cd, i);
+			else {
+				cd->volume[i] = vol;
 				again = 1;
+			}
 		}
 	}
 
@@ -231,8 +240,8 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index,
 
 	/* set the default volumes */
 	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-		cd->volume[i] = 1 << 16;
-		cd->tvolume[i] = 1 << 16;
+		cd->volume[i] = VOL_MAX;
+		cd->tvolume[i] = VOL_MAX;
 		cd->hvol[i] = NULL;
 	}
 
@@ -261,7 +270,7 @@ static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	/* TODO: ignore vol of 0 atm - bad IPC */
-	if (vol != 0)
+	if (vol > 0 && vol <= VOL_MAX)
 		cd->tvolume[chan] = vol;
 }
 
