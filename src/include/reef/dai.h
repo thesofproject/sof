@@ -52,6 +52,9 @@
 
 #define DAI_NUM_SLOT_MAPS	8
 
+/* DAI flags */
+#define DAI_FLAGS_IRQ_CB	(1 << 0)	/* irq used for copy() timer */
+
 
 struct dai;
 

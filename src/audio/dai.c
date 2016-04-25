@@ -173,7 +173,8 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 		goto error;
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK, dai_dma_cb, dev);
+	if (dd->ssp->plat_data. & DAI_FLAGS_IRQ_CB)
+		dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK, dai_dma_cb, dev);
 
 	return dev;
 
