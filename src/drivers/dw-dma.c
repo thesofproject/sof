@@ -549,6 +549,9 @@ static int dw_dma_pm_context_restore(struct dma *dma)
 /* store DMA conext after leaving D3 */
 static int dw_dma_pm_context_store(struct dma *dma)
 {
+	/* disable the DMA controller */
+	dw_write(dma, DW_DMA_CFG, 0);
+
 	return 0;
 }
 
