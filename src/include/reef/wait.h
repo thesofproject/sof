@@ -19,7 +19,7 @@
 #include <platform/interrupt.h>
 
 #define trace_wait() \
-	trace_event(TRACE_CLASS_WAIT, "WFI"); \
+	tracev_event(TRACE_CLASS_WAIT, "WFI"); \
 	tracev_value(interrupt_get_enabled()); \
 	tracev_value(platform_interrupt_get_enabled());
 
