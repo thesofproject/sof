@@ -316,16 +316,21 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 static int host_preload(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	int ret;
+	int ret, i;
 
-	/* do DMA transfer */
-	wait_init(&hd->complete);
-	dma_set_config(hd->dma, hd->chan, &hd->config);
-	dma_start(hd->dma, hd->chan);
+	/* preload all periods */
+	for (i = 0; i < PLAT_HOST_PERIODS; i++) {
+		/* do DMA transfer */
+		wait_init(&hd->complete);
+		dma_set_config(hd->dma, hd->chan, &hd->config);
+		dma_start(hd->dma, hd->chan);
 
-	/* wait 1 msecs for DMA to finish */
-	hd->complete.timeout = 1000;
-	ret = wait_for_completion_timeout(&hd->complete);
+		/* wait 1 msecs for DMA to finish */
+		hd->complete.timeout = 1000;
+		ret = wait_for_completion_timeout(&hd->complete);
+		if (ret < 0)
+			break;
+	}
 
 	return ret;
 }
@@ -355,7 +360,8 @@ static int host_prepare(struct comp_dev *dev)
 	hd->pp = 0;
 	hd->host_not_count = hd->params.period_frames * hd->params.frame_size;
 
-	// TODO: zero buffers
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
+		host_preload(dev);
 
 	return 0;
 }
@@ -378,7 +384,6 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		dma_release(hd->dma, hd->chan);
 		break;
 	case COMP_CMD_START:
-		host_preload(dev);
 		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_DRAIN:
