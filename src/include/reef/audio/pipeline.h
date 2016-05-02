@@ -95,11 +95,7 @@ int init_pipeline(void);
 /* pipeline work */
 void pipeline_do_work(struct pipeline *p, uint32_t udelay);
 
-/* notify pipeline that this buffer needs filled */
-void pipeline_fill_buffer(struct pipeline *p, struct comp_buffer *buffer);
-
-/* notify pipeline that this buffer emptied */
-void pipeline_empty_buffer(struct pipeline *p, struct comp_buffer *buffer);
+void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev);
 
 static inline void pipeline_set_work_freq(struct pipeline *p,
 	uint32_t work_freq, uint16_t clock)

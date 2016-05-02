@@ -143,9 +143,11 @@ struct dma_chan_data {
 	uint8_t direction;
 	uint8_t reserved[2];
 	struct dw_lli2 *lli;
+	struct dw_lli2 *lli_current;
 	int desc_count;
 	uint32_t cfg_lo;
 	uint32_t cfg_hi;
+	struct dma *dma;
 
 	void (*cb)(void *data, uint32_t type);	/* client callback function */
 	void *cb_data;		/* client callback data */
@@ -279,20 +281,32 @@ static int dw_dma_start(struct dma *dma, int channel)
 		mask = 1 << (24 + channel);
 	platform_interrupt_mask_clear(mask);
 
-	/* channel needs started from scratch, so write SARn, DARn */
-	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
-	dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
-	dw_write(dma, DW_LLP(channel), p->chan[channel].lli->llp);
+	/* TODO: Revisit: are we using LLP mode or single transfer ? */
+	/* HACK: force processor block reloading */
+	//if (p->chan[channel].lli->llp) {
+		/* LLP mode - only write LLP pointer */
+	//	dw_write(dma, DW_LLP(channel), (uint32_t)p->chan[channel].lli);
+	//} else {
+		/* single transfer */
+	//	dw_write(dma, DW_LLP(channel), 0);
 
-	/* program CTLn and CFGn*/
-	dw_write(dma, DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
-	dw_write(dma, DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
+		/* channel needs started from scratch, so write SARn, DARn */
+		dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
+		dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
+
+		/* program CTLn */
+		dw_write(dma, DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
+		dw_write(dma, DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
+	//}
+
+	/* write channel config */
 	dw_write(dma, DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
 	dw_write(dma, DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
 
 	/* enable the channel */
-	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 	p->chan[channel].status = DMA_STATUS_RUNNING;
+	p->chan[channel].lli_current = p->chan[channel].lli;
+	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 
 out:
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
@@ -474,8 +488,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
-		lli_desc->ctrl_hi &= ~DW_CTLH_DONE; /* clear the done bit */
-
 		/* write CTL_LOn for each lli */
 		lli_desc->ctrl_lo |= DW_CTLL_FC(config->direction); /* config the transfer type */
 		lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2); /* config the src tr width */
@@ -518,7 +530,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		/* set next descriptor in list */
 		lli_desc->llp = (uint32_t)(lli_desc + 1);
-		lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
+		//lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 
 		/* next descriptor */
 		lli_desc++;
@@ -527,12 +539,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	/* end of list or cyclic buffer ? */
 	if (config->cyclic) {
 		lli_desc_tail->llp = (uint32_t)lli_desc_head;
-		p->chan[channel].cfg_lo |=
-			(DW_CTLL_RELOAD_DST | DW_CTLL_RELOAD_SRC);
 	} else {
 		lli_desc_tail->llp = 0x0;
-		lli_desc_tail->ctrl_lo &=
-			~(DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN);
+		//lli_desc_tail->ctrl_lo &=
+		//	~(DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN);
 	}
 
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
@@ -565,6 +575,37 @@ static void dw_dma_set_cb(struct dma *dma, int channel, int type,
 	p->chan[channel].cb_data = data;
 	p->chan[channel].cb_type = type;
 	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+}
+
+static inline void dw_dma_chan_reload(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dw_lli2 *lli = p->chan[channel].lli_current;
+
+	/* only need to reload if this is a block transfer */
+	if (lli == 0 || (lli && lli->llp == 0)) {
+		p->chan[channel].status = DMA_STATUS_IDLE;
+		return;
+	}
+
+	/* get current and next block pointers */
+	lli = (struct dw_lli2 *)lli->llp;
+	p->chan[channel].lli_current = lli;
+
+	/* clear any existing IRQs */
+	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+
+	/* channel needs started from scratch, so write SARn, DARn */
+	dw_write(dma, DW_SAR(channel), lli->sar);
+	dw_write(dma, DW_DAR(channel), lli->dar);
+
+	/* program CTLn */
+	dw_write(dma, DW_CTRL_LOW(channel), lli->ctrl_lo);
+	dw_write(dma, DW_CTRL_HIGH(channel), lli->ctrl_hi);
+
+	/* enable the channel */
+	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 }
 
 /* this will probably be called at the end of every period copied */
@@ -602,15 +643,18 @@ static void dw_dma_irq_handler(void *data)
 			p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST) {
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST);
-			p->chan[i].status = DMA_STATUS_IDLE;
-		}
 
+			/* check for reload channel */
+			dw_dma_chan_reload(dma, i);
+		}
+#if 0
 		/* end of a block */
 		if (status_block & mask &&
 			p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK);
 		}
+#endif
 	}
 
 	/* clear interrupts */
@@ -661,6 +705,7 @@ static int dw_dma_probe(struct dma *dma)
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(dw_pdata->lock);
+
 	dw_dma_setup(dma);
 
 	/* init work */

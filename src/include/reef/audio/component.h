@@ -147,6 +147,7 @@ struct comp_dev {
 	uint8_t is_dai;		/* component is graph DAI endpoint */
 	uint8_t is_host;	/* component is graph host endpoint */
 	uint8_t direction;	/* STREAM_DIRECTION_ */
+	uint32_t schedule;	/* schedule copy */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;

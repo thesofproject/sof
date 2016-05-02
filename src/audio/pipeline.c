@@ -575,6 +575,46 @@ static int pipeline_copy_capture(struct comp_dev *comp)
 	return err;
 }
 
+/* do copy work for this component if scheduled */
+static inline void pipeline_copy_capture_work(struct comp_dev *dev)
+{
+	uint32_t flags, schedule;
+
+	spin_lock_irq(dev->lock, flags);
+	schedule = dev->schedule;
+	spin_unlock_irq(dev->lock, flags);
+
+	/* process downstream */
+	if (schedule)
+		pipeline_copy_capture(dev);
+	else
+		return;
+
+	spin_lock_irq(dev->lock, flags);
+	dev->schedule = 0;
+	spin_unlock_irq(dev->lock, flags);
+}
+
+/* do copy work for this component if scheduled */
+static inline void pipeline_copy_playback_work(struct comp_dev *dev)
+{
+	uint32_t flags, schedule;
+
+	spin_lock_irq(dev->lock, flags);
+	schedule = dev->schedule;
+	spin_unlock_irq(dev->lock, flags);
+
+	/* process downstream */
+	if (schedule)
+		pipeline_copy_playback(dev);
+	else
+		return;
+
+	spin_lock_irq(dev->lock, flags);
+	dev->schedule = 0;
+	spin_unlock_irq(dev->lock, flags);
+}
+
 /* called on timer tick to process pipeline data */
 void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 {
@@ -584,8 +624,6 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 	// TODO: The list of buffers to be emptied and filled should be processed
 	// from DAI to host here.  
 
-	if (pipe_data->copy_status != PIPELINE_COPY_SCHEDULED)
-		return;
 
 	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
 
@@ -600,14 +638,10 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
 
-		if (ep->state != COMP_STATE_RUNNING)
-			continue;
-
 		if (ep->direction == STREAM_DIRECTION_PLAYBACK)
 			continue;
 
-		/* process downstream */
-		pipeline_copy_capture(ep);
+		pipeline_copy_capture_work(ep);
 	}
 
 	/* now process playback streams in the pipeline */
@@ -616,14 +650,10 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 
 		ep = container_of(elist, struct comp_dev, endpoint_list);
 
-		if (ep->state != COMP_STATE_RUNNING)
-			continue;
-
 		if (ep->direction != STREAM_DIRECTION_PLAYBACK)
 			continue;
 
-		/* process downstream */
-		pipeline_copy_playback(ep);
+		pipeline_copy_playback_work(ep);
 	}
 
 	trace_pipe("PWe");
@@ -631,40 +661,14 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 	pipe_data->copy_status = PIPELINE_COPY_IDLE;
 }
 
-/* notify pipeline that this buffer needs filled */
-void pipeline_fill_buffer(struct pipeline *p, struct comp_buffer *buffer)
-{
-	uint32_t flags;
-
-	spin_lock_irq(pipe_data->lock, flags);
-
-	/* is buffer work already running or scheduled ? */
-	if (pipe_data->copy_status == PIPELINE_COPY_RUNNING ||
-		pipe_data->copy_status == PIPELINE_COPY_SCHEDULED)
-		goto out;
-	
-	// TODO: buffer should be added to list of "to be filled" buffers
-	pipe_data->copy_status = PIPELINE_COPY_SCHEDULED;
-out:
-	spin_unlock_irq(pipe_data->lock, flags);
-}
-
 /* notify pipeline that this buffer emptied */
-void pipeline_empty_buffer(struct pipeline *p, struct comp_buffer *buffer)
+void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 {
 	uint32_t flags;
 
-	spin_lock_irq(pipe_data->lock, flags);
-
-	/* is buffer work already running or scheduled ? */
-	if (pipe_data->copy_status == PIPELINE_COPY_RUNNING ||
-		pipe_data->copy_status == PIPELINE_COPY_SCHEDULED)
-		goto out;
-
-	// TODO: buffer should be added to list of "to be emptied" buffers
-	pipe_data->copy_status = PIPELINE_COPY_SCHEDULED;
-out:
-	spin_unlock_irq(pipe_data->lock, flags);
+	spin_lock_irq(dev->lock, flags);
+	dev->schedule = 1;
+	spin_unlock_irq(dev->lock, flags);
 }
 
 /* init pipeline */

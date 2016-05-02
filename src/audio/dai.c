@@ -39,25 +39,6 @@ struct dai_data {
 	volatile uint32_t *dai_pos;
 };
 
-/* the first DMA block IRQ sometimes goes missing so re-align if it does */
-static inline int dai_period_aligned(struct dai_data *dd,
-	void *ptr, void *base, uint32_t size)
-{
-	if (dd->pp & 0x1) {
-		/* is ptr in correct period for pong */
-		if (ptr - base < size)
-			return 0;
-
-	} else {
-		/* is ptr in correct period for ping */
-		if (ptr - base > size)
-			return 0;
-	}
-
-	/* ping and pong aligned */
-	return 1;
-}
-
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *data, uint32_t type)
 {
@@ -123,23 +104,8 @@ static void dai_dma_cb(void *data, uint32_t type)
 	/* recalc available buffer space */
 	comp_update_buffer(dma_buffer);
 
-	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
-
-		if (!dai_period_aligned(dd, dma_buffer->r_ptr,
-			dma_buffer->addr, dma_period_desc->size))
-			return;
-
-		/* notify pipeline that DAI needs it's buffer filled */
-		pipeline_fill_buffer(dev->pipeline, dma_buffer);
-	} else {
-
-		if (!dai_period_aligned(dd, dma_buffer->w_ptr,
-			dma_buffer->addr, dma_period_desc->size))
-			return;
-
-		/* notify pipeline that DAI needs it's buffer emptied */
-		pipeline_empty_buffer(dev->pipeline, dma_buffer);
-	}
+	/* notify pipeline that DAI needs it's buffer filled */
+	pipeline_schedule_copy(dev->pipeline, dev);
 
 	dd->pp++;
 }
@@ -173,8 +139,8 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 		goto error;
 
 	/* set up callback */
-	if (dd->ssp->plat_data. & DAI_FLAGS_IRQ_CB)
-		dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK, dai_dma_cb, dev);
+	//if (dd->ssp->plat_data.flags & DAI_FLAGS_IRQ_CB)
+		dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
 
 	return dev;
 

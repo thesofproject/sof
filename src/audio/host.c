@@ -384,6 +384,8 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		dma_release(hd->dma, hd->chan);
 		break;
 	case COMP_CMD_START:
+		dma_set_config(hd->dma, hd->chan, &hd->config);
+		dma_start(hd->dma, hd->chan);
 		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_DRAIN:

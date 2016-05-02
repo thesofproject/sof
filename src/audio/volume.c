@@ -356,6 +356,9 @@ static int volume_copy(struct comp_dev *dev)
 		trace_comp("VPo");
 	else
 		trace_comp("VPi");
+
+	trace_value((uint32_t)(source->r_ptr - source->addr));
+	trace_value((uint32_t)(sink->w_ptr - sink->addr));
 #endif
 
 	/* copy and scale volume */
@@ -405,6 +408,13 @@ found:
 			*cd->hvol[i] = cd->volume[i];
 	}
 	cd->pp = 0;
+
+	/* copy periods from host */
+	if (source->params.direction == STREAM_DIRECTION_PLAYBACK) {
+		for (i = 0; i < PLAT_HOST_PERIODS; i++)
+			volume_copy(dev);
+	}
+
 	return 0;
 }
 
