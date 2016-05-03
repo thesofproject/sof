@@ -53,6 +53,10 @@ int do_task(void)
 	/* main audio IPC processing loop */
 	while (1) {
 
+		// TODO use SW IRQ to schedule pipeline work
+		/* check for any work before sleeping */
+		pipeline_do_work(pdata.p, 0);
+
 		// TODO: combine irq_syn into WFI()
 		wait_for_interrupt(0);
 		interrupt_enable_sync();
