@@ -859,7 +859,7 @@ static void do_cmd(void)
 
 static void do_notify(void)
 {
-	trace_ipc("Not");
+	tracev_ipc("Not");
 
 	/* clear DONE bit - tell Host we have completed */
 	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
@@ -873,7 +873,7 @@ static void irq_handler(void *arg)
 {
 	uint32_t isr;
 
-	trace_ipc("IRQ");
+	tracev_ipc("IRQ");
 
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);

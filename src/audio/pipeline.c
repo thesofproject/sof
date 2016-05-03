@@ -627,7 +627,7 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 
 	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
 
-	trace_pipe("PWs");
+	tracev_pipe("PWs");
 
 	if (list_empty(&p->dai_ep_list))
 		return;
@@ -656,7 +656,7 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 		pipeline_copy_playback_work(ep);
 	}
 
-	trace_pipe("PWe");
+	tracev_pipe("PWe");
 
 	pipe_data->copy_status = PIPELINE_COPY_IDLE;
 }
