@@ -56,6 +56,7 @@
 #define TRACEE	0
 
 void _trace_event(uint32_t event);
+void trace_off(void);
 
 #if TRACE
 
