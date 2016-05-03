@@ -74,13 +74,10 @@ static void host_dma_cb(void *data, uint32_t type)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
-	struct dma_chan_status status;
+	struct comp_buffer *dma_buffer;
 
 	local_elem = list_first_entry(&hd->config.elem_list,
 		struct dma_sg_elem, list);
-
-	/* update local buffer position */
-	dma_status(hd->dma, hd->chan, &status, hd->params.direction);
 
 #if 0
 	// TODO: move this to new trace mechanism
@@ -116,13 +113,21 @@ static void host_dma_cb(void *data, uint32_t type)
 		local_elem->dest = sink_elem->dest;
 	}
 
+	/* update buffer positions */
+	dma_buffer = hd->dma_buffer;
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
-		hd->dma_buffer->w_ptr = (void*)status.w_pos;
+		dma_buffer->w_ptr += hd->period->size;
+
+		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
+			dma_buffer->w_ptr = dma_buffer->addr;
 #if 0
 		trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
 #endif
 	} else {
-		hd->dma_buffer->r_ptr = (void*)status.r_pos;
+		hd->dma_buffer->r_ptr += hd->period->size;
+
+		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
+			dma_buffer->r_ptr = dma_buffer->addr;
 #if 0
 		trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
 #endif
