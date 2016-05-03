@@ -582,6 +582,7 @@ static inline void pipeline_copy_capture_work(struct comp_dev *dev)
 
 	spin_lock_irq(dev->lock, flags);
 	schedule = dev->schedule;
+	dev->schedule = 0;
 	spin_unlock_irq(dev->lock, flags);
 
 	/* process downstream */
@@ -589,10 +590,6 @@ static inline void pipeline_copy_capture_work(struct comp_dev *dev)
 		pipeline_copy_capture(dev);
 	else
 		return;
-
-	spin_lock_irq(dev->lock, flags);
-	dev->schedule = 0;
-	spin_unlock_irq(dev->lock, flags);
 }
 
 /* do copy work for this component if scheduled */
@@ -602,17 +599,15 @@ static inline void pipeline_copy_playback_work(struct comp_dev *dev)
 
 	spin_lock_irq(dev->lock, flags);
 	schedule = dev->schedule;
+	dev->schedule = 0;
 	spin_unlock_irq(dev->lock, flags);
 
 	/* process downstream */
-	if (schedule)
+	if (schedule) {
 		pipeline_copy_playback(dev);
-	else
+	} else
 		return;
 
-	spin_lock_irq(dev->lock, flags);
-	dev->schedule = 0;
-	spin_unlock_irq(dev->lock, flags);
 }
 
 /* called on timer tick to process pipeline data */
@@ -620,17 +615,23 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 {
 	struct list_head *elist;
 
-	// TODO: locks.
-	// TODO: The list of buffers to be emptied and filled should be processed
-	// from DAI to host here.  
+	spin_lock(&pipe_data->lock);
 
+	/* dont run concurrently */
+	if (pipe_data->copy_status == PIPELINE_COPY_RUNNING) {
+		spin_unlock(&pipe_data->lock);
+		return;
+	}
+
+	/* return if no endpoints */
+	if (list_empty(&p->dai_ep_list)) {
+		spin_unlock(&pipe_data->lock);
+		return;
+	}
 
 	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
 
 	tracev_pipe("PWs");
-
-	if (list_empty(&p->dai_ep_list))
-		return;
 
 	/* process capture streams in the pipeline */
 	list_for_each(elist, &p->dai_ep_list) {
@@ -659,6 +660,7 @@ void pipeline_do_work(struct pipeline *p, uint32_t udelay)
 	tracev_pipe("PWe");
 
 	pipe_data->copy_status = PIPELINE_COPY_IDLE;
+	spin_unlock(&pipe_data->lock);
 }
 
 /* notify pipeline that this buffer emptied */
