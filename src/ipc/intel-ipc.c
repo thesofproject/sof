@@ -690,8 +690,9 @@ static uint32_t ipc_stream_reset(uint32_t header)
 		goto error;
 	}
 
-error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
+error:
+	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 }
 
 static uint32_t ipc_stream_pause(uint32_t header)
