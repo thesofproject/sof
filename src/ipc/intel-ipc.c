@@ -386,8 +386,7 @@ static uint32_t ipc_stream_free(uint32_t header)
 	/* read alloc stream IPC from the inbox */
 	mailbox_inbox_read(&free_req, 0, sizeof(free_req));
 
-	// HACK - fix stream IDs
-	//free_req.stream_id = 0;
+	/* stream ID appears duplicated by mailbox */
 	//stream_id = header & IPC_INTEL_STR_ID_MASK;
 	//stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
@@ -684,7 +683,7 @@ static uint32_t ipc_stream_reset(uint32_t header)
 
 	pcm_dev->state = IPC_HOST_PAUSED; // TODO: fix to stopped
 
-	/* initialise the pipeline */
+	/* reset the pipeline */
 	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
 	if (err < 0) {
 		trace_ipc_error("err");
