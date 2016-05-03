@@ -46,10 +46,6 @@ static void dai_dma_cb(void *data, uint32_t type)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct period_desc *dma_period_desc;
 	struct comp_buffer *dma_buffer;
-	struct dma_chan_status status;
-
-	/* update local buffer position */
-	dma_status(dd->dma, dd->chan, &status, dd->direction);
 
 #if 0
 	if (dd->pp & 0x1)
@@ -62,16 +58,17 @@ static void dai_dma_cb(void *data, uint32_t type)
 		dma_buffer = list_first_entry(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
-		dma_buffer->r_ptr = (void*)status.r_pos;
 		dma_period_desc = &dma_buffer->desc.sink_period;
-#if 0
-		// TODO: move this to new trace mechanism
-		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
-#endif
+		dma_buffer->r_ptr += dma_period_desc->size;
 
 		/* check for end of buffer */
 		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
 			dma_buffer->r_ptr = dma_buffer->addr;
+
+#if 0
+		// TODO: move this to new trace mechanism
+		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
+#endif
 
 		/* update host position(in bytes offset) for drivers */
 		dd->dai_pos_blks += dma_period_desc->size;
@@ -82,17 +79,18 @@ static void dai_dma_cb(void *data, uint32_t type)
 	} else {
 		dma_buffer = list_first_entry(&dev->bsink_list,
 			struct comp_buffer, source_list);
-		dma_buffer->w_ptr = (void*)status.w_pos;
+
 		dma_period_desc = &dma_buffer->desc.source_period;
+		dma_buffer->w_ptr += dma_period_desc->size;
+
+		/* check for end of buffer */
+		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
+			dma_buffer->w_ptr = dma_buffer->addr;
 
 #if 0
 		// TODO: move this to new trace mechanism
 		trace_value((uint32_t)(dma_buffer->w_ptr - dma_buffer->addr));
 #endif
-
-		/* check for end of buffer */
-		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
-			dma_buffer->w_ptr = dma_buffer->addr;
 
 		/* update host position(in bytes offset) for drivers */
 		dd->dai_pos_blks += dma_period_desc->size;
