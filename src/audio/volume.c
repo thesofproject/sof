@@ -24,7 +24,7 @@
  */
 #define VOL_RAMP_US	2000
 #define VOL_RAMP_STEP	(1 << 11)
-#define VOL_MAX		(1 << 16)
+#define VOL_MAX		(1 << 31)
 
 /*
  * Simple volume control
@@ -201,7 +201,7 @@ static uint32_t vol_work(void *data, uint32_t delay)
 			vol -= VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (vol <= cd->tvolume[i || vol >= VOL_MAX])
+			if (vol <= cd->tvolume[i] || vol >= VOL_MAX)
 				vol_update(cd, i);
 			else {
 				cd->volume[i] = vol;
@@ -300,8 +300,10 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_VOLUME:
 		cv = (struct comp_volume*)data;
 
-		for (i = 0; i < STREAM_MAX_CHANNELS; i++)
-			volume_set_chan(dev, i, cv->volume[i]);
+		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
+			if (cv->update_bits & (0x1 << i))
+				volume_set_chan(dev, i, cv->volume);
+		}
 
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
@@ -309,7 +311,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		cv = (struct comp_volume*)data;
 
 		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-			if (cv->volume[i])
+			if (cv->update_bits & (0x1 << i))
 				volume_set_chan_mute(dev, i);
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
@@ -318,7 +320,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		cv = (struct comp_volume*)data;
 
 		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-			if (cv->volume[i])
+			if (cv->update_bits & (0x1 << i))
 				volume_set_chan_unmute(dev, i);
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);

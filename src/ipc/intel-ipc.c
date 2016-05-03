@@ -575,8 +575,9 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 
 	/* TODO: add other channels */ 
 	memset(&cv, 0, sizeof(cv));
-	cv.volume[req.channel] = req.target_volume;
-
+	cv.update_bits = req.channel == CHANNELS_ALL ?
+		CHANNELS_ALL : 0x1 << req.channel;
+	cv.volume = req.target_volume;
 	/* the driver uses stream ID to also identify certain mixers */
 	mixer_id = header & IPC_INTEL_STR_ID_MASK;
 	mixer_id >>= IPC_INTEL_STR_ID_SHIFT;
