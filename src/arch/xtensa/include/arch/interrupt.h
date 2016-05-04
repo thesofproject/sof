@@ -74,14 +74,9 @@ static inline void arch_interrupt_clear(int irq)
 	xthal_set_intclear(0x1 << irq);
 }
 
-static inline uint32_t arch_interrupt_global_disable(void)
+static inline void arch_interrupt_global_disable(void)
 {
-	uint32_t flags;
-
-	flags = xthal_get_intenable();
 	xthal_set_intenable(0);
-
-	return flags;
 }
 
 static inline void arch_interrupt_global_enable(uint32_t flags)

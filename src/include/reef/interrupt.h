@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <arch/interrupt.h>
 #include <reef/trace.h>
+#include <reef/debug.h>
 
 #define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ | __e)
 
@@ -71,14 +72,16 @@ static inline uint32_t interrupt_local_disable(void)
 	return arch_interrupt_local_disable();
 }
 
-static inline uint32_t interrupt_global_disable(void)
+static inline void interrupt_global_disable(void)
 {
-	return arch_interrupt_global_disable();
+	arch_interrupt_global_disable();
 }
 
 static inline void interrupt_global_enable(uint32_t flags)
 {
-	arch_interrupt_global_enable(flags);
+	if (flags == 0)
+		dbg_val_at(flags | 0x100000, 17);
+	arch_interrupt_global_enable(0x0000ec04);
 }
 
 #endif
