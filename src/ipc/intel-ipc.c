@@ -904,10 +904,15 @@ int ipc_process_msg_queue(void)
 }
 
 /* Send stream command */
+// TODO Queue notifications and send seqentially
 int ipc_stream_send_notification(int stream_id)
 {
 	uint32_t header;
 	struct ipc_intel_ipc_stream_get_position msg;
+
+	/* cant send nofication when one is in progress */
+	if (shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
+		return 0;
 
 	msg.position = 100;/* this position looks not used in driver, it only care the pos registers */
 	msg.fw_cycle_count = 0;
