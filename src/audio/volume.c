@@ -24,7 +24,7 @@
  */
 #define VOL_RAMP_US	2000
 #define VOL_RAMP_STEP	(1 << 11)
-#define VOL_MAX		(1 << 16)
+#define VOL_MAX		(1 << 31)
 
 /*
  * Simple volume control
