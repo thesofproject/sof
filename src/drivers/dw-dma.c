@@ -704,7 +704,7 @@ static int dw_dma_probe(struct dma *dma)
 	bzero(dw_pdata, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
-	spinlock_init(dw_pdata->lock);
+	spinlock_init(&dw_pdata->lock);
 
 	dw_dma_setup(dma);
 

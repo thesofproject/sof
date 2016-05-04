@@ -317,7 +317,7 @@ static int ssp_probe(struct dai *dai)
 	dai_set_drvdata(dai, ssp);
 
 	/* init driver */
-	spinlock_init(ssp->lock);
+	spinlock_init(&ssp->lock);
 	interrupt_register(dai_irq(dai), ssp_irq_handler, dai);
 
 	return 0;

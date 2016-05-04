@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <reef/list.h>
+#include <reef/lock.h>
 
 /* DMA directions */
 #define DMA_DIR_MEM_TO_MEM	0
@@ -95,6 +96,7 @@ struct dma_plat_data {
 
 struct dma {
 	struct dma_plat_data plat_data;
+	spinlock_t lock;
 	const struct dma_ops *ops;
 	void *private;
 };
