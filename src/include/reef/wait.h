@@ -34,6 +34,7 @@ void arch_wait_for_interrupt(int level);
 static inline void wait_for_interrupt(int level)
 {
 	trace_wait();
+	arch_interrupt_global_enable(0x0000ec04);
 	arch_wait_for_interrupt(level);
 }
 
