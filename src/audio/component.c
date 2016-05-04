@@ -32,7 +32,6 @@ static void comp_init(struct comp_dev *dev, struct pipeline *p, uint32_t id,
 	dev->direction = direction;
 	dev->state = COMP_STATE_INIT;
 	dev->pipeline = p;
-	dev->schedule = 0;
 	spinlock_init(&dev->lock);
 	list_init(&dev->bsource_list);
 	list_init(&dev->bsink_list);

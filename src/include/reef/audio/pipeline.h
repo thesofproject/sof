@@ -92,9 +92,6 @@ struct pipeline *init_static_pipeline(void);
 /* pipeline creation */
 int init_pipeline(void);
 
-/* pipeline work */
-void pipeline_do_work(struct pipeline *p, uint32_t udelay);
-
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev);
 
 static inline void pipeline_set_work_freq(struct pipeline *p,

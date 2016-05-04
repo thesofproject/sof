@@ -151,7 +151,6 @@ struct comp_dev {
 	uint8_t is_dai;		/* component is graph DAI endpoint */
 	uint8_t is_host;	/* component is graph host endpoint */
 	uint8_t direction;	/* STREAM_DIRECTION_ */
-	uint32_t schedule;	/* schedule copy */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;
@@ -162,6 +161,7 @@ struct comp_dev {
 	struct list_head bsink_list;	/* list of sink buffers */
 	struct list_head pipeline_list;	/* list in pipeline component devs */
 	struct list_head endpoint_list;	/* list in pipeline endpoint devs */
+	struct list_head schedule_list;	/* list in pipeline copy scheduler */
 };
 
 /* audio component buffer - connects 2 audio components together in pipeline */

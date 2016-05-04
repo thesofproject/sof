@@ -28,6 +28,7 @@ struct pipeline_data {
 	uint32_t next_id;	/* monotonic ID counter */
 	struct list_head pipeline_list;	/* list of all pipelines */
 	uint32_t copy_status;	/* PIPELINE_COPY_ */
+	struct list_head schedule_list;	/* list of components to be copied */
 };
 
 /* generic operation data used by op graph walk */
@@ -575,102 +576,56 @@ static int pipeline_copy_capture(struct comp_dev *comp)
 	return err;
 }
 
-/* do copy work for this component if scheduled */
-static inline void pipeline_copy_capture_work(struct comp_dev *dev)
-{
-	uint32_t flags, schedule;
-
-	spin_lock_irq(dev->lock, flags);
-	schedule = dev->schedule;
-	dev->schedule = 0;
-	spin_unlock_irq(dev->lock, flags);
-
-	/* process downstream */
-	if (schedule)
-		pipeline_copy_capture(dev);
-	else
-		return;
-}
-
-/* do copy work for this component if scheduled */
-static inline void pipeline_copy_playback_work(struct comp_dev *dev)
-{
-	uint32_t flags, schedule;
-
-	spin_lock_irq(dev->lock, flags);
-	schedule = dev->schedule;
-	dev->schedule = 0;
-	spin_unlock_irq(dev->lock, flags);
-
-	/* process downstream */
-	if (schedule) {
-		pipeline_copy_playback(dev);
-	} else
-		return;
-
-}
-
-/* called on timer tick to process pipeline data */
-void pipeline_do_work(struct pipeline *p, uint32_t udelay)
-{
-	struct list_head *elist;
-
-	spin_lock(&pipe_data->lock);
-
-	/* dont run concurrently */
-	if (pipe_data->copy_status == PIPELINE_COPY_RUNNING) {
-		spin_unlock(&pipe_data->lock);
-		return;
-	}
-
-	/* return if no endpoints */
-	if (list_empty(&p->dai_ep_list)) {
-		spin_unlock(&pipe_data->lock);
-		return;
-	}
-
-	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
-
-	tracev_pipe("PWs");
-
-	/* process capture streams in the pipeline */
-	list_for_each(elist, &p->dai_ep_list) {
-		struct comp_dev *ep;
-
-		ep = container_of(elist, struct comp_dev, endpoint_list);
-
-		if (ep->direction == STREAM_DIRECTION_PLAYBACK)
-			continue;
-
-		pipeline_copy_capture_work(ep);
-	}
-
-	/* now process playback streams in the pipeline */
-	list_for_each(elist, &p->dai_ep_list) {
-		struct comp_dev *ep;
-
-		ep = container_of(elist, struct comp_dev, endpoint_list);
-
-		if (ep->direction != STREAM_DIRECTION_PLAYBACK)
-			continue;
-
-		pipeline_copy_playback_work(ep);
-	}
-
-	tracev_pipe("PWe");
-
-	pipe_data->copy_status = PIPELINE_COPY_IDLE;
-	spin_unlock(&pipe_data->lock);
-}
-
-/* notify pipeline that this buffer emptied */
+/* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 {
 	uint32_t flags;
 
-	spin_lock_irq(dev->lock, flags);
-	dev->schedule = 1;
-	spin_unlock_irq(dev->lock, flags);
+	/* add to list of scheduled components */
+	spin_lock_irq(&pipe_data->lock, flags);
+	list_add_tail(&dev->schedule_list, &pipe_data->schedule_list);
+	spin_unlock_irq(&pipe_data->lock, flags);
+
+	/* now schedule the copy */
+	interrupt_set(IRQ_NUM_SOFTWARE1);
+}
+
+static void pipeline_schedule(void *arg)
+{
+	struct comp_dev *dev;
+	uint32_t flags;
+	uint32_t finished = 0;
+
+	tracev_pipe("PWs");
+	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
+
+	while (1) {
+
+		/* get next component scheduled or finish */
+		spin_lock_irq(&pipe_data->lock, flags);
+
+		if (list_empty(&pipe_data->schedule_list))
+			finished = 1;
+		else {
+			dev = list_first_entry(&pipe_data->schedule_list,
+				struct comp_dev, schedule_list);
+			list_del(&dev->schedule_list);
+		}
+
+		spin_unlock_irq(&pipe_data->lock, flags);
+
+		if (finished)
+			break;
+
+		/* copy the component buffers */
+		if (dev->direction == STREAM_DIRECTION_PLAYBACK)
+			pipeline_copy_playback(dev);
+		else
+			pipeline_copy_capture(dev);
+	}
+
+	tracev_pipe("PWe");
+	pipe_data->copy_status = PIPELINE_COPY_IDLE;
 }
 
 /* init pipeline */
@@ -680,8 +635,14 @@ int pipeline_init(void)
 
 	pipe_data = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
+	list_init(&pipe_data->schedule_list);
 	pipe_data->next_id = 0;
+	pipe_data->count = 0;
 	spinlock_init(&pipe_data->lock);
+
+	/* configure pipeline scheduler interrupt */
+	interrupt_register(IRQ_NUM_SOFTWARE1, pipeline_schedule, NULL);
+	interrupt_enable(IRQ_NUM_SOFTWARE1);
 
 	return 0;
 }
