@@ -201,7 +201,7 @@ static uint32_t vol_work(void *data, uint32_t delay)
 			vol -= VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (vol <= cd->tvolume[i || vol >= VOL_MAX])
+			if (vol <= cd->tvolume[i] || vol >= VOL_MAX)
 				vol_update(cd, i);
 			else {
 				cd->volume[i] = vol;
