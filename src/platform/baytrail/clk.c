@@ -106,7 +106,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
 
 	/* atomic context for chaning clocks */
-	spin_lock_irq(clk_pdata->clk[clock].lock, flags);
+	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
 	case CLK_CPU:
@@ -164,7 +164,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		break;
 	}
 
-	spin_unlock_irq(clk_pdata->clk[clock].lock, flags);
+	spin_unlock_irq(&clk_pdata->clk[clock].lock, flags);
 	return clk_pdata->clk[clock].freq;
 }
 
