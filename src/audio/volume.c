@@ -300,8 +300,10 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_VOLUME:
 		cv = (struct comp_volume*)data;
 
-		for (i = 0; i < STREAM_MAX_CHANNELS; i++)
-			volume_set_chan(dev, i, cv->volume[i]);
+		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
+			if (cv->update_bits & (0x1 << i))
+				volume_set_chan(dev, i, cv->volume);
+		}
 
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
@@ -309,7 +311,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		cv = (struct comp_volume*)data;
 
 		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-			if (cv->volume[i])
+			if (cv->update_bits & (0x1 << i))
 				volume_set_chan_mute(dev, i);
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
@@ -318,7 +320,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		cv = (struct comp_volume*)data;
 
 		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-			if (cv->volume[i])
+			if (cv->update_bits & (0x1 << i))
 				volume_set_chan_unmute(dev, i);
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);

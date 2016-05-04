@@ -68,9 +68,13 @@
 #define trace_comp_error(__e)	trace_error(TRACE_CLASS_COMP, __e)
 #define tracev_comp(__e)	tracev_event(TRACE_CLASS_COMP, __e)
 
+#define CHANNELS_ALL           0xffffffff
+
 /* standard component command structures */
 struct comp_volume {
-	uint32_t volume[STREAM_MAX_CHANNELS];
+	uint32_t update_bits;   /* bit 1s indicate the coresponding
+                                   channels(indices) need to be updated */
+	uint32_t volume;
 };
 
 struct comp_dev;
