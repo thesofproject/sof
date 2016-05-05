@@ -290,7 +290,7 @@ void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 	struct work *work;
 	struct list_head *wlist;
 
-	spin_lock_local_irq(&queue->lock, queue->ts->timer);
+	spin_lock_irq(&queue->lock);
 
 	/* check to see if we are already scheduled ? */
 	list_for_each(wlist, &queue->work) {
@@ -311,12 +311,12 @@ void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 	queue_reschedule(queue);
 
 out:
-	spin_unlock_local_irq(&queue->lock, queue->ts->timer);
+	spin_unlock_irq(&queue->lock);
 }
 
 void work_cancel(struct work_queue *queue, struct work *w)
 {
-	spin_lock_local_irq(&queue->lock, queue->ts->timer);
+	spin_lock_irq(&queue->lock);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -324,7 +324,7 @@ void work_cancel(struct work_queue *queue, struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock_local_irq(&queue->lock, queue->ts->timer);
+	spin_unlock_irq(&queue->lock);
 }
 
 void work_schedule_default(struct work *w, uint32_t timeout)
@@ -332,7 +332,7 @@ void work_schedule_default(struct work *w, uint32_t timeout)
 	struct work *work;
 	struct list_head *wlist;
 
-	spin_lock_local_irq(&queue_->lock, queue_->ts->timer);
+	spin_lock_irq(&queue_->lock);
 
 	/* check to see if we are already scheduled ? */
 	list_for_each(wlist, &queue_->work) {
@@ -353,12 +353,12 @@ void work_schedule_default(struct work *w, uint32_t timeout)
 	queue_reschedule(queue_);
 
 out:
-	spin_unlock_local_irq(&queue_->lock, queue_->ts->timer);
+	spin_unlock_irq(&queue_->lock);
 }
 
 void work_cancel_default(struct work *w)
 {
-	spin_lock_local_irq(&queue_->lock, queue_->ts->timer);
+	spin_lock_irq(&queue_->lock);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -366,7 +366,7 @@ void work_cancel_default(struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
 
-	spin_unlock_local_irq(&queue_->lock, queue_->ts->timer);
+	spin_unlock_irq(&queue_->lock);
 }
 
 struct work_queue *work_new_queue(const struct work_queue_timesource *ts)

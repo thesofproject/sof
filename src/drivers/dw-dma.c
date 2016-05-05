@@ -182,7 +182,7 @@ static int dw_dma_channel_get(struct dma *dma)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	int i;
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	/* find first free non draining channel */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -199,12 +199,12 @@ static int dw_dma_channel_get(struct dma *dma)
 		dw_write(dma, DW_MASK_ERR, INT_UNMASK(i));
 
 		/* return channel */
-		spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+		spin_unlock_irq(&dma->lock);
 		return i;
 	}
 
 	/* DMAC has no free channels */
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 	return -ENODEV;
 }
 
@@ -213,7 +213,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	/* channel can only be freed if it's not still draining */
 	if (p->chan[channel].status == DMA_STATUS_DRAINING ||
@@ -242,7 +242,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 	p->chan[channel].desc_count = 0;
 
 out:
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 }
 
 static int dw_dma_start(struct dma *dma, int channel)
@@ -251,7 +251,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	uint32_t mask;
 	int ret = 0;
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	/* channel idle */
 	if (p->chan[channel].status != DMA_STATUS_IDLE) {
@@ -308,7 +308,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 
 out:
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 	return ret;
 }
 
@@ -316,13 +316,13 @@ static int dw_dma_release(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	/* unpause channel */
 	dw_update_bits(dma, DW_CFG_LOW(channel), DW_CFG_CH_SUSPEND, 0);
 	p->chan[channel].status = DMA_STATUS_RUNNING;
 
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 	return 0;
 }
 
@@ -330,14 +330,14 @@ static int dw_dma_pause(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	dw_update_bits(dma, DW_CFG_LOW(channel),
 			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
 			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
 	p->chan[channel].status = DMA_STATUS_PAUSED;
 
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 	return 0;
 }
 
@@ -353,7 +353,7 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 	int i, schedule = 0;
 	uint32_t cfg;
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	/* check any draining channels */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -379,7 +379,7 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 			schedule = 1;
 	}
 
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 
 	/* still waiting on more FIFOs to drain ? */
 	if (schedule)
@@ -392,7 +392,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	/* suspend the channel if it's still active */
 	if (dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel)) {
@@ -403,7 +403,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	}
 
 	p->chan[channel].status = DMA_STATUS_IDLE;
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 
 	return 0;
 }
@@ -412,13 +412,13 @@ static int dw_dma_drain(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	// TODO: this should drain the current avail in the *buffer*.
 	// TODO: in llp mode we would NULL terminate the last valid desc.
 	p->chan[channel].status = DMA_STATUS_DRAINING;
 
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 	/* FIFO cleanup done by general purpose timer */
 	work_schedule_default(&p->work, 1000);
 	return 0;
@@ -448,7 +448,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dw_lli2 *lli_desc, *lli_desc_head, *lli_desc_tail;
 	uint32_t desc_count = 0;
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
@@ -544,7 +544,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		//	~(DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN);
 	}
 
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 
 	return 0;
 }
