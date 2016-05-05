@@ -185,8 +185,8 @@ struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
 
 	/* add component dev to pipeline list */ 
 	list_add(&cd->pipeline_list, &p->comp_list);
+	spin_unlock(&p->lock);
 
-	spin_unlock(&pipe_data->lock);
 	return cd;
 }
 
@@ -206,8 +206,6 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 
 	trace_pipe("BNw");
 
-	spin_lock(&p->lock);
-
 	/* allocate buffer */
 	buffer = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
 	if (buffer == NULL)
@@ -224,10 +222,11 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 	buffer->free = desc->size;
 	buffer->avail = 0;
 	buffer->desc = *desc;
+
+	spin_lock(&p->lock);
 	buffer->id = pipe_data->next_id++;
 	list_add(&buffer->pipeline_list, &p->buffer_list);
-
-	spin_unlock(&pipe_data->lock);
+	spin_unlock(&p->lock);
 	return buffer;
 }
 
@@ -240,7 +239,7 @@ int pipeline_buffer_free(struct pipeline *p, struct comp_buffer *buffer)
 	list_del(&buffer->pipeline_list);
 	rfree(RZONE_MODULE, RMOD_SYS, buffer->addr);
 	rfree(RZONE_MODULE, RMOD_SYS, buffer);
-	spin_unlock(&pipe_data->lock);
+	spin_unlock(&p->lock);
 	return 0;
 }
 
@@ -579,12 +578,10 @@ static int pipeline_copy_capture(struct comp_dev *comp)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 {
-	uint32_t flags;
-
 	/* add to list of scheduled components */
-	spin_lock_irq(&pipe_data->lock, flags);
+	spin_lock_irq(&pipe_data->lock);
 	list_add_tail(&dev->schedule_list, &pipe_data->schedule_list);
-	spin_unlock_irq(&pipe_data->lock, flags);
+	spin_unlock_irq(&pipe_data->lock);
 
 	/* now schedule the copy */
 	interrupt_set(IRQ_NUM_SOFTWARE1);
@@ -593,7 +590,6 @@ void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 static void pipeline_schedule(void *arg)
 {
 	struct comp_dev *dev;
-	uint32_t flags;
 	uint32_t finished = 0;
 
 	tracev_pipe("PWs");
@@ -602,7 +598,7 @@ static void pipeline_schedule(void *arg)
 	while (1) {
 
 		/* get next component scheduled or finish */
-		spin_lock_irq(&pipe_data->lock, flags);
+		spin_lock_irq(&pipe_data->lock);
 
 		if (list_empty(&pipe_data->schedule_list))
 			finished = 1;
@@ -612,7 +608,7 @@ static void pipeline_schedule(void *arg)
 			list_del(&dev->schedule_list);
 		}
 
-		spin_unlock_irq(&pipe_data->lock, flags);
+		spin_unlock_irq(&pipe_data->lock);
 
 		if (finished)
 			break;
@@ -637,7 +633,6 @@ int pipeline_init(void)
 	list_init(&pipe_data->pipeline_list);
 	list_init(&pipe_data->schedule_list);
 	pipe_data->next_id = 0;
-	pipe_data->count = 0;
 	spinlock_init(&pipe_data->lock);
 
 	/* configure pipeline scheduler interrupt */
