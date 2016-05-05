@@ -569,11 +569,11 @@ static void dw_dma_set_cb(struct dma *dma, int channel, int type,
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	spin_lock_local_irq(&dma->lock, dma_irq(dma));
+	spin_lock_irq(&dma->lock);
 	p->chan[channel].cb = cb;
 	p->chan[channel].cb_data = data;
 	p->chan[channel].cb_type = type;
-	spin_unlock_local_irq(&dma->lock, dma_irq(dma));
+	spin_unlock_irq(&dma->lock);
 }
 
 static inline void dw_dma_chan_reload(struct dma *dma, int channel)
