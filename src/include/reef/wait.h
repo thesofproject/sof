@@ -87,7 +87,6 @@ static inline int wait_for_completion_timeout(completion_t *comp)
 	/* check for completion after every wake from IRQ */
 	while (c->complete == 0 && c->timeout == 0) {
 		wait_for_interrupt(0);
-		interrupt_enable_sync();
 	}
 
 	/* did we timeout */

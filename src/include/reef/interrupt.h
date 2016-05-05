@@ -37,11 +37,6 @@ static inline void interrupt_disable(int irq)
 	arch_interrupt_disable(irq);
 }
 
-static inline void interrupt_enable_sync(void)
-{
-	arch_interrupt_enable_sync();
-}
-
 static inline void interrupt_set(int irq)
 {
 	arch_interrupt_set(irq);

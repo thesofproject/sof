@@ -38,11 +38,6 @@ static inline void arch_interrupt_enable(int irq)
 	xthal_set_intenable(_arch_irq_enable);
 }
 
-static inline void arch_interrupt_enable_sync(void)
-{
-	xthal_set_intenable(_arch_irq_enable);
-}
-
 static inline void arch_interrupt_disable(int irq)
 {
 	_arch_irq_enable &= ~(0x1 << irq);
