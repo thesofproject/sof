@@ -62,26 +62,14 @@ static inline uint32_t interrupt_get_status(void)
 	return arch_interrupt_get_status();
 }
 
-static inline void interrupt_local_enable(uint32_t flags)
-{
-	arch_interrupt_local_enable(flags);
-}
-
-static inline uint32_t interrupt_local_disable(void)
-{
-	return arch_interrupt_local_disable();
-}
-
 static inline void interrupt_global_disable(void)
 {
 	arch_interrupt_global_disable();
 }
 
-static inline void interrupt_global_enable(uint32_t flags)
+static inline void interrupt_global_enable(void)
 {
-	if (flags == 0)
-		dbg_val_at(flags | 0x100000, 17);
-	arch_interrupt_global_enable(0x0000ec04);
+	arch_interrupt_global_enable();
 }
 
 #endif
