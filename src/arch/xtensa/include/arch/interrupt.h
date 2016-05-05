@@ -74,23 +74,19 @@ static inline void arch_interrupt_clear(int irq)
 	xthal_set_intclear(0x1 << irq);
 }
 
-static inline void arch_interrupt_global_disable(void)
+static inline uint32_t arch_interrupt_global_disable(void)
 {
-	xthal_set_intenable(0);
+	uint32_t flags;
+
+	asm volatile("rsil	%0, 5"
+		     : "=a" (flags) :: "memory");
+	return flags;
 }
 
-static inline void arch_interrupt_global_enable(uint32_t flags)
+static inline void arch_interrupt_global_enable(void)
 {
-	xthal_set_intenable(flags);
-}
-
-static inline uint32_t arch_interrupt_local_disable(void)
-{
-	return 0;
-}
-
-static inline void arch_interrupt_local_enable(uint32_t flags)
-{
+	uint32_t flags;
+	asm volatile("rsil %0, 0" : "=a" (flags) :: "memory");
 }
 
 #endif
