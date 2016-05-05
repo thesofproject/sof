@@ -13,18 +13,22 @@
 
 #include <stdint.h>
 #include <reef/interrupt.h>
+#include <arch/spinlock.h>
 
-typedef uint32_t spinlock_t;
 
 /* uni-processor locking implementation using same syntax as Linux */
 /* TODO: add multi-processor support */
 
 /* all SMP spinlocks need init, nothing todo on UP */
-#define spinlock_init(lock)
+#define spinlock_init(lock) \
+	arch_spinlock_init(lock)
 
 /* does nothing on UP systems */
-#define spin_lock(lock)
-#define spin_unlock(lock)
+#define spin_lock(lock) \
+	arch_spin_lock(lock)
+
+#define spin_unlock(lock) \
+	arch_spin_unlock(lock)
 
 /* disables single IRQ and takes lock */
 #define spin_lock_local_irq(lock, irq) \
@@ -37,14 +41,13 @@ typedef uint32_t spinlock_t;
 	interrupt_enable(irq);
 
 /* disables all IRQ sources and tales lock - atomic context */
-#define spin_lock_irq(lock, flags) \
-	flags = interrupt_get_enabled(); \
+#define spin_lock_irq(lock) \
 	interrupt_global_disable(); \
 	spin_lock(lock);
 
 /* re-enables current IRQ sources and releases lock */
-#define spin_unlock_irq(lock, flags) \
+#define spin_unlock_irq(lock) \
 	spin_unlock(lock); \
-	interrupt_global_enable(flags);
+	interrupt_global_enable();
 
 #endif
