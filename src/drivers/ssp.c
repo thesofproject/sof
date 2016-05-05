@@ -91,7 +91,6 @@ struct ssp_pdata {
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t psp;
-	spinlock_t lock;
 };
 
 static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
@@ -303,11 +302,6 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-static void ssp_irq_handler(void *data)
-{
-
-}
-
 static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
@@ -315,10 +309,6 @@ static int ssp_probe(struct dai *dai)
 	/* allocate private data */
 	ssp = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
-
-	/* init driver */
-	spinlock_init(&ssp->lock);
-	interrupt_register(dai_irq(dai), ssp_irq_handler, dai);
 
 	return 0;
 }
