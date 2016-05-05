@@ -581,6 +581,10 @@ static inline void dw_dma_chan_reload(struct dma *dma, int channel)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_lli2 *lli = p->chan[channel].lli_current;
 
+	/* return if channel is not running */
+	if (p->chan[channel].status != DMA_STATUS_RUNNING)
+		return;
+
 	/* only need to reload if this is a block transfer */
 	if (lli == 0 || (lli && lli->llp == 0)) {
 		p->chan[channel].status = DMA_STATUS_IDLE;

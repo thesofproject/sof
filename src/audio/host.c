@@ -375,6 +375,7 @@ static int host_prepare(struct comp_dev *dev)
 static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	int ret = 0;
 
 	// TODO: align cmd macros.
 	switch (cmd) {
@@ -384,6 +385,8 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_STOP:
 		dma_stop(hd->dma, hd->chan);
 		dev->state = COMP_STATE_STOPPED;
+		hd->complete.timeout = 1000;
+		ret = wait_for_completion_timeout(&hd->complete);
 		break;
 	case COMP_CMD_RELEASE:
 		dma_release(hd->dma, hd->chan);
@@ -406,7 +409,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem)

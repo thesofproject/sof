@@ -103,7 +103,8 @@ static void dai_dma_cb(void *data, uint32_t type)
 	comp_update_buffer(dma_buffer);
 
 	/* notify pipeline that DAI needs it's buffer filled */
-	pipeline_schedule_copy(dev->pipeline, dev);
+	if (dev->state == COMP_STATE_RUNNING)
+		pipeline_schedule_copy(dev->pipeline, dev);
 
 	dd->pp++;
 }
