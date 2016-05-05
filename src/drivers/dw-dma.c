@@ -158,7 +158,6 @@ struct dma_chan_data {
 struct dma_pdata {
 	struct dma_chan_data chan[DW_MAX_CHAN];
 	struct work work;
-	spinlock_t lock;
 };
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
@@ -704,7 +703,7 @@ static int dw_dma_probe(struct dma *dma)
 	bzero(dw_pdata, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
-	spinlock_init(&dw_pdata->lock);
+	spinlock_init(&dma->lock);
 
 	dw_dma_setup(dma);
 
