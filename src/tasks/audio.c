@@ -53,9 +53,8 @@ int do_task(void)
 	/* main audio IPC processing loop */
 	while (1) {
 
-		// TODO: combine irq_syn into WFI()
+		/* sleep until next IPC */
 		wait_for_interrupt(0);
-		interrupt_enable_sync();
 
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
