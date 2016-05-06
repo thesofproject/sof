@@ -274,6 +274,18 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
 	}
 
+	/* check the state - if we are still allocated then reset and free */
+	if (pcm_dev->state == IPC_HOST_ALLOC) {
+		/* reset the pipeline */
+		err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
+		if (err < 0) {
+			trace_ipc_error("err");
+			goto error;
+		}
+
+		pcm_dev->state = IPC_HOST_RESET;
+	}
+
 	params = &pcm_dev->params;
 
 	/* read in format to create params */
@@ -681,8 +693,6 @@ static uint32_t ipc_stream_reset(uint32_t header)
 		goto error;
 	}
 
-	pcm_dev->state = IPC_HOST_PAUSED; // TODO: fix to stopped
-
 	/* reset the pipeline */
 	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
 	if (err < 0) {
@@ -690,6 +700,7 @@ static uint32_t ipc_stream_reset(uint32_t header)
 		goto error;
 	}
 
+	pcm_dev->state = IPC_HOST_RESET;
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 error:
 	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
@@ -748,6 +759,7 @@ static uint32_t ipc_stream_resume(uint32_t header)
 		goto error;
 	}
 
+	/* only prepare at the allocation statge */
 	if (pcm_dev->state == IPC_HOST_ALLOC) {
 		/* initialise the pipeline, preparing pcm data */
 		err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
