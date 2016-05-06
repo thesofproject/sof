@@ -22,10 +22,11 @@
 
 /* Intel IPC stream states. TODO we have to manually track this atm as is
 does not align to ALSA. TODO align IPC with ALSA ops */
-#define IPC_HOST_ALLOC		0	/* host stream has been alloced */
-#define IPC_HOST_RUNNING	1	/* host stream is running */
-#define IPC_HOST_PAUSED		2	/* host stream has been paused */
-#define IPC_HOST_RESET		3	/* host stream has been reset */
+#define IPC_HOST_RESET		0	/* host stream has been reset */
+#define IPC_HOST_ALLOC		1	/* host stream has been alloced */
+#define IPC_HOST_RUNNING	2	/* host stream is running */
+#define IPC_HOST_PAUSED		3	/* host stream has been paused */
+
 
 /* IPC generic component device */
 struct ipc_comp_dev {
@@ -51,7 +52,7 @@ struct ipc_pcm_dev {
 
 	/* runtime config */	
 	struct stream_params params;
-	uint32_t state;
+	uint32_t state;		/* IPC_HOST_*/
 };
 
 /* IPC BE DAI device */ 
