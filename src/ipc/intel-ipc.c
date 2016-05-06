@@ -733,7 +733,7 @@ error:
 static uint32_t ipc_stream_resume(uint32_t header)
 {
 	struct ipc_pcm_dev *pcm_dev;
-	uint32_t stream_id;
+	uint32_t stream_id, cmd = COMP_CMD_RELEASE;
 	int err;
 
 	trace_ipc("SRe");
@@ -748,17 +748,19 @@ static uint32_t ipc_stream_resume(uint32_t header)
 		goto error;
 	}
 
-	/* TODO: add check if need prepare */
-	/* initialise the pipeline, preparing pcm data */
-	err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
-	if (err < 0) {
-		trace_ipc_error("eRp");
-		goto error;
+	if (pcm_dev->state == IPC_HOST_ALLOC) {
+		/* initialise the pipeline, preparing pcm data */
+		err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
+		if (err < 0) {
+			trace_ipc_error("eRp");
+			goto error;
+		}
+		cmd = COMP_CMD_START;
 	}
 
 	/* initialise the pipeline */
 	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-			COMP_CMD_START, NULL);
+			cmd, NULL);
 	if (err < 0) {
 		trace_ipc_error("eRc");
 		goto error;
