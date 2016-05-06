@@ -114,7 +114,7 @@ static void dma_complete(void *data, uint32_t type)
 
 /* this function copies the audio buffer page tables from the host to the DSP */
 /* the page table is a max of 4K */
-static int get_page_desciptors(struct intel_ipc_data *iipc, 
+static int get_page_descriptors(struct intel_ipc_data *iipc,
 	struct ipc_intel_ipc_stream_alloc_req *req)
 {
 	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
@@ -295,7 +295,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	params->period_frames = req.format.period_frames;
 
 	/* use DMA to read in compressed page table ringbuffer from host */
-	err = get_page_desciptors(iipc, &req);
+	err = get_page_descriptors(iipc, &req);
 	if (err < 0) {
 		trace_ipc_error("eAp");
 		goto error;
