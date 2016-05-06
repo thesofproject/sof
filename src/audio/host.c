@@ -331,7 +331,7 @@ static int host_preload(struct comp_dev *dev)
 		dma_start(hd->dma, hd->chan);
 
 		/* wait 1 msecs for DMA to finish */
-		hd->complete.timeout = 1000;
+		hd->complete.timeout = 100;
 		ret = wait_for_completion_timeout(&hd->complete);
 		if (ret < 0)
 			break;
@@ -385,7 +385,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_STOP:
 		dma_stop(hd->dma, hd->chan);
 		dev->state = COMP_STATE_STOPPED;
-		hd->complete.timeout = 1000;
+		hd->complete.timeout = 100;
 		ret = wait_for_completion_timeout(&hd->complete);
 		break;
 	case COMP_CMD_RELEASE:
@@ -462,6 +462,9 @@ static int host_reset(struct comp_dev *dev)
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+
+	if (dev->state != COMP_STATE_RUNNING)
+		return 0;
 
 	dma_set_config(hd->dma, hd->chan, &hd->config);
 #if 0
