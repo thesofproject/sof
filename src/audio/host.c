@@ -380,7 +380,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	// TODO: align cmd macros.
 	switch (cmd) {
 	case COMP_CMD_PAUSE:
-		dma_pause(hd->dma, hd->chan);
+//		dma_pause(hd->dma, hd->chan);
 		dev->state = COMP_STATE_PAUSED;
 		break;
 	case COMP_CMD_STOP:
@@ -390,7 +390,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		ret = wait_for_completion_timeout(&hd->complete);
 		break;
 	case COMP_CMD_RELEASE:
-		dma_release(hd->dma, hd->chan);
+//		dma_release(hd->dma, hd->chan);
 		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_START:
