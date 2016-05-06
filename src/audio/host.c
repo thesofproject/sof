@@ -279,8 +279,12 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	}
 
 	/* component buffer size must be divisor of host buffer size */
-	if (hd->host_size % hd->period->size)
+	if (hd->host_size % hd->period->size) {
+		trace_comp_error("eHB");
+		trace_value(hd->host_size);
+		trace_value(hd->period->size);
 		return -EINVAL;
+	}
 
 	/* create SG DMA elems for local DMA buffer */
 	err = create_local_elems(dev, params);
