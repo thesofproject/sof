@@ -305,6 +305,8 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
+		trace_pipe_error("eOi");
+		trace_value(op_data->op);
 		return -EINVAL;
 	}
 
@@ -356,11 +358,11 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the buffers first */
-		list_for_each(clist, &comp->bsink_list) {
+		list_for_each(clist, &comp->bsource_list) {
 			struct comp_buffer *buffer;
 
 			buffer = container_of(clist, struct comp_buffer,
-				source_list);
+				sink_list);
 			bzero(buffer->addr, buffer->desc.size);
 		}
 
@@ -373,6 +375,8 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
+		trace_pipe_error("eOi");
+		trace_value(op_data->op);
 		return -EINVAL;
 	}
 
