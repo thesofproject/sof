@@ -60,6 +60,7 @@ struct pipeline *pipeline_from_id(int id)
 	}
 
 	/* not found */
+	trace_pipe_error("ePp");
 	return NULL;
 }
 
@@ -80,6 +81,7 @@ static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
 	}
 
 	/* not found */
+	trace_pipe_error("ePc");
 	return NULL;
 }
 
@@ -101,8 +103,10 @@ struct pipeline *pipeline_new(uint16_t id)
 	trace_pipe("PNw");
 
 	p = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
-	if (p == NULL)
+	if (p == NULL) {
+		trace_pipe_error("ePN");
 		return NULL;
+	}
 
 	spin_lock(&pipe_data->lock);
 	p->id = id;
@@ -164,6 +168,7 @@ struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
 	cd = comp_new(p, type, index, pipe_data->next_id++, direction);
 	if (cd == NULL) {
 		pipe_data->next_id--;
+		trace_pipe_error("eNw");
 		return NULL;
 	}
 
@@ -208,12 +213,15 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 
 	/* allocate buffer */
 	buffer = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
-	if (buffer == NULL)
+	if (buffer == NULL) {
+		trace_pipe_error("eBm");
 		return NULL;
+	}
 
 	buffer->addr = rballoc(RZONE_MODULE, RMOD_SYS, desc->size);
 	if (buffer->addr == NULL) {
 		rfree(RZONE_MODULE, RMOD_SYS, buffer);
+		trace_pipe_error("ebm");
 		return NULL;
 	}
 
@@ -316,8 +324,10 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		return err;
 	}
 
-	if (comp->is_dai)
+	if (comp->is_dai) {
+		trace_pipe("C-D");
 		return 0;
+	}
 
 	/* now run this operation downstream */
 	list_for_each(clist, &comp->bsink_list) {
@@ -386,8 +396,10 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		return err;
 	}
 
-	if (comp->is_dai)
+	if (comp->is_dai) {
+		trace_pipe("C+D");
 		return 0;
+	}
 
 	/* now run this operation upstream */
 	list_for_each(clist, &comp->bsource_list) {

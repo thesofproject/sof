@@ -224,6 +224,7 @@ struct pipeline *init_static_pipeline(void)
 	return pipeline_static;
 
 error:
+	trace_pipe_error("ePS");
 	pipeline_free(pipeline_static);
 	return NULL;
 }
