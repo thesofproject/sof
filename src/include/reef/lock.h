@@ -14,7 +14,30 @@
 #include <stdint.h>
 #include <reef/interrupt.h>
 #include <arch/spinlock.h>
+#include <reef/trace.h>
 
+#define DEBUG_LOCKS	0
+
+#if DEBUG_LOCKS
+
+#define trace_lock(__e)		trace_event(TRACE_CLASS_LOCK, __e)
+#define tracev_lock(__e)	tracev_event(TRACE_CLASS_LOCK, __e)
+
+#define spin_lock_dbg() \
+	trace_lock("LcE"); \
+	trace_value(__LINE__);
+#define spin_unlock_dbg() \
+	trace_lock("LcX");
+
+#else
+
+#define trace_lock(__e)
+#define tracev_lock(__e)
+
+#define spin_lock_dbg()
+#define spin_unlock_dbg()
+
+#endif
 
 /* uni-processor locking implementation using same syntax as Linux */
 /* TODO: add multi-processor support */
@@ -25,10 +48,12 @@
 
 /* does nothing on UP systems */
 #define spin_lock(lock) \
-	arch_spin_lock(lock)
+	spin_lock_dbg(); \
+	arch_spin_lock(lock);
 
 #define spin_unlock(lock) \
-	arch_spin_unlock(lock)
+	arch_spin_unlock(lock); \
+	spin_unlock_dbg();
 
 /* disables all IRQ sources and tales lock - atomic context */
 #define spin_lock_irq(lock) \
