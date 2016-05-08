@@ -14,6 +14,8 @@
 #include <reef/alloc.h>
 #include <reef/interrupt.h>
 #include <reef/lock.h>
+#include <reef/work.h>
+#include <reef/trace.h>
 
 /* SSCR0 bits */
 #define SSCR0_DSS_MASK	(0x0000000f)
@@ -86,11 +88,26 @@
 #define SFIFOTT_TX(x)		(x - 1)
 #define SFIFOTT_RX(x)		((x - 1) << 16)
 
+/* SSP port status */
+#define SSP_STATE_INIT			0
+#define SSP_STATE_RUNNING		1
+#define SSP_STATE_IDLE			2
+#define SSP_STATE_DRAINING		3
+#define SSP_STATE_PAUSED		4
+
+/* tracing */
+#define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
+#define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
+#define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
+
 /* SSP private data */
 struct ssp_pdata {
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t psp;
+	struct work work;
+	spinlock_t lock;
+	uint32_t state[2];		/* SSP_STATE_ for each direction */
 };
 
 static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
@@ -136,8 +153,25 @@ static int ssp_context_restore(struct dai *dai)
 /* Digital Audio interface formatting */
 static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 {
-	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0, sscr1, sspsp, sfifott;
+
+	spin_lock(&ssp->lock);
+
+	/* is playback already running */
+	if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_RUNNING ||
+		ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_DRAINING) {
+		trace_ssp_error("wsP");
+		goto out;
+	}
+
+	/* is capture already running */
+	if (ssp->state[DAI_DIR_CAPTURE] == SSP_STATE_RUNNING) {
+		trace_ssp_error("wsC");
+		goto out;
+	}
+
+	trace_ssp("SsC");
 
 	/* reset SSP settings */
 	sscr0 = 0;
@@ -235,10 +269,15 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	/* test loopback */
 	sscr1 |= SSCR1_LBM;
 #endif
+
+	trace_ssp("SSC");
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
+
+out:
+	spin_unlock(&ssp->lock);
 
 	return 0;
 }
@@ -246,38 +285,68 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 /* start the SSP for either playback or capture */
 static void ssp_start(struct dai *dai, int direction)
 {
-	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	spin_lock(&ssp->lock);
 
 	/* enable port */
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
+	ssp->state[direction] = SSP_STATE_RUNNING;
+
+	trace_ssp("SEn");
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
 	else
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
+
+	spin_unlock(&ssp->lock);
 }
 
 /* stop the SSP port stream DMA and disable SSP port if no users */
 static void ssp_stop(struct dai *dai, int direction)
 {
-	//struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr1;
 
+	spin_lock(&ssp->lock);
+
+	trace_ssp("SDc");
+
 	/* disable DMA */
-	if (direction == DAI_DIR_PLAYBACK)
-		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-	else
+	if (direction == DAI_DIR_PLAYBACK) {
+		if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_DRAINING)
+			ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
+	} else
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 
 	/* disable port if no users */
 	sscr1 = ssp_read(dai, SSCR1);
-	if (!(sscr1 & (SSCR1_TSRE | SSCR1_RSRE)))
+	if (!(sscr1 & (SSCR1_TSRE | SSCR1_RSRE))) {
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+		ssp->state[direction] = SSP_STATE_IDLE;
+		trace_ssp("SDp");
+	}
+
+	spin_unlock(&ssp->lock);
+}
+
+static uint32_t ssp_drain_work(void *data, uint32_t udelay)
+{
+	struct dai *dai = (struct dai *)data;
+
+	trace_ssp("SDw");
+	ssp_stop(dai, STREAM_DIRECTION_PLAYBACK);
+	return 0;
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	trace_ssp("STr");
+
 	switch (cmd) {
 	case DAI_TRIGGER_START:
 	case DAI_TRIGGER_PAUSE_RELEASE:
@@ -285,7 +354,12 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	case DAI_TRIGGER_PAUSE_PUSH:
 	case DAI_TRIGGER_STOP:
-		ssp_stop(dai, direction);
+		if (direction == STREAM_DIRECTION_PLAYBACK) {
+			ssp->state[STREAM_DIRECTION_PLAYBACK] =
+				SSP_STATE_DRAINING;
+			work_schedule_default(&ssp->work, 1333);
+		} else
+			ssp_stop(dai, direction);
 		break;
 	case DAI_TRIGGER_RESUME:
 		ssp_context_restore(dai);
@@ -309,6 +383,9 @@ static int ssp_probe(struct dai *dai)
 	/* allocate private data */
 	ssp = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
+
+	work_init(&ssp->work, ssp_drain_work, dai, WORK_ASYNC);
+	spinlock_init(&ssp->lock);
 
 	return 0;
 }
