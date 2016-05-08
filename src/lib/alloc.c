@@ -9,9 +9,28 @@
 #include <reef/alloc.h>
 #include <reef/reef.h>
 #include <reef/debug.h>
+#include <reef/trace.h>
 #include <platform/memory.h>
 #include <stdint.h>
 
+/* debug to set memory value on every allocation */
+#define DEBUG_BLOCK_ALLOC		0
+#define DEBUG_BLOCK_ALLOC_VALUE		0x6b6b6b6b
+
+/* debug to set memory value on every free TODO: not working atm */
+#define DEBUG_BLOCK_FREE		0
+#define DEBUG_BLOCK_FREE_VALUE		0x5a5a5a5a
+
+/* memory tracing support */
+#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
+#define trace_mem(__e)	trace_event(TRACE_CLASS_MEM, __e)
+#else
+#define trace_mem(__e)
+#endif
+
+#define trace_mem_error(__e)	trace_error(TRACE_CLASS_MEM, __e)
+
+/* block status */
 #define BLOCK_FREE	0
 #define BLOCK_USED	1
 
@@ -47,7 +66,7 @@ struct block_map {
 	{.block_size = sz, .count = cnt, .free_count = cnt, .block = hdr}
 
 /* Heap blocks for modules */
-static struct block_hdr mod_block8[HEAP_MOD_COUNT8];
+//static struct block_hdr mod_block8[HEAP_MOD_COUNT8];
 static struct block_hdr mod_block16[HEAP_MOD_COUNT16];
 static struct block_hdr mod_block32[HEAP_MOD_COUNT32];
 static struct block_hdr mod_block64[HEAP_MOD_COUNT64];
@@ -58,7 +77,7 @@ static struct block_hdr mod_block1024[HEAP_MOD_COUNT1024];
 
 /* Heap memory map for modules */
 static struct block_map mod_heap_map[] = {
-	BLOCK_DEF(8, HEAP_MOD_COUNT8, mod_block8),
+/*	BLOCK_DEF(8, HEAP_MOD_COUNT8, mod_block8), */
 	BLOCK_DEF(16, HEAP_MOD_COUNT16, mod_block16),
 	BLOCK_DEF(32, HEAP_MOD_COUNT32, mod_block32),
 	BLOCK_DEF(64, HEAP_MOD_COUNT64, mod_block64),
@@ -90,6 +109,17 @@ uint32_t module_heap_end = (uint32_t)&_buffer_heap;
 uint32_t buffer_heap = (uint32_t)&_buffer_heap;
 uint32_t buffer_heap_end = (uint32_t)&_stack_sentry;
 
+#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
+static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
+{
+	uint32_t count = bytes >> 2;
+	uint32_t *dest = ptr, i;
+
+	for (i = 0; i < count; i++)
+		dest[i] = val;
+}
+#endif
+
 /* allocate from system memory pool */
 static void *rmalloc_dev(size_t bytes)
 {
@@ -97,8 +127,14 @@ static void *rmalloc_dev(size_t bytes)
 
 	/* always suceeds or panics */
 	system_heap += bytes;
-	if (system_heap >= system_heap_end)
+	if (system_heap >= system_heap_end) {
+		trace_mem_error("eMd");
 		panic(PANIC_MEM);
+	}
+
+#if DEBUG_BLOCK_ALLOC
+	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
+#endif
 
 	return ptr;
 }
@@ -126,6 +162,10 @@ static void *alloc_block(struct block_map *map, int module)
 			break;
 		}
 	}
+
+#if DEBUG_BLOCK_ALLOC
+	alloc_memset_region(ptr, map->block_size, DEBUG_BLOCK_ALLOC_VALUE);
+#endif
 
 	return ptr;
 }
@@ -159,6 +199,7 @@ static void *alloc_cont_blocks(struct block_map *map, int module, size_t bytes)
 	}
 
 	/* not found */
+	trace_mem_error("eCb");
 	return NULL;
 
 found:
@@ -189,6 +230,10 @@ found:
 			}
 		}
 	}
+
+#if DEBUG_BLOCK_ALLOC
+	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
+#endif
 
 	return ptr;
 }
@@ -230,6 +275,10 @@ static void free_block(int module, void *ptr)
 	/* set first free */
 	if (block < map->first_free)
 		map->first_free = block;
+
+#if DEBUG_BLOCK_FREE
+	alloc_memset_region(ptr, map->block_size * (i - 1), DEBUG_BLOCK_FREE_VALUE);
+#endif
 }
 
 /* allocate single block for module */
@@ -251,6 +300,7 @@ static void *rmalloc_mod(int module, size_t bytes)
 		return alloc_block(&mod_heap_map[i], module);
 	}
 
+	trace_mem_error("eMm");
 	return NULL;
 }
 
@@ -262,6 +312,7 @@ void *rmalloc(int zone, int module, size_t bytes)
 	case RZONE_MODULE:
 		return rmalloc_mod(module, bytes);
 	default:
+		trace_mem_error("eMz");
 		return NULL;
 	}
 }
@@ -311,11 +362,13 @@ void rfree(int zone, int module, void *ptr)
 {
 	switch (zone) {
 	case RZONE_DEV:
+		trace_mem_error("eMF");
 		panic(PANIC_MEM);
 		break;
 	case RZONE_MODULE:
 		return free_block(module, ptr);
 	default:
+		trace_mem_error("eMf");
 		break;
 	}
 }
