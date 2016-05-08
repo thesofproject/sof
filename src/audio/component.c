@@ -51,7 +51,11 @@ struct comp_dev *comp_new(struct pipeline *p, uint32_t type, uint32_t index,
 		drv = container_of(clist, struct comp_driver, list);
 		if (drv->type == type) {
 			dev = drv->ops.new(type, index, direction);
-			comp_init(dev, p, id, drv, direction);
+			if (dev != NULL)
+				comp_init(dev, p, id, drv, direction);
+			else
+				trace_comp_error("eCN");
+
 			goto out;
 		}
 	}
