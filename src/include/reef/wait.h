@@ -18,11 +18,6 @@
 #include <reef/trace.h>
 #include <platform/interrupt.h>
 
-#define trace_wait() \
-	tracev_event(TRACE_CLASS_WAIT, "WFI"); \
-	tracev_value(interrupt_get_enabled()); \
-	tracev_value(platform_interrupt_get_enabled());
-
 typedef struct {
 	uint32_t complete;
 	struct work work;
@@ -33,8 +28,9 @@ void arch_wait_for_interrupt(int level);
 
 static inline void wait_for_interrupt(int level)
 {
-	trace_wait();
+	tracev_event(TRACE_CLASS_WAIT, "WFE");
 	arch_wait_for_interrupt(level);
+	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }
 
 static uint32_t _wait_cb(void *data, uint32_t delay)
