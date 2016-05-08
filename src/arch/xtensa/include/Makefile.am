@@ -5,4 +5,7 @@ noinst_HEADERS = \
 	xtensa/hal.h \
 	xtensa/xtensa-xer.h \
 	xtensa/config/core.h \
-	arch/reef.h
+	arch/interrupt.h \
+	arch/reef.h \
+	arch/spinlock.h \
+	arch/timer.h

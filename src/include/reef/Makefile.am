@@ -20,5 +20,6 @@ noinst_HEADERS = \
 	stream.h \
 	task.h \
 	timer.h \
+	trace.h \
 	wait.h \
 	work.h
