@@ -49,6 +49,8 @@
 #define TRACE_CLASS_SSP		(7 << 24)
 #define TRACE_CLASS_COMP	(8 << 24)
 #define TRACE_CLASS_WAIT	(9 << 24)
+#define TRACE_CLASS_LOCK	(10 << 24)
+#define TRACE_CLASS_MEM		(11 << 24)
 
 /* move to config.h */
 #define TRACE	0
