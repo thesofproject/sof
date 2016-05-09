@@ -142,6 +142,9 @@
 #define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
 #define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
 
+/* HW Linked list support currently disabled - needs debug for missing IRQs !!! */
+#define DW_USE_HW_LLI	0
+
 /* data for each DMA channel */
 struct dma_chan_data {
 	uint32_t status;
@@ -298,14 +301,14 @@ static int dw_dma_start(struct dma *dma, int channel)
 		mask = 1 << (24 + channel);
 	platform_interrupt_mask_clear(mask);
 
+#if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
-	/* HACK: force processor block reloading */
-	//if (p->chan[channel].lli->llp) {
+	if (p->chan[channel].lli->llp) {
 		/* LLP mode - only write LLP pointer */
-	//	dw_write(dma, DW_LLP(channel), (uint32_t)p->chan[channel].lli);
-	//} else {
+		dw_write(dma, DW_LLP(channel), (uint32_t)p->chan[channel].lli);
+	} else {
 		/* single transfer */
-	//	dw_write(dma, DW_LLP(channel), 0);
+		dw_write(dma, DW_LLP(channel), 0);
 
 		/* channel needs started from scratch, so write SARn, DARn */
 		dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
@@ -314,7 +317,16 @@ static int dw_dma_start(struct dma *dma, int channel)
 		/* program CTLn */
 		dw_write(dma, DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
 		dw_write(dma, DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
-	//}
+	}
+#else
+	/* channel needs started from scratch, so write SARn, DARn */
+	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
+	dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
+
+	/* program CTLn */
+	dw_write(dma, DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
+	dw_write(dma, DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
+#endif
 
 	/* write channel config */
 	dw_write(dma, DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
@@ -354,6 +366,7 @@ static int dw_dma_pause(struct dma *dma, int channel)
 
 	trace_dma("Dpa");
 
+	/* pause the channel and let the current transfer drain */
 	dw_update_bits(dma, DW_CFG_LOW(channel),
 			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
 			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
@@ -388,7 +401,7 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 
 		/* is channel finished */
 		if (p->chan[i].drain_count-- &&
-			dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << i)) {
+			!(dw_read(dma, DW_CFG_LOW(i)) & DW_CFG_CH_FIFO_EMPTY)) {
 			schedule = 1;
 			continue;
 		}
@@ -398,6 +411,9 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 			dw_dma_channel_put_unlocked(dma, i);
 		else
 			p->chan[i].status = DMA_STATUS_IDLE;
+
+		// TODO: signal completion for the channle
+
 	}
 
 	spin_unlock_irq(&dma->lock);
@@ -419,7 +435,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	trace_dma("DDi");
 
 	/* suspend the playback channel if it's still active */
-	if (p->chan[channel].direction == STREAM_DIRECTION_PLAYBACK &&
+	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV &&
 		dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel)) {
 
 		dw_update_bits(dma, DW_CFG_LOW(channel),
@@ -429,6 +445,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 		p->chan[channel].drain_count = 14;
 		schedule = 1;
 	} else {
+
 		/* channel can be disabled */
 		dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 		p->chan[channel].status = DMA_STATUS_IDLE;
@@ -451,13 +468,17 @@ static int dw_dma_drain(struct dma *dma, int channel)
 
 	trace_dma("Dra");
 
-	// TODO: this should drain the current avail in the *buffer*.
 	// TODO: in llp mode we would NULL terminate the last valid desc.
+	dw_update_bits(dma, DW_CFG_LOW(channel),
+			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
+			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
+	p->chan[channel].drain_count = 14;
 	p->chan[channel].status = DMA_STATUS_DRAINING;
 
 	spin_unlock_irq(&dma->lock);
+
 	/* FIFO cleanup done by general purpose timer */
-	work_schedule_default(&p->work, 1000);
+	work_schedule_default(&p->work, 100);
 	return 0;
 }
 
@@ -573,8 +594,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		/* set next descriptor in list */
 		lli_desc->llp = (uint32_t)(lli_desc + 1);
-		//lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
-
+#if DW_USE_HW_LLI
+		lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
+#endif
 		/* next descriptor */
 		lli_desc++;
 	}
@@ -584,8 +606,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		lli_desc_tail->llp = (uint32_t)lli_desc_head;
 	} else {
 		lli_desc_tail->llp = 0x0;
-		//lli_desc_tail->ctrl_lo &=
-		//	~(DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN);
+#if DW_USE_HW_LLI
+		lli_desc_tail->ctrl_lo &=
+			~(DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN);
+#endif
 	}
 
 	spin_unlock_irq(&dma->lock);
@@ -704,8 +728,8 @@ static void dw_dma_irq_handler(void *data)
 			/* check for reload channel */
 			dw_dma_chan_reload(dma, i);
 		}
-#if 0
-		/* end of a block */
+#if DW_USE_HW_LLI
+		/* end of a LLI block */
 		if (status_block & mask &&
 			p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
 			p->chan[i].cb(p->chan[i].cb_data,
