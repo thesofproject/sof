@@ -134,6 +134,7 @@ static void run_work(struct work_queue *queue)
 	struct list_head *wlist, *tlist;
 	struct work *work;
 	uint32_t reschedule_usecs, udelay;
+
 	/* check each work item in queue for pending */
 	list_for_each_safe(wlist, tlist, &queue->work) {
 

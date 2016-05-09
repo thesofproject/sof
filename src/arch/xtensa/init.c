@@ -19,6 +19,10 @@
 #include <reef/init.h>
 #include <stdint.h>
 
+// TODO: this should be fixed by rotating the register Window on the stack and
+// dumping the saved registers.
+// TODO: we should also have different handlers for each type where we can take
+// advantage of dumping further information. i.e. call stack and avoid clobering 
 /* some registers dumped below are clobbered */
 static void exception(void)
 {
