@@ -243,6 +243,8 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 
+	spin_lock_irq(&queue->lock);
+
 	/* clear and disable interrupt */
 	work_clear_timer(queue);
 	timer_disable(queue->ts->timer);
@@ -261,6 +263,8 @@ static void queue_run(void *data)
 	/* the interrupt may need to be re-enabled outside IRQ context.
 	 * wait_for_interrupt() will do this for us */
 	timer_enable(queue->ts->timer);
+
+	spin_unlock_irq(&queue->lock);
 }
 
 /* notification of CPU frequency changes - atomic PRE and POST sequence */
@@ -269,6 +273,8 @@ static void work_notify(int message, void *data, void *event_data)
 	struct work_queue *queue = (struct work_queue *)data;
 	struct clock_notify_data *clk_data =
 		(struct clock_notify_data *)event_data;
+
+	spin_lock_irq(&queue->lock);
 
 	/* we need to re-caclulate timer when CPU freqency changes */
 	if (message == CLOCK_NOTIFY_POST) {
@@ -284,6 +290,8 @@ static void work_notify(int message, void *data, void *event_data)
 		/* CPU frequency update pending */
 		timer_disable(queue->ts->timer);
 	}
+
+	spin_unlock_irq(&queue->lock);
 }
 
 void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
