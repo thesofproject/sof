@@ -230,6 +230,7 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 	buffer->free = desc->size;
 	buffer->avail = 0;
 	buffer->desc = *desc;
+	buffer->connected = 0;
 
 	spin_lock(&p->lock);
 	buffer->id = pipe_data->next_id++;
@@ -268,6 +269,11 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source,
 	list_add(&buffer->sink_list, &sink->bsource_list);
 	buffer->sink = sink;
 	spin_unlock(&sink->lock);
+
+	/* connect the components */
+	spin_lock(&p->lock);
+	buffer->connected = 1;
+	spin_unlock(&p->lock);
 
 	return 0;
 }
