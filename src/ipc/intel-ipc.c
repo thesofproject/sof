@@ -37,9 +37,6 @@ struct intel_ipc_data {
 	uint8_t *page_table;
 	completion_t complete;
 
-	/* SSP port - TODO driver only support 1 atm */
-	uint32_t dai[2];
-
 	/* PM */
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
 };
@@ -467,7 +464,6 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 {
 	struct ipc_intel_ipc_device_config_req config_req;
 	struct ipc_dai_dev *dai_dev;
-	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	int err;
 
 	trace_ipc("DsF");
@@ -479,21 +475,12 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	switch (config_req.ssp_interface) {
 	case IPC_INTEL_DEVICE_SSP_0:
 
-		/* TODO: hard coded atm */
-		iipc->dai[0] = 2;
-		iipc->dai[1] = 3;
 		break;
 	case IPC_INTEL_DEVICE_SSP_1:
 
-		/* TODO: hard coded atm */
-		iipc->dai[0] = 2;
-		iipc->dai[1] = 3;
 		break;
 	case IPC_INTEL_DEVICE_SSP_2:
 
-		/* TODO: hard coded atm */
-		iipc->dai[0] = 2;
-		iipc->dai[1] = 3;
 		break;
 	default:
 		/* TODO: */
@@ -960,8 +947,6 @@ int platform_ipc_init(struct ipc *ipc)
 	/* init ipc data */
 	iipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
-	iipc->dai[0] = 2;
-	iipc->dai[1] = 3;
 
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
