@@ -171,8 +171,7 @@ struct comp_buffer {
 
 	/* runtime data */
 	uint32_t id;		/* runtime ID of buffer */
-	uint8_t connected;	/* connected in path */
-	uint8_t reserved[3];	/* reserved */
+	uint32_t connected;	/* connected in path */
 	uint32_t avail;		/* available bytes for reading */
 	uint32_t free;		/* free bytes for writting */
 	void *w_ptr;		/* buffer write pointer */
