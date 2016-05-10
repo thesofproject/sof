@@ -44,8 +44,6 @@ struct comp_data {
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
 	struct work volwork;
-	uint32_t last_run;	/* clk when last run */
-	uint32_t pp;		/* ping pong trace */
 
 	/* host volume readback */
 	uint32_t *hvol[STREAM_MAX_CHANNELS];
@@ -359,12 +357,6 @@ static int volume_copy(struct comp_dev *dev)
 	sink = list_first_entry(&dev->bsink_list, struct comp_buffer, source_list);
 
 #if 0
-	// TODO: move this to new trace mechanism
-	if (cd->pp++ & 0x1)
-		trace_comp("VPo");
-	else
-		trace_comp("VPi");
-
 	trace_value((uint32_t)(source->r_ptr - source->addr));
 	trace_value((uint32_t)(sink->w_ptr - sink->addr));
 #endif
@@ -415,7 +407,6 @@ found:
 		if (cd->hvol[i])
 			*cd->hvol[i] = cd->volume[i];
 	}
-	cd->pp = 0;
 
 	/* copy periods from host */
 	if (source->params.direction == STREAM_DIRECTION_PLAYBACK) {
@@ -436,7 +427,6 @@ static int volume_reset(struct comp_dev *dev)
 	for (i = 0; i < STREAM_MAX_CHANNELS; i++)
 		cd->hvol[i] = NULL;
 
-	cd->pp = 0;
 	return 0;
 }
 

@@ -34,7 +34,6 @@ struct dai_data {
 	struct dma *dma;
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
-	uint32_t pp;	/* ping or pong - trace */
 
 	volatile uint32_t *dai_pos;
 };
@@ -46,13 +45,6 @@ static void dai_dma_cb(void *data, uint32_t type)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct period_desc *dma_period_desc;
 	struct comp_buffer *dma_buffer;
-
-#if 0
-	if (dd->pp & 0x1)
-		trace_comp("DPo");
-	else
-		trace_comp("DPi");
-#endif
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_entry(&dev->bsource_list,
@@ -105,8 +97,6 @@ static void dai_dma_cb(void *data, uint32_t type)
 	/* notify pipeline that DAI needs it's buffer filled */
 	if (dev->state == COMP_STATE_RUNNING)
 		pipeline_schedule_copy(dev->pipeline, dev);
-
-	dd->pp++;
 }
 
 static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
@@ -301,7 +291,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	dd->dai_pos_blks = 0;
-	dd->pp = 0;
+
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
 
@@ -320,9 +310,9 @@ static int dai_reset(struct comp_dev *dev)
 		list_del(&elem->list);
 		rfree(RZONE_MODULE, RMOD_SYS, elem);
 	}
+
 	dev->state = COMP_STATE_INIT;
 	dd->dai_pos_blks = 0;
-	dd->pp = 0;
 
 	return 0;
 }
