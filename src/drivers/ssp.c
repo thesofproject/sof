@@ -325,9 +325,10 @@ static void ssp_stop(struct dai *dai, int direction)
 	sscr1 = ssp_read(dai, SSCR1);
 	if (!(sscr1 & (SSCR1_TSRE | SSCR1_RSRE))) {
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		ssp->state[direction] = SSP_STATE_IDLE;
 		trace_ssp("SDp");
 	}
+
+	ssp->state[direction] = SSP_STATE_IDLE;
 
 	spin_unlock(&ssp->lock);
 }
