@@ -23,6 +23,9 @@
 #define PIPELINE_COPY_SCHEDULED	1
 #define PIPELINE_COPY_RUNNING	2
 
+#define PIPELINE_DEPTH_LIMIT	5
+#define PIPELINE_MAX_COUNT	20
+
 struct pipeline_data {
 	spinlock_t lock;
 	uint32_t next_id;	/* monotonic ID counter */
@@ -524,11 +527,16 @@ int pipeline_host_buffer(struct pipeline *p, struct comp_dev *host,
 }
 
 /* copy audio data from DAI buffer to host PCM buffer via pipeline */
-static int pipeline_copy_playback(struct comp_dev *comp)
+static int pipeline_copy_playback(struct comp_dev *comp, uint32_t depth)
 {
 	struct list_head *clist;
 	int err;
 
+	/* protect the stack from pipeline that are too large or loop */
+	if (depth++ >= PIPELINE_DEPTH_LIMIT) {
+		trace_pipe_error("ePD");
+		return -EINVAL;
+	}
 	/* component should copy to buffers */
 	err = comp_copy(comp);
 
@@ -552,7 +560,7 @@ static int pipeline_copy_playback(struct comp_dev *comp)
 		if (!buffer->connected)
 			continue;
 
-		err = pipeline_copy_playback(buffer->source);
+		err = pipeline_copy_playback(buffer->source, depth);
 		if (err < 0)
 			break;
 	}
@@ -561,10 +569,16 @@ static int pipeline_copy_playback(struct comp_dev *comp)
 }
 
 /* copy audio data from DAI buffer to host PCM buffer via pipeline */
-static int pipeline_copy_capture(struct comp_dev *comp)
+static int pipeline_copy_capture(struct comp_dev *comp, uint32_t depth)
 {
 	struct list_head *clist;
 	int err;
+
+	/* protect the stack from pipeline that are too large or loop */
+	if (depth++ >= PIPELINE_DEPTH_LIMIT) {
+		trace_pipe_error("ePD");
+		return -EINVAL;
+	}
 
 	/* component should copy to buffers */
 	err = comp_copy(comp);
@@ -589,7 +603,7 @@ static int pipeline_copy_capture(struct comp_dev *comp)
 		if (!buffer->connected)
 			continue;
 
-		err = pipeline_copy_capture(buffer->sink);
+		err = pipeline_copy_capture(buffer->sink, depth);
 		if (err < 0)
 			break;
 	}
@@ -600,24 +614,42 @@ static int pipeline_copy_capture(struct comp_dev *comp)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 {
+	struct comp_dev *cd;
+	struct list_head *clist;
+
 	/* add to list of scheduled components */
 	spin_lock_irq(&pipe_data->lock);
+
+	/* check to see if we are already scheduled ? */
+	list_for_each(clist, &pipe_data->schedule_list) {
+		cd = container_of(clist, struct comp_dev, schedule_list);
+
+		/* keep original */
+		if (cd == dev)
+			goto out;
+	}
+
 	list_add_tail(&dev->schedule_list, &pipe_data->schedule_list);
+
+
 	spin_unlock_irq(&pipe_data->lock);
 
 	/* now schedule the copy */
 	interrupt_set(IRQ_NUM_SOFTWARE1);
+
+out:
 }
 
-static void pipeline_schedule(void *arg)
+void pipeline_schedule(void *arg)
 {
 	struct comp_dev *dev;
-	uint32_t finished = 0;
+	uint32_t finished = 0, count = 0;
 
 	tracev_pipe("PWs");
 	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
 
-	while (1) {
+	/* dont loop forever, but have a max number of components to copy */
+	while (count < PIPELINE_MAX_COUNT) {
 
 		/* get next component scheduled or finish */
 		spin_lock_irq(&pipe_data->lock);
@@ -637,9 +669,15 @@ static void pipeline_schedule(void *arg)
 
 		/* copy the component buffers */
 		if (dev->direction == STREAM_DIRECTION_PLAYBACK)
-			pipeline_copy_playback(dev);
+			pipeline_copy_playback(dev, 0);
 		else
-			pipeline_copy_capture(dev);
+			pipeline_copy_capture(dev, 0);
+
+		count++;
+	}
+
+	if (count == PIPELINE_MAX_COUNT) {
+		trace_pipe_error("ePC");
 	}
 
 	tracev_pipe("PWe");
