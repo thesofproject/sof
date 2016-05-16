@@ -313,6 +313,9 @@ static int dai_reset(struct comp_dev *dev)
 
 	dev->state = COMP_STATE_INIT;
 	dd->dai_pos_blks = 0;
+	if (dd->dai_pos)
+		*dd->dai_pos = 0;
+	dd->dai_pos = NULL;
 
 	return 0;
 }
@@ -321,7 +324,7 @@ static int dai_reset(struct comp_dev *dev)
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	// TODO: wait on pause/stop/drain completions before SSP ops.
+	int ret;
 
 	switch (cmd) {
 
@@ -341,7 +344,9 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_START:
-		dma_start(dd->dma, dd->chan);
+		ret = dma_start(dd->dma, dd->chan);
+		if (ret < 0)
+			return ret;
 		dai_trigger(dd->ssp, cmd, dd->direction);
 		dev->state = COMP_STATE_RUNNING;
 		break;
