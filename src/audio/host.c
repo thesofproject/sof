@@ -44,9 +44,8 @@ struct host_data {
 	uint32_t host_size;
 	volatile uint32_t *host_pos;	/* points to mailbox */
 	uint32_t host_pos_blks;		/* position in bytes (nearest block) */
-	int32_t host_not_count;		/* notify host when < 0 */
-	uint32_t pp;	/* ping pong trace */
-
+	uint32_t host_period_bytes;	/* host period size in bytes */
+	uint32_t host_period_pos;	/* position in current host perid */
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;
@@ -79,15 +78,10 @@ static void host_dma_cb(void *data, uint32_t type)
 	local_elem = list_first_entry(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
-#if 0
-	// TODO: move this to new trace mechanism
-	if (hd->pp++ & 0x1)
-		trace_comp("HPo");
-	else
-		trace_comp("HPi");
-#endif
 	/* new local period, update host buffer position blks */
 	hd->host_pos_blks += hd->period->size;
+
+	/* buffer overlap ? */
 	if (hd->host_pos_blks >= hd->host_size)
 		hd->host_pos_blks = 0;
 	if (hd->host_pos)
@@ -137,11 +131,10 @@ static void host_dma_cb(void *data, uint32_t type)
 	comp_update_buffer(hd->dma_buffer);
 
 	/* send IPC message to driver if needed */
-	hd->host_not_count -= local_elem->size;
-	if (hd->host_not_count < 0) {
+	hd->host_period_pos += hd->period->size;
+	if (hd->host_period_pos >= hd->host_period_bytes) {
+		hd->host_period_pos = 0;
 		ipc_stream_send_notification(dev->id);
-		hd->host_not_count =
-			hd->params.period_frames * hd->params.frame_size;
 	}
 
 	/* let any waiters know we have completed */
@@ -176,7 +169,10 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	comp_set_host_ep(dev);
 	hd->dma = dma_get(DMA_ID_DMAC0);
 	hd->host_size = 0;
+	hd->host_period_bytes = 0;
 	hd->host_pos = NULL;
+	hd->source = NULL;
+	hd->sink = NULL;
 
 	/* init buffer elems */
 	list_init(&hd->config.elem_list);
@@ -337,8 +333,10 @@ static int host_preload(struct comp_dev *dev)
 		/* wait 1 msecs for DMA to finish */
 		hd->complete.timeout = 100;
 		ret = wait_for_completion_timeout(&hd->complete);
-		if (ret < 0)
+		if (ret < 0) {
+			trace_comp_error("eHp");
 			break;
+		}
 	}
 
 	return ret;
@@ -366,8 +364,8 @@ static int host_prepare(struct comp_dev *dev)
 	if (hd->host_pos)
 		*hd->host_pos = 0;
 	hd->host_pos_blks = 0;
-	hd->pp = 0;
-	hd->host_not_count = hd->params.period_frames * hd->params.frame_size;
+	hd->host_period_pos = 0;
+	hd->host_period_bytes = hd->params.period_frames * hd->params.frame_size;
 
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		host_preload(dev);
@@ -458,7 +456,12 @@ static int host_reset(struct comp_dev *dev)
 	}
 
 	hd->host_size = 0;
-	hd->pp = 0;
+	if (hd->host_pos)
+		*hd->host_pos = 0;
+	hd->host_pos = NULL;
+	hd->host_period_bytes = 0;
+	hd->source = NULL;
+	hd->sink = NULL;
 	dev->state = COMP_STATE_INIT;
 
 	return 0;
@@ -473,12 +476,6 @@ static int host_copy(struct comp_dev *dev)
 		return 0;
 
 	dma_set_config(hd->dma, hd->chan, &hd->config);
-#if 0
-	if (hd->pp & 0x1)
-		trace_comp("HPO");
-	else
-		trace_comp("HPI");
-#endif
 	dma_start(hd->dma, hd->chan);
 
 	return 0;
