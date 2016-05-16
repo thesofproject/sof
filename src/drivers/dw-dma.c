@@ -719,8 +719,7 @@ static void dw_dma_irq_handler(void *data)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
 	uint32_t mask, pmask;
-	int i, dmac = dma->plat_data.irq - IRQ_NUM_EXT_DMAC0;
-
+	int i;
 
 	interrupt_disable(dma_irq(dma));
 	

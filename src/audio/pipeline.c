@@ -631,13 +631,11 @@ void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 
 	list_add_tail(&dev->schedule_list, &pipe_data->schedule_list);
 
-
+out:
 	spin_unlock_irq(&pipe_data->lock);
 
 	/* now schedule the copy */
 	interrupt_set(IRQ_NUM_SOFTWARE1);
-
-out:
 }
 
 void pipeline_schedule(void *arg)
