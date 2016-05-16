@@ -14,7 +14,7 @@
 #include <reef/audio/component.h>
 
 static struct comp_dev *mux_new(uint32_t type, uint32_t index,
-	uint8_t direction)
+	uint32_t direction)
 {
 
 	return 0;

@@ -42,18 +42,18 @@ struct dma_sg_elem {
 
 /* DMA physical SG params */
 struct dma_sg_config {	
-	uint16_t src_width;
-	uint16_t dest_width;
-	uint16_t direction;
-	uint16_t src_dev;
-	uint16_t dest_dev;
-	uint16_t cyclic;		/* circular buffer */
+	uint32_t src_width;
+	uint32_t dest_width;
+	uint32_t direction;
+	uint32_t src_dev;
+	uint32_t dest_dev;
+	uint32_t cyclic;		/* circular buffer */
 	struct list_head elem_list;	/* list of dma_sg elems */
 };
 
 struct dma_chan_status {
-	uint16_t state;
-	uint16_t flags;
+	uint32_t state;
+	uint32_t flags;
 	uint32_t w_pos;
 	uint32_t r_pos;
 	uint32_t timestamp;
@@ -88,10 +88,10 @@ struct dma_ops {
 /* DMA platform data */
 struct dma_plat_data {
 	uint32_t base;
-	uint16_t channels; 
-	uint16_t desc_per_chan;
-	uint16_t irq;
-	uint16_t capabilities;
+	uint32_t channels; 
+	uint32_t desc_per_chan;
+	uint32_t irq;
+	uint32_t capabilities;
 };
 
 struct dma {

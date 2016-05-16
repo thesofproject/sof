@@ -88,9 +88,9 @@ struct pipeline;
  */
 struct period_desc {
 	uint32_t size;	/* period size in bytes */
-	uint16_t number;
-	uint8_t no_irq;	/* dont send periodic IRQ to host/DSP */
-	uint8_t reserved;
+	uint32_t number;
+	uint32_t no_irq;	/* dont send periodic IRQ to host/DSP */
+	uint32_t reserved;
 };
 
 /*
@@ -106,7 +106,7 @@ struct buffer_desc {
 struct comp_ops {
 	/* component creation and destruction */
 	struct comp_dev *(*new)(uint32_t type, uint32_t index,
-		uint8_t direction);
+		uint32_t direction);
 	void (*free)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
@@ -147,10 +147,10 @@ struct comp_dev {
 
 	/* runtime */
 	uint32_t id;		/* runtime ID of component */
-	uint8_t state;		/* COMP_STATE_ */
-	uint8_t is_dai;		/* component is graph DAI endpoint */
-	uint8_t is_host;	/* component is graph host endpoint */
-	uint8_t direction;	/* STREAM_DIRECTION_ */
+	uint32_t state;		/* COMP_STATE_ */
+	uint32_t is_dai;		/* component is graph DAI endpoint */
+	uint32_t is_host;	/* component is graph host endpoint */
+	uint32_t direction;	/* STREAM_DIRECTION_ */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;
@@ -202,7 +202,7 @@ void comp_unregister(struct comp_driver *drv);
 
 /* component creation and destruction - mandatory */
 struct comp_dev *comp_new(struct pipeline *p, uint32_t type, uint32_t index,
-	uint32_t id, uint8_t direction);
+	uint32_t id, uint32_t direction);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);

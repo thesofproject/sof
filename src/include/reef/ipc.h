@@ -39,10 +39,10 @@ struct ipc_comp_dev {
 		struct comp_dev *cd;
 		struct comp_buffer *cb;
 	};
-	uint32_t type;
+	//uint32_t type;
 
 	struct list_head list;		/* list in ipc data */
-	void *private;
+	//void *private;
 };
 
 /* IPC FE PCM device - maps to host PCM */
@@ -80,8 +80,8 @@ struct ipc {
 	/* messaging */
 	uint32_t host_msg;		/* current message from host */
 	uint32_t dsp_msg;		/* current message to host */
-	uint16_t host_pending;
-	uint16_t dsp_pending;
+	uint32_t host_pending;
+	uint32_t dsp_pending;
 
 	/* RX call back */
 	int (*cb)(struct ipc_msg *msg);

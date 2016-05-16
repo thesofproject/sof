@@ -216,7 +216,7 @@ static uint32_t vol_work(void *data, uint32_t delay)
 }
 
 static struct comp_dev *volume_new(uint32_t type, uint32_t index,
-	uint8_t direction)
+	uint32_t direction)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;

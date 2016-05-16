@@ -69,35 +69,35 @@ struct dai_ops {
 
 /* DAI slot map to audio channel */
 struct dai_slot_map {
-	uint8_t channel;	/* channel ID - CHAN_ID_ */
-	uint8_t slot;		/* physical slot index */
+	uint32_t channel;	/* channel ID - CHAN_ID_ */
+	uint32_t slot;		/* physical slot index */
 };
 
 /* DAI runtime hardware configuration */
 struct dai_config {
-	uint16_t format;
-	uint16_t frame_size;	/* in BCLKs */
+	uint32_t format;
+	uint32_t frame_size;	/* in BCLKs */
 	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
 	struct dai_slot_map rx_slot_map[DAI_NUM_SLOT_MAPS];
-	uint16_t bclk_fs;	/* ratio between frame size and BCLK */
-	uint16_t mclk_fs;	/* ratio between frame size and MCLK */
+	uint32_t bclk_fs;	/* ratio between frame size and BCLK */
+	uint32_t mclk_fs;	/* ratio between frame size and MCLK */
 	uint32_t mclk;		/* mclk frequency in Hz */
-	uint16_t clk_src;	/* DAI specific clk source */
+	uint32_t clk_src;	/* DAI specific clk source */
 };
 
 struct dai_plat_fifo_data {
 	uint32_t offset;
-	uint16_t width;
-	uint16_t depth;
-	uint16_t watermark;
-	uint16_t handshake;
+	uint32_t width;
+	uint32_t depth;
+	uint32_t watermark;
+	uint32_t handshake;
 };
 
 /* DAI platform data */
 struct dai_plat_data {
 	uint32_t base;
-	uint16_t irq;
-	uint16_t flags;
+	uint32_t irq;
+	uint32_t flags;
 	struct dai_plat_fifo_data fifo[2];
 };
 

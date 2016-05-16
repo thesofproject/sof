@@ -9,6 +9,7 @@
 #ifndef __INCLUDE_NOTIFIER__
 #define __INCLUDE_NOTIFIER__
 
+#include <stdint.h>
 #include <reef/list.h>
 
 /* notifier general IDs */
@@ -16,7 +17,7 @@
 #define NOTIFIER_ID_SSP_FREQ	1
 
 struct notifier {
-	int id;
+	uint32_t id;
 	struct list_head list;
 	void *cb_data;
 	void (*cb)(int message, void *cb_data, void *event_data);

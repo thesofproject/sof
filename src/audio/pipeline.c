@@ -96,7 +96,7 @@ struct comp_dev *pipeline_get_comp(struct pipeline *p, uint32_t id)
 }	
 
 /* create new pipeline - returns pipeline id or negative error */
-struct pipeline *pipeline_new(uint16_t id)
+struct pipeline *pipeline_new(uint32_t id)
 {
 	struct pipeline *p;
 
@@ -159,7 +159,7 @@ void pipeline_free(struct pipeline *p)
 
 /* create a new component in the pipeline */
 struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
-	uint32_t index, uint8_t direction)
+	uint32_t index, uint32_t direction)
 {
 	struct comp_dev *cd;
 

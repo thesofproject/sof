@@ -26,8 +26,8 @@
  * Audio pipeline.
  */
 struct pipeline {
-	uint16_t id;		/* id */
-	uint16_t clock;		/* clock use as pipeline time base */
+	uint32_t id;		/* id */
+	uint32_t clock;		/* clock use as pipeline time base */
 	spinlock_t lock;
 
 	/* work */
@@ -45,7 +45,7 @@ struct pipeline {
 extern struct pipeline *pipeline_static;
 
 /* create new pipeline - returns pipeline id */
-struct pipeline *pipeline_new(uint16_t id);
+struct pipeline *pipeline_new(uint32_t id);
 void pipeline_free(struct pipeline *p);
 
 struct pipeline *pipeline_from_id(int id);
@@ -53,7 +53,7 @@ struct comp_dev *pipeline_get_comp(struct pipeline *p, uint32_t id);
 
 /* pipeline component creation and destruction */
 struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
-	uint32_t index, uint8_t direction);
+	uint32_t index, uint32_t direction);
 int pipeline_comp_free(struct pipeline *p, struct comp_dev *cd);
 
 /* pipeline buffer creation and destruction */
@@ -94,8 +94,10 @@ int init_pipeline(void);
 
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev);
 
+void pipeline_schedule(void *arg);
+
 static inline void pipeline_set_work_freq(struct pipeline *p,
-	uint32_t work_freq, uint16_t clock)
+	uint32_t work_freq, uint32_t clock)
 {
 	p->work_freq = work_freq;
 	p->clock = clock;

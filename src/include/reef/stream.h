@@ -43,14 +43,14 @@
 
 /* channel to stream position mapping */
 struct stream_channel {
-	uint16_t channel;
-	uint16_t position;
+	uint32_t channel;
+	uint32_t position;
 };
 
 /* PCM stream params */
 struct stream_pcm_params {
 	uint32_t rate;
-	uint16_t format;
+	uint32_t format;
 	struct stream_channel channel_map[STREAM_MAX_CHANNELS];	
 };
 
@@ -61,11 +61,11 @@ struct stream_vorbis_params {
 
 /* stream parameters */
 struct stream_params {
-	uint16_t type;		/* STREAM_PARAMS_TYPE_ */
-	uint8_t direction;
-	uint8_t channels;
+	uint32_t type;		/* STREAM_PARAMS_TYPE_ */
+	uint32_t direction;
+	uint32_t channels;
 	uint32_t period_frames;
-	uint16_t frame_size;
+	uint32_t frame_size;
 	union {
 		struct stream_pcm_params pcm;
 		struct stream_vorbis_params vorbis;

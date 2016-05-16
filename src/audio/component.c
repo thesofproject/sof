@@ -25,7 +25,7 @@ struct comp_data {
 static struct comp_data *cd;
 
 static void comp_init(struct comp_dev *dev, struct pipeline *p, uint32_t id,
-	struct comp_driver *drv, uint8_t direction)
+	struct comp_driver *drv, uint32_t direction)
 {
 	dev->id = id;
 	dev->drv = drv;
@@ -38,7 +38,7 @@ static void comp_init(struct comp_dev *dev, struct pipeline *p, uint32_t id,
 }
 
 struct comp_dev *comp_new(struct pipeline *p, uint32_t type, uint32_t index,
-	uint32_t id, uint8_t direction)
+	uint32_t id, uint32_t direction)
 {
 	struct list_head *clist;
 	struct comp_driver *drv;

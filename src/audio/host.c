@@ -149,7 +149,7 @@ static void host_dma_cb(void *data, uint32_t type)
 }
 
 static struct comp_dev *host_new(uint32_t type, uint32_t index,
-	uint8_t direction)
+	uint32_t direction)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;

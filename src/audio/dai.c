@@ -100,7 +100,7 @@ static void dai_dma_cb(void *data, uint32_t type)
 }
 
 static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
-	uint8_t direction)
+	uint32_t direction)
 {
 	struct comp_dev *dev;
 	struct dai_data *dd;
@@ -140,7 +140,7 @@ error:
 }
 
 static struct comp_dev *dai_new_hda(uint32_t type, uint32_t index,
-	uint8_t direction)
+	uint32_t direction)
 {
 	return 0;
 }
