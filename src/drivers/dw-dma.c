@@ -35,6 +35,7 @@
 #include <reef/work.h>
 #include <reef/lock.h>
 #include <reef/trace.h>
+#include <reef/wait.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <platform/interrupt.h>
@@ -132,6 +133,8 @@
 /* CTL_HI */
 #define DW_CTLH_DONE			0x00020000
 #define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
+#define DW_CTLH_CLASS(x)		(x << 29)
+#define DW_CTLH_WEIGHT(x)		(x << 18)
 
 /* CFG_HI */
 #define DW_CFGH_SRC_PER(x)		(x << 0)
@@ -149,6 +152,7 @@
 struct dma_chan_data {
 	uint32_t status;
 	uint32_t direction;
+	completion_t complete;
 	int32_t drain_count;
 	struct dw_lli2 *lli;
 	struct dw_lli2 *lli_current;
@@ -168,6 +172,7 @@ struct dma_chan_data {
 /* private data for DW DMA engine */
 struct dma_pdata {
 	struct dma_chan_data chan[DW_MAX_CHAN];
+	uint32_t class;		/* channel class - set for controller atm */
 };
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
@@ -262,7 +267,6 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	p->chan[channel].status = DMA_STATUS_FREE;
 	p->chan[channel].cb = NULL;
 	p->chan[channel].desc_count = 0;
-	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 }
 
 /* channel must not be running when this is called */
@@ -283,11 +287,14 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 	tracev_dma("DEn");
 
-	/* channel idle */
+	/* is channel idle, disabled and ready ? */
 	if (p->chan[channel].status != DMA_STATUS_IDLE ||
-		!(dw_read(dma, DW_CFG_LOW(channel)) & DW_CFG_CH_FIFO_EMPTY)) {
+		(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
 		ret = -EBUSY;
 		trace_dma_error("eDi");
+		trace_value(dw_read(dma, DW_DMA_CHAN_EN));
+		trace_value(dw_read(dma, DW_CFG_LOW(channel)));
+		trace_value(p->chan[channel].status);
 		goto out;
 	}
 
@@ -380,8 +387,8 @@ static int dw_dma_pause(struct dma *dma, int channel)
 
 	/* pause the channel and let the current transfer drain */
 	dw_update_bits(dma, DW_CFG_LOW(channel),
-			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
-			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
+			DW_CFG_CH_SUSPEND,
+			DW_CFG_CH_SUSPEND);
 	p->chan[channel].status = DMA_STATUS_PAUSED;
 
 	spin_unlock_irq(&dma->lock);
@@ -409,64 +416,84 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 		goto out;
 
 	/* is channel finished */
-	if (cd->drain_count-- &&
-		!(dw_read(dma, DW_CFG_LOW(cd->channel)) & DW_CFG_CH_FIFO_EMPTY)) {
-		schedule = 1;
+	if (cd->drain_count-- <= 0) {
+		trace_dma_error("eDw");
+		trace_value(dw_read(dma, DW_DMA_CHAN_EN));
+		trace_value(dw_read(dma, DW_CFG_LOW(cd->channel)));
+		/* do we need to free it ? */
+		if (cd->status == DMA_STATUS_CLOSING)
+			dw_dma_channel_put_unlocked(dma, cd->channel);
+
+		cd->status = DMA_STATUS_IDLE;
 		goto out;
 	}
-	/* should have drained by now ??? */
-	if (cd->drain_count <= 0)
-		trace_dma_error("eDw");
 
-	/* do we need to free it ? */
-	if (cd->status == DMA_STATUS_CLOSING)
-		dw_dma_channel_put_unlocked(dma, cd->channel);
-	else
-		cd->status = DMA_STATUS_IDLE;
+	/* is draining complete ? */
+	if (dw_read(dma, DW_CFG_LOW(cd->channel)) & DW_CFG_CH_FIFO_EMPTY)  {
+
+		/* fifo is empty so now check if channel is disabled */
+		if (!(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << cd->channel))) {
+
+			/* clear suspend */
+			dw_update_bits(dma, DW_CFG_LOW(cd->channel),
+				DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN, 0);
+
+			/* do we need to free it ? */
+			if (cd->status == DMA_STATUS_CLOSING)
+				dw_dma_channel_put_unlocked(dma, cd->channel);
+
+			cd->status = DMA_STATUS_IDLE;
+			wait_completed(&cd->complete);
+			goto out;
+		}
+
+		/* disable the channel */
+		dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(cd->channel));
+	}
+
+	/* need to reschedule and check again */
+	schedule = 100;
 
 out:
 	spin_unlock_irq(&dma->lock);
 
 	/* still waiting on more FIFOs to drain ? */
-	if (schedule)
-		return 100;	/* reschedule this work in 100 usec */
-	else
-		return 0;
+	return schedule;
 }
 
 static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	int schedule = 0;
+	int schedule = 0, ret = 0;
 
 	spin_lock_irq(&dma->lock);
 
 	trace_dma("DDi");
 
-	/* suspend the playback channel if it's still active */
-	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV &&
-		dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel)) {
+	/* has channel already disabled ? */
+	if (!(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
+		p->chan[channel].status = DMA_STATUS_IDLE;
+		goto out;
+	}
 
-		dw_update_bits(dma, DW_CFG_LOW(channel),
+	/* suspend and drain */
+	dw_update_bits(dma, DW_CFG_LOW(channel),
 			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
 			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
-		p->chan[channel].status = DMA_STATUS_DRAINING;
-		p->chan[channel].drain_count = 14;
-		schedule = 1;
-	} else {
+	p->chan[channel].status = DMA_STATUS_DRAINING;
+	p->chan[channel].drain_count = 14;
+	schedule = 1;
 
-		/* channel can be disabled */
-		dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
-		p->chan[channel].status = DMA_STATUS_IDLE;
-	}
-	
+out:
 	spin_unlock_irq(&dma->lock);
 
 	/* buffer and FIFO drain done by general purpose timer */
-	if (schedule)
+	if (schedule) {
 		work_schedule_default(&p->chan[channel].work, 100);
+		ret = wait_for_completion_timeout(&p->chan[channel].complete);
+	}
 
-	return 0;
+	return ret;
 }
 
 static int dw_dma_drain(struct dma *dma, int channel)
@@ -599,7 +626,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		lli_desc->dar = (uint32_t)sg_elem->dest;
 
 		/* set transfer size of element */
-		lli_desc->ctrl_hi |= sg_elem->size & DW_CTLH_BLOCK_TS_MASK;
+		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
+			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
 
 		/* set next descriptor in list */
 		lli_desc->llp = (uint32_t)(lli_desc + 1);
@@ -668,10 +696,6 @@ static inline void dw_dma_chan_reload(struct dma *dma, int channel)
 	lli = (struct dw_lli2 *)lli->llp;
 	p->chan[channel].lli_current = lli;
 
-	/* clear any existing IRQs */
-	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
-
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), lli->sar);
 	dw_write(dma, DW_DAR(channel), lli->dar);
@@ -695,7 +719,8 @@ static void dw_dma_irq_handler(void *data)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
 	uint32_t mask, pmask;
-	int i;
+	int i, dmac = dma->plat_data.irq - IRQ_NUM_EXT_DMAC0;
+
 
 	interrupt_disable(dma_irq(dma));
 	
@@ -708,6 +733,11 @@ static void dw_dma_irq_handler(void *data)
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
 	status_tfr = dw_read(dma, DW_STATUS_TFR);
+
+
+	/* clear interrupts */
+	dw_write(dma, DW_CLEAR_BLOCK, status_block);
+	dw_write(dma, DW_CLEAR_TFR, status_tfr);
 
 	/* TODO: handle errors, just clear them atm */
 	status_err = dw_read(dma, DW_STATUS_ERR);
@@ -747,10 +777,6 @@ static void dw_dma_irq_handler(void *data)
 #endif
 	}
 
-	/* clear interrupts */
-	dw_write(dma, DW_CLEAR_BLOCK, status_block);
-	dw_write(dma, DW_CLEAR_TFR, status_tfr);
-
 out:
 	pmask = status_block | status_tfr | status_err;
 
@@ -767,6 +793,9 @@ out:
 
 static void dw_dma_setup(struct dma *dma)
 {
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	int i;
+
 	/* enable the DMA controller */
 	dw_write(dma, DW_DMA_CFG, 1);
 
@@ -783,6 +812,17 @@ static void dw_dma_setup(struct dma *dma)
 	dw_write(dma, DW_FIFO_PART0_HI, 0x100080);
 	dw_write(dma, DW_FIFO_PART0_LO, 0x100080 | (1 << 26));
 	dw_write(dma, DW_FIFO_PART0_LO, 0x100080);
+
+	/* set channel priorities */
+	/* TODO set class in pdata and add API in get() to select priority */
+	if (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0)
+		p->class = 6;
+	else
+		p->class = 7;
+	for (i = 0; i <  DW_MAX_CHAN; i++) {
+		dw_write(dma, DW_CTRL_HIGH(i), DW_CTLH_CLASS(p->class));
+	}
+
 }
 
 static int dw_dma_probe(struct dma *dma)
@@ -805,6 +845,8 @@ static int dw_dma_probe(struct dma *dma)
 			&dw_pdata->chan[i], WORK_ASYNC);
 		dw_pdata->chan[i].dma = dma;
 		dw_pdata->chan[i].channel = i;
+		dw_pdata->chan[i].complete.timeout = 1333;
+		wait_init(&dw_pdata->chan[i].complete);
 	}
 
 	/* register our IRQ handler */
