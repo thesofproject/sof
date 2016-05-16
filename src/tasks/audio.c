@@ -53,7 +53,7 @@ int do_task(void)
 	/* main audio IPC processing loop */
 	while (1) {
 
-		/* sleep until next IPC */
+		/* sleep until next IPC or DMA */
 		wait_for_interrupt(0);
 
 		/* now process any IPC messages from host */

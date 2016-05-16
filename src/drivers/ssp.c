@@ -313,7 +313,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	spin_lock(&ssp->lock);
 
 	trace_ssp("SDc");
-
+// no need for work, use dma completiion in dai.c
 	/* disable DMA */
 	if (direction == DAI_DIR_PLAYBACK) {
 		if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_DRAINING)

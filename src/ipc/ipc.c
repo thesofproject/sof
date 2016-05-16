@@ -55,6 +55,7 @@ struct ipc_buffer_dev *ipc_get_buffer(uint32_t id)
 	return NULL;
 }
 
+// todo make this type safe and provide new calls and accessor for each type
 int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index,
 	uint8_t direction)
 {
