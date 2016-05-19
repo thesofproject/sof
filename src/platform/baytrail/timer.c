@@ -14,7 +14,7 @@
 #include <reef/debug.h>
 #include <stdint.h>
 
-void platform_timer_start(int timer)
+void platform_timer_start(struct timer *timer)
 {
 	/* run timer */
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
@@ -22,14 +22,14 @@ void platform_timer_start(int timer)
 }
 
 /* this seems to stop rebooting with RTD3 ???? */
-void platform_timer_stop(int timer)
+void platform_timer_stop(struct timer *timer)
 {
 	/* run timer */
 	shim_write(SHIM_EXT_TIMER_CNTLL, 0);
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_CLEAR);
 }
 
-void platform_timer_set(int timer, uint32_t ticks)
+void platform_timer_set(struct timer *timer, uint32_t ticks)
 {
 	/* a tick value of 0 will not generate an IRQ */
 	if (ticks == 0)
@@ -40,13 +40,13 @@ void platform_timer_set(int timer, uint32_t ticks)
 	shim_write(SHIM_EXT_TIMER_CNTLL, ticks);
 }
 
-void platform_timer_clear(int timer)
+void platform_timer_clear(struct timer *timer)
 {
 	/* we dont use the timer clear bit as we only need to clear the ISR */
 	shim_write(SHIM_PISR, SHIM_PISR_EXT_TIMER);
 }
 
-uint32_t platform_timer_get(int timer)
+uint32_t platform_timer_get(struct timer *timer)
 {
 	return shim_read(SHIM_EXT_TIMER_STAT);
 }

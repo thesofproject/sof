@@ -31,12 +31,12 @@ struct work {
 };
 
 struct work_queue_timesource {
-	int timer;
+	struct timer timer;
 	int clk;
 	int notifier;
-	void (*timer_set)(int timer, uint32_t ticks);
-	void (*timer_clear)(int timer);
-	uint32_t (*timer_get)(int timer);
+	void (*timer_set)(struct timer *, uint32_t ticks);
+	void (*timer_clear)(struct timer *);
+	uint32_t (*timer_get)(struct timer *);
 };
 
 #define work_init(w, x, xd, xflags) \
@@ -53,9 +53,9 @@ void work_schedule_default(struct work *work, uint32_t timeout);
 void work_cancel_default(struct work *work);
 
 /* create new work queue */
-struct work_queue *work_new_queue(const struct work_queue_timesource *ts);
+struct work_queue *work_new_queue(struct work_queue_timesource *ts);
 
 /* init system workq */
-void init_system_workq(const struct work_queue_timesource *ts);
+void init_system_workq(struct work_queue_timesource *ts);
 
 #endif

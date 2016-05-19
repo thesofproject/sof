@@ -39,8 +39,11 @@ static const struct sst_intel_ipc_fw_ready ready = {
 	},
 };
 
-static const struct work_queue_timesource platform_generic_queue = {
-	.timer 		= TIMER3,	/* external timer */
+static struct work_queue_timesource platform_generic_queue = {
+	.timer 	 = {
+		.id = TIMER3,	/* external timer */
+		.irq = IRQ_NUM_EXT_TIMER,
+	},
 	.clk		= CLK_SSP,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
 	.timer_set	= platform_timer_set,
@@ -154,6 +157,11 @@ uint32_t platform_interrupt_get_enabled(void)
 	return shim_read(SHIM_PIMR);
 }
 
+static struct timer platform_ext_timer = {
+	.id = TIMER3,
+	.irq = IRQ_NUM_EXT_TIMER,
+};
+
 int platform_init(void)
 {
 	struct dma *dmac0, *dmac1;
@@ -176,7 +184,7 @@ int platform_init(void)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(TIMER3);
+	platform_timer_start(&platform_ext_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();

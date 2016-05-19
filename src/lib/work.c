@@ -43,7 +43,7 @@ struct work_queue {
 	uint32_t window_size;		/* window size for pending work */
 	spinlock_t lock;
 	struct notifier notifier;	/* notify CPU freq changes */
-	const struct work_queue_timesource *ts;	/* time source for work queue */
+	struct work_queue_timesource *ts;	/* time source for work queue */
 	uint32_t ticks_per_usec;	/* ticks per msec */
 	uint32_t run_ticks;	/* ticks when last run */
 };
@@ -53,17 +53,17 @@ static struct work_queue *queue_;
 
 static inline void work_set_timer(struct work_queue *queue, uint32_t ticks)
 {
-	queue->ts->timer_set(queue->ts->timer, ticks);
+	queue->ts->timer_set(&queue->ts->timer, ticks);
 }
 
 static inline void work_clear_timer(struct work_queue *queue)
 {
-	queue->ts->timer_clear(queue->ts->timer);
+	queue->ts->timer_clear(&queue->ts->timer);
 }
 
 static inline uint32_t work_get_timer(struct work_queue *queue)
 {
-	return queue->ts->timer_get(queue->ts->timer);
+	return queue->ts->timer_get(&queue->ts->timer);
 }
 
 /* is there any work pending in the current time window ? */
@@ -285,10 +285,10 @@ static void work_notify(int message, void *data, void *event_data)
 		queue->window_size = queue->ticks_per_usec * 2000;
 		queue_recalc_timers(queue, clk_data);
 		queue_reschedule(queue);
-		timer_enable(queue->ts->timer);
+		timer_enable(&queue->ts->timer);
 	} else if (message == CLOCK_NOTIFY_PRE) {
 		/* CPU frequency update pending */
-		timer_disable(queue->ts->timer);
+		timer_disable(&queue->ts->timer);
 	}
 
 	spin_unlock_irq(&queue->lock);
@@ -378,7 +378,7 @@ void work_cancel_default(struct work *w)
 	spin_unlock_irq(&queue_->lock);
 }
 
-struct work_queue *work_new_queue(const struct work_queue_timesource *ts)
+struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 {
 	struct work_queue *queue;
 
@@ -398,12 +398,12 @@ struct work_queue *work_new_queue(const struct work_queue_timesource *ts)
 	notifier_register(&queue->notifier);
 
 	/* register system timer */
-	timer_register(queue->ts->timer, queue_run, queue);
+	timer_register(&queue->ts->timer, queue_run, queue);
 
 	return queue;
 }
 
-void init_system_workq(const struct work_queue_timesource *ts)
+void init_system_workq(struct work_queue_timesource *ts)
 {
 	queue_ = work_new_queue(ts);
 }

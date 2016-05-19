@@ -14,6 +14,7 @@
 #define __PLATFORM_TIMER_H__
 
 #include <stdint.h>
+#include <reef/timer.h>
 #include <platform/interrupt.h>
 
 #define TIMER_COUNT	4
@@ -26,11 +27,11 @@
 
 #define TIMER_AUDIO	TIMER3
 
-void platform_timer_set(int timer, uint32_t ticks);
-void platform_timer_clear(int timer);
-uint32_t platform_timer_get(int timer);
-void platform_timer_start(int timer);
-void platform_timer_stop(int timer);
+void platform_timer_set(struct timer *timer, uint32_t ticks);
+void platform_timer_clear(struct timer *timer);
+uint32_t platform_timer_get(struct timer *timer);
+void platform_timer_start(struct timer *timer);
+void platform_timer_stop(struct timer *timer);
 
 #endif
 
