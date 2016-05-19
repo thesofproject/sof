@@ -20,7 +20,6 @@ reef_SOURCES = \
 	_vectors.S \
 	init.c \
 	wait.S \
-	interrupt.c \
 	timer.c
 
 reef_CFLAGS = \

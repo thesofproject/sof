@@ -17,8 +17,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-extern uint32_t _arch_irq_enable;
-
 static inline int arch_interrupt_register(int irq,
 	void(*handler)(void *arg), void *arg)
 {
@@ -32,26 +30,32 @@ static inline void arch_interrupt_unregister(int irq)
 	_xtos_set_interrupt_handler_arg(irq, NULL, NULL);
 }
 
+#if 0
 static inline void arch_interrupt_enable(int irq)
 {
-	_arch_irq_enable |= (0x1 << irq);
 	xthal_set_intenable(_arch_irq_enable);
 }
 
 static inline void arch_interrupt_disable(int irq)
 {
-	_arch_irq_enable &= ~(0x1 << irq);
 	xthal_set_intenable(_arch_irq_enable);
 }
+#endif
 
-static inline void arch_interrupt_enable_mask(uint32_t mask)
-{
-	xthal_set_intenable(mask);
-}
+#define arch_interrupt_enable_mask(mask) \
+	_xtos_ints_on(mask)
+
+#define arch_interrupt_disable_mask(mask) \
+	_xtos_ints_off(mask)
 
 static inline void arch_interrupt_set(int irq)
 {
 	xthal_set_intset(0x1 << irq);
+}
+
+static inline void arch_interrupt_clear(int irq)
+{
+	xthal_set_intclear(0x1 << irq);
 }
 
 static inline uint32_t arch_interrupt_get_enabled(void)
@@ -62,11 +66,6 @@ static inline uint32_t arch_interrupt_get_enabled(void)
 static inline uint32_t arch_interrupt_get_status(void)
 {
 	return xthal_get_interrupt();
-}
-
-static inline void arch_interrupt_clear(int irq)
-{
-	xthal_set_intclear(0x1 << irq);
 }
 
 static inline uint32_t arch_interrupt_global_disable(void)
