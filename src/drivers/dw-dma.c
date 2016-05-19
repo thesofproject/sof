@@ -720,19 +720,16 @@ static void dw_dma_irq_handler(void *data)
 	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
 	uint32_t mask, pmask;
 	int i;
-
-	interrupt_disable(dma_irq(dma));
 	
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr)
-		goto out;
+		trace_dma_error("eDI");
 
 	tracev_dma("DIr");
 
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
 	status_tfr = dw_read(dma, DW_STATUS_TFR);
-
 
 	/* clear interrupts */
 	dw_write(dma, DW_CLEAR_BLOCK, status_block);
@@ -744,6 +741,17 @@ static void dw_dma_irq_handler(void *data)
 	if (status_err) {
 		trace_dma_error("eDi");
 	}
+
+	pmask = status_block | status_tfr | status_err;
+
+	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
+	if (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0)
+		pmask <<= 16;
+	else
+		pmask <<= 24;
+
+	platform_interrupt_mask_clear(pmask);
+	interrupt_clear(dma_irq(dma));
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
@@ -775,19 +783,6 @@ static void dw_dma_irq_handler(void *data)
 		}
 #endif
 	}
-
-out:
-	pmask = status_block | status_tfr | status_err;
-
-	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
-	if (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0)
-		pmask <<= 16;
-	else
-		pmask <<= 24;
-
-	platform_interrupt_mask_clear(pmask);
-
-	interrupt_enable(dma_irq(dma));
 }
 
 static void dw_dma_setup(struct dma *dma)
