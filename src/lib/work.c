@@ -243,11 +243,10 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 
-	spin_lock_irq(&queue->lock);
-
-	/* clear and disable interrupt */
+	/* clear interrupt */
 	work_clear_timer(queue);
-	timer_disable(queue->ts->timer);
+
+	spin_lock_irq(&queue->lock);
 
 	queue->run_ticks = work_get_timer(queue);
 
@@ -259,10 +258,6 @@ static void queue_run(void *data)
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
-
-	/* the interrupt may need to be re-enabled outside IRQ context.
-	 * wait_for_interrupt() will do this for us */
-	timer_enable(queue->ts->timer);
 
 	spin_unlock_irq(&queue->lock);
 }
