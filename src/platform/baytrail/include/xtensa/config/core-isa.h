@@ -318,7 +318,7 @@
 #define XCHAL_NUM_TIMERS		3	/* number of CCOMPAREn regs */
 #define XCHAL_NUM_INTERRUPTS		22	/* number of interrupts */
 #define XCHAL_NUM_INTERRUPTS_LOG2	5	/* ceil(log2(NUM_INTERRUPTS)) */
-#define XCHAL_NUM_EXTINTERRUPTS		17	/* num of external interrupts */
+#define XCHAL_NUM_EXTINTERRUPTS		12	/* num of external interrupts */
 #define XCHAL_NUM_INTLEVELS		6	/* number of interrupt levels
 						   (not including level zero) */
 #define XCHAL_EXCM_LEVEL		5	/* level masked by PS.EXCM */
