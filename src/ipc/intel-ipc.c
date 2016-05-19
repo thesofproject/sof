@@ -883,6 +883,7 @@ static void irq_handler(void *arg)
 
 		/* Mask Done interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
+		interrupt_clear(IRQ_NUM_EXT_IA);
 		do_notify();
 	}
 
@@ -890,6 +891,8 @@ static void irq_handler(void *arg)
 		
 		/* Mask Busy interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
+		interrupt_clear(IRQ_NUM_EXT_IA);
+
 		/* place message in Q and process later */
 		_ipc->host_msg = shim_read(SHIM_IPCXL);
 		_ipc->host_pending = 1;
