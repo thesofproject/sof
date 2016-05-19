@@ -27,14 +27,14 @@ static inline void interrupt_unregister(int irq)
 	arch_interrupt_unregister(irq);
 }
 
-static inline void interrupt_enable(int irq)
+static inline uint32_t interrupt_enable(uint32_t irq)
 {
-	arch_interrupt_enable(irq);
+	return arch_interrupt_enable_mask(1 << irq);
 }
 
-static inline void interrupt_disable(int irq)
+static inline uint32_t interrupt_disable(uint32_t irq)
 {
-	arch_interrupt_disable(irq);
+	return arch_interrupt_disable_mask(1 <<irq);
 }
 
 static inline void interrupt_set(int irq)
@@ -42,11 +42,13 @@ static inline void interrupt_set(int irq)
 	arch_interrupt_set(irq);
 }
 
+
 static inline void interrupt_clear(int irq)
 {
 	arch_interrupt_clear(irq);
 }
 
+#if 0
 static inline uint32_t interrupt_get_enabled(void)
 {
 	return arch_interrupt_get_enabled();
@@ -56,7 +58,7 @@ static inline uint32_t interrupt_get_status(void)
 {
 	return arch_interrupt_get_status();
 }
-
+#endif
 static inline void interrupt_global_disable(void)
 {
 	arch_interrupt_global_disable();
