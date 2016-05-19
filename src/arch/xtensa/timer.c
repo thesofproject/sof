@@ -22,9 +22,9 @@
 #include <stdint.h>
 #include <errno.h>
 
-void arch_timer_set(int timer, unsigned int ticks)
+void arch_timer_set(struct timer *timer, unsigned int ticks)
 {
-	switch (timer) {
+	switch (timer->id) {
 	case TIMER0:
 		xthal_set_ccompare(0, ticks);
 		break;

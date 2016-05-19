@@ -16,25 +16,30 @@
 #include <stdint.h>
 #include <errno.h>
 
-static inline int arch_timer_register(int timer,
+struct timer {
+	uint32_t id;
+	uint32_t irq;
+};
+
+static inline int arch_timer_register(struct timer *timer,
 	void(*handler)(void *arg), void *arg)
 {
-	return arch_interrupt_register(timer, handler, arg);
+	return arch_interrupt_register(timer->id, handler, arg);
 }
 
-static inline void arch_timer_unregister(int timer)
+static inline void arch_timer_unregister(struct timer *timer)
 {
-	arch_interrupt_unregister(timer);
+	arch_interrupt_unregister(timer->id);
 }
 
-static inline void arch_timer_enable(int timer)
+static inline void arch_timer_enable(struct timer *timer)
 {
-	arch_interrupt_enable(timer);
+	arch_interrupt_enable_mask(1 << timer->irq);
 }
 
-static inline void arch_timer_disable(int timer)
+static inline void arch_timer_disable(struct timer *timer)
 {
-	arch_interrupt_disable(timer);
+	arch_interrupt_disable_mask(1 << timer->irq);
 }
 
 static inline uint32_t arch_timer_get_system(void)
@@ -42,11 +47,11 @@ static inline uint32_t arch_timer_get_system(void)
 	return xthal_get_ccount();
 }
 
-void arch_timer_set(int timer, unsigned int ticks);
+void arch_timer_set(struct timer *timer, unsigned int ticks);
 
-static inline void arch_timer_clear(int timer)
+static inline void arch_timer_clear(struct timer *timer)
 {
-	arch_interrupt_clear(timer);
+	arch_interrupt_clear(timer->irq);
 }
 
 #endif
