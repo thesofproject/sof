@@ -195,9 +195,10 @@ static inline void dw_update_bits(struct dma *dma, uint32_t reg, uint32_t mask,
 static int dw_dma_channel_get(struct dma *dma)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
 	int i;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("Dgt");
 
@@ -216,12 +217,12 @@ static int dw_dma_channel_get(struct dma *dma)
 		dw_write(dma, DW_MASK_ERR, INT_UNMASK(i));
 
 		/* return channel */
-		spin_unlock_irq(&dma->lock);
+		spin_unlock_irq(&dma->lock, flags);
 		return i;
 	}
 
 	/* DMAC has no free channels */
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 	trace_dma_error("eDg");
 	return -ENODEV;
 }
@@ -272,18 +273,20 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 /* channel must not be running when this is called */
 static void dw_dma_channel_put(struct dma *dma, int channel)
 {
-	spin_lock_irq(&dma->lock);
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
 	dw_dma_channel_put_unlocked(dma, channel);
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 }
 
 static int dw_dma_start(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t mask;
+	uint32_t mask, flags;
 	int ret = 0;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	tracev_dma("DEn");
 
@@ -357,15 +360,16 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 
 out:
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 	return ret;
 }
 
 static int dw_dma_release(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("Dpr");
 
@@ -373,15 +377,16 @@ static int dw_dma_release(struct dma *dma, int channel)
 	dw_update_bits(dma, DW_CFG_LOW(channel), DW_CFG_CH_SUSPEND, 0);
 	p->chan[channel].status = DMA_STATUS_RUNNING;
 
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 	return 0;
 }
 
 static int dw_dma_pause(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("Dpa");
 
@@ -391,7 +396,7 @@ static int dw_dma_pause(struct dma *dma, int channel)
 			DW_CFG_CH_SUSPEND);
 	p->chan[channel].status = DMA_STATUS_PAUSED;
 
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 	return 0;
 }
 
@@ -405,8 +410,9 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 	struct dma_chan_data *cd = (struct dma_chan_data *)data;
 	struct dma *dma = cd->dma;
 	int schedule = 0;
+	uint32_t flags;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("DFw");
 
@@ -455,7 +461,7 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 	schedule = 100;
 
 out:
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 
 	/* still waiting on more FIFOs to drain ? */
 	return schedule;
@@ -465,8 +471,9 @@ static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	int schedule = 0, ret = 0;
+	uint32_t flags;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("DDi");
 
@@ -485,10 +492,11 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	schedule = 1;
 
 out:
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 
 	/* buffer and FIFO drain done by general purpose timer */
 	if (schedule) {
+// TODO wait init ???
 		work_schedule_default(&p->chan[channel].work, 100);
 		ret = wait_for_completion_timeout(&p->chan[channel].complete);
 	}
@@ -499,8 +507,9 @@ out:
 static int dw_dma_drain(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("Dra");
 
@@ -511,7 +520,7 @@ static int dw_dma_drain(struct dma *dma, int channel)
 	p->chan[channel].drain_count = 14;
 	p->chan[channel].status = DMA_STATUS_DRAINING;
 
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 
 	/* FIFO cleanup done by general purpose timer */
 	work_schedule_default(&p->chan[channel].work, 100);
@@ -540,9 +549,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct list_head *plist;
 	struct dma_sg_elem *sg_elem;
 	struct dw_lli2 *lli_desc, *lli_desc_head, *lli_desc_tail;
-	uint32_t desc_count = 0;
+	uint32_t desc_count = 0, flags;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 
 	tracev_dma("Dsc");
 
@@ -649,7 +658,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 #endif
 	}
 
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 
 	return 0;
 }
@@ -673,12 +682,13 @@ static void dw_dma_set_cb(struct dma *dma, int channel, int type,
 		void (*cb)(void *data, uint32_t type), void *data)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
 
-	spin_lock_irq(&dma->lock);
+	spin_lock_irq(&dma->lock, flags);
 	p->chan[channel].cb = cb;
 	p->chan[channel].cb_data = data;
 	p->chan[channel].cb_type = type;
-	spin_unlock_irq(&dma->lock);
+	spin_unlock_irq(&dma->lock, flags);
 }
 
 static inline void dw_dma_chan_reload(struct dma *dma, int channel)

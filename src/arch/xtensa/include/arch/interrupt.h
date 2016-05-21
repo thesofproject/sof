@@ -77,10 +77,10 @@ static inline uint32_t arch_interrupt_global_disable(void)
 	return flags;
 }
 
-static inline void arch_interrupt_global_enable(void)
+static inline void arch_interrupt_global_enable(uint32_t flags)
 {
-	uint32_t flags;
-	asm volatile("rsil %0, 0" : "=a" (flags) :: "memory");
+	asm volatile("wsr %0, ps; rsync"
+		     :: "a" (flags) : "memory");
 }
 
 #endif

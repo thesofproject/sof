@@ -56,13 +56,13 @@
 	spin_unlock_dbg();
 
 /* disables all IRQ sources and tales lock - atomic context */
-#define spin_lock_irq(lock) \
-	interrupt_global_disable(); \
+#define spin_lock_irq(lock, flags) \
+	flags = interrupt_global_disable(); \
 	spin_lock(lock);
 
 /* re-enables current IRQ sources and releases lock */
-#define spin_unlock_irq(lock) \
+#define spin_unlock_irq(lock, flags) \
 	spin_unlock(lock); \
-	interrupt_global_enable();
+	interrupt_global_enable(flags);
 
 #endif

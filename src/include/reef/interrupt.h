@@ -59,14 +59,14 @@ static inline uint32_t interrupt_get_status(void)
 	return arch_interrupt_get_status();
 }
 #endif
-static inline void interrupt_global_disable(void)
+static inline uint32_t interrupt_global_disable(void)
 {
-	arch_interrupt_global_disable();
+	return arch_interrupt_global_disable();
 }
 
-static inline void interrupt_global_enable(void)
+static inline void interrupt_global_enable(uint32_t flags)
 {
-	arch_interrupt_global_enable();
+	arch_interrupt_global_enable(flags);
 }
 
 #endif

@@ -611,14 +611,16 @@ static int pipeline_copy_capture(struct comp_dev *comp, uint32_t depth)
 	return err;
 }
 
+//TODO check locks for IRQ status prior to locking
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 {
 	struct comp_dev *cd;
 	struct list_head *clist;
+	uint32_t flags;
 
 	/* add to list of scheduled components */
-	spin_lock_irq(&pipe_data->lock);
+	spin_lock_irq(&pipe_data->lock, flags);
 
 	/* check to see if we are already scheduled ? */
 	list_for_each(clist, &pipe_data->schedule_list) {
@@ -632,18 +634,18 @@ void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 	list_add_tail(&dev->schedule_list, &pipe_data->schedule_list);
 
 out:
-	spin_unlock_irq(&pipe_data->lock);
+	spin_unlock_irq(&pipe_data->lock, flags);
 
 	/* now schedule the copy */
-	//interrupt_set(IRQ_NUM_SOFTWARE4);
+	interrupt_set(IRQ_NUM_SOFTWARE4);
 }
 
 void pipeline_schedule(void *arg)
 {
 	struct comp_dev *dev;
-	uint32_t finished = 0, count = 0;
+	uint32_t finished = 0, count = 0, flags;
 
-	//interrupt_clear(IRQ_NUM_SOFTWARE4);
+	interrupt_clear(IRQ_NUM_SOFTWARE4);
 
 	tracev_pipe("PWs");
 	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
@@ -652,7 +654,7 @@ void pipeline_schedule(void *arg)
 	while (count < PIPELINE_MAX_COUNT) {
 
 		/* get next component scheduled or finish */
-		spin_lock_irq(&pipe_data->lock);
+		spin_lock_irq(&pipe_data->lock, flags);
 
 		if (list_empty(&pipe_data->schedule_list))
 			finished = 1;
@@ -662,7 +664,7 @@ void pipeline_schedule(void *arg)
 			list_del(&dev->schedule_list);
 		}
 
-		spin_unlock_irq(&pipe_data->lock);
+		spin_unlock_irq(&pipe_data->lock, flags);
 
 		if (finished)
 			break;
@@ -696,8 +698,8 @@ int pipeline_init(void)
 	spinlock_init(&pipe_data->lock);
 
 	/* configure pipeline scheduler interrupt */
-	//interrupt_register(IRQ_NUM_SOFTWARE4, pipeline_schedule, NULL);
-	//interrupt_enable(IRQ_NUM_SOFTWARE4);
+	interrupt_register(IRQ_NUM_SOFTWARE4, pipeline_schedule, NULL);
+	interrupt_enable(IRQ_NUM_SOFTWARE4);
 
 	return 0;
 }

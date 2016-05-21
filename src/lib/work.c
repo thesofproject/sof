@@ -242,11 +242,12 @@ static void queue_reschedule(struct work_queue *queue)
 static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
+	uint32_t flags;
 
 	/* clear interrupt */
 	work_clear_timer(queue);
 
-	spin_lock_irq(&queue->lock);
+	spin_lock_irq(&queue->lock, flags);
 
 	queue->run_ticks = work_get_timer(queue);
 
@@ -259,7 +260,7 @@ static void queue_run(void *data)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock_irq(&queue->lock);
+	spin_unlock_irq(&queue->lock, flags);
 }
 
 /* notification of CPU frequency changes - atomic PRE and POST sequence */
@@ -268,8 +269,9 @@ static void work_notify(int message, void *data, void *event_data)
 	struct work_queue *queue = (struct work_queue *)data;
 	struct clock_notify_data *clk_data =
 		(struct clock_notify_data *)event_data;
+	uint32_t flags;
 
-	spin_lock_irq(&queue->lock);
+	spin_lock_irq(&queue->lock, flags);
 
 	/* we need to re-caclulate timer when CPU freqency changes */
 	if (message == CLOCK_NOTIFY_POST) {
@@ -286,15 +288,16 @@ static void work_notify(int message, void *data, void *event_data)
 		timer_disable(&queue->ts->timer);
 	}
 
-	spin_unlock_irq(&queue->lock);
+	spin_unlock_irq(&queue->lock, flags);
 }
 
 void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 {
 	struct work *work;
 	struct list_head *wlist;
+	uint32_t flags;
 
-	spin_lock_irq(&queue->lock);
+	spin_lock_irq(&queue->lock, flags);
 
 	/* check to see if we are already scheduled ? */
 	list_for_each(wlist, &queue->work) {
@@ -315,12 +318,14 @@ void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 	queue_reschedule(queue);
 
 out:
-	spin_unlock_irq(&queue->lock);
+	spin_unlock_irq(&queue->lock, flags);
 }
 
 void work_cancel(struct work_queue *queue, struct work *w)
 {
-	spin_lock_irq(&queue->lock);
+	uint32_t flags;
+
+	spin_lock_irq(&queue->lock, flags);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -328,15 +333,16 @@ void work_cancel(struct work_queue *queue, struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock_irq(&queue->lock);
+	spin_unlock_irq(&queue->lock, flags);
 }
 
 void work_schedule_default(struct work *w, uint32_t timeout)
 {
 	struct work *work;
 	struct list_head *wlist;
+	uint32_t flags;
 
-	spin_lock_irq(&queue_->lock);
+	spin_lock_irq(&queue_->lock, flags);
 
 	/* check to see if we are already scheduled ? */
 	list_for_each(wlist, &queue_->work) {
@@ -357,12 +363,14 @@ void work_schedule_default(struct work *w, uint32_t timeout)
 	queue_reschedule(queue_);
 
 out:
-	spin_unlock_irq(&queue_->lock);
+	spin_unlock_irq(&queue_->lock, flags);
 }
 
 void work_cancel_default(struct work *w)
 {
-	spin_lock_irq(&queue_->lock);
+	uint32_t flags;
+
+	spin_lock_irq(&queue_->lock, flags);
 
 	/* remove work from list */
 	list_del(&w->list);
@@ -370,7 +378,7 @@ void work_cancel_default(struct work *w)
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue_);
 
-	spin_unlock_irq(&queue_->lock);
+	spin_unlock_irq(&queue_->lock, flags);
 }
 
 struct work_queue *work_new_queue(struct work_queue_timesource *ts)
