@@ -56,12 +56,8 @@ int do_task(void)
 		/* sleep until next IPC or DMA */
 		wait_for_interrupt(0);
 
-		pipeline_schedule(NULL);
-
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
-
-		pipeline_schedule(NULL);
 	}
 
 	/* something bad happened */
