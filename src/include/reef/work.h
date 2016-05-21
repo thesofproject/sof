@@ -38,7 +38,7 @@ struct work_queue_timesource {
 	void (*timer_clear)(struct timer *);
 	uint32_t (*timer_get)(struct timer *);
 };
-
+// TODO: make sure all work does not sleep and is quick.
 #define work_init(w, x, xd, xflags) \
 	(w)->cb = x; \
 	(w)->cb_data = xd; \

@@ -113,7 +113,7 @@ int ipc_pmc_send_msg(uint32_t message)
 	/* we can only send new messages if the SC is not busy */
 	if (ipclpesch & SHIM_IPCLPESCH_BUSY)
 		return -EAGAIN;
-
+//TODO use xtos_ints_on/off varient and wait for com[letion
 	/* disable all interrupts except for SCU */
 	irq_mask = arch_interrupt_get_enabled();
 	arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_PMC);

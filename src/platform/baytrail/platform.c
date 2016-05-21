@@ -168,7 +168,7 @@ int platform_init(void)
 	struct dai *ssp0, *ssp1, *ssp2;
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
-
+// TODO mask all xtensa dn SHIM IRQs
 	/* clear mailbox for early trace and debug */
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
