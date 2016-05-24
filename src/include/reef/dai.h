@@ -65,6 +65,7 @@ struct dai_ops {
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
 	int (*probe)(struct dai *dai);
+	int (*set_loopback_mode)(struct dai *dai, uint32_t lbm);
 };
 
 /* DAI slot map to audio channel */
@@ -83,6 +84,7 @@ struct dai_config {
 	uint32_t mclk_fs;	/* ratio between frame size and MCLK */
 	uint32_t mclk;		/* mclk frequency in Hz */
 	uint32_t clk_src;	/* DAI specific clk source */
+	uint32_t lbm;	/* loopback mode */
 };
 
 struct dai_plat_fifo_data {
@@ -127,6 +129,12 @@ struct dai *dai_get(uint32_t type, uint32_t index);
 static inline int dai_set_config(struct dai *dai, struct dai_config *dai_config)
 {
 	return dai->ops->set_config(dai, dai_config);
+}
+
+/* Digital Audio interface formatting */
+static inline int dai_set_loopback_mode(struct dai *dai, uint32_t lbm)
+{
+	return dai->ops->set_loopback_mode(dai, lbm);
 }
 
 /* Digital Audio interface trigger */
