@@ -115,6 +115,9 @@ struct comp_ops {
 	/* set component audio stream paramters */
 	int (*dai_config)(struct comp_dev *dev, struct dai_config *dai_config);
 
+	/* set dai component loopback mode */
+	int (*dai_set_loopback)(struct comp_dev *dev, uint32_t lbm);
+
 	/* used to pass standard and bespoke commands (with data) to component */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
 
@@ -256,6 +259,15 @@ static inline int comp_dai_config(struct comp_dev *dev,
 {
 	if (dev->drv->ops.dai_config)
 		return dev->drv->ops.dai_config(dev, dai_config);
+	return 0;
+}
+
+/* DAI configuration - only mandatory for DAI components */
+static inline int comp_dai_loopback(struct comp_dev *dev,
+	uint32_t lbm)
+{
+	if (dev->drv->ops.dai_set_loopback)
+		return dev->drv->ops.dai_set_loopback(dev, lbm);
 	return 0;
 }
 
