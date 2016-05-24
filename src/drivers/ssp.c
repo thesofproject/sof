@@ -265,10 +265,11 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 
 	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
 	sfifott = (SFIFOTT_TX(8) | SFIFOTT_RX(8));
-#if 0
-	/* test loopback */
-	sscr1 |= SSCR1_LBM;
-#endif
+
+	if (dai->config.lbm)
+		sscr1 |= SSCR1_LBM;
+	else
+		sscr1 &= ~SSCR1_LBM;
 
 	trace_ssp("SSC");
 	ssp_write(dai, SSCR0, sscr0);
@@ -277,6 +278,21 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	ssp_write(dai, SFIFOTT, sfifott);
 
 out:
+	spin_unlock(&ssp->lock);
+
+	return 0;
+}
+
+/* Digital Audio interface formatting */
+static inline int ssp_set_loopback_mode(struct dai *dai, uint32_t lbm)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+
+	trace_ssp("SLb");
+	spin_lock(&ssp->lock);
+
+	ssp_update_bits(dai, SSCR1, SSCR1_LBM, lbm ? SSCR1_LBM : 0);
+
 	spin_unlock(&ssp->lock);
 
 	return 0;
@@ -397,4 +413,5 @@ const struct dai_ops ssp_ops = {
 	.pm_context_store	= ssp_context_store,
 	.pm_context_restore	= ssp_context_restore,
 	.probe			= ssp_probe,
+	.set_loopback_mode	= ssp_set_loopback_mode,
 };
