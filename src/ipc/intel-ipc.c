@@ -527,17 +527,22 @@ static uint32_t ipc_context_save(uint32_t header)
 
 	/* TODO: check we are inactive */
 
-	/* mask all interrupts */
-	interrupt_global_disable();
-	platform_timer_stop(0);
-	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0xffff8438);
+	/* mask all DSP interrupts */
+	arch_interrupt_disable_mask(0xffff);
+
+	/* mask platform interrupts - TODO refine mask and add PIMR */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | 0x3);
+
+	/* clear any outstanding platform IRQs - TODO refine */
 
 	/* TODO: stop timers */
+	platform_timer_stop(0);
 	platform_ssp_disable_mn(0);
 	platform_ssp_disable_mn(1);
 	platform_ssp_disable_mn(2);
 
 	/* TODO: disable SSP and DMA HW */
+	dma_pm_context_store(iipc->dmac0);
 
 	/* TODO: save the context */
 	reply.entries_no = 0;
@@ -545,6 +550,7 @@ static uint32_t ipc_context_save(uint32_t header)
 	mailbox_outbox_write(0, &reply, sizeof(reply));
 
 	iipc->pm_prepare_D3 = 1;
+
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
@@ -850,13 +856,15 @@ static void do_cmd(void)
 	ipcxh |= SHIM_IPCXH_DONE | status;
 	shim_write(SHIM_IPCXH, ipcxh);
 
+	// TODO: signal audio work to enter D3 in normal context
+	/* are we about to enter D3 ? */
+	if (iipc->pm_prepare_D3) {
+		while (1)
+			wait_for_interrupt(0);
+	}
+
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
-
-// TODO: signal audio work to enter D3 in normal context
-	/* are we about to enter D3 ? */
-	if (iipc->pm_prepare_D3)
-		wait_for_interrupt(0);
 }
 
 static void do_notify(void)
