@@ -111,12 +111,13 @@ int ipc_pmc_send_msg(uint32_t message)
 	ipclpesch = shim_read(SHIM_IPCLPESCH);
 
 	/* we can only send new messages if the SC is not busy */
-	if (ipclpesch & SHIM_IPCLPESCH_BUSY)
+	if (ipclpesch & SHIM_IPCLPESCH_BUSY) {
+		trace_ipc_error("ePb");
 		return -EAGAIN;
-//TODO use xtos_ints_on/off varient and wait for com[letion
+	}
+
 	/* disable all interrupts except for SCU */
-	irq_mask = arch_interrupt_get_enabled();
-	arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_PMC);
+	irq_mask = arch_interrupt_disable_mask(~(1 << IRQ_NUM_EXT_PMC));
 
 	/* send the new message */
 	shim_write(SHIM_IPCLPESCL, 0);
@@ -125,7 +126,18 @@ int ipc_pmc_send_msg(uint32_t message)
 	/* now wait for clock change */
 	wait_for_interrupt(0);
 
+	/* enable other IRQs */
 	arch_interrupt_enable_mask(irq_mask);
+
+	/* check status */
+	ipclpesch = shim_read(SHIM_IPCLPESCH);
+
+	/* did command succeed */
+	if (ipclpesch & SHIM_IPCLPESCH_BUSY) {
+		trace_ipc_error("ePf");
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
