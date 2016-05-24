@@ -117,7 +117,9 @@ enum ipc_glb_type {
 	IPC_INTEL_GLB_DEBUG_LOG_MESSAGE = 14,		/* Message to or from the debug logger. */
 	IPC_INTEL_GLB_MODULE_OPERATION = 15,		/* Message to loadable fw module */
 	IPC_INTEL_GLB_REQUEST_TRANSFER = 16, 		/* < Request Transfer for host */
-	IPC_INTEL_GLB_MAX_IPC_MESSAGE_TYPE = 17,	/* Maximum message number */
+	IPC_INTEL_GLB_ENABLE_LOOPBACK = 17,		/* Set device format */
+	IPC_INTEL_GLB_DISABLE_LOOPBACK = 18,	/* Get device format */
+	IPC_INTEL_GLB_MAX_IPC_MESSAGE_TYPE	/* Maximum message number */
 };
 
 enum ipc_glb_reply {

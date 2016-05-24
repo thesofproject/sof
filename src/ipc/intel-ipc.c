@@ -518,6 +518,25 @@ error:
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
+static uint32_t ipc_device_set_loopback(uint32_t header, uint32_t lbm)
+{
+	struct ipc_dai_dev *dai_dev;
+
+	trace_ipc("DsL");
+
+	/* TODO: playback/capture DAI dev get the pcm_dev */
+	dai_dev = ipc_get_dai_comp(3);
+	if (dai_dev == NULL) {
+		trace_ipc_error("eDg");
+		goto error;
+	}
+
+	comp_dai_loopback(dai_dev->dev.cd, lbm);
+
+error:
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+}
+
 static uint32_t ipc_context_save(uint32_t header)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
@@ -820,6 +839,10 @@ static uint32_t ipc_cmd(void)
 		return ipc_device_get_formats(header);
 	case IPC_INTEL_GLB_SET_DEVICE_FORMATS:
 		return ipc_device_set_formats(header);
+	case IPC_INTEL_GLB_ENABLE_LOOPBACK:
+		return ipc_device_set_loopback(header, 1);
+	case IPC_INTEL_GLB_DISABLE_LOOPBACK:
+		return ipc_device_set_loopback(header, 0);
 	case IPC_INTEL_GLB_ENTER_DX_STATE:
 		return ipc_context_save(header);
 	case IPC_INTEL_GLB_GET_MIXER_STREAM_INFO:
