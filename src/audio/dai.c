@@ -380,6 +380,13 @@ static int dai_config(struct comp_dev *dev, struct dai_config *dai_config)
 	return dai_set_config(dd->ssp, dai_config);
 }
 
+static int dai_set_loopback(struct comp_dev *dev, uint32_t lbm)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	return dai_set_loopback_mode(dd->ssp, lbm);
+}
+
 static struct comp_driver comp_dai_ssp = {
 	.type	= COMP_TYPE_DAI_SSP,
 	.ops	= {
@@ -391,6 +398,7 @@ static struct comp_driver comp_dai_ssp = {
 		.prepare	= dai_prepare,
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
+		.dai_set_loopback = dai_set_loopback,
 	},
 };
 
