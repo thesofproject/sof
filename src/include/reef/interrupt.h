@@ -42,23 +42,11 @@ static inline void interrupt_set(int irq)
 	arch_interrupt_set(irq);
 }
 
-
 static inline void interrupt_clear(int irq)
 {
 	arch_interrupt_clear(irq);
 }
 
-#if 0
-static inline uint32_t interrupt_get_enabled(void)
-{
-	return arch_interrupt_get_enabled();
-}
-
-static inline uint32_t interrupt_get_status(void)
-{
-	return arch_interrupt_get_status();
-}
-#endif
 static inline uint32_t interrupt_global_disable(void)
 {
 	return arch_interrupt_global_disable();

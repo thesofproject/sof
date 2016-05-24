@@ -30,21 +30,11 @@ static inline void arch_interrupt_unregister(int irq)
 	_xtos_set_interrupt_handler_arg(irq, NULL, NULL);
 }
 
-#if 0
-static inline void arch_interrupt_enable(int irq)
-{
-	xthal_set_intenable(_arch_irq_enable);
-}
-
-static inline void arch_interrupt_disable(int irq)
-{
-	xthal_set_intenable(_arch_irq_enable);
-}
-#endif
-
+/* returns previous mask */
 #define arch_interrupt_enable_mask(mask) \
 	_xtos_ints_on(mask)
 
+/* returns previous mask */
 #define arch_interrupt_disable_mask(mask) \
 	_xtos_ints_off(mask)
 
