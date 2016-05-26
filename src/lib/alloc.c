@@ -102,36 +102,50 @@ extern uint32_t _module_heap;
 extern uint32_t _buffer_heap;
 extern uint32_t _stack_sentry;
 
+struct mm_heap {
+	uint32_t blocks;
+	struct block_map *map;
+	uint32_t heap;
+	uint32_t heap_end;
+};
+
 /* heap block memory map */
 struct mm {
-	/* general heap for components */
-	struct block_map *heap;
-	uint32_t module_heap;
-	uint32_t module_heap_end;
 
-	/* general component buffer heap */
-	struct block_map *buffer;
-	uint32_t buffer_heap;
-	uint32_t buffer_heap_end;
+	struct mm_heap module;	/* general heap for components */
+	struct mm_heap system;	/* general component buffer heap */
+	struct mm_heap buffer;	/* system heap - used during init cannot be freed */
 
-	/* system heap - used during init cannot be freed */
-	uint32_t system_heap;
-	uint32_t system_heap_end;
-
-	spinlock_t lock;	/* all aloccs and frees are atomic */
+	spinlock_t lock;	/* all allocs and frees are atomic */
+	struct mm_info mm_info;
 };
 
 struct mm memmap = {
-	.system_heap = (uint32_t)&_system_heap,
-	.system_heap_end = (uint32_t)&_module_heap,
+	.system = {
+		.heap = (uint32_t)&_system_heap,
+		.heap_end = (uint32_t)&_module_heap,
+	},
 
-	.heap = mod_heap_map,
-	.module_heap = (uint32_t)&_module_heap,
-	.module_heap_end = (uint32_t)&_buffer_heap,
+	.module = {
+		.blocks = ARRAY_SIZE(mod_heap_map),
+		.map = mod_heap_map,
+		.heap = (uint32_t)&_module_heap,
+		.heap_end = (uint32_t)&_buffer_heap,
+	},
 
-	.buffer = buf_heap_map,
-	.buffer_heap = (uint32_t)&_buffer_heap,
-	.buffer_heap_end = (uint32_t)&_stack_sentry,
+	.buffer = {
+		.blocks = ARRAY_SIZE(buf_heap_map),
+		.map = buf_heap_map,
+		.heap = (uint32_t)&_buffer_heap,
+		.heap_end = (uint32_t)&_stack_sentry,
+	},
+
+	.mm_info = {
+		.buffer = {.free = HEAP_BUF_SIZE,},
+		.system = {.free = SYSTEM_MEM,},
+		.module = {.free = HEAP_MOD_SIZE,},
+		.total = {.free = SYSTEM_MEM + HEAP_MOD_SIZE + HEAP_BUF_SIZE,},
+	},
 };
 
 #if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
@@ -148,11 +162,11 @@ static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 /* allocate from system memory pool */
 static void *rmalloc_dev(size_t bytes)
 {
-	void *ptr = (void *)memmap.system_heap;
+	void *ptr = (void *)memmap.system.heap;
 
 	/* always suceeds or panics */
-	memmap.system_heap += bytes;
-	if (memmap.system_heap >= memmap.system_heap_end) {
+	memmap.system.heap += bytes;
+	if (memmap.system.heap >= memmap.system.heap_end) {
 		trace_mem_error("eMd");
 		panic(PANIC_MEM);
 	}
@@ -280,9 +294,14 @@ static void free_block(int module, void *ptr)
 		/* is ptr in this block */
 		if ((uint32_t)ptr >= mod_heap_map[i].base &&
 			(uint32_t)ptr < mod_heap_map[i + 1].base)
-			break;
+			goto found;
 	}
 
+	/* not found */
+	trace_mem_error("eMF");
+	return;
+
+found:
 	/* calculate block header */
 	map = &mod_heap_map[i];
 	block = ((uint32_t)ptr - map->base) / map->block_size;
@@ -295,6 +314,7 @@ static void free_block(int module, void *ptr)
 		hdr->size = 0;
 		hdr->flags = BLOCK_FREE;
 		map->free_count++;
+		//memmap.
 	}
 
 	/* set first free */
@@ -425,6 +445,27 @@ void rfree(int zone, int module, void *ptr)
 	spin_unlock_irq(&memmap.lock, flags);
 }
 
+struct mm_info *mm_pm_context_info(void)
+{
+	/* recalc totals */
+	memmap.mm_info.total.free = memmap.mm_info.buffer.free +
+		memmap.mm_info.module.free + memmap.mm_info.system.free;
+	memmap.mm_info.total.used = memmap.mm_info.buffer.used +
+		memmap.mm_info.module.used + memmap.mm_info.system.used;
+
+	return &memmap.mm_info;
+}
+
+int mm_pm_context_save(struct dma_sg_config *sg)
+{
+	return 0;
+}
+
+int mm_pm_context_restore(struct dma_sg_config *sg)
+{
+	return 0;
+}
+
 /* initialise map */
 void init_heap(void)
 {
@@ -435,7 +476,7 @@ void init_heap(void)
 
 	/* initialise buffer map */
 	current_map = &buf_heap_map[0];
-	current_map->base = memmap.buffer_heap;
+	current_map->base = memmap.buffer.heap;
 
 	for (i = 1; i < ARRAY_SIZE(buf_heap_map); i++) {
 		next_map = &buf_heap_map[i];
@@ -446,7 +487,7 @@ void init_heap(void)
 
 	/* initialise module map */
 	current_map = &mod_heap_map[0];
-	current_map->base = memmap.module_heap;
+	current_map->base = memmap.module.heap;
 
 	for (i = 1; i < ARRAY_SIZE(mod_heap_map); i++) {
 		next_map = &mod_heap_map[i];

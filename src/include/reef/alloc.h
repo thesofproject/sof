@@ -10,6 +10,8 @@
 #define __INCLUDE_ALLOC__
 
 #include <string.h>
+#include <stdint.h>
+#include <reef/dma.h>
 
 /* Heap Memory Zones */
 /* device zone - never freed, always suceeds */
@@ -20,6 +22,18 @@
 /* Modules */
 #define RMOD_SYS	0	/* system module */
 #define RMOD(m)		(m + 16)	/* all other modules */
+
+struct mm_item {
+	uint32_t used;
+	uint32_t free;
+};
+
+struct mm_info {
+	struct mm_item total;	/* total bytes used/free */
+	struct mm_item system;	/* system bytes used/free */
+	struct mm_item module;	/* module bytes used/free */
+	struct mm_item buffer;	/* buffer bytes used/free */
+};
 
 void *rmalloc(int zone, int module, size_t bytes);
 
@@ -33,5 +47,9 @@ void init_heap(void);
 void bzero(void *s, size_t n);
 
 void *memset(void *s, int c, size_t n);
+
+struct mm_info *mm_pm_context_info(void);
+int mm_pm_context_save(struct dma_sg_config *sg);
+int mm_pm_context_restore(struct dma_sg_config *sg);
 
 #endif
