@@ -331,21 +331,35 @@ static void *rmalloc_mod(int module, size_t bytes)
 
 void *rmalloc(int zone, int module, size_t bytes)
 {
+	uint32_t flags;
+	void *ptr = NULL;
+
+	spin_lock_irq(&memmap.lock, flags);
+
 	switch (zone) {
 	case RZONE_DEV:
-		return rmalloc_dev(bytes);
+		ptr = rmalloc_dev(bytes);
+		break;
 	case RZONE_MODULE:
-		return rmalloc_mod(module, bytes);
+		ptr = rmalloc_mod(module, bytes);
+		break;
 	default:
 		trace_mem_error("eMz");
-		return NULL;
+		break;
 	}
+
+	spin_unlock_irq(&memmap.lock, flags);
+	return ptr;
 }
 
 /* allocates continuous buffer on 1k boundary */
 void *rballoc(int zone, int module, size_t bytes)
 {
+	uint32_t flags;
+	void *ptr = NULL;
 	int i;
+
+	spin_lock_irq(&memmap.lock, flags);
 
 	/* will request fit in single block */
 	for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
@@ -359,15 +373,17 @@ void *rballoc(int zone, int module, size_t bytes)
 			continue;
 
 		/* allocate block */
-		return alloc_block(&buf_heap_map[i], module);
+		ptr = alloc_block(&buf_heap_map[i], module);
+		goto out;
 	}
 
 	/* request spans > 1 block */
 
 	/* only 1 choice for block size */
-	if (ARRAY_SIZE(buf_heap_map) == 1)
-		return alloc_cont_blocks(&buf_heap_map[0], module, bytes);
-	else {
+	if (ARRAY_SIZE(buf_heap_map) == 1) {
+		ptr = alloc_cont_blocks(&buf_heap_map[0], module, bytes);
+		goto out;
+	} else {
 
 		/* find best block size for request */
 		for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
@@ -379,23 +395,34 @@ void *rballoc(int zone, int module, size_t bytes)
 		}
 	}
 
-	return alloc_cont_blocks(&buf_heap_map[ARRAY_SIZE(buf_heap_map) - 1],
+	ptr = alloc_cont_blocks(&buf_heap_map[ARRAY_SIZE(buf_heap_map) - 1],
 		module, bytes);
+
+out:
+	spin_unlock_irq(&memmap.lock, flags);
+	return ptr;
 }
 
 void rfree(int zone, int module, void *ptr)
 {
+	uint32_t flags;
+
+	spin_lock_irq(&memmap.lock, flags);
+
 	switch (zone) {
 	case RZONE_DEV:
 		trace_mem_error("eMF");
 		panic(PANIC_MEM);
 		break;
 	case RZONE_MODULE:
-		return free_block(module, ptr);
+		free_block(module, ptr);
+		break;
 	default:
 		trace_mem_error("eMf");
 		break;
 	}
+
+	spin_unlock_irq(&memmap.lock, flags);
 }
 
 /* initialise map */
