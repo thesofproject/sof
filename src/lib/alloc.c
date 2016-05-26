@@ -10,6 +10,7 @@
 #include <reef/reef.h>
 #include <reef/debug.h>
 #include <reef/trace.h>
+#include <reef/lock.h>
 #include <platform/memory.h>
 #include <stdint.h>
 
@@ -101,13 +102,37 @@ extern uint32_t _module_heap;
 extern uint32_t _buffer_heap;
 extern uint32_t _stack_sentry;
 
-/* local heap locations */
-uint32_t system_heap = (uint32_t)&_system_heap;
-uint32_t system_heap_end = (uint32_t)&_module_heap;
-uint32_t module_heap = (uint32_t)&_module_heap;
-uint32_t module_heap_end = (uint32_t)&_buffer_heap;
-uint32_t buffer_heap = (uint32_t)&_buffer_heap;
-uint32_t buffer_heap_end = (uint32_t)&_stack_sentry;
+/* heap block memory map */
+struct mm {
+	/* general heap for components */
+	struct block_map *heap;
+	uint32_t module_heap;
+	uint32_t module_heap_end;
+
+	/* general component buffer heap */
+	struct block_map *buffer;
+	uint32_t buffer_heap;
+	uint32_t buffer_heap_end;
+
+	/* system heap - used during init cannot be freed */
+	uint32_t system_heap;
+	uint32_t system_heap_end;
+
+	spinlock_t lock;	/* all aloccs and frees are atomic */
+};
+
+struct mm memmap = {
+	.system_heap = (uint32_t)&_system_heap,
+	.system_heap_end = (uint32_t)&_module_heap,
+
+	.heap = mod_heap_map,
+	.module_heap = (uint32_t)&_module_heap,
+	.module_heap_end = (uint32_t)&_buffer_heap,
+
+	.buffer = buf_heap_map,
+	.buffer_heap = (uint32_t)&_buffer_heap,
+	.buffer_heap_end = (uint32_t)&_stack_sentry,
+};
 
 #if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
 static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
@@ -123,11 +148,11 @@ static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 /* allocate from system memory pool */
 static void *rmalloc_dev(size_t bytes)
 {
-	void *ptr = (void *)system_heap;
+	void *ptr = (void *)memmap.system_heap;
 
 	/* always suceeds or panics */
-	system_heap += bytes;
-	if (system_heap >= system_heap_end) {
+	memmap.system_heap += bytes;
+	if (memmap.system_heap >= memmap.system_heap_end) {
 		trace_mem_error("eMd");
 		panic(PANIC_MEM);
 	}
@@ -376,26 +401,30 @@ void rfree(int zone, int module, void *ptr)
 /* initialise map */
 void init_heap(void)
 {
-	struct block_map *nmap, *omap;
+	struct block_map *next_map, *current_map;
 	int i;
 
+	spinlock_init(&memmap.lock);
+
 	/* initialise buffer map */
-	omap = &buf_heap_map[0];
-	omap->base = buffer_heap;
+	current_map = &buf_heap_map[0];
+	current_map->base = memmap.buffer_heap;
 
 	for (i = 1; i < ARRAY_SIZE(buf_heap_map); i++) {
-		nmap = &buf_heap_map[i];
-		nmap->base = omap->base + omap->block_size * omap->count;
-		omap = &buf_heap_map[i];
+		next_map = &buf_heap_map[i];
+		next_map->base = current_map->base +
+			current_map->block_size * current_map->count;
+		current_map = &buf_heap_map[i];
 	}
 
 	/* initialise module map */
-	omap = &mod_heap_map[0];
-	omap->base = module_heap;
+	current_map = &mod_heap_map[0];
+	current_map->base = memmap.module_heap;
 
 	for (i = 1; i < ARRAY_SIZE(mod_heap_map); i++) {
-		nmap = &mod_heap_map[i];
-		nmap->base = omap->base + omap->block_size * omap->count;
-		omap = &mod_heap_map[i];
+		next_map = &mod_heap_map[i];
+		next_map->base = current_map->base +
+			current_map->block_size * current_map->count;
+		current_map = &mod_heap_map[i];
 	}
 }
