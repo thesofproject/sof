@@ -12,8 +12,8 @@
 #define __INCLUDE_LOCK__
 
 #include <stdint.h>
-#include <reef/interrupt.h>
 #include <arch/spinlock.h>
+#include <reef/interrupt.h>
 #include <reef/trace.h>
 
 #define DEBUG_LOCKS	0
