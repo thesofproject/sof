@@ -23,16 +23,9 @@
 #define RMOD_SYS	0	/* system module */
 #define RMOD(m)		(m + 16)	/* all other modules */
 
-struct mm_item {
+struct mm_info {
 	uint32_t used;
 	uint32_t free;
-};
-
-struct mm_info {
-	struct mm_item total;	/* total bytes used/free */
-	struct mm_item system;	/* system bytes used/free */
-	struct mm_item module;	/* module bytes used/free */
-	struct mm_item buffer;	/* buffer bytes used/free */
 };
 
 void *rmalloc(int zone, int module, size_t bytes);
@@ -41,6 +34,8 @@ void *rmalloc(int zone, int module, size_t bytes);
 void *rballoc(int zone, int module, size_t bytes);
 
 void rfree(int zone, int module, void *ptr);
+
+void rbfree(int zone, int module, void *ptr);
 
 void init_heap(void);
 

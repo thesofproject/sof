@@ -107,6 +107,7 @@ struct mm_heap {
 	struct block_map *map;
 	uint32_t heap;
 	uint32_t heap_end;
+	struct mm_info info;
 };
 
 /* heap block memory map */
@@ -115,15 +116,15 @@ struct mm {
 	struct mm_heap module;	/* general heap for components */
 	struct mm_heap system;	/* general component buffer heap */
 	struct mm_heap buffer;	/* system heap - used during init cannot be freed */
-
+	struct mm_info total;
 	spinlock_t lock;	/* all allocs and frees are atomic */
-	struct mm_info mm_info;
 };
 
 struct mm memmap = {
 	.system = {
 		.heap = (uint32_t)&_system_heap,
 		.heap_end = (uint32_t)&_module_heap,
+		.info = {.free = SYSTEM_MEM,},
 	},
 
 	.module = {
@@ -131,6 +132,7 @@ struct mm memmap = {
 		.map = mod_heap_map,
 		.heap = (uint32_t)&_module_heap,
 		.heap_end = (uint32_t)&_buffer_heap,
+		.info = {.free = HEAP_MOD_SIZE,},
 	},
 
 	.buffer = {
@@ -138,14 +140,9 @@ struct mm memmap = {
 		.map = buf_heap_map,
 		.heap = (uint32_t)&_buffer_heap,
 		.heap_end = (uint32_t)&_stack_sentry,
+		.info = {.free = HEAP_BUF_SIZE,},
 	},
-
-	.mm_info = {
-		.buffer = {.free = HEAP_BUF_SIZE,},
-		.system = {.free = SYSTEM_MEM,},
-		.module = {.free = HEAP_MOD_SIZE,},
-		.total = {.free = SYSTEM_MEM + HEAP_MOD_SIZE + HEAP_BUF_SIZE,},
-	},
+	.total = {.free = SYSTEM_MEM + HEAP_MOD_SIZE + HEAP_BUF_SIZE,},
 };
 
 #if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
@@ -179,8 +176,9 @@ static void *rmalloc_dev(size_t bytes)
 }
 
 /* allocate single block */
-static void *alloc_block(struct block_map *map, int module)
+static void *alloc_block(struct mm_heap *heap, int level, int module)
 {
+	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr = &map->block[map->first_free];
 	void *ptr;
 	int i;
@@ -190,6 +188,8 @@ static void *alloc_block(struct block_map *map, int module)
 	hdr->module = module;
 	hdr->size = 1;
 	hdr->flags = BLOCK_USED;
+	heap->info.used += map->block_size;
+	heap->info.free -= map->block_size;
 
 	/* find next free */
 	for (i = map->first_free; i < map->count; ++i) {
@@ -210,12 +210,14 @@ static void *alloc_block(struct block_map *map, int module)
 }
 
 /* allocates continious blocks */
-static void *alloc_cont_blocks(struct block_map *map, int module, size_t bytes)
+static void *alloc_cont_blocks(struct mm_heap *heap, int level, int module, size_t bytes)
 {
+	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr = &map->block[map->first_free];
 	void *ptr;
 	unsigned int start, current, count = bytes / map->block_size;
 	unsigned int i, remaining = map->count - count, end;
+
 	if (bytes % map->block_size)
 		count++;
 
@@ -247,6 +249,8 @@ found:
 	ptr = (void *)(map->base + start * map->block_size);
 	hdr = &map->block[start];
 	hdr->size = count;
+	heap->info.used += count * map->block_size;
+	heap->info.free -= count * map->block_size;
 
 	/* allocate each block */
 	for (current = start; current < end; current++) {
@@ -278,7 +282,7 @@ found:
 }
 
 /* free block(s) */
-static void free_block(int module, void *ptr)
+static void free_block(struct mm_heap *heap, int module, void *ptr)
 {
 	struct block_map *map;
 	struct block_hdr *hdr;
@@ -314,7 +318,8 @@ found:
 		hdr->size = 0;
 		hdr->flags = BLOCK_FREE;
 		map->free_count++;
-		//memmap.
+		heap->info.used -= map->block_size;
+		heap->info.free += map->block_size;
 	}
 
 	/* set first free */
@@ -342,7 +347,7 @@ static void *rmalloc_mod(int module, size_t bytes)
 			continue;
 
 		/* free block space exists */
-		return alloc_block(&mod_heap_map[i], module);
+		return alloc_block(&memmap.module, i, module);
 	}
 
 	trace_mem_error("eMm");
@@ -393,7 +398,7 @@ void *rballoc(int zone, int module, size_t bytes)
 			continue;
 
 		/* allocate block */
-		ptr = alloc_block(&buf_heap_map[i], module);
+		ptr = alloc_block(&memmap.buffer, i, module);
 		goto out;
 	}
 
@@ -401,7 +406,7 @@ void *rballoc(int zone, int module, size_t bytes)
 
 	/* only 1 choice for block size */
 	if (ARRAY_SIZE(buf_heap_map) == 1) {
-		ptr = alloc_cont_blocks(&buf_heap_map[0], module, bytes);
+		ptr = alloc_cont_blocks(&memmap.buffer, 0, module, bytes);
 		goto out;
 	} else {
 
@@ -410,12 +415,12 @@ void *rballoc(int zone, int module, size_t bytes)
 
 			/* allocate is block size smaller than request */
 			if (buf_heap_map[i].block_size < bytes)
-				alloc_cont_blocks(&buf_heap_map[i], module,
+				alloc_cont_blocks(&memmap.buffer, i, module,
 					bytes);
 		}
 	}
 
-	ptr = alloc_cont_blocks(&buf_heap_map[ARRAY_SIZE(buf_heap_map) - 1],
+	ptr = alloc_cont_blocks(&memmap.buffer, ARRAY_SIZE(buf_heap_map) - 1,
 		module, bytes);
 
 out:
@@ -435,7 +440,29 @@ void rfree(int zone, int module, void *ptr)
 		panic(PANIC_MEM);
 		break;
 	case RZONE_MODULE:
-		free_block(module, ptr);
+		free_block(&memmap.module, module, ptr);
+		break;
+	default:
+		trace_mem_error("eMf");
+		break;
+	}
+
+	spin_unlock_irq(&memmap.lock, flags);
+}
+
+void rbfree(int zone, int module, void *ptr)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&memmap.lock, flags);
+
+	switch (zone) {
+	case RZONE_DEV:
+		trace_mem_error("eMF");
+		panic(PANIC_MEM);
+		break;
+	case RZONE_MODULE:
+		free_block(&memmap.buffer, module, ptr);
 		break;
 	default:
 		trace_mem_error("eMf");
@@ -448,12 +475,12 @@ void rfree(int zone, int module, void *ptr)
 struct mm_info *mm_pm_context_info(void)
 {
 	/* recalc totals */
-	memmap.mm_info.total.free = memmap.mm_info.buffer.free +
-		memmap.mm_info.module.free + memmap.mm_info.system.free;
-	memmap.mm_info.total.used = memmap.mm_info.buffer.used +
-		memmap.mm_info.module.used + memmap.mm_info.system.used;
+	memmap.total.free = memmap.buffer.info.free +
+		memmap.module.info.free + memmap.system.info.free;
+	memmap.total.used = memmap.buffer.info.used +
+		memmap.module.info.used + memmap.system.info.used;
 
-	return &memmap.mm_info;
+	return &memmap.total;
 }
 
 int mm_pm_context_save(struct dma_sg_config *sg)
