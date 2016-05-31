@@ -65,27 +65,11 @@ INTERRUPTS_DEFS = \
 	-D__SPLIT__inttype \
 	-D__SPLIT__inttype_mask \
 	-D__SPLIT__timer_interrupt \
-	-D__SPLIT__vpri \
-	-D__SPLIT__vpri_to_intlevel \
-	-D__SPLIT__intlevel_to_vpri \
-	-D__SPLIT__vpri_int_enable \
-	-D__SPLIT__vpri_int_disable \
-	-D__SPLIT__set_vpri_locklevel \
-	-D__SPLIT__get_vpri_locklevel \
-	-D__SPLIT__set_int_vpri \
-	-D__SPLIT__get_int_vpri \
-	-D__SPLIT__trampolines \
-	-D__SPLIT__deprecated \
 	-D__SPLIT__get_intenable \
 	-D__SPLIT__set_intenable \
 	-D__SPLIT__get_interrupt \
 	-D__SPLIT__set_intset \
-	-D__SPLIT__set_intclear \
-	-D__SPLIT__get_vpri \
-	-D__SPLIT__set_vpri \
-	-D__SPLIT__get_intpending_nw \
-	-D__SPLIT__vpri_lock \
-	-D__SPLIT__vpri_unlock
+	-D__SPLIT__set_intclear
 
 CACHE_DEFS = \
 	-D__SPLIT__get_cacheattr \
