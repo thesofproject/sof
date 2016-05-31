@@ -49,7 +49,6 @@ reef_LDADD = \
 	xtos/libxlevel3.a \
 	xtos/libxlevel4.a \
 	xtos/libxlevel5.a \
-	xtos/libxlevel6.a \
 	hal/libhal.a \
 	-lgcc
 

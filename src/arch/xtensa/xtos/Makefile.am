@@ -3,8 +3,7 @@ lib_LIBRARIES = \
 	libxlevel2.a \
 	libxlevel3.a \
 	libxlevel4.a \
-	libxlevel5.a \
-	libxlevel6.a
+	libxlevel5.a
 
 VECTOR_DEFS = \
 	-D__SPLIT__vector \
@@ -14,8 +13,7 @@ VECTOR_DEFS = \
 	-D__SPLIT__level2 \
 	-D__SPLIT__level3 \
 	-D__SPLIT__level4 \
-	-D__SPLIT__level5 \
-	-D__SPLIT__level6
+	-D__SPLIT__level5
 
 
 if HAVE_BAYTRAIL
