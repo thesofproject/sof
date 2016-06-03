@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <reef/list.h>
 #include <reef/lock.h>
+#include <reef/reef.h>
 
 /* DMA directions */
 #define DMA_DIR_MEM_TO_MEM	0
@@ -191,5 +192,31 @@ static inline int dma_probe(struct dma *dma)
 {
 	return dma->ops->probe(dma);
 }
+
+/* get the size of SG buffer */
+static inline uint32_t dma_sg_get_size(struct dma_sg_config *sg)
+{
+	struct dma_sg_elem *sg_elem;
+	struct list_head *plist;
+	uint32_t size = 0;
+
+	list_for_each(plist, &sg->elem_list) {
+
+		sg_elem = container_of(plist, struct dma_sg_elem, list);
+		size += sg_elem->size;
+	}
+
+	return size;
+}
+
+/* DMA copy data from host to DSP */
+int dma_copy_from_host(struct dma *dma, int chan,
+	struct dma_sg_config *host_sg, int32_t host_offset,
+	void *local_ptr, int32_t size);
+
+/* DMA copy data from DSP to host */
+int dma_copy_to_host(struct dma *dma, int chan,
+	struct dma_sg_config *host_sg, int32_t host_offset,
+	void *local_ptr, int32_t size);
 
 #endif
