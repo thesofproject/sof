@@ -21,7 +21,7 @@
 /* convenience component UUIDs and descriptors */
 #define SPIPE_MIXER {COMP_TYPE_MIXER, 0, 0}
 #define SPIPE_MUX {COMP_TYPE_MUX, 0, 0}
-#define SPIPE_VOLUME {COMP_TYPE_VOLUME, 0, 0}
+#define SPIPE_VOLUME(xindex) {COMP_TYPE_VOLUME, xindex, 0}
 #define SPIPE_SWITCH {COMP_TYPE_SWITCH, 0, 0}
 #define SPIPE_DAI_SSP(xindex) {COMP_TYPE_DAI_SSP, xindex, 0}
 #define SPIPE_HOST(xindex) {COMP_TYPE_HOST, xindex, 0}
@@ -62,10 +62,11 @@ struct spipe_link {
 	struct spipe_comp *sink;
 };
 
+#if 1
 static struct spipe_comp host_p = SPIPE_HOST(0);
 static struct spipe_comp host_c = SPIPE_HOST(0);
-static struct spipe_comp volume_p = SPIPE_VOLUME;
-static struct spipe_comp volume_c = SPIPE_VOLUME;
+static struct spipe_comp volume_p = SPIPE_VOLUME(0);
+static struct spipe_comp volume_c = SPIPE_VOLUME(0);
 static struct spipe_comp ssp_p = SPIPE_DAI_SSP(0);
 static struct spipe_comp ssp_c = SPIPE_DAI_SSP(0);
 
@@ -110,22 +111,46 @@ static struct spipe_link pipe_capture0[] = {
 	{&ssp_c, &dev_buf_c, &volume_c},
 	{&volume_c, &host_buf_c, &host_c},
 };
-
+#endif
 
 #if 0
+static struct spipe_comp pipe1_play_comps[] = {
+	SPIPE_HOST(0),		/* ID = 0 */
+	SPIPE_VOLUME(0),	/* ID = 1 */
+	SPIPE_HOST(1),		/* ID = 2 */
+	SPIPE_VOLUME(1),	/* ID = 3 */
+	SPIPE_MIXER,		/* ID = 4 */
+	SPIPE_VOLUME(2),	/* ID = 5 */
+	SPIPE_DAI_SSP(0),	/* ID = 6 */
+};
+
+static struct spipe_buffer pipe1_buffers[] = {
+	SPIPE_HOST_BUF,	/* B0 */
+	SPIPE_HOST_BUF,	/* B1 */
+	SPIPE_HOST_BUF,	/* B2 */
+	SPIPE_HOST_BUF,	/* B3 */
+	SPIPE_HOST_BUF,	/* B4 */
+	SPIPE_DEV_BUF,	/* B5 */
+};
+
 /* 
  * Two PCMs mixed into single SSP output.
  *
- * host PCM0(0) ---> volume(2) ---+
- *                                | mixer(4) --> volume(5) ---> SSP0(6)
- * host PCM1(1) ---> volume(3) ---+
+ * host PCM0(0) ---> volume(1) ---+
+ *                                |mixer(4) --> volume(5) ---> SSP0(6)
+ * host PCM1(2) ---> volume(3) ---+
  */
 static struct spipe_link pipe_play1[] = {
-	{SPIPE_HOST(0), SPIPE_VOLUME(2), SPIPE_MIXER(4)},
-	{SPIPE_HOST(1), SPIPE_VOLUME(3), SPIPE_MIXER(4)},
-	{SPIPE_MIXER(4), SPIPE_VOLUME(5), SPIPE_DAI_SSP0(6)},
+	{&pipe1_play_comps[0], &pipe1_buffers[0], &pipe1_play_comps[1]},
+	{&pipe1_play_comps[2], &pipe1_buffers[1], &pipe1_play_comps[3]},
+	{&pipe1_play_comps[1], &pipe1_buffers[2], &pipe1_play_comps[4]},
+	{&pipe1_play_comps[3], &pipe1_buffers[3], &pipe1_play_comps[4]},
+	{&pipe1_play_comps[4], &pipe1_buffers[4], &pipe1_play_comps[5]},
+	{&pipe1_play_comps[5], &pipe1_buffers[5], &pipe1_play_comps[6]},
 };
+#endif
 
+#if 0
 /*
  * Default BDW pipelines with Linux FW Lite
  *
@@ -174,6 +199,7 @@ struct pipeline *init_static_pipeline(void)
 	// TODO: rate should come from platform.h
 	pipeline_set_work_freq(pipeline_static, 1000, CLK_SSP);
 
+#if 1
 	/* create playback components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_play_comps); i++) {
 		pipe0_play_comps[i]->id = ipc_comp_new(pipeline_id,
@@ -219,6 +245,34 @@ struct pipeline *init_static_pipeline(void)
 		if (err < 0)
 			goto error;
 	}
+#else
+	/* create playback components in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe1_play_comps); i++) {
+		pipe1_play_comps[i].id = ipc_comp_new(pipeline_id,
+			pipe1_play_comps[i].type, pipe1_play_comps[i].index,
+			STREAM_DIRECTION_PLAYBACK);
+		if (pipe1_play_comps[i].id < 0)
+			goto error;
+	}
+
+	/* create buffers in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe1_buffers); i++) {
+		pipe1_buffers[i].id = ipc_buffer_new(pipeline_id,
+			&pipe1_buffers[i].buffer);
+		if (pipe1_buffers[i].id < 0)
+			goto error;
+	}
+
+	/* connect components on playback pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe_play1); i++) {
+		/* add source -> sink */
+		err = ipc_comp_connect(pipe_play1[i].source->id,
+			pipe_play1[i].sink->id,
+			pipe_play1[i].buffer->id);
+		if (err < 0)
+			goto error;
+	}
+#endif
 
 	/* pipeline now ready for params, prepare and cmds */
 	return pipeline_static;
