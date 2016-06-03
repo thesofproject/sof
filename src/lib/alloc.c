@@ -145,6 +145,26 @@ struct mm memmap = {
 	.total = {.free = SYSTEM_MEM + HEAP_MOD_SIZE + HEAP_BUF_SIZE,},
 };
 
+/* total size of block */
+static inline uint32_t block_get_size(struct block_map *map)
+{
+	return sizeof(*map) + map->count *
+		(map->block_size + sizeof(struct block_hdr));
+}
+
+/* total size of heap */
+static inline uint32_t heap_get_size(struct mm_heap *heap)
+{
+	uint32_t size = sizeof(struct mm_heap);
+	int i;
+
+	for (i = 0; i < heap->blocks; i++) {
+		size += block_get_size(&heap->map[i]);
+	}
+
+	return size;
+}
+
 #if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
 static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 {
@@ -472,24 +492,78 @@ void rbfree(int zone, int module, void *ptr)
 	spin_unlock_irq(&memmap.lock, flags);
 }
 
-struct mm_info *mm_pm_context_info(void)
+uint32_t mm_pm_context_size(void)
 {
+	uint32_t size;
+
+	/* calc context size for each area  */	
+	size = memmap.buffer.info.used;
+	size += memmap.module.info.used;
+	size += memmap.system.info.used;
+
+	/* add memory maps */
+	size += heap_get_size(&memmap.buffer);
+	size += heap_get_size(&memmap.module);
+	size += heap_get_size(&memmap.system);
+
 	/* recalc totals */
 	memmap.total.free = memmap.buffer.info.free +
 		memmap.module.info.free + memmap.system.info.free;
 	memmap.total.used = memmap.buffer.info.used +
 		memmap.module.info.used + memmap.system.info.used;
 
-	return &memmap.total;
+	return size;
 }
 
+/* 
+ * Save the DSP memories that are in use the system and modules. All pipeline and modules
+ * must be disabled before calling this functions. No allocations are permitted after
+ * calling this and before calling restore.
+ */ 
 int mm_pm_context_save(struct dma_sg_config *sg)
 {
+	struct dma_sg_elem *sg_elem;
+	struct list_head *plist;
+	uint32_t used, size;
+
+	/* first make sure SG buffer has enough space on host for DSP context */
+	used = mm_pm_context_size();
+	if (used > dma_sg_get_size(sg))
+		return -EINVAL;
+
+	/* copy memory maps to SG */
+	list_for_each(plist, &sg->elem_list) {
+
+		sg_elem = container_of(plist, struct dma_sg_elem, list);
+		size += sg_elem->size;
+	}
+
+
+	
+
+	/* copy system memory contents to SG */
+
+	/* copy module memory contents to SG */
+
+	/* copy buffer memory contents to SG */
+
 	return 0;
 }
 
+/*
+ * Restore the DSP memories to modules abd the system. This must be called immediately
+ * after booting before any pipeline work.
+ */
 int mm_pm_context_restore(struct dma_sg_config *sg)
 {
+	/* copy memory maps from SG */
+
+	/* copy system memory contents from SG */
+
+	/* copy module memory contents from SG */
+
+	/* copy buffer memory contents from SG */
+
 	return 0;
 }
 

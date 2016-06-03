@@ -43,7 +43,7 @@ void bzero(void *s, size_t n);
 
 void *memset(void *s, int c, size_t n);
 
-struct mm_info *mm_pm_context_info(void);
+uint32_t mm_pm_context_size(void);
 int mm_pm_context_save(struct dma_sg_config *sg);
 int mm_pm_context_restore(struct dma_sg_config *sg);
 
