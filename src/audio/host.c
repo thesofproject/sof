@@ -22,6 +22,10 @@
 #include <reef/audio/pipeline.h>
 #include <platform/dma.h>
 
+#define trace_host(__e)	trace_event(TRACE_CLASS_HOST, __e)
+#define tracev_host(__e)	tracev_event(TRACE_CLASS_HOST, __e)
+#define trace_host_error(__e)	trace_error(TRACE_CLASS_HOST, __e)
+
 struct hc_buf {
 	/* host buffer info */
 	struct list_head elem_list;
@@ -323,6 +327,7 @@ static int host_preload(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret, i;
 
+	trace_host("PrL");
 	/* preload all periods */
 	for (i = 0; i < PLAT_HOST_PERIODS; i++) {
 		/* do DMA transfer */
@@ -370,6 +375,7 @@ static int host_prepare(struct comp_dev *dev)
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		host_preload(dev);
 
+	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
