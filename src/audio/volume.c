@@ -66,10 +66,10 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.channels; i++) {
-		for (j = 0; j < frames; j++) {
+	for (i = 0; i < frames; i++) {
+		for (j = 0; j < source->params.channels; j++) {
 			int32_t val = (int32_t)*src;
-			*dest = (val * cd->volume[i]) >> 16;
+			*dest = (val * cd->volume[j]) >> 16;
 			dest++;
 			src++;
 		}
@@ -89,10 +89,10 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.channels; i++) {
-		for (j = 0; j < frames; j++) {
+	for (i = 0; i < frames; i++) {
+		for (j = 0; j < source->params.channels; j++) {
 			/* TODO: clamp when converting to int16_t */
-			*dest = (int16_t)((*src * cd->volume[i]) >> 16);
+			*dest = (int16_t)((*src * cd->volume[j]) >> 16);
 			dest++;
 			src++;
 		}
@@ -112,9 +112,9 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j;
 
 	/* buffer sizes are always divisable by period frames */
-	for (i = 0; i < source->params.channels; i++) {
-		for (j = 0; j < frames; j++) {
-			*dest = (*src * cd->volume[i]) >> 16;
+	for (i = 0; i < frames; i++) {
+		for (j = 0; j < source->params.channels; j++) {
+			*dest = (*src * cd->volume[j]) >> 16;
 			dest++;
 			src++;
 		}
@@ -414,6 +414,7 @@ found:
 			volume_copy(dev);
 	}
 
+	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
