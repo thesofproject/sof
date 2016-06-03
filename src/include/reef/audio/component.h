@@ -19,12 +19,12 @@
 
 /* audio component states */
 #define COMP_STATE_INIT		0	/* component being initialised */
-#define COMP_STATE_STOPPED	1	/* component inactive, but ready */
-#define COMP_STATE_RUNNING	2	/* component active */
-#define COMP_STATE_PAUSED	3	/* component paused */
-#define COMP_STATE_DRAINING	4	/* component draining */
-#define COMP_STATE_SUSPEND	5	/* component suspended */
-#define COMP_STATE_PREPARE	6	/* component prepared */
+#define COMP_STATE_SUSPEND	1	/* component suspended */
+#define COMP_STATE_STOPPED	2	/* component inactive, but ready */
+#define COMP_STATE_DRAINING	3	/* component draining */
+#define COMP_STATE_PREPARE	4	/* component prepared */
+#define COMP_STATE_PAUSED	5	/* component paused */
+#define COMP_STATE_RUNNING	6	/* component active */
 
 /* standard audio component types */
 #define COMP_TYPE_HOST		0	/* host endpoint */
@@ -153,6 +153,7 @@ struct comp_dev {
 	uint32_t state;		/* COMP_STATE_ */
 	uint32_t is_dai;		/* component is graph DAI endpoint */
 	uint32_t is_host;	/* component is graph host endpoint */
+	uint32_t is_mixer;	/* component is mixer */
 	uint32_t direction;	/* STREAM_DIRECTION_ */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
@@ -305,6 +306,11 @@ static inline void comp_clear_ep(struct comp_dev *dev)
 {
 	dev->is_host = 0;
 	dev->is_dai = 0;
+}
+
+static inline void comp_set_mixer(struct comp_dev *dev)
+{
+	dev->is_mixer = 1;
 }
 
 static inline void comp_set_sink_params(struct comp_dev *dev,
