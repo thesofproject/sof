@@ -182,6 +182,16 @@ static int mixer_copy(struct comp_dev *dev)
 
 static int mixer_reset(struct comp_dev *dev)
 {
+	struct list_head * blist;
+	struct comp_buffer *source;
+
+	list_for_each(blist, &dev->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+		/* only mix the sources with the same state with mixer*/
+		if (source->source->state > COMP_STATE_STOPPED)
+			return 1; /* should not reset the downstream components */
+	}
+
 	return 0;
 }
 
