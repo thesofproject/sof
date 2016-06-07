@@ -980,7 +980,7 @@ int platform_ipc_init(struct ipc *ipc)
 	_ipc = ipc;
 
 	/* init ipc data */
-	iipc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
+	iipc = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* allocate page table buffer */

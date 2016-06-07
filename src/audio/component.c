@@ -83,7 +83,7 @@ void comp_unregister(struct comp_driver *drv)
 
 void sys_comp_init(void)
 {
-	cd = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*cd));
+	cd = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*cd));
 	list_init(&cd->list);
 	spinlock_init(&cd->lock);
 }

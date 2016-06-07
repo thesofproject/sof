@@ -105,11 +105,11 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 	struct comp_dev *dev;
 	struct dai_data *dd;
 
-	dev = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	dev = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
 
-	dd = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dd));
+	dd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dd));
 	if (dd == NULL) {
 		rfree(RZONE_MODULE, RMOD_SYS, dev);
 		return NULL;
@@ -185,7 +185,7 @@ static int dai_playback_params(struct comp_dev *dev,
 	/* set up cyclic list of DMA elems */
 	for (i = 0; i < dma_period_desc->number; i++) {
 
-		elem = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+		elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
 		if (elem == NULL)
 			goto err_unwind;
 
@@ -241,7 +241,7 @@ static int dai_capture_params(struct comp_dev *dev,
 	/* set up cyclic list of DMA elems */
 	for (i = 0; i < dma_period_desc->number; i++) {
 
-		elem = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+		elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
 		if (elem == NULL)
 			goto err_unwind;
 

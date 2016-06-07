@@ -105,7 +105,7 @@ struct pipeline *pipeline_new(uint32_t id)
 
 	trace_pipe("PNw");
 
-	p = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
+	p = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
 	if (p == NULL) {
 		trace_pipe_error("ePN");
 		return NULL;
@@ -215,7 +215,7 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 	trace_pipe("BNw");
 
 	/* allocate buffer */
-	buffer = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
+	buffer = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
 	if (buffer == NULL) {
 		trace_pipe_error("eBm");
 		return NULL;
@@ -691,7 +691,7 @@ int pipeline_init(void)
 {
 	trace_pipe("PIn");
 
-	pipe_data = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
+	pipe_data = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
 	list_init(&pipe_data->schedule_list);
 	pipe_data->next_id = 0;
