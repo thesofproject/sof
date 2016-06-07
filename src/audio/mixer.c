@@ -48,7 +48,7 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 				src++;
 				sources[k]->r_ptr = src;
 			}
-			*dest = (int16_t)(val / count); /* average level */
+			*dest = (int16_t)(val >> (count >> 1)); /* average level */
 			dest++;
 		}
 	}
