@@ -285,7 +285,7 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source,
 static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 {
 	struct list_head *clist;
-	int err;
+	int err = 0;
 
 	trace_pipe("CO-");
 	trace_value(comp->id);
@@ -297,11 +297,16 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		err = comp_params(comp, op_data->params);
 		break;
 	case COMP_OPS_CMD:
-
 		/* send command to the component */
 		err = comp_cmd(comp, op_data->cmd, op_data->cmd_data);
 		break;
 	case COMP_OPS_PREPARE:
+		if (comp->is_mixer && (comp->state >= COMP_STATE_PREPARE)) {
+			/* don't need go downstream, finished */
+			trace_pipe("C-M");
+			return 0;
+		}
+
 		/* prepare the buffers first by clearing contents */
 		list_for_each(clist, &comp->bsink_list) {
 			struct comp_buffer *buffer;
@@ -335,6 +340,12 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 
 	if (comp->is_dai) {
 		trace_pipe("C-D");
+		return 0;
+	}
+
+	if (comp->is_mixer && (err > 0)) {
+		/* don't need go downstream, finished */
+		trace_pipe("C-M");
 		return 0;
 	}
 
@@ -557,7 +568,7 @@ static int pipeline_copy_playback(struct comp_dev *comp, uint32_t depth)
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* dont go upstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->connected || buffer->source->state != COMP_STATE_RUNNING)
 			continue;
 
 		err = pipeline_copy_playback(buffer->source, depth);
