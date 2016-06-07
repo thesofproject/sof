@@ -397,6 +397,18 @@ void *rmalloc(int zone, int module, size_t bytes)
 	return ptr;
 }
 
+void *rzalloc(int zone, int module, size_t bytes)
+{
+	void *ptr = NULL;
+
+	ptr = rmalloc(zone, module, bytes);
+	if (ptr != NULL) {
+		bzero(ptr, bytes);
+	}
+
+	return ptr;
+}
+
 /* allocates continuous buffer on 1k boundary */
 void *rballoc(int zone, int module, size_t bytes)
 {

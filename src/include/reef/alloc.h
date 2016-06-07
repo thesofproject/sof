@@ -30,6 +30,8 @@ struct mm_info {
 
 void *rmalloc(int zone, int module, size_t bytes);
 
+void *rzalloc(int zone, int module, size_t bytes);
+
 /* allocates buffer on 1k boundary */
 void *rballoc(int zone, int module, size_t bytes);
 
