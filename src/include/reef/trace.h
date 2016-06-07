@@ -51,6 +51,7 @@
 #define TRACE_CLASS_WAIT	(9 << 24)
 #define TRACE_CLASS_LOCK	(10 << 24)
 #define TRACE_CLASS_MEM		(11 << 24)
+#define TRACE_CLASS_MIXER	(12 << 24)
 
 /* move to config.h */
 #define TRACE	0
