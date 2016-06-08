@@ -52,6 +52,14 @@ static struct sst_intel_ipc_stream_data *_stream_dataP =
 static struct sst_intel_ipc_stream_data *_stream_dataC =
 	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
 		sizeof(struct sst_intel_ipc_stream_data));
+static struct sst_intel_ipc_stream_data *_stream_dataR =
+	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
+		2 * sizeof(struct sst_intel_ipc_stream_data));
+#if 0
+static struct sst_intel_ipc_stream_data *_stream_dataM =
+	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
+		3 * sizeof(struct sst_intel_ipc_stream_data));
+#endif
 /*
  * BDW IPC dialect.
  *
@@ -244,6 +252,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		dai_id = 3;
 		direction = STREAM_DIRECTION_CAPTURE;
 		_stream_data = _stream_dataC;
+		break;
+	case IPC_INTEL_STREAM_TYPE_RENDER:
+		host_id = 2;
+		mixer_id = 3;
+		dai_id = 6;
+		direction = STREAM_DIRECTION_PLAYBACK;
+		_stream_data = _stream_dataR;
 		break;
 	default:
 		trace_ipc_error("eAt");
