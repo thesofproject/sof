@@ -55,11 +55,10 @@ static struct sst_intel_ipc_stream_data *_stream_dataC =
 static struct sst_intel_ipc_stream_data *_stream_dataR =
 	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
 		2 * sizeof(struct sst_intel_ipc_stream_data));
-#if 0
 static struct sst_intel_ipc_stream_data *_stream_dataM =
 	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
 		3 * sizeof(struct sst_intel_ipc_stream_data));
-#endif
+
 /*
  * BDW IPC dialect.
  *
@@ -445,24 +444,38 @@ static uint32_t ipc_stream_info(uint32_t header)
 {
 	struct ipc_intel_ipc_stream_info_reply info;
 	struct ipc_comp_dev *comp_dev;
-	int i;
+	int err, i;
 
 	trace_ipc("SIn");
 
 	/* TODO: get data from topology */ 
 	info.mixer_hw_id = 1;
 
-	/* get the pcm_dev */
+	/* get the mixer_dev */
 	comp_dev = ipc_get_comp(info.mixer_hw_id);
 	if (comp_dev == NULL)
 		goto error; 
-	
+
+	/* pass the volume readback posn to the host */
+	err = comp_cmd(comp_dev->cd, COMP_CMD_IPC_MMAP_VOL(0),
+		&_stream_dataM->vol[0].vol);
+	if (err < 0) {
+		trace_ipc_error("eIv");
+		goto error;
+	}
+	err = comp_cmd(comp_dev->cd, COMP_CMD_IPC_MMAP_VOL(1),
+		&_stream_dataM->vol[1].vol);
+	if (err < 0) {
+		trace_ipc_error("eIv");
+		goto error;
+	}
+
 	// TODO: this is duplicating standard stream alloc mixer 
 	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
 		info.peak_meter_register_address[i] =
-			to_host_offset(_stream_dataP->vol[i].peak);
+			to_host_offset(_stream_dataM->vol[i].peak);
 		info.volume_register_address[i] =
-			to_host_offset(_stream_dataP->vol[i].vol);
+			to_host_offset(_stream_dataM->vol[i].vol);
 	}
 
 	mailbox_outbox_write(0, &info, sizeof(info));
