@@ -91,6 +91,10 @@ static void mixer_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int mixer_params(struct comp_dev *dev, struct stream_params *params)
 {
+	/* dont do any params downstream setting for running mixer stream */
+	if (dev->state == COMP_STATE_RUNNING)
+		return 1;
+
 	/* dont do any data transformation */
 	comp_set_sink_params(dev, params);
 
