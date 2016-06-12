@@ -216,13 +216,30 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	return 0;
 }
 
+struct stream_ids {
+	uint32_t host_id;
+	uint32_t volume_id;
+	uint32_t mixer_id;
+	uint32_t dai_id;
+};
+
+static struct stream_ids stream_comp[IPC_INTEL_STREAM_TYPE_MAX_STREAM_TYPE] = {
+#if 1
+		{2, 3, 3, 6},	/* render stream */
+		{0, 1, 1, 2},	/* system stream */
+		{5, 4, 4, 3},	/* capture stream */
+#else
+		{2, 3, 4, 6},	/* render stream */
+		{0, 1, 4, 6},	/* system stream */
+		{9, 8, 4, 7},	/* capture stream */
+#endif
+};
 static uint32_t ipc_stream_alloc(uint32_t header)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct ipc_intel_ipc_stream_alloc_req req;
 	struct ipc_intel_ipc_stream_alloc_reply reply;
 	struct stream_params *params;
-	uint32_t host_id, dai_id, mixer_id, volume_id;
 	struct ipc_pcm_dev *pcm_dev;
 	struct ipc_dai_dev *dai_dev;
 	struct ipc_comp_dev *mixer_dev;
@@ -240,26 +257,14 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	/* host a & dai ID values are from hard coded static pipeline */ 
 	switch (req.stream_type) {
 	case IPC_INTEL_STREAM_TYPE_SYSTEM:
-		host_id = 0;
-		dai_id = 2;
-		mixer_id = 1;
-		volume_id = 1;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		_stream_data = _stream_dataP;
 		break;
 	case IPC_INTEL_STREAM_TYPE_CAPTURE:
-		host_id = 5;
-		mixer_id = 4;
-		dai_id = 3;
-		volume_id = 4;
 		direction = STREAM_DIRECTION_CAPTURE;
 		_stream_data = _stream_dataC;
 		break;
 	case IPC_INTEL_STREAM_TYPE_RENDER:
-		host_id = 2;
-		mixer_id = 3;
-		dai_id = 6;
-		volume_id = 3;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		_stream_data = _stream_dataR;
 		break;
@@ -269,28 +274,28 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	};
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(host_id);
+	pcm_dev = ipc_get_pcm_comp(stream_comp[req.stream_type].host_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("eAC");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 	}
 
 	/* get the dai_dev */
-	dai_dev = ipc_get_dai_comp(dai_id);
+	dai_dev = ipc_get_dai_comp(stream_comp[req.stream_type].dai_id);
 	if (dai_dev == NULL) {
 		trace_ipc_error("eAD");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
 	}
 
 	/* get the mixer_dev */
-	mixer_dev = ipc_get_comp(mixer_id);
+	mixer_dev = ipc_get_comp(stream_comp[req.stream_type].mixer_id);
 	if (mixer_dev == NULL) {
 		trace_ipc_error("eAM");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
 	}
 
 	/* get the volume_dev */
-	volume_dev = ipc_get_comp(volume_id);
+	volume_dev = ipc_get_comp(stream_comp[req.stream_type].volume_id);
 	if (volume_dev == NULL) {
 		trace_ipc_error("eAV");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
@@ -380,8 +385,8 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	}
 
 	/* at this point pipeline is ready for command so send stream reply */
-	reply.stream_hw_id = host_id;
-	reply.mixer_hw_id = mixer_id;
+	reply.stream_hw_id = stream_comp[req.stream_type].host_id;
+	reply.mixer_hw_id = stream_comp[req.stream_type].mixer_id;
 
 	/* set read pos and presentation pos address */
 	reply.read_position_register_address =
@@ -449,7 +454,7 @@ static uint32_t ipc_stream_info(uint32_t header)
 	trace_ipc("SIn");
 
 	/* TODO: get data from topology */ 
-	info.mixer_hw_id = 1;
+	info.mixer_hw_id = stream_comp[IPC_INTEL_STREAM_TYPE_SYSTEM].mixer_id;
 
 	/* get the mixer_dev */
 	comp_dev = ipc_get_comp(info.mixer_hw_id);
@@ -527,7 +532,7 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	};
 
 	/* TODO: playback/capture DAI dev get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(3);
+	dai_dev = ipc_get_dai_comp(stream_comp[IPC_INTEL_STREAM_TYPE_SYSTEM].dai_id);
 	if (dai_dev == NULL) {
 		trace_ipc_error("eDg");
 		goto error;
@@ -564,7 +569,7 @@ static uint32_t ipc_device_set_loopback(uint32_t header, uint32_t lbm)
 	trace_ipc("DsL");
 
 	/* TODO: playback/capture DAI dev get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(3);
+	dai_dev = ipc_get_dai_comp(stream_comp[IPC_INTEL_STREAM_TYPE_SYSTEM].dai_id);
 	if (dai_dev == NULL) {
 		trace_ipc_error("eDg");
 		goto error;
