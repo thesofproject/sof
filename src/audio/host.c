@@ -379,10 +379,31 @@ static int host_prepare(struct comp_dev *dev)
 	return 0;
 }
 
+static struct comp_dev* host_volume_component(struct comp_dev *host)
+{
+	struct comp_dev *comp_dev = NULL;
+	struct list_head *clist;
+
+	list_for_each(clist, &host->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer,
+			source_list);
+
+		if (buffer->sink->drv->type == COMP_TYPE_VOLUME) {
+			comp_dev = buffer->sink;
+			break;
+		}
+	}
+
+	return comp_dev;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct comp_dev *vol_dev = NULL;
 	int ret = 0;
 
 	// TODO: align cmd macros.
@@ -415,6 +436,11 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_IPC_MMAP_RPOS:
 		hd->host_pos = data;
+		break;
+	case COMP_CMD_VOLUME:
+		vol_dev = host_volume_component(dev);
+		if (vol_dev != NULL)
+			ret = comp_cmd(vol_dev, COMP_CMD_VOLUME, data);
 		break;
 	default:
 		break;
