@@ -124,6 +124,12 @@ static struct spipe_comp pipe1_play_comps[] = {
 	SPIPE_DAI_SSP(0),	/* ID = 6 */
 };
 
+static struct spipe_comp pipe1_capt_comps[] = {
+	SPIPE_DAI_SSP(0),	/* ID = 7 */
+	SPIPE_VOLUME(3),	/* ID = 8 */
+	SPIPE_HOST(2),		/* ID = 9 */
+};
+
 static struct spipe_buffer pipe1_buffers[] = {
 	SPIPE_HOST_BUF,	/* B0 */
 	SPIPE_HOST_BUF,	/* B1 */
@@ -131,6 +137,8 @@ static struct spipe_buffer pipe1_buffers[] = {
 	SPIPE_HOST_BUF,	/* B3 */
 	SPIPE_HOST_BUF,	/* B4 */
 	SPIPE_DEV_BUF,	/* B5 */
+	SPIPE_DEV_BUF,	/* B6 */
+	SPIPE_HOST_BUF, /* B7 */
 };
 
 /* 
@@ -139,6 +147,8 @@ static struct spipe_buffer pipe1_buffers[] = {
  * host PCM0(0) ---> volume(1) ---+
  *                                |mixer(4) --> volume(5) ---> SSP0(6)
  * host PCM1(2) ---> volume(3) ---+
+ *
+ * host PCM0(9) <--- volume(8) <--- SSP0(7)
  */
 static struct spipe_link pipe_play1[] = {
 	{&pipe1_play_comps[0], &pipe1_buffers[0], &pipe1_play_comps[1]},
@@ -147,6 +157,11 @@ static struct spipe_link pipe_play1[] = {
 	{&pipe1_play_comps[3], &pipe1_buffers[3], &pipe1_play_comps[4]},
 	{&pipe1_play_comps[4], &pipe1_buffers[4], &pipe1_play_comps[5]},
 	{&pipe1_play_comps[5], &pipe1_buffers[5], &pipe1_play_comps[6]},
+};
+
+static struct spipe_link pipe_capture1[] = {
+	{&pipe1_capt_comps[0], &pipe1_buffers[6], &pipe1_capt_comps[1]},
+	{&pipe1_capt_comps[1], &pipe1_buffers[7], &pipe1_capt_comps[2]},
 };
 #endif
 
@@ -255,6 +270,15 @@ struct pipeline *init_static_pipeline(void)
 			goto error;
 	}
 
+	/* create capture components in the pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe1_capt_comps); i++) {
+		pipe1_capt_comps[i].id = ipc_comp_new(pipeline_id,
+			pipe1_capt_comps[i].type, pipe1_capt_comps[i].index,
+			STREAM_DIRECTION_CAPTURE);
+		if (pipe1_capt_comps[i].id < 0)
+			goto error;
+	}
+
 	/* create buffers in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe1_buffers); i++) {
 		pipe1_buffers[i].id = ipc_buffer_new(pipeline_id,
@@ -269,6 +293,16 @@ struct pipeline *init_static_pipeline(void)
 		err = ipc_comp_connect(pipe_play1[i].source->id,
 			pipe_play1[i].sink->id,
 			pipe_play1[i].buffer->id);
+		if (err < 0)
+			goto error;
+	}
+
+	/* create components on capture pipeline */
+	for (i = 0; i < ARRAY_SIZE(pipe_capture1); i++) {
+		/* add source -> sink */
+		err = ipc_comp_connect(pipe_capture1[i].source->id,
+			pipe_capture1[i].sink->id,
+			pipe_capture1[i].buffer->id);
 		if (err < 0)
 			goto error;
 	}
