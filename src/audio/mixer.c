@@ -123,10 +123,33 @@ static int mixer_status_change(struct comp_dev *dev/* , uint32_t target_state */
 	return finish;
 }
 
+
+static struct comp_dev* mixer_volume_component(struct comp_dev *mixer)
+{
+	struct comp_dev *comp_dev = NULL;
+	struct list_head *clist;
+
+	list_for_each(clist, &mixer->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer,
+			source_list);
+
+		if (buffer->sink->drv->type == COMP_TYPE_VOLUME) {
+			comp_dev = buffer->sink;
+			break;
+		}
+	}
+
+	return comp_dev;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	int finish = 0;
+	struct comp_dev *vol_dev = NULL;
+
 	switch(cmd) {
 	case COMP_CMD_START:
 		trace_mixer("MSa");
@@ -137,6 +160,16 @@ static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
 		finish = mixer_status_change(dev);
+		break;
+	case COMP_CMD_VOLUME:
+		vol_dev = mixer_volume_component(dev);
+		if (vol_dev != NULL)
+			finish = comp_cmd(vol_dev, COMP_CMD_VOLUME, data);
+		break;
+	case COMP_CMD_IPC_MMAP_VOL(0) ... COMP_CMD_IPC_MMAP_VOL(STREAM_MAX_CHANNELS - 1):
+		vol_dev = mixer_volume_component(dev);
+		if (vol_dev != NULL)
+			finish = comp_cmd(vol_dev, cmd, data);
 		break;
 	default:
 		break;
