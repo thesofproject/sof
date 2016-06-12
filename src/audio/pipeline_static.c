@@ -62,7 +62,7 @@ struct spipe_link {
 	struct spipe_comp *sink;
 };
 
-#if 1
+#if 0
 static struct spipe_comp host_p = SPIPE_HOST(0);
 static struct spipe_comp host_c = SPIPE_HOST(0);
 static struct spipe_comp volume_p = SPIPE_VOLUME(0);
@@ -113,7 +113,7 @@ static struct spipe_link pipe_capture0[] = {
 };
 #endif
 
-#if 0
+#if 1
 static struct spipe_comp pipe1_play_comps[] = {
 	SPIPE_HOST(0),		/* ID = 0 */
 	SPIPE_VOLUME(0),	/* ID = 1 */
@@ -214,7 +214,7 @@ struct pipeline *init_static_pipeline(void)
 	// TODO: rate should come from platform.h
 	pipeline_set_work_freq(pipeline_static, 1000, CLK_SSP);
 
-#if 1
+#if 0
 	/* create playback components in the pipeline */
 	for (i = 0; i < ARRAY_SIZE(pipe0_play_comps); i++) {
 		pipe0_play_comps[i]->id = ipc_comp_new(pipeline_id,

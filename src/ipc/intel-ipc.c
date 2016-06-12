@@ -224,7 +224,7 @@ struct stream_ids {
 };
 
 static struct stream_ids stream_comp[IPC_INTEL_STREAM_TYPE_MAX_STREAM_TYPE] = {
-#if 1
+#if 0
 		{2, 3, 3, 6},	/* render stream */
 		{0, 1, 1, 2},	/* system stream */
 		{5, 4, 4, 3},	/* capture stream */
