@@ -608,10 +608,10 @@ static uint32_t ipc_context_restore(uint32_t header)
 
 static uint32_t ipc_stage_set_volume(uint32_t header)
 {
-	struct ipc_comp_dev *mixer_dev;
+	struct ipc_comp_dev *stream_dev;
 	struct ipc_intel_ipc_volume_req req;
 	struct comp_volume cv;
-	uint32_t mixer_id;
+	uint32_t stream_id;
 	int err;
 
 	trace_ipc("VoS");
@@ -628,16 +628,16 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 		CHANNELS_ALL : 0x1 << req.channel;
 	cv.volume = req.target_volume;
 	/* the driver uses stream ID to also identify certain mixers */
-	mixer_id = header & IPC_INTEL_STR_ID_MASK;
-	mixer_id >>= IPC_INTEL_STR_ID_SHIFT;
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev TODO: command for pipeline or mixer comp */
-	mixer_dev = ipc_get_comp(mixer_id);
-	if (mixer_dev == NULL)
+	stream_dev = ipc_get_comp(stream_id);
+	if (stream_dev == NULL)
 		goto error; 
 
-	/* TODO: complete call with private volume data */
-	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, &cv);
+	/* volume component is the one next to host(stream) or mixer(master) */
+	err = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, &cv);
 	if (err < 0)
 		goto error;
 
@@ -649,24 +649,24 @@ error:
 
 static uint32_t ipc_stage_get_volume(uint32_t header)
 {
-	struct ipc_comp_dev *mixer_dev;
+	struct ipc_comp_dev *stream_dev;
 	struct comp_volume cv;
-	uint32_t mixer_id;
+	uint32_t stream_id;
 	int err;
 
 	trace_ipc("VoG");
 
 	/* the driver uses stream ID to also identify certain mixers */
-	mixer_id = header & IPC_INTEL_STR_ID_MASK;
-	mixer_id >>= IPC_INTEL_STR_ID_SHIFT;
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
 
 	/* get the pcm_dev */
-	mixer_dev = ipc_get_comp(mixer_id);
-	if (mixer_dev == NULL)
+	stream_dev = ipc_get_comp(stream_id);
+	if (stream_dev == NULL)
 		goto error; 
 	
 	/* TODO: complete call with private volume data */
-	err = comp_cmd(mixer_dev->cd, COMP_CMD_VOLUME, &cv);
+	err = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, &cv);
 	if (err < 0)
 		goto error;
 
