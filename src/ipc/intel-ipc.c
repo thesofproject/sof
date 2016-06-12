@@ -223,10 +223,11 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	struct ipc_intel_ipc_stream_alloc_req req;
 	struct ipc_intel_ipc_stream_alloc_reply reply;
 	struct stream_params *params;
-	uint32_t host_id, dai_id, mixer_id;
+	uint32_t host_id, dai_id, mixer_id, volume_id;
 	struct ipc_pcm_dev *pcm_dev;
 	struct ipc_dai_dev *dai_dev;
 	struct ipc_comp_dev *mixer_dev;
+	struct ipc_comp_dev *volume_dev;
 	struct sst_intel_ipc_stream_data *_stream_data;
 	int err, i;
 	uint8_t direction;
@@ -243,6 +244,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		host_id = 0;
 		dai_id = 2;
 		mixer_id = 1;
+		volume_id = 1;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		_stream_data = _stream_dataP;
 		break;
@@ -250,6 +252,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		host_id = 5;
 		mixer_id = 4;
 		dai_id = 3;
+		volume_id = 4;
 		direction = STREAM_DIRECTION_CAPTURE;
 		_stream_data = _stream_dataC;
 		break;
@@ -257,6 +260,7 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 		host_id = 2;
 		mixer_id = 3;
 		dai_id = 6;
+		volume_id = 3;
 		direction = STREAM_DIRECTION_PLAYBACK;
 		_stream_data = _stream_dataR;
 		break;
@@ -284,6 +288,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	if (mixer_dev == NULL) {
 		trace_ipc_error("eAM");
 		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
+	}
+
+	/* get the volume_dev */
+	volume_dev = ipc_get_comp(volume_id);
+	if (volume_dev == NULL) {
+		trace_ipc_error("eAV");
+		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 	}
 
 	/* check the state - if we are still allocated then reset and free */
@@ -356,13 +367,13 @@ static uint32_t ipc_stream_alloc(uint32_t header)
 	}
 
 	/* pass the volume readback posn to the host */
-	err = comp_cmd(mixer_dev->cd, COMP_CMD_IPC_MMAP_VOL(0),
+	err = comp_cmd(volume_dev->cd, COMP_CMD_IPC_MMAP_VOL(0),
 		&_stream_data->vol[0].vol);
 	if (err < 0) {
 		trace_ipc_error("eAv");
 		goto error;
 	}
-	err = comp_cmd(mixer_dev->cd, COMP_CMD_IPC_MMAP_VOL(1),
+	err = comp_cmd(volume_dev->cd, COMP_CMD_IPC_MMAP_VOL(1),
 		&_stream_data->vol[1].vol);
 	if (err < 0) {
 		trace_ipc_error("eAv");
