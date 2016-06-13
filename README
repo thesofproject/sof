@@ -1,0 +1,12 @@
+
+Build Instructions
+
+Run "autogen.sh" thaun run the following based on your platform.
+
+Baytrail :-
+
+./configure --with-arch=xtensa --with-platform=baytrail --with-tool-dir=~/source/reef/xtensa-hifi2ep-elf --host=xtensa-hifi2ep-elf host_alias=xtensa-hifi2ep-elf
+
+Cherrytrail :-
+
+./configure --with-arch=xtensa --with-platform=cherrytrail --with-tool-dir=~/source/reef/xtensa-hifi2ep-elf --host=xtensa-hifi2ep-elf host_alias=xtensa-hifi2ep-elf

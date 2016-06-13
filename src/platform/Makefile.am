@@ -1,5 +1,19 @@
-if HAVE_BAYTRAIL
+if BUILD_BAYTRAIL
+SUBDIRS = baytrail
+endif
+
+if BUILD_CHERRYTRAIL
 SUBDIRS = baytrail 
-else
-SUBDIRS =
+endif
+
+if BUILD_BROXTON
+SUBDIRS = broxton
+endif
+
+if BUILD_HASWELL
+SUBDIRS = haswell
+endif
+
+if BUILD_BROADWELL
+SUBDIRS = haswell
 endif

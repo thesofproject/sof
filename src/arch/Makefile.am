@@ -1,5 +1,3 @@
-if HAVE_XTENSA
+if BUILD_XTENSA
 SUBDIRS = xtensa
-else
-SUBDIRS =
 endif

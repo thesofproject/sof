@@ -116,7 +116,7 @@ CACHE_DEFS = \
 	-D__SPLIT__release_minor
 
 
-if HAVE_BAYTRAIL
+if BUILD_BAYTRAIL
 PLATFORM_DEFS = \
 	$(STATE_DEFS) \
 	$(DISASS_DEFS) \

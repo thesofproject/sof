@@ -29,7 +29,7 @@ AC_ARG_WITH([arch],
 
 case "$with_arch" in
     xtensa*)
-	AM_CONDITIONAL(HAVE_XTENSA, true)
+	AM_CONDITIONAL(BUILD_XTENSA, true)
 
 	ARCH_CFLAGS="-mtext-section-literals"
 	AC_SUBST(ARCH_CFLAGS)
@@ -60,16 +60,109 @@ AC_ARG_WITH([platform],
 
 case "$with_platform" in
     baytrail*)
-	AM_CONDITIONAL(HAVE_BAYTRAIL, true)
+	AM_CONDITIONAL(BUILD_BAYTRAIL, true)
+	AM_CONDITIONAL(BUILD_CHERRYTRAIL, false)
+	AM_CONDITIONAL(BUILD_HASWELL, false)
+	AM_CONDITIONAL(BUILD_BROADWELL, false)
+	AM_CONDITIONAL(BUILD_BROXTON, false)
 
-       	PLATFORM_LDSCRIPT="elf32xtensa.x"
+	PLATFORM_LDSCRIPT="elf32xtensa.x"
 	AC_SUBST(PLATFORM_LDSCRIPT)
 
 	PLATFORM="baytrail"
 	AC_SUBST(PLATFORM)
 
+	FW_NAME="byt"
+	AC_SUBST(FW_NAME)
+
 	XTENSA_CORE="hifi2_std"
 	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_BAYTRAIL], [1], [Configure for Baytrail])
+    ;;
+    cherrytrail*)
+	AM_CONDITIONAL(BUILD_BAYTRAIL, false)
+	AM_CONDITIONAL(BUILD_CHERRYTRAIL, true)
+	AM_CONDITIONAL(BUILD_HASWELL, false)
+	AM_CONDITIONAL(BUILD_BROADWELL, false)
+	AM_CONDITIONAL(BUILD_BROXTON, false)
+
+	PLATFORM_LDSCRIPT="elf32xtensa.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="baytrail"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="cht"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi2_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_CHERRYTRAIL], [1], [Configure for Cherrytrail])
+    ;;
+    haswell*)
+	AM_CONDITIONAL(BUILD_BAYTRAIL, false)
+	AM_CONDITIONAL(BUILD_CHERRYTRAIL, false)
+	AM_CONDITIONAL(BUILD_HASWELL, true)
+	AM_CONDITIONAL(BUILD_BROADWELL, false)
+	AM_CONDITIONAL(BUILD_BROXTON, false)
+
+	PLATFORM_LDSCRIPT="elf32xtensa.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="haswell"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="hsw"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi2_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_HASWELL], [1], [Configure for Haswell])
+    ;;
+    broadwell*)
+	AM_CONDITIONAL(BUILD_BAYTRAIL, false)
+	AM_CONDITIONAL(BUILD_CHERRYTRAIL, false)
+	AM_CONDITIONAL(BUILD_HASWELL, false)
+	AM_CONDITIONAL(BUILD_BROADWELL, true)
+	AM_CONDITIONAL(BUILD_BROXTON, false)
+
+	PLATFORM_LDSCRIPT="elf32xtensa.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="haswell"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="bdw"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi2_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_BROADWELL], [1], [Configure for Broadwell])
+    ;;
+   broxton*)
+	AM_CONDITIONAL(BUILD_BAYTRAIL, false)
+	AM_CONDITIONAL(BUILD_CHERRYTRAIL, false)
+	AM_CONDITIONAL(BUILD_HASWELL, false)
+	AM_CONDITIONAL(BUILD_BROADWELL, false)
+	AM_CONDITIONAL(BUILD_BROXTON, true)
+
+	PLATFORM_LDSCRIPT="elf32xtensa.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="broxton"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="bxt"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi2_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_BROXTON], [1], [Configure for Broxton])
     ;;
     *)
         AC_MSG_ERROR([Host platform not specified])
@@ -112,6 +205,16 @@ AC_OUTPUT([
 	src/platform/baytrail/include/platform/Makefile
 	src/platform/baytrail/include/xtensa/Makefile
 	src/platform/baytrail/include/xtensa/config/Makefile
+	src/platform/haswell/Makefile
+	src/platform/haswell/include/Makefile
+	src/platform/haswell/include/platform/Makefile
+	src/platform/haswell/include/xtensa/Makefile
+	src/platform/haswell/include/xtensa/config/Makefile
+	src/platform/broxton/Makefile
+	src/platform/broxton/include/Makefile
+	src/platform/broxton/include/platform/Makefile
+	src/platform/broxton/include/xtensa/Makefile
+	src/platform/broxton/include/xtensa/config/Makefile
 ])
 
 echo "

@@ -16,7 +16,7 @@ VECTOR_DEFS = \
 	-D__SPLIT__level5
 
 
-if HAVE_BAYTRAIL
+if BUILD_BAYTRAIL
 PLATFORM_DEFS = $(VECTOR_DEFS)
 else
 PLATFORM_DEFS =
@@ -67,6 +67,7 @@ libxlevel5_a_CCASFLAGS = \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=5
 
+if BUILD_BROXTON
 libxlevel6_a_SOURCES = \
 	$(LEVEL_SRC)
 
@@ -76,6 +77,7 @@ libxlevel6_a_CCASFLAGS = \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=6
+endif
 
 libxtos_a_SOURCES = \
 	core-restore.S \

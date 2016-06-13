@@ -59,7 +59,7 @@ reef_LDFLAGS = \
 bin-local: reef
 	$(OBJCOPY) -O binary reef reef.bin
 	$(OBJDUMP) -D reef > reef.map
-	rimage -i reef -o reef.ri -m byt
+	rimage -i reef -o reef-$(FW_NAME).ri -m $(FW_NAME)
 
 vminstall:
 	scp -P 5555 reef.ri root@localhost:/lib/firmware/intel/
