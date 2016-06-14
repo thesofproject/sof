@@ -588,7 +588,11 @@ static uint32_t ipc_context_save(uint32_t header)
 
 	trace_ipc("PMs");
 
-	/* TODO: check we are inactive */
+	/* TODO: check we are inactive - all streams are suspended */
+
+	// TODO now save the context - create SG buffer config using
+	// parse_page_descriptors() etc. Libin is working on generic version.
+	//mm_pm_context_save(struct dma_sg_config *sg);
 
 	/* mask all DSP interrupts */
 	arch_interrupt_disable_mask(0xffff);

@@ -13,6 +13,7 @@
 #include <reef/trace.h>
 #include <reef/dma.h>
 #include <reef/wait.h>
+#include <platform/dma.h>
 
 static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	int32_t *offset)
@@ -40,14 +41,21 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	return NULL;
 }
 
-int dma_copy_to_host(struct dma *dma, int chan,
-	struct dma_sg_config *host_sg, int32_t host_offset,
+int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	void *local_ptr, int32_t size)
 {
 	struct dma_sg_config config;
 	struct dma_sg_elem *host_sg_elem, local_sg_elem;
+	struct dma *dma = dma_get(DMA_ID_DMAC0);
 	completion_t complete;
-	int32_t err, offset = host_offset;
+	int32_t err, offset = host_offset, chan;
+
+	/* get DMA channel from DMAC0 */
+	chan = dma_channel_get(dma);
+	if (chan < 0) {
+		//trace_ipc_error("ePC");
+		return chan;
+	}
 
 	/* find host element with host_offset */
 	host_sg_elem = sg_get_elem_at(host_sg, &offset);
@@ -80,6 +88,7 @@ int dma_copy_to_host(struct dma *dma, int chan,
 		err = wait_for_completion_timeout(&complete);
 		if (err < 0) {
 			//trace_comp_error("eAp");
+			dma_channel_put(dma, chan);
 			return -EIO;
 		}
 
@@ -102,17 +111,25 @@ int dma_copy_to_host(struct dma *dma, int chan,
 	}
 
 	/* new host offset in SG buffer */
+	dma_channel_put(dma, chan);
 	return host_offset;
 }
 
-int dma_copy_from_host(struct dma *dma, int chan,
-	struct dma_sg_config *host_sg, int32_t host_offset,
+int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	void *local_ptr, int32_t size)
 {
 	struct dma_sg_config config;
 	struct dma_sg_elem *host_sg_elem, local_sg_elem;
+	struct dma *dma = dma_get(DMA_ID_DMAC0);
 	completion_t complete;
-	int32_t err, offset = host_offset;
+	int32_t err, offset = host_offset, chan;
+
+	/* get DMA channel from DMAC0 */
+	chan = dma_channel_get(dma);
+	if (chan < 0) {
+		//trace_ipc_error("ePC");
+		return chan;
+	}
 
 	/* find host element with host_offset */
 	host_sg_elem = sg_get_elem_at(host_sg, &offset);
@@ -145,6 +162,7 @@ int dma_copy_from_host(struct dma *dma, int chan,
 		err = wait_for_completion_timeout(&complete);
 		if (err < 0) {
 			//trace_comp_error("eAp");
+			dma_channel_put(dma, chan);
 			return -EIO;
 		}
 
@@ -167,5 +185,6 @@ int dma_copy_from_host(struct dma *dma, int chan,
 	}
 
 	/* new host offset in SG buffer */
+	dma_channel_put(dma, chan);
 	return host_offset;
 }

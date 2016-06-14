@@ -210,13 +210,11 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_config *sg)
 }
 
 /* DMA copy data from host to DSP */
-int dma_copy_from_host(struct dma *dma, int chan,
-	struct dma_sg_config *host_sg, int32_t host_offset,
-	void *local_ptr, int32_t size);
+int dma_copy_from_host(struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size);
 
 /* DMA copy data from DSP to host */
-int dma_copy_to_host(struct dma *dma, int chan,
-	struct dma_sg_config *host_sg, int32_t host_offset,
-	void *local_ptr, int32_t size);
+int dma_copy_to_host(struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size);
 
 #endif

@@ -534,9 +534,8 @@ uint32_t mm_pm_context_size(void)
  */ 
 int mm_pm_context_save(struct dma_sg_config *sg)
 {
-	struct dma_sg_elem *sg_elem;
-	struct list_head *plist;
-	uint32_t used, size;
+	uint32_t used;
+	int32_t offset = 0, ret;
 
 	/* first make sure SG buffer has enough space on host for DSP context */
 	used = mm_pm_context_size();
@@ -544,22 +543,27 @@ int mm_pm_context_save(struct dma_sg_config *sg)
 		return -EINVAL;
 
 	/* copy memory maps to SG */
-	list_for_each(plist, &sg->elem_list) {
-
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
-		size += sg_elem->size;
-	}
-
-
+	ret = dma_copy_to_host(sg, offset,
+		(void *)&memmap, sizeof(memmap));
+	if (ret < 0)
+		return ret;
 	
-
 	/* copy system memory contents to SG */
+	ret = dma_copy_to_host(sg, offset + ret,
+		(void *)memmap.system.heap,
+		(int32_t)(memmap.system.heap_end - memmap.system.heap));
+	if (ret < 0)
+		return ret;
 
 	/* copy module memory contents to SG */
+	// TODO: iterate over module block map and copy contents of each block
+	// to the host.
 
 	/* copy buffer memory contents to SG */
+	// TODO: iterate over buffer block map and copy contents of each block
+	// to the host.
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -568,13 +572,28 @@ int mm_pm_context_save(struct dma_sg_config *sg)
  */
 int mm_pm_context_restore(struct dma_sg_config *sg)
 {
+	int32_t offset = 0, ret;
+
 	/* copy memory maps from SG */
+	ret = dma_copy_from_host(sg, offset,
+		(void *)&memmap, sizeof(memmap));
+	if (ret < 0)
+		return ret;
 
 	/* copy system memory contents from SG */
+	ret = dma_copy_to_host(sg, offset + ret,
+		(void *)memmap.system.heap,
+		(int32_t)(memmap.system.heap_end - memmap.system.heap));
+	if (ret < 0)
+		return ret;
 
 	/* copy module memory contents from SG */
+	// TODO: iterate over module block map and copy contents of each block
+	// to the host. This is the same block order used by the context store
 
 	/* copy buffer memory contents from SG */
+	// TODO: iterate over buffer block map and copy contents of each block
+	// to the host. This is the same block order used by the context store
 
 	return 0;
 }
