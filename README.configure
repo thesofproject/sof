@@ -1,0 +1,7 @@
+
+# build for Broxton
+./configure --with-arch=xtensa --with-platform=broxton --with-tool-dir=~/source/reef/xtensa-bxt-elf --host=xtensa-bxt-elf
+
+# Build for Baytrail
+./configure --with-arch=xtensa --with-platform=baytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf
+
