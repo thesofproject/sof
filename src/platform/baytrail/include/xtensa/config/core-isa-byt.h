@@ -95,7 +95,7 @@
 #define XCHAL_CP_MAXCFG			2	/* max allowed cp id plus one */
 
 /* TODO: we have this option but currently our assembler does not support it */
-#define XCHAL_HAVE_MAC16		0	/* MAC16 package */
+#define XCHAL_HAVE_MAC16		1	/* MAC16 package */
 
 #define XCHAL_HAVE_FUSION		 0	/* Fusion*/
 #define XCHAL_HAVE_FUSION_FP	 0	        /* Fusion FP option */
