@@ -1,34 +1,36 @@
-/* Linker Script for baytrail - TODO: this should be run through the GCC
+/* Linker Script for broxton - TODO: this should be run through the GCC
    pre-processor to align heap and stack variables */
 
 OUTPUT_ARCH(xtensa)
 
 MEMORY
 {
-  iram0_0_seg :                       	org = 0xFF2C0000, len = 0x2E0
-  iram0_1_seg :                       	org = 0xFF2C02E0, len = 0x120
-  iram0_2_seg :                       	org = 0xFF2C0400, len = 0x178
-  iram0_3_seg :                       	org = 0xFF2C0578, len = 0x4
-  iram0_4_seg :                       	org = 0xFF2C057C, len = 0x1C
-  iram0_5_seg :                       	org = 0xFF2C0598, len = 0x4
-  iram0_6_seg :                       	org = 0xFF2C059C, len = 0x1C
-  iram0_7_seg :                       	org = 0xFF2C05B8, len = 0x4
-  iram0_8_seg :                       	org = 0xFF2C05BC, len = 0x1C
-  iram0_9_seg :                       	org = 0xFF2C05D8, len = 0x4
-  iram0_10_seg :                      	org = 0xFF2C05DC, len = 0x1C
-  iram0_11_seg :                      	org = 0xFF2C05F8, len = 0x4
-  iram0_12_seg :                      	org = 0xFF2C05FC, len = 0x1C
-  iram0_13_seg :                      	org = 0xFF2C0618, len = 0x4
-  iram0_14_seg :                      	org = 0xFF2C061C, len = 0x1C
-  iram0_15_seg :                      	org = 0xFF2C0638, len = 0x4
-  iram0_16_seg :                      	org = 0xFF2C063C, len = 0x1C
-  iram0_17_seg :                      	org = 0xFF2C0658, len = 0x4
-  iram0_18_seg :                      	org = 0xFF2C065C, len = 0x1C
-  iram0_19_seg :                      	org = 0xFF2C0678, len = 0x4
-  iram0_20_seg :                      	org = 0xFF2C067C, len = 0x1C
-  iram0_21_seg :                      	org = 0xFF2C0698, len = 0x13968
-  dram0_0_seg :                       	org = 0xFF300000, len = 0x8
-  dram0_1_seg :                       	org = 0xFF300008, len = 0x26FF8
+  iram0_0_seg :		org = 0xbefe0000, len = 0x300	/* .ResetVector.text */
+  iram0_1_seg :		org = 0xbefe0300, len = 0x0	/* .ResetVector.literal */
+  iram0_2_seg :		org = 0xbefe0800, len = 0x178	/* .WindowVectors.text */
+  iram0_3_seg :		org = 0xbefe0978, len = 0x8	/* .Level2InterruptVector.literal */
+  iram0_4_seg :		org = 0xbefe0980, len = 0x38	/* .Level2InterruptVector.text */
+  iram0_5_seg :		org = 0xbefe09b8, len = 0x8	/* .Level3InterruptVector.literal */
+  iram0_6_seg :		org = 0xbefe09c0, len = 0x38	/* .Level3InterruptVector.text */
+  iram0_7_seg :		org = 0xbefe09f8, len = 0x8	/* .Level4InterruptVector.literal */
+  iram0_8_seg :		org = 0xbefe0a00, len = 0x38	/* .Level4InterruptVector.text */
+  iram0_9_seg :		org = 0xbefe0a38, len = 0x8	/* .Level5InterruptVector.literal */
+  iram0_10_seg :	org = 0xbefe0a40, len = 0x38	/* .Level5InterruptVector.text */
+  iram0_11_seg :	org = 0xbefe0a78, len = 0x8	/* .DebugExceptionVector.literal */
+  iram0_12_seg :	org = 0xbefe0a80, len = 0x38	/* .DebugExceptionVector.text */
+  iram0_13_seg :	org = 0xbefe0ab8, len = 0x8	/* .NMIExceptionVector.literal */
+  iram0_14_seg :	org = 0xbefe0ac0, len = 0x38	/* .NMIExceptionVector.text */
+  iram0_15_seg :	org = 0xbefe0bf8, len = 0x8	/* .KernelExceptionVector.literal */
+  iram0_16_seg :	org = 0xbefe0b00, len = 0x38	/* .KernelExceptionVector.text */
+  iram0_17_seg :	org = 0xbefe0b38, len = 0x8	/* .UserExceptionVector.literal */
+  iram0_18_seg :	org = 0xbefe0b40, len = 0x38	/* .UserExceptionVector.text */
+  iram0_19_seg :	org = 0xbefe0b78, len = 0x48	/* .DoubleExceptionVector.literal */
+  iram0_20_seg :	org = 0xbefe0bc0, len = 0x40	/* .DoubleExceptionVector.text */
+  iram0_21_seg :	org = 0xbefe0300, len = 0x100	/* .memoryExceptionVector.literal */
+  iram0_22_seg :	org = 0xbefe0400, len = 0x180	/* .MemoryExceptionVector.text */
+  iram0_23_seg :	org = 0xFF2C0698, len = 0x13968
+  dram0_0_seg :		org = 0xFF300000, len = 0x8
+  dram0_1_seg :		org = 0xFF300008, len = 0x26FF8
 }
 
 PHDRS
@@ -55,6 +57,8 @@ PHDRS
   iram0_19_phdr PT_LOAD;
   iram0_20_phdr PT_LOAD;
   iram0_21_phdr PT_LOAD;
+  iram0_22_phdr PT_LOAD;
+  iram0_23_phdr PT_LOAD;
   dram0_0_phdr PT_LOAD;
   dram0_1_phdr PT_LOAD;
   dram0_1_bss_phdr PT_LOAD;
@@ -67,7 +71,7 @@ ENTRY(_ResetVector)
 _rom_store_table = 0;
 
 /* ABI0 does not use Window base */
-PROVIDE(_memmap_vecbase_reset = 0xff2c0400);
+PROVIDE(_memmap_vecbase_reset = 0xbefe0800);
 
 /* Various memory-map dependent cache attribute settings: */
 _memmap_cacheattr_wb_base = 0x44024000;
@@ -236,6 +240,20 @@ SECTIONS
     _DoubleExceptionVector_text_end = ABSOLUTE(.);
   } >iram0_20_seg :iram0_20_phdr
 
+  .MemErrorVector.literal : ALIGN(4)
+  {
+    _MemErrorVector_literal_start = ABSOLUTE(.);
+    *(.MemErrorVector.literal)
+    _MemErrorVector_literal_end = ABSOLUTE(.);
+  } >iram0_21_seg :iram0_21_phdr
+
+  .MemErrorVector.text : ALIGN(4)
+  {
+    _MemErrorVector_text_start = ABSOLUTE(.);
+    KEEP (*(.MemErrorVector.text))
+    _MemErrorVector_text_end = ABSOLUTE(.);
+  } >iram0_22_seg :iram0_22_phdr
+
   .text : ALIGN(4)
   {
     _stext = .;
@@ -249,7 +267,7 @@ SECTIONS
     *(.gnu.version)
     _text_end = ABSOLUTE(.);
     _etext = .;
-  } >iram0_21_seg :iram0_21_phdr
+  } >iram0_23_seg :iram0_23_phdr
 
   .reset.rodata : ALIGN(4)
   {
