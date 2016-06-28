@@ -253,7 +253,7 @@
 #define XCHAL_DCACHE_SETWIDTH		8
 
 /*  Cache set associativity (number of ways):  */
-#define XCHAL_ICACHE_WAYS		4
+#define XCHAL_ICACHE_WAYS		2
 #define XCHAL_DCACHE_WAYS		3
 
 /*  Cache features:  */
