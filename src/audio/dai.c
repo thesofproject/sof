@@ -329,8 +329,8 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	switch (cmd) {
 
 	case COMP_CMD_PAUSE:
-//		dma_pause(dd->dma, dd->chan);
-//		dai_trigger(dd->ssp, cmd, dd->direction);
+		dma_pause(dd->dma, dd->chan);
+		dai_trigger(dd->ssp, cmd, dd->direction);
 		dev->state = COMP_STATE_PAUSED;
 		break;
 	case COMP_CMD_STOP:
