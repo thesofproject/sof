@@ -9,6 +9,7 @@ noinst_HEADERS = \
 	dw-dma.h \
 	init.h \
 	interrupt.h \
+	interrupt-map.h \
 	io.h \
 	ipc.h \
 	list.h \

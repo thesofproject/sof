@@ -147,14 +147,35 @@ void platform_ssp_disable_mn(uint32_t ssp_port)
 }
 
 /* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
-void platform_interrupt_mask_clear(uint32_t mask)
+void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
-	shim_write(SHIM_PISR, mask);
+	switch (irq) {
+	case IRQ_NUM_EXT_DMAC0:
+		shim_write(SHIM_PISR, mask << 16);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_DMAC1:
+		shim_write(SHIM_PISR, mask << 24);
+		interrupt_clear(irq);
+		break;
+	default:
+		break;
+	}
 }
 
 uint32_t platform_interrupt_get_enabled(void)
 {
 	return shim_read(SHIM_PIMR);
+}
+
+void platform_interrupt_mask(uint32_t irq, uint32_t mask)
+{
+
+}
+
+void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
+{
+
 }
 
 static struct timer platform_ext_timer = {

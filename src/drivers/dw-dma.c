@@ -283,7 +283,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 static int dw_dma_start(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t mask, flags;
+	uint32_t flags;
 	int ret = 0;
 
 	spin_lock_irq(&dma->lock, flags);
@@ -317,11 +317,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
 
 	/* clear platform interrupt */
-	if (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0)
-		mask = 1 << (16 + channel);
-	else
-		mask = 1 << (24 + channel);
-	platform_interrupt_mask_clear(mask);
+	platform_interrupt_clear(dma_irq(dma), 1 << channel);
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
@@ -752,16 +748,9 @@ static void dw_dma_irq_handler(void *data)
 		trace_dma_error("eDi");
 	}
 
+	/* clear platform and DSP interrupt */
 	pmask = status_block | status_tfr | status_err;
-
-	/* we dont use the DSP IRQ clear as we only need to clear the ISR */
-	if (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0)
-		pmask <<= 16;
-	else
-		pmask <<= 24;
-
-	platform_interrupt_mask_clear(pmask);
-	interrupt_clear(dma_irq(dma));
+	platform_interrupt_clear(dma_irq(dma), pmask);
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
@@ -797,7 +786,7 @@ static void dw_dma_irq_handler(void *data)
 
 static void dw_dma_setup(struct dma *dma)
 {
-	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
 	int i;
 
 	/* enable the DMA controller */
@@ -818,13 +807,8 @@ static void dw_dma_setup(struct dma *dma)
 	dw_write(dma, DW_FIFO_PART0_LO, 0x100080);
 
 	/* set channel priorities */
-	/* TODO set class in pdata and add API in get() to select priority */
-	if (dma->plat_data.irq == IRQ_NUM_EXT_DMAC0)
-		p->class = 6;
-	else
-		p->class = 7;
 	for (i = 0; i <  DW_MAX_CHAN; i++) {
-		dw_write(dma, DW_CTRL_HIGH(i), DW_CTLH_CLASS(p->class));
+		dw_write(dma, DW_CTRL_HIGH(i), DW_CTLH_CLASS(dp->chan[i].class));
 	}
 
 }

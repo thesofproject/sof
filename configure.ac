@@ -163,6 +163,7 @@ case "$with_platform" in
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_BROXTON], [1], [Configure for Broxton])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
     ;;
     *)
         AC_MSG_ERROR([Host platform not specified])

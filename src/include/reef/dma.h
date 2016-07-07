@@ -88,11 +88,11 @@ struct dma_ops {
 
 /* DMA platform data */
 struct dma_plat_data {
+	uint32_t id;
 	uint32_t base;
 	uint32_t channels; 
-	uint32_t desc_per_chan;
 	uint32_t irq;
-	uint32_t capabilities;
+	void *drv_plat_data;
 };
 
 struct dma {

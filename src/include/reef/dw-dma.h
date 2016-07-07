@@ -13,6 +13,16 @@
 
 #define DW_DMA_MAX_NR_CHANNELS	8
 
+/* TODO: add FIFO sizes */
+struct dw_chan_data {
+	uint16_t class;
+	uint16_t weight;
+};
+
+struct dw_drv_plat_data {
+	struct dw_chan_data chan[DW_DMA_MAX_NR_CHANNELS];
+};
+
 /* DMA descriptor used by the HW version 1 */
 struct dw_lli1 {
 	uint32_t sar;

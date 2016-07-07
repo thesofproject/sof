@@ -14,12 +14,14 @@
 
 #include <xtensa/xtruntime.h>
 #include <xtensa/hal.h>
+#include <reef/interrupt-map.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 static inline int arch_interrupt_register(int irq,
 	void(*handler)(void *arg), void *arg)
 {
+	irq = REEF_IRQ_NUMBER(irq);
 	xthal_set_intclear(0x1 << irq);
 	_xtos_set_interrupt_handler_arg(irq, handler, arg);
 	return 0;
@@ -27,6 +29,7 @@ static inline int arch_interrupt_register(int irq,
 
 static inline void arch_interrupt_unregister(int irq)
 {
+	irq = REEF_IRQ_NUMBER(irq);
 	_xtos_set_interrupt_handler_arg(irq, NULL, NULL);
 }
 
@@ -40,11 +43,13 @@ static inline void arch_interrupt_unregister(int irq)
 
 static inline void arch_interrupt_set(int irq)
 {
+	irq = REEF_IRQ_NUMBER(irq);
 	xthal_set_intset(0x1 << irq);
 }
 
 static inline void arch_interrupt_clear(int irq)
 {
+	irq = REEF_IRQ_NUMBER(irq);
 	xthal_set_intclear(0x1 << irq);
 }
 

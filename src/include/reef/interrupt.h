@@ -57,4 +57,9 @@ static inline void interrupt_global_enable(uint32_t flags)
 	arch_interrupt_global_enable(flags);
 }
 
+uint32_t platform_interrupt_get_enabled();
+void platform_interrupt_clear(uint32_t irq, uint32_t mask);
+void platform_interrupt_mask(uint32_t irq, uint32_t mask);
+void platform_interrupt_unmask(uint32_t irq, uint32_t mask);
+
 #endif

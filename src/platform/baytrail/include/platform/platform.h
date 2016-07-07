@@ -10,6 +10,10 @@
 #define __PLATFORM_PLATFORM_H__
 
 #include <platform/shim.h>
+#include <platform/interrupt.h>
+
+/* IPC Interrupt */
+#define IPC_INTERUPT	IRQ_NUM_EXT_IA
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
@@ -42,8 +46,6 @@
 int platform_boot_complete(uint32_t boot_message);
 
 int platform_init(void);
-
-void platform_interrupt_mask_clear(uint32_t mask);
 
 int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 	uint32_t bclk_fs);
