@@ -17,19 +17,19 @@
 #include <stdint.h>
 #include <string.h>
 
-static struct dai ssp[3] = {
+static struct dai ssp[4] = {
 {
 	.type = COMP_TYPE_DAI_SSP,
 	.index = 0,
 	.plat_data = {
-		.base		= SSP0_BASE,
-		.irq		= IRQ_NUM_EXT_SSP0,
+		.base		= SSP_BASE(0),
+		.irq		= IRQ_EXT_SSP0_LVL5(0),
 		.fifo[STREAM_DIRECTION_PLAYBACK] = {
-			.offset		= SSP0_BASE + SSDR,
+			.offset		= SSP_BASE(0) + SSDR,
 			.handshake	= DMA_HANDSHAKE_SSP0_TX,
 		},
 		.fifo[STREAM_DIRECTION_CAPTURE] = {
-			.offset		= SSP0_BASE + SSDR,
+			.offset		= SSP_BASE(0) + SSDR,
 			.handshake	= DMA_HANDSHAKE_SSP0_RX,
 		}
 	},
@@ -39,14 +39,14 @@ static struct dai ssp[3] = {
 	.type = COMP_TYPE_DAI_SSP,
 	.index = 1,
 	.plat_data = {
-		.base		= SSP1_BASE,
-		.irq		= IRQ_NUM_EXT_SSP1,
+		.base		= SSP_BASE(1),
+		.irq		= IRQ_EXT_SSP1_LVL5(0),
 		.fifo[STREAM_DIRECTION_PLAYBACK] = {
-			.offset		= SSP1_BASE + SSDR,
+			.offset		= SSP_BASE(1) + SSDR,
 			.handshake	= DMA_HANDSHAKE_SSP1_TX,
 		},
 		.fifo[STREAM_DIRECTION_CAPTURE] = {
-			.offset		= SSP1_BASE + SSDR,
+			.offset		= SSP_BASE(1) + SSDR,
 			.handshake	= DMA_HANDSHAKE_SSP1_RX,
 		}
 	},
@@ -56,15 +56,32 @@ static struct dai ssp[3] = {
 	.type = COMP_TYPE_DAI_SSP,
 	.index = 2,
 	.plat_data = {
-		.base		= SSP2_BASE,
-		.irq		= IRQ_NUM_EXT_SSP2,
+		.base		= SSP_BASE(2),
+		.irq		= IRQ_EXT_SSP2_LVL5(0),
 		.fifo[STREAM_DIRECTION_PLAYBACK] = {
-			.offset		= SSP2_BASE + SSDR,
+			.offset		= SSP_BASE(2) + SSDR,
 			.handshake	= DMA_HANDSHAKE_SSP2_TX,
 		},
 		.fifo[STREAM_DIRECTION_CAPTURE] = {
-			.offset		= SSP2_BASE + SSDR,
+			.offset		= SSP_BASE(2) + SSDR,
 			.handshake	= DMA_HANDSHAKE_SSP2_RX,
+		}
+	},
+	.ops		= &ssp_ops,
+},
+{
+	.type = COMP_TYPE_DAI_SSP,
+	.index = 3,
+	.plat_data = {
+		.base		= SSP_BASE(3),
+		.irq		= IRQ_EXT_SSP3_LVL5(0),
+		.fifo[STREAM_DIRECTION_PLAYBACK] = {
+			.offset		= SSP_BASE(3) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP3_TX,
+		},
+		.fifo[STREAM_DIRECTION_CAPTURE] = {
+			.offset		= SSP_BASE(3) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP3_RX,
 		}
 	},
 	.ops		= &ssp_ops,

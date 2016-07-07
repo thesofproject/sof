@@ -10,6 +10,10 @@
 #define __PLATFORM_PLATFORM_H__
 
 #include <platform/shim.h>
+#include <platform/interrupt.h>
+
+/* IPC Interrupt */
+#define IPC_INTERUPT	IRQ_EXT_IPC_LVL2(0)
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
@@ -26,6 +30,7 @@
 #define PLAT_DEV_PERSIZE	256	/* must be multiple of DMA+DEV burst size */
 #define PLAT_DEV_PERIODS	2 	/* give enough latency for DMA refill */
 
+#if 0
 /* Platform defined panic code */
 #define platform_panic(__x) \
 	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) |\
@@ -35,6 +40,10 @@
 #define platform_trace_point(__x) \
 	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) |\
 		((__x) & 0x3fffffff)))
+#else
+#define platform_panic(__x)
+#define platform_trace_point(__x)
+#endif
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
  */
@@ -42,8 +51,6 @@
 int platform_boot_complete(uint32_t boot_message);
 
 int platform_init(void);
-
-void platform_interrupt_mask_clear(uint32_t mask);
 
 int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 	uint32_t bclk_fs);

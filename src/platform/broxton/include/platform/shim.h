@@ -12,113 +12,57 @@
 #include <platform/memory.h>
 #include <stdint.h>
 
-#define SHIM_CSR		0x00
-#define SHIM_PISR		0x08
-#define SHIM_PIMR		0x10
-#define SHIM_ISRX		0x18
-#define SHIM_ISRD		0x20
-#define SHIM_IMRX		0x28
-#define SHIM_IMRD		0x30
-#define SHIM_IPCXL		0x38 /* IPC IA -> SST */
-#define SHIM_IPCXH		0x3c /* IPC IA -> SST */
-#define SHIM_IPCDL		0x40 /* IPC SST -> IA */
-#define SHIM_IPCDH		0x44 /* IPC SST -> IA */
-#define SHIM_ISRSC		0x48
-#define SHIM_ISRLPESC		0x50
-#define SHIM_IMRSCL		0x58
-#define SHIM_IMRSCH		0x5c
-#define SHIM_IMRLPESC		0x60
-#define SHIM_IPCSCL		0x68
-#define SHIM_IPCSCH		0x6c
-#define SHIM_IPCLPESCL		0x70
-#define SHIM_IPCLPESCH		0x74
-#define SHIM_CLKCTL		0x78
-#define SHIM_FR_LAT_REQ		0x80
-#define SHIM_MISC		0x88
-#define SHIM_EXT_TIMER_CNTLL	0xC0
-#define SHIM_EXT_TIMER_CNTLH	0xC4
-#define SHIM_EXT_TIMER_STAT	0xC8
-#define SHIM_SSP0_DIVL		0xE8
-#define SHIM_SSP0_DIVH		0xEC
-#define SHIM_SSP1_DIVL		0xF0
-#define SHIM_SSP1_DIVH		0xF4
-#define SHIM_SSP2_DIVL		0xF8
-#define SHIM_SSP2_DIVH		0xFC
 
-#define SHIM_SHIM_BEGIN		SHIM_CSR
-#define SHIM_SHIM_END		SHIM_HDMC
+static inline uint32_t ipc_read(uint32_t reg)
+{
+	return *((volatile uint32_t*)(IPC_HOST_BASE + reg));
+}
 
-/* CSR 0x0 */
-#define SHIM_CSR_RST		(0x1 << 0)
-#define SHIM_CSR_VECTOR_SEL	(0x1 << 1)
-#define SHIM_CSR_STALL		(0x1 << 2)
-#define SHIM_CSR_PWAITMODE	(0x1 << 3)
+static inline void ipc_write(uint32_t reg, uint32_t val)
+{
+	*((volatile uint32_t*)(IPC_HOST_BASE + reg)) = val;
+}
 
-/* PISR */
-#define SHIM_PISR_EXT_TIMER	(1 << 10)
+#define IRQ_CPU_OFFSET	0x40
 
-/*  ISRX 0x18 */
-#define SHIM_ISRX_BUSY		(0x1 << 1)
-#define SHIM_ISRX_DONE		(0x1 << 0)
+#define REG_IRQ_IL2MSD(xcpu)	(0x0 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL2MCD(xcpu)	(0x4 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL2MD(xcpu)	(0x8 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL2SD(xcpu)	(0xc + (xcpu * IRQ_CPU_OFFSET))
 
-/*  ISRD / ISD */
-#define SHIM_ISRD_BUSY		(0x1 << 1)
-#define SHIM_ISRD_DONE		(0x1 << 0)
+#define REG_IRQ_IL3MSD(xcpu)	(0x10 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL3MCD(xcpu)	(0x14 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL3MD(xcpu)	(0x18 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL3SD(xcpu)	(0x1c + (xcpu * IRQ_CPU_OFFSET))
 
-/* IMRX / IMC */
-#define SHIM_IMRX_BUSY		(0x1 << 1)
-#define SHIM_IMRX_DONE		(0x1 << 0)
+#define REG_IRQ_IL4MSD(xcpu)	(0x20 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL4MCD(xcpu)	(0x24 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL4MD(xcpu)	(0x28 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL4SD(xcpu)	(0x2c + (xcpu * IRQ_CPU_OFFSET))
 
-/* IMRD / IMD */
-#define SHIM_IMRD_DONE		(0x1 << 0)
-#define SHIM_IMRD_BUSY		(0x1 << 1)
-#define SHIM_IMRD_SSP0		(0x1 << 16)
-#define SHIM_IMRD_DMAC0		(0x1 << 21)
-#define SHIM_IMRD_DMAC1		(0x1 << 22)
-#define SHIM_IMRD_DMAC		(SHIM_IMRD_DMAC0 | SHIM_IMRD_DMAC1)
+#define REG_IRQ_IL5MSD(xcpu)	(0x30 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL5MCD(xcpu)	(0x34 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL5MD(xcpu)	(0x38 + (xcpu * IRQ_CPU_OFFSET))
+#define REG_IRQ_IL5SD(xcpu)	(0x3c + (xcpu * IRQ_CPU_OFFSET))
 
-/*  IPCX / IPCCH */
-#define	SHIM_IPCXH_DONE		(0x1 << 30)
-#define	SHIM_IPCXH_BUSY		(0x1 << 31)
+#define REG_IRQ_IL2RSD		0x100
+#define REG_IRQ_IL3RSD		0x104
+#define REG_IRQ_IL4RSD		0x108
+#define REG_IRQ_IL5RSD		0x10c
 
-/*  IPCDH */
-#define	SHIM_IPCDH_DONE		(0x1 << 30)
-#define	SHIM_IPCDH_BUSY		(0x1 << 31)
+#define REG_IRQ_LVL5_LP_GPDMA0_MASK		(0xff << 16)
+#define REG_IRQ_LVL5_LP_GPDMA1_MASK		(0xff << 24)
 
-/* ISRLPESC */
-#define SHIM_ISRLPESC_DONE	(0x1 << 0)
-#define SHIM_ISRLPESC_BUSY	(0x1 << 1)
+static inline uint32_t irq_read(uint32_t reg)
+{
+	return *((volatile uint32_t*)(IRQ_BASE + reg));
+}
 
-/* IMRLPESC */
-#define	SHIM_IMRLPESC_BUSY	(0x1 << 1)
-#define	SHIM_IMRLPESC_DONE	(0x1 << 0)
+static inline void irq_write(uint32_t reg, uint32_t val)
+{
+	*((volatile uint32_t*)(IRQ_BASE + reg)) = val;
+}
 
-/* IPCSCH */
-#define SHIM_IPCSCH_DONE	(0x1 << 30)
-#define SHIM_IPCSCH_BUSY	(0x1 << 31)
-
-/* IPCLPESCH */
-#define SHIM_IPCLPESCH_DONE	(0x1 << 30)
-#define SHIM_IPCLPESCH_BUSY	(0x1 << 31)
-
-/* CLKCTL */
-#define SHIM_CLKCTL_SSP2_EN	(1 << 18)
-#define SHIM_CLKCTL_SSP1_EN	(1 << 17)
-#define SHIM_CLKCTL_SSP0_EN	(1 << 16)
-#define SHIM_CLKCTL_FRCHNGGO	(1 << 5)
-#define SHIM_CLKCTL_FRCHNGACK	(1 << 4)
-
-/* SHIM_FR_LAT_REQ */
-#define SHIM_FR_LAT_CLK_MASK	0x7
-
-/* ext timer */
-#define SHIM_EXT_TIMER_RUN	(1 << 31)
-#define SHIM_EXT_TIMER_CLEAR	(1 << 30)
-
-/* SSP M/N */
-#define SHIM_SSP_DIV_BYP	(1 << 31)
-#define SHIM_SSP_DIV_ENA	(1 << 30)
-#define SHIM_SSP_DIV_UPD	(1 << 29)
 
 static inline uint32_t shim_read(uint32_t reg)
 {

@@ -98,6 +98,7 @@ void clock_disable(int clock)
 
 uint32_t clock_set_freq(int clock, uint32_t hz)
 {
+#if 0
 	struct clock_notify_data notify_data;
 	uint32_t idx, flags;
 	int err = 0;
@@ -165,6 +166,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	}
 
 	spin_unlock_irq(&clk_pdata->clk[clock].lock, flags);
+#endif
 	return clk_pdata->clk[clock].freq;
 }
 

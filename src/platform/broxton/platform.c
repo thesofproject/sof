@@ -42,7 +42,7 @@ static const struct sst_intel_ipc_fw_ready ready = {
 static struct work_queue_timesource platform_generic_queue = {
 	.timer 	 = {
 		.id = TIMER3,	/* external timer */
-		.irq = IRQ_NUM_EXT_TIMER,
+		.irq = IRQ_BIT_LVL2_WALL_CLK0,
 	},
 	.clk		= CLK_SSP,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
@@ -53,17 +53,17 @@ static struct work_queue_timesource platform_generic_queue = {
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
+	//uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
 	mailbox_outbox_write(0, &ready, sizeof(ready));
 
 	/* boot now complete so we can relax the CPU */
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
-
+#if 0
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCDL, IPC_INTEL_FW_READY | outbox);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
-
+#endif
 	return 0;
 }
 
@@ -75,6 +75,7 @@ struct ssp_mn {
 	uint32_t n;
 };
 
+#if 0
 static const struct ssp_mn ssp_mn_conf[] = {
 	{25000000, 24, 48000, 1152, 25000},     /* 1.152MHz */
 	{25000000, 32, 48000, 1536, 25000}, 	/* 1.536MHz */
@@ -82,11 +83,13 @@ static const struct ssp_mn ssp_mn_conf[] = {
 	{25000000, 400, 48000, 96, 125}, 	/* 19.2MHz */
 	{25000000, 400, 44100, 441, 625}, 	/* 17.64MHz */
 };
+#endif
 
 /* set the SSP M/N clock dividers */
 int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 	uint32_t bclk_fs)
 {
+#if 0
 	int i;
 
 	/* check for matching config in the table */
@@ -124,12 +127,13 @@ int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 
 		return 0;
 	}
-
+#endif
 	return -EINVAL;
 }
 
 void platform_ssp_disable_mn(uint32_t ssp_port)
 {
+#if 0
 	switch (ssp_port) {
 	case 0:
 		shim_write(SHIM_SSP0_DIVH, SHIM_SSP_DIV_BYP |
@@ -144,22 +148,53 @@ void platform_ssp_disable_mn(uint32_t ssp_port)
 			SHIM_SSP_DIV_UPD);
 		break;
 	}
+#endif
 }
 
 /* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
-void platform_interrupt_mask_clear(uint32_t mask)
+void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
-	shim_write(SHIM_PISR, mask);
+	/* get the external IRQ */
+	switch (REEF_IRQ_NUMBER(irq)) {
+	case IRQ_NUM_EXT_LEVEL5:
+		if (irq_read(REG_IRQ_IL5RSD) == 0)
+			interrupt_clear(REEF_IRQ_NUMBER(irq));
+		break;
+	case IRQ_NUM_EXT_LEVEL4:
+		if (irq_read(REG_IRQ_IL4RSD) == 0)
+			interrupt_clear(REEF_IRQ_NUMBER(irq));
+		break;
+	case IRQ_NUM_EXT_LEVEL3:
+		if (irq_read(REG_IRQ_IL3RSD) == 0)
+			interrupt_clear(REEF_IRQ_NUMBER(irq));
+		break;
+	case IRQ_NUM_EXT_LEVEL2:
+		if (irq_read(REG_IRQ_IL2RSD) == 0)
+			interrupt_clear(REEF_IRQ_NUMBER(irq));
+		break;
+	default:
+		break;
+	}
 }
 
 uint32_t platform_interrupt_get_enabled(void)
 {
-	return shim_read(SHIM_PIMR);
+	return 0;//shim_read(SHIM_PIMR);
+}
+
+void platform_interrupt_mask(uint32_t irq, uint32_t mask)
+{
+
+}
+
+void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
+{
+
 }
 
 static struct timer platform_ext_timer = {
 	.id = TIMER3,
-	.irq = IRQ_NUM_EXT_TIMER,
+	.irq = IRQ_BIT_LVL2_WALL_CLK0,
 };
 
 int platform_init(void)
@@ -175,12 +210,12 @@ int platform_init(void)
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 
 	/* configure the shim */
-	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
+	//shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
 
 	trace_point(TRACE_BOOT_PLATFORM_PMC);
 
 	/* init PMC IPC */
-	platform_ipc_pmc_init();
+	//platform_ipc_pmc_init();
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
@@ -213,7 +248,7 @@ int platform_init(void)
 	dma_probe(dmac1);
 
 	/* mask SSP interrupts */
-	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
+	//shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
