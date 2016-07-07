@@ -32,6 +32,7 @@
 #include <xtensa/config/system.h>	/* for XSHAL_USE_ABSOLUTE_LITERALS only */
 #include <xtensa/xtruntime-core-state.h>
 #include "xtos-internal.h"
+#include <config.h>
 
 // The following reset vector avoids initializing certain registers already
 // initialized by processor reset.  But it does initialize some of them
@@ -76,8 +77,9 @@ _ResetVector:
 	wsr	a0, MEMCTL
 #endif
 #endif
+#ifdef CONFIG_BAYTRAIL
 	j	_ResetHandler
-
+#endif
 	.size	_ResetVector, . - _ResetVector
 
 # if XCHAL_HAVE_HALT
@@ -95,6 +97,10 @@ _ResetVector:
 #  endif
 # endif
 
+#ifdef CONFIG_BROXTON
+	.section .ResetHandler.text, "ax"
+	j	_ResetHandler
+#endif
 	.align	4
 	.literal_position	// tells the assembler/linker to place literals here
 
