@@ -32,10 +32,12 @@ static const struct sst_intel_ipc_fw_ready ready = {
 	.inbox_size = MAILBOX_OUTBOX_SIZE,
 	.outbox_size = MAILBOX_INBOX_SIZE,
 	.fw_info_size = sizeof(struct fw_info),
-	.info = {
-		.name = "REEF",
-		.date = __DATE__,
-		.time = __TIME__,
+	{
+		.info = {
+			.name = "REEF",
+			.date = __DATE__,
+			.time = __TIME__,
+		},
 	},
 };
 
