@@ -13,7 +13,10 @@
 #include <platform/interrupt.h>
 
 /* IPC Interrupt */
-#define IPC_INTERUPT	IRQ_EXT_IPC_LVL2(0)
+#define PLATFORM_IPC_INTERUPT	IRQ_EXT_IPC_LVL2(0)
+
+/* pipeline IRQ */
+#define PLATFORM_PIPELINE_IRQ	IRQ_NUM_SOFTWARE3
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096

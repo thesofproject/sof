@@ -648,7 +648,7 @@ out:
 	spin_unlock_irq(&pipe_data->lock, flags);
 
 	/* now schedule the copy */
-	interrupt_set(IRQ_NUM_SOFTWARE4);
+	interrupt_set(PLATFORM_PIPELINE_IRQ);
 }
 
 void pipeline_schedule(void *arg)
@@ -656,7 +656,7 @@ void pipeline_schedule(void *arg)
 	struct comp_dev *dev;
 	uint32_t finished = 0, count = 0, flags;
 
-	interrupt_clear(IRQ_NUM_SOFTWARE4);
+	interrupt_clear(PLATFORM_PIPELINE_IRQ);
 
 	tracev_pipe("PWs");
 	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
@@ -709,8 +709,8 @@ int pipeline_init(void)
 	spinlock_init(&pipe_data->lock);
 
 	/* configure pipeline scheduler interrupt */
-	interrupt_register(IRQ_NUM_SOFTWARE4, pipeline_schedule, NULL);
-	interrupt_enable(IRQ_NUM_SOFTWARE4);
+	interrupt_register(PLATFORM_PIPELINE_IRQ, pipeline_schedule, NULL);
+	interrupt_enable(PLATFORM_PIPELINE_IRQ);
 
 	return 0;
 }

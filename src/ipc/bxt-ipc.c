@@ -90,7 +90,7 @@ static void irq_handler(void *arg)
 
 		/* Mask Done interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
-		interrupt_clear(IPC_INTERUPT);
+		interrupt_clear(PLATFORM_IPC_INTERUPT);
 		do_notify();
 	}
 
@@ -98,7 +98,7 @@ static void irq_handler(void *arg)
 
 		/* Mask Busy interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
-		interrupt_clear(IPC_INTERUPT);
+		interrupt_clear(PLATFORM_IPC_INTERUPT);
 
 		/* place message in Q and process later */
 		_ipc->host_msg = shim_read(SHIM_IPCXL);
@@ -173,8 +173,8 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
-	interrupt_register(IPC_INTERUPT, irq_handler, NULL);
-	interrupt_enable(IPC_INTERUPT);
+	interrupt_register(PLATFORM_IPC_INTERUPT, irq_handler, NULL);
+	interrupt_enable(PLATFORM_IPC_INTERUPT);
 
 #if 0
 	/* Unmask Busy and Done interrupts */

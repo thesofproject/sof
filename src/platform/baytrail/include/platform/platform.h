@@ -13,10 +13,13 @@
 #include <platform/interrupt.h>
 
 /* IPC Interrupt */
-#define IPC_INTERUPT	IRQ_NUM_EXT_IA
+#define PLATFORM_IPC_INTERUPT	IRQ_NUM_EXT_IA
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
+
+/* pipeline IRQ */
+#define PLATFORM_PIPELINE_IRQ	IRQ_NUM_SOFTWARE4
 
 /* Platform stream capabilities */
 #define PLATFORM_MAX_CHANNELS	4
