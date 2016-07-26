@@ -77,7 +77,8 @@ _ResetVector:
 	wsr	a0, MEMCTL
 #endif
 #endif
-#ifdef CONFIG_BAYTRAIL
+/* Broxton+ have reset vector in ROM */
+#if defined(CONFIG_BAYTRAIL) || defined(CONFIG_CHERRYTRAIL) || defined (CONFIG_HASWELL) || defined(CONFIG_BROADWELL)
 	j	_ResetHandler
 #endif
 	.size	_ResetVector, . - _ResetVector
