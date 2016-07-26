@@ -11,33 +11,30 @@
 
 /* physical DSP addresses */
 
-#define SHIM_BASE	0xFF340000
-#define SHIM_SIZE	0x00004000
+#define SHIM_BASE	0xFFFEB000
+#define SHIM_SIZE	0x00001000
 
-#define IRAM_BASE	0xFF2C0000
-#define IRAM_SIZE	0x00014000
+#define IRAM_BASE	0x00000000
+#define IRAM_SIZE	0x00050000
 
-#define DRAM0_BASE	0xFF300000
-#define DRAM0_SIZE	0x00028000
-#define DRAM0_VBASE	0xC0000000
+#define DRAM0_BASE	0x00400000
+#define DRAM0_SIZE	0x000A0000
+#define DRAM0_VBASE	0x00400000
 
-#define MAILBOX_BASE	0xFF344000
+#define MAILBOX_BASE	0x0049E000
 #define MAILBOX_SIZE	0x00001000
 
-#define DMA0_BASE	0xFF298000
-#define DMA0_SIZE	0x00004000
+#define DMA0_BASE	0xFFFFD000
+#define DMA0_SIZE	0x00001000
 
-#define DMA1_BASE	0xFF29C000
-#define DMA1_SIZE	0x00004000
+#define DMA1_BASE	0xFFFFE000
+#define DMA1_SIZE	0x00001000
 
-#define SSP0_BASE	0xFF2A0000
+#define SSP0_BASE	0xFFFEC000
 #define SSP0_SIZE	0x00001000
 
-#define SSP1_BASE	0xFF2A1000
+#define SSP1_BASE	0xFFFED000
 #define SSP1_SIZE	0x00001000
-
-#define SSP2_BASE	0xFF2A2000
-#define SSP2_SIZE	0x00001000
 
 /* HEAP Constants - WARNING this MUST be aligned with the linker script */
 /* TODO:preproces linker script with this header to align automatically. */
@@ -59,6 +56,7 @@
 	HEAP_MOD_COUNT128 * 128 + HEAP_MOD_COUNT256 * 256 + \
 	HEAP_MOD_COUNT512 * 512 + HEAP_MOD_COUNT1024 * 1024)
 
+// TODO: this is set small atm, but needs recalced to fit stack + mailbox +DRAM
 /* Heap for buffers */
 #define HEAP_BUF_BLOCK_SIZE	1024
 #define HEAP_BUF_COUNT	111

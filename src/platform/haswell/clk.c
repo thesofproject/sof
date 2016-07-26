@@ -16,7 +16,6 @@
 #include <platform/clk.h>
 #include <platform/shim.h>
 #include <platform/timer.h>
-#include <platform/pmc.h>
 #include <stdint.h>
 
 #define NUM_CLOCKS	2
@@ -52,8 +51,8 @@ static const struct freq_table cpu_freq[] = {
 };
 
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19, PMC_SET_SSP_19M2},
-	{25000000, 25, PMC_SET_SSP_25M},	/* default */
+	{19200000, 19, 0},
+	{25000000, 25, 0},	/* default */
 };
 
 #define CPU_DEFAULT_IDX		3
@@ -100,7 +99,6 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
 	uint32_t idx, flags;
-	int err = 0;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
@@ -122,16 +120,6 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		/* set CPU frequency request for CCU */
 		io_reg_update_bits(SHIM_BASE + SHIM_FR_LAT_REQ,
 				SHIM_FR_LAT_CLK_MASK, cpu_freq[idx].enc);
-		
-		/* send freq request to SC */
-		err = ipc_pmc_send_msg(PMC_SET_LPECLK);
-		if (err == 0) {
-
-			/* update clock frequency */
-			clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
-			clk_pdata->clk[clock].ticks_per_usec =
-				cpu_freq[idx].ticks_per_usec;
-		}
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
@@ -145,16 +133,6 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		/* tell anyone interested we are about to change CPU freq */
 		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_PRE,
 			&notify_data);
-
-		/* send SSP freq request to SC */
-		err = ipc_pmc_send_msg(ssp_freq[idx].enc);
-		if (err == 0) {
-
-			/* update clock frequency */
-			clk_pdata->clk[clock].freq = ssp_freq[idx].freq;
-			clk_pdata->clk[clock].ticks_per_usec =
-				ssp_freq[idx].ticks_per_usec;
-		}
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_POST,

@@ -43,8 +43,8 @@ static const struct sst_intel_ipc_fw_ready ready = {
 
 static struct work_queue_timesource platform_generic_queue = {
 	.timer 	 = {
-		.id = TIMER3,	/* external timer */
-		.irq = IRQ_NUM_EXT_TIMER,
+		.id = TIMER2,	/* external timer */
+		.irq = IRQ_NUM_TIMER3,
 	},
 	.clk		= CLK_SSP,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
@@ -149,9 +149,20 @@ void platform_ssp_disable_mn(uint32_t ssp_port)
 }
 
 /* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
-void platform_interrupt_mask_clear(uint32_t mask)
+void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
-	shim_write(SHIM_PISR, mask);
+	switch (irq) {
+	case IRQ_NUM_EXT_DMAC0:
+		shim_write(SHIM_PISR, mask << 16);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_DMAC1:
+		shim_write(SHIM_PISR, mask << 24);
+		interrupt_clear(irq);
+		break;
+	default:
+		break;
+	}
 }
 
 uint32_t platform_interrupt_get_enabled(void)
@@ -159,15 +170,25 @@ uint32_t platform_interrupt_get_enabled(void)
 	return shim_read(SHIM_PIMR);
 }
 
+void platform_interrupt_mask(uint32_t irq, uint32_t mask)
+{
+
+}
+
+void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
+{
+
+}
+
 static struct timer platform_ext_timer = {
-	.id = TIMER3,
-	.irq = IRQ_NUM_EXT_TIMER,
+	.id = TIMER2,
+	.irq = IRQ_NUM_TIMER3,
 };
 
 int platform_init(void)
 {
 	struct dma *dmac0, *dmac1;
-	struct dai *ssp0, *ssp1, *ssp2;
+	struct dai *ssp0, *ssp1;
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 // TODO mask all xtensa dn SHIM IRQs
@@ -181,8 +202,6 @@ int platform_init(void)
 
 	trace_point(TRACE_BOOT_PLATFORM_PMC);
 
-	/* init PMC IPC */
-	platform_ipc_pmc_init();
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
@@ -225,7 +244,5 @@ int platform_init(void)
 	ssp1 = dai_get(COMP_TYPE_DAI_SSP, 1);
 	dai_probe(ssp1);
 
-	ssp2 = dai_get(COMP_TYPE_DAI_SSP, 2);
-	dai_probe(ssp2);
 	return 0;
 }

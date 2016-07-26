@@ -7,11 +7,38 @@ libipc_a_SOURCES = \
 	byt-ipc.c \
 	pmc-ipc.c \
 	dma-copy.c
-else
+endif
+
+if BUILD_CHERRYTRAIL
+libipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	byt-ipc.c \
+	pmc-ipc.c \
+	dma-copy.c
+endif
+
+if BUILD_BROXTON
 libipc_a_SOURCES = \
 	ipc.c \
 	intel-ipc.c \
 	bxt-ipc.c \
+	dma-copy.c
+endif
+
+if BUILD_BROADWELL
+libipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	byt-ipc.c \
+	dma-copy.c
+endif
+
+if BUILD_HASWELL
+libipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	byt-ipc.c \
 	dma-copy.c
 endif
 

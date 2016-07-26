@@ -23,7 +23,7 @@
 #define IRQ_NUM_TIMER2		10
 #define IRQ_NUM_SOFTWARE2	11
 #define IRQ_NUM_EXT_PARITY	12
-#define IRQ_NUM_TIMER2		13
+#define IRQ_NUM_TIMER3		13
 #define IRQ_NUM_NMI		14
 
 /* IRQ Masks */

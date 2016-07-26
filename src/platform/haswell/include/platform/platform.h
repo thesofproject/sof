@@ -11,8 +11,14 @@
 
 #include <platform/shim.h>
 
+/* IPC Interrupt */
+#define PLATFORM_IPC_INTERUPT	IRQ_NUM_EXT_IA
+
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
+
+/* pipeline IRQ */
+#define PLATFORM_PIPELINE_IRQ	IRQ_NUM_SOFTWARE1
 
 /* Platform stream capabilities */
 #define PLATFORM_MAX_CHANNELS	4

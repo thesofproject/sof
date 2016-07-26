@@ -51,24 +51,7 @@ static struct dai ssp[3] = {
 		}
 	},
 	.ops		= &ssp_ops,
-},
-{
-	.type = COMP_TYPE_DAI_SSP,
-	.index = 2,
-	.plat_data = {
-		.base		= SSP2_BASE,
-		.irq		= IRQ_NUM_EXT_SSP2,
-		.fifo[STREAM_DIRECTION_PLAYBACK] = {
-			.offset		= SSP2_BASE + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP2_TX,
-		},
-		.fifo[STREAM_DIRECTION_CAPTURE] = {
-			.offset		= SSP2_BASE + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP2_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},};
+}};
 
 struct dai *dai_get(uint32_t type, uint32_t index)
 {
