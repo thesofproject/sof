@@ -36,6 +36,8 @@
 #define SSP1_BASE	0xFFFED000
 #define SSP1_SIZE	0x00001000
 
+/* TODO: HSW and BDW have different amount of IRAM and DRAM */
+
 /* HEAP Constants - WARNING this MUST be aligned with the linker script */
 /* TODO:preproces linker script with this header to align automatically. */
 

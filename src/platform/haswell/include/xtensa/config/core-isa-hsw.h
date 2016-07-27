@@ -61,8 +61,8 @@
 #define XCHAL_HAVE_DEPBITS		0	/* DEPBITS instruction */
 #define XCHAL_HAVE_CLAMPS		1	/* CLAMPS instruction */
 #define XCHAL_HAVE_MUL16		1	/* MUL16S/MUL16U instructions */
-#define XCHAL_HAVE_MUL32		1	/* MULL instruction */
-#define XCHAL_HAVE_MUL32_HIGH		1	/* MULUH/MULSH instructions */
+#define XCHAL_HAVE_MUL32		0	/* MULL instruction */
+#define XCHAL_HAVE_MUL32_HIGH		0	/* MULUH/MULSH instructions */
 #define XCHAL_HAVE_DIV32		0	/* QUOS/QUOU/REMS/REMU instructions */
 #define XCHAL_HAVE_L32R			1	/* L32R instruction */
 #define XCHAL_HAVE_ABSOLUTE_LITERALS	0	/* non-PC-rel (extended) L32R */
@@ -213,16 +213,16 @@
 #define XCHAL_ICACHE_LINEWIDTH		7	/* log2(I line size in bytes) */
 #define XCHAL_DCACHE_LINEWIDTH		7	/* log2(D line size in bytes) */
 
-#define XCHAL_ICACHE_SIZE		49152	/* I-cache size in bytes or 0 */
-#define XCHAL_DCACHE_SIZE		98304	/* D-cache size in bytes or 0 */
+#define XCHAL_ICACHE_SIZE		0	/* I-cache size in bytes or 0 */
+#define XCHAL_DCACHE_SIZE		0	/* D-cache size in bytes or 0 */
 
-#define XCHAL_DCACHE_IS_WRITEBACK	1	/* writeback feature */
+#define XCHAL_DCACHE_IS_WRITEBACK	0	/* writeback feature */
 #define XCHAL_DCACHE_IS_COHERENT	0	/* MP coherence feature */
 
-#define XCHAL_HAVE_PREFETCH		1	/* PREFCTL register */
+#define XCHAL_HAVE_PREFETCH		0	/* PREFCTL register */
 #define XCHAL_HAVE_PREFETCH_L1		0	/* prefetch to L1 dcache */
-#define XCHAL_PREFETCH_CASTOUT_LINES	1	/* dcache pref. castout bufsz */
-#define XCHAL_PREFETCH_ENTRIES		8	/* cache prefetch entries */
+#define XCHAL_PREFETCH_CASTOUT_LINES	0	/* dcache pref. castout bufsz */
+#define XCHAL_PREFETCH_ENTRIES		0	/* cache prefetch entries */
 #define XCHAL_PREFETCH_BLOCK_ENTRIES	0	/* prefetch block streams */
 #define XCHAL_HAVE_CACHE_BLOCKOPS	0	/* block prefetch for caches */
 #define XCHAL_HAVE_ICACHE_TEST		0	/* Icache test instructions */
@@ -249,16 +249,16 @@
 /*  If present, cache size in bytes == (ways * 2^(linewidth + setwidth)).  */
 
 /*  Number of cache sets in log2(lines per way):  */
-#define XCHAL_ICACHE_SETWIDTH		7
-#define XCHAL_DCACHE_SETWIDTH		8
+#define XCHAL_ICACHE_SETWIDTH		0
+#define XCHAL_DCACHE_SETWIDTH		0
 
 /*  Cache set associativity (number of ways):  */
-#define XCHAL_ICACHE_WAYS		3
-#define XCHAL_DCACHE_WAYS		3
+#define XCHAL_ICACHE_WAYS		0
+#define XCHAL_DCACHE_WAYS		0
 
 /*  Cache features:  */
-#define XCHAL_ICACHE_LINE_LOCKABLE	1
-#define XCHAL_DCACHE_LINE_LOCKABLE	1
+#define XCHAL_ICACHE_LINE_LOCKABLE	0
+#define XCHAL_DCACHE_LINE_LOCKABLE	0
 #define XCHAL_ICACHE_ECC_PARITY		0
 #define XCHAL_DCACHE_ECC_PARITY		0
 
@@ -266,7 +266,7 @@
 #define XCHAL_ICACHE_ACCESS_SIZE	8
 #define XCHAL_DCACHE_ACCESS_SIZE	8
 
-#define XCHAL_DCACHE_BANKS		1	/* number of banks */
+#define XCHAL_DCACHE_BANKS		0	/* number of banks */
 
 /*  Number of encoded cache attr bits (see <xtensa/hal.h> for decoded bits):  */
 #define XCHAL_CA_BITS			4
@@ -291,15 +291,15 @@
 #define XCHAL_NUM_XLMI			0	/* number of core XLMI ports */
 
 /*  Instruction RAM 0:  */
-#define XCHAL_INSTRAM0_VADDR		0xff2c0000	/* virtual address */
-#define XCHAL_INSTRAM0_PADDR		0xff2c0000	/* physical address */
-#define XCHAL_INSTRAM0_SIZE		0x14000	/* size in bytes */
+#define XCHAL_INSTRAM0_VADDR		0x00000000	/* virtual address */
+#define XCHAL_INSTRAM0_PADDR		0x00000000	/* physical address */
+#define XCHAL_INSTRAM0_SIZE		0x60000	/* size in bytes */
 #define XCHAL_INSTRAM0_ECC_PARITY	0	/* ECC/parity type, 0=none */
 
 /*  Data RAM 0:  */
-#define XCHAL_DATARAM0_VADDR		0xff300000	/* virtual address */
-#define XCHAL_DATARAM0_PADDR		0xff300000	/* physical address */
-#define XCHAL_DATARAM0_SIZE		0x28000	/* size in bytes */
+#define XCHAL_DATARAM0_VADDR		0x00400000	/* virtual address */
+#define XCHAL_DATARAM0_PADDR		0x00400000	/* physical address */
+#define XCHAL_DATARAM0_SIZE		0x80000	/* size in bytes */
 #define XCHAL_DATARAM0_ECC_PARITY	0	/* ECC/parity type, 0=none */
 #define XCHAL_DATARAM0_BANKS		1	/* number of banks */
 

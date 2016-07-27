@@ -5,6 +5,12 @@
 # Build for Baytrail
 ./configure --with-arch=xtensa --with-platform=baytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf
 
+# Build for Cherrytrail
+./configure --with-arch=xtensa --with-platform=cherrytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf
+
 # Build for Broadwell
-./configure --with-arch=xtensa --with-platform=broadwell --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf
+./configure --with-arch=xtensa --with-platform=broadwell --with-tool-dir=~/source/reef/xtensa-hsw-elf --host=xtensa-hsw-elf
+
+# Build for Haswell
+./configure --with-arch=xtensa --with-platform=haswell --with-tool-dir=~/source/reef/xtensa-hsw-elf --host=xtensa-hsw-elf
 

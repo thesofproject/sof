@@ -348,6 +348,9 @@ SECTIONS
     _bss_end = ABSOLUTE(.);
   } >dram_seg0 :dram_bss_phdr
 
+/* TODO: !! HSW and BDW have different amount of IRAM and DRAM !!
+   Only setup for BDW atm !! */
+
 /* TODO: need to clean up what we are using/not using here */
 /* TODO: need to run the pre-processor on this to align with C headers */
 

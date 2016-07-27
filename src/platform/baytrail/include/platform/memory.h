@@ -30,6 +30,9 @@
 #define DMA1_BASE	0xFF29C000
 #define DMA1_SIZE	0x00004000
 
+#define DMA2_BASE	0xFF294000
+#define DMA2_SIZE	0x00004000
+
 #define SSP0_BASE	0xFF2A0000
 #define SSP0_SIZE	0x00001000
 
@@ -38,6 +41,15 @@
 
 #define SSP2_BASE	0xFF2A2000
 #define SSP2_SIZE	0x00001000
+
+#define SSP3_BASE	0xFF2A4000
+#define SSP3_SIZE	0x00001000
+
+#define SSP4_BASE	0xFF2A5000
+#define SSP4_SIZE	0x00001000
+
+#define SSP5_BASE	0xFF2A6000
+#define SSP5_SIZE	0x00001000
 
 /* HEAP Constants - WARNING this MUST be aligned with the linker script */
 /* TODO:preproces linker script with this header to align automatically. */
