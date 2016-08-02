@@ -33,10 +33,6 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 	int i, j, k;
 	int32_t val = 0;
 
-	trace_mixer("MxN");
-	trace_value(count);
-	trace_value((uint32_t)sink->w_ptr);
-
 	/* buffer sizes are always divisable by period frames */
 	for (i = 0; i < frames; i++) {
 		for (j = 0; j < sink->params.channels; j++) {
