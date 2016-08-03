@@ -413,11 +413,15 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		dev->state = COMP_STATE_PAUSED;
 		break;
 	case COMP_CMD_STOP:
-		dma_stop(hd->dma, hd->chan);
-		dev->state = COMP_STATE_STOPPED;
-		hd->complete.timeout = 100;
+		trace_host("HSp");
+		trace_value(dev->state);
+		if (dev->state > COMP_STATE_STOPPED) {
+			dma_stop(hd->dma, hd->chan);
+			dev->state = COMP_STATE_STOPPED;
+			hd->complete.timeout = 100;
 // TODO wait init ?
-		ret = wait_for_completion_timeout(&hd->complete);
+			ret = wait_for_completion_timeout(&hd->complete);
+		}
 		break;
 	case COMP_CMD_RELEASE:
 //		dma_release(hd->dma, hd->chan);
