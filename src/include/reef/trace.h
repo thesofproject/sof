@@ -54,9 +54,9 @@
 #define TRACE_CLASS_MIXER	(12 << 24)
 
 /* move to config.h */
-#define TRACE	0
+#define TRACE	1
 #define TRACEV	0
-#define TRACEE	0
+#define TRACEE	1
 
 void _trace_event(uint32_t event);
 void trace_off(void);
