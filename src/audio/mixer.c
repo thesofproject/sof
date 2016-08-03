@@ -182,8 +182,6 @@ static int mixer_copy(struct comp_dev *dev)
 	uint32_t i = 0, cframes = 64;
 	struct list_head * blist;
 
-	trace_mixer("MCy");
-
 	/* calculate the highest status between input streams */
 	list_for_each(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
