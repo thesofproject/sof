@@ -631,7 +631,7 @@ static uint32_t ipc_stage_set_volume(uint32_t header)
 	/* read volume from the inbox */
 	mailbox_inbox_read(&req, 0, sizeof(req));
 
-	if (req.channel > 1)
+	if (req.channel > 1 && req.channel != CHANNELS_ALL)
 		goto error;
 
 	/* TODO: add other channels */ 
