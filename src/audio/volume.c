@@ -336,7 +336,10 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_IPC_MMAP_VOL(0) ... COMP_CMD_IPC_MMAP_VOL(STREAM_MAX_CHANNELS - 1):
-		cd->hvol[cmd - COMP_CMD_IPC_MMAP_VOL(0)] = data;
+		i = cmd - COMP_CMD_IPC_MMAP_VOL(0);
+		cd->hvol[i] = data;
+		if (cd->hvol[i])
+			*cd->hvol[i] = cd->volume[i];
 		break;
 	default:
 		break;
