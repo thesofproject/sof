@@ -423,13 +423,7 @@ found:
 
 static int volume_reset(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int i;
-
 	dev->state = COMP_STATE_INIT;
-
-	for (i = 0; i < STREAM_MAX_CHANNELS; i++)
-		cd->hvol[i] = NULL;
 
 	return 0;
 }
