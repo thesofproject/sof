@@ -1,0 +1,20 @@
+
+Build Instructions
+
+1) Run "autogen.sh" 
+
+2) Run the following configure based on your platform.
+
+Baytrail :-
+
+./configure --with-arch=xtensa --with-platform=baytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
+
+Cherrytrail :-
+
+./configure --with-arch=xtensa --with-platform=cherrytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
+
+3) make
+
+4) make bin
+
+ 
