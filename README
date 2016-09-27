@@ -1,0 +1,36 @@
+Sound Open Firmware Tools
+=========================
+
+This is a collection of open source tools used to develop open source audio
+DSP firmwares for ALSA.
+
+Building and Installing
+=======================
+
+./autogen.sh (only needed first time)
+./configure
+make
+make install
+
+
+rimage
+======
+
+rimage is used to convert ELF executable firmware files to the firmware file
+formats used by the kernel drivers.
+
+e.g.
+
+rimage -i elf_file -o kernel_file -m machine
+
+rimage can also convert kernel firmware formats to flat binaries formats to
+assist in debugging :-
+
+e.g. convert to flat binary, then ELF then dissasemble
+
+rimage -i /lib/firmware/intel/reef-byt.ri -o image.bin -b -m byt
+
+xtensa-byt-elf-objcopy -I binary -O elf32-xtensa-le -B xtensa image.bin image.bin.elf
+
+xtensa-byt-elf-objdump -D image.bin.elf > image.dis.txt
+
