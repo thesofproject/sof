@@ -298,12 +298,14 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		hd->period = &hd->dma_buffer->desc.source_period;
+		config->direction = DMA_DIR_HMEM_TO_LMEM;
 	} else {
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
 		hd->dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		hd->period = &hd->dma_buffer->desc.sink_period;
+		config->direction = DMA_DIR_LMEM_TO_HMEM;
 	}
 
 	/* component buffer size must be divisor of host buffer size */
@@ -323,7 +325,6 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	hd->dma_buffer->w_ptr = hd->dma_buffer->addr;
 
 	/* set up DMA configuration */
-	config->direction = DMA_DIR_MEM_TO_MEM;
 	config->src_width = sizeof(uint32_t);
 	config->dest_width = sizeof(uint32_t);
 	config->cyclic = 0;

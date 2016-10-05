@@ -172,7 +172,7 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 	dma = iipc->dmac0;
 
 	/* set up DMA configuration */
-	config.direction = DMA_DIR_MEM_TO_MEM;
+	config.direction = DMA_DIR_HMEM_TO_LMEM;
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;

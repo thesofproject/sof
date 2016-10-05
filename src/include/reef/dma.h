@@ -38,10 +38,12 @@
 #include <reef/reef.h>
 
 /* DMA directions */
-#define DMA_DIR_MEM_TO_MEM	0
-#define DMA_DIR_MEM_TO_DEV	1
-#define DMA_DIR_DEV_TO_MEM	2
-#define DMA_DIR_DEV_TO_DEV	3
+#define DMA_DIR_MEM_TO_MEM	0	/* local memcpy */
+#define DMA_DIR_HMEM_TO_LMEM	1	/* host to local memcpy */
+#define DMA_DIR_LMEM_TO_HMEM	2	/* local to host memcpy */
+#define DMA_DIR_MEM_TO_DEV	3
+#define DMA_DIR_DEV_TO_MEM	4
+#define DMA_DIR_DEV_TO_DEV	5
 
 /* DMA status flags */
 #define DMA_STATUS_FREE		0

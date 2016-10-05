@@ -608,7 +608,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
 		/* write CTL_LOn for each lli */
-		lli_desc->ctrl_lo |= DW_CTLL_FC(config->direction); /* config the transfer type */
 		lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2); /* config the src tr width */
 		lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2); /* config the dest tr width */
 		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(3); /* config the src msize length 2^2 */
@@ -617,33 +616,55 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
 		switch (config->direction) {
-		case DMA_DIR_MEM_TO_MEM:
+		case DMA_DIR_LMEM_TO_HMEM:
+			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M;
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_INC;
+			lli_desc->sar =
+				(uint32_t)sg_elem->src | PLATFORM_HOST_DMA_MASK;
+			lli_desc->dar = (uint32_t)sg_elem->dest;
+			break;
+		case DMA_DIR_HMEM_TO_LMEM:
+			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M;
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_INC;
+			lli_desc->dar =
+				(uint32_t)sg_elem->dest | PLATFORM_HOST_DMA_MASK;
+			lli_desc->sar = (uint32_t)sg_elem->src;
+			break;
+		case DMA_DIR_MEM_TO_MEM:
+			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M;
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_INC;
+			lli_desc->sar = (uint32_t)sg_elem->src;
+			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		case DMA_DIR_MEM_TO_DEV:
+			lli_desc->ctrl_lo |= DW_CTLL_FC_M2P;
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_FIX;
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_DST_PER(config->dest_dev);
+			lli_desc->sar = (uint32_t)sg_elem->src;
+			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		case DMA_DIR_DEV_TO_MEM:
+			lli_desc->ctrl_lo |= DW_CTLL_FC_P2M;
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_FIX | DW_CTLL_DST_INC;
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_SRC_PER(config->src_dev);
+			lli_desc->sar = (uint32_t)sg_elem->src;
+			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		case DMA_DIR_DEV_TO_DEV:
+			lli_desc->ctrl_lo |= DW_CTLL_FC_P2P;
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_FIX | DW_CTLL_DST_FIX;
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_SRC_PER(config->src_dev) |
 				DW_CFGH_DST_PER(config->dest_dev);
+			lli_desc->sar = (uint32_t)sg_elem->src;
+			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		default:
 			trace_dma_error("eDD");
 			break;
 		}
-
-		/* set source and destination adddresses */
-		lli_desc->sar = (uint32_t)sg_elem->src;
-		lli_desc->dar = (uint32_t)sg_elem->dest;
 
 		/* set transfer size of element */
 		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |

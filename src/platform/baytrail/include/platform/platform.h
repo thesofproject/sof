@@ -47,6 +47,9 @@
 /* pipeline IRQ */
 #define PLATFORM_PIPELINE_IRQ	IRQ_NUM_SOFTWARE4
 
+/* DMA treats PHY addresses as host address unless within DSP region */
+#define PLATFORM_HOST_DMA_MASK	0xFF000000
+
 /* Platform stream capabilities */
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
