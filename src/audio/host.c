@@ -256,9 +256,11 @@ static int create_local_elems(struct comp_dev *dev,
 			goto unwind;
 
 		if (params->direction == STREAM_DIRECTION_PLAYBACK)
-			e->dest = (uint32_t)(hd->dma_buffer->addr) + i * hd->period->size;
+			e->dest = (uint32_t)(hd->dma_buffer->addr) +
+				i * hd->period->size;
 		else
-			e->src = (uint32_t)(hd->dma_buffer->addr) + i * hd->period->size;
+			e->src = (uint32_t)(hd->dma_buffer->addr) +
+				i * hd->period->size;
 
 		e->size = hd->period->size;
 
@@ -396,7 +398,8 @@ static int host_prepare(struct comp_dev *dev)
 		*hd->host_pos = 0;
 	hd->host_pos_blks = 0;
 	hd->host_period_pos = 0;
-	hd->host_period_bytes = hd->params.period_frames * hd->params.frame_size;
+	hd->host_period_bytes =
+		hd->params.period_frames * hd->params.frame_size;
 
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		host_preload(dev);
