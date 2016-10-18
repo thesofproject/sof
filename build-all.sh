@@ -1,14 +1,19 @@
-# build images for all targets.
+# build all images for all targets.
+pwd=`pwd`
+
+rm -fr src/arch/xtensa/*.ri
 
 # Build for Baytrail
 make clean
-./configure --with-arch=xtensa --with-platform=baytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf
+./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=$pwd/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
 make
 make bin
 
 # Build for Cherrytrail
 make clean
-./configure --with-arch=xtensa --with-platform=cherrytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf
+./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=$pwd/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
 make
 make bin
 
+# list all the images
+ls -l src/arch/xtensa/*.ri

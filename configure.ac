@@ -21,13 +21,13 @@ AC_CANONICAL_HOST
 CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -fno-inline-functions -nostdlib"
 
 # Cross compiler tool libgcc and headers
-AC_ARG_WITH([tool-dir],
-        AS_HELP_STRING([--with-tool-dir], [Specify location of cross gcc libraries and headers]),
-        [], [with_tool_dir=no])
-AS_IF([test "x$with_tool_dir" = xno],
-	AC_MSG_ERROR([Please specify cross compiler tool directory]),
-	[TOOL_DIR=$with_tool_dir])
-AC_SUBST(TOOL_DIR)
+AC_ARG_WITH([root-dir],
+        AS_HELP_STRING([--with-root-dir], [Specify location of cross gcc libraries and headers]),
+        [], [with_root_dir=no])
+AS_IF([test "x$with_root_dir" = xno],
+	AC_MSG_ERROR([Please specify cross compiler root header directory]),
+	[ROOT_DIR=$with_root_dir])
+AC_SUBST(ROOT_DIR)
 
 # Architecture support
 AC_ARG_WITH([arch],

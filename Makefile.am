@@ -6,7 +6,7 @@ SRC_DIR = $(abs_top_builddir)/src
 
 export REEF_INCDIR = \
 	-I $(SRC_DIR)/include \
-	-I $(TOOL_DIR)/include
+	-I $(ROOT_DIR)/include
 
 export ARCH_INCDIR = \
 	-I $(SRC_DIR)/arch/$(ARCH)/include \
