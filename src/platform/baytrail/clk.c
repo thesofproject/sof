@@ -40,6 +40,7 @@
 #include <platform/shim.h>
 #include <platform/timer.h>
 #include <platform/pmc.h>
+#include <config.h>
 #include <stdint.h>
 
 #define NUM_CLOCKS	2
@@ -62,11 +63,12 @@ struct freq_table {
 
 static struct clk_pdata *clk_pdata;
 
+#if defined CONFIG_BAYTRAIL
 /* increasing frequency order */
 static const struct freq_table cpu_freq[] = {
-	{19200000, 19, 0x0},
-	{19200000, 19, 0x1},
-	{38400000, 38, 0x2},
+	{19200000, 25, 0x0},
+	{19200000, 25, 0x1},
+	{38400000, 50, 0x2},
 	{50000000, 50, 0x3},	/* default */
 	{100000000, 100, 0x4},
 	{200000000, 200, 0x5},
@@ -81,6 +83,33 @@ static const struct freq_table ssp_freq[] = {
 
 #define CPU_DEFAULT_IDX		3
 #define SSP_DEFAULT_IDX		1
+
+#elif defined CONFIG_CHERRYTRAIL
+
+/* increasing frequency order */
+static const struct freq_table cpu_freq[] = {
+	{19200000, 19, 0x0},
+	{19200000, 19, 0x1},
+	{38400000, 38, 0x2},
+	{50000000, 50, 0x3},	/* default */
+	{100000000, 100, 0x4},
+	{200000000, 200, 0x5},
+	{267000000, 267, 0x6},
+	{343000000, 343, 0x7},
+};
+
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19, PMC_SET_SSP_19M2},	/* default */
+};
+
+#define CPU_DEFAULT_IDX		3
+#define SSP_DEFAULT_IDX		0
+
+#else
+#error No target defined
+#endif
+
+
 
 static inline uint32_t get_freq(const struct freq_table *table, int size,
 	unsigned int hz)
