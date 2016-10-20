@@ -53,6 +53,7 @@
 #define IRQ_NUM_EXT_SSP0	16	/* Level 5 */
 #define IRQ_NUM_EXT_SSP1	17	/* Level 5 */
 #define IRQ_NUM_EXT_SSP2	18	/* Level 5 */
+#define IRQ_NUM_EXT_DMAC2	19	/* Level 5 */
 #define IRQ_NUM_NMI		20	/* Level 7 */
 
 /* IRQ Masks */
@@ -74,5 +75,6 @@
 #define IRQ_MASK_EXT_SSP0	(1 << IRQ_NUM_EXT_SSP0)
 #define IRQ_MASK_EXT_SSP1	(1 << IRQ_NUM_EXT_SSP1)
 #define IRQ_MASK_EXT_SSP2	(1 << IRQ_NUM_EXT_SSP2)
+#define IRQ_MASK_EXT_DMAC2	(1 << IRQ_NUM_EXT_DMAC2)
 
 #endif
