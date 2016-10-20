@@ -89,7 +89,7 @@ int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 		return -EINVAL;
 
 	/* set up DMA configuration */
-	complete.timeout = 100;	/* wait 1 msecs for DMA to finish */
+	complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
 	config.direction = DMA_DIR_LMEM_TO_HMEM;
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
@@ -166,7 +166,7 @@ int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 		return -EINVAL;
 
 	/* set up DMA configuration */
-	complete.timeout = 100;	/* wait 1 msecs for DMA to finish */
+	complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
 	config.direction = DMA_DIR_HMEM_TO_LMEM;
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
