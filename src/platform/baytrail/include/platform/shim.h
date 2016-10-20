@@ -36,6 +36,7 @@
 
 #define SHIM_CSR		0x00
 #define SHIM_PISR		0x08
+#define SHIM_PISRH		0x0c
 #define SHIM_PIMR		0x10
 #define SHIM_ISRX		0x18
 #define SHIM_ISRD		0x20
@@ -66,6 +67,12 @@
 #define SHIM_SSP1_DIVH		0xF4
 #define SHIM_SSP2_DIVL		0xF8
 #define SHIM_SSP2_DIVH		0xFC
+#define SHIM_SSP3_DIVL		0x100
+#define SHIM_SSP3_DIVH		0x104
+#define SHIM_SSP4_DIVL		0x108
+#define SHIM_SSP4_DIVH		0x10c
+#define SHIM_SSP5_DIVL		0x110
+#define SHIM_SSP5_DIVH		0x114
 
 #define SHIM_SHIM_BEGIN		SHIM_CSR
 #define SHIM_SHIM_END		SHIM_HDMC

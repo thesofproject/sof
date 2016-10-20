@@ -46,6 +46,7 @@
 #include <reef/ipc.h>
 #include <reef/trace.h>
 #include <reef/audio/component.h>
+#include <config.h>
 #include <string.h>
 
 static const struct sst_intel_ipc_fw_ready ready = {
@@ -148,6 +149,23 @@ int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 			shim_write(SHIM_SSP2_DIVH, SHIM_SSP_DIV_ENA |
 				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
 			break;
+#if defined CONFIG_CHERRYTRAIL
+		case 3:
+			shim_write(SHIM_SSP3_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP3_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		case 4:
+			shim_write(SHIM_SSP4_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP4_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		case 5:
+			shim_write(SHIM_SSP5_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP5_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+#endif
 		default:
 			return -ENODEV;
 		}
@@ -173,6 +191,20 @@ void platform_ssp_disable_mn(uint32_t ssp_port)
 		shim_write(SHIM_SSP2_DIVH, SHIM_SSP_DIV_BYP |
 			SHIM_SSP_DIV_UPD);
 		break;
+#if defined CONFIG_CHERRYTRAIL
+	case 3:
+		shim_write(SHIM_SSP3_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	case 4:
+		shim_write(SHIM_SSP4_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	case 5:
+		shim_write(SHIM_SSP5_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+#endif
 	}
 }
 
@@ -188,11 +220,18 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 		shim_write(SHIM_PISR, mask << 24);
 		interrupt_clear(irq);
 		break;
+#if defined CONFIG_CHERRYTRAIL
+	case IRQ_NUM_EXT_DMAC2:
+		shim_write(SHIM_PISRH, mask << 0);
+		interrupt_clear(irq);
+		break;
+#endif
 	default:
 		break;
 	}
 }
 
+/* TODO: expand this to 64 bit - should we just return mask of IRQ numbers */
 uint32_t platform_interrupt_get_enabled(void)
 {
 	return shim_read(SHIM_PIMR);
@@ -215,8 +254,15 @@ static struct timer platform_ext_timer = {
 
 int platform_init(void)
 {
+#if defined CONFIG_BAYTRAIL
 	struct dma *dmac0, *dmac1;
 	struct dai *ssp0, *ssp1, *ssp2;
+#elif defined CONFIG_CHERRYTRAIL
+	struct dma *dmac0, *dmac1, *dmac2;
+	struct dai *ssp0, *ssp1, *ssp2, *ssp3, *ssp4, *ssp5;
+#else
+#error Undefined platform
+#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
@@ -226,7 +272,11 @@ int platform_init(void)
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 
 	/* configure the shim */
+#if defined CONFIG_BAYTRAIL
 	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
+#elif defined CONFIG_CHERRYTRAIL
+	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x00000e0e);
+#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_PMC);
 
@@ -247,9 +297,15 @@ int platform_init(void)
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
 	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
 
-	/* set SSP clock to 25M */
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
+
+#if defined CONFIG_BAYTRAIL
+	/* set SSP clock to 25M TODO: make BYT use 19.2M as default */
 	clock_set_freq(CLK_SSP, 25000000);
+#elif defined CONFIG_CHERRYTRAIL
+	/* set SSP clock to 19.2M */
+	clock_set_freq(CLK_SSP, 19200000);
+#endif
 
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
@@ -266,6 +322,13 @@ int platform_init(void)
 	if (dmac1 == NULL)
 		return -ENODEV;
 	dma_probe(dmac1);
+
+#if defined CONFIG_CHERRYTRAIL
+	dmac2 = dma_get(DMA_ID_DMAC1);
+	if (dmac2 == NULL)
+		return -ENODEV;
+	dma_probe(dmac2);
+#endif
 
 	/* mask SSP interrupts */
 	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
@@ -286,5 +349,23 @@ int platform_init(void)
 	if (ssp2 == NULL)
 		return -ENODEV;
 	dai_probe(ssp2);
+
+#if defined CONFIG_CHERRYTRAIL
+	ssp3 = dai_get(COMP_TYPE_DAI_SSP, 3);
+	if (ssp3 == NULL)
+		return -ENODEV;
+	dai_probe(ssp3);
+
+	ssp4 = dai_get(COMP_TYPE_DAI_SSP, 4);
+	if (ssp4 == NULL)
+		return -ENODEV;
+	dai_probe(ssp4);
+
+	ssp5 = dai_get(COMP_TYPE_DAI_SSP, 5);
+	if (ssp5 == NULL)
+		return -ENODEV;
+	dai_probe(ssp5);
+#endif
+
 	return 0;
 }
