@@ -39,7 +39,7 @@
 #include <stdint.h>
 #include <string.h>
 
-static struct dai ssp[3] = {
+static struct dai ssp[] = {
 {
 	.type = COMP_TYPE_DAI_SSP,
 	.index = 0,
@@ -90,7 +90,61 @@ static struct dai ssp[3] = {
 		}
 	},
 	.ops		= &ssp_ops,
-},};
+},
+#if defined CONFIG_CHERRYTRAIL
+{
+	.type = COMP_TYPE_DAI_SSP,
+	.index = 3,
+	.plat_data = {
+		.base		= SSP3_BASE,
+		.irq		= IRQ_NUM_EXT_SSP0,
+		.fifo[STREAM_DIRECTION_PLAYBACK] = {
+			.offset		= SSP3_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP3_TX,
+		},
+		.fifo[STREAM_DIRECTION_CAPTURE] = {
+			.offset		= SSP0_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP3_RX,
+		}
+	},
+	.ops		= &ssp_ops,
+},
+{
+	.type = COMP_TYPE_DAI_SSP,
+	.index = 4,
+	.plat_data = {
+		.base		= SSP4_BASE,
+		.irq		= IRQ_NUM_EXT_SSP1,
+		.fifo[STREAM_DIRECTION_PLAYBACK] = {
+			.offset		= SSP4_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP4_TX,
+		},
+		.fifo[STREAM_DIRECTION_CAPTURE] = {
+			.offset		= SSP4_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP4_RX,
+		}
+	},
+	.ops		= &ssp_ops,
+},
+{
+	.type = COMP_TYPE_DAI_SSP,
+	.index = 5,
+	.plat_data = {
+		.base		= SSP5_BASE,
+		.irq		= IRQ_NUM_EXT_SSP2,
+		.fifo[STREAM_DIRECTION_PLAYBACK] = {
+			.offset		= SSP5_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP5_TX,
+		},
+		.fifo[STREAM_DIRECTION_CAPTURE] = {
+			.offset		= SSP5_BASE + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP5_RX,
+		}
+	},
+	.ops		= &ssp_ops,
+},
+#endif
+};
 
 struct dai *dai_get(uint32_t type, uint32_t index)
 {
