@@ -47,6 +47,12 @@
 #define DAI_PLAYBACK_STREAM	0
 #define DAI_CAPTURE_STREAM	1
 
+/* tracing */
+#define trace_dai(__e) trace_event(TRACE_CLASS_DAI, __e)
+#define trace_dai_error(__e)   trace_error(TRACE_CLASS_DAI, __e)
+#define tracev_dai(__e)        tracev_event(TRACE_CLASS_DAI, __e)
+
+
 struct dai_data {
 	/* local DMA config */
 	int chan;
