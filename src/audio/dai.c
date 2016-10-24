@@ -217,20 +217,22 @@ static int dai_playback_params(struct comp_dev *dev,
 	dma_period_desc = &dma_buffer->desc.sink_period;
 	dma_buffer->params = *params;
 
-	/* set up cyclic list of DMA elems */
-	for (i = 0; i < dma_period_desc->number; i++) {
+	if (list_is_empty(&config->elem_list)) {
+		/* set up cyclic list of DMA elems */
+		for (i = 0; i < dma_period_desc->number; i++) {
 
-		elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
-		if (elem == NULL)
-			goto err_unwind;
+			elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+			if (elem == NULL)
+				goto err_unwind;
 
-		elem->size = dma_period_desc->size;
-		elem->src = (uint32_t)(dma_buffer->r_ptr) +
-			i * dma_period_desc->size;
+			elem->size = dma_period_desc->size;
+			elem->src = (uint32_t)(dma_buffer->r_ptr) +
+				i * dma_period_desc->size;
 
-		elem->dest = dai_fifo(dd->ssp, params->direction);
+			elem->dest = dai_fifo(dd->ssp, params->direction);
 
-		list_item_append(&elem->list, &config->elem_list);
+			list_item_append(&elem->list, &config->elem_list);
+		}
 	}
 
 	/* set write pointer to start of buffer */
@@ -273,18 +275,20 @@ static int dai_capture_params(struct comp_dev *dev,
 	dma_period_desc = &dma_buffer->desc.source_period;
 	dma_buffer->params = *params;
 
-	/* set up cyclic list of DMA elems */
-	for (i = 0; i < dma_period_desc->number; i++) {
+	if (list_is_empty(&config->elem_list)) {
+		/* set up cyclic list of DMA elems */
+		for (i = 0; i < dma_period_desc->number; i++) {
 
-		elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
-		if (elem == NULL)
-			goto err_unwind;
+			elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+			if (elem == NULL)
+				goto err_unwind;
 
-		elem->size = dma_period_desc->size;
-		elem->dest = (uint32_t)(dma_buffer->w_ptr) +
-			i * dma_period_desc->size;
-		elem->src = dai_fifo(dd->ssp, params->direction);
-		list_item_append(&elem->list, &config->elem_list);
+			elem->size = dma_period_desc->size;
+			elem->dest = (uint32_t)(dma_buffer->w_ptr) +
+				i * dma_period_desc->size;
+			elem->src = dai_fifo(dd->ssp, params->direction);
+			list_item_append(&elem->list, &config->elem_list);
+		}
 	}
 
 	/* set write pointer to start of buffer */
@@ -306,6 +310,11 @@ static int dai_params(struct comp_dev *dev,
 {
 	struct comp_buffer *dma_buffer;
 
+	/* can set params on only init state */
+	if (dev->state != COMP_STATE_INIT) {
+		trace_dai_error("wdp");
+		return -EINVAL;
+	}
 	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
@@ -323,14 +332,22 @@ static int dai_params(struct comp_dev *dev,
 
 static int dai_prepare(struct comp_dev *dev)
 {
+	int ret = 0;
 	struct dai_data *dd = comp_get_drvdata(dev);
+
+	if (list_is_empty(&dd->config.elem_list)) {
+		trace_dai_error("wdm");
+		return -EINVAL;
+	}
 
 	dd->dai_pos_blks = 0;
 
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
 
-	return dma_set_config(dd->dma, dd->chan, &dd->config);
+	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
+	dev->state = COMP_STATE_PREPARE;
+	return ret;
 }
 
 static int dai_reset(struct comp_dev *dev)
@@ -364,30 +381,43 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	switch (cmd) {
 
 	case COMP_CMD_PAUSE:
-		dma_pause(dd->dma, dd->chan);
-		dai_trigger(dd->ssp, cmd, dd->direction);
-		dev->state = COMP_STATE_PAUSED;
+		if (dev->state == COMP_STATE_RUNNING) {
+			dma_pause(dd->dma, dd->chan);
+			dai_trigger(dd->ssp, cmd, dd->direction);
+			dev->state = COMP_STATE_PAUSED;
+		}
 		break;
 	case COMP_CMD_STOP:
-		if (dev->state == COMP_STATE_RUNNING)
-			dma_stop(dd->dma, dd->chan, 1);
-		else if (dev->state == COMP_STATE_PAUSED)
-			dma_stop(dd->dma, dd->chan, 0);
-
-		dai_trigger(dd->ssp, cmd, dd->direction);
-		dev->state = COMP_STATE_STOPPED;
+		switch (dev->state) {
+		case COMP_STATE_RUNNING:
+		case COMP_STATE_PAUSED:
+			dma_stop(dd->dma, dd->chan,
+				dev->state == COMP_STATE_RUNNING ? 1 : 0);
+			/* need stop ssp */
+			dai_trigger(dd->ssp, cmd, dd->direction);
+		/* go through */
+		case COMP_STATE_PREPARE:
+			dev->state = COMP_STATE_INIT;
+			break;
+		}
 		break;
 	case COMP_CMD_RELEASE:
-		dai_trigger(dd->ssp, cmd, dd->direction);
-		dma_release(dd->dma, dd->chan);
-		dev->state = COMP_STATE_RUNNING;
+		/* only release from paused*/
+		if (dev->state == COMP_STATE_PAUSED) {
+			dai_trigger(dd->ssp, cmd, dd->direction);
+			dma_release(dd->dma, dd->chan);
+			dev->state = COMP_STATE_RUNNING;
+		}
 		break;
 	case COMP_CMD_START:
-		ret = dma_start(dd->dma, dd->chan);
-		if (ret < 0)
-			return ret;
-		dai_trigger(dd->ssp, cmd, dd->direction);
-		dev->state = COMP_STATE_RUNNING;
+		/* only start from prepared*/
+		if (dev->state == COMP_STATE_PREPARE) {
+			ret = dma_start(dd->dma, dd->chan);
+			if (ret < 0)
+				return ret;
+			dai_trigger(dd->ssp, cmd, dd->direction);
+			dev->state = COMP_STATE_RUNNING;
+		}
 		break;
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
