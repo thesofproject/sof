@@ -39,6 +39,7 @@
 #include <reef/lock.h>
 #include <reef/work.h>
 #include <reef/trace.h>
+#include <reef/wait.h>
 
 /* SSCR0 bits */
 #define SSCR0_DSS_MASK	(0x0000000f)
@@ -132,6 +133,8 @@ struct ssp_pdata {
 	struct work work;
 	spinlock_t lock;
 	uint32_t state[2];		/* SSP_STATE_ for each direction */
+	completion_t drain_complete;
+
 };
 
 static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
@@ -401,6 +404,7 @@ static uint32_t ssp_drain_work(void *data, uint32_t udelay)
 		ssp_stop(dai, STREAM_DIRECTION_PLAYBACK);
 	else
 		ssp_pause(dai, STREAM_DIRECTION_PLAYBACK);
+	wait_completed(&ssp->drain_complete);
 	return 0;
 }
 
@@ -438,7 +442,11 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		if (direction == STREAM_DIRECTION_PLAYBACK) {
 			ssp->state[STREAM_DIRECTION_PLAYBACK] =
 				SSP_STATE_PAUSING;
-			work_schedule_default(&ssp->work, 1000);
+			/* make sure the maximum 256 bytes are drained */
+			work_schedule_default(&ssp->work, 1333);
+			wait_init(&ssp->drain_complete);
+			ssp->drain_complete.timeout = 1500;
+			wait_for_completion_timeout(&ssp->drain_complete);
 		} else
 			ssp_pause(dai, direction);
 		break;
@@ -453,6 +461,9 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 			ssp->state[STREAM_DIRECTION_PLAYBACK] =
 				SSP_STATE_DRAINING;
 			work_schedule_default(&ssp->work, 2000);
+			wait_init(&ssp->drain_complete);
+			ssp->drain_complete.timeout = 3000;
+			wait_for_completion_timeout(&ssp->drain_complete);
 		} else
 			ssp_stop(dai, direction);
 		break;
