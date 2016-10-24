@@ -113,8 +113,8 @@
 
 /* SSP port status */
 #define SSP_STATE_INIT			0
-#define SSP_STATE_RUNNING		1
-#define SSP_STATE_IDLE			2
+#define SSP_STATE_IDLE			1
+#define SSP_STATE_RUNNING		2
 #define SSP_STATE_DRAINING		3
 #define SSP_STATE_PAUSING		4
 #define SSP_STATE_PAUSED		5
@@ -182,16 +182,10 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 
 	spin_lock(&ssp->lock);
 
-	/* is playback already running */
-	if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_RUNNING ||
-		ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_DRAINING) {
-		trace_ssp_error("wsP");
-		goto out;
-	}
-
-	/* is capture already running */
-	if (ssp->state[DAI_DIR_CAPTURE] == SSP_STATE_RUNNING) {
-		trace_ssp_error("wsC");
+	/* is playback/capture already running */
+	if (ssp->state[DAI_DIR_PLAYBACK] > SSP_STATE_IDLE ||
+		ssp->state[DAI_DIR_CAPTURE] > SSP_STATE_IDLE) {
+		trace_ssp_error("wsS");
 		goto out;
 	}
 
@@ -300,6 +294,9 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
+
+	ssp->state[DAI_DIR_PLAYBACK] = SSP_STATE_IDLE;
+	ssp->state[DAI_DIR_CAPTURE] = SSP_STATE_IDLE;
 
 out:
 	spin_unlock(&ssp->lock);
@@ -415,17 +412,29 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 
 	switch (cmd) {
 	case DAI_TRIGGER_START:
+/* let's only wait until draining finished(timout) before another start */
+#if 0
 		/* cancel any scheduled work */
 		if (ssp->state[direction] == SSP_STATE_DRAINING)
 			work_cancel_default(&ssp->work);
-		ssp_start(dai, direction);
+#endif
+		if (ssp->state[direction] == SSP_STATE_IDLE)
+			ssp_start(dai, direction);
 		break;
 	case DAI_TRIGGER_PAUSE_RELEASE:
+/* let's only wait until pausing finished(timout) before next release */
+#if 0
 		if (ssp->state[direction] == SSP_STATE_PAUSING)
 			work_cancel_default(&ssp->work);
-		ssp_start(dai, direction);
+#endif
+		if (ssp->state[direction] == SSP_STATE_PAUSED)
+			ssp_start(dai, direction);
 		break;
 	case DAI_TRIGGER_PAUSE_PUSH:
+		if (ssp->state[direction] != SSP_STATE_RUNNING) {
+			trace_ssp_error("wsP");
+			return 0;
+		}
 		if (direction == STREAM_DIRECTION_PLAYBACK) {
 			ssp->state[STREAM_DIRECTION_PLAYBACK] =
 				SSP_STATE_PAUSING;
@@ -434,7 +443,13 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 			ssp_pause(dai, direction);
 		break;
 	case DAI_TRIGGER_STOP:
-		if (direction == STREAM_DIRECTION_PLAYBACK) {
+		if (ssp->state[direction] != SSP_STATE_RUNNING &&
+			ssp->state[direction] != SSP_STATE_PAUSED) {
+			trace_ssp_error("wsO");
+			return 0;
+		}
+		if (direction == STREAM_DIRECTION_PLAYBACK &&
+			ssp->state[direction] == SSP_STATE_RUNNING) {
 			ssp->state[STREAM_DIRECTION_PLAYBACK] =
 				SSP_STATE_DRAINING;
 			work_schedule_default(&ssp->work, 2000);
@@ -466,6 +481,9 @@ static int ssp_probe(struct dai *dai)
 
 	work_init(&ssp->work, ssp_drain_work, dai, WORK_ASYNC);
 	spinlock_init(&ssp->lock);
+
+	ssp->state[DAI_DIR_PLAYBACK] = SSP_STATE_INIT;
+	ssp->state[DAI_DIR_CAPTURE] = SSP_STATE_INIT;
 
 	return 0;
 }
