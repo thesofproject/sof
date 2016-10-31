@@ -7,11 +7,11 @@ Build Instructions
 
 Baytrail :-
 
-./configure --with-arch=xtensa --with-platform=baytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
+./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
 
 Cherrytrail :-
 
-./configure --with-arch=xtensa --with-platform=cherrytrail --with-tool-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
+./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
 
 3) make
 
