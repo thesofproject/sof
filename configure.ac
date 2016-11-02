@@ -113,6 +113,20 @@ case "$with_platform" in
     ;;
 esac
 
+# DSP core support (Optional)
+AC_ARG_WITH([dsp-core],
+        AS_HELP_STRING([--with-dsp-core], [Specify DSP Core]),
+	[], [with_dsp_core=no])
+
+case "$with_dsp_core" in
+    CHT_audio_hifiep*)
+	# BXT/CHT DSP Core
+	XTENSA_CORE="CHT_audio_hifiep"
+	AC_SUBST(XTENSA_CORE)
+    ;;
+
+esac
+
 # Test after CFLAGS set othewise test of cross compiler fails. 
 AM_PROG_AS
 AM_PROG_AR
@@ -157,6 +171,7 @@ echo "
 
 Target Architecture:           ${ARCH}
 Target Platform:               ${PLATFORM}
+Target Core:                   ${XTENSA_CORE}
 
 Compiler:                      ${CC}
 CFLAGS:                        ${CFLAGS}
