@@ -250,6 +250,7 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 		trace_pipe_error("ebm");
 		return NULL;
 	}
+	bzero(buffer->addr, desc->size);
 
 	buffer->w_ptr = buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + desc->size;
