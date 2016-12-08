@@ -633,15 +633,15 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		case DMA_DIR_MEM_TO_MEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M;
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_INC;
-			lli_desc->sar = (uint32_t)sg_elem->src;
-			lli_desc->dar = (uint32_t)sg_elem->dest;
+			lli_desc->sar = (uint32_t)sg_elem->src | PLATFORM_HOST_DMA_MASK;
+			lli_desc->dar = (uint32_t)sg_elem->dest | PLATFORM_HOST_DMA_MASK;
 			break;
 		case DMA_DIR_MEM_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2P;
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_INC | DW_CTLL_DST_FIX;
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_DST_PER(config->dest_dev);
-			lli_desc->sar = (uint32_t)sg_elem->src;
+			lli_desc->sar = (uint32_t)sg_elem->src | PLATFORM_HOST_DMA_MASK;
 			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		case DMA_DIR_DEV_TO_MEM:
@@ -650,7 +650,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_SRC_PER(config->src_dev);
 			lli_desc->sar = (uint32_t)sg_elem->src;
-			lli_desc->dar = (uint32_t)sg_elem->dest;
+			lli_desc->dar = (uint32_t)sg_elem->dest | PLATFORM_HOST_DMA_MASK;
 			break;
 		case DMA_DIR_DEV_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2P;
