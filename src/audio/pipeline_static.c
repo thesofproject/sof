@@ -45,6 +45,9 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
+/* simple debug pipeline */
+#define DEBUG_PIPE	0
+
 /* convenience component UUIDs and descriptors */
 #define SPIPE_MIXER {COMP_TYPE_MIXER, 0, 0}
 #define SPIPE_MUX {COMP_TYPE_MUX, 0, 0}
@@ -119,6 +122,22 @@ static struct spipe_buffer pipe_buffers[] = {
 	SPIPE_HOST_BUF, /* B7 */
 };
 
+#if DEBUG_PIPE
+
+/*
+ * One PCM to single SSP output. SSP port is set in platform.h
+ *
+ * host PCM0(0) ---> volume(1) ---> SSPx(6)
+ *
+ * host PCM0(9) <--- volume(8) <--- SSPx(7)
+ */
+static struct spipe_link pipe_play[] = {
+	{&pipe_play_comps[0], &pipe_buffers[0], &pipe_play_comps[1]},
+	{&pipe_play_comps[1], &pipe_buffers[5], &pipe_play_comps[6]},
+};
+
+#else
+
 /*
  * Two PCMs mixed into single SSP output. SSP port is set in platform.h
  *
@@ -136,6 +155,8 @@ static struct spipe_link pipe_play[] = {
 	{&pipe_play_comps[4], &pipe_buffers[4], &pipe_play_comps[5]},
 	{&pipe_play_comps[5], &pipe_buffers[5], &pipe_play_comps[6]},
 };
+
+#endif
 
 static struct spipe_link pipe_capture[] = {
 	{&pipe_capt_comps[0], &pipe_buffers[6], &pipe_capt_comps[1]},
