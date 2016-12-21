@@ -184,7 +184,7 @@ struct dma_chan_data {
 
 	struct work work;
 
-	void (*cb)(void *data, uint32_t type);	/* client callback function */
+	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);	/* client callback function */
 	void *cb_data;		/* client callback data */
 	int cb_type;		/* callback type */
 };
@@ -195,7 +195,9 @@ struct dma_pdata {
 	uint32_t class;		/* channel class - set for controller atm */
 };
 
-static inline void dw_dma_chan_reload(struct dma *dma, int channel);
+static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel);
+static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
+		struct dma_sg_elem *next);
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
 {
@@ -385,6 +387,7 @@ out:
 static int dw_dma_release(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_sg_elem next;
 	uint32_t flags;
 
 	spin_lock_irq(&dma->lock, flags);
@@ -393,8 +396,8 @@ static int dw_dma_release(struct dma *dma, int channel)
 
 	if (p->chan[channel].status == DMA_STATUS_PAUSED) {
 		if (p->chan[channel].cb && p->chan[channel].cb_type & DMA_IRQ_TYPE_LLIST)
-			p->chan[channel].cb(p->chan[channel].cb_data, DMA_IRQ_TYPE_LLIST);
-		dw_dma_chan_reload(dma, channel);
+			p->chan[channel].cb(p->chan[channel].cb_data, DMA_IRQ_TYPE_LLIST, &next);
+		dw_dma_chan_reload_lli(dma, channel);
 	}
 
 	/* resume and reload DMA */
@@ -711,7 +714,8 @@ static int dw_dma_pm_context_store(struct dma *dma)
 }
 
 static void dw_dma_set_cb(struct dma *dma, int channel, int type,
-		void (*cb)(void *data, uint32_t type), void *data)
+		void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
+		void *data)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
@@ -723,7 +727,8 @@ static void dw_dma_set_cb(struct dma *dma, int channel, int type,
 	spin_unlock_irq(&dma->lock, flags);
 }
 
-static inline void dw_dma_chan_reload(struct dma *dma, int channel)
+/* reload using LLI data */
+static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_lli2 *lli = p->chan[channel].lli_current;
@@ -754,11 +759,39 @@ static inline void dw_dma_chan_reload(struct dma *dma, int channel)
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 }
 
+/* reload using callback data */
+static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
+		struct dma_sg_elem *next)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dw_lli2 *lli = p->chan[channel].lli_current;
+
+	/* channel needs started from scratch, so write SARn, DARn */
+	dw_write(dma, DW_SAR(channel), next->src);
+	dw_write(dma, DW_DAR(channel), next->dest);
+
+	/* set transfer size of element */
+	lli->ctrl_hi = DW_CTLH_CLASS(p->class) |
+		(next->size & DW_CTLH_BLOCK_TS_MASK);
+
+	/* program CTLn */
+	dw_write(dma, DW_CTRL_LOW(channel), lli->ctrl_lo);
+	dw_write(dma, DW_CTRL_HIGH(channel), lli->ctrl_hi);
+
+	/* program CFGn */
+	dw_write(dma, DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
+	dw_write(dma, DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
+
+	/* enable the channel */
+	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
+}
+
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_sg_elem next;
 	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
 	uint32_t mask, pmask;
 	int i;
@@ -806,12 +839,16 @@ static void dw_dma_irq_handler(void *data)
 				continue;
 			}
 
+			next.size = 0;
 			if (p->chan[i].cb)
 				p->chan[i].cb(p->chan[i].cb_data,
-					DMA_IRQ_TYPE_LLIST);
+					DMA_IRQ_TYPE_LLIST, &next);
 
 			/* check for reload channel */
-			dw_dma_chan_reload(dma, i);
+			if (next.size > 0)
+				dw_dma_chan_reload_next(dma, i, &next);
+			else
+				dw_dma_chan_reload_lli(dma, i);
 		}
 #if DW_USE_HW_LLI
 		/* end of a LLI block */

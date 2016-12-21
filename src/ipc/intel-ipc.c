@@ -143,7 +143,7 @@ static uint32_t ipc_fw_caps(uint32_t header)
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
-static void dma_complete(void *data, uint32_t type)
+static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	struct intel_ipc_data *iipc = (struct intel_ipc_data *)data;
 

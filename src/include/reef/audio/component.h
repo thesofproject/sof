@@ -161,7 +161,8 @@ struct comp_ops {
 	int (*copy)(struct comp_dev *dev);
 
 	/* host buffer config */
-	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem);
+	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem,
+			uint32_t host_size);
 };
 
 

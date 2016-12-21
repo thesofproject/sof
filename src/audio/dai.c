@@ -68,7 +68,7 @@ struct dai_data {
 };
 
 /* this is called by DMA driver every time descriptor has completed */
-static void dai_dma_cb(void *data, uint32_t type)
+static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct dai_data *dd = comp_get_drvdata(dev);
