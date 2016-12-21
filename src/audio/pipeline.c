@@ -554,11 +554,11 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 /* TODO: remove ?? configure pipelines host DMA buffer */
 int pipeline_host_buffer(struct pipeline *p, struct comp_dev *host,
-	struct dma_sg_elem *elem)
+	struct dma_sg_elem *elem, uint32_t host_size)
 {
 	trace_pipe("PBr");
 
-	return comp_host_buffer(host, elem);
+	return comp_host_buffer(host, elem, host_size);
 }
 
 /* copy audio data from DAI buffer to host PCM buffer via pipeline */

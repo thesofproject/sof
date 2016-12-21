@@ -254,10 +254,10 @@ static inline int comp_params(struct comp_dev *dev,
  * mandatory for host components, optional for the others.
  */
 static inline int comp_host_buffer(struct comp_dev *dev,
-	struct dma_sg_elem *elem)
+	struct dma_sg_elem *elem, uint32_t host_size)
 {
 	if (dev->drv->ops.host_buffer)
-		return dev->drv->ops.host_buffer(dev, elem);
+		return dev->drv->ops.host_buffer(dev, elem, host_size);
 	return 0;
 }
 

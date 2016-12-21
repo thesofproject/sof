@@ -473,7 +473,8 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	return ret;
 }
 
-static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem)
+static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
+		uint32_t host_size)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *e;
@@ -484,7 +485,7 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem)
 		return -ENOMEM;
 
 	*e = *elem;
-	hd->host_size += e->size;
+	hd->host_size = host_size;
 
 	list_item_append(&e->list, &hd->host.elem_list);
 	return 0;

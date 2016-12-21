@@ -244,7 +244,8 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 		else
 			elem.dest = phy_addr;
 
-		err = pipeline_host_buffer(pipeline_static, host, &elem);
+		err = pipeline_host_buffer(pipeline_static, host, &elem,
+				req->ringinfo.ring_size);
 		if (err < 0) {
 			trace_ipc_error("ePb");
 			return err;
