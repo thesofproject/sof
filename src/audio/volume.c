@@ -397,7 +397,9 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t cframes = 64;
+	uint32_t cframes = PIPELINE_LL_FRAMES;
+
+	trace_comp("Vol");
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);

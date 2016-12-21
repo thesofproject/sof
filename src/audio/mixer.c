@@ -203,8 +203,10 @@ static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *sources[5], *source;
-	uint32_t i = 0, cframes = 64;
+	uint32_t i = 0, cframes = PIPELINE_LL_FRAMES;
 	struct list_item * blist;
+
+	trace_mixer("Mix");
 
 	/* calculate the highest status between input streams */
 	list_for_item(blist, &dev->bsource_list) {

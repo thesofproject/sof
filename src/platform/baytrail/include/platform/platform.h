@@ -55,12 +55,15 @@
 #define PLATFORM_MAX_STREAMS	5
 
 /* Platform Host DMA buffer config - these should align with DMA engine */
-#define PLAT_HOST_PERSIZE	256	/* must be multiple of DMA burst size */
+#define PLAT_HOST_PERSIZE	192	/* must be multiple of DMA burst size */
 #define PLAT_HOST_PERIODS	2	/* give enough latency for DMA refill */
 
 /* Platform Dev DMA buffer config - these should align with DMA engine */
-#define PLAT_DEV_PERSIZE	256	/* must be multiple of DMA+DEV burst size */
+#define PLAT_DEV_PERSIZE	192	/* must be multiple of DMA+DEV burst size */
 #define PLAT_DEV_PERIODS	2	/* give enough latency for DMA refill */
+
+/* Pipeline low latency frames per copy - TODO should come from config */
+#define PIPELINE_LL_FRAMES	48
 
 /* DMA channel drain timeout in microseconds */
 #define PLATFORM_DMA_TIMEOUT	1333
