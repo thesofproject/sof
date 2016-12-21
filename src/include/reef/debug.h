@@ -122,6 +122,7 @@
 /* panic and stop executing any more code */
 #define panic(_p) \
 	do { \
+		interrupt_global_disable(); \
 		dbg_val(0xdead0000 | _p) \
 		platform_panic(_p); \
 		while(1) {}; \
