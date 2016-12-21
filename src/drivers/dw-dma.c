@@ -831,8 +831,8 @@ static void dw_dma_irq_handler(void *data)
 		mask = 0x1 << i;
 
 		/* end of a transfer */
-		if (status_tfr & mask &&
-			p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST) {
+		if ((status_tfr & mask) &&
+			(p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)) {
 
 			if (p->chan[i].status == DMA_STATUS_PAUSING) {
 				p->chan[i].status = DMA_STATUS_PAUSED;
