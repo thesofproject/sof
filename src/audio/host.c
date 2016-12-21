@@ -364,8 +364,8 @@ static int host_preload(struct comp_dev *dev)
 		dma_set_config(hd->dma, hd->chan, &hd->config);
 		dma_start(hd->dma, hd->chan);
 
-		/* wait 1 msecs for DMA to finish */
-		hd->complete.timeout = 100;
+		/* wait for DMA to finish */
+		hd->complete.timeout = PLATFORM_DMA_TIMEOUT;
 		ret = wait_for_completion_timeout(&hd->complete);
 		if (ret < 0) {
 			trace_comp_error("eHp");
