@@ -76,6 +76,8 @@ struct host_data {
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;
+	uint32_t split_remaining;
+	uint32_t next_inc;
 
 	/* stream info */
 	struct stream_params params;
@@ -95,16 +97,80 @@ static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 	return elem;
 }
 
-/* this is called by DMA driver every time descriptor has completed */
-static void host_dma_cb(void *data, uint32_t type)
+/*
+ * Host period copy to DSP DMA completion. This is called when DMA completes
+ * its current transfer from host to DSP. The host memory is not guaranteed
+ * to be continuous and also not guaranteed to have a period/buffer size that
+ * is a multiple of the DSP period size. This means we must check we do not
+ * overflow host period/buffer/page boundaries on each transfer and split the
+ * DMA transfer if we do overflow.
+ */
+static void host_dma_cb_playback(struct comp_dev *dev,
+	struct dma_sg_elem *next)
 {
-	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
 	struct comp_buffer *dma_buffer;
 
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
+
+	trace_host("Cpp");
+
+	/* are we dealing with a split transfer */
+	if (hd->split_remaining) {
+
+		/* update local elem */
+		local_elem->dest += local_elem->size;
+		source_elem = next_buffer(hd->source);
+		hd->source->current_end = source_elem->src + source_elem->size;
+		local_elem->src = source_elem->src;
+
+		/* set up next elem */
+		local_elem->size = hd->split_remaining;
+		hd->next_inc = hd->split_remaining;
+		hd->split_remaining = 0;
+
+	} else {
+		/* destination is always DSP period size */
+		sink_elem = next_buffer(hd->sink);
+
+		local_elem->dest = sink_elem->dest;
+		local_elem->size = hd->period->size;
+		local_elem->src += hd->next_inc;
+		hd->next_inc = hd->period->size;
+
+		/* are we at end of elem */
+		if (local_elem->src == hd->source->current_end) {
+
+			/* end of elem, so use next */
+			source_elem = next_buffer(hd->source);
+			hd->source->current_end = source_elem->src + source_elem->size;
+			local_elem->src = source_elem->src;
+
+		} else if (local_elem->src + hd->period->size > hd->source->current_end) {
+
+			/* split copy - split transaction into 2 copies */
+			local_elem->size = hd->source->current_end - local_elem->src;
+			hd->split_remaining = hd->period->size - local_elem->size;
+
+			next->src = local_elem->src;
+			next->dest = local_elem->dest;
+			next->size = local_elem->size;
+			return;
+		}
+	}
+
+	/* update buffer positions */
+	dma_buffer = hd->dma_buffer;
+
+	dma_buffer->w_ptr += hd->period->size;
+
+	if (dma_buffer->w_ptr >= dma_buffer->end_addr)
+		dma_buffer->w_ptr = dma_buffer->addr;
+#if 0
+	trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
+#endif
 
 	/* new local period, update host buffer position blks */
 	hd->host_pos_blks += hd->period->size;
@@ -114,46 +180,6 @@ static void host_dma_cb(void *data, uint32_t type)
 		hd->host_pos_blks = 0;
 	if (hd->host_pos)
 		*hd->host_pos = hd->host_pos_blks;
-
-	/* update source buffer elem and check for overflow */
-	local_elem->src += hd->period->size;
-	if (local_elem->src >= hd->source->current_end) {
-
-		/* move onto next host side elem */
-		source_elem = next_buffer(hd->source);
-		hd->source->current_end = source_elem->src + source_elem->size;
-		local_elem->src = source_elem->src;
-	}
-
-	/* update sink buffer elem and check for overflow */
-	local_elem->dest += hd->period->size;
-	if (local_elem->dest >= hd->sink->current_end) {
-
-		/* move onto next host side elem */
-		sink_elem = next_buffer(hd->sink);
-		hd->sink->current_end = sink_elem->dest + sink_elem->size;
-		local_elem->dest = sink_elem->dest;
-	}
-
-	/* update buffer positions */
-	dma_buffer = hd->dma_buffer;
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
-		dma_buffer->w_ptr += hd->period->size;
-
-		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
-			dma_buffer->w_ptr = dma_buffer->addr;
-#if 0
-		trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
-#endif
-	} else {
-		hd->dma_buffer->r_ptr += hd->period->size;
-
-		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
-			dma_buffer->r_ptr = dma_buffer->addr;
-#if 0
-		trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
-#endif
-	}
 
 	/* recalc available buffer space */
 	comp_update_buffer(hd->dma_buffer);
@@ -167,6 +193,117 @@ static void host_dma_cb(void *data, uint32_t type)
 
 	/* let any waiters know we have completed */
 	wait_completed(&hd->complete);
+}
+
+/*
+ * DSP period copy to host DMA completion. This is called when DMA completes
+ * its current transfer from DSP to host. The host memory is not guaranteed
+ * to be continuous and also not guaranteed to have a period/buffer size that
+ * is a multiple of the DSP period size. This means we must check we do not
+ * overflow host period/buffer/page boundaries on each transfer and split the
+ * DMA transfer if we do overflow.
+ */
+static void host_dma_cb_capture(struct comp_dev *dev,
+		struct dma_sg_elem *next)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
+	struct comp_buffer *dma_buffer;
+
+	local_elem = list_first_item(&hd->config.elem_list,
+		struct dma_sg_elem, list);
+
+	trace_host("Cpc");
+
+	/* are we dealing with a split transfer */
+	if (hd->split_remaining) {
+
+		/* update local elem */
+		local_elem->src += local_elem->size;
+		sink_elem = next_buffer(hd->sink);
+		hd->sink->current_end = sink_elem->dest + sink_elem->size;
+		local_elem->dest = sink_elem->dest;
+
+		/* set up next elem */
+		local_elem->size = hd->split_remaining;
+		hd->next_inc = hd->split_remaining;
+		hd->split_remaining = 0;
+
+	} else {
+		/* source is always DSP period size */
+		source_elem = next_buffer(hd->source);
+
+		local_elem->src = source_elem->src;
+		local_elem->size = hd->period->size;
+		local_elem->dest += hd->next_inc;
+		hd->next_inc = hd->period->size;
+
+		/* are we at end of elem */
+		if (local_elem->dest == hd->sink->current_end) {
+
+			/* end of elem, so use next */
+			sink_elem = next_buffer(hd->sink);
+			hd->sink->current_end = sink_elem->dest + sink_elem->size;
+			local_elem->dest = sink_elem->dest;
+
+		} else if (local_elem->dest + hd->period->size > hd->sink->current_end) {
+
+			/* split copy - split transaction into 2 copies */
+			local_elem->size = hd->sink->current_end - local_elem->dest;
+			hd->split_remaining = hd->period->size - local_elem->size;
+
+			next->src = local_elem->src;
+			next->dest = local_elem->dest;
+			next->size = local_elem->size;
+			return;
+		}
+	}
+
+	/* update buffer positions */
+	dma_buffer = hd->dma_buffer;
+	hd->dma_buffer->r_ptr += hd->period->size;
+
+	if (dma_buffer->r_ptr >= dma_buffer->end_addr)
+		dma_buffer->r_ptr = dma_buffer->addr;
+#if 0
+	trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
+#endif
+
+
+	/* new local period, update host buffer position blks */
+	hd->host_pos_blks += hd->period->size;
+
+	/* buffer overlap ? */
+	if (hd->host_pos_blks >= hd->host_size)
+		hd->host_pos_blks = 0;
+	if (hd->host_pos)
+		*hd->host_pos = hd->host_pos_blks;
+
+	/* recalc available buffer space */
+	comp_update_buffer(hd->dma_buffer);
+
+	/* send IPC message to driver if needed */
+	hd->host_period_pos += hd->period->size;
+	if (hd->host_period_pos >= hd->host_period_bytes) {
+		hd->host_period_pos = 0;
+		ipc_stream_send_notification(dev, &hd->cp);
+	}
+
+	/* let any waiters know we have completed */
+	wait_completed(&hd->complete);
+}
+
+/* this is called by DMA driver every time descriptor has completed */
+static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
+{
+
+	struct comp_dev *dev = (struct comp_dev *)data;
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
+		host_dma_cb_playback(dev, next);
+	else
+		host_dma_cb_capture(dev, next);
 }
 
 static struct comp_dev *host_new(uint32_t type, uint32_t index,
@@ -203,6 +340,7 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	hd->host_pos = NULL;
 	hd->source = NULL;
 	hd->sink = NULL;
+	hd->split_remaining = 0;
 
 	/* init buffer elems */
 	list_init(&hd->config.elem_list);
@@ -347,6 +485,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	local_elem->dest = sink_elem->dest;
 	local_elem->size = hd->period->size;
 	local_elem->src = source_elem->src;
+	hd->next_inc = hd->period->size;
 	return 0;
 }
 
@@ -401,6 +540,8 @@ static int host_prepare(struct comp_dev *dev)
 	hd->host_period_pos = 0;
 	hd->host_period_bytes =
 		hd->params.period_frames * hd->params.frame_size;
+	hd->split_remaining = 0;
+
 
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		host_preload(dev);
@@ -533,6 +674,7 @@ static int host_copy(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_RUNNING)
 		return 0;
 
+	trace_host("CpS");
 	dma_set_config(hd->dma, hd->chan, &hd->config);
 	dma_start(hd->dma, hd->chan);
 
