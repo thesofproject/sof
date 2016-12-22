@@ -75,6 +75,7 @@ struct comp_data {
 struct comp_func_map {
 	uint16_t source;	/* source format */
 	uint16_t sink;		/* sink format */
+	uint16_t channels;	/* channel number for the stream */
 	void (*func)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
 };
@@ -85,21 +86,16 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src = (int16_t*) source->r_ptr;
-	int32_t *dest = (int32_t*) sink->w_ptr;
-	int i, j;
+	int32_t i, *dest = (int32_t*) sink->w_ptr;
 
 	/* buffer sizes are always divisible by period frames */
-	for (i = 0; i < frames; i++) {
-		for (j = 0; j < source->params.channels; j++) {
-			int32_t val = (int32_t)*src;
-			*dest = (val * cd->volume[j]) >> 16;
-			dest++;
-			src++;
-		}
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = (int32_t)src[i] * cd->volume[0];
+		dest[i + 1] = (int32_t)src[i] * cd->volume[1];
 	}
 
-	source->r_ptr = src;
-	sink->w_ptr = dest;
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
@@ -107,22 +103,17 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t*) source->r_ptr;
+	int32_t i, *src = (int32_t*) source->r_ptr;
 	int16_t *dest = (int16_t*) sink->w_ptr;
-	int i, j;
 
 	/* buffer sizes are always divisible by period frames */
-	for (i = 0; i < frames; i++) {
-		for (j = 0; j < source->params.channels; j++) {
-			/* TODO: clamp when converting to int16_t */
-			*dest = (int16_t)((*src * cd->volume[j]) >> 16);
-			dest++;
-			src++;
-		}
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = (((int32_t)src[i] >> 16) * cd->volume[0]) >> 16;
+		dest[i + 1] = (((int32_t)src[i + 1] >> 16) * cd->volume[1]) >> 16;
 	}
 
-	source->r_ptr = src;
-	sink->w_ptr = dest;
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
@@ -131,20 +122,16 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src = (int32_t*) source->r_ptr;
-	int32_t *dest = (int32_t*) sink->w_ptr;
-	int i, j;
+	int32_t i, *dest = (int32_t*) sink->w_ptr;
 
 	/* buffer sizes are always divisible by period frames */
-	for (i = 0; i < frames; i++) {
-		for (j = 0; j < source->params.channels; j++) {
-			*dest = (*src * cd->volume[j]) >> 16;
-			dest++;
-			src++;
-		}
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = ((int64_t)src[i] * cd->volume[0]) >> 16;
+		dest[i + 1] = ((int64_t)src[i] * cd->volume[1]) >> 16;
 	}
 
-	source->r_ptr = src;
-	sink->w_ptr = dest;
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 16 bit source buffer to 16 bit dest buffer */
@@ -154,30 +141,64 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src = (int16_t*) source->r_ptr;
 	int16_t *dest = (int16_t*) sink->w_ptr;
-	int i, j;
+	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
-	for (i = 0; i < frames; i++) {
-		for (j = 0; j < source->params.channels; j++) {
-			int32_t val = (int32_t)*src;
-			/* TODO: clamp when converting to int16_t */
-			*dest = (int16_t)((val * cd->volume[j]) >> 16);
-
-			dest++;
-			src++;
-		}
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = ((int32_t)src[i] * cd->volume[0]) >> 16;
+		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[1]) >> 16;
 	}
 
-	source->r_ptr = src;
-	sink->w_ptr = dest;
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
+}
+
+/* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
+static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
+	struct comp_buffer *source, uint32_t frames)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int16_t *src = (int16_t*) source->r_ptr;
+	int32_t i, *dest = (int32_t*) sink->w_ptr;
+
+	/* buffer sizes are always divisible by period frames */
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = ((int32_t)src[i] * cd->volume[0]) >> 8;
+		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[0]) >> 8;
+	}
+
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
+}
+
+/* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
+static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
+	struct comp_buffer *source, uint32_t frames)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int32_t i, *src = (int32_t*) source->r_ptr;
+	int16_t *dest = (int16_t*) sink->w_ptr;
+
+	/* buffer sizes are always divisible by period frames */
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = (int16_t)((((int32_t)src[i] >> 8) *
+			cd->volume[0]) >> 16);
+		dest[i + 1] = (int16_t)((((int32_t)src[i + 1] >> 8) *
+			cd->volume[0]) >> 16);
+	}
+
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
 }
 
 /* map of source and sink buffer formats to volume function */
 static const struct comp_func_map func_map[] = {
-	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S16_LE, vol_s16_to_s16},
-	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S32_LE, vol_s16_to_s32},
-	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S16_LE, vol_s32_to_s16},
-	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S32_LE, vol_s32_to_s32},
+	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S16_LE, 2, vol_s16_to_s16},
+	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S32_LE, 2, vol_s16_to_s32},
+	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S16_LE, 2, vol_s32_to_s16},
+	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S32_LE, 2, vol_s32_to_s32},
+	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S24_3LE, 2, vol_s16_to_s24},
+	{STREAM_FORMAT_S24_3LE, STREAM_FORMAT_S16_LE, 2, vol_s24_to_s16},
 };
 
 static void vol_update(struct comp_data *cd, uint32_t chan)
@@ -420,6 +441,8 @@ static int volume_prepare(struct comp_dev *dev)
 		if (source->params.pcm.format != func_map[i].source)
 			continue;
 		if (sink->params.pcm.format != func_map[i].sink)
+			continue;
+		if (sink->params.channels != func_map[i].channels)
 			continue;
 
 		cd->scale_vol = func_map[i].func;
