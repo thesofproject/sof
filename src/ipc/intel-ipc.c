@@ -530,7 +530,6 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 {
 	struct ipc_intel_ipc_device_config_req config_req;
 	struct ipc_dai_dev *dai_dev;
-	int err;
 
 	trace_ipc("DsF");
 
@@ -568,15 +567,6 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	dai_dev->dai_config.bclk_fs = 32;	/* 32 BCLKs per frame - */
 	dai_dev->dai_config.mclk_fs = 256;	
 	dai_dev->dai_config.clk_src = SSP_CLK_EXT;
-
-	/* set SSP M/N dividers */
-	err = platform_ssp_set_mn(config_req.ssp_interface, 
-		25000000, 48000,
-		dai_dev->dai_config.bclk_fs);
-	if (err < 0) {
-		trace_ipc_error("eDs");
-		goto error;
-	}
 
 	comp_dai_config(dai_dev->dev.cd, &dai_dev->dai_config);
 
