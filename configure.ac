@@ -1,6 +1,6 @@
 
 AC_PREREQ([2.69])
-AC_INIT([Reef],[m4_esyscmd(./git-version-gen .tarball-version)],[sound-open-firmware@alsa-project.org])
+AC_INIT([Reef],[m4_esyscmd(./git-version.sh)],[sound-open-firmware@alsa-project.org])
 AC_CONFIG_SRCDIR([src/init/init.c])
 AC_CONFIG_HEADERS([src/include/config.h])
 AC_CONFIG_MACRO_DIRS([m4])
@@ -10,8 +10,8 @@ AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability subdir-objects silent-rule
 AM_MAINTAINER_MODE([enable])
 
 # get version info from git
-m4_define(reef_major, `echo $VERSION | cut -d. -f1 | cut -d- -f1`)
-m4_define(reef_minor, `echo $VERSION | cut -d. -f2 | cut -d- -f1`)
+m4_define(reef_major, `cat .version | cut -dv -f2 | cut -d. -f1`)
+m4_define(reef_minor, `cat .version | cut -d. -f2 | cut -d- -f1`)
 AC_DEFINE_UNQUOTED([REEF_MAJOR], reef_major, [Reef major version])
 AC_DEFINE_UNQUOTED([REEF_MINOR], reef_minor, [Reef minor version])
 

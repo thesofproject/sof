@@ -12,6 +12,7 @@
 *.rom
 *.man
 .version
+.tarball-version
 
 Makefile
 Makefile.in
@@ -27,9 +28,11 @@ CHANGELOG
 ltmain.sh
 m4/*
 libtool
+src/include/version.h
 
 autom4te*
 config.*
 *.gz
 *.xz
 src/arch/xtensa/reef
+reef-v*

@@ -59,6 +59,7 @@
 #include <uapi/intel-ipc.h>
 #include <reef/intel-ipc.h>
 #include <config.h>
+#include <version.h>
 
 /* convert DSP mailbox address to host offset */
 #define to_host_offset(_s) \
@@ -123,7 +124,7 @@ static const struct ipc_intel_ipc_fw_version fw_version = {
 	.minor = REEF_MINOR,
 	.major = REEF_MAJOR,
 	.type = 0,
-	.fw_build_hash = VERSION,
+	.fw_build_hash = REEF_BUILD,
 	.fw_log_providers_hash = 0,
 };
 

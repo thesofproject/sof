@@ -15,9 +15,12 @@ export ARCH_INCDIR = \
 export PLATFORM_INCDIR = \
 	-I $(SRC_DIR)/platform/$(PLATFORM)/include
 
-BUILT_SOURCES = $(top_srcdir)/.version
-$(top_srcdir)/.version:
-	echo $(VERSION) > $@-t && mv $@-t $@
+BUILT_SOURCES = $(top_srcdir)/src/include/version.h
+
+$(top_srcdir)/src/include/version.h:
+	./git-version.sh
+
 dist-hook:
-	echo $(VERSION) > $(distdir)/.tarball-version
-	echo $(VERSION) > $(distdir)/.version
+	./git-version.sh
+	cat .version > $(distdir)/.tarball-version
+	cat .version > $(distdir)/.version
