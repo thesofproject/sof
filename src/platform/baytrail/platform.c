@@ -180,13 +180,8 @@ int platform_init(void)
 
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
 
-#if defined CONFIG_BAYTRAIL
-	/* set SSP clock to 25M TODO: make BYT use 19.2M as default */
-	clock_set_freq(CLK_SSP, 25000000);
-#elif defined CONFIG_CHERRYTRAIL
 	/* set SSP clock to 19.2M */
 	clock_set_freq(CLK_SSP, 19200000);
-#endif
 
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
