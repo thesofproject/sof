@@ -103,8 +103,7 @@ struct dai_config {
 	uint32_t frame_size;	/* in BCLKs */
 	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
 	struct dai_slot_map rx_slot_map[DAI_NUM_SLOT_MAPS];
-	uint32_t bclk_fs;	/* ratio between frame size and BCLK */
-	uint32_t mclk_fs;	/* ratio between frame size and MCLK */
+	uint32_t bclk;	/* BCLK frequency in Hz */
 	uint32_t mclk;		/* mclk frequency in Hz */
 	uint32_t clk_src;	/* DAI specific clk source */
 	uint32_t lbm;	/* loopback mode */

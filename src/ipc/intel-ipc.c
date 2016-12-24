@@ -565,9 +565,9 @@ static uint32_t ipc_device_set_formats(uint32_t header)
 	dai_dev->dai_config.mclk = config_req.clock_frequency;
 	dai_dev->dai_config.format = DAI_FMT_I2S | DAI_FMT_CONT |
 		DAI_FMT_NB_NF | DAI_FMT_CBS_CFS;
-	dai_dev->dai_config.frame_size = 32;	/* TODO 16bit stereo hard coded */
-	dai_dev->dai_config.bclk_fs = 32;	/* 32 BCLKs per frame - */
-	dai_dev->dai_config.mclk_fs = 256;	
+	dai_dev->dai_config.frame_size = 24; /* really sample size */
+	dai_dev->dai_config.bclk = 2400000;
+	dai_dev->dai_config.mclk = 19200000;
 	dai_dev->dai_config.clk_src = SSP_CLK_EXT;
 
 	comp_dai_config(dai_dev->dev.cd, &dai_dev->dai_config);

@@ -252,7 +252,9 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		return -ENODEV;
 	}
 
-	sscr0 |= SSCR0_SCR(dai->config.mclk_fs / dai->config.bclk_fs - 1);
+	/* BCLK is generated from MCLK */
+	sscr0 |= SSCR0_SCR(dai->config.mclk / dai->config.bclk - 1);
+
 	/* format */
 	switch (dai->config.format & DAI_FMT_FORMAT_MASK) {
 	case DAI_FMT_I2S:
