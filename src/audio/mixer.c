@@ -49,31 +49,35 @@ struct mixer_data {
 
 /* mix n stream datas to 1 sink buffer */
 static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
-	struct comp_buffer **sources, uint32_t count, uint32_t frames)
+	struct comp_buffer **sources, uint32_t num_sources, uint32_t frames)
 {
-	int16_t *src;
-	int16_t *dest = (int16_t*) sink->w_ptr;
-	int i, j, k;
-	int32_t val = 0;
+	int32_t *src, *dest = sink->w_ptr, val[2], count;
+	int i, j;
 
-	/* buffer sizes are always divisible by period frames */
-	/* TODO: unroll this loop for further optimisation */
-	for (i = 0; i < frames; i++) {
-		for (j = 0; j < sink->params.channels; j++) {
-			val = 0;
-			for (k = 0; k < count; k++) {
-				src = (int16_t*)sources[k]->r_ptr;
-				val += *src;
-				/* TODO: clamp when converting to int16_t */
-				src++;
-				sources[k]->r_ptr = src;
-			}
-			*dest = (int16_t)(val >> (count >> 1)); /* average level */
-			dest++;
+	count = frames * sink->params.channels;
+
+	for (i = 0; i < count; i += 2) {
+		val[0] = 0;
+		val[1] = 0;
+		for (j = 0; j < num_sources; j++) {
+			src = sources[j]->r_ptr;
+
+			/* TODO: clamp */
+			val[0] += src[i];
+			val[1] += src[i + 1];
 		}
+
+		/* TODO: best place for attenuation ? */
+		dest[i] = (val[0] >> (num_sources >> 1));
+		dest[i + 1] = (val[1] >> (num_sources >> 1));
 	}
 
-	sink->w_ptr = dest;
+	/* update R/W pointers */
+	sink->w_ptr = dest + count;
+	for (j = 0; j < num_sources; j++) {
+		src = sources[j]->r_ptr;
+		sources[j]->r_ptr = src + count;
+	}
 }
 
 static struct comp_dev *mixer_new(uint32_t type, uint32_t index,
@@ -203,7 +207,7 @@ static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *sources[5], *source;
-	uint32_t i = 0, cframes = PIPELINE_LL_FRAMES;
+	uint32_t i = 0, cframes = PLAT_INT_PERIOD_FRAMES;
 	struct list_item * blist;
 
 	trace_mixer("Mix");
@@ -222,7 +226,7 @@ static int mixer_copy(struct comp_dev *dev)
 	md->mix_func(dev, sink, sources, i, cframes);
 
 	/* update buffer pointers for overflow */
-	for(; i>0; i--) {
+	for(; i > 0; i--) {
 		if (sources[i-1]->r_ptr >= sources[i-1]->end_addr)
 			sources[i-1]->r_ptr = sources[i-1]->addr;
 		comp_update_buffer(sources[i-1]);
