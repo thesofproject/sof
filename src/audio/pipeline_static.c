@@ -46,7 +46,7 @@
 #include <reef/audio/pipeline.h>
 
 /* simple debug pipeline */
-#define DEBUG_PIPE	0
+#define DEBUG_PIPE	1
 
 /* convenience component UUIDs and descriptors */
 #define SPIPE_MIXER {COMP_TYPE_MIXER, 0, 0}
@@ -63,16 +63,37 @@
 	.source_period = {.size = xosize, .number = xonum, .no_irq = xoirq},},}
 
 /* Host facing buffer */
+#define HOST_PERIOD_SIZE \
+	(PLAT_HOST_PERIOD_FRAMES * PLATFORM_HOST_FRAME_SIZE)
+#define HOST_BUFFER_SIZE \
+	(HOST_PERIOD_SIZE * PLAT_HOST_PERIODS)
+
 #define SPIPE_HOST_BUF \
-	SPIPE_BUFFER(PLAT_HOST_PERSIZE * PLAT_HOST_PERIODS, \
-		PLAT_HOST_PERSIZE, PLAT_HOST_PERIODS, 0, \
-		PLAT_HOST_PERSIZE, PLAT_HOST_PERIODS, 0)
+	SPIPE_BUFFER(HOST_BUFFER_SIZE, \
+		HOST_PERIOD_SIZE, PLAT_HOST_PERIODS, 0, \
+		HOST_PERIOD_SIZE, PLAT_HOST_PERIODS, 0)
 
 /* Device facing buffer */
+#define DEV_PERIOD_SIZE \
+	(PLAT_DAI_PERIOD_FRAMES * PLATFORM_DAI_FRAME_SIZE)
+#define DEV_BUFFER_SIZE \
+	(DEV_PERIOD_SIZE * PLAT_DAI_PERIODS)
+
 #define SPIPE_DEV_BUF \
-	SPIPE_BUFFER(PLAT_DEV_PERSIZE * PLAT_DEV_PERIODS, \
-		PLAT_DEV_PERSIZE, PLAT_DEV_PERIODS, 0, \
-		PLAT_DEV_PERSIZE, PLAT_DEV_PERIODS, 0)
+	SPIPE_BUFFER(DEV_BUFFER_SIZE, \
+		DEV_PERIOD_SIZE, PLAT_DAI_PERIODS, 0, \
+		DEV_PERIOD_SIZE, PLAT_DAI_PERIODS, 0)
+
+/* Internal buffer */
+#define INT_PERIOD_SIZE \
+	(PLAT_INT_PERIOD_FRAMES * PLATFORM_INT_FRAME_SIZE)
+#define INT_BUFFER_SIZE \
+	(INT_PERIOD_SIZE * PLAT_INT_PERIODS)
+
+#define SPIPE_INT_BUF \
+	SPIPE_BUFFER(INT_BUFFER_SIZE, \
+		INT_PERIOD_SIZE, PLAT_INT_PERIODS, 0, \
+		INT_PERIOD_SIZE, PLAT_INT_PERIODS, 0)
 
 struct spipe_comp {
 	uint32_t type;
@@ -114,9 +135,9 @@ static struct spipe_comp pipe_capt_comps[] = {
 static struct spipe_buffer pipe_buffers[] = {
 	SPIPE_HOST_BUF,	/* B0 */
 	SPIPE_HOST_BUF,	/* B1 */
-	SPIPE_HOST_BUF,	/* B2 */
-	SPIPE_HOST_BUF,	/* B3 */
-	SPIPE_HOST_BUF,	/* B4 */
+	SPIPE_INT_BUF,	/* B2 */
+	SPIPE_INT_BUF,	/* B3 */
+	SPIPE_INT_BUF,	/* B4 */
 	SPIPE_DEV_BUF,	/* B5 */
 	SPIPE_DEV_BUF,	/* B6 */
 	SPIPE_HOST_BUF, /* B7 */
@@ -127,9 +148,9 @@ static struct spipe_buffer pipe_buffers[] = {
 /*
  * One PCM to single SSP output. SSP port is set in platform.h
  *
- * host PCM0(0) ---> volume(1) ---> SSPx(6)
+ * host PCM0(0) --B0--> volume(1) --B5--> SSPx(6)
  *
- * host PCM0(9) <--- volume(8) <--- SSPx(7)
+ * host PCM0(9) <--B7-- volume(8) <--B6-- SSPx(7)
  */
 static struct spipe_link pipe_play[] = {
 	{&pipe_play_comps[0], &pipe_buffers[0], &pipe_play_comps[1]},
@@ -141,11 +162,11 @@ static struct spipe_link pipe_play[] = {
 /*
  * Two PCMs mixed into single SSP output. SSP port is set in platform.h
  *
- * host PCM0(0) ---> volume(1) ---+
- *                                |mixer(4) --> volume(5) ---> SSPx(6)
- * host PCM1(2) ---> volume(3) ---+
+ * host PCM0(0) --B0--> volume(1) --B2--+
+ *                                      |--mixer(4) --B4--> volume(5) --B5--> SSPx(6)
+ * host PCM1(2) --B1--> volume(3) --B3--+
  *
- * host PCM0(9) <--- volume(8) <--- SSPx(7)
+ * host PCM0(9) <--B7-- volume(8) <--B6-- SSPx(7)
  */
 static struct spipe_link pipe_play[] = {
 	{&pipe_play_comps[0], &pipe_buffers[0], &pipe_play_comps[1]},
