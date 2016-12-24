@@ -164,7 +164,7 @@ static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
 		dest[i] = ((int32_t)src[i] * cd->volume[0]) >> 8;
-		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[0]) >> 8;
+		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[1]) >> 8;
 	}
 
 	source->r_ptr = src + i;
@@ -184,7 +184,7 @@ static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = (int16_t)((((int32_t)src[i] >> 8) *
 			cd->volume[0]) >> 16);
 		dest[i + 1] = (int16_t)((((int32_t)src[i + 1] >> 8) *
-			cd->volume[0]) >> 16);
+			cd->volume[1]) >> 16);
 	}
 
 	source->r_ptr = src + i;
@@ -197,8 +197,8 @@ static const struct comp_func_map func_map[] = {
 	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S32_LE, 2, vol_s16_to_s32},
 	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S16_LE, 2, vol_s32_to_s16},
 	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S32_LE, 2, vol_s32_to_s32},
-	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S24_3LE, 2, vol_s16_to_s24},
-	{STREAM_FORMAT_S24_3LE, STREAM_FORMAT_S16_LE, 2, vol_s24_to_s16},
+	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S24_4LE, 2, vol_s16_to_s24},
+	{STREAM_FORMAT_S24_4LE, STREAM_FORMAT_S16_LE, 2, vol_s24_to_s16},
 };
 
 static void vol_update(struct comp_data *cd, uint32_t chan)
@@ -397,7 +397,7 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t cframes = PIPELINE_LL_FRAMES;
+	uint32_t cframes = PLAT_INT_PERIOD_FRAMES;
 
 	trace_comp("Vol");
 
@@ -431,18 +431,32 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
+	uint32_t source_format, sink_format;
 	int i;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
+	/* is source a host or DAI ? */
+	if (source->source->is_host || source->source->is_dai)
+		source_format = source->params.pcm.format;
+	else
+		source_format = STREAM_FORMAT_S32_LE;
+
+	/* TODO tmp hard coded for 24 bit - need fixed for capture*/
+	/* is sink a host or DAI ? */
+	if (sink->sink->is_host || sink->sink->is_dai)
+		sink_format = STREAM_FORMAT_S24_4LE;//sink->params.pcm.format;
+	else
+		sink_format = STREAM_FORMAT_S32_LE;
+
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < ARRAY_SIZE(func_map); i++) {
 
-		if (source->params.pcm.format != func_map[i].source)
+		if (source_format != func_map[i].source)
 			continue;
-		if (sink->params.pcm.format != func_map[i].sink)
+		if (sink_format != func_map[i].sink)
 			continue;
 		if (sink->params.channels != func_map[i].channels)
 			continue;
