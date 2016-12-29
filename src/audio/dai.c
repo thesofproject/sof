@@ -59,6 +59,7 @@ struct dai_data {
 	struct dma_sg_config config;
 
 	int direction;
+	uint32_t stream_format;
 	struct dai *ssp;
 	struct dma *dma;
 
@@ -162,6 +163,8 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 	if (dd->chan < 0)
 		goto error;
 
+	dd->stream_format = PLATFORM_SSP_STREAM_FORMAT;
+
 	/* set up callback */
 	//if (dd->ssp->plat_data.flags & DAI_FLAGS_IRQ_CB)
 		dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
@@ -216,6 +219,9 @@ static int dai_playback_params(struct comp_dev *dev,
 		struct comp_buffer, sink_list);
 	dma_period_desc = &dma_buffer->desc.sink_period;
 	dma_buffer->params = *params;
+
+	/* set it to dai stream format, for volume func correct mapping */
+	dma_buffer->params.pcm.format = dd->stream_format;
 
 	if (list_is_empty(&config->elem_list)) {
 		/* set up cyclic list of DMA elems */
@@ -274,6 +280,9 @@ static int dai_capture_params(struct comp_dev *dev,
 		struct comp_buffer, source_list);
 	dma_period_desc = &dma_buffer->desc.source_period;
 	dma_buffer->params = *params;
+
+	/* set it to dai stream format, for volume func correct mapping */
+	dma_buffer->params.pcm.format = dd->stream_format;
 
 	if (list_is_empty(&config->elem_list)) {
 		/* set up cyclic list of DMA elems */
