@@ -117,6 +117,37 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 
 	trace_host("Cpp");
 
+	/* update buffer positions */
+	dma_buffer = hd->dma_buffer;
+
+	dma_buffer->w_ptr += local_elem->size;
+
+	if (dma_buffer->w_ptr >= dma_buffer->end_addr)
+		dma_buffer->w_ptr = dma_buffer->addr;
+
+#if 0
+	trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
+#endif
+
+	/* recalc available buffer space */
+	comp_update_buffer(hd->dma_buffer);
+
+	/* new local period, update host buffer position blks */
+	hd->host_pos_blks += local_elem->size;
+
+	/* buffer overlap ? */
+	if (hd->host_pos_blks >= hd->host_size)
+		hd->host_pos_blks = 0;
+	if (hd->host_pos)
+		*hd->host_pos = hd->host_pos_blks;
+
+	/* send IPC message to driver if needed */
+	hd->host_period_pos += local_elem->size;
+	if (hd->host_period_pos >= hd->host_period_bytes) {
+		hd->host_period_pos = 0;
+		ipc_stream_send_notification(dev, &hd->cp);
+	}
+
 	/* are we dealing with a split transfer */
 	if (hd->split_remaining) {
 
@@ -161,36 +192,6 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 		}
 	}
 
-	/* update buffer positions */
-	dma_buffer = hd->dma_buffer;
-
-	dma_buffer->w_ptr += hd->period->size;
-
-	if (dma_buffer->w_ptr >= dma_buffer->end_addr)
-		dma_buffer->w_ptr = dma_buffer->addr;
-#if 0
-	trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
-#endif
-
-	/* new local period, update host buffer position blks */
-	hd->host_pos_blks += hd->period->size;
-
-	/* buffer overlap ? */
-	if (hd->host_pos_blks >= hd->host_size)
-		hd->host_pos_blks = 0;
-	if (hd->host_pos)
-		*hd->host_pos = hd->host_pos_blks;
-
-	/* recalc available buffer space */
-	comp_update_buffer(hd->dma_buffer);
-
-	/* send IPC message to driver if needed */
-	hd->host_period_pos += hd->period->size;
-	if (hd->host_period_pos >= hd->host_period_bytes) {
-		hd->host_period_pos = 0;
-		ipc_stream_send_notification(dev, &hd->cp);
-	}
-
 	/* let any waiters know we have completed */
 	wait_completed(&hd->complete);
 }
@@ -214,6 +215,35 @@ static void host_dma_cb_capture(struct comp_dev *dev,
 		struct dma_sg_elem, list);
 
 	trace_host("Cpc");
+
+	/* update buffer positions */
+	dma_buffer = hd->dma_buffer;
+	hd->dma_buffer->r_ptr += local_elem->size;
+
+	if (dma_buffer->r_ptr >= dma_buffer->end_addr)
+		dma_buffer->r_ptr = dma_buffer->addr;
+#if 0
+	trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
+#endif
+
+	/* new local period, update host buffer position blks */
+	hd->host_pos_blks += local_elem->size;
+
+	/* buffer overlap ? */
+	if (hd->host_pos_blks >= hd->host_size)
+		hd->host_pos_blks = 0;
+	if (hd->host_pos)
+		*hd->host_pos = hd->host_pos_blks;
+
+	/* recalc available buffer space */
+	comp_update_buffer(hd->dma_buffer);
+
+	/* send IPC message to driver if needed */
+	hd->host_period_pos += local_elem->size;
+	if (hd->host_period_pos >= hd->host_period_bytes) {
+		hd->host_period_pos = 0;
+		ipc_stream_send_notification(dev, &hd->cp);
+	}
 
 	/* are we dealing with a split transfer */
 	if (hd->split_remaining) {
@@ -257,36 +287,6 @@ static void host_dma_cb_capture(struct comp_dev *dev,
 			next->size = local_elem->size;
 			return;
 		}
-	}
-
-	/* update buffer positions */
-	dma_buffer = hd->dma_buffer;
-	hd->dma_buffer->r_ptr += hd->period->size;
-
-	if (dma_buffer->r_ptr >= dma_buffer->end_addr)
-		dma_buffer->r_ptr = dma_buffer->addr;
-#if 0
-	trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
-#endif
-
-
-	/* new local period, update host buffer position blks */
-	hd->host_pos_blks += hd->period->size;
-
-	/* buffer overlap ? */
-	if (hd->host_pos_blks >= hd->host_size)
-		hd->host_pos_blks = 0;
-	if (hd->host_pos)
-		*hd->host_pos = hd->host_pos_blks;
-
-	/* recalc available buffer space */
-	comp_update_buffer(hd->dma_buffer);
-
-	/* send IPC message to driver if needed */
-	hd->host_period_pos += hd->period->size;
-	if (hd->host_period_pos >= hd->host_period_bytes) {
-		hd->host_period_pos = 0;
-		ipc_stream_send_notification(dev, &hd->cp);
 	}
 
 	/* let any waiters know we have completed */
