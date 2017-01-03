@@ -260,8 +260,8 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	case DAI_FMT_I2S:
 		sscr0 |= SSCR0_PSP;
 		sscr1 |= SSCR1_TRAIL;
-		sspsp |= SSPSP_SFRMWDTH(dai->config.frame_size + 1);
-		sspsp |= SSPSP_SFRMDLY((dai->config.frame_size + 1) * 2);
+		sspsp |= SSPSP_SFRMWDTH(dai->config.sample_size + 1);
+		sspsp |= SSPSP_SFRMDLY((dai->config.sample_size + 1) * 2);
 		sspsp |= SSPSP_DMYSTRT(1);
 		break;
 	case DAI_FMT_DSP_A:
@@ -274,11 +274,11 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		return -EINVAL;
 	}
 
-	/* frame size */
-	if (dai->config.frame_size > 16)
-		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(dai->config.frame_size - 16));
+	/* sample size */
+	if (dai->config.sample_size > 16)
+		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(dai->config.sample_size - 16));
 	else
-		sscr0 |= SSCR0_DSIZE(dai->config.frame_size);
+		sscr0 |= SSCR0_DSIZE(dai->config.sample_size);
 
 	/* watermarks - TODO: do we still need old sscr1 method ?? */
 	sscr1 |= (SSCR1_TX(4) | SSCR1_RX(4));

@@ -100,7 +100,7 @@ struct dai_slot_map {
 /* DAI runtime hardware configuration */
 struct dai_config {
 	uint32_t format;
-	uint32_t frame_size;	/* in BCLKs */
+	uint32_t sample_size;	/* in BCLKs */
 	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
 	struct dai_slot_map rx_slot_map[DAI_NUM_SLOT_MAPS];
 	uint32_t bclk;	/* BCLK frequency in Hz */
