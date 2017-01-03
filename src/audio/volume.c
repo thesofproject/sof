@@ -191,6 +191,44 @@ static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	sink->w_ptr = dest + i;
 }
 
+/* copy and scale volume from 32 bit source buffer to 24 bit on 32 bit boundary dest buffer */
+static void vol_s32_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
+	struct comp_buffer *source, uint32_t frames)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int32_t *src = (int32_t*) source->r_ptr;
+	int32_t i, *dest = (int32_t*) sink->w_ptr;
+
+	/* buffer sizes are always divisible by period frames */
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = ((int64_t)src[i] * cd->volume[0]) >> 24;
+		dest[i + 1] = ((int64_t)src[i + 1] * cd->volume[1]) >> 24;
+	}
+
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
+}
+
+/* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
+static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
+	struct comp_buffer *source, uint32_t frames)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int32_t i, *src = (int32_t*) source->r_ptr;
+	int32_t *dest = (int32_t*) sink->w_ptr;
+
+	/* buffer sizes are always divisible by period frames */
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = (int32_t)(((int64_t)src[i]  *
+			cd->volume[0]) >> 8);
+		dest[i + 1] = (int32_t)(((int64_t)src[i + 1] *
+			cd->volume[1]) >> 8);
+	}
+
+	source->r_ptr = src + i;
+	sink->w_ptr = dest + i;
+}
+
 /* map of source and sink buffer formats to volume function */
 static const struct comp_func_map func_map[] = {
 	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S16_LE, 2, vol_s16_to_s16},
@@ -199,6 +237,8 @@ static const struct comp_func_map func_map[] = {
 	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S32_LE, 2, vol_s32_to_s32},
 	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S24_4LE, 2, vol_s16_to_s24},
 	{STREAM_FORMAT_S24_4LE, STREAM_FORMAT_S16_LE, 2, vol_s24_to_s16},
+	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S24_4LE, 2, vol_s32_to_s24},
+	{STREAM_FORMAT_S24_4LE, STREAM_FORMAT_S32_LE, 2, vol_s24_to_s32},
 };
 
 static void vol_update(struct comp_data *cd, uint32_t chan)
@@ -447,7 +487,7 @@ static int volume_prepare(struct comp_dev *dev)
 	/* TODO tmp hard coded for 24 bit - need fixed for capture*/
 	/* is sink a host or DAI ? */
 	if (sink->sink->is_host || sink->sink->is_dai)
-		sink_format = STREAM_FORMAT_S24_4LE;//sink->params.pcm.format;
+		sink_format = sink->params.pcm.format;
 	else
 		sink_format = STREAM_FORMAT_S32_LE;
 
