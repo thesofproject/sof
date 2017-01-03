@@ -46,7 +46,7 @@
 #include <reef/audio/pipeline.h>
 
 /* simple debug pipeline */
-#define DEBUG_PIPE	1
+#define DEBUG_PIPE	0
 
 /* convenience component UUIDs and descriptors */
 #define SPIPE_MIXER {COMP_TYPE_MIXER, 0, 0}
