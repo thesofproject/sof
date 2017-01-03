@@ -51,7 +51,8 @@ struct mixer_data {
 static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer **sources, uint32_t num_sources, uint32_t frames)
 {
-	int32_t *src, *dest = sink->w_ptr, val[2], count;
+	int32_t *src, *dest = sink->w_ptr, count;
+	int64_t val[2];
 	int i, j;
 
 	count = frames * sink->params.channels;
