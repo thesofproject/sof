@@ -230,13 +230,13 @@ static int mixer_copy(struct comp_dev *dev)
 	for(; i > 0; i--) {
 		if (sources[i-1]->r_ptr >= sources[i-1]->end_addr)
 			sources[i-1]->r_ptr = sources[i-1]->addr;
-		comp_update_buffer(sources[i-1]);
+		comp_update_buffer_consume(sources[i-1]);
 	}
 	if (sink->w_ptr >= sink->end_addr)
 		sink->w_ptr = sink->addr;
 
 	/* calc new free and available */
-	comp_update_buffer(sink);
+	comp_update_buffer_produce(sink);
 
 	/* number of frames sent downstream */
 	return cframes;

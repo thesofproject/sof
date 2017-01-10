@@ -460,8 +460,8 @@ static int volume_copy(struct comp_dev *dev)
 		sink->w_ptr = sink->addr;
 
 	/* calc new free and available */
-	comp_update_buffer(sink);
-	comp_update_buffer(source);
+	comp_update_buffer_produce(sink);
+	comp_update_buffer_consume(source);
 
 	/* number of frames sent downstream */
 	return cframes;

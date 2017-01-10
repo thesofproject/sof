@@ -130,7 +130,7 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 #endif
 
 	/* recalc available buffer space */
-	comp_update_buffer(hd->dma_buffer);
+	comp_update_buffer_consume(hd->dma_buffer);
 
 	/* new local period, update host buffer position blks */
 	hd->host_pos_blks += local_elem->size;
@@ -236,7 +236,7 @@ static void host_dma_cb_capture(struct comp_dev *dev,
 		*hd->host_pos = hd->host_pos_blks;
 
 	/* recalc available buffer space */
-	comp_update_buffer(hd->dma_buffer);
+	comp_update_buffer_produce(hd->dma_buffer);
 
 	/* send IPC message to driver if needed */
 	hd->host_period_pos += local_elem->size;

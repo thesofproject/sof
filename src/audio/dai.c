@@ -98,6 +98,8 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 			*dd->dai_pos = dd->dai_pos_blks +
 				dma_buffer->r_ptr - dma_buffer->addr;
 
+		/* recalc available buffer space */
+		comp_update_buffer_consume(dma_buffer);
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
@@ -119,10 +121,10 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		if (dd->dai_pos)
 			*dd->dai_pos = dd->dai_pos_blks +
 				dma_buffer->w_ptr - dma_buffer->addr;
-	}
 
-	/* recalc available buffer space */
-	comp_update_buffer(dma_buffer);
+		/* recalc available buffer space */
+		comp_update_buffer_produce(dma_buffer);
+	}
 
 	/* notify pipeline that DAI needs it's buffer filled */
 //	if (dev->state == COMP_STATE_RUNNING)

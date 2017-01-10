@@ -311,10 +311,24 @@ void sys_comp_mux_init(void);
 void sys_comp_switch_init(void);
 void sys_comp_volume_init(void);
 
-static inline void comp_update_buffer(struct comp_buffer *buffer)
+static inline void comp_update_buffer_produce(struct comp_buffer *buffer)
 {
-	if (buffer->r_ptr <= buffer->w_ptr)
+	if (buffer->r_ptr < buffer->w_ptr)
 		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+	else if (buffer->r_ptr == buffer->w_ptr)
+		buffer->avail = buffer->end_addr - buffer->addr; /* full */
+	else
+		buffer->avail = buffer->end_addr - buffer->r_ptr +
+			buffer->w_ptr - buffer->addr;
+	buffer->free = buffer->desc.size - buffer->avail;
+}
+
+static inline void comp_update_buffer_consume(struct comp_buffer *buffer)
+{
+	if (buffer->r_ptr < buffer->w_ptr)
+		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+	else if (buffer->r_ptr == buffer->w_ptr)
+		buffer->avail = 0; /* empty */
 	else
 		buffer->avail = buffer->end_addr - buffer->r_ptr +
 			buffer->w_ptr - buffer->addr;
