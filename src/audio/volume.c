@@ -306,11 +306,11 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index,
 	struct comp_data *cd;
 	int i;
 
-	dev = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	dev = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
 
-	cd = rmalloc(RZONE_MODULE, RMOD_SYS, sizeof(*cd));
+	cd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(RZONE_MODULE, RMOD_SYS, dev);
 		return NULL;
