@@ -91,7 +91,7 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
 		dest[i] = (int32_t)src[i] * cd->volume[0];
-		dest[i + 1] = (int32_t)src[i] * cd->volume[1];
+		dest[i + 1] = (int32_t)src[i + 1] * cd->volume[1];
 	}
 
 	source->r_ptr = src + i;
@@ -127,7 +127,7 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
 		dest[i] = ((int64_t)src[i] * cd->volume[0]) >> 16;
-		dest[i + 1] = ((int64_t)src[i] * cd->volume[1]) >> 16;
+		dest[i + 1] = ((int64_t)src[i + 1] * cd->volume[1]) >> 16;
 	}
 
 	source->r_ptr = src + i;
