@@ -64,6 +64,7 @@ struct host_data {
 	completion_t complete;
 	struct period_desc *period;
 	struct comp_buffer *dma_buffer;
+	struct work work;
 
 	/* local and host DMA buffer info */
 	struct hc_buf host;
@@ -220,6 +221,10 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 			/* end of stream, stop */
 			next->size = 0;
 			need_copy = 0;
+
+			/* will notify host side once dai tell us */
+			wait_init(&dev->pipeline->complete);
+			work_schedule_default(&hd->work, PLATFORM_HOST_FINISH_DELAY);
 			goto next_copy;
 		}
 
@@ -354,6 +359,38 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		host_dma_cb_capture(dev, next);
 }
 
+/* We need to wait until the last bytes/period is finished in dai, before we
+ * can notify host side about that, otherwise, host side will trigger stop too
+ * early, and we will miss rendering them.
+ * This work should be scheduled once the copy for host component is finished,
+ * and wait a timeout inside the work for pipeline->complete, which should be
+ * set in the endpoint(dai) rendering finishing callback.
+ */
+static uint32_t host_finish_work(void *data, uint32_t udelay)
+{
+	struct comp_dev *dev = (struct comp_dev *)data;
+	struct host_data *hd = comp_get_drvdata(dev);
+	int ret;
+
+	dev->pipeline->complete.timeout = PLATFORM_HOST_FINISH_TIMEOUT;
+	ret = wait_for_completion_timeout(&dev->pipeline->complete);
+	if (ret < 0)
+		trace_comp_error("eHf");
+	else {
+		trace_comp("hFw");
+		/* update for host side */
+		if (hd->host_pos) {
+			*hd->host_pos = hd->host_pos_read;
+			/* send the last notification to host */
+			ipc_stream_send_notification(dev, &hd->cp);
+		}
+	}
+
+	return 0;
+}
+
+
+
 static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	uint32_t direction)
 {
@@ -389,6 +426,7 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	hd->source = NULL;
 	hd->sink = NULL;
 	hd->split_remaining = 0;
+	work_init(&hd->work, host_finish_work, dev, WORK_ASYNC);
 
 	/* init buffer elems */
 	list_init(&hd->config.elem_list);

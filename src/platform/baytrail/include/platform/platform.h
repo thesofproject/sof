@@ -86,6 +86,12 @@
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000
 
+/* Host finish work schedule delay in microseconds */
+#define PLATFORM_HOST_FINISH_DELAY	100
+
+/* Host finish work(drain from host to dai) timeout in microseconds */
+#define PLATFORM_HOST_FINISH_TIMEOUT	50000
+
 /* Platform defined panic code */
 #define platform_panic(__x) \
 		shim_write(SHIM_IPCXL, ((shim_read(SHIM_IPCXL) & 0xc0000000) |\

@@ -141,6 +141,7 @@ struct pipeline *pipeline_new(uint32_t id)
 	list_init(&p->host_ep_list);
 	list_init(&p->dai_ep_list);
 	list_init(&p->buffer_list);
+	wait_init(&p->complete);
 
 	spinlock_init(&p->lock);
 	list_item_prepend(&p->list, &pipe_data->pipeline_list);

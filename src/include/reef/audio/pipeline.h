@@ -39,6 +39,7 @@
 #include <reef/dma.h>
 #include <reef/audio/component.h>
 #include <reef/trace.h>
+#include <reef/wait.h>
 
 #define trace_pipe(__e)	trace_event(TRACE_CLASS_PIPE, __e)
 #define trace_pipe_error(__e)	trace_error(TRACE_CLASS_PIPE, __e)
@@ -50,6 +51,7 @@
 struct pipeline {
 	uint32_t id;		/* id */
 	spinlock_t lock;
+	completion_t complete;	/* indicate if the pipeline data is finished*/
 
 	/* lists */
 	struct list_item host_ep_list;		/* list of host endpoints */
