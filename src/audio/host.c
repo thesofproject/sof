@@ -688,6 +688,9 @@ static int host_stop(struct comp_dev *dev)
 	local_elem->src = source_elem->src;
 	hd->next_inc = hd->period->size;
 
+	/* now reset downstream buffer */
+	comp_buffer_reset(dev);
+
 	dev->state = COMP_STATE_SETUP;
 	return 0;
 }

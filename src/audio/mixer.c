@@ -184,13 +184,17 @@ static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 	switch(cmd) {
 	case COMP_CMD_START:
 		trace_mixer("MSa");
-	case COMP_CMD_STOP:
 	case COMP_CMD_PAUSE:
 	case COMP_CMD_RELEASE:
 	case COMP_CMD_DRAIN:
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
 		finish = mixer_status_change(dev);
+		break;
+	case COMP_CMD_STOP:
+		finish = mixer_status_change(dev);
+		if (finish == 0)
+			comp_buffer_reset(dev);
 		break;
 	case COMP_CMD_VOLUME:
 		vol_dev = mixer_volume_component(dev);

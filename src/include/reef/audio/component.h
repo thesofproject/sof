@@ -39,6 +39,7 @@
 #include <reef/reef.h>
 #include <reef/dma.h>
 #include <reef/stream.h>
+#include <reef/alloc.h>
 
 /* audio component states
  * the states may transform as below:
@@ -307,6 +308,32 @@ static inline int comp_dai_loopback(struct comp_dev *dev,
 {
 	if (dev->drv->ops.dai_set_loopback)
 		return dev->drv->ops.dai_set_loopback(dev, lbm);
+	return 0;
+}
+
+/* reset component downstream buffers  */
+static inline int comp_buffer_reset(struct comp_dev *dev)
+{
+	struct list_item *clist;
+
+	/* reset downstream buffers */
+	list_for_item(clist, &dev->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* dont reset buffer if the component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		/* reset buffer next to the component*/
+		bzero(buffer->addr, buffer->desc.size);
+		buffer->w_ptr = buffer->r_ptr = buffer->addr;
+		buffer->end_addr = buffer->addr + buffer->desc.size;
+		buffer->free = buffer->desc.size;
+		buffer->avail = 0;
+	}
+
 	return 0;
 }
 

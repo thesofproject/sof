@@ -431,8 +431,10 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_STOP:
 		if (dev->state == COMP_STATE_RUNNING ||
 		    dev->state == COMP_STATE_DRAINING ||
-		    dev->state == COMP_STATE_PAUSED)
+		    dev->state == COMP_STATE_PAUSED) {
+			comp_buffer_reset(dev);
 			dev->state = COMP_STATE_SETUP;
+		}
 		break;
 	case COMP_CMD_PAUSE:
 		/* only support pausing for running */
