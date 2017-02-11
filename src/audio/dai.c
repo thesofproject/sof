@@ -63,6 +63,7 @@ struct dai_data {
 	struct dai *ssp;
 	struct dma *dma;
 
+	uint32_t last_bytes;    /* the last bytes(<period size) it copies. */
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
 	volatile uint64_t *dai_pos; /* host can read back this value without IPC */
@@ -159,6 +160,8 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 
 	list_init(&dd->config.elem_list);
 	dd->dai_pos = NULL;
+	dd->dai_pos_blks = 0;
+	dd->last_bytes = 0;
 
 	/* get DMA channel from DMAC1 */
 	dd->chan = dma_channel_get(dd->dma);
@@ -374,6 +377,7 @@ static int dai_reset(struct comp_dev *dev)
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
 	dd->dai_pos = NULL;
+	dd->last_bytes = 0;
 
 	return 0;
 }
@@ -403,6 +407,7 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 			dai_trigger(dd->ssp, cmd, dd->direction);
 		/* go through */
 		case COMP_STATE_PREPARE:
+			dd->last_bytes = 0;
 			dev->state = COMP_STATE_SETUP;
 			break;
 		}
