@@ -43,6 +43,7 @@
 #include <reef/wait.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
+#include <uapi/intel-ipc.h>
 #include <platform/dma.h>
 
 #define trace_host(__e)	trace_event(TRACE_CLASS_HOST, __e)
@@ -651,22 +652,66 @@ static struct comp_dev* host_volume_component(struct comp_dev *host)
 	return comp_dev;
 }
 
+static int host_stop(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *source_elem, *sink_elem, *local_elem;
+
+	/* reset buffer pointers */
+	if (hd->host_pos)
+		*hd->host_pos = 0;
+	hd->host_app_pos = 0;
+	hd->host_pos_read = 0;
+	hd->host_period_pos = 0;
+	host_update_buffer_consume(hd);
+
+	/* reset buffer pointers and local_elem, to let next start
+	   from original one */
+
+	/* setup elem to point to first source elem */
+	source_elem = list_first_item(&hd->source->elem_list,
+					struct dma_sg_elem, list);
+	hd->source->current = &source_elem->list;
+	hd->source->current_end = source_elem->src + source_elem->size;
+
+	/* setup elem to point to first sink elem */
+	sink_elem = list_first_item(&hd->sink->elem_list,
+					struct dma_sg_elem, list);
+	hd->sink->current = &sink_elem->list;
+	hd->sink->current_end = sink_elem->dest + sink_elem->size;
+
+	/* local element */
+	local_elem = list_first_item(&hd->config.elem_list,
+					struct dma_sg_elem, list);
+	local_elem->dest = sink_elem->dest;
+	local_elem->size = hd->period->size;
+	local_elem->src = source_elem->src;
+	hd->next_inc = hd->period->size;
+
+	dev->state = COMP_STATE_STOPPED;
+	return 0;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_dev *vol_dev = NULL;
+	struct ipc_intel_ipc_stream_set_position *app_pos;
 	int ret = 0;
 
 	// TODO: align cmd macros.
 	switch (cmd) {
 	case COMP_CMD_PAUSE:
-		/* channel is paused by DAI */
-		dev->state = COMP_STATE_PAUSED;
+		/* only support pausing for running, channel is paused by DAI */
+		if (dev->state == COMP_STATE_RUNNING)
+			dev->state = COMP_STATE_PAUSED;
 		break;
 	case COMP_CMD_STOP:
-		/* stop any new DMA copies (let existing finish though) */
-		dev->state = COMP_STATE_STOPPED;
+		if (dev->state == COMP_STATE_RUNNING ||
+			dev->state == COMP_STATE_DRAINING ||
+			dev->state == COMP_STATE_PAUSED)
+			ret = host_stop(dev);
 		break;
 	case COMP_CMD_RELEASE:
 		/* channel is released by DAI */
@@ -680,6 +725,11 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_IPC_MMAP_RPOS:
 		hd->host_pos = data;
+		break;
+	case COMP_CMD_AVAIL_UPDATE:
+		app_pos = (struct ipc_intel_ipc_stream_set_position *)data;
+		hd->host_app_pos = app_pos->position;
+		host_update_buffer_produce(hd);
 		break;
 	case COMP_CMD_VOLUME:
 		vol_dev = host_volume_component(dev);
