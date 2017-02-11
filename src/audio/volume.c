@@ -341,8 +341,26 @@ static void volume_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int volume_params(struct comp_dev *dev, struct stream_params *params)
 {
+	struct stream_params sink_params = *params;
+	struct comp_buffer *sink;
+
+	/* volume components will only ever have 1 source and 1 sink buffer */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+
+	/* hard coded until new IPC is ready */
+	if (sink->sink->is_host) {
+		sink_params.pcm.format = STREAM_FORMAT_S16_LE;
+		sink_params.frame_size = 2 * params->channels; /* 16bit container */
+	} else if (sink->sink->is_dai) {
+		sink_params.pcm.format = PLATFORM_SSP_STREAM_FORMAT;
+		sink_params.frame_size = 4 * params->channels; /* 32bit container */
+	} else {
+		sink_params.pcm.format = STREAM_FORMAT_S32_LE;
+		sink_params.frame_size = 4 * params->channels; /* 32bit container */
+	}
+
 	/* dont do any data transformation */
-	comp_set_sink_params(dev, params);
+	comp_set_sink_params(dev, &sink_params);
 
 	return 0;
 }
