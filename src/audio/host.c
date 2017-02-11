@@ -803,13 +803,25 @@ static int host_reset(struct comp_dev *dev)
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	int ret;
 
+	trace_host("CpS");
 	if (dev->state != COMP_STATE_RUNNING)
 		return 0;
 
-	trace_host("CpS");
+	if (hd->host_avail == 0)
+		return 0;
+
+	/* do DMA transfer */
+	wait_init(&hd->complete);
 	dma_set_config(hd->dma, hd->chan, &hd->config);
 	dma_start(hd->dma, hd->chan);
+
+	/* wait for DMA to finish */
+	hd->complete.timeout = PLATFORM_DMA_TIMEOUT;
+	ret = wait_for_completion_timeout(&hd->complete);
+	if (ret < 0)
+		trace_comp_error("eHc");
 
 	return 0;
 }
