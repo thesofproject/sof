@@ -811,6 +811,39 @@ error:
 	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 }
 
+static uint32_t ipc_stream_stop(uint32_t header)
+{
+	struct ipc_pcm_dev *pcm_dev;
+	uint32_t stream_id;
+	int err;
+
+	trace_ipc("SSt");
+
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+
+	/* get the pcm_dev */
+	pcm_dev = ipc_get_pcm_comp(stream_id);
+	if (pcm_dev == NULL) {
+		trace_ipc_error("erg");
+		goto error;
+	}
+
+	/* send stop TODO: this should be done in trigger */
+	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
+		COMP_CMD_STOP, NULL);
+	if (err < 0) {
+		trace_ipc_error("erc");
+		goto error;
+	}
+
+	/* need prepare again before next start */
+	pcm_dev->state = IPC_HOST_ALLOC;
+	return IPC_INTEL_GLB_REPLY_SUCCESS;
+error:
+	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+}
+
 static uint32_t ipc_stream_pause(uint32_t header)
 {
 	struct ipc_pcm_dev *pcm_dev;
@@ -905,6 +938,8 @@ static uint32_t ipc_stream_message(uint32_t header)
 		return ipc_stream_reset(header);
 	case IPC_INTEL_STR_PAUSE:
 		return ipc_stream_pause(header);
+	case IPC_INTEL_STR_STOP:
+		return ipc_stream_stop(header);
 	case IPC_INTEL_STR_RESUME:
 		return ipc_stream_resume(header);
 	case IPC_INTEL_STR_STAGE_MESSAGE:
