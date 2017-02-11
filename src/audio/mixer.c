@@ -116,12 +116,18 @@ static void mixer_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int mixer_params(struct comp_dev *dev, struct stream_params *params)
 {
+	struct stream_params sink_params = *params;
+
 	/* dont do any params downstream setting for running mixer stream */
 	if (dev->state == COMP_STATE_RUNNING)
 		return 1;
 
+	/* suppose sink component won't be host/dai, so hard code it */
+	sink_params.pcm.format = STREAM_FORMAT_S32_LE;
+	sink_params.frame_size = 4 * params->channels; /* 32bit container */
+
 	/* dont do any data transformation */
-	comp_set_sink_params(dev, params);
+	comp_set_sink_params(dev, &sink_params);
 
 	return 0;
 }
