@@ -69,8 +69,8 @@ struct host_data {
 	struct hc_buf host;
 	struct hc_buf local;
 	uint32_t host_size;
-	volatile uint32_t *host_pos;	/* points to mailbox */
-	uint32_t host_pos_blks;		/* position in bytes (nearest block) */
+	volatile uint32_t *host_pos;    /* read pos, update to mailbox for host side */
+	uint32_t host_pos_read;         /* host buffer read pos in bytes */
 	uint32_t host_period_bytes;	/* host period size in bytes */
 	uint32_t host_period_pos;	/* position in current host perid */
 	uint32_t host_app_pos;        /* host buffer app write pos, points to mailbox */
@@ -89,24 +89,24 @@ struct host_data {
 
 static inline void host_update_buffer_produce(struct host_data *hd)
 {
-	if (hd->host_pos_blks < hd->host_app_pos)
-		hd->host_avail = hd->host_app_pos - hd->host_pos_blks;
-	else if (hd->host_pos_blks == hd->host_app_pos)
+	if (hd->host_pos_read < hd->host_app_pos)
+		hd->host_avail = hd->host_app_pos - hd->host_pos_read;
+	else if (hd->host_pos_read == hd->host_app_pos)
 		hd->host_avail = hd->host_size; /* full */
 	else
-		hd->host_avail = hd->host_size -hd->host_pos_blks +
+		hd->host_avail = hd->host_size -hd->host_pos_read +
 			hd->host_app_pos;
 	hd->host_free = hd->host_size - hd->host_avail;
 }
 
 static inline void host_update_buffer_consume(struct host_data *hd)
 {
-	if (hd->host_pos_blks < hd->host_app_pos)
-		hd->host_avail = hd->host_app_pos - hd->host_pos_blks;
-	else if (hd->host_pos_blks == hd->host_app_pos)
+	if (hd->host_pos_read < hd->host_app_pos)
+		hd->host_avail = hd->host_app_pos - hd->host_pos_read;
+	else if (hd->host_pos_read == hd->host_app_pos)
 		hd->host_avail = 0; /* empty */
 	else
-		hd->host_avail = hd->host_size -hd->host_pos_blks +
+		hd->host_avail = hd->host_size -hd->host_pos_read +
 			hd->host_app_pos;
 	hd->host_free = hd->host_size - hd->host_avail;
 }
@@ -161,13 +161,13 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	comp_update_buffer_consume(hd->dma_buffer);
 
 	/* new local period, update host buffer position blks */
-	hd->host_pos_blks += local_elem->size;
+	hd->host_pos_read += local_elem->size;
 
 	/* buffer overlap ? */
-	if (hd->host_pos_blks >= hd->host_size)
-		hd->host_pos_blks = 0;
+	if (hd->host_pos_read >= hd->host_size)
+		hd->host_pos_read = 0;
 	if (hd->host_pos)
-		*hd->host_pos = hd->host_pos_blks;
+		*hd->host_pos = hd->host_pos_read;
 	host_update_buffer_consume(hd);
 
 	/* send IPC message to driver if needed */
@@ -250,13 +250,13 @@ static void host_dma_cb_capture(struct comp_dev *dev,
 #endif
 
 	/* new local period, update host buffer position blks */
-	hd->host_pos_blks += local_elem->size;
+	hd->host_pos_read += local_elem->size;
 
 	/* buffer overlap ? */
-	if (hd->host_pos_blks >= hd->host_size)
-		hd->host_pos_blks = 0;
+	if (hd->host_pos_read >= hd->host_size)
+		hd->host_pos_read = 0;
 	if (hd->host_pos)
-		*hd->host_pos = hd->host_pos_blks;
+		*hd->host_pos = hd->host_pos_read;
 
 	/* recalc available buffer space */
 	comp_update_buffer_produce(hd->dma_buffer);
@@ -559,7 +559,7 @@ static int host_prepare(struct comp_dev *dev)
 
 	if (hd->host_pos)
 		*hd->host_pos = 0;
-	hd->host_pos_blks = 0;
+	hd->host_pos_read = 0;
 	hd->host_period_pos = 0;
 	hd->host_period_bytes =
 		hd->params.period_frames * hd->params.frame_size;
