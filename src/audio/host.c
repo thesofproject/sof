@@ -73,6 +73,9 @@ struct host_data {
 	uint32_t host_pos_blks;		/* position in bytes (nearest block) */
 	uint32_t host_period_bytes;	/* host period size in bytes */
 	uint32_t host_period_pos;	/* position in current host perid */
+	uint32_t host_app_pos;        /* host buffer app write pos, points to mailbox */
+	uint32_t host_avail;   /* host buffer available size */
+	uint32_t host_free;    /* host buffer free size */
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;
@@ -83,6 +86,30 @@ struct host_data {
 	struct stream_params params;
 	struct comp_position cp;
 };
+
+static inline void host_update_buffer_produce(struct host_data *hd)
+{
+	if (hd->host_pos_blks < hd->host_app_pos)
+		hd->host_avail = hd->host_app_pos - hd->host_pos_blks;
+	else if (hd->host_pos_blks == hd->host_app_pos)
+		hd->host_avail = hd->host_size; /* full */
+	else
+		hd->host_avail = hd->host_size -hd->host_pos_blks +
+			hd->host_app_pos;
+	hd->host_free = hd->host_size - hd->host_avail;
+}
+
+static inline void host_update_buffer_consume(struct host_data *hd)
+{
+	if (hd->host_pos_blks < hd->host_app_pos)
+		hd->host_avail = hd->host_app_pos - hd->host_pos_blks;
+	else if (hd->host_pos_blks == hd->host_app_pos)
+		hd->host_avail = 0; /* empty */
+	else
+		hd->host_avail = hd->host_size -hd->host_pos_blks +
+			hd->host_app_pos;
+	hd->host_free = hd->host_size - hd->host_avail;
+}
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
@@ -141,6 +168,7 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 		hd->host_pos_blks = 0;
 	if (hd->host_pos)
 		*hd->host_pos = hd->host_pos_blks;
+	host_update_buffer_consume(hd);
 
 	/* send IPC message to driver if needed */
 	hd->host_period_pos += local_elem->size;
@@ -541,6 +569,7 @@ static int host_prepare(struct comp_dev *dev)
 	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		host_preload(dev);
 
+	host_update_buffer_consume(hd);
 	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
