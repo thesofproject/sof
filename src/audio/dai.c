@@ -351,11 +351,6 @@ static int dai_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	dd->dai_pos_blks = 0;
-
-	if (dd->dai_pos)
-		*dd->dai_pos = 0;
-
 	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
 	dev->state = COMP_STATE_PREPARE;
 	return ret;
@@ -435,6 +430,8 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_IPC_MMAP_PPOS:
 		dd->dai_pos = data;
+		if (dd->dai_pos)
+			*dd->dai_pos = 0;
 		break;
 	default:
 		break;
