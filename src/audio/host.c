@@ -420,12 +420,6 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	hd->dma = dma_get(DMA_ID_DMAC0);
 	if (hd->dma == NULL)
 		goto error;
-	hd->host_size = 0;
-	hd->host_period_bytes = 0;
-	hd->host_pos = NULL;
-	hd->source = NULL;
-	hd->sink = NULL;
-	hd->split_remaining = 0;
 	work_init(&hd->work, host_finish_work, dev, WORK_ASYNC);
 
 	/* init buffer elems */
@@ -740,10 +734,14 @@ static int host_reset(struct comp_dev *dev)
 	}
 
 	hd->host_size = 0;
+	hd->host_avail= 0;
 	if (hd->host_pos)
 		*hd->host_pos = 0;
 	hd->host_pos = NULL;
+	hd->host_app_pos = 0;
+
 	hd->host_period_bytes = 0;
+	hd->host_pos_read = 0;
 	hd->source = NULL;
 	hd->sink = NULL;
 	dev->state = COMP_STATE_INIT;
