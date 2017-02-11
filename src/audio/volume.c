@@ -429,10 +429,15 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		dev->state = COMP_STATE_RUNNING;
 		break;
 	case COMP_CMD_STOP:
-		dev->state = COMP_STATE_SETUP;
+		if (dev->state == COMP_STATE_RUNNING ||
+		    dev->state == COMP_STATE_DRAINING ||
+		    dev->state == COMP_STATE_PAUSED)
+			dev->state = COMP_STATE_SETUP;
 		break;
 	case COMP_CMD_PAUSE:
-		dev->state = COMP_STATE_PAUSED;
+		/* only support pausing for running */
+		if (dev->state == COMP_STATE_RUNNING)
+			dev->state = COMP_STATE_PAUSED;
 		break;
 	case COMP_CMD_RELEASE:
 		dev->state = COMP_STATE_RUNNING;
