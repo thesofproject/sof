@@ -141,7 +141,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 			dai_cmd(dev, COMP_CMD_STOP, NULL);
 
 			/* stop dma immediatly */
-			next->size = 0;
+			next->size = DMA_RELOAD_END;
 
 			/* let any waiters know we have completed */
 			wait_completed(&dev->pipeline->complete);

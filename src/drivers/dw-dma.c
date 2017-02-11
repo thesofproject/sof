@@ -387,7 +387,6 @@ out:
 static int dw_dma_release(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct dma_sg_elem next;
 	uint32_t flags;
 
 	spin_lock_irq(&dma->lock, flags);
@@ -395,8 +394,6 @@ static int dw_dma_release(struct dma *dma, int channel)
 	trace_dma("Dpr");
 
 	if (p->chan[channel].status == DMA_STATUS_PAUSED) {
-		if (p->chan[channel].cb && p->chan[channel].cb_type & DMA_IRQ_TYPE_LLIST)
-			p->chan[channel].cb(p->chan[channel].cb_data, DMA_IRQ_TYPE_LLIST, &next);
 		dw_dma_chan_reload_lli(dma, channel);
 	}
 
@@ -834,20 +831,29 @@ static void dw_dma_irq_handler(void *data)
 		if ((status_tfr & mask) &&
 			(p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)) {
 
-			if (p->chan[i].status == DMA_STATUS_PAUSING) {
-				p->chan[i].status = DMA_STATUS_PAUSED;
-				continue;
-			}
-
-			next.size = 0;
+			next.size = DMA_RELOAD_LLI; /* will reload lli by default */
 			if (p->chan[i].cb)
 				p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST, &next);
 
-			/* check for reload channel */
-			if (next.size > 0)
+			/* check for reload channel:
+			 * next.size is DMA_RELOAD_END, stop this dma copy;
+			 * next.size > 0 but not DMA_RELOAD_LLI, use next
+			 * element for next copy;
+			 * if we are waiting for pause, pause it;
+			 * otherwise, reload lli
+			 */
+			if (next.size == DMA_RELOAD_END) {
+				p->chan[i].status = DMA_STATUS_IDLE;
+				continue;
+			}
+			else if (next.size != DMA_RELOAD_LLI)
 				dw_dma_chan_reload_next(dma, i, &next);
-			else
+			/* reload lli, but let's check if we are pausing first */
+			else if (p->chan[i].status == DMA_STATUS_PAUSING) {
+				p->chan[i].status = DMA_STATUS_PAUSED;
+				continue;
+			} else
 				dw_dma_chan_reload_lli(dma, i);
 		}
 #if DW_USE_HW_LLI

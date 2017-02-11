@@ -220,7 +220,7 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	if (hd->host_avail < local_elem->size) {
 		if (hd->host_avail == 0) {
 			/* end of stream, stop */
-			next->size = 0;
+			next->size = DMA_RELOAD_END;
 			need_copy = 0;
 
 			/* will notify host side once dai tell us */
