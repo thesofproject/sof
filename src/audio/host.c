@@ -498,12 +498,39 @@ unwind:
 	return -ENOMEM;
 }
 
+static int host_elements_reset(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *source_elem, *sink_elem, *local_elem;
+
+	/* setup elem to point to first source elem */
+	source_elem = list_first_item(&hd->source->elem_list,
+		struct dma_sg_elem, list);
+	hd->source->current = &source_elem->list;
+	hd->source->current_end = source_elem->src + source_elem->size;
+
+	/* setup elem to point to first sink elem */
+	sink_elem = list_first_item(&hd->sink->elem_list,
+		struct dma_sg_elem, list);
+	hd->sink->current = &sink_elem->list;
+	hd->sink->current_end = sink_elem->dest + sink_elem->size;
+
+	/* local element */
+	local_elem = list_first_item(&hd->config.elem_list,
+		struct dma_sg_elem, list);
+	local_elem->dest = sink_elem->dest;
+	local_elem->size = hd->period->size;
+	local_elem->src = source_elem->src;
+	hd->next_inc = hd->period->size;
+
+	return 0;
+}
+
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev, struct stream_params *params)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &hd->config;
-	struct dma_sg_elem *source_elem, *sink_elem, *local_elem;
 	int err;
 
 	/* set params */
@@ -548,25 +575,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	config->dest_width = sizeof(uint32_t);
 	config->cyclic = 0;
 
-	/* setup elem to point to first source elem */
-	source_elem = list_first_item(&hd->source->elem_list,
-		struct dma_sg_elem, list);
-	hd->source->current = &source_elem->list;
-	hd->source->current_end = source_elem->src + source_elem->size;
-
-	/* setup elem to point to first sink elem */
-	sink_elem = list_first_item(&hd->sink->elem_list,
-		struct dma_sg_elem, list);
-	hd->sink->current = &sink_elem->list;
-	hd->sink->current_end = sink_elem->dest + sink_elem->size;
-
-	/* local element */
-	local_elem = list_first_item(&hd->config.elem_list,
-		struct dma_sg_elem, list);
-	local_elem->dest = sink_elem->dest;
-	local_elem->size = hd->period->size;
-	local_elem->src = source_elem->src;
-	hd->next_inc = hd->period->size;
+	host_elements_reset(dev);
 	return 0;
 }
 
@@ -652,10 +661,9 @@ static struct comp_dev* host_volume_component(struct comp_dev *host)
 	return comp_dev;
 }
 
-static int host_stop(struct comp_dev *dev)
+static int host_pointer_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *source_elem, *sink_elem, *local_elem;
 
 	/* reset buffer pointers */
 	if (hd->host_pos)
@@ -663,30 +671,19 @@ static int host_stop(struct comp_dev *dev)
 	hd->host_app_pos = 0;
 	hd->host_pos_read = 0;
 	hd->host_period_pos = 0;
-	host_update_buffer_consume(hd);
+	hd->host_size = 0;
+	hd->host_avail= 0;
 
-	/* reset buffer pointers and local_elem, to let next start
-	   from original one */
+	return 0;
+}
 
-	/* setup elem to point to first source elem */
-	source_elem = list_first_item(&hd->source->elem_list,
-					struct dma_sg_elem, list);
-	hd->source->current = &source_elem->list;
-	hd->source->current_end = source_elem->src + source_elem->size;
+static int host_stop(struct comp_dev *dev)
+{
+	/* reset host side buffer pointers */
+	host_pointer_reset(dev);
 
-	/* setup elem to point to first sink elem */
-	sink_elem = list_first_item(&hd->sink->elem_list,
-					struct dma_sg_elem, list);
-	hd->sink->current = &sink_elem->list;
-	hd->sink->current_end = sink_elem->dest + sink_elem->size;
-
-	/* local element */
-	local_elem = list_first_item(&hd->config.elem_list,
-					struct dma_sg_elem, list);
-	local_elem->dest = sink_elem->dest;
-	local_elem->size = hd->period->size;
-	local_elem->src = source_elem->src;
-	hd->next_inc = hd->period->size;
+	/* reset elements, to let next start from original one */
+	host_elements_reset(dev);
 
 	/* now reset downstream buffer */
 	comp_buffer_reset(dev);
@@ -786,15 +783,10 @@ static int host_reset(struct comp_dev *dev)
 		rfree(RZONE_MODULE, RMOD_SYS, e);
 	}
 
-	hd->host_size = 0;
-	hd->host_avail= 0;
-	if (hd->host_pos)
-		*hd->host_pos = 0;
+	host_pointer_reset(dev);
 	hd->host_pos = NULL;
-	hd->host_app_pos = 0;
 
 	hd->host_period_bytes = 0;
-	hd->host_pos_read = 0;
 	hd->source = NULL;
 	hd->sink = NULL;
 	dev->state = COMP_STATE_INIT;
