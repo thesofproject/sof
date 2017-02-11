@@ -306,6 +306,78 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source,
 	return 0;
 }
 
+/* preload component buffers prior to playback start */
+static int component_preload(struct comp_dev *comp, uint32_t depth,
+		uint32_t max_depth)
+{
+	struct list_item *clist;
+	int err;
+
+	/* bail if we are at max_depth */
+	if (depth > max_depth)
+		return 0;
+
+	trace_value(comp->id);
+	err = comp_preload(comp);
+
+	/* dont walk the graph any further if this component fails */
+	if (err < 0) {
+		trace_pipe_error("eOp");
+		return err;
+	} else if (err > 0 || comp->is_dai) {
+		/* we finish walking the graph if we reach the DAI or component is
+		 * currently active and configured already (err > 0).
+		 */
+		trace_pipe("prl");
+		trace_value((uint32_t)err);
+		trace_value(comp->is_dai);
+		trace_value(comp->id);
+		trace_value(comp->is_host);
+		return 0;
+	}
+
+	/* now run this operation downstream */
+	list_for_item(clist, &comp->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* dont go downstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		err = component_preload(buffer->sink, depth + 1, max_depth);
+		if (err < 0)
+			break;
+	}
+
+	return err;
+}
+
+/* work out the pipeline depth from this component to the farthest endpoint */
+static int pipeline_depth(struct comp_dev *comp, int current)
+{
+	struct list_item *clist;
+	int depth = 0;
+
+	/* go down stream to deepest endpoint */
+	list_for_item(clist, &comp->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* dont go downstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		depth = pipeline_depth(buffer->sink, current + 1);
+		if (depth > current)
+			current = depth;
+	}
+
+	return current;
+}
+
 /* call op on all downstream components - locks held by caller */
 static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 {
@@ -459,7 +531,7 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 int pipeline_prepare(struct pipeline *p, struct comp_dev *host)
 {
 	struct op_data op_data;
-	int ret;
+	int ret, depth, i;
 
 	trace_pipe("Ppr");
 
@@ -467,12 +539,28 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *host)
 	op_data.op = COMP_OPS_PREPARE;
 
 	spin_lock(&p->lock);
-	if (host->direction == STREAM_DIRECTION_PLAYBACK)
-		ret = component_op_sink(&op_data, host);
-	else
-		ret = component_op_source(&op_data, host);
-	spin_unlock(&p->lock);
+	if (host->direction == STREAM_DIRECTION_PLAYBACK) {
 
+		/* first of all prepare the pipeline */
+		ret = component_op_sink(&op_data, host);
+		if (ret < 0)
+			goto out;
+
+		/* then preload buffers - the buffers must be moved
+		 * downstream so that every component has full buffers for
+		 * trigger start */
+		depth = pipeline_depth(host, 0);
+		for (i = depth; i > 0; i--) {
+			ret = component_preload(host, 0, i);
+			if (ret < 0)
+				break;
+		}
+	} else {
+		ret = component_op_source(&op_data, host);
+	}
+
+out:
+	spin_unlock(&p->lock);
 	return ret;
 }
 

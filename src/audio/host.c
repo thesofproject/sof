@@ -586,8 +586,9 @@ static int host_preload(struct comp_dev *dev)
 	int ret, i;
 
 	trace_host("PrL");
+
 	/* preload all periods */
-	for (i = 0; i < PLAT_HOST_PERIODS; i++) {
+	for (i = 0; i < dev->preload; i++) {
 		/* do DMA transfer */
 		wait_init(&hd->complete);
 		dma_set_config(hd->dma, hd->chan, &hd->config);
@@ -632,11 +633,8 @@ static int host_prepare(struct comp_dev *dev)
 		hd->params.period_frames * hd->params.frame_size;
 	hd->split_remaining = 0;
 
+	dev->preload = PLAT_HOST_PERIODS;
 
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
-		host_preload(dev);
-
-	host_update_buffer_consume(hd);
 	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
@@ -830,6 +828,7 @@ struct comp_driver comp_host = {
 		.cmd		= host_cmd,
 		.copy		= host_copy,
 		.prepare	= host_prepare,
+		.preload	= host_preload,
 		.host_buffer	= host_buffer,
 	},
 };

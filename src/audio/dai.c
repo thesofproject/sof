@@ -488,6 +488,12 @@ static int dai_copy(struct comp_dev *dev)
 	return 0;
 }
 
+/* source component will preload dai */
+static int dai_preload(struct comp_dev *dev)
+{
+	return 0;
+}
+
 static int dai_config(struct comp_dev *dev, struct dai_config *dai_config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
@@ -513,6 +519,7 @@ static struct comp_driver comp_dai_ssp = {
 		.prepare	= dai_prepare,
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
+		.preload	= dai_preload,
 		.dai_set_loopback = dai_set_loopback,
 	},
 };
@@ -526,6 +533,7 @@ static struct comp_driver comp_dai_hda = {
 		.cmd		= dai_cmd,
 		.copy		= dai_copy,
 		.prepare	= dai_prepare,
+		.preload	= dai_preload,
 	},
 };
 

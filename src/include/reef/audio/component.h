@@ -140,7 +140,12 @@ struct buffer_desc {
 	struct period_desc source_period;
 };
 
-/* audio component operations - all mandatory */
+/*
+ * Audio component operations - all mandatory.
+ *
+ * All component operations must return 0 for success, negative values for
+ * errors and 1 to stop the pipeline walk operation.
+ */
 struct comp_ops {
 	/* component creation and destruction */
 	struct comp_dev *(*new)(uint32_t type, uint32_t index,
@@ -149,6 +154,9 @@ struct comp_ops {
 
 	/* set component audio stream paramters */
 	int (*params)(struct comp_dev *dev, struct stream_params *params);
+
+	/* preload buffers */
+	int (*preload)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
 	int (*dai_config)(struct comp_dev *dev, struct dai_config *dai_config);
@@ -194,6 +202,7 @@ struct comp_dev {
 	uint32_t is_host;	/* component is graph host endpoint */
 	uint32_t is_mixer;	/* component is mixer */
 	uint32_t direction;	/* STREAM_DIRECTION_ */
+	uint16_t preload;       /* number of periods to preload during prepare() */
 	spinlock_t lock;	/* lock for this component */
 	void *private;		/* private data */
 	struct comp_driver *drv;
@@ -279,6 +288,12 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 static inline int comp_prepare(struct comp_dev *dev)
 {
 	return dev->drv->ops.prepare(dev);
+}
+
+/* component preload buffers -mandatory  */
+static inline int comp_preload(struct comp_dev *dev)
+{
+	return dev->drv->ops.preload(dev);
 }
 
 /* copy component buffers - mandatory */

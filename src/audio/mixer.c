@@ -286,18 +286,53 @@ static int mixer_reset(struct comp_dev *dev)
 	return 0;
 }
 
+/*
+ * Prepare the mixer. The mixer may already be running at this point with other
+ * sources. Make sure we only prepare the "prepared" source streams and not
+ * the active or inactive sources.
+ *
+ * We should also make sure that we propagate the prepare call to downstream
+ * if downstream is not currently active.
+ */
 static int mixer_prepare(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
-	int i;
+	struct list_item * blist;
+	struct comp_buffer *source;
+	int downstream = 0;
 
 	trace_mixer("MPp");
-	md->mix_func = mix_n;
 
-	dev->state = COMP_STATE_PREPARE;
+	if (dev->state != COMP_STATE_RUNNING) {
+		md->mix_func = mix_n;
+		dev->state = COMP_STATE_PREPARE;
+		dev->preload = PLAT_INT_PERIODS;
+	}
 
-	/* mix periods */
-	for (i = 0; i < PLAT_HOST_PERIODS; i++)
+	/* check each mixer source state */
+	list_for_item(blist, &dev->bsource_list) {
+		source = container_of(blist, struct comp_buffer, sink_list);
+
+		/* only prepare downstream if we have no active sources */
+		if (source->source->state == COMP_STATE_PAUSED ||
+				source->source->state == COMP_STATE_RUNNING) {
+			downstream = 1;
+		}
+	}
+
+	/* prepare downstream */
+	return downstream;
+}
+
+static int mixer_preload(struct comp_dev *dev)
+{
+	int i;
+
+	if (dev->state != COMP_STATE_PREPARE)
+		return 1;
+
+	/* preload and mix periods if inactive */
+	for (i = 0; i < dev->preload; i++)
 		mixer_copy(dev);
 
 	return 0;
@@ -310,6 +345,7 @@ struct comp_driver comp_mixer = {
 		.free		= mixer_free,
 		.params		= mixer_params,
 		.prepare	= mixer_prepare,
+		.preload	= mixer_preload,
 		.cmd		= mixer_cmd,
 		.copy		= mixer_copy,
 		.reset		= mixer_reset,

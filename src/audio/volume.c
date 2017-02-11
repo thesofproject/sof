@@ -548,13 +548,18 @@ found:
 			*cd->hvol[i] = cd->volume[i];
 	}
 
-	/* copy periods from host */
-	if (source->params.direction == STREAM_DIRECTION_PLAYBACK) {
-		for (i = 0; i < PLAT_INT_PERIODS; i++)
-			volume_copy(dev);
-	}
-
+	dev->preload = PLAT_INT_PERIODS;
 	dev->state = COMP_STATE_PREPARE;
+	return 0;
+}
+
+static int volume_preload(struct comp_dev *dev)
+{
+	int i;
+
+	for (i = 0; i < dev->preload; i++)
+		volume_copy(dev);
+
 	return 0;
 }
 
@@ -575,6 +580,7 @@ struct comp_driver comp_volume = {
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
+		.preload	= volume_preload,
 	},
 };
 
