@@ -711,9 +711,43 @@ error:
 
 static uint32_t ipc_stage_write_pos(uint32_t header)
 {
+	struct ipc_comp_dev *stream_dev;
+	struct ipc_intel_ipc_stream_set_position app_pos;
+	uint32_t stream_id;
+	int err;
+
 	trace_ipc("PoW");
 
+	/* read volume from the inbox */
+	mailbox_inbox_read(&app_pos, 0, sizeof(app_pos));
+
+	trace_value(app_pos.position);
+	/* the driver uses stream ID to also identify certain mixers */
+	stream_id = header & IPC_INTEL_STR_ID_MASK;
+	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+
+	/* get the pcm_dev */
+	stream_dev = ipc_get_comp(stream_id);
+	if (stream_dev == NULL)
+		goto error;
+
+	err = pipeline_cmd(stream_dev->p, stream_dev->cd,
+		COMP_CMD_AVAIL_UPDATE, &app_pos);
+	if (err < 0)
+		goto error;
+
+	/* drain the pipeline for EOS */
+	if (app_pos.end_of_buffer) {
+		err = pipeline_cmd(stream_dev->p, stream_dev->cd,
+			COMP_CMD_DRAIN, NULL);
+		if (err < 0)
+			goto error;
+	}
+
 	return IPC_INTEL_GLB_REPLY_SUCCESS;
+
+error:
+	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
 }
 
 static uint32_t ipc_stage_message(uint32_t header)

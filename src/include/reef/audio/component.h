@@ -72,6 +72,7 @@
 #define COMP_CMD_MUTE		101
 #define COMP_CMD_UNMUTE		102
 #define COMP_CMD_ROUTE		103
+#define COMP_CMD_AVAIL_UPDATE          104
 
 /* MMAP IPC status */
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
