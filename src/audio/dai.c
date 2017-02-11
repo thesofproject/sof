@@ -69,6 +69,7 @@ struct dai_data {
 	volatile uint64_t *dai_pos; /* host can read back this value without IPC */
 };
 
+static int dai_cmd(struct comp_dev *dev, int cmd, void *data);
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
@@ -76,17 +77,22 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct period_desc *dma_period_desc;
 	struct comp_buffer *dma_buffer;
+	uint32_t copied_size;
 
 	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
 		dma_period_desc = &dma_buffer->desc.sink_period;
-		dma_buffer->r_ptr += dma_period_desc->size;
+		copied_size = dd->last_bytes ? dd->last_bytes : dma_period_desc->size;
+		dma_buffer->r_ptr += copied_size;
 
 		/* check for end of buffer */
-		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
+		if (dma_buffer->r_ptr >= dma_buffer->end_addr) {
 			dma_buffer->r_ptr = dma_buffer->addr;
+			/* update host position(in bytes offset) for drivers */
+			dd->dai_pos_blks += dma_buffer->desc.size;
+		}
 
 #if 0
 		// TODO: move this to new trace mechanism
@@ -109,16 +115,17 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		dma_buffer->w_ptr += dma_period_desc->size;
 
 		/* check for end of buffer */
-		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
+		if (dma_buffer->w_ptr >= dma_buffer->end_addr) {
 			dma_buffer->w_ptr = dma_buffer->addr;
+			/* update host position(in bytes offset) for drivers */
+			dd->dai_pos_blks += dma_buffer->desc.size;
+		}
 
 #if 0
 		// TODO: move this to new trace mechanism
 		trace_value((uint32_t)(dma_buffer->w_ptr - dma_buffer->addr));
 #endif
 
-		/* update host position(in bytes offset) for drivers */
-		dd->dai_pos_blks += dma_period_desc->size;
 		if (dd->dai_pos)
 			*dd->dai_pos = dd->dai_pos_blks +
 				dma_buffer->w_ptr - dma_buffer->addr;
@@ -127,9 +134,39 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		comp_update_buffer_produce(dma_buffer);
 	}
 
+	if (dd->direction == STREAM_DIRECTION_PLAYBACK &&
+				dma_buffer->avail < dma_period_desc->size) {
+		/* end of stream, finish */
+		if (dma_buffer->avail == 0) {
+			dai_cmd(dev, COMP_CMD_STOP, NULL);
+
+			/* stop dma immediatly */
+			next->size = 0;
+
+			/* let any waiters know we have completed */
+			wait_completed(&dev->pipeline->complete);
+
+			return;
+		} else {
+			/* drain the last bytes */
+			next->src = (uint32_t)dma_buffer->r_ptr;
+			next->dest = dai_fifo(dd->ssp, dd->direction);
+			next->size = dma_buffer->avail;
+
+			dd->last_bytes = next->size;
+
+			goto next_copy;
+
+		}
+
+	}
 	/* notify pipeline that DAI needs it's buffer filled */
 //	if (dev->state == COMP_STATE_RUNNING)
 		pipeline_schedule_copy(dev->pipeline, dev);
+
+next_copy:
+
+	return;
 }
 
 static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
