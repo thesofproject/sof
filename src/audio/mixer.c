@@ -250,7 +250,7 @@ static int mixer_reset(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
 		/* only mix the sources with the same state with mixer*/
-		if (source->source->state > COMP_STATE_STOPPED)
+		if (source->source->state > COMP_STATE_SETUP)
 			return 1; /* should not reset the downstream components */
 	}
 

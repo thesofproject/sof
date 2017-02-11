@@ -403,7 +403,7 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 			dai_trigger(dd->ssp, cmd, dd->direction);
 		/* go through */
 		case COMP_STATE_PREPARE:
-			dev->state = COMP_STATE_INIT;
+			dev->state = COMP_STATE_SETUP;
 			break;
 		}
 		break;

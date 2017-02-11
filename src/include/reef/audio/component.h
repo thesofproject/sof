@@ -40,10 +40,16 @@
 #include <reef/dma.h>
 #include <reef/stream.h>
 
-/* audio component states */
+/* audio component states
+ * the states may transform as below:
+ *        new()         params()          start()
+ * none	-----> init ------> setup -----> running
+ * none	<----- init <------ setup <----- running
+ *        free()          reset()             stop()
+ */
 #define COMP_STATE_INIT		0	/* component being initialised */
-#define COMP_STATE_SUSPEND	1	/* component suspended */
-#define COMP_STATE_STOPPED	2	/* component inactive, but ready */
+#define COMP_STATE_SETUP       1       /* component inactive, but ready */
+#define COMP_STATE_SUSPEND     2       /* component suspended */
 #define COMP_STATE_DRAINING	3	/* component draining */
 #define COMP_STATE_PREPARE	4	/* component prepared */
 #define COMP_STATE_PAUSED	5	/* component paused */
