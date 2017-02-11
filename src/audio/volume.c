@@ -473,6 +473,16 @@ static int volume_copy(struct comp_dev *dev)
 	trace_value((uint32_t)(sink->w_ptr - sink->addr));
 #endif
 
+	if (source->avail < cframes * source->params.frame_size ||
+			sink->free < cframes * sink->params.frame_size)
+		cframes = source->avail / source->params.frame_size;
+
+	/* no data to copy */
+	if (cframes == 0) {
+		trace_value(source->avail);
+		return 0;
+	}
+
 	/* copy and scale volume */
 	cd->scale_vol(dev, sink, source, cframes);
 
@@ -538,7 +548,7 @@ found:
 
 	/* copy periods from host */
 	if (source->params.direction == STREAM_DIRECTION_PLAYBACK) {
-		for (i = 0; i < PLAT_HOST_PERIODS; i++)
+		for (i = 0; i < PLAT_INT_PERIODS; i++)
 			volume_copy(dev);
 	}
 
