@@ -214,7 +214,7 @@ static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *sources[5], *source;
-	uint32_t i = 0, cframes = PLAT_INT_PERIOD_FRAMES;
+	uint32_t i = 0, num_mix_sources, cframes = PLAT_INT_PERIOD_FRAMES;
 	struct list_item * blist;
 
 	trace_mixer("Mix");
@@ -227,13 +227,31 @@ static int mixer_copy(struct comp_dev *dev)
 			sources[i++] = source;
 	}
 
+	num_mix_sources = i;
+
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+
+	for(i = 0; i < num_mix_sources; i++) {
+		if (sources[i]->avail < cframes * sources[i]->params.frame_size)
+			cframes = sources[i]->avail /sources[i]->params.frame_size;
+	}
+	if (sink->free < cframes * sink->params.frame_size)
+		cframes = sink->free /sink->params.frame_size;
+
+	if (num_mix_sources == 0)
+		cframes = 0;
+
+	/* no frames to mix */
+	if (cframes == 0) {
+		trace_value(cframes);
+		return 0;
+	}
 
 	/* mix streams */
 	md->mix_func(dev, sink, sources, i, cframes);
 
 	/* update buffer pointers for overflow */
-	for(; i > 0; i--) {
+	for(i = num_mix_sources; i > 0; i--) {
 		if (sources[i-1]->r_ptr >= sources[i-1]->end_addr)
 			sources[i-1]->r_ptr = sources[i-1]->addr;
 		comp_update_buffer_consume(sources[i-1]);
@@ -260,6 +278,7 @@ static int mixer_reset(struct comp_dev *dev)
 			return 1; /* should not reset the downstream components */
 	}
 
+	dev->state = COMP_STATE_INIT;
 	return 0;
 }
 
