@@ -138,7 +138,7 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
 	struct comp_buffer *dma_buffer;
-	uint32_t next_size;
+	uint32_t next_size, need_copy = 0;
 
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
@@ -158,7 +158,7 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 #endif
 
 	/* recalc available buffer space */
-	comp_update_buffer_consume(hd->dma_buffer);
+	comp_update_buffer_produce(hd->dma_buffer);
 
 	/* new local period, update host buffer position blks */
 	hd->host_pos_read += local_elem->size;
@@ -166,8 +166,6 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	/* buffer overlap ? */
 	if (hd->host_pos_read >= hd->host_size)
 		hd->host_pos_read = 0;
-	if (hd->host_pos)
-		*hd->host_pos = hd->host_pos_read;
 	host_update_buffer_consume(hd);
 
 	/* send IPC message to driver if needed */
@@ -200,7 +198,7 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	}
 
 	next_size = hd->period->size;
-	if (local_elem->src + hd->period->size > hd->source->current_end)
+	if (local_elem->src + next_size > hd->source->current_end)
 		next_size = hd->source->current_end - local_elem->src;
 	if (local_elem->dest + next_size > hd->sink->current_end)
 		next_size = hd->sink->current_end - local_elem->dest;
@@ -209,13 +207,33 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 		if (next_size != hd->period->size)
 			hd->split_remaining = hd->period->size - next_size;
 	} else {
+		need_copy = 1;
 		next_size = next_size < hd->split_remaining ?
 			next_size : hd->split_remaining;
 		hd->split_remaining -= next_size;
 	}
 	local_elem->size = next_size;
 
-	if (hd->split_remaining) {
+	/* check if avail is enough, otherwise, drain the last bytes and stop */
+	if (hd->host_avail < local_elem->size) {
+		if (hd->host_avail == 0) {
+			/* end of stream, stop */
+			next->size = 0;
+			need_copy = 0;
+			goto next_copy;
+		}
+
+		/* end of stream, drain the last bytes */
+		local_elem->size = hd->host_avail;
+
+		/* the split_remaining may not be copied anymore, but, let's make it
+		   correct. we have only hd->host_avail data, so the split_remaining
+		   should be (next_size - hd->host_avail) bigger */
+		hd->split_remaining += next_size - hd->host_avail;
+	}
+
+next_copy:
+	if (need_copy) {
 		next->src = local_elem->src;
 		next->dest = local_elem->dest;
 		next->size = local_elem->size;
@@ -266,7 +284,7 @@ static void host_dma_cb_capture(struct comp_dev *dev,
 		*hd->host_pos = hd->host_pos_read;
 
 	/* recalc available buffer space */
-	comp_update_buffer_produce(hd->dma_buffer);
+	comp_update_buffer_consume(hd->dma_buffer);
 
 	/* send IPC message to driver if needed */
 	hd->host_period_pos += local_elem->size;
