@@ -174,7 +174,14 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	hd->host_period_pos += local_elem->size;
 	if (hd->host_period_pos >= hd->host_period_bytes) {
 		hd->host_period_pos = 0;
-		ipc_stream_send_notification(dev, &hd->cp);
+		/* for the last bytes/period, send notification later */
+		if (hd->host_avail) {
+			/* update for host side */
+			if (hd->host_pos) {
+				*hd->host_pos = hd->host_pos_read;
+				ipc_stream_send_notification(dev, &hd->cp);
+			}
+		}
 	}
 
 	local_elem->src += local_elem->size;
