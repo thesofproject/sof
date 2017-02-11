@@ -111,6 +111,7 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
 	struct comp_buffer *dma_buffer;
+	uint32_t next_size;
 
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
@@ -148,48 +149,42 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 		ipc_stream_send_notification(dev, &hd->cp);
 	}
 
-	/* are we dealing with a split transfer */
-	if (hd->split_remaining) {
-
-		/* update local elem */
-		local_elem->dest += local_elem->size;
+	local_elem->src += local_elem->size;
+	local_elem->dest += local_elem->size;
+	if (local_elem->src == hd->source->current_end) {
+		/* end of elem, so use next */
 		source_elem = next_buffer(hd->source);
 		hd->source->current_end = source_elem->src + source_elem->size;
 		local_elem->src = source_elem->src;
-
-		/* set up next elem */
-		local_elem->size = hd->split_remaining;
-		hd->next_inc = hd->split_remaining;
-		hd->split_remaining = 0;
-
-	} else {
-		/* destination is always DSP period size */
+	}
+	if (local_elem->dest == hd->sink->current_end) {
+		/* end of elem, so use next */
 		sink_elem = next_buffer(hd->sink);
-
+		hd->sink->current_end = sink_elem->dest + sink_elem->size;
 		local_elem->dest = sink_elem->dest;
-		local_elem->size = hd->period->size;
-		local_elem->src += hd->next_inc;
-		hd->next_inc = hd->period->size;
+	}
 
-		/* are we at end of elem */
-		if (local_elem->src == hd->source->current_end) {
+	next_size = hd->period->size;
+	if (local_elem->src + hd->period->size > hd->source->current_end)
+		next_size = hd->source->current_end - local_elem->src;
+	if (local_elem->dest + next_size > hd->sink->current_end)
+		next_size = hd->sink->current_end - local_elem->dest;
 
-			/* end of elem, so use next */
-			source_elem = next_buffer(hd->source);
-			hd->source->current_end = source_elem->src + source_elem->size;
-			local_elem->src = source_elem->src;
+	if (!hd->split_remaining) {
+		if (next_size != hd->period->size)
+			hd->split_remaining = hd->period->size - next_size;
+	} else {
+		next_size = next_size < hd->split_remaining ?
+			next_size : hd->split_remaining;
+		hd->split_remaining -= next_size;
+	}
+	local_elem->size = next_size;
 
-		} else if (local_elem->src + hd->period->size > hd->source->current_end) {
-
-			/* split copy - split transaction into 2 copies */
-			local_elem->size = hd->source->current_end - local_elem->src;
-			hd->split_remaining = hd->period->size - local_elem->size;
-
-			next->src = local_elem->src;
-			next->dest = local_elem->dest;
-			next->size = local_elem->size;
-			return;
-		}
+	if (hd->split_remaining) {
+		next->src = local_elem->src;
+		next->dest = local_elem->dest;
+		next->size = local_elem->size;
+		return;
 	}
 
 	/* let any waiters know we have completed */
