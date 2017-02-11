@@ -612,7 +612,7 @@ struct sst_intel_ipc_stream_vol {
 
 struct sst_intel_ipc_stream_data {
 	uint32_t read_posn;
-	uint32_t presentation_posn;
+	uint64_t presentation_posn;
 	struct sst_intel_ipc_stream_vol vol[IPC_INTEL_NO_CHANNELS];
 } __attribute__((packed));
 #endif

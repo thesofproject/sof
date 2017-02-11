@@ -65,7 +65,7 @@ struct dai_data {
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
-	volatile uint32_t *dai_pos;
+	volatile uint64_t *dai_pos; /* host can read back this value without IPC */
 };
 
 /* this is called by DMA driver every time descriptor has completed */
