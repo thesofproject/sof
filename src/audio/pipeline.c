@@ -331,16 +331,6 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 			return 0;
 		}
 
-		/* prepare the buffers first by clearing contents */
-		list_for_item(clist, &comp->bsink_list) {
-			struct comp_buffer *buffer;
-
-			buffer = container_of(clist, struct comp_buffer,
-				source_list);
-
-			bzero(buffer->addr, buffer->desc.size);
-		}
-
 		/* prepare the component */
 		err = comp_prepare(comp);
 
