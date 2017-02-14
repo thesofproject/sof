@@ -583,7 +583,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 static int host_preload(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	int ret, i;
+	int ret = 0, i;
 
 	trace_host("PrL");
 
