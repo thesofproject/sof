@@ -163,21 +163,9 @@ static void show_exception(uint32_t val, uint32_t addr)
 					get_char(val, 1), get_char(val, 0));
 }
 
-struct sst_debugfs_map {
-	const char *name;
-	uint32_t size;
-};
 
-static const struct sst_debugfs_map debugfs_byt[] = {
-	{"dmac0", 0x420},
-	{"dmac1", 0x420},
-	{"ssp0", 0x100},
-	{"ssp1", 0x100},
-	{"ssp2", 0x100},
-	{"iram", 80 * 1024},
-	{"dram", 160 * 1024},
-	{"shim", 0x100},
-	{"mbox", 0x1000},
+static const char *debugfs[] = {
+	"dmac0","dmac1", "ssp0", "ssp1", "ssp2", "iram", "dram", "shim", "mbox"
 };
 
 static int snapshot(const char *name)
@@ -188,13 +176,15 @@ static int snapshot(const char *name)
 	FILE *in_fd, *out_fd;
 	int i, count;
 
-	if (name == NULL)
+	if (name == NULL) {
+		fprintf(stderr, "error: need snapshot name\n");
 		return -EINVAL;
+	}
 
-	for (i = 0; i < ARRAY_SIZE(debugfs_byt); i++) {
+	for (i = 0; i < ARRAY_SIZE(debugfs); i++) {
 
-		sprintf(pinname, "%s/%s", path, debugfs_byt[i].name);
-		sprintf(poutname, "%s.%s.txt", name, debugfs_byt[i].name);
+		sprintf(pinname, "%s/%s", path, debugfs[i]);
+		sprintf(poutname, "%s.%s.txt", name, debugfs[i]);
 
 		/* open debugfs for reading */
 		in_fd = fopen(pinname, "r");
@@ -237,11 +227,11 @@ int main(int argc, char *argv[])
 {
 	int opt, count;
 	const char * out_file = NULL, *in_file = "/sys/kernel/debug/mbox";
-	FILE *in_fd, *out_fd;
+	FILE *in_fd = NULL, *out_fd = NULL;
 	char c, tmp[4] = {0};
 	uint32_t addr = 0, val, timestamp = 0;
 
-	while ((opt = getopt(argc, argv, "ho:i:s:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:s:m:")) != -1) {
 		switch (opt) {
 		case 'o':
 			out_file = optarg;
@@ -257,7 +247,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (in_file == NULL || out_file == NULL)
+	if (argc > 1 && (in_file == NULL || out_file == NULL))
 		usage(argv[0]);
 
 	/* open infile for reading */
@@ -267,15 +257,18 @@ int main(int argc, char *argv[])
 			in_file, errno);
 	}
 
-	/* open outfile for reading */
+	/* open outfile for writing */
+	if (out_file == NULL)
+		goto convert;
+
 	out_fd = fopen(out_file, "w");
 	if (out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			out_file, errno);
 	}
 
-	/* start to converting */
-	fprintf(stdout, "start to converting...\n");
+	/* start to converting mailbox */
+convert:
 	while (1) {
 		count = fread(&tmp[0], 1, 4, in_fd);
 		if (count != 4)
@@ -300,16 +293,19 @@ int main(int argc, char *argv[])
 			addr < MAILBOX_EXCEPTION_OFFSET + MAILBOX_EXCEPTION_SIZE)
 			show_exception(val, addr);
 
-		count = fwrite(&tmp[0], 1, 4, out_fd);
-		if (count != 4)
-			break;
+		if (out_fd) {
+			count = fwrite(&tmp[0], 1, 4, out_fd);
+			if (count != 4)
+				break;
+		}
 
 		addr += 4;
 	}
 
 	/* close files */
 	fclose(in_fd);
-	fclose(out_fd);
+	if (out_fd)
+		fclose(out_fd);
 
-	fprintf(stdout, "converting finished.\n");
+	return 0;
 }
