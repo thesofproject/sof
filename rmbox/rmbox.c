@@ -88,11 +88,11 @@ static void usage(char *name)
 	exit(0);
 }
 
-static inline float to_usecs(uint32_t time)
+static inline float clk_to_usecs(uint32_t time)
 {
-	/* trace timestamp uses CPU system clock at default 25MHz ticks */
+	/* trace timestamp uses SSP system clock at default 19.2MHz ticks */
 	// TODO: support variable clock rates
-	return (float)time / 25.0; 
+	return (float)time / 19.2;
 }
 
 static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp)
@@ -103,8 +103,8 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp)
 	/* timestamp or value ? */
 	if ((addr % 8) == 0) {
 		printf("trace.io: timestamp 0x%8.8x (%2.2f us) \tdelta 0x%8.8x (%2.2f us)\t",
-			(uint32_t)val, to_usecs(val),
-			(uint32_t)val - *timestamp, to_usecs(val - *timestamp));
+			(uint32_t)val, clk_to_usecs(val),
+			(uint32_t)val - *timestamp, clk_to_usecs(val - *timestamp));
 		*timestamp = val;
 		return;
 	}
