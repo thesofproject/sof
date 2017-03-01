@@ -535,10 +535,12 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 
 	/* set params */
 	hd->params = *params;
-	comp_set_sink_params(dev, params);
 
 	/* determine source and sink buffer elems */
 	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
+		/* set sink buffer params */
+		comp_set_sink_params(dev, params);
+
 		hd->source = &hd->host;
 		hd->sink = &hd->local;
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
@@ -546,6 +548,9 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 		hd->period = &hd->dma_buffer->desc.source_period;
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 	} else {
+		/* set source buffer params */
+		comp_set_source_params(dev, params);
+
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
 		hd->dma_buffer = list_first_item(&dev->bsource_list,

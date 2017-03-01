@@ -420,4 +420,17 @@ static inline void comp_set_sink_params(struct comp_dev *dev,
 	}
 }
 
+static inline void comp_set_source_params(struct comp_dev *dev,
+	struct stream_params *params)
+{
+	struct list_item *clist;
+	struct comp_buffer *source;
+
+	list_for_item(clist, &dev->bsource_list) {
+
+		source = container_of(clist, struct comp_buffer, sink_list);
+		source->params = *params;
+	}
+}
+
 #endif

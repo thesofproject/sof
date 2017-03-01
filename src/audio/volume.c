@@ -341,26 +341,37 @@ static void volume_free(struct comp_dev *dev)
 /* set component audio stream paramters */
 static int volume_params(struct comp_dev *dev, struct stream_params *params)
 {
-	struct stream_params sink_params = *params;
-	struct comp_buffer *sink;
+	struct stream_params buffer_params = *params;
+	struct comp_buffer *next_buf;
+	struct comp_dev *next_dev;
 
-	/* volume components will only ever have 1 source and 1 sink buffer */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
+		/* volume components will only ever have 1 sink buffer */
+		next_buf = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+		next_dev = next_buf->sink;
+	} else {
+		/* volume components will only ever have 1 source buffer */
+		next_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+		next_dev = next_buf->source;
+	}
 
 	/* hard coded until new IPC is ready */
-	if (sink->sink->is_host) {
-		sink_params.pcm.format = STREAM_FORMAT_S16_LE;
-		sink_params.frame_size = 2 * params->channels; /* 16bit container */
-	} else if (sink->sink->is_dai) {
-		sink_params.pcm.format = PLATFORM_SSP_STREAM_FORMAT;
-		sink_params.frame_size = 4 * params->channels; /* 32bit container */
+	if (next_dev->is_host) {
+		buffer_params.pcm.format = STREAM_FORMAT_S16_LE;
+		buffer_params.frame_size = 2 * params->channels; /* 16bit container */
+	} else if (next_dev->is_dai) {
+		buffer_params.pcm.format = PLATFORM_SSP_STREAM_FORMAT;
+		buffer_params.frame_size = 4 * params->channels; /* 32bit container */
 	} else {
-		sink_params.pcm.format = STREAM_FORMAT_S32_LE;
-		sink_params.frame_size = 4 * params->channels; /* 32bit container */
+		buffer_params.pcm.format = STREAM_FORMAT_S32_LE;
+		buffer_params.frame_size = 4 * params->channels; /* 32bit container */
 	}
 
 	/* dont do any data transformation */
-	comp_set_sink_params(dev, &sink_params);
+	if (params->direction == STREAM_DIRECTION_PLAYBACK)
+		comp_set_sink_params(dev, &buffer_params);
+	else
+		comp_set_source_params(dev, &buffer_params);
 
 	return 0;
 }
