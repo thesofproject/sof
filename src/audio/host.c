@@ -65,19 +65,16 @@ struct host_data {
 	completion_t complete;
 	struct period_desc *period;
 	struct comp_buffer *dma_buffer;
-	struct work work;
 
 	/* local and host DMA buffer info */
 	struct hc_buf host;
 	struct hc_buf local;
 	uint32_t host_size;
-	volatile uint32_t *host_pos;    /* read pos, update to mailbox for host side */
-	uint32_t host_pos_read;         /* host buffer read pos in bytes */
-	uint32_t host_period_bytes;	/* host period size in bytes */
-	uint32_t host_period_pos;	/* position in current host perid */
-	uint32_t host_app_pos;        /* host buffer app write pos, points to mailbox */
-	uint32_t host_avail;   /* host buffer available size */
-	uint32_t host_free;    /* host buffer free size */
+	/* host possition reporting related */
+	volatile uint32_t *host_pos;    /* read/write pos, update to mailbox for host side */
+	uint32_t report_period; 	/* host_pos report/update to host side period, in bytes */
+	uint32_t report_pos;		/* position in current report period */
+	uint32_t local_pos;		/* the host side buffer local read/write possition, in bytes */
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;
@@ -88,30 +85,6 @@ struct host_data {
 	struct stream_params params;
 	struct comp_position cp;
 };
-
-static inline void host_update_buffer_produce(struct host_data *hd)
-{
-	if (hd->host_pos_read < hd->host_app_pos)
-		hd->host_avail = hd->host_app_pos - hd->host_pos_read;
-	else if (hd->host_pos_read == hd->host_app_pos)
-		hd->host_avail = hd->host_size; /* full */
-	else
-		hd->host_avail = hd->host_size -hd->host_pos_read +
-			hd->host_app_pos;
-	hd->host_free = hd->host_size - hd->host_avail;
-}
-
-static inline void host_update_buffer_consume(struct host_data *hd)
-{
-	if (hd->host_pos_read < hd->host_app_pos)
-		hd->host_avail = hd->host_app_pos - hd->host_pos_read;
-	else if (hd->host_pos_read == hd->host_app_pos)
-		hd->host_avail = 0; /* empty */
-	else
-		hd->host_avail = hd->host_size -hd->host_pos_read +
-			hd->host_app_pos;
-	hd->host_free = hd->host_size - hd->host_avail;
-}
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
@@ -127,16 +100,17 @@ static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 }
 
 /*
- * Host period copy to DSP DMA completion. This is called when DMA completes
- * its current transfer from host to DSP. The host memory is not guaranteed
- * to be continuous and also not guaranteed to have a period/buffer size that
- * is a multiple of the DSP period size. This means we must check we do not
+ * Host period copy between DSP and host DMA completion.
+ * This is called  by DMA driver every time when DMA completes its current
+ * transfer between host and DSP. The host memory is not guaranteed to be
+ * continuous and also not guaranteed to have a period/buffer size that is a
+ * multiple of the DSP period size. This means we must check we do not
  * overflow host period/buffer/page boundaries on each transfer and split the
  * DMA transfer if we do overflow.
  */
-static void host_dma_cb_playback(struct comp_dev *dev,
-	struct dma_sg_elem *next)
+static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
+	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
 	struct comp_buffer *dma_buffer;
@@ -145,42 +119,50 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
-	trace_host("Cpp");
+	trace_host("CpC");
 
 	/* update buffer positions */
 	dma_buffer = hd->dma_buffer;
 
-	dma_buffer->w_ptr += local_elem->size;
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+		dma_buffer->w_ptr += local_elem->size;
 
-	if (dma_buffer->w_ptr >= dma_buffer->end_addr)
-		dma_buffer->w_ptr = dma_buffer->addr;
-
+		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
+			dma_buffer->w_ptr = dma_buffer->addr;
 #if 0
-	trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
+		trace_value((uint32_t)(hd->dma_buffer->w_ptr - hd->dma_buffer->addr));
 #endif
 
-	/* recalc available buffer space */
-	comp_update_buffer_produce(hd->dma_buffer);
+		/* recalc available buffer space */
+		comp_update_buffer_produce(hd->dma_buffer);
+	} else {
+		dma_buffer->r_ptr += local_elem->size;
+
+		if (dma_buffer->r_ptr >= dma_buffer->end_addr)
+			dma_buffer->r_ptr = dma_buffer->addr;
+#if 0
+		trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
+#endif
+
+		/* recalc available buffer space */
+		comp_update_buffer_consume(hd->dma_buffer);
+	}
 
 	/* new local period, update host buffer position blks */
-	hd->host_pos_read += local_elem->size;
+	hd->local_pos += local_elem->size;
 
 	/* buffer overlap ? */
-	if (hd->host_pos_read >= hd->host_size)
-		hd->host_pos_read = 0;
-	host_update_buffer_consume(hd);
+	if (hd->local_pos >= hd->host_size)
+		hd->local_pos = 0;
 
 	/* send IPC message to driver if needed */
-	hd->host_period_pos += local_elem->size;
-	if (hd->host_period_pos >= hd->host_period_bytes) {
-		hd->host_period_pos = 0;
-		/* for the last bytes/period, send notification later */
-		if (hd->host_avail) {
-			/* update for host side */
-			if (hd->host_pos) {
-				*hd->host_pos = hd->host_pos_read;
-				ipc_stream_send_notification(dev, &hd->cp);
-			}
+	hd->report_pos += local_elem->size;
+	if (hd->report_pos >= hd->report_period) {
+		hd->report_pos = 0;
+		/* update for host side */
+		if (hd->host_pos) {
+			*hd->host_pos = hd->local_pos;
+			ipc_stream_send_notification(dev, &hd->cp);
 		}
 	}
 
@@ -216,29 +198,6 @@ static void host_dma_cb_playback(struct comp_dev *dev,
 	}
 	local_elem->size = next_size;
 
-	/* check if avail is enough, otherwise, drain the last bytes and stop */
-	if (hd->host_avail < local_elem->size) {
-		if (hd->host_avail == 0) {
-			/* end of stream, stop */
-			next->size = DMA_RELOAD_END;
-			need_copy = 0;
-
-			/* will notify host side once dai tell us */
-			wait_init(&dev->pipeline->complete);
-			work_schedule_default(&hd->work, PLATFORM_HOST_FINISH_DELAY);
-			goto next_copy;
-		}
-
-		/* end of stream, drain the last bytes */
-		local_elem->size = hd->host_avail;
-
-		/* the split_remaining may not be copied anymore, but, let's make it
-		   correct. we have only hd->host_avail data, so the split_remaining
-		   should be (next_size - hd->host_avail) bigger */
-		hd->split_remaining += next_size - hd->host_avail;
-	}
-
-next_copy:
 	if (need_copy) {
 		next->src = local_elem->src;
 		next->dest = local_elem->dest;
@@ -249,148 +208,6 @@ next_copy:
 	/* let any waiters know we have completed */
 	wait_completed(&hd->complete);
 }
-
-/*
- * DSP period copy to host DMA completion. This is called when DMA completes
- * its current transfer from DSP to host. The host memory is not guaranteed
- * to be continuous and also not guaranteed to have a period/buffer size that
- * is a multiple of the DSP period size. This means we must check we do not
- * overflow host period/buffer/page boundaries on each transfer and split the
- * DMA transfer if we do overflow.
- */
-static void host_dma_cb_capture(struct comp_dev *dev,
-		struct dma_sg_elem *next)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
-	struct comp_buffer *dma_buffer;
-
-	local_elem = list_first_item(&hd->config.elem_list,
-		struct dma_sg_elem, list);
-
-	trace_host("Cpc");
-
-	/* update buffer positions */
-	dma_buffer = hd->dma_buffer;
-	hd->dma_buffer->r_ptr += local_elem->size;
-
-	if (dma_buffer->r_ptr >= dma_buffer->end_addr)
-		dma_buffer->r_ptr = dma_buffer->addr;
-#if 0
-	trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
-#endif
-
-	/* new local period, update host buffer position blks */
-	hd->host_pos_read += local_elem->size;
-
-	/* buffer overlap ? */
-	if (hd->host_pos_read >= hd->host_size)
-		hd->host_pos_read = 0;
-	if (hd->host_pos)
-		*hd->host_pos = hd->host_pos_read;
-
-	/* recalc available buffer space */
-	comp_update_buffer_consume(hd->dma_buffer);
-
-	/* send IPC message to driver if needed */
-	hd->host_period_pos += local_elem->size;
-	if (hd->host_period_pos >= hd->host_period_bytes) {
-		hd->host_period_pos = 0;
-		ipc_stream_send_notification(dev, &hd->cp);
-	}
-
-	/* are we dealing with a split transfer */
-	if (hd->split_remaining) {
-
-		/* update local elem */
-		local_elem->src += local_elem->size;
-		sink_elem = next_buffer(hd->sink);
-		hd->sink->current_end = sink_elem->dest + sink_elem->size;
-		local_elem->dest = sink_elem->dest;
-
-		/* set up next elem */
-		local_elem->size = hd->split_remaining;
-		hd->next_inc = hd->split_remaining;
-		hd->split_remaining = 0;
-
-	} else {
-		/* source is always DSP period size */
-		source_elem = next_buffer(hd->source);
-
-		local_elem->src = source_elem->src;
-		local_elem->size = hd->period->size;
-		local_elem->dest += hd->next_inc;
-		hd->next_inc = hd->period->size;
-
-		/* are we at end of elem */
-		if (local_elem->dest == hd->sink->current_end) {
-
-			/* end of elem, so use next */
-			sink_elem = next_buffer(hd->sink);
-			hd->sink->current_end = sink_elem->dest + sink_elem->size;
-			local_elem->dest = sink_elem->dest;
-
-		} else if (local_elem->dest + hd->period->size > hd->sink->current_end) {
-
-			/* split copy - split transaction into 2 copies */
-			local_elem->size = hd->sink->current_end - local_elem->dest;
-			hd->split_remaining = hd->period->size - local_elem->size;
-
-			next->src = local_elem->src;
-			next->dest = local_elem->dest;
-			next->size = local_elem->size;
-			return;
-		}
-	}
-
-	/* let any waiters know we have completed */
-	wait_completed(&hd->complete);
-}
-
-/* this is called by DMA driver every time descriptor has completed */
-static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
-{
-
-	struct comp_dev *dev = (struct comp_dev *)data;
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
-		host_dma_cb_playback(dev, next);
-	else
-		host_dma_cb_capture(dev, next);
-}
-
-/* We need to wait until the last bytes/period is finished in dai, before we
- * can notify host side about that, otherwise, host side will trigger stop too
- * early, and we will miss rendering them.
- * This work should be scheduled once the copy for host component is finished,
- * and wait a timeout inside the work for pipeline->complete, which should be
- * set in the endpoint(dai) rendering finishing callback.
- */
-static uint32_t host_finish_work(void *data, uint32_t udelay)
-{
-	struct comp_dev *dev = (struct comp_dev *)data;
-	struct host_data *hd = comp_get_drvdata(dev);
-	int ret;
-
-	dev->pipeline->complete.timeout = PLATFORM_HOST_FINISH_TIMEOUT;
-	ret = wait_for_completion_timeout(&dev->pipeline->complete);
-	if (ret < 0)
-		trace_comp_error("eHf");
-	else {
-		trace_comp("hFw");
-		/* update for host side */
-		if (hd->host_pos) {
-			*hd->host_pos = hd->host_pos_read;
-			/* send the last notification to host */
-			ipc_stream_send_notification(dev, &hd->cp);
-		}
-	}
-
-	return 0;
-}
-
-
 
 static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	uint32_t direction)
@@ -421,7 +238,6 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	hd->dma = dma_get(DMA_ID_DMAC0);
 	if (hd->dma == NULL)
 		goto error;
-	work_init(&hd->work, host_finish_work, dev, WORK_ASYNC);
 
 	/* init buffer elems */
 	list_init(&hd->config.elem_list);
@@ -616,25 +432,19 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
 
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
-
-		dma_buffer->r_ptr = dma_buffer->addr;
-		dma_buffer->w_ptr = dma_buffer->addr;
-	} else {
+	else
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
+	dma_buffer->r_ptr = dma_buffer->w_ptr = dma_buffer->addr;
 
-		dma_buffer->r_ptr = dma_buffer->addr;
-		dma_buffer->w_ptr = dma_buffer->addr;
-	}
-
+	hd->local_pos = 0;
 	if (hd->host_pos)
 		*hd->host_pos = 0;
-	hd->host_pos_read = 0;
-	hd->host_period_pos = 0;
-	hd->host_period_bytes =
+	hd->report_pos = 0;
+	hd->report_period =
 		hd->params.period_frames * hd->params.frame_size;
 	hd->split_remaining = 0;
 
@@ -671,11 +481,8 @@ static int host_pointer_reset(struct comp_dev *dev)
 	/* reset buffer pointers */
 	if (hd->host_pos)
 		*hd->host_pos = 0;
-	hd->host_app_pos = 0;
-	hd->host_pos_read = 0;
-	hd->host_period_pos = 0;
-	hd->host_size = 0;
-	hd->host_avail= 0;
+	hd->local_pos = 0;
+	hd->report_pos = 0;
 
 	return 0;
 }
@@ -700,7 +507,6 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_dev *vol_dev = NULL;
-	struct ipc_intel_ipc_stream_set_position *app_pos;
 	int ret = 0;
 
 	// TODO: align cmd macros.
@@ -728,11 +534,6 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_IPC_MMAP_RPOS:
 		hd->host_pos = data;
-		break;
-	case COMP_CMD_AVAIL_UPDATE:
-		app_pos = (struct ipc_intel_ipc_stream_set_position *)data;
-		hd->host_app_pos = app_pos->position;
-		host_update_buffer_produce(hd);
 		break;
 	case COMP_CMD_VOLUME:
 		vol_dev = host_volume_component(dev);
@@ -789,7 +590,7 @@ static int host_reset(struct comp_dev *dev)
 	host_pointer_reset(dev);
 	hd->host_pos = NULL;
 
-	hd->host_period_bytes = 0;
+	hd->report_period = 0;
 	hd->source = NULL;
 	hd->sink = NULL;
 	dev->state = COMP_STATE_INIT;
@@ -805,9 +606,6 @@ static int host_copy(struct comp_dev *dev)
 
 	trace_host("CpS");
 	if (dev->state != COMP_STATE_RUNNING)
-		return 0;
-
-	if (hd->host_avail == 0)
 		return 0;
 
 	/* do DMA transfer */
