@@ -166,6 +166,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		}
 	}
 
+	/* update src and dest positions and check for overflow */
 	local_elem->src += local_elem->size;
 	local_elem->dest += local_elem->size;
 	if (local_elem->src == hd->source->current_end) {
@@ -181,16 +182,20 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		local_elem->dest = sink_elem->dest;
 	}
 
+	/* calc size of next transfer */
 	next_size = hd->period->size;
 	if (local_elem->src + next_size > hd->source->current_end)
 		next_size = hd->source->current_end - local_elem->src;
 	if (local_elem->dest + next_size > hd->sink->current_end)
 		next_size = hd->sink->current_end - local_elem->dest;
 
+	/* are we dealing with a split transfer ? */
 	if (!hd->split_remaining) {
+		/* no, is next transfer split ? */
 		if (next_size != hd->period->size)
 			hd->split_remaining = hd->period->size - next_size;
 	} else {
+		/* yes, than calc transfer size */
 		need_copy = 1;
 		next_size = next_size < hd->split_remaining ?
 			next_size : hd->split_remaining;
@@ -198,6 +203,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	}
 	local_elem->size = next_size;
 
+	/* schedule immediate split transfer if needed */
 	if (need_copy) {
 		next->src = local_elem->src;
 		next->dest = local_elem->dest;
