@@ -37,6 +37,7 @@
 #define SSP_CLK_NET_PLL	1
 #define SSP_CLK_EXT	2
 #define SSP_CLK_NET	3
+#define SSP_CLK_DEFAULT        4
 
 /* SSP register offsets */
 #define SSCR0		0x00
