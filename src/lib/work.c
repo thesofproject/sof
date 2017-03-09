@@ -298,7 +298,7 @@ static void work_notify(int message, void *data, void *event_data)
 
 	spin_lock_irq(&queue->lock, flags);
 
-	/* we need to re-caclulate timer when CPU freqency changes */
+	/* we need to re-caclulate timer when CPU frequency changes */
 	if (message == CLOCK_NOTIFY_POST) {
 
 		/* CPU frequency update complete */
@@ -334,7 +334,7 @@ void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
 			goto out;
 	}
 
-	/* convert timeout microsecs to CPU clock ticks */
+	/* convert timeout micro seconds to CPU clock ticks */
 	w->timeout = queue->ticks_per_usec * timeout + work_get_timer(queue);
 
 	/* insert work into list */
