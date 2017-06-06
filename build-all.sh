@@ -1,3 +1,9 @@
+# fail on any errors
+set -e
+
+# run autogen.sh
+./autogen.sh
+
 # build all images for all targets.
 pwd=`pwd`
 
