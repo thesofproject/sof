@@ -67,8 +67,8 @@ reef_LDFLAGS = \
 	-T ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
 
 bin-local: reef
-	$(OBJCOPY) -O binary reef reef.bin
-	$(OBJDUMP) -D reef > reef-$(FW_NAME).map
+	$(OBJCOPY) -O binary reef reef-$(FW_NAME).bin
+	$(OBJDUMP) -h -D reef > reef-$(FW_NAME).map
 	rimage -i reef -o reef-$(FW_NAME).ri -m $(FW_NAME)
 
 vminstall-local:
