@@ -34,6 +34,7 @@
 #include <reef/interrupt.h>
 #include <platform/interrupt.h>
 #include <reef/mailbox.h>
+#include <arch/task.h>
 #include <reef/debug.h>
 #include <reef/init.h>
 #include <stdint.h>
@@ -152,6 +153,7 @@ static void register_exceptions(void)
 int arch_init(struct reef *reef)
 {
 	register_exceptions();
+	arch_init_tasks();
 	return 0;
 }
 

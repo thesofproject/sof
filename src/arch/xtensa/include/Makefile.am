@@ -8,4 +8,5 @@ noinst_HEADERS = \
 	arch/interrupt.h \
 	arch/reef.h \
 	arch/spinlock.h \
-	arch/timer.h
+	arch/timer.h \
+	arch/task.h

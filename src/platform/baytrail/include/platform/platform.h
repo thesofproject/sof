@@ -52,6 +52,10 @@ struct reef;
 /* pipeline IRQ */
 #define PLATFORM_PIPELINE_IRQ	IRQ_NUM_SOFTWARE4
 
+#define PLATFORM_IRQ_TASK_HIGH	IRQ_NUM_SOFTWARE4
+#define PLATFORM_IRQ_TASK_MED	IRQ_NUM_SOFTWARE3
+#define PLATFORM_IRQ_TASK_LOW	IRQ_NUM_SOFTWARE2
+
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_HOST_DMA_MASK	0xFF000000
 

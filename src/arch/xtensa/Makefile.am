@@ -32,7 +32,8 @@ reef_SOURCES = \
 	_vectors.S \
 	init.c \
 	wait.S \
-	timer.c
+	timer.c \
+	task.c
 
 reef_CFLAGS = \
 	$(ARCH_INCDIR) \
@@ -49,9 +50,9 @@ reef_LDADD = \
 	../../init/libinit.a \
 	../../platform/$(PLATFORM)/libplatform.a \
 	../../tasks/libtasks.a \
-	../../audio/libaudio.a \
 	../../lib/libcore.a \
 	../../ipc/libipc.a \
+	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	libreset.a \
 	xtos/libxtos.a \
