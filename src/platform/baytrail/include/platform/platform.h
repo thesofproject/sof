@@ -50,12 +50,14 @@ struct reef;
 #define HOST_PAGE_SIZE		4096
 
 /* pipeline IRQ */
+#define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE5
 #define PLATFORM_PIPELINE_IRQ	IRQ_NUM_SOFTWARE4
 
 #define PLATFORM_IRQ_TASK_HIGH	IRQ_NUM_SOFTWARE4
 #define PLATFORM_IRQ_TASK_MED	IRQ_NUM_SOFTWARE3
 #define PLATFORM_IRQ_TASK_LOW	IRQ_NUM_SOFTWARE2
 
+#define PLATFORM_SCHEDULE_COST	200
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_HOST_DMA_MASK	0xFF000000
 
@@ -77,11 +79,13 @@ struct reef;
 /* Platform Dev DMA buffer config - these should align with DMA engine */
 #define PLAT_DAI_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
 #define PLAT_DAI_PERIODS	2	/* give enough latency for DMA refill */
+#define PLAT_DAI_SCHED		1000 /* scheduling time in usecs */
 
 /* Platform internal buffer config - these should align with DMA engine */
 #define PLAT_INT_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
 #define PLAT_INT_PERIODS	2	/* give enough latency for DMA refill */
 
+#define PLATFORM_SCHED_CLOCK	CLK_SSP
 
 /* DMA channel drain timeout in microseconds */
 #define PLATFORM_DMA_TIMEOUT	1333

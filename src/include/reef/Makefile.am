@@ -17,6 +17,7 @@ noinst_HEADERS = \
 	mailbox.h \
 	notifier.h \
 	reef.h \
+	schedule.h \
 	ssp.h \
 	stream.h \
 	task.h \

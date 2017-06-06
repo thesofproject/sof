@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,62 +26,65 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic DSP initialisation. This calls architecture and platform specific
- * initialisation functions.
  */
 
+#ifndef __INCLUDE_REEF_SCHEDULE_H__
+#define __INCLUDE_REEF_SCHEDULE_H__
+
+#include <stdint.h>
 #include <stddef.h>
-#include <reef/init.h>
-#include <reef/task.h>
-#include <reef/debug.h>
-#include <reef/alloc.h>
-#include <reef/notifier.h>
-#include <reef/work.h>
-#include <reef/trace.h>
-#include <reef/schedule.h>
-#include <platform/platform.h>
+#include <errno.h>
+#include <reef/reef.h>
+#include <reef/lock.h>
+#include <reef/list.h>
 
-/* main firmware context */
-static struct reef reef;
+struct reef;
 
-int main(int argc, char *argv[])
+/* task states */
+#define TASK_STATE_INIT		0	
+#define TASK_STATE_QUEUED	1
+#define TASK_STATE_RUNNING	2
+#define TASK_STATE_PREEMPTED	3
+#define TASK_STATE_COMPLETED	4
+
+/* task priorities - values same as Linux processes, gives scope for future.*/
+#define TASK_PRI_LOW	19
+#define TASK_PRI_MED	0
+#define TASK_PRI_HIGH	-20
+
+struct task {
+	uint16_t core;			/* core id to run on */
+	int16_t priority;		/* scheduling priority TASK_PRI_ */
+	uint32_t deadline;		/* scheduling deadline */
+	uint32_t max_rtime;		/* max time taken to run */
+	uint32_t state;			/* TASK_STATE_ */
+	struct list_item list;		/* list in scheduler */
+	void *data;
+	void *sdata;
+	void (*func)(void *arg);
+};
+
+void schedule(void);
+
+void schedule_task(struct task *task, uint32_t deadline, uint16_t priority,
+		void *data);
+
+void schedule_task_core(struct task *task, uint32_t deadline,
+	uint16_t priority, uint16_t core, void *data);
+
+void schedule_task_complete(struct task *task);
+
+static inline void task_init(struct task *task, void (*func)(void *),
+	void *data)
 {
-	int err;
-
-	trace_point(TRACE_BOOT_START);
-
-	/* setup context */
-	reef.argc = argc;
-	reef.argv = argv;
-
-	/* init architecture */
-	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(&reef);
-	if (err < 0)
-		panic(PANIC_ARCH);
-
-	/* initialise system services */
-	trace_point(TRACE_BOOT_SYS_HEAP);
-	init_heap(&reef);
-
-	trace_point(TRACE_BOOT_SYS_NOTE);
-	init_system_notify(&reef);
-
-	trace_point(TRACE_BOOT_SYS_SCHED);
-	scheduler_init(&reef);
-
-	/* init the platform */
-	err = platform_init(&reef);
-	if (err < 0)
-		panic(PANIC_PLATFORM);
-
-	trace_point(TRACE_BOOT_PLATFORM);
-
-	/* should not return */
-	err = do_task(&reef);
-
-	/* should never get here */
-	panic(PANIC_TASK);
-	return err;
+	task->core = 0;
+	task->priority = TASK_PRI_MED;
+	task->state = TASK_STATE_INIT;
+	task->func = func;
+	task->data = data;
+	task->sdata = NULL;
 }
+
+int scheduler_init(struct reef *reef);
+
+#endif
