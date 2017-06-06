@@ -488,7 +488,7 @@ static int ssp_probe(struct dai *dai)
 	struct ssp_pdata *ssp;
 
 	/* allocate private data */
-	ssp = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*ssp));
+	ssp = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
 	work_init(&ssp->work, ssp_drain_work, dai, WORK_ASYNC);

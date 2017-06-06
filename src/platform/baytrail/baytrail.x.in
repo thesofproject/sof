@@ -1,73 +1,145 @@
-/* Linker Script for baytrail - TODO: this should be run through the GCC
-   pre-processor to align heap and stack variables */
+/*
+ * Linker Script for Baytrail.
+ *
+ * This script is run through the GNU C preprocessor to align the memory
+ * offsets with headers.
+ *
+ * Use spaces for formatting as cpp ignore tab sizes.
+ */
+
+#include <platform/memory.h>
+#include <xtensa/config/core-isa.h>
 
 OUTPUT_ARCH(xtensa)
 
 MEMORY
 {
-  iram0_0_seg :                       	org = 0xFF2C0000, len = 0x2E0
-  iram0_1_seg :                       	org = 0xFF2C02E0, len = 0x120
-  iram0_2_seg :                       	org = 0xFF2C0400, len = 0x178
-  iram0_3_seg :                       	org = 0xFF2C0578, len = 0x4
-  iram0_4_seg :                       	org = 0xFF2C057C, len = 0x1C
-  iram0_5_seg :                       	org = 0xFF2C0598, len = 0x4
-  iram0_6_seg :                       	org = 0xFF2C059C, len = 0x1C
-  iram0_7_seg :                       	org = 0xFF2C05B8, len = 0x4
-  iram0_8_seg :                       	org = 0xFF2C05BC, len = 0x1C
-  iram0_9_seg :                       	org = 0xFF2C05D8, len = 0x4
-  iram0_10_seg :                      	org = 0xFF2C05DC, len = 0x1C
-  iram0_11_seg :                      	org = 0xFF2C05F8, len = 0x4
-  iram0_12_seg :                      	org = 0xFF2C05FC, len = 0x1C
-  iram0_13_seg :                      	org = 0xFF2C0618, len = 0x4
-  iram0_14_seg :                      	org = 0xFF2C061C, len = 0x1C
-  iram0_15_seg :                      	org = 0xFF2C0638, len = 0x4
-  iram0_16_seg :                      	org = 0xFF2C063C, len = 0x1C
-  iram0_17_seg :                      	org = 0xFF2C0658, len = 0x4
-  iram0_18_seg :                      	org = 0xFF2C065C, len = 0x1C
-  iram0_19_seg :                      	org = 0xFF2C0678, len = 0x4
-  iram0_20_seg :                      	org = 0xFF2C067C, len = 0x1C
-  iram0_21_seg :                      	org = 0xFF2C0698, len = 0x13968
-  dram0_0_seg :                       	org = 0xFF300000, len = 0x8
-  dram0_1_seg :                       	org = 0xFF300008, len = 0x26FF8
+  vector_reset_text :
+        org = XCHAL_RESET_VECTOR0_PADDR,
+        len = REEF_MEM_RESET_TEXT_SIZE
+  vector_reset_lit :
+        org = XCHAL_RESET_VECTOR0_PADDR + REEF_MEM_RESET_TEXT_SIZE,
+        len = REEF_MEM_RESET_LIT_SIZE
+  vector_base_text :
+       	org = XCHAL_VECBASE_RESET_PADDR,
+        len = REEF_MEM_VECBASE_LIT_SIZE
+  vector_int2_lit :
+       	org = XCHAL_INTLEVEL2_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_int2_text :
+        org = XCHAL_INTLEVEL2_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_int3_lit :
+       	org = XCHAL_INTLEVEL3_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_int3_text :
+       	org = XCHAL_INTLEVEL3_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_int4_lit :
+       	org = XCHAL_INTLEVEL4_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_int4_text :
+       	org = XCHAL_INTLEVEL4_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_int5_lit :
+       	org = XCHAL_INTLEVEL5_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE, 
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_int5_text :
+       	org = XCHAL_INTLEVEL5_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_int6_lit :
+       	org = XCHAL_INTLEVEL6_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_int6_text :
+       	org = XCHAL_INTLEVEL6_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_int7_lit :
+       	org = XCHAL_INTLEVEL7_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_int7_text :
+       	org = XCHAL_INTLEVEL7_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_kernel_lit :
+       	org = XCHAL_KERNEL_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_kernel_text :
+       	org = XCHAL_KERNEL_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_user_lit :
+       	org = XCHAL_USER_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_user_text :
+       	org = XCHAL_USER_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  vector_double_lit :
+       	org = XCHAL_DOUBLEEXC_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+        len = REEF_MEM_VECT_LIT_SIZE
+  vector_double_text :
+       	org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
+        len = REEF_MEM_VECT_TEXT_SIZE
+  reef_text_start :
+       	org = XCHAL_DOUBLEEXC_VECTOR_PADDR + REEF_MEM_VECT_SIZE,
+        len = (IRAM_BASE + IRAM_SIZE) - (XCHAL_DOUBLEEXC_VECTOR_PADDR + REEF_MEM_VECT_SIZE)
+  reef_data_ro :
+       	org = DRAM0_BASE,
+        len = REEF_MEM_RO_SIZE
+  reef_data :
+       	org = DRAM0_BASE + REEF_MEM_RO_SIZE,
+        len = HEAP_SYSTEM_BASE - (DRAM0_BASE + REEF_MEM_RO_SIZE)
+  system_heap :
+        org = HEAP_SYSTEM_BASE,
+        len = HEAP_SYSTEM_SIZE
+  runtime_heap :
+        org = HEAP_RUNTIME_BASE,
+        len = HEAP_RUNTIME_SIZE
+  buffer_heap :
+        org = HEAP_BUFFER_BASE,
+        len = HEAP_BUFFER_SIZE
+  reef_stack :
+        org = REEF_STACK_END,
+        len = REEF_STACK_BASE - REEF_STACK_END
 }
 
 PHDRS
 {
-  iram0_0_phdr PT_LOAD;
-  iram0_1_phdr PT_LOAD;
-  iram0_2_phdr PT_LOAD;
-  iram0_3_phdr PT_LOAD;
-  iram0_4_phdr PT_LOAD;
-  iram0_5_phdr PT_LOAD;
-  iram0_6_phdr PT_LOAD;
-  iram0_7_phdr PT_LOAD;
-  iram0_8_phdr PT_LOAD;
-  iram0_9_phdr PT_LOAD;
-  iram0_10_phdr PT_LOAD;
-  iram0_11_phdr PT_LOAD;
-  iram0_12_phdr PT_LOAD;
-  iram0_13_phdr PT_LOAD;
-  iram0_14_phdr PT_LOAD;
-  iram0_15_phdr PT_LOAD;
-  iram0_16_phdr PT_LOAD;
-  iram0_17_phdr PT_LOAD;
-  iram0_18_phdr PT_LOAD;
-  iram0_19_phdr PT_LOAD;
-  iram0_20_phdr PT_LOAD;
-  iram0_21_phdr PT_LOAD;
-  dram0_0_phdr PT_LOAD;
-  dram0_1_phdr PT_LOAD;
-  dram0_1_bss_phdr PT_LOAD;
-  dram0_2_phdr PT_LOAD;
+  vector_reset_text_phdr PT_LOAD;
+  vector_reset_lit_phdr PT_LOAD;
+  vector_base_text_phdr PT_LOAD;
+  vector_base_lit_phdr PT_LOAD;
+  vector_int2_text_phdr PT_LOAD;
+  vector_int2_lit_phdr PT_LOAD;
+  vector_int3_text_phdr PT_LOAD;
+  vector_int3_lit_phdr PT_LOAD;
+  vector_int4_text_phdr PT_LOAD;
+  vector_int4_lit_phdr PT_LOAD;
+  vector_int5_text_phdr PT_LOAD;
+  vector_int5_lit_phdr PT_LOAD;
+  vector_int6_text_phdr PT_LOAD;
+  vector_int6_lit_phdr PT_LOAD;
+  vector_int7_text_phdr PT_LOAD;
+  vector_int7_lit_phdr PT_LOAD;
+  vector_kernel_text_phdr PT_LOAD;
+  vector_kernel_lit_phdr PT_LOAD;
+  vector_user_text_phdr PT_LOAD;
+  vector_user_lit_phdr PT_LOAD;
+  vector_double_text_phdr PT_LOAD;
+  vector_double_lit_phdr PT_LOAD;
+  reef_text_start_phdr PT_LOAD;
+  reef_data_ro_phdr PT_LOAD;
+  reef_data_phdr PT_LOAD;
+  reef_data_bss_phdr PT_LOAD;
+  system_heap_phdr PT_LOAD;
+  runtime_heap_phdr PT_LOAD;
+  buffer_heap_phdr PT_LOAD;
+  reef_stack_phdr PT_LOAD;
 }
-
 
 /*  Default entry point:  */
 ENTRY(_ResetVector)
 _rom_store_table = 0;
 
 /* ABI0 does not use Window base */
-PROVIDE(_memmap_vecbase_reset = 0xff2c0400);
+PROVIDE(_memmap_vecbase_reset = XCHAL_VECBASE_RESET_PADDR);
 
 /* Various memory-map dependent cache attribute settings: */
 _memmap_cacheattr_wb_base = 0x44024000;
@@ -94,147 +166,147 @@ SECTIONS
     _ResetVector_text_start = ABSOLUTE(.);
     KEEP (*(.ResetVector.text))
     _ResetVector_text_end = ABSOLUTE(.);
-  } >iram0_0_seg :iram0_0_phdr
+  } >vector_reset_text :vector_reset_text_phdr
 
   .ResetVector.literal : ALIGN(4)
   {
     _ResetVector_literal_start = ABSOLUTE(.);
     *(.ResetVector.literal)
     _ResetVector_literal_end = ABSOLUTE(.);
-  } >iram0_1_seg :iram0_1_phdr
+  } >vector_reset_lit :vector_reset_lit_phdr
 
   .WindowVectors.text : ALIGN(4)
   {
     _WindowVectors_text_start = ABSOLUTE(.);
     KEEP (*(.WindowVectors.text))
     _WindowVectors_text_end = ABSOLUTE(.);
-  } >iram0_2_seg :iram0_2_phdr
+  } >vector_base_text :vector_base_text_phdr
 
   .Level2InterruptVector.literal : ALIGN(4)
   {
     _Level2InterruptVector_literal_start = ABSOLUTE(.);
     *(.Level2InterruptVector.literal)
     _Level2InterruptVector_literal_end = ABSOLUTE(.);
-  } >iram0_3_seg :iram0_3_phdr
+  } >vector_int2_lit :vector_int2_lit_phdr
 
   .Level2InterruptVector.text : ALIGN(4)
   {
     _Level2InterruptVector_text_start = ABSOLUTE(.);
     KEEP (*(.Level2InterruptVector.text))
     _Level2InterruptVector_text_end = ABSOLUTE(.);
-  } >iram0_4_seg :iram0_4_phdr
+  } >vector_int2_text :vector_int2_text_phdr
 
   .Level3InterruptVector.literal : ALIGN(4)
   {
     _Level3InterruptVector_literal_start = ABSOLUTE(.);
     *(.Level3InterruptVector.literal)
     _Level3InterruptVector_literal_end = ABSOLUTE(.);
-  } >iram0_5_seg :iram0_5_phdr
+  } >vector_int3_lit :vector_int3_lit_phdr
 
   .Level3InterruptVector.text : ALIGN(4)
   {
     _Level3InterruptVector_text_start = ABSOLUTE(.);
     KEEP (*(.Level3InterruptVector.text))
     _Level3InterruptVector_text_end = ABSOLUTE(.);
-  } >iram0_6_seg :iram0_6_phdr
+  } >vector_int3_text :vector_int3_text_phdr
 
   .Level4InterruptVector.literal : ALIGN(4)
   {
     _Level4InterruptVector_literal_start = ABSOLUTE(.);
     *(.Level4InterruptVector.literal)
     _Level4InterruptVector_literal_end = ABSOLUTE(.);
-  } >iram0_7_seg :iram0_7_phdr
+  } >vector_int4_lit :vector_int4_lit_phdr
 
   .Level4InterruptVector.text : ALIGN(4)
   {
     _Level4InterruptVector_text_start = ABSOLUTE(.);
     KEEP (*(.Level4InterruptVector.text))
     _Level4InterruptVector_text_end = ABSOLUTE(.);
-  } >iram0_8_seg :iram0_8_phdr
+  } >vector_int4_text :vector_int4_text_phdr
 
   .Level5InterruptVector.literal : ALIGN(4)
   {
     _Level5InterruptVector_literal_start = ABSOLUTE(.);
     *(.Level5InterruptVector.literal)
     _Level5InterruptVector_literal_end = ABSOLUTE(.);
-  } >iram0_9_seg :iram0_9_phdr
+  } >vector_int5_lit :vector_int5_lit_phdr
 
   .Level5InterruptVector.text : ALIGN(4)
   {
     _Level5InterruptVector_text_start = ABSOLUTE(.);
     KEEP (*(.Level5InterruptVector.text))
     _Level5InterruptVector_text_end = ABSOLUTE(.);
-  } >iram0_10_seg :iram0_10_phdr
+  } >vector_int5_text :vector_int5_text_phdr
 
   .DebugExceptionVector.literal : ALIGN(4)
   {
     _DebugExceptionVector_literal_start = ABSOLUTE(.);
     *(.DebugExceptionVector.literal)
     _DebugExceptionVector_literal_end = ABSOLUTE(.);
-  } >iram0_11_seg :iram0_11_phdr
+  } >vector_int6_lit :vector_int6_lit_phdr
 
   .DebugExceptionVector.text : ALIGN(4)
   {
     _DebugExceptionVector_text_start = ABSOLUTE(.);
     KEEP (*(.DebugExceptionVector.text))
     _DebugExceptionVector_text_end = ABSOLUTE(.);
-  } >iram0_12_seg :iram0_12_phdr
+  } >vector_int6_text :vector_int6_text_phdr
 
   .NMIExceptionVector.literal : ALIGN(4)
   {
     _NMIExceptionVector_literal_start = ABSOLUTE(.);
     *(.NMIExceptionVector.literal)
     _NMIExceptionVector_literal_end = ABSOLUTE(.);
-  } >iram0_13_seg :iram0_13_phdr
+  } >vector_int7_lit :vector_int7_lit_phdr
 
   .NMIExceptionVector.text : ALIGN(4)
   {
     _NMIExceptionVector_text_start = ABSOLUTE(.);
     KEEP (*(.NMIExceptionVector.text))
     _NMIExceptionVector_text_end = ABSOLUTE(.);
-  } >iram0_14_seg :iram0_14_phdr
+  } >vector_int7_text :vector_int7_text_phdr
 
   .KernelExceptionVector.literal : ALIGN(4)
   {
     _KernelExceptionVector_literal_start = ABSOLUTE(.);
     *(.KernelExceptionVector.literal)
     _KernelExceptionVector_literal_end = ABSOLUTE(.);
-  } >iram0_15_seg :iram0_15_phdr
+  } >vector_kernel_lit :vector_kernel_lit_phdr
 
   .KernelExceptionVector.text : ALIGN(4)
   {
     _KernelExceptionVector_text_start = ABSOLUTE(.);
     KEEP (*(.KernelExceptionVector.text))
     _KernelExceptionVector_text_end = ABSOLUTE(.);
-  } >iram0_16_seg :iram0_16_phdr
+  } >vector_kernel_text :vector_kernel_text_phdr
 
   .UserExceptionVector.literal : ALIGN(4)
   {
     _UserExceptionVector_literal_start = ABSOLUTE(.);
     *(.UserExceptionVector.literal)
     _UserExceptionVector_literal_end = ABSOLUTE(.);
-  } >iram0_17_seg :iram0_17_phdr
+  } >vector_user_lit :vector_user_lit_phdr
 
   .UserExceptionVector.text : ALIGN(4)
   {
     _UserExceptionVector_text_start = ABSOLUTE(.);
     KEEP (*(.UserExceptionVector.text))
     _UserExceptionVector_text_end = ABSOLUTE(.);
-  } >iram0_18_seg :iram0_18_phdr
+  } >vector_user_text :vector_user_text_phdr
 
   .DoubleExceptionVector.literal : ALIGN(4)
   {
     _DoubleExceptionVector_literal_start = ABSOLUTE(.);
     *(.DoubleExceptionVector.literal)
     _DoubleExceptionVector_literal_end = ABSOLUTE(.);
-  } >iram0_19_seg :iram0_19_phdr
+  } >vector_double_lit :vector_double_lit_phdr
 
   .DoubleExceptionVector.text : ALIGN(4)
   {
     _DoubleExceptionVector_text_start = ABSOLUTE(.);
     KEEP (*(.DoubleExceptionVector.text))
     _DoubleExceptionVector_text_end = ABSOLUTE(.);
-  } >iram0_20_seg :iram0_20_phdr
+  } >vector_double_text :vector_double_text_phdr
 
   .text : ALIGN(4)
   {
@@ -249,14 +321,14 @@ SECTIONS
     *(.gnu.version)
     _text_end = ABSOLUTE(.);
     _etext = .;
-  } >iram0_21_seg :iram0_21_phdr
+  } >reef_text_start :reef_text_start_phdr
 
   .reset.rodata : ALIGN(4)
   {
     _reset_rodata_start = ABSOLUTE(.);
     *(.reset.rodata)
     _reset_rodata_end = ABSOLUTE(.);
-  } >dram0_0_seg :dram0_0_phdr
+  } >reef_data_ro :reef_data_ro_phdr
 
   .rodata : ALIGN(4)
   {
@@ -294,7 +366,7 @@ SECTIONS
     LONG(_bss_end)
     _bss_table_end = ABSOLUTE(.);
     _rodata_end = ABSOLUTE(.);
-  } >dram0_1_seg :dram0_1_phdr
+  } >reef_data :reef_data_phdr
 
   .data : ALIGN(4)
   {
@@ -312,7 +384,7 @@ SECTIONS
     *(.gnu.linkonce.s2.*)
     KEEP(*(.jcr))
     _data_end = ABSOLUTE(.);
-  } >dram0_1_seg :dram0_1_phdr
+  } >reef_data :reef_data_phdr
 
   .lit4 : ALIGN(4)
   {
@@ -321,8 +393,7 @@ SECTIONS
     *(.lit4.*)
     *(.gnu.linkonce.lit4.*)
     _lit4_end = ABSOLUTE(.);
-  } >dram0_1_seg :dram0_1_phdr
-
+  } >reef_data :reef_data_phdr
 
   .bss (NOLOAD) : ALIGN(8)
   {
@@ -343,40 +414,13 @@ SECTIONS
     *(COMMON)
     . = ALIGN (8);
     _bss_end = ABSOLUTE(.);
-  } >dram0_1_seg :dram0_1_bss_phdr
+  } >reef_data :reef_data_bss_phdr
 
-/* TODO: need to clean up what we are using/not using here */
-/* TODO: need to run the pre-processor on this to align with C headers */
-
-  _end = 0xff327000;
-  PROVIDE(end = 0xff327000);
-  _stack_sentry = 0xff327000;
- __stack = 0xff328000;
-  _heap_sentry = 0xff328000;
-
-  /* The Heap and stack are organised like this :-
-   *
-   * DRAM start --------
-   *            RO Data
-   *            Data
-   *            BSS
-   *            System Heap
-   *            Module Heap
-   *            Module Buffers
-   *            Stack
-   * DRAM End   ---------
-   */
-
-  /* System Heap */
-  _system_heap = 0xff304000;
-
-
-  /* module heap */
-  _module_heap = 0xff305000;
-
-  /* buffer heap */
-  _buffer_heap = 0xff30c000;
-  _buffer_heap_end = _stack_sentry;
+  /* stack */
+  _end = REEF_STACK_END;
+  PROVIDE(end = REEF_STACK_END);
+  _stack_sentry = REEF_STACK_END;
+  __stack = REEF_STACK_BASE;
 
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }
@@ -395,6 +439,7 @@ SECTIONS
   .debug_funcnames  0 :  { *(.debug_funcnames) }
   .debug_typenames  0 :  { *(.debug_typenames) }
   .debug_varnames  0 :  { *(.debug_varnames) }
+
   .xt.insn 0 :
   {
     KEEP (*(.xt.insn))
@@ -427,5 +472,37 @@ SECTIONS
     KEEP (*(.xt.profile_files))
     KEEP (*(.gnu.linkonce.xt.profile_files.*))
   }
+
+  .system_heap (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _system_heap_start = ABSOLUTE(.);
+    . = . + HEAP_SYSTEM_SIZE;
+    _system_heap_end = ABSOLUTE(.);
+  } >system_heap :system_heap_phdr
+
+  .runtime_heap (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _runtime_heap_start = ABSOLUTE(.);
+    . = . + HEAP_RUNTIME_SIZE;
+    _runtime_heap_end = ABSOLUTE(.);
+  } >runtime_heap :runtime_heap_phdr
+
+  .buffer_heap (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _system_heap_start = ABSOLUTE(.);
+    . = . + HEAP_BUFFER_SIZE;
+    _system_heap_end = ABSOLUTE(.);
+  } >buffer_heap :buffer_heap_phdr
+
+  .reef_stack (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (4096);
+    _reef_stack_start = ABSOLUTE(.);
+    . = . + REEF_STACK_SIZE;
+    _reef_stack_end = ABSOLUTE(.);
+  } >reef_stack :reef_stack_phdr
 }
 

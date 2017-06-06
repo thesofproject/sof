@@ -306,13 +306,13 @@ static struct comp_dev *volume_new(uint32_t type, uint32_t index,
 	struct comp_data *cd;
 	int i;
 
-	dev = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
 
-	cd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, dev);
+		rfree(dev);
 		return NULL;
 	}
 
@@ -334,8 +334,8 @@ static void volume_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	rfree(RZONE_MODULE, RMOD_SYS, cd);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(cd);
+	rfree(dev);
 }
 
 /* set component audio stream paramters */

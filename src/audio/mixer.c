@@ -88,13 +88,13 @@ static struct comp_dev *mixer_new(uint32_t type, uint32_t index,
 	struct mixer_data *md;
 
 	trace_mixer("MNw");
-	dev = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
 
-	md = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*md));
+	md = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*md));
 	if (md == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, dev);
+		rfree(dev);
 		return NULL;
 	}
 
@@ -109,8 +109,8 @@ static void mixer_free(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 
-	rfree(RZONE_MODULE, RMOD_SYS, md);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(md);
+	rfree(dev);
 }
 
 /* set component audio stream paramters */

@@ -222,20 +222,20 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	struct host_data *hd;
 	struct dma_sg_elem *elem;
 
-	dev = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
 
-	hd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*hd));
+	hd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*hd));
 	if (hd == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, dev);
+		rfree(dev);
 		return NULL;
 	}
 
-	elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+	elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
 	if (elem == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, dev);
-		rfree(RZONE_MODULE, RMOD_SYS, hd);
+		rfree(dev);
+		rfree(hd);
 		return NULL;
 	}
 
@@ -262,9 +262,9 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	return dev;
 
 error:
-	rfree(RZONE_MODULE, RMOD_SYS, elem);
-	rfree(RZONE_MODULE, RMOD_SYS, hd);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(elem);
+	rfree(hd);
+	rfree(dev);
 	return NULL;
 }
 
@@ -277,9 +277,9 @@ static void host_free(struct comp_dev *dev)
 		struct dma_sg_elem, list);
 	dma_channel_put(hd->dma, hd->chan);
 
-	rfree(RZONE_MODULE, RMOD_SYS, elem);
-	rfree(RZONE_MODULE, RMOD_SYS, hd);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(elem);
+	rfree(hd);
+	rfree(dev);
 }
 
 static int create_local_elems(struct comp_dev *dev,
@@ -292,7 +292,7 @@ static int create_local_elems(struct comp_dev *dev,
 
 	for (i = 0; i < hd->period->number; i++) {
 		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*e));
+		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
 		if (e == NULL)
 			goto unwind;
 
@@ -315,7 +315,7 @@ unwind:
 
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&e->list);
-		rfree(RZONE_MODULE, RMOD_SYS, e);
+		rfree(e);
 	}
 	return -ENOMEM;
 }
@@ -560,7 +560,7 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
 	struct dma_sg_elem *e;
 
 	/* allocate new host DMA elem and add it to our list */
-	e = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*e));
+	e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
 	if (e == NULL)
 		return -ENOMEM;
 
@@ -582,7 +582,7 @@ static int host_reset(struct comp_dev *dev)
 
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&e->list);
-		rfree(RZONE_MODULE, RMOD_SYS, e);
+		rfree(e);
 	}
 
 	/* free all local DMA elements */
@@ -590,7 +590,7 @@ static int host_reset(struct comp_dev *dev)
 
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&e->list);
-		rfree(RZONE_MODULE, RMOD_SYS, e);
+		rfree(e);
 	}
 
 	host_pointer_reset(dev);

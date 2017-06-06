@@ -175,13 +175,13 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 	struct comp_dev *dev;
 	struct dai_data *dd;
 
-	dev = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
 
-	dd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dd));
+	dd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dd));
 	if (dd == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, dev);
+		rfree(dev);
 		return NULL;
 	}
 
@@ -214,8 +214,8 @@ static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
 	return dev;
 
 error:
-	rfree(RZONE_MODULE, RMOD_SYS, dd);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(dd);
+	rfree(dev);
 	return NULL;
 }
 
@@ -231,8 +231,8 @@ static void dai_free(struct comp_dev *dev)
 
 	dma_channel_put(dd->dma, dd->chan);
 
-	rfree(RZONE_MODULE, RMOD_SYS, dd);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(dd);
+	rfree(dev);
 }
 
 /* set component audio SSP and DMA configuration */
@@ -269,7 +269,7 @@ static int dai_playback_params(struct comp_dev *dev,
 		/* set up cyclic list of DMA elems */
 		for (i = 0; i < dma_period_desc->number; i++) {
 
-			elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+			elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
 			if (elem == NULL)
 				goto err_unwind;
 
@@ -292,7 +292,7 @@ err_unwind:
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
-		rfree(RZONE_MODULE, RMOD_SYS, elem);
+		rfree(elem);
 	}
 	return -ENOMEM;
 }
@@ -330,7 +330,7 @@ static int dai_capture_params(struct comp_dev *dev,
 		/* set up cyclic list of DMA elems */
 		for (i = 0; i < dma_period_desc->number; i++) {
 
-			elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+			elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
 			if (elem == NULL)
 				goto err_unwind;
 
@@ -351,7 +351,7 @@ err_unwind:
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
-		rfree(RZONE_MODULE, RMOD_SYS, elem);
+		rfree(elem);
 	}
 	return -ENOMEM;
 }
@@ -406,7 +406,7 @@ static int dai_reset(struct comp_dev *dev)
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
-		rfree(RZONE_MODULE, RMOD_SYS, elem);
+		rfree(elem);
 	}
 
 	dev->state = COMP_STATE_INIT;

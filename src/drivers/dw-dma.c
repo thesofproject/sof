@@ -284,7 +284,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 
 	/* free the lli allocated by set_config*/
 	if (p->chan[channel].lli) {
-		rfree(RZONE_MODULE, RMOD_SYS, p->chan[channel].lli);
+		rfree(p->chan[channel].lli);
 		p->chan[channel].lli = NULL;
 	}
 
@@ -587,8 +587,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		/* allocate descriptors for channel */
 		if (p->chan[channel].lli)
-			rfree(RZONE_MODULE, RMOD_SYS, p->chan[channel].lli);
-		p->chan[channel].lli = rzalloc(RZONE_MODULE, RMOD_SYS,
+			rfree(p->chan[channel].lli);
+		p->chan[channel].lli = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
 			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
 		if (p->chan[channel].lli == NULL) {
 			trace_dma_error("eDm");
@@ -903,7 +903,7 @@ static int dw_dma_probe(struct dma *dma)
 	int i;
 
 	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*dw_pdata));
+	dw_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(&dma->lock);

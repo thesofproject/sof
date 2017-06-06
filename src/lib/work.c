@@ -412,7 +412,7 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 	struct work_queue *queue;
 
 	/* init work queue */
-	queue = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*queue_));
+	queue = rmalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*queue_));
 
 	list_init(&queue->work);
 	spinlock_init(&queue->lock);

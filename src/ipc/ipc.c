@@ -92,13 +92,13 @@ int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index,
 	switch (type) {
 	case COMP_TYPE_DAI_SSP:
 	case COMP_TYPE_DAI_HDA:
-		icd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(struct ipc_dai_dev));
+		icd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(struct ipc_dai_dev));
 		break;
 	case COMP_TYPE_HOST:
-		icd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(struct ipc_pcm_dev));
+		icd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(struct ipc_pcm_dev));
 		break;
 	default:
-		icd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*icd));
+		icd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*icd));
 		break;
 	}
 	if (icd == NULL)
@@ -107,7 +107,7 @@ int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index,
 	/* register component with piepline */
 	icd->cd = pipeline_comp_new(p, type, index, direction);
 	if (icd->cd == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, icd);
+		rfree(icd);
 		return -ENOMEM;
 	}
 
@@ -128,7 +128,7 @@ void ipc_comp_free(uint32_t comp_id)
 
 	pipeline_comp_free(icd->p, icd->cd);
 	list_item_del(&icd->list);
-	rfree(RZONE_MODULE, RMOD_SYS, icd);
+	rfree(icd);
 }
 
 int ipc_buffer_new(int pipeline_id, struct buffer_desc *desc)
@@ -139,14 +139,14 @@ int ipc_buffer_new(int pipeline_id, struct buffer_desc *desc)
 	if (p == NULL)
 		return -EINVAL;
 
-	icb = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(struct ipc_buffer_dev));
+	icb = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(struct ipc_buffer_dev));
 	if (icb == NULL)
 		return -ENOMEM;
 
 	/* register buffer with piepline */
 	icb->cb = pipeline_buffer_new(p, desc);
 	if (icb->cb == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, icb);
+		rfree(icb);
 		return -ENOMEM;
 	}
 
@@ -167,7 +167,7 @@ void ipc_buffer_free(uint32_t comp_id)
 
 	pipeline_buffer_free(icb->dev.p, icb->dev.cb);
 	list_item_del(&icb->dev.list);
-	rfree(RZONE_MODULE, RMOD_SYS, icb);
+	rfree(icb);
 }
 
 int ipc_comp_connect(uint32_t source_id, uint32_t sink_id, uint32_t buffer_id)
@@ -191,7 +191,7 @@ int ipc_comp_connect(uint32_t source_id, uint32_t sink_id, uint32_t buffer_id)
 int ipc_init(void)
 {
 	/* init ipc data */
-	_ipc = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*_ipc));
+	_ipc = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*_ipc));
 	list_init(&_ipc->comp_list);
 	list_init(&_ipc->buffer_list);
 	_ipc->host_pending = 0;

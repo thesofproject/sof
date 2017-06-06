@@ -3,6 +3,18 @@ SUBDIRS = hal xtos include
 bin_PROGRAMS = \
 	reef
 
+# generate linker script from platform headers
+LINK_SCRIPT = ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
+LINK_DEPS = \
+	../../platform/$(PLATFORM)/include/platform/memory.h \
+	../../platform/$(PLATFORM)/include/xtensa/config/core-isa*
+
+nodist_reef_SOURCES = $(LINK_SCRIPT).in
+BUILT_SOURCES = $(LINK_SCRIPT)
+CLEANFILES = $(LINK_SCRIPT)
+$(LINK_SCRIPT): Makefile $(LINK_SCRIPT).in $(LINK_DEPS)
+	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(REEF_INCDIR) - >$@
+
 noinst_LIBRARIES = \
 	libreset.a
 

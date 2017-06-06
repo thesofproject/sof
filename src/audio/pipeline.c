@@ -128,7 +128,7 @@ struct pipeline *pipeline_new(uint32_t id)
 
 	trace_pipe("PNw");
 
-	p = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
+	p = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*p));
 	if (p == NULL) {
 		trace_pipe_error("ePN");
 		return NULL;
@@ -172,15 +172,13 @@ void pipeline_free(struct pipeline *p)
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, pipeline_list);
-		rfree(RZONE_MODULE, RMOD(buffer->source->drv->module_id),
-			buffer->addr);
-		rfree(RZONE_MODULE, RMOD(buffer->source->drv->module_id),
-			buffer);
+		rfree(buffer->addr);
+		rfree(buffer);
 	}
 
 	/* now free the pipeline */
 	list_item_del(&p->list);
-	rfree(RZONE_MODULE, RMOD_SYS, p);
+	rfree(p);
 	spin_unlock(&pipe_data->lock);
 }
 
@@ -239,15 +237,15 @@ struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
 	trace_pipe("BNw");
 
 	/* allocate buffer */
-	buffer = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
+	buffer = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*buffer));
 	if (buffer == NULL) {
 		trace_pipe_error("eBm");
 		return NULL;
 	}
 
-	buffer->addr = rballoc(RZONE_MODULE, RMOD_SYS, desc->size);
+	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, desc->size);
 	if (buffer->addr == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, buffer);
+		rfree(buffer);
 		trace_pipe_error("ebm");
 		return NULL;
 	}
@@ -274,8 +272,8 @@ int pipeline_buffer_free(struct pipeline *p, struct comp_buffer *buffer)
 
 	spin_lock(&p->lock);
 	list_item_del(&buffer->pipeline_list);
-	rfree(RZONE_MODULE, RMOD_SYS, buffer->addr);
-	rfree(RZONE_MODULE, RMOD_SYS, buffer);
+	rfree(buffer->addr);
+	rfree(buffer);
 	spin_unlock(&p->lock);
 	return 0;
 }
@@ -805,7 +803,7 @@ int pipeline_init(void)
 {
 	trace_pipe("PIn");
 
-	pipe_data = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
+	pipe_data = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*pipe_data));
 	list_init(&pipe_data->pipeline_list);
 	list_init(&pipe_data->schedule_list);
 	pipe_data->next_id = 0;
