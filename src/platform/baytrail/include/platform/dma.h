@@ -38,6 +38,32 @@
 #define DMA_ID_DMAC1	1
 #define DMA_ID_DMAC2	2
 
+/* baytrail specific registers */
+/* CTL_LO */
+#define DW_CTLL_S_GATH_EN		(1 << 17)
+#define DW_CTLL_D_SCAT_EN		(1 << 18)
+/* CTL_HI */
+#define DW_CTLH_DONE			0x00020000
+#define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
+#define DW_CTLH_CLASS(x)		(x << 29)
+#define DW_CTLH_WEIGHT(x)		(x << 18)
+/* CFG_LO */
+#define DW_CFG_CH_DRAIN			0x400
+/* CFG_HI */
+#define DW_CFGH_SRC_PER(x)		(x << 0)
+#define DW_CFGH_DST_PER(x)		(x << 4)
+/* FIFO Partition */
+#define DW_FIFO_PARTITION
+#define DW_FIFO_PART0_LO		0x0400
+#define DW_FIFO_PART0_HI		0x0404
+#define DW_FIFO_PART1_LO		0x0408
+#define DW_FIFO_PART1_HI		0x040C
+#define DW_CH_SAI_ERR			0x0410
+
+/* default initial setup register values */
+#define DW_CFG_LOW_DEF	0x00000003
+#define DW_CFG_HIGH_DEF	0x0
+
 #define DMA_HANDSHAKE_SSP0_RX	0
 #define DMA_HANDSHAKE_SSP0_TX	1
 #define DMA_HANDSHAKE_SSP1_RX	2

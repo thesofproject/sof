@@ -62,6 +62,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <config.h>
 
 /* channel registers */
 #define DW_MAX_CHAN			8
@@ -108,20 +109,16 @@
 #define DW_INTR_STATUS			0x0360
 #define DW_DMA_CFG			0x0398
 #define DW_DMA_CHAN_EN			0x03A0
-#define DW_FIFO_PART0_LO		0x0400
-#define DW_FIFO_PART0_HI		0x0404
-#define DW_FIFO_PART1_LO		0x0408
-#define DW_FIFO_PART1_HI		0x040C
-#define DW_CH_SAI_ERR			0x0410
 
 /* channel bits */
 #define INT_MASK(chan)			(0x100 << chan)
 #define INT_UNMASK(chan)		(0x101 << chan)
+#define INT_MASK_ALL			0xFF00
+#define INT_UNMASK_ALL			0xFFFF
 #define CHAN_ENABLE(chan)		(0x101 << chan)
 #define CHAN_DISABLE(chan)		(0x100 << chan)
 
 #define DW_CFG_CH_SUSPEND		0x100
-#define DW_CFG_CH_DRAIN			0x400
 #define DW_CFG_CH_FIFO_EMPTY		0x200
 
 /* CTL_LO */
@@ -136,8 +133,6 @@
 #define DW_CTLL_SRC_FIX			(2 << 9)
 #define DW_CTLL_DST_MSIZE(x)		(x << 11)
 #define DW_CTLL_SRC_MSIZE(x)		(x << 14)
-#define DW_CTLL_S_GATH_EN		(1 << 17)
-#define DW_CTLL_D_SCAT_EN		(1 << 18)
 #define DW_CTLL_FC(x)			(x << 20)
 #define DW_CTLL_FC_M2M			(0 << 20)
 #define DW_CTLL_FC_M2P			(1 << 20)
@@ -150,16 +145,6 @@
 #define DW_CTLL_RELOAD_SRC		(1 << 30)
 #define DW_CTLL_RELOAD_DST		(1 << 31)
 
-/* CTL_HI */
-#define DW_CTLH_DONE			0x00020000
-#define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
-#define DW_CTLH_CLASS(x)		(x << 29)
-#define DW_CTLH_WEIGHT(x)		(x << 18)
-
-/* CFG_HI */
-#define DW_CFGH_SRC_PER(x)		(x << 0)
-#define DW_CFGH_DST_PER(x)		(x << 4)
-
 /* tracing */
 #define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)
 #define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
@@ -167,6 +152,9 @@
 
 /* HW Linked list support currently disabled - needs debug for missing IRQs !!! */
 #define DW_USE_HW_LLI	0
+
+/* number of tries to wait for reset */
+#define DW_DMA_CFG_TRIES	10000
 
 /* data for each DMA channel */
 struct dma_chan_data {
@@ -264,7 +252,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 		return;
 	}
 
-
+#ifdef DW_CFG_CH_DRAIN /* have drain feature */
 	if (p->chan[channel].status == DMA_STATUS_PAUSED) {
 
 		dw_update_bits(dma, DW_CFG_LOW(channel),
@@ -276,6 +264,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 		work_schedule_default(&p->chan[channel].work, 100);
 		return;
 	}
+#endif
 
 	/* mask block, transfer and error interrupts for channel */
 	dw_write(dma, DW_MASK_TFR, INT_MASK(channel));
@@ -456,8 +445,11 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 
 		/* clear suspend */
 		dw_update_bits(dma, DW_CFG_LOW(cd->channel),
+#ifdef DW_CFG_CH_DRAIN /* have drain feature */
 				DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN, 0);
-
+#else
+				DW_CFG_CH_SUSPEND, 0);
+#endif
 		cd->status = DMA_STATUS_IDLE;
 		goto out;
 	}
@@ -470,8 +462,11 @@ static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
 
 			/* clear suspend */
 			dw_update_bits(dma, DW_CFG_LOW(cd->channel),
+#ifdef DW_CFG_CH_DRAIN /* have drain feature */
 				DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN, 0);
-
+#else
+				DW_CFG_CH_SUSPEND, 0);
+#endif
 			/* do we need to free it ? */
 			if (cd->status == DMA_STATUS_CLOSING)
 				dw_dma_channel_put_unlocked(dma, cd->channel);
@@ -512,15 +507,17 @@ static int dw_dma_stop(struct dma *dma, int channel, int drain)
 	}
 
 	/* suspend and drain */
+	bits = DW_CFG_CH_SUSPEND;
+	p->chan[channel].drain_count = 3;
+	p->chan[channel].status = DMA_STATUS_STOPPING;
+
+#ifdef DW_CFG_CH_DRAIN /* have drain feature, then may drain */
 	if (drain) {
-		bits = DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN;
+		bits |= DW_CFG_CH_DRAIN;
 		p->chan[channel].drain_count = 14;
 		p->chan[channel].status = DMA_STATUS_DRAINING;
-	} else {
-		bits = DW_CFG_CH_SUSPEND;
-		p->chan[channel].drain_count = 3;
-		p->chan[channel].status = DMA_STATUS_STOPPING;
 	}
+#endif
 
 	dw_update_bits(dma, DW_CFG_LOW(channel), bits, bits);
 	schedule = 1;
@@ -568,8 +565,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
-	p->chan[channel].cfg_lo = 0x00000003;
-	p->chan[channel].cfg_hi = 0x0;
+	p->chan[channel].cfg_lo = DW_CFG_LOW_DEF;
+	p->chan[channel].cfg_hi = DW_CFG_HIGH_DEF;
 
 	/* get number of SG elems */
 	list_for_item(plist, &config->elem_list)
@@ -666,9 +663,19 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			break;
 		}
 
+		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
+				trace_dma_error("eDS");
+				return -EINVAL;
+		}
 		/* set transfer size of element */
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
 		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
 			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
+#else
+		/* for the unit is transaction--TR_WIDTH. */
+		lli_desc->ctrl_hi = (sg_elem->size / (1 << (lli_desc->ctrl_lo >> 4 & 0x7)))
+			& DW_CTLH_BLOCK_TS_MASK;
+#endif
 
 		/* set next descriptor in list */
 		lli_desc->llp = (uint32_t)(lli_desc + 1);
@@ -768,8 +775,14 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	dw_write(dma, DW_DAR(channel), next->dest);
 
 	/* set transfer size of element */
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
 	lli->ctrl_hi = DW_CTLH_CLASS(p->class) |
 		(next->size & DW_CTLH_BLOCK_TS_MASK);
+#else
+	/* for the unit is transaction--TR_WIDTH. */
+	lli->ctrl_hi = (next->size / (1 << (lli->ctrl_lo >> 4 & 0x7)))
+		& DW_CTLH_BLOCK_TS_MASK;
+#endif
 
 	/* program CTLn */
 	dw_write(dma, DW_CTRL_LOW(channel), lli->ctrl_lo);
@@ -872,16 +885,38 @@ static void dw_dma_setup(struct dma *dma)
 	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
 	int i;
 
+	/* we cannot config DMAC if DMAC has been already enabled by host */
+	if (dw_read(dma, DW_DMA_CFG) != 0)
+		dw_write(dma, DW_DMA_CFG, 0x0);
+
+	/* now check that it's 0 */
+	for (i = DW_DMA_CFG_TRIES; i > 0; i--) {
+		if (dw_read(dma, DW_DMA_CFG) == 0)
+			goto found;
+	}
+	trace_dma_error("eDs");
+	return;
+
+found:
+	for (i = 0; i <  DW_MAX_CHAN; i++)
+		dw_read(dma, DW_DMA_CHAN_EN);
+
+#ifdef HAVE_HDDA
+	/* enable HDDA before DMAC */
+	shim_write(SHIM_HMDC, SHIM_HMDC_HDDA_ALLCH);
+#endif
+
 	/* enable the DMA controller */
 	dw_write(dma, DW_DMA_CFG, 1);
 
 	/* mask all interrupts for all 8 channels */
-	dw_write(dma, DW_MASK_TFR, 0x0000ff00);
-	dw_write(dma, DW_MASK_BLOCK, 0x0000ff00);
-	dw_write(dma, DW_MASK_SRC_TRAN, 0x0000ff00);
-	dw_write(dma, DW_MASK_DST_TRAN, 0x0000ff00);
-	dw_write(dma, DW_MASK_ERR, 0x0000ff00);
+	dw_write(dma, DW_MASK_TFR, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_BLOCK, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_SRC_TRAN, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_DST_TRAN, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_ERR, INT_MASK_ALL);
 
+#ifdef DW_FIFO_PARTITION
 	/* TODO: we cannot config DMA FIFOs if DMAC has been already */
 	/* allocate FIFO partitions, 128 bytes for each ch */
 	dw_write(dma, DW_FIFO_PART1_LO, 0x100080);
@@ -889,10 +924,15 @@ static void dw_dma_setup(struct dma *dma)
 	dw_write(dma, DW_FIFO_PART0_HI, 0x100080);
 	dw_write(dma, DW_FIFO_PART0_LO, 0x100080 | (1 << 26));
 	dw_write(dma, DW_FIFO_PART0_LO, 0x100080);
+#endif
 
 	/* set channel priorities */
 	for (i = 0; i <  DW_MAX_CHAN; i++) {
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
 		dw_write(dma, DW_CTRL_HIGH(i), DW_CTLH_CLASS(dp->chan[i].class));
+#else
+		dw_write(dma, DW_CFG_LOW(i), DW_CFG_CLASS(dp->chan[i].class));
+#endif
 	}
 
 }
