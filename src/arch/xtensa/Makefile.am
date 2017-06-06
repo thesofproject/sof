@@ -74,3 +74,5 @@ bin-local: reef
 vminstall-local:
 	scp -P 5555 reef-*.ri root@localhost:/lib/firmware/intel/
 
+clean-local:
+	rm -f reef-*.bin
