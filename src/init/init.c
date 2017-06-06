@@ -41,35 +41,41 @@
 #include <reef/trace.h>
 #include <platform/platform.h>
 
+/* main firmware context */
+static struct reef reef;
+
 int main(int argc, char *argv[])
 {
 	int err;
 
 	trace_point(TRACE_BOOT_START);
 
+	/* setup context */
+	reef.argc = argc;
+	reef.argv = argv;
+
 	/* init architecture */
-	err = arch_init();
+	trace_point(TRACE_BOOT_ARCH);
+	err = arch_init(&reef);
 	if (err < 0)
 		panic(PANIC_ARCH);
 
-	trace_point(TRACE_BOOT_ARCH);
-
 	/* initialise system services */
 	trace_point(TRACE_BOOT_SYS_HEAP);
-	init_heap();
-	init_system_notify();
+	init_heap(&reef);
 
 	trace_point(TRACE_BOOT_SYS_NOTE);
+	init_system_notify(&reef);
 
 	/* init the platform */
-	err = platform_init();
+	err = platform_init(&reef);
 	if (err < 0)
 		panic(PANIC_PLATFORM);
 
 	trace_point(TRACE_BOOT_PLATFORM);
 
 	/* should not return */
-	err = do_task();
+	err = do_task(&reef);
 
 	/* should never get here */
 	panic(PANIC_TASK);

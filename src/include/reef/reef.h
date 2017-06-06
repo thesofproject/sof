@@ -35,6 +35,9 @@
 #include <stddef.h>
 #include <arch/reef.h>
 
+struct ipc;
+
+/* TODO: define for unsigned and short, byte */
 #define MAX_INT		0xffffffff
 
 /* use same syntax as Linux for simplicity */
@@ -54,5 +57,19 @@ void cmemcpy(void *dest, void *src, size_t size);
 #define rmemcpy(dest, src, size) \
 	cmemcpy(dest, src, size)
 #endif
+
+/* general firmware context */
+struct reef {
+	/* init data */
+	int argc;
+	char **argv;
+
+	/* ipc */
+	struct ipc *ipc;
+
+	/* private data */
+	void *arch_private;
+	void *plat_private;
+};
 
 #endif

@@ -35,6 +35,8 @@
 #include <platform/shim.h>
 #include <platform/interrupt.h>
 
+struct reef;
+
 /* default static pipeline SSP port - not used for dynamic pipes */
 #define PLATFORM_SSP_PORT	2
 
@@ -107,6 +109,6 @@
 
 int platform_boot_complete(uint32_t boot_message);
 
-int platform_init(void);
+int platform_init(struct reef *reef);
 
 #endif

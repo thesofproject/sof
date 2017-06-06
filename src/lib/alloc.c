@@ -602,7 +602,7 @@ int mm_pm_context_restore(struct dma_sg_config *sg)
 }
 
 /* initialise map */
-void init_heap(void)
+void init_heap(struct reef *reef)
 {
 	struct block_map *next_map, *current_map;
 	int i;

@@ -50,7 +50,7 @@ struct audio_data {
 	struct pipeline *p;
 };
 
-int do_task(void)
+int do_task(struct reef *reef)
 {
 	struct audio_data pdata;
 

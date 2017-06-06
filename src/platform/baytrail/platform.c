@@ -133,7 +133,7 @@ static struct timer platform_ext_timer = {
 	.irq = IRQ_NUM_EXT_TIMER,
 };
 
-int platform_init(void)
+int platform_init(struct reef *reef)
 {
 #if defined CONFIG_BAYTRAIL
 	struct dma *dmac0, *dmac1;
@@ -185,7 +185,7 @@ int platform_init(void)
 
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init();
+	ipc_init(reef);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);

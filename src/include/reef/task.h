@@ -31,6 +31,8 @@
 #ifndef __INCLUDE_TASK_H__
 #define __INCLUDE_TASK_H__
 
-int do_task(void);
+struct reef;
+
+int do_task(struct reef *reef);
 
 #endif

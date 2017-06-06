@@ -188,7 +188,7 @@ int ipc_comp_connect(uint32_t source_id, uint32_t sink_id, uint32_t buffer_id)
 		icd_source->cd, icd_sink->cd, ibd->dev.cb);
 }
 
-int ipc_init(void)
+int ipc_init(struct reef *reef)
 {
 	/* init ipc data */
 	_ipc = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*_ipc));

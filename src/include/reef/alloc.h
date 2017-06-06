@@ -36,6 +36,8 @@
 #include <stdint.h>
 #include <reef/dma.h>
 
+struct reef;
+
 /* Heap Memory Zones
  *
  * The heap has three different zones from where memory can be allocated :-
@@ -87,5 +89,5 @@ int mm_pm_context_save(struct dma_sg_config *sg);
 int mm_pm_context_restore(struct dma_sg_config *sg);
 
 /* heap initialisation */
-void init_heap(void);
+void init_heap(struct reef *reef);
 #endif

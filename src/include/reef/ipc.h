@@ -38,6 +38,8 @@
 #include <reef/audio/component.h>
 #include <reef/lock.h>
 
+struct reef;
+
 #define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC, __e)
 #define tracev_ipc(__e)	tracev_event(TRACE_CLASS_IPC, __e)
 #define trace_ipc_error(__e)	trace_error(TRACE_CLASS_IPC, __e)
@@ -136,7 +138,7 @@ struct ipc {
 #define ipc_get_dai_comp(id) \
 	(struct ipc_dai_dev *)ipc_get_comp(id)
 
-int ipc_init(void);
+int ipc_init(struct reef *reef);
 int platform_ipc_init(struct ipc *ipc);
 void ipc_free(struct ipc *ipc);
 

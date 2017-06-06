@@ -149,7 +149,7 @@ static void register_exceptions(void)
 }
 
 /* do any architecture init here */
-int arch_init(void)
+int arch_init(struct reef *reef)
 {
 	register_exceptions();
 	return 0;
