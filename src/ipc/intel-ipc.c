@@ -120,11 +120,10 @@ static inline uint32_t msg_get_stage_type(uint32_t msg)
 
 /* TODO: add build count */
 static const struct ipc_intel_ipc_fw_version fw_version = {
-	.build = 0,
+	.build = REEF_BUILD,
 	.minor = REEF_MINOR,
 	.major = REEF_MAJOR,
 	.type = 0,
-	.fw_build_hash = REEF_BUILD,
 	.fw_log_providers_hash = 0,
 };
 

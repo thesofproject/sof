@@ -13,6 +13,8 @@
 *.man
 .version
 .tarball-version
+*.x
+.build
 
 Makefile
 Makefile.in

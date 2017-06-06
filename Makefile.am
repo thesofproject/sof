@@ -17,10 +17,13 @@ export PLATFORM_INCDIR = \
 
 BUILT_SOURCES = $(top_srcdir)/src/include/version.h
 
-$(top_srcdir)/src/include/version.h:
+$(top_srcdir)/src/include/version.h: Makefile
 	./git-version.sh
 
 dist-hook:
 	./git-version.sh
 	cat .version > $(distdir)/.tarball-version
 	cat .version > $(distdir)/.version
+
+all-local:
+	rm -f $(top_srcdir)/src/include/version.h
