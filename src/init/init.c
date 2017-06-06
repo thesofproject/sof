@@ -55,10 +55,11 @@ int main(int argc, char *argv[])
 	trace_point(TRACE_BOOT_ARCH);
 
 	/* initialise system services */
+	trace_point(TRACE_BOOT_SYS_HEAP);
 	init_heap();
 	init_system_notify();
 
-	trace_point(TRACE_BOOT_SYS);
+	trace_point(TRACE_BOOT_SYS_NOTE);
 
 	/* init the platform */
 	err = platform_init();

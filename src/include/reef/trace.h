@@ -48,7 +48,10 @@
 
 /* system specific codes */
 #define TRACE_BOOT_SYS_WORK		(TRACE_BOOT_SYS + 0x100)
-#define TRACE_BOOT_SYS_CPU_FREQ		(TRACE_BOOT_SYS + 0x101)
+#define TRACE_BOOT_SYS_CPU_FREQ		(TRACE_BOOT_SYS + 0x200)
+#define TRACE_BOOT_SYS_HEAP		(TRACE_BOOT_SYS + 0x300)
+#define TRACE_BOOT_SYS_NOTE		(TRACE_BOOT_SYS + 0x400)
+#define TRACE_BOOT_SYS_SCHED		(TRACE_BOOT_SYS + 0x500)
 
 /* platform/device specific codes */
 #define TRACE_BOOT_PLATFORM_MBOX	(TRACE_BOOT_PLATFORM + 0x100)
@@ -75,6 +78,10 @@
 #define TRACE_CLASS_LOCK	(10 << 24)
 #define TRACE_CLASS_MEM		(11 << 24)
 #define TRACE_CLASS_MIXER	(12 << 24)
+#define TRACE_CLASS_BUFFER	(13 << 24)
+#define TRACE_CLASS_VOLUME	(14 << 24)
+#define TRACE_CLASS_SWITCH	(15 << 24)
+#define TRACE_CLASS_MUX		(16 << 24)
 
 /* move to config.h */
 #define TRACE	1
