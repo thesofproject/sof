@@ -32,9 +32,6 @@
  * communication between the host processor and the DSP. The IPC used here
  * utilises a shared mailbox and door bell between the host and DSP.
  *
- * The IPC here is currently based on the upstream BDW driver, but it's
- * missing some of the newer IPC call used for pipeline management used by
- * the SKL/BXT drivers.
  */
 
 #include <reef/debug.h>
@@ -56,91 +53,32 @@
 #include <platform/dma.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
-#include <uapi/intel-ipc.h>
+#include <uapi/ipc.h>
 #include <reef/intel-ipc.h>
 #include <config.h>
-#include <version.h>
 
-/* convert DSP mailbox address to host offset */
-#define to_host_offset(_s) \
-	(((uint32_t)&_s) - MAILBOX_BASE + MAILBOX_HOST_OFFSET)
+#define iGS(x) (x >> SOF_GLB_TYPE_SHIFT)
+#define iCS(x) (x >> SOF_CMD_TYPE_SHIFT)
 
+/* IPC context - shared with platform IPC driver */
 struct ipc *_ipc;
 
-/* hard coded stream offset TODO: make this into programmable map */
-static struct sst_intel_ipc_stream_data *_stream_dataP =
-	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET);
-static struct sst_intel_ipc_stream_data *_stream_dataC =
-	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
-		sizeof(struct sst_intel_ipc_stream_data));
-static struct sst_intel_ipc_stream_data *_stream_dataR =
-	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
-		2 * sizeof(struct sst_intel_ipc_stream_data));
-static struct sst_intel_ipc_stream_data *_stream_dataM =
-	(struct sst_intel_ipc_stream_data *)(MAILBOX_BASE + MAILBOX_STREAM_OFFSET +
-		3 * sizeof(struct sst_intel_ipc_stream_data));
-
-/*
- * BDW IPC dialect.
- *
- * This IPC ABI only supports a fixed static pipeline using the upstream BDW
- * driver. The stream and mixer IDs are hard coded (must match the static
- * pipeline definition).
- */
-
-/* static IDs. TODO: to be replaced with dynamic IDs */
-struct stream_ids {
-	uint32_t host_id;
-	uint32_t volume_id;
-	uint32_t mixer_id;
-	uint32_t dai_id;
-};
-
-static const struct stream_ids
-	stream_comp[IPC_INTEL_STREAM_TYPE_MAX_STREAM_TYPE] = {
-	{2, 3, 4, 6},	/* render stream */
-	{0, 1, 4, 6},	/* system stream */
-	{9, 8, 4, 7},	/* capture stream */
-};
-
-static inline uint32_t msg_get_global_type(uint32_t msg)
+static inline struct sof_ipc_hdr *mailbox_validate(void)
 {
-	return (msg & IPC_INTEL_GLB_TYPE_MASK) >> IPC_INTEL_GLB_TYPE_SHIFT;
-}
+	struct sof_ipc_hdr *hdr = _ipc->comp_data;
 
-static inline uint32_t msg_get_stream_type(uint32_t msg)
-{
-	return (msg & IPC_INTEL_STR_TYPE_MASK) >> IPC_INTEL_STR_TYPE_SHIFT;
-}
+	/* read component values from the inbox */
+	mailbox_inbox_read(hdr, 0, sizeof(*hdr));
 
-static inline uint32_t msg_get_stage_type(uint32_t msg)
-{
-	return (msg & IPC_INTEL_STG_TYPE_MASK) >> IPC_INTEL_STG_TYPE_SHIFT;
-}
+	/* validate component header */
+	if (hdr->size > SOF_IPC_MSG_MAX_SIZE) {
+		trace_ipc_error("ebg");
+		return NULL;
+	}
 
-/* TODO: add build count */
-static const struct ipc_intel_ipc_fw_version fw_version = {
-	.build = REEF_BUILD,
-	.minor = REEF_MINOR,
-	.major = REEF_MAJOR,
-	.type = 0,
-	.fw_log_providers_hash = 0,
-};
-
-static uint32_t ipc_fw_version(uint32_t header)
-{
-	trace_ipc("Ver");
-
-	mailbox_outbox_write(0, &fw_version, sizeof(fw_version));
-
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-}
-
-static uint32_t ipc_fw_caps(uint32_t header)
-{
-	trace_ipc("Cap");
-
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	/* read rest of component data */
+	mailbox_inbox_read(hdr + 1, sizeof(*hdr), hdr->size - sizeof(*hdr));
+	return hdr;
 }
 
 static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
@@ -155,9 +93,8 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
  * Copy the audio buffer page tables from the host to the DSP max of 4K.
  */
 static int get_page_descriptors(struct intel_ipc_data *iipc,
-	struct ipc_intel_ipc_stream_alloc_req *req)
+	struct sof_ipc_host_buffer *ring)
 {
-	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
 	struct dma_sg_config config;
 	struct dma_sg_elem elem;
 	struct dma *dma;
@@ -180,11 +117,11 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 
 	/* set up DMA desciptor */
 	elem.dest = (uint32_t)iipc->page_table;
-	elem.src = ring->ring_pt_address;
+	elem.src = ring->phy_addr;
 
 	/* source buffer size is always PAGE_SIZE bytes */
 	/* 20 bits for each page, round up to 32 */
-	elem.size = (ring->num_pages * 5 * 16 + 31) / 32;
+	elem.size = (ring->pages * 5 * 16 + 31) / 32;
 	list_item_prepend(&elem.list, &config.elem_list);
 
 	ret = dma_set_config(dma, chan, &config);
@@ -217,17 +154,16 @@ out:
  * page table entry and adding each elem to a list in struct dma_sg_config.
  */
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
-	struct ipc_intel_ipc_stream_alloc_req *req,
-	struct comp_dev *host, uint8_t direction)
+	struct sof_ipc_host_buffer *ring, struct comp_dev *cd)
 {
-	struct ipc_intel_ipc_stream_ring *ring = &req->ringinfo;
+	struct sof_ipc_comp_host *host = (struct sof_ipc_comp_host *)&cd->comp;
 	struct dma_sg_elem elem;
 	int i, err;
 	uint32_t idx, phy_addr;
 
 	elem.size = HOST_PAGE_SIZE;
 
-	for (i = 0; i < ring->num_pages; i++) {
+	for (i = 0; i < ring->pages; i++) {
 
 		idx = (((i << 2) + i)) >> 1;
 		phy_addr = iipc->page_table[idx] | (iipc->page_table[idx + 1] << 8)
@@ -239,13 +175,12 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
 
-		if (direction == STREAM_DIRECTION_PLAYBACK)
+		if (host->direction == SOF_IPC_STREAM_PLAYBACK)
 			elem.src = phy_addr;
 		else
 			elem.dest = phy_addr;
 
-		err = pipeline_host_buffer(pipeline_static, host, &elem,
-				req->ringinfo.ring_size);
+		err = comp_host_buffer(cd, &elem, ring->size);
 		if (err < 0) {
 			trace_ipc_error("ePb");
 			return err;
@@ -255,349 +190,198 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	return 0;
 }
 
+/*
+ * Stream IPC Operations.
+ */
+
 /* allocate a new stream */
-static uint32_t ipc_stream_alloc(uint32_t header)
+static uint32_t ipc_stream_pcm_params(uint32_t stream)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
-	struct ipc_intel_ipc_stream_alloc_req req;
-	struct ipc_intel_ipc_stream_alloc_reply reply;
-	struct stream_params *params;
-	struct ipc_pcm_dev *pcm_dev;
-	struct ipc_dai_dev *dai_dev;
-	struct ipc_comp_dev *mixer_dev;
-	struct ipc_comp_dev *volume_dev;
-	struct sst_intel_ipc_stream_data *_stream_data;
-	int err, i;
-	uint8_t direction;
+	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
+	struct stream_params params;
+	struct ipc_comp_dev *pcm_dev;
+	int err;
 
 	trace_ipc("SAl");
 
-	/* read alloc stream IPC from the inbox */
-	mailbox_inbox_read(&req, 0, sizeof(req));
-
-	/* format always PCM, now check source type */
-	/* host a & dai ID values are from hard coded static pipeline */ 
-	switch (req.stream_type) {
-	case IPC_INTEL_STREAM_TYPE_SYSTEM:
-		direction = STREAM_DIRECTION_PLAYBACK;
-		_stream_data = _stream_dataP;
-		break;
-	case IPC_INTEL_STREAM_TYPE_CAPTURE:
-		direction = STREAM_DIRECTION_CAPTURE;
-		_stream_data = _stream_dataC;
-		break;
-	case IPC_INTEL_STREAM_TYPE_RENDER:
-		direction = STREAM_DIRECTION_PLAYBACK;
-		_stream_data = _stream_dataR;
-		break;
-	default:
-		trace_ipc_error("eAt");
-		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
-	};
+	params.type = STREAM_TYPE_PCM;
+	params.pcm = pcm_params;
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(stream_comp[req.stream_type].host_id);
+	pcm_dev = ipc_get_comp(_ipc, pcm_params->comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("eAC");
-		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+		return -EINVAL;
 	}
-
-	/* get the dai_dev */
-	dai_dev = ipc_get_dai_comp(stream_comp[req.stream_type].dai_id);
-	if (dai_dev == NULL) {
-		trace_ipc_error("eAD");
-		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
-	}
-
-	/* get the mixer_dev */
-	mixer_dev = ipc_get_comp(stream_comp[req.stream_type].mixer_id);
-	if (mixer_dev == NULL) {
-		trace_ipc_error("eAM");
-		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM; 
-	}
-
-	/* get the volume_dev */
-	volume_dev = ipc_get_comp(stream_comp[req.stream_type].volume_id);
-	if (volume_dev == NULL) {
-		trace_ipc_error("eAV");
-		return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
-	}
-
-	/* check the state - if we are still allocated then reset and free */
-	if (pcm_dev->state == IPC_HOST_ALLOC) {
-		/* reset the pipeline */
-		err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
-		if (err < 0) {
-			trace_ipc_error("err");
-			goto error;
-		}
-
-		pcm_dev->state = IPC_HOST_RESET;
-	}
-
-	params = &pcm_dev->params;
-
-	/* read in format to create params */
-	params->channels = req.format.ch_num;
-	params->pcm.rate = req.format.frequency;
-	params->direction = direction;
-
-	/* work out bitdepth and framesize */
-	switch (req.format.bitdepth) {
-	case 16:
-		params->pcm.format = STREAM_FORMAT_S16_LE;
-		params->frame_size = 2 * params->channels;
-		break;
-	default:
-		trace_ipc_error("eAb");
-		goto error;
-	}
-
-	params->period_frames = req.format.period_frames;
 
 	/* use DMA to read in compressed page table ringbuffer from host */
-	err = get_page_descriptors(iipc, &req);
+	err = get_page_descriptors(iipc, &pcm_params->buffer);
 	if (err < 0) {
 		trace_ipc_error("eAp");
 		goto error;
 	}
 
 	/* Parse host tables */
-	err = parse_page_descriptors(iipc, &req, pcm_dev->dev.cd, direction);
+	err = parse_page_descriptors(iipc, &pcm_params->buffer, pcm_dev->cd);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
 	}
 
 	/* configure pipeline audio params */
-	err = pipeline_params(pipeline_static, pcm_dev->dev.cd, params);	
+	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, &params);
 	if (err < 0) {
 		trace_ipc_error("eAa");
 		goto error;
 	}
 
-	/* pass the IPC presentation posn pointer to the DAI */
-	err = comp_cmd(dai_dev->dev.cd, COMP_CMD_IPC_MMAP_PPOS,
-		&_stream_data->presentation_posn);
-	if (err < 0) {
-		trace_ipc_error("eAr");
-		goto error;
-	}
-
-	/* pass the IPC read posn pointer to the host */
-	err = comp_cmd(pcm_dev->dev.cd, COMP_CMD_IPC_MMAP_RPOS,
-		&_stream_data->read_posn);
-	if (err < 0) {
-		trace_ipc_error("eAR");
-		goto error;
-	}
-
-	/* pass the volume readback posn to the host */
-	err = comp_cmd(volume_dev->cd, COMP_CMD_IPC_MMAP_VOL(0),
-		&_stream_data->vol[0].vol);
-	if (err < 0) {
-		trace_ipc_error("eAv");
-		goto error;
-	}
-	err = comp_cmd(volume_dev->cd, COMP_CMD_IPC_MMAP_VOL(1),
-		&_stream_data->vol[1].vol);
-	if (err < 0) {
-		trace_ipc_error("eAv");
-		goto error;
-	}
-
-	/* at this point pipeline is ready for command so send stream reply */
-	reply.stream_hw_id = stream_comp[req.stream_type].host_id;
-	reply.mixer_hw_id = stream_comp[req.stream_type].mixer_id;
-
-	/* set read pos and presentation pos address */
-	reply.read_position_register_address =
-		to_host_offset(_stream_data->read_posn);
-	reply.presentation_position_register_address =
-		to_host_offset(_stream_data->presentation_posn);
-
-	/* set volume address */
-	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
-		reply.peak_meter_register_address[i] =
-			to_host_offset(_stream_data->vol[i].peak);
-		reply.volume_register_address[i] =
-			to_host_offset(_stream_data->vol[i].vol);
-	}
-
-	/* write reply to mailbox */
-	mailbox_outbox_write(0, &reply, sizeof(reply));
-
-	/* update stream state */
-	pcm_dev->state = IPC_HOST_ALLOC;
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	return 0;
 
 error:
-	pipeline_reset(pipeline_static, pcm_dev->dev.cd);
-	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+	pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+	return -EINVAL;
 }
 
 /* free stream resources */
-static uint32_t ipc_stream_free(uint32_t header)
+static uint32_t ipc_stream_pcm_free(uint32_t header)
 {
-	struct ipc_intel_ipc_stream_free_req free_req;
-	struct ipc_pcm_dev *pcm_dev;
+	struct sof_ipc_stream *free_req = _ipc->comp_data;
+	struct ipc_comp_dev *pcm_dev;
 
 	trace_ipc("SFr");
 
-	/* read alloc stream IPC from the inbox */
-	mailbox_inbox_read(&free_req, 0, sizeof(free_req));
+	/* get the pcm_dev */
+	pcm_dev = ipc_get_comp(_ipc, free_req->comp_id);
+	if (pcm_dev == NULL)
+		return ENODEV;
 
-	/* TODO: stream ID appears duplicated by mailbox */
-	//stream_id = header & IPC_INTEL_STR_ID_MASK;
-	//stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	/* reset the pipeline */
+	pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+	return 0;
+}
+
+static uint32_t ipc_stream_trigger(uint32_t header)
+{
+	struct ipc_comp_dev *pcm_dev;
+	uint32_t cmd = COMP_CMD_RELEASE;
+	struct sof_ipc_stream *stream  = _ipc->comp_data;
+	int err;
+
+	trace_ipc("SRe");
 
 	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(free_req.stream_id);
-	if (pcm_dev == NULL)
-		goto error; 
-
-	/* check stream state */
-	if (pcm_dev->state == IPC_HOST_RUNNING ||
-		pcm_dev->state == IPC_HOST_PAUSED)
+	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
+	if (pcm_dev == NULL) {
+		trace_ipc_error("eRg");
 		goto error;
+	}
 
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	switch (header) {
+	case SOF_IPC_STREAM_TRIG_START:
+		cmd = COMP_CMD_START;
+		break;
+	case SOF_IPC_STREAM_TRIG_STOP:
+		cmd = COMP_CMD_STOP;
+		break;
+	case SOF_IPC_STREAM_TRIG_PAUSE:
+		cmd = COMP_CMD_PAUSE;
+		break;
+	case SOF_IPC_STREAM_TRIG_RELEASE:
+		cmd = COMP_CMD_RELEASE;
+		break;
+	case SOF_IPC_STREAM_TRIG_DRAIN:
+		cmd = COMP_CMD_DRAIN;
+		break;
+	/* XRUN is special case- TODO */
+	case SOF_IPC_STREAM_TRIG_XRUN:
+		return 0;
+	}
+
+	/* trigger the component */
+	err = pipeline_cmd(pcm_dev->cd->pipeline, pcm_dev->cd,
+			cmd, NULL);
+	if (err < 0) {
+		trace_ipc_error("eRc");
+		goto error;
+	}
 
 error:
-	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+	return 0;
 }
 
-static uint32_t ipc_stream_info(uint32_t header)
+static uint32_t ipc_glb_stream_message(uint32_t header)
 {
-	struct ipc_intel_ipc_stream_info_reply info;
-	struct ipc_comp_dev *comp_dev;
-	int err, i;
+	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
-	trace_ipc("SIn");
-
-	/* TODO: get data from topology */ 
-	info.mixer_hw_id = stream_comp[IPC_INTEL_STREAM_TYPE_SYSTEM].mixer_id;
-
-	/* get the mixer_dev */
-	comp_dev = ipc_get_comp(info.mixer_hw_id);
-	if (comp_dev == NULL)
-		goto error; 
-
-	/* pass the volume readback posn to the host */
-	err = comp_cmd(comp_dev->cd, COMP_CMD_IPC_MMAP_VOL(0),
-		&_stream_dataM->vol[0].vol);
-	if (err < 0) {
-		trace_ipc_error("eIv");
-		goto error;
+	switch (cmd) {
+	case iCS(SOF_IPC_STREAM_PCM_PARAMS):
+		return ipc_stream_pcm_params(header);
+	case iCS(SOF_IPC_STREAM_PCM_FREE):
+		return ipc_stream_pcm_free(header);
+	case iCS(SOF_IPC_STREAM_TRIG_START):
+	case iCS(SOF_IPC_STREAM_TRIG_STOP):
+	case iCS(SOF_IPC_STREAM_TRIG_PAUSE):
+	case iCS(SOF_IPC_STREAM_TRIG_RELEASE):
+	case iCS(SOF_IPC_STREAM_TRIG_DRAIN):
+	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
+		return ipc_stream_trigger(header);
+	default:
+		return -EINVAL;
 	}
-	err = comp_cmd(comp_dev->cd, COMP_CMD_IPC_MMAP_VOL(1),
-		&_stream_dataM->vol[1].vol);
-	if (err < 0) {
-		trace_ipc_error("eIv");
-		goto error;
-	}
-
-	/* TODO: this is duplicating standard stream alloc mixer */
-	for (i = 0; i < IPC_INTEL_NO_CHANNELS; i++) {
-		info.peak_meter_register_address[i] =
-			to_host_offset(_stream_dataM->vol[i].peak);
-		info.volume_register_address[i] =
-			to_host_offset(_stream_dataM->vol[i].vol);
-	}
-
-	mailbox_outbox_write(0, &info, sizeof(info));
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-
-/* TODO: define error code for failure here */
-error:
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
 }
 
-static uint32_t ipc_dump(uint32_t header)
+/*
+ * DAI IPC Operations.
+ */
+
+static uint32_t ipc_dai_ssp_config(uint32_t header)
 {
-	trace_ipc("Dum");
-
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-}
-
-static uint32_t ipc_device_get_formats(uint32_t header)
-{
-	trace_ipc("DgF");
-
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-}
-
-static uint32_t ipc_device_set_formats(uint32_t header)
-{
-	struct ipc_intel_ipc_device_config_req config_req;
-	struct ipc_dai_dev *dai_dev;
+	struct sof_ipc_dai_ssp_params *ssp = _ipc->comp_data;
+	struct ipc_comp_dev *dai_dev;
+	struct dai_config dai_config;
 
 	trace_ipc("DsF");
 
-	/* read alloc stream IPC from the inbox */
-	mailbox_inbox_read(&config_req, 0, sizeof(config_req));
-
-	/* get SSP port TODO: align ports*/
-	switch (config_req.ssp_interface) {
-	case IPC_INTEL_DEVICE_SSP_0:
-
-		break;
-	case IPC_INTEL_DEVICE_SSP_1:
-
-		break;
-	case IPC_INTEL_DEVICE_SSP_2:
-
-		break;
-	default:
-		/* TODO: */
-		goto error;
-	};
+	dai_config.type = DAI_TYPE_INTEL_SSP;
+	dai_config.ssp = ssp;
 
 	/* TODO: playback/capture DAI dev get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(stream_comp[IPC_INTEL_STREAM_TYPE_SYSTEM].dai_id);
+	dai_dev = ipc_get_comp(_ipc, ssp->comp_id);
 	if (dai_dev == NULL) {
 		trace_ipc_error("eDg");
 		goto error;
 	}
 
-	/* setup the DAI HW config - TODO hard coded due to IPC limitations */
-	dai_dev->dai_config.mclk = config_req.clock_frequency;
-	dai_dev->dai_config.format = DAI_FMT_I2S | DAI_FMT_CONT |
-		DAI_FMT_NB_NF | DAI_FMT_CBS_CFS;
-	dai_dev->dai_config.sample_size = 24;
-	dai_dev->dai_config.bclk = 2400000;
-	dai_dev->dai_config.mclk = 19200000;
-	dai_dev->dai_config.clk_src = SSP_CLK_EXT;
-
-	comp_dai_config(dai_dev->dev.cd, &dai_dev->dai_config);
+	comp_dai_config(dai_dev->cd, &dai_config);
 
 error:
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	return 0;
 }
 
-static uint32_t ipc_device_set_loopback(uint32_t header, uint32_t lbm)
+/*
+ * PM IPC Operations.
+ */
+
+static uint32_t ipc_pm_context_size(uint32_t header)
 {
-	struct ipc_dai_dev *dai_dev;
+	struct sof_ipc_pm_ctx pm_ctx;
 
-	trace_ipc("DsL");
+	trace_ipc("PMs");
 
-	/* TODO: playback/capture DAI dev get the pcm_dev */
-	dai_dev = ipc_get_dai_comp(stream_comp[IPC_INTEL_STREAM_TYPE_SYSTEM].dai_id);
-	if (dai_dev == NULL) {
-		trace_ipc_error("eDg");
-		goto error;
-	}
+	bzero(&pm_ctx, sizeof(pm_ctx));
 
-	comp_dai_loopback(dai_dev->dev.cd, lbm);
+	/* TODO: calculate the context and size of host buffers required */
 
-error:
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	/* write the context to the host driver */
+	mailbox_outbox_write(0, &pm_ctx, sizeof(pm_ctx));
+
+	return 0;
 }
 
-static uint32_t ipc_context_save(uint32_t header)
+static uint32_t ipc_pm_context_save(uint32_t header)
 {
-	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
-	struct ipc_intel_ipc_dx_reply reply;
+	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
 	trace_ipc("PMs");
 
@@ -610,6 +394,7 @@ static uint32_t ipc_context_save(uint32_t header)
 
 	/* mask all DSP interrupts */
 	arch_interrupt_disable_mask(0xffff);
+
 	/* TODO: mask ALL platform interrupts inc DMA */
 
 	/* TODO: clear any outstanding platform IRQs - TODO refine */
@@ -620,372 +405,253 @@ static uint32_t ipc_context_save(uint32_t header)
 	/* TODO: disable SSP and DMA HW */
 
 	/* TODO: save the context */
-	reply.entries_no = 0;
+	//reply.entries_no = 0;
 
-	mailbox_outbox_write(0, &reply, sizeof(reply));
+	/* write the context to the host driver */
+	mailbox_outbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
-	iipc->pm_prepare_D3 = 1;
+	//iipc->pm_prepare_D3 = 1;
 
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	return 0;
 }
 
-static uint32_t ipc_context_restore(uint32_t header)
+static uint32_t ipc_pm_context_restore(uint32_t header)
 {
+//	struct sof_ipc_pm_ctx pm_ctx = _ipc->comp_data;
+
 	trace_ipc("PMr");
 
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	/* now restore the context */
+
+	return 0;
 }
 
-static uint32_t ipc_stage_set_volume(uint32_t header)
+static uint32_t ipc_glb_pm_message(uint32_t header)
+{
+	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+
+	switch (cmd) {
+	case iCS(SOF_IPC_PM_CTX_SAVE):
+		return ipc_pm_context_save(header);
+	case iCS(SOF_IPC_PM_CTX_RESTORE):
+		return ipc_pm_context_restore(header);
+	case iCS(SOF_IPC_PM_CTX_SIZE):
+		return ipc_pm_context_size(header);
+	case iCS(SOF_IPC_PM_CLK_SET):
+	case iCS(SOF_IPC_PM_CLK_GET):
+	case iCS(SOF_IPC_PM_CLK_REQ):
+	default:
+		return -ENOMEM;
+	}
+}
+
+/*
+ * Topology IPC Operations.
+ */
+
+static uint32_t ipc_comp_set_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc_comp_dev *stream_dev;
-	struct ipc_intel_ipc_volume_req req;
-	struct comp_volume cv;
-	uint32_t stream_id;
-	int err;
+	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
 
 	trace_ipc("VoS");
 
-	/* read volume from the inbox */
-	mailbox_inbox_read(&req, 0, sizeof(req));
-
-	if (req.channel > 1 && req.channel != CHANNELS_ALL)
-		goto error;
-
-	/* TODO: add other channels */ 
-	memset(&cv, 0, sizeof(cv));
-	cv.update_bits = req.channel == CHANNELS_ALL ?
-		CHANNELS_ALL : 0x1 << req.channel;
-	cv.volume = req.target_volume;
-
-	/* TODO: use mixer comp IDs to get mixer */
-	/* the driver uses stream ID to also identify certain mixers */
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-
-	/* get the pcm_dev TODO: command for pipeline or mixer comp */
-	stream_dev = ipc_get_comp(stream_id);
+	/* get the component */
+	stream_dev = ipc_get_comp(_ipc, values->comp_id);
 	if (stream_dev == NULL)
-		goto error; 
+		return -ENODEV;
 
-	/* volume component is the one next to host(stream) or mixer(master) */
-	err = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, &cv);
-	if (err < 0)
-		goto error;
-
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-
-error:
-	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+	/* set component values */
+	return comp_cmd(stream_dev->cd, cmd, values);
 }
 
-static uint32_t ipc_stage_get_volume(uint32_t header)
+static uint32_t ipc_comp_get_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc_comp_dev *stream_dev;
-	struct comp_volume cv;
-	uint32_t stream_id;
-	int err;
+	struct sof_ipc_ctrl_values values;
+	int ret;
 
 	trace_ipc("VoG");
 
-	/* the driver uses stream ID to also identify certain mixers */
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-
-	/* get the pcm_dev */
-	stream_dev = ipc_get_comp(stream_id);
+	/* get the component */
+	stream_dev = ipc_get_comp(_ipc, values.comp_id);
 	if (stream_dev == NULL)
-		goto error; 
+		return -ENODEV;
 	
-	/* TODO: complete call with private volume data */
-	err = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, &cv);
-	if (err < 0)
-		goto error;
+	/* get component values */
+	ret = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, &values);
+	if (ret < 0)
+		return ret;
 
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	/* write component values to the outbox */
+	mailbox_outbox_write(&values, 0, sizeof(values));
 
-error:
-	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+	return 0;
 }
 
-static uint32_t ipc_stage_write_pos(uint32_t header)
+static uint32_t ipc_glb_comp_message(uint32_t header)
 {
-	struct ipc_comp_dev *stream_dev;
-	struct ipc_intel_ipc_stream_set_position app_pos;
-	uint32_t stream_id;
-	int err;
+	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
-	trace_ipc("PoW");
-
-	/* read volume from the inbox */
-	mailbox_inbox_read(&app_pos, 0, sizeof(app_pos));
-
-	trace_value(app_pos.position);
-	/* the driver uses stream ID to also identify certain mixers */
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-
-	/* get the pcm_dev */
-	stream_dev = ipc_get_comp(stream_id);
-	if (stream_dev == NULL)
-		goto error;
-
-	err = pipeline_cmd(stream_dev->p, stream_dev->cd,
-		COMP_CMD_AVAIL_UPDATE, &app_pos);
-	if (err < 0)
-		goto error;
-
-	/* drain the pipeline for EOS */
-	if (app_pos.end_of_buffer) {
-		err = pipeline_cmd(stream_dev->p, stream_dev->cd,
-			COMP_CMD_DRAIN, NULL);
-		if (err < 0)
-			goto error;
-	}
-
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-
-error:
-	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
-}
-
-static uint32_t ipc_stage_message(uint32_t header)
-{
-	uint32_t stg = msg_get_stage_type(header);
-
-	switch (stg) {
-	case IPC_INTEL_STG_GET_VOLUME:
-		return ipc_stage_get_volume(header);
-	case IPC_INTEL_STG_SET_VOLUME:
-		return ipc_stage_set_volume(header);
-	case IPC_INTEL_STG_SET_WRITE_POSITION:
-		return ipc_stage_write_pos(header);
-	case IPC_INTEL_STG_MUTE_LOOPBACK:
-	case IPC_INTEL_STG_SET_FX_ENABLE:
-	case IPC_INTEL_STG_SET_FX_DISABLE:
-	case IPC_INTEL_STG_SET_FX_GET_PARAM:
-	case IPC_INTEL_STG_SET_FX_SET_PARAM:
-	case IPC_INTEL_STG_SET_FX_GET_INFO:
+	switch (cmd) {
+	case iCS(SOF_IPC_COMP_SET_VOLUME):
+		return ipc_comp_set_value(header, COMP_CMD_VOLUME);
+	case iCS(SOF_IPC_COMP_GET_VOLUME):
+		return ipc_comp_get_value(header, COMP_CMD_VOLUME);
+	case iCS(SOF_IPC_COMP_SET_MIXER):
+		return ipc_comp_set_value(header, COMP_CMD_ROUTE);
+	case iCS(SOF_IPC_COMP_GET_MIXER):
+		return ipc_comp_get_value(header, COMP_CMD_ROUTE);
+	case iCS(SOF_IPC_COMP_SET_MUX):
+		return ipc_comp_set_value(header, COMP_CMD_ROUTE);
+	case iCS(SOF_IPC_COMP_GET_MUX):
+		return ipc_comp_get_value(header, COMP_CMD_ROUTE);
+	case iCS(SOF_IPC_COMP_SET_SRC):
+		return ipc_comp_set_value(header, COMP_CMD_SRC);
+	case iCS(SOF_IPC_COMP_GET_SRC):
+		return ipc_comp_get_value(header, COMP_CMD_SRC);
+	case iCS(SOF_IPC_COMP_SSP_CONFIG):
+		return ipc_dai_ssp_config(header);
+	case iCS(SOF_IPC_COMP_LOOPBACK):
+		return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
+	case iCS(SOF_IPC_COMP_HDA_CONFIG):
+	case iCS(SOF_IPC_COMP_DMIC_CONFIG):
 	default:
-		return IPC_INTEL_GLB_REPLY_UNKNOWN_MESSAGE_TYPE;
+		trace_ipc_error("eCc");
+		trace_value(header);
+		return EINVAL;
 	}
 }
 
-static uint32_t ipc_stream_reset(uint32_t header)
+static uint32_t ipc_glb_tplg_comp_new(uint32_t header)
 {
-	struct ipc_pcm_dev *pcm_dev;
-	uint32_t stream_id;
-	int err;
+	struct sof_ipc_comp *comp = _ipc->comp_data;
+	struct sof_ipc_comp_reply reply;
+	uint32_t ret;
 
-	trace_ipc("SRt");
+	trace_ipc("tcn");
 
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
+	/* register component */
+	ret = ipc_comp_new(_ipc, comp);
+	if (ret < 0)
+		return ret;
 
-	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(stream_id);
-	if (pcm_dev == NULL) {
-		trace_ipc_error("erg");
-		goto error; 
-	}
-
-	/* send stop TODO: this should be done in trigger */
-	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-		COMP_CMD_STOP, NULL);
-	if (err < 0) {
-		trace_ipc_error("erc");
-		goto error;
-	}
-
-	/* reset the pipeline */
-	err = pipeline_reset(pcm_dev->dev.p, pcm_dev->dev.cd);
-	if (err < 0) {
-		trace_ipc_error("err");
-		goto error;
-	}
-
-	pcm_dev->state = IPC_HOST_RESET;
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-error:
-	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+	/* write component values to the outbox */
+	mailbox_outbox_write(&reply, 0, sizeof(reply));
+	return 0;
 }
 
-static uint32_t ipc_stream_stop(uint32_t header)
+static uint32_t ipc_glb_tplg_buffer_new(uint32_t header)
 {
-	struct ipc_pcm_dev *pcm_dev;
-	uint32_t stream_id;
-	int err;
+	struct sof_ipc_buffer *ipc_buffer = _ipc->comp_data;
 
-	trace_ipc("SSt");
-
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-
-	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(stream_id);
-	if (pcm_dev == NULL) {
-		trace_ipc_error("erg");
-		goto error;
-	}
-
-	/* send stop TODO: this should be done in trigger */
-	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-		COMP_CMD_STOP, NULL);
-	if (err < 0) {
-		trace_ipc_error("erc");
-		goto error;
-	}
-
-	/* need prepare again before next start */
-	pcm_dev->state = IPC_HOST_ALLOC;
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
-error:
-	return IPC_INTEL_GLB_REPLY_ERROR_INVALID_PARAM;
+	return ipc_buffer_new(_ipc, ipc_buffer);
 }
 
-static uint32_t ipc_stream_pause(uint32_t header)
+static uint32_t ipc_glb_tplg_pipe_new(uint32_t header)
 {
-	struct ipc_pcm_dev *pcm_dev;
-	uint32_t stream_id;
-	int err;
+	struct sof_ipc_pipe_new *ipc_pipeline = _ipc->comp_data;
 
-	trace_ipc("SPa");
+	trace_ipc("Tpn");
 
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-
-	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(stream_id);
-	if (pcm_dev == NULL) {
-		trace_ipc_error("ePg");
-		goto error;
-	}
-
-	/* IPC design require we have to pause an alloced stream ??  */
-	if (pcm_dev->state == IPC_HOST_ALLOC)
-		return IPC_INTEL_GLB_REPLY_SUCCESS;
-
-	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-		COMP_CMD_PAUSE, NULL);
-	if (err < 0) {
-		trace_ipc_error("ePc");
-		goto error;
-	}
-
-	pcm_dev->state = IPC_HOST_PAUSED;
-
-error:
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	return ipc_pipeline_new(_ipc, ipc_pipeline);
 }
 
-static uint32_t ipc_stream_resume(uint32_t header)
+static uint32_t ipc_glb_tplg_comp_connect(uint32_t header)
 {
-	struct ipc_pcm_dev *pcm_dev;
-	uint32_t stream_id, cmd = COMP_CMD_RELEASE;
-	int err;
+	struct sof_ipc_pipe_comp_connect *connect = _ipc->comp_data;
 
-	trace_ipc("SRe");
+	trace_ipc("Tpn");
 
-	stream_id = header & IPC_INTEL_STR_ID_MASK;
-	stream_id >>= IPC_INTEL_STR_ID_SHIFT;
-
-	/* get the pcm_dev */
-	pcm_dev = ipc_get_pcm_comp(stream_id);
-	if (pcm_dev == NULL) {
-		trace_ipc_error("eRg");
-		goto error;
-	}
-
-	/* only prepare at the allocation statge */
-	if (pcm_dev->state == IPC_HOST_ALLOC) {
-		/* initialise the pipeline, preparing pcm data */
-		err = pipeline_prepare(pipeline_static, pcm_dev->dev.cd);
-		if (err < 0) {
-			trace_ipc_error("eRp");
-			goto error;
-		}
-		cmd = COMP_CMD_START;
-	}
-
-	/* initialise the pipeline */
-	err = pipeline_cmd(pcm_dev->dev.p, pcm_dev->dev.cd,
-			cmd, NULL);
-	if (err < 0) {
-		trace_ipc_error("eRc");
-		goto error;
-	}
-
-	pcm_dev->state = IPC_HOST_RUNNING;
-
-error:
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	return ipc_comp_connect(_ipc, connect);
 }
 
-static uint32_t ipc_stream_notification(uint32_t header)
+static uint32_t ipc_glb_tplg_pipe_connect(uint32_t header)
 {
-	trace_ipc("SNo");
+	struct sof_ipc_pipe_pipe_connect *connect = _ipc->comp_data;
 
-	return IPC_INTEL_GLB_REPLY_SUCCESS;
+	trace_ipc("Tpn");
+
+	return ipc_pipe_connect(_ipc, connect);
 }
 
-static uint32_t ipc_stream_message(uint32_t header)
+static uint32_t ipc_glb_tplg_free(uint32_t header,
+		void (*free_func)(struct ipc *ipc, uint32_t id))
 {
-	uint32_t str = msg_get_stream_type(header);
+	struct sof_ipc_free *ipc_free = _ipc->comp_data;
 
-	switch (str) {
-	case IPC_INTEL_STR_RESET:
-		return ipc_stream_reset(header);
-	case IPC_INTEL_STR_PAUSE:
-		return ipc_stream_pause(header);
-	case IPC_INTEL_STR_STOP:
-		return ipc_stream_stop(header);
-	case IPC_INTEL_STR_RESUME:
-		return ipc_stream_resume(header);
-	case IPC_INTEL_STR_STAGE_MESSAGE:
-		return ipc_stage_message(header);
-	case IPC_INTEL_STR_NOTIFICATION:
-		return ipc_stream_notification(header);
+	trace_ipc("Tcf");
+
+	/* free the object */
+	free_func(_ipc, ipc_free->id);
+
+	return 0;
+}
+
+static uint32_t ipc_glb_tplg_message(uint32_t header)
+{
+	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+
+	switch (cmd) {
+	case iCS(SOF_IPC_TPLG_COMP_NEW):
+		return ipc_glb_tplg_comp_new(header);
+	case iCS(SOF_IPC_TPLG_COMP_FREE):
+		return ipc_glb_tplg_free(header, ipc_comp_free);
+	case iCS(SOF_IPC_TPLG_COMP_CONNECT):
+		return ipc_glb_tplg_comp_connect(header);
+	case iCS(SOF_IPC_TPLG_PIPE_NEW):
+		return ipc_glb_tplg_pipe_new(header);
+	case iCS(SOF_IPC_TPLG_PIPE_FREE):
+		return ipc_glb_tplg_free(header, ipc_pipeline_free);
+	case iCS(SOF_IPC_TPLG_PIPE_CONNECT):
+		return ipc_glb_tplg_pipe_connect(header);
+	//case SOF_IPC_TPLG_PIPE_COMPLETE:
+	//	return ipc_glb_tplg_pipe_complete(header);
+	case iCS(SOF_IPC_TPLG_BUFFER_NEW):
+		return ipc_glb_tplg_buffer_new(header);
+	case iCS(SOF_IPC_TPLG_BUFFER_FREE):
+		return ipc_glb_tplg_free(header, ipc_buffer_free);
 	default:
-		return IPC_INTEL_GLB_REPLY_UNKNOWN_MESSAGE_TYPE;
+		trace_ipc_error("eTc");
+		trace_value(header);
+		return -EINVAL;
 	}
 }
+
+/*
+ * Global IPC Operations.
+ */
 
 uint32_t ipc_cmd(void)
 {
-	uint32_t type, header;
+	struct sof_ipc_hdr *hdr;
+	uint32_t type;
 
-	header = _ipc->host_msg;
-	type = msg_get_global_type(header);
+	hdr = mailbox_validate();
+	if (hdr == NULL) {
+		trace_ipc_error("hdr");
+		return -EINVAL;
+	}
+
+	type = (hdr->cmd & SOF_GLB_TYPE_MASK) >> SOF_GLB_TYPE_SHIFT;
 
 	switch (type) {
-	case IPC_INTEL_GLB_GET_FW_VERSION:
-		return ipc_fw_version(header);
-	case IPC_INTEL_GLB_ALLOCATE_STREAM:
-		return ipc_stream_alloc(header);
-	case IPC_INTEL_GLB_FREE_STREAM:
-		return ipc_stream_free(header);
-	case IPC_INTEL_GLB_GET_FW_CAPABILITIES:
-		return ipc_fw_caps(header);
-	case IPC_INTEL_GLB_REQUEST_DUMP:
-		return ipc_dump(header);
-	case IPC_INTEL_GLB_GET_DEVICE_FORMATS:
-		return ipc_device_get_formats(header);
-	case IPC_INTEL_GLB_SET_DEVICE_FORMATS:
-		return ipc_device_set_formats(header);
-	case IPC_INTEL_GLB_ENABLE_LOOPBACK:
-		return ipc_device_set_loopback(header, 1);
-	case IPC_INTEL_GLB_DISABLE_LOOPBACK:
-		return ipc_device_set_loopback(header, 0);
-	case IPC_INTEL_GLB_ENTER_DX_STATE:
-		return ipc_context_save(header);
-	case IPC_INTEL_GLB_GET_MIXER_STREAM_INFO:
-		return ipc_stream_info(header);
-	case IPC_INTEL_GLB_RESTORE_CONTEXT:
-		return ipc_context_restore(header);
-	case IPC_INTEL_GLB_STREAM_MESSAGE:
-		return ipc_stream_message(header);
+	case iGS(SOF_IPC_GLB_REPLY):
+		return 0;
+	case iGS(SOF_IPC_GLB_COMPOUND):
+		return -EINVAL;	/* TODO */
+	case iGS(SOF_IPC_GLB_TPLG_MSG):
+		return ipc_glb_tplg_message(hdr->cmd);
+	case iGS(SOF_IPC_GLB_PM_MSG):
+		return ipc_glb_pm_message(hdr->cmd);
+	case iGS(SOF_IPC_GLB_COMP_MSG):
+		return ipc_glb_comp_message(hdr->cmd);
+	case iGS(SOF_IPC_GLB_STREAM_MSG):
+		return ipc_glb_stream_message(hdr->cmd);
 	default:
-		return IPC_INTEL_GLB_REPLY_UNKNOWN_MESSAGE_TYPE;
+		trace_ipc_error("eGc");
+		trace_value(type);
+		return -EINVAL;
 	}
 }
 
@@ -1004,21 +670,13 @@ static inline struct ipc_msg *msg_get_empty(struct ipc *ipc)
 
 /* Send stream command */
 int ipc_stream_send_notification(struct comp_dev *cdev,
-	struct comp_position *cp)
+	struct sof_ipc_stream_posn *posn)
 {
-	struct ipc_intel_ipc_stream_get_position msg;
 	uint32_t header;
 
-	/* TODO: position not used in driver, it only uses the pos registers */
-	msg.position = 100;
-	msg.fw_cycle_count = 0;
+	header = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
 
-	header = IPC_INTEL_GLB_TYPE(IPC_INTEL_GLB_STREAM_MESSAGE) |
-		IPC_INTEL_STR_TYPE(IPC_INTEL_STR_NOTIFICATION) |
-		IPC_INTEL_STG_TYPE(IPC_POSITION_CHANGED) |
-		IPC_INTEL_STR_ID(cdev->id);
-
-	return ipc_queue_host_message(_ipc, header, &msg, sizeof(msg),
+	return ipc_queue_host_message(_ipc, header, posn, sizeof(*posn),
 		NULL, 0, NULL, NULL);
 }
 
@@ -1048,7 +706,7 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	msg->cb = cb;
 
 	/* copy mailbox data to message */
-	if (tx_bytes > 0 && tx_bytes < MSG_MAX_SIZE)
+	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
 		rmemcpy(msg->tx_data, tx_data, tx_bytes);
 
 	/* now queue the message */

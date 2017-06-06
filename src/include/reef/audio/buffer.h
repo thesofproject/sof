@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_AUDIO_PIPELINE_H__
-#define __INCLUDE_AUDIO_PIPELINE_H__
+#ifndef __INCLUDE_AUDIO_BUFFER_H__
+#define __INCLUDE_AUDIO_BUFFER_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -43,74 +43,63 @@
 #include <uapi/ipc.h>
 
 /* pipeline tracing */
-#define trace_pipe(__e)	trace_event(TRACE_CLASS_PIPE, __e)
-#define trace_pipe_error(__e)	trace_error(TRACE_CLASS_PIPE, __e)
-#define tracev_pipe(__e)	tracev_event(TRACE_CLASS_PIPE, __e)
+#define trace_buffer(__e)	trace_event(TRACE_CLASS_BUFFER, __e)
+#define trace_buffer_error(__e)	trace_error(TRACE_CLASS_BUFFER, __e)
+#define tracev_buffer(__e)	tracev_event(TRACE_CLASS_BUFFER, __e)
 
-struct ipc_pipeline_dev;
-struct ipc;
+/* audio component buffer - connects 2 audio components together in pipeline */
+struct comp_buffer {
 
-/*
- * Audio pipeline.
- */
-struct pipeline {
-	uint32_t id;		/* id */
-	spinlock_t lock;
-	struct sof_ipc_pipe_new ipc_pipe;
+	/* runtime data */
+	uint32_t connected;	/* connected in path */
+	uint32_t size;		/* size of buffer in bytes */
+	uint32_t alloc_size;	/* allocated size in bytes */
+	uint32_t avail;		/* available bytes for reading */
+	uint32_t free;		/* free bytes for writing */
+	void *w_ptr;		/* buffer write pointer */
+	void *r_ptr;		/* buffer read position */
+	void *addr;		/* buffer base address */
+	void *end_addr;		/* buffer end address */
+
+	/* IPC configuration */
+	struct sof_ipc_buffer ipc_buffer;
+	struct stream_params params;
+
+	/* connected components */
+	struct comp_dev *source;	/* source component */
+	struct comp_dev *sink;		/* sink component */
 
 	/* lists */
-	struct list_item comp_list;		/* list of components */
-	struct list_item buffer_list;		/* list of buffers */
-
-	/* scheduling */
-	struct task pipe_task;		/* pipeline processing task */
+	struct list_item source_list;	/* list in comp buffers */
+	struct list_item sink_list;	/* list in comp buffers */
 };
-
-/* static pipeline */
-extern struct pipeline *pipeline_static;
-
-/* pipeline creation and destruction */
-struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc);
-void pipeline_free(struct pipeline *p);
 
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 void buffer_free(struct comp_buffer *buffer);
 
-/* insert component in pipeline */
-int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_cd,
-	struct comp_dev *sink_cd, struct comp_buffer *buffer);
+static inline void comp_update_buffer_produce(struct comp_buffer *buffer)
+{
+	if (buffer->r_ptr < buffer->w_ptr)
+		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+	else if (buffer->r_ptr == buffer->w_ptr)
+		buffer->avail = buffer->end_addr - buffer->addr; /* full */
+	else
+		buffer->avail = buffer->end_addr - buffer->r_ptr +
+			buffer->w_ptr - buffer->addr;
+	buffer->free = buffer->ipc_buffer.size - buffer->avail;
+}
 
-int pipeline_pipe_connect(struct pipeline *psource, struct pipeline *psink,
-		struct comp_dev *source_cd, struct comp_dev *sink_cd,
-		struct comp_buffer *buffer);
-
-/* pipeline parameters */
-int pipeline_params(struct pipeline *p, struct comp_dev *cd,
-	struct stream_params *params);
-
-/* prepare the pipeline for usage */
-int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
-
-/* reset the pipeline and free resources */
-int pipeline_reset(struct pipeline *p, struct comp_dev *host_cd);
-
-/* send pipeline a command */
-int pipeline_cmd(struct pipeline *p, struct comp_dev *host_cd, int cmd,
-	void *data);
-
-/* initialise pipeline subsys */
-int pipeline_init(void);
-
-/* static pipeline creation */
-int init_static_pipeline(struct ipc *ipc);
-
-/* pipeline creation */
-int init_pipeline(void);
-
-void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev,
-		uint32_t deadline, uint32_t priority);
-
-void pipeline_schedule(void *arg);
+static inline void comp_update_buffer_consume(struct comp_buffer *buffer)
+{
+	if (buffer->r_ptr < buffer->w_ptr)
+		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+	else if (buffer->r_ptr == buffer->w_ptr)
+		buffer->avail = 0; /* empty */
+	else
+		buffer->avail = buffer->end_addr - buffer->r_ptr +
+			buffer->w_ptr - buffer->addr;
+	buffer->free = buffer->ipc_buffer.size - buffer->avail;
+}
 
 #endif

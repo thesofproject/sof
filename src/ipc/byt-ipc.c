@@ -49,7 +49,7 @@
 #include <platform/platform.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
-#include <uapi/intel-ipc.h>
+#include <uapi/ipc.h>
 #include <reef/intel-ipc.h>
 
 extern struct ipc *_ipc;
@@ -67,7 +67,7 @@ static void do_notify(void)
 		goto out;
 
 	/* copy the data returned from DSP */
-	if (msg->rx_size && msg->rx_size < MSG_MAX_SIZE)
+	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
 		mailbox_inbox_read(0, msg->rx_data, msg->rx_size);
 
 	/* any callback ? */
@@ -121,18 +121,19 @@ static void irq_handler(void *arg)
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(ipc);
-	uint32_t ipcxh, status;
+	uint32_t ipcxh;//, status;
 
 	trace_ipc("Cmd");
 	//trace_value(_ipc->host_msg);
 
-	status = ipc_cmd();
+	/* TODO: handle error with reply data in mailbox */
+	ipc_cmd();
 	ipc->host_pending = 0;
-
+	trace_ipc("CmD");
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	ipcxh = shim_read(SHIM_IPCXH);
 	ipcxh &= ~SHIM_IPCXH_BUSY;
-	ipcxh |= SHIM_IPCXH_DONE | status;
+	ipcxh |= SHIM_IPCXH_DONE;// | status;
 	shim_write(SHIM_IPCXH, ipcxh);
 
 	// TODO: signal audio work to enter D3 in normal context
@@ -193,14 +194,15 @@ int platform_ipc_init(struct ipc *ipc)
 	list_init(&ipc->empty_list);
 	list_init(&ipc->msg_list);
 	spinlock_init(&ipc->lock);
+
 	for (i = 0; i < MSG_QUEUE_SIZE; i++)
 		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_SYS, RFLAGS_NONE,
-		IPC_INTEL_PAGE_TABLE_SIZE);
+		HOST_PAGE_SIZE);
 	if (iipc->page_table)
-		bzero(iipc->page_table, IPC_INTEL_PAGE_TABLE_SIZE);
+		bzero(iipc->page_table, HOST_PAGE_SIZE);
 
 	/* dma */
 	iipc->dmac0 = dma_get(DMA_ID_DMAC0);

@@ -42,6 +42,10 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
+#define trace_volume(__e)	trace_event(TRACE_CLASS_VOLUME, __e)
+#define tracev_volume(__e)	tracev_event(TRACE_CLASS_VOLUME, __e)
+#define trace_volume_error(__e)	trace_error(TRACE_CLASS_VOLUME, __e)
+
 /* this should ramp from 0dB to mute in 64ms.
  * i.e 2^16 -> 0 in 32 * 2048 steps each lasting 2ms
  */
@@ -61,15 +65,16 @@
 
 /* volume component private data */
 struct comp_data {
-	uint32_t volume[STREAM_MAX_CHANNELS];	/* current volume */
-	uint32_t tvolume[STREAM_MAX_CHANNELS];	/* target volume */
-	uint32_t mvolume[STREAM_MAX_CHANNELS];	/* mute volume */
+	uint32_t chan[PLATFORM_MAX_CHANNELS];
+	uint32_t volume[PLATFORM_MAX_CHANNELS];	/* current volume */
+	uint32_t tvolume[PLATFORM_MAX_CHANNELS];	/* target volume */
+	uint32_t mvolume[PLATFORM_MAX_CHANNELS];	/* mute volume */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
 	struct work volwork;
 
 	/* host volume readback */
-	uint32_t *hvol[STREAM_MAX_CHANNELS];
+	struct sof_ipc_ctrl_values *hvol;
 };
 
 struct comp_func_map {
@@ -231,22 +236,34 @@ static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 
 /* map of source and sink buffer formats to volume function */
 static const struct comp_func_map func_map[] = {
-	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S16_LE, 2, vol_s16_to_s16},
-	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S32_LE, 2, vol_s16_to_s32},
-	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S16_LE, 2, vol_s32_to_s16},
-	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S32_LE, 2, vol_s32_to_s32},
-	{STREAM_FORMAT_S16_LE, STREAM_FORMAT_S24_4LE, 2, vol_s16_to_s24},
-	{STREAM_FORMAT_S24_4LE, STREAM_FORMAT_S16_LE, 2, vol_s24_to_s16},
-	{STREAM_FORMAT_S32_LE, STREAM_FORMAT_S24_4LE, 2, vol_s32_to_s24},
-	{STREAM_FORMAT_S24_4LE, STREAM_FORMAT_S32_LE, 2, vol_s24_to_s32},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, 2, vol_s16_to_s16},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, 2, vol_s16_to_s32},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, 2, vol_s32_to_s16},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, 2, vol_s32_to_s32},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, 2, vol_s16_to_s24},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, 2, vol_s24_to_s16},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, 2, vol_s32_to_s24},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, 2, vol_s24_to_s32},
 };
+
+/* synchronise host mmap() volume with real value */
+static void vol_sync_host(struct comp_data *cd, uint32_t chan)
+{
+	int i;
+
+	if (cd->hvol == NULL)
+			return;
+
+	for (i = 0; i < cd->hvol->num_values; i++) {
+		if (cd->hvol->values[i].channel == cd->chan[chan])
+			cd->hvol->values[i].value = cd->volume[chan];
+	}
+}
 
 static void vol_update(struct comp_data *cd, uint32_t chan)
 {
 	cd->volume[chan] = cd->tvolume[chan];
-
-	if (cd->hvol[chan])
-		*cd->hvol[chan] = cd->volume[chan];
+	vol_sync_host(cd, chan);
 }
 
 /* this ramps volume changes over time */
@@ -258,7 +275,7 @@ static uint32_t vol_work(void *data, uint32_t delay)
 	int i, again = 0;
 
 	/* inc/dec each volume if it's not at target */
-	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 
 		/* skip if target reached */
 		if (cd->volume[i] == cd->tvolume[i]) {
@@ -290,6 +307,9 @@ static uint32_t vol_work(void *data, uint32_t delay)
 				again = 1;
 			}
 		}
+
+		/* sync host with new value */
+		vol_sync_host(cd, i);
 	}
 
 	/* do we need to continue ramping */
@@ -299,32 +319,32 @@ static uint32_t vol_work(void *data, uint32_t delay)
 		return 0;
 }
 
-static struct comp_dev *volume_new(uint32_t type, uint32_t index,
-	uint32_t direction)
+static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
 	int i;
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	trace_volume("new");
+
+	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_volume));
 
-	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, cd);
-	comp_clear_ep(dev);
 	work_init(&cd->volwork, vol_work, dev, WORK_ASYNC);
 
 	/* set the default volumes */
-	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		cd->volume[i] = VOL_MAX;
 		cd->tvolume[i] = VOL_MAX;
-		cd->hvol[i] = NULL;
 	}
 
 	return dev;
@@ -345,33 +365,24 @@ static int volume_params(struct comp_dev *dev, struct stream_params *params)
 	struct comp_buffer *next_buf;
 	struct comp_dev *next_dev;
 
-	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
-		/* volume components will only ever have 1 sink buffer */
-		next_buf = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-		next_dev = next_buf->sink;
-	} else {
-		/* volume components will only ever have 1 source buffer */
-		next_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-		next_dev = next_buf->source;
-	}
+	/* volume components will only ever have one sink & one source buffer */
+	next_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	next_dev = next_buf->source;
 
 	/* hard coded until new IPC is ready */
-	if (next_dev->is_host) {
-		buffer_params.pcm.format = STREAM_FORMAT_S16_LE;
-		buffer_params.frame_size = 2 * params->channels; /* 16bit container */
-	} else if (next_dev->is_dai) {
-		buffer_params.pcm.format = PLATFORM_SSP_STREAM_FORMAT;
-		buffer_params.frame_size = 4 * params->channels; /* 32bit container */
+	if (next_dev->comp.type == SOF_COMP_HOST) {
+		buffer_params.pcm->frame_fmt = SOF_IPC_FRAME_S16_LE;
+		buffer_params.pcm->frame_size = 2 * params->pcm->channels; /* 16bit container */
+	} else if (next_dev->comp.type == SOF_COMP_DAI) {
+		buffer_params.pcm->frame_fmt = PLATFORM_SSP_STREAM_FORMAT;
+		buffer_params.pcm->frame_size = 4 * params->pcm->channels; /* 32bit container */
 	} else {
-		buffer_params.pcm.format = STREAM_FORMAT_S32_LE;
-		buffer_params.frame_size = 4 * params->channels; /* 32bit container */
+		buffer_params.pcm->frame_fmt = SOF_IPC_FRAME_S32_LE;
+		buffer_params.pcm->frame_size = 4 * params->pcm->channels; /* 32bit container */
 	}
 
 	/* dont do any data transformation */
-	if (params->direction == STREAM_DIRECTION_PLAYBACK)
-		comp_set_sink_params(dev, &buffer_params);
-	else
-		comp_set_source_params(dev, &buffer_params);
+	comp_set_sink_params(dev, params);
 
 	return 0;
 }
@@ -404,35 +415,41 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_volume *cv;
-	int i;
+	struct sof_ipc_ctrl_values *cv;
+	int i, j;
 
 	switch (cmd) {
 	case COMP_CMD_VOLUME:
-		cv = (struct comp_volume*)data;
+		cv = (struct sof_ipc_ctrl_values*)data;
 
-		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-			if (cv->update_bits & (0x1 << i))
-				volume_set_chan(dev, i, cv->volume);
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			for (j = 0; j < cv->num_values; j++) {
+				if (cv->values[j].channel == cd->chan[i])
+					volume_set_chan(dev, i, cv->values[j].value);
+			}
 		}
 
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	case COMP_CMD_MUTE:
-		cv = (struct comp_volume*)data;
+		cv = (struct sof_ipc_ctrl_values*)data;
 
-		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-			if (cv->update_bits & (0x1 << i))
-				volume_set_chan_mute(dev, i);
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			for (j = 0; j < cv->num_values; j++) {
+				if (cv->values[j].channel == cd->chan[i])
+					volume_set_chan_mute(dev, i);
+			}
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	case COMP_CMD_UNMUTE:
-		cv = (struct comp_volume*)data;
+		cv = (struct sof_ipc_ctrl_values*)data;
 
-		for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-			if (cv->update_bits & (0x1 << i))
-				volume_set_chan_unmute(dev, i);
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			for (j = 0; j < cv->num_values; j++) {
+				if (cv->values[j].channel == cd->chan[i])
+					volume_set_chan_unmute(dev, i);
+			}
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
@@ -454,12 +471,6 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_RELEASE:
 		dev->state = COMP_STATE_RUNNING;
-		break;
-	case COMP_CMD_IPC_MMAP_VOL(0) ... COMP_CMD_IPC_MMAP_VOL(STREAM_MAX_CHANNELS - 1):
-		i = cmd - COMP_CMD_IPC_MMAP_VOL(0);
-		cd->hvol[i] = data;
-		if (cd->hvol[i])
-			*cd->hvol[i] = cd->volume[i];
 		break;
 	default:
 		break;
@@ -486,9 +497,9 @@ static int volume_copy(struct comp_dev *dev)
 	trace_value((uint32_t)(sink->w_ptr - sink->addr));
 #endif
 
-	if (source->avail < cframes * source->params.frame_size ||
-			sink->free < cframes * sink->params.frame_size)
-		cframes = source->avail / source->params.frame_size;
+	if (source->avail < cframes * source->params.pcm->frame_size ||
+			sink->free < cframes * sink->params.pcm->frame_size)
+		cframes = source->avail / source->params.pcm->frame_size;
 
 	/* no data to copy */
 	if (cframes == 0) {
@@ -509,15 +520,14 @@ static int volume_copy(struct comp_dev *dev)
 	comp_update_buffer_produce(sink);
 	comp_update_buffer_consume(source);
 
-	/* number of frames sent downstream */
-	return cframes;
+	return 0;
 }
 
 static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t source_format, sink_format;
+	enum sof_ipc_frame source_format, sink_format;
 	int i;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
@@ -525,17 +535,17 @@ static int volume_prepare(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* is source a host or DAI ? */
-	if (source->source->is_host || source->source->is_dai)
-		source_format = source->params.pcm.format;
+	if (source->source->is_endpoint || source->source->is_endpoint)
+		source_format = source->params.pcm->frame_fmt;
 	else
-		source_format = STREAM_FORMAT_S32_LE;
+		source_format = SOF_IPC_FRAME_S32_LE;
 
 	/* TODO tmp hard coded for 24 bit - need fixed for capture*/
 	/* is sink a host or DAI ? */
-	if (sink->sink->is_host || sink->sink->is_dai)
-		sink_format = sink->params.pcm.format;
+	if (sink->sink->is_endpoint || sink->sink->is_endpoint)
+		sink_format = sink->params.pcm->frame_fmt;
 	else
-		sink_format = STREAM_FORMAT_S32_LE;
+		sink_format = SOF_IPC_FRAME_S32_LE;
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < ARRAY_SIZE(func_map); i++) {
@@ -544,7 +554,7 @@ static int volume_prepare(struct comp_dev *dev)
 			continue;
 		if (sink_format != func_map[i].sink)
 			continue;
-		if (sink->params.channels != func_map[i].channels)
+		if (sink->params.pcm->channels != func_map[i].channels)
 			continue;
 
 		cd->scale_vol = func_map[i].func;
@@ -554,22 +564,20 @@ static int volume_prepare(struct comp_dev *dev)
 	return -EINVAL;
 
 found:
-	for (i = 0; i < STREAM_MAX_CHANNELS; i++) {
-		if (cd->hvol[i])
-			*cd->hvol[i] = cd->volume[i];
-	}
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		vol_sync_host(cd, i);
 
-	dev->preload = PLAT_INT_PERIODS;
+	//dev->preload = PLAT_INT_PERIODS;
 	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
 static int volume_preload(struct comp_dev *dev)
 {
-	int i;
+	//int i, count;
 
-	for (i = 0; i < dev->preload; i++)
-		volume_copy(dev);
+//	for (i = 0; i < dev->preload; i++)
+	//	volume_copy(dev);
 
 	return 0;
 }
@@ -582,7 +590,7 @@ static int volume_reset(struct comp_dev *dev)
 }
 
 struct comp_driver comp_volume = {
-	.type	= COMP_TYPE_VOLUME,
+	.type	= SOF_COMP_VOLUME,
 	.ops	= {
 		.new		= volume_new,
 		.free		= volume_free,

@@ -35,11 +35,16 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static struct comp_dev *mux_new(uint32_t type, uint32_t index,
-	uint32_t direction)
-{
+/* tracing */
+#define trace_mux(__e) trace_event(TRACE_CLASS_MUX, __e)
+#define trace_mux_error(__e)   trace_error(TRACE_CLASS_MUX, __e)
+#define tracev_mux(__e)        tracev_event(TRACE_CLASS_MUX, __e)
 
-	return 0;
+static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
+{
+	trace_mux("new");
+
+	return NULL;
 }
 
 static void mux_free(struct comp_dev *dev)
@@ -79,7 +84,7 @@ static int mux_prepare(struct comp_dev *dev)
 }
 
 struct comp_driver comp_mux = {
-	.type	= COMP_TYPE_MUX,
+	.type	= SOF_COMP_MUX,
 	.ops	= {
 		.new		= mux_new,
 		.free		= mux_free,

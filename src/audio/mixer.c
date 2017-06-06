@@ -47,7 +47,7 @@ struct mixer_data {
 		struct comp_buffer **sources, uint32_t count, uint32_t frames);
 };
 
-/* mix n stream datas to 1 sink buffer */
+/* mix N PCM source streams to one sink stream */
 static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer **sources, uint32_t num_sources, uint32_t frames)
 {
@@ -55,7 +55,7 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 	int64_t val[2];
 	int i, j;
 
-	count = frames * sink->params.channels;
+	count = frames * sink->params.pcm->channels;
 
 	for (i = 0; i < count; i += 2) {
 		val[0] = 0;
@@ -81,16 +81,17 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-static struct comp_dev *mixer_new(uint32_t type, uint32_t index,
-	uint32_t direction)
+static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct mixer_data *md;
 
-	trace_mixer("MNw");
+	trace_mixer("new");
 	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
+
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_mixer));
 
 	md = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*md));
 	if (md == NULL) {
@@ -99,8 +100,6 @@ static struct comp_dev *mixer_new(uint32_t type, uint32_t index,
 	}
 
 	comp_set_drvdata(dev, md);
-	comp_clear_ep(dev);
-	comp_set_mixer(dev);
 
 	return dev;
 }
@@ -113,7 +112,7 @@ static void mixer_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-/* set component audio stream paramters */
+/* set component audio stream parameters */
 static int mixer_params(struct comp_dev *dev, struct stream_params *params)
 {
 	struct stream_params sink_params = *params;
@@ -123,8 +122,8 @@ static int mixer_params(struct comp_dev *dev, struct stream_params *params)
 		return 1;
 
 	/* suppose sink component won't be host/dai, so hard code it */
-	sink_params.pcm.format = STREAM_FORMAT_S32_LE;
-	sink_params.frame_size = 4 * params->channels; /* 32bit container */
+	sink_params.pcm->frame_fmt = SOF_IPC_FRAME_S32_LE;
+	sink_params.pcm->frame_size = 4 * params->pcm->channels; /* 32bit container */
 
 	/* dont do any data transformation */
 	comp_set_sink_params(dev, &sink_params);
@@ -154,32 +153,10 @@ static int mixer_status_change(struct comp_dev *dev/* , uint32_t target_state */
 	return finish;
 }
 
-
-static struct comp_dev* mixer_volume_component(struct comp_dev *mixer)
-{
-	struct comp_dev *comp_dev = NULL;
-	struct list_item *clist;
-
-	list_for_item(clist, &mixer->bsink_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer,
-			source_list);
-
-		if (buffer->sink->drv->type == COMP_TYPE_VOLUME) {
-			comp_dev = buffer->sink;
-			break;
-		}
-	}
-
-	return comp_dev;
-}
-
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	int finish = 0;
-	struct comp_dev *vol_dev = NULL;
 
 	switch(cmd) {
 	case COMP_CMD_START:
@@ -196,16 +173,6 @@ static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 		if (finish == 0)
 			comp_buffer_reset(dev);
 		break;
-	case COMP_CMD_VOLUME:
-		vol_dev = mixer_volume_component(dev);
-		if (vol_dev != NULL)
-			finish = comp_cmd(vol_dev, COMP_CMD_VOLUME, data);
-		break;
-	case COMP_CMD_IPC_MMAP_VOL(0) ... COMP_CMD_IPC_MMAP_VOL(STREAM_MAX_CHANNELS - 1):
-		vol_dev = mixer_volume_component(dev);
-		if (vol_dev != NULL)
-			finish = comp_cmd(vol_dev, cmd, data);
-		break;
 	default:
 		break;
 	}
@@ -213,7 +180,7 @@ static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 	return finish;
 }
 
-/* mix N stream datas to 1 sink buffer */
+/* mix N source PCM streams to one sink stream */
 static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
@@ -236,11 +203,11 @@ static int mixer_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	for(i = 0; i < num_mix_sources; i++) {
-		if (sources[i]->avail < cframes * sources[i]->params.frame_size)
-			cframes = sources[i]->avail /sources[i]->params.frame_size;
+		if (sources[i]->avail < cframes * sources[i]->params.pcm->frame_size)
+			cframes = sources[i]->avail /sources[i]->params.pcm->frame_size;
 	}
-	if (sink->free < cframes * sink->params.frame_size)
-		cframes = sink->free /sink->params.frame_size;
+	if (sink->free < cframes * sink->params.pcm->frame_size)
+		cframes = sink->free /sink->params.pcm->frame_size;
 
 	if (num_mix_sources == 0)
 		cframes = 0;
@@ -306,7 +273,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_RUNNING) {
 		md->mix_func = mix_n;
 		dev->state = COMP_STATE_PREPARE;
-		dev->preload = PLAT_INT_PERIODS;
+		//dev->preload = PLAT_INT_PERIODS;
 	}
 
 	/* check each mixer source state */
@@ -326,20 +293,20 @@ static int mixer_prepare(struct comp_dev *dev)
 
 static int mixer_preload(struct comp_dev *dev)
 {
-	int i;
+	//int i;
 
 	if (dev->state != COMP_STATE_PREPARE)
 		return 1;
 
 	/* preload and mix periods if inactive */
-	for (i = 0; i < dev->preload; i++)
-		mixer_copy(dev);
+	//for (i = 0; i < dev->preload; i++)
+	//	mixer_copy(dev);
 
 	return 0;
 }
 
 struct comp_driver comp_mixer = {
-	.type	= COMP_TYPE_MIXER,
+	.type	= SOF_COMP_MIXER,
 	.ops	= {
 		.new		= mixer_new,
 		.free		= mixer_free,

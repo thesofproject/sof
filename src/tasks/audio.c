@@ -52,8 +52,9 @@ struct audio_data {
 
 int do_task(struct reef *reef)
 {
+#ifdef STATIC_PIPE
 	struct audio_data pdata;
-
+#endif
 	/* init default audio components */
 	sys_comp_init();
 	sys_comp_dai_init();
@@ -63,11 +64,12 @@ int do_task(struct reef *reef)
 	sys_comp_switch_init();
 	sys_comp_volume_init();
 
+#if STATIC_PIPE
 	/* init static pipeline */
 	pdata.p = init_static_pipeline();
 	if (pdata.p == NULL)
 		panic(PANIC_TASK);
-
+#endif
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);
 

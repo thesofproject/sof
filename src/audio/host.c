@@ -43,8 +43,8 @@
 #include <reef/wait.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
-#include <uapi/intel-ipc.h>
 #include <platform/dma.h>
+#include <uapi/ipc.h>
 
 #define trace_host(__e)	trace_event(TRACE_CLASS_HOST, __e)
 #define tracev_host(__e)	tracev_event(TRACE_CLASS_HOST, __e)
@@ -63,8 +63,8 @@ struct host_data {
 	int chan;
 	struct dma_sg_config config;
 	completion_t complete;
-	struct period_desc *period;
 	struct comp_buffer *dma_buffer;
+	int period_count;
 
 	/* local and host DMA buffer info */
 	struct hc_buf host;
@@ -83,7 +83,7 @@ struct host_data {
 
 	/* stream info */
 	struct stream_params params;
-	struct comp_position cp;
+	struct sof_ipc_stream_posn posn; /* TODO: update this */
 };
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
@@ -124,7 +124,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	/* update buffer positions */
 	dma_buffer = hd->dma_buffer;
 
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK) {
+	if (hd->params.pcm->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer->w_ptr += local_elem->size;
 
 		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
@@ -162,7 +162,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		/* update for host side */
 		if (hd->host_pos) {
 			*hd->host_pos = hd->local_pos;
-			ipc_stream_send_notification(dev, &hd->cp);
+			ipc_stream_send_notification(dev, &hd->posn);
 		}
 	}
 
@@ -183,7 +183,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	}
 
 	/* calc size of next transfer */
-	next_size = hd->period->size;
+	next_size = dev->period_bytes;
 	if (local_elem->src + next_size > hd->source->current_end)
 		next_size = hd->source->current_end - local_elem->src;
 	if (local_elem->dest + next_size > hd->sink->current_end)
@@ -192,8 +192,8 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	/* are we dealing with a split transfer ? */
 	if (!hd->split_remaining) {
 		/* no, is next transfer split ? */
-		if (next_size != hd->period->size)
-			hd->split_remaining = hd->period->size - next_size;
+		if (next_size != dev->period_bytes)
+			hd->split_remaining = dev->period_bytes - next_size;
 	} else {
 		/* yes, than calc transfer size */
 		need_copy = 1;
@@ -215,16 +215,18 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	wait_completed(&hd->complete);
 }
 
-static struct comp_dev *host_new(uint32_t type, uint32_t index,
-	uint32_t direction)
+static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
 	struct dma_sg_elem *elem;
 
+	trace_host("new");
+
 	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_host));
 
 	hd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*hd));
 	if (hd == NULL) {
@@ -240,7 +242,8 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 	}
 
 	comp_set_drvdata(dev, hd);
-	comp_set_host_ep(dev);
+	comp_set_endpoint(dev);
+
 	hd->dma = dma_get(DMA_ID_DMAC0);
 	if (hd->dma == NULL)
 		goto error;
@@ -253,8 +256,10 @@ static struct comp_dev *host_new(uint32_t type, uint32_t index,
 
 	/* get DMA channel from DMAC0 */
 	hd->chan = dma_channel_get(hd->dma);
-	if (hd->chan < 0)
+	if (hd->chan < 0) {
+		trace_host_error("eDC");
 		goto error;
+	}
 
 	/* set up callback */
 	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST, host_dma_cb, dev);
@@ -290,20 +295,20 @@ static int create_local_elems(struct comp_dev *dev,
 	struct list_item *elist, *tlist;
 	int i;
 
-	for (i = 0; i < hd->period->number; i++) {
+	for (i = 0; i < hd->period_count; i++) {
 		/* allocate new host DMA elem and add it to our list */
 		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
 		if (e == NULL)
 			goto unwind;
 
-		if (params->direction == STREAM_DIRECTION_PLAYBACK)
+		if (params->pcm->direction == SOF_IPC_STREAM_PLAYBACK)
 			e->dest = (uint32_t)(hd->dma_buffer->addr) +
-				i * hd->period->size;
+				i * dev->period_bytes;
 		else
 			e->src = (uint32_t)(hd->dma_buffer->addr) +
-				i * hd->period->size;
+				i * dev->period_bytes;
 
-		e->size = hd->period->size;
+		e->size = dev->period_bytes;
 
 		list_item_append(&e->list, &hd->local.elem_list);
 	}
@@ -341,9 +346,9 @@ static int host_elements_reset(struct comp_dev *dev)
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 	local_elem->dest = sink_elem->dest;
-	local_elem->size = hd->period->size;
+	local_elem->size = dev->period_bytes;
 	local_elem->src = source_elem->src;
-	hd->next_inc = hd->period->size;
+	hd->next_inc = dev->period_bytes;
 
 	return 0;
 }
@@ -359,7 +364,8 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	hd->params = *params;
 
 	/* determine source and sink buffer elems */
-	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
+	if (params->pcm->direction == SOF_IPC_STREAM_PLAYBACK) {
+
 		/* set sink buffer params */
 		comp_set_sink_params(dev, params);
 
@@ -367,9 +373,10 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 		hd->sink = &hd->local;
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
-		hd->period = &hd->dma_buffer->desc.source_period;
+
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 	} else {
+
 		/* set source buffer params */
 		comp_set_source_params(dev, params);
 
@@ -377,15 +384,26 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 		hd->sink = &hd->host;
 		hd->dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
-		hd->period = &hd->dma_buffer->desc.sink_period;
+
 		config->direction = DMA_DIR_LMEM_TO_HMEM;
 	}
 
+	hd->period_count = hd->dma_buffer->size / dev->period_bytes;
+
+	/* resize the buffer if space is available to align with period size */
+	if (hd->period_count * dev->period_bytes <= hd->dma_buffer->alloc_size)
+		hd->dma_buffer->size = hd->period_count * dev->period_bytes;
+	else {
+		trace_host_error("eSz");
+		return -EINVAL;
+	}
+
+
 	/* component buffer size must be divisor of host buffer size */
-	if (hd->host_size % hd->period->size) {
+	if (hd->host_size % dev->period_bytes) {
 		trace_comp_error("eHB");
 		trace_value(hd->host_size);
-		trace_value(hd->period->size);
+		trace_value(dev->period_bytes);
 		return -EINVAL;
 	}
 
@@ -409,6 +427,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 /* preload the local buffers with available host data before start */
 static int host_preload(struct comp_dev *dev)
 {
+#if 0
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret = 0, i;
 
@@ -431,6 +450,8 @@ static int host_preload(struct comp_dev *dev)
 	}
 
 	return ret;
+#endif
+	return 0;
 }
 
 static int host_prepare(struct comp_dev *dev)
@@ -438,7 +459,7 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
 
-	if (hd->params.direction == STREAM_DIRECTION_PLAYBACK)
+	if (hd->params.pcm->direction == SOF_IPC_STREAM_PLAYBACK)
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 	else
@@ -450,34 +471,13 @@ static int host_prepare(struct comp_dev *dev)
 	if (hd->host_pos)
 		*hd->host_pos = 0;
 	hd->report_pos = 0;
-	hd->report_period =
-		hd->params.period_frames * hd->params.frame_size;
+	hd->report_period = hd->params.pcm->period_bytes;
 	hd->split_remaining = 0;
 
-	dev->preload = PLAT_HOST_PERIODS;
+	//dev->preload = PLAT_HOST_PERIODS;
 
 	dev->state = COMP_STATE_PREPARE;
 	return 0;
-}
-
-static struct comp_dev* host_volume_component(struct comp_dev *host)
-{
-	struct comp_dev *comp_dev = NULL;
-	struct list_item *clist;
-
-	list_for_item(clist, &host->bsink_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer,
-			source_list);
-
-		if (buffer->sink->drv->type == COMP_TYPE_VOLUME) {
-			comp_dev = buffer->sink;
-			break;
-		}
-	}
-
-	return comp_dev;
 }
 
 static int host_pointer_reset(struct comp_dev *dev)
@@ -511,8 +511,6 @@ static int host_stop(struct comp_dev *dev)
 /* used to pass standard and bespoke commands (with data) to component */
 static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct comp_dev *vol_dev = NULL;
 	int ret = 0;
 
 	// TODO: align cmd macros.
@@ -537,14 +535,6 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
-		break;
-	case COMP_CMD_IPC_MMAP_RPOS:
-		hd->host_pos = data;
-		break;
-	case COMP_CMD_VOLUME:
-		vol_dev = host_volume_component(dev);
-		if (vol_dev != NULL)
-			ret = comp_cmd(vol_dev, COMP_CMD_VOLUME, data);
 		break;
 	default:
 		break;
@@ -628,7 +618,7 @@ static int host_copy(struct comp_dev *dev)
 	return 0;
 }
 struct comp_driver comp_host = {
-	.type	= COMP_TYPE_HOST,
+	.type	= SOF_COMP_HOST,
 	.ops	= {
 		.new		= host_new,
 		.free		= host_free,

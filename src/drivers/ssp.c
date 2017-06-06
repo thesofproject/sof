@@ -88,17 +88,17 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	dai->config = *dai_config;
 
 	/* clock masters */
-	switch (dai->config.format & DAI_FMT_MASTER_MASK) {
-	case DAI_FMT_CBM_CFM:
+	switch (dai->config.ssp->format & SOF_DAI_FMT_MASTER_MASK) {
+	case SOF_DAI_FMT_CBM_CFM:
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 		break;
-	case DAI_FMT_CBS_CFS:
+	case SOF_DAI_FMT_CBS_CFS:
 		sscr1 |= SSCR1_SCFR | SSCR1_RWOT;
 		break;
-	case DAI_FMT_CBM_CFS:
+	case SOF_DAI_FMT_CBM_CFS:
 		sscr1 |= SSCR1_SFRMDIR;
 		break;
-	case DAI_FMT_CBS_CFM:
+	case SOF_DAI_FMT_CBS_CFM:
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR | SSCR1_SCFR;
 		break;
 	case SSP_CLK_DEFAULT:
@@ -108,15 +108,15 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* clock signal polarity */
-	switch (dai->config.format & DAI_FMT_INV_MASK) {
-	case DAI_FMT_NB_NF:
+	switch (dai->config.ssp->format & SOF_DAI_FMT_INV_MASK) {
+	case SOF_DAI_FMT_NB_NF:
 		break;
-	case DAI_FMT_NB_IF:
+	case SOF_DAI_FMT_NB_IF:
 		break;
-	case DAI_FMT_IB_IF:
+	case SOF_DAI_FMT_IB_IF:
 		sspsp |= SSPSP_SCMODE(2);
 		break;
-	case DAI_FMT_IB_NF:
+	case SOF_DAI_FMT_IB_NF:
 		sspsp |= SSPSP_SCMODE(2) | SSPSP_SFRMP;
 		break;
 	default:
@@ -124,7 +124,7 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* clock source */
-	switch (dai->config.clk_src) {
+	switch (dai->config.ssp->clk_id) {
 	case SSP_CLK_AUDIO:
 		sscr0 |= SSCR0_ACS;
 		break;
@@ -142,20 +142,20 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* BCLK is generated from MCLK */
-	sscr0 |= SSCR0_SCR(dai->config.mclk / dai->config.bclk - 1);
+	sscr0 |= SSCR0_SCR(dai->config.ssp->mclk / dai->config.ssp->bclk - 1);
 
 	/* format */
-	switch (dai->config.format & DAI_FMT_FORMAT_MASK) {
-	case DAI_FMT_I2S:
+	switch (dai->config.ssp->format & SOF_DAI_FMT_FORMAT_MASK) {
+	case SOF_DAI_FMT_I2S:
 		sscr0 |= SSCR0_PSP;
 		sscr1 |= SSCR1_TRAIL;
-		sspsp |= SSPSP_SFRMWDTH(dai->config.sample_size + 1);
-		sspsp |= SSPSP_SFRMDLY((dai->config.sample_size + 1) * 2);
+		sspsp |= SSPSP_SFRMWDTH(dai->config.ssp->frame_width + 1);
+		sspsp |= SSPSP_SFRMDLY((dai->config.ssp->frame_width + 1) * 2);
 		sspsp |= SSPSP_DMYSTRT(1);
 		break;
-	case DAI_FMT_DSP_A:
+	case SOF_DAI_FMT_DSP_A:
 		sspsp |= SSPSP_FSRT;
-	case DAI_FMT_DSP_B:
+	case SOF_DAI_FMT_DSP_B:
 		sscr0 |= SSCR0_PSP;
 		sscr1 |= SSCR1_TRAIL;
 		break;
@@ -164,22 +164,22 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* sample size */
-	if (dai->config.sample_size > 16)
-		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(dai->config.sample_size - 16));
+	if (dai->config.ssp->frame_width > 16)
+		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(dai->config.ssp->frame_width - 16));
 	else
-		sscr0 |= SSCR0_DSIZE(dai->config.sample_size);
+		sscr0 |= SSCR0_DSIZE(dai->config.ssp->frame_width);
 
 	/* watermarks - TODO: do we still need old sscr1 method ?? */
 	sscr1 |= (SSCR1_TX(4) | SSCR1_RX(4));
 
 	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
 	sfifott = (SFIFOTT_TX(8) | SFIFOTT_RX(8));
-
+#if 0
 	if (dai->config.lbm)
 		sscr1 |= SSCR1_LBM;
 	else
 		sscr1 &= ~SSCR1_LBM;
-
+#endif
 	trace_ssp("SSC");
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
@@ -288,10 +288,10 @@ static uint32_t ssp_drain_work(void *data, uint32_t udelay)
 
 	trace_ssp("SDw");
 
-	if (ssp->state[STREAM_DIRECTION_PLAYBACK] == SSP_STATE_DRAINING)
-		ssp_stop(dai, STREAM_DIRECTION_PLAYBACK);
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == SSP_STATE_DRAINING)
+		ssp_stop(dai, SOF_IPC_STREAM_CAPTURE);
 	else
-		ssp_pause(dai, STREAM_DIRECTION_PLAYBACK);
+		ssp_pause(dai, SOF_IPC_STREAM_CAPTURE);
 	wait_completed(&ssp->drain_complete);
 	return 0;
 }
@@ -327,8 +327,8 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 			trace_ssp_error("wsP");
 			return 0;
 		}
-		if (direction == STREAM_DIRECTION_PLAYBACK) {
-			ssp->state[STREAM_DIRECTION_PLAYBACK] =
+		if (direction == SOF_IPC_STREAM_CAPTURE) {
+			ssp->state[SOF_IPC_STREAM_CAPTURE] =
 				SSP_STATE_PAUSING;
 			/* make sure the maximum 256 bytes are drained */
 			work_schedule_default(&ssp->work, 1333);
@@ -344,9 +344,9 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 			trace_ssp_error("wsO");
 			return 0;
 		}
-		if (direction == STREAM_DIRECTION_PLAYBACK &&
+		if (direction == SOF_IPC_STREAM_PLAYBACK &&
 			ssp->state[direction] == SSP_STATE_RUNNING) {
-			ssp->state[STREAM_DIRECTION_PLAYBACK] =
+			ssp->state[SOF_IPC_STREAM_PLAYBACK] =
 				SSP_STATE_DRAINING;
 			work_schedule_default(&ssp->work, 2000);
 			wait_init(&ssp->drain_complete);

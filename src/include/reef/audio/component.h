@@ -37,9 +37,11 @@
 #include <reef/lock.h>
 #include <reef/list.h>
 #include <reef/reef.h>
+#include <reef/alloc.h>
 #include <reef/dma.h>
 #include <reef/stream.h>
-#include <reef/alloc.h>
+#include <reef/audio/buffer.h>
+#include <uapi/ipc.h>
 
 /* audio component states
  * the states may transform as below:
@@ -56,15 +58,6 @@
 #define COMP_STATE_PAUSED	5	/* component paused */
 #define COMP_STATE_RUNNING	6	/* component active */
 
-/* standard audio component types */
-#define COMP_TYPE_HOST		0	/* host endpoint */
-#define COMP_TYPE_VOLUME	1	/* Volume component */
-#define COMP_TYPE_MIXER		2	/* Mixer component */
-#define COMP_TYPE_MUX		3	/* MUX component */
-#define COMP_TYPE_SWITCH	4	/* Switch component */
-#define COMP_TYPE_DAI_SSP	5	/* SSP DAI endpoint */
-#define COMP_TYPE_DAI_HDA	6	/* SSP DAI endpoint */
-
 /* standard component commands */
 
 #define COMP_CMD_STOP		0	/* stop component stream */
@@ -79,7 +72,9 @@
 #define COMP_CMD_MUTE		101
 #define COMP_CMD_UNMUTE		102
 #define COMP_CMD_ROUTE		103
-#define COMP_CMD_AVAIL_UPDATE          104
+#define COMP_CMD_SRC		104
+#define COMP_CMD_LOOPBACK	105
+
 
 /* MMAP IPC status */
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
@@ -99,46 +94,10 @@
 #define trace_comp_error(__e)	trace_error(TRACE_CLASS_COMP, __e)
 #define tracev_comp(__e)	tracev_event(TRACE_CLASS_COMP, __e)
 
-#define CHANNELS_ALL           0xffffffff
-
-/* standard component command structures */
-struct comp_volume {
-	uint32_t update_bits;   /* bit 1s indicate the coresponding
-                                   channels(indices) need to be updated */
-	uint32_t volume;
-};
-
 struct comp_dev;
 struct comp_buffer;
 struct dai_config;
 struct pipeline;
-
-/*
- * Component position information.
- */
- struct comp_position {
- 	uint32_t position;
- 	uint32_t cycle_count;
- };
-
-/*
- * Componnent period descriptors
- */
-struct period_desc {
-	uint32_t size;	/* period size in bytes */
-	uint32_t number;
-	uint32_t no_irq;	/* dont send periodic IRQ to host/DSP */
-	uint32_t reserved;
-};
-
-/*
- * Pipeline buffer descriptor.
- */
-struct buffer_desc {
-	uint32_t size;		/* buffer size in bytes */
-	struct period_desc sink_period;
-	struct period_desc source_period;
-};
 
 /*
  * Audio component operations - all mandatory.
@@ -148,8 +107,7 @@ struct buffer_desc {
  */
 struct comp_ops {
 	/* component creation and destruction */
-	struct comp_dev *(*new)(uint32_t type, uint32_t index,
-		uint32_t direction);
+	struct comp_dev *(*new)(struct sof_ipc_comp *comp);
 	void (*free)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
@@ -160,9 +118,6 @@ struct comp_ops {
 
 	/* set component audio stream paramters */
 	int (*dai_config)(struct comp_dev *dev, struct dai_config *dai_config);
-
-	/* set dai component loopback mode */
-	int (*dai_set_loopback)(struct comp_dev *dev, uint32_t lbm);
 
 	/* used to pass standard and bespoke commands (with data) to component */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
@@ -184,7 +139,7 @@ struct comp_ops {
 
 /* audio component base driver "class" - used by all other component types */
 struct comp_driver {
-	uint32_t type;		/* COMP_TYPE_ for driver */
+	uint32_t type;		/* SOF_COMP_ for driver */
 	uint32_t module_id;
 
 	struct comp_ops ops;	/* component operations */
@@ -196,50 +151,30 @@ struct comp_driver {
 struct comp_dev {
 
 	/* runtime */
-	uint32_t id;		/* runtime ID of component */
-	uint32_t state;		/* COMP_STATE_ */
-	uint32_t is_dai;		/* component is graph DAI endpoint */
-	uint32_t is_host;	/* component is graph host endpoint */
-	uint32_t is_mixer;	/* component is mixer */
-	uint32_t direction;	/* STREAM_DIRECTION_ */
-	uint16_t preload;       /* number of periods to preload during prepare() */
+	uint16_t state;		/* COMP_STATE_ */
+	uint16_t is_endpoint;	/* component is end point in pipeline */
 	spinlock_t lock;	/* lock for this component */
-	void *private;		/* private data */
-	struct comp_driver *drv;
 	struct pipeline *pipeline;	/* pipeline we belong to */
+	uint32_t period_frames;	/* frames to process per period - 0 is variable */
+	uint32_t period_bytes;	/* bytes to process per period - 0 is variable */
+
+	/* driver */
+	struct comp_driver *drv;
 
 	/* lists */
+	struct list_item list;			/* list in components */
 	struct list_item bsource_list;	/* list of source buffers */
 	struct list_item bsink_list;	/* list of sink buffers */
-	struct list_item pipeline_list;	/* list in pipeline component devs */
-	struct list_item endpoint_list;	/* list in pipeline endpoint devs */
-	struct list_item schedule_list;	/* list in pipeline copy scheduler */
+
+	/* private data - core does not touch this */
+	void *private;		/* private data */
+
+	/* IPC config object header - MUST be at end as it's variable size/type */
+	struct sof_ipc_comp comp;
 };
 
-/* audio component buffer - connects 2 audio components together in pipeline */
-struct comp_buffer {
-	struct buffer_desc desc;
-	struct stream_params params;
-
-	/* runtime data */
-	uint32_t id;		/* runtime ID of buffer */
-	uint32_t connected;	/* connected in path */
-	uint32_t avail;		/* available bytes for reading */
-	uint32_t free;		/* free bytes for writing */
-	void *w_ptr;		/* buffer write pointer */
-	void *r_ptr;		/* buffer read position */
-	void *addr;		/* buffer base address */
-	void *end_addr;		/* buffer end address */
-
-	/* connected components */
-	struct comp_dev *source;	/* source component */
-	struct comp_dev *sink;		/* sink component */
-
-	/* lists */
-	struct list_item pipeline_list;	/* list in pipeline buffers */
-	struct list_item source_list;	/* list in comp buffers */
-	struct list_item sink_list;	/* list in comp buffers */
-};
+#define COMP_SIZE(x) \
+	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
 
 #define comp_set_drvdata(c, data) \
 	c->private = data
@@ -253,8 +188,7 @@ int comp_register(struct comp_driver *drv);
 void comp_unregister(struct comp_driver *drv);
 
 /* component creation and destruction - mandatory */
-struct comp_dev *comp_new(struct pipeline *p, uint32_t type, uint32_t index,
-	uint32_t id, uint32_t direction);
+struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);
@@ -317,13 +251,19 @@ static inline int comp_dai_config(struct comp_dev *dev,
 	return 0;
 }
 
-/* DAI configuration - only mandatory for DAI components */
-static inline int comp_dai_loopback(struct comp_dev *dev,
-	uint32_t lbm)
+/* default base component initialisations */
+void sys_comp_dai_init(void);
+void sys_comp_host_init(void);
+void sys_comp_mixer_init(void);
+void sys_comp_mux_init(void);
+void sys_comp_switch_init(void);
+void sys_comp_volume_init(void);
+
+
+
+static inline void comp_set_endpoint(struct comp_dev *dev)
 {
-	if (dev->drv->ops.dai_set_loopback)
-		return dev->drv->ops.dai_set_loopback(dev, lbm);
-	return 0;
+	dev->is_endpoint = 1;
 }
 
 /* reset component downstream buffers  */
@@ -342,69 +282,14 @@ static inline int comp_buffer_reset(struct comp_dev *dev)
 			continue;
 
 		/* reset buffer next to the component*/
-		bzero(buffer->addr, buffer->desc.size);
+		bzero(buffer->addr, buffer->ipc_buffer.size);
 		buffer->w_ptr = buffer->r_ptr = buffer->addr;
-		buffer->end_addr = buffer->addr + buffer->desc.size;
-		buffer->free = buffer->desc.size;
+		buffer->end_addr = buffer->addr + buffer->ipc_buffer.size;
+		buffer->free = buffer->ipc_buffer.size;
 		buffer->avail = 0;
 	}
 
 	return 0;
-}
-
-/* default base component initialisations */
-void sys_comp_dai_init(void);
-void sys_comp_host_init(void);
-void sys_comp_mixer_init(void);
-void sys_comp_mux_init(void);
-void sys_comp_switch_init(void);
-void sys_comp_volume_init(void);
-
-static inline void comp_update_buffer_produce(struct comp_buffer *buffer)
-{
-	if (buffer->r_ptr < buffer->w_ptr)
-		buffer->avail = buffer->w_ptr - buffer->r_ptr;
-	else if (buffer->r_ptr == buffer->w_ptr)
-		buffer->avail = buffer->end_addr - buffer->addr; /* full */
-	else
-		buffer->avail = buffer->end_addr - buffer->r_ptr +
-			buffer->w_ptr - buffer->addr;
-	buffer->free = buffer->desc.size - buffer->avail;
-}
-
-static inline void comp_update_buffer_consume(struct comp_buffer *buffer)
-{
-	if (buffer->r_ptr < buffer->w_ptr)
-		buffer->avail = buffer->w_ptr - buffer->r_ptr;
-	else if (buffer->r_ptr == buffer->w_ptr)
-		buffer->avail = 0; /* empty */
-	else
-		buffer->avail = buffer->end_addr - buffer->r_ptr +
-			buffer->w_ptr - buffer->addr;
-	buffer->free = buffer->desc.size - buffer->avail;
-}
-
-static inline void comp_set_host_ep(struct comp_dev *dev)
-{
-	dev->is_host = 1;
-	dev->is_dai = 0;
-}
-
-static inline void comp_set_dai_ep(struct comp_dev *dev)
-{
-	dev->is_host = 0;
-	dev->is_dai = 1;
-}
-
-static inline void comp_clear_ep(struct comp_dev *dev)
-{
-	dev->is_host = 0;
-	dev->is_dai = 0;
-}
-
-static inline void comp_set_mixer(struct comp_dev *dev)
-{
-	dev->is_mixer = 1;
 }
 
 static inline void comp_set_sink_params(struct comp_dev *dev,
@@ -431,6 +316,15 @@ static inline void comp_set_source_params(struct comp_dev *dev,
 		source = container_of(clist, struct comp_buffer, sink_list);
 		source->params = *params;
 	}
+}
+
+/* get a components preload period count from source buffer */
+static inline uint32_t comp_get_preload_count(struct comp_dev *dev)
+{
+	struct comp_buffer *source;
+
+	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	return source->ipc_buffer.preload_count;
 }
 
 #endif

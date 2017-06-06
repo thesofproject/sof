@@ -26,6 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
 #include <stdint.h>
@@ -36,90 +37,64 @@
 #include <reef/list.h>
 #include <reef/stream.h>
 #include <reef/alloc.h>
+#include <reef/debug.h>
+#include <reef/ipc.h>
+#include <platform/timer.h>
+#include <platform/platform.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
-#include <uapi/ipc.h>
+#include <reef/audio/buffer.h>
 
-struct comp_data {
-	struct list_item list;		/* list of components */
-	spinlock_t lock;
-};
-
-static struct comp_data *cd;
-
-static struct comp_driver *get_drv(uint32_t type)
+/* create a new component in the pipeline */
+struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
-	struct list_item *clist;
-	struct comp_driver *drv = NULL;
+	struct comp_buffer *buffer;
 
-	spin_lock(&cd->lock);
+	trace_buffer("new");
 
-	/* search driver list for driver type */
-	list_for_item(clist, &cd->list) {
-
-		drv = container_of(clist, struct comp_driver, list);
-		if (drv->type == type)
-			goto out;
-	}
-
-	/* not found */
-	drv = NULL;
-
-out:
-	spin_unlock(&cd->lock);
-	return drv;
-}
-
-struct comp_dev *comp_new(struct sof_ipc_comp *comp)
-{
-	struct comp_dev *cdev;
-	struct comp_driver *drv;
-
-	/* find the driver for our new component */
-	drv = get_drv(comp->type);
-	if (drv == NULL) {
-		trace_comp_error("eCD");
-		trace_value(comp->type);
+	/* validate request */
+	if (desc->size == 0 || desc->size > HEAP_BUFFER_SIZE) {
+		trace_buffer_error("ebg");
+		trace_value(desc->size);
 		return NULL;
 	}
 
-	/* create the new component */
-	cdev = drv->ops.new(comp);
-	if (cdev == NULL) {
-		trace_comp_error("eCN");
+	/* allocate new buffer */
+	buffer = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*buffer));
+	if (buffer == NULL) {
+		trace_buffer_error("ebN");
 		return NULL;
 	}
 
-	/* init component */
-	memcpy(&cdev->comp, comp, sizeof(*comp));
-	cdev->drv = drv;
-	cdev->state = COMP_STATE_INIT;
-	spinlock_init(&cdev->lock);
-	list_init(&cdev->bsource_list);
-	list_init(&cdev->bsink_list);
+	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, desc->size);
+	if (buffer->addr == NULL) {
+		rfree(buffer);
+		trace_buffer_error("ebm");
+		return NULL;
+	}
 
-	return cdev;
+	bzero(buffer->addr, desc->size);
+	memcpy(&buffer->ipc_buffer, desc, sizeof(*desc));
+
+	//buffer->size =
+	//buffer->alloc_size =
+	buffer->ipc_buffer = *desc;
+	buffer->w_ptr = buffer->r_ptr = buffer->addr;
+	buffer->end_addr = buffer->addr + buffer->ipc_buffer.size;
+	buffer->free = buffer->ipc_buffer.size;
+	buffer->avail = 0;
+	buffer->connected = 0;
+
+	return buffer;
 }
 
-int comp_register(struct comp_driver *drv)
+/* free component in the pipeline */
+void buffer_free(struct comp_buffer *buffer)
 {
-	spin_lock(&cd->lock);
-	list_item_prepend(&drv->list, &cd->list);
-	spin_unlock(&cd->lock);
+	trace_buffer("BFr");
 
-	return 0;
-}
-
-void comp_unregister(struct comp_driver *drv)
-{
-	spin_lock(&cd->lock);
-	list_item_del(&drv->list);
-	spin_unlock(&cd->lock);
-}
-
-void sys_comp_init(void)
-{
-	cd = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*cd));
-	list_init(&cd->list);
-	spinlock_init(&cd->lock);
+	list_item_del(&buffer->source_list);
+	list_item_del(&buffer->sink_list);
+	rfree(buffer->addr);
+	rfree(buffer);
 }

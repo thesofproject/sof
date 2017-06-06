@@ -34,6 +34,7 @@
 
 #include <platform/shim.h>
 #include <platform/interrupt.h>
+#include <uapi/ipc.h>
 
 struct reef;
 
@@ -41,7 +42,7 @@ struct reef;
 #define PLATFORM_SSP_PORT	2
 
 /* default SSP stream format - need aligned with codec setting*/
-#define PLATFORM_SSP_STREAM_FORMAT	STREAM_FORMAT_S24_4LE
+#define PLATFORM_SSP_STREAM_FORMAT	SOF_IPC_FRAME_S24_4LE
 
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERUPT	IRQ_NUM_EXT_IA
@@ -51,13 +52,15 @@ struct reef;
 
 /* pipeline IRQ */
 #define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE5
-#define PLATFORM_PIPELINE_IRQ	IRQ_NUM_SOFTWARE4
 
 #define PLATFORM_IRQ_TASK_HIGH	IRQ_NUM_SOFTWARE4
 #define PLATFORM_IRQ_TASK_MED	IRQ_NUM_SOFTWARE3
 #define PLATFORM_IRQ_TASK_LOW	IRQ_NUM_SOFTWARE2
 
 #define PLATFORM_SCHEDULE_COST	200
+
+#define PLATFORM_FW_READY		(0x1 << 29)
+
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_HOST_DMA_MASK	0xFF000000
 
@@ -86,6 +89,9 @@ struct reef;
 #define PLAT_INT_PERIODS	2	/* give enough latency for DMA refill */
 
 #define PLATFORM_SCHED_CLOCK	CLK_SSP
+
+#define PLATFORM_NUM_MMAP_POSN	10
+#define PLATFORM_NUM_MMAP_VOL	10
 
 /* DMA channel drain timeout in microseconds */
 #define PLATFORM_DMA_TIMEOUT	1333

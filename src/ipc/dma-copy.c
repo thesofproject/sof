@@ -30,7 +30,7 @@
  */
 
 #include <stdint.h>
-#include <uapi/intel-ipc.h>
+#include <uapi/ipc.h>
 #include <reef/reef.h>
 #include <reef/debug.h>
 #include <reef/trace.h>

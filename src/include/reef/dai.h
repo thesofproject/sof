@@ -35,31 +35,6 @@
 #include <stdint.h>
 #include <reef/audio/component.h>
 
-#define DAI_FMT_I2S		1 /* I2S mode */
-#define DAI_FMT_RIGHT_J		2 /* Right Justified mode */
-#define DAI_FMT_LEFT_J		3 /* Left Justified mode */
-#define DAI_FMT_DSP_A		4 /* L data MSB after FRM LRC */
-#define DAI_FMT_DSP_B		5 /* L data MSB during FRM LRC */
-#define DAI_FMT_PDM		6 /* Pulse density modulation */
-
-#define DAI_FMT_CONT		(1 << 4) /* continuous clock */
-#define DAI_FMT_GATED		(0 << 4) /* clock is gated */
-
-#define DAI_FMT_NB_NF		(0 << 8) /* normal bit clock + frame */
-#define DAI_FMT_NB_IF		(2 << 8) /* normal BCLK + inv FRM */
-#define DAI_FMT_IB_NF		(3 << 8) /* invert BCLK + nor FRM */
-#define DAI_FMT_IB_IF		(4 << 8) /* invert BCLK + FRM */
-
-#define DAI_FMT_CBM_CFM		(0 << 12) /* codec clk & FRM master */
-#define DAI_FMT_CBS_CFM		(2 << 12) /* codec clk slave & FRM master */
-#define DAI_FMT_CBM_CFS		(3 << 12) /* codec clk master & frame slave */
-#define DAI_FMT_CBS_CFS		(4 << 12) /* codec clk & FRM slave */
-
-#define DAI_FMT_FORMAT_MASK	0x000f
-#define DAI_FMT_CLOCK_MASK	0x00f0
-#define DAI_FMT_INV_MASK	0x0f00
-#define DAI_FMT_MASTER_MASK	0xf000
-
 #define DAI_CLOCK_IN		0
 #define DAI_CLOCK_OUT		1
 
@@ -97,8 +72,22 @@ struct dai_slot_map {
 	uint32_t slot;		/* physical slot index */
 };
 
+enum dai_type {
+	DAI_TYPE_INTEL_SSP	= 0,
+	DAI_TYPE_INTEL_HDA,
+	DAI_TYPE_INTEL_DMIC,
+};
+
 /* DAI runtime hardware configuration */
 struct dai_config {
+	enum dai_type type;
+	union {
+		struct sof_ipc_dai_ssp_params *ssp;
+		struct sof_ipc_dai_hda_params *hda;
+		struct sof_ipc_dai_dmic_params *dmic;
+	};
+
+#if 0
 	uint32_t format;
 	uint32_t sample_size;	/* in BCLKs */
 	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
@@ -107,6 +96,7 @@ struct dai_config {
 	uint32_t mclk;		/* mclk frequency in Hz */
 	uint32_t clk_src;	/* DAI specific clk source */
 	uint32_t lbm;	/* loopback mode */
+#endif
 };
 
 struct dai_plat_fifo_data {

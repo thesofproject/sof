@@ -36,7 +36,7 @@
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/pmc.h>
-#include <uapi/intel-ipc.h>
+#include <uapi/ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
 #include <reef/dma.h>
@@ -48,17 +48,23 @@
 #include <reef/audio/component.h>
 #include <config.h>
 #include <string.h>
+#include <version.h>
 
-static const struct sst_intel_ipc_fw_ready ready = {
+static const struct sof_ipc_fw_ready ready = {
 	/* for host, we need exchange the naming of inxxx and outxxx */
 	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_OUTBOX_OFFSET,
 	.outbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,
 	.inbox_size = MAILBOX_OUTBOX_SIZE,
 	.outbox_size = MAILBOX_INBOX_SIZE,
-	.fw_info_size = sizeof(struct fw_info),
-	{
-		.rsvd = PACKAGE_STRING,
+	.version = {
+		.build = REEF_BUILD,
+		.minor = REEF_MINOR,
+		.major = REEF_MAJOR,
+		.date = __DATE__,
+		.time = __TIME__,
+		.tag = REEF_TAG,
 	},
+	/* TODO: add capabilities */
 };
 
 static struct work_queue_timesource platform_generic_queue = {
@@ -79,12 +85,12 @@ int platform_boot_complete(uint32_t boot_message)
 
 	mailbox_outbox_write(0, &ready, sizeof(ready));
 
+	/* now interrupt host to tell it we are done booting */
+	shim_write(SHIM_IPCDL, PLATFORM_FW_READY | outbox);
+	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
+
 	/* boot now complete so we can relax the CPU */
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
-
-	/* now interrupt host to tell it we are done booting */
-	shim_write(SHIM_IPCDL, IPC_INTEL_FW_READY | outbox);
-	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
 
 	return 0;
 }
@@ -211,33 +217,33 @@ int platform_init(struct reef *reef)
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	ssp0 = dai_get(COMP_TYPE_DAI_SSP, 0);
+	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0);
 	if (ssp0 == NULL)
 		return -ENODEV;
 	dai_probe(ssp0);
 
-	ssp1 = dai_get(COMP_TYPE_DAI_SSP, 1);
+	ssp1 = dai_get(SOF_DAI_INTEL_SSP, 1);
 	if (ssp1 == NULL)
 		return -ENODEV;
 	dai_probe(ssp1);
 
-	ssp2 = dai_get(COMP_TYPE_DAI_SSP, 2);
+	ssp2 = dai_get(SOF_DAI_INTEL_SSP, 2);
 	if (ssp2 == NULL)
 		return -ENODEV;
 	dai_probe(ssp2);
 
 #if defined CONFIG_CHERRYTRAIL
-	ssp3 = dai_get(COMP_TYPE_DAI_SSP, 3);
+	ssp3 = dai_get(SOF_DAI_INTEL_SSP, 3);
 	if (ssp3 == NULL)
 		return -ENODEV;
 	dai_probe(ssp3);
 
-	ssp4 = dai_get(COMP_TYPE_DAI_SSP, 4);
+	ssp4 = dai_get(SOF_DAI_INTEL_SSP, 4);
 	if (ssp4 == NULL)
 		return -ENODEV;
 	dai_probe(ssp4);
 
-	ssp5 = dai_get(COMP_TYPE_DAI_SSP, 5);
+	ssp5 = dai_get(SOF_DAI_INTEL_SSP, 5);
 	if (ssp5 == NULL)
 		return -ENODEV;
 	dai_probe(ssp5);
