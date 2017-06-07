@@ -1,6 +1,8 @@
 noinst_LIBRARIES = libaudio.a
 
 libaudio_a_SOURCES = \
+	eq_iir.c \
+	iir.c \
 	eq_fir.c \
 	fir.c \
 	tone.c \

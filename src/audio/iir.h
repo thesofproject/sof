@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,68 +25,51 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic audio task.
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/task.h>
-#include <reef/wait.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <platform/interrupt.h>
-#include <platform/shim.h>
-#include <reef/audio/pipeline.h>
-#include <reef/work.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <errno.h>
+/* A full 22th order equalizer with 11 biquads cover octave bands 1-11 in
+ * in the 0 - 20 kHz bandwidth.
+ */
+#define IIR_DF2T_BIQUADS_MAX 11
 
-struct audio_data {
-	struct pipeline *p;
+struct iir_state_df2t {
+	int mute; /* Set to 1 to mute EQ output, 0 otherwise */
+	int biquads; /* Number of IIR 2nd order sections total */
+	int biquads_in_series; /* Number of IIR 2nd order sections in series*/
+	int32_t *coef; /* Pointer to IIR coefficients */
+	int64_t *delay; /* Pointer to IIR delay line */
 };
 
-int do_task(struct reef *reef)
-{
-#ifdef STATIC_PIPE
-	struct audio_data pdata;
-#endif
-	/* init default audio components */
-	sys_comp_init();
-	sys_comp_dai_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_mux_init();
-	sys_comp_switch_init();
-	sys_comp_volume_init();
-        sys_comp_src_init();
-        sys_comp_tone_init();
-        sys_comp_eq_iir_init();
-        sys_comp_eq_fir_init();
+#define NHEADER_DF2T 2
 
-#if STATIC_PIPE
-	/* init static pipeline */
-	pdata.p = init_static_pipeline();
-	if (pdata.p == NULL)
-		panic(PANIC_TASK);
-#endif
-	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
+struct iir_header_df2t {
+	int32_t num_sections;
+	int32_t num_sections_in_series;
+};
 
-	/* main audio IPC processing loop */
-	while (1) {
+#define NBIQUAD_DF2T 7
 
-		/* sleep until next IPC or DMA */
-		wait_for_interrupt(0);
+struct iir_biquad_df2t {
+	int32_t a2; /* Q2.30 */
+	int32_t a1; /* Q2.30 */
+	int32_t b2; /* Q2.30 */
+	int32_t b1; /* Q2.30 */
+	int32_t b0; /* Q2.30 */
+	int32_t output_shift; /* Number of right shifts */
+	int32_t output_gain;  /* Q2.14 */
+};
 
-		/* now process any IPC messages from host */
-		ipc_process_msg_queue();
-	}
+int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x);
 
-	/* something bad happened */
-	return -EIO;
-}
+size_t iir_init_coef_df2t(struct iir_state_df2t *iir, int32_t config[]);
+
+void iir_init_delay_df2t(struct iir_state_df2t *iir, int64_t **delay);
+
+void iir_mute_df2t(struct iir_state_df2t *iir);
+
+void iir_unmute_df2t(struct iir_state_df2t *iir);
+
+void iir_reset_df2t(struct iir_state_df2t *iir);

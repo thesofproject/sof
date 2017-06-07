@@ -78,6 +78,8 @@
 #define COMP_CMD_TONE           106     /* Tone generator amplitude and frequency */
 #define COMP_CMD_EQ_FIR_CONFIG  107     /* Configuration data for FIR EQ */
 #define COMP_CMD_EQ_FIR_SWITCH  108     /* Update request for FIR EQ */
+#define COMP_CMD_EQ_IIR_CONFIG  109     /* Configuration data for IIR EQ */
+#define COMP_CMD_EQ_IIR_SWITCH  110     /* Response update request for IIR EQ */
 
 /* MMAP IPC status */
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
@@ -263,6 +265,7 @@ void sys_comp_switch_init(void);
 void sys_comp_volume_init(void);
 void sys_comp_src_init(void);
 void sys_comp_tone_init(void);
+void sys_comp_eq_iir_init(void);
 
 
 void sys_comp_eq_fir_init(void);

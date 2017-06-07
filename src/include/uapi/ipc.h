@@ -404,6 +404,7 @@ enum sof_comp_type {
 	SOF_COMP_TONE,
 	SOF_COMP_SWITCH,
 	SOF_COMP_BUFFER,
+	SOF_COMP_EQ_IIR,
 	SOF_COMP_EQ_FIR,
 };
 
@@ -681,10 +682,20 @@ struct sof_ipc_eq_fir_blob {
 	int32_t data[];
 } __attribute__((packed));
 
+struct sof_ipc_eq_iir_blob {
+	struct sof_ipc_hdr hdr;
+	struct sof_ipc_host_buffer buffer;
+	int32_t data[];
+} __attribute__((packed));
+
 struct sof_ipc_eq_fir_switch {
 	struct sof_ipc_hdr hdr;
 	int32_t data[];
 } __attribute__((packed));
 
+struct sof_ipc_eq_iir_switch {
+	struct sof_ipc_hdr hdr;
+	int32_t data[];
+} __attribute__((packed));
 
 #endif
