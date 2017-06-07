@@ -44,6 +44,7 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <platform/dma.h>
+#include <arch/cache.h>
 #include <uapi/ipc.h>
 
 #define trace_host(__e)	trace_event(TRACE_CLASS_HOST, __e)
@@ -127,6 +128,9 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	if (hd->params.pcm->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer->w_ptr += local_elem->size;
 
+		/* invalidate audio data */
+		dcache_invalidate_region(dma_buffer->w_ptr, local_elem->size);
+
 		if (dma_buffer->w_ptr >= dma_buffer->end_addr)
 			dma_buffer->w_ptr = dma_buffer->addr;
 #if 0
@@ -143,6 +147,9 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 #if 0
 		trace_value((uint32_t)(hd->dma_buffer->r_ptr - hd->dma_buffer->addr));
 #endif
+
+		/* writeback audio data */
+		dcache_writeback_region(dma_buffer->r_ptr, local_elem->size);
 
 		/* recalc available buffer space */
 		comp_update_buffer_consume(hd->dma_buffer);

@@ -29,6 +29,7 @@
  */
 
 #include <reef/trace.h>
+#include <arch/cache.h>
 #include <stdint.h>
 
 /* trace position */
@@ -46,6 +47,9 @@ void _trace_event(uint32_t event)
 	/* write timestamp and event to trace buffer */
 	t[0] = platform_timer_get(0);
 	t[1] = event;
+
+	/* writeback trace data */
+	dcache_writeback_region((void*)t, sizeof(uint32_t) * 2);
 
 	trace_pos += (sizeof(uint32_t) << 1);
 	if (trace_pos >= MAILBOX_TRACE_SIZE)

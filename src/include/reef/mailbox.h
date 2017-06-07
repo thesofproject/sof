@@ -32,6 +32,7 @@
 #define __INCLUDE_MAILBOX__
 
 #include <platform/mailbox.h>
+#include <arch/cache.h>
 #include <stdint.h>
 
 /* almost 1k should be enough for everyone ..... */
@@ -62,15 +63,19 @@
 	MAILBOX_DEBUG_SIZE
 
 #define mailbox_outbox_write(dest, src, bytes) \
-	rmemcpy((void*)(MAILBOX_OUTBOX_BASE + dest), src, bytes);
+	rmemcpy((void*)(MAILBOX_OUTBOX_BASE + dest), src, bytes); \
+	dcache_writeback_region((void*)(MAILBOX_OUTBOX_BASE + dest), bytes);
 
 #define mailbox_outbox_read(dest, src, bytes) \
+	dcache_invalidate_region((void*)(MAILBOX_OUTBOX_BASE + src), bytes); \
 	rmemcpy(dest, (void*)(MAILBOX_OUTBOX_BASE + src), bytes);
 
 #define mailbox_inbox_write(dest, src, bytes) \
-	rmemcpy((void*)(MAILBOX_INBOX_BASE + dest), src, bytes);
+	rmemcpy((void*)(MAILBOX_INBOX_BASE + dest), src, bytes); \
+	dcache_writeback_region((void*)(MAILBOX_INBOX_BASE + dest), bytes);
 
 #define mailbox_inbox_read(dest, src, bytes) \
+	dcache_invalidate_region((void*)(MAILBOX_INBOX_BASE + src), bytes); \
 	rmemcpy(dest, (void*)(MAILBOX_INBOX_BASE + src), bytes);
 
 #endif

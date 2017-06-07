@@ -43,6 +43,7 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <platform/dma.h>
+#include <arch/cache.h>
 
 #define DAI_PLAYBACK_STREAM	0
 #define DAI_CAPTURE_STREAM	1
@@ -94,6 +95,9 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 			dd->dai_pos_blks += dma_buffer->ipc_buffer.size;
 		}
 
+		/* writeback buffer contents from cache */
+		dcache_writeback_region(dma_buffer->r_ptr, dev->period_bytes);
+
 #if 0
 		// TODO: move this to new trace mechanism
 		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
@@ -110,6 +114,9 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
+
+		/* invalidate buffer contents */
+		dcache_writeback_region(dma_buffer->w_ptr, dev->period_bytes);
 
 		dma_buffer->w_ptr += dev->period_bytes;
 
