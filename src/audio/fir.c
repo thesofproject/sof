@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,67 +25,68 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic audio task.
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/task.h>
-#include <reef/wait.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <platform/interrupt.h>
-#include <platform/shim.h>
-#include <reef/audio/pipeline.h>
-#include <reef/work.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <errno.h>
 
-struct audio_data {
-	struct pipeline *p;
-};
+#ifdef MODULE_TEST
+#include <stdio.h>
+#endif
 
-int do_task(struct reef *reef)
+#include <reef/audio/format.h>
+#include "fir.h"
+
+#ifdef MODULE_TEST
+#include <stdio.h>
+#endif
+
+/*
+ * EQ FIR algorithm code
+ */
+
+void fir_reset(struct fir_state_32x16 *fir)
 {
-#ifdef STATIC_PIPE
-	struct audio_data pdata;
-#endif
-	/* init default audio components */
-	sys_comp_init();
-	sys_comp_dai_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_mux_init();
-	sys_comp_switch_init();
-	sys_comp_volume_init();
-        sys_comp_src_init();
-        sys_comp_tone_init();
-        sys_comp_eq_fir_init();
+	fir->mute = 1;
+	fir->rwi = 0;
+	fir->length = 0;
+	fir->delay_size = 0;
+	fir->in_shift = 0;
+	fir->out_shift = 0;
+	fir->coef = NULL;
+	/* There may need to know the beginning of dynamic allocation after
+	 * reset so omitting setting also fir->delay to NULL.
+	 */
+}
 
-#if STATIC_PIPE
-	/* init static pipeline */
-	pdata.p = init_static_pipeline();
-	if (pdata.p == NULL)
-		panic(PANIC_TASK);
-#endif
-	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
+int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
+{
+	struct fir_coef_32x16 *setup;
 
-	/* main audio IPC processing loop */
-	while (1) {
+	setup = (struct fir_coef_32x16 *) config;
+	fir->mute = 0;
+	fir->rwi = 0;
+	fir->length = (int) setup->length;
+	fir->in_shift = (int) setup->in_shift;
+	fir->out_shift = (int) setup->out_shift;
+	fir->coef = &setup->coef;
+	fir->delay = NULL;
+	fir->delay_size = 0;
 
-		/* sleep until next IPC or DMA */
-		wait_for_interrupt(0);
+	if ((fir->length > MAX_FIR_LENGTH) || (fir->length < 1))
+		return -EINVAL;
 
-		/* now process any IPC messages from host */
-		ipc_process_msg_queue();
-	}
+	return fir->length;
+}
 
-	/* something bad happened */
-	return -EIO;
+void fir_init_delay(struct fir_state_32x16 *fir, int16_t config[],
+	int32_t **data)
+{
+	fir->delay = *data;
+	fir->delay_size = fir->length;
+	*data += fir->delay_size; /* Point to next delay line start */
 }

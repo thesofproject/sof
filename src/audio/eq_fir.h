@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,67 +25,46 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic audio task.
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/task.h>
-#include <reef/wait.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <platform/interrupt.h>
-#include <platform/shim.h>
-#include <reef/audio/pipeline.h>
-#include <reef/work.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <errno.h>
+#ifndef EQ_FIR_H
+#define EQ_FIR_H
 
-struct audio_data {
-	struct pipeline *p;
+
+/*
+ * eq_fir_configuration data structure contains this information
+ *     stream max channels
+ *     number_of_responses_defined
+ *         0=no respones, 1=one response defined, 2=two responses defined, etc.
+ *     assign_response[STREAM_MAX_CHANNELS]
+ *         -1 = not defined, 0 = use first response, 1 = use 2nd response, etc.
+ *         E.g. {0, 0, 0, 0, -1, -1, -1, -1} would apply to channels 0-3 the
+ *	   same first defined response and leave channels 4-7 unequalized.
+ *     all_coefficients[]
+ *         Repeated data { filter_length, input_shift, output_shift, h[] }
+ *	   where vector h has filter_length number of coefficients.
+ *	   Coefficients in h[] are in Q1.15 format. 16384 = 0.5. The shifts
+ *	   are number of right shifts.
+ */
+
+#define NHEADER_EQ_FIR_BLOB 2 /* Header is two words plus assigns plus coef */
+
+#define EQ_FIR_MAX_BLOB_SIZE 4096 /* Max size allowed for blob */
+
+struct eq_fir_configuration {
+	uint16_t stream_max_channels;
+	uint16_t number_of_responses_defined;
+	uint16_t assign_response[PLATFORM_MAX_CHANNELS];
+	int16_t all_coefficients[];
 };
 
-int do_task(struct reef *reef)
-{
-#ifdef STATIC_PIPE
-	struct audio_data pdata;
+struct eq_fir_update {
+	uint16_t stream_max_channels;
+	uint16_t assign_response[PLATFORM_MAX_CHANNELS];
+
+};
+
 #endif
-	/* init default audio components */
-	sys_comp_init();
-	sys_comp_dai_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_mux_init();
-	sys_comp_switch_init();
-	sys_comp_volume_init();
-        sys_comp_src_init();
-        sys_comp_tone_init();
-        sys_comp_eq_fir_init();
-
-#if STATIC_PIPE
-	/* init static pipeline */
-	pdata.p = init_static_pipeline();
-	if (pdata.p == NULL)
-		panic(PANIC_TASK);
-#endif
-	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
-
-	/* main audio IPC processing loop */
-	while (1) {
-
-		/* sleep until next IPC or DMA */
-		wait_for_interrupt(0);
-
-		/* now process any IPC messages from host */
-		ipc_process_msg_queue();
-	}
-
-	/* something bad happened */
-	return -EIO;
-}

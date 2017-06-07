@@ -76,6 +76,8 @@
 #define COMP_CMD_LOOPBACK	105
 
 #define COMP_CMD_TONE           106     /* Tone generator amplitude and frequency */
+#define COMP_CMD_EQ_FIR_CONFIG  107     /* Configuration data for FIR EQ */
+#define COMP_CMD_EQ_FIR_SWITCH  108     /* Update request for FIR EQ */
 
 /* MMAP IPC status */
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
@@ -263,6 +265,7 @@ void sys_comp_src_init(void);
 void sys_comp_tone_init(void);
 
 
+void sys_comp_eq_fir_init(void);
 
 static inline void comp_set_endpoint(struct comp_dev *dev)
 {

@@ -404,6 +404,7 @@ enum sof_comp_type {
 	SOF_COMP_TONE,
 	SOF_COMP_SWITCH,
 	SOF_COMP_BUFFER,
+	SOF_COMP_EQ_FIR,
 };
 
 /* create new generic component - SOF_IPC_TPLG_COMP_NEW */
@@ -673,5 +674,17 @@ struct sof_ipc_window {
 	uint32_t num_windows;
 	struct sof_ipc_window_elem window[0];
 }  __attribute__((packed));
+/* IPC to pass configuration blobs to equalizers and re-assign responses */
+struct sof_ipc_eq_fir_blob {
+	struct sof_ipc_hdr hdr;
+	struct sof_ipc_host_buffer buffer;
+	int32_t data[];
+} __attribute__((packed));
+
+struct sof_ipc_eq_fir_switch {
+	struct sof_ipc_hdr hdr;
+	int32_t data[];
+} __attribute__((packed));
+
 
 #endif
