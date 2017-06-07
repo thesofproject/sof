@@ -505,6 +505,14 @@ struct sof_ipc_comp_mux {
 struct sof_ipc_comp_tone {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_pcm_comp pcm;
+	int32_t frequency;
+	int32_t amplitude;
+	int32_t freq_mult;
+	int32_t ampl_mult;
+	int32_t length;
+	int32_t period;
+	int32_t repeats;
+	int32_t ramp_step;
 } __attribute__((packed));
 
 /* frees components, buffers and pipelines

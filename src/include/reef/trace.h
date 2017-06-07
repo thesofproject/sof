@@ -83,6 +83,7 @@
 #define TRACE_CLASS_SWITCH	(15 << 24)
 #define TRACE_CLASS_MUX		(16 << 24)
 #define TRACE_CLASS_SRC         (17 << 24)
+#define TRACE_CLASS_TONE        (18 << 24)
 
 /* move to config.h */
 #define TRACE	1

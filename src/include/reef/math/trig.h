@@ -25,66 +25,18 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic audio task.
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/task.h>
-#include <reef/wait.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <platform/interrupt.h>
-#include <platform/shim.h>
-#include <reef/audio/pipeline.h>
-#include <reef/work.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <errno.h>
+#ifndef TRIG_H
+#define TRIG_H
 
-struct audio_data {
-	struct pipeline *p;
-};
+#define PI_DIV2_Q4_28 421657428
+#define PI_Q4_28      843314857
+#define PI_MUL2_Q4_28     1686629713
 
-int do_task(struct reef *reef)
-{
-#ifdef STATIC_PIPE
-	struct audio_data pdata;
+int32_t sin_fixed(int32_t w); /* Input is Q4.28, output is Q1.31 */
+
 #endif
-	/* init default audio components */
-	sys_comp_init();
-	sys_comp_dai_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_mux_init();
-	sys_comp_switch_init();
-	sys_comp_volume_init();
-        sys_comp_src_init();
-        sys_comp_tone_init();
-
-#if STATIC_PIPE
-	/* init static pipeline */
-	pdata.p = init_static_pipeline();
-	if (pdata.p == NULL)
-		panic(PANIC_TASK);
-#endif
-	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
-
-	/* main audio IPC processing loop */
-	while (1) {
-
-		/* sleep until next IPC or DMA */
-		wait_for_interrupt(0);
-
-		/* now process any IPC messages from host */
-		ipc_process_msg_queue();
-	}
-
-	/* something bad happened */
-	return -EIO;
-}

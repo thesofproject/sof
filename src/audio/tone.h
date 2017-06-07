@@ -25,66 +25,29 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic audio task.
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/task.h>
-#include <reef/wait.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <platform/interrupt.h>
-#include <platform/shim.h>
-#include <reef/audio/pipeline.h>
-#include <reef/work.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <errno.h>
 
-struct audio_data {
-	struct pipeline *p;
+struct tone_state {
+	int mute;
+	int32_t a; /* Current amplitude Q1.31 */
+	int32_t a_target; /* Target amplitude Q1.31 */
+	int32_t ampl_coef; /* Amplitude multiplier Q2.30 */
+	int32_t c; /* Coefficient 2*pi/Fs Q1.31 */
+	int32_t f; /* Frequency Q18.14 */
+	int32_t freq_coef; /* Frequency multiplier Q2.30 */
+	int32_t fs; /* Sample rate in Hertz Q32.0 */
+	int32_t ramp_step; /* Amplitude ramp step Q1.31 */
+	int32_t w; /* Angle radians Q4.28 */
+	int32_t w_step; /* Angle step Q4.28 */
+	uint32_t block_count;
+	uint32_t repeat_count;
+	uint32_t repeats; /* Number of repeats for tone (sweep steps) */
+	uint32_t sample_count;
+	uint32_t samples_in_block; /* Samples in 125 us block */
+	uint32_t tone_length; /* Active length in 125 us blocks */
+	uint32_t tone_period; /* Active + idle time in 125 us blocks */
 };
-
-int do_task(struct reef *reef)
-{
-#ifdef STATIC_PIPE
-	struct audio_data pdata;
-#endif
-	/* init default audio components */
-	sys_comp_init();
-	sys_comp_dai_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_mux_init();
-	sys_comp_switch_init();
-	sys_comp_volume_init();
-        sys_comp_src_init();
-        sys_comp_tone_init();
-
-#if STATIC_PIPE
-	/* init static pipeline */
-	pdata.p = init_static_pipeline();
-	if (pdata.p == NULL)
-		panic(PANIC_TASK);
-#endif
-	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
-
-	/* main audio IPC processing loop */
-	while (1) {
-
-		/* sleep until next IPC or DMA */
-		wait_for_interrupt(0);
-
-		/* now process any IPC messages from host */
-		ipc_process_msg_queue();
-	}
-
-	/* something bad happened */
-	return -EIO;
-}

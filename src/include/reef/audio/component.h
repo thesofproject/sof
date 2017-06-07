@@ -75,6 +75,7 @@
 #define COMP_CMD_SRC		104
 #define COMP_CMD_LOOPBACK	105
 
+#define COMP_CMD_TONE           106     /* Tone generator amplitude and frequency */
 
 /* MMAP IPC status */
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
@@ -259,6 +260,7 @@ void sys_comp_mux_init(void);
 void sys_comp_switch_init(void);
 void sys_comp_volume_init(void);
 void sys_comp_src_init(void);
+void sys_comp_tone_init(void);
 
 
 

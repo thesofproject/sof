@@ -1,6 +1,7 @@
 noinst_LIBRARIES = libaudio.a
 
 libaudio_a_SOURCES = \
+	tone.c \
 	src.c \
 	src_core.c \
 	mixer.c \
