@@ -258,6 +258,7 @@ void sys_comp_mixer_init(void);
 void sys_comp_mux_init(void);
 void sys_comp_switch_init(void);
 void sys_comp_volume_init(void);
+void sys_comp_src_init(void);
 
 
 

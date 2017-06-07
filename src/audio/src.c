@@ -1,0 +1,572 @@
+/*
+ * Copyright (c) 2017, Intel Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *   * Neither the name of the Intel Corporation nor the
+ *     names of its contributors may be used to endorse or promote products
+ *     derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
+ */
+
+#include <stdint.h>
+#include <stddef.h>
+#include <errno.h>
+#include <reef/reef.h>
+#include <reef/lock.h>
+#include <reef/list.h>
+#include <reef/stream.h>
+#include <reef/alloc.h>
+#include <reef/work.h>
+#include <reef/clock.h>
+#include <reef/audio/component.h>
+#include <reef/audio/pipeline.h>
+#include "src_core.h"
+
+#ifdef MODULE_TEST
+#include <stdio.h>
+#endif
+
+#define trace_src(__e) trace_event(TRACE_CLASS_SRC, __e)
+#define tracev_src(__e) tracev_event(TRACE_CLASS_SRC, __e)
+#define trace_src_error(__e) trace_error(TRACE_CLASS_SRC, __e)
+
+/* src component private data */
+struct comp_data {
+	struct polyphase_src src[PLATFORM_MAX_CHANNELS];
+	int32_t *delay_lines;
+	int scratch_length;
+	//int32_t z[STAGE_BUF_SIZE];
+	void (*src_func)(struct comp_dev *dev,
+		struct comp_buffer *source,
+		struct comp_buffer *sink,
+		uint32_t source_frames,
+		uint32_t sink_frames);
+};
+
+/* Common mute function for 2s and 1s SRC. This preserves the same
+ * buffer consume and produce pattern as normal operation.
+ */
+static void src_muted_s32(struct comp_buffer *source, struct comp_buffer *sink,
+	int blk_in, int blk_out, int nch, int source_frames)
+{
+
+	int i;
+	int32_t *src = (int32_t *) source->r_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t *end = (int32_t *) sink->end_addr;
+	int n_read = 0;
+	int n_max;
+	int n;
+	int n_written = 0;
+
+	for (i = 0; i < source_frames - blk_in + 1; i += blk_in) {
+		n_max = end - dest;
+		n = nch*blk_out;
+		if (n < n_max) {
+			bzero(dest, n * sizeof(int32_t));
+			dest += n;
+		} else {
+			/* Also case n_max == n is done here */
+			bzero(dest, n_max * sizeof(int32_t));
+			dest = (int32_t *) sink->addr;
+			bzero(dest, (n - n_max) * sizeof(int32_t));
+			dest += n - n_max;
+		}
+		n_read += nch*blk_in;
+		n_written += nch*blk_out;
+	}
+	source->r_ptr = src + n_read;
+	sink->w_ptr = dest;
+	comp_wrap_source_r_ptr_circular(source);
+	comp_wrap_sink_w_ptr_circular(sink);
+	comp_update_source_free_avail(source, n_read);
+	comp_update_sink_free_avail(sink, n_written);
+}
+
+/* Fallback function to just output muted samples and advance
+ * pointers. Note that a buffer that is not having integer number of
+ * frames in a period will drift since there is no similar blk in/out
+ * check as for SRC.
+ */
+static void fallback_s32(struct comp_dev *dev,
+	struct comp_buffer *source,
+	struct comp_buffer *sink,
+	uint32_t source_frames,
+	uint32_t sink_frames)
+{
+
+	struct comp_data *cd = comp_get_drvdata(dev);
+	//int32_t *src = (int32_t*) source->r_ptr;
+	//int32_t *dest = (int32_t*) sink->w_ptr;
+	int nch = sink->params.pcm->channels;
+	int blk_in = cd->src[0].blk_in;
+	int blk_out = cd->src[0].blk_out;
+
+	src_muted_s32(source, sink, blk_in, blk_out, nch, source_frames);
+
+}
+
+/* Normal 2 stage SRC */
+static void src_2s_s32_default(struct comp_dev *dev,
+	struct comp_buffer *source, struct comp_buffer *sink,
+	uint32_t source_frames, uint32_t sink_frames)
+{
+	int i, j;
+	struct polyphase_src *s;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int blk_in = cd->src[0].blk_in;
+	int blk_out = cd->src[0].blk_out;
+	int n_times1 = cd->src[0].stage1_times;
+	int n_times2 = cd->src[0].stage2_times;
+	int nch = sink->params.pcm->channels;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t *src = (int32_t *) source->r_ptr;
+	struct src_stage_prm s1, s2;
+	int n_read = 0;
+	int n_written = 0;
+
+	if (cd->src[0].mute) {
+		src_muted_s32(source, sink, blk_in, blk_out, nch, source_frames);
+		return;
+	}
+
+	s1.times = n_times1;
+	s1.x_end_addr = source->end_addr;
+	s1.x_size = source->alloc_size;
+	s1.x_inc = nch;
+	s1.y_end_addr = &cd->delay_lines[cd->scratch_length];
+	s1.y_size = STAGE_BUF_SIZE * sizeof(int32_t);
+	s1.y_inc = 1;
+
+	s2.times = n_times2;
+	s2.x_end_addr = &cd->delay_lines[cd->scratch_length];
+	s2.x_size = STAGE_BUF_SIZE * sizeof(int32_t);
+	s2.x_inc = 1;
+	s2.y_end_addr = sink->end_addr;
+	s2.y_size = sink->alloc_size;
+	s2.y_inc = nch;
+
+	for (j = 0; j < nch; j++) {
+		s = &cd->src[j]; /* Point to src[] for this channel */
+		s1.x_rptr = src++;
+		s2.y_wptr = dest++;
+		s1.state = &s->state1;
+		s1.stage = s->stage1;
+		s2.state = &s->state2;
+		s2.stage = s->stage2;
+
+		for (i = 0; i < source_frames - blk_in + 1; i += blk_in) {
+			/* Reset output to buffer start, read interleaved */
+			s1.y_wptr = cd->delay_lines;
+			src_polyphase_stage_cir(&s1);
+			s2.x_rptr = cd->delay_lines;
+			src_polyphase_stage_cir(&s2);
+
+			n_read += blk_in;
+			n_written += blk_out;
+		}
+	}
+	source->r_ptr = s1.x_rptr - nch + 1;
+	sink->w_ptr = s2.y_wptr - nch + 1;
+	comp_wrap_source_r_ptr_circular(source);
+	comp_wrap_sink_w_ptr_circular(sink);
+	comp_update_source_free_avail(source, n_read);
+	comp_update_sink_free_avail(sink, n_written);
+}
+
+/* 1 stage SRC for simple conversions */
+static void src_1s_s32_default(struct comp_dev *dev,
+	struct comp_buffer *source, struct comp_buffer *sink,
+	uint32_t source_frames, uint32_t sink_frames)
+{
+	int i, j;
+	//int32_t *xp, *yp;
+	struct polyphase_src *s;
+
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int blk_in = cd->src[0].blk_in;
+	int blk_out = cd->src[0].blk_out;
+	int n_times = cd->src[0].stage1_times;
+	int nch = sink->params.pcm->channels;
+	int32_t *dest = (int32_t*) sink->w_ptr;
+	int32_t *src = (int32_t*) source->r_ptr;
+	int n_read = 0;
+	int n_written = 0;
+	struct src_stage_prm s1;
+
+	if (cd->src[0].mute) {
+		src_muted_s32(source, sink, blk_in, blk_out, nch, source_frames);
+		return;
+	}
+
+	s1.times = n_times;
+	s1.x_end_addr = source->end_addr;
+	s1.x_size = source->alloc_size;
+	s1.x_inc = nch;
+	s1.y_end_addr = sink->end_addr;
+	s1.y_size = sink->alloc_size;
+	s1.y_inc = nch;
+
+	for (j = 0; j < nch; j++) {
+		s = &cd->src[j]; /* Point to src for this channel */
+		s1.x_rptr = src++;
+		s1.y_wptr = dest++;
+		s1.state = &s->state1;
+		s1.stage = s->stage1;
+
+		for (i = 0; i + blk_in - 1 < source_frames; i += blk_in) {
+			src_polyphase_stage_cir(&s1);
+
+			n_read += blk_in;
+			n_written += blk_out;
+		}
+
+	}
+	source->r_ptr = s1.x_rptr - nch + 1;
+	sink->w_ptr = s1.y_wptr - nch + 1;
+
+	comp_wrap_source_r_ptr_circular(source);
+	comp_wrap_sink_w_ptr_circular(sink);
+	comp_update_source_free_avail(source, n_read);
+	comp_update_sink_free_avail(sink, n_written);
+}
+
+static struct comp_dev *src_new(struct sof_ipc_comp *comp)
+{
+	int i;
+	struct comp_dev *dev;
+	struct comp_data *cd;
+
+	trace_src("SNw");
+	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	if (dev == NULL)
+		return NULL;
+
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_src));
+
+	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	if (cd == NULL) {
+#if SRC_SOF == 1
+		rfree(dev);
+#else
+		rfree(dev);
+#endif
+		return NULL;
+	}
+
+	comp_set_drvdata(dev, cd);
+#if SRC_SOF == 0
+
+#endif
+
+	cd->delay_lines = NULL;
+	cd->src_func = src_2s_s32_default;
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		src_polyphase_reset(&cd->src[i]);
+
+	return dev;
+}
+
+static void src_free(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	trace_src("SFr");
+
+#if SRC_SOF == 1
+	/* Free dynamically reserved buffers for SRC algorithm */
+	if (cd->delay_lines != NULL)
+		rfree(cd->delay_lines);
+
+	rfree(cd);
+	rfree(dev);
+#else
+	/* Free dynamically reserved buffers for SRC algorithm */
+	if (cd->delay_lines != NULL)
+		rfree(cd->delay_lines);
+
+	rfree(cd);
+	rfree(dev);
+#endif
+}
+
+/* set component audio stream parameters */
+static int src_params(struct comp_dev *dev, struct stream_params *params)
+{
+	int i;
+	struct comp_buffer *source, *sink;
+	struct src_alloc need;
+	size_t delay_lines_size;
+	int32_t *buffer_start;
+	int n = 0;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	trace_src("SPa");
+
+	/* SRC supports only S32_LE PCM format */
+	if ((params->type != STREAM_TYPE_PCM)
+		|| (params->pcm->frame_fmt != SOF_IPC_FRAME_S32_LE))
+		return -EINVAL;
+
+	/* No data transformation */
+	comp_set_sink_params(dev, params);
+
+	/* Allocate needed memory for delay lines */
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+		sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+		source_list);
+	src_buffer_lengths(&need, source->params.pcm->rate,
+		sink->params.pcm->rate, source->params.pcm->channels);
+	delay_lines_size = sizeof(int32_t) * need.total;
+	if (cd->delay_lines != NULL)
+		rfree(cd->delay_lines);
+
+	cd->delay_lines = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, delay_lines_size);
+	if (cd->delay_lines == NULL)
+		return -EINVAL;
+
+	/* Clear all delay lines here */
+	memset(cd->delay_lines, 0, delay_lines_size);
+	cd->scratch_length = need.scratch;
+	buffer_start = cd->delay_lines + need.scratch;
+
+	/* Initize SRC for actual sample rate */
+	for (i = 0; i < source->params.pcm->channels; i++) {
+		n = src_polyphase_init(&cd->src[i], source->params.pcm->rate,
+			sink->params.pcm->rate, buffer_start);
+		buffer_start += need.single_src;
+	}
+
+	switch (n) {
+	case 1:
+		cd->src_func = src_1s_s32_default; /* Simpler 1 stage SRC */
+		break;
+	case 2:
+		cd->src_func = src_2s_s32_default; /* Default 2 stage SRC */
+		break;
+	default:
+		/* This is possibly due to missing coefficients for
+		 * requested rates combination. Sink audio will be
+		 * muted if copy() is run.
+		 */
+		trace_src("SFa");
+		cd->src_func = fallback_s32;
+		return(-EINVAL);
+		break;
+	}
+
+	/* Check that src blk_in and blk_out are less than params.period_frames.
+	 * Return an error if the period is too short.
+	 */
+	if (src_polyphase_get_blk_in(&cd->src[0]) > source->params.pcm->period_count)
+		return(-EINVAL);
+
+	if (src_polyphase_get_blk_out(&cd->src[0]) > sink->params.pcm->period_count)
+		return(-EINVAL);
+
+
+	return 0;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int src_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	trace_src("SCm");
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_src *cv;
+	int i;
+
+	switch (cmd) {
+	case COMP_CMD_SRC:
+		trace_src("SMa");
+		cv = (struct sof_ipc_comp_src *) data;
+		cv->in_mask = src_input_rates();
+		cv->out_mask = src_output_rates();
+		break;
+	case COMP_CMD_MUTE:
+		trace_src("SMu");
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+			src_polyphase_mute(&cd->src[i]);
+
+		break;
+	case COMP_CMD_UNMUTE:
+		trace_src("SUm");
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+			src_polyphase_unmute(&cd->src[i]);
+
+		break;
+	case COMP_CMD_START:
+		trace_src("SSt");
+		dev->state = COMP_STATE_RUNNING;
+		break;
+	case COMP_CMD_STOP:
+		trace_src("SSp");
+		if (dev->state == COMP_STATE_RUNNING ||
+			dev->state == COMP_STATE_DRAINING ||
+			dev->state == COMP_STATE_PAUSED) {
+			comp_buffer_reset(dev);
+			dev->state = COMP_STATE_SETUP;
+		}
+		break;
+	case COMP_CMD_PAUSE:
+		trace_src("SPe");
+		/* only support pausing for running */
+		if (dev->state == COMP_STATE_RUNNING)
+			dev->state = COMP_STATE_PAUSED;
+
+		break;
+	case COMP_CMD_RELEASE:
+		trace_src("SRl");
+		dev->state = COMP_STATE_RUNNING;
+		break;
+	default:
+		trace_src("SDf");
+		break;
+	}
+
+	return 0;
+}
+
+/* copy and process stream data from source to sink buffers */
+static int src_copy(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
+	uint32_t frames_source;
+	uint32_t frames_sink;
+	int need_source, need_sink, min_frames;
+
+	trace_comp("SRC");
+
+	/* src component needs 1 source and 1 sink buffer */
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+		sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+		source_list);
+
+	/* Check that source has enough frames available and sink enough
+	 * frames free.
+	 */
+	frames_source = source->params.pcm->period_count;
+	frames_sink = sink->params.pcm->period_count;
+	min_frames = src_polyphase_get_blk_in(&cd->src[0]);
+	if (frames_source > min_frames)
+		need_source = frames_source * source->params.pcm->frame_size;
+	else {
+		frames_source = min_frames;
+		need_source = min_frames * source->params.pcm->frame_size;
+	}
+
+	min_frames = src_polyphase_get_blk_out(&cd->src[0]);
+	if (frames_sink > min_frames)
+		need_sink = frames_sink * sink->params.pcm->frame_size;
+	else {
+		frames_sink = min_frames;
+		need_sink = min_frames * sink->params.pcm->frame_size;
+	}
+
+	/* Run as many times as buffers allow */
+	while ((source->avail >= need_source) && (sink->free >= need_sink)) {
+		/* Run src */
+		cd->src_func(dev, source, sink, frames_source, frames_sink);
+
+	}
+
+	return 0;
+}
+
+static int src_prepare(struct comp_dev *dev)
+{
+	// struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
+	// int i;
+
+	trace_src("SPp");
+
+#if 1
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+		sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+		source_list);
+
+	trace_value(source->params.pcm->channels);
+	trace_value(source->params.pcm->rate);
+	trace_value(sink->params.pcm->rate);
+#endif
+
+	//dev->preload = PLAT_INT_PERIODS;
+	dev->state = COMP_STATE_PREPARE;
+	return 0;
+}
+
+static int src_preload(struct comp_dev *dev)
+{
+	//int i;
+	trace_src("SPl");
+
+
+	//for (i = 0; i < dev->preload; i++)
+	//    src_copy(dev);
+
+	return 0;
+}
+
+static int src_reset(struct comp_dev *dev)
+{
+	int i;
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	trace_src("SRe");
+
+	cd->src_func = src_2s_s32_default;
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		src_polyphase_reset(&cd->src[i]);
+
+	dev->state = COMP_STATE_INIT;
+	return 0;
+}
+
+struct comp_driver comp_src = {
+	.type = SOF_COMP_SRC,
+	.ops =
+	{
+		.new = src_new,
+		.free = src_free,
+		.params = src_params,
+		.cmd = src_cmd,
+		.copy = src_copy,
+		.prepare = src_prepare,
+		.reset = src_reset,
+		.preload = src_preload,
+	},
+};
+
+void sys_comp_src_init(void)
+{
+	comp_register(&comp_src);
+}

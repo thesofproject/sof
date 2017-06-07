@@ -25,65 +25,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic audio task.
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/task.h>
-#include <reef/wait.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <platform/interrupt.h>
-#include <platform/shim.h>
-#include <reef/audio/pipeline.h>
-#include <reef/work.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <errno.h>
+/* Euclidean algorithm for greatest common denominator from
+ * pseudocode in
+ * https://en.wikipedia.org/wiki/Euclidean_algorithm#Implementations
+ */
 
-struct audio_data {
-	struct pipeline *p;
-};
-
-int do_task(struct reef *reef)
+int gcd(int a, int b)
 {
-#ifdef STATIC_PIPE
-	struct audio_data pdata;
-#endif
-	/* init default audio components */
-	sys_comp_init();
-	sys_comp_dai_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_mux_init();
-	sys_comp_switch_init();
-	sys_comp_volume_init();
-        sys_comp_src_init();
-
-#if STATIC_PIPE
-	/* init static pipeline */
-	pdata.p = init_static_pipeline();
-	if (pdata.p == NULL)
-		panic(PANIC_TASK);
-#endif
-	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
-
-	/* main audio IPC processing loop */
-	while (1) {
-
-		/* sleep until next IPC or DMA */
-		wait_for_interrupt(0);
-
-		/* now process any IPC messages from host */
-		ipc_process_msg_queue();
+	int t;
+	while (b != 0) {
+		t = b;
+		b = a % b;
+		a = t;
 	}
-
-	/* something bad happened */
-	return -EIO;
+	return a;
 }

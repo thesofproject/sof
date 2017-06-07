@@ -53,6 +53,7 @@ reef_LDADD = \
 	../../lib/libcore.a \
 	../../ipc/libipc.a \
 	../../audio/libaudio.a \
+	../../math/libmath.a \
 	../../drivers/libdrivers.a \
 	libreset.a \
 	xtos/libxtos.a \

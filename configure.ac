@@ -150,6 +150,7 @@ AC_CONFIG_FILES([
 	src/arch/xtensa/hal/Makefile
 	src/arch/xtensa/xtos/Makefile
 	src/audio/Makefile
+        src/math/Makefile
 	src/drivers/Makefile
 	src/include/Makefile
 	src/include/reef/Makefile

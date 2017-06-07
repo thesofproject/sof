@@ -102,4 +102,37 @@ static inline void comp_update_buffer_consume(struct comp_buffer *buffer)
 	buffer->free = buffer->ipc_buffer.size - buffer->avail;
 }
 
+static inline void comp_update_source_free_avail(struct comp_buffer *src, int n)
+{
+        src->avail -= sizeof(int32_t)*n;
+        src->free += sizeof(int32_t)*n;
+}
+
+
+static inline void comp_update_sink_free_avail(struct comp_buffer *snk, int n)
+{
+        snk->avail += sizeof(int32_t)*n;
+        snk->free -= sizeof(int32_t)*n;
+}
+
+
+static inline void comp_wrap_source_r_ptr_circular(struct comp_buffer *src)
+{
+        if (src->r_ptr >= src->end_addr)
+                src->r_ptr -= src->alloc_size;
+
+        if (src->r_ptr < src->addr)
+                src->r_ptr += src->alloc_size;
+}
+
+
+static inline void comp_wrap_sink_w_ptr_circular(struct comp_buffer *snk)
+{
+        if (snk->w_ptr >= snk->end_addr)
+                snk->w_ptr -= snk->alloc_size;
+
+        if (snk->w_ptr < snk->addr)
+                snk->w_ptr += snk->alloc_size;
+}
+
 #endif

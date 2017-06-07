@@ -109,7 +109,7 @@
 #define HEAP_RT_COUNT1024		4
 
 /* Heap configuration */
-#define REEF_DATA_SIZE			0x4000
+#define REEF_DATA_SIZE			0x6800
 
 #define HEAP_SYSTEM_BASE		(DRAM0_BASE + REEF_DATA_SIZE)
 #define HEAP_SYSTEM_SIZE		0x2000
