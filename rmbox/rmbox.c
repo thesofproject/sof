@@ -34,6 +34,10 @@
 #define TRACE_CLASS_LOCK	(10 << 24)
 #define TRACE_CLASS_MEM		(11 << 24)
 #define TRACE_CLASS_MIXER	(12 << 24)
+#define TRACE_CLASS_BUFFER	(13 << 24)
+#define TRACE_CLASS_VOLUME	(14 << 24)
+#define TRACE_CLASS_SWITCH	(15 << 24)
+#define TRACE_CLASS_MUX		(16 << 24)
 
 #define MAILBOX_HOST_OFFSET	0x144000
 
@@ -134,6 +138,14 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp)
 		trace = "mem";
 	else if (class == TRACE_CLASS_MIXER)
 		trace = "mixer";
+	else if (class == TRACE_CLASS_BUFFER)
+		trace = "buffer";
+	else if (class == TRACE_CLASS_VOLUME)
+		trace = "volume";
+	else if (class == TRACE_CLASS_SWITCH)
+		trace = "switch";
+	else if (class == TRACE_CLASS_MUX)
+		trace = "mux";
 	else {
 		printf("value 0x%8.8x\n", (uint32_t)val);
 		return;
