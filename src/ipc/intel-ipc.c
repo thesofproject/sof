@@ -468,23 +468,24 @@ static uint32_t ipc_comp_set_value(uint32_t header, uint32_t cmd)
 static uint32_t ipc_comp_get_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc_comp_dev *stream_dev;
-	struct sof_ipc_ctrl_values values;
+	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
 	int ret;
 
 	trace_ipc("VoG");
 
+
 	/* get the component */
-	stream_dev = ipc_get_comp(_ipc, values.comp_id);
+	stream_dev = ipc_get_comp(_ipc, values->comp_id);
 	if (stream_dev == NULL)
 		return -ENODEV;
 	
 	/* get component values */
-	ret = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, &values);
+	ret = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, values);
 	if (ret < 0)
 		return ret;
 
 	/* write component values to the outbox */
-	mailbox_outbox_write(&values, 0, sizeof(values));
+	mailbox_outbox_write(values, 0, sizeof(*values));
 
 	return 0;
 }
