@@ -50,6 +50,13 @@ struct image {
 	int data_size;
 	int file_size;
 	int num_modules;
+	uint32_t text_start;
+	uint32_t text_end;
+	uint32_t data_start;
+	uint32_t data_end;
+	uint32_t bss_start;
+	uint32_t bss_end;
+
 
 	/* disa */
 	void *in_buffer;
@@ -82,8 +89,12 @@ struct adsp {
 	uint32_t iram_size;
 	uint32_t dram_base;
 	uint32_t dram_size;
+	uint32_t host_iram_offset;
+	uint32_t host_dram_offset;
+
 	uint32_t image_size;
 	uint32_t dram_offset;
+
 	enum machine_id machine_id;
 	struct adsp_ops ops;
 	const struct section *sections;
