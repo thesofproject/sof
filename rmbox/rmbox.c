@@ -267,6 +267,7 @@ int main(int argc, char *argv[])
 	if (in_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for reading %d\n",
 			in_file, errno);
+		return -EIO;
 	}
 
 	/* open outfile for writing */
@@ -277,6 +278,7 @@ int main(int argc, char *argv[])
 	if (out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			out_file, errno);
+		return -EIO;
 	}
 
 	/* start to converting mailbox */
