@@ -327,7 +327,8 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 
 	trace_volume("new");
 
-	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_volume));
 	if (dev == NULL)
 		return NULL;
 	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_volume));

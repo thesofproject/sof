@@ -87,7 +87,8 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 	struct mixer_data *md;
 
 	trace_mixer("new");
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_mixer));
 	if (dev == NULL)
 		return NULL;
 

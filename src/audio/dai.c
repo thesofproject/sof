@@ -181,7 +181,8 @@ static struct comp_dev *dai_new_ssp(struct sof_ipc_comp *comp)
 	struct dai_data *dd;
 	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)comp;
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_dai));
 	if (dev == NULL)
 		return NULL;
 	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_dai));

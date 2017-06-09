@@ -42,6 +42,7 @@
 #include <reef/clock.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
+#include <uapi/ipc.h>
 #include "src_core.h"
 
 #ifdef MODULE_TEST
@@ -260,7 +261,8 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 
 	trace_src("SNw");
-	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_src));
 	if (dev == NULL)
 		return NULL;
 

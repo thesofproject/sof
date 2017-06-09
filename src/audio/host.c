@@ -230,7 +230,8 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	trace_host("new");
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_host));
 	if (dev == NULL)
 		return NULL;
 	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_host));
