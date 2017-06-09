@@ -92,14 +92,14 @@ static void usage(char *name)
 	exit(0);
 }
 
-static inline float clk_to_usecs(uint32_t time)
+static inline float to_usecs(uint32_t time, uint32_t clk)
 {
-	/* trace timestamp uses SSP system clock at default 19.2MHz ticks */
+	/* trace timestamp uses CPU system clock at default 25MHz ticks */
 	// TODO: support variable clock rates
-	return (float)time / 19.2;
+	return (float)time / clk;
 }
 
-static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp)
+static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, uint32_t clk)
 {
 	const char *trace;
 	uint32_t class;
@@ -107,8 +107,8 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp)
 	/* timestamp or value ? */
 	if ((addr % 8) == 0) {
 		printf("trace.io: timestamp 0x%8.8x (%2.2f us) \tdelta 0x%8.8x (%2.2f us)\t",
-			(uint32_t)val, clk_to_usecs(val),
-			(uint32_t)val - *timestamp, clk_to_usecs(val - *timestamp));
+			(uint32_t)val, to_usecs(val, clk),
+			(uint32_t)val - *timestamp, to_usecs(val - *timestamp, clk));
 		*timestamp = val;
 		return;
 	}
@@ -238,18 +238,21 @@ static int snapshot(const char *name)
 int main(int argc, char *argv[])
 {
 	int opt, count;
-	const char * out_file = NULL, *in_file = "/sys/kernel/debug/mbox";
+	const char * out_file = NULL, *in_file = "/sys/kernel/debug/sof/mbox";
 	FILE *in_fd = NULL, *out_fd = NULL;
 	char c, tmp[4] = {0};
-	uint32_t addr = 0, val, timestamp = 0;
+	uint32_t addr = 0, val, clk = 25, timestamp = 0;
 
-	while ((opt = getopt(argc, argv, "ho:i:s:m:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:s:m:c:")) != -1) {
 		switch (opt) {
 		case 'o':
 			out_file = optarg;
 			break;
 		case 'i':
 			in_file = optarg;
+			break;
+		case 'c':
+			clk = atoi(optarg);
 			break;
 		case 's':
 			return snapshot(optarg);
@@ -299,7 +302,7 @@ convert:
 
 		if (addr >= MAILBOX_TRACE_OFFSET &&
 			addr < MAILBOX_TRACE_OFFSET + MAILBOX_TRACE_SIZE)
-			show_trace(val, addr, &timestamp);
+			show_trace(val, addr, &timestamp, clk);
 		else if (addr >= MAILBOX_DEBUG_OFFSET &&
 			addr < MAILBOX_DEBUG_OFFSET + MAILBOX_DEBUG_SIZE)
 			show_debug(val, addr);
