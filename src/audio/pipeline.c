@@ -310,7 +310,7 @@ static int component_op_upstream(struct op_data *op_data,
 	struct comp_dev *start, struct comp_dev *current, int op_start)
 {
 	struct list_item *clist;
-	int err;
+	int err = 0;
 
 	trace_pipe("CO+");
 	trace_value(current->comp.id);
