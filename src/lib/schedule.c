@@ -206,7 +206,7 @@ int scheduler_init(struct reef *reef)
 {
 	trace_pipe("ScI");
 
-	sch = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*sch));
+	sch = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*sch));
 	list_init(&sch->list);
 	spinlock_init(&sch->lock);
 	sch->clock = PLATFORM_SCHED_CLOCK;
