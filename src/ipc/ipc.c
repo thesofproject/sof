@@ -238,7 +238,7 @@ int ipc_pipe_connect(struct ipc *ipc,
 
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp(ipc, connect->comp_source_id);
-	if (icd_source != NULL) {
+	if (icd_source == NULL) {
 		trace_ipc_error("eCr");
 		trace_value(connect->comp_source_id);
 		return EINVAL;
