@@ -598,6 +598,8 @@ struct sof_ipc_pm_ctx {
  * Firmware boot and version
  */
 
+#define SOF_IPC_MAX_ELEMS	16
+
 /* extended data types that can be appended onto end of sof_ipc_fw_ready */
 enum sof_ipc_ext_data {
 	SOF_IPC_EXT_DMA_BUFFER = 0,
@@ -622,9 +624,6 @@ struct sof_ipc_fw_ready {
 	uint32_t inbox_size;
 	uint32_t outbox_size;
 	struct sof_ipc_fw_version version;
-
-	/* header to first extended capability/platform structure */
-	struct sof_ipc_hdr ext_hdr;
 } __attribute__((packed));
 
 /*
@@ -637,6 +636,12 @@ enum sof_ipc_region {
 	SOF_IPC_REGION_TRACE,
 	SOF_IPC_REGION_DEBUG,
 	SOF_IPC_REGION_STREAM,
+	SOF_IPC_REGION_REGS,
+};
+
+struct sof_ipc_ext_data_hdr {
+	struct sof_ipc_hdr hdr;
+	enum sof_ipc_ext_data type;			/* SOF_IPC_EXT_ */
 };
 
 struct sof_ipc_dma_buffer_elem {
@@ -647,10 +652,9 @@ struct sof_ipc_dma_buffer_elem {
 
 /* extended data DMA buffers for IPC, trace and debug */
 struct sof_ipc_dma_buffer_data {
-	struct sof_ipc_hdr hdr;
-	enum sof_ipc_ext_data type;			/* SOF_IPC_EXT_DMA_BUFFER */
+	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_buffers;
-	struct sof_ipc_dma_buffer_elem buffer[0];	/* host files in buffer[n].buffer */
+	struct sof_ipc_dma_buffer_elem buffer[];	/* host files in buffer[n].buffer */
 }  __attribute__((packed));
 
 
@@ -658,15 +662,15 @@ struct sof_ipc_window_elem {
 	enum sof_ipc_region type;
 	uint32_t id;	/* platform specific - used to map to host memory */
 	uint32_t flags;	/* R, W, RW, etc - to define */
-	uint32_t size;
+	uint32_t size;	/* size of region in bytes */
+	uint32_t offset; /* offset in window region as windows can be partitioned */
 };
 
 /* extended data memory windows for IPC, trace and debug */
 struct sof_ipc_window {
-	struct sof_ipc_hdr hdr;
-	enum sof_ipc_ext_data type;			/* SOF_IPC_EXT_DMA_BUFFER */
+	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_windows;
-	struct sof_ipc_window_elem window[0];
+	struct sof_ipc_window_elem window[];
 }  __attribute__((packed));
 /* IPC to pass configuration blobs to equalizers and re-assign responses */
 struct sof_ipc_eq_fir_blob {
