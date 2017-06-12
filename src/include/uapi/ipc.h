@@ -54,22 +54,22 @@
 #define SOF_CMD_TYPE_MASK			(0xfff << SOF_CMD_TYPE_SHIFT)
 #define SOF_CMD_TYPE(x)				(x << SOF_CMD_TYPE_SHIFT)
 
-
 /* Global Message Types */
-#define SOF_IPC_GLB_REPLY			SOF_GLB_TYPE(0x0)
-#define SOF_IPC_GLB_COMPOUND			SOF_GLB_TYPE(0x1)
-#define SOF_IPC_GLB_TPLG_MSG			SOF_GLB_TYPE(0x2)
-#define SOF_IPC_GLB_PM_MSG			SOF_GLB_TYPE(0x3)
-#define SOF_IPC_GLB_COMP_MSG			SOF_GLB_TYPE(0x4)
-#define SOF_IPC_GLB_STREAM_MSG			SOF_GLB_TYPE(0x5)
+#define SOF_IPC_GLB_REPLY			SOF_GLB_TYPE(0x1)
+#define SOF_IPC_GLB_COMPOUND			SOF_GLB_TYPE(0x2)
+#define SOF_IPC_GLB_TPLG_MSG			SOF_GLB_TYPE(0x3)
+#define SOF_IPC_GLB_PM_MSG			SOF_GLB_TYPE(0x4)
+#define SOF_IPC_GLB_COMP_MSG			SOF_GLB_TYPE(0x5)
+#define SOF_IPC_GLB_STREAM_MSG			SOF_GLB_TYPE(0x6)
+#define SOF_IPC_FW_READY			SOF_GLB_TYPE(0x7)
 
 /*
  * DSP Command Message Types
  */
 
 /* reply - error details in mailbox reply */
-#define SOF_IPC_REPLY_SUCCESS			SOF_CMD_TYPE(0x000)
-#define SOF_IPC_REPLY_ERROR			SOF_CMD_TYPE(0x001)
+#define SOF_IPC_REPLY_SUCCESS			SOF_CMD_TYPE(0x001)
+#define SOF_IPC_REPLY_ERROR			SOF_CMD_TYPE(0x002)
 
 /* topology */
 #define SOF_IPC_TPLG_COMP_NEW			SOF_CMD_TYPE(0x000)
@@ -121,13 +121,6 @@
 
 /* Get message component id */
 #define SOF_IPC_MESSAGE_ID(x)			(x & 0xffff)
-
-/*
- * Firmware ready message
- */
-/* Firmware Ready Message */
-#define SOF_FW_READY				(0x1 << 29)
-
 
 /* maximum message size for mailbox Tx/Tx */
 #define SOF_IPC_MSG_MAX_SIZE			128
