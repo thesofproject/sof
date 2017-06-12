@@ -169,6 +169,9 @@ static void src_2s_s32_default(struct comp_dev *dev,
 	s2.y_size = sink->alloc_size;
 	s2.y_inc = nch;
 
+	s1.x_rptr = src + nch - 1;
+	s2.y_wptr = dest + nch - 1;
+
 	for (j = 0; j < nch; j++) {
 		s = &cd->src[j]; /* Point to src[] for this channel */
 		s1.x_rptr = src++;
@@ -229,6 +232,8 @@ static void src_1s_s32_default(struct comp_dev *dev,
 	s1.y_end_addr = sink->end_addr;
 	s1.y_size = sink->alloc_size;
 	s1.y_inc = nch;
+	s1.x_rptr = src + nch - 1;
+	s1.y_wptr = dest + nch - 1;
 
 	for (j = 0; j < nch; j++) {
 		s = &cd->src[j]; /* Point to src for this channel */
@@ -270,18 +275,11 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 
 	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
-#if SRC_SOF == 1
 		rfree(dev);
-#else
-		rfree(dev);
-#endif
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, cd);
-#if SRC_SOF == 0
-
-#endif
 
 	cd->delay_lines = NULL;
 	cd->src_func = src_2s_s32_default;
@@ -297,21 +295,12 @@ static void src_free(struct comp_dev *dev)
 
 	trace_src("SFr");
 
-#if SRC_SOF == 1
 	/* Free dynamically reserved buffers for SRC algorithm */
 	if (cd->delay_lines != NULL)
 		rfree(cd->delay_lines);
 
 	rfree(cd);
 	rfree(dev);
-#else
-	/* Free dynamically reserved buffers for SRC algorithm */
-	if (cd->delay_lines != NULL)
-		rfree(cd->delay_lines);
-
-	rfree(cd);
-	rfree(dev);
-#endif
 }
 
 /* set component audio stream parameters */
