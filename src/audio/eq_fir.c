@@ -334,9 +334,10 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 			return -EINVAL;
 
 		cd->config = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
-		if (cd->config != NULL)
-			memcpy(cd->config, blob->data, bs);
+		if (cd->config == NULL)
+			return -EINVAL;
 
+		memcpy(cd->config, blob->data, bs);
 		eq_fir_setup(cd->fir, cd->config, source->params.pcm->channels);
 		break;
 	case COMP_CMD_MUTE:
