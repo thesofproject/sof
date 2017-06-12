@@ -339,9 +339,10 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 
 		/* Allocate and make a copy of the blob and setup IIR */
 		cd->config = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
-		if (cd->config != NULL)
-			memcpy(cd->config, blob->data, bs);
+		if (cd->config == NULL)
+			return -EINVAL;
 
+		memcpy(cd->config, blob->data, bs);
 		eq_iir_setup(cd->iir, cd->config, source->params.pcm->channels);
 		break;
 	case COMP_CMD_MUTE:
