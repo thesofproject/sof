@@ -333,7 +333,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 
 		/* Copy new config, need to decode data to know the size */
 		blob = (struct sof_ipc_eq_iir_blob *) data;
-		bs = blob->hdr.size - sizeof(struct sof_ipc_hdr);
+		bs = blob->comp.hdr.size - sizeof(struct sof_ipc_hdr);
 		if (bs > EQ_IIR_MAX_BLOB_SIZE)
 			return -EINVAL;
 
