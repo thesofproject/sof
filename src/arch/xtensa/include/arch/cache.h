@@ -38,42 +38,29 @@
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
 
 static inline void dcache_writeback_region(void *addr, size_t size) {}
-static inline void icache_writeback_region(void *addr, size_t size) {}
 static inline void dcache_invalidate_region(void *addr, size_t size) {}
 static inline void icache_invalidate_region(void *addr, size_t size) {}
 static inline void dcache_writeback_invalidate_region(void *addr, size_t size) {}
-static inline void icache_writeback_invalidate_region(void *addr, size_t size) {}
-
 #else
 
 static inline void dcache_writeback_region(void *addr, size_t size)
 {
-	xthal_dcache_region_writeback(void *addr, size_t size);
-}
-
-static inline void icache_writeback_region(void *addr, size_t size)
-{
-	xthal_icache_region_writeback(void *addr, size_t size);
+	xthal_dcache_region_writeback(addr, size);
 }
 
 static inline void dcache_invalidate_region(void *addr, size_t size)
 {
-	xthal_dcache_region_invalidate(void *addr, size_t size);
+	xthal_dcache_region_invalidate(addr, size);
 }
 
 static inline void icache_invalidate_region(void *addr, size_t size)
 {
-	xthal_icache_region_invalidate(void *addr, size_t size);
+	xthal_icache_region_invalidate(addr, size);
 }
 
 static inline void dcache_writeback_invalidate_region(void *addr, size_t size)
 {
 	xthal_dcache_region_writeback_inv(addr, size);
-}
-
-static inline void icache_writeback_invalidate_region(void *addr, size_t size)
-{
-	xthal_icache_region_writeback_inv(addr, size);
 }
 
 #endif
