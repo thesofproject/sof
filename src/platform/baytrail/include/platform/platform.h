@@ -49,6 +49,7 @@ struct reef;
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
+#define PLATFORM_PAGE_TABLE_SIZE	256
 
 /* pipeline IRQ */
 #define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE5

@@ -199,10 +199,10 @@ int platform_ipc_init(struct ipc *ipc)
 		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
 	/* allocate page table buffer */
-	iipc->page_table = rballoc(RZONE_SYS, RFLAGS_NONE,
-		HOST_PAGE_SIZE);
+	iipc->page_table = rzalloc(RZONE_SYS, RFLAGS_NONE,
+		PLATFORM_PAGE_TABLE_SIZE);
 	if (iipc->page_table)
-		bzero(iipc->page_table, HOST_PAGE_SIZE);
+		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
 
 	/* dma */
 	iipc->dmac0 = dma_get(DMA_ID_DMAC0);
