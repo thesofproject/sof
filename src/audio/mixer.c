@@ -84,6 +84,8 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
+	struct sof_ipc_comp_mixer *mixer;
+	struct sof_ipc_comp_mixer *ipc_mixer = (struct sof_ipc_comp_mixer *)comp;
 	struct mixer_data *md;
 
 	trace_mixer("new");
@@ -92,7 +94,8 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 	if (dev == NULL)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_mixer));
+	mixer = (struct sof_ipc_comp_mixer *)&dev->comp;
+	memcpy(mixer, ipc_mixer, sizeof(struct sof_ipc_comp_mixer));
 
 	md = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*md));
 	if (md == NULL) {

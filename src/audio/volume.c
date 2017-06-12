@@ -322,6 +322,8 @@ static uint32_t vol_work(void *data, uint32_t delay)
 static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
+	struct sof_ipc_comp_volume *vol;
+	struct sof_ipc_comp_volume *ipc_vol = (struct sof_ipc_comp_volume *)comp;
 	struct comp_data *cd;
 	int i;
 
@@ -331,7 +333,9 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		COMP_SIZE(struct sof_ipc_comp_volume));
 	if (dev == NULL)
 		return NULL;
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_volume));
+
+	vol = (struct sof_ipc_comp_volume *)&dev->comp;
+	memcpy(vol, ipc_vol, sizeof(struct sof_ipc_comp_volume));
 
 	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {

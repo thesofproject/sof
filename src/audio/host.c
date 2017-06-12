@@ -226,6 +226,8 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
+	struct sof_ipc_comp_host *host;
+	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
 	struct dma_sg_elem *elem;
 
 	trace_host("new");
@@ -234,7 +236,9 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		COMP_SIZE(struct sof_ipc_comp_host));
 	if (dev == NULL)
 		return NULL;
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_host));
+
+	host = (struct sof_ipc_comp_host *)&dev->comp;
+	memcpy(host, ipc_host, sizeof(struct sof_ipc_comp_host));
 
 	hd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*hd));
 	if (hd == NULL) {

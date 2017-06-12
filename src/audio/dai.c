@@ -178,13 +178,18 @@ next_copy:
 static struct comp_dev *dai_new_ssp(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
+	struct sof_ipc_comp_dai *dai;
+	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)comp;
 	struct dai_data *dd;
-	struct sof_ipc_comp_dai *dai = (struct sof_ipc_comp_dai *)comp;
 
 	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
 		COMP_SIZE(struct sof_ipc_comp_dai));
 	if (dev == NULL)
 		return NULL;
+
+	dai = (struct sof_ipc_comp_dai *)&dev->comp;
+	memcpy(dai, ipc_dai, sizeof(struct sof_ipc_comp_dai));
+
 	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_dai));
 
 	dd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dd));

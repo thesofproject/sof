@@ -261,17 +261,21 @@ static void src_1s_s32_default(struct comp_dev *dev,
 
 static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 {
-	int i;
 	struct comp_dev *dev;
+	struct sof_ipc_comp_src *src;
+	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *)comp;
 	struct comp_data *cd;
+	int i;
 
 	trace_src("SNw");
+
 	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE,
 		COMP_SIZE(struct sof_ipc_comp_src));
 	if (dev == NULL)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_src));
+	src = (struct sof_ipc_comp_src *)&dev->comp;
+	memcpy(src, ipc_src, sizeof(struct sof_ipc_comp_src));
 
 	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
