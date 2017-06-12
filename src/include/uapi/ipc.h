@@ -510,6 +510,29 @@ struct sof_ipc_comp_tone {
 	int32_t ramp_step;
 } __attribute__((packed));
 
+/* IPC to pass configuration blobs to equalizers and re-assign responses */
+struct sof_ipc_eq_fir_blob {
+	struct sof_ipc_comp comp;
+	struct sof_ipc_host_buffer buffer;
+	int32_t data[];
+} __attribute__((packed));
+
+struct sof_ipc_eq_iir_blob {
+	struct sof_ipc_comp comp;
+	struct sof_ipc_host_buffer buffer;
+	int32_t data[];
+} __attribute__((packed));
+
+struct sof_ipc_eq_fir_switch {
+	struct sof_ipc_comp comp;
+	int32_t data[];
+} __attribute__((packed));
+
+struct sof_ipc_eq_iir_switch {
+	struct sof_ipc_comp comp;
+	int32_t data[];
+} __attribute__((packed));
+
 /* frees components, buffers and pipelines
  * SOF_IPC_TPLG_COMP_FREE, SOF_IPC_TPLG_PIPE_FREE, SOF_IPC_TPLG_BUFFER_FREE
  */
@@ -672,27 +695,5 @@ struct sof_ipc_window {
 	uint32_t num_windows;
 	struct sof_ipc_window_elem window[];
 }  __attribute__((packed));
-/* IPC to pass configuration blobs to equalizers and re-assign responses */
-struct sof_ipc_eq_fir_blob {
-	struct sof_ipc_hdr hdr;
-	struct sof_ipc_host_buffer buffer;
-	int32_t data[];
-} __attribute__((packed));
-
-struct sof_ipc_eq_iir_blob {
-	struct sof_ipc_hdr hdr;
-	struct sof_ipc_host_buffer buffer;
-	int32_t data[];
-} __attribute__((packed));
-
-struct sof_ipc_eq_fir_switch {
-	struct sof_ipc_hdr hdr;
-	int32_t data[];
-} __attribute__((packed));
-
-struct sof_ipc_eq_iir_switch {
-	struct sof_ipc_hdr hdr;
-	int32_t data[];
-} __attribute__((packed));
 
 #endif
