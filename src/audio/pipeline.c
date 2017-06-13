@@ -136,12 +136,14 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source,
 	spin_lock(&source->lock);
 	list_item_prepend(&buffer->source_list, &source->bsink_list);
 	buffer->source = source;
+	source->pipeline = p;
 	spin_unlock(&source->lock);
 
 	/* connect sink to buffer */
 	spin_lock(&sink->lock);
 	list_item_prepend(&buffer->sink_list, &sink->bsource_list);
 	buffer->sink = sink;
+	sink->pipeline = p;
 	spin_unlock(&sink->lock);
 
 	/* connect the components */
