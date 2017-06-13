@@ -380,7 +380,7 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
-
+	comp_set_endpoint(dev);
 
 	tonegen_reset(&cd->sg);
 
