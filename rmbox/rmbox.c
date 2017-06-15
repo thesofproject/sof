@@ -230,6 +230,8 @@ static int snapshot(const char *name)
 			addr += 4;
 		}
 
+		fclose(in_fd);
+		fclose(out_fd);
 	}
 
 	return 0;
@@ -281,6 +283,7 @@ int main(int argc, char *argv[])
 	if (out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			out_file, errno);
+		fclose(in_fd);
 		return -EIO;
 	}
 
