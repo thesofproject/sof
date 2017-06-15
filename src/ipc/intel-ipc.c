@@ -195,7 +195,7 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
  */
 
 /* allocate a new stream */
-static uint32_t ipc_stream_pcm_params(uint32_t stream)
+static int ipc_stream_pcm_params(uint32_t stream)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
@@ -244,7 +244,7 @@ error:
 }
 
 /* free stream resources */
-static uint32_t ipc_stream_pcm_free(uint32_t header)
+static int ipc_stream_pcm_free(uint32_t header)
 {
 	struct sof_ipc_stream *free_req = _ipc->comp_data;
 	struct ipc_comp_dev *pcm_dev;
@@ -261,7 +261,7 @@ static uint32_t ipc_stream_pcm_free(uint32_t header)
 	return 0;
 }
 
-static uint32_t ipc_stream_trigger(uint32_t header)
+static int ipc_stream_trigger(uint32_t header)
 {
 	struct ipc_comp_dev *pcm_dev;
 	uint32_t cmd = COMP_CMD_RELEASE;
@@ -310,7 +310,7 @@ error:
 	return 0;
 }
 
-static uint32_t ipc_glb_stream_message(uint32_t header)
+static int ipc_glb_stream_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
@@ -335,7 +335,7 @@ static uint32_t ipc_glb_stream_message(uint32_t header)
  * DAI IPC Operations.
  */
 
-static uint32_t ipc_dai_ssp_config(uint32_t header)
+static int ipc_dai_ssp_config(uint32_t header)
 {
 	struct sof_ipc_dai_ssp_params *ssp = _ipc->comp_data;
 	struct ipc_comp_dev *dai_dev;
@@ -363,7 +363,7 @@ error:
  * PM IPC Operations.
  */
 
-static uint32_t ipc_pm_context_size(uint32_t header)
+static int ipc_pm_context_size(uint32_t header)
 {
 	struct sof_ipc_pm_ctx pm_ctx;
 
@@ -379,7 +379,7 @@ static uint32_t ipc_pm_context_size(uint32_t header)
 	return 0;
 }
 
-static uint32_t ipc_pm_context_save(uint32_t header)
+static int ipc_pm_context_save(uint32_t header)
 {
 	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
@@ -415,7 +415,7 @@ static uint32_t ipc_pm_context_save(uint32_t header)
 	return 0;
 }
 
-static uint32_t ipc_pm_context_restore(uint32_t header)
+static int ipc_pm_context_restore(uint32_t header)
 {
 //	struct sof_ipc_pm_ctx pm_ctx = _ipc->comp_data;
 
@@ -426,7 +426,7 @@ static uint32_t ipc_pm_context_restore(uint32_t header)
 	return 0;
 }
 
-static uint32_t ipc_glb_pm_message(uint32_t header)
+static int ipc_glb_pm_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
@@ -449,7 +449,7 @@ static uint32_t ipc_glb_pm_message(uint32_t header)
  * Topology IPC Operations.
  */
 
-static uint32_t ipc_comp_set_value(uint32_t header, uint32_t cmd)
+static int ipc_comp_set_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc_comp_dev *stream_dev;
 	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
@@ -465,14 +465,13 @@ static uint32_t ipc_comp_set_value(uint32_t header, uint32_t cmd)
 	return comp_cmd(stream_dev->cd, cmd, values);
 }
 
-static uint32_t ipc_comp_get_value(uint32_t header, uint32_t cmd)
+static int ipc_comp_get_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc_comp_dev *stream_dev;
 	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
 	int ret;
 
 	trace_ipc("VoG");
-
 
 	/* get the component */
 	stream_dev = ipc_get_comp(_ipc, values->comp_id);
@@ -490,7 +489,7 @@ static uint32_t ipc_comp_get_value(uint32_t header, uint32_t cmd)
 	return 0;
 }
 
-static uint32_t ipc_glb_comp_message(uint32_t header)
+static int ipc_glb_comp_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
@@ -520,15 +519,15 @@ static uint32_t ipc_glb_comp_message(uint32_t header)
 	default:
 		trace_ipc_error("eCc");
 		trace_value(header);
-		return EINVAL;
+		return -EINVAL;
 	}
 }
 
-static uint32_t ipc_glb_tplg_comp_new(uint32_t header)
+static int ipc_glb_tplg_comp_new(uint32_t header)
 {
 	struct sof_ipc_comp *comp = _ipc->comp_data;
 	struct sof_ipc_comp_reply reply;
-	uint32_t ret;
+	int ret;
 
 	trace_ipc("tcn");
 
@@ -542,14 +541,14 @@ static uint32_t ipc_glb_tplg_comp_new(uint32_t header)
 	return 0;
 }
 
-static uint32_t ipc_glb_tplg_buffer_new(uint32_t header)
+static int ipc_glb_tplg_buffer_new(uint32_t header)
 {
 	struct sof_ipc_buffer *ipc_buffer = _ipc->comp_data;
 
 	return ipc_buffer_new(_ipc, ipc_buffer);
 }
 
-static uint32_t ipc_glb_tplg_pipe_new(uint32_t header)
+static int ipc_glb_tplg_pipe_new(uint32_t header)
 {
 	struct sof_ipc_pipe_new *ipc_pipeline = _ipc->comp_data;
 
@@ -558,7 +557,7 @@ static uint32_t ipc_glb_tplg_pipe_new(uint32_t header)
 	return ipc_pipeline_new(_ipc, ipc_pipeline);
 }
 
-static uint32_t ipc_glb_tplg_comp_connect(uint32_t header)
+static int ipc_glb_tplg_comp_connect(uint32_t header)
 {
 	struct sof_ipc_pipe_comp_connect *connect = _ipc->comp_data;
 
@@ -567,7 +566,7 @@ static uint32_t ipc_glb_tplg_comp_connect(uint32_t header)
 	return ipc_comp_connect(_ipc, connect);
 }
 
-static uint32_t ipc_glb_tplg_pipe_connect(uint32_t header)
+static int ipc_glb_tplg_pipe_connect(uint32_t header)
 {
 	struct sof_ipc_pipe_pipe_connect *connect = _ipc->comp_data;
 
@@ -576,7 +575,7 @@ static uint32_t ipc_glb_tplg_pipe_connect(uint32_t header)
 	return ipc_pipe_connect(_ipc, connect);
 }
 
-static uint32_t ipc_glb_tplg_free(uint32_t header,
+static int ipc_glb_tplg_free(uint32_t header,
 		void (*free_func)(struct ipc *ipc, uint32_t id))
 {
 	struct sof_ipc_free *ipc_free = _ipc->comp_data;
@@ -589,7 +588,7 @@ static uint32_t ipc_glb_tplg_free(uint32_t header,
 	return 0;
 }
 
-static uint32_t ipc_glb_tplg_message(uint32_t header)
+static int ipc_glb_tplg_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
@@ -623,7 +622,7 @@ static uint32_t ipc_glb_tplg_message(uint32_t header)
  * Global IPC Operations.
  */
 
-uint32_t ipc_cmd(void)
+int ipc_cmd(void)
 {
 	struct sof_ipc_hdr *hdr;
 	uint32_t type;
