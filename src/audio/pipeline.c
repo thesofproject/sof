@@ -395,7 +395,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	if (host->direction == SOF_IPC_STREAM_PLAYBACK) {
 
 		/* first of all prepare the pipeline */
-		ret = component_op_downstream(&op_data, dev, dev, 1);
+		ret = component_op_downstream(&op_data, dev, dev, 0);
 		if (ret < 0)
 			goto out;
 
@@ -410,7 +410,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 				break;
 		}
 	} else {
-		ret = component_op_upstream(&op_data, dev, dev, 1);
+		ret = component_op_upstream(&op_data, dev, dev, 0);
 	}
 
 out:
