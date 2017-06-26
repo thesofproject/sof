@@ -60,8 +60,6 @@ struct reef;
 
 #define PLATFORM_SCHEDULE_COST	200
 
-#define PLATFORM_FW_READY		(0x1 << 29)
-
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_HOST_DMA_MASK	0xFF000000
 

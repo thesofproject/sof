@@ -86,7 +86,7 @@ int platform_boot_complete(uint32_t boot_message)
 	mailbox_outbox_write(0, &ready, sizeof(ready));
 
 	/* now interrupt host to tell it we are done booting */
-	shim_write(SHIM_IPCDL, PLATFORM_FW_READY | outbox);
+	shim_write(SHIM_IPCDL, SOF_IPC_FW_READY | outbox);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
 
 	/* boot now complete so we can relax the CPU */
