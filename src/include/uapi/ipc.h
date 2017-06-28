@@ -516,6 +516,12 @@ struct sof_ipc_comp_eq_fir {
        struct sof_ipc_pcm_comp pcm;
 } __attribute__((packed));
 
+/* IIR equalizer component */
+struct sof_ipc_comp_eq_iir {
+       struct sof_ipc_comp comp;
+       struct sof_ipc_pcm_comp pcm;
+} __attribute__((packed));
+
 /* IPC to pass configuration blobs to equalizers and re-assign responses */
 struct sof_ipc_eq_fir_blob {
 	struct sof_ipc_comp comp;

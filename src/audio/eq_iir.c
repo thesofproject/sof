@@ -205,7 +205,7 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 	/* Allocate all IIR channels data in a big chunk and clear it */
 	iir_delay = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, size_sum);
 	if (iir_delay == NULL)
-		return -EINVAL;
+		return -ENOMEM;
 
 	memset(iir_delay, 0, size_sum);
 
@@ -226,7 +226,7 @@ static int eq_iir_switch_response(struct iir_state_df2t iir[],
 	struct eq_iir_configuration *config, struct eq_iir_update *update,
 	int nch)
 {
-	int i;
+	int i, ret;
 
 	/* Copy assign response from update and re-initilize EQ */
 	if (config == NULL)
@@ -237,9 +237,9 @@ static int eq_iir_switch_response(struct iir_state_df2t iir[],
 			config->assign_response[i] = update->assign_response[i];
 	}
 
-	eq_iir_setup(iir, config, nch);
+	ret = eq_iir_setup(iir, config, nch);
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -312,19 +312,26 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	trace_eq_iir("ECm");
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source = list_first_item(&dev->bsource_list,
-		struct comp_buffer, sink_list);
 	struct sof_ipc_eq_iir_switch *assign;
 	struct sof_ipc_eq_iir_blob *blob;
+	struct eq_iir_update *iir_update;
 	int i;
+	int ret = 0;
 	size_t bs;
+
 	switch (cmd) {
 	case COMP_CMD_EQ_IIR_SWITCH:
 		trace_eq_iir("EFx");
 		assign = (struct sof_ipc_eq_iir_switch *) data;
-		eq_iir_switch_response(cd->iir, cd->config,
-			(struct eq_iir_update *) assign->data,
-			source->params.pcm->channels);
+		iir_update = (struct eq_iir_update *) assign->data;
+		ret = eq_iir_switch_response(cd->iir, cd->config,
+			iir_update, PLATFORM_MAX_CHANNELS);
+
+		/* Print trace information */
+		tracev_value(iir_update->stream_max_channels);
+		for (i = 0; i < iir_update->stream_max_channels; i++)
+			tracev_value(iir_update->assign_response[i]);
+
 		break;
 	case COMP_CMD_EQ_IIR_CONFIG:
 		trace_eq_iir("EFc");
@@ -333,7 +340,8 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 
 		/* Copy new config, need to decode data to know the size */
 		blob = (struct sof_ipc_eq_iir_blob *) data;
-		bs = blob->comp.hdr.size - sizeof(struct sof_ipc_hdr);
+		bs = blob->comp.hdr.size - sizeof(struct sof_ipc_hdr)
+			- sizeof(struct sof_ipc_host_buffer);
 		if (bs > EQ_IIR_MAX_BLOB_SIZE)
 			return -EINVAL;
 
@@ -343,7 +351,16 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 			return -EINVAL;
 
 		memcpy(cd->config, blob->data, bs);
-		eq_iir_setup(cd->iir, cd->config, source->params.pcm->channels);
+		/* Initialize all channels, the actual number of channels may
+		 * not be set yet. */
+		ret = eq_iir_setup(cd->iir, cd->config, PLATFORM_MAX_CHANNELS);
+
+		/* Print trace information */
+		tracev_value(cd->config->stream_max_channels);
+		tracev_value(cd->config->number_of_responses_defined);
+		for (i = 0; i < cd->config->stream_max_channels; i++)
+			tracev_value(cd->config->assign_response[i]);
+
 		break;
 	case COMP_CMD_MUTE:
 		trace_eq_iir("EFm");
@@ -386,7 +403,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -409,9 +426,6 @@ static int eq_iir_copy(struct comp_dev *dev)
 	/* Check that source has enough frames available and that sink has
 	 * enough frames free.
 	 */
-	//frames = source->params.period_frames;
-	//need_source = frames * source->params.frame_size;
-	//need_sink = frames * sink->params.frame_size;
 	frames = source->params.pcm->period_count;
 	need_source = frames * source->params.pcm->frame_size;
 	need_sink = frames * sink->params.pcm->frame_size;
@@ -427,19 +441,24 @@ static int eq_iir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
+	int ret;
 
 	trace_eq_iir("EPp");
 
 	cd->eq_iir_func = eq_iir_s32_default;
 
-	/* Initialize EQ */
+	/* Initialize EQ. Note that if EQ has not received command to
+	 * configure the response the EQ prepare returns an error that
+	 * interrupts pipeline prepare for downstream.
+	 */
 	if (cd->config == NULL)
 		return -EINVAL;
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 		sink_list);
-	if (eq_iir_setup(cd->iir, cd->config, source->params.pcm->channels) < 0)
-		return -EINVAL;
+	ret = eq_iir_setup(cd->iir, cd->config, source->params.pcm->channels);
+	if (ret < 0)
+		return ret;
 
 	//dev->preload = PLAT_INT_PERIODS;
 	dev->state = COMP_STATE_PREPARE;

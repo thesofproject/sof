@@ -64,7 +64,7 @@
  *         {0, 0, 0, 0, 1073741824, 0, 16484}
  */
 
-#define EQ_IIR_MAX_BLOB_SIZE 1024
+#define EQ_IIR_MAX_BLOB_SIZE 1024 /* In bytes or size_t */
 
 #define NHEADER_EQ_IIR_BLOB 2 /* Blob is two words plus asssigns plus coef */
 
