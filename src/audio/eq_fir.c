@@ -297,7 +297,7 @@ static int eq_fir_params(struct comp_dev *dev, struct stream_params *params)
 		return -EINVAL;
 
 	/* don't do any data transformation */
-	comp_set_sink_params(dev, params);
+	comp_buffer_sink_params(dev, params);
 
 	return 0;
 }

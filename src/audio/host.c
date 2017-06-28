@@ -379,7 +379,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	if (params->pcm->direction == SOF_IPC_STREAM_PLAYBACK) {
 
 		/* set sink buffer params */
-		comp_set_sink_params(dev, params);
+		comp_buffer_sink_params(dev, params);
 
 		hd->source = &hd->host;
 		hd->sink = &hd->local;

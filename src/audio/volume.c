@@ -387,7 +387,7 @@ static int volume_params(struct comp_dev *dev, struct stream_params *params)
 	}
 
 	/* dont do any data transformation */
-	comp_set_sink_params(dev, params);
+	comp_buffer_sink_params(dev, params);
 
 	return 0;
 }

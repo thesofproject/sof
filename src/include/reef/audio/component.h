@@ -301,7 +301,7 @@ static inline int comp_buffer_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static inline void comp_set_sink_params(struct comp_dev *dev,
+static inline void comp_buffer_sink_params(struct comp_dev *dev,
 	struct stream_params *params)
 {
 	struct list_item *clist;

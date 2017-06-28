@@ -130,7 +130,7 @@ static int mixer_params(struct comp_dev *dev, struct stream_params *params)
 	sink_params.pcm->frame_size = 4 * params->pcm->channels; /* 32bit container */
 
 	/* dont do any data transformation */
-	comp_set_sink_params(dev, &sink_params);
+	comp_buffer_sink_params(dev, &sink_params);
 
 	return 0;
 }
