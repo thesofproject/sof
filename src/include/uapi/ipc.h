@@ -399,6 +399,8 @@ enum sof_comp_type {
 	SOF_COMP_BUFFER,
 	SOF_COMP_EQ_IIR,
 	SOF_COMP_EQ_FIR,
+        SOF_COMP_FILEREAD,      /* For test bench only */
+        SOF_COMP_FILEWRITE,     /* For test bench only */
 };
 
 /* create new generic component - SOF_IPC_TPLG_COMP_NEW */
