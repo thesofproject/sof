@@ -32,7 +32,7 @@
 #ifndef SRC_CORE_H
 #define SRC_CORE_H
 
-#define MAX(a,b) ((a) > (b)) ? (a) : (b)
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 /* Include SRC min/max constants etc. */
 #include <reef/audio/coefficients/src/src_int24_define.h>
@@ -125,17 +125,19 @@ static inline int src_polyphase_get_blk_out(struct polyphase_src *src)
 
 void src_polyphase_reset(struct polyphase_src *src);
 
-int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2, int32_t *delay_lines_start);
+int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2,
+	int32_t *delay_lines_start);
 
-int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[], int n_in);
+int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[],
+	int n_in);
 
 void src_polyphase_stage_cir(struct src_stage_prm *s);
 
 int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch);
 
-int32_t src_input_rates();
+int32_t src_input_rates(void);
 
-int32_t src_output_rates();
+int32_t src_output_rates(void);
 
 #ifdef MODULE_TEST
 void src_print_info(struct polyphase_src *src);

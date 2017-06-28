@@ -65,7 +65,7 @@ int src_fir_delay_length(struct src_stage *s)
 int src_out_delay_length(struct src_stage *s)
 {
 
-	return(s->num_of_subfilters - 1) * s->odm + 1;
+	return (s->num_of_subfilters - 1) * s->odm + 1;
 }
 
 /* Calculates the buffer length needed between two SRC stages */
@@ -86,6 +86,7 @@ int src_stage_buf_length(struct src_stage *s1, struct src_stage *s2)
 int src_find_fs(int fs_list[], int list_length, int fs)
 {
 	int i;
+
 	for (i = 0; i < list_length; i++) {
 		if (fs_list[i] == fs)
 			return i;
@@ -94,10 +95,11 @@ int src_find_fs(int fs_list[], int list_length, int fs)
 }
 
 /* Match SOF and defined SRC input rates into a bit mask */
-int32_t src_input_rates()
+int32_t src_input_rates(void)
 {
 	int n, b;
 	int mask = 0;
+
 	for (n = SOF_RATES_LENGTH - 1; n >= 0; n--) {
 		b = (src_find_fs(src_in_fs, NUM_IN_FS, sof_rates[n]) >= 0)
 			? 1 : 0;
@@ -107,10 +109,11 @@ int32_t src_input_rates()
 }
 
 /* Match SOF and defined SRC output rates into a bit mask */
-int32_t src_output_rates()
+int32_t src_output_rates(void)
 {
 	int n, b;
 	int mask = 0;
+
 	for (n = SOF_RATES_LENGTH - 1; n >= 0; n--) {
 		b = (src_find_fs(src_out_fs, NUM_OUT_FS, sof_rates[n]) >= 0)
 			? 1 : 0;
@@ -152,7 +155,7 @@ int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch)
 	return 0;
 }
 
-static void src_state_reset(struct src_state* state)
+static void src_state_reset(struct src_state *state)
 {
 
 	state->fir_delay_size = 0;
@@ -316,7 +319,8 @@ static inline int32_t fir_filter(
 	n1 = fir->fir_ri + 1;
 	if (n1 > filter_length) {
 		/* No need to un-wrap fir read index, make sure fir_fi
-		 * is ge 0 after FIR computation */
+		 * is ge 0 after FIR computation.
+		 */
 		fir_part(&y, filter_length, coefs, coefi, fir->fir_delay,
 			&fir->fir_ri);
 	} else {
@@ -331,7 +335,7 @@ static inline int32_t fir_filter(
 	/* Q9.47 -> Q9.24, saturate to Q8.24 */
 	y = y >> (23 + shift);
 
-	return(int32_t) sat_int32(y);
+	return (int32_t)sat_int32(y);
 }
 
 void src_polyphase_stage_cir(struct src_stage_prm *s)
@@ -377,7 +381,8 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 				if (s->x_rptr >= s->x_end_addr)
 					s->x_rptr = (int32_t *)
 					((size_t) s->x_rptr - s->x_size);
-				if (s->state->fir_wi == s->state->fir_delay_size)
+				if (s->state->fir_wi
+					== s->state->fir_delay_size)
 					s->state->fir_wi = 0;
 			}
 		}
@@ -416,14 +421,16 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 			if (m < n_wrap_min) {
 				/* No circular wrap need */
 				while (m > 0) {
-					*s->y_wptr = s->state->out_delay[s->state->out_ri++];
+					*s->y_wptr = s->state->out_delay[
+						s->state->out_ri++];
 					s->y_wptr += s->y_inc;
 					m -= s->y_inc;
 				}
 			} else {
 				/* Wrap in n_wrap_min/y_inc samples */
 				while (n_wrap_min > 0) {
-					*s->y_wptr = s->state->out_delay[s->state->out_ri++];
+					*s->y_wptr = s->state->out_delay[
+						s->state->out_ri++];
 					s->y_wptr += s->y_inc;
 					n_wrap_min -= s->y_inc;
 					m -= s->y_inc;
@@ -434,7 +441,8 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 					(int32_t *)
 					((size_t) s->y_wptr - s->y_size);
 
-				if (s->state->out_ri == s->state->out_delay_size)
+				if (s->state->out_ri
+					== s->state->out_delay_size)
 					s->state->out_ri = 0;
 			}
 		}
@@ -460,7 +468,8 @@ void src_print_info(struct polyphase_src *src)
 
 	printf("SRC1 filter length %d\n", n1);
 	printf("SRC1 subfilter length %d\n", src->stage1->subfilter_length);
-	printf("SRC1 number of subfilters %d\n", src->stage1->num_of_subfilters);
+	printf("SRC1 number of subfilters %d\n",
+		src->stage1->num_of_subfilters);
 	printf("SRC1 idm %d\n", src->stage1->idm);
 	printf("SRC1 odm %d\n", src->stage1->odm);
 	printf("SRC1 input blk %d\n", src->stage1->blk_in);
@@ -470,14 +479,16 @@ void src_print_info(struct polyphase_src *src)
 	if (n1 > 3) {
 		printf("SRC1 coef[1] %d\n", src->stage1->coefs[1]);
 		printf("SRC1 coef[2] %d\n", src->stage1->coefs[2]);
-		printf("SRC1 coef[%d] %d\n", n1 - 1, src->stage1->coefs[n1 - 1]);
+		printf("SRC1 coef[%d] %d\n",
+			n1 - 1, src->stage1->coefs[n1 - 1]);
 	}
 	printf("SRC1 FIR delay %d\n", src->state1.fir_delay_size);
 	printf("SRC1 out delay %d\n", src->state1.out_delay_size);
 
 	printf("SRC2 filter length %d\n", n2);
 	printf("SRC2 subfilter length %d\n", src->stage2->subfilter_length);
-	printf("SRC2 number of subfilters %d\n", src->stage2->num_of_subfilters);
+	printf("SRC2 number of subfilters %d\n",
+		src->stage2->num_of_subfilters);
 	printf("SRC2 idm %d\n", src->stage2->idm);
 	printf("SRC2 odm %d\n", src->stage2->odm);
 	printf("SRC2 input blk %d\n", src->stage2->blk_in);
@@ -487,7 +498,8 @@ void src_print_info(struct polyphase_src *src)
 	if (n2 > 3) {
 		printf("SRC2 coef[1] %d\n", src->stage2->coefs[1]);
 		printf("SRC2 coef[2] %d\n", src->stage2->coefs[2]);
-		printf("SRC2 coef[%d] %d\n", n1 - 1, src->stage2->coefs[n2 - 1]);
+		printf("SRC2 coef[%d] %d\n",
+			n1 - 1, src->stage2->coefs[n2 - 1]);
 	}
 	printf("SRC2 FIR delay %d\n", src->state2.fir_delay_size);
 	printf("SRC2 out delay %d\n", src->state2.out_delay_size);

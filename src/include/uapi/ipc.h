@@ -490,6 +490,7 @@ struct sof_ipc_comp_src {
 	struct sof_ipc_pcm_comp pcm;
 	uint32_t in_mask;	/* SOF_RATE_ supported input rates */
 	uint32_t out_mask;	/* SOF_RATE_ supported output rates */
+	int32_t out_rate;
 } __attribute__((packed));
 
 /* generic MUX component */

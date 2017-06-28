@@ -56,9 +56,13 @@
 /* src component private data */
 struct comp_data {
 	struct polyphase_src src[PLATFORM_MAX_CHANNELS];
+	/* Next two elements must be kept in this order since
+	 * the end of pcm_params is a flexible array.
+	 */
+	struct sof_ipc_pcm_params pcm_params;
+	enum sof_ipc_chmap channel_map[PLATFORM_MAX_CHANNELS];
 	int32_t *delay_lines;
 	int scratch_length;
-	//int32_t z[STAGE_BUF_SIZE];
 	void (*src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
@@ -149,7 +153,8 @@ static void src_2s_s32_default(struct comp_dev *dev,
 	int n_written = 0;
 
 	if (cd->src[0].mute) {
-		src_muted_s32(source, sink, blk_in, blk_out, nch, source_frames);
+		src_muted_s32(source, sink, blk_in, blk_out, nch,
+			source_frames);
 		return;
 	}
 
@@ -214,14 +219,15 @@ static void src_1s_s32_default(struct comp_dev *dev,
 	int blk_out = cd->src[0].blk_out;
 	int n_times = cd->src[0].stage1_times;
 	int nch = sink->params.pcm->channels;
-	int32_t *dest = (int32_t*) sink->w_ptr;
-	int32_t *src = (int32_t*) source->r_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t *src = (int32_t *) source->r_ptr;
 	int n_read = 0;
 	int n_written = 0;
 	struct src_stage_prm s1;
 
 	if (cd->src[0].mute) {
-		src_muted_s32(source, sink, blk_in, blk_out, nch, source_frames);
+		src_muted_s32(source, sink, blk_in, blk_out, nch,
+			source_frames);
 		return;
 	}
 
@@ -263,7 +269,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_src *src;
-	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *)comp;
+	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *) comp;
 	struct comp_data *cd;
 	int i;
 
@@ -274,7 +280,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	if (dev == NULL)
 		return NULL;
 
-	src = (struct sof_ipc_comp_src *)&dev->comp;
+	src = (struct sof_ipc_comp_src *) &dev->comp;
 	memcpy(src, ipc_src, sizeof(struct sof_ipc_comp_src));
 
 	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
@@ -317,6 +323,7 @@ static int src_params(struct comp_dev *dev, struct stream_params *params)
 	int32_t *buffer_start;
 	int n = 0;
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_src *src = (struct sof_ipc_comp_src *) &dev->comp;
 
 	trace_src("SPa");
 
@@ -325,23 +332,45 @@ static int src_params(struct comp_dev *dev, struct stream_params *params)
 		|| (params->pcm->frame_fmt != SOF_IPC_FRAME_S32_LE))
 		return -EINVAL;
 
-	/* No data transformation */
-	comp_set_sink_params(dev, params);
+	comp_buffer_sink_params(dev, params);
 
-	/* Allocate needed memory for delay lines */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 		sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 		source_list);
-	src_buffer_lengths(&need, source->params.pcm->rate,
-		sink->params.pcm->rate, source->params.pcm->channels);
+
+	/* Copy PCM stream parameters and the channel map array */
+	memcpy(&cd->pcm_params, &(*params->pcm),
+		sizeof(struct sof_ipc_pcm_params));
+	for (i = 0; i < params->pcm->channels; i++)
+		cd->pcm_params.channel_map[i] = params->pcm->channel_map[i];
+
+	/* Point sink stream parameters to copy */
+	sink->params.pcm = &cd->pcm_params;
+
+	/* Stored IPC from src_new() contains the output rate for sink,
+	 * set the new rate for sink.
+	 */
+	sink->params.pcm->rate = src->out_rate;
+
+	/* Adjust sink buffer parameters to match fs_out/fs_in */
+	sink->params.pcm->period_count = sink->params.pcm->period_count
+		* sink->params.pcm->rate / source->params.pcm->rate;
+	sink->params.pcm->period_bytes = sink->params.pcm->period_bytes
+		* sink->params.pcm->rate / source->params.pcm->rate;
+
+	/* Allocate needed memory for delay lines */
+	if (src_buffer_lengths(&need, source->params.pcm->rate,
+		sink->params.pcm->rate, source->params.pcm->channels) < 0)
+		return -EINVAL;
+
 	delay_lines_size = sizeof(int32_t) * need.total;
 	if (cd->delay_lines != NULL)
 		rfree(cd->delay_lines);
 
 	cd->delay_lines = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, delay_lines_size);
 	if (cd->delay_lines == NULL)
-		return -EINVAL;
+		return -ENOMEM;
 
 	/* Clear all delay lines here */
 	memset(cd->delay_lines, 0, delay_lines_size);
@@ -369,18 +398,19 @@ static int src_params(struct comp_dev *dev, struct stream_params *params)
 		 */
 		trace_src("SFa");
 		cd->src_func = fallback_s32;
-		return(-EINVAL);
-		break;
+		return -EINVAL;
 	}
 
 	/* Check that src blk_in and blk_out are less than params.period_frames.
 	 * Return an error if the period is too short.
 	 */
-	if (src_polyphase_get_blk_in(&cd->src[0]) > source->params.pcm->period_count)
-		return(-EINVAL);
+	if (src_polyphase_get_blk_in(&cd->src[0])
+		> source->params.pcm->period_count)
+		return -EINVAL;
 
-	if (src_polyphase_get_blk_out(&cd->src[0]) > sink->params.pcm->period_count)
-		return(-EINVAL);
+	if (src_polyphase_get_blk_out(&cd->src[0])
+		> sink->params.pcm->period_count)
+		return -EINVAL;
 
 
 	return 0;
@@ -548,8 +578,7 @@ static int src_reset(struct comp_dev *dev)
 
 struct comp_driver comp_src = {
 	.type = SOF_COMP_SRC,
-	.ops =
-	{
+	.ops = {
 		.new = src_new,
 		.free = src_free,
 		.params = src_params,
