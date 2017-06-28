@@ -175,6 +175,9 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 		}
 	}
 
+	/* Free existing FIR channels data if it was allocated */
+	eq_fir_free_delaylines(fir);
+
 	/* Initialize 1st phase */
 	for (i = 0; i < nch; i++) {
 		resp = config->assign_response[i];
@@ -191,14 +194,12 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 		}
 
 	}
-	/* Free existing FIR channels data if it was allocated */
-	eq_fir_free_delaylines(fir);
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
 	fir_data = rballoc(RZONE_SYS, RFLAGS_NONE,
 		length_sum * sizeof(int32_t));
 	if (fir_data == NULL)
-		return -EINVAL;
+		return -ENOMEM;
 
 	memset(fir_data, 0, length_sum * sizeof(int32_t));
 
@@ -220,7 +221,7 @@ static int eq_fir_switch_response(struct fir_state_32x16 fir[],
 	struct eq_fir_configuration *config, struct eq_fir_update *update,
 	int nch)
 {
-	int i;
+	int i, ret;
 
 	/* Copy assign response from update and re-initilize EQ */
 	if (config == NULL)
@@ -231,9 +232,9 @@ static int eq_fir_switch_response(struct fir_state_32x16 fir[],
 			config->assign_response[i] = update->assign_response[i];
 	}
 
-	eq_fir_setup(fir, config, nch);
+	ret = eq_fir_setup(fir, config, nch);
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -306,21 +307,26 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	trace_src("ECm");
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source = list_first_item(&dev->bsource_list,
-		struct comp_buffer, sink_list);
 	struct sof_ipc_eq_fir_blob *blob;
 	struct sof_ipc_eq_fir_switch *assign;
-
+	struct eq_fir_update *fir_update;
 	int i;
+	int ret = 0;
 	size_t bs;
 
 	switch (cmd) {
 	case COMP_CMD_EQ_FIR_SWITCH:
 		trace_src("EFx");
 		assign = (struct sof_ipc_eq_fir_switch *) data;
-		eq_fir_switch_response(cd->fir, cd->config,
-			(struct eq_fir_update *) assign->data,
-			source->params.pcm->channels);
+		fir_update = (struct eq_fir_update *) assign->data;
+		ret = eq_fir_switch_response(cd->fir, cd->config,
+			fir_update, PLATFORM_MAX_CHANNELS);
+
+		/* Print trace information */
+		tracev_value(iir_update->stream_max_channels);
+		for (i = 0; i < fir_update->stream_max_channels; i++)
+			tracev_value(iir_update->assign_response[i]);
+
 		break;
 	case COMP_CMD_EQ_FIR_CONFIG:
 		trace_src("EFc");
@@ -338,7 +344,14 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 			return -EINVAL;
 
 		memcpy(cd->config, blob->data, bs);
-		eq_fir_setup(cd->fir, cd->config, source->params.pcm->channels);
+		ret = eq_fir_setup(cd->fir, cd->config, PLATFORM_MAX_CHANNELS);
+
+		/* Print trace information */
+		tracev_value(cd->config->stream_max_channels);
+		tracev_value(cd->config->number_of_responses_defined);
+		for (i = 0; i < cd->config->stream_max_channels; i++)
+			tracev_value(cd->config->assign_response[i]);
+
 		break;
 	case COMP_CMD_MUTE:
 		trace_src("EFm");
@@ -378,10 +391,9 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	default:
 		trace_src("EDf");
-		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -419,6 +431,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
+	int ret;
 
 	trace_src("EPp");
 
@@ -430,8 +443,9 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 		sink_list);
-	if (eq_fir_setup(cd->fir, cd->config, source->params.pcm->channels) < 0)
-		return -EINVAL;
+	ret = eq_fir_setup(cd->fir, cd->config, source->params.pcm->channels);
+	if (ret < 0)
+		return ret;
 
 	//dev->preload = PLAT_INT_PERIODS;
 	dev->state = COMP_STATE_PREPARE;

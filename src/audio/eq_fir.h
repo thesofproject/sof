@@ -52,7 +52,7 @@
 
 #define NHEADER_EQ_FIR_BLOB 2 /* Header is two words plus assigns plus coef */
 
-#define EQ_FIR_MAX_BLOB_SIZE 4096 /* Max size allowed for blob */
+#define EQ_FIR_MAX_BLOB_SIZE 4096 /* Max size allowed for blob in bytes */
 
 struct eq_fir_configuration {
 	uint16_t stream_max_channels;
