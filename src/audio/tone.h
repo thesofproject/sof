@@ -30,6 +30,11 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/* Convert float frequency in Hz to Q16.16 fractional format */
+#define TONE_FREQ(f) Q_CONVERT_FLOAT(f, 16)
+
+/* Convert float gain to Q1.31 fractional format */
+#define TONE_GAIN(v) Q_CONVERT_FLOAT(v, 31)
 
 struct tone_state {
 	int mute;
@@ -37,7 +42,7 @@ struct tone_state {
 	int32_t a_target; /* Target amplitude Q1.31 */
 	int32_t ampl_coef; /* Amplitude multiplier Q2.30 */
 	int32_t c; /* Coefficient 2*pi/Fs Q1.31 */
-	int32_t f; /* Frequency Q18.14 */
+	int32_t f; /* Frequency Q16.16 */
 	int32_t freq_coef; /* Frequency multiplier Q2.30 */
 	int32_t fs; /* Sample rate in Hertz Q32.0 */
 	int32_t ramp_step; /* Amplitude ramp step Q1.31 */

@@ -55,8 +55,8 @@
 #define trace_tone_error(__e) trace_error(TRACE_CLASS_TONE, __e)
 
 #define TONE_NUM_FS            13       /* Table size for 8-192 kHz range */
-#define TONE_AMPLITUDE_DEFAULT 2147484  /* -60 dB from full scale */
-#define TONE_FREQUENCY_DEFAULT 16334848 /* 997 in Q18.14 */
+#define TONE_AMPLITUDE_DEFAULT MINUS_60DB_Q1_31  /* -60 dB */
+#define TONE_FREQUENCY_DEFAULT TONE_FREQ(997.0)    /* 997 Hz */
 
 static int32_t tonegen(struct tone_state *sg);
 static void tonegen_control(struct tone_state *sg);
@@ -80,7 +80,6 @@ struct comp_data {
 	struct tone_state sg;
 	void (*tone_func)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
-
 };
 
 /*
@@ -129,7 +128,8 @@ static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 			/* No need to check if past end_addr,
 			 * it is so just subtract buffer size.
 			 */
-			dest = (int32_t *) ((size_t) dest - sink->alloc_size);
+			dest = (int32_t *) ((size_t) dest
+				- sink->ipc_buffer.size);
 		}
 	}
 	sink->w_ptr = dest;
@@ -381,7 +381,9 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 	comp_set_endpoint(dev);
+	cd->tone_func = tone_s32_default;
 
+	/* Reset tone generator and set channels volumes to default */
 	tonegen_reset(&cd->sg);
 
 	return dev;
@@ -417,22 +419,19 @@ static int tone_params(struct comp_dev *dev, struct stream_params *params)
 static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_tone *cv;
+	struct sof_ipc_comp_tone *ct;
 	trace_tone("TCm");
 
 	switch (cmd) {
 	case COMP_CMD_TONE:
 		trace_tone("Tto");
-		cv = (struct sof_ipc_comp_tone *) data;
+		ct = (struct sof_ipc_comp_tone *) data;
 		/* Ignore channels while tone implementation is mono */
-		tonegen_set_f(&cd->sg, cv->frequency);
-		tonegen_set_a(&cd->sg, cv->amplitude);
-		tonegen_set_sweep(&cd->sg, cv->freq_mult, cv->ampl_mult,
-			cv->length, cv->period, cv->repeats);
-		tonegen_set_linramp(&cd->sg, cv->ramp_step);
-		break;
-	case COMP_CMD_VOLUME:
-		trace_tone("TVo");
+		tonegen_set_f(&cd->sg, ct->frequency);
+		tonegen_set_a(&cd->sg, ct->amplitude);
+		tonegen_set_sweep(&cd->sg, ct->freq_mult, ct->ampl_mult,
+			ct->length, ct->period, ct->repeats);
+		tonegen_set_linramp(&cd->sg, ct->ramp_step);
 		break;
 	case COMP_CMD_MUTE:
 		trace_tone("TMu");
@@ -496,7 +495,6 @@ static int tone_copy(struct comp_dev *dev)
 	 */
 	need_sink = cframes * sink->params.pcm->frame_size;
 	if (sink->free >= need_sink) {
-
 		/* create tone */
 		cd->tone_func(dev, sink, source, cframes);
 	}
@@ -517,7 +515,6 @@ static int tone_prepare(struct comp_dev *dev)
 	trace_value(sink->params.pcm->channels);
 	trace_value(sink->params.pcm->rate);
 
-	cd->tone_func = tone_s32_default;
 	f = tonegen_get_f(&cd->sg);
 	a = tonegen_get_a(&cd->sg);
 	if (tonegen_init(&cd->sg, sink->params.pcm->rate, f, a) < 0)
