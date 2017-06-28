@@ -91,7 +91,7 @@ static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t sine_sample;
-	int32_t *dest = (int32_t*) sink->w_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
 	int i, n, n_wrap_dest;
 	int nch = sink->params.pcm->channels;
 
@@ -152,7 +152,7 @@ static int32_t tonegen(struct tone_state *sg)
 	if (sg->mute)
 		return 0;
 	else
-		return(int32_t) sine; /* Q1.31 no saturation need */
+		return (int32_t) sine; /* Q1.31 no saturation need */
 }
 
 static void tonegen_control(struct tone_state *sg)
@@ -420,6 +420,7 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_tone *ct;
+
 	trace_tone("TCm");
 
 	switch (cmd) {
@@ -554,8 +555,7 @@ static int tone_reset(struct comp_dev *dev)
 
 struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
-	.ops =
-	{
+	.ops = {
 		.new = tone_new,
 		.free = tone_free,
 		.params = tone_params,

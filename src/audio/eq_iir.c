@@ -352,7 +352,8 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 
 		memcpy(cd->config, blob->data, bs);
 		/* Initialize all channels, the actual number of channels may
-		 * not be set yet. */
+		 * not be set yet.
+		 */
 		ret = eq_iir_setup(cd->iir, cd->config, PLATFORM_MAX_CHANNELS);
 
 		/* Print trace information */
@@ -497,8 +498,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 struct comp_driver comp_eq_iir = {
 	.type = SOF_COMP_EQ_IIR,
-	.ops =
-	{
+	.ops = {
 		.new = eq_iir_new,
 		.free = eq_iir_free,
 		.params = eq_iir_params,

@@ -483,8 +483,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 
 struct comp_driver comp_eq_fir = {
 	.type = SOF_COMP_EQ_FIR,
-	.ops =
-	{
+	.ops = {
 		.new = eq_fir_new,
 		.free = eq_fir_free,
 		.params = eq_fir_params,

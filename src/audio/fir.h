@@ -103,14 +103,17 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	 * calculate before circular wrap need.
 	 */
 	n1 = fir->rwi + 1;
-	tmp_ri = (fir->rwi)++; /* Point to newest sample and advance read index */
+	/* Point to newest sample and advance read index */
+	tmp_ri = (fir->rwi)++;
 	if (fir->rwi == fir->delay_size)
 		fir->rwi = 0;
 
 	if (n1 > fir->length) {
 		/* No need to un-wrap fir read index, make sure ri
-		 * is >= 0 after FIR computation */
-		fir_part_32x16(&y, fir->length, fir->coef, &i, fir->delay, &tmp_ri);
+		 * is >= 0 after FIR computation.
+		 */
+		fir_part_32x16(&y, fir->length, fir->coef, &i, fir->delay,
+			&tmp_ri);
 	} else {
 		n2 = fir->length - n1;
 		/* Part 1, loop n1 times, fir_ri becomes -1 */
@@ -126,5 +129,5 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	if (fir->mute)
 		return 0;
 	else
-		return(int32_t) y;
+		return (int32_t)y;
 }
