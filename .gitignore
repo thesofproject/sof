@@ -1,5 +1,6 @@
 *.o
 *.in
+*~
 autom4te*
 *.Po
 *.swp
@@ -16,3 +17,5 @@ ltmain.sh
 rimage/rimage
 rmbox/rmbox
 rwav/rwav
+*.tplg
+topology/*.conf
