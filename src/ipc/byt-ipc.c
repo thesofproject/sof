@@ -68,7 +68,7 @@ static void do_notify(void)
 
 	/* copy the data returned from DSP */
 	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
-		mailbox_inbox_read(0, msg->rx_data, msg->rx_size);
+		mailbox_inbox_read(msg->rx_data, 0, msg->rx_size);
 
 	/* any callback ? */
 	if (msg->cb)
