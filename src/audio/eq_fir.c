@@ -323,9 +323,9 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 			fir_update, PLATFORM_MAX_CHANNELS);
 
 		/* Print trace information */
-		tracev_value(iir_update->stream_max_channels);
+		tracev_value(fir_update->stream_max_channels);
 		for (i = 0; i < fir_update->stream_max_channels; i++)
-			tracev_value(iir_update->assign_response[i]);
+			tracev_value(fir_update->assign_response[i]);
 
 		break;
 	case COMP_CMD_EQ_FIR_CONFIG:
