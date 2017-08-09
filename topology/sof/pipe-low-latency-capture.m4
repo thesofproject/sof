@@ -43,20 +43,29 @@ SectionControlMixer.STR(PCM PCM_ID Capture Volume) {
 # Components and Buffers
 #
 
-W_PCM_CAPTURE(Low Latency Capture)
-W_PGA(Capture Volume)
-W_BUFFER(0, BUF_INT_SIZE)
-W_BUFFER(1, BUF_PCM_SIZE)
+# Host "Low Latency Capture" PCM uses pipeline DMAC and channel
+# with 0 sink and 2 source periods
+W_PCM_CAPTURE(Low Latency Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 0)
+
+# "Capture Volume" has 2 sink and source periods for host and DAI ping-pong
+W_PGA(Capture Volume, PIPELINE_FORMAT, 2, 2, 0)
+
+# Capture Buffers
+W_BUFFER(0, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
+W_BUFFER(1, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
 
 #
 # Pipeline Graph
 #
-#  host PCM <--B1-- volume( <--B0-- source DAI0
+#  host PCM <--B1-- volume <--B0-- source DAI0
 
 SectionGraph."pipe-ll-capture-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
 
 	lines [
+		dapm(Low Latency Capture PCM_ID, N_PCM)
 		dapm(N_PCM, N_BUFFER(1))
 		dapm(N_BUFFER(1), N_PGA(Capture Volume))
 		dapm(N_PGA(Capture Volume), N_BUFFER(0))
@@ -64,10 +73,15 @@ SectionGraph."pipe-ll-capture-PIPELINE_ID" {
 }
 
 #
+# Pipeline Source and Sinks
+#
+indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(0))
+
+#
 # Pipeline Configuration.
 #
 
-W_PIPELINE(N_PGA(Capture Volume), SCHEDULE_DEADLINE, pipe_ll_schedule_plat)
+W_PIPELINE(N_PGA(Capture Volume), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
 
 #
 # PCM Configuration

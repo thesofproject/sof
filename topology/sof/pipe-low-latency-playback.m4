@@ -86,14 +86,28 @@ SectionControlMixer.STR(Master Playback Volume) {
 # Components and Buffers
 #
 
-W_PCM_PLAYBACK(Low Latency Playback)
-W_PGA(Playback Volume)
-W_PGA(Mixer Volume)
-W_MIXER(0)
-W_BUFFER(0, BUF_PCM_SIZE)
-W_BUFFER(1, BUF_INT_SIZE)
-W_BUFFER(2, BUF_INT_SIZE)
-W_BUFFER(3, BUF_INT_SIZE)
+# Host "Low latency Playback" PCM uses pipeline DMAC and channel
+# with 2 sink and 0 source periods
+W_PCM_PLAYBACK(Low Latency Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
+
+# "Playback Volume" has 1 sink period and 2 source periods for host ping-pong
+W_PGA(Playback Volume, PIPELINE_FORMAT, 1, 2, 1)
+
+# "Mixer Volume" has 1 source and 2 sink periods for DAI ping-pong
+W_PGA(Mixer Volume, PIPELINE_FORMAT, 2, 1, 1)
+
+# Mixer 0 has 1 sink and source periods.
+W_MIXER(0, PIPELINE_FORMAT, 1, 1, 1)
+
+# Low Latency Buffers
+W_BUFFER(0, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
+W_BUFFER(1, COMP_BUFFER_SIZE(1,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS,SCHEDULE_FRAMES))
+W_BUFFER(2, COMP_BUFFER_SIZE(1,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
+W_BUFFER(3, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
 
 #
 # Pipeline Graph
@@ -111,6 +125,7 @@ SectionGraph."pipe-ll-playback-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
 
 	lines [
+		dapm(N_PCM, Low Latency Playback PCM_ID)
 		dapm(N_BUFFER(0), N_PCM)
 		dapm(N_PGA(Playback Volume), N_BUFFER(0))
 		dapm(N_BUFFER(1), N_PGA(Playback Volume))
@@ -122,10 +137,16 @@ SectionGraph."pipe-ll-playback-PIPELINE_ID" {
 }
 
 #
+# Pipeline Source and Sinks
+#
+indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(3))
+indir(`define', concat(`PIPELINE_MIXER_', PIPELINE_ID), N_MIXER(0))
+
+#
 # Pipeline Configuration.
 #
 
-W_PIPELINE(N_PGA(Mixer Volume), SCHEDULE_DEADLINE, pipe_ll_schedule_plat)
+W_PIPELINE(N_PGA(Mixer Volume), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
 
 #
 # PCM Configuration

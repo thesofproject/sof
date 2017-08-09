@@ -65,12 +65,23 @@ SectionData."media_src_conf" {
 # Components and Buffers
 #
 
-W_PCM_PLAYBACK(Media Playback)
-W_PGA(Playback Volume)
-W_SRC(0, media_src_conf)
-W_BUFFER(0, BUF_PCM_SIZE)
-W_BUFFER(1, BUF_INT_SIZE)
-W_BUFFER(2, BUF_INT_SIZE)
+# Host "Low latency Playback" PCM uses pipeline DMAC and channel
+# with 2 sink and 0 source periods
+W_PCM_PLAYBACK(Media Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
+
+# "Playback Volume" has 2 sink period and 2 source periods for host ping-pong
+W_PGA(Playback Volume, PIPELINE_FORMAT, 2, 2, 2)
+
+# "SRC 0" has 2 sink and source periods.
+W_SRC(0, media_src_conf, PIPELINE_FORMAT, 2, 2, 2)
+
+# Media Buffers
+W_BUFFER(0, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
+W_BUFFER(1,COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
+W_BUFFER(2, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
 
 #
 # Pipeline Graph
@@ -82,7 +93,8 @@ SectionGraph."pipe-media-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
 
 	lines [
-		dapm(N_BUFFER(0), Media Playback PCM_ID)
+		dapm(N_PCM, Media Playback PCM_ID)
+		dapm(N_BUFFER(0), N_PCM)
 		dapm(N_PGA(Playback Volume), N_BUFFER(0))
 		dapm(N_BUFFER(1), N_PGA(Playback Volume))
 		dapm(N_SRC(0), N_BUFFER(1))
@@ -91,10 +103,15 @@ SectionGraph."pipe-media-PIPELINE_ID" {
 }
 
 #
+# Pipeline Source and Sinks
+#
+indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(2))
+
+#
 # Pipeline Configuration.
 #
 
-W_PIPELINE(N_SRC(0), SCHEDULE_DEADLINE, pipe_media_schedule_plat)
+W_PIPELINE(N_SRC(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_media_schedule_plat)
 
 #
 # PCM Configuration

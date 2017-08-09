@@ -46,10 +46,17 @@ SectionControlMixer.STR(Tone Volume PIPELINE_ID) {
 # Components and Buffers
 #
 
-W_TONE(0)
-W_PGA(Tone Volume)
-W_BUFFER(0, BUF_INT_SIZE)
-W_BUFFER(1, BUF_INT_SIZE)
+# "Tone 0" has 2 sink period and 0 source periods
+W_TONE(0, PIPELINE_FORMAT, 2, 0, 0)
+
+# "Tone Volume" has 2 sink period and 2 source periods
+W_PGA(Tone Volume, PIPELINE_FORMAT, 2, 2, 0)
+
+# Low Latency Buffers
+W_BUFFER(0,COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
+W_BUFFER(1, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
 
 
 #
@@ -69,7 +76,12 @@ SectionGraph."pipe-tone-PIPELINE_ID" {
 }
 
 #
+# Pipeline Source and Sinks
+#
+indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(1))
+
+#
 # Pipeline Configuration.
 #
 
-W_PIPELINE(N_TONE(0), SCHEDULE_DEADLINE, pipe_tone_schedule_plat)
+W_PIPELINE(N_TONE(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_tone_schedule_plat)
