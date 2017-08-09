@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <reef/reef.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
 #include <reef/timer.h>
@@ -94,6 +95,7 @@
 
 void _trace_event(uint32_t event);
 void trace_off(void);
+void trace_init(struct reef * reef);
 
 #if TRACE
 

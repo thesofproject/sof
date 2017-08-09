@@ -29,34 +29,55 @@
  */
 
 #include <reef/trace.h>
+#include <reef/reef.h>
+#include <reef/alloc.h>
 #include <arch/cache.h>
+#include <platform/timer.h>
+#include <reef/lock.h>
 #include <stdint.h>
 
-/* trace position */
-static uint32_t trace_pos = 0;
-static uint32_t trace_enable = 1;
+struct trace {
+	uint32_t pos ;	/* trace position */
+	uint32_t enable;
+	spinlock_t lock;
+};
+
+static struct trace trace;
 
 void _trace_event(uint32_t event)
 {
-	volatile uint32_t *t =
-		(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace_pos);
+	unsigned long flags;
+	volatile uint32_t *t;
 
-	if (!trace_enable)
+	if (!trace.enable)
 		return;
 
+	spin_lock_irq(&trace.lock, flags);
+
 	/* write timestamp and event to trace buffer */
+	t =(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace.pos);
 	t[0] = platform_timer_get(0);
 	t[1] = event;
 
 	/* writeback trace data */
 	dcache_writeback_region((void*)t, sizeof(uint32_t) * 2);
 
-	trace_pos += (sizeof(uint32_t) << 1);
-	if (trace_pos >= MAILBOX_TRACE_SIZE)
-		trace_pos = 0;
+	trace.pos += (sizeof(uint32_t) << 1);
+
+	if (trace.pos >= MAILBOX_TRACE_SIZE)
+		trace.pos = 0;
+
+	spin_unlock_irq(&trace.lock, flags);
 }
 
 void trace_off(void)
 {
-	trace_enable = 0;
+	trace.enable = 0;
 };
+
+void trace_init(struct reef *reef)
+{
+	trace.enable = 1;
+	trace.pos = 0;
+	spinlock_init(&trace.lock);
+}

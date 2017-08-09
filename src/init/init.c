@@ -65,6 +65,8 @@ int main(int argc, char *argv[])
 	trace_point(TRACE_BOOT_SYS_HEAP);
 	init_heap(&reef);
 
+	trace_init(&reef);
+
 	trace_point(TRACE_BOOT_SYS_NOTE);
 	init_system_notify(&reef);
 
