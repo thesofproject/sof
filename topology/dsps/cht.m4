@@ -7,8 +7,7 @@ SectionVendorTuples."pipe_ll_schedule_plat_tokens" {
 	tokens "sof_sched_tokens"
 
 	tuples."word" {
-		SOF_TKN_SCHED_PRIORITY 	"0"
-		SOF_TKN_SCHED_MIPS 	"50000"
+		SOF_TKN_SCHED_MIPS	"50000"
 	}
 }
 
@@ -21,8 +20,7 @@ SectionVendorTuples."pipe_media_schedule_plat_tokens" {
 	tokens "sof_sched_tokens"
 
 	tuples."word" {
-		SOF_TKN_SCHED_PRIORITY 	"1"
-		SOF_TKN_SCHED_MIPS 	"100000"
+		SOF_TKN_SCHED_MIPS	"100000"
 	}
 }
 
@@ -35,8 +33,7 @@ SectionVendorTuples."pipe_tone_schedule_plat_tokens" {
 	tokens "sof_sched_tokens"
 
 	tuples."word" {
-		SOF_TKN_SCHED_PRIORITY 	"2"
-		SOF_TKN_SCHED_MIPS 	"200000"
+		SOF_TKN_SCHED_MIPS	"200000"
 	}
 }
 
@@ -49,8 +46,8 @@ SectionVendorTuples."dai0p_plat_tokens" {
 	tokens "sof_dai_tokens"
 
 	tuples."word" {
-		SOF_TKN_DAI_DMAC 	"1"
-		SOF_TKN_DAI_DMAC_CHAN 	"0"
+		SOF_TKN_DAI_DMAC	"1"
+		SOF_TKN_DAI_DMAC_CHAN	"0"
 	}
 }
 
@@ -63,11 +60,24 @@ SectionVendorTuples."dai0c_plat_tokens" {
 	tokens "sof_dai_tokens"
 
 	tuples."word" {
-		SOF_TKN_DAI_DMAC 	"1"
-		SOF_TKN_DAI_DMAC_CHAN 	"1"
+		SOF_TKN_DAI_DMAC	"1"
+		SOF_TKN_DAI_DMAC_CHAN	"1"
 	}
 }
 
 SectionData."dai0c_plat_conf" {
 	tuples "dai0c_plat_tokens"
+}
+
+# DAI schedule Configuration - scheduled by IRQ
+SectionVendorTuples."pipe_dai_schedule_plat_tokens" {
+	tokens "sof_sched_tokens"
+
+	tuples."word" {
+		SOF_TKN_SCHED_MIPS	"5000"
+	}
+}
+
+SectionData."pipe_dai_schedule_plat" {
+	tuples "pipe_dai_schedule_plat_tokens"
 }
