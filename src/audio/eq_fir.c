@@ -43,6 +43,7 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <reef/audio/format.h>
+#include <uapi/ipc.h>
 #include "fir.h"
 #include "eq_fir.h"
 
@@ -57,6 +58,7 @@
 /* src component private data */
 struct comp_data {
 	struct eq_fir_configuration *config;
+	uint32_t period_bytes;
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS];
 	void (*eq_fir_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
@@ -71,14 +73,13 @@ struct comp_data {
 static void eq_fir_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink, uint32_t frames)
 {
-
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ch, n, n_wrap_src, n_wrap_snk, n_wrap_min;
 	int32_t *src = (int32_t *) source->r_ptr;
 	int32_t *snk = (int32_t *) sink->w_ptr;
-	int nch = source->params.pcm->channels;
+	int nch = dev->params.channels;
 	int32_t *x = src + nch - 1;
 	int32_t *y = snk + nch - 1;
-	struct comp_data *cd = comp_get_drvdata(dev);
 
 	for (ch = 0; ch < nch; ch++) {
 		n = frames * nch;
@@ -119,11 +120,6 @@ static void eq_fir_s32_default(struct comp_dev *dev,
 	}
 	source->r_ptr = x - nch + 1; /* After previous loop the x and y */
 	sink->w_ptr = y - nch + 1; /* point to one frame -1. */
-
-	comp_wrap_source_r_ptr_circular(source);
-	comp_wrap_sink_w_ptr_circular(sink);
-	comp_update_source_free_avail(source, frames * nch);
-	comp_update_sink_free_avail(sink, frames * nch);
 }
 
 static void eq_fir_free_parameters(struct eq_fir_configuration **config)
@@ -243,20 +239,20 @@ static int eq_fir_switch_response(struct fir_state_32x16 fir[],
 
 static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 {
-	int i;
-	//struct comp_buffer *sink;
-	//struct comp_buffer *source;
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	int i;
 
-	trace_src("ENw");
-	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	trace_src("new");
+
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_eq_fir));
 	if (dev == NULL)
 		return NULL;
 
-	//memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_fir));
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_fir));
 
-	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
@@ -276,7 +272,7 @@ static void eq_fir_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_src("EFr");
+	trace_src("fre");
 
 	eq_fir_free_delaylines(cd->fir);
 	eq_fir_free_parameters(&cd->config);
@@ -286,18 +282,22 @@ static void eq_fir_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int eq_fir_params(struct comp_dev *dev, struct stream_params *params)
+static int eq_fir_params(struct comp_dev *dev,
+	struct stream_params *host_params)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	trace_src("EPa");
+	trace_src("par");
+
+	comp_install_params(dev, host_params);
+
+	/* calculate period size based on config */
+	cd->period_bytes = config->frames * config->frame_size;
 
 	/* EQ supports only S32_LE PCM format */
-	if ((params->type != STREAM_TYPE_PCM)
-		|| (params->pcm->frame_fmt != SOF_IPC_FRAME_S32_LE))
+	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
-
-	/* don't do any data transformation */
-	comp_buffer_sink_params(dev, params);
 
 	return 0;
 }
@@ -305,7 +305,6 @@ static int eq_fir_params(struct comp_dev *dev, struct stream_params *params)
 /* used to pass standard and bespoke commands (with data) to component */
 static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 {
-	trace_src("ECm");
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_eq_fir_blob *blob;
 	struct sof_ipc_eq_fir_switch *assign;
@@ -313,6 +312,8 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 	int i;
 	int ret = 0;
 	size_t bs;
+
+	trace_src("cmd");
 
 	switch (cmd) {
 	case COMP_CMD_EQ_FIR_SWITCH:
@@ -339,7 +340,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 		if (bs > EQ_FIR_MAX_BLOB_SIZE)
 			return -EINVAL;
 
-		cd->config = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
+		cd->config = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
 		if (cd->config == NULL)
 			return -EINVAL;
 
@@ -400,14 +401,13 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 static int eq_fir_copy(struct comp_dev *dev)
 {
 	struct comp_data *sd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
-	int frames;
-	int need_source, need_sink;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *source, *sink;
+	uint32_t copy_bytes;
 
 	trace_comp("EqF");
 
-	/* src component needs 1 source and 1 sink buffer */
+	/* get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 		sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
@@ -416,21 +416,24 @@ static int eq_fir_copy(struct comp_dev *dev)
 	/* Check that source has enough frames available and sink enough
 	 * frames free.
 	 */
-	frames = source->params.pcm->period_count;
-	need_source = frames * source->params.pcm->frame_size;
-	need_sink = frames * sink->params.pcm->frame_size;
+	copy_bytes = comp_buffer_get_copy_bytes(dev, source, sink);
 
 	/* Run EQ if buffers have enough room */
-	if ((source->avail >= need_source) && (sink->free >= need_sink))
-		sd->eq_fir_func(dev, source, sink, frames);
+	if (copy_bytes < sd->period_bytes)
+		return 0;
 
-	return 0;
+	sd->eq_fir_func(dev, source, sink, config->frames);
+
+	/* calc new free and available */
+	comp_update_buffer_consume(source, copy_bytes);
+	comp_update_buffer_produce(sink, copy_bytes);
+
+	return config->frames;
 }
 
 static int eq_fir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
 	int ret;
 
 	trace_src("EPp");
@@ -441,9 +444,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	if (cd->config == NULL)
 		return -EINVAL;
 
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-		sink_list);
-	ret = eq_fir_setup(cd->fir, cd->config, source->params.pcm->channels);
+	ret = eq_fir_setup(cd->fir, cd->config, dev->params.channels);
 	if (ret < 0)
 		return ret;
 
@@ -454,13 +455,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 static int eq_fir_preload(struct comp_dev *dev)
 {
-	//int i;
-
-	trace_src("EPl");
-	//for (i = 0; i < dev->preload; i++)
-	//	eq_fir_copy(dev);
-
-	return 0;
+	return eq_fir_copy(dev);
 }
 
 static int eq_fir_reset(struct comp_dev *dev)

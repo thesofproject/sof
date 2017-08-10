@@ -74,12 +74,15 @@ static inline uint32_t schedule_time_diff(uint32_t current, uint32_t pipe_time)
  * deadlines. If so, then schedule the earlier queued task after the currently
  * running task has completed.
  */
-static struct task *edf_get_next(void)
+static inline struct task *edf_get_next(void)
 {
 	struct task *task, *next_task = NULL;
 	struct list_item *clist;
 	uint32_t next_delta = MAX_INT, current, delta;
  
+	if (list_is_empty(&sch->list))
+		return NULL;
+
 	/* get the current time */
 	current = platform_timer_get(NULL);
 
@@ -109,33 +112,33 @@ void schedule_edf(void)
 	struct task *task;
 	uint32_t flags;
 
-	tracev_pipe("EDF");
+	tracev_pipe("edf");
 
 	/* get next component scheduled  */
 	spin_lock_irq(&sch->lock, flags);
 
 	/* get next task to be scheduled */
 	task = edf_get_next();
-	if (task == NULL)
-		goto out;
+
+	spin_unlock_irq(&sch->lock, flags);
+	interrupt_clear(PLATFORM_SCHEDULE_IRQ);
 
 	/* is task currently running ? */
-	if (task->state == TASK_STATE_RUNNING)
-		goto out;
+	if (task == NULL || task->state == TASK_STATE_RUNNING) {
+		trace_pipe("ed0");
+		return;
+	}
 
 	arch_run_task(task);
-
-out:
-	spin_unlock_irq(&sch->lock, flags);
-
-	interrupt_clear(PLATFORM_SCHEDULE_IRQ);
 }
 
-/* Add a new task to the scheduler to be run */
+/* delete task from scheduler */
 int schedule_task_del(struct task *task)
 {
 	uint32_t flags;
 	int ret = 0;
+
+	tracev_pipe("del");
 
 	/* add task to list */
 	spin_lock_irq(&sch->lock, flags);
@@ -160,6 +163,16 @@ void schedule_task(struct task *task, uint32_t deadline, uint16_t priority,
 {
 	uint32_t flags, time, current, ticks;
 
+	tracev_pipe("add");
+
+	spin_lock_irq(&sch->lock, flags);
+
+	/* is task already running ? - not enough MIPS to complete ? */
+	if (task->state == TASK_STATE_RUNNING) {
+		trace_pipe("tsk");
+		goto out;
+	}
+
 	/* get the current time */
 	current = platform_timer_get(NULL);
 
@@ -168,12 +181,13 @@ void schedule_task(struct task *task, uint32_t deadline, uint16_t priority,
 	time = current + ticks - PLATFORM_SCHEDULE_COST;
 
 	/* add task to list */
-	spin_lock_irq(&sch->lock, flags);
 	task->deadline = time;
 	task->priority = priority;
 	task->sdata = data;
-	list_item_prepend(&task->list, &sch->list);
+	list_item_append(&task->list, &sch->list);
 	task->state = TASK_STATE_QUEUED;
+
+out:
 	spin_unlock_irq(&sch->lock, flags);
 }
 
@@ -181,6 +195,8 @@ void schedule_task(struct task *task, uint32_t deadline, uint16_t priority,
 void schedule_task_complete(struct task *task)
 {
 	uint32_t flags;
+
+	tracev_pipe("com");
 
 	spin_lock_irq(&sch->lock, flags);
 	list_item_del(&task->list);
@@ -190,6 +206,7 @@ void schedule_task_complete(struct task *task)
 
 void scheduler_run(void *unused)
 {
+	tracev_pipe("run");
 	/* EDF is only scheduler supported atm */
 	schedule_edf();
 }
@@ -197,6 +214,13 @@ void scheduler_run(void *unused)
 /* run the scheduler */
 void schedule(void)
 {
+	tracev_pipe("sch");
+
+	/* TODO: detect current IRQ context and call scheduler_run if both
+	 * current context matches scheduler context. saves a DSP context
+	 * switch.
+	 */
+
 	/* the scheduler is run in IRQ context */
 	interrupt_set(PLATFORM_SCHEDULE_IRQ);
 }

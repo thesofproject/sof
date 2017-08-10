@@ -68,7 +68,10 @@ static int ssp_context_restore(struct dai *dai)
 static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t sscr0, sscr1, sspsp, sfifott;
+	struct sof_ipc_dai_ssp_params *params = &ssp->params;
+	uint32_t sscr0, sscr1, sspsp, sfifott, mdiv, bdiv;
+	uint32_t stop_size, phy_frame_size, data_size;
+	int ret = 0;
 
 	spin_lock(&ssp->lock);
 
@@ -79,16 +82,16 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		goto out;
 	}
 
-	trace_ssp("SsC");
+	trace_ssp("cos");
 
 	/* reset SSP settings */
 	sscr0 = 0;
 	sscr1 = 0;
 	sspsp = 0;
-	dai->config = *dai_config;
+	ssp->params = *dai_config->ssp;
 
 	/* clock masters */
-	switch (dai->config.ssp->format & SOF_DAI_FMT_MASTER_MASK) {
+	switch (params->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 		break;
@@ -104,11 +107,12 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	case SSP_CLK_DEFAULT:
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* clock signal polarity */
-	switch (dai->config.ssp->format & SOF_DAI_FMT_INV_MASK) {
+	switch (params->format & SOF_DAI_FMT_INV_MASK) {
 	case SOF_DAI_FMT_NB_NF:
 		break;
 	case SOF_DAI_FMT_NB_IF:
@@ -120,11 +124,12 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		sspsp |= SSPSP_SCMODE(2) | SSPSP_SFRMP;
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* clock source */
-	switch (dai->config.ssp->clk_id) {
+	switch (params->clk_id) {
 	case SSP_CLK_AUDIO:
 		sscr0 |= SSCR0_ACS;
 		break;
@@ -138,20 +143,75 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		sscr0 |= SSCR0_NCS | SSCR0_MOD;
 		break;
 	default:
-		return -ENODEV;
+		ret = -EINVAL;
+		goto out;
 	}
 
-	/* BCLK is generated from MCLK */
-	sscr0 |= SSCR0_SCR(dai->config.ssp->mclk / dai->config.ssp->bclk - 1);
+	/* BCLK is generated from MCLK - must be divisable */
+	if (params->mclk % params->bclk) {
+		trace_ssp_error("ec1");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* divisor must be within SCR range */
+	mdiv = (params->mclk / params->bclk)- 1;
+	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
+		trace_ssp_error("ec2");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* set the divisor */
+	sscr0 |= SSCR0_SCR(mdiv);
+
+	/* calc frame width based on BCLK and rate - must be divisable */
+	if (params->bclk % params->fclk) {
+		trace_ssp_error("ec3");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* must be enouch BCLKs for data */
+	bdiv = params->bclk / params->fclk;
+	if (bdiv < params->frame_width * params->num_slots) {
+		trace_ssp_error("ec4");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* physical frame size must be <= 38 */
+	phy_frame_size = bdiv / params->num_slots;
+	if (phy_frame_size > 38) {
+		trace_ssp_error("ec5");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	trace_value(mdiv);
+	trace_value(bdiv);
+	trace_value(phy_frame_size);
 
 	/* format */
-	switch (dai->config.ssp->format & SOF_DAI_FMT_FORMAT_MASK) {
+	switch (params->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
+
+		/* calculate dummy stop size and include dummy start */
+		stop_size = phy_frame_size - params->frame_width - 1;
+		trace_value(stop_size);
+		if (stop_size > 3) {
+			trace_ssp_error("ec6");
+			ret = -EINVAL;
+			goto out;
+		}
+
 		sscr0 |= SSCR0_PSP;
 		sscr1 |= SSCR1_TRAIL;
-		sspsp |= SSPSP_SFRMWDTH(dai->config.ssp->frame_width + 1);
-		sspsp |= SSPSP_SFRMDLY((dai->config.ssp->frame_width + 1) * 2);
+		sspsp |= SSPSP_SFRMWDTH(phy_frame_size);
+		/* subtract 1 for I2S start delay */
+		sspsp |= SSPSP_SFRMDLY((phy_frame_size - 1) * 2);
 		sspsp |= SSPSP_DMYSTRT(1);
+		sspsp |= SSPSP_DMYSTOP(stop_size);
 		break;
 	case SOF_DAI_FMT_DSP_A:
 		sspsp |= SSPSP_FSRT;
@@ -160,14 +220,27 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		sscr1 |= SSCR1_TRAIL;
 		break;
 	default:
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
-	/* sample size */
-	if (dai->config.ssp->frame_width > 16)
-		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(dai->config.ssp->frame_width - 16));
+	/* sample data size on SSP FIFO */
+	switch (params->frame_width) {
+	case 16:	/* 2 * 16bit packed into 32bit FIFO */
+	case 24:	/* 1 * 24bit in 32bit FIFO (8 MSBs not used) */
+	case 32:	/* 1 * 32bit packed into 32bit FIFO */
+		data_size = 32;
+		break;
+	default:
+		trace_ssp_error("ec7");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (data_size > 16)
+		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
 	else
-		sscr0 |= SSCR0_DSIZE(dai->config.ssp->frame_width);
+		sscr0 |= SSCR0_DSIZE(data_size);
 
 	/* watermarks - TODO: do we still need old sscr1 method ?? */
 	sscr1 |= (SSCR1_TX(4) | SSCR1_RX(4));
@@ -180,7 +253,7 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	else
 		sscr1 &= ~SSCR1_LBM;
 #endif
-	trace_ssp("SSC");
+	trace_ssp("coe");
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSPSP, sspsp);
@@ -192,7 +265,7 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 out:
 	spin_unlock(&ssp->lock);
 
-	return 0;
+	return ret;
 }
 
 /* Digital Audio interface formatting */
@@ -200,7 +273,7 @@ static inline int ssp_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("SLb");
+	trace_ssp("loo");
 	spin_lock(&ssp->lock);
 
 	ssp_update_bits(dai, SSCR1, SSCR1_LBM, lbm ? SSCR1_LBM : 0);
@@ -221,7 +294,7 @@ static void ssp_start(struct dai *dai, int direction)
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 	ssp->state[direction] = SSP_STATE_RUNNING;
 
-	trace_ssp("SEn");
+	trace_ssp("sta");
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
@@ -240,7 +313,7 @@ static void ssp_stop(struct dai *dai, int direction)
 
 	spin_lock(&ssp->lock);
 
-	trace_ssp("SDc");
+	trace_ssp("sto");
 
 	/* disable DMA */
 	if (direction == DAI_DIR_PLAYBACK) {
@@ -267,7 +340,7 @@ static void ssp_pause(struct dai *dai, int direction)
 
 	spin_lock(&ssp->lock);
 
-	trace_ssp("SDp");
+	trace_ssp("pau");
 
 	/* disable DMA */
 	if (direction == DAI_DIR_PLAYBACK) {
@@ -286,7 +359,7 @@ static uint32_t ssp_drain_work(void *data, uint32_t udelay)
 	struct dai *dai = (struct dai *)data;
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("SDw");
+	trace_ssp("dra");
 
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == SSP_STATE_DRAINING)
 		ssp_stop(dai, SOF_IPC_STREAM_CAPTURE);
@@ -300,10 +373,10 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("STr");
+	trace_ssp("tri");
 
 	switch (cmd) {
-	case DAI_TRIGGER_START:
+	case COMP_CMD_START:
 /* let's only wait until draining finished(timout) before another start */
 #if 0
 		/* cancel any scheduled work */
@@ -313,7 +386,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		if (ssp->state[direction] == SSP_STATE_IDLE)
 			ssp_start(dai, direction);
 		break;
-	case DAI_TRIGGER_PAUSE_RELEASE:
+	case COMP_CMD_RELEASE:
 /* let's only wait until pausing finished(timout) before next release */
 #if 0
 		if (ssp->state[direction] == SSP_STATE_PAUSING)
@@ -322,7 +395,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		if (ssp->state[direction] == SSP_STATE_PAUSED)
 			ssp_start(dai, direction);
 		break;
-	case DAI_TRIGGER_PAUSE_PUSH:
+	case COMP_CMD_PAUSE:
 		if (ssp->state[direction] != SSP_STATE_RUNNING) {
 			trace_ssp_error("wsP");
 			return 0;
@@ -338,7 +411,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		} else
 			ssp_pause(dai, direction);
 		break;
-	case DAI_TRIGGER_STOP:
+	case COMP_CMD_STOP:
 		if (ssp->state[direction] != SSP_STATE_RUNNING &&
 			ssp->state[direction] != SSP_STATE_PAUSED) {
 			trace_ssp_error("wsO");
@@ -355,11 +428,11 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		} else
 			ssp_stop(dai, direction);
 		break;
-	case DAI_TRIGGER_RESUME:
+	case COMP_CMD_RESUME:
 		ssp_context_restore(dai);
 		ssp_start(dai, direction);
 		break;
-	case DAI_TRIGGER_SUSPEND:
+	case COMP_CMD_SUSPEND:
 		ssp_stop(dai, direction);
 		ssp_context_store(dai);
 		break;

@@ -51,14 +51,15 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
+#include <platform/timer.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <uapi/ipc.h>
 #include <reef/intel-ipc.h>
 #include <config.h>
 
-#define iGS(x) (x >> SOF_GLB_TYPE_SHIFT)
-#define iCS(x) (x >> SOF_CMD_TYPE_SHIFT)
+#define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
+#define iCS(x) ((x >> SOF_CMD_TYPE_SHIFT) & 0xfff)
 
 /* IPC context - shared with platform IPC driver */
 struct ipc *_ipc;
@@ -201,6 +202,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
 	struct stream_params params;
 	struct ipc_comp_dev *pcm_dev;
+	struct comp_dev *cd;
 	int err;
 
 	trace_ipc("SAl");
@@ -212,18 +214,24 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	pcm_dev = ipc_get_comp(_ipc, pcm_params->comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("eAC");
+		trace_value(pcm_params->comp_id);
 		return -EINVAL;
 	}
 
+	/* set params component params */
+	cd = pcm_dev->cd;
+	cd->params = pcm_params->params;
+
 	/* use DMA to read in compressed page table ringbuffer from host */
-	err = get_page_descriptors(iipc, &pcm_params->buffer);
+	err = get_page_descriptors(iipc, &pcm_params->params.buffer);
 	if (err < 0) {
 		trace_ipc_error("eAp");
 		goto error;
 	}
 
 	/* Parse host tables */
-	err = parse_page_descriptors(iipc, &pcm_params->buffer, pcm_dev->cd);
+	err = parse_page_descriptors(iipc, &pcm_params->params.buffer,
+		pcm_dev->cd);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
@@ -235,6 +243,14 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		trace_ipc_error("eAa");
 		goto error;
 	}
+
+	/* prepare pipeline audio params */
+	err = pipeline_prepare(pcm_dev->cd->pipeline, pcm_dev->cd);
+	if (err < 0) {
+		trace_ipc_error("eAr");
+		goto error;
+	}
+
 
 	return 0;
 
@@ -266,9 +282,10 @@ static int ipc_stream_trigger(uint32_t header)
 	struct ipc_comp_dev *pcm_dev;
 	uint32_t cmd = COMP_CMD_RELEASE;
 	struct sof_ipc_stream *stream  = _ipc->comp_data;
+	uint32_t ipc_cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 	int err;
 
-	trace_ipc("SRe");
+	trace_ipc("tri");
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
@@ -277,24 +294,24 @@ static int ipc_stream_trigger(uint32_t header)
 		goto error;
 	}
 
-	switch (header) {
-	case SOF_IPC_STREAM_TRIG_START:
+	switch (ipc_cmd) {
+	case iCS(SOF_IPC_STREAM_TRIG_START):
 		cmd = COMP_CMD_START;
 		break;
-	case SOF_IPC_STREAM_TRIG_STOP:
+	case iCS(SOF_IPC_STREAM_TRIG_STOP):
 		cmd = COMP_CMD_STOP;
 		break;
-	case SOF_IPC_STREAM_TRIG_PAUSE:
+	case iCS(SOF_IPC_STREAM_TRIG_PAUSE):
 		cmd = COMP_CMD_PAUSE;
 		break;
-	case SOF_IPC_STREAM_TRIG_RELEASE:
+	case iCS(SOF_IPC_STREAM_TRIG_RELEASE):
 		cmd = COMP_CMD_RELEASE;
 		break;
-	case SOF_IPC_STREAM_TRIG_DRAIN:
+	case iCS(SOF_IPC_STREAM_TRIG_DRAIN):
 		cmd = COMP_CMD_DRAIN;
 		break;
 	/* XRUN is special case- TODO */
-	case SOF_IPC_STREAM_TRIG_XRUN:
+	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
 		return 0;
 	}
 
@@ -338,25 +355,54 @@ static int ipc_glb_stream_message(uint32_t header)
 static int ipc_dai_ssp_config(uint32_t header)
 {
 	struct sof_ipc_dai_ssp_params *ssp = _ipc->comp_data;
-	struct ipc_comp_dev *dai_dev;
 	struct dai_config dai_config;
+	struct dai *dai;
+	int ret;
 
 	trace_ipc("DsF");
 
+	/* TODO: set type in topology */
 	dai_config.type = DAI_TYPE_INTEL_SSP;
 	dai_config.ssp = ssp;
 
-	/* TODO: playback/capture DAI dev get the pcm_dev */
-	dai_dev = ipc_get_comp(_ipc, ssp->comp_id);
-	if (dai_dev == NULL) {
-		trace_ipc_error("eDg");
-		goto error;
+	/* TODO: allow topology to define SSP clock type */
+	dai_config.ssp->clk_id = SSP_CLK_EXT;
+
+	/* get DAI */
+	dai = dai_get(SOF_DAI_INTEL_SSP, ssp->ssp_id);
+	if (dai == NULL) {
+		trace_ipc_error("eDi");
+		trace_value(ssp->ssp_id);
+		return -ENODEV;
 	}
 
-	comp_dai_config(dai_dev->cd, &dai_config);
+	/* configure DAI */
+	ret = dai_set_config(dai, &dai_config);
+	if (ret < 0) {
+		trace_ipc_error("eDC");
+		return ret;
+	}
 
-error:
-	return 0;
+	/* now send params to all components who use that DAI */
+	return ipc_comp_dai_config(_ipc, &dai_config);
+}
+
+static int ipc_glb_dai_message(uint32_t header)
+{
+	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+
+	switch (cmd) {
+	case iCS(SOF_IPC_COMP_SSP_CONFIG):
+		return ipc_dai_ssp_config(header);
+	case iCS(SOF_IPC_COMP_LOOPBACK):
+		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
+	case iCS(SOF_IPC_COMP_HDA_CONFIG):
+	case iCS(SOF_IPC_COMP_DMIC_CONFIG):
+	default:
+		trace_ipc_error("eDc");
+		trace_value(header);
+		return -EINVAL;
+	}
 }
 
 /*
@@ -454,7 +500,7 @@ static int ipc_comp_set_value(uint32_t header, uint32_t cmd)
 	struct ipc_comp_dev *stream_dev;
 	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
 
-	trace_ipc("VoS");
+	//trace_ipc("VoS");
 
 	/* get the component */
 	stream_dev = ipc_get_comp(_ipc, values->comp_id);
@@ -510,12 +556,6 @@ static int ipc_glb_comp_message(uint32_t header)
 		return ipc_comp_set_value(header, COMP_CMD_SRC);
 	case iCS(SOF_IPC_COMP_GET_SRC):
 		return ipc_comp_get_value(header, COMP_CMD_SRC);
-	case iCS(SOF_IPC_COMP_SSP_CONFIG):
-		return ipc_dai_ssp_config(header);
-	case iCS(SOF_IPC_COMP_LOOPBACK):
-		return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
-	case iCS(SOF_IPC_COMP_HDA_CONFIG):
-	case iCS(SOF_IPC_COMP_DMIC_CONFIG):
 	default:
 		trace_ipc_error("eCc");
 		trace_value(header);
@@ -537,13 +577,15 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 		return ret;
 
 	/* write component values to the outbox */
-	mailbox_outbox_write(&reply, 0, sizeof(reply));
+	mailbox_outbox_write(0, &reply, sizeof(reply));
 	return 0;
 }
 
 static int ipc_glb_tplg_buffer_new(uint32_t header)
 {
 	struct sof_ipc_buffer *ipc_buffer = _ipc->comp_data;
+
+	trace_ipc("Ibn");
 
 	return ipc_buffer_new(_ipc, ipc_buffer);
 }
@@ -552,31 +594,33 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 {
 	struct sof_ipc_pipe_new *ipc_pipeline = _ipc->comp_data;
 
-	trace_ipc("Tpn");
+	trace_ipc("Ipn");
 
 	return ipc_pipeline_new(_ipc, ipc_pipeline);
+}
+
+static int ipc_glb_tplg_pipe_complete(uint32_t header)
+{
+	struct sof_ipc_pipe_ready *ipc_pipeline = _ipc->comp_data;
+
+	trace_ipc("Ipc");
+
+	ipc_pipeline_complete(_ipc, ipc_pipeline->comp_id);
+
+	return 0;
 }
 
 static int ipc_glb_tplg_comp_connect(uint32_t header)
 {
 	struct sof_ipc_pipe_comp_connect *connect = _ipc->comp_data;
 
-	trace_ipc("Tpn");
+	trace_ipc("Icn");
 
 	return ipc_comp_connect(_ipc, connect);
 }
 
-static int ipc_glb_tplg_pipe_connect(uint32_t header)
-{
-	struct sof_ipc_pipe_pipe_connect *connect = _ipc->comp_data;
-
-	trace_ipc("Tpn");
-
-	return ipc_pipe_connect(_ipc, connect);
-}
-
 static int ipc_glb_tplg_free(uint32_t header,
-		void (*free_func)(struct ipc *ipc, uint32_t id))
+		int (*free_func)(struct ipc *ipc, uint32_t id))
 {
 	struct sof_ipc_free *ipc_free = _ipc->comp_data;
 
@@ -601,12 +645,10 @@ static int ipc_glb_tplg_message(uint32_t header)
 		return ipc_glb_tplg_comp_connect(header);
 	case iCS(SOF_IPC_TPLG_PIPE_NEW):
 		return ipc_glb_tplg_pipe_new(header);
+	case iCS(SOF_IPC_TPLG_PIPE_COMPLETE):
+		return ipc_glb_tplg_pipe_complete(header);
 	case iCS(SOF_IPC_TPLG_PIPE_FREE):
 		return ipc_glb_tplg_free(header, ipc_pipeline_free);
-	case iCS(SOF_IPC_TPLG_PIPE_CONNECT):
-		return ipc_glb_tplg_pipe_connect(header);
-	//case SOF_IPC_TPLG_PIPE_COMPLETE:
-	//	return ipc_glb_tplg_pipe_complete(header);
 	case iCS(SOF_IPC_TPLG_BUFFER_NEW):
 		return ipc_glb_tplg_buffer_new(header);
 	case iCS(SOF_IPC_TPLG_BUFFER_FREE):
@@ -648,6 +690,8 @@ int ipc_cmd(void)
 		return ipc_glb_comp_message(hdr->cmd);
 	case iGS(SOF_IPC_GLB_STREAM_MSG):
 		return ipc_glb_stream_message(hdr->cmd);
+	case iGS(SOF_IPC_GLB_DAI_MSG):
+		return ipc_glb_dai_message(hdr->cmd);
 	default:
 		trace_ipc_error("eGc");
 		trace_value(type);
@@ -675,7 +719,7 @@ int ipc_stream_send_notification(struct comp_dev *cdev,
 	uint32_t header;
 
 	header = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
-
+trace_value(header);
 	return ipc_queue_host_message(_ipc, header, posn, sizeof(*posn),
 		NULL, 0, NULL, NULL);
 }

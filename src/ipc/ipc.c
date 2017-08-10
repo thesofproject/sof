@@ -43,6 +43,12 @@
 #include <reef/audio/pipeline.h>
 #include <reef/audio/buffer.h>
 
+/*
+ * Components, buffers and pipelines all use the same set of monotonic ID
+ * numbers passed in by the host. They are stored in different lists, hence
+ * more than 1 list may need to be searched for the correspodning component.
+ */
+
 struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 {
 	struct ipc_comp_dev *icd;
@@ -50,36 +56,22 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 
 	list_for_item(clist, &ipc->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
-		if (icd->cd->comp.id == id)
-			return icd;
-	}
-
-	return NULL;
-}
-
-struct ipc_buffer_dev *ipc_get_buffer(struct ipc *ipc, uint32_t id)
-{
-	struct ipc_buffer_dev *icb;
-	struct list_item *clist;
-
-	list_for_item(clist, &ipc->buffer_list) {
-		icb = container_of(clist, struct ipc_buffer_dev, list);
-		if (icb->cb->ipc_buffer.comp.id == id)
-			return icb;
-	}
-
-	return NULL;
-}
-
-struct ipc_pipeline_dev *ipc_get_pipeline(struct ipc *ipc, uint32_t id)
-{
-	struct ipc_pipeline_dev *ipd;
-	struct list_item *clist;
-
-	list_for_item(clist, &ipc->pipeline_list) {
-		ipd = container_of(clist, struct ipc_pipeline_dev, list);
-		if (ipd->pipeline->id == id)
-			return ipd;
+		switch (icd->type) {
+		case COMP_TYPE_COMPONENT:
+			if (icd->cd->comp.id == id)
+				return icd;
+			break;
+		case COMP_TYPE_BUFFER:
+			if (icd->cb->ipc_buffer.comp.id == id)
+				return icd;
+			break;
+		case COMP_TYPE_PIPELINE:
+			if (icd->pipeline->ipc_pipe.comp_id == id)
+				return icd;
+			break;
+		default:
+			break;
+		}
 	}
 
 	return NULL;
@@ -114,37 +106,41 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 		return -ENOMEM;
 	}
 	icd->cd = cd;
+	icd->type = COMP_TYPE_COMPONENT;
 
 	/* add new component to the list */
 	list_item_append(&icd->list, &ipc->comp_list);
 	return ret;
 }
 
-void ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
+int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *icd;
 
 	/* check whether component exists */
 	icd = ipc_get_comp(ipc, comp_id);
 	if (icd == NULL)
-		return;
+		return -ENODEV;
 
 	/* free component and remove from list */
 	comp_free(icd->cd);
 	list_item_del(&icd->list);
 	rfree(icd);
+
+	return 0;
 }
 
 int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 {
-	struct ipc_buffer_dev *ibd;
+	struct ipc_comp_dev *ibd;
 	struct comp_buffer *buffer;
 	int ret = 0;
 
 	/* check whether buffer already exists */
-	ibd = ipc_get_buffer(ipc, desc->comp.id);
+	ibd = ipc_get_comp(ipc, desc->comp.id);
 	if (ibd != NULL) {
 		trace_ipc_error("eBe");
+		trace_value(desc->comp.id);
 		return -EINVAL;
 	}
 
@@ -156,39 +152,41 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 		return -ENOMEM;
 	}
 
-	ibd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(struct ipc_buffer_dev));
+	ibd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(struct ipc_comp_dev));
 	if (ibd == NULL) {
 		rfree(buffer);
 		return -ENOMEM;
 	}
 	ibd->cb = buffer;
+	ibd->type = COMP_TYPE_BUFFER;
 
 	/* add new buffer to the list */
-	list_item_append(&ibd->list, &ipc->buffer_list);
+	list_item_append(&ibd->list, &ipc->comp_list);
 	return ret;
 }
 
-void ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
+int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 {
-	struct ipc_buffer_dev *ibd;
+	struct ipc_comp_dev *ibd;
 
 	/* check whether buffer exists */
-	ibd = ipc_get_buffer(ipc, buffer_id);
+	ibd = ipc_get_comp(ipc, buffer_id);
 	if (ibd == NULL)
-		return;
+		return -ENODEV;
 
 	/* free buffer and remove from list */
 	buffer_free(ibd->cb);
 	list_item_del(&ibd->list);
 	rfree(ibd);
+
+	return 0;
 }
 
 int ipc_comp_connect(struct ipc *ipc,
 	struct sof_ipc_pipe_comp_connect *connect)
 {
 	struct ipc_comp_dev *icd_source, *icd_sink;
-	struct ipc_buffer_dev *ibd;
-	struct ipc_pipeline_dev *ipc_pipe;
+	//struct ipc_comp_dev *icd_source_pipe, *icd_sink_pipe;
 
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp(ipc, connect->source_id);
@@ -205,92 +203,53 @@ int ipc_comp_connect(struct ipc *ipc,
 		return -EINVAL;
 	}
 
-	/* check whether the buffer already exists */
-	ibd = ipc_get_buffer(ipc, connect->buffer_id);
-	if (ibd == NULL) {
-		trace_ipc_error("eCb");
-		trace_value(connect->buffer_id);
+	/* check source and sink types */
+	if (icd_source->type == COMP_TYPE_BUFFER &&
+		icd_sink->type == COMP_TYPE_COMPONENT)
+		return pipeline_buffer_connect(icd_source->pipeline,
+			icd_source->cb, icd_sink->cd);
+	else if (icd_source->type == COMP_TYPE_COMPONENT &&
+		icd_sink->type == COMP_TYPE_BUFFER)
+		return pipeline_comp_connect(icd_source->pipeline,
+			icd_source->cd, icd_sink->cb);
+	else {
+		trace_ipc_error("eCt");
+		trace_value(connect->source_id);
+		trace_value(connect->sink_id);
 		return -EINVAL;
 	}
-
-	/* check whether the pipeline already exists */
-	ipc_pipe = ipc_get_pipeline(ipc, connect->pipeline_id);
-	if (ipc_pipe == NULL) {
-		trace_ipc_error("eCp");
-		trace_value(connect->pipeline_id);
-		return -EINVAL;
-	}
-
-	/* must be on same pipeline */
-	//if (connect->pipeline_id != icd_source->)
-		//return -EINVAL;
-
-	return pipeline_comp_connect(ipc_pipe->pipeline,
-		icd_source->cd, icd_sink->cd, ibd->cb);
 }
 
-int ipc_pipe_connect(struct ipc *ipc,
-	struct sof_ipc_pipe_pipe_connect *connect)
-{
-	struct ipc_comp_dev *icd_source, *icd_sink;
-	struct ipc_buffer_dev *ibd;
-	struct ipc_pipeline_dev *ipc_pipe_source, *ipc_pipe_sink;
-
-	/* check whether the components already exist */
-	icd_source = ipc_get_comp(ipc, connect->comp_source_id);
-	if (icd_source == NULL) {
-		trace_ipc_error("eCr");
-		trace_value(connect->comp_source_id);
-		return EINVAL;
-	}
-
-	icd_sink = ipc_get_comp(ipc, connect->comp_sink_id);
-	if (icd_sink == NULL) {
-		trace_ipc_error("eCn");
-		trace_value(connect->comp_sink_id);
-		return EINVAL;
-	}
-
-	/* check whether the buffer already exists */
-	ibd = ipc_get_buffer(ipc, connect->buffer_id);
-	if (ibd == NULL) {
-		trace_ipc_error("eCb");
-		trace_value(connect->buffer_id);
-		return EINVAL;
-	}
-
-	/* check whether the pipelines already exist */
-	ipc_pipe_source = ipc_get_pipeline(ipc, connect->pipeline_source_id);
-	if (ipc_pipe_source == NULL) {
-		trace_ipc_error("eCp");
-		trace_value(connect->pipeline_source_id);
-		return EINVAL;
-	}
-
-	ipc_pipe_sink = ipc_get_pipeline(ipc, connect->pipeline_sink_id);
-	if (ipc_pipe_sink == NULL) {
-		trace_ipc_error("eCP");
-		trace_value(connect->pipeline_sink_id);
-		return EINVAL;
-	}
-
-	return pipeline_pipe_connect(ipc_pipe_source->pipeline,
-		ipc_pipe_sink->pipeline, icd_source->cd, icd_sink->cd, ibd->cb);
-}
 
 int ipc_pipeline_new(struct ipc *ipc,
 	struct sof_ipc_pipe_new *pipe_desc)
 {
-	struct ipc_pipeline_dev *ipc_pipe;
+	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
+	struct ipc_comp_dev *icd;
 
 	/* check whether the pipeline already exists */
-	ipc_pipe = ipc_get_pipeline(ipc, pipe_desc->pipeline_id);
-	if (ipc_pipe != NULL)
-		return EINVAL;
+	ipc_pipe = ipc_get_comp(ipc, pipe_desc->comp_id);
+	if (ipc_pipe != NULL) {
+		trace_ipc_error("ePi");
+		trace_value(pipe_desc->comp_id);
+		return -EINVAL;
+	}
+
+	/* find the scheduling component */
+	icd = ipc_get_comp(ipc, pipe_desc->sched_id);
+	if (icd == NULL) {
+		trace_ipc_error("ePs");
+		trace_value(pipe_desc->sched_id);
+		return -EINVAL;
+	}
+	if (icd->type != COMP_TYPE_COMPONENT) {
+		trace_ipc_error("ePc");
+		return -EINVAL;
+	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(pipe_desc);
+	pipe = pipeline_new(pipe_desc, icd->cd);
 	if (pipe == NULL) {
 		trace_ipc_error("ePn");
 		return -ENOMEM;
@@ -298,32 +257,90 @@ int ipc_pipeline_new(struct ipc *ipc,
 
 	/* allocate the IPC pipeline container */
 	ipc_pipe = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
-		sizeof(struct ipc_pipeline_dev));
+		sizeof(struct ipc_comp_dev));
 	if (ipc_pipe == NULL) {
-		rfree(pipe);
+		pipeline_free(pipe);
 		return -ENOMEM;
 	}
 
 	ipc_pipe->pipeline = pipe;
+	ipc_pipe->type = COMP_TYPE_PIPELINE;
 
 	/* add new pipeline to the list */
-	list_item_append(&ipc_pipe->list, &ipc->pipeline_list);
+	list_item_append(&ipc_pipe->list, &ipc->comp_list);
 	return 0;
 }
 
-void ipc_pipeline_free(struct ipc *ipc, uint32_t pipeline_id)
+int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 {
-	struct ipc_pipeline_dev *ipc_pipe;
+	struct ipc_comp_dev *ipc_pipe;
+	int ret;
 
 	/* check whether pipeline exists */
-	ipc_pipe = ipc_get_pipeline(ipc, pipeline_id);
+	ipc_pipe = ipc_get_comp(ipc, comp_id);
+	if (ipc_pipe == NULL)
+		return -ENODEV;
+
+	/* free buffer and remove from list */
+	ret = pipeline_free(ipc_pipe->pipeline);
+	if (ret < 0) {
+		trace_ipc_error("ePf");
+		return ret;
+	}
+
+	list_item_del(&ipc_pipe->list);
+	rfree(ipc_pipe);
+
+	return 0;
+}
+
+void ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
+{
+	struct ipc_comp_dev *ipc_pipe;
+
+	/* check whether pipeline exists */
+	ipc_pipe = ipc_get_comp(ipc, comp_id);
 	if (ipc_pipe == NULL)
 		return;
 
 	/* free buffer and remove from list */
-	pipeline_free(ipc_pipe->pipeline);
-	list_item_del(&ipc_pipe->list);
-	rfree(ipc_pipe);
+	pipeline_complete(ipc_pipe->pipeline);
+}
+
+int ipc_comp_dai_config(struct ipc *ipc, struct dai_config *config)
+{
+	struct ipc_comp_dev *icd;
+	struct list_item *clist;
+	int ret = 0;
+
+	/* for each component */
+	list_for_item(clist, &ipc->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		switch (icd->type) {
+		case COMP_TYPE_COMPONENT:
+
+			/* make sure we only config DAI comps */
+			switch (icd->cd->comp.type) {
+			case SOF_COMP_DAI:
+			case SOF_COMP_SG_DAI:
+				ret = comp_dai_config(icd->cd, config);
+				if (ret < 0) {
+					trace_ipc_error("eCD");
+					return ret;
+				}
+				break;
+			default:
+				break;
+			}
+
+			break;
+		/* ignore non components */
+		default:
+			break;
+		}
+	}
+
+	return ret;
 }
 
 int ipc_init(struct reef *reef)
@@ -334,9 +351,7 @@ int ipc_init(struct reef *reef)
 	reef->ipc = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*reef->ipc));
 	reef->ipc->comp_data = rzalloc(RZONE_SYS, RFLAGS_NONE, SOF_IPC_MSG_MAX_SIZE);
 
-	list_init(&reef->ipc->buffer_list);
 	list_init(&reef->ipc->comp_list);
-	list_init(&reef->ipc->pipeline_list);
 
 	return platform_ipc_init(reef->ipc);
 }

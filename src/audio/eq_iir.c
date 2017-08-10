@@ -43,6 +43,7 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <reef/audio/format.h>
+#include <uapi/ipc.h>
 #include "eq_iir.h"
 #include "iir.h"
 
@@ -57,6 +58,7 @@
 /* src component private data */
 struct comp_data {
 	struct eq_iir_configuration *config;
+	uint32_t period_bytes;
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS];
 	void (*eq_iir_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
@@ -71,15 +73,13 @@ struct comp_data {
 static void eq_iir_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink, uint32_t frames)
 {
-
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int ch, n, n_wrap_src, n_wrap_snk, n_wrap_min;
 	int32_t *src = (int32_t *) source->r_ptr;
 	int32_t *snk = (int32_t *) sink->w_ptr;
-	int nch = source->params.pcm->channels;
+	int nch = dev->params.channels;
 	int32_t *x = src + nch - 1;
 	int32_t *y = snk + nch - 1;
-	struct comp_data *cd = comp_get_drvdata(dev);
-
 
 	for (ch = 0; ch < nch; ch++) {
 		n = frames * nch;
@@ -120,11 +120,6 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 	}
 	source->r_ptr = x - nch + 1; /* After previous loop the x and y */
 	sink->w_ptr = y - nch + 1; /*  point to one frame -1. */
-
-	comp_wrap_source_r_ptr_circular(source);
-	comp_wrap_sink_w_ptr_circular(sink);
-	comp_update_source_free_avail(source, frames * nch);
-	comp_update_sink_free_avail(sink, frames * nch);
 }
 
 static void eq_iir_free_parameters(struct eq_iir_configuration **config)
@@ -203,7 +198,7 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 	}
 
 	/* Allocate all IIR channels data in a big chunk and clear it */
-	iir_delay = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, size_sum);
+	iir_delay = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, size_sum);
 	if (iir_delay == NULL)
 		return -ENOMEM;
 
@@ -248,20 +243,20 @@ static int eq_iir_switch_response(struct iir_state_df2t iir[],
 
 static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 {
-	int i;
-	//struct comp_buffer *sink;
-	//struct comp_buffer *source;
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	int i;
 
-	trace_eq_iir("ENw");
-	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	trace_eq_iir("new");
+
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_eq_iir));
 	if (dev == NULL)
 		return NULL;
 
-	//memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_iir));
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_iir));
 
-	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
@@ -281,7 +276,7 @@ static void eq_iir_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_eq_iir("EFr");
+	trace_eq_iir("fre");
 
 	eq_iir_free_delaylines(cd->iir);
 	eq_iir_free_parameters(&cd->config);
@@ -291,18 +286,22 @@ static void eq_iir_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int eq_iir_params(struct comp_dev *dev, struct stream_params *params)
+static int eq_iir_params(struct comp_dev *dev,
+	struct stream_params *host_params)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	trace_eq_iir("EPa");
+	trace_eq_iir("par");
+
+	comp_install_params(dev, host_params);
+
+	/* calculate period size based on config */
+	cd->period_bytes = config->frames * config->frame_size;
 
 	/* EQ supports only S32_LE PCM format */
-	if ((params->type != STREAM_TYPE_PCM)
-		|| (params->pcm->frame_fmt != SOF_IPC_FRAME_S32_LE))
+	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
-
-	/* don't do any data transformation */
-	comp_buffer_sink_params(dev, params);
 
 	return 0;
 }
@@ -310,7 +309,6 @@ static int eq_iir_params(struct comp_dev *dev, struct stream_params *params)
 /* used to pass standard and bespoke commands (with data) to component */
 static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 {
-	trace_eq_iir("ECm");
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_eq_iir_switch *assign;
 	struct sof_ipc_eq_iir_blob *blob;
@@ -318,6 +316,8 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 	int i;
 	int ret = 0;
 	size_t bs;
+
+	trace_eq_iir("cmd");
 
 	switch (cmd) {
 	case COMP_CMD_EQ_IIR_SWITCH:
@@ -346,7 +346,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 			return -EINVAL;
 
 		/* Allocate and make a copy of the blob and setup IIR */
-		cd->config = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
+		cd->config = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
 		if (cd->config == NULL)
 			return -EINVAL;
 
@@ -411,37 +411,39 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 static int eq_iir_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
-	int frames;
-	int need_source, need_sink;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *source, *sink;
+	uint32_t copy_bytes;
 
 	trace_comp("EqI");
 
-	/* src component needs 1 source and 1 sink buffer */
+	/* get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 		sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 		source_list);
 
-	/* Check that source has enough frames available and that sink has
-	 * enough frames free.
+	/* Check that source has enough frames available and sink enough
+	 * frames free.
 	 */
-	frames = source->params.pcm->period_count;
-	need_source = frames * source->params.pcm->frame_size;
-	need_sink = frames * sink->params.pcm->frame_size;
+	copy_bytes = comp_buffer_get_copy_bytes(dev, source, sink);
 
 	/* Run EQ if buffers have enough room */
-	if ((source->avail >= need_source) && (sink->free >= need_sink))
-		cd->eq_iir_func(dev, source, sink, frames);
+	if (copy_bytes < cd->period_bytes)
+		return 0;
 
-	return 0;
+	cd->eq_iir_func(dev, source, sink, config->frames);
+
+	/* calc new free and available */
+	comp_update_buffer_consume(source, copy_bytes);
+	comp_update_buffer_produce(sink, copy_bytes);
+
+	return config->frames;
 }
 
 static int eq_iir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
 	int ret;
 
 	trace_eq_iir("EPp");
@@ -455,9 +457,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	if (cd->config == NULL)
 		return -EINVAL;
 
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-		sink_list);
-	ret = eq_iir_setup(cd->iir, cd->config, source->params.pcm->channels);
+	ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
 	if (ret < 0)
 		return ret;
 
@@ -468,14 +468,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 
 static int eq_iir_preload(struct comp_dev *dev)
 {
-	//int i;
-
-	trace_eq_iir("EPl");
-
-	//for (i = 0; i < dev->preload; i++)
-	//    eq_iir_copy(dev);
-
-	return 0;
+	return eq_iir_copy(dev);
 }
 
 static int eq_iir_reset(struct comp_dev *dev)

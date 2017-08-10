@@ -116,7 +116,7 @@ struct comp_ops {
 	void (*free)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
-	int (*params)(struct comp_dev *dev, struct stream_params *params);
+	int (*params)(struct comp_dev *dev, struct stream_params *host_params);
 
 	/* preload buffers */
 	int (*preload)(struct comp_dev *dev);
@@ -160,8 +160,9 @@ struct comp_dev {
 	uint16_t is_endpoint;	/* component is end point in pipeline */
 	spinlock_t lock;	/* lock for this component */
 	struct pipeline *pipeline;	/* pipeline we belong to */
-	uint32_t period_frames;	/* frames to process per period - 0 is variable */
-	uint32_t period_bytes;	/* bytes to process per period - 0 is variable */
+
+	/* common runtime configuration for downstream/upstream */
+	struct sof_ipc_stream_params params;
 
 	/* driver */
 	struct comp_driver *drv;
@@ -180,6 +181,12 @@ struct comp_dev {
 
 #define COMP_SIZE(x) \
 	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
+#define COMP_GET_IPC(dev, type) \
+	(struct type *)(&dev->comp)
+#define COMP_GET_PARAMS(dev) \
+	(struct type *)(&dev->params)
+#define COMP_GET_CONFIG(dev) \
+	(struct sof_ipc_comp_config *)((void*)&dev->comp + sizeof(struct sof_ipc_comp))
 
 #define comp_set_drvdata(c, data) \
 	c->private = data
@@ -266,14 +273,7 @@ void sys_comp_volume_init(void);
 void sys_comp_src_init(void);
 void sys_comp_tone_init(void);
 void sys_comp_eq_iir_init(void);
-
-
 void sys_comp_eq_fir_init(void);
-
-static inline void comp_set_endpoint(struct comp_dev *dev)
-{
-	dev->is_endpoint = 1;
-}
 
 /* reset component downstream buffers  */
 static inline int comp_buffer_reset(struct comp_dev *dev)
@@ -301,39 +301,28 @@ static inline int comp_buffer_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static inline void comp_buffer_sink_params(struct comp_dev *dev,
-	struct stream_params *params)
+/*
+ * Convenince functions to install upstream/downstream common params. Only
+ * applicable to single upstream source. Components with > 1 source  or sink
+ * must do this manually.
+ *
+ * This allows params to propagate from the host PCM component downstrean on
+ * playback and upstream on capture.
+ */
+static inline void comp_install_params(struct comp_dev *dev,
+	struct stream_params *host_params)
 {
-	struct list_item *clist;
-	struct comp_buffer *sink;
+	struct comp_buffer *buffer;
 
-	list_for_item(clist, &dev->bsink_list) {
-
-		sink = container_of(clist, struct comp_buffer, source_list);
-		sink->params = *params;
+	if (host_params->pcm->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		buffer = list_first_item(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+		dev->params = buffer->source->params;
+	} else {
+		buffer = list_first_item(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		dev->params = buffer->sink->params;
 	}
-}
-
-static inline void comp_set_source_params(struct comp_dev *dev,
-	struct stream_params *params)
-{
-	struct list_item *clist;
-	struct comp_buffer *source;
-
-	list_for_item(clist, &dev->bsource_list) {
-
-		source = container_of(clist, struct comp_buffer, sink_list);
-		source->params = *params;
-	}
-}
-
-/* get a components preload period count from source buffer */
-static inline uint32_t comp_get_preload_count(struct comp_dev *dev)
-{
-	struct comp_buffer *source;
-
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	return source->ipc_buffer.preload_count;
 }
 
 #endif

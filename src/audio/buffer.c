@@ -76,8 +76,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	bzero(buffer->addr, desc->size);
 	memcpy(&buffer->ipc_buffer, desc, sizeof(*desc));
 
-	//buffer->size =
-	buffer->alloc_size = desc->size;
+	buffer->size = buffer->alloc_size = desc->size;
 	buffer->ipc_buffer = *desc;
 	buffer->w_ptr = buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + buffer->ipc_buffer.size;

@@ -63,7 +63,6 @@ struct comp_buffer {
 
 	/* IPC configuration */
 	struct sof_ipc_buffer ipc_buffer;
-	struct stream_params params;
 
 	/* connected components */
 	struct comp_dev *source;	/* source component */
@@ -78,61 +77,74 @@ struct comp_buffer {
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 void buffer_free(struct comp_buffer *buffer);
 
-static inline void comp_update_buffer_produce(struct comp_buffer *buffer)
+/* called by a component after pruducing data into this buffer */
+static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
+	uint32_t bytes)
 {
+	buffer->w_ptr += bytes;
+
+	/* check for pointer wrap */
+	if (buffer->w_ptr >= buffer->end_addr)
+		buffer->w_ptr = buffer->addr;
+
+	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
 		buffer->avail = buffer->w_ptr - buffer->r_ptr;
 	else if (buffer->r_ptr == buffer->w_ptr)
-		buffer->avail = buffer->end_addr - buffer->addr; /* full */
+		buffer->avail = buffer->size; /* full */
 	else
-		buffer->avail = buffer->end_addr - buffer->r_ptr +
-			buffer->w_ptr - buffer->addr;
-	buffer->free = buffer->ipc_buffer.size - buffer->avail;
+		buffer->avail = buffer->size - (buffer->r_ptr - buffer->w_ptr);
+
+	/* calculate free bytes */
+	buffer->free = buffer->size - buffer->avail;
+
+	tracev_buffer("pro");
+	tracev_value(buffer->avail);
+	tracev_value(buffer->free);
 }
 
-static inline void comp_update_buffer_consume(struct comp_buffer *buffer)
+/* called by a component after consuming data from this buffer */
+static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
+	uint32_t bytes)
 {
+	buffer->r_ptr += bytes;
+
+	/* check for pointer wrap */
+	if (buffer->r_ptr >= buffer->end_addr)
+		buffer->r_ptr = buffer->addr;
+
+	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
 		buffer->avail = buffer->w_ptr - buffer->r_ptr;
 	else if (buffer->r_ptr == buffer->w_ptr)
 		buffer->avail = 0; /* empty */
 	else
-		buffer->avail = buffer->end_addr - buffer->r_ptr +
-			buffer->w_ptr - buffer->addr;
-	buffer->free = buffer->ipc_buffer.size - buffer->avail;
+		buffer->avail = buffer->size - (buffer->r_ptr - buffer->w_ptr);
+
+	/* calculate free bytes */
+	buffer->free = buffer->size - buffer->avail;
+
+	tracev_buffer("con");
+	tracev_value(buffer->avail);
+	tracev_value(buffer->free);
 }
 
-static inline void comp_update_source_free_avail(struct comp_buffer *src, int n)
+/* get the max number of bytes that can be copied between sink and source */
+static inline uint32_t comp_buffer_get_copy_bytes(struct comp_dev *dev,
+	struct comp_buffer *source, struct comp_buffer *sink)
 {
-        src->avail -= sizeof(int32_t)*n;
-        src->free += sizeof(int32_t)*n;
-}
+	uint32_t copy_bytes;
 
+	/* Check that source has enough frames available and sink enough
+	 * frames free.
+	 */
+	/* Run EQ if buffers have enough room */
+	if (source->avail > sink->free)
+		copy_bytes = sink->free;
+	else
+		copy_bytes = source->avail;
 
-static inline void comp_update_sink_free_avail(struct comp_buffer *snk, int n)
-{
-        snk->avail += sizeof(int32_t)*n;
-        snk->free -= sizeof(int32_t)*n;
-}
-
-
-static inline void comp_wrap_source_r_ptr_circular(struct comp_buffer *src)
-{
-        if (src->r_ptr >= src->end_addr)
-                src->r_ptr -= src->alloc_size;
-
-        if (src->r_ptr < src->addr)
-                src->r_ptr += src->alloc_size;
-}
-
-
-static inline void comp_wrap_sink_w_ptr_circular(struct comp_buffer *snk)
-{
-        if (snk->w_ptr >= snk->end_addr)
-                snk->w_ptr -= snk->alloc_size;
-
-        if (snk->w_ptr < snk->addr)
-                snk->w_ptr += snk->alloc_size;
+	return copy_bytes;
 }
 
 #endif

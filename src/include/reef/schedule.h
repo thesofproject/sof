@@ -46,6 +46,7 @@ struct reef;
 #define TASK_STATE_RUNNING	2
 #define TASK_STATE_PREEMPTED	3
 #define TASK_STATE_COMPLETED	4
+#define TASK_STATE_FREE		5
 
 /* task priorities - values same as Linux processes, gives scope for future.*/
 #define TASK_PRI_LOW	19
@@ -84,6 +85,15 @@ static inline void task_init(struct task *task, void (*func)(void *),
 	task->data = data;
 	task->sdata = NULL;
 }
+
+static inline void task_free(struct task *task)
+{
+	task->state = TASK_STATE_FREE;
+	task->func = NULL;
+	task->data = NULL;
+	task->sdata = NULL;
+}
+
 
 int scheduler_init(struct reef *reef);
 

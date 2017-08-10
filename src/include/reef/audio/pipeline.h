@@ -54,7 +54,6 @@ struct ipc;
  * Audio pipeline.
  */
 struct pipeline {
-	uint32_t id;		/* id */
 	spinlock_t lock;
 	struct sof_ipc_pipe_new ipc_pipe;
 
@@ -64,26 +63,27 @@ struct pipeline {
 
 	/* scheduling */
 	struct task pipe_task;		/* pipeline processing task */
+	struct comp_dev *sched_comp;
 };
 
 /* static pipeline */
 extern struct pipeline *pipeline_static;
 
 /* pipeline creation and destruction */
-struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc);
-void pipeline_free(struct pipeline *p);
+struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
+	struct comp_dev *cd);
+int pipeline_free(struct pipeline *p);
 
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 void buffer_free(struct comp_buffer *buffer);
 
 /* insert component in pipeline */
-int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_cd,
-	struct comp_dev *sink_cd, struct comp_buffer *buffer);
-
-int pipeline_pipe_connect(struct pipeline *psource, struct pipeline *psink,
-		struct comp_dev *source_cd, struct comp_dev *sink_cd,
-		struct comp_buffer *buffer);
+int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
+	struct comp_buffer *sink_buffer);
+int pipeline_buffer_connect(struct pipeline *p,
+	struct comp_buffer *source_buffer, struct comp_dev *sink_comp);
+void pipeline_complete(struct pipeline *p);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,

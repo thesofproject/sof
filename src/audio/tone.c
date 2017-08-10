@@ -44,6 +44,7 @@
 #include <reef/audio/format.h>
 #include <reef/audio/pipeline.h>
 #include <reef/math/trig.h>
+#include <uapi/ipc.h>
 #include "tone.h"
 
 #ifdef MODULE_TEST
@@ -77,6 +78,10 @@ static const int32_t tone_pi2_div_fs[TONE_NUM_FS] = {
 
 /* TODO: Remove *source when internal endpoint is possible */
 struct comp_data {
+	uint32_t period_bytes;
+	uint32_t channels;
+	uint32_t frame_bytes;
+	uint32_t rate;
 	struct tone_state sg;
 	void (*tone_func)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
@@ -91,9 +96,9 @@ static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t sine_sample;
-	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t *dest = (int32_t*) sink->w_ptr;
 	int i, n, n_wrap_dest;
-	int nch = sink->params.pcm->channels;
+	int nch = cd->channels;
 
 	n = frames * nch;
 	while (n > 0) {
@@ -133,7 +138,6 @@ static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 		}
 	}
 	sink->w_ptr = dest;
-	comp_update_sink_free_avail(sink, frames * nch);
 }
 
 static int32_t tonegen(struct tone_state *sg)
@@ -152,7 +156,7 @@ static int32_t tonegen(struct tone_state *sg)
 	if (sg->mute)
 		return 0;
 	else
-		return (int32_t) sine; /* Q1.31 no saturation need */
+		return(int32_t) sine; /* Q1.31 no saturation need */
 }
 
 static void tonegen_control(struct tone_state *sg)
@@ -365,22 +369,21 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	struct comp_dev *dev;
 	struct comp_data *cd;
 
-	trace_tone("TNw");
-	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+	trace_tone("new");
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
 	if (dev == NULL)
 		return NULL;
 
 	//memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_tone));
 
 
-	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, cd);
-	comp_set_endpoint(dev);
 	cd->tone_func = tone_s32_default;
 
 	/* Reset tone generator and set channels volumes to default */
@@ -393,24 +396,29 @@ static void tone_free(struct comp_dev *dev)
 {
 	struct tone_data *td = comp_get_drvdata(dev);
 
-	trace_tone("TFr");
+	trace_tone("fre");
 
 	rfree(td);
 	rfree(dev);
 }
 
 /* set component audio stream parameters */
-static int tone_params(struct comp_dev *dev, struct stream_params *params)
+static int tone_params(struct comp_dev *dev, struct stream_params *host_params)
 {
-	trace_tone("TPa");
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_stream_params *params = &dev->params;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	/* Tone generator supports only S32_LE PCM format */
-	if ((params->type != STREAM_TYPE_PCM)
-		|| (params->pcm->frame_fmt != SOF_IPC_FRAME_S32_LE))
+	trace_tone("par");
+
+	comp_install_params(dev, host_params);
+
+	/* calculate period size based on config */
+	cd->period_bytes = config->frames * config->frame_size;
+
+	/* EQ supports only S32_LE PCM format */
+	if (params->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
-
-	/* Don't do any data transformation */
-	comp_buffer_sink_params(dev, params);
 
 	return 0;
 }
@@ -421,7 +429,7 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_tone *ct;
 
-	trace_tone("TCm");
+	trace_tone("tri");
 
 	switch (cmd) {
 	case COMP_CMD_TONE:
@@ -478,47 +486,42 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 /* copy and process stream data from source to sink buffers */
 static int tone_copy(struct comp_dev *dev)
 {
-	int need_sink;
 	struct comp_buffer *sink;
 	struct comp_buffer *source = NULL;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t cframes;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	trace_comp("Ton");
+	trace_comp("cpy");
 
 	/* tone component sink buffer */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 		source_list);
-	cframes = sink->params.pcm->period_count;
 
 	/* Test that sink has enough free frames. Then run once to maintain
 	 * low latency and steady load for tones.
 	 */
-	need_sink = cframes * sink->params.pcm->frame_size;
-	if (sink->free >= need_sink) {
+	if (sink->free >= cd->period_bytes) {
 		/* create tone */
-		cd->tone_func(dev, sink, source, cframes);
+		cd->tone_func(dev, sink, source, config->frames);
 	}
 
-	return 0;
+	comp_update_buffer_produce(sink, cd->period_bytes);
+
+	return config->frames;
 }
 
 static int tone_prepare(struct comp_dev *dev)
 {
 	int32_t f, a;
-	struct comp_buffer *sink;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_tone("TPp");
-
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-		source_list);
-	trace_value(sink->params.pcm->channels);
-	trace_value(sink->params.pcm->rate);
+	tracev_value(cd->channels);
+	tracev_value(cd->rate);
 
 	f = tonegen_get_f(&cd->sg);
 	a = tonegen_get_a(&cd->sg);
-	if (tonegen_init(&cd->sg, sink->params.pcm->rate, f, a) < 0)
+	if (tonegen_init(&cd->sg, cd->rate, f, a) < 0)
 		return -EINVAL;
 
 	//dev->preload = PLAT_INT_PERIODS;
@@ -555,7 +558,8 @@ static int tone_reset(struct comp_dev *dev)
 
 struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
-	.ops = {
+	.ops =
+	{
 		.new = tone_new,
 		.free = tone_free,
 		.params = tone_params,

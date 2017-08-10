@@ -43,6 +43,7 @@
 
 /* mixer component private data */
 struct mixer_data {
+	uint32_t period_bytes;
 	void (*mix_func)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer **sources, uint32_t count, uint32_t frames);
 };
@@ -55,7 +56,7 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 	int64_t val[2];
 	int i, j;
 
-	count = frames * sink->params.pcm->channels;
+	count = frames * dev->params.channels;
 
 	for (i = 0; i < count; i += 2) {
 		val[0] = 0;
@@ -85,7 +86,8 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_mixer *mixer;
-	struct sof_ipc_comp_mixer *ipc_mixer = (struct sof_ipc_comp_mixer *)comp;
+	struct sof_ipc_comp_mixer *ipc_mixer =
+		(struct sof_ipc_comp_mixer *)comp;
 	struct mixer_data *md;
 
 	trace_mixer("new");
@@ -112,25 +114,29 @@ static void mixer_free(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 
+	trace_mixer("fre");
+
 	rfree(md);
 	rfree(dev);
 }
 
 /* set component audio stream parameters */
-static int mixer_params(struct comp_dev *dev, struct stream_params *params)
+static int mixer_params(struct comp_dev *dev,
+	struct stream_params *host_params)
 {
-	struct stream_params sink_params = *params;
+	struct mixer_data *md = comp_get_drvdata(dev);
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+
+	trace_mixer("par");
 
 	/* dont do any params downstream setting for running mixer stream */
 	if (dev->state == COMP_STATE_RUNNING)
 		return 1;
 
-	/* suppose sink component won't be host/dai, so hard code it */
-	sink_params.pcm->frame_fmt = SOF_IPC_FRAME_S32_LE;
-	sink_params.pcm->frame_size = 4 * params->pcm->channels; /* 32bit container */
+	comp_install_params(dev, host_params);
 
-	/* dont do any data transformation */
-	comp_buffer_sink_params(dev, &sink_params);
+	/* calculate period size based on config */
+	md->period_bytes = config->frames * config->frame_size;
 
 	return 0;
 }
@@ -162,6 +168,8 @@ static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	int finish = 0;
 
+	trace_mixer("cmd");
+
 	switch(cmd) {
 	case COMP_CMD_START:
 		trace_mixer("MSa");
@@ -184,67 +192,69 @@ static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 	return finish;
 }
 
-/* mix N source PCM streams to one sink stream */
+/*
+ * Mix N source PCM streams to one sink PCM stream. Frames copied is constant.
+ */
 static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
-	struct comp_buffer *sink, *sources[5], *source;
-	uint32_t i = 0, num_mix_sources, cframes = PLAT_INT_PERIOD_FRAMES;
-	struct list_item * blist;
+	struct comp_buffer *sink, *sources[PLATFORM_MAX_STREAMS], *source;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct list_item *blist;
+	int32_t i = 0, num_mix_sources = 0;
 
-	trace_mixer("Mix");
+	trace_mixer("cpy");
 
-	/* calculate the highest status between input streams */
+	/* calculate the highest runtime component status between input streams */
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
-		/* only mix the sources with the same state with mixer*/
+
+		/* only mix the sources with the same state with mixer */
 		if (source->source->state == dev->state)
-			sources[i++] = source;
+			sources[num_mix_sources++] = source;
 	}
 
-	num_mix_sources = i;
-
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-
-	for(i = 0; i < num_mix_sources; i++) {
-		if (sources[i]->avail < cframes * sources[i]->params.pcm->frame_size)
-			cframes = sources[i]->avail /sources[i]->params.pcm->frame_size;
-	}
-	if (sink->free < cframes * sink->params.pcm->frame_size)
-		cframes = sink->free /sink->params.pcm->frame_size;
-
+	/* dont have any work if all sources are inactive */
 	if (num_mix_sources == 0)
-		cframes = 0;
+		return 0;
 
-	/* no frames to mix */
-	if (cframes == 0) {
-		trace_value(cframes);
+	/* make sure no sources have underruns */
+	for (i = 0; i < num_mix_sources; i++) {
+		if (sources[i]->avail < md->period_bytes) {
+			trace_mixer("xru");
+			tracev_value(source[i]->source->comp.id);
+			return 0;
+		}
+	}
+
+	/* make sure sink has no overuns */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	if (sink->free < md->period_bytes) {
+		trace_mixer("xro");
+		tracev_value(sink[i]->sink->comp.id);
 		return 0;
 	}
 
 	/* mix streams */
-	md->mix_func(dev, sink, sources, i, cframes);
+	md->mix_func(dev, sink, sources, i, config->frames);
 
-	/* update buffer pointers for overflow */
-	for(i = num_mix_sources; i > 0; i--) {
-		if (sources[i-1]->r_ptr >= sources[i-1]->end_addr)
-			sources[i-1]->r_ptr = sources[i-1]->addr;
-		comp_update_buffer_consume(sources[i-1]);
-	}
-	if (sink->w_ptr >= sink->end_addr)
-		sink->w_ptr = sink->addr;
+	/* update source buffer pointers for overflow */
+	for (i = --num_mix_sources; i >= 0; i--)
+		comp_update_buffer_consume(sources[i], md->period_bytes);
 
 	/* calc new free and available */
-	comp_update_buffer_produce(sink);
+	comp_update_buffer_produce(sink, md->period_bytes);
 
 	/* number of frames sent downstream */
-	return cframes;
+	return config->frames;
 }
 
 static int mixer_reset(struct comp_dev *dev)
 {
 	struct list_item * blist;
 	struct comp_buffer *source;
+
+	trace_mixer("res");
 
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
@@ -272,7 +282,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	struct comp_buffer *source;
 	int downstream = 0;
 
-	trace_mixer("MPp");
+	trace_mixer("pre");
 
 	if (dev->state != COMP_STATE_RUNNING) {
 		md->mix_func = mix_n;
@@ -297,16 +307,7 @@ static int mixer_prepare(struct comp_dev *dev)
 
 static int mixer_preload(struct comp_dev *dev)
 {
-	//int i;
-
-	if (dev->state != COMP_STATE_PREPARE)
-		return 1;
-
-	/* preload and mix periods if inactive */
-	//for (i = 0; i < dev->preload; i++)
-	//	mixer_copy(dev);
-
-	return 0;
+	return mixer_copy(dev);
 }
 
 struct comp_driver comp_mixer = {

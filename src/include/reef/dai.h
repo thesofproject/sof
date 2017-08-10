@@ -86,17 +86,6 @@ struct dai_config {
 		struct sof_ipc_dai_hda_params *hda;
 		struct sof_ipc_dai_dmic_params *dmic;
 	};
-
-#if 0
-	uint32_t format;
-	uint32_t sample_size;	/* in BCLKs */
-	struct dai_slot_map tx_slot_map[DAI_NUM_SLOT_MAPS];
-	struct dai_slot_map rx_slot_map[DAI_NUM_SLOT_MAPS];
-	uint32_t bclk;	/* BCLK frequency in Hz */
-	uint32_t mclk;		/* mclk frequency in Hz */
-	uint32_t clk_src;	/* DAI specific clk source */
-	uint32_t lbm;	/* loopback mode */
-#endif
 };
 
 struct dai_plat_fifo_data {
@@ -119,7 +108,6 @@ struct dai {
 	uint32_t type;
 	uint32_t index;
 	struct dai_plat_data plat_data;
-	struct dai_config config;
 	const struct dai_ops *ops;
 	void *private;
 };

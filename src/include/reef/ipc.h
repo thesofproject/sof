@@ -42,6 +42,7 @@
 #include <reef/audio/component.h>
 
 struct reef;
+struct dai_config;
 
 #define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC, __e)
 #define tracev_ipc(__e)	tracev_event(TRACE_CLASS_IPC, __e)
@@ -49,39 +50,24 @@ struct reef;
 
 #define MSG_QUEUE_SIZE		12
 
+#define COMP_TYPE_COMPONENT	1
+#define COMP_TYPE_BUFFER	2
+#define COMP_TYPE_PIPELINE	3
 
 /* IPC generic component device */
 struct ipc_comp_dev {
-	uint16_t flags;
+	uint16_t type;	/* COMP_TYPE_ */
 	uint16_t state;
 
-	/* component data */
-	struct comp_dev *cd;
+	/* component type data */
+	union {
+		struct comp_dev *cd;
+		struct comp_buffer *cb;
+		struct pipeline *pipeline;
+	};
 
 	/* lists */
 	struct list_item list;		/* list in components */
-};
-
-/* IPC buffer device */
-struct ipc_buffer_dev {
-	uint16_t flags;
-	uint16_t state;
-
-	struct comp_buffer *cb;
-
-	/* lists */
-	struct list_item list;		/* list in buffers */
-};
-
-/* IPC pipeline device */
-struct ipc_pipeline_dev {
-	uint16_t flags;
-	uint16_t state;
-
-	struct pipeline *pipeline;
-
-	/* lists */
-	struct list_item list;		/* list in pipelines */
 };
 
 struct ipc_msg {
@@ -111,9 +97,7 @@ struct ipc {
 	int (*cb)(struct ipc_msg *msg);
 
 	/* pipelines, components and buffers */
-	struct list_item pipeline_list;	/* list of pipelines */
 	struct list_item comp_list;		/* list of component devices */
-	struct list_item buffer_list;	/* list of buffer devices */
 
 	void *private;
 };
@@ -144,30 +128,35 @@ void ipc_platform_send_msg(struct ipc *ipc);
  * IPC Component creation and destruction.
  */
 int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *new);
-void ipc_comp_free(struct ipc *ipc, uint32_t comp_id);
+int ipc_comp_free(struct ipc *ipc, uint32_t comp_id);
 
 /*
  * IPC Buffer creation and destruction.
  */
 int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *buffer);
-void ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id);
+int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id);
 
 /*
  * IPC Pipeline creation and destruction.
  */
 int ipc_pipeline_new(struct ipc *ipc, struct sof_ipc_pipe_new *pipeline);
-void ipc_pipeline_free(struct ipc *ipc, uint32_t pipeline_id);
+int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id);
+void ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
 
 /*
  * Pipeline component and buffer connections.
  */
 int ipc_comp_connect(struct ipc *ipc,
 	struct sof_ipc_pipe_comp_connect *connect);
-int ipc_pipe_connect(struct ipc *ipc,
-	struct sof_ipc_pipe_pipe_connect *connect);
 
+/*
+ * Get component by ID.
+ */
 struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
-struct ipc_buffer_dev *ipc_get_buffer(struct ipc *ipc, uint32_t id);
-struct ipc_pipeline_dev *ipc_get_pipeline(struct ipc *ipc, uint32_t id);
+
+/*
+ * Configure all DAI components attached to DAI.
+ */
+int ipc_comp_dai_config(struct ipc *ipc, struct dai_config *config);
 
 #endif

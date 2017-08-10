@@ -65,6 +65,10 @@
 
 /* volume component private data */
 struct comp_data {
+	uint32_t source_period_bytes;
+	uint32_t sink_period_bytes;
+	enum sof_ipc_frame source_format;
+	enum sof_ipc_frame sink_format;
 	uint32_t chan[PLATFORM_MAX_CHANNELS];
 	uint32_t volume[PLATFORM_MAX_CHANNELS];	/* current volume */
 	uint32_t tvolume[PLATFORM_MAX_CHANNELS];	/* target volume */
@@ -252,7 +256,7 @@ static void vol_sync_host(struct comp_data *cd, uint32_t chan)
 	int i;
 
 	if (cd->hvol == NULL)
-			return;
+		return;
 
 	for (i = 0; i < cd->hvol->num_values; i++) {
 		if (cd->hvol->values[i].channel == cd->chan[chan])
@@ -329,7 +333,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 
 	trace_volume("new");
 
-	dev = rmalloc(RZONE_RUNTIME, RFLAGS_NONE,
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
 		COMP_SIZE(struct sof_ipc_comp_volume));
 	if (dev == NULL)
 		return NULL;
@@ -337,7 +341,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	vol = (struct sof_ipc_comp_volume *)&dev->comp;
 	memcpy(vol, ipc_vol, sizeof(struct sof_ipc_comp_volume));
 
-	cd = rmalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
@@ -359,35 +363,20 @@ static void volume_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
+	trace_volume("fre");
+
 	rfree(cd);
 	rfree(dev);
 }
 
-/* set component audio stream paramters */
-static int volume_params(struct comp_dev *dev, struct stream_params *params)
+/*
+ * Set volume component audio stream paramters.
+ */
+static int volume_params(struct comp_dev *dev, struct stream_params *host_params)
 {
-	struct stream_params buffer_params = *params;
-	struct comp_buffer *next_buf;
-	struct comp_dev *next_dev;
+	trace_volume("par");
 
-	/* volume components will only ever have one sink & one source buffer */
-	next_buf = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	next_dev = next_buf->source;
-
-	/* hard coded until new IPC is ready */
-	if (next_dev->comp.type == SOF_COMP_HOST) {
-		buffer_params.pcm->frame_fmt = SOF_IPC_FRAME_S16_LE;
-		buffer_params.pcm->frame_size = 2 * params->pcm->channels; /* 16bit container */
-	} else if (next_dev->comp.type == SOF_COMP_DAI) {
-		buffer_params.pcm->frame_fmt = PLATFORM_SSP_STREAM_FORMAT;
-		buffer_params.pcm->frame_size = 4 * params->pcm->channels; /* 32bit container */
-	} else {
-		buffer_params.pcm->frame_fmt = SOF_IPC_FRAME_S32_LE;
-		buffer_params.pcm->frame_size = 4 * params->pcm->channels; /* 32bit container */
-	}
-
-	/* dont do any data transformation */
-	comp_buffer_sink_params(dev, params);
+	comp_install_params(dev, host_params);
 
 	return 0;
 }
@@ -422,6 +411,8 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_ctrl_values *cv;
 	int i, j;
+
+	trace_volume("cmd");
 
 	switch (cmd) {
 	case COMP_CMD_VOLUME:
@@ -489,9 +480,10 @@ static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *source;
-	uint32_t cframes = PLAT_INT_PERIOD_FRAMES;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	uint32_t copy_bytes;
 
-	trace_comp("Vol");
+	trace_volume("cpy");
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
@@ -502,64 +494,94 @@ static int volume_copy(struct comp_dev *dev)
 	trace_value((uint32_t)(sink->w_ptr - sink->addr));
 #endif
 
-	if (source->avail < cframes * source->params.pcm->frame_size ||
-			sink->free < cframes * sink->params.pcm->frame_size)
-		cframes = source->avail / source->params.pcm->frame_size;
+	/* get max number of bytes that can be copied */
+	copy_bytes = comp_buffer_get_copy_bytes(dev, source, sink);
 
-	/* no data to copy */
-	if (cframes == 0) {
-		trace_value(source->avail);
+	/* Run volume if buffers have enough room */
+	if (copy_bytes < cd->source_period_bytes ||
+		copy_bytes < cd->sink_period_bytes) {
+		trace_volume_error("xru");
 		return 0;
 	}
 
 	/* copy and scale volume */
-	cd->scale_vol(dev, sink, source, cframes);
-
-	/* update buffer pointers for overflow */
-	if (source->r_ptr >= source->end_addr)
-		source->r_ptr = source->addr;
-	if (sink->w_ptr >= sink->end_addr)
-		sink->w_ptr = sink->addr;
+	cd->scale_vol(dev, sink, source, config->frames);
 
 	/* calc new free and available */
-	comp_update_buffer_produce(sink);
-	comp_update_buffer_consume(source);
+	comp_update_buffer_produce(sink, cd->sink_period_bytes);
+	comp_update_buffer_consume(source, cd->source_period_bytes);
 
-	return 0;
+	return config->frames;
 }
 
+/*
+ * Volume componnet is usually first and last in pipelines so it makes sense
+ * to also do some type conversion here too.
+ */
 static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink, *source;
-	enum sof_ipc_frame source_format, sink_format;
+	struct comp_buffer *sinkb, *sourceb;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_config *sconfig;
 	int i;
 
+	trace_volume("pre");
+
 	/* volume components will only ever have 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
-	/* is source a host or DAI ? */
-	if (source->source->is_endpoint || source->source->is_endpoint)
-		source_format = source->params.pcm->frame_fmt;
-	else
-		source_format = SOF_IPC_FRAME_S32_LE;
+	/* get source data format */
+	switch (sourceb->source->comp.id) {
+	case SOF_COMP_HOST:
+	case SOF_COMP_SG_HOST:
+		/* source format come from IPC params */
+		cd->source_format = sourceb->source->params.frame_fmt;
+		cd->source_period_bytes = config->frames *
+			sourceb->source->params.channels *
+			sourceb->source->params.sample_size;
+		break;
+	case SOF_COMP_DAI:
+	case SOF_COMP_SG_DAI:
+	default:
+		/* source format comes from DAI/comp config */
+		sconfig = COMP_GET_CONFIG(sourceb->source);
+		cd->source_format = sconfig->frame_fmt;
+		cd->source_period_bytes = config->frames *
+			sconfig->channels * sconfig->frame_size;
+		break;
+	}
 
-	/* TODO tmp hard coded for 24 bit - need fixed for capture*/
-	/* is sink a host or DAI ? */
-	if (sink->sink->is_endpoint || sink->sink->is_endpoint)
-		sink_format = sink->params.pcm->frame_fmt;
-	else
-		sink_format = SOF_IPC_FRAME_S32_LE;
+	/* get sink data format */
+	switch (sinkb->sink->comp.id) {
+	case SOF_COMP_HOST:
+	case SOF_COMP_SG_HOST:
+		/* sink format come from IPC params */
+		cd->sink_format = sinkb->sink->params.frame_fmt;
+		cd->sink_period_bytes = config->frames *
+			sinkb->sink->params.channels *
+			sinkb->sink->params.sample_size;
+		break;
+	case SOF_COMP_DAI:
+	case SOF_COMP_SG_DAI:
+	default:
+		/* sink format comes from DAI/comp config */
+		sconfig = COMP_GET_CONFIG(sinkb->sink);
+		cd->sink_format = sconfig->frame_fmt;
+		cd->sink_period_bytes = config->frames *
+			sconfig->channels * sconfig->frame_size;
+		break;
+	}
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < ARRAY_SIZE(func_map); i++) {
 
-		if (source_format != func_map[i].source)
+		if (cd->source_format != func_map[i].source)
 			continue;
-		if (sink_format != func_map[i].sink)
+		if (cd->sink_format != func_map[i].sink)
 			continue;
-		if (sink->params.pcm->channels != func_map[i].channels)
+		if (dev->params.channels != func_map[i].channels)
 			continue;
 
 		cd->scale_vol = func_map[i].func;
@@ -572,25 +594,20 @@ found:
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		vol_sync_host(cd, i);
 
-	//dev->preload = PLAT_INT_PERIODS;
 	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
 static int volume_preload(struct comp_dev *dev)
 {
-	//int i, count;
-
-//	for (i = 0; i < dev->preload; i++)
-	//	volume_copy(dev);
-
-	return 0;
+	return volume_copy(dev);
 }
 
 static int volume_reset(struct comp_dev *dev)
 {
-	dev->state = COMP_STATE_INIT;
+	trace_volume("res");
 
+	dev->state = COMP_STATE_INIT;
 	return 0;
 }
 
