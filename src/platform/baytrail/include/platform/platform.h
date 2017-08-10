@@ -61,12 +61,10 @@ struct reef;
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
 
+/* clock source used by scheduler for deadline calculations */
 #define PLATFORM_SCHED_CLOCK	CLK_SSP
 
-#define PLATFORM_NUM_MMAP_POSN	10
-#define PLATFORM_NUM_MMAP_VOL	10
-
-/* DMA channel drain timeout in microseconds */
+/* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
 
 /* IPC page data copy timeout */
@@ -74,12 +72,6 @@ struct reef;
 
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000
-
-/* Host finish work schedule delay in microseconds */
-#define PLATFORM_HOST_FINISH_DELAY	100
-
-/* Host finish work(drain from host to dai) timeout in microseconds */
-#define PLATFORM_HOST_FINISH_TIMEOUT	50000
 
 /* Platform defined panic code */
 #define platform_panic(__x) \
