@@ -140,7 +140,7 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 	dma_start(dma, chan);
 
 	/* wait for DMA to complete */
-	iipc->complete.timeout = PLATFORM_IPC_DMA_TIMEOUT;
+	iipc->complete.timeout = PLATFORM_HOST_DMA_TIMEOUT;
 	ret = wait_for_completion_timeout(&iipc->complete);
 
 	/* compressed page tables now in buffer at _ipc->page_table */

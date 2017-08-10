@@ -67,8 +67,8 @@ struct reef;
 /* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
 
-/* IPC page data copy timeout */
-#define PLATFORM_IPC_DMA_TIMEOUT 2000
+/* DMA host transfer timeouts in microseconds */
+#define PLATFORM_HOST_DMA_TIMEOUT	50
 
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000

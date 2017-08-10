@@ -451,7 +451,7 @@ static int host_preload(struct comp_dev *dev)
 	wait_init(&hd->complete);
 
 	/* do DMA transfer */
-	hd->complete.timeout = PLATFORM_DMA_TIMEOUT;
+	hd->complete.timeout = PLATFORM_HOST_DMA_TIMEOUT;
 	dma_set_config(hd->dma, hd->chan, &hd->config);
 	dma_start(hd->dma, hd->chan);
 
