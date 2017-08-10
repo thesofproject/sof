@@ -112,17 +112,25 @@ static inline int wait_for_completion_timeout(completion_t *comp)
 	comp->timeout = 0;
 
 	/* check for completion after every wake from IRQ */
-	while (c->complete == 0 && c->timeout == 0) {
+	while (1) {
+
+		if (c->complete)
+			break;
+		if (c->timeout)
+			break;
+
 		wait_for_interrupt(0);
 	}
 
-	/* did we timeout */
-	if (c->timeout == 0) {
+	/* did we complete */
+	if (c->complete) {
 		/* no timeout so cancel work and return 0 */
 		work_cancel_default(&comp->work);
 		return 0;
 	} else {
 		/* timeout */
+		trace_value(c->timeout);
+		trace_value(c->complete);
 		return -ETIME;
 	}
 }
