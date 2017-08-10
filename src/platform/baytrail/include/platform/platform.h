@@ -67,13 +67,6 @@ struct reef;
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
 
-/* TODO: get this from IPC - 2 * 32 bit*/
-#define PLATFORM_INT_FRAME_SIZE		8
-/* TODO: get this from IPC - 2 * 16 bit*/
-#define PLATFORM_HOST_FRAME_SIZE	4
-/* TODO: get this from IPC - 2 * 24 (32) bit*/
-#define PLATFORM_DAI_FRAME_SIZE		8
-
 /* Platform Host DMA buffer config - these should align with DMA engine */
 #define PLAT_HOST_PERIOD_FRAMES	48	/* must be multiple of DMA burst size */
 #define PLAT_HOST_PERIODS	2	/* give enough latency for DMA refill */

@@ -45,6 +45,14 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
+
+/* 2 * 32 bit*/
+#define PLATFORM_INT_FRAME_SIZE		8
+/* 2 * 16 bit*/
+#define PLATFORM_HOST_FRAME_SIZE	4
+/* 2 * 24 (32) bit*/
+#define PLATFORM_DAI_FRAME_SIZE		8
+
 /*
  * Static Buffer Convenience Constructors.
  */
