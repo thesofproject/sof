@@ -66,6 +66,12 @@
 #define PLAT_INT_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
 #define PLAT_INT_PERIODS	2	/* give enough latency for DMA refill */
 
+/* default static pipeline SSP port - not used for dynamic pipes */
+#define PLATFORM_SSP_PORT	2
+
+/* default SSP stream format - need aligned with codec setting*/
+#define PLATFORM_SSP_STREAM_FORMAT	SOF_IPC_FRAME_S24_4LE
+
 /*
  * Static Buffer Convenience Constructors.
  */
