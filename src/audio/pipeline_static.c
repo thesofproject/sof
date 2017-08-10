@@ -53,6 +53,19 @@
 /* 2 * 24 (32) bit*/
 #define PLATFORM_DAI_FRAME_SIZE		8
 
+/* Platform Host DMA buffer config - these should align with DMA engine */
+#define PLAT_HOST_PERIOD_FRAMES	48	/* must be multiple of DMA burst size */
+#define PLAT_HOST_PERIODS	2	/* give enough latency for DMA refill */
+
+/* Platform Dev DMA buffer config - these should align with DMA engine */
+#define PLAT_DAI_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
+#define PLAT_DAI_PERIODS	2	/* give enough latency for DMA refill */
+#define PLAT_DAI_SCHED		1000 /* scheduling time in usecs */
+
+/* Platform internal buffer config - these should align with DMA engine */
+#define PLAT_INT_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
+#define PLAT_INT_PERIODS	2	/* give enough latency for DMA refill */
+
 /*
  * Static Buffer Convenience Constructors.
  */

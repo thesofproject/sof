@@ -703,10 +703,10 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 }
 
 /* notify pipeline that this component requires buffers emptied/filled */
-void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev,
-	uint32_t deadline, uint32_t priority)
+void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 {
-	schedule_task(&p->pipe_task, deadline, priority, dev);
+	schedule_task(&p->pipe_task, p->ipc_pipe.deadline,
+		p->ipc_pipe.priority, dev);
 	schedule();
 }
 

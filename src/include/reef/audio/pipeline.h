@@ -108,8 +108,7 @@ int init_static_pipeline(struct ipc *ipc);
 /* pipeline creation */
 int init_pipeline(void);
 
-void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev,
-		uint32_t deadline, uint32_t priority);
+void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev);
 
 void pipeline_schedule(void *arg);
 

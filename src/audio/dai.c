@@ -146,7 +146,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	}
 
 	/* notify pipeline that DAI needs it's buffer processed */
-	pipeline_schedule_copy(dev->pipeline, dev, PLAT_DAI_SCHED, TASK_PRI_HIGH);
+	pipeline_schedule_copy(dev->pipeline, dev);
 
 next_copy:
 
