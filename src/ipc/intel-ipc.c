@@ -274,7 +274,50 @@ static int ipc_stream_pcm_free(uint32_t header)
 
 	/* reset the pipeline */
 	pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+
+/* get stream position */
+static int ipc_stream_position(uint32_t header)
+{
+	struct sof_ipc_stream *stream = _ipc->comp_data;
+	struct sof_ipc_stream_posn posn;
+	struct ipc_comp_dev *pcm_dev;
+
+	trace_ipc("pos");
+
+	memset(&posn, 0, sizeof(posn));
+
+	/* get the pcm_dev */
+	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
+	if (pcm_dev == NULL) {
+		trace_ipc_error("epo");
+		return -ENODEV;
+	}
+
+	/* set message fields - TODO; get others */
+	posn.rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
+	posn.rhdr.hdr.size = sizeof(posn);
+	posn.comp_id = stream->comp_id;
+
+	/* get the stream positions and timestamps */
+	pipeline_get_timestamp(pcm_dev->cd->pipeline, pcm_dev->cd, &posn);
+
+	/* copy positions to outbox */
+	mailbox_outbox_write(0, &posn, sizeof(posn));
 	return 0;
+}
+
+/* send stream position */
+int ipc_stream_send_position(struct comp_dev *cdev,
+	struct sof_ipc_stream_posn *posn)
+{
+	uint32_t header;
+
+	header = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
+	posn->rhdr.hdr.cmd = header;
+	posn->rhdr.hdr.size = sizeof(*posn);
+
+	return ipc_queue_host_message(_ipc, header, posn, sizeof(*posn),
+		NULL, 0, NULL, NULL);
 }
 
 static int ipc_stream_trigger(uint32_t header)
@@ -343,6 +386,8 @@ static int ipc_glb_stream_message(uint32_t header)
 	case iCS(SOF_IPC_STREAM_TRIG_DRAIN):
 	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
 		return ipc_stream_trigger(header);
+	case iCS(SOF_IPC_STREAM_POSITION):
+		return ipc_stream_position(header);
 	default:
 		return -EINVAL;
 	}
@@ -712,17 +757,6 @@ static inline struct ipc_msg *msg_get_empty(struct ipc *ipc)
 	return msg;
 }
 
-/* Send stream command */
-int ipc_stream_send_notification(struct comp_dev *cdev,
-	struct sof_ipc_stream_posn *posn)
-{
-	uint32_t header;
-
-	header = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
-trace_value(header);
-	return ipc_queue_host_message(_ipc, header, posn, sizeof(*posn),
-		NULL, 0, NULL, NULL);
-}
 
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	void *tx_data, size_t tx_bytes, void *rx_data,

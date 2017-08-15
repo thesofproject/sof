@@ -68,6 +68,7 @@ struct dai_data {
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
 	volatile uint64_t *dai_pos; /* host can read back this value without IPC */
+	uint64_t wallclock;	/* wall clock at stream start */
 };
 
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data);
@@ -485,6 +486,9 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		if (dev->state == COMP_STATE_PAUSED) {
 			dai_trigger(dd->dai, cmd, dev->params.direction);
 			dma_release(dd->dma, dd->chan);
+
+			/* update starting wallclock */
+			platform_dai_wallclock(dev, &dd->wallclock);
 			dev->state = COMP_STATE_RUNNING;
 		}
 		break;
@@ -495,6 +499,9 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 			if (ret < 0)
 				return ret;
 			dai_trigger(dd->dai, cmd, dev->params.direction);
+
+			/* update starting wallclock */
+			platform_dai_wallclock(dev, &dd->wallclock);
 			dev->state = COMP_STATE_RUNNING;
 		}
 		break;
@@ -522,6 +529,18 @@ static int dai_copy(struct comp_dev *dev)
 /* source component will preload dai */
 static int dai_preload(struct comp_dev *dev)
 {
+	return 0;
+}
+
+static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* TODO: improve accuracy by adding current DMA position */
+	posn->dai_posn = dev->position;
+
+	/* set stream start wallclock */
+	posn->wallclock = dd->wallclock;
 	return 0;
 }
 
@@ -562,6 +581,7 @@ static struct comp_driver comp_dai = {
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
 		.preload	= dai_preload,
+		.position	= dai_position,
 	},
 };
 

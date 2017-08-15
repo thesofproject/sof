@@ -114,7 +114,7 @@ void ipc_free(struct ipc *ipc);
 
 int ipc_process_msg_queue(void);
 
-int ipc_stream_send_notification(struct comp_dev *cdev,
+int ipc_stream_send_position(struct comp_dev *cdev,
 		struct sof_ipc_stream_posn *posn);
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	void *tx_data, size_t tx_bytes, void *rx_data,

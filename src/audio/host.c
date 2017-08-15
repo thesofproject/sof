@@ -152,14 +152,19 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	/* send IPC message to driver if needed */
 	hd->report_pos += local_elem->size;
 	hd->posn.host_posn += local_elem->size;
+
+	/* NO_IRQ mode if host_period_size == 0 */
 	if (dev->params.host_period_bytes != 0 &&
 		hd->report_pos >= dev->params.host_period_bytes) {
 		hd->report_pos = 0;
 		/* update for host side */
 		if (hd->host_pos) {
 			*hd->host_pos = hd->local_pos;
-			ipc_stream_send_notification(dev, &hd->posn);
 		}
+
+		/* send timestamps to host */
+		pipeline_get_timestamp(dev->pipeline, dev, &hd->posn);
+		ipc_stream_send_position(dev, &hd->posn);
 	}
 
 	/* update src and dest positions and check for overflow */
@@ -270,6 +275,9 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	/* set up callback */
 	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST, host_dma_cb, dev);
+
+	/* init posn data. TODO: other fields */
+	hd->posn.comp_id = comp->id;
 
 	return dev;
 
@@ -523,6 +531,17 @@ static int host_stop(struct comp_dev *dev)
 	return 0;
 }
 
+static int host_position(struct comp_dev *dev,
+	struct sof_ipc_stream_posn *posn)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	/* TODO: improve accuracy by adding current DMA position */
+	posn->host_posn = hd->local_pos;
+
+	return 0;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 {
@@ -641,6 +660,7 @@ struct comp_driver comp_host = {
 		.prepare	= host_prepare,
 		.preload	= host_preload,
 		.host_buffer	= host_buffer,
+		.position	= host_position,
 	},
 };
 
