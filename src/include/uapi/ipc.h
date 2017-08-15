@@ -63,13 +63,11 @@
 #define SOF_IPC_GLB_STREAM_MSG			SOF_GLB_TYPE(0x6U)
 #define SOF_IPC_FW_READY			SOF_GLB_TYPE(0x7U)
 #define SOF_IPC_GLB_DAI_MSG			SOF_GLB_TYPE(0x8U)
+
 /*
  * DSP Command Message Types
  */
 
-/* reply - error details in mailbox reply */
-#define SOF_IPC_REPLY_SUCCESS			SOF_CMD_TYPE(0x001)
-#define SOF_IPC_REPLY_ERROR			SOF_CMD_TYPE(0x002)
 
 /* topology */
 #define SOF_IPC_TPLG_COMP_NEW			SOF_CMD_TYPE(0x000)
@@ -138,6 +136,16 @@ struct sof_ipc_hdr {
 	uint32_t cmd;			/* SOF_IPC_GLB_ + cmd */
 	uint32_t size;			/* size of structure */
 }  __attribute__((packed));
+
+/*
+ * Generic reply message. Some commands override this with their own reply
+ * types that must include this at start.
+ */
+struct sof_ipc_reply {
+	struct sof_ipc_hdr hdr;
+	int32_t error;			/* negative error numbers */
+}  __attribute__((packed));
+
 
 /*
  * Compound commands - SOF_IPC_GLB_COMPOUND.
@@ -332,7 +340,7 @@ struct sof_ipc_pcm_params {
 
 /* PCM params info reply - SOF_IPC_STREAM_PCM_PARAMS_REPLY */
 struct sof_ipc_pcm_params_reply {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_reply rhdr;
 	uint32_t comp_id;
 	uint32_t posn_offset;
 }   __attribute__((packed));
@@ -353,7 +361,7 @@ struct sof_ipc_stream {
 } __attribute__((packed));
 
 struct sof_ipc_stream_posn {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_reply rhdr;
 	uint32_t comp_id;
 	uint32_t host_posn;	/* in frames */
 	uint32_t dai_posn;	/* in frames */
@@ -567,7 +575,7 @@ struct sof_ipc_free {
 
 
 struct sof_ipc_comp_reply {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_reply rhdr;
 	uint32_t id;
 	uint32_t offset;
 } __attribute__((packed));
