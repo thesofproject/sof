@@ -33,6 +33,7 @@
 #include <platform/timer.h>
 #include <platform/shim.h>
 #include <reef/debug.h>
+#include <reef/audio/component.h>
 #include <stdint.h>
 
 void platform_timer_start(struct timer *timer)
@@ -70,4 +71,39 @@ void platform_timer_clear(struct timer *timer)
 uint32_t platform_timer_get(struct timer *timer)
 {
 	return shim_read(SHIM_EXT_TIMER_STAT);
+}
+
+/* get timestamp for host stream DMA position */
+void platform_host_timestamp(struct comp_dev *host,
+	struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get host postion */
+	err = comp_position(host, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_HOST_VALID;
+}
+
+/* get timestamp for DAI stream DMA position */
+void platform_dai_timestamp(struct comp_dev *dai,
+	struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get DAI postion */
+	err = comp_position(dai, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_DAI_VALID;
+
+	/* get SSP wallclock - DAI sets this to stream start value */
+	posn->wallclock = shim_read(SHIM_EXT_TIMER_STAT) - posn->wallclock;
+	posn->flags |= SOF_TIME_WALL_VALID;
+}
+
+/* get current wallclock for componnent */
+void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+{
+	/* only 1 wallclock on BYT */
+	*wallclock = shim_read(SHIM_EXT_TIMER_STAT);
 }

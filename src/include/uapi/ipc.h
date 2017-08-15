@@ -360,12 +360,35 @@ struct sof_ipc_stream {
 	uint32_t comp_id;
 } __attribute__((packed));
 
+
+/* flags indicating which time stamps are in sync with each other */
+#define	SOF_TIME_HOST_SYNC	(1 << 0)
+#define	SOF_TIME_DAI_SYNC	(1 << 1)
+#define	SOF_TIME_WALL_SYNC	(1 << 2)
+#define	SOF_TIME_STAMP_SYNC	(1 << 3)
+
+/* flags indicating which time stamps are valid */
+#define	SOF_TIME_HOST_VALID	(1 << 8)
+#define	SOF_TIME_DAI_VALID	(1 << 9)
+#define	SOF_TIME_WALL_VALID	(1 << 10)
+#define	SOF_TIME_STAMP_VALID	(1 << 11)
+
+/* flags indicating time stamps are 64bit else 3use low 32bit */
+#define	SOF_TIME_HOST_64	(1 << 16)
+#define	SOF_TIME_DAI_64		(1 << 17)
+#define	SOF_TIME_WALL_64	(1 << 18)
+#define	SOF_TIME_STAMP_64	(1 << 19)
+
 struct sof_ipc_stream_posn {
 	struct sof_ipc_reply rhdr;
 	uint32_t comp_id;
-	uint32_t host_posn;	/* in frames */
-	uint32_t dai_posn;	/* in frames */
-	uint64_t timestamp;
+	uint32_t flags;		/* SOF_TIME_ */
+	uint32_t wallclock_hz;	/* frequency of wallclock in Hz */
+	uint32_t timestamp_ns;	/* resolution of timestamp in ns */
+	uint64_t host_posn;	/* host DMA position in bytes */
+	uint64_t dai_posn;	/* DAI DMA position in bytes */
+	uint64_t wallclock;	/* audio wall clock */
+	uint64_t timestamp;	/* system time stamp */
 }  __attribute__((packed));
 
 /*

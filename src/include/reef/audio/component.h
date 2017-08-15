@@ -139,6 +139,10 @@ struct comp_ops {
 	/* host buffer config */
 	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem,
 			uint32_t host_size);
+
+	/* position */
+	int (*position)(struct comp_dev *dev,
+		struct sof_ipc_stream_posn *posn);
 };
 
 
@@ -261,6 +265,15 @@ static inline int comp_dai_config(struct comp_dev *dev,
 {
 	if (dev->drv->ops.dai_config)
 		return dev->drv->ops.dai_config(dev, dai_config);
+	return 0;
+}
+
+/* component rendering position */
+static inline int comp_position(struct comp_dev *dev,
+	struct sof_ipc_stream_posn *posn)
+{
+	if (dev->drv->ops.position)
+		return dev->drv->ops.position(dev, posn);
 	return 0;
 }
 

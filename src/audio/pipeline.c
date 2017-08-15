@@ -679,7 +679,7 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 			return 0;
 	}
 
-	/* travel downstream to source end point(s) */
+	/* travel downstream to sink end point(s) */
 	list_for_item(clist, &current->bsink_list) {
 		struct comp_buffer *buffer;
 
@@ -701,6 +701,107 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 	tracev_pipe("CD-");
 	return err;
 }
+
+static int timestamp_downstream(struct comp_dev *start,
+		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
+{
+	struct list_item *clist;
+	int res = 0;
+
+	/* is component a DAI endpoint ? */
+	if (current != start) {
+
+		/* go downstream if we are not endpoint */
+		if (!current->is_endpoint)
+			goto downstream;
+
+		if (current->comp.id == SOF_COMP_DAI ||
+			current->comp.id == SOF_COMP_SG_DAI) {
+			platform_dai_timestamp(current, posn);
+			return 1;
+		}
+	}
+
+
+downstream:
+	/* travel downstream to sink end point(s) */
+	list_for_item(clist, &current->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* dont go downstream if this component is not connected */
+		if (!buffer->connected || buffer->sink->state != COMP_STATE_RUNNING)
+			continue;
+
+		/* continue downstream */
+		res = timestamp_downstream(start, buffer->sink, posn);
+		if (res == 1)
+			break;
+	}
+
+	/* return back upstream */
+	return res;
+}
+
+
+static int timestamp_upstream(struct comp_dev *start,
+		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
+{
+	struct list_item *clist;
+	int res = 0;
+
+	/* is component a DAI endpoint ? */
+	if (current != start) {
+
+		/* go downstream if we are not endpoint */
+		if (!current->is_endpoint)
+			goto upstream;
+
+		if (current->comp.id == SOF_COMP_DAI ||
+			current->comp.id == SOF_COMP_SG_DAI) {
+			platform_dai_timestamp(current, posn);
+			return 1;
+		}
+	}
+
+
+upstream:
+	/* travel upstream to source end point(s) */
+	list_for_item(clist, &current->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* dont go downstream if this component is not connected */
+		if (!buffer->connected || buffer->source->state != COMP_STATE_RUNNING)
+			continue;
+
+		/* continue downstream */
+		res = timestamp_upstream(start, buffer->sink, posn);
+		if (res == 1)
+			break;
+	}
+
+	/* return back upstream */
+	return res;
+}
+
+/*
+ * Get the timestamps for host and first active DAI found.
+ */
+void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
+	struct sof_ipc_stream_posn *posn)
+{
+	platform_host_timestamp(host, posn);
+
+	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		timestamp_downstream(host, host, posn);
+	} else {
+		timestamp_upstream(host, host, posn);
+	}
+}
+
 
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
