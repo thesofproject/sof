@@ -203,7 +203,7 @@ static int mixer_copy(struct comp_dev *dev)
 	struct list_item *blist;
 	int32_t i = 0, num_mix_sources = 0;
 
-	trace_mixer("cpy");
+	tracev_mixer("cpy");
 
 	/* calculate the highest runtime component status between input streams */
 	list_for_item(blist, &dev->bsource_list) {

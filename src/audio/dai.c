@@ -80,7 +80,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct comp_buffer *dma_buffer;
 	uint32_t copied_size;
 
-	trace_dai("irq");
+	tracev_dai("irq");
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,

@@ -120,7 +120,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
-	trace_host("irq");
+	tracev_host("irq");
 
 	/* update buffer positions */
 	dma_buffer = hd->dma_buffer;
@@ -615,7 +615,7 @@ static int host_copy(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	trace_host("cpy");
+	tracev_host("cpy");
 
 	if (dev->state != COMP_STATE_RUNNING)
 		return 0;

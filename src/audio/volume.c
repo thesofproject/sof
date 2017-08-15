@@ -483,7 +483,7 @@ static int volume_copy(struct comp_dev *dev)
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	uint32_t copy_bytes;
 
-	trace_volume("cpy");
+	tracev_volume("cpy");
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);

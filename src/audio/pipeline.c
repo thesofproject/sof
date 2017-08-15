@@ -716,13 +716,13 @@ static void pipeline_task(void *arg)
 	struct task *task = &p->pipe_task;
 	struct comp_dev *dev = task->sdata;
 
-	trace_pipe("PWs");
+	tracev_pipe("PWs");
 
 	/* copy data from upstream source enpoints to downstream endpoints */
 	pipeline_copy_from_upstream(dev, dev);
 	pipeline_copy_to_downstream(dev, dev);
 
-	trace_pipe("PWe");
+	tracev_pipe("PWe");
 }
 
 /* init pipeline */
