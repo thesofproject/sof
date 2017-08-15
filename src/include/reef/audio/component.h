@@ -159,6 +159,7 @@ struct comp_dev {
 	uint16_t state;		/* COMP_STATE_ */
 	uint16_t is_endpoint;	/* component is end point in pipeline */
 	spinlock_t lock;	/* lock for this component */
+	uint64_t position;	/* component rendering position */
 	struct pipeline *pipeline;	/* pipeline we belong to */
 
 	/* common runtime configuration for downstream/upstream */

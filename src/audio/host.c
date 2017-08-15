@@ -143,6 +143,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	/* new local period, update host buffer position blks */
 	hd->local_pos += local_elem->size;
+	dev->position += local_elem->size;
 
 	/* buffer overlap ? */
 	if (hd->local_pos >= hd->host_size)
@@ -150,6 +151,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	/* send IPC message to driver if needed */
 	hd->report_pos += local_elem->size;
+	hd->posn.host_posn += local_elem->size;
 	if (dev->params.host_period_bytes != 0 &&
 		hd->report_pos >= dev->params.host_period_bytes) {
 		hd->report_pos = 0;
@@ -486,8 +488,7 @@ static int host_prepare(struct comp_dev *dev)
 		*hd->host_pos = 0;
 	hd->report_pos = 0;
 	hd->split_remaining = 0;
-
-	//dev->preload = PLAT_HOST_PERIODS;
+	dev->position = 0;
 
 	dev->state = COMP_STATE_PREPARE;
 	return 0;
@@ -502,6 +503,7 @@ static int host_pointer_reset(struct comp_dev *dev)
 		*hd->host_pos = 0;
 	hd->local_pos = 0;
 	hd->report_pos = 0;
+	dev->position = 0;
 
 	return 0;
 }

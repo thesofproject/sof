@@ -95,6 +95,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		dcache_writeback_region(dma_buffer->r_ptr, dd->period_bytes);
 
 		/* update host position(in bytes offset) for drivers */
+		dev->position += copied_size;
 		if (dd->dai_pos) {
 			dd->dai_pos_blks += copied_size;
 			*dd->dai_pos = dd->dai_pos_blks +
@@ -111,6 +112,8 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		/* recalc available buffer space */
 		comp_update_buffer_produce(dma_buffer, dd->period_bytes);
 
+		/* update positions */
+		dev->position += dd->period_bytes;
 		if (dd->dai_pos) {
 			dd->dai_pos_blks += dd->period_bytes;
 			*dd->dai_pos = dd->dai_pos_blks +
@@ -396,6 +399,8 @@ static int dai_prepare(struct comp_dev *dev)
 
 	trace_dai("pre");
 
+	dev->position = 0;
+
 	if (list_is_empty(&dd->config.elem_list)) {
 		trace_dai_error("wdm");
 		return -EINVAL;
@@ -436,6 +441,7 @@ static int dai_reset(struct comp_dev *dev)
 		*dd->dai_pos = 0;
 	dd->dai_pos = NULL;
 	dd->last_bytes = 0;
+	dev->position = 0;
 
 	return 0;
 }
