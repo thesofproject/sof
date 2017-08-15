@@ -78,6 +78,7 @@ static void do_notify(void)
 
 out:
 	spin_unlock_irq(&_ipc->lock, flags);
+
 	/* clear DONE bit - tell Host we have completed */
 	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
 
@@ -121,30 +122,48 @@ static void irq_handler(void *arg)
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(ipc);
-	uint32_t ipcxh;//, status;
+	struct sof_ipc_reply reply;
+	uint32_t ipcxh;
+	int32_t err;
 
 	trace_ipc("Cmd");
-	//trace_value(_ipc->host_msg);
 
-	/* TODO: handle error with reply data in mailbox */
-	ipc_cmd();
+	/* clear old mailbox return values */
+	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
+	reply.hdr.size = sizeof(reply);
+	reply.error = 0;
+	mailbox_outbox_write(0, &reply, sizeof(reply));
+
+	/* perform command and return any error */
+	err = ipc_cmd();
+	if (err < 0) {
+		/* read component values from the inbox */
+		reply.error = err;
+
+		/* write error back to outbox */
+		mailbox_outbox_write(0, &reply, sizeof(reply));
+	}
 	ipc->host_pending = 0;
-	trace_ipc("CmD");
+
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	ipcxh = shim_read(SHIM_IPCXH);
 	ipcxh &= ~SHIM_IPCXH_BUSY;
-	ipcxh |= SHIM_IPCXH_DONE;// | status;
+	ipcxh |= SHIM_IPCXH_DONE;
 	shim_write(SHIM_IPCXH, ipcxh);
+
+	/* unmask busy interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1)
+		while (1) {
+			trace_ipc("pme");
 			wait_for_interrupt(0);
+		}
 	}
 
-	/* unmask busy interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+	trace_ipc("CmD");
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)

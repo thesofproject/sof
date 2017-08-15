@@ -255,7 +255,9 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	return 0;
 
 error:
-	pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+	if (err < 0)
+		trace_ipc_error("eA!");
 	return -EINVAL;
 }
 
@@ -269,11 +271,14 @@ static int ipc_stream_pcm_free(uint32_t header)
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, free_req->comp_id);
-	if (pcm_dev == NULL)
-		return ENODEV;
+	if (pcm_dev == NULL) {
+		trace_ipc_error("eFr");
+		return -ENODEV;
+	}
 
 	/* reset the pipeline */
-	pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+	return pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+}
 
 /* get stream position */
 static int ipc_stream_position(uint32_t header)
@@ -326,7 +331,7 @@ static int ipc_stream_trigger(uint32_t header)
 	uint32_t cmd = COMP_CMD_RELEASE;
 	struct sof_ipc_stream *stream  = _ipc->comp_data;
 	uint32_t ipc_cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
-	int err;
+	int ret;
 
 	trace_ipc("tri");
 
@@ -334,7 +339,7 @@ static int ipc_stream_trigger(uint32_t header)
 	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("eRg");
-		goto error;
+		return -ENODEV;
 	}
 
 	switch (ipc_cmd) {
@@ -359,15 +364,13 @@ static int ipc_stream_trigger(uint32_t header)
 	}
 
 	/* trigger the component */
-	err = pipeline_cmd(pcm_dev->cd->pipeline, pcm_dev->cd,
+	ret = pipeline_cmd(pcm_dev->cd->pipeline, pcm_dev->cd,
 			cmd, NULL);
-	if (err < 0) {
+	if (ret < 0) {
 		trace_ipc_error("eRc");
-		goto error;
 	}
 
-error:
-	return 0;
+	return ret;
 }
 
 static int ipc_glb_stream_message(uint32_t header)
@@ -532,7 +535,7 @@ static int ipc_glb_pm_message(uint32_t header)
 	case iCS(SOF_IPC_PM_CLK_GET):
 	case iCS(SOF_IPC_PM_CLK_REQ):
 	default:
-		return -ENOMEM;
+		return -EINVAL;
 	}
 }
 
@@ -545,12 +548,14 @@ static int ipc_comp_set_value(uint32_t header, uint32_t cmd)
 	struct ipc_comp_dev *stream_dev;
 	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
 
-	//trace_ipc("VoS");
+	trace_ipc("VoS");
 
 	/* get the component */
 	stream_dev = ipc_get_comp(_ipc, values->comp_id);
-	if (stream_dev == NULL)
+	if (stream_dev == NULL) {
+		trace_ipc_error("eVs");
 		return -ENODEV;
+	}
 
 	/* set component values */
 	return comp_cmd(stream_dev->cd, cmd, values);
@@ -566,13 +571,17 @@ static int ipc_comp_get_value(uint32_t header, uint32_t cmd)
 
 	/* get the component */
 	stream_dev = ipc_get_comp(_ipc, values->comp_id);
-	if (stream_dev == NULL)
+	if (stream_dev == NULL){
+		trace_ipc_error("eVg");
 		return -ENODEV;
+	}
 	
 	/* get component values */
 	ret = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, values);
-	if (ret < 0)
+	if (ret < 0) {
+		trace_ipc_error("eVG");
 		return ret;
+	}
 
 	/* write component values to the outbox */
 	mailbox_outbox_write(values, 0, sizeof(*values));
@@ -618,8 +627,10 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 
 	/* register component */
 	ret = ipc_comp_new(_ipc, comp);
-	if (ret < 0)
+	if (ret < 0) {
+		trace_ipc_error("etc");
 		return ret;
+	}
 
 	/* write component values to the outbox */
 	mailbox_outbox_write(0, &reply, sizeof(reply));
