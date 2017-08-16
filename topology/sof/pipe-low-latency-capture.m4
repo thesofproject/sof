@@ -98,7 +98,7 @@ SectionPCMCapabilities.STR(Low Latency Capture PCM_ID) {
 	periods_max "4"
 	period_size_min	"192"
 	period_size_max	"16384"
-	buffer_size_min	"384"
+	buffer_size_min	"65536"
 	buffer_size_max	"65536"
 }
 

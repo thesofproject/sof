@@ -58,10 +58,10 @@ SectionPCMCapabilities.STR(Passthrough Playback PCM_ID) {
 	channels_min "2"
 	channels_max "4"
 	periods_min "2"
-	periods_max "4"
+	periods_max "16"
 	period_size_min	"192"
 	period_size_max	"16384"
-	buffer_size_min	"384"
+	buffer_size_min	"65536"
 	buffer_size_max	"65536"
 }
 
