@@ -255,7 +255,7 @@ define(`N_DAI_IN', DAI_NAME`.IN')
 
 dnl W_DAI_OUT(stream, type, index, data, periods_sink, periods_source, preload)
 define(`W_DAI_OUT',
-`SectionVendorTuples."'N_DAI_IN($1)`_tuples_w_comp" {'
+`SectionVendorTuples."'N_DAI_OUT($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
@@ -263,8 +263,8 @@ define(`W_DAI_OUT',
 `		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
 `	}'
 `}'
-`SectionData."'N_DAI_IN($1)`_data_w_comp" {'
-`	tuples "'N_DAI_IN($1)`_tuples_w_comp"'
+`SectionData."'N_DAI_OUT($1)`_data_w_comp" {'
+`	tuples "'N_DAI_OUT($1)`_tuples_w_comp"'
 `}'
 `SectionVendorTuples."'N_DAI_OUT($1)`_tuples_w" {'
 `	tokens "sof_dai_tokens"'
@@ -291,7 +291,7 @@ define(`W_DAI_OUT',
 `	stream_name "'$1`"'
 `	data ['
 `		"'N_DAI_OUT($1)`_data_w"'
-`		"'N_DAI_IN($1)`_data_w_comp"'
+`		"'N_DAI_OUT($1)`_data_w_comp"'
 `		"'N_DAI_OUT($1)`_data_str"'
 `		"'$4`"'
 `	]'
