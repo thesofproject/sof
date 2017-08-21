@@ -403,18 +403,15 @@ static void tone_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int tone_params(struct comp_dev *dev, struct stream_params *host_params)
+static int tone_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_stream_params *params = &dev->params;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
 	trace_tone("par");
 
-	comp_install_params(dev, host_params);
-
 	/* calculate period size based on config */
-	cd->period_bytes = config->frames * config->frame_size;
+	cd->period_bytes = dev->frames * dev->frame_bytes;
 
 	/* EQ supports only S32_LE PCM format */
 	if (params->frame_fmt != SOF_IPC_FRAME_S32_LE)
@@ -489,7 +486,6 @@ static int tone_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	struct comp_buffer *source = NULL;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
 	trace_comp("cpy");
 
@@ -502,12 +498,12 @@ static int tone_copy(struct comp_dev *dev)
 	 */
 	if (sink->free >= cd->period_bytes) {
 		/* create tone */
-		cd->tone_func(dev, sink, source, config->frames);
+		cd->tone_func(dev, sink, source, dev->frames);
 	}
 
 	comp_update_buffer_produce(sink, cd->period_bytes);
 
-	return config->frames;
+	return dev->frames;
 }
 
 static int tone_prepare(struct comp_dev *dev)

@@ -53,7 +53,7 @@ static void mux_free(struct comp_dev *dev)
 }
 
 /* set component audio stream paramters */
-static int mux_params(struct comp_dev *dev, struct stream_params *params)
+static int mux_params(struct comp_dev *dev)
 {
 
 	return 0;

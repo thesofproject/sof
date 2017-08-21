@@ -200,20 +200,23 @@ static int ipc_stream_pcm_params(uint32_t stream)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
-	struct stream_params params;
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
 	int err;
 
 	trace_ipc("SAl");
 
-	params.type = STREAM_TYPE_PCM;
-	params.pcm = pcm_params;
-
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, pcm_params->comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("eAC");
+		trace_value(pcm_params->comp_id);
+		return -EINVAL;
+	}
+
+	/* sanity check comp */
+	if (pcm_dev->cd->pipeline == NULL) {
+		trace_ipc_error("eA1");
 		trace_value(pcm_params->comp_id);
 		return -EINVAL;
 	}
@@ -238,7 +241,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 
 	/* configure pipeline audio params */
-	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, &params);
+	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, pcm_params);
 	if (err < 0) {
 		trace_ipc_error("eAa");
 		goto error;

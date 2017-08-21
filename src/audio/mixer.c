@@ -121,22 +121,14 @@ static void mixer_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int mixer_params(struct comp_dev *dev,
-	struct stream_params *host_params)
+static int mixer_params(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
 	trace_mixer("par");
 
-	/* dont do any params downstream setting for running mixer stream */
-	if (dev->state == COMP_STATE_RUNNING)
-		return 1;
-
-	comp_install_params(dev, host_params);
-
 	/* calculate period size based on config */
-	md->period_bytes = config->frames * config->frame_size;
+	md->period_bytes = dev->frames * dev->frame_bytes;
 
 	return 0;
 }
@@ -199,7 +191,6 @@ static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *sources[PLATFORM_MAX_STREAMS], *source;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct list_item *blist;
 	int32_t i = 0, num_mix_sources = 0;
 
@@ -236,7 +227,7 @@ static int mixer_copy(struct comp_dev *dev)
 	}
 
 	/* mix streams */
-	md->mix_func(dev, sink, sources, i, config->frames);
+	md->mix_func(dev, sink, sources, i, dev->frames);
 
 	/* update source buffer pointers for overflow */
 	for (i = --num_mix_sources; i >= 0; i--)
@@ -246,7 +237,7 @@ static int mixer_copy(struct comp_dev *dev)
 	comp_update_buffer_produce(sink, md->period_bytes);
 
 	/* number of frames sent downstream */
-	return config->frames;
+	return dev->frames;
 }
 
 static int mixer_reset(struct comp_dev *dev)

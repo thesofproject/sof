@@ -286,18 +286,15 @@ static void eq_iir_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int eq_iir_params(struct comp_dev *dev,
-	struct stream_params *host_params)
+static int eq_iir_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
 	trace_eq_iir("par");
 
-	comp_install_params(dev, host_params);
-
 	/* calculate period size based on config */
-	cd->period_bytes = config->frames * config->frame_size;
+	cd->period_bytes = dev->frames * dev->frame_bytes;
 
 	/* EQ supports only S32_LE PCM format */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
@@ -411,7 +408,6 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 static int eq_iir_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_buffer *source, *sink;
 	uint32_t copy_bytes;
 
@@ -432,13 +428,13 @@ static int eq_iir_copy(struct comp_dev *dev)
 	if (copy_bytes < cd->period_bytes)
 		return 0;
 
-	cd->eq_iir_func(dev, source, sink, config->frames);
+	cd->eq_iir_func(dev, source, sink, dev->frames);
 
 	/* calc new free and available */
 	comp_update_buffer_consume(source, copy_bytes);
 	comp_update_buffer_produce(sink, copy_bytes);
 
-	return config->frames;
+	return dev->frames;
 }
 
 static int eq_iir_prepare(struct comp_dev *dev)

@@ -304,8 +304,7 @@ static void host_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-static int create_local_elems(struct comp_dev *dev,
-	struct stream_params *params)
+static int create_local_elems(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *e;
@@ -320,13 +319,13 @@ static int create_local_elems(struct comp_dev *dev,
 
 		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 			e->dest = (uint32_t)(hd->dma_buffer->addr) +
-				i *  hd->period_bytes;
+				i * hd->period_bytes;
 		else
 			e->src = (uint32_t)(hd->dma_buffer->addr) +
-				i *  hd->period_bytes;
+				i * hd->period_bytes;
 
 		e->size = hd->period_bytes;
-;
+
 		list_item_append(&e->list, &hd->local.elem_list);
 	}
 
@@ -371,12 +370,12 @@ static int host_elements_reset(struct comp_dev *dev)
 }
 
 /* configure the DMA params and descriptors for host buffer IO */
-static int host_params(struct comp_dev *dev, struct stream_params *params)
+static int host_params(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *cconfig = COMP_GET_CONFIG(dev);
 	struct dma_sg_config *config = &hd->config;
-	uint32_t buffer_size ;
+	uint32_t buffer_size;
 	int err;
 
 	trace_host("par");
@@ -405,8 +404,11 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	}
 
 	/* calculate period size based on config */
-	hd->period_bytes = cconfig->frames * dev->params.sample_size *
-		dev->params.channels;
+	hd->period_bytes = dev->frames * comp_frame_bytes(dev);
+	if (hd->period_bytes == 0) {
+		trace_host_error("eS1");
+		return -EINVAL;
+	}
 
 	/* resize the buffer if space is available to align with period size */
 	buffer_size = hd->period_count * hd->period_bytes;
@@ -426,7 +428,7 @@ static int host_params(struct comp_dev *dev, struct stream_params *params)
 	}
 
 	/* create SG DMA elems for local DMA buffer */
-	err = create_local_elems(dev, params);
+	err = create_local_elems(dev);
 	if (err < 0)
 		return err;
 
@@ -634,7 +636,6 @@ static int host_reset(struct comp_dev *dev)
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
 	tracev_host("cpy");
 
@@ -645,7 +646,7 @@ static int host_copy(struct comp_dev *dev)
 	dma_set_config(hd->dma, hd->chan, &hd->config);
 	dma_start(hd->dma, hd->chan);
 
-	return config->frames;
+	return dev->frames;
 }
 
 struct comp_driver comp_host = {

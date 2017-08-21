@@ -53,7 +53,7 @@ static void switch_free(struct comp_dev *dev)
 }
 
 /* set component audio stream paramters */
-static int switch_params(struct comp_dev *dev, struct stream_params *params)
+static int switch_params(struct comp_dev *dev)
 {
 
 	return 0;

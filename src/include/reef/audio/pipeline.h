@@ -87,7 +87,7 @@ void pipeline_complete(struct pipeline *p);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,
-	struct stream_params *params);
+	struct sof_ipc_pcm_params *params);
 
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);

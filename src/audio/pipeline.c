@@ -65,13 +65,12 @@ static void connect_upstream(struct pipeline *p, struct comp_dev *start,
 	struct comp_dev *current)
 {
 	struct list_item *clist;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(current);
 
 	tracev_value(current->comp.id);
 
 	/* complete component init */
 	current->pipeline = p;
-	config->frames = p->ipc_pipe.frames_per_sched;
+	current->frames = p->ipc_pipe.frames_per_sched;
 
 	/* we are an endpoint if we have 0 source components */
 	if (list_is_empty(&current->bsource_list)) {
@@ -98,13 +97,12 @@ static void connect_downstream(struct pipeline *p, struct comp_dev *start,
 	struct comp_dev *current)
 {
 	struct list_item *clist;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(current);
 
 	tracev_value(current->comp.id);
 
 	/* complete component init */
 	current->pipeline = p;
-	config->frames = p->ipc_pipe.frames_per_sched;
+	current->frames = p->ipc_pipe.frames_per_sched;
 
 	/* we are an endpoint if we have 0 sink components */
 	if (list_is_empty(&current->bsink_list)) {
@@ -547,7 +545,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
  * Params are always modified in the direction of host PCM to DAI.
  */
 int pipeline_params(struct pipeline *p, struct comp_dev *host,
-	struct stream_params *params)
+	struct sof_ipc_pcm_params *params)
 {
 	struct op_data op_data;
 	int ret;
@@ -556,9 +554,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PARAMS;
-	op_data.params = params;
 
 	spin_lock(&p->lock);
+
+	host->params = params->params;
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* send params downstream from host to DAI */

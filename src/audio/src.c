@@ -298,7 +298,7 @@ static void src_free(struct comp_dev *dev)
 }
 
 /* set component audio stream parameters */
-static int src_params(struct comp_dev *dev, struct stream_params *host_params)
+static int src_params(struct comp_dev *dev)
 {
 	struct sof_ipc_stream_params *params = &dev->params;
 	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
@@ -311,8 +311,6 @@ static int src_params(struct comp_dev *dev, struct stream_params *host_params)
 	int n = 0, i;
 
 	trace_src("par");
-
-	comp_install_params(dev, host_params);
 
 	/* EQ supports only S32_LE PCM format */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
@@ -377,10 +375,10 @@ static int src_params(struct comp_dev *dev, struct stream_params *host_params)
 	/* Check that src blk_in and blk_out are less than params.period_frames.
 	 * Return an error if the period is too short.
 	 */
-	if (src_polyphase_get_blk_in(&cd->src[0]) > config->frames)
+	if (src_polyphase_get_blk_in(&cd->src[0]) > dev->frames)
 		return -EINVAL;
 
-	if (src_polyphase_get_blk_out(&cd->src[0]) > config->frames)
+	if (src_polyphase_get_blk_out(&cd->src[0]) > dev->frames)
 		return -EINVAL;
 
 	return 0;
@@ -449,7 +447,6 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data)
 static int src_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	uint32_t frames_source;
@@ -467,23 +464,23 @@ static int src_copy(struct comp_dev *dev)
 	/* Check that source has enough frames available and sink enough
 	 * frames free.
 	 */
-	frames_source = config->frames;
-	frames_sink = config->frames;
+	frames_source = dev->frames;
+	frames_sink = dev->frames;
 
 	min_frames = src_polyphase_get_blk_in(&cd->src[0]);
 	if (frames_source > min_frames)
-		need_source = frames_source * config->frame_size;
+		need_source = frames_source * dev->frame_bytes;
 	else {
 		frames_source = min_frames;
-		need_source = min_frames * config->frame_size;
+		need_source = min_frames * dev->frame_bytes;
 	}
 
 	min_frames = src_polyphase_get_blk_out(&cd->src[0]);
 	if (frames_sink > min_frames)
-		need_sink = frames_sink * config->frame_size;
+		need_sink = frames_sink * dev->frame_bytes;
 	else {
 		frames_sink = min_frames;
-		need_sink = min_frames * config->frame_size;
+		need_sink = min_frames * dev->frame_bytes;
 	}
 
 	/* Run as many times as buffers allow */

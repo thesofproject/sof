@@ -62,7 +62,6 @@ struct dai_data {
 	struct dai *dai;
 	struct dma *dma;
 	uint32_t period_bytes;
-	uint32_t sample_width;
 
 	uint32_t last_bytes;    /* the last bytes(<period size) it copies. */
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
@@ -228,8 +227,7 @@ static void dai_free(struct comp_dev *dev)
 }
 
 /* set component audio SSP and DMA configuration */
-static int dai_playback_params(struct comp_dev *dev,
-	struct stream_params *params)
+static int dai_playback_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
@@ -293,8 +291,7 @@ err_unwind:
 	return -ENOMEM;
 }
 
-static int dai_capture_params(struct comp_dev *dev,
-	struct stream_params *params)
+static int dai_capture_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
@@ -356,12 +353,10 @@ err_unwind:
 	return -ENOMEM;
 }
 
-static int dai_params(struct comp_dev *dev,
-	struct stream_params *host_params)
+static int dai_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
 	trace_dai("par");
 
@@ -371,24 +366,22 @@ static int dai_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	comp_install_params(dev, host_params);
-
 	/* calculate period size based on config */
-	config->frame_size = dd->sample_width * dev->params.channels;
-	dd->period_bytes = config->frames * config->frame_size;
+	dev->frame_bytes = comp_frame_bytes(dev);
+	dd->period_bytes = dev->frames * dev->frame_bytes;
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = dma_buffer->addr;
 
-		return dai_playback_params(dev, host_params);
+		return dai_playback_params(dev);
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = dma_buffer->addr;
 
-		return dai_capture_params(dev, host_params);
+		return dai_capture_params(dev);
 	}
 }
 

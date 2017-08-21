@@ -116,7 +116,7 @@ struct comp_ops {
 	void (*free)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
-	int (*params)(struct comp_dev *dev, struct stream_params *host_params);
+	int (*params)(struct comp_dev *dev);
 
 	/* preload buffers */
 	int (*preload)(struct comp_dev *dev);
@@ -165,6 +165,8 @@ struct comp_dev {
 	uint16_t is_endpoint;	/* component is end point in pipeline */
 	spinlock_t lock;	/* lock for this component */
 	uint64_t position;	/* component rendering position */
+	uint32_t frames;	/* number of frames we copy to sink */
+	uint32_t frame_bytes;	/* frames size copied to sink in bytes */
 	struct pipeline *pipeline;	/* pipeline we belong to */
 
 	/* common runtime configuration for downstream/upstream */
@@ -213,10 +215,9 @@ static inline void comp_free(struct comp_dev *dev)
 }
 
 /* component parameter init - mandatory */
-static inline int comp_params(struct comp_dev *dev,
-	struct stream_params *params)
+static inline int comp_params(struct comp_dev *dev)
 {
-	return dev->drv->ops.params(dev, params);
+	return dev->drv->ops.params(dev);
 }
 
 /* component host buffer config
@@ -325,11 +326,11 @@ static inline int comp_buffer_reset(struct comp_dev *dev)
  * playback and upstream on capture.
  */
 static inline void comp_install_params(struct comp_dev *dev,
-	struct stream_params *host_params)
+	enum sof_ipc_stream_direction direction)
 {
 	struct comp_buffer *buffer;
 
-	if (host_params->pcm->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+	if (direction == SOF_IPC_STREAM_PLAYBACK) {
 		buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dev->params = buffer->source->params;
@@ -337,6 +338,21 @@ static inline void comp_install_params(struct comp_dev *dev,
 		buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dev->params = buffer->sink->params;
+	}
+}
+
+static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
+{
+	/* calculate period size based on params */
+	switch (dev->params.frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return 2 * dev->params.channels;
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+	case SOF_IPC_FRAME_FLOAT:
+		return 4 * dev->params.channels;
+	default:
+		return 0;
 	}
 }
 
