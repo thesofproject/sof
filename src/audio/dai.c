@@ -544,26 +544,23 @@ static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 	return 0;
 }
 
-static int dai_config(struct comp_dev *dev, struct dai_config *dai_config)
+static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	switch (dai_config->type) {
-	case DAI_TYPE_INTEL_SSP:
-		switch (dai_config->ssp->frame_width) {
-		case 16:
-			dd->sample_width = 2;
-			break;
-		case 17 ... 32:
-			dd->sample_width = 4;
-			break;
-		default:
-			trace_dai_error("eft");
-			return -EINVAL;
-		}
+	/* calc frame bytes */
+	switch (config->sample_valid_bits) {
+	case 16:
+		dev->frame_bytes = 2 * config->num_slots;
+		break;
+	case 17 ... 32:
+		dev->frame_bytes = 4 * config->num_slots;
 		break;
 	default:
-		dd->sample_width = 2;
+		break;
+	}
+
+	if (dev->frame_bytes == 0) {
+		trace_dai_error("de1");
+		return -EINVAL;
 	}
 
 	return 0;

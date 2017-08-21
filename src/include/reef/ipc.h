@@ -157,6 +157,6 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
 /*
  * Configure all DAI components attached to DAI.
  */
-int ipc_comp_dai_config(struct ipc *ipc, struct dai_config *config);
+int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
 
 #endif

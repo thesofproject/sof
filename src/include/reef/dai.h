@@ -58,7 +58,7 @@ struct dai;
 
 /* DAI operations - all optional */
 struct dai_ops {
-	int (*set_config)(struct dai *dai, struct dai_config *dai_config);
+	int (*set_config)(struct dai *dai, struct sof_ipc_dai_config *config);
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
@@ -78,15 +78,6 @@ enum dai_type {
 	DAI_TYPE_INTEL_DMIC,
 };
 
-/* DAI runtime hardware configuration */
-struct dai_config {
-	enum dai_type type;
-	union {
-		struct sof_ipc_dai_ssp_params *ssp;
-		struct sof_ipc_dai_hda_params *hda;
-		struct sof_ipc_dai_dmic_params *dmic;
-	};
-};
 
 struct dai_plat_fifo_data {
 	uint32_t offset;
@@ -126,9 +117,10 @@ struct dai *dai_get(uint32_t type, uint32_t index);
 	dai->plat_data.fifo[direction].offset
 
 /* Digital Audio interface formatting */
-static inline int dai_set_config(struct dai *dai, struct dai_config *dai_config)
+static inline int dai_set_config(struct dai *dai,
+	struct sof_ipc_dai_config *config)
 {
-	return dai->ops->set_config(dai, dai_config);
+	return dai->ops->set_config(dai, config);
 }
 
 /* Digital Audio interface formatting */

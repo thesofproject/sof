@@ -65,12 +65,12 @@ static int ssp_context_restore(struct dai *dai)
 }
 
 /* Digital Audio interface formatting */
-static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
+static inline int ssp_set_config(struct dai *dai,
+	struct sof_ipc_dai_config *config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	struct sof_ipc_dai_ssp_params *params = &ssp->params;
 	uint32_t sscr0, sscr1, sspsp, sfifott, mdiv, bdiv;
-	uint32_t stop_size, phy_frame_size, data_size;
+	uint32_t stop_size, data_size;
 	int ret = 0;
 
 	spin_lock(&ssp->lock);
@@ -88,10 +88,15 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	sscr0 = 0;
 	sscr1 = 0;
 	sspsp = 0;
-	ssp->params = *dai_config->ssp;
+
+	ssp->config = *config;
+	ssp->params = config->ssp[0];
+
+	/* TODO: allow topology to define SSP clock type */
+	config->ssp[0].clk_id = SSP_CLK_EXT;
 
 	/* clock masters */
-	switch (params->format & SOF_DAI_FMT_MASTER_MASK) {
+	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 		break;
@@ -112,7 +117,7 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* clock signal polarity */
-	switch (params->format & SOF_DAI_FMT_INV_MASK) {
+	switch (config->format & SOF_DAI_FMT_INV_MASK) {
 	case SOF_DAI_FMT_NB_NF:
 		break;
 	case SOF_DAI_FMT_NB_IF:
@@ -129,7 +134,7 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* clock source */
-	switch (params->clk_id) {
+	switch (config->ssp[0].clk_id) {
 	case SSP_CLK_AUDIO:
 		sscr0 |= SSCR0_ACS;
 		break;
@@ -148,14 +153,14 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* BCLK is generated from MCLK - must be divisable */
-	if (params->mclk % params->bclk) {
+	if (config->mclk % config->bclk) {
 		trace_ssp_error("ec1");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* divisor must be within SCR range */
-	mdiv = (params->mclk / params->bclk)- 1;
+	mdiv = (config->mclk / config->bclk)- 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ec2");
 		ret = -EINVAL;
@@ -166,23 +171,22 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	sscr0 |= SSCR0_SCR(mdiv);
 
 	/* calc frame width based on BCLK and rate - must be divisable */
-	if (params->bclk % params->fclk) {
+	if (config->bclk % config->fclk) {
 		trace_ssp_error("ec3");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* must be enouch BCLKs for data */
-	bdiv = params->bclk / params->fclk;
-	if (bdiv < params->frame_width * params->num_slots) {
+	bdiv = config->bclk / config->fclk;
+	if (bdiv < config->sample_container_bits * config->num_slots) {
 		trace_ssp_error("ec4");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	/* physical frame size must be <= 38 */
-	phy_frame_size = bdiv / params->num_slots;
-	if (phy_frame_size > 38) {
+	/* sample_container_bits must be <= 38 for SSP */
+	if (config->sample_container_bits > 38) {
 		trace_ssp_error("ec5");
 		ret = -EINVAL;
 		goto out;
@@ -190,14 +194,14 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 
 	trace_value(mdiv);
 	trace_value(bdiv);
-	trace_value(phy_frame_size);
 
 	/* format */
-	switch (params->format & SOF_DAI_FMT_FORMAT_MASK) {
+	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 
 		/* calculate dummy stop size and include dummy start */
-		stop_size = phy_frame_size - params->frame_width - 1;
+		stop_size = config->sample_container_bits -
+			(config->sample_valid_bits) - 1;
 		trace_value(stop_size);
 		if (stop_size > 3) {
 			trace_ssp_error("ec6");
@@ -207,9 +211,9 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 
 		sscr0 |= SSCR0_PSP;
 		sscr1 |= SSCR1_TRAIL;
-		sspsp |= SSPSP_SFRMWDTH(phy_frame_size);
+		sspsp |= SSPSP_SFRMWDTH(config->sample_container_bits);
 		/* subtract 1 for I2S start delay */
-		sspsp |= SSPSP_SFRMDLY((phy_frame_size - 1) * 2);
+		sspsp |= SSPSP_SFRMDLY((config->sample_container_bits - 1) * 2);
 		sspsp |= SSPSP_DMYSTRT(1);
 		sspsp |= SSPSP_DMYSTOP(stop_size);
 		break;
@@ -225,16 +229,12 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 	}
 
 	/* sample data size on SSP FIFO */
-	switch (params->frame_width) {
+	switch (config->sample_valid_bits) {
 	case 16:	/* 2 * 16bit packed into 32bit FIFO */
-	case 24:	/* 1 * 24bit in 32bit FIFO (8 MSBs not used) */
-	case 32:	/* 1 * 32bit packed into 32bit FIFO */
 		data_size = 32;
 		break;
 	default:
-		trace_ssp_error("ec7");
-		ret = -EINVAL;
-		goto out;
+		data_size = config->sample_valid_bits;
 	}
 
 	if (data_size > 16)

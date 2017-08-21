@@ -99,10 +99,8 @@
 #define SOF_IPC_COMP_GET_SRC			SOF_CMD_TYPE(0x007)
 
 /* DAI messages */
-#define SOF_IPC_COMP_SSP_CONFIG			SOF_CMD_TYPE(0x000)
-#define SOF_IPC_COMP_HDA_CONFIG			SOF_CMD_TYPE(0x001)
-#define SOF_IPC_COMP_DMIC_CONFIG		SOF_CMD_TYPE(0x002)
-#define SOF_IPC_COMP_LOOPBACK			SOF_CMD_TYPE(0x003)
+#define SOF_IPC_DAI_CONFIG			SOF_CMD_TYPE(0x001)
+#define SOF_IPC_DAI_LOOPBACK			SOF_CMD_TYPE(0x002)
 
 /* stream */
 #define SOF_IPC_STREAM_PCM_PARAMS		SOF_CMD_TYPE(0x001)
@@ -193,36 +191,67 @@ struct sof_ipc_compound_hdr {
 #define SOF_DAI_FMT_INV_MASK		0x0f00
 #define SOF_DAI_FMT_MASTER_MASK		0xf000
 
+/* types of DAI */
+enum sof_ipc_dai_type {
+	SOF_DAI_INTEL_NONE = 0,
+	SOF_DAI_INTEL_SSP,
+	SOF_DAI_INTEL_DMIC,
+	SOF_DAI_INTEL_HDA,
+};
+
 /* SSP Configuration Request - SOF_IPC_DAI_SSP_CONFIG */
 struct sof_ipc_dai_ssp_params {
 	struct sof_ipc_hdr hdr;
-	uint32_t mclk;
-	uint32_t bclk;
-	uint32_t fclk;
-	uint16_t ssp_id;
 	uint16_t mode;
-	uint16_t num_slots;
-	uint16_t frame_width;
 	uint16_t clk_id;
-	uint16_t format;	/* SOF_DAI_FMT_ */
-	uint16_t mclk_master;
 } __attribute__((packed));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
 struct sof_ipc_dai_hda_params {
 	struct sof_ipc_hdr hdr;
-	uint32_t hda_id;
-	uint32_t mclk;
 	/* TODO */
 } __attribute__((packed));
 
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
 struct sof_ipc_dai_dmic_params {
 	struct sof_ipc_hdr hdr;
-	uint32_t dmic_id;
-	uint32_t mclk;
 	/* TODO */
 } __attribute__((packed));
+
+
+/* general purpose DAI configuration */
+struct sof_ipc_dai_config {
+	struct sof_ipc_hdr hdr;
+	enum sof_ipc_dai_type type;
+	uint32_t id;	/* physical number if more than 1 of this type */
+
+	/* physical protocol and clocking */
+	uint16_t format;	/* SOF_DAI_FMT_ */
+	uint16_t reserved;	/* alignment */
+	uint32_t mclk;	/* mclk frequency in Hz */
+	uint32_t bclk;	/* bclk frequency in Hz */
+	uint32_t fclk;	/* cclk frequency in Hz */
+
+	/* TDM */
+	uint32_t num_slots;
+	uint32_t rx_slot_mask;
+	uint32_t tx_slot_mask;
+
+	/* data */
+	uint16_t sample_valid_bits;
+	uint16_t sample_container_bits;
+
+	/* MCLK */
+	uint16_t mclk_always_run;
+	uint16_t mclk_master;
+
+	/* HW specific data */
+	union {
+		struct sof_ipc_dai_ssp_params ssp[0];
+		struct sof_ipc_dai_hda_params hda[0];
+		struct sof_ipc_dai_dmic_params dmic[0];
+	};
+};
 
 /*
  * Stream configuration.
@@ -325,9 +354,11 @@ struct sof_ipc_stream_params {
 	enum sof_ipc_buffer_format buffer_fmt;
 	uint32_t rate;
 	uint32_t channels;
-	uint32_t sample_size;
+	uint32_t sample_valid_bytes;
+	uint32_t sample_container_bytes;
 	/* for notifying host period has completed - 0 means no period IRQ */
 	uint32_t host_period_bytes;
+	enum sof_ipc_chmap chmap[SOF_IPC_MAX_CHANNELS];	/* channel map */
 } __attribute__((packed));
 
 /* PCM params info - SOF_IPC_STREAM_PCM_PARAMS */
@@ -454,25 +485,13 @@ struct sof_ipc_buffer {
 	uint32_t size;		/* buffer size in bytes */
 } __attribute__((packed));
 
-/* types of DAI */
-enum sof_ipc_dai_type {
-	SOF_DAI_INTEL_NONE = 0,
-	SOF_DAI_INTEL_SSP,
-	SOF_DAI_INTEL_DMIC,
-	SOF_DAI_INTEL_HDA,
-};
 
 /* generic component config data */
 struct sof_ipc_comp_config {
-	uint32_t format;	/* data format */
-	uint32_t frames;	/* number of frames to process, 0 is variable */
-	uint32_t channels;	/* max number of channels */
-	uint32_t frame_size;	/* sample size in bytes */
 	uint32_t periods_sink;	/* 0 means variable */
 	uint32_t periods_source;	/* 0 means variable */
 	uint32_t preload_count;	/* how many periods to preload */
 	enum sof_ipc_frame frame_fmt;
-	enum sof_ipc_chmap chmap[SOF_IPC_MAX_CHANNELS];	/* channel map */
 } __attribute__((packed));
 
 /* generic host component */

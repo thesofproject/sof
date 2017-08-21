@@ -400,39 +400,32 @@ static int ipc_glb_stream_message(uint32_t header)
  * DAI IPC Operations.
  */
 
-static int ipc_dai_ssp_config(uint32_t header)
+static int ipc_dai_config(uint32_t header)
 {
-	struct sof_ipc_dai_ssp_params *ssp = _ipc->comp_data;
-	struct dai_config dai_config;
+	struct sof_ipc_dai_config *config = _ipc->comp_data;
 	struct dai *dai;
 	int ret;
 
 	trace_ipc("DsF");
 
-	/* TODO: set type in topology */
-	dai_config.type = DAI_TYPE_INTEL_SSP;
-	dai_config.ssp = ssp;
-
-	/* TODO: allow topology to define SSP clock type */
-	dai_config.ssp->clk_id = SSP_CLK_EXT;
-
 	/* get DAI */
-	dai = dai_get(SOF_DAI_INTEL_SSP, ssp->ssp_id);
+	dai = dai_get(config->type, config->id);
 	if (dai == NULL) {
 		trace_ipc_error("eDi");
-		trace_value(ssp->ssp_id);
+		trace_value(config->type);
+		trace_value(config->id);
 		return -ENODEV;
 	}
 
 	/* configure DAI */
-	ret = dai_set_config(dai, &dai_config);
+	ret = dai_set_config(dai, config);
 	if (ret < 0) {
 		trace_ipc_error("eDC");
 		return ret;
 	}
 
-	/* now send params to all components who use that DAI */
-	return ipc_comp_dai_config(_ipc, &dai_config);
+	/* now send params to all DAI components who use that physical DAI */
+	return ipc_comp_dai_config(_ipc, config);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -440,12 +433,10 @@ static int ipc_glb_dai_message(uint32_t header)
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
 	switch (cmd) {
-	case iCS(SOF_IPC_COMP_SSP_CONFIG):
-		return ipc_dai_ssp_config(header);
-	case iCS(SOF_IPC_COMP_LOOPBACK):
+	case iCS(SOF_IPC_DAI_CONFIG):
+		return ipc_dai_config(header);
+	case iCS(SOF_IPC_DAI_LOOPBACK):
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
-	case iCS(SOF_IPC_COMP_HDA_CONFIG):
-	case iCS(SOF_IPC_COMP_DMIC_CONFIG):
 	default:
 		trace_ipc_error("eDc");
 		trace_value(header);

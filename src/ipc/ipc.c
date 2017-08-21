@@ -307,7 +307,7 @@ void ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	pipeline_complete(ipc_pipe->pipeline);
 }
 
-int ipc_comp_dai_config(struct ipc *ipc, struct dai_config *config)
+int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;

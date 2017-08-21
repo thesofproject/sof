@@ -122,7 +122,8 @@ struct comp_ops {
 	int (*preload)(struct comp_dev *dev);
 
 	/* set component audio stream paramters */
-	int (*dai_config)(struct comp_dev *dev, struct dai_config *dai_config);
+	int (*dai_config)(struct comp_dev *dev,
+		struct sof_ipc_dai_config *dai_config);
 
 	/* used to pass standard and bespoke commands (with data) to component */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
@@ -261,10 +262,10 @@ static inline int comp_reset(struct comp_dev *dev)
 
 /* DAI configuration - only mandatory for DAI components */
 static inline int comp_dai_config(struct comp_dev *dev,
-	struct dai_config *dai_config)
+	struct sof_ipc_dai_config *config)
 {
 	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dev, dai_config);
+		return dev->drv->ops.dai_config(dev, config);
 	return 0;
 }
 
