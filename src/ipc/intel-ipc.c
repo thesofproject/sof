@@ -622,11 +622,15 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	/* register component */
 	ret = ipc_comp_new(_ipc, comp);
 	if (ret < 0) {
-		trace_ipc_error("etc");
+		trace_ipc_error("cn1");
 		return ret;
 	}
 
 	/* write component values to the outbox */
+	reply.rhdr.hdr.size = sizeof(reply);
+	reply.rhdr.hdr.cmd = header;
+	reply.rhdr.error = 0;
+	reply.offset = 0; /* TODO: set this up for mmaped components */
 	mailbox_outbox_write(0, &reply, sizeof(reply));
 	return 0;
 }
@@ -634,19 +638,47 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 static int ipc_glb_tplg_buffer_new(uint32_t header)
 {
 	struct sof_ipc_buffer *ipc_buffer = _ipc->comp_data;
+	struct sof_ipc_comp_reply reply;
+	int ret;
 
 	trace_ipc("Ibn");
 
-	return ipc_buffer_new(_ipc, ipc_buffer);
+	ret = ipc_buffer_new(_ipc, ipc_buffer);
+	if (ret < 0) {
+		trace_ipc_error("bn1");
+		return ret;
+	}
+
+	/* write component values to the outbox */
+	reply.rhdr.hdr.size = sizeof(reply);
+	reply.rhdr.hdr.cmd = header;
+	reply.rhdr.error = 0;
+	reply.offset = 0; /* TODO: set this up for mmaped components */
+	mailbox_outbox_write(0, &reply, sizeof(reply));
+	return 0;
 }
 
 static int ipc_glb_tplg_pipe_new(uint32_t header)
 {
 	struct sof_ipc_pipe_new *ipc_pipeline = _ipc->comp_data;
+	struct sof_ipc_comp_reply reply;
+	int ret;
 
 	trace_ipc("Ipn");
 
-	return ipc_pipeline_new(_ipc, ipc_pipeline);
+	ret = ipc_pipeline_new(_ipc, ipc_pipeline);
+	if (ret < 0) {
+		trace_ipc_error("pn1");
+		return ret;
+	}
+
+	/* write component values to the outbox */
+	reply.rhdr.hdr.size = sizeof(reply);
+	reply.rhdr.hdr.cmd = header;
+	reply.rhdr.error = 0;
+	reply.offset = 0; /* TODO: set this up for mmaped components */
+	mailbox_outbox_write(0, &reply, sizeof(reply));
+	return 0;
 }
 
 static int ipc_glb_tplg_pipe_complete(uint32_t header)
