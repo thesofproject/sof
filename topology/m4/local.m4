@@ -253,7 +253,7 @@ define(`N_DAI', DAI_NAME)
 define(`N_DAI_OUT', DAI_NAME`.OUT')
 define(`N_DAI_IN', DAI_NAME`.IN')
 
-dnl W_DAI_OUT(stream, type, index, data, periods_sink, periods_source, preload)
+dnl W_DAI_OUT(stream, type, index, format, periods_sink, periods_source, preload, data)
 define(`W_DAI_OUT',
 `SectionVendorTuples."'N_DAI_OUT($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
@@ -284,6 +284,15 @@ define(`W_DAI_OUT',
 `SectionData."'N_DAI_OUT($1)`_data_str" {'
 `	tuples "'N_DAI_OUT($1)`_tuples_str"'
 `}'
+`SectionVendorTuples."'N_DAI_OUT($1)`_tuples_comp_str" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."string" {'
+`		SOF_TKN_COMP_FORMAT'	STR($4)
+`	}'
+`}'
+`SectionData."'N_DAI_OUT($1)`_data_comp_str" {'
+`	tuples "'N_DAI_OUT($1)`_tuples_comp_str"'
+`}'
 `SectionWidget."'N_DAI_OUT`" {'
 `	index "'PIPELINE_ID`"'
 `	type "dai_in"'
@@ -293,11 +302,12 @@ define(`W_DAI_OUT',
 `		"'N_DAI_OUT($1)`_data_w"'
 `		"'N_DAI_OUT($1)`_data_w_comp"'
 `		"'N_DAI_OUT($1)`_data_str"'
-`		"'$4`"'
+`		"'N_DAI_OUT($1)`_data_comp_str"'
+`		"'$8`"'
 `	]'
 `}')
 
-dnl W_DAI_IN(stream, type, index, data, periods_sink, periods_source, preload)
+dnl W_DAI_IN(stream, type, index, format, periods_sink, periods_source, preload, data)
 define(`W_DAI_IN',
 `SectionVendorTuples."'N_DAI_IN($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
@@ -328,6 +338,15 @@ define(`W_DAI_IN',
 `SectionData."'N_DAI_IN($1)`_data_str" {'
 `	tuples "'N_DAI_IN($1)`_tuples_str"'
 `}'
+`SectionVendorTuples."'N_DAI_IN($1)`_tuples_comp_str" {'
+`	tokens "sof_comp_tokens"'
+`	tuples."string" {'
+`		SOF_TKN_COMP_FORMAT'	STR($4)
+`	}'
+`}'
+`SectionData."'N_DAI_IN($1)`_data_comp_str" {'
+`	tuples "'N_DAI_IN($1)`_tuples_comp_str"'
+`}'
 `SectionWidget."'N_DAI_IN`" {'
 `	index "'PIPELINE_ID`"'
 `	type "dai_out"'
@@ -337,7 +356,8 @@ define(`W_DAI_IN',
 `		"'N_DAI_IN($1)`_data_w"'
 `		"'N_DAI_IN($1)`_data_w_comp"'
 `		"'N_DAI_IN($1)`_data_str"'
-`		"'$4`"'
+`		"'N_DAI_OUT($1)`_data_comp_str"'
+`		"'$8`"'
 `	]'
 `}')
 
@@ -447,6 +467,7 @@ define(`COMP_SAMPLE_SIZE',
 	$1, `s16le', `2',
 	$1, `s24_4le', `4',
 	$1, `s32le', `4',
+	$1, `float', `4',
 	`4')')
 
 

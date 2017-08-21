@@ -16,14 +16,14 @@ include(`local.m4')
 # with 2 sink and 0 source periods
 W_PCM_PLAYBACK(Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
-# Capture Buffers
+# Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
 
 #
 # DAI definitions
 #
-W_DAI_OUT(DAI_SNAME, DAI_TYPE, DAI_INDEX, dai0p_plat_conf)
+W_DAI_OUT(DAI_SNAME, DAI_TYPE, DAI_INDEX, DAI_FORMAT, 0, 2, 2, dai0p_plat_conf)
 
 #
 # DAI pipeline - always use 0 for DAIs
@@ -33,7 +33,7 @@ W_PIPELINE(N_DAI_OUT, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCH
 #
 # Pipeline Graph
 #
-#  host PCM <--B1-- volume <--B0-- source DAI0
+#  host PCM_P --> B0 --> sink DAI0
 
 SectionGraph."pipe-pass-playback-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
@@ -65,7 +65,7 @@ SectionPCMCapabilities.STR(Passthrough Playback PCM_ID) {
 	buffer_size_max	"65536"
 }
 
-# PCM Low Latency Capture
+# PCM Low Latency Passthrough Playback
 SectionPCM.STR(PCM PCM_ID) {
 
 	index STR(PIPELINE_ID)
