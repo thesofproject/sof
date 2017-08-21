@@ -583,6 +583,17 @@ found:
 
 static int volume_preload(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sink;
+
+	trace_volume("PrL");
+
+	/* make sure there is enough space in sink buffer */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+		source_list);
+	if (sink->free < cd->sink_period_bytes)
+		return 0;
+
 	return volume_copy(dev);
 }
 

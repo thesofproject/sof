@@ -54,6 +54,9 @@ struct reef;
 
 #define PLATFORM_SCHEDULE_COST	200
 
+/* maximum preload pipeline depth */
+#define MAX_PRELOAD_SIZE	20
+
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_HOST_DMA_MASK	0xFF000000
 

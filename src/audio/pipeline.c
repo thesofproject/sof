@@ -300,8 +300,15 @@ static int component_op_downstream(struct op_data *op_data,
 	/* do operation on this component */
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
+
+		/* dont do any params downstream if current is running */
+		if (current->state == COMP_STATE_RUNNING)
+			return 0;
+
 		/* send params to the component */
-		err = comp_params(current, op_data->params);
+		if (current != start)
+			comp_install_params(current, SOF_IPC_STREAM_PLAYBACK);
+		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
 		/* send command to the component */
@@ -365,8 +372,15 @@ static int component_op_upstream(struct op_data *op_data,
 	/* do operation on this component */
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
+
+		/* dont do any params upstream if current is running */
+		if (current->state == COMP_STATE_RUNNING)
+			return 0;
+
 		/* send params to the component */
-		err = comp_params(current, op_data->params);
+		if (current != start)
+			comp_install_params(current, SOF_IPC_STREAM_CAPTURE);
+		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
 		/* send command to the component */
@@ -419,7 +433,7 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 {
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(current);
 	struct list_item *clist;
-	int i, count = 0;
+	int i, total = 0, count = 0;
 
 	trace_pipe("PR-");
 	tracev_value(current->comp.id);
@@ -429,12 +443,13 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 		return 0;
 
 	/* now preload the buffers */
-	for (i = 0; i < config->preload_count; i++)
-		count += comp_preload(current);
+	for (i = 0; i < config->preload_count; i++) {
+		count = comp_preload(current);
 
-	/* finished at this level and downstream if no data is preloaded */
-	if (count == 0)
-		return count;
+		if (count < 0)
+			return count;
+		total += count;
+	}
 
 	/* now run this operation downstream */
 	list_for_item(clist, &current->bsink_list) {
@@ -446,13 +461,15 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 		if (!buffer->connected)
 			continue;
 
-		count += preload_downstream(start, buffer->sink);
+		count = preload_downstream(start, buffer->sink);
+		if (count < 0)
+			return count;
+
+		total += count;
 	}
 
-	return count;
+	return total;
 }
-
-#define MAX_PRELOAD_SIZE	3
 
 /* prepare the pipeline for usage - preload host buffers here */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
@@ -483,7 +500,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 			count = preload_downstream(dev, dev);
 
 			/* complete ? */
-			if (count == 0)
+			if (count <= 0)
 				goto out;
 		}
 

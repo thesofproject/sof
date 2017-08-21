@@ -471,11 +471,11 @@ static int host_preload(struct comp_dev *dev)
 	ret = wait_for_completion_timeout(&hd->complete);
 	if (ret < 0) {
 		trace_comp_error("eHp");
-		return 0;
+		return -EIO;
 	}
 
 	/* one period copied */
-	return 1;
+	return hd->period_bytes;
 }
 
 static int host_prepare(struct comp_dev *dev)
