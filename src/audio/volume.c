@@ -102,9 +102,6 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = (int32_t)src[i] * cd->volume[0];
 		dest[i + 1] = (int32_t)src[i + 1] * cd->volume[1];
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
@@ -120,9 +117,6 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = (((int32_t)src[i] >> 16) * cd->volume[0]) >> 16;
 		dest[i + 1] = (((int32_t)src[i + 1] >> 16) * cd->volume[1]) >> 16;
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
@@ -138,9 +132,6 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = ((int64_t)src[i] * cd->volume[0]) >> 16;
 		dest[i + 1] = ((int64_t)src[i + 1] * cd->volume[1]) >> 16;
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 16 bit source buffer to 16 bit dest buffer */
@@ -157,9 +148,6 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = ((int32_t)src[i] * cd->volume[0]) >> 16;
 		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[1]) >> 16;
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
@@ -175,9 +163,6 @@ static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = ((int32_t)src[i] * cd->volume[0]) >> 8;
 		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[1]) >> 8;
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
@@ -195,9 +180,6 @@ static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i + 1] = (int16_t)((((int32_t)src[i + 1] >> 8) *
 			cd->volume[1]) >> 16);
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 32 bit source buffer to 24 bit on 32 bit boundary dest buffer */
@@ -213,9 +195,6 @@ static void vol_s32_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = ((int64_t)src[i] * cd->volume[0]) >> 24;
 		dest[i + 1] = ((int64_t)src[i + 1] * cd->volume[1]) >> 24;
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
@@ -233,9 +212,6 @@ static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i + 1] = (int32_t)(((int64_t)src[i + 1] *
 			cd->volume[1]) >> 8);
 	}
-
-	source->r_ptr = src + i;
-	sink->w_ptr = dest + i;
 }
 
 /* map of source and sink buffer formats to volume function */
