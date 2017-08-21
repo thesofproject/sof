@@ -19,6 +19,7 @@ SectionVendorTokens."sof_dai_tokens" {
 	SOF_TKN_DAI_DMAC_CONFIG			"153"
 	SOF_TKN_DAI_TYPE			"154"
 	SOF_TKN_DAI_INDEX			"155"
+	SOF_TKN_DAI_SAMPLE_BITS			"156"
 }
 
 SectionVendorTokens."sof_sched_tokens" {

@@ -82,8 +82,8 @@ DAI_ADD(sof/pipe-dai-capture.m4, SSP, 0, I2S, PIPELINE_SINK_2, 2)
 #
 # BE configurations - overrides config in ACPI if present
 #
-DAI_CONFIG(SSP, 0, Codec, I2S, I2S,
+DAI_CONFIG(SSP, 0, Codec, I2S, I2S, 24,
 	DAI_CLOCK(mclk, 24000000, slave),
 	DAI_CLOCK(bclk, 2400000, slave),
 	DAI_CLOCK(fsync, 48000, slave),
-	DAI_TDM(2, 24, 3, 3))
+	DAI_TDM(2, 25, 3, 3))
