@@ -126,7 +126,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	uint32_t ipcxh;
 	int32_t err;
 
-	trace_ipc("Cmd");
+	tracev_ipc("Cmd");
 
 	/* clear old mailbox return values */
 	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
@@ -163,7 +163,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 		}
 	}
 
-	trace_ipc("CmD");
+	tracev_ipc("CmD");
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)

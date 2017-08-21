@@ -239,7 +239,7 @@ void pipeline_complete(struct pipeline *p)
 	  complete component task and pipeline init */
 
 	trace_pipe("com");
-	tracev_value( p->ipc_pipe.pipeline_id);
+	tracev_value(p->ipc_pipe.pipeline_id);
 
 	connect_downstream(p, p->sched_comp, p->sched_comp);
 	connect_upstream(p, p->sched_comp, p->sched_comp);

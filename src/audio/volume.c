@@ -463,11 +463,6 @@ static int volume_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
-#if 0
-	trace_value((uint32_t)(source->r_ptr - source->addr));
-	trace_value((uint32_t)(sink->w_ptr - sink->addr));
-#endif
-
 	/* get max number of bytes that can be copied */
 	copy_bytes = comp_buffer_get_copy_bytes(dev, source, sink);
 
