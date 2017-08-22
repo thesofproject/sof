@@ -467,9 +467,12 @@ static int volume_copy(struct comp_dev *dev)
 	copy_bytes = comp_buffer_get_copy_bytes(dev, source, sink);
 
 	/* Run volume if buffers have enough room */
-	if (copy_bytes < cd->source_period_bytes ||
-		copy_bytes < cd->sink_period_bytes) {
-		trace_volume_error("xru");
+	if (copy_bytes < cd->source_period_bytes) {
+		comp_underrun(dev, source, cd->source_period_bytes);
+		return 0;
+	}
+	if (copy_bytes < cd->sink_period_bytes) {
+		comp_overrun(dev, source, cd->sink_period_bytes);
 		return 0;
 	}
 
