@@ -35,8 +35,8 @@
 #include <arch/cache.h>
 #include <stdint.h>
 
-/* almost 1k should be enough for everyone ..... */
-#define IPC_MAX_MAILBOX_BYTES 0xe80
+/* 4k should be enough for everyone ..... */
+#define IPC_MAX_MAILBOX_BYTES 0x1000
 
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE
