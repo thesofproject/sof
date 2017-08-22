@@ -200,6 +200,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
+	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
 	int err;
@@ -255,6 +256,13 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 
 
+	/* write component values to the outbox */
+	reply.rhdr.hdr.size = sizeof(reply);
+	reply.rhdr.hdr.cmd = stream;
+	reply.rhdr.error = 0;
+	reply.comp_id = pcm_params->comp_id;
+	reply.posn_offset = 0; /* TODO: set this up for mmaped components */
+	mailbox_outbox_write(0, &reply, sizeof(reply));
 	return 0;
 
 error:
