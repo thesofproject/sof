@@ -41,6 +41,7 @@
 #include <reef/dma.h>
 #include <reef/stream.h>
 #include <reef/audio/buffer.h>
+#include <reef/audio/pipeline.h>
 #include <uapi/ipc.h>
 
 /* audio component states
@@ -354,6 +355,25 @@ static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
 	default:
 		return 0;
 	}
+}
+
+/* XRUN handling */
+static inline void comp_underrun(struct comp_dev *dev, struct comp_buffer *source,
+	uint32_t copy_bytes)
+{
+	trace_comp("Xun");
+	trace_value((source->avail << 16) | copy_bytes);
+
+	pipeline_xrun(dev->pipeline, dev, (int32_t)source->avail - copy_bytes);
+}
+
+static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
+	uint32_t copy_bytes)
+{
+	trace_comp("Xov");
+	trace_value((sink->free << 16) | copy_bytes);
+
+	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
 }
 
 #endif
