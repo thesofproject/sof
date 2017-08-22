@@ -57,6 +57,9 @@ struct pipeline {
 	spinlock_t lock;
 	struct sof_ipc_pipe_new ipc_pipe;
 
+	/* runtime status */
+	int32_t xrun_bytes;		/* last xrun length */
+
 	/* lists */
 	struct list_item comp_list;		/* list of components */
 	struct list_item buffer_list;		/* list of buffers */
@@ -116,5 +119,8 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host_dev,
 	struct sof_ipc_stream_posn *posn);
 
 void pipeline_schedule(void *arg);
+
+/* notify host that we have XRUN */
+void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
 
 #endif

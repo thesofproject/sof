@@ -183,6 +183,28 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 	spin_unlock(&current->lock);
 }
 
+/* update pipeline state based on cmd */
+static void pipeline_cmd_update(struct pipeline *p, int cmd)
+{
+	switch (cmd) {
+	case COMP_CMD_PAUSE:
+		break;
+	case COMP_CMD_STOP:
+		break;
+	case COMP_CMD_RELEASE:
+		p->xrun_bytes = 0;
+		break;
+	case COMP_CMD_START:
+		p->xrun_bytes = 0;
+		break;
+	case COMP_CMD_SUSPEND:
+		break;
+	case COMP_CMD_RESUME:
+		p->xrun_bytes = 0;
+		break;
+	}
+}
+
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct comp_dev *cd)
@@ -311,8 +333,10 @@ static int component_op_downstream(struct op_data *op_data,
 		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
-		/* send command to the component */
+		/* send command to the component and update pipeline state  */
 		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
+		if (err == 0)
+			pipeline_cmd_update(current->pipeline, op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the component */
@@ -383,8 +407,10 @@ static int component_op_upstream(struct op_data *op_data,
 		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
-		/* send command to the component */
+		/* send command to the component and update pipeline state  */
 		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
+		if (err == 0)
+			pipeline_cmd_update(current->pipeline, op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the component */
@@ -818,6 +844,92 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	}
 }
 
+static void xrun(struct comp_dev *dev, void *data)
+{
+	struct sof_ipc_stream_posn *posn = data;
+
+	/* get host timestamps */
+	platform_host_timestamp(dev, posn);
+
+	/* send XRUN to host */
+	ipc_stream_send_xrun(dev, posn);
+}
+
+
+/* travel down stream from start and run func for each component of type */
+static void pipeline_for_each_downstream(struct pipeline *p,
+	enum sof_comp_type type, struct comp_dev *current,
+	void (*func)(struct comp_dev *, void *), void *data)
+{
+	struct list_item *clist;
+
+	if (current->comp.type == type)
+		func(current, data);
+
+	/* travel downstream to sink end point(s) */
+	list_for_item(clist, &current->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* dont go downstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		/* continue downstream */
+		pipeline_for_each_downstream(p, type, buffer->sink,
+			func, data);
+	}
+}
+
+/* travel up stream from start and run func for each component of type */
+static void pipeline_for_each_upstream(struct pipeline *p,
+	enum sof_comp_type type, struct comp_dev *current,
+	void (*func)(struct comp_dev *, void *), void *data)
+{
+	struct list_item *clist;
+
+	if (current->comp.type == type)
+		func(current, data);
+
+	/* travel upstream to sink end point(s) */
+	list_for_item(clist, &current->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* dont go downstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		/* continue downstream */
+		pipeline_for_each_upstream(p, type, buffer->source,
+			func, data);
+	}
+}
+
+/*
+ * Send an XRUN to each host for this component.
+ */
+void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
+	int32_t bytes)
+{
+	struct sof_ipc_stream_posn posn;
+
+	/* dont flood host */
+	if (p->xrun_bytes)
+		return;
+
+	memset(&posn, 0, sizeof(posn));
+	p->xrun_bytes = posn.xrun_size = bytes;
+	posn.xrun_comp_id = dev->comp.id;
+
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		pipeline_for_each_upstream(p, SOF_COMP_HOST, dev, xrun, &posn);
+	} else {
+		pipeline_for_each_downstream(p, SOF_COMP_HOST, dev, xrun, &posn);
+	}
+}
 
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
