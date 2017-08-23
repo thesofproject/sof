@@ -636,11 +636,29 @@ static int host_reset(struct comp_dev *dev)
 static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
+	struct comp_buffer *dma_buffer;
+	struct dma_sg_elem *local_elem;
 
 	tracev_host("cpy");
 
 	if (dev->state != COMP_STATE_RUNNING)
 		return 0;
+
+	local_elem = list_first_item(&hd->config.elem_list,
+		struct dma_sg_elem, list);
+
+	/* enough free or avail to copy ? */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		dma_buffer = list_first_item(&dev->bsink_list,
+			struct comp_buffer, source_list);
+		if (dma_buffer->free < local_elem->size)
+			return 0;
+	} else {
+		dma_buffer = list_first_item(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+		if (dma_buffer->avail < local_elem->size)
+			return 0;
+	}
 
 	/* do DMA transfer */
 	dma_set_config(hd->dma, hd->chan, &hd->config);
