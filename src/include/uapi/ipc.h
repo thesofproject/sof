@@ -494,7 +494,7 @@ struct sof_ipc_buffer {
 } __attribute__((packed));
 
 
-/* generic component config data */
+/* generic component config data - must always be after struct sof_ipc_comp */
 struct sof_ipc_comp_config {
 	uint32_t periods_sink;	/* 0 means variable */
 	uint32_t periods_source;	/* 0 means variable */
