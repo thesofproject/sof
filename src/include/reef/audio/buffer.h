@@ -99,8 +99,8 @@ static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 	buffer->free = buffer->size - buffer->avail;
 
 	tracev_buffer("pro");
-	tracev_value(buffer->avail);
-	tracev_value(buffer->free);
+	tracev_value((buffer->avail << 12) | buffer->free);
+	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
 }
 
 /* called by a component after consuming data from this buffer */
@@ -125,8 +125,8 @@ static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 	buffer->free = buffer->size - buffer->avail;
 
 	tracev_buffer("con");
-	tracev_value(buffer->avail);
-	tracev_value(buffer->free);
+	tracev_value((buffer->avail << 12) | buffer->free);
+	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
 }
 
 /* get the max number of bytes that can be copied between sink and source */
