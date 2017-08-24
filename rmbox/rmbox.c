@@ -38,6 +38,10 @@
 #define TRACE_CLASS_VOLUME	(14 << 24)
 #define TRACE_CLASS_SWITCH	(15 << 24)
 #define TRACE_CLASS_MUX		(16 << 24)
+#define TRACE_CLASS_SRC         (17 << 24)
+#define TRACE_CLASS_TONE        (18 << 24)
+#define TRACE_CLASS_EQ_FIR      (19 << 24)
+#define TRACE_CLASS_EQ_IIR      (20 << 24)
 
 #define MAILBOX_HOST_OFFSET	0x144000
 
@@ -146,6 +150,14 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, uint32_
 		trace = "switch";
 	else if (class == TRACE_CLASS_MUX)
 		trace = "mux";
+	else if (class == TRACE_CLASS_SRC)
+		trace = "src";
+	else if (class == TRACE_CLASS_TONE)
+		trace = "tone";
+	else if (class == TRACE_CLASS_EQ_FIR)
+		trace = "eq-fir";
+	else if (class == TRACE_CLASS_EQ_IIR)
+		trace = "eq-iir";
 	else {
 		printf("value 0x%8.8x\n", (uint32_t)val);
 		return;
