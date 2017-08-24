@@ -127,8 +127,19 @@ static int mixer_params(struct comp_dev *dev)
 
 	trace_mixer("par");
 
+	/* calculate frame size based on config */
+	dev->frame_bytes = comp_frame_bytes(dev);
+	if (dev->frame_bytes == 0) {
+		trace_mixer_error("mx1");
+		return -EINVAL;
+	}
+
 	/* calculate period size based on config */
 	md->period_bytes = dev->frames * dev->frame_bytes;
+	if (md->period_bytes == 0) {
+		trace_mixer_error("mx2");
+		return -EINVAL;
+	}
 
 	return 0;
 }
