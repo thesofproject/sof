@@ -548,10 +548,14 @@ static int volume_prepare(struct comp_dev *dev)
 	/* validate */
 	if (cd->sink_period_bytes == 0) {
 		trace_volume_error("vp1");
+		trace_value(dev->frames);
+		trace_value(sinkb->sink->frame_bytes);
 		return -EINVAL;
 	}
 	if (cd->source_period_bytes == 0) {
 		trace_volume_error("vp2");
+		trace_value(dev->frames);
+		trace_value(sourceb->source->frame_bytes);
 		return -EINVAL;
 	}
 
