@@ -367,15 +367,19 @@ static int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a)
 static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
+	struct sof_ipc_comp_tone *tone;
+	struct sof_ipc_comp_tone *ipc_tone = (struct sof_ipc_comp_tone *) comp;
 	struct comp_data *cd;
 
 	trace_tone("new");
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dev));
+
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_tone));
 	if (dev == NULL)
 		return NULL;
 
-	//memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_tone));
-
+	tone = (struct sof_ipc_comp_tone *) &dev->comp;
+	memcpy(tone, ipc_tone, sizeof(struct sof_ipc_comp_tone));
 
 	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
@@ -406,15 +410,19 @@ static void tone_free(struct comp_dev *dev)
 static int tone_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_stream_params *params = &dev->params;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
 	trace_tone("par");
+
+	/* Need to compute this in non-host endpoint */
+	dev->frame_bytes =
+		dev->params.sample_container_bytes * dev->params.channels;
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames * dev->frame_bytes;
 
 	/* EQ supports only S32_LE PCM format */
-	if (params->frame_fmt != SOF_IPC_FRAME_S32_LE)
+	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
 	return 0;
@@ -499,9 +507,8 @@ static int tone_copy(struct comp_dev *dev)
 	if (sink->free >= cd->period_bytes) {
 		/* create tone */
 		cd->tone_func(dev, sink, source, dev->frames);
+		comp_update_buffer_produce(sink, 0);
 	}
-
-	comp_update_buffer_produce(sink, cd->period_bytes);
 
 	return dev->frames;
 }
@@ -512,6 +519,9 @@ static int tone_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_tone("TPp");
+
+	cd->channels = dev->params.channels;
+	cd->rate = dev->params.rate;
 	tracev_value(cd->channels);
 	tracev_value(cd->rate);
 
@@ -520,21 +530,13 @@ static int tone_prepare(struct comp_dev *dev)
 	if (tonegen_init(&cd->sg, cd->rate, f, a) < 0)
 		return -EINVAL;
 
-	//dev->preload = PLAT_INT_PERIODS;
 	dev->state = COMP_STATE_PREPARE;
-
 	return 0;
 }
 
 static int tone_preload(struct comp_dev *dev)
 {
-	//int i;
-	trace_tone("TPl");
-
-	//for (i = 0; i < dev->preload; i++)
-	//	tone_copy(dev);
-
-	return 0;
+	return tone_copy(dev);
 }
 
 static int tone_reset(struct comp_dev *dev)
