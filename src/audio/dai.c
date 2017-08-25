@@ -252,11 +252,15 @@ static int dai_playback_params(struct comp_dev *dev)
 	buffer_size = source_config->periods_sink * dd->period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
-	if (buffer_size <= dma_buffer->alloc_size)
-		dma_buffer->size = buffer_size;
-	else {
-		trace_dai_error("eSz");
+	if (buffer_size == 0 || buffer_size > dma_buffer->alloc_size) {
+		trace_dai_error("ep1");
+		trace_value(source_config->periods_sink);
+		trace_value(dd->period_bytes);
+		trace_value(buffer_size);
+		trace_value(dma_buffer->alloc_size);
 		return -EINVAL;
+	} else {
+		dma_buffer->size = buffer_size;
 	}
 
 	if (list_is_empty(&config->elem_list)) {
@@ -283,6 +287,7 @@ static int dai_playback_params(struct comp_dev *dev)
 	return 0;
 
 err_unwind:
+	trace_dai_error("ep3");
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
@@ -316,11 +321,15 @@ static int dai_capture_params(struct comp_dev *dev)
 	buffer_size = sink_config->periods_source * dd->period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
-	if (buffer_size <= dma_buffer->alloc_size)
-		dma_buffer->size = buffer_size;
-	else {
-		trace_dai_error("eSz");
+	if (buffer_size == 0 || buffer_size > dma_buffer->alloc_size) {
+		trace_dai_error("ec1");
+		trace_value(sink_config->periods_sink);
+		trace_value(dd->period_bytes);
+		trace_value(buffer_size);
+		trace_value(dma_buffer->alloc_size);
 		return -EINVAL;
+	} else {
+		dma_buffer->size = buffer_size;
 	}
 
 	if (list_is_empty(&config->elem_list)) {
@@ -345,6 +354,7 @@ static int dai_capture_params(struct comp_dev *dev)
 	return 0;
 
 err_unwind:
+	trace_dai_error("ec3");
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
@@ -368,7 +378,16 @@ static int dai_params(struct comp_dev *dev)
 
 	/* calculate period size based on config */
 	dev->frame_bytes = comp_frame_bytes(dev);
+	if (dev->frame_bytes == 0) {
+		trace_dai_error("ed1");
+		return -EINVAL;
+	}
+
 	dd->period_bytes = dev->frames * dev->frame_bytes;
+	if (dd->period_bytes == 0) {
+		trace_dai_error("ed2");
+		return -EINVAL;
+	}
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
