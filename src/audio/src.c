@@ -60,7 +60,6 @@ struct comp_data {
 	int scratch_length;
 	uint32_t sink_rate;
 	uint32_t source_rate;
-	//int32_t z[STAGE_BUF_SIZE];
 	void (*src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
@@ -117,8 +116,6 @@ static void fallback_s32(struct comp_dev *dev,
 {
 
 	struct comp_data *cd = comp_get_drvdata(dev);
-	//int32_t *src = (int32_t*) source->r_ptr;
-	//int32_t *dest = (int32_t*) sink->w_ptr;
 	int nch = dev->params.channels;
 	int blk_in = cd->src[0].blk_in;
 	int blk_out = cd->src[0].blk_out;
@@ -253,7 +250,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_src *src;
-	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *)comp;
+	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *) comp;
 	struct comp_data *cd;
 	int i;
 
@@ -264,7 +261,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	if (dev == NULL)
 		return NULL;
 
-	src = (struct sof_ipc_comp_src *)&dev->comp;
+	src = (struct sof_ipc_comp_src *) &dev->comp;
 	memcpy(src, ipc_src, sizeof(struct sof_ipc_comp_src));
 
 	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
@@ -312,7 +309,7 @@ static int src_params(struct comp_dev *dev)
 
 	trace_src("par");
 
-	/* EQ supports only S32_LE PCM format */
+	/* SRC supports only S32_LE PCM format */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
 
@@ -372,14 +369,9 @@ static int src_params(struct comp_dev *dev)
 		break;
 	}
 
-	/* Check that src blk_in and blk_out are less than params.period_frames.
-	 * Return an error if the period is too short.
-	 */
-	if (src_polyphase_get_blk_in(&cd->src[0]) > dev->frames)
-		return -EINVAL;
-
-	if (src_polyphase_get_blk_out(&cd->src[0]) > dev->frames)
-		return -EINVAL;
+	/* Need to compute this */
+	dev->frame_bytes =
+		dev->params.sample_container_bytes * dev->params.channels;
 
 	return 0;
 }
@@ -389,15 +381,11 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	trace_src("SCm");
 	struct comp_data *cd = comp_get_drvdata(dev);
-//	struct sof_ipc_comp_src *cv;
 	int i;
 
 	switch (cmd) {
 	case COMP_CMD_SRC:
 		trace_src("SMa");
-//		cv = (struct sof_ipc_comp_src *) data;
-//		cv->in_mask = src_input_rates();
-//		cv->out_mask = src_output_rates();
 		break;
 	case COMP_CMD_MUTE:
 		trace_src("SMu");
@@ -447,11 +435,8 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data)
 static int src_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
-	uint32_t frames_source;
-	uint32_t frames_sink;
-	int need_source, need_sink, min_frames;
+	struct comp_buffer *source, *sink;
+	int need_source, need_sink, blk_in, blk_out, frames_source, frames_sink;
 
 	trace_comp("SRC");
 
@@ -464,35 +449,22 @@ static int src_copy(struct comp_dev *dev)
 	/* Check that source has enough frames available and sink enough
 	 * frames free.
 	 */
-	frames_source = dev->frames;
-	frames_sink = dev->frames;
-
-	min_frames = src_polyphase_get_blk_in(&cd->src[0]);
-	if (frames_source > min_frames)
-		need_source = frames_source * dev->frame_bytes;
-	else {
-		frames_source = min_frames;
-		need_source = min_frames * dev->frame_bytes;
-	}
-
-	min_frames = src_polyphase_get_blk_out(&cd->src[0]);
-	if (frames_sink > min_frames)
-		need_sink = frames_sink * dev->frame_bytes;
-	else {
-		frames_sink = min_frames;
-		need_sink = min_frames * dev->frame_bytes;
-	}
+	blk_in = src_polyphase_get_blk_in(&cd->src[0]);
+	blk_out = src_polyphase_get_blk_out(&cd->src[0]);
+	frames_source = dev->frames * blk_in / blk_out;
+	frames_sink = frames_source * blk_out / blk_in;
+	need_source = frames_source * dev->frame_bytes;
+	need_sink = frames_sink * dev->frame_bytes;
 
 	/* Run as many times as buffers allow */
 	while ((source->avail >= need_source) && (sink->free >= need_sink)) {
 		/* Run src */
 		cd->src_func(dev, source, sink, frames_source, frames_sink);
 
+		/* calc new free and available  */
+		comp_update_buffer_consume(source, 0);
+		comp_update_buffer_produce(sink, 0);
 	}
-
-	/* calc new free and available - offset calc by conversion func */
-	comp_update_buffer_consume(source, 0);
-	comp_update_buffer_produce(sink, 0);
 
 	return 0;
 }

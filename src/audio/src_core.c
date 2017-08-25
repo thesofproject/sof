@@ -45,14 +45,17 @@
 #include "src_core.h"
 
 /* Include conversion tables */
+#if SRC_SHORT == 1
+#include <reef/audio/coefficients/src/src_int16_table.h>
+#else
 #include <reef/audio/coefficients/src/src_int24_table.h>
-
-#if 1
-/* TODO: These should be defined somewhere else. */
-#define SOF_RATES_LENGTH 15
-int sof_rates[SOF_RATES_LENGTH] = {7350, 8000, 11025, 12000, 16000, 22050,
-	24000, 32000, 44100, 48000, 64000, 88200, 96000, 176400, 192000};
 #endif
+
+/* TODO: These should be defined somewhere else. */
+#define SOF_RATES_LENGTH 16
+int sof_rates[SOF_RATES_LENGTH] = {7350, 8000, 11025, 12000, 16000, 18900,
+	22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 176400,
+	192000};
 
 /* Calculates the needed FIR delay line length */
 int src_fir_delay_length(struct src_stage *s)
@@ -293,6 +296,23 @@ int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2,
 	return n_stages;
 }
 
+#if SRC_SHORT == 1
+
+/* Calculate a FIR filter part that does not need circular modification */
+static inline void fir_part(int64_t *y, int ntaps, const int16_t c[], int *ic,
+	int32_t d[], int *id)
+{
+	int64_t p;
+	int n;
+
+	/* Data is Q1.31, coef is Q1.15, product is Q2.46 */
+	for (n = 0; n < ntaps; n++) {
+		p = (int64_t) c[(*ic)++] * d[(*id)--];
+		*y += p;
+	}
+}
+#else
+
 /* Calculate a FIR filter part that does not need circular modification */
 static inline void fir_part(int64_t *y, int ntaps, const int32_t c[], int *ic,
 	int32_t d[], int *id)
@@ -307,6 +327,40 @@ static inline void fir_part(int64_t *y, int ntaps, const int32_t c[], int *ic,
 		*y += p;
 	}
 }
+#endif
+
+#if SRC_SHORT == 1
+
+static inline int32_t fir_filter(
+	struct src_state *fir, const int16_t coefs[],
+	int *coefi, int filter_length, int shift)
+{
+	int64_t y = 0;
+	int n1;
+	int n2;
+
+	n1 = fir->fir_ri + 1;
+	if (n1 > filter_length) {
+		/* No need to un-wrap fir read index, make sure fir_fi
+		 * is ge 0 after FIR computation.
+		 */
+		fir_part(&y, filter_length, coefs, coefi, fir->fir_delay,
+			&fir->fir_ri);
+	} else {
+		n2 = filter_length - n1;
+		/* Part 1, loop n1 times, fir_ri becomes -1 */
+		fir_part(&y, n1, coefs, coefi, fir->fir_delay, &fir->fir_ri);
+
+		/* Part 2, unwrap fir_ri, continue rest of filter */
+		fir->fir_ri = fir->fir_delay_size - 1;
+		fir_part(&y, n2, coefs, coefi, fir->fir_delay, &fir->fir_ri);
+	}
+	/* Q2.46 -> Q2.31, saturate to Q1.31 */
+	y = y >> (15 + shift);
+
+	return (int32_t) sat_int32(y);
+}
+#else
 
 static inline int32_t fir_filter(
 	struct src_state *fir, const int32_t coefs[],
@@ -335,8 +389,9 @@ static inline int32_t fir_filter(
 	/* Q9.47 -> Q9.24, saturate to Q8.24 */
 	y = y >> (23 + shift);
 
-	return (int32_t)sat_int32(y);
+	return (int32_t) sat_int32(y);
 }
+#endif
 
 void src_polyphase_stage_cir(struct src_stage_prm *s)
 {

@@ -32,10 +32,17 @@
 #ifndef SRC_CORE_H
 #define SRC_CORE_H
 
+/* TODO: This should be made per platform configurable */
+#define SRC_SHORT 1
+
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 /* Include SRC min/max constants etc. */
+#if SRC_SHORT == 1
+#include <reef/audio/coefficients/src/src_int16_define.h>
+#else
 #include <reef/audio/coefficients/src/src_int24_define.h>
+#endif
 
 struct src_alloc {
 	int fir_s1;
@@ -57,7 +64,11 @@ struct src_stage {
 	const int blk_out;
 	const int halfband;
 	const int shift;
+#if SRC_SHORT == 1
+	const int16_t *coefs;
+#else
 	const int32_t *coefs;
+#endif
 };
 
 struct src_state {
