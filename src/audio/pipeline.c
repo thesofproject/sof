@@ -311,7 +311,8 @@ int pipeline_buffer_connect(struct pipeline *p,
 
 /* call op on all downstream components - locks held by caller */
 static int component_op_downstream(struct op_data *op_data,
-	struct comp_dev *start, struct comp_dev *current)
+	struct comp_dev *start, struct comp_dev *current,
+	struct comp_dev *previous)
 {
 	struct list_item *clist;
 	int err = 0;
@@ -328,8 +329,8 @@ static int component_op_downstream(struct op_data *op_data,
 			return 0;
 
 		/* send params to the component */
-		if (current != start)
-			comp_install_params(current, SOF_IPC_STREAM_PLAYBACK);
+		if (current != start && previous != NULL)
+			comp_install_params(current, previous);
 		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
@@ -375,7 +376,8 @@ static int component_op_downstream(struct op_data *op_data,
 		if (!buffer->connected)
 			continue;
 
-		err = component_op_downstream(op_data, start, buffer->sink);
+		err = component_op_downstream(op_data, start, buffer->sink,
+			current);
 		if (err < 0)
 			break;
 	}
@@ -385,7 +387,8 @@ static int component_op_downstream(struct op_data *op_data,
 
 /* call op on all upstream components - locks held by caller */
 static int component_op_upstream(struct op_data *op_data,
-	struct comp_dev *start, struct comp_dev *current)
+	struct comp_dev *start, struct comp_dev *current,
+	struct comp_dev *previous)
 {
 	struct list_item *clist;
 	int err = 0;
@@ -402,8 +405,8 @@ static int component_op_upstream(struct op_data *op_data,
 			return 0;
 
 		/* send params to the component */
-		if (current != start)
-			comp_install_params(current, SOF_IPC_STREAM_CAPTURE);
+		if (current != start && previous != NULL)
+			comp_install_params(current, previous);
 		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
@@ -446,7 +449,8 @@ static int component_op_upstream(struct op_data *op_data,
 		if (!buffer->connected)
 			continue;
 
-		err = component_op_upstream(op_data, start, buffer->source);
+		err = component_op_upstream(op_data, start, buffer->source,
+			current);
 		if (err < 0)
 			break;
 	}
@@ -514,7 +518,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 
 		/* first of all prepare the pipeline */
-		ret = component_op_downstream(&op_data, dev, dev);
+		ret = component_op_downstream(&op_data, dev, dev, NULL);
 		if (ret < 0)
 			goto out;
 
@@ -535,7 +539,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		ret = -EIO;
 
 	} else {
-		ret = component_op_upstream(&op_data, dev, dev);
+		ret = component_op_upstream(&op_data, dev, dev, NULL);
 	}
 
 out:
@@ -561,10 +565,10 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* send cmd downstream from host to DAI */
-		ret = component_op_downstream(&op_data, host, host);
+		ret = component_op_downstream(&op_data, host, host, NULL);
 	} else {
 		/* send cmd upstream from host to DAI */
-		ret = component_op_upstream(&op_data, host, host);
+		ret = component_op_upstream(&op_data, host, host, NULL);
 	}
 
 	if (ret < 0)
@@ -604,10 +608,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* send params downstream from host to DAI */
-		ret = component_op_downstream(&op_data, host, host);
+		ret = component_op_downstream(&op_data, host, host, NULL);
 	} else {
 		/* send params upstream from host to DAI */
-		ret = component_op_upstream(&op_data, host, host);
+		ret = component_op_upstream(&op_data, host, host, NULL);
 	}
 
 	if (ret < 0)
@@ -632,10 +636,10 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* send reset downstream from host to DAI */
-		ret = component_op_downstream(&op_data, host, host);
+		ret = component_op_downstream(&op_data, host, host, NULL);
 	} else {
 		/* send reset upstream from host to DAI */
-		ret = component_op_upstream(&op_data, host, host);
+		ret = component_op_upstream(&op_data, host, host, NULL);
 	}
 
 	if (ret < 0)

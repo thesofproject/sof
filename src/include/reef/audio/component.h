@@ -327,19 +327,9 @@ static inline int comp_buffer_reset(struct comp_dev *dev)
  * playback and upstream on capture.
  */
 static inline void comp_install_params(struct comp_dev *dev,
-	enum sof_ipc_stream_direction direction)
+	struct comp_dev *previous)
 {
-	struct comp_buffer *buffer;
-
-	if (direction == SOF_IPC_STREAM_PLAYBACK) {
-		buffer = list_first_item(&dev->bsource_list,
-			struct comp_buffer, sink_list);
-		dev->params = buffer->source->params;
-	} else {
-		buffer = list_first_item(&dev->bsink_list,
-			struct comp_buffer, source_list);
-		dev->params = buffer->sink->params;
-	}
+	dev->params = previous->params;
 }
 
 static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
