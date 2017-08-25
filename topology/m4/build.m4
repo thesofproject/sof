@@ -81,7 +81,7 @@ define(`PIPELINE_ADD',
 `include($1)'
 )
 
-dnl DAI_ADD(pipeline, dai type, dai_index, stream_name, buffer, periods)
+dnl DAI_ADD(pipeline, dai type, dai_index, stream_name, buffer, periods, format, frames, deadline, priority, core)
 define(`DAI_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`DAI_TYPE')'
@@ -89,6 +89,11 @@ define(`DAI_ADD',
 `undefine(`DAI_SNAME')'
 `undefine(`DAI_BUF')'
 `undefine(`DAI_PERIODS')'
+`undefine(`DAI_FORMAT')'
+`undefine(`SCHEDULE_FRAMES')'
+`undefine(`SCHEDULE_DEADLINE')'
+`undefine(`SCHEDULE_PRIORITY')'
+`undefine(`SCHEDULE_CORE')'
 `define(`PIPELINE_ID', 0)'
 `define(`DAI_TYPE', STR($2))'
 `define(`DAI_INDEX', STR($3))'
@@ -96,6 +101,11 @@ define(`DAI_ADD',
 `define(`DAI_BUF', $5)'
 `define(`DAI_NAME', $2$3)'
 `define(`DAI_PERIODS', $6)'
+`define(`DAI_FORMAT', $7)'
+`define(`SCHEDULE_FRAMES', $8)'
+`define(`SCHEDULE_DEADLINE', $9)'
+`define(`SCHEDULE_PRIORITY', $10)'
+`define(`SCHEDULE_CORE', $11)'
 `include($1)'
 )
 
