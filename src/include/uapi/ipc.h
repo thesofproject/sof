@@ -472,6 +472,8 @@ enum sof_comp_type {
 	SOF_COMP_BUFFER,
 	SOF_COMP_EQ_IIR,
 	SOF_COMP_EQ_FIR,
+        SOF_COMP_FILEREAD,	/* host test based file IO */
+        SOF_COMP_FILEWRITE,	/* host test based file IO */
 };
 
 /* XRUN action for component */
