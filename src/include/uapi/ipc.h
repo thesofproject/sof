@@ -302,20 +302,24 @@ enum sof_ipc_chmap {
 };
 
 /* common sample rates for use in masks */
-#define SOF_RATE_8000	(1 << 0)
-#define SOF_RATE_11250	(1 << 1)
-#define SOF_RATE_16000	(1 << 2)
-#define SOF_RATE_22500	(1 << 3)
-#define SOF_RATE_24000	(1 << 4)
-#define SOF_RATE_32000	(1 << 5)
-#define SOF_RATE_40000	(1 << 6)
-#define SOF_RATE_44100	(1 << 7)
-#define SOF_RATE_48000	(1 << 8)
-#define SOF_RATE_88200	(1 << 9)
-#define SOF_RATE_96000	(1 << 10)
-#define SOF_RATE_176400	(1 << 11)
-#define SOF_RATE_192000	(1 << 12)
+#define SOF_RATE_8000		(1 <<  0) /* 8000Hz  */
+#define SOF_RATE_11025		(1 <<  1) /* 11025Hz */
+#define SOF_RATE_12000		(1 <<  2) /* 12000Hz */
+#define SOF_RATE_16000		(1 <<  3) /* 16000Hz */
+#define SOF_RATE_22050		(1 <<  4) /* 22050Hz */
+#define SOF_RATE_24000		(1 <<  5) /* 24000Hz */
+#define SOF_RATE_32000		(1 <<  6) /* 32000Hz */
+#define SOF_RATE_44100		(1 <<  7) /* 44100Hz */
+#define SOF_RATE_48000		(1 <<  8) /* 48000Hz */
+#define SOF_RATE_64000		(1 <<  9) /* 64000Hz */
+#define SOF_RATE_88200		(1 << 10) /* 88200Hz */
+#define SOF_RATE_96000		(1 << 11) /* 96000Hz */
+#define SOF_RATE_176400		(1 << 12) /* 176400Hz */
+#define SOF_RATE_192000		(1 << 13) /* 192000Hz */
 
+/* continuous and non-standard rates for flexibility */
+#define SOF_RATE_CONTINUOUS	(1 << 30)  /* range */
+#define SOF_RATE_KNOT		(1 << 31)  /* non-continuous */
 
 /* stream PCM frame format */
 enum sof_ipc_frame {
