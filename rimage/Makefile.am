@@ -6,5 +6,5 @@ noinst_HEADERS = \
 rimage_SOURCES = \
 	cherrytrail.c \
 	baytrail.c \
+	flat.c \
 	rimage.c
-
