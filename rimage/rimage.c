@@ -223,12 +223,9 @@ int main(int argc, char *argv[])
 {
 	struct image image;
 	const char *mach = NULL;
-	int opt, ret, i;
+	int opt, ret, i, binary = 0;
 
 	memset(&image, 0, sizeof(image));
-	image.text_start = 0xffffffff;
-	image.data_start = 0xffffffff;
-	image.bss_start = 0xffffffff;
 
 	while ((opt = getopt(argc, argv, "ho:i:m:vba:sk:")) != -1) {
 		switch (opt) {
@@ -243,6 +240,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'v':
 			image.verbose = 1;
+			break;
+		case 'b':
+			binary = 1;
 			break;
 		case 's':
 			image.dump_sections = 1;
@@ -282,16 +282,26 @@ found:
 			image.in_file, errno);
 	}
 
-	/* open outfile for writing */
-	unlink(image.out_file);
+	/* open outfile for reading */
 	image.out_fd = fopen(image.out_file, "w");
 	if (image.out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image.out_file, errno);
 	}
 
-	/* write data */
-	ret = write_elf_data(&image);
+	if (binary) {
+
+		switch(image.adsp->machine_id) {
+		case MACHINE_BAYTRAIL:
+			ret = write_byt_binary_image(&image);
+			break;
+		default:
+			fprintf(stderr, "error: not supported machine for binary input!\n");
+			return ret;
+		}
+
+	} else
+		ret = write_elf_data(&image);
 
 	/* close files */
 	fclose(image.out_fd);

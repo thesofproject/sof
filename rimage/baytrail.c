@@ -40,6 +40,17 @@ static const struct section byt_sections[] = {
 	{"NMIExceptionVector", 			0xff2c061c},
 };
 
+static const enum reef_module_id modules[] = {
+	REEF_MODULE_BASE_FW,
+	REEF_MODULE_AAC_5_1,
+	REEF_MODULE_PCM,
+	REEF_MODULE_PCM_SYSTEM,
+	REEF_MODULE_PCM_CAPTURE,
+	REEF_MODULE_PCM_REFERENCE,
+	REEF_MODULE_BLUETOOTH_RENDER_MODULE,
+	REEF_MODULE_BLUETOOTH_CAPTURE_MODULE,
+};
+
 static int is_iram(struct image *image, Elf32_Shdr *section)
 {
 	const struct adsp *adsp = image->adsp;
@@ -75,7 +86,7 @@ static int block_idx = 0;
 static int write_block(struct image *image, Elf32_Shdr *section)
 {
 	const struct adsp *adsp = image->adsp;
-	struct snd_sof_blk_hdr block;
+	struct dma_block_info block;
 	size_t count;
 	void *buffer;
 	int ret;
@@ -83,13 +94,11 @@ static int write_block(struct image *image, Elf32_Shdr *section)
 	block.size = section->sh_size;
 
 	if (is_iram(image, section)) {
-		block.type = SOF_BLK_TEXT;
-		block.offset = section->sh_addr - adsp->iram_base
-			+ adsp->host_iram_offset;
+		block.type = REEF_IRAM;
+		block.ram_offset = section->sh_addr - adsp->iram_base;
 	} else if (is_dram(image, section)) {
-		block.type = SOF_BLK_DATA;
-		block.offset = section->sh_addr - adsp->dram_base
-			+ adsp->host_dram_offset;
+		block.type = REEF_DRAM;
+		block.ram_offset = section->sh_addr - adsp->dram_base;
 	} else {
 		fprintf(stderr, "error: invalid block address/size 0x%x/0x%x\n",
 			section->sh_addr, section->sh_size);
@@ -144,18 +153,18 @@ out:
 int byt_write_modules(struct image *image)
 {
 	const struct adsp *adsp = image->adsp;
-	struct snd_sof_mod_hdr hdr;
+	struct byt_module_header hdr;
 	Elf32_Shdr *section;
 	size_t count;
 	int i, err;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
 
-	fprintf(stdout, "Using BYT file format\n");
-
-	hdr.num_blocks = image->num_sections - image->num_bss;
-	hdr.size = image->text_size + image->data_size +
-		sizeof(struct snd_sof_blk_hdr) * hdr.num_blocks;
-	hdr.type = SOF_FW_BASE;
+	memcpy(hdr.signature, REEF_FW_SIGN, REEF_FW_SIGNATURE_SIZE);
+	hdr.blocks = image->num_sections - image->num_bss;
+	hdr.mod_size = image->text_size + image->data_size + \
+				   sizeof(struct dma_block_info) * hdr.blocks;
+	hdr.type = REEF_MODULE_BASE_FW;
+	hdr.entry_point = 0;//section->sh_addr;
 
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
 	if (count != 1) {
@@ -182,28 +191,41 @@ int byt_write_modules(struct image *image)
 		}
 	}
 
+	/* write the remaining 7 fake modules headers, to make the linux driver happy */
+	hdr.mod_size = 0;
+	hdr.blocks = 0;
+
+	for (i = 1; i < sizeof(modules) / sizeof(modules[0]); i++) {
+		hdr.type = modules[i];
+		count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
+		if (count != 1) {
+			fprintf(stderr, "error: failed to write section header %d\n", i);
+			return -errno ;
+		}
+	}
+
 	return 0;
 }
 
 /* used by others */
 int byt_write_header(struct image *image)
 {
-	struct snd_sof_fw_header hdr;
+	struct fw_header hdr;
 	size_t count;
 
-	memcpy(hdr.sig, SND_SOF_FW_SIG, SND_SOF_FW_SIG_SIZE);
+	memcpy(hdr.signature, REEF_FW_SIGN, REEF_FW_SIGNATURE_SIZE);
 
-	hdr.num_modules = 1;
-	hdr.abi = SND_SOF_FW_ABI;
+	hdr.modules = sizeof(modules) / sizeof(modules[0]);
+	hdr.file_format = 0;
 
-	image->fw_size += sizeof(struct snd_sof_blk_hdr) *
+	image->fw_size += sizeof(struct dma_block_info) *
 		(image->num_sections - image->num_bss);
-	image->fw_size += sizeof(struct snd_sof_mod_hdr) * hdr.num_modules;
+	image->fw_size += sizeof(struct byt_module_header) * hdr.modules;
 	hdr.file_size = image->fw_size;
 
 	fprintf(stdout, "fw: image size %ld (0x%lx) bytes %d modules\n\n",
 		hdr.file_size + sizeof(hdr), hdr.file_size + sizeof(hdr),
-		hdr.num_modules);
+		hdr.modules);
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
 	if (count != 1)
 		return -errno;
@@ -211,19 +233,14 @@ int byt_write_header(struct image *image)
 	return 0;
 }
 
-#define IRAM_OFFSET		0x0C0000
-#define IRAM_SIZE		(80 * 1024)
-#define DRAM_OFFSET		0x100000
-#define DRAM_SIZE		(160 * 1024)
-
 const struct adsp byt_machine = {
 		.name = "byt",
 		.iram_base = 0xff2c0000,
 		.iram_size = 0x14000,
-		.host_iram_offset = IRAM_OFFSET,
 		.dram_base = 0xff300000,
 		.dram_size = 0x28000,
-		.host_dram_offset = DRAM_OFFSET,
+		.image_size = 0xff300000 - 0xff2c0000 + 0x28000,
+		.dram_offset = 0xff300000 - 0xff2c0000,
 		.machine_id = MACHINE_BAYTRAIL,
 		.ops = {
 			.write_header = byt_write_header,

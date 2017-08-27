@@ -40,19 +40,14 @@ static const struct section cht_sections[] = {
 	{"NMIExceptionVector", 			0xff2c061c},
 };
 
-#define IRAM_OFFSET		0x0C0000
-#define IRAM_SIZE		(80 * 1024)
-#define DRAM_OFFSET		0x100000
-#define DRAM_SIZE		(160 * 1024)
-
 const struct adsp cht_machine = {
 		.name = "cht",
 		.iram_base = 0xff2c0000,
 		.iram_size = 0x14000,
-		.host_iram_offset = IRAM_OFFSET,
 		.dram_base = 0xff300000,
 		.dram_size = 0x28000,
-		.host_dram_offset = DRAM_OFFSET,
+		.image_size = 0xff300000 - 0xff2c0000 + 0x28000,
+		.dram_offset = 0xff300000 - 0xff2c0000,
 		.machine_id = MACHINE_CHERRYTRAIL,
 		.ops = {
 				.write_header = byt_write_header,
