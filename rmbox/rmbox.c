@@ -99,23 +99,38 @@ static void usage(char *name)
 	exit(0);
 }
 
-static inline float to_usecs(uint32_t time, uint32_t clk)
+static float to_usecs(uint32_t time, float clk)
 {
 	/* trace timestamp uses CPU system clock at default 25MHz ticks */
 	// TODO: support variable clock rates
 	return (float)time / clk;
 }
 
-static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, uint32_t clk)
+static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, float clk)
 {
 	const char *trace;
 	uint32_t class;
+	uint32_t delta = val - *timestamp;
+	float fdelta = to_usecs(delta, clk);
 
 	/* timestamp or value ? */
 	if ((addr % 8) == 0) {
+
+		/* buffer wrap ? */
+		if (val < *timestamp) {
+			printf("----------------------------------------"
+				"----------------------------------------"
+				"--------------------------------------\n");
+			delta = 0;
+			fdelta = 0.0;
+		} else {
+			delta = val - *timestamp;
+			fdelta = to_usecs(delta, clk);
+		}
+
 		printf("trace.io: timestamp 0x%8.8x (%2.2f us) \tdelta 0x%8.8x (%2.2f us)\t",
 			(uint32_t)val, to_usecs(val, clk),
-			(uint32_t)val - *timestamp, to_usecs(val - *timestamp, clk));
+			(uint32_t)delta, fdelta);
 		*timestamp = val;
 		return;
 	}
@@ -258,7 +273,8 @@ int main(int argc, char *argv[])
 	const char * out_file = NULL, *in_file = "/sys/kernel/debug/sof/mbox";
 	FILE *in_fd = NULL, *out_fd = NULL;
 	char c, tmp[4] = {0};
-	uint32_t addr = 0, val, clk = 25, timestamp = 0;
+	uint32_t addr = 0, val, timestamp = 0;
+	float clk = 19.2f;
 
 	while ((opt = getopt(argc, argv, "ho:i:s:m:c:")) != -1) {
 		switch (opt) {
@@ -269,7 +285,7 @@ int main(int argc, char *argv[])
 			in_file = optarg;
 			break;
 		case 'c':
-			clk = atoi(optarg);
+			clk = atof(optarg);
 			break;
 		case 's':
 			return snapshot(optarg);
@@ -301,6 +317,8 @@ int main(int argc, char *argv[])
 
 	/* start to converting mailbox */
 convert:
+	fprintf(stdout, "using %2.2fMHz timestamp clock\n", clk);
+
 	while (1) {
 		count = fread(&tmp[0], 1, 4, in_fd);
 		if (count != 4)
