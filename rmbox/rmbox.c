@@ -92,7 +92,10 @@ static inline char get_char(uint32_t val, int idx)
 
 static void usage(char *name)
 {
-	fprintf(stdout, "%s:\t -i infile -o outfile\n", name);
+	fprintf(stdout, "Usage %s <option(s)> <file(s)>\n", name);
+	fprintf(stdout, "%s:\t -i infile -o outfile\tDump infile contents to outfile\n", name);
+	fprintf(stdout, "%s:\t -c\t\t\tSet timestamp clock in MHz\n", name);
+	fprintf(stdout, "%s:\t -s\t\t\tTake a snapshot of state\n", name);
 	exit(0);
 }
 
@@ -275,9 +278,6 @@ int main(int argc, char *argv[])
 			usage(argv[0]);
 		}
 	}
-
-	if (argc > 1 && (in_file == NULL || out_file == NULL))
-		usage(argv[0]);
 
 	/* open infile for reading */
 	in_fd = fopen(in_file, "r");
