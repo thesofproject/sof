@@ -55,7 +55,11 @@
 #define SSTSA		0x30
 #define SSRSA		0x34
 #define SSTSS		0x38
+#define SSCR2		0x40
 #define SFIFOTT		0x6C
+#define SSCR3		0x70
+#define SSCR4		0x74
+#define SSCR5		0x78
 
 extern const struct dai_ops ssp_ops;
 
@@ -75,7 +79,7 @@ extern const struct dai_ops ssp_ops;
 #define SSCR0_NCS	(1 << 21)
 #define SSCR0_RIM	(1 << 22)
 #define SSCR0_TUM	(1 << 23)
-#define SSCR0_FRDC	(0x07000000)
+#define SSCR0_FRDC(x)	((x - 1) << 24)
 #define SSCR0_ACS	(1 << 30)
 #define SSCR0_MOD	(1 << 31)
 
@@ -126,6 +130,20 @@ extern const struct dai_ops ssp_ops;
 #define SSPSP_SFRMWDTH(x)	((x) << 16)
 #define SSPSP_DMYSTOP(x)	((x) << 23)
 #define SSPSP_FSRT		(1 << 25)
+
+/* SSCR3 bits */
+#define SSCR3_I2S_FRM_MST	(1 << 0)
+#define SSCR3_I2S_ENA		(1 << 1)
+#define SSCR3_I2S_FRM_POL	(1 << 2)
+#define SSCR3_I2S_TX_ENA	(1 << 9)
+#define SSCR3_I2S_RX_ENA	(1 << 10)
+#define SSCR3_I2S_CLK_MST	(1 << 16)
+
+/* SSCR4 bits */
+#define SSCR4_FRM_CLOCKS(x)	(x << 7)
+
+/* SSCR5 bits */
+#define SSCR5_FRM_ASRT_CLOCKS(x)	((x - 1) << 1)
 
 /* SFIFOTT bits */
 #define SFIFOTT_TX(x)		(x - 1)

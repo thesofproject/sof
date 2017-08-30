@@ -69,8 +69,8 @@ static inline int ssp_set_config(struct dai *dai,
 	struct sof_ipc_dai_config *config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t sscr0, sscr1, sspsp, sfifott, mdiv, bdiv;
-	uint32_t stop_size, data_size;
+	uint32_t sscr0, sscr1, sscr2, sscr3, sspsp, sfifott, mdiv, bdiv;
+	uint32_t data_size, frame_len = 0;
 	int ret = 0;
 
 	spin_lock(&ssp->lock);
@@ -78,7 +78,7 @@ static inline int ssp_set_config(struct dai *dai,
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] > SSP_STATE_IDLE ||
 		ssp->state[DAI_DIR_CAPTURE] > SSP_STATE_IDLE) {
-		trace_ssp_error("wsS");
+		trace_ssp_error("ec1");
 		goto out;
 	}
 
@@ -87,6 +87,8 @@ static inline int ssp_set_config(struct dai *dai,
 	/* reset SSP settings */
 	sscr0 = 0;
 	sscr1 = 0;
+	sscr2 = 0xc1;
+	sscr3 = 0x2c018;
 	sspsp = 0;
 
 	ssp->config = *config;
@@ -102,6 +104,7 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
 		sscr1 |= SSCR1_SCFR | SSCR1_RWOT;
+		sscr3 |= SSCR3_I2S_FRM_MST | SSCR3_I2S_CLK_MST;
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
 		sscr1 |= SSCR1_SFRMDIR;
@@ -112,6 +115,7 @@ static inline int ssp_set_config(struct dai *dai,
 	case SSP_CLK_DEFAULT:
 		break;
 	default:
+		trace_ssp_error("ec2");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -129,6 +133,7 @@ static inline int ssp_set_config(struct dai *dai,
 		sspsp |= SSPSP_SCMODE(2) | SSPSP_SFRMP;
 		break;
 	default:
+		trace_ssp_error("ec3");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -148,13 +153,14 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_NCS | SSCR0_MOD;
 		break;
 	default:
+		trace_ssp_error("ec4");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->mclk % config->bclk) {
-		trace_ssp_error("ec1");
+		trace_ssp_error("ec5");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -162,17 +168,17 @@ static inline int ssp_set_config(struct dai *dai,
 	/* divisor must be within SCR range */
 	mdiv = (config->mclk / config->bclk)- 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		trace_ssp_error("ec2");
+		trace_ssp_error("ec6");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	/* set the divisor */
+	/* set the SCR divisor */
 	sscr0 |= SSCR0_SCR(mdiv);
 
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->bclk % config->fclk) {
-		trace_ssp_error("ec3");
+		trace_ssp_error("ec7");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -180,53 +186,52 @@ static inline int ssp_set_config(struct dai *dai,
 	/* must be enouch BCLKs for data */
 	bdiv = config->bclk / config->fclk;
 	if (bdiv < config->sample_container_bits * config->num_slots) {
-		trace_ssp_error("ec4");
+		trace_ssp_error("ec8");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* sample_container_bits must be <= 38 for SSP */
 	if (config->sample_container_bits > 38) {
-		trace_ssp_error("ec5");
+		trace_ssp_error("ec9");
 		ret = -EINVAL;
 		goto out;
 	}
-
-	trace_value(mdiv);
-	trace_value(bdiv);
 
 	/* format */
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 
-		/* calculate dummy stop size and include dummy start */
-		stop_size = config->sample_container_bits -
-			(config->sample_valid_bits) - 1;
-		trace_value(stop_size);
-		if (stop_size > 3) {
-			trace_ssp_error("ec6");
-			ret = -EINVAL;
-			goto out;
-		}
+		/* enable I2S mode */
+		sscr3 |= SSCR3_I2S_ENA | SSCR3_I2S_TX_ENA | SSCR3_I2S_RX_ENA;
 
 		sscr0 |= SSCR0_PSP;
 		sscr1 |= SSCR1_TRAIL;
-		sspsp |= SSPSP_SFRMWDTH(config->sample_container_bits);
-		/* subtract 1 for I2S start delay */
-		sspsp |= SSPSP_SFRMDLY((config->sample_container_bits - 1) * 2);
-		sspsp |= SSPSP_DMYSTRT(1);
-		sspsp |= SSPSP_DMYSTOP(stop_size);
+
+		/* set asserted frame length */
+		frame_len = config->sample_container_bits;
 		break;
 	case SOF_DAI_FMT_DSP_A:
-		sspsp |= SSPSP_FSRT;
-	case SOF_DAI_FMT_DSP_B:
-		sscr0 |= SSCR0_PSP;
+		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
 		sscr1 |= SSCR1_TRAIL;
+		sspsp |= SSPSP_SFRMWDTH(1) | SSPSP_SFRMDLY(2);
+	case SOF_DAI_FMT_DSP_B:
+		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
+		sscr1 |= SSCR1_TRAIL;
+		sspsp |= SSPSP_SFRMWDTH(1);
 		break;
 	default:
+		trace_ssp_error("eca");
 		ret = -EINVAL;
 		goto out;
 	}
+
+	/* set frame length and slot mask in I2s & PCM modes */
+	ssp_write(dai, SSCR4,
+		SSCR4_FRM_CLOCKS(config->sample_container_bits << 1));
+	ssp_write(dai, SSCR5, SSCR5_FRM_ASRT_CLOCKS(frame_len));
+	ssp_write(dai, SSTSA, config->tx_slot_mask);
+	ssp_write(dai, SSRSA, config->rx_slot_mask);
 
 	/* sample data size on SSP FIFO */
 	switch (config->sample_valid_bits) {
@@ -234,7 +239,7 @@ static inline int ssp_set_config(struct dai *dai,
 		data_size = 32;
 		break;
 	default:
-		data_size = config->sample_valid_bits;
+		data_size = config->sample_container_bits;
 	}
 
 	if (data_size > 16)
@@ -242,20 +247,14 @@ static inline int ssp_set_config(struct dai *dai,
 	else
 		sscr0 |= SSCR0_DSIZE(data_size);
 
-	/* watermarks - TODO: do we still need old sscr1 method ?? */
-	sscr1 |= (SSCR1_TX(4) | SSCR1_RX(4));
-
 	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
 	sfifott = (SFIFOTT_TX(8) | SFIFOTT_RX(8));
-#if 0
-	if (dai->config.lbm)
-		sscr1 |= SSCR1_LBM;
-	else
-		sscr1 &= ~SSCR1_LBM;
-#endif
+
 	trace_ssp("coe");
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
+	ssp_write(dai, SSCR2, sscr2);
+	ssp_write(dai, SSCR3, sscr3);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
 
