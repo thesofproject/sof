@@ -91,10 +91,10 @@ SectionControlMixer.STR(Master Playback Volume) {
 W_PCM_PLAYBACK(Low Latency Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Playback Volume" has 1 sink period and 2 source periods for host ping-pong
-W_PGA(Playback Volume, PIPELINE_FORMAT, 1, 2, 1)
+W_PGA(0, PCM PCM_ID Playback Volume, PIPELINE_FORMAT, 1, 2, 1)
 
-# "Mixer Volume" has 1 source and 2 sink periods for DAI ping-pong
-W_PGA(Mixer Volume, PIPELINE_FORMAT, 2, 1, 1)
+# "Master Playback Volume" has 1 source and 2 sink periods for DAI ping-pong
+W_PGA(1, Master Playback Volume, PIPELINE_FORMAT, 2, 1, 1)
 
 # Mixer 0 has 1 sink and source periods.
 W_MIXER(0, PIPELINE_FORMAT, 1, 1, 1)
@@ -127,12 +127,12 @@ SectionGraph."pipe-ll-playback-PIPELINE_ID" {
 	lines [
 		dapm(N_PCM, Low Latency Playback PCM_ID)
 		dapm(N_BUFFER(0), N_PCM)
-		dapm(N_PGA(Playback Volume), N_BUFFER(0))
-		dapm(N_BUFFER(1), N_PGA(Playback Volume))
+		dapm(N_PGA(0), N_BUFFER(0))
+		dapm(N_BUFFER(1), N_PGA(0))
 		dapm(N_MIXER(0), N_BUFFER(1))
 		dapm(N_BUFFER(2), N_MIXER(0))
-		dapm(N_PGA(Mixer Volume), N_BUFFER(2))
-		dapm(N_BUFFER(3), N_PGA(Mixer Volume))
+		dapm(N_PGA(1), N_BUFFER(2))
+		dapm(N_BUFFER(3), N_PGA(1))
 	]
 }
 
@@ -146,7 +146,7 @@ indir(`define', concat(`PIPELINE_MIXER_', PIPELINE_ID), N_MIXER(0))
 # Pipeline Configuration.
 #
 
-W_PIPELINE(N_PGA(Mixer Volume), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
+W_PIPELINE(N_PGA(1), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
 
 #
 # PCM Configuration

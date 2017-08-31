@@ -70,7 +70,7 @@ SectionData."media_src_conf" {
 W_PCM_PLAYBACK(Media Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Playback Volume" has 2 sink period and 2 source periods for host ping-pong
-W_PGA(Playback Volume, PIPELINE_FORMAT, 2, 2, 2)
+W_PGA(0, PCM PCM_ID Playback Volume, PIPELINE_FORMAT, 2, 2, 2)
 
 # "SRC 0" has 2 sink and source periods.
 W_SRC(0, media_src_conf, PIPELINE_FORMAT, 2, 2, 2)
@@ -95,8 +95,8 @@ SectionGraph."pipe-media-PIPELINE_ID" {
 	lines [
 		dapm(N_PCM, Media Playback PCM_ID)
 		dapm(N_BUFFER(0), N_PCM)
-		dapm(N_PGA(Playback Volume), N_BUFFER(0))
-		dapm(N_BUFFER(1), N_PGA(Playback Volume))
+		dapm(N_PGA(0), N_BUFFER(0))
+		dapm(N_BUFFER(1), N_PGA(0))
 		dapm(N_SRC(0), N_BUFFER(1))
 		dapm(N_BUFFER(2), N_SRC(0))
 	]

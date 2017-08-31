@@ -50,7 +50,7 @@ SectionControlMixer.STR(Tone Volume PIPELINE_ID) {
 W_TONE(0, PIPELINE_FORMAT, 2, 0, 0)
 
 # "Tone Volume" has 2 sink period and 2 source periods
-W_PGA(Tone Volume, PIPELINE_FORMAT, 2, 2, 0)
+W_PGA(0, Tone Volume PIPELINE_ID, PIPELINE_FORMAT, 2, 2, 0)
 
 # Low Latency Buffers
 W_BUFFER(0,COMP_BUFFER_SIZE(2,
@@ -70,8 +70,8 @@ SectionGraph."pipe-tone-PIPELINE_ID" {
 
 	lines [
 		dapm(N_BUFFER(0), N_TONE(0))
-		dapm(N_PGA(Tone Volume), N_BUFFER(0))
-		dapm(N_BUFFER(1), N_PGA(Tone Volume))
+		dapm(N_PGA(0), N_BUFFER(0))
+		dapm(N_BUFFER(1), N_PGA(0))
 	]
 }
 

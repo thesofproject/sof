@@ -142,14 +142,14 @@ define(`W_PCM_CAPTURE',
 dnl PGA name)
 define(`N_PGA', `PGA'PIPELINE_ID`.'$1)
 
-dnl W_PGA(name, format, periods_sink, periods_source, preload)
+dnl W_PGA(name, kcontrol, format, periods_sink, periods_source, preload)
 define(`W_PGA',
 `SectionVendorTuples."'N_PGA($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
-`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($5)
+`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
+`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($5)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
 `	}'
 `}'
 `SectionData."'N_PGA($1)`_data_w" {'
@@ -158,7 +158,7 @@ define(`W_PGA',
 `SectionVendorTuples."'N_PGA($1)`_tuples_str" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_COMP_FORMAT'	STR($2)
+`		SOF_TKN_COMP_FORMAT'	STR($3)
 `	}'
 `}'
 `SectionData."'N_PGA($1)`_data_str" {'
@@ -171,6 +171,9 @@ define(`W_PGA',
 `	data ['
 `		"'N_PGA($1)`_data_w"'
 `		"'N_PGA($1)`_data_str"'
+`	]'
+`	mixer ['
+`		"'$2`"'
 `	]'
 `}')
 
