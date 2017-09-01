@@ -334,20 +334,38 @@ found:
 /* free block(s) */
 static void free_block(struct mm_heap *heap, void *ptr)
 {
-	struct block_map *map;
+	struct mm_heap * mm_heap;
+	struct block_map * block_map;
 	struct block_hdr *hdr;
-	int i, block;
+	int i, block, array_size;
 
 	/* sanity check */
 	if (ptr == NULL)
 		return;
 
+	/* find mm_heap that ptr belongs to */
+	if ((uint32_t)ptr >= memmap.runtime.heap &&
+		(uint32_t)ptr < memmap.runtime.heap + memmap.runtime.size) {
+		mm_heap = &memmap.runtime;
+		array_size = ARRAY_SIZE(rt_heap_map);
+	} else if ((uint32_t)ptr >= memmap.buffer.heap &&
+		(uint32_t)ptr < memmap.buffer.heap + memmap.buffer.size) {
+		mm_heap = &memmap.buffer;
+		array_size = ARRAY_SIZE(buf_heap_map);
+#if (HEAP_DMA_BUFFER_SIZE > 0)
+	} else if ((uint32_t)ptr >= memmap.dma.heap &&
+		(uint32_t)ptr < memmap.dma.heap + memmap.dma.size) {
+		mm_heap = &memmap.dma;
+		array_size = ARRAY_SIZE(dma_buf_heap_map);
+#endif
+	} else
+		return;
+
 	/* find block that ptr belongs to */
-	for (i = 0; i < ARRAY_SIZE(rt_heap_map) - 1; i ++) {
+	for (i = 0; i < array_size - 1; i ++) {
 
 		/* is ptr in this block */
-		if ((uint32_t)ptr >= rt_heap_map[i].base &&
-			(uint32_t)ptr < rt_heap_map[i + 1].base)
+		if ((uint32_t)ptr < mm_heap->map[i + 1].base)
 			goto found;
 	}
 
@@ -356,27 +374,29 @@ static void free_block(struct mm_heap *heap, void *ptr)
 	return;
 
 found:
+	/* the block i is it */
+	block_map = &mm_heap->map[i];
+
 	/* calculate block header */
-	map = &rt_heap_map[i];
-	block = ((uint32_t)ptr - map->base) / map->block_size;
-	hdr = &map->block[block];
+	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
+	hdr = &block_map->block[block];
 
 	/* free block header and continious blocks */
 	for (i = block; i < block + hdr->size; i++) {
-		hdr = &map->block[i];
+		hdr = &block_map->block[i];
 		hdr->size = 0;
 		hdr->flags = 0;
-		map->free_count++;
-		heap->info.used -= map->block_size;
-		heap->info.free += map->block_size;
+		block_map->free_count++;
+		heap->info.used -= block_map->block_size;
+		heap->info.free += block_map->block_size;
 	}
 
 	/* set first free */
-	if (block < map->first_free)
-		map->first_free = block;
+	if (block < block_map->first_free)
+		block_map->first_free = block;
 
 #if DEBUG_BLOCK_FREE
-	alloc_memset_region(ptr, map->block_size * (i - 1), DEBUG_BLOCK_FREE_VALUE);
+	alloc_memset_region(ptr, block_map->block_size * (i - 1), DEBUG_BLOCK_FREE_VALUE);
 #endif
 }
 
@@ -443,47 +463,57 @@ void *rzalloc(int zone, int bflags, size_t bytes)
 /* allocates continuous buffer on 1k boundary */
 void *rballoc(int zone, int bflags, size_t bytes)
 {
+	struct block_map * block_map = buf_heap_map;
+	struct mm_heap * mm_heap = &memmap.buffer;
+	int i, array_size = ARRAY_SIZE(buf_heap_map);
 	uint32_t flags;
 	void *ptr = NULL;
-	int i;
 
+#if (HEAP_DMA_BUFFER_SIZE > 0)
+	if (bflags & RFLAGS_DMA) {
+		mm_heap = &memmap.dma;
+		block_map = dma_buf_heap_map;
+		array_size = ARRAY_SIZE(dma_buf_heap_map);
+	}
+#endif
 	spin_lock_irq(&memmap.lock, flags);
 
 	/* will request fit in single block */
-	for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
+	for (i = 0; i < array_size; i++) {
 
+		trace_value(block_map[i].block_size);
 		/* is block big enough */
-		if (buf_heap_map[i].block_size < bytes)
+		if (block_map[i].block_size < bytes)
 			continue;
 
 		/* does block have free space */
-		if (buf_heap_map[i].free_count == 0)
+		if (block_map[i].free_count == 0)
 			continue;
 
 		/* allocate block */
-		ptr = alloc_block(&memmap.buffer, i, bflags);
+		ptr = alloc_block(mm_heap, i, bflags);
 		goto out;
 	}
 
 	/* request spans > 1 block */
 
 	/* only 1 choice for block size */
-	if (ARRAY_SIZE(buf_heap_map) == 1) {
-		ptr = alloc_cont_blocks(&memmap.buffer, 0, bflags, bytes);
+	if (array_size == 1) {
+		ptr = alloc_cont_blocks(mm_heap, 0, bflags, bytes);
 		goto out;
 	} else {
 
 		/* find best block size for request */
-		for (i = 0; i < ARRAY_SIZE(buf_heap_map); i++) {
+		for (i = 0; i < array_size; i++) {
 
 			/* allocate is block size smaller than request */
-			if (buf_heap_map[i].block_size < bytes)
-				alloc_cont_blocks(&memmap.buffer, i, bflags,
+			if (block_map[i].block_size < bytes)
+				alloc_cont_blocks(mm_heap, i, bflags,
 					bytes);
 		}
 	}
 
-	ptr = alloc_cont_blocks(&memmap.buffer, ARRAY_SIZE(buf_heap_map) - 1,
+	ptr = alloc_cont_blocks(mm_heap, array_size - 1,
 		bflags, bytes);
 
 out:
