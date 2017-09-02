@@ -376,29 +376,42 @@ static int src_params(struct comp_dev *dev)
 	return 0;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int src_cmd(struct comp_dev *dev, int cmd, void *data)
+static int src_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
-	trace_src("SCm");
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
 
-	switch (cmd) {
-	case COMP_CMD_SRC:
-		trace_src("SMa");
-		break;
-	case COMP_CMD_MUTE:
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_MUTE:
 		trace_src("SMu");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			src_polyphase_mute(&cd->src[i]);
 
 		break;
-	case COMP_CMD_UNMUTE:
+	case SOF_CTRL_CMD_UNMUTE:
 		trace_src("SUm");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			src_polyphase_unmute(&cd->src[i]);
 
 		break;
+	default:
+		trace_src_error("ec1");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int src_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	trace_src("SCm");
+
+	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+		return src_ctrl_cmd(dev, cdata);
 	case COMP_CMD_START:
 		trace_src("SSt");
 		dev->state = COMP_STATE_RUNNING;

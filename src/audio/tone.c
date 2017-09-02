@@ -229,6 +229,7 @@ static inline void tonegen_set_f(struct tone_state *sg, int32_t f)
 	sg->f = f;
 }
 
+#if 0
 /* Tone sweep parameters description:
  * fc - Multiplication factor for frequency as Q2.30 for logarithmic change
  * ac - Multiplication factor for amplitude as Q2.30 for logarithmic change
@@ -250,6 +251,7 @@ static void tonegen_set_sweep(struct tone_state *sg, int32_t fc, int32_t ac,
 	sg->tone_length = (l > 0) ? l : INT32_MAXVALUE; /* Count rate 125 us */
 	sg->tone_period = (p > 0) ? p : INT32_MAXVALUE; /* Count rate 125 us */
 }
+#endif
 
 /* Tone ramp parameters:
  * step - Value that is added or subtracted to amplitude. A zero or negative
@@ -428,16 +430,22 @@ static int tone_params(struct comp_dev *dev)
 	return 0;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
+static int tone_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_tone *ct;
 
-	trace_tone("tri");
-
-	switch (cmd) {
-	case COMP_CMD_TONE:
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_MUTE:
+		trace_tone("TMu");
+		tonegen_mute(&cd->sg);
+		break;
+	case SOF_CTRL_CMD_UNMUTE:
+		trace_tone("TUm");
+		tonegen_unmute(&cd->sg);
+		break;
+/* TODO: use comp value list array to set this */
+#if 0
+	case SOF_CTRL_TYPE_VALUE_COMP_SET:
 		trace_tone("Tto");
 		ct = (struct sof_ipc_comp_tone *) data;
 		/* Ignore channels while tone implementation is mono */
@@ -447,14 +455,25 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 			ct->length, ct->period, ct->repeats);
 		tonegen_set_linramp(&cd->sg, ct->ramp_step);
 		break;
-	case COMP_CMD_MUTE:
-		trace_tone("TMu");
-		tonegen_mute(&cd->sg);
-		break;
-	case COMP_CMD_UNMUTE:
-		trace_tone("TUm");
-		tonegen_unmute(&cd->sg);
-		break;
+#endif
+	default:
+		trace_tone_error("ec1");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	trace_tone("tri");
+
+	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+		return tone_ctrl_cmd(dev, cdata);
 	case COMP_CMD_START:
 		trace_tone("TSt");
 		dev->state = COMP_STATE_RUNNING;

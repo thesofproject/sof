@@ -559,48 +559,31 @@ static int ipc_glb_pm_message(uint32_t header)
  * Topology IPC Operations.
  */
 
-static int ipc_comp_set_value(uint32_t header, uint32_t cmd)
+/* get/set component values or runtime data */
+static int ipc_comp_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc_comp_dev *stream_dev;
-	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
-
-	trace_ipc("VoS");
-
-	/* get the component */
-	stream_dev = ipc_get_comp(_ipc, values->comp_id);
-	if (stream_dev == NULL) {
-		trace_ipc_error("eVs");
-		return -ENODEV;
-	}
-
-	/* set component values */
-	return comp_cmd(stream_dev->cd, cmd, values);
-}
-
-static int ipc_comp_get_value(uint32_t header, uint32_t cmd)
-{
-	struct ipc_comp_dev *stream_dev;
-	struct sof_ipc_ctrl_values *values = _ipc->comp_data;
+	struct sof_ipc_ctrl_data *data = _ipc->comp_data;
 	int ret;
 
 	trace_ipc("VoG");
 
 	/* get the component */
-	stream_dev = ipc_get_comp(_ipc, values->comp_id);
+	stream_dev = ipc_get_comp(_ipc, data->comp_id);
 	if (stream_dev == NULL){
 		trace_ipc_error("eVg");
 		return -ENODEV;
 	}
 	
 	/* get component values */
-	ret = comp_cmd(stream_dev->cd, COMP_CMD_VOLUME, values);
+	ret = comp_cmd(stream_dev->cd, cmd, data);
 	if (ret < 0) {
 		trace_ipc_error("eVG");
 		return ret;
 	}
 
 	/* write component values to the outbox */
-	mailbox_outbox_write(values, 0, sizeof(*values));
+	mailbox_outbox_write(0, data, data->hdr.size);
 
 	return 0;
 }
@@ -610,22 +593,14 @@ static int ipc_glb_comp_message(uint32_t header)
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
 	switch (cmd) {
-	case iCS(SOF_IPC_COMP_SET_VOLUME):
-		return ipc_comp_set_value(header, COMP_CMD_VOLUME);
-	case iCS(SOF_IPC_COMP_GET_VOLUME):
-		return ipc_comp_get_value(header, COMP_CMD_VOLUME);
-	case iCS(SOF_IPC_COMP_SET_MIXER):
-		return ipc_comp_set_value(header, COMP_CMD_ROUTE);
-	case iCS(SOF_IPC_COMP_GET_MIXER):
-		return ipc_comp_get_value(header, COMP_CMD_ROUTE);
-	case iCS(SOF_IPC_COMP_SET_MUX):
-		return ipc_comp_set_value(header, COMP_CMD_ROUTE);
-	case iCS(SOF_IPC_COMP_GET_MUX):
-		return ipc_comp_get_value(header, COMP_CMD_ROUTE);
-	case iCS(SOF_IPC_COMP_SET_SRC):
-		return ipc_comp_set_value(header, COMP_CMD_SRC);
-	case iCS(SOF_IPC_COMP_GET_SRC):
-		return ipc_comp_get_value(header, COMP_CMD_SRC);
+	case iCS(SOF_IPC_COMP_SET_VALUE):
+		return ipc_comp_value(header, COMP_CMD_SET_VALUE);
+	case iCS(SOF_IPC_COMP_GET_VALUE):
+		return ipc_comp_value(header, COMP_CMD_GET_VALUE);
+	case iCS(SOF_IPC_COMP_SET_DATA):
+		return ipc_comp_value(header, COMP_CMD_SET_DATA);
+	case iCS(SOF_IPC_COMP_GET_DATA):
+		return ipc_comp_value(header, COMP_CMD_GET_DATA);
 	default:
 		trace_ipc_error("eCc");
 		trace_value(header);

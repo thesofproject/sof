@@ -59,7 +59,9 @@
 #define COMP_STATE_PAUSED	5	/* component paused */
 #define COMP_STATE_RUNNING	6	/* component active */
 
-/* standard component commands */
+/*
+ * standard component stream commands
+ */
 
 #define COMP_CMD_STOP		0	/* stop component stream */
 #define COMP_CMD_START		1	/* start component stream */
@@ -69,18 +71,15 @@
 #define COMP_CMD_SUSPEND	5	/* suspend component */
 #define COMP_CMD_RESUME		6	/* resume component */
 
-#define COMP_CMD_VOLUME		100
-#define COMP_CMD_MUTE		101
-#define COMP_CMD_UNMUTE		102
-#define COMP_CMD_ROUTE		103
-#define COMP_CMD_SRC		104
-#define COMP_CMD_LOOPBACK	105
+/*
+ * standard component control commands
+ */
 
-#define COMP_CMD_TONE           106     /* Tone generator amplitude and frequency */
-#define COMP_CMD_EQ_FIR_CONFIG  107     /* Configuration data for FIR EQ */
-#define COMP_CMD_EQ_FIR_SWITCH  108     /* Update request for FIR EQ */
-#define COMP_CMD_EQ_IIR_CONFIG  109     /* Configuration data for IIR EQ */
-#define COMP_CMD_EQ_IIR_SWITCH  110     /* Response update request for IIR EQ */
+#define COMP_CMD_SET_VALUE	100
+#define COMP_CMD_GET_VALUE	101
+#define COMP_CMD_SET_DATA	102
+#define COMP_CMD_GET_DATA	103
+
 
 /* MMAP IPC status */
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */

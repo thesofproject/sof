@@ -88,15 +88,12 @@
 #define SOF_IPC_PM_CLK_GET			SOF_CMD_TYPE(0x005)
 #define SOF_IPC_PM_CLK_REQ			SOF_CMD_TYPE(0x006)
 
-/* component - multiple different types */
-#define SOF_IPC_COMP_SET_VOLUME			SOF_CMD_TYPE(0x001)
-#define SOF_IPC_COMP_GET_VOLUME			SOF_CMD_TYPE(0x002)
-#define SOF_IPC_COMP_SET_MIXER			SOF_CMD_TYPE(0x003)
-#define SOF_IPC_COMP_GET_MIXER			SOF_CMD_TYPE(0x004)
-#define SOF_IPC_COMP_SET_MUX			SOF_CMD_TYPE(0x005)
-#define SOF_IPC_COMP_GET_MUX			SOF_CMD_TYPE(0x006)
-#define SOF_IPC_COMP_SET_SRC			SOF_CMD_TYPE(0x007)
-#define SOF_IPC_COMP_GET_SRC			SOF_CMD_TYPE(0x008)
+/* component runtime config - multiple different types */
+#define SOF_IPC_COMP_SET_VALUE			SOF_CMD_TYPE(0x001)
+#define SOF_IPC_COMP_GET_VALUE			SOF_CMD_TYPE(0x002)
+#define SOF_IPC_COMP_SET_DATA			SOF_CMD_TYPE(0x003)
+#define SOF_IPC_COMP_GET_DATA			SOF_CMD_TYPE(0x004)
+
 
 /* DAI messages */
 #define SOF_IPC_DAI_CONFIG			SOF_CMD_TYPE(0x001)
@@ -433,23 +430,68 @@ struct sof_ipc_stream_posn {
  * Component Mixers and Controls
  */
 
-struct sof_ipc_ctrl_chan {
+/* control data type and direction */
+enum sof_ipc_ctrl_type {
+	SOF_CTRL_TYPE_VALUE_CHAN_GET = 0,
+	SOF_CTRL_TYPE_VALUE_CHAN_SET,
+	SOF_CTRL_TYPE_VALUE_COMP_GET,
+	SOF_CTRL_TYPE_VALUE_COMP_SET,
+	SOF_CTRL_TYPE_DATA_GET,
+	SOF_CTRL_TYPE_DATA_SET,
+};
+
+/* control command type */
+enum sof_ipc_ctrl_cmd {
+	SOF_CTRL_CMD_VOLUME = 0,
+	SOF_CTRL_CMD_ROUTE,
+	SOF_CTRL_CMD_SRC,
+	SOF_CTRL_CMD_LOOPBACK,
+	SOF_CTRL_CMD_EQ_SWITCH,
+	SOF_CTRL_CMD_EQ_CONFIG,
+	/* Mute is similar to volume, but maps better onto ALSA switch controls */
+	SOF_CTRL_CMD_MUTE,
+	SOF_CTRL_CMD_UNMUTE,
+};
+
+/* generic channel mapped value data */
+struct sof_ipc_ctrl_value_chan {
 	enum sof_ipc_chmap channel;
 	uint32_t value;
 } __attribute__((packed));
 
-struct sof_ipc_ctrl_values {
-	struct sof_ipc_hdr hdr;
-	uint32_t comp_id;
-	uint32_t num_values;
-	struct sof_ipc_ctrl_chan values[SOF_IPC_MAX_CHANNELS];
+/* generic component mapped value data */
+struct sof_ipc_ctrl_value_comp {
+	uint32_t index;		/* component source/sink/control index in control */
+	union {
+		uint32_t uvalue;
+		int32_t svalue;
+	};
 } __attribute__((packed));
 
-struct sof_ipc_ctrl_get_values {
+/* generic control data */
+struct sof_ipc_ctrl_data {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
-	uint32_t num_values;
+
+	/* control access and data type */
+	enum sof_ipc_ctrl_type type;
+	enum sof_ipc_ctrl_cmd cmd;
+
+	/* control data - can either be appended or DMAed from host */
+	struct sof_ipc_host_buffer buffer;
+	uint32_t num_elems;	/* in array elems or bytes */
+
+	/* control data - add new types if needed */
+	union {
+		/* channel values can be used by volume type controls */
+		struct sof_ipc_ctrl_value_chan chanv[0];
+		/* component values used by routing controls like mux, mixer */
+		struct sof_ipc_ctrl_value_comp compv[0];
+		/* data can be used by binary controls */
+		char data[0];
+	};
 } __attribute__((packed));
+
 
 /*
  * Component
@@ -599,28 +641,6 @@ struct sof_ipc_comp_eq_iir {
        struct sof_ipc_comp_config config;
 } __attribute__((packed));
 
-/* IPC to pass configuration blobs to equalizers and re-assign responses */
-struct sof_ipc_eq_fir_blob {
-	struct sof_ipc_comp comp;
-	struct sof_ipc_host_buffer buffer;
-	int32_t data[];
-} __attribute__((packed));
-
-struct sof_ipc_eq_iir_blob {
-	struct sof_ipc_comp comp;
-	struct sof_ipc_host_buffer buffer;
-	int32_t data[];
-} __attribute__((packed));
-
-struct sof_ipc_eq_fir_switch {
-	struct sof_ipc_comp comp;
-	int32_t data[];
-} __attribute__((packed));
-
-struct sof_ipc_eq_iir_switch {
-	struct sof_ipc_comp comp;
-	int32_t data[];
-} __attribute__((packed));
 
 /* frees components, buffers and pipelines
  * SOF_IPC_TPLG_COMP_FREE, SOF_IPC_TPLG_PIPE_FREE, SOF_IPC_TPLG_BUFFER_FREE

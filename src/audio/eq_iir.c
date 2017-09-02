@@ -303,24 +303,17 @@ static int eq_iir_params(struct comp_dev *dev)
 	return 0;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
+static int iir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_eq_iir_switch *assign;
-	struct sof_ipc_eq_iir_blob *blob;
-	struct eq_iir_update *iir_update;
-	int i;
-	int ret = 0;
+	struct eq_iir_update *iir_update; /* TODO: move to IPC header as part of ABI */
+	int i, ret = 0;
 	size_t bs;
 
-	trace_eq_iir("cmd");
-
-	switch (cmd) {
-	case COMP_CMD_EQ_IIR_SWITCH:
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_EQ_SWITCH:
 		trace_eq_iir("EFx");
-		assign = (struct sof_ipc_eq_iir_switch *) data;
-		iir_update = (struct eq_iir_update *) assign->data;
+		iir_update = (struct eq_iir_update *) cdata->data;
 		ret = eq_iir_switch_response(cd->iir, cd->config,
 			iir_update, PLATFORM_MAX_CHANNELS);
 
@@ -330,15 +323,13 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 			tracev_value(iir_update->assign_response[i]);
 
 		break;
-	case COMP_CMD_EQ_IIR_CONFIG:
+	case SOF_CTRL_CMD_EQ_CONFIG:
 		trace_eq_iir("EFc");
 		/* Check and free old config */
 		eq_iir_free_parameters(&cd->config);
 
 		/* Copy new config, need to decode data to know the size */
-		blob = (struct sof_ipc_eq_iir_blob *) data;
-		bs = blob->comp.hdr.size - sizeof(struct sof_ipc_hdr)
-			- sizeof(struct sof_ipc_host_buffer);
+		bs = cdata->num_elems;
 		if (bs > EQ_IIR_MAX_BLOB_SIZE)
 			return -EINVAL;
 
@@ -347,7 +338,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 		if (cd->config == NULL)
 			return -EINVAL;
 
-		memcpy(cd->config, blob->data, bs);
+		memcpy(cd->config, cdata->data, bs);
 		/* Initialize all channels, the actual number of channels may
 		 * not be set yet.
 		 */
@@ -360,17 +351,38 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 			tracev_value(cd->config->assign_response[i]);
 
 		break;
-	case COMP_CMD_MUTE:
+	case SOF_CTRL_CMD_MUTE:
 		trace_eq_iir("EFm");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			iir_mute_df2t(&cd->iir[i]);
 
 		break;
-	case COMP_CMD_UNMUTE:
+	case SOF_CTRL_CMD_UNMUTE:
 		trace_eq_iir("EFu");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			iir_unmute_df2t(&cd->iir[i]);
 
+		break;
+	default:
+		trace_eq_iir_error("ec1");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+	int ret = 0;
+
+	trace_eq_iir("cmd");
+
+	switch (cmd) {
+	case COMP_CMD_SET_DATA:
+		ret = iir_cmd(dev, cdata);
 		break;
 	case COMP_CMD_START:
 		trace_eq_iir("EFs");
@@ -398,6 +410,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	default:
 		trace_eq_iir("EDf");
+		ret = -EINVAL;
 		break;
 	}
 

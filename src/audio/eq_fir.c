@@ -299,26 +299,25 @@ static int eq_fir_params(struct comp_dev *dev)
 	return 0;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
+static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_eq_fir_blob *blob;
-	struct sof_ipc_eq_fir_switch *assign;
-	struct eq_fir_update *fir_update;
-	int i;
-	int ret = 0;
+	struct eq_fir_update *fir_update; /* TODO: move this to IPC as it's ABI */
 	size_t bs;
+	int i, ret = 0;
 
-	trace_src("cmd");
+	/* TODO: determine if data is DMAed or appended to cdata */
 
-	switch (cmd) {
-	case COMP_CMD_EQ_FIR_SWITCH:
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_EQ_SWITCH:
 		trace_src("EFx");
-		assign = (struct sof_ipc_eq_fir_switch *) data;
-		fir_update = (struct eq_fir_update *) assign->data;
+		fir_update = (struct eq_fir_update *)cdata->data;
 		ret = eq_fir_switch_response(cd->fir, cd->config,
 			fir_update, PLATFORM_MAX_CHANNELS);
+		if (ret < 0) {
+			trace_src_error("ec1");
+			return ret;
+		}
 
 		/* Print trace information */
 		tracev_value(fir_update->stream_max_channels);
@@ -326,14 +325,13 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 			tracev_value(fir_update->assign_response[i]);
 
 		break;
-	case COMP_CMD_EQ_FIR_CONFIG:
+	case SOF_CTRL_CMD_EQ_CONFIG:
 		trace_src("EFc");
 		/* Check and free old config */
 		eq_fir_free_parameters(&cd->config);
 
 		/* Copy new config, need to decode data to know the size */
-		blob = (struct sof_ipc_eq_fir_blob *) data;
-		bs = blob->comp.hdr.size - sizeof(struct sof_ipc_hdr);
+		bs = cdata->num_elems;
 		if (bs > EQ_FIR_MAX_BLOB_SIZE)
 			return -EINVAL;
 
@@ -341,7 +339,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 		if (cd->config == NULL)
 			return -EINVAL;
 
-		memcpy(cd->config, blob->data, bs);
+		memcpy(cd->config, cdata->data, bs);
 		ret = eq_fir_setup(cd->fir, cd->config, PLATFORM_MAX_CHANNELS);
 
 		/* Print trace information */
@@ -349,19 +347,39 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 		tracev_value(cd->config->number_of_responses_defined);
 		for (i = 0; i < cd->config->stream_max_channels; i++)
 			tracev_value(cd->config->assign_response[i]);
-
 		break;
-	case COMP_CMD_MUTE:
+	case SOF_CTRL_CMD_MUTE:
 		trace_src("EFm");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			fir_mute(&cd->fir[i]);
 
 		break;
-	case COMP_CMD_UNMUTE:
+	case SOF_CTRL_CMD_UNMUTE:
 		trace_src("EFu");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			fir_unmute(&cd->fir[i]);
 
+		break;
+	default:
+		trace_src_error("ec1");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+	int ret = 0;
+
+	trace_src("cmd");
+
+	switch (cmd) {
+	case COMP_CMD_SET_DATA:
+		ret = fir_cmd(dev, cdata);
 		break;
 	case COMP_CMD_START:
 		trace_src("EFs");
@@ -389,6 +407,8 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	default:
 		trace_src("EDf");
+		ret = -EINVAL;
+		break;
 	}
 
 	return ret;

@@ -69,16 +69,16 @@ struct comp_data {
 	uint32_t sink_period_bytes;
 	enum sof_ipc_frame source_format;
 	enum sof_ipc_frame sink_format;
-	uint32_t chan[PLATFORM_MAX_CHANNELS];
-	uint32_t volume[PLATFORM_MAX_CHANNELS];	/* current volume */
-	uint32_t tvolume[PLATFORM_MAX_CHANNELS];	/* target volume */
-	uint32_t mvolume[PLATFORM_MAX_CHANNELS];	/* mute volume */
+	uint32_t chan[SOF_IPC_MAX_CHANNELS];
+	uint32_t volume[SOF_IPC_MAX_CHANNELS];	/* current volume */
+	uint32_t tvolume[SOF_IPC_MAX_CHANNELS];	/* target volume */
+	uint32_t mvolume[SOF_IPC_MAX_CHANNELS];	/* mute volume */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
 	struct work volwork;
 
 	/* host volume readback */
-	struct sof_ipc_ctrl_values *hvol;
+	struct sof_ipc_ctrl_value_chan *hvol;
 };
 
 struct comp_func_map {
@@ -234,9 +234,9 @@ static void vol_sync_host(struct comp_data *cd, uint32_t chan)
 	if (cd->hvol == NULL)
 		return;
 
-	for (i = 0; i < cd->hvol->num_values; i++) {
-		if (cd->hvol->values[i].channel == cd->chan[chan])
-			cd->hvol->values[i].value = cd->volume[chan];
+	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
+		if (cd->hvol[i].channel == cd->chan[chan])
+			cd->hvol[i].value = cd->volume[chan];
 	}
 }
 
@@ -380,50 +380,61 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 	cd->tvolume[chan] = cd->mvolume[chan];
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
+static int volume_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_ctrl_values *cv;
 	int i, j;
 
-	trace_volume("cmd");
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_VOLUME:
 
-	switch (cmd) {
-	case COMP_CMD_VOLUME:
-		cv = (struct sof_ipc_ctrl_values*)data;
-
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-			for (j = 0; j < cv->num_values; j++) {
-				if (cv->values[j].channel == cd->chan[i])
-					volume_set_chan(dev, i, cv->values[j].value);
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
+			for (j = 0; j < cdata->num_elems; j++) {
+				if (cdata->chanv[j].value == cd->chan[i])
+					volume_set_chan(dev, i, cdata->chanv[j].value);
 			}
 		}
 
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
-	case COMP_CMD_MUTE:
-		cv = (struct sof_ipc_ctrl_values*)data;
+	case SOF_CTRL_CMD_MUTE:
 
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-			for (j = 0; j < cv->num_values; j++) {
-				if (cv->values[j].channel == cd->chan[i])
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
+			for (j = 0; j < cdata->num_elems; j++) {
+				if (cdata->chanv[j].value == cd->chan[i])
 					volume_set_chan_mute(dev, i);
 			}
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
-	case COMP_CMD_UNMUTE:
-		cv = (struct sof_ipc_ctrl_values*)data;
+	case SOF_CTRL_CMD_UNMUTE:
 
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-			for (j = 0; j < cv->num_values; j++) {
-				if (cv->values[j].channel == cd->chan[i])
+		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
+			for (j = 0; j < cdata->num_elems; j++) {
+				if (cdata->chanv[j].value == cd->chan[i])
 					volume_set_chan_unmute(dev, i);
 			}
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
+	default:
+		trace_volume_error("ec1");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	trace_volume("cmd");
+
+	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+		return volume_ctrl_cmd(dev, cdata);
 	case COMP_CMD_START:
 		dev->state = COMP_STATE_RUNNING;
 		break;
