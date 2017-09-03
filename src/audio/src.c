@@ -357,7 +357,7 @@ static int src_params(struct comp_dev *dev)
 	if (cd->delay_lines != NULL)
 		rfree(cd->delay_lines);
 
-	cd->delay_lines = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, delay_lines_size);
+	cd->delay_lines = rballoc(RZONE_RUNTIME, RFLAGS_NONE, delay_lines_size);
 	if (cd->delay_lines == NULL) {
 		trace_src_error("sr3");
 		trace_value(delay_lines_size);
