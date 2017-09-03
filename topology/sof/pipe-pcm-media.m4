@@ -127,7 +127,7 @@ SectionPCMCapabilities.STR(Media Playback PCM_ID) {
 	channels_max "2"
 	periods_min "2"
 	periods_max "32"
-	period_size_min	"4096"
+	period_size_min	"192"
 	period_size_max	"262144"
 	buffer_size_min	"8388608"
 	buffer_size_max	"8388608"
