@@ -73,7 +73,7 @@ W_PCM_PLAYBACK(Media Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 W_PGA(0, PCM PCM_ID Playback Volume, PIPELINE_FORMAT, 2, 2, 2)
 
 # "SRC 0" has 2 sink and source periods.
-W_SRC(0, media_src_conf, PIPELINE_FORMAT, 2, 2, 2)
+W_SRC(0, PIPELINE_FORMAT, 2, 2, media_src_conf, 2)
 
 # Media Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

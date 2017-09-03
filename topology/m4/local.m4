@@ -17,7 +17,7 @@ define(`W_SRC',
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($5)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
 `	}'
 `}'
 `SectionData."'N_SRC($1)`_data_w" {'
@@ -39,7 +39,7 @@ define(`W_SRC',
 `	data ['
 `		"'N_SRC($1)`_data_w"'
 `		"'N_SRC($1)`_data_str"'
-`		"'$2`"'
+`		"'$5`"'
 `	]'
 `}')
 
