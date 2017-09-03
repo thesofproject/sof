@@ -51,9 +51,7 @@ SectionVendorTuples."media_src_tokens" {
 	tokens "sof_src_tokens"
 
 	tuples."word" {
-		SOF_TKN_SRC_RATE_IN	16000
-		SOF_TKN_SRC_RATE_IN	44100
-		SOF_TKN_SRC_RATE_OUT	48000
+		SOF_TKN_SRC_RATE_OUT	"48000"
 	}
 }
 
