@@ -256,6 +256,12 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 
 	trace_src("new");
 
+	/* validate init data - either SRC sink or source rate must be set */
+	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0) {
+		trace_src_error("sn1");
+		return NULL;
+	}
+
 	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
 		COMP_SIZE(struct sof_ipc_comp_src));
 	if (dev == NULL)
@@ -305,13 +311,15 @@ static int src_params(struct comp_dev *dev)
 	size_t delay_lines_size;
 	uint32_t source_rate, sink_rate;
 	int32_t *buffer_start;
-	int n = 0, i;
+	int n = 0, i, err;
 
 	trace_src("par");
 
 	/* SRC supports only S32_LE PCM format */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
+	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE) {
+		trace_src_error("sr0");
 		return -EINVAL;
+	}
 
 	/* Calculate source and sink rates, one rate will come from IPC new
 	 * and the other from params. */
@@ -330,14 +338,31 @@ static int src_params(struct comp_dev *dev)
 	}
 
 	/* Allocate needed memory for delay lines */
-	src_buffer_lengths(&need, source_rate, sink_rate, params->channels);
+	err = src_buffer_lengths(&need, source_rate, sink_rate, params->channels);
+	if (err < 0) {
+		trace_src_error("sr1");
+		trace_value(source_rate);
+		trace_value(sink_rate);
+		trace_value(params->channels);
+		return err;
+	}
+
 	delay_lines_size = sizeof(int32_t) * need.total;
+	if (delay_lines_size == 0) {
+		trace_src_error("sr2");
+		return -EINVAL;
+	}
+
+	/* free any existing dalay lines. TODO reuse if same size */
 	if (cd->delay_lines != NULL)
 		rfree(cd->delay_lines);
 
 	cd->delay_lines = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, delay_lines_size);
-	if (cd->delay_lines == NULL)
+	if (cd->delay_lines == NULL) {
+		trace_src_error("sr3");
+		trace_value(delay_lines_size);
 		return -EINVAL;
+	}
 
 	/* Clear all delay lines here */
 	memset(cd->delay_lines, 0, delay_lines_size);
