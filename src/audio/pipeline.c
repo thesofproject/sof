@@ -505,7 +505,7 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct op_data op_data;
-	int ret, count, i;
+	int ret, i;
 
 	trace_pipe("pre");
 
@@ -527,10 +527,10 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		 * trigger start */
 		for (i = 0; i < MAX_PRELOAD_SIZE; i++) {
 
-			count = preload_downstream(dev, dev);
+			ret = preload_downstream(dev, dev);
 
 			/* complete ? */
-			if (count <= 0)
+			if (ret <= 0)
 				goto out;
 		}
 
