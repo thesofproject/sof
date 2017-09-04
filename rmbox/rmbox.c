@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 // TODO: include all this stuff
 
@@ -132,6 +133,12 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, float c
 			(uint32_t)val, to_usecs(val, clk),
 			(uint32_t)delta, fdelta);
 		*timestamp = val;
+		return;
+	}
+
+	/* check for printable values - otherwise it's a value */
+	if (!isprint((char)(val >> 16)) || !isprint((char)(val >> 8)) || !isprint((char)val)) {
+		printf("value 0x%8.8x\n", (uint32_t)val);
 		return;
 	}
 
