@@ -1,2 +1,3 @@
 include_HEADERS = \
-	ipc.h
+	ipc.h \
+	abi.h
