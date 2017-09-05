@@ -326,28 +326,24 @@ static int ipc_stream_position(uint32_t header)
 int ipc_stream_send_position(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	uint32_t header;
-
-	header = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
-	posn->rhdr.hdr.cmd = header;
+	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
 	posn->rhdr.hdr.size = sizeof(*posn);
+	posn->comp_id = cdev->comp.id;
 
-	return ipc_queue_host_message(_ipc, header, posn, sizeof(*posn),
-		NULL, 0, NULL, NULL);
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
+		sizeof(*posn), NULL, 0, NULL, NULL);
 }
 
 /* send stream position TODO: send compound message  */
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	uint32_t header;
-
-	header = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_XRUN;
-	posn->rhdr.hdr.cmd = header;
+	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_XRUN;
 	posn->rhdr.hdr.size = sizeof(*posn);
+	posn->comp_id = cdev->comp.id;
 
-	return ipc_queue_host_message(_ipc, header, posn, sizeof(*posn),
-		NULL, 0, NULL, NULL);
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
+		sizeof(*posn), NULL, 0, NULL, NULL);
 }
 
 static int ipc_stream_trigger(uint32_t header)
