@@ -51,11 +51,15 @@
 #include <version.h>
 
 static const struct sof_ipc_fw_ready ready = {
-	/* for host, we need exchange the naming of inxxx and outxxx */
-	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_OUTBOX_OFFSET,
-	.outbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,
-	.inbox_size = MAILBOX_OUTBOX_SIZE,
-	.outbox_size = MAILBOX_INBOX_SIZE,
+	.hdr = {
+		.cmd = SOF_IPC_FW_READY,
+		.size = sizeof(struct sof_ipc_fw_ready),
+	},
+	/* dspbox is for DSP initiated IPC, hostbox is for host iniiated IPC */
+	.dspbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_DSPBOX_OFFSET,
+	.hostbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_HOSTBOX_OFFSET,
+	.dspbox_size = MAILBOX_DSPBOX_SIZE,
+	.hostbox_size = MAILBOX_HOSTBOX_SIZE,
 	.version = {
 		.build = REEF_BUILD,
 		.minor = REEF_MINOR,
@@ -83,7 +87,7 @@ int platform_boot_complete(uint32_t boot_message)
 {
 	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
-	mailbox_outbox_write(0, &ready, sizeof(ready));
+	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCDL, SOF_IPC_FW_READY | outbox);

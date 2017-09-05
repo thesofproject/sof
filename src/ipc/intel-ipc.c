@@ -69,7 +69,7 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 	struct sof_ipc_hdr *hdr = _ipc->comp_data;
 
 	/* read component values from the inbox */
-	mailbox_inbox_read(hdr, 0, sizeof(*hdr));
+	mailbox_hostbox_read(hdr, 0, sizeof(*hdr));
 
 	/* validate component header */
 	if (hdr->size > SOF_IPC_MSG_MAX_SIZE) {
@@ -78,7 +78,7 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 	}
 
 	/* read rest of component data */
-	mailbox_inbox_read(hdr + 1, sizeof(*hdr), hdr->size - sizeof(*hdr));
+	mailbox_hostbox_read(hdr + 1, sizeof(*hdr), hdr->size - sizeof(*hdr));
 	return hdr;
 }
 
@@ -262,8 +262,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	reply.rhdr.error = 0;
 	reply.comp_id = pcm_params->comp_id;
 	reply.posn_offset = 0; /* TODO: set this up for mmaped components */
-	mailbox_outbox_write(0, &reply, sizeof(reply));
-	return 0;
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 1;
 
 error:
 	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
@@ -318,8 +318,8 @@ static int ipc_stream_position(uint32_t header)
 	pipeline_get_timestamp(pcm_dev->cd->pipeline, pcm_dev->cd, &posn);
 
 	/* copy positions to outbox */
-	mailbox_outbox_write(0, &posn, sizeof(posn));
-	return 0;
+	mailbox_hostbox_write(0, &posn, sizeof(posn));
+	return 1;
 }
 
 /* send stream position */
@@ -484,9 +484,8 @@ static int ipc_pm_context_size(uint32_t header)
 	/* TODO: calculate the context and size of host buffers required */
 
 	/* write the context to the host driver */
-	mailbox_outbox_write(0, &pm_ctx, sizeof(pm_ctx));
-
-	return 0;
+	mailbox_hostbox_write(0, &pm_ctx, sizeof(pm_ctx));
+	return 1;
 }
 
 static int ipc_pm_context_save(uint32_t header)
@@ -518,11 +517,11 @@ static int ipc_pm_context_save(uint32_t header)
 	//reply.entries_no = 0;
 
 	/* write the context to the host driver */
-	mailbox_outbox_write(0, pm_ctx, sizeof(*pm_ctx));
+	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
 	//iipc->pm_prepare_D3 = 1;
 
-	return 0;
+	return 1;
 }
 
 static int ipc_pm_context_restore(uint32_t header)
@@ -583,9 +582,8 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	}
 
 	/* write component values to the outbox */
-	mailbox_outbox_write(0, data, data->hdr.size);
-
-	return 0;
+	mailbox_hostbox_write(0, data, data->hdr.size);
+	return 1;
 }
 
 static int ipc_glb_comp_message(uint32_t header)
@@ -628,8 +626,8 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	reply.rhdr.hdr.cmd = header;
 	reply.rhdr.error = 0;
 	reply.offset = 0; /* TODO: set this up for mmaped components */
-	mailbox_outbox_write(0, &reply, sizeof(reply));
-	return 0;
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 1;
 }
 
 static int ipc_glb_tplg_buffer_new(uint32_t header)
@@ -651,8 +649,8 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	reply.rhdr.hdr.cmd = header;
 	reply.rhdr.error = 0;
 	reply.offset = 0; /* TODO: set this up for mmaped components */
-	mailbox_outbox_write(0, &reply, sizeof(reply));
-	return 0;
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 1;
 }
 
 static int ipc_glb_tplg_pipe_new(uint32_t header)
@@ -674,8 +672,8 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	reply.rhdr.hdr.cmd = header;
 	reply.rhdr.error = 0;
 	reply.offset = 0; /* TODO: set this up for mmaped components */
-	mailbox_outbox_write(0, &reply, sizeof(reply));
-	return 0;
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 1;
 }
 
 static int ipc_glb_tplg_pipe_complete(uint32_t header)

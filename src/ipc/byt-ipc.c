@@ -68,7 +68,7 @@ static void do_notify(void)
 
 	/* copy the data returned from DSP */
 	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
-		mailbox_inbox_read(msg->rx_data, 0, msg->rx_size);
+		mailbox_dspbox_read(msg->rx_data, 0, msg->rx_size);
 
 	/* any callback ? */
 	if (msg->cb)
@@ -128,21 +128,24 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 
 	tracev_ipc("Cmd");
 
-	/* clear old mailbox return values */
-	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-	reply.hdr.size = sizeof(reply);
-	reply.error = 0;
-	mailbox_outbox_write(0, &reply, sizeof(reply));
-
 	/* perform command and return any error */
 	err = ipc_cmd();
-	if (err < 0) {
-		/* read component values from the inbox */
+	if (err > 0) {
+		goto done; /* reply created and copied by cmd() */
+	} else if (err < 0) {
+		/* send std error reply */
 		reply.error = err;
-
-		/* write error back to outbox */
-		mailbox_outbox_write(0, &reply, sizeof(reply));
+	} else if (err == 0) {
+		/* send std reply */
+		reply.error = 0;
 	}
+
+	/* send std error/ok reply */
+	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
+	reply.hdr.size = sizeof(reply);
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+
+done:
 	ipc->host_pending = 0;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
@@ -185,7 +188,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 
 	/* now send the message */
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg, list);
-	mailbox_outbox_write(0, msg->tx_data, msg->tx_size);
+	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	ipc->dsp_msg = msg;
 	tracev_ipc("Msg");
