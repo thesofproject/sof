@@ -761,13 +761,12 @@ static int timestamp_downstream(struct comp_dev *start,
 		if (!current->is_endpoint)
 			goto downstream;
 
-		if (current->comp.id == SOF_COMP_DAI ||
-			current->comp.id == SOF_COMP_SG_DAI) {
+		if (current->comp.type == SOF_COMP_DAI ||
+			current->comp.type == SOF_COMP_SG_DAI) {
 			platform_dai_timestamp(current, posn);
 			return 1;
 		}
 	}
-
 
 downstream:
 	/* travel downstream to sink end point(s) */
@@ -804,8 +803,8 @@ static int timestamp_upstream(struct comp_dev *start,
 		if (!current->is_endpoint)
 			goto upstream;
 
-		if (current->comp.id == SOF_COMP_DAI ||
-			current->comp.id == SOF_COMP_SG_DAI) {
+		if (current->comp.type == SOF_COMP_DAI ||
+			current->comp.type == SOF_COMP_SG_DAI) {
 			platform_dai_timestamp(current, posn);
 			return 1;
 		}
