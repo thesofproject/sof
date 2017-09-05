@@ -479,11 +479,11 @@ static int volume_copy(struct comp_dev *dev)
 
 	/* Run volume if buffers have enough room */
 	if (copy_bytes < cd->source_period_bytes) {
-		comp_underrun(dev, source, cd->source_period_bytes);
+		comp_underrun(dev, source, copy_bytes, cd->source_period_bytes);
 		return 0;
 	}
 	if (copy_bytes < cd->sink_period_bytes) {
-		comp_overrun(dev, source, cd->sink_period_bytes);
+		comp_overrun(dev, sink, copy_bytes, cd->sink_period_bytes);
 		return 0;
 	}
 

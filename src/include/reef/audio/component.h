@@ -348,19 +348,21 @@ static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
 
 /* XRUN handling */
 static inline void comp_underrun(struct comp_dev *dev, struct comp_buffer *source,
-	uint32_t copy_bytes)
+	uint32_t copy_bytes, uint32_t min_bytes)
 {
 	trace_comp("Xun");
-	trace_value((source->avail << 16) | copy_bytes);
+	trace_value((dev->comp.id << 16) | source->avail);
+	trace_value((min_bytes << 16) | copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)source->avail - copy_bytes);
 }
 
 static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
-	uint32_t copy_bytes)
+	uint32_t copy_bytes, uint32_t min_bytes)
 {
 	trace_comp("Xov");
-	trace_value((sink->free << 16) | copy_bytes);
+	trace_value((dev->comp.id << 16) | sink->free);
+	trace_value((min_bytes << 16) | copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
 }
