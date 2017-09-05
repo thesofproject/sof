@@ -203,7 +203,7 @@ static int mixer_copy(struct comp_dev *dev)
 	struct mixer_data *md = comp_get_drvdata(dev);
 	struct comp_buffer *sink, *sources[PLATFORM_MAX_STREAMS], *source;
 	struct list_item *blist;
-	int32_t i = 0, num_mix_sources = 0;
+	int32_t i = 0, num_mix_sources = 0, xru = 0;
 
 	tracev_mixer("cpy");
 
@@ -223,17 +223,19 @@ static int mixer_copy(struct comp_dev *dev)
 	/* make sure no sources have underruns */
 	for (i = 0; i < num_mix_sources; i++) {
 		if (sources[i]->avail < md->period_bytes) {
-			trace_mixer("xru");
-			trace_value(source[i].source->comp.id);
-			return 0;
+			comp_underrun(dev, sources[i], sources[i]->avail,
+				md->period_bytes);
+			xru = 1;
 		}
 	}
+	/* underrun ? */
+	if (xru)
+		return 0;
 
 	/* make sure sink has no overuns */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	if (sink->free < md->period_bytes) {
-		trace_mixer("xro");
-		trace_value(sink[i].sink->comp.id);
+		comp_overrun(dev, sink, sink->free, md->period_bytes);
 		return 0;
 	}
 
