@@ -107,7 +107,7 @@ static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 	buffer->free = buffer->size - buffer->avail;
 
 	tracev_buffer("pro");
-	tracev_value((buffer->avail << 12) | buffer->free);
+	tracev_value((buffer->avail << 16) | buffer->free);
 	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
 }
 
@@ -141,7 +141,7 @@ static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 	buffer->free = buffer->size - buffer->avail;
 
 	tracev_buffer("con");
-	tracev_value((buffer->avail << 12) | buffer->free);
+	tracev_value((buffer->avail << 16) | buffer->free);
 	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
 }
 
@@ -154,7 +154,6 @@ static inline uint32_t comp_buffer_get_copy_bytes(struct comp_dev *dev,
 	/* Check that source has enough frames available and sink enough
 	 * frames free.
 	 */
-	/* Run EQ if buffers have enough room */
 	if (source->avail > sink->free)
 		copy_bytes = sink->free;
 	else
