@@ -923,6 +923,10 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	if (p->xrun_bytes)
 		return;
 
+	/* only send when we are running */
+	if (dev->state != COMP_STATE_RUNNING)
+		return;
+
 	memset(&posn, 0, sizeof(posn));
 	p->xrun_bytes = posn.xrun_size = bytes;
 	posn.xrun_comp_id = dev->comp.id;
