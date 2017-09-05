@@ -529,8 +529,11 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 			ret = preload_downstream(dev, dev);
 
+			/* errors ? */
+			if (ret < 0)
+				break;
 			/* complete ? */
-			if (ret <= 0)
+			else if (ret == 0)
 				goto out;
 		}
 
