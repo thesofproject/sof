@@ -73,13 +73,6 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = (val[0] >> (num_sources >> 1));
 		dest[i + 1] = (val[1] >> (num_sources >> 1));
 	}
-
-	/* update R/W pointers */
-	sink->w_ptr = dest + count;
-	for (j = 0; j < num_sources; j++) {
-		src = sources[j]->r_ptr;
-		sources[j]->r_ptr = src + count;
-	}
 }
 
 static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
