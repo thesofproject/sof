@@ -311,7 +311,7 @@ static int src_params(struct comp_dev *dev)
 	size_t delay_lines_size;
 	uint32_t source_rate, sink_rate;
 	int32_t *buffer_start;
-	int n = 0, i, err;
+	int n = 0, i, err, frames_is_for_source;
 
 	trace_src("par");
 
@@ -329,21 +329,25 @@ static int src_params(struct comp_dev *dev)
 		sink_rate = src->sink_rate;
 		/* re-write our params with output rate for next component */
 		params->rate = sink_rate;
+		frames_is_for_source = 0;
 	} else {
 		/* params rate is sink rate */
 		source_rate = src->source_rate;
 		sink_rate = params->rate;
 		/* re-write our params with output rate for next component */
 		params->rate = source_rate;
+		frames_is_for_source = 1;
 	}
 
 	/* Allocate needed memory for delay lines */
-	err = src_buffer_lengths(&need, source_rate, sink_rate, params->channels);
+	err = src_buffer_lengths(&need, source_rate, sink_rate,
+		params->channels, dev->frames, frames_is_for_source);
 	if (err < 0) {
 		trace_src_error("sr1");
 		trace_value(source_rate);
 		trace_value(sink_rate);
 		trace_value(params->channels);
+		trace_value(dev->frames);
 		return err;
 	}
 
@@ -371,8 +375,8 @@ static int src_params(struct comp_dev *dev)
 
 	/* Initize SRC for actual sample rate */
 	for (i = 0; i < params->channels; i++) {
-		n = src_polyphase_init(&cd->src[i], source_rate,
-			sink_rate, buffer_start);
+		n = src_polyphase_init(&cd->src[i], source_rate, sink_rate,
+			&need, buffer_start);
 		buffer_start += need.single_src;
 	}
 
@@ -474,7 +478,7 @@ static int src_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source, *sink;
-	int need_source, need_sink, blk_in, blk_out, frames_source, frames_sink;
+	int need_source, need_sink, blk_in, blk_out;
 
 	trace_comp("SRC");
 
@@ -484,20 +488,18 @@ static int src_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 		source_list);
 
-	/* Check that source has enough frames available and sink enough
-	 * frames free.
+	/* Calculate needed amount of source buffer and sink buffer
+	 * for one SRC run.
 	 */
 	blk_in = src_polyphase_get_blk_in(&cd->src[0]);
 	blk_out = src_polyphase_get_blk_out(&cd->src[0]);
-	frames_source = dev->frames * blk_in / blk_out;
-	frames_sink = frames_source * blk_out / blk_in;
-	need_source = frames_source * dev->frame_bytes;
-	need_sink = frames_sink * dev->frame_bytes;
+	need_source = blk_in * dev->frame_bytes;
+	need_sink = blk_out * dev->frame_bytes;
 
 	/* Run as many times as buffers allow */
 	while ((source->avail >= need_source) && (sink->free >= need_sink)) {
 		/* Run src */
-		cd->src_func(dev, source, sink, frames_source, frames_sink);
+		cd->src_func(dev, source, sink, blk_in, blk_out);
 
 		/* calc new free and available  */
 		comp_update_buffer_consume(source, 0);

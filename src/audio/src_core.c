@@ -52,8 +52,8 @@
 #endif
 
 /* TODO: These should be defined somewhere else. */
-#define SOF_RATES_LENGTH 16
-int sof_rates[SOF_RATES_LENGTH] = {7350, 8000, 11025, 12000, 16000, 18900,
+#define SOF_RATES_LENGTH 15
+int sof_rates[SOF_RATES_LENGTH] = {8000, 11025, 12000, 16000, 18900,
 	22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 176400,
 	192000};
 
@@ -69,20 +69,6 @@ int src_out_delay_length(struct src_stage *s)
 {
 
 	return (s->num_of_subfilters - 1) * s->odm + 1;
-}
-
-/* Calculates the buffer length needed between two SRC stages */
-int src_stage_buf_length(struct src_stage *s1, struct src_stage *s2)
-{
-	int k, s1_times;
-
-	if ((s1->blk_out == 0) || (s2->blk_in == 0))
-		return 0;
-
-	k = gcd(s1->blk_out, s2->blk_in);
-	s1_times = s2->blk_in / k;
-
-	return s1->blk_out * s1_times;
 }
 
 /* Returns index of a matching sample rate */
@@ -126,31 +112,65 @@ int32_t src_output_rates(void)
 }
 
 /* Calculates buffers to allocate for a SRC mode */
-int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch)
+int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch,
+	int max_frames, int max_frames_is_for_source)
 {
-	int idx_in, idx_out;
+	int blk_in, blk_out, k, s1_times, s2_times;
 	struct src_stage *stage1, *stage2;
 
-	idx_in = src_find_fs(src_in_fs, NUM_IN_FS, fs_in);
-	idx_out = src_find_fs(src_out_fs, NUM_OUT_FS, fs_out);
+	a->idx_in = src_find_fs(src_in_fs, NUM_IN_FS, fs_in);
+	a->idx_out = src_find_fs(src_out_fs, NUM_OUT_FS, fs_out);
 
-	/* Return an error if no in and out match was found. */
-	if ((idx_in < 0) || (idx_out < 0))
+	/* Set blk_in, blk_out so that the muted fallback SRC keeps
+	 * just source & sink in sync in pipeline without drift.
+	 */
+	if ((a->idx_in < 0) || (a->idx_out < 0)) {
+		k = gcd(fs_in, fs_out);
+		a->blk_in = fs_in / k;
+		a->blk_out = fs_out / k;
 		return -EINVAL;
+	}
 
-	stage1 = src_table1[idx_out][idx_in];
-	stage2 = src_table2[idx_out][idx_in];
+	stage1 = src_table1[a->idx_out][a->idx_in];
+	stage2 = src_table2[a->idx_out][a->idx_in];
 	a->fir_s1 = src_fir_delay_length(stage1);
 	a->out_s1 = src_out_delay_length(stage1);
+
+	k = gcd(stage1->blk_out, stage2->blk_in);
+	s1_times = stage2->blk_in / k;
+	s2_times = s1_times * stage1->blk_out / stage2->blk_in;
+	blk_in = s1_times * stage1->blk_in;
+	blk_out = s2_times * stage2->blk_out;
+
+	/* Find out how many additional times the SRC can be executed
+	   while having block size less or equal to max_frames.
+	 */
+	if (max_frames_is_for_source) {
+		k = max_frames / blk_in;
+	} else {
+		k = max_frames / blk_out;
+	}
+
+	/* Return with error if max_frames is too small even for smallest
+	   possible SRC block length. */
+	if (k < 1)
+		return -EINVAL;
+
+	a->blk_mult = k;
+	a->blk_in = blk_in * k;
+	a->blk_out = blk_out * k;
+	a->stage1_times = s1_times * k;
+	a->stage2_times = s2_times * k;
 
 	if (stage2->filter_length == 1) {
 		a->fir_s2 = 0;
 		a->out_s2 = 0;
 		a->scratch = 0;
+		a->stage2_times = 0;
 	} else {
 		a->fir_s2 = src_fir_delay_length(stage2);
 		a->out_s2 = src_out_delay_length(stage2);
-		a->scratch = src_stage_buf_length(stage1, stage2);
+		a->scratch = stage1->blk_out * s1_times * k;
 	}
 	a->single_src = a->fir_s1 + a->fir_s2 + a->out_s1 + a->out_s2;
 	a->total = a->scratch + nch * a->single_src;
@@ -171,10 +191,9 @@ static void src_state_reset(struct src_state *state)
 
 static int init_stages(
 	struct src_stage *stage1, struct src_stage *stage2,
-	struct polyphase_src *src, int n, int32_t *delay_lines_start)
+	struct polyphase_src *src, struct src_alloc *res,
+	int n, int32_t *delay_lines_start)
 {
-	int k;
-
 	/* Clear FIR state */
 	src_state_reset(&src->state1);
 	src_state_reset(&src->state2);
@@ -183,9 +202,9 @@ static int init_stages(
 	src->stage1 = stage1;
 	src->stage2 = stage2;
 	if (n == 1) {
-		src->blk_in = stage1->blk_in;
-		src->blk_out = stage1->blk_out;
-		src->stage1_times = 1;
+		src->blk_in = stage1->blk_in * res->blk_mult;
+		src->blk_out = stage1->blk_out * res->blk_mult;
+		src->stage1_times = res->stage1_times;
 		src->stage2_times = 0;
 		if (stage1->blk_out == 0)
 			return -EINVAL;
@@ -193,23 +212,21 @@ static int init_stages(
 		if ((stage1->blk_out == 0) || (stage1->blk_in == 0))
 			return -EINVAL;
 
-		k = gcd(stage1->blk_out, stage2->blk_in);
-		src->stage1_times = stage2->blk_in / k;
-		src->stage2_times =
-			src->stage1_times * stage1->blk_out / stage2->blk_in;
-		src->blk_in = src->stage1_times * stage1->blk_in;
-		src->blk_out = src->stage2_times * stage2->blk_out;
+		src->stage1_times = res->stage1_times;
+		src->stage2_times = res->stage2_times;
+		src->blk_in = res->blk_in;
+		src->blk_out = res->blk_out;
 	}
 
 	/* Delay line sizes */
-	src->state1.fir_delay_size = src_fir_delay_length(stage1);
-	src->state1.out_delay_size = src_out_delay_length(stage1);
+	src->state1.fir_delay_size = res->fir_s1; //src_fir_delay_length(stage1);
+	src->state1.out_delay_size = res->out_s1; //src_out_delay_length(stage1);
 	src->state1.fir_delay = delay_lines_start;
 	src->state1.out_delay =
 		src->state1.fir_delay + src->state1.fir_delay_size;
 	if (n > 1) {
-		src->state2.fir_delay_size = src_fir_delay_length(stage2);
-		src->state2.out_delay_size = src_out_delay_length(stage2);
+		src->state2.fir_delay_size = res->fir_s2; // src_fir_delay_length(stage2);
+		src->state2.out_delay_size = res->out_s2; // src_out_delay_length(stage2);
 		src->state2.fir_delay =
 			src->state1.out_delay + src->state1.out_delay_size;
 		src->state2.out_delay =
@@ -253,45 +270,35 @@ void src_polyphase_reset(struct polyphase_src *src)
 }
 
 int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2,
-	int32_t *delay_lines_start)
+	struct src_alloc *res, int32_t *delay_lines_start)
 {
-	int f, idx_in, idx_out, n_stages, ret;
+	int n_stages, ret;
 	struct src_stage *stage1, *stage2;
 
-	idx_in = src_find_fs(src_in_fs, NUM_IN_FS, fs1);
-	idx_out = src_find_fs(src_out_fs, NUM_OUT_FS, fs2);
-
-	if ((idx_in < 0) || (idx_out < 0)) {
-		ret = -EINVAL;
-	} else {
-		/* Get setup for 2 stage conversion */
-		stage1 = src_table1[idx_out][idx_in];
-		stage2 = src_table2[idx_out][idx_in];
-		ret = init_stages(stage1, stage2, src, 2, delay_lines_start);
-
-		/* Get number of stages used for optimize opportunity. 2nd
-		 * stage lenth is one if conversion needs only one stage.
-		 */
-		n_stages = (src->stage2->filter_length == 1) ? 1 : 2;
-
-		/* If filter length for first stage is zero this is a deleted
-		 * mode from in/out matrix. Computing of such SRC mode needs
-		 * to be prevented.
-		 */
-		if (src->stage2->filter_length == 0)
-			ret = -EINVAL;
-	}
-
-	if (ret < 0) {
-		/* Set blk_in, blk_out so that the muted fallback SRC keeps
-		 * just source & sink in sync in pipeline without drift.
-		 */
-		f = gcd(fs1, fs2);
-		src->blk_in = fs1 / f;
-		src->blk_out = fs2 / f;
-
+	if ((res->idx_in < 0) || (res->idx_out < 0)) {
+		src->blk_in = res->blk_in;
+		src->blk_out = res->blk_out;
 		return -EINVAL;
 	}
+
+	/* Get setup for 2 stage conversion */
+	stage1 = src_table1[res->idx_out][res->idx_in];
+	stage2 = src_table2[res->idx_out][res->idx_in];
+	ret = init_stages(stage1, stage2, src, res, 2, delay_lines_start);
+	if (ret < 0)
+		return -EINVAL;
+
+	/* Get number of stages used for optimize opportunity. 2nd
+	 * stage lenth is one if conversion needs only one stage.
+	 */
+	n_stages = (src->stage2->filter_length == 1) ? 1 : 2;
+
+	/* If filter length for first stage is zero this is a deleted
+	 * mode from in/out matrix. Computing of such SRC mode needs
+	 * to be prevented.
+	 */
+	if (src->stage2->filter_length == 0)
+		return -EINVAL;
 
 	return n_stages;
 }
