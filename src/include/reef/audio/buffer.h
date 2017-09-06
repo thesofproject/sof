@@ -52,7 +52,7 @@ struct comp_buffer {
 
 	/* runtime data */
 	uint32_t connected;	/* connected in path */
-	uint32_t size;		/* size of buffer in bytes */
+	uint32_t size;		/* runtime buffer size in bytes (period multiple) */
 	uint32_t alloc_size;	/* allocated size in bytes */
 	uint32_t avail;		/* available bytes for reading */
 	uint32_t free;		/* free bytes for writing */
@@ -109,6 +109,7 @@ static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 	tracev_buffer("pro");
 	tracev_value((buffer->avail << 16) | buffer->free);
 	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
+	tracev_value((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr));
 }
 
 /* called by a component after consuming data from this buffer */
@@ -143,6 +144,7 @@ static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 	tracev_buffer("con");
 	tracev_value((buffer->avail << 16) | buffer->free);
 	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
+	tracev_value((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr));
 }
 
 /* get the max number of bytes that can be copied between sink and source */
