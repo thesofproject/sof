@@ -214,6 +214,9 @@ static inline void comp_free(struct comp_dev *dev)
 	dev->drv->ops.free(dev);
 }
 
+/* component state set */
+int comp_set_state(struct comp_dev *dev, int cmd);
+
 /* component parameter init - mandatory */
 static inline int comp_params(struct comp_dev *dev)
 {

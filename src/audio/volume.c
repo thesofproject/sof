@@ -429,6 +429,7 @@ static int volume_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata
 static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
+	int ret = 0;
 
 	trace_volume("cmd");
 
@@ -436,29 +437,15 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_SET_VALUE:
 		return volume_ctrl_cmd(dev, cdata);
 	case COMP_CMD_START:
-		dev->state = COMP_STATE_RUNNING;
-		break;
 	case COMP_CMD_STOP:
-		if (dev->state == COMP_STATE_RUNNING ||
-		    dev->state == COMP_STATE_DRAINING ||
-		    dev->state == COMP_STATE_PAUSED) {
-			comp_buffer_reset(dev);
-			dev->state = COMP_STATE_SETUP;
-		}
-		break;
 	case COMP_CMD_PAUSE:
-		/* only support pausing for running */
-		if (dev->state == COMP_STATE_RUNNING)
-			dev->state = COMP_STATE_PAUSED;
-		break;
 	case COMP_CMD_RELEASE:
-		dev->state = COMP_STATE_RUNNING;
-		break;
 	default:
+		ret = comp_set_state(dev, cmd);
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */

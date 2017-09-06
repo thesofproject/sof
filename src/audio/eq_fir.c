@@ -382,32 +382,11 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 		ret = fir_cmd(dev, cdata);
 		break;
 	case COMP_CMD_START:
-		trace_src("EFs");
-		dev->state = COMP_STATE_RUNNING;
-		break;
 	case COMP_CMD_STOP:
-		trace_src("ESp");
-		if (dev->state == COMP_STATE_RUNNING ||
-			dev->state == COMP_STATE_DRAINING ||
-			dev->state == COMP_STATE_PAUSED) {
-			comp_buffer_reset(dev);
-			dev->state = COMP_STATE_SETUP;
-		}
-		break;
 	case COMP_CMD_PAUSE:
-		trace_src("EPe");
-		/* only support pausing for running */
-		if (dev->state == COMP_STATE_RUNNING)
-			dev->state = COMP_STATE_PAUSED;
-
-		break;
 	case COMP_CMD_RELEASE:
-		trace_src("ERl");
-		dev->state = COMP_STATE_RUNNING;
-		break;
 	default:
-		trace_src("EDf");
-		ret = -EINVAL;
+		ret = comp_set_state(dev, cmd);
 		break;
 	}
 

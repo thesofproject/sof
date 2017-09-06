@@ -434,6 +434,8 @@ static int tone_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
+	trace_tone("tri");
+
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_MUTE:
 		trace_tone("TMu");
@@ -468,6 +470,7 @@ static int tone_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
+	int ret = 0;
 
 	trace_tone("tri");
 
@@ -475,36 +478,15 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_SET_VALUE:
 		return tone_ctrl_cmd(dev, cdata);
 	case COMP_CMD_START:
-		trace_tone("TSt");
-		dev->state = COMP_STATE_RUNNING;
-		break;
 	case COMP_CMD_STOP:
-		trace_tone("TSp");
-		if (dev->state == COMP_STATE_RUNNING ||
-			dev->state == COMP_STATE_DRAINING ||
-			dev->state == COMP_STATE_PAUSED) {
-			comp_buffer_reset(dev);
-			dev->state = COMP_STATE_SETUP;
-		}
-		break;
 	case COMP_CMD_PAUSE:
-		trace_tone("TPe");
-		/* only support pausing for running */
-		if (dev->state == COMP_STATE_RUNNING)
-			dev->state = COMP_STATE_PAUSED;
-
-		break;
 	case COMP_CMD_RELEASE:
-		trace_tone("TRl");
-		dev->state = COMP_STATE_RUNNING;
-		break;
 	default:
-		trace_tone("TDf");
-
+		ret = comp_set_state(dev, cmd);
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */

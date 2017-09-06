@@ -117,6 +117,44 @@ void comp_unregister(struct comp_driver *drv)
 	spin_unlock(&cd->lock);
 }
 
+int comp_set_state(struct comp_dev *dev, int cmd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	case COMP_CMD_START:
+	case COMP_CMD_RELEASE:
+		dev->state = COMP_STATE_RUNNING;
+		break;
+	case COMP_CMD_STOP:
+		if (dev->state == COMP_STATE_RUNNING ||
+		dev->state == COMP_STATE_DRAINING ||
+		dev->state == COMP_STATE_PAUSED) {
+			comp_buffer_reset(dev);
+			dev->state = COMP_STATE_SETUP;
+		} else {
+			trace_comp_error("CEs");
+			ret = -EINVAL;
+		}
+		break;
+	case COMP_CMD_PAUSE:
+		/* only support pausing for running */
+		if (dev->state == COMP_STATE_RUNNING)
+			dev->state = COMP_STATE_PAUSED;
+		else {
+			trace_comp_error("CEp");
+			ret = -EINVAL;
+		}
+		break;
+	default:
+		trace_comp_error("CEd");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 void sys_comp_init(void)
 {
 	cd = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*cd));

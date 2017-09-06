@@ -551,28 +551,20 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	// TODO: align cmd macros.
 	switch (cmd) {
-	case COMP_CMD_PAUSE:
-		/* only support pausing for running, channel is paused by DAI */
-		if (dev->state == COMP_STATE_RUNNING)
-			dev->state = COMP_STATE_PAUSED;
-		break;
 	case COMP_CMD_STOP:
 		if (dev->state == COMP_STATE_RUNNING ||
 			dev->state == COMP_STATE_DRAINING ||
 			dev->state == COMP_STATE_PAUSED)
 			ret = host_stop(dev);
 		break;
-	case COMP_CMD_RELEASE:
-		/* channel is released by DAI */
-		dev->state = COMP_STATE_RUNNING;
-		break;
-	case COMP_CMD_START:
-		dev->state = COMP_STATE_RUNNING;
-		break;
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
 		break;
+	case COMP_CMD_START:
+	case COMP_CMD_PAUSE:
+	case COMP_CMD_RELEASE:
 	default:
+		ret = comp_set_state(dev, cmd);
 		break;
 	}
 
