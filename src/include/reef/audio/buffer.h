@@ -93,7 +93,7 @@ static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 
 	/* check for pointer wrap */
 	if (buffer->w_ptr >= buffer->end_addr)
-		buffer->w_ptr = buffer->addr;
+		buffer->w_ptr = buffer->addr + (buffer->w_ptr - buffer->end_addr);
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
@@ -127,7 +127,7 @@ static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 
 	/* check for pointer wrap */
 	if (buffer->r_ptr >= buffer->end_addr)
-		buffer->r_ptr = buffer->addr;
+		buffer->r_ptr = buffer->addr + (buffer->r_ptr - buffer->end_addr);
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
