@@ -412,11 +412,10 @@ static int host_params(struct comp_dev *dev)
 
 	/* resize the buffer if space is available to align with period size */
 	buffer_size = hd->period_count * hd->period_bytes;
-	if (buffer_size <= hd->dma_buffer->alloc_size)
-		hd->dma_buffer->size = buffer_size;
-	else {
+	err = buffer_set_size(hd->dma_buffer, buffer_size);
+	if (err < 0) {
 		trace_host_error("eSz");
-		return -EINVAL;
+		return err;
 	}
 
 	/* component buffer size must be divisor of host buffer size */
@@ -432,8 +431,7 @@ static int host_params(struct comp_dev *dev)
 	if (err < 0)
 		return err;
 
-	hd->dma_buffer->r_ptr = hd->dma_buffer->addr;
-	hd->dma_buffer->w_ptr = hd->dma_buffer->addr;
+	buffer_reset_pos(hd->dma_buffer);
 
 	/* set up DMA configuration */
 	config->src_width = sizeof(uint32_t);

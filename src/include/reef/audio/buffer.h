@@ -162,4 +162,29 @@ static inline uint32_t comp_buffer_get_copy_bytes(struct comp_dev *dev,
 	return copy_bytes;
 }
 
+static inline void buffer_reset_pos(struct comp_buffer *buffer)
+{
+	buffer->r_ptr = buffer->addr;
+	buffer->w_ptr = buffer->addr;
+	buffer->free = buffer->size;
+	buffer->avail = 0;
+}
+
+static inline void buffer_clear(struct comp_buffer *buffer)
+{
+	memset(buffer->addr, 0, buffer->size);
+}
+
+/* set the runtime size of a buffer in bytes and improve the data cache */
+/* performance by only using minimum space needed for runtime params */
+static inline int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
+{
+	if (size > buffer->alloc_size)
+		return -ENOMEM;
+
+	buffer->end_addr = buffer->addr + size;
+	buffer->size = size;
+	return 0;
+}
+
 #endif

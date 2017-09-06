@@ -505,8 +505,8 @@ static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb, *sourceb;
-	struct sof_ipc_comp_config *sconfig;
-	int i;
+	struct sof_ipc_comp_config *sconfig, *config = COMP_GET_CONFIG(dev);
+	int i, ret;
 
 	trace_volume("pre");
 
@@ -555,6 +555,16 @@ static int volume_prepare(struct comp_dev *dev)
 	}
 
 	dev->frame_bytes = cd->sink_period_bytes;
+
+	/* set downstream buffer size */
+	ret = buffer_set_size(sinkb, cd->sink_period_bytes *
+		config->periods_sink);
+	if (ret < 0) {
+		trace_volume_error("vp0");
+		return ret;
+	}
+
+	buffer_reset_pos(sinkb);
 
 	/* validate */
 	if (cd->sink_period_bytes == 0) {
