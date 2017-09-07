@@ -121,37 +121,8 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		}
 	}
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
-				dma_buffer->avail < dd->period_bytes) {
-		/* end of stream, finish */
-		if (dma_buffer->avail == 0) {
-			dai_cmd(dev, COMP_CMD_STOP, NULL);
-
-			/* stop dma immediately */
-			next->size = DMA_RELOAD_END;
-
-			/* let any waiters know we have completed */
-			//wait_completed(&dev->pipeline->complete);
-
-			return;
-		} else {
-			/* drain the last bytes */
-			next->src = (uint32_t)dma_buffer->r_ptr;
-			next->dest = dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK);
-			next->size = dma_buffer->avail;
-
-			dd->last_bytes = next->size;
-
-			goto next_copy;
-
-		}
-
-	}
-
 	/* notify pipeline that DAI needs it's buffer processed */
 	pipeline_schedule_copy(dev->pipeline, dev);
-
-next_copy:
 
 	return;
 }
