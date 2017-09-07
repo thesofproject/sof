@@ -38,9 +38,9 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4, 1, 0, 2, s32le, 48, 1000, 0, 
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4, 2, 1, 2, s32le, 48, 1000, 0, 0, 0, 2)
 
 # PCM Media Playback pipeline 3 on PCM 2 using max 2 channels of s32le.
-# Schedule 96 frames per 2000us deadline on core 0 with priority 1
+# Schedule 192 frames per 4000us deadline on core 0 with priority 1
 # Use DMAC 0 channel 3 for PCM audio playback data
-PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4, 3, 2, 2, s32le, 96, 2000, 1, 0, 0, 3)
+PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4, 3, 2, 2, s32le, 192, 4000, 1, 0, 0, 3)
 
 # Tone Playback pipeline 5 using max 2 channels of s32le.
 # Schedule 192 frames per 4000us deadline on core 0 with priority 2
