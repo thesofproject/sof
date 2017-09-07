@@ -183,6 +183,8 @@ static inline int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 {
 	if (size > buffer->alloc_size)
 		return -ENOMEM;
+	if (size == 0)
+		return -EINVAL;
 
 	buffer->end_addr = buffer->addr + size;
 	buffer->size = size;
