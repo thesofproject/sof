@@ -60,6 +60,7 @@ struct comp_data {
 	int scratch_length;
 	uint32_t sink_rate;
 	uint32_t source_rate;
+	uint32_t period_bytes;	/* sink period */
 	void (*src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
@@ -150,7 +151,7 @@ static void src_2s_s32_default(struct comp_dev *dev,
 
 	s1.times = n_times1;
 	s1.x_end_addr = source->end_addr;
-	s1.x_size = source->alloc_size;
+	s1.x_size = source->size;
 	s1.x_inc = nch;
 	s1.y_end_addr = &cd->delay_lines[cd->scratch_length];
 	s1.y_size = STAGE_BUF_SIZE * sizeof(int32_t);
@@ -161,7 +162,7 @@ static void src_2s_s32_default(struct comp_dev *dev,
 	s2.x_size = STAGE_BUF_SIZE * sizeof(int32_t);
 	s2.x_inc = 1;
 	s2.y_end_addr = sink->end_addr;
-	s2.y_size = sink->alloc_size;
+	s2.y_size = sink->size;
 	s2.y_inc = nch;
 
 	s1.x_rptr = src + nch - 1;
@@ -219,10 +220,10 @@ static void src_1s_s32_default(struct comp_dev *dev,
 
 	s1.times = n_times;
 	s1.x_end_addr = source->end_addr;
-	s1.x_size = source->alloc_size;
+	s1.x_size = source->size;
 	s1.x_inc = nch;
 	s1.y_end_addr = sink->end_addr;
-	s1.y_size = sink->alloc_size;
+	s1.y_size = sink->size;
 	s1.y_inc = nch;
 	s1.x_rptr = src + nch - 1;
 	s1.y_wptr = dest + nch - 1;
@@ -307,6 +308,7 @@ static int src_params(struct comp_dev *dev)
 	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sink;
 	struct src_alloc need;
 	size_t delay_lines_size;
 	uint32_t source_rate, sink_rate;
@@ -401,6 +403,17 @@ static int src_params(struct comp_dev *dev)
 	/* Need to compute this */
 	dev->frame_bytes =
 		dev->params.sample_container_bytes * dev->params.channels;
+	cd->period_bytes = dev->frames * dev->frame_bytes;
+
+	/* configure downstream buffer */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	err = buffer_set_size(sink, cd->period_bytes * config->periods_sink);
+	if (err < 0) {
+		trace_src_error("eSz");
+		return err;
+	}
+
+	buffer_reset_pos(sink);
 
 	return 0;
 }

@@ -206,7 +206,7 @@ static int dai_playback_params(struct comp_dev *dev)
 	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
 	struct list_item *elist, *tlist;
-	int i;
+	int i, err;
 	uint32_t buffer_size;
 
 	/* set up DMA configuration */
@@ -223,15 +223,14 @@ static int dai_playback_params(struct comp_dev *dev)
 	buffer_size = source_config->periods_sink * dd->period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
-	if (buffer_size == 0 || buffer_size > dma_buffer->alloc_size) {
+	err = buffer_set_size(dma_buffer, buffer_size);
+	if (err < 0) {
 		trace_dai_error("ep1");
 		trace_value(source_config->periods_sink);
 		trace_value(dd->period_bytes);
 		trace_value(buffer_size);
 		trace_value(dma_buffer->alloc_size);
-		return -EINVAL;
-	} else {
-		dma_buffer->size = buffer_size;
+		return err;
 	}
 
 	if (list_is_empty(&config->elem_list)) {
@@ -253,7 +252,7 @@ static int dai_playback_params(struct comp_dev *dev)
 	}
 
 	/* set write pointer to start of buffer */
-	dma_buffer->w_ptr = dma_buffer->addr;
+	buffer_reset_pos(dma_buffer);
 
 	return 0;
 
@@ -275,7 +274,7 @@ static int dai_capture_params(struct comp_dev *dev)
 	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
 	struct list_item *elist, *tlist;
-	int i;
+	int i, err;
 	uint32_t buffer_size;
 
 	/* set up DMA configuration */
@@ -292,15 +291,14 @@ static int dai_capture_params(struct comp_dev *dev)
 	buffer_size = sink_config->periods_source * dd->period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
-	if (buffer_size == 0 || buffer_size > dma_buffer->alloc_size) {
+	err = buffer_set_size(dma_buffer, buffer_size);
+	if (err < 0) {
 		trace_dai_error("ec1");
 		trace_value(sink_config->periods_sink);
 		trace_value(dd->period_bytes);
 		trace_value(buffer_size);
 		trace_value(dma_buffer->alloc_size);
-		return -EINVAL;
-	} else {
-		dma_buffer->size = buffer_size;
+		return err;
 	}
 
 	if (list_is_empty(&config->elem_list)) {
@@ -319,8 +317,8 @@ static int dai_capture_params(struct comp_dev *dev)
 		}
 	}
 
-	/* set write pointer to start of buffer */
-	dma_buffer->r_ptr = dma_buffer->addr;
+	/* set read pointer to start of buffer */
+	buffer_reset_pos(dma_buffer);
 
 	return 0;
 

@@ -110,10 +110,10 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 				/* Check both source and destination for wrap */
 				if (x > (int32_t *) source->end_addr)
 					x = (int32_t *)
-					((size_t) x - source->alloc_size);
+					((size_t) x - source->size);
 				if (snk > (int32_t *) sink->end_addr)
 					y = (int32_t *)
-					((size_t) y - sink->alloc_size);
+					((size_t) y - sink->size);
 			}
 		}
 
@@ -290,11 +290,23 @@ static int eq_iir_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *sink;
+	int err;
 
 	trace_eq_iir("par");
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames * dev->frame_bytes;
+
+	/* configure downstream buffer */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	err = buffer_set_size(sink, cd->period_bytes * config->periods_sink);
+	if (err < 0) {
+		trace_eq_iir_error("eSz");
+		return err;
+	}
+
+	buffer_reset_pos(sink);
 
 	/* EQ supports only S32_LE PCM format */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
