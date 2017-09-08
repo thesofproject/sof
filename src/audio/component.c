@@ -148,6 +148,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	default:
 		trace_comp_error("CEd");
+		trace_value(cmd);
 		ret = -EINVAL;
 		break;
 	}

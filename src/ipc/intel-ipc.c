@@ -567,6 +567,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	stream_dev = ipc_get_comp(_ipc, data->comp_id);
 	if (stream_dev == NULL){
 		trace_ipc_error("eVg");
+		trace_value(data->comp_id);
 		return -ENODEV;
 	}
 	

@@ -465,7 +465,7 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 	struct list_item *clist;
 	int i, total = 0, count = 0;
 
-	trace_pipe("PR-");
+	tracev_pipe("PR-");
 	tracev_value(current->comp.id);
 
 	/* reached endpoint ? */
@@ -574,8 +574,11 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 		ret = component_op_upstream(&op_data, host, host, NULL);
 	}
 
-	if (ret < 0)
-		trace_ipc_error("pae");
+	if (ret < 0) {
+		trace_ipc_error("pc0");
+		trace_value(host->comp.id);
+		trace_value(cmd);
+	}
 
 	spin_unlock(&p->lock);
 	return ret;
@@ -617,8 +620,10 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		ret = component_op_upstream(&op_data, host, host, NULL);
 	}
 
-	if (ret < 0)
-		trace_ipc_error("pae");
+	if (ret < 0) {
+		trace_ipc_error("pp0");
+		trace_value(host->comp.id);
+	}
 
 	spin_unlock(&p->lock);
 	return ret;
@@ -645,8 +650,10 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 		ret = component_op_upstream(&op_data, host, host, NULL);
 	}
 
-	if (ret < 0)
-		trace_ipc_error("pae");
+	if (ret < 0) {
+		trace_ipc_error("pr0");
+		trace_value(host->comp.id);
+	}
 
 	spin_unlock(&p->lock);
 	return ret;
