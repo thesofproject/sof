@@ -579,7 +579,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	}
 
 	/* write component values to the outbox */
-	mailbox_hostbox_write(0, data, data->hdr.size);
+	mailbox_hostbox_write(0, data, data->rhdr.hdr.size);
 	return 1;
 }
 

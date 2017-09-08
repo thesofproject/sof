@@ -470,7 +470,7 @@ struct sof_ipc_ctrl_value_comp {
 
 /* generic control data */
 struct sof_ipc_ctrl_data {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_reply rhdr;
 	uint32_t comp_id;
 
 	/* control access and data type */
