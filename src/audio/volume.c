@@ -380,10 +380,16 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 	cd->tvolume[chan] = cd->mvolume[chan];
 }
 
-static int volume_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i, j;
+
+	/* validate */
+	if (cdata->num_elems == 0 || cdata->num_elems >= SOF_IPC_MAX_CHANNELS) {
+		trace_volume_error("gs0");
+		return -EINVAL;
+	}
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
@@ -418,7 +424,37 @@ static int volume_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
 	default:
-		trace_volume_error("ec1");
+		trace_volume_error("gs1");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int i, j;
+
+	/* validate */
+	if (cdata->num_elems == 0 || cdata->num_elems >= SOF_IPC_MAX_CHANNELS) {
+		trace_volume_error("gc0");
+		return -EINVAL;
+	}
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_VOLUME:
+
+		for (i = 0; i < cdata->num_elems; i++) {
+			for (j = 0; j < cdata->num_elems; j++) {
+				if (cdata->chanv[j].value == cd->chan[i])
+					cdata->chanv[j].value = cd->tvolume[i];
+			}
+		}
+
+		break;
+	default:
+		trace_volume_error("ec2");
 		return -EINVAL;
 	}
 
@@ -435,7 +471,9 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
-		return volume_ctrl_cmd(dev, cdata);
+		return volume_ctrl_set_cmd(dev, cdata);
+	case COMP_CMD_GET_VALUE:
+		return volume_ctrl_get_cmd(dev, cdata);
 	case COMP_CMD_START:
 	case COMP_CMD_STOP:
 	case COMP_CMD_PAUSE:
