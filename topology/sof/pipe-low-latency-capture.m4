@@ -89,7 +89,7 @@ W_PIPELINE(N_PGA(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHE
 
 SectionPCMCapabilities.STR(Low Latency Capture PCM_ID) {
 
-	formats "S24_LE,S16_LE"
+	formats "S32_LE,S24_LE,S16_LE"
 	rate_min "48000"
 	rate_max "48000"
 	channels_min "2"

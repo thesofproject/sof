@@ -120,7 +120,7 @@ W_PIPELINE(N_SRC(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHE
 # PCM capabilities supported by FW
 
 SectionPCMCapabilities.STR(Media Playback PCM_ID) {
-	formats "S24_LE,S16_LE"
+	formats "S32_LE,S24_LE,S16_LE"
 	rate_min "8000"
 	rate_max "192000"
 	channels_min "2"

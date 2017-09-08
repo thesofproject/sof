@@ -91,7 +91,7 @@ SectionGraph."pipe-pass-vol-playback-PIPELINE_ID" {
 
 SectionPCMCapabilities.STR(Passthrough Playback PCM_ID) {
 
-	formats "S24_LE,S16_LE"
+	formats "S32_LE,S24_LE,S16_LE"
 	rate_min "48000"
 	rate_max "48000"
 	channels_min "2"
