@@ -22,7 +22,10 @@ MACHINES = \
 	reef-bdw-rt5640.tplg \
 	reef-byt-rt5640.tplg \
 	reef-byt-rt5651.tplg \
-	reef-hsw-rt5640.tplg
+	reef-hsw-rt5640.tplg \
+	test-passthrough-24bit-48k-ssp2.tplg \
+	test-passthrough-24bit-48k-vol-ssp2.tplg \
+	test-passthrough-24bit-48k-src-ssp2.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
