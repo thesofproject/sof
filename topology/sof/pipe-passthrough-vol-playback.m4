@@ -65,7 +65,7 @@ W_DAI_OUT(DAI_SNAME, DAI_TYPE, DAI_INDEX, DAI_FORMAT, 0, DAI_PERIODS,
 # DAI pipeline - always use 0 for DAIs
 #
 W_PIPELINE(N_DAI_OUT, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES,
-	SCHEDULE_CORE, pipe_dai_schedule_plat)
+	SCHEDULE_CORE, 0, pipe_dai_schedule_plat)
 
 #
 # Pipeline Graph

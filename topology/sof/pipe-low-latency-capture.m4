@@ -81,7 +81,7 @@ indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(0))
 # Pipeline Configuration.
 #
 
-W_PIPELINE(N_PGA(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
+#W_PIPELINE(N_PGA(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
 
 #
 # PCM Configuration

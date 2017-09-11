@@ -370,7 +370,7 @@ define(`NPIPELINE_BUFFER', `BUF'$1`.'$2)
 dnl Pipeline name)
 define(`N_PIPELINE', `PIPELINE.'PIPELINE_ID`.'$1)
 
-dnl W_PIPELINE(stream, deadline, priority, frames, core, platform)
+dnl W_PIPELINE(stream, deadline, priority, frames, core, timer, platform)
 define(`W_PIPELINE',
 `SectionVendorTuples."'N_PIPELINE($1)`_tuples" {'
 `	tokens "sof_sched_tokens"'
@@ -379,6 +379,7 @@ define(`W_PIPELINE',
 `		SOF_TKN_SCHED_PRIORITY'		STR($3)
 `		SOF_TKN_SCHED_CORE'		STR($5)
 `		SOF_TKN_SCHED_FRAMES'		STR($4)
+`		SOF_TKN_SCHED_TIMER'		STR($6)
 `	}'
 `}'
 `SectionData."'N_PIPELINE($1)`_data" {'
@@ -391,7 +392,7 @@ define(`W_PIPELINE',
 `	stream_name "'$1`"'
 `	data ['
 `		"'N_PIPELINE($1)`_data"'
-`		"'$6`"'
+`		"'$7`"'
 `	]'
 `}')
 
