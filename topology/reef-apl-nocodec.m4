@@ -75,11 +75,11 @@ SectionGraph."pipe-apl-nocodec" {
 
 # playback DAI is SSP2 using I2S DAPM stream and 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priorty 0
-DAI_ADD(sof/pipe-dai-playback.m4, SSP, 2, I2S, PIPELINE_SOURCE_1, 2, s24le, 48, 1000, 0, 0)
+DAI_ADD(sof/pipe-dai-playback.m4, 1, SSP, 2, I2S, PIPELINE_SOURCE_1, 2, s24le, 48, 1000, 0, 0)
 
 # capture DAI is SSP2 using I2S DAPM stream and 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priorty 0
-DAI_ADD(sof/pipe-dai-capture.m4, SSP, 2, I2S, PIPELINE_SINK_2, 2, s24le, 48, 1000, 0, 0)
+DAI_ADD(sof/pipe-dai-capture.m4, 1, SSP, 2, I2S, PIPELINE_SINK_2, 2, s24le, 48, 1000, 0, 0)
 
 #
 # BE configurations - overrides config in ACPI if present

@@ -81,7 +81,7 @@ define(`PIPELINE_ADD',
 `include($1)'
 )
 
-dnl DAI_ADD(pipeline, dai type, dai_index, stream_name, buffer, periods, format, frames, deadline, priority, core)
+dnl DAI_ADD(pipeline, pipeline id, dai type, dai_index, stream_name, buffer, periods, format, frames, deadline, priority, core)
 define(`DAI_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`DAI_TYPE')'
@@ -94,18 +94,18 @@ define(`DAI_ADD',
 `undefine(`SCHEDULE_DEADLINE')'
 `undefine(`SCHEDULE_PRIORITY')'
 `undefine(`SCHEDULE_CORE')'
-`define(`PIPELINE_ID', 0)'
-`define(`DAI_TYPE', STR($2))'
-`define(`DAI_INDEX', STR($3))'
-`define(`DAI_SNAME', $4)'
-`define(`DAI_BUF', $5)'
-`define(`DAI_NAME', $2$3)'
-`define(`DAI_PERIODS', $6)'
-`define(`DAI_FORMAT', $7)'
-`define(`SCHEDULE_FRAMES', $8)'
-`define(`SCHEDULE_DEADLINE', $9)'
-`define(`SCHEDULE_PRIORITY', $10)'
-`define(`SCHEDULE_CORE', $11)'
+`define(`PIPELINE_ID', $2)'
+`define(`DAI_TYPE', STR($3))'
+`define(`DAI_INDEX', STR($4))'
+`define(`DAI_SNAME', $5)'
+`define(`DAI_BUF', $6)'
+`define(`DAI_NAME', $3$4)'
+`define(`DAI_PERIODS', $7)'
+`define(`DAI_FORMAT', $8)'
+`define(`SCHEDULE_FRAMES', $9)'
+`define(`SCHEDULE_DEADLINE', $10)'
+`define(`SCHEDULE_PRIORITY', $11)'
+`define(`SCHEDULE_CORE', $12)'
 `include($1)'
 )
 
