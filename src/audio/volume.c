@@ -555,7 +555,7 @@ static int volume_prepare(struct comp_dev *dev)
 		sconfig = COMP_GET_CONFIG(sourceb->source);
 		cd->source_format = sconfig->frame_fmt;
 		cd->source_period_bytes = dev->frames *
-			sourceb->source->frame_bytes;
+			comp_frame_bytes(sourceb->source);
 		break;
 	}
 
@@ -575,7 +575,7 @@ static int volume_prepare(struct comp_dev *dev)
 		sconfig = COMP_GET_CONFIG(sinkb->sink);
 		cd->sink_format = sconfig->frame_fmt;
 		cd->sink_period_bytes = dev->frames *
-			sinkb->sink->frame_bytes;
+			comp_frame_bytes(sinkb->sink);
 		break;
 	}
 
