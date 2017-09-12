@@ -60,7 +60,7 @@ struct comp_data {
 	int scratch_length;
 	uint32_t sink_rate;
 	uint32_t source_rate;
-	uint32_t period_bytes;	/* sink period */
+	uint32_t period_bytes; /* sink period */
 	void (*src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
@@ -308,12 +308,12 @@ static int src_params(struct comp_dev *dev)
 	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
+	struct comp_buffer *sink, *source;
 	struct src_alloc need;
 	size_t delay_lines_size;
 	uint32_t source_rate, sink_rate;
 	int32_t *buffer_start;
-	int n = 0, i, err, frames_is_for_source;
+	int n = 0, i, err, frames_is_for_source, q;
 
 	trace_src("par");
 
@@ -405,15 +405,37 @@ static int src_params(struct comp_dev *dev)
 		dev->params.sample_container_bytes * dev->params.channels;
 	cd->period_bytes = dev->frames * dev->frame_bytes;
 
-	/* configure downstream buffer */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	err = buffer_set_size(sink, cd->period_bytes * config->periods_sink);
+	/* The downstream buffer must be at least length of blk_out plus
+	 * dev->frames and an integer multiple of dev->frames. The
+	 * buffer_set_size will return an error if the required length would
+	 * be too long.
+	 */
+	q = need.blk_out / dev->frames;
+	if (q * dev->frames < need.blk_out)
+		++q;
+
+	if (q * dev->frames < need.blk_out + dev->frames)
+		++q;
+
+	/* Configure downstream buffer */
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+		source_list);
+	err = buffer_set_size(sink, q * dev->frames * dev->frame_bytes);
 	if (err < 0) {
 		trace_src_error("eSz");
 		return err;
 	}
 
 	buffer_reset_pos(sink);
+
+	/* Check that source buffer has sufficient size */
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+		sink_list);
+	if (source->size < need.blk_in * dev->frame_bytes) {
+		trace_src_error("eSy");
+		return -EINVAL;
+	}
+
 
 	return 0;
 }

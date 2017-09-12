@@ -151,10 +151,12 @@ int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch,
 		k = max_frames / blk_out;
 	}
 
-	/* Return with error if max_frames is too small even for smallest
-	   possible SRC block length. */
+	/* Mininum k is 1, when 0 max_frames is less than block length. In
+	 * that case need to check in src.c that sink/source size is large
+	 * enough for at least one block.
+	 */
 	if (k < 1)
-		return -EINVAL;
+		k = 1;
 
 	a->blk_mult = k;
 	a->blk_in = blk_in * k;
@@ -209,9 +211,6 @@ static int init_stages(
 		if (stage1->blk_out == 0)
 			return -EINVAL;
 	} else {
-		if ((stage1->blk_out == 0) || (stage1->blk_in == 0))
-			return -EINVAL;
-
 		src->stage1_times = res->stage1_times;
 		src->stage2_times = res->stage2_times;
 		src->blk_in = res->blk_in;
@@ -219,14 +218,14 @@ static int init_stages(
 	}
 
 	/* Delay line sizes */
-	src->state1.fir_delay_size = res->fir_s1; //src_fir_delay_length(stage1);
-	src->state1.out_delay_size = res->out_s1; //src_out_delay_length(stage1);
+	src->state1.fir_delay_size = res->fir_s1;
+	src->state1.out_delay_size = res->out_s1;
 	src->state1.fir_delay = delay_lines_start;
 	src->state1.out_delay =
 		src->state1.fir_delay + src->state1.fir_delay_size;
 	if (n > 1) {
-		src->state2.fir_delay_size = res->fir_s2; // src_fir_delay_length(stage2);
-		src->state2.out_delay_size = res->out_s2; // src_out_delay_length(stage2);
+		src->state2.fir_delay_size = res->fir_s2;
+		src->state2.out_delay_size = res->out_s2;
 		src->state2.fir_delay =
 			src->state1.out_delay + src->state1.out_delay_size;
 		src->state2.out_delay =
@@ -289,7 +288,7 @@ int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2,
 		return -EINVAL;
 
 	/* Get number of stages used for optimize opportunity. 2nd
-	 * stage lenth is one if conversion needs only one stage.
+	 * stage length is one if conversion needs only one stage.
 	 */
 	n_stages = (src->stage2->filter_length == 1) ? 1 : 2;
 
@@ -297,7 +296,7 @@ int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2,
 	 * mode from in/out matrix. Computing of such SRC mode needs
 	 * to be prevented.
 	 */
-	if (src->stage2->filter_length == 0)
+	if (src->stage1->filter_length == 0)
 		return -EINVAL;
 
 	return n_stages;
