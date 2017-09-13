@@ -56,7 +56,7 @@ void _trace_event(uint32_t event)
 
 	/* write timestamp and event to trace buffer */
 	t =(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace.pos);
-	t[0] = platform_timer_get(0);
+	t[0] = platform_timer_get(platform_timer);
 	t[1] = event;
 
 	/* writeback trace data */

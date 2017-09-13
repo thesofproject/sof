@@ -83,6 +83,8 @@ static struct work_queue_timesource platform_generic_queue = {
 	.timer_get	= platform_timer_get,
 };
 
+struct timer *platform_timer = &platform_generic_queue.timer;
+
 int platform_boot_complete(uint32_t boot_message)
 {
 	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
@@ -138,11 +140,6 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 
 }
 
-static struct timer platform_ext_timer = {
-	.id = TIMER3,
-	.irq = IRQ_NUM_EXT_TIMER,
-};
-
 int platform_init(struct reef *reef)
 {
 #if defined CONFIG_BAYTRAIL
@@ -176,7 +173,7 @@ int platform_init(struct reef *reef)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(&platform_ext_timer);
+	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();

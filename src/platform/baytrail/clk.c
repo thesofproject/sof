@@ -240,8 +240,7 @@ uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
 		_current = arch_timer_get_system(NULL);
 		break;
 	case CLK_SSP:
-		// TODO: fix timer ID
-		_current = platform_timer_get(NULL);
+		_current = platform_timer_get(platform_timer);
 		break;
 	default:
 		return 0;

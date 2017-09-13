@@ -84,7 +84,7 @@ static inline struct task *edf_get_next(void)
 		return NULL;
 
 	/* get the current time */
-	current = platform_timer_get(NULL);
+	current = platform_timer_get(platform_timer);
 
 	/* check every queued or running task in list */
 	list_for_item(clist, &sch->list) {
@@ -174,7 +174,7 @@ void schedule_task(struct task *task, uint32_t deadline, uint16_t priority,
 	}
 
 	/* get the current time */
-	current = platform_timer_get(NULL);
+	current = platform_timer_get(platform_timer);
 
 	/* calculate deadline - TODO: include MIPS */
 	ticks = clock_us_to_ticks(sch->clock, deadline);
