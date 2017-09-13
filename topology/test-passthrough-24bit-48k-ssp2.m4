@@ -38,7 +38,7 @@ define(`TEST_DAI_LINK_STREAM_NAME', `Audio')
 PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-playback.m4, 
 	1, 0, 2, s24le, 
 	48, 1000, 0, 0, 0, 1,
-	SSP, 2, TEST_DAI_LINK_STREAM_NAME, 2)
+	SSP, 2, TEST_DAI_LINK_STREAM_NAME, s24le, 2)
 
 #
 # BE configurations - overrides config in ACPI if present
