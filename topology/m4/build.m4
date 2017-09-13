@@ -1,6 +1,8 @@
 divert(-1)
 
-dnl PIPELINE_PCM_ADD(pipeline, id, pcm, max channels, format, frames, deadline, priority, core)
+dnl PIPELINE_PCM_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
+dnl     frames, deadline, priority, core, dmac, dmac_chan)
 define(`PIPELINE_PCM_ADD',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
@@ -25,8 +27,10 @@ define(`PIPELINE_PCM_ADD',
 `include($1)'
 )
 
-dnl PIPELINE_PCM_DAI_ADD(pipeline, id, pcm, max channels, format, frames,
-dnl     deadline, priority, core, dai type, dai_index, stream_name, dai format, periods)
+dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
+dnl     frames, deadline, priority, core, dmac, dmac_chan,
+dnl     dai type, dai_index, stream_name, dai format, periods)
 define(`PIPELINE_PCM_DAI_ADD',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
@@ -62,7 +66,9 @@ define(`PIPELINE_PCM_DAI_ADD',
 `include($1)'
 )
 
-dnl PIPELINE_ADD(pipeline, id, max channels, format, frames, deadline, priority, core)
+dnl PIPELINE_ADD(pipeline,
+dnl     pipe id, max channels, format,
+dnl     frames, deadline, priority, core)
 define(`PIPELINE_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`PIPELINE_CHANNELS')'
@@ -81,7 +87,10 @@ define(`PIPELINE_ADD',
 `include($1)'
 )
 
-dnl DAI_ADD(pipeline, pipeline id, dai type, dai_index, stream_name, buffer, periods, format, frames, deadline, priority, core)
+dnl DAI_ADD(pipeline,
+dnl     pipe id, dai type, dai_index, stream_name,
+dnl     buffer, periods, format,
+dnl     frames, deadline, priority, core)
 define(`DAI_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`DAI_TYPE')'
