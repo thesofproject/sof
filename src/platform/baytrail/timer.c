@@ -32,15 +32,58 @@
 
 #include <platform/timer.h>
 #include <platform/shim.h>
+#include <platform/interrupt.h>
 #include <reef/debug.h>
 #include <reef/audio/component.h>
 #include <stdint.h>
+
+struct timer_data {
+	void (*handler2)(void *arg);
+	void *arg2;
+};
+
+static struct timer_data xtimer[1] = {};
+
+void platform_timer_64_handler(void *arg)
+{
+	struct timer *timer = arg;
+	struct timer_data *tdata = timer->timer_data;
+	uint32_t timeout;
+
+	/* get timeout value - will tell us timeout reason */
+	timeout = shim_read(SHIM_EXT_TIMER_CNTLL);
+
+	/* we dont use the timer clear bit as we only need to clear the ISR */
+	shim_write(SHIM_PISR, SHIM_PISR_EXT_TIMER);
+
+	/* is this a 32 bit rollover ? */
+	if (timeout == 1) {
+		/* roll over the timer */
+		timer->hitime++;
+	} else {
+		/* no roll over, run the handler */
+		tdata->handler2(tdata->arg2);
+	}
+
+	/* get next timeout value */
+	if (timer->hitimeout > 0 && timer->hitimeout == timer->hitime) {
+		/* timeout is in this 32 bit period */
+		timeout = timer->lowtimeout;
+	} else {
+		/* timeout is in another 32 bit period */
+		timeout = 1;
+	}
+
+	/* set new value and run */
+	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
+	shim_write(SHIM_EXT_TIMER_CNTLL, timeout);
+}
 
 void platform_timer_start(struct timer *timer)
 {
 	/* run timer */
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
-	shim_write(SHIM_EXT_TIMER_CNTLL, 0);
+	shim_write(SHIM_EXT_TIMER_CNTLL, 1);
 }
 
 /* this seems to stop rebooting with RTD3 ???? */
@@ -51,15 +94,40 @@ void platform_timer_stop(struct timer *timer)
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_CLEAR);
 }
 
-void platform_timer_set(struct timer *timer, uint32_t ticks)
+int platform_timer_set(struct timer *timer, uint64_t ticks)
 {
+	uint32_t time = 1, hitimeout = ticks >> 32, flags;
+
 	/* a tick value of 0 will not generate an IRQ */
-	if (ticks == 0)
-		ticks = 1;
+	/* value of 1 represents rollover */
+	if ((ticks & 0xffffffff) < 0x2)
+		ticks += 2;
+
+	flags = arch_interrupt_global_disable();
+
+	/* same hi 64 bit context as ticks ? */
+	if (hitimeout == timer->hitime) {
+		/* yes, then set the value for next timeout */
+		time = ticks;
+		timer->lowtimeout = 0;
+		timer->hitimeout = 0;
+	} else if (hitimeout < timer->hitime) {
+		/* cant be in the past */
+		arch_interrupt_global_enable(flags);
+		return -EINVAL;
+	} else {
+		/* set for checking at next timeout */
+		timer->hitimeout = hitimeout;
+		timer->lowtimeout = ticks;
+	}
 
 	/* set new value and run */
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
-	shim_write(SHIM_EXT_TIMER_CNTLL, ticks);
+	shim_write(SHIM_EXT_TIMER_CNTLL, time);
+
+	arch_interrupt_global_enable(flags);
+
+	return 0;
 }
 
 void platform_timer_clear(struct timer *timer)
@@ -68,9 +136,31 @@ void platform_timer_clear(struct timer *timer)
 	shim_write(SHIM_PISR, SHIM_PISR_EXT_TIMER);
 }
 
-uint32_t platform_timer_get(struct timer *timer)
+uint64_t platform_timer_get(struct timer *timer)
 {
-	return shim_read(SHIM_EXT_TIMER_STAT);
+	uint64_t time;
+	uint32_t flags, low, high;
+
+	flags = arch_interrupt_global_disable();
+
+	/* read low 32 bits */
+	low = shim_read(SHIM_EXT_TIMER_STAT);
+
+	/* check and see whether 32bit IRQ is pending for timer */
+	if (arch_interrupt_get_status() & IRQ_MASK_EXT_TIMER &&
+		shim_read(SHIM_EXT_TIMER_CNTLL) == 1) {
+		/* yes, overflow has occured but handler has not run */
+		high = timer->hitime + 1;
+	} else {
+		/* no overflow */
+		high = timer->hitime;
+	}
+
+	time = ((uint64_t)high << 32) | low;
+
+	arch_interrupt_global_enable(flags);
+
+	return time;
 }
 
 /* get timestamp for host stream DMA position */
@@ -106,4 +196,37 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on BYT */
 	*wallclock = shim_read(SHIM_EXT_TIMER_STAT);
+}
+
+static int platform_timer_register(struct timer *timer,
+	void(*handler)(void *arg), void *arg)
+{
+	struct timer_data *tdata = &xtimer[0];
+	uint32_t flags;
+	int ret;
+
+	flags = arch_interrupt_global_disable();
+	tdata->handler2 = handler;
+	tdata->arg2 = arg;
+	timer->timer_data = tdata;
+	timer->hitime = 0;
+	timer->hitimeout = 0;
+	ret = arch_interrupt_register(timer->id, platform_timer_64_handler, timer);
+	arch_interrupt_global_enable(flags);
+
+	return ret;
+}
+
+int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
+{
+	switch (timer->id) {
+	case TIMER0:
+	case TIMER1:
+	case TIMER2:
+		return arch_timer_register(timer, handler, arg);
+	case TIMER3:
+		return platform_timer_register(timer, handler, arg);
+	default:
+		return -EINVAL;
+	}
 }

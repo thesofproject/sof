@@ -57,9 +57,9 @@ struct work_queue_timesource {
 	struct timer timer;
 	int clk;
 	int notifier;
-	void (*timer_set)(struct timer *, uint32_t ticks);
+	int (*timer_set)(struct timer *, uint64_t ticks);
 	void (*timer_clear)(struct timer *);
-	uint32_t (*timer_get)(struct timer *);
+	uint64_t (*timer_get)(struct timer *);
 };
 
 /* initialise our work */
@@ -69,11 +69,11 @@ struct work_queue_timesource {
 	(w)->flags = xflags;
 
 /* schedule/cancel work on work queue */
-void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout);
+void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout);
 void work_cancel(struct work_queue *queue, struct work *work);
 
 /* schedule/cancel work on default system work queue */
-void work_schedule_default(struct work *work, uint32_t timeout);
+void work_schedule_default(struct work *work, uint64_t timeout);
 void work_cancel_default(struct work *work);
 
 /* create new work queue */

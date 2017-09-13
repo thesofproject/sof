@@ -60,22 +60,26 @@
 
 struct work_queue {
 	struct list_item work;		/* list of work */
-	uint32_t timeout;		/* timeout for next queue run */
+	uint64_t timeout;		/* timeout for next queue run */
 	uint32_t window_size;		/* window size for pending work */
 	spinlock_t lock;
 	struct notifier notifier;	/* notify CPU freq changes */
 	struct work_queue_timesource *ts;	/* time source for work queue */
 	uint32_t ticks_per_usec;	/* ticks per msec */
-	uint32_t run_ticks;	/* ticks when last run */
+	uint64_t run_ticks;	/* ticks when last run */
 };
 
 /* generic system work queue */
 static struct work_queue *queue_;
 
-static inline void work_set_timer(struct work_queue *queue, uint32_t ticks)
+static inline int work_set_timer(struct work_queue *queue, uint64_t ticks)
 {
-	queue->ts->timer_set(&queue->ts->timer, ticks);
+	int ret;
+
+	ret = queue->ts->timer_set(&queue->ts->timer, ticks);
 	timer_enable(&queue->ts->timer);
+
+	return ret;
 }
 
 static inline void work_clear_timer(struct work_queue *queue)
@@ -84,7 +88,7 @@ static inline void work_clear_timer(struct work_queue *queue)
 	timer_disable(&queue->ts->timer);
 }
 
-static inline uint32_t work_get_timer(struct work_queue *queue)
+static inline uint64_t work_get_timer(struct work_queue *queue)
 {
 	return queue->ts->timer_get(&queue->ts->timer);
 }
@@ -317,7 +321,7 @@ static void work_notify(int message, void *data, void *event_data)
 	spin_unlock_irq(&queue->lock, flags);
 }
 
-void work_schedule(struct work_queue *queue, struct work *w, uint32_t timeout)
+void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 {
 	struct work *work;
 	struct list_item *wlist;
@@ -362,7 +366,7 @@ void work_cancel(struct work_queue *queue, struct work *w)
 	spin_unlock_irq(&queue->lock, flags);
 }
 
-void work_schedule_default(struct work *w, uint32_t timeout)
+void work_schedule_default(struct work *w, uint64_t timeout)
 {
 	struct work *work;
 	struct list_item *wlist;

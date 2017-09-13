@@ -172,14 +172,14 @@ int platform_init(struct reef *reef)
 	platform_ipc_pmc_init();
 
 	/* init work queues and clocks */
+	trace_point(TRACE_BOOT_SYS_WORK);
+	init_system_workq(&platform_generic_queue);
+
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
-
-	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue);
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
