@@ -32,17 +32,7 @@
 #ifndef SRC_CORE_H
 #define SRC_CORE_H
 
-/* TODO: This should be made per platform configurable */
-#define SRC_SHORT 1
-
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
-
-/* Include SRC min/max constants etc. */
-#if SRC_SHORT == 1
-#include <reef/audio/coefficients/src/src_int16_define.h>
-#else
-#include <reef/audio/coefficients/src/src_int24_define.h>
-#endif
 
 struct src_alloc {
 	int fir_s1;
@@ -150,6 +140,8 @@ int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[],
 	int n_in);
 
 void src_polyphase_stage_cir(struct src_stage_prm *s);
+
+void src_polyphase_stage_cir_s24(struct src_stage_prm *s);
 
 int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch,
 	int max_frames, int max_frames_is_for_source);

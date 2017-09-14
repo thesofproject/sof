@@ -43,13 +43,7 @@
 #include <reef/audio/format.h>
 #include <reef/math/numbers.h>
 #include "src_core.h"
-
-/* Include conversion tables */
-#if SRC_SHORT == 1
-#include <reef/audio/coefficients/src/src_int16_table.h>
-#else
-#include <reef/audio/coefficients/src/src_int24_table.h>
-#endif
+#include "src_config.h"
 
 /* TODO: These should be defined somewhere else. */
 #define SOF_RATES_LENGTH 15
@@ -256,7 +250,7 @@ static int init_stages(
 void src_polyphase_reset(struct polyphase_src *src)
 {
 
-	src->mute = 1;
+	src->mute = 0;
 	src->number_of_stages = 0;
 	src->blk_in = 0;
 	src->blk_out = 0;
@@ -401,15 +395,8 @@ static inline int32_t fir_filter(
 
 void src_polyphase_stage_cir(struct src_stage_prm *s)
 {
-	int n;
-	int m;
-	int f;
-	int c;
-	int r;
+	int n, m, f, c, r, n_wrap_fir, n_wrap_buf, n_wrap_min;
 	int32_t z;
-	int n_wrap_fir;
-	int n_wrap_buf;
-	int n_wrap_min;
 
 	for (n = 0; n < s->times; n++) {
 		/* Input data */
@@ -510,6 +497,111 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	}
 }
 
+void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
+{
+	int n, m, f, c, r, n_wrap_fir, n_wrap_buf, n_wrap_min;
+	int32_t se, z;
+
+	for (n = 0; n < s->times; n++) {
+		/* Input data */
+		m = s->x_inc * s->stage->blk_in;
+		while (m > 0) {
+			n_wrap_fir =
+				(s->state->fir_delay_size - s->state->fir_wi)
+				* s->x_inc;
+			n_wrap_buf = s->x_end_addr - s->x_rptr;
+			n_wrap_min = (n_wrap_fir < n_wrap_buf)
+				? n_wrap_fir : n_wrap_buf;
+			if (m < n_wrap_min) {
+				/* No circular wrap need */
+				while (m > 0) {
+					se = *s->x_rptr << 8;
+					s->state->fir_delay[s->state->fir_wi++]
+						= se >> 8;
+					s->x_rptr += s->x_inc;
+					m -= s->x_inc;
+				}
+			} else {
+				/* Wrap in n_wrap_min/x_inc samples */
+				while (n_wrap_min > 0) {
+					se = *s->x_rptr << 8;
+					s->state->fir_delay[s->state->fir_wi++]
+						= se >> 8;
+					s->x_rptr += s->x_inc;
+					n_wrap_min -= s->x_inc;
+					m -= s->x_inc;
+				}
+				/* Check both */
+				if (s->x_rptr >= s->x_end_addr)
+					s->x_rptr = (int32_t *)
+					((size_t) s->x_rptr - s->x_size);
+				if (s->state->fir_wi
+					== s->state->fir_delay_size)
+					s->state->fir_wi = 0;
+			}
+		}
+
+		/* Filter */
+		c = 0;
+		r = s->state->fir_wi - s->stage->blk_in
+			- (s->stage->num_of_subfilters - 1) * s->stage->idm;
+		if (r < 0)
+			r += s->state->fir_delay_size;
+
+		s->state->out_wi = s->state->out_ri;
+		for (f = 0; f < s->stage->num_of_subfilters; f++) {
+			s->state->fir_ri = r;
+			z = fir_filter(s->state, s->stage->coefs, &c,
+				s->stage->subfilter_length, s->stage->shift);
+			r += s->stage->idm;
+			if (r > s->state->fir_delay_size - 1)
+				r -= s->state->fir_delay_size;
+
+			s->state->out_delay[s->state->out_wi] = z;
+			s->state->out_wi += s->stage->odm;
+			if (s->state->out_wi > s->state->out_delay_size - 1)
+				s->state->out_wi -= s->state->out_delay_size;
+		}
+
+		/* Output */
+		m = s->y_inc * s->stage->num_of_subfilters;
+		while (m > 0) {
+			n_wrap_fir =
+				(s->state->out_delay_size - s->state->out_ri)
+				* s->y_inc;
+			n_wrap_buf = s->y_end_addr - s->y_wptr;
+			n_wrap_min = (n_wrap_fir < n_wrap_buf)
+				? n_wrap_fir : n_wrap_buf;
+			if (m < n_wrap_min) {
+				/* No circular wrap need */
+				while (m > 0) {
+					*s->y_wptr = s->state->out_delay[
+						s->state->out_ri++];
+					s->y_wptr += s->y_inc;
+					m -= s->y_inc;
+				}
+			} else {
+				/* Wrap in n_wrap_min/y_inc samples */
+				while (n_wrap_min > 0) {
+					*s->y_wptr = s->state->out_delay[
+						s->state->out_ri++];
+					s->y_wptr += s->y_inc;
+					n_wrap_min -= s->y_inc;
+					m -= s->y_inc;
+				}
+				/* Check both */
+				if (s->y_wptr >= s->y_end_addr)
+					s->y_wptr =
+					(int32_t *)
+					((size_t) s->y_wptr - s->y_size);
+
+				if (s->state->out_ri
+					== s->state->out_delay_size)
+					s->state->out_ri = 0;
+			}
+		}
+	}
+}
 
 #ifdef MODULE_TEST
 

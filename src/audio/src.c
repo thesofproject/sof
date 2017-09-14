@@ -57,10 +57,11 @@
 struct comp_data {
 	struct polyphase_src src[PLATFORM_MAX_CHANNELS];
 	int32_t *delay_lines;
-	int scratch_length;
 	uint32_t sink_rate;
 	uint32_t source_rate;
 	uint32_t period_bytes; /* sink period */
+	int scratch_length; /* Buffer for stage1-stage2 */
+	int sign_extend_s24; /* Set if need to copy sign bit to b24..b31 */
 	void (*src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
@@ -154,12 +155,12 @@ static void src_2s_s32_default(struct comp_dev *dev,
 	s1.x_size = source->size;
 	s1.x_inc = nch;
 	s1.y_end_addr = &cd->delay_lines[cd->scratch_length];
-	s1.y_size = STAGE_BUF_SIZE * sizeof(int32_t);
+	s1.y_size = cd->scratch_length * sizeof(int32_t);
 	s1.y_inc = 1;
 
 	s2.times = n_times2;
 	s2.x_end_addr = &cd->delay_lines[cd->scratch_length];
-	s2.x_size = STAGE_BUF_SIZE * sizeof(int32_t);
+	s2.x_size = cd->scratch_length * sizeof(int32_t);
 	s2.x_inc = 1;
 	s2.y_end_addr = sink->end_addr;
 	s2.y_size = sink->size;
@@ -180,9 +181,14 @@ static void src_2s_s32_default(struct comp_dev *dev,
 		for (i = 0; i < source_frames - blk_in + 1; i += blk_in) {
 			/* Reset output to buffer start, read interleaved */
 			s1.y_wptr = cd->delay_lines;
-			src_polyphase_stage_cir(&s1);
 			s2.x_rptr = cd->delay_lines;
-			src_polyphase_stage_cir(&s2);
+			if (cd->sign_extend_s24) {
+				src_polyphase_stage_cir_s24(&s1);
+				src_polyphase_stage_cir_s24(&s2);
+			} else {
+				src_polyphase_stage_cir(&s1);
+				src_polyphase_stage_cir(&s2);
+			}
 
 			n_read += blk_in;
 			n_written += blk_out;
@@ -198,7 +204,6 @@ static void src_1s_s32_default(struct comp_dev *dev,
 	uint32_t source_frames, uint32_t sink_frames)
 {
 	int i, j;
-	//int32_t *xp, *yp;
 	struct polyphase_src *s;
 
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -236,7 +241,10 @@ static void src_1s_s32_default(struct comp_dev *dev,
 		s1.stage = s->stage1;
 
 		for (i = 0; i + blk_in - 1 < source_frames; i += blk_in) {
-			src_polyphase_stage_cir(&s1);
+			if (cd->sign_extend_s24)
+				src_polyphase_stage_cir_s24(&s1);
+			else
+				src_polyphase_stage_cir(&s1);
 
 			n_read += blk_in;
 			n_written += blk_out;
@@ -317,8 +325,15 @@ static int src_params(struct comp_dev *dev)
 
 	trace_src("par");
 
-	/* SRC supports only S32_LE PCM format */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE) {
+	/* SRC supports S24_4LE and S32_LE formats */
+	switch (config->frame_fmt) {
+	case SOF_IPC_FRAME_S24_4LE:
+		cd->sign_extend_s24 = 1;
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		cd->sign_extend_s24 = 0;
+		break;
+	default:
 		trace_src_error("sr0");
 		return -EINVAL;
 	}
@@ -423,6 +438,8 @@ static int src_params(struct comp_dev *dev)
 	err = buffer_set_size(sink, q * dev->frames * dev->frame_bytes);
 	if (err < 0) {
 		trace_src_error("eSz");
+		trace_value(sink->alloc_size);
+		trace_value(q * dev->frames * dev->frame_bytes);
 		return err;
 	}
 
