@@ -96,7 +96,10 @@ int platform_boot_complete(uint32_t boot_message)
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
 
 	/* boot now complete so we can relax the CPU */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+	/* For now skip this to gain more processing performance
+	 * for SRC component.
+	 */
+	/* clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ); */
 
 	return 0;
 }
