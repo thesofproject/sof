@@ -953,7 +953,13 @@ void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
 {
 	schedule_task(&p->pipe_task, p->ipc_pipe.deadline,
 		p->ipc_pipe.priority, dev);
+
 	schedule();
+}
+
+void pipeline_schedule_cancel(struct pipeline *p, struct comp_dev *dev)
+{
+	schedule_task_complete(&p->pipe_task);
 }
 
 static void pipeline_task(void *arg)
