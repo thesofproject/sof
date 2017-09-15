@@ -691,6 +691,10 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		if (!buffer->connected || buffer->source->state != COMP_STATE_RUNNING)
 			continue;
 
+		/* dont go upstream if this source is from another pipeline */
+		if (buffer->source->pipeline != current->pipeline)
+			continue;
+
 		/* continue upstream */
 		err = pipeline_copy_from_upstream(start, buffer->source);
 		if (err < 0) {
@@ -743,6 +747,10 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 
 		/* dont go downstream if this component is not connected */
 		if (!buffer->connected || buffer->sink->state != COMP_STATE_RUNNING)
+			continue;
+
+		/* dont go downstream if this sink is from another pipeline */
+		if (buffer->sink->pipeline != current->pipeline)
 			continue;
 
 		/* continue downstream */
