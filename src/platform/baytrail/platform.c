@@ -105,6 +105,18 @@ int platform_boot_complete(uint32_t boot_message)
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
+	case IRQ_NUM_EXT_SSP0:
+		shim_write(SHIM_PISR, mask << 3);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP1:
+		shim_write(SHIM_PISR, mask << 4);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP2:
+		shim_write(SHIM_PISR, mask << 5);
+		interrupt_clear(irq);
+		break;
 	case IRQ_NUM_EXT_DMAC0:
 		shim_write(SHIM_PISR, mask << 16);
 		interrupt_clear(irq);
@@ -116,6 +128,18 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 #if defined CONFIG_CHERRYTRAIL
 	case IRQ_NUM_EXT_DMAC2:
 		shim_write(SHIM_PISRH, mask << 0);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP3:
+		shim_write(SHIM_PISRH, mask << 8);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP4:
+		shim_write(SHIM_PISRH, mask << 9);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP5:
+		shim_write(SHIM_PISRH, mask << 10);
 		interrupt_clear(irq);
 		break;
 #endif
@@ -132,12 +156,76 @@ uint32_t platform_interrupt_get_enabled(void)
 
 void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 {
-
+	switch (irq) {
+	case IRQ_NUM_EXT_SSP0:
+		shim_write(SHIM_PIMR, mask << 3);
+		break;
+	case IRQ_NUM_EXT_SSP1:
+		shim_write(SHIM_PIMR, mask << 4);
+		break;
+	case IRQ_NUM_EXT_SSP2:
+		shim_write(SHIM_PIMR, mask << 5);
+		break;
+	case IRQ_NUM_EXT_DMAC0:
+		shim_write(SHIM_PIMR, mask << 16);
+		break;
+	case IRQ_NUM_EXT_DMAC1:
+		shim_write(SHIM_PIMR, mask << 24);
+		break;
+#if defined CONFIG_CHERRYTRAIL
+	case IRQ_NUM_EXT_DMAC2:
+		shim_write(SHIM_PISMH, mask << 8);
+		break;
+	case IRQ_NUM_EXT_SSP3:
+		shim_write(SHIM_PIMRH, mask << 0);
+		break;
+	case IRQ_NUM_EXT_SSP4:
+		shim_write(SHIM_PIMRH, mask << 1);
+		break;
+	case IRQ_NUM_EXT_SSP5:
+		shim_write(SHIM_PIMRH, mask << 2);
+		break;
+#endif
+	default:
+		break;
+	}
 }
 
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
-
+	switch (irq) {
+	case IRQ_NUM_EXT_SSP0:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 3));
+		break;
+	case IRQ_NUM_EXT_SSP1:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 4));
+		break;
+	case IRQ_NUM_EXT_SSP2:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 5));
+		break;
+	case IRQ_NUM_EXT_DMAC0:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 16));
+		break;
+	case IRQ_NUM_EXT_DMAC1:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 24));
+		break;
+#if defined CONFIG_CHERRYTRAIL
+	case IRQ_NUM_EXT_DMAC2:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 8));
+		break;
+	case IRQ_NUM_EXT_SSP3:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 0));
+		break;
+	case IRQ_NUM_EXT_SSP4:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 1));
+		break;
+	case IRQ_NUM_EXT_SSP5:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 2));
+		break;
+#endif
+	default:
+		break;
+	}
 }
 
 int platform_init(struct reef *reef)
@@ -213,8 +301,13 @@ int platform_init(struct reef *reef)
 	dma_probe(dmac2);
 #endif
 
-	/* mask SSP interrupts */
+	/* mask SSP 0 - 2 interrupts */
 	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
+
+#if defined CONFIG_CHERRYTRAIL
+	/* mask SSP 3 - 5 interrupts */
+	shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) | 0x00000700);
+#endif
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
