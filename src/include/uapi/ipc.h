@@ -63,6 +63,7 @@
 #define SOF_IPC_GLB_STREAM_MSG			SOF_GLB_TYPE(0x6U)
 #define SOF_IPC_FW_READY			SOF_GLB_TYPE(0x7U)
 #define SOF_IPC_GLB_DAI_MSG			SOF_GLB_TYPE(0x8U)
+#define SOF_IPC_GLB_TRACE_MSG			SOF_GLB_TYPE(0x9U)
 
 /*
  * DSP Command Message Types
@@ -113,6 +114,9 @@
 #define SOF_IPC_STREAM_VORBIS_PARAMS		SOF_CMD_TYPE(0x010)
 #define SOF_IPC_STREAM_VORBIS_FREE		SOF_CMD_TYPE(0x011)
 
+/* trace and debug */
+#define SOF_IPC_TRACE_DMA_INIT			SOF_CMD_TYPE(0x001)
+#define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x002)
 
 /* Get message component id */
 #define SOF_IPC_MESSAGE_ID(x)			(x & 0xffff)
@@ -794,6 +798,16 @@ struct sof_ipc_window {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_windows;
 	struct sof_ipc_window_elem window[];
+}  __attribute__((packed));
+
+/*
+ * DMA for Trace
+ */
+
+/* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */
+struct sof_ipc_dma_trace_params {
+	struct sof_ipc_hdr hdr;
+	struct sof_ipc_host_buffer buffer;
 }  __attribute__((packed));
 
 #endif
