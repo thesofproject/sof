@@ -76,6 +76,12 @@ struct reef;
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000
 
+/* local buffer size of DMA tracing */
+#define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
+
+/* the interval of DMA trace copying */
+#define DMA_TRACE_US		500000
+
 /* Platform defined panic code */
 #define platform_panic(__x) \
 		shim_write(SHIM_IPCXL, ((shim_read(SHIM_IPCXL) & 0xc0000000) |\

@@ -25,76 +25,45 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Yan Wang <yan.wang@linux.intel.com>
  */
+
+#ifndef __INCLUDE_DMA_TRACE__
+#define __INCLUDE_DMA_TRACE__
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <reef/reef.h>
+#include <reef/list.h>
+#include <reef/mailbox.h>
+#include <reef/debug.h>
+#include <reef/timer.h>
+#include <reef/dma.h>
+#include <reef/work.h>
+#include <platform/platform.h>
+#include <platform/timer.h>
 
-#if 0 // TODO: only compile if no arch memcpy is available.
+struct dma_trace_buf {
+	void *w_ptr;		/* buffer write pointer */
+	void *r_ptr;		/* buffer read position */
+	void *addr;		/* buffer base address */
+	void *end_addr;		/* buffer end address */
+	uint32_t size;		/* size of buffer in bytes */
+};
 
-void cmemcpy(void *dest, void *src, size_t size)
-{
-	uint32_t *d32, *s32;
-	uint8_t *d8, *s8;
-	int i, d = size / 4, r = size % 4;
+struct dma_trace_data {
+	struct dma_sg_config config;
+	struct dma_trace_buf dmatb;
+	int32_t host_offset;
+	uint32_t host_size;
+	struct work dmat_work;
+};
 
-	/* copy word at a time */
-	d32 = dest;
-	s32 = src;
-	for (i = 0; i <	d; i++)
-		d32[i] = s32[i];
+int dma_trace_init(struct dma_trace_data *d);
+int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
+	uint32_t host_size);
+void dma_trace_config_ready(struct dma_trace_data *d);
 
-	/* copy remaining bytes */
-	d8 = (uint8_t*) d32[i];
-	s8 = (uint8_t*) s32[i];
-	for (i = 0; i <	r; i++)
-		d8[i] = s8[i];
-}
+void dtrace_event(char *e);
+
 #endif
-
-/* used by gcc - but uses arch_memcpy internally */
-void *memcpy(void *dest, const void *src, size_t n)
-{
-	arch_memcpy(dest, src, n);
-	return dest;
-}
-
-/* generic bzero - TODO: can be optimsed for ARCH ? */
-void bzero(void *s, size_t n)
-{
-	uint32_t *d32 = s;
-	uint8_t *d8;
-	int i, d = n >> 2, r = n % 4;
-
-	/* zero word at a time */
-	for (i = 0; i <	d; i++)
-		d32[i] = 0;
-
-	/* zero remaining bytes */
-	d8 = (uint8_t*) &d32[i];
-	for (i = 0; i <	r; i++)
-		d8[i] = 0;
-}
-
-/* generic memset - TODO: can be optimsed for ARCH ? */
-void *memset(void *s, int c, size_t n)
-{
-	uint8_t *d8 = s, v = c;
-	int i;
-
-	for (i = 0; i <	n; i++)
-		d8[i] = v;
-
-	return s;
-}
-
-/* generic strlen - TODO: can be optimsed for ARCH ? */
-int rstrlen(char *s)
-{
-	char *p = s;
-
-	while(*p++ != 0);
-	return (p - s) - 1;
-}
