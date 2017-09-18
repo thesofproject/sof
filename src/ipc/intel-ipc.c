@@ -155,14 +155,22 @@ out:
  * page table entry and adding each elem to a list in struct dma_sg_config.
  */
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
-	struct sof_ipc_host_buffer *ring, struct comp_dev *cd)
+	struct sof_ipc_host_buffer *ring, void *data, uint32_t is_trace)
 {
-	struct sof_ipc_comp_host *host = (struct sof_ipc_comp_host *)&cd->comp;
+	struct comp_dev* cd = NULL;
+	struct sof_ipc_comp_host *host = NULL;
+	struct dma_trace_data *d = NULL;
 	struct dma_sg_elem elem;
 	int i, err;
 	uint32_t idx, phy_addr;
 
 	elem.size = HOST_PAGE_SIZE;
+	if (is_trace)
+		d = (struct dma_trace_data *)data;
+	else {
+		cd = (struct comp_dev *)data;
+		host = (struct sof_ipc_comp_host *)&cd->comp;
+	}
 
 	for (i = 0; i < ring->pages; i++) {
 
@@ -176,12 +184,15 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
 
-		if (host->direction == SOF_IPC_STREAM_PLAYBACK)
+		if (!is_trace && host->direction == SOF_IPC_STREAM_PLAYBACK)
 			elem.src = phy_addr;
 		else
 			elem.dest = phy_addr;
 
-		err = comp_host_buffer(cd, &elem, ring->size);
+		if (is_trace)
+			err = dma_trace_host_buffer(d, &elem, ring->size);
+		else
+			err = comp_host_buffer(cd, &elem, ring->size);
 		if (err < 0) {
 			trace_ipc_error("ePb");
 			return err;
@@ -235,7 +246,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 	/* Parse host tables */
 	err = parse_page_descriptors(iipc, &pcm_params->params.buffer,
-		pcm_dev->cd);
+		pcm_dev->cd, 0);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
@@ -559,6 +570,98 @@ static int ipc_glb_pm_message(uint32_t header)
 }
 
 /*
+ * Debug IPC Operations.
+ */
+
+static int ipc_dma_trace_init(uint32_t header)
+{
+	struct sof_ipc_reply reply;
+	int err;
+
+	trace_ipc("Dti");
+
+	/* Initialize DMA for Trace*/
+	err = dma_trace_init(&_ipc->dmat);
+	if (err < 0) {
+		trace_ipc_error("eIP");
+		goto error;
+	}
+
+	/* write component values to the outbox */
+	reply.hdr.size = sizeof(reply);
+	reply.hdr.cmd = header;
+	reply.error = 0;
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 0;
+
+error:
+	if (err < 0)
+		trace_ipc_error("eA!");
+	return -EINVAL;
+}
+
+static int ipc_dma_trace_config(uint32_t header)
+{
+	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
+	struct sof_ipc_reply reply;
+	int err;
+
+	trace_ipc("DAl");
+
+	/* use DMA to read in compressed page table ringbuffer from host */
+	err = get_page_descriptors(iipc, &params->buffer);
+	if (err < 0) {
+		trace_ipc_error("eCp");
+		goto error;
+	}
+
+	trace_ipc("DAg");
+
+	/* Parse host tables */
+	err = parse_page_descriptors(iipc, &params->buffer,
+		&_ipc->dmat, 1);
+	if (err < 0) {
+		trace_ipc_error("ePP");
+		goto error;
+	}
+
+	trace_ipc("DAp");
+
+	dma_trace_config_ready(&_ipc->dmat);
+
+	/* write component values to the outbox */
+	reply.hdr.size = sizeof(reply);
+	reply.hdr.cmd = header;
+	reply.error = 0;
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 0;
+
+error:
+	if (err < 0)
+		trace_ipc_error("eA!");
+	return -EINVAL;
+}
+
+static int ipc_glb_debug_message(uint32_t header)
+{
+	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+
+	trace_ipc("Idn");
+
+	switch (cmd) {
+	case iCS(SOF_IPC_TRACE_DMA_INIT):
+		return ipc_dma_trace_init(header);
+	case iCS(SOF_IPC_TRACE_DMA_PARAMS):
+		return ipc_dma_trace_config(header);
+	default:
+		trace_ipc_error("eDc");
+		trace_value(header);
+		return -EINVAL;
+	}
+}
+
+/*
  * Topology IPC Operations.
  */
 
@@ -774,6 +877,8 @@ int ipc_cmd(void)
 		return ipc_glb_stream_message(hdr->cmd);
 	case iGS(SOF_IPC_GLB_DAI_MSG):
 		return ipc_glb_dai_message(hdr->cmd);
+	case iGS(SOF_IPC_GLB_TRACE_MSG):
+		return ipc_glb_debug_message(hdr->cmd);
 	default:
 		trace_ipc_error("eGc");
 		trace_value(type);

@@ -40,6 +40,7 @@
 #include <uapi/ipc.h>
 #include <reef/audio/pipeline.h>
 #include <reef/audio/component.h>
+#include <reef/audio/dma-trace.h>
 
 struct reef;
 struct dai_config;
@@ -98,6 +99,9 @@ struct ipc {
 
 	/* pipelines, components and buffers */
 	struct list_item comp_list;		/* list of component devices */
+
+	/* DMA for Trace*/
+	struct dma_trace_data dmat;
 
 	void *private;
 };
