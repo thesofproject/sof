@@ -64,6 +64,14 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	return NULL;
 }
 
+static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
+{
+	completion_t *comp = (completion_t *)data;
+
+	if (type == DMA_IRQ_TYPE_LLIST)
+		wait_completed(comp);
+}
+
 int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	void *local_ptr, int32_t size)
 {
@@ -101,6 +109,8 @@ int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	local_sg_elem.src = (uint32_t)local_ptr;
 	local_sg_elem.size = HOST_PAGE_SIZE - offset;
 	list_item_prepend(&local_sg_elem.list, &config.elem_list);
+
+	dma_set_cb(dma, chan, DMA_IRQ_TYPE_LLIST, dma_complete, &complete);
 
 	/* transfer max PAGE size at a time to SG buffer */
 	while (size > 0) {
@@ -178,6 +188,8 @@ int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	local_sg_elem.src = host_sg_elem->src + offset;
 	local_sg_elem.size = HOST_PAGE_SIZE - offset;
 	list_item_prepend(&local_sg_elem.list, &config.elem_list);
+
+	dma_set_cb(dma, chan, DMA_IRQ_TYPE_LLIST, dma_complete, &complete);
 
 	/* transfer max PAGE size at a time to SG buffer */
 	while (size > 0) {
