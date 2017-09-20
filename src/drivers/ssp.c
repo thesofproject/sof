@@ -249,7 +249,7 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_DSIZE(data_size);
 
 	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
-	sfifott = (SFIFOTT_TX(8) | SFIFOTT_RX(8));
+	sfifott = (SFIFOTT_TX(4) | SFIFOTT_RX(12));
 
 	trace_ssp("coe");
 	ssp_write(dai, SSCR0, sscr0);
