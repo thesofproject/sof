@@ -351,6 +351,64 @@ out:
 	spin_unlock_irq(&queue->lock, flags);
 }
 
+void work_schedule_default(struct work *w, uint64_t timeout)
+{
+	work_schedule(queue_, w, timeout);
+}
+
+static void reschedule(struct work_queue *queue, struct work *w, uint64_t time)
+{
+	struct work *work;
+	struct list_item *wlist;
+	uint32_t flags;
+
+	spin_lock_irq(&queue->lock, flags);
+
+	/* check to see if we are already scheduled ? */
+	list_for_item(wlist, &queue->work) {
+		work = container_of(wlist, struct work, list);
+
+		/* found it */
+		if (work == w)
+			goto found;
+	}
+
+	/* not found insert work into list */
+	list_item_prepend(&w->list, &queue->work);
+
+found:
+	/* re-calc timer and re-arm */
+	w->timeout = time;
+	queue_reschedule(queue);
+
+	spin_unlock_irq(&queue->lock, flags);
+}
+
+void work_reschedule(struct work_queue *queue, struct work *w, uint64_t timeout)
+{
+	uint64_t time;
+
+	/* convert timeout micro seconds to CPU clock ticks */
+	time = queue->ticks_per_usec * timeout + work_get_timer(queue);
+
+	reschedule(queue, w, time);
+}
+
+void work_reschedule_default(struct work *w, uint64_t timeout)
+{
+	uint64_t time;
+
+	/* convert timeout micro seconds to CPU clock ticks */
+	time = queue_->ticks_per_usec * timeout + work_get_timer(queue_);
+
+	reschedule(queue_, w, time);
+}
+
+void work_reschedule_default_at(struct work *w, uint64_t time)
+{
+	reschedule(queue_, w, time);
+}
+
 void work_cancel(struct work_queue *queue, struct work *w)
 {
 	uint32_t flags;
@@ -366,49 +424,9 @@ void work_cancel(struct work_queue *queue, struct work *w)
 	spin_unlock_irq(&queue->lock, flags);
 }
 
-void work_schedule_default(struct work *w, uint64_t timeout)
-{
-	struct work *work;
-	struct list_item *wlist;
-	uint32_t flags;
-
-	spin_lock_irq(&queue_->lock, flags);
-
-	/* check to see if we are already scheduled ? */
-	list_for_item(wlist, &queue_->work) {
-		work = container_of(wlist, struct work, list);
-
-		/* keep original timeout */
-		if (work == w)
-			goto out;
-	}
-
-	/* convert timeout microsecs to CPU clock ticks */
-	w->timeout = queue_->ticks_per_usec * timeout + work_get_timer(queue_);
-
-	/* insert work into list */
-	list_item_prepend(&w->list, &queue_->work);
-
-	/* re-calc timer and re-arm */
-	queue_reschedule(queue_);
-
-out:
-	spin_unlock_irq(&queue_->lock, flags);
-}
-
 void work_cancel_default(struct work *w)
 {
-	uint32_t flags;
-
-	spin_lock_irq(&queue_->lock, flags);
-
-	/* remove work from list */
-	list_item_del(&w->list);
-
-	/* re-calc timer and re-arm */
-	queue_reschedule(queue_);
-
-	spin_unlock_irq(&queue_->lock, flags);
+	work_cancel(queue_, w);
 }
 
 struct work_queue *work_new_queue(struct work_queue_timesource *ts)
