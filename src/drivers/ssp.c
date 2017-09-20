@@ -76,9 +76,10 @@ static inline int ssp_set_config(struct dai *dai,
 	spin_lock(&ssp->lock);
 
 	/* is playback/capture already running */
-	if (ssp->state[DAI_DIR_PLAYBACK] > SSP_STATE_IDLE ||
-		ssp->state[DAI_DIR_CAPTURE] > SSP_STATE_IDLE) {
+	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
+		ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
 		trace_ssp_error("ec1");
+		ret = -EINVAL;
 		goto out;
 	}
 
@@ -258,8 +259,8 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
 
-	ssp->state[DAI_DIR_PLAYBACK] = SSP_STATE_IDLE;
-	ssp->state[DAI_DIR_CAPTURE] = SSP_STATE_IDLE;
+	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
+	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
 out:
 	spin_unlock(&ssp->lock);
@@ -291,7 +292,7 @@ static void ssp_start(struct dai *dai, int direction)
 
 	/* enable port */
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
-	ssp->state[direction] = SSP_STATE_RUNNING;
+	ssp->state[direction] = COMP_STATE_ACTIVE;
 
 	trace_ssp("sta");
 
@@ -304,68 +305,35 @@ static void ssp_start(struct dai *dai, int direction)
 	spin_unlock(&ssp->lock);
 }
 
-/* stop the SSP port stream DMA and disable SSP port if no users */
+/* stop the SSP for either playback or capture */
 static void ssp_stop(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t sscr1;
 
 	spin_lock(&ssp->lock);
 
-	trace_ssp("sto");
-
-	/* disable DMA */
-	if (direction == DAI_DIR_PLAYBACK) {
-		if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_DRAINING)
-			ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-	} else
+	/* stop Rx if we are not capturing */
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
-
-	/* disable port if no users */
-	sscr1 = ssp_read(dai, SSCR1);
-	if (!(sscr1 & (SSCR1_TSRE | SSCR1_RSRE))) {
-		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		trace_ssp("SDp");
+		trace_ssp("Ss0");
 	}
 
-	ssp->state[direction] = SSP_STATE_IDLE;
+	/* stop Tx if we are not playing */
+	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
+		trace_ssp("Ss1");
+	}
+
+	/* disable SSP port if no users */
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE &&
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
+		trace_ssp("Ss2");
+	}
 
 	spin_unlock(&ssp->lock);
-}
-
-static void ssp_pause(struct dai *dai, int direction)
-{
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
-	spin_lock(&ssp->lock);
-
-	trace_ssp("pau");
-
-	/* disable DMA */
-	if (direction == DAI_DIR_PLAYBACK) {
-		if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_PAUSING)
-			ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-	} else
-		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
-
-	ssp->state[direction] = SSP_STATE_PAUSED;
-
-	spin_unlock(&ssp->lock);
-}
-
-static uint32_t ssp_drain_work(void *data, uint32_t udelay)
-{
-	struct dai *dai = (struct dai *)data;
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
-	trace_ssp("dra");
-
-	if (ssp->state[SOF_IPC_STREAM_CAPTURE] == SSP_STATE_DRAINING)
-		ssp_stop(dai, SOF_IPC_STREAM_CAPTURE);
-	else
-		ssp_pause(dai, SOF_IPC_STREAM_CAPTURE);
-	wait_completed(&ssp->drain_complete);
-	return 0;
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
@@ -376,63 +344,23 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 
 	switch (cmd) {
 	case COMP_CMD_START:
-/* let's only wait until draining finished(timout) before another start */
-#if 0
-		/* cancel any scheduled work */
-		if (ssp->state[direction] == SSP_STATE_DRAINING)
-			work_cancel_default(&ssp->work);
-#endif
-		if (ssp->state[direction] == SSP_STATE_IDLE)
+		if (ssp->state[direction] == COMP_STATE_PREPARE ||
+			ssp->state[direction] == COMP_STATE_PAUSED)
 			ssp_start(dai, direction);
 		break;
 	case COMP_CMD_RELEASE:
-/* let's only wait until pausing finished(timout) before next release */
-#if 0
-		if (ssp->state[direction] == SSP_STATE_PAUSING)
-			work_cancel_default(&ssp->work);
-#endif
-		if (ssp->state[direction] == SSP_STATE_PAUSED)
+		if (ssp->state[direction] == COMP_STATE_PAUSED)
 			ssp_start(dai, direction);
 		break;
-	case COMP_CMD_PAUSE:
-		if (ssp->state[direction] != SSP_STATE_RUNNING) {
-			trace_ssp_error("wsP");
-			return 0;
-		}
-		if (direction == SOF_IPC_STREAM_CAPTURE) {
-			ssp->state[SOF_IPC_STREAM_CAPTURE] =
-				SSP_STATE_PAUSING;
-			/* make sure the maximum 256 bytes are drained */
-			work_schedule_default(&ssp->work, 1333);
-			wait_init(&ssp->drain_complete);
-			ssp->drain_complete.timeout = 1500;
-			wait_for_completion_timeout(&ssp->drain_complete);
-		} else
-			ssp_pause(dai, direction);
-		break;
 	case COMP_CMD_STOP:
-		if (ssp->state[direction] != SSP_STATE_RUNNING &&
-			ssp->state[direction] != SSP_STATE_PAUSED) {
-			trace_ssp_error("wsO");
-			return 0;
-		}
-		if (direction == SOF_IPC_STREAM_PLAYBACK &&
-			ssp->state[direction] == SSP_STATE_RUNNING) {
-			ssp->state[SOF_IPC_STREAM_PLAYBACK] =
-				SSP_STATE_DRAINING;
-			work_schedule_default(&ssp->work, 2000);
-			wait_init(&ssp->drain_complete);
-			ssp->drain_complete.timeout = 3000;
-			wait_for_completion_timeout(&ssp->drain_complete);
-		} else
-			ssp_stop(dai, direction);
+	case COMP_CMD_PAUSE:
+		ssp->state[direction] = COMP_STATE_PAUSED;
+		ssp_stop(dai, direction);
 		break;
 	case COMP_CMD_RESUME:
 		ssp_context_restore(dai);
-		ssp_start(dai, direction);
 		break;
 	case COMP_CMD_SUSPEND:
-		ssp_stop(dai, direction);
 		ssp_context_store(dai);
 		break;
 	default:
@@ -450,11 +378,10 @@ static int ssp_probe(struct dai *dai)
 	ssp = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
-	work_init(&ssp->work, ssp_drain_work, dai, WORK_ASYNC);
 	spinlock_init(&ssp->lock);
 
-	ssp->state[DAI_DIR_PLAYBACK] = SSP_STATE_INIT;
-	ssp->state[DAI_DIR_CAPTURE] = SSP_STATE_INIT;
+	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
+	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
 	return 0;
 }

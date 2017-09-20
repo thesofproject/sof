@@ -527,7 +527,7 @@ static int host_stop(struct comp_dev *dev)
 	/* now reset downstream buffer */
 	comp_buffer_reset(dev);
 
-	dev->state = COMP_STATE_SETUP;
+	dev->state = COMP_STATE_READY;
 	return 0;
 }
 
@@ -552,8 +552,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	// TODO: align cmd macros.
 	switch (cmd) {
 	case COMP_CMD_STOP:
-		if (dev->state == COMP_STATE_RUNNING ||
-			dev->state == COMP_STATE_DRAINING ||
+		if (dev->state == COMP_STATE_ACTIVE ||
 			dev->state == COMP_STATE_PAUSED)
 			ret = host_stop(dev);
 		break;
@@ -631,7 +630,7 @@ static int host_copy(struct comp_dev *dev)
 
 	tracev_host("cpy");
 
-	if (dev->state != COMP_STATE_RUNNING)
+	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
 	local_elem = list_first_item(&hd->config.elem_list,

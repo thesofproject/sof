@@ -56,6 +56,7 @@
 #include <reef/lock.h>
 #include <reef/trace.h>
 #include <reef/wait.h>
+#include <reef/audio/component.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <platform/interrupt.h>
@@ -160,8 +161,6 @@
 struct dma_chan_data {
 	uint32_t status;
 	uint32_t direction;
-	completion_t complete;
-	int32_t drain_count;
 	struct dw_lli2 *lli;
 	struct dw_lli2 *lli_current;
 	uint32_t desc_count;
@@ -169,8 +168,6 @@ struct dma_chan_data {
 	uint32_t cfg_hi;
 	struct dma *dma;
 	int32_t channel;
-
-	struct work work;
 
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);	/* client callback function */
 	void *cb_data;		/* client callback data */
@@ -218,10 +215,10 @@ static int dw_dma_channel_get(struct dma *dma)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		/* use channel if it's free */
-		if (p->chan[i].status != DMA_STATUS_FREE)
+		if (p->chan[i].status != COMP_STATE_READY)
 			continue;
 
-		p->chan[i].status = DMA_STATUS_IDLE;
+		p->chan[i].status = COMP_STATE_PREPARE;
 
 		/* unmask block, transfer and error interrupts for channel */
 		dw_write(dma, DW_MASK_TFR, INT_UNMASK(i));
@@ -244,27 +241,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	trace_dma("Dpt");
-
-	/* channel can only be freed if it's not still draining */
-	if (p->chan[channel].status == DMA_STATUS_DRAINING) {
-		p->chan[channel].status = DMA_STATUS_CLOSING;
-		return;
-	}
-
-#ifdef DW_CFG_CH_DRAIN /* have drain feature */
-	if (p->chan[channel].status == DMA_STATUS_PAUSED) {
-
-		dw_update_bits(dma, DW_CFG_LOW(channel),
-			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN,
-			DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN);
-
-		/* free channel later */
-		p->chan[channel].status = DMA_STATUS_CLOSING;
-		work_schedule_default(&p->chan[channel].work, 100);
-		return;
-	}
-#endif
+	tracev_dma("Dpt");
 
 	/* mask block, transfer and error interrupts for channel */
 	dw_write(dma, DW_MASK_TFR, INT_MASK(channel));
@@ -278,7 +255,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	}
 
 	/* set new state */
-	p->chan[channel].status = DMA_STATUS_FREE;
+	p->chan[channel].status = COMP_STATE_READY;
 	p->chan[channel].cb = NULL;
 	p->chan[channel].desc_count = 0;
 }
@@ -304,7 +281,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	tracev_dma("DEn");
 
 	/* is channel idle, disabled and ready ? */
-	if (p->chan[channel].status != DMA_STATUS_IDLE ||
+	if (p->chan[channel].status != COMP_STATE_PREPARE ||
 		(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
 		ret = -EBUSY;
 		trace_dma_error("eDi");
@@ -364,7 +341,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
 
 	/* enable the channel */
-	p->chan[channel].status = DMA_STATUS_RUNNING;
+	p->chan[channel].status = COMP_STATE_ACTIVE;
 	p->chan[channel].lli_current = p->chan[channel].lli;
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 
@@ -382,12 +359,12 @@ static int dw_dma_release(struct dma *dma, int channel)
 
 	trace_dma("Dpr");
 
-	if (p->chan[channel].status == DMA_STATUS_PAUSED) {
+	if (p->chan[channel].status == COMP_STATE_PAUSED) {
 		dw_dma_chan_reload_lli(dma, channel);
 	}
 
 	/* resume and reload DMA */
-	p->chan[channel].status = DMA_STATUS_RUNNING;
+	p->chan[channel].status = COMP_STATE_ACTIVE;
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
@@ -402,136 +379,37 @@ static int dw_dma_pause(struct dma *dma, int channel)
 
 	trace_dma("Dpa");
 
-	if (p->chan[channel].status != DMA_STATUS_RUNNING)
+	if (p->chan[channel].status != COMP_STATE_ACTIVE)
 		goto out;
 
 	/* pause the channel */
-	p->chan[channel].status = DMA_STATUS_PAUSING;
+	p->chan[channel].status = COMP_STATE_PAUSED;
 
 out:
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
 }
 
-/*
- * Wait for DMA drain completion using delayed work. This allows the stream
- * IPC to return immediately without blocking the host. This work is called
- * by the general system timer.
- */
-static uint32_t dw_dma_fifo_work(void *data, uint32_t udelay)
+static int dw_dma_stop(struct dma *dma, int channel)
 {
-	struct dma_chan_data *cd = (struct dma_chan_data *)data;
-	struct dma *dma = cd->dma;
-	int schedule = 0;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	int  ret = 0;
 	uint32_t flags;
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dma("DFw");
-
-	/* only check channels that are still draining */
-	if (cd->status != DMA_STATUS_DRAINING &&
-		cd->status != DMA_STATUS_CLOSING &&
-		cd->status != DMA_STATUS_STOPPING)
-		goto out;
-
-	/* is channel finished */
-	if (cd->drain_count-- <= 0) {
-		trace_dma("wDw");
-
-		/* do we need to free it ? */
-		if (cd->status == DMA_STATUS_CLOSING)
-			dw_dma_channel_put_unlocked(dma, cd->channel);
-
-		/* clear suspend */
-		dw_update_bits(dma, DW_CFG_LOW(cd->channel),
-#ifdef DW_CFG_CH_DRAIN /* have drain feature */
-				DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN, 0);
-#else
-				DW_CFG_CH_SUSPEND, 0);
-#endif
-		cd->status = DMA_STATUS_IDLE;
-		goto out;
-	}
-
-	/* is draining complete ? */
-	if (dw_read(dma, DW_CFG_LOW(cd->channel)) & DW_CFG_CH_FIFO_EMPTY)  {
-
-		/* fifo is empty so now check if channel is disabled */
-		if (!(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << cd->channel))) {
-
-			/* clear suspend */
-			dw_update_bits(dma, DW_CFG_LOW(cd->channel),
-#ifdef DW_CFG_CH_DRAIN /* have drain feature */
-				DW_CFG_CH_SUSPEND | DW_CFG_CH_DRAIN, 0);
-#else
-				DW_CFG_CH_SUSPEND, 0);
-#endif
-			/* do we need to free it ? */
-			if (cd->status == DMA_STATUS_CLOSING)
-				dw_dma_channel_put_unlocked(dma, cd->channel);
-
-			cd->status = DMA_STATUS_IDLE;
-			wait_completed(&cd->complete);
-			goto out;
-		}
-
-		/* disable the channel */
-		dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(cd->channel));
-	}
-
-	/* need to reschedule and check again */
-	schedule = 100;
-
-out:
-	spin_unlock_irq(&dma->lock, flags);
-
-	/* still waiting on more FIFOs to drain ? */
-	return schedule;
-}
-
-static int dw_dma_stop(struct dma *dma, int channel, int drain)
-{
-	struct dma_pdata *p = dma_get_drvdata(dma);
-	int schedule = 0, ret = 0;
-	uint32_t flags, bits;
-
-	spin_lock_irq(&dma->lock, flags);
-
-	trace_dma("DDi");
+	tracev_dma("DDi");
 
 	/* has channel already disabled ? */
 	if (!(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
-		p->chan[channel].status = DMA_STATUS_IDLE;
+		p->chan[channel].status = COMP_STATE_PREPARE;
 		goto out;
 	}
 
-	/* suspend and drain */
-	bits = DW_CFG_CH_SUSPEND;
-	p->chan[channel].drain_count = 3;
-	p->chan[channel].status = DMA_STATUS_STOPPING;
-
-#ifdef DW_CFG_CH_DRAIN /* have drain feature, then may drain */
-	if (drain) {
-		bits |= DW_CFG_CH_DRAIN;
-		p->chan[channel].drain_count = 14;
-		p->chan[channel].status = DMA_STATUS_DRAINING;
-	}
-#endif
-
-	dw_update_bits(dma, DW_CFG_LOW(channel), bits, bits);
-	schedule = 1;
+	p->chan[channel].status = COMP_STATE_PAUSED;
 
 out:
 	spin_unlock_irq(&dma->lock, flags);
-
-	/* buffer and FIFO drain done by general purpose timer */
-	if (schedule) {
-		wait_clear(&p->chan[channel].complete);
-		work_schedule_default(&p->chan[channel].work, 100);
-		ret = wait_for_completion_timeout(&p->chan[channel].complete);
-	}
-
 	return ret;
 }
 
@@ -739,7 +617,7 @@ static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel)
 
 	/* only need to reload if this is a block transfer */
 	if (lli == 0 || (lli && lli->llp == 0)) {
-		p->chan[channel].status = DMA_STATUS_IDLE;
+		p->chan[channel].status = COMP_STATE_PREPARE;
 		return;
 	}
 
@@ -833,9 +711,8 @@ static void dw_dma_irq_handler(void *data)
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
-		/* skip if channel is not running or pausing*/
-		if (p->chan[i].status != DMA_STATUS_RUNNING &&
-			p->chan[i].status != DMA_STATUS_PAUSING)
+		/* skip if channel is not running */
+		if (p->chan[i].status != COMP_STATE_ACTIVE)
 			continue;
 
 		mask = 0x1 << i;
@@ -857,14 +734,13 @@ static void dw_dma_irq_handler(void *data)
 			 * otherwise, reload lli
 			 */
 			if (next.size == DMA_RELOAD_END) {
-				p->chan[i].status = DMA_STATUS_IDLE;
+				p->chan[i].status = COMP_STATE_PREPARE;
 				continue;
 			}
 			else if (next.size != DMA_RELOAD_LLI)
 				dw_dma_chan_reload_next(dma, i, &next);
 			/* reload lli, but let's check if we are pausing first */
-			else if (p->chan[i].status == DMA_STATUS_PAUSING) {
-				p->chan[i].status = DMA_STATUS_PAUSED;
+			else if (p->chan[i].status == COMP_STATE_PAUSED) {
 				continue;
 			} else
 				dw_dma_chan_reload_lli(dma, i);
@@ -952,12 +828,9 @@ static int dw_dma_probe(struct dma *dma)
 
 	/* init work */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
-		work_init(&dw_pdata->chan[i].work, dw_dma_fifo_work,
-			&dw_pdata->chan[i], WORK_ASYNC);
 		dw_pdata->chan[i].dma = dma;
 		dw_pdata->chan[i].channel = i;
-		dw_pdata->chan[i].complete.timeout = PLATFORM_DMA_TIMEOUT;
-		wait_init(&dw_pdata->chan[i].complete);
+		dw_pdata->chan[i].status = COMP_STATE_READY;
 	}
 
 	/* register our IRQ handler */

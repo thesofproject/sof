@@ -45,16 +45,6 @@
 #define DMA_DIR_DEV_TO_MEM	4
 #define DMA_DIR_DEV_TO_DEV	5
 
-/* DMA status flags */
-#define DMA_STATUS_FREE		0
-#define DMA_STATUS_IDLE		1
-#define DMA_STATUS_RUNNING	2
-#define DMA_STATUS_DRAINING	4
-#define DMA_STATUS_CLOSING	5
-#define DMA_STATUS_PAUSED	6
-#define DMA_STATUS_PAUSING	7
-#define DMA_STATUS_STOPPING	8
-
 /* DMA IRQ types */
 #define DMA_IRQ_TYPE_BLOCK	(1 << 0)
 #define DMA_IRQ_TYPE_LLIST	(1 << 1)
@@ -101,7 +91,7 @@ struct dma_ops {
 	void (*channel_put)(struct dma *dma, int channel);
 
 	int (*start)(struct dma *dma, int channel);
-	int (*stop)(struct dma *dma, int channel, int drain);
+	int (*stop)(struct dma *dma, int channel);
 	int (*pause)(struct dma *dma, int channel);
 	int (*release)(struct dma *dma, int channel);
 	int (*status)(struct dma *dma, int channel,
@@ -180,9 +170,9 @@ static inline int dma_start(struct dma *dma, int channel)
 	return dma->ops->start(dma, channel);
 }
 
-static inline int dma_stop(struct dma *dma, int channel, int drain)
+static inline int dma_stop(struct dma *dma, int channel)
 {
-	return dma->ops->stop(dma, channel, drain);
+	return dma->ops->stop(dma, channel);
 }
 
 static inline int dma_pause(struct dma *dma, int channel)

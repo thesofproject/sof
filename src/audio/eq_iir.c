@@ -398,27 +398,26 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_START:
 		trace_eq_iir("EFs");
-		dev->state = COMP_STATE_RUNNING;
+		dev->state = COMP_STATE_ACTIVE;
 		break;
 	case COMP_CMD_STOP:
 		trace_eq_iir("ESp");
-		if (dev->state == COMP_STATE_RUNNING ||
-			dev->state == COMP_STATE_DRAINING ||
+		if (dev->state == COMP_STATE_ACTIVE ||
 			dev->state == COMP_STATE_PAUSED) {
 			comp_buffer_reset(dev);
-			dev->state = COMP_STATE_SETUP;
+			dev->state = COMP_STATE_READY;
 		}
 		break;
 	case COMP_CMD_PAUSE:
 		trace_eq_iir("EPe");
 		/* only support pausing for running */
-		if (dev->state == COMP_STATE_RUNNING)
+		if (dev->state == COMP_STATE_ACTIVE)
 			dev->state = COMP_STATE_PAUSED;
 
 		break;
 	case COMP_CMD_RELEASE:
 		trace_eq_iir("ERl");
-		dev->state = COMP_STATE_RUNNING;
+		dev->state = COMP_STATE_ACTIVE;
 		break;
 	default:
 		trace_eq_iir("EDf");

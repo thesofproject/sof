@@ -149,14 +149,6 @@ extern const struct dai_ops ssp_ops;
 #define SFIFOTT_TX(x)		(x - 1)
 #define SFIFOTT_RX(x)		((x - 1) << 16)
 
-/* SSP port status */
-#define SSP_STATE_INIT			0
-#define SSP_STATE_RUNNING		1
-#define SSP_STATE_IDLE			2
-#define SSP_STATE_DRAINING		3
-#define SSP_STATE_PAUSING		4
-#define SSP_STATE_PAUSED		5
-
 /* tracing */
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
@@ -167,7 +159,6 @@ struct ssp_pdata {
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t psp;
-	struct work work;
 	spinlock_t lock;
 	uint32_t state[2];		/* SSP_STATE_ for each direction */
 	completion_t drain_complete;

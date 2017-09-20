@@ -237,7 +237,7 @@ int pipeline_free(struct pipeline *p)
 	trace_pipe("fre");
 
 	/* make sure we are not in use */
-	if (p->sched_comp->state > COMP_STATE_SETUP) {
+	if (p->sched_comp->state > COMP_STATE_READY) {
 		trace_pipe_error("epb");
 		return -EBUSY;
 	}
@@ -325,7 +325,7 @@ static int component_op_downstream(struct op_data *op_data,
 	case COMP_OPS_PARAMS:
 
 		/* dont do any params downstream if current is running */
-		if (current->state == COMP_STATE_RUNNING)
+		if (current->state == COMP_STATE_ACTIVE)
 			return 0;
 
 		/* send params to the component */
@@ -401,7 +401,7 @@ static int component_op_upstream(struct op_data *op_data,
 	case COMP_OPS_PARAMS:
 
 		/* dont do any params upstream if current is running */
-		if (current->state == COMP_STATE_RUNNING)
+		if (current->state == COMP_STATE_ACTIVE)
 			return 0;
 
 		/* send params to the component */
@@ -688,7 +688,7 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* dont go upstream if this component is not connected */
-		if (!buffer->connected || buffer->source->state != COMP_STATE_RUNNING)
+		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* dont go upstream if this source is from another pipeline */
@@ -746,7 +746,7 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* dont go downstream if this component is not connected */
-		if (!buffer->connected || buffer->sink->state != COMP_STATE_RUNNING)
+		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* dont go downstream if this sink is from another pipeline */
@@ -794,7 +794,7 @@ downstream:
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* dont go downstream if this component is not connected */
-		if (!buffer->connected || buffer->sink->state != COMP_STATE_RUNNING)
+		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
@@ -837,7 +837,7 @@ upstream:
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* dont go downstream if this component is not connected */
-		if (!buffer->connected || buffer->source->state != COMP_STATE_RUNNING)
+		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
@@ -942,7 +942,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 		return;
 
 	/* only send when we are running */
-	if (dev->state != COMP_STATE_RUNNING)
+	if (dev->state != COMP_STATE_ACTIVE)
 		return;
 
 	memset(&posn, 0, sizeof(posn));

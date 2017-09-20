@@ -93,7 +93,6 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	/* init component */
 	memcpy(&cdev->comp, comp, sizeof(*comp));
 	cdev->drv = drv;
-	cdev->state = COMP_STATE_INIT;
 	spinlock_init(&cdev->lock);
 	list_init(&cdev->bsource_list);
 	list_init(&cdev->bsink_list);
@@ -124,14 +123,13 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_CMD_START:
 	case COMP_CMD_RELEASE:
-		dev->state = COMP_STATE_RUNNING;
+		dev->state = COMP_STATE_ACTIVE;
 		break;
 	case COMP_CMD_STOP:
-		if (dev->state == COMP_STATE_RUNNING ||
-		dev->state == COMP_STATE_DRAINING ||
+		if (dev->state == COMP_STATE_ACTIVE ||
 		dev->state == COMP_STATE_PAUSED) {
 			comp_buffer_reset(dev);
-			dev->state = COMP_STATE_SETUP;
+			dev->state = COMP_STATE_READY;
 		} else {
 			trace_comp_error("CEs");
 			ret = -EINVAL;
@@ -139,7 +137,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_CMD_PAUSE:
 		/* only support pausing for running */
-		if (dev->state == COMP_STATE_RUNNING)
+		if (dev->state == COMP_STATE_ACTIVE)
 			dev->state = COMP_STATE_PAUSED;
 		else {
 			trace_comp_error("CEp");

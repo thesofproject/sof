@@ -82,6 +82,17 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	tracev_dai("irq");
 
+	/* is stream stopped or paused ? */
+	if (dev->state == COMP_STATE_PAUSED) {
+
+		/* stop the DAI */
+		dai_trigger(dd->dai, COMP_CMD_STOP, dev->params.direction);
+
+		/* tell DMA not to reload */
+		next->size = DMA_RELOAD_END;
+		return;
+	}
+
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
@@ -178,7 +189,7 @@ static struct comp_dev *dai_new_ssp(struct sof_ipc_comp *comp)
 
 	/* set up callback */
 	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
-
+	dev->state = COMP_STATE_READY;
 	return dev;
 
 error:
@@ -340,7 +351,7 @@ static int dai_params(struct comp_dev *dev)
 	trace_dai("par");
 
 	/* can set params on only init state */
-	if (dev->state != COMP_STATE_INIT) {
+	if (dev->state != COMP_STATE_READY) {
 		trace_dai_error("wdp");
 		return -EINVAL;
 	}
@@ -417,13 +428,13 @@ static int dai_reset(struct comp_dev *dev)
 		rfree(elem);
 	}
 
-	dev->state = COMP_STATE_INIT;
 	dd->dai_pos_blks = 0;
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
 	dd->dai_pos = NULL;
 	dd->last_bytes = 0;
 	dev->position = 0;
+	dev->state = COMP_STATE_READY;
 
 	return 0;
 }
@@ -439,60 +450,24 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	tracev_value(cmd);
 
 	switch (cmd) {
-
 	case COMP_CMD_PAUSE:
-		if (dev->state == COMP_STATE_RUNNING) {
-			dma_pause(dd->dma, dd->chan);
-			dai_trigger(dd->dai, cmd, dev->params.direction);
-			dev->state = COMP_STATE_PAUSED;
-		}
-		break;
 	case COMP_CMD_STOP:
-		switch (dev->state) {
-		case COMP_STATE_RUNNING:
-		case COMP_STATE_PAUSED:
-			dma_stop(dd->dma, dd->chan,
-				dev->state == COMP_STATE_RUNNING ? 1 : 0);
-			/* need stop ssp */
-			dai_trigger(dd->dai, cmd, dev->params.direction);
-			/* go through */
-		case COMP_STATE_PREPARE:
-			dd->last_bytes = 0;
-			dev->state = COMP_STATE_SETUP;
-			break;
-		}
+		dev->state = COMP_STATE_PAUSED;
 		break;
 	case COMP_CMD_RELEASE:
-		/* only release from paused*/
-		if (dev->state == COMP_STATE_PAUSED) {
-			dai_trigger(dd->dai, cmd, dev->params.direction);
-			dma_release(dd->dma, dd->chan);
-
-			/* update starting wallclock */
-			platform_dai_wallclock(dev, &dd->wallclock);
-			dev->state = COMP_STATE_RUNNING;
-		}
-		break;
 	case COMP_CMD_START:
-		/* only start from prepared*/
-		if (dev->state == COMP_STATE_PREPARE) {
-			ret = dma_start(dd->dma, dd->chan);
-			if (ret < 0)
-				return ret;
-			dai_trigger(dd->dai, cmd, dev->params.direction);
 
-			/* update starting wallclock */
-			platform_dai_wallclock(dev, &dd->wallclock);
-			dev->state = COMP_STATE_RUNNING;
-		}
+		ret = dma_start(dd->dma, dd->chan);
+		if (ret < 0)
+			return ret;
+		dai_trigger(dd->dai, cmd, dev->params.direction);
+
+		/* update starting wallclock */
+		platform_dai_wallclock(dev, &dd->wallclock);
+		dev->state = COMP_STATE_ACTIVE;
 		break;
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
-		break;
-	case COMP_CMD_IPC_MMAP_PPOS:
-		dd->dai_pos = data;
-		if (dd->dai_pos)
-			*dd->dai_pos = 0;
 		break;
 	default:
 		break;

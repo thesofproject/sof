@@ -270,7 +270,7 @@ static int mixer_reset(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
 		/* only mix the sources with the same state with mixer*/
-		if (source->source->state > COMP_STATE_SETUP)
+		if (source->source->state > COMP_STATE_READY)
 			return 1; /* should not reset the downstream components */
 	}
 
@@ -295,7 +295,7 @@ static int mixer_prepare(struct comp_dev *dev)
 
 	trace_mixer("pre");
 
-	if (dev->state != COMP_STATE_RUNNING) {
+	if (dev->state != COMP_STATE_ACTIVE) {
 		md->mix_func = mix_n;
 		dev->state = COMP_STATE_PREPARE;
 		//dev->preload = PLAT_INT_PERIODS;
@@ -307,7 +307,7 @@ static int mixer_prepare(struct comp_dev *dev)
 
 		/* only prepare downstream if we have no active sources */
 		if (source->source->state == COMP_STATE_PAUSED ||
-				source->source->state == COMP_STATE_RUNNING) {
+				source->source->state == COMP_STATE_ACTIVE) {
 			downstream = 1;
 		}
 	}

@@ -44,20 +44,29 @@
 #include <reef/audio/pipeline.h>
 #include <uapi/ipc.h>
 
-/* audio component states
- * the states may transform as below:
- *        new()         params()          start()
- * none	-----> init ------> setup -----> running
- * none	<----- init <------ setup <----- running
- *        free()          reset()             stop()
+/*
+ * Audio Component States
+ *
+ * States may transform as below:-
+ *
+ * 1) i.e. Initialisation to playback and pause/release
+ * init --> setup --> preprare --> active <-> paused --+
+ *                       ^                             |
+ *                       +-----------------------------+
+ *
+ * 2) i.e. Suspend
+ *
+ * setup --> suspend --> setup OR
+ * prepare --> suspend -> prepare OR
+ * paused --> suspend --> paused
  */
+
 #define COMP_STATE_INIT		0	/* component being initialised */
-#define COMP_STATE_SETUP       1       /* component inactive, but ready */
-#define COMP_STATE_SUSPEND     2       /* component suspended */
-#define COMP_STATE_DRAINING	3	/* component draining */
-#define COMP_STATE_PREPARE	4	/* component prepared */
-#define COMP_STATE_PAUSED	5	/* component paused */
-#define COMP_STATE_RUNNING	6	/* component active */
+#define COMP_STATE_READY	1       /* component inactive, but ready */
+#define COMP_STATE_SUSPEND	2       /* component suspended */
+#define COMP_STATE_PREPARE	3	/* component prepared */
+#define COMP_STATE_PAUSED	4	/* component paused */
+#define COMP_STATE_ACTIVE	5	/* component active */
 
 /*
  * standard component stream commands
