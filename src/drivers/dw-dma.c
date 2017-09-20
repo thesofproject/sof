@@ -709,6 +709,11 @@ static void dw_dma_irq_handler(void *data)
 	pmask = status_block | status_tfr | status_err;
 	platform_interrupt_clear(dma_irq(dma), pmask);
 
+	/* confirm IRQ cleared */
+	if (dw_read(dma, DW_STATUS_BLOCK)) {
+		trace_dma_error("eii");
+	}
+
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		/* skip if channel is not running */
