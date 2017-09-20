@@ -370,18 +370,13 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-/* The IRQ handler allows the SSP port to drain the playback FIFO to make sure
- * every sample has been played */
+/* clear IRQ sources atm */
 static void ssp_irq_handler(void *data)
 {
 	struct dai *dai = data;
-	int i;
 
+	trace_ssp("irq");
 	trace_value(ssp_read(dai, SSSR));
-
-	/* empty Rx FIFO */
-	for (i = 0; i < 16; i++)
-		ssp_read(dai, SSDR);
 
 	/* clear IRQ */
 	ssp_write(dai, SSSR, ssp_read(dai, SSSR));
