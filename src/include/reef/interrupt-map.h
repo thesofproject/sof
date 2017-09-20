@@ -31,6 +31,8 @@
 #ifndef __INCLUDE_INTERRUPT_MAP__
 #define __INCLUDE_INTERRUPT_MAP__
 
+#include <config.h>
+
 #define REEF_IRQ_BIT_SHIFT	24
 #define REEF_IRQ_LEVEL_SHIFT	16
 #define REEF_IRQ_CPU_SHIFT	8
@@ -43,6 +45,7 @@
 #define REEF_IRQ(_bit, _level, _cpu, _number) \
 	((_bit << REEF_IRQ_BIT_SHIFT) \
 	| (_level << REEF_IRQ_LEVEL_SHIFT)\
+	| (_cpu << REEF_IRQ_CPU_SHIFT)\
 	| (_number << REEF_IRQ_NUM_SHIFT))
 
 #ifdef CONFIG_IRQ_MAP
