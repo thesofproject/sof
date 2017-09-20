@@ -287,6 +287,13 @@ static int ipc_stream_pcm_free(uint32_t header)
 		return -ENODEV;
 	}
 
+	/* sanity check comp */
+	if (pcm_dev->cd->pipeline == NULL) {
+		trace_ipc_error("eF1");
+		trace_value(free_req->comp_id);
+		return -EINVAL;
+	}
+
 	/* reset the pipeline */
 	return pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 }
