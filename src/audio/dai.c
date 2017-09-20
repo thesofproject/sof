@@ -433,6 +433,7 @@ static int dai_reset(struct comp_dev *dev)
 		*dd->dai_pos = 0;
 	dd->dai_pos = NULL;
 	dd->last_bytes = 0;
+	dd->wallclock = 0;
 	dev->position = 0;
 	dev->state = COMP_STATE_READY;
 
