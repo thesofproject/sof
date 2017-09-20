@@ -51,7 +51,7 @@ uint32_t clock_set_freq(int clock, unsigned int hz);
 
 uint32_t clock_get_freq(int clock);
 
-uint32_t clock_us_to_ticks(int clock, uint32_t us);
+uint64_t clock_us_to_ticks(int clock, uint64_t us);
 
 uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current);
 

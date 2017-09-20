@@ -225,7 +225,7 @@ uint32_t clock_get_freq(int clock)
 	return clk_pdata->clk[clock].freq;
 }
 
-uint32_t clock_us_to_ticks(int clock, uint32_t us)
+uint64_t clock_us_to_ticks(int clock, uint64_t us)
 {
 	return clk_pdata->clk[clock].ticks_per_usec * us;
 }
