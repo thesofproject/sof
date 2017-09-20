@@ -78,7 +78,7 @@ extern const struct dai_ops ssp_ops;
 #define SSCR0_EDSS	(1 << 20)
 #define SSCR0_NCS	(1 << 21)
 #define SSCR0_RIM	(1 << 22)
-#define SSCR0_TUM	(1 << 23)
+#define SSCR0_TIM	(1 << 23)
 #define SSCR0_FRDC(x)	((x - 1) << 24)
 #define SSCR0_ACS	(1 << 30)
 #define SSCR0_MOD	(1 << 31)
@@ -153,6 +153,10 @@ extern const struct dai_ops ssp_ops;
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
 #define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
+
+
+#define ssp_irq(ssp) \
+	ssp->plat_data.irq
 
 /* SSP private data */
 struct ssp_pdata {
