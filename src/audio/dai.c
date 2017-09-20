@@ -138,7 +138,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	return;
 }
 
-static struct comp_dev *dai_new_ssp(struct sof_ipc_comp *comp)
+static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_dai *dai;
@@ -525,7 +525,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 static struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.ops	= {
-		.new		= dai_new_ssp,
+		.new		= dai_new,
 		.free		= dai_free,
 		.params		= dai_params,
 		.cmd		= dai_cmd,
