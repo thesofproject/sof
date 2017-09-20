@@ -396,6 +396,7 @@ static int ipc_stream_trigger(uint32_t header)
 			cmd, NULL);
 	if (ret < 0) {
 		trace_ipc_error("eRc");
+		trace_value(ipc_cmd);
 	}
 
 	return ret;
