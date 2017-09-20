@@ -172,7 +172,7 @@ void platform_host_timestamp(struct comp_dev *host,
 	/* get host postion */
 	err = comp_position(host, posn);
 	if (err == 0)
-		posn->flags |= SOF_TIME_HOST_VALID;
+		posn->flags |= SOF_TIME_HOST_VALID | SOF_TIME_HOST_64;
 }
 
 /* get timestamp for DAI stream DMA position */
@@ -187,15 +187,15 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = shim_read(SHIM_EXT_TIMER_STAT) - posn->wallclock;
-	posn->flags |= SOF_TIME_WALL_VALID;
+	posn->wallclock = platform_timer_get(platform_timer) - posn->wallclock;
+	posn->flags |= SOF_TIME_WALL_VALID | SOF_TIME_WALL_64;
 }
 
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on BYT */
-	*wallclock = shim_read(SHIM_EXT_TIMER_STAT);
+	*wallclock = platform_timer_get(platform_timer);
 }
 
 static int platform_timer_register(struct timer *timer,
