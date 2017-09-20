@@ -86,9 +86,9 @@ static inline int ssp_set_config(struct dai *dai,
 	trace_ssp("cos");
 
 	/* reset SSP settings */
-	sscr0 = 0;
-	sscr1 = 0;
-	sscr2 = 0xc1;
+	sscr0 = SSCR0_RIM | SSCR0_TIM;
+	sscr1 = SSCR1_PINTE | SSCR1_RWOT;
+	sscr2 = 0x1c1;
 	sscr3 = 0x2c018;
 	sspsp = 0;
 
@@ -104,7 +104,7 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
-		sscr1 |= SSCR1_SCFR | SSCR1_RWOT;
+		sscr1 |= SSCR1_SCFR;
 		sscr3 |= SSCR3_I2S_FRM_MST | SSCR3_I2S_CLK_MST;
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
