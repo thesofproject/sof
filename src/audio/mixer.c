@@ -99,7 +99,7 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, md);
-
+	dev->state = COMP_STATE_READY;
 	return dev;
 }
 
@@ -274,7 +274,7 @@ static int mixer_reset(struct comp_dev *dev)
 			return 1; /* should not reset the downstream components */
 	}
 
-	dev->state = COMP_STATE_INIT;
+	dev->state = COMP_STATE_READY;
 	return 0;
 }
 
@@ -311,6 +311,8 @@ static int mixer_prepare(struct comp_dev *dev)
 			downstream = 1;
 		}
 	}
+
+	dev->state = COMP_STATE_PREPARE;
 
 	/* prepare downstream */
 	return downstream;

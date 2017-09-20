@@ -332,6 +332,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		cd->tvolume[i] = VOL_MAX;
 	}
 
+	dev->state = COMP_STATE_READY;
 	return dev;
 }
 
@@ -649,7 +650,7 @@ static int volume_reset(struct comp_dev *dev)
 {
 	trace_volume("res");
 
-	dev->state = COMP_STATE_INIT;
+	dev->state = COMP_STATE_READY;
 	return 0;
 }
 

@@ -122,13 +122,23 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_CMD_START:
+		if (dev->state == COMP_STATE_PREPARE) {
+			dev->state = COMP_STATE_ACTIVE;
+		} else {
+			trace_comp_error("CES");
+			ret = -EINVAL;
+		}
+		break;
 	case COMP_CMD_RELEASE:
-		dev->state = COMP_STATE_ACTIVE;
+		if (dev->state == COMP_STATE_PAUSED) {
+			dev->state = COMP_STATE_ACTIVE;
+		} else {
+			trace_comp_error("CEr");
+			ret = -EINVAL;
+		}
 		break;
 	case COMP_CMD_STOP:
-		if (dev->state == COMP_STATE_ACTIVE ||
-		dev->state == COMP_STATE_PAUSED) {
-			comp_buffer_reset(dev);
+		if (dev->state == COMP_STATE_ACTIVE) {
 			dev->state = COMP_STATE_READY;
 		} else {
 			trace_comp_error("CEs");

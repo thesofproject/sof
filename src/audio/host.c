@@ -527,7 +527,7 @@ static int host_stop(struct comp_dev *dev)
 	/* now reset downstream buffer */
 	comp_buffer_reset(dev);
 
-	dev->state = COMP_STATE_READY;
+	dev->state = COMP_STATE_PAUSED;
 	return 0;
 }
 
@@ -549,18 +549,16 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	trace_host("cmd");
 
-	// TODO: align cmd macros.
 	switch (cmd) {
+	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
-		if (dev->state == COMP_STATE_ACTIVE ||
-			dev->state == COMP_STATE_PAUSED)
+		if (dev->state == COMP_STATE_ACTIVE)
 			ret = host_stop(dev);
 		break;
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
 		break;
 	case COMP_CMD_START:
-	case COMP_CMD_PAUSE:
 	case COMP_CMD_RELEASE:
 	default:
 		ret = comp_set_state(dev, cmd);
@@ -616,7 +614,7 @@ static int host_reset(struct comp_dev *dev)
 	hd->host_pos = NULL;
 	hd->source = NULL;
 	hd->sink = NULL;
-	dev->state = COMP_STATE_INIT;
+	dev->state = COMP_STATE_READY;
 
 	return 0;
 }
