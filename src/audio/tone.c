@@ -395,6 +395,7 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	/* Reset tone generator and set channels volumes to default */
 	tonegen_reset(&cd->sg);
 
+	dev->state = COMP_STATE_READY;
 	return dev;
 }
 
@@ -472,17 +473,16 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_tone("tri");
+	trace_tone("cmd");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
 
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
 		return tone_ctrl_cmd(dev, cdata);
-	case COMP_CMD_START:
-	case COMP_CMD_STOP:
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_RELEASE:
 	default:
-		ret = comp_set_state(dev, cmd);
 		break;
 	}
 
@@ -550,7 +550,7 @@ static int tone_reset(struct comp_dev *dev)
 	/* Initialize with the defaults */
 	tonegen_reset(&cd->sg);
 
-	dev->state = COMP_STATE_INIT;
+	dev->state = COMP_STATE_READY;
 
 	return 0;
 }

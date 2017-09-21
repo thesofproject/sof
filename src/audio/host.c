@@ -278,7 +278,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	/* init posn data. TODO: other fields */
 	hd->posn.comp_id = comp->id;
-
+	dev->state = COMP_STATE_READY;
 	return dev;
 
 error:
@@ -549,19 +549,16 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	trace_host("cmd");
 
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
 	switch (cmd) {
 	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
-		if (dev->state == COMP_STATE_ACTIVE)
-			ret = host_stop(dev);
+		ret = host_stop(dev);
 		break;
-	case COMP_CMD_SUSPEND:
-	case COMP_CMD_RESUME:
-		break;
-	case COMP_CMD_START:
-	case COMP_CMD_RELEASE:
 	default:
-		ret = comp_set_state(dev, cmd);
 		break;
 	}
 

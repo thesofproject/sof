@@ -444,20 +444,18 @@ static int dai_reset(struct comp_dev *dev)
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-//	struct sof_ipc_ctrl_values *ctrl = data;
 	int ret;
 
 	trace_dai("cmd");
 	tracev_value(cmd);
 
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
 	switch (cmd) {
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_STOP:
-		dev->state = COMP_STATE_PAUSED;
-		break;
 	case COMP_CMD_RELEASE:
 	case COMP_CMD_START:
-
 		ret = dma_start(dd->dma, dd->chan);
 		if (ret < 0)
 			return ret;
@@ -465,16 +463,12 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 
 		/* update starting wallclock */
 		platform_dai_wallclock(dev, &dd->wallclock);
-		dev->state = COMP_STATE_ACTIVE;
-		break;
-	case COMP_CMD_SUSPEND:
-	case COMP_CMD_RESUME:
 		break;
 	default:
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */

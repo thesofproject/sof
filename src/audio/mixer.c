@@ -151,55 +151,60 @@ static int mixer_params(struct comp_dev *dev)
 	return 0;
 }
 
-static int mixer_status_change(struct comp_dev *dev/* , uint32_t target_state */)
+static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
 {
-	int finish = 0;
 	struct comp_buffer *source;
 	struct list_item * blist;
-	uint32_t stream_target = COMP_STATE_INIT;
+	int count = 0;
 
-	/* calculate the highest status between input streams */
-	list_for_item(blist, &dev->bsource_list) {
+	/* count source with state == status */
+	list_for_item(blist, &mixer->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
-		if (source->source->state > stream_target)
-			stream_target = source->source->state;
+		if (source->source->state == status)
+			count++;
 	}
 
-	if (dev->state == stream_target)
-		finish = 1;
-	else
-		dev->state = stream_target;
+	return count;
+}
 
-	return finish;
+static inline int mixer_sink_status(struct comp_dev *mixer)
+{
+	struct comp_buffer *sink;
+
+	sink = list_first_item(&mixer->bsink_list, struct comp_buffer,
+		source_list);
+	return sink->sink->state;
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 {
-	int finish = 0;
+	int ret;
 
 	trace_mixer("cmd");
 
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
 	switch(cmd) {
 	case COMP_CMD_START:
-		trace_mixer("MSa");
-	case COMP_CMD_PAUSE:
 	case COMP_CMD_RELEASE:
-	case COMP_CMD_DRAIN:
-	case COMP_CMD_SUSPEND:
-	case COMP_CMD_RESUME:
-		finish = mixer_status_change(dev);
+		if (mixer_sink_status(dev) == COMP_STATE_ACTIVE)
+			return 1; /* no need to go downstream */
 		break;
+	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
-		finish = mixer_status_change(dev);
-		if (finish == 0)
-			comp_buffer_reset(dev);
+		if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) > 0) {
+			dev->state = COMP_STATE_ACTIVE;
+			return 1; /* no need to go downstream */
+		}
 		break;
 	default:
 		break;
 	}
 
-	return finish;
+	return 0; /* send cmd downstream */
 }
 
 /*

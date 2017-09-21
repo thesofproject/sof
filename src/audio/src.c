@@ -292,6 +292,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		src_polyphase_reset(&cd->src[i]);
 
+	dev->state = COMP_STATE_READY;
 	return dev;
 }
 
@@ -489,17 +490,16 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data)
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_src("SCm");
+	trace_src("cmd");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
 
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
 		return src_ctrl_cmd(dev, cdata);
-	case COMP_CMD_START:
-	case COMP_CMD_STOP:
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_RELEASE:
 	default:
-		ret = comp_set_state(dev, cmd);
 		break;
 	}
 
@@ -564,7 +564,7 @@ static int src_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		src_polyphase_reset(&cd->src[i]);
 
-	dev->state = COMP_STATE_INIT;
+	dev->state = COMP_STATE_READY;
 	return 0;
 }
 

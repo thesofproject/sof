@@ -466,25 +466,22 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
-	int ret = 0;
+	int ret;
 
 	trace_volume("cmd");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
 
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
 		return volume_ctrl_set_cmd(dev, cdata);
 	case COMP_CMD_GET_VALUE:
 		return volume_ctrl_get_cmd(dev, cdata);
-	case COMP_CMD_START:
-	case COMP_CMD_STOP:
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_RELEASE:
 	default:
-		ret = comp_set_state(dev, cmd);
-		break;
+		return ret;
 	}
-
-	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */

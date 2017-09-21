@@ -394,9 +394,6 @@ static int ipc_stream_trigger(uint32_t header)
 	case iCS(SOF_IPC_STREAM_TRIG_RELEASE):
 		cmd = COMP_CMD_RELEASE;
 		break;
-	case iCS(SOF_IPC_STREAM_TRIG_DRAIN):
-		cmd = COMP_CMD_DRAIN;
-		break;
 	/* XRUN is special case- TODO */
 	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
 		return 0;

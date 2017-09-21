@@ -389,16 +389,18 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	trace_src("cmd");
 
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
 		ret = fir_cmd(dev, cdata);
 		break;
-	case COMP_CMD_START:
 	case COMP_CMD_STOP:
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_RELEASE:
+		comp_buffer_reset(dev);
+		break;
 	default:
-		ret = comp_set_state(dev, cmd);
 		break;
 	}
 

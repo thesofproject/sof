@@ -76,7 +76,6 @@
 #define COMP_CMD_START		1	/* start component stream */
 #define COMP_CMD_PAUSE		2	/* immediately pause the component stream */
 #define COMP_CMD_RELEASE	3	/* release paused component stream */
-#define COMP_CMD_DRAIN		4	/* drain component buffers */
 #define COMP_CMD_SUSPEND	5	/* suspend component */
 #define COMP_CMD_RESUME		6	/* resume component */
 
