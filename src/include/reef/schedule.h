@@ -37,6 +37,7 @@
 #include <reef/reef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
+#include <reef/work.h>
 
 struct reef;
 
@@ -47,53 +48,59 @@ struct reef;
 #define TASK_STATE_PREEMPTED	3
 #define TASK_STATE_COMPLETED	4
 #define TASK_STATE_FREE		5
+#define TASK_STATE_CANCEL	6
 
 /* task priorities - values same as Linux processes, gives scope for future.*/
 #define TASK_PRI_LOW	19
 #define TASK_PRI_MED	0
 #define TASK_PRI_HIGH	-20
 
+
+/* task descriptor */
 struct task {
 	uint16_t core;			/* core id to run on */
 	int16_t priority;		/* scheduling priority TASK_PRI_ */
-	uint32_t deadline;		/* scheduling deadline */
-	uint32_t max_rtime;		/* max time taken to run */
+	uint64_t start;			/* scheduling earliest start time */
+	uint64_t deadline;		/* scheduling deadline */
 	uint32_t state;			/* TASK_STATE_ */
 	struct list_item list;		/* list in scheduler */
+
+	/* task function and private data */
 	void *data;
-	void *sdata;
 	void (*func)(void *arg);
+
+	/* runtime duration in scheduling clock base */
+	uint64_t max_rtime;		/* max time taken to run */
 };
 
 void schedule(void);
 
-void schedule_task(struct task *task, uint32_t deadline, uint16_t priority,
-		void *data);
-
-void schedule_task_core(struct task *task, uint32_t deadline,
-	uint16_t priority, uint16_t core, void *data);
+void schedule_task(struct task *task, uint64_t start, uint64_t deadline);
 
 void schedule_task_complete(struct task *task);
 
-static inline void task_init(struct task *task, void (*func)(void *),
+static inline void schedule_task_init(struct task *task, void (*func)(void *),
 	void *data)
 {
 	task->core = 0;
-	task->priority = TASK_PRI_MED;
 	task->state = TASK_STATE_INIT;
 	task->func = func;
 	task->data = data;
-	task->sdata = NULL;
 }
 
-static inline void task_free(struct task *task)
+static inline void schedule_task_free(struct task *task)
 {
 	task->state = TASK_STATE_FREE;
 	task->func = NULL;
 	task->data = NULL;
-	task->sdata = NULL;
 }
 
+static inline void schedule_task_config(struct task *task, uint16_t priority,
+	uint16_t core)
+{
+	task->priority = priority;
+	task->core = core;
+}
 
 int scheduler_init(struct reef *reef);
 

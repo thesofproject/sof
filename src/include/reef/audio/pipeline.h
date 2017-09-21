@@ -112,8 +112,8 @@ int init_static_pipeline(struct ipc *ipc);
 int init_pipeline(void);
 
 /* schedule a copy operation for this pipeline */
-void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev);
-void pipeline_schedule_cancel(struct pipeline *p, struct comp_dev *dev);
+void pipeline_schedule_copy(struct pipeline *p, uint64_t start);
+void pipeline_schedule_cancel(struct pipeline *p);
 
 /* get time pipeline timestamps from host to dai */
 void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host_dev,

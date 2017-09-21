@@ -184,23 +184,29 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 }
 
 /* update pipeline state based on cmd */
-static void pipeline_cmd_update(struct pipeline *p, int cmd)
+static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
+	int cmd)
 {
+	if (p->sched_comp != comp)
+		return;
+
 	switch (cmd) {
 	case COMP_CMD_PAUSE:
-		break;
 	case COMP_CMD_STOP:
-		break;
-	case COMP_CMD_RELEASE:
-		p->xrun_bytes = 0;
+		pipeline_schedule_cancel(p);
 		break;
 	case COMP_CMD_START:
+	case COMP_CMD_RELEASE:
 		p->xrun_bytes = 0;
+
+		/* schedule pipeline */
+		if (p->ipc_pipe.timer)
+			pipeline_schedule_copy(p, 0);
+
 		break;
 	case COMP_CMD_SUSPEND:
 		break;
 	case COMP_CMD_RESUME:
-		p->xrun_bytes = 0;
 		break;
 	}
 }
@@ -222,7 +228,9 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	/* init pipeline */
 	p->sched_comp = cd;
-	task_init(&p->pipe_task, pipeline_task, p);
+	schedule_task_init(&p->pipe_task, pipeline_task, p);
+	schedule_task_config(&p->pipe_task, pipe_desc->priority,
+		pipe_desc->core);
 	list_init(&p->comp_list);
 	list_init(&p->buffer_list);
 	spinlock_init(&p->lock);
@@ -243,7 +251,7 @@ int pipeline_free(struct pipeline *p)
 	}
 
 	/* remove from any scheduling */
-	task_free(&p->pipe_task);
+	schedule_task_free(&p->pipe_task);
 
 	/* disconnect components */
 	disconnect_downstream(p, p->sched_comp, p->sched_comp);
@@ -337,7 +345,8 @@ static int component_op_downstream(struct op_data *op_data,
 		/* send command to the component and update pipeline state  */
 		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
 		if (err == 0)
-			pipeline_cmd_update(current->pipeline, op_data->cmd);
+			pipeline_cmd_update(current->pipeline, current,
+				op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the component */
@@ -413,7 +422,8 @@ static int component_op_upstream(struct op_data *op_data,
 		/* send command to the component and update pipeline state  */
 		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
 		if (err == 0)
-			pipeline_cmd_update(current->pipeline, op_data->cmd);
+			pipeline_cmd_update(current->pipeline, current,
+				op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the component */
@@ -957,15 +967,13 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 }
 
 /* notify pipeline that this component requires buffers emptied/filled */
-void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
+void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
-	schedule_task(&p->pipe_task, p->ipc_pipe.deadline,
-		p->ipc_pipe.priority, dev);
-
-	schedule();
+	if (p->sched_comp->state == COMP_STATE_ACTIVE)
+		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline);
 }
 
-void pipeline_schedule_cancel(struct pipeline *p, struct comp_dev *dev)
+void pipeline_schedule_cancel(struct pipeline *p)
 {
 	schedule_task_complete(&p->pipe_task);
 }
@@ -973,8 +981,7 @@ void pipeline_schedule_cancel(struct pipeline *p, struct comp_dev *dev)
 static void pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
-	struct task *task = &p->pipe_task;
-	struct comp_dev *dev = task->sdata;
+	struct comp_dev *dev = p->sched_comp;
 
 	tracev_pipe("PWs");
 
@@ -983,6 +990,11 @@ static void pipeline_task(void *arg)
 	pipeline_copy_to_downstream(dev, dev);
 
 	tracev_pipe("PWe");
+
+	/* now reschedule the task */
+	/* TODO: add in scheduling cost and any timer drift */
+	if (p->ipc_pipe.timer)
+		pipeline_schedule_copy(p, p->ipc_pipe.deadline);
 }
 
 /* init pipeline */
