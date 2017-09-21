@@ -83,7 +83,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	tracev_dai("irq");
 
 	/* is stream stopped or paused ? */
-	if (dev->state == COMP_STATE_PAUSED) {
+	if (dev->state != COMP_STATE_ACTIVE) {
 
 		/* stop the DAI */
 		dai_trigger(dd->dai, COMP_CMD_STOP, dev->params.direction);
