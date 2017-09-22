@@ -628,13 +628,6 @@ void src_print_info(struct polyphase_src *src)
 	printf("SRC1 input blk %d\n", src->stage1->blk_in);
 	printf("SRC1 output blk %d\n", src->stage1->blk_out);
 	printf("SRC1 halfband %d\n", src->stage1->halfband);
-	printf("SRC1 coef[0] %d\n", src->stage1->coefs[0]);
-	if (n1 > 3) {
-		printf("SRC1 coef[1] %d\n", src->stage1->coefs[1]);
-		printf("SRC1 coef[2] %d\n", src->stage1->coefs[2]);
-		printf("SRC1 coef[%d] %d\n",
-			n1 - 1, src->stage1->coefs[n1 - 1]);
-	}
 	printf("SRC1 FIR delay %d\n", src->state1.fir_delay_size);
 	printf("SRC1 out delay %d\n", src->state1.out_delay_size);
 
@@ -647,13 +640,6 @@ void src_print_info(struct polyphase_src *src)
 	printf("SRC2 input blk %d\n", src->stage2->blk_in);
 	printf("SRC2 output blk %d\n", src->stage2->blk_out);
 	printf("SRC2 halfband %d\n", src->stage2->halfband);
-	printf("SRC2 coef[0] %d\n", src->stage2->coefs[0]);
-	if (n2 > 3) {
-		printf("SRC2 coef[1] %d\n", src->stage2->coefs[1]);
-		printf("SRC2 coef[2] %d\n", src->stage2->coefs[2]);
-		printf("SRC2 coef[%d] %d\n",
-			n1 - 1, src->stage2->coefs[n2 - 1]);
-	}
 	printf("SRC2 FIR delay %d\n", src->state2.fir_delay_size);
 	printf("SRC2 out delay %d\n", src->state2.out_delay_size);
 }

@@ -62,11 +62,7 @@ struct src_stage {
 	const int blk_out;
 	const int halfband;
 	const int shift;
-#if SRC_SHORT == 1
-	const int16_t *coefs;
-#else
-	const int32_t *coefs;
-#endif
+	const void *coefs; /* Can be int16_t or int32_t depending on config */
 };
 
 struct src_state {
