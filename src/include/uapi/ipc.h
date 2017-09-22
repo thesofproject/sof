@@ -32,6 +32,8 @@
 #ifndef __INCLUDE_UAPI_IPC_H__
 #define __INCLUDE_UAPI_IPC_H__
 
+#include <uapi/abi.h>
+
 /*
  * IPC messages have a prefixed 32 bit identifier made up as follows :-
  *
@@ -492,7 +494,7 @@ struct sof_ipc_ctrl_data {
 		/* component values used by routing controls like mux, mixer */
 		struct sof_ipc_ctrl_value_comp compv[0];
 		/* data can be used by binary controls */
-		char data[0];
+		struct sof_abi_hdr data[0];
 	};
 } __attribute__((packed));
 
