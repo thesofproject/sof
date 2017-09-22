@@ -118,8 +118,6 @@ static void eq_fir_s32_default(struct comp_dev *dev,
 		}
 
 	}
-	source->r_ptr = x - nch + 1; /* After previous loop the x and y */
-	sink->w_ptr = y - nch + 1; /* point to one frame -1. */
 }
 
 static void eq_fir_free_parameters(struct eq_fir_configuration **config)
