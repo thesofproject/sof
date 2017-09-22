@@ -216,6 +216,7 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
 		sscr1 |= SSCR1_TRAIL;
 		sspsp |= SSPSP_SFRMWDTH(1) | SSPSP_SFRMDLY(2);
+		break;
 	case SOF_DAI_FMT_DSP_B:
 		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
 		sscr1 |= SSCR1_TRAIL;
