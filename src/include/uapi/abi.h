@@ -45,6 +45,7 @@ struct sof_abi_hdr {
 	uint32_t size;		/* size in bytes of data excluding this struct */
 	uint32_t abi;		/* SOF ABI version */
 	uint32_t comp_abi;	/* component specific ABI version */
+	char data[0];
 }  __attribute__((packed));
 
 #endif
