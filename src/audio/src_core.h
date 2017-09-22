@@ -33,6 +33,7 @@
 #define SRC_CORE_H
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 struct src_alloc {
 	int fir_s1;

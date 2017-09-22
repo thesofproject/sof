@@ -322,7 +322,7 @@ static int src_params(struct comp_dev *dev)
 	size_t delay_lines_size;
 	uint32_t source_rate, sink_rate;
 	int32_t *buffer_start;
-	int n = 0, i, err, frames_is_for_source, q;
+	int n = 0, i, err, frames_is_for_source, nch, q;
 
 	trace_src("par");
 
@@ -392,7 +392,8 @@ static int src_params(struct comp_dev *dev)
 	buffer_start = cd->delay_lines + need.scratch;
 
 	/* Initize SRC for actual sample rate */
-	for (i = 0; i < params->channels; i++) {
+	nch = MIN(params->channels, PLATFORM_MAX_CHANNELS);
+	for (i = 0; i < nch; i++) {
 		n = src_polyphase_init(&cd->src[i], source_rate, sink_rate,
 			&need, buffer_start);
 		buffer_start += need.single_src;
