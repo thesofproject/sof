@@ -35,9 +35,9 @@
 #include <config.h>
 
 #if CONFIG_BAYTRAIL
-#define SRC_SHORT 0
-#include <reef/audio/coefficients/src/src_small_int24_define.h>
-#include <reef/audio/coefficients/src/src_small_int24_table.h>
+#define SRC_SHORT 1
+#include <reef/audio/coefficients/src/src_tiny_int16_define.h>
+#include <reef/audio/coefficients/src/src_tiny_int16_table.h>
 #else
 #define SHORT_SHORT 0
 #include <reef/audio/coefficients/src/src_std_int24_define.h>
