@@ -51,9 +51,9 @@
 #include <stdio.h>
 #endif
 
-#define trace_src(__e) trace_event(TRACE_CLASS_SRC, __e)
-#define tracev_src(__e) tracev_event(TRACE_CLASS_SRC, __e)
-#define trace_src_error(__e) trace_error(TRACE_CLASS_SRC, __e)
+#define trace_eq(__e) trace_event(TRACE_CLASS_EQ_FIR, __e)
+#define tracev_eq(__e) tracev_event(TRACE_CLASS_EQ_FIR, __e)
+#define trace_eq_error(__e) trace_error(TRACE_CLASS_EQ_FIR, __e)
 
 /* src component private data */
 struct comp_data {
@@ -243,7 +243,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 	int i;
 
-	trace_src("new");
+	trace_eq("new");
 
 	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
 		COMP_SIZE(struct sof_ipc_comp_eq_fir));
@@ -272,7 +272,7 @@ static void eq_fir_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_src("fre");
+	trace_eq("fre");
 
 	eq_fir_free_delaylines(cd->fir);
 	eq_fir_free_parameters(&cd->config);
@@ -289,7 +289,7 @@ static int eq_fir_params(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	int err;
 
-	trace_src("par");
+	trace_eq("par");
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames * dev->frame_bytes;
@@ -298,7 +298,7 @@ static int eq_fir_params(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	err = buffer_set_size(sink, cd->period_bytes * config->periods_sink);
 	if (err < 0) {
-		trace_src_error("eSz");
+		trace_eq_error("eSz");
 		return err;
 	}
 
@@ -322,12 +322,12 @@ static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_EQ_SWITCH:
-		trace_src("EFx");
+		trace_eq("EFx");
 		fir_update = (struct eq_fir_update *)cdata->data;
 		ret = eq_fir_switch_response(cd->fir, cd->config,
 			fir_update, PLATFORM_MAX_CHANNELS);
 		if (ret < 0) {
-			trace_src_error("ec1");
+			trace_eq_error("ec1");
 			return ret;
 		}
 
@@ -338,7 +338,8 @@ static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 
 		break;
 	case SOF_CTRL_CMD_EQ_CONFIG:
-		trace_src("EFc");
+		trace_eq("EFc");
+
 		/* Check and free old config */
 		eq_fir_free_parameters(&cd->config);
 
@@ -361,19 +362,19 @@ static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 			tracev_value(cd->config->assign_response[i]);
 		break;
 	case SOF_CTRL_CMD_MUTE:
-		trace_src("EFm");
+		trace_eq("EFm");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			fir_mute(&cd->fir[i]);
 
 		break;
 	case SOF_CTRL_CMD_UNMUTE:
-		trace_src("EFu");
+		trace_eq("EFu");
 		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 			fir_unmute(&cd->fir[i]);
 
 		break;
 	default:
-		trace_src_error("ec1");
+		trace_eq_error("ec1");
 		ret = -EINVAL;
 		break;
 	}
@@ -387,7 +388,7 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
 
-	trace_src("cmd");
+	trace_eq("cmd");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -445,7 +446,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_src("EPp");
+	trace_eq("EPp");
 
 	cd->eq_fir_func = eq_fir_s32_default;
 
@@ -472,7 +473,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 	int i;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_src("ERe");
+	trace_eq("ERe");
 
 	eq_fir_free_delaylines(cd->fir);
 	eq_fir_free_parameters(&cd->config);
