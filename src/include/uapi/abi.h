@@ -32,6 +32,7 @@
 #define __INCLUDE_UAPI_ABI_H__
 
 #define SOF_ABI_VERSION		1
+#define SOF_ABI_MAGIC		0x00464F53	/* "SOF\0" */
 
 /*
  * Header for all non IPC ABI data. Identifies data type, size and ABI.
@@ -39,7 +40,7 @@
  */
 
 struct sof_abi_hdr {
-	char magic[4];		/* 'S', 'O', 'F', '\0' */
+	uint32_t magic;		/* 'S', 'O', 'F', '\0' */
 	uint32_t type;		/* component specific type */
 	uint32_t size;		/* size in bytes of data excluding this struct */
 	uint32_t abi;		/* SOF ABI version */
