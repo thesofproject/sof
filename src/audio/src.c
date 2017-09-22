@@ -417,7 +417,9 @@ static int src_params(struct comp_dev *dev)
 		break;
 	}
 
-	/* Need to compute this */
+	/* Calculate period size based on config. First make sure that
+	 * frame_bytes is set.
+	 */
 	dev->frame_bytes =
 		dev->params.sample_container_bytes * dev->params.channels;
 	cd->period_bytes = dev->frames * dev->frame_bytes;
