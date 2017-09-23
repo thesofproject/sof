@@ -59,6 +59,7 @@ struct pipeline {
 
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
+	uint32_t status;		/* pipeline status */
 
 	/* lists */
 	struct list_item comp_list;		/* list of components */
@@ -86,7 +87,7 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
 	struct comp_buffer *sink_buffer);
 int pipeline_buffer_connect(struct pipeline *p,
 	struct comp_buffer *source_buffer, struct comp_dev *sink_comp);
-void pipeline_complete(struct pipeline *p);
+int pipeline_complete(struct pipeline *p);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,

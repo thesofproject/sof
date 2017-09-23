@@ -148,7 +148,7 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id);
  */
 int ipc_pipeline_new(struct ipc *ipc, struct sof_ipc_pipe_new *pipeline);
 int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id);
-void ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
+int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
 
 /*
  * Pipeline component and buffer connections.

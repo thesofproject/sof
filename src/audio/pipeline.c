@@ -228,6 +228,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	/* init pipeline */
 	p->sched_comp = cd;
+	p->status = COMP_STATE_INIT;
 	schedule_task_init(&p->pipe_task, pipeline_task, p);
 	schedule_task_config(&p->pipe_task, pipe_desc->priority,
 		pipe_desc->core);
@@ -263,16 +264,24 @@ int pipeline_free(struct pipeline *p)
 	return 0;
 }
 
-void pipeline_complete(struct pipeline *p)
+int pipeline_complete(struct pipeline *p)
 {
 	/* now walk downstream and upstream form "start" component and
 	  complete component task and pipeline init */
 
 	trace_pipe("com");
-	tracev_value(p->ipc_pipe.pipeline_id);
+	trace_value(p->ipc_pipe.pipeline_id);
+
+	/* cheeck whether pipeline is already complete */
+	if (p->status != COMP_STATE_INIT) {
+		trace_pipe_error("epc");
+		return -EINVAL;
+	}
 
 	connect_downstream(p, p->sched_comp, p->sched_comp);
 	connect_upstream(p, p->sched_comp, p->sched_comp);
+	p->status = COMP_STATE_READY;
+	return 0;
 }
 
 /* connect component -> buffer */

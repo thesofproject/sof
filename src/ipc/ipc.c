@@ -293,17 +293,17 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	return 0;
 }
 
-void ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
+int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp(ipc, comp_id);
 	if (ipc_pipe == NULL)
-		return;
+		return -EINVAL;
 
 	/* free buffer and remove from list */
-	pipeline_complete(ipc_pipe->pipeline);
+	return pipeline_complete(ipc_pipe->pipeline);
 }
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)

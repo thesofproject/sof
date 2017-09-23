@@ -787,9 +787,7 @@ static int ipc_glb_tplg_pipe_complete(uint32_t header)
 
 	trace_ipc("Ipc");
 
-	ipc_pipeline_complete(_ipc, ipc_pipeline->comp_id);
-
-	return 0;
+	return ipc_pipeline_complete(_ipc, ipc_pipeline->comp_id);
 }
 
 static int ipc_glb_tplg_comp_connect(uint32_t header)
