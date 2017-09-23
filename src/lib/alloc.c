@@ -481,7 +481,6 @@ void *rballoc(int zone, int bflags, size_t bytes)
 	/* will request fit in single block */
 	for (i = 0; i < array_size; i++) {
 
-		trace_value(block_map[i].block_size);
 		/* is block big enough */
 		if (block_map[i].block_size < bytes)
 			continue;
