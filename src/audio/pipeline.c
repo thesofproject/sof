@@ -851,7 +851,7 @@ upstream:
 			continue;
 
 		/* continue downstream */
-		res = timestamp_upstream(start, buffer->sink, posn);
+		res = timestamp_upstream(start, buffer->source, posn);
 		if (res == 1)
 			break;
 	}
