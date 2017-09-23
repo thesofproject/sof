@@ -616,7 +616,10 @@ static int volume_prepare(struct comp_dev *dev)
 		cd->scale_vol = func_map[i].func;
 		goto found;
 	}
-
+	trace_volume_error("vp3");
+	trace_value(cd->source_format);
+	trace_value(cd->sink_format);
+	trace_value(dev->params.channels);
 	return -EINVAL;
 
 found:
