@@ -509,12 +509,8 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data)
 	if (ret < 0)
 		return ret;
 
-	switch (cmd) {
-	case COMP_CMD_SET_VALUE:
-		return src_ctrl_cmd(dev, cdata);
-	default:
-		break;
-	}
+	if (cmd == COMP_CMD_SET_VALUE)
+		ret = src_ctrl_cmd(dev, cdata);
 
 	return ret;
 }
