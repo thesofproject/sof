@@ -266,8 +266,12 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level, int bflags,
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr = &map->block[map->first_free];
 	void *ptr;
-	unsigned int start, current, count = bytes / map->block_size;
-	unsigned int i, remaining = map->count - count, end;
+	unsigned int start;
+	unsigned int current;
+	unsigned int count = bytes / map->block_size;
+	unsigned int i;
+	unsigned int remaining = map->count - count;
+	unsigned int end;
 
 	if (bytes % map->block_size)
 		count++;
@@ -337,7 +341,9 @@ static void free_block(struct mm_heap *heap, void *ptr)
 	struct mm_heap * mm_heap;
 	struct block_map * block_map;
 	struct block_hdr *hdr;
-	int i, block, array_size;
+	int i;
+	int block;
+	int array_size;
 
 	/* sanity check */
 	if (ptr == NULL)
@@ -465,7 +471,8 @@ void *rballoc(int zone, int bflags, size_t bytes)
 {
 	struct block_map * block_map = buf_heap_map;
 	struct mm_heap * mm_heap = &memmap.buffer;
-	int i, array_size = ARRAY_SIZE(buf_heap_map);
+	int i;
+	int array_size = ARRAY_SIZE(buf_heap_map);
 	uint32_t flags;
 	void *ptr = NULL;
 
@@ -569,7 +576,8 @@ uint32_t mm_pm_context_size(void)
 int mm_pm_context_save(struct dma_sg_config *sg)
 {
 	uint32_t used;
-	int32_t offset = 0, ret;
+	int32_t offset = 0;
+	int32_t ret;
 
 	/* first make sure SG buffer has enough space on host for DSP context */
 	used = mm_pm_context_size();
@@ -605,7 +613,8 @@ int mm_pm_context_save(struct dma_sg_config *sg)
  */
 int mm_pm_context_restore(struct dma_sg_config *sg)
 {
-	int32_t offset = 0, ret;
+	int32_t offset = 0;
+	int32_t ret;
 
 	/* copy memory maps from SG */
 	ret = dma_copy_from_host(sg, offset,
@@ -633,7 +642,8 @@ int mm_pm_context_restore(struct dma_sg_config *sg)
 /* initialise map */
 void init_heap(struct reef *reef)
 {
-	struct block_map *next_map, *current_map;
+	struct block_map *next_map;
+	struct block_map *current_map;
 	int i;
 
 	spinlock_init(&memmap.lock);

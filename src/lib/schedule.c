@@ -94,9 +94,13 @@ static inline void edf_reschedule(struct task *task, uint64_t current)
 static inline struct task *edf_get_next(uint64_t current,
 	struct task *ignore)
 {
-	struct task *task, *next_task = NULL;
-	struct list_item *clist, *tlist;
-	uint64_t next_delta = UINT64_MAX, delta, deadline;
+	struct task *task;
+	struct task *next_task = NULL;
+	struct list_item *clist;
+	struct list_item *tlist;
+	uint64_t next_delta = UINT64_MAX;
+	uint64_t delta;
+	uint64_t deadline;
 	int reschedule = 0;
  
 	/* any tasks in the scheduler ? */
@@ -157,7 +161,8 @@ static uint32_t sch_work(void *data, uint32_t delay)
  */
 struct task *schedule_edf(void)
 {
-	struct task *task, *next_plus1_task = NULL;
+	struct task *task;
+	struct task *next_plus1_task = NULL;
 	uint64_t current;
 	uint32_t flags;
 

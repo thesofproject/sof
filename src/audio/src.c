@@ -131,7 +131,8 @@ static void src_2s_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink,
 	uint32_t source_frames, uint32_t sink_frames)
 {
-	int i, j;
+	int i;
+	int j;
 	struct polyphase_src *s;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int blk_in = cd->src[0].blk_in;
@@ -141,7 +142,8 @@ static void src_2s_s32_default(struct comp_dev *dev,
 	int nch = dev->params.channels;
 	int32_t *dest = (int32_t *) sink->w_ptr;
 	int32_t *src = (int32_t *) source->r_ptr;
-	struct src_stage_prm s1, s2;
+	struct src_stage_prm s1;
+	struct src_stage_prm s2;
 	int n_read = 0;
 	int n_written = 0;
 
@@ -203,7 +205,8 @@ static void src_1s_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink,
 	uint32_t source_frames, uint32_t sink_frames)
 {
-	int i, j;
+	int i;
+	int j;
 	struct polyphase_src *s;
 
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -317,12 +320,19 @@ static int src_params(struct comp_dev *dev)
 	struct sof_ipc_comp_src *src = COMP_GET_IPC(dev, sof_ipc_comp_src);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink, *source;
+	struct comp_buffer *sink;
+	struct comp_buffer *source;
 	struct src_alloc need;
 	size_t delay_lines_size;
-	uint32_t source_rate, sink_rate;
+	uint32_t source_rate;
+	uint32_t sink_rate;
 	int32_t *buffer_start;
-	int n = 0, i, err, frames_is_for_source, nch, q;
+	int n = 0;
+	int i;
+	int err;
+	int frames_is_for_source;
+	int nch;
+	int q;
 
 	trace_src("par");
 
@@ -513,8 +523,12 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data)
 static int src_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source, *sink;
-	int need_source, need_sink, blk_in, blk_out;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
+	int need_source;
+	int need_sink;
+	int blk_in;
+	int blk_out;
 
 	trace_comp("SRC");
 

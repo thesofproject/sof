@@ -53,7 +53,8 @@ static struct intel_ipc_pmc_data *_pmc;
 
 static void do_cmd(void)
 {
-	uint32_t ipcsc, status = 0;
+	uint32_t ipcsc;
+	uint32_t status = 0;
 	
 	trace_ipc("SCm");
 	trace_value(_pmc->msg_l);
@@ -123,7 +124,8 @@ static void irq_handler(void *arg)
 
 int ipc_pmc_send_msg(uint32_t message)
 {
-	uint32_t ipclpesch, irq_mask;
+	uint32_t ipclpesch;
+	uint32_t irq_mask;
 
 	trace_ipc("SMs");
 

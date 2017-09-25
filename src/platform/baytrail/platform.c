@@ -234,11 +234,21 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 int platform_init(struct reef *reef)
 {
 #if defined CONFIG_BAYTRAIL
-	struct dma *dmac0, *dmac1;
-	struct dai *ssp0, *ssp1, *ssp2;
+	struct dma *dmac0;
+	struct dma *dmac1;
+	struct dai *ssp0;
+	struct dai *ssp1;
+	struct dai *ssp2;
 #elif defined CONFIG_CHERRYTRAIL
-	struct dma *dmac0, *dmac1, *dmac2;
-	struct dai *ssp0, *ssp1, *ssp2, *ssp3, *ssp4, *ssp5;
+	struct dma *dmac0;
+	struct dma *dmac1;
+	struct dma *dmac2;
+	struct dai *ssp0;
+	struct dai *ssp1;
+	struct dai *ssp2;
+	struct dai *ssp3;
+	struct dai *ssp4;
+	struct dai *ssp5;
 #else
 #error Undefined platform
 #endif

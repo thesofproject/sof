@@ -132,7 +132,10 @@ int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 uint64_t arch_timer_get_system(struct timer *timer)
 {
 	uint64_t time;
-	uint32_t flags, low, high, ccompare;
+	uint32_t flags;
+	uint32_t low;
+	uint32_t high;
+	uint32_t ccompare;
 
 	switch (timer->id) {
 	case TIMER0:
@@ -171,7 +174,9 @@ uint64_t arch_timer_get_system(struct timer *timer)
 
 int arch_timer_set(struct timer *timer, uint64_t ticks)
 {
-	uint32_t time = 1, hitimeout = ticks >> 32, flags;
+	uint32_t time = 1;
+	uint32_t hitimeout = ticks >> 32;
+	uint32_t flags;
 
 	/* value of 1 represents rollover */
 	if ((ticks & 0xffffffff) == 0x1)

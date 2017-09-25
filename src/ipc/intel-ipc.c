@@ -99,7 +99,8 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 	struct dma_sg_config config;
 	struct dma_sg_elem elem;
 	struct dma *dma;
-	int chan, ret = 0;
+	int chan;
+	int ret = 0;
 
 	/* get DMA channel from DMAC0 */
 	chan = dma_channel_get(iipc->dmac0);
@@ -161,8 +162,10 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	struct sof_ipc_comp_host *host = NULL;
 	struct dma_trace_data *d = NULL;
 	struct dma_sg_elem elem;
-	int i, err;
-	uint32_t idx, phy_addr;
+	int i;
+	int err;
+	uint32_t idx;
+	uint32_t phy_addr;
 
 	elem.size = HOST_PAGE_SIZE;
 	if (is_trace)

@@ -482,7 +482,9 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 {
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(current);
 	struct list_item *clist;
-	int i, total = 0, count = 0;
+	int i;
+	int total = 0;
+	int count = 0;
 
 	tracev_pipe("PR-");
 	tracev_value(current->comp.id);
@@ -524,7 +526,8 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct op_data op_data;
-	int ret, i;
+	int ret;
+	int i;
 
 	trace_pipe("pre");
 

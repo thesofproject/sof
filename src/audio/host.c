@@ -112,9 +112,12 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem, *source_elem, *sink_elem;
+	struct dma_sg_elem *local_elem;
+	struct dma_sg_elem *source_elem;
+	struct dma_sg_elem *sink_elem;
 	struct comp_buffer *dma_buffer;
-	uint32_t next_size, need_copy = 0;
+	uint32_t next_size;
+	uint32_t need_copy = 0;
 	uint32_t period_bytes = hd->period_bytes;
 
 	local_elem = list_first_item(&hd->config.elem_list,
@@ -308,7 +311,8 @@ static int create_local_elems(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *e;
-	struct list_item *elist, *tlist;
+	struct list_item *elist;
+	struct list_item *tlist;
 	int i;
 
 	for (i = 0; i < hd->period_count; i++) {
@@ -344,7 +348,9 @@ unwind:
 static int host_elements_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *source_elem, *sink_elem, *local_elem;
+	struct dma_sg_elem *source_elem;
+	struct dma_sg_elem *sink_elem;
+	struct dma_sg_elem *local_elem;
 
 	/* setup elem to point to first source elem */
 	source_elem = list_first_item(&hd->source->elem_list,
@@ -588,7 +594,8 @@ static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *e;
-	struct list_item *elist, *tlist;
+	struct list_item *elist;
+	struct list_item *tlist;
 
 	trace_host("res");
 

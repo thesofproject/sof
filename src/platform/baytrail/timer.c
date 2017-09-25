@@ -96,7 +96,9 @@ void platform_timer_stop(struct timer *timer)
 
 int platform_timer_set(struct timer *timer, uint64_t ticks)
 {
-	uint32_t time = 1, hitimeout = ticks >> 32, flags;
+	uint32_t time = 1;
+	uint32_t hitimeout = ticks >> 32;
+	uint32_t flags;
 
 	/* a tick value of 0 will not generate an IRQ */
 	/* value of 1 represents rollover */
@@ -139,7 +141,9 @@ void platform_timer_clear(struct timer *timer)
 uint64_t platform_timer_get(struct timer *timer)
 {
 	uint64_t time;
-	uint32_t flags, low, high;
+	uint32_t flags;
+	uint32_t low;
+	uint32_t high;
 
 	flags = arch_interrupt_global_disable();
 

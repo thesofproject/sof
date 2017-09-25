@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright (c) 2016, Intel Corporation
  * All rights reserved.
  *
@@ -216,8 +216,10 @@ static int dai_playback_params(struct comp_dev *dev)
 	struct sof_ipc_comp_config *source_config;
 	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
-	struct list_item *elist, *tlist;
-	int i, err;
+	struct list_item *elist;
+	struct list_item *tlist;
+	int i;
+	int err;
 	uint32_t buffer_size;
 
 	/* set up DMA configuration */
@@ -284,8 +286,10 @@ static int dai_capture_params(struct comp_dev *dev)
 	struct sof_ipc_comp_config *sink_config;
 	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
-	struct list_item *elist, *tlist;
-	int i, err;
+	struct list_item *elist;
+	struct list_item *tlist;
+	int i;
+	int err;
 	uint32_t buffer_size;
 
 	/* set up DMA configuration */
@@ -417,7 +421,8 @@ static int dai_reset(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct list_item *elist, *tlist;
+	struct list_item *elist;
+	struct list_item *tlist;
 	struct dma_sg_elem *elem;
 
 	trace_dai("res");

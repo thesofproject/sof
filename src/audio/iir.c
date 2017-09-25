@@ -72,10 +72,12 @@
 
 int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 {
-	int32_t in, tmp;
+	int32_t in;
+	int32_t tmp;
 	int64_t acc;
 	int32_t out = 0;
-	int i, j;
+	int i;
+	int j;
 	int d = 0; /* Index to delays */
 	int c = 2; /* Index to coefficient a2 */
 

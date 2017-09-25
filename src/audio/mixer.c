@@ -52,9 +52,12 @@ struct mixer_data {
 static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer **sources, uint32_t num_sources, uint32_t frames)
 {
-	int32_t *src, *dest = sink->w_ptr, count;
+	int32_t *src;
+	int32_t *dest = sink->w_ptr;
+	int32_t count;
 	int64_t val[2];
-	int i, j;
+	int i;
+	int j;
 
 	count = frames * dev->params.channels;
 
@@ -213,9 +216,13 @@ static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
 static int mixer_copy(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
-	struct comp_buffer *sink, *sources[PLATFORM_MAX_STREAMS], *source;
+	struct comp_buffer *sink;
+	struct comp_buffer *sources[PLATFORM_MAX_STREAMS];
+	struct comp_buffer *source;
 	struct list_item *blist;
-	int32_t i = 0, num_mix_sources = 0, xru = 0;
+	int32_t i = 0;
+	int32_t num_mix_sources = 0;
+	int32_t xru = 0;
 
 	tracev_mixer("cpy");
 

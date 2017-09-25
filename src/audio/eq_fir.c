@@ -75,7 +75,11 @@ static void eq_fir_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int ch, n, n_wrap_src, n_wrap_snk, n_wrap_min;
+	int ch;
+	int n;
+	int n_wrap_src;
+	int n_wrap_snk;
+	int n_wrap_min;
 	int32_t *src = (int32_t *) source->r_ptr;
 	int32_t *snk = (int32_t *) sink->w_ptr;
 	int nch = dev->params.channels;
@@ -151,7 +155,11 @@ static void eq_fir_free_delaylines(struct fir_state_32x16 fir[])
 static int eq_fir_setup(struct fir_state_32x16 fir[],
 	struct sof_eq_fir_config *config, int nch)
 {
-	int i, j, idx, length, resp;
+	int i;
+	int j;
+	int idx;
+	int length;
+	int resp;
 	int32_t *fir_data;
 	int16_t *coef_data, *assign_response;
 	int response_index[PLATFORM_MAX_CHANNELS];
@@ -219,7 +227,9 @@ static int eq_fir_switch_response(struct fir_state_32x16 fir[],
 	struct sof_eq_fir_config *config,
 	struct sof_ipc_ctrl_value_comp compv[], uint32_t num_elemens, int nch)
 {
-	int i, j, ret;
+	int i;
+	int j;
+	int ret;
 
 	/* Copy assign response from update and re-initilize EQ */
 	if (config == NULL)
@@ -327,7 +337,8 @@ static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_ctrl_value_comp *compv;
 	size_t bs;
-	int i, ret = 0;
+	int i;
+	int ret = 0;
 
 	/* TODO: determine if data is DMAed or appended to cdata */
 
@@ -420,7 +431,8 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 static int eq_fir_copy(struct comp_dev *dev)
 {
 	struct comp_data *sd = comp_get_drvdata(dev);
-	struct comp_buffer *source, *sink;
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
 	uint32_t copy_bytes;
 
 	trace_comp("EqF");

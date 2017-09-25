@@ -80,7 +80,8 @@ int src_find_fs(int fs_list[], int list_length, int fs)
 /* Match SOF and defined SRC input rates into a bit mask */
 int32_t src_input_rates(void)
 {
-	int n, b;
+	int n;
+	int b;
 	int mask = 0;
 
 	for (n = SOF_RATES_LENGTH - 1; n >= 0; n--) {
@@ -94,7 +95,8 @@ int32_t src_input_rates(void)
 /* Match SOF and defined SRC output rates into a bit mask */
 int32_t src_output_rates(void)
 {
-	int n, b;
+	int n;
+	int b;
 	int mask = 0;
 
 	for (n = SOF_RATES_LENGTH - 1; n >= 0; n--) {
@@ -109,8 +111,13 @@ int32_t src_output_rates(void)
 int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch,
 	int max_frames, int max_frames_is_for_source)
 {
-	int blk_in, blk_out, k, s1_times, s2_times;
-	struct src_stage *stage1, *stage2;
+	int blk_in;
+	int blk_out;
+	int k;
+	int s1_times;
+	int s2_times;
+	struct src_stage *stage1;
+	struct src_stage *stage2;
 
 	a->idx_in = src_find_fs(src_in_fs, NUM_IN_FS, fs_in);
 	a->idx_out = src_find_fs(src_out_fs, NUM_OUT_FS, fs_out);
@@ -265,8 +272,10 @@ void src_polyphase_reset(struct polyphase_src *src)
 int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2,
 	struct src_alloc *res, int32_t *delay_lines_start)
 {
-	int n_stages, ret;
-	struct src_stage *stage1, *stage2;
+	int n_stages;
+	int ret;
+	struct src_stage *stage1;
+	struct src_stage *stage2;
 
 	if ((res->idx_in < 0) || (res->idx_out < 0)) {
 		src->blk_in = res->blk_in;
@@ -395,7 +404,14 @@ static inline int32_t fir_filter(
 
 void src_polyphase_stage_cir(struct src_stage_prm *s)
 {
-	int n, m, f, c, r, n_wrap_fir, n_wrap_buf, n_wrap_min;
+	int n;
+	int m;
+	int f;
+	int c;
+	int r;
+	int n_wrap_fir;
+	int n_wrap_buf;
+	int n_wrap_min;
 	int32_t z;
 
 	for (n = 0; n < s->times; n++) {
@@ -499,8 +515,16 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 
 void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 {
-	int n, m, f, c, r, n_wrap_fir, n_wrap_buf, n_wrap_min;
-	int32_t se, z;
+	int n;
+	int m;
+	int f;
+	int c;
+	int r;
+	int n_wrap_fir;
+	int n_wrap_buf;
+	int n_wrap_min;
+	int32_t se;
+	int32_t z;
 
 	for (n = 0; n < s->times; n++) {
 		/* Input data */

@@ -151,7 +151,8 @@ void clock_disable(int clock)
 uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
-	uint32_t idx, flags;
+	uint32_t idx;
+	uint32_t flags;
 	int err = 0;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;

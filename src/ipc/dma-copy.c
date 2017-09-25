@@ -76,10 +76,13 @@ int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	void *local_ptr, int32_t size)
 {
 	struct dma_sg_config config;
-	struct dma_sg_elem *host_sg_elem, local_sg_elem;
+	struct dma_sg_elem *host_sg_elem;
+	struct dma_sg_elem local_sg_elem;
 	struct dma *dma = dma_get(DMA_ID_DMAC0);
 	completion_t complete;
-	int32_t err, offset = host_offset, chan;
+	int32_t err;
+	int32_t offset = host_offset;
+	int32_t chan;
 
 	if (dma == NULL)
 		return -ENODEV;
@@ -155,10 +158,13 @@ int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	void *local_ptr, int32_t size)
 {
 	struct dma_sg_config config;
-	struct dma_sg_elem *host_sg_elem, local_sg_elem;
+	struct dma_sg_elem *host_sg_elem;
+	struct dma_sg_elem local_sg_elem;
 	struct dma *dma = dma_get(DMA_ID_DMAC0);
 	completion_t complete;
-	int32_t err, offset = host_offset, chan;
+	int32_t err;
+	int32_t offset = host_offset;
+	int32_t chan;
 
 	if (dma == NULL)
 		return -ENODEV;

@@ -185,7 +185,8 @@ int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id)
 int ipc_comp_connect(struct ipc *ipc,
 	struct sof_ipc_pipe_comp_connect *connect)
 {
-	struct ipc_comp_dev *icd_source, *icd_sink;
+	struct ipc_comp_dev *icd_source;
+	struct ipc_comp_dev *icd_sink;
 
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp(ipc, connect->source_id);

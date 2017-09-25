@@ -97,7 +97,9 @@ static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t sine_sample;
 	int32_t *dest = (int32_t*) sink->w_ptr;
-	int i, n, n_wrap_dest;
+	int i;
+	int n;
+	int n_wrap_dest;
 	int nch = cd->channels;
 
 	n = frames * nch;
@@ -142,7 +144,8 @@ static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 
 static int32_t tonegen(struct tone_state *sg)
 {
-	int64_t sine, w;
+	int64_t sine;
+	int64_t w;
 
 	/* sg->w is angle in Q4.28 radians format, sin() returns Q1.31 */
 	/* sg->a is amplitude as Q1.31 */
@@ -161,7 +164,8 @@ static int32_t tonegen(struct tone_state *sg)
 
 static void tonegen_control(struct tone_state *sg)
 {
-	int64_t a, p;
+	int64_t a;
+	int64_t p;
 
 	/* Count samples, 125 us blocks */
 	sg->sample_count++;
@@ -329,7 +333,8 @@ static void tonegen_reset(struct tone_state *sg)
 
 static int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a)
 {
-	int idx, i;
+	int idx;
+	int i;
 
 	sg->a_target = a;
 	sg->a = (sg->ramp_step > sg->a_target) ? sg->a_target : sg->ramp_step;
@@ -516,7 +521,8 @@ static int tone_copy(struct comp_dev *dev)
 
 static int tone_prepare(struct comp_dev *dev)
 {
-	int32_t f, a;
+	int32_t f;
+	int32_t a;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_tone("TPp");

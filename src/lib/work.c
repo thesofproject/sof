@@ -98,7 +98,8 @@ static int is_work_pending(struct work_queue *queue)
 {
 	struct list_item *wlist;
 	struct work *work;
-	uint32_t win_end, win_start;
+	uint32_t win_end;
+	uint32_t win_start;
 	int pending_count = 0;
 
 	/* get the current valid window of work */
@@ -158,9 +159,11 @@ static inline void work_next_timeout(struct work_queue *queue,
 /* run all pending work */
 static void run_work(struct work_queue *queue, uint32_t *flags)
 {
-	struct list_item *wlist, *tlist;
+	struct list_item *wlist;
+	struct list_item *tlist;
 	struct work *work;
-	uint32_t reschedule_usecs, udelay;
+	uint32_t reschedule_usecs;
+	uint32_t udelay;
 
 	/* check each work item in queue for pending */
 	list_for_item_safe(wlist, tlist, &queue->work) {
@@ -207,7 +210,10 @@ static void queue_get_next_timeout(struct work_queue *queue)
 {
 	struct list_item *wlist;
 	struct work *work;
-	uint32_t delta = MAX_INT, current, d, ticks;
+	uint32_t delta = MAX_INT;
+	uint32_t current;
+	uint32_t d;
+	uint32_t ticks;
 
 	/* only recalc if work list not empty */
 	if (list_is_empty(&queue->work)) {
@@ -240,7 +246,9 @@ static void queue_recalc_timers(struct work_queue *queue,
 {
 	struct list_item *wlist;
 	struct work *work;
-	uint32_t delta_ticks, delta_usecs, current;
+	uint32_t delta_ticks;
+	uint32_t delta_usecs;
+	uint32_t current;
 
 	/* get current time */
 	current = work_get_timer(queue);

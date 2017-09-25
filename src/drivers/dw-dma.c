@@ -434,8 +434,11 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct list_item *plist;
 	struct dma_sg_elem *sg_elem;
-	struct dw_lli2 *lli_desc, *lli_desc_head, *lli_desc_tail;
-	uint32_t desc_count = 0, flags;
+	struct dw_lli2 *lli_desc;
+	struct dw_lli2 *lli_desc_head;
+	struct dw_lli2 *lli_desc_tail;
+	uint32_t desc_count = 0;
+	uint32_t flags;
 
 	spin_lock_irq(&dma->lock, flags);
 
@@ -680,8 +683,12 @@ static void dw_dma_irq_handler(void *data)
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_sg_elem next;
-	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
-	uint32_t mask, pmask;
+	uint32_t status_tfr = 0;
+	uint32_t status_block = 0;
+	uint32_t status_err = 0;
+	uint32_t status_intr;
+	uint32_t mask;
+	uint32_t pmask;
 	int i;
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);

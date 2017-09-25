@@ -359,7 +359,10 @@ int init_static_pipeline(struct ipc *ipc)
 {
 	struct scomps *sc;
 	struct sof_ipc_comp *c;
-	int i, j, k, ret;
+	int i;
+	int j;
+	int k;
+	int ret;
 
 	/* init system pipeline core */
 	ret = pipeline_init();

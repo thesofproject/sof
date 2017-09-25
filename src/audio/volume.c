@@ -95,8 +95,10 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t*) source->r_ptr;
-	int32_t i, *dest = (int32_t*) sink->w_ptr;
+	int16_t *src = (int16_t *) source->r_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t i;
+
 
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
@@ -110,8 +112,9 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t i, *src = (int32_t*) source->r_ptr;
-	int16_t *dest = (int16_t*) sink->w_ptr;
+	int32_t *src = (int32_t *) source->r_ptr;
+	int16_t *dest = (int16_t *) sink->w_ptr;
+	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
@@ -125,8 +128,9 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t*) source->r_ptr;
-	int32_t i, *dest = (int32_t*) sink->w_ptr;
+	int32_t *src = (int32_t *) source->r_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
@@ -140,8 +144,8 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t*) source->r_ptr;
-	int16_t *dest = (int16_t*) sink->w_ptr;
+	int16_t *src = (int16_t *) source->r_ptr;
+	int16_t *dest = (int16_t *) sink->w_ptr;
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
@@ -156,8 +160,9 @@ static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t*) source->r_ptr;
-	int32_t i, *dest = (int32_t*) sink->w_ptr;
+	int16_t *src = (int16_t *) source->r_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
@@ -171,8 +176,9 @@ static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t i, *src = (int32_t*) source->r_ptr;
-	int16_t *dest = (int16_t*) sink->w_ptr;
+	int32_t *src = (int32_t *) source->r_ptr;
+	int16_t *dest = (int16_t *) sink->w_ptr;
+	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
@@ -188,8 +194,9 @@ static void vol_s32_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t*) source->r_ptr;
-	int32_t i, *dest = (int32_t*) sink->w_ptr;
+	int32_t *src = (int32_t *) source->r_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
@@ -203,8 +210,9 @@ static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t i, *src = (int32_t*) source->r_ptr;
-	int32_t *dest = (int32_t*) sink->w_ptr;
+	int32_t *src = (int32_t *) source->r_ptr;
+	int32_t *dest = (int32_t *) sink->w_ptr;
+	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
 	for (i = 0; i < frames * 2; i += 2) {
@@ -274,7 +282,8 @@ static uint32_t vol_work(void *data, uint32_t delay)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol;
-	int i, again = 0;
+	int again = 0;
+	int i;
 
 	/* inc/dec each volume if it's not at target */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
@@ -406,7 +415,8 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int i, j;
+	int i;
+	int j;
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems >= SOF_IPC_MAX_CHANNELS) {
@@ -457,7 +467,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int i, j;
+	int i;
+	int j;
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems >= SOF_IPC_MAX_CHANNELS) {
@@ -510,7 +521,8 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink, *source;
+	struct comp_buffer *sink;
+	struct comp_buffer *source;
 	uint32_t copy_bytes;
 
 	tracev_volume("cpy");
@@ -549,9 +561,12 @@ static int volume_copy(struct comp_dev *dev)
 static int volume_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sinkb, *sourceb;
-	struct sof_ipc_comp_config *sconfig, *config = COMP_GET_CONFIG(dev);
-	int i, ret;
+	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
+	struct sof_ipc_comp_config *sconfig;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	int i;
+	int ret;
 
 	trace_volume("pre");
 

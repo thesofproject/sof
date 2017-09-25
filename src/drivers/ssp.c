@@ -69,8 +69,16 @@ static inline int ssp_set_config(struct dai *dai,
 	struct sof_ipc_dai_config *config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t sscr0, sscr1, sscr2, sscr3, sspsp, sfifott, mdiv, bdiv;
-	uint32_t data_size, frame_len = 0;
+	uint32_t sscr0;
+	uint32_t sscr1;
+	uint32_t sscr2;
+	uint32_t sscr3;
+	uint32_t sspsp;
+	uint32_t sfifott;
+	uint32_t mdiv;
+	uint32_t bdiv;
+	uint32_t data_size;
+	uint32_t frame_len = 0;
 	int ret = 0;
 
 	spin_lock(&ssp->lock);

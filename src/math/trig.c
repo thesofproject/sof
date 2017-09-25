@@ -575,8 +575,12 @@ static inline int32_t sine_lookup(int idx) {
 /* Compute fixed point sine with table lookup and interpolation */
 int32_t sin_fixed(int32_t w) {
     int idx;
-    int32_t frac, s0, s1, delta;
-    int64_t sine, idx_tmp;
+    int32_t frac;
+    int32_t s0;
+    int32_t s1;
+    int32_t delta;
+    int64_t sine;
+    int64_t idx_tmp;
 
     /* Q4.28 x Q12.20 -> Q16.48 */
     idx_tmp = (int64_t) w * SINE_C_Q20;
