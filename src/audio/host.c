@@ -415,6 +415,7 @@ static int host_params(struct comp_dev *dev)
 	err = buffer_set_size(hd->dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_host_error("eSz");
+		trace_value(buffer_size);
 		return err;
 	}
 
