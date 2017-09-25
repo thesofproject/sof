@@ -41,6 +41,7 @@
 #include <reef/clock.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
+#include <reef/audio/format.h>
 
 #define trace_volume(__e)	trace_event(TRACE_CLASS_VOLUME, __e)
 #define tracev_volume(__e)	tracev_event(TRACE_CLASS_VOLUME, __e)
@@ -214,6 +215,26 @@ static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+/* Copy and scale volume from 24 bit source buffer to 24 bit on 32 bit boundary
+ * dest buffer.
+ */
+static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
+	struct comp_buffer *source, uint32_t frames)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int32_t i, *src = (int32_t*) source->r_ptr;
+	int32_t *dest = (int32_t*) sink->w_ptr;
+
+	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.23 and volume is Q1.16 */
+	for (i = 0; i < frames * 2; i += 2) {
+		dest[i] = (int32_t)(Q_MULTS_32X32(
+			(int64_t)src[i], cd->volume[0], 23, 16, 23));
+		dest[i + 1] = (int32_t)(Q_MULTS_32X32(
+			(int64_t)src[i+1], cd->volume[1], 23, 16, 23));
+	}
+}
+
 /* map of source and sink buffer formats to volume function */
 static const struct comp_func_map func_map[] = {
 	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, 2, vol_s16_to_s16},
@@ -224,6 +245,7 @@ static const struct comp_func_map func_map[] = {
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, 2, vol_s24_to_s16},
 	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, 2, vol_s32_to_s24},
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, 2, vol_s24_to_s32},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, 2, vol_s24_to_s24},
 };
 
 /* synchronise host mmap() volume with real value */
