@@ -114,9 +114,7 @@ static inline int wait_for_completion_timeout(completion_t *comp)
 	/* check for completion after every wake from IRQ */
 	while (1) {
 
-		if (c->complete)
-			break;
-		if (c->timeout)
+		if (c->complete || c->timeout)
 			break;
 
 		wait_for_interrupt(0);
