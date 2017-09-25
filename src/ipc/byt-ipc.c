@@ -132,12 +132,9 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	err = ipc_cmd();
 	if (err > 0) {
 		goto done; /* reply created and copied by cmd() */
-	} else if (err < 0) {
+	} else {
 		/* send std error reply */
 		reply.error = err;
-	} else if (err == 0) {
-		/* send std reply */
-		reply.error = 0;
 	}
 
 	/* send std error/ok reply */
