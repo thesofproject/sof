@@ -244,13 +244,11 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSRSA, config->rx_slot_mask);
 
 	/* sample data size on SSP FIFO */
-	switch (config->sample_valid_bits) {
-	case 16:	/* 2 * 16bit packed into 32bit FIFO */
+	if (config->sample_valid_bits == 16)
+		/* 2 * 16bit packed into 32bit FIFO */
 		data_size = 32;
-		break;
-	default:
+	else
 		data_size = config->sample_container_bits;
-	}
 
 	if (data_size > 16)
 		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
