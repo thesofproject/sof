@@ -44,6 +44,7 @@
 #include <reef/audio/pipeline.h>
 #include <reef/audio/format.h>
 #include <uapi/ipc.h>
+#include <uapi/eq.h>
 #include "eq_iir.h"
 #include "iir.h"
 
@@ -57,7 +58,7 @@
 
 /* src component private data */
 struct comp_data {
-	struct eq_iir_configuration *config;
+	struct sof_eq_iir_config *config;
 	uint32_t period_bytes;
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS];
 	void (*eq_iir_func)(struct comp_dev *dev,
@@ -120,7 +121,7 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 	}
 }
 
-static void eq_iir_free_parameters(struct eq_iir_configuration **config)
+static void eq_iir_free_parameters(struct sof_eq_iir_config **config)
 {
 	if (*config != NULL)
 		rfree(*config);
@@ -150,27 +151,31 @@ static void eq_iir_free_delaylines(struct iir_state_df2t *iir)
 }
 
 static int eq_iir_setup(struct iir_state_df2t iir[],
-	struct eq_iir_configuration *config, int nch)
+	struct sof_eq_iir_config *config, int nch)
 {
 	int i, j, idx, resp;
 	size_t s;
 	size_t size_sum = 0;
 	int64_t *iir_delay; /* TODO should not need to know the type */
+	int32_t *coef_data, *assign_response;
 	int response_index[PLATFORM_MAX_CHANNELS];
-
-	if (nch > PLATFORM_MAX_CHANNELS)
-		return -EINVAL;
 
 	/* Free existing IIR channels data if it was allocated */
 	eq_iir_free_delaylines(iir);
 
+	if ((nch > PLATFORM_MAX_CHANNELS)
+		|| (config->channels_in_config > PLATFORM_MAX_CHANNELS))
+		return -EINVAL;
+
 	/* Collect index of respose start positions in all_coefficients[]  */
 	j = 0;
+	assign_response = &config->data[0];
+	coef_data = &config->data[config->channels_in_config];
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		if (i < config->number_of_responses_defined) {
+		if (i < config->number_of_responses) {
 			response_index[i] = j;
 			j += NHEADER_DF2T
-				+ NBIQUAD_DF2T * config->all_coefficients[j];
+				+ NBIQUAD_DF2T * coef_data[j];
 		} else {
 			response_index[i] = 0;
 		}
@@ -178,15 +183,17 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 
 	/* Initialize 1st phase */
 	for (i = 0; i < nch; i++) {
-		resp = config->assign_response[i];
+		resp = assign_response[i];
+		if (resp > config->number_of_responses - 1)
+			return -EINVAL;
+
 		if (resp < 0) {
 			/* Initialize EQ channel to bypass */
 			iir_reset_df2t(&iir[i]);
 		} else {
 			/* Initialize EQ coefficients */
 			idx = response_index[resp];
-			s = iir_init_coef_df2t(&iir[i],
-				&config->all_coefficients[idx]);
+			s = iir_init_coef_df2t(&iir[i], &coef_data[idx]);
 			if (s > 0)
 				size_sum += s;
 			else
@@ -204,9 +211,8 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 
 	/* Initialize 2nd phase to set EQ delay lines pointers */
 	for (i = 0; i < nch; i++) {
-		resp = config->assign_response[i];
+		resp = assign_response[i];
 		if (resp >= 0) {
-			idx = response_index[resp];
 			iir_init_delay_df2t(&iir[i], &iir_delay);
 		}
 
@@ -216,18 +222,19 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 }
 
 static int eq_iir_switch_response(struct iir_state_df2t iir[],
-	struct eq_iir_configuration *config, struct eq_iir_update *update,
-	int nch)
+	struct sof_eq_iir_config *config,
+	struct sof_ipc_ctrl_value_comp compv[], uint32_t num_elemens, int nch)
 {
-	int i, ret;
+	int i, j, ret;
 
 	/* Copy assign response from update and re-initilize EQ */
 	if (config == NULL)
 		return -EINVAL;
 
-	for (i = 0; i < config->stream_max_channels; i++) {
-		if (i < update->stream_max_channels)
-			config->assign_response[i] = update->assign_response[i];
+	for (i = 0; i < num_elemens; i++) {
+		j = compv[i].index;
+		if (j < config->channels_in_config)
+			config->data[i] = compv[i].svalue;
 	}
 
 	ret = eq_iir_setup(iir, config, nch);
@@ -293,7 +300,11 @@ static int eq_iir_params(struct comp_dev *dev)
 
 	trace_eq_iir("par");
 
-	/* calculate period size based on config */
+	/* Calculate period size based on config. First make sure that
+	 * frame_bytes is set.
+	 */
+	dev->frame_bytes =
+		dev->params.sample_container_bytes * dev->params.channels;
 	cd->period_bytes = dev->frames * dev->frame_bytes;
 
 	/* configure downstream buffer */
@@ -316,21 +327,21 @@ static int eq_iir_params(struct comp_dev *dev)
 static int iir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct eq_iir_update *iir_update; /* TODO: move to IPC header as part of ABI */
+	struct sof_ipc_ctrl_value_comp *compv;
 	int i, ret = 0;
 	size_t bs;
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_EQ_SWITCH:
 		trace_eq_iir("EFx");
-		iir_update = (struct eq_iir_update *) cdata->data;
+		compv = (struct sof_ipc_ctrl_value_comp *) cdata->data->data;
 		ret = eq_iir_switch_response(cd->iir, cd->config,
-			iir_update, PLATFORM_MAX_CHANNELS);
+			compv, cdata->num_elems, PLATFORM_MAX_CHANNELS);
 
 		/* Print trace information */
-		tracev_value(iir_update->stream_max_channels);
-		for (i = 0; i < iir_update->stream_max_channels; i++)
-			tracev_value(iir_update->assign_response[i]);
+		tracev_value(cd->config->channels_in_config);
+		for (i = 0; i < cd->config->channels_in_config; i++)
+			tracev_value(cd->config->data[i]);
 
 		break;
 	case SOF_CTRL_CMD_EQ_CONFIG:
@@ -339,8 +350,8 @@ static int iir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 		eq_iir_free_parameters(&cd->config);
 
 		/* Copy new config, need to decode data to know the size */
-		bs = cdata->num_elems;
-		if (bs > EQ_IIR_MAX_BLOB_SIZE)
+		bs = cdata->data->size;
+		if ((bs > SOF_EQ_IIR_MAX_SIZE) || (bs < 1))
 			return -EINVAL;
 
 		/* Allocate and make a copy of the blob and setup IIR */
@@ -348,18 +359,11 @@ static int iir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 		if (cd->config == NULL)
 			return -EINVAL;
 
-		memcpy(cd->config, cdata->data, bs);
+		memcpy(cd->config, cdata->data->data, bs);
 		/* Initialize all channels, the actual number of channels may
 		 * not be set yet.
 		 */
 		ret = eq_iir_setup(cd->iir, cd->config, PLATFORM_MAX_CHANNELS);
-
-		/* Print trace information */
-		tracev_value(cd->config->stream_max_channels);
-		tracev_value(cd->config->number_of_responses_defined);
-		for (i = 0; i < cd->config->stream_max_channels; i++)
-			tracev_value(cd->config->assign_response[i]);
-
 		break;
 	case SOF_CTRL_CMD_MUTE:
 		trace_eq_iir("EFm");
