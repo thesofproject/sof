@@ -58,8 +58,7 @@ void fir_reset(struct fir_state_32x16 *fir);
 
 int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[]);
 
-void fir_init_delay(struct fir_state_32x16 *fir, int16_t config[],
-	int32_t **data);
+void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
 /* The next trivial functions are inlined */
 

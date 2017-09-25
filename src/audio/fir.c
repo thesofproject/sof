@@ -83,8 +83,7 @@ int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
 	return fir->length;
 }
 
-void fir_init_delay(struct fir_state_32x16 *fir, int16_t config[],
-	int32_t **data)
+void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 {
 	fir->delay = *data;
 	fir->delay_size = fir->length;

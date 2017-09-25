@@ -44,6 +44,7 @@
 #include <reef/audio/pipeline.h>
 #include <reef/audio/format.h>
 #include <uapi/ipc.h>
+#include <uapi/eq.h>
 #include "fir.h"
 #include "eq_fir.h"
 
@@ -57,7 +58,7 @@
 
 /* src component private data */
 struct comp_data {
-	struct eq_fir_configuration *config;
+	struct sof_eq_fir_config *config;
 	uint32_t period_bytes;
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS];
 	void (*eq_fir_func)(struct comp_dev *dev,
@@ -120,7 +121,7 @@ static void eq_fir_s32_default(struct comp_dev *dev,
 	}
 }
 
-static void eq_fir_free_parameters(struct eq_fir_configuration **config)
+static void eq_fir_free_parameters(struct sof_eq_fir_config **config)
 {
 	if (*config != NULL)
 		rfree(*config);
@@ -148,22 +149,26 @@ static void eq_fir_free_delaylines(struct fir_state_32x16 fir[])
 }
 
 static int eq_fir_setup(struct fir_state_32x16 fir[],
-	struct eq_fir_configuration *config, int nch)
+	struct sof_eq_fir_config *config, int nch)
 {
 	int i, j, idx, length, resp;
 	int32_t *fir_data;
+	int16_t *coef_data, *assign_response;
 	int response_index[PLATFORM_MAX_CHANNELS];
 	int length_sum = 0;
 
-	if (nch > PLATFORM_MAX_CHANNELS)
+	if ((nch > PLATFORM_MAX_CHANNELS)
+		|| (config->channels_in_config > PLATFORM_MAX_CHANNELS))
 		return -EINVAL;
 
 	/* Collect index of respose start positions in all_coefficients[]  */
 	j = 0;
+	assign_response = &config->data[0];
+	coef_data = &config->data[config->channels_in_config];
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		if (i < config->number_of_responses_defined) {
+		if (i < config->number_of_responses) {
 			response_index[i] = j;
-			j += 3 + config->all_coefficients[j];
+			j += 3 + coef_data[j];
 		} else {
 			response_index[i] = 0;
 		}
@@ -174,15 +179,17 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 
 	/* Initialize 1st phase */
 	for (i = 0; i < nch; i++) {
-		resp = config->assign_response[i];
+		resp = assign_response[i];
+		if (resp > config->number_of_responses - 1)
+			return -EINVAL;
+
 		if (resp < 0) {
 			/* Initialize EQ channel to bypass */
 			fir_reset(&fir[i]);
 		} else {
 			/* Initialize EQ coefficients */
 			idx = response_index[resp];
-			length = fir_init_coef(&fir[i],
-				&config->all_coefficients[idx]);
+			length = fir_init_coef(&fir[i], &coef_data[idx]);
 			if (length > 0)
 				length_sum += length;
 		}
@@ -199,31 +206,29 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 
 	/* Initialize 2nd phase to set EQ delay lines pointers */
 	for (i = 0; i < nch; i++) {
-		resp = config->assign_response[i];
+		resp = assign_response[i];
 		if (resp >= 0) {
-			idx = response_index[resp];
-			fir_init_delay(&fir[i], &config->all_coefficients[idx],
-				&fir_data);
+			fir_init_delay(&fir[i], &fir_data);
 		}
-
 	}
 
 	return 0;
 }
 
 static int eq_fir_switch_response(struct fir_state_32x16 fir[],
-	struct eq_fir_configuration *config, struct eq_fir_update *update,
-	int nch)
+	struct sof_eq_fir_config *config,
+	struct sof_ipc_ctrl_value_comp compv[], uint32_t num_elemens, int nch)
 {
-	int i, ret;
+	int i, j, ret;
 
 	/* Copy assign response from update and re-initilize EQ */
 	if (config == NULL)
 		return -EINVAL;
 
-	for (i = 0; i < config->stream_max_channels; i++) {
-		if (i < update->stream_max_channels)
-			config->assign_response[i] = update->assign_response[i];
+	for (i = 0; i < num_elemens; i++) {
+		j = compv[i].index;
+		if (j < config->channels_in_config)
+			config->data[i] = compv[i].svalue;
 	}
 
 	ret = eq_fir_setup(fir, config, nch);
@@ -238,6 +243,9 @@ static int eq_fir_switch_response(struct fir_state_32x16 fir[],
 static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
+	struct sof_ipc_comp_eq_fir *eq_fir;
+	struct sof_ipc_comp_eq_fir *ipc_eq_fir
+		= (struct sof_ipc_comp_eq_fir *) comp;
 	struct comp_data *cd;
 	int i;
 
@@ -248,7 +256,8 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	if (dev == NULL)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_fir));
+	eq_fir = (struct sof_ipc_comp_eq_fir *) &dev->comp;
+	memcpy(eq_fir, ipc_eq_fir, sizeof(struct sof_ipc_comp_eq_fir));
 
 	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
 	if (cd == NULL) {
@@ -282,14 +291,18 @@ static void eq_fir_free(struct comp_dev *dev)
 /* set component audio stream parameters */
 static int eq_fir_params(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
 	int err;
 
 	trace_eq("par");
 
-	/* calculate period size based on config */
+	/* Calculate period size based on config. First make sure that
+	 * frame_bytes is set.
+	 */
+	dev->frame_bytes =
+		dev->params.sample_container_bytes * dev->params.channels;
 	cd->period_bytes = dev->frames * dev->frame_bytes;
 
 	/* configure downstream buffer */
@@ -312,27 +325,30 @@ static int eq_fir_params(struct comp_dev *dev)
 static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct eq_fir_update *fir_update; /* TODO: move this to IPC as it's ABI */
+	struct sof_ipc_ctrl_value_comp *compv;
 	size_t bs;
 	int i, ret = 0;
 
 	/* TODO: determine if data is DMAed or appended to cdata */
 
+	/* Check version from ABI header */
+	if (cdata->data->comp_abi != SOF_EQ_FIR_ABI_VERSION)
+		return -EINVAL;
+
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_EQ_SWITCH:
 		trace_eq("EFx");
-		fir_update = (struct eq_fir_update *)cdata->data;
+		compv = (struct sof_ipc_ctrl_value_comp *) cdata->data->data;
 		ret = eq_fir_switch_response(cd->fir, cd->config,
-			fir_update, PLATFORM_MAX_CHANNELS);
+			compv, cdata->num_elems, PLATFORM_MAX_CHANNELS);
 		if (ret < 0) {
 			trace_eq_error("ec1");
 			return ret;
 		}
 
 		/* Print trace information */
-		tracev_value(fir_update->stream_max_channels);
-		for (i = 0; i < fir_update->stream_max_channels; i++)
-			tracev_value(fir_update->assign_response[i]);
+		for (i = 0; i < cd->config->channels_in_config; i++)
+			tracev_value(cd->config->data[i]);
 
 		break;
 	case SOF_CTRL_CMD_EQ_CONFIG:
@@ -342,22 +358,16 @@ static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 		eq_fir_free_parameters(&cd->config);
 
 		/* Copy new config, need to decode data to know the size */
-		bs = cdata->num_elems;
-		if (bs > EQ_FIR_MAX_BLOB_SIZE)
+		bs = cdata->data->size;
+		if ((bs > SOF_EQ_FIR_MAX_SIZE) || (bs < 1))
 			return -EINVAL;
 
 		cd->config = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
 		if (cd->config == NULL)
 			return -EINVAL;
 
-		memcpy(cd->config, cdata->data, bs);
+		memcpy(cd->config, cdata->data->data, bs);
 		ret = eq_fir_setup(cd->fir, cd->config, PLATFORM_MAX_CHANNELS);
-
-		/* Print trace information */
-		tracev_value(cd->config->stream_max_channels);
-		tracev_value(cd->config->number_of_responses_defined);
-		for (i = 0; i < cd->config->stream_max_channels; i++)
-			tracev_value(cd->config->assign_response[i]);
 		break;
 	case SOF_CTRL_CMD_MUTE:
 		trace_eq("EFm");
