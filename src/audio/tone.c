@@ -484,12 +484,8 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 	if (ret < 0)
 		return ret;
 
-	switch (cmd) {
-	case COMP_CMD_SET_VALUE:
-		return tone_ctrl_cmd(dev, cdata);
-	default:
-		break;
-	}
+	if (cmd == COMP_CMD_SET_VALUE)
+		ret = tone_ctrl_cmd(dev, cdata);
 
 	return ret;
 }
