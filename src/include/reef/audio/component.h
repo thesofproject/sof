@@ -245,6 +245,17 @@ static inline int comp_host_buffer(struct comp_dev *dev,
 /* send component command - mandatory */
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 {
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	if ((cmd == COMP_CMD_SET_DATA)
+		&& ((cdata->data->magic != SOF_ABI_MAGIC)
+		|| (cdata->data->abi != SOF_ABI_VERSION))) {
+		trace_comp_error("abi");
+		trace_value(cdata->data->magic);
+		trace_value(cdata->data->abi);
+		return -EINVAL;
+	}
+
 	return dev->drv->ops.cmd(dev, cmd, data);
 }
 
