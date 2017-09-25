@@ -313,7 +313,7 @@ static void ssp_start(struct dai *dai, int direction)
 }
 
 /* stop the SSP for either playback or capture */
-static void ssp_stop(struct dai *dai, int direction)
+static void ssp_stop(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
@@ -362,7 +362,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_CMD_STOP:
 	case COMP_CMD_PAUSE:
 		ssp->state[direction] = COMP_STATE_PAUSED;
-		ssp_stop(dai, direction);
+		ssp_stop(dai);
 		break;
 	case COMP_CMD_RESUME:
 		ssp_context_restore(dai);
