@@ -205,8 +205,8 @@ static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
 
 		break;
 	case COMP_CMD_SUSPEND:
-		break;
 	case COMP_CMD_RESUME:
+	default:
 		break;
 	}
 }
