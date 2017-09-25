@@ -476,18 +476,14 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 		return -EINVAL;
 	}
 
-	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_VOLUME:
-
+	if (cdata->cmd == SOF_CTRL_CMD_VOLUME) {
 		for (i = 0; i < cdata->num_elems; i++) {
 			for (j = 0; j < cdata->num_elems; j++) {
 				if (cdata->chanv[j].value == cd->chan[i])
 					cdata->chanv[j].value = cd->tvolume[i];
 			}
 		}
-
-		break;
-	default:
+	} else {
 		trace_volume_error("ec2");
 		return -EINVAL;
 	}
