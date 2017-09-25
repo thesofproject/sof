@@ -526,7 +526,7 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct op_data op_data;
-	int ret;
+	int ret = -1;
 	int i;
 
 	trace_pipe("pre");
@@ -551,18 +551,15 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 			ret = preload_downstream(dev, dev);
 
-			/* errors ? */
-			if (ret < 0)
+			/* errors or complete ? */
+			if (ret <= 0)
 				break;
-			/* complete ? */
-			else if (ret == 0)
-				goto out;
 		}
-
-		/* failed to preload */
-		trace_pipe_error("epl");
-		ret = -EIO;
-
+		if (ret < 0) {
+			/* failed to preload */
+			trace_pipe_error("epl");
+			ret = -EIO;
+		}
 	} else {
 		ret = component_op_upstream(&op_data, dev, dev, NULL);
 	}
