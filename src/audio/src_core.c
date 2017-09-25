@@ -52,21 +52,21 @@ int sof_rates[SOF_RATES_LENGTH] = {8000, 11025, 12000, 16000, 18900,
 	192000};
 
 /* Calculates the needed FIR delay line length */
-int src_fir_delay_length(struct src_stage *s)
+static int src_fir_delay_length(struct src_stage *s)
 {
 	return s->subfilter_length + (s->num_of_subfilters - 1) * s->idm
 		+ s->blk_in;
 }
 
 /* Calculates the FIR output delay line length */
-int src_out_delay_length(struct src_stage *s)
+static int src_out_delay_length(struct src_stage *s)
 {
 
 	return (s->num_of_subfilters - 1) * s->odm + 1;
 }
 
 /* Returns index of a matching sample rate */
-int src_find_fs(int fs_list[], int list_length, int fs)
+static int src_find_fs(int fs_list[], int list_length, int fs)
 {
 	int i;
 

@@ -40,6 +40,7 @@
 #include <reef/mailbox.h>
 #include <reef/dai.h>
 #include <reef/dma.h>
+#include <reef/interrupt.h>
 #include <reef/reef.h>
 #include <reef/work.h>
 #include <reef/clock.h>

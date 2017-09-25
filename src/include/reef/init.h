@@ -38,4 +38,6 @@ int main(int argc, char *argv[]);
 
 int arch_init(struct reef *reef);
 
+void __memmap_init(void);
+
 #endif

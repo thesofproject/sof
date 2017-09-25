@@ -159,7 +159,7 @@ static uint32_t sch_work(void *data, uint32_t delay)
  * Schedule task with the earliest deadline from task list.
  * Can run in IRQ context.
  */
-struct task *schedule_edf(void)
+static struct task *schedule_edf(void)
 {
 	struct task *task;
 	struct task *next_plus1_task = NULL;
@@ -201,8 +201,9 @@ struct task *schedule_edf(void)
 	return next_plus1_task;
 }
 
+#if 0 /* FIXME: is this needed ? */
 /* delete task from scheduler */
-int schedule_task_del(struct task *task)
+static int schedule_task_del(struct task *task)
 {
 	uint32_t flags;
 	int ret = 0;
@@ -225,6 +226,7 @@ out:
 	spin_unlock_irq(&sch->lock, flags);
 	return ret;
 }
+#endif
 
 /*
  * Add a new task to the scheduler to be run and define a scheduling
@@ -285,7 +287,7 @@ void schedule_task_complete(struct task *task)
 	spin_unlock_irq(&sch->lock, flags);
 }
 
-void scheduler_run(void *unused)
+static void scheduler_run(void *unused)
 {
 	struct task *next_task;
 

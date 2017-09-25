@@ -44,7 +44,7 @@ struct timer_data {
 
 static struct timer_data xtimer[1] = {};
 
-void platform_timer_64_handler(void *arg)
+static void platform_timer_64_handler(void *arg)
 {
 	struct timer *timer = arg;
 	struct timer_data *tdata = timer->timer_data;

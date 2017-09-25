@@ -18,7 +18,7 @@ AC_DEFINE_UNQUOTED([REEF_MINOR], reef_minor, [Reef minor version])
 AC_CANONICAL_HOST
 
 # General compiler flags
-CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -fno-inline-functions -nostdlib"
+CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -fno-inline-functions -nostdlib -Wmissing-prototypes"
 
 # Cross compiler tool libgcc and headers
 AC_ARG_WITH([root-dir],

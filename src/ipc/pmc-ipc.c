@@ -37,6 +37,7 @@
 #include <reef/wait.h>
 #include <reef/trace.h>
 #include <platform/interrupt.h>
+#include <platform/pmc.h>
 #include <platform/shim.h>
 
 
