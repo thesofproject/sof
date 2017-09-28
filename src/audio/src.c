@@ -65,8 +65,7 @@ struct comp_data {
 	void (*src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
-		uint32_t source_frames,
-		uint32_t sink_frames);
+		int source_frames);
 };
 
 /* Common mute function for 2s and 1s SRC. This preserves the same
@@ -77,7 +76,6 @@ static void src_muted_s32(struct comp_buffer *source, struct comp_buffer *sink,
 {
 
 	int i;
-	int32_t *src = (int32_t *) source->r_ptr;
 	int32_t *dest = (int32_t *) sink->w_ptr;
 	int32_t *end = (int32_t *) sink->end_addr;
 	int n_read = 0;
@@ -101,8 +99,6 @@ static void src_muted_s32(struct comp_buffer *source, struct comp_buffer *sink,
 		n_read += nch*blk_in;
 		n_written += nch*blk_out;
 	}
-	source->r_ptr = src + n_read;
-	sink->w_ptr = dest;
 }
 
 /* Fallback function to just output muted samples and advance
@@ -113,8 +109,7 @@ static void src_muted_s32(struct comp_buffer *source, struct comp_buffer *sink,
 static void fallback_s32(struct comp_dev *dev,
 	struct comp_buffer *source,
 	struct comp_buffer *sink,
-	uint32_t source_frames,
-	uint32_t sink_frames)
+	int source_frames)
 {
 
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -129,7 +124,7 @@ static void fallback_s32(struct comp_dev *dev,
 /* Normal 2 stage SRC */
 static void src_2s_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink,
-	uint32_t source_frames, uint32_t sink_frames)
+	int source_frames)
 {
 	int i;
 	int j;
@@ -196,14 +191,12 @@ static void src_2s_s32_default(struct comp_dev *dev,
 			n_written += blk_out;
 		}
 	}
-	source->r_ptr = s1.x_rptr - nch + 1;
-	sink->w_ptr = s2.y_wptr - nch + 1;
 }
 
 /* 1 stage SRC for simple conversions */
 static void src_1s_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink,
-	uint32_t source_frames, uint32_t sink_frames)
+	int source_frames)
 {
 	int i;
 	int j;
@@ -254,8 +247,6 @@ static void src_1s_s32_default(struct comp_dev *dev,
 		}
 
 	}
-	source->r_ptr = s1.x_rptr - nch + 1;
-	sink->w_ptr = s1.y_wptr - nch + 1;
 }
 
 static struct comp_dev *src_new(struct sof_ipc_comp *comp)
@@ -404,8 +395,7 @@ static int src_params(struct comp_dev *dev)
 	/* Initize SRC for actual sample rate */
 	nch = MIN(params->channels, PLATFORM_MAX_CHANNELS);
 	for (i = 0; i < nch; i++) {
-		n = src_polyphase_init(&cd->src[i], source_rate, sink_rate,
-			&need, buffer_start);
+		n = src_polyphase_init(&cd->src[i], &need, buffer_start);
 		buffer_start += need.single_src;
 	}
 
@@ -440,10 +430,10 @@ static int src_params(struct comp_dev *dev)
 	 * be too long.
 	 */
 	q = need.blk_out / dev->frames;
-	if (q * dev->frames < need.blk_out)
+	if (q * (int)dev->frames < need.blk_out)
 		++q;
 
-	if (q * dev->frames < need.blk_out + dev->frames)
+	if (q * (int)dev->frames < need.blk_out + (int)dev->frames)
 		++q;
 
 	/* Configure downstream buffer */
@@ -543,13 +533,13 @@ static int src_copy(struct comp_dev *dev)
 	need_sink = blk_out * dev->frame_bytes;
 
 	/* Run as many times as buffers allow */
-	while ((source->avail >= need_source) && (sink->free >= need_sink)) {
+	while (((int) source->avail >= need_source) && ((int) sink->free >= need_sink)) {
 		/* Run src */
-		cd->src_func(dev, source, sink, blk_in, blk_out);
+		cd->src_func(dev, source, sink, blk_in);
 
 		/* calc new free and available  */
-		comp_update_buffer_consume(source, 0);
-		comp_update_buffer_produce(sink, 0);
+		comp_update_buffer_consume(source, need_source);
+		comp_update_buffer_produce(sink, need_sink);
 	}
 
 	return 0;

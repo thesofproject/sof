@@ -130,8 +130,8 @@ static inline int src_polyphase_get_blk_out(struct polyphase_src *src)
 
 void src_polyphase_reset(struct polyphase_src *src);
 
-int src_polyphase_init(struct polyphase_src *src, int fs1, int fs2,
-	struct src_alloc *res, int32_t *delay_lines_start);
+int src_polyphase_init(struct polyphase_src *src, struct src_alloc *res,
+	int32_t *delay_lines_start);
 
 int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[],
 	int n_in);
