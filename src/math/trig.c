@@ -32,6 +32,7 @@
 
 #include <stdint.h>
 #include <reef/audio/format.h>
+#include <reef/math/trig.h>
 
 
 #define SINE_C_Q20 341782638 /* 2*SINE_NQUART/pi in Q12.20 */

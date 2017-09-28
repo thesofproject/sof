@@ -35,6 +35,8 @@
  * https://en.wikipedia.org/wiki/Euclidean_algorithm#Implementations
  */
 
+#include <reef/math/numbers.h>
+
 int gcd(int a, int b)
 {
 	int t;

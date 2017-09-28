@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <reef/reef.h>
+#include <reef/alloc.h>
 
 #if 0 // TODO: only compile if no arch memcpy is available.
 
