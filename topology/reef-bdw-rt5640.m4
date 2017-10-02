@@ -36,25 +36,25 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
 	48, 1000, 0, 0, 0, 1)
 
-# Low Latency capture pipeline 2 on PCM 1 using max 2 channels of s32le.
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 # Use DMAC 0 channel 2 for PCM audio capture data
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
-	2, 1, 2, s32le,
+	2, 0, 2, s32le,
 	48, 1000, 0, 0, 0, 2)
 
-# PCM Media Playback pipeline 3 on PCM 2 using max 2 channels of s32le.
+# PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # Schedule 96 frames per 2000us deadline on core 0 with priority 1
 # Use DMAC 0 channel 3 for PCM audio playback data
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	3, 2, 2, s32le,
+	3, 1, 2, s32le,
 	96, 2000, 1, 0, 0, 3)
 
-# PCM Media Playback pipeline 4 on PCM 3 using max 2 channels of s32le.
+# PCM Media Playback pipeline 4 on PCM 2 using max 2 channels of s32le.
 # Schedule 96 frames per 2000us deadline on core 0 with priority 1
 # Use DMAC 0 channel 4 for PCM audio playback data
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	4, 3, 2, s32le,
+	4, 2, 2, s32le,
 	96, 2000, 1, 0, 0, 4)
 
 # Tone Playback pipeline 5 using max 2 channels of s32le.
@@ -96,6 +96,9 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 0, I2S,
 	PIPELINE_SINK_2, 2, s24le,
 	48, 1000, 0, 0)
+
+# PCM Low Latency
+PCM_DUPLEX_ADD(Low Latency, 6, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
 #
 # BE configurations - overrides config in ACPI if present

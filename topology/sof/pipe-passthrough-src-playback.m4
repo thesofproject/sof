@@ -62,8 +62,8 @@ SectionGraph."pipe-pass-src-playback-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
 
 	lines [
-		dapm(N_PCM, Passthrough Playback PCM_ID)
-		dapm(N_BUFFER(0), N_PCM)
+		dapm(N_PCMP, Passthrough Playback PCM_ID)
+		dapm(N_BUFFER(0), N_PCMP)
 		dapm(N_SRC(0), N_BUFFER(0))
 		dapm(N_BUFFER(1), N_SRC(0))
 		dapm(N_DAI_OUT, N_BUFFER(1))

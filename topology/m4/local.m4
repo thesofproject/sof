@@ -67,12 +67,13 @@ define(`W_BUFFER',
 `}')
 
 dnl PCM name)
-define(`N_PCM', `PCM'PCM_ID)
+define(`N_PCMP', `PCM'PCM_ID`P')
+define(`N_PCMC', `PCM'PCM_ID`C')
 
 dnl W_PCM_PLAYBACK(stream, dmac, dmac_chan, periods_sink, periods_source, preload)
 dnl  PCM platform configuration
 define(`W_PCM_PLAYBACK',
-`SectionVendorTuples."'N_PCM($1)`_tuples_w_comp" {'
+`SectionVendorTuples."'N_PCMP($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
@@ -80,34 +81,34 @@ define(`W_PCM_PLAYBACK',
 `		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
 `	}'
 `}'
-`SectionData."'N_PCM($1)`_data_w_comp" {'
-`	tuples "'N_PCM($1)`_tuples_w_comp"'
+`SectionData."'N_PCMP($1)`_data_w_comp" {'
+`	tuples "'N_PCMP($1)`_tuples_w_comp"'
 `}'
-`SectionVendorTuples."'N_PCM($1)`_tuples" {'
+`SectionVendorTuples."'N_PCMP($1)`_tuples" {'
 `	tokens "sof_pcm_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_PCM_DMAC'	STR($2)
 `		SOF_TKN_PCM_DMAC_CHAN'	STR($3)
 `	}'
 `}'
-`SectionData."'N_PCM($1)`_data" {'
-`	tuples "'N_PCM($1)`_tuples"'
+`SectionData."'N_PCMP($1)`_data" {'
+`	tuples "'N_PCMP($1)`_tuples"'
 `}'
-`SectionWidget."'N_PCM`" {'
+`SectionWidget."'N_PCMP`" {'
 `	index "'PIPELINE_ID`"'
 `	type "aif_out"'
 `	no_pm "true"'
 `	stream_name "'$1`"'
 `	data ['
-`		"'N_PCM($1)`_data"'
-`		"'N_PCM($1)`_data_w_comp"'
+`		"'N_PCMP($1)`_data"'
+`		"'N_PCMP($1)`_data_w_comp"'
 `	]'
 `}')
 
 
 dnl W_PCM_PLAYBACK(stream, dmac, dmac_chan, periods_sink, periods_source, preload)
 define(`W_PCM_CAPTURE',
-`SectionVendorTuples."'N_PCM($1)`_tuples_w_comp" {'
+`SectionVendorTuples."'N_PCMC($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
@@ -115,27 +116,27 @@ define(`W_PCM_CAPTURE',
 `		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
 `	}'
 `}'
-`SectionData."'N_PCM($1)`_data_w_comp" {'
-`	tuples "'N_PCM($1)`_tuples_w_comp"'
+`SectionData."'N_PCMC($1)`_data_w_comp" {'
+`	tuples "'N_PCMC($1)`_tuples_w_comp"'
 `}'
-`SectionVendorTuples."'N_PCM($1)`_tuples" {'
+`SectionVendorTuples."'N_PCMC($1)`_tuples" {'
 `	tokens "sof_pcm_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_PCM_DMAC'	STR($2)
 `		SOF_TKN_PCM_DMAC_CHAN'	STR($3)
 `	}'
 `}'
-`SectionData."'N_PCM($1)`_data" {'
-`	tuples "'N_PCM($1)`_tuples"'
+`SectionData."'N_PCMC($1)`_data" {'
+`	tuples "'N_PCMC($1)`_tuples"'
 `}'
-`SectionWidget."'N_PCM`" {'
+`SectionWidget."'N_PCMC`" {'
 `	index "'PIPELINE_ID`"'
 `	type "aif_out"'
 `	no_pm "true"'
 `	stream_name "'$1`"'
 `	data ['
-`		"'N_PCM($1)`_data"'
-`		"'N_PCM($1)`_data_w_comp"'
+`		"'N_PCMC($1)`_data"'
+`		"'N_PCMC($1)`_data_w_comp"'
 `	]'
 `}')
 
@@ -478,5 +479,28 @@ define(`COMP_SAMPLE_SIZE',
 dnl COMP_BUFFER_SIZE( num_periods, sample_size, channels, fmames)
 define(`COMP_BUFFER_SIZE', `eval(`$1 * $2 * $3 * $4')')
 
+dnl PCM_DUPLEX_ADD(name, pipeline, pcm_id, dai_id, playback, capture)
+define(`PCM_DUPLEX_ADD',
+`SectionPCM.STR($1) {'
+`'
+`	index STR($2)'
+`'
+`	# used for binding to the PCM'
+`	id STR($3)'
+`'
+`	dai.STR($1 $3) {'
+`		id STR($4)'
+`	}'
+`'
+`	pcm."capture" {'
+`'
+`		capabilities STR($6)'
+`	}'
+`'
+`	pcm."playback" {'
+`'
+`		capabilities STR($5)'
+`	}'
+`}')
 
 divert(0) dnl

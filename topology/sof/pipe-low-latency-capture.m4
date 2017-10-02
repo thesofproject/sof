@@ -65,8 +65,8 @@ SectionGraph."pipe-ll-capture-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
 
 	lines [
-		dapm(Low Latency Capture PCM_ID, N_PCM)
-		dapm(N_PCM, N_BUFFER(1))
+		dapm(Low Latency Capture PCM_ID, N_PCMC)
+		dapm(N_PCMC, N_BUFFER(1))
 		dapm(N_BUFFER(1), N_PGA(0))
 		dapm(N_PGA(0), N_BUFFER(0))
 	]
@@ -76,12 +76,7 @@ SectionGraph."pipe-ll-capture-PIPELINE_ID" {
 # Pipeline Source and Sinks
 #
 indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(0))
-
-#
-# Pipeline Configuration.
-#
-
-#W_PIPELINE(N_PGA(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Low Latency Capture PCM_ID)
 
 #
 # PCM Configuration
@@ -102,20 +97,3 @@ SectionPCMCapabilities.STR(Low Latency Capture PCM_ID) {
 	buffer_size_max	"65536"
 }
 
-# PCM Low Latency Capture
-SectionPCM.STR(PCM PCM_ID) {
-
-	index STR(PIPELINE_ID)
-
-	# used for binding to the PCM
-	id STR(PCM_ID)
-
-	dai.STR(Low Latency Capture PCM_ID) {
-		id STR(PCM_ID)
-	}
-
-	pcm."capture" {
-
-		capabilities STR(Low Latency Capture PCM_ID)
-	}
-}

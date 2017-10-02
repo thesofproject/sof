@@ -125,8 +125,8 @@ SectionGraph."pipe-ll-playback-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
 
 	lines [
-		dapm(N_PCM, Low Latency Playback PCM_ID)
-		dapm(N_BUFFER(0), N_PCM)
+		dapm(N_PCMP, Low Latency Playback PCM_ID)
+		dapm(N_BUFFER(0), N_PCMP)
 		dapm(N_PGA(0), N_BUFFER(0))
 		dapm(N_BUFFER(1), N_PGA(0))
 		dapm(N_MIXER(0), N_BUFFER(1))
@@ -141,12 +141,7 @@ SectionGraph."pipe-ll-playback-PIPELINE_ID" {
 #
 indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(3))
 indir(`define', concat(`PIPELINE_MIXER_', PIPELINE_ID), N_MIXER(0))
-
-#
-# Pipeline Configuration.
-#
-
-#W_PIPELINE(N_PGA(1), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, pipe_ll_schedule_plat)
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Low Latency Playback PCM_ID)
 
 #
 # PCM Configuration
@@ -168,21 +163,3 @@ SectionPCMCapabilities.STR(Low Latency Playback PCM_ID) {
 	buffer_size_max	"65536"
 }
 
-# PCM Low Latency Playback
-SectionPCM.STR(PCM PCM_ID) {
-
-	index STR(PIPELINE_ID)
-
-	# used for binding to the PCM
-	id STR(PCM_ID)
-
-	dai.STR(Low Latency Playback PCM_ID) {
-		id STR(PCM_ID)
-	}
-
-	# Playback and Capture Configuration
-	pcm."playback" {
-
-		capabilities STR(Low Latency Playback PCM_ID)
-	}
-}
