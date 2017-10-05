@@ -432,6 +432,7 @@ static int ipc_glb_stream_message(uint32_t header)
 	case iCS(SOF_IPC_STREAM_POSITION):
 		return ipc_stream_position(header);
 	default:
+		trace_ipc_error("es1");
 		return -EINVAL;
 	}
 }
