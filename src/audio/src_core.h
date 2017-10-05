@@ -35,19 +35,20 @@
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
-struct src_alloc {
+struct src_param {
 	int fir_s1;
 	int fir_s2;
 	int out_s1;
 	int out_s2;
-	int scratch;
+	int sbuf_length;
 	int single_src;
 	int total;
-	int blk_mult;
 	int blk_in;
 	int blk_out;
 	int stage1_times;
 	int stage2_times;
+	int stage1_times_max;
+	int stage2_times_max;
 	int idx_in;
 	int idx_out;
 };
@@ -103,6 +104,18 @@ struct src_stage_prm {
 	struct src_stage *stage;
 };
 
+static inline void src_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
+{
+	if (*ptr >= end)
+		*ptr = (int32_t *) ((size_t) * ptr - size);
+}
+
+static inline void src_circ_dec_wrap(int32_t **ptr, int32_t *addr, size_t size)
+{
+	if (*ptr < addr)
+		*ptr = (int32_t *) ((size_t) * ptr + size);
+}
+
 static inline void src_polyphase_mute(struct polyphase_src *src)
 {
 	src->mute = 1;
@@ -130,7 +143,7 @@ static inline int src_polyphase_get_blk_out(struct polyphase_src *src)
 
 void src_polyphase_reset(struct polyphase_src *src);
 
-int src_polyphase_init(struct polyphase_src *src, struct src_alloc *res,
+int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 	int32_t *delay_lines_start);
 
 int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[],
@@ -140,12 +153,14 @@ void src_polyphase_stage_cir(struct src_stage_prm *s);
 
 void src_polyphase_stage_cir_s24(struct src_stage_prm *s);
 
-int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch,
-	int max_frames, int max_frames_is_for_source);
+int src_buffer_lengths(struct src_param *p, int fs_in, int fs_out, int nch,
+	int frames, int frames_is_for_source);
 
 int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
+
+int src_ceil_divide(int a, int b);
 
 #ifdef MODULE_TEST
 void src_print_info(struct polyphase_src *src);

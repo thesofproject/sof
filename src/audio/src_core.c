@@ -51,6 +51,18 @@ int sof_rates[SOF_RATES_LENGTH] = {8000, 11025, 12000, 16000, 18900,
 	22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 176400,
 	192000};
 
+/* Calculate ceil() for integer division */
+int src_ceil_divide(int a, int b)
+{
+	int c;
+
+	c = a / b;
+	if (c * b < a)
+		c++;
+
+	return c;
+}
+
 /* Calculates the needed FIR delay line length */
 static int src_fir_delay_length(struct src_stage *s)
 {
@@ -62,7 +74,7 @@ static int src_fir_delay_length(struct src_stage *s)
 static int src_out_delay_length(struct src_stage *s)
 {
 
-	return (s->num_of_subfilters - 1) * s->odm + 1;
+	return 1 + (s->num_of_subfilters - 1) * s->odm;
 }
 
 /* Returns index of a matching sample rate */
@@ -108,16 +120,16 @@ int32_t src_output_rates(void)
 }
 
 /* Calculates buffers to allocate for a SRC mode */
-int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch,
-	int max_frames, int max_frames_is_for_source)
+int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
+	int frames, int frames_is_for_source)
 {
-	int blk_in;
-	int blk_out;
-	int k;
-	int s1_times;
-	int s2_times;
 	struct src_stage *stage1;
 	struct src_stage *stage2;
+	int k;
+	int q;
+	int den;
+	int num;
+	int frames2;
 
 	a->idx_in = src_find_fs(src_in_fs, NUM_IN_FS, fs_in);
 	a->idx_out = src_find_fs(src_out_fs, NUM_OUT_FS, fs_out);
@@ -137,46 +149,59 @@ int src_buffer_lengths(struct src_alloc *a, int fs_in, int fs_out, int nch,
 	a->fir_s1 = src_fir_delay_length(stage1);
 	a->out_s1 = src_out_delay_length(stage1);
 
-	k = gcd(stage1->blk_out, stage2->blk_in);
-	s1_times = stage2->blk_in / k;
-	s2_times = s1_times * stage1->blk_out / stage2->blk_in;
-	blk_in = s1_times * stage1->blk_in;
-	blk_out = s2_times * stage2->blk_out;
-
 	/* Find out how many additional times the SRC can be executed
 	   while having block size less or equal to max_frames.
 	 */
-	if (max_frames_is_for_source) {
-		k = max_frames / blk_in;
+	if (frames_is_for_source) {
+		/* Times that stage1 needs to run to input length of frames */
+		a->stage1_times_max = src_ceil_divide(frames, stage1->blk_in);
+		q = frames / stage1->blk_in;
+		a->stage1_times = MAX(q, 1);
+		a->blk_in = a->stage1_times * stage1->blk_in;
+
+		/* Times that stage2 needs to run */
+		den = stage2->blk_in * stage1->blk_in;
+		num = frames * stage2->blk_out * stage1->blk_out;
+		frames2 = src_ceil_divide(num, den);
+		a->stage2_times_max = src_ceil_divide(frames2, stage2->blk_out);
+		q = frames2 / stage2->blk_out;
+		a->stage2_times = MAX(q, 1);
+		a->blk_out = a->stage2_times * stage2->blk_out;
 	} else {
-		k = max_frames / blk_out;
+		/* Times that stage2 needs to run to output length of frames */
+		a->stage2_times_max = src_ceil_divide(frames, stage2->blk_out);
+		q = frames / stage2->blk_out;
+		a->stage2_times = MAX(q, 1);
+		a->blk_out = a->stage2_times * stage2->blk_out;
+
+		/* Times that stage1 needs to run */
+		num = frames * stage2->blk_in * stage1->blk_in;
+		den = stage2->blk_out * stage1->blk_out;
+		frames2 = src_ceil_divide(num, den);
+		a->stage1_times_max = src_ceil_divide(frames2, stage1->blk_in);
+		q = frames2 / stage1->blk_in;
+		a->stage1_times = MAX(q, 1);
+		a->blk_in = a->stage1_times * stage1->blk_in;
 	}
-
-	/* Mininum k is 1, when 0 max_frames is less than block length. In
-	 * that case need to check in src.c that sink/source size is large
-	 * enough for at least one block.
-	 */
-	if (k < 1)
-		k = 1;
-
-	a->blk_mult = k;
-	a->blk_in = blk_in * k;
-	a->blk_out = blk_out * k;
-	a->stage1_times = s1_times * k;
-	a->stage2_times = s2_times * k;
 
 	if (stage2->filter_length == 1) {
 		a->fir_s2 = 0;
 		a->out_s2 = 0;
-		a->scratch = 0;
 		a->stage2_times = 0;
+		a->stage2_times_max = 0;
+		a->sbuf_length = 0;
 	} else {
 		a->fir_s2 = src_fir_delay_length(stage2);
 		a->out_s2 = src_out_delay_length(stage2);
-		a->scratch = stage1->blk_out * s1_times * k;
+		/* 2x is an empirically tested length. Since the sink buffer
+		 * capability to receive samples varies a shorter stage 2 output
+		 * block will create a peak in internal buffer usage.
+		 */
+		a->sbuf_length = 2 * nch * stage1->blk_out * a->stage1_times_max;
 	}
+
 	a->single_src = a->fir_s1 + a->fir_s2 + a->out_s1 + a->out_s2;
-	a->total = a->scratch + nch * a->single_src;
+	a->total = a->sbuf_length + nch * a->single_src;
 
 	return 0;
 }
@@ -194,7 +219,7 @@ static void src_state_reset(struct src_state *state)
 
 static int init_stages(
 	struct src_stage *stage1, struct src_stage *stage2,
-	struct polyphase_src *src, struct src_alloc *res,
+	struct polyphase_src *src, struct src_param *p,
 	int n, int32_t *delay_lines_start)
 {
 	/* Clear FIR state */
@@ -204,29 +229,27 @@ static int init_stages(
 	src->number_of_stages = n;
 	src->stage1 = stage1;
 	src->stage2 = stage2;
+	src->blk_in = p->blk_in;
+	src->blk_out = p->blk_out;
 	if (n == 1) {
-		src->blk_in = stage1->blk_in * res->blk_mult;
-		src->blk_out = stage1->blk_out * res->blk_mult;
-		src->stage1_times = res->stage1_times;
+		src->stage1_times = p->stage1_times;
 		src->stage2_times = 0;
 		if (stage1->blk_out == 0)
 			return -EINVAL;
 	} else {
-		src->stage1_times = res->stage1_times;
-		src->stage2_times = res->stage2_times;
-		src->blk_in = res->blk_in;
-		src->blk_out = res->blk_out;
+		src->stage1_times = p->stage1_times;
+		src->stage2_times = p->stage2_times;
 	}
 
 	/* Delay line sizes */
-	src->state1.fir_delay_size = res->fir_s1;
-	src->state1.out_delay_size = res->out_s1;
+	src->state1.fir_delay_size = p->fir_s1;
+	src->state1.out_delay_size = p->out_s1;
 	src->state1.fir_delay = delay_lines_start;
 	src->state1.out_delay =
 		src->state1.fir_delay + src->state1.fir_delay_size;
 	if (n > 1) {
-		src->state2.fir_delay_size = res->fir_s2;
-		src->state2.out_delay_size = res->out_s2;
+		src->state2.fir_delay_size = p->fir_s2;
+		src->state2.out_delay_size = p->out_s2;
 		src->state2.fir_delay =
 			src->state1.out_delay + src->state1.out_delay_size;
 		src->state2.out_delay =
@@ -251,7 +274,6 @@ static int init_stages(
 	}
 
 	return 0;
-
 }
 
 void src_polyphase_reset(struct polyphase_src *src)
@@ -269,7 +291,7 @@ void src_polyphase_reset(struct polyphase_src *src)
 	src_state_reset(&src->state2);
 }
 
-int src_polyphase_init(struct polyphase_src *src, struct src_alloc *res,
+int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
 	int32_t *delay_lines_start)
 {
 	int n_stages;
@@ -277,23 +299,28 @@ int src_polyphase_init(struct polyphase_src *src, struct src_alloc *res,
 	struct src_stage *stage1;
 	struct src_stage *stage2;
 
-	if ((res->idx_in < 0) || (res->idx_out < 0)) {
-		src->blk_in = res->blk_in;
-		src->blk_out = res->blk_out;
+	if ((p->idx_in < 0) || (p->idx_out < 0)) {
+		src->blk_in = p->blk_in;
+		src->blk_out = p->blk_out;
 		return -EINVAL;
 	}
 
 	/* Get setup for 2 stage conversion */
-	stage1 = src_table1[res->idx_out][res->idx_in];
-	stage2 = src_table2[res->idx_out][res->idx_in];
-	ret = init_stages(stage1, stage2, src, res, 2, delay_lines_start);
+	stage1 = src_table1[p->idx_out][p->idx_in];
+	stage2 = src_table2[p->idx_out][p->idx_in];
+	ret = init_stages(stage1, stage2, src, p, 2, delay_lines_start);
 	if (ret < 0)
 		return -EINVAL;
 
 	/* Get number of stages used for optimize opportunity. 2nd
 	 * stage length is one if conversion needs only one stage.
+	 * If input and output rate is the same return 0 to
+	 * use a simple copy function instead of 1 stage FIR with one
+	 * tap.
 	 */
 	n_stages = (src->stage2->filter_length == 1) ? 1 : 2;
+	if (p->idx_in == p->idx_out)
+		n_stages = 0;
 
 	/* If filter length for first stage is zero this is a deleted
 	 * mode from in/out matrix. Computing of such SRC mode needs
@@ -311,14 +338,20 @@ int src_polyphase_init(struct polyphase_src *src, struct src_alloc *res,
 static inline void fir_part(int64_t *y, int ntaps, const int16_t c[], int *ic,
 	int32_t d[], int *id)
 {
-	int64_t p;
 	int n;
+	int64_t a = 0;
 
 	/* Data is Q1.31, coef is Q1.15, product is Q2.46 */
-	for (n = 0; n < ntaps; n++) {
-		p = (int64_t) c[(*ic)++] * d[(*id)--];
-		*y += p;
+	for (n = 0; n < (ntaps >> 1); n++) {
+		a += (int64_t) c[*ic] * d[*id]
+			+ (int64_t) c[*ic + 1] * d[*id - 1];
+		*ic += 2;
+		*id -= 2;
 	}
+	if (ntaps & 1)
+		a += (int64_t) c[(*ic)++] * d[(*id)--];
+
+	*y += a;
 }
 #else
 
@@ -326,15 +359,20 @@ static inline void fir_part(int64_t *y, int ntaps, const int16_t c[], int *ic,
 static inline void fir_part(int64_t *y, int ntaps, const int32_t c[], int *ic,
 	int32_t d[], int *id)
 {
-	int64_t p;
 	int n;
+	int64_t a = 0;
 
 	/* Data is Q8.24, coef is Q1.23, product is Q9.47 */
-	for (n = 0; n < ntaps; n++) {
-
-		p = (int64_t) c[(*ic)++] * d[(*id)--];
-		*y += p;
+	for (n = 0; n < (ntaps >> 1); n++) {
+		a += (int64_t) c[*ic] * d[*id]
+			+ (int64_t) c[*ic + 1] * d[*id - 1];
+		*ic += 2;
+		*id -= 2;
 	}
+	if (ntaps & 1)
+		a += (int64_t) c[(*ic)++] * d[(*id)--];
+
+	*y += a;
 }
 #endif
 
@@ -367,7 +405,7 @@ static inline int32_t fir_filter(
 	/* Q2.46 -> Q2.31, saturate to Q1.31 */
 	y = y >> (15 + shift);
 
-	return (int32_t) sat_int32(y);
+	return(int32_t) sat_int32(y);
 }
 #else
 
@@ -398,12 +436,14 @@ static inline int32_t fir_filter(
 	/* Q9.47 -> Q9.24, saturate to Q8.24 */
 	y = y >> (23 + shift);
 
-	return (int32_t) sat_int32(y);
+	return(int32_t) sat_int32(y);
 }
 #endif
 
-void src_polyphase_stage_cir(struct src_stage_prm *s)
+void src_polyphase_stage_cir(struct src_stage_prm * s)
 {
+	struct src_state *fir = s->state;
+	struct src_stage *cfg = s->stage;
 	int n;
 	int m;
 	int f;
@@ -412,109 +452,80 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	int n_wrap_fir;
 	int n_wrap_buf;
 	int n_wrap_min;
+	int n_min;
 	int32_t z;
 
 	for (n = 0; n < s->times; n++) {
 		/* Input data */
-		m = s->x_inc * s->stage->blk_in;
+		m = s->x_inc * cfg->blk_in;
 		while (m > 0) {
-			n_wrap_fir =
-				(s->state->fir_delay_size - s->state->fir_wi)
+			n_wrap_fir = (fir->fir_delay_size - fir->fir_wi)
 				* s->x_inc;
 			n_wrap_buf = s->x_end_addr - s->x_rptr;
 			n_wrap_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
-			if (m < n_wrap_min) {
-				/* No circular wrap need */
-				while (m > 0) {
-					s->state->fir_delay[s->state->fir_wi++]
-						= *s->x_rptr;
-					s->x_rptr += s->x_inc;
-					m -= s->x_inc;
-				}
-			} else {
-				/* Wrap in n_wrap_min/x_inc samples */
-				while (n_wrap_min > 0) {
-					s->state->fir_delay[s->state->fir_wi++]
-						= *s->x_rptr;
-					s->x_rptr += s->x_inc;
-					n_wrap_min -= s->x_inc;
-					m -= s->x_inc;
-				}
-				/* Check both */
-				if (s->x_rptr >= s->x_end_addr)
-					s->x_rptr = (int32_t *)
-					((size_t) s->x_rptr - s->x_size);
-				if (s->state->fir_wi
-					== s->state->fir_delay_size)
-					s->state->fir_wi = 0;
+			n_min = (m < n_wrap_min) ? m : n_wrap_min;
+			while (n_min > 0) {
+				fir->fir_delay[fir->fir_wi++] = *s->x_rptr;
+				s->x_rptr += s->x_inc;
+				n_min -= s->x_inc;
+				m -= s->x_inc;
 			}
+			/* Check for wrap */
+			src_circ_inc_wrap(&s->x_rptr, s->x_end_addr, s->x_size);
+			if (fir->fir_wi == fir->fir_delay_size)
+				fir->fir_wi = 0;
 		}
 
 		/* Filter */
 		c = 0;
-		r = s->state->fir_wi - s->stage->blk_in
-			- (s->stage->num_of_subfilters - 1) * s->stage->idm;
+		r = fir->fir_wi - cfg->blk_in
+			- (cfg->num_of_subfilters - 1) * cfg->idm;
 		if (r < 0)
-			r += s->state->fir_delay_size;
+			r += fir->fir_delay_size;
 
-		s->state->out_wi = s->state->out_ri;
-		for (f = 0; f < s->stage->num_of_subfilters; f++) {
-			s->state->fir_ri = r;
-			z = fir_filter(s->state, s->stage->coefs, &c,
-				s->stage->subfilter_length, s->stage->shift);
-			r += s->stage->idm;
-			if (r > s->state->fir_delay_size - 1)
-				r -= s->state->fir_delay_size;
+		fir->out_wi = fir->out_ri;
+		for (f = 0; f < cfg->num_of_subfilters; f++) {
+			fir->fir_ri = r;
+			z = fir_filter(fir, cfg->coefs, &c,
+				cfg->subfilter_length, cfg->shift);
+			r += cfg->idm;
+			if (r >= fir->fir_delay_size)
+				r -= fir->fir_delay_size;
 
-			s->state->out_delay[s->state->out_wi] = z;
-			s->state->out_wi += s->stage->odm;
-			if (s->state->out_wi > s->state->out_delay_size - 1)
-				s->state->out_wi -= s->state->out_delay_size;
+			fir->out_delay[fir->out_wi] = z;
+			fir->out_wi += cfg->odm;
+			if (fir->out_wi >= fir->out_delay_size)
+				fir->out_wi -= fir->out_delay_size;
 		}
 
 		/* Output */
-		m = s->y_inc * s->stage->num_of_subfilters;
+		m = s->y_inc * cfg->num_of_subfilters;
 		while (m > 0) {
-			n_wrap_fir =
-				(s->state->out_delay_size - s->state->out_ri)
+			n_wrap_fir = (fir->out_delay_size - fir->out_ri)
 				* s->y_inc;
 			n_wrap_buf = s->y_end_addr - s->y_wptr;
 			n_wrap_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
-			if (m < n_wrap_min) {
-				/* No circular wrap need */
-				while (m > 0) {
-					*s->y_wptr = s->state->out_delay[
-						s->state->out_ri++];
-					s->y_wptr += s->y_inc;
-					m -= s->y_inc;
-				}
-			} else {
-				/* Wrap in n_wrap_min/y_inc samples */
-				while (n_wrap_min > 0) {
-					*s->y_wptr = s->state->out_delay[
-						s->state->out_ri++];
-					s->y_wptr += s->y_inc;
-					n_wrap_min -= s->y_inc;
-					m -= s->y_inc;
-				}
-				/* Check both */
-				if (s->y_wptr >= s->y_end_addr)
-					s->y_wptr =
-					(int32_t *)
-					((size_t) s->y_wptr - s->y_size);
-
-				if (s->state->out_ri
-					== s->state->out_delay_size)
-					s->state->out_ri = 0;
+			n_min = (m < n_wrap_min) ? m : n_wrap_min;
+			while (n_min > 0) {
+				*s->y_wptr = fir->out_delay[fir->out_ri++];
+				s->y_wptr += s->y_inc;
+				n_min -= s->y_inc;
+				m -= s->y_inc;
 			}
+			/* Check wrap */
+			src_circ_inc_wrap(&s->y_wptr, s->y_end_addr, s->y_size);
+			if (fir->out_ri == fir->out_delay_size)
+				fir->out_ri = 0;
 		}
 	}
 }
 
-void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
+void src_polyphase_stage_cir_s24(struct src_stage_prm * s)
 {
+	struct src_state *fir = s->state;
+	struct src_stage *cfg = s->stage;
 	int n;
 	int m;
 	int f;
@@ -523,113 +534,82 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 	int n_wrap_fir;
 	int n_wrap_buf;
 	int n_wrap_min;
+	int n_min;
+	int32_t z;
 	int32_t se;
-	int32_t z;
 
 	for (n = 0; n < s->times; n++) {
 		/* Input data */
-		m = s->x_inc * s->stage->blk_in;
+		m = s->x_inc * cfg->blk_in;
 		while (m > 0) {
-			n_wrap_fir =
-				(s->state->fir_delay_size - s->state->fir_wi)
+			n_wrap_fir = (fir->fir_delay_size - fir->fir_wi)
 				* s->x_inc;
 			n_wrap_buf = s->x_end_addr - s->x_rptr;
 			n_wrap_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
-			if (m < n_wrap_min) {
-				/* No circular wrap need */
-				while (m > 0) {
-					se = *s->x_rptr << 8;
-					s->state->fir_delay[s->state->fir_wi++]
-						= se >> 8;
-					s->x_rptr += s->x_inc;
-					m -= s->x_inc;
-				}
-			} else {
-				/* Wrap in n_wrap_min/x_inc samples */
-				while (n_wrap_min > 0) {
-					se = *s->x_rptr << 8;
-					s->state->fir_delay[s->state->fir_wi++]
-						= se >> 8;
-					s->x_rptr += s->x_inc;
-					n_wrap_min -= s->x_inc;
-					m -= s->x_inc;
-				}
-				/* Check both */
-				if (s->x_rptr >= s->x_end_addr)
-					s->x_rptr = (int32_t *)
-					((size_t) s->x_rptr - s->x_size);
-				if (s->state->fir_wi
-					== s->state->fir_delay_size)
-					s->state->fir_wi = 0;
+			n_min = (m < n_wrap_min) ? m : n_wrap_min;
+			while (n_min > 0) {
+				se = *s->x_rptr << 8;
+				fir->fir_delay[fir->fir_wi++] = se >> 8;
+				s->x_rptr += s->x_inc;
+				n_min -= s->x_inc;
+				m -= s->x_inc;
 			}
+			/* Check for wrap */
+			src_circ_inc_wrap(&s->x_rptr, s->x_end_addr, s->x_size);
+			if (fir->fir_wi == fir->fir_delay_size)
+				fir->fir_wi = 0;
 		}
 
 		/* Filter */
 		c = 0;
-		r = s->state->fir_wi - s->stage->blk_in
-			- (s->stage->num_of_subfilters - 1) * s->stage->idm;
+		r = fir->fir_wi - cfg->blk_in
+			- (cfg->num_of_subfilters - 1) * cfg->idm;
 		if (r < 0)
-			r += s->state->fir_delay_size;
+			r += fir->fir_delay_size;
 
-		s->state->out_wi = s->state->out_ri;
-		for (f = 0; f < s->stage->num_of_subfilters; f++) {
-			s->state->fir_ri = r;
-			z = fir_filter(s->state, s->stage->coefs, &c,
-				s->stage->subfilter_length, s->stage->shift);
-			r += s->stage->idm;
-			if (r > s->state->fir_delay_size - 1)
-				r -= s->state->fir_delay_size;
+		fir->out_wi = fir->out_ri;
+		for (f = 0; f < cfg->num_of_subfilters; f++) {
+			fir->fir_ri = r;
+			z = fir_filter(fir, cfg->coefs, &c,
+				cfg->subfilter_length, cfg->shift);
+			r += cfg->idm;
+			if (r >= fir->fir_delay_size)
+				r -= fir->fir_delay_size;
 
-			s->state->out_delay[s->state->out_wi] = z;
-			s->state->out_wi += s->stage->odm;
-			if (s->state->out_wi > s->state->out_delay_size - 1)
-				s->state->out_wi -= s->state->out_delay_size;
+			fir->out_delay[fir->out_wi] = z;
+			fir->out_wi += cfg->odm;
+			if (fir->out_wi >= fir->out_delay_size)
+				fir->out_wi -= fir->out_delay_size;
 		}
 
 		/* Output */
-		m = s->y_inc * s->stage->num_of_subfilters;
+		m = s->y_inc * cfg->num_of_subfilters;
 		while (m > 0) {
-			n_wrap_fir =
-				(s->state->out_delay_size - s->state->out_ri)
+			n_wrap_fir = (fir->out_delay_size - fir->out_ri)
 				* s->y_inc;
 			n_wrap_buf = s->y_end_addr - s->y_wptr;
 			n_wrap_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
-			if (m < n_wrap_min) {
-				/* No circular wrap need */
-				while (m > 0) {
-					*s->y_wptr = s->state->out_delay[
-						s->state->out_ri++];
-					s->y_wptr += s->y_inc;
-					m -= s->y_inc;
-				}
-			} else {
-				/* Wrap in n_wrap_min/y_inc samples */
-				while (n_wrap_min > 0) {
-					*s->y_wptr = s->state->out_delay[
-						s->state->out_ri++];
-					s->y_wptr += s->y_inc;
-					n_wrap_min -= s->y_inc;
-					m -= s->y_inc;
-				}
-				/* Check both */
-				if (s->y_wptr >= s->y_end_addr)
-					s->y_wptr =
-					(int32_t *)
-					((size_t) s->y_wptr - s->y_size);
-
-				if (s->state->out_ri
-					== s->state->out_delay_size)
-					s->state->out_ri = 0;
+			n_min = (m < n_wrap_min) ? m : n_wrap_min;
+			while (n_min > 0) {
+				*s->y_wptr = fir->out_delay[fir->out_ri++];
+				s->y_wptr += s->y_inc;
+				n_min -= s->y_inc;
+				m -= s->y_inc;
 			}
+			/* Check wrap */
+			src_circ_inc_wrap(&s->y_wptr, s->y_end_addr, s->y_size);
+			if (fir->out_ri == fir->out_delay_size)
+				fir->out_ri = 0;
 		}
 	}
 }
+
 
 #ifdef MODULE_TEST
 
-void src_print_info(struct polyphase_src *src)
+void src_print_info(struct polyphase_src * src)
 {
 
 	int n1;
