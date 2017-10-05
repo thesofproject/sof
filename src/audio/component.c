@@ -122,7 +122,8 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_CMD_START:
-		if (dev->state == COMP_STATE_PREPARE) {
+		if (dev->state == COMP_STATE_PREPARE ||
+			dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
 			trace_comp_error("CES");
