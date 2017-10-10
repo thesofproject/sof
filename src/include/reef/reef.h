@@ -37,9 +37,6 @@
 
 struct ipc;
 
-/* TODO: define for unsigned and short, byte */
-#define MAX_INT		0xffffffff
-
 /* use same syntax as Linux for simplicity */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #define container_of(ptr, type, member) \

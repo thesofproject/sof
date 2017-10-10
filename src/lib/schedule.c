@@ -146,7 +146,7 @@ static inline struct task *edf_get_next(uint64_t current,
 }
 
 /* work set in the future when next task can be scheduled */
-static uint32_t sch_work(void *data, uint32_t delay)
+static uint64_t sch_work(void *data, uint64_t delay)
 {
 	tracev_pipe("wrk");
 	schedule();

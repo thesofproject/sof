@@ -277,7 +277,7 @@ static void vol_update(struct comp_data *cd, uint32_t chan)
 }
 
 /* this ramps volume changes over time */
-static uint32_t vol_work(void *data, uint32_t delay)
+static uint64_t vol_work(void *data, uint64_t delay)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);

@@ -97,7 +97,7 @@ static void trace_send(struct dma_trace_data *d)
 	trace_buffer("dts");
 }
 
-static uint32_t trace_work(void *data, uint32_t delay)
+static uint64_t trace_work(void *data, uint64_t delay)
 {
 	struct dma_trace_data *d = (struct dma_trace_data *)data;
 

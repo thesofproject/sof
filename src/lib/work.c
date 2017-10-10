@@ -40,6 +40,7 @@
 #include <reef/debug.h>
 #include <platform/clk.h>
 #include <platform/platform.h>
+#include <limits.h>
 
 /*
  * Generic delayed work queue support.
@@ -98,8 +99,8 @@ static int is_work_pending(struct work_queue *queue)
 {
 	struct list_item *wlist;
 	struct work *work;
-	uint32_t win_end;
-	uint32_t win_start;
+	uint64_t win_end;
+	uint64_t win_start;
 	int pending_count = 0;
 
 	/* get the current valid window of work */
@@ -131,7 +132,8 @@ static int is_work_pending(struct work_queue *queue)
 
 			/* if work has timed out then mark it as pending to run */
 			if (work->timeout <= win_end ||
-				(work->timeout >= win_start && work->timeout < MAX_INT)) {
+				(work->timeout >= win_start &&
+				work->timeout < ULONG_LONG_MAX)) {
 				work->pending = 1;
 				pending_count++;
 			} else {
@@ -144,7 +146,7 @@ static int is_work_pending(struct work_queue *queue)
 }
 
 static inline void work_next_timeout(struct work_queue *queue,
-	struct work *work, uint32_t reschedule_usecs)
+	struct work *work, uint64_t reschedule_usecs)
 {
 	/* reschedule work */
 	if (work->flags & WORK_SYNC) {
@@ -162,8 +164,8 @@ static void run_work(struct work_queue *queue, uint32_t *flags)
 	struct list_item *wlist;
 	struct list_item *tlist;
 	struct work *work;
-	uint32_t reschedule_usecs;
-	uint32_t udelay;
+	uint64_t reschedule_usecs;
+	uint64_t udelay;
 
 	/* check each work item in queue for pending */
 	list_for_item_safe(wlist, tlist, &queue->work) {
@@ -192,9 +194,9 @@ static void run_work(struct work_queue *queue, uint32_t *flags)
 	}
 }
 
-static inline uint32_t calc_delta_ticks(uint32_t current, uint32_t work)
+static inline uint64_t calc_delta_ticks(uint64_t current, uint64_t work)
 {
-	uint32_t max = MAX_INT;
+	uint64_t max = ULONG_LONG_MAX;
 
 	/* does work run in next cycle ? */
 	if (work < current) {
@@ -210,10 +212,10 @@ static void queue_get_next_timeout(struct work_queue *queue)
 {
 	struct list_item *wlist;
 	struct work *work;
-	uint32_t delta = MAX_INT;
-	uint32_t current;
-	uint32_t d;
-	uint32_t ticks;
+	uint64_t delta = ULONG_LONG_MAX;
+	uint64_t current;
+	uint64_t d;
+	uint64_t ticks;
 
 	/* only recalc if work list not empty */
 	if (list_is_empty(&queue->work)) {
@@ -246,9 +248,9 @@ static void queue_recalc_timers(struct work_queue *queue,
 {
 	struct list_item *wlist;
 	struct work *work;
-	uint32_t delta_ticks;
-	uint32_t delta_usecs;
-	uint32_t current;
+	uint64_t delta_ticks;
+	uint64_t delta_usecs;
+	uint64_t current;
 
 	/* get current time */
 	current = work_get_timer(queue);

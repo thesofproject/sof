@@ -42,6 +42,7 @@
 #include <platform/pmc.h>
 #include <config.h>
 #include <stdint.h>
+#include <limits.h>
 
 #define NUM_CLOCKS	2
 
@@ -231,9 +232,9 @@ uint64_t clock_us_to_ticks(int clock, uint64_t us)
 	return clk_pdata->clk[clock].ticks_per_usec * us;
 }
 
-uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
+uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 {
-	uint32_t _current;
+	uint64_t _current;
 
 	// TODO: change timer APIs to clk APIs ??
 	switch (clock) {
@@ -252,7 +253,7 @@ uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
 		return (_current - previous) /
 			clk_pdata->clk[clock].ticks_per_usec;
 	else
-		return (_current + (MAX_INT - previous)) /
+		return (_current + (ULONG_LONG_MAX - previous)) /
 			clk_pdata->clk[clock].ticks_per_usec;
 }
 

@@ -45,7 +45,7 @@
 typedef struct {
 	uint32_t complete;
 	struct work work;
-	uint32_t timeout;
+	uint64_t timeout;
 } completion_t;
 
 void arch_wait_for_interrupt(int level);
@@ -57,7 +57,7 @@ static inline void wait_for_interrupt(int level)
 	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }
 
-static uint32_t _wait_cb(void *data, uint32_t delay)
+static uint64_t _wait_cb(void *data, uint64_t delay)
 {
 	volatile completion_t *wc = (volatile completion_t*)data;
 
