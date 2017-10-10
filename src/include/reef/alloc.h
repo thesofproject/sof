@@ -82,7 +82,7 @@ void rbfree(void *ptr);
 /* utility */
 void bzero(void *s, size_t n);
 void *memset(void *s, int c, size_t n);
-int rstrlen(char *s);
+int rstrlen(const char *s);
 
 /* Heap save/restore contents and context for PM D0/D3 events */
 uint32_t mm_pm_context_size(void);

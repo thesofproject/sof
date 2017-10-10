@@ -99,9 +99,9 @@ void *memset(void *s, int c, size_t n)
 }
 
 /* generic strlen - TODO: can be optimsed for ARCH ? */
-int rstrlen(char *s)
+int rstrlen(const char *s)
 {
-	char *p = s;
+	const char *p = s;
 
 	while(*p++ != 0);
 	return (p - s) - 1;
