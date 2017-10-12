@@ -422,7 +422,7 @@ static int dw_dma_status(struct dma *dma, int channel,
 	status->state = p->chan[channel].status;
 	status->r_pos = dw_read(dma, DW_SAR(channel));
 	status->w_pos = dw_read(dma, DW_DAR(channel));
-	status->timestamp = timer_get_system(NULL);
+	status->timestamp = timer_get_system(platform_timer);
 
 	return 0;
 }
