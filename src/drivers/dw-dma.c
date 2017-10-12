@@ -746,17 +746,17 @@ static void dw_dma_irq_handler(void *data)
 			 * if we are waiting for pause, pause it;
 			 * otherwise, reload lli
 			 */
-			if (next.size == DMA_RELOAD_END) {
+			switch (next.size) {
+			case DMA_RELOAD_END:
 				p->chan[i].status = COMP_STATE_PREPARE;
-				continue;
-			}
-			else if (next.size != DMA_RELOAD_LLI)
-				dw_dma_chan_reload_next(dma, i, &next);
-			/* reload lli, but let's check if we are pausing first */
-			else if (p->chan[i].status == COMP_STATE_PAUSED) {
-				continue;
-			} else
+				break;
+			case DMA_RELOAD_LLI:
 				dw_dma_chan_reload_lli(dma, i);
+				break;
+			default:
+				dw_dma_chan_reload_next(dma, i, &next);
+				break;
+			}
 		}
 #if DW_USE_HW_LLI
 		/* end of a LLI block */
