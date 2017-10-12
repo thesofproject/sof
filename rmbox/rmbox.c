@@ -100,23 +100,22 @@ static void usage(char *name)
 	exit(0);
 }
 
-static float to_usecs(uint32_t time, float clk)
+static float to_usecs(uint64_t time, float clk)
 {
 	/* trace timestamp uses CPU system clock at default 25MHz ticks */
 	// TODO: support variable clock rates
-	return (float)time / clk;
+	return (double)time / clk;
 }
 
-static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, float clk)
+static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, float clk, uint64_t align)
 {
 	const char *trace;
 	uint32_t class;
-	uint32_t delta = val - *timestamp;
+	uint64_t delta = val - *timestamp;
 	float fdelta = to_usecs(delta, clk);
 
 	/* timestamp or value ? */
-	if ((addr % 8) == 0) {
-
+	if ((addr % align) == 0) {
 		/* buffer wrap ? */
 		if (val < *timestamp) {
 			printf("----------------------------------------"
@@ -129,9 +128,9 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, float c
 			fdelta = to_usecs(delta, clk);
 		}
 
-		printf("trace.io: timestamp 0x%8.8x (%2.2f us) \tdelta 0x%8.8x (%2.2f us)\t",
-			(uint32_t)val, to_usecs(val, clk),
-			(uint32_t)delta, fdelta);
+		printf("trace.io: timestamp 0x%16.16lx (%2.2f us) \tdelta 0x%16.16lx (%2.2f us)\t",
+			(uint64_t)val, to_usecs(val, clk),
+			(uint64_t)delta, fdelta);
 		*timestamp = val;
 		return;
 	}
@@ -279,17 +278,23 @@ int main(int argc, char *argv[])
 	int opt, count;
 	const char * out_file = NULL, *in_file = "/sys/kernel/debug/sof/mbox";
 	FILE *in_fd = NULL, *out_fd = NULL;
-	char c, tmp[4] = {0};
-	uint32_t addr = 0, val, timestamp = 0;
+	char c, tmp[8] = {0};
+	uint64_t addr = 0, val, timestamp = 0, align = 4, i;
 	float clk = 19.2f;
+	uint32_t is_dma_trace = 0;
 
-	while ((opt = getopt(argc, argv, "ho:i:s:m:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:s:m:c:t:")) != -1) {
 		switch (opt) {
 		case 'o':
 			out_file = optarg;
 			break;
 		case 'i':
 			in_file = optarg;
+			break;
+		case 't':
+			in_file = optarg;
+			is_dma_trace = 1;
+			align = 8;
 			break;
 		case 'c':
 			clk = atof(optarg);
@@ -327,36 +332,37 @@ convert:
 	fprintf(stdout, "using %2.2fMHz timestamp clock\n", clk);
 
 	while (1) {
-		count = fread(&tmp[0], 1, 4, in_fd);
-		if (count != 4)
+		count = fread(&tmp[0], 1, align, in_fd);
+		if (count != align)
 			break;
 
-		val = *((uint32_t*)tmp);
+		val = *((uint64_t*)tmp);
 
-		c = tmp[0];
-		tmp[0] = tmp[3];
-		tmp[3] = c;
-		c = tmp[1];
-		tmp[1] = tmp[2];
-		tmp[2] = c;
+		for (i = 0; i < align / 2; i++) {
+			c = tmp[i];
+			tmp[i] = tmp[align - i - 1];
+			tmp[align - i - 1] = c;
+		}
 
-		if (addr >= MAILBOX_TRACE_OFFSET &&
-			addr < MAILBOX_TRACE_OFFSET + MAILBOX_TRACE_SIZE)
-			show_trace(val, addr, &timestamp, clk);
+		if (is_dma_trace)
+			show_trace(val, addr, &timestamp, clk, align * 2);
+		else if (addr >= MAILBOX_TRACE_OFFSET &&
+				addr < MAILBOX_TRACE_OFFSET + MAILBOX_TRACE_SIZE)
+			show_trace(val, addr, &timestamp, clk, align * 2);
 		else if (addr >= MAILBOX_DEBUG_OFFSET &&
-			addr < MAILBOX_DEBUG_OFFSET + MAILBOX_DEBUG_SIZE)
+				addr < MAILBOX_DEBUG_OFFSET + MAILBOX_DEBUG_SIZE)
 			show_debug(val, addr);
 		else if (addr >= MAILBOX_EXCEPTION_OFFSET &&
-			addr < MAILBOX_EXCEPTION_OFFSET + MAILBOX_EXCEPTION_SIZE)
+				addr < MAILBOX_EXCEPTION_OFFSET + MAILBOX_EXCEPTION_SIZE)
 			show_exception(val, addr);
 
 		if (out_fd) {
-			count = fwrite(&tmp[0], 1, 4, out_fd);
-			if (count != 4)
+			count = fwrite(&tmp[0], 1, align, out_fd);
+			if (count != align)
 				break;
 		}
 
-		addr += 4;
+		addr += align;
 	}
 
 	/* close files */
