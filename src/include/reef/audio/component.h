@@ -78,6 +78,8 @@
 #define COMP_CMD_RELEASE	3	/* release paused component stream */
 #define COMP_CMD_SUSPEND	5	/* suspend component */
 #define COMP_CMD_RESUME		6	/* resume component */
+#define COMP_CMD_RESET		6	/* reset component */
+#define COMP_CMD_PREPARE	7	/* prepare component */
 
 /*
  * standard component control commands

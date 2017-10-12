@@ -487,8 +487,13 @@ static int host_prepare(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
+	int ret;
 
 	trace_host("pre");
+
+	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	if (ret < 0)
+		return ret;
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		dma_buffer = list_first_item(&dev->bsink_list,
@@ -505,7 +510,6 @@ static int host_prepare(struct comp_dev *dev)
 	hd->split_remaining = 0;
 	dev->position = 0;
 
-	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
@@ -519,6 +523,7 @@ static int host_pointer_reset(struct comp_dev *dev)
 	hd->local_pos = 0;
 	hd->report_pos = 0;
 	dev->position = 0;
+	comp_set_state(dev, COMP_CMD_RESET);
 
 	return 0;
 }

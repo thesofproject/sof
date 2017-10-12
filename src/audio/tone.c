@@ -517,11 +517,16 @@ static int tone_copy(struct comp_dev *dev)
 
 static int tone_prepare(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t f;
 	int32_t a;
-	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
 
 	trace_tone("TPp");
+
+	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	if (ret < 0)
+		return ret;
 
 	cd->channels = dev->params.channels;
 	cd->rate = dev->params.rate;
@@ -530,10 +535,11 @@ static int tone_prepare(struct comp_dev *dev)
 
 	f = tonegen_get_f(&cd->sg);
 	a = tonegen_get_a(&cd->sg);
-	if (tonegen_init(&cd->sg, cd->rate, f, a) < 0)
+	if (tonegen_init(&cd->sg, cd->rate, f, a) < 0) {
+		comp_set_state(dev, COMP_CMD_RESET);
 		return -EINVAL;
+	}
 
-	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
@@ -552,7 +558,7 @@ static int tone_reset(struct comp_dev *dev)
 	/* Initialize with the defaults */
 	tonegen_reset(&cd->sg);
 
-	dev->state = COMP_STATE_READY;
+	comp_set_state(dev, COMP_CMD_RESET);
 
 	return 0;
 }

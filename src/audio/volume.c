@@ -566,6 +566,10 @@ static int volume_prepare(struct comp_dev *dev)
 
 	trace_volume("pre");
 
+	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	if (ret < 0)
+		return ret;
+
 	/* volume components will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
@@ -617,7 +621,7 @@ static int volume_prepare(struct comp_dev *dev)
 		config->periods_sink);
 	if (ret < 0) {
 		trace_volume_error("vp0");
-		return ret;
+		goto err;
 	}
 
 	buffer_reset_pos(sinkb);
@@ -627,13 +631,15 @@ static int volume_prepare(struct comp_dev *dev)
 		trace_volume_error("vp1");
 		trace_value(dev->frames);
 		trace_value(sinkb->sink->frame_bytes);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 	if (cd->source_period_bytes == 0) {
 		trace_volume_error("vp2");
 		trace_value(dev->frames);
 		trace_value(sourceb->source->frame_bytes);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err;
 	}
 
 	/* map the volume function for source and sink buffers */
@@ -653,13 +659,15 @@ static int volume_prepare(struct comp_dev *dev)
 	trace_value(cd->source_format);
 	trace_value(cd->sink_format);
 	trace_value(dev->params.channels);
-	return -EINVAL;
+
+err:
+	comp_set_state(dev, COMP_CMD_RESET);
+	return ret;
 
 found:
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		vol_sync_host(cd, i);
 
-	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
@@ -683,7 +691,7 @@ static int volume_reset(struct comp_dev *dev)
 {
 	trace_volume("res");
 
-	dev->state = COMP_STATE_READY;
+	comp_set_state(dev, COMP_CMD_RESET);
 	return 0;
 }
 

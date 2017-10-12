@@ -468,18 +468,24 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 	trace_eq("EPp");
 
-	cd->eq_fir_func = eq_fir_s32_default;
-
-	/* Initialize EQ */
-	if (cd->config == NULL)
-		return -EINVAL;
-
-	ret = eq_fir_setup(cd->fir, cd->config, dev->params.channels);
+	ret = comp_set_state(dev, COMP_CMD_PREPARE);
 	if (ret < 0)
 		return ret;
 
-	//dev->preload = PLAT_INT_PERIODS;
-	dev->state = COMP_STATE_PREPARE;
+	cd->eq_fir_func = eq_fir_s32_default;
+
+	/* Initialize EQ */
+	if (cd->config == NULL) {
+		comp_set_state(dev, COMP_CMD_RESET);
+		return -EINVAL;
+	}
+
+	ret = eq_fir_setup(cd->fir, cd->config, dev->params.channels);
+	if (ret < 0) {
+		comp_set_state(dev, COMP_CMD_RESET);
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -502,7 +508,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
-	dev->state = COMP_STATE_INIT;
+	comp_set_state(dev, COMP_CMD_RESET);
 	return 0;
 }
 

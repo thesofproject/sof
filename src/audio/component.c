@@ -142,7 +142,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_CMD_STOP:
 		if (dev->state == COMP_STATE_ACTIVE) {
-			dev->state = COMP_STATE_READY;
+			dev->state = COMP_STATE_PREPARE;
 		} else {
 			trace_comp_error("CEs");
 			trace_value(dev->state);
@@ -155,6 +155,26 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			dev->state = COMP_STATE_PAUSED;
 		else {
 			trace_comp_error("CEp");
+			trace_value(dev->state);
+			ret = -EINVAL;
+		}
+		break;
+	case COMP_CMD_RESET:
+		/* reset always succeeds */
+		dev->state = COMP_STATE_READY;
+		if (dev->state == COMP_STATE_ACTIVE ||
+			dev->state == COMP_STATE_PAUSED) {
+			trace_comp_error("CER");
+			trace_value(dev->state);
+			ret = 0;
+		}
+		break;
+	case COMP_CMD_PREPARE:
+		if (dev->state == COMP_STATE_PREPARE ||
+			dev->state == COMP_STATE_READY) {
+			dev->state = COMP_STATE_PREPARE;
+		} else {
+			trace_comp_error("CEP");
 			trace_value(dev->state);
 			ret = -EINVAL;
 		}

@@ -463,21 +463,27 @@ static int eq_iir_prepare(struct comp_dev *dev)
 
 	trace_eq_iir("EPp");
 
+	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	if (ret < 0)
+		return ret;
+
 	cd->eq_iir_func = eq_iir_s32_default;
 
 	/* Initialize EQ. Note that if EQ has not received command to
 	 * configure the response the EQ prepare returns an error that
 	 * interrupts pipeline prepare for downstream.
 	 */
-	if (cd->config == NULL)
+	if (cd->config == NULL) {
+		comp_set_state(dev, COMP_CMD_RESET);
 		return -EINVAL;
+	}
 
 	ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
-	if (ret < 0)
+	if (ret < 0) {
+		comp_set_state(dev, COMP_CMD_RESET);
 		return ret;
+	}
 
-	//dev->preload = PLAT_INT_PERIODS;
-	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
@@ -500,7 +506,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
 
-	dev->state = COMP_STATE_INIT;
+	comp_set_state(dev, COMP_CMD_RESET);
 	return 0;
 }
 

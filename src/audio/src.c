@@ -549,8 +549,9 @@ static int src_copy(struct comp_dev *dev)
 
 static int src_prepare(struct comp_dev *dev)
 {
-	dev->state = COMP_STATE_PREPARE;
-	return 0;
+	trace_src("pre");
+
+	return comp_set_state(dev, COMP_CMD_PREPARE);
 }
 
 static int src_preload(struct comp_dev *dev)
@@ -569,7 +570,7 @@ static int src_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		src_polyphase_reset(&cd->src[i]);
 
-	dev->state = COMP_STATE_READY;
+	comp_set_state(dev, COMP_CMD_RESET);
 	return 0;
 }
 

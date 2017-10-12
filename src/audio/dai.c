@@ -396,10 +396,15 @@ static int dai_prepare(struct comp_dev *dev)
 
 	trace_dai("pre");
 
+	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	if (ret < 0)
+		return ret;
+
 	dev->position = 0;
 
 	if (list_is_empty(&dd->config.elem_list)) {
 		trace_dai_error("wdm");
+		comp_set_state(dev, COMP_CMD_RESET);
 		return -EINVAL;
 	}
 
@@ -412,8 +417,9 @@ static int dai_prepare(struct comp_dev *dev)
 	}
 
 	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
-	if (ret == 0)
-		dev->state = COMP_STATE_PREPARE;
+	if (ret < 0)
+		comp_set_state(dev, COMP_CMD_RESET);
+
 	return ret;
 }
 
@@ -440,7 +446,7 @@ static int dai_reset(struct comp_dev *dev)
 	dd->last_bytes = 0;
 	dd->wallclock = 0;
 	dev->position = 0;
-	dev->state = COMP_STATE_READY;
+	comp_set_state(dev, COMP_CMD_RESET);
 
 	return 0;
 }

@@ -286,7 +286,7 @@ static int mixer_reset(struct comp_dev *dev)
 			return 1; /* should not reset the downstream components */
 	}
 
-	dev->state = COMP_STATE_READY;
+	comp_set_state(dev, COMP_CMD_RESET);
 	return 0;
 }
 
@@ -304,13 +304,20 @@ static int mixer_prepare(struct comp_dev *dev)
 	struct list_item * blist;
 	struct comp_buffer *source;
 	int downstream = 0;
+	int ret;
 
 	trace_mixer("pre");
 
+	/* does mixer already have active source streams ? */
 	if (dev->state != COMP_STATE_ACTIVE) {
+
+		/* currently inactive so setup mixer */
 		md->mix_func = mix_n;
 		dev->state = COMP_STATE_PREPARE;
-		//dev->preload = PLAT_INT_PERIODS;
+
+		ret = comp_set_state(dev, COMP_CMD_PREPARE);
+		if (ret < 0)
+			return ret;
 	}
 
 	/* check each mixer source state */
@@ -323,8 +330,6 @@ static int mixer_prepare(struct comp_dev *dev)
 			downstream = 1;
 		}
 	}
-
-	dev->state = COMP_STATE_PREPARE;
 
 	/* prepare downstream */
 	return downstream;
