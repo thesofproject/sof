@@ -398,17 +398,16 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
-	tracev_dma("DDi");
+	trace_dma("DDi");
 
-	/* has channel already disabled ? */
-	if (!(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
-		p->chan[channel].status = COMP_STATE_PREPARE;
-		goto out;
+	/* is channel stii active ? */
+	if ((dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
+		trace_dma_error("ea0");
+		trace_value(channel);
 	}
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
 
-out:
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
 }
