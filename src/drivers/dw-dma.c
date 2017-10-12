@@ -215,10 +215,10 @@ static int dw_dma_channel_get(struct dma *dma)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 
 		/* use channel if it's free */
-		if (p->chan[i].status != COMP_STATE_READY)
+		if (p->chan[i].status != COMP_STATE_INIT)
 			continue;
 
-		p->chan[i].status = COMP_STATE_PREPARE;
+		p->chan[i].status = COMP_STATE_READY;
 
 		/* unmask block, transfer and error interrupts for channel */
 		dw_write(dma, DW_MASK_TFR, INT_UNMASK(i));
@@ -255,7 +255,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	}
 
 	/* set new state */
-	p->chan[channel].status = COMP_STATE_READY;
+	p->chan[channel].status = COMP_STATE_INIT;
 	p->chan[channel].cb = NULL;
 	p->chan[channel].desc_count = 0;
 }
@@ -406,7 +406,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 		goto out;
 	}
 
-	p->chan[channel].status = COMP_STATE_PAUSED;
+	p->chan[channel].status = COMP_STATE_PREPARE;
 
 out:
 	spin_unlock_irq(&dma->lock, flags);
@@ -578,6 +578,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 #endif
 	}
 
+	p->chan[channel].status = COMP_STATE_PREPARE;
 	spin_unlock_irq(&dma->lock, flags);
 
 	return 0;
@@ -842,7 +843,7 @@ static int dw_dma_probe(struct dma *dma)
 	for (i = 0; i < DW_MAX_CHAN; i++) {
 		dw_pdata->chan[i].dma = dma;
 		dw_pdata->chan[i].channel = i;
-		dw_pdata->chan[i].status = COMP_STATE_READY;
+		dw_pdata->chan[i].status = COMP_STATE_INIT;
 	}
 
 	/* register our IRQ handler */
