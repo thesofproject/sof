@@ -57,6 +57,7 @@ struct dma_trace_data {
 	int32_t host_offset;
 	uint32_t host_size;
 	struct work dmat_work;
+	uint32_t ready;
 };
 
 int dma_trace_init(struct dma_trace_data *d);
@@ -64,6 +65,6 @@ int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	uint32_t host_size);
 void dma_trace_config_ready(struct dma_trace_data *d);
 
-void dtrace_event(char *e);
+void dtrace_event(const char *e, uint32_t size);
 
 #endif

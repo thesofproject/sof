@@ -93,8 +93,6 @@ static void trace_send(struct dma_trace_data *d)
 
 	d->host_offset += size;
 	buffer->r_ptr += size;
-
-	trace_buffer("dts");
 }
 
 static uint64_t trace_work(void *data, uint64_t delay)
@@ -150,24 +148,20 @@ int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 void dma_trace_config_ready(struct dma_trace_data *d)
 {
 	work_schedule_default(&d->dmat_work, DMA_TRACE_US);
+	d->ready = 1;
 }
 
-void dtrace_event(char *e)
+void dtrace_event(const char *e, uint32_t length)
 {
 	struct dma_trace_buf *buffer = NULL;
-	int length = rstrlen(e);
 	int margin = 0;
 
-	if (trace_data == NULL || length < 1) {
-		trace_buffer_error("ele");
+	if (trace_data == NULL || length < 1)
 		return;
-	}
 
 	buffer = &trace_data->dmatb;
-	if (buffer == NULL) {
-		trace_buffer_error("ele");
+	if (buffer == NULL)
 		return;
-	}
 
 	margin = buffer->end_addr - buffer->w_ptr;
 
@@ -178,17 +172,17 @@ void dtrace_event(char *e)
 		memcpy(buffer->w_ptr, e, margin);
 		buffer->w_ptr += margin;
 
-		trace_send(trace_data);
+		if(trace_data->ready)
+			trace_send(trace_data);
+
 		buffer->w_ptr = buffer->r_ptr = buffer->addr;
 		bzero(buffer->addr, buffer->size);
 
 		memcpy(buffer->w_ptr, e + margin, length - margin);
 		buffer->w_ptr += length -margin;
-
-		trace_buffer("ebs");
 	}
 
 	length = buffer->w_ptr - buffer->r_ptr;
-	if (length >= (DMA_TRACE_LOCAL_SIZE / 2))
+	if (trace_data->ready && length >= (DMA_TRACE_LOCAL_SIZE / 2))
 		trace_send(trace_data);
 }
