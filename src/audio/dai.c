@@ -62,6 +62,7 @@ struct dai_data {
 	struct dai *dai;
 	struct dma *dma;
 	uint32_t period_bytes;
+	completion_t complete;
 
 	uint32_t last_bytes;    /* the last bytes(<period size) it copies. */
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
@@ -90,6 +91,9 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 		/* tell DMA not to reload */
 		next->size = DMA_RELOAD_END;
+
+		/* inform waiters */
+		wait_completed(&dd->complete);
 		return;
 	}
 
@@ -460,6 +464,8 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	trace_dai("cmd");
 	tracev_value(cmd);
 
+	wait_init(&dd->complete);
+
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
 		return ret;
@@ -474,6 +480,18 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 
 		/* update starting wallclock */
 		platform_dai_wallclock(dev, &dd->wallclock);
+		break;
+	case COMP_CMD_PAUSE:
+	case COMP_CMD_STOP:
+		wait_init(&dd->complete);
+
+		/* wait for DMA to complete */
+		dd->complete.timeout = dev->pipeline->ipc_pipe.deadline;
+		ret = wait_for_completion_timeout(&dd->complete);
+		if (ret < 0) {
+			trace_dai_error("ed0");
+			trace_value(cmd);
+		}
 		break;
 	default:
 		break;
