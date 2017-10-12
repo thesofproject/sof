@@ -94,6 +94,7 @@
 #define TRACEE	1
 
 void _trace_event(uint32_t event);
+void _trace_error(uint32_t event);
 void trace_off(void);
 void trace_init(struct reef * reef);
 
@@ -117,7 +118,8 @@ void trace_init(struct reef * reef);
 
 /* error tracing */
 #if TRACEE
-#define trace_error(__c, __e) trace_event(__c, __e)
+#define trace_error(__c, __e) \
+	_trace_error(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 #else
 #define trace_error(__c, __e)
 #endif

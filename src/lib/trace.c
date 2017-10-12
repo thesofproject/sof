@@ -34,6 +34,7 @@
 #include <arch/cache.h>
 #include <platform/timer.h>
 #include <reef/lock.h>
+#include <reef/audio/dma-trace.h>
 #include <stdint.h>
 
 struct trace {
@@ -44,7 +45,7 @@ struct trace {
 
 static struct trace trace;
 
-void _trace_event(uint32_t event)
+void _trace_error(uint32_t event)
 {
 	unsigned long flags;
 	volatile uint32_t *t;
@@ -52,6 +53,10 @@ void _trace_event(uint32_t event)
 	if (!trace.enable)
 		return;
 
+	/* save event to DMA tracing buffer */
+	_trace_event(event);
+
+	/* send event by mail box too. */
 	spin_lock_irq(&trace.lock, flags);
 
 	/* write timestamp and event to trace buffer */
@@ -66,6 +71,27 @@ void _trace_event(uint32_t event)
 
 	if (trace.pos >= MAILBOX_TRACE_SIZE)
 		trace.pos = 0;
+
+	spin_unlock_irq(&trace.lock, flags);
+}
+
+void _trace_event(uint32_t event)
+{
+	unsigned long flags;
+	volatile uint64_t dt[2];
+	volatile uint32_t et = (event & 0xff000000);
+
+	if (!trace.enable)
+		return;
+
+	if (et == TRACE_CLASS_DMA)
+		return;
+
+	spin_lock_irq(&trace.lock, flags);
+
+	dt[0] = platform_timer_get(platform_timer);
+	dt[1] = event;
+	dtrace_event((const char*)dt, sizeof(uint64_t) * 2);
 
 	spin_unlock_irq(&trace.lock, flags);
 }
