@@ -315,6 +315,7 @@ static int create_local_elems(struct comp_dev *dev)
 	struct list_item *tlist;
 	int i;
 
+	/* TODO: simplify elem storage by using an array */
 	for (i = 0; i < hd->period_count; i++) {
 		/* allocate new host DMA elem and add it to our list */
 		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
@@ -337,11 +338,11 @@ static int create_local_elems(struct comp_dev *dev)
 
 unwind:
 	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
-
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&e->list);
 		rfree(e);
 	}
+	trace_host_error("el0");
 	return -ENOMEM;
 }
 
