@@ -213,21 +213,17 @@ static inline int ssp_set_config(struct dai *dai,
 
 		/* enable I2S mode */
 		sscr3 |= SSCR3_I2S_ENA | SSCR3_I2S_TX_ENA | SSCR3_I2S_RX_ENA;
-
 		sscr0 |= SSCR0_PSP;
-		sscr1 |= SSCR1_TRAIL;
 
 		/* set asserted frame length */
 		frame_len = config->sample_container_bits;
 		break;
 	case SOF_DAI_FMT_DSP_A:
 		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
-		sscr1 |= SSCR1_TRAIL;
 		sspsp |= SSPSP_SFRMWDTH(1) | SSPSP_SFRMDLY(2);
 		break;
 	case SOF_DAI_FMT_DSP_B:
 		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
-		sscr1 |= SSCR1_TRAIL;
 		sspsp |= SSPSP_SFRMWDTH(1);
 		break;
 	default:
