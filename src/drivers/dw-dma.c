@@ -544,8 +544,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		}
 
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
-				trace_dma_error("eDS");
-				return -EINVAL;
+			trace_dma_error("eDS");
+			return -EINVAL;
 		}
 		/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
