@@ -356,7 +356,8 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 			ssp_start(dai, direction);
 		break;
 	case COMP_CMD_RELEASE:
-		if (ssp->state[direction] == COMP_STATE_PAUSED)
+		if (ssp->state[direction] == COMP_STATE_PAUSED ||
+			ssp->state[direction] == COMP_STATE_PREPARE)
 			ssp_start(dai, direction);
 		break;
 	case COMP_CMD_STOP:
