@@ -717,8 +717,10 @@ static void dw_dma_irq_handler(void *data)
 	platform_interrupt_clear(dma_irq(dma), pmask);
 
 	/* confirm IRQ cleared */
-	if (dw_read(dma, DW_STATUS_BLOCK)) {
+	status_block = dw_read(dma, DW_STATUS_BLOCK);
+	if (status_block) {
 		trace_dma_error("eii");
+		trace_value(status_block);
 	}
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
