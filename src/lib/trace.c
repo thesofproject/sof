@@ -48,7 +48,7 @@ static struct trace trace;
 void _trace_error(uint32_t event)
 {
 	unsigned long flags;
-	volatile uint32_t *t;
+	volatile uint64_t *t;
 
 	if (!trace.enable)
 		return;
@@ -60,14 +60,14 @@ void _trace_error(uint32_t event)
 	spin_lock_irq(&trace.lock, flags);
 
 	/* write timestamp and event to trace buffer */
-	t =(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace.pos);
+	t =(volatile uint64_t*)(MAILBOX_TRACE_BASE + trace.pos);
 	t[0] = platform_timer_get(platform_timer);
 	t[1] = event;
 
 	/* writeback trace data */
-	dcache_writeback_region((void*)t, sizeof(uint32_t) * 2);
+	dcache_writeback_region((void*)t, sizeof(uint64_t) * 2);
 
-	trace.pos += (sizeof(uint32_t) << 1);
+	trace.pos += (sizeof(uint64_t) << 1);
 
 	if (trace.pos >= MAILBOX_TRACE_SIZE)
 		trace.pos = 0;
@@ -79,7 +79,7 @@ void _trace_event(uint32_t event)
 {
 	unsigned long flags;
 	volatile uint64_t dt[2];
-	volatile uint32_t et = (event & 0xff000000);
+	uint32_t et = (event & 0xff000000);
 
 	if (!trace.enable)
 		return;
