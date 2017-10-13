@@ -66,6 +66,7 @@ static int dma_trace_new_buffer(struct dma_trace_data *d, uint32_t buffer_size)
 	buffer->size = buffer_size;
 	buffer->w_ptr = buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + buffer->size;
+	buffer->avail = 0;
 
 	return 0;
 }
@@ -74,25 +75,61 @@ static void trace_send(struct dma_trace_data *d)
 {
 	struct dma_trace_buf *buffer = &d->dmatb;
 	struct dma_sg_config *config = &d->config;
-	uint32_t size = 0;
+	unsigned long flags;
 	int32_t offset = 0;
+	uint32_t avail = buffer->avail;
+	uint32_t bytes_copied = avail;
+	uint32_t size;
+	uint32_t hsize;
+	uint32_t lsize;
 
-	if (buffer->w_ptr == buffer->r_ptr)
+	/* any data to copy ? */
+	if (avail == 0)
 		return;
 
-	size = buffer->w_ptr - buffer->r_ptr;
-	if (d->host_offset + size > d->host_size)
-		d->host_offset = 0;
+	/* copy to host in sections if we wrap */
+	while (avail > 0) {
 
-	offset = dma_copy_to_host(config, d->host_offset,
-		buffer->r_ptr, size);
-	if (offset < 0) {
-		trace_buffer_error("ebb");
-		return;
+		lsize = hsize = avail;
+
+		/* host buffer wrap ? */
+		if (d->host_offset + buffer->avail > d->host_size)
+			hsize = d->host_offset + buffer->avail - d->host_size;
+
+		/* local buffer wrap ? */
+		if (buffer->r_ptr > buffer->w_ptr)
+			lsize = buffer->end_addr - buffer->r_ptr;
+
+		/* get smallest size */
+		if (hsize < lsize)
+			size = hsize;
+		else
+			size = lsize;
+
+		/* copy this section to host */
+		offset = dma_copy_to_host(config, d->host_offset,
+			buffer->r_ptr, size);
+		if (offset < 0) {
+			trace_buffer_error("ebb");
+			return;
+		}
+
+		/* update host pointer and check for wrap */
+		d->host_offset += size;
+		if (d->host_offset + size >= d->host_size)
+			d->host_offset = 0;
+
+		/* update local pointer and check for wrap */
+		buffer->r_ptr += size;
+		if (buffer->r_ptr >= buffer->end_addr)
+			buffer->r_ptr = buffer->addr;
+
+		avail -= size;
 	}
 
-	d->host_offset += size;
-	buffer->r_ptr += size;
+	spin_lock_irq(&d->lock, flags);
+	buffer->avail -= bytes_copied;
+	spin_unlock_irq(&d->lock, flags);
 }
 
 static uint64_t trace_work(void *data, uint64_t delay)
@@ -125,6 +162,7 @@ int dma_trace_init(struct dma_trace_data *d)
 	trace_data = d;
 
 	work_init(&d->dmat_work, trace_work, d, WORK_ASYNC);
+	spinlock_init(&d->lock);
 	return 0;
 }
 
@@ -155,34 +193,39 @@ void dtrace_event(const char *e, uint32_t length)
 {
 	struct dma_trace_buf *buffer = NULL;
 	int margin = 0;
+	unsigned long flags;
 
-	if (trace_data == NULL || length < 1)
+	if (trace_data == NULL || length == 0)
 		return;
 
 	buffer = &trace_data->dmatb;
 	if (buffer == NULL)
 		return;
 
+	spin_lock_irq(&trace_data->lock, flags);
+
 	margin = buffer->end_addr - buffer->w_ptr;
 
+	/* check for buffer wrap */
 	if (margin > length) {
+
+		/* no wrap */
 		memcpy(buffer->w_ptr, e, length);
 		buffer->w_ptr += length;
 	} else {
+
+		/* data is bigger than remaining margin so we wrap */
 		memcpy(buffer->w_ptr, e, margin);
-		buffer->w_ptr += margin;
-
-		if(trace_data->ready)
-			trace_send(trace_data);
-
-		buffer->w_ptr = buffer->r_ptr = buffer->addr;
-		bzero(buffer->addr, buffer->size);
+		buffer->w_ptr = buffer->addr;
 
 		memcpy(buffer->w_ptr, e + margin, length - margin);
-		buffer->w_ptr += length -margin;
+		buffer->w_ptr += length - margin;
 	}
 
-	length = buffer->w_ptr - buffer->r_ptr;
-	if (trace_data->ready && length >= (DMA_TRACE_LOCAL_SIZE / 2))
-		trace_send(trace_data);
+	buffer->avail += length;
+	spin_unlock_irq(&trace_data->lock, flags);
+
+	/* schedule copy now if buffer > 50% full */
+	if (trace_data->ready && buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2))
+		work_reschedule_default(&trace_data->dmat_work, 100);
 }

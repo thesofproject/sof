@@ -49,6 +49,7 @@ struct dma_trace_buf {
 	void *addr;		/* buffer base address */
 	void *end_addr;		/* buffer end address */
 	uint32_t size;		/* size of buffer in bytes */
+	uint32_t avail;		/* avail bytes in buffer */
 };
 
 struct dma_trace_data {
@@ -58,6 +59,7 @@ struct dma_trace_data {
 	uint32_t host_size;
 	struct work dmat_work;
 	uint32_t ready;
+	spinlock_t lock;
 };
 
 int dma_trace_init(struct dma_trace_data *d);

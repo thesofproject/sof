@@ -60,7 +60,7 @@ void _trace_error(uint32_t event)
 	spin_lock_irq(&trace.lock, flags);
 
 	/* write timestamp and event to trace buffer */
-	t =(volatile uint64_t*)(MAILBOX_TRACE_BASE + trace.pos);
+	t = (volatile uint64_t*)(MAILBOX_TRACE_BASE + trace.pos);
 	t[0] = platform_timer_get(platform_timer);
 	t[1] = event;
 
@@ -69,7 +69,7 @@ void _trace_error(uint32_t event)
 
 	trace.pos += (sizeof(uint64_t) << 1);
 
-	if (trace.pos >= MAILBOX_TRACE_SIZE)
+	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
 		trace.pos = 0;
 
 	spin_unlock_irq(&trace.lock, flags);
@@ -77,7 +77,6 @@ void _trace_error(uint32_t event)
 
 void _trace_event(uint32_t event)
 {
-	unsigned long flags;
 	volatile uint64_t dt[2];
 	uint32_t et = (event & 0xff000000);
 
@@ -87,13 +86,9 @@ void _trace_event(uint32_t event)
 	if (et == TRACE_CLASS_DMA)
 		return;
 
-	spin_lock_irq(&trace.lock, flags);
-
 	dt[0] = platform_timer_get(platform_timer);
 	dt[1] = event;
 	dtrace_event((const char*)dt, sizeof(uint64_t) * 2);
-
-	spin_unlock_irq(&trace.lock, flags);
 }
 
 void trace_off(void)
