@@ -113,6 +113,9 @@ static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, float c
 	uint32_t class;
 	uint64_t delta = val - *timestamp;
 	float fdelta = to_usecs(delta, clk);
+	float us = 0.0f;
+	uint64_t s = 0, ms = 0;
+	uint64_t ds = 0, dms = 0;
 
 	/* timestamp or value ? */
 	if ((addr % align) == 0) {
@@ -128,9 +131,21 @@ static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, float c
 			fdelta = to_usecs(delta, clk);
 		}
 
-		printf("trace.io: timestamp 0x%16.16lx (%2.2f us) \tdelta 0x%16.16lx (%2.2f us)\t",
-			(uint64_t)val, to_usecs(val, clk),
-			(uint64_t)delta, fdelta);
+		if (align == 8) {
+			/* 32-bit timestamp */
+			printf("trace.io: timestamp 0x%16.16lx (%2.2f us) \tdelta 0x%16.16lx (%2.2f us)\t",
+				(uint64_t)val, to_usecs(val, clk),
+				(uint64_t)delta, fdelta);
+		} else {
+			/* 64-bit timestamp */
+			us = to_usecs(val, clk);
+			s =  us / 1000000;
+			ms = us / 1000 - s * 1000;
+			ds = fdelta / 1000000;
+			dms = fdelta / 1000 - ds * 1000;
+			printf("trace.io: timestamp [%lu.%lu] \tdelta [%lu.%lu]\t",
+					s, ms, ds, dms);
+		}
 		*timestamp = val;
 		return;
 	}
