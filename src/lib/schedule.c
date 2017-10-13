@@ -102,10 +102,15 @@ static inline struct task *edf_get_next(uint64_t current,
 	uint64_t delta;
 	uint64_t deadline;
 	int reschedule = 0;
+	uint32_t flags;
  
+	spin_lock_irq(&sch->lock, flags);
+
 	/* any tasks in the scheduler ? */
-	if (list_is_empty(&sch->list))
+	if (list_is_empty(&sch->list)) {
+		spin_unlock_irq(&sch->lock, flags);
 		return NULL;
+	}
 
 	/* check every queued or running task in list */
 	list_for_item_safe(clist, tlist, &sch->list) {
@@ -142,6 +147,7 @@ static inline struct task *edf_get_next(uint64_t current,
 		}
 	}
 
+	spin_unlock_irq(&sch->lock, flags);
 	return next_task;
 }
 
@@ -164,12 +170,8 @@ static struct task *schedule_edf(void)
 	struct task *task;
 	struct task *next_plus1_task = NULL;
 	uint64_t current;
-	uint32_t flags;
 
 	tracev_pipe("edf");
-
-	/* get next component scheduled  */
-	spin_lock_irq(&sch->lock, flags);
 
 	/* get the current time */
 	current = platform_timer_get(platform_timer);
@@ -177,7 +179,6 @@ static struct task *schedule_edf(void)
 	/* get next task to be scheduled */
 	task = edf_get_next(current, NULL);
 
-	spin_unlock_irq(&sch->lock, flags);
 	interrupt_clear(PLATFORM_SCHEDULE_IRQ);
 
 	/* any tasks ? */
