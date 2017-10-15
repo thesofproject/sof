@@ -36,6 +36,7 @@
 #include <reef/list.h>
 #include <reef/lock.h>
 #include <reef/reef.h>
+#include <reef/wait.h>
 
 /* DMA directions */
 #define DMA_DIR_MEM_TO_MEM	0	/* local memcpy */
@@ -228,12 +229,29 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_config *sg)
 	return size;
 }
 
+/* generic DMA DSP <-> Host copier */
+
+struct dma_copy {
+	int chan;
+	struct dma *dmac;
+	completion_t complete;
+};
+
+/* init dma copy context */
+int dma_copy_new(struct dma_copy *dc, int dmac);
+
+/* free dma copy context resources */
+static inline void dma_copy_free(struct dma_copy *dc)
+{
+	dma_channel_put(dc->dmac, dc->chan);
+}
+
 /* DMA copy data from host to DSP */
-int dma_copy_from_host(struct dma_sg_config *host_sg,
+int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
 
 /* DMA copy data from DSP to host */
-int dma_copy_to_host(struct dma_sg_config *host_sg,
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
 
 #endif

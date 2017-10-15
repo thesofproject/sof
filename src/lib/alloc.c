@@ -573,7 +573,7 @@ uint32_t mm_pm_context_size(void)
  * must be disabled before calling this functions. No allocations are permitted after
  * calling this and before calling restore.
  */
-int mm_pm_context_save(struct dma_sg_config *sg)
+int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
 {
 	uint32_t used;
 	int32_t offset = 0;
@@ -585,13 +585,13 @@ int mm_pm_context_save(struct dma_sg_config *sg)
 		return -EINVAL;
 
 	/* copy memory maps to SG */
-	ret = dma_copy_to_host(sg, offset,
+	ret = dma_copy_to_host(dc, sg, offset,
 		(void *)&memmap, sizeof(memmap));
 	if (ret < 0)
 		return ret;
 
 	/* copy system memory contents to SG */
-	ret = dma_copy_to_host(sg, offset + ret,
+	ret = dma_copy_to_host(dc, sg, offset + ret,
 		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
 	if (ret < 0)
 		return ret;
@@ -611,19 +611,19 @@ int mm_pm_context_save(struct dma_sg_config *sg)
  * Restore the DSP memories to modules abd the system. This must be called immediately
  * after booting before any pipeline work.
  */
-int mm_pm_context_restore(struct dma_sg_config *sg)
+int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 {
 	int32_t offset = 0;
 	int32_t ret;
 
 	/* copy memory maps from SG */
-	ret = dma_copy_from_host(sg, offset,
+	ret = dma_copy_from_host(dc, sg, offset,
 		(void *)&memmap, sizeof(memmap));
 	if (ret < 0)
 		return ret;
 
 	/* copy system memory contents from SG */
-	ret = dma_copy_to_host(sg, offset + ret,
+	ret = dma_copy_to_host(dc, sg, offset + ret,
 		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
 	if (ret < 0)
 		return ret;

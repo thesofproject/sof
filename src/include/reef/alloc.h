@@ -86,8 +86,8 @@ int rstrlen(const char *s);
 
 /* Heap save/restore contents and context for PM D0/D3 events */
 uint32_t mm_pm_context_size(void);
-int mm_pm_context_save(struct dma_sg_config *sg);
-int mm_pm_context_restore(struct dma_sg_config *sg);
+int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg);
+int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg);
 
 /* heap initialisation */
 void init_heap(struct reef *reef);

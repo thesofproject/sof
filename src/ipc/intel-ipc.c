@@ -629,7 +629,9 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	trace_ipc("DAp");
 
-	dma_trace_config_ready(&_ipc->dmat);
+	err = dma_trace_enable(&_ipc->dmat);
+	if (err < 0)
+		goto error;
 
 	/* write component values to the outbox */
 	reply.hdr.size = sizeof(reply);

@@ -77,13 +77,9 @@ void _trace_error(uint32_t event)
 
 void _trace_event(uint32_t event)
 {
-	volatile uint64_t dt[2];
-	uint32_t et = (event & 0xff000000);
+	uint64_t dt[2];
 
 	if (!trace.enable)
-		return;
-
-	if (et == TRACE_CLASS_DMA)
 		return;
 
 	dt[0] = platform_timer_get(platform_timer);

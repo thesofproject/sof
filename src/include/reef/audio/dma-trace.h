@@ -55,17 +55,18 @@ struct dma_trace_buf {
 struct dma_trace_data {
 	struct dma_sg_config config;
 	struct dma_trace_buf dmatb;
+	struct dma_copy dc;
 	int32_t host_offset;
 	uint32_t host_size;
 	struct work dmat_work;
-	uint32_t ready;
+	uint32_t enabled;
 	spinlock_t lock;
 };
 
 int dma_trace_init(struct dma_trace_data *d);
 int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	uint32_t host_size);
-void dma_trace_config_ready(struct dma_trace_data *d);
+int dma_trace_enable(struct dma_trace_data *d);
 
 void dtrace_event(const char *e, uint32_t size);
 

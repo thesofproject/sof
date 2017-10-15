@@ -41,51 +41,22 @@
 
 static struct dma_trace_data *trace_data = NULL;
 
-static int dma_trace_new_buffer(struct dma_trace_data *d, uint32_t buffer_size)
+static uint64_t trace_work(void *data, uint64_t delay)
 {
-	struct dma_trace_buf *buffer = &d->dmatb;
-
-	trace_buffer("nlb");
-
-	/* validate request */
-	if (buffer_size == 0 || buffer_size > HEAP_BUFFER_SIZE) {
-		trace_buffer_error("ebg");
-		trace_value(buffer_size);
-		return -ENOMEM;
-	}
-
-	/* allocate new buffer */
-	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, buffer_size);
-	if (buffer->addr == NULL) {
-		trace_buffer_error("ebm");
-		return -ENOMEM;
-	}
-
-	bzero(buffer->addr, buffer_size);
-
-	buffer->size = buffer_size;
-	buffer->w_ptr = buffer->r_ptr = buffer->addr;
-	buffer->end_addr = buffer->addr + buffer->size;
-	buffer->avail = 0;
-
-	return 0;
-}
-
-static void trace_send(struct dma_trace_data *d)
-{
+	struct dma_trace_data *d = (struct dma_trace_data *)data;
 	struct dma_trace_buf *buffer = &d->dmatb;
 	struct dma_sg_config *config = &d->config;
 	unsigned long flags;
 	int32_t offset = 0;
 	uint32_t avail = buffer->avail;
-	uint32_t bytes_copied = avail;
+	uint32_t bytes_copied = 0;
 	uint32_t size;
 	uint32_t hsize;
 	uint32_t lsize;
 
 	/* any data to copy ? */
 	if (avail == 0)
-		return;
+		return DMA_TRACE_US;
 
 	/* copy to host in sections if we wrap */
 	while (avail > 0) {
@@ -106,12 +77,15 @@ static void trace_send(struct dma_trace_data *d)
 		else
 			size = lsize;
 
+		/* writeback trace data */
+		dcache_writeback_region((void*)buffer->r_ptr, size);
+
 		/* copy this section to host */
-		offset = dma_copy_to_host(config, d->host_offset,
+		offset = dma_copy_to_host(&d->dc, config, d->host_offset,
 			buffer->r_ptr, size);
 		if (offset < 0) {
 			trace_buffer_error("ebb");
-			return;
+			goto out;
 		}
 
 		/* update host pointer and check for wrap */
@@ -125,18 +99,13 @@ static void trace_send(struct dma_trace_data *d)
 			buffer->r_ptr = buffer->addr;
 
 		avail -= size;
+		bytes_copied += size;
 	}
 
+out:
 	spin_lock_irq(&d->lock, flags);
 	buffer->avail -= bytes_copied;
 	spin_unlock_irq(&d->lock, flags);
-}
-
-static uint64_t trace_work(void *data, uint64_t delay)
-{
-	struct dma_trace_data *d = (struct dma_trace_data *)data;
-
-	trace_send(d);
 
 	/* reschedule the trace copying work */
 	return DMA_TRACE_US;
@@ -144,25 +113,41 @@ static uint64_t trace_work(void *data, uint64_t delay)
 
 int dma_trace_init(struct dma_trace_data *d)
 {
-	int err;
+	struct dma_trace_buf *buffer = &d->dmatb;
+	int ret;
 
 	trace_buffer("dtn");
 
-	/* init buffer elems */
-	list_init(&d->config.elem_list);
-
-	/* allocate local DMA buffer */
-	err = dma_trace_new_buffer(d, DMA_TRACE_LOCAL_SIZE);
-	if (err < 0) {
-		trace_buffer_error("ePb");
-		return err;
+	/* allocate new buffer */
+	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, DMA_TRACE_LOCAL_SIZE);
+	if (buffer->addr == NULL) {
+		trace_buffer_error("ebm");
+		return -ENOMEM;
 	}
 
-	d->host_offset = 0;
-	trace_data = d;
+	/* init DMA copy context */
+	ret = dma_copy_new(&d->dc, PLATFORM_TRACE_DMAC);
+	if (ret < 0) {
+		trace_buffer_error("edm");
+		rfree(buffer->addr);
+		return ret;
+	}
 
+	bzero(buffer->addr, DMA_TRACE_LOCAL_SIZE);
+
+	/* initialise the DMA buffer */
+	buffer->size = DMA_TRACE_LOCAL_SIZE;
+	buffer->w_ptr = buffer->r_ptr = buffer->addr;
+	buffer->end_addr = buffer->addr + buffer->size;
+	buffer->avail = 0;
+	d->host_offset = 0;
+	d->enabled = 0;
+
+	list_init(&d->config.elem_list);
 	work_init(&d->dmat_work, trace_work, d, WORK_ASYNC);
 	spinlock_init(&d->lock);
+	trace_data = d;
+
 	return 0;
 }
 
@@ -183,10 +168,18 @@ int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	return 0;
 }
 
-void dma_trace_config_ready(struct dma_trace_data *d)
+int dma_trace_enable(struct dma_trace_data *d)
 {
+	/* validate DMA context */
+	if (d->dc.dmac == NULL || d->dc.chan < 0) {
+		trace_buffer_error("eem");
+		return -ENODEV;
+	}
+
+	/* TODO: fix crash when enabled */
+	//d->enabled = 1;
 	work_schedule_default(&d->dmat_work, DMA_TRACE_US);
-	d->ready = 1;
+	return 0;
 }
 
 void dtrace_event(const char *e, uint32_t length)
@@ -226,6 +219,6 @@ void dtrace_event(const char *e, uint32_t length)
 	spin_unlock_irq(&trace_data->lock, flags);
 
 	/* schedule copy now if buffer > 50% full */
-	if (trace_data->ready && buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2))
+	if (trace_data->enabled && buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2))
 		work_reschedule_default(&trace_data->dmat_work, 100);
 }

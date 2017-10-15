@@ -82,6 +82,9 @@ struct reef;
 /* the interval of DMA trace copying */
 #define DMA_TRACE_US		500000
 
+/* DMAC used for trace DMA */
+#define PLATFORM_TRACE_DMAC	DMA_ID_DMAC0
+
 /* Platform defined panic code */
 #define platform_panic(__x) \
 		shim_write(SHIM_IPCXL, ((shim_read(SHIM_IPCXL) & 0xc0000000) |\
