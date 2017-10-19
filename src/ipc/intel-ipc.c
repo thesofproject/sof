@@ -574,33 +574,6 @@ static int ipc_glb_pm_message(uint32_t header)
  * Debug IPC Operations.
  */
 
-static int ipc_dma_trace_init(uint32_t header)
-{
-	struct sof_ipc_reply reply;
-	int err;
-
-	trace_ipc("Dti");
-
-	/* Initialize DMA for Trace*/
-	err = dma_trace_init(&_ipc->dmat);
-	if (err < 0) {
-		trace_ipc_error("eIP");
-		goto error;
-	}
-
-	/* write component values to the outbox */
-	reply.hdr.size = sizeof(reply);
-	reply.hdr.cmd = header;
-	reply.error = 0;
-	mailbox_hostbox_write(0, &reply, sizeof(reply));
-	return 0;
-
-error:
-	if (err < 0)
-		trace_ipc_error("eA!");
-	return -EINVAL;
-}
-
 static int ipc_dma_trace_config(uint32_t header)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
@@ -608,7 +581,14 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct sof_ipc_reply reply;
 	int err;
 
-	trace_ipc("DAl");
+	trace_ipc_error("DA1");
+
+	/* Initialize DMA for Trace*/
+	err = dma_trace_init(&_ipc->dmat);
+	if (err < 0) {
+		trace_ipc_error("eIP");
+		goto error;
+	}
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &params->buffer);
@@ -653,8 +633,6 @@ static int ipc_glb_debug_message(uint32_t header)
 	trace_ipc("Idn");
 
 	switch (cmd) {
-	case iCS(SOF_IPC_TRACE_DMA_INIT):
-		return ipc_dma_trace_init(header);
 	case iCS(SOF_IPC_TRACE_DMA_PARAMS):
 		return ipc_dma_trace_config(header);
 	default:

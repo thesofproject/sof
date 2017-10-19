@@ -117,8 +117,7 @@
 #define SOF_IPC_STREAM_VORBIS_FREE		SOF_CMD_TYPE(0x011)
 
 /* trace and debug */
-#define SOF_IPC_TRACE_DMA_INIT			SOF_CMD_TYPE(0x001)
-#define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x002)
+#define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x001)
 
 /* Get message component id */
 #define SOF_IPC_MESSAGE_ID(x)			(x & 0xffff)
