@@ -37,7 +37,13 @@
 #include <arch/task.h>
 #include <reef/debug.h>
 #include <reef/init.h>
+#include <reef/lock.h>
 #include <stdint.h>
+
+#if DEBUG_LOCKS
+uint32_t lock_dbg_atomic = 0;
+uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
+#endif
 
 /* TODO: this should be fixed by rotating the register Window on the stack and
  * dumping the saved registers.

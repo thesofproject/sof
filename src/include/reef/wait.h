@@ -40,7 +40,17 @@
 #include <reef/timer.h>
 #include <reef/interrupt.h>
 #include <reef/trace.h>
+#include <reef/lock.h>
 #include <platform/interrupt.h>
+
+#if DEBUG_LOCKS
+#define wait_atomic_check	\
+	if (lock_dbg_atomic) { \
+		trace_error_atomic(TRACE_CLASS_WAIT, "atm"); \
+	}
+#else
+#define wait_atomic_check
+#endif
 
 typedef struct {
 	uint32_t complete;
@@ -53,6 +63,7 @@ void arch_wait_for_interrupt(int level);
 static inline void wait_for_interrupt(int level)
 {
 	tracev_event(TRACE_CLASS_WAIT, "WFE");
+	wait_atomic_check;
 	arch_wait_for_interrupt(level);
 	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }

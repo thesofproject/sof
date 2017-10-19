@@ -37,6 +37,9 @@
 
 typedef struct {
 	volatile uint32_t lock;
+#if DEBUG_LOCKS
+	uint32_t user;
+#endif
 } spinlock_t;
 
 static inline void arch_spinlock_init(spinlock_t *lock)

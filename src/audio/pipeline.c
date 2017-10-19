@@ -39,6 +39,7 @@
 #include <reef/alloc.h>
 #include <reef/debug.h>
 #include <reef/ipc.h>
+#include <reef/lock.h>
 #include <platform/timer.h>
 #include <platform/platform.h>
 #include <reef/audio/component.h>

@@ -34,23 +34,70 @@
 #ifndef __INCLUDE_LOCK__
 #define __INCLUDE_LOCK__
 
+#define DEBUG_LOCKS	0
+
 #include <stdint.h>
 #include <arch/spinlock.h>
 #include <reef/interrupt.h>
 #include <reef/trace.h>
 
-#define DEBUG_LOCKS	0
 
 #if DEBUG_LOCKS
 
-#define trace_lock(__e)		trace_event(TRACE_CLASS_LOCK, __e)
-#define tracev_lock(__e)	tracev_event(TRACE_CLASS_LOCK, __e)
+#define DBG_LOCK_USERS		8
+
+#define trace_lock(__e)		trace_event_atomic(TRACE_CLASS_LOCK, __e)
+#define tracev_lock(__e)	tracev_event_atomic(TRACE_CLASS_LOCK, __e)
+#define trace_lock_error(__e)	trace_error_atomic(TRACE_CLASS_LOCK, __e)
+#define trace_lock_value(__e)	_trace_error_atomic(__e)
+
+extern uint32_t lock_dbg_atomic;
+extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
 #define spin_lock_dbg() \
-	trace_lock("LcE"); \
-	trace_value(__LINE__);
+	trace_lock("LcE");
+
 #define spin_unlock_dbg() \
 	trace_lock("LcX");
+
+/* all SMP spinlocks need init, nothing todo on UP */
+#define spinlock_init(lock) \
+	arch_spinlock_init(lock); \
+	(lock)->user = __LINE__;
+
+/* does nothing on UP systems */
+#define spin_lock(lock) \
+	spin_lock_dbg(); \
+	if (lock_dbg_atomic) { \
+		int __i = 0; \
+		int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
+			? DBG_LOCK_USERS : lock_dbg_atomic; \
+		trace_lock_error("eal"); \
+		trace_lock_value(__LINE__); \
+		trace_lock_value(lock_dbg_atomic); \
+		for (__i = 0; __i < __count; __i++) { \
+			trace_lock_value((lock_dbg_atomic << 24) | \
+				lock_dbg_user[__i]); \
+		} \
+	} \
+	arch_spin_lock(lock);
+
+#define spin_unlock(lock) \
+	arch_spin_unlock(lock); \
+	spin_unlock_dbg();
+
+/* disables all IRQ sources and takes lock - enter atomic context */
+#define spin_lock_irq(lock, flags) \
+	flags = interrupt_global_disable(); \
+	spin_lock(lock); \
+	if (++lock_dbg_atomic < DBG_LOCK_USERS) \
+		lock_dbg_user[lock_dbg_atomic - 1] = (lock)->user;
+
+/* re-enables current IRQ sources and releases lock - leave atomic context */
+#define spin_unlock_irq(lock, flags) \
+	spin_unlock(lock); \
+	lock_dbg_atomic--; \
+	interrupt_global_enable(flags);
 
 #else
 
@@ -59,8 +106,6 @@
 
 #define spin_lock_dbg()
 #define spin_unlock_dbg()
-
-#endif
 
 /* all SMP spinlocks need init, nothing todo on UP */
 #define spinlock_init(lock) \
@@ -84,5 +129,7 @@
 #define spin_unlock_irq(lock, flags) \
 	spin_unlock(lock); \
 	interrupt_global_enable(flags);
+
+#endif
 
 #endif
