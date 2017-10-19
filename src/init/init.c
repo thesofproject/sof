@@ -84,6 +84,6 @@ int main(int argc, char *argv[])
 	err = do_task(&reef);
 
 	/* should never get here */
-	panic(PANIC_TASK);
+	panic_dump_stack(PANIC_TASK);
 	return err;
 }
