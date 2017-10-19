@@ -233,6 +233,10 @@ static int mixer_copy(struct comp_dev *dev)
 		/* only mix the sources with the same state with mixer */
 		if (source->source->state == dev->state)
 			sources[num_mix_sources++] = source;
+
+		/* too many sources ? */
+		if (num_mix_sources == PLATFORM_MAX_STREAMS - 1)
+			return 0;
 	}
 
 	/* dont have any work if all sources are inactive */
