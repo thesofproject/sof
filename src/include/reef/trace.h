@@ -95,6 +95,8 @@
 
 void _trace_event(uint32_t event);
 void _trace_error(uint32_t event);
+void _trace_event_atomic(uint32_t event);
+void _trace_error_atomic(uint32_t event);
 void trace_off(void);
 void trace_init(struct reef * reef);
 
@@ -102,8 +104,11 @@ void trace_init(struct reef * reef);
 
 #define trace_event(__c, __e) \
 	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
+#define trace_event_atomic(__c, __e) \
+	_trace_event_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 
 #define trace_value(x)	_trace_event(x)
+#define trace_value_atomic(x)	_trace_event_atomic(x)
 
 #define trace_point(x) platform_trace_point(x)
 
@@ -111,17 +116,24 @@ void trace_init(struct reef * reef);
 #if TRACEV
 #define tracev_event(__c, __e) trace_event(__c, __e)
 #define tracev_value(x)	_trace_event(x)
+#define tracev_event_atomic(__c, __e) trace_event_atomic(__c, __e)
+#define tracev_value_atomic(x)	_trace_event_atomic(x)
 #else
 #define tracev_event(__c, __e)
 #define tracev_value(x)
+#define tracev_event_atomic(__c, __e)
+#define tracev_value_atomic(x)
 #endif
 
 /* error tracing */
 #if TRACEE
 #define trace_error(__c, __e) \
 	_trace_error(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
+#define trace_error_atomic(__c, __e) \
+	_trace_error_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 #else
 #define trace_error(__c, __e)
+#define trace_error_atomic(__c, __e)
 #endif
 
 #else
