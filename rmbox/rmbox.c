@@ -129,16 +129,28 @@ static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, double 
 		/* 64-bit timestamp */
 		us = to_usecs(val, clk);
 
-		printf("[%6.6f]\tdelta [%6.6f]\t",
+		/* empty data ? */
+		if (val == 0) {
+			*timestamp = 0;
+			return;
+		}
+
+		/* detect wrap around */
+		if (fdelta < 1000.0 * 1000.0 * 1000.0)
+			printf("0x%lx [%6.6f]\tdelta [%6.6f]\t", addr,
 				us / 1000000.0 , fdelta / 1000000.0);
+		else
+			printf("0x%lx [%6.6f]\tdelta [********]\t", addr,
+				us / 1000000.0);
 
 		*timestamp = val;
 		return;
-	}
+	} else if (*timestamp == 0)
+		return;
 
 	/* check for printable values - otherwise it's a value */
 	if (!isprint((char)(val >> 16)) || !isprint((char)(val >> 8)) || !isprint((char)val)) {
-		printf("value 0x%8.8x\n", (uint32_t)val);
+		printf("value 0x%16.16lx\n", val);
 		return;
 	}
 
@@ -236,9 +248,6 @@ trace:
 			tmp[i] = tmp[TRACE_BLOCK_SIZE - i - 1];
 			tmp[TRACE_BLOCK_SIZE - i - 1] = c;
 		}
-
-		if (val == 0)
-			break;
 
 		show_trace(val, addr, &timestamp, clk);
 
