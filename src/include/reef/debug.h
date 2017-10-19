@@ -98,6 +98,16 @@
 			*(__m++) = *(__a++); \
 	} while (0);
 
+/* dump data area at addr and size count at mailbox ofset or shared memory */
+#define dump_at(addr, count, offset) \
+	do { \
+		volatile uint32_t *__m = (uint32_t*)mailbox_get_debug_base() + offset; \
+		volatile uint32_t *__a = (uint32_t*)addr; \
+		volatile int __c = count; \
+		while (__c--) \
+			*(__m++) = *(__a++); \
+	} while (0);
+
 /* dump object to start of mailbox */
 #define dump_object(__o) \
 	dbg(); \
@@ -107,6 +117,10 @@
 #define dump_object_ptr(__o) \
 	dbg(); \
 	dump(__o, sizeof(*(__o)) >> 2);
+
+#define dump_object_ptr_at(__o, __at) \
+	dbg(); \
+	dump_at(__o, sizeof(*(__o)) >> 2, __at);
 
 #else
 
