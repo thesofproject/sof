@@ -229,24 +229,16 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 }
 
 static int eq_iir_switch_response(struct iir_state_df2t iir[],
-	struct sof_eq_iir_config *config,
-	struct sof_ipc_ctrl_value_comp compv[], uint32_t num_elemens, int nch)
+	struct sof_eq_iir_config *config, uint32_t ch, int32_t response)
 {
-	int i;
-	int j;
 	int ret;
 
 	/* Copy assign response from update and re-initilize EQ */
-	if (config == NULL)
+	if ((config == NULL) || (ch >= PLATFORM_MAX_CHANNELS))
 		return -EINVAL;
 
-	for (i = 0; i < num_elemens; i++) {
-		j = compv[i].index;
-		if (j < config->channels_in_config)
-			config->data[i] = compv[i].svalue;
-	}
-
-	ret = eq_iir_setup(iir, config, nch);
+	config->data[ch] = response;
+	ret = eq_iir_setup(iir, config, PLATFORM_MAX_CHANNELS);
 
 	return ret;
 }
@@ -283,6 +275,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
 
+	dev->state = COMP_STATE_READY;
 	return dev;
 }
 
@@ -333,7 +326,38 @@ static int eq_iir_params(struct comp_dev *dev)
 	return 0;
 }
 
-static int iir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int iir_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int j;
+	uint32_t ch;
+	uint32_t val;
+
+	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
+		trace_eq_iir("mst");
+		for (j = 0; j < cdata->num_elems; j++) {
+			ch = cdata->chanv[j].channel;
+			val = cdata->chanv[j].value;
+			tracev_value(ch);
+			tracev_value(val);
+			if (ch >= PLATFORM_MAX_CHANNELS) {
+				trace_eq_iir_error("che");
+				return -EINVAL;
+			}
+			if (val > 0)
+				iir_mute_df2t(&cd->iir[ch]);
+			else
+				iir_unmute_df2t(&cd->iir[ch]);
+		}
+	} else {
+		trace_eq_iir_error("ste");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int iir_cmd_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_ctrl_value_comp *compv;
@@ -342,20 +366,29 @@ static int iir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 	size_t bs;
 
 	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_EQ_SWITCH:
-		trace_eq_iir("EFx");
-		compv = (struct sof_ipc_ctrl_value_comp *) cdata->data->data;
-		ret = eq_iir_switch_response(cd->iir, cd->config,
-			compv, cdata->num_elems, PLATFORM_MAX_CHANNELS);
-
-		/* Print trace information */
-		tracev_value(cd->config->channels_in_config);
-		for (i = 0; i < cd->config->channels_in_config; i++)
-			tracev_value(cd->config->data[i]);
-
+	case SOF_CTRL_CMD_ENUM:
+		trace_eq_iir("EIe");
+		if (cdata->index == SOF_EQ_IIR_IDX_SWITCH) {
+			trace_eq_iir("EIs");
+			compv = (struct sof_ipc_ctrl_value_comp *) cdata->data->data;
+			for (i = 0; i < (int) cdata->num_elems; i++) {
+				tracev_value(compv[i].index);
+				tracev_value(compv[i].svalue);
+				ret = eq_iir_switch_response(cd->iir, cd->config,
+					compv[i].index, compv[i].svalue);
+				if (ret < 0) {
+					trace_eq_iir_error("swe");
+					return -EINVAL;
+				}
+			}
+		} else {
+			trace_eq_iir_error("une");
+			trace_value(cdata->index);
+			return -EINVAL;
+		}
 		break;
-	case SOF_CTRL_CMD_EQ_CONFIG:
-		trace_eq_iir("EFc");
+	case SOF_CTRL_CMD_BINARY:
+		trace_eq_iir("EIb");
 		/* Check and free old config */
 		eq_iir_free_parameters(&cd->config);
 
@@ -374,18 +407,6 @@ static int iir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 		 * not be set yet.
 		 */
 		ret = eq_iir_setup(cd->iir, cd->config, PLATFORM_MAX_CHANNELS);
-		break;
-	case SOF_CTRL_CMD_MUTE:
-		trace_eq_iir("EFm");
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-			iir_mute_df2t(&cd->iir[i]);
-
-		break;
-	case SOF_CTRL_CMD_UNMUTE:
-		trace_eq_iir("EFu");
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-			iir_unmute_df2t(&cd->iir[i]);
-
 		break;
 	default:
 		trace_eq_iir_error("ec1");
@@ -409,13 +430,14 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+		ret = iir_cmd_set_value(dev, cdata);
+		break;
 	case COMP_CMD_SET_DATA:
-		ret = iir_cmd(dev, cdata);
+		ret = iir_cmd_set_data(dev, cdata);
 		break;
 	case COMP_CMD_STOP:
 		comp_buffer_reset(dev);
-		break;
-	default:
 		break;
 	}
 
