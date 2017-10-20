@@ -186,7 +186,6 @@ struct comp_dev {
 	struct comp_driver *drv;
 
 	/* lists */
-	struct list_item list;			/* list in components */
 	struct list_item bsource_list;	/* list of source buffers */
 	struct list_item bsink_list;	/* list of sink buffers */
 
