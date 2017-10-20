@@ -224,24 +224,16 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 }
 
 static int eq_fir_switch_response(struct fir_state_32x16 fir[],
-	struct sof_eq_fir_config *config,
-	struct sof_ipc_ctrl_value_comp compv[], uint32_t num_elemens, int nch)
+	struct sof_eq_fir_config *config, uint32_t ch, int32_t response)
 {
-	int i;
-	int j;
 	int ret;
 
 	/* Copy assign response from update and re-initilize EQ */
-	if (config == NULL)
+	if ((config == NULL) || (ch >= PLATFORM_MAX_CHANNELS))
 		return -EINVAL;
 
-	for (i = 0; i < num_elemens; i++) {
-		j = compv[i].index;
-		if (j < config->channels_in_config)
-			config->data[i] = compv[i].svalue;
-	}
-
-	ret = eq_fir_setup(fir, config, nch);
+	config->data[ch] = response;
+	ret = eq_fir_setup(fir, config, PLATFORM_MAX_CHANNELS);
 
 	return ret;
 }
@@ -282,6 +274,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
+	dev->state = COMP_STATE_READY;
 	return dev;
 }
 
@@ -332,7 +325,36 @@ static int eq_fir_params(struct comp_dev *dev)
 	return 0;
 }
 
-static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int fir_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int j;
+	uint32_t ch;
+
+	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
+		trace_eq("mst");
+		for (j = 0; j < cdata->num_elems; j++) {
+			ch = cdata->chanv[j].channel;
+			tracev_value(ch);
+			tracev_value(cdata->chanv[j].value);
+			if (ch >= PLATFORM_MAX_CHANNELS) {
+				trace_eq_error("che");
+				return -EINVAL;
+			}
+			if (cdata->chanv[j].value > 0)
+				fir_mute(&cd->fir[ch]);
+			else
+				fir_unmute(&cd->fir[ch]);
+		}
+	} else {
+		trace_eq_error("ste");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int fir_cmd_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_ctrl_value_comp *compv;
@@ -347,22 +369,28 @@ static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 		return -EINVAL;
 
 	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_EQ_SWITCH:
-		trace_eq("EFx");
-		compv = (struct sof_ipc_ctrl_value_comp *) cdata->data->data;
-		ret = eq_fir_switch_response(cd->fir, cd->config,
-			compv, cdata->num_elems, PLATFORM_MAX_CHANNELS);
-		if (ret < 0) {
-			trace_eq_error("ec1");
-			return ret;
+	case SOF_CTRL_CMD_ENUM:
+		trace_eq("EFe");
+		if (cdata->index == SOF_EQ_FIR_IDX_SWITCH) {
+			trace_eq("EFs");
+			compv = (struct sof_ipc_ctrl_value_comp *) cdata->data->data;
+			for (i = 0; i < (int) cdata->num_elems; i++) {
+				tracev_value(compv[i].index);
+				tracev_value(compv[i].svalue);
+				ret = eq_fir_switch_response(cd->fir, cd->config,
+					compv[i].index, compv[i].svalue);
+				if (ret < 0) {
+					trace_eq_error("swe");
+					return -EINVAL;
+				}
+			}
+		} else {
+			trace_eq_error("une");
+			trace_value(cdata->index);
+			return -EINVAL;
 		}
-
-		/* Print trace information */
-		for (i = 0; i < cd->config->channels_in_config; i++)
-			tracev_value(cd->config->data[i]);
-
 		break;
-	case SOF_CTRL_CMD_EQ_CONFIG:
+	case SOF_CTRL_CMD_BINARY:
 		trace_eq("EFc");
 
 		/* Check and free old config */
@@ -379,18 +407,6 @@ static int fir_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 
 		memcpy(cd->config, cdata->data->data, bs);
 		ret = eq_fir_setup(cd->fir, cd->config, PLATFORM_MAX_CHANNELS);
-		break;
-	case SOF_CTRL_CMD_MUTE:
-		trace_eq("EFm");
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-			fir_mute(&cd->fir[i]);
-
-		break;
-	case SOF_CTRL_CMD_UNMUTE:
-		trace_eq("EFu");
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-			fir_unmute(&cd->fir[i]);
-
 		break;
 	default:
 		trace_eq_error("ec1");
@@ -414,13 +430,14 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+		ret = fir_cmd_set_value(dev, cdata);
+		break;
 	case COMP_CMD_SET_DATA:
-		ret = fir_cmd(dev, cdata);
+		ret = fir_cmd_set_data(dev, cdata);
 		break;
 	case COMP_CMD_STOP:
 		comp_buffer_reset(dev);
-		break;
-	default:
 		break;
 	}
 
