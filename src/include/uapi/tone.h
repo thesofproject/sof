@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,33 +26,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
- *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-/* Convert float frequency in Hz to Q16.16 fractional format */
-#define TONE_FREQ(f) Q_CONVERT_FLOAT(f, 16)
+#ifndef TONE_H
+#define TONE_H
 
-/* Convert float gain to Q1.31 fractional format */
-#define TONE_GAIN(v) Q_CONVERT_FLOAT(v, 31)
+/* Component will reject non-matching configuration. The version number need
+ * to be incremented with any ABI changes in function fir_cmd().
+ */
+#define SOF_TONE_ABI_VERSION		1
 
-struct tone_state {
-	int mute;
-	int32_t a; /* Current amplitude Q1.31 */
-	int32_t a_target; /* Target amplitude Q1.31 */
-	int32_t ampl_coef; /* Amplitude multiplier Q2.30 */
-	int32_t c; /* Coefficient 2*pi/Fs Q1.31 */
-	int32_t f; /* Frequency Q16.16 */
-	int32_t freq_coef; /* Frequency multiplier Q2.30 */
-	int32_t fs; /* Sample rate in Hertz Q32.0 */
-	int32_t ramp_step; /* Amplitude ramp step Q1.31 */
-	int32_t w; /* Angle radians Q4.28 */
-	int32_t w_step; /* Angle step Q4.28 */
-	uint32_t block_count;
-	uint32_t repeat_count;
-	uint32_t repeats; /* Number of repeats for tone (sweep steps) */
-	uint32_t sample_count;
-	uint32_t samples_in_block; /* Samples in 125 us block */
-	uint32_t tone_length; /* Active length in 125 us blocks */
-	uint32_t tone_period; /* Active + idle time in 125 us blocks */
-};
+#define SOF_TONE_IDX_FREQUENCY		0
+#define SOF_TONE_IDX_AMPLITUDE		1
+#define SOF_TONE_IDX_FREQ_MULT		2
+#define SOF_TONE_IDX_AMPL_MULT		3
+#define SOF_TONE_IDX_LENGTH		4
+#define SOF_TONE_IDX_PERIOD		5
+#define SOF_TONE_IDX_REPEATS		6
+#define SOF_TONE_IDX_LIN_RAMP_STEP	7
+
+#endif /* TONE_ABI_H */

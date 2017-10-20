@@ -45,7 +45,7 @@
 #include <reef/audio/pipeline.h>
 #include <reef/math/trig.h>
 #include <uapi/ipc.h>
-#include "tone.h"
+#include <uapi/tone.h>
 
 #ifdef MODULE_TEST
 #include <stdio.h>
@@ -55,14 +55,17 @@
 #define tracev_tone(__e) tracev_event(TRACE_CLASS_TONE, __e)
 #define trace_tone_error(__e) trace_error(TRACE_CLASS_TONE, __e)
 
+/* Convert float frequency in Hz to Q16.16 fractional format */
+#define TONE_FREQ(f) Q_CONVERT_FLOAT(f, 16)
+
+/* Convert float gain to Q1.31 fractional format */
+#define TONE_GAIN(v) Q_CONVERT_FLOAT(v, 31)
+
+/* Set default tone amplitude and frequency */
+#define TONE_AMPLITUDE_DEFAULT TONE_GAIN(0.5)      /*  -6 dB  */
+#define TONE_FREQUENCY_DEFAULT TONE_FREQ(82.41)    /* E2 note */
+
 #define TONE_NUM_FS            13       /* Table size for 8-192 kHz range */
-#define TONE_AMPLITUDE_DEFAULT MINUS_60DB_Q1_31  /* -60 dB */
-#define TONE_FREQUENCY_DEFAULT TONE_FREQ(997.0)    /* 997 Hz */
-
-static int32_t tonegen(struct tone_state *sg);
-static void tonegen_control(struct tone_state *sg);
-static void tonegen_update_f(struct tone_state *sg, int32_t f);
-
 
 /* 2*pi/Fs lookup tables in Q1.31 for each Fs */
 static const int32_t tone_fs_list[TONE_NUM_FS] = {
@@ -76,70 +79,78 @@ static const int32_t tone_pi2_div_fs[TONE_NUM_FS] = {
 
 /* tone component private data */
 
-/* TODO: Remove *source when internal endpoint is possible */
+struct tone_state {
+	int mute;
+	int32_t a; /* Current amplitude Q1.31 */
+	int32_t a_target; /* Target amplitude Q1.31 */
+	int32_t ampl_coef; /* Amplitude multiplier Q2.30 */
+	int32_t c; /* Coefficient 2*pi/Fs Q1.31 */
+	int32_t f; /* Frequency Q16.16 */
+	int32_t freq_coef; /* Frequency multiplier Q2.30 */
+	int32_t fs; /* Sample rate in Hertz Q32.0 */
+	int32_t ramp_step; /* Amplitude ramp step Q1.31 */
+	int32_t w; /* Angle radians Q4.28 */
+	int32_t w_step; /* Angle step Q4.28 */
+	uint32_t block_count;
+	uint32_t repeat_count;
+	uint32_t repeats; /* Number of repeats for tone (sweep steps) */
+	uint32_t sample_count;
+	uint32_t samples_in_block; /* Samples in 125 us block */
+	uint32_t tone_length; /* Active length in 125 us blocks */
+	uint32_t tone_period; /* Active + idle time in 125 us blocks */
+};
+
 struct comp_data {
 	uint32_t period_bytes;
 	uint32_t channels;
 	uint32_t frame_bytes;
 	uint32_t rate;
-	struct tone_state sg;
+	struct tone_state sg[PLATFORM_MAX_CHANNELS];
 	void (*tone_func)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source, uint32_t frames);
+		uint32_t frames);
 };
+
+static int32_t tonegen(struct tone_state *sg);
+static void tonegen_control(struct tone_state *sg);
+static void tonegen_update_f(struct tone_state *sg, int32_t f);
 
 /*
  * Tone generator algorithm code
  */
 
+static inline void tone_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
+{
+	if (*ptr >= end)
+		*ptr = (int32_t *) ((size_t) * ptr - size);
+}
+
 static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
-	struct comp_buffer *source, uint32_t frames)
+	uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t sine_sample;
 	int32_t *dest = (int32_t*) sink->w_ptr;
 	int i;
 	int n;
 	int n_wrap_dest;
+	int n_min;
 	int nch = cd->channels;
 
 	n = frames * nch;
 	while (n > 0) {
 		n_wrap_dest = (int32_t *) sink->end_addr - dest;
-		if (n < n_wrap_dest) {
-			/* No circular wrap need */
-			while (n > 0) {
-				/* Update period count for sweeps, etc. */
-				tonegen_control(&cd->sg);
-				/* Calculate mono sine wave sample and then
-				 * duplicate to channels.
-				 */
-				sine_sample = tonegen(&cd->sg);
-				n -= nch;
-				for (i = 0; i < nch; i++) {
-					*dest = sine_sample;
-					dest++;
-				}
+		n_min = (n < n_wrap_dest) ? n : n_wrap_dest;
+		/* Process until wrap or completed n */
+		while (n_min > 0) {
+			n -= nch;
+			n_min -= nch;
+			for (i = 0; i < nch; i++) {
+				tonegen_control(&cd->sg[i]);
+				*dest = tonegen(&cd->sg[i]);
+				dest++;
 			}
-		} else {
-			/* Process until wrap */
-			while (n_wrap_dest > 0) {
-				tonegen_control(&cd->sg);
-				sine_sample = tonegen(&cd->sg);
-				n -= nch;
-				n_wrap_dest -= nch;
-				for (i = 0; i < nch; i++) {
-					*dest = sine_sample;
-					dest++;
-				}
-			}
-			/* No need to check if past end_addr,
-			 * it is so just subtract buffer size.
-			 */
-			dest = (int32_t *) ((size_t) dest
-				- sink->ipc_buffer.size);
 		}
+		tone_circ_inc_wrap(&dest, sink->end_addr, sink->size);
 	}
-	sink->w_ptr = dest;
 }
 
 static int32_t tonegen(struct tone_state *sg)
@@ -226,39 +237,46 @@ static void tonegen_control(struct tone_state *sg)
 	}
 }
 
+/* Set sine amplitude */
 static inline void tonegen_set_a(struct tone_state *sg, int32_t a)
 {
 	sg->a_target = a;
 }
 
-static inline void tonegen_set_f(struct tone_state *sg, int32_t f)
-{
-	sg->f = f;
-}
-
-#if 0
-/* Tone sweep parameters description:
- * fc - Multiplication factor for frequency as Q2.30 for logarithmic change
- * ac - Multiplication factor for amplitude as Q2.30 for logarithmic change
- * l - Tone length in samples, this is the active length of tone
- * p - Tone period in samples, this is the length including the pause after beep
- * r - Repeated number of beeps
- */
-
-static void tonegen_set_sweep(struct tone_state *sg, int32_t fc, int32_t ac,
-	uint32_t l, uint32_t p, uint32_t r)
+/* Repeated number of beeps */
+static void tonegen_set_repeats(struct tone_state *sg, uint32_t r)
 {
 	sg->repeats = r;
-
-	/* Zeros as defaults make a nicer API without need to remember
-	 * the neutral settings for sweep and repeat parameters.
-	 */
-	sg->freq_coef = (fc > 0) ? fc : ONE_Q2_30; /* Set freq mult to 1.0 */
-	sg->ampl_coef = (ac > 0) ? ac : ONE_Q2_30; /* Set ampl mult to 1.0 */
-	sg->tone_length = (l > 0) ? l : INT32_MAXVALUE; /* Count rate 125 us */
-	sg->tone_period = (p > 0) ? p : INT32_MAXVALUE; /* Count rate 125 us */
 }
-#endif
+
+/* The next functions support zero as shortcut for defaults to get
+ * make a nicer API without need to remember the neutral steady
+ * non-swept tone settings.
+ */
+
+/* Multiplication factor for frequency as Q2.30 for logarithmic change */
+static void tonegen_set_freq_mult(struct tone_state *sg, int32_t fm)
+{
+	sg->freq_coef = (fm > 0) ? fm : ONE_Q2_30; /* Set freq mult to 1.0 */
+}
+
+/* Multiplication factor for amplitude as Q2.30 for logarithmic change */
+static void tonegen_set_ampl_mult(struct tone_state *sg, int32_t am)
+{
+	sg->ampl_coef = (am > 0) ? am : ONE_Q2_30; /* Set ampl mult to 1.0 */
+}
+
+/* Tone length in samples, this is the active length of tone */
+static void tonegen_set_length(struct tone_state *sg, uint32_t tl)
+{
+	sg->tone_length = (tl > 0) ? tl : INT32_MAXVALUE; /* Count rate 125 us */
+}
+
+/* Tone period in samples, this is the length including the pause after beep */
+static void tonegen_set_period(struct tone_state *sg, uint32_t tp)
+{
+	sg->tone_period = (tp > 0) ? tp : INT32_MAXVALUE; /* Count rate 125 us */
+}
 
 /* Tone ramp parameters:
  * step - Value that is added or subtracted to amplitude. A zero or negative
@@ -382,6 +400,7 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_tone *tone;
 	struct sof_ipc_comp_tone *ipc_tone = (struct sof_ipc_comp_tone *) comp;
 	struct comp_data *cd;
+	int i;
 
 	trace_tone("new");
 
@@ -403,7 +422,8 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	cd->tone_func = tone_s32_default;
 
 	/* Reset tone generator and set channels volumes to default */
-	tonegen_reset(&cd->sg);
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		tonegen_reset(&cd->sg[i]);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -441,34 +461,104 @@ static int tone_params(struct comp_dev *dev)
 	return 0;
 }
 
-static int tone_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int tone_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	int j;
+	uint32_t ch;
+	uint32_t val;
+
+	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
+		trace_tone("mst");
+		for (j = 0; j < cdata->num_elems; j++) {
+			ch = cdata->chanv[j].channel;
+			val = cdata->chanv[j].value;
+			tracev_value(ch);
+			tracev_value(val);
+			if (ch >= PLATFORM_MAX_CHANNELS) {
+				trace_tone_error("che");
+				return -EINVAL;
+			}
+			if (val > 0)
+				tonegen_mute(&cd->sg[ch]);
+			else
+				tonegen_unmute(&cd->sg[ch]);
+
+		}
+	} else {
+		trace_tone_error("ste");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int tone_cmd_set_data(struct comp_dev *dev,
+	struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_ctrl_value_comp *compv;
+	int i;
+	uint32_t ch;
+	uint32_t val;
 
 	trace_tone("tri");
 
+	/* Check version from ABI header */
+	if (cdata->data->comp_abi != SOF_TONE_ABI_VERSION) {
+		trace_tone_error("abi");
+		return -EINVAL;
+	}
+
 	switch (cdata->cmd) {
-	case SOF_CTRL_CMD_MUTE:
-		trace_tone("TMu");
-		tonegen_mute(&cd->sg);
+	case SOF_CTRL_CMD_ENUM:
+		trace_tone("ten");
+		trace_value(cdata->index);
+		compv = (struct sof_ipc_ctrl_value_comp *) cdata->data->data;
+		for (i = 0; i < (int) cdata->num_elems; i++) {
+			ch = compv[i].index;
+			val = compv[i].svalue;
+			tracev_value(ch);
+			tracev_value(val);
+			switch (cdata->index) {
+			case SOF_TONE_IDX_FREQUENCY:
+				trace_tone("tfr");
+				tonegen_update_f(&cd->sg[ch], val);
+				break;
+			case SOF_TONE_IDX_AMPLITUDE:
+				trace_tone("tam");
+				tonegen_set_a(&cd->sg[ch], val);
+				break;
+			case SOF_TONE_IDX_FREQ_MULT:
+				trace_tone("tfx");
+				tonegen_set_freq_mult(&cd->sg[ch], val);
+				break;
+			case SOF_TONE_IDX_AMPL_MULT:
+				trace_tone("tax");
+				tonegen_set_ampl_mult(&cd->sg[ch], val);
+				break;
+			case SOF_TONE_IDX_LENGTH:
+				trace_tone("tle");
+				tonegen_set_length(&cd->sg[ch], val);
+				break;
+			case SOF_TONE_IDX_PERIOD:
+				trace_tone("tpe");
+				tonegen_set_period(&cd->sg[ch], val);
+				break;
+			case SOF_TONE_IDX_REPEATS:
+				trace_tone("trp");
+				tonegen_set_repeats(&cd->sg[ch], val);
+				break;
+			case SOF_TONE_IDX_LIN_RAMP_STEP:
+				trace_tone("trs");
+				tonegen_set_linramp(&cd->sg[ch], val);
+				break;
+			default:
+				trace_tone_error("ier");
+				return -EINVAL;
+			}
+		}
 		break;
-	case SOF_CTRL_CMD_UNMUTE:
-		trace_tone("TUm");
-		tonegen_unmute(&cd->sg);
-		break;
-/* TODO: use comp value list array to set this */
-#if 0
-	case SOF_CTRL_TYPE_VALUE_COMP_SET:
-		trace_tone("Tto");
-		ct = (struct sof_ipc_comp_tone *) data;
-		/* Ignore channels while tone implementation is mono */
-		tonegen_set_f(&cd->sg, ct->frequency);
-		tonegen_set_a(&cd->sg, ct->amplitude);
-		tonegen_set_sweep(&cd->sg, ct->freq_mult, ct->ampl_mult,
-			ct->length, ct->period, ct->repeats);
-		tonegen_set_linramp(&cd->sg, ct->ramp_step);
-		break;
-#endif
 	default:
 		trace_tone_error("ec1");
 		return -EINVAL;
@@ -489,17 +579,22 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 	if (ret < 0)
 		return ret;
 
-	if (cmd == COMP_CMD_SET_VALUE)
-		ret = tone_ctrl_cmd(dev, cdata);
+	switch (cmd) {
+	case COMP_CMD_SET_DATA:
+		ret = tone_cmd_set_data(dev, cdata);
+		break;
+	case COMP_CMD_SET_VALUE:
+		ret = tone_cmd_set_value(dev, cdata);
+		break;
+	}
 
 	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */
-static int tone_copy(struct comp_dev *dev)
+static int tone_copy(struct comp_dev * dev)
 {
 	struct comp_buffer *sink;
-	struct comp_buffer *source = NULL;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_comp("cpy");
@@ -513,19 +608,22 @@ static int tone_copy(struct comp_dev *dev)
 	 */
 	if (sink->free >= cd->period_bytes) {
 		/* create tone */
-		cd->tone_func(dev, sink, source, dev->frames);
-		comp_update_buffer_produce(sink, 0);
+		cd->tone_func(dev, sink, dev->frames);
+
+		/* calc new free and available */
+		comp_update_buffer_produce(sink, cd->period_bytes);
 	}
 
 	return dev->frames;
 }
 
-static int tone_prepare(struct comp_dev *dev)
+static int tone_prepare(struct comp_dev * dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t f;
 	int32_t a;
 	int ret;
+	int i;
 
 	trace_tone("TPp");
 
@@ -538,30 +636,34 @@ static int tone_prepare(struct comp_dev *dev)
 	tracev_value(cd->channels);
 	tracev_value(cd->rate);
 
-	f = tonegen_get_f(&cd->sg);
-	a = tonegen_get_a(&cd->sg);
-	if (tonegen_init(&cd->sg, cd->rate, f, a) < 0) {
-		comp_set_state(dev, COMP_CMD_RESET);
-		return -EINVAL;
+	for (i = 0; i < cd->channels; i++) {
+		f = tonegen_get_f(&cd->sg[i]);
+		a = tonegen_get_a(&cd->sg[i]);
+		if (tonegen_init(&cd->sg[i], cd->rate, f, a) < 0) {
+			comp_set_state(dev, COMP_CMD_RESET);
+			return -EINVAL;
+		}
 	}
 
 	return 0;
 }
 
-static int tone_preload(struct comp_dev *dev)
+static int tone_preload(struct comp_dev * dev)
 {
 	return tone_copy(dev);
 }
 
-static int tone_reset(struct comp_dev *dev)
+static int tone_reset(struct comp_dev * dev)
 {
 
 	struct comp_data *cd = comp_get_drvdata(dev);
+	int i;
 
 	trace_tone("TRe");
 
 	/* Initialize with the defaults */
-	tonegen_reset(&cd->sg);
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		tonegen_reset(&cd->sg[i]);
 
 	comp_set_state(dev, COMP_CMD_RESET);
 
@@ -570,8 +672,7 @@ static int tone_reset(struct comp_dev *dev)
 
 struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
-	.ops =
-	{
+	.ops = {
 		.new = tone_new,
 		.free = tone_free,
 		.params = tone_params,
