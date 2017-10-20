@@ -41,7 +41,7 @@ struct src_param {
 	int out_s1;
 	int out_s2;
 	int sbuf_length;
-	int single_src;
+	int src_multich;
 	int total;
 	int blk_in;
 	int blk_out;
@@ -51,6 +51,7 @@ struct src_param {
 	int stage2_times_max;
 	int idx_in;
 	int idx_out;
+	int nch;
 };
 
 struct src_stage {
@@ -70,20 +71,13 @@ struct src_state {
 	int fir_delay_size;
 	int out_delay_size;
 	int fir_wi;
-	int fir_ri;
-	int out_wi;
 	int out_ri;
 	int32_t *fir_delay;
 	int32_t *out_delay;
 };
 
 struct polyphase_src {
-	int mute;
 	int number_of_stages;
-	int blk_in;
-	int blk_out;
-	int stage1_times;
-	int stage2_times;
 	struct src_stage *stage1;
 	struct src_stage *stage2;
 	struct src_state state1;
@@ -91,15 +85,14 @@ struct polyphase_src {
 };
 
 struct src_stage_prm {
+	int nch;
 	int times;
 	int32_t *x_rptr;
 	int32_t *x_end_addr;
 	size_t x_size;
-	int x_inc;
 	int32_t *y_wptr;
 	int32_t *y_end_addr;
 	size_t y_size;
-	int y_inc;
 	struct src_state *state;
 	struct src_stage *stage;
 };
@@ -114,31 +107,6 @@ static inline void src_circ_dec_wrap(int32_t **ptr, int32_t *addr, size_t size)
 {
 	if (*ptr < addr)
 		*ptr = (int32_t *) ((size_t) * ptr + size);
-}
-
-static inline void src_polyphase_mute(struct polyphase_src *src)
-{
-	src->mute = 1;
-}
-
-static inline void src_polyphase_unmute(struct polyphase_src *src)
-{
-	src->mute = 0;
-}
-
-static inline int src_polyphase_getmute(struct polyphase_src *src)
-{
-	return src->mute;
-}
-
-static inline int src_polyphase_get_blk_in(struct polyphase_src *src)
-{
-	return src->blk_in;
-}
-
-static inline int src_polyphase_get_blk_out(struct polyphase_src *src)
-{
-	return src->blk_out;
 }
 
 void src_polyphase_reset(struct polyphase_src *src);
@@ -161,9 +129,5 @@ int32_t src_input_rates(void);
 int32_t src_output_rates(void);
 
 int src_ceil_divide(int a, int b);
-
-#ifdef MODULE_TEST
-void src_print_info(struct polyphase_src *src);
-#endif
 
 #endif

@@ -55,7 +55,7 @@
 
 /* src component private data */
 struct comp_data {
-	struct polyphase_src src[PLATFORM_MAX_CHANNELS];
+	struct polyphase_src src;
 	struct src_param param;
 	int32_t *delay_lines;
 	uint32_t sink_rate;
@@ -63,16 +63,16 @@ struct comp_data {
 	int32_t *sbuf_w_ptr;
 	int32_t *sbuf_r_ptr;
 	int sbuf_avail;
-	int sign_extend_s24; /* Set if need to copy sign bit to b24..b31 */
 	void (* src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
 		size_t *consumed,
 		size_t *produced);
+	void (* polyphase_func)(struct src_stage_prm *s);
 };
 
 /* Fallback function */
-static void fallback_s32(struct comp_dev *dev, struct comp_buffer *source,
+static void src_fallback(struct comp_dev *dev, struct comp_buffer *source,
 	struct comp_buffer *sink, size_t *bytes_read, size_t *bytes_written)
 {
 	*bytes_read = 0;
@@ -84,101 +84,110 @@ static void src_2s_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink,
 	size_t *bytes_read, size_t *bytes_written)
 {
-	struct polyphase_src *s;
 	struct src_stage_prm s1;
 	struct src_stage_prm s2;
-	int j;
+	int s1_blk_in;
+	int s1_blk_out;
+	int s2_blk_in;
+	int s2_blk_out;
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *dest = (int32_t *) sink->w_ptr;
 	int32_t *src = (int32_t *) source->r_ptr;
-	int32_t *sbuf_addr = cd->delay_lines;
 	int32_t *sbuf_end_addr = &cd->delay_lines[cd->param.sbuf_length];
 	int32_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
-	const int nch = dev->params.channels;
-	const int s1_blk_in = cd->src[0].stage1->blk_in * nch;
-	const int s1_blk_out = cd->src[0].stage1->blk_out * nch;
-	const int s2_blk_in = cd->src[0].stage2->blk_in * nch;
-	const int s2_blk_out = cd->src[0].stage2->blk_out * nch;
+	int nch = dev->params.channels;
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
-	int source_check = (source->avail >> 2) - s1_blk_in; /* for int32_t */
-	int sink_check = (sink->free >> 2) - s2_blk_out; /* For int32_t */
 	int n_read = 0;
 	int n_written = 0;
 	int n1 = 0;
 	int n2 = 0;
+	int avail_b = source->avail;
+	int free_b = sink->free;
+	int sz = sizeof(int32_t);
 
-	s1.times = 1;
 	s1.x_end_addr = source->end_addr;
 	s1.x_size = source->size;
-	s1.x_inc = nch;
 	s1.y_end_addr = sbuf_end_addr;
 	s1.y_size = sbuf_size;
-	s1.y_inc = nch;
+	s1.state = &cd->src.state1;
+	s1.stage = cd->src.stage1;
+	s1.x_rptr = src;
+	s1.y_wptr = cd->sbuf_w_ptr;
+	s1.nch = nch;
 
-	s2.times = 1;
 	s2.x_end_addr = sbuf_end_addr;
 	s2.x_size = sbuf_size;
-	s2.x_inc = nch;
 	s2.y_end_addr = sink->end_addr;
 	s2.y_size = sink->size;
-	s2.y_inc = nch;
+	s2.state = &cd->src.state2;
+	s2.stage = cd->src.stage2;
+	s2.x_rptr = cd->sbuf_r_ptr;
+	s2.y_wptr = dest;
+	s2.nch = nch;
 
-	/* 1st stage runs once a long multiplied length block.
-	 * The stage buffer much be large enough to fit one s1 output block
-	 * plus one s2 input block plus jitter in s2 consumption.
+
+	/* Test if 1st stage can be run with default block length to reach
+	 * the period length or just under it.
 	 */
-	while ((n1 < cd->param.stage1_times_max)
-		&& (n_read <= source_check)
-		&& (sbuf_free >= s1_blk_out)) {
-		for (j = 0; j < nch; j++) {
-			s = &cd->src[j]; /* Point to src[] for this channel */
-			s1.x_rptr = src++;
-			s1.y_wptr = cd->sbuf_w_ptr++;
-			src_circ_inc_wrap(&src, source->end_addr, source->size);
-			src_circ_inc_wrap(&cd->sbuf_w_ptr, sbuf_end_addr, sbuf_size);
-			s1.state = &s->state1;
-			s1.stage = s->stage1;
-			if (cd->sign_extend_s24)
-				src_polyphase_stage_cir_s24(&s1);
-			else
-				src_polyphase_stage_cir(&s1);
+	s1.times = cd->param.stage1_times;
+	s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
+	s1_blk_out = s1.times * cd->src.stage1->blk_out * nch;
+	if ((avail_b >= s1_blk_in * sz) && (sbuf_free >= s1_blk_out)) {
+		cd->polyphase_func(&s1);
 
-		}
-		n_read += s1_blk_in;
+		cd->sbuf_w_ptr = s1.y_wptr;
 		cd->sbuf_avail += s1_blk_out;
+		n_read += s1_blk_in;
+		avail_b -= s1_blk_in * sz;
 		sbuf_free -= s1_blk_out;
-		src = s1.x_rptr - nch + 1;
-		cd->sbuf_w_ptr = s1.y_wptr - nch + 1;
-		src_circ_dec_wrap(&src, source->addr, source->size);
-		src_circ_dec_wrap(&cd->sbuf_w_ptr, sbuf_addr, sbuf_size);
-		n1++;
+		n1 = s1.times;
 	}
 
-	/* 2nd stage runs as many min size blocks as buffers allow */
+	/* Run one block at time the remaining data for 1st stage. */
+	s1.times = 1;
+	s1_blk_in = cd->src.stage1->blk_in * nch;
+	s1_blk_out = cd->src.stage1->blk_out * nch;
+	while ((n1 < cd->param.stage1_times_max) && (avail_b >= s1_blk_in * sz)
+		&& (sbuf_free >= s1_blk_out)) {
+		cd->polyphase_func(&s1);
+
+		cd->sbuf_w_ptr = s1.y_wptr;
+		cd->sbuf_avail += s1_blk_out;
+		n_read += s1_blk_in;
+		avail_b -= s1_blk_in * sz;
+		sbuf_free -= s1_blk_out;
+		n1 += s1.times;
+	}
+
+	/* Test if 2nd stage can be run with default block length. */
+	s2.times = cd->param.stage2_times;
+	s2_blk_in = s2.times * cd->src.stage2->blk_in * nch;
+	s2_blk_out = s2.times * cd->src.stage2->blk_out * nch;
+	if ((cd->sbuf_avail >= s2_blk_in) && (free_b >= s2_blk_out * sz)) {
+		cd->polyphase_func(&s2);
+
+		cd->sbuf_r_ptr = s2.x_rptr;
+		cd->sbuf_avail -= s2_blk_in;
+		free_b -= s2_blk_out * sz;
+		n_written += s2_blk_out;
+		n2 = s2.times;
+	}
+
+
+	/* Run one block at time the remaining 2nd stage output */
+	s2.times = 1;
+	s2_blk_in = cd->src.stage2->blk_in * nch;
+	s2_blk_out = cd->src.stage2->blk_out * nch;
 	while ((n2 < cd->param.stage2_times_max)
 		&& (cd->sbuf_avail >= s2_blk_in)
-		&& (n_written <= sink_check)) {
-		for (j = 0; j < nch; j++) {
-			s2.x_rptr = cd->sbuf_r_ptr++;
-			s2.y_wptr = dest++;
-			src_circ_inc_wrap(&cd->sbuf_r_ptr, sbuf_end_addr, sbuf_size);
-			src_circ_inc_wrap(&dest, sink->end_addr, sink->size);
-			s = &cd->src[j]; /* Point to src[] for this channel */
-			s2.state = &s->state2;
-			s2.stage = s->stage2;
-			if (cd->sign_extend_s24)
-				src_polyphase_stage_cir_s24(&s2);
-			else
-				src_polyphase_stage_cir(&s2);
+		&& (free_b >= s2_blk_out * sz)) {
+		cd->polyphase_func(&s2);
 
-		}
-		cd->sbuf_r_ptr = s2.x_rptr - nch + 1;
-		dest = s2.y_wptr - nch + 1;
-		src_circ_dec_wrap(&cd->sbuf_r_ptr, sbuf_addr, sbuf_size);
-		src_circ_dec_wrap(&dest, sink->addr, sink->size);
-		n_written += s2_blk_out;
+		cd->sbuf_r_ptr = s2.x_rptr;
 		cd->sbuf_avail -= s2_blk_in;
-		n2++;
+		free_b -= s2_blk_out * sz;
+		n_written += s2_blk_out;
+		n2 += s2.times;
 	}
 	*bytes_read = sizeof(int32_t) * n_read;
 	*bytes_written = sizeof(int32_t) * n_written;
@@ -189,42 +198,27 @@ static void src_1s_s32_default(struct comp_dev *dev,
 	struct comp_buffer *source, struct comp_buffer *sink,
 	size_t *bytes_read, size_t *bytes_written)
 {
-	struct polyphase_src *s;
 	struct src_stage_prm s1;
-	int j;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *dest = (int32_t *) sink->w_ptr;
-	int32_t *src = (int32_t *) source->r_ptr;
 	int nch = dev->params.channels;
 	int n_read = 0;
 	int n_written = 0;
 
 	s1.times = cd->param.stage1_times;
+	s1.x_rptr = (int32_t *) source->r_ptr;
 	s1.x_end_addr = source->end_addr;
 	s1.x_size = source->size;
-	s1.x_inc = nch;
+	s1.y_wptr = (int32_t *) sink->w_ptr;
 	s1.y_end_addr = sink->end_addr;
 	s1.y_size = sink->size;
-	s1.y_inc = nch;
-	s1.x_rptr = src + nch - 1;
-	s1.y_wptr = dest + nch - 1;
+	s1.state = &cd->src.state1;
+	s1.stage = cd->src.stage1;
+	s1.nch = dev->params.channels;
 
-	for (j = 0; j < nch; j++) {
-		s = &cd->src[j]; /* Point to src for this channel */
-		s1.x_rptr = src++;
-		s1.y_wptr = dest++;
-		src_circ_inc_wrap(&src, source->end_addr, source->size);
-		src_circ_inc_wrap(&dest, sink->end_addr, sink->size);
-		s1.state = &s->state1;
-		s1.stage = s->stage1;
-		if (cd->sign_extend_s24)
-			src_polyphase_stage_cir_s24(&s1);
-		else
-			src_polyphase_stage_cir(&s1);
+	cd->polyphase_func(&s1);
 
-		n_read += cd->param.blk_in;
-		n_written += cd->param.blk_out;
-	}
+	n_read += nch * cd->param.blk_in;
+	n_written += nch * cd->param.blk_out;
 	*bytes_read = n_read * sizeof(int32_t);
 	*bytes_written = n_written * sizeof(int32_t);
 }
@@ -271,7 +265,6 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_src *src;
 	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *) comp;
 	struct comp_data *cd;
-	int i;
 
 	trace_src("new");
 
@@ -299,8 +292,8 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 
 	cd->delay_lines = NULL;
 	cd->src_func = src_2s_s32_default;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		src_polyphase_reset(&cd->src[i]);
+	cd->polyphase_func = src_polyphase_stage_cir;
+	src_polyphase_reset(&cd->src);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -334,10 +327,8 @@ static int src_params(struct comp_dev *dev)
 	uint32_t sink_rate;
 	int32_t *buffer_start;
 	int n = 0;
-	int i;
 	int err;
 	int frames_is_for_source;
-	int nch;
 	int q;
 
 	trace_src("par");
@@ -345,10 +336,10 @@ static int src_params(struct comp_dev *dev)
 	/* SRC supports S24_4LE and S32_LE formats */
 	switch (config->frame_fmt) {
 	case SOF_IPC_FRAME_S24_4LE:
-		cd->sign_extend_s24 = 1;
+		cd->polyphase_func = src_polyphase_stage_cir_s24;
 		break;
 	case SOF_IPC_FRAME_S32_LE:
-		cd->sign_extend_s24 = 0;
+		cd->polyphase_func = src_polyphase_stage_cir;
 		break;
 	default:
 		trace_src_error("sr0");
@@ -407,11 +398,7 @@ static int src_params(struct comp_dev *dev)
 	buffer_start = cd->delay_lines + cd->param.sbuf_length;
 
 	/* Initize SRC for actual sample rate */
-	nch = MIN(params->channels, PLATFORM_MAX_CHANNELS);
-	for (i = 0; i < nch; i++) {
-		n = src_polyphase_init(&cd->src[i], &cd->param, buffer_start);
-		buffer_start += cd->param.single_src;
-	}
+	n = src_polyphase_init(&cd->src, &cd->param, buffer_start);
 
 	/* Reset stage buffer */
 	cd->sbuf_r_ptr = cd->delay_lines;
@@ -434,7 +421,7 @@ static int src_params(struct comp_dev *dev)
 		 * muted if copy() is run.
 		 */
 		trace_src("SFa");
-		cd->src_func = fallback_s32;
+		cd->src_func = src_fallback;
 		return -EINVAL;
 		break;
 	}
@@ -532,7 +519,6 @@ static int src_copy(struct comp_dev *dev)
 
 	/* Run SRC function if buffers avail and free allow */
 	if (((int) source->avail >= need_source) && ((int) sink->free >= need_sink)) {
-		/* Run src */
 		cd->src_func(dev, source, sink, &consumed, &produced);
 
 		/* Calc new free and available if data was processed. These
@@ -561,14 +547,12 @@ static int src_preload(struct comp_dev *dev)
 
 static int src_reset(struct comp_dev *dev)
 {
-	int i;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_src("SRe");
 
 	cd->src_func = src_2s_s32_default;
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
-		src_polyphase_reset(&cd->src[i]);
+	src_polyphase_reset(&cd->src);
 
 	comp_set_state(dev, COMP_CMD_RESET);
 	return 0;
