@@ -56,6 +56,18 @@
 #define MINUS_80DB_Q1_31     214748  /* 10^(-80/20) */
 #define MINUS_90DB_Q1_31      67909  /* 10^(-90/20) */
 
+/* Compute the number of shifts
+ * This will result in a compiler overflow error if shift bits are out of
+ * range as INT64_MAX/MIN is greater than 32 bit Q shift parameter
+ */
+#define Q_SHIFT_BITS_64(qx, qy, qz) \
+	((qx + qy - qz) <= 63 ? (((qx + qy - qz) >= 0) ? \
+	 (qx + qy - qz) : INT64_MIN) : INT64_MAX)
+
+#define Q_SHIFT_BITS_32(qx, qy, qz) \
+	((qx + qy - qz) <= 31 ? (((qx + qy - qz) >= 0) ? \
+	 (qx + qy - qz) : INT32_MIN) : INT32_MAX)
+
 /* Convert a float number to fractional Qnx.ny format. Note that there is no
  * check for nx+ny number of bits to fit the word length of int.
  */
@@ -82,28 +94,24 @@
 #define SATP_INT32(x) (((x) > INT32_MAXVALUE) ? INT32_MAXVALUE : (x))
 #define SATM_INT32(x) (((x) < INT32_MINVALUE) ? INT32_MINVALUE : (x))
 
-static inline int64_t q_mults_32x32(int32_t x, int32_t y,
-	const int qx, const int qy, const int qp)
+static inline int64_t q_mults_32x32(int32_t x, int32_t y, const int shift_bits)
 {
-	return ((int64_t)x * y) >> (qx+qy-qp);
+	return ((int64_t)x * y) >> shift_bits;
 }
 
-static inline int64_t q_multsr_32x32(int32_t x, int32_t y,
-	const int qx, const int qy, const int qp)
+static inline int64_t q_multsr_32x32(int32_t x, int32_t y, const int shift_bits)
 {
-	return ((((int64_t)x * y) >> (qx+qy-qp-1)) + 1) >> 1;
+	return ((((int64_t)x * y) >> (shift_bits - 1)) + 1) >> 1;
 }
 
-static inline int32_t q_mults_16x16(int16_t x, int16_t y,
-	const int qx, const int qy, const int qp)
+static inline int32_t q_mults_16x16(int16_t x, int32_t y, const int shift_bits)
 {
-	return ((int32_t)x * y) >> (qx+qy-qp);
+	return ((int32_t)x * y) >> shift_bits;
 }
 
-static inline int16_t q_multsr_16x16(int16_t x, int16_t y,
-	const int qx, const int qy, const int qp)
+static inline int16_t q_multsr_16x16(int16_t x, int32_t y, const int shift_bits)
 {
-	return ((((int32_t)x * y) >> (qx+qy-qp-1)) + 1) >> 1;
+	return ((((int32_t)x * y) >> (shift_bits - 1)) + 1) >> 1;
 }
 
 /* Saturation inline functions */
@@ -145,6 +153,24 @@ static inline int16_t sat_int16(int32_t x)
 		return INT16_MINVALUE;
 	else
 		return (int16_t)x;
+}
+
+/* Fractional multiplication with shift and saturation */
+static inline int32_t q_multsr_sat_32x32(int32_t x, int32_t y,
+	const int shift_bits)
+{
+	return sat_int32(((((int64_t)x * y) >> (shift_bits - 1)) + 1) >> 1);
+}
+
+static inline int16_t q_multsr_sat_16x16(int16_t x, int32_t y,
+	const int shift_bits)
+{
+	return sat_int16(((((int32_t)x * y) >> (shift_bits - 1)) + 1) >> 1);
+}
+
+static inline int32_t sign_extend_s24(int32_t x)
+{
+	return (x << 8) >> 8;
 }
 
 #endif

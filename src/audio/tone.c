@@ -149,7 +149,9 @@ static int32_t tonegen(struct tone_state *sg)
 
 	/* sg->w is angle in Q4.28 radians format, sin() returns Q1.31 */
 	/* sg->a is amplitude as Q1.31 */
-	sine = q_mults_32x32(sin_fixed(sg->w), sg->a, 31, 31, 31);
+	sine =
+		q_mults_32x32(sin_fixed(sg->w), sg->a,
+		Q_SHIFT_BITS_64(31, 31, 31));
 
 	/* Next point */
 	w = (int64_t) sg->w + sg->w_step;
@@ -208,15 +210,16 @@ static void tonegen_control(struct tone_state *sg)
 		&& (sg->repeat_count + 1 < sg->repeats)) {
 		sg->block_count = 0;
 		if (sg->ampl_coef > 0) {
-			sg->a_target = sat_int32(q_multsr_32x32(
-				sg->a_target,
-				sg->ampl_coef, 31, 30, 31));
+			sg->a_target =
+				sat_int32(q_multsr_32x32(sg->a_target,
+				sg->ampl_coef, Q_SHIFT_BITS_64(31, 30, 31)));
 			sg->a = (sg->ramp_step > sg->a_target)
 				? sg->a_target : sg->ramp_step;
 		}
 		if (sg->freq_coef > 0) {
 			/* f is Q16.16, freq_coef is Q2.30 */
-			p = q_multsr_32x32(sg->f, sg->freq_coef, 16, 30, 16);
+			p = q_multsr_32x32(sg->f, sg->freq_coef,
+				Q_SHIFT_BITS_64(16, 30, 16));
 			tonegen_update_f(sg, (int32_t) p); /* No saturation */
 		}
 		sg->repeat_count++;
@@ -297,7 +300,8 @@ static void tonegen_update_f(struct tone_state *sg, int32_t f)
 	f_max = Q_SHIFT_LEFT((int64_t) sg->fs, 0, 16 - 1);
 	f_max = (f_max > INT32_MAXVALUE) ? INT32_MAXVALUE : f_max;
 	sg->f = (f > f_max) ? f_max : f;
-	w_tmp = q_multsr_32x32(sg->f, sg->c, 16, 31, 28); /* Q16 x Q31 -> Q28 */
+	/* Q16 x Q31 -> Q28 */
+	w_tmp = q_multsr_32x32(sg->f, sg->c, Q_SHIFT_BITS_64(16, 31, 28));
 	w_tmp = (w_tmp > PI_Q4_28) ? PI_Q4_28 : w_tmp; /* Limit to pi Q4.28 */
 	sg->w_step = (int32_t) w_tmp;
 
@@ -362,7 +366,8 @@ static int tonegen_init(struct tone_state *sg, int32_t fs, int32_t f, int32_t a)
 	tonegen_update_f(sg, f);
 
 	/* 125us as Q1.31 is 268435, calculate fs * 125e-6 in Q31.0  */
-	sg->samples_in_block = (int32_t) q_multsr_32x32(fs, 268435, 0, 31, 0);
+	sg->samples_in_block =
+		(int32_t) q_multsr_32x32(fs, 268435, Q_SHIFT_BITS_64(0, 31, 0));
 
 	return 0;
 }

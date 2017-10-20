@@ -594,6 +594,7 @@ int32_t sin_fixed(int32_t w) {
     delta = s1 - s0; /* Q1.31 */
     //sine = (int64_t) frac*delta; /* Q1.31 x Q1.31 -> Q2.62 */
     //sine = (sine >> 31) + s0; /* Q2.31 */
-    sine = s0 + q_mults_32x32(frac, delta, 31, 31, 31); /* All Q1.31 */
+	/* All Q1.31 */
+	sine = s0 + q_mults_32x32(frac, delta, Q_SHIFT_BITS_64(31, 31, 31));
     return (int32_t) sine;
 }

@@ -99,8 +99,8 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t *dest = (int32_t *) sink->w_ptr;
 	int32_t i;
 
-
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.15 --> Q1.31 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
 		dest[i] = (int32_t)src[i] * cd->volume[0];
 		dest[i + 1] = (int32_t)src[i + 1] * cd->volume[1];
@@ -117,9 +117,12 @@ static void vol_s32_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.31 --> Q1.15 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = (((int32_t)src[i] >> 16) * cd->volume[0]) >> 16;
-		dest[i + 1] = (((int32_t)src[i + 1] >> 16) * cd->volume[1]) >> 16;
+		dest[i] = (int16_t)q_multsr_sat_32x32(
+			src[i], cd->volume[0], Q_SHIFT_BITS_64(31, 16, 15));
+		dest[i + 1] = (int16_t)q_multsr_sat_32x32(
+			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(31, 16, 15));
 	}
 }
 
@@ -133,9 +136,12 @@ static void vol_s32_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.31 --> Q1.31 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = ((int64_t)src[i] * cd->volume[0]) >> 16;
-		dest[i + 1] = ((int64_t)src[i + 1] * cd->volume[1]) >> 16;
+		dest[i] = q_multsr_sat_32x32(
+			src[i], cd->volume[0], Q_SHIFT_BITS_64(31, 16, 31));
+		dest[i + 1] = q_multsr_sat_32x32(
+			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(31, 16, 31));
 	}
 }
 
@@ -149,9 +155,12 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.15 --> Q1.15 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = ((int32_t)src[i] * cd->volume[0]) >> 16;
-		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[1]) >> 16;
+		dest[i] = q_multsr_sat_16x16(
+			src[i], cd->volume[0], Q_SHIFT_BITS_32(15, 16, 15));
+		dest[i + 1] = q_multsr_sat_16x16(
+			src[i + 1], cd->volume[1], Q_SHIFT_BITS_32(15, 16, 15));
 	}
 }
 
@@ -165,9 +174,12 @@ static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.15 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = ((int32_t)src[i] * cd->volume[0]) >> 8;
-		dest[i + 1] = ((int32_t)src[i + 1] * cd->volume[1]) >> 8;
+		dest[i] = q_multsr_sat_32x32(
+			src[i], cd->volume[0], Q_SHIFT_BITS_64(15, 16, 23));
+		dest[i + 1] = q_multsr_sat_32x32(
+			src[i], cd->volume[0], Q_SHIFT_BITS_64(15, 16, 23));
 	}
 }
 
@@ -181,11 +193,14 @@ static void vol_s24_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.23 --> Q1.15 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = (int16_t)((((int32_t)src[i] >> 8) *
-			cd->volume[0]) >> 16);
-		dest[i + 1] = (int16_t)((((int32_t)src[i + 1] >> 8) *
-			cd->volume[1]) >> 16);
+		dest[i] = (int16_t)q_multsr_sat_32x32(
+			sign_extend_s24(src[i]), cd->volume[0],
+			Q_SHIFT_BITS_64(23, 16, 15));
+		dest[i + 1] = (int16_t)q_multsr_sat_32x32(
+			sign_extend_s24(src[i + 1]), cd->volume[1],
+			Q_SHIFT_BITS_64(23, 16, 15));
 	}
 }
 
@@ -199,9 +214,12 @@ static void vol_s32_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.31 --> Q1.23 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = ((int64_t)src[i] * cd->volume[0]) >> 24;
-		dest[i + 1] = ((int64_t)src[i + 1] * cd->volume[1]) >> 24;
+		dest[i] = q_multsr_sat_32x32(
+			src[i], cd->volume[0], Q_SHIFT_BITS_64(31, 16, 23));
+		dest[i + 1] = q_multsr_sat_32x32(
+			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(31, 16, 23));
 	}
 }
 
@@ -215,11 +233,14 @@ static void vol_s24_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t i;
 
 	/* buffer sizes are always divisible by period frames */
+	/* Samples are Q1.23 --> Q1.31 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = (int32_t)(((int64_t)src[i]  *
-			cd->volume[0]) >> 8);
-		dest[i + 1] = (int32_t)(((int64_t)src[i + 1] *
-			cd->volume[1]) >> 8);
+		dest[i] = q_multsr_sat_32x32(
+			sign_extend_s24(src[i]), cd->volume[0],
+			Q_SHIFT_BITS_64(23, 16, 31));
+		dest[i + 1] = q_multsr_sat_32x32(
+			sign_extend_s24(src[i + 1]), cd->volume[1],
+			Q_SHIFT_BITS_64(23, 16, 31));
 	}
 }
 
@@ -234,12 +255,14 @@ static void vol_s24_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t *dest = (int32_t*) sink->w_ptr;
 
 	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.23 and volume is Q1.16 */
+	/* Samples are Q1.23 --> Q1.23 and volume is Q1.16 */
 	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = (int32_t)(Q_MULTS_32X32(
-			(int64_t)src[i], cd->volume[0], 23, 16, 23));
-		dest[i + 1] = (int32_t)(Q_MULTS_32X32(
-			(int64_t)src[i+1], cd->volume[1], 23, 16, 23));
+		dest[i] = q_multsr_sat_32x32(
+			sign_extend_s24(src[i]), cd->volume[0],
+			Q_SHIFT_BITS_64(23, 16, 23));
+		dest[i + 1] = q_multsr_sat_32x32(
+			sign_extend_s24(src[i + 1]), cd->volume[1],
+			Q_SHIFT_BITS_64(23, 16, 23));
 	}
 }
 
