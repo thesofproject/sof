@@ -449,36 +449,35 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
-
+		trace_volume("vst");
 		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
 			for (j = 0; j < cdata->num_elems; j++) {
-				if (cdata->chanv[j].value == cd->chan[i])
+				tracev_value(cdata->chanv[j].channel);
+				tracev_value(cdata->chanv[j].value);
+				if (cdata->chanv[j].channel == cd->chan[i])
 					volume_set_chan(dev, i, cdata->chanv[j].value);
 			}
 		}
-
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
-	case SOF_CTRL_CMD_MUTE:
 
+	case SOF_CTRL_CMD_SWITCH:
+		trace_volume("mst");
 		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
 			for (j = 0; j < cdata->num_elems; j++) {
-				if (cdata->chanv[j].value == cd->chan[i])
-					volume_set_chan_mute(dev, i);
+				tracev_value(cdata->chanv[j].channel);
+				tracev_value(cdata->chanv[j].value);
+				if (cdata->chanv[j].channel == cd->chan[i]) {
+					if (cdata->chanv[j].value > 0)
+						volume_set_chan_mute(dev, i);
+					else
+						volume_set_chan_unmute(dev, i);
+				}
 			}
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
 		break;
-	case SOF_CTRL_CMD_UNMUTE:
 
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
-			for (j = 0; j < cdata->num_elems; j++) {
-				if (cdata->chanv[j].value == cd->chan[i])
-					volume_set_chan_unmute(dev, i);
-			}
-		}
-		work_schedule_default(&cd->volwork, VOL_RAMP_US);
-		break;
 	default:
 		trace_volume_error("gs1");
 		return -EINVAL;
