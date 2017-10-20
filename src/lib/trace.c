@@ -34,7 +34,7 @@
 #include <arch/cache.h>
 #include <platform/timer.h>
 #include <reef/lock.h>
-#include <reef/audio/dma-trace.h>
+#include <reef/dma-trace.h>
 #include <stdint.h>
 
 struct trace {

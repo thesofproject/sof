@@ -17,7 +17,6 @@ libaudio_a_SOURCES = \
 	pipeline.c \
 	pipeline_static.c \
 	component.c \
-	dma-trace.c \
 	buffer.c
 
 libaudio_a_CFLAGS = \

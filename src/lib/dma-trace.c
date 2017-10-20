@@ -29,7 +29,7 @@
  */
 
 #include <reef/trace.h>
-#include <reef/audio/dma-trace.h>
+#include <reef/dma-trace.h>
 #include <reef/ipc.h>
 #include <reef/reef.h>
 #include <reef/alloc.h>
@@ -172,7 +172,6 @@ int dma_trace_enable(struct dma_trace_data *d)
 		return -ENODEV;
 	}
 
-	/* TODO: fix crash when enabled */
 	d->enabled = 1;
 	work_schedule_default(&d->dmat_work, DMA_TRACE_US);
 	return 0;

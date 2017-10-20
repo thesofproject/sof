@@ -40,7 +40,7 @@
 #include <uapi/ipc.h>
 #include <reef/audio/pipeline.h>
 #include <reef/audio/component.h>
-#include <reef/audio/dma-trace.h>
+#include <reef/dma-trace.h>
 
 struct reef;
 struct dai_config;

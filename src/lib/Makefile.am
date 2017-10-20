@@ -6,6 +6,7 @@ libcore_a_SOURCES = \
 	work.c \
 	notifier.c \
 	trace.c \
+	dma-trace.c \
 	schedule.c
 
 libcore_a_CFLAGS = \
