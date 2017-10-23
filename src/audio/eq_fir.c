@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <reef/reef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
@@ -330,21 +331,23 @@ static int fir_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cda
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
 	uint32_t ch;
+	bool val;
 
 	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
 		trace_eq("mst");
 		for (j = 0; j < cdata->num_elems; j++) {
 			ch = cdata->chanv[j].channel;
+			val = cdata->chanv[j].value;
 			tracev_value(ch);
-			tracev_value(cdata->chanv[j].value);
+			tracev_value(val);
 			if (ch >= PLATFORM_MAX_CHANNELS) {
 				trace_eq_error("che");
 				return -EINVAL;
 			}
-			if (cdata->chanv[j].value > 0)
-				fir_mute(&cd->fir[ch]);
-			else
+			if (val)
 				fir_unmute(&cd->fir[ch]);
+			else
+				fir_mute(&cd->fir[ch]);
 		}
 	} else {
 		trace_eq_error("ste");

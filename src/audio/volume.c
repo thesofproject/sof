@@ -468,10 +468,10 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 				tracev_value(cdata->chanv[j].channel);
 				tracev_value(cdata->chanv[j].value);
 				if (cdata->chanv[j].channel == cd->chan[i]) {
-					if (cdata->chanv[j].value > 0)
-						volume_set_chan_mute(dev, i);
-					else
+					if (cdata->chanv[j].value)
 						volume_set_chan_unmute(dev, i);
+					else
+						volume_set_chan_mute(dev, i);
 				}
 			}
 		}

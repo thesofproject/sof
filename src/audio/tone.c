@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <reef/reef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
@@ -466,7 +467,7 @@ static int tone_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cd
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
 	uint32_t ch;
-	uint32_t val;
+	bool val;
 
 	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
 		trace_tone("mst");
@@ -479,10 +480,10 @@ static int tone_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cd
 				trace_tone_error("che");
 				return -EINVAL;
 			}
-			if (val > 0)
-				tonegen_mute(&cd->sg[ch]);
-			else
+			if (val)
 				tonegen_unmute(&cd->sg[ch]);
+			else
+				tonegen_mute(&cd->sg[ch]);
 
 		}
 	} else {

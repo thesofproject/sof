@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <reef/reef.h>
 #include <reef/lock.h>
 #include <reef/list.h>
@@ -331,7 +332,7 @@ static int iir_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cda
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
 	uint32_t ch;
-	uint32_t val;
+	bool val;
 
 	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
 		trace_eq_iir("mst");
@@ -344,10 +345,10 @@ static int iir_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cda
 				trace_eq_iir_error("che");
 				return -EINVAL;
 			}
-			if (val > 0)
-				iir_mute_df2t(&cd->iir[ch]);
-			else
+			if (val)
 				iir_unmute_df2t(&cd->iir[ch]);
+			else
+				iir_mute_df2t(&cd->iir[ch]);
 		}
 	} else {
 		trace_eq_iir_error("ste");
