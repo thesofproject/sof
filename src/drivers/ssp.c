@@ -400,8 +400,17 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
+#if defined CONFIG_CHERRYTRAIL
+	/* register our IRQ handler - CHT shares SSP 0,1,2 IRQs with SSP 3,4,5 */
+	if (ssp_irq(dai) >= IRQ_CHT_SSP_OFFSET)
+		interrupt_register(ssp_irq(dai) - IRQ_CHT_SSP_OFFSET,
+			ssp_irq_handler, dai);
+	else
+		interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
+#else
 	/* register our IRQ handler */
 	interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
+#endif
 	platform_interrupt_unmask(ssp_irq(dai), 1);
 	interrupt_enable(ssp_irq(dai));
 

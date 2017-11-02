@@ -56,6 +56,13 @@
 #define IRQ_NUM_EXT_DMAC2	19	/* Level 5 */
 #define IRQ_NUM_NMI		20	/* Level 7 */
 
+/* SSP 3,4,5 share PHY IRQs with SSP 0,1,2 respectively but we give them a
+  virtual number in order to differentiate from SSP0, 1 and 2 IRQs */
+#define IRQ_CHT_SSP_OFFSET	16
+#define IRQ_NUM_EXT_SSP3	(IRQ_CHT_SSP_OFFSET + IRQ_NUM_EXT_SSP0)	/* Level 5 */
+#define IRQ_NUM_EXT_SSP4	(IRQ_CHT_SSP_OFFSET + IRQ_NUM_EXT_SSP1)	/* Level 5 */
+#define IRQ_NUM_EXT_SSP5	(IRQ_CHT_SSP_OFFSET + IRQ_NUM_EXT_SSP2)	/* Level 5 */
+
 /* IRQ Masks */
 #define IRQ_MASK_SOFTWARE0	(1 << IRQ_NUM_SOFTWARE0)
 #define IRQ_MASK_TIMER1		(1 << IRQ_NUM_TIMER1)

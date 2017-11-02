@@ -179,7 +179,7 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 		break;
 #if defined CONFIG_CHERRYTRAIL
 	case IRQ_NUM_EXT_DMAC2:
-		shim_write(SHIM_PISMH, mask << 8);
+		shim_write(SHIM_PIMRH, mask << 8);
 		break;
 	case IRQ_NUM_EXT_SSP3:
 		shim_write(SHIM_PIMRH, mask << 0);
