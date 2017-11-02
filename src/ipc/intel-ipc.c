@@ -583,6 +583,13 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	trace_ipc_error("DA1");
 
+	/* Initialize DMA for Trace*/
+	err = dma_trace_init(&_ipc->dmat);
+	if (err < 0) {
+		trace_ipc_error("eIP");
+		goto error;
+	}
+
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &params->buffer);
 	if (err < 0) {
