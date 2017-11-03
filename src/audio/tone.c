@@ -187,7 +187,7 @@ static void tonegen_control(struct tone_state *sg)
 		return;
 
 	sg->sample_count = 0;
-	if (sg->block_count < INT32_MAXVALUE)
+	if (sg->block_count < INT32_MAX)
 		sg->block_count++;
 
 	/* Fadein ramp during tone */
@@ -270,13 +270,13 @@ static void tonegen_set_ampl_mult(struct tone_state *sg, int32_t am)
 /* Tone length in samples, this is the active length of tone */
 static void tonegen_set_length(struct tone_state *sg, uint32_t tl)
 {
-	sg->tone_length = (tl > 0) ? tl : INT32_MAXVALUE; /* Count rate 125 us */
+	sg->tone_length = (tl > 0) ? tl : INT32_MAX; /* Count rate 125 us */
 }
 
 /* Tone period in samples, this is the length including the pause after beep */
 static void tonegen_set_period(struct tone_state *sg, uint32_t tp)
 {
-	sg->tone_period = (tp > 0) ? tp : INT32_MAXVALUE; /* Count rate 125 us */
+	sg->tone_period = (tp > 0) ? tp : INT32_MAX; /* Count rate 125 us */
 }
 
 /* Tone ramp parameters:
@@ -287,7 +287,7 @@ static void tonegen_set_period(struct tone_state *sg, uint32_t tp)
 
 static inline void tonegen_set_linramp(struct tone_state *sg, int32_t step)
 {
-	sg->ramp_step = (step > 0) ? step : INT32_MAXVALUE;
+	sg->ramp_step = (step > 0) ? step : INT32_MAX;
 }
 
 static inline int32_t tonegen_get_f(struct tone_state *sg)
@@ -317,7 +317,7 @@ static void tonegen_update_f(struct tone_state *sg, int32_t f)
 
 	/* Calculate Fs/2, fs is Q32.0, f is Q16.16 */
 	f_max = Q_SHIFT_LEFT((int64_t) sg->fs, 0, 16 - 1);
-	f_max = (f_max > INT32_MAXVALUE) ? INT32_MAXVALUE : f_max;
+	f_max = (f_max > INT32_MAX) ? INT32_MAX : f_max;
 	sg->f = (f > f_max) ? f_max : f;
 	/* Q16 x Q31 -> Q28 */
 	w_tmp = q_multsr_32x32(sg->f, sg->c, Q_SHIFT_BITS_64(16, 31, 28));
@@ -349,8 +349,8 @@ static void tonegen_reset(struct tone_state *sg)
 	/* Continuous tone */
 	sg->freq_coef = ONE_Q2_30; /* Set freq multiplier to 1.0 */
 	sg->ampl_coef = ONE_Q2_30; /* Set ampl multiplier to 1.0 */
-	sg->tone_length = INT32_MAXVALUE;
-	sg->tone_period = INT32_MAXVALUE;
+	sg->tone_length = INT32_MAX;
+	sg->tone_period = INT32_MAX;
 	sg->ramp_step = ONE_Q1_31; /* Set lin ramp modification to max */
 }
 

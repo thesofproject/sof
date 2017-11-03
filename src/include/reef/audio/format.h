@@ -33,13 +33,10 @@
 #ifndef AUDIO_FORMAT_H
 #define AUDIO_FORMAT_H
 
-/* Maximum and minimum values for integer types */
-#define INT16_MAXVALUE  32767
-#define INT16_MINVALUE -32768
+/* Maximum and minimum values for 24 bit */
 #define INT24_MAXVALUE  8388607
 #define INT24_MINVALUE -8388608
-#define INT32_MAXVALUE  2147483647
-#define INT32_MINVALUE -2147483648
+
 
 /* Collection of common fractional numbers */
 #define ONE_Q2_30 1073741824 /* Q2.30 1.0 */
@@ -91,8 +88,8 @@
 #define Q_MULTSR_32X32(px, py, qx, qy, qp) (((px) * (py) >> (((qx)+(qy)-(qp)-1) +1) >> 1))
 
 /* Saturation */
-#define SATP_INT32(x) (((x) > INT32_MAXVALUE) ? INT32_MAXVALUE : (x))
-#define SATM_INT32(x) (((x) < INT32_MINVALUE) ? INT32_MINVALUE : (x))
+#define SATP_INT32(x) (((x) > INT32_MAX) ? INT32_MAX : (x))
+#define SATM_INT32(x) (((x) < INT32_MIN) ? INT32_MIN : (x))
 
 static inline int64_t q_mults_32x32(int32_t x, int32_t y, const int shift_bits)
 {
@@ -120,10 +117,10 @@ static inline int32_t sat_int32(int64_t x)
 {
 #if 1
 	/* TODO: Is this faster */
-	if (x > INT32_MAXVALUE)
-		return INT32_MAXVALUE;
-	else if (x < INT32_MINVALUE)
-		return INT32_MINVALUE;
+	if (x > INT32_MAX)
+		return INT32_MAX;
+	else if (x < INT32_MIN)
+		return INT32_MIN;
 	else
 		return (int32_t)x;
 #else
@@ -147,10 +144,10 @@ static inline int32_t sat_int24(int32_t x)
 
 static inline int16_t sat_int16(int32_t x)
 {
-	if (x > INT16_MAXVALUE)
-		return INT16_MAXVALUE;
-	else if (x < INT16_MINVALUE)
-		return INT16_MINVALUE;
+	if (x > INT16_MAX)
+		return INT16_MAX;
+	else if (x < INT16_MIN)
+		return INT16_MIN;
 	else
 		return (int16_t)x;
 }
