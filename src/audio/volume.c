@@ -179,7 +179,7 @@ static void vol_s16_to_s24(struct comp_dev *dev, struct comp_buffer *sink,
 		dest[i] = q_multsr_sat_32x32(
 			src[i], cd->volume[0], Q_SHIFT_BITS_64(15, 16, 23));
 		dest[i + 1] = q_multsr_sat_32x32(
-			src[i], cd->volume[0], Q_SHIFT_BITS_64(15, 16, 23));
+			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(15, 16, 23));
 	}
 }
 
