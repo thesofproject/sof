@@ -164,17 +164,28 @@ static inline uint32_t comp_buffer_get_copy_bytes(struct comp_dev *dev,
 	return copy_bytes;
 }
 
-static inline void buffer_reset_pos(struct comp_buffer *buffer)
+static inline void buffer_reset_pos(struct comp_buffer *buffer,
+	uint32_t sink_period_bytes)
 {
-	buffer->r_ptr = buffer->addr;
+	buffer->r_ptr = buffer->addr + buffer->size - sink_period_bytes;
 	buffer->w_ptr = buffer->addr;
 	buffer->free = buffer->size;
 	buffer->avail = 0;
 }
 
-static inline void buffer_clear(struct comp_buffer *buffer)
+static inline void buffer_reset_pos(struct comp_buffer *buffer)
 {
-	memset(buffer->addr, 0, buffer->size);
+	/* reset read and write pointer to buffer bas */
+	buffer->w_ptr = buffer->r_ptr = buffer->addr;
+
+	/* free space is buffer size */
+	buffer->free = buffer->size;
+
+	/* ther are no avail samples at reset */
+	buffer->avail = 0;
+
+	/* clear buffer contents */
+	bzero(buffer->r_ptr, buffer->avail);
 }
 
 /* set the runtime size of a buffer in bytes and improve the data cache */

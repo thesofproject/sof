@@ -128,9 +128,6 @@ struct comp_ops {
 	/* set component audio stream parameters */
 	int (*params)(struct comp_dev *dev);
 
-	/* preload buffers */
-	int (*preload)(struct comp_dev *dev);
-
 	/* set component audio stream parameters */
 	int (*dai_config)(struct comp_dev *dev,
 		struct sof_ipc_dai_config *dai_config);
@@ -266,12 +263,6 @@ static inline int comp_prepare(struct comp_dev *dev)
 	return dev->drv->ops.prepare(dev);
 }
 
-/* component preload buffers -mandatory  */
-static inline int comp_preload(struct comp_dev *dev)
-{
-	return dev->drv->ops.preload(dev);
-}
-
 /* copy component buffers - mandatory */
 static inline int comp_copy(struct comp_dev *dev)
 {
@@ -313,32 +304,6 @@ void sys_comp_src_init(void);
 void sys_comp_tone_init(void);
 void sys_comp_eq_iir_init(void);
 void sys_comp_eq_fir_init(void);
-
-/* reset component downstream buffers  */
-static inline int comp_buffer_reset(struct comp_dev *dev)
-{
-	struct list_item *clist;
-
-	/* reset downstream buffers */
-	list_for_item(clist, &dev->bsink_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, source_list);
-
-		/* don't reset buffer if the component is not connected */
-		if (!buffer->connected)
-			continue;
-
-		/* reset buffer next to the component*/
-		bzero(buffer->addr, buffer->ipc_buffer.size);
-		buffer->w_ptr = buffer->r_ptr = buffer->addr;
-		buffer->end_addr = buffer->addr + buffer->ipc_buffer.size;
-		buffer->free = buffer->ipc_buffer.size;
-		buffer->avail = 0;
-	}
-
-	return 0;
-}
 
 /*
  * Convenience functions to install upstream/downstream common params. Only

@@ -481,49 +481,80 @@ static int component_op_upstream(struct op_data *op_data,
 	return err;
 }
 
-/* preload all downstream components - locks held by caller */
-static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
+static int component_prepare_buffers_upstream(struct comp_dev *start,
+	struct comp_dev *current, struct comp_buffer *buffer)
 {
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(current);
 	struct list_item *clist;
-	int i;
-	int total = 0;
-	int count = 0;
+	int err = 0;
 
-	tracev_pipe("PR-");
-	tracev_value(current->comp.id);
+	/* component copy/process to downstream */
+	if (current != start && buffer != NULL) {
 
-	/* reached endpoint ? */
-	if (current != start && current->is_endpoint)
-		return 0;
+		buffer_reset_pos(buffer);
 
-	/* now preload the buffers */
-	for (i = 0; i < config->preload_count; i++) {
-		count = comp_preload(current);
-
-		if (count < 0)
-			return count;
-		total += count;
+		/* stop going downstream if we reach an end point in this pipeline */
+		if (current->is_endpoint)
+			return 0;
 	}
 
-	/* now run this operation downstream */
+	/* travel uptream to sink end point(s) */
+	list_for_item(clist, &current->bsource_list) {
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* dont go upstream if this component is not connected or active */
+		if (!buffer->connected || buffer->source->state == COMP_STATE_ACTIVE)
+			continue;
+
+		/* continue downstream */
+		err = component_prepare_buffers_upstream(start, buffer->source,
+			buffer);
+		if (err < 0) {
+			trace_pipe_error("eBD");
+			break;
+		}
+	}
+
+	/* return back downstream */
+	return err;
+}
+
+static int component_prepare_buffers_downstream(struct comp_dev *start,
+	struct comp_dev *current, struct comp_buffer *buffer)
+{
+	struct list_item *clist;
+	int err = 0;
+
+	/* component copy/process to downstream */
+	if (current != start && buffer != NULL) {
+
+		buffer_reset_pos(buffer);
+
+		/* stop going downstream if we reach an end point in this pipeline */
+		if (current->is_endpoint)
+			return 0;
+	}
+
+	/* travel downstream to sink end point(s) */
 	list_for_item(clist, &current->bsink_list) {
-		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* don't go downstream if this component is not connected */
-		if (!buffer->connected)
+		/* dont go downstream if this component is not connected or active */
+		if (!buffer->connected || buffer->sink->state == COMP_STATE_ACTIVE)
 			continue;
 
-		count = preload_downstream(start, buffer->sink);
-		if (count < 0)
-			return count;
-
-		total += count;
+		/* continue downstream */
+		err = component_prepare_buffers_downstream(start, buffer->sink,
+			buffer);
+		if (err < 0) {
+			trace_pipe_error("eBD");
+			break;
+		}
 	}
 
-	return total;
+	/* return back upstream */
+	return err;
 }
 
 /* prepare the pipeline for usage - preload host buffers here */
@@ -531,7 +562,6 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct op_data op_data;
 	int ret = -1;
-	int i;
 
 	trace_pipe("pre");
 
@@ -543,29 +573,19 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	/* playback pipelines can be preloaded from host before trigger */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 
-		/* first of all prepare the pipeline */
 		ret = component_op_downstream(&op_data, dev, dev, NULL);
 		if (ret < 0)
 			goto out;
 
-		/* then preload buffers - the buffers must be moved
-		 * downstream so that every component has full buffers for
-		 * trigger start */
-		for (i = 0; i < MAX_PRELOAD_SIZE; i++) {
-
-			ret = preload_downstream(dev, dev);
-
-			/* errors or complete ? */
-			if (ret <= 0)
-				break;
-		}
-		if (ret < 0) {
-			/* failed to preload */
-			trace_pipe_error("epl");
-			ret = -EIO;
-		}
+		/* set up reader and writer positions */
+		component_prepare_buffers_downstream(dev, dev, NULL);
 	} else {
 		ret = component_op_upstream(&op_data, dev, dev, NULL);
+		if (ret < 0)
+			goto out;
+
+		/* set up reader and writer positions */
+		component_prepare_buffers_upstream(dev, dev, NULL);
 	}
 
 out:

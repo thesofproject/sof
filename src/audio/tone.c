@@ -649,11 +649,6 @@ static int tone_prepare(struct comp_dev * dev)
 	return 0;
 }
 
-static int tone_preload(struct comp_dev * dev)
-{
-	return tone_copy(dev);
-}
-
 static int tone_reset(struct comp_dev * dev)
 {
 
@@ -681,7 +676,6 @@ struct comp_driver comp_tone = {
 		.copy = tone_copy,
 		.prepare = tone_prepare,
 		.reset = tone_reset,
-		.preload = tone_preload,
 	},
 };
 

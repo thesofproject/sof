@@ -666,8 +666,6 @@ static int volume_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	buffer_reset_pos(sinkb);
-
 	/* validate */
 	if (cd->sink_period_bytes == 0) {
 		trace_volume_error("vp1");
@@ -713,22 +711,6 @@ found:
 	return 0;
 }
 
-static int volume_preload(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
-
-	trace_volume("PrL");
-
-	/* make sure there is enough space in sink buffer */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-		source_list);
-	if (sink->free < cd->sink_period_bytes)
-		return 0;
-
-	return volume_copy(dev);
-}
-
 static int volume_reset(struct comp_dev *dev)
 {
 	trace_volume("res");
@@ -747,7 +729,6 @@ struct comp_driver comp_volume = {
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,
-		.preload	= volume_preload,
 	},
 };
 

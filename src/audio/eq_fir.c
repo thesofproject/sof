@@ -317,8 +317,6 @@ static int eq_fir_params(struct comp_dev *dev)
 		return err;
 	}
 
-	buffer_reset_pos(sink);
-
 	/* EQ supports only S32_LE PCM format */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
 		return -EINVAL;
@@ -439,9 +437,6 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_SET_DATA:
 		ret = fir_cmd_set_data(dev, cdata);
 		break;
-	case COMP_CMD_STOP:
-		comp_buffer_reset(dev);
-		break;
 	}
 
 	return ret;
@@ -509,11 +504,6 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	return 0;
 }
 
-static int eq_fir_preload(struct comp_dev *dev)
-{
-	return eq_fir_copy(dev);
-}
-
 static int eq_fir_reset(struct comp_dev *dev)
 {
 	int i;
@@ -542,7 +532,6 @@ struct comp_driver comp_eq_fir = {
 		.copy = eq_fir_copy,
 		.prepare = eq_fir_prepare,
 		.reset = eq_fir_reset,
-		.preload = eq_fir_preload,
 	},
 };
 

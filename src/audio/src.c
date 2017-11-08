@@ -450,8 +450,6 @@ static int src_params(struct comp_dev *dev)
 		return err;
 	}
 
-	buffer_reset_pos(sink);
-
 	/* Check that source buffer has sufficient size */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 		sink_list);
@@ -540,11 +538,6 @@ static int src_prepare(struct comp_dev *dev)
 	return comp_set_state(dev, COMP_CMD_PREPARE);
 }
 
-static int src_preload(struct comp_dev *dev)
-{
-	return src_copy(dev);
-}
-
 static int src_reset(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -568,7 +561,6 @@ struct comp_driver comp_src = {
 		.copy = src_copy,
 		.prepare = src_prepare,
 		.reset = src_reset,
-		.preload = src_preload,
 	},
 };
 

@@ -149,8 +149,6 @@ static int mixer_params(struct comp_dev *dev)
 		return ret;
 	}
 
-	buffer_reset_pos(sink);
-
 	return 0;
 }
 
@@ -339,11 +337,6 @@ static int mixer_prepare(struct comp_dev *dev)
 	return downstream;
 }
 
-static int mixer_preload(struct comp_dev *dev)
-{
-	return mixer_copy(dev);
-}
-
 struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
 	.ops	= {
@@ -351,7 +344,6 @@ struct comp_driver comp_mixer = {
 		.free		= mixer_free,
 		.params		= mixer_params,
 		.prepare	= mixer_prepare,
-		.preload	= mixer_preload,
 		.cmd		= mixer_cmd,
 		.copy		= mixer_copy,
 		.reset		= mixer_reset,

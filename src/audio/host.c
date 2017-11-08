@@ -51,6 +51,8 @@
 #define tracev_host(__e)	tracev_event(TRACE_CLASS_HOST, __e)
 #define trace_host_error(__e)	trace_error(TRACE_CLASS_HOST, __e)
 
+static int host_copy(struct comp_dev *dev);
+
 struct hc_buf {
 	/* host buffer info */
 	struct list_item elem_list;
@@ -439,8 +441,6 @@ static int host_params(struct comp_dev *dev)
 	if (err < 0)
 		return err;
 
-	buffer_reset_pos(hd->dma_buffer);
-
 	/* set up DMA configuration */
 	config->src_width = sizeof(uint32_t);
 	config->dest_width = sizeof(uint32_t);
@@ -451,43 +451,9 @@ static int host_params(struct comp_dev *dev)
 	return 0;
 }
 
-/* preload the l1 period from host to DSP */
-static int host_preload(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
-	int ret;
-
-	trace_host("PrL");
-
-	/* make sure there is enough space in sink buffer */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-		source_list);
-	if (sink->free < hd->period_bytes)
-		return 0;
-
-	wait_init(&hd->complete);
-
-	/* do DMA transfer */
-	hd->complete.timeout = PLATFORM_HOST_DMA_TIMEOUT;
-	dma_set_config(hd->dma, hd->chan, &hd->config);
-	dma_start(hd->dma, hd->chan);
-
-	/* wait for DMA to finish */
-	ret = wait_for_completion_timeout(&hd->complete);
-	if (ret < 0) {
-		trace_comp_error("eHp");
-		return -EIO;
-	}
-
-	/* one period copied */
-	return hd->period_bytes;
-}
-
 static int host_prepare(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct comp_buffer *dma_buffer;
 	int ret;
 
 	trace_host("pre");
@@ -495,14 +461,6 @@ static int host_prepare(struct comp_dev *dev)
 	ret = comp_set_state(dev, COMP_CMD_PREPARE);
 	if (ret < 0)
 		return ret;
-
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dma_buffer = list_first_item(&dev->bsink_list,
-			struct comp_buffer, source_list);
-	else
-		dma_buffer = list_first_item(&dev->bsource_list,
-			struct comp_buffer, sink_list);
-	dma_buffer->r_ptr = dma_buffer->w_ptr = dma_buffer->addr;
 
 	hd->local_pos = 0;
 	if (hd->host_pos)
@@ -537,9 +495,6 @@ static int host_stop(struct comp_dev *dev)
 	/* reset elements, to let next start from original one */
 	host_elements_reset(dev);
 
-	/* now reset downstream buffer */
-	comp_buffer_reset(dev);
-
 	dev->state = COMP_STATE_PAUSED;
 	return 0;
 }
@@ -570,6 +525,14 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
 		ret = host_stop(dev);
+		break;
+	case COMP_CMD_START:
+		/* preload first playback period for preloader task */
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+			ret = host_copy(dev);
+			if (ret == dev->frames)
+				ret = 0;
+		}
 		break;
 	default:
 		break;
@@ -675,7 +638,6 @@ struct comp_driver comp_host = {
 		.cmd		= host_cmd,
 		.copy		= host_copy,
 		.prepare	= host_prepare,
-		.preload	= host_preload,
 		.host_buffer	= host_buffer,
 		.position	= host_position,
 	},

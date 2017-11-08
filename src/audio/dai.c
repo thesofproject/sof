@@ -268,9 +268,6 @@ static int dai_playback_params(struct comp_dev *dev)
 		}
 	}
 
-	/* set write pointer to start of buffer */
-	buffer_reset_pos(dma_buffer);
-
 	return 0;
 
 err_unwind:
@@ -335,9 +332,6 @@ static int dai_capture_params(struct comp_dev *dev)
 			list_item_append(&elem->list, &config->elem_list);
 		}
 	}
-
-	/* set read pointer to start of buffer */
-	buffer_reset_pos(dma_buffer);
 
 	return 0;
 
@@ -506,12 +500,6 @@ static int dai_copy(struct comp_dev *dev)
 	return 0;
 }
 
-/* source component will preload dai */
-static int dai_preload(struct comp_dev *dev)
-{
-	return 0;
-}
-
 static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
@@ -558,7 +546,6 @@ static struct comp_driver comp_dai = {
 		.prepare	= dai_prepare,
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
-		.preload	= dai_preload,
 		.position	= dai_position,
 	},
 };
