@@ -642,22 +642,22 @@ static int ipc_glb_debug_message(uint32_t header)
 /* get/set component values or runtime data */
 static int ipc_comp_value(uint32_t header, uint32_t cmd)
 {
-	struct ipc_comp_dev *stream_dev;
+	struct ipc_comp_dev *comp_dev;
 	struct sof_ipc_ctrl_data *data = _ipc->comp_data;
 	int ret;
 
 	trace_ipc("VoG");
 
 	/* get the component */
-	stream_dev = ipc_get_comp(_ipc, data->comp_id);
-	if (stream_dev == NULL){
+	comp_dev = ipc_get_comp(_ipc, data->comp_id);
+	if (comp_dev == NULL){
 		trace_ipc_error("eVg");
 		trace_value(data->comp_id);
 		return -ENODEV;
 	}
 	
 	/* get component values */
-	ret = comp_cmd(stream_dev->cd, cmd, data);
+	ret = comp_cmd(comp_dev->cd, cmd, data);
 	if (ret < 0) {
 		trace_ipc_error("eVG");
 		return ret;
