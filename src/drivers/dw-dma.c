@@ -87,16 +87,16 @@
 	(0x0044 + BYT_CHAN_OFFSET(chan))
 
 /* registers */
-#define DW_STATUS_TFR			0x02E8
-#define DW_STATUS_BLOCK			0x02F0
-#define DW_STATUS_SRC_TRAN		0x02F8
-#define DW_STATUS_DST_TRAN		0x0300
-#define DW_STATUS_ERR			0x0308
 #define DW_RAW_TFR			0x02C0
 #define DW_RAW_BLOCK			0x02C8
 #define DW_RAW_SRC_TRAN			0x02D0
 #define DW_RAW_DST_TRAN			0x02D8
 #define DW_RAW_ERR			0x02E0
+#define DW_STATUS_TFR			0x02E8
+#define DW_STATUS_BLOCK			0x02F0
+#define DW_STATUS_SRC_TRAN		0x02F8
+#define DW_STATUS_DST_TRAN		0x0300
+#define DW_STATUS_ERR			0x0308
 #define DW_MASK_TFR			0x0310
 #define DW_MASK_BLOCK			0x0318
 #define DW_MASK_SRC_TRAN		0x0320
