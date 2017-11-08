@@ -46,6 +46,7 @@
 #include <reef/clock.h>
 #include <reef/ipc.h>
 #include <reef/trace.h>
+#include <reef/dma-trace.h>
 #include <reef/audio/component.h>
 #include <config.h>
 #include <string.h>
@@ -356,6 +357,9 @@ int platform_init(struct reef *reef)
 		return -ENODEV;
 	dai_probe(ssp5);
 #endif
+
+	/* Initialize DMA for Trace*/
+	dma_trace_init(&reef->ipc->dmat);
 
 	return 0;
 }
