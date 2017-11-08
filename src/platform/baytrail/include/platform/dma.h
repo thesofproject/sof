@@ -45,13 +45,13 @@
 /* CTL_HI */
 #define DW_CTLH_DONE			0x00020000
 #define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
-#define DW_CTLH_CLASS(x)		(x << 29)
-#define DW_CTLH_WEIGHT(x)		(x << 18)
+#define DW_CTLH_CLASS(x)		((x) << 29)
+#define DW_CTLH_WEIGHT(x)		((x) << 18)
 /* CFG_LO */
 #define DW_CFG_CH_DRAIN			0x400
 /* CFG_HI */
-#define DW_CFGH_SRC_PER(x)		(x << 0)
-#define DW_CFGH_DST_PER(x)		(x << 4)
+#define DW_CFGH_SRC_PER(x)		((x) << 0)
+#define DW_CFGH_DST_PER(x)		((x) << 4)
 /* FIFO Partition */
 #define DW_FIFO_PARTITION
 #define DW_FIFO_PART0_LO		0x0400

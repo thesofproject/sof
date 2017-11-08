@@ -79,7 +79,7 @@ extern const struct dai_ops ssp_ops;
 #define SSCR0_NCS	(1 << 21)
 #define SSCR0_RIM	(1 << 22)
 #define SSCR0_TIM	(1 << 23)
-#define SSCR0_FRDC(x)	((x - 1) << 24)
+#define SSCR0_FRDC(x)	(((x) - 1) << 24)
 #define SSCR0_ACS	(1 << 30)
 #define SSCR0_MOD	(1 << 31)
 
@@ -140,14 +140,14 @@ extern const struct dai_ops ssp_ops;
 #define SSCR3_I2S_CLK_MST	(1 << 16)
 
 /* SSCR4 bits */
-#define SSCR4_FRM_CLOCKS(x)	(x << 7)
+#define SSCR4_FRM_CLOCKS(x)	((x) << 7)
 
 /* SSCR5 bits */
-#define SSCR5_FRM_ASRT_CLOCKS(x)	((x - 1) << 1)
+#define SSCR5_FRM_ASRT_CLOCKS(x)	(((x) - 1) << 1)
 
 /* SFIFOTT bits */
-#define SFIFOTT_TX(x)		(x - 1)
-#define SFIFOTT_RX(x)		((x - 1) << 16)
+#define SFIFOTT_TX(x)		((x) - 1)
+#define SFIFOTT_RX(x)		(((x) - 1) << 16)
 
 /* tracing */
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
