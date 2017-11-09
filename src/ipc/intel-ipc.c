@@ -619,6 +619,19 @@ error:
 	return -EINVAL;
 }
 
+/* send DMA trace host buffer position to host */
+int ipc_dma_trace_send_position(void)
+{
+	struct sof_ipc_dma_trace_posn posn;
+
+	posn.rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG | SOF_IPC_TRACE_DMA_POSITION;
+	posn.host_offset = _ipc->dmat.host_offset;
+	posn.rhdr.hdr.size = sizeof(posn);
+
+	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,
+		sizeof(posn), NULL, 0, NULL, NULL);
+}
+
 static int ipc_glb_debug_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;

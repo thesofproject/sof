@@ -166,4 +166,7 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
  */
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
 
+/* send DMA trace host buffer position to host */
+int ipc_dma_trace_send_position(void);
+
 #endif
