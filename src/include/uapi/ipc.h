@@ -118,6 +118,7 @@
 
 /* trace and debug */
 #define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x001)
+#define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
 
 /* Get message component id */
 #define SOF_IPC_MESSAGE_ID(x)			(x & 0xffff)
@@ -808,6 +809,12 @@ struct sof_ipc_window {
 struct sof_ipc_dma_trace_params {
 	struct sof_ipc_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
+}  __attribute__((packed));
+
+/* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */
+struct sof_ipc_dma_trace_posn {
+	struct sof_ipc_reply rhdr;
+	uint32_t host_offset;	/* Offset of DMA host buffer */
 }  __attribute__((packed));
 
 #endif
