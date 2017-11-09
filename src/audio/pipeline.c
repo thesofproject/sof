@@ -85,7 +85,7 @@ static void connect_upstream(struct pipeline *p, struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go upstream if this source is from another pipeline */
+		/* don't go upstream if this source is from another pipeline */
 		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id)
 			continue;
 
@@ -117,7 +117,7 @@ static void connect_downstream(struct pipeline *p, struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this sink is from another pipeline */
+		/* don't go downstream if this sink is from another pipeline */
 		if (buffer->sink->comp.pipeline_id != p->ipc_pipe.pipeline_id)
 			continue;
 
@@ -142,14 +142,14 @@ static void disconnect_upstream(struct pipeline *p, struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go upstream if this source is from another pipeline */
+		/* don't go upstream if this source is from another pipeline */
 		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id)
 			continue;
 
 		connect_upstream(p, start, buffer->source);
 	}
 
-	/* diconnect source from buffer */
+	/* disconnect source from buffer */
 	spin_lock(&current->lock);
 	list_item_del(&current->bsource_list);
 	spin_unlock(&current->lock);
@@ -171,14 +171,14 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this sink is from another pipeline */
+		/* don't go downstream if this sink is from another pipeline */
 		if (buffer->sink->comp.pipeline_id != p->ipc_pipe.pipeline_id)
 			continue;
 
 		connect_downstream(p, start, buffer->sink);
 	}
 
-	/* diconnect source from buffer */
+	/* disconnect source from buffer */
 	spin_lock(&current->lock);
 	list_item_del(&current->bsink_list);
 	spin_unlock(&current->lock);
@@ -273,7 +273,7 @@ int pipeline_complete(struct pipeline *p)
 	trace_pipe("com");
 	trace_value(p->ipc_pipe.pipeline_id);
 
-	/* cheeck whether pipeline is already complete */
+	/* check whether pipeline is already complete */
 	if (p->status != COMP_STATE_INIT) {
 		trace_pipe_error("epc");
 		return -EINVAL;
@@ -342,7 +342,7 @@ static int component_op_downstream(struct op_data *op_data,
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
 
-		/* dont do any params downstream if current is running */
+		/* don't do any params downstream if current is running */
 		if (current->state == COMP_STATE_ACTIVE)
 			return 0;
 
@@ -373,7 +373,7 @@ static int component_op_downstream(struct op_data *op_data,
 		return -EINVAL;
 	}
 
-	/* dont walk the graph any further if this component fails */
+	/* don't walk the graph any further if this component fails */
 	if (err < 0) {
 		trace_pipe_error("eOp");
 		return err;
@@ -391,7 +391,7 @@ static int component_op_downstream(struct op_data *op_data,
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
@@ -419,7 +419,7 @@ static int component_op_upstream(struct op_data *op_data,
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
 
-		/* dont do any params upstream if current is running */
+		/* don't do any params upstream if current is running */
 		if (current->state == COMP_STATE_ACTIVE)
 			return 0;
 
@@ -450,7 +450,7 @@ static int component_op_upstream(struct op_data *op_data,
 		return -EINVAL;
 	}
 
-	/* dont walk the graph any further if this component fails */
+	/* don't walk the graph any further if this component fails */
 	if (err < 0) {
 		trace_pipe_error("eOp");
 		return err;
@@ -465,7 +465,7 @@ static int component_op_upstream(struct op_data *op_data,
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go upstream if this component is not connected */
+		/* don't go upstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
@@ -509,7 +509,7 @@ static int preload_downstream(struct comp_dev *start, struct comp_dev *current)
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
@@ -707,11 +707,11 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go upstream if this component is not connected */
+		/* don't go upstream if this component is not connected */
 		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
 			continue;
 
-		/* dont go upstream if this source is from another pipeline */
+		/* don't go upstream if this source is from another pipeline */
 		if (buffer->source->pipeline != current->pipeline)
 			continue;
 
@@ -765,11 +765,11 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
 			continue;
 
-		/* dont go downstream if this sink is from another pipeline */
+		/* don't go downstream if this sink is from another pipeline */
 		if (buffer->sink->pipeline != current->pipeline)
 			continue;
 
@@ -813,7 +813,7 @@ downstream:
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
 			continue;
 
@@ -856,7 +856,7 @@ upstream:
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
 			continue;
 
@@ -913,7 +913,7 @@ static void pipeline_for_each_downstream(struct pipeline *p,
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
@@ -939,7 +939,7 @@ static void pipeline_for_each_upstream(struct pipeline *p,
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
@@ -957,7 +957,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 {
 	struct sof_ipc_stream_posn posn;
 
-	/* dont flood host */
+	/* don't flood host */
 	if (p->xrun_bytes)
 		return;
 
@@ -995,7 +995,7 @@ static void pipeline_task(void *arg)
 
 	tracev_pipe("PWs");
 
-	/* copy data from upstream source enpoints to downstream endpoints */
+	/* copy data from upstream source endpoints to downstream endpoints */
 	pipeline_copy_from_upstream(dev, dev);
 	pipeline_copy_to_downstream(dev, dev);
 

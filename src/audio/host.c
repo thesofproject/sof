@@ -70,10 +70,10 @@ struct host_data {
 	struct hc_buf host;
 	struct hc_buf local;
 	uint32_t host_size;
-	/* host possition reporting related */
+	/* host position reporting related */
 	volatile uint32_t *host_pos;    /* read/write pos, update to mailbox for host side */
 	uint32_t report_pos;		/* position in current report period */
-	uint32_t local_pos;		/* the host side buffer local read/write possition, in bytes */
+	uint32_t local_pos;		/* the host side buffer local read/write position, in bytes */
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;

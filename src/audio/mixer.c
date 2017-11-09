@@ -239,7 +239,7 @@ static int mixer_copy(struct comp_dev *dev)
 			return 0;
 	}
 
-	/* dont have any work if all sources are inactive */
+	/* don't have any work if all sources are inactive */
 	if (num_mix_sources == 0)
 		return 0;
 
@@ -255,7 +255,7 @@ static int mixer_copy(struct comp_dev *dev)
 	if (xru)
 		return 0;
 
-	/* make sure sink has no overuns */
+	/* make sure sink has no overruns */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 	if (sink->free < md->period_bytes) {
 		comp_overrun(dev, sink, sink->free, md->period_bytes);

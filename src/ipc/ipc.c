@@ -46,7 +46,7 @@
 /*
  * Components, buffers and pipelines all use the same set of monotonic ID
  * numbers passed in by the host. They are stored in different lists, hence
- * more than 1 list may need to be searched for the correspodning component.
+ * more than 1 list may need to be searched for the corresponding component.
  */
 
 struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)

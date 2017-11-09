@@ -53,7 +53,7 @@ static void platform_timer_64_handler(void *arg)
 	/* get timeout value - will tell us timeout reason */
 	timeout = shim_read(SHIM_EXT_TIMER_CNTLL);
 
-	/* we dont use the timer clear bit as we only need to clear the ISR */
+	/* we don't use the timer clear bit as we only need to clear the ISR */
 	shim_write(SHIM_PISR, SHIM_PISR_EXT_TIMER);
 
 	/* is this a 32 bit rollover ? */
@@ -130,7 +130,7 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 
 void platform_timer_clear(struct timer *timer)
 {
-	/* we dont use the timer clear bit as we only need to clear the ISR */
+	/* we don't use the timer clear bit as we only need to clear the ISR */
 	shim_write(SHIM_PISR, SHIM_PISR_EXT_TIMER);
 }
 
@@ -149,7 +149,7 @@ uint64_t platform_timer_get(struct timer *timer)
 	/* check and see whether 32bit IRQ is pending for timer */
 	if (arch_interrupt_get_status() & IRQ_MASK_EXT_TIMER &&
 		shim_read(SHIM_EXT_TIMER_CNTLL) == 1) {
-		/* yes, overflow has occured but handler has not run */
+		/* yes, overflow has occurred but handler has not run */
 		high = timer->hitime + 1;
 	} else {
 		/* no overflow */
@@ -169,7 +169,7 @@ void platform_host_timestamp(struct comp_dev *host,
 {
 	int err;
 
-	/* get host postion */
+	/* get host position */
 	err = comp_position(host, posn);
 	if (err == 0)
 		posn->flags |= SOF_TIME_HOST_VALID | SOF_TIME_HOST_64;
@@ -181,7 +181,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 {
 	int err;
 
-	/* get DAI postion */
+	/* get DAI position */
 	err = comp_position(dai, posn);
 	if (err == 0)
 		posn->flags |= SOF_TIME_DAI_VALID;
@@ -191,7 +191,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 	posn->flags |= SOF_TIME_WALL_VALID | SOF_TIME_WALL_64;
 }
 
-/* get current wallclock for componnent */
+/* get current wallclock for component */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on BYT */

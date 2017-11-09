@@ -117,7 +117,7 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 	config.cyclic = 0;
 	list_init(&config.elem_list);
 
-	/* set up DMA desciptor */
+	/* set up DMA descriptor */
 	elem.dest = (uint32_t)iipc->page_table;
 	elem.src = ring->phy_addr;
 

@@ -382,7 +382,7 @@ int init_static_pipeline(struct ipc *ipc)
 		/* register components for this pipeline */
 		for (j = 0; j < spipe[i].num_scomps; j++) {
 
-			/* all pipeline componnets have same header */
+			/* all pipeline components have same header */
 			c = sc[j].comps;
 
 			for (k = 0; k < sc[j].num_comps; k++) {

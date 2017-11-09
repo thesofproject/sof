@@ -314,7 +314,7 @@ static void work_notify(int message, void *data, void *event_data)
 
 	spin_lock_irq(&queue->lock, flags);
 
-	/* we need to re-caclulate timer when CPU frequency changes */
+	/* we need to re-calculate timer when CPU frequency changes */
 	if (message == CLOCK_NOTIFY_POST) {
 
 		/* CPU frequency update complete */

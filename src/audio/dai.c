@@ -136,7 +136,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		}
 	}
 
-	/* notify pipeline that DAI needs it's buffer processed */
+	/* notify pipeline that DAI needs its buffer processed */
 	pipeline_schedule_copy(dev->pipeline, 0);
 
 	return;
@@ -455,7 +455,7 @@ static int dai_reset(struct comp_dev *dev)
 	return 0;
 }
 
-/* used to pass standard and bespoke commandd (with data) to component */
+/* used to pass standard and bespoke command (with data) to component */
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);

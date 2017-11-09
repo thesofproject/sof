@@ -27,7 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *
- * Simple wait for event completion and signalling with timeouts.
+ * Simple wait for event completion and signaling with timeouts.
  */
 
 #ifndef __INCLUDE_WAIT__

@@ -259,7 +259,7 @@ static void *alloc_block(struct mm_heap *heap, int level, int bflags)
 	return ptr;
 }
 
-/* allocates continious blocks */
+/* allocates continuous blocks */
 static void *alloc_cont_blocks(struct mm_heap *heap, int level, int bflags,
 	size_t bytes)
 {
@@ -276,7 +276,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level, int bflags,
 	if (bytes % map->block_size)
 		count++;
 
-	/* check for continious blocks from "start" */
+	/* check for continuous blocks from "start" */
 	for (start = map->first_free; start < remaining; start++) {
 
 		/* check that we have enough free blocks from start pos */
@@ -387,7 +387,7 @@ found:
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
 	hdr = &block_map->block[block];
 
-	/* free block header and continious blocks */
+	/* free block header and continuous blocks */
 	for (i = block; i < block + hdr->size; i++) {
 		hdr = &block_map->block[i];
 		hdr->size = 0;
@@ -608,7 +608,7 @@ int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
 }
 
 /*
- * Restore the DSP memories to modules abd the system. This must be called immediately
+ * Restore the DSP memories to modules and the system. This must be called immediately
  * after booting before any pipeline work.
  */
 int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)

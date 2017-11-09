@@ -84,7 +84,7 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 
 /* Copy DSP memory to host memory.
  * copies DSP memory to host in PAGE_SIZE or smaller blocks and waits/sleeps
- * between blocks. Cant be used in IRQ context.
+ * between blocks. Can't be used in IRQ context.
  */
 int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size)

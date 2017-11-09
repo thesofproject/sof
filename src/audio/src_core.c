@@ -29,7 +29,7 @@
  *
  */
 
-/* Non optimised default C implementation guaranteed to work on any
+/* Non optimized default C implementation guaranteed to work on any
  * architecture.
  */
 
@@ -55,7 +55,7 @@ int sof_rates[SOF_RATES_LENGTH] = {8000, 11025, 12000, 16000, 18900,
 	22050, 24000, 32000, 44100, 48000, 64000, 88200, 96000, 176400,
 	192000};
 
-/* The FIR maximum lenghts are per channel so need to multiply them */
+/* The FIR maximum lengths are per channel so need to multiply them */
 #define MAX_FIR_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE)
 #define MAX_OUT_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_OUT_DELAY_SIZE)
 

@@ -179,7 +179,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
-	/* can't send nofication when one is in progress */
+	/* can't send notification when one is in progress */
 	if (shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
 		goto out;
 

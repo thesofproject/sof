@@ -77,7 +77,7 @@ struct comp_buffer {
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 void buffer_free(struct comp_buffer *buffer);
 
-/* called by a component after pruducing data into this buffer */
+/* called by a component after producing data into this buffer */
 static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 	uint32_t bytes)
 {

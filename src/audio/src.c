@@ -382,7 +382,7 @@ static int src_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* free any existing dalay lines. TODO reuse if same size */
+	/* free any existing delay lines. TODO reuse if same size */
 	if (cd->delay_lines != NULL)
 		rfree(cd->delay_lines);
 
@@ -397,7 +397,7 @@ static int src_params(struct comp_dev *dev)
 	memset(cd->delay_lines, 0, delay_lines_size);
 	buffer_start = cd->delay_lines + cd->param.sbuf_length;
 
-	/* Initize SRC for actual sample rate */
+	/* Initialize SRC for actual sample rate */
 	n = src_polyphase_init(&cd->src, &cd->param, buffer_start);
 
 	/* Reset stage buffer */
@@ -511,8 +511,8 @@ static int src_copy(struct comp_dev *dev)
 	 * for one SRC run. The blk_in and blk are minimum condition to
 	 * call copy. Copy can consume or produce a slightly larger block
 	 * with the rates where block sizes are not constant. E.g. for
-	 * 1 ms schduling the blocks can be under or above 1 ms when the
-	 * SRC interal block size constraint prevents exact 1 ms blocks.
+	 * 1 ms scheduling the blocks can be under or above 1 ms when the
+	 * SRC interval block size constraint prevents exact 1 ms blocks.
 	 */
 	need_source = cd->param.blk_in * dev->frame_bytes;
 	need_sink = cd->param.blk_out * dev->frame_bytes;

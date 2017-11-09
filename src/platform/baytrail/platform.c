@@ -57,7 +57,7 @@ static const struct sof_ipc_fw_ready ready = {
 		.cmd = SOF_IPC_FW_READY,
 		.size = sizeof(struct sof_ipc_fw_ready),
 	},
-	/* dspbox is for DSP initiated IPC, hostbox is for host iniiated IPC */
+	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
 	.dspbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_DSPBOX_OFFSET,
 	.hostbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_HOSTBOX_OFFSET,
 	.dspbox_size = MAILBOX_DSPBOX_SIZE,

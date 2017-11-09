@@ -573,7 +573,7 @@ static int volume_copy(struct comp_dev *dev)
 }
 
 /*
- * Volume componnet is usually first and last in pipelines so it makes sense
+ * Volume component is usually first and last in pipelines so it makes sense
  * to also do some type conversion here too.
  */
 static int volume_prepare(struct comp_dev *dev)

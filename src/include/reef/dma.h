@@ -52,7 +52,7 @@
 
 
 /* We will use this macro in cb handler to inform dma that
- * we need to stop the reload for specail purpose
+ * we need to stop the reload for special purpose
  */
 #define DMA_RELOAD_END	0
 #define DMA_RELOAD_LLI	0xFFFFFFFF

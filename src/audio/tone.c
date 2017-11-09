@@ -190,7 +190,7 @@ static void tonegen_control(struct tone_state *sg)
 	if (sg->block_count < INT32_MAX)
 		sg->block_count++;
 
-	/* Fadein ramp during tone */
+	/* Fade-in ramp during tone */
 	if (sg->block_count < sg->tone_length) {
 		if (sg->a == 0)
 			sg->w = 0; /* Reset phase to have less clicky ramp */
@@ -208,7 +208,7 @@ static void tonegen_control(struct tone_state *sg)
 		sg->a = (int32_t) a;
 	}
 
-	/* Fadeout ramp after tone*/
+	/* Fade-out ramp after tone*/
 	if (sg->block_count > sg->tone_length) {
 		a = (int64_t) sg->a - sg->ramp_step;
 		if (a < 0)

@@ -117,7 +117,7 @@ static inline uint32_t get_freq(const struct freq_table *table, int size,
 {
 	uint32_t i;
 
-	/* find lowest available frequency that is >= requested hz */
+	/* find lowest available frequency that is >= requested Hz */
 	for (i = 0; i < size; i++) {
 		if (hz <= table[i].freq)
 			return i;
@@ -159,7 +159,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
 
-	/* atomic context for chaning clocks */
+	/* atomic context for chaining clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {

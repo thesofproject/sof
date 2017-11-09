@@ -98,7 +98,7 @@
 			*(__m++) = *(__a++); \
 	} while (0);
 
-/* dump data area at addr and size count at mailbox ofset or shared memory */
+/* dump data area at addr and size count at mailbox offset or shared memory */
 #define dump_at(addr, count, offset) \
 	do { \
 		volatile uint32_t *__m = (uint32_t*)mailbox_get_debug_base() + offset; \

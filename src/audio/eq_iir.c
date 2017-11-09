@@ -175,7 +175,7 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 		|| (config->channels_in_config > PLATFORM_MAX_CHANNELS))
 		return -EINVAL;
 
-	/* Collect index of respose start positions in all_coefficients[]  */
+	/* Collect index of response start positions in all_coefficients[]  */
 	j = 0;
 	assign_response = &config->data[0];
 	coef_data = &config->data[config->channels_in_config];
@@ -234,7 +234,7 @@ static int eq_iir_switch_response(struct iir_state_df2t iir[],
 {
 	int ret;
 
-	/* Copy assign response from update and re-initilize EQ */
+	/* Copy assign response from update and re-initialize EQ */
 	if ((config == NULL) || (ch >= PLATFORM_MAX_CHANNELS))
 		return -EINVAL;
 

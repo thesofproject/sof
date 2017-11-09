@@ -50,7 +50,7 @@
  * States may transform as below:-
  *
  * 1) i.e. Initialisation to playback and pause/release
- * init --> setup --> preprare --> active <-> paused --+
+ * init --> setup --> prepare --> active <-> paused --+
  *                       ^                             |
  *                       +-----------------------------+
  *
@@ -125,13 +125,13 @@ struct comp_ops {
 	struct comp_dev *(*new)(struct sof_ipc_comp *comp);
 	void (*free)(struct comp_dev *dev);
 
-	/* set component audio stream paramters */
+	/* set component audio stream parameters */
 	int (*params)(struct comp_dev *dev);
 
 	/* preload buffers */
 	int (*preload)(struct comp_dev *dev);
 
-	/* set component audio stream paramters */
+	/* set component audio stream parameters */
 	int (*dai_config)(struct comp_dev *dev,
 		struct sof_ipc_dai_config *dai_config);
 
@@ -325,7 +325,7 @@ static inline int comp_buffer_reset(struct comp_dev *dev)
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont reset buffer if the component is not connected */
+		/* don't reset buffer if the component is not connected */
 		if (!buffer->connected)
 			continue;
 
@@ -341,11 +341,11 @@ static inline int comp_buffer_reset(struct comp_dev *dev)
 }
 
 /*
- * Convenince functions to install upstream/downstream common params. Only
+ * Convenience functions to install upstream/downstream common params. Only
  * applicable to single upstream source. Components with > 1 source  or sink
  * must do this manually.
  *
- * This allows params to propagate from the host PCM component downstrean on
+ * This allows params to propagate from the host PCM component downstream on
  * playback and upstream on capture.
  */
 static inline void comp_install_params(struct comp_dev *dev,
