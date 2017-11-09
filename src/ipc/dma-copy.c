@@ -34,6 +34,7 @@
 #include <reef/reef.h>
 #include <reef/debug.h>
 #include <reef/trace.h>
+#include <reef/ipc.h>
 #include <reef/dma.h>
 #include <reef/wait.h>
 #include <platform/dma.h>
@@ -75,6 +76,8 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	if (type == DMA_IRQ_TYPE_LLIST)
 		wait_completed(comp);
+
+	ipc_dma_trace_send_position();
 
 	next->size = DMA_RELOAD_END;
 }
