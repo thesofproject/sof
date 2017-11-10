@@ -56,7 +56,7 @@ struct dma_trace_data {
 	struct dma_sg_config config;
 	struct dma_trace_buf dmatb;
 	struct dma_copy dc;
-	int32_t host_offset;
+	uint32_t host_offset;
 	uint32_t host_size;
 	struct work dmat_work;
 	uint32_t enabled;

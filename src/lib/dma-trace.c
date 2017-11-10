@@ -90,12 +90,12 @@ static uint64_t trace_work(void *data, uint64_t delay)
 
 	/* update host pointer and check for wrap */
 	d->host_offset += size;
-	if (d->host_offset + size >= d->host_size)
+	if (d->host_offset == d->host_size)
 		d->host_offset = 0;
 
 	/* update local pointer and check for wrap */
 	buffer->r_ptr += size;
-	if (buffer->r_ptr >= buffer->end_addr)
+	if (buffer->r_ptr == buffer->end_addr)
 		buffer->r_ptr = buffer->addr;
 
 out:
