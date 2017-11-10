@@ -735,6 +735,7 @@ static void dw_dma_irq_handler(void *data)
 		if ((status_tfr & mask) &&
 			(p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)) {
 
+			next.src = next.dest = DMA_RELOAD_LLI;
 			next.size = DMA_RELOAD_LLI; /* will reload lli by default */
 			if (p->chan[i].cb)
 				p->chan[i].cb(p->chan[i].cb_data,
