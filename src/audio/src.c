@@ -496,8 +496,9 @@ static int src_copy(struct comp_dev *dev)
 	int need_sink;
 	size_t consumed = 0;
 	size_t produced = 0;
+	int res;
 
-	trace_comp("SRC");
+	trace_src("SRC");
 
 	/* src component needs 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
@@ -514,6 +515,20 @@ static int src_copy(struct comp_dev *dev)
 	 */
 	need_source = cd->param.blk_in * dev->frame_bytes;
 	need_sink = cd->param.blk_out * dev->frame_bytes;
+
+	/* make sure source component buffer has enough data available and that
+	 * the sink component buffer has enough free bytes for copy. Also
+	 * check for XRUNs */
+	res = comp_buffer_can_copy_bytes(source, sink, need_source);
+	if (res) {
+		trace_src_error("xru");
+		return -EIO;	/* xrun */
+	}
+	res = comp_buffer_can_copy_bytes(source, sink, need_sink);
+	if (res) {
+		trace_src_error("xro");
+		return -EIO;	/* xrun */
+	}
 
 	/* Run SRC function if buffers avail and free allow */
 	if (((int) source->avail >= need_source) && ((int) sink->free >= need_sink)) {

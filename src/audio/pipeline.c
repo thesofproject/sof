@@ -742,7 +742,8 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		err = pipeline_copy_from_upstream(start, buffer->source);
 		if (err < 0) {
 			trace_pipe_error("ePU");
-			break;
+			trace_value(current->comp.id);
+			return err;
 		}
 	}
 
@@ -800,7 +801,8 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		err = pipeline_copy_to_downstream(start, buffer->sink);
 		if (err < 0) {
 			trace_pipe_error("ePD");
-			break;
+			trace_value(current->comp.id);
+			return err;
 		}
 	}
 

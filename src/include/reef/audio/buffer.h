@@ -81,14 +81,6 @@ void buffer_free(struct comp_buffer *buffer);
 static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 	uint32_t bytes)
 {
-	/* complain loudly if component tries to overrun buffer
-	 * components MUST check for free space first !! */
-	if (bytes > buffer->free) {
-		trace_buffer_error("Xxo");
-		trace_value(buffer->ipc_buffer.comp.id);
-		return;
-	}
-
 	buffer->w_ptr += bytes;
 
 	/* check for pointer wrap */
@@ -116,14 +108,6 @@ static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 	uint32_t bytes)
 {
-	/* complain loudly if component tries to underrun buffer
-	 * components MUST check for avail space first !! */
-	if (buffer->avail < bytes) {
-		trace_buffer_error("Xxu");
-		trace_value(buffer->ipc_buffer.comp.id);
-		return;
-	}
-
 	buffer->r_ptr += bytes;
 
 	/* check for pointer wrap */
@@ -148,29 +132,28 @@ static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 }
 
 /* get the max number of bytes that can be copied between sink and source */
-static inline uint32_t comp_buffer_get_copy_bytes(struct comp_dev *dev,
-	struct comp_buffer *source, struct comp_buffer *sink)
+static inline int comp_buffer_can_copy_bytes(struct comp_buffer *source,
+	struct comp_buffer *sink, uint32_t bytes)
 {
-	uint32_t copy_bytes;
+	/* check for underrun */
+	if (source->avail < bytes)
+		return -1;
 
-	/* Check that source has enough frames available and sink enough
-	 * frames free.
-	 */
-	if (source->avail > sink->free)
-		copy_bytes = sink->free;
-	else
-		copy_bytes = source->avail;
+	/* check for overrun */
+	if (sink->free < bytes)
+		return 1;
 
-	return copy_bytes;
+	/* we are good to copy */
+	return 0;
 }
 
-static inline void buffer_reset_pos(struct comp_buffer *buffer,
-	uint32_t sink_period_bytes)
+static inline uint32_t comp_buffer_get_copy_bytes(struct comp_buffer *source,
+	struct comp_buffer *sink)
 {
-	buffer->r_ptr = buffer->addr + buffer->size - sink_period_bytes;
-	buffer->w_ptr = buffer->addr;
-	buffer->free = buffer->size;
-	buffer->avail = 0;
+	if (source->avail < sink->free)
+		return sink->free;
+	else
+		return source->avail;
 }
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer)

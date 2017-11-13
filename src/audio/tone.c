@@ -613,9 +613,14 @@ static int tone_copy(struct comp_dev * dev)
 
 		/* calc new free and available */
 		comp_update_buffer_produce(sink, cd->period_bytes);
-	}
 
-	return dev->frames;
+		return dev->frames;
+	} else {
+		/* XRUN */
+		trace_tone_error("xrn");
+		comp_overrun(dev, sink, cd->period_bytes, sink->free);
+		return -EIO;
+	}
 }
 
 static int tone_prepare(struct comp_dev * dev)

@@ -446,7 +446,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	uint32_t copy_bytes;
+	int res;
 
 	trace_comp("EqI");
 
@@ -456,20 +456,20 @@ static int eq_iir_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 		source_list);
 
-	/* Check that source has enough frames available and sink enough
-	 * frames free.
-	 */
-	copy_bytes = comp_buffer_get_copy_bytes(dev, source, sink);
-
-	/* Run EQ if buffers have enough room */
-	if (copy_bytes < cd->period_bytes)
-		return 0;
+	/* make sure source component buffer has enough data available and that
+	 * the sink component buffer has enough free bytes for copy. Also
+	 * check for XRUNs */
+	res = comp_buffer_can_copy_bytes(source, sink, cd->period_bytes);
+	if (res) {
+		trace_eq_iir_error("xrn");
+		return -EIO;	/* xrun */
+	}
 
 	cd->eq_iir_func(dev, source, sink, dev->frames);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, copy_bytes);
-	comp_update_buffer_produce(sink, copy_bytes);
+	comp_update_buffer_consume(source, cd->period_bytes);
+	comp_update_buffer_produce(sink, cd->period_bytes);
 
 	return dev->frames;
 }

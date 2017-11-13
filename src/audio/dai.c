@@ -117,6 +117,12 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 				dma_buffer->r_ptr - dma_buffer->addr;
 		}
 
+		/* make sure there is availble bytes for next period */
+		if (dma_buffer->avail < dd->period_bytes) {
+			trace_dai_error("xru");
+			comp_underrun(dev, dma_buffer, copied_size, 0);
+		}
+
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
@@ -133,6 +139,12 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 			dd->dai_pos_blks += dd->period_bytes;
 			*dd->dai_pos = dd->dai_pos_blks +
 				dma_buffer->w_ptr - dma_buffer->addr;
+		}
+
+		/* make sure there is free bytes for next period */
+		if (dma_buffer->free < dd->period_bytes) {
+			trace_dai_error("xro");
+			comp_overrun(dev, dma_buffer, dd->period_bytes, 0);
 		}
 	}
 

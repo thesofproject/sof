@@ -561,7 +561,6 @@ static int volume_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
-	uint32_t copy_bytes;
 
 	tracev_volume("cpy");
 
@@ -569,17 +568,18 @@ static int volume_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
-	/* get max number of bytes that can be copied */
-	copy_bytes = comp_buffer_get_copy_bytes(dev, source, sink);
-
-	/* Run volume if buffers have enough room */
-	if (copy_bytes < cd->source_period_bytes) {
-		comp_underrun(dev, source, copy_bytes, cd->source_period_bytes);
-		return 0;
+	/* make sure source component buffer has enough data available and that
+	 * the sink component buffer has enough free bytes for copy. Also
+	 * check for XRUNs */
+	if (source->avail < cd->source_period_bytes) {
+		trace_volume_error("xru");
+		comp_overrun(dev, source, cd->source_period_bytes, 0);
+		return -EIO;	/* xrun */
 	}
-	if (copy_bytes < cd->sink_period_bytes) {
-		comp_overrun(dev, sink, copy_bytes, cd->sink_period_bytes);
-		return 0;
+	if (sink->free < cd->sink_period_bytes) {
+		trace_volume_error("xro");
+		comp_underrun(dev, sink, cd->sink_period_bytes, 0);
+		return -EIO;	/* xrun */
 	}
 
 	/* copy and scale volume */

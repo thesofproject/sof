@@ -220,9 +220,11 @@ static int mixer_copy(struct comp_dev *dev)
 	struct list_item *blist;
 	int32_t i = 0;
 	int32_t num_mix_sources = 0;
-	int32_t xru = 0;
+	int res;
 
 	tracev_mixer("cpy");
+
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* calculate the highest runtime component status between input streams */
 	list_for_item(blist, &dev->bsource_list) {
@@ -243,21 +245,20 @@ static int mixer_copy(struct comp_dev *dev)
 
 	/* make sure no sources have underruns */
 	for (i = 0; i < num_mix_sources; i++) {
-		if (sources[i]->avail < md->period_bytes) {
+
+		/* make sure source component buffer has enough data available
+		 * and that the sink component buffer has enough free bytes
+		 * for copy. Also check for XRUNs */
+		res = comp_buffer_can_copy_bytes(sources[i], sink, md->period_bytes);
+		if (res < 0) {
+			trace_mixer_error("xru");
 			comp_underrun(dev, sources[i], sources[i]->avail,
 				md->period_bytes);
-			xru = 1;
+		} else if (res > 0) {
+			trace_mixer_error("xru");
+			comp_overrun(dev, sources[i], sink->free,
+				md->period_bytes);
 		}
-	}
-	/* underrun ? */
-	if (xru)
-		return 0;
-
-	/* make sure sink has no overruns */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
-	if (sink->free < md->period_bytes) {
-		comp_overrun(dev, sink, sink->free, md->period_bytes);
-		return 0;
 	}
 
 	/* mix streams */

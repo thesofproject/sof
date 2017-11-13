@@ -610,15 +610,27 @@ static int host_copy(struct comp_dev *dev)
 
 	/* enough free or avail to copy ? */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
-		if (dma_buffer->free < local_elem->size)
-			return 0;
+
+		if (dma_buffer->free < local_elem->size) {
+			/* make sure there is free bytes for next period */
+			trace_host_error("xro");
+			comp_overrun(dev, dma_buffer, local_elem->size, 0);
+			return -EIO;
+		}
 	} else {
+
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
-		if (dma_buffer->avail < local_elem->size)
-			return 0;
+
+		if (dma_buffer->avail < local_elem->size) {
+			/* make sure there is avail bytes for next period */
+			trace_host_error("xru");
+			comp_underrun(dev, dma_buffer, local_elem->size, 0);
+			return -EIO;
+		}
 	}
 
 	/* do DMA transfer */
