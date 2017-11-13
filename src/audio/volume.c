@@ -53,6 +53,7 @@
 #define VOL_RAMP_US	2000
 #define VOL_RAMP_STEP	(1 << 11)
 #define VOL_MAX		(1 << 16)
+#define VOL_MIN		0
 
 /*
  * Simple volume control
@@ -282,14 +283,14 @@ static const struct comp_func_map func_map[] = {
 /* synchronise host mmap() volume with real value */
 static void vol_sync_host(struct comp_data *cd, uint32_t chan)
 {
-	int i;
-
 	if (cd->hvol == NULL)
 		return;
 
-	for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
-		if (cd->hvol[i].channel == cd->chan[chan])
-			cd->hvol[i].value = cd->volume[chan];
+	if (chan < SOF_IPC_MAX_CHANNELS)
+		cd->hvol[chan].value = cd->volume[chan];
+	else {
+		trace_volume_error("veh");
+		tracev_value(chan);
 	}
 }
 
@@ -414,10 +415,20 @@ static int volume_params(struct comp_dev *dev)
 static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	uint32_t v = vol;
 
-	/* TODO: ignore vol of 0 atm - bad IPC */
-	if (vol > 0 && vol <= VOL_MAX)
-		cd->tvolume[chan] = vol;
+	/* Limit received volume gain to MIN..MAX range before applying it.
+	 * MAX is needed for now for the generic C gain arithmetics to prevent
+	 * multiplication overflow with the 32 bit value. Non-zero MIN option
+	 * can be useful to prevent totally muted small volume gain.
+	 */
+	if (v < VOL_MIN)
+		v = VOL_MIN;
+
+	if (v > VOL_MAX)
+		v = VOL_MAX;
+
+	cd->tvolume[chan] = v;
 }
 
 static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
@@ -450,12 +461,16 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_VOLUME:
 		trace_volume("vst");
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
-			for (j = 0; j < cdata->num_elems; j++) {
-				tracev_value(cdata->chanv[j].channel);
-				tracev_value(cdata->chanv[j].value);
-				if (cdata->chanv[j].channel == cd->chan[i])
-					volume_set_chan(dev, i, cdata->chanv[j].value);
+		trace_value(cdata->comp_id);
+		for (j = 0; j < cdata->num_elems; j++) {
+			trace_value(cdata->chanv[j].channel);
+			trace_value(cdata->chanv[j].value);
+			i = cdata->chanv[j].channel;
+			if ((i >= 0) && (i < SOF_IPC_MAX_CHANNELS))
+				volume_set_chan(dev, i, cdata->chanv[j].value);
+			else {
+				trace_volume_error("gs2");
+				tracev_value(i);
 			}
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
@@ -463,16 +478,19 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 
 	case SOF_CTRL_CMD_SWITCH:
 		trace_volume("mst");
-		for (i = 0; i < SOF_IPC_MAX_CHANNELS; i++) {
-			for (j = 0; j < cdata->num_elems; j++) {
-				tracev_value(cdata->chanv[j].channel);
-				tracev_value(cdata->chanv[j].value);
-				if (cdata->chanv[j].channel == cd->chan[i]) {
-					if (cdata->chanv[j].value)
-						volume_set_chan_unmute(dev, i);
-					else
-						volume_set_chan_mute(dev, i);
-				}
+		trace_value(cdata->comp_id);
+		for (j = 0; j < cdata->num_elems; j++) {
+			trace_value(cdata->chanv[j].channel);
+			trace_value(cdata->chanv[j].value);
+			i = cdata->chanv[j].channel;
+			if ((i >= 0) && (i < SOF_IPC_MAX_CHANNELS)) {
+				if (cdata->chanv[j].value)
+					volume_set_chan_unmute(dev, i);
+				else
+					volume_set_chan_mute(dev, i);
+			} else {
+				trace_volume_error("gs3");
+				tracev_value(i);
 			}
 		}
 		work_schedule_default(&cd->volwork, VOL_RAMP_US);
@@ -489,21 +507,23 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int i;
 	int j;
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems >= SOF_IPC_MAX_CHANNELS) {
 		trace_volume_error("gc0");
+		tracev_value(cdata->num_elems);
 		return -EINVAL;
 	}
 
 	if (cdata->cmd == SOF_CTRL_CMD_VOLUME) {
-		for (i = 0; i < cdata->num_elems; i++) {
-			for (j = 0; j < cdata->num_elems; j++) {
-				if (cdata->chanv[j].value == cd->chan[i])
-					cdata->chanv[j].value = cd->tvolume[i];
-			}
+		trace_volume("vgt");
+		trace_value(cdata->comp_id);
+		for (j = 0; j < cdata->num_elems; j++) {
+			cdata->chanv[j].channel = j;
+			cdata->chanv[j].value = cd->tvolume[j];
+			trace_value(cdata->chanv[j].channel);
+			trace_value(cdata->chanv[j].value);
 		}
 	} else {
 		trace_volume_error("ec2");
