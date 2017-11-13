@@ -63,6 +63,7 @@ struct dai_data {
 	struct dma *dma;
 	uint32_t period_bytes;
 	completion_t complete;
+	int xrun;		/* true if we are doing xrun recovery */
 
 	uint32_t last_bytes;    /* the last bytes(<period size) it copies. */
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
@@ -83,14 +84,36 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	tracev_dai("irq");
 
-	/* is stream stopped or paused ? */
-	if (dev->state != COMP_STATE_ACTIVE) {
+	/* is stream stopped or paused and we are not handling XRUN ? */
+	if (dev->state != COMP_STATE_ACTIVE && dd->xrun == 0) {
 
 		/* stop the DAI */
 		dai_trigger(dd->dai, COMP_CMD_STOP, dev->params.direction);
 
 		/* tell DMA not to reload */
 		next->size = DMA_RELOAD_END;
+
+		/* inform waiters */
+		wait_completed(&dd->complete);
+		return;
+	}
+
+	/* is our pipeline handling an XRUN ? */
+	if (dd->xrun) {
+
+		/* make sure we only playback silence during an XRUN */
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+
+			dma_buffer = list_first_item(&dev->bsource_list,
+				struct comp_buffer, sink_list);
+
+			/* fill buffer with silence */
+			bzero(dma_buffer->addr, dma_buffer->size);
+
+			/* writeback buffer contents from cache */
+			dcache_writeback_region(dma_buffer->addr,
+				dma_buffer->size);
+		}
 
 		/* inform waiters */
 		wait_completed(&dd->complete);
@@ -195,6 +218,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->last_bytes = 0;
+	dd->xrun = 0;
 
 	/* get DMA channel from DMAC1 */
 	dd->chan = dma_channel_get(dd->dma);
@@ -423,8 +447,15 @@ static int dai_prepare(struct comp_dev *dev)
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
+		/* fill playback periods with silence */
+		bzero(dma_buffer->r_ptr, dma_buffer->avail);
+
 		dcache_writeback_region(dma_buffer->r_ptr, dma_buffer->avail);
 	}
+
+	/* dma reconfig not required if XRUN handling */
+	if (dd->xrun)
+		return ret;
 
 	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
 	if (ret < 0)
@@ -456,6 +487,7 @@ static int dai_reset(struct comp_dev *dev)
 	dd->last_bytes = 0;
 	dd->wallclock = 0;
 	dev->position = 0;
+	dd->xrun = 0;
 	comp_set_state(dev, COMP_CMD_RESET);
 
 	return 0;
@@ -479,14 +511,24 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	switch (cmd) {
 	case COMP_CMD_RELEASE:
 	case COMP_CMD_START:
-		ret = dma_start(dd->dma, dd->chan);
-		if (ret < 0)
-			return ret;
-		dai_trigger(dd->dai, cmd, dev->params.direction);
+
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun == 0) {
+
+			/* start the DAI */
+			ret = dma_start(dd->dma, dd->chan);
+			if (ret < 0)
+				return ret;
+			dai_trigger(dd->dai, cmd, dev->params.direction);
+		} else {
+			dd->xrun = 0;
+		}
 
 		/* update starting wallclock */
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
+	case COMP_CMD_XRUN:
+		dd->xrun = 1;
 	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
 		wait_init(&dd->complete);
