@@ -80,6 +80,7 @@
 #define COMP_CMD_RESUME		6	/* resume component */
 #define COMP_CMD_RESET		6	/* reset component */
 #define COMP_CMD_PREPARE	7	/* prepare component */
+#define COMP_CMD_XRUN		8	/* XRUN component */
 
 /*
  * standard component control commands

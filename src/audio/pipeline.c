@@ -76,6 +76,9 @@ static void connect_upstream(struct pipeline *p, struct comp_dev *start,
 	/* we are an endpoint if we have 0 source components */
 	if (list_is_empty(&current->bsource_list)) {
 		current->is_endpoint = 1;
+
+		/* pipeline source comp is current */
+		p->source_comp = current;
 		return;
 	}
 
@@ -86,8 +89,13 @@ static void connect_upstream(struct pipeline *p, struct comp_dev *start,
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* don't go upstream if this source is from another pipeline */
-		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id)
+		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id) {
+
+			/* pipeline source comp is current unless we go upstream */
+			p->source_comp = current;
+
 			continue;
+		}
 
 		connect_upstream(p, start, buffer->source);
 	}
@@ -210,6 +218,7 @@ static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
 		break;
 	case COMP_CMD_SUSPEND:
 	case COMP_CMD_RESUME:
+	case COMP_CMD_XRUN:
 	default:
 		break;
 	}
@@ -1001,6 +1010,38 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	}
 }
 
+/* recover the pipeline from a XRUN condition */
+static int pipeline_xrun_recover(struct pipeline *p)
+{
+	int ret;
+
+	trace_pipe_error("pxr");
+
+	/* notify all pipeline comps we are in XRUN */
+	ret = pipeline_cmd(p, p->source_comp, COMP_CMD_XRUN, NULL);
+	if (ret < 0) {
+		trace_pipe_error("px0");
+		return ret;
+	}
+	p->xrun_bytes = 0;
+
+	/* prepare the pipeline */
+	pipeline_prepare(p, p->source_comp);
+	if (ret < 0) {
+		trace_pipe_error("px1");
+		return ret;
+	}
+
+	/* restart pipeline comps */
+	pipeline_cmd(p, p->source_comp, COMP_CMD_START, NULL);
+	if (ret < 0) {
+		trace_pipe_error("px2");
+		return ret;
+	}
+
+	return 0;
+}
+
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
@@ -1025,13 +1066,36 @@ static void pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
 	struct comp_dev *dev = p->sched_comp;
+	int err;
 
 	tracev_pipe("PWs");
 
-	/* copy data from upstream source endpoints to downstream endpoints */
-	pipeline_copy_from_upstream(dev, dev);
-	pipeline_copy_to_downstream(dev, dev);
+	/* are we in xrun ? */
+	if (p->xrun_bytes) {
+		err = pipeline_xrun_recover(p);
+		if (err < 0)
+			return;  /* failed - host will stop this pipeline */
+		goto sched;
+	}
 
+	/* copy data from upstream source endpoints to downstream endpoints */
+	err = pipeline_copy_from_upstream(dev, dev);
+	if (err < 0) {
+		err = pipeline_xrun_recover(p);
+		if (err < 0)
+			return;  /* failed - host will stop this pipeline */
+		goto sched;
+	}
+
+	err = pipeline_copy_to_downstream(dev, dev);
+	if (err < 0) {
+		err = pipeline_xrun_recover(p);
+		if (err < 0)
+			return;  /* failed - host will stop this pipeline */
+		goto sched;
+	}
+
+sched:
 	tracev_pipe("PWe");
 
 	/* now reschedule the task */

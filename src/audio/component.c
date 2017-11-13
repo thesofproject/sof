@@ -141,6 +141,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		}
 		break;
 	case COMP_CMD_STOP:
+	case COMP_CMD_XRUN:
 		if (dev->state == COMP_STATE_ACTIVE) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
