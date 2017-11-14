@@ -30,6 +30,7 @@
  */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <reef/stream.h>
 #include <reef/ssp.h>
 #include <reef/alloc.h>
@@ -40,6 +41,19 @@
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
 #define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
 
+/* FIXME: move this to a helper and optimize */
+static int hweight_32(uint32_t mask)
+{
+	int i;
+	int count = 0;
+
+	for (i = 0; i < 32; i++) {
+		count += mask&1;
+		mask >>= 1;
+	}
+	return count;
+}
+
 /* save SSP context prior to entering D3 */
 static int ssp_context_store(struct dai *dai)
 {
@@ -47,6 +61,8 @@ static int ssp_context_store(struct dai *dai)
 
 	ssp->sscr0 = ssp_read(dai, SSCR0);
 	ssp->sscr1 = ssp_read(dai, SSCR1);
+
+	/* FIXME: need to store sscr2,3,4,5 */
 	ssp->psp = ssp_read(dai, SSPSP);
 
 	return 0;
@@ -59,6 +75,7 @@ static int ssp_context_restore(struct dai *dai)
 
 	ssp_write(dai, SSCR0, ssp->sscr0);
 	ssp_write(dai, SSCR1, ssp->sscr1);
+	/* FIXME: need to restore sscr2,3,4,5 */
 	ssp_write(dai, SSPSP, ssp->psp);
 
 	return 0;
@@ -73,12 +90,20 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t sscr1;
 	uint32_t sscr2;
 	uint32_t sscr3;
+	uint32_t sscr4;
+	uint32_t sscr5;
 	uint32_t sspsp;
 	uint32_t sfifott;
 	uint32_t mdiv;
 	uint32_t bdiv;
 	uint32_t data_size;
+	uint32_t start_delay;
+	uint32_t active_tx_slots = 2;
+	uint32_t active_rx_slots = 2;
 	uint32_t frame_len = 0;
+	bool inverted_frame = false;
+	bool cfs = false;
+	bool cbs = false;
 	int ret = 0;
 
 	spin_lock(&ssp->lock);
@@ -94,34 +119,98 @@ static inline int ssp_set_config(struct dai *dai,
 	trace_ssp("cos");
 
 	/* reset SSP settings */
-	sscr0 = SSCR0_RIM | SSCR0_TIM;
-	sscr1 = SSCR1_PINTE | SSCR1_RWOT;
-	sscr2 = 0x1c1;
-	sscr3 = 0x2c018;
-	sspsp = 0;
+	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
+	/*
+	 * FIXME: MOD, ACS, NCS are not set,
+	 * no support for network mode for now
+	 */
+	sscr0 = SSCR0_PSP | SSCR0_RIM | SSCR0_TIM;
+
+	/*
+	 * FIXME: PINTE and RWOT are not set in sscr1
+	 *   sscr1 = SSCR1_PINTE | SSCR1_RWOT;
+	 */
+
+	/* sscr1 dynamic settings are TFT, RFT, SFRMDIR, SCLKDIR, SCFR */
+	sscr1 = SSCR1_TTE;
+#ifdef ENABLE_TIE_RIE /* FIXME: not enabled, difference with SST driver */
+	sscr1 |= SSCR1_TIE | SSCR1_RIE;
+#endif
+
+	/* sscr2 dynamic setting is SLV_EXT_CLK_RUN_EN */
+	sscr2 = SSCR2_URUN_FIX0;
+	sscr2 |= SSCR2_ASRC_INTR_MASK;
+#ifdef ENABLE_SSCR2_FIXES /* FIXME: is this needed ? */
+	sscr2 |= SSCR2_UNDRN_FIX_EN | SSCR2_FIFO_EMPTY_FIX_EN;
+#endif
+
+
+	/*
+	 * sscr3 dynamic settings are FRM_MS_EN, I2S_MODE_EN, I2S_FRM_POL,
+	 * I2S_TX_EN, I2S_RX_EN, I2S_CLK_MST
+	 */
+	sscr3 = SSCR3_I2S_TX_SS_FIX_EN | SSCR3_I2S_RX_SS_FIX_EN |
+		SSCR3_STRETCH_TX | SSCR3_STRETCH_RX |
+		SSCR3_SYN_FIX_EN;
+#ifdef ENABLE_CLK_EDGE_SEL /* FIXME: is this needed ? */
+	sscr3 |= SSCR3_CLK_EDGE_SEL;
+#endif
+
+	/* sscr4 dynamic settings is TOT_FRAME_PRD */
+	sscr4 = 0x0;
+
+	/* sscr4 dynamic settings are FRM_ASRT_CLOCKS and FRM_POLARITY */
+	sscr5 = 0x0;
+
+	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
+	sspsp = SSPSP_ETDS; /* make sure SDO line is tri-stated when inactive */
 
 	ssp->config = *config;
 	ssp->params = config->ssp[0];
 
-	/* TODO: allow topology to define SSP clock type */
-	config->ssp[0].clk_id = SSP_CLK_EXT;
-
 	/* clock masters */
+	/*
+	 * On TNG/BYT/CHT, the SSP wrapper generates the fs even in master mode,
+	 * the master/slave choice depends on the clock type
+	 */
+	sscr1 |= SSCR1_SFRMDIR;
+
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
-		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
+		sscr0 |= SSCR0_ECS; /* external clock used */
+		sscr1 |= SSCR1_SCLKDIR;
+		/*
+		 * FIXME: does SSRC1.SCFR need to be set
+		 * when codec is master ?
+		 */
+		sscr2 |= SSCR2_SLV_EXT_CLK_RUN_EN;
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
+#ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
 		sscr1 |= SSCR1_SCFR;
-		sscr3 |= SSCR3_I2S_FRM_MST | SSCR3_I2S_CLK_MST;
+#endif
+		sscr3 |= SSCR3_FRM_MST_EN;
+		cfs = true;
+		cbs = true;
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
-		sscr1 |= SSCR1_SFRMDIR;
+		sscr0 |= SSCR0_ECS; /* external clock used */
+		sscr1 |= SSCR1_SCLKDIR;
+		/*
+		 * FIXME: does SSRC1.SCFR need to be set
+		 * when codec is master ?
+		 */
+		sscr2 |= SSCR2_SLV_EXT_CLK_RUN_EN;
+		sscr3 |= SSCR3_FRM_MST_EN;
+		cfs = true;
+		/* FIXME: this mode has not been tested */
 		break;
 	case SOF_DAI_FMT_CBS_CFM:
-		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR | SSCR1_SCFR;
-		break;
-	case SSP_CLK_DEFAULT:
+#ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
+		sscr1 |= SSCR1_SCFR;
+#endif
+		/* FIXME: this mode has not been tested */
+		cbs = true;
 		break;
 	default:
 		trace_ssp_error("ec2");
@@ -137,15 +226,21 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_IB_IF:
 		sspsp |= SSPSP_SCMODE(2);
+		inverted_frame = true; /* handled later with format */
 		break;
 	case SOF_DAI_FMT_IB_NF:
-		sspsp |= SSPSP_SCMODE(2) | SSPSP_SFRMP;
+		sspsp |= SSPSP_SCMODE(2);
+		inverted_frame = true; /* handled later with format */
 		break;
 	default:
 		trace_ssp_error("ec3");
 		ret = -EINVAL;
 		goto out;
 	}
+
+#ifdef CLK_TYPE /* not enabled, keep the code for reference */
+	/* TODO: allow topology to define SSP clock type */
+	config->ssp[0].clk_id = SSP_CLK_EXT;
 
 	/* clock source */
 	switch (config->ssp[0].clk_id) {
@@ -166,6 +261,7 @@ static inline int ssp_set_config(struct dai *dai,
 		ret = -EINVAL;
 		goto out;
 	}
+#endif
 
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->mclk % config->bclk) {
@@ -211,20 +307,118 @@ static inline int ssp_set_config(struct dai *dai,
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 
+		start_delay = 1;
+
 		/* enable I2S mode */
-		sscr3 |= SSCR3_I2S_ENA | SSCR3_I2S_TX_ENA | SSCR3_I2S_RX_ENA;
-		sscr0 |= SSCR0_PSP;
+		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
 
 		/* set asserted frame length */
 		frame_len = config->sample_container_bits;
+
+		/* handle frame polarity, I2S default is falling/active low */
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
+		sscr3 |= SSCR3_I2S_FRM_POL(!inverted_frame);
+
+		if (cbs) {
+			/*
+			 * keep RX functioning on a TX underflow
+			 * (I2S/LEFT_J master only)
+			 */
+			sscr3 |= SSCR3_MST_CLK_EN;
+
+			/*
+			 * total frame period (both asserted and
+			 * deasserted time of frame
+			 */
+			sscr4 |= SSCR4_TOT_FRM_PRD(frame_len << 1);
+		}
+
+		break;
+
+	case SOF_DAI_FMT_LEFT_J:
+
+		start_delay = 0;
+
+		/* apparently we need the same initialization as for I2S */
+		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
+
+		/* set asserted frame length */
+		frame_len = config->sample_container_bits;
+
+		/* LEFT_J default is rising/active high, opposite of I2S */
+		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sscr3 |= SSCR3_I2S_FRM_POL(inverted_frame);
+
+		if (cbs) {
+			/*
+			 * keep RX functioning on a TX underflow
+			 * (I2S/LEFT_J master only)
+			 */
+			sscr3 |= SSCR3_MST_CLK_EN;
+
+			/*
+			 * total frame period (both asserted and
+			 * deasserted time of frame
+			 */
+			sscr4 |= SSCR4_TOT_FRM_PRD(frame_len << 1);
+		}
+
 		break;
 	case SOF_DAI_FMT_DSP_A:
-		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
-		sspsp |= SSPSP_SFRMWDTH(1) | SSPSP_SFRMDLY(2);
+
+		start_delay = 1;
+
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
+
+		/* set asserted frame length */
+		frame_len = 1;
+
+		/* handle frame polarity, DSP_A default is rising/active high */
+		sspsp |= SSPSP_SFRMP(inverted_frame);
+		if (cfs) {
+			/* set sscr frame polarity in DSP/master mode only */
+			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
+		}
+
+		/*
+		 * total frame period (both asserted and
+		 * deasserted time of frame)
+		 */
+		if (cbs)
+			sscr4 |= SSCR4_TOT_FRM_PRD(config->num_slots *
+					   config->sample_container_bits);
+
+		active_tx_slots = hweight_32(config->tx_slot_mask);
+		active_rx_slots = hweight_32(config->rx_slot_mask);
+
 		break;
 	case SOF_DAI_FMT_DSP_B:
-		sscr0 |= SSCR0_PSP | SSCR0_MOD | SSCR0_FRDC(config->num_slots);
-		sspsp |= SSPSP_SFRMWDTH(1);
+
+		start_delay = 0;
+
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
+
+		/* set asserted frame length */
+		frame_len = 1;
+
+		/* handle frame polarity, DSP_A default is rising/active high */
+		sspsp |= SSPSP_SFRMP(inverted_frame);
+		if (cfs) {
+			/* set sscr frame polarity in DSP/master mode only */
+			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
+		}
+
+		/*
+		 * total frame period (both asserted and
+		 * deasserted time of frame
+		 */
+		if (cbs)
+			sscr4 |= SSCR4_TOT_FRM_PRD(config->num_slots *
+					   config->sample_container_bits);
+
+		active_tx_slots = hweight_32(config->tx_slot_mask);
+		active_rx_slots = hweight_32(config->rx_slot_mask);
+
 		break;
 	default:
 		trace_ssp_error("eca");
@@ -232,35 +426,35 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	/* set frame length and slot mask in I2s & PCM modes */
-	ssp_write(dai, SSCR4,
-		SSCR4_FRM_CLOCKS(config->sample_container_bits << 1));
-	ssp_write(dai, SSCR5, SSCR5_FRM_ASRT_CLOCKS(frame_len));
-	ssp_write(dai, SSTSA, config->tx_slot_mask);
-	ssp_write(dai, SSRSA, config->rx_slot_mask);
+	sspsp |= SSPSP_DMYSTRT(start_delay);
+	sspsp |= SSPSP_SFRMWDTH(frame_len);
+	sscr5 |= SSCR5_FRM_ASRT_CLOCKS(frame_len);
 
-	/* sample data size on SSP FIFO */
-	if (config->sample_valid_bits == 16)
-		/* 2 * 16bit packed into 32bit FIFO */
-		data_size = 32;
-	else
-		data_size = config->sample_container_bits;
+	data_size = config->sample_valid_bits;
 
 	if (data_size > 16)
 		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
 	else
 		sscr0 |= SSCR0_DSIZE(data_size);
 
-	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
-	sfifott = (SFIFOTT_TX(4) | SFIFOTT_RX(12));
+	/* FIXME:
+	 * watermarks - (RFT + 1) should equal DMA SRC_MSIZE
+	 */
+	sfifott = (SFIFOTT_TX(2*active_tx_slots) |
+		   SFIFOTT_RX(2*active_rx_slots));
 
 	trace_ssp("coe");
+
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSCR2, sscr2);
 	ssp_write(dai, SSCR3, sscr3);
+	ssp_write(dai, SSCR4, sscr4);
+	ssp_write(dai, SSCR5, sscr5);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
+	ssp_write(dai, SSTSA, config->tx_slot_mask);
+	ssp_write(dai, SSRSA, config->rx_slot_mask);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
