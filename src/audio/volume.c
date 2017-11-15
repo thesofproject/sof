@@ -656,7 +656,7 @@ static int volume_prepare(struct comp_dev *dev)
 		break;
 	}
 
-	dev->frame_bytes = cd->sink_period_bytes;
+	dev->frame_bytes = cd->sink_period_bytes / dev->frames;
 
 	/* set downstream buffer size */
 	ret = buffer_set_size(sinkb, cd->sink_period_bytes *
