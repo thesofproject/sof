@@ -120,6 +120,10 @@ static inline struct task *edf_get_next(uint64_t current,
 		if (task->state != TASK_STATE_QUEUED)
 			continue;
 
+		/* ignore the ignored tasks */
+		if (task == ignore)
+			continue;
+
 		/* include the length of task in deadline calc */
 		deadline = task->deadline - task->max_rtime;
 
