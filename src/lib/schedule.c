@@ -333,8 +333,31 @@ static void scheduler_run(void *unused)
 /* run the scheduler */
 void schedule(void)
 {
+	struct list_item *tlist;
+	struct task *task;
+	uint32_t flags;
+
 	tracev_pipe("sch");
 
+	spin_lock_irq(&sch->lock, flags);
+
+	/* make sure we have a queued task in the list first before we
+	   start scheduling as contexts switches are not free. */
+	list_for_item(tlist, &sch->list) {
+		task = container_of(tlist, struct task, list);
+
+		/* schedule if we find any queued tasks */
+		if (task->state == TASK_STATE_QUEUED) {
+			spin_unlock_irq(&sch->lock, flags);
+			goto schedule;
+		}
+	}
+
+	/* no task to schedule */
+	spin_unlock_irq(&sch->lock, flags);
+	return;
+
+schedule:
 	/* TODO: detect current IRQ context and call scheduler_run if both
 	 * current context matches scheduler context. saves a DSP context
 	 * switch.
