@@ -175,6 +175,17 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 		host = (struct sof_ipc_comp_host *)&cd->comp;
 	}
 
+	/* the ring size may be not multiple of the page size, the last
+	 * page may be not full used. The used size should be in range
+	 * of (ring->pages - 1, ring->pages] * PAGES.
+	 */
+	if ((ring->size <= HOST_PAGE_SIZE * (ring->pages - 1)) ||
+			(ring->size > HOST_PAGE_SIZE * ring->pages)) {
+		/* error buffer size */
+		trace_ipc_error("eBs");
+		return -EINVAL;
+	}
+
 	for (i = 0; i < ring->pages; i++) {
 
 		idx = (((i << 2) + i)) >> 1;
@@ -191,6 +202,10 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 			elem.src = phy_addr;
 		else
 			elem.dest = phy_addr;
+
+		/* the last page may be not full used */
+		if (i == (ring->pages - 1))
+			elem.size = ring->size - HOST_PAGE_SIZE * i;
 
 		if (is_trace)
 			err = dma_trace_host_buffer(d, &elem, ring->size);
