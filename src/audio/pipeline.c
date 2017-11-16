@@ -200,6 +200,9 @@ static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
 	case COMP_CMD_RELEASE:
 		p->xrun_bytes = 0;
 
+		/* schedule initial pipeline fill when next idle */
+		pipeline_schedule_copy_idle(p);
+
 		/* schedule pipeline */
 		if (p->ipc_pipe.timer)
 			pipeline_schedule_copy(p, 0);
@@ -981,6 +984,14 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
 	if (p->sched_comp->state == COMP_STATE_ACTIVE)
 		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline);
+}
+
+/* notify pipeline that this component requires buffers emptied/filled
+ * when DSP is next idle. This is intended to be used to preload pipeline
+ * buffers prior to trigger start. */
+void pipeline_schedule_copy_idle(struct pipeline *p)
+{
+	schedule_task_idle(&p->pipe_task, p->ipc_pipe.deadline);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)
