@@ -77,6 +77,8 @@ void schedule(void);
 
 void schedule_task(struct task *task, uint64_t start, uint64_t deadline);
 
+void schedule_task_idle(struct task *task, uint64_t deadline);
+
 void schedule_task_complete(struct task *task);
 
 static inline void schedule_task_init(struct task *task, void (*func)(void *),

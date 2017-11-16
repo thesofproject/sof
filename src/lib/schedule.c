@@ -233,15 +233,8 @@ out:
 }
 #endif
 
-/*
- * Add a new task to the scheduler to be run and define a scheduling
- * window in time for the task to be ran. i.e. task will run between start and
- * deadline times.
- *
- * start is in microseconds relative to last task start time.
- * deadline is in microseconds relative to start.
- */
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
+
+static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 {
 	uint32_t flags;
 	uint64_t current;
@@ -254,7 +247,7 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	if (task->state == TASK_STATE_RUNNING) {
 		trace_pipe("tsk");
 		spin_unlock_irq(&sch->lock, flags);
-		return;
+		return 0;
 	}
 
 	/* get the current time */
@@ -275,8 +268,40 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	task->state = TASK_STATE_QUEUED;
 	spin_unlock_irq(&sch->lock, flags);
 
-	/* rerun scheduler */
-	schedule();
+	return 1;
+}
+
+/*
+ * Add a new task to the scheduler to be run and define a scheduling
+ * deadline in time for the task to be ran. Do not invoke the scheduler
+ * immediately to run task, but wait intil schedule is next called.
+ *
+ * deadline is in microseconds relative to start.
+ */
+void schedule_task_idle(struct task *task, uint64_t deadline)
+{
+	_schedule_task(task, 0, deadline);
+}
+
+/*
+ * Add a new task to the scheduler to be run and define a scheduling
+ * window in time for the task to be ran. i.e. task will run between start and
+ * deadline times.
+ *
+ * start is in microseconds relative to last task start time.
+ * deadline is in microseconds relative to start.
+ */
+void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
+{
+	int need_sched;
+
+	need_sched = _schedule_task(task, start, deadline);
+
+	/* need to run scheduler if task not already running */
+	if (need_sched) {
+		/* rerun scheduler */
+		schedule();
+	}
 }
 
 /* Remove a task from the scheduler when complete */

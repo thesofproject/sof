@@ -85,6 +85,9 @@ int do_task(struct reef *reef)
 
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
+
+		/* schedule any idle taks */
+		schedule();
 	}
 
 	/* something bad happened */
