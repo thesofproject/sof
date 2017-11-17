@@ -488,8 +488,36 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
 		/* write CTL_LOn for each lli */
-		lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2); /* config the src tr width */
-		lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2); /* config the dest tr width */
+		switch (config->src_width) {
+		case 2:
+			/* config the src tr width for 16 bit samples */
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(1);
+			break;
+		case 4:
+			/* config the src tr width for 24, 32 bit samples */
+			lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2);
+			break;
+		default:
+			trace_dma_error("eD2");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		switch (config->dest_width) {
+		case 2:
+			/* config the dest tr width for 16 bit samples */
+			lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(1);
+			break;
+		case 4:
+			/* config the dest tr width for 24, 32 bit samples */
+			lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2);
+			break;
+		default:
+			trace_dma_error("eD3");
+			ret = -EINVAL;
+			goto out;
+		}
+
 		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(3); /* config the src msize length 2^2 */
 		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(3); /* config the dest msize length 2^2 */
 		lli_desc->ctrl_lo |= DW_CTLL_INT_EN; /* enable interrupt */
