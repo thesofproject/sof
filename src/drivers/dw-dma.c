@@ -438,6 +438,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dw_lli2 *lli_desc_tail;
 	uint32_t desc_count = 0;
 	uint32_t flags;
+	int ret = 0;
 
 	spin_lock_irq(&dma->lock, flags);
 
@@ -453,8 +454,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		desc_count++;
 
 	if (desc_count == 0) {
-		trace_dma_error("eDC");
-		return -EINVAL;
+		trace_dma_error("eD0");
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* do we need to realloc descriptors */
@@ -468,8 +470,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		p->chan[channel].lli = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
 			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
 		if (p->chan[channel].lli == NULL) {
-			trace_dma_error("eDm");
-			return -ENOMEM;
+			trace_dma_error("eD1");
+			ret = -ENOMEM;
+			goto out;
 		}
 	}
 
@@ -539,14 +542,17 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		default:
-			trace_dma_error("eDD");
-			break;
+			trace_dma_error("eD4");
+			ret = -EINVAL;
+			goto out;
 		}
 
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
-			trace_dma_error("eDS");
-			return -EINVAL;
+			trace_dma_error("eD5");
+			ret = -EINVAL;
+			goto out;
 		}
+
 		/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
 		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
@@ -578,9 +584,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	}
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
+out:
 	spin_unlock_irq(&dma->lock, flags);
-
-	return 0;
+	return ret;
 }
 
 /* restore DMA conext after leaving D3 */
