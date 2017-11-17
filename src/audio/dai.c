@@ -264,8 +264,8 @@ static int dai_playback_params(struct comp_dev *dev)
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
-	config->src_width = sizeof(uint32_t);
-	config->dest_width = sizeof(uint32_t);
+	config->src_width = comp_sample_bytes(dev);
+	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 1;
 	config->dest_dev = dd->dai->plat_data.fifo[0].handshake;
 
@@ -331,8 +331,8 @@ static int dai_capture_params(struct comp_dev *dev)
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
-	config->src_width = sizeof(uint32_t);
-	config->dest_width = sizeof(uint32_t);
+	config->src_width = comp_sample_bytes(dev);
+	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 1;
 	config->src_dev = dd->dai->plat_data.fifo[1].handshake;
 

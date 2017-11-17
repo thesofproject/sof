@@ -441,7 +441,8 @@ static int host_params(struct comp_dev *dev)
 	if (err < 0)
 		return err;
 
-	/* set up DMA configuration */
+	/* set up DMA configuration - copy in words for all formats as
+	   this is most optimal for memory <-> memory copies. */
 	config->src_width = sizeof(uint32_t);
 	config->dest_width = sizeof(uint32_t);
 	config->cyclic = 0;
