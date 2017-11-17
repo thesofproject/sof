@@ -335,6 +335,21 @@ static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
 	}
 }
 
+static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
+{
+	/* calculate period size based on params */
+	switch (dev->params.frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return 2;
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+	case SOF_IPC_FRAME_FLOAT:
+		return 4;
+	default:
+		return 0;
+	}
+}
+
 /* XRUN handling */
 static inline void comp_underrun(struct comp_dev *dev, struct comp_buffer *source,
 	uint32_t copy_bytes, uint32_t min_bytes)
