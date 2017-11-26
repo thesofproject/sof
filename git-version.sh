@@ -20,3 +20,5 @@ fi
 echo $num > .build
 echo "#define REEF_BUILD $num" >> src/include/version.h
 
+#echo version for AC_INIT
+echo -n `cat .version | cut -dv -f2 | cut -d. -f1`:`cat .version | cut -d. -f2 | cut -d- -f1`
