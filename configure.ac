@@ -35,7 +35,6 @@ AC_ARG_WITH([arch],
 
 case "$with_arch" in
     xtensa*)
-	AM_CONDITIONAL(BUILD_XTENSA, true)
 
 	ARCH_CFLAGS="-mtext-section-literals"
 	AC_SUBST(ARCH_CFLAGS)
@@ -58,6 +57,8 @@ case "$with_arch" in
     ;;
 esac
 
+AM_CONDITIONAL(BUILD_XTENSA, test "$ARCH" = "xtensa")
+
 
 # Platform support
 AC_ARG_WITH([platform],
@@ -66,11 +67,6 @@ AC_ARG_WITH([platform],
 
 case "$with_platform" in
     baytrail*)
-	AM_CONDITIONAL(BUILD_BAYTRAIL, true)
-	AM_CONDITIONAL(BUILD_CHERRYTRAIL, false)
-	AM_CONDITIONAL(BUILD_HASWELL, false)
-	AM_CONDITIONAL(BUILD_BROADWELL, false)
-	AM_CONDITIONAL(BUILD_BROXTON, false)
 
 	PLATFORM_LDSCRIPT="baytrail.x"
 	AC_SUBST(PLATFORM_LDSCRIPT)
@@ -87,11 +83,6 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_BAYTRAIL], [1], [Configure for Baytrail])
     ;;
     cherrytrail*)
-	AM_CONDITIONAL(BUILD_BAYTRAIL, false)
-	AM_CONDITIONAL(BUILD_CHERRYTRAIL, true)
-	AM_CONDITIONAL(BUILD_HASWELL, false)
-	AM_CONDITIONAL(BUILD_BROADWELL, false)
-	AM_CONDITIONAL(BUILD_BROXTON, false)
 
 	PLATFORM_LDSCRIPT="baytrail.x"
 	AC_SUBST(PLATFORM_LDSCRIPT)
@@ -112,6 +103,11 @@ case "$with_platform" in
     ;;
 esac
 
+AM_CONDITIONAL(BUILD_BAYTRAIL, test "$FW_NAME" = "byt")
+AM_CONDITIONAL(BUILD_CHERRYTRAIL,  test "$FW_NAME" = "cht")
+AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
+AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
+AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],
         AS_HELP_STRING([--with-dsp-core], [Specify DSP Core]),
