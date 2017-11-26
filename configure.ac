@@ -1,6 +1,5 @@
-
 AC_PREREQ([2.69])
-AC_INIT([Reef],[m4_esyscmd(./git-version.sh), m4_esyscmd(rm -f .build)],[sound-open-firmware@alsa-project.org])
+AC_INIT([Reef],[m4_esyscmd(./git-version.sh)],[sound-open-firmware@alsa-project.org])
 AC_CONFIG_SRCDIR([src/init/init.c])
 AC_CONFIG_HEADERS([src/include/config.h])
 AC_CONFIG_MACRO_DIRS([m4])
