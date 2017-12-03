@@ -7,7 +7,7 @@ git describe --abbrev=4 > .version
 git describe --abbrev=4 > .tarball-version
 
 # git commit for IPC
-echo "#define REEF_TAG \"`git describe --abbrev=4 | cut -d- -f3`\"" > src/include/version.h
+echo "#define REEF_TAG \"`git log --pretty=format:\"%h\" -1 | cut -c1-5`\"" > src/include/version.h
 
 # build counter
 if [ -e .build ]; then
