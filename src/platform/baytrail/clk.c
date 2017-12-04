@@ -67,8 +67,8 @@ static struct clk_pdata *clk_pdata;
 #if defined CONFIG_BAYTRAIL
 /* increasing frequency order */
 static const struct freq_table cpu_freq[] = {
-	{19200000, 25, 0x0},
-	{19200000, 25, 0x1},
+	{25000000, 25, 0x0},
+	{25000000, 25, 0x1},
 	{38400000, 50, 0x2},
 	{50000000, 50, 0x3},	/* default */
 	{100000000, 100, 0x4},
