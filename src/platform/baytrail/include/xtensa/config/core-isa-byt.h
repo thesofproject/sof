@@ -176,7 +176,7 @@
 
 #define XCHAL_SW_VERSION		1100002	/* sw version of this header */
 
-#define XCHAL_CORE_ID			"hifi2ep"	/* alphanum core name
+#define XCHAL_CORE_ID			"hifiep_bd5"	/* alphanum core name
 						   (CoreID) set in the Xtensa
 						   Processor Generator */
 

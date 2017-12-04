@@ -77,7 +77,7 @@ case "$with_platform" in
 	FW_NAME="byt"
 	AC_SUBST(FW_NAME)
 
-	XTENSA_CORE="hifi2_std"
+	XTENSA_CORE="hifiep_bd5"
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_BAYTRAIL], [1], [Configure for Baytrail])
@@ -93,7 +93,7 @@ case "$with_platform" in
 	FW_NAME="cht"
 	AC_SUBST(FW_NAME)
 
-	XTENSA_CORE="hifi2_std"
+	XTENSA_CORE="hifiep_bd5"
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_CHERRYTRAIL], [1], [Configure for Cherrytrail])
