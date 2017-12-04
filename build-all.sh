@@ -10,8 +10,8 @@ pwd=`pwd`
 rm -fr src/arch/xtensa/*.ri
 
 # Build for Baytrail
-make clean
 ./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=$pwd/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
+make clean
 make
 make bin
 
