@@ -60,6 +60,7 @@ struct dma_trace_data {
 	uint32_t host_size;
 	struct work dmat_work;
 	uint32_t enabled;
+	uint32_t copy_in_progress;
 	spinlock_t lock;
 };
 

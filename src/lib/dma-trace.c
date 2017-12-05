@@ -56,6 +56,9 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	if (avail == 0)
 		return DMA_TRACE_US;
 
+	/* DMA trace copying is working */
+	d->copy_in_progress = 1;
+
 	/* make sure we dont write more than buffer */
 	if (avail > DMA_TRACE_LOCAL_SIZE)
 		avail = DMA_TRACE_LOCAL_SIZE;
@@ -100,7 +103,12 @@ static uint64_t trace_work(void *data, uint64_t delay)
 
 out:
 	spin_lock_irq(&d->lock, flags);
+
 	buffer->avail -= size;
+
+	/* DMA trace copying is done */
+	d->copy_in_progress = 0;
+
 	spin_unlock_irq(&d->lock, flags);
 
 	/* reschedule the trace copying work */
@@ -138,6 +146,7 @@ int dma_trace_init(struct dma_trace_data *d)
 	buffer->avail = 0;
 	d->host_offset = 0;
 	d->enabled = 0;
+	d->copy_in_progress = 0;
 
 	list_init(&d->config.elem_list);
 	work_init(&d->dmat_work, trace_work, d, WORK_ASYNC);
@@ -226,6 +235,14 @@ void dtrace_event(const char *e, uint32_t length)
 
 	spin_lock_irq(&trace_data->lock, flags);
 	dtrace_add_event(e, length);
+
+	/* if DMA trace copying is working */
+	/* don't check if local buffer is half full */
+	if (trace_data->copy_in_progress) {
+		spin_unlock_irq(&trace_data->lock, flags);
+		return;
+	}
+
 	spin_unlock_irq(&trace_data->lock, flags);
 
 	/* schedule copy now if buffer > 50% full */
