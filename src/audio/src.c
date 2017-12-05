@@ -496,7 +496,6 @@ static int src_copy(struct comp_dev *dev)
 	int need_sink;
 	size_t consumed = 0;
 	size_t produced = 0;
-	int res;
 
 	trace_src("SRC");
 
@@ -519,30 +518,26 @@ static int src_copy(struct comp_dev *dev)
 	/* make sure source component buffer has enough data available and that
 	 * the sink component buffer has enough free bytes for copy. Also
 	 * check for XRUNs */
-	res = comp_buffer_can_copy_bytes(source, sink, need_source);
-	if (res) {
+	if (source->avail < need_source) {
 		trace_src_error("xru");
 		return -EIO;	/* xrun */
 	}
-	res = comp_buffer_can_copy_bytes(source, sink, need_sink);
-	if (res) {
+	if (sink->free < need_sink) {
 		trace_src_error("xro");
 		return -EIO;	/* xrun */
 	}
 
-	/* Run SRC function if buffers avail and free allow */
-	if (((int) source->avail >= need_source) && ((int) sink->free >= need_sink)) {
-		cd->src_func(dev, source, sink, &consumed, &produced);
+	cd->src_func(dev, source, sink, &consumed, &produced);
 
-		/* Calc new free and available if data was processed. These
-		 * functions must not be called with 0 consumed/produced.
-		 */
-		if (consumed > 0)
-			comp_update_buffer_consume(source, consumed);
+	/* Calc new free and available if data was processed. These
+	 * functions must not be called with 0 consumed/produced.
+	 */
+	if (consumed > 0)
+		comp_update_buffer_consume(source, consumed);
 
-		if (produced > 0)
-			comp_update_buffer_produce(sink, produced);
-	}
+	if (produced > 0)
+		comp_update_buffer_produce(sink, produced);
+
 	return 0;
 }
 
