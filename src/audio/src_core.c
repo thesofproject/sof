@@ -133,7 +133,6 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 {
 	struct src_stage *stage1;
 	struct src_stage *stage2;
-	int k;
 	int q;
 	int den;
 	int num;
@@ -149,18 +148,25 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 	a->idx_in = src_find_fs(src_in_fs, NUM_IN_FS, fs_in);
 	a->idx_out = src_find_fs(src_out_fs, NUM_OUT_FS, fs_out);
 
-	/* Set blk_in, blk_out so that the muted fallback SRC keeps
-	 * just source & sink in sync in pipeline without drift.
-	 */
+	/* Check that both in and out rates are supported */
 	if ((a->idx_in < 0) || (a->idx_out < 0)) {
-		k = gcd(fs_in, fs_out);
-		a->blk_in = fs_in / k;
-		a->blk_out = fs_out / k;
+		trace_src_error("us1");
+		tracev_value(fs_in);
+		tracev_value(fs_out);
 		return -EINVAL;
 	}
 
 	stage1 = src_table1[a->idx_out][a->idx_in];
 	stage2 = src_table2[a->idx_out][a->idx_in];
+
+	/* Check from stage1 parameter for a deleted in/out rate combination.*/
+	if (stage1->filter_length < 1) {
+		trace_src_error("us2");
+		tracev_value(fs_in);
+		tracev_value(fs_out);
+		return -EINVAL;
+	}
+
 	a->fir_s1 = nch * src_fir_delay_length(stage1);
 	a->out_s1 = nch * src_out_delay_length(stage1);
 
