@@ -82,6 +82,7 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 	return hdr;
 }
 
+#ifdef CONFIG_HOST_PTABLE
 static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	struct intel_ipc_data *iipc = (struct intel_ipc_data *)data;
@@ -219,6 +220,7 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 
 	return 0;
 }
+#endif
 
 /*
  * Stream IPC Operations.
@@ -227,7 +229,9 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 /* allocate a new stream */
 static int ipc_stream_pcm_params(uint32_t stream)
 {
+#ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+#endif
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
@@ -255,6 +259,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd = pcm_dev->cd;
 	cd->params = pcm_params->params;
 
+#ifdef CONFIG_HOST_PTABLE
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &pcm_params->params.buffer);
 	if (err < 0) {
@@ -269,6 +274,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		trace_ipc_error("eAP");
 		goto error;
 	}
+#endif
 
 	/* configure pipeline audio params */
 	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, pcm_params);

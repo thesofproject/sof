@@ -81,6 +81,7 @@ case "$with_platform" in
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_BAYTRAIL], [1], [Configure for Baytrail])
+	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
     ;;
     cherrytrail*)
 
@@ -97,6 +98,7 @@ case "$with_platform" in
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_CHERRYTRAIL], [1], [Configure for Cherrytrail])
+	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
     ;;
     *)
         AC_MSG_ERROR([Host platform not specified])
