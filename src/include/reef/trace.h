@@ -128,7 +128,7 @@ void trace_init(struct reef * reef);
 /* error tracing */
 #if TRACEE
 #define trace_error(__c, __e) \
-	_trace_error(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
+	_trace_error_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 #define trace_error_atomic(__c, __e) \
 	_trace_error_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 #else
