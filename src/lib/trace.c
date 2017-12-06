@@ -111,6 +111,8 @@ void _trace_error_atomic(uint32_t event)
 	dcache_writeback_region((void*)t, sizeof(uint64_t) * 2);
 }
 
+#if defined(CONFIG_DMA_TRACE)
+
 void _trace_event(uint32_t event)
 {
 	uint64_t dt[2];
@@ -134,6 +136,62 @@ void _trace_event_atomic(uint32_t event)
 	dt[1] = event;
 	dtrace_event_atomic((const char*)dt, sizeof(uint64_t) * 2);
 }
+
+#else
+
+void _trace_event(uint32_t event)
+{
+	unsigned long flags;
+	uint64_t time, *t;
+
+	if (!trace.enable)
+		return;
+
+	time = platform_timer_get(platform_timer);
+
+	/* send event by mail box too. */
+	spin_lock_irq(&trace.lock, flags);
+
+	/* write timestamp and event to trace buffer */
+	t = (uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
+	trace.pos += (sizeof(uint64_t) << 1);
+
+	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace.pos = 0;
+
+	spin_unlock_irq(&trace.lock, flags);
+
+	t[0] = time;
+	t[1] = event;
+
+	/* writeback trace data */
+	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
+}
+
+void _trace_event_atomic(uint32_t event)
+{
+	uint64_t time, *t;
+
+	if (!trace.enable)
+		return;
+
+	time = platform_timer_get(platform_timer);
+
+	/* write timestamp and event to trace buffer */
+	t = (uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
+	trace.pos += (sizeof(uint64_t) << 1);
+
+	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace.pos = 0;
+
+	t[0] = time;
+	t[1] = event;
+
+	/* writeback trace data */
+	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
+}
+
+#endif
 
 void trace_off(void)
 {

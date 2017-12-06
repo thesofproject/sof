@@ -122,6 +122,14 @@ case "$with_dsp_core" in
 
 esac
 
+# dma trace support (Optional), dma trace by default
+AC_ARG_ENABLE([dma-trace],
+        AS_HELP_STRING([--disable-dma-trace], [Disabled dma trace and use fallback mailbox trace]))
+
+AS_IF([test "x$enable_dma_trace" != "xno"], [
+	AC_DEFINE([CONFIG_DMA_TRACE], [1], [Configure DMA trace])
+	])
+
 # Test after CFLAGS set othewise test of cross compiler fails. 
 AM_PROG_AS
 AM_PROG_AR

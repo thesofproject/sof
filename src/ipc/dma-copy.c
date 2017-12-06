@@ -77,7 +77,9 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 	if (type == DMA_IRQ_TYPE_LLIST)
 		wait_completed(comp);
 
+#if defined(CONFIG_DMA_TRACE)
 	ipc_dma_trace_send_position();
+#endif
 
 	next->size = DMA_RELOAD_END;
 }
