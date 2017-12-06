@@ -101,6 +101,7 @@ static const struct freq_table cpu_freq[] = {
 
 static const struct freq_table ssp_freq[] = {
 	{19200000, 19, PMC_SET_SSP_19M2},	/* default */
+	{25000000, 25, PMC_SET_SSP_25M},
 };
 
 #define CPU_DEFAULT_IDX		3
