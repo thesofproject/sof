@@ -15,13 +15,16 @@ DEPS = \
 
 MACHINES = \
 	reef-cht-nocodec.tplg \
+	reef-cht-max98090.tplg \
 	reef-apl-nocodec.tplg \
 	reef-bxt-nocodec.tplg \
 	reef-byt-nocodec.tplg \
 	reef-bdw-rt286.tplg \
 	reef-bdw-rt5640.tplg \
 	reef-byt-rt5640.tplg \
+	reef-byt-rt5645.tplg \
 	reef-byt-rt5651.tplg \
+	reef-byt-da7212.tplg \
 	reef-hsw-rt5640.tplg \
 	test-passthrough-24bit-48k-ssp2.tplg \
 	test-passthrough-24bit-48k-vol-ssp2.tplg \
