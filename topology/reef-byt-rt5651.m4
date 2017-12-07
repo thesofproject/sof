@@ -92,7 +92,7 @@ PCM_DUPLEX_ADD(Low Latency, 3, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 #
 # BE configurations - overrides config in ACPI if present
 #
-DAI_CONFIG(SSP, 2, Baytrail Audio, Audio, I2S, 24,
+DAI_CONFIG(SSP, 2, Baytrail Audio, I2S, 24,
 	DAI_CLOCK(mclk, 19200000, slave),
 	DAI_CLOCK(bclk, 2400000, slave),
 	DAI_CLOCK(fsync, 48000, slave),

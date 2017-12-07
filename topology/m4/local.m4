@@ -422,17 +422,17 @@ define(`DAI_TDM',
 dnl Pipeline name)
 define(`N_DAI_CONFIG', `DAICONFIG.'$1)
 
-dnl DAI_CONFIG(type, idx, name, sname, format, valid bits, mclk, bclk, fsync, tdm)
+dnl DAI_CONFIG(type, idx, name, format, valid bits, mclk, bclk, fsync, tdm)
 define(`DAI_CONFIG',
 `SectionHWConfig."'$1$2`" {'
 `'
 `	id		"'$2`"'
-`	format		"'$5`"'
+`	format		"'$4`"'
 `'
+`	'$6
 `	'$7
 `	'$8
 `	'$9
-`	'$10
 `}'
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples_str" {'
 `	tokens "sof_dai_tokens"'
@@ -446,7 +446,7 @@ define(`DAI_CONFIG',
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples" {'
 `	tokens "sof_dai_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_DAI_SAMPLE_BITS'	STR($6)
+`		SOF_TKN_DAI_SAMPLE_BITS'	STR($5)
 `	}'
 `}'
 `SectionData."'N_DAI_CONFIG($1$2)`_data" {'
@@ -456,7 +456,6 @@ define(`DAI_CONFIG',
 `SectionBE."'$3`" {'
 `	index "0"'
 `'
-`	stream_name "'$4`"'
 `	hw_configs ['
 `		"'$1$2`"'
 `	]'

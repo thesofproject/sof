@@ -48,7 +48,7 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-src-playback.m4,
 #
 # 24bit I2S using 25bit sample conatiner on SSP2
 #
-DAI_CONFIG(SSP, 2, TEST_DAI_LINK_NAME, TEST_DAI_LINK_STREAM_NAME, I2S, 24,
+DAI_CONFIG(SSP, 2, TEST_DAI_LINK_NAME, I2S, 24,
 	DAI_CLOCK(mclk, 19200000, slave),
 	DAI_CLOCK(bclk, 2400000, slave),
 	DAI_CLOCK(fsync, 48000, slave),
