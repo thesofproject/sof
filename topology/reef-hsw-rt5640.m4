@@ -22,8 +22,6 @@ include(`dsps/hsw.m4')
 #                                  |--low latency mixer ----> volume ---->  SSP2
 # PCM2 ----> SRC -----> volume ----+
 #                                  |
-# PCM3 ----> SRC -----> volume ----+
-#                                  |
 #           Tone -----> volume ----+
 #
 # PCM1 <---- Volume <---- SSP0
@@ -50,13 +48,6 @@ PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
 	192, 4000, 1, 0, 0, 3)
 
-# PCM Media Playback pipeline 4 on PCM 2 using max 2 channels of s32le.
-# Schedule 192 frames per 4000us deadline on core 0 with priority 1
-# Use DMAC 0 channel 3 for PCM audio playback data
-PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	4, 2, 2, s32le,
-	192, 4000, 1, 0, 0, 4)
-
 # Tone Playback pipeline 5 using max 2 channels of s32le.
 # Schedule 192 frames per 4000us deadline on core 0 with priority 2
 PIPELINE_ADD(sof/pipe-tone.m4,
@@ -70,8 +61,6 @@ SectionGraph."pipe-hsw-rt5640" {
 	lines [
 		# media 0
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_3)
-		# media 1
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_4)
 		#tone
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_5)
 	]
