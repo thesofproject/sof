@@ -373,7 +373,7 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 	posn->comp_id = cdev->comp.id;
 
 	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-		sizeof(*posn), NULL, 0, NULL, NULL);
+		sizeof(*posn), NULL, 0, NULL, NULL, 1);
 }
 
 /* send stream position TODO: send compound message  */
@@ -385,7 +385,7 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 	posn->comp_id = cdev->comp.id;
 
 	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-		sizeof(*posn), NULL, 0, NULL, NULL);
+		sizeof(*posn), NULL, 0, NULL, NULL, 1);
 }
 
 static int ipc_stream_trigger(uint32_t header)
@@ -651,7 +651,7 @@ int ipc_dma_trace_send_position(void)
 	posn.rhdr.hdr.size = sizeof(posn);
 
 	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,
-		sizeof(posn), NULL, 0, NULL, NULL);
+		sizeof(posn), NULL, 0, NULL, NULL, 1);
 }
 
 static int ipc_glb_debug_message(uint32_t header)
@@ -909,19 +909,107 @@ static inline struct ipc_msg *msg_get_empty(struct ipc *ipc)
 	return msg;
 }
 
+static inline struct ipc_msg *ipc_glb_stream_message_find(struct ipc *ipc,
+	struct sof_ipc_stream_posn *posn)
+{
+	struct list_item *plist;
+	struct ipc_msg *msg = NULL;
+	struct sof_ipc_stream_posn *old_posn = NULL;
+	uint32_t cmd;
+
+	/* Check whether the command is expected */
+	cmd = (posn->rhdr.hdr.cmd & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+
+	switch (cmd) {
+	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
+	case iCS(SOF_IPC_STREAM_POSITION):
+
+		/* iterate host message list for searching */
+		list_for_item(plist, &ipc->msg_list) {
+			msg = container_of(plist, struct ipc_msg, list);
+			if (msg->header == posn->rhdr.hdr.cmd) {
+				old_posn = (struct sof_ipc_stream_posn *)msg->tx_data;
+				if (old_posn->comp_id == posn->comp_id)
+					return msg;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	/* no match */
+	return NULL;
+}
+
+static inline struct ipc_msg *ipc_glb_trace_message_find(struct ipc *ipc,
+	struct sof_ipc_dma_trace_posn *posn)
+{
+	struct list_item *plist;
+	struct ipc_msg *msg = NULL;
+	uint32_t cmd;
+
+	/* Check whether the command is expected */
+	cmd = (posn->rhdr.hdr.cmd & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+
+	switch (cmd) {
+	case iCS(SOF_IPC_TRACE_DMA_POSITION):
+		/* iterate host message list for searching */
+		list_for_item(plist, &ipc->msg_list) {
+			msg = container_of(plist, struct ipc_msg, list);
+			if (msg->header == posn->rhdr.hdr.cmd)
+				return msg;
+		}
+		break;
+	default:
+		break;
+	}
+
+	/* no match */
+	return NULL;
+}
+
+static inline struct ipc_msg *msg_find(struct ipc *ipc, uint32_t header,
+	void *tx_data)
+{
+	uint32_t type;
+
+	/* use different sub function for different global message type */
+	type = (header & SOF_GLB_TYPE_MASK) >> SOF_GLB_TYPE_SHIFT;
+
+	switch (type) {
+	case iGS(SOF_IPC_GLB_STREAM_MSG):
+		return ipc_glb_stream_message_find(ipc,
+			(struct sof_ipc_stream_posn *)tx_data);
+	case iGS(SOF_IPC_GLB_TRACE_MSG):
+		return ipc_glb_trace_message_find(ipc,
+			(struct sof_ipc_dma_trace_posn *)tx_data);
+	default:
+		/* not found */
+		return NULL;
+	}
+}
 
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	void *tx_data, size_t tx_bytes, void *rx_data,
-	size_t rx_bytes, void (*cb)(void*, void*), void *cb_data)
+	size_t rx_bytes, void (*cb)(void*, void*), void *cb_data, uint32_t replace)
 {
-	struct ipc_msg *msg;
-	uint32_t flags;
+	struct ipc_msg *msg = NULL;
+	uint32_t flags, found = 0;
 	int ret = 0;
 
 	spin_lock_irq(&ipc->lock, flags);
 
-	/* get a free message */
-	msg = msg_get_empty(ipc);
+	/* do we need to replace an existing message? */
+	if (replace)
+		msg = msg_find(ipc, header, tx_data);
+
+	/* do we need to use a new empty message? */
+	if (msg)
+		found = 1;
+	else
+		msg = msg_get_empty(ipc);
+
 	if (msg == NULL) {
 		trace_ipc_error("eQb");
 		ret = -EBUSY;
@@ -939,9 +1027,11 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
 		rmemcpy(msg->tx_data, tx_data, tx_bytes);
 
-	/* now queue the message */
-	ipc->dsp_pending = 1;
-	list_item_append(&msg->list, &ipc->msg_list);
+	if (!found) {
+		/* now queue the message */
+		ipc->dsp_pending = 1;
+		list_item_append(&msg->list, &ipc->msg_list);
+	}
 
 out:
 	spin_unlock_irq(&ipc->lock, flags);
