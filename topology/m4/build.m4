@@ -30,7 +30,7 @@ define(`PIPELINE_PCM_ADD',
 dnl PIPELINE_PCM_DAI_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core, dmac, dmac_chan,
-dnl     dai type, dai_index, stream_name, dai format, periods)
+dnl     dai type, dai_index, dai format, periods)
 define(`PIPELINE_PCM_DAI_ADD',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
@@ -44,7 +44,6 @@ define(`PIPELINE_PCM_DAI_ADD',
 `undefine(`PIPELINE_DMAC_CHAN')'
 `undefine(`DAI_TYPE')'
 `undefine(`DAI_INDEX')'
-`undefine(`DAI_SNAME')'
 `undefine(`DAI_FORMAT')'
 `undefine(`DAI_PERIODS')'
 `define(`PIPELINE_ID', $2)'
@@ -59,9 +58,8 @@ define(`PIPELINE_PCM_DAI_ADD',
 `define(`PIPELINE_DMAC_CHAN', $11)'
 `define(`DAI_TYPE', STR($12))'
 `define(`DAI_INDEX', STR($13))'
-`define(`DAI_SNAME', $14)'
-`define(`DAI_FORMAT', $15)'
-`define(`DAI_PERIODS', $16)'
+`define(`DAI_FORMAT', $14)'
+`define(`DAI_PERIODS', $15)'
 `define(`DAI_NAME', $12$13)'
 `include($1)'
 )
@@ -88,14 +86,13 @@ define(`PIPELINE_ADD',
 )
 
 dnl DAI_ADD(pipeline,
-dnl     pipe id, dai type, dai_index, stream_name,
+dnl     pipe id, dai type, dai_index,
 dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
 define(`DAI_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`DAI_TYPE')'
 `undefine(`DAI_INDEX')'
-`undefine(`DAI_SNAME')'
 `undefine(`DAI_BUF')'
 `undefine(`DAI_PERIODS')'
 `undefine(`DAI_FORMAT')'
@@ -106,15 +103,14 @@ define(`DAI_ADD',
 `define(`PIPELINE_ID', $2)'
 `define(`DAI_TYPE', STR($3))'
 `define(`DAI_INDEX', STR($4))'
-`define(`DAI_SNAME', $5)'
-`define(`DAI_BUF', $6)'
+`define(`DAI_BUF', $5)'
 `define(`DAI_NAME', $3$4)'
-`define(`DAI_PERIODS', $7)'
-`define(`DAI_FORMAT', $8)'
-`define(`SCHEDULE_FRAMES', $9)'
-`define(`SCHEDULE_DEADLINE', $10)'
-`define(`SCHEDULE_PRIORITY', $11)'
-`define(`SCHEDULE_CORE', $12)'
+`define(`DAI_PERIODS', $6)'
+`define(`DAI_FORMAT', $7)'
+`define(`SCHEDULE_FRAMES', $8)'
+`define(`SCHEDULE_DEADLINE', $9)'
+`define(`SCHEDULE_PRIORITY', $10)'
+`define(`SCHEDULE_CORE', $11)'
 `include($1)'
 )
 

@@ -72,17 +72,17 @@ SectionGraph."pipe-byt-nocodec" {
 # SSP port 2 is our only pipeline DAI
 #
 
-# playback DAI is SSP2 using I2S DAPM stream and 2 periods
+# playback DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 2, I2S,
+	1, SSP, 2,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
 
-# capture DAI is SSP2 using I2S DAPM stream and 2 periods
+# capture DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SSP, 2, I2S,
+	2, SSP, 2,
 	PIPELINE_SINK_2, 2, s24le,
 	48, 1000, 0, 0)
 

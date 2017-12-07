@@ -22,9 +22,6 @@ include(`dsps/byt.m4')
 # DAI Link Name
 define(`TEST_DAI_LINK_NAME', `Baytrail Audio')
 
-# DAI Link Stream Name
-define(`TEST_DAI_LINK_STREAM_NAME', `Audio')
-
 #
 # Define the pipeline
 #
@@ -38,7 +35,7 @@ define(`TEST_DAI_LINK_STREAM_NAME', `Audio')
 PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-playback.m4, 
 	1, 0, 2, s16le, 
 	48, 1000, 0, 0, 0, 1,
-	SSP, 2, TEST_DAI_LINK_STREAM_NAME, s16le, 2)
+	SSP, 2, s16le, 2)
 
 #
 # BE configurations - overrides config in ACPI if present

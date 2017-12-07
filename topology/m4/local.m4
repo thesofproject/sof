@@ -257,111 +257,109 @@ define(`N_DAI', DAI_NAME)
 define(`N_DAI_OUT', DAI_NAME`.OUT')
 define(`N_DAI_IN', DAI_NAME`.IN')
 
-dnl W_DAI_OUT(stream, type, index, format, periods_sink, periods_source, preload, data)
+dnl W_DAI_OUT(type, index, format, periods_sink, periods_source, preload, data)
 define(`W_DAI_OUT',
-`SectionVendorTuples."'N_DAI_OUT($1)`_tuples_w_comp" {'
+`SectionVendorTuples."'N_DAI_OUT($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
-`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
+`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
+`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($5)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
 `	}'
 `}'
-`SectionData."'N_DAI_OUT($1)`_data_w_comp" {'
-`	tuples "'N_DAI_OUT($1)`_tuples_w_comp"'
+`SectionData."'N_DAI_OUT($2)`_data_w_comp" {'
+`	tuples "'N_DAI_OUT($2)`_tuples_w_comp"'
 `}'
-`SectionVendorTuples."'N_DAI_OUT($1)`_tuples_w" {'
+`SectionVendorTuples."'N_DAI_OUT($2)`_tuples_w" {'
 `	tokens "sof_dai_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_DAI_INDEX'	$3
+`		SOF_TKN_DAI_INDEX'	$2
 `	}'
 `}'
-`SectionData."'N_DAI_OUT($1)`_data_w" {'
-`	tuples "'N_DAI_OUT($1)`_tuples_w"'
+`SectionData."'N_DAI_OUT($2)`_data_w" {'
+`	tuples "'N_DAI_OUT($2)`_tuples_w"'
 `}'
-`SectionVendorTuples."'N_DAI_OUT($1)`_tuples_str" {'
+`SectionVendorTuples."'N_DAI_OUT($2)`_tuples_str" {'
 `	tokens "sof_dai_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_DAI_TYPE'	$2
+`		SOF_TKN_DAI_TYPE'	$1
 `	}'
 `}'
-`SectionData."'N_DAI_OUT($1)`_data_str" {'
-`	tuples "'N_DAI_OUT($1)`_tuples_str"'
+`SectionData."'N_DAI_OUT($2)`_data_str" {'
+`	tuples "'N_DAI_OUT($2)`_tuples_str"'
 `}'
-`SectionVendorTuples."'N_DAI_OUT($1)`_tuples_comp_str" {'
+`SectionVendorTuples."'N_DAI_OUT($2)`_tuples_comp_str" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_COMP_FORMAT'	STR($4)
+`		SOF_TKN_COMP_FORMAT'	STR($3)
 `	}'
 `}'
-`SectionData."'N_DAI_OUT($1)`_data_comp_str" {'
-`	tuples "'N_DAI_OUT($1)`_tuples_comp_str"'
+`SectionData."'N_DAI_OUT($2)`_data_comp_str" {'
+`	tuples "'N_DAI_OUT($2)`_tuples_comp_str"'
 `}'
 `SectionWidget."'N_DAI_OUT`" {'
 `	index "'PIPELINE_ID`"'
 `	type "dai_in"'
 `	no_pm "true"'
-`	stream_name "'$1`"'
 `	data ['
-`		"'N_DAI_OUT($1)`_data_w"'
-`		"'N_DAI_OUT($1)`_data_w_comp"'
-`		"'N_DAI_OUT($1)`_data_str"'
-`		"'N_DAI_OUT($1)`_data_comp_str"'
-`		"'$8`"'
+`		"'N_DAI_OUT($2)`_data_w"'
+`		"'N_DAI_OUT($2)`_data_w_comp"'
+`		"'N_DAI_OUT($2)`_data_str"'
+`		"'N_DAI_OUT($2)`_data_comp_str"'
+`		"'$7`"'
 `	]'
 `}')
 
-dnl W_DAI_IN(stream, type, index, format, periods_sink, periods_source, preload, data)
+dnl W_DAI_IN(type, index, format, periods_sink, periods_source, preload, data)
 define(`W_DAI_IN',
-`SectionVendorTuples."'N_DAI_IN($1)`_tuples_w_comp" {'
+`SectionVendorTuples."'N_DAI_IN($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
-`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
+`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
+`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($5)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
 `	}'
 `}'
-`SectionData."'N_DAI_IN($1)`_data_w_comp" {'
-`	tuples "'N_DAI_IN($1)`_tuples_w_comp"'
+`SectionData."'N_DAI_IN($2)`_data_w_comp" {'
+`	tuples "'N_DAI_IN($2)`_tuples_w_comp"'
 `}'
-`SectionVendorTuples."'N_DAI_IN($1)`_tuples_w" {'
+`SectionVendorTuples."'N_DAI_IN($2)`_tuples_w" {'
 `	tokens "sof_dai_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_DAI_INDEX'	$3
+`		SOF_TKN_DAI_INDEX'	$2
 `	}'
 `}'
-`SectionData."'N_DAI_IN($1)`_data_w" {'
-`	tuples "'N_DAI_IN($1)`_tuples_w"'
+`SectionData."'N_DAI_IN($2)`_data_w" {'
+`	tuples "'N_DAI_IN($2)`_tuples_w"'
 `}'
-`SectionVendorTuples."'N_DAI_IN($1)`_tuples_str" {'
+`SectionVendorTuples."'N_DAI_IN($2)`_tuples_str" {'
 `	tokens "sof_dai_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_DAI_TYPE'	$2
+`		SOF_TKN_DAI_TYPE'	$1
 `	}'
 `}'
-`SectionData."'N_DAI_IN($1)`_data_str" {'
-`	tuples "'N_DAI_IN($1)`_tuples_str"'
+`SectionData."'N_DAI_IN($2)`_data_str" {'
+`	tuples "'N_DAI_IN($2)`_tuples_str"'
 `}'
-`SectionVendorTuples."'N_DAI_IN($1)`_tuples_comp_str" {'
+`SectionVendorTuples."'N_DAI_IN($2)`_tuples_comp_str" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_COMP_FORMAT'	STR($4)
+`		SOF_TKN_COMP_FORMAT'	STR($3)
 `	}'
 `}'
-`SectionData."'N_DAI_IN($1)`_data_comp_str" {'
-`	tuples "'N_DAI_IN($1)`_tuples_comp_str"'
+`SectionData."'N_DAI_IN($2)`_data_comp_str" {'
+`	tuples "'N_DAI_IN($2)`_tuples_comp_str"'
 `}'
 `SectionWidget."'N_DAI_IN`" {'
 `	index "'PIPELINE_ID`"'
 `	type "dai_out"'
 `	no_pm "true"'
-`	stream_name "'$1`"'
 `	data ['
-`		"'N_DAI_IN($1)`_data_w"'
-`		"'N_DAI_IN($1)`_data_w_comp"'
-`		"'N_DAI_IN($1)`_data_str"'
-`		"'N_DAI_OUT($1)`_data_comp_str"'
-`		"'$8`"'
+`		"'N_DAI_IN($2)`_data_w"'
+`		"'N_DAI_IN($2)`_data_w_comp"'
+`		"'N_DAI_IN($2)`_data_str"'
+`		"'N_DAI_OUT($2)`_data_comp_str"'
+`		"'$7`"'
 `	]'
 `}')
 
