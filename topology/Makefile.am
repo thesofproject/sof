@@ -26,6 +26,8 @@ MACHINES = \
 	reef-byt-rt5651.tplg \
 	reef-byt-da7212.tplg \
 	reef-hsw-rt5640.tplg \
+	test-passthrough-16bit-48k-ssp2-nocodec.tplg \
+	test-passthrough-24bit-48k-ssp2-nocodec.tplg \
 	test-passthrough-24bit-48k-ssp2.tplg \
 	test-passthrough-24bit-48k-ssp2-SSP2-Codec.tplg \
 	test-passthrough-16bit-48k-ssp2-SSP2-Codec.tplg \
