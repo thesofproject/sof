@@ -69,6 +69,20 @@ SectionData."dai0c_plat_conf" {
 	tuples "dai0c_plat_tokens"
 }
 
+# PCM platform configuration
+SectionVendorTuples."pcm_plat_tokens" {
+	tokens "sof_dai_tokens"
+
+	tuples."word" {
+		SOF_TKN_DAI_DMAC	PIPELINE_DMAC
+		SOF_TKN_DAI_DMAC_CHAN	PIPELINE_DMAC_CHAN
+	}
+}
+
+SectionData."pcm_plat_conf" {
+	tuples "pcm_plat_tokens"
+}
+
 # DAI schedule Configuration - scheduled by IRQ
 SectionVendorTuples."pipe_dai_schedule_plat_tokens" {
 	tokens "sof_sched_tokens"
