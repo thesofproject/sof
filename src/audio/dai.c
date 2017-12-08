@@ -442,15 +442,14 @@ static int dai_prepare(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* writeback buffer contents from cache */
+	/* initialise buffers */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+
+		/* write back buffer contents from cache for playback */
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
-		/* fill playback periods with silence */
-		bzero(dma_buffer->r_ptr, dma_buffer->avail);
-
-		dcache_writeback_region(dma_buffer->r_ptr, dma_buffer->avail);
+		dcache_writeback_region(dma_buffer->addr, dma_buffer->size);
 	}
 
 	/* dma reconfig not required if XRUN handling */
