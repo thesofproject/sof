@@ -573,12 +573,12 @@ static int volume_copy(struct comp_dev *dev)
 	 * check for XRUNs */
 	if (source->avail < cd->source_period_bytes) {
 		trace_volume_error("xru");
-		comp_overrun(dev, source, cd->source_period_bytes, 0);
+		comp_underrun(dev, source, cd->source_period_bytes, 0);
 		return -EIO;	/* xrun */
 	}
 	if (sink->free < cd->sink_period_bytes) {
 		trace_volume_error("xro");
-		comp_underrun(dev, sink, cd->sink_period_bytes, 0);
+		comp_overrun(dev, sink, cd->sink_period_bytes, 0);
 		return -EIO;	/* xrun */
 	}
 
