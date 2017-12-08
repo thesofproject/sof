@@ -789,7 +789,7 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 
 		/* stop going downstream if we reach an end point in this pipeline */
 		if (current->is_endpoint)
-			return 0;
+			goto out;
 	}
 
 	/* travel downstream to sink end point(s) */
@@ -815,6 +815,7 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		}
 	}
 
+out:
 	/* return back upstream */
 	tracev_pipe("CD-");
 	return err;
