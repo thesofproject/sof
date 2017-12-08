@@ -535,9 +535,12 @@ static int src_copy(struct comp_dev *dev)
 	if (consumed > 0)
 		comp_update_buffer_consume(source, consumed);
 
-	if (produced > 0)
+	if (produced > 0) {
 		comp_update_buffer_produce(sink, produced);
+		return cd->param.blk_out;
+	}
 
+	/* produced no data */
 	return 0;
 }
 
