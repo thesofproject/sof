@@ -611,6 +611,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 #endif
 	}
 
+	/* write back descriptors so DMA engine can read them directly */
+	dcache_writeback_region(p->chan[channel].lli,
+			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
+
 	p->chan[channel].status = COMP_STATE_PREPARE;
 out:
 	spin_unlock_irq(&dma->lock, flags);
