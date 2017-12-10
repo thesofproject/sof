@@ -492,6 +492,30 @@ static int dai_reset(struct comp_dev *dev)
 	return 0;
 }
 
+/* the configuration of the upstream pipeline is unknown
+ * to the DAI so we have to check that the r_ptr != w_ptr for the
+ * DAI DMA buffer. This is not required for capture as the pipeline is
+ * run after the first period has been copied (i.e. r_ptr != w_ptr).
+ */
+static void dai_pointer_init(struct comp_dev *dev)
+{
+	struct comp_buffer *dma_buffer;
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* advance w/r pointer by one period if equal at stream start */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		dma_buffer = list_first_item(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+
+		if (dma_buffer->w_ptr != dma_buffer->r_ptr)
+			return;
+
+		/* advance source pipeline w_ptr by one period
+		 * this places pipeline w_ptr in period before DAI r_ptr */
+		comp_update_buffer_produce(dma_buffer, dd->period_bytes);
+	}
+}
+
 /* used to pass standard and bespoke command (with data) to component */
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 {
@@ -510,6 +534,8 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 	switch (cmd) {
 	case COMP_CMD_RELEASE:
 	case COMP_CMD_START:
+
+		dai_pointer_init(dev);
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
