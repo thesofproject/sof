@@ -41,10 +41,14 @@ SectionGraph."pipe-pass-playback-PIPELINE_ID" {
 	lines [
 		dapm(N_PCMP, Passthrough Playback PCM_ID)
 		dapm(N_BUFFER(0), N_PCMP)
-		dapm(N_DAI_OUT, N_BUFFER(0))
 	]
 }
 
+#
+# Pipeline Source and Sinks
+#
+indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(0))
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_ID)
 
 #
 # PCM Configuration
@@ -63,22 +67,4 @@ SectionPCMCapabilities.STR(Passthrough Playback PCM_ID) {
 	period_size_max	"16384"
 	buffer_size_min	"65536"
 	buffer_size_max	"65536"
-}
-
-# PCM Low Latency Passthrough Playback
-SectionPCM.STR(PCM PCM_ID) {
-
-	index STR(PIPELINE_ID)
-
-	# used for binding to the PCM
-	id STR(PCM_ID)
-
-	dai.STR(Passthrough Playback PCM_ID) {
-		id STR(PCM_ID)
-	}
-
-	pcm."playback" {
-
-		capabilities STR(Passthrough Playback PCM_ID)
-	}
 }
