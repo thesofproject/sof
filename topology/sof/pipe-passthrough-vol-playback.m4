@@ -80,9 +80,14 @@ SectionGraph."pipe-pass-vol-playback-PIPELINE_ID" {
 		dapm(N_BUFFER(0), N_PCMP)
 		dapm(N_PGA(0), N_BUFFER(0))
 		dapm(N_BUFFER(1), N_PGA(0))
-		dapm(N_DAI_OUT, N_BUFFER(1))
 	]
 }
+
+#
+# Pipeline Source and Sinks
+#
+indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(1))
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_ID)
 
 
 #
@@ -104,20 +109,3 @@ SectionPCMCapabilities.STR(Passthrough Playback PCM_ID) {
 	buffer_size_max	"65536"
 }
 
-# PCM Passthrough Playback
-SectionPCM.STR(PCM PCM_ID) {
-
-	index STR(PIPELINE_ID)
-
-	# used for binding to the PCM
-	id STR(PCM_ID)
-
-	dai.STR(Passthrough Playback PCM_ID) {
-		id STR(PCM_ID)
-	}
-
-	pcm."playback" {
-
-		capabilities STR(Passthrough Playback PCM_ID)
-	}
-}
