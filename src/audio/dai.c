@@ -492,27 +492,34 @@ static int dai_reset(struct comp_dev *dev)
 	return 0;
 }
 
-/* the configuration of the upstream pipeline is unknown
- * to the DAI so we have to check that the r_ptr != w_ptr for the
- * DAI DMA buffer. This is not required for capture as the pipeline is
- * run after the first period has been copied (i.e. r_ptr != w_ptr).
+/* The playback source pipeline must be advanced by one period so that it
+ * does not write to the period that DMA is reading. The configuration of the
+ * upstream pipeline is unknown to the DAI but we can check if the source buffer
+ * is shared with another DMA engine (which preloads the buffer by one period)
+ * and only advance the write pointer when source component is not another
+ * DMA engine.
  */
 static void dai_pointer_init(struct comp_dev *dev)
 {
 	struct comp_buffer *dma_buffer;
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	/* advance w/r pointer by one period if equal at stream start */
+	/* not reuquired for capture streams */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
-		if (dma_buffer->w_ptr != dma_buffer->r_ptr)
-			return;
-
-		/* advance source pipeline w_ptr by one period
-		 * this places pipeline w_ptr in period before DAI r_ptr */
-		comp_update_buffer_produce(dma_buffer, dd->period_bytes);
+		switch (dma_buffer->source->comp.type) {
+		case SOF_COMP_HOST:
+		case SOF_COMP_SG_HOST:
+			/* buffer is preloaded and advanced by host DMA engine */
+			break;
+		default:
+			/* advance source pipeline w_ptr by one period
+			 * this places pipeline w_ptr in period before DAI r_ptr */
+			comp_update_buffer_produce(dma_buffer, dd->period_bytes);
+			break;
+		}
 	}
 }
 
