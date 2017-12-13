@@ -412,6 +412,12 @@ static int host_params(struct comp_dev *dev)
 		hd->period_count = cconfig->periods_source;
 	}
 
+	/* validate period count */
+	if (hd->period_count == 0) {
+		trace_host_error("eS0");
+		return -EINVAL;
+	}
+
 	/* calculate period size based on config */
 	hd->period_bytes = dev->frames * comp_frame_bytes(dev);
 	if (hd->period_bytes == 0) {
