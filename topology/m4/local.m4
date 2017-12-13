@@ -131,7 +131,7 @@ define(`W_PCM_CAPTURE',
 `}'
 `SectionWidget."'N_PCMC`" {'
 `	index "'PIPELINE_ID`"'
-`	type "aif_out"'
+`	type "aif_in"'
 `	no_pm "true"'
 `	stream_name "'$1`"'
 `	data ['
@@ -358,7 +358,7 @@ define(`W_DAI_IN',
 `		"'N_DAI_IN($2)`_data_w"'
 `		"'N_DAI_IN($2)`_data_w_comp"'
 `		"'N_DAI_IN($2)`_data_str"'
-`		"'N_DAI_OUT($2)`_data_comp_str"'
+`		"'N_DAI_IN($2)`_data_comp_str"'
 `		"'$7`"'
 `	]'
 `}')
