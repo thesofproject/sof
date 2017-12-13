@@ -80,7 +80,13 @@ struct reef;
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 
 /* the interval of DMA trace copying */
-#define DMA_TRACE_US		500000
+#define DMA_TRACE_PERIOD		500000
+
+/*
+ * the interval of reschedule DMA trace copying in special case like half
+ * fullness of local DMA trace buffer
+ */
+#define DMA_TRACE_RESCHEDULE_TIME	5000
 
 /* DMAC used for trace DMA */
 #define PLATFORM_TRACE_DMAC	DMA_ID_DMAC0

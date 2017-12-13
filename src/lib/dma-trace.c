@@ -54,7 +54,7 @@ static uint64_t trace_work(void *data, uint64_t delay)
 
 	/* any data to copy ? */
 	if (avail == 0)
-		return DMA_TRACE_US;
+		return DMA_TRACE_PERIOD;
 
 	/* DMA trace copying is working */
 	d->copy_in_progress = 1;
@@ -112,7 +112,7 @@ out:
 	spin_unlock_irq(&d->lock, flags);
 
 	/* reschedule the trace copying work */
-	return DMA_TRACE_US;
+	return DMA_TRACE_PERIOD;
 }
 
 int dma_trace_init(struct dma_trace_data *d)
@@ -182,7 +182,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 	}
 
 	d->enabled = 1;
-	work_schedule_default(&d->dmat_work, DMA_TRACE_US);
+	work_schedule_default(&d->dmat_work, DMA_TRACE_PERIOD);
 	return 0;
 }
 
@@ -247,7 +247,8 @@ void dtrace_event(const char *e, uint32_t length)
 
 	/* schedule copy now if buffer > 50% full */
 	if (trace_data->enabled && buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2))
-		work_reschedule_default(&trace_data->dmat_work, 100);
+		work_reschedule_default(&trace_data->dmat_work,
+		DMA_TRACE_RESCHEDULE_TIME);
 }
 
 void dtrace_event_atomic(const char *e, uint32_t length)
