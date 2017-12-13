@@ -17,6 +17,7 @@ AC_OUTPUT([
 	rimage/Makefile
 	rmbox/Makefile
 	topology/Makefile
+	topology/test/Makefile
 ])
 
 echo "

@@ -19,3 +19,4 @@ rmbox/rmbox
 rwav/rwav
 *.tplg
 topology/*.conf
+topology/test/*.conf

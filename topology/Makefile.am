@@ -3,6 +3,8 @@
 # Dependencies
 #
 
+SUBDIRS = test
+
 DEPS = \
 	dsps/*.m4 \
 	common/*.m4 \
@@ -25,14 +27,7 @@ MACHINES = \
 	reef-byt-rt5645.tplg \
 	reef-byt-rt5651.tplg \
 	reef-byt-da7212.tplg \
-	reef-hsw-rt5640.tplg \
-	test-passthrough-16bit-48k-ssp2-nocodec.tplg \
-	test-passthrough-24bit-48k-ssp2-nocodec.tplg \
-	test-passthrough-24bit-48k-ssp2.tplg \
-	test-passthrough-24bit-48k-ssp2-SSP2-Codec.tplg \
-	test-passthrough-16bit-48k-ssp2-SSP2-Codec.tplg \
-	test-passthrough-24bit-48k-vol-ssp2.tplg \
-	test-passthrough-24bit-48k-src-ssp2.tplg
+	reef-hsw-rt5640.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf

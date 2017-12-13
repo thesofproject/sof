@@ -14,7 +14,7 @@ include(`local.m4')
 
 # Host "Passthrough Playback" PCM uses pipeline DMAC and channel
 # with 4 sink and 0 source periods
-W_PCM_PLAYBACK(Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 4, 0, 2)
+W_PCM_PLAYBACK(Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 4, 0, 2)
 
 #
 # SRC Configuration
@@ -44,13 +44,13 @@ W_BUFFER(1, COMP_BUFFER_SIZE(4,
 #
 # DAI definitions
 #
-W_DAI_OUT(DAI_TYPE, DAI_INDEX, DAI_FORMAT, 0, DAI_PERIODS,
-	DAI_PERIODS, dai0p_plat_conf)
+W_DAI_IN(DAI_TYPE, DAI_INDEX, DAI_FORMAT, 0, DAI_PERIODS,
+	DAI_PERIODS, dai0c_plat_conf)
 
 #
 # DAI pipeline
 #
-W_PIPELINE(N_DAI_OUT, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES,
+W_PIPELINE(N_DAI_IN, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES,
 	SCHEDULE_CORE, 0, pipe_dai_schedule_plat)
 
 #
@@ -58,24 +58,28 @@ W_PIPELINE(N_DAI_OUT, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES,
 #
 #  host PCM_P --> B0 --> SRC 0 --> B1 --> sink DAI0
 
-SectionGraph."pipe-pass-src-playback-PIPELINE_ID" {
+SectionGraph."pipe-pass-src-capture-PIPELINE_ID" {
 	index STR(PIPELINE_ID)
 
 	lines [
-		dapm(N_PCMP, Passthrough Playback PCM_ID)
-		dapm(N_BUFFER(0), N_PCMP)
-		dapm(N_SRC(0), N_BUFFER(0))
-		dapm(N_BUFFER(1), N_SRC(0))
-		dapm(N_DAI_OUT, N_BUFFER(1))
+		dapm(Passthrough Capture PCM_ID, N_PCMC)
+		dapm(N_PCMC, N_BUFFER(0))
+		dapm(N_BUFFER(0), N_SRC(0))
+		dapm(N_SRC(0), N_BUFFER(1))
 	]
 }
 
+#
+# Pipeline Source and Sinks
+#
+indir(`define', concat(`PIPELINE_SINK_', PIPELINE_ID), N_BUFFER(1))
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Capture PCM_ID)
 
 #
 # PCM Configuration
 #
 
-SectionPCMCapabilities.STR(Passthrough Playback PCM_ID) {
+SectionPCMCapabilities.STR(Passthrough Capture PCM_ID) {
 
 	formats "S32_LE,S24_LE,S16_LE"
 	rate_min "8000"
@@ -88,22 +92,4 @@ SectionPCMCapabilities.STR(Passthrough Playback PCM_ID) {
 	period_size_max	"16384"
 	buffer_size_min	"65536"
 	buffer_size_max	"65536"
-}
-
-# PCM Passthrough Playback
-SectionPCM.STR(PCM PCM_ID) {
-
-	index STR(PIPELINE_ID)
-
-	# used for binding to the PCM
-	id STR(PCM_ID)
-
-	dai.STR(Passthrough Playback PCM_ID) {
-		id STR(PCM_ID)
-	}
-
-	pcm."playback" {
-
-		capabilities STR(Passthrough Playback PCM_ID)
-	}
 }
