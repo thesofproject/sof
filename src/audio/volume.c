@@ -407,7 +407,12 @@ static void volume_free(struct comp_dev *dev)
  */
 static int volume_params(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	trace_volume("par");
+
+	/* rewrite params format for all downstream */
+	dev->params.frame_fmt = cd->sink_format;
 
 	return 0;
 }
@@ -655,6 +660,8 @@ static int volume_prepare(struct comp_dev *dev)
 			comp_frame_bytes(sinkb->sink);
 		break;
 	}
+	/* rewrite params format for all downstream */
+	dev->params.frame_fmt = cd->sink_format;
 
 	dev->frame_bytes = cd->sink_period_bytes / dev->frames;
 
