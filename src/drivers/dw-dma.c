@@ -232,7 +232,7 @@ static int dw_dma_channel_get(struct dma *dma)
 
 	/* DMAC has no free channels */
 	spin_unlock_irq(&dma->lock, flags);
-	trace_dma_error("eDg");
+	trace_dma_error("eG0");
 	return -ENODEV;
 }
 
@@ -284,7 +284,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	if (p->chan[channel].status != COMP_STATE_PREPARE ||
 		(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
 		ret = -EBUSY;
-		trace_dma_error("eDi");
+		trace_dma_error("eS0");
 		trace_value(dw_read(dma, DW_DMA_CHAN_EN));
 		trace_value(dw_read(dma, DW_CFG_LOW(channel)));
 		trace_value(p->chan[channel].status);
@@ -294,7 +294,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	/* valid stream ? */
 	if (p->chan[channel].lli == NULL) {
 		ret = -EINVAL;
-		trace_dma_error("eDv");
+		trace_dma_error("eS1");
 		goto out;
 	}
 
@@ -731,7 +731,7 @@ static void dw_dma_irq_handler(void *data)
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr)
-		trace_dma_error("eDI");
+		trace_dma_error("eI0");
 
 	tracev_dma("DIr");
 
@@ -747,7 +747,7 @@ static void dw_dma_irq_handler(void *data)
 	status_err = dw_read(dma, DW_STATUS_ERR);
 	dw_write(dma, DW_CLEAR_ERR, status_err);
 	if (status_err) {
-		trace_dma_error("eDi");
+		trace_dma_error("eI1");
 	}
 
 	/* clear platform and DSP interrupt */
@@ -757,7 +757,7 @@ static void dw_dma_irq_handler(void *data)
 	/* confirm IRQ cleared */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
 	if (status_block) {
-		trace_dma_error("eii");
+		trace_dma_error("eI2");
 		trace_value(status_block);
 	}
 
