@@ -12,7 +12,7 @@ M4_FLAGS="-I ../ -I ../m4"
 
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.
-SIMPLE_TESTS=(test-ssp)
+SIMPLE_TESTS=(test-ssp test-capture-ssp test-playback-ssp)
 
 # process m4 simple tests -
 # simple_test(name, pipe_name, be_name, format, dai_id, dai_format, dai_phy_bits, dai_data_bits dai_bclk)
