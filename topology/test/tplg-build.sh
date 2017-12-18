@@ -12,7 +12,7 @@ M4_FLAGS="-I ../ -I ../m4"
 
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.
-SIMPLE_TESTS=(test-ssp test-src-ssp)
+SIMPLE_TESTS=(test-ssp)
 
 # process m4 simple tests -
 # simple_test(name, pipe_name, be_name, format, dai_id, dai_format, dai_phy_bits, dai_data_bits dai_bclk)
@@ -29,7 +29,7 @@ SIMPLE_TESTS=(test-ssp test-src-ssp)
 function simple_test {
 	for i in ${SIMPLE_TESTS[@]}
 	do
-		TFILE="$i$5-$4-48k-$1"
+		TFILE="$i$5-$2-$4-$6-48k-$1"
 		echo "M4 pre-processing test $i -> ${TFILE}"
 		m4 ${M4_FLAGS} \
 			-DTEST_PIPE_NAME="$2" \

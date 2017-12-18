@@ -31,7 +31,7 @@ include(`dsps/byt.m4')
 #
 # Define the pipeline
 #
-# PCM0 <---> SSP TEST_SSP_PORT
+# PCM0 <-- TEST_PIPE_NAME pipe --> SSP TEST_SSP_PORT
 #
 
 # Passthrough playback pipeline 1 on PCM 0 using max 2 channels of s24le.
