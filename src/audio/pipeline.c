@@ -196,6 +196,7 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
 	int cmd)
 {
+	/* only required by the scheduling component */
 	if (p->sched_comp != comp)
 		return;
 
@@ -345,7 +346,11 @@ int pipeline_buffer_connect(struct pipeline *p,
 	return 0;
 }
 
-/* call op on all downstream components - locks held by caller */
+/* Walk the graph downstream from start component in any pipeline and perform
+ * the operation on each component. Graph walk is stopped on any component
+ * returning an error ( < 0) and returns immediately. Components returning a
+ * positive error code also stop the graph walk on that branch causing the
+ * walk to return to a shallower level in the graph. */
 static int component_op_downstream(struct op_data *op_data,
 	struct comp_dev *start, struct comp_dev *current,
 	struct comp_dev *previous)
@@ -422,7 +427,11 @@ static int component_op_downstream(struct op_data *op_data,
 	return err;
 }
 
-/* call op on all upstream components - locks held by caller */
+/* Walk the graph upstream from start component in any pipeline and perform
+ * the operation on each component. Graph walk is stopped on any component
+ * returning an error ( < 0) and returns immediately. Components returning a
+ * positive error code also stop the graph walk on that branch causing the
+ * walk to return to a shallower level in the graph. */
 static int component_op_upstream(struct op_data *op_data,
 	struct comp_dev *start, struct comp_dev *current,
 	struct comp_dev *previous)
@@ -496,6 +505,8 @@ static int component_op_upstream(struct op_data *op_data,
 	return err;
 }
 
+/* walk the graph upstream from start component in any pipeline and prepare
+ * the buffer context for each inactive component */
 static int component_prepare_buffers_upstream(struct comp_dev *start,
 	struct comp_dev *current, struct comp_buffer *buffer)
 {
@@ -534,6 +545,8 @@ static int component_prepare_buffers_upstream(struct comp_dev *start,
 	return err;
 }
 
+/* walk the graph downstream from start component in any pipeline and prepare
+ * the buffer context for each inactive component */
 static int component_prepare_buffers_downstream(struct comp_dev *start,
 	struct comp_dev *current, struct comp_buffer *buffer)
 {
@@ -725,6 +738,10 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
  * end point(s) to the downstream components in a single operation.
  * i.e. the period data is processed from upstream end points to downstream
  * "comp" recursively in a single call to this function.
+ *
+ * The copy operation is for this pipeline only (as pipelines are scheduled
+ * individually) and it stops at pipeline endpoints (where a component has no
+ * source or sink components) or where this pipeline joins another pipeline.
  */
 static int pipeline_copy_from_upstream(struct comp_dev *start,
 	struct comp_dev *current)
@@ -779,6 +796,10 @@ copy:
  * downstream end point component(s) in a single operation.
  * i.e. the period data is processed from this component to downstream
  * end points recursively in a single call to this function.
+ *
+ * The copy operation is for this pipeline only (as pipelines are scheduled
+ * individually) and it stops at pipeline endpoints (where a component has no
+ * source or sink components) or where this pipeline joins another pipeline.
  */
 static int pipeline_copy_to_downstream(struct comp_dev *start,
 		struct comp_dev *current)
@@ -827,6 +848,10 @@ out:
 	return err;
 }
 
+/* walk the graph to downstream active components in any pipeline to find
+ * the first active DAI and return it's timestamp.
+ * TODO: consider pipeline with multiple DAIs
+ */
 static int timestamp_downstream(struct comp_dev *start,
 		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
 {
@@ -868,7 +893,10 @@ downstream:
 	return res;
 }
 
-
+/* walk the graph to upstream active components in any pipeline to find
+ * the first active DAI and return it's timestamp.
+ * TODO: consider pipeline with multiple DAIs
+ */
 static int timestamp_upstream(struct comp_dev *start,
 		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
 {
@@ -938,7 +966,8 @@ static void xrun(struct comp_dev *dev, void *data)
 }
 
 
-/* travel down stream from start and run func for each component of type */
+/* walk the graph downstream from start component in any pipeline and run
+ * function <func> for each component of type <type> */
 static void pipeline_for_each_downstream(struct pipeline *p,
 	enum sof_comp_type type, struct comp_dev *current,
 	void (*func)(struct comp_dev *, void *), void *data)
@@ -964,7 +993,8 @@ static void pipeline_for_each_downstream(struct pipeline *p,
 	}
 }
 
-/* travel up stream from start and run func for each component of type */
+/* walk the graph upstream from start component in any pipeline and run
+ * function <func> for each component of type <type> */
 static void pipeline_for_each_upstream(struct pipeline *p,
 	enum sof_comp_type type, struct comp_dev *current,
 	void (*func)(struct comp_dev *, void *), void *data)
