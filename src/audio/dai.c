@@ -601,6 +601,11 @@ static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 
 static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* set dma burst elems to slot number */
+	dd->config.burst_elems = config->num_slots;
+
 	/* calc frame bytes */
 	switch (config->sample_valid_bits) {
 	case 16:
