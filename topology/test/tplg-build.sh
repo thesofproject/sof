@@ -52,15 +52,18 @@ simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000
 simple_test nocodec volume "NoCodec" s16le 2 s16le 20 16 1920000
 simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000
 simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000
+simple_test nocodec src "NoCodec" s24le 2 s24le 25 24 2400000
 
 simple_test codec passthrough "SSP2-Codec" s16le 2 s16le 20 16 1920000
 simple_test codec passthrough "SSP2-Codec" s24le 2 s24le 25 24 2400000
 simple_test codec volume "SSP2-Codec" s16le 2 s16le 20 16 1920000
 simple_test codec volume "SSP2-Codec" s24le 2 s24le 25 24 2400000
 simple_test codec volume "SSP2-Codec" s16le 2 s24le 25 24 2400000
+simple_test codec src "SSP2-Codec" s24le 2 s24le 25 24 2400000
 
 simple_test baytrail passthrough "Baytrail Audio" s16le 2 s16le 20 16 1920000
 simple_test baytrail passthrough "Baytrail Audio" s24le 2 s24le 25 24 2400000
 simple_test baytrail volume "Baytrail Audio" s16le 2 s16le 20 16 1920000
 simple_test baytrail volume "Baytrail Audio" s24le 2 s24le 25 24 2400000
 simple_test baytrail volume "Baytrail Audio" s16le 2 s24le 25 24 2400000
+simple_test baytrail src "Baytrail Audio" s24le 2 s24le 25 24 2400000
