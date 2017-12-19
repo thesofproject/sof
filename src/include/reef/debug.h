@@ -45,6 +45,7 @@
 #define PANIC_PLATFORM	4
 #define PANIC_TASK	5
 #define PANIC_EXCEPTION	6
+#define PANIC_DEADLOCK	7
 
 #define DEBUG
 
