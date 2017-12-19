@@ -168,7 +168,8 @@ int byt_write_modules(struct image *image)
 
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
 	if (count != 1) {
-		fprintf(stderr, "error: failed to write section header %d\n", i);
+		fprintf(stderr, "error: failed to write section header %d\n",
+			-errno);
 		return -errno ;
 	}
 

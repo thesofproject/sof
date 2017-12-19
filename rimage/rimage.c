@@ -208,6 +208,9 @@ static int write_elf_data(struct image *image)
 		goto out;
 	}
 
+	free(image->prg);
+	free(image->section);
+
 out:
 	return ret;
 }

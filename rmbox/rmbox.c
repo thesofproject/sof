@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 // TODO: include all this stuff
 
@@ -38,6 +39,10 @@
 #define TRACE_CLASS_VOLUME	(14 << 24)
 #define TRACE_CLASS_SWITCH	(15 << 24)
 #define TRACE_CLASS_MUX		(16 << 24)
+#define TRACE_CLASS_SRC         (17 << 24)
+#define TRACE_CLASS_TONE        (18 << 24)
+#define TRACE_CLASS_EQ_FIR      (19 << 24)
+#define TRACE_CLASS_EQ_IIR      (20 << 24)
 
 #define MAILBOX_HOST_OFFSET	0x144000
 
@@ -77,6 +82,9 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
+
+#define TRACE_BLOCK_SIZE	8
+
 static inline char get_char(uint32_t val, int idx)
 {
 	char c = (val >> (idx * 8)) & 0xff;
@@ -88,28 +96,61 @@ static inline char get_char(uint32_t val, int idx)
 
 static void usage(char *name)
 {
-	fprintf(stdout, "%s:\t -i infile -o outfile\n", name);
+	fprintf(stdout, "Usage %s <option(s)> <file(s)>\n", name);
+	fprintf(stdout, "%s:\t \t\t\tDisplay mailbox contents\n", name);
+	fprintf(stdout, "%s:\t -i infile -o outfile\tDump infile contents to outfile\n", name);
+	fprintf(stdout, "%s:\t -c\t\t\tSet timestamp clock in MHz\n", name);
+	fprintf(stdout, "%s:\t -s\t\t\tTake a snapshot of state\n", name);
+	fprintf(stdout, "%s:\t -t\t\t\tDisplay trace data\n", name);
 	exit(0);
 }
 
-static inline float to_usecs(uint32_t time, uint32_t clk)
+static double to_usecs(uint64_t time, double clk)
 {
 	/* trace timestamp uses CPU system clock at default 25MHz ticks */
 	// TODO: support variable clock rates
-	return (float)time / clk;
+	return (double)time / clk;
 }
 
-static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, uint32_t clk)
+static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, double clk)
 {
 	const char *trace;
 	uint32_t class;
+	uint64_t delta = val - *timestamp;
+	double fdelta = to_usecs(delta, clk);
+	double us = 0.0f;
 
 	/* timestamp or value ? */
-	if ((addr % 8) == 0) {
-		printf("trace.io: timestamp 0x%8.8x (%2.2f us) \tdelta 0x%8.8x (%2.2f us)\t",
-			(uint32_t)val, to_usecs(val, clk),
-			(uint32_t)val - *timestamp, to_usecs(val - *timestamp, clk));
+	if ((addr % (TRACE_BLOCK_SIZE * 2)) == 0) {
+
+		delta = val - *timestamp;
+		fdelta = to_usecs(delta, clk);
+
+		/* 64-bit timestamp */
+		us = to_usecs(val, clk);
+
+		/* empty data ? */
+		if (val == 0) {
+			*timestamp = 0;
+			return;
+		}
+
+		/* detect wrap around */
+		if (fdelta < 1000.0 * 1000.0 * 1000.0)
+			printf("0x%lx [%6.6f]\tdelta [%6.6f]\t", addr,
+				us / 1000000.0 , fdelta / 1000000.0);
+		else
+			printf("0x%lx [%6.6f]\tdelta [********]\t", addr,
+				us / 1000000.0);
+
 		*timestamp = val;
+		return;
+	} else if (*timestamp == 0)
+		return;
+
+	/* check for printable values - otherwise it's a value */
+	if (!isprint((char)(val >> 16)) || !isprint((char)(val >> 8)) || !isprint((char)val)) {
+		printf("value 0x%16.16lx\n", val);
 		return;
 	}
 
@@ -146,6 +187,14 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, uint32_
 		trace = "switch";
 	else if (class == TRACE_CLASS_MUX)
 		trace = "mux";
+	else if (class == TRACE_CLASS_SRC)
+		trace = "src";
+	else if (class == TRACE_CLASS_TONE)
+		trace = "tone";
+	else if (class == TRACE_CLASS_EQ_FIR)
+		trace = "eq-fir";
+	else if (class == TRACE_CLASS_EQ_IIR)
+		trace = "eq-iir";
 	else {
 		printf("value 0x%8.8x\n", (uint32_t)val);
 		return;
@@ -153,6 +202,65 @@ static void show_trace(uint32_t val, uint32_t addr, uint32_t *timestamp, uint32_
 
 	printf("%s %c%c%c\n", trace,
 		(char)(val >> 16), (char)(val >> 8), (char)val);
+}
+
+static int trace_read(const char *in_file, const char *out_file, double clk,
+	int offset)
+{
+	int count, i;
+	FILE *in_fd = NULL, *out_fd = NULL;
+	char c, tmp[TRACE_BLOCK_SIZE] = {0};
+	uint64_t addr = 0, val, timestamp = 0;
+
+	in_fd = fopen(in_file, "r");
+	if (in_fd == NULL) {
+		fprintf(stderr, "error: unable to open %s for reading %d\n",
+			in_file, errno);
+		return -EIO;
+	}
+
+	if (out_file == NULL)
+		goto trace;
+
+	out_fd = fopen(out_file, "w");
+	if (out_fd == NULL) {
+		fprintf(stderr, "error: unable to open %s for writing %d\n",
+			out_file, errno);
+	}
+
+trace:
+	fprintf(stdout, "using %2.2fMHz timestamp clock\n", clk);
+
+	while (1) {
+		count = fread(&tmp[0], 1, TRACE_BLOCK_SIZE, in_fd);
+		if (count != TRACE_BLOCK_SIZE)
+			break;
+
+		if (addr < offset) {
+			addr += TRACE_BLOCK_SIZE;
+			continue;
+		}
+
+		val = *((uint64_t*)tmp);
+
+		for (i = 0; i < TRACE_BLOCK_SIZE / 2; i++) {
+			c = tmp[i];
+			tmp[i] = tmp[TRACE_BLOCK_SIZE - i - 1];
+			tmp[TRACE_BLOCK_SIZE - i - 1] = c;
+		}
+
+		show_trace(val, addr, &timestamp, clk);
+
+		if (out_fd) {
+			count = fwrite(&tmp[0], 1, TRACE_BLOCK_SIZE, out_fd);
+			if (count != TRACE_BLOCK_SIZE)
+				break;
+		}
+
+		addr += TRACE_BLOCK_SIZE;
+	}
+
+	return 0;
 }
 
 static void show_debug(uint32_t val, uint32_t addr)
@@ -182,7 +290,7 @@ static const char *debugfs[] = {
 
 static int snapshot(const char *name)
 {
-	const char *path = "/sys/kernel/debug";
+	const char *path = "/sys/kernel/debug/sof";
 	uint32_t val, addr;
 	char pinname[64], poutname[64], buffer[128];
 	FILE *in_fd, *out_fd;
@@ -230,6 +338,8 @@ static int snapshot(const char *name)
 			addr += 4;
 		}
 
+		fclose(in_fd);
+		fclose(out_fd);
 	}
 
 	return 0;
@@ -237,13 +347,15 @@ static int snapshot(const char *name)
 
 int main(int argc, char *argv[])
 {
-	int opt, count;
+	int opt, count, trace = 0;
 	const char * out_file = NULL, *in_file = "/sys/kernel/debug/sof/mbox";
 	FILE *in_fd = NULL, *out_fd = NULL;
-	char c, tmp[4] = {0};
-	uint32_t addr = 0, val, clk = 25, timestamp = 0;
+	char c, tmp[8] = {0};
+	uint64_t addr = 0, val, timestamp = 0, align = 4, i;
+	double clk = 19.2;
+	int title_dbg_done = 0, title_exp_done = 0;
 
-	while ((opt = getopt(argc, argv, "ho:i:s:m:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:s:m:c:t")) != -1) {
 		switch (opt) {
 		case 'o':
 			out_file = optarg;
@@ -251,8 +363,11 @@ int main(int argc, char *argv[])
 		case 'i':
 			in_file = optarg;
 			break;
+		case 't':
+			trace = 1;
+			break;
 		case 'c':
-			clk = atoi(optarg);
+			clk = atof(optarg);
 			break;
 		case 's':
 			return snapshot(optarg);
@@ -262,8 +377,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc > 1 && (in_file == NULL || out_file == NULL))
-		usage(argv[0]);
+	/* trace requested ? */
+	if (trace)
+		return trace_read("/sys/kernel/debug/sof/trace", out_file, clk, 0);
 
 	/* open infile for reading */
 	in_fd = fopen(in_file, "r");
@@ -281,43 +397,56 @@ int main(int argc, char *argv[])
 	if (out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			out_file, errno);
+		fclose(in_fd);
 		return -EIO;
 	}
 
 	/* start to converting mailbox */
 convert:
+	fprintf(stdout, "using %2.2fMHz timestamp clock\n", clk);
+
 	while (1) {
-		count = fread(&tmp[0], 1, 4, in_fd);
-		if (count != 4)
+		count = fread(&tmp[0], 1, align, in_fd);
+		if (count != align)
 			break;
 
-		val = *((uint32_t*)tmp);
+		val = *((uint64_t*)tmp);
 
-		c = tmp[0];
-		tmp[0] = tmp[3];
-		tmp[3] = c;
-		c = tmp[1];
-		tmp[1] = tmp[2];
-		tmp[2] = c;
+		for (i = 0; i < align / 2; i++) {
+			c = tmp[i];
+			tmp[i] = tmp[align - i - 1];
+			tmp[align - i - 1] = c;
+		}
 
-		if (addr >= MAILBOX_TRACE_OFFSET &&
-			addr < MAILBOX_TRACE_OFFSET + MAILBOX_TRACE_SIZE)
-			show_trace(val, addr, &timestamp, clk);
-		else if (addr >= MAILBOX_DEBUG_OFFSET &&
-			addr < MAILBOX_DEBUG_OFFSET + MAILBOX_DEBUG_SIZE)
+		if (addr >= MAILBOX_DEBUG_OFFSET &&
+				addr < MAILBOX_DEBUG_OFFSET + MAILBOX_DEBUG_SIZE) {
+
+			if (!title_dbg_done++)
+				fprintf(stdout, "\nDebug log:\n");
+
 			show_debug(val, addr);
-		else if (addr >= MAILBOX_EXCEPTION_OFFSET &&
-			addr < MAILBOX_EXCEPTION_OFFSET + MAILBOX_EXCEPTION_SIZE)
+		} else if (addr >= MAILBOX_EXCEPTION_OFFSET &&
+				addr < MAILBOX_EXCEPTION_OFFSET + MAILBOX_EXCEPTION_SIZE) {
+
+			if (!title_exp_done++)
+				fprintf(stdout, "\nException log:\n");
+
 			show_exception(val, addr);
+		}
 
 		if (out_fd) {
-			count = fwrite(&tmp[0], 1, 4, out_fd);
-			if (count != 4)
+			count = fwrite(&tmp[0], 1, align, out_fd);
+			if (count != align)
 				break;
 		}
 
-		addr += 4;
+		addr += align;
 	}
+
+	/* read debug */
+	fprintf(stdout, "\nError log:\n");
+	trace_read("/sys/kernel/debug/sof/mbox", out_file, clk,
+		MAILBOX_TRACE_OFFSET);
 
 	/* close files */
 	fclose(in_fd);
