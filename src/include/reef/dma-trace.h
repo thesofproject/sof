@@ -64,7 +64,8 @@ struct dma_trace_data {
 	spinlock_t lock;
 };
 
-int dma_trace_init(struct dma_trace_data *d);
+int dma_trace_init_early(struct dma_trace_data *d);
+int dma_trace_init_complete(struct dma_trace_data *d);
 int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	uint32_t host_size);
 int dma_trace_enable(struct dma_trace_data *d);

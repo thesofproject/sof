@@ -115,26 +115,15 @@ out:
 	return DMA_TRACE_PERIOD;
 }
 
-int dma_trace_init(struct dma_trace_data *d)
+int dma_trace_init_early(struct dma_trace_data *d)
 {
 	struct dma_trace_buf *buffer = &d->dmatb;
-	int ret;
-
-	trace_buffer("dtn");
 
 	/* allocate new buffer */
 	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, DMA_TRACE_LOCAL_SIZE);
 	if (buffer->addr == NULL) {
 		trace_buffer_error("ebm");
 		return -ENOMEM;
-	}
-
-	/* init DMA copy context */
-	ret = dma_copy_new(&d->dc, PLATFORM_TRACE_DMAC);
-	if (ret < 0) {
-		trace_buffer_error("edm");
-		rfree(buffer->addr);
-		return ret;
 	}
 
 	bzero(buffer->addr, DMA_TRACE_LOCAL_SIZE);
@@ -149,9 +138,28 @@ int dma_trace_init(struct dma_trace_data *d)
 	d->copy_in_progress = 0;
 
 	list_init(&d->config.elem_list);
-	work_init(&d->dmat_work, trace_work, d, WORK_ASYNC);
 	spinlock_init(&d->lock);
 	trace_data = d;
+
+	return 0;
+}
+
+int dma_trace_init_complete(struct dma_trace_data *d)
+{
+	struct dma_trace_buf *buffer = &d->dmatb;
+	int ret;
+
+	trace_buffer("dtn");
+
+	/* init DMA copy context */
+	ret = dma_copy_new(&d->dc, PLATFORM_TRACE_DMAC);
+	if (ret < 0) {
+		trace_buffer_error("edm");
+		rfree(buffer->addr);
+		return ret;
+	}
+
+	work_init(&d->dmat_work, trace_work, d, WORK_ASYNC);
 
 	return 0;
 }
@@ -193,15 +201,8 @@ static void dtrace_add_event(const char *e, uint32_t length)
 
 	margin = buffer->end_addr - buffer->w_ptr;
 
-	/* validate */
-	if (margin <= 0) {
-		trace_buffer_error("emm");
-		return;
-	}
-
 	/* check for buffer wrap */
 	if (margin > length) {
-
 		/* no wrap */
 		memcpy(buffer->w_ptr, e, length);
 		buffer->w_ptr += length;
@@ -223,15 +224,11 @@ void dtrace_event(const char *e, uint32_t length)
 	struct dma_trace_buf *buffer = NULL;
 	unsigned long flags;
 
-	if (trace_data == NULL || length == 0)
-		return;
-
-	if (!trace_data->enabled)
+	if (trace_data == NULL ||
+		length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
 		return;
 
 	buffer = &trace_data->dmatb;
-	if (buffer == NULL)
-		return;
 
 	spin_lock_irq(&trace_data->lock, flags);
 	dtrace_add_event(e, length);
@@ -253,16 +250,8 @@ void dtrace_event(const char *e, uint32_t length)
 
 void dtrace_event_atomic(const char *e, uint32_t length)
 {
-	struct dma_trace_buf *buffer = NULL;
-
-	if (trace_data == NULL || length == 0)
-		return;
-
-	if (!trace_data->enabled)
-		return;
-
-	buffer = &trace_data->dmatb;
-	if (buffer == NULL)
+	if (trace_data == NULL ||
+		length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
 		return;
 
 	dtrace_add_event(e, length);

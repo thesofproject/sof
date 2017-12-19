@@ -297,6 +297,8 @@ int platform_init(struct reef *reef)
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(reef);
 
+	dma_trace_init_early(&reef->ipc->dmat);
+
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	dmac0 = dma_get(DMA_ID_DMAC0);
@@ -359,7 +361,7 @@ int platform_init(struct reef *reef)
 #endif
 
 	/* Initialize DMA for Trace*/
-	dma_trace_init(&reef->ipc->dmat);
+	dma_trace_init_complete(&reef->ipc->dmat);
 
 	return 0;
 }
