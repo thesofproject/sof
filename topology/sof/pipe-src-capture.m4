@@ -14,7 +14,7 @@ include(`local.m4')
 
 # Host "Passthrough Playback" PCM uses pipeline DMAC and channel
 # with 4 sink and 0 source periods
-W_PCM_PLAYBACK(Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 4, 0, 2)
+W_PCM_CAPTURE(Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 4, 0, 2)
 
 #
 # SRC Configuration
