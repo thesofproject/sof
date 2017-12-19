@@ -35,6 +35,7 @@
 #define __INCLUDE_LOCK__
 
 #define DEBUG_LOCKS	0
+#define DEBUG_LOCKS_VERBOSE	0
 
 #include <stdint.h>
 #include <arch/spinlock.h>
@@ -62,19 +63,33 @@
  * grep -rn lock --include *.c | grep 439
  *     src/lib/alloc.c:439:	spin_lock_irq(&memmap.lock, flags);
  *
- * Every lock entry and exit shows LcE and LcX in trace alonside the lock
+ * Every lock entry and exit shows LcE and LcX in trace alongside the lock
  * line numbers in hex. e.g.
  *
  * 0xfd60 [11032.730567]	delta [0.000004]	lock LcE
  * 0xfd70 [11032.730569]	delta [0.000002]	value 0x00000000000000ae
  *
- * Deadlock would be a LcE without a subsequent LcX.
+ * Deadlock can be confirmed in rmbox :-
  *
+ * Debug log:
+ * debug: 0x0 (00) = 	0xdead0007 	(-559087609) 	|....|
+ *  ....
+ * Error log:
+ * using 19.20MHz timestamp clock
+ * 0xc30 [26.247240]	delta [26.245851]	lock DED
+ * 0xc40 [26.247242]	delta [0.000002]	value 0x00000000000002b4
+ * 0xc50 [26.247244]	delta [0.000002]	value 0x0000000000000109
+ *
+ * DED means deadlock has been detected and the DSP is now halted. The first
+ * value after DEA is the line number where deadlock occurs and the second
+ * number is the line number where the lock is allocated. These can be grepped
+ * like above.
  */
 
 #if DEBUG_LOCKS
 
 #define DBG_LOCK_USERS		8
+#define DBG_LOCK_TRIES		10000
 
 #define trace_lock(__e)		trace_error_atomic(TRACE_CLASS_LOCK, __e)
 #define tracev_lock(__e)	tracev_event_atomic(TRACE_CLASS_LOCK, __e)
@@ -84,22 +99,29 @@
 extern uint32_t lock_dbg_atomic;
 extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
-#define spin_lock_dbg() \
-	trace_lock("LcE"); \
-	trace_lock_value(__LINE__);
-
-#define spin_unlock_dbg() \
-	trace_lock("LcX"); \
-	trace_lock_value(__LINE__); \
-
 /* all SMP spinlocks need init, nothing todo on UP */
 #define spinlock_init(lock) \
 	arch_spinlock_init(lock); \
 	(lock)->user = __LINE__;
 
-/* does nothing on UP systems */
-#define spin_lock(lock) \
-	spin_lock_dbg(); \
+/* panic on deadlock */
+#define spin_try_lock_dbg(lock) \
+	do { \
+		int __tries; \
+		for (__tries = DBG_LOCK_TRIES;  __tries > 0; __tries--) { \
+			if (arch_try_lock(lock)) \
+				break;	/* lock acquired */ \
+		} \
+		if (__tries == 0) { \
+			trace_lock_error("DED"); \
+			trace_lock_value(__LINE__); \
+			trace_lock_value((lock)->user); \
+			panic(PANIC_DEADLOCK); /* lock not acquired */ \
+		} \
+	} while (0);
+
+#if DEBUG_LOCKS_VERBOSE
+#define spin_lock_log(lock) \
 	if (lock_dbg_atomic) { \
 		int __i = 0; \
 		int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
@@ -111,8 +133,27 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 			trace_lock_value((lock_dbg_atomic << 24) | \
 				lock_dbg_user[__i]); \
 		} \
-	} \
-	arch_spin_lock(lock);
+	}
+
+#define spin_lock_dbg() \
+	trace_lock("LcE"); \
+	trace_lock_value(__LINE__);
+
+#define spin_unlock_dbg() \
+	trace_lock("LcX"); \
+	trace_lock_value(__LINE__);
+
+#else
+#define spin_lock_log(lock)
+#define spin_lock_dbg()
+#define spin_unlock_dbg()
+#endif
+
+/* does nothing on UP systems */
+#define spin_lock(lock) \
+	spin_lock_dbg(); \
+	spin_lock_log(lock); \
+	spin_try_lock_dbg(lock);
 
 #define spin_unlock(lock) \
 	arch_spin_unlock(lock); \
