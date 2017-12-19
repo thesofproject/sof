@@ -648,6 +648,8 @@ int ipc_dma_trace_send_position(void)
 
 	posn.rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG | SOF_IPC_TRACE_DMA_POSITION;
 	posn.host_offset = _ipc->dmat.host_offset;
+	posn.overflow = _ipc->dmat.overflow;
+	posn.messages = _ipc->dmat.messages;
 	posn.rhdr.hdr.size = sizeof(posn);
 
 	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,

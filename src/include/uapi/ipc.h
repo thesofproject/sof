@@ -816,6 +816,8 @@ struct sof_ipc_dma_trace_params {
 struct sof_ipc_dma_trace_posn {
 	struct sof_ipc_reply rhdr;
 	uint32_t host_offset;	/* Offset of DMA host buffer */
+	uint32_t overflow;	/* overflow bytes if any */
+	uint32_t messages;	/* total trace messages */
 }  __attribute__((packed));
 
 #endif

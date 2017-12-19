@@ -60,8 +60,12 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	d->copy_in_progress = 1;
 
 	/* make sure we dont write more than buffer */
-	if (avail > DMA_TRACE_LOCAL_SIZE)
+	if (avail > DMA_TRACE_LOCAL_SIZE) {
+		d->overflow = avail - DMA_TRACE_LOCAL_SIZE;
 		avail = DMA_TRACE_LOCAL_SIZE;
+	} else {
+		d->overflow = 0;
+	}
 
 	/* copy to host in sections if we wrap */
 	lsize = hsize = avail;
@@ -134,6 +138,8 @@ int dma_trace_init_early(struct dma_trace_data *d)
 	buffer->end_addr = buffer->addr + buffer->size;
 	buffer->avail = 0;
 	d->host_offset = 0;
+	d->overflow = 0;
+	d->messages = 0;
 	d->enabled = 0;
 	d->copy_in_progress = 0;
 
@@ -217,6 +223,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 	}
 
 	buffer->avail += length;
+	trace_data->messages++;
 }
 
 void dtrace_event(const char *e, uint32_t length)
