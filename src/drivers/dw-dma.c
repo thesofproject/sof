@@ -426,6 +426,13 @@ static int dw_dma_status(struct dma *dma, int channel,
 	return 0;
 }
 
+/*
+ * use array to get burst_elems for specific slot number setting.
+ * the relation between msize and burst_elems should be
+ * 2 ^ burst_elems = burst_elems
+ */
+static const uint32_t burst_elems[] = {1, 2, 4, 8};
+
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
@@ -438,7 +445,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dw_lli2 *lli_desc_tail;
 	uint32_t desc_count = 0;
 	uint32_t flags;
-	int ret = 0;
+	uint32_t msize = 3;/* default msize */
+	int i, ret = 0;
 
 	spin_lock_irq(&dma->lock, flags);
 
@@ -482,6 +490,17 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	lli_desc = lli_desc_head = p->chan[channel].lli;
 	lli_desc_tail = p->chan[channel].lli + p->chan[channel].desc_count - 1;
 
+	/* configure msize if burst_elems is set */
+	if (config->burst_elems) {
+		/* burst_elems set, configure msize */
+		for (i = 0; i < ARRAY_SIZE(burst_elems); i++) {
+			if (burst_elems[i] == config->burst_elems) {
+				msize = i;
+				break;
+			}
+		}
+	}
+
 	/* fill in lli for the elem in the list */
 	list_for_item(plist, &config->elem_list) {
 
@@ -518,8 +537,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			goto out;
 		}
 
-		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(3); /* config the src msize length 2^2 */
-		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(3); /* config the dest msize length 2^2 */
+		lli_desc->ctrl_lo |= DW_CTLL_SRC_MSIZE(msize);
+		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(msize);
 		lli_desc->ctrl_lo |= DW_CTLL_INT_EN; /* enable interrupt */
 
 		/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
