@@ -208,10 +208,11 @@ static int write_elf_data(struct image *image)
 		goto out;
 	}
 
-	free(image->prg);
-	free(image->section);
-
 out:
+	if (image->prg)
+		free(image->prg);
+	if (image->section)
+		free(image->section);
 	return ret;
 }
 
@@ -283,6 +284,8 @@ found:
 	if (image.in_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for reading %d\n",
 			image.in_file, errno);
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* open outfile for writing */
@@ -291,14 +294,19 @@ found:
 	if (image.out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image.out_file, errno);
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* write data */
 	ret = write_elf_data(&image);
 
+out:
 	/* close files */
-	fclose(image.out_fd);
-	fclose(image.in_fd);
+	if (image.in_fd)
+		fclose(image.in_fd);
+	if (image.out_fd)
+		fclose(image.out_fd);
 
 	return ret;
 }
