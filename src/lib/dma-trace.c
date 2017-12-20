@@ -48,7 +48,7 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	struct dma_sg_config *config = &d->config;
 	unsigned long flags;
 	uint32_t avail = buffer->avail;
-	uint32_t size;
+	int32_t size;
 	uint32_t hsize;
 	uint32_t lsize;
 
