@@ -427,7 +427,7 @@ static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */
-	if (v < VOL_MIN)
+	if (v <= VOL_MIN)
 		v = VOL_MIN;
 
 	if (v > VOL_MAX)
