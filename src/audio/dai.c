@@ -95,7 +95,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 		/* inform waiters */
 		wait_completed(&dd->complete);
-		return;
 	}
 
 	/* is our pipeline handling an XRUN ? */
@@ -172,9 +171,8 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	}
 
 	/* notify pipeline that DAI needs its buffer processed */
-	pipeline_schedule_copy(dev->pipeline, 0);
-
-	return;
+	if (dev->state == COMP_STATE_ACTIVE)
+		pipeline_schedule_copy(dev->pipeline, 0);
 }
 
 static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
@@ -539,10 +537,10 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
-	case COMP_CMD_RELEASE:
 	case COMP_CMD_START:
-
 		dai_pointer_init(dev);
+		/* fall through */
+	case COMP_CMD_RELEASE:
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {

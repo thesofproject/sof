@@ -529,7 +529,6 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
-	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
 		ret = host_stop(dev);
 		break;
