@@ -46,6 +46,7 @@
 #include <reef/clock.h>
 #include <reef/ipc.h>
 #include <reef/trace.h>
+#include <reef/agent.h>
 #include <reef/dma-trace.h>
 #include <reef/audio/component.h>
 #include <config.h>
@@ -283,6 +284,9 @@ int platform_init(struct reef *reef)
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
+
+	/* init the system agent */
+	sa_init(reef);
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);

@@ -36,6 +36,7 @@
 #include <reef/timer.h>
 #include <reef/interrupt.h>
 #include <reef/ipc.h>
+#include <reef/agent.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
 #include <reef/audio/pipeline.h>
@@ -81,12 +82,13 @@ int do_task(struct reef *reef)
 	while (1) {
 
 		/* sleep until next IPC or DMA */
+		sa_enter_idle(reef);
 		wait_for_interrupt(0);
 
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
 
-		/* schedule any idle taks */
+		/* schedule any idle tasks */
 		schedule();
 	}
 
