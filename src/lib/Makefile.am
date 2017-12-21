@@ -7,7 +7,8 @@ libcore_a_SOURCES = \
 	notifier.c \
 	trace.c \
 	dma-trace.c \
-	schedule.c
+	schedule.c \
+	agent.c
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

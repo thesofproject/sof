@@ -47,6 +47,7 @@
 #define PANIC_EXCEPTION	6
 #define PANIC_DEADLOCK	7
 #define PANIC_STACK	8
+#define PANIC_IDLE	9
 
 #define DEBUG
 

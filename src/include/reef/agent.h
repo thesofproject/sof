@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,49 +28,23 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_REEF_REEF__
-#define __INCLUDE_REEF_REEF__
+#ifndef __INCLUDE_REEF_AGENT__
+#define __INCLUDE_REEF_AGENT__
 
 #include <stdint.h>
 #include <stddef.h>
-#include <arch/reef.h>
+#include <reef/work.h>
 
-struct ipc;
-struct sa;
+struct reef;
 
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
-
-/* C memcpy for arch that dont have arch_memcpy() */
-void cmemcpy(void *dest, void *src, size_t size);
-
-// TODO: add detection for arch memcpy
-#if 1
-#define rmemcpy(dest, src, size) \
-	arch_memcpy(dest, src, size)
-#else
-#define rmemcpy(dest, src, size) \
-	cmemcpy(dest, src, size)
-#endif
-
-/* general firmware context */
-struct reef {
-	/* init data */
-	int argc;
-	char **argv;
-
-	/* ipc */
-	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
-
-	/* private data */
-	void *arch_private;
-	void *plat_private;
+/* simple agent */
+struct sa {
+	uint64_t last_idle;	/* time of last idle */
+	uint64_t ticks;
+	struct work work;
 };
+
+void sa_enter_idle(struct reef *reef);
+void sa_init(struct reef *reef);
 
 #endif
