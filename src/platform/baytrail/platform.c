@@ -78,7 +78,7 @@ static struct work_queue_timesource platform_generic_queue = {
 		.id = TIMER3,	/* external timer */
 		.irq = IRQ_NUM_EXT_TIMER,
 	},
-	.clk		= CLK_SSP,
+	.clk		= PLATFORM_WORKQ_CLOCK,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,

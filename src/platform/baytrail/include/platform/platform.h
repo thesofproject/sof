@@ -76,6 +76,9 @@ struct reef;
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000
 
+/* platform WorkQ clock */
+#define PLATFORM_WORKQ_CLOCK	CLK_SSP
+
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 
