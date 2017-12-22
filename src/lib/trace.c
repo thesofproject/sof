@@ -49,7 +49,9 @@ void _trace_error(uint32_t event)
 {
 	unsigned long flags;
 	volatile uint64_t *t;
+#if defined(CONFIG_DMA_TRACE)
 	uint64_t dt[2];
+#endif
 	uint64_t time;
 
 	if (!trace.enable)
@@ -57,10 +59,12 @@ void _trace_error(uint32_t event)
 
 	time = platform_timer_get(platform_timer);
 
+#if defined(CONFIG_DMA_TRACE)
 	/* save event to DMA tracing buffer */
 	dt[0] = time;
 	dt[1] = event;
 	dtrace_event((const char*)dt, sizeof(uint64_t) * 2);
+#endif
 
 	/* send event by mail box too. */
 	spin_lock_irq(&trace.lock, flags);
@@ -84,7 +88,9 @@ void _trace_error(uint32_t event)
 void _trace_error_atomic(uint32_t event)
 {
 	volatile uint64_t *t;
+#if defined(CONFIG_DMA_TRACE)
 	uint64_t dt[2];
+#endif
 	uint64_t time;
 
 	if (!trace.enable)
@@ -92,10 +98,12 @@ void _trace_error_atomic(uint32_t event)
 
 	time = platform_timer_get(platform_timer);
 
+#if defined(CONFIG_DMA_TRACE)
 	/* save event to DMA tracing buffer */
 	dt[0] = time;
 	dt[1] = event;
 	dtrace_event_atomic((const char*)dt, sizeof(uint64_t) * 2);
+#endif
 
 	/* write timestamp and event to trace buffer */
 	t = (volatile uint64_t*)(MAILBOX_TRACE_BASE + trace.pos);

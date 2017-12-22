@@ -6,9 +6,13 @@ libcore_a_SOURCES = \
 	work.c \
 	notifier.c \
 	trace.c \
-	dma-trace.c \
 	schedule.c \
 	agent.c
+
+if BUILD_DMA_TRACE
+libcore_a_SOURCES += \
+	dma-trace.c
+endif
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

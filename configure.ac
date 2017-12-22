@@ -132,6 +132,8 @@ AS_IF([test "x$enable_dma_trace" != "xno"], [
 	AC_DEFINE([CONFIG_DMA_TRACE], [1], [Configure DMA trace])
 	])
 
+AM_CONDITIONAL(BUILD_DMA_TRACE,  test "x$enable_dma_trace" != "xno")
+
 # Test after CFLAGS set othewise test of cross compiler fails. 
 AM_PROG_AS
 AM_PROG_AR
