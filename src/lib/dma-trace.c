@@ -108,7 +108,12 @@ static uint64_t trace_work(void *data, uint64_t delay)
 out:
 	spin_lock_irq(&d->lock, flags);
 
-	buffer->avail -= size;
+	/* disregard any old messages and dont resend them if we overflow */
+	if (d->overflow) {
+		buffer->avail = DMA_TRACE_LOCAL_SIZE - size;
+	} else {
+		buffer->avail -= size;
+	}
 
 	/* DMA trace copying is done */
 	d->copy_in_progress = 0;
