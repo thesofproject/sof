@@ -23,6 +23,7 @@ include(`dsps/byt.m4')
 # TEST_SSP_PORT	- SSP port number e.g. 2
 # TEST_SSP_FORMAT - SSP data format e.g s16le
 # TEST_PIPE_FORMAT - Pipeline format e.g. s16le
+# TEST_SSP_MCLK - SSP MCLK in Hz
 # TEST_SSP_BCLK - SSP BCLK in Hz
 # TEST_SSP_PHY_BITS - SSP physical slot size
 # TEST_SSP_DATA_BITS - SSP data slot size
@@ -66,7 +67,7 @@ PCM_CAPTURE_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_2)
 # TEST_SSP_DATA_BITS bit I2S using TEST_SSP_PHY_BITS bit sample conatiner on SSP TEST_SSP_PORT
 #
 DAI_CONFIG(SSP, TEST_SSP_PORT, TEST_DAI_LINK_NAME, I2S, TEST_SSP_DATA_BITS,
-	DAI_CLOCK(mclk, 19200000, slave),
+	DAI_CLOCK(mclk, TEST_SSP_MCLK, slave),
 	DAI_CLOCK(bclk, TEST_SSP_BCLK, slave),
 	DAI_CLOCK(fsync, 48000, slave),
 	DAI_TDM(2, TEST_SSP_PHY_BITS, 3, 3))

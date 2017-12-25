@@ -25,6 +25,7 @@ SIMPLE_TESTS=(test-ssp test-capture-ssp test-playback-ssp)
 # 7) dai_phy_bits - SSP physical number of BLKCs per slot/channel
 # 8) dai_data_bits - SSP number of valid daat bits per slot/channel
 # 9) dai_bclk - SSP BCLK in HZ
+# 10) dai_mclk - SSP MCLK in HZ
 #
 function simple_test {
 	for i in ${SIMPLE_TESTS[@]}
@@ -38,6 +39,7 @@ function simple_test {
 			-DTEST_SSP_FORMAT=$6 \
 			-DTEST_PIPE_FORMAT=$4 \
 			-DTEST_SSP_BCLK=$9 \
+			-DTEST_SSP_BCLK=$10 \
 			-DTEST_SSP_PHY_BITS=$7 \
 			-DTEST_SSP_DATA_BITS=$8 \
 			$i.m4 > ${TFILE}.conf
@@ -47,23 +49,28 @@ function simple_test {
 }
 
 # Pre-process the simple tests
-simple_test nocodec passthrough "NoCodec" s16le 2 s16le 20 16 1920000
-simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000
-simple_test nocodec volume "NoCodec" s16le 2 s16le 20 16 1920000
-simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000
-simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000
-simple_test nocodec src "NoCodec" s24le 2 s24le 25 24 2400000
+simple_test nocodec passthrough "NoCodec" s16le 2 s16le 20 16 1920000 19200000
+simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 19200000
+simple_test nocodec volume "NoCodec" s16le 2 s16le 20 16 1920000 19200000
+simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 19200000
+simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 19200000
+simple_test nocodec src "NoCodec" s24le 2 s24le 25 24 2400000 19200000
 
-simple_test codec passthrough "SSP2-Codec" s16le 2 s16le 20 16 1920000
-simple_test codec passthrough "SSP2-Codec" s24le 2 s24le 25 24 2400000
-simple_test codec volume "SSP2-Codec" s16le 2 s16le 20 16 1920000
-simple_test codec volume "SSP2-Codec" s24le 2 s24le 25 24 2400000
-simple_test codec volume "SSP2-Codec" s16le 2 s24le 25 24 2400000
-simple_test codec src "SSP2-Codec" s24le 2 s24le 25 24 2400000
+simple_test codec passthrough "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000
+simple_test codec passthrough "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000
+simple_test codec volume "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000
+simple_test codec volume "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000
+simple_test codec volume "SSP2-Codec" s16le 2 s24le 25 24 2400000 19200000
+simple_test codec src "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000
 
-simple_test baytrail passthrough "Baytrail Audio" s16le 2 s16le 20 16 1920000
-simple_test baytrail passthrough "Baytrail Audio" s24le 2 s24le 25 24 2400000
-simple_test baytrail volume "Baytrail Audio" s16le 2 s16le 20 16 1920000
-simple_test baytrail volume "Baytrail Audio" s24le 2 s24le 25 24 2400000
-simple_test baytrail volume "Baytrail Audio" s16le 2 s24le 25 24 2400000
-simple_test baytrail src "Baytrail Audio" s24le 2 s24le 25 24 2400000
+simple_test baytrail passthrough "Baytrail Audio" s16le 2 s16le 20 16 1920000 19200000
+simple_test baytrail passthrough "Baytrail Audio" s24le 2 s24le 25 24 2400000 19200000
+simple_test baytrail volume "Baytrail Audio" s16le 2 s16le 20 16 1920000 19200000
+simple_test baytrail volume "Baytrail Audio" s24le 2 s24le 25 24 2400000 19200000
+simple_test baytrail volume "Baytrail Audio" s16le 2 s24le 25 24 2400000 19200000
+simple_test baytrail src "Baytrail Audio" s24le 2 s24le 25 24 2400000 19200000
+
+simple_test nocodec passthrough "NoCodec" s16le 4 s16le 16 16 1536000 24576000
+simple_test apollolake passthrough "SSP4-Codec" s16le 4 s16le 16 16 1536000 24576000
+
+
