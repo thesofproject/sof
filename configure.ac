@@ -1,5 +1,5 @@
 AC_PREREQ([2.69])
-AC_INIT([Reef],[m4_esyscmd(./git-version.sh)],[sound-open-firmware@alsa-project.org])
+AC_INIT([Reef],[m4_esyscmd(./version.sh)],[sound-open-firmware@alsa-project.org])
 AC_CONFIG_SRCDIR([src/init/init.c])
 AC_CONFIG_HEADERS([src/include/config.h])
 AC_CONFIG_MACRO_DIRS([m4])
@@ -154,6 +154,9 @@ AC_CONFIG_FILES([
 	src/arch/Makefile
 	src/arch/xtensa/Makefile
 	src/arch/xtensa/include/Makefile
+	src/arch/xtensa/include/arch/Makefile
+	src/arch/xtensa/include/xtensa/Makefile
+	src/arch/xtensa/include/xtensa/config/Makefile
 	src/arch/xtensa/hal/Makefile
 	src/arch/xtensa/xtos/Makefile
 	src/audio/Makefile
@@ -162,6 +165,9 @@ AC_CONFIG_FILES([
 	src/include/Makefile
 	src/include/reef/Makefile
 	src/include/reef/audio/Makefile
+	src/include/reef/audio/coefficients/Makefile
+	src/include/reef/audio/coefficients/src/Makefile
+	src/include/reef/math/Makefile
 	src/include/uapi/Makefile
 	src/ipc/Makefile
 	src/lib/Makefile
