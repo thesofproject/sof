@@ -35,5 +35,5 @@ echo "#define REEF_BUILD $num" >> $DIR/src/include/version.h
 
 #echo version for AC_INIT
 if [ -e $DIR/.version ]; then
-	echo -n `cat $DIR/.version | cut -dv -f2 | cut -d. -f1`.`cat $DIR/.version | cut -d. -f2 | cut -d- -f1`
+	echo -n `cat $DIR/.version | cut -dv -f2 | cut -d. -f1`.`cat $DIR/.version | cut -d. -f2 | cut -d- -f1`.`cat $DIR/.version | cut -d. -f3 | cut -d- -f1`
 fi

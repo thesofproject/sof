@@ -11,8 +11,10 @@ AM_MAINTAINER_MODE([enable])
 # get version info from git
 m4_define(reef_major, `cat .version | cut -dv -f2 | cut -d. -f1`)
 m4_define(reef_minor, `cat .version | cut -d. -f2 | cut -d- -f1`)
+m4_define(reef_micro, `cat .version | cut -d. -f3 | cut -d- -f1`)
 AC_DEFINE_UNQUOTED([REEF_MAJOR], reef_major, [Reef major version])
 AC_DEFINE_UNQUOTED([REEF_MINOR], reef_minor, [Reef minor version])
+AC_DEFINE_UNQUOTED([REEF_MICRO], reef_micro, [Reef micro version])
 
 AC_CANONICAL_HOST
 
