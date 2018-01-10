@@ -3,7 +3,7 @@
 # Dependencies
 #
 
-SUBDIRS = test
+SUBDIRS = test m4 sof common dsps
 
 DEPS = \
 	dsps/*.m4 \
@@ -44,3 +44,16 @@ clean:
 	rm -f *.conf
 	rm -f *.tplg
 
+EXTRA_DIST = \
+	reef-cht-nocodec.m4 \
+	reef-cht-max98090.m4 \
+	reef-apl-nocodec.m4 \
+	reef-bxt-nocodec.m4 \
+	reef-byt-nocodec.m4 \
+	reef-bdw-rt286.m4 \
+	reef-bdw-rt5640.m4 \
+	reef-byt-rt5640.m4 \
+	reef-byt-rt5645.m4 \
+	reef-byt-rt5651.m4 \
+	reef-byt-da7212.m4 \
+	reef-hsw-rt5640.m4
