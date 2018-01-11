@@ -1,4 +1,4 @@
-SUBDIRS = audio
+SUBDIRS = audio math
 
 noinst_HEADERS = \
 	alloc.h \
@@ -6,8 +6,10 @@ noinst_HEADERS = \
 	dai.h \
 	debug.h \
 	dma.h \
+	dma-trace.h \
 	dw-dma.h \
 	init.h \
+	intel-ipc.h \
 	interrupt.h \
 	interrupt-map.h \
 	io.h \

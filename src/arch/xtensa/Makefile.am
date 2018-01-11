@@ -1,6 +1,6 @@
 SUBDIRS = hal xtos include
 
-bin_PROGRAMS = \
+noinst_PROGRAMS = \
 	reef
 
 # generate linker script from platform headers
@@ -79,3 +79,6 @@ vminstall-local:
 
 clean-local:
 	rm -f reef-*.bin
+	rm -fr *.lst
+	rm -fr *.map
+	rm -fr *.dis

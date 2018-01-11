@@ -1,5 +1,13 @@
 noinst_LIBRARIES = libaudio.a
 
+noinst_HEADERS = \
+	eq_fir.h \
+	eq_iir.h \
+	fir.h \
+	iir.h \
+	src_config.h \
+	src_core.h
+
 libaudio_a_SOURCES = \
 	eq_iir.c \
 	iir.c \

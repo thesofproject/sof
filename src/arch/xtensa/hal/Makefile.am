@@ -134,7 +134,7 @@ PLATFORM_DEFS = \
 	$(CACHE_DEFS)
 endif
 
-lib_LIBRARIES = libhal.a
+noinst_LIBRARIES = libhal.a
 
 libhal_a_SOURCES = \
 	attribute.c \
