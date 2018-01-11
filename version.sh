@@ -10,8 +10,8 @@ else
 	DIR=$1
 fi
 
-# create git version if we are a git repo
-if [ ! -d $DIR/.git ]; then
+# create git version if we are a git repo or git worktree
+if [ -e $DIR/.git -o -d $DIR/.git ]; then
 #	 version for make dist
 	git describe --abbrev=4 > $DIR/.version
 	git describe --abbrev=4 > $DIR/.tarball-version
@@ -19,7 +19,7 @@ if [ ! -d $DIR/.git ]; then
 	# git commit for IPC
 	echo "#define REEF_TAG \"`git log --pretty=format:\"%h\" -1 | cut -c1-5`\"" > $DIR/src/include/version.h
 else
-	echo "#define REEF_TAG 0" > $DIR/src/include/version.h
+	echo "#define REEF_TAG \"0\"" > $DIR/src/include/version.h
 fi
 
 # build counter
