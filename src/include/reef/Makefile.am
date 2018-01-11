@@ -1,6 +1,7 @@
 SUBDIRS = audio math
 
 noinst_HEADERS = \
+	agent.h \
 	alloc.h \
 	clock.h \
 	dai.h \
