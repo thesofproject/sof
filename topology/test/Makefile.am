@@ -3,6 +3,8 @@
 # Dependencies
 #
 
+
+
 DEPS = \
 	../dsps/*.m4 \
 	../common/*.m4 \
@@ -18,3 +20,10 @@ all : *.m4 ${DEPS}
 clean:
 	rm -f *.conf
 	rm -f *.tplg
+
+
+EXTRA_DIST = \
+	test-capture-ssp.m4 \
+	test-playback-ssp.m4 \
+	test-ssp.m4 \
+	tplg-build.sh
