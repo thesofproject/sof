@@ -39,7 +39,7 @@ function simple_test {
 			-DTEST_SSP_FORMAT=$6 \
 			-DTEST_PIPE_FORMAT=$4 \
 			-DTEST_SSP_BCLK=$9 \
-			-DTEST_SSP_MCLK=$10 \
+			-DTEST_SSP_MCLK=${10} \
 			-DTEST_SSP_PHY_BITS=$7 \
 			-DTEST_SSP_DATA_BITS=$8 \
 			$i.m4 > ${TFILE}.conf
