@@ -325,10 +325,10 @@ static int create_local_elems(struct comp_dev *dev)
 			goto unwind;
 
 		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-			e->dest = (uint32_t)(hd->dma_buffer->addr) +
+			e->dest = (uintptr_t)(hd->dma_buffer->addr) +
 				i * hd->period_bytes;
 		else
-			e->src = (uint32_t)(hd->dma_buffer->addr) +
+			e->src = (uintptr_t)(hd->dma_buffer->addr) +
 				i * hd->period_bytes;
 
 		e->size = hd->period_bytes;
