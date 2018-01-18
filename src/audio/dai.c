@@ -559,6 +559,7 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_XRUN:
 		dd->xrun = 1;
+		/* fall through */
 	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
 		wait_init(&dd->complete);
