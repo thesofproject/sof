@@ -34,7 +34,7 @@
 
 #include <config.h>
 
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL || defined CONFIG_BROADWELL || defined CONFIG_HASWELL
 #define SRC_SHORT 1
 #include <reef/audio/coefficients/src/src_tiny_int16_define.h>
 #include <reef/audio/coefficients/src/src_tiny_int16_table.h>

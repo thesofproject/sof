@@ -21,5 +21,18 @@ make clean
 make
 make bin
 
+# Build for Broadwell
+make clean
+./configure --with-arch=xtensa --with-platform=broadwell --with-root-dir=$pwd/../xtensa-root/xtensa-hsw-elf --host=xtensa-hsw-elf
+make
+make bin
+
+# Build for Haswell
+make clean
+./configure --with-arch=xtensa --with-platform=haswell --with-root-dir=$pwd/../xtensa-root/xtensa-hsw-elf --host=xtensa-hsw-elf
+make
+make bin
+
+
 # list all the images
 ls -l src/arch/xtensa/*.ri

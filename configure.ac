@@ -102,6 +102,40 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_CHERRYTRAIL], [1], [Configure for Cherrytrail])
 	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
     ;;
+    haswell*)
+
+	PLATFORM_LDSCRIPT="haswell.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="haswell"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="hsw"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifiep_bd5"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_HASWELL], [1], [Configure for Haswell])
+	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
+    ;;
+    broadwell*)
+
+	PLATFORM_LDSCRIPT="broadwell.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="haswell"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="bdw"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifiep_bd5"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_BROADWELL], [1], [Configure for Broadwell])
+	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
+    ;;
     *)
         AC_MSG_ERROR([Host platform not specified])
     ;;
@@ -112,6 +146,7 @@ AM_CONDITIONAL(BUILD_CHERRYTRAIL,  test "$FW_NAME" = "cht")
 AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
 AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
 AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
+
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],
         AS_HELP_STRING([--with-dsp-core], [Specify DSP Core]),
@@ -179,6 +214,11 @@ AC_CONFIG_FILES([
 	src/platform/baytrail/include/platform/Makefile
 	src/platform/baytrail/include/xtensa/Makefile
 	src/platform/baytrail/include/xtensa/config/Makefile
+	src/platform/haswell/Makefile
+	src/platform/haswell/include/Makefile
+	src/platform/haswell/include/platform/Makefile
+	src/platform/haswell/include/xtensa/Makefile
+	src/platform/haswell/include/xtensa/config/Makefile
 ])
 AC_OUTPUT
 
