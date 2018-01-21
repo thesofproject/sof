@@ -146,6 +146,25 @@
 #define DW_CTLL_RELOAD_SRC		(1 << 30)
 #define DW_CTLL_RELOAD_DST		(1 << 31)
 
+/* Haswell / Broadwell specific registers */
+#if defined (CONFIG_HASWELL) || defined (CONFIG_BROADWELL)
+
+/* CTL_HI */
+#define DW_CTLH_DONE			0x00001000
+#define DW_CTLH_BLOCK_TS_MASK		0x00000fff
+
+/* CFG_LO */
+#define DW_CFG_CLASS(x)		(x << 5)
+
+/* CFG_HI */
+#define DW_CFGH_SRC_PER(x)		(x << 7)
+#define DW_CFGH_DST_PER(x)		(x << 11)
+
+/* default initial setup register values */
+#define DW_CFG_LOW_DEF				0x0
+#define DW_CFG_HIGH_DEF			0x4
+#endif
+
 /* tracing */
 #define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)
 #define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
