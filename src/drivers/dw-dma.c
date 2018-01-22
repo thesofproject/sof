@@ -196,6 +196,39 @@
 #define DW_CFG_LOW_DEF			0x00000003
 #define DW_CFG_HIGH_DEF		0x0
 
+#elif defined (CONFIG_APOLLOLAKE) || defined (CONFIG_CANNONLAKE)
+
+/* CTL_LO */
+#define DW_CTLL_S_GATH_EN		(1 << 17)
+#define DW_CTLL_D_SCAT_EN		(1 << 18)
+
+/* CTL_HI */
+#define DW_CTLH_DONE			0x00020000
+#define DW_CTLH_BLOCK_TS_MASK		0x0001ffff
+#define DW_CTLH_CLASS(x)		(x << 29)
+#define DW_CTLH_WEIGHT(x)		(x << 18)
+
+/* CFG_LO */
+#define DW_CFG_CH_DRAIN		0x400
+
+/* CFG_HI */
+#define DW_CFGH_SRC_PER(x)		(x << 0)
+#define DW_CFGH_DST_PER(x)		(x << 4)
+
+/* FIFO Partition */
+#define DW_FIFO_PARTITION
+#define DW_FIFO_PART0_LO		0x0400
+#define DW_FIFO_PART0_HI		0x0404
+#define DW_FIFO_PART1_LO		0x0408
+#define DW_FIFO_PART1_HI		0x040C
+#define DW_CH_SAI_ERR			0x0410
+#define DW_DMA_GLB_CFG			0x0418
+
+/* default initial setup register values */
+#define DW_CFG_LOW_DEF			0x00000003
+#define DW_CFG_HIGH_DEF		0x0
+
+#define DW_REG_MAX			DW_DMA_GLB_CFG
 #endif
 
 /* tracing */
@@ -653,11 +686,12 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		}
 
 		/* set transfer size of element */
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
-		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
-			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
-#else
-		/* for the unit is transaction--TR_WIDTH. */
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
+	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+				lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
+					(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
+#elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
+		/* for bdw, the unit is transaction--TR_WIDTH. */
 		lli_desc->ctrl_hi = (sg_elem->size / (1 << (lli_desc->ctrl_lo >> 4 & 0x7)))
 			& DW_CTLH_BLOCK_TS_MASK;
 #endif
@@ -765,10 +799,11 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	dw_write(dma, DW_DAR(channel), next->dest);
 
 	/* set transfer size of element */
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
-	lli->ctrl_hi = DW_CTLH_CLASS(p->class) |
-		(next->size & DW_CTLH_BLOCK_TS_MASK);
-#else
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
+	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+		lli->ctrl_hi = DW_CTLH_CLASS(p->class) |
+			(next->size & DW_CTLH_BLOCK_TS_MASK);
+#elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
 	/* for the unit is transaction--TR_WIDTH. */
 	lli->ctrl_hi = (next->size / (1 << (lli->ctrl_lo >> 4 & 0x7)))
 		& DW_CTLH_BLOCK_TS_MASK;
@@ -928,7 +963,8 @@ found:
 
 	/* set channel priorities */
 	for (i = 0; i <  DW_MAX_CHAN; i++) {
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
+	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
 		dw_write(dma, DW_CTRL_HIGH(i), DW_CTLH_CLASS(dp->chan[i].class));
 #else
 		dw_write(dma, DW_CFG_LOW(i), DW_CFG_CLASS(dp->chan[i].class));
