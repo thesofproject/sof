@@ -33,40 +33,47 @@
 
 #include <stdint.h>
 #include <arch/interrupt.h>
+#include <platform/interrupt.h>
 #include <reef/trace.h>
 #include <reef/debug.h>
+#include <reef/lock.h>
 
-#define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ | __e)
+#define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
+#define trace_irq_error(__e)	trace_error(TRACE_CLASS_IRQ,  __e)
 
-static inline int interrupt_register(int irq,
-	void(*handler)(void *arg), void *arg)
-{
-	return arch_interrupt_register(irq, handler, arg);
-}
+/* child interrupt source */
+struct irq_child {
+	uint32_t enabled;
 
-static inline void interrupt_unregister(int irq)
-{
-	arch_interrupt_unregister(irq);
-}
+	void (*handler)(void *arg);
+	void *handler_arg;
+};
 
-static inline uint32_t interrupt_enable(uint32_t irq)
-{
-	return arch_interrupt_enable_mask(1 << irq);
-}
+/* parent source */
+struct irq_parent {
+	int num;
+	void (*handler)(void *arg);
+	uint32_t enabled_count;
+	spinlock_t lock;
 
-static inline uint32_t interrupt_disable(uint32_t irq)
-{
-	return arch_interrupt_disable_mask(1 <<irq);
-}
+	uint32_t num_children;
+	struct irq_child *child[PLATFORM_IRQ_CHILDREN];
+};
+
+int interrupt_register(uint32_t irq,
+	void(*handler)(void *arg), void *arg);
+void interrupt_unregister(uint32_t irq);
+uint32_t interrupt_enable(uint32_t irq);
+uint32_t interrupt_disable(uint32_t irq);
 
 static inline void interrupt_set(int irq)
 {
-	arch_interrupt_set(irq);
+	arch_interrupt_set(REEF_IRQ_NUMBER(irq));
 }
 
 static inline void interrupt_clear(int irq)
 {
-	arch_interrupt_clear(irq);
+	arch_interrupt_clear(REEF_IRQ_NUMBER(irq));
 }
 
 static inline uint32_t interrupt_global_disable(void)
@@ -79,9 +86,11 @@ static inline void interrupt_global_enable(uint32_t flags)
 	arch_interrupt_global_enable(flags);
 }
 
-uint32_t platform_interrupt_get_enabled(void);
-void platform_interrupt_clear(uint32_t irq, uint32_t mask);
-void platform_interrupt_mask(uint32_t irq, uint32_t mask);
-void platform_interrupt_unmask(uint32_t irq, uint32_t mask);
+/* called by platform interrupt ops */
+int irq_register_child(struct irq_parent *parent, int irq,
+	void (*handler)(void *arg), void *arg);
+void irq_unregister_child(struct irq_parent *parent, int irq);
+uint32_t irq_enable_child(struct irq_parent *parent, int irq);
+uint32_t irq_disable_child(struct irq_parent *parent, int irq);
 
 #endif

@@ -7,7 +7,8 @@ libcore_a_SOURCES = \
 	notifier.c \
 	trace.c \
 	schedule.c \
-	agent.c
+	agent.c \
+	interrupt.c
 
 if BUILD_DMA_TRACE
 libcore_a_SOURCES += \
