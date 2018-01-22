@@ -23,6 +23,7 @@ libreset_a_SOURCES = \
 
 libreset_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
+	$(ASFLAGS) \
 	$(ARCH_ASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	-mtext-section-literals
@@ -42,6 +43,7 @@ reef_CFLAGS = \
 
 reef_CCASFLAGS = \
 	$(ARCH_INCDIR) \
+	$(ASFLAGS) \
 	$(ARCH_ASFLAGS) \
 	$(PLATFORM_INCDIR)
 

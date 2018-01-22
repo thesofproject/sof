@@ -21,6 +21,10 @@ AC_CANONICAL_HOST
 # General compiler flags
 CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -fno-inline-functions -nostdlib -Wmissing-prototypes"
 
+# General assembler flags
+ASFLAGS="-DASSEMBLY"
+AC_SUBST(ASFLAGS)
+
 # Cross compiler tool libgcc and headers
 AC_ARG_WITH([root-dir],
         AS_HELP_STRING([--with-root-dir], [Specify location of cross gcc libraries and headers]),
