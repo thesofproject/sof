@@ -31,7 +31,6 @@ reef_SOURCES = \
 	crt1-boards.S \
 	_vectors.S \
 	init.c \
-	wait.S \
 	timer.c \
 	task.c
 

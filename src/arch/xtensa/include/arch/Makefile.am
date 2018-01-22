@@ -4,4 +4,5 @@ noinst_HEADERS = \
 	reef.h \
 	spinlock.h \
 	task.h \
-	timer.h
+	timer.h \
+	wait.h

@@ -35,6 +35,7 @@
 
 #include <stdint.h>
 #include <errno.h>
+#include <arch/wait.h>
 #include <reef/debug.h>
 #include <reef/work.h>
 #include <reef/timer.h>

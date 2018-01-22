@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,17 +28,42 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <xtensa/coreasm.h>
-#include <xtensa/config/specreg.h>
-#include "xtos-internal.h"
+#include <xtensa/xtruntime.h>
 
-	.text
-	.align 4
-	.global	arch_wait_for_interrupt
-	.type	arch_wait_for_interrupt,@function
-arch_wait_for_interrupt:
-	abi_entry
-	waiti 0
-	abi_return
+#if defined(CONFIG_CANNONLAKE)
 
-	.size	arch_wait_for_interrupt, . - arch_wait_for_interrupt
+static inline void arch_wait_for_interrupt(int level)
+{
+	int i;
+
+	/* this sequnce must be atomic on LX6 */
+	XTOS_SET_INTLEVEL(5);
+
+	/* LX6 needs a delay */
+	for (i = 0; i < 128; i++)
+		asm volatile("nop");
+
+	/* and to flush all loads/stores prior to wait */
+	asm volatile("isync");
+	asm volatile("extw");
+
+	/* now wait */
+	asm volatile("waiti 0");
+}
+
+#else
+
+static inline void arch_wait_for_interrupt(int level)
+{
+	 asm volatile("waiti 0");
+}
+
+#endif
+
+static inline void idelay(int n)
+{
+	while (n--) {
+		asm volatile("nop");
+	}
+}
+
