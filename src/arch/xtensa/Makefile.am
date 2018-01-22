@@ -49,9 +49,9 @@ reef_CCASFLAGS = \
 
 reef_LDADD = \
 	../../init/libinit.a \
-	../../platform/$(PLATFORM)/libplatform.a \
 	../../tasks/libtasks.a \
 	../../lib/libcore.a \
+	../../platform/$(PLATFORM)/libplatform.a \
 	../../ipc/libipc.a \
 	../../audio/libaudio.a \
 	../../math/libmath.a \
