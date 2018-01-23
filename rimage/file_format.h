@@ -55,6 +55,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+
 /*
  * Firmware file format .
  */
@@ -108,9 +109,9 @@ struct snd_sof_mod_hdr {
  */
 struct snd_sof_fw_header {
 	unsigned char sig[SND_SOF_FW_SIG_SIZE]; /* "Reef" */
-	uint32_t file_size; 	/* size of file minus this header */
-	uint32_t num_modules; 	/* number of modules */
-	uint32_t abi; 		/* version of header format */
+	uint32_t file_size;	/* size of file minus this header */
+	uint32_t num_modules;	/* number of modules */
+	uint32_t abi;		/* version of header format */
 } __attribute__((packed));
 
 #endif

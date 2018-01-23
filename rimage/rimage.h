@@ -1,7 +1,7 @@
 /*
  * ELF to firmware image creator.
  *
- * Copyright (c) 2015, Intel Corporation.
+ * Copyright (c) 2015-2018 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,92 +25,140 @@
 #include <openssl/err.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+#define MAX_MODULES		32
 
 struct adsp;
-struct fw_image_manifest;
+struct manifest;
+struct man_module;
 
-struct image {
-	const char *in_file;
-	const char *out_file;
-	FILE *in_fd;
-	FILE *out_fd;
-	void *pos;
+/* list of supported targets */
+enum machine_id {
+	MACHINE_BAYTRAIL	= 0,
+	MACHINE_CHERRYTRAIL,
+	MACHINE_BRASWELL,
+	MACHINE_HASWELL,
+	MACHINE_BROADWELL,
+	MACHINE_APOLLOLAKE,
+	MACHINE_CANNONLAKE,
+	MACHINE_MAX
+};
+
+/*
+ * ELF module data
+ */
+struct module {
+	const char *elf_file;
+	FILE *fd;
+
 	Elf32_Ehdr hdr;
 	Elf32_Shdr *section;
 	Elf32_Phdr *prg;
-	const struct adsp *adsp;
-	int abi;
-	int verbose;
 
-	int num_sections;
-	int num_bss;
-	int fw_size;
-	int bss_size;
-	int text_size;
-	int data_size;
-	int file_size;
-	int num_modules;
 	uint32_t text_start;
 	uint32_t text_end;
 	uint32_t data_start;
 	uint32_t data_end;
 	uint32_t bss_start;
 	uint32_t bss_end;
+	uint32_t foffset;
 
+	int num_sections;
+	int num_bss;
+	int fw_size;
 
-	/* disa */
-	void *in_buffer;
-	void *out_buffer;
+	/* sizes do not include any gaps */
+	int bss_size;
+	int text_size;
+	int data_size;
+
+	/* sizes do include gaps to nearest page */
+	int bss_file_size;
+	int text_file_size;
+	int data_file_size;
+};
+
+/*
+ * Firmware image context.
+ */
+struct image {
+
+	const char *out_file;
+	FILE *out_fd;
+	void *pos;
+
+	const struct adsp *adsp;
+	int abi;
+	int verbose;
+	int num_modules;
+	struct module module[MAX_MODULES];
+	uint32_t image_end;/* module end, equal to output image size */
 	int dump_sections;
+
+	/* SHA 256 */
+	const char *key_name;
+	EVP_MD_CTX *mdctx;
+	const EVP_MD *md;
+
+	/* file IO */
+	void *fw_image;
+	void *rom_image;
+	FILE *out_rom_fd;
+	FILE *out_man_fd;
+	FILE *out_unsigned_fd;
+	char out_rom_file[256];
+	char out_man_file[256];
+	char out_unsigned_file[256];
 };
 
-struct section {
-	const char *name;
-	uint32_t addr;
-	uint32_t size;
-};
-
-struct adsp_ops {
-	/* write header or manifest */
-	int (*write_header)(struct image *image);
-	/* write data modules */
-	int (*write_modules)(struct image *image);
-};
-
-enum machine_id {
-	MACHINE_BAYTRAIL	= 0,
-	MACHINE_CHERRYTRAIL,
-	MACHINE_MAX
-};
-
+/*
+ * Audio DSP descriptor and operations.
+ */
 struct adsp {
 	const char *name;
 	uint32_t iram_base;
 	uint32_t iram_size;
 	uint32_t dram_base;
 	uint32_t dram_size;
+	uint32_t sram_base;
+	uint32_t sram_size;
 	uint32_t host_iram_offset;
 	uint32_t host_dram_offset;
+	uint32_t rom_base;
+	uint32_t rom_size;
+	uint32_t imr_base;
+	uint32_t imr_size;
 
 	uint32_t image_size;
 	uint32_t dram_offset;
 
 	enum machine_id machine_id;
-	struct adsp_ops ops;
-	const struct section *sections;
+	int (*write_firmware)(struct image *image);
+	struct fw_image_manifest *man;
+
+	/* fixups */
+	uint32_t base_fw_text_size_fixup;	/* added to BASEFW text size */
 };
 
-/* headers used by multiple platforms */
-int byt_write_header(struct image *image);
+void module_sha256_create(struct image *image);
+void module_sha256_update(struct image *image, uint8_t *data, size_t bytes);
+void module_sha256_complete(struct image *image, uint8_t *hash);
+int ri_manifest_sign(struct image *image);
+void ri_hash(struct image *image, unsigned offset, unsigned size, char *hash);
 
-/* modules used by multiple platforms */
-int byt_write_modules(struct image *image);
-
-/* for disassembly */
-int write_byt_binary_image(struct image *image);
+int elf_parse_module(struct image *image, int module_index, const char *name);
+void elf_free_module(struct image *image, int module_index);
+int elf_is_rom(struct image *image, Elf32_Shdr *section);
+int elf_validate_modules(struct image *image);
+int elf_find_section(struct image *image, struct module *module,
+		const char *name);
 
 /* supported machines */
-extern const struct adsp byt_machine;
-extern const struct adsp cht_machine;
+extern const struct adsp machine_byt;
+extern const struct adsp machine_cht;
+extern const struct adsp machine_bsw;
+extern const struct adsp machine_hsw;
+extern const struct adsp machine_bdw;
+extern const struct adsp machine_apl;
+extern const struct adsp machine_cnl;
 
 #endif
