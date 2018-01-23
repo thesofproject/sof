@@ -157,6 +157,23 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_BROADWELL], [1], [Configure for Broadwell])
 	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
     ;;
+   cannonlake*)
+
+	PLATFORM_LDSCRIPT="cannonlake.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="cannonlake"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="cnl"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi4_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_CANNONLAKE], [1], [Configure for Cannonlake])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+    ;;
     *)
         AC_MSG_ERROR([Host platform not specified])
     ;;
@@ -167,6 +184,8 @@ AM_CONDITIONAL(BUILD_CHERRYTRAIL,  test "$FW_NAME" = "cht")
 AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
 AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
 AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
+AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
+AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 
 # DSP core support (Optional)
@@ -192,6 +211,9 @@ AS_IF([test "x$enable_dma_trace" != "xno"], [
 	])
 
 AM_CONDITIONAL(BUILD_DMA_TRACE,  test "x$enable_dma_trace" != "xno")
+
+PLATFORM_BOOT_LDR_LDSCRIPT="boot_ldr.x"
+AC_SUBST(PLATFORM_BOOT_LDR_LDSCRIPT)
 
 # Test after CFLAGS set othewise test of cross compiler fails. 
 AM_PROG_AS
@@ -246,6 +268,11 @@ AC_CONFIG_FILES([
 	src/platform/haswell/include/platform/Makefile
 	src/platform/haswell/include/xtensa/Makefile
 	src/platform/haswell/include/xtensa/config/Makefile
+	src/platform/cannonlake/Makefile
+	src/platform/cannonlake/include/Makefile
+	src/platform/cannonlake/include/platform/Makefile
+	src/platform/cannonlake/include/xtensa/Makefile
+	src/platform/cannonlake/include/xtensa/config/Makefile
 ])
 AC_OUTPUT
 

@@ -17,3 +17,7 @@ endif
 if BUILD_BROADWELL
 SUBDIRS = haswell
 endif
+
+if BUILD_CANNONLAKE
+SUBDIRS = cannonlake
+endif

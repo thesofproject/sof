@@ -45,6 +45,12 @@ if BUILD_HASWELL
 PLATFORM_DEFS = $(VECTOR_DEFS)
 endif
 
+if BUILD_CANNONLAKE
+PLATFORM_DEFS = $(VECTOR_DEFS)
+noinst_LIBRARIES += libxlevel6.a
+VECTOR_DEFS += -D__SPLIT__level6
+endif
+
 LEVEL_SRC = \
 	int-handler.S \
 	int-vector.S \
