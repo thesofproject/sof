@@ -41,6 +41,11 @@
 #include <platform/platform.h>
 #include <platform/timer.h>
 
+/* bootloader trace values */
+#define TRACE_BOOT_LDR_ENTRY		0x100
+#define TRACE_BOOT_LDR_HPSRAM		0x110
+#define TRACE_BOOT_LDR_MANIFEST	0x120
+#define TRACE_BOOT_LDR_JUMP		0x150
 
 /* general trace init codes - only used at boot when main trace is not available */
 #define TRACE_BOOT_START		0x1000
