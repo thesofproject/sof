@@ -42,6 +42,14 @@ libipc_a_SOURCES = \
 	dma-copy.c
 endif
 
+if BUILD_CANNONLAKE
+libipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	cnl-ipc.c \
+	dma-copy.c
+endif
+
 libipc_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
