@@ -6,6 +6,10 @@ if BUILD_CHERRYTRAIL
 SUBDIRS = baytrail 
 endif
 
+if BUILD_APOLLOLAKE
+SUBDIRS = apollolake
+endif
+
 if BUILD_HASWELL
 SUBDIRS = haswell
 endif

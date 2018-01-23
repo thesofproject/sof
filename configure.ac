@@ -106,6 +106,23 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_CHERRYTRAIL], [1], [Configure for Cherrytrail])
 	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
     ;;
+   apollolake*)
+
+	PLATFORM_LDSCRIPT="apollolake.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="apollolake"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="apl"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi3_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apololake])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+    ;;
     haswell*)
 
 	PLATFORM_LDSCRIPT="haswell.x"
@@ -150,6 +167,7 @@ AM_CONDITIONAL(BUILD_CHERRYTRAIL,  test "$FW_NAME" = "cht")
 AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
 AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
 AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
+AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],
@@ -218,6 +236,11 @@ AC_CONFIG_FILES([
 	src/platform/baytrail/include/platform/Makefile
 	src/platform/baytrail/include/xtensa/Makefile
 	src/platform/baytrail/include/xtensa/config/Makefile
+	src/platform/apollolake/Makefile
+	src/platform/apollolake/include/Makefile
+	src/platform/apollolake/include/platform/Makefile
+	src/platform/apollolake/include/xtensa/Makefile
+	src/platform/apollolake/include/xtensa/config/Makefile
 	src/platform/haswell/Makefile
 	src/platform/haswell/include/Makefile
 	src/platform/haswell/include/platform/Makefile
