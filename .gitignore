@@ -17,6 +17,7 @@
 .build
 *.dis
 *.lst
+.*
 
 Makefile
 Makefile.in
@@ -39,4 +40,8 @@ config.*
 *.gz
 *.xz
 src/arch/xtensa/reef
-reef-v*
+src/arch/xtensa/boot_ldr
+reef-*
+boot_ldr-*
+boot_module
+module
