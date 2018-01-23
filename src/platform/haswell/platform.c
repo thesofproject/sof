@@ -34,7 +34,6 @@
 #include <platform/dma.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
-#include <platform/pmc.h>
 #include <uapi/ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
