@@ -35,6 +35,10 @@
 #include "xtos-internal.h"
 #include <config.h>
 
+#if XCHAL_HAVE_BOOTLOADER
+#include <platform/memory.h>
+#endif
+
 // The following reset vector avoids initializing certain registers already
 // initialized by processor reset.  But it does initialize some of them
 // anyway, for minimal support of warm restart (restarting in software by
@@ -290,6 +294,7 @@ _ResetHandler:
 	s32i	a0, a2, 0	// clear sync variable
 .Ldonesync:
 #endif
+
 #if XCHAL_HAVE_EXTERN_REGS && XCHAL_HAVE_MP_RUNSTALL
 	/* On core 0, this releases other cores.  On other cores this has no effect, because
 	   runstall control is unconnected.  */
@@ -375,7 +380,6 @@ _ResetHandler:
 	movi	a2, _memmap_cacheattr_reset	/* note: absolute symbol, not a ptr */
 	cacheattr_set				/* set CACHEATTR from a2 (clobbers a3-a8) */
 #endif
-
 	/*  Now that caches are initialized, cache coherency can be enabled.  */
 #if XCHAL_DCACHE_IS_COHERENT
 # if XCHAL_HAVE_EXTERN_REGS && XCHAL_HAVE_MX && (XCHAL_HW_MIN_VERSION < XTENSA_HWVERSION_RE_2012_0)
@@ -574,7 +578,15 @@ unpackdone:
 	 *  needed (with -mlongcalls) which it doesn't with j or jx.
 	 *  Note:  This needs to be call0 regardless of the selected ABI.
 	 */
-	call0	_start		// jump to _start (in crt1-*.S)
+
+#if XCHAL_HAVE_BOOTLOADER
+		/*ToDo refine the _start*/
+		movi a0, REEF_TEXT_START
+		callx0 a0
+#else
+		call0	_start		// jump to _start (in crt1-*.S)
+#endif
+
 	/* does not return */
 
 #else /* XCHAL_HAVE_HALT */
