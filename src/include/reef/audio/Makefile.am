@@ -1,7 +1,9 @@
 SUBDIRS = coefficients
 
-noinst_HEADERS = \
+includedir = $(prefix)/include/sof/reef/audio
+
+include_HEADERS = \
 	component.h \
 	pipeline.h \
-	buffer.h \
-	format.h
+	format.h \
+	buffer.h

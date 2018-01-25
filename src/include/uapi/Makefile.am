@@ -1,4 +1,4 @@
-includedir = $(prefix)/include/sof
+includedir = $(prefix)/include/sof/uapi
 
 include_HEADERS = \
 	ipc.h \

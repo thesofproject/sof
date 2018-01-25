@@ -1,7 +1,11 @@
 SUBDIRS = audio math
 
 noinst_HEADERS = \
-	agent.h \
+	agent.h
+
+includedir = $(prefix)/include/sof/reef
+
+include_HEADERS = \
 	alloc.h \
 	clock.h \
 	dai.h \

@@ -33,6 +33,10 @@ make clean
 make
 make bin
 
+# Build library for host platform architecture
+./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
+make
+make install
 
 # list all the images
 ls -l src/arch/xtensa/*.ri

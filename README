@@ -13,6 +13,13 @@ Cherrytrail :-
 
 ./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
 
+Library for Host Platform :-
+If building library for host platform, run the following configure. Please modify
+the --prefix option to choose the directory for installing the library files and
+headers
+
+./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
+
 3) make
 
 4) make bin
