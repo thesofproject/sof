@@ -137,4 +137,5 @@ int ri_manifest_sign(struct image *image)
 		MAN_RSA_SIGNATURE_LEN),
 		(void *)man + MAN_SIG_PKG_OFFSET,
 		(man->css.size - man->css.header_len) * sizeof(uint32_t));
+	return 0;
 }
