@@ -128,6 +128,12 @@ struct dma {
 	void *private;
 };
 
+struct dma_int {
+	struct dma *dma;
+	uint32_t channel;
+	uint32_t irq;
+};
+
 struct dma *dma_get(int dmac_id);
 
 #define dma_set_drvdata(dma, data) \

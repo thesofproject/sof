@@ -821,6 +821,194 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 }
 
+static void dw_dma_setup(struct dma *dma)
+{
+	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
+	int i;
+
+	/* we cannot config DMAC if DMAC has been already enabled by host */
+	if (dw_read(dma, DW_DMA_CFG) != 0)
+		dw_write(dma, DW_DMA_CFG, 0x0);
+
+	/* now check that it's 0 */
+	for (i = DW_DMA_CFG_TRIES; i > 0; i--) {
+		if (dw_read(dma, DW_DMA_CFG) == 0)
+			goto found;
+	}
+	trace_dma_error("eDs");
+	return;
+
+found:
+	for (i = 0; i <  DW_MAX_CHAN; i++)
+		dw_read(dma, DW_DMA_CHAN_EN);
+
+#ifdef HAVE_HDDA
+	/* enable HDDA before DMAC */
+	shim_write(SHIM_HMDC, SHIM_HMDC_HDDA_ALLCH);
+#endif
+
+	/* enable the DMA controller */
+	dw_write(dma, DW_DMA_CFG, 1);
+
+	/* mask all interrupts for all 8 channels */
+	dw_write(dma, DW_MASK_TFR, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_BLOCK, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_SRC_TRAN, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_DST_TRAN, INT_MASK_ALL);
+	dw_write(dma, DW_MASK_ERR, INT_MASK_ALL);
+
+#ifdef DW_FIFO_PARTITION
+	/* TODO: we cannot config DMA FIFOs if DMAC has been already */
+	/* allocate FIFO partitions, 128 bytes for each ch */
+	dw_write(dma, DW_FIFO_PART1_LO, 0x100080);
+	dw_write(dma, DW_FIFO_PART1_HI, 0x100080);
+	dw_write(dma, DW_FIFO_PART0_HI, 0x100080);
+	dw_write(dma, DW_FIFO_PART0_LO, 0x100080 | (1 << 26));
+	dw_write(dma, DW_FIFO_PART0_LO, 0x100080);
+#endif
+
+	/* set channel priorities */
+	for (i = 0; i <  DW_MAX_CHAN; i++) {
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL ||\
+	defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+		dw_write(dma, DW_CTRL_HIGH(i),
+			 DW_CTLH_CLASS(dp->chan[i].class));
+#elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
+		dw_write(dma, DW_CFG_LOW(i),
+			 DW_CFG_CLASS(dp->chan[i].class));
+#endif
+	}
+}
+
+#ifdef CONFIG_APOLLOLAKE
+/* external layer 2 interrupt for dmac */
+static void dw_dma_irq_handler(void *data)
+{
+	struct dma_int *dma_int = (struct dma_int *)data;
+	struct dma *dma = dma_int->dma;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_sg_elem next;
+	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
+	uint32_t mask;
+	int i = dma_int->channel;
+
+	status_intr = dw_read(dma, DW_INTR_STATUS);
+	if (!status_intr)
+		trace_dma_error("eDI");
+
+	trace_dma("irq");
+	trace_value(status_intr);
+
+	/* get the source of our IRQ. */
+	status_block = dw_read(dma, DW_STATUS_BLOCK);
+	status_tfr = dw_read(dma, DW_STATUS_TFR);
+
+	/* TODO: handle errors, just clear them atm */
+	status_err = dw_read(dma, DW_STATUS_ERR);
+	if (status_err) {
+		trace_dma_error("eDi");
+		dw_write(dma, DW_CLEAR_ERR, status_err & i);
+	}
+
+	/* clear interrupts for channel*/
+	dw_write(dma, DW_CLEAR_BLOCK, status_block);
+	dw_write(dma, DW_CLEAR_TFR, status_tfr);
+
+	/* skip if channel is not running */
+	if (p->chan[i].status != COMP_STATE_ACTIVE) {
+		trace_dma_error("eDs");
+		return;
+	}
+
+	mask = 0x1 << i;
+
+#if DW_USE_HW_LLI
+		/* end of a LLI block */
+		if (status_block & mask &&
+		    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
+			next.src = DMA_RELOAD_LLI;
+			next.dest = DMA_RELOAD_LLI;
+			/* will reload lli by default */
+			next.size = DMA_RELOAD_LLI;
+			p->chan[i].cb(p->chan[i].cb_data,
+					DMA_IRQ_TYPE_BLOCK, &next);
+		}
+#endif
+	/* end of a transfer */
+	if ((status_tfr & mask) &&
+	    (p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)) {
+		trace_value(status_tfr);
+
+		next.src = DMA_RELOAD_LLI;
+		next.dest = DMA_RELOAD_LLI;
+		next.size = DMA_RELOAD_LLI; /* will reload lli by default */
+		if (p->chan[i].cb)
+			p->chan[i].cb(p->chan[i].cb_data,
+				DMA_IRQ_TYPE_LLIST, &next);
+
+		/* check for reload channel:
+		 * next.size is DMA_RELOAD_END, stop this dma copy;
+		 * next.size > 0 but not DMA_RELOAD_LLI, use next
+		 * element for next copy;
+		 * if we are waiting for pause, pause it;
+		 * otherwise, reload lli
+		 */
+		switch (next.size) {
+		case DMA_RELOAD_END:
+			p->chan[i].status = COMP_STATE_PREPARE;
+			break;
+		case DMA_RELOAD_LLI:
+			/* reload lli, but let's check if it is paused */
+			if (p->chan[i].status != COMP_STATE_PAUSED)
+				dw_dma_chan_reload_lli(dma, i);
+			break;
+		default:
+			dw_dma_chan_reload_next(dma, i, &next);
+			break;
+		}
+	}
+}
+
+static int dw_dma_probe(struct dma *dma)
+{
+	struct dma_int *dma_int[DW_MAX_CHAN];
+	struct dma_pdata *dw_pdata;
+	int i;
+
+	/* allocate private data */
+	dw_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*dw_pdata));
+	dma_set_drvdata(dma, dw_pdata);
+
+	spinlock_init(&dma->lock);
+
+	dw_dma_setup(dma);
+
+	/* init work */
+	for (i = 0; i < dma->plat_data.channels; i++) {
+		dw_pdata->chan[i].dma = dma;
+		dw_pdata->chan[i].channel = i;
+		dw_pdata->chan[i].status = COMP_STATE_INIT;
+
+		dma_int[i] = rzalloc(RZONE_SYS, RFLAGS_NONE,
+				     sizeof(struct dma_int));
+
+		dma_int[i]->dma = dma;
+		dma_int[i]->channel = i;
+		dma_int[i]->irq = dma->plat_data.irq +
+				(i << REEF_IRQ_BIT_SHIFT);
+
+		/* register our IRQ handler */
+		interrupt_register(dma_int[i]->irq,
+				   dw_dma_irq_handler,
+				   dma_int[i]);
+		interrupt_enable(dma_int[i]->irq);
+	}
+
+	return 0;
+}
+
+#else
+
 /* this will probably be called at the end of every period copied */
 static void dw_dma_irq_handler(void *data)
 {
@@ -915,64 +1103,6 @@ static void dw_dma_irq_handler(void *data)
 	}
 }
 
-static void dw_dma_setup(struct dma *dma)
-{
-	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
-	int i;
-
-	/* we cannot config DMAC if DMAC has been already enabled by host */
-	if (dw_read(dma, DW_DMA_CFG) != 0)
-		dw_write(dma, DW_DMA_CFG, 0x0);
-
-	/* now check that it's 0 */
-	for (i = DW_DMA_CFG_TRIES; i > 0; i--) {
-		if (dw_read(dma, DW_DMA_CFG) == 0)
-			goto found;
-	}
-	trace_dma_error("eDs");
-	return;
-
-found:
-	for (i = 0; i <  DW_MAX_CHAN; i++)
-		dw_read(dma, DW_DMA_CHAN_EN);
-
-#ifdef HAVE_HDDA
-	/* enable HDDA before DMAC */
-	shim_write(SHIM_HMDC, SHIM_HMDC_HDDA_ALLCH);
-#endif
-
-	/* enable the DMA controller */
-	dw_write(dma, DW_DMA_CFG, 1);
-
-	/* mask all interrupts for all 8 channels */
-	dw_write(dma, DW_MASK_TFR, INT_MASK_ALL);
-	dw_write(dma, DW_MASK_BLOCK, INT_MASK_ALL);
-	dw_write(dma, DW_MASK_SRC_TRAN, INT_MASK_ALL);
-	dw_write(dma, DW_MASK_DST_TRAN, INT_MASK_ALL);
-	dw_write(dma, DW_MASK_ERR, INT_MASK_ALL);
-
-#ifdef DW_FIFO_PARTITION
-	/* TODO: we cannot config DMA FIFOs if DMAC has been already */
-	/* allocate FIFO partitions, 128 bytes for each ch */
-	dw_write(dma, DW_FIFO_PART1_LO, 0x100080);
-	dw_write(dma, DW_FIFO_PART1_HI, 0x100080);
-	dw_write(dma, DW_FIFO_PART0_HI, 0x100080);
-	dw_write(dma, DW_FIFO_PART0_LO, 0x100080 | (1 << 26));
-	dw_write(dma, DW_FIFO_PART0_LO, 0x100080);
-#endif
-
-	/* set channel priorities */
-	for (i = 0; i <  DW_MAX_CHAN; i++) {
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
-	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
-		dw_write(dma, DW_CTRL_HIGH(i), DW_CTLH_CLASS(dp->chan[i].class));
-#else
-		dw_write(dma, DW_CFG_LOW(i), DW_CFG_CLASS(dp->chan[i].class));
-#endif
-	}
-
-}
-
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
@@ -999,6 +1129,7 @@ static int dw_dma_probe(struct dma *dma)
 
 	return 0;
 }
+#endif
 
 const struct dma_ops dw_dma_ops = {
 	.channel_get	= dw_dma_channel_get,
