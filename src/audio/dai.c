@@ -226,7 +226,8 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	}
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
+				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
 	dev->state = COMP_STATE_READY;
 	return dev;
 

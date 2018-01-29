@@ -396,22 +396,11 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
-	if (p->chan[channel].lli->llp) {
-		/* LLP mode - only write LLP pointer */
+	if (p->chan[channel].lli) {
+		/* LLP mode - write LLP pointer */
 		dw_write(dma, DW_LLP(channel), (uint32_t)p->chan[channel].lli);
-	} else {
-		/* single transfer */
-		dw_write(dma, DW_LLP(channel), 0);
-
-		/* channel needs started from scratch, so write SARn, DARn */
-		dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
-		dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
-
-		/* program CTLn */
-		dw_write(dma, DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
-		dw_write(dma, DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
 	}
-#else
+#endif
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), p->chan[channel].lli->sar);
 	dw_write(dma, DW_DAR(channel), p->chan[channel].lli->dar);
@@ -419,7 +408,6 @@ static int dw_dma_start(struct dma *dma, int channel)
 	/* program CTLn */
 	dw_write(dma, DW_CTRL_LOW(channel), p->chan[channel].lli->ctrl_lo);
 	dw_write(dma, DW_CTRL_HIGH(channel), p->chan[channel].lli->ctrl_hi);
-#endif
 
 	/* write channel config */
 	dw_write(dma, DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
@@ -1017,6 +1005,7 @@ static void dw_dma_irq_handler(void *data)
 	struct dma_sg_elem next;
 	uint32_t status_tfr = 0;
 	uint32_t status_block = 0;
+	uint32_t status_block_new = 0;
 	uint32_t status_err = 0;
 	uint32_t status_intr;
 	uint32_t mask;
@@ -1049,10 +1038,10 @@ static void dw_dma_irq_handler(void *data)
 	platform_interrupt_clear(dma_irq(dma), pmask);
 
 	/* confirm IRQ cleared */
-	status_block = dw_read(dma, DW_STATUS_BLOCK);
-	if (status_block) {
+	status_block_new = dw_read(dma, DW_STATUS_BLOCK);
+	if (status_block_new) {
 		trace_dma_error("eI2");
-		trace_value(status_block);
+		trace_value(status_block_new);
 	}
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -1063,12 +1052,25 @@ static void dw_dma_irq_handler(void *data)
 
 		mask = 0x1 << i;
 
+#if DW_USE_HW_LLI
+		/* end of a LLI block */
+		if (status_block & mask &&
+		    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
+			next.src = DMA_RELOAD_LLI;
+			next.dest = DMA_RELOAD_LLI;
+			next.size = DMA_RELOAD_LLI;
+			p->chan[i].cb(p->chan[i].cb_data,
+					DMA_IRQ_TYPE_BLOCK, &next);
+		}
+#endif
 		/* end of a transfer */
 		if ((status_tfr & mask) &&
 			(p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)) {
 
-			next.src = next.dest = DMA_RELOAD_LLI;
-			next.size = DMA_RELOAD_LLI; /* will reload lli by default */
+			next.src = DMA_RELOAD_LLI;
+			next.dest = DMA_RELOAD_LLI;
+			/* will reload lli by default */
+			next.size = DMA_RELOAD_LLI;
 			if (p->chan[i].cb)
 				p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_LLIST, &next);
@@ -1092,14 +1094,6 @@ static void dw_dma_irq_handler(void *data)
 				break;
 			}
 		}
-#if DW_USE_HW_LLI
-		/* end of a LLI block */
-		if (status_block & mask &&
-			p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
-			p->chan[i].cb(p->chan[i].cb_data,
-					DMA_IRQ_TYPE_BLOCK);
-		}
-#endif
 	}
 }
 
