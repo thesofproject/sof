@@ -65,6 +65,7 @@ struct module {
 	int num_sections;
 	int num_bss;
 	int fw_size;
+	int bss_index;
 
 	/* sizes do not include any gaps */
 	int bss_size;

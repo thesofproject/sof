@@ -27,6 +27,7 @@ static int elf_read_sections(struct image *image, struct module *module)
 	size_t count;
 	int i, ret;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
+	int man_section_idx;
 
 	/* read in section header */
 	ret = fseek(module->fd, hdr->e_shoff, SEEK_SET);
@@ -49,6 +50,16 @@ static int elf_read_sections(struct image *image, struct module *module)
 			module->elf_file, -errno);
 		return -errno;
 	}
+
+	/* find manifest module data */
+	man_section_idx = elf_find_section(image, module, ".bss");
+	if (man_section_idx < 0) {
+		return -EINVAL;
+	}
+	module->bss_index = man_section_idx;
+
+	fprintf(stdout, " BSS module metadata section at index %d\n",
+		man_section_idx);
 
 	/* parse each section */
 	for (i = 0; i < hdr->e_shnum; i++) {
@@ -211,7 +222,7 @@ int elf_is_rom(struct image *image, Elf32_Shdr *section)
 }
 
 static void elf_module_size(struct image *image, struct module *module,
-	Elf32_Shdr *section)
+	Elf32_Shdr *section, int index)
 {
 	switch (section->sh_type) {
 	case SHT_PROGBITS:
@@ -236,12 +247,14 @@ static void elf_module_size(struct image *image, struct module *module,
 		break;
 	case SHT_NOBITS:
 		/* bss */
-		if (module->bss_start > section->sh_addr)
+		if (index == module->bss_index) {
+			/* updated the .bss segment */
 			module->bss_start = section->sh_addr;
-		if (module->bss_end < section->sh_addr + section->sh_size)
 			module->bss_end = section->sh_addr + section->sh_size;
-
-		fprintf(stdout, "\tBSS\n");
+			fprintf(stdout, "\tBSS\n");
+		} else {
+			fprintf(stdout, "\tHEAP\n");
+		}
 		break;
 	default:
 		break;
@@ -282,7 +295,8 @@ static void elf_module_limits(struct image *image, struct module *module)
 			section->sh_size);
 
 		/* text or data section */
-		elf_module_size(image, module, section);
+		elf_module_size(image, module, section, i);
+
 	}
 
 	fprintf(stdout, "\n");
