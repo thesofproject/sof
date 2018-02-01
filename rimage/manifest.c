@@ -22,7 +22,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
-#include <sof/manifest.h>
+#include <sof/uapi/manifest.h>
 
 #include "rimage.h"
 #include "file_format.h"
