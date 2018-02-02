@@ -384,6 +384,7 @@ static int dai_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
+	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 
 	trace_dai("par");
 
@@ -392,6 +393,9 @@ static int dai_params(struct comp_dev *dev)
 		trace_dai_error("wdp");
 		return -EINVAL;
 	}
+
+	/* for DAI, we should configure its frame_fmt from topology */
+	dev->params.frame_fmt = dconfig->frame_fmt;
 
 	/* calculate period size based on config */
 	dev->frame_bytes = comp_frame_bytes(dev);
