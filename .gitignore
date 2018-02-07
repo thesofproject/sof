@@ -31,7 +31,8 @@ ar-lib
 stamp-h1
 CHANGELOG
 ltmain.sh
-m4/*
+m4/lt*
+m4/libtool.m4
 libtool
 src/include/version.h
 
