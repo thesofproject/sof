@@ -2,6 +2,7 @@
 *.Po
 *~
 *.a
+*.la
 *.Tpo
 *.swp
 *.bin
