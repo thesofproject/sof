@@ -184,6 +184,8 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCD, msg->header | SHIM_IPCD_BUSY);
 
+	list_item_append(&msg->list, &ipc->empty_list);
+
 out:
 	spin_unlock_irq(&ipc->lock, flags);
 }

@@ -168,7 +168,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	ipc_write(IPC_DIPCIE, 0);
 	ipc_write(IPC_DIPCI, 0x80000000 | msg->header);
 
-list_item_append(&msg->list, &ipc->empty_list);
+	list_item_append(&msg->list, &ipc->empty_list);
 
 out:
 	spin_unlock_irq(&ipc->lock, flags);
