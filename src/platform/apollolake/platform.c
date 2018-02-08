@@ -176,8 +176,7 @@ static struct timer platform_ext_timer = {
 
 int platform_init(struct reef *reef)
 {
-	struct dma *dmac0;
-	struct dma *dmac1;
+	struct dma *dmac;
 	struct dai *ssp2;
 
 	platform_interrupt_init();
@@ -232,15 +231,25 @@ int platform_init(struct reef *reef)
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
-	dmac0 = dma_get(DMA_GP_LP_DMAC0);
-	if (dmac0 == NULL)
+	dmac = dma_get(DMA_GP_LP_DMAC0);
+	if (dmac == NULL)
 		return -ENODEV;
-	dma_probe(dmac0);
+	dma_probe(dmac);
 
-	dmac1 = dma_get(DMA_GP_LP_DMAC1);
-	if (dmac1 == NULL)
+	dmac = dma_get(DMA_GP_LP_DMAC1);
+	if (dmac == NULL)
 		return -ENODEV;
-	dma_probe(dmac1);
+	dma_probe(dmac);
+
+	dmac = dma_get(DMA_HOST_OUT_DMAC);
+	if (dmac == NULL)
+		return -ENODEV;
+	dma_probe(dmac);
+
+	dmac = dma_get(DMA_HOST_IN_DMAC);
+	if (dmac == NULL)
+		return -ENODEV;
+	dma_probe(dmac);
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);

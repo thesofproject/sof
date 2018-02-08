@@ -142,6 +142,7 @@ case "$with_platform" in
 
 	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apololake])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
     haswell*)
 
@@ -193,6 +194,7 @@ case "$with_platform" in
 
 	AC_DEFINE([CONFIG_CANNONLAKE], [1], [Configure for Cannonlake])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
     *)
 	if test "$ARCH" = "host"; then
