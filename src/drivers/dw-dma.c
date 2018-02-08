@@ -236,8 +236,12 @@
 #define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
 #define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
 
-/* HW Linked list support currently disabled - needs debug for missing IRQs !!! */
+/* HW Linked list support, only enabled for APL/CNL at the moment */
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#define DW_USE_HW_LLI	1
+#else
 #define DW_USE_HW_LLI	0
+#endif
 
 /* number of tries to wait for reset */
 #define DW_DMA_CFG_TRIES	10000
@@ -922,6 +926,11 @@ static void dw_dma_irq_handler(void *data)
 			next.size = DMA_RELOAD_LLI;
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK, &next);
+			if (next.size == DMA_RELOAD_END) {
+				trace_dma("LSo");
+				/* disable channel, finished */
+				dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
+			}
 		}
 #endif
 	/* end of a transfer */
