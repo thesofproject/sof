@@ -3,6 +3,7 @@
 *~
 *.a
 *.la
+*.lo
 *.Tpo
 *.swp
 *.bin
