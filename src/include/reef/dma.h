@@ -89,7 +89,7 @@ struct dma_chan_status {
 /* DMA operations */
 struct dma_ops {
 
-	int (*channel_get)(struct dma *dma);
+	int (*channel_get)(struct dma *dma, int req_channel);
 	void (*channel_put)(struct dma *dma, int channel);
 
 	int (*start)(struct dma *dma, int channel);
@@ -163,9 +163,9 @@ struct dma *dma_get(int dmac_id);
  * 6) dma_channel_put()
  */
 
-static inline int dma_channel_get(struct dma *dma)
+static inline int dma_channel_get(struct dma *dma, int req_channel)
 {
-	return dma->ops->channel_get(dma);
+	return dma->ops->channel_get(dma, req_channel);
 }
 
 static inline void dma_channel_put(struct dma *dma, int channel)

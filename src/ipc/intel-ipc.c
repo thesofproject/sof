@@ -104,7 +104,7 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 	int ret = 0;
 
 	/* get DMA channel from DMAC0 */
-	chan = dma_channel_get(iipc->dmac0);
+	chan = dma_channel_get(iipc->dmac0, 0);
 	if (chan < 0) {
 		trace_ipc_error("ePC");
 		return chan;

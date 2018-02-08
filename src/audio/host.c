@@ -272,7 +272,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	list_item_prepend(&elem->list, &hd->config.elem_list);
 
 	/* get DMA channel from DMAC */
-	hd->chan = dma_channel_get(hd->dma);
+	hd->chan = dma_channel_get(hd->dma, 0);
 	if (hd->chan < 0) {
 		trace_host_error("eDC");
 		goto error;

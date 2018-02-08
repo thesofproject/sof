@@ -359,8 +359,8 @@ int dma_copy_new(struct dma_copy *dc, int dmac)
 		return -ENODEV;
 	}
 
-		/* get DMA channel from DMAC0 */
-	dc->chan = dma_channel_get(dc->dmac);
+	/* get DMA channel from DMAC0 */
+	dc->chan = dma_channel_get(dc->dmac, 0);
 	if (dc->chan < 0) {
 		trace_dma_error("ec1");
 		return dc->chan;

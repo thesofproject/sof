@@ -219,7 +219,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->xrun = 0;
 
 	/* get DMA channel from DMAC1 */
-	dd->chan = dma_channel_get(dd->dma);
+	dd->chan = dma_channel_get(dd->dma, 0);
 	if (dd->chan < 0){
 		trace_dai_error("eDc");
 		goto error;
