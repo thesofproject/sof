@@ -103,7 +103,7 @@ struct dma_ops {
 	int (*set_config)(struct dma *dma, int channel,
 		struct dma_sg_config *config);
 
-	void (*set_cb)(struct dma *dma, int channel, int type,
+	int (*set_cb)(struct dma *dma, int channel, int type,
 		void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 		void *data);
 
@@ -173,10 +173,10 @@ static inline void dma_channel_put(struct dma *dma, int channel)
 	dma->ops->channel_put(dma, channel);
 }
 
-static inline void dma_set_cb(struct dma *dma, int channel, int type,
+static inline int dma_set_cb(struct dma *dma, int channel, int type,
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next), void *data)
 {
-	dma->ops->set_cb(dma, channel, type, cb, data);
+	return dma->ops->set_cb(dma, channel, type, cb, data);
 }
 
 static inline int dma_start(struct dma *dma, int channel)

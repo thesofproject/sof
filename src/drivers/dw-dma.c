@@ -729,7 +729,7 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static void dw_dma_set_cb(struct dma *dma, int channel, int type,
+static int dw_dma_set_cb(struct dma *dma, int channel, int type,
 		void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 		void *data)
 {
@@ -741,6 +741,8 @@ static void dw_dma_set_cb(struct dma *dma, int channel, int type,
 	p->chan[channel].cb_data = data;
 	p->chan[channel].cb_type = type;
 	spin_unlock_irq(&dma->lock, flags);
+
+	return 0;
 }
 
 /* reload using LLI data */
