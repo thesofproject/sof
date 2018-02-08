@@ -119,6 +119,7 @@ struct dma_plat_data {
 	uint32_t base;
 	uint32_t channels;
 	uint32_t irq;
+	uint32_t chan_size;
 	void *drv_plat_data;
 };
 
@@ -145,6 +146,10 @@ struct dma *dma_get(int dmac_id);
 	dma->plat_data.base
 #define dma_irq(dma) \
 	dma->plat_data.irq
+#define dma_chan_size(dma) \
+	dma->plat_data.chan_size
+#define dma_chan_base(dma, chan) \
+	(dma->plat_data.base + chan * dma->plat_data.chan_size)
 
 /* DMA API
  * Programming flow is :-
