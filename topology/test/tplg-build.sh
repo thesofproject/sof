@@ -70,7 +70,8 @@ simple_test baytrail volume "Baytrail Audio" s24le 2 s24le 25 24 2400000 1920000
 simple_test baytrail volume "Baytrail Audio" s16le 2 s24le 25 24 2400000 19200000
 simple_test baytrail src "Baytrail Audio" s24le 2 s24le 25 24 2400000 19200000
 
-simple_test nocodec passthrough "NoCodec" s16le 4 s16le 16 16 1536000 24576000
-simple_test apollolake passthrough "SSP4-Codec" s16le 4 s16le 16 16 1536000 24576000
+# for APL
+simple_test nocodec volume "NoCodec" s16le 4 s16le 16 16 1536000 24576000
+simple_test codec volume "SSP4-Codec" s16le 4 s16le 16 16 1536000 24576000
 
 
