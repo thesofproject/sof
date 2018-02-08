@@ -38,6 +38,8 @@
 #include <reef/trace.h>
 #include <reef/wait.h>
 
+#define BIT(x) (1 << (x))
+
 #define SSP_CLK_AUDIO	0
 #define SSP_CLK_NET_PLL	1
 #define SSP_CLK_EXT	2
@@ -55,11 +57,17 @@
 #define SSTSA		0x30
 #define SSRSA		0x34
 #define SSTSS		0x38
+
+#if defined CONFIG_BAYTRAIL ||\
+	defined CONFIG_CHERRYTRAIL ||\
+	defined CONFIG_BROADWELL ||\
+	defined CONFIG_HASWELL
 #define SSCR2		0x40
 #define SFIFOTT		0x6C
 #define SSCR3		0x70
 #define SSCR4		0x74
 #define SSCR5		0x78
+#endif
 
 extern const struct dai_ops ssp_ops;
 
@@ -112,17 +120,28 @@ extern const struct dai_ops ssp_ops;
 #define SSCR1_TTE	(1 << 30)
 #define SSCR1_TTELP	(1 << 31)
 
+#if defined CONFIG_BAYTRAIL ||\
+	defined CONFIG_CHERRYTRAIL ||\
+	defined CONFIG_BROADWELL ||\
+	defined CONFIG_HASWELL
 /* SSCR2 bits */
-#define SSCR2_URUN_FIX0	(1 << 0)
-#define SSCR2_URUN_FIX1	(1 << 1)
-#define SSCR2_SLV_EXT_CLK_RUN_EN	(1 << 2)
-#define SSCR2_CLK_DEL_EN		(1 << 3)
-#define SSCR2_UNDRN_FIX_EN		(1 << 6)
-#define SSCR2_FIFO_EMPTY_FIX_EN		(1 << 7)
-#define SSCR2_ASRC_CNTR_EN		(1 << 8)
-#define SSCR2_ASRC_CNTR_CLR		(1 << 9)
-#define SSCR2_ASRC_FRM_CNRT_EN		(1 << 10)
-#define SSCR2_ASRC_INTR_MASK		(1 << 11)
+#define SSCR2_URUN_FIX0	BIT(0)
+#define SSCR2_URUN_FIX1	BIT(1)
+#define SSCR2_SLV_EXT_CLK_RUN_EN	BIT(2)
+#define SSCR2_CLK_DEL_EN		BIT(3)
+#define SSCR2_UNDRN_FIX_EN		BIT(6)
+#define SSCR2_FIFO_EMPTY_FIX_EN		BIT(7)
+#define SSCR2_ASRC_CNTR_EN		BIT(8)
+#define SSCR2_ASRC_CNTR_CLR		BIT(9)
+#define SSCR2_ASRC_FRM_CNRT_EN		BIT(10)
+#define SSCR2_ASRC_INTR_MASK		BIT(11)
+#elif defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#define SSCR2_TURM1		BIT(1)
+#define SSCR2_SDFD		BIT(14)
+#define SSCR2_SDPM		BIT(16)
+#define SSCR2_LJDFD		BIT(17)
+#endif
+
 
 /* SSR bits */
 #define SSSR_TNF	(1 << 2)
@@ -142,6 +161,17 @@ extern const struct dai_ops ssp_ops;
 #define SSPSP_SFRMWDTH(x)	((x) << 16)
 #define SSPSP_DMYSTOP(x)	((x) << 23)
 #define SSPSP_FSRT		(1 << 25)
+
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#define SSPSP_EDMYSTOP(x)	((x) << 26)
+#define SSTSS		0x38
+#define SSCR2		0x40
+#define SSPSP2	0x44
+#define SSCR3		0x48
+#define SSIOC		0x4C
+
+#define SSP_REG_MAX	SSIOC
+#endif
 
 /* SSCR3 bits */
 #define SSCR3_FRM_MST_EN	(1 << 0)
@@ -168,6 +198,22 @@ extern const struct dai_ops ssp_ops;
 /* SFIFOTT bits */
 #define SFIFOTT_TX(x)		((x) - 1)
 #define SFIFOTT_RX(x)		(((x) - 1) << 16)
+
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#define SSTSA_TSEN			BIT(8)
+#define SSRSA_RSEN			BIT(8)
+
+#define SSCR3_TFL_MASK	(0x0000003f)
+#define SSCR3_RFL_MASK	(0x00003f00)
+#define SSCR3_TFT_MASK	(0x003f0000)
+#define SSCR3_TX(x) (((x) - 1) << 16)
+#define SSCR3_RFT_MASK	(0x3f000000)
+#define SSCR3_RX(x) (((x) - 1) << 24)
+
+#define SSIOC_TXDPDEB	BIT(1)
+#define SSIOC_SFCR	BIT(4)
+#define SSIOC_SCOE	BIT(5)
+#endif
 
 /* tracing */
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)

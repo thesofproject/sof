@@ -212,6 +212,7 @@ AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
 AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
+AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],
