@@ -33,10 +33,17 @@ make clean
 make
 make bin
 
-# Build library for host platform architecture
-./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
+# Build for Apollolake
+make clean
+./configure --with-arch=xtensa --with-platform=apollolake --with-root-dir=$pwd/../xtensa-root/xtensa-bxt-elf --host=xtensa-bxt-elf
 make
-make install
+make bin
+
+# Build for Cannonlake
+make clean
+./configure --with-arch=xtensa --with-platform=cannonlake --with-root-dir=$pwd/../xtensa-root/xtensa-cnl-elf --host=xtensa-cnl-elf
+make
+make bin
 
 # list all the images
 ls -l src/arch/xtensa/*.ri
