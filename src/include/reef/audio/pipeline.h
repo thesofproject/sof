@@ -39,59 +39,60 @@
 #include <reef/dma.h>
 #include <reef/audio/component.h>
 #include <reef/trace.h>
-#include <reef/wait.h>
+#include <reef/schedule.h>
+#include <uapi/ipc.h>
 
+/* pipeline tracing */
 #define trace_pipe(__e)	trace_event(TRACE_CLASS_PIPE, __e)
 #define trace_pipe_error(__e)	trace_error(TRACE_CLASS_PIPE, __e)
 #define tracev_pipe(__e)	tracev_event(TRACE_CLASS_PIPE, __e)
+
+struct ipc_pipeline_dev;
+struct ipc;
 
 /*
  * Audio pipeline.
  */
 struct pipeline {
-	uint32_t id;		/* id */
 	spinlock_t lock;
-	completion_t complete;	/* indicate if the pipeline data is finished*/
+	struct sof_ipc_pipe_new ipc_pipe;
+
+	/* runtime status */
+	int32_t xrun_bytes;		/* last xrun length */
+	uint32_t status;		/* pipeline status */
 
 	/* lists */
-	struct list_item host_ep_list;		/* list of host endpoints */
-	struct list_item dai_ep_list;		/* list of DAI endpoints */
 	struct list_item comp_list;		/* list of components */
 	struct list_item buffer_list;		/* list of buffers */
-	struct list_item list;			/* list in pipeline list */
+
+	/* scheduling */
+	struct task pipe_task;		/* pipeline processing task */
+	struct comp_dev *sched_comp;	/* component that drives scheduling in this pipe */
+	struct comp_dev *source_comp;	/* source component for this pipe */
 };
 
-/* static pipeline ID */
+/* static pipeline */
 extern struct pipeline *pipeline_static;
 
-/* create new pipeline - returns pipeline id */
-struct pipeline *pipeline_new(uint32_t id);
-void pipeline_free(struct pipeline *p);
-
-struct pipeline *pipeline_from_id(int id);
-struct comp_dev *pipeline_get_comp(struct pipeline *p, uint32_t id);
-
-/* pipeline component creation and destruction */
-struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
-	uint32_t index, uint32_t direction);
-int pipeline_comp_free(struct pipeline *p, struct comp_dev *cd);
+/* pipeline creation and destruction */
+struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
+	struct comp_dev *cd);
+int pipeline_free(struct pipeline *p);
 
 /* pipeline buffer creation and destruction */
-struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
-	struct buffer_desc *desc);
-int pipeline_buffer_free(struct pipeline *p, struct comp_buffer *buffer);
+struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
+void buffer_free(struct comp_buffer *buffer);
 
 /* insert component in pipeline */
-int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_cd,
-	struct comp_dev *sink_cd, struct comp_buffer *buffer);
+int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
+	struct comp_buffer *sink_buffer);
+int pipeline_buffer_connect(struct pipeline *p,
+	struct comp_buffer *source_buffer, struct comp_dev *sink_comp);
+int pipeline_complete(struct pipeline *p);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,
-	struct stream_params *params);
-
-/* pipeline parameters */
-int pipeline_host_buffer(struct pipeline *p, struct comp_dev *cd,
-	struct dma_sg_elem *elem, uint32_t host_size);
+	struct sof_ipc_pcm_params *params);
 
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
@@ -107,13 +108,23 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host_cd, int cmd,
 int pipeline_init(void);
 
 /* static pipeline creation */
-struct pipeline *init_static_pipeline(void);
+int init_static_pipeline(struct ipc *ipc);
 
 /* pipeline creation */
 int init_pipeline(void);
 
-void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev);
+/* schedule a copy operation for this pipeline */
+void pipeline_schedule_copy(struct pipeline *p, uint64_t start);
+void pipeline_schedule_copy_idle(struct pipeline *p);
+void pipeline_schedule_cancel(struct pipeline *p);
+
+/* get time pipeline timestamps from host to dai */
+void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host_dev,
+	struct sof_ipc_stream_posn *posn);
 
 void pipeline_schedule(void *arg);
+
+/* notify host that we have XRUN */
+void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
 
 #endif

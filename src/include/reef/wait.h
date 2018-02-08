@@ -27,7 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *
- * Simple wait for event completion and signalling with timeouts.
+ * Simple wait for event completion and signaling with timeouts.
  */
 
 #ifndef __INCLUDE_WAIT__
@@ -35,17 +35,28 @@
 
 #include <stdint.h>
 #include <errno.h>
+#include <arch/wait.h>
 #include <reef/debug.h>
 #include <reef/work.h>
 #include <reef/timer.h>
 #include <reef/interrupt.h>
 #include <reef/trace.h>
+#include <reef/lock.h>
 #include <platform/interrupt.h>
+
+#if DEBUG_LOCKS
+#define wait_atomic_check	\
+	if (lock_dbg_atomic) { \
+		trace_error_atomic(TRACE_CLASS_WAIT, "atm"); \
+	}
+#else
+#define wait_atomic_check
+#endif
 
 typedef struct {
 	uint32_t complete;
 	struct work work;
-	uint32_t timeout;
+	uint64_t timeout;
 } completion_t;
 
 void arch_wait_for_interrupt(int level);
@@ -53,11 +64,12 @@ void arch_wait_for_interrupt(int level);
 static inline void wait_for_interrupt(int level)
 {
 	tracev_event(TRACE_CLASS_WAIT, "WFE");
+	wait_atomic_check;
 	arch_wait_for_interrupt(level);
 	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }
 
-static uint32_t _wait_cb(void *data, uint32_t delay)
+static uint64_t _wait_cb(void *data, uint64_t delay)
 {
 	volatile completion_t *wc = (volatile completion_t*)data;
 
@@ -112,17 +124,23 @@ static inline int wait_for_completion_timeout(completion_t *comp)
 	comp->timeout = 0;
 
 	/* check for completion after every wake from IRQ */
-	while (c->complete == 0 && c->timeout == 0) {
+	while (1) {
+
+		if (c->complete || c->timeout)
+			break;
+
 		wait_for_interrupt(0);
 	}
 
-	/* did we timeout */
-	if (c->timeout == 0) {
+	/* did we complete */
+	if (c->complete) {
 		/* no timeout so cancel work and return 0 */
 		work_cancel_default(&comp->work);
 		return 0;
 	} else {
 		/* timeout */
+		trace_value(c->timeout);
+		trace_value(c->complete);
 		return -ETIME;
 	}
 }

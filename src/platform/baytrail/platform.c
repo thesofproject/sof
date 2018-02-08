@@ -36,29 +36,42 @@
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/pmc.h>
-#include <uapi/intel-ipc.h>
+#include <uapi/ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
 #include <reef/dma.h>
+#include <reef/interrupt.h>
 #include <reef/reef.h>
 #include <reef/work.h>
 #include <reef/clock.h>
 #include <reef/ipc.h>
 #include <reef/trace.h>
+#include <reef/agent.h>
+#include <reef/dma-trace.h>
 #include <reef/audio/component.h>
 #include <config.h>
 #include <string.h>
+#include <version.h>
 
-static const struct sst_intel_ipc_fw_ready ready = {
-	/* for host, we need exchange the naming of inxxx and outxxx */
-	.inbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_OUTBOX_OFFSET,
-	.outbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_INBOX_OFFSET,
-	.inbox_size = MAILBOX_OUTBOX_SIZE,
-	.outbox_size = MAILBOX_INBOX_SIZE,
-	.fw_info_size = sizeof(struct fw_info),
-	{
-		.rsvd = PACKAGE_STRING,
+static const struct sof_ipc_fw_ready ready = {
+	.hdr = {
+		.cmd = SOF_IPC_FW_READY,
+		.size = sizeof(struct sof_ipc_fw_ready),
 	},
+	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
+	.dspbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_DSPBOX_OFFSET,
+	.hostbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_HOSTBOX_OFFSET,
+	.dspbox_size = MAILBOX_DSPBOX_SIZE,
+	.hostbox_size = MAILBOX_HOSTBOX_SIZE,
+	.version = {
+		.build = REEF_BUILD,
+		.minor = REEF_MINOR,
+		.major = REEF_MAJOR,
+		.date = __DATE__,
+		.time = __TIME__,
+		.tag = REEF_TAG,
+	},
+	/* TODO: add capabilities */
 };
 
 static struct work_queue_timesource platform_generic_queue = {
@@ -66,25 +79,30 @@ static struct work_queue_timesource platform_generic_queue = {
 		.id = TIMER3,	/* external timer */
 		.irq = IRQ_NUM_EXT_TIMER,
 	},
-	.clk		= CLK_SSP,
+	.clk		= PLATFORM_WORKQ_CLOCK,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
 };
 
+struct timer *platform_timer = &platform_generic_queue.timer;
+
 int platform_boot_complete(uint32_t boot_message)
 {
 	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
-	mailbox_outbox_write(0, &ready, sizeof(ready));
-
-	/* boot now complete so we can relax the CPU */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	/* now interrupt host to tell it we are done booting */
-	shim_write(SHIM_IPCDL, IPC_INTEL_FW_READY | outbox);
+	shim_write(SHIM_IPCDL, SOF_IPC_FW_READY | outbox);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
+
+	/* boot now complete so we can relax the CPU */
+	/* For now skip this to gain more processing performance
+	 * for SRC component.
+	 */
+	/* clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ); */
 
 	return 0;
 }
@@ -93,6 +111,18 @@ int platform_boot_complete(uint32_t boot_message)
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
+	case IRQ_NUM_EXT_SSP0:
+		shim_write(SHIM_PISR, mask << 3);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP1:
+		shim_write(SHIM_PISR, mask << 4);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP2:
+		shim_write(SHIM_PISR, mask << 5);
+		interrupt_clear(irq);
+		break;
 	case IRQ_NUM_EXT_DMAC0:
 		shim_write(SHIM_PISR, mask << 16);
 		interrupt_clear(irq);
@@ -104,6 +134,18 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 #if defined CONFIG_CHERRYTRAIL
 	case IRQ_NUM_EXT_DMAC2:
 		shim_write(SHIM_PISRH, mask << 0);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP3:
+		shim_write(SHIM_PISRH, mask << 8);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP4:
+		shim_write(SHIM_PISRH, mask << 9);
+		interrupt_clear(irq);
+		break;
+	case IRQ_NUM_EXT_SSP5:
+		shim_write(SHIM_PISRH, mask << 10);
 		interrupt_clear(irq);
 		break;
 #endif
@@ -120,27 +162,96 @@ uint32_t platform_interrupt_get_enabled(void)
 
 void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 {
-
+	switch (irq) {
+	case IRQ_NUM_EXT_SSP0:
+		shim_write(SHIM_PIMR, mask << 3);
+		break;
+	case IRQ_NUM_EXT_SSP1:
+		shim_write(SHIM_PIMR, mask << 4);
+		break;
+	case IRQ_NUM_EXT_SSP2:
+		shim_write(SHIM_PIMR, mask << 5);
+		break;
+	case IRQ_NUM_EXT_DMAC0:
+		shim_write(SHIM_PIMR, mask << 16);
+		break;
+	case IRQ_NUM_EXT_DMAC1:
+		shim_write(SHIM_PIMR, mask << 24);
+		break;
+#if defined CONFIG_CHERRYTRAIL
+	case IRQ_NUM_EXT_DMAC2:
+		shim_write(SHIM_PIMRH, mask << 8);
+		break;
+	case IRQ_NUM_EXT_SSP3:
+		shim_write(SHIM_PIMRH, mask << 0);
+		break;
+	case IRQ_NUM_EXT_SSP4:
+		shim_write(SHIM_PIMRH, mask << 1);
+		break;
+	case IRQ_NUM_EXT_SSP5:
+		shim_write(SHIM_PIMRH, mask << 2);
+		break;
+#endif
+	default:
+		break;
+	}
 }
 
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
-
+	switch (irq) {
+	case IRQ_NUM_EXT_SSP0:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 3));
+		break;
+	case IRQ_NUM_EXT_SSP1:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 4));
+		break;
+	case IRQ_NUM_EXT_SSP2:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 5));
+		break;
+	case IRQ_NUM_EXT_DMAC0:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 16));
+		break;
+	case IRQ_NUM_EXT_DMAC1:
+		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 24));
+		break;
+#if defined CONFIG_CHERRYTRAIL
+	case IRQ_NUM_EXT_DMAC2:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 8));
+		break;
+	case IRQ_NUM_EXT_SSP3:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 0));
+		break;
+	case IRQ_NUM_EXT_SSP4:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 1));
+		break;
+	case IRQ_NUM_EXT_SSP5:
+		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 2));
+		break;
+#endif
+	default:
+		break;
+	}
 }
 
-static struct timer platform_ext_timer = {
-	.id = TIMER3,
-	.irq = IRQ_NUM_EXT_TIMER,
-};
-
-int platform_init(void)
+int platform_init(struct reef *reef)
 {
 #if defined CONFIG_BAYTRAIL
-	struct dma *dmac0, *dmac1;
-	struct dai *ssp0, *ssp1, *ssp2;
+	struct dma *dmac0;
+	struct dma *dmac1;
+	struct dai *ssp0;
+	struct dai *ssp1;
+	struct dai *ssp2;
 #elif defined CONFIG_CHERRYTRAIL
-	struct dma *dmac0, *dmac1, *dmac2;
-	struct dai *ssp0, *ssp1, *ssp2, *ssp3, *ssp4, *ssp5;
+	struct dma *dmac0;
+	struct dma *dmac1;
+	struct dma *dmac2;
+	struct dai *ssp0;
+	struct dai *ssp1;
+	struct dai *ssp2;
+	struct dai *ssp3;
+	struct dai *ssp4;
+	struct dai *ssp5;
 #else
 #error Undefined platform
 #endif
@@ -165,14 +276,17 @@ int platform_init(void)
 	platform_ipc_pmc_init();
 
 	/* init work queues and clocks */
+	trace_point(TRACE_BOOT_SYS_WORK);
+	init_system_workq(&platform_generic_queue);
+
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(&platform_ext_timer);
+	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
 
-	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue);
+	/* init the system agent */
+	sa_init(reef);
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
@@ -185,7 +299,9 @@ int platform_init(void)
 
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init();
+	ipc_init(reef);
+
+	dma_trace_init_early(&reef->ipc->dmat);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -206,42 +322,50 @@ int platform_init(void)
 	dma_probe(dmac2);
 #endif
 
-	/* mask SSP interrupts */
+	/* mask SSP 0 - 2 interrupts */
 	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
+
+#if defined CONFIG_CHERRYTRAIL
+	/* mask SSP 3 - 5 interrupts */
+	shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) | 0x00000700);
+#endif
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	ssp0 = dai_get(COMP_TYPE_DAI_SSP, 0);
+	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0);
 	if (ssp0 == NULL)
 		return -ENODEV;
 	dai_probe(ssp0);
 
-	ssp1 = dai_get(COMP_TYPE_DAI_SSP, 1);
+	ssp1 = dai_get(SOF_DAI_INTEL_SSP, 1);
 	if (ssp1 == NULL)
 		return -ENODEV;
 	dai_probe(ssp1);
 
-	ssp2 = dai_get(COMP_TYPE_DAI_SSP, 2);
+	ssp2 = dai_get(SOF_DAI_INTEL_SSP, 2);
 	if (ssp2 == NULL)
 		return -ENODEV;
 	dai_probe(ssp2);
 
 #if defined CONFIG_CHERRYTRAIL
-	ssp3 = dai_get(COMP_TYPE_DAI_SSP, 3);
+	ssp3 = dai_get(SOF_DAI_INTEL_SSP, 3);
 	if (ssp3 == NULL)
 		return -ENODEV;
 	dai_probe(ssp3);
 
-	ssp4 = dai_get(COMP_TYPE_DAI_SSP, 4);
+	ssp4 = dai_get(SOF_DAI_INTEL_SSP, 4);
 	if (ssp4 == NULL)
 		return -ENODEV;
 	dai_probe(ssp4);
 
-	ssp5 = dai_get(COMP_TYPE_DAI_SSP, 5);
+	ssp5 = dai_get(SOF_DAI_INTEL_SSP, 5);
 	if (ssp5 == NULL)
 		return -ENODEV;
 	dai_probe(ssp5);
 #endif
+
+	/* Initialize DMA for Trace*/
+	dma_trace_init_complete(&reef->ipc->dmat);
 
 	return 0;
 }

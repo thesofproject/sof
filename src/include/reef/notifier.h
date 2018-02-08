@@ -34,6 +34,8 @@
 #include <stdint.h>
 #include <reef/list.h>
 
+struct reef;
+
 /* notifier general IDs */
 #define NOTIFIER_ID_CPU_FREQ	0
 #define NOTIFIER_ID_SSP_FREQ	1
@@ -50,6 +52,6 @@ void notifier_unregister(struct notifier *notifier);
 
 void notifier_event(int id, int message, void *event_data);
 
-void init_system_notify(void);
+void init_system_notify(struct reef *reef);
 
 #endif

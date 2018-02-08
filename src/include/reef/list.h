@@ -109,6 +109,10 @@ static inline int list_item_is_last(struct list_item *item,
 #define list_for_item(item, list) \
 	for (item = (list)->next; item != (list); item = item->next)
 
+/* list iterator */
+#define list_for_item_prev(item, list) \
+	for (item = (list)->prev; item != (list); item = item->prev)
+
 /* list iterator - safe to delete items */
 #define list_for_item_safe(item, tmp, list) \
 	for (item = (list)->next, tmp = item->next;\

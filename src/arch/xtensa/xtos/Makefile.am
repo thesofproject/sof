@@ -1,4 +1,11 @@
-lib_LIBRARIES = \
+noinst_HEADERS = \
+	xtos-internal.h \
+	xtos-params.h \
+	interrupt-pri.h \
+	window-vectors-new.S \
+	int-medpri-dispatcher.S
+
+noinst_LIBRARIES = \
 	libxtos.a \
 	libxlevel2.a \
 	libxlevel3.a \
@@ -24,9 +31,9 @@ if BUILD_CHERRYTRAIL
 PLATFORM_DEFS = $(VECTOR_DEFS)
 endif
 
-if BUILD_BROXTON
+if BUILD_APOLLOLAKE
 PLATFORM_DEFS = $(VECTOR_DEFS)
-lib_LIBRARIES += libxlevel6.a
+noinst_LIBRARIES += libxlevel6.a
 VECTOR_DEFS += -D__SPLIT__level6
 endif
 
@@ -36,6 +43,12 @@ endif
 
 if BUILD_HASWELL
 PLATFORM_DEFS = $(VECTOR_DEFS)
+endif
+
+if BUILD_CANNONLAKE
+PLATFORM_DEFS = $(VECTOR_DEFS)
+noinst_LIBRARIES += libxlevel6.a
+VECTOR_DEFS += -D__SPLIT__level6
 endif
 
 LEVEL_SRC = \
@@ -83,7 +96,7 @@ libxlevel5_a_CCASFLAGS = \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=5
 
-if BUILD_BROXTON
+if BUILD_APOLLOLAKE
 libxlevel6_a_SOURCES = \
 	$(LEVEL_SRC)
 

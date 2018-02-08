@@ -32,6 +32,7 @@
 #define __INCLUDE_PLATFORM_INTERRUPT__
 
 #include <stdint.h>
+#include <string.h>
 #include <reef/interrupt-map.h>
 
 /* IRQ numbers */
@@ -56,6 +57,13 @@
 #define IRQ_NUM_EXT_DMAC2	19	/* Level 5 */
 #define IRQ_NUM_NMI		20	/* Level 7 */
 
+/* SSP 3,4,5 share PHY IRQs with SSP 0,1,2 respectively but we give them a
+  virtual number in order to differentiate from SSP0, 1 and 2 IRQs */
+#define IRQ_CHT_SSP_OFFSET	16
+#define IRQ_NUM_EXT_SSP3	(IRQ_CHT_SSP_OFFSET + IRQ_NUM_EXT_SSP0)	/* Level 5 */
+#define IRQ_NUM_EXT_SSP4	(IRQ_CHT_SSP_OFFSET + IRQ_NUM_EXT_SSP1)	/* Level 5 */
+#define IRQ_NUM_EXT_SSP5	(IRQ_CHT_SSP_OFFSET + IRQ_NUM_EXT_SSP2)	/* Level 5 */
+
 /* IRQ Masks */
 #define IRQ_MASK_SOFTWARE0	(1 << IRQ_NUM_SOFTWARE0)
 #define IRQ_MASK_TIMER1		(1 << IRQ_NUM_TIMER1)
@@ -76,5 +84,21 @@
 #define IRQ_MASK_EXT_SSP1	(1 << IRQ_NUM_EXT_SSP1)
 #define IRQ_MASK_EXT_SSP2	(1 << IRQ_NUM_EXT_SSP2)
 #define IRQ_MASK_EXT_DMAC2	(1 << IRQ_NUM_EXT_DMAC2)
+
+/* no nested interrupts */
+#define PLATFORM_IRQ_CHILDREN	0
+
+static inline void platform_interrupt_init(void) {}
+
+static inline struct irq_parent *platform_irq_get_parent(uint32_t irq)
+{
+	return NULL;
+}
+
+void platform_interrupt_set(int irq);
+void platform_interrupt_clear(uint32_t irq, uint32_t mask);
+uint32_t platform_interrupt_get_enabled(void);
+void platform_interrupt_mask(uint32_t irq, uint32_t mask);
+void platform_interrupt_unmask(uint32_t irq, uint32_t mask);
 
 #endif

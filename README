@@ -7,11 +7,18 @@ Build Instructions
 
 Baytrail :-
 
-./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
+./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
 
 Cherrytrail :-
 
-./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=~/source/reef/xtensa-byt-elf --host=xtensa-byt-elf host_alias=xtensa-byt-elf
+./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
+
+Library for Host Platform :-
+If building library for host platform, run the following configure. Please modify
+the --prefix option to choose the directory for installing the library files and
+headers
+
+./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
 
 3) make
 

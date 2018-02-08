@@ -37,6 +37,7 @@
 #include <reef/wait.h>
 #include <reef/trace.h>
 #include <platform/interrupt.h>
+#include <platform/pmc.h>
 #include <platform/shim.h>
 
 
@@ -53,7 +54,8 @@ static struct intel_ipc_pmc_data *_pmc;
 
 static void do_cmd(void)
 {
-	uint32_t ipcsc, status = 0;
+	uint32_t ipcsc;
+	uint32_t status = 0;
 	
 	trace_ipc("SCm");
 	trace_value(_pmc->msg_l);
@@ -123,7 +125,8 @@ static void irq_handler(void *arg)
 
 int ipc_pmc_send_msg(uint32_t message)
 {
-	uint32_t ipclpesch, irq_mask;
+	uint32_t ipclpesch;
+	uint32_t irq_mask;
 
 	trace_ipc("SMs");
 
@@ -165,7 +168,7 @@ int platform_ipc_pmc_init(void)
 	uint32_t imrlpesc;
 
 	/* init ipc data */
-	_pmc = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_pmc_data));
+	_pmc = rmalloc(RZONE_SYS, RFLAGS_NONE, sizeof(struct intel_ipc_pmc_data));
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_PMC, irq_handler, NULL);

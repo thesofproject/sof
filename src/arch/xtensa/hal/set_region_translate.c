@@ -69,12 +69,12 @@ static inline unsigned probe_itlb(unsigned addr) {
 	return tmp;
 }
 
-void invalidate_dtlb_entry(unsigned addr) {
+static inline void invalidate_dtlb_entry(unsigned addr) {
 	__asm__ __volatile__("idtlb  %0; dsync \n\t"
 			: : "a" (addr));
 }
 
-void invalidate_itlb_entry(unsigned addr) {
+static inline void invalidate_itlb_entry(unsigned addr) {
 	__asm__ __volatile__("iitlb  %0 ; isync\n\t"
 			: : "a" (addr));
 }

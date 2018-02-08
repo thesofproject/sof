@@ -41,6 +41,31 @@ STATE_DEFS = \
 	-D__SPLIT__get_cpenable \
 	-D__SPLIT__set_cpenable
 
+STATE_DEFS_CNL = \
+	-D__SPLIT__extra_size \
+	-D__SPLIT__extra_align \
+	-D__SPLIT__cpregs_size \
+	-D__SPLIT__cpregs_align \
+	-D__SPLIT__cp_names \
+	-D__SPLIT__all_extra_size \
+	-D__SPLIT__all_extra_align \
+	-D__SPLIT__num_coprocessors \
+	-D__SPLIT__cp_num \
+	-D__SPLIT__cp_max \
+	-D__SPLIT__cp_mask \
+	-D__SPLIT__cp_id_mappings \
+	-D__SPLIT__cp_mask_mappings \
+	-D__SPLIT__init_mem_extra \
+	-D__SPLIT__init_mem_cp \
+	-D__SPLIT__save_extra \
+	-D__SPLIT__restore_extra \
+	-D__SPLIT__cpregs_save_fn \
+	-D__SPLIT__cpregs_restore_fn \
+	-D__SPLIT__validate_cp \
+	-D__SPLIT__invalidate_cp \
+	-D__SPLIT__get_cpenable \
+	-D__SPLIT__set_cpenable
+
 DISASS_DEFS = \
 	-D__SPLIT__op0_format_lengths \
 	-D__SPLIT__byte0_format_lengths \
@@ -134,7 +159,43 @@ PLATFORM_DEFS = \
 	$(CACHE_DEFS)
 endif
 
-lib_LIBRARIES = libhal.a
+if BUILD_BROADWELL
+PLATFORM_DEFS = \
+	$(STATE_DEFS) \
+	$(DISASS_DEFS) \
+	$(MISC_DEFS) \
+	$(INTERRUPTS_DEFS) \
+	$(CACHE_DEFS)
+endif
+
+if BUILD_HASWELL
+PLATFORM_DEFS = \
+	$(STATE_DEFS) \
+	$(DISASS_DEFS) \
+	$(MISC_DEFS) \
+	$(INTERRUPTS_DEFS) \
+	$(CACHE_DEFS)
+endif
+
+if BUILD_APOLLOLAKE
+PLATFORM_DEFS = \
+	$(STATE_DEFS) \
+	$(DISASS_DEFS) \
+	$(MISC_DEFS) \
+	$(INTERRUPTS_DEFS) \
+	$(CACHE_DEFS)
+endif
+
+if BUILD_CANNONLAKE
+PLATFORM_DEFS = \
+	$(STATE_DEFS_CNL) \
+	$(DISASS_DEFS) \
+	$(MISC_DEFS) \
+	$(INTERRUPTS_DEFS) \
+	$(CACHE_DEFS)
+endif
+
+noinst_LIBRARIES = libhal.a
 
 libhal_a_SOURCES = \
 	attribute.c \

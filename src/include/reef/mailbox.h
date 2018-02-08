@@ -32,10 +32,11 @@
 #define __INCLUDE_MAILBOX__
 
 #include <platform/mailbox.h>
+#include <arch/cache.h>
 #include <stdint.h>
 
-/* almost 1k should be enough for everyone ..... */
-#define IPC_MAX_MAILBOX_BYTES 0xe80
+/* 4k should be enough for everyone ..... */
+#define IPC_MAX_MAILBOX_BYTES 0x1000
 
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE
@@ -43,17 +44,17 @@
 #define mailbox_get_exception_size() \
 	MAILBOX_EXCEPTION_SIZE
 
-#define mailbox_get_outbox_base() \
-	MAILBOX_OUTBOX_BASE
+#define mailbox_get_dspbox_base() \
+	MAILBOX_DSPBOX_BASE
 
-#define mailbox_get_outbox_size() \
-	MAILBOX_OUTBOX_SIZE
+#define mailbox_get_dspbox_size() \
+	MAILBOX_DSPBOX_SIZE
 
-#define mailbox_get_inbox_base() \
-	MAILBOX_INBOX_BASE
+#define mailbox_get_hostbox_base() \
+	MAILBOX_HOSTBOX_BASE
 
-#define mailbox_get_inbox_size() \
-	MAILBOX_INBOX_SIZE
+#define mailbox_get_hostbox_size() \
+	MAILBOX_HOSTBOX_SIZE
 
 #define mailbox_get_debug_base() \
 	MAILBOX_DEBUG_BASE
@@ -61,16 +62,20 @@
 #define mailbox_get_debug_size() \
 	MAILBOX_DEBUG_SIZE
 
-#define mailbox_outbox_write(dest, src, bytes) \
-	rmemcpy((void*)(MAILBOX_OUTBOX_BASE + dest), src, bytes);
+#define mailbox_dspbox_write(dest, src, bytes) \
+	rmemcpy((void*)(MAILBOX_DSPBOX_BASE + dest), src, bytes); \
+	dcache_writeback_region((void*)(MAILBOX_DSPBOX_BASE + dest), bytes);
 
-#define mailbox_outbox_read(dest, src, bytes) \
-	rmemcpy(dest, (void*)(MAILBOX_OUTBOX_BASE + src), bytes);
+#define mailbox_dspbox_read(dest, src, bytes) \
+	dcache_invalidate_region((void*)(MAILBOX_DSPBOX_BASE + src), bytes); \
+	rmemcpy(dest, (void*)(MAILBOX_DSPBOX_BASE + src), bytes);
 
-#define mailbox_inbox_write(dest, src, bytes) \
-	rmemcpy((void*)(MAILBOX_INBOX_BASE + dest), src, bytes);
+#define mailbox_hostbox_write(dest, src, bytes) \
+	rmemcpy((void*)(MAILBOX_HOSTBOX_BASE + dest), src, bytes); \
+	dcache_writeback_region((void*)(MAILBOX_HOSTBOX_BASE + dest), bytes);
 
-#define mailbox_inbox_read(dest, src, bytes) \
-	rmemcpy(dest, (void*)(MAILBOX_INBOX_BASE + src), bytes);
+#define mailbox_hostbox_read(dest, src, bytes) \
+	dcache_invalidate_region((void*)(MAILBOX_HOSTBOX_BASE + src), bytes); \
+	rmemcpy(dest, (void*)(MAILBOX_HOSTBOX_BASE + src), bytes);
 
 #endif

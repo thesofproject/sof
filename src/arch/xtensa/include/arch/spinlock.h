@@ -37,6 +37,9 @@
 
 typedef struct {
 	volatile uint32_t lock;
+#if DEBUG_LOCKS
+	uint32_t user;
+#endif
 } spinlock_t;
 
 static inline void arch_spinlock_init(spinlock_t *lock)
@@ -57,6 +60,24 @@ static inline void arch_spin_lock(spinlock_t *lock)
 		: "=&a" (result)
 		: "a" (&lock->lock)
 		: "memory");
+}
+
+static inline int arch_try_lock(spinlock_t *lock)
+{
+	uint32_t result;
+
+	__asm__ __volatile__(
+		"       movi    %0, 0\n"
+		"       wsr     %0, scompare1\n"
+		"       movi    %0, 1\n"
+		"       s32c1i  %0, %1, 0\n"
+		: "=&a" (result)
+		: "a" (&lock->lock)
+		: "memory");
+
+	if (result)
+		return 0; /* lock failed */
+	return 1; /* lock acquired */
 }
 
 static inline void arch_spin_unlock(spinlock_t *lock)

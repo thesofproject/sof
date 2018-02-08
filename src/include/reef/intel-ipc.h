@@ -44,6 +44,6 @@ struct intel_ipc_data {
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
 };
 
-uint32_t ipc_cmd(void);
+int ipc_cmd(void);
 
 #endif

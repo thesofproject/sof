@@ -36,6 +36,7 @@
 #include <reef/list.h>
 #include <reef/lock.h>
 #include <reef/reef.h>
+#include <reef/wait.h>
 
 /* DMA directions */
 #define DMA_DIR_MEM_TO_MEM	0	/* local memcpy */
@@ -45,23 +46,13 @@
 #define DMA_DIR_DEV_TO_MEM	4
 #define DMA_DIR_DEV_TO_DEV	5
 
-/* DMA status flags */
-#define DMA_STATUS_FREE		0
-#define DMA_STATUS_IDLE		1
-#define DMA_STATUS_RUNNING	2
-#define DMA_STATUS_DRAINING	4
-#define DMA_STATUS_CLOSING	5
-#define DMA_STATUS_PAUSED	6
-#define DMA_STATUS_PAUSING	7
-#define DMA_STATUS_STOPPING	8
-
 /* DMA IRQ types */
 #define DMA_IRQ_TYPE_BLOCK	(1 << 0)
 #define DMA_IRQ_TYPE_LLIST	(1 << 1)
 
 
 /* We will use this macro in cb handler to inform dma that
- * we need to stop the reload for specail purpose
+ * we need to stop the reload for special purpose
  */
 #define DMA_RELOAD_END	0
 #define DMA_RELOAD_LLI	0xFFFFFFFF
@@ -79,6 +70,7 @@ struct dma_sg_elem {
 struct dma_sg_config {
 	uint32_t src_width;
 	uint32_t dest_width;
+	uint32_t burst_elems;
 	uint32_t direction;
 	uint32_t src_dev;
 	uint32_t dest_dev;
@@ -101,7 +93,7 @@ struct dma_ops {
 	void (*channel_put)(struct dma *dma, int channel);
 
 	int (*start)(struct dma *dma, int channel);
-	int (*stop)(struct dma *dma, int channel, int drain);
+	int (*stop)(struct dma *dma, int channel);
 	int (*pause)(struct dma *dma, int channel);
 	int (*release)(struct dma *dma, int channel);
 	int (*status)(struct dma *dma, int channel,
@@ -134,6 +126,12 @@ struct dma {
 	spinlock_t lock;
 	const struct dma_ops *ops;
 	void *private;
+};
+
+struct dma_int {
+	struct dma *dma;
+	uint32_t channel;
+	uint32_t irq;
 };
 
 struct dma *dma_get(int dmac_id);
@@ -180,9 +178,9 @@ static inline int dma_start(struct dma *dma, int channel)
 	return dma->ops->start(dma, channel);
 }
 
-static inline int dma_stop(struct dma *dma, int channel, int drain)
+static inline int dma_stop(struct dma *dma, int channel)
 {
-	return dma->ops->stop(dma, channel, drain);
+	return dma->ops->stop(dma, channel);
 }
 
 static inline int dma_pause(struct dma *dma, int channel)
@@ -238,12 +236,33 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_config *sg)
 	return size;
 }
 
+/* generic DMA DSP <-> Host copier */
+
+struct dma_copy {
+	int chan;
+	struct dma *dmac;
+	completion_t complete;
+};
+
+/* init dma copy context */
+int dma_copy_new(struct dma_copy *dc, int dmac);
+
+/* free dma copy context resources */
+static inline void dma_copy_free(struct dma_copy *dc)
+{
+	dma_channel_put(dc->dmac, dc->chan);
+}
+
 /* DMA copy data from host to DSP */
-int dma_copy_from_host(struct dma_sg_config *host_sg,
+int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size);
+int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
 
 /* DMA copy data from DSP to host */
-int dma_copy_to_host(struct dma_sg_config *host_sg,
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size);
+int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
 
 #endif

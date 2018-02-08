@@ -31,6 +31,8 @@
 #ifndef __PLATFORM_MEMORY_H__
 #define __PLATFORM_MEMORY_H__
 
+#include <config.h>
+
 /* physical DSP addresses */
 
 #define SHIM_BASE	0xFF340000
@@ -73,33 +75,79 @@
 #define SSP5_BASE	0xFF2A6000
 #define SSP5_SIZE	0x00001000
 
-/* HEAP Constants - WARNING this MUST be aligned with the linker script */
-/* TODO:preproces linker script with this header to align automatically. */
+/*
+ * The Heap and Stack on Baytrail are organised like this :-
+ *
+ * +--------------------------------------------------------------------------+
+ * | Offset              | Region         |  Size                             |
+ * +---------------------+----------------+-----------------------------------+
+ * | DRAM0_BASE          | RO Data        |  REEF_DATA_SIZE                   |
+ * |                     | Data           |                                   |
+ * |                     | BSS            |                                   |
+ * +---------------------+----------------+-----------------------------------+
+ * | HEAP_SYSTEM_BASE    | System Heap    |  HEAP_SYSTEM_SIZE                 |
+ * +---------------------+----------------+-----------------------------------+
+ * | HEAP_RUNTIME_BASE   | Runtime Heap   |  HEAP_RUNTIME_SIZE                |
+ * +---------------------+----------------+-----------------------------------+
+ * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
+ * +---------------------+----------------+-----------------------------------+
+ * | REEF_STACK_END      | Stack          |  REEF_STACK_SIZE                  |
+ * +---------------------+----------------+-----------------------------------+
+ * | REEF_STACK_BASE     |                |                                   |
+ * +---------------------+----------------+-----------------------------------+
+ */
+
 
 /* Heap section sizes for module pool */
-#define HEAP_MOD_COUNT8			0
-#define HEAP_MOD_COUNT16		256
-#define HEAP_MOD_COUNT32		128
-#define HEAP_MOD_COUNT64		64
-#define HEAP_MOD_COUNT128		32
-#define HEAP_MOD_COUNT256		16
-#define HEAP_MOD_COUNT512		8
-#define HEAP_MOD_COUNT1024		4
+#define HEAP_RT_COUNT8			0
+#define HEAP_RT_COUNT16		    64
+#define HEAP_RT_COUNT32		    64
+#define HEAP_RT_COUNT64		    64
+#define HEAP_RT_COUNT128		64
+#define HEAP_RT_COUNT256		64
+#define HEAP_RT_COUNT512		8
+#define HEAP_RT_COUNT1024		4
 
-/* total Heap for modules - must be aligned with linker script !!! */
-#define HEAP_MOD_SIZE \
-	(HEAP_MOD_COUNT8 * 8 + HEAP_MOD_COUNT16 * 16 + \
-	HEAP_MOD_COUNT32 * 32 + HEAP_MOD_COUNT64 * 64 + \
-	HEAP_MOD_COUNT128 * 128 + HEAP_MOD_COUNT256 * 256 + \
-	HEAP_MOD_COUNT512 * 512 + HEAP_MOD_COUNT1024 * 1024)
+/* Heap configuration */
+#define REEF_DATA_SIZE			0x6800
 
-/* Heap for buffers */
-#define HEAP_BUF_BLOCK_SIZE	1024
-#define HEAP_BUF_COUNT	111
-#define HEAP_BUF_SIZE (HEAP_BUF_BLOCK_SIZE * HEAP_BUF_COUNT)
+#define HEAP_SYSTEM_BASE		(DRAM0_BASE + REEF_DATA_SIZE)
+#define HEAP_SYSTEM_SIZE		0x2000
 
-/* Remaining DRAM for Stack, data and BSS. TODO: verify no overflow during build */
-#define SYSTEM_MEM \
-	(DRAM0_SIZE - HEAP_MOD_SIZE - HEAP_BUF_SIZE)
+#define HEAP_RUNTIME_BASE		(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
+#define HEAP_RUNTIME_SIZE \
+	(HEAP_RT_COUNT8 * 8 + HEAP_RT_COUNT16 * 16 + \
+	HEAP_RT_COUNT32 * 32 + HEAP_RT_COUNT64 * 64 + \
+	HEAP_RT_COUNT128 * 128 + HEAP_RT_COUNT256 * 256 + \
+	HEAP_RT_COUNT512 * 512 + HEAP_RT_COUNT1024 * 1024)
+
+#define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
+#define HEAP_BUFFER_SIZE	\
+    (DRAM0_SIZE - HEAP_RUNTIME_SIZE - REEF_STACK_SIZE - HEAP_SYSTEM_SIZE)
+
+#define HEAP_BUFFER_BLOCK_SIZE		0x180
+#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+
+/* DMA buffer heap is the same physical memory as buffer heap on baytrail */
+#define HEAP_DMA_BUFFER_BASE		0
+#define HEAP_DMA_BUFFER_SIZE		0
+#define HEAP_DMA_BUFFER_BLOCK_SIZE	0
+#define HEAP_DMA_BUFFER_COUNT		0
+
+/* Stack configuration */
+#define REEF_STACK_SIZE				0x1000
+#define REEF_STACK_BASE				(DRAM0_BASE + DRAM0_SIZE)
+#define REEF_STACK_END				(REEF_STACK_BASE - REEF_STACK_SIZE)
+
+/* Vector and literal sizes - not in core-isa.h */
+#define REEF_MEM_VECT_LIT_SIZE		0x4
+#define REEF_MEM_VECT_TEXT_SIZE		0x1c
+#define REEF_MEM_VECT_SIZE		(REEF_MEM_VECT_TEXT_SIZE + REEF_MEM_VECT_LIT_SIZE)
+
+#define REEF_MEM_RESET_TEXT_SIZE	0x2e0
+#define REEF_MEM_RESET_LIT_SIZE		0x120
+#define REEF_MEM_VECBASE_LIT_SIZE	0x178
+
+#define REEF_MEM_RO_SIZE			0x8
 
 #endif

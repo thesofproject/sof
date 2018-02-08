@@ -37,49 +37,60 @@
 #include <reef/lock.h>
 #include <reef/list.h>
 #include <reef/reef.h>
+#include <reef/alloc.h>
 #include <reef/dma.h>
 #include <reef/stream.h>
-#include <reef/alloc.h>
+#include <reef/audio/buffer.h>
+#include <reef/audio/pipeline.h>
+#include <uapi/ipc.h>
 
-/* audio component states
- * the states may transform as below:
- *        new()         params()          start()
- * none	-----> init ------> setup -----> running
- * none	<----- init <------ setup <----- running
- *        free()          reset()             stop()
+/*
+ * Audio Component States
+ *
+ * States may transform as below:-
+ *
+ * 1) i.e. Initialisation to playback and pause/release
+ * init --> setup --> prepare --> active <-> paused --+
+ *                       ^                             |
+ *                       +-----------------------------+
+ *
+ * 2) i.e. Suspend
+ *
+ * setup --> suspend --> setup OR
+ * prepare --> suspend -> prepare OR
+ * paused --> suspend --> paused
  */
+
 #define COMP_STATE_INIT		0	/* component being initialised */
-#define COMP_STATE_SETUP       1       /* component inactive, but ready */
-#define COMP_STATE_SUSPEND     2       /* component suspended */
-#define COMP_STATE_DRAINING	3	/* component draining */
-#define COMP_STATE_PREPARE	4	/* component prepared */
-#define COMP_STATE_PAUSED	5	/* component paused */
-#define COMP_STATE_RUNNING	6	/* component active */
+#define COMP_STATE_READY	1       /* component inactive, but ready */
+#define COMP_STATE_SUSPEND	2       /* component suspended */
+#define COMP_STATE_PREPARE	3	/* component prepared */
+#define COMP_STATE_PAUSED	4	/* component paused */
+#define COMP_STATE_ACTIVE	5	/* component active */
 
-/* standard audio component types */
-#define COMP_TYPE_HOST		0	/* host endpoint */
-#define COMP_TYPE_VOLUME	1	/* Volume component */
-#define COMP_TYPE_MIXER		2	/* Mixer component */
-#define COMP_TYPE_MUX		3	/* MUX component */
-#define COMP_TYPE_SWITCH	4	/* Switch component */
-#define COMP_TYPE_DAI_SSP	5	/* SSP DAI endpoint */
-#define COMP_TYPE_DAI_HDA	6	/* SSP DAI endpoint */
-
-/* standard component commands */
+/*
+ * standard component stream commands
+ */
 
 #define COMP_CMD_STOP		0	/* stop component stream */
 #define COMP_CMD_START		1	/* start component stream */
 #define COMP_CMD_PAUSE		2	/* immediately pause the component stream */
 #define COMP_CMD_RELEASE	3	/* release paused component stream */
-#define COMP_CMD_DRAIN		4	/* drain component buffers */
 #define COMP_CMD_SUSPEND	5	/* suspend component */
 #define COMP_CMD_RESUME		6	/* resume component */
+#define COMP_CMD_RESET		6	/* reset component */
+#define COMP_CMD_PREPARE	7	/* prepare component */
+#define COMP_CMD_XRUN		8	/* XRUN component */
 
-#define COMP_CMD_VOLUME		100
-#define COMP_CMD_MUTE		101
-#define COMP_CMD_UNMUTE		102
-#define COMP_CMD_ROUTE		103
-#define COMP_CMD_AVAIL_UPDATE          104
+/*
+ * standard component control commands
+ */
+
+#define COMP_CMD_SET_VALUE	100
+#define COMP_CMD_GET_VALUE	101
+#define COMP_CMD_SET_DATA	102
+#define COMP_CMD_GET_DATA	103
+
 
 /* MMAP IPC status */
 #define COMP_CMD_IPC_MMAP_RPOS	200	/* host read position */
@@ -99,46 +110,10 @@
 #define trace_comp_error(__e)	trace_error(TRACE_CLASS_COMP, __e)
 #define tracev_comp(__e)	tracev_event(TRACE_CLASS_COMP, __e)
 
-#define CHANNELS_ALL           0xffffffff
-
-/* standard component command structures */
-struct comp_volume {
-	uint32_t update_bits;   /* bit 1s indicate the coresponding
-                                   channels(indices) need to be updated */
-	uint32_t volume;
-};
-
 struct comp_dev;
 struct comp_buffer;
 struct dai_config;
 struct pipeline;
-
-/*
- * Component position information.
- */
- struct comp_position {
- 	uint32_t position;
- 	uint32_t cycle_count;
- };
-
-/*
- * Componnent period descriptors
- */
-struct period_desc {
-	uint32_t size;	/* period size in bytes */
-	uint32_t number;
-	uint32_t no_irq;	/* dont send periodic IRQ to host/DSP */
-	uint32_t reserved;
-};
-
-/*
- * Pipeline buffer descriptor.
- */
-struct buffer_desc {
-	uint32_t size;		/* buffer size in bytes */
-	struct period_desc sink_period;
-	struct period_desc source_period;
-};
 
 /*
  * Audio component operations - all mandatory.
@@ -148,21 +123,15 @@ struct buffer_desc {
  */
 struct comp_ops {
 	/* component creation and destruction */
-	struct comp_dev *(*new)(uint32_t type, uint32_t index,
-		uint32_t direction);
+	struct comp_dev *(*new)(struct sof_ipc_comp *comp);
 	void (*free)(struct comp_dev *dev);
 
-	/* set component audio stream paramters */
-	int (*params)(struct comp_dev *dev, struct stream_params *params);
+	/* set component audio stream parameters */
+	int (*params)(struct comp_dev *dev);
 
-	/* preload buffers */
-	int (*preload)(struct comp_dev *dev);
-
-	/* set component audio stream paramters */
-	int (*dai_config)(struct comp_dev *dev, struct dai_config *dai_config);
-
-	/* set dai component loopback mode */
-	int (*dai_set_loopback)(struct comp_dev *dev, uint32_t lbm);
+	/* set component audio stream parameters */
+	int (*dai_config)(struct comp_dev *dev,
+		struct sof_ipc_dai_config *dai_config);
 
 	/* used to pass standard and bespoke commands (with data) to component */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
@@ -179,12 +148,16 @@ struct comp_ops {
 	/* host buffer config */
 	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem,
 			uint32_t host_size);
+
+	/* position */
+	int (*position)(struct comp_dev *dev,
+		struct sof_ipc_stream_posn *posn);
 };
 
 
 /* audio component base driver "class" - used by all other component types */
 struct comp_driver {
-	uint32_t type;		/* COMP_TYPE_ for driver */
+	uint32_t type;		/* SOF_COMP_ for driver */
 	uint32_t module_id;
 
 	struct comp_ops ops;	/* component operations */
@@ -196,50 +169,39 @@ struct comp_driver {
 struct comp_dev {
 
 	/* runtime */
-	uint32_t id;		/* runtime ID of component */
-	uint32_t state;		/* COMP_STATE_ */
-	uint32_t is_dai;		/* component is graph DAI endpoint */
-	uint32_t is_host;	/* component is graph host endpoint */
-	uint32_t is_mixer;	/* component is mixer */
-	uint32_t direction;	/* STREAM_DIRECTION_ */
-	uint16_t preload;       /* number of periods to preload during prepare() */
+	uint16_t state;		/* COMP_STATE_ */
+	uint16_t is_endpoint;	/* component is end point in pipeline */
 	spinlock_t lock;	/* lock for this component */
-	void *private;		/* private data */
-	struct comp_driver *drv;
+	uint64_t position;	/* component rendering position */
+	uint32_t frames;	/* number of frames we copy to sink */
+	uint32_t frame_bytes;	/* frames size copied to sink in bytes */
 	struct pipeline *pipeline;	/* pipeline we belong to */
+
+	/* common runtime configuration for downstream/upstream */
+	struct sof_ipc_stream_params params;
+
+	/* driver */
+	struct comp_driver *drv;
 
 	/* lists */
 	struct list_item bsource_list;	/* list of source buffers */
 	struct list_item bsink_list;	/* list of sink buffers */
-	struct list_item pipeline_list;	/* list in pipeline component devs */
-	struct list_item endpoint_list;	/* list in pipeline endpoint devs */
-	struct list_item schedule_list;	/* list in pipeline copy scheduler */
+
+	/* private data - core does not touch this */
+	void *private;		/* private data */
+
+	/* IPC config object header - MUST be at end as it's variable size/type */
+	struct sof_ipc_comp comp;
 };
 
-/* audio component buffer - connects 2 audio components together in pipeline */
-struct comp_buffer {
-	struct buffer_desc desc;
-	struct stream_params params;
-
-	/* runtime data */
-	uint32_t id;		/* runtime ID of buffer */
-	uint32_t connected;	/* connected in path */
-	uint32_t avail;		/* available bytes for reading */
-	uint32_t free;		/* free bytes for writing */
-	void *w_ptr;		/* buffer write pointer */
-	void *r_ptr;		/* buffer read position */
-	void *addr;		/* buffer base address */
-	void *end_addr;		/* buffer end address */
-
-	/* connected components */
-	struct comp_dev *source;	/* source component */
-	struct comp_dev *sink;		/* sink component */
-
-	/* lists */
-	struct list_item pipeline_list;	/* list in pipeline buffers */
-	struct list_item source_list;	/* list in comp buffers */
-	struct list_item sink_list;	/* list in comp buffers */
-};
+#define COMP_SIZE(x) \
+	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
+#define COMP_GET_IPC(dev, type) \
+	(struct type *)(&dev->comp)
+#define COMP_GET_PARAMS(dev) \
+	(struct type *)(&dev->params)
+#define COMP_GET_CONFIG(dev) \
+	(struct sof_ipc_comp_config *)((void*)&dev->comp + sizeof(struct sof_ipc_comp))
 
 #define comp_set_drvdata(c, data) \
 	c->private = data
@@ -253,18 +215,19 @@ int comp_register(struct comp_driver *drv);
 void comp_unregister(struct comp_driver *drv);
 
 /* component creation and destruction - mandatory */
-struct comp_dev *comp_new(struct pipeline *p, uint32_t type, uint32_t index,
-	uint32_t id, uint32_t direction);
+struct comp_dev *comp_new(struct sof_ipc_comp *comp);
 static inline void comp_free(struct comp_dev *dev)
 {
 	dev->drv->ops.free(dev);
 }
 
+/* component state set */
+int comp_set_state(struct comp_dev *dev, int cmd);
+
 /* component parameter init - mandatory */
-static inline int comp_params(struct comp_dev *dev,
-	struct stream_params *params)
+static inline int comp_params(struct comp_dev *dev)
 {
-	return dev->drv->ops.params(dev, params);
+	return dev->drv->ops.params(dev);
 }
 
 /* component host buffer config
@@ -281,6 +244,17 @@ static inline int comp_host_buffer(struct comp_dev *dev,
 /* send component command - mandatory */
 static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 {
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	if ((cmd == COMP_CMD_SET_DATA)
+		&& ((cdata->data->magic != SOF_ABI_MAGIC)
+		|| (cdata->data->abi != SOF_ABI_VERSION))) {
+		trace_comp_error("abi");
+		trace_value(cdata->data->magic);
+		trace_value(cdata->data->abi);
+		return -EINVAL;
+	}
+
 	return dev->drv->ops.cmd(dev, cmd, data);
 }
 
@@ -288,12 +262,6 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 static inline int comp_prepare(struct comp_dev *dev)
 {
 	return dev->drv->ops.prepare(dev);
-}
-
-/* component preload buffers -mandatory  */
-static inline int comp_preload(struct comp_dev *dev)
-{
-	return dev->drv->ops.preload(dev);
 }
 
 /* copy component buffers - mandatory */
@@ -310,45 +278,19 @@ static inline int comp_reset(struct comp_dev *dev)
 
 /* DAI configuration - only mandatory for DAI components */
 static inline int comp_dai_config(struct comp_dev *dev,
-	struct dai_config *dai_config)
+	struct sof_ipc_dai_config *config)
 {
 	if (dev->drv->ops.dai_config)
-		return dev->drv->ops.dai_config(dev, dai_config);
+		return dev->drv->ops.dai_config(dev, config);
 	return 0;
 }
 
-/* DAI configuration - only mandatory for DAI components */
-static inline int comp_dai_loopback(struct comp_dev *dev,
-	uint32_t lbm)
+/* component rendering position */
+static inline int comp_position(struct comp_dev *dev,
+	struct sof_ipc_stream_posn *posn)
 {
-	if (dev->drv->ops.dai_set_loopback)
-		return dev->drv->ops.dai_set_loopback(dev, lbm);
-	return 0;
-}
-
-/* reset component downstream buffers  */
-static inline int comp_buffer_reset(struct comp_dev *dev)
-{
-	struct list_item *clist;
-
-	/* reset downstream buffers */
-	list_for_item(clist, &dev->bsink_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, source_list);
-
-		/* dont reset buffer if the component is not connected */
-		if (!buffer->connected)
-			continue;
-
-		/* reset buffer next to the component*/
-		bzero(buffer->addr, buffer->desc.size);
-		buffer->w_ptr = buffer->r_ptr = buffer->addr;
-		buffer->end_addr = buffer->addr + buffer->desc.size;
-		buffer->free = buffer->desc.size;
-		buffer->avail = 0;
-	}
-
+	if (dev->drv->ops.position)
+		return dev->drv->ops.position(dev, posn);
 	return 0;
 }
 
@@ -359,78 +301,74 @@ void sys_comp_mixer_init(void);
 void sys_comp_mux_init(void);
 void sys_comp_switch_init(void);
 void sys_comp_volume_init(void);
+void sys_comp_src_init(void);
+void sys_comp_tone_init(void);
+void sys_comp_eq_iir_init(void);
+void sys_comp_eq_fir_init(void);
 
-static inline void comp_update_buffer_produce(struct comp_buffer *buffer)
+/*
+ * Convenience functions to install upstream/downstream common params. Only
+ * applicable to single upstream source. Components with > 1 source  or sink
+ * must do this manually.
+ *
+ * This allows params to propagate from the host PCM component downstream on
+ * playback and upstream on capture.
+ */
+static inline void comp_install_params(struct comp_dev *dev,
+	struct comp_dev *previous)
 {
-	if (buffer->r_ptr < buffer->w_ptr)
-		buffer->avail = buffer->w_ptr - buffer->r_ptr;
-	else if (buffer->r_ptr == buffer->w_ptr)
-		buffer->avail = buffer->end_addr - buffer->addr; /* full */
-	else
-		buffer->avail = buffer->end_addr - buffer->r_ptr +
-			buffer->w_ptr - buffer->addr;
-	buffer->free = buffer->desc.size - buffer->avail;
+	dev->params = previous->params;
 }
 
-static inline void comp_update_buffer_consume(struct comp_buffer *buffer)
+static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
 {
-	if (buffer->r_ptr < buffer->w_ptr)
-		buffer->avail = buffer->w_ptr - buffer->r_ptr;
-	else if (buffer->r_ptr == buffer->w_ptr)
-		buffer->avail = 0; /* empty */
-	else
-		buffer->avail = buffer->end_addr - buffer->r_ptr +
-			buffer->w_ptr - buffer->addr;
-	buffer->free = buffer->desc.size - buffer->avail;
-}
-
-static inline void comp_set_host_ep(struct comp_dev *dev)
-{
-	dev->is_host = 1;
-	dev->is_dai = 0;
-}
-
-static inline void comp_set_dai_ep(struct comp_dev *dev)
-{
-	dev->is_host = 0;
-	dev->is_dai = 1;
-}
-
-static inline void comp_clear_ep(struct comp_dev *dev)
-{
-	dev->is_host = 0;
-	dev->is_dai = 0;
-}
-
-static inline void comp_set_mixer(struct comp_dev *dev)
-{
-	dev->is_mixer = 1;
-}
-
-static inline void comp_set_sink_params(struct comp_dev *dev,
-	struct stream_params *params)
-{
-	struct list_item *clist;
-	struct comp_buffer *sink;
-
-	list_for_item(clist, &dev->bsink_list) {
-
-		sink = container_of(clist, struct comp_buffer, source_list);
-		sink->params = *params;
+	/* calculate period size based on params */
+	switch (dev->params.frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return 2 * dev->params.channels;
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+	case SOF_IPC_FRAME_FLOAT:
+		return 4 * dev->params.channels;
+	default:
+		return 0;
 	}
 }
 
-static inline void comp_set_source_params(struct comp_dev *dev,
-	struct stream_params *params)
+static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
 {
-	struct list_item *clist;
-	struct comp_buffer *source;
-
-	list_for_item(clist, &dev->bsource_list) {
-
-		source = container_of(clist, struct comp_buffer, sink_list);
-		source->params = *params;
+	/* calculate period size based on params */
+	switch (dev->params.frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		return 2;
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+	case SOF_IPC_FRAME_FLOAT:
+		return 4;
+	default:
+		return 0;
 	}
+}
+
+/* XRUN handling */
+static inline void comp_underrun(struct comp_dev *dev, struct comp_buffer *source,
+	uint32_t copy_bytes, uint32_t min_bytes)
+{
+	trace_comp("Xun");
+	trace_value((dev->comp.id << 16) | source->avail);
+	trace_value((min_bytes << 16) | copy_bytes);
+
+	pipeline_xrun(dev->pipeline, dev, (int32_t)source->avail - copy_bytes);
+}
+
+static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
+	uint32_t copy_bytes, uint32_t min_bytes)
+{
+	trace_comp("Xov");
+	trace_value((dev->comp.id << 16) | sink->free);
+	trace_value((min_bytes << 16) | copy_bytes);
+
+	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
 }
 
 #endif

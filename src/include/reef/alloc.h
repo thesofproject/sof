@@ -36,24 +36,34 @@
 #include <stdint.h>
 #include <reef/dma.h>
 
+struct reef;
+
 /* Heap Memory Zones
  *
- * The heap has two different zones from where memory can be allocated :-
+ * The heap has three different zones from where memory can be allocated :-
  *
- * 1) Device Zone. Fixed size heap where alloc always succeeds and is never
+ * 1) System  Zone. Fixed size heap where alloc always succeeds and is never
  * freed. Used by any init code that will never give up the memory.
  *
- * 2) Module Zone. Main and larger heap zone where allocs are not guaranteed to
+ * 2) Runtime Zone. Main and larger heap zone where allocs are not guaranteed to
  * succeed. Memory can be freed here.
+ *
+ * 3) Buffer Zone. Largest heap zone intended for audio buffers.
  *
  * See platform/memory.h for heap size configuration and mappings.
  */
-#define RZONE_DEV	0
-#define RZONE_MODULE	1
+#define RZONE_SYS		0
+#define RZONE_RUNTIME	1
+#define RZONE_BUFFER	2
 
-/* Modules identifier used for tracking memory resource ownership */
-#define RMOD_SYS	0		/* system module is owner  */
-#define RMOD(m)		(m + 16)	/* owned by other modules */
+/*
+ * Heap allocation memory flags.
+ */
+#define RFLAGS_NONE		0
+#define RFLAGS_USED		1
+#define RFLAGS_ATOMIC	2   /* allocation with IRQs off */
+#define RFLAGS_DMA		4   /* DMA-able memory */
+#define RFLAGS_POWER	8   /* low power memory */
 
 struct mm_info {
 	uint32_t used;
@@ -61,23 +71,24 @@ struct mm_info {
 };
 
 /* heap allocation and free */
-void *rmalloc(int zone, int module, size_t bytes);
-void *rzalloc(int zone, int module, size_t bytes);
-void rfree(int zone, int module, void *ptr);
+void *rmalloc(int zone, int flags, size_t bytes);
+void *rzalloc(int zone, int flags, size_t bytes);
+void rfree(void *ptr);
 
 /* heap allocation and free for buffers on 1k boundary */
-void *rballoc(int zone, int module, size_t bytes);
-void rbfree(int zone, int module, void *ptr);
+void *rballoc(int zone, int flags, size_t bytes);
+void rbfree(void *ptr);
 
 /* utility */
 void bzero(void *s, size_t n);
 void *memset(void *s, int c, size_t n);
+int rstrlen(const char *s);
 
 /* Heap save/restore contents and context for PM D0/D3 events */
 uint32_t mm_pm_context_size(void);
-int mm_pm_context_save(struct dma_sg_config *sg);
-int mm_pm_context_restore(struct dma_sg_config *sg);
+int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg);
+int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg);
 
 /* heap initialisation */
-void init_heap(void);
+void init_heap(struct reef *reef);
 #endif

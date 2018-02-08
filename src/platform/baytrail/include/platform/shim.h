@@ -38,6 +38,7 @@
 #define SHIM_PISR		0x08
 #define SHIM_PISRH		0x0c
 #define SHIM_PIMR		0x10
+#define SHIM_PIMRH		0x14
 #define SHIM_ISRX		0x18
 #define SHIM_ISRD		0x20
 #define SHIM_IMRX		0x28

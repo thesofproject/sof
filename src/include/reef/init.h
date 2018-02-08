@@ -31,9 +31,13 @@
 #ifndef __INCLUDE_INIT_H__
 #define __INCLUDE_INIT_H__
 
+struct reef;
+
 /* main firmware entry point - argc and argv not currently used */
 int main(int argc, char *argv[]);
 
-int arch_init(void);
+int arch_init(struct reef *reef);
+
+void __memmap_init(void);
 
 #endif

@@ -45,214 +45,402 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
-/* simple debug pipeline */
-#define DEBUG_PIPE	0
 
-/* convenience component UUIDs and descriptors */
-#define SPIPE_MIXER {COMP_TYPE_MIXER, 0, 0}
-#define SPIPE_MUX {COMP_TYPE_MUX, 0, 0}
-#define SPIPE_VOLUME(xindex) {COMP_TYPE_VOLUME, 0, 0}
-#define SPIPE_SWITCH {COMP_TYPE_SWITCH, 0, 0}
-#define SPIPE_DAI_SSP(xindex) {COMP_TYPE_DAI_SSP, xindex, 0}
-#define SPIPE_HOST(xindex) {COMP_TYPE_HOST, xindex, 0}
+/* 2 * 32 bit*/
+#define PLATFORM_INT_FRAME_SIZE		8
+/* 2 * 16 bit*/
+#define PLATFORM_HOST_FRAME_SIZE	4
+/* 2 * 24 (32) bit*/
+#define PLATFORM_DAI_FRAME_SIZE		8
 
-/* convenience buffer descriptors */
-#define SPIPE_BUFFER(xsize, xisize, xinum, xiirq, xosize, xonum, xoirq) \
-	{.buffer = {.size = xsize, \
-	.sink_period = {.size = xisize, .number = xinum, .no_irq = xiirq}, \
-	.source_period = {.size = xosize, .number = xonum, .no_irq = xoirq},},}
+/* Platform Host DMA buffer config - these should align with DMA engine */
+#define PLAT_HOST_PERIOD_FRAMES	48	/* must be multiple of DMA burst size */
+#define PLAT_HOST_PERIODS	2	/* give enough latency for DMA refill */
+
+/* Platform Dev DMA buffer config - these should align with DMA engine */
+#define PLAT_DAI_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
+#define PLAT_DAI_PERIODS	2	/* give enough latency for DMA refill */
+#define PLAT_DAI_SCHED		1000 /* scheduling time in usecs */
+
+/* Platform internal buffer config - these should align with DMA engine */
+#define PLAT_INT_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
+#define PLAT_INT_PERIODS	2	/* give enough latency for DMA refill */
+
+/* default static pipeline SSP port - not used for dynamic pipes */
+#define PLATFORM_SSP_PORT	2
+
+/* default SSP stream format - need aligned with codec setting*/
+#define PLATFORM_SSP_STREAM_FORMAT	SOF_IPC_FRAME_S24_4LE
+
+/*
+ * Static Buffer Convenience Constructors.
+ */
+#define SPIPE_BUFFER(bid, bsize) \
+	{.comp.id = bid, .size = bsize}
+#define SPIPE_COMP_CONNECT(source, sink) \
+	{.source_id = source, .sink_id = sink}
+
+/*
+ * Static Component Convenience Constructors.
+ */
+#define SPIPE_COMP(cid, ctype, csize) \
+	{.id = cid, .type = ctype, .hdr.size = sizeof(struct csize)}
+#define SPIPE_HOST(scomp, hno_irq, hdmac, hchan, hconfig) \
+	{.comp = scomp, .no_irq = hno_irq, .dmac_id = hdmac,\
+	.dmac_chan = hchan, .dmac_config = hconfig}
+#define SPIPE_DAI(scomp, ddai_type, ddai_idx, ddmac, dchan, dconfig) \
+	{.comp = scomp, .type = ddai_type, .index = ddai_idx, .dmac_id = ddmac,\
+	.dmac_chan = dchan, .dmac_config = dconfig}
+#define SPIPE_VOL(scomp, vmin, vmax) \
+	{.comp = scomp, .min_value = vmin, .max_value = vmax}
+#define SPIPE_MIX(scomp) {.comp = scomp}
+#define SPIPE_SRC(scomp) {.comp = scomp}
+#define SPIPE_TONE(scomp) {.comp = scomp}
+
+/*
+ * Static Pipeline Convenience Constructor
+ */
+#define SPIPE_PIPE(pid, pcore, pdeadline, ppriority) \
+	{.pipeline_id = pid, .core = pcore, .deadline = pdeadline, .priority = ppriority}
+#define SPIPE_PIPE_CONNECT(psource, bsource, bid, psink, bsink) \
+	{.pipeline_source_id = psource, .comp_source_id = bsource, \
+	.buffer_id = bid, .pipeline_sink_id = psink, .comp_sink_id = bsink}
+
+/*
+ * Static pipeline container and constructor
+ */
+
+struct scomps {
+	struct sof_ipc_comp *comps;
+	uint32_t num_comps;
+};
+
+#define SCOMP(ccomps) \
+	{.comps = (struct sof_ipc_comp *)ccomps, .num_comps = ARRAY_SIZE(ccomps)}
+
+
+struct spipe {
+	struct scomps *scomps;
+	uint32_t num_scomps;
+	struct sof_ipc_buffer *buffer;
+	uint32_t num_buffers;
+	struct sof_ipc_pipe_comp_connect *connect;
+	uint32_t num_connections;
+};
+
+#define SPIPE(ncomp, sbuffer, sconnect) \
+	{.scomps = ncomp, .num_scomps = ARRAY_SIZE(ncomp), \
+	.buffer = sbuffer, .num_buffers = ARRAY_SIZE(sbuffer), \
+	.connect = sconnect, .num_connections = ARRAY_SIZE(sconnect)}
+
+/*
+ * Components used in static pipeline 0.
+ */
+
+static struct sof_ipc_comp_host host_p0[] = {
+	SPIPE_HOST(SPIPE_COMP(0, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 1, 0),	/* ID = 0 */
+	SPIPE_HOST(SPIPE_COMP(2, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 2, 0),	/* ID = 2 */
+	SPIPE_HOST(SPIPE_COMP(9, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 3, 0),	/* ID = 9 */
+};
+
+static struct sof_ipc_comp_volume volume_p0[] = {
+	SPIPE_VOL(SPIPE_COMP(1, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 1 */
+	SPIPE_VOL(SPIPE_COMP(3, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 3 */
+	SPIPE_VOL(SPIPE_COMP(5, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 5 */
+	SPIPE_VOL(SPIPE_COMP(8, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 8 */
+};
+
+static struct sof_ipc_comp_dai dai_p0[] = {
+	SPIPE_DAI(SPIPE_COMP(6, SOF_COMP_DAI, sof_ipc_comp_dai),
+		SOF_DAI_INTEL_SSP, PLATFORM_SSP_PORT, 1, 0, 0),	/* ID = 6 */
+	SPIPE_DAI(SPIPE_COMP(7, SOF_COMP_DAI, sof_ipc_comp_dai),
+		SOF_DAI_INTEL_SSP, PLATFORM_SSP_PORT, 1, 1, 0),	/* ID = 7 */
+};
+
+static struct sof_ipc_comp_mixer mixer_p0[] = {
+	SPIPE_MIX(SPIPE_COMP(4, SOF_COMP_MIXER, sof_ipc_comp_mixer)),				/* ID = 4 */
+};
+
+static struct scomps pipe0_scomps[] = {
+	SCOMP(host_p0),
+	SCOMP(volume_p0),
+	SCOMP(dai_p0),
+	SCOMP(mixer_p0),
+};
+
+/*
+ * Components used in static pipeline 1.
+ */
+
+static struct sof_ipc_comp_host host_p1[] = {
+	SPIPE_HOST(SPIPE_COMP(10, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 4, 0),	/* ID = 10 */
+};
+
+static struct sof_ipc_comp_volume volume_p1[] = {
+	SPIPE_VOL(SPIPE_COMP(12, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 12 */
+};
+
+static struct sof_ipc_comp_src src_p1[] = {
+	SPIPE_SRC(SPIPE_COMP(11, SOF_COMP_SRC, sof_ipc_comp_src)),	/* ID = 11 */
+};
+
+static struct scomps pipe1_scomps[] = {
+		SCOMP(host_p1),
+		SCOMP(volume_p1),
+		SCOMP(src_p1),
+};
+
+/*
+ * Components used in static pipeline 2.
+ */
+
+static struct sof_ipc_comp_tone tone_p2[] = {
+	SPIPE_TONE(SPIPE_COMP(13, SOF_COMP_HOST, sof_ipc_comp_tone)),	/* ID = 13 */
+};
+
+static struct sof_ipc_comp_volume volume_p2[] = {
+	SPIPE_VOL(SPIPE_COMP(15, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 15 */
+};
+
+static struct sof_ipc_comp_src src_p2[] = {
+	SPIPE_SRC(SPIPE_COMP(14, SOF_COMP_SRC, sof_ipc_comp_src)),	/* ID = 14 */
+};
+
+static struct scomps pipe2_scomps[] = {
+		SCOMP(tone_p2),
+		SCOMP(volume_p2),
+		SCOMP(src_p2),
+};
 
 /* Host facing buffer */
 #define HOST_PERIOD_SIZE \
 	(PLAT_HOST_PERIOD_FRAMES * PLATFORM_HOST_FRAME_SIZE)
-#define HOST_BUFFER_SIZE \
-	(HOST_PERIOD_SIZE * PLAT_HOST_PERIODS)
-
-#define SPIPE_HOST_BUF \
-	SPIPE_BUFFER(HOST_BUFFER_SIZE, \
-		HOST_PERIOD_SIZE, PLAT_HOST_PERIODS, 0, \
-		HOST_PERIOD_SIZE, PLAT_HOST_PERIODS, 0)
 
 /* Device facing buffer */
-#define DEV_PERIOD_SIZE \
+#define DAI_PERIOD_SIZE \
 	(PLAT_DAI_PERIOD_FRAMES * PLATFORM_DAI_FRAME_SIZE)
-#define DEV_BUFFER_SIZE \
-	(DEV_PERIOD_SIZE * PLAT_DAI_PERIODS)
-
-#define SPIPE_DEV_BUF \
-	SPIPE_BUFFER(DEV_BUFFER_SIZE, \
-		DEV_PERIOD_SIZE, PLAT_DAI_PERIODS, 0, \
-		DEV_PERIOD_SIZE, PLAT_DAI_PERIODS, 0)
 
 /* Internal buffer */
 #define INT_PERIOD_SIZE \
 	(PLAT_INT_PERIOD_FRAMES * PLATFORM_INT_FRAME_SIZE)
-#define INT_BUFFER_SIZE \
-	(INT_PERIOD_SIZE * PLAT_INT_PERIODS)
-
-#define SPIPE_INT_BUF \
-	SPIPE_BUFFER(INT_BUFFER_SIZE, \
-		INT_PERIOD_SIZE, PLAT_INT_PERIODS, 0, \
-		INT_PERIOD_SIZE, PLAT_INT_PERIODS, 0)
-
-struct spipe_comp {
-	uint32_t type;
-	uint32_t index;
-	uint32_t id;
-};
-
-struct spipe_buffer {
-	struct buffer_desc buffer;
-	uint32_t id;
-};
-
-/* static link between components using UUIDs and IDs */
-struct spipe_link {
-	struct spipe_comp *source;
-	struct spipe_buffer *buffer;
-	struct spipe_comp *sink;
-};
-
-/* playback components */
-static struct spipe_comp pipe_play_comps[] = {
-	SPIPE_HOST(0),		/* ID = 0 */
-	SPIPE_VOLUME(0),	/* ID = 1 */
-	SPIPE_HOST(1),		/* ID = 2 */
-	SPIPE_VOLUME(1),	/* ID = 3 */
-	SPIPE_MIXER,		/* ID = 4 */
-	SPIPE_VOLUME(2),	/* ID = 5 */
-	SPIPE_DAI_SSP(PLATFORM_SSP_PORT),	/* ID = 6 */
-};
-
-/* capture components */
-static struct spipe_comp pipe_capt_comps[] = {
-	SPIPE_DAI_SSP(PLATFORM_SSP_PORT),	/* ID = 7 */
-	SPIPE_VOLUME(3),	/* ID = 8 */
-	SPIPE_HOST(2),		/* ID = 9 */
-};
-
-/* buffers used in pipeline */
-static struct spipe_buffer pipe_buffers[] = {
-	SPIPE_HOST_BUF,	/* B0 */
-	SPIPE_HOST_BUF,	/* B1 */
-	SPIPE_INT_BUF,	/* B2 */
-	SPIPE_INT_BUF,	/* B3 */
-	SPIPE_INT_BUF,	/* B4 */
-	SPIPE_DEV_BUF,	/* B5 */
-	SPIPE_DEV_BUF,	/* B6 */
-	SPIPE_HOST_BUF, /* B7 */
-};
-
-#if DEBUG_PIPE
 
 /*
- * One PCM to single SSP output. SSP port is set in platform.h
- *
- * host PCM0(0) --B0--> volume(1) --B5--> SSPx(6)
- *
- * host PCM0(9) <--B7-- volume(8) <--B6-- SSPx(7)
+ * Buffers used in static pipeline 0.
  */
-static struct spipe_link pipe_play[] = {
-	{&pipe_play_comps[0], &pipe_buffers[0], &pipe_play_comps[1]},
-	{&pipe_play_comps[1], &pipe_buffers[5], &pipe_play_comps[6]},
+static struct sof_ipc_buffer buffer0[] = {
+	/* B0 - LL Playback - PCM 0 Host0 -> Volume1 */
+	SPIPE_BUFFER(0, HOST_PERIOD_SIZE * 2),
+
+	/* B1 - LL Playback - PCM 1 - Host2 -> Volume3 */
+	SPIPE_BUFFER(1, HOST_PERIOD_SIZE * 2),
+
+	/* B2 Volume1 -> Mixer4 */
+	SPIPE_BUFFER(2, INT_PERIOD_SIZE * 1),
+
+	/* B3  Volume3 -> Mixer4 */
+	SPIPE_BUFFER(3, INT_PERIOD_SIZE * 1),
+
+	/* B4 Mixer4 -> Volume 5 */
+	SPIPE_BUFFER(4, INT_PERIOD_SIZE * 1),
+
+	/* B5 - DAI Playback - Volume5 -> DAI6 */
+	SPIPE_BUFFER(5, DAI_PERIOD_SIZE * 2),
+
+	/* B6 - DAI Capture - DAI7 - > Volume8 */
+	SPIPE_BUFFER(6, DAI_PERIOD_SIZE * 2),
+
+	/* B7 - PCM0 - Capture LL - Volume8 -> Host9 */
+	SPIPE_BUFFER(7, HOST_PERIOD_SIZE * 1),
 };
 
-#else
+/*
+ * Buffers used in static pipeline 1.
+ */
+static struct sof_ipc_buffer buffer1[] = {
+	/* B8 - Playback - PCM 3 - Host10 -> SRC11 */
+	SPIPE_BUFFER(8, HOST_PERIOD_SIZE * 16),
+
+	/* B9  SRC11 -> Volume12 */
+	SPIPE_BUFFER(9, INT_PERIOD_SIZE * 2),
+
+	/* B10  Volume12 -> Mixer4 */
+	SPIPE_BUFFER(10, INT_PERIOD_SIZE * 2),
+};
 
 /*
- * Two PCMs mixed into single SSP output. SSP port is set in platform.h
+ * Buffers used in static pipeline 2.
+ */
+static struct sof_ipc_buffer buffer2[] = {
+	/* B11 - tone13 -> SRC14 */
+	SPIPE_BUFFER(11, HOST_PERIOD_SIZE * 16),
+
+	/* B12  SRC14 -> Volume15 */
+	SPIPE_BUFFER(12, INT_PERIOD_SIZE * 2),
+
+	/* B13  Volume15 -> Mixer4 */
+	SPIPE_BUFFER(13, INT_PERIOD_SIZE * 2),
+};
+
+/*
+ * Pipeline 0
+ *
+ * Two Low Latency PCMs mixed into single SSP output.
  *
  * host PCM0(0) --B0--> volume(1) --B2--+
  *                                      |--mixer(4) --B4--> volume(5) --B5--> SSPx(6)
  * host PCM1(2) --B1--> volume(3) --B3--+
+ *                                      |
+ *                     pipeline 1 >-----+
+ *                                      |
+ *                     pipeline 2 >-----+
  *
  * host PCM0(9) <--B7-- volume(8) <--B6-- SSPx(7)
+ *
+ *
+ * Pipeline 1
+ *
+ * One PCM with SRC that is a Mixer 4 source
+ *
+ * host PCM2(10) --B8 --> SRC(11) --B9--> volume(12) --B10 --> Pipeline 0
+ *
+ *
+ * Pipeline 2
+ *
+ * Test Pipeline
+ *
+ * tone(13) --- B11 ---> SRC(14) --B12---> volume(15) --B13 ---> Pipeline 0
  */
-static struct spipe_link pipe_play[] = {
-	{&pipe_play_comps[0], &pipe_buffers[0], &pipe_play_comps[1]},
-	{&pipe_play_comps[2], &pipe_buffers[1], &pipe_play_comps[3]},
-	{&pipe_play_comps[1], &pipe_buffers[2], &pipe_play_comps[4]},
-	{&pipe_play_comps[3], &pipe_buffers[3], &pipe_play_comps[4]},
-	{&pipe_play_comps[4], &pipe_buffers[4], &pipe_play_comps[5]},
-	{&pipe_play_comps[5], &pipe_buffers[5], &pipe_play_comps[6]},
+
+/* pipeline 0 component/buffer connections */
+static struct sof_ipc_pipe_comp_connect c_connect0[] = {
+	SPIPE_COMP_CONNECT(0, 1), /* Host0 -> B0 ->  Volume1 */
+	SPIPE_COMP_CONNECT(2, 3), /* Host2 -> B1 ->  Volume3 */
+	SPIPE_COMP_CONNECT(1, 4), /* Volume1 -> B2 -> Mixer4 */
+	SPIPE_COMP_CONNECT(3, 4), /* Volume3 -> B3 -> Mixer4 */
+	SPIPE_COMP_CONNECT(4, 5), /* Mixer4 -> B4 -> Volume5 */
+	SPIPE_COMP_CONNECT(5, 6), /* Volume5 -> B5 -> DAI6 */
+	SPIPE_COMP_CONNECT(7, 8), /* DAI7 -> B6 -> Volume8 */
+	SPIPE_COMP_CONNECT(8, 9), /* Volume8 -> B7 -> host9 */
 };
 
-#endif
-
-static struct spipe_link pipe_capture[] = {
-	{&pipe_capt_comps[0], &pipe_buffers[6], &pipe_capt_comps[1]},
-	{&pipe_capt_comps[1], &pipe_buffers[7], &pipe_capt_comps[2]},
+/* pipeline 1 component/buffer connections */
+static struct sof_ipc_pipe_comp_connect c_connect1[] = {
+	SPIPE_COMP_CONNECT(10, 11), /* Host10 -> B8 ->  SRC11 */
+	SPIPE_COMP_CONNECT(11, 12), /* SRC11 -> B9 ->  Volume12 */
 };
 
-/* static pipeline ID */
-struct pipeline *pipeline_static;
-uint32_t pipeline_id = 0;
+/* pipeline 2 component/buffer connections */
+static struct sof_ipc_pipe_comp_connect c_connect2[] = {
+	SPIPE_COMP_CONNECT(13, 14), /* tone13 -> B11 ->  SRC14 */
+	SPIPE_COMP_CONNECT(14, 15), /* SRC14 -> B12 ->  Volume15 */
+};
 
-struct pipeline *init_static_pipeline(void)
+/* pipeline connections to other pipelines */
+//static struct sof_ipc_pipe_pipe_connect p_connect[] = {
+//	SPIPE_PIPE_CONNECT(1, 12, 10, 0, 4), /* p1 volume12 -> B10 -> p0 Mixer4 */
+//	SPIPE_PIPE_CONNECT(2, 15, 13, 0, 4), /* p2 Volume15 -> B13 -> p0 Mixer4 */
+//};
+
+/* the static pipelines */
+static struct spipe spipe[] = {
+	SPIPE(pipe0_scomps, buffer0, c_connect0),
+	SPIPE(pipe1_scomps, buffer1, c_connect1),
+	SPIPE(pipe2_scomps, buffer2, c_connect2),
+};
+
+/* pipelines */
+struct sof_ipc_pipe_new pipeline[] = {
+	SPIPE_PIPE(0, 0, 1000, TASK_PRI_HIGH),	/* high pri - 1ms deadline */
+//	SPIPE_PIPE(1, 0, 4000, TASK_PRI_MED),	/* med pri - 4ms deadline */
+//	SPIPE_PIPE(2, 0, 5000, TASK_PRI_LOW),	/* low pri - 5ms deadline */
+};
+
+int init_static_pipeline(struct ipc *ipc)
 {
-	int i, err;
+	struct scomps *sc;
+	struct sof_ipc_comp *c;
+	int i;
+	int j;
+	int k;
+	int ret;
 
 	/* init system pipeline core */
-	err = pipeline_init();
-	if (err < 0)
+	ret = pipeline_init();
+	if (ret < 0)
 		return NULL;
 
-	/* create the pipeline */
-	pipeline_static = pipeline_new(pipeline_id);
-	if (pipeline_static == NULL)
-		return NULL;
+	/* create the pipelines */
+	for (i = 0; i < ARRAY_SIZE(pipeline); i++) {
 
-	/* create play back components in the pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe_play_comps); i++) {
-		pipe_play_comps[i].id = ipc_comp_new(pipeline_id,
-			pipe_play_comps[i].type, pipe_play_comps[i].index,
-			STREAM_DIRECTION_PLAYBACK);
-		if (pipe_play_comps[i].id < 0)
+		/* create the pipeline */
+		ret = ipc_pipeline_new(ipc, &pipeline[i]);
+		if (ret < 0)
 			goto error;
+
+		sc = spipe[i].scomps;
+
+		/* register components for this pipeline */
+		for (j = 0; j < spipe[i].num_scomps; j++) {
+
+			/* all pipeline components have same header */
+			c = sc[j].comps;
+
+			for (k = 0; k < sc[j].num_comps; k++) {
+
+				ret = ipc_comp_new(ipc, c);
+				if (ret < 0)
+					goto error;
+
+				/* next component - sizes not constant */
+				c = (void*)c + c->hdr.size;
+			}
+		}
+
+		/* register buffers for this pipeline */
+		for (j = 0; j < spipe[i].num_buffers; j++) {
+			ret = ipc_buffer_new(ipc, &spipe[i].buffer[j]);
+			if (ret < 0)
+				goto error;
+		}
+
+		/* connect components in this pipeline */
+		for (j = 0; j < spipe[i].num_connections; j++) {
+			ret = ipc_comp_connect(ipc, &spipe[i].connect[j]);
+			if (ret < 0)
+				goto error;
+		}
 	}
 
-	/* create capture components in the pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe_capt_comps); i++) {
-		pipe_capt_comps[i].id = ipc_comp_new(pipeline_id,
-			pipe_capt_comps[i].type, pipe_capt_comps[i].index,
-			STREAM_DIRECTION_CAPTURE);
-		if (pipe_capt_comps[i].id < 0)
+#if 0
+	/* connect the pipelines */
+	for (i = 0; i < ARRAY_SIZE(p_connect); i++) {
+		ret = ipc_pipe_connect(ipc, &p_connect[i]);
+		if (ret < 0)
 			goto error;
 	}
-
-	/* create buffers in the pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe_buffers); i++) {
-		pipe_buffers[i].id = ipc_buffer_new(pipeline_id,
-			&pipe_buffers[i].buffer);
-		if (pipe_buffers[i].id < 0)
-			goto error;
-	}
-
-	/* connect components on play back pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe_play); i++) {
-		/* add source -> sink */
-		err = ipc_comp_connect(pipe_play[i].source->id,
-			pipe_play[i].sink->id,
-			pipe_play[i].buffer->id);
-		if (err < 0)
-			goto error;
-	}
-
-	/* create components on capture pipeline */
-	for (i = 0; i < ARRAY_SIZE(pipe_capture); i++) {
-		/* add source -> sink */
-		err = ipc_comp_connect(pipe_capture[i].source->id,
-			pipe_capture[i].sink->id,
-			pipe_capture[i].buffer->id);
-		if (err < 0)
-			goto error;
-	}
-
-	/* pipeline now ready for params, prepare and cmds */
-	return pipeline_static;
+#endif
+	/* pipelines now ready for params, prepare and cmds */
+	return 0;
 
 error:
 	trace_pipe_error("ePS");
-	pipeline_free(pipeline_static);
-	return NULL;
+	
+	for (i = 0; i < ARRAY_SIZE(pipeline); i++) {
+
+		/* free pipeline */
+		ipc_pipeline_free(ipc, pipeline[i].pipeline_id);
+
+		/* free components */
+		for (j = 0; j < spipe[i].num_scomps; j++) {
+			sc = spipe[i].scomps;
+			for (k = 0; k < sc->num_comps; k++)
+				ipc_comp_free(ipc, spipe[i].scomps[j].comps[k].id);
+		}
+
+		/* free buffers */
+		for (j = 0; j < spipe[i].num_buffers; j++)
+			ipc_buffer_free(ipc, spipe[i].buffer[j].comp.id);
+	}
+
+	return ret;
 }

@@ -35,6 +35,10 @@
 #include "xtos-internal.h"
 #include <config.h>
 
+#if XCHAL_HAVE_BOOTLOADER
+#include <platform/memory.h>
+#endif
+
 // The following reset vector avoids initializing certain registers already
 // initialized by processor reset.  But it does initialize some of them
 // anyway, for minimal support of warm restart (restarting in software by
@@ -78,7 +82,26 @@ _ResetVector:
 	wsr	a0, MEMCTL
 #endif
 #endif
+
+/* Apollolake+ have reset vector in ROM */
+#if defined(CONFIG_BAYTRAIL) || defined(CONFIG_CHERRYTRAIL) \
+	|| defined (CONFIG_HASWELL) || defined(CONFIG_BROADWELL)
 	j	_ResetHandler
+#else
+
+	// This is our VM bxt ROM. It simply jumps to the reset handler.
+	j .sram_jump		// jump over the literals
+
+	.align	4
+	.literal_position	// tells the assembler/linker to place literals here
+
+_reset_sram:
+	.word _ResetHandler
+	.align 4
+.sram_jump:
+	l32r	a0, _reset_sram	// load SRAM reset hanler address
+	jx	a0		// jump to the hanlder
+#endif
 	.size	_ResetVector, . - _ResetVector
 
 # if XCHAL_HAVE_HALT
@@ -96,7 +119,7 @@ _ResetVector:
 #  endif
 # endif
 
-#ifdef CONFIG_BROXTON
+#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 	.section .ResetHandler.text, "ax"
 	j	_ResetHandler
 #endif
@@ -105,6 +128,7 @@ _ResetVector:
 
 	.align	4
 	.global	_ResetHandler
+
 _ResetHandler:
 #endif
 
@@ -155,7 +179,19 @@ _ResetHandler:
 
 #endif
 
+#if defined(CONFIG_APOLLOLAKE)
+	call0 _call_init
+#endif
+
+#if defined(CONFIG_APOLLOLAKE)
 	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
+	movi	a0, 0
+	movi	a1, 0
+	movi	a2, 0
+#else
+	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
+#endif
+
 
 #if XCHAL_HAVE_INTERRUPTS	// technically this should be under !FULL_RESET, assuming hard reset
 	wsr	a0, INTENABLE	// make sure that interrupts are shut off (*before* we lower PS.INTLEVEL and PS.EXCM!)
@@ -249,9 +285,16 @@ _ResetHandler:
 	extui 	a3, a3, 0, 8	// extract core ID (FIXME: need proper constants for PRID bits to extract)
 	beqz	a2, .Ldonesync	// skip if no sync variable
 	bnez	a3, .Ldonesync	// only do this on core 0
+#if defined(CONFIG_APOLLOLAKE)
+	movi	a2, 100		// delay here for 100 iterations if we are not core 0
+2:	addi.n	a2, a2, -1
+	bnez	a2, 2b
+	j	.Ldonesync
+#endif
 	s32i	a0, a2, 0	// clear sync variable
 .Ldonesync:
 #endif
+
 #if XCHAL_HAVE_EXTERN_REGS && XCHAL_HAVE_MP_RUNSTALL
 	/* On core 0, this releases other cores.  On other cores this has no effect, because
 	   runstall control is unconnected.  */
@@ -312,7 +355,11 @@ _ResetHandler:
 
 #if XCHAL_HAVE_PREFETCH
 	/* Enable cache prefetch if present.  */
+#if defined(CONFIG_APOLLOLAKE)
+	movi.n	a2, 34
+#else
 	movi.n	a2, 68
+#endif
 	wsr	a2, PREFCTL
 #endif
 	/*
@@ -333,7 +380,6 @@ _ResetHandler:
 	movi	a2, _memmap_cacheattr_reset	/* note: absolute symbol, not a ptr */
 	cacheattr_set				/* set CACHEATTR from a2 (clobbers a3-a8) */
 #endif
-
 	/*  Now that caches are initialized, cache coherency can be enabled.  */
 #if XCHAL_DCACHE_IS_COHERENT
 # if XCHAL_HAVE_EXTERN_REGS && XCHAL_HAVE_MX && (XCHAL_HW_MIN_VERSION < XTENSA_HWVERSION_RE_2012_0)
@@ -479,6 +525,7 @@ unpackdone:
 	 */
 #if HAVE_XSR
 
+#if !XCHAL_HAVE_BOOTLOADER
 /*  For asm macros; works for positive a,b smaller than 1000:  */
 # define GREATERTHAN(a,b)	(((b)-(a)) & ~0xFFF)
 
@@ -517,7 +564,7 @@ unpackdone:
 	init_vector	4
 	init_vector	5
 	init_vector	6
-
+#endif
 #endif /*HAVE_XSR*/
 
 
@@ -531,7 +578,15 @@ unpackdone:
 	 *  needed (with -mlongcalls) which it doesn't with j or jx.
 	 *  Note:  This needs to be call0 regardless of the selected ABI.
 	 */
-	call0	_start		// jump to _start (in crt1-*.S)
+
+#if XCHAL_HAVE_BOOTLOADER
+		/*ToDo refine the _start*/
+		movi a0, REEF_TEXT_START
+		callx0 a0
+#else
+		call0	_start		// jump to _start (in crt1-*.S)
+#endif
+
 	/* does not return */
 
 #else /* XCHAL_HAVE_HALT */
@@ -551,6 +606,16 @@ unpackdone:
 	.size	_ResetHandler, . - _ResetHandler
 #else
 	.size	_ResetVector, . - _ResetVector
+#endif
+
+#if defined(CONFIG_APOLLOLAKE)
+	.align	4
+	.global	_call_init
+	.type _call_init,@function
+
+_call_init:
+	ret.n
+	.size	_call_init, . - _call_init
 #endif
 
 	.text

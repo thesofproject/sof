@@ -38,6 +38,7 @@
 #include <reef/alloc.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
+#include <uapi/ipc.h>
 
 struct comp_data {
 	struct list_item list;		/* list of components */
@@ -46,45 +47,57 @@ struct comp_data {
 
 static struct comp_data *cd;
 
-static void comp_init(struct comp_dev *dev, struct pipeline *p, uint32_t id,
-	struct comp_driver *drv, uint32_t direction)
-{
-	dev->id = id;
-	dev->drv = drv;
-	dev->direction = direction;
-	dev->state = COMP_STATE_INIT;
-	dev->pipeline = p;
-	spinlock_init(&dev->lock);
-	list_init(&dev->bsource_list);
-	list_init(&dev->bsink_list);
-}
-
-struct comp_dev *comp_new(struct pipeline *p, uint32_t type, uint32_t index,
-	uint32_t id, uint32_t direction)
+static struct comp_driver *get_drv(uint32_t type)
 {
 	struct list_item *clist;
-	struct comp_driver *drv;
-	struct comp_dev *dev = NULL;
+	struct comp_driver *drv = NULL;
 
 	spin_lock(&cd->lock);
 
+	/* search driver list for driver type */
 	list_for_item(clist, &cd->list) {
 
 		drv = container_of(clist, struct comp_driver, list);
-		if (drv->type == type) {
-			dev = drv->ops.new(type, index, direction);
-			if (dev != NULL)
-				comp_init(dev, p, id, drv, direction);
-			else
-				trace_comp_error("eCN");
-
+		if (drv->type == type)
 			goto out;
-		}
 	}
+
+	/* not found */
+	drv = NULL;
 
 out:
 	spin_unlock(&cd->lock);
-	return dev;
+	return drv;
+}
+
+struct comp_dev *comp_new(struct sof_ipc_comp *comp)
+{
+	struct comp_dev *cdev;
+	struct comp_driver *drv;
+
+	/* find the driver for our new component */
+	drv = get_drv(comp->type);
+	if (drv == NULL) {
+		trace_comp_error("eCD");
+		trace_value(comp->type);
+		return NULL;
+	}
+
+	/* create the new component */
+	cdev = drv->ops.new(comp);
+	if (cdev == NULL) {
+		trace_comp_error("eCN");
+		return NULL;
+	}
+
+	/* init component */
+	memcpy(&cdev->comp, comp, sizeof(*comp));
+	cdev->drv = drv;
+	spinlock_init(&cdev->lock);
+	list_init(&cdev->bsource_list);
+	list_init(&cdev->bsink_list);
+
+	return cdev;
 }
 
 int comp_register(struct comp_driver *drv)
@@ -103,9 +116,80 @@ void comp_unregister(struct comp_driver *drv)
 	spin_unlock(&cd->lock);
 }
 
+int comp_set_state(struct comp_dev *dev, int cmd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	case COMP_CMD_START:
+		if (dev->state == COMP_STATE_PREPARE ||
+			dev->state == COMP_STATE_PAUSED) {
+			dev->state = COMP_STATE_ACTIVE;
+		} else {
+			trace_comp_error("CES");
+			trace_value(dev->state);
+			ret = -EINVAL;
+		}
+		break;
+	case COMP_CMD_RELEASE:
+		if (dev->state == COMP_STATE_PAUSED) {
+			dev->state = COMP_STATE_ACTIVE;
+		} else {
+			trace_comp_error("CEr");
+			trace_value(dev->state);
+			ret = -EINVAL;
+		}
+		break;
+	case COMP_CMD_STOP:
+	case COMP_CMD_XRUN:
+		if (dev->state == COMP_STATE_ACTIVE) {
+			dev->state = COMP_STATE_PREPARE;
+		} else {
+			trace_comp_error("CEs");
+			trace_value(dev->state);
+			ret = -EINVAL;
+		}
+		break;
+	case COMP_CMD_PAUSE:
+		/* only support pausing for running */
+		if (dev->state == COMP_STATE_ACTIVE)
+			dev->state = COMP_STATE_PAUSED;
+		else {
+			trace_comp_error("CEp");
+			trace_value(dev->state);
+			ret = -EINVAL;
+		}
+		break;
+	case COMP_CMD_RESET:
+		/* reset always succeeds */
+		dev->state = COMP_STATE_READY;
+		if (dev->state == COMP_STATE_ACTIVE ||
+			dev->state == COMP_STATE_PAUSED) {
+			trace_comp_error("CER");
+			trace_value(dev->state);
+			ret = 0;
+		}
+		break;
+	case COMP_CMD_PREPARE:
+		if (dev->state == COMP_STATE_PREPARE ||
+			dev->state == COMP_STATE_READY) {
+			dev->state = COMP_STATE_PREPARE;
+		} else {
+			trace_comp_error("CEP");
+			trace_value(dev->state);
+			ret = -EINVAL;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 void sys_comp_init(void)
 {
-	cd = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*cd));
+	cd = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*cd));
 	list_init(&cd->list);
 	spinlock_init(&cd->lock);
 }

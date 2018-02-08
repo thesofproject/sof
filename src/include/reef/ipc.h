@@ -35,70 +35,48 @@
 #include <stdint.h>
 #include <reef/trace.h>
 #include <reef/dai.h>
-#include <reef/audio/component.h>
 #include <reef/lock.h>
+#include <platform/platform.h>
+#include <uapi/ipc.h>
+#include <reef/audio/pipeline.h>
+#include <reef/audio/component.h>
+#include <reef/dma-trace.h>
+
+struct reef;
+struct dai_config;
 
 #define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC, __e)
 #define tracev_ipc(__e)	tracev_event(TRACE_CLASS_IPC, __e)
 #define trace_ipc_error(__e)	trace_error(TRACE_CLASS_IPC, __e)
 
-#define MSG_QUEUE_SIZE		4
+#define MSG_QUEUE_SIZE		12
 
-/* Intel IPC stream states. TODO we have to manually track this atm as is
-does not align to ALSA. TODO align IPC with ALSA ops */
-#define IPC_HOST_RESET		0	/* host stream has been reset */
-#define IPC_HOST_ALLOC		1	/* host stream has been alloced */
-#define IPC_HOST_RUNNING	2	/* host stream is running */
-#define IPC_HOST_PAUSED		3	/* host stream has been paused */
-
-#define MSG_MAX_SIZE		128
+#define COMP_TYPE_COMPONENT	1
+#define COMP_TYPE_BUFFER	2
+#define COMP_TYPE_PIPELINE	3
 
 /* IPC generic component device */
 struct ipc_comp_dev {
-	/* pipeline we belong to */
-	uint32_t pipeline_id;
-	struct pipeline *p;
+	uint16_t type;	/* COMP_TYPE_ */
+	uint16_t state;
 
-	/* component data */
+	/* component type data */
 	union {
 		struct comp_dev *cd;
 		struct comp_buffer *cb;
+		struct pipeline *pipeline;
 	};
 
-	struct list_item list;		/* list in ipc data */
-};
-
-/* IPC FE PCM device - maps to host PCM */
-struct ipc_pcm_dev {
-
-	struct ipc_comp_dev dev;
-
-	/* runtime config */
-	struct stream_params params;
-	uint32_t state;		/* IPC_HOST_*/
-};
-
-/* IPC BE DAI device */
-struct ipc_dai_dev {
-
-	struct ipc_comp_dev dev;
-
-	/* runtime config */
-	struct dai_config dai_config;
-};
-
-/* IPC buffer device */
-struct ipc_buffer_dev {
-
-	struct ipc_comp_dev dev;
+	/* lists */
+	struct list_item list;		/* list in components */
 };
 
 struct ipc_msg {
 	uint32_t header;	/* specific to platform */
 	uint32_t tx_size;	/* payload size in bytes */
-	uint8_t tx_data[MSG_MAX_SIZE];		/* pointer to payload data */
+	uint8_t tx_data[SOF_IPC_MSG_MAX_SIZE];		/* pointer to payload data */
 	uint32_t rx_size;	/* payload size in bytes */
-	uint8_t rx_data[MSG_MAX_SIZE];		/* pointer to payload data */
+	uint8_t rx_data[SOF_IPC_MSG_MAX_SIZE];		/* pointer to payload data */
 	struct list_item list;
 	void (*cb)(void *cb_data, void *mailbox_data);
 	void *cb_data;
@@ -114,15 +92,16 @@ struct ipc {
 	struct list_item empty_list;
 	spinlock_t lock;
 	struct ipc_msg message[MSG_QUEUE_SIZE];
+	void *comp_data;
 
 	/* RX call back */
 	int (*cb)(struct ipc_msg *msg);
 
-	/* mixers, dais and pcms */
-	uint32_t next_comp_id;
-	uint32_t next_buffer_id;
-	struct list_item comp_list;	/* list of component devices */
-	struct list_item buffer_list;	/* list of buffer devices */
+	/* pipelines, components and buffers */
+	struct list_item comp_list;		/* list of component devices */
+
+	/* DMA for Trace*/
+	struct dma_trace_data dmat;
 
 	void *private;
 };
@@ -131,38 +110,63 @@ struct ipc {
 	(ipc)->private = data
 #define ipc_get_drvdata(ipc) \
 	(ipc)->private;
-#define ipc_get_pcm_comp(id) \
-	(struct ipc_pcm_dev *)ipc_get_comp(id)
-#define ipc_get_dai_comp(id) \
-	(struct ipc_dai_dev *)ipc_get_comp(id)
 
-int ipc_init(void);
+
+int ipc_init(struct reef *reef);
 int platform_ipc_init(struct ipc *ipc);
 void ipc_free(struct ipc *ipc);
 
-struct ipc_comp_dev *ipc_get_comp(uint32_t id);
-
 int ipc_process_msg_queue(void);
 
-int ipc_stream_send_notification(struct comp_dev *cdev,
-	struct comp_position *cp);
+int ipc_stream_send_position(struct comp_dev *cdev,
+		struct sof_ipc_stream_posn *posn);
+int ipc_stream_send_xrun(struct comp_dev *cdev,
+	struct sof_ipc_stream_posn *posn);
+
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	void *tx_data, size_t tx_bytes, void *rx_data,
-	size_t rx_bytes, void (*cb)(void*, void*), void *cb_data);
+	size_t rx_bytes, void (*cb)(void*, void*), void *cb_data, uint32_t replace);
 int ipc_send_short_msg(uint32_t msg);
 
 void ipc_platform_do_cmd(struct ipc *ipc);
 void ipc_platform_send_msg(struct ipc *ipc);
 
-/* dynamic pipeline API */
-int ipc_comp_new(int pipeline_id, uint32_t type, uint32_t index,
-	uint8_t direction);
-void ipc_comp_free(uint32_t comp_id);
+/*
+ * IPC Component creation and destruction.
+ */
+int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *new);
+int ipc_comp_free(struct ipc *ipc, uint32_t comp_id);
 
-int ipc_buffer_new(int pipeline_id, struct buffer_desc *buffer_desc);
-void ipc_buffer_free(uint32_t buffer_id);
+/*
+ * IPC Buffer creation and destruction.
+ */
+int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *buffer);
+int ipc_buffer_free(struct ipc *ipc, uint32_t buffer_id);
 
-int ipc_comp_connect(uint32_t source_id, uint32_t sink_id,
-	uint32_t buffer_id);
+/*
+ * IPC Pipeline creation and destruction.
+ */
+int ipc_pipeline_new(struct ipc *ipc, struct sof_ipc_pipe_new *pipeline);
+int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id);
+int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id);
+
+/*
+ * Pipeline component and buffer connections.
+ */
+int ipc_comp_connect(struct ipc *ipc,
+	struct sof_ipc_pipe_comp_connect *connect);
+
+/*
+ * Get component by ID.
+ */
+struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
+
+/*
+ * Configure all DAI components attached to DAI.
+ */
+int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
+
+/* send DMA trace host buffer position to host */
+int ipc_dma_trace_send_position(void);
 
 #endif

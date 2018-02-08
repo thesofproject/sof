@@ -39,12 +39,28 @@
 struct timer {
 	uint32_t id;
 	uint32_t irq;
+	void *timer_data;	/* used by core */
+	uint32_t hitime;	/* high end of 64bit timer */
+	uint32_t hitimeout;
+	uint32_t lowtimeout;
 };
+
+/* internal API calls */
+int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg);
+void timer_64_handler(void *arg);
 
 static inline int arch_timer_register(struct timer *timer,
 	void(*handler)(void *arg), void *arg)
 {
-	return arch_interrupt_register(timer->id, handler, arg);
+	uint32_t flags;
+	int ret;
+
+	flags = arch_interrupt_global_disable();
+	timer64_register(timer, handler, arg);
+	ret = arch_interrupt_register(timer->id, timer_64_handler, timer);
+	arch_interrupt_global_enable(flags);
+
+	return ret;
 }
 
 static inline void arch_timer_unregister(struct timer *timer)
@@ -62,12 +78,9 @@ static inline void arch_timer_disable(struct timer *timer)
 	arch_interrupt_disable_mask(1 << timer->irq);
 }
 
-static inline uint32_t arch_timer_get_system(struct timer *timer)
-{
-	return xthal_get_ccount();
-}
+uint64_t arch_timer_get_system(struct timer *timer);
 
-void arch_timer_set(struct timer *timer, unsigned int ticks);
+int arch_timer_set(struct timer *timer, uint64_t ticks);
 
 static inline void arch_timer_clear(struct timer *timer)
 {

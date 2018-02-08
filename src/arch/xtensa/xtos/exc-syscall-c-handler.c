@@ -26,6 +26,7 @@
 #include <xtensa/config/core.h>
 #include "xtos-internal.h"
 
+UserFrame* _xtos_p_syscall_handler( UserFrame *uf /*, int cause */ );
 
 /*
  *  User vector mode exception handler for the SYSCALL cause.

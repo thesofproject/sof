@@ -78,7 +78,7 @@ out:
 	spin_unlock(&_notify.lock);
 }
 
-void init_system_notify(void)
+void init_system_notify(struct reef *reef)
 {
 	list_init(&_notify.list);
 	spinlock_init(&_notify.lock);

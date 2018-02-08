@@ -35,11 +35,16 @@
 #include <reef/stream.h>
 #include <reef/audio/component.h>
 
-static struct comp_dev *switch_new(uint32_t type, uint32_t index,
-	uint32_t direction)
-{
+/* tracing */
+#define trace_switch(__e) trace_event(TRACE_CLASS_SWITCH, __e)
+#define trace_switch_error(__e)   trace_error(TRACE_CLASS_SWITCH, __e)
+#define tracev_switch(__e)        tracev_event(TRACE_CLASS_SWITCH, __e)
 
-	return 0;
+static struct comp_dev *switch_new(struct sof_ipc_comp *comp)
+{
+	trace_switch("new");
+
+	return NULL;
 }
 
 static void switch_free(struct comp_dev *dev)
@@ -47,8 +52,8 @@ static void switch_free(struct comp_dev *dev)
 
 }
 
-/* set component audio stream paramters */
-static int switch_params(struct comp_dev *dev, struct stream_params *params)
+/* set component audio stream parameters */
+static int switch_params(struct comp_dev *dev)
 {
 
 	return 0;
@@ -79,7 +84,7 @@ static int switch_prepare(struct comp_dev *dev)
 }
 
 struct comp_driver comp_switch = {
-	.type	= COMP_TYPE_SWITCH,
+	.type	= SOF_COMP_SWITCH,
 	.ops	= {
 		.new		= switch_new,
 		.free		= switch_free,

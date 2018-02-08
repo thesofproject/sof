@@ -30,127 +30,28 @@
  */
 
 #include <errno.h>
-#include <reef/dai.h>
-#include <reef/io.h>
+#include <stdbool.h>
 #include <reef/stream.h>
 #include <reef/ssp.h>
 #include <reef/alloc.h>
 #include <reef/interrupt.h>
-#include <reef/lock.h>
-#include <reef/work.h>
-#include <reef/trace.h>
-#include <reef/wait.h>
-
-/* SSCR0 bits */
-#define SSCR0_DSS_MASK	(0x0000000f)
-#define SSCR0_DSIZE(x)  ((x) - 1)
-#define SSCR0_FRF	(0x00000030)
-#define SSCR0_MOT	(00 << 4)
-#define SSCR0_TI	(1 << 4)
-#define SSCR0_NAT	(2 << 4)
-#define SSCR0_PSP	(3 << 4)
-#define SSCR0_ECS	(1 << 6)
-#define SSCR0_SSE	(1 << 7)
-#define SSCR0_SCR(x)	((x) << 8)
-#define SSCR0_EDSS	(1 << 20)
-#define SSCR0_NCS	(1 << 21)
-#define SSCR0_RIM	(1 << 22)
-#define SSCR0_TUM	(1 << 23)
-#define SSCR0_FRDC	(0x07000000)
-#define SSCR0_ACS	(1 << 30)
-#define SSCR0_MOD	(1 << 31)
-
-/* SSCR1 bits */
-#define SSCR1_RIE	(1 << 0)
-#define SSCR1_TIE	(1 << 1)
-#define SSCR1_LBM	(1 << 2)
-#define SSCR1_SPO	(1 << 3)
-#define SSCR1_SPH	(1 << 4)
-#define SSCR1_MWDS	(1 << 5)
-#define SSCR1_TFT_MASK	(0x000003c0)
-#define SSCR1_TX(x) (((x) - 1) << 6)
-#define SSCR1_RFT_MASK	(0x00003c00)
-#define SSCR1_RX(x) (((x) - 1) << 10)
-#define SSCR1_EFWR	(1 << 14)
-#define SSCR1_STRF	(1 << 15)
-#define SSCR1_IFS	(1 << 16)
-#define SSCR1_PINTE	(1 << 18)
-#define SSCR1_TINTE	(1 << 19)
-#define SSCR1_RSRE	(1 << 20)
-#define SSCR1_TSRE	(1 << 21)
-#define SSCR1_TRAIL	(1 << 22)
-#define SSCR1_RWOT	(1 << 23)
-#define SSCR1_SFRMDIR	(1 << 24)
-#define SSCR1_SCLKDIR	(1 << 25)
-#define SSCR1_ECRB	(1 << 26)
-#define SSCR1_ECRA	(1 << 27)
-#define SSCR1_SCFR	(1 << 28)
-#define SSCR1_EBCEI	(1 << 29)
-#define SSCR1_TTE	(1 << 30)
-#define SSCR1_TTELP	(1 << 31)
-
-/* SSR bits */
-#define SSSR_TNF	(1 << 2)
-#define SSSR_RNE	(1 << 3)
-#define SSSR_BSY	(1 << 4)
-#define SSSR_TFS	(1 << 5)
-#define SSSR_RFS	(1 << 6)
-#define SSSR_ROR	(1 << 7)
-
-/* SSPSP bits */
-#define SSPSP_SCMODE(x)		((x) << 0)
-#define SSPSP_SFRMP		(1 << 2)
-#define SSPSP_ETDS		(1 << 3)
-#define SSPSP_STRTDLY(x)	((x) << 4)
-#define SSPSP_DMYSTRT(x)	((x) << 7)
-#define SSPSP_SFRMDLY(x)	((x) << 9)
-#define SSPSP_SFRMWDTH(x)	((x) << 16)
-#define SSPSP_DMYSTOP(x)	((x) << 23)
-#define SSPSP_FSRT		(1 << 25)
-
-/* SFIFOTT bits */
-#define SFIFOTT_TX(x)		(x - 1)
-#define SFIFOTT_RX(x)		((x - 1) << 16)
-
-/* SSP port status */
-#define SSP_STATE_INIT			0
-#define SSP_STATE_IDLE			1
-#define SSP_STATE_RUNNING		2
-#define SSP_STATE_DRAINING		3
-#define SSP_STATE_PAUSING		4
-#define SSP_STATE_PAUSED		5
 
 /* tracing */
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
 #define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
 
-/* SSP private data */
-struct ssp_pdata {
-	uint32_t sscr0;
-	uint32_t sscr1;
-	uint32_t psp;
-	struct work work;
-	spinlock_t lock;
-	uint32_t state[2];		/* SSP_STATE_ for each direction */
-	completion_t drain_complete;
-
-};
-
-static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
+/* FIXME: move this to a helper and optimize */
+static int hweight_32(uint32_t mask)
 {
-	io_reg_write(dai_base(dai) + reg, value);
-}
+	int i;
+	int count = 0;
 
-static inline uint32_t ssp_read(struct dai *dai, uint32_t reg)
-{
-	return io_reg_read(dai_base(dai) + reg);
-}
-
-static inline void ssp_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
-	uint32_t value)
-{
-	io_reg_update_bits(dai_base(dai) + reg, mask, value);
+	for (i = 0; i < 32; i++) {
+		count += mask&1;
+		mask >>= 1;
+	}
+	return count;
 }
 
 /* save SSP context prior to entering D3 */
@@ -160,6 +61,8 @@ static int ssp_context_store(struct dai *dai)
 
 	ssp->sscr0 = ssp_read(dai, SSCR0);
 	ssp->sscr1 = ssp_read(dai, SSCR1);
+
+	/* FIXME: need to store sscr2,3,4,5 */
 	ssp->psp = ssp_read(dai, SSPSP);
 
 	return 0;
@@ -172,72 +75,175 @@ static int ssp_context_restore(struct dai *dai)
 
 	ssp_write(dai, SSCR0, ssp->sscr0);
 	ssp_write(dai, SSCR1, ssp->sscr1);
+	/* FIXME: need to restore sscr2,3,4,5 */
 	ssp_write(dai, SSPSP, ssp->psp);
 
 	return 0;
 }
 
 /* Digital Audio interface formatting */
-static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
+static inline int ssp_set_config(struct dai *dai,
+	struct sof_ipc_dai_config *config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t sscr0, sscr1, sspsp, sfifott;
+	uint32_t sscr0;
+	uint32_t sscr1;
+	uint32_t sscr2;
+	uint32_t sscr3;
+	uint32_t sscr4;
+	uint32_t sscr5;
+	uint32_t sspsp;
+	uint32_t sfifott;
+	uint32_t mdiv;
+	uint32_t bdiv;
+	uint32_t data_size;
+	uint32_t start_delay;
+	uint32_t active_tx_slots = 2;
+	uint32_t active_rx_slots = 2;
+	uint32_t frame_len = 0;
+	bool inverted_frame = false;
+	bool cfs = false;
+	bool cbs = false;
+	int ret = 0;
 
 	spin_lock(&ssp->lock);
 
 	/* is playback/capture already running */
-	if (ssp->state[DAI_DIR_PLAYBACK] > SSP_STATE_IDLE ||
-		ssp->state[DAI_DIR_CAPTURE] > SSP_STATE_IDLE) {
-		trace_ssp_error("wsS");
+	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
+		ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
+		trace_ssp_error("ec1");
+		ret = -EINVAL;
 		goto out;
 	}
 
-	trace_ssp("SsC");
+	trace_ssp("cos");
 
 	/* reset SSP settings */
-	sscr0 = 0;
-	sscr1 = 0;
-	sspsp = 0;
-	dai->config = *dai_config;
+	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
+	/*
+	 * FIXME: MOD, ACS, NCS are not set,
+	 * no support for network mode for now
+	 */
+	sscr0 = SSCR0_PSP | SSCR0_RIM | SSCR0_TIM;
+
+	/*
+	 * FIXME: PINTE and RWOT are not set in sscr1
+	 *   sscr1 = SSCR1_PINTE | SSCR1_RWOT;
+	 */
+
+	/* sscr1 dynamic settings are TFT, RFT, SFRMDIR, SCLKDIR, SCFR */
+	sscr1 = SSCR1_TTE;
+#ifdef ENABLE_TIE_RIE /* FIXME: not enabled, difference with SST driver */
+	sscr1 |= SSCR1_TIE | SSCR1_RIE;
+#endif
+
+	/* sscr2 dynamic setting is SLV_EXT_CLK_RUN_EN */
+	sscr2 = SSCR2_URUN_FIX0;
+	sscr2 |= SSCR2_ASRC_INTR_MASK;
+#ifdef ENABLE_SSCR2_FIXES /* FIXME: is this needed ? */
+	sscr2 |= SSCR2_UNDRN_FIX_EN | SSCR2_FIFO_EMPTY_FIX_EN;
+#endif
+
+
+	/*
+	 * sscr3 dynamic settings are FRM_MS_EN, I2S_MODE_EN, I2S_FRM_POL,
+	 * I2S_TX_EN, I2S_RX_EN, I2S_CLK_MST
+	 */
+	sscr3 = SSCR3_I2S_TX_SS_FIX_EN | SSCR3_I2S_RX_SS_FIX_EN |
+		SSCR3_STRETCH_TX | SSCR3_STRETCH_RX |
+		SSCR3_SYN_FIX_EN;
+#ifdef ENABLE_CLK_EDGE_SEL /* FIXME: is this needed ? */
+	sscr3 |= SSCR3_CLK_EDGE_SEL;
+#endif
+
+	/* sscr4 dynamic settings is TOT_FRAME_PRD */
+	sscr4 = 0x0;
+
+	/* sscr4 dynamic settings are FRM_ASRT_CLOCKS and FRM_POLARITY */
+	sscr5 = 0x0;
+
+	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
+	sspsp = SSPSP_ETDS; /* make sure SDO line is tri-stated when inactive */
+
+	ssp->config = *config;
+	ssp->params = config->ssp[0];
 
 	/* clock masters */
-	switch (dai->config.format & DAI_FMT_MASTER_MASK) {
-	case DAI_FMT_CBM_CFM:
-		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
+	/*
+	 * On TNG/BYT/CHT, the SSP wrapper generates the fs even in master mode,
+	 * the master/slave choice depends on the clock type
+	 */
+	sscr1 |= SSCR1_SFRMDIR;
+
+	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
+	case SOF_DAI_FMT_CBM_CFM:
+		sscr0 |= SSCR0_ECS; /* external clock used */
+		sscr1 |= SSCR1_SCLKDIR;
+		/*
+		 * FIXME: does SSRC1.SCFR need to be set
+		 * when codec is master ?
+		 */
+		sscr2 |= SSCR2_SLV_EXT_CLK_RUN_EN;
 		break;
-	case DAI_FMT_CBS_CFS:
-		sscr1 |= SSCR1_SCFR | SSCR1_RWOT;
+	case SOF_DAI_FMT_CBS_CFS:
+#ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
+		sscr1 |= SSCR1_SCFR;
+#endif
+		sscr3 |= SSCR3_FRM_MST_EN;
+		cfs = true;
+		cbs = true;
 		break;
-	case DAI_FMT_CBM_CFS:
-		sscr1 |= SSCR1_SFRMDIR;
+	case SOF_DAI_FMT_CBM_CFS:
+		sscr0 |= SSCR0_ECS; /* external clock used */
+		sscr1 |= SSCR1_SCLKDIR;
+		/*
+		 * FIXME: does SSRC1.SCFR need to be set
+		 * when codec is master ?
+		 */
+		sscr2 |= SSCR2_SLV_EXT_CLK_RUN_EN;
+		sscr3 |= SSCR3_FRM_MST_EN;
+		cfs = true;
+		/* FIXME: this mode has not been tested */
 		break;
-	case DAI_FMT_CBS_CFM:
-		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR | SSCR1_SCFR;
-		break;
-	case SSP_CLK_DEFAULT:
+	case SOF_DAI_FMT_CBS_CFM:
+#ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
+		sscr1 |= SSCR1_SCFR;
+#endif
+		/* FIXME: this mode has not been tested */
+		cbs = true;
 		break;
 	default:
-		return -EINVAL;
+		trace_ssp_error("ec2");
+		ret = -EINVAL;
+		goto out;
 	}
 
 	/* clock signal polarity */
-	switch (dai->config.format & DAI_FMT_INV_MASK) {
-	case DAI_FMT_NB_NF:
+	switch (config->format & SOF_DAI_FMT_INV_MASK) {
+	case SOF_DAI_FMT_NB_NF:
 		break;
-	case DAI_FMT_NB_IF:
+	case SOF_DAI_FMT_NB_IF:
 		break;
-	case DAI_FMT_IB_IF:
+	case SOF_DAI_FMT_IB_IF:
 		sspsp |= SSPSP_SCMODE(2);
+		inverted_frame = true; /* handled later with format */
 		break;
-	case DAI_FMT_IB_NF:
-		sspsp |= SSPSP_SCMODE(2) | SSPSP_SFRMP;
+	case SOF_DAI_FMT_IB_NF:
+		sspsp |= SSPSP_SCMODE(2);
+		inverted_frame = true; /* handled later with format */
 		break;
 	default:
-		return -EINVAL;
+		trace_ssp_error("ec3");
+		ret = -EINVAL;
+		goto out;
 	}
 
+#ifdef CLK_TYPE /* not enabled, keep the code for reference */
+	/* TODO: allow topology to define SSP clock type */
+	config->ssp[0].clk_id = SSP_CLK_EXT;
+
 	/* clock source */
-	switch (dai->config.clk_src) {
+	switch (config->ssp[0].clk_id) {
 	case SSP_CLK_AUDIO:
 		sscr0 |= SSCR0_ACS;
 		break;
@@ -251,61 +257,212 @@ static inline int ssp_set_config(struct dai *dai, struct dai_config *dai_config)
 		sscr0 |= SSCR0_NCS | SSCR0_MOD;
 		break;
 	default:
-		return -ENODEV;
+		trace_ssp_error("ec4");
+		ret = -EINVAL;
+		goto out;
+	}
+#endif
+
+	/* BCLK is generated from MCLK - must be divisable */
+	if (config->mclk % config->bclk) {
+		trace_ssp_error("ec5");
+		ret = -EINVAL;
+		goto out;
 	}
 
-	/* BCLK is generated from MCLK */
-	sscr0 |= SSCR0_SCR(dai->config.mclk / dai->config.bclk - 1);
+	/* divisor must be within SCR range */
+	mdiv = (config->mclk / config->bclk)- 1;
+	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
+		trace_ssp_error("ec6");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* set the SCR divisor */
+	sscr0 |= SSCR0_SCR(mdiv);
+
+	/* calc frame width based on BCLK and rate - must be divisable */
+	if (config->bclk % config->fclk) {
+		trace_ssp_error("ec7");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* must be enouch BCLKs for data */
+	bdiv = config->bclk / config->fclk;
+	if (bdiv < config->sample_container_bits * config->num_slots) {
+		trace_ssp_error("ec8");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* sample_container_bits must be <= 38 for SSP */
+	if (config->sample_container_bits > 38) {
+		trace_ssp_error("ec9");
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* format */
-	switch (dai->config.format & DAI_FMT_FORMAT_MASK) {
-	case DAI_FMT_I2S:
-		sscr0 |= SSCR0_PSP;
-		sscr1 |= SSCR1_TRAIL;
-		sspsp |= SSPSP_SFRMWDTH(dai->config.sample_size + 1);
-		sspsp |= SSPSP_SFRMDLY((dai->config.sample_size + 1) * 2);
-		sspsp |= SSPSP_DMYSTRT(1);
+	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
+	case SOF_DAI_FMT_I2S:
+
+		start_delay = 1;
+
+		/* enable I2S mode */
+		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
+
+		/* set asserted frame length */
+		frame_len = config->sample_container_bits;
+
+		/* handle frame polarity, I2S default is falling/active low */
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
+		sscr3 |= SSCR3_I2S_FRM_POL(!inverted_frame);
+
+		if (cbs) {
+			/*
+			 * keep RX functioning on a TX underflow
+			 * (I2S/LEFT_J master only)
+			 */
+			sscr3 |= SSCR3_MST_CLK_EN;
+
+			/*
+			 * total frame period (both asserted and
+			 * deasserted time of frame
+			 */
+			sscr4 |= SSCR4_TOT_FRM_PRD(frame_len << 1);
+		}
+
 		break;
-	case DAI_FMT_DSP_A:
-		sspsp |= SSPSP_FSRT;
-	case DAI_FMT_DSP_B:
-		sscr0 |= SSCR0_PSP;
-		sscr1 |= SSCR1_TRAIL;
+
+	case SOF_DAI_FMT_LEFT_J:
+
+		start_delay = 0;
+
+		/* apparently we need the same initialization as for I2S */
+		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
+
+		/* set asserted frame length */
+		frame_len = config->sample_container_bits;
+
+		/* LEFT_J default is rising/active high, opposite of I2S */
+		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sscr3 |= SSCR3_I2S_FRM_POL(inverted_frame);
+
+		if (cbs) {
+			/*
+			 * keep RX functioning on a TX underflow
+			 * (I2S/LEFT_J master only)
+			 */
+			sscr3 |= SSCR3_MST_CLK_EN;
+
+			/*
+			 * total frame period (both asserted and
+			 * deasserted time of frame
+			 */
+			sscr4 |= SSCR4_TOT_FRM_PRD(frame_len << 1);
+		}
+
+		break;
+	case SOF_DAI_FMT_DSP_A:
+
+		start_delay = 1;
+
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
+
+		/* set asserted frame length */
+		frame_len = 1;
+
+		/* handle frame polarity, DSP_A default is rising/active high */
+		sspsp |= SSPSP_SFRMP(inverted_frame);
+		if (cfs) {
+			/* set sscr frame polarity in DSP/master mode only */
+			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
+		}
+
+		/*
+		 * total frame period (both asserted and
+		 * deasserted time of frame)
+		 */
+		if (cbs)
+			sscr4 |= SSCR4_TOT_FRM_PRD(config->num_slots *
+					   config->sample_container_bits);
+
+		active_tx_slots = hweight_32(config->tx_slot_mask);
+		active_rx_slots = hweight_32(config->rx_slot_mask);
+
+		break;
+	case SOF_DAI_FMT_DSP_B:
+
+		start_delay = 0;
+
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
+
+		/* set asserted frame length */
+		frame_len = 1;
+
+		/* handle frame polarity, DSP_A default is rising/active high */
+		sspsp |= SSPSP_SFRMP(inverted_frame);
+		if (cfs) {
+			/* set sscr frame polarity in DSP/master mode only */
+			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
+		}
+
+		/*
+		 * total frame period (both asserted and
+		 * deasserted time of frame
+		 */
+		if (cbs)
+			sscr4 |= SSCR4_TOT_FRM_PRD(config->num_slots *
+					   config->sample_container_bits);
+
+		active_tx_slots = hweight_32(config->tx_slot_mask);
+		active_rx_slots = hweight_32(config->rx_slot_mask);
+
 		break;
 	default:
-		return -EINVAL;
+		trace_ssp_error("eca");
+		ret = -EINVAL;
+		goto out;
 	}
 
-	/* sample size */
-	if (dai->config.sample_size > 16)
-		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(dai->config.sample_size - 16));
+	sspsp |= SSPSP_DMYSTRT(start_delay);
+	sspsp |= SSPSP_SFRMWDTH(frame_len);
+	sscr5 |= SSCR5_FRM_ASRT_CLOCKS(frame_len);
+
+	data_size = config->sample_valid_bits;
+
+	if (data_size > 16)
+		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
 	else
-		sscr0 |= SSCR0_DSIZE(dai->config.sample_size);
+		sscr0 |= SSCR0_DSIZE(data_size);
 
-	/* watermarks - TODO: do we still need old sscr1 method ?? */
-	sscr1 |= (SSCR1_TX(4) | SSCR1_RX(4));
+	/* FIXME:
+	 * watermarks - (RFT + 1) should equal DMA SRC_MSIZE
+	 */
+	sfifott = (SFIFOTT_TX(2*active_tx_slots) |
+		   SFIFOTT_RX(2*active_rx_slots));
 
-	/* watermarks - (RFT + 1) should equal DMA SRC_MSIZE */
-	sfifott = (SFIFOTT_TX(8) | SFIFOTT_RX(8));
+	trace_ssp("coe");
 
-	if (dai->config.lbm)
-		sscr1 |= SSCR1_LBM;
-	else
-		sscr1 &= ~SSCR1_LBM;
-
-	trace_ssp("SSC");
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
+	ssp_write(dai, SSCR2, sscr2);
+	ssp_write(dai, SSCR3, sscr3);
+	ssp_write(dai, SSCR4, sscr4);
+	ssp_write(dai, SSCR5, sscr5);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
+	ssp_write(dai, SSTSA, config->tx_slot_mask);
+	ssp_write(dai, SSRSA, config->rx_slot_mask);
 
-	ssp->state[DAI_DIR_PLAYBACK] = SSP_STATE_IDLE;
-	ssp->state[DAI_DIR_CAPTURE] = SSP_STATE_IDLE;
+	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
+	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
 out:
 	spin_unlock(&ssp->lock);
 
-	return 0;
+	return ret;
 }
 
 /* Digital Audio interface formatting */
@@ -313,7 +470,7 @@ static inline int ssp_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("SLb");
+	trace_ssp("loo");
 	spin_lock(&ssp->lock);
 
 	ssp_update_bits(dai, SSCR1, SSCR1_LBM, lbm ? SSCR1_LBM : 0);
@@ -332,9 +489,9 @@ static void ssp_start(struct dai *dai, int direction)
 
 	/* enable port */
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
-	ssp->state[direction] = SSP_STATE_RUNNING;
+	ssp->state[direction] = COMP_STATE_ACTIVE;
 
-	trace_ssp("SEn");
+	trace_ssp("sta");
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
@@ -345,135 +502,63 @@ static void ssp_start(struct dai *dai, int direction)
 	spin_unlock(&ssp->lock);
 }
 
-/* stop the SSP port stream DMA and disable SSP port if no users */
-static void ssp_stop(struct dai *dai, int direction)
+/* stop the SSP for either playback or capture */
+static void ssp_stop(struct dai *dai)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-	uint32_t sscr1;
 
 	spin_lock(&ssp->lock);
 
-	trace_ssp("SDc");
-
-	/* disable DMA */
-	if (direction == DAI_DIR_PLAYBACK) {
-		if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_DRAINING)
-			ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-	} else
+	/* stop Rx if we are not capturing */
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
-
-	/* disable port if no users */
-	sscr1 = ssp_read(dai, SSCR1);
-	if (!(sscr1 & (SSCR1_TSRE | SSCR1_RSRE))) {
-		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-		trace_ssp("SDp");
+		trace_ssp("Ss0");
 	}
 
-	ssp->state[direction] = SSP_STATE_IDLE;
+	/* stop Tx if we are not playing */
+	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
+		trace_ssp("Ss1");
+	}
+
+	/* disable SSP port if no users */
+	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE &&
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
+		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
+		trace_ssp("Ss2");
+	}
 
 	spin_unlock(&ssp->lock);
-}
-
-static void ssp_pause(struct dai *dai, int direction)
-{
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
-	spin_lock(&ssp->lock);
-
-	trace_ssp("SDp");
-
-	/* disable DMA */
-	if (direction == DAI_DIR_PLAYBACK) {
-		if (ssp->state[DAI_DIR_PLAYBACK] == SSP_STATE_PAUSING)
-			ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-	} else
-		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
-
-	ssp->state[direction] = SSP_STATE_PAUSED;
-
-	spin_unlock(&ssp->lock);
-}
-
-static uint32_t ssp_drain_work(void *data, uint32_t udelay)
-{
-	struct dai *dai = (struct dai *)data;
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
-	trace_ssp("SDw");
-
-	if (ssp->state[STREAM_DIRECTION_PLAYBACK] == SSP_STATE_DRAINING)
-		ssp_stop(dai, STREAM_DIRECTION_PLAYBACK);
-	else
-		ssp_pause(dai, STREAM_DIRECTION_PLAYBACK);
-	wait_completed(&ssp->drain_complete);
-	return 0;
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("STr");
+	trace_ssp("tri");
 
 	switch (cmd) {
-	case DAI_TRIGGER_START:
-/* let's only wait until draining finished(timout) before another start */
-#if 0
-		/* cancel any scheduled work */
-		if (ssp->state[direction] == SSP_STATE_DRAINING)
-			work_cancel_default(&ssp->work);
-#endif
-		if (ssp->state[direction] == SSP_STATE_IDLE)
+	case COMP_CMD_START:
+		if (ssp->state[direction] == COMP_STATE_PREPARE ||
+			ssp->state[direction] == COMP_STATE_PAUSED)
 			ssp_start(dai, direction);
 		break;
-	case DAI_TRIGGER_PAUSE_RELEASE:
-/* let's only wait until pausing finished(timout) before next release */
-#if 0
-		if (ssp->state[direction] == SSP_STATE_PAUSING)
-			work_cancel_default(&ssp->work);
-#endif
-		if (ssp->state[direction] == SSP_STATE_PAUSED)
+	case COMP_CMD_RELEASE:
+		if (ssp->state[direction] == COMP_STATE_PAUSED ||
+			ssp->state[direction] == COMP_STATE_PREPARE)
 			ssp_start(dai, direction);
 		break;
-	case DAI_TRIGGER_PAUSE_PUSH:
-		if (ssp->state[direction] != SSP_STATE_RUNNING) {
-			trace_ssp_error("wsP");
-			return 0;
-		}
-		if (direction == STREAM_DIRECTION_PLAYBACK) {
-			ssp->state[STREAM_DIRECTION_PLAYBACK] =
-				SSP_STATE_PAUSING;
-			/* make sure the maximum 256 bytes are drained */
-			work_schedule_default(&ssp->work, 1333);
-			wait_init(&ssp->drain_complete);
-			ssp->drain_complete.timeout = 1500;
-			wait_for_completion_timeout(&ssp->drain_complete);
-		} else
-			ssp_pause(dai, direction);
+	case COMP_CMD_STOP:
+	case COMP_CMD_PAUSE:
+		ssp->state[direction] = COMP_STATE_PAUSED;
+		ssp_stop(dai);
 		break;
-	case DAI_TRIGGER_STOP:
-		if (ssp->state[direction] != SSP_STATE_RUNNING &&
-			ssp->state[direction] != SSP_STATE_PAUSED) {
-			trace_ssp_error("wsO");
-			return 0;
-		}
-		if (direction == STREAM_DIRECTION_PLAYBACK &&
-			ssp->state[direction] == SSP_STATE_RUNNING) {
-			ssp->state[STREAM_DIRECTION_PLAYBACK] =
-				SSP_STATE_DRAINING;
-			work_schedule_default(&ssp->work, 2000);
-			wait_init(&ssp->drain_complete);
-			ssp->drain_complete.timeout = 3000;
-			wait_for_completion_timeout(&ssp->drain_complete);
-		} else
-			ssp_stop(dai, direction);
-		break;
-	case DAI_TRIGGER_RESUME:
+	case COMP_CMD_RESUME:
 		ssp_context_restore(dai);
-		ssp_start(dai, direction);
 		break;
-	case DAI_TRIGGER_SUSPEND:
-		ssp_stop(dai, direction);
+	case COMP_CMD_SUSPEND:
 		ssp_context_store(dai);
 		break;
 	default:
@@ -483,19 +568,45 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
+/* clear IRQ sources atm */
+static void ssp_irq_handler(void *data)
+{
+	struct dai *dai = data;
+
+	trace_ssp("irq");
+	trace_value(ssp_read(dai, SSSR));
+
+	/* clear IRQ */
+	ssp_write(dai, SSSR, ssp_read(dai, SSSR));
+	platform_interrupt_clear(ssp_irq(dai), 1);
+}
+
 static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
 
 	/* allocate private data */
-	ssp = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*ssp));
+	ssp = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
-	work_init(&ssp->work, ssp_drain_work, dai, WORK_ASYNC);
 	spinlock_init(&ssp->lock);
 
-	ssp->state[DAI_DIR_PLAYBACK] = SSP_STATE_INIT;
-	ssp->state[DAI_DIR_CAPTURE] = SSP_STATE_INIT;
+	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
+	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
+
+#if defined CONFIG_CHERRYTRAIL
+	/* register our IRQ handler - CHT shares SSP 0,1,2 IRQs with SSP 3,4,5 */
+	if (ssp_irq(dai) >= IRQ_CHT_SSP_OFFSET)
+		interrupt_register(ssp_irq(dai) - IRQ_CHT_SSP_OFFSET,
+			ssp_irq_handler, dai);
+	else
+		interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
+#else
+	/* register our IRQ handler */
+	interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
+#endif
+	platform_interrupt_unmask(ssp_irq(dai), 1);
+	interrupt_enable(ssp_irq(dai));
 
 	return 0;
 }

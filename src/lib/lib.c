@@ -31,14 +31,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <reef/reef.h>
+#include <reef/alloc.h>
 
 #if 0 // TODO: only compile if no arch memcpy is available.
 
 void cmemcpy(void *dest, void *src, size_t size)
 {
-	uint32_t *d32, *s32;
-	uint8_t *d8, *s8;
-	int i, d = size / 4, r = size % 4;
+	uint32_t *d32;
+	uint32_t *s32;
+	uint8_t *d8;
+	uint8_t *s8;
+	int i;
+	int d = size / 4;
+	int r = size % 4;
 
 	/* copy word at a time */
 	d32 = dest;
@@ -66,7 +71,9 @@ void bzero(void *s, size_t n)
 {
 	uint32_t *d32 = s;
 	uint8_t *d8;
-	int i, d = n >> 2, r = n % 4;
+	int i;
+	int d = n >> 2;
+	int r = n % 4;
 
 	/* zero word at a time */
 	for (i = 0; i <	d; i++)
@@ -81,11 +88,21 @@ void bzero(void *s, size_t n)
 /* generic memset - TODO: can be optimsed for ARCH ? */
 void *memset(void *s, int c, size_t n)
 {
-	uint8_t *d8 = s, v = c;
+	uint8_t *d8 = s;
+	uint8_t v = c;
 	int i;
 
 	for (i = 0; i <	n; i++)
 		d8[i] = v;
 
 	return s;
+}
+
+/* generic strlen - TODO: can be optimsed for ARCH ? */
+int rstrlen(const char *s)
+{
+	const char *p = s;
+
+	while(*p++ != 0);
+	return (p - s) - 1;
 }

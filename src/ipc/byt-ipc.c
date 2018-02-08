@@ -49,7 +49,7 @@
 #include <platform/platform.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
-#include <uapi/intel-ipc.h>
+#include <uapi/ipc.h>
 #include <reef/intel-ipc.h>
 
 extern struct ipc *_ipc;
@@ -67,8 +67,8 @@ static void do_notify(void)
 		goto out;
 
 	/* copy the data returned from DSP */
-	if (msg->rx_size && msg->rx_size < MSG_MAX_SIZE)
-		mailbox_inbox_read(0, msg->rx_data, msg->rx_size);
+	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
+		mailbox_dspbox_read(msg->rx_data, 0, msg->rx_size);
 
 	/* any callback ? */
 	if (msg->cb)
@@ -78,6 +78,7 @@ static void do_notify(void)
 
 out:
 	spin_unlock_irq(&_ipc->lock, flags);
+
 	/* clear DONE bit - tell Host we have completed */
 	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
 
@@ -121,29 +122,48 @@ static void irq_handler(void *arg)
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(ipc);
-	uint32_t ipcxh, status;
+	struct sof_ipc_reply reply;
+	uint32_t ipcxh;
+	int32_t err;
 
-	trace_ipc("Cmd");
-	//trace_value(_ipc->host_msg);
+	tracev_ipc("Cmd");
 
-	status = ipc_cmd();
+	/* perform command and return any error */
+	err = ipc_cmd();
+	if (err > 0) {
+		goto done; /* reply created and copied by cmd() */
+	} else {
+		/* send std error reply */
+		reply.error = err;
+	}
+
+	/* send std error/ok reply */
+	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
+	reply.hdr.size = sizeof(reply);
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+
+done:
 	ipc->host_pending = 0;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	ipcxh = shim_read(SHIM_IPCXH);
 	ipcxh &= ~SHIM_IPCXH_BUSY;
-	ipcxh |= SHIM_IPCXH_DONE | status;
+	ipcxh |= SHIM_IPCXH_DONE;
 	shim_write(SHIM_IPCXH, ipcxh);
+
+	/* unmask busy interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1)
+		while (1) {
+			trace_ipc("pme");
 			wait_for_interrupt(0);
+		}
 	}
 
-	/* unmask busy interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+	tracev_ipc("CmD");
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
@@ -159,13 +179,13 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
-	/* can't send nofication when one is in progress */
+	/* can't send notification when one is in progress */
 	if (shim_read(SHIM_IPCDH) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
 		goto out;
 
 	/* now send the message */
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg, list);
-	mailbox_outbox_write(0, msg->tx_data, msg->tx_size);
+	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	ipc->dsp_msg = msg;
 	tracev_ipc("Msg");
@@ -187,20 +207,21 @@ int platform_ipc_init(struct ipc *ipc)
 	_ipc = ipc;
 
 	/* init ipc data */
-	iipc = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(struct intel_ipc_data));
+	iipc = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 	_ipc->dsp_msg = NULL;
 	list_init(&ipc->empty_list);
 	list_init(&ipc->msg_list);
 	spinlock_init(&ipc->lock);
+
 	for (i = 0; i < MSG_QUEUE_SIZE; i++)
 		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
 	/* allocate page table buffer */
-	iipc->page_table = rballoc(RZONE_DEV, RMOD_SYS,
-		IPC_INTEL_PAGE_TABLE_SIZE);
+	iipc->page_table = rzalloc(RZONE_SYS, RFLAGS_NONE,
+		PLATFORM_PAGE_TABLE_SIZE);
 	if (iipc->page_table)
-		bzero(iipc->page_table, IPC_INTEL_PAGE_TABLE_SIZE);
+		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
 
 	/* dma */
 	iipc->dmac0 = dma_get(DMA_ID_DMAC0);

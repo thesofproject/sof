@@ -30,13 +30,19 @@
  */
 
 #include <stdint.h>
-#include <uapi/intel-ipc.h>
+#include <uapi/ipc.h>
 #include <reef/reef.h>
 #include <reef/debug.h>
 #include <reef/trace.h>
+#include <reef/ipc.h>
 #include <reef/dma.h>
 #include <reef/wait.h>
 #include <platform/dma.h>
+
+/* tracing */
+#define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)
+#define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
+#define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
 
 static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	int32_t *offset)
@@ -60,28 +66,40 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	}
 
 	/* host offset in beyond end of SG buffer */
-	//trace_mem_error("eMs");
+	trace_dma_error("ex0");
 	return NULL;
 }
 
-int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
-	void *local_ptr, int32_t size)
+static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
+{
+	completion_t *comp = (completion_t *)data;
+
+	if (type == DMA_IRQ_TYPE_LLIST)
+		wait_completed(comp);
+
+#if defined(CONFIG_DMA_TRACE)
+	ipc_dma_trace_send_position();
+#endif
+
+	next->size = DMA_RELOAD_END;
+}
+
+/* Copy DSP memory to host memory.
+ * copies DSP memory to host in PAGE_SIZE or smaller blocks and waits/sleeps
+ * between blocks. Can't be used in IRQ context.
+ */
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size)
 {
 	struct dma_sg_config config;
-	struct dma_sg_elem *host_sg_elem, local_sg_elem;
-	struct dma *dma = dma_get(DMA_ID_DMAC0);
-	completion_t complete;
-	int32_t err, offset = host_offset, chan;
+	struct dma_sg_elem *host_sg_elem;
+	struct dma_sg_elem local_sg_elem;
+	int32_t err;
+	int32_t offset = host_offset;
+	int32_t bytes_copied = 0;
 
-	if (dma == NULL)
-		return -ENODEV;
-
-	/* get DMA channel from DMAC0 */
-	chan = dma_channel_get(dma);
-	if (chan < 0) {
-		//trace_ipc_error("ePC");
-		return chan;
-	}
+	if (size <= 0)
+		return 0;
 
 	/* find host element with host_offset */
 	host_sg_elem = sg_get_elem_at(host_sg, &offset);
@@ -89,7 +107,6 @@ int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 		return -EINVAL;
 
 	/* set up DMA configuration */
-	complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
 	config.direction = DMA_DIR_LMEM_TO_HMEM;
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
@@ -99,22 +116,30 @@ int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	/* configure local DMA elem */
 	local_sg_elem.dest = host_sg_elem->dest + offset;
 	local_sg_elem.src = (uint32_t)local_ptr;
-	local_sg_elem.size = HOST_PAGE_SIZE - offset;
+	if (size >= HOST_PAGE_SIZE - offset)
+		local_sg_elem.size = HOST_PAGE_SIZE - offset;
+	else
+		local_sg_elem.size = size;
+
 	list_item_prepend(&local_sg_elem.list, &config.elem_list);
 
 	/* transfer max PAGE size at a time to SG buffer */
 	while (size > 0) {
 
 		/* start the DMA */
-		wait_init(&complete);
-		dma_set_config(dma, chan, &config);
-		dma_start(dma, chan);
+		wait_init(&dc->complete);
+		err = dma_set_config(dc->dmac, dc->chan, &config);
+		if (err < 0)
+			return err;
+
+		err = dma_start(dc->dmac, dc->chan);
+		if (err < 0)
+			return err;
 	
 		/* wait for DMA to complete */
-		err = wait_for_completion_timeout(&complete);
+		err = wait_for_completion_timeout(&dc->complete);
 		if (err < 0) {
-			//trace_comp_error("eAp");
-			dma_channel_put(dma, chan);
+			trace_dma_error("ex1");
 			return -EIO;
 		}
 
@@ -123,11 +148,14 @@ int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 		host_offset += local_sg_elem.size;
 
 		/* next dest host address is in next host elem */
+
 		host_sg_elem = list_next_item(host_sg_elem, list);
 		local_sg_elem.dest = host_sg_elem->dest;
 
 		/* local address is continuous */
 		local_sg_elem.src = (uint32_t)local_ptr + local_sg_elem.size;
+
+		bytes_copied += local_sg_elem.size;
 
 		/* do we have less than 1 PAGE to copy ? */
 		if (size >= HOST_PAGE_SIZE)
@@ -136,29 +164,25 @@ int dma_copy_to_host(struct dma_sg_config *host_sg, int32_t host_offset,
 			local_sg_elem.size = size;
 	}
 
-	/* new host offset in SG buffer */
-	dma_channel_put(dma, chan);
-	return host_offset;
+	/* bytes copied */
+	return bytes_copied;
 }
 
-int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
-	void *local_ptr, int32_t size)
+/* Copy DSP memory to host memory.
+ * Copies DSP memory to host in a single PAGE_SIZE or smaller block. Does not
+ * waits/sleeps and can be used in IRQ context.
+ */
+int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size)
 {
 	struct dma_sg_config config;
-	struct dma_sg_elem *host_sg_elem, local_sg_elem;
-	struct dma *dma = dma_get(DMA_ID_DMAC0);
-	completion_t complete;
-	int32_t err, offset = host_offset, chan;
+	struct dma_sg_elem *host_sg_elem;
+	struct dma_sg_elem local_sg_elem;
+	int32_t err;
+	int32_t offset = host_offset;
 
-	if (dma == NULL)
-		return -ENODEV;
-
-	/* get DMA channel from DMAC0 */
-	chan = dma_channel_get(dma);
-	if (chan < 0) {
-		//trace_ipc_error("ePC");
-		return chan;
-	}
+	if (size <= 0)
+		return 0;
 
 	/* find host element with host_offset */
 	host_sg_elem = sg_get_elem_at(host_sg, &offset);
@@ -166,7 +190,58 @@ int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 		return -EINVAL;
 
 	/* set up DMA configuration */
-	complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
+	config.direction = DMA_DIR_LMEM_TO_HMEM;
+	config.src_width = sizeof(uint32_t);
+	config.dest_width = sizeof(uint32_t);
+	config.cyclic = 0;
+	list_init(&config.elem_list);
+
+	/* configure local DMA elem */
+	local_sg_elem.dest = host_sg_elem->dest + offset;
+	local_sg_elem.src = (uint32_t)local_ptr;
+	if (size >= HOST_PAGE_SIZE - offset)
+		local_sg_elem.size = HOST_PAGE_SIZE - offset;
+	else
+		local_sg_elem.size = size;
+
+	list_item_prepend(&local_sg_elem.list, &config.elem_list);
+
+	/* start the DMA */
+	err = dma_set_config(dc->dmac, dc->chan, &config);
+	if (err < 0)
+		return err;
+
+	err = dma_start(dc->dmac, dc->chan);
+	if (err < 0)
+		return err;
+
+	/* bytes copied */
+	return local_sg_elem.size;
+}
+
+/* Copy host memory to DSP memory.
+ * Copies host memory to host in PAGE_SIZE or smaller blocks and waits/sleeps
+ * between blocks. Cant be used in IRQ context.
+ */
+int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size)
+{
+	struct dma_sg_config config;
+	struct dma_sg_elem *host_sg_elem;
+	struct dma_sg_elem local_sg_elem;
+	int32_t err;
+	int32_t offset = host_offset;
+	int32_t bytes_copied = 0;
+
+	if (size <= 0)
+		return 0;
+
+	/* find host element with host_offset */
+	host_sg_elem = sg_get_elem_at(host_sg, &offset);
+	if (host_sg_elem == NULL)
+		return -EINVAL;
+
+	/* set up DMA configuration */
 	config.direction = DMA_DIR_HMEM_TO_LMEM;
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
@@ -176,22 +251,29 @@ int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 	/* configure local DMA elem */
 	local_sg_elem.dest = (uint32_t)local_ptr;
 	local_sg_elem.src = host_sg_elem->src + offset;
-	local_sg_elem.size = HOST_PAGE_SIZE - offset;
+	if (size >= HOST_PAGE_SIZE - offset)
+		local_sg_elem.size = HOST_PAGE_SIZE - offset;
+	else
+		local_sg_elem.size = size;
 	list_item_prepend(&local_sg_elem.list, &config.elem_list);
 
 	/* transfer max PAGE size at a time to SG buffer */
 	while (size > 0) {
 
 		/* start the DMA */
-		wait_init(&complete);
-		dma_set_config(dma, chan, &config);
-		dma_start(dma, chan);
-	
+		wait_init(&dc->complete);
+		err = dma_set_config(dc->dmac, dc->chan, &config);
+		if (err < 0)
+			return err;
+
+		err = dma_start(dc->dmac, dc->chan);
+		if (err < 0)
+			return err;
+
 		/* wait for DMA to complete */
-		err = wait_for_completion_timeout(&complete);
+		err = wait_for_completion_timeout(&dc->complete);
 		if (err < 0) {
-			//trace_comp_error("eAp");
-			dma_channel_put(dma, chan);
+			trace_dma_error("ex2");
 			return -EIO;
 		}
 
@@ -206,6 +288,8 @@ int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 		/* local address is continuous */
 		local_sg_elem.dest = (uint32_t)local_ptr + local_sg_elem.size;
 
+		bytes_copied += local_sg_elem.size;
+
 		/* do we have less than 1 PAGE to copy ? */
 		if (size >= HOST_PAGE_SIZE)
 			local_sg_elem.size = HOST_PAGE_SIZE;
@@ -213,7 +297,78 @@ int dma_copy_from_host(struct dma_sg_config *host_sg, int32_t host_offset,
 			local_sg_elem.size = size;
 	}
 
-	/* new host offset in SG buffer */
-	dma_channel_put(dma, chan);
-	return host_offset;
+	/* bytes copied */
+	return bytes_copied;
 }
+
+/* Copy host memory to DSP memory.
+ * Copies host memory to DSP in a single PAGE_SIZE or smaller block. Does not
+ * waits/sleeps and can be used in IRQ context.
+ */
+int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size)
+{
+	struct dma_sg_config config;
+	struct dma_sg_elem *host_sg_elem;
+	struct dma_sg_elem local_sg_elem;
+	int32_t err;
+	int32_t offset = host_offset;
+
+	if (size <= 0)
+		return 0;
+
+	/* find host element with host_offset */
+	host_sg_elem = sg_get_elem_at(host_sg, &offset);
+	if (host_sg_elem == NULL)
+		return -EINVAL;
+
+	/* set up DMA configuration */
+	config.direction = DMA_DIR_HMEM_TO_LMEM;
+	config.src_width = sizeof(uint32_t);
+	config.dest_width = sizeof(uint32_t);
+	config.cyclic = 0;
+	list_init(&config.elem_list);
+
+	/* configure local DMA elem */
+	local_sg_elem.dest = (uint32_t)local_ptr;
+	local_sg_elem.src = host_sg_elem->src + offset;
+	if (size >= HOST_PAGE_SIZE - offset)
+		local_sg_elem.size = HOST_PAGE_SIZE - offset;
+	else
+		local_sg_elem.size = size;
+	list_item_prepend(&local_sg_elem.list, &config.elem_list);
+
+	/* start the DMA */
+	err = dma_set_config(dc->dmac, dc->chan, &config);
+	if (err < 0)
+		return err;
+
+	err = dma_start(dc->dmac, dc->chan);
+	if (err < 0)
+		return err;
+
+	/* bytes copied */
+	return local_sg_elem.size;
+}
+
+int dma_copy_new(struct dma_copy *dc, int dmac)
+{
+	dc->dmac = dma_get(dmac);
+	if (dc->dmac == NULL) {
+		trace_dma_error("ec0");
+		return -ENODEV;
+	}
+
+		/* get DMA channel from DMAC0 */
+	dc->chan = dma_channel_get(dc->dmac);
+	if (dc->chan < 0) {
+		trace_dma_error("ec1");
+		return dc->chan;
+	}
+
+	dc->complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
+	dma_set_cb(dc->dmac, dc->chan, DMA_IRQ_TYPE_LLIST, dma_complete,
+		&dc->complete);
+	return 0;
+}
+

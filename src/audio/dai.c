@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright (c) 2016, Intel Corporation
  * All rights reserved.
  *
@@ -43,6 +43,7 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <platform/dma.h>
+#include <arch/cache.h>
 
 #define DAI_PLAYBACK_STREAM	0
 #define DAI_CAPTURE_STREAM	1
@@ -58,171 +59,182 @@ struct dai_data {
 	int chan;
 	struct dma_sg_config config;
 
-	int direction;
-	uint32_t stream_format;
-	struct dai *ssp;
+	struct dai *dai;
 	struct dma *dma;
+	uint32_t period_bytes;
+	completion_t complete;
+	int xrun;		/* true if we are doing xrun recovery */
 
 	uint32_t last_bytes;    /* the last bytes(<period size) it copies. */
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
 	volatile uint64_t *dai_pos; /* host can read back this value without IPC */
+	uint64_t wallclock;	/* wall clock at stream start */
 };
 
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data);
+
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct period_desc *dma_period_desc;
 	struct comp_buffer *dma_buffer;
 	uint32_t copied_size;
 
-	if (dd->direction == STREAM_DIRECTION_PLAYBACK) {
+	tracev_dai("irq");
+
+	/* is stream stopped or paused and we are not handling XRUN ? */
+	if (dev->state != COMP_STATE_ACTIVE && dd->xrun == 0) {
+
+		/* stop the DAI */
+		dai_trigger(dd->dai, COMP_CMD_STOP, dev->params.direction);
+
+		/* tell DMA not to reload */
+		next->size = DMA_RELOAD_END;
+
+		/* inform waiters */
+		wait_completed(&dd->complete);
+	}
+
+	/* is our pipeline handling an XRUN ? */
+	if (dd->xrun) {
+
+		/* make sure we only playback silence during an XRUN */
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+
+			dma_buffer = list_first_item(&dev->bsource_list,
+				struct comp_buffer, sink_list);
+
+			/* fill buffer with silence */
+			bzero(dma_buffer->addr, dma_buffer->size);
+
+			/* writeback buffer contents from cache */
+			dcache_writeback_region(dma_buffer->addr,
+				dma_buffer->size);
+		}
+
+		/* inform waiters */
+		wait_completed(&dd->complete);
+		return;
+	}
+
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
-		dma_period_desc = &dma_buffer->desc.sink_period;
-		copied_size = dd->last_bytes ? dd->last_bytes : dma_period_desc->size;
-		dma_buffer->r_ptr += copied_size;
-
-		/* check for end of buffer */
-		if (dma_buffer->r_ptr >= dma_buffer->end_addr) {
-			dma_buffer->r_ptr = dma_buffer->addr;
-			/* update host position(in bytes offset) for drivers */
-			dd->dai_pos_blks += dma_buffer->desc.size;
-		}
-
-#if 0
-		// TODO: move this to new trace mechanism
-		trace_value((uint32_t)(dma_buffer->r_ptr - dma_buffer->addr));
-#endif
-
-		/* update host position(in bytes offset) for drivers */
-		dd->dai_pos_blks += dma_period_desc->size;
-		if (dd->dai_pos)
-			*dd->dai_pos = dd->dai_pos_blks +
-				dma_buffer->r_ptr - dma_buffer->addr;
+		copied_size = dd->last_bytes ? dd->last_bytes : dd->period_bytes;
 
 		/* recalc available buffer space */
-		comp_update_buffer_consume(dma_buffer);
+		comp_update_buffer_consume(dma_buffer, copied_size);
+
+		/* writeback buffer contents from cache */
+		dcache_writeback_region(dma_buffer->r_ptr, copied_size);
+
+		/* update host position(in bytes offset) for drivers */
+		dev->position += copied_size;
+		if (dd->dai_pos) {
+			dd->dai_pos_blks += copied_size;
+			*dd->dai_pos = dd->dai_pos_blks +
+				dma_buffer->r_ptr - dma_buffer->addr;
+		}
+
+		/* make sure there is availble bytes for next period */
+		if (dma_buffer->avail < dd->period_bytes) {
+			trace_dai_error("xru");
+			comp_underrun(dev, dma_buffer, copied_size, 0);
+		}
+
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 
-		dma_period_desc = &dma_buffer->desc.source_period;
-		dma_buffer->w_ptr += dma_period_desc->size;
-
-		/* check for end of buffer */
-		if (dma_buffer->w_ptr >= dma_buffer->end_addr) {
-			dma_buffer->w_ptr = dma_buffer->addr;
-			/* update host position(in bytes offset) for drivers */
-			dd->dai_pos_blks += dma_buffer->desc.size;
-		}
-
-#if 0
-		// TODO: move this to new trace mechanism
-		trace_value((uint32_t)(dma_buffer->w_ptr - dma_buffer->addr));
-#endif
-
-		if (dd->dai_pos)
-			*dd->dai_pos = dd->dai_pos_blks +
-				dma_buffer->w_ptr - dma_buffer->addr;
+		/* invalidate buffer contents */
+		dcache_invalidate_region(dma_buffer->w_ptr, dd->period_bytes);
 
 		/* recalc available buffer space */
-		comp_update_buffer_produce(dma_buffer);
-	}
+		comp_update_buffer_produce(dma_buffer, dd->period_bytes);
 
-	if (dd->direction == STREAM_DIRECTION_PLAYBACK &&
-				dma_buffer->avail < dma_period_desc->size) {
-		/* end of stream, finish */
-		if (dma_buffer->avail == 0) {
-			dai_cmd(dev, COMP_CMD_STOP, NULL);
-
-			/* stop dma immediatly */
-			next->size = DMA_RELOAD_END;
-
-			/* let any waiters know we have completed */
-			wait_completed(&dev->pipeline->complete);
-
-			return;
-		} else {
-			/* drain the last bytes */
-			next->src = (uint32_t)dma_buffer->r_ptr;
-			next->dest = dai_fifo(dd->ssp, dd->direction);
-			next->size = dma_buffer->avail;
-
-			dd->last_bytes = next->size;
-
-			goto next_copy;
-
+		/* update positions */
+		dev->position += dd->period_bytes;
+		if (dd->dai_pos) {
+			dd->dai_pos_blks += dd->period_bytes;
+			*dd->dai_pos = dd->dai_pos_blks +
+				dma_buffer->w_ptr - dma_buffer->addr;
 		}
 
+		/* make sure there is free bytes for next period */
+		if (dma_buffer->free < dd->period_bytes) {
+			trace_dai_error("xro");
+			comp_overrun(dev, dma_buffer, dd->period_bytes, 0);
+		}
 	}
-	/* notify pipeline that DAI needs it's buffer filled */
-//	if (dev->state == COMP_STATE_RUNNING)
-		pipeline_schedule_copy(dev->pipeline, dev);
 
-next_copy:
-
-	return;
+	/* notify pipeline that DAI needs its buffer processed */
+	if (dev->state == COMP_STATE_ACTIVE)
+		pipeline_schedule_copy(dev->pipeline, 0);
 }
 
-static struct comp_dev *dai_new_ssp(uint32_t type, uint32_t index,
-	uint32_t direction)
+static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
+	struct sof_ipc_comp_dai *dai;
+	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)comp;
 	struct dai_data *dd;
 
-	dev = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dev));
+	trace_dai("new");
+
+	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		COMP_SIZE(struct sof_ipc_comp_dai));
 	if (dev == NULL)
 		return NULL;
 
-	dd = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*dd));
+	dai = (struct sof_ipc_comp_dai *)&dev->comp;
+	memcpy(dai, ipc_dai, sizeof(struct sof_ipc_comp_dai));
+
+	dd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dd));
 	if (dd == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, dev);
+		rfree(dev);
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, dd);
-	comp_set_dai_ep(dev);
 
-	dd->ssp = dai_get(type, index);
-	if (dd->ssp == NULL)
+	dd->dai = dai_get(dai->type, dai->index);
+	if (dd->dai == NULL) {
+		trace_dai_error("eDg");
 		goto error;
-	dd->dma = dma_get(DMA_ID_DMAC1);
-	if (dd->dma == NULL)
+	}
+
+	dd->dma = dma_get(ipc_dai->dmac_id);
+	if (dd->dma == NULL) {
+		trace_dai_error("eDd");
 		goto error;
+	}
 
 	list_init(&dd->config.elem_list);
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->last_bytes = 0;
+	dd->xrun = 0;
 
 	/* get DMA channel from DMAC1 */
 	dd->chan = dma_channel_get(dd->dma);
-	if (dd->chan < 0)
+	if (dd->chan < 0){
+		trace_dai_error("eDc");
 		goto error;
-
-	dd->stream_format = PLATFORM_SSP_STREAM_FORMAT;
+	}
 
 	/* set up callback */
-	//if (dd->ssp->plat_data.flags & DAI_FLAGS_IRQ_CB)
-		dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
-
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
+				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	dev->state = COMP_STATE_READY;
 	return dev;
 
 error:
-	rfree(RZONE_MODULE, RMOD_SYS, dd);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(dd);
+	rfree(dev);
 	return NULL;
-}
-
-static struct comp_dev *dai_new_hda(uint32_t type, uint32_t index,
-	uint32_t direction)
-{
-	return 0;
 }
 
 static void dai_free(struct comp_dev *dev)
@@ -231,168 +243,226 @@ static void dai_free(struct comp_dev *dev)
 
 	dma_channel_put(dd->dma, dd->chan);
 
-	rfree(RZONE_MODULE, RMOD_SYS, dd);
-	rfree(RZONE_MODULE, RMOD_SYS, dev);
+	rfree(dd);
+	rfree(dev);
 }
 
 /* set component audio SSP and DMA configuration */
-static int dai_playback_params(struct comp_dev *dev,
-	struct stream_params *params)
+static int dai_playback_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
+	struct sof_ipc_comp_config *source_config;
 	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
-	struct list_item *elist, *tlist;
+	struct list_item *elist;
+	struct list_item *tlist;
 	int i;
-
-	dd->direction = params->direction;
+	int err;
+	uint32_t buffer_size;
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_MEM_TO_DEV;
-	config->src_width = sizeof(uint32_t);
-	config->dest_width = sizeof(uint32_t);
+	config->src_width = comp_sample_bytes(dev);
+	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 1;
-	config->dest_dev = dd->ssp->plat_data.fifo[0].handshake;
+	config->dest_dev = dd->dai->plat_data.fifo[0].handshake;
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_item(&dev->bsource_list,
 		struct comp_buffer, sink_list);
-	dma_period_desc = &dma_buffer->desc.sink_period;
-	dma_buffer->params = *params;
+	source_config = COMP_GET_CONFIG(dma_buffer->source);
+	buffer_size = source_config->periods_sink * dd->period_bytes;
 
-	/* set it to dai stream format, for volume func correct mapping */
-	dma_buffer->params.pcm.format = dd->stream_format;
+	/* resize the buffer if space is available to align with period size */
+	err = buffer_set_size(dma_buffer, buffer_size);
+	if (err < 0) {
+		trace_dai_error("ep1");
+		trace_value(source_config->periods_sink);
+		trace_value(dd->period_bytes);
+		trace_value(buffer_size);
+		trace_value(dma_buffer->alloc_size);
+		return err;
+	}
 
 	if (list_is_empty(&config->elem_list)) {
 		/* set up cyclic list of DMA elems */
-		for (i = 0; i < dma_period_desc->number; i++) {
+		for (i = 0; i < source_config->periods_sink; i++) {
 
-			elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+			elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
 			if (elem == NULL)
 				goto err_unwind;
 
-			elem->size = dma_period_desc->size;
-			elem->src = (uint32_t)(dma_buffer->r_ptr) +
-				i * dma_period_desc->size;
+			elem->size = dd->period_bytes;
+			elem->src = (uintptr_t)(dma_buffer->r_ptr) +
+				i * dd->period_bytes;
 
-			elem->dest = dai_fifo(dd->ssp, params->direction);
+			elem->dest = dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK);
 
 			list_item_append(&elem->list, &config->elem_list);
 		}
 	}
 
-	/* set write pointer to start of buffer */
-	dma_buffer->w_ptr = dma_buffer->addr;
-
 	return 0;
 
 err_unwind:
+	trace_dai_error("ep3");
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
-		rfree(RZONE_MODULE, RMOD_SYS, elem);
+		rfree(elem);
 	}
 	return -ENOMEM;
 }
 
-static int dai_capture_params(struct comp_dev *dev,
-	struct stream_params *params)
+static int dai_capture_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
+	struct sof_ipc_comp_config *sink_config;
 	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
-	struct period_desc *dma_period_desc;
-	struct list_item *elist, *tlist;
+	struct list_item *elist;
+	struct list_item *tlist;
 	int i;
-
-	dd->direction = params->direction;
+	int err;
+	uint32_t buffer_size;
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
-	config->src_width = sizeof(uint32_t);
-	config->dest_width = sizeof(uint32_t);
+	config->src_width = comp_sample_bytes(dev);
+	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 1;
-	config->src_dev = dd->ssp->plat_data.fifo[1].handshake;
+	config->src_dev = dd->dai->plat_data.fifo[1].handshake;
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_item(&dev->bsink_list,
 		struct comp_buffer, source_list);
-	dma_period_desc = &dma_buffer->desc.source_period;
-	dma_buffer->params = *params;
+	sink_config = COMP_GET_CONFIG(dma_buffer->sink);
+	buffer_size = sink_config->periods_source * dd->period_bytes;
 
-	/* set it to dai stream format, for volume func correct mapping */
-	dma_buffer->params.pcm.format = dd->stream_format;
+	/* resize the buffer if space is available to align with period size */
+	err = buffer_set_size(dma_buffer, buffer_size);
+	if (err < 0) {
+		trace_dai_error("ec1");
+		trace_value(sink_config->periods_sink);
+		trace_value(dd->period_bytes);
+		trace_value(buffer_size);
+		trace_value(dma_buffer->alloc_size);
+		return err;
+	}
 
 	if (list_is_empty(&config->elem_list)) {
 		/* set up cyclic list of DMA elems */
-		for (i = 0; i < dma_period_desc->number; i++) {
+		for (i = 0; i < sink_config->periods_source; i++) {
 
-			elem = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*elem));
+			elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
 			if (elem == NULL)
 				goto err_unwind;
 
-			elem->size = dma_period_desc->size;
-			elem->dest = (uint32_t)(dma_buffer->w_ptr) +
-				i * dma_period_desc->size;
-			elem->src = dai_fifo(dd->ssp, params->direction);
+			elem->size = dd->period_bytes;
+			elem->dest = (uintptr_t)(dma_buffer->w_ptr) +
+				i * dd->period_bytes;
+			elem->src = dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE);
 			list_item_append(&elem->list, &config->elem_list);
 		}
 	}
 
-	/* set write pointer to start of buffer */
-	dma_buffer->r_ptr = dma_buffer->addr;
-
 	return 0;
 
 err_unwind:
+	trace_dai_error("ec3");
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
-		rfree(RZONE_MODULE, RMOD_SYS, elem);
+		rfree(elem);
 	}
 	return -ENOMEM;
 }
 
-static int dai_params(struct comp_dev *dev,
-	struct stream_params *params)
+static int dai_params(struct comp_dev *dev)
 {
+	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
+	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+
+	trace_dai("par");
 
 	/* can set params on only init state */
-	if (dev->state != COMP_STATE_INIT) {
+	if (dev->state != COMP_STATE_READY) {
 		trace_dai_error("wdp");
 		return -EINVAL;
 	}
-	if (params->direction == STREAM_DIRECTION_PLAYBACK) {
+
+	/* for DAI, we should configure its frame_fmt from topology */
+	dev->params.frame_fmt = dconfig->frame_fmt;
+
+	/* calculate period size based on config */
+	dev->frame_bytes = comp_frame_bytes(dev);
+	if (dev->frame_bytes == 0) {
+		trace_dai_error("ed1");
+		return -EINVAL;
+	}
+
+	dd->period_bytes = dev->frames * dev->frame_bytes;
+	if (dd->period_bytes == 0) {
+		trace_dai_error("ed2");
+		return -EINVAL;
+	}
+
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = dma_buffer->addr;
 
-		return dai_playback_params(dev, params);
+		return dai_playback_params(dev);
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = dma_buffer->addr;
 
-		return dai_capture_params(dev, params);
+		return dai_capture_params(dev);
 	}
 }
 
 static int dai_prepare(struct comp_dev *dev)
 {
-	int ret = 0;
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct comp_buffer *dma_buffer;
+	int ret = 0;
+
+	trace_dai("pre");
+
+	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	dev->position = 0;
 
 	if (list_is_empty(&dd->config.elem_list)) {
 		trace_dai_error("wdm");
+		comp_set_state(dev, COMP_CMD_RESET);
 		return -EINVAL;
 	}
 
+	/* initialise buffers */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+
+		/* write back buffer contents from cache for playback */
+		dma_buffer = list_first_item(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+
+		dcache_writeback_region(dma_buffer->addr, dma_buffer->size);
+	}
+
+	/* dma reconfig not required if XRUN handling */
+	if (dd->xrun)
+		return ret;
+
 	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
-	dev->state = COMP_STATE_PREPARE;
+	if (ret < 0)
+		comp_set_state(dev, COMP_CMD_RESET);
+
 	return ret;
 }
 
@@ -400,86 +470,118 @@ static int dai_reset(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct list_item *elist, *tlist;
+	struct list_item *elist;
+	struct list_item *tlist;
 	struct dma_sg_elem *elem;
+
+	trace_dai("res");
 
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
-		rfree(RZONE_MODULE, RMOD_SYS, elem);
+		rfree(elem);
 	}
 
-	dev->state = COMP_STATE_INIT;
 	dd->dai_pos_blks = 0;
 	if (dd->dai_pos)
 		*dd->dai_pos = 0;
 	dd->dai_pos = NULL;
 	dd->last_bytes = 0;
+	dd->wallclock = 0;
+	dev->position = 0;
+	dd->xrun = 0;
+	comp_set_state(dev, COMP_CMD_RESET);
 
 	return 0;
 }
 
-/* used to pass standard and bespoke commandd (with data) to component */
+/* The playback source pipeline must be advanced by one period so that it
+ * does not write to the period that DMA is reading. The configuration of the
+ * upstream pipeline is unknown to the DAI but we can check if the source buffer
+ * is shared with another DMA engine (which preloads the buffer by one period)
+ * and only advance the write pointer when source component is not another
+ * DMA engine.
+ */
+static void dai_pointer_init(struct comp_dev *dev)
+{
+	struct comp_buffer *dma_buffer;
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* not reuquired for capture streams */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		dma_buffer = list_first_item(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+
+		switch (dma_buffer->source->comp.type) {
+		case SOF_COMP_HOST:
+		case SOF_COMP_SG_HOST:
+			/* buffer is preloaded and advanced by host DMA engine */
+			break;
+		default:
+			/* advance source pipeline w_ptr by one period
+			 * this places pipeline w_ptr in period before DAI r_ptr */
+			comp_update_buffer_produce(dma_buffer, dd->period_bytes);
+			break;
+		}
+	}
+}
+
+/* used to pass standard and bespoke command (with data) to component */
 static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	switch (cmd) {
+	trace_dai("cmd");
+	tracev_value(cmd);
 
-	case COMP_CMD_PAUSE:
-		if (dev->state == COMP_STATE_RUNNING) {
-			dma_pause(dd->dma, dd->chan);
-			dai_trigger(dd->ssp, cmd, dd->direction);
-			dev->state = COMP_STATE_PAUSED;
-		}
-		break;
-	case COMP_CMD_STOP:
-		switch (dev->state) {
-		case COMP_STATE_RUNNING:
-		case COMP_STATE_PAUSED:
-			dma_stop(dd->dma, dd->chan,
-				dev->state == COMP_STATE_RUNNING ? 1 : 0);
-			/* need stop ssp */
-			dai_trigger(dd->ssp, cmd, dd->direction);
-		/* go through */
-		case COMP_STATE_PREPARE:
-			dd->last_bytes = 0;
-			dev->state = COMP_STATE_SETUP;
-			break;
-		}
-		break;
-	case COMP_CMD_RELEASE:
-		/* only release from paused*/
-		if (dev->state == COMP_STATE_PAUSED) {
-			dai_trigger(dd->ssp, cmd, dd->direction);
-			dma_release(dd->dma, dd->chan);
-			dev->state = COMP_STATE_RUNNING;
-		}
-		break;
+	wait_init(&dd->complete);
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	switch (cmd) {
 	case COMP_CMD_START:
-		/* only start from prepared*/
-		if (dev->state == COMP_STATE_PREPARE) {
+		dai_pointer_init(dev);
+		/* fall through */
+	case COMP_CMD_RELEASE:
+
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun == 0) {
+
+			/* start the DAI */
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
 				return ret;
-			dai_trigger(dd->ssp, cmd, dd->direction);
-			dev->state = COMP_STATE_RUNNING;
+			dai_trigger(dd->dai, cmd, dev->params.direction);
+		} else {
+			dd->xrun = 0;
 		}
+
+		/* update starting wallclock */
+		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
-	case COMP_CMD_SUSPEND:
-	case COMP_CMD_RESUME:
-		break;
-	case COMP_CMD_IPC_MMAP_PPOS:
-		dd->dai_pos = data;
-		if (dd->dai_pos)
-			*dd->dai_pos = 0;
+	case COMP_CMD_XRUN:
+		dd->xrun = 1;
+		/* fall through */
+	case COMP_CMD_PAUSE:
+	case COMP_CMD_STOP:
+		wait_init(&dd->complete);
+
+		/* wait for DMA to complete */
+		dd->complete.timeout = dev->pipeline->ipc_pipe.deadline;
+		ret = wait_for_completion_timeout(&dd->complete);
+		if (ret < 0) {
+			trace_dai_error("ed0");
+			trace_value(cmd);
+		}
 		break;
 	default:
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -488,30 +590,50 @@ static int dai_copy(struct comp_dev *dev)
 	return 0;
 }
 
-/* source component will preload dai */
-static int dai_preload(struct comp_dev *dev)
+static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 {
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* TODO: improve accuracy by adding current DMA position */
+	posn->dai_posn = dev->position;
+
+	/* set stream start wallclock */
+	posn->wallclock = dd->wallclock;
+
 	return 0;
 }
 
-static int dai_config(struct comp_dev *dev, struct dai_config *dai_config)
+static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	return dai_set_config(dd->ssp, dai_config);
+	/* set dma burst elems to slot number */
+	dd->config.burst_elems = config->num_slots;
+
+	/* calc frame bytes */
+	switch (config->sample_valid_bits) {
+	case 16:
+		dev->frame_bytes = 2 * config->num_slots;
+		break;
+	case 17 ... 32:
+		dev->frame_bytes = 4 * config->num_slots;
+		break;
+	default:
+		break;
+	}
+
+	if (dev->frame_bytes == 0) {
+		trace_dai_error("de1");
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
-static int dai_set_loopback(struct comp_dev *dev, uint32_t lbm)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	return dai_set_loopback_mode(dd->ssp, lbm);
-}
-
-static struct comp_driver comp_dai_ssp = {
-	.type	= COMP_TYPE_DAI_SSP,
+static struct comp_driver comp_dai = {
+	.type	= SOF_COMP_DAI,
 	.ops	= {
-		.new		= dai_new_ssp,
+		.new		= dai_new,
 		.free		= dai_free,
 		.params		= dai_params,
 		.cmd		= dai_cmd,
@@ -519,26 +641,11 @@ static struct comp_driver comp_dai_ssp = {
 		.prepare	= dai_prepare,
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
-		.preload	= dai_preload,
-		.dai_set_loopback = dai_set_loopback,
-	},
-};
-
-static struct comp_driver comp_dai_hda = {
-	.type	= COMP_TYPE_DAI_HDA,
-	.ops	= {
-		.new		= dai_new_hda,
-		.free		= dai_free,
-		.params		= dai_params,
-		.cmd		= dai_cmd,
-		.copy		= dai_copy,
-		.prepare	= dai_prepare,
-		.preload	= dai_preload,
+		.position	= dai_position,
 	},
 };
 
 void sys_comp_dai_init(void)
 {
-	comp_register(&comp_dai_ssp);
-	comp_register(&comp_dai_hda);
+	comp_register(&comp_dai);
 }

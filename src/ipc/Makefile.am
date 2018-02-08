@@ -1,7 +1,22 @@
-noinst_LIBRARIES = libipc.a
+if BUILD_LIB
+lib_LTLIBRARIES  = libsof_ipc.la
+
+libsof_ipc_la_SOURCES = \
+	ipc.c
+
+libsof_ipc_la_LDFLAGS = \
+	-version-info `echo $(VERSION) | cut -d '.' -f 1` \
+	-no-undefined \
+	-export-dynamic
+
+libsof_ipc_la_CFLAGS = \
+	$(ARCH_CFLAGS) \
+	$(COMMON_INCDIR)
+else
+noinst_LIBRARIES = libsof_ipc.a
 
 if BUILD_BAYTRAIL
-libipc_a_SOURCES = \
+libsof_ipc_a_SOURCES = \
 	ipc.c \
 	intel-ipc.c \
 	byt-ipc.c \
@@ -10,7 +25,7 @@ libipc_a_SOURCES = \
 endif
 
 if BUILD_CHERRYTRAIL
-libipc_a_SOURCES = \
+libsof_ipc_a_SOURCES = \
 	ipc.c \
 	intel-ipc.c \
 	byt-ipc.c \
@@ -18,9 +33,41 @@ libipc_a_SOURCES = \
 	dma-copy.c
 endif
 
-libipc_a_CFLAGS = \
+if BUILD_BROADWELL
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	hsw-ipc.c \
+	dma-copy.c
+endif
+
+if BUILD_HASWELL
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	hsw-ipc.c \
+	dma-copy.c
+endif
+
+
+if BUILD_APOLLOLAKE
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	apl-ipc.c \
+	dma-copy.c
+endif
+
+if BUILD_CANNONLAKE
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	intel-ipc.c \
+	cnl-ipc.c \
+	dma-copy.c
+endif
+
+libsof_ipc_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
-	$(ARCH_INCDIR) \
-	$(REEF_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(COMMON_INCDIR)
+endif
 

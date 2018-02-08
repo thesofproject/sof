@@ -32,6 +32,11 @@
 #define __INCLUDE_SSP__
 
 #include <reef/dai.h>
+#include <reef/io.h>
+#include <reef/lock.h>
+#include <reef/work.h>
+#include <reef/trace.h>
+#include <reef/wait.h>
 
 #define SSP_CLK_AUDIO	0
 #define SSP_CLK_NET_PLL	1
@@ -50,8 +55,156 @@
 #define SSTSA		0x30
 #define SSRSA		0x34
 #define SSTSS		0x38
+#define SSCR2		0x40
 #define SFIFOTT		0x6C
+#define SSCR3		0x70
+#define SSCR4		0x74
+#define SSCR5		0x78
 
 extern const struct dai_ops ssp_ops;
+
+/* SSCR0 bits */
+#define SSCR0_DSS_MASK	(0x0000000f)
+#define SSCR0_DSIZE(x)  ((x) - 1)
+#define SSCR0_FRF	(0x00000030)
+#define SSCR0_MOT	(00 << 4)
+#define SSCR0_TI	(1 << 4)
+#define SSCR0_NAT	(2 << 4)
+#define SSCR0_PSP	(3 << 4)
+#define SSCR0_ECS	(1 << 6)
+#define SSCR0_SSE	(1 << 7)
+#define SSCR0_SCR_MASK (0x000fff00)
+#define SSCR0_SCR(x)	((x) << 8)
+#define SSCR0_EDSS	(1 << 20)
+#define SSCR0_NCS	(1 << 21)
+#define SSCR0_RIM	(1 << 22)
+#define SSCR0_TIM	(1 << 23)
+#define SSCR0_FRDC(x)	(((x) - 1) << 24)
+#define SSCR0_ACS	(1 << 30)
+#define SSCR0_MOD	(1 << 31)
+
+/* SSCR1 bits */
+#define SSCR1_RIE	(1 << 0)
+#define SSCR1_TIE	(1 << 1)
+#define SSCR1_LBM	(1 << 2)
+#define SSCR1_SPO	(1 << 3)
+#define SSCR1_SPH	(1 << 4)
+#define SSCR1_MWDS	(1 << 5)
+#define SSCR1_TFT_MASK	(0x000003c0)
+#define SSCR1_TFT(x) (((x) - 1) << 6)
+#define SSCR1_RFT_MASK	(0x00003c00)
+#define SSCR1_RFT(x) (((x) - 1) << 10)
+#define SSCR1_EFWR	(1 << 14)
+#define SSCR1_STRF	(1 << 15)
+#define SSCR1_IFS	(1 << 16)
+#define SSCR1_PINTE	(1 << 18)
+#define SSCR1_TINTE	(1 << 19)
+#define SSCR1_RSRE	(1 << 20)
+#define SSCR1_TSRE	(1 << 21)
+#define SSCR1_TRAIL	(1 << 22)
+#define SSCR1_RWOT	(1 << 23)
+#define SSCR1_SFRMDIR	(1 << 24)
+#define SSCR1_SCLKDIR	(1 << 25)
+#define SSCR1_ECRB	(1 << 26)
+#define SSCR1_ECRA	(1 << 27)
+#define SSCR1_SCFR	(1 << 28)
+#define SSCR1_EBCEI	(1 << 29)
+#define SSCR1_TTE	(1 << 30)
+#define SSCR1_TTELP	(1 << 31)
+
+/* SSCR2 bits */
+#define SSCR2_URUN_FIX0	(1 << 0)
+#define SSCR2_URUN_FIX1	(1 << 1)
+#define SSCR2_SLV_EXT_CLK_RUN_EN	(1 << 2)
+#define SSCR2_CLK_DEL_EN		(1 << 3)
+#define SSCR2_UNDRN_FIX_EN		(1 << 6)
+#define SSCR2_FIFO_EMPTY_FIX_EN		(1 << 7)
+#define SSCR2_ASRC_CNTR_EN		(1 << 8)
+#define SSCR2_ASRC_CNTR_CLR		(1 << 9)
+#define SSCR2_ASRC_FRM_CNRT_EN		(1 << 10)
+#define SSCR2_ASRC_INTR_MASK		(1 << 11)
+
+/* SSR bits */
+#define SSSR_TNF	(1 << 2)
+#define SSSR_RNE	(1 << 3)
+#define SSSR_BSY	(1 << 4)
+#define SSSR_TFS	(1 << 5)
+#define SSSR_RFS	(1 << 6)
+#define SSSR_ROR	(1 << 7)
+
+/* SSPSP bits */
+#define SSPSP_SCMODE(x)		((x) << 0)
+#define SSPSP_SFRMP(x)		((x) << 2)
+#define SSPSP_ETDS		(1 << 3)
+#define SSPSP_STRTDLY(x)	((x) << 4)
+#define SSPSP_DMYSTRT(x)	((x) << 7)
+#define SSPSP_SFRMDLY(x)	((x) << 9)
+#define SSPSP_SFRMWDTH(x)	((x) << 16)
+#define SSPSP_DMYSTOP(x)	((x) << 23)
+#define SSPSP_FSRT		(1 << 25)
+
+/* SSCR3 bits */
+#define SSCR3_FRM_MST_EN	(1 << 0)
+#define SSCR3_I2S_MODE_EN	(1 << 1)
+#define SSCR3_I2S_FRM_POL(x)	((x) << 2)
+#define SSCR3_I2S_TX_SS_FIX_EN	(1 << 3)
+#define SSCR3_I2S_RX_SS_FIX_EN	(1 << 4)
+#define SSCR3_I2S_TX_EN		(1 << 9)
+#define SSCR3_I2S_RX_EN		(1 << 10)
+#define SSCR3_CLK_EDGE_SEL	(1 << 12)
+#define SSCR3_STRETCH_TX	(1 << 14)
+#define SSCR3_STRETCH_RX	(1 << 15)
+#define SSCR3_MST_CLK_EN	(1 << 16)
+#define SSCR3_SYN_FIX_EN	(1 << 17)
+
+
+/* SSCR4 bits */
+#define SSCR4_TOT_FRM_PRD(x)	((x) << 7)
+
+/* SSCR5 bits */
+#define SSCR5_FRM_ASRT_CLOCKS(x)	(((x) - 1) << 1)
+#define SSCR5_FRM_POLARITY(x)	((x) << 0)
+
+/* SFIFOTT bits */
+#define SFIFOTT_TX(x)		((x) - 1)
+#define SFIFOTT_RX(x)		(((x) - 1) << 16)
+
+/* tracing */
+#define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
+#define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
+#define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
+
+
+#define ssp_irq(ssp) \
+	ssp->plat_data.irq
+
+/* SSP private data */
+struct ssp_pdata {
+	uint32_t sscr0;
+	uint32_t sscr1;
+	uint32_t psp;
+	spinlock_t lock;
+	uint32_t state[2];		/* SSP_STATE_ for each direction */
+	completion_t drain_complete;
+	struct sof_ipc_dai_config config;
+	struct sof_ipc_dai_ssp_params params;
+};
+
+static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
+{
+	io_reg_write(dai_base(dai) + reg, value);
+}
+
+static inline uint32_t ssp_read(struct dai *dai, uint32_t reg)
+{
+	return io_reg_read(dai_base(dai) + reg);
+}
+
+static inline void ssp_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
+	uint32_t value)
+{
+	io_reg_update_bits(dai_base(dai) + reg, mask, value);
+}
+
 
 #endif

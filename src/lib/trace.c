@@ -29,30 +29,186 @@
  */
 
 #include <reef/trace.h>
+#include <reef/reef.h>
+#include <reef/alloc.h>
+#include <arch/cache.h>
+#include <platform/timer.h>
+#include <reef/lock.h>
+#include <reef/dma-trace.h>
 #include <stdint.h>
 
-/* trace position */
-static uint32_t trace_pos = 0;
-static uint32_t trace_enable = 1;
+struct trace {
+	uint32_t pos ;	/* trace position */
+	uint32_t enable;
+	spinlock_t lock;
+};
+
+static struct trace trace;
+
+void _trace_error(uint32_t event)
+{
+	unsigned long flags;
+	volatile uint64_t *t;
+#if defined(CONFIG_DMA_TRACE)
+	uint64_t dt[2];
+#endif
+	uint64_t time;
+
+	if (!trace.enable)
+		return;
+
+	time = platform_timer_get(platform_timer);
+
+#if defined(CONFIG_DMA_TRACE)
+	/* save event to DMA tracing buffer */
+	dt[0] = time;
+	dt[1] = event;
+	dtrace_event((const char*)dt, sizeof(uint64_t) * 2);
+#endif
+
+	/* send event by mail box too. */
+	spin_lock_irq(&trace.lock, flags);
+
+	/* write timestamp and event to trace buffer */
+	t = (volatile uint64_t*)(MAILBOX_TRACE_BASE + trace.pos);
+	trace.pos += (sizeof(uint64_t) << 1);
+
+	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace.pos = 0;
+
+	spin_unlock_irq(&trace.lock, flags);
+
+	t[0] = time;
+	t[1] = event;
+
+	/* writeback trace data */
+	dcache_writeback_region((void*)t, sizeof(uint64_t) * 2);
+}
+
+void _trace_error_atomic(uint32_t event)
+{
+	volatile uint64_t *t;
+#if defined(CONFIG_DMA_TRACE)
+	uint64_t dt[2];
+#endif
+	uint64_t time;
+
+	if (!trace.enable)
+		return;
+
+	time = platform_timer_get(platform_timer);
+
+#if defined(CONFIG_DMA_TRACE)
+	/* save event to DMA tracing buffer */
+	dt[0] = time;
+	dt[1] = event;
+	dtrace_event_atomic((const char*)dt, sizeof(uint64_t) * 2);
+#endif
+
+	/* write timestamp and event to trace buffer */
+	t = (volatile uint64_t*)(MAILBOX_TRACE_BASE + trace.pos);
+	trace.pos += (sizeof(uint64_t) << 1);
+
+	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace.pos = 0;
+
+	t[0] = time;
+	t[1] = event;
+
+	/* writeback trace data */
+	dcache_writeback_region((void*)t, sizeof(uint64_t) * 2);
+}
+
+#if defined(CONFIG_DMA_TRACE)
 
 void _trace_event(uint32_t event)
 {
-	volatile uint32_t *t =
-		(volatile uint32_t*)(MAILBOX_TRACE_BASE + trace_pos);
+	uint64_t dt[2];
 
-	if (!trace_enable)
+	if (!trace.enable)
 		return;
 
+	dt[0] = platform_timer_get(platform_timer);
+	dt[1] = event;
+	dtrace_event((const char*)dt, sizeof(uint64_t) * 2);
+}
+
+void _trace_event_atomic(uint32_t event)
+{
+	uint64_t dt[2];
+
+	if (!trace.enable)
+		return;
+
+	dt[0] = platform_timer_get(platform_timer);
+	dt[1] = event;
+	dtrace_event_atomic((const char*)dt, sizeof(uint64_t) * 2);
+}
+
+#else
+
+void _trace_event(uint32_t event)
+{
+	unsigned long flags;
+	uint64_t time, *t;
+
+	if (!trace.enable)
+		return;
+
+	time = platform_timer_get(platform_timer);
+
+	/* send event by mail box too. */
+	spin_lock_irq(&trace.lock, flags);
+
 	/* write timestamp and event to trace buffer */
-	t[0] = platform_timer_get(0);
+	t = (uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
+	trace.pos += (sizeof(uint64_t) << 1);
+
+	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace.pos = 0;
+
+	spin_unlock_irq(&trace.lock, flags);
+
+	t[0] = time;
 	t[1] = event;
 
-	trace_pos += (sizeof(uint32_t) << 1);
-	if (trace_pos >= MAILBOX_TRACE_SIZE)
-		trace_pos = 0;
+	/* writeback trace data */
+	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
 }
+
+void _trace_event_atomic(uint32_t event)
+{
+	uint64_t time, *t;
+
+	if (!trace.enable)
+		return;
+
+	time = platform_timer_get(platform_timer);
+
+	/* write timestamp and event to trace buffer */
+	t = (uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
+	trace.pos += (sizeof(uint64_t) << 1);
+
+	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace.pos = 0;
+
+	t[0] = time;
+	t[1] = event;
+
+	/* writeback trace data */
+	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
+}
+
+#endif
 
 void trace_off(void)
 {
-	trace_enable = 0;
-};
+	trace.enable = 0;
+}
+
+void trace_init(struct reef *reef)
+{
+	trace.enable = 1;
+	trace.pos = 0;
+	spinlock_init(&trace.lock);
+}

@@ -34,32 +34,43 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <reef/reef.h>
 #include <reef/mailbox.h>
 #include <reef/debug.h>
 #include <reef/timer.h>
 #include <platform/platform.h>
 #include <platform/timer.h>
 
-/* general trace init codes - only used at boot when main trace is not availble */
-#define TRACE_BOOT_START	0x1000
+/* bootloader trace values */
+#define TRACE_BOOT_LDR_ENTRY		0x100
+#define TRACE_BOOT_LDR_HPSRAM		0x110
+#define TRACE_BOOT_LDR_MANIFEST	0x120
+#define TRACE_BOOT_LDR_JUMP		0x150
+
+/* general trace init codes - only used at boot when main trace is not available */
+#define TRACE_BOOT_START		0x1000
 #define TRACE_BOOT_ARCH		0x2000
-#define TRACE_BOOT_SYS		0x3000
-#define TRACE_BOOT_PLATFORM	0x4000
+#define TRACE_BOOT_SYS			0x3000
+#define TRACE_BOOT_PLATFORM		0x4000
 
 /* system specific codes */
 #define TRACE_BOOT_SYS_WORK		(TRACE_BOOT_SYS + 0x100)
-#define TRACE_BOOT_SYS_CPU_FREQ		(TRACE_BOOT_SYS + 0x101)
+#define TRACE_BOOT_SYS_CPU_FREQ		(TRACE_BOOT_SYS + 0x200)
+#define TRACE_BOOT_SYS_HEAP		(TRACE_BOOT_SYS + 0x300)
+#define TRACE_BOOT_SYS_NOTE		(TRACE_BOOT_SYS + 0x400)
+#define TRACE_BOOT_SYS_SCHED		(TRACE_BOOT_SYS + 0x500)
 
 /* platform/device specific codes */
-#define TRACE_BOOT_PLATFORM_MBOX	(TRACE_BOOT_PLATFORM + 0x100)
-#define TRACE_BOOT_PLATFORM_SHIM	(TRACE_BOOT_PLATFORM + 0x101)
-#define TRACE_BOOT_PLATFORM_PMC		(TRACE_BOOT_PLATFORM + 0x102)
-#define TRACE_BOOT_PLATFORM_TIMER	(TRACE_BOOT_PLATFORM + 0x103)
-#define TRACE_BOOT_PLATFORM_CLOCK	(TRACE_BOOT_PLATFORM + 0x104)
-#define TRACE_BOOT_PLATFORM_SSP_FREQ	(TRACE_BOOT_PLATFORM + 0x105)
-#define TRACE_BOOT_PLATFORM_IPC		(TRACE_BOOT_PLATFORM + 0x106)
-#define TRACE_BOOT_PLATFORM_DMA		(TRACE_BOOT_PLATFORM + 0x107)
-#define TRACE_BOOT_PLATFORM_SSP		(TRACE_BOOT_PLATFORM + 0x108)
+#define TRACE_BOOT_PLATFORM_ENTRY	(TRACE_BOOT_PLATFORM + 0x100)
+#define TRACE_BOOT_PLATFORM_MBOX	(TRACE_BOOT_PLATFORM + 0x110)
+#define TRACE_BOOT_PLATFORM_SHIM	(TRACE_BOOT_PLATFORM + 0x120)
+#define TRACE_BOOT_PLATFORM_PMC		(TRACE_BOOT_PLATFORM + 0x130)
+#define TRACE_BOOT_PLATFORM_TIMER	(TRACE_BOOT_PLATFORM + 0x140)
+#define TRACE_BOOT_PLATFORM_CLOCK	(TRACE_BOOT_PLATFORM + 0x150)
+#define TRACE_BOOT_PLATFORM_SSP_FREQ	(TRACE_BOOT_PLATFORM + 0x160)
+#define TRACE_BOOT_PLATFORM_IPC		(TRACE_BOOT_PLATFORM + 0x170)
+#define TRACE_BOOT_PLATFORM_DMA		(TRACE_BOOT_PLATFORM + 0x180)
+#define TRACE_BOOT_PLATFORM_SSP		(TRACE_BOOT_PLATFORM + 0x190)
 
 
 /* trace event classes - high 8 bits*/
@@ -75,6 +86,15 @@
 #define TRACE_CLASS_LOCK	(10 << 24)
 #define TRACE_CLASS_MEM		(11 << 24)
 #define TRACE_CLASS_MIXER	(12 << 24)
+#define TRACE_CLASS_BUFFER	(13 << 24)
+#define TRACE_CLASS_VOLUME	(14 << 24)
+#define TRACE_CLASS_SWITCH	(15 << 24)
+#define TRACE_CLASS_MUX		(16 << 24)
+#define TRACE_CLASS_SRC         (17 << 24)
+#define TRACE_CLASS_TONE        (18 << 24)
+#define TRACE_CLASS_EQ_FIR      (19 << 24)
+#define TRACE_CLASS_EQ_IIR      (20 << 24)
+#define TRACE_CLASS_SA		(21 << 24)
 
 /* move to config.h */
 #define TRACE	1
@@ -82,14 +102,21 @@
 #define TRACEE	1
 
 void _trace_event(uint32_t event);
+void _trace_error(uint32_t event);
+void _trace_event_atomic(uint32_t event);
+void _trace_error_atomic(uint32_t event);
 void trace_off(void);
+void trace_init(struct reef * reef);
 
 #if TRACE
 
 #define trace_event(__c, __e) \
 	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
+#define trace_event_atomic(__c, __e) \
+	_trace_event_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 
 #define trace_value(x)	_trace_event(x)
+#define trace_value_atomic(x)	_trace_event_atomic(x)
 
 #define trace_point(x) platform_trace_point(x)
 
@@ -97,16 +124,24 @@ void trace_off(void);
 #if TRACEV
 #define tracev_event(__c, __e) trace_event(__c, __e)
 #define tracev_value(x)	_trace_event(x)
+#define tracev_event_atomic(__c, __e) trace_event_atomic(__c, __e)
+#define tracev_value_atomic(x)	_trace_event_atomic(x)
 #else
 #define tracev_event(__c, __e)
 #define tracev_value(x)
+#define tracev_event_atomic(__c, __e)
+#define tracev_value_atomic(x)
 #endif
 
 /* error tracing */
 #if TRACEE
-#define trace_error(__c, __e) trace_event(__c, __e)
+#define trace_error(__c, __e) \
+	_trace_error_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
+#define trace_error_atomic(__c, __e) \
+	_trace_error_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 #else
 #define trace_error(__c, __e)
+#define trace_error_atomic(__c, __e)
 #endif
 
 #else

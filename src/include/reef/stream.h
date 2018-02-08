@@ -29,69 +29,24 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_STREAM__
-#define __INCLUDE_STREAM__
+#ifndef __INCLUDE_REEF_STREAM__
+#define __INCLUDE_REEF_STREAM__
 
 #include <stdint.h>
 #include <platform/platform.h>
+#include <uapi/ipc.h>
 
-/* stream type */
-#define STREAM_TYPE_PCM		0
-#define STREAM_TYPE_VORBIS	1
-/* other compressed stream types here if supported */
-
-/* supported format masks */
-#define STREAM_FORMAT_S16_LE	1
-#define STREAM_FORMAT_S24_3LE	2
-#define STREAM_FORMAT_S24_4LE	4
-#define STREAM_FORMAT_S32_LE	8
-
-/* supported channel mappings */
-#define STREAM_CHANNEL_MAP_MONO		0
-#define STREAM_CHANNEL_MAP_LEFT		1
-#define STREAM_CHANNEL_MAP_RIGHT	2
-
-/* stream direction */
-#define STREAM_DIRECTION_PLAYBACK	0
-#define STREAM_DIRECTION_CAPTURE	1
-
-/* maximum streams and channels */
-#define STREAM_MAX_CHANNELS	PLATFORM_MAX_CHANNELS
-#define STREAM_MAX_STREAMS	PLATFORM_MAX_STREAMS
-
-/* stream params type */
-#define STREAM_PARAMS_TYPE_PCM		0
-#define STREAM_PARAMS_TYPE_DMA		1
-#define STREAM_PARAMS_TYPE_VORBIS	2
-
-/* channel to stream position mapping */
-struct stream_channel {
-	uint32_t channel;
-	uint32_t position;
+enum stream_type {
+	STREAM_TYPE_PCM		= 0,
+	STREAM_TYPE_VORBIS	= 1,
 };
 
-/* PCM stream params */
-struct stream_pcm_params {
-	uint32_t rate;
-	uint32_t format;
-	struct stream_channel channel_map[STREAM_MAX_CHANNELS];
-};
-
-/* compressed vorbis stream params if required */
-struct stream_vorbis_params {
-	/* TODO */
-};
-
-/* stream parameters */
-struct stream_params {
-	uint32_t type;		/* STREAM_PARAMS_TYPE_ */
-	uint32_t direction;
-	uint32_t channels;
-	uint32_t period_frames;
-	uint32_t frame_size;
+struct stream_params
+{
+	enum stream_type type;
 	union {
-		struct stream_pcm_params pcm;
-		struct stream_vorbis_params vorbis;
+		struct sof_ipc_pcm_params *pcm;
+		struct sof_ipc_vorbis_params *vorbis;
 	};
 };
 

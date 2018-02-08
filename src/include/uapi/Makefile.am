@@ -1,2 +1,8 @@
+includedir = $(prefix)/include/sof/uapi
+
 include_HEADERS = \
-	intel-ipc.h
+	ipc.h \
+	abi.h \
+	eq.h  \
+	tone.h \
+	manifest.h

@@ -42,6 +42,7 @@
 #include <platform/pmc.h>
 #include <config.h>
 #include <stdint.h>
+#include <limits.h>
 
 #define NUM_CLOCKS	2
 
@@ -66,9 +67,9 @@ static struct clk_pdata *clk_pdata;
 #if defined CONFIG_BAYTRAIL
 /* increasing frequency order */
 static const struct freq_table cpu_freq[] = {
-	{19200000, 25, 0x0},
-	{19200000, 25, 0x1},
-	{38400000, 50, 0x2},
+	{25000000, 25, 0x0},
+	{25000000, 25, 0x1},
+	{50000000, 50, 0x2},
 	{50000000, 50, 0x3},	/* default */
 	{100000000, 100, 0x4},
 	{200000000, 200, 0x5},
@@ -100,6 +101,7 @@ static const struct freq_table cpu_freq[] = {
 
 static const struct freq_table ssp_freq[] = {
 	{19200000, 19, PMC_SET_SSP_19M2},	/* default */
+	{25000000, 25, PMC_SET_SSP_25M},
 };
 
 #define CPU_DEFAULT_IDX		3
@@ -116,7 +118,7 @@ static inline uint32_t get_freq(const struct freq_table *table, int size,
 {
 	uint32_t i;
 
-	/* find lowest available frequency that is >= requested hz */
+	/* find lowest available frequency that is >= requested Hz */
 	for (i = 0; i < size; i++) {
 		if (hz <= table[i].freq)
 			return i;
@@ -151,13 +153,14 @@ void clock_disable(int clock)
 uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
-	uint32_t idx, flags;
+	uint32_t idx;
+	uint32_t flags;
 	int err = 0;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
 
-	/* atomic context for chaning clocks */
+	/* atomic context for chaining clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
@@ -225,14 +228,14 @@ uint32_t clock_get_freq(int clock)
 	return clk_pdata->clk[clock].freq;
 }
 
-uint32_t clock_us_to_ticks(int clock, uint32_t us)
+uint64_t clock_us_to_ticks(int clock, uint64_t us)
 {
 	return clk_pdata->clk[clock].ticks_per_usec * us;
 }
 
-uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
+uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 {
-	uint32_t _current;
+	uint64_t _current;
 
 	// TODO: change timer APIs to clk APIs ??
 	switch (clock) {
@@ -240,8 +243,7 @@ uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
 		_current = arch_timer_get_system(NULL);
 		break;
 	case CLK_SSP:
-		// TODO: fix timer ID
-		_current = platform_timer_get(NULL);
+		_current = platform_timer_get(platform_timer);
 		break;
 	default:
 		return 0;
@@ -252,13 +254,13 @@ uint32_t clock_time_elapsed(int clock, uint32_t previous, uint32_t *current)
 		return (_current - previous) /
 			clk_pdata->clk[clock].ticks_per_usec;
 	else
-		return (_current + (MAX_INT - previous)) /
+		return (_current + (ULONG_LONG_MAX - previous)) /
 			clk_pdata->clk[clock].ticks_per_usec;
 }
 
 void init_platform_clocks(void)
 {
-	clk_pdata = rmalloc(RZONE_DEV, RMOD_SYS, sizeof(*clk_pdata));
+	clk_pdata = rmalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*clk_pdata));
 
 	spinlock_init(&clk_pdata->clk[0].lock);
 	spinlock_init(&clk_pdata->clk[1].lock);

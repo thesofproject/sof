@@ -38,23 +38,15 @@
 #include <reef/stream.h>
 #include <reef/alloc.h>
 #include <reef/debug.h>
+#include <reef/ipc.h>
+#include <reef/lock.h>
 #include <platform/timer.h>
+#include <platform/platform.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 
-#define PIPELINE_COPY_IDLE	0
-#define PIPELINE_COPY_SCHEDULED	1
-#define PIPELINE_COPY_RUNNING	2
-
-#define PIPELINE_DEPTH_LIMIT	5
-#define PIPELINE_MAX_COUNT	20
-
 struct pipeline_data {
 	spinlock_t lock;
-	uint32_t next_id;	/* monotonic ID counter */
-	struct list_item pipeline_list;	/* list of all pipelines */
-	uint32_t copy_status;	/* PIPELINE_COPY_ */
-	struct list_item schedule_list;	/* list of components to be copied */
 };
 
 /* generic operation data used by op graph walk */
@@ -64,353 +56,338 @@ struct op_data {
 	struct stream_params *params;
 	int cmd;
 	void *cmd_data;
-	uint32_t copy_size;
 };
 
 static struct pipeline_data *pipe_data;
-static int component_op_sink(struct op_data *op_data, struct comp_dev *comp);
-//static int component_op_source(struct op_data *op_data, struct comp_dev *comp);
+static void pipeline_task(void *arg);
 
-/* caller hold locks */
-struct pipeline *pipeline_from_id(int id)
+/* call op on all upstream components - locks held by caller */
+static void connect_upstream(struct pipeline *p, struct comp_dev *start,
+	struct comp_dev *current)
 {
-	struct pipeline *p;
-	struct list_item *plist;
-
-	/* search for pipeline by id */
-	list_for_item(plist, &pipe_data->pipeline_list) {
-
-		p = container_of(plist, struct pipeline, list);
-		if (p->id == id)
-			return p;
-	}
-
-	/* not found */
-	trace_pipe_error("ePp");
-	return NULL;
-}
-
-/* caller hold locks */
-static struct comp_dev *pipeline_comp_from_id(struct pipeline *p,
-	uint32_t id)
-{
-	struct comp_dev *cd;
 	struct list_item *clist;
 
-	/* search for pipeline by id */
-	list_for_item(clist, &p->comp_list) {
+	tracev_value(current->comp.id);
 
-		cd = container_of(clist, struct comp_dev, pipeline_list);
+	/* complete component init */
+	current->pipeline = p;
+	current->frames = p->ipc_pipe.frames_per_sched;
 
-		if (cd->id == id)
-			return cd;
+	/* we are an endpoint if we have 0 source components */
+	if (list_is_empty(&current->bsource_list)) {
+		current->is_endpoint = 1;
+
+		/* pipeline source comp is current */
+		p->source_comp = current;
+		return;
 	}
 
-	/* not found */
-	trace_pipe_error("ePc");
-	return NULL;
+	/* now run this operation upstream */
+	list_for_item(clist, &current->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* don't go upstream if this source is from another pipeline */
+		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id) {
+
+			/* pipeline source comp is current unless we go upstream */
+			p->source_comp = current;
+
+			continue;
+		}
+
+		connect_upstream(p, start, buffer->source);
+	}
+
 }
 
-struct comp_dev *pipeline_get_comp(struct pipeline *p, uint32_t id)
+static void connect_downstream(struct pipeline *p, struct comp_dev *start,
+	struct comp_dev *current)
 {
-	struct comp_dev *cd;
+	struct list_item *clist;
 
-	spin_lock(&p->lock);
-	cd = pipeline_comp_from_id(p, id);
-	spin_unlock(&p->lock);
-	return cd;
+	tracev_value(current->comp.id);
+
+	/* complete component init */
+	current->pipeline = p;
+	current->frames = p->ipc_pipe.frames_per_sched;
+
+	/* we are an endpoint if we have 0 sink components */
+	if (list_is_empty(&current->bsink_list)) {
+		current->is_endpoint = 1;
+		return;
+	}
+
+	/* now run this operation downstream */
+	list_for_item(clist, &current->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* don't go downstream if this sink is from another pipeline */
+		if (buffer->sink->comp.pipeline_id != p->ipc_pipe.pipeline_id)
+			continue;
+
+		connect_downstream(p, start, buffer->sink);
+	}
+}
+
+/* call op on all upstream components - locks held by caller */
+static void disconnect_upstream(struct pipeline *p, struct comp_dev *start,
+	struct comp_dev *current)
+{
+	struct list_item *clist;
+
+	tracev_value(current->comp.id);
+
+	/* complete component init */
+	current->pipeline = NULL;
+
+	/* now run this operation upstream */
+	list_for_item(clist, &current->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* don't go upstream if this source is from another pipeline */
+		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id)
+			continue;
+
+		connect_upstream(p, start, buffer->source);
+	}
+
+	/* disconnect source from buffer */
+	spin_lock(&current->lock);
+	list_item_del(&current->bsource_list);
+	spin_unlock(&current->lock);
+}
+
+static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
+	struct comp_dev *current)
+{
+	struct list_item *clist;
+
+	tracev_value(current->comp.id);
+
+	/* complete component init */
+	current->pipeline = NULL;
+
+	/* now run this operation downstream */
+	list_for_item(clist, &current->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* don't go downstream if this sink is from another pipeline */
+		if (buffer->sink->comp.pipeline_id != p->ipc_pipe.pipeline_id)
+			continue;
+
+		connect_downstream(p, start, buffer->sink);
+	}
+
+	/* disconnect source from buffer */
+	spin_lock(&current->lock);
+	list_item_del(&current->bsink_list);
+	spin_unlock(&current->lock);
+}
+
+/* update pipeline state based on cmd */
+static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
+	int cmd)
+{
+	/* only required by the scheduling component */
+	if (p->sched_comp != comp)
+		return;
+
+	switch (cmd) {
+	case COMP_CMD_PAUSE:
+	case COMP_CMD_STOP:
+		pipeline_schedule_cancel(p);
+		break;
+	case COMP_CMD_START:
+	case COMP_CMD_RELEASE:
+		p->xrun_bytes = 0;
+
+		/* playback pipelines need scheduled now, capture pipelines are
+		 * scheduled once their initial DMA period is filled by the DAI */
+		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+
+			/* pipelines are either scheduled by timers or DAI/DMA interrupts */
+			if (p->ipc_pipe.timer) {
+				/* timer - schedule initial copy */
+				pipeline_schedule_copy(p, 0);
+			} else {
+				/* DAI - schedule initial pipeline fill when next idle */
+				pipeline_schedule_copy_idle(p);
+			}
+		}
+		break;
+	case COMP_CMD_SUSPEND:
+	case COMP_CMD_RESUME:
+	case COMP_CMD_XRUN:
+	default:
+		break;
+	}
 }
 
 /* create new pipeline - returns pipeline id or negative error */
-struct pipeline *pipeline_new(uint32_t id)
+struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
+	struct comp_dev *cd)
 {
 	struct pipeline *p;
 
-	trace_pipe("PNw");
+	trace_pipe("new");
 
-	p = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*p));
+	/* allocate new pipeline */
+	p = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*p));
 	if (p == NULL) {
 		trace_pipe_error("ePN");
 		return NULL;
 	}
 
-	spin_lock(&pipe_data->lock);
-	p->id = id;
-	//p->state = PIPELINE_STATE_INIT;
+	/* init pipeline */
+	p->sched_comp = cd;
+	p->status = COMP_STATE_INIT;
+	schedule_task_init(&p->pipe_task, pipeline_task, p);
+	schedule_task_config(&p->pipe_task, pipe_desc->priority,
+		pipe_desc->core);
 	list_init(&p->comp_list);
-	list_init(&p->host_ep_list);
-	list_init(&p->dai_ep_list);
 	list_init(&p->buffer_list);
-	wait_init(&p->complete);
-
 	spinlock_init(&p->lock);
-	list_item_prepend(&p->list, &pipe_data->pipeline_list);
-	spin_unlock(&pipe_data->lock);
+	memcpy(&p->ipc_pipe, pipe_desc, sizeof(*pipe_desc));
 
 	return p;
 }
 
 /* pipelines must be inactive */
-void pipeline_free(struct pipeline *p)
+int pipeline_free(struct pipeline *p)
 {
-	struct list_item *clist, *t;
+	trace_pipe("fre");
 
-	trace_pipe("PFr");
-
-	spin_lock(&pipe_data->lock);
-
-	/* free all components */
-	list_for_item_safe(clist, t, &p->comp_list) {
-		struct comp_dev *comp;
-
-		comp = container_of(clist, struct comp_dev, pipeline_list);
-		comp_free(comp);
+	/* make sure we are not in use */
+	if (p->sched_comp->state > COMP_STATE_READY) {
+		trace_pipe_error("epb");
+		return -EBUSY;
 	}
 
-	/* free all buffers */
-	list_for_item_safe(clist, t, &p->buffer_list) {
-		struct comp_buffer *buffer;
+	/* remove from any scheduling */
+	schedule_task_free(&p->pipe_task);
 
-		buffer = container_of(clist, struct comp_buffer, pipeline_list);
-		rfree(RZONE_MODULE, RMOD(buffer->source->drv->module_id),
-			buffer->addr);
-		rfree(RZONE_MODULE, RMOD(buffer->source->drv->module_id),
-			buffer);
-	}
+	/* disconnect components */
+	disconnect_downstream(p, p->sched_comp, p->sched_comp);
+	disconnect_upstream(p, p->sched_comp, p->sched_comp);
 
 	/* now free the pipeline */
-	list_item_del(&p->list);
-	rfree(RZONE_MODULE, RMOD_SYS, p);
-	spin_unlock(&pipe_data->lock);
-}
+	rfree(p);
 
-/* create a new component in the pipeline */
-struct comp_dev *pipeline_comp_new(struct pipeline *p, uint32_t type,
-	uint32_t index, uint32_t direction)
-{
-	struct comp_dev *cd;
-
-	trace_pipe("CNw");
-
-	cd = comp_new(p, type, index, pipe_data->next_id++, direction);
-	if (cd == NULL) {
-		pipe_data->next_id--;
-		trace_pipe_error("eNw");
-		return NULL;
-	}
-
-	spin_lock(&p->lock);
-
-	switch (type) {
-	case COMP_TYPE_DAI_SSP:
-	case COMP_TYPE_DAI_HDA:
-		/* add to DAI endpoint list and to list*/
-		list_item_prepend(&cd->endpoint_list, &p->dai_ep_list);
-		break;
-	case COMP_TYPE_HOST:
-		/* add to DAI endpoint list and to list*/
-		list_item_prepend(&cd->endpoint_list, &p->host_ep_list);
-		break;
-	default:
-		break;
-	}
-
-	/* add component dev to pipeline list */
-	list_item_prepend(&cd->pipeline_list, &p->comp_list);
-	spin_unlock(&p->lock);
-
-	return cd;
-}
-
-/* free component in the pipeline */
-int pipeline_comp_free(struct pipeline *p, struct comp_dev *cd)
-{
-	trace_pipe("CFr");
-	// TODO
 	return 0;
 }
 
-/* create a new component in the pipeline */
-struct comp_buffer *pipeline_buffer_new(struct pipeline *p,
-	struct buffer_desc *desc)
+int pipeline_complete(struct pipeline *p)
 {
-	struct comp_buffer *buffer;
+	/* now walk downstream and upstream form "start" component and
+	  complete component task and pipeline init */
 
-	trace_pipe("BNw");
+	trace_pipe("com");
+	trace_value(p->ipc_pipe.pipeline_id);
 
-	/* allocate buffer */
-	buffer = rzalloc(RZONE_MODULE, RMOD_SYS, sizeof(*buffer));
-	if (buffer == NULL) {
-		trace_pipe_error("eBm");
-		return NULL;
+	/* check whether pipeline is already complete */
+	if (p->status != COMP_STATE_INIT) {
+		trace_pipe_error("epc");
+		return -EINVAL;
 	}
 
-	buffer->addr = rballoc(RZONE_MODULE, RMOD_SYS, desc->size);
-	if (buffer->addr == NULL) {
-		rfree(RZONE_MODULE, RMOD_SYS, buffer);
-		trace_pipe_error("ebm");
-		return NULL;
-	}
-	bzero(buffer->addr, desc->size);
-
-	buffer->w_ptr = buffer->r_ptr = buffer->addr;
-	buffer->end_addr = buffer->addr + desc->size;
-	buffer->free = desc->size;
-	buffer->avail = 0;
-	buffer->desc = *desc;
-	buffer->connected = 0;
-
-	spin_lock(&p->lock);
-	buffer->id = pipe_data->next_id++;
-	list_item_prepend(&buffer->pipeline_list, &p->buffer_list);
-	spin_unlock(&p->lock);
-	return buffer;
-}
-
-/* free component in the pipeline */
-int pipeline_buffer_free(struct pipeline *p, struct comp_buffer *buffer)
-{
-	trace_pipe("BFr");
-
-	spin_lock(&p->lock);
-	list_item_del(&buffer->pipeline_list);
-	rfree(RZONE_MODULE, RMOD_SYS, buffer->addr);
-	rfree(RZONE_MODULE, RMOD_SYS, buffer);
-	spin_unlock(&p->lock);
+	connect_downstream(p, p->sched_comp, p->sched_comp);
+	connect_upstream(p, p->sched_comp, p->sched_comp);
+	p->status = COMP_STATE_READY;
 	return 0;
 }
 
-/* insert component in pipeline and allocate buffers */
-int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source,
-	struct comp_dev *sink, struct comp_buffer *buffer)
+/* connect component -> buffer */
+int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
+	struct comp_buffer *sink_buffer)
 {
-	trace_pipe("CCn");
+	trace_pipe("cnc");
 
 	/* connect source to buffer */
-	spin_lock(&source->lock);
-	list_item_prepend(&buffer->source_list, &source->bsink_list);
-	buffer->source = source;
-	spin_unlock(&source->lock);
-
-	/* connect sink to buffer */
-	spin_lock(&sink->lock);
-	list_item_prepend(&buffer->sink_list, &sink->bsource_list);
-	buffer->sink = sink;
-	spin_unlock(&sink->lock);
+	spin_lock(&source_comp->lock);
+	list_item_prepend(&sink_buffer->source_list, &source_comp->bsink_list);
+	sink_buffer->source = source_comp;
+	spin_unlock(&source_comp->lock);
 
 	/* connect the components */
-	spin_lock(&p->lock);
-	buffer->connected = 1;
-	spin_unlock(&p->lock);
+	if (sink_buffer->source && sink_buffer->sink)
+		sink_buffer->connected = 1;
 
+	tracev_value((source_comp->comp.id << 16) |
+		sink_buffer->ipc_buffer.comp.id);
 	return 0;
 }
 
-/* preload component buffers prior to playback start */
-static int component_preload(struct comp_dev *comp, uint32_t depth,
-		uint32_t max_depth)
+/* connect buffer -> component */
+int pipeline_buffer_connect(struct pipeline *p,
+	struct comp_buffer *source_buffer, struct comp_dev *sink_comp)
 {
-	struct list_item *clist;
-	int err;
+	trace_pipe("cbc");
 
-	/* bail if we are at max_depth */
-	if (depth > max_depth)
-		return 0;
+	/* connect sink to buffer */
+	spin_lock(&sink_comp->lock);
+	list_item_prepend(&source_buffer->sink_list, &sink_comp->bsource_list);
+	source_buffer->sink = sink_comp;
+	spin_unlock(&sink_comp->lock);
 
-	trace_value(comp->id);
-	err = comp_preload(comp);
+	/* connect the components */
+	if (source_buffer->source && source_buffer->sink)
+		source_buffer->connected = 1;
 
-	/* dont walk the graph any further if this component fails */
-	if (err < 0) {
-		trace_pipe_error("eOp");
-		return err;
-	} else if (err > 0 || comp->is_dai) {
-		/* we finish walking the graph if we reach the DAI or component is
-		 * currently active and configured already (err > 0).
-		 */
-		trace_pipe("prl");
-		trace_value((uint32_t)err);
-		trace_value(comp->is_dai);
-		trace_value(comp->id);
-		trace_value(comp->is_host);
-		return 0;
-	}
-
-	/* now run this operation downstream */
-	list_for_item(clist, &comp->bsink_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, source_list);
-
-		/* dont go downstream if this component is not connected */
-		if (!buffer->connected)
-			continue;
-
-		err = component_preload(buffer->sink, depth + 1, max_depth);
-		if (err < 0)
-			break;
-	}
-
-	return err;
+	tracev_value((source_buffer->ipc_buffer.comp.id << 16) |
+		sink_comp->comp.id);
+	return 0;
 }
 
-/* work out the pipeline depth from this component to the farthest endpoint */
-static int pipeline_depth(struct comp_dev *comp, int current)
-{
-	struct list_item *clist;
-	int depth = 0;
-
-	/* go down stream to deepest endpoint */
-	list_for_item(clist, &comp->bsink_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, source_list);
-
-		/* dont go downstream if this component is not connected */
-		if (!buffer->connected)
-			continue;
-
-		depth = pipeline_depth(buffer->sink, current + 1);
-		if (depth > current)
-			current = depth;
-	}
-
-	return current;
-}
-
-/* call op on all downstream components - locks held by caller */
-static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
+/* Walk the graph downstream from start component in any pipeline and perform
+ * the operation on each component. Graph walk is stopped on any component
+ * returning an error ( < 0) and returns immediately. Components returning a
+ * positive error code also stop the graph walk on that branch causing the
+ * walk to return to a shallower level in the graph. */
+static int component_op_downstream(struct op_data *op_data,
+	struct comp_dev *start, struct comp_dev *current,
+	struct comp_dev *previous)
 {
 	struct list_item *clist;
 	int err = 0;
 
-	trace_pipe("CO-");
-	trace_value(comp->id);
+	tracev_pipe("CO-");
+	tracev_value(current->comp.id);
 
 	/* do operation on this component */
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
+
+		/* don't do any params downstream if current is running */
+		if (current->state == COMP_STATE_ACTIVE)
+			return 0;
+
 		/* send params to the component */
-		err = comp_params(comp, op_data->params);
+		if (current != start && previous != NULL)
+			comp_install_params(current, previous);
+		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
-		/* send command to the component */
-		err = comp_cmd(comp, op_data->cmd, op_data->cmd_data);
+		/* send command to the component and update pipeline state  */
+		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
+		if (err == 0)
+			pipeline_cmd_update(current->pipeline, current,
+				op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
-		if (comp->is_mixer && (comp->state >= COMP_STATE_PREPARE)) {
-			/* don't need go downstream, finished */
-			trace_pipe("C-M");
-			return 0;
-		}
-
 		/* prepare the component */
-		err = comp_prepare(comp);
-
+		err = comp_prepare(current);
 		break;
 	case COMP_OPS_RESET:
 		/* component should reset and free resources */
-		err = comp_reset(comp);
+		err = comp_reset(current);
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
@@ -419,34 +396,30 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 		return -EINVAL;
 	}
 
-	/* dont walk the graph any further if this component fails */
+	/* don't walk the graph any further if this component fails */
 	if (err < 0) {
 		trace_pipe_error("eOp");
 		return err;
-	}
-
-	if (comp->is_dai) {
-		trace_pipe("C-D");
-		return 0;
-	}
-
-	if (comp->is_mixer && (err > 0)) {
-		/* don't need go downstream, finished */
-		trace_pipe("C-M");
-		return 0;
+	} else if (err > 0 || (current != start && current->is_endpoint)) {
+		/* we finish walking the graph if we reach the DAI or component is
+		 * currently active and configured already (err > 0).
+		 */
+		tracev_pipe("C-D");
+		return err;
 	}
 
 	/* now run this operation downstream */
-	list_for_item(clist, &comp->bsink_list) {
+	list_for_item(clist, &current->bsink_list) {
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this component is not connected */
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
-		err = component_op_sink(op_data, buffer->sink);
+		err = component_op_downstream(op_data, start, buffer->sink,
+			current);
 		if (err < 0)
 			break;
 	}
@@ -454,41 +427,48 @@ static int component_op_sink(struct op_data *op_data, struct comp_dev *comp)
 	return err;
 }
 
-/* call op on all upstream components - locks held by caller */
-static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
+/* Walk the graph upstream from start component in any pipeline and perform
+ * the operation on each component. Graph walk is stopped on any component
+ * returning an error ( < 0) and returns immediately. Components returning a
+ * positive error code also stop the graph walk on that branch causing the
+ * walk to return to a shallower level in the graph. */
+static int component_op_upstream(struct op_data *op_data,
+	struct comp_dev *start, struct comp_dev *current,
+	struct comp_dev *previous)
 {
 	struct list_item *clist;
-	int err;
+	int err = 0;
 
-	trace_pipe("CO+");
-	trace_value(comp->id);
+	tracev_pipe("CO+");
+	tracev_value(current->comp.id);
 
 	/* do operation on this component */
 	switch (op_data->op) {
 	case COMP_OPS_PARAMS:
+
+		/* don't do any params upstream if current is running */
+		if (current->state == COMP_STATE_ACTIVE)
+			return 0;
+
 		/* send params to the component */
-		err = comp_params(comp, op_data->params);
+		if (current != start && previous != NULL)
+			comp_install_params(current, previous);
+		err = comp_params(current);
 		break;
 	case COMP_OPS_CMD:
-		/* send command to the component */
-		err = comp_cmd(comp, op_data->cmd, op_data->cmd_data);
+		/* send command to the component and update pipeline state  */
+		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
+		if (err == 0)
+			pipeline_cmd_update(current->pipeline, current,
+				op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
-		/* prepare the buffers first */
-		list_for_item(clist, &comp->bsource_list) {
-			struct comp_buffer *buffer;
-
-			buffer = container_of(clist, struct comp_buffer,
-				sink_list);
-			bzero(buffer->addr, buffer->desc.size);
-		}
-
 		/* prepare the component */
-		err = comp_prepare(comp);
+		err = comp_prepare(current);
 		break;
 	case COMP_OPS_RESET:
 		/* component should reset and free resources */
-		err = comp_reset(comp);
+		err = comp_reset(current);
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
@@ -497,28 +477,27 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 		return -EINVAL;
 	}
 
-	/* dont walk the graph any further if this component fails */
+	/* don't walk the graph any further if this component fails */
 	if (err < 0) {
 		trace_pipe_error("eOp");
 		return err;
-	}
-
-	if (comp->is_dai) {
-		trace_pipe("C+D");
+	} else if (err > 0 || (current != start && current->is_endpoint)) {
+		tracev_pipe("C+D");
 		return 0;
 	}
 
 	/* now run this operation upstream */
-	list_for_item(clist, &comp->bsource_list) {
+	list_for_item(clist, &current->bsource_list) {
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go upstream if this component is not connected */
+		/* don't go upstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
-		err = component_op_source(op_data, buffer->source);
+		err = component_op_upstream(op_data, start, buffer->source,
+			current);
 		if (err < 0)
 			break;
 	}
@@ -526,37 +505,115 @@ static int component_op_source(struct op_data *op_data, struct comp_dev *comp)
 	return err;
 }
 
+/* walk the graph upstream from start component in any pipeline and prepare
+ * the buffer context for each inactive component */
+static int component_prepare_buffers_upstream(struct comp_dev *start,
+	struct comp_dev *current, struct comp_buffer *buffer)
+{
+	struct list_item *clist;
+	int err = 0;
+
+	/* component copy/process to downstream */
+	if (current != start && buffer != NULL) {
+
+		buffer_reset_pos(buffer);
+
+		/* stop going downstream if we reach an end point in this pipeline */
+		if (current->is_endpoint)
+			return 0;
+	}
+
+	/* travel uptream to sink end point(s) */
+	list_for_item(clist, &current->bsource_list) {
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* dont go upstream if this component is not connected or active */
+		if (!buffer->connected || buffer->source->state == COMP_STATE_ACTIVE)
+			continue;
+
+		/* continue downstream */
+		err = component_prepare_buffers_upstream(start, buffer->source,
+			buffer);
+		if (err < 0) {
+			trace_pipe_error("eBD");
+			break;
+		}
+	}
+
+	/* return back downstream */
+	return err;
+}
+
+/* walk the graph downstream from start component in any pipeline and prepare
+ * the buffer context for each inactive component */
+static int component_prepare_buffers_downstream(struct comp_dev *start,
+	struct comp_dev *current, struct comp_buffer *buffer)
+{
+	struct list_item *clist;
+	int err = 0;
+
+	/* component copy/process to downstream */
+	if (current != start && buffer != NULL) {
+
+		buffer_reset_pos(buffer);
+
+		/* stop going downstream if we reach an end point in this pipeline */
+		if (current->is_endpoint)
+			return 0;
+	}
+
+	/* travel downstream to sink end point(s) */
+	list_for_item(clist, &current->bsink_list) {
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* dont go downstream if this component is not connected or active */
+		if (!buffer->connected || buffer->sink->state == COMP_STATE_ACTIVE)
+			continue;
+
+		/* continue downstream */
+		err = component_prepare_buffers_downstream(start, buffer->sink,
+			buffer);
+		if (err < 0) {
+			trace_pipe_error("eBD");
+			break;
+		}
+	}
+
+	/* return back upstream */
+	return err;
+}
 
 /* prepare the pipeline for usage - preload host buffers here */
-int pipeline_prepare(struct pipeline *p, struct comp_dev *host)
+int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct op_data op_data;
-	int ret, depth, i;
+	int ret = -1;
 
-	trace_pipe("Ppr");
+	trace_pipe("pre");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PREPARE;
 
 	spin_lock(&p->lock);
-	if (host->direction == STREAM_DIRECTION_PLAYBACK) {
 
-		/* first of all prepare the pipeline */
-		ret = component_op_sink(&op_data, host);
+	/* playback pipelines can be preloaded from host before trigger */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+
+		ret = component_op_downstream(&op_data, dev, dev, NULL);
 		if (ret < 0)
 			goto out;
 
-		/* then preload buffers - the buffers must be moved
-		 * downstream so that every component has full buffers for
-		 * trigger start */
-		depth = pipeline_depth(host, 0);
-		for (i = depth; i > 0; i--) {
-			ret = component_preload(host, 0, i);
-			if (ret < 0)
-				break;
-		}
+		/* set up reader and writer positions */
+		component_prepare_buffers_downstream(dev, dev, NULL);
 	} else {
-		ret = component_op_source(&op_data, host);
+		ret = component_op_upstream(&op_data, dev, dev, NULL);
+		if (ret < 0)
+			goto out;
+
+		/* set up reader and writer positions */
+		component_prepare_buffers_upstream(dev, dev, NULL);
 	}
 
 out:
@@ -571,7 +628,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 	struct op_data op_data;
 	int ret;
 
-	trace_pipe("PCm");
+	trace_pipe("cmd");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_CMD;
@@ -579,18 +636,40 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 	op_data.cmd_data = data;
 
 	spin_lock(&p->lock);
-	if (host->direction == STREAM_DIRECTION_PLAYBACK)
-		ret = component_op_sink(&op_data, host);
-	else
-		ret = component_op_source(&op_data, host);
+
+	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		/* send cmd downstream from host to DAI */
+		ret = component_op_downstream(&op_data, host, host, NULL);
+	} else {
+		/* send cmd upstream from host to DAI */
+		ret = component_op_upstream(&op_data, host, host, NULL);
+	}
+
+	if (ret < 0) {
+		trace_ipc_error("pc0");
+		trace_value(host->comp.id);
+		trace_value(cmd);
+	}
 
 	spin_unlock(&p->lock);
 	return ret;
 }
 
-/* send pipeline component/endpoint params */
+/*
+ * Send pipeline component params from host to endpoints.
+ * Params always start at host (PCM) and go downstream for playback and
+ * upstream for capture.
+ *
+ * Playback params can be re-written by upstream components. e.g. upstream SRC
+ * can change sample rate for all downstream components regardless of sample
+ * rate from host.
+ *
+ * Capture params can be re-written by downstream components.
+ *
+ * Params are always modified in the direction of host PCM to DAI.
+ */
 int pipeline_params(struct pipeline *p, struct comp_dev *host,
-	struct stream_params *params)
+	struct sof_ipc_pcm_params *params)
 {
 	struct op_data op_data;
 	int ret;
@@ -599,15 +678,25 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PARAMS;
-	op_data.params = params;
 
 	spin_lock(&p->lock);
-	if (host->direction == STREAM_DIRECTION_PLAYBACK)
-		ret = component_op_sink(&op_data, host);
-	else
-		ret = component_op_source(&op_data, host);
-	spin_unlock(&p->lock);
 
+	host->params = params->params;
+
+	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		/* send params downstream from host to DAI */
+		ret = component_op_downstream(&op_data, host, host, NULL);
+	} else {
+		/* send params upstream from host to DAI */
+		ret = component_op_upstream(&op_data, host, host, NULL);
+	}
+
+	if (ret < 0) {
+		trace_ipc_error("pp0");
+		trace_value(host->comp.id);
+	}
+
+	spin_unlock(&p->lock);
 	return ret;
 }
 
@@ -623,181 +712,433 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	op_data.op = COMP_OPS_RESET;
 
 	spin_lock(&p->lock);
-	if (host->direction == STREAM_DIRECTION_PLAYBACK)
-		ret = component_op_sink(&op_data, host);
-	else
-		ret = component_op_source(&op_data, host);
+
+	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		/* send reset downstream from host to DAI */
+		ret = component_op_downstream(&op_data, host, host, NULL);
+	} else {
+		/* send reset upstream from host to DAI */
+		ret = component_op_upstream(&op_data, host, host, NULL);
+	}
+
+	if (ret < 0) {
+		trace_ipc_error("pr0");
+		trace_value(host->comp.id);
+	}
+
 	spin_unlock(&p->lock);
 	return ret;
 }
 
-/* TODO: remove ?? configure pipelines host DMA buffer */
-int pipeline_host_buffer(struct pipeline *p, struct comp_dev *host,
-	struct dma_sg_elem *elem, uint32_t host_size)
-{
-	trace_pipe("PBr");
-
-	return comp_host_buffer(host, elem, host_size);
-}
-
-/* copy audio data from DAI buffer to host PCM buffer via pipeline */
-static int pipeline_copy_playback(struct comp_dev *comp, uint32_t depth)
+/*
+ * Upstream Copy and Process.
+ *
+ * Copy period(s) from all upstream sources to this component. The period will
+ * be copied and processed by each component from the upstream component
+ * end point(s) to the downstream components in a single operation.
+ * i.e. the period data is processed from upstream end points to downstream
+ * "comp" recursively in a single call to this function.
+ *
+ * The copy operation is for this pipeline only (as pipelines are scheduled
+ * individually) and it stops at pipeline endpoints (where a component has no
+ * source or sink components) or where this pipeline joins another pipeline.
+ */
+static int pipeline_copy_from_upstream(struct comp_dev *start,
+	struct comp_dev *current)
 {
 	struct list_item *clist;
-	int err;
+	int err = 0;
 
-	/* protect the stack from pipeline that are too large or loop */
-	if (depth++ >= PIPELINE_DEPTH_LIMIT) {
-		trace_pipe_error("ePD");
-		return -EINVAL;
-	}
-	/* component should copy to buffers */
-	err = comp_copy(comp);
+	tracev_pipe("CP+");
+	tracev_value(current->comp.id);
 
-	/* dont walk the graph any further if this component fails or
-	   doesnt copy any data */
-	if (err < 0) {
-		trace_pipe_error("ePc");
-		return err;
-	}
+	/* stop going upstream if we reach an end point in this pipeline */
+	if (current->is_endpoint && current != start)
+		goto copy;
 
-	if (comp->is_host)
-		return 0;
-
-	/* now copy upstream */
-	list_for_item(clist, &comp->bsource_list) {
+	/* travel upstream to source end point(s) */
+	list_for_item(clist, &current->bsource_list) {
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go upstream if this component is not connected */
-		if (!buffer->connected || buffer->source->state != COMP_STATE_RUNNING)
+		/* don't go upstream if this component is not connected */
+		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
 			continue;
 
-		err = pipeline_copy_playback(buffer->source, depth);
-		if (err < 0)
-			break;
+		/* don't go upstream if this source is from another pipeline */
+		if (buffer->source->pipeline != current->pipeline)
+			continue;
+
+		/* continue upstream */
+		err = pipeline_copy_from_upstream(start, buffer->source);
+		if (err < 0) {
+			trace_pipe_error("ePU");
+			trace_value(current->comp.id);
+			return err;
+		}
 	}
 
+copy:
+	/* we are at the upstream end point component so copy the buffers */
+	err = comp_copy(current);
+
+	/* return back downstream */
+	tracev_pipe("CD+");
 	return err;
 }
 
-/* copy audio data from DAI buffer to host PCM buffer via pipeline */
-static int pipeline_copy_capture(struct comp_dev *comp, uint32_t depth)
+/*
+ * Downstream Copy and Process.
+ *
+ * Copy period(s) from this component to all downstream sinks. The period will
+ * be copied and processed by each component from this component to all
+ * downstream end point component(s) in a single operation.
+ * i.e. the period data is processed from this component to downstream
+ * end points recursively in a single call to this function.
+ *
+ * The copy operation is for this pipeline only (as pipelines are scheduled
+ * individually) and it stops at pipeline endpoints (where a component has no
+ * source or sink components) or where this pipeline joins another pipeline.
+ */
+static int pipeline_copy_to_downstream(struct comp_dev *start,
+		struct comp_dev *current)
 {
 	struct list_item *clist;
-	int err;
+	int err = 0;
 
-	/* protect the stack from pipeline that are too large or loop */
-	if (depth++ >= PIPELINE_DEPTH_LIMIT) {
-		trace_pipe_error("ePD");
-		return -EINVAL;
+	tracev_pipe("CP-");
+	tracev_value(current->comp.id);
+
+	/* component copy/process to downstream */
+	if (current != start) {
+		err = comp_copy(current);
+
+		/* stop going downstream if we reach an end point in this pipeline */
+		if (current->is_endpoint)
+			goto out;
 	}
 
-	/* component should copy to buffers */
-	err = comp_copy(comp);
-
-	/* dont walk the graph any further if this component fails or
-	   doesnt copy any data */
-	if (err < 0) {
-		trace_pipe_error("ePc");
-		return err;
-	}
-
-	if (comp->is_host)
-		return 0;
-
-	/* now copy upstream */
-	list_for_item(clist, &comp->bsink_list) {
+	/* travel downstream to sink end point(s) */
+	list_for_item(clist, &current->bsink_list) {
 		struct comp_buffer *buffer;
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go upstream if this component is not connected */
-		if (!buffer->connected)
+		/* don't go downstream if this component is not connected */
+		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
 			continue;
 
-		err = pipeline_copy_capture(buffer->sink, depth);
-		if (err < 0)
-			break;
+		/* don't go downstream if this sink is from another pipeline */
+		if (buffer->sink->pipeline != current->pipeline)
+			continue;
+
+		/* continue downstream */
+		err = pipeline_copy_to_downstream(start, buffer->sink);
+		if (err < 0) {
+			trace_pipe_error("ePD");
+			trace_value(current->comp.id);
+			return err;
+		}
 	}
 
+out:
+	/* return back upstream */
+	tracev_pipe("CD-");
 	return err;
 }
 
-//TODO check locks for IRQ status prior to locking
-/* notify pipeline that this component requires buffers emptied/filled */
-void pipeline_schedule_copy(struct pipeline *p, struct comp_dev *dev)
+/* walk the graph to downstream active components in any pipeline to find
+ * the first active DAI and return it's timestamp.
+ * TODO: consider pipeline with multiple DAIs
+ */
+static int timestamp_downstream(struct comp_dev *start,
+		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
 {
-	struct comp_dev *cd;
 	struct list_item *clist;
-	uint32_t flags;
+	int res = 0;
 
-	/* add to list of scheduled components */
-	spin_lock_irq(&pipe_data->lock, flags);
+	/* is component a DAI endpoint ? */
+	if (current != start) {
 
-	/* check to see if we are already scheduled ? */
-	list_for_item(clist, &pipe_data->schedule_list) {
-		cd = container_of(clist, struct comp_dev, schedule_list);
+		/* go downstream if we are not endpoint */
+		if (!current->is_endpoint)
+			goto downstream;
 
-		/* keep original */
-		if (cd == dev)
-			goto out;
+		if (current->comp.type == SOF_COMP_DAI ||
+			current->comp.type == SOF_COMP_SG_DAI) {
+			platform_dai_timestamp(current, posn);
+			return 1;
+		}
 	}
 
-	list_item_append(&dev->schedule_list, &pipe_data->schedule_list);
+downstream:
+	/* travel downstream to sink end point(s) */
+	list_for_item(clist, &current->bsink_list) {
+		struct comp_buffer *buffer;
 
-out:
-	spin_unlock_irq(&pipe_data->lock, flags);
+		buffer = container_of(clist, struct comp_buffer, source_list);
 
-	/* now schedule the copy */
-	interrupt_set(PLATFORM_PIPELINE_IRQ);
+		/* don't go downstream if this component is not connected */
+		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
+			continue;
+
+		/* continue downstream */
+		res = timestamp_downstream(start, buffer->sink, posn);
+		if (res == 1)
+			break;
+	}
+
+	/* return back upstream */
+	return res;
 }
 
-void pipeline_schedule(void *arg)
+/* walk the graph to upstream active components in any pipeline to find
+ * the first active DAI and return it's timestamp.
+ * TODO: consider pipeline with multiple DAIs
+ */
+static int timestamp_upstream(struct comp_dev *start,
+		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
 {
-	struct comp_dev *dev;
-	uint32_t finished = 0, count = 0, flags;
+	struct list_item *clist;
+	int res = 0;
 
-	interrupt_clear(PLATFORM_PIPELINE_IRQ);
+	/* is component a DAI endpoint ? */
+	if (current != start) {
+
+		/* go downstream if we are not endpoint */
+		if (!current->is_endpoint)
+			goto upstream;
+
+		if (current->comp.type == SOF_COMP_DAI ||
+			current->comp.type == SOF_COMP_SG_DAI) {
+			platform_dai_timestamp(current, posn);
+			return 1;
+		}
+	}
+
+
+upstream:
+	/* travel upstream to source end point(s) */
+	list_for_item(clist, &current->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* don't go downstream if this component is not connected */
+		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
+			continue;
+
+		/* continue downstream */
+		res = timestamp_upstream(start, buffer->source, posn);
+		if (res == 1)
+			break;
+	}
+
+	/* return back upstream */
+	return res;
+}
+
+/*
+ * Get the timestamps for host and first active DAI found.
+ */
+void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
+	struct sof_ipc_stream_posn *posn)
+{
+	platform_host_timestamp(host, posn);
+
+	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		timestamp_downstream(host, host, posn);
+	} else {
+		timestamp_upstream(host, host, posn);
+	}
+}
+
+static void xrun(struct comp_dev *dev, void *data)
+{
+	struct sof_ipc_stream_posn *posn = data;
+
+	/* get host timestamps */
+	platform_host_timestamp(dev, posn);
+
+	/* send XRUN to host */
+	ipc_stream_send_xrun(dev, posn);
+}
+
+
+/* walk the graph downstream from start component in any pipeline and run
+ * function <func> for each component of type <type> */
+static void pipeline_for_each_downstream(struct pipeline *p,
+	enum sof_comp_type type, struct comp_dev *current,
+	void (*func)(struct comp_dev *, void *), void *data)
+{
+	struct list_item *clist;
+
+	if (current->comp.type == type)
+		func(current, data);
+
+	/* travel downstream to sink end point(s) */
+	list_for_item(clist, &current->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* don't go downstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		/* continue downstream */
+		pipeline_for_each_downstream(p, type, buffer->sink,
+			func, data);
+	}
+}
+
+/* walk the graph upstream from start component in any pipeline and run
+ * function <func> for each component of type <type> */
+static void pipeline_for_each_upstream(struct pipeline *p,
+	enum sof_comp_type type, struct comp_dev *current,
+	void (*func)(struct comp_dev *, void *), void *data)
+{
+	struct list_item *clist;
+
+	if (current->comp.type == type)
+		func(current, data);
+
+	/* travel upstream to sink end point(s) */
+	list_for_item(clist, &current->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* don't go downstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		/* continue downstream */
+		pipeline_for_each_upstream(p, type, buffer->source,
+			func, data);
+	}
+}
+
+/*
+ * Send an XRUN to each host for this component.
+ */
+void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
+	int32_t bytes)
+{
+	struct sof_ipc_stream_posn posn;
+
+	/* don't flood host */
+	if (p->xrun_bytes)
+		return;
+
+	/* only send when we are running */
+	if (dev->state != COMP_STATE_ACTIVE)
+		return;
+
+	memset(&posn, 0, sizeof(posn));
+	p->xrun_bytes = posn.xrun_size = bytes;
+	posn.xrun_comp_id = dev->comp.id;
+
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		pipeline_for_each_upstream(p, SOF_COMP_HOST, dev, xrun, &posn);
+	} else {
+		pipeline_for_each_downstream(p, SOF_COMP_HOST, dev, xrun, &posn);
+	}
+}
+
+/* recover the pipeline from a XRUN condition */
+static int pipeline_xrun_recover(struct pipeline *p)
+{
+	int ret;
+
+	trace_pipe_error("pxr");
+
+	/* notify all pipeline comps we are in XRUN */
+	ret = pipeline_cmd(p, p->source_comp, COMP_CMD_XRUN, NULL);
+	if (ret < 0) {
+		trace_pipe_error("px0");
+		return ret;
+	}
+	p->xrun_bytes = 0;
+
+	/* prepare the pipeline */
+	pipeline_prepare(p, p->source_comp);
+	if (ret < 0) {
+		trace_pipe_error("px1");
+		return ret;
+	}
+
+	/* restart pipeline comps */
+	pipeline_cmd(p, p->source_comp, COMP_CMD_START, NULL);
+	if (ret < 0) {
+		trace_pipe_error("px2");
+		return ret;
+	}
+
+	return 0;
+}
+
+/* notify pipeline that this component requires buffers emptied/filled */
+void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
+{
+	if (p->sched_comp->state == COMP_STATE_ACTIVE)
+		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline);
+}
+
+/* notify pipeline that this component requires buffers emptied/filled
+ * when DSP is next idle. This is intended to be used to preload pipeline
+ * buffers prior to trigger start. */
+void pipeline_schedule_copy_idle(struct pipeline *p)
+{
+	schedule_task_idle(&p->pipe_task, p->ipc_pipe.deadline);
+}
+
+void pipeline_schedule_cancel(struct pipeline *p)
+{
+	schedule_task_complete(&p->pipe_task);
+}
+
+static void pipeline_task(void *arg)
+{
+	struct pipeline *p = arg;
+	struct comp_dev *dev = p->sched_comp;
+	int err;
 
 	tracev_pipe("PWs");
-	pipe_data->copy_status = PIPELINE_COPY_RUNNING;
 
-	/* dont loop forever, but have a max number of components to copy */
-	while (count < PIPELINE_MAX_COUNT) {
-
-		/* get next component scheduled or finish */
-		spin_lock_irq(&pipe_data->lock, flags);
-
-		if (list_is_empty(&pipe_data->schedule_list))
-			finished = 1;
-		else {
-			dev = list_first_item(&pipe_data->schedule_list,
-				struct comp_dev, schedule_list);
-			list_item_del(&dev->schedule_list);
-		}
-
-		spin_unlock_irq(&pipe_data->lock, flags);
-
-		if (finished)
-			break;
-
-		/* copy the component buffers */
-		if (dev->direction == STREAM_DIRECTION_PLAYBACK)
-			pipeline_copy_playback(dev, 0);
-		else
-			pipeline_copy_capture(dev, 0);
-
-		count++;
+	/* are we in xrun ? */
+	if (p->xrun_bytes) {
+		err = pipeline_xrun_recover(p);
+		if (err < 0)
+			return;  /* failed - host will stop this pipeline */
+		goto sched;
 	}
 
-	if (count == PIPELINE_MAX_COUNT) {
-		trace_pipe_error("ePC");
+	/* copy data from upstream source endpoints to downstream endpoints */
+	err = pipeline_copy_from_upstream(dev, dev);
+	if (err < 0) {
+		err = pipeline_xrun_recover(p);
+		if (err < 0)
+			return;  /* failed - host will stop this pipeline */
+		goto sched;
 	}
 
+	err = pipeline_copy_to_downstream(dev, dev);
+	if (err < 0) {
+		err = pipeline_xrun_recover(p);
+		if (err < 0)
+			return;  /* failed - host will stop this pipeline */
+		goto sched;
+	}
+
+sched:
 	tracev_pipe("PWe");
-	pipe_data->copy_status = PIPELINE_COPY_IDLE;
+
+	/* now reschedule the task */
+	/* TODO: add in scheduling cost and any timer drift */
+	if (p->ipc_pipe.timer)
+		pipeline_schedule_copy(p, p->ipc_pipe.deadline);
 }
 
 /* init pipeline */
@@ -805,15 +1146,8 @@ int pipeline_init(void)
 {
 	trace_pipe("PIn");
 
-	pipe_data = rzalloc(RZONE_DEV, RMOD_SYS, sizeof(*pipe_data));
-	list_init(&pipe_data->pipeline_list);
-	list_init(&pipe_data->schedule_list);
-	pipe_data->next_id = 0;
+	pipe_data = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*pipe_data));
 	spinlock_init(&pipe_data->lock);
-
-	/* configure pipeline scheduler interrupt */
-	interrupt_register(PLATFORM_PIPELINE_IRQ, pipeline_schedule, NULL);
-	interrupt_enable(PLATFORM_PIPELINE_IRQ);
 
 	return 0;
 }
