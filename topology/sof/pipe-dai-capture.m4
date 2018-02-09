@@ -1,4 +1,4 @@
-# DAI Playback connector
+# DAI Capture connector
 
 # Include topology builder
 include(`local.m4')

@@ -12,7 +12,7 @@ include(`local.m4')
 # Components and Buffers
 #
 
-# Host "Passthrough Playback" PCM uses pipeline DMAC and channel
+# Host "Passthrough Capture" PCM uses pipeline DMAC and channel
 # with 4 sink and 0 source periods
 W_PCM_CAPTURE(Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 4, 0, 2)
 
@@ -35,7 +35,7 @@ SectionData."media_src_conf" {
 # "SRC" has 4 source and 4 sink periods
 W_SRC(0, PIPELINE_FORMAT, 4, 4, media_src_conf, 2)
 
-# Playback Buffers
+# Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(4,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
 W_BUFFER(1, COMP_BUFFER_SIZE(4,

@@ -44,12 +44,12 @@ SectionControlMixer.STR(Master Capture Volume) {
 
 # Host "Passthrough Capture" PCM uses pipeline DMAC and channel
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 2)
+W_PCM_CAPTURE(Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 2)
 
 # "Volume" has 2 source and 2 sink periods
 W_PGA(0, Master Capture Volume, PIPELINE_FORMAT, 2, 2, 2)
 
-# Playback Buffers
+# Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES))
 W_BUFFER(1, COMP_BUFFER_SIZE(2,
