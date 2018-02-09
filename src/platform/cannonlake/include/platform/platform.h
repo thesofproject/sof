@@ -40,6 +40,7 @@
 struct reef;
 
 #define PLATFORM_SSP_COUNT 3
+#define MAX_GPDMA_COUNT 2
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096

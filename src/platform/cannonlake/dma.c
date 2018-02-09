@@ -124,7 +124,7 @@ static struct dma dma[] = {
 		.id		= DMA_GP_LP_DMAC1,
 		.base		= LP_GP_DMA_BASE(1),
 		.channels	= 8,
-		.irq = IRQ_EXT_LP_GPDMA1_LVL4(0, 0),
+		.irq = IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
 		.drv_plat_data	= &dmac1,
 	},
 	.ops		= &dw_dma_ops,
