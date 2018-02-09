@@ -168,7 +168,7 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer)
 	buffer->avail = 0;
 
 	/* clear buffer contents */
-	bzero(buffer->r_ptr, buffer->avail);
+	bzero(buffer->addr, buffer->size);
 }
 
 /* set the runtime size of a buffer in bytes and improve the data cache */
