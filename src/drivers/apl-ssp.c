@@ -36,6 +36,7 @@
 #include <reef/ssp.h>
 #include <reef/alloc.h>
 #include <reef/interrupt.h>
+#include <config.h>
 
 /* tracing */
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
@@ -231,6 +232,8 @@ static inline int ssp_set_config(struct dai *dai,
 		ret = -EINVAL;
 		goto out;
 	}
+#elif CONFIG_APOLLOLAKE
+	sscr0 |= SSCR0_MOD | SSCR0_ACS | SSCR0_ECS;
 #else
 	sscr0 |= SSCR0_MOD | SSCR0_ACS;
 #endif
