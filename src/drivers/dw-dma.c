@@ -586,8 +586,19 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		/* write CTL_LOn for each lli */
 		switch (config->src_width) {
 		case 2:
-			/* config the src tr width for 16 bit samples */
-			lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(1);
+			/* non peripheral copies are optimal using words */
+			switch (config->direction) {
+			case DMA_DIR_LMEM_TO_HMEM:
+			case DMA_DIR_HMEM_TO_LMEM:
+			case DMA_DIR_MEM_TO_MEM:
+				/* config the src tr width for 32 bit words */
+				lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2);
+				break;
+			default:
+				/* config the src width for 16 bit samples */
+				lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(1);
+				break;
+			}
 			break;
 		case 4:
 			/* config the src tr width for 24, 32 bit samples */
@@ -601,8 +612,19 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		switch (config->dest_width) {
 		case 2:
-			/* config the dest tr width for 16 bit samples */
-			lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(1);
+			/* non peripheral copies are optimal using words */
+			switch (config->direction) {
+			case DMA_DIR_LMEM_TO_HMEM:
+			case DMA_DIR_HMEM_TO_LMEM:
+			case DMA_DIR_MEM_TO_MEM:
+				/* config the dest tr width for 32 bit words */
+				lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2);
+				break;
+			default:
+				/* config the dest width for 16 bit samples */
+				lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(1);
+				break;
+			}
 			break;
 		case 4:
 			/* config the dest tr width for 24, 32 bit samples */
@@ -680,8 +702,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
 	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
-				lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
-					(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
+		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
+			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
 		/* for bdw, the unit is transaction--TR_WIDTH. */
 		lli_desc->ctrl_hi = (sg_elem->size / (1 << (lli_desc->ctrl_lo >> 4 & 0x7)))
