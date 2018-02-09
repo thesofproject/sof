@@ -411,6 +411,10 @@ static int create_local_elems(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *e;
+#if defined CONFIG_DMA_GW
+	struct dma_sg_elem *ec;
+	struct dma_sg_elem *local_elem;
+#endif
 	struct list_item *elist;
 	struct list_item *tlist;
 	int i;
@@ -434,13 +438,21 @@ static int create_local_elems(struct comp_dev *dev)
 		list_item_append(&e->list, &hd->local.elem_list);
 #if defined CONFIG_DMA_GW
 		/*
-		 * for dma gateway, we don't allocate extra sg elements, so,
-		 * just reuse local elements for config.elem_list.
+		 * for dma gateway, we don't allocate extra sg elements in
+		 * host_buffer, so, we need create them here and add them
+		 * to config.elem_list.
 		 * And, as the first element has been added at host_new, so
-		 * add from the 2nd element here
+		 * add from the 2nd element here.
 		 */
-		if (i >= 1)
-			list_item_append(&e->list, &hd->config.elem_list);
+		if (!i)
+			continue;
+		/* allocate new host DMA elem and add it to our list */
+		ec = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*ec));
+		if (!ec)
+			goto unwind;
+
+		*ec = *e;
+		list_item_append(&ec->list, &hd->config.elem_list);
 #endif
 	}
 
@@ -452,6 +464,15 @@ unwind:
 		list_item_del(&e->list);
 		rfree(e);
 	}
+#if defined CONFIG_DMA_GW
+	local_elem = list_first_item(&hd->config.elem_list,
+				     struct dma_sg_elem, list);
+	list_for_item_safe(elist, tlist, &local_elem->list) {
+		ec = container_of(elist, struct dma_sg_elem, list);
+		list_item_del(&ec->list);
+		rfree(ec);
+	}
+#endif
 	trace_host_error("el0");
 	return -ENOMEM;
 }
@@ -712,7 +733,6 @@ static int host_reset(struct comp_dev *dev)
 
 	/* free all host DMA elements */
 	list_for_item_safe(elist, tlist, &hd->host.elem_list) {
-
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&e->list);
 		rfree(e);
@@ -720,7 +740,6 @@ static int host_reset(struct comp_dev *dev)
 
 	/* free all local DMA elements */
 	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
-
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&e->list);
 		rfree(e);
@@ -729,6 +748,21 @@ static int host_reset(struct comp_dev *dev)
 #if defined CONFIG_DMA_GW
 	dma_stop(hd->dma, hd->chan);
 	dma_channel_put(hd->dma, hd->chan);
+
+	e = list_first_item(&hd->config.elem_list,
+			    struct dma_sg_elem, list);
+	/*
+	 * here free dma_sg_elem those allocated in create_local_elems(),
+	 * we should keep header and the first local elem after reset
+	 */
+	list_for_item_safe(elist, tlist, &e->list) {
+		e = container_of(elist, struct dma_sg_elem, list);
+		/* should not free the header, finished */
+		if (elist == &hd->config.elem_list)
+			break;
+		list_item_del(&e->list);
+		rfree(e);
+	}
 #endif
 
 	host_pointer_reset(dev);
