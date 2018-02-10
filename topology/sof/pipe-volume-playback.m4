@@ -38,6 +38,32 @@ SectionControlMixer.STR(Master Playback Volume) {
 	tlv "vtlv_m90s3"
 }
 
+SectionControlMixer.STR(Master Playback Volume Switch) {
+
+	# control belongs to this index group
+	index STR(PIPELINE_ID)
+
+	# Channel register and shift for Front Left/Right
+	channel."FL" {
+		reg "1"
+		shift "0"
+	}
+	channel."FR" {
+		reg "1"
+		shift "1"
+	}
+
+	# control uses bespoke driver get/put/info ID 0
+	ops."ctl" {
+		info "volsw"
+		get "256"
+		put "256"
+	}
+
+	# Volume mute on/off
+	max "1"
+	invert "false"
+}
 #
 # Components and Buffers
 #
@@ -47,7 +73,7 @@ SectionControlMixer.STR(Master Playback Volume) {
 W_PCM_PLAYBACK(Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, Master Playback Volume, PIPELINE_FORMAT, 2, 2, 2)
+W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, KCONTROLS("Master Playback Volume Switch", "Master Playback Volume"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

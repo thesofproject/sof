@@ -91,10 +91,10 @@ SectionControlMixer.STR(Master Playback Volume) {
 W_PCM_PLAYBACK(Low Latency Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Playback Volume" has 1 sink period and 2 source periods for host ping-pong
-W_PGA(0, PCM PCM_ID Playback Volume, PIPELINE_FORMAT, 1, 2, 1)
+W_PGA(0, PIPELINE_FORMAT, 1, 2, 1, KCONTROLS("PCM PCM_ID Playback Volume"))
 
 # "Master Playback Volume" has 1 source and 2 sink periods for DAI ping-pong
-W_PGA(1, Master Playback Volume, PIPELINE_FORMAT, 2, 1, 1)
+W_PGA(1, PIPELINE_FORMAT, 2, 1, 1, KCONTROLS("Master Playback Volume"))
 
 # Mixer 0 has 1 sink and source periods.
 W_MIXER(0, PIPELINE_FORMAT, 1, 1, 1)

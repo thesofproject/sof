@@ -48,7 +48,7 @@ SectionControlMixer.STR(PCM PCM_ID Capture Volume) {
 W_PCM_CAPTURE(Low Latency Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 0)
 
 # "Capture Volume" has 2 sink and source periods for host and DAI ping-pong
-W_PGA(0, PCM PCM_ID Capture Volume, PIPELINE_FORMAT, 2, 2, 0)
+W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, KCONTROLS("PCM PCM_ID Capture Volume"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

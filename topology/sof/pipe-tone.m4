@@ -50,7 +50,7 @@ SectionControlMixer.STR(Tone Volume PIPELINE_ID) {
 W_TONE(0, PIPELINE_FORMAT, 2, 0, 0)
 
 # "Tone Volume" has 2 sink period and 2 source periods
-W_PGA(0, Tone Volume PIPELINE_ID, PIPELINE_FORMAT, 2, 2, 0)
+W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, KCONTROLS("Tone Volume PIPELINE_ID"))
 
 # Low Latency Buffers
 W_BUFFER(0,COMP_BUFFER_SIZE(2,
