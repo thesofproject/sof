@@ -440,7 +440,9 @@ static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	cd->mvolume[chan] = cd->volume[chan];
+	/* Check if not muted already */
+	if (cd->volume[chan] != 0)
+		cd->mvolume[chan] = cd->volume[chan];
 	cd->tvolume[chan] = 0;
 }
 
@@ -448,7 +450,9 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	cd->tvolume[chan] = cd->mvolume[chan];
+	/* Check if muted */
+	if (cd->volume[chan] == 0)
+		cd->tvolume[chan] = cd->mvolume[chan];
 }
 
 static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
@@ -521,7 +525,7 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 		return -EINVAL;
 	}
 
-	if (cdata->cmd == SOF_CTRL_CMD_VOLUME) {
+	if (cdata->cmd == SOF_CTRL_CMD_VOLUME || SOF_CTRL_CMD_SWITCH) {
 		trace_volume("vgt");
 		trace_value(cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {
