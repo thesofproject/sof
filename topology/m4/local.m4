@@ -460,6 +460,7 @@ define(`DAI_CONFIG',
 `'
 `SectionBE."'$3`" {'
 `	index "0"'
+`	default_hw_conf_id	"'$2`"'
 `'
 `	hw_configs ['
 `		"'$1$2`"'
