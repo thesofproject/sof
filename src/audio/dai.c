@@ -507,7 +507,7 @@ static void dai_pointer_init(struct comp_dev *dev)
 	struct comp_buffer *dma_buffer;
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	/* not reuquired for capture streams */
+	/* not required for capture streams */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
