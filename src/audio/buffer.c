@@ -84,6 +84,8 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	buffer->avail = 0;
 	buffer->connected = 0;
 
+	spinlock_init(&buffer->lock);
+
 	return buffer;
 }
 

@@ -71,6 +71,8 @@ struct comp_buffer {
 	/* lists */
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
+
+	spinlock_t lock;
 };
 
 /* pipeline buffer creation and destruction */
@@ -81,6 +83,10 @@ void buffer_free(struct comp_buffer *buffer);
 static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 	uint32_t bytes)
 {
+	uint32_t flags;
+
+	spin_lock_irq(&buffer->lock, flags);
+
 	buffer->w_ptr += bytes;
 
 	/* check for pointer wrap */
@@ -98,6 +104,8 @@ static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
+	spin_unlock_irq(&buffer->lock, flags);
+
 	tracev_buffer("pro");
 	tracev_value((buffer->avail << 16) | buffer->free);
 	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
@@ -108,6 +116,10 @@ static inline void comp_update_buffer_produce(struct comp_buffer *buffer,
 static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 	uint32_t bytes)
 {
+	uint32_t flags;
+
+	spin_lock_irq(&buffer->lock, flags);
+
 	buffer->r_ptr += bytes;
 
 	/* check for pointer wrap */
@@ -124,6 +136,8 @@ static inline void comp_update_buffer_consume(struct comp_buffer *buffer,
 
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
+
+	spin_unlock_irq(&buffer->lock, flags);
 
 	tracev_buffer("con");
 	tracev_value((buffer->avail << 16) | buffer->free);
