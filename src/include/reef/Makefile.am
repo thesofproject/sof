@@ -1,20 +1,13 @@
-SUBDIRS = audio math
+SUBDIRS = audio
 
 noinst_HEADERS = \
-	agent.h
-
-includedir = $(prefix)/include/sof/reef
-
-include_HEADERS = \
 	alloc.h \
 	clock.h \
 	dai.h \
 	debug.h \
 	dma.h \
-	dma-trace.h \
 	dw-dma.h \
 	init.h \
-	intel-ipc.h \
 	interrupt.h \
 	interrupt-map.h \
 	io.h \
@@ -31,4 +24,7 @@ include_HEADERS = \
 	timer.h \
 	trace.h \
 	wait.h \
-	work.h
+	work.h \
+	dw-uart.h \
+	spi.h \
+	gpio.h

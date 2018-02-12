@@ -325,10 +325,10 @@ static int create_local_elems(struct comp_dev *dev)
 			goto unwind;
 
 		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-			e->dest = (uintptr_t)(hd->dma_buffer->addr) +
+			e->dest = (uint32_t)(hd->dma_buffer->addr) +
 				i * hd->period_bytes;
 		else
-			e->src = (uintptr_t)(hd->dma_buffer->addr) +
+			e->src = (uint32_t)(hd->dma_buffer->addr) +
 				i * hd->period_bytes;
 
 		e->size = hd->period_bytes;
@@ -390,7 +390,6 @@ static int host_params(struct comp_dev *dev)
 	trace_host("par");
 
 	/* host params always installed by pipeline IPC */
-	hd->host_size = dev->params.buffer.size;
 
 	/* determine source and sink buffer elems */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -530,6 +529,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
+	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
 		ret = host_stop(dev);
 		break;
@@ -560,6 +560,7 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
 		return -ENOMEM;
 
 	*e = *elem;
+	hd->host_size = host_size;
 
 	list_item_append(&e->list, &hd->host.elem_list);
 	return 0;

@@ -71,6 +71,10 @@ struct dma_sg_config {
 	uint32_t src_width;
 	uint32_t dest_width;
 	uint32_t burst_elems;
+#ifdef CONFIG_SUECREEK
+	uint32_t src_msize;
+	uint32_t dest_msize;
+#endif
 	uint32_t direction;
 	uint32_t src_dev;
 	uint32_t dest_dev;

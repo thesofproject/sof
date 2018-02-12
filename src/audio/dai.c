@@ -43,6 +43,7 @@
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
 #include <platform/dma.h>
+#include <platform/timer.h>
 #include <arch/cache.h>
 
 #define DAI_PLAYBACK_STREAM	0
@@ -95,6 +96,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 		/* inform waiters */
 		wait_completed(&dd->complete);
+		return;
 	}
 
 	/* is our pipeline handling an XRUN ? */
@@ -171,8 +173,9 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	}
 
 	/* notify pipeline that DAI needs its buffer processed */
-	if (dev->state == COMP_STATE_ACTIVE)
-		pipeline_schedule_copy(dev->pipeline, 0);
+	pipeline_schedule_copy(dev->pipeline, 0);
+
+	return;
 }
 
 static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
@@ -226,8 +229,8 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	}
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
-				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_LLIST |
+			DMA_IRQ_TYPE_BLOCK, dai_dma_cb, dev);
 	dev->state = COMP_STATE_READY;
 	return dev;
 
@@ -294,7 +297,7 @@ static int dai_playback_params(struct comp_dev *dev)
 				goto err_unwind;
 
 			elem->size = dd->period_bytes;
-			elem->src = (uintptr_t)(dma_buffer->r_ptr) +
+			elem->src = (uint32_t)(dma_buffer->r_ptr) +
 				i * dd->period_bytes;
 
 			elem->dest = dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK);
@@ -361,7 +364,7 @@ static int dai_capture_params(struct comp_dev *dev)
 				goto err_unwind;
 
 			elem->size = dd->period_bytes;
-			elem->dest = (uintptr_t)(dma_buffer->w_ptr) +
+			elem->dest = (uint32_t)(dma_buffer->w_ptr) +
 				i * dd->period_bytes;
 			elem->src = dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE);
 			list_item_append(&elem->list, &config->elem_list);
@@ -384,7 +387,7 @@ static int dai_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
-	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)&dev->comp;
 
 	trace_dai("par");
 
@@ -395,7 +398,7 @@ static int dai_params(struct comp_dev *dev)
 	}
 
 	/* for DAI, we should configure its frame_fmt from topology */
-	dev->params.frame_fmt = dconfig->frame_fmt;
+	dev->params.frame_fmt = ipc_dai->config.frame_fmt;
 
 	/* calculate period size based on config */
 	dev->frame_bytes = comp_frame_bytes(dev);
@@ -542,10 +545,10 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
-	case COMP_CMD_START:
-		dai_pointer_init(dev);
-		/* fall through */
 	case COMP_CMD_RELEASE:
+	case COMP_CMD_START:
+
+		dai_pointer_init(dev);
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
@@ -564,7 +567,6 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_XRUN:
 		dd->xrun = 1;
-		/* fall through */
 	case COMP_CMD_PAUSE:
 	case COMP_CMD_STOP:
 		wait_init(&dd->complete);
@@ -576,6 +578,8 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 			trace_dai_error("ed0");
 			trace_value(cmd);
 		}
+
+		dma_stop(dd->dma, dd->chan);
 		break;
 	default:
 		break;

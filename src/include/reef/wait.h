@@ -35,7 +35,6 @@
 
 #include <stdint.h>
 #include <errno.h>
-#include <arch/wait.h>
 #include <reef/debug.h>
 #include <reef/work.h>
 #include <reef/timer.h>
@@ -43,6 +42,7 @@
 #include <reef/trace.h>
 #include <reef/lock.h>
 #include <platform/interrupt.h>
+#include <arch/wait.h>
 
 #if DEBUG_LOCKS
 #define wait_atomic_check	\

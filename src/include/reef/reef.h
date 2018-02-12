@@ -36,7 +36,6 @@
 #include <arch/reef.h>
 
 struct ipc;
-struct sa;
 
 /* use same syntax as Linux for simplicity */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -64,9 +63,6 @@ struct reef {
 
 	/* ipc */
 	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
 
 	/* private data */
 	void *arch_private;

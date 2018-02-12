@@ -1,11 +1,4 @@
-noinst_HEADERS = \
-	xtos-internal.h \
-	xtos-params.h \
-	interrupt-pri.h \
-	window-vectors-new.S \
-	int-medpri-dispatcher.S
-
-noinst_LIBRARIES = \
+lib_LIBRARIES = \
 	libxtos.a \
 	libxlevel2.a \
 	libxlevel3.a \
@@ -33,7 +26,7 @@ endif
 
 if BUILD_APOLLOLAKE
 PLATFORM_DEFS = $(VECTOR_DEFS)
-noinst_LIBRARIES += libxlevel6.a
+lib_LIBRARIES += libxlevel6.a
 VECTOR_DEFS += -D__SPLIT__level6
 endif
 
@@ -45,9 +38,13 @@ if BUILD_HASWELL
 PLATFORM_DEFS = $(VECTOR_DEFS)
 endif
 
+if BUILD_SUECREEK
+PLATFORM_DEFS = $(VECTOR_DEFS)
+endif
+
 if BUILD_CANNONLAKE
 PLATFORM_DEFS = $(VECTOR_DEFS)
-noinst_LIBRARIES += libxlevel6.a
+lib_LIBRARIES += libxlevel6.a
 VECTOR_DEFS += -D__SPLIT__level6
 endif
 

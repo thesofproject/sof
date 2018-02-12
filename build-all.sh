@@ -9,6 +9,12 @@ pwd=`pwd`
 
 rm -fr src/arch/xtensa/*.ri
 
+# build for Apollolake
+./configure --with-arch=xtensa --with-platform=apollolake --with-root-dir=$pwd/../xtensa-root/xtensa-bxt-elf --host=xtensa-bxt-elf --disable-dma-trace
+make clean
+make
+make bin
+
 # Build for Baytrail
 ./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=$pwd/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
 make clean
@@ -33,10 +39,17 @@ make clean
 make
 make bin
 
-# Build library for host platform architecture
-./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
+# build for Cannonlake
+make clean
+./configure --with-arch=xtensa --with-platform=cannonlake --with-root-dir=$pwd/../xtensa-root/xtensa-sue-elf --host=xtensa-sue-elf --disable-dma-trace
 make
-make install
+make bin
+
+# build for SueCreek
+make clean
+./configure --with-arch=xtensa --with-platform=suecreek --with-root-dir=$pwd/../xtensa-root/xtensa-sue-elf --host=xtensa-sue-elf --disable-dma-trace
+make
+make bin
 
 # list all the images
 ls -l src/arch/xtensa/*.ri

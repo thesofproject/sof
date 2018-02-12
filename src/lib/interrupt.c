@@ -202,3 +202,4 @@ uint32_t interrupt_disable(uint32_t irq)
 	else
 		return irq_disable_child(parent, irq);
 }
+

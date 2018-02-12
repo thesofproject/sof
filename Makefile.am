@@ -2,23 +2,8 @@ SUBDIRS = src
 
 ACLOCAL_AMFLAGS = -I m4
 
-EXTRA_DIST = version.sh
-
 SRC_DIR = $(abs_top_builddir)/src
 
-if BUILD_HOST
-export ARCH_INCDIR = \
-	-I $(SRC_DIR)/arch/$(ARCH)/include
-
-export REEF_INCDIR = \
-	-I $(SRC_DIR)/include
-
-if BUILD_LIB
-export PLATFORM_INCDIR = \
-	-I $(SRC_DIR)/library/include
-endif
-
-else
 export REEF_INCDIR = \
 	-I $(SRC_DIR)/include \
 	-I $(ROOT_DIR)/include
@@ -26,12 +11,17 @@ export REEF_INCDIR = \
 export ARCH_INCDIR = \
 	-I $(SRC_DIR)/arch/$(ARCH)/include \
 	-I $(SRC_DIR)/arch/$(ARCH)/xtos
+
 export PLATFORM_INCDIR = \
 	-I $(SRC_DIR)/platform/$(PLATFORM)/include
-endif
+
+BUILT_SOURCES = $(top_srcdir)/src/include/version.h
+
+$(top_srcdir)/src/include/version.h: Makefile
+	./git-version.sh
 
 dist-hook:
-	./version.sh $(top_srcdir)
+	./git-version.sh
 	cat .version > $(distdir)/.tarball-version
 	cat .version > $(distdir)/.version
 

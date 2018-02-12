@@ -1,4 +1,4 @@
-/*
+/* 
  * xtensa/config/core-matmap.h -- Memory access and translation mapping
  *	parameters (CHAL) of the Xtensa processor core configuration.
  *
@@ -110,8 +110,8 @@
  *  one is returned instead (eg. writethru instead of writeback,
  *  bypass instead of writethru).
  */
-#define XCHAL_CA_BYPASS			2	/* cache disabled (bypassed) mode */
-#define XCHAL_CA_BYPASSBUF		6	/* cache disabled (bypassed) bufferable mode */
+#define XCHAL_CA_BYPASS  		2	/* cache disabled (bypassed) mode */
+#define XCHAL_CA_BYPASSBUF  		6	/* cache disabled (bypassed) bufferable mode */
 #define XCHAL_CA_WRITETHRU		1	/* cache enabled (write-through) mode */
 #define XCHAL_CA_WRITEBACK		4	/* cache enabled (write-back) mode */
 #define XCHAL_HAVE_CA_WRITEBACK_NOALLOC	1	/* write-back no-allocate availability */
@@ -147,7 +147,7 @@
  *		from the page table and storing it in one of the auto-refill ways;
  *		if this PTE load also misses, a miss exception is posted for s/w.
  *	min-wired = a "min-wired" way can be used to map a single (minimum-sized)
- *		page arbitrarily under program control; it has a single entry,
+ * 		page arbitrarily under program control; it has a single entry,
  *		is non-auto-refill (some other way(s) must be auto-refill),
  *		all its fields (VPN, PPN, ASID, CA) are all writable, and it
  *		supports the XCHAL_MMU_MIN_PTE_PAGE_SIZE page size (a current
@@ -311,3 +311,4 @@
 
 
 #endif /*XTENSA_CONFIG_CORE_MATMAP_H*/
+

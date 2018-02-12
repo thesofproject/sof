@@ -79,7 +79,7 @@ out:
 	spin_unlock_irq(&_ipc->lock, flags);
 
 	/* clear DONE bit - tell Host we have completed */
-	shim_write(SHIM_IPCD, shim_read(SHIM_IPCD) & ~SHIM_IPCD_DONE);
+	shim_write(SHIM_IPCDL, shim_read(SHIM_IPCDL) & ~SHIM_IPCDH_DONE);
 
 	/* unmask Done interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
@@ -110,7 +110,7 @@ static void irq_handler(void *arg)
 		interrupt_clear(PLATFORM_IPC_INTERUPT);
 
 		/* place message in Q and process later */
-		_ipc->host_msg = shim_read(SHIM_IPCX);
+		_ipc->host_msg = shim_read(SHIM_IPCXL);
 		_ipc->host_pending = 1;
 	}
 }
@@ -141,10 +141,10 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 done:
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
-	ipcx = shim_read(SHIM_IPCX);
-	ipcx &= ~SHIM_IPCX_BUSY;
-	ipcx |= SHIM_IPCX_DONE;
-	shim_write(SHIM_IPCX, ipcx);
+	ipcx = shim_read(SHIM_IPCXL);
+	ipcx &= ~SHIM_IPCXH_BUSY;
+	ipcx |= SHIM_IPCXH_DONE;
+	shim_write(SHIM_IPCXL, ipcx);
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
@@ -171,7 +171,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	}
 
 	/* can't send nofication when one is in progress */
-	if (shim_read(SHIM_IPCD) & (SHIM_IPCD_BUSY | SHIM_IPCD_DONE))
+	if (shim_read(SHIM_IPCDL) & (SHIM_IPCDH_BUSY | SHIM_IPCDH_DONE))
 		goto out;
 
 	/* now send the message */
@@ -182,7 +182,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	tracev_ipc("Msg");
 
 	/* now interrupt host to tell it we have message sent */
-	shim_write(SHIM_IPCD, msg->header | SHIM_IPCD_BUSY);
+	shim_write(SHIM_IPCDL, msg->header | SHIM_IPCDH_BUSY);
 
 out:
 	spin_unlock_irq(&ipc->lock, flags);

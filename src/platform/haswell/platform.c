@@ -34,6 +34,7 @@
 #include <platform/dma.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
+#include <platform/pmc.h>
 #include <uapi/ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
@@ -44,9 +45,7 @@
 #include <reef/clock.h>
 #include <reef/ipc.h>
 #include <reef/trace.h>
-#include <reef/agent.h>
-#include <reef/io.h>
-#include <reef/dma-trace.h>
+#include <reef/ssp.h>
 #include <reef/audio/component.h>
 #include <config.h>
 #include <string.h>
@@ -57,7 +56,7 @@ static const struct sof_ipc_fw_ready ready = {
 		.cmd = SOF_IPC_FW_READY,
 		.size = sizeof(struct sof_ipc_fw_ready),
 	},
-	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
+	/* dspbox is for DSP initiated IPC, hostbox is for host iniiated IPC */
 	.dspbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_DSPBOX_OFFSET,
 	.hostbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_HOSTBOX_OFFSET,
 	.dspbox_size = MAILBOX_DSPBOX_SIZE,
@@ -94,12 +93,23 @@ int platform_boot_complete(uint32_t boot_message)
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
 	/* now interrupt host to tell it we are done booting */
-	shim_write(SHIM_IPCD, outbox | SHIM_IPCD_BUSY);
+	shim_write(SHIM_IPCDL, SOF_IPC_FW_READY | outbox | SHIM_IPCDH_BUSY);
 
 	/* boot now complete so we can relax the CPU */
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
 
 	return 0;
+}
+
+/* set the SSP M/N clock dividers */
+int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
+	uint32_t bclk_fs)
+{
+	return 0;
+}
+
+void platform_ssp_disable_mn(uint32_t ssp_port)
+{
 }
 
 void platform_interrupt_set(int irq)
@@ -112,9 +122,9 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_DMAC0:
+		interrupt_clear(irq);
+		break;
 	case IRQ_NUM_EXT_DMAC1:
-	case IRQ_NUM_EXT_SSP0:
-	case IRQ_NUM_EXT_SSP1:
 		interrupt_clear(irq);
 		break;
 	default:
@@ -130,50 +140,18 @@ uint32_t platform_interrupt_get_enabled(void)
 
 void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 {
-	switch (irq) {
-	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_IMRD, SHIM_IMRD_SSP0);
-		break;
-	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_IMRD, SHIM_IMRD_SSP1);
-		break;
-	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_IMRD, SHIM_IMRD_DMAC0);
-		break;
-	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_IMRD, SHIM_IMRD_DMAC1);
-		break;
-	default:
-		break;
-	}
+
 }
 
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
-	switch (irq) {
-	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_SSP0);
-		break;
-	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_SSP1);
-		break;
-	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DMAC0);
-		break;
-	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DMAC1);
-		break;
-	default:
-		break;
-	}
+
 }
 
 int platform_init(struct reef *reef)
 {
-	struct dma *dmac0;
-	struct dma *dmac1;
-	struct dai *ssp0;
-	struct dai *ssp1;
+	struct dma *dmac0, *dmac1;
+	struct dai *ssp0, *ssp1;
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
@@ -183,17 +161,11 @@ int platform_init(struct reef *reef)
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 
 	/* init work queues and clocks */
-	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue);
-
-	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(platform_timer);
-
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
 
-	/* init the system agent */
-	sa_init(reef);
+	trace_point(TRACE_BOOT_SYS_WORK);
+	init_system_workq(&platform_generic_queue);
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
@@ -206,8 +178,6 @@ int platform_init(struct reef *reef)
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(reef);
-
-	dma_trace_init_early(&reef->ipc->dmat);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -229,6 +199,8 @@ int platform_init(struct reef *reef)
 	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
 			SHIM_IMRD_DMAC1, 0);
 
+	trace_value(0xeeea);
+
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
 	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0);
@@ -240,9 +212,6 @@ int platform_init(struct reef *reef)
 	if (ssp1 == NULL)
 		return -ENODEV;
 	dai_probe(ssp1);
-
-	/* Initialize DMA for Trace*/
-	dma_trace_init_complete(&reef->ipc->dmat);
 
 	return 0;
 }

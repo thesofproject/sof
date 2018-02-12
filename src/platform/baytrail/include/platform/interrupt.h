@@ -32,8 +32,10 @@
 #define __INCLUDE_PLATFORM_INTERRUPT__
 
 #include <stdint.h>
-#include <string.h>
+#include <stddef.h>
 #include <reef/interrupt-map.h>
+
+#define PLATFORM_IRQ_CHILDREN	0
 
 /* IRQ numbers */
 #define IRQ_NUM_SOFTWARE0	0	/* Level 1 */
@@ -85,11 +87,10 @@
 #define IRQ_MASK_EXT_SSP2	(1 << IRQ_NUM_EXT_SSP2)
 #define IRQ_MASK_EXT_DMAC2	(1 << IRQ_NUM_EXT_DMAC2)
 
-/* no nested interrupts */
-#define PLATFORM_IRQ_CHILDREN	0
 
 static inline void platform_interrupt_init(void) {}
 
+/* baytrail does not support child IRQs */
 static inline struct irq_parent *platform_irq_get_parent(uint32_t irq)
 {
 	return NULL;

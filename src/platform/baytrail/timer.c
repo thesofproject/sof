@@ -198,7 +198,7 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 	*wallclock = platform_timer_get(platform_timer);
 }
 
-static int platform_timer_register(struct timer *timer,
+static int ext_timer_register(struct timer *timer,
 	void(*handler)(void *arg), void *arg)
 {
 	struct timer_data *tdata = &xtimer[0];
@@ -217,7 +217,7 @@ static int platform_timer_register(struct timer *timer,
 	return ret;
 }
 
-int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
+int platform_timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
 	switch (timer->id) {
 	case TIMER0:
@@ -225,7 +225,7 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 	case TIMER2:
 		return arch_timer_register(timer, handler, arg);
 	case TIMER3:
-		return platform_timer_register(timer, handler, arg);
+		return ext_timer_register(timer, handler, arg);
 	default:
 		return -EINVAL;
 	}

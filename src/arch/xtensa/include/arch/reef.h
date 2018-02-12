@@ -40,16 +40,4 @@ void *xthal_memcpy(void *dst, const void *src, size_t len);
 #define arch_memcpy(dest, src, size) \
 	xthal_memcpy(dest, src, size)
 
-static inline size_t arch_get_stack_ptr(void)
-{
-	size_t ptr;
-
-	/* stack pointer is in a1 */
-	__asm__ __volatile__ ("mov %0, a1"
-		: "=a" (ptr)
-		:
-		: "memory");
-	return ptr;
-}
-
 #endif

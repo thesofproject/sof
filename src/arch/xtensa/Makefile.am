@@ -1,6 +1,6 @@
 SUBDIRS = hal xtos include
 
-noinst_PROGRAMS = \
+bin_PROGRAMS = \
 	reef
 
 # generate linker script from platform headers
@@ -31,14 +31,10 @@ libreset_a_CCASFLAGS = \
 reef_SOURCES = \
 	crt1-boards.S \
 	_vectors.S \
+	main-entry.S \
 	init.c \
 	timer.c \
 	task.c
-
-if BUILD_CANNONLAKE
-reef_SOURCES += \
-	main-entry.S
-endif
 
 reef_CFLAGS = \
 	$(ARCH_INCDIR) \
@@ -57,9 +53,9 @@ reef_LDADD = \
 	../../tasks/libtasks.a \
 	../../lib/libcore.a \
 	../../platform/$(PLATFORM)/libplatform.a \
-	../../ipc/libsof_ipc.a \
+	../../ipc/libipc.a \
 	../../audio/libaudio.a \
-	../../math/libsof_math.a \
+	../../math/libmath.a \
 	../../drivers/libdrivers.a \
 	libreset.a \
 	xtos/libxtos.a \
@@ -74,13 +70,12 @@ reef_LDFLAGS = \
 	$(ARCH_LDFLAGS) -Wl,-Map=reef-$(FW_NAME).map \
 	-T ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
 
-RIMAGE_FLAGS = reef-$(FW_NAME)
-RIMAGE_BOOT_FLAGS =
-BIN_FLAGS = reef
+RIMAGE_FLAGS =-i reef
+BIN_FLAGS =reef
 
 if BUILD_BOOTLOADER
 
-noinst_PROGRAMS += \
+bin_PROGRAMS += \
 	boot_ldr
 
 LINK_BOOT_LDR_SCRIPT = ../../platform/$(PLATFORM)/$(PLATFORM_BOOT_LDR_LDSCRIPT)
@@ -123,42 +118,26 @@ boot_ldr_LDFLAGS = \
 	-T ../../platform/$(PLATFORM)/$(PLATFORM_BOOT_LDR_LDSCRIPT)
 
 boot_ldr-local:
-	cp boot_ldr boot_ldr-$(FW_NAME)
-	$(OBJCOPY) -O binary ../../platform/$(PLATFORM)/boot_module mod-boot-$(FW_NAME).bin
-	$(OBJCOPY) --add-section .module=mod-boot-$(FW_NAME).bin \
-		--set-section-flags .module=load,readonly boot_ldr-$(FW_NAME)
 	$(OBJCOPY) -O binary boot_ldr boot_ldr-$(FW_NAME).bin
 	$(OBJDUMP) -h -D boot_ldr > boot_ldr-$(FW_NAME).map
 	$(OBJDUMP) -S boot_ldr > boot_ldr-$(FW_NAME).lst
 	$(OBJDUMP) -D boot_ldr > boot_ldr-$(FW_NAME).dis
 
-RIMAGE_BOOT_FLAGS += boot_ldr-$(FW_NAME)
+RIMAGE_FLAGS +=-l boot_ldr
 BIN_FLAGS +=boot_ldr-local
 endif
 
-if BUILD_MODULE
-MODULE_COPY=$(OBJCOPY) -O binary ../../platform/$(PLATFORM)/module mod-$(FW_NAME).bin
-MODULE_INSERT=$(OBJCOPY) --add-section .module=mod-$(FW_NAME).bin \
-		--set-section-flags .module=load,readonly reef-$(FW_NAME)
-else
-MODULE_COPY=
-MODULE_INSERT=
-endif
-
 bin-local: $(BIN_FLAGS)
-	cp reef reef-$(FW_NAME)
-	$(MODULE_COPY)
-	$(MODULE_INSERT)
-	$(OBJDUMP) -S reef-$(FW_NAME) > reef-$(FW_NAME).lst
-	$(OBJDUMP) -D reef-$(FW_NAME) > reef-$(FW_NAME).dis
-	rimage -o reef-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS)
+	$(OBJCOPY) -O binary reef reef-$(FW_NAME).bin
+	$(OBJDUMP) -S reef > reef-$(FW_NAME).lst
+	$(OBJDUMP) -D reef > reef-$(FW_NAME).dis
+	rimage $(RIMAGE_FLAGS) -o reef-$(FW_NAME).ri -m $(FW_NAME)
 
 vminstall-local:
 	scp -P 5555 reef-*.ri root@localhost:/lib/firmware/intel/
 
 clean-local:
-	rm -fr mod-*
-	rm -fr *.bin
+	rm -f reef-*.bin
 	rm -fr *.lst
 	rm -fr *.map
 	rm -fr *.dis

@@ -1,4 +1,4 @@
-/*
+/* 
  * tie.h -- compile-time HAL definitions dependent on CORE & TIE configuration
  *
  *  NOTE:  This header file is not meant to be included directly.
@@ -42,7 +42,7 @@
 #define XCHAL_CP1_IDENT			AudioEngineLX
 #define XCHAL_CP1_SA_SIZE		112	/* size of state save area */
 #define XCHAL_CP1_SA_ALIGN		8	/* min alignment of save area */
-#define XCHAL_CP_ID_AUDIOENGINELX	1	/* coprocessor ID (0..7) */
+#define XCHAL_CP_ID_AUDIOENGINELX   	1	/* coprocessor ID (0..7) */
 
 /*  Filler info for unassigned coprocessors, to simplify arrays etc:  */
 #define XCHAL_CP0_SA_SIZE		0
@@ -167,3 +167,4 @@
 	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8
 
 #endif /*_XTENSA_CORE_TIE_H*/
+

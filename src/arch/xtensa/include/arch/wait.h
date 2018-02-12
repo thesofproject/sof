@@ -48,7 +48,7 @@ static inline void arch_wait_for_interrupt(int level)
 	asm volatile("extw");
 
 	/* now wait */
-	asm volatile("waiti 0");
+	 asm volatile("waiti 0");
 }
 
 #else
@@ -62,7 +62,7 @@ static inline void arch_wait_for_interrupt(int level)
 
 static inline void idelay(int n)
 {
-	while (n--) {
+	while(n--) {
 		asm volatile("nop");
 	}
 }

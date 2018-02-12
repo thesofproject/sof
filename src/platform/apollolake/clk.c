@@ -39,6 +39,7 @@
 #include <platform/clk.h>
 #include <platform/shim.h>
 #include <platform/timer.h>
+#include <platform/pmc.h>
 #include <config.h>
 #include <stdint.h>
 #include <limits.h>
@@ -75,8 +76,8 @@ static const struct freq_table cpu_freq[] = {
  * 19.2M for Atom and 24M for core
  */
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19,},	/* default */
-	{24000000, 24,},
+	{19200000, 19, PMC_SET_SSP_19M2},	/* default */
+	{24000000, 24, PMC_SET_SSP_25M},
 };
 
 #define CPU_DEFAULT_IDX		2
@@ -122,8 +123,7 @@ void clock_disable(int clock)
 uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
-	uint32_t idx;
-	uint32_t flags;
+	uint32_t idx, flags;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;

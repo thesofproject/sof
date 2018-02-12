@@ -55,6 +55,8 @@ void platform_timer_clear(struct timer *timer);
 uint64_t platform_timer_get(struct timer *timer);
 void platform_timer_start(struct timer *timer);
 void platform_timer_stop(struct timer *timer);
+int platform_timer_register(struct timer *timer,
+	void (*handler)(void *arg), void *arg);
 
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,

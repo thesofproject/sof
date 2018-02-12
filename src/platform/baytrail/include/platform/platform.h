@@ -76,9 +76,6 @@ struct reef;
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000
 
-/* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	CLK_SSP
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 
@@ -94,16 +91,15 @@ struct reef;
 /* DMAC used for trace DMA */
 #define PLATFORM_TRACE_DMAC	DMA_ID_DMAC0
 
-/* DSP should be idle in this time frame */
-#define PLATFORM_IDLE_TIME	750000
-
 /* Platform defined panic code */
 #define platform_panic(__x) \
-	shim_write(SHIM_IPCDH, (0xdead000 | (__x & 0xfff)))
+		shim_write(SHIM_IPCXL, ((shim_read(SHIM_IPCXL) & 0xc0000000) |\
+		((0xdead000 | __x) & 0x3fffffff)))
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
-	shim_write(SHIM_IPCDH, 	(__x & 0x3fffffff))
+	shim_write(SHIM_IPCDH, ((shim_read(SHIM_IPCDH) & 0xc0000000) |\
+		((__x) & 0x3fffffff)))
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
  */

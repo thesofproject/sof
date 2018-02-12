@@ -35,7 +35,7 @@
 #include <stddef.h>
 #include <xtensa/hal.h>
 
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL || defined CONFIG_BROADWELL || defined CONFIG_HASWELL
 
 static inline void dcache_writeback_region(void *addr, size_t size) {}
 static inline void dcache_invalidate_region(void *addr, size_t size) {}

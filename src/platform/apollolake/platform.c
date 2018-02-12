@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2016, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,17 +35,16 @@
 #include <platform/dma.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
+#include <platform/pmc.h>
 #include <platform/interrupt.h>
 #include <uapi/ipc.h>
 #include <reef/mailbox.h>
 #include <reef/dai.h>
 #include <reef/dma.h>
 #include <reef/reef.h>
-#include <reef/agent.h>
 #include <reef/work.h>
 #include <reef/clock.h>
 #include <reef/ipc.h>
-#include <reef/io.h>
 #include <reef/trace.h>
 #include <reef/audio/component.h>
 #include <string.h>
@@ -56,6 +55,12 @@ static const struct sof_ipc_fw_ready ready = {
 		.cmd = SOF_IPC_FW_READY,
 		.size = sizeof(struct sof_ipc_fw_ready),
 	},
+
+	/* for host, we need exchange the naming of inxxx and outxxx */
+	.hostbox_offset = 0,
+	.dspbox_offset = 0,
+	.hostbox_size = 0x1000,
+	.dspbox_size = 0x1000,
 	.version = {
 		.build = REEF_BUILD,
 		.minor = REEF_MINOR,
@@ -68,46 +73,46 @@ static const struct sof_ipc_fw_ready ready = {
 
 #define SRAM_WINDOW_HOST_OFFSET(x)		(0x80000 + x * 0x20000)
 
-#define NUM_APL_WINDOWS		5
+#define NUM_BXT_WINDOWS		5
 
 static const struct sof_ipc_window sram_window = {
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,
 		.hdr.size = sizeof(struct sof_ipc_window) +
-			sizeof(struct sof_ipc_window_elem) * NUM_APL_WINDOWS,
+			sizeof(struct sof_ipc_window_elem) * NUM_BXT_WINDOWS,
 		.type	= SOF_IPC_EXT_WINDOW,
 	},
-	.num_windows	= NUM_APL_WINDOWS,
-	.window[0]	= {
-		.type	= SOF_IPC_REGION_REGS,
+	.num_windows 	= NUM_BXT_WINDOWS,
+	.window[0] 	= {
+		.type 	= SOF_IPC_REGION_REGS,
 		.id	= 0,	/* map to host window 0 */
 		.flags	= 0, // TODO: set later
 		.size	= MAILBOX_SW_REG_SIZE,
 		.offset	= 0,
 	},
-	.window[1]	= {
-		.type	= SOF_IPC_REGION_UPBOX,
+	.window[1] 	= {
+		.type 	= SOF_IPC_REGION_UPBOX,
 		.id	= 0,	/* map to host window 0 */
 		.flags	= 0, // TODO: set later
 		.size	= MAILBOX_DSPBOX_SIZE,
 		.offset	= MAILBOX_SW_REG_SIZE,
 	},
-	.window[2]	= {
-		.type	= SOF_IPC_REGION_DOWNBOX,
+	.window[2] 	= {
+		.type 	= SOF_IPC_REGION_DOWNBOX,
 		.id	= 1,	/* map to host window 1 */
 		.flags	= 0, // TODO: set later
 		.size	= MAILBOX_HOSTBOX_SIZE,
 		.offset	= 0,
 	},
-	.window[3]	= {
-		.type	= SOF_IPC_REGION_DEBUG,
+	.window[3] 	= {
+		.type 	= SOF_IPC_REGION_DEBUG,
 		.id	= 2,	/* map to host window 2 */
 		.flags	= 0, // TODO: set later
 		.size	= SRAM_DEBUG_SIZE,
 		.offset	= 0,
 	},
-	.window[4]	= {
-		.type	= SOF_IPC_REGION_TRACE,
+	.window[4] 	= {
+		.type 	= SOF_IPC_REGION_TRACE,
 		.id	= 3,	/* map to host window 3 */
 		.flags	= 0, // TODO: set later
 		.size	= MAILBOX_TRACE_SIZE,
@@ -133,40 +138,126 @@ struct timer *platform_timer = &platform_generic_queue.timer;
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
-	mailbox_dspbox_write(sizeof(ready), &sram_window,
-		sram_window.ext_hdr.hdr.size);
+	mailbox_dspbox_write(sizeof(ready), &sram_window, sram_window.ext_hdr.hdr.size);
 
 	/* boot now complete so we can relax the CPU */
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
 
-	/* tell host we are ready */
 	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCI, 0x80000000 | SOF_IPC_FW_READY);
 
 	return 0;
 }
 
+struct ssp_mn {
+	uint32_t source;
+	uint32_t bclk_fs;
+	uint32_t rate;
+	uint32_t m;
+	uint32_t n;
+};
+
+#if 0
+static const struct ssp_mn ssp_mn_conf[] = {
+	{25000000, 24, 48000, 1152, 25000},     /* 1.152MHz */
+	{25000000, 32, 48000, 1536, 25000},	/* 1.536MHz */
+	{25000000, 64, 48000, 3072, 25000},	/* 3.072MHz */
+	{25000000, 400, 48000, 96, 125},	/* 19.2MHz */
+	{25000000, 400, 44100, 441, 625},	/* 17.64MHz */
+};
+#endif
+
+/* set the SSP M/N clock dividers */
+int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
+	uint32_t bclk_fs)
+{
+#if 0
+	int i;
+
+	/* check for matching config in the table */
+	for (i = 0; i < ARRAY_SIZE(ssp_mn_conf); i++) {
+
+		if (ssp_mn_conf[i].source != source)
+			continue;
+
+		if (ssp_mn_conf[i].rate != rate)
+			continue;
+
+		if (ssp_mn_conf[i].bclk_fs != bclk_fs)
+			continue;
+
+		/* match */
+		switch (ssp_port) {
+		case 0:
+			shim_write(SHIM_SSP0_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP0_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		case 1:
+			shim_write(SHIM_SSP1_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP1_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		case 2:
+			shim_write(SHIM_SSP2_DIVL, ssp_mn_conf[i].n);
+			shim_write(SHIM_SSP2_DIVH, SHIM_SSP_DIV_ENA |
+				SHIM_SSP_DIV_UPD | ssp_mn_conf[i].m);
+			break;
+		default:
+			return -ENODEV;
+		}
+
+		return 0;
+	}
+#endif
+	return -EINVAL;
+}
+
+void platform_ssp_disable_mn(uint32_t ssp_port)
+{
+#if 0
+	switch (ssp_port) {
+	case 0:
+		shim_write(SHIM_SSP0_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	case 1:
+		shim_write(SHIM_SSP1_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	case 2:
+		shim_write(SHIM_SSP2_DIVH, SHIM_SSP_DIV_BYP |
+			SHIM_SSP_DIV_UPD);
+		break;
+	}
+#endif
+}
+
 static void platform_memory_windows_init(void)
 {
 	/* window0, for fw status & outbox/uplink mbox */
-	io_reg_write(DMWLO(0), HP_SRAM_WIN0_SIZE | 0x7);
-	io_reg_write(DMWBA(0), HP_SRAM_WIN0_BASE
-		| DMWBA_READONLY | DMWBA_ENABLE);
+	*((volatile uint32_t*)(HOST_WIN_BASE(0) + 0)) =
+		HP_SRAM_WIN0_BASE |0x3; /* read only for host */
+	*((volatile uint32_t*)(HOST_WIN_BASE(0) + 4)) =
+		HP_SRAM_WIN0_SIZE |0x7; /* limit offset, 8 KB */
 
 	/* window1, for inbox/downlink mbox */
-	io_reg_write(DMWLO(1), HP_SRAM_WIN1_SIZE | 0x7);
-	io_reg_write(DMWBA(1), HP_SRAM_WIN1_BASE
-		| DMWBA_ENABLE);
+	*((volatile uint32_t*)(HOST_WIN_BASE(1) + 0)) =
+		HP_SRAM_WIN1_BASE |0x1; /* writable for host */
+	*((volatile uint32_t*)(HOST_WIN_BASE(1) + 4)) =
+		HP_SRAM_WIN1_SIZE | 0x7; /* limit offset, 8 KB */
 
 	/* window2, for debug */
-	io_reg_write(DMWLO(2), HP_SRAM_WIN2_SIZE | 0x7);
-	io_reg_write(DMWBA(2), HP_SRAM_WIN2_BASE
-		| DMWBA_READONLY | DMWBA_ENABLE);
+	*((volatile uint32_t*)(HOST_WIN_BASE(2) + 0)) =
+		HP_SRAM_WIN2_BASE |0x3; /* read only for host */
+	*((volatile uint32_t*)(HOST_WIN_BASE(2) + 4)) =
+		HP_SRAM_WIN2_SIZE | 0x7; /* limit offset, 4 KB */
 
 	/* window3, for trace */
-	io_reg_write(DMWLO(3), HP_SRAM_WIN3_SIZE | 0x7);
-	io_reg_write(DMWBA(3), HP_SRAM_WIN3_BASE
-		| DMWBA_READONLY | DMWBA_ENABLE);
+	*((volatile uint32_t*)(HOST_WIN_BASE(3) + 0)) =
+		HP_SRAM_WIN3_BASE |0x3; /* read only for host */
+	*((volatile uint32_t*)(HOST_WIN_BASE(3) + 4)) =
+		HP_SRAM_WIN3_SIZE | 0x7; /* limit offset, 8 KB */
 }
 
 static struct timer platform_ext_timer = {
@@ -176,8 +267,7 @@ static struct timer platform_ext_timer = {
 
 int platform_init(struct reef *reef)
 {
-	struct dma *dmac0;
-	struct dma *dmac1;
+	struct dma *dmac0, *dmac1;
 	struct dai *ssp2;
 
 	platform_interrupt_init();
@@ -197,9 +287,6 @@ int platform_init(struct reef *reef)
 	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue);
 
-	/* init the system agent */
-	sa_init(reef);
-
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
 	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
@@ -212,7 +299,11 @@ int platform_init(struct reef *reef)
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(reef);
 
-	/* disable PM for boot */
+	/* disable LP SRAM power gating.
+	 * disable LP GPDMA force dynamic clock gating.
+	 * disable I2S force dynamic clock gating
+	 * prevent local clock gating.
+	 */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
 		SHIM_CLKCTL_LPGPDMAFDCGB(0) |
 		SHIM_CLKCTL_LPGPDMAFDCGB(1) |
@@ -241,6 +332,9 @@ int platform_init(struct reef *reef)
 	if (dmac1 == NULL)
 		return -ENODEV;
 	dma_probe(dmac1);
+
+	/* mask SSP interrupts */
+	//shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);

@@ -1,8 +1,7 @@
-includedir = $(prefix)/include/sof/uapi
+includedir = $(prefix)/include/sof
 
 include_HEADERS = \
 	ipc.h \
 	abi.h \
 	eq.h  \
-	tone.h \
-	manifest.h
+	tone.h

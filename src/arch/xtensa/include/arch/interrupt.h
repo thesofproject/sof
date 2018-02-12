@@ -38,7 +38,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-static inline int arch_interrupt_register(int irq,
+static inline int arch_interrupt_register(uint32_t irq,
 	void(*handler)(void *arg), void *arg)
 {
 	irq = REEF_IRQ_NUMBER(irq);
@@ -47,7 +47,7 @@ static inline int arch_interrupt_register(int irq,
 	return 0;
 }
 
-static inline void arch_interrupt_unregister(int irq)
+static inline void arch_interrupt_unregister(uint32_t irq)
 {
 	irq = REEF_IRQ_NUMBER(irq);
 	_xtos_set_interrupt_handler_arg(irq, NULL, NULL);

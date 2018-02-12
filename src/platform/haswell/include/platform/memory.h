@@ -95,9 +95,9 @@
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8			0
-#define HEAP_RT_COUNT16			256
-#define HEAP_RT_COUNT32			128
-#define HEAP_RT_COUNT64			64
+#define HEAP_RT_COUNT16		    256
+#define HEAP_RT_COUNT32		    128
+#define HEAP_RT_COUNT64		    64
 #define HEAP_RT_COUNT128		32
 #define HEAP_RT_COUNT256		16
 #define HEAP_RT_COUNT512		8
@@ -117,11 +117,11 @@
 	HEAP_RT_COUNT512 * 512 + HEAP_RT_COUNT1024 * 1024)
 
 #define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
-#define HEAP_BUFFER_SIZE \
+#define HEAP_BUFFER_SIZE	\
     (DRAM0_SIZE - HEAP_RUNTIME_SIZE - REEF_STACK_SIZE - HEAP_SYSTEM_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
-#define HEAP_BUFFER_COUNT		(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 /* DMA buffer heap is the same physical memory as buffer heap on baytrail */
 #define HEAP_DMA_BUFFER_BASE		0
@@ -130,9 +130,9 @@
 #define HEAP_DMA_BUFFER_COUNT		0
 
 /* Stack configuration */
-#define REEF_STACK_SIZE			0x1000
-#define REEF_STACK_BASE			(DRAM0_BASE + DRAM0_SIZE)
-#define REEF_STACK_END			(REEF_STACK_BASE - REEF_STACK_SIZE)
+#define REEF_STACK_SIZE				0x1000
+#define REEF_STACK_BASE				(DRAM0_BASE + DRAM0_SIZE)
+#define REEF_STACK_END				(REEF_STACK_BASE - REEF_STACK_SIZE)
 
 /* Vector and literal sizes - not in core-isa.h */
 #define REEF_MEM_VECT_LIT_SIZE		0x4
@@ -143,6 +143,6 @@
 #define REEF_MEM_RESET_LIT_SIZE		0x120
 #define REEF_MEM_VECBASE_LIT_SIZE	0x178
 
-#define REEF_MEM_RO_SIZE		0x8
+#define REEF_MEM_RO_SIZE			0x8
 
 #endif

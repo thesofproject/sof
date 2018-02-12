@@ -39,6 +39,7 @@ void platform_timer_start(struct timer *timer)
 {
 }
 
+/* this seems to stop rebooting with RTD3 ???? */
 void platform_timer_stop(struct timer *timer)
 {
 }
@@ -89,10 +90,10 @@ void platform_dai_timestamp(struct comp_dev *dai,
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on HSW */
-	*wallclock = timer_get_system(platform_timer);
+	*wallclock = platform_timer_get(platform_timer);
 }
 
-int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
+int platform_timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
 	switch (timer->id) {
 	case TIMER0:

@@ -32,37 +32,16 @@
 #define __INCLUDE_TIMER__
 
 #include <arch/timer.h>
+#include <reef/interrupt.h>
 #include <stdint.h>
 
 int timer_register(struct timer *timer,
-	void(*handler)(void *arg), void *arg);
-
-static inline void timer_unregister(struct timer *timer)
-{
-	arch_timer_unregister(timer);
-}
-
-static inline void timer_enable(struct timer *timer)
-{
-	arch_timer_enable(timer);
-}
-
-static inline void timer_disable(struct timer *timer)
-{
-	arch_timer_disable(timer);
-}
-
-static inline int timer_set(struct timer *timer, uint64_t ticks)
-{
-	return arch_timer_set(timer, ticks);
-}
-
-void timer_set_ms(struct timer *timer, unsigned int ms);
-
-static inline void timer_clear(struct timer *timer)
-{
-	arch_timer_clear(timer);
-}
+	void (*handler)(void *arg), void *arg);
+void timer_unregister(struct timer *timer);
+void timer_enable(struct timer *timer);
+void timer_disable(struct timer *timer);
+void timer_set(struct timer *timer, unsigned int ticks);
+void timer_clear(struct timer *timer);
 
 unsigned int timer_get_count(struct timer *timer);
 

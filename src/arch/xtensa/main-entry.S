@@ -55,3 +55,4 @@ _MainEntry:
 	.size	_MainEntry, . - _MainEntry
 
 	.end	literal_prefix
+
