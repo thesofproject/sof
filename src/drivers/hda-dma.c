@@ -309,7 +309,6 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	p->chan[channel].direction = config->direction;
 	p->chan[channel].desc_count = desc_count;
 
-
 	/* validate - HDA only supports continuous elems of same size  */
 	list_for_item(plist, &config->elem_list) {
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
@@ -343,6 +342,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* firmware control buffer */
 	dgcs = DGCS_FWCB;
+
 	/* set DGCS.SCS bit to 0 for 32 bit container */
 	if ((config->direction == SOF_IPC_STREAM_PLAYBACK &&
 	    config->dest_width <= 16) ||
