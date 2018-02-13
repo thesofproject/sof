@@ -48,3 +48,4 @@ reef-*
 boot_ldr-*
 boot_module
 module
+rimage/rimage

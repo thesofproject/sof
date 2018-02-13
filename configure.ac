@@ -19,7 +19,7 @@ AC_DEFINE_UNQUOTED([REEF_MICRO], reef_micro, [Reef micro version])
 AC_CANONICAL_HOST
 
 # General compiler flags
-CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -fno-inline-functions -nostdlib -Wmissing-prototypes"
+CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 
 # General assembler flags
 ASFLAGS="-DASSEMBLY"
@@ -37,6 +37,13 @@ if test "$have_library" = "yes"; then
 fi
 AM_CONDITIONAL(BUILD_LIB, test "$have_library" = "yes")
 
+# check if we are building tools
+AC_ARG_ENABLE(rimage, [AS_HELP_STRING([--enable-rimage],[build rimage tool])], have_rimage=$enableval, have_rimage=no)
+if test "$have_rimage" = "yes"; then
+	AC_DEFINE([CONFIG_RIMAGE], [1], [Configure to build rimage])
+fi
+AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
+
 # Architecture support
 AC_ARG_WITH([arch],
         AS_HELP_STRING([--with-arch], [Specify DSP architecture]),
@@ -52,7 +59,7 @@ case "$with_arch" in
 	AC_SUBST(XTENSA_LDFLAGS)
 
 	# extra CFLAGS defined here otherwise configure working gcc tests fails.
-	CFLAGS="${CFLAGS:+$CFLAGS }-mlongcalls"
+	CFLAGS="${CFLAGS:+$CFLAGS }-fno-inline-functions -nostdlib -mlongcalls"
 	LDFLAGS="${LDFLAGS:+$LDFLAGS }-nostdlib"
 
 	#ARCH_ASFLAGS=""
@@ -79,7 +86,9 @@ case "$with_arch" in
 	AC_SUBST(ARCH)
     ;;
     *)
-        AC_MSG_ERROR([DSP architecture not specified])
+	if test "$have_rimage" = "no"; then
+		AC_MSG_ERROR([DSP architecture not specified])
+	fi
     ;;
 esac
 
@@ -197,11 +206,13 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
     *)
-	if test "$ARCH" = "host"; then
-		PLATFORM="host"
-		AC_SUBST(PLATFORM)
-	else
-		AC_MSG_ERROR([Host platform not specified])
+	if test "$have_rimage" = "no"; then
+		if test "$ARCH" = "host"; then
+			PLATFORM="host"
+			AC_SUBST(PLATFORM)
+		else
+			AC_MSG_ERROR([Host platform not specified])
+		fi
 	fi
     ;;
 esac
@@ -315,12 +326,26 @@ LT_INIT
 AC_CHECK_TOOL([OBJCOPY], [objcopy], [])
 AC_CHECK_TOOL([OBJDUMP], [objdump], [])
 
+# Check for openssl - used by rimage
+AC_CHECK_LIB([crypto], [OPENSSL_config], , [have_openssl="no"])
+if test "$have_rimage" = "yes"; then
+	if test "$have_openssl" = "no"; then
+		AC_MSG_ERROR([Need OpenSSL libcrypto for rimage code signing])
+	fi
+fi
+
+PEM_KEY_PREFIX="/usr/local/share/rimage"
+AC_DEFINE_UNQUOTED([PEM_KEY_PREFIX], ["$PEM_KEY_PREFIX"], ["Path for PEM keys"])
+AC_SUBST(PEM_KEY_PREFIX)
+
 AM_EXTRA_RECURSIVE_TARGETS([bin])
 
 AM_EXTRA_RECURSIVE_TARGETS([vminstall])
 
 AC_CONFIG_FILES([
 	Makefile
+	rimage/Makefile
+	rimage/keys/Makefile
 	src/Makefile
 	src/tasks/Makefile
 	src/init/Makefile
@@ -380,6 +405,7 @@ echo "
 Target Architecture:           ${ARCH}
 Target Platform:               ${PLATFORM}
 Target Core:                   ${XTENSA_CORE}
+PEM:                           ${PEM_KEY_PREFIX}
 
 Compiler:                      ${CC}
 CFLAGS:                        ${CFLAGS}

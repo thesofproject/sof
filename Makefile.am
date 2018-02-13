@@ -1,4 +1,8 @@
+if BUILD_RIMAGE
+SUBDIRS = rimage
+else
 SUBDIRS = src
+endif
 
 ACLOCAL_AMFLAGS = -I m4
 
