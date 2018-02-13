@@ -91,6 +91,8 @@ struct host_data {
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 };
 
+static int host_stop(struct comp_dev *dev);
+
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
 	struct dma_sg_elem *elem;
@@ -231,6 +233,77 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	wait_completed(&hd->complete);
 }
 
+static int create_local_elems(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *e;
+	struct list_item *elist;
+	struct list_item *tlist;
+	int i;
+
+	/* TODO: simplify elem storage by using an array */
+	for (i = 0; i < hd->period_count; i++) {
+		/* allocate new host DMA elem and add it to our list */
+		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+		if (e == NULL)
+			goto unwind;
+
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+			e->dest = (uintptr_t)(hd->dma_buffer->addr) +
+				i * hd->period_bytes;
+		else
+			e->src = (uintptr_t)(hd->dma_buffer->addr) +
+				i * hd->period_bytes;
+
+		e->size = hd->period_bytes;
+
+		list_item_append(&e->list, &hd->local.elem_list);
+	}
+
+	return 0;
+
+unwind:
+	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
+		e = container_of(elist, struct dma_sg_elem, list);
+		list_item_del(&e->list);
+		rfree(e);
+	}
+
+	trace_host_error("el0");
+	return -ENOMEM;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int host_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	int ret = 0;
+
+	trace_host("cmd");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	switch (cmd) {
+	case COMP_CMD_STOP:
+		ret = host_stop(dev);
+		break;
+	case COMP_CMD_START:
+		/* preload first playback period for preloader task */
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+			ret = host_copy(dev);
+			if (ret == dev->frames)
+				ret = 0;
+			// wait for completion ?
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 #else
 
 static void host_gw_dma_update(struct comp_dev *dev)
@@ -308,6 +381,111 @@ static void host_gw_dma_update(struct comp_dev *dev)
 			local_elem->src = source_elem->src;
 		}
 	}
+}
+
+static int create_local_elems(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *e;
+	struct dma_sg_elem *ec;
+	struct dma_sg_elem *local_elem;
+	struct list_item *elist;
+	struct list_item *tlist;
+	int i;
+
+	/* TODO: simplify elem storage by using an array */
+	for (i = 0; i < hd->period_count; i++) {
+		/* allocate new host DMA elem and add it to our list */
+		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+		if (e == NULL)
+			goto unwind;
+
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+			e->dest = (uintptr_t)(hd->dma_buffer->addr) +
+				i * hd->period_bytes;
+		else
+			e->src = (uintptr_t)(hd->dma_buffer->addr) +
+				i * hd->period_bytes;
+
+		e->size = hd->period_bytes;
+
+		list_item_append(&e->list, &hd->local.elem_list);
+
+		/*
+		 * for dma gateway, we don't allocate extra sg elements in
+		 * host_buffer, so, we need create them here and add them
+		 * to config.elem_list.
+		 * And, as the first element has been added at host_new, so
+		 * add from the 2nd element here.
+		 */
+		if (i == 0)
+			continue;
+
+		/* allocate new host DMA elem and add it to our list */
+		ec = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*ec));
+		if (!ec)
+			goto unwind;
+
+		*ec = *e;
+		list_item_append(&ec->list, &hd->config.elem_list);
+
+	}
+
+	return 0;
+
+unwind:
+	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
+		e = container_of(elist, struct dma_sg_elem, list);
+		list_item_del(&e->list);
+		rfree(e);
+	}
+
+	local_elem = list_first_item(&hd->config.elem_list,
+				     struct dma_sg_elem, list);
+	list_for_item_safe(elist, tlist, &local_elem->list) {
+		ec = container_of(elist, struct dma_sg_elem, list);
+		list_item_del(&ec->list);
+		rfree(ec);
+	}
+
+	trace_host_error("el0");
+	return -ENOMEM;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int host_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	int ret = 0;
+
+	trace_host("cmd");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	switch (cmd) {
+	case COMP_CMD_STOP:
+		ret = host_stop(dev);
+		break;
+	case COMP_CMD_START:
+		dma_start(hd->dma, hd->chan);
+
+		/* preload first playback period for preloader task */
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+			/*
+			 * host dma will not start copy at this point yet,
+			 * just produce empty period bytes for it.
+			 */
+			comp_update_buffer_produce(hd->dma_buffer,
+						   hd->period_bytes);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
 }
 
 #endif
@@ -405,76 +583,6 @@ static void host_free(struct comp_dev *dev)
 	rfree(elem);
 	rfree(hd);
 	rfree(dev);
-}
-
-static int create_local_elems(struct comp_dev *dev)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *e;
-#if defined CONFIG_DMA_GW
-	struct dma_sg_elem *ec;
-	struct dma_sg_elem *local_elem;
-#endif
-	struct list_item *elist;
-	struct list_item *tlist;
-	int i;
-
-	/* TODO: simplify elem storage by using an array */
-	for (i = 0; i < hd->period_count; i++) {
-		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
-		if (e == NULL)
-			goto unwind;
-
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-			e->dest = (uintptr_t)(hd->dma_buffer->addr) +
-				i * hd->period_bytes;
-		else
-			e->src = (uintptr_t)(hd->dma_buffer->addr) +
-				i * hd->period_bytes;
-
-		e->size = hd->period_bytes;
-
-		list_item_append(&e->list, &hd->local.elem_list);
-#if defined CONFIG_DMA_GW
-		/*
-		 * for dma gateway, we don't allocate extra sg elements in
-		 * host_buffer, so, we need create them here and add them
-		 * to config.elem_list.
-		 * And, as the first element has been added at host_new, so
-		 * add from the 2nd element here.
-		 */
-		if (!i)
-			continue;
-		/* allocate new host DMA elem and add it to our list */
-		ec = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*ec));
-		if (!ec)
-			goto unwind;
-
-		*ec = *e;
-		list_item_append(&ec->list, &hd->config.elem_list);
-#endif
-	}
-
-	return 0;
-
-unwind:
-	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
-		e = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&e->list);
-		rfree(e);
-	}
-#if defined CONFIG_DMA_GW
-	local_elem = list_first_item(&hd->config.elem_list,
-				     struct dma_sg_elem, list);
-	list_for_item_safe(elist, tlist, &local_elem->list) {
-		ec = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&ec->list);
-		rfree(ec);
-	}
-#endif
-	trace_host_error("el0");
-	return -ENOMEM;
 }
 
 static int host_elements_reset(struct comp_dev *dev)
@@ -661,50 +769,6 @@ static int host_position(struct comp_dev *dev,
 	return 0;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
-static int host_cmd(struct comp_dev *dev, int cmd, void *data)
-{
-	int ret = 0;
-#if defined CONFIG_DMA_GW
-	struct host_data *hd = comp_get_drvdata(dev);
-#endif
-	trace_host("cmd");
-
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
-	switch (cmd) {
-	case COMP_CMD_STOP:
-		ret = host_stop(dev);
-		break;
-	case COMP_CMD_START:
-#if defined CONFIG_DMA_GW
-		dma_start(hd->dma, hd->chan);
-#endif
-		/* preload first playback period for preloader task */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-#if !defined CONFIG_DMA_GW
-			ret = host_copy(dev);
-			if (ret == dev->frames)
-				ret = 0;
-#else
-			/*
-			 * host dma will not start copy at this point yet,
-			 * just produce empty period bytes for it.
-			 */
-			comp_update_buffer_produce(hd->dma_buffer,
-						   hd->period_bytes);
-#endif
-		}
-		break;
-	default:
-		break;
-	}
-
-	return ret;
-}
-
 static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
 		uint32_t host_size)
 {
@@ -757,6 +821,7 @@ static int host_reset(struct comp_dev *dev)
 	 */
 	list_for_item_safe(elist, tlist, &e->list) {
 		e = container_of(elist, struct dma_sg_elem, list);
+
 		/* should not free the header, finished */
 		if (elist == &hd->config.elem_list)
 			break;
