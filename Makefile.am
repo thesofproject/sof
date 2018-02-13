@@ -1,1 +1,1 @@
-SUBDIRS = rimage rmbox topology
+SUBDIRS = rmbox topology
