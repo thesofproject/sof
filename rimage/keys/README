@@ -1,0 +1,34 @@
+About
+=====
+
+Firmware binary signing is for audio DSP is mandatory on Intel products from
+Skylake onwards. i.e. no code signing on Baytrail, Cherrytrail, Braswell,
+Haswell and Broadwell but mandatory on Skylake, Kabylake, Apollolake and
+Cannonlake.
+
+rimage can now sign firmware binaries for Apollolake and Cannonlake targets.
+This is done automatically as part of the "make bin" part of the build.
+
+
+Key Pairs
+=========
+
+The key included here is the Intel OTC (Opensource Technology Center) community
+development key. It can be freely used by anyone and is intended for reference
+board makers and firmware developers.
+
+** This key is NOT intended for locking down firmware on end user production
+devices since the "private" key has been published here. A new key pair must
+be genrated for securing firmware ! **
+
+RSA Private and Public keys are generated as follows :-
+
+openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in private_key.pem -out public_key.pem
+
+The public key needs to be programmed into the OEM Key manifest (cavsManifest0)
+within the BIOS in order to verify code signed with the private key. 
+Intel supplies tools to board makers to stitch the public key into the BIOS.
+
+The private key is used by rimage to sign the SOF binary. It should be kept
+secret and secure for production signing. 

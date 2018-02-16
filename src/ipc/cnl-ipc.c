@@ -27,7 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *	Keyon Jie <yang.jie@linux.intel.com>
- 	Rander Wang <rander.wang@intel.com>
+	Rander Wang <rander.wang@intel.com>
  */
 
 #include <reef/debug.h>
@@ -55,44 +55,12 @@
 
 extern struct ipc *_ipc;
 
-#if 0
-static void do_notify(void)
-{
-	uint32_t flags;
-	struct ipc_msg *msg;
-
-	tracev_ipc("Not");
-
-	spin_lock_irq(&_ipc->lock, flags);
-	msg = _ipc->dsp_msg;
-	if (msg == NULL)
-		goto out;
-
-	/* copy the data returned from DSP */
-	if (msg->rx_size && msg->rx_size < MSG_MAX_SIZE)
-		mailbox_inbox_read(msg->rx_data, 0, msg->rx_size);
-
-	/* any callback ? */
-	if (msg->cb)
-		msg->cb(msg->cb_data, msg->rx_data);
-
-	list_add_tail(&msg->list, &_ipc->empty_list);
-
-out:
-	spin_unlock_irq(&_ipc->lock, flags);
-
-	/* clear DONE bit - tell Host we have completed */
-	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
-
-	/* unmask Done interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
-}
-#endif
-
 /* test code to check working IRQ */
 static void irq_handler(void *arg)
 {
-	uint32_t dipctdr, dipcida, msg = 0;
+	uint32_t dipctdr;
+	uint32_t dipcida;
+	uint32_t msg = 0;
 
 	trace_ipc("IRQ");
 
@@ -138,9 +106,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	int32_t err;
 
 	trace_ipc("Cmd");
-	//trace_value(_ipc->host_msg);
-
-//	ipc_cmd();
 
 	/* perform command and return any error */
 	err = ipc_cmd();
@@ -177,7 +142,6 @@ done:
 	}
 
 	tracev_ipc("CmD");
-
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
@@ -205,6 +169,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
 
 	list_item_append(&msg->list, &ipc->empty_list);
+
 out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
@@ -247,4 +212,3 @@ int platform_ipc_init(struct ipc *ipc)
 
 	return 0;
 }
-

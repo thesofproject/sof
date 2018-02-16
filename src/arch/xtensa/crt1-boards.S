@@ -127,14 +127,15 @@ _start:
 	.weak	_Level5FromVector
 
 	movi	a4, _Level2FromVector
-	wsr		a4, EXCSAVE+2
+	wsr	a4, EXCSAVE+2
 	movi	a4, _Level3FromVector
-	wsr		a4, EXCSAVE+3
+	wsr	a4, EXCSAVE+3
 	movi	a4, _Level4FromVector
-	wsr		a4, EXCSAVE+4
+	wsr	a4, EXCSAVE+4
 	movi	a4, _Level5FromVector
-	wsr		a4, EXCSAVE+5
+	wsr	a4, EXCSAVE+5
 #endif
+
 	// Initialize the stack pointer.
 	// See the "ABI and Software Conventions" chapter in the
 	// Xtensa ISA Reference manual for details.

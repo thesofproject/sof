@@ -3,7 +3,13 @@ Build Instructions
 
 1) Run "autogen.sh" 
 
-2) Run the following configure based on your platform.
+2) Build and install the rimage ELF image creator and signing tool
+
+./configure --enable-rimage
+make
+sudo make install
+
+3) Run the following configure based on your platform.
 
 Baytrail :-
 
@@ -13,28 +19,15 @@ Cherrytrail :-
 
 ./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf
 
-Apollolake :-
+Library for Host Platform :-
+If building library for host platform, run the following configure. Please modify
+the --prefix option to choose the directory for installing the library files and
+headers
 
-./configure --with-arch=xtensa --with-platform=apollolake --with-root-dir=$PWD/../xtensa-root/xtensa-bxt-elf --host=xtensa-bxt-elf host_alias=xtensa-bxt-elf --disable-dma-trace
+./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
 
-Haswell :-
+4) make
 
-./configure --with-arch=xtensa --with-platform=haswell --with-root-dir=$PWD/../xtensa-root/xtensa-hsw-elf --host=xtensa-hsw-elf host_alias=xtensa-hsw-elf
-
-Broadwell :-
-
-./configure --with-arch=xtensa --with-platform=broadwell --with-root-dir=$PWD/../xtensa-root/xtensa-hsw-elf --host=xtensa-hsw-elf host_alias=xtensa-hsw-elf
-
-Suecreek :-
-
-./configure --with-arch=xtensa --with-platform=suecreek --with-root-dir=$PWD/../xtensa-root/xtensa-sue-elf --host=xtensa-sue-elf host_alias=xtensa-sue-elf --disable-dma-trace
-
-Cannonlake :-
-
-./configure --with-arch=xtensa --with-platform=cannonlake --with-root-dir=$PWD/../xtensa-root/xtensa-sue-elf --host=xtensa-sue-elf host_alias=xtensa-sue-elf --disable-dma-trace
-
-3) make
-
-4) make bin
+5) make bin
 
  

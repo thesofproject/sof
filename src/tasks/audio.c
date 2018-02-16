@@ -36,6 +36,7 @@
 #include <reef/timer.h>
 #include <reef/interrupt.h>
 #include <reef/ipc.h>
+#include <reef/agent.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
 #include <reef/audio/pipeline.h>
@@ -46,14 +47,14 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#if defined (CONFIG_SUECREEK)
-#define STATIC_PIPE	1
-#endif
+struct audio_data {
+	struct pipeline *p;
+};
 
 int do_task(struct reef *reef)
 {
 #ifdef STATIC_PIPE
-	int ret;
+	struct audio_data pdata;
 #endif
 	/* init default audio components */
 	sys_comp_init();
@@ -70,8 +71,8 @@ int do_task(struct reef *reef)
 
 #if STATIC_PIPE
 	/* init static pipeline */
-	ret = init_static_pipeline(reef->ipc);
-	if (ret <0)
+	pdata.p = init_static_pipeline();
+	if (pdata.p == NULL)
 		panic(PANIC_TASK);
 #endif
 	/* let host know DSP boot is complete */
@@ -81,12 +82,13 @@ int do_task(struct reef *reef)
 	while (1) {
 
 		/* sleep until next IPC or DMA */
+		sa_enter_idle(reef);
 		wait_for_interrupt(0);
 
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
 
-		/* schedule any idle taks */
+		/* schedule any idle tasks */
 		schedule();
 	}
 

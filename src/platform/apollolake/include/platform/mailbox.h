@@ -35,7 +35,7 @@
 #include <platform/memory.h>
 
 
-/* 
+/*
  * The Window Region on Broxton HPSRAM is organised like this :-
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
@@ -49,16 +49,16 @@
  * | SRAM_OUTBOX_BASE    | Outbox W0      |  SRAM_MAILBOX_SIZE                |
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_SW_REG_BASE    | SW Registers W0|  SRAM_SW_REG_SIZE                 |
- * +---------------------+----------------+-----------------------------------+ 
+ * +---------------------+----------------+-----------------------------------+
  */
 
 /* window 3 - trace */
 #define MAILBOX_TRACE_SIZE	SRAM_TRACE_SIZE
-#define MAILBOX_TRACE_BASE 	SRAM_TRACE_BASE
+#define MAILBOX_TRACE_BASE	SRAM_TRACE_BASE
 
 /* window 2 debug and exception */
 #define MAILBOX_DEBUG_SIZE	(SRAM_DEBUG_SIZE -  MAILBOX_EXCEPTION_SIZE)
-#define MAILBOX_DEBUG_BASE 	SRAM_DEBUG_BASE
+#define MAILBOX_DEBUG_BASE	SRAM_DEBUG_BASE
 
 #define MAILBOX_EXCEPTION_SIZE	0x100
 #define MAILBOX_EXCEPTION_BASE \
@@ -66,7 +66,7 @@
 
 /* window 1 inbox/downlink and FW registers */
 #define MAILBOX_HOSTBOX_SIZE	SRAM_INBOX_SIZE
-#define MAILBOX_HOSTBOX_BASE 	SRAM_INBOX_BASE
+#define MAILBOX_HOSTBOX_BASE	SRAM_INBOX_BASE
 
 
 #define MAILBOX_STREAM_SIZE	0x200
@@ -75,9 +75,9 @@
 
 /* window 0 */
 #define MAILBOX_DSPBOX_SIZE	SRAM_OUTBOX_SIZE
-#define MAILBOX_DSPBOX_BASE 	SRAM_OUTBOX_BASE
+#define MAILBOX_DSPBOX_BASE	SRAM_OUTBOX_BASE
 
 #define MAILBOX_SW_REG_SIZE	SRAM_SW_REG_SIZE
-#define MAILBOX_SW_REG_BASE 	SRAM_SW_REG_BASE
+#define MAILBOX_SW_REG_BASE	SRAM_SW_REG_BASE
 
 #endif

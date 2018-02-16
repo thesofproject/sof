@@ -15,3 +15,13 @@ libplatform_a_CFLAGS = \
 	$(ARCH_INCDIR) \
 	$(REEF_INCDIR) \
 	$(PLATFORM_INCDIR)
+
+noinst_PROGRAMS = module
+
+module_SOURCES = \
+	base_module.c
+
+module_CFLAGS = \
+	$(ARCH_INCDIR) \
+	$(REEF_INCDIR) \
+	$(PLATFORM_INCDIR)

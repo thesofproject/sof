@@ -1,11 +1,21 @@
-noinst_LIBRARIES = libmath.a
+if BUILD_LIB
+lib_LTLIBRARIES = libsof_math.la
 
-libmath_a_SOURCES = \
+libsof_math_la_SOURCES = \
 	trig.c \
 	numbers.c
 
-libmath_a_CFLAGS = \
+libsof_math_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
-	$(REEF_INCDIR) \
-	$(ARCH_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(COMMON_INCDIR)
+else
+noinst_LIBRARIES = libsof_math.a
+
+libsof_math_a_SOURCES = \
+	trig.c \
+	numbers.c
+
+libsof_math_a_CFLAGS = \
+	$(ARCH_CFLAGS) \
+	$(COMMON_INCDIR)
+endif

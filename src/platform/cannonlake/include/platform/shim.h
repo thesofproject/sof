@@ -40,13 +40,13 @@
 #endif
 
 /* DSP IPC for Host Registers */
-#define IPC_DIPCTDR	0x00
-#define IPC_DIPCTDA	0x04
-#define IPC_DIPCTDD	0x08
-#define IPC_DIPCIDR	0x10
-#define IPC_DIPCIDA	0x14
-#define IPC_DIPCIDD	0x18
-#define IPC_DIPCCTL	0x28
+#define IPC_DIPCTDR		0x00
+#define IPC_DIPCTDA		0x04
+#define IPC_DIPCTDD		0x08
+#define IPC_DIPCIDR		0x10
+#define IPC_DIPCIDA		0x14
+#define IPC_DIPCIDD		0x18
+#define IPC_DIPCCTL		0x28
 
 
 /* DIPCTDR */
@@ -64,7 +64,7 @@
 #define IPC_DIPCIDA_DONE	(1 << 31)
 
 /* DIPCIE */
-#define IPC_DIPCIE_DONE	(1 << 31)
+#define IPC_DIPCIE_DONE		(1 << 31)
 #define IPC_DIPCIE_MSG_MASK	0x3FFFFFFF
 
 /* DIPCCTL */
@@ -77,6 +77,7 @@
 #define REG_IRQ_IL2MCD(xcpu)	(0x4 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL2MD(xcpu)	(0x8 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL2SD(xcpu)	(0xc + (xcpu * IRQ_CPU_OFFSET))
+
 /* all mask valid bits */
 #define REG_IRQ_IL2MD_ALL		0x03F181F0
 
@@ -84,6 +85,7 @@
 #define REG_IRQ_IL3MCD(xcpu)	(0x14 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL3MD(xcpu)	(0x18 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL3SD(xcpu)	(0x1c + (xcpu * IRQ_CPU_OFFSET))
+
 /* all mask valid bits */
 #define REG_IRQ_IL3MD_ALL		0x807F81FF
 
@@ -91,6 +93,7 @@
 #define REG_IRQ_IL4MCD(xcpu)	(0x24 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL4MD(xcpu)	(0x28 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL4SD(xcpu)	(0x2c + (xcpu * IRQ_CPU_OFFSET))
+
 /* all mask valid bits */
 #define REG_IRQ_IL4MD_ALL		0x807F81FF
 
@@ -98,6 +101,7 @@
 #define REG_IRQ_IL5MCD(xcpu)	(0x34 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL5MD(xcpu)	(0x38 + (xcpu * IRQ_CPU_OFFSET))
 #define REG_IRQ_IL5SD(xcpu)	(0x3c + (xcpu * IRQ_CPU_OFFSET))
+
 /* all mask valid bits */
 #define REG_IRQ_IL5MD_ALL		0xFFFFC0CF
 
@@ -109,13 +113,11 @@
 #define REG_IRQ_LVL5_LP_GPDMA0_MASK		(0xff << 16)
 #define REG_IRQ_LVL5_LP_GPDMA1_MASK		(0xff << 24)
 
-
-
 /* DSP Shim Registers */
 #define SHIM_DSPWC		0x20 /* DSP Wall Clock */
-#define SHIM_DSPWCTCS	0x28 /* DSP Wall Clock Timer Control & Status */
-#define SHIM_DSPWCT0C	0x30 /* DSP Wall Clock Timer 0 Compare */
-#define SHIM_DSPWCT1C	0x38 /* DSP Wall Clock Timer 1 Compare */
+#define SHIM_DSPWCTCS		0x28 /* DSP Wall Clock Timer Control & Status */
+#define SHIM_DSPWCT0C		0x30 /* DSP Wall Clock Timer 0 Compare */
+#define SHIM_DSPWCT1C		0x38 /* DSP Wall Clock Timer 1 Compare */
 
 #define SHIM_DSPWCTCS_T1T	(0x1 << 5) /* Timer 1 triggered */
 #define SHIM_DSPWCTCS_T0T	(0x1 << 4) /* Timer 0 triggered */
@@ -131,23 +133,28 @@
 
 /* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
 #define SHIM_CLKCTL_LPGPDMAFDCGB(x)	(0x1 << (26 + x))
-#define SHIM_CLKCTL_TCPLCG(x)	(0x1 << (16 + x))
+#define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))
+
 /* Core clock PLL divisor */
 #define SHIM_CLKCTL_DPCS_MASK(x)	(0x1 << 2)
+
 /* Prevent Audio PLL Shutdown */
 #define SHIM_CLKCTL_TCPAPLLS	(0x1 << 7)
+
 /* 0--from PLL, 1--from oscillator */
 #define SHIM_CLKCTL_HDCS	(0x1 << 4)
+
 /* Oscillator select */
 #define SHIM_CLKCTL_HDOCS	(0x1 << 2)
+
 /* HP memory clock PLL divisor */
 #define SHIM_CLKCTL_HPMPCS	(0x1 << 0)
 
-#define GPDMA_CLKCTL(x)	(0x78404 + x*0x100)
+#define GPDMA_CLKCTL(x)		(0x78404 + x*0x100)
 #define GPDMA_FDCGB		(0x1 << 0)
 
-#define L2LMCAP		0x71D00
-#define L2MPAT		0x71D04
+#define L2LMCAP			0x71D00
+#define L2MPAT			0x71D04
 
 #define HSPGCTL0		0x71D10
 #define HSRMCTL0		0x71D14
@@ -157,32 +164,39 @@
 #define HSRMCTL1		0x71D24
 #define HSPGISTS1		0x71D28
 
-#define LSPGCTL		0x71D50
-#define LSRMCTL		0x71D54
+#define LSPGCTL			0x71D50
+#define LSRMCTL			0x71D54
 #define LSPGISTS		0x71D58
 
-#define SHIM_L2_MECS	(SHIM_BASE + 0xd0)
+#define SHIM_L2_MECS		(SHIM_BASE + 0xd0)
 
-#define SHIM_LDOCTL	0xA4
+#define SHIM_LDOCTL		0xA4
 #define SHIM_HPMEM_POWER_ON	(0x3 << 0)
 #define SHIM_LPMEM_POWER_BYPASS	(0x1 << 0)
 
-#define DSP_RESOURCE_LPGPDMA(x)	(0x71A60 + (2*x))
+#define DSP_INIT_LPGPDMA(x)	(0x71A60 + (2*x))
 #define LPGPDMA_CTLOSEL_FLAG	(1 << 15)
 #define LPGPDMA_CHOSEL_FLAG	(0xFF)
 
-#define DSP_RESOURCE_IOPO	0x71A68
-#define IOPO_DMIC_FLAG	(1 << 0)
-#define IOPO_I2S_FLAG	(7 << 8)
+#define DSP_INIT_IOPO	0x71A68
+#define IOPO_DMIC_FLAG		(1 << 0)
+#define IOPO_I2S_FLAG		(7 << 8)
 
-#define DSP_RESOURCE_GENO	0x71A6C
-#define GENO_MDIVOSEL	(1 << 1)
-#define GENO_DIOPTOSEL	(1 << 2)
+#define DSP_INIT_GENO	0x71A6C
+#define GENO_MDIVOSEL		(1 << 1)
+#define GENO_DIOPTOSEL		(1 << 2)
 
-#define DSP_RESOURCE_ALHO	0x71A70
-#define ALHO_ASO_FLAG	(1 << 0)
-#define ALHO_CSO_FLAG	(1 << 1)
-#define ALHO_CFO_FLAG	(1 << 2)
+#define DSP_INIT_ALHO	0x71A70
+#define ALHO_ASO_FLAG		(1 << 0)
+#define ALHO_CSO_FLAG		(1 << 1)
+#define ALHO_CFO_FLAG		(1 << 2)
+
+/* host windows */
+#define DMWBA(x)		(HOST_WIN_BASE(x) + 0x0)
+#define DMWLO(x)		(HOST_WIN_BASE(x) + 0x4)
+
+#define DMWBA_ENABLE		(1 << 0)
+#define DMWBA_READONLY		(1 << 1)
 
 #ifndef ASSEMBLY
 

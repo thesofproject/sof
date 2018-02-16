@@ -85,7 +85,8 @@
 /* Fractional multiplication with shift and round
  * Note that the parameters px and py must be cast to (int64_t) if other type.
  */
-#define Q_MULTSR_32X32(px, py, qx, qy, qp) (((px) * (py) >> (((qx)+(qy)-(qp)-1) +1) >> 1))
+#define Q_MULTSR_32X32(px, py, qx, qy, qp) \
+	((((px) * (py) >> ((qx)+(qy)-(qp)-1)) + 1) >> 1)
 
 /* Saturation */
 #define SATP_INT32(x) (((x) > INT32_MAX) ? INT32_MAX : (x))

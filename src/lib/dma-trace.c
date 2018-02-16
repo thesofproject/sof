@@ -108,7 +108,12 @@ static uint64_t trace_work(void *data, uint64_t delay)
 out:
 	spin_lock_irq(&d->lock, flags);
 
-	buffer->avail -= size;
+	/* disregard any old messages and dont resend them if we overflow */
+	if (d->overflow) {
+		buffer->avail = DMA_TRACE_LOCAL_SIZE - size;
+	} else {
+		buffer->avail -= size;
+	}
 
 	/* DMA trace copying is done */
 	d->copy_in_progress = 0;
@@ -180,7 +185,10 @@ int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	if (e == NULL)
 		return -ENOMEM;
 
-	*e = *elem;
+	/* copy fields - excluding possibly non-initialized elem->src */
+	e->dest = elem->dest;
+	e->size = elem->size;
+
 	d->host_size = host_size;
 
 	list_item_append(&e->list, &d->config.elem_list);

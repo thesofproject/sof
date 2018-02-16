@@ -18,10 +18,6 @@ if BUILD_BROADWELL
 SUBDIRS = haswell
 endif
 
-if BUILD_SUECREEK
-SUBDIRS = suecreek
-endif
-
 if BUILD_CANNONLAKE
 SUBDIRS = cannonlake
 endif

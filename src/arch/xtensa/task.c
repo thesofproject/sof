@@ -31,7 +31,6 @@
 
 #include <reef/schedule.h>
 #include <reef/interrupt.h>
-#include <platform/interrupt.h>
 #include <platform/platform.h>
 #include <reef/debug.h>
 #include <arch/task.h>

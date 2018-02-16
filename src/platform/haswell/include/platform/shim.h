@@ -39,8 +39,8 @@
 #define SHIM_ISRD		0x20
 #define SHIM_IMRX		0x28
 #define SHIM_IMRD		0x30
-#define SHIM_IPCXL		0x38 /* IPC IA -> SST */
-#define SHIM_IPCDL		0x40 /* IPC SST -> IA */
+#define SHIM_IPCX		0x38 /* IPC IA -> SST */
+#define SHIM_IPCD		0x40 /* IPC SST -> IA */
 
 #define SHIM_CLKCTL		0x78
 
@@ -83,12 +83,12 @@
 #define SHIM_IMRD_DMAC		(SHIM_IMRD_DMAC0 | SHIM_IMRD_DMAC1)
 
 /*  IPCX / IPCCH */
-#define	SHIM_IPCXH_DONE		(0x1 << 30)
-#define	SHIM_IPCXH_BUSY		(0x1 << 31)
+#define	SHIM_IPCX_DONE		(0x1 << 30)
+#define	SHIM_IPCX_BUSY		(0x1 << 31)
 
 /*  IPCDH */
-#define	SHIM_IPCDH_DONE		(0x1 << 30)
-#define	SHIM_IPCDH_BUSY		(0x1 << 31)
+#define	SHIM_IPCD_DONE		(0x1 << 30)
+#define	SHIM_IPCD_BUSY		(0x1 << 31)
 
 /* CLKCTL */
 #define SHIM_CLKCTL_SMOS(x)	(x << 24)

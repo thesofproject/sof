@@ -217,38 +217,3 @@ int arch_timer_set(struct timer *timer, uint64_t ticks)
 	arch_interrupt_global_enable(flags);
 	return 0;
 }
-
-int timer_register(struct timer *timer,
-	void (*handler)(void *arg), void *arg)
-{
-	return platform_timer_register(timer, handler, arg);
-}
-
-void timer_unregister(struct timer *timer)
-{
-	interrupt_unregister(timer->irq);
-}
-
-void timer_enable(struct timer *timer)
-{
-	interrupt_enable(timer->irq);
-}
-
-void timer_disable(struct timer *timer)
-{
-	interrupt_disable(timer->irq);
-}
-
-void timer_set(struct timer *timer, unsigned int ticks)
-{
-	arch_timer_set(timer, ticks);
-}
-
-//void timer_set_ms(struct timer *timer, unsigned int ms);
-
-void timer_clear(struct timer *timer)
-{
-	interrupt_clear(timer->irq);
-}
-
-

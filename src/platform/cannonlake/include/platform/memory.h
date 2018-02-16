@@ -53,38 +53,16 @@
 #define IPC_HOST_BASE		0x00071E00
 #define IPC_HOST_SIZE		0x00000020
 
-/* IPC to the CSME */
-#define IPC_CSME_BASE		0x00071E40
-#define IPC_CSME_SIZE		0x00000020
-
 /* intra DSP  IPC */
 #define IPC_DSP_SIZE		0x00000080
 #define IPC_DSP_BASE(x)		(0x00001200 + x * IPC_DSP_SIZE)
-
-/* SHA 256 */
-#define SHA256_BASE		0x00001400
-#define SHA256_SIZE		0x00000100
-
-/* L2 cache */
-#define L2C_CTRL_BASE		0x00001500
-#define L2C_CTRL_SIZE		0x00000010
-
-#define L2C_PREF_BASE		0x00001510
-#define L2C_PREF_SIZE		0x00000010
-
-#define L2C_PERF_BASE		0x00001520
-#define L2C_PERF_SIZE		0x00000010
 
 /* SRAM window for HOST */
 #define HOST_WIN_SIZE		0x00000008
 #define HOST_WIN_BASE(x)	(0x00071A00 + x * HOST_WIN_SIZE)
 
-/* SRAM window for CSME */
-#define CSME_WIN_SIZE		0x00000008
-#define CSME_WIN_BASE(x)	(0x00071A20 + x * HOST_WIN_SIZE)
-
 /* IRQ controller */
-#define IRQ_BASE		 0x00078800
+#define IRQ_BASE		0x00078800
 #define IRQ_SIZE		0x00000200
 
 /* time stamping */
@@ -155,7 +133,7 @@
 #define DATA_LENGTH		0x4000
 
 
-/* 
+/*
  * The HP SRAM Region on Cannonlake is organised like this :-
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
@@ -193,9 +171,9 @@
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8			0
-#define HEAP_RT_COUNT16		    	256
-#define HEAP_RT_COUNT32		    	128
-#define HEAP_RT_COUNT64		    	64
+#define HEAP_RT_COUNT16			256
+#define HEAP_RT_COUNT32			128
+#define HEAP_RT_COUNT64			64
 #define HEAP_RT_COUNT128		32
 #define HEAP_RT_COUNT256		16
 #define HEAP_RT_COUNT512		8
@@ -206,7 +184,7 @@
 #define REEF_TEXT_START_SIZE		0x40
 #define L2_VECTOR_SIZE		0x1000
 
-/* HP SRAM windows */	
+/* HP SRAM windows */
 /* window 0 */
 #define SRAM_SW_REG_BASE	(HP_SRAM_BASE + 0x4000)
 #define SRAM_SW_REG_SIZE	0x1000
@@ -274,8 +252,8 @@
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-/* 
- * The LP SRAM Heap and Stack on Apololake are organised like this :-
+/*
+ * The LP SRAM Heap and Stack on Cannonlake are organised like this :-
  *
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
@@ -291,7 +269,7 @@
  * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
  * | REEF_LP_STACK_END   | Stack          |  REEF_LP_STACK_SIZE                  |
- * +---------------------+----------------+-----------------------------------+ 
+ * +---------------------+----------------+-----------------------------------+
  * | REEF_STACK_BASE     |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
@@ -302,9 +280,9 @@
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_LP_COUNT8			0
-#define HEAP_RT_LP_COUNT16		    	256
-#define HEAP_RT_LP_COUNT32		    	128
-#define HEAP_RT_LP_COUNT64		    	64
+#define HEAP_RT_LP_COUNT16			256
+#define HEAP_RT_LP_COUNT32			128
+#define HEAP_RT_LP_COUNT64			64
 #define HEAP_RT_LP_COUNT128			32
 #define HEAP_RT_LP_COUNT256			16
 #define HEAP_RT_LP_COUNT512			8

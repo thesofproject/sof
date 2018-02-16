@@ -1,1 +1,0 @@
-SUBDIRS = platform xtensa

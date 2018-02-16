@@ -21,79 +21,79 @@ MEMORY
         org = XCHAL_RESET_VECTOR0_PADDR + REEF_MEM_RESET_TEXT_SIZE,
         len = REEF_MEM_RESET_LIT_SIZE
   vector_memory_lit :
-       	org = XCHAL_MEMERROR_VECTOR_PADDR + REEF_MEM_ERROR_LIT_SIZE,
+	org = XCHAL_MEMERROR_VECTOR_PADDR + REEF_MEM_ERROR_LIT_SIZE,
         len = REEF_MEM_ERROR_LIT_SIZE
   vector_memory_text :
-       	org = XCHAL_MEMERROR_VECTOR_PADDR,
+	org = XCHAL_MEMERROR_VECTOR_PADDR,
         len = REEF_MEM_ERROR_TEXT_SIZE
   vector_base_text :
-       	org = XCHAL_VECBASE_RESET_PADDR,
+	org = XCHAL_VECBASE_RESET_PADDR,
         len = REEF_MEM_VECBASE_LIT_SIZE
   vector_int2_lit :
-       	org = XCHAL_INTLEVEL2_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_INTLEVEL2_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_int2_text :
         org = XCHAL_INTLEVEL2_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_int3_lit :
-       	org = XCHAL_INTLEVEL3_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_INTLEVEL3_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_int3_text :
-       	org = XCHAL_INTLEVEL3_VECTOR_PADDR,
+	org = XCHAL_INTLEVEL3_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_int4_lit :
-       	org = XCHAL_INTLEVEL4_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_INTLEVEL4_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_int4_text :
-       	org = XCHAL_INTLEVEL4_VECTOR_PADDR,
+	org = XCHAL_INTLEVEL4_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_int5_lit :
-       	org = XCHAL_INTLEVEL5_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE, 
+	org = XCHAL_INTLEVEL5_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_int5_text :
-       	org = XCHAL_INTLEVEL5_VECTOR_PADDR,
+	org = XCHAL_INTLEVEL5_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_int6_lit :
-       	org = XCHAL_INTLEVEL6_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_INTLEVEL6_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_int6_text :
-       	org = XCHAL_INTLEVEL6_VECTOR_PADDR,
+	org = XCHAL_INTLEVEL6_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_int7_lit :
-       	org = XCHAL_INTLEVEL7_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_INTLEVEL7_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_int7_text :
-       	org = XCHAL_INTLEVEL7_VECTOR_PADDR,
+	org = XCHAL_INTLEVEL7_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_kernel_lit :
-       	org = XCHAL_KERNEL_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_KERNEL_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_kernel_text :
-       	org = XCHAL_KERNEL_VECTOR_PADDR,
+	org = XCHAL_KERNEL_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_user_lit :
-       	org = XCHAL_USER_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_USER_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_user_text :
-       	org = XCHAL_USER_VECTOR_PADDR,
+	org = XCHAL_USER_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_double_lit :
-       	org = XCHAL_DOUBLEEXC_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
+	org = XCHAL_DOUBLEEXC_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_double_text :
-       	org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
+	org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   reef_text_start :
-       	org = REEF_TEXT_START,
+	org = REEF_TEXT_START,
         len = REEF_TEXT_START_SIZE,
   reef_text :
-       	org = REEF_TEXT_BASE,
+	org = REEF_TEXT_BASE,
         len = REEF_TEXT_SIZE,
   reef_data :
-       	org = REEF_TEXT_BASE + REEF_TEXT_SIZE,
+	org = REEF_TEXT_BASE + REEF_TEXT_SIZE,
         len = REEF_DATA_SIZE
   reef_bss_data :
-  	org = REEF_TEXT_BASE + REEF_TEXT_SIZE + REEF_DATA_SIZE,
+	org = REEF_TEXT_BASE + REEF_TEXT_SIZE + REEF_DATA_SIZE,
         len = REEF_BSS_DATA_SIZE
   system_heap :
         org = HEAP_SYSTEM_BASE,
@@ -540,4 +540,3 @@ SECTIONS
     _reef_stack_end = ABSOLUTE(.);
   } >reef_stack :reef_stack_phdr
 }
-

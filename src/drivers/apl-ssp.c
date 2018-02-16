@@ -27,6 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Rander Wang <rander.wang@linux.intel.com>
  */
 
 #include <errno.h>
@@ -35,6 +36,7 @@
 #include <reef/ssp.h>
 #include <reef/alloc.h>
 #include <reef/interrupt.h>
+#include <config.h>
 
 /* tracing */
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
@@ -117,7 +119,6 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* sscr1 dynamic settings are SFRMDIR, SCLKDIR, SCFR */
 	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_RWOT | SSCR1_TRAIL;
-//	sscr1 |= SSCR1_TIE | SSCR1_RIE;
 
 	/* sscr2 dynamic setting is LJDFD */
 	sscr2 = SSCR2_SDFD | SSCR2_TURM1;
@@ -126,7 +127,6 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr3 = 0;
 
 	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
-//	sspsp = SSPSP_ETDS; /* make sure SDO line is tri-stated when inactive */
 	sspsp = 0;
 
 	ssp->config = *config;
@@ -232,6 +232,8 @@ static inline int ssp_set_config(struct dai *dai,
 		ret = -EINVAL;
 		goto out;
 	}
+#elif CONFIG_APOLLOLAKE
+	sscr0 |= SSCR0_MOD | SSCR0_ACS | SSCR0_ECS;
 #else
 	sscr0 |= SSCR0_MOD | SSCR0_ACS;
 #endif
@@ -380,6 +382,7 @@ static inline int ssp_set_config(struct dai *dai,
 	trace_value(sscr3);
 	trace_value(ssioc);
 
+	/* TODO: move this into M/N driver */
 	mn_reg_write(0x0, mdivc);
 	mn_reg_write(0x80, mdivr);
 	mn_reg_write(0x100 + config->id * 0x8 + 0x0, i2s_m);

@@ -129,24 +129,6 @@ static struct dma dma[] = {
 	},
 	.ops		= &dw_dma_ops,
 },
-#if 0 /* no HP GPDMAC for APL/BXT */
-{	/* High Performance GP DMAC 0 */
-	.plat_data = {
-		.id		= DMA_GP_HP_DMAC0,
-		.base		= HP_GP_DMA_BASE(0),
-		.irq		= IRQ_EXT_HOST_DMA_IN_LVL3(0),
-	},
-	.ops		= &dw_dma_ops,
-},
-{	/* High Performance GP DMAC 1 */
-	.plat_data = {
-		.id		= DMA_GP_HP_DMAC1,
-		.base		= HP_GP_DMA_BASE(1),
-		.irq		= IRQ_EXT_HOST_DMA_OUT_LVL3(0),
-	},
-	.ops		= &dw_dma_ops,
-},
-#endif
 {	/* Host In DMAC */
 	.plat_data = {
 		.id		= DMA_HOST_IN_DMAC,
@@ -154,7 +136,6 @@ static struct dma dma[] = {
 		.channels	= 7,
 		.irq = IRQ_EXT_HOST_DMA_IN_LVL3(0, 0),
 	},
-//	.ops		= &dma_ops,
 },
 {	/* Host out DMAC */
 	.plat_data = {
@@ -163,7 +144,6 @@ static struct dma dma[] = {
 		.channels	= 6,
 		.irq = IRQ_EXT_HOST_DMA_OUT_LVL3(0, 0),
 	},
-//	.ops		= &dma_ops,
 },
 {	/* Link In DMAC */
 	.plat_data = {
@@ -172,7 +152,6 @@ static struct dma dma[] = {
 		.channels	= 8,
 		.irq = IRQ_EXT_LINK_DMA_IN_LVL4(0, 0),
 	},
-//	.ops		= &dma_ops,
 },
 {	/* Link out DMAC */
 	.plat_data = {
@@ -181,7 +160,6 @@ static struct dma dma[] = {
 		.channels	= 8,
 		.irq = IRQ_EXT_LINK_DMA_OUT_LVL4(0, 0),
 	},
-//	.ops		= &dma_ops,
 },};
 
 struct dma *dma_get(int dmac_id)
@@ -195,4 +173,3 @@ struct dma *dma_get(int dmac_id)
 
 	return NULL;
 }
-

@@ -21,7 +21,7 @@ MEMORY
         org = IMR_BOOT_LDR_LIT_BASE,
         len = IMR_BOOT_LDR_LIT_SIZE
   reef_text :
-       	org = IMR_BOOT_LDR_TEXT_BASE,
+	org = IMR_BOOT_LDR_TEXT_BASE,
         len = IMR_BOOT_LDR_TEXT_SIZE,
   vector_base_text :
         org = XCHAL_VECBASE_RESET_PADDR,
@@ -45,7 +45,7 @@ MEMORY
         org = XCHAL_INTLEVEL4_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   vector_int5_lit :
-        org = XCHAL_INTLEVEL5_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE, 
+        org = XCHAL_INTLEVEL5_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
         len = REEF_MEM_VECT_LIT_SIZE
   vector_int5_text :
         org = XCHAL_INTLEVEL5_VECTOR_PADDR,
@@ -81,10 +81,10 @@ MEMORY
         org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   reef_data :
-       	org = IMR_BOOT_LDR_DATA_BASE,
+	org = IMR_BOOT_LDR_DATA_BASE,
         len = IMR_BOOT_LDR_DATA_SIZE
   reef_bss_data :
-  	org = IMR_BOOT_LDR_BSS_BASE,
+	org = IMR_BOOT_LDR_BSS_BASE,
         len = IMR_BOOT_LDR_BSS_SIZE
 }
 
@@ -429,4 +429,3 @@ SECTIONS
     KEEP (*(.gnu.linkonce.xt.profile_files.*))
   }
 }
-

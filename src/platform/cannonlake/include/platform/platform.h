@@ -34,23 +34,29 @@
 #define __PLATFORM_PLATFORM_H__
 
 #include <platform/shim.h>
+#include <platform/interrupt.h>
+#include <uapi/ipc.h>
 
 struct reef;
 
-/* default SSP stream format - need aligned with codec setting*/
-#define PLATFORM_SSP_STREAM_FORMAT	SOF_IPC_FRAME_S24_4LE
+#define PLATFORM_SSP_COUNT 3
+#define MAX_GPDMA_COUNT 2
 
-#define MAX_SSP_COUNT 3
+/* Host page size */
+#define HOST_PAGE_SIZE		4096
+#define PLATFORM_PAGE_TABLE_SIZE	256
 
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERUPT	IRQ_EXT_IPC_LVL2(0)
 
-/* pipeline IRQ - TODO confirm IRQs */
+/* pipeline IRQ */
 #define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE5
 
 #define PLATFORM_IRQ_TASK_HIGH	IRQ_NUM_SOFTWARE4
 #define PLATFORM_IRQ_TASK_MED	IRQ_NUM_SOFTWARE3
 #define PLATFORM_IRQ_TASK_LOW	IRQ_NUM_SOFTWARE2
+
+#define PLATFORM_SCHEDULE_COST	200
 
 /* maximum preload pipeline depth */
 #define MAX_PRELOAD_SIZE	20
@@ -58,49 +64,24 @@ struct reef;
 /* DMA treats PHY addresses as host address unless within DSP region */
 #define PLATFORM_HOST_DMA_MASK	0x00000000
 
-/* Host page size */
-#define HOST_PAGE_SIZE		4096
-
-#define PLATFORM_SCHEDULE_COST	200
-
 /* Platform stream capabilities */
 #define PLATFORM_MAX_CHANNELS	4
 #define PLATFORM_MAX_STREAMS	5
 
-/* TODO: get this from IPC - 2 * 32 bit*/
-#define PLATFORM_INT_FRAME_SIZE		8
-/* TODO: get this from IPC - 2 * 16 bit*/
-#define PLATFORM_HOST_FRAME_SIZE	4
-/* TODO: get this from IPC - 2 * 24 (32) bit*/
-#define PLATFORM_DAI_FRAME_SIZE		8
-
-/* Platform Host DMA buffer config - these should align with DMA engine */
-#define PLAT_HOST_PERIOD_FRAMES	48	/* must be multiple of DMA burst size */
-#define PLAT_HOST_PERIODS	2	/* give enough latency for DMA refill */
-
-/* Platform Dev DMA buffer config - these should align with DMA engine */
-#define PLAT_DAI_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
-#define PLAT_DAI_PERIODS	2	/* give enough latency for DMA refill */
-#define PLAT_DAI_SCHED		1000 /* scheduling time in usecs */
-
-/* Platform internal buffer config - these should align with DMA engine */
-#define PLAT_INT_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
-#define PLAT_INT_PERIODS	2	/* give enough latency for DMA refill */
-
-
+/* clock source used by scheduler for deadline calculations */
 #define PLATFORM_SCHED_CLOCK	CLK_SSP
 
-#define PLATFORM_NUM_MMAP_POSN	10
-#define PLATFORM_NUM_MMAP_VOL	10
-
-/* DMA channel drain timeout in microseconds */
+/* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
 
-/* IPC page data copy timeout */
-#define PLATFORM_IPC_DMA_TIMEOUT 2000
+/* DMA host transfer timeouts in microseconds */
+#define PLATFORM_HOST_DMA_TIMEOUT	50
 
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000
+
+/* platform WorkQ clock */
+#define PLATFORM_WORKQ_CLOCK	CLK_SSP
 
 /* Host finish work schedule delay in microseconds */
 #define PLATFORM_HOST_FINISH_DELAY	100
@@ -116,23 +97,28 @@ struct reef;
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 
 /* the interval of DMA trace copying */
-#define DMA_TRACE_US		500000
+#define DMA_TRACE_PERIOD		500000
 
-#define PLATFORM_HOST_DMA_TIMEOUT	50
+/*
+ * the interval of reschedule DMA trace copying in special case like half
+ * fullness of local DMA trace buffer
+ */
+#define DMA_TRACE_RESCHEDULE_TIME	5000
 
 /* DMAC used for trace DMA */
 #define PLATFORM_TRACE_DMAC	DMA_ID_DMAC0
 
+/* DSP should be idle in this time frame */
+#define PLATFORM_IDLE_TIME	750000
+
 /* Platform defined panic code */
 #define platform_panic(__x) \
-	sw_reg_write(SW_REG_STATUS, ((sw_reg_read(SW_REG_STATUS) & 0xc0000000) |\
-		((0xdead000 | __x) & 0x3fffffff)))
+	sw_reg_write(SW_REG_STATUS, (0xdead000 | __x) & 0x3fffffff)
 
 /* Platform defined trace code */
 #if USE_SW_REG_STATUS
 #define platform_trace_point(__x) \
-	sw_reg_write(SW_REG_STATUS, ((sw_reg_read(SW_REG_STATUS) & 0xc0000000) |\
-		((0xace0000 | __x) & 0x3fffffff)));\
+	sw_reg_write(SW_REG_STATUS, (0xace0000 | __x) & 0x3fffffff));\
 	sw_reg_write(SW_REG_ERRCODE, __x)
 #else	//using SW_REG_STATUS may influence the ROM status, don't do that atm.
 #define platform_trace_point(__x) \

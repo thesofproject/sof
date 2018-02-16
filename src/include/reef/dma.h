@@ -71,10 +71,6 @@ struct dma_sg_config {
 	uint32_t src_width;
 	uint32_t dest_width;
 	uint32_t burst_elems;
-#ifdef CONFIG_SUECREEK
-	uint32_t src_msize;
-	uint32_t dest_msize;
-#endif
 	uint32_t direction;
 	uint32_t src_dev;
 	uint32_t dest_dev;
@@ -93,11 +89,12 @@ struct dma_chan_status {
 /* DMA operations */
 struct dma_ops {
 
-	int (*channel_get)(struct dma *dma);
+	int (*channel_get)(struct dma *dma, int req_channel);
 	void (*channel_put)(struct dma *dma, int channel);
 
 	int (*start)(struct dma *dma, int channel);
 	int (*stop)(struct dma *dma, int channel);
+	int (*copy)(struct dma *dma, int channel, int bytes);
 	int (*pause)(struct dma *dma, int channel);
 	int (*release)(struct dma *dma, int channel);
 	int (*status)(struct dma *dma, int channel,
@@ -106,7 +103,7 @@ struct dma_ops {
 	int (*set_config)(struct dma *dma, int channel,
 		struct dma_sg_config *config);
 
-	void (*set_cb)(struct dma *dma, int channel, int type,
+	int (*set_cb)(struct dma *dma, int channel, int type,
 		void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 		void *data);
 
@@ -122,6 +119,7 @@ struct dma_plat_data {
 	uint32_t base;
 	uint32_t channels;
 	uint32_t irq;
+	uint32_t chan_size;
 	void *drv_plat_data;
 };
 
@@ -148,6 +146,10 @@ struct dma *dma_get(int dmac_id);
 	dma->plat_data.base
 #define dma_irq(dma) \
 	dma->plat_data.irq
+#define dma_chan_size(dma) \
+	dma->plat_data.chan_size
+#define dma_chan_base(dma, chan) \
+	(dma->plat_data.base + chan * dma->plat_data.chan_size)
 
 /* DMA API
  * Programming flow is :-
@@ -161,9 +163,9 @@ struct dma *dma_get(int dmac_id);
  * 6) dma_channel_put()
  */
 
-static inline int dma_channel_get(struct dma *dma)
+static inline int dma_channel_get(struct dma *dma, int req_channel)
 {
-	return dma->ops->channel_get(dma);
+	return dma->ops->channel_get(dma, req_channel);
 }
 
 static inline void dma_channel_put(struct dma *dma, int channel)
@@ -171,10 +173,10 @@ static inline void dma_channel_put(struct dma *dma, int channel)
 	dma->ops->channel_put(dma, channel);
 }
 
-static inline void dma_set_cb(struct dma *dma, int channel, int type,
+static inline int dma_set_cb(struct dma *dma, int channel, int type,
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next), void *data)
 {
-	dma->ops->set_cb(dma, channel, type, cb, data);
+	return dma->ops->set_cb(dma, channel, type, cb, data);
 }
 
 static inline int dma_start(struct dma *dma, int channel)
@@ -185,6 +187,11 @@ static inline int dma_start(struct dma *dma, int channel)
 static inline int dma_stop(struct dma *dma, int channel)
 {
 	return dma->ops->stop(dma, channel);
+}
+
+static inline int dma_copy(struct dma *dma, int channel, int bytes)
+{
+	return dma->ops->copy(dma, channel, bytes);
 }
 
 static inline int dma_pause(struct dma *dma, int channel)

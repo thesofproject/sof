@@ -42,7 +42,7 @@
 #include <string.h>
 #include <config.h>
 
-static struct dai ssp[MAX_SSP_COUNT] = {
+static struct dai ssp[] = {
 {
 	.type = SOF_DAI_INTEL_SSP,
 	.index = 0,

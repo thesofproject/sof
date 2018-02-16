@@ -49,7 +49,6 @@
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
 	struct comp_buffer *buffer;
-	int bflags = RFLAGS_NONE;
 
 	trace_buffer("new");
 
@@ -67,16 +66,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		return NULL;
 	}
 
-	/* todo: add a type to sof_ipc_buffer, allocate dma buffer
-	 * for DMA buffer type, hardcode it at the moment.
-	 */
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-					|| defined CONFIG_SUECREEK
-//	if (desc->type == SOF_BUFF_DMA)
-		bflags = RFLAGS_DMA;
-#endif
-
-	buffer->addr = rballoc(RZONE_RUNTIME, bflags, desc->size);
+	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, desc->size);
 	if (buffer->addr == NULL) {
 		rfree(buffer);
 		trace_buffer_error("ebm");
@@ -93,6 +83,8 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	buffer->free = buffer->ipc_buffer.size;
 	buffer->avail = 0;
 	buffer->connected = 0;
+
+	spinlock_init(&buffer->lock);
 
 	return buffer;
 }

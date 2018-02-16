@@ -41,7 +41,7 @@ extern void _ResetVector(void);
 void boot_pri_core(void);
 void boot_sec_core(void);
 
-#if CONFIG_CANNONLAKE
+#if defined(CONFIG_CANNONLAKE)
 
 /* memcopy used by boot loader */
 static inline void bmemcpy(void *dest, void *src, size_t bytes)
@@ -68,7 +68,8 @@ static inline void bbzero(void *dest, size_t bytes)
 	dcache_writeback_region(dest, bytes);
 }
 
-static void parse_module(struct adsp_fw_header *hdr, struct module *mod)
+static void parse_module(struct sof_man_fw_header *hdr,
+	struct sof_man_module *mod)
 {
 	int i;
 	uint32_t bias;
@@ -77,18 +78,20 @@ static void parse_module(struct adsp_fw_header *hdr, struct module *mod)
 	for (i = 0; i < 3; i++) {
 
 		switch (mod->segment[i].flags.r.type) {
-		case MAN_SEGMENT_TEXT:
-		case MAN_SEGMENT_DATA:
-			bias = (mod->segment[i].file_offset - ELF_TEXT_OFFSET);
+		case SOF_MAN_SEGMENT_TEXT:
+		case SOF_MAN_SEGMENT_DATA:
+			bias = (mod->segment[i].file_offset -
+				SOF_MAN_ELF_TEXT_OFFSET);
+
 			/* copy from IMR to SRAM */
 			bmemcpy((void *)mod->segment[i].v_base_addr,
 				(void *)((int)hdr + bias),
-				mod->segment[i].flags.r.length * MAN_PAGE_SIZE);
+				mod->segment[i].flags.r.length * HOST_PAGE_SIZE);
 			break;
-		case MAN_SEGMENT_BSS:
+		case SOF_MAN_SEGMENT_BSS:
 			/* copy from IMR to SRAM */
 			bbzero((void*)mod->segment[i].v_base_addr,
-				mod->segment[i].flags.r.length * MAN_PAGE_SIZE);
+				mod->segment[i].flags.r.length * HOST_PAGE_SIZE);
 			break;
 		default:
 			/* ignore */
@@ -98,26 +101,20 @@ static void parse_module(struct adsp_fw_header *hdr, struct module *mod)
 }
 
 /* parse FW manifest and copy modules */
-static void parse_manifest(void) 
+static void parse_manifest(void)
 {
-	struct adsp_fw_desc *desc =
-		(struct adsp_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
-	struct adsp_fw_header *hdr = &desc->header;
+	struct sof_man_fw_desc *desc =
+		(struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+	struct sof_man_fw_header *hdr = &desc->header;
+	struct sof_man_module *mod;
 	int i;
 
 	/* copy module to SRAM  - skip bootloader module */
 	for (i = 1; i < hdr->num_module_entries; i++) {
 
-		parse_module(hdr, &desc->module[i]);
+		mod = sof_man_get_module(desc, i);
+		parse_module(hdr, mod);
 	}
-}
-#endif
-
-
-#if CONFIG_SUECREEK
-void dw_uart_write_word(uint32_t word)
-{
-	/* currently used to build, but needs to link with dw-uart.c version */
 }
 #endif
 
@@ -144,9 +141,9 @@ static int32_t hp_sram_init(void)
 	status = io_reg_read(HSPGISTS0);
 	while (status) {
 		idelay(delay_count);
-		status = io_reg_read(HSPGISTS0);
 
-		if(timeout-- < 0) {
+		status = io_reg_read(HSPGISTS0);
+		if (timeout-- < 0) {
 			return -EIO;
 		}
 	}
@@ -157,9 +154,9 @@ static int32_t hp_sram_init(void)
 	status = io_reg_read(HSPGISTS1);
 	while (status) {
 		idelay(delay_count);
-		status = io_reg_read(HSPGISTS1);
 
-		if(timeout-- < 0) {
+		status = io_reg_read(HSPGISTS1);
+		if (timeout-- < 0) {
 			return -EIO;
 		}
 	}
@@ -192,12 +189,12 @@ void boot_pri_core(void)
 	/* init the HPSRAM */
 	platform_trace_point(TRACE_BOOT_LDR_HPSRAM);
 	result = hp_sram_init();
-	if(result < 0) {
+	if (result < 0) {
 		platform_panic(PANIC_MEM);
 		return;
 	}
 
-#if CONFIG_CANNONLAKE
+#if defined(CONFIG_CANNONLAKE)
 	/* parse manifest and copy modules */
 	platform_trace_point(TRACE_BOOT_LDR_MANIFEST);
 	parse_manifest();
@@ -207,4 +204,3 @@ void boot_pri_core(void)
 	platform_trace_point(TRACE_BOOT_LDR_JUMP);
 	_ResetVector();
 }
-

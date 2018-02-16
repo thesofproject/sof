@@ -104,7 +104,7 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 	int ret = 0;
 
 	/* get DMA channel from DMAC0 */
-	chan = dma_channel_get(iipc->dmac0);
+	chan = dma_channel_get(iipc->dmac0, 0);
 	if (chan < 0) {
 		trace_ipc_error("ePC");
 		return chan;
@@ -598,13 +598,15 @@ static int ipc_glb_pm_message(uint32_t header)
 
 static int ipc_dma_trace_config(uint32_t header)
 {
+#ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
+#endif
 	struct sof_ipc_reply reply;
 	int err;
 
 	trace_ipc_error("DA1");
-
+#ifdef CONFIG_HOST_PTABLE
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &params->buffer);
 	if (err < 0) {
@@ -621,7 +623,7 @@ static int ipc_dma_trace_config(uint32_t header)
 		trace_ipc_error("ePP");
 		goto error;
 	}
-
+#endif
 	trace_ipc("DAp");
 
 	err = dma_trace_enable(&_ipc->dmat);

@@ -52,38 +52,16 @@
 #define IPC_HOST_BASE		0x00001180
 #define IPC_HOST_SIZE		0x00000020
 
-/* IPC to the CSME */
-#define IPC_CSME_BASE		0x000011A0
-#define IPC_CSME_SIZE		0x00000020
-
 /* intra DSP  IPC */
 #define IPC_DSP_SIZE		0x00000080
 #define IPC_DSP_BASE(x)		(0x00001200 + x * IPC_DSP_SIZE)
-
-/* SHA 256 */
-#define SHA256_BASE		0x00001400
-#define SHA256_SIZE		0x00000100
-
-/* L2 cache */
-#define L2C_CTRL_BASE		0x00001500
-#define L2C_CTRL_SIZE		0x00000010
-
-#define L2C_PREF_BASE		0x00001510
-#define L2C_PREF_SIZE		0x00000010
-
-#define L2C_PERF_BASE		0x00001520
-#define L2C_PERF_SIZE		0x00000010
 
 /* SRAM window for HOST */
 #define HOST_WIN_SIZE		0x00000008
 #define HOST_WIN_BASE(x)	(0x00001580 + x * HOST_WIN_SIZE)
 
-/* SRAM window for CSME */
-#define CSME_WIN_SIZE		0x00000008
-#define CSME_WIN_BASE(x)	(0x000015A0 + x * HOST_WIN_SIZE)
-
 /* IRQ controller */
-#define IRQ_BASE		 0x00001600
+#define IRQ_BASE		0x00001600
 #define IRQ_SIZE		0x00000200
 
 /* time stamping */
@@ -105,20 +83,20 @@
 /* link DMAC stream */
 #define GTW_LINK_OUT_STREAM_SIZE	0x00000020
 #define GTW_LINK_OUT_STREAM_BASE(x) \
-				(0x00002400 + x * GTW_LINK_OUT_STREAM_SIZE)
+	(0x00002400 + x * GTW_LINK_OUT_STREAM_SIZE)
 
 #define GTW_LINK_IN_STREAM_SIZE	0x00000020
 #define GTW_LINK_IN_STREAM_BASE(x) \
-				(0x00002600 + x * GTW_LINK_IN_STREAM_SIZE)
+	(0x00002600 + x * GTW_LINK_IN_STREAM_SIZE)
 
 /* host DMAC stream */
 #define GTW_HOST_OUT_STREAM_SIZE	0x00000040
 #define GTW_HOST_OUT_STREAM_BASE(x) \
-				(0x00002800 + x * GTW_HOST_OUT_STREAM_SIZE)
+	(0x00002800 + x * GTW_HOST_OUT_STREAM_SIZE)
 
 #define GTW_HOST_IN_STREAM_SIZE		0x00000040
 #define GTW_HOST_IN_STREAM_BASE(x) \
-				(0x00002C00 + x * GTW_HOST_IN_STREAM_SIZE)
+	(0x00002C00 + x * GTW_HOST_IN_STREAM_SIZE)
 
 /* code loader */
 #define GTW_CODE_LDR_SIZE	0x00000040
@@ -148,7 +126,7 @@
 #define ROM_BASE		0xBEFE0000
 #define ROM_SIZE		0x00002000
 
-/* 
+/*
  * The L2 SRAM Heap and Stack on Apololake are organised like this :-
  *
  * +--------------------------------------------------------------------------+
@@ -165,7 +143,7 @@
  * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
  * | REEF_STACK_END      | Stack          |  REEF_STACK_SIZE                  |
- * +---------------------+----------------+-----------------------------------+ 
+ * +---------------------+----------------+-----------------------------------+
  * | REEF_STACK_BASE     |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
@@ -176,30 +154,31 @@
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8			0
-#define HEAP_RT_COUNT16		    	256
-#define HEAP_RT_COUNT32		    	128
-#define HEAP_RT_COUNT64		    	64
+#define HEAP_RT_COUNT16			256
+#define HEAP_RT_COUNT32			128
+#define HEAP_RT_COUNT64			64
 #define HEAP_RT_COUNT128		32
 #define HEAP_RT_COUNT256		16
 #define HEAP_RT_COUNT512		8
 #define HEAP_RT_COUNT1024		4
 
 /* text and data share the same L2 SRAM on Broxton */
-#define REEF_TEXT_START		L2_SRAM_BASE
+#define REEF_TEXT_START			L2_SRAM_BASE
 #define REEF_TEXT_START_SIZE		0x400
-#define L2_VECTOR_SIZE		0x1000
+#define L2_VECTOR_SIZE			0x1000
 
-#define REEF_TEXT_BASE		(L2_SRAM_BASE + L2_VECTOR_SIZE)
-#define REEF_TEXT_SIZE		0x18000
+#define REEF_TEXT_BASE			(L2_SRAM_BASE + L2_VECTOR_SIZE)
+#define REEF_TEXT_SIZE			0x18000
 
 /* initialized data */
-#define REEF_DATA_SIZE		0x18000
+#define REEF_DATA_SIZE			0x18000
 
 /* bss data */
 #define REEF_BSS_DATA_SIZE		0x2000
 
 /* Heap configuration */
-#define HEAP_SYSTEM_BASE		(REEF_TEXT_START + REEF_TEXT_SIZE + \
+#define HEAP_SYSTEM_BASE \
+	(REEF_TEXT_START + REEF_TEXT_SIZE + \
 	REEF_DATA_SIZE + REEF_BSS_DATA_SIZE)
 #define HEAP_SYSTEM_SIZE		0x2000
 
@@ -220,11 +199,11 @@
 
 
 /* Stack configuration */
-#define REEF_STACK_SIZE				0x1000
-#define REEF_STACK_BASE				(L2_SRAM_BASE + L2_SRAM_SIZE)
-#define REEF_STACK_END				(REEF_STACK_BASE - REEF_STACK_SIZE)
+#define REEF_STACK_SIZE			0x1000
+#define REEF_STACK_BASE			(L2_SRAM_BASE + L2_SRAM_SIZE)
+#define REEF_STACK_END			(REEF_STACK_BASE - REEF_STACK_SIZE)
 
-/* 
+/*
  * The HP SRAM Region Apololake is organised like this :-
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
@@ -240,14 +219,14 @@
  * | SRAM_SW_REG_BASE    | SW Registers W0|  SRAM_SW_REG_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_OUTBOX_BASE    | Outbox W0      |  SRAM_MAILBOX_SIZE                |
- * +---------------------+----------------+-----------------------------------+ 
+ * +---------------------+----------------+-----------------------------------+
  */
 
 /* HP SRAM */
 #define HP_SRAM_BASE		0xBE000000
 #define HP_SRAM_SIZE		0x00020000
 
-/* HP SRAM windows */	
+/* HP SRAM windows */
 
 /* window 3 */
 #define SRAM_TRACE_BASE		(HEAP_HP_BUFFER_BASE + HEAP_HP_BUFFER_SIZE)
@@ -267,10 +246,6 @@
 
 #define SRAM_OUTBOX_BASE	(SRAM_SW_REG_BASE + SRAM_SW_REG_SIZE)
 #define SRAM_OUTBOX_SIZE	0x1000
-
-/* read only for host, can be used as trace/debug/stream... */
-//#define SRAM_MAILBOX_UP_BASE	SRAM_MAILBOX_BASE
-//#define SRAM_MAILBOX_UP_SIZE	0x1000
 
 #define HP_SRAM_WIN0_BASE	SRAM_SW_REG_BASE
 #define HP_SRAM_WIN0_SIZE	(SRAM_SW_REG_SIZE + SRAM_OUTBOX_SIZE)
@@ -299,9 +274,9 @@
 
 #define HEAP_HP_BUFFER_BLOCK_SIZE	0x180
 #define HEAP_HP_BUFFER_COUNT \
-				(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
+	(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
-/* 
+/*
  * The LP SRAM Heap and Stack on Apololake are organised like this :-
  *
  * +--------------------------------------------------------------------------+
@@ -311,14 +286,14 @@
  * |                     | Data           |                                   |
  * |                     | BSS            |                                   |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_SYSTEM_BASE | System Heap    |  HEAP_LP_SYSTEM_SIZE                 |
+ * | HEAP_LP_SYSTEM_BASE | System Heap    |  HEAP_LP_SYSTEM_SIZE              |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_RUNTIME_BASE| Runtime Heap   |  HEAP_LP_RUNTIME_SIZE                |
+ * | HEAP_LP_RUNTIME_BASE| Runtime Heap   |  HEAP_LP_RUNTIME_SIZE             |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE                 |
+ * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE              |
  * +---------------------+----------------+-----------------------------------+
- * | REEF_LP_STACK_END   | Stack          |  REEF_LP_STACK_SIZE                  |
- * +---------------------+----------------+-----------------------------------+ 
+ * | REEF_LP_STACK_END   | Stack          |  REEF_LP_STACK_SIZE               |
+ * +---------------------+----------------+-----------------------------------+
  * | REEF_STACK_BASE     |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
@@ -328,41 +303,43 @@
 #define LP_SRAM_SIZE		0x00020000
 
 /* Heap section sizes for module pool */
-#define HEAP_RT_LP_COUNT8			0
-#define HEAP_RT_LP_COUNT16		    	256
-#define HEAP_RT_LP_COUNT32		    	128
-#define HEAP_RT_LP_COUNT64		    	64
-#define HEAP_RT_LP_COUNT128			32
-#define HEAP_RT_LP_COUNT256			16
-#define HEAP_RT_LP_COUNT512			8
-#define HEAP_RT_LP_COUNT1024			4
+#define HEAP_RT_LP_COUNT8		0
+#define HEAP_RT_LP_COUNT16		256
+#define HEAP_RT_LP_COUNT32		128
+#define HEAP_RT_LP_COUNT64		64
+#define HEAP_RT_LP_COUNT128		32
+#define HEAP_RT_LP_COUNT256		16
+#define HEAP_RT_LP_COUNT512		8
+#define HEAP_RT_LP_COUNT1024		4
 
 /* Heap configuration */
-#define REEF_LP_DATA_SIZE			0x4000
+#define REEF_LP_DATA_SIZE		0x4000
 
 #define HEAP_LP_SYSTEM_BASE		(LP_SRAM_BASE + REEF_LP_DATA_SIZE)
 #define HEAP_LP_SYSTEM_SIZE		0x1000
 
-#define HEAP_LP_RUNTIME_BASE		(HEAP_LP_SYSTEM_BASE + HEAP_LP_SYSTEM_SIZE)
+#define HEAP_LP_RUNTIME_BASE \
+	(HEAP_LP_SYSTEM_BASE + HEAP_LP_SYSTEM_SIZE)
 #define HEAP_LP_RUNTIME_SIZE \
 	(HEAP_RT_LP_COUNT8 * 8 + HEAP_RT_LP_COUNT16 * 16 + \
 	HEAP_RT_LP_COUNT32 * 32 + HEAP_RT_LP_COUNT64 * 64 + \
 	HEAP_RT_LP_COUNT128 * 128 + HEAP_RT_LP_COUNT256 * 256 + \
 	HEAP_RT_LP_COUNT512 * 512 + HEAP_RT_LP_COUNT1024 * 1024)
 
-#define HEAP_LP_BUFFER_BASE		(HEAP_LP_RUNTIME_BASE + HEAP_LP_RUNTIME_SIZE)
-#define HEAP_LP_BUFFER_SIZE	\
+#define HEAP_LP_BUFFER_BASE \
+	(HEAP_LP_RUNTIME_BASE + HEAP_LP_RUNTIME_SIZE)
+#define HEAP_LP_BUFFER_SIZE \
     (LP_SRAM_SIZE - HEAP_LP_RUNTIME_SIZE - REEF_LP_STACK_SIZE - HEAP_LP_SYSTEM_SIZE)
 
-#define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
-#define HEAP_LP_BUFFER_COUNT	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
+#define HEAP_LP_BUFFER_BLOCK_SIZE	0x180
+#define HEAP_LP_BUFFER_COUNT \
+	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
 
 
 /* Stack configuration */
-#define REEF_LP_STACK_SIZE			0x1000
-#define REEF_LP_STACK_BASE			(LP_SRAM_BASE + LP_SRAM_SIZE)
-#define REEF_LP_STACK_END			(REEF_LP_STACK_BASE - REEF_LP_STACK_SIZE)
-
+#define REEF_LP_STACK_SIZE		0x1000
+#define REEF_LP_STACK_BASE		(LP_SRAM_BASE + LP_SRAM_SIZE)
+#define REEF_LP_STACK_END		(REEF_LP_STACK_BASE - REEF_LP_STACK_SIZE)
 
 /* Vector and literal sizes - not in core-isa.h */
 #define REEF_MEM_VECT_LIT_SIZE		0x8
@@ -376,5 +353,5 @@
 #define REEF_MEM_RESET_LIT_SIZE		0x8
 #define REEF_MEM_VECBASE_LIT_SIZE	0x178
 
-#define REEF_MEM_RO_SIZE			0x8
+#define REEF_MEM_RO_SIZE		0x8
 #endif

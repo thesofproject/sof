@@ -33,38 +33,24 @@
 
 #include <stdint.h>
 
-#define DMA_ID_DMAC0	0
-#define DMA_ID_DMAC1	1
+#define DMA_ID_DMAC0			0
+#define DMA_ID_DMAC1			1
 
-/* haswell/broadwell specific registers */
-/* CTL_HI */
-#define DW_CTLH_DONE					0x00001000
-#define DW_CTLH_BLOCK_TS_MASK			0x00000fff
-/* CFG_LO */
-#define DW_CFG_CLASS(x)                (x << 5)
-/* CFG_HI */
-#define DW_CFGH_SRC_PER(x)		(x << 7)
-#define DW_CFGH_DST_PER(x)		(x << 11)
-
-/* default initial setup register values */
-#define DW_CFG_LOW_DEF	0x0
-#define DW_CFG_HIGH_DEF	0x4
-
-#define DMA_HANDSHAKE_SSP1_RX	0
-#define DMA_HANDSHAKE_SSP1_TX	1
-#define DMA_HANDSHAKE_SSP0_RX	2
-#define DMA_HANDSHAKE_SSP0_TX	3
-#define DMA_HANDSHAKE_OBFF_0	4
+#define DMA_HANDSHAKE_SSP1_RX		0
+#define DMA_HANDSHAKE_SSP1_TX		1
+#define DMA_HANDSHAKE_SSP0_RX		2
+#define DMA_HANDSHAKE_SSP0_TX		3
+#define DMA_HANDSHAKE_OBFF_0		4
 #define DMA_HANDSHAKE_OBFF_1		5
 #define DMA_HANDSHAKE_OBFF_2		6
-#define DMA_HANDSHAKE_OBFF_3	7
-#define DMA_HANDSHAKE_OBFF_4	8
-#define DMA_HANDSHAKE_OBFF_5	9
-#define DMA_HANDSHAKE_OBFF_6	10
+#define DMA_HANDSHAKE_OBFF_3		7
+#define DMA_HANDSHAKE_OBFF_4		8
+#define DMA_HANDSHAKE_OBFF_5		9
+#define DMA_HANDSHAKE_OBFF_6		10
 #define DMA_HANDSHAKE_OBFF_7		11
-#define DMA_HANDSHAKE_OBFF_8	12
-#define DMA_HANDSHAKE_OBFF_9	13
-#define DMA_HANDSHAKE_OBFF_10	14
-#define DMA_HANDSHAKE_OBFF_11	15
+#define DMA_HANDSHAKE_OBFF_8		12
+#define DMA_HANDSHAKE_OBFF_9		13
+#define DMA_HANDSHAKE_OBFF_10		14
+#define DMA_HANDSHAKE_OBFF_11		15
 
 #endif

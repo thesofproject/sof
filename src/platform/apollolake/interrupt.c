@@ -74,7 +74,7 @@ static void parent_level2_handler(void *data)
 
 next:
 		status >>= 1;
-		i ++;
+		i++;
 	}
 
 	/* clear parent and unmask */
@@ -117,7 +117,7 @@ static void parent_level3_handler(void *data)
 
 next:
 		status >>= 1;
-		i ++;
+		i++;
 	}
 
 	/* clear parent and unmask */
@@ -160,7 +160,7 @@ static void parent_level4_handler(void *data)
 
 next:
 		status >>= 1;
-		i ++;
+		i++;
 	}
 
 	/* clear parent and unmask */
@@ -203,7 +203,7 @@ static void parent_level5_handler(void *data)
 
 next:
 		status >>= 1;
-		i ++;
+		i++;
 	}
 
 	/* clear parent and unmask */
@@ -302,4 +302,3 @@ void platform_interrupt_init(void)
 		spinlock_init(&dsp_irq[i].lock);
 	}
 }
-

@@ -2,6 +2,7 @@ noinst_LIBRARIES = libdrivers.a
 
 libdrivers_a_SOURCES = \
 	dw-dma.c
+
 if BUILD_APL_SSP
 libdrivers_a_SOURCES += \
 	apl-ssp.c
@@ -10,10 +11,14 @@ libdrivers_a_SOURCES += \
 	ssp.c
 endif
 
-if BUILD_SUECREEK
+if BUILD_APOLLOLAKE
 libdrivers_a_SOURCES += \
-	dw-uart.c \
-	spi.c
+	hda-dma.c
+endif
+
+if BUILD_CANNONLAKE
+libdrivers_a_SOURCES += \
+	hda-dma.c
 endif
 
 libdrivers_a_CFLAGS = \

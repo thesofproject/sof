@@ -33,8 +33,8 @@
 #include <xtensa/config/system.h>	/* for XSHAL_USE_ABSOLUTE_LITERALS only */
 #include <xtensa/xtruntime-core-state.h>
 #include "xtos-internal.h"
-
 #include <config.h>
+
 #if XCHAL_HAVE_BOOTLOADER
 #include <platform/memory.h>
 #endif
@@ -83,8 +83,9 @@ _ResetVector:
 #endif
 #endif
 
-/* Appollolake + have reset vector in ROM */
-#if defined(CONFIG_BAYTRAIL) || defined(CONFIG_CHERRYTRAIL) || defined (CONFIG_HASWELL) || defined(CONFIG_BROADWELL)
+/* Apollolake+ have reset vector in ROM */
+#if defined(CONFIG_BAYTRAIL) || defined(CONFIG_CHERRYTRAIL) \
+	|| defined (CONFIG_HASWELL) || defined(CONFIG_BROADWELL)
 	j	_ResetHandler
 #else
 
@@ -98,7 +99,7 @@ _reset_sram:
 	.word _ResetHandler
 	.align 4
 .sram_jump:
-	l32r 	a0, _reset_sram	// load SRAM reset hanler address
+	l32r	a0, _reset_sram	// load SRAM reset hanler address
 	jx	a0		// jump to the hanlder
 #endif
 	.size	_ResetVector, . - _ResetVector
@@ -178,11 +179,11 @@ _ResetHandler:
 
 #endif
 
-#if defined(CONFIG_APOLLOLAKE) || defined (CONFIG_SUECREEK)
+#if defined(CONFIG_APOLLOLAKE)
 	call0 _call_init
 #endif
 
-#if defined(CONFIG_APOLLOLAKE) || defined (CONFIG_SUECREEK)
+#if defined(CONFIG_APOLLOLAKE)
 	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
 	movi	a0, 0
 	movi	a1, 0
@@ -284,7 +285,7 @@ _ResetHandler:
 	extui 	a3, a3, 0, 8	// extract core ID (FIXME: need proper constants for PRID bits to extract)
 	beqz	a2, .Ldonesync	// skip if no sync variable
 	bnez	a3, .Ldonesync	// only do this on core 0
-#if defined(CONFIG_APOLLOLAKE) || defined (CONFIG_SUECREEK)
+#if defined(CONFIG_APOLLOLAKE)
 	movi	a2, 100		// delay here for 100 iterations if we are not core 0
 2:	addi.n	a2, a2, -1
 	bnez	a2, 2b
@@ -354,7 +355,7 @@ _ResetHandler:
 
 #if XCHAL_HAVE_PREFETCH
 	/* Enable cache prefetch if present.  */
-#if defined(CONFIG_APOLLOLAKE) || defined (CONFIG_SUECREEK)
+#if defined(CONFIG_APOLLOLAKE)
 	movi.n	a2, 34
 #else
 	movi.n	a2, 68
@@ -376,12 +377,8 @@ _ResetHandler:
 	 */
 #if XCHAL_HAVE_CACHEATTR || XCHAL_HAVE_MIMIC_CACHEATTR || XCHAL_HAVE_XLT_CACHEATTR \
 		|| (XCHAL_HAVE_PTP_MMU && XCHAL_HAVE_SPANNING_WAY)
-#if defined (CONFIG_SUECREEK)
-	/* TODO set SUE cache attrs */
-#else
 	movi	a2, _memmap_cacheattr_reset	/* note: absolute symbol, not a ptr */
 	cacheattr_set				/* set CACHEATTR from a2 (clobbers a3-a8) */
-#endif
 #endif
 	/*  Now that caches are initialized, cache coherency can be enabled.  */
 #if XCHAL_DCACHE_IS_COHERENT
@@ -473,6 +470,7 @@ unpackdone:
 #endif /* have and use absolute literals */
 	.end	no-absolute-literals		// we can now start using absolute literals
 
+
 //  Technically, this only needs to be done pre-LX2, assuming hard reset:
 # if XCHAL_HAVE_WINDOWED && defined(__XTENSA_WINDOWED_ABI__)
 	//  Windowed register init, so we can call windowed code (eg. C code).
@@ -516,7 +514,7 @@ unpackdone:
 	//  code memory, thus forcing memory error vector to be shared given
 	//  it is not VECBASE relative) to have the same memory error vector,
 	//  yet each have their own handler and associated data save area.
-#if XCHAL_HAVE_MEM_ECC_PARITY_IGNORE
+#if XCHAL_HAVE_MEM_ECC_PARITY
 	movi	a4, _MemErrorHandler
 	wsr	a4, MESAVE
 #endif
@@ -569,6 +567,7 @@ unpackdone:
 #endif
 #endif /*HAVE_XSR*/
 
+
 	/*
 	 *  Complete reset initialization outside the vector,
 	 *  to avoid requiring a vector that is larger than necessary.
@@ -609,7 +608,7 @@ unpackdone:
 	.size	_ResetVector, . - _ResetVector
 #endif
 
-#if defined(CONFIG_APOLLOLAKE) || defined (CONFIG_SUECREEK)
+#if defined(CONFIG_APOLLOLAKE)
 	.align	4
 	.global	_call_init
 	.type _call_init,@function

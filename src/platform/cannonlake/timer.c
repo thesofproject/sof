@@ -119,3 +119,16 @@ int platform_timer_register(struct timer *timer,
 	return interrupt_register(timer->irq, handler, arg);
 }
 
+int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
+{
+	switch (timer->id) {
+	case TIMER0:
+	case TIMER1:
+	case TIMER2:
+		return arch_timer_register(timer, handler, arg);
+	case TIMER3:
+		return platform_timer_register(timer, handler, arg);
+	default:
+		return -EINVAL;
+	}
+}
