@@ -85,10 +85,6 @@ struct reef;
 /* Host finish work(drain from host to dai) timeout in microseconds */
 #define PLATFORM_HOST_FINISH_TIMEOUT	50000
 
-// TODO: move to SW reg header
-#define SW_REG_STATUS	0x0
-#define SW_REG_ERRCODE	0x04
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 
@@ -109,17 +105,11 @@ struct reef;
 
 /* Platform defined panic code */
 #define platform_panic(__x) \
-	sw_reg_write(SW_REG_STATUS, (0xdead000 | __x) & 0x3fffffff)
+	sw_reg_write(SRAM_REG_FW_STATUS, (0xdead000 | __x) & 0x3fffffff)
 
 /* Platform defined trace code */
-#if USE_SW_REG_STATUS
 #define platform_trace_point(__x) \
-	sw_reg_write(SW_REG_STATUS, (0xace0000 | __x) & 0x3fffffff));\
-	sw_reg_write(SW_REG_ERRCODE, __x)
-#else	//using SW_REG_STATUS may influence the ROM status, don't do that atm.
-#define platform_trace_point(__x) \
-	sw_reg_write(SW_REG_ERRCODE, __x)
-#endif
+	sw_reg_write(SRAM_REG_FW_TRACEP, __x)
 
 struct timer *platform_timer;
 
