@@ -169,11 +169,6 @@ static void platform_memory_windows_init(void)
 		| DMWBA_READONLY | DMWBA_ENABLE);
 }
 
-static struct timer platform_ext_timer = {
-	.id = TIMER3,
-	.irq = IRQ_EXT_TSTAMP0_LVL2(0),
-};
-
 int platform_init(struct reef *reef)
 {
 	struct dma *dmac;
@@ -188,7 +183,7 @@ int platform_init(struct reef *reef)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(&platform_ext_timer);
+	platform_timer_start(&platform_generic_queue.timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
