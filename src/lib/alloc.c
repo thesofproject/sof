@@ -647,6 +647,10 @@ void init_heap(struct reef *reef)
 	struct block_map *current_map;
 	int i;
 
+	/* sanity check for malformed images or loader issues */
+	if (memmap.system.heap != HEAP_SYSTEM_BASE)
+		panic(SOF_IPC_PANIC_MEM);
+
 	spinlock_init(&memmap.lock);
 
 	/* initialise buffer map */
