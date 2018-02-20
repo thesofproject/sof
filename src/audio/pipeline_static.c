@@ -367,7 +367,7 @@ int init_static_pipeline(struct ipc *ipc)
 	/* init system pipeline core */
 	ret = pipeline_init();
 	if (ret < 0)
-		return NULL;
+		return ret;
 
 	/* create the pipelines */
 	for (i = 0; i < ARRAY_SIZE(pipeline); i++) {
