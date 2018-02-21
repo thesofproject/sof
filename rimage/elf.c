@@ -314,9 +314,6 @@ int elf_validate_section(struct image *image, struct module *module,
 	for (i = 0; i < image->num_modules; i++) {
 		m = &image->module[i];
 
-		if (m == module)
-			continue;
-
 		/* for each section */
 		for (j = 0; j < m->hdr.e_shnum; j++) {
 			s = &m->section[j];
