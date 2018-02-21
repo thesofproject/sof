@@ -32,22 +32,13 @@
 #ifndef __INCLUDE_DEBUG__
 #define __INCLUDE_DEBUG__
 
+#include <reef/reef.h>
 #include <reef/mailbox.h>
+#include <uapi/ipc.h>
 #include <platform/platform.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-/* panic reasons */
-#define PANIC_MEM	0
-#define PANIC_WORK	1
-#define PANIC_IPC	2
-#define PANIC_ARCH	3
-#define PANIC_PLATFORM	4
-#define PANIC_TASK	5
-#define PANIC_EXCEPTION	6
-#define PANIC_DEADLOCK	7
-#define PANIC_STACK	8
-#define PANIC_IDLE	9
 
 #define DEBUG
 
@@ -136,38 +127,31 @@
 #define dump_object_ptr(__o)
 #endif
 
-/* panic and stop executing any more code */
-#define panic(_p) \
-	do { \
-		interrupt_global_disable(); \
-		dbg_val(0xdead0000 | _p) \
-		platform_panic(_p); \
-		while(1) {}; \
-	} while (0);
-
 /* dump stack as part of panic */
-#define panic_dump_stack(_p) \
-	do { \
-		extern uint32_t __stack; \
-		extern uint32_t _stack_sentry; \
-		uint32_t _stack_bottom = (uint32_t)&__stack; \
-		uint32_t _stack_limit = (uint32_t)&_stack_sentry; \
-		uint32_t _stack_top = arch_get_stack_ptr(); \
-		uint32_t _size = _stack_bottom - _stack_top; \
-		uint32_t _panic = _p; \
-		dbg_val(0xdead0000 | _p) \
-		dbg_val_at(_stack_top, 1) \
-		dbg_val_at(_stack_bottom, 2) \
-		/* is stack smashed ? */\
-		if (_stack_bottom <= _stack_limit) { \
-			dbg_val_at(0x51ac0000 | _p, 3); \
-			_stack_bottom = _stack_limit; \
-			_panic = PANIC_STACK; \
-		} \
-		platform_panic(_panic); \
-		dump_at(_stack_top, (_size - sizeof(uint32_t)) >> 2, 4) \
-		\
-		while(1) {}; \
-	} while (0);
+static inline void dump_stack(uint32_t p, void *addr, size_t offset,
+	size_t limit)
+{
+	extern void *__stack;
+	extern void *_stack_sentry;
+	void *stack_bottom = (void *)&__stack;
+	void *stack_limit = (void *)&_stack_sentry;
+	void *stack_top = arch_get_stack_ptr() + offset;
+	size_t size = stack_bottom - stack_top;
+
+	/* is stack smashed ? */
+	if (stack_top - offset <= stack_limit) {
+		stack_bottom = stack_limit;
+		p = SOF_IPC_PANIC_STACK;
+		platform_panic(p);
+	}
+
+	/* make sure stack size won't overflow dump area */
+	if (size > limit)
+		size = limit;
+
+	/* copy stack contents and writeback */
+	rmemcpy(addr, stack_top, size - sizeof(void *));
+	dcache_writeback_region(addr, size - sizeof(void *));
+}
 
 #endif

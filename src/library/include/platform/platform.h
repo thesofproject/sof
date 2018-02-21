@@ -50,5 +50,6 @@
 /* IPC page data copy timeout */
 #define PLATFORM_IPC_DMA_TIMEOUT 2000
 
+static inline void platform_panic(uint32_t p) {}
 
 #endif

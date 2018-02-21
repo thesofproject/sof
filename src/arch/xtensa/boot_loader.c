@@ -190,7 +190,7 @@ void boot_pri_core(void)
 	platform_trace_point(TRACE_BOOT_LDR_HPSRAM);
 	result = hp_sram_init();
 	if (result < 0) {
-		platform_panic(PANIC_MEM);
+		platform_panic(SOF_IPC_PANIC_MEM);
 		return;
 	}
 

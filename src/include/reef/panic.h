@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,65 +26,44 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic DSP initialisation. This calls architecture and platform specific
- * initialisation functions.
  */
 
-#include <stddef.h>
-#include <reef/init.h>
-#include <reef/task.h>
-#include <reef/debug.h>
-#include <reef/panic.h>
-#include <reef/alloc.h>
-#include <reef/notifier.h>
-#include <reef/work.h>
-#include <reef/trace.h>
-#include <reef/schedule.h>
+#ifndef __INCLUDE_SOF_IPC_PANIC__
+#define __INCLUDE_SOF_IPC_PANIC__
+
+#include <reef/reef.h>
+#include <reef/mailbox.h>
+#include <reef/interrupt.h>
 #include <platform/platform.h>
+#include <uapi/ipc.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-/* main firmware context */
-static struct reef reef;
-
-int main(int argc, char *argv[])
+/* panic and rewind stack */
+static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames)
 {
-	int err;
+	void *ext_offset;
 
-	trace_point(TRACE_BOOT_START);
+	/* disable all IRQs */
+	interrupt_global_disable();
 
-	/* setup context */
-	reef.argc = argc;
-	reef.argv = argv;
+	/* dump DSP core registers */
+	ext_offset = arch_dump_regs();
 
-	/* init architecture */
-	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(&reef);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_ARCH);
+	/* dump stack frames */
+	dump_stack(SOF_IPC_PANIC_EXCEPTION, ext_offset, stack_rewind_frames,
+		ARCH_STACK_DUMP_FRAMES * sizeof(uint32_t));
 
-	/* initialise system services */
-	trace_point(TRACE_BOOT_SYS_HEAP);
-	init_heap(&reef);
+	/* TODO: send IPC oops message to host */
 
-	trace_init(&reef);
-
-	trace_point(TRACE_BOOT_SYS_NOTE);
-	init_system_notify(&reef);
-
-	trace_point(TRACE_BOOT_SYS_SCHED);
-	scheduler_init(&reef);
-
-	/* init the platform */
-	err = platform_init(&reef);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_PLATFORM);
-
-	trace_point(TRACE_BOOT_PLATFORM);
-
-	/* should not return */
-	err = do_task(&reef);
-
-	/* should never get here */
-	panic(SOF_IPC_PANIC_TASK);
-	return err;
+	/* panic and loop forever */
+	platform_panic(p);
+	while (1) {};
 }
+
+static inline void panic(uint32_t p)
+{
+	panic_rewind(p, 0);
+}
+
+#endif

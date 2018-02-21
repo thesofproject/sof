@@ -73,7 +73,7 @@ int do_task(struct reef *reef)
 	/* init static pipeline */
 	pdata.p = init_static_pipeline();
 	if (pdata.p == NULL)
-		panic(PANIC_TASK);
+		panic(SOF_IPC_PANIC_TASK);
 #endif
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);

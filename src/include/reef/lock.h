@@ -116,7 +116,7 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 			trace_lock_error("DED"); \
 			trace_lock_value(__LINE__); \
 			trace_lock_value((lock)->user); \
-			panic(PANIC_DEADLOCK); /* lock not acquired */ \
+			panic(SOF_IPC_PANIC_DEADLOCK); /* lock not acquired */ \
 		} \
 	} while (0);
 
