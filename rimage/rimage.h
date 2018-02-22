@@ -156,7 +156,7 @@ int elf_validate_modules(struct image *image);
 int elf_find_section(struct image *image, struct module *module,
 		const char *name);
 int elf_validate_section(struct image *image, struct module *module,
-	Elf32_Shdr *section);
+	Elf32_Shdr *section, int index);
 
 /* supported machines */
 extern const struct adsp machine_byt;
