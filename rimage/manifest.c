@@ -51,6 +51,21 @@ static int man_open_rom_file(struct image *image)
 	return 0;
 }
 
+static int man_open_unsigned_file(struct image *image)
+{
+	sprintf(image->out_unsigned_file, "%s.uns", image->out_file);
+	unlink(image->out_unsigned_file);
+
+	/* open unsigned FW outfile for writing */
+	image->out_unsigned_fd = fopen(image->out_unsigned_file, "w");
+	if (image->out_unsigned_fd == NULL) {
+		fprintf(stderr, "error: unable to open %s for writing %d\n",
+				image->out_unsigned_file, errno);
+	}
+
+	return 0;
+}
+
 static int man_open_manifest_file(struct image *image)
 {
 	/* open manifest outfile for writing */
@@ -351,6 +366,39 @@ static int man_module_create(struct image *image, struct module *module,
 	return 0;
 }
 
+static int man_write_unsigned_mod(struct image *image)
+{
+	int count;
+
+	/* write metadata file for unsigned FW */
+	count = fwrite(image->fw_image + MAN_META_EXT_OFFSET,
+			sizeof(struct sof_man_adsp_meta_file_ext), 1,
+			image->out_man_fd);
+
+	/* did the metadata/manifest write succeed ? */
+	if (count != 1) {
+		fprintf(stderr, "error: failed to write meta %s %d\n",
+			image->out_man_file, -errno);
+		return -errno;
+	}
+	fclose(image->out_man_fd);
+
+	/* now prepare the unsigned rimage */
+	count = fwrite(image->fw_image + MAN_FW_DESC_OFFSET,
+			image->image_end - MAN_FW_DESC_OFFSET,
+			1, image->out_unsigned_fd);
+
+	/* did the unsigned FW write succeed ? */
+	if (count != 1) {
+		fprintf(stderr, "error: failed to write firmware %s %d\n",
+			image->out_unsigned_file, -errno);
+		return -errno;
+	}
+	fclose(image->out_unsigned_fd);
+
+	return 0;
+}
+
 static int man_write_fw_mod(struct image *image)
 {
 	int count;
@@ -397,6 +445,11 @@ static int man_write_fw(struct image *image)
 
 	/* open ROM image */
 	ret = man_open_rom_file(image);
+	if (ret < 0)
+		goto err;
+
+	/* open unsigned firmware */
+	ret = man_open_unsigned_file(image);
 	if (ret < 0)
 		goto err;
 
@@ -474,6 +527,11 @@ static int man_write_fw(struct image *image)
 
 	/* write the firmware */
 	ret = man_write_fw_mod(image);
+	if (ret < 0)
+		goto err;
+
+	/* write the unsigned files*/
+	ret = man_write_unsigned_mod(image);
 	if (ret < 0)
 		goto err;
 
