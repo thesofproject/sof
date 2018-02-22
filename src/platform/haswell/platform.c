@@ -89,7 +89,7 @@ struct timer *platform_timer = &platform_generic_queue.timer;
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
+	uint32_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
