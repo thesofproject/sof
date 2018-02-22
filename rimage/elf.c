@@ -303,7 +303,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 
 /* make sure no section overlap from any modules */
 int elf_validate_section(struct image *image, struct module *module,
-	Elf32_Shdr *section)
+	Elf32_Shdr *section, int index)
 {
 	struct module *m;
 	Elf32_Shdr *s;
@@ -322,14 +322,21 @@ int elf_validate_section(struct image *image, struct module *module,
 				continue;
 
 			/* only check valid sections */
-			if (!(section->sh_flags & valid))
+			if (!(s->sh_flags & valid))
 				continue;
 
-			if (section->sh_size == 0)
+			if (s->sh_size == 0)
 				continue;
 
-			/* is section non overlapping ? */
+			/* is section start non overlapping ? */
 			if (section->sh_addr >= s->sh_addr &&
+				section->sh_addr <
+				s->sh_addr + s->sh_size) {
+				goto err;
+			}
+
+			/* is section end non overlapping ? */
+			if (section->sh_addr + section->sh_size > s->sh_addr &&
 				section->sh_addr + section->sh_size <=
 				s->sh_addr + s->sh_size) {
 				goto err;
@@ -340,8 +347,8 @@ int elf_validate_section(struct image *image, struct module *module,
 	return 0;
 
 err:
-	fprintf(stderr, "error: section overlap between %s and %s\n",
-		module->elf_file, m->elf_file);
+	fprintf(stderr, "error: section overlap between %s:%d and %s:%d\n",
+		module->elf_file, index, m->elf_file, j);
 	fprintf(stderr, "     [0x%x : 0x%x] overlaps with [0x%x :0x%x]\n",
 		section->sh_addr, section->sh_addr + section->sh_size,
 		s->sh_addr, s->sh_addr + s->sh_size);
@@ -372,7 +379,7 @@ int elf_validate_modules(struct image *image)
 				continue;
 
 			/* is section non overlapping ? */
-			ret = elf_validate_section(image, module, section);
+			ret = elf_validate_section(image, module, section, j);
 			if (ret < 0)
 				return ret;
 		}
