@@ -133,7 +133,7 @@ static inline void dump_stack(uint32_t p, void *addr, size_t offset,
 {
 	extern void *__stack;
 	extern void *_stack_sentry;
-	void *stack_bottom = (void *)&__stack;
+	void *stack_bottom = (void *)&__stack - sizeof(void *);
 	void *stack_limit = (void *)&_stack_sentry;
 	void *stack_top = arch_get_stack_ptr() + offset;
 	size_t size = stack_bottom - stack_top;
