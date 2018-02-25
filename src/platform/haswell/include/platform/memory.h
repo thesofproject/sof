@@ -53,7 +53,6 @@
 #if CONFIG_BROADWELL
 #define DRAM0_SIZE	0x000A0000
 #define SHIM_BASE	0xFFFFB000
-#define MAILBOX_BASE	0x0049E000
 #define DMA0_BASE	0xFFFFE000
 #define DMA1_BASE	0xFFFFF000
 #define SSP0_BASE	0xFFFFC000
@@ -62,7 +61,6 @@
 #else	/* HASWELL */
 #define DRAM0_SIZE	0x00080000
 #define SHIM_BASE	0xFFFE7000
-#define MAILBOX_BASE	0x0047E000
 #define DMA0_BASE	0xFFFF0000
 #define DMA1_BASE	0xFFFF8000
 #define SSP0_BASE	0xFFFE8000
@@ -85,6 +83,8 @@
  * | HEAP_RUNTIME_BASE   | Runtime Heap   |  HEAP_RUNTIME_SIZE                |
  * +---------------------+----------------+-----------------------------------+
  * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
+ * +---------------------+----------------+-----------------------------------+
+ * | MAILBOX_BASE        | Mailbox        |  MAILBOX_SIZE                     |
  * +---------------------+----------------+-----------------------------------+
  * | REEF_STACK_END      | Stack          |  REEF_STACK_SIZE                  |
  * +---------------------+----------------+-----------------------------------+ 
@@ -119,7 +119,7 @@
 #define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE \
 	(DRAM0_SIZE - HEAP_RUNTIME_SIZE - REEF_STACK_SIZE -\
-	 HEAP_SYSTEM_SIZE - REEF_DATA_SIZE)
+	 HEAP_SYSTEM_SIZE - REEF_DATA_SIZE - MAILBOX_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT		(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
@@ -134,6 +134,8 @@
 #define REEF_STACK_SIZE			0x1000
 #define REEF_STACK_BASE			(DRAM0_BASE + DRAM0_SIZE)
 #define REEF_STACK_END			(REEF_STACK_BASE - REEF_STACK_SIZE)
+
+#define MAILBOX_BASE			(REEF_STACK_END - MAILBOX_SIZE)
 
 /* Vector and literal sizes - not in core-isa.h */
 #define REEF_MEM_VECT_LIT_SIZE		0x4
