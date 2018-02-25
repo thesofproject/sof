@@ -43,16 +43,19 @@
 static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames)
 {
 	void *ext_offset;
+	size_t count;
 
 	/* disable all IRQs */
 	interrupt_global_disable();
 
 	/* dump DSP core registers */
 	ext_offset = arch_dump_regs();
+	count = MAILBOX_EXCEPTION_SIZE -
+		(size_t)(ext_offset - mailbox_get_exception_base());
 
 	/* dump stack frames */
-	dump_stack(SOF_IPC_PANIC_EXCEPTION, ext_offset, stack_rewind_frames,
-		ARCH_STACK_DUMP_FRAMES * sizeof(uint32_t));
+	p = dump_stack(p, ext_offset, stack_rewind_frames,
+		count * sizeof(uint32_t));
 
 	/* TODO: send IPC oops message to host */
 
