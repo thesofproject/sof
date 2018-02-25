@@ -128,7 +128,7 @@
 #endif
 
 /* dump stack as part of panic */
-static inline void dump_stack(uint32_t p, void *addr, size_t offset,
+static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 	size_t limit)
 {
 	extern void *__stack;
@@ -142,7 +142,7 @@ static inline void dump_stack(uint32_t p, void *addr, size_t offset,
 	if (stack_top - offset <= stack_limit) {
 		stack_bottom = stack_limit;
 		p = SOF_IPC_PANIC_STACK;
-		platform_panic(p);
+		return p;
 	}
 
 	/* make sure stack size won't overflow dump area */
@@ -152,6 +152,7 @@ static inline void dump_stack(uint32_t p, void *addr, size_t offset,
 	/* copy stack contents and writeback */
 	rmemcpy(addr, stack_top, size - sizeof(void *));
 	dcache_writeback_region(addr, size - sizeof(void *));
+	return p;
 }
 
 #endif
