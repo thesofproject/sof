@@ -41,6 +41,7 @@
 #include <reef/work.h>
 #include <reef/trace.h>
 #include <reef/schedule.h>
+#include <reef/dma-trace.h>
 #include <platform/platform.h>
 
 /* main firmware context */

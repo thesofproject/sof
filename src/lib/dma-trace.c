@@ -124,9 +124,12 @@ out:
 	return DMA_TRACE_PERIOD;
 }
 
-int dma_trace_init_early(struct dma_trace_data *d)
+int dma_trace_init_early(struct reef *reef)
 {
-	struct dma_trace_buf *buffer = &d->dmatb;
+	struct dma_trace_buf *buffer;
+
+	trace_data = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*trace_data));
+	buffer = &trace_data->dmatb;
 
 	/* allocate new buffer */
 	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, DMA_TRACE_LOCAL_SIZE);
@@ -142,15 +145,10 @@ int dma_trace_init_early(struct dma_trace_data *d)
 	buffer->w_ptr = buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + buffer->size;
 	buffer->avail = 0;
-	d->host_offset = 0;
-	d->overflow = 0;
-	d->messages = 0;
-	d->enabled = 0;
-	d->copy_in_progress = 0;
 
-	list_init(&d->config.elem_list);
-	spinlock_init(&d->lock);
-	trace_data = d;
+	list_init(&trace_data->config.elem_list);
+	spinlock_init(&trace_data->lock);
+	reef->dmat = trace_data;
 
 	return 0;
 }

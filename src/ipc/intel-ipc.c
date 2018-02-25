@@ -56,6 +56,7 @@
 #include <reef/audio/pipeline.h>
 #include <uapi/ipc.h>
 #include <reef/intel-ipc.h>
+#include <reef/dma-trace.h>
 #include <config.h>
 
 #define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
@@ -626,7 +627,7 @@ static int ipc_dma_trace_config(uint32_t header)
 #endif
 	trace_ipc("DAp");
 
-	err = dma_trace_enable(&_ipc->dmat);
+	err = dma_trace_enable(_ipc->dmat);
 	if (err < 0)
 		goto error;
 
@@ -649,9 +650,9 @@ int ipc_dma_trace_send_position(void)
 	struct sof_ipc_dma_trace_posn posn;
 
 	posn.rhdr.hdr.cmd =  SOF_IPC_GLB_TRACE_MSG | SOF_IPC_TRACE_DMA_POSITION;
-	posn.host_offset = _ipc->dmat.host_offset;
-	posn.overflow = _ipc->dmat.overflow;
-	posn.messages = _ipc->dmat.messages;
+	posn.host_offset = _ipc->dmat->host_offset;
+	posn.overflow = _ipc->dmat->overflow;
+	posn.messages = _ipc->dmat->messages;
 	posn.rhdr.hdr.size = sizeof(posn);
 
 	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,

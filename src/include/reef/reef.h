@@ -68,6 +68,9 @@ struct reef {
 	/* system agent */
 	struct sa *sa;
 
+	/* DMA for Trace*/
+	struct dma_trace_data *dmat;
+
 	/* private data */
 	void *arch_private;
 	void *plat_private;

@@ -350,6 +350,7 @@ int ipc_init(struct reef *reef)
 	/* init ipc data */
 	reef->ipc = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*reef->ipc));
 	reef->ipc->comp_data = rzalloc(RZONE_SYS, RFLAGS_NONE, SOF_IPC_MSG_MAX_SIZE);
+	reef->ipc->dmat = reef->dmat;
 
 	list_init(&reef->ipc->comp_list);
 
