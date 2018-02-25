@@ -91,7 +91,7 @@ struct reef;
 #define DMA_TRACE_RESCHEDULE_TIME	5000
 
 /* DMAC used for trace DMA */
-#define PLATFORM_TRACE_DMAC	DMA_ID_DMAC0
+#define PLATFORM_TRACE_DMAC	DMA_ID_DMAC1
 
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000

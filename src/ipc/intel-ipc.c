@@ -104,13 +104,13 @@ static int get_page_descriptors(struct intel_ipc_data *iipc,
 	int chan;
 	int ret = 0;
 
-	/* get DMA channel from DMAC0 */
-	chan = dma_channel_get(iipc->dmac0, 0);
+	/* get DMA channel from DMAC */
+	chan = dma_channel_get(iipc->dmac, 0);
 	if (chan < 0) {
 		trace_ipc_error("ePC");
 		return chan;
 	}
-	dma = iipc->dmac0;
+	dma = iipc->dmac;
 
 	/* set up DMA configuration */
 	config.direction = DMA_DIR_HMEM_TO_LMEM;

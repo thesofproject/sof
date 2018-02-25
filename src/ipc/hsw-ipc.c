@@ -215,7 +215,7 @@ int platform_ipc_init(struct ipc *ipc)
 		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
 
 	/* dma */
-	iipc->dmac0 = dma_get(DMA_ID_DMAC0);
+	iipc->dmac = dma_get(DMA_ID_DMAC1);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;
