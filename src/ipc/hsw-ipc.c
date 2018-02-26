@@ -48,6 +48,7 @@
 #include <platform/platform.h>
 #include <reef/audio/component.h>
 #include <reef/audio/pipeline.h>
+#include <reef/panic.h>
 #include <uapi/ipc.h>
 #include <reef/intel-ipc.h>
 
@@ -85,7 +86,6 @@ out:
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
 }
 
-/* test code to check working IRQ */
 static void irq_handler(void *arg)
 {
 	uint32_t isr;
@@ -109,7 +109,11 @@ static void irq_handler(void *arg)
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
 		interrupt_clear(PLATFORM_IPC_INTERUPT);
 
-		/* place message in Q and process later */
+		/* TODO: place message in Q and process later */
+		/* It's not Q ATM, may overwrite */
+		if (_ipc->host_pending)
+			trace_ipc_error("Pen");
+
 		_ipc->host_msg = shim_read(SHIM_IPCX);
 		_ipc->host_pending = 1;
 	}
@@ -139,6 +143,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
 
 done:
+	ipc->host_pending = 0;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	ipcx = shim_read(SHIM_IPCX);
@@ -146,15 +151,19 @@ done:
 	ipcx |= SHIM_IPCX_DONE;
 	shim_write(SHIM_IPCX, ipcx);
 
+	/* unmask busy interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1)
+		while (1) {
+			trace_ipc("pme");
 			wait_for_interrupt(0);
+		}
 	}
 
-	/* unmask busy interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+	tracev_ipc("CmD");
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
@@ -205,6 +214,7 @@ int platform_ipc_init(struct ipc *ipc)
 	list_init(&ipc->empty_list);
 	list_init(&ipc->msg_list);
 	spinlock_init(&ipc->lock);
+
 	for (i = 0; i < MSG_QUEUE_SIZE; i++)
 		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
