@@ -75,8 +75,8 @@ static const struct sof_ipc_fw_ready ready = {
 
 static struct work_queue_timesource platform_generic_queue = {
 	.timer	 = {
-		.id = TIMER0,	/* external timer using SSP */
-		.irq = IRQ_NUM_TIMER1,
+		.id = TIMER2,	/* external timer using SSP */
+		.irq = IRQ_NUM_TIMER3,
 	},
 	.clk		= CLK_CPU,
 	.notifier	= NOTIFIER_ID_CPU_FREQ,
