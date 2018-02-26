@@ -102,7 +102,7 @@ struct reef;
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
-	shim_write(SHIM_IPCD, ((__x) & 0x3fffffff))
+	shim_write(SHIM_IPCX, ((__x) & 0x3fffffff))
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
  */
