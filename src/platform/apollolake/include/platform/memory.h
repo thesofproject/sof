@@ -168,7 +168,7 @@
 #define L2_VECTOR_SIZE			0x1000
 
 #define REEF_TEXT_BASE			(L2_SRAM_BASE + L2_VECTOR_SIZE)
-#define REEF_TEXT_SIZE			0x18000
+#define REEF_TEXT_SIZE			0x19000
 
 /* initialized data */
 #define REEF_DATA_SIZE			0x18000
