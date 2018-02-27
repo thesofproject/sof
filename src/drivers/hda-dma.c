@@ -345,9 +345,9 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* set DGCS.SCS bit to 0 for 32 bit container */
 	if ((config->direction == SOF_IPC_STREAM_PLAYBACK &&
-	    config->dest_width <= 16) ||
+	    config->dest_width <= 2) ||
 	    (config->direction == SOF_IPC_STREAM_CAPTURE &&
-	    config->src_width <= 16))
+	    config->src_width <= 2))
 		dgcs |= DGCS_SCS;
 
 	/* init channel in HW */

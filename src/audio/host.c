@@ -637,7 +637,7 @@ static int host_params(struct comp_dev *dev)
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 
-		config->direction = DMA_DIR_HMEM_TO_LMEM;
+		config->direction = SOF_IPC_STREAM_PLAYBACK;
 		hd->period_count = cconfig->periods_sink;
 	} else {
 
@@ -646,7 +646,7 @@ static int host_params(struct comp_dev *dev)
 		hd->dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
-		config->direction = DMA_DIR_LMEM_TO_HMEM;
+		config->direction = SOF_IPC_STREAM_CAPTURE;
 		hd->period_count = cconfig->periods_source;
 	}
 
@@ -725,7 +725,8 @@ static int host_prepare(struct comp_dev *dev)
 	dev->position = 0;
 
 #if defined CONFIG_DMA_GW
-	hd->first_copy = 1;
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		hd->first_copy = 1;
 #endif
 
 	return 0;

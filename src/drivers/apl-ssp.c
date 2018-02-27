@@ -359,6 +359,22 @@ static inline int ssp_set_config(struct dai *dai,
 	/* bypass divider for MCLK */
 	mdivr = 0x00000fff;
 
+#ifdef CONFIG_CANNONLAKE
+	/* Overwrite everything */
+	sscr0 = 0x83d00437;
+	sscr1 = 0xc0700000;
+	ssto = 0x0;
+	sspsp = 0x02010004;
+	sstsa = 0x3;
+	ssrsa = 0x3;
+	sscr2 = 0x4002;
+	sspsp2 = 0x4;
+	sscr3 = 0x7070f00;
+	ssioc = 0x20;
+	mdivc = 0x1;
+	mdivr = 0xfff;
+#endif
+
 	trace_ssp("coe");
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
