@@ -32,6 +32,7 @@
 
 #include <reef/dma.h>
 #include <reef/dw-dma.h>
+#include <reef/hda-dma.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>
@@ -133,33 +134,37 @@ static struct dma dma[] = {
 	.plat_data = {
 		.id		= DMA_HOST_IN_DMAC,
 		.base		= GTW_HOST_IN_STREAM_BASE(0),
-		.channels	= 7,
+		.channels	= 9,
 		.irq = IRQ_EXT_HOST_DMA_IN_LVL3(0, 0),
 	},
+	.ops		= &hda_host_dma_ops,
 },
 {	/* Host out DMAC */
 	.plat_data = {
 		.id		= DMA_HOST_OUT_DMAC,
 		.base		= GTW_HOST_OUT_STREAM_BASE(0),
-		.channels	= 6,
+		.channels	= 7,
 		.irq = IRQ_EXT_HOST_DMA_OUT_LVL3(0, 0),
 	},
+	.ops		= &hda_host_dma_ops,
 },
 {	/* Link In DMAC */
 	.plat_data = {
 		.id		= DMA_LINK_IN_DMAC,
 		.base		= GTW_LINK_IN_STREAM_BASE(0),
-		.channels	= 8,
+		.channels	= 9,
 		.irq = IRQ_EXT_LINK_DMA_IN_LVL4(0, 0),
 	},
+	.ops		= &hda_link_dma_ops,
 },
 {	/* Link out DMAC */
 	.plat_data = {
 		.id		= DMA_LINK_OUT_DMAC,
 		.base		= GTW_LINK_OUT_STREAM_BASE(0),
-		.channels	= 8,
+		.channels	= 7,
 		.irq = IRQ_EXT_LINK_DMA_OUT_LVL4(0, 0),
 	},
+	.ops		= &hda_link_dma_ops,
 },};
 
 struct dma *dma_get(int dmac_id)

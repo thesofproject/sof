@@ -275,15 +275,15 @@ int platform_init(struct reef *reef)
 	/* init PMC IPC */
 	platform_ipc_pmc_init();
 
+	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
+	init_platform_clocks();
+
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue);
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);
-
-	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
 
 	/* init the system agent */
 	sa_init(reef);
@@ -300,8 +300,6 @@ int platform_init(struct reef *reef)
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(reef);
-
-	dma_trace_init_early(&reef->ipc->dmat);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -365,7 +363,7 @@ int platform_init(struct reef *reef)
 #endif
 
 	/* Initialize DMA for Trace*/
-	dma_trace_init_complete(&reef->ipc->dmat);
+	dma_trace_init_complete(reef->dmat);
 
 	return 0;
 }

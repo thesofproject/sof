@@ -514,7 +514,7 @@ unpackdone:
 	//  code memory, thus forcing memory error vector to be shared given
 	//  it is not VECBASE relative) to have the same memory error vector,
 	//  yet each have their own handler and associated data save area.
-#if XCHAL_HAVE_MEM_ECC_PARITY
+#if XCHAL_HAVE_MEM_ECC_PARITY_IGNORE
 	movi	a4, _MemErrorHandler
 	wsr	a4, MESAVE
 #endif

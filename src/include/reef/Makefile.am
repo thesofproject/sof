@@ -23,6 +23,7 @@ include_HEADERS = \
 	lock.h \
 	mailbox.h \
 	notifier.h \
+	panic.h \
 	reef.h \
 	schedule.h \
 	ssp.h \

@@ -253,6 +253,16 @@ int platform_init(struct reef *reef)
 		return -ENODEV;
 	dma_probe(dmac);
 
+	dmac = dma_get(DMA_HOST_OUT_DMAC);
+	if (!dmac)
+		return -ENODEV;
+	dma_probe(dmac);
+
+	dmac = dma_get(DMA_HOST_IN_DMAC);
+	if (!dmac)
+		return -ENODEV;
+	dma_probe(dmac);
+
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
 	for(i = 0; i < PLATFORM_SSP_COUNT; i++) {

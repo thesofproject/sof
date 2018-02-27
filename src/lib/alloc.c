@@ -32,6 +32,7 @@
 #include <reef/alloc.h>
 #include <reef/reef.h>
 #include <reef/debug.h>
+#include <reef/panic.h>
 #include <reef/trace.h>
 #include <reef/lock.h>
 #include <platform/memory.h>
@@ -216,7 +217,7 @@ static void *rmalloc_sys(size_t bytes)
 	memmap.system.heap += bytes;
 	if (memmap.system.heap >= HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE) {
 		trace_mem_error("eMd");
-		panic(PANIC_MEM);
+		panic(SOF_IPC_PANIC_MEM);
 	}
 
 #if DEBUG_BLOCK_ALLOC

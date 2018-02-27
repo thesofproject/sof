@@ -1,5 +1,5 @@
 /*
- * Linker Script for Apololake.
+ * Linker Script for Cannonlake.
  *
  * This script is run through the GNU C preprocessor to align the memory
  * offsets with headers.

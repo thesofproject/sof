@@ -36,7 +36,7 @@
 /* private data for IPC */
 struct intel_ipc_data {
 	/* DMA */
-	struct dma *dmac0;
+	struct dma *dmac;
 	uint8_t *page_table;
 	completion_t complete;
 

@@ -35,11 +35,13 @@
 #include <reef/init.h>
 #include <reef/task.h>
 #include <reef/debug.h>
+#include <reef/panic.h>
 #include <reef/alloc.h>
 #include <reef/notifier.h>
 #include <reef/work.h>
 #include <reef/trace.h>
 #include <reef/schedule.h>
+#include <reef/dma-trace.h>
 #include <platform/platform.h>
 
 /* main firmware context */
@@ -59,7 +61,7 @@ int main(int argc, char *argv[])
 	trace_point(TRACE_BOOT_ARCH);
 	err = arch_init(&reef);
 	if (err < 0)
-		panic(PANIC_ARCH);
+		panic(SOF_IPC_PANIC_ARCH);
 
 	/* initialise system services */
 	trace_point(TRACE_BOOT_SYS_HEAP);
@@ -76,7 +78,7 @@ int main(int argc, char *argv[])
 	/* init the platform */
 	err = platform_init(&reef);
 	if (err < 0)
-		panic(PANIC_PLATFORM);
+		panic(SOF_IPC_PANIC_PLATFORM);
 
 	trace_point(TRACE_BOOT_PLATFORM);
 
@@ -84,6 +86,6 @@ int main(int argc, char *argv[])
 	err = do_task(&reef);
 
 	/* should never get here */
-	panic_dump_stack(PANIC_TASK);
+	panic(SOF_IPC_PANIC_TASK);
 	return err;
 }

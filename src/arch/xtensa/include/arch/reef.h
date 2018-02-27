@@ -34,15 +34,20 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <reef/mailbox.h>
+#include <uapi/ipc.h>
+
+/* architecture specific stack frames to dump */
+#define ARCH_STACK_DUMP_FRAMES		32
 
 void *xthal_memcpy(void *dst, const void *src, size_t len);
 
 #define arch_memcpy(dest, src, size) \
 	xthal_memcpy(dest, src, size)
 
-static inline size_t arch_get_stack_ptr(void)
+static inline void *arch_get_stack_ptr(void)
 {
-	size_t ptr;
+	void *ptr;
 
 	/* stack pointer is in a1 */
 	__asm__ __volatile__ ("mov %0, a1"
@@ -50,6 +55,60 @@ static inline size_t arch_get_stack_ptr(void)
 		:
 		: "memory");
 	return ptr;
+}
+
+static inline void *arch_dump_regs(void)
+{
+	struct sof_ipc_dsp_oops_xtensa *x =
+		(struct sof_ipc_dsp_oops_xtensa *) mailbox_get_exception_base();
+
+	/* Exception Vector number - 0x0 */
+	__asm__ __volatile__ ("rsr %0, EXCCAUSE" : "=a" (x->exccause) : : "memory");
+	/* Exception Vector address - 0x4 */
+	__asm__ __volatile__ ("rsr %0, EXCVADDR" : "=a" (x->excvaddr) : : "memory");
+	/* Exception Processor State - 0x8 */
+	__asm__ __volatile__ ("rsr %0, PS" : "=a" (x->ps) : : "memory");
+	/* Level 1 Exception PC - 0xc */
+	__asm__ __volatile__ ("rsr %0, EPC1" : "=a" (x->epc1) : : "memory");
+	/* Level 2 Exception PC - 0x10 */
+	__asm__ __volatile__ ("rsr %0, EPC2" : "=a" (x->epc2) : : "memory");
+	/* Level 3 Exception PC - 0x14 */
+	__asm__ __volatile__ ("rsr %0, EPC3" : "=a" (x->epc3) : : "memory");
+	/* Level 4 Exception PC - 0x18 */
+	__asm__ __volatile__ ("rsr %0, EPC4" : "=a" (x->epc4) : : "memory");
+	/* Level 5 Exception PC - 0x1c */
+	__asm__ __volatile__ ("rsr %0, EPC5" : "=a" (x->epc5) : : "memory");
+	/* Level 6 Exception PC - 0x20 */
+	__asm__ __volatile__ ("rsr %0, EPC6" : "=a" (x->epc6) : : "memory");
+	/* Level 7 Exception PC - 0x24 */
+	__asm__ __volatile__ ("rsr %0, EPC7" : "=a" (x->epc7) : : "memory");
+	/* Level 2 Exception PS - 0x28 */
+	__asm__ __volatile__ ("rsr %0, EPS2" : "=a" (x->eps2) : : "memory");
+	/* Level 3 Exception PS - 0x2c */
+	__asm__ __volatile__ ("rsr %0, EPS3" : "=a" (x->eps3) : : "memory");
+	/* Level 4 Exception PS - 0x30 */
+	__asm__ __volatile__ ("rsr %0, EPS4" : "=a" (x->eps4) : : "memory");
+	/* Level 5 Exception PS - 0x34 */
+	__asm__ __volatile__ ("rsr %0, EPS5" : "=a" (x->eps5) : : "memory");
+	/* Level 6 Exception PS - 0x38 */
+	__asm__ __volatile__ ("rsr %0, EPS6" : "=a" (x->eps6) : : "memory");
+	/* Level 7 Exception PS - 0x3c */
+	__asm__ __volatile__ ("rsr %0, EPS7" : "=a" (x->eps7) : : "memory");
+	/* Double Exception program counter - 0x40 */
+	__asm__ __volatile__ ("rsr %0, DEPC" : "=a" (x->depc) : : "memory");
+	/* Interrupts Enabled - 0x44 */
+	__asm__ __volatile__ ("rsr %0, INTENABLE" : "=a" (x->intenable) : : "memory");
+	/* Interrupts Status - 0x48 */
+	__asm__ __volatile__ ("rsr %0, INTERRUPT" : "=a" (x->interrupt) : : "memory");
+	/* Shift register - 0x4c */
+	__asm__ __volatile__ ("rsr %0, SAR" : "=a" (x->sar) : : "memory");
+	/* Register A1 (stack) - 0x50 */
+	__asm__ __volatile__ ("mov %0, a1" : "=a" (x->stack) : : "memory");
+
+	dcache_writeback_region((void *)x, sizeof(*x));
+
+	/* tell caller extended data can be placed hereafter */
+	return (void *)(x + 1);
 }
 
 #endif

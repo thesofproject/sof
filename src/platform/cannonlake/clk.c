@@ -75,7 +75,7 @@ static const struct freq_table ssp_freq[] = {
 	{25000000, 25,},	/* default */
 };
 
-#define CPU_DEFAULT_IDX		2
+#define CPU_DEFAULT_IDX		1
 #define SSP_DEFAULT_IDX		1
 
 static inline uint32_t get_freq(const struct freq_table *table, int size,

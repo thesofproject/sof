@@ -64,7 +64,7 @@
 #define IRQ_MASK_TIMER2		(1 << IRQ_NUM_TIMER2)
 #define IRQ_MASK_SOFTWARE2	(1 << IRQ_NUM_SOFTWARE2)
 #define IRQ_MASK_EXT_PARITY	(1 << IRQ_NUM_EXT_PARITY)
-#define IRQ_MASK_TIMER2		(1 << IRQ_NUM_TIMER2)
+#define IRQ_MASK_TIMER3		(1 << IRQ_NUM_TIMER3)
 
 static inline void platform_interrupt_init(void) {}
 

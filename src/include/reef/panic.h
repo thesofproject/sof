@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,61 +28,45 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <xtensa/xtruntime.h>
-#include <xtensa/hal.h>
-#include <platform/memory.h>
-#include <reef/interrupt.h>
-#include <platform/interrupt.h>
+#ifndef __INCLUDE_SOF_IPC_PANIC__
+#define __INCLUDE_SOF_IPC_PANIC__
+
+#include <reef/reef.h>
 #include <reef/mailbox.h>
-#include <arch/task.h>
-#include <reef/panic.h>
-#include <reef/init.h>
-#include <reef/lock.h>
+#include <reef/interrupt.h>
+#include <platform/platform.h>
+#include <uapi/ipc.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-#if DEBUG_LOCKS
-uint32_t lock_dbg_atomic = 0;
-uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
+/* panic and rewind stack */
+static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames)
+{
+	void *ext_offset;
+	size_t count;
+
+	/* disable all IRQs */
+	interrupt_global_disable();
+
+	/* dump DSP core registers */
+	ext_offset = arch_dump_regs();
+	count = MAILBOX_EXCEPTION_SIZE -
+		(size_t)(ext_offset - mailbox_get_exception_base());
+
+	/* dump stack frames */
+	p = dump_stack(p, ext_offset, stack_rewind_frames,
+		count * sizeof(uint32_t));
+
+	/* TODO: send IPC oops message to host */
+
+	/* panic and loop forever */
+	platform_panic(p);
+	while (1) {};
+}
+
+static inline void panic(uint32_t p)
+{
+	panic_rewind(p, 0);
+}
+
 #endif
-
-static void exception(void)
-{
-	/* now panic and rewind 8 stack frames. */
-	/* TODO: we could invoke a GDB stub here */
-	panic_rewind(SOF_IPC_PANIC_EXCEPTION, 8 * sizeof(uint32_t));
-}
-
-static void register_exceptions(void)
-{
-	_xtos_set_exception_handler(
-		EXCCAUSE_ILLEGAL, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_SYSCALL, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_DIVIDE_BY_ZERO, (void*) &exception);
-
-	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_DATA_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_ADDR_ERROR, (void*) &exception);
-
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_DATA_ERROR, (void*) &exception);
-}
-
-/* do any architecture init here */
-int arch_init(struct reef *reef)
-{
-	register_exceptions();
-	arch_init_tasks();
-	return 0;
-}
-
-/* called from assembler context with no return or func parameters */
-void __memmap_init(void)
-{
-}

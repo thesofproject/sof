@@ -208,6 +208,10 @@ void trace_off(void)
 
 void trace_init(struct reef *reef)
 {
+
+#if defined(CONFIG_DMA_TRACE)
+	dma_trace_init_early(reef);
+#endif
 	trace.enable = 1;
 	trace.pos = 0;
 	spinlock_init(&trace.lock);

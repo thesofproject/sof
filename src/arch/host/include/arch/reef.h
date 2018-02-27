@@ -33,9 +33,41 @@
 #define __INCLUDE_ARCH_REEF__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <stddef.h>
+#include <string.h>
+#include <stdio.h>
+#include <execinfo.h>
+
+/* architecture specific stack frames to dump */
+#define ARCH_STACK_DUMP_FRAMES		32
 
 #define arch_memcpy(dest, src, size) \
 	memcpy(dest, src, size)
+
+static inline void *arch_get_stack_ptr(void)
+{
+	void *frames[ARCH_STACK_DUMP_FRAMES];
+	size_t frame_count;
+	size_t i;
+	char **symbols;
+
+	frame_count = backtrace(frames, ARCH_STACK_DUMP_FRAMES);
+	symbols = backtrace_symbols(frames, frame_count);
+
+	fprintf(stderr, "Dumping %zd stack frames.\n", frame_count);
+
+	for (i = 0; i < frame_count; i++)
+		fprintf(stderr, "\t%s\n", symbols[i]);
+
+	free(symbols);
+
+	return NULL;
+}
+
+static inline void *arch_dump_regs(void)
+{
+	return NULL;
+}
 
 #endif

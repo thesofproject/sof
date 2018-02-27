@@ -36,21 +36,9 @@
 
 int timer_register(struct timer *timer,
 	void(*handler)(void *arg), void *arg);
-
-static inline void timer_unregister(struct timer *timer)
-{
-	arch_timer_unregister(timer);
-}
-
-static inline void timer_enable(struct timer *timer)
-{
-	arch_timer_enable(timer);
-}
-
-static inline void timer_disable(struct timer *timer)
-{
-	arch_timer_disable(timer);
-}
+void timer_unregister(struct timer *timer);
+void timer_enable(struct timer *timer);
+void timer_disable(struct timer *timer);
 
 static inline int timer_set(struct timer *timer, uint64_t ticks)
 {

@@ -127,6 +127,23 @@
 #define SOF_IPC_MSG_MAX_SIZE			128
 
 /*
+ * SOF panic codes
+ */
+#define SOF_IPC_PANIC_MAGIC			0x0dead000
+#define SOF_IPC_PANIC_MAGIC_MASK		0x0ffff000
+#define SOF_IPC_PANIC_CODE_MASK			0x00000fff
+#define SOF_IPC_PANIC_MEM			(SOF_IPC_PANIC_MAGIC | 0)
+#define SOF_IPC_PANIC_WORK			(SOF_IPC_PANIC_MAGIC | 1)
+#define SOF_IPC_PANIC_IPC			(SOF_IPC_PANIC_MAGIC | 2)
+#define SOF_IPC_PANIC_ARCH			(SOF_IPC_PANIC_MAGIC | 3)
+#define SOF_IPC_PANIC_PLATFORM			(SOF_IPC_PANIC_MAGIC | 4)
+#define SOF_IPC_PANIC_TASK			(SOF_IPC_PANIC_MAGIC | 5)
+#define SOF_IPC_PANIC_EXCEPTION			(SOF_IPC_PANIC_MAGIC | 6)
+#define SOF_IPC_PANIC_DEADLOCK			(SOF_IPC_PANIC_MAGIC | 7)
+#define SOF_IPC_PANIC_STACK			(SOF_IPC_PANIC_MAGIC | 8)
+#define SOF_IPC_PANIC_IDLE			(SOF_IPC_PANIC_MAGIC | 9)
+
+/*
  * Command Header - Header for all IPC. Identifies IPC message.
  * The size can be greater than the structure size and that means there is
  * extended bespoke data beyond the end of the structure including variable
@@ -818,6 +835,35 @@ struct sof_ipc_dma_trace_posn {
 	uint32_t host_offset;	/* Offset of DMA host buffer */
 	uint32_t overflow;	/* overflow bytes if any */
 	uint32_t messages;	/* total trace messages */
+}  __attribute__((packed));
+
+/*
+ * Architecture specific debug
+ */
+
+/* Xtensa Firmware Oops data */
+struct sof_ipc_dsp_oops_xtensa {
+	uint32_t exccause;
+	uint32_t excvaddr;
+	uint32_t ps;
+	uint32_t epc1;
+	uint32_t epc2;
+	uint32_t epc3;
+	uint32_t epc4;
+	uint32_t epc5;
+	uint32_t epc6;
+	uint32_t epc7;
+	uint32_t eps2;
+	uint32_t eps3;
+	uint32_t eps4;
+	uint32_t eps5;
+	uint32_t eps6;
+	uint32_t eps7;
+	uint32_t depc;
+	uint32_t intenable;
+	uint32_t interrupt;
+	uint32_t sar;
+	uint32_t stack;
 }  __attribute__((packed));
 
 #endif

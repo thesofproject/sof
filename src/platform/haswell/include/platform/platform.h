@@ -64,7 +64,7 @@ struct reef;
 #define PLATFORM_MAX_STREAMS	5
 
 /* clock source used by scheduler for deadline calculations */
-#define PLATFORM_SCHED_CLOCK	CLK_SSP
+#define PLATFORM_SCHED_CLOCK	CLK_CPU
 
 /* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
@@ -76,7 +76,7 @@ struct reef;
 #define PLATFORM_WORKQ_WINDOW	2000
 
 /* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	CLK_SSP
+#define PLATFORM_WORKQ_CLOCK	CLK_CPU
 
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
@@ -91,7 +91,7 @@ struct reef;
 #define DMA_TRACE_RESCHEDULE_TIME	5000
 
 /* DMAC used for trace DMA */
-#define PLATFORM_TRACE_DMAC	DMA_ID_DMAC0
+#define PLATFORM_TRACE_DMAC	DMA_ID_DMAC1
 
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
@@ -102,7 +102,7 @@ struct reef;
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
-	shim_write(SHIM_IPCD, ((__x) & 0x3fffffff))
+	shim_write(SHIM_IPCX, ((__x) & 0x3fffffff))
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
  */

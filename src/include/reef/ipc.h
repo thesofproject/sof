@@ -101,7 +101,7 @@ struct ipc {
 	struct list_item comp_list;		/* list of component devices */
 
 	/* DMA for Trace*/
-	struct dma_trace_data dmat;
+	struct dma_trace_data *dmat;
 
 	void *private;
 };

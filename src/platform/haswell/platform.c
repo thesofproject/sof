@@ -75,8 +75,8 @@ static const struct sof_ipc_fw_ready ready = {
 
 static struct work_queue_timesource platform_generic_queue = {
 	.timer	 = {
-		.id = TIMER0,	/* external timer using SSP */
-		.irq = IRQ_NUM_TIMER1,
+		.id = TIMER2,	/* external timer using SSP */
+		.irq = IRQ_NUM_TIMER3,
 	},
 	.clk		= CLK_CPU,
 	.notifier	= NOTIFIER_ID_CPU_FREQ,
@@ -89,7 +89,7 @@ struct timer *platform_timer = &platform_generic_queue.timer;
 
 int platform_boot_complete(uint32_t boot_message)
 {
-	uint64_t outbox = MAILBOX_HOST_OFFSET >> 3;
+	uint32_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 
@@ -182,15 +182,15 @@ int platform_init(struct reef *reef)
 
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 
+	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
+	init_platform_clocks();
+
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue);
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);
-
-	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
 
 	/* init the system agent */
 	sa_init(reef);
@@ -206,8 +206,6 @@ int platform_init(struct reef *reef)
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(reef);
-
-	dma_trace_init_early(&reef->ipc->dmat);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -242,7 +240,7 @@ int platform_init(struct reef *reef)
 	dai_probe(ssp1);
 
 	/* Initialize DMA for Trace*/
-	dma_trace_init_complete(&reef->ipc->dmat);
+	dma_trace_init_complete(reef->dmat);
 
 	return 0;
 }

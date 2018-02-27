@@ -77,7 +77,7 @@
 /* DGBS */
 #define DGBS_MASK	0xfffff0
 
-#define HDA_DMA_MAX_CHANS		8
+#define HDA_DMA_MAX_CHANS		9
 
 struct hda_chan_data {
 	uint32_t stream_id;

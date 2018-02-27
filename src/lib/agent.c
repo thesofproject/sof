@@ -37,6 +37,7 @@
 #include <reef/reef.h>
 #include <reef/agent.h>
 #include <reef/debug.h>
+#include <reef/panic.h>
 #include <reef/alloc.h>
 #include <reef/clock.h>
 #include <reef/trace.h>
@@ -70,7 +71,7 @@ static uint64_t validate(void *data, uint64_t delay)
 	if (delta > sa->ticks) {
 		trace_sa("tim");
 		trace_sa_value(delta);
-		panic_dump_stack(PANIC_IDLE);
+		panic(SOF_IPC_PANIC_IDLE);
 	}
 
 	return PLATFORM_IDLE_TIME;
