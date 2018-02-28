@@ -521,9 +521,9 @@ static int man_write_fw(struct image *image)
 	}
 
 	/* sign manifest */
-	ret = ri_manifest_sign(image);
-	if (ret < 0)
-		goto err;
+	//ret = ri_manifest_sign(image);
+	//if (ret < 0)
+	//	goto err;
 
 	/* write the firmware */
 	ret = man_write_fw_mod(image);
