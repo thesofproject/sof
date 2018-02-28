@@ -1034,7 +1034,7 @@ static int dw_dma_probe(struct dma *dma)
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
-	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_pdata *p;
 	struct dma_sg_elem next;
 	uint32_t status_tfr = 0;
 	uint32_t status_block = 0;
@@ -1056,6 +1056,8 @@ static void dw_dma_irq_handler(void *data)
 		trace_dma_error("eI0");
 #endif
 	}
+
+	p = dma_get_drvdata(dma);
 
 	tracev_dma("DIr");
 
@@ -1102,6 +1104,11 @@ static void dw_dma_irq_handler(void *data)
 			next.size = DMA_RELOAD_LLI;
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK, &next);
+			if (next.size == DMA_RELOAD_END) {
+				trace_dma("LSo");
+				/* disable channel, finished */
+				dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
+			}
 		}
 #endif
 		/* end of a transfer */
