@@ -21,6 +21,9 @@
 #include <string.h>
 #include <ctype.h>
 
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+
 // TODO: include all this stuff
 
 #define TRACE_CLASS_IRQ		(1 << 24)
@@ -200,8 +203,19 @@ static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, double 
 		return;
 	}
 
-	printf("%s %c%c%c\n", trace,
+	switch ((char)(val >> 16)) {
+	case 'e':
+	case 'E':
+	case 'x':
+	case 'X':
+		printf("%s%s %c%c%c%s\n", KRED, trace,
+		(char)(val >> 16), (char)(val >> 8), (char)val, KNRM);
+		break;
+	default:
+		printf("%s %c%c%c\n", trace,
 		(char)(val >> 16), (char)(val >> 8), (char)val);
+		break;
+	}
 }
 
 static int trace_read(const char *in_file, const char *out_file, double clk,
