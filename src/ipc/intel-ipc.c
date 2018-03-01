@@ -619,7 +619,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	/* Parse host tables */
 	err = parse_page_descriptors(iipc, &params->buffer,
-		&_ipc->dmat, 1);
+		_ipc->dmat, 1);
 	if (err < 0) {
 		trace_ipc_error("ePP");
 		goto error;
