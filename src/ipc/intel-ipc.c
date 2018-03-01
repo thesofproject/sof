@@ -189,7 +189,7 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 		phy_addr &= 0xfffff000;
 
 		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
 		if (!e)
 			return -ENOMEM;
 

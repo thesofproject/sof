@@ -364,7 +364,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 
 	trace_volume("new");
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_volume));
 	if (dev == NULL)
 		return NULL;
@@ -372,7 +372,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	vol = (struct sof_ipc_comp_volume *)&dev->comp;
 	memcpy(vol, ipc_vol, sizeof(struct sof_ipc_comp_volume));
 
-	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;

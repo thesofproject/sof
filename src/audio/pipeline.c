@@ -240,7 +240,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	trace_pipe("new");
 
 	/* allocate new pipeline */
-	p = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*p));
+	p = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*p));
 	if (p == NULL) {
 		trace_pipe_error("ePN");
 		return NULL;
@@ -1146,7 +1146,8 @@ int pipeline_init(void)
 {
 	trace_pipe("PIn");
 
-	pipe_data = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*pipe_data));
+	pipe_data = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+		sizeof(*pipe_data));
 	spinlock_init(&pipe_data->lock);
 
 	return 0;

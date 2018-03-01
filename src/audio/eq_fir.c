@@ -205,7 +205,7 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 	}
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	fir_data = rballoc(RZONE_SYS, RFLAGS_NONE,
+	fir_data = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		length_sum * sizeof(int32_t));
 	if (fir_data == NULL)
 		return -ENOMEM;
@@ -253,7 +253,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	trace_eq("new");
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_eq_fir));
 	if (dev == NULL)
 		return NULL;
@@ -261,7 +261,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	eq_fir = (struct sof_ipc_comp_eq_fir *) &dev->comp;
 	memcpy(eq_fir, ipc_eq_fir, sizeof(struct sof_ipc_comp_eq_fir));
 
-	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
@@ -401,7 +401,7 @@ static int fir_cmd_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdat
 		if ((bs > SOF_EQ_FIR_MAX_SIZE) || (bs < 1))
 			return -EINVAL;
 
-		cd->config = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
+		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
 		if (cd->config == NULL)
 			return -EINVAL;
 

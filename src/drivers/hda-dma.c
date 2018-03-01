@@ -391,7 +391,7 @@ static int hda_dma_probe(struct dma *dma)
 	int i;
 
 	/* allocate private data */
-	hda_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*hda_pdata));
+	hda_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*hda_pdata));
 	dma_set_drvdata(dma, hda_pdata);
 
 	spinlock_init(&dma->lock);

@@ -572,7 +572,7 @@ struct sof_ipc_comp {
 struct sof_ipc_buffer {
 	struct sof_ipc_comp comp;
 	uint32_t size;		/* buffer size in bytes */
-	uint32_t type;		/* SOF_MEM_CAPS_ */
+	uint32_t caps;		/* SOF_MEM_CAPS_ */
 } __attribute__((packed));
 
 

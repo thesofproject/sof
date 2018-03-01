@@ -184,7 +184,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	trace_dai("new");
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_dai));
 	if (dev == NULL)
 		return NULL;
@@ -192,7 +192,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dai = (struct sof_ipc_comp_dai *)&dev->comp;
 	memcpy(dai, ipc_dai, sizeof(struct sof_ipc_comp_dai));
 
-	dd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*dd));
+	dd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (dd == NULL) {
 		rfree(dev);
 		return NULL;
@@ -289,7 +289,8 @@ static int dai_playback_params(struct comp_dev *dev)
 		/* set up cyclic list of DMA elems */
 		for (i = 0; i < source_config->periods_sink; i++) {
 
-			elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
+			elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+				sizeof(*elem));
 			if (elem == NULL)
 				goto err_unwind;
 
@@ -356,7 +357,8 @@ static int dai_capture_params(struct comp_dev *dev)
 		/* set up cyclic list of DMA elems */
 		for (i = 0; i < sink_config->periods_source; i++) {
 
-			elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
+			elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+				sizeof(*elem));
 			if (elem == NULL)
 				goto err_unwind;
 

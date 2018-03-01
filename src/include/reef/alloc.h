@@ -57,12 +57,6 @@ struct reef;
 #define RZONE_RUNTIME	1
 #define RZONE_BUFFER	2
 
-/*
- * Heap allocation memory flags.
- */
-#define RFLAGS_NONE		0
-#define RFLAGS_USED		1
-
 struct mm_info {
 	uint32_t used;
 	uint32_t free;
@@ -70,7 +64,7 @@ struct mm_info {
 
 struct block_hdr {
 	uint16_t size;		/* size in blocks for continuous allocation */
-	uint16_t flags;		/* usage flags for page */
+	uint16_t used;		/* usage flags for page */
 } __attribute__ ((packed));
 
 struct block_map {

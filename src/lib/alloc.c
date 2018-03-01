@@ -132,7 +132,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 	map->free_count--;
 	ptr = (void *)(map->base + map->first_free * map->block_size);
 	hdr->size = 1;
-	hdr->flags = RFLAGS_USED;
+	hdr->used = 1;
 	heap->info.used += map->block_size;
 	heap->info.free -= map->block_size;
 
@@ -141,7 +141,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 
 		hdr = &map->block[i];
 
-		if (hdr->flags == 0) {
+		if (hdr->used == 0) {
 			map->first_free = i;
 			break;
 		}
@@ -180,7 +180,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 			hdr = &map->block[current];
 
 			/* is block used */
-			if (hdr->flags == RFLAGS_USED)
+			if (hdr->used)
 				break;
 		}
 
@@ -205,7 +205,7 @@ found:
 	/* allocate each block */
 	for (current = start; current < end; current++) {
 		hdr = &map->block[current];
-		hdr->flags = RFLAGS_USED;
+		hdr->used = 1;
 	}
 
 	/* do we need to find a new first free block ? */
@@ -216,7 +216,7 @@ found:
 
 			hdr = &map->block[i];
 
-			if (hdr->flags == 0) {
+			if (hdr->used == 0) {
 				map->first_free = i;
 				break;
 			}
@@ -330,7 +330,7 @@ found:
 	for (i = block; i < block + hdr->size; i++) {
 		hdr = &block_map->block[i];
 		hdr->size = 0;
-		hdr->flags = 0;
+		hdr->used = 0;
 		block_map->free_count++;
 		heap->info.used -= block_map->block_size;
 		heap->info.free += block_map->block_size;

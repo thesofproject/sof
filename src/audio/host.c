@@ -244,7 +244,7 @@ static int create_local_elems(struct comp_dev *dev)
 	/* TODO: simplify elem storage by using an array */
 	for (i = 0; i < hd->period_count; i++) {
 		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
 		if (e == NULL)
 			goto unwind;
 
@@ -396,7 +396,7 @@ static int create_local_elems(struct comp_dev *dev)
 	/* TODO: simplify elem storage by using an array */
 	for (i = 0; i < hd->period_count; i++) {
 		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
 		if (e == NULL)
 			goto unwind;
 
@@ -422,7 +422,7 @@ static int create_local_elems(struct comp_dev *dev)
 			continue;
 
 		/* allocate new host DMA elem and add it to our list */
-		ec = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*ec));
+		ec = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*ec));
 		if (!ec)
 			goto unwind;
 
@@ -500,7 +500,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	trace_host("new");
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_host));
 	if (dev == NULL)
 		return NULL;
@@ -508,13 +508,13 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	host = (struct sof_ipc_comp_host *)&dev->comp;
 	memcpy(host, ipc_host, sizeof(struct sof_ipc_comp_host));
 
-	hd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*hd));
+	hd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*hd));
 	if (hd == NULL) {
 		rfree(dev);
 		return NULL;
 	}
 
-	elem = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*elem));
+	elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*elem));
 	if (elem == NULL) {
 		rfree(dev);
 		rfree(hd);
@@ -776,7 +776,7 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
 	struct dma_sg_elem *e;
 
 	/* allocate new host DMA elem and add it to our list */
-	e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+	e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
 	if (e == NULL)
 		return -ENOMEM;
 

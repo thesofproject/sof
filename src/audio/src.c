@@ -274,7 +274,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_src));
 	if (dev == NULL)
 		return NULL;
@@ -282,7 +282,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	src = (struct sof_ipc_comp_src *) &dev->comp;
 	memcpy(src, ipc_src, sizeof(struct sof_ipc_comp_src));
 
-	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
@@ -386,7 +386,8 @@ static int src_params(struct comp_dev *dev)
 	if (cd->delay_lines != NULL)
 		rfree(cd->delay_lines);
 
-	cd->delay_lines = rballoc(RZONE_RUNTIME, RFLAGS_NONE, delay_lines_size);
+	cd->delay_lines = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+		delay_lines_size);
 	if (cd->delay_lines == NULL) {
 		trace_src_error("sr3");
 		trace_value(delay_lines_size);

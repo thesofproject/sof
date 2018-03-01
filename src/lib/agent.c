@@ -83,7 +83,7 @@ void sa_init(struct reef *reef)
 
 	trace_sa("ini");
 
-	sa = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*sa));
+	sa = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sa));
 	reef->sa = sa;
 
 	/* set default tick timout */

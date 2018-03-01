@@ -552,7 +552,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		/* allocate descriptors for channel */
 		if (p->chan[channel].lli)
 			rfree(p->chan[channel].lli);
-		p->chan[channel].lli = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		p->chan[channel].lli = rzalloc(RZONE_RUNTIME,
+			SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
 		if (p->chan[channel].lli == NULL) {
 			trace_dma_error("eD1");
@@ -997,7 +998,7 @@ static int dw_dma_probe(struct dma *dma)
 	int i;
 
 	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*dw_pdata));
+	dw_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(&dma->lock);
@@ -1010,7 +1011,7 @@ static int dw_dma_probe(struct dma *dma)
 		dw_pdata->chan[i].channel = i;
 		dw_pdata->chan[i].status = COMP_STATE_INIT;
 
-		dma_int[i] = rzalloc(RZONE_SYS, RFLAGS_NONE,
+		dma_int[i] = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 				     sizeof(struct dma_int));
 
 		dma_int[i]->dma = dma;
@@ -1156,7 +1157,8 @@ static int dw_dma_probe(struct dma *dma)
 #endif
 	{
 		/* allocate private data */
-		dw_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*dw_pdata));
+		dw_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+			sizeof(*dw_pdata));
 		dma_set_drvdata(dmac, dw_pdata);
 
 		spinlock_init(&dmac->lock);
