@@ -174,7 +174,7 @@
 #define REEF_DATA_SIZE			0x18000
 
 /* bss data */
-#define REEF_BSS_DATA_SIZE		0x2000
+#define REEF_BSS_DATA_SIZE		0x2800
 
 /* Heap configuration */
 #define HEAP_SYSTEM_BASE \
@@ -262,12 +262,6 @@
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
-/* DMA buffer heap is the HP physical memory on Broxton */
-#define HEAP_DMA_BUFFER_BASE		HP_SRAM_BASE
-#define HEAP_DMA_BUFFER_SIZE		HEAP_HP_BUFFER_SIZE
-#define HEAP_DMA_BUFFER_BLOCK_SIZE	HEAP_HP_BUFFER_BLOCK_SIZE
-#define HEAP_DMA_BUFFER_COUNT		HEAP_HP_BUFFER_COUNT
-
 /* HP SRAM Heap */
 #define HEAP_HP_BUFFER_BASE	HP_SRAM_BASE
 #define HEAP_HP_BUFFER_SIZE \
@@ -283,7 +277,7 @@
 	(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
 /*
- * The LP SRAM Heap and Stack on Apololake are organised like this :-
+ * The LP SRAM Heap and Stack on Apollolake are organised like this :-
  *
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
@@ -341,6 +335,8 @@
 #define HEAP_LP_BUFFER_COUNT \
 	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
 
+#define PLATFORM_HEAP_RUNTIME		1
+#define PLATFORM_HEAP_BUFFER		3
 
 /* Stack configuration */
 #define REEF_LP_STACK_SIZE		0x1000

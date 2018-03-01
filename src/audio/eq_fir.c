@@ -149,8 +149,7 @@ static void eq_fir_free_delaylines(struct fir_state_32x16 fir[])
 	}
 
 	if (data != NULL)
-		rbfree(data);
-
+		rfree(data);
 }
 
 static int eq_fir_setup(struct fir_state_32x16 fir[],

@@ -35,6 +35,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <reef/dma.h>
+#include <platform/memory.h>
 
 struct reef;
 
@@ -61,23 +62,58 @@ struct reef;
  */
 #define RFLAGS_NONE		0
 #define RFLAGS_USED		1
-#define RFLAGS_ATOMIC	2   /* allocation with IRQs off */
-#define RFLAGS_DMA		4   /* DMA-able memory */
-#define RFLAGS_POWER	8   /* low power memory */
 
 struct mm_info {
 	uint32_t used;
 	uint32_t free;
 };
 
+struct block_hdr {
+	uint16_t size;		/* size in blocks for continuous allocation */
+	uint16_t flags;		/* usage flags for page */
+} __attribute__ ((packed));
+
+struct block_map {
+	uint16_t block_size;	/* size of block in bytes */
+	uint16_t count;		/* number of blocks in map */
+	uint16_t free_count;	/* number of free blocks */
+	uint16_t first_free;	/* index of first free block */
+	struct block_hdr *block;	/* base block header */
+	uint32_t base;		/* base address of space */
+} __attribute__ ((packed));
+
+#define BLOCK_DEF(sz, cnt, hdr) \
+	{.block_size = sz, .count = cnt, .free_count = cnt, .block = hdr}
+
+struct mm_heap {
+	uint32_t blocks;
+	struct block_map *map;
+	uint32_t heap;
+	uint32_t size;
+	uint32_t caps;
+	struct mm_info info;
+};
+
+/* heap block memory map */
+struct mm {
+	/* system heap - used during init cannot be freed */
+	struct mm_heap system;
+	/* general heap for components */
+	struct mm_heap runtime[PLATFORM_HEAP_RUNTIME];
+	/* general component buffer heap */
+	struct mm_heap buffer[PLATFORM_HEAP_BUFFER];
+
+	struct mm_info total;
+	spinlock_t lock;	/* all allocs and frees are atomic */
+};
+
 /* heap allocation and free */
-void *rmalloc(int zone, int flags, size_t bytes);
-void *rzalloc(int zone, int flags, size_t bytes);
+void *rmalloc(int zone, uint32_t caps, size_t bytes);
+void *rzalloc(int zone, uint32_t caps, size_t bytes);
 void rfree(void *ptr);
 
 /* heap allocation and free for buffers on 1k boundary */
-void *rballoc(int zone, int flags, size_t bytes);
-void rbfree(void *ptr);
+void *rballoc(int zone, uint32_t flags, size_t bytes);
 
 /* utility */
 void bzero(void *s, size_t n);

@@ -55,6 +55,8 @@
 
 #define trace_mem_error(__e)	trace_error(TRACE_CLASS_MEM, __e)
 
+extern struct mm memmap;
+
 /* We have 3 memory pools
  *
  * 1) System memory pool does not have a map and it's size is fixed at build
@@ -67,115 +69,6 @@
  *    module removal or calls to rfree(). Saved as part of PM context.
  */
 
-struct block_hdr {
-	uint16_t size;		/* size in blocks of this continuous allocation */
-	uint16_t flags;		/* usage flags for page */
-} __attribute__ ((packed));
-
-struct block_map {
-	uint16_t block_size;	/* size of block in bytes */
-	uint16_t count;		/* number of blocks in map */
-	uint16_t free_count;	/* number of free blocks */
-	uint16_t first_free;	/* index of first free block */
-	struct block_hdr *block;	/* base block header */
-	uint32_t base;		/* base address of space */
-} __attribute__ ((packed));
-
-#define BLOCK_DEF(sz, cnt, hdr) \
-	{.block_size = sz, .count = cnt, .free_count = cnt, .block = hdr}
-
-/* Heap blocks for modules */
-//static struct block_hdr mod_block8[HEAP_RT_COUNT8];
-static struct block_hdr mod_block16[HEAP_RT_COUNT16];
-static struct block_hdr mod_block32[HEAP_RT_COUNT32];
-static struct block_hdr mod_block64[HEAP_RT_COUNT64];
-static struct block_hdr mod_block128[HEAP_RT_COUNT128];
-static struct block_hdr mod_block256[HEAP_RT_COUNT256];
-static struct block_hdr mod_block512[HEAP_RT_COUNT512];
-static struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
-
-/* Heap memory map for modules */
-static struct block_map rt_heap_map[] = {
-/*	BLOCK_DEF(8, HEAP_RT_COUNT8, mod_block8), */
-	BLOCK_DEF(16, HEAP_RT_COUNT16, mod_block16),
-	BLOCK_DEF(32, HEAP_RT_COUNT32, mod_block32),
-	BLOCK_DEF(64, HEAP_RT_COUNT64, mod_block64),
-	BLOCK_DEF(128, HEAP_RT_COUNT128, mod_block128),
-	BLOCK_DEF(256, HEAP_RT_COUNT256, mod_block256),
-	BLOCK_DEF(512, HEAP_RT_COUNT512, mod_block512),
-	BLOCK_DEF(1024, HEAP_RT_COUNT1024, mod_block1024),
-};
-
-/* Heap blocks for buffers */
-static struct block_hdr buf_block[HEAP_BUFFER_COUNT];
-
-/* Heap memory map for buffers */
-static struct block_map buf_heap_map[] = {
-	BLOCK_DEF(HEAP_BUFFER_BLOCK_SIZE, HEAP_BUFFER_COUNT, buf_block),
-};
-
-#if (HEAP_DMA_BUFFER_SIZE > 0)
-/* Heap memory map for DMA buffers - only used for HW with special DMA memories */
-static struct block_map dma_buf_heap_map[] = {
-	BLOCK_DEF(HEAP_DMA_BUFFER_BLOCK_SIZE, HEAP_DMA_BUFFER_COUNT, buf_block),
-};
-#endif
-
-struct mm_heap {
-	uint32_t blocks;
-	struct block_map *map;
-	uint32_t heap;
-	uint32_t size;
-	struct mm_info info;
-};
-
-/* heap block memory map */
-struct mm {
-	struct mm_heap runtime;	/* general heap for components */
-	struct mm_heap system;	/* system heap - used during init cannot be freed */
-	struct mm_heap buffer;	/* general component buffer heap */
-#if (HEAP_DMA_BUFFER_SIZE > 0)
-	struct mm_heap dma;	/* general component DMA buffer heap */
-#endif
-	struct mm_info total;
-	spinlock_t lock;	/* all allocs and frees are atomic */
-};
-
-struct mm memmap = {
-	.system = {
-		.heap = HEAP_SYSTEM_BASE,
-		.size = HEAP_SYSTEM_SIZE,
-		.info = {.free = HEAP_SYSTEM_SIZE,},
-	},
-
-	.runtime = {
-		.blocks = ARRAY_SIZE(rt_heap_map),
-		.map = rt_heap_map,
-		.heap = HEAP_RUNTIME_BASE,
-		.size = HEAP_RUNTIME_SIZE,
-		.info = {.free = HEAP_RUNTIME_SIZE,},
-	},
-
-	.buffer = {
-		.blocks = ARRAY_SIZE(buf_heap_map),
-		.map = buf_heap_map,
-		.heap = HEAP_BUFFER_BASE,
-		.size = HEAP_BUFFER_SIZE,
-		.info = {.free = HEAP_BUFFER_SIZE,},
-	},
-
-#if (HEAP_DMA_BUFFER_SIZE > 0)
-	.dma = {
-		.blocks = ARRAY_SIZE(dma_buf_heap_map),
-		.map = dma_buf_heap_map,
-		.heap = HEAP_DMA_BUFFER_BASE,
-		.size = HEAP_DMA_BUFFER_SIZE,
-		.info = {.free = HEAP_DMA_BUFFER_SIZE,},
-	},
-#endif
-	.total = {.free = HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + 
-		HEAP_BUFFER_SIZE + HEAP_DMA_BUFFER_SIZE,},
-};
 
 /* total size of block */
 static inline uint32_t block_get_size(struct block_map *map)
@@ -228,7 +121,8 @@ static void *rmalloc_sys(size_t bytes)
 }
 
 /* allocate single block */
-static void *alloc_block(struct mm_heap *heap, int level, int bflags)
+static void *alloc_block(struct mm_heap *heap, int level,
+	uint32_t caps)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr = &map->block[map->first_free];
@@ -238,7 +132,7 @@ static void *alloc_block(struct mm_heap *heap, int level, int bflags)
 	map->free_count--;
 	ptr = (void *)(map->base + map->first_free * map->block_size);
 	hdr->size = 1;
-	hdr->flags = RFLAGS_USED | bflags;
+	hdr->flags = RFLAGS_USED;
 	heap->info.used += map->block_size;
 	heap->info.free -= map->block_size;
 
@@ -261,8 +155,8 @@ static void *alloc_block(struct mm_heap *heap, int level, int bflags)
 }
 
 /* allocates continuous blocks */
-static void *alloc_cont_blocks(struct mm_heap *heap, int level, int bflags,
-	size_t bytes)
+static void *alloc_cont_blocks(struct mm_heap *heap, int level,
+	uint32_t caps, size_t bytes)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr = &map->block[map->first_free];
@@ -311,7 +205,7 @@ found:
 	/* allocate each block */
 	for (current = start; current < end; current++) {
 		hdr = &map->block[current];
-		hdr->flags = RFLAGS_USED | bflags;
+		hdr->flags = RFLAGS_USED;
 	}
 
 	/* do we need to find a new first free block ? */
@@ -336,43 +230,87 @@ found:
 	return ptr;
 }
 
-/* free block(s) */
-static void free_block(struct mm_heap *heap, void *ptr)
+static struct mm_heap *get_heap_from_ptr(void *ptr)
 {
-	struct mm_heap * mm_heap;
-	struct block_map * block_map;
+	struct mm_heap *heap;
+	int i;
+
+	/* find mm_heap that ptr belongs to */
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
+		heap = &memmap.runtime[i];
+
+		if ((uint32_t)ptr >= heap->heap &&
+			(uint32_t)ptr < heap->heap + heap->size)
+			return heap;
+	}
+
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
+		heap = &memmap.buffer[i];
+
+		if ((uint32_t)ptr >= heap->heap &&
+			(uint32_t)ptr < heap->heap + heap->size)
+			return heap;
+	}
+
+	return NULL;
+}
+
+static struct mm_heap *get_runtime_heap_from_caps(uint32_t caps)
+{
+	struct mm_heap *heap;
+	uint32_t mask;
+	int i;
+
+	/* find first heap that support type */
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
+		heap = &memmap.runtime[i];
+		mask = heap->caps & caps;
+		if (mask == caps)
+			return heap;
+	}
+
+	return NULL;
+}
+
+static struct mm_heap *get_buffer_heap_from_caps(uint32_t caps)
+{
+	struct mm_heap *heap;
+	uint32_t mask;
+	int i;
+
+	/* find first heap that support type */
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
+		heap = &memmap.buffer[i];
+		mask = heap->caps & caps;
+		if (mask == caps)
+			return heap;
+	}
+
+	return NULL;
+}
+
+/* free block(s) */
+static void free_block(void *ptr)
+{
+	struct mm_heap *heap;
+	struct block_map *block_map;
 	struct block_hdr *hdr;
 	int i;
 	int block;
-	int array_size;
 
 	/* sanity check */
 	if (ptr == NULL)
 		return;
 
-	/* find mm_heap that ptr belongs to */
-	if ((uint32_t)ptr >= memmap.runtime.heap &&
-		(uint32_t)ptr < memmap.runtime.heap + memmap.runtime.size) {
-		mm_heap = &memmap.runtime;
-		array_size = ARRAY_SIZE(rt_heap_map);
-	} else if ((uint32_t)ptr >= memmap.buffer.heap &&
-		(uint32_t)ptr < memmap.buffer.heap + memmap.buffer.size) {
-		mm_heap = &memmap.buffer;
-		array_size = ARRAY_SIZE(buf_heap_map);
-#if (HEAP_DMA_BUFFER_SIZE > 0)
-	} else if ((uint32_t)ptr >= memmap.dma.heap &&
-		(uint32_t)ptr < memmap.dma.heap + memmap.dma.size) {
-		mm_heap = &memmap.dma;
-		array_size = ARRAY_SIZE(dma_buf_heap_map);
-#endif
-	} else
+	heap = get_heap_from_ptr(ptr);
+	if (heap == NULL)
 		return;
 
 	/* find block that ptr belongs to */
-	for (i = 0; i < array_size - 1; i ++) {
+	for (i = 0; i < heap->blocks - 1; i++) {
 
 		/* is ptr in this block */
-		if ((uint32_t)ptr < mm_heap->map[i + 1].base)
+		if ((uint32_t)ptr < heap->map[i + 1].base)
 			goto found;
 	}
 
@@ -382,7 +320,7 @@ static void free_block(struct mm_heap *heap, void *ptr)
 
 found:
 	/* the block i is it */
-	block_map = &mm_heap->map[i];
+	block_map = &heap->map[i];
 
 	/* calculate block header */
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
@@ -398,7 +336,7 @@ found:
 		heap->info.free += block_map->block_size;
 	}
 
-	/* set first free */
+	/* set first free block */
 	if (block < block_map->first_free)
 		block_map->first_free = block;
 
@@ -408,31 +346,37 @@ found:
 }
 
 /* allocate single block for runtime */
-static void *rmalloc_runtime(int bflags, size_t bytes)
+static void *rmalloc_runtime(uint32_t caps, size_t bytes)
 {
+	struct mm_heap *heap;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(rt_heap_map); i ++) {
+	heap = get_runtime_heap_from_caps(caps);
+	if (heap == NULL)
+		goto error;
+
+	for (i = 0; i < heap->blocks; i++) {
 
 		/* is block big enough */
-		if (rt_heap_map[i].block_size < bytes)
+		if (heap->map[i].block_size < bytes)
 			continue;
 
 		/* does block have free space */
-		if (rt_heap_map[i].free_count == 0)
+		if (heap->map[i].free_count == 0)
 			continue;
 
 		/* free block space exists */
-		return alloc_block(&memmap.runtime, i, bflags);
+		return alloc_block(heap, i, caps);
 	}
 
+error:
 	trace_mem_error("eMm");
 	trace_value(bytes);
-	trace_value(bflags);
+	trace_value(caps);
 	return NULL;
 }
 
-void *rmalloc(int zone, int bflags, size_t bytes)
+void *rmalloc(int zone, uint32_t caps, size_t bytes)
 {
 	uint32_t flags;
 	void *ptr = NULL;
@@ -444,7 +388,7 @@ void *rmalloc(int zone, int bflags, size_t bytes)
 		ptr = rmalloc_sys(bytes);
 		break;
 	case RZONE_RUNTIME:
-		ptr = rmalloc_runtime(bflags, bytes);
+		ptr = rmalloc_runtime(caps, bytes);
 		break;
 	default:
 		trace_mem_error("eMz");
@@ -455,11 +399,11 @@ void *rmalloc(int zone, int bflags, size_t bytes)
 	return ptr;
 }
 
-void *rzalloc(int zone, int bflags, size_t bytes)
+void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {
 	void *ptr = NULL;
 
-	ptr = rmalloc(zone, bflags, bytes);
+	ptr = rmalloc(zone, caps, bytes);
 	if (ptr != NULL) {
 		bzero(ptr, bytes);
 	}
@@ -467,61 +411,54 @@ void *rzalloc(int zone, int bflags, size_t bytes)
 	return ptr;
 }
 
-/* allocates continuous buffer on 1k boundary */
-void *rballoc(int zone, int bflags, size_t bytes)
+/* allocates continuous buffers */
+void *rballoc(int zone, uint32_t caps, size_t bytes)
 {
-	struct block_map * block_map = buf_heap_map;
-	struct mm_heap * mm_heap = &memmap.buffer;
+	struct mm_heap *heap;
 	int i;
-	int array_size = ARRAY_SIZE(buf_heap_map);
 	uint32_t flags;
 	void *ptr = NULL;
 
-#if (HEAP_DMA_BUFFER_SIZE > 0)
-	if (bflags & RFLAGS_DMA) {
-		mm_heap = &memmap.dma;
-		block_map = dma_buf_heap_map;
-		array_size = ARRAY_SIZE(dma_buf_heap_map);
-	}
-#endif
 	spin_lock_irq(&memmap.lock, flags);
 
+	heap = get_buffer_heap_from_caps(caps);
+	if (heap == NULL)
+		goto out;
+
 	/* will request fit in single block */
-	for (i = 0; i < array_size; i++) {
+	for (i = 0; i < heap->blocks; i++) {
 
 		/* is block big enough */
-		if (block_map[i].block_size < bytes)
+		if (heap->map[i].block_size < bytes)
 			continue;
 
 		/* does block have free space */
-		if (block_map[i].free_count == 0)
+		if (heap->map[i].free_count == 0)
 			continue;
 
 		/* allocate block */
-		ptr = alloc_block(mm_heap, i, bflags);
+		ptr = alloc_block(heap, i, caps);
 		goto out;
 	}
 
 	/* request spans > 1 block */
 
 	/* only 1 choice for block size */
-	if (array_size == 1) {
-		ptr = alloc_cont_blocks(mm_heap, 0, bflags, bytes);
+	if (heap->blocks == 1) {
+		ptr = alloc_cont_blocks(heap, 0, caps, bytes);
 		goto out;
 	} else {
 
 		/* find best block size for request */
-		for (i = 0; i < array_size; i++) {
+		for (i = 0; i < heap->blocks; i++) {
 
 			/* allocate is block size smaller than request */
-			if (block_map[i].block_size < bytes)
-				alloc_cont_blocks(mm_heap, i, bflags,
-					bytes);
+			if (heap->map[i].block_size < bytes)
+				alloc_cont_blocks(heap, i, caps, bytes);
 		}
 	}
 
-	ptr = alloc_cont_blocks(mm_heap, array_size - 1,
-		bflags, bytes);
+	ptr = alloc_cont_blocks(heap, heap->blocks - 1, caps, bytes);
 
 out:
 	spin_unlock_irq(&memmap.lock, flags);
@@ -533,38 +470,42 @@ void rfree(void *ptr)
 	uint32_t flags;
 
 	spin_lock_irq(&memmap.lock, flags);
-	free_block(&memmap.runtime, ptr);
-	spin_unlock_irq(&memmap.lock, flags);
-}
-
-void rbfree(void *ptr)
-{
-	uint32_t flags;
-
-	spin_lock_irq(&memmap.lock, flags);
-	free_block(&memmap.buffer, ptr);
+	free_block(ptr);
 	spin_unlock_irq(&memmap.lock, flags);
 }
 
 uint32_t mm_pm_context_size(void)
 {
-	uint32_t size;
+	uint32_t size = 0;
+	int i;
 
 	/* calc context size for each area  */
-	size = memmap.buffer.info.used;
-	size += memmap.runtime.info.used;
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++)
+		size += memmap.buffer[i].info.used;
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++)
+		size += memmap.runtime[i].info.used;
 	size += memmap.system.info.used;
 
 	/* add memory maps */
-	size += heap_get_size(&memmap.buffer);
-	size += heap_get_size(&memmap.runtime);
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++)
+		size += heap_get_size(&memmap.buffer[i]);
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++)
+		size += heap_get_size(&memmap.runtime[i]);
 	size += heap_get_size(&memmap.system);
 
 	/* recalc totals */
-	memmap.total.free = memmap.buffer.info.free +
-		memmap.runtime.info.free + memmap.system.info.free;
-	memmap.total.used = memmap.buffer.info.used +
-		memmap.runtime.info.used + memmap.system.info.used;
+	memmap.total.free = memmap.system.info.free;
+	memmap.total.used = memmap.system.info.used;
+
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
+		memmap.total.free += memmap.buffer[i].info.free;
+		memmap.total.used += memmap.buffer[i].info.used;
+	}
+
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
+		memmap.total.free = memmap.runtime[i].info.free;
+		memmap.total.used = memmap.runtime[i].info.used;
+	}
 
 	return size;
 }
@@ -643,9 +584,12 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 /* initialise map */
 void init_heap(struct reef *reef)
 {
+	struct mm_heap *heap;
 	struct block_map *next_map;
 	struct block_map *current_map;
 	int i;
+	int j;
+	int k;
 
 	/* sanity check for malformed images or loader issues */
 	if (memmap.system.heap != HEAP_SYSTEM_BASE)
@@ -654,37 +598,40 @@ void init_heap(struct reef *reef)
 	spinlock_init(&memmap.lock);
 
 	/* initialise buffer map */
-	current_map = &buf_heap_map[0];
-	current_map->base = memmap.buffer.heap;
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
+		heap = &memmap.buffer[i];
 
-	for (i = 1; i < ARRAY_SIZE(buf_heap_map); i++) {
-		next_map = &buf_heap_map[i];
-		next_map->base = current_map->base +
-			current_map->block_size * current_map->count;
-		current_map = &buf_heap_map[i];
+		for (j = 0; j < heap->blocks; j++) {
+
+			current_map = &heap->map[j];
+			current_map->base = heap->heap;
+
+			for (k = 1; k < heap->blocks; k++) {
+				next_map = &heap->map[k];
+				next_map->base = current_map->base +
+					current_map->block_size *
+					current_map->count;
+				current_map = &heap->map[k];
+			}
+		}
 	}
 
 	/* initialise runtime map */
-	current_map = &rt_heap_map[0];
-	current_map->base = memmap.runtime.heap;
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
+		heap = &memmap.runtime[i];
 
-	for (i = 1; i < ARRAY_SIZE(rt_heap_map); i++) {
-		next_map = &rt_heap_map[i];
-		next_map->base = current_map->base +
-			current_map->block_size * current_map->count;
-		current_map = &rt_heap_map[i];
+		for (j = 0; j < heap->blocks; j++) {
+
+			current_map = &heap->map[j];
+			current_map->base = heap->heap;
+
+			for (k = 1; k < heap->blocks; k++) {
+				next_map = &heap->map[k];
+				next_map->base = current_map->base +
+					current_map->block_size *
+					current_map->count;
+				current_map = &heap->map[k];
+			}
+		}
 	}
-
-#if (HEAP_DMA_BUFFER_SIZE > 0)
-	/* initialise DMA map */
-	current_map = &dma_buf_heap_map[0];
-	current_map->base = memmap.dma.heap;
-
-	for (i = 1; i < ARRAY_SIZE(dma_buf_heap_map); i++) {
-		next_map = &dma_buf_heap_map[i];
-		next_map->base = current_map->base +
-			current_map->block_size * current_map->count;
-		current_map = &dma_buf_heap_map[i];
-	}
-#endif
 }
