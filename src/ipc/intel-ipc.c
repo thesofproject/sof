@@ -158,24 +158,13 @@ out:
  * page table entry and adding each elem to a list in struct dma_sg_config.
  */
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
-	struct sof_ipc_host_buffer *ring, void *data, uint32_t is_trace)
+	struct sof_ipc_host_buffer *ring, struct list_item *elem_list,
+	uint32_t direction)
 {
-	struct comp_dev* cd = NULL;
-	struct sof_ipc_comp_host *host = NULL;
-	struct dma_trace_data *d = NULL;
-	struct dma_sg_elem elem;
 	int i;
-	int err;
 	uint32_t idx;
 	uint32_t phy_addr;
-
-	elem.size = HOST_PAGE_SIZE;
-	if (is_trace)
-		d = (struct dma_trace_data *)data;
-	else {
-		cd = (struct comp_dev *)data;
-		host = (struct sof_ipc_comp_host *)&cd->comp;
-	}
+	struct dma_sg_elem *e;
 
 	/* the ring size may be not multiple of the page size, the last
 	 * page may be not full used. The used size should be in range
@@ -189,7 +178,6 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	}
 
 	for (i = 0; i < ring->pages; i++) {
-
 		idx = (((i << 2) + i)) >> 1;
 		phy_addr = iipc->page_table[idx] | (iipc->page_table[idx + 1] << 8)
 				| (iipc->page_table[idx + 2] << 16);
@@ -200,23 +188,23 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
 
-		if (!is_trace && host->direction == SOF_IPC_STREAM_PLAYBACK)
-			elem.src = phy_addr;
+		/* allocate new host DMA elem and add it to our list */
+		e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+		if (!e)
+			return -ENOMEM;
+
+		if (direction == SOF_IPC_STREAM_PLAYBACK)
+			e->src = phy_addr;
 		else
-			elem.dest = phy_addr;
+			e->dest = phy_addr;
 
 		/* the last page may be not full used */
 		if (i == (ring->pages - 1))
-			elem.size = ring->size - HOST_PAGE_SIZE * i;
-
-		if (is_trace)
-			err = dma_trace_host_buffer(d, &elem, ring->size);
+			e->size = ring->size - HOST_PAGE_SIZE * i;
 		else
-			err = comp_host_buffer(cd, &elem, ring->size);
-		if (err < 0) {
-			trace_ipc_error("ePb");
-			return err;
-		}
+			e->size = HOST_PAGE_SIZE;
+
+		list_item_append(&e->list, elem_list);
 	}
 
 	return 0;
@@ -232,6 +220,11 @@ static int ipc_stream_pcm_params(uint32_t stream)
 {
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+	struct sof_ipc_comp_host *host = NULL;
+	struct list_item elem_list;
+	struct dma_sg_elem *elem;
+	struct list_item *plist;
+	uint32_t ring_size;
 #endif
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
 	struct sof_ipc_pcm_params_reply reply;
@@ -269,11 +262,28 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 
 	/* Parse host tables */
+	host = (struct sof_ipc_comp_host *)&cd->comp;
+	ring_size = pcm_params->params.buffer.size;
+	list_init(&elem_list);
+
 	err = parse_page_descriptors(iipc, &pcm_params->params.buffer,
-		pcm_dev->cd, 0);
+		&elem_list, host->direction);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
+	}
+
+	list_for_item(plist, &elem_list) {
+		elem = container_of(plist, struct dma_sg_elem, list);
+
+		err = comp_host_buffer(cd, elem, ring_size);
+		if (err < 0) {
+			trace_ipc_error("ePb");
+			goto error;
+		}
+
+		list_item_del(&elem->list);
+		rfree(elem);
 	}
 #endif
 
@@ -302,6 +312,14 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	return 1;
 
 error:
+#ifdef CONFIG_HOST_PTABLE
+	list_for_item(plist, &elem_list) {
+		elem = container_of(plist, struct dma_sg_elem, list);
+		list_item_del(&elem->list);
+		rfree(elem);
+	}
+#endif
+
 	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0)
 		trace_ipc_error("eA!");
@@ -602,6 +620,10 @@ static int ipc_dma_trace_config(uint32_t header)
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
+	struct list_item elem_list;
+	struct dma_sg_elem *elem;
+	struct list_item *plist;
+	uint32_t ring_size;
 #endif
 	struct sof_ipc_reply reply;
 	int err;
@@ -618,11 +640,27 @@ static int ipc_dma_trace_config(uint32_t header)
 	trace_ipc("DAg");
 
 	/* Parse host tables */
+	ring_size = params->buffer.size;
+	list_init(&elem_list);
+
 	err = parse_page_descriptors(iipc, &params->buffer,
-		_ipc->dmat, 1);
+		&elem_list, SOF_IPC_STREAM_CAPTURE);
 	if (err < 0) {
 		trace_ipc_error("ePP");
 		goto error;
+	}
+
+	list_for_item(plist, &elem_list) {
+		elem = container_of(plist, struct dma_sg_elem, list);
+
+		err = dma_trace_host_buffer(_ipc->dmat, elem, ring_size);
+		if (err < 0) {
+			trace_ipc_error("ePb");
+			goto error;
+		}
+
+		list_item_del(&elem->list);
+		rfree(elem);
 	}
 #endif
 	trace_ipc("DAp");
@@ -639,6 +677,14 @@ static int ipc_dma_trace_config(uint32_t header)
 	return 0;
 
 error:
+#ifdef CONFIG_HOST_PTABLE
+	list_for_item(plist, &elem_list) {
+		elem = container_of(plist, struct dma_sg_elem, list);
+		list_item_del(&elem->list);
+		rfree(elem);
+	}
+#endif
+
 	if (err < 0)
 		trace_ipc_error("eA!");
 	return -EINVAL;
