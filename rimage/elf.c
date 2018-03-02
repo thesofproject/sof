@@ -500,13 +500,6 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 	if (rem)
 		module->text_file_size += MAN_PAGE_SIZE - rem;
 
-
-	/* apply any base FW fixups */
-	if (image->adsp->base_fw_text_size_fixup &&
-		module->text_start == image->adsp->sram_base) {
-		module->text_file_size += image->adsp->base_fw_text_size_fixup;
-	}
-
 	/* data section */
 	module->data_file_size = module->data_end - module->data_start;
 	rem = module->data_file_size % MAN_PAGE_SIZE;
