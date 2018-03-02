@@ -102,6 +102,7 @@ struct sof_man_module {
 	struct sof_man_module_type type;
 	uint8_t hash[SOF_MAN_MOD_SHA256_LEN];
 	uint32_t entry_point;
+	uint32_t text_size;
 	uint16_t cfg_offset;
 	uint16_t cfg_count;
 	uint32_t affinity_mask;
