@@ -146,6 +146,8 @@
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_DEBUG_BASE     | Debug data  W2 |  SRAM_DEBUG_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
+ * | SRAM_STREAM_BASE    | Stream data W2 |  SRAM_STREAM_SIZE                 |
+ * +---------------------+----------------+-----------------------------------+
  * | SRAM_TRACE_BASE     | Trace Buffer W3|  SRAM_TRACE_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
  * | HP_SRAM_BASE        | DMA            |  HEAP_HP_BUFFER_SIZE              |
@@ -206,8 +208,11 @@
 #define SRAM_DEBUG_BASE		(SRAM_INBOX_BASE + SRAM_INBOX_SIZE)
 #define SRAM_DEBUG_SIZE		0x1000
 
+#define SRAM_STREAM_BASE	(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_STREAM_SIZE	0x1000
+
 /* window 3 */
-#define SRAM_TRACE_BASE		(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_TRACE_BASE		(SRAM_STREAM_BASE + SRAM_STREAM_SIZE)
 #define SRAM_TRACE_SIZE		0x2000
 
 #define HP_SRAM_WIN0_BASE	SRAM_SW_REG_BASE
@@ -215,7 +220,7 @@
 #define HP_SRAM_WIN1_BASE	SRAM_INBOX_BASE
 #define HP_SRAM_WIN1_SIZE	SRAM_INBOX_SIZE
 #define HP_SRAM_WIN2_BASE	SRAM_DEBUG_BASE
-#define HP_SRAM_WIN2_SIZE	SRAM_DEBUG_SIZE
+#define HP_SRAM_WIN2_SIZE	(SRAM_DEBUG_SIZE + SRAM_STREAM_SIZE)
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
