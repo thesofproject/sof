@@ -58,10 +58,6 @@ static const struct sof_ipc_fw_ready ready = {
 		.size = sizeof(struct sof_ipc_fw_ready),
 	},
 	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
-	.dspbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_DSPBOX_OFFSET,
-	.hostbox_offset = MAILBOX_HOST_OFFSET + MAILBOX_HOSTBOX_OFFSET,
-	.dspbox_size = MAILBOX_DSPBOX_SIZE,
-	.hostbox_size = MAILBOX_HOSTBOX_SIZE,
 	.version = {
 		.build = REEF_BUILD,
 		.minor = REEF_MINOR,
@@ -71,6 +67,45 @@ static const struct sof_ipc_fw_ready ready = {
 		.tag = REEF_TAG,
 	},
 	/* TODO: add capabilities */
+};
+
+#define NUM_HSW_WINDOWS		4
+static const struct sof_ipc_window sram_window = {
+	.ext_hdr	= {
+		.hdr.cmd = SOF_IPC_FW_READY,
+		.hdr.size = sizeof(struct sof_ipc_window) +
+			sizeof(struct sof_ipc_window_elem) * NUM_HSW_WINDOWS,
+		.type	= SOF_IPC_EXT_WINDOW,
+	},
+	.num_windows	= NUM_HSW_WINDOWS,
+	.window[0]	= {
+		.type	= SOF_IPC_REGION_UPBOX,
+		.id	= 0,	/* map to host window 0 */
+		.flags	= 0, // TODO: set later
+		.size	= MAILBOX_DSPBOX_SIZE,
+		.offset	= MAILBOX_DSPBOX_OFFSET,
+	},
+	.window[1]	= {
+		.type	= SOF_IPC_REGION_DOWNBOX,
+		.id	= 0,	/* map to host window 0 */
+		.flags	= 0, // TODO: set later
+		.size	= MAILBOX_HOSTBOX_SIZE,
+		.offset	= MAILBOX_HOSTBOX_OFFSET,
+	},
+	.window[2]	= {
+		.type	= SOF_IPC_REGION_DEBUG,
+		.id	= 0,	/* map to host window 0 */
+		.flags	= 0, // TODO: set later
+		.size	= MAILBOX_DEBUG_SIZE,
+		.offset	= MAILBOX_DEBUG_OFFSET,
+	},
+	.window[3]	= {
+		.type	= SOF_IPC_REGION_TRACE,
+		.id	= 0,	/* map to host window 0 */
+		.flags	= 0, // TODO: set later
+		.size	= MAILBOX_TRACE_SIZE,
+		.offset	= MAILBOX_TRACE_OFFSET,
+	},
 };
 
 static struct work_queue_timesource platform_generic_queue = {
@@ -92,6 +127,8 @@ int platform_boot_complete(uint32_t boot_message)
 	uint32_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
+	mailbox_dspbox_write(sizeof(ready), &sram_window,
+			     sram_window.ext_hdr.hdr.size);
 
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCD, outbox | SHIM_IPCD_BUSY);
