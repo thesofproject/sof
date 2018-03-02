@@ -78,4 +78,11 @@
 	dcache_invalidate_region((void*)(MAILBOX_HOSTBOX_BASE + src), bytes); \
 	rmemcpy(dest, (void*)(MAILBOX_HOSTBOX_BASE + src), bytes);
 
+#define mailbox_stream_write(dest, src, bytes) \
+	do { \
+		rmemcpy((void *)(MAILBOX_STREAM_BASE + dest), src, bytes); \
+		dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + dest), \
+					bytes); \
+	} while (0)
+
 #endif

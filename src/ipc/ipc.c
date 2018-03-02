@@ -77,6 +77,27 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 	return NULL;
 }
 
+int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe)
+{
+	int i;
+	uint32_t posn_size = sizeof(struct sof_ipc_stream_posn);
+
+	for (i = 0; i < PLATFORM_MAX_STREAMS; i++) {
+		if (ipc->posn_map[i] == pipe)
+			return pipe->posn_offset;
+	}
+
+	for (i = 0; i < PLATFORM_MAX_STREAMS; i++) {
+		if (ipc->posn_map[i] == NULL) {
+			ipc->posn_map[i] = pipe;
+			pipe->posn_offset = i * posn_size;
+			return pipe->posn_offset;
+		}
+	}
+
+	return -EINVAL;
+}
+
 int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cd;
@@ -347,6 +368,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 
 int ipc_init(struct reef *reef)
 {
+	int i;
 	trace_ipc("IPI");
 
 	/* init ipc data */
@@ -354,6 +376,9 @@ int ipc_init(struct reef *reef)
 	reef->ipc->comp_data = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		SOF_IPC_MSG_MAX_SIZE);
 	reef->ipc->dmat = reef->dmat;
+
+	for (i = 0; i < PLATFORM_MAX_STREAMS; i++)
+		reef->ipc->posn_map[i] = NULL;
 
 	list_init(&reef->ipc->comp_list);
 

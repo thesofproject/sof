@@ -230,7 +230,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
-	int err;
+	int err, posn_offset;
 
 	trace_ipc("SAl");
 
@@ -301,13 +301,17 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		goto error;
 	}
 
-
+	posn_offset = ipc_get_posn_offset(_ipc, pcm_dev->cd->pipeline);
+	if (posn_offset < 0) {
+		trace_ipc_error("eAo");
+		goto error;
+	}
 	/* write component values to the outbox */
 	reply.rhdr.hdr.size = sizeof(reply);
 	reply.rhdr.hdr.cmd = stream;
 	reply.rhdr.error = 0;
 	reply.comp_id = pcm_params->comp_id;
-	reply.posn_offset = 0; /* TODO: set this up for mmaped components */
+	reply.posn_offset = posn_offset;
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
 	return 1;
 
@@ -371,15 +375,18 @@ static int ipc_stream_position(uint32_t header)
 	}
 
 	/* set message fields - TODO; get others */
-	posn.rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
+	posn.rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
+			    stream->comp_id;
 	posn.rhdr.hdr.size = sizeof(posn);
 	posn.comp_id = stream->comp_id;
 
 	/* get the stream positions and timestamps */
 	pipeline_get_timestamp(pcm_dev->cd->pipeline, pcm_dev->cd, &posn);
 
-	/* copy positions to outbox */
-	mailbox_hostbox_write(0, &posn, sizeof(posn));
+	/* copy positions to stream region */
+	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
+			     &posn, sizeof(posn));
+
 	return 1;
 }
 
@@ -387,24 +394,38 @@ static int ipc_stream_position(uint32_t header)
 int ipc_stream_send_position(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
+	struct sof_ipc_hdr hdr;
+
+	tracev_ipc("Pos");
+	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
+			      cdev->comp.id;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-		sizeof(*posn), NULL, 0, NULL, NULL, 1);
+	hdr.cmd = posn->rhdr.hdr.cmd;
+	hdr.size = sizeof(hdr);
+
+	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
+				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
 }
 
 /* send stream position TODO: send compound message  */
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
+	struct sof_ipc_hdr hdr;
+
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_XRUN;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-		sizeof(*posn), NULL, 0, NULL, NULL, 1);
+	hdr.cmd = posn->rhdr.hdr.cmd;
+	hdr.size = sizeof(hdr);
+
+	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
+				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
 }
 
 static int ipc_stream_trigger(uint32_t header)
