@@ -75,6 +75,7 @@ struct module {
 	/* sizes do include gaps to nearest page */
 	int bss_file_size;
 	int text_file_size;
+	int text_fixup_size;
 	int data_file_size;
 };
 
@@ -135,9 +136,6 @@ struct adsp {
 	enum machine_id machine_id;
 	int (*write_firmware)(struct image *image);
 	struct fw_image_manifest *man;
-
-	/* fixups */
-	uint32_t base_fw_text_size_fixup;	/* added to BASEFW text size */
 };
 
 void module_sha256_create(struct image *image);

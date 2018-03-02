@@ -109,7 +109,7 @@ static uint32_t elf_to_file_offset(struct image *image,
 		} else {
 			/* rodata segment, append to text segment */
 			file_offset = elf_addr - module->data_start +
-				module->foffset + module->text_file_size;
+				module->foffset + module->text_fixup_size;
 
 		}
 	} else if (section->sh_type == SHT_NOBITS) {
@@ -232,6 +232,9 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	man_module->type.domain_dp = sof_mod.type.domain_dp;
 	man_module->type.domain_ll = sof_mod.type.domain_ll;
 	man_module->type.load_type = sof_mod.type.load_type;
+
+	/* read out text_fixup_size from memory mapping */
+	module->text_fixup_size = sof_mod.text_size;
 
 	/* text segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_TEXT];
@@ -361,13 +364,22 @@ static int man_module_create(struct image *image, struct module *module,
 	if (module->text_file_size % MAN_PAGE_SIZE)
 		pages += 1;
 
+	if (module->text_fixup_size == 0)
+		module->text_fixup_size = module->text_file_size;
+
+	/* check if text_file_size is bigger then text_fixup_size */
+	if (module->text_file_size > module->text_fixup_size) {
+		fprintf(stderr, "error: too small text size assigned!\n");
+		return -EINVAL;
+	}
+
 	man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length = pages;
 
 	/* data section */
 	man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr =
 		module->data_start;
 	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
-			module->foffset + module->text_file_size;
+			module->foffset + module->text_fixup_size;
 	pages = module->data_file_size / MAN_PAGE_SIZE;
 	if (module->data_file_size % MAN_PAGE_SIZE)
 		pages += 1;
@@ -627,7 +639,6 @@ const struct adsp machine_apl = {
 	.machine_id = MACHINE_APOLLOLAKE,
 	.write_firmware = man_write_fw,
 	.man = &apl_manifest,
-	.base_fw_text_size_fixup = 0xa000,
 };
 
 const struct adsp machine_cnl = {
