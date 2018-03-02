@@ -1103,6 +1103,12 @@ static void dw_dma_irq_handler(void *data)
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK, &next);
 		}
+
+		if (next.size == DMA_RELOAD_END) {
+			trace_dma("LSo");
+			/* disable channel, finished */
+			dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
+		}
 #endif
 		/* end of a transfer */
 		if ((status_tfr & mask) &&
