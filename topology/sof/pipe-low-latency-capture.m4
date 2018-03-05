@@ -10,34 +10,14 @@ include(`local.m4')
 #
 # Controls
 #
-
-SectionControlMixer.STR(PCM PCM_ID Capture Volume) {
-
-	# control belongs to this index group
-	index STR(PIPELINE_ID)
-
-	# Channel register and shift for Front Left/Right
-	channel."FL" {
-		reg "0"
-		shift "0"
-	}
-	channel."FR" {
-		reg "0"
-		shift "1"
-	}
-
-	# control uses bespoke driver get/put/info ID 0
-	ops."ctl" {
-		info "volsw"
-		get "256"
-		put "256"
-	}
-
-	# TLV 40 steps from -90dB to +20dB for 3dB
-	max "40"
-	invert "false"
-	tlv "vtlv_m90s3"
-}
+# Volume Mixer control with max value of 32
+C_CONTROLMIXER(PCM PCM_ID Capture Volume, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
+	CONTROLMIXER_MAX(, 40),
+	false,
+	CONTROLMIXER_TLV(TLV 32 steps from -90dB to +6dB for 3dB, vtlv_m90s3),
+	Channel register and shift for Front Left/Right,
+	LIST(`	', KCONTROL_CHANNEL(FL, 0, 0), KCONTROL_CHANNEL(FR, 0, 1)))
 
 #
 # Components and Buffers

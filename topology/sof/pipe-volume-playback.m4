@@ -10,60 +10,24 @@ include(`local.m4')
 #
 # Controls
 #
-SectionControlMixer.STR(Master Playback Volume) {
+# Volume Mixer control with max value of 32
+C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
+	CONTROLMIXER_MAX(, 32),
+	false,
+	CONTROLMIXER_TLV(TLV 32 steps from -90dB to +6dB for 3dB, vtlv_m90s3),
+	Channel register and shift for Front Left/Right,
+	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
-	# control belongs to this index group
-	index STR(PIPELINE_ID)
+# Volume Mixer Switch control with max value of 1
+C_CONTROLMIXER(Master Playback Volume Switch, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
+	CONTROLMIXER_MAX(max value 1 indicates switch type control, 1),
+	false,
+	,
+	Channel register and shift for Front Left/Right,
+	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
-	# Channel register and shift for Front Left/Right
-	channel."FL" {
-		reg "1"
-		shift "0"
-	}
-	channel."FR" {
-		reg "1"
-		shift "1"
-	}
-
-	# control uses bespoke driver get/put/info ID 0
-	ops."ctl" {
-		info "volsw"
-		get "256"
-		put "256"
-	}
-
-	# TLV 32 steps from -90dB to +6dB for 3dB
-	max "32"
-	invert "false"
-	tlv "vtlv_m90s3"
-}
-
-SectionControlMixer.STR(Master Playback Volume Switch) {
-
-	# control belongs to this index group
-	index STR(PIPELINE_ID)
-
-	# Channel register and shift for Front Left/Right
-	channel."FL" {
-		reg "1"
-		shift "0"
-	}
-	channel."FR" {
-		reg "1"
-		shift "1"
-	}
-
-	# control uses bespoke driver get/put/info ID 0
-	ops."ctl" {
-		info "volsw"
-		get "256"
-		put "256"
-	}
-
-	# Volume mute on/off
-	max "1"
-	invert "false"
-}
 #
 # Components and Buffers
 #
