@@ -240,7 +240,7 @@ define(`W_MIXER',
 dnl Tone name)
 define(`N_TONE', `TONE'PIPELINE_ID`.'$1)
 
-dnl W_TONE(name, format, periods_sink, periods_source, preload)
+dnl W_TONE(name, format, periods_sink, periods_source, preload, kcontrols_list)
 define(`W_TONE',
 `SectionVendorTuples."'N_TONE($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'

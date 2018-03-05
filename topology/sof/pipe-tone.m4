@@ -43,12 +43,40 @@ SectionControlMixer.STR(Tone Volume PIPELINE_ID) {
 	tlv "vtlv_m90s3"
 }
 
+SectionControlMixer.STR(Tone Switch PIPELINE_ID) {
+
+	# control belongs to this index group
+	index STR(PIPELINE_ID)
+
+	# Channel register and shift for Front Left/Right
+	channel."FL" {
+		reg "2"
+		shift "0"
+	}
+	channel."FR" {
+		reg "2"
+		shift "1"
+	}
+
+	# control uses bespoke driver get/put/info ID 0
+	ops."ctl" {
+		info "volsw"
+		# 256 binds the mixer control to volume get/put handlers
+		get "256"
+		put "256"
+	}
+
+	# max 1 indicates switch type mixer control
+	max "1"
+	invert "false"
+}
+
 #
 # Components and Buffers
 #
 
 # "Tone 0" has 2 sink period and 0 source periods
-W_TONE(0, PIPELINE_FORMAT, 2, 0, 0)
+W_TONE(0, PIPELINE_FORMAT, 2, 0, 0, LIST(`		', "Tone Switch PIPELINE_ID"))
 
 # "Tone Volume" has 2 sink period and 2 source periods
 W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, LIST(`		', "Tone Volume PIPELINE_ID"))
