@@ -5,8 +5,12 @@
 #  host PCM_P --> SRC --> sink DAI0
 
 # Include topology builder
-include(`local.m4')
-
+include(`utils.m4')
+include(`src.m4')
+include(`buffer.m4')
+include(`pcm.m4')
+include(`dai.m4')
+include(`pipeline.m4')
 
 #
 # Components and Buffers

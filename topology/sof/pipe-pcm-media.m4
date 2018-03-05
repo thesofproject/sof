@@ -8,7 +8,12 @@
 #
 
 # Include topology builder
-include(`local.m4')
+include(`utils.m4')
+include(`src.m4')
+include(`buffer.m4')
+include(`pga.m4')
+include(`mixercontrol.m4')
+include(`pipeline.m4')
 
 #
 # Controls

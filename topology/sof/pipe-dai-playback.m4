@@ -1,7 +1,9 @@
 # DAI Playback connector
 
 # Include topology builder
-include(`local.m4')
+include(`utils.m4')
+include(`dai.m4')
+include(`pipeline.m4')
 
 #
 # DAI definitions

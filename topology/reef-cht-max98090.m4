@@ -3,8 +3,9 @@
 #
 
 # Include topology builder
-include(`local.m4')
-include(`build.m4')
+include(`utils.m4')
+include(`dai.m4')
+include(`pipeline.m4')
 
 # Include TLV library
 include(`common/tlv.m4')

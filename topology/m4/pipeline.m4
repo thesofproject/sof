@@ -1,5 +1,36 @@
 divert(-1)
 
+dnl Define macro for pipeline widget
+
+dnl Pipeline name)
+define(`N_PIPELINE', `PIPELINE.'PIPELINE_ID`.'$1)
+
+dnl W_PIPELINE(stream, deadline, priority, frames, core, timer, platform)
+define(`W_PIPELINE',
+`SectionVendorTuples."'N_PIPELINE($1)`_tuples" {'
+`	tokens "sof_sched_tokens"'
+`	tuples."word" {'
+`		SOF_TKN_SCHED_DEADLINE'		STR($2)
+`		SOF_TKN_SCHED_PRIORITY'		STR($3)
+`		SOF_TKN_SCHED_CORE'		STR($5)
+`		SOF_TKN_SCHED_FRAMES'		STR($4)
+`		SOF_TKN_SCHED_TIMER'		STR($6)
+`	}'
+`}'
+`SectionData."'N_PIPELINE($1)`_data" {'
+`	tuples "'N_PIPELINE($1)`_tuples"'
+`}'
+`SectionWidget."'N_PIPELINE($1)`" {'
+`	index "'PIPELINE_ID`"'
+`	type "scheduler"'
+`	no_pm "true"'
+`	stream_name "'$1`"'
+`	data ['
+`		"'N_PIPELINE($1)`_data"'
+`		"'$7`"'
+`	]'
+`}')
+
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core, dmac, dmac_chan)
@@ -82,35 +113,6 @@ define(`PIPELINE_ADD',
 `define(`SCHEDULE_DEADLINE', $6)'
 `define(`SCHEDULE_PRIORITY', $7)'
 `define(`SCHEDULE_CORE', $8)'
-`include($1)'
-)
-
-dnl DAI_ADD(pipeline,
-dnl     pipe id, dai type, dai_index,
-dnl     buffer, periods, format,
-dnl     frames, deadline, priority, core)
-define(`DAI_ADD',
-`undefine(`PIPELINE_ID')'
-`undefine(`DAI_TYPE')'
-`undefine(`DAI_INDEX')'
-`undefine(`DAI_BUF')'
-`undefine(`DAI_PERIODS')'
-`undefine(`DAI_FORMAT')'
-`undefine(`SCHEDULE_FRAMES')'
-`undefine(`SCHEDULE_DEADLINE')'
-`undefine(`SCHEDULE_PRIORITY')'
-`undefine(`SCHEDULE_CORE')'
-`define(`PIPELINE_ID', $2)'
-`define(`DAI_TYPE', STR($3))'
-`define(`DAI_INDEX', STR($4))'
-`define(`DAI_BUF', $5)'
-`define(`DAI_NAME', $3$4)'
-`define(`DAI_PERIODS', $6)'
-`define(`DAI_FORMAT', $7)'
-`define(`SCHEDULE_FRAMES', $8)'
-`define(`SCHEDULE_DEADLINE', $9)'
-`define(`SCHEDULE_PRIORITY', $10)'
-`define(`SCHEDULE_CORE', $11)'
 `include($1)'
 )
 
