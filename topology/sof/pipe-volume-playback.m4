@@ -73,7 +73,7 @@ SectionControlMixer.STR(Master Playback Volume Switch) {
 W_PCM_PLAYBACK(Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, KCONTROLS("Master Playback Volume Switch", "Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "Master Playback Volume Switch", "Master Playback Volume"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

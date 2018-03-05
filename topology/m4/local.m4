@@ -10,15 +10,15 @@ define(`argn', `ifelse(`$1', 1, ``$2'',
 
 dnl Defines a list of items from a variable number of params.
 dnl Use as last argument in a macro.
+dnl The first argument specifies the number of tabs to be added for formatting
 define(`LIST_LOOP', `argn(j,$@)
-		ifelse(i,`1', `', `define(`i', decr(i)) define(`j', incr(j)) $0($@)')')
+$1ifelse(i,`2', `', `define(`i', decr(i))define(`j', incr(j))$0($@)')')
+
+define(`LIST', `pushdef(`i', $#)pushdef(`j', `2')LIST_LOOP($@)popdef(i)popdef(j)')
 
 dnl Sums a list of variable arguments. Use as last argument in macro.
 define(`SUM_LOOP', `eval(argn(j,$@)
 		ifelse(i,`1', `', `define(`i', decr(i)) define(`j', incr(j)) + $0($@)'))')
-
-dnl Support a varaible list of kcontrols.
-define(`KCONTROLS', `pushdef(`i', $#) pushdef(`j', `1') LIST_LOOP($@)')
 
 dnl Memory capabilities
 define(`MEMCAPS', `pushdef(`i', $#) pushdef(`j', `1') SUM_LOOP($@)')
@@ -165,7 +165,7 @@ define(`N_PGA', `PGA'PIPELINE_ID`.'$1)
 
 dnl W_PGA(name, format, periods_sink, periods_source, preload, kcontrol0. kcontrol1...etc)
 define(`W_PGA',
-`pushdef(`args',`eval($#-6)')SectionVendorTuples."'N_PGA($1)`_tuples_w" {'
+`SectionVendorTuples."'N_PGA($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
@@ -269,6 +269,9 @@ define(`W_TONE',
 `	data ['
 `		"'N_TONE($1)`_data_w"'
 `		"'N_TONE($1)`_data_str"'
+`	]'
+`	mixer ['
+		$6
 `	]'
 `}')
 
