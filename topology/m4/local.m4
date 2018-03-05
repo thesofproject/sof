@@ -632,6 +632,16 @@ define(`PCM_CAPABILITIES',
 `	buffer_size_max	STR($12)'
 `}')
 
+dnl W_VENDORTUPLES(name, tokens, RATE_OUT)
+define(`W_VENDORTUPLES',
+`SectionVendorTuples.STR($1) {'
+`	tokens STR($2)'
+`'
+`	tuples."word" {'
+`		$3'
+`	}'
+`}')
+
 divert(0) dnl
 
 

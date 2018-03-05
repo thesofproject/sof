@@ -26,13 +26,7 @@ C_CONTROLMIXER(PCM PCM_ID Playback Volume, PIPELINE_ID,
 # SRC Configuration
 #
 
-SectionVendorTuples."media_src_tokens" {
-	tokens "sof_src_tokens"
-
-	tuples."word" {
-		SOF_TKN_SRC_RATE_OUT	"48000"
-	}
-}
+W_VENDORTUPLES(media_src_tokens, sof_src_tokens, LIST(`		', `SOF_TKN_SRC_RATE_OUT	"48000"'))
 
 SectionData."media_src_conf" {
 	tuples "media_src_tokens"
