@@ -642,6 +642,13 @@ define(`W_VENDORTUPLES',
 `	}'
 `}')
 
+dnl W_DATA(name, tuples)
+define(`W_DATA',
+`SectionData.STR($1) {'
+`	tuples STR($2)'
+`}')
+
+
 divert(0) dnl
 
 
