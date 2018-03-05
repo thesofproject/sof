@@ -2,6 +2,14 @@
 # Haswell differentiation for pipelines and components
 #
 
+include(`memory.m4')
+
+dnl Memory capabilities for diferent buffer types on Haswell
+define(`PLATFORM_DAI_MEM_CAP', MEMCAPS(MEM_CAP_RAM, MEM_CAP_DMA, MEM_CAP_CACHE))
+define(`PLATFORM_HOST_MEM_CAP', MEMCAPS(MEM_CAP_RAM, MEM_CAP_DMA, MEM_CAP_CACHE))
+define(`PLATFORM_PASS_MEM_CAP', MEMCAPS(MEM_CAP_RAM, MEM_CAP_DMA, MEM_CAP_CACHE))
+define(`PLATFORM_COMP_MEM_CAP', MEMCAPS(MEM_CAP_RAM, MEM_CAP_CACHE))
+
 # Low Latency PCM Configuration
 SectionVendorTuples."pipe_ll_schedule_plat_tokens" {
 	tokens "sof_sched_tokens"

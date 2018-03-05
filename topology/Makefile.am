@@ -34,7 +34,7 @@ MACHINES = \
 .PRECIOUS: %.conf
 
 %.conf : %.m4 ${DEPS}
-	m4 -I m4 $< > $@
+	m4 -I m4 -I common $< > $@
 
 %.tplg : %.conf
 	alsatplg -v 1 -c $< -o $@

@@ -11,6 +11,7 @@
 
 SectionVendorTokens."sof_buffer_tokens" {
 	SOF_TKN_BUF_SIZE			"100"
+	SOF_TKN_BUF_CAPS			"101"
 }
 
 SectionVendorTokens."sof_dai_tokens" {

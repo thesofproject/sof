@@ -4,12 +4,24 @@ define(`concat',`$1$2')
 
 define(`STR', `"'$1`"')
 
+dnl Argument iterator.
 define(`argn', `ifelse(`$1', 1, ``$2'',
        `argn(decr(`$1'), shift(shift($@)))')')
 
-define(`KCONTROLS', `pushdef(`i', $#) pushdef(`j', `1') KCONTROL_LOOP($@)')
-define(`KCONTROL_LOOP', `argn(j,$@)
+dnl Defines a list of items from a variable number of params.
+dnl Use as last argument in a macro.
+define(`LIST_LOOP', `argn(j,$@)
 		ifelse(i,`1', `', `define(`i', decr(i)) define(`j', incr(j)) $0($@)')')
+
+dnl Sums a list of variable arguments. Use as last argument in macro.
+define(`SUM_LOOP', `eval(argn(j,$@)
+		ifelse(i,`1', `', `define(`i', decr(i)) define(`j', incr(j)) + $0($@)'))')
+
+dnl Support a varaible list of kcontrols.
+define(`KCONTROLS', `pushdef(`i', $#) pushdef(`j', `1') LIST_LOOP($@)')
+
+dnl Memory capabilities
+define(`MEMCAPS', `pushdef(`i', $#) pushdef(`j', `1') SUM_LOOP($@)')
 
 dnl create direct DAPM/pipeline link between 2 widgets)
 define(`dapm', `"$1, , $2"')
@@ -53,12 +65,13 @@ define(`W_SRC',
 dnl Buffer name)
 define(`N_BUFFER', `BUF'PIPELINE_ID`.'$1)
 
-dnl W_BUFFER(name, size)
+dnl W_BUFFER(name, size, capabilities)
 define(`W_BUFFER',
 `SectionVendorTuples."'N_BUFFER($1)`_tuples" {'
 `	tokens "sof_buffer_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_BUF_SIZE'	STR($2)
+`		SOF_TKN_BUF_CAPS'	$3
 `	}'
 `}'
 `SectionData."'N_BUFFER($1)`_data" {'

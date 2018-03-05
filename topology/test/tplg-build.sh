@@ -8,7 +8,7 @@
 set -e
 
 # M4 preprocessor flags
-M4_FLAGS="-I ../ -I ../m4"
+M4_FLAGS="-I ../ -I ../m4 -I ../common"
 
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.

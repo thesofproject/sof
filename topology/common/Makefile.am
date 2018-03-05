@@ -1,3 +1,4 @@
 EXTRA_DIST = \
-	tlv.m4
+	tlv.m4 \
+	memory.m4
 
