@@ -605,6 +605,17 @@ define(`C_CONTROLMIXER',
 `	$6'
 `}')
 
+dnl P_GRAPH(name, CONNECTIONS)
+define(`P_GRAPH',
+`SectionGraph.STR($1) {'
+`	index STR($2)'
+`'
+`	lines ['
+`		$3'
+`	]'
+`}')
+
+
 divert(0) dnl
 
 

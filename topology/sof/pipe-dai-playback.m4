@@ -16,10 +16,5 @@ W_PIPELINE(N_DAI_OUT, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCH
 #
 # Graph connections to pipelines
 
-SectionGraph.STR(DAI_NAME) {
-	index STR(PIPELINE_ID)
-
-	lines [
-		dapm(N_DAI_OUT, DAI_BUF)
-	]
-}
+P_GRAPH(DAI_NAME, PIPELINE_ID,
+	LIST(`		', `dapm(N_DAI_OUT, DAI_BUF)'))

@@ -43,16 +43,12 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 #
 #  host PCM <--B1-- volume <--B0-- source DAI0
 
-SectionGraph."pipe-ll-capture-PIPELINE_ID" {
-	index STR(PIPELINE_ID)
-
-	lines [
-		dapm(Low Latency Capture PCM_ID, N_PCMC)
-		dapm(N_PCMC, N_BUFFER(1))
-		dapm(N_BUFFER(1), N_PGA(0))
-		dapm(N_PGA(0), N_BUFFER(0))
-	]
-}
+P_GRAPH(pipe-ll-capture-PIPELINE_ID, PIPELINE_ID,
+	LIST(`		',
+	`dapm(Low Latency Capture PCM_ID, N_PCMC)',
+	`dapm(N_PCMC, N_BUFFER(1))',
+	`dapm(N_BUFFER(1), N_PGA(0))',
+	`dapm(N_PGA(0), N_BUFFER(0))'))
 
 #
 # Pipeline Source and Sinks

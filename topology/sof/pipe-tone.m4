@@ -57,15 +57,11 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 #  Tone --B0--> volume --B1--> Endpoint Pipeline
 #
 
-SectionGraph."pipe-tone-PIPELINE_ID" {
-	index STR(PIPELINE_ID)
-
-	lines [
-		dapm(N_BUFFER(0), N_TONE(0))
-		dapm(N_PGA(0), N_BUFFER(0))
-		dapm(N_BUFFER(1), N_PGA(0))
-	]
-}
+P_GRAPH(pipe-tone-PIPELINE_ID, PIPELINE_ID,
+	LIST(`		',
+	`dapm(N_BUFFER(0), N_TONE(0))',
+	`dapm(N_PGA(0), N_BUFFER(0))',
+	`dapm(N_BUFFER(1), N_PGA(0))'))
 
 #
 # Pipeline Source and Sinks

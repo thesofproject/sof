@@ -71,18 +71,14 @@ W_BUFFER(2, COMP_BUFFER_SIZE(3,
 #  PCM --B0--> volume --B1--> SRC --> B2 --> Endpoint Pipeline
 #
 
-SectionGraph."pipe-media-PIPELINE_ID" {
-	index STR(PIPELINE_ID)
-
-	lines [
-		dapm(N_PCMP, Media Playback PCM_ID)
-		dapm(N_BUFFER(0), N_PCMP)
-		dapm(N_PGA(0), N_BUFFER(0))
-		dapm(N_BUFFER(1), N_PGA(0))
-		dapm(N_SRC(0), N_BUFFER(1))
-		dapm(N_BUFFER(2), N_SRC(0))
-	]
-}
+P_GRAPH(pipe-media-PIPELINE_ID, PIPELINE_ID,
+	LIST(`		',
+	`dapm(N_PCMP, Media Playback PCM_ID)',
+	`dapm(N_BUFFER(0), N_PCMP)',
+	`dapm(N_PGA(0), N_BUFFER(0))',
+	`dapm(N_BUFFER(1), N_PGA(0))',
+	`dapm(N_SRC(0), N_BUFFER(1))'
+	`dapm(N_BUFFER(2), N_SRC(0))'))
 
 #
 # Pipeline Source and Sinks

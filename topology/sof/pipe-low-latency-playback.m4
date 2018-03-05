@@ -86,20 +86,16 @@ W_BUFFER(3, COMP_BUFFER_SIZE(2,
 #                     pipeline n+3 >---+  .....etc....more pipes can be mixed here
 #
 
-SectionGraph."pipe-ll-playback-PIPELINE_ID" {
-	index STR(PIPELINE_ID)
-
-	lines [
-		dapm(N_PCMP, Low Latency Playback PCM_ID)
-		dapm(N_BUFFER(0), N_PCMP)
-		dapm(N_PGA(0), N_BUFFER(0))
-		dapm(N_BUFFER(1), N_PGA(0))
-		dapm(N_MIXER(0), N_BUFFER(1))
-		dapm(N_BUFFER(2), N_MIXER(0))
-		dapm(N_PGA(1), N_BUFFER(2))
-		dapm(N_BUFFER(3), N_PGA(1))
-	]
-}
+P_GRAPH(pipe-ll-playback-PIPELINE_ID, PIPELINE_ID,
+	LIST(`		',
+	`dapm(N_PCMP, Low Latency Playback PCM_ID)',
+	`dapm(N_BUFFER(0), N_PCMP)',
+	`dapm(N_PGA(0), N_BUFFER(0))',
+	`dapm(N_BUFFER(1), N_PGA(0))',
+	`dapm(N_MIXER(0), N_BUFFER(1))',
+	`dapm(N_BUFFER(2), N_MIXER(0))',
+	`dapm(N_PGA(1), N_BUFFER(2))',
+	`dapm(N_BUFFER(3), N_PGA(1))'))
 
 #
 # Pipeline Source and Sinks

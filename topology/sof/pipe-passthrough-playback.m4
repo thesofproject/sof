@@ -36,14 +36,10 @@ W_PIPELINE(N_DAI_OUT, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCH
 #
 #  host PCM_P --> B0 --> sink DAI0
 
-SectionGraph."pipe-pass-playback-PIPELINE_ID" {
-	index STR(PIPELINE_ID)
-
-	lines [
-		dapm(N_PCMP, Passthrough Playback PCM_ID)
-		dapm(N_BUFFER(0), N_PCMP)
-	]
-}
+P_GRAPH(pipe-pass-playback-PIPELINE_ID, PIPELINE_ID,
+	LIST(`		',
+	`dapm(N_PCMP, Passthrough Playback PCM_ID)',
+	`dapm(N_BUFFER(0), N_PCMP)'))
 
 #
 # Pipeline Source and Sinks

@@ -36,14 +36,10 @@ W_PIPELINE(N_DAI_IN, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHE
 #
 #  host PCM_C <-- B0 <-- sink DAI0
 
-SectionGraph."pipe-pass-capture-PIPELINE_ID" {
-	index STR(PIPELINE_ID)
-
-	lines [
-		dapm(Passthrough Capture PCM_ID, N_PCMC)
-		dapm(N_PCMC, N_BUFFER(0))
-	]
-}
+P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
+	LIST(`		',
+	`dapm(Passthrough Capture PCM_ID, N_PCMC)',
+	`dapm(N_PCMC, N_BUFFER(0))'))
 
 #
 # Pipeline Source and Sinks
