@@ -71,7 +71,7 @@ define(`W_BUFFER',
 `	tokens "sof_buffer_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_BUF_SIZE'	STR($2)
-`		SOF_TKN_BUF_CAPS'	$3
+`		SOF_TKN_BUF_CAPS'	STR($3)
 `	}'
 `}'
 `SectionData."'N_BUFFER($1)`_data" {'
