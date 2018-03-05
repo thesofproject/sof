@@ -77,17 +77,4 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Capture PCM_ID
 # PCM Configuration
 #
 
-SectionPCMCapabilities.STR(Passthrough Capture PCM_ID) {
-
-	formats "S32_LE,S24_LE,S16_LE"
-	rate_min "8000"
-	rate_max "96000"
-	channels_min "2"
-	channels_max "4"
-	periods_min "2"
-	periods_max "16"
-	period_size_min	"192"
-	period_size_max	"16384"
-	buffer_size_min	"65536"
-	buffer_size_max	"65536"
-}
+PCM_CAPABILITIES(Passthrough Capture PCM_ID, `S32_LE,S24_LE,S16_LE', 8000, 96000, 2, 4, 2, 16, 192, 16384, 65536, 65536)

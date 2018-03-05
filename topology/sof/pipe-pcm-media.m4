@@ -97,19 +97,7 @@ W_PIPELINE(N_SRC(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHE
 
 # PCM capabilities supported by FW
 
-SectionPCMCapabilities.STR(Media Playback PCM_ID) {
-	formats "S32_LE,S24_LE,S16_LE"
-	rate_min "8000"
-	rate_max "192000"
-	channels_min "2"
-	channels_max "2"
-	periods_min "2"
-	periods_max "32"
-	period_size_min	"192"
-	period_size_max	"262144"
-	buffer_size_min	"8388608"
-	buffer_size_max	"8388608"
-}
+PCM_CAPABILITIES(Media Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 8000, 192000, 2, 2, 2, 32, 192, 262144, 8388608, 8388608)
 
 # PCM Low Latency Playback and Capture
 SectionPCM.STR(Media Playback PCM_ID) {

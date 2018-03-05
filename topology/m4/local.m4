@@ -615,6 +615,22 @@ define(`P_GRAPH',
 `	]'
 `}')
 
+dnl PCM_CAPABILITIES(name, formats, rate_min, rate_max, channels_min, channels_max, periods_min, periods_max, period_size_min, period_size_max, buffer_size_min, buffer_size_max)
+define(`PCM_CAPABILITIES',
+`SectionPCMCapabilities.STR($1) {'
+`'
+`	formats "$2"'
+`	rate_min STR($3)'
+`	rate_max STR($4)'
+`	channels_min STR($5)'
+`	channels_max STR($6)'
+`	periods_min STR($7)'
+`	periods_max STR($8)'
+`	period_size_min	STR($9)'
+`	period_size_max	STR($10)'
+`	buffer_size_min	STR($11)'
+`	buffer_size_max	STR($12)'
+`}')
 
 divert(0) dnl
 

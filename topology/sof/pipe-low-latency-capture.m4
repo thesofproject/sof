@@ -60,18 +60,4 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Low Latency Capture PCM_ID
 # PCM Configuration
 #
 
-SectionPCMCapabilities.STR(Low Latency Capture PCM_ID) {
-
-	formats "S32_LE,S24_LE,S16_LE"
-	rate_min "48000"
-	rate_max "48000"
-	channels_min "2"
-	channels_max "4"
-	periods_min "2"
-	periods_max "4"
-	period_size_min	"192"
-	period_size_max	"16384"
-	buffer_size_min	"65536"
-	buffer_size_max	"65536"
-}
-
+PCM_CAPABILITIES(Low Latency Capture PCM_ID, `S32_LE,S24_LE,S16_LE', 48000, 48000, 2, 4, 2, 4, 192, 16384, 65536, 65536)
