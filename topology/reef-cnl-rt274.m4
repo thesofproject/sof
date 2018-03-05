@@ -13,7 +13,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Apollolake DSP configuration
-include(`dsps/bxt.m4')
+include(`dsps/cnl.m4')
 
 #
 # Define the pipelines
