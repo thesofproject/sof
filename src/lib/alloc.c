@@ -351,10 +351,17 @@ static void *rmalloc_runtime(uint32_t caps, size_t bytes)
 	struct mm_heap *heap;
 	int i;
 
+	/* check runtime heap for capabilities */
 	heap = get_runtime_heap_from_caps(caps);
+	if (heap)
+		goto find;
+
+	/* next check buffer heap for capabilities */
+	heap = get_buffer_heap_from_caps(caps);
 	if (heap == NULL)
 		goto error;
 
+find:
 	for (i = 0; i < heap->blocks; i++) {
 
 		/* is block big enough */
