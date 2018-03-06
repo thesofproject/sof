@@ -313,7 +313,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	list_for_item(plist, &config->elem_list) {
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
-		if (config->direction == SOF_IPC_STREAM_PLAYBACK)
+		if (config->direction == DMA_DIR_HMEM_TO_LMEM)
 			addr = sg_elem->dest;
 		else
 			addr = sg_elem->src;
@@ -344,10 +344,10 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	dgcs = DGCS_FWCB;
 
 	/* set DGCS.SCS bit to 0 for 32 bit container */
-	if ((config->direction == SOF_IPC_STREAM_PLAYBACK &&
-	    config->dest_width <= 16) ||
-	    (config->direction == SOF_IPC_STREAM_CAPTURE &&
-	    config->src_width <= 16))
+	if ((config->direction == DMA_DIR_HMEM_TO_LMEM &&
+	     config->dest_width <= 16) ||
+	    (config->direction == DMA_DIR_LMEM_TO_HMEM &&
+	     config->src_width <= 16))
 		dgcs |= DGCS_SCS;
 
 	/* init channel in HW */
