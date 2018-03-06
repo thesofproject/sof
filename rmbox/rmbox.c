@@ -47,42 +47,6 @@
 #define TRACE_CLASS_EQ_FIR      (19 << 24)
 #define TRACE_CLASS_EQ_IIR      (20 << 24)
 
-#define MAILBOX_HOST_OFFSET	0x144000
-
-#define MAILBOX_OUTBOX_OFFSET	0x0
-#define MAILBOX_OUTBOX_SIZE	0x400
-#define MAILBOX_OUTBOX_BASE \
-	(MAILBOX_BASE + MAILBOX_OUTBOX_OFFSET)
-
-#define MAILBOX_INBOX_OFFSET	MAILBOX_OUTBOX_SIZE
-#define MAILBOX_INBOX_SIZE	0x400
-#define MAILBOX_INBOX_BASE \
-	(MAILBOX_BASE + MAILBOX_INBOX_OFFSET)
-
-#define MAILBOX_EXCEPTION_OFFSET \
-	(MAILBOX_INBOX_SIZE + MAILBOX_OUTBOX_SIZE)
-#define MAILBOX_EXCEPTION_SIZE	0x100
-#define MAILBOX_EXCEPTION_BASE \
-	(MAILBOX_BASE + MAILBOX_EXCEPTION_OFFSET)
-
-#define MAILBOX_DEBUG_OFFSET \
-	(MAILBOX_EXCEPTION_SIZE + MAILBOX_EXCEPTION_OFFSET)
-#define MAILBOX_DEBUG_SIZE	0x100
-#define MAILBOX_DEBUG_BASE \
-	(MAILBOX_BASE + MAILBOX_DEBUG_OFFSET)
-
-#define MAILBOX_STREAM_OFFSET \
-	(MAILBOX_DEBUG_SIZE + MAILBOX_DEBUG_OFFSET)
-#define MAILBOX_STREAM_SIZE	0x200
-#define MAILBOX_STREAM_BASE \
-	(MAILBOX_BASE + MAILBOX_STREAM_OFFSET)
-
-#define MAILBOX_TRACE_OFFSET \
-	(MAILBOX_STREAM_SIZE + MAILBOX_STREAM_OFFSET)
-#define MAILBOX_TRACE_SIZE	0x380
-#define MAILBOX_TRACE_BASE \
-	(MAILBOX_BASE + MAILBOX_TRACE_OFFSET)
-
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 
@@ -218,8 +182,7 @@ static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, double 
 	}
 }
 
-static int trace_read(const char *in_file, const char *out_file, double clk,
-	int offset)
+static int trace_read(const char *in_file, const char *out_file, double clk)
 {
 	int count, i;
 	FILE *in_fd = NULL, *out_fd = NULL;
@@ -250,11 +213,6 @@ trace:
 		if (count != TRACE_BLOCK_SIZE)
 			break;
 
-		if (addr < offset) {
-			addr += TRACE_BLOCK_SIZE;
-			continue;
-		}
-
 		val = *((uint64_t*)tmp);
 
 		for (i = 0; i < TRACE_BLOCK_SIZE / 2; i++) {
@@ -277,21 +235,10 @@ trace:
 	return 0;
 }
 
-static void show_debug(uint32_t val, uint32_t addr)
+static void show_data(uint32_t val, uint32_t addr)
 {
-	printf("debug: 0x%x (%2.2d) = \t0x%8.8x \t(%8.8d) \t|%c%c%c%c|\n", 
-					(unsigned int)addr - MAILBOX_DEBUG_OFFSET,
-					((unsigned int)addr - MAILBOX_DEBUG_OFFSET) / 4, 
-					val, val,
-					get_char(val, 3), get_char(val, 2),
-					get_char(val, 1), get_char(val, 0));
-}
-
-static void show_exception(uint32_t val, uint32_t addr)
-{
-	printf("exp: 0x%x (%2.2d) = \t0x%8.8x \t(%8.8d) \t|%c%c%c%c|\n", 
-					(unsigned int)addr - MAILBOX_EXCEPTION_OFFSET,
-					((unsigned int)addr - MAILBOX_EXCEPTION_OFFSET) / 4, 
+	printf("data: 0x%x = \t0x%8.8x \t(%8.8d) \t|%c%c%c%c|\n",
+					(unsigned int)addr,
 					val, val,
 					get_char(val, 3), get_char(val, 2),
 					get_char(val, 1), get_char(val, 0));
@@ -299,7 +246,9 @@ static void show_exception(uint32_t val, uint32_t addr)
 
 
 static const char *debugfs[] = {
-	"dmac0","dmac1", "ssp0", "ssp1", "ssp2", "iram", "dram", "shim", "mbox"
+	"dmac0", "dmac1", "ssp0", "ssp1",
+	"ssp2", "iram", "dram", "shim",
+	"mbox", "etrace",
 };
 
 static int snapshot(const char *name)
@@ -362,12 +311,11 @@ static int snapshot(const char *name)
 int main(int argc, char *argv[])
 {
 	int opt, count, trace = 0;
-	const char * out_file = NULL, *in_file = "/sys/kernel/debug/sof/mbox";
+	const char * out_file = NULL, *in_file = NULL;
 	FILE *in_fd = NULL, *out_fd = NULL;
 	char c, tmp[8] = {0};
 	uint64_t addr = 0, val, timestamp = 0, align = 4, i;
 	double clk = 19.2;
-	int title_dbg_done = 0, title_exp_done = 0;
 
 	while ((opt = getopt(argc, argv, "ho:i:s:m:c:t")) != -1) {
 		switch (opt) {
@@ -393,7 +341,15 @@ int main(int argc, char *argv[])
 
 	/* trace requested ? */
 	if (trace)
-		return trace_read("/sys/kernel/debug/sof/trace", out_file, clk, 0);
+		return trace_read("/sys/kernel/debug/sof/trace",
+			out_file, clk);
+
+	/* default option with no infile is to dump errors/debug data */
+	if (in_file == NULL) {
+		fprintf(stdout, "\nError log:\n");
+		return trace_read("/sys/kernel/debug/sof/etrace",
+			out_file, clk);
+	}
 
 	/* open infile for reading */
 	in_fd = fopen(in_file, "r");
@@ -432,21 +388,7 @@ convert:
 			tmp[align - i - 1] = c;
 		}
 
-		if (addr >= MAILBOX_DEBUG_OFFSET &&
-				addr < MAILBOX_DEBUG_OFFSET + MAILBOX_DEBUG_SIZE) {
-
-			if (!title_dbg_done++)
-				fprintf(stdout, "\nDebug log:\n");
-
-			show_debug(val, addr);
-		} else if (addr >= MAILBOX_EXCEPTION_OFFSET &&
-				addr < MAILBOX_EXCEPTION_OFFSET + MAILBOX_EXCEPTION_SIZE) {
-
-			if (!title_exp_done++)
-				fprintf(stdout, "\nException log:\n");
-
-			show_exception(val, addr);
-		}
+		show_data(val, addr);
 
 		if (out_fd) {
 			count = fwrite(&tmp[0], 1, align, out_fd);
@@ -456,11 +398,6 @@ convert:
 
 		addr += align;
 	}
-
-	/* read debug */
-	fprintf(stdout, "\nError log:\n");
-	trace_read("/sys/kernel/debug/sof/mbox", out_file, clk,
-		MAILBOX_TRACE_OFFSET);
 
 	/* close files */
 	fclose(in_fd);
