@@ -851,7 +851,8 @@ static int host_copy(struct comp_dev *dev)
 		return 0;
 
 #if defined CONFIG_DMA_GW
-	if (hd->first_copy) {
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
+	    hd->first_copy) {
 		/*
 		 * host dma will not start copy at this point yet, just produce
 		 * empty period bytes for it.
