@@ -178,7 +178,8 @@ static void platform_memory_windows_init(void)
 int platform_init(struct reef *reef)
 {
 	struct dma *dmac;
-	struct dai *ssp2;
+	struct dai *ssp;
+	int i;
 
 	platform_interrupt_init();
 
@@ -254,9 +255,12 @@ int platform_init(struct reef *reef)
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	ssp2 = dai_get(SOF_DAI_INTEL_SSP, 4);
-	if (ssp2 == NULL)
-		return -ENODEV;
-	dai_probe(ssp2);
+	for (i = 0; i < PLATFORM_NUM_SSP; i++) {
+		ssp = dai_get(SOF_DAI_INTEL_SSP, i);
+		if (ssp == NULL)
+			return -ENODEV;
+		dai_probe(ssp);
+	}
+
 	return 0;
 }

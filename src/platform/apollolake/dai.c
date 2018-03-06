@@ -34,6 +34,7 @@
 #include <reef/ssp.h>
 #include <reef/stream.h>
 #include <reef/audio/component.h>
+#include <platform/platform.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>
@@ -41,7 +42,7 @@
 #include <string.h>
 #include <config.h>
 
-static struct dai ssp[6] = {
+static struct dai ssp[PLATFORM_NUM_SSP] = {
 {
 	.type = SOF_DAI_INTEL_SSP,
 	.index = 0,
