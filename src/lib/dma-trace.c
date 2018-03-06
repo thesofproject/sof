@@ -132,8 +132,9 @@ int dma_trace_init_early(struct reef *reef)
 	buffer = &trace_data->dmatb;
 
 	/* allocate new buffer */
-	buffer->addr = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		DMA_TRACE_LOCAL_SIZE);
+	buffer->addr = rballoc(RZONE_RUNTIME,
+			       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+			       DMA_TRACE_LOCAL_SIZE);
 	if (buffer->addr == NULL) {
 		trace_buffer_error("ebm");
 		return -ENOMEM;
