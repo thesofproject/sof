@@ -35,7 +35,7 @@ W_VENDORTUPLES(dai0p_plat_tokens, sof_dai_tokens, LIST(`		', `SOF_TKN_DAI_DMAC	"
 W_DATA(dai0p_plat_conf, dai0p_plat_tokens)
 
 # DAI0 platform capture configuration
-W_VENDORTUPLES(dai0c_plat_tokens, sof_dai_tokens, LIST(`		', `SOF_TKN_DAI_DMAC	"1"', `SOF_TKN_DAI_DMAC	"1"'))
+W_VENDORTUPLES(dai0c_plat_tokens, sof_dai_tokens, LIST(`		', `SOF_TKN_DAI_DMAC	"1"', `SOF_TKN_DAI_DMAC_CHAN	"1"'))
 
 W_DATA(dai0c_plat_conf, dai0c_plat_tokens)
 

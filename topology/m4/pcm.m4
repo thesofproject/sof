@@ -93,28 +93,6 @@ define(`PCM_CAPABILITIES',
 `	buffer_size_max	STR($12)'
 `}')
 
-dnl COMP_BUFFER_SIZE( num_periods, sample_size, channels, fmames)
-define(`COMP_BUFFER_SIZE', `eval(`$1 * $2 * $3 * $4')')
-
-dnl PCM_PLAYBACK_ADD(name, pipeline, pcm_id, dai_id, playback)
-define(`PCM_PLAYBACK_ADD',
-`SectionPCM.STR($1) {'
-`'
-`	index STR($2)'
-`'
-`	# used for binding to the PCM'
-`	id STR($3)'
-`'
-`	dai.STR($1 $3) {'
-`		id STR($4)'
-`	}'
-`'
-`	pcm."playback" {'
-`'
-`		capabilities STR($5)'
-`	}'
-`}')
-
 dnl PCM_CAPTURE_ADD(name, pipeline, pcm_id, dai_id, capture)
 define(`PCM_CAPTURE_ADD',
 `SectionPCM.STR($1) {'
