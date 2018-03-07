@@ -259,6 +259,11 @@ int platform_init(struct reef *reef)
 		return -ENODEV;
 	dma_probe(dmac);
 
+	dmac = dma_get(DMA_GP_LP_DMAC1);
+	if (!dmac)
+		return -ENODEV;
+	dma_probe(dmac);
+
 	dmac = dma_get(DMA_HOST_OUT_DMAC);
 	if (!dmac)
 		return -ENODEV;
