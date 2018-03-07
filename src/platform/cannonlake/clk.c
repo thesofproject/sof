@@ -191,7 +191,7 @@ uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 
 void init_platform_clocks(void)
 {
-	clk_pdata = rmalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		sizeof(*clk_pdata));
 
 	spinlock_init(&clk_pdata->clk[0].lock);
