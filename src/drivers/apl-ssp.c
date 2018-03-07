@@ -333,10 +333,11 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
 
 		/* set asserted frame length */
-		frame_len = config->sample_container_bits;
+		frame_len = 1;
 
 		/* handle frame polarity, DSP_A default is rising/active high */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
+		sspsp |= SSPSP_FSRT;
 
 		break;
 	default:
