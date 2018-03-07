@@ -68,8 +68,8 @@ struct dma_sg_elem {
 
 /* DMA physical SG params */
 struct dma_sg_config {
-	uint32_t src_width;
-	uint32_t dest_width;
+	uint32_t src_width;	/* in bytes */
+	uint32_t dest_width;	/* in bytes */
 	uint32_t burst_elems;
 	uint32_t direction;
 	uint32_t src_dev;
