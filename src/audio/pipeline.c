@@ -1063,14 +1063,14 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	p->xrun_bytes = 0;
 
 	/* prepare the pipeline */
-	pipeline_prepare(p, p->source_comp);
+	ret = pipeline_prepare(p, p->source_comp);
 	if (ret < 0) {
 		trace_pipe_error("px1");
 		return ret;
 	}
 
 	/* restart pipeline comps */
-	pipeline_cmd(p, p->source_comp, COMP_CMD_START, NULL);
+	ret = pipeline_cmd(p, p->source_comp, COMP_CMD_START, NULL);
 	if (ret < 0) {
 		trace_pipe_error("px2");
 		return ret;
