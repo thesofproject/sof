@@ -68,7 +68,7 @@ static const struct sof_ipc_fw_ready ready = {
 
 #define SRAM_WINDOW_HOST_OFFSET(x)		(0x80000 + x * 0x20000)
 
-#define NUM_APL_WINDOWS		5
+#define NUM_APL_WINDOWS		6
 
 static const struct sof_ipc_window sram_window = {
 	.ext_hdr	= {
@@ -103,10 +103,17 @@ static const struct sof_ipc_window sram_window = {
 		.type	= SOF_IPC_REGION_DEBUG,
 		.id	= 2,	/* map to host window 2 */
 		.flags	= 0, // TODO: set later
-		.size	= SRAM_DEBUG_SIZE,
+		.size	= MAILBOX_EXCEPTION_SIZE + MAILBOX_DEBUG_SIZE,
 		.offset	= 0,
 	},
 	.window[4]	= {
+		.type	= SOF_IPC_REGION_STREAM,
+		.id	= 2,	/* map to host window 2 */
+		.flags	= 0, // TODO: set later
+		.size	= MAILBOX_STREAM_SIZE,
+		.offset	= MAILBOX_STREAM_OFFSET,
+	},
+	.window[5]	= {
 		.type	= SOF_IPC_REGION_TRACE,
 		.id	= 3,	/* map to host window 3 */
 		.flags	= 0, // TODO: set later
@@ -172,7 +179,8 @@ static void platform_memory_windows_init(void)
 int platform_init(struct reef *reef)
 {
 	struct dma *dmac;
-	struct dai *ssp2;
+	struct dai *ssp;
+	int i;
 
 	platform_interrupt_init();
 
@@ -248,9 +256,12 @@ int platform_init(struct reef *reef)
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	ssp2 = dai_get(SOF_DAI_INTEL_SSP, 4);
-	if (ssp2 == NULL)
-		return -ENODEV;
-	dai_probe(ssp2);
+	for (i = 0; i < PLATFORM_NUM_SSP; i++) {
+		ssp = dai_get(SOF_DAI_INTEL_SSP, i);
+		if (ssp == NULL)
+			return -ENODEV;
+		dai_probe(ssp);
+	}
+
 	return 0;
 }

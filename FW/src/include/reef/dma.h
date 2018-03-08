@@ -38,13 +38,15 @@
 #include <reef/reef.h>
 #include <reef/wait.h>
 
-/* DMA directions */
-#define DMA_DIR_MEM_TO_MEM	0	/* local memcpy */
-#define DMA_DIR_HMEM_TO_LMEM	1	/* host to local memcpy */
-#define DMA_DIR_LMEM_TO_HMEM	2	/* local to host memcpy */
-#define DMA_DIR_MEM_TO_DEV	3
-#define DMA_DIR_DEV_TO_MEM	4
-#define DMA_DIR_DEV_TO_DEV	5
+/* types of DMA directions */
+enum dma_copy_dir {
+	DMA_DIR_MEM_TO_MEM = 0,	/* local memcpy */
+	DMA_DIR_HMEM_TO_LMEM,	/* host to local memcpy */
+	DMA_DIR_LMEM_TO_HMEM,	/* local to host memcpy */
+	DMA_DIR_MEM_TO_DEV,
+	DMA_DIR_DEV_TO_MEM,
+	DMA_DIR_DEV_TO_DEV,
+};
 
 /* DMA IRQ types */
 #define DMA_IRQ_TYPE_BLOCK	(1 << 0)
@@ -68,10 +70,10 @@ struct dma_sg_elem {
 
 /* DMA physical SG params */
 struct dma_sg_config {
-	uint32_t src_width;
-	uint32_t dest_width;
+	uint32_t src_width;	/* in bytes */
+	uint32_t dest_width;	/* in bytes */
 	uint32_t burst_elems;
-	uint32_t direction;
+	enum dma_copy_dir direction;
 	uint32_t src_dev;
 	uint32_t dest_dev;
 	uint32_t cyclic;		/* circular buffer */

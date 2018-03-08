@@ -211,7 +211,7 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 	}
 
 	/* Allocate all IIR channels data in a big chunk and clear it */
-	iir_delay = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, size_sum);
+	iir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
 	if (iir_delay == NULL)
 		return -ENOMEM;
 
@@ -256,14 +256,14 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 
 	trace_eq_iir("new");
 
-	dev = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_eq_iir));
 	if (dev == NULL)
 		return NULL;
 
 	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_iir));
 
-	cd = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (cd == NULL) {
 		rfree(dev);
 		return NULL;
@@ -397,7 +397,7 @@ static int iir_cmd_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdat
 			return -EINVAL;
 
 		/* Allocate and make a copy of the blob and setup IIR */
-		cd->config = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, bs);
+		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
 		if (cd->config == NULL)
 			return -EINVAL;
 

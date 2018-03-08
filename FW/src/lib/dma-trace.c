@@ -128,11 +128,13 @@ int dma_trace_init_early(struct reef *reef)
 {
 	struct dma_trace_buf *buffer;
 
-	trace_data = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*trace_data));
+	trace_data = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*trace_data));
 	buffer = &trace_data->dmatb;
 
 	/* allocate new buffer */
-	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, DMA_TRACE_LOCAL_SIZE);
+	buffer->addr = rballoc(RZONE_RUNTIME,
+			       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+			       DMA_TRACE_LOCAL_SIZE);
 	if (buffer->addr == NULL) {
 		trace_buffer_error("ebm");
 		return -ENOMEM;
@@ -179,7 +181,7 @@ int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	struct dma_sg_elem *e;
 
 	/* allocate new host DMA elem and add it to our list */
-	e = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*e));
+	e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
 	if (e == NULL)
 		return -ENOMEM;
 

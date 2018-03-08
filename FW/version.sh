@@ -11,7 +11,7 @@ else
 fi
 
 # create git version if we are a git repo or git worktree
-if [ -e $DIR/.git -o -d $DIR/.git ]; then
+if [ -e $DIR/../.git -o -d $DIR/../.git ]; then
 #	 version for make dist
 	git describe --abbrev=4 > $DIR/.version
 	git describe --abbrev=4 > $DIR/.tarball-version

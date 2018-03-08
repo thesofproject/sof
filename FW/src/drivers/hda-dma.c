@@ -84,7 +84,7 @@ struct hda_chan_data {
 	uint32_t status;
 	uint32_t desc_count;
 	uint32_t desc_avail;
-	uint32_t direction;
+	enum dma_copy_dir direction;
 };
 
 struct dma_pdata {
@@ -313,7 +313,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	list_for_item(plist, &config->elem_list) {
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
-		if (config->direction == SOF_IPC_STREAM_PLAYBACK)
+		if (config->direction == DMA_DIR_HMEM_TO_LMEM)
 			addr = sg_elem->dest;
 		else
 			addr = sg_elem->src;
@@ -343,10 +343,10 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	/* firmware control buffer */
 	dgcs = DGCS_FWCB;
 
-	/* set DGCS.SCS bit to 0 for 32 bit container */
-	if ((config->direction == SOF_IPC_STREAM_PLAYBACK &&
+	/* set DGCS.SCS bit to 1 for 16bit(2B) container */
+	if ((config->direction == DMA_DIR_HMEM_TO_LMEM &&
 	    config->dest_width <= 2) ||
-	    (config->direction == SOF_IPC_STREAM_CAPTURE &&
+	    (config->direction == DMA_DIR_LMEM_TO_HMEM &&
 	    config->src_width <= 2))
 		dgcs |= DGCS_SCS;
 
@@ -391,7 +391,7 @@ static int hda_dma_probe(struct dma *dma)
 	int i;
 
 	/* allocate private data */
-	hda_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*hda_pdata));
+	hda_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*hda_pdata));
 	dma_set_drvdata(dma, hda_pdata);
 
 	spinlock_init(&dma->lock);

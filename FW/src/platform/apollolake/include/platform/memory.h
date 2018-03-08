@@ -168,17 +168,17 @@
 #define L2_VECTOR_SIZE			0x1000
 
 #define REEF_TEXT_BASE			(L2_SRAM_BASE + L2_VECTOR_SIZE)
-#define REEF_TEXT_SIZE			0x18000
+#define REEF_TEXT_SIZE			0x19000
 
 /* initialized data */
 #define REEF_DATA_SIZE			0x18000
 
 /* bss data */
-#define REEF_BSS_DATA_SIZE		0x2000
+#define REEF_BSS_DATA_SIZE		0x2800
 
 /* Heap configuration */
 #define HEAP_SYSTEM_BASE \
-	(REEF_TEXT_START + REEF_TEXT_SIZE + \
+	(REEF_TEXT_BASE + REEF_TEXT_SIZE + \
 	REEF_DATA_SIZE + REEF_BSS_DATA_SIZE)
 #define HEAP_SYSTEM_SIZE		0x2000
 
@@ -214,6 +214,8 @@
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_DEBUG_BASE     | Debug data  W2 |  SRAM_DEBUG_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
+ * | SRAM_STREAM_BASE    | Stream data W2 |  SRAM_STREAM_SIZE                 |
+ * +---------------------+----------------+-----------------------------------+
  * | SRAM_INBOX_BASE     | Inbox  W1      |  SRAM_INBOX_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_SW_REG_BASE    | SW Registers W0|  SRAM_SW_REG_SIZE                 |
@@ -236,8 +238,11 @@
 #define SRAM_DEBUG_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
 #define SRAM_DEBUG_SIZE		0x1000
 
+#define SRAM_STREAM_BASE	(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_STREAM_SIZE	0x1000
+
 /* window 1 */
-#define SRAM_INBOX_BASE		(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_INBOX_BASE		(SRAM_STREAM_BASE + SRAM_STREAM_SIZE)
 #define SRAM_INBOX_SIZE		0x2000
 
 /* window 0 */
@@ -258,15 +263,9 @@
 #define HP_SRAM_WIN1_BASE	SRAM_INBOX_BASE
 #define HP_SRAM_WIN1_SIZE	SRAM_INBOX_SIZE
 #define HP_SRAM_WIN2_BASE	SRAM_DEBUG_BASE
-#define HP_SRAM_WIN2_SIZE	SRAM_DEBUG_SIZE
+#define HP_SRAM_WIN2_SIZE	(SRAM_DEBUG_SIZE + SRAM_STREAM_SIZE)
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
-
-/* DMA buffer heap is the HP physical memory on Broxton */
-#define HEAP_DMA_BUFFER_BASE		HP_SRAM_BASE
-#define HEAP_DMA_BUFFER_SIZE		HEAP_HP_BUFFER_SIZE
-#define HEAP_DMA_BUFFER_BLOCK_SIZE	HEAP_HP_BUFFER_BLOCK_SIZE
-#define HEAP_DMA_BUFFER_COUNT		HEAP_HP_BUFFER_COUNT
 
 /* HP SRAM Heap */
 #define HEAP_HP_BUFFER_BASE	HP_SRAM_BASE
@@ -274,6 +273,7 @@
 		(HP_SRAM_SIZE - \
 		SRAM_TRACE_SIZE - \
 		SRAM_DEBUG_SIZE - \
+		SRAM_STREAM_SIZE - \
 		SRAM_INBOX_SIZE - \
 		SRAM_OUTBOX_SIZE - \
 		SRAM_SW_REG_SIZE)
@@ -283,7 +283,7 @@
 	(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
 /*
- * The LP SRAM Heap and Stack on Apololake are organised like this :-
+ * The LP SRAM Heap and Stack on Apollolake are organised like this :-
  *
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
@@ -341,6 +341,8 @@
 #define HEAP_LP_BUFFER_COUNT \
 	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
 
+#define PLATFORM_HEAP_RUNTIME		1
+#define PLATFORM_HEAP_BUFFER		3
 
 /* Stack configuration */
 #define REEF_LP_STACK_SIZE		0x1000

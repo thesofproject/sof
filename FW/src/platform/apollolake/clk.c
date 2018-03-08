@@ -76,7 +76,7 @@ static const struct freq_table cpu_freq[] = {
  */
 static const struct freq_table ssp_freq[] = {
 	{19200000, 19,},	/* default */
-	{24000000, 24,},
+	{24576000, 24,},
 };
 
 #define CPU_DEFAULT_IDX		2
@@ -197,7 +197,7 @@ uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 
 void init_platform_clocks(void)
 {
-	clk_pdata = rmalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*clk_pdata));
+	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
 
 	spinlock_init(&clk_pdata->clk[0].lock);
 	spinlock_init(&clk_pdata->clk[1].lock);

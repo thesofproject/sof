@@ -249,7 +249,7 @@
 /* data for each DMA channel */
 struct dma_chan_data {
 	uint32_t status;
-	uint32_t direction;
+	enum dma_copy_dir direction;
 	struct dw_lli2 *lli;
 	struct dw_lli2 *lli_current;
 	uint32_t desc_count;
@@ -552,7 +552,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		/* allocate descriptors for channel */
 		if (p->chan[channel].lli)
 			rfree(p->chan[channel].lli);
-		p->chan[channel].lli = rzalloc(RZONE_RUNTIME, RFLAGS_NONE,
+		p->chan[channel].lli = rzalloc(RZONE_RUNTIME,
+			SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
 		if (p->chan[channel].lli == NULL) {
 			trace_dma_error("eD1");
@@ -997,7 +998,7 @@ static int dw_dma_probe(struct dma *dma)
 	int i;
 
 	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*dw_pdata));
+	dw_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(&dma->lock);
@@ -1010,7 +1011,7 @@ static int dw_dma_probe(struct dma *dma)
 		dw_pdata->chan[i].channel = i;
 		dw_pdata->chan[i].status = COMP_STATE_INIT;
 
-		dma_int[i] = rzalloc(RZONE_SYS, RFLAGS_NONE,
+		dma_int[i] = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 				     sizeof(struct dma_int));
 
 		dma_int[i]->dma = dma;
@@ -1047,14 +1048,7 @@ static void dw_dma_irq_handler(void *data)
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr) {
-#ifdef CONFIG_CANNONLAKE
-		dma++;
-		status_intr = dw_read(dma, DW_INTR_STATUS);
-		if (!status_intr)
-			trace_dma_error("eI0");
-#else
 		trace_dma_error("eI0");
-#endif
 	}
 
 	p = dma_get_drvdata(dma);
@@ -1104,11 +1098,12 @@ static void dw_dma_irq_handler(void *data)
 			next.size = DMA_RELOAD_LLI;
 			p->chan[i].cb(p->chan[i].cb_data,
 					DMA_IRQ_TYPE_BLOCK, &next);
-			if (next.size == DMA_RELOAD_END) {
-				trace_dma("LSo");
-				/* disable channel, finished */
-				dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
-			}
+		}
+
+		if (next.size == DMA_RELOAD_END) {
+			trace_dma("LSo");
+			/* disable channel, finished */
+			dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
 		}
 #endif
 		/* end of a transfer */
@@ -1148,30 +1143,22 @@ static void dw_dma_irq_handler(void *data)
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
-	struct dma *dmac = dma;
 	int i;
-#ifdef CONFIG_CANNONLAKE
-	int j;
 
-	for (j = 0; j < MAX_GPDMA_COUNT; j++)
-#endif
-	{
-		/* allocate private data */
-		dw_pdata = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*dw_pdata));
-		dma_set_drvdata(dmac, dw_pdata);
+	/* allocate private data */
+	dw_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+		sizeof(*dw_pdata));
+	dma_set_drvdata(dma, dw_pdata);
 
-		spinlock_init(&dmac->lock);
+	spinlock_init(&dma->lock);
 
-		dw_dma_setup(dmac);
+	dw_dma_setup(dma);
 
-		/* init work */
-		for (i = 0; i < DW_MAX_CHAN; i++) {
-			dw_pdata->chan[i].dma = dmac;
-			dw_pdata->chan[i].channel = i;
-			dw_pdata->chan[i].status = COMP_STATE_INIT;
-		}
-
-		dmac++;
+	/* init work */
+	for (i = 0; i < DW_MAX_CHAN; i++) {
+		dw_pdata->chan[i].dma = dma;
+		dw_pdata->chan[i].channel = i;
+		dw_pdata->chan[i].status = COMP_STATE_INIT;
 	}
 
 	/* register our IRQ handler */

@@ -60,13 +60,13 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	}
 
 	/* allocate new buffer */
-	buffer = rzalloc(RZONE_RUNTIME, RFLAGS_NONE, sizeof(*buffer));
+	buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*buffer));
 	if (buffer == NULL) {
 		trace_buffer_error("ebN");
 		return NULL;
 	}
 
-	buffer->addr = rballoc(RZONE_RUNTIME, RFLAGS_NONE, desc->size);
+	buffer->addr = rballoc(RZONE_RUNTIME, desc->caps, desc->size);
 	if (buffer->addr == NULL) {
 		rfree(buffer);
 		trace_buffer_error("ebm");

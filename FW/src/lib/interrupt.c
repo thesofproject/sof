@@ -56,7 +56,8 @@ int irq_register_child(struct irq_parent *parent, int irq,
 
 	/* init child */
 	parent->child[REEF_IRQ_BIT(irq)] =
-		rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(struct irq_child));
+		rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+			sizeof(struct irq_child));
 	parent->child[REEF_IRQ_BIT(irq)]->enabled = 0;
 	parent->child[REEF_IRQ_BIT(irq)]->handler = handler;
 	parent->child[REEF_IRQ_BIT(irq)]->handler_arg = arg;

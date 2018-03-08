@@ -146,6 +146,8 @@
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_DEBUG_BASE     | Debug data  W2 |  SRAM_DEBUG_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
+ * | SRAM_STREAM_BASE    | Stream data W2 |  SRAM_STREAM_SIZE                 |
+ * +---------------------+----------------+-----------------------------------+
  * | SRAM_TRACE_BASE     | Trace Buffer W3|  SRAM_TRACE_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
  * | HP_SRAM_BASE        | DMA            |  HEAP_HP_BUFFER_SIZE              |
@@ -206,8 +208,11 @@
 #define SRAM_DEBUG_BASE		(SRAM_INBOX_BASE + SRAM_INBOX_SIZE)
 #define SRAM_DEBUG_SIZE		0x1000
 
+#define SRAM_STREAM_BASE	(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_STREAM_SIZE	0x1000
+
 /* window 3 */
-#define SRAM_TRACE_BASE		(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_TRACE_BASE		(SRAM_STREAM_BASE + SRAM_STREAM_SIZE)
 #define SRAM_TRACE_SIZE		0x2000
 
 #define HP_SRAM_WIN0_BASE	SRAM_SW_REG_BASE
@@ -215,15 +220,15 @@
 #define HP_SRAM_WIN1_BASE	SRAM_INBOX_BASE
 #define HP_SRAM_WIN1_SIZE	SRAM_INBOX_SIZE
 #define HP_SRAM_WIN2_BASE	SRAM_DEBUG_BASE
-#define HP_SRAM_WIN2_SIZE	SRAM_DEBUG_SIZE
+#define HP_SRAM_WIN2_SIZE	(SRAM_DEBUG_SIZE + SRAM_STREAM_SIZE)
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
-#define HEAP_DMA_BUFFER_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
-#define HEAP_DMA_BUFFER_SIZE		0x20000
-#define HEAP_DMA_BUFFER_BLOCK_SIZE	0x180
-#define HEAP_DMA_BUFFER_COUNT \
-				(HEAP_DMA_BUFFER_SIZE / HEAP_DMA_BUFFER_BLOCK_SIZE)
+#define HEAP_HP_BUFFER_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
+#define HEAP_HP_BUFFER_SIZE		0x20000
+#define HEAP_HP_BUFFER_BLOCK_SIZE	0x180
+#define HEAP_HP_BUFFER_COUNT \
+			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
 #define REEF_TEXT_BASE		(REEF_TEXT_START + REEF_TEXT_START_SIZE)
 #define REEF_TEXT_SIZE		0x18000
@@ -314,6 +319,8 @@
 #define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_LP_BUFFER_COUNT	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
 
+#define PLATFORM_HEAP_RUNTIME		1
+#define PLATFORM_HEAP_BUFFER		3
 
 /* Stack configuration */
 #define REEF_LP_STACK_SIZE			0x1000
@@ -335,7 +342,7 @@
 
 #define REEF_MEM_RO_SIZE			0x8
 
-/* boot loadee in IMR */
+/* boot loader in IMR */
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB0038000
 #define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x40
 #define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + IMR_BOOT_LDR_TEXT_ENTRY_SIZE)

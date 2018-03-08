@@ -144,6 +144,17 @@
 #define SOF_IPC_PANIC_IDLE			(SOF_IPC_PANIC_MAGIC | 9)
 
 /*
+ * SOF memory capabilities, add new ones at the end
+ */
+#define SOF_MEM_CAPS_RAM			(1 << 0)
+#define SOF_MEM_CAPS_ROM			(1 << 1)
+#define SOF_MEM_CAPS_EXT			(1 << 2) /* external */
+#define SOF_MEM_CAPS_LP				(1 << 3) /* low power */
+#define SOF_MEM_CAPS_HP				(1 << 4) /* high performance */
+#define SOF_MEM_CAPS_DMA			(1 << 5) /* DMA'able */
+#define SOF_MEM_CAPS_CACHE			(1 << 6) /* cacheable */
+
+/*
  * Command Header - Header for all IPC. Identifies IPC message.
  * The size can be greater than the structure size and that means there is
  * extended bespoke data beyond the end of the structure including variable
@@ -561,6 +572,7 @@ struct sof_ipc_comp {
 struct sof_ipc_buffer {
 	struct sof_ipc_comp comp;
 	uint32_t size;		/* buffer size in bytes */
+	uint32_t caps;		/* SOF_MEM_CAPS_ */
 } __attribute__((packed));
 
 

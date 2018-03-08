@@ -189,7 +189,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 void sys_comp_init(void)
 {
-	cd = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(*cd));
+	cd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	list_init(&cd->list);
 	spinlock_init(&cd->lock);
 }

@@ -109,7 +109,7 @@ static uint32_t elf_to_file_offset(struct image *image,
 		} else {
 			/* rodata segment, append to text segment */
 			file_offset = elf_addr - module->data_start +
-				module->foffset + module->text_file_size;
+				module->foffset + module->text_fixup_size;
 
 		}
 	} else if (section->sh_type == SHT_NOBITS) {
@@ -233,6 +233,9 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	man_module->type.domain_ll = sof_mod.type.domain_ll;
 	man_module->type.load_type = sof_mod.type.load_type;
 
+	/* read out text_fixup_size from memory mapping */
+	module->text_fixup_size = sof_mod.text_size;
+
 	/* text segment */
 	segment = &man_module->segment[SOF_MAN_SEGMENT_TEXT];
 	segment->flags.r.contents = 1;
@@ -258,6 +261,62 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	fprintf(stdout, " Entry point 0x%8.8x\n", man_module->entry_point);
 
 	return 0;
+}
+
+static inline const char *segment_name(int i)
+{
+        switch (i) {
+        case SOF_MAN_SEGMENT_TEXT:
+                return "TEXT";
+        case SOF_MAN_SEGMENT_RODATA:
+                return "DATA";
+        case SOF_MAN_SEGMENT_BSS:
+                return "BSS";
+        default:
+                return "NONE";
+        }
+}
+
+/* make sure no segments collide */
+static int man_module_validate(struct sof_man_module *man_module)
+{
+        uint32_t istart, iend;
+        uint32_t jstart, jend;
+        int i, j;
+
+        for (i = 0; i < 3; i++) {
+
+                istart = man_module->segment[i].v_base_addr;
+                iend = istart + man_module->segment[i].flags.r.length *
+                        MAN_PAGE_SIZE;
+
+                for (j = 0; j < 3; j++) {
+
+                        /* don't validate segment against itself */
+                        if (i == j)
+                                continue;
+
+                        jstart = man_module->segment[j].v_base_addr;
+                        jend = jstart + man_module->segment[j].flags.r.length *
+                                MAN_PAGE_SIZE;
+
+                        if (jstart > istart && jstart < iend)
+                                goto err;
+
+                        if (jend > istart && jend < iend)
+                                goto err;
+                }
+        }
+
+        /* success, no overlapping segments */
+        return 0;
+
+err:
+        fprintf(stderr, "error: segment %s [0x%8.8x:0x%8.8x] overlaps",
+                segment_name(i), istart, iend);
+        fprintf(stderr, " with %s [0x%8.8x:0x%8.8x]\n",
+                segment_name(j), jstart, jend);
+        return -EINVAL;
 }
 
 static int man_module_create(struct image *image, struct module *module,
@@ -300,10 +359,19 @@ static int man_module_create(struct image *image, struct module *module,
 	man_module->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr =
 		module->text_start;
 
-	/* calculates those padding 0s by the start of next segment */
-	pages = module->text_file_size / MAN_PAGE_SIZE;
-	if (module->text_file_size % MAN_PAGE_SIZE)
-		pages += 1;
+	 /* calculates those padding 0s by the start of next segment */
+	 pages = module->text_file_size / MAN_PAGE_SIZE;
+	 if (module->text_file_size % MAN_PAGE_SIZE)
+		 pages += 1;
+
+        if (module->text_fixup_size == 0)
+                module->text_fixup_size = module->text_file_size;
+
+        /* check if text_file_size is bigger then text_fixup_size */
+        if (module->text_file_size > module->text_fixup_size) {
+                fprintf(stderr, "error: too small text size assigned!\n");
+                return -EINVAL;
+        }
 
 	man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length = pages;
 
@@ -311,7 +379,7 @@ static int man_module_create(struct image *image, struct module *module,
 	man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr =
 		module->data_start;
 	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
-			module->foffset + module->text_file_size;
+			module->foffset + module->text_fixup_size;
 	pages = module->data_file_size / MAN_PAGE_SIZE;
 	if (module->data_file_size % MAN_PAGE_SIZE)
 		pages += 1;
@@ -327,6 +395,10 @@ static int man_module_create(struct image *image, struct module *module,
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = pages;
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\tFile\tType\n");
+
+        /* validate segments */
+        if (man_module_validate(man_module) < 0)
+                return -EINVAL;
 
 	/* find all sections and copy to corresponding segments */
 	for (i = 0; i < module->hdr.e_shnum; i++) {
@@ -567,7 +639,6 @@ const struct adsp machine_apl = {
 	.machine_id = MACHINE_APOLLOLAKE,
 	.write_firmware = man_write_fw,
 	.man = &apl_manifest,
-	.base_fw_text_size_fixup = 0xa000,
 };
 
 const struct adsp machine_cnl = {

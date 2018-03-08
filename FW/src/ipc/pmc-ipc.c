@@ -168,7 +168,8 @@ int platform_ipc_pmc_init(void)
 	uint32_t imrlpesc;
 
 	/* init ipc data */
-	_pmc = rmalloc(RZONE_SYS, RFLAGS_NONE, sizeof(struct intel_ipc_pmc_data));
+	_pmc = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+		sizeof(struct intel_ipc_pmc_data));
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_PMC, irq_handler, NULL);

@@ -103,6 +103,15 @@ struct reef;
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
 
+/* platform has DMA memory type */
+#define PLATFORM_MEM_HAS_DMA
+
+/* platform has low power memory type */
+#define PLATFORM_MEM_HAS_LP_RAM
+
+/* number of SSP ports in platform */
+#define PLATFORM_NUM_SSP	6
+
 /* Platform defined panic code */
 #define platform_panic(__x) \
 	sw_reg_write(SRAM_REG_FW_STATUS, (0xdead000 | __x) & 0x3fffffff)

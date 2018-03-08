@@ -46,6 +46,7 @@ struct sof_man_module apl_manifest = {
 			.domain_ll = 1,
 	},
 	.affinity_mask = 3,
+	.text_size = REEF_TEXT_SIZE + L2_VECTOR_SIZE,
 };
 
 /* not used, but stops linker complaining */

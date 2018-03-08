@@ -182,7 +182,8 @@ int platform_ipc_init(struct ipc *ipc)
 	_ipc = ipc;
 
 	/* init ipc data */
-	iipc = rzalloc(RZONE_SYS, RFLAGS_NONE, sizeof(struct intel_ipc_data));
+	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+		sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 	_ipc->dsp_msg = NULL;
 	list_init(&ipc->empty_list);
@@ -192,7 +193,7 @@ int platform_ipc_init(struct ipc *ipc)
 		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
 	/* allocate page table buffer */
-	iipc->page_table = rballoc(RZONE_SYS, RFLAGS_NONE,
+	iipc->page_table = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 			HOST_PAGE_SIZE);
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);

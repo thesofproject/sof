@@ -103,6 +103,9 @@ struct ipc {
 	/* DMA for Trace*/
 	struct dma_trace_data *dmat;
 
+	/* mmap for posn_offset */
+	struct pipeline *posn_map[PLATFORM_MAX_STREAMS];
+
 	void *private;
 };
 
@@ -169,4 +172,6 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config);
 /* send DMA trace host buffer position to host */
 int ipc_dma_trace_send_position(void);
 
+/* get posn offset by pipeline. */
+int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe);
 #endif

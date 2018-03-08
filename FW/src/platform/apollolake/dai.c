@@ -41,7 +41,7 @@
 #include <string.h>
 #include <config.h>
 
-static struct dai ssp[6] = {
+static struct dai ssp[PLATFORM_NUM_SSP] = {
 {
 	.type = SOF_DAI_INTEL_SSP,
 	.index = 0,

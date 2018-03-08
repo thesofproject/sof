@@ -158,24 +158,13 @@ out:
  * page table entry and adding each elem to a list in struct dma_sg_config.
  */
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
-	struct sof_ipc_host_buffer *ring, void *data, uint32_t is_trace)
+       struct sof_ipc_host_buffer *ring, struct list_item *elem_list,
+       uint32_t direction)
 {
-	struct comp_dev* cd = NULL;
-	struct sof_ipc_comp_host *host = NULL;
-	struct dma_trace_data *d = NULL;
-	struct dma_sg_elem elem;
 	int i;
-	int err;
 	uint32_t idx;
 	uint32_t phy_addr;
-
-	elem.size = HOST_PAGE_SIZE;
-	if (is_trace)
-		d = (struct dma_trace_data *)data;
-	else {
-		cd = (struct comp_dev *)data;
-		host = (struct sof_ipc_comp_host *)&cd->comp;
-	}
+	struct dma_sg_elem *e;
 
 	/* the ring size may be not multiple of the page size, the last
 	 * page may be not full used. The used size should be in range
@@ -200,23 +189,23 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
 
-		if (!is_trace && host->direction == SOF_IPC_STREAM_PLAYBACK)
-			elem.src = phy_addr;
+		/* allocate new host DMA elem and add it to our list */
+		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
+		if (!e)
+			return -ENOMEM;
+
+		if (direction == SOF_IPC_STREAM_PLAYBACK)
+			e->src = phy_addr;
 		else
-			elem.dest = phy_addr;
+			e->dest = phy_addr;
 
 		/* the last page may be not full used */
 		if (i == (ring->pages - 1))
-			elem.size = ring->size - HOST_PAGE_SIZE * i;
-
-		if (is_trace)
-			err = dma_trace_host_buffer(d, &elem, ring->size);
+			e->size = ring->size - HOST_PAGE_SIZE * i;
 		else
-			err = comp_host_buffer(cd, &elem, ring->size);
-		if (err < 0) {
-			trace_ipc_error("ePb");
-			return err;
-		}
+			e->size = HOST_PAGE_SIZE;
+
+		list_item_append(&e->list, elem_list);
 	}
 
 	return 0;
@@ -232,12 +221,17 @@ static int ipc_stream_pcm_params(uint32_t stream)
 {
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+        struct sof_ipc_comp_host *host = NULL;
+        struct list_item elem_list;
+        struct dma_sg_elem *elem;
+        struct list_item *plist;
+        uint32_t ring_size;
 #endif
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
-	int err;
+	int err, posn_offset;
 
 	trace_ipc("SAl");
 
@@ -269,11 +263,28 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 
 	/* Parse host tables */
+	host = (struct sof_ipc_comp_host *)&cd->comp;
+	ring_size = pcm_params->params.buffer.size;
+	list_init(&elem_list);
+
 	err = parse_page_descriptors(iipc, &pcm_params->params.buffer,
-		pcm_dev->cd, 0);
+		&elem_list, host->direction);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
+	}
+
+	list_for_item(plist, &elem_list) {
+                elem = container_of(plist, struct dma_sg_elem, list);
+
+                err = comp_host_buffer(cd, elem, ring_size);
+                if (err < 0) {
+                        trace_ipc_error("ePb");
+                        goto error;
+                }
+
+                list_item_del(&elem->list);
+                rfree(elem);
 	}
 #endif
 
@@ -291,17 +302,28 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		goto error;
 	}
 
-
+	posn_offset = ipc_get_posn_offset(_ipc, pcm_dev->cd->pipeline);
+	if (posn_offset < 0) {
+		trace_ipc_error("eAo");
+		goto error;
+	}
 	/* write component values to the outbox */
 	reply.rhdr.hdr.size = sizeof(reply);
 	reply.rhdr.hdr.cmd = stream;
 	reply.rhdr.error = 0;
 	reply.comp_id = pcm_params->comp_id;
-	reply.posn_offset = 0; /* TODO: set this up for mmaped components */
+	reply.posn_offset = posn_offset;
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
 	return 1;
 
 error:
+#ifdef CONFIG_HOST_PTABLE
+        list_for_item(plist, &elem_list) {
+                elem = container_of(plist, struct dma_sg_elem, list);
+                list_item_del(&elem->list);
+                rfree(elem);
+        }
+#endif
 	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0)
 		trace_ipc_error("eA!");
@@ -353,15 +375,18 @@ static int ipc_stream_position(uint32_t header)
 	}
 
 	/* set message fields - TODO; get others */
-	posn.rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
+	posn.rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
+			    stream->comp_id;
 	posn.rhdr.hdr.size = sizeof(posn);
 	posn.comp_id = stream->comp_id;
 
 	/* get the stream positions and timestamps */
 	pipeline_get_timestamp(pcm_dev->cd->pipeline, pcm_dev->cd, &posn);
 
-	/* copy positions to outbox */
-	mailbox_hostbox_write(0, &posn, sizeof(posn));
+	/* copy positions to stream region */
+	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
+			     &posn, sizeof(posn));
+
 	return 1;
 }
 
@@ -369,24 +394,38 @@ static int ipc_stream_position(uint32_t header)
 int ipc_stream_send_position(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION;
+	struct sof_ipc_hdr hdr;
+
+	tracev_ipc("Pos");
+	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
+			      cdev->comp.id;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-		sizeof(*posn), NULL, 0, NULL, NULL, 1);
+	hdr.cmd = posn->rhdr.hdr.cmd;
+	hdr.size = sizeof(hdr);
+
+	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
+				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
 }
 
 /* send stream position TODO: send compound message  */
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
+	struct sof_ipc_hdr hdr;
+
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_XRUN;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
-		sizeof(*posn), NULL, 0, NULL, NULL, 1);
+	hdr.cmd = posn->rhdr.hdr.cmd;
+	hdr.size = sizeof(hdr);
+
+	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
+				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
 }
 
 static int ipc_stream_trigger(uint32_t header)
@@ -602,6 +641,10 @@ static int ipc_dma_trace_config(uint32_t header)
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
+	struct list_item elem_list;
+	struct dma_sg_elem *elem;
+	struct list_item *plist;
+	uint32_t ring_size;
 #endif
 	struct sof_ipc_reply reply;
 	int err;
@@ -618,11 +661,27 @@ static int ipc_dma_trace_config(uint32_t header)
 	trace_ipc("DAg");
 
 	/* Parse host tables */
+	ring_size = params->buffer.size;
+	list_init(&elem_list);
+
 	err = parse_page_descriptors(iipc, &params->buffer,
-		&_ipc->dmat, 1);
+		&elem_list, SOF_IPC_STREAM_CAPTURE);
 	if (err < 0) {
 		trace_ipc_error("ePP");
 		goto error;
+	}
+
+	list_for_item(plist, &elem_list) {
+		elem = container_of(plist, struct dma_sg_elem, list);
+
+		err = dma_trace_host_buffer(_ipc->dmat, elem, ring_size);
+		if (err < 0) {
+			trace_ipc_error("ePb");
+			goto error;
+		}
+
+		list_item_del(&elem->list);
+		rfree(elem);
 	}
 #endif
 	trace_ipc("DAp");
@@ -639,6 +698,13 @@ static int ipc_dma_trace_config(uint32_t header)
 	return 0;
 
 error:
+#ifdef CONFIG_HOST_PTABLE
+	list_for_item(plist, &elem_list) {
+		elem = container_of(plist, struct dma_sg_elem, list);
+		list_item_del(&elem->list);
+		rfree(elem);
+	}
+#endif
 	if (err < 0)
 		trace_ipc_error("eA!");
 	return -EINVAL;

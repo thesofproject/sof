@@ -69,6 +69,9 @@ struct pipeline {
 	struct task pipe_task;		/* pipeline processing task */
 	struct comp_dev *sched_comp;	/* component that drives scheduling in this pipe */
 	struct comp_dev *source_comp;	/* source component for this pipe */
+
+	/* position update */
+	uint32_t posn_offset;		/* position update array offset*/
 };
 
 /* static pipeline */

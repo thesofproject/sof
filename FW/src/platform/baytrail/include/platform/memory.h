@@ -129,11 +129,8 @@
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-/* DMA buffer heap is the same physical memory as buffer heap on baytrail */
-#define HEAP_DMA_BUFFER_BASE		0
-#define HEAP_DMA_BUFFER_SIZE		0
-#define HEAP_DMA_BUFFER_BLOCK_SIZE	0
-#define HEAP_DMA_BUFFER_COUNT		0
+#define PLATFORM_HEAP_RUNTIME		1
+#define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */
 #define REEF_STACK_SIZE				0x1000
