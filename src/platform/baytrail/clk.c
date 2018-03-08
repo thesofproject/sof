@@ -214,6 +214,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_POST,
 			&notify_data);
+		break;
 
 	default:
 		break;
