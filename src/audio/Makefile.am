@@ -1006,7 +1006,9 @@ libaudio_a_SOURCES = \
 	fir.c \
 	tone.c \
 	src.c \
-	src_core.c \
+	src_generic.c \
+	src_hifi2ep.c \
+	src_hifi3.c \
 	mixer.c \
 	mux.c \
 	volume.c \

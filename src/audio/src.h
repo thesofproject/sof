@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef SRC_CORE_H
-#define SRC_CORE_H
+#ifndef SRC_H
+#define SRC_H
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -68,12 +68,12 @@ struct src_stage {
 };
 
 struct src_state {
-	int fir_delay_size;
-	int out_delay_size;
-	int fir_wi;
-	int out_ri;
+	int fir_delay_size;	/* samples */
+	int out_delay_size;	/* samples */
 	int32_t *fir_delay;
 	int32_t *out_delay;
+	int32_t *fir_wp;
+	int32_t *out_rp;
 };
 
 struct polyphase_src {
@@ -91,6 +91,7 @@ struct src_stage_prm {
 	int32_t *x_end_addr;
 	size_t x_size;
 	int32_t *y_wptr;
+	int32_t *y_addr;
 	int32_t *y_end_addr;
 	size_t y_size;
 	struct src_state *state;
@@ -100,13 +101,13 @@ struct src_stage_prm {
 static inline void src_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
 {
 	if (*ptr >= end)
-		*ptr = (int32_t *) ((size_t) * ptr - size);
+		*ptr = (int32_t *)((size_t)*ptr - size);
 }
 
 static inline void src_circ_dec_wrap(int32_t **ptr, int32_t *addr, size_t size)
 {
 	if (*ptr < addr)
-		*ptr = (int32_t *) ((size_t) * ptr + size);
+		*ptr = (int32_t *)((size_t)*ptr + size);
 }
 
 void src_polyphase_reset(struct polyphase_src *src);
