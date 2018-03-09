@@ -953,6 +953,7 @@ static void dw_dma_irq_handler(void *data)
 				trace_dma("LSo");
 				/* disable channel, finished */
 				dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
+				p->chan[i].status = COMP_STATE_PREPARE;
 			}
 		}
 #endif
