@@ -160,10 +160,13 @@ extern const struct dai_ops ssp_ops;
 #define SSPSP_SFRMDLY(x)	((x) << 9)
 #define SSPSP_SFRMWDTH(x)	((x) << 16)
 #define SSPSP_DMYSTOP(x)	((x) << 23)
+#define SSPSP_DMYSTOP_BITS	2
+#define SSPSP_DMYSTOP_MASK	((0x1 << SSPSP_DMYSTOP_BITS) - 1)
 #define SSPSP_FSRT		(1 << 25)
 
 #if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
 #define SSPSP_EDMYSTOP(x)	((x) << 26)
+#define SSPSP_EDMYSTOP_MASK	0x7
 #define SSTSS		0x38
 #define SSCR2		0x40
 #define SSPSP2	0x44

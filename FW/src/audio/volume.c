@@ -525,7 +525,8 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 		return -EINVAL;
 	}
 
-	if (cdata->cmd == SOF_CTRL_CMD_VOLUME || SOF_CTRL_CMD_SWITCH) {
+	if (cdata->cmd == SOF_CTRL_CMD_VOLUME ||
+	    cdata->cmd == SOF_CTRL_CMD_SWITCH) {
 		trace_volume("vgt");
 		trace_value(cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {

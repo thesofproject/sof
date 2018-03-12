@@ -34,14 +34,57 @@
 
 #include <config.h>
 
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL || defined CONFIG_BROADWELL || defined CONFIG_HASWELL
-#define SRC_SHORT 1
-#include <reef/audio/coefficients/src/src_tiny_int16_define.h>
-#include <reef/audio/coefficients/src/src_tiny_int16_table.h>
+/* If next defines are set to 1 the SRC is configured automatically. Setting
+ * to zero temporarily is useful is for testing needs.
+ * Setting SRC_AUTODSP to 0 allows to manually set the code variant.
+ * Setting SRC_AUTOCOEF to 0 allows to select the coefficient type.
+ */
+#define SRC_AUTOARCH    1
+#define SRC_AUTOCOEF    1
+
+/* Force manually some code variant when SRC_AUTODSP is set to zero. These
+ * are useful in code debugging.
+ */
+#if SRC_AUTOARCH == 0
+#define SRC_GENERIC	1
+#define SRC_HIFIEP	0
+#define SRC_HIFI3	0
+#endif
+#if SRC_AUTOCOEF == 0
+#define SRC_SHORT	0
+#endif
+
+/* Select 16 bit coefficients for specific platforms.
+ * Otherwise 32 bits is the default.
+ */
+#if SRC_AUTOCOEF == 1
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
+	|| defined CONFIG_BROADWELL || defined CONFIG_HASWELL
+#define SRC_SHORT	1     /* Use int16_t filter coefficients */
 #else
-#define SHORT_SHORT 0
-#include <reef/audio/coefficients/src/src_std_int24_define.h>
-#include <reef/audio/coefficients/src/src_std_int24_table.h>
+#define SRC_SHORT	0     /* Use int32_t filter coefficients */
+#endif
+#endif
+
+/* Select optimized code variant when xt-xcc compiler is used */
+#if SRC_AUTOARCH == 1
+#if defined __XCC__
+#include <xtensa/config/core-isa.h>
+#define SRC_GENERIC	0
+#if XCHAL_HAVE_HIFI2EP == 1
+#define SRC_HIFIEP	1
+#define SRC_HIFI3	0
+#endif
+#if XCHAL_HAVE_HIFI3 == 1
+#define SRC_HIFI3	1
+#define SRC_HIFIEP	0
+#endif
+#else
+/* GCC */
+#define SRC_GENERIC	1
+#define SRC_HIFIEP	0
+#define SRC_HIFI3	0
+#endif
 #endif
 
 #endif

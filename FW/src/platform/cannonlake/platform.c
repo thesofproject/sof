@@ -130,8 +130,8 @@ static struct work_queue_timesource platform_generic_queue = {
 		.id = TIMER3, /* external timer */
 		.irq = IRQ_EXT_TSTAMP0_LVL2(0),
 	},
-	.clk		= CLK_CPU,
-	.notifier	= NOTIFIER_ID_CPU_FREQ,
+	.clk		= CLK_SSP,
+	.notifier	= NOTIFIER_ID_SSP_FREQ,
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,

@@ -134,7 +134,7 @@ static struct dma dma[] = {
 	.plat_data = {
 		.id		= DMA_HOST_IN_DMAC,
 		.base		= GTW_HOST_IN_STREAM_BASE(0),
-		.channels	= 9,
+		.channels	= 7,
 		.irq = IRQ_EXT_HOST_DMA_IN_LVL3(0, 0),
 	},
 	.ops		= &hda_host_dma_ops,
@@ -143,7 +143,7 @@ static struct dma dma[] = {
 	.plat_data = {
 		.id		= DMA_HOST_OUT_DMAC,
 		.base		= GTW_HOST_OUT_STREAM_BASE(0),
-		.channels	= 7,
+		.channels	= 9,
 		.irq = IRQ_EXT_HOST_DMA_OUT_LVL3(0, 0),
 	},
 	.ops		= &hda_host_dma_ops,

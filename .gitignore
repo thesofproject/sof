@@ -17,6 +17,7 @@
 .build
 *.dis
 *.lst
+*.in
 
 Makefile
 Makefile.in
@@ -30,13 +31,19 @@ ar-lib
 stamp-h1
 CHANGELOG
 ltmain.sh
-m4/*
+FW/m4/*
 libtool
-src/include/version.h
+FW/src/include/version.h
+FW/
 
 autom4te*
 config.*
 *.gz
 *.xz
-src/arch/xtensa/reef
+FW/src/arch/xtensa/reef
 reef-v*
+
+*.tplg
+Tools/topology/*.conf
+Tools/topology/test/*.conf
+Tools/rmbox/rmbox

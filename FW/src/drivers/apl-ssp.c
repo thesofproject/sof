@@ -93,7 +93,9 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t i2s_n;
 	uint32_t data_size;
 	uint32_t start_delay;
+	uint32_t dummy_stop;
 	uint32_t frame_len = 0;
+	uint32_t bdiv_min;
 	bool inverted_frame = false;
 	int ret = 0;
 
@@ -194,6 +196,7 @@ static inline int ssp_set_config(struct dai *dai,
 	case SOF_DAI_FMT_NB_NF:
 		break;
 	case SOF_DAI_FMT_NB_IF:
+		inverted_frame = true; /* handled later with format */
 		break;
 	case SOF_DAI_FMT_IB_IF:
 		sspsp |= SSPSP_SCMODE(2);
@@ -201,7 +204,6 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_IB_NF:
 		sspsp |= SSPSP_SCMODE(2);
-		inverted_frame = true; /* handled later with format */
 		break;
 	default:
 		trace_ssp_error("ec3");
@@ -265,8 +267,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* must be enouch BCLKs for data */
 	bdiv = config->bclk / config->fclk;
-	if (bdiv < config->sample_container_bits *
-			((config->rx_slot_mask + 1) / 2)) {
+	if (bdiv < config->sample_container_bits * config->num_slots) {
 		trace_ssp_error("ec8");
 		ret = -EINVAL;
 		goto out;
@@ -283,16 +284,27 @@ static inline int ssp_set_config(struct dai *dai,
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 
-		start_delay = config->sample_container_bits >
-			config->sample_valid_bits ? 1 : 0;
+		start_delay = 1;
 
 		sscr0 |= SSCR0_FRDC(config->num_slots);
 
-		/* set asserted frame length */
-		frame_len = config->sample_container_bits;
+		if (bdiv % 2) {
+			trace_ssp_error("eca");
+			ret = -EINVAL;
+			goto out;
+		}
 
-		/* handle frame polarity, I2S default is falling/active low */
-		sspsp |= SSPSP_SFRMP(!inverted_frame);
+		/* set asserted frame length to half frame length */
+		frame_len = bdiv / 2;
+
+		/*
+		 * handle frame polarity, I2S default is falling/active low,
+		 * non-inverted(inverted_frame=0) -- active low(SFRMP=0),
+		 * inverted(inverted_frame=1) -- rising/active high(SFRMP=1),
+		 * so, we should set SFRMP to inverted_frame.
+		 */
+		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sspsp |= SSPSP_FSRT;
 
 		break;
 
@@ -305,25 +317,41 @@ static inline int ssp_set_config(struct dai *dai,
 		/* LJDFD enable */
 		sscr2 &= ~SSCR2_LJDFD;
 
-		/* set asserted frame length */
-		frame_len = config->sample_container_bits;
+		if (bdiv % 2) {
+			trace_ssp_error("ecb");
+			ret = -EINVAL;
+			goto out;
+		}
 
-		/* LEFT_J default is rising/active high, opposite of I2S */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		/* set asserted frame length to half frame length */
+		frame_len = bdiv / 2;
+
+		/*
+		 * handle frame polarity, LEFT_J default is rising/active high,
+		 * non-inverted(inverted_frame=0) -- active high(SFRMP=1),
+		 * inverted(inverted_frame=1) -- falling/active low(SFRMP=0),
+		 * so, we should set SFRMP to !inverted_frame.
+		 */
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
 
 		break;
 	case SOF_DAI_FMT_DSP_A:
 
-		start_delay = config->sample_container_bits >
-			config->sample_valid_bits ? 1 : 0;
+		start_delay = 1;
 
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
 
 		/* set asserted frame length */
-		frame_len = config->sample_container_bits;
+		frame_len = 1;
 
-		/* handle frame polarity, DSP_A default is rising/active high */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		/*
+		 * handle frame polarity, DSP_A default is rising/active high,
+		 * non-inverted(inverted_frame=0) -- active high(SFRMP=1),
+		 * inverted(inverted_frame=1) -- falling/active low(SFRMP=0),
+		 * so, we should set SFRMP to !inverted_frame.
+		 */
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
+		sspsp |= SSPSP_FSRT;
 
 		break;
 	case SOF_DAI_FMT_DSP_B:
@@ -335,9 +363,13 @@ static inline int ssp_set_config(struct dai *dai,
 		/* set asserted frame length */
 		frame_len = 1;
 
-		/* handle frame polarity, DSP_A default is rising/active high */
+		/*
+		 * handle frame polarity, DSP_B default is rising/active high,
+		 * non-inverted(inverted_frame=0) -- active high(SFRMP=1),
+		 * inverted(inverted_frame=1) -- falling/active low(SFRMP=0),
+		 * so, we should set SFRMP to !inverted_frame.
+		 */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
-		sspsp |= SSPSP_FSRT;
 
 		break;
 	default:
@@ -346,8 +378,24 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	sspsp |= SSPSP_DMYSTRT(start_delay);
+	sspsp |= SSPSP_STRTDLY(start_delay);
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
+
+	/*
+	 * [dummy_start][valid_bits_slot[0...n-1]][dummy_stop],
+	 * but don't count dummy_start for dummy_stop calculation.
+	 */
+	bdiv_min = config->num_slots * config->sample_valid_bits;
+	if (bdiv < bdiv_min) {
+		trace_ssp_error("ecc");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	dummy_stop = bdiv - bdiv_min;
+	sspsp |= SSPSP_DMYSTOP(SSPSP_DMYSTOP_MASK & dummy_stop);
+	sspsp |= SSPSP_EDMYSTOP(SSPSP_EDMYSTOP_MASK &
+				(dummy_stop >> SSPSP_DMYSTOP_BITS));
 
 	data_size = config->sample_valid_bits;
 
@@ -362,7 +410,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 #ifdef CONFIG_CANNONLAKE
 	/* Overwrite everything */
-	sscr0 = 0x83d00437;
+	/*sscr0 = 0x83d00437;
 	sscr1 = 0xc0700000;
 	ssto = 0x0;
 	sspsp = 0x02010004;
@@ -373,7 +421,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr3 = 0x7070f00;
 	ssioc = 0x20;
 	mdivc = 0x1;
-	mdivr = 0xfff;
+	mdivr = 0xfff;*/
 #endif
 
 	trace_ssp("coe");

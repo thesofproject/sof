@@ -779,7 +779,7 @@ static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel)
 	struct dw_lli2 *lli = p->chan[channel].lli_current;
 
 	/* only need to reload if this is a block transfer */
-	if (lli == 0 || (lli && lli->llp == 0)) {
+	if (!lli || lli->llp == 0) {
 		p->chan[channel].status = COMP_STATE_PREPARE;
 		return;
 	}
