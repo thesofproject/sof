@@ -117,8 +117,8 @@ static const struct sof_ipc_window sram_window = {
 
 static struct work_queue_timesource platform_generic_queue = {
 	.timer	 = {
-		.id = TIMER2,	/* external timer using SSP */
-		.irq = IRQ_NUM_TIMER3,
+		.id = TIMER1,	/* internal timer */
+		.irq = IRQ_NUM_TIMER2,
 	},
 	.clk		= CLK_CPU,
 	.notifier	= NOTIFIER_ID_CPU_FREQ,
