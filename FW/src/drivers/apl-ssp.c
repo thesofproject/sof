@@ -93,7 +93,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t i2s_n;
 	uint32_t data_size;
 	uint32_t start_delay;
-	uint32_t dummy_stop;
+	uint32_t frame_end_padding;
 	uint32_t frame_len = 0;
 	uint32_t bdiv_min;
 	bool inverted_frame = false;
@@ -265,7 +265,7 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	/* must be enouch BCLKs for data */
+	/* must be enough BCLKs for data */
 	bdiv = config->bclk / config->fclk;
 	if (bdiv < config->sample_container_bits * config->num_slots) {
 		trace_ssp_error("ec8");
@@ -337,7 +337,7 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_DSP_A:
 
-		start_delay = 1;
+		start_delay = 0;
 
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
 
@@ -381,10 +381,6 @@ static inline int ssp_set_config(struct dai *dai,
 	sspsp |= SSPSP_STRTDLY(start_delay);
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
-	/*
-	 * [dummy_start][valid_bits_slot[0...n-1]][dummy_stop],
-	 * but don't count dummy_start for dummy_stop calculation.
-	 */
 	bdiv_min = config->num_slots * config->sample_valid_bits;
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ecc");
@@ -392,10 +388,14 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	dummy_stop = bdiv - bdiv_min;
-	sspsp |= SSPSP_DMYSTOP(SSPSP_DMYSTOP_MASK & dummy_stop);
-	sspsp |= SSPSP_EDMYSTOP(SSPSP_EDMYSTOP_MASK &
-				(dummy_stop >> SSPSP_DMYSTOP_BITS));
+	frame_end_padding = bdiv - bdiv_min;
+	if (frame_end_padding > SSPSP2_FEP_MASK) {
+		trace_ssp_error("ecd");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
 	data_size = config->sample_valid_bits;
 
@@ -404,25 +404,13 @@ static inline int ssp_set_config(struct dai *dai,
 	else
 		sscr0 |= SSCR0_DSIZE(data_size);
 
+#ifdef CONFIG_CANNONLAKE
+	mdivc = 0x1;
+#else
 	mdivc = 0x00100001;
+#endif
 	/* bypass divider for MCLK */
 	mdivr = 0x00000fff;
-
-#ifdef CONFIG_CANNONLAKE
-	/* Overwrite everything */
-	/*sscr0 = 0x83d00437;
-	sscr1 = 0xc0700000;
-	ssto = 0x0;
-	sspsp = 0x02010004;
-	sstsa = 0x3;
-	ssrsa = 0x3;
-	sscr2 = 0x4002;
-	sspsp2 = 0x4;
-	sscr3 = 0x7070f00;
-	ssioc = 0x20;
-	mdivc = 0x1;
-	mdivr = 0xfff;*/
-#endif
 
 	trace_ssp("coe");
 	ssp_write(dai, SSCR0, sscr0);
