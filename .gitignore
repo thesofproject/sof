@@ -34,13 +34,16 @@ ltmain.sh
 FW/m4/*
 libtool
 FW/src/include/version.h
-FW/
+FW/src/arch/xtensa/boot_ldr*
+FW/src/arch/xtensa/reef*
+.deps/
+boot_module
+module
 
 autom4te*
 config.*
 *.gz
 *.xz
-FW/src/arch/xtensa/reef
 reef-v*
 
 *.tplg
