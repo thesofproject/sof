@@ -335,7 +335,7 @@ static uint64_t vol_work(void *data, uint64_t delay)
 			vol -= VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (vol <= cd->tvolume[i] || vol >= VOL_MAX)
+			if (vol <= cd->tvolume[i] || vol <= VOL_MIN)
 				vol_update(cd, i);
 			else {
 				cd->volume[i] = vol;
