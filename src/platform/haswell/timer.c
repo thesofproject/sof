@@ -37,24 +37,27 @@
 
 void platform_timer_start(struct timer *timer)
 {
+	arch_timer_enable(timer);
 }
 
 void platform_timer_stop(struct timer *timer)
 {
+	arch_timer_disable(timer);
 }
 
 int platform_timer_set(struct timer *timer, uint64_t ticks)
 {
-	return 0;
+	return arch_timer_set(timer, ticks);
 }
 
 void platform_timer_clear(struct timer *timer)
 {
+	arch_timer_clear(timer);
 }
 
 uint64_t platform_timer_get(struct timer *timer)
 {
-	return 0;
+	return arch_timer_get_system(timer);
 }
 
 /* get timestamp for host stream DMA position */
