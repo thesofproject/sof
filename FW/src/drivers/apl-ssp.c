@@ -120,7 +120,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr0 = SSCR0_PSP | SSCR0_RIM | SSCR0_TIM;
 
 	/* sscr1 dynamic settings are SFRMDIR, SCLKDIR, SCFR */
-	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_RWOT | SSCR1_TRAIL;
+	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_TRAIL;
 
 	/* sscr2 dynamic setting is LJDFD */
 	sscr2 = SSCR2_SDFD | SSCR2_TURM1;
