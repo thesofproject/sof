@@ -598,7 +598,7 @@ static int tone_copy(struct comp_dev * dev)
 	struct comp_buffer *sink;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_comp("cpy");
+	tracev_comp("cpy");
 
 	/* tone component sink buffer */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
