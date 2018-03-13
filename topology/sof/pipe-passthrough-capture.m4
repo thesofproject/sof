@@ -27,7 +27,7 @@ W_BUFFER(0, COMP_BUFFER_SIZE(2,
 #
 # DAI definitions
 #
-W_DAI_IN(DAI_TYPE, DAI_INDEX, DAI_FORMAT, 0, 2, 2, dai0c_plat_conf)
+W_DAI_IN(DAI_TYPE, DAI_INDEX, DAI_BE, DAI_FORMAT, 0, 2, 2, dai0c_plat_conf)
 
 #
 # DAI pipeline - always use 0 for DAIs
