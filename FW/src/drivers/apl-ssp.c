@@ -120,13 +120,13 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr0 = SSCR0_PSP | SSCR0_RIM | SSCR0_TIM;
 
 	/* sscr1 dynamic settings are SFRMDIR, SCLKDIR, SCFR */
-	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_TRAIL;
+	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_TRAIL | SSCR1_RSRE | SSCR1_TSRE;
 
 	/* sscr2 dynamic setting is LJDFD */
 	sscr2 = SSCR2_SDFD | SSCR2_TURM1;
 
 	/* sscr3 dynamic settings are TFT, RFT */
-	sscr3 = 0;
+	sscr3 = SSCR3_TX(8) | SSCR3_RX(8);
 
 	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
 	sspsp = 0;
@@ -169,8 +169,6 @@ static inline int ssp_set_config(struct dai *dai,
 		 */
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
-		sscr1 |= SSCR1_SCFR;
-		ssioc |= SSIOC_SFCR;
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
 		sscr0 |= SSCR0_ECS; /* external clock used */
