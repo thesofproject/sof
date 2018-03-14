@@ -640,12 +640,12 @@ static int ipc_dma_trace_config(uint32_t header)
 {
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
-	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
 	struct list_item elem_list;
 	struct dma_sg_elem *elem;
 	struct list_item *plist;
 	uint32_t ring_size;
 #endif
+	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
 	struct sof_ipc_reply reply;
 	int err;
 
@@ -683,6 +683,12 @@ static int ipc_dma_trace_config(uint32_t header)
 		list_item_del(&elem->list);
 		rfree(elem);
 	}
+#else
+	/* stream tag of capture stream for DMA trace */
+	_ipc->dmat->stream_tag = params->stream_tag;
+
+	/* host buffer size for DMA trace */
+	_ipc->dmat->host_size = params->buffer.size;
 #endif
 	trace_ipc("DAp");
 
