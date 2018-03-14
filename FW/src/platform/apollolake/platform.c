@@ -263,5 +263,8 @@ int platform_init(struct reef *reef)
 		dai_probe(ssp);
 	}
 
+	/* Initialize DMA for Trace */
+	dma_trace_init_complete(reef->dmat);
+
 	return 0;
 }

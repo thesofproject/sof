@@ -845,7 +845,7 @@ static int host_copy(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
 
-	trace_host("cpy");
+	tracev_host("cpy");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;

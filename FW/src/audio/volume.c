@@ -307,7 +307,7 @@ static uint64_t vol_work(void *data, uint64_t delay)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol;
 	int again = 0;
-	int i;
+	int i, new_vol;
 
 	/* inc/dec each volume if it's not at target */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
@@ -332,14 +332,19 @@ static uint64_t vol_work(void *data, uint64_t delay)
 			}
 		} else {
 			/* ramp down */
-			vol -= VOL_RAMP_STEP;
-
-			/* ramp completed ? */
-			if (vol <= cd->tvolume[i] || vol <= VOL_MIN)
+			new_vol = vol - VOL_RAMP_STEP;
+			if (new_vol <= 0) {
+				/* cannot ramp down below 0 */
 				vol_update(cd, i);
-			else {
-				cd->volume[i] = vol;
-				again = 1;
+			} else {
+				/* ramp completed ? */
+				if (new_vol <= cd->tvolume[i] ||
+						new_vol <= VOL_MIN) {
+					vol_update(cd, i);
+				} else {
+					cd->volume[i] = new_vol;
+					again = i;
+				}
 			}
 		}
 

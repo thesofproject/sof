@@ -42,23 +42,23 @@
 #define IRQ_NUM_SOFTWARE0	0	/* level 1 */
 #define IRQ_NUM_TIMER1		1	/* level 1 */
 #define IRQ_NUM_EXT_LEVEL1	2	/* level 1 */
-#define IRQ_NUM_SOFTWARE2	3	/* level 1 */
-#define IRQ_NUM_SOFTWARE3	4	/* level 2 */
+#define IRQ_NUM_SOFTWARE1	3	/* level 1 */
+#define IRQ_NUM_SOFTWARE2	4	/* level 2 */
 #define IRQ_NUM_TIMER2		5	/* level 2 */
 #define IRQ_NUM_EXT_LEVEL2	6	/* level 2 */
-#define IRQ_NUM_SOFTWARE4	7	/* level 2 */
-#define IRQ_NUM_SOFTWARE5	8	/* level 3 */
+#define IRQ_NUM_SOFTWARE3	7	/* level 2 */
+#define IRQ_NUM_SOFTWARE4	8	/* level 3 */
 #define IRQ_NUM_TIMER3		9	/* level 3 */
 #define IRQ_NUM_EXT_LEVEL3	10	/* level 3 */
-#define IRQ_NUM_SOFTWARE6	11	/* level 3 */
-#define IRQ_NUM_SOFTWARE7	12	/* level 4 */
+#define IRQ_NUM_SOFTWARE5	11	/* level 3 */
+#define IRQ_NUM_SOFTWARE6	12	/* level 4 */
 #define IRQ_NUM_EXT_LEVEL4	13	/* level 4 */
-#define IRQ_NUM_SOFTWARE8	14	/* level 4 */
-#define IRQ_NUM_SOFTWARE9	15	/* level 5 */
+#define IRQ_NUM_SOFTWARE7	14	/* level 4 */
+#define IRQ_NUM_SOFTWARE8	15	/* level 5 */
 #define IRQ_NUM_EXT_LEVEL5	16	/* level 5 */
 #define IRQ_NUM_EXT_LEVEL6	17	/* level 5 */
 #define IRQ_NUM_EXT_LEVEL7	18	/* level 5 */
-#define IRQ_NUM_SOFTWARE10	19	/* level 5 */
+#define IRQ_NUM_SOFTWARE9	19	/* level 5 */
 #define IRQ_NUM_NMI		20	/* level 7 */
 
 /* IRQ Level 2 bits */

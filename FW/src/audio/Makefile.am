@@ -31,7 +31,7 @@ SOF_SRC = \
 
 SRC_SRC = \
 	src.c \
-	src_core.c
+	src_generic.c
 
 EQ_FIR_SRC = \
 	eq_fir.c \

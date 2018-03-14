@@ -953,6 +953,7 @@ static void dw_dma_irq_handler(void *data)
 				trace_dma("LSo");
 				/* disable channel, finished */
 				dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
+				p->chan[i].status = COMP_STATE_PREPARE;
 			}
 		}
 #endif
@@ -1141,18 +1142,20 @@ static void dw_dma_irq_handler(void *data)
 }
 
 #if defined CONFIG_CANNONLAKE
+/*All the dma share the same interrupt on CNL, so check each dma*/
+/*controller when interrupt coming, then do the work            */
 static void dw_dma_irq_cnl(void *data)
 {
 	struct dma *dma;
 	uint32_t status_intr;
 
-	/* check interrupt status of DMA controller 0 */
+	/*check interrupt status of DMA controller 0*/
 	dma = dma_get(DMA_GP_LP_DMAC0);
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (status_intr)
 		dw_dma_irq_handler(dma);
 
-	/* check interrupt status of DMA controller 1 */
+	/*check interrupt status of DMA controller 1*/
 	dma = dma_get(DMA_GP_LP_DMAC1);
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (status_intr)

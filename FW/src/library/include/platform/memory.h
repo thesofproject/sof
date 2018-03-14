@@ -38,6 +38,8 @@
 #endif
 
 #define HEAP_BUFFER_SIZE	(1024 * 128)
+#define PLATFORM_HEAP_RUNTIME		1
+#define PLATFORM_HEAP_BUFFER		3
 
 #if 0
 /* physical DSP addresses */

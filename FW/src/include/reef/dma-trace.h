@@ -63,6 +63,7 @@ struct dma_trace_data {
 	struct work dmat_work;
 	uint32_t enabled;
 	uint32_t copy_in_progress;
+	uint32_t stream_tag;
 	spinlock_t lock;
 };
 

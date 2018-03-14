@@ -44,8 +44,6 @@
 #define TIMER2		IRQ_NUM_TIMER3
 #define TIMER3		IRQ_NUM_EXT_TIMER
 
-#define TIMER_AUDIO	TIMER3
-
 struct comp_dev;
 struct sof_ipc_stream_posn;
 
