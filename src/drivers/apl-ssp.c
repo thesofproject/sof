@@ -43,6 +43,19 @@
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
 #define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
 
+/* FIXME: move this to a helper and optimize */
+static int hweight_32(uint32_t mask)
+{
+	int i;
+	int count = 0;
+
+	for (i = 0; i < 32; i++) {
+		count += mask & 1;
+		mask >>= 1;
+	}
+	return count;
+}
+
 /* save SSP context prior to entering D3 */
 static int ssp_context_store(struct dai *dai)
 {
@@ -96,6 +109,11 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t dummy_stop;
 	uint32_t frame_len = 0;
 	uint32_t bdiv_min;
+	uint32_t tft;
+	uint32_t rft;
+	uint32_t active_tx_slots = 2;
+	uint32_t active_rx_slots = 2;
+
 	bool inverted_frame = false;
 	int ret = 0;
 
@@ -353,6 +371,9 @@ static inline int ssp_set_config(struct dai *dai,
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		sspsp |= SSPSP_FSRT;
 
+		active_tx_slots = hweight_32(config->tx_slot_mask);
+		active_rx_slots = hweight_32(config->rx_slot_mask);
+
 		break;
 	case SOF_DAI_FMT_DSP_B:
 
@@ -370,6 +391,9 @@ static inline int ssp_set_config(struct dai *dai,
 		 * so, we should set SFRMP to !inverted_frame.
 		 */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
+
+		active_tx_slots = hweight_32(config->tx_slot_mask);
+		active_rx_slots = hweight_32(config->rx_slot_mask);
 
 		break;
 	default:
@@ -407,6 +431,27 @@ static inline int ssp_set_config(struct dai *dai,
 	mdivc = 0x00100001;
 	/* bypass divider for MCLK */
 	mdivr = 0x00000fff;
+
+	/* setting TFT and RFT */
+	switch (config->sample_valid_bits) {
+	case 16:
+		/* use 2 bytes for each slot */
+		tft = active_tx_slots * 2;
+		rft = active_rx_slots * 2;
+		break;
+	case 24:
+	case 32:
+		/* use 4 bytes for each slot */
+		tft = active_tx_slots * 4;
+		rft = active_rx_slots * 4;
+		break;
+	default:
+		trace_ssp_error("ecd");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	sscr3 |= SSCR3_TX(tft) | SSCR3_RX(rft);
 
 	trace_ssp("coe");
 	ssp_write(dai, SSCR0, sscr0);
