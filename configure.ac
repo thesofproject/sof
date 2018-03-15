@@ -241,16 +241,6 @@ case "$with_dsp_core" in
 
 esac
 
-# dma trace support (Optional), dma trace by default
-AC_ARG_ENABLE([dma-trace],
-        AS_HELP_STRING([--disable-dma-trace], [Disabled dma trace and use fallback mailbox trace]))
-
-AS_IF([test "x$enable_dma_trace" != "xno"], [
-	AC_DEFINE([CONFIG_DMA_TRACE], [1], [Configure DMA trace])
-	])
-
-AM_CONDITIONAL(BUILD_DMA_TRACE,  test "x$enable_dma_trace" != "xno")
-
 PLATFORM_BOOT_LDR_LDSCRIPT="boot_ldr.x"
 AC_SUBST(PLATFORM_BOOT_LDR_LDSCRIPT)
 
