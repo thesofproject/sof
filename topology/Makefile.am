@@ -26,7 +26,7 @@ MACHINES = \
 	reef-byt-rt5640.tplg \
 	reef-byt-rt5645.tplg \
 	reef-byt-rt5651.tplg \
-	reef-byt-da7212.tplg \
+	reef-byt-da7213.tplg \
 	reef-cnl-rt274.tplg \
 	reef-hsw-rt5640.tplg
 
@@ -56,6 +56,6 @@ EXTRA_DIST = \
 	reef-byt-rt5640.m4 \
 	reef-byt-rt5645.m4 \
 	reef-byt-rt5651.m4 \
-	reef-byt-da7212.m4 \
+	reef-byt-da7213.m4 \
 	reef-cnl-rt274.m4 \
 	reef-hsw-rt5640.m4

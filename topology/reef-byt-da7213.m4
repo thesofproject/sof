@@ -1,5 +1,5 @@
 #
-# Topology for generic Baytrail board with no codec.
+# Topology for generic Baytrail board with DA7213 codec.
 #
 
 # Include topology builder
