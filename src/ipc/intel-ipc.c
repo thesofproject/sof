@@ -631,7 +631,6 @@ static int ipc_glb_pm_message(uint32_t header)
 	}
 }
 
-#if defined(CONFIG_DMA_TRACE)
 /*
  * Debug IPC Operations.
  */
@@ -747,7 +746,6 @@ static int ipc_glb_debug_message(uint32_t header)
 		return -EINVAL;
 	}
 }
-#endif
 
 /*
  * Topology IPC Operations.
@@ -963,10 +961,8 @@ int ipc_cmd(void)
 		return ipc_glb_stream_message(hdr->cmd);
 	case iGS(SOF_IPC_GLB_DAI_MSG):
 		return ipc_glb_dai_message(hdr->cmd);
-#if defined(CONFIG_DMA_TRACE)
 	case iGS(SOF_IPC_GLB_TRACE_MSG):
 		return ipc_glb_debug_message(hdr->cmd);
-#endif
 	default:
 		trace_ipc_error("eGc");
 		trace_value(type);

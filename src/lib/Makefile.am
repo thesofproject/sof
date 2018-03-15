@@ -8,12 +8,8 @@ libcore_a_SOURCES = \
 	trace.c \
 	schedule.c \
 	agent.c \
-	interrupt.c
-
-if BUILD_DMA_TRACE
-libcore_a_SOURCES += \
+	interrupt.c \
 	dma-trace.c
-endif
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
