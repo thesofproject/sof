@@ -1,5 +1,5 @@
 #
-# Topology for generic Baytrail board with no codec.
+# Topology for generic Baytrail board with RT5640.
 #
 
 # Include topology builder
@@ -76,7 +76,7 @@ SectionGraph."pipe-byt-rt5640" {
 # playback DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 2, SSP-Codec
+	1, SSP, 2, SSP-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
 
@@ -93,7 +93,7 @@ PCM_DUPLEX_ADD(Low Latency, 6, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 #
 # BE configurations - overrides config in ACPI if present
 #
-DAI_CONFIG(SSP, 2, Baytrail Audio, I2S, 24,
+DAI_CONFIG(SSP, 2, SSP2-Codec, I2S, 24,
 	DAI_CLOCK(mclk, 19200000, slave),
 	DAI_CLOCK(bclk, 2400000, slave),
 	DAI_CLOCK(fsync, 48000, slave),
