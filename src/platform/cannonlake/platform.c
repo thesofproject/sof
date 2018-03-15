@@ -144,9 +144,6 @@ int platform_boot_complete(uint32_t boot_message)
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
 		sram_window.ext_hdr.hdr.size);
 
-	/* boot now complete so we can relax the CPU */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
-
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | SOF_IPC_FW_READY);
