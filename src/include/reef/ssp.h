@@ -167,9 +167,10 @@ extern const struct dai_ops ssp_ops;
 #if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
 #define SSPSP_EDMYSTOP(x)	((x) << 26)
 #define SSPSP_EDMYSTOP_MASK	0x7
+#define SSPSP2_FEP_MASK		0xff
 #define SSTSS		0x38
 #define SSCR2		0x40
-#define SSPSP2	0x44
+#define SSPSP2		0x44
 #define SSCR3		0x48
 #define SSIOC		0x4C
 
