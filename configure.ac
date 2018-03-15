@@ -9,7 +9,7 @@ AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability subdir-objects silent-rule
 AM_MAINTAINER_MODE([enable])
 
 # get version info from git
-m4_define(reef_major, `cat .version | cut -dv -f2 | cut -d. -f1`)
+m4_define(reef_major, `cat .version | cut -d0 -f2 | cut -d. -f1`)
 m4_define(reef_minor, `cat .version | cut -d. -f2 | cut -d- -f1`)
 m4_define(reef_micro, `cat .version | cut -d. -f3 | cut -d- -f1`)
 AC_DEFINE_UNQUOTED([REEF_MAJOR], reef_major, [Reef major version])
