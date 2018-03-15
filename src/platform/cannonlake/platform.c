@@ -284,7 +284,7 @@ int platform_init(struct reef *reef)
 	}
 
 	/* Initialize DMA for Trace*/
-	dma_trace_init_complete(reef->dmat);
+	//dma_trace_init_complete(reef->dmat);
 
 	return 0;
 }
