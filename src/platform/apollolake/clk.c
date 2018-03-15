@@ -72,7 +72,6 @@ static const struct freq_table cpu_freq[] = {
 
 /*
  * XTAL clock, used as Wall Clock(external timer),
- * 19.2M for Atom and 24M for core
  */
 static const struct freq_table ssp_freq[] = {
 	{19200000, 19,},	/* default */

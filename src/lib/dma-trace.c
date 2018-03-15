@@ -214,7 +214,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 	int i;
 
 	err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
-	if (err > 0)
+	if (err < 0)
 		return err;
 
 	/* size of every trace record */
@@ -233,17 +233,17 @@ static int dma_trace_start(struct dma_trace_data *d)
 	list_init(&config.elem_list);
 
 	/* generate local elem list for local trace buffer */
-	e = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*e), elem_num);
+	e = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*e) * elem_num);
 	if (!e)
 		return -ENOMEM;
 
 	for (i = 0; i < elem_num; i++) {
-			e[i].dest = 0;
-			e[i].src = elem_addr;
-			e[i].size = elem_size; /* the minimum size of DMA copy */
+		e[i].dest = 0;
+		e[i].src = elem_addr;
+		e[i].size = elem_size; /* the minimum size of DMA copy */
 
-			list_item_append(&e[i].list, &config.elem_list);
-			elem_addr += elem_size;
+		list_item_append(&e[i].list, &config.elem_list);
+		elem_addr += elem_size;
 	}
 
 	err = dma_set_config(d->dc.dmac, d->dc.chan, &config);

@@ -339,11 +339,11 @@ static uint64_t vol_work(void *data, uint64_t delay)
 			} else {
 				/* ramp completed ? */
 				if (new_vol <= cd->tvolume[i] ||
-						new_vol <= VOL_MIN) {
+					new_vol <= VOL_MIN) {
 					vol_update(cd, i);
 				} else {
 					cd->volume[i] = new_vol;
-					again = i;
+					again = 1;
 				}
 			}
 		}
@@ -531,7 +531,7 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 	}
 
 	if (cdata->cmd == SOF_CTRL_CMD_VOLUME ||
-	    cdata->cmd == SOF_CTRL_CMD_SWITCH) {
+	    cdata->cmd ==  SOF_CTRL_CMD_SWITCH) {
 		trace_volume("vgt");
 		trace_value(cdata->comp_id);
 		for (j = 0; j < cdata->num_elems; j++) {

@@ -345,9 +345,9 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* set DGCS.SCS bit to 1 for 16bit(2B) container */
 	if ((config->direction == DMA_DIR_HMEM_TO_LMEM &&
-	    config->dest_width <= 2) ||
+	     config->dest_width <= 2) ||
 	    (config->direction == DMA_DIR_LMEM_TO_HMEM &&
-	    config->src_width <= 2))
+	     config->src_width <= 2))
 		dgcs |= DGCS_SCS;
 
 	/* init channel in HW */

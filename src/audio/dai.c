@@ -95,8 +95,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 		/* inform waiters */
 		wait_completed(&dd->complete);
-
-		return;
 	}
 
 	/* is our pipeline handling an XRUN ? */
@@ -580,8 +578,6 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 			trace_dai_error("ed0");
 			trace_value(cmd);
 		}
-
-		dma_stop(dd->dma, dd->chan);
 		break;
 	default:
 		break;

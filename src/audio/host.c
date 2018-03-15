@@ -465,6 +465,9 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
+	case COMP_CMD_PAUSE:
+		dma_stop(hd->dma, hd->chan);
+		break;
 	case COMP_CMD_STOP:
 		ret = host_stop(dev);
 		break;

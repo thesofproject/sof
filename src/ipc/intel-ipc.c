@@ -158,8 +158,8 @@ out:
  * page table entry and adding each elem to a list in struct dma_sg_config.
  */
 static int parse_page_descriptors(struct intel_ipc_data *iipc,
-       struct sof_ipc_host_buffer *ring, struct list_item *elem_list,
-       uint32_t direction)
+	struct sof_ipc_host_buffer *ring, struct list_item *elem_list,
+	uint32_t direction)
 {
 	int i;
 	uint32_t idx;
@@ -178,7 +178,6 @@ static int parse_page_descriptors(struct intel_ipc_data *iipc,
 	}
 
 	for (i = 0; i < ring->pages; i++) {
-
 		idx = (((i << 2) + i)) >> 1;
 		phy_addr = iipc->page_table[idx] | (iipc->page_table[idx + 1] << 8)
 				| (iipc->page_table[idx + 2] << 16);
@@ -221,11 +220,11 @@ static int ipc_stream_pcm_params(uint32_t stream)
 {
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
-        struct sof_ipc_comp_host *host = NULL;
-        struct list_item elem_list;
-        struct dma_sg_elem *elem;
-        struct list_item *plist;
-        uint32_t ring_size;
+	struct sof_ipc_comp_host *host = NULL;
+	struct list_item elem_list;
+	struct dma_sg_elem *elem;
+	struct list_item *plist;
+	uint32_t ring_size;
 #endif
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
 	struct sof_ipc_pcm_params_reply reply;
@@ -275,16 +274,16 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 
 	list_for_item(plist, &elem_list) {
-                elem = container_of(plist, struct dma_sg_elem, list);
+		elem = container_of(plist, struct dma_sg_elem, list);
 
-                err = comp_host_buffer(cd, elem, ring_size);
-                if (err < 0) {
-                        trace_ipc_error("ePb");
-                        goto error;
-                }
+		err = comp_host_buffer(cd, elem, ring_size);
+		if (err < 0) {
+			trace_ipc_error("ePb");
+			goto error;
+		}
 
-                list_item_del(&elem->list);
-                rfree(elem);
+		list_item_del(&elem->list);
+		rfree(elem);
 	}
 #endif
 
@@ -318,12 +317,13 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 error:
 #ifdef CONFIG_HOST_PTABLE
-        list_for_item(plist, &elem_list) {
-                elem = container_of(plist, struct dma_sg_elem, list);
-                list_item_del(&elem->list);
-                rfree(elem);
-        }
+	list_for_item(plist, &elem_list) {
+		elem = container_of(plist, struct dma_sg_elem, list);
+		list_item_del(&elem->list);
+		rfree(elem);
+	}
 #endif
+
 	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0)
 		trace_ipc_error("eA!");
@@ -711,6 +711,7 @@ error:
 		rfree(elem);
 	}
 #endif
+
 	if (err < 0)
 		trace_ipc_error("eA!");
 	return -EINVAL;

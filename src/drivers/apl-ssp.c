@@ -93,7 +93,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t i2s_n;
 	uint32_t data_size;
 	uint32_t start_delay;
-	uint32_t frame_end_padding;
+	uint32_t dummy_stop;
 	uint32_t frame_len = 0;
 	uint32_t bdiv_min;
 	bool inverted_frame = false;
@@ -120,13 +120,13 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr0 = SSCR0_PSP | SSCR0_RIM | SSCR0_TIM;
 
 	/* sscr1 dynamic settings are SFRMDIR, SCLKDIR, SCFR */
-	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_TRAIL | SSCR1_RSRE | SSCR1_TSRE;
+	sscr1 = SSCR1_TTE | SSCR1_TTELP | SSCR1_RWOT | SSCR1_TRAIL;
 
 	/* sscr2 dynamic setting is LJDFD */
 	sscr2 = SSCR2_SDFD | SSCR2_TURM1;
 
 	/* sscr3 dynamic settings are TFT, RFT */
-	sscr3 = SSCR3_TX(8) | SSCR3_RX(8);
+	sscr3 = 0;
 
 	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
 	sspsp = 0;
@@ -169,6 +169,8 @@ static inline int ssp_set_config(struct dai *dai,
 		 */
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
+		sscr1 |= SSCR1_SCFR;
+		ssioc |= SSIOC_SFCR;
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
 		sscr0 |= SSCR0_ECS; /* external clock used */
@@ -263,7 +265,7 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	/* must be enough BCLKs for data */
+	/* must be enouch BCLKs for data */
 	bdiv = config->bclk / config->fclk;
 	if (bdiv < config->sample_container_bits * config->num_slots) {
 		trace_ssp_error("ec8");
@@ -335,7 +337,7 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_DSP_A:
 
-		start_delay = 0;
+		start_delay = 1;
 
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->num_slots);
 
@@ -379,6 +381,10 @@ static inline int ssp_set_config(struct dai *dai,
 	sspsp |= SSPSP_STRTDLY(start_delay);
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
+	/*
+	 * [dummy_start][valid_bits_slot[0...n-1]][dummy_stop],
+	 * but don't count dummy_start for dummy_stop calculation.
+	 */
 	bdiv_min = config->num_slots * config->sample_valid_bits;
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ecc");
@@ -386,14 +392,10 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	frame_end_padding = bdiv - bdiv_min;
-	if (frame_end_padding > SSPSP2_FEP_MASK) {
-		trace_ssp_error("ecd");
-		ret = -EINVAL;
-		goto out;
-	}
-
-	sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
+	dummy_stop = bdiv - bdiv_min;
+	sspsp |= SSPSP_DMYSTOP(SSPSP_DMYSTOP_MASK & dummy_stop);
+	sspsp |= SSPSP_EDMYSTOP(SSPSP_EDMYSTOP_MASK &
+				(dummy_stop >> SSPSP_DMYSTOP_BITS));
 
 	data_size = config->sample_valid_bits;
 
@@ -402,11 +404,7 @@ static inline int ssp_set_config(struct dai *dai,
 	else
 		sscr0 |= SSCR0_DSIZE(data_size);
 
-#ifdef CONFIG_CANNONLAKE
-	mdivc = 0x1;
-#else
 	mdivc = 0x00100001;
-#endif
 	/* bypass divider for MCLK */
 	mdivr = 0x00000fff;
 

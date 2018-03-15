@@ -120,7 +120,6 @@ static const struct sof_ipc_window sram_window = {
 		.size	= MAILBOX_TRACE_SIZE,
 		.offset	= 0,
 	},
-
 };
 
 static struct work_queue_timesource platform_generic_queue = {
@@ -263,7 +262,7 @@ int platform_init(struct reef *reef)
 		dai_probe(ssp);
 	}
 
-	/* Initialize DMA for Trace */
+	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(reef->dmat);
 
 	return 0;

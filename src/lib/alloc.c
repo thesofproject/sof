@@ -69,6 +69,7 @@ extern struct mm memmap;
  *    module removal or calls to rfree(). Saved as part of PM context.
  */
 
+
 /* total size of block */
 static inline uint32_t block_get_size(struct block_map *map)
 {
@@ -509,8 +510,8 @@ uint32_t mm_pm_context_size(void)
 	}
 
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		memmap.total.free += memmap.runtime[i].info.free;
-		memmap.total.used += memmap.runtime[i].info.used;
+		memmap.total.free = memmap.runtime[i].info.free;
+		memmap.total.used = memmap.runtime[i].info.used;
 	}
 
 	return size;

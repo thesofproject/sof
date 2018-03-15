@@ -70,7 +70,7 @@ static const struct sof_ipc_fw_ready ready = {
 	/* TODO: add capabilities */
 };
 
-#define NUM_BYT_WINDOWS			5
+#define NUM_BYT_WINDOWS		5
 static const struct sof_ipc_window sram_window = {
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,

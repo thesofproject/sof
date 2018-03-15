@@ -75,8 +75,8 @@ struct mm memmap = {
 		.heap = HEAP_SYSTEM_BASE,
 		.size = HEAP_SYSTEM_SIZE,
 		.info = {.free = HEAP_SYSTEM_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
+		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE |
+			SOF_MEM_CAPS_HP | SOF_MEM_CAPS_DMA,
 	},
 	.runtime[0] = {
 		.blocks = ARRAY_SIZE(rt_heap_map),
@@ -84,8 +84,8 @@ struct mm memmap = {
 		.heap = HEAP_RUNTIME_BASE,
 		.size = HEAP_RUNTIME_SIZE,
 		.info = {.free = HEAP_RUNTIME_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
+		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE |
+			SOF_MEM_CAPS_HP | SOF_MEM_CAPS_DMA,
 	},
 	.buffer[0] = {
 		.blocks = ARRAY_SIZE(buf_heap_map),
@@ -93,8 +93,8 @@ struct mm memmap = {
 		.heap = HEAP_BUFFER_BASE,
 		.size = HEAP_BUFFER_SIZE,
 		.info = {.free = HEAP_BUFFER_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
+		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_CACHE |
+			SOF_MEM_CAPS_HP | SOF_MEM_CAPS_DMA,
 	},
 	.buffer[1] = {
 		.blocks = ARRAY_SIZE(hp_buf_heap_map),

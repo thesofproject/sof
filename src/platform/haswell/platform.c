@@ -69,7 +69,7 @@ static const struct sof_ipc_fw_ready ready = {
 	/* TODO: add capabilities */
 };
 
-#define NUM_HSW_WINDOWS			5
+#define NUM_HSW_WINDOWS		5
 static const struct sof_ipc_window sram_window = {
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,
@@ -77,7 +77,7 @@ static const struct sof_ipc_window sram_window = {
 			sizeof(struct sof_ipc_window_elem) * NUM_HSW_WINDOWS,
 		.type	= SOF_IPC_EXT_WINDOW,
 	},
-	.num_windows	= NUM_BYT_WINDOWS,
+	.num_windows	= NUM_HSW_WINDOWS,
 	.window[0]	= {
 		.type	= SOF_IPC_REGION_UPBOX,
 		.id	= 0,	/* map to host window 0 */
@@ -117,8 +117,8 @@ static const struct sof_ipc_window sram_window = {
 
 static struct work_queue_timesource platform_generic_queue = {
 	.timer	 = {
-		.id = TIMER2,	/* external timer using SSP */
-		.irq = IRQ_NUM_TIMER3,
+		.id = TIMER1,	/* internal timer */
+		.irq = IRQ_NUM_TIMER2,
 	},
 	.clk		= CLK_CPU,
 	.notifier	= NOTIFIER_ID_CPU_FREQ,
@@ -134,6 +134,8 @@ int platform_boot_complete(uint32_t boot_message)
 	uint32_t outbox = MAILBOX_HOST_OFFSET >> 3;
 
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
+	mailbox_dspbox_write(sizeof(ready), &sram_window,
+			     sram_window.ext_hdr.hdr.size);
 
 	/* now interrupt host to tell it we are done booting */
 	shim_write(SHIM_IPCD, outbox | SHIM_IPCD_BUSY);

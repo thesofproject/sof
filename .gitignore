@@ -2,6 +2,8 @@
 *.Po
 *~
 *.a
+*.la
+*.lo
 *.Tpo
 *.swp
 *.bin
@@ -17,7 +19,7 @@
 .build
 *.dis
 *.lst
-*.in
+.*
 
 Makefile
 Makefile.in
@@ -31,22 +33,19 @@ ar-lib
 stamp-h1
 CHANGELOG
 ltmain.sh
-FW/m4/*
+m4/lt*
+m4/libtool.m4
 libtool
-FW/src/include/version.h
-FW/src/arch/xtensa/boot_ldr*
-FW/src/arch/xtensa/reef*
-.deps/
-boot_module
-module
+src/include/version.h
 
 autom4te*
 config.*
 *.gz
 *.xz
-reef-v*
-
-*.tplg
-Tools/topology/*.conf
-Tools/topology/test/*.conf
-Tools/rmbox/rmbox
+src/arch/xtensa/reef
+src/arch/xtensa/boot_ldr
+reef-*
+boot_ldr-*
+boot_module
+module
+rimage/rimage

@@ -265,58 +265,58 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 
 static inline const char *segment_name(int i)
 {
-        switch (i) {
-        case SOF_MAN_SEGMENT_TEXT:
-                return "TEXT";
-        case SOF_MAN_SEGMENT_RODATA:
-                return "DATA";
-        case SOF_MAN_SEGMENT_BSS:
-                return "BSS";
-        default:
-                return "NONE";
-        }
+	switch (i) {
+	case SOF_MAN_SEGMENT_TEXT:
+		return "TEXT";
+	case SOF_MAN_SEGMENT_RODATA:
+		return "DATA";
+	case SOF_MAN_SEGMENT_BSS:
+		return "BSS";
+	default:
+		return "NONE";
+	}
 }
 
 /* make sure no segments collide */
 static int man_module_validate(struct sof_man_module *man_module)
 {
-        uint32_t istart, iend;
-        uint32_t jstart, jend;
-        int i, j;
+	uint32_t istart, iend;
+	uint32_t jstart, jend;
+	int i, j;
 
-        for (i = 0; i < 3; i++) {
+	for (i = 0; i < 3; i++) {
 
-                istart = man_module->segment[i].v_base_addr;
-                iend = istart + man_module->segment[i].flags.r.length *
-                        MAN_PAGE_SIZE;
+		istart = man_module->segment[i].v_base_addr;
+		iend = istart + man_module->segment[i].flags.r.length *
+			MAN_PAGE_SIZE;
 
-                for (j = 0; j < 3; j++) {
+		for (j = 0; j < 3; j++) {
 
-                        /* don't validate segment against itself */
-                        if (i == j)
-                                continue;
+			/* don't validate segment against itself */
+			if (i == j)
+				continue;
 
-                        jstart = man_module->segment[j].v_base_addr;
-                        jend = jstart + man_module->segment[j].flags.r.length *
-                                MAN_PAGE_SIZE;
+			jstart = man_module->segment[j].v_base_addr;
+			jend = jstart + man_module->segment[j].flags.r.length *
+				MAN_PAGE_SIZE;
 
-                        if (jstart > istart && jstart < iend)
-                                goto err;
+			if (jstart > istart && jstart < iend)
+				goto err;
 
-                        if (jend > istart && jend < iend)
-                                goto err;
-                }
-        }
+			if (jend > istart && jend < iend)
+				goto err;
+		}
+	}
 
-        /* success, no overlapping segments */
-        return 0;
+	/* success, no overlapping segments */
+	return 0;
 
 err:
-        fprintf(stderr, "error: segment %s [0x%8.8x:0x%8.8x] overlaps",
-                segment_name(i), istart, iend);
-        fprintf(stderr, " with %s [0x%8.8x:0x%8.8x]\n",
-                segment_name(j), jstart, jend);
-        return -EINVAL;
+	fprintf(stderr, "error: segment %s [0x%8.8x:0x%8.8x] overlaps",
+		segment_name(i), istart, iend);
+	fprintf(stderr, " with %s [0x%8.8x:0x%8.8x]\n",
+		segment_name(j), jstart, jend);
+	return -EINVAL;
 }
 
 static int man_module_create(struct image *image, struct module *module,
@@ -359,19 +359,19 @@ static int man_module_create(struct image *image, struct module *module,
 	man_module->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr =
 		module->text_start;
 
-	 /* calculates those padding 0s by the start of next segment */
-	 pages = module->text_file_size / MAN_PAGE_SIZE;
-	 if (module->text_file_size % MAN_PAGE_SIZE)
-		 pages += 1;
+	/* calculates those padding 0s by the start of next segment */
+	pages = module->text_file_size / MAN_PAGE_SIZE;
+	if (module->text_file_size % MAN_PAGE_SIZE)
+		pages += 1;
 
-        if (module->text_fixup_size == 0)
-                module->text_fixup_size = module->text_file_size;
+	if (module->text_fixup_size == 0)
+		module->text_fixup_size = module->text_file_size;
 
-        /* check if text_file_size is bigger then text_fixup_size */
-        if (module->text_file_size > module->text_fixup_size) {
-                fprintf(stderr, "error: too small text size assigned!\n");
-                return -EINVAL;
-        }
+	/* check if text_file_size is bigger then text_fixup_size */
+	if (module->text_file_size > module->text_fixup_size) {
+		fprintf(stderr, "error: too small text size assigned!\n");
+		return -EINVAL;
+	}
 
 	man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length = pages;
 
@@ -396,9 +396,9 @@ static int man_module_create(struct image *image, struct module *module,
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\tFile\tType\n");
 
-        /* validate segments */
-        if (man_module_validate(man_module) < 0)
-                return -EINVAL;
+	/* validate segments */
+	if (man_module_validate(man_module) < 0)
+		return -EINVAL;
 
 	/* find all sections and copy to corresponding segments */
 	for (i = 0; i < module->hdr.e_shnum; i++) {
@@ -593,9 +593,9 @@ static int man_write_fw(struct image *image)
 	}
 
 	/* sign manifest */
-	//ret = ri_manifest_sign(image);
-	//if (ret < 0)
-	//	goto err;
+	ret = ri_manifest_sign(image);
+	if (ret < 0)
+		goto err;
 
 	/* write the firmware */
 	ret = man_write_fw_mod(image);

@@ -61,7 +61,7 @@ struct css_header {
 	uint32_t exponent_size;
 	uint8_t modulus[MAN_RSA_KEY_MODULUS_LEN];
 	uint8_t exponent[MAN_RSA_KEY_EXPONENT_LEN];
-	uint8_t signature[192/*MAN_RSA_SIGNATURE_LEN*/];
+	uint8_t signature[MAN_RSA_SIGNATURE_LEN];
 } __attribute__((packed));
 
 void ri_css_hdr_create(struct image *image);

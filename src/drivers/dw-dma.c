@@ -1036,7 +1036,7 @@ static int dw_dma_probe(struct dma *dma)
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
-	struct dma_pdata *p;
+	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_sg_elem next;
 	uint32_t status_tfr = 0;
 	uint32_t status_block = 0;
@@ -1051,8 +1051,6 @@ static void dw_dma_irq_handler(void *data)
 	if (!status_intr) {
 		trace_dma_error("eI0");
 	}
-
-	p = dma_get_drvdata(dma);
 
 	tracev_dma("DIr");
 
