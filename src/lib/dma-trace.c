@@ -120,6 +120,14 @@ out:
 
 	spin_unlock_irq(&d->lock, flags);
 
+#if defined CONFIG_DMA_GW
+	/*
+	 * there isn't DMA completion callback in GW DMA copying
+	 * so we send position IPC message after DMA copying API calling
+	 */
+	ipc_dma_trace_send_position();
+#endif
+
 	/* reschedule the trace copying work */
 	return DMA_TRACE_PERIOD;
 }
@@ -195,8 +203,77 @@ int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	return 0;
 }
 
+#if defined CONFIG_DMA_GW
+
+static int dma_trace_start(struct dma_trace_data *d)
+{
+	struct dma_sg_config config;
+	struct dma_sg_elem *e;
+	uint32_t elem_size, elem_addr, elem_num;
+	int err = 0;
+	int i;
+
+	err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
+	if (err < 0)
+		return err;
+
+	/* size of every trace record */
+	elem_size = sizeof(uint64_t) * 2;
+
+	/* Initialize address of local elem */
+	elem_addr = (uint32_t)d->dmatb.addr;
+
+	/* the number of elem list */
+	elem_num = DMA_TRACE_LOCAL_SIZE / elem_size;
+
+	config.direction = DMA_DIR_LMEM_TO_HMEM;
+	config.src_width = sizeof(uint32_t);
+	config.dest_width = sizeof(uint32_t);
+	config.cyclic = 0;
+	list_init(&config.elem_list);
+
+	/* generate local elem list for local trace buffer */
+	e = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*e) * elem_num);
+	if (!e)
+		return -ENOMEM;
+
+	for (i = 0; i < elem_num; i++) {
+		e[i].dest = 0;
+		e[i].src = elem_addr;
+		e[i].size = elem_size; /* the minimum size of DMA copy */
+
+		list_item_append(&e[i].list, &config.elem_list);
+		elem_addr += elem_size;
+	}
+
+	err = dma_set_config(d->dc.dmac, d->dc.chan, &config);
+	if (err < 0) {
+		rfree(e);
+		return err;
+	}
+
+	err = dma_start(d->dc.dmac, d->dc.chan);
+
+	rfree(e);
+	return err;
+}
+
+#endif
+
 int dma_trace_enable(struct dma_trace_data *d)
 {
+#if defined CONFIG_DMA_GW
+	int err;
+
+	/*
+	 * GW DMA need finish DMA config and start before
+	 * host driver trigger start DMA
+	 */
+	err = dma_trace_start(d);
+	if (err < 0)
+		return err;
+#endif
+
 	/* validate DMA context */
 	if (d->dc.dmac == NULL || d->dc.chan < 0) {
 		trace_error_atomic(TRACE_CLASS_BUFFER, "eem");

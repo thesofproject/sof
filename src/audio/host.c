@@ -465,6 +465,9 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
+	case COMP_CMD_PAUSE:
+		dma_stop(hd->dma, hd->chan);
+		break;
 	case COMP_CMD_STOP:
 		ret = host_stop(dev);
 		break;
@@ -845,7 +848,7 @@ static int host_copy(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
 
-	trace_host("cpy");
+	tracev_host("cpy");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
