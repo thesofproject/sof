@@ -254,6 +254,9 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd->params = pcm_params->params;
 
 #ifdef CONFIG_HOST_PTABLE
+
+	list_init(&elem_list);
+
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &pcm_params->params.buffer);
 	if (err < 0) {
@@ -264,7 +267,6 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	/* Parse host tables */
 	host = (struct sof_ipc_comp_host *)&cd->comp;
 	ring_size = pcm_params->params.buffer.size;
-	list_init(&elem_list);
 
 	err = parse_page_descriptors(iipc, &pcm_params->params.buffer,
 		&elem_list, host->direction);
@@ -650,6 +652,9 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	trace_ipc_error("DA1");
 #ifdef CONFIG_HOST_PTABLE
+
+	list_init(&elem_list);
+
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &params->buffer);
 	if (err < 0) {
@@ -661,7 +666,6 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	/* Parse host tables */
 	ring_size = params->buffer.size;
-	list_init(&elem_list);
 
 	err = parse_page_descriptors(iipc, &params->buffer,
 		&elem_list, SOF_IPC_STREAM_CAPTURE);
