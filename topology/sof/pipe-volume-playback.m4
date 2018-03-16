@@ -31,7 +31,7 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 
 # Host "Passthrough Playback" PCM uses pipeline DMAC and channel
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Volume" has 2 source and 2 sink periods
 W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "Master Playback Volume"))
@@ -63,8 +63,8 @@ W_PIPELINE(N_DAI_OUT, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES,
 
 P_GRAPH(pipe-pass-vol-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(N_PCMP, Passthrough Playback PCM_ID)',
-	`dapm(N_BUFFER(0), N_PCMP)',
+	`dapm(N_PCMP(PCM_ID), Passthrough Playback PCM_ID)',
+	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_PGA(0), N_BUFFER(0))',
 	`dapm(N_BUFFER(1), N_PGA(0))'))
 

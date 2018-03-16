@@ -17,7 +17,7 @@ include(`pipeline.m4')
 
 # Host "Passthrough Capture" PCM uses pipeline DMAC and channel
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 2)
+W_PCM_CAPTURE(PCM_ID, Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 2)
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -41,8 +41,8 @@ W_PIPELINE(N_DAI_IN, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHE
 
 P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(Passthrough Capture PCM_ID, N_PCMC)',
-	`dapm(N_PCMC, N_BUFFER(0))'))
+	`dapm(Passthrough Capture PCM_ID, N_PCMC(PCM_ID))',
+	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))'))
 
 #
 # Pipeline Source and Sinks

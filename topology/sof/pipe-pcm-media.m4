@@ -41,7 +41,7 @@ W_DATA(media_src_conf, media_src_tokens)
 
 # Host "Low latency Playback" PCM uses pipeline DMAC and channel
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(Media Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Media Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Playback Volume" has 2 sink period and 2 source periods for host ping-pong
 W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "PCM PCM_ID Playback Volume"))
@@ -70,8 +70,8 @@ W_BUFFER(2, COMP_BUFFER_SIZE(3,
 
 P_GRAPH(pipe-media-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(N_PCMP, Media Playback PCM_ID)',
-	`dapm(N_BUFFER(0), N_PCMP)',
+	`dapm(N_PCMP(PCM_ID), Media Playback PCM_ID)',
+	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_PGA(0), N_BUFFER(0))',
 	`dapm(N_BUFFER(1), N_PGA(0))',
 	`dapm(N_SRC(0), N_BUFFER(1))'

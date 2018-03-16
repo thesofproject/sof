@@ -29,7 +29,7 @@ C_CONTROLMIXER(PCM PCM_ID Capture Volume, PIPELINE_ID,
 
 # Host "Low Latency Capture" PCM uses pipeline DMAC and channel
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(Low Latency Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 0)
+W_PCM_CAPTURE(PCM_ID, Low Latency Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 0)
 
 # "Capture Volume" has 2 sink and source periods for host and DAI ping-pong
 W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, LIST(`		', "PCM PCM_ID Capture Volume"))
@@ -49,8 +49,8 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 
 P_GRAPH(pipe-ll-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(Low Latency Capture PCM_ID, N_PCMC)',
-	`dapm(N_PCMC, N_BUFFER(1))',
+	`dapm(Low Latency Capture PCM_ID, N_PCMC(PCM_ID))',
+	`dapm(N_PCMC(PCM_ID), N_BUFFER(1))',
 	`dapm(N_BUFFER(1), N_PGA(0))',
 	`dapm(N_PGA(0), N_BUFFER(0))'))
 
