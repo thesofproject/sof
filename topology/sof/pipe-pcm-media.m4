@@ -14,6 +14,7 @@ include(`buffer.m4')
 include(`pga.m4')
 include(`mixercontrol.m4')
 include(`pipeline.m4')
+include(`pcm.m4')
 
 #
 # Controls
