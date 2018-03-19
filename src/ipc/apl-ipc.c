@@ -61,7 +61,7 @@ static void irq_handler(void *arg)
 	uint32_t dipcie;
 	uint32_t msg = 0;
 
-	trace_ipc("IRQ");
+	tracev_ipc("IRQ");
 
 	dipct = ipc_read(IPC_DIPCT);
 	dipcie = ipc_read(IPC_DIPCIE);
@@ -86,7 +86,7 @@ static void irq_handler(void *arg)
 
 	/* reply message(done) from host */
 	if (dipcie & IPC_DIPCIE_DONE) {
-		trace_ipc("Rpy");
+		tracev_ipc("Rpy");
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
