@@ -45,18 +45,6 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 	PLATFORM_DAI_MEM_CAP)
 
 #
-# DAI definitions
-#
-W_DAI_IN(DAI_TYPE, DAI_INDEX, DAI_BE, DAI_FORMAT, 0, DAI_PERIODS,
-	DAI_PERIODS, dai0c_plat_conf)
-
-#
-# DAI pipeline - always use 0 for DAIs
-#
-W_PIPELINE(N_DAI_IN, SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES,
-	SCHEDULE_CORE, 0, pipe_dai_schedule_plat)
-
-#
 # Pipeline Graph
 #
 #  host PCM_P <-- B0 <-- Volume 0 <-- B1 <-- sink DAI0
