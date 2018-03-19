@@ -75,7 +75,7 @@ union sof_man_segment_flags {
 } __attribute__((packed));
 
 /*
- * Module segment descriptor.
+ * Module segment descriptor. Used by ROM - Immutable.
  */
 struct sof_man_segment_desc {
 	union sof_man_segment_flags flags;
@@ -93,7 +93,7 @@ struct sof_man_segment_desc {
 #define SOF_MAN_MOD_ID			{'$', 'A', 'M', 'E'}
 
 /*
- * Each module has an entry in the FW header.
+ * Each module has an entry in the FW header. Used by ROM - Immutable.
  */
 struct sof_man_module {
 	uint8_t struct_id[SOF_MAN_MOD_ID_LEN];	/* SOF_MAN_MOD_ID */
@@ -102,7 +102,6 @@ struct sof_man_module {
 	struct sof_man_module_type type;
 	uint8_t hash[SOF_MAN_MOD_SHA256_LEN];
 	uint32_t entry_point;
-	uint32_t text_size;
 	uint16_t cfg_offset;
 	uint16_t cfg_count;
 	uint32_t affinity_mask;
@@ -112,7 +111,7 @@ struct sof_man_module {
 } __attribute__((packed));
 
 /*
- * Each module has a configuration in the FW header.
+ * Each module has a configuration in the FW header. Used by ROM - Immutable.
  */
 struct sof_man_mod_config {
 	uint32_t par[4];	/* module parameters */
@@ -138,9 +137,9 @@ struct sof_man_mod_config {
 
 /*
  * The firmware has a standard header that is checked by the ROM on firmware
- * loading.
- * preload_page_count is used by DMA code loader and is entire image size on
- * CNL. i.e. CNL: total size of the binary’s .text and .rodata
+ * loading. preload_page_count is used by DMA code loader and is entire
+ * image size on CNL. i.e. CNL: total size of the binary’s .text and .rodata
+ * Used by ROM - Immutable.
  */
 struct sof_man_fw_header {
 	uint8_t header_id[4];
@@ -163,7 +162,7 @@ struct sof_man_fw_header {
 
 /*
  * Firmware manifest descriptor. This can contain N modules and N module
- * configs.
+ * configs. Used by ROM - Immutable.
  */
 struct sof_man_fw_desc {
 	struct sof_man_fw_header header;
@@ -181,7 +180,7 @@ struct sof_man_fw_desc {
 } __attribute__((packed));
 
 /*
- * Component Descriptor
+ * Component Descriptor. Used by ROM - Immutable.
  */
 struct sof_man_component_desc {
 	uint32_t reserved[2];	/* all 0 */
@@ -194,7 +193,7 @@ struct sof_man_component_desc {
 
 
 /*
- * Audio DSP extended metadata.
+ * Audio DSP extended metadata. Used by ROM - Immutable.
  */
 struct sof_man_adsp_meta_file_ext {
 	uint32_t ext_type;	/* always 17 for ADSP extension */
@@ -203,6 +202,14 @@ struct sof_man_adsp_meta_file_ext {
 	uint8_t reserved[16];	/* all 0 */
 	struct sof_man_component_desc comp_desc[1];
 } __attribute__((packed));
+
+/*
+ * Module Manifest for rimage module metadata. Not used by ROM.
+ */
+struct sof_man_module_manifest {
+	struct sof_man_module module;
+	uint32_t text_size;
+};
 
 /* utility to get module pointer from position */
 static inline struct sof_man_module *sof_man_get_module(

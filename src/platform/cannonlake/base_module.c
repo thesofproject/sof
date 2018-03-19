@@ -36,16 +36,18 @@
  * the SOF executable image but is inserted by object copy as a ELF section
  * for parsing by rimage (to genrate the manifest).
  */
-struct sof_man_module cnl_manifest = {
-	.name	= "BASEFW",
-	.uuid	= {0x32, 0x8c, 0x39, 0x0e, 0xde, 0x5a, 0x4b, 0xba,
-			0x93, 0xb1, 0xc5, 0x04, 0x32, 0x28, 0x0e, 0xe4},
-	.entry_point = REEF_TEXT_START,
-	.type = {
-			.load_type = SOF_MAN_MOD_TYPE_MODULE,
-			.domain_ll = 1,
+struct sof_man_module_manifest cnl_manifest = {
+	.module = {
+		.name	= "BASEFW",
+		.uuid	= {0x32, 0x8c, 0x39, 0x0e, 0xde, 0x5a, 0x4b, 0xba,
+				0x93, 0xb1, 0xc5, 0x04, 0x32, 0x28, 0x0e, 0xe4},
+		.entry_point = REEF_TEXT_START,
+		.type = {
+				.load_type = SOF_MAN_MOD_TYPE_MODULE,
+				.domain_ll = 1,
+		},
+		.affinity_mask = 3,
 	},
-	.affinity_mask = 3,
 };
 
 /* not used, but stops linker complaining */
