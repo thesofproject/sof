@@ -194,7 +194,7 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 {
 	Elf32_Shdr *section;
 	struct sof_man_segment_desc *segment;
-	struct sof_man_module sof_mod;
+	struct sof_man_module_manifest sof_mod;
 	size_t count;
 	int ret, man_section_idx;
 
@@ -224,14 +224,14 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 
 	/* configure man_module with sofmod data */
 	memcpy(man_module->struct_id, "$AME", 4);
-	man_module->entry_point = sof_mod.entry_point;
-	memcpy(man_module->name, sof_mod.name, SOF_MAN_MOD_NAME_LEN);
-	memcpy(man_module->uuid, sof_mod.uuid, 16);
-	man_module->affinity_mask = sof_mod.affinity_mask;
-	man_module->type.auto_start = sof_mod.type.auto_start;
-	man_module->type.domain_dp = sof_mod.type.domain_dp;
-	man_module->type.domain_ll = sof_mod.type.domain_ll;
-	man_module->type.load_type = sof_mod.type.load_type;
+	man_module->entry_point = sof_mod.module.entry_point;
+	memcpy(man_module->name, sof_mod.module.name, SOF_MAN_MOD_NAME_LEN);
+	memcpy(man_module->uuid, sof_mod.module.uuid, 16);
+	man_module->affinity_mask = sof_mod.module.affinity_mask;
+	man_module->type.auto_start = sof_mod.module.type.auto_start;
+	man_module->type.domain_dp = sof_mod.module.type.domain_dp;
+	man_module->type.domain_ll = sof_mod.module.type.domain_ll;
+	man_module->type.load_type = sof_mod.module.type.load_type;
 
 	/* read out text_fixup_size from memory mapping */
 	module->text_fixup_size = sof_mod.text_size;
