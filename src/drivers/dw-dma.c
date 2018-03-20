@@ -910,11 +910,12 @@ static void dw_dma_irq_handler(void *data)
 	int i = dma_int->channel;
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
-	if (!status_intr)
+	if (!status_intr) {
 		trace_dma_error("eDI");
+		trace_value(status_intr);
+	}
 
-	trace_dma("irq");
-	trace_value(status_intr);
+	tracev_dma("irq");
 
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
