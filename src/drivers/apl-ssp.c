@@ -144,7 +144,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr2 = SSCR2_SDFD | SSCR2_TURM1;
 
 	/* sscr3 dynamic settings are TFT, RFT */
-	sscr3 = SSCR3_TX(8) | SSCR3_RX(8);
+	sscr3 = 0;
 
 	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
 	sspsp = 0;
