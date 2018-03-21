@@ -10,11 +10,22 @@ else
 	DIR=$1
 fi
 
+# get version from git tag
+GIT_TAG=`git describe --abbrev=4`
+
+# Some releases have a SOF_FW_XXX_ prefix on the tag and this prefix
+# must be stripped for usage in version.h. i.e. we just need the number.
+if [ $(expr match $GIT_TAG 'SOF_FW_[A-Z][A-Z][A-Z]_' ) -eq 11 ]; then
+	VER=`echo $GIT_TAG | cut -d_ -f4`
+else
+	VER=$GIT_TAG
+fi
+
 # create git version if we are a git repo or git worktree
 if [ -e $DIR/.git -o -d $DIR/.git ]; then
 #	 version for make dist
-	git describe --abbrev=4 > $DIR/.version
-	git describe --abbrev=4 > $DIR/.tarball-version
+	echo $VER > $DIR/.version
+	echo $VER > $DIR/.tarball-version
 
 	# git commit for IPC
 	echo "#define REEF_TAG \"`git log --pretty=format:\"%h\" -1 | cut -c1-5`\"" > $DIR/src/include/version.h
