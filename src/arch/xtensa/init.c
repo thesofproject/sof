@@ -78,7 +78,7 @@ static void register_exceptions(void)
 int arch_init(struct reef *reef)
 {
 	register_exceptions();
-	arch_init_tasks();
+	arch_assign_tasks();
 	return 0;
 }
 

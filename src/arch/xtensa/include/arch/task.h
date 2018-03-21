@@ -36,6 +36,8 @@ struct task;
 
 void arch_run_task(struct task *task);
 
-int arch_init_tasks(void);
+void arch_allocate_tasks(void);
+
+int arch_assign_tasks(void);
 
 #endif

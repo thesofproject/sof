@@ -64,6 +64,9 @@ struct task {
 	uint64_t deadline;		/* scheduling deadline */
 	uint32_t state;			/* TASK_STATE_ */
 	struct list_item list;		/* list in scheduler */
+	struct list_item irq_low_list;	/* list for low irq level */
+	struct list_item irq_med_list;	/* list for medium irq level */
+	struct list_item irq_high_list;	/* list for high irq level */
 
 	/* task function and private data */
 	void *data;
