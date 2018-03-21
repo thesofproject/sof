@@ -545,14 +545,14 @@ static void ssp_stop(struct dai *dai)
 	/* stop Rx if we are not capturing */
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
-		ssp_update_bits(dai, SSTSA, 0x1 << 8, 0x0 << 8);
+		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x0 << 8);
 		trace_ssp("Ss0");
 	}
 
 	/* stop Tx if we are not playing */
 	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
-		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x0 << 8);
+		ssp_update_bits(dai, SSTSA, 0x1 << 8, 0x0 << 8);
 		trace_ssp("Ss1");
 	}
 
