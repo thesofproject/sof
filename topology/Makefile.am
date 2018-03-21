@@ -28,7 +28,8 @@ MACHINES = \
 	reef-byt-rt5651.tplg \
 	reef-byt-da7213.tplg \
 	reef-cnl-rt274.tplg \
-	reef-hsw-rt5640.tplg
+	reef-hsw-rt5640.tplg \
+	reef-apl-tdf8532.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
@@ -58,4 +59,5 @@ EXTRA_DIST = \
 	reef-byt-rt5651.m4 \
 	reef-byt-da7213.m4 \
 	reef-cnl-rt274.m4 \
-	reef-hsw-rt5640.m4
+	reef-hsw-rt5640.m4 \
+	reef-apl-tdf8532.m4
