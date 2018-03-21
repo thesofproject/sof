@@ -98,7 +98,7 @@ struct reef;
 
 /* Platform defined panic code */
 #define platform_panic(__x) \
-	shim_write(SHIM_IPCD, (0xdead000 | __x) & 0x3fffffff)
+	shim_write(SHIM_IPCD, (SHIM_IPCD_BUSY | 0xdead000 | __x))
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \

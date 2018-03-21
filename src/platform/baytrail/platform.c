@@ -70,7 +70,7 @@ static const struct sof_ipc_fw_ready ready = {
 	/* TODO: add capabilities */
 };
 
-#define NUM_BYT_WINDOWS		5
+#define NUM_BYT_WINDOWS		6
 static const struct sof_ipc_window sram_window = {
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,
@@ -113,6 +113,13 @@ static const struct sof_ipc_window sram_window = {
 		.flags	= 0, // TODO: set later
 		.size	= MAILBOX_STREAM_SIZE,
 		.offset	= MAILBOX_STREAM_OFFSET,
+	},
+	.window[5]	= {
+		.type	= SOF_IPC_REGION_EXCEPTION,
+		.id	= 0,	/* map to host window 0 */
+		.flags	= 0, // TODO: set later
+		.size	= MAILBOX_EXCEPTION_SIZE,
+		.offset	= MAILBOX_EXCEPTION_OFFSET,
 	},
 };
 

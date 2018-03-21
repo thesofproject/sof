@@ -108,8 +108,10 @@ struct reef;
 #define PLATFORM_IDLE_TIME	750000
 
 /* Platform defined trace code */
-#define platform_panic(__x) \
-	sw_reg_write(SRAM_REG_FW_STATUS, (0xdead000 | __x) & 0x3fffffff)
+#define platform_panic(__x) { \
+	sw_reg_write(SRAM_REG_FW_STATUS, (0xdead000 | __x) & 0x3fffffff); \
+	ipc_write(IPC_DIPCIDR, 0x80000000 | ((0xdead000 | __x) & 0x3fffffff)); \
+}
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
