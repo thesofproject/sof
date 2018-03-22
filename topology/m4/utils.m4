@@ -35,6 +35,15 @@ define(`COMP_SAMPLE_SIZE',
 	$1, `float', `4',
 	`4')')
 
+dnl COMP_FORMAT_NAME(FMT)
+define(`COMP_FORMAT_NAME',
+`ifelse(
+	$1, `s16le', `S16_LE',
+	$1, `s24le', `S24_LE',
+	$1, `s32le', `S32_LE',
+	$1, `float', `FLOAT_LE',
+	)')
+
 dnl P_GRAPH(name, CONNECTIONS)
 define(`P_GRAPH',
 `SectionGraph.STR($1) {'
