@@ -80,7 +80,7 @@ out:
 	spin_unlock_irq(&_ipc->lock, flags);
 
 	/* clear DONE bit - tell Host we have completed */
-	shim_write(SHIM_IPCD, shim_read(SHIM_IPCD) & ~SHIM_IPCD_DONE);
+	shim_write(SHIM_IPCD, 0);
 
 	/* unmask Done interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
@@ -123,7 +123,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc = ipc_get_drvdata(ipc);
 	struct sof_ipc_reply reply;
-	uint32_t ipcx;
 	int32_t err;
 
 	tracev_ipc("Cmd");
@@ -146,10 +145,7 @@ done:
 	ipc->host_pending = 0;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
-	ipcx = shim_read(SHIM_IPCX);
-	ipcx &= ~SHIM_IPCX_BUSY;
-	ipcx |= SHIM_IPCX_DONE;
-	shim_write(SHIM_IPCX, ipcx);
+	shim_write(SHIM_IPCX, SHIM_IPCX_DONE);
 
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
@@ -191,7 +187,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	tracev_ipc("Msg");
 
 	/* now interrupt host to tell it we have message sent */
-	shim_write(SHIM_IPCD, msg->header | SHIM_IPCD_BUSY);
+	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY);
 
 	list_item_append(&msg->list, &ipc->empty_list);
 
