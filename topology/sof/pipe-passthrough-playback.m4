@@ -44,4 +44,4 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_I
 # PCM Configuration
 #
 
-PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 48000, 48000, 2, 4, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(Passthrough Playback PCM_ID, COMP_FORMAT_NAME(PIPELINE_FORMAT), 48000, 48000, 2, 4, 2, 16, 192, 16384, 65536, 65536)
