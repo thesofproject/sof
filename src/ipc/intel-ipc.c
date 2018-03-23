@@ -650,7 +650,8 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct sof_ipc_reply reply;
 	int err;
 
-	trace_ipc_error("DA1");
+	trace_ipc("DA1");
+
 #ifdef CONFIG_HOST_PTABLE
 
 	list_init(&elem_list);
