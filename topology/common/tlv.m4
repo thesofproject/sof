@@ -4,11 +4,11 @@
 #
 
 SectionTLV."vtlv_m90s3" {
-	Comment "-90dB step 3dB"
+	Comment "-64dB step 2dB"
 
 	scale {
-		min "-9000"
-		step "300"
+		min "-6400"
+		step "200"
 		mute "1"
 	}
 }
