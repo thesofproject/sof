@@ -192,8 +192,8 @@ static int hda_dma_start(struct dma *dma, int channel)
 	    (dgcs & DGCS_GEN)) {
 		ret = -EBUSY;
 		trace_host_error("eS0");
-		trace_value(dgcs);
-		trace_value(p->chan[channel].status);
+		trace_error_value(dgcs);
+		trace_error_value(p->chan[channel].status);
 		goto out;
 	}
 

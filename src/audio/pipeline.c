@@ -392,7 +392,7 @@ static int component_op_downstream(struct op_data *op_data,
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
 		trace_pipe_error("eOi");
-		trace_value(op_data->op);
+		trace_error_value(op_data->op);
 		return -EINVAL;
 	}
 
@@ -473,7 +473,7 @@ static int component_op_upstream(struct op_data *op_data,
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
 		trace_pipe_error("eOi");
-		trace_value(op_data->op);
+		trace_error_value(op_data->op);
 		return -EINVAL;
 	}
 
@@ -647,8 +647,8 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 
 	if (ret < 0) {
 		trace_ipc_error("pc0");
-		trace_value(host->comp.id);
-		trace_value(cmd);
+		trace_error_value(host->comp.id);
+		trace_error_value(cmd);
 	}
 
 	spin_unlock(&p->lock);
@@ -693,7 +693,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	if (ret < 0) {
 		trace_ipc_error("pp0");
-		trace_value(host->comp.id);
+		trace_error_value(host->comp.id);
 	}
 
 	spin_unlock(&p->lock);
@@ -723,7 +723,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	if (ret < 0) {
 		trace_ipc_error("pr0");
-		trace_value(host->comp.id);
+		trace_error_value(host->comp.id);
 	}
 
 	spin_unlock(&p->lock);
@@ -774,7 +774,7 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		err = pipeline_copy_from_upstream(start, buffer->source);
 		if (err < 0) {
 			trace_pipe_error("ePU");
-			trace_value(current->comp.id);
+			trace_error_value(current->comp.id);
 			return err;
 		}
 	}
@@ -837,7 +837,7 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		err = pipeline_copy_to_downstream(start, buffer->sink);
 		if (err < 0) {
 			trace_pipe_error("ePD");
-			trace_value(current->comp.id);
+			trace_error_value(current->comp.id);
 			return err;
 		}
 	}

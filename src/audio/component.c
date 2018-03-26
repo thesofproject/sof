@@ -79,7 +79,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	drv = get_drv(comp->type);
 	if (drv == NULL) {
 		trace_comp_error("eCD");
-		trace_value(comp->type);
+		trace_error_value(comp->type);
 		return NULL;
 	}
 
@@ -127,7 +127,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
 			trace_comp_error("CES");
-			trace_value(dev->state);
+			trace_error_value(dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -136,7 +136,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
 			trace_comp_error("CEr");
-			trace_value(dev->state);
+			trace_error_value(dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -146,7 +146,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			dev->state = COMP_STATE_PREPARE;
 		} else {
 			trace_comp_error("CEs");
-			trace_value(dev->state);
+			trace_error_value(dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -156,7 +156,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			dev->state = COMP_STATE_PAUSED;
 		else {
 			trace_comp_error("CEp");
-			trace_value(dev->state);
+			trace_error_value(dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -166,7 +166,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_ACTIVE ||
 			dev->state == COMP_STATE_PAUSED) {
 			trace_comp_error("CER");
-			trace_value(dev->state);
+			trace_error_value(dev->state);
 			ret = 0;
 		}
 		break;
@@ -176,7 +176,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			dev->state = COMP_STATE_PREPARE;
 		} else {
 			trace_comp_error("CEP");
-			trace_value(dev->state);
+			trace_error_value(dev->state);
 			ret = -EINVAL;
 		}
 		break;

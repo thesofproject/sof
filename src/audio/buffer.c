@@ -55,7 +55,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	/* validate request */
 	if (desc->size == 0 || desc->size > HEAP_BUFFER_SIZE) {
 		trace_buffer_error("ebg");
-		trace_value(desc->size);
+		trace_error_value(desc->size);
 		return NULL;
 	}
 

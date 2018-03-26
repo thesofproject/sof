@@ -250,8 +250,8 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 		&& ((cdata->data->magic != SOF_ABI_MAGIC)
 		|| (cdata->data->abi != SOF_ABI_VERSION))) {
 		trace_comp_error("abi");
-		trace_value(cdata->data->magic);
-		trace_value(cdata->data->abi);
+		trace_error_value(cdata->data->magic);
+		trace_error_value(cdata->data->abi);
 		return -EINVAL;
 	}
 

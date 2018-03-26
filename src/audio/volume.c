@@ -943,15 +943,15 @@ static int volume_prepare(struct comp_dev *dev)
 	/* validate */
 	if (cd->sink_period_bytes == 0) {
 		trace_volume_error("vp1");
-		trace_value(dev->frames);
-		trace_value(sinkb->sink->frame_bytes);
+		trace_error_value(dev->frames);
+		trace_error_value(sinkb->sink->frame_bytes);
 		ret = -EINVAL;
 		goto err;
 	}
 	if (cd->source_period_bytes == 0) {
 		trace_volume_error("vp2");
-		trace_value(dev->frames);
-		trace_value(sourceb->source->frame_bytes);
+		trace_error_value(dev->frames);
+		trace_error_value(sourceb->source->frame_bytes);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -970,9 +970,9 @@ static int volume_prepare(struct comp_dev *dev)
 		goto found;
 	}
 	trace_volume_error("vp3");
-	trace_value(cd->source_format);
-	trace_value(cd->sink_format);
-	trace_value(dev->params.channels);
+	trace_error_value(cd->source_format);
+	trace_error_value(cd->sink_format);
+	trace_error_value(dev->params.channels);
 
 err:
 	comp_set_state(dev, COMP_CMD_RESET);

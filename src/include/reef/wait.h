@@ -139,8 +139,8 @@ static inline int wait_for_completion_timeout(completion_t *comp)
 		return 0;
 	} else {
 		/* timeout */
-		trace_value(c->timeout);
-		trace_value(c->complete);
+		trace_error_value(c->timeout);
+		trace_error_value(c->complete);
 		return -ETIME;
 	}
 }

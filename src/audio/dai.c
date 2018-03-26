@@ -82,7 +82,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct comp_buffer *dma_buffer;
 	uint32_t copied_size;
 
-	tracev_dai("irq");
+	trace_dai("irq");
 
 	/* is stream stopped or paused and we are not handling XRUN ? */
 	if (dev->state != COMP_STATE_ACTIVE && dd->xrun == 0) {
@@ -278,10 +278,10 @@ static int dai_playback_params(struct comp_dev *dev)
 	err = buffer_set_size(dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_dai_error("ep1");
-		trace_value(source_config->periods_sink);
-		trace_value(dd->period_bytes);
-		trace_value(buffer_size);
-		trace_value(dma_buffer->alloc_size);
+		trace_error_value(source_config->periods_sink);
+		trace_error_value(dd->period_bytes);
+		trace_error_value(buffer_size);
+		trace_error_value(dma_buffer->alloc_size);
 		return err;
 	}
 
@@ -346,10 +346,10 @@ static int dai_capture_params(struct comp_dev *dev)
 	err = buffer_set_size(dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_dai_error("ec1");
-		trace_value(sink_config->periods_sink);
-		trace_value(dd->period_bytes);
-		trace_value(buffer_size);
-		trace_value(dma_buffer->alloc_size);
+		trace_error_value(sink_config->periods_sink);
+		trace_error_value(dd->period_bytes);
+		trace_error_value(buffer_size);
+		trace_error_value(dma_buffer->alloc_size);
 		return err;
 	}
 
@@ -576,7 +576,7 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		ret = wait_for_completion_timeout(&dd->complete);
 		if (ret < 0) {
 			trace_dai_error("ed0");
-			trace_value(cmd);
+			trace_error_value(cmd);
 		}
 		break;
 	default:

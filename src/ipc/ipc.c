@@ -108,7 +108,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	icd = ipc_get_comp(ipc, comp->id);
 	if (icd != NULL) {
 		trace_ipc_error("eCe");
-		trace_value(comp->id);
+		trace_error_value(comp->id);
 		return -EINVAL;
 	}
 
@@ -162,7 +162,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	ibd = ipc_get_comp(ipc, desc->comp.id);
 	if (ibd != NULL) {
 		trace_ipc_error("eBe");
-		trace_value(desc->comp.id);
+		trace_error_value(desc->comp.id);
 		return -EINVAL;
 	}
 
@@ -215,14 +215,14 @@ int ipc_comp_connect(struct ipc *ipc,
 	icd_source = ipc_get_comp(ipc, connect->source_id);
 	if (icd_source == NULL) {
 		trace_ipc_error("eCr");
-		trace_value(connect->source_id);
+		trace_error_value(connect->source_id);
 		return -EINVAL;
 	}
 
 	icd_sink = ipc_get_comp(ipc, connect->sink_id);
 	if (icd_sink == NULL) {
 		trace_ipc_error("eCn");
-		trace_value(connect->sink_id);
+		trace_error_value(connect->sink_id);
 		return -EINVAL;
 	}
 
@@ -237,8 +237,8 @@ int ipc_comp_connect(struct ipc *ipc,
 			icd_source->cd, icd_sink->cb);
 	else {
 		trace_ipc_error("eCt");
-		trace_value(connect->source_id);
-		trace_value(connect->sink_id);
+		trace_error_value(connect->source_id);
+		trace_error_value(connect->sink_id);
 		return -EINVAL;
 	}
 }
@@ -255,7 +255,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	ipc_pipe = ipc_get_comp(ipc, pipe_desc->comp_id);
 	if (ipc_pipe != NULL) {
 		trace_ipc_error("ePi");
-		trace_value(pipe_desc->comp_id);
+		trace_error_value(pipe_desc->comp_id);
 		return -EINVAL;
 	}
 
@@ -263,7 +263,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	icd = ipc_get_comp(ipc, pipe_desc->sched_id);
 	if (icd == NULL) {
 		trace_ipc_error("ePs");
-		trace_value(pipe_desc->sched_id);
+		trace_error_value(pipe_desc->sched_id);
 		return -EINVAL;
 	}
 	if (icd->type != COMP_TYPE_COMPONENT) {

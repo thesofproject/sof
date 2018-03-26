@@ -374,9 +374,9 @@ static int dw_dma_start(struct dma *dma, int channel)
 		(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
 		ret = -EBUSY;
 		trace_dma_error("eS0");
-		trace_value(dw_read(dma, DW_DMA_CHAN_EN));
-		trace_value(dw_read(dma, DW_CFG_LOW(channel)));
-		trace_value(p->chan[channel].status);
+		trace_error_value(dw_read(dma, DW_DMA_CHAN_EN));
+		trace_error_value(dw_read(dma, DW_CFG_LOW(channel)));
+		trace_error_value(p->chan[channel].status);
 		goto out;
 	}
 
@@ -480,7 +480,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	/* is channel stii active ? */
 	if ((dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
 		trace_dma_error("ea0");
-		trace_value(channel);
+		trace_error_value(channel);
 	}
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
@@ -912,7 +912,7 @@ static void dw_dma_irq_handler(void *data)
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr) {
 		trace_dma_error("eDI");
-		trace_value(status_intr);
+		trace_error_value(status_intr);
 	}
 
 	tracev_dma("irq");
@@ -1078,7 +1078,7 @@ static void dw_dma_irq_handler(void *data)
 	status_block_new = dw_read(dma, DW_STATUS_BLOCK);
 	if (status_block_new) {
 		trace_dma_error("eI2");
-		trace_value(status_block_new);
+		trace_error_value(status_block_new);
 	}
 
 	for (i = 0; i < DW_MAX_CHAN; i++) {
