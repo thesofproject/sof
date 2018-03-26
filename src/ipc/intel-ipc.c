@@ -238,14 +238,14 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	pcm_dev = ipc_get_comp(_ipc, pcm_params->comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("eAC");
-		trace_value(pcm_params->comp_id);
+		trace_error_value(pcm_params->comp_id);
 		return -EINVAL;
 	}
 
 	/* sanity check comp */
 	if (pcm_dev->cd->pipeline == NULL) {
 		trace_ipc_error("eA1");
-		trace_value(pcm_params->comp_id);
+		trace_error_value(pcm_params->comp_id);
 		return -EINVAL;
 	}
 
@@ -254,6 +254,9 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd->params = pcm_params->params;
 
 #ifdef CONFIG_HOST_PTABLE
+
+	list_init(&elem_list);
+
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &pcm_params->params.buffer);
 	if (err < 0) {
@@ -264,7 +267,6 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	/* Parse host tables */
 	host = (struct sof_ipc_comp_host *)&cd->comp;
 	ring_size = pcm_params->params.buffer.size;
-	list_init(&elem_list);
 
 	err = parse_page_descriptors(iipc, &pcm_params->params.buffer,
 		&elem_list, host->direction);
@@ -348,7 +350,7 @@ static int ipc_stream_pcm_free(uint32_t header)
 	/* sanity check comp */
 	if (pcm_dev->cd->pipeline == NULL) {
 		trace_ipc_error("eF1");
-		trace_value(free_req->comp_id);
+		trace_error_value(free_req->comp_id);
 		return -EINVAL;
 	}
 
@@ -468,7 +470,7 @@ static int ipc_stream_trigger(uint32_t header)
 			cmd, NULL);
 	if (ret < 0) {
 		trace_ipc_error("eRc");
-		trace_value(ipc_cmd);
+		trace_error_value(ipc_cmd);
 	}
 
 	return ret;
@@ -514,8 +516,8 @@ static int ipc_dai_config(uint32_t header)
 	dai = dai_get(config->type, config->id);
 	if (dai == NULL) {
 		trace_ipc_error("eDi");
-		trace_value(config->type);
-		trace_value(config->id);
+		trace_error_value(config->type);
+		trace_error_value(config->id);
 		return -ENODEV;
 	}
 
@@ -541,7 +543,7 @@ static int ipc_glb_dai_message(uint32_t header)
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
 	default:
 		trace_ipc_error("eDc");
-		trace_value(header);
+		trace_error_value(header);
 		return -EINVAL;
 	}
 }
@@ -648,8 +650,12 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct sof_ipc_reply reply;
 	int err;
 
-	trace_ipc_error("DA1");
+	trace_ipc("DA1");
+
 #ifdef CONFIG_HOST_PTABLE
+
+	list_init(&elem_list);
+
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = get_page_descriptors(iipc, &params->buffer);
 	if (err < 0) {
@@ -661,7 +667,6 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	/* Parse host tables */
 	ring_size = params->buffer.size;
-	list_init(&elem_list);
 
 	err = parse_page_descriptors(iipc, &params->buffer,
 		&elem_list, SOF_IPC_STREAM_CAPTURE);
@@ -742,7 +747,7 @@ static int ipc_glb_debug_message(uint32_t header)
 		return ipc_dma_trace_config(header);
 	default:
 		trace_ipc_error("eDc");
-		trace_value(header);
+		trace_error_value(header);
 		return -EINVAL;
 	}
 }
@@ -764,7 +769,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	comp_dev = ipc_get_comp(_ipc, data->comp_id);
 	if (comp_dev == NULL){
 		trace_ipc_error("eVg");
-		trace_value(data->comp_id);
+		trace_error_value(data->comp_id);
 		return -ENODEV;
 	}
 	
@@ -795,7 +800,7 @@ static int ipc_glb_comp_message(uint32_t header)
 		return ipc_comp_value(header, COMP_CMD_GET_DATA);
 	default:
 		trace_ipc_error("eCc");
-		trace_value(header);
+		trace_error_value(header);
 		return -EINVAL;
 	}
 }
@@ -924,7 +929,7 @@ static int ipc_glb_tplg_message(uint32_t header)
 		return ipc_glb_tplg_free(header, ipc_buffer_free);
 	default:
 		trace_ipc_error("eTc");
-		trace_value(header);
+		trace_error_value(header);
 		return -EINVAL;
 	}
 }
@@ -965,7 +970,7 @@ int ipc_cmd(void)
 		return ipc_glb_debug_message(hdr->cmd);
 	default:
 		trace_ipc_error("eGc");
-		trace_value(type);
+		trace_error_value(type);
 		return -EINVAL;
 	}
 }

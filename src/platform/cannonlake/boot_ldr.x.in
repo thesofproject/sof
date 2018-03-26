@@ -375,7 +375,7 @@ SECTIONS
 
   PROVIDE(_memmap_vecbase_reset = HP_SRAM_VECBASE_RESET);
 
-  _memmap_cacheattr_wbna_trapnull = 0x25222222;
+  _memmap_cacheattr_wbna_trapnull = 0xFF42FFF2;
   PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
   .debug  0 :  { *(.debug) }

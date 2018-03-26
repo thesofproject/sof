@@ -645,10 +645,10 @@ static int src_params(struct comp_dev *dev)
 		params->channels, dev->frames, frames_is_for_source);
 	if (err < 0) {
 		trace_src_error("sr1");
-		trace_value(source_rate);
-		trace_value(sink_rate);
-		trace_value(params->channels);
-		trace_value(dev->frames);
+		trace_error_value(source_rate);
+		trace_error_value(sink_rate);
+		trace_error_value(params->channels);
+		trace_error_value(dev->frames);
 		return err;
 	}
 
@@ -666,7 +666,7 @@ static int src_params(struct comp_dev *dev)
 		delay_lines_size);
 	if (!cd->delay_lines) {
 		trace_src_error("sr3");
-		trace_value(delay_lines_size);
+		trace_error_value(delay_lines_size);
 		return -EINVAL;
 	}
 
@@ -721,8 +721,8 @@ static int src_params(struct comp_dev *dev)
 	err = buffer_set_size(sink, q * dev->frames * dev->frame_bytes);
 	if (err < 0) {
 		trace_src_error("eSz");
-		trace_value(sink->alloc_size);
-		trace_value(q * dev->frames * dev->frame_bytes);
+		trace_error_value(sink->alloc_size);
+		trace_error_value(q * dev->frames * dev->frame_bytes);
 		return err;
 	}
 

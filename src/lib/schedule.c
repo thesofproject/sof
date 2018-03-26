@@ -172,7 +172,7 @@ static uint64_t sch_work(void *data, uint64_t delay)
 static struct task *schedule_edf(void)
 {
 	struct task *task;
-	struct task *next_plus1_task = NULL;
+	struct task *future_task = NULL;
 	uint64_t current;
 
 	tracev_pipe("edf");
@@ -192,18 +192,16 @@ static struct task *schedule_edf(void)
 	/* can task be started now ? */
 	if (task->start > current) {
 		/* no, then schedule wake up */
-		next_plus1_task = task;
+		future_task = task;
 	} else {
-		/* yes, get next task and run this one now */
-		next_plus1_task = edf_get_next(current, task);
-
-		/* run current task */
+		/* yes, run current task */
 		task->start = current;
+		task->state = TASK_STATE_RUNNING;
 		arch_run_task(task);
 	}
 
-	/* teall caller about next task (after current) */
-	return next_plus1_task;
+	/* tell caller about future task */
+	return future_task;
 }
 
 #if 0 /* FIXME: is this needed ? */
@@ -319,15 +317,14 @@ void schedule_task_complete(struct task *task)
 
 static void scheduler_run(void *unused)
 {
-	struct task *next_task;
+	struct task *future_task;
 
 	tracev_pipe("run");
 
 	/* EDF is only scheduler supported atm */
-	next_task = schedule_edf();
-	if (next_task) {
-		work_reschedule_default_at(&sch->work, next_task->start);
-	}
+	future_task = schedule_edf();
+	if (future_task)
+		work_reschedule_default_at(&sch->work, future_task->start);
 }
 
 /* run the scheduler */
@@ -381,6 +378,9 @@ int scheduler_init(struct reef *reef)
 	/* configure scheduler interrupt */
 	interrupt_register(PLATFORM_SCHEDULE_IRQ, scheduler_run, NULL);
 	interrupt_enable(PLATFORM_SCHEDULE_IRQ);
+
+	/* allocate arch tasks */
+	arch_allocate_tasks();
 
 	return 0;
 }

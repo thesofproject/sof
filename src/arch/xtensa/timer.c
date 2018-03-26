@@ -80,7 +80,7 @@ void timer_64_handler(void *arg)
 	}
 
 	/* get next timeout value */
-	if (timer->hitimeout > 0 && timer->hitimeout == timer->hitime) {
+	if (timer->hitimeout == timer->hitime) {
 		/* timeout is in this 32 bit period */
 		ccompare = timer->lowtimeout;
 	} else {
@@ -185,17 +185,13 @@ int arch_timer_set(struct timer *timer, uint64_t ticks)
 	flags = arch_interrupt_global_disable();
 
 	/* same hi 64 bit context as ticks ? */
-	if (hitimeout == timer->hitime) {
-		/* yes, then set the value for next timeout */
-		time = ticks;
-		timer->lowtimeout = 0;
-		timer->hitimeout = 0;
-	} else if (hitimeout < timer->hitime) {
+	if (hitimeout < timer->hitime) {
 		/* cant be in the past */
 		arch_interrupt_global_enable(flags);
 		return -EINVAL;
 	} else {
 		/* set for checking at next timeout */
+		time = ticks;
 		timer->hitimeout = hitimeout;
 		timer->lowtimeout = ticks;
 	}

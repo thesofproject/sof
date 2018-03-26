@@ -70,7 +70,7 @@ static const struct sof_ipc_fw_ready ready = {
 
 #define SRAM_WINDOW_HOST_OFFSET(x)	(0x80000 + x * 0x20000)
 
-#define NUM_CNL_WINDOWS		6
+#define NUM_CNL_WINDOWS		7
 
 static const struct sof_ipc_window sram_window = {
 	.ext_hdr	= {
@@ -105,17 +105,24 @@ static const struct sof_ipc_window sram_window = {
 		.type	= SOF_IPC_REGION_DEBUG,
 		.id	= 2,	/* map to host window 2 */
 		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_EXCEPTION_SIZE + MAILBOX_DEBUG_SIZE,
+		.size	= MAILBOX_DEBUG_SIZE,
 		.offset	= 0,
 	},
 	.window[4]	= {
+		.type	= SOF_IPC_REGION_EXCEPTION,
+		.id	= 2,	/* map to host window 2 */
+		.flags	= 0, // TODO: set later
+		.size	= MAILBOX_EXCEPTION_SIZE,
+		.offset	= MAILBOX_EXCEPTION_OFFSET,
+	},
+	.window[5]	= {
 		.type	= SOF_IPC_REGION_STREAM,
 		.id	= 2,	/* map to host window 2 */
 		.flags	= 0, // TODO: set later
 		.size	= MAILBOX_STREAM_SIZE,
 		.offset	= MAILBOX_STREAM_OFFSET,
 	},
-	.window[5]	= {
+	.window[6]	= {
 		.type	= SOF_IPC_REGION_TRACE,
 		.id	= 3,	/* map to host window 3 */
 		.flags	= 0, // TODO: set later
@@ -143,9 +150,6 @@ int platform_boot_complete(uint32_t boot_message)
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
 		sram_window.ext_hdr.hdr.size);
-
-	/* boot now complete so we can relax the CPU */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
 
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);

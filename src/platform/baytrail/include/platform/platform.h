@@ -98,12 +98,14 @@ struct reef;
 #define PLATFORM_IDLE_TIME	750000
 
 /* Platform defined panic code */
-#define platform_panic(__x) \
-	shim_write(SHIM_IPCDH, (0xdead000 | (__x & 0xfff)))
+#define platform_panic(__x) { \
+	shim_write(SHIM_IPCDL, (0xdead000 | (__x & 0xfff))); \
+	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY); \
+}
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
-	shim_write(SHIM_IPCDH, 	(__x & 0x3fffffff))
+	shim_write(SHIM_IPCXL, (__x & 0x3fffffff))
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
  */

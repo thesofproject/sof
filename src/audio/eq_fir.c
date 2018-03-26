@@ -386,7 +386,7 @@ static int fir_cmd_set_data(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdat
 			}
 		} else {
 			trace_eq_error("une");
-			trace_value(cdata->index);
+			trace_error_value(cdata->index);
 			return -EINVAL;
 		}
 		break;

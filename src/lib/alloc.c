@@ -378,8 +378,8 @@ find:
 
 error:
 	trace_mem_error("eMm");
-	trace_value(bytes);
-	trace_value(caps);
+	trace_error_value(bytes);
+	trace_error_value(caps);
 	return NULL;
 }
 

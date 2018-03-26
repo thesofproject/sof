@@ -671,15 +671,15 @@ static int host_params(struct comp_dev *dev)
 	err = buffer_set_size(hd->dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_host_error("eSz");
-		trace_value(buffer_size);
+		trace_error_value(buffer_size);
 		return err;
 	}
 
 	/* component buffer size must be divisor of host buffer size */
 	if (hd->host_size % hd->period_bytes) {
 		trace_comp_error("eHB");
-		trace_value(hd->host_size);
-		trace_value(hd->period_bytes);
+		trace_error_value(hd->host_size);
+		trace_error_value(hd->period_bytes);
 		return -EINVAL;
 	}
 

@@ -114,7 +114,7 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 /* notify DMA to copy bytes */
 static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 {
-	trace_host("GwU");
+	tracev_host("GwU");
 
 	/* reset BSC before start next copy */
 	hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
@@ -192,8 +192,8 @@ static int hda_dma_start(struct dma *dma, int channel)
 	    (dgcs & DGCS_GEN)) {
 		ret = -EBUSY;
 		trace_host_error("eS0");
-		trace_value(dgcs);
-		trace_value(p->chan[channel].status);
+		trace_error_value(dgcs);
+		trace_error_value(p->chan[channel].status);
 		goto out;
 	}
 

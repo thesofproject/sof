@@ -62,7 +62,7 @@ static void irq_handler(void *arg)
 	uint32_t dipcida;
 	uint32_t msg = 0;
 
-	trace_ipc("IRQ");
+	tracev_ipc("IRQ");
 
 	dipctdr = ipc_read(IPC_DIPCTDR);
 	dipcida = ipc_read(IPC_DIPCIDA);
@@ -86,7 +86,7 @@ static void irq_handler(void *arg)
 
 	/* reply message(done) from host */
 	if (dipcida & IPC_DIPCIDA_DONE) {
-		trace_ipc("Rpy");
+		tracev_ipc("Rpy");
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 

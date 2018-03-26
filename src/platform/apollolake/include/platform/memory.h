@@ -180,7 +180,7 @@
 #define HEAP_SYSTEM_BASE \
 	(REEF_TEXT_BASE + REEF_TEXT_SIZE +\
 	REEF_DATA_SIZE + REEF_BSS_DATA_SIZE)
-#define HEAP_SYSTEM_SIZE		0x2000
+#define HEAP_SYSTEM_SIZE		0x3200
 
 #define HEAP_RUNTIME_BASE		(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
 #define HEAP_RUNTIME_SIZE \
@@ -214,6 +214,8 @@
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_DEBUG_BASE     | Debug data  W2 |  SRAM_DEBUG_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
+ * | SRAM_EXCEPT_BASE    | Debug data  W2 |  SRAM_EXCEPT_SIZE                 |
+ * +---------------------+----------------+-----------------------------------+
  * | SRAM_STREAM_BASE    | Stream data W2 |  SRAM_STREAM_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
  * | SRAM_INBOX_BASE     | Inbox  W1      |  SRAM_INBOX_SIZE                  |
@@ -236,9 +238,12 @@
 
 /* window 2 */
 #define SRAM_DEBUG_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
-#define SRAM_DEBUG_SIZE		0x1000
+#define SRAM_DEBUG_SIZE		0x800
 
-#define SRAM_STREAM_BASE	(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_EXCEPT_BASE	(SRAM_DEBUG_BASE + SRAM_DEBUG_SIZE)
+#define SRAM_EXCEPT_SIZE	0x800
+
+#define SRAM_STREAM_BASE	(SRAM_EXCEPT_BASE + SRAM_EXCEPT_SIZE)
 #define SRAM_STREAM_SIZE	0x1000
 
 /* window 1 */
@@ -263,7 +268,8 @@
 #define HP_SRAM_WIN1_BASE	SRAM_INBOX_BASE
 #define HP_SRAM_WIN1_SIZE	SRAM_INBOX_SIZE
 #define HP_SRAM_WIN2_BASE	SRAM_DEBUG_BASE
-#define HP_SRAM_WIN2_SIZE	(SRAM_DEBUG_SIZE + SRAM_STREAM_SIZE)
+#define HP_SRAM_WIN2_SIZE	(SRAM_DEBUG_SIZE + SRAM_EXCEPT_SIZE + \
+				SRAM_STREAM_SIZE)
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
@@ -273,6 +279,7 @@
 		(HP_SRAM_SIZE - \
 		SRAM_TRACE_SIZE - \
 		SRAM_DEBUG_SIZE - \
+		SRAM_EXCEPT_SIZE - \
 		SRAM_STREAM_SIZE - \
 		SRAM_INBOX_SIZE - \
 		SRAM_OUTBOX_SIZE - \
