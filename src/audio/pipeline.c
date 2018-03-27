@@ -627,6 +627,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 {
 	struct op_data op_data;
 	int ret;
+	uint32_t flags;
 
 	trace_pipe("cmd");
 
@@ -635,7 +636,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 	op_data.cmd = cmd;
 	op_data.cmd_data = data;
 
-	spin_lock(&p->lock);
+	spin_lock_irq(&p->lock, flags);
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* send cmd downstream from host to DAI */
@@ -651,7 +652,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 		trace_error_value(cmd);
 	}
 
-	spin_unlock(&p->lock);
+	spin_unlock_irq(&p->lock, flags);
 	return ret;
 }
 
