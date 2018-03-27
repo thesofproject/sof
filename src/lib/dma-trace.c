@@ -115,7 +115,7 @@ out:
 		buffer->avail -= size;
 	}
 
-	/* DMA trace copying is done */
+	/* DMA trace copying is done, allow reschedule */
 	d->copy_in_progress = 0;
 
 	spin_unlock_irq(&d->lock, flags);
@@ -335,9 +335,15 @@ void dtrace_event(const char *e, uint32_t length)
 	spin_unlock_irq(&trace_data->lock, flags);
 
 	/* schedule copy now if buffer > 50% full */
-	if (trace_data->enabled && buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2))
+	if (trace_data->enabled &&
+	    buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2)) {
 		work_reschedule_default(&trace_data->dmat_work,
 		DMA_TRACE_RESCHEDULE_TIME);
+		/* reschedule should not be intrrupted */
+		/* just like we are in copy progress */
+		trace_data->copy_in_progress = 1;
+	}
+
 }
 
 void dtrace_event_atomic(const char *e, uint32_t length)
