@@ -30,7 +30,7 @@ define(`CONTROLMIXER_OPS',
 
 dnl C_CONTROLMIXER(name, index, ops, max, invert, tlv, KCONTROL_CHANNELS)
 define(`C_CONTROLMIXER',
-`SectionControlMixer.STR($1) {'
+`SectionControlMixer."$1 PIPELINE_ID" {'
 `'
 `	# control belongs to this index group'
 `	index STR($2)'

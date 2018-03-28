@@ -32,7 +32,7 @@ C_CONTROLMIXER(PCM PCM_ID Capture Volume, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Low Latency Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 0)
 
 # "Capture Volume" has 2 sink and source periods for host and DAI ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, LIST(`		', "PCM PCM_ID Capture Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, LIST(`		', "PCM PCM_ID Capture Volume PIPELINE_ID"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

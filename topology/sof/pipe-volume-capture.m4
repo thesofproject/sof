@@ -34,7 +34,7 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 2)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "Master Capture Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "Master Capture Volume PIPELINE_ID"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

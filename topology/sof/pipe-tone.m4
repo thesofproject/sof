@@ -20,7 +20,7 @@ include(`pipeline.m4')
 #
 
 # Volume Mixer control with max value of 32
-C_CONTROLMIXER(Tone Volume PIPELINE_ID, PIPELINE_ID,
+C_CONTROLMIXER(Tone Volume, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(, 32),
 	false,
@@ -29,7 +29,7 @@ C_CONTROLMIXER(Tone Volume PIPELINE_ID, PIPELINE_ID,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
 # Switch type Mixer Control with max value of 1
-C_CONTROLMIXER(Tone Switch PIPELINE_ID, PIPELINE_ID,
+C_CONTROLMIXER(Tone Switch, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
 	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
 	false,
