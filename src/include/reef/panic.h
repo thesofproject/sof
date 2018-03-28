@@ -34,6 +34,7 @@
 #include <reef/reef.h>
 #include <reef/mailbox.h>
 #include <reef/interrupt.h>
+#include <reef/trace.h>
 #include <platform/platform.h>
 #include <uapi/ipc.h>
 #include <stdint.h>
@@ -59,8 +60,13 @@ static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames)
 
 	/* TODO: send IPC oops message to host */
 
-	/* panic and loop forever */
+	/* panic */
 	platform_panic(p);
+
+	/* flush last trace messages */
+	trace_flush();
+
+	/* and loop forever */
 	while (1) {};
 }
 

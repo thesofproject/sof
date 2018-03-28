@@ -136,6 +136,17 @@ void _trace_event_atomic(uint32_t event)
 	dtrace_event_atomic((const char*)dt, sizeof(uint64_t) * 2);
 }
 
+void trace_flush(void)
+{
+	volatile uint64_t *t;
+
+	/* get mailbox position */
+	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
+
+	/* flush dma trace messages */
+	dma_trace_flush((void *)t);
+}
+
 void trace_off(void)
 {
 	trace.enable = 0;

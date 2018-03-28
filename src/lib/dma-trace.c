@@ -36,6 +36,7 @@
 #include <arch/cache.h>
 #include <platform/timer.h>
 #include <platform/dma.h>
+#include <platform/platform.h>
 #include <reef/lock.h>
 #include <stdint.h>
 
@@ -283,6 +284,40 @@ int dma_trace_enable(struct dma_trace_data *d)
 	d->enabled = 1;
 	work_schedule_default(&d->dmat_work, DMA_TRACE_PERIOD);
 	return 0;
+}
+
+void dma_trace_flush(void *t)
+{
+	struct dma_trace_buf *buffer = &trace_data->dmatb;
+	uint32_t avail = buffer->avail;
+	int32_t size;
+	int32_t wrap_count;
+
+	/* number of bytes to flush */
+	if (avail > DMA_FLUSH_TRACE_SIZE) {
+		size = DMA_FLUSH_TRACE_SIZE;
+	} else {
+		/* check for buffer wrap */
+		if (buffer->w_ptr > buffer->r_ptr)
+			size = buffer->w_ptr - buffer->r_ptr;
+		else
+			size = buffer->end_addr - buffer->r_ptr +
+				buffer->w_ptr - buffer->addr;
+	}
+
+	/* check for buffer wrap */
+	if (buffer->w_ptr - size < buffer->addr) {
+		wrap_count = buffer->w_ptr - buffer->addr;
+		memcpy(t, buffer->end_addr - (size - wrap_count),
+		       size - wrap_count);
+		memcpy(t + (size - wrap_count), buffer->addr,
+		       wrap_count);
+	} else {
+		memcpy(t, buffer->w_ptr - size, size);
+	}
+
+	/* writeback trace data */
+	dcache_writeback_region(t, size);
 }
 
 static void dtrace_add_event(const char *e, uint32_t length)
