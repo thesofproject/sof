@@ -102,10 +102,9 @@
 #define TRACEE	1
 
 void _trace_event(uint32_t event);
-void _trace_error(uint32_t event);
-void _trace_error_value(uint32_t event);
+void _trace_event_mbox(uint32_t event);
 void _trace_event_atomic(uint32_t event);
-void _trace_error_atomic(uint32_t event);
+void _trace_event_mbox_atomic(uint32_t event);
 void trace_flush(void);
 void trace_off(void);
 void trace_init(struct reef * reef);
@@ -116,7 +115,6 @@ void trace_init(struct reef * reef);
 	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
 #define trace_event_atomic(__c, __e) \
 	_trace_event_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
-
 #define trace_value(x)	_trace_event(x)
 #define trace_value_atomic(x)	_trace_event_atomic(x)
 
@@ -138,12 +136,12 @@ void trace_init(struct reef * reef);
 /* error tracing */
 #if TRACEE
 #define trace_error(__c, __e) \
-	_trace_error_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
+	_trace_event_mbox_atomic(__c | (__e[0] << 16) | (__e[1] << 8) | __e[2])
 #define trace_error_atomic(__c, __e) \
-	_trace_error_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
-/* write back error value to mbox*/
-#define trace_error_value(x) _trace_error_atomic(x)
-#define trace_error_value_atomic(x) _trace_error_atomic(x)
+	_trace_event_mbox_atomic(__c | (__e[0] << 16) | (__e[1] << 8) | __e[2])
+/* write back error value to mbox */
+#define trace_error_value(x) _trace_event_mbox_atomic(x)
+#define trace_error_value_atomic(x) _trace_event_mbox_atomic(x)
 #else
 #define trace_error(__c, __e)
 #define trace_error_atomic(__c, __e)
