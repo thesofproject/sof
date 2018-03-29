@@ -103,9 +103,8 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
 /* reset the pipeline and free resources */
 int pipeline_reset(struct pipeline *p, struct comp_dev *host_cd);
 
-/* send pipeline a command */
-int pipeline_cmd(struct pipeline *p, struct comp_dev *host_cd, int cmd,
-	void *data);
+/* trigger pipeline - atomic */
+int pipeline_trigger(struct pipeline *p, struct comp_dev *host_cd, int cmd);
 
 /* initialise pipeline subsys */
 int pipeline_init(void);

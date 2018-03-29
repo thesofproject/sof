@@ -425,10 +425,6 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	trace_eq("cmd");
 
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
 		ret = fir_cmd_set_value(dev, cdata);
@@ -439,6 +435,13 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 	}
 
 	return ret;
+}
+
+static int eq_fir_trigger(struct comp_dev *dev, int cmd)
+{
+	trace_eq("trg");
+
+	return comp_set_state(dev, cmd);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -482,7 +485,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 	trace_eq("EPp");
 
-	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
 
@@ -490,13 +493,13 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 	/* Initialize EQ */
 	if (cd->config == NULL) {
-		comp_set_state(dev, COMP_CMD_RESET);
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
 	ret = eq_fir_setup(cd->fir, cd->config, dev->params.channels);
 	if (ret < 0) {
-		comp_set_state(dev, COMP_CMD_RESET);
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
 
@@ -517,7 +520,7 @@ static int eq_fir_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
@@ -528,6 +531,7 @@ struct comp_driver comp_eq_fir = {
 		.free = eq_fir_free,
 		.params = eq_fir_params,
 		.cmd = eq_fir_cmd,
+		.trigger = eq_fir_trigger,
 		.copy = eq_fir_copy,
 		.prepare = eq_fir_prepare,
 		.reset = eq_fir_reset,

@@ -178,24 +178,24 @@ static inline int mixer_sink_status(struct comp_dev *mixer)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int mixer_cmd(struct comp_dev *dev, int cmd, void *data)
+static int mixer_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret;
 
-	trace_mixer("cmd");
+	trace_mixer("trg");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
 		return ret;
 
 	switch(cmd) {
-	case COMP_CMD_START:
-	case COMP_CMD_RELEASE:
+	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_RELEASE:
 		if (mixer_sink_status(dev) == COMP_STATE_ACTIVE)
 			return 1; /* no need to go downstream */
 		break;
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_STOP:
+	case COMP_TRIGGER_PAUSE:
+	case COMP_TRIGGER_STOP:
 		if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) > 0) {
 			dev->state = COMP_STATE_ACTIVE;
 			return 1; /* no need to go downstream */
@@ -289,7 +289,7 @@ static int mixer_reset(struct comp_dev *dev)
 			return 1; /* should not reset the downstream components */
 	}
 
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
@@ -318,7 +318,7 @@ static int mixer_prepare(struct comp_dev *dev)
 		md->mix_func = mix_n;
 		dev->state = COMP_STATE_PREPARE;
 
-		ret = comp_set_state(dev, COMP_CMD_PREPARE);
+		ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 		if (ret < 0)
 			return ret;
 	}
@@ -345,7 +345,7 @@ struct comp_driver comp_mixer = {
 		.free		= mixer_free,
 		.params		= mixer_params,
 		.prepare	= mixer_prepare,
-		.cmd		= mixer_cmd,
+		.trigger	= mixer_trigger,
 		.copy		= mixer_copy,
 		.reset		= mixer_reset,
 	},

@@ -751,14 +751,17 @@ static int src_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	trace_src("cmd");
 
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
 	if (cmd == COMP_CMD_SET_VALUE)
 		ret = src_ctrl_cmd(dev, cdata);
 
 	return ret;
+}
+
+static int src_trigger(struct comp_dev *dev, int cmd)
+{
+	trace_src("trg");
+
+	return comp_set_state(dev, cmd);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -827,7 +830,7 @@ static int src_prepare(struct comp_dev *dev)
 {
 	trace_src("pre");
 
-	return comp_set_state(dev, COMP_CMD_PREPARE);
+	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
 
 static int src_reset(struct comp_dev *dev)
@@ -839,7 +842,7 @@ static int src_reset(struct comp_dev *dev)
 	cd->src_func = src_2s_s32_default;
 	src_polyphase_reset(&cd->src);
 
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
@@ -850,6 +853,7 @@ struct comp_driver comp_src = {
 		.free = src_free,
 		.params = src_params,
 		.cmd = src_cmd,
+		.trigger = src_trigger,
 		.copy = src_copy,
 		.prepare = src_prepare,
 		.reset = src_reset,

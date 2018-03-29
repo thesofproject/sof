@@ -540,25 +540,25 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	trace_ssp("tri");
 
 	switch (cmd) {
-	case COMP_CMD_START:
+	case COMP_TRIGGER_START:
 		if (ssp->state[direction] == COMP_STATE_PREPARE ||
 			ssp->state[direction] == COMP_STATE_PAUSED)
 			ssp_start(dai, direction);
 		break;
-	case COMP_CMD_RELEASE:
+	case COMP_TRIGGER_RELEASE:
 		if (ssp->state[direction] == COMP_STATE_PAUSED ||
 			ssp->state[direction] == COMP_STATE_PREPARE)
 			ssp_start(dai, direction);
 		break;
-	case COMP_CMD_STOP:
-	case COMP_CMD_PAUSE:
+	case COMP_TRIGGER_STOP:
+	case COMP_TRIGGER_PAUSE:
 		ssp->state[direction] = COMP_STATE_PAUSED;
 		ssp_stop(dai);
 		break;
-	case COMP_CMD_RESUME:
+	case COMP_TRIGGER_RESUME:
 		ssp_context_restore(dai);
 		break;
-	case COMP_CMD_SUSPEND:
+	case COMP_TRIGGER_SUSPEND:
 		ssp_context_store(dai);
 		break;
 	default:

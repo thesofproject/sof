@@ -70,17 +70,18 @@
 
 /*
  * standard component stream commands
+ * TODO: use IPC versions after 1.1
  */
 
-#define COMP_CMD_STOP		0	/* stop component stream */
-#define COMP_CMD_START		1	/* start component stream */
-#define COMP_CMD_PAUSE		2	/* immediately pause the component stream */
-#define COMP_CMD_RELEASE	3	/* release paused component stream */
-#define COMP_CMD_SUSPEND	5	/* suspend component */
-#define COMP_CMD_RESUME		6	/* resume component */
-#define COMP_CMD_RESET		6	/* reset component */
-#define COMP_CMD_PREPARE	7	/* prepare component */
-#define COMP_CMD_XRUN		8	/* XRUN component */
+#define COMP_TRIGGER_STOP	0	/* stop component stream */
+#define COMP_TRIGGER_START	1	/* start component stream */
+#define COMP_TRIGGER_PAUSE	2	/* pause the component stream */
+#define COMP_TRIGGER_RELEASE	3	/* release paused component stream */
+#define COMP_TRIGGER_SUSPEND	5	/* suspend component */
+#define COMP_TRIGGER_RESUME	6	/* resume component */
+#define COMP_TRIGGER_RESET	6	/* reset component */
+#define COMP_TRIGGER_PREPARE	7	/* prepare component */
+#define COMP_TRIGGER_XRUN	8	/* XRUN component */
 
 /*
  * standard component control commands
@@ -100,7 +101,7 @@
 
 /* component operations */
 #define COMP_OPS_PARAMS		0
-#define COMP_OPS_CMD		1
+#define COMP_OPS_TRIGGER	1
 #define COMP_OPS_PREPARE	2
 #define COMP_OPS_COPY		3
 #define COMP_OPS_BUFFER		4
@@ -133,8 +134,11 @@ struct comp_ops {
 	int (*dai_config)(struct comp_dev *dev,
 		struct sof_ipc_dai_config *dai_config);
 
-	/* used to pass standard and bespoke commands (with data) to component */
+	/* used to pass standard and bespoke commands (with optional data) */
 	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
+
+	/* atomic - used to start/stop/pause stream operations */
+	int (*trigger)(struct comp_dev *dev, int cmd);
 
 	/* prepare component after params are set */
 	int (*prepare)(struct comp_dev *dev);
@@ -256,6 +260,12 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 	}
 
 	return dev->drv->ops.cmd(dev, cmd, data);
+}
+
+/* trigger component - mandatory and atomic */
+static inline int comp_trigger(struct comp_dev *dev, int cmd)
+{
+	return dev->drv->ops.trigger(dev, cmd);
 }
 
 /* prepare component - mandatory */

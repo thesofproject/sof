@@ -121,7 +121,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	int ret = 0;
 
 	switch (cmd) {
-	case COMP_CMD_START:
+	case COMP_TRIGGER_START:
 		if (dev->state == COMP_STATE_PREPARE ||
 			dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_ACTIVE;
@@ -131,7 +131,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			ret = -EINVAL;
 		}
 		break;
-	case COMP_CMD_RELEASE:
+	case COMP_TRIGGER_RELEASE:
 		if (dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
@@ -140,8 +140,8 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			ret = -EINVAL;
 		}
 		break;
-	case COMP_CMD_STOP:
-	case COMP_CMD_XRUN:
+	case COMP_TRIGGER_STOP:
+	case COMP_TRIGGER_XRUN:
 		if (dev->state == COMP_STATE_ACTIVE) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
@@ -150,7 +150,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			ret = -EINVAL;
 		}
 		break;
-	case COMP_CMD_PAUSE:
+	case COMP_TRIGGER_PAUSE:
 		/* only support pausing for running */
 		if (dev->state == COMP_STATE_ACTIVE)
 			dev->state = COMP_STATE_PAUSED;
@@ -160,7 +160,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			ret = -EINVAL;
 		}
 		break;
-	case COMP_CMD_RESET:
+	case COMP_TRIGGER_RESET:
 		/* reset always succeeds */
 		dev->state = COMP_STATE_READY;
 		if (dev->state == COMP_STATE_ACTIVE ||
@@ -170,7 +170,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			ret = 0;
 		}
 		break;
-	case COMP_CMD_PREPARE:
+	case COMP_TRIGGER_PREPARE:
 		if (dev->state == COMP_STATE_PREPARE ||
 			dev->state == COMP_STATE_READY) {
 			dev->state = COMP_STATE_PREPARE;

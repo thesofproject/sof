@@ -809,13 +809,8 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
-	int ret;
 
 	trace_volume("cmd");
-
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
 
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
@@ -823,8 +818,15 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_GET_VALUE:
 		return volume_ctrl_get_cmd(dev, cdata);
 	default:
-		return ret;
+		return -EINVAL;
 	}
+}
+
+static int volume_trigger(struct comp_dev *dev, int cmd)
+{
+	trace_volume("trg");
+
+	return comp_set_state(dev, cmd);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -880,7 +882,7 @@ static int volume_prepare(struct comp_dev *dev)
 
 	trace_volume("pre");
 
-	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
 
@@ -975,7 +977,7 @@ static int volume_prepare(struct comp_dev *dev)
 	trace_error_value(dev->params.channels);
 
 err:
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret;
 
 found:
@@ -989,7 +991,7 @@ static int volume_reset(struct comp_dev *dev)
 {
 	trace_volume("res");
 
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
@@ -1000,6 +1002,7 @@ struct comp_driver comp_volume = {
 		.free		= volume_free,
 		.params		= volume_params,
 		.cmd		= volume_cmd,
+		.trigger	= volume_trigger,
 		.copy		= volume_copy,
 		.prepare	= volume_prepare,
 		.reset		= volume_reset,

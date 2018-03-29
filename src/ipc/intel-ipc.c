@@ -433,7 +433,7 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 static int ipc_stream_trigger(uint32_t header)
 {
 	struct ipc_comp_dev *pcm_dev;
-	uint32_t cmd = COMP_CMD_RELEASE;
+	uint32_t cmd = COMP_TRIGGER_RELEASE;
 	struct sof_ipc_stream *stream  = _ipc->comp_data;
 	uint32_t ipc_cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 	int ret;
@@ -449,16 +449,16 @@ static int ipc_stream_trigger(uint32_t header)
 
 	switch (ipc_cmd) {
 	case iCS(SOF_IPC_STREAM_TRIG_START):
-		cmd = COMP_CMD_START;
+		cmd = COMP_TRIGGER_START;
 		break;
 	case iCS(SOF_IPC_STREAM_TRIG_STOP):
-		cmd = COMP_CMD_STOP;
+		cmd = COMP_TRIGGER_STOP;
 		break;
 	case iCS(SOF_IPC_STREAM_TRIG_PAUSE):
-		cmd = COMP_CMD_PAUSE;
+		cmd = COMP_TRIGGER_PAUSE;
 		break;
 	case iCS(SOF_IPC_STREAM_TRIG_RELEASE):
-		cmd = COMP_CMD_RELEASE;
+		cmd = COMP_TRIGGER_RELEASE;
 		break;
 	/* XRUN is special case- TODO */
 	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
@@ -466,8 +466,7 @@ static int ipc_stream_trigger(uint32_t header)
 	}
 
 	/* trigger the component */
-	ret = pipeline_cmd(pcm_dev->cd->pipeline, pcm_dev->cd,
-			cmd, NULL);
+	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	if (ret < 0) {
 		trace_ipc_error("eRc");
 		trace_error_value(ipc_cmd);
