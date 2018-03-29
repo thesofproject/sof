@@ -53,6 +53,20 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	uint32_t hsize;
 	uint32_t lsize;
 
+	if (d->host_offset == d->host_size)
+		d->host_offset = 0;
+
+#if defined CONFIG_DMA_GW
+	/*
+	 * there isn't DMA completion callback in GW DMA copying.
+	 * so we send previous position always before the next copying
+	 * for guaranteeing previous DMA copying is finished.
+	 * This function will be called once every 500ms at least even
+	 * if no new trace is filled.
+	 */
+	ipc_dma_trace_send_position();
+#endif
+
 	/* any data to copy ? */
 	if (avail == 0)
 		return DMA_TRACE_PERIOD;
@@ -98,8 +112,6 @@ static uint64_t trace_work(void *data, uint64_t delay)
 
 	/* update host pointer and check for wrap */
 	d->host_offset += size;
-	if (d->host_offset == d->host_size)
-		d->host_offset = 0;
 
 	/* update local pointer and check for wrap */
 	buffer->r_ptr += size;
@@ -120,14 +132,6 @@ out:
 	d->copy_in_progress = 0;
 
 	spin_unlock_irq(&d->lock, flags);
-
-#if defined CONFIG_DMA_GW
-	/*
-	 * there isn't DMA completion callback in GW DMA copying
-	 * so we send position IPC message after DMA copying API calling
-	 */
-	ipc_dma_trace_send_position();
-#endif
 
 	/* reschedule the trace copying work */
 	return DMA_TRACE_PERIOD;
