@@ -232,6 +232,10 @@ trace:
 		addr += TRACE_BLOCK_SIZE;
 	}
 
+	fclose(in_fd);
+	if (out_fd)
+		fclose(out_fd);
+
 	return 0;
 }
 
