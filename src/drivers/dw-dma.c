@@ -1150,15 +1150,19 @@ static void dw_dma_irq_cnl(void *data)
 
 	/*check interrupt status of DMA controller 0*/
 	dma = dma_get(DMA_GP_LP_DMAC0);
-	status_intr = dw_read(dma, DW_INTR_STATUS);
-	if (status_intr)
-		dw_dma_irq_handler(dma);
+	if (dma) {
+		status_intr = dw_read(dma, DW_INTR_STATUS);
+		if (status_intr)
+			dw_dma_irq_handler(dma);
+	}
 
 	/*check interrupt status of DMA controller 1*/
 	dma = dma_get(DMA_GP_LP_DMAC1);
-	status_intr = dw_read(dma, DW_INTR_STATUS);
-	if (status_intr)
-		dw_dma_irq_handler(dma);
+	if (dma) {
+		status_intr = dw_read(dma, DW_INTR_STATUS);
+		if (status_intr)
+			dw_dma_irq_handler(dma);
+	}
 }
 #endif
 
