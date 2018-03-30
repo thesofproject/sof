@@ -56,6 +56,7 @@ struct dma_trace_data {
 	struct dma_sg_config config;
 	struct dma_trace_buf dmatb;
 	struct dma_copy dc;
+	uint32_t old_host_offset;
 	uint32_t host_offset;
 	uint32_t overflow;
 	uint32_t messages;

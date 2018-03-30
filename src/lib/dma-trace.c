@@ -64,7 +64,10 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	 * This function will be called once every 500ms at least even
 	 * if no new trace is filled.
 	 */
-	ipc_dma_trace_send_position();
+	if (d->old_host_offset != d->host_offset) {
+		ipc_dma_trace_send_position();
+		d->old_host_offset = d->host_offset;
+	}
 #endif
 
 	/* any data to copy ? */
