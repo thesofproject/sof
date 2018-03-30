@@ -28,11 +28,13 @@ TONE_TEST=test-tone-playback-ssp
 # 8) dai_data_bits - SSP number of valid data bits per slot/channel
 # 9) dai_bclk - SSP BCLK in HZ
 # 10) dai_mclk - SSP MCLK in HZ
+# 11) SSP mode - SSP mode e.g. I2S, LEFT_J, DSP_A and DSP_B
 #
+
 function simple_test {
 	for i in ${SIMPLE_TESTS[@]}
 	do
-		TFILE="$i$5-$2-$4-$6-48k-$1"
+		TFILE="$i$5-${11}-$2-$4-$6-48k-$1"
 		echo "M4 pre-processing test $i -> ${TFILE}"
 		m4 ${M4_FLAGS} \
 			-DTEST_PIPE_NAME="$2" \
@@ -44,6 +46,7 @@ function simple_test {
 			-DTEST_SSP_MCLK=${10} \
 			-DTEST_SSP_PHY_BITS=$7 \
 			-DTEST_SSP_DATA_BITS=$8 \
+			-DTEST_SSP_MODE=${11} \
 			$i.m4 > ${TFILE}.conf
 		echo "Compiling test $i -> ${TFILE}.tplg"
 		alsatplg -v 1 -c ${TFILE}.conf -o ${TFILE}.tplg
@@ -82,43 +85,43 @@ function tone_test {
 }
 
 # Pre-process the simple tests
-simple_test nocodec passthrough "NoCodec" s16le 2 s16le 20 16 1920000 19200000
-simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 19200000
-simple_test nocodec volume "NoCodec" s16le 2 s16le 20 16 1920000 19200000
-simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 19200000
-simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 19200000
-simple_test nocodec src "NoCodec" s24le 2 s24le 25 24 2400000 19200000
+simple_test nocodec passthrough "NoCodec" s16le 2 s16le 20 16 1920000 19200000 I2S
+simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S
+simple_test nocodec volume "NoCodec" s16le 2 s16le 20 16 1920000 19200000 I2S
+simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S
+simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 19200000 I2S
+simple_test nocodec src "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S
 
-simple_test codec passthrough "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000
-simple_test codec passthrough "SSP2-Codec" s24le 2 s16le 20 16 1920000 19200000
-simple_test codec passthrough "SSP2-Codec" s16le 2 s24le 25 24 2400000 19200000
-simple_test codec passthrough "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000
-simple_test codec volume "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000
-simple_test codec volume "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000
-simple_test codec volume "SSP2-Codec" s24le 2 s16le 20 16 1920000 19200000
-simple_test codec volume "SSP2-Codec" s16le 2 s24le 25 24 2400000 19200000
-simple_test codec src "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000
+simple_test codec passthrough "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000 I2S
+simple_test codec passthrough "SSP2-Codec" s24le 2 s16le 20 16 1920000 19200000 I2S
+simple_test codec passthrough "SSP2-Codec" s16le 2 s24le 25 24 2400000 19200000 I2S
+simple_test codec passthrough "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S
+simple_test codec volume "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000 I2S
+simple_test codec volume "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S
+simple_test codec volume "SSP2-Codec" s24le 2 s16le 20 16 1920000 19200000 I2S
+simple_test codec volume "SSP2-Codec" s16le 2 s24le 25 24 2400000 19200000 I2S
+simple_test codec src "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S
 
 # for APL
-simple_test nocodec volume "NoCodec" s16le 4 s16le 16 16 1536000 24576000
-simple_test nocodec volume "NoCodec" s24le 4 s16le 16 16 1536000 24576000
-simple_test nocodec volume "NoCodec" s32le 4 s16le 16 16 1536000 24576000
-simple_test nocodec volume "NoCodec" s16le 4 s24le 32 24 3072000 24576000
-simple_test nocodec volume "NoCodec" s24le 4 s24le 32 24 3072000 24576000
-simple_test nocodec volume "NoCodec" s32le 4 s24le 32 24 3072000 24576000
-simple_test nocodec volume "NoCodec" s16le 4 s32le 32 32 3072000 24576000
-simple_test nocodec volume "NoCodec" s24le 4 s32le 32 32 3072000 24576000
-simple_test nocodec volume "NoCodec" s32le 4 s32le 32 32 3072000 24576000
-simple_test codec volume "SSP4-Codec" s16le 4 s16le 16 16 1536000 24576000
-simple_test nocodec volume "NoCodec" s16le 5 s16le 16 16 1536000 24576000
-simple_test nocodec src "NoCodec" s24le 4 s24le 32 24 3072000 24576000
+simple_test nocodec volume "NoCodec" s16le 4 s16le 16 16 1536000 24576000 I2S
+simple_test nocodec volume "NoCodec" s24le 4 s16le 16 16 1536000 24576000 I2S
+simple_test nocodec volume "NoCodec" s32le 4 s16le 16 16 1536000 24576000 I2S
+simple_test nocodec volume "NoCodec" s16le 4 s24le 32 24 3072000 24576000 I2S
+simple_test nocodec volume "NoCodec" s24le 4 s24le 32 24 3072000 24576000 I2S
+simple_test nocodec volume "NoCodec" s32le 4 s24le 32 24 3072000 24576000 I2S
+simple_test nocodec volume "NoCodec" s16le 4 s32le 32 32 3072000 24576000 I2S
+simple_test nocodec volume "NoCodec" s24le 4 s32le 32 32 3072000 24576000 I2S
+simple_test nocodec volume "NoCodec" s32le 4 s32le 32 32 3072000 24576000 I2S
+simple_test codec volume "SSP4-Codec" s16le 4 s16le 16 16 1536000 24576000 I2S
+simple_test nocodec volume "NoCodec" s16le 5 s16le 16 16 1536000 24576000 I2S
+simple_test nocodec src "NoCodec" s24le 4 s24le 32 24 3072000 24576000 I2S
 
 # for CNL
-simple_test nocodec volume "NoCodec" s16le 2 s16le 25 16 2400000 24000000
-simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 24000000
-simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 24000000
-simple_test nocodec volume "NoCodec" s24le 2 s16le 25 16 2400000 24000000
-simple_test nocodec src "NoCodec" s24le 4 s24le 25 24 2400000 24000000
+simple_test nocodec volume "NoCodec" s16le 2 s16le 25 16 2400000 24000000 I2S
+simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 24000000 I2S
+simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 24000000 I2S
+simple_test nocodec volume "NoCodec" s24le 2 s16le 25 16 2400000 24000000 I2S
+simple_test nocodec src "NoCodec" s24le 4 s24le 25 24 2400000 24000000 I2S
 
 # Tone test: Tone component only supports s32le currently
 tone_test codec tone "SSP2-Codec" s32le 2 s16le 20 16 1920000 19200000
