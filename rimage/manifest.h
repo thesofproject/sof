@@ -22,6 +22,9 @@
 
 #define MAN_PAGE_SIZE		4096
 
+/* start offset for modules built using xcc */
+#define XCC_MOD_OFFSET		0x8
+
 /* start offset for base FW module */
 #define FILE_TEXT_OFFSET		0x8000
 
