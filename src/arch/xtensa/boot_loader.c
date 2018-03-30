@@ -121,7 +121,7 @@ static void parse_manifest(void)
 /* power on HPSRAM */
 static int32_t hp_sram_init(void)
 {
-	int delay_count = 256, timeout = 256;
+	int delay_count = 256;
 	uint32_t status;
 
 	shim_write(SHIM_LDOCTL, SHIM_HPMEM_POWER_ON);
@@ -141,24 +141,15 @@ static int32_t hp_sram_init(void)
 	status = io_reg_read(HSPGISTS0);
 	while (status) {
 		idelay(delay_count);
-
 		status = io_reg_read(HSPGISTS0);
-		if (timeout-- < 0) {
-			return -EIO;
-		}
 	}
 
 	/* query the power status of second part of HP memory */
 	/* and do as above code                               */
-	timeout = 256;
 	status = io_reg_read(HSPGISTS1);
 	while (status) {
 		idelay(delay_count);
-
 		status = io_reg_read(HSPGISTS1);
-		if (timeout-- < 0) {
-			return -EIO;
-		}
 	}
 
 	/* add some delay before touch power register */

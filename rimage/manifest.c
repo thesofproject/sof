@@ -211,11 +211,18 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	section = &module->section[man_section_idx];
 
 	/* load in manifest data */
-	ret = fseek(module->fd, section->sh_offset, SEEK_SET);
+	/* module built using xcc has preceding bytes */
+	if (section->sh_size > sizeof(sof_mod))
+		ret = fseek(module->fd,
+			section->sh_offset + XCC_MOD_OFFSET, SEEK_SET);
+	else
+		ret = fseek(module->fd, section->sh_offset, SEEK_SET);
+
 	if (ret < 0) {
 		fprintf(stderr, "error: can't seek to section %d\n", ret);
 		return ret;
 	}
+
 	count = fread(&sof_mod, 1, sizeof(sof_mod), module->fd);
 	if (count != sizeof(sof_mod)) {
 		fprintf(stderr, "error: can't read section %d\n", -errno);

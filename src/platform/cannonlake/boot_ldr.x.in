@@ -21,7 +21,7 @@ MEMORY
         org = IMR_BOOT_LDR_LIT_BASE,
         len = IMR_BOOT_LDR_LIT_SIZE
   reef_text :
-	org = IMR_BOOT_LDR_TEXT_BASE,
+        org = IMR_BOOT_LDR_TEXT_BASE,
         len = IMR_BOOT_LDR_TEXT_SIZE,
   vector_base_text :
         org = XCHAL_VECBASE_RESET_PADDR,
@@ -81,7 +81,7 @@ MEMORY
         org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
         len = REEF_MEM_VECT_TEXT_SIZE
   reef_data :
-	org = IMR_BOOT_LDR_DATA_BASE,
+        org = IMR_BOOT_LDR_DATA_BASE,
         len = IMR_BOOT_LDR_DATA_SIZE
   reef_bss_data :
 	org = IMR_BOOT_LDR_BSS_BASE,
@@ -148,6 +148,9 @@ SECTIONS
     *(.fini.literal)
     KEEP(*(.fini))
     *(.gnu.version)
+    KEEP (*(.ResetVector.text))
+    KEEP (*(.ResetHandler.text))
+    KEEP (*(.MemoryExceptionVector.text))
     _text_end = ABSOLUTE(.);
     _etext = .;
   } >reef_text :reef_text_phdr

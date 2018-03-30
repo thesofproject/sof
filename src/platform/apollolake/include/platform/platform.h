@@ -125,7 +125,7 @@ struct reef;
 #define platform_trace_point(__x) \
 	sw_reg_write(SRAM_REG_FW_TRACEP, __x)
 
-struct timer *platform_timer;
+extern struct timer *platform_timer;
 
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
