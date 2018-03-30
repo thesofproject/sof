@@ -82,8 +82,8 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	trace_dai("irq");
 
-	/* is stream stopped or paused and we are not handling XRUN ? */
-	if (dev->state != COMP_STATE_ACTIVE && dd->xrun == 0) {
+	/* stop dma copy for pause/stop/xrun */
+	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
 
 		/* stop the DAI */
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
@@ -111,9 +111,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 			dcache_writeback_region(dma_buffer->addr,
 				dma_buffer->size);
 		}
-
-		/* inform waiters */
-		wait_completed(&dd->complete);
 		return;
 	}
 
@@ -456,8 +453,11 @@ static int dai_prepare(struct comp_dev *dev)
 	}
 
 	/* dma reconfig not required if XRUN handling */
-	if (dd->xrun)
+	if (dd->xrun) {
+		/* after prepare, we have recovered from xrun */
+		dd->xrun = 0;
 		return ret;
+	}
 
 	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
 	if (ret < 0)
