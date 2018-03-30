@@ -430,18 +430,22 @@ out:
 static int dw_dma_release(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dw_lli2 *lli;
 	uint32_t flags;
 
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("Dpr");
 
-	if (p->chan[channel].status == COMP_STATE_PAUSED) {
-		dw_dma_chan_reload_lli(dma, channel);
-	}
-
-	/* resume and reload DMA */
-	p->chan[channel].status = COMP_STATE_ACTIVE;
+	/* get current lli */
+#if DW_USE_HW_LLI
+	lli = (struct dw_lli2 *)dw_read(dma, DW_LLP(channel));
+#else
+	lli = p->chan[channel].lli_current;
+#endif
+	/* get next lli and recover the lli to head for restart */
+	lli = (struct dw_lli2 *)lli->llp;
+	p->chan[channel].lli = lli;
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;

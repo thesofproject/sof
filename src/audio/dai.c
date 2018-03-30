@@ -544,12 +544,27 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		dai_pointer_init(dev);
-		/* fall through */
-	case COMP_TRIGGER_RELEASE:
-
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
+			/* start the DAI */
+			ret = dma_start(dd->dma, dd->chan);
+			if (ret < 0)
+				return ret;
+			dai_trigger(dd->dai, cmd, dev->params.direction);
+		} else {
+			dd->xrun = 0;
+		}
 
+		/* update starting wallclock */
+		platform_dai_wallclock(dev, &dd->wallclock);
+		break;
+	case COMP_TRIGGER_RELEASE:
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun == 0) {
+			/* recover the dma status */
+			ret = dma_release(dd->dma, dd->chan);
+			if (ret < 0)
+				return ret;
 			/* start the DAI */
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
