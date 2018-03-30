@@ -122,10 +122,11 @@ out:
 	spin_lock_irq(&d->lock, flags);
 
 	/* disregard any old messages and dont resend them if we overflow */
-	if (d->overflow) {
-		buffer->avail = DMA_TRACE_LOCAL_SIZE - size;
-	} else {
-		buffer->avail -= size;
+	if (size > 0) {
+		if (d->overflow)
+			buffer->avail = DMA_TRACE_LOCAL_SIZE - size;
+		else
+			buffer->avail -= size;
 	}
 
 	/* DMA trace copying is done, allow reschedule */
