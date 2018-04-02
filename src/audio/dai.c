@@ -78,6 +78,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
+	uint32_t copied_size;
 
 	trace_dai("irq");
 
@@ -111,6 +112,57 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 				dma_buffer->size);
 		}
 		return;
+	}
+
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		dma_buffer = list_first_item(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+
+		copied_size = dd->last_bytes ? dd->last_bytes : dd->period_bytes;
+
+		/* recalc available buffer space */
+		comp_update_buffer_consume(dma_buffer, copied_size);
+
+		/* writeback buffer contents from cache */
+		dcache_writeback_region(dma_buffer->r_ptr, copied_size);
+
+		/* update host position(in bytes offset) for drivers */
+		dev->position += copied_size;
+		if (dd->dai_pos) {
+			dd->dai_pos_blks += copied_size;
+			*dd->dai_pos = dd->dai_pos_blks +
+				dma_buffer->r_ptr - dma_buffer->addr;
+		}
+
+		/* make sure there is availble bytes for next period */
+		if (dma_buffer->avail < dd->period_bytes) {
+			trace_dai_error("xru");
+			comp_underrun(dev, dma_buffer, copied_size, 0);
+		}
+
+	} else {
+		dma_buffer = list_first_item(&dev->bsink_list,
+			struct comp_buffer, source_list);
+
+		/* invalidate buffer contents */
+		dcache_invalidate_region(dma_buffer->w_ptr, dd->period_bytes);
+
+		/* recalc available buffer space */
+		comp_update_buffer_produce(dma_buffer, dd->period_bytes);
+
+		/* update positions */
+		dev->position += dd->period_bytes;
+		if (dd->dai_pos) {
+			dd->dai_pos_blks += dd->period_bytes;
+			*dd->dai_pos = dd->dai_pos_blks +
+				dma_buffer->w_ptr - dma_buffer->addr;
+		}
+
+		/* make sure there is free bytes for next period */
+		if (dma_buffer->free < dd->period_bytes) {
+			trace_dai_error("xro");
+			comp_overrun(dev, dma_buffer, dd->period_bytes, 0);
+		}
 	}
 
 	/* notify pipeline that DAI needs its buffer processed */
@@ -550,62 +602,6 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
-	struct dai_data *dd = comp_get_drvdata(dev);
-	struct comp_buffer *dma_buffer;
-	uint32_t copied_size;
-
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		dma_buffer = list_first_item(&dev->bsource_list,
-					     struct comp_buffer, sink_list);
-
-		copied_size = dd->last_bytes ?
-			dd->last_bytes : dd->period_bytes;
-
-		/* recalc available buffer space */
-		comp_update_buffer_consume(dma_buffer, copied_size);
-
-		/* writeback buffer contents from cache */
-		dcache_writeback_region(dma_buffer->r_ptr, copied_size);
-
-		/* update host position(in bytes offset) for drivers */
-		dev->position += copied_size;
-		if (dd->dai_pos) {
-			dd->dai_pos_blks += copied_size;
-			*dd->dai_pos = dd->dai_pos_blks +
-				dma_buffer->r_ptr - dma_buffer->addr;
-		}
-
-		/* make sure there is available bytes for next period */
-		if (dma_buffer->avail < dd->period_bytes) {
-			trace_dai_error("xru");
-			comp_underrun(dev, dma_buffer, copied_size, 0);
-		}
-
-	} else {
-		dma_buffer = list_first_item(&dev->bsink_list,
-					     struct comp_buffer, source_list);
-
-		/* invalidate buffer contents */
-		dcache_invalidate_region(dma_buffer->w_ptr, dd->period_bytes);
-
-		/* recalc available buffer space */
-		comp_update_buffer_produce(dma_buffer, dd->period_bytes);
-
-		/* update positions */
-		dev->position += dd->period_bytes;
-		if (dd->dai_pos) {
-			dd->dai_pos_blks += dd->period_bytes;
-			*dd->dai_pos = dd->dai_pos_blks +
-				dma_buffer->w_ptr - dma_buffer->addr;
-		}
-
-		/* make sure there is free bytes for next period */
-		if (dma_buffer->free < dd->period_bytes) {
-			trace_dai_error("xro");
-			comp_overrun(dev, dma_buffer, dd->period_bytes, 0);
-		}
-	}
-
 	return 0;
 }
 
