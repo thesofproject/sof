@@ -63,27 +63,41 @@
 #define mailbox_get_debug_size() \
 	MAILBOX_DEBUG_SIZE
 
-#define mailbox_dspbox_write(dest, src, bytes) \
-	rmemcpy((void*)(MAILBOX_DSPBOX_BASE + dest), src, bytes); \
-	dcache_writeback_region((void*)(MAILBOX_DSPBOX_BASE + dest), bytes);
+static inline
+void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
+{
+	rmemcpy((void *)(MAILBOX_DSPBOX_BASE + offset), src, bytes);
+	dcache_writeback_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+}
 
-#define mailbox_dspbox_read(dest, src, bytes) \
-	dcache_invalidate_region((void*)(MAILBOX_DSPBOX_BASE + src), bytes); \
-	rmemcpy(dest, (void*)(MAILBOX_DSPBOX_BASE + src), bytes);
+static inline
+void mailbox_dspbox_read(void *dest, size_t offset, size_t bytes)
+{
+	dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+	rmemcpy(dest, (void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+}
 
-#define mailbox_hostbox_write(dest, src, bytes) \
-	rmemcpy((void*)(MAILBOX_HOSTBOX_BASE + dest), src, bytes); \
-	dcache_writeback_region((void*)(MAILBOX_HOSTBOX_BASE + dest), bytes);
+static inline
+void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
+{
+	rmemcpy((void *)(MAILBOX_HOSTBOX_BASE + offset), src, bytes);
+	dcache_writeback_region((void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
+}
 
-#define mailbox_hostbox_read(dest, src, bytes) \
-	dcache_invalidate_region((void*)(MAILBOX_HOSTBOX_BASE + src), bytes); \
-	rmemcpy(dest, (void*)(MAILBOX_HOSTBOX_BASE + src), bytes);
+static inline
+void mailbox_hostbox_read(void *dest, size_t offset, size_t bytes)
+{
+	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE + offset),
+				 bytes);
+	rmemcpy(dest, (void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
+}
 
-#define mailbox_stream_write(dest, src, bytes) \
-	do { \
-		rmemcpy((void *)(MAILBOX_STREAM_BASE + dest), src, bytes); \
-		dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + dest), \
-					bytes); \
-	} while (0)
+static inline
+void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
+{
+	rmemcpy((void *)(MAILBOX_STREAM_BASE + offset), src, bytes);
+	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
+				bytes);
+}
 
 #endif
