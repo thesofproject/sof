@@ -34,6 +34,7 @@
 #include <platform/mailbox.h>
 #include <arch/cache.h>
 #include <stdint.h>
+#include <reef/string.h>
 
 /* 4k should be enough for everyone ..... */
 #define IPC_MAX_MAILBOX_BYTES 0x1000
