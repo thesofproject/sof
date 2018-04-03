@@ -54,6 +54,7 @@ do
 				PLATFORM="cannonlake"
 				ROOT="xtensa-cnl-elf"
 			fi
+			PATH=$pwd/../xtensa-root/$ROOT/bin:$PATH
 			./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$pwd/../xtensa-root/$ROOT --host=$ROOT
 			make clean
 			make
