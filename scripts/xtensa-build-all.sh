@@ -6,6 +6,12 @@ set -e
 
 pwd=`pwd`
 
+# make sure rimage is built and aligned with code
+./configure --enable-rimage
+make
+sudo make install
+
+# now build the firmware (depends on rimage)
 rm -fr src/arch/xtensa/*.ri
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl)
