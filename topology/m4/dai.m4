@@ -7,14 +7,14 @@ define(`N_DAI', DAI_NAME)
 define(`N_DAI_OUT', DAI_NAME`.OUT')
 define(`N_DAI_IN', DAI_NAME`.IN')
 
-dnl W_DAI_OUT(type, index, format, periods_sink, periods_source, preload, data)
+dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source, preload, data)
 define(`W_DAI_OUT',
 `SectionVendorTuples."'N_DAI_OUT($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
-`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($5)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
+`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
+`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
 `	}'
 `}'
 `SectionData."'N_DAI_OUT($2)`_data_w_comp" {'
@@ -41,7 +41,7 @@ define(`W_DAI_OUT',
 `SectionVendorTuples."'N_DAI_OUT($2)`_tuples_comp_str" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_COMP_FORMAT'	STR($3)
+`		SOF_TKN_COMP_FORMAT'	STR($4)
 `	}'
 `}'
 `SectionData."'N_DAI_OUT($2)`_data_comp_str" {'
@@ -50,24 +50,25 @@ define(`W_DAI_OUT',
 `SectionWidget."'N_DAI_OUT`" {'
 `	index "'PIPELINE_ID`"'
 `	type "dai_in"'
+`	stream_name' STR($3)
 `	no_pm "true"'
 `	data ['
 `		"'N_DAI_OUT($2)`_data_w"'
 `		"'N_DAI_OUT($2)`_data_w_comp"'
 `		"'N_DAI_OUT($2)`_data_str"'
 `		"'N_DAI_OUT($2)`_data_comp_str"'
-`		"'$7`"'
+`		"'$8`"'
 `	]'
 `}')
 
-dnl W_DAI_IN(type, index, format, periods_sink, periods_source, preload, data)
+dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source, preload, data)
 define(`W_DAI_IN',
 `SectionVendorTuples."'N_DAI_IN($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($4)
-`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($5)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
+`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
+`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
 `	}'
 `}'
 `SectionData."'N_DAI_IN($2)`_data_w_comp" {'
@@ -94,7 +95,7 @@ define(`W_DAI_IN',
 `SectionVendorTuples."'N_DAI_IN($2)`_tuples_comp_str" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_COMP_FORMAT'	STR($3)
+`		SOF_TKN_COMP_FORMAT'	STR($4)
 `	}'
 `}'
 `SectionData."'N_DAI_IN($2)`_data_comp_str" {'
@@ -103,13 +104,14 @@ define(`W_DAI_IN',
 `SectionWidget."'N_DAI_IN`" {'
 `	index "'PIPELINE_ID`"'
 `	type "dai_out"'
+`	stream_name' STR($3)
 `	no_pm "true"'
 `	data ['
 `		"'N_DAI_IN($2)`_data_w"'
 `		"'N_DAI_IN($2)`_data_w_comp"'
 `		"'N_DAI_IN($2)`_data_str"'
 `		"'N_DAI_IN($2)`_data_comp_str"'
-`		"'$7`"'
+`		"'$8`"'
 `	]'
 `}')
 
@@ -183,13 +185,14 @@ define(`DAI_CONFIG',
 `}')
 
 dnl DAI_ADD(pipeline,
-dnl     pipe id, dai type, dai_index,
+dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
 define(`DAI_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`DAI_TYPE')'
 `undefine(`DAI_INDEX')'
+`undefine(`DAI_BE')'
 `undefine(`DAI_BUF')'
 `undefine(`DAI_PERIODS')'
 `undefine(`DAI_FORMAT')'
@@ -200,14 +203,15 @@ define(`DAI_ADD',
 `define(`PIPELINE_ID', $2)'
 `define(`DAI_TYPE', STR($3))'
 `define(`DAI_INDEX', STR($4))'
-`define(`DAI_BUF', $5)'
+`define(`DAI_BE', $5)'
+`define(`DAI_BUF', $6)'
 `define(`DAI_NAME', $3$4)'
-`define(`DAI_PERIODS', $6)'
-`define(`DAI_FORMAT', $7)'
-`define(`SCHEDULE_FRAMES', $8)'
-`define(`SCHEDULE_DEADLINE', $9)'
-`define(`SCHEDULE_PRIORITY', $10)'
-`define(`SCHEDULE_CORE', $11)'
+`define(`DAI_PERIODS', $7)'
+`define(`DAI_FORMAT', $8)'
+`define(`SCHEDULE_FRAMES', $9)'
+`define(`SCHEDULE_DEADLINE', $10)'
+`define(`SCHEDULE_PRIORITY', $11)'
+`define(`SCHEDULE_CORE', $12)'
 `include($1)'
 )
 

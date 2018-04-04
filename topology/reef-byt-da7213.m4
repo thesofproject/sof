@@ -1,5 +1,5 @@
 #
-# Topology for generic Baytrail board with no codec.
+# Topology for generic Baytrail board with DA7213 codec.
 #
 
 # Include topology builder
@@ -76,14 +76,14 @@ SectionGraph."pipe-byt-da7212" {
 # playback DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 2,
+	1, SSP, 2, SSP2-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SSP, 2,
+	2, SSP, 2, SSP2-Codec,
 	PIPELINE_SINK_2, 2, s24le,
 	48, 1000, 0, 0)
 

@@ -33,21 +33,21 @@ include(`dsps/bdw.m4')
 # Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
-	48, 1000, 0, 0, 0, 1)
+	48, 1000, 0, 0, 1, 1)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 # Use DMAC 0 channel 2 for PCM audio capture data
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	2, 0, 2, s32le,
-	48, 1000, 0, 0, 0, 2)
+	48, 1000, 0, 0, 1, 2)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # Schedule 96 frames per 2000us deadline on core 0 with priority 1
 # Use DMAC 0 channel 3 for PCM audio playback data
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
-	96, 2000, 1, 0, 0, 3)
+	96, 2000, 1, 0, 1, 3)
 
 # Tone Playback pipeline 5 using max 2 channels of s32le.
 # Schedule 192 frames per 4000us deadline on core 0 with priority 2
@@ -76,14 +76,14 @@ SectionGraph."pipe-bdw-rt286" {
 # playback DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 0,
+	1, SSP, 0, Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SSP, 0,
+	2, SSP, 0, Codec,
 	PIPELINE_SINK_2, 2, s24le,
 	48, 1000, 0, 0)
 

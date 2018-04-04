@@ -28,6 +28,7 @@ include(`dsps/byt.m4')
 # TEST_SSP_BCLK - SSP BCLK in Hz
 # TEST_SSP_PHY_BITS - SSP physical slot size
 # TEST_SSP_DATA_BITS - SSP data slot size
+# TEST_SSP_MODE - SSP mode e.g. I2S, LEFT_J, DSP_A and DSP_B
 #
 
 #
@@ -53,7 +54,7 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 # playback DAI is SSP TEST_SSP_PORT using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, TEST_SSP_PORT,
+	1, SSP, TEST_SSP_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SOURCE_1, 2, TEST_SSP_FORMAT,
 	48, 1000, 0, 0)
 
@@ -67,7 +68,7 @@ PCM_PLAYBACK_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_1)
 #
 # TEST_SSP_DATA_BITS bit I2S using TEST_SSP_PHY_BITS bit sample conatiner on SSP TEST_SSP_PORT
 #
-DAI_CONFIG(SSP, TEST_SSP_PORT, TEST_DAI_LINK_NAME, I2S, TEST_SSP_DATA_BITS,
+DAI_CONFIG(SSP, TEST_SSP_PORT, TEST_DAI_LINK_NAME, TEST_SSP_MODE, TEST_SSP_DATA_BITS,
 	DAI_CLOCK(mclk, TEST_SSP_MCLK, slave),
 	DAI_CLOCK(bclk, TEST_SSP_BCLK, slave),
 	DAI_CLOCK(fsync, 48000, slave),

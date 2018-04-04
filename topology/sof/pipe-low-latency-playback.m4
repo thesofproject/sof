@@ -54,13 +54,13 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 
 # Host "Low latency Playback" PCM uses pipeline DMAC and channel
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(Low Latency Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
 
 # "Playback Volume" has 1 sink period and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 1, 2, 1, LIST(`		', "PCM PCM_ID Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 1, 2, 1, LIST(`		', "PCM PCM_ID Playback Volume PIPELINE_ID"))
 
 # "Master Playback Volume" has 1 source and 2 sink periods for DAI ping-pong
-W_PGA(1, PIPELINE_FORMAT, 2, 1, 1, LIST(`		', "Master Playback Volume"))
+W_PGA(1, PIPELINE_FORMAT, 2, 1, 1, LIST(`		', "Master Playback Volume PIPELINE_ID"))
 
 # Mixer 0 has 1 sink and source periods.
 W_MIXER(0, PIPELINE_FORMAT, 1, 1, 1)
@@ -93,8 +93,8 @@ W_BUFFER(3, COMP_BUFFER_SIZE(2,
 
 P_GRAPH(pipe-ll-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(N_PCMP, Low Latency Playback PCM_ID)',
-	`dapm(N_BUFFER(0), N_PCMP)',
+	`dapm(N_PCMP(PCM_ID), Low Latency Playback PCM_ID)',
+	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_PGA(0), N_BUFFER(0))',
 	`dapm(N_BUFFER(1), N_PGA(0))',
 	`dapm(N_MIXER(0), N_BUFFER(1))',

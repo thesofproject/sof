@@ -45,7 +45,7 @@ PIPELINE_ADD(sof/pipe-tone.m4,
 # playback DAI is SSP2 using 2 periods
 # Buffers use TEST_SSP_FORMAT format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	5, SSP, TEST_SSP_PORT,
+	5, SSP, TEST_SSP_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SOURCE_5, 2, TEST_SSP_FORMAT,
 	48, 1000, 2, 0)
 
