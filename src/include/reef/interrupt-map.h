@@ -43,10 +43,10 @@
 #define REEF_IRQ_CPU_MASK	0xff
 
 #define REEF_IRQ(_bit, _level, _cpu, _number) \
-	((_bit << REEF_IRQ_BIT_SHIFT) \
-	| (_level << REEF_IRQ_LEVEL_SHIFT)\
-	| (_cpu << REEF_IRQ_CPU_SHIFT)\
-	| (_number << REEF_IRQ_NUM_SHIFT))
+	(((_bit) << REEF_IRQ_BIT_SHIFT)	      \
+	 | ((_level) << REEF_IRQ_LEVEL_SHIFT) \
+	 | ((_cpu) << REEF_IRQ_CPU_SHIFT)     \
+	 | ((_number) << REEF_IRQ_NUM_SHIFT))
 
 #ifdef CONFIG_IRQ_MAP
 /*
@@ -58,13 +58,13 @@
  * 4. CPU interrupt number.
  */
 #define REEF_IRQ_NUMBER(_irq) \
-	((_irq >> REEF_IRQ_NUM_SHIFT) & REEF_IRQ_NUM_MASK)
+	(((_irq) >> REEF_IRQ_NUM_SHIFT) & REEF_IRQ_NUM_MASK)
 #define REEF_IRQ_LEVEL(_level) \
-	((_level >> REEF_IRQ_LEVEL_SHIFT) & REEF_IRQ_LEVEL_MASK)
+	(((_level) >> REEF_IRQ_LEVEL_SHIFT) & REEF_IRQ_LEVEL_MASK)
 #define REEF_IRQ_BIT(_bit) \
-	((_bit >> REEF_IRQ_BIT_SHIFT) & REEF_IRQ_BIT_MASK)
+	(((_bit) >> REEF_IRQ_BIT_SHIFT) & REEF_IRQ_BIT_MASK)
 #define REEF_IRQ_CPU(_cpu) \
-	((_cpu >> REEF_IRQ_CPU_SHIFT) & REEF_IRQ_CPU_MASK)
+	(((_cpu) >> REEF_IRQ_CPU_SHIFT) & REEF_IRQ_CPU_MASK)
 #else
 /*
  * IRQs are directly mapped onto a single level, bit and level.
