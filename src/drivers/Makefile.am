@@ -8,7 +8,7 @@ libdrivers_a_SOURCES += \
 	apl-ssp.c
 else
 libdrivers_a_SOURCES += \
-	ssp.c
+	byt-ssp.c
 endif
 
 if BUILD_APOLLOLAKE
