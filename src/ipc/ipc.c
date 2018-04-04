@@ -374,7 +374,7 @@ int ipc_init(struct reef *reef)
 	/* init ipc data */
 	reef->ipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*reef->ipc));
 	reef->ipc->comp_data = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		SOF_IPC_MSG_MAX_SIZE);
+				       SOF_IPC_MSG_MAX_SIZE);
 	reef->ipc->dmat = reef->dmat;
 
 	for (i = 0; i < PLATFORM_MAX_STREAMS; i++)

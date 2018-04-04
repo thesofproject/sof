@@ -108,7 +108,7 @@ void _trace_event_atomic(uint32_t event);
 void _trace_event_mbox_atomic(uint32_t event);
 void trace_flush(void);
 void trace_off(void);
-void trace_init(struct reef * reef);
+void trace_init(struct reef *reef);
 
 #if TRACE
 

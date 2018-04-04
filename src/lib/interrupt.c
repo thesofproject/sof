@@ -82,7 +82,7 @@ void irq_unregister_child(struct irq_parent *parent, int irq)
 	spin_lock(&parent->lock);
 
 	/* does child already exist ? */
-	if (parent->child[REEF_IRQ_BIT(irq)] == NULL)
+	if (!parent->child[REEF_IRQ_BIT(irq)])
 		goto finish;
 
 	/* free child */
@@ -107,7 +107,7 @@ uint32_t irq_enable_child(struct irq_parent *parent, int irq)
 
 	spin_lock(&parent->lock);
 
-	child =parent->child[REEF_IRQ_BIT(irq)];
+	child = parent->child[REEF_IRQ_BIT(irq)];
 
 	/* already enabled ? */
 	if (child->enabled)
@@ -134,7 +134,7 @@ uint32_t irq_disable_child(struct irq_parent *parent, int irq)
 
 	spin_lock(&parent->lock);
 
-	child =parent->child[REEF_IRQ_BIT(irq)];
+	child = parent->child[REEF_IRQ_BIT(irq)];
 
 	/* already disabled ? */
 	if (!child->enabled)
