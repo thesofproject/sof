@@ -7,6 +7,7 @@ includedir = $(prefix)/include/sof/reef
 
 include_HEADERS = \
 	alloc.h \
+	atomic.h \
 	clock.h \
 	dai.h \
 	debug.h \
