@@ -28,13 +28,13 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <reef/trace.h>
-#include <reef/reef.h>
-#include <reef/alloc.h>
+#include <sof/trace.h>
+#include <sof/sof.h>
+#include <sof/alloc.h>
 #include <arch/cache.h>
 #include <platform/timer.h>
-#include <reef/lock.h>
-#include <reef/dma-trace.h>
+#include <sof/lock.h>
+#include <sof/dma-trace.h>
 #include <stdint.h>
 
 struct trace {
@@ -152,9 +152,9 @@ void trace_off(void)
 	trace.enable = 0;
 }
 
-void trace_init(struct reef *reef)
+void trace_init(struct sof *sof)
 {
-	dma_trace_init_early(reef);
+	dma_trace_init_early(sof);
 	trace.enable = 1;
 	trace.pos = 0;
 	spinlock_init(&trace.lock);

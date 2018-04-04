@@ -74,7 +74,7 @@
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
  * +---------------------+----------------+-----------------------------------+
- * | DRAM0_BASE          | RO Data        |  REEF_DATA_SIZE                   |
+ * | DRAM0_BASE          | RO Data        |  SOF_DATA_SIZE                   |
  * |                     | Data           |                                   |
  * |                     | BSS            |                                   |
  * +---------------------+----------------+-----------------------------------+
@@ -86,9 +86,9 @@
  * +---------------------+----------------+-----------------------------------+
  * | MAILBOX_BASE        | Mailbox        |  MAILBOX_SIZE                     |
  * +---------------------+----------------+-----------------------------------+
- * | REEF_STACK_END      | Stack          |  REEF_STACK_SIZE                  |
+ * | SOF_STACK_END      | Stack          |  SOF_STACK_SIZE                  |
  * +---------------------+----------------+-----------------------------------+ 
- * | REEF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_BASE     |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -104,9 +104,9 @@
 #define HEAP_RT_COUNT1024		4
 
 /* Heap configuration */
-#define REEF_DATA_SIZE			0xa000
+#define SOF_DATA_SIZE			0xa000
 
-#define HEAP_SYSTEM_BASE		(DRAM0_BASE + REEF_DATA_SIZE)
+#define HEAP_SYSTEM_BASE		(DRAM0_BASE + SOF_DATA_SIZE)
 #define HEAP_SYSTEM_SIZE		0x2000
 
 #define HEAP_RUNTIME_BASE		(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
@@ -118,8 +118,8 @@
 
 #define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE \
-	(DRAM0_SIZE - HEAP_RUNTIME_SIZE - REEF_STACK_SIZE -\
-	 HEAP_SYSTEM_SIZE - REEF_DATA_SIZE - MAILBOX_SIZE)
+	(DRAM0_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_SIZE -\
+	 HEAP_SYSTEM_SIZE - SOF_DATA_SIZE - MAILBOX_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT		(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
@@ -128,21 +128,21 @@
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */
-#define REEF_STACK_SIZE			0x1000
-#define REEF_STACK_BASE			(DRAM0_BASE + DRAM0_SIZE)
-#define REEF_STACK_END			(REEF_STACK_BASE - REEF_STACK_SIZE)
+#define SOF_STACK_SIZE			0x1000
+#define SOF_STACK_BASE			(DRAM0_BASE + DRAM0_SIZE)
+#define SOF_STACK_END			(SOF_STACK_BASE - SOF_STACK_SIZE)
 
-#define MAILBOX_BASE			(REEF_STACK_END - MAILBOX_SIZE)
+#define MAILBOX_BASE			(SOF_STACK_END - MAILBOX_SIZE)
 
 /* Vector and literal sizes - not in core-isa.h */
-#define REEF_MEM_VECT_LIT_SIZE		0x4
-#define REEF_MEM_VECT_TEXT_SIZE		0x1c
-#define REEF_MEM_VECT_SIZE		(REEF_MEM_VECT_TEXT_SIZE + REEF_MEM_VECT_LIT_SIZE)
+#define SOF_MEM_VECT_LIT_SIZE		0x4
+#define SOF_MEM_VECT_TEXT_SIZE		0x1c
+#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + SOF_MEM_VECT_LIT_SIZE)
 
-#define REEF_MEM_RESET_TEXT_SIZE	0x2e0
-#define REEF_MEM_RESET_LIT_SIZE		0x120
-#define REEF_MEM_VECBASE_LIT_SIZE	0x178
+#define SOF_MEM_RESET_TEXT_SIZE	0x2e0
+#define SOF_MEM_RESET_LIT_SIZE		0x120
+#define SOF_MEM_VECBASE_LIT_SIZE	0x178
 
-#define REEF_MEM_RO_SIZE		0x8
+#define SOF_MEM_RO_SIZE		0x8
 
 #endif

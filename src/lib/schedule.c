@@ -31,19 +31,19 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/stream.h>
-#include <reef/alloc.h>
-#include <reef/debug.h>
-#include <reef/clock.h>
-#include <reef/schedule.h>
-#include <reef/work.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/stream.h>
+#include <sof/alloc.h>
+#include <sof/debug.h>
+#include <sof/clock.h>
+#include <sof/schedule.h>
+#include <sof/work.h>
 #include <platform/timer.h>
 #include <platform/clk.h>
-#include <reef/audio/component.h>
-#include <reef/audio/pipeline.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
 #include <arch/task.h>
 
 struct schedule_data {
@@ -365,7 +365,7 @@ schedule:
 }
 
 /* Initialise the scheduler */
-int scheduler_init(struct reef *reef)
+int scheduler_init(struct sof *sof)
 {
 	trace_pipe("ScI");
 

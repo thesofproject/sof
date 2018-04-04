@@ -30,13 +30,13 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
-#include <reef/clock.h>
-#include <reef/io.h>
-#include <reef/reef.h>
-#include <reef/list.h>
-#include <reef/alloc.h>
-#include <reef/notifier.h>
-#include <reef/lock.h>
+#include <sof/clock.h>
+#include <sof/io.h>
+#include <sof/sof.h>
+#include <sof/list.h>
+#include <sof/alloc.h>
+#include <sof/notifier.h>
+#include <sof/lock.h>
 #include <platform/clk.h>
 #include <platform/shim.h>
 #include <platform/timer.h>

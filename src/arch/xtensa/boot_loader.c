@@ -30,8 +30,8 @@
 
 #include <arch/cache.h>
 #include <arch/wait.h>
-#include <reef/trace.h>
-#include <reef/io.h>
+#include <sof/trace.h>
+#include <sof/io.h>
 #include <uapi/manifest.h>
 #include <platform/memory.h>
 

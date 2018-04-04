@@ -29,28 +29,28 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <reef/mailbox.h>
-#include <reef/reef.h>
-#include <reef/stream.h>
-#include <reef/dai.h>
-#include <reef/dma.h>
-#include <reef/alloc.h>
-#include <reef/wait.h>
-#include <reef/trace.h>
-#include <reef/ssp.h>
+#include <sof/debug.h>
+#include <sof/timer.h>
+#include <sof/interrupt.h>
+#include <sof/ipc.h>
+#include <sof/mailbox.h>
+#include <sof/sof.h>
+#include <sof/stream.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <sof/alloc.h>
+#include <sof/wait.h>
+#include <sof/trace.h>
+#include <sof/ssp.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
-#include <reef/audio/component.h>
-#include <reef/audio/pipeline.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
 #include <uapi/ipc.h>
-#include <reef/intel-ipc.h>
+#include <sof/intel-ipc.h>
 
 extern struct ipc *_ipc;
 

@@ -34,9 +34,9 @@
  */
 
 #include <stdint.h>
-#include <reef/alloc.h>
-#include <reef/audio/format.h>
-#include <reef/math/numbers.h>
+#include <sof/alloc.h>
+#include <sof/audio/format.h>
+#include <sof/math/numbers.h>
 
 #include "src_config.h"
 #include "src.h"

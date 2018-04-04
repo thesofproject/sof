@@ -28,8 +28,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <reef/dma.h>
-#include <reef/dw-dma.h>
+#include <sof/dma.h>
+#include <sof/dw-dma.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>

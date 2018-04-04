@@ -32,18 +32,18 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/stream.h>
-#include <reef/alloc.h>
-#include <reef/debug.h>
-#include <reef/ipc.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/stream.h>
+#include <sof/alloc.h>
+#include <sof/debug.h>
+#include <sof/ipc.h>
 #include <platform/timer.h>
 #include <platform/platform.h>
-#include <reef/audio/component.h>
-#include <reef/audio/pipeline.h>
-#include <reef/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
+#include <sof/audio/buffer.h>
 
 /* create a new component in the pipeline */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)

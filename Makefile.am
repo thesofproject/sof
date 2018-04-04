@@ -14,7 +14,7 @@ if BUILD_HOST
 export ARCH_INCDIR = \
 	-I $(SRC_DIR)/arch/$(ARCH)/include
 
-export REEF_INCDIR = \
+export SOF_INCDIR = \
 	-I $(SRC_DIR)/include
 
 if BUILD_LIB
@@ -23,7 +23,7 @@ export PLATFORM_INCDIR = \
 endif
 
 else
-export REEF_INCDIR = \
+export SOF_INCDIR = \
 	-I $(SRC_DIR)/include \
 	-I $(ROOT_DIR)/include
 

@@ -33,7 +33,7 @@
 #define __PLATFORM_TIMER_H__
 
 #include <stdint.h>
-#include <reef/timer.h>
+#include <sof/timer.h>
 #include <platform/interrupt.h>
 
 #define TIMER_COUNT	3

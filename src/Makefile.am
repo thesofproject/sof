@@ -1,5 +1,5 @@
 export COMMON_INCDIR = \
-	$(REEF_INCDIR) \
+	$(SOF_INCDIR) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR)
 

@@ -28,16 +28,16 @@
  * Author: Yan Wang <yan.wang@linux.intel.com>
  */
 
-#include <reef/trace.h>
-#include <reef/dma-trace.h>
-#include <reef/ipc.h>
-#include <reef/reef.h>
-#include <reef/alloc.h>
+#include <sof/trace.h>
+#include <sof/dma-trace.h>
+#include <sof/ipc.h>
+#include <sof/sof.h>
+#include <sof/alloc.h>
 #include <arch/cache.h>
 #include <platform/timer.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
-#include <reef/lock.h>
+#include <sof/lock.h>
 #include <stdint.h>
 
 static struct dma_trace_data *trace_data = NULL;
@@ -141,7 +141,7 @@ out:
 	return DMA_TRACE_PERIOD;
 }
 
-int dma_trace_init_early(struct reef *reef)
+int dma_trace_init_early(struct sof *sof)
 {
 	struct dma_trace_buf *buffer;
 
@@ -167,7 +167,7 @@ int dma_trace_init_early(struct reef *reef)
 
 	list_init(&trace_data->config.elem_list);
 	spinlock_init(&trace_data->lock);
-	reef->dmat = trace_data;
+	sof->dmat = trace_data;
 
 	return 0;
 }

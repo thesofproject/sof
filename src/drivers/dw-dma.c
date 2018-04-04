@@ -29,7 +29,7 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  *
  *
- * This driver API will only be called by 3 clients in reef :-
+ * This driver API will only be called by 3 clients in sof :-
  *
  * 1. Host audio component. This component represents the ALSA PCM device
  *    and involves copying data to/from the host ALSA audio buffer to/from the
@@ -43,20 +43,20 @@
  *    used to construct the DMA configuration for the host client 1 above.
  */
 
-#include <reef/debug.h>
-#include <reef/reef.h>
-#include <reef/dma.h>
-#include <reef/dw-dma.h>
-#include <reef/io.h>
-#include <reef/stream.h>
-#include <reef/timer.h>
-#include <reef/alloc.h>
-#include <reef/interrupt.h>
-#include <reef/work.h>
-#include <reef/lock.h>
-#include <reef/trace.h>
-#include <reef/wait.h>
-#include <reef/audio/component.h>
+#include <sof/debug.h>
+#include <sof/sof.h>
+#include <sof/dma.h>
+#include <sof/dw-dma.h>
+#include <sof/io.h>
+#include <sof/stream.h>
+#include <sof/timer.h>
+#include <sof/alloc.h>
+#include <sof/interrupt.h>
+#include <sof/work.h>
+#include <sof/lock.h>
+#include <sof/trace.h>
+#include <sof/wait.h>
+#include <sof/audio/component.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <platform/interrupt.h>
@@ -1023,7 +1023,7 @@ static int dw_dma_probe(struct dma *dma)
 		dma_int[i]->dma = dma;
 		dma_int[i]->channel = i;
 		dma_int[i]->irq = dma->plat_data.irq +
-				(i << REEF_IRQ_BIT_SHIFT);
+				(i << SOF_IRQ_BIT_SHIFT);
 
 		/* register our IRQ handler */
 		interrupt_register(dma_int[i]->irq,

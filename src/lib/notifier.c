@@ -28,10 +28,10 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <reef/notifier.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
+#include <sof/notifier.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/list.h>
 
 /* General purpose notifiers */
 
@@ -78,7 +78,7 @@ out:
 	spin_unlock(&_notify.lock);
 }
 
-void init_system_notify(struct reef *reef)
+void init_system_notify(struct sof *sof)
 {
 	list_init(&_notify.list);
 	spinlock_init(&_notify.lock);

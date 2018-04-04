@@ -31,13 +31,13 @@
 #include <xtensa/xtruntime.h>
 #include <xtensa/hal.h>
 #include <platform/memory.h>
-#include <reef/interrupt.h>
+#include <sof/interrupt.h>
 #include <platform/interrupt.h>
-#include <reef/mailbox.h>
+#include <sof/mailbox.h>
 #include <arch/task.h>
-#include <reef/panic.h>
-#include <reef/init.h>
-#include <reef/lock.h>
+#include <sof/panic.h>
+#include <sof/init.h>
+#include <sof/lock.h>
 #include <stdint.h>
 
 #if DEBUG_LOCKS
@@ -75,7 +75,7 @@ static void register_exceptions(void)
 }
 
 /* do any architecture init here */
-int arch_init(struct reef *reef)
+int arch_init(struct sof *sof)
 {
 	register_exceptions();
 	arch_assign_tasks();

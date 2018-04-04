@@ -38,7 +38,7 @@
 #include <stdio.h>
 #endif
 
-#include <reef/audio/format.h>
+#include <sof/audio/format.h>
 #include "iir.h"
 
 /*

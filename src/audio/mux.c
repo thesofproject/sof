@@ -30,10 +30,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/stream.h>
-#include <reef/audio/component.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/stream.h>
+#include <sof/audio/component.h>
 
 /* tracing */
 #define trace_mux(__e) trace_event(TRACE_CLASS_MUX, __e)

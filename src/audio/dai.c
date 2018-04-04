@@ -32,16 +32,16 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/dai.h>
-#include <reef/alloc.h>
-#include <reef/dma.h>
-#include <reef/wait.h>
-#include <reef/stream.h>
-#include <reef/audio/component.h>
-#include <reef/audio/pipeline.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/dai.h>
+#include <sof/alloc.h>
+#include <sof/dma.h>
+#include <sof/wait.h>
+#include <sof/stream.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
 #include <platform/dma.h>
 #include <arch/cache.h>
 

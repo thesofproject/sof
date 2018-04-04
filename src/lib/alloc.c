@@ -29,12 +29,12 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/alloc.h>
-#include <reef/reef.h>
-#include <reef/debug.h>
-#include <reef/panic.h>
-#include <reef/trace.h>
-#include <reef/lock.h>
+#include <sof/alloc.h>
+#include <sof/sof.h>
+#include <sof/debug.h>
+#include <sof/panic.h>
+#include <sof/trace.h>
+#include <sof/lock.h>
 #include <platform/memory.h>
 #include <stdint.h>
 
@@ -589,7 +589,7 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 }
 
 /* initialise map */
-void init_heap(struct reef *reef)
+void init_heap(struct sof *sof)
 {
 	struct mm_heap *heap;
 	struct block_map *next_map;

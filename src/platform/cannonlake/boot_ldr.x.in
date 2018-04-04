@@ -20,70 +20,70 @@ MEMORY
   boot_entry_lit :
         org = IMR_BOOT_LDR_LIT_BASE,
         len = IMR_BOOT_LDR_LIT_SIZE
-  reef_text :
+  sof_text :
         org = IMR_BOOT_LDR_TEXT_BASE,
         len = IMR_BOOT_LDR_TEXT_SIZE,
   vector_base_text :
         org = XCHAL_VECBASE_RESET_PADDR,
-        len = REEF_MEM_VECBASE_LIT_SIZE
+        len = SOF_MEM_VECBASE_LIT_SIZE
   vector_int2_lit :
-        org = XCHAL_INTLEVEL2_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_INTLEVEL2_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_int2_text :
         org = XCHAL_INTLEVEL2_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_int3_lit :
-        org = XCHAL_INTLEVEL3_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_INTLEVEL3_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_int3_text :
         org = XCHAL_INTLEVEL3_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_int4_lit :
-        org = XCHAL_INTLEVEL4_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_INTLEVEL4_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_int4_text :
         org = XCHAL_INTLEVEL4_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_int5_lit :
-        org = XCHAL_INTLEVEL5_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_INTLEVEL5_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_int5_text :
         org = XCHAL_INTLEVEL5_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_int6_lit :
-        org = XCHAL_INTLEVEL6_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_INTLEVEL6_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_int6_text :
         org = XCHAL_INTLEVEL6_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_int7_lit :
-        org = XCHAL_INTLEVEL7_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_INTLEVEL7_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_int7_text :
         org = XCHAL_INTLEVEL7_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_kernel_lit :
-        org = XCHAL_KERNEL_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_KERNEL_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_kernel_text :
         org = XCHAL_KERNEL_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_user_lit :
-        org = XCHAL_USER_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_USER_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_user_text :
         org = XCHAL_USER_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
+        len = SOF_MEM_VECT_TEXT_SIZE
   vector_double_lit :
-        org = XCHAL_DOUBLEEXC_VECTOR_PADDR - REEF_MEM_VECT_LIT_SIZE,
-        len = REEF_MEM_VECT_LIT_SIZE
+        org = XCHAL_DOUBLEEXC_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        len = SOF_MEM_VECT_LIT_SIZE
   vector_double_text :
         org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
-        len = REEF_MEM_VECT_TEXT_SIZE
-  reef_data :
+        len = SOF_MEM_VECT_TEXT_SIZE
+  sof_data :
         org = IMR_BOOT_LDR_DATA_BASE,
         len = IMR_BOOT_LDR_DATA_SIZE
-  reef_bss_data :
+  sof_bss_data :
 	org = IMR_BOOT_LDR_BSS_BASE,
         len = IMR_BOOT_LDR_BSS_SIZE
 }
@@ -92,7 +92,7 @@ PHDRS
 {
   boot_entry_text_phdr PT_LOAD;
   boot_entry_lit_phdr PT_LOAD;
-  reef_text_phdr PT_LOAD;
+  sof_text_phdr PT_LOAD;
   vector_base_text_phdr PT_LOAD;
   vector_int2_lit_phdr PT_LOAD;
   vector_int2_text_phdr PT_LOAD;
@@ -112,8 +112,8 @@ PHDRS
   vector_user_text_phdr PT_LOAD;
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
-  reef_data_phdr PT_LOAD;
-  reef_bss_data_phdr PT_LOAD;
+  sof_data_phdr PT_LOAD;
+  sof_bss_data_phdr PT_LOAD;
 }
 
 /*  Default entry point:  */
@@ -153,7 +153,7 @@ SECTIONS
     KEEP (*(.MemoryExceptionVector.text))
     _text_end = ABSOLUTE(.);
     _etext = .;
-  } >reef_text :reef_text_phdr
+  } >sof_text :sof_text_phdr
 
   .WindowVectors.text : ALIGN(4)
   {
@@ -324,7 +324,7 @@ SECTIONS
     LONG(_bss_end)
     _bss_table_end = ABSOLUTE(.);
     _rodata_end = ABSOLUTE(.);
-  } >reef_data :reef_data_phdr
+  } >sof_data :sof_data_phdr
 
   .data : ALIGN(4)
   {
@@ -342,7 +342,7 @@ SECTIONS
     *(.gnu.linkonce.s2.*)
     KEEP(*(.jcr))
     _data_end = ABSOLUTE(.);
-  } >reef_data :reef_data_phdr
+  } >sof_data :sof_data_phdr
 
   .lit4 : ALIGN(4)
   {
@@ -351,7 +351,7 @@ SECTIONS
     *(.lit4.*)
     *(.gnu.linkonce.lit4.*)
     _lit4_end = ABSOLUTE(.);
-  } >reef_data :reef_data_phdr
+  } >sof_data :sof_data_phdr
 
   .bss (NOLOAD) : ALIGN(8)
   {
@@ -372,7 +372,7 @@ SECTIONS
     *(COMMON)
     . = ALIGN (8);
     _bss_end = ABSOLUTE(.);
-  } >reef_bss_data :reef_bss_data_phdr
+  } >sof_bss_data :sof_bss_data_phdr
 
  _man = 0x1234567;
 

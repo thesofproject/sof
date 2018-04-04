@@ -32,10 +32,10 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <reef/stream.h>
-#include <reef/ssp.h>
-#include <reef/alloc.h>
-#include <reef/interrupt.h>
+#include <sof/stream.h>
+#include <sof/ssp.h>
+#include <sof/alloc.h>
+#include <sof/interrupt.h>
 #include <config.h>
 
 /* tracing */

@@ -29,12 +29,12 @@
  *
  */
 
-#include <reef/schedule.h>
-#include <reef/interrupt.h>
+#include <sof/schedule.h>
+#include <sof/interrupt.h>
 #include <platform/platform.h>
-#include <reef/debug.h>
+#include <sof/debug.h>
 #include <arch/task.h>
-#include <reef/alloc.h>
+#include <sof/alloc.h>
 #include <stdint.h>
 #include <errno.h>
 

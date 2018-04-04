@@ -32,16 +32,16 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/stream.h>
-#include <reef/alloc.h>
-#include <reef/work.h>
-#include <reef/clock.h>
-#include <reef/audio/component.h>
-#include <reef/audio/pipeline.h>
-#include <reef/audio/format.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/stream.h>
+#include <sof/alloc.h>
+#include <sof/work.h>
+#include <sof/clock.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
+#include <sof/audio/format.h>
 
 #define trace_volume(__e)	trace_event(TRACE_CLASS_VOLUME, __e)
 #define tracev_volume(__e)	tracev_event(TRACE_CLASS_VOLUME, __e)

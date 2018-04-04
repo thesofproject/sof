@@ -28,7 +28,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <reef/alloc.h>
+#include <sof/alloc.h>
 
 /* Heap blocks for modules */
 static struct block_hdr mod_block16[HEAP_RT_COUNT16];

@@ -581,7 +581,7 @@ unpackdone:
 
 #if XCHAL_HAVE_BOOTLOADER
 		/*ToDo refine the _start*/
-		movi a0, REEF_TEXT_START
+		movi a0, SOF_TEXT_START
 		callx0 a0
 #else
 		call0	_start		// jump to _start (in crt1-*.S)

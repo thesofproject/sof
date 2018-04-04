@@ -30,9 +30,9 @@
  *
  */
 
-#include <reef/reef.h>
-#include <reef/interrupt.h>
-#include <reef/interrupt-map.h>
+#include <sof/sof.h>
+#include <sof/interrupt.h>
+#include <sof/interrupt-map.h>
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
@@ -221,7 +221,7 @@ static struct irq_parent dsp_irq[4] = {
 
 struct irq_parent *platform_irq_get_parent(uint32_t irq)
 {
-	switch (REEF_IRQ_NUMBER(irq)) {
+	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL2:
 		return &dsp_irq[0];
 	case IRQ_NUM_EXT_LEVEL3:
@@ -243,18 +243,18 @@ uint32_t platform_interrupt_get_enabled(void)
 void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 {
 	/* mask external interrupt bit */
-	switch (REEF_IRQ_NUMBER(irq)) {
+	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MSD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL5MSD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MSD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL4MSD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MSD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL3MSD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MSD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL2MSD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	default:
 		break;
@@ -265,18 +265,18 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
 	/* unmask external interrupt bit */
-	switch (REEF_IRQ_NUMBER(irq)) {
+	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MCD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL5MCD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MCD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL4MCD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MCD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL3MCD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MCD(0), 1 << REEF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL2MCD(0), 1 << SOF_IRQ_BIT(irq));
 		break;
 	default:
 		break;

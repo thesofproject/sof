@@ -37,7 +37,7 @@
 #include <platform/interrupt.h>
 #include <uapi/ipc.h>
 
-struct reef;
+struct sof;
 
 #define PLATFORM_SSP_COUNT 3
 #define MAX_GPDMA_COUNT 2
@@ -128,7 +128,7 @@ extern struct timer *platform_timer;
 
 int platform_boot_complete(uint32_t boot_message);
 
-int platform_init(struct reef *reef);
+int platform_init(struct sof *sof);
 
 int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 	uint32_t bclk_fs);

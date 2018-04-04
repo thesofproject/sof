@@ -31,12 +31,12 @@
 
 #include <stdint.h>
 #include <uapi/ipc.h>
-#include <reef/reef.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
-#include <reef/ipc.h>
-#include <reef/dma.h>
-#include <reef/wait.h>
+#include <sof/sof.h>
+#include <sof/debug.h>
+#include <sof/trace.h>
+#include <sof/ipc.h>
+#include <sof/dma.h>
+#include <sof/wait.h>
 #include <platform/dma.h>
 
 /* tracing */

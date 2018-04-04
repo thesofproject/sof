@@ -32,16 +32,16 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/stream.h>
-#include <reef/alloc.h>
-#include <reef/ipc.h>
-#include <reef/debug.h>
-#include <reef/audio/component.h>
-#include <reef/audio/pipeline.h>
-#include <reef/audio/buffer.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/stream.h>
+#include <sof/alloc.h>
+#include <sof/ipc.h>
+#include <sof/debug.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
+#include <sof/audio/buffer.h>
 
 /*
  * Components, buffers and pipelines all use the same set of monotonic ID
@@ -366,21 +366,21 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	return ret;
 }
 
-int ipc_init(struct reef *reef)
+int ipc_init(struct sof *sof)
 {
 	int i;
 	trace_ipc("IPI");
 
 	/* init ipc data */
-	reef->ipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*reef->ipc));
-	reef->ipc->comp_data = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-				       SOF_IPC_MSG_MAX_SIZE);
-	reef->ipc->dmat = reef->dmat;
+	sof->ipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));
+	sof->ipc->comp_data = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+				      SOF_IPC_MSG_MAX_SIZE);
+	sof->ipc->dmat = sof->dmat;
 
 	for (i = 0; i < PLATFORM_MAX_STREAMS; i++)
-		reef->ipc->posn_map[i] = NULL;
+		sof->ipc->posn_map[i] = NULL;
 
-	list_init(&reef->ipc->comp_list);
+	list_init(&sof->ipc->comp_list);
 
-	return platform_ipc_init(reef->ipc);
+	return platform_ipc_init(sof->ipc);
 }

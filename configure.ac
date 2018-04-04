@@ -9,12 +9,12 @@ AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability subdir-objects silent-rule
 AM_MAINTAINER_MODE([enable])
 
 # get version info from git
-m4_define(reef_major, `cat .version | cut -dv -f2 | cut -d. -f1`)
-m4_define(reef_minor, `cat .version | cut -d. -f2 | cut -d- -f1`)
-m4_define(reef_micro, `cat .version | cut -d. -f3 | cut -d- -f1`)
-AC_DEFINE_UNQUOTED([REEF_MAJOR], reef_major, [Reef major version])
-AC_DEFINE_UNQUOTED([REEF_MINOR], reef_minor, [Reef minor version])
-AC_DEFINE_UNQUOTED([REEF_MICRO], reef_micro, [Reef micro version])
+m4_define(sof_major, `cat .version | cut -dv -f2 | cut -d. -f1`)
+m4_define(sof_minor, `cat .version | cut -d. -f2 | cut -d- -f1`)
+m4_define(sof_micro, `cat .version | cut -d. -f3 | cut -d- -f1`)
+AC_DEFINE_UNQUOTED([SOF_MAJOR], sof_major, [Sof major version])
+AC_DEFINE_UNQUOTED([SOF_MINOR], sof_minor, [Sof minor version])
+AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
 
 AC_CANONICAL_HOST
 
@@ -354,11 +354,11 @@ AC_CONFIG_FILES([
         src/math/Makefile
 	src/drivers/Makefile
 	src/include/Makefile
-	src/include/reef/Makefile
-	src/include/reef/audio/Makefile
-	src/include/reef/audio/coefficients/Makefile
-	src/include/reef/audio/coefficients/src/Makefile
-	src/include/reef/math/Makefile
+	src/include/sof/Makefile
+	src/include/sof/audio/Makefile
+	src/include/sof/audio/coefficients/Makefile
+	src/include/sof/audio/coefficients/src/Makefile
+	src/include/sof/math/Makefile
 	src/include/uapi/Makefile
 	src/ipc/Makefile
 	src/library/Makefile

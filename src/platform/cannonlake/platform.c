@@ -38,17 +38,17 @@
 #include <platform/timer.h>
 #include <platform/interrupt.h>
 #include <uapi/ipc.h>
-#include <reef/mailbox.h>
-#include <reef/dai.h>
-#include <reef/dma.h>
-#include <reef/reef.h>
-#include <reef/work.h>
-#include <reef/clock.h>
-#include <reef/ipc.h>
-#include <reef/agent.h>
-#include <reef/io.h>
-#include <reef/trace.h>
-#include <reef/audio/component.h>
+#include <sof/mailbox.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <sof/sof.h>
+#include <sof/work.h>
+#include <sof/clock.h>
+#include <sof/ipc.h>
+#include <sof/agent.h>
+#include <sof/io.h>
+#include <sof/trace.h>
+#include <sof/audio/component.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -59,12 +59,12 @@ static const struct sof_ipc_fw_ready ready = {
 		.size = sizeof(struct sof_ipc_fw_ready),
 	},
 	.version = {
-		.build = REEF_BUILD,
-		.minor = REEF_MINOR,
-		.major = REEF_MAJOR,
+		.build = SOF_BUILD,
+		.minor = SOF_MINOR,
+		.major = SOF_MAJOR,
 		.date = __DATE__,
 		.time = __TIME__,
-		.tag = REEF_TAG,
+		.tag = SOF_TAG,
 	},
 };
 
@@ -206,7 +206,7 @@ static struct timer platform_ext_timer = {
 	.irq = IRQ_EXT_TSTAMP0_LVL2(0),
 };
 
-int platform_init(struct reef *reef)
+int platform_init(struct sof *sof)
 {
 	struct dma *dmac;
 	struct dai *ssp;
@@ -233,7 +233,7 @@ int platform_init(struct reef *reef)
 	init_system_workq(&platform_generic_queue);
 
 	/* init the system agent */
-	sa_init(reef);
+	sa_init(sof);
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
@@ -245,7 +245,7 @@ int platform_init(struct reef *reef)
 
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init(reef);
+	ipc_init(sof);
 
 	/* prevent Core0 clock gating. */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
@@ -290,7 +290,7 @@ int platform_init(struct reef *reef)
 	}
 
 	/* Initialize DMA for Trace*/
-	dma_trace_init_complete(reef->dmat);
+	dma_trace_init_complete(sof->dmat);
 
 	return 0;
 }

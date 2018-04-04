@@ -29,15 +29,15 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/work.h>
-#include <reef/timer.h>
-#include <reef/list.h>
-#include <reef/clock.h>
-#include <reef/alloc.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/notifier.h>
-#include <reef/debug.h>
+#include <sof/work.h>
+#include <sof/timer.h>
+#include <sof/list.h>
+#include <sof/clock.h>
+#include <sof/alloc.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/notifier.h>
+#include <sof/debug.h>
 #include <platform/clk.h>
 #include <platform/platform.h>
 #include <limits.h>

@@ -1,7 +1,7 @@
 SUBDIRS = hal xtos include
 
 noinst_PROGRAMS = \
-	reef
+	sof
 
 # generate linker script from platform headers
 LINK_SCRIPT = ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
@@ -9,11 +9,11 @@ LINK_DEPS = \
 	../../platform/$(PLATFORM)/include/platform/memory.h \
 	../../platform/$(PLATFORM)/include/xtensa/config/core-isa*
 
-nodist_reef_SOURCES = $(LINK_SCRIPT).in
+nodist_sof_SOURCES = $(LINK_SCRIPT).in
 BUILT_SOURCES = $(LINK_SCRIPT)
 CLEANFILES = $(LINK_SCRIPT)
 $(LINK_SCRIPT): Makefile $(LINK_SCRIPT).in $(LINK_DEPS)
-	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(REEF_INCDIR) - >$@
+	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) - >$@
 
 noinst_LIBRARIES = \
 	libreset.a
@@ -28,7 +28,7 @@ libreset_a_CCASFLAGS = \
 	$(PLATFORM_INCDIR) \
 	-mtext-section-literals
 
-reef_SOURCES = \
+sof_SOURCES = \
 	crt1-boards.S \
 	_vectors.S \
 	init.c \
@@ -36,23 +36,23 @@ reef_SOURCES = \
 	task.c
 
 if BUILD_CANNONLAKE
-reef_SOURCES += \
+sof_SOURCES += \
 	main-entry.S
 endif
 
-reef_CFLAGS = \
+sof_CFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ARCH_CFLAGS) \
-	$(REEF_INCDIR) \
+	$(SOF_INCDIR) \
 	$(PLATFORM_INCDIR)
 
-reef_CCASFLAGS = \
+sof_CCASFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ASFLAGS) \
 	$(ARCH_ASFLAGS) \
 	$(PLATFORM_INCDIR)
 
-reef_LDADD = \
+sof_LDADD = \
 	../../init/libinit.a \
 	../../tasks/libtasks.a \
 	../../lib/libcore.a \
@@ -70,13 +70,13 @@ reef_LDADD = \
 	hal/libhal.a \
 	-lgcc
 
-reef_LDFLAGS = \
-	$(ARCH_LDFLAGS) -Wl,-Map=reef-$(FW_NAME).map \
+sof_LDFLAGS = \
+	$(ARCH_LDFLAGS) -Wl,-Map=sof-$(FW_NAME).map \
 	-T ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
 
-RIMAGE_FLAGS = reef-$(FW_NAME)
+RIMAGE_FLAGS = sof-$(FW_NAME)
 RIMAGE_BOOT_FLAGS =
-BIN_FLAGS = reef
+BIN_FLAGS = sof
 
 if BUILD_BOOTLOADER
 
@@ -89,7 +89,7 @@ CLEANFILES += $(LINK_BOOT_LDR_SCRIPT)
 
 nodist_boot_ldr_SOURCES = $(LINK_BOOT_LDR_SCRIPT).in
 $(LINK_BOOT_LDR_SCRIPT): Makefile $(LINK_BOOT_LDR_SCRIPT).in $(LINK_DEPS)
-	cat $(LINK_BOOT_LDR_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(REEF_INCDIR) - >$@
+	cat $(LINK_BOOT_LDR_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) - >$@
 
 boot_ldr_SOURCES = \
 	boot_entry.S \
@@ -99,7 +99,7 @@ boot_ldr_SOURCES = \
 boot_ldr_CFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ARCH_CFLAGS) \
-	$(REEF_INCDIR) \
+	$(SOF_INCDIR) \
 	$(PLATFORM_INCDIR)
 
 boot_ldr_CCASFLAGS = \
@@ -139,22 +139,22 @@ endif
 if BUILD_MODULE
 MODULE_COPY=$(OBJCOPY) -O binary ../../platform/$(PLATFORM)/module mod-$(FW_NAME).bin
 MODULE_INSERT=$(OBJCOPY) --add-section .module=mod-$(FW_NAME).bin \
-		--set-section-flags .module=load,readonly reef-$(FW_NAME)
+		--set-section-flags .module=load,readonly sof-$(FW_NAME)
 else
 MODULE_COPY=
 MODULE_INSERT=
 endif
 
 bin-local: $(BIN_FLAGS)
-	cp reef reef-$(FW_NAME)
+	cp sof sof-$(FW_NAME)
 	$(MODULE_COPY)
 	$(MODULE_INSERT)
-	$(OBJDUMP) -S reef-$(FW_NAME) > reef-$(FW_NAME).lst
-	$(OBJDUMP) -D reef-$(FW_NAME) > reef-$(FW_NAME).dis
-	rimage -o reef-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS)
+	$(OBJDUMP) -S sof-$(FW_NAME) > sof-$(FW_NAME).lst
+	$(OBJDUMP) -D sof-$(FW_NAME) > sof-$(FW_NAME).dis
+	rimage -o sof-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS)
 
 vminstall-local:
-	scp -P 5555 reef-*.ri root@localhost:/lib/firmware/intel/
+	scp -P 5555 sof-*.ri root@localhost:/lib/firmware/intel/
 
 clean-local:
 	rm -fr mod-*

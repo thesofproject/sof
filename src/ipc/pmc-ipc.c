@@ -28,14 +28,14 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <reef/reef.h>
-#include <reef/alloc.h>
-#include <reef/wait.h>
-#include <reef/trace.h>
+#include <sof/debug.h>
+#include <sof/timer.h>
+#include <sof/interrupt.h>
+#include <sof/ipc.h>
+#include <sof/sof.h>
+#include <sof/alloc.h>
+#include <sof/wait.h>
+#include <sof/trace.h>
 #include <platform/interrupt.h>
 #include <platform/pmc.h>
 #include <platform/shim.h>

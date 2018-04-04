@@ -37,18 +37,18 @@
 #include <platform/timer.h>
 #include <platform/pmc.h>
 #include <uapi/ipc.h>
-#include <reef/mailbox.h>
-#include <reef/dai.h>
-#include <reef/dma.h>
-#include <reef/interrupt.h>
-#include <reef/reef.h>
-#include <reef/work.h>
-#include <reef/clock.h>
-#include <reef/ipc.h>
-#include <reef/trace.h>
-#include <reef/agent.h>
-#include <reef/dma-trace.h>
-#include <reef/audio/component.h>
+#include <sof/mailbox.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <sof/interrupt.h>
+#include <sof/sof.h>
+#include <sof/work.h>
+#include <sof/clock.h>
+#include <sof/ipc.h>
+#include <sof/trace.h>
+#include <sof/agent.h>
+#include <sof/dma-trace.h>
+#include <sof/audio/component.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -60,12 +60,12 @@ static const struct sof_ipc_fw_ready ready = {
 	},
 	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
 	.version = {
-		.build = REEF_BUILD,
-		.minor = REEF_MINOR,
-		.major = REEF_MAJOR,
+		.build = SOF_BUILD,
+		.minor = SOF_MINOR,
+		.major = SOF_MAJOR,
 		.date = __DATE__,
 		.time = __TIME__,
-		.tag = REEF_TAG,
+		.tag = SOF_TAG,
 	},
 	/* TODO: add capabilities */
 };
@@ -287,7 +287,7 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 	}
 }
 
-int platform_init(struct reef *reef)
+int platform_init(struct sof *sof)
 {
 #if defined CONFIG_BAYTRAIL
 	struct dma *dmac0;
@@ -339,7 +339,7 @@ int platform_init(struct reef *reef)
 	platform_timer_start(platform_timer);
 
 	/* init the system agent */
-	sa_init(reef);
+	sa_init(sof);
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
@@ -352,7 +352,7 @@ int platform_init(struct reef *reef)
 
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init(reef);
+	ipc_init(sof);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -416,7 +416,7 @@ int platform_init(struct reef *reef)
 #endif
 
 	/* Initialize DMA for Trace*/
-	dma_trace_init_complete(reef->dmat);
+	dma_trace_init_complete(sof->dmat);
 
 	return 0;
 }

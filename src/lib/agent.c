@@ -34,13 +34,13 @@
  * continuously then the SA will emit trace and panic().
  */
 
-#include <reef/reef.h>
-#include <reef/agent.h>
-#include <reef/debug.h>
-#include <reef/panic.h>
-#include <reef/alloc.h>
-#include <reef/clock.h>
-#include <reef/trace.h>
+#include <sof/sof.h>
+#include <sof/agent.h>
+#include <sof/debug.h>
+#include <sof/panic.h>
+#include <sof/alloc.h>
+#include <sof/clock.h>
+#include <sof/trace.h>
 #include <platform/timer.h>
 #include <platform/platform.h>
 #include <platform/clk.h>
@@ -51,9 +51,9 @@
 /*
  * Notify the SA that we are about to enter idle state (WFI).
  */
-void sa_enter_idle(struct reef *reef)
+void sa_enter_idle(struct sof *sof)
 {
-	struct sa *sa = reef->sa;
+	struct sa *sa = sof->sa;
 
 	sa->last_idle = platform_timer_get(platform_timer);
 }
@@ -77,14 +77,14 @@ static uint64_t validate(void *data, uint64_t delay)
 	return PLATFORM_IDLE_TIME;
 }
 
-void sa_init(struct reef *reef)
+void sa_init(struct sof *sof)
 {
 	struct sa *sa;
 
 	trace_sa("ini");
 
 	sa = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sa));
-	reef->sa = sa;
+	sof->sa = sa;
 
 	/* set default tick timout */
 	sa->ticks = clock_us_to_ticks(PLATFORM_WORKQ_CLOCK, PLATFORM_IDLE_TIME);

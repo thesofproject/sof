@@ -14,7 +14,7 @@ libplatform_a_SOURCES = \
 libplatform_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
-	$(REEF_INCDIR) \
+	$(SOF_INCDIR) \
 	$(PLATFORM_INCDIR)
 
 noinst_PROGRAMS = module boot_module
@@ -24,7 +24,7 @@ module_SOURCES = \
 
 module_CFLAGS = \
 	$(ARCH_INCDIR) \
-	$(REEF_INCDIR) \
+	$(SOF_INCDIR) \
 	$(PLATFORM_INCDIR)
 
 boot_module_SOURCES = \
@@ -32,5 +32,5 @@ boot_module_SOURCES = \
 
 boot_module_CFLAGS = \
 	$(ARCH_INCDIR) \
-	$(REEF_INCDIR) \
+	$(SOF_INCDIR) \
 	$(PLATFORM_INCDIR)

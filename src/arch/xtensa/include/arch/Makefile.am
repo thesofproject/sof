@@ -2,7 +2,7 @@ noinst_HEADERS = \
 	atomic.h \
 	cache.h \
 	interrupt.h \
-	reef.h \
+	sof.h \
 	spinlock.h \
 	task.h \
 	timer.h \

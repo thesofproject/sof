@@ -32,20 +32,20 @@
  */
 
 #include <stddef.h>
-#include <reef/init.h>
-#include <reef/task.h>
-#include <reef/debug.h>
-#include <reef/panic.h>
-#include <reef/alloc.h>
-#include <reef/notifier.h>
-#include <reef/work.h>
-#include <reef/trace.h>
-#include <reef/schedule.h>
-#include <reef/dma-trace.h>
+#include <sof/init.h>
+#include <sof/task.h>
+#include <sof/debug.h>
+#include <sof/panic.h>
+#include <sof/alloc.h>
+#include <sof/notifier.h>
+#include <sof/work.h>
+#include <sof/trace.h>
+#include <sof/schedule.h>
+#include <sof/dma-trace.h>
 #include <platform/platform.h>
 
 /* main firmware context */
-static struct reef reef;
+static struct sof sof;
 
 int main(int argc, char *argv[])
 {
@@ -54,36 +54,36 @@ int main(int argc, char *argv[])
 	trace_point(TRACE_BOOT_START);
 
 	/* setup context */
-	reef.argc = argc;
-	reef.argv = argv;
+	sof.argc = argc;
+	sof.argv = argv;
 
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(&reef);
+	err = arch_init(&sof);
 	if (err < 0)
 		panic(SOF_IPC_PANIC_ARCH);
 
 	/* initialise system services */
 	trace_point(TRACE_BOOT_SYS_HEAP);
-	init_heap(&reef);
+	init_heap(&sof);
 
-	trace_init(&reef);
+	trace_init(&sof);
 
 	trace_point(TRACE_BOOT_SYS_NOTE);
-	init_system_notify(&reef);
+	init_system_notify(&sof);
 
 	trace_point(TRACE_BOOT_SYS_SCHED);
-	scheduler_init(&reef);
+	scheduler_init(&sof);
 
 	/* init the platform */
-	err = platform_init(&reef);
+	err = platform_init(&sof);
 	if (err < 0)
 		panic(SOF_IPC_PANIC_PLATFORM);
 
 	trace_point(TRACE_BOOT_PLATFORM);
 
 	/* should not return */
-	err = do_task(&reef);
+	err = do_task(&sof);
 
 	/* should never get here */
 	panic(SOF_IPC_PANIC_TASK);

@@ -33,8 +33,8 @@
 #include <platform/timer.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>
-#include <reef/debug.h>
-#include <reef/audio/component.h>
+#include <sof/debug.h>
+#include <sof/audio/component.h>
 #include <stdint.h>
 
 struct timer_data {

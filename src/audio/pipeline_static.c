@@ -34,16 +34,16 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <reef/reef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/stream.h>
-#include <reef/dai.h>
-#include <reef/ipc.h>
+#include <sof/sof.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/stream.h>
+#include <sof/dai.h>
+#include <sof/ipc.h>
 #include <platform/clk.h>
 #include <platform/platform.h>
-#include <reef/audio/component.h>
-#include <reef/audio/pipeline.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
 
 
 /* 2 * 32 bit*/

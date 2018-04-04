@@ -28,9 +28,9 @@ if [ -e $DIR/.git -o -d $DIR/.git ]; then
 	echo $VER > $DIR/.tarball-version
 
 	# git commit for IPC
-	echo "#define REEF_TAG \"`git log --pretty=format:\"%h\" -1 | cut -c1-5`\"" > $DIR/src/include/version.h
+	echo "#define SOF_TAG \"`git log --pretty=format:\"%h\" -1 | cut -c1-5`\"" > $DIR/src/include/version.h
 else
-	echo "#define REEF_TAG \"0\"" > $DIR/src/include/version.h
+	echo "#define SOF_TAG \"0\"" > $DIR/src/include/version.h
 fi
 
 # build counter
@@ -42,7 +42,7 @@ fi
 
 # save and insert build counter
 echo $num > $DIR/.build
-echo "#define REEF_BUILD $num" >> $DIR/src/include/version.h
+echo "#define SOF_BUILD $num" >> $DIR/src/include/version.h
 
 #echo version for AC_INIT
 if [ -e $DIR/.version ]; then

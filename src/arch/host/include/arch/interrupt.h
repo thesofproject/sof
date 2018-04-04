@@ -32,7 +32,7 @@
 #ifndef __ARCH_INTERRUPT_H
 #define __ARCH_INTERRUPT_H
 
-#include <reef/interrupt-map.h>
+#include <sof/interrupt-map.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>

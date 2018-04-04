@@ -35,7 +35,7 @@
 #include <platform/interrupt.h>
 #include <uapi/ipc.h>
 
-struct reef;
+struct sof;
 
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERUPT	IRQ_NUM_EXT_IA
@@ -112,6 +112,6 @@ struct reef;
 
 int platform_boot_complete(uint32_t boot_message);
 
-int platform_init(struct reef *reef);
+int platform_init(struct sof *sof);
 
 #endif

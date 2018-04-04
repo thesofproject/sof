@@ -34,10 +34,10 @@
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/timer.h>
-#include <reef/mailbox.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
+#include <sof/mailbox.h>
+#include <sof/debug.h>
+#include <sof/timer.h>
+#include <sof/interrupt.h>
 #include <stdint.h>
 #include <errno.h>
 

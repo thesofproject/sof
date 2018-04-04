@@ -42,9 +42,9 @@ autom4te*
 config.*
 *.gz
 *.xz
-src/arch/xtensa/reef
+src/arch/xtensa/sof
 src/arch/xtensa/boot_ldr
-reef-*
+sof-*
 boot_ldr-*
 boot_module
 module

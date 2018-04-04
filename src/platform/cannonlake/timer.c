@@ -32,8 +32,8 @@
 
 #include <platform/timer.h>
 #include <platform/shim.h>
-#include <reef/debug.h>
-#include <reef/audio/component.h>
+#include <sof/debug.h>
+#include <sof/audio/component.h>
 #include <stdint.h>
 
 void platform_timer_start(struct timer *timer)

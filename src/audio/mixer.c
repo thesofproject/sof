@@ -31,11 +31,11 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <reef/lock.h>
-#include <reef/list.h>
-#include <reef/stream.h>
-#include <reef/alloc.h>
-#include <reef/audio/component.h>
+#include <sof/lock.h>
+#include <sof/list.h>
+#include <sof/stream.h>
+#include <sof/alloc.h>
+#include <sof/audio/component.h>
 
 #define trace_mixer(__e)	trace_event(TRACE_CLASS_MIXER, __e)
 #define tracev_mixer(__e)	tracev_event(TRACE_CLASS_MIXER, __e)

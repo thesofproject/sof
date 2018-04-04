@@ -30,7 +30,7 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/audio/format.h>
+#include <sof/audio/format.h>
 
 #define MAX_FIR_LENGTH 192
 

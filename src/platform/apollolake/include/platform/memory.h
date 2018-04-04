@@ -132,7 +132,7 @@
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
  * +---------------------+----------------+-----------------------------------+
- * | L2_SRAM_BASE        | RO Data        |  REEF_DATA_SIZE                   |
+ * | L2_SRAM_BASE        | RO Data        |  SOF_DATA_SIZE                   |
  * |                     | Data           |                                   |
  * |                     | BSS            |                                   |
  * +---------------------+----------------+-----------------------------------+
@@ -142,9 +142,9 @@
  * +---------------------+----------------+-----------------------------------+
  * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
- * | REEF_STACK_END      | Stack          |  REEF_STACK_SIZE                  |
+ * | SOF_STACK_END      | Stack          |  SOF_STACK_SIZE                  |
  * +---------------------+----------------+-----------------------------------+
- * | REEF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_BASE     |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -163,23 +163,23 @@
 #define HEAP_RT_COUNT1024		4
 
 /* text and data share the same L2 SRAM on Broxton */
-#define REEF_TEXT_START			L2_SRAM_BASE
-#define REEF_TEXT_START_SIZE		0x400
+#define SOF_TEXT_START			L2_SRAM_BASE
+#define SOF_TEXT_START_SIZE		0x400
 #define L2_VECTOR_SIZE			0x1000
 
-#define REEF_TEXT_BASE			(L2_SRAM_BASE + L2_VECTOR_SIZE)
-#define REEF_TEXT_SIZE			0x19000
+#define SOF_TEXT_BASE			(L2_SRAM_BASE + L2_VECTOR_SIZE)
+#define SOF_TEXT_SIZE			0x19000
 
 /* initialized data */
-#define REEF_DATA_SIZE			0x18000
+#define SOF_DATA_SIZE			0x18000
 
 /* bss data */
-#define REEF_BSS_DATA_SIZE		0x2800
+#define SOF_BSS_DATA_SIZE		0x2800
 
 /* Heap configuration */
 #define HEAP_SYSTEM_BASE \
-	(REEF_TEXT_BASE + REEF_TEXT_SIZE +\
-	REEF_DATA_SIZE + REEF_BSS_DATA_SIZE)
+	(SOF_TEXT_BASE + SOF_TEXT_SIZE +\
+	SOF_DATA_SIZE + SOF_BSS_DATA_SIZE)
 #define HEAP_SYSTEM_SIZE		0x3200
 
 #define HEAP_RUNTIME_BASE		(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
@@ -191,17 +191,17 @@
 
 #define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE	\
-    (L2_SRAM_SIZE - L2_VECTOR_SIZE - REEF_TEXT_SIZE - REEF_DATA_SIZE - \
-     REEF_BSS_DATA_SIZE - HEAP_RUNTIME_SIZE - REEF_STACK_SIZE - HEAP_SYSTEM_SIZE)
+    (L2_SRAM_SIZE - L2_VECTOR_SIZE - SOF_TEXT_SIZE - SOF_DATA_SIZE - \
+     SOF_BSS_DATA_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_SIZE - HEAP_SYSTEM_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 
 /* Stack configuration */
-#define REEF_STACK_SIZE			0x1000
-#define REEF_STACK_BASE			(L2_SRAM_BASE + L2_SRAM_SIZE)
-#define REEF_STACK_END			(REEF_STACK_BASE - REEF_STACK_SIZE)
+#define SOF_STACK_SIZE			0x1000
+#define SOF_STACK_BASE			(L2_SRAM_BASE + L2_SRAM_SIZE)
+#define SOF_STACK_END			(SOF_STACK_BASE - SOF_STACK_SIZE)
 
 /*
  * The HP SRAM Region Apololake is organised like this :-
@@ -295,7 +295,7 @@
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
  * +---------------------+----------------+-----------------------------------+
- * | LP_SRAM_BASE        | RO Data        |  REEF_LP_DATA_SIZE                |
+ * | LP_SRAM_BASE        | RO Data        |  SOF_LP_DATA_SIZE                |
  * |                     | Data           |                                   |
  * |                     | BSS            |                                   |
  * +---------------------+----------------+-----------------------------------+
@@ -305,9 +305,9 @@
  * +---------------------+----------------+-----------------------------------+
  * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE              |
  * +---------------------+----------------+-----------------------------------+
- * | REEF_LP_STACK_END   | Stack          |  REEF_LP_STACK_SIZE               |
+ * | SOF_LP_STACK_END   | Stack          |  SOF_LP_STACK_SIZE               |
  * +---------------------+----------------+-----------------------------------+
- * | REEF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_BASE     |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -326,9 +326,9 @@
 #define HEAP_RT_LP_COUNT1024		4
 
 /* Heap configuration */
-#define REEF_LP_DATA_SIZE		0x4000
+#define SOF_LP_DATA_SIZE		0x4000
 
-#define HEAP_LP_SYSTEM_BASE		(LP_SRAM_BASE + REEF_LP_DATA_SIZE)
+#define HEAP_LP_SYSTEM_BASE		(LP_SRAM_BASE + SOF_LP_DATA_SIZE)
 #define HEAP_LP_SYSTEM_SIZE		0x1000
 
 #define HEAP_LP_RUNTIME_BASE \
@@ -342,7 +342,7 @@
 #define HEAP_LP_BUFFER_BASE \
 	(HEAP_LP_RUNTIME_BASE + HEAP_LP_RUNTIME_SIZE)
 #define HEAP_LP_BUFFER_SIZE \
-    (LP_SRAM_SIZE - HEAP_LP_RUNTIME_SIZE - REEF_LP_STACK_SIZE - HEAP_LP_SYSTEM_SIZE)
+    (LP_SRAM_SIZE - HEAP_LP_RUNTIME_SIZE - SOF_LP_STACK_SIZE - HEAP_LP_SYSTEM_SIZE)
 
 #define HEAP_LP_BUFFER_BLOCK_SIZE	0x180
 #define HEAP_LP_BUFFER_COUNT \
@@ -352,21 +352,21 @@
 #define PLATFORM_HEAP_BUFFER		3
 
 /* Stack configuration */
-#define REEF_LP_STACK_SIZE		0x1000
-#define REEF_LP_STACK_BASE		(LP_SRAM_BASE + LP_SRAM_SIZE)
-#define REEF_LP_STACK_END		(REEF_LP_STACK_BASE - REEF_LP_STACK_SIZE)
+#define SOF_LP_STACK_SIZE		0x1000
+#define SOF_LP_STACK_BASE		(LP_SRAM_BASE + LP_SRAM_SIZE)
+#define SOF_LP_STACK_END		(SOF_LP_STACK_BASE - SOF_LP_STACK_SIZE)
 
 /* Vector and literal sizes - not in core-isa.h */
-#define REEF_MEM_VECT_LIT_SIZE		0x8
-#define REEF_MEM_VECT_TEXT_SIZE		0x38
-#define REEF_MEM_VECT_SIZE		(REEF_MEM_VECT_TEXT_SIZE + REEF_MEM_VECT_LIT_SIZE)
+#define SOF_MEM_VECT_LIT_SIZE		0x8
+#define SOF_MEM_VECT_TEXT_SIZE		0x38
+#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + SOF_MEM_VECT_LIT_SIZE)
 
-#define REEF_MEM_ERROR_TEXT_SIZE	0x180
-#define REEF_MEM_ERROR_LIT_SIZE		0x8
+#define SOF_MEM_ERROR_TEXT_SIZE	0x180
+#define SOF_MEM_ERROR_LIT_SIZE		0x8
 
-#define REEF_MEM_RESET_TEXT_SIZE	0x268
-#define REEF_MEM_RESET_LIT_SIZE		0x8
-#define REEF_MEM_VECBASE_LIT_SIZE	0x178
+#define SOF_MEM_RESET_TEXT_SIZE	0x268
+#define SOF_MEM_RESET_LIT_SIZE		0x8
+#define SOF_MEM_VECBASE_LIT_SIZE	0x178
 
-#define REEF_MEM_RO_SIZE		0x8
+#define SOF_MEM_RO_SIZE		0x8
 #endif

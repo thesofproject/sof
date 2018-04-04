@@ -29,8 +29,8 @@
  *
  */
 
-#ifndef __INCLUDE_ARCH_STRING_REEF__
-#define __INCLUDE_ARCH_STRING_REEF__
+#ifndef __INCLUDE_ARCH_STRING_SOF__
+#define __INCLUDE_ARCH_STRING_SOF__
 
 void *xthal_memcpy(void *dst, const void *src, size_t len);
 

@@ -29,9 +29,9 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <reef/dma.h>
-#include <reef/dw-dma.h>
-#include <reef/hda-dma.h>
+#include <sof/dma.h>
+#include <sof/dw-dma.h>
+#include <sof/hda-dma.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>

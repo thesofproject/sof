@@ -33,7 +33,7 @@
 #define __PLATFORM_DMA_H__
 
 #include <stdint.h>
-#include <reef/io.h>
+#include <sof/io.h>
 #include <arch/cache.h>
 
 /* available DMACs */

@@ -1,4 +1,4 @@
-SUBDIRS = reef uapi
+SUBDIRS = sof uapi
 
 version.h:
 	$(top_srcdir)/version.sh $(top_srcdir)

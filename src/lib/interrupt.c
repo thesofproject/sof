@@ -30,9 +30,9 @@
  *
  */
 
-#include <reef/interrupt.h>
-#include <reef/interrupt-map.h>
-#include <reef/alloc.h>
+#include <sof/interrupt.h>
+#include <sof/interrupt-map.h>
+#include <sof/alloc.h>
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
 #include <stdint.h>
@@ -49,18 +49,18 @@ int irq_register_child(struct irq_parent *parent, int irq,
 	spin_lock(&parent->lock);
 
 	/* does child already exist ? */
-	if (parent->child[REEF_IRQ_BIT(irq)]) {
+	if (parent->child[SOF_IRQ_BIT(irq)]) {
 		/* already registered, return */
 		goto finish;
 	}
 
 	/* init child */
-	parent->child[REEF_IRQ_BIT(irq)] =
+	parent->child[SOF_IRQ_BIT(irq)] =
 		rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 			sizeof(struct irq_child));
-	parent->child[REEF_IRQ_BIT(irq)]->enabled = 0;
-	parent->child[REEF_IRQ_BIT(irq)]->handler = handler;
-	parent->child[REEF_IRQ_BIT(irq)]->handler_arg = arg;
+	parent->child[SOF_IRQ_BIT(irq)]->enabled = 0;
+	parent->child[SOF_IRQ_BIT(irq)]->handler = handler;
+	parent->child[SOF_IRQ_BIT(irq)]->handler_arg = arg;
 
 	/* do we need to register parent ? */
 	if (parent->num_children == 0) {
@@ -82,13 +82,13 @@ void irq_unregister_child(struct irq_parent *parent, int irq)
 	spin_lock(&parent->lock);
 
 	/* does child already exist ? */
-	if (!parent->child[REEF_IRQ_BIT(irq)])
+	if (!parent->child[SOF_IRQ_BIT(irq)])
 		goto finish;
 
 	/* free child */
 	parent->num_children -= 1;
-	rfree(parent->child[REEF_IRQ_BIT(irq)]);
-	parent->child[REEF_IRQ_BIT(irq)] = NULL;
+	rfree(parent->child[SOF_IRQ_BIT(irq)]);
+	parent->child[SOF_IRQ_BIT(irq)] = NULL;
 
 	/*
 	 * unregister the root interrupt if the this l2 is
@@ -107,7 +107,7 @@ uint32_t irq_enable_child(struct irq_parent *parent, int irq)
 
 	spin_lock(&parent->lock);
 
-	child = parent->child[REEF_IRQ_BIT(irq)];
+	child = parent->child[SOF_IRQ_BIT(irq)];
 
 	/* already enabled ? */
 	if (child->enabled)
@@ -115,7 +115,7 @@ uint32_t irq_enable_child(struct irq_parent *parent, int irq)
 
 	/* enable the parent interrupt */
 	if (parent->enabled_count == 0)
-		arch_interrupt_enable_mask(1 << REEF_IRQ_NUMBER(irq));
+		arch_interrupt_enable_mask(1 << SOF_IRQ_NUMBER(irq));
 	child->enabled = 1;
 	parent->enabled_count++;
 
@@ -134,7 +134,7 @@ uint32_t irq_disable_child(struct irq_parent *parent, int irq)
 
 	spin_lock(&parent->lock);
 
-	child = parent->child[REEF_IRQ_BIT(irq)];
+	child = parent->child[SOF_IRQ_BIT(irq)];
 
 	/* already disabled ? */
 	if (!child->enabled)
@@ -147,7 +147,7 @@ uint32_t irq_disable_child(struct irq_parent *parent, int irq)
 	/* disable the parent interrupt */
 	parent->enabled_count--;
 	if (parent->enabled_count == 0)
-		arch_interrupt_disable_mask(1 << REEF_IRQ_NUMBER(irq));
+		arch_interrupt_disable_mask(1 << SOF_IRQ_NUMBER(irq));
 
 finish:
 	spin_unlock(&parent->lock);

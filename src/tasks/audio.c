@@ -30,19 +30,19 @@
  * Generic audio task.
  */
 
-#include <reef/task.h>
-#include <reef/wait.h>
-#include <reef/debug.h>
-#include <reef/timer.h>
-#include <reef/interrupt.h>
-#include <reef/ipc.h>
-#include <reef/agent.h>
+#include <sof/task.h>
+#include <sof/wait.h>
+#include <sof/debug.h>
+#include <sof/timer.h>
+#include <sof/interrupt.h>
+#include <sof/ipc.h>
+#include <sof/agent.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
-#include <reef/audio/pipeline.h>
-#include <reef/work.h>
-#include <reef/debug.h>
-#include <reef/trace.h>
+#include <sof/audio/pipeline.h>
+#include <sof/work.h>
+#include <sof/debug.h>
+#include <sof/trace.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -51,7 +51,7 @@ struct audio_data {
 	struct pipeline *p;
 };
 
-int do_task(struct reef *reef)
+int do_task(struct sof *sof)
 {
 #ifdef STATIC_PIPE
 	struct audio_data pdata;
@@ -82,7 +82,7 @@ int do_task(struct reef *reef)
 	while (1) {
 
 		/* sleep until next IPC or DMA */
-		sa_enter_idle(reef);
+		sa_enter_idle(sof);
 		wait_for_interrupt(0);
 
 		/* now process any IPC messages from host */

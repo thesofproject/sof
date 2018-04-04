@@ -33,7 +33,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <reef/interrupt-map.h>
+#include <sof/interrupt-map.h>
 
 #define PLATFORM_IRQ_CHILDREN	0
 

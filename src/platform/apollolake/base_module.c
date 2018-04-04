@@ -41,14 +41,14 @@ struct sof_man_module_manifest apl_manifest = {
 		.name	= "BASEFW",
 		.uuid	= {0x2e, 0x9e, 0x86, 0xfc, 0xf8, 0x45, 0x45, 0x40,
 			0xa4, 0x16, 0x89, 0x88, 0x0a, 0xe3, 0x20, 0xa9},
-		.entry_point = REEF_TEXT_START,
+		.entry_point = SOF_TEXT_START,
 		.type = {
 				.load_type = SOF_MAN_MOD_TYPE_MODULE,
 				.domain_ll = 1,
 		},
 		.affinity_mask = 3,
 	},
-	.text_size = REEF_TEXT_SIZE + L2_VECTOR_SIZE,
+	.text_size = SOF_TEXT_SIZE + L2_VECTOR_SIZE,
 };
 
 /* not used, but stops linker complaining */

@@ -28,11 +28,11 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <reef/reef.h>
-#include <reef/dai.h>
-#include <reef/ssp.h>
-#include <reef/stream.h>
-#include <reef/audio/component.h>
+#include <sof/sof.h>
+#include <sof/dai.h>
+#include <sof/ssp.h>
+#include <sof/stream.h>
+#include <sof/audio/component.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>
