@@ -60,7 +60,7 @@
 #define REEF_IRQ_NUMBER(_irq) \
 	((_irq >> REEF_IRQ_NUM_SHIFT) & REEF_IRQ_NUM_MASK)
 #define REEF_IRQ_LEVEL(_level) \
-	((_level >> REEF_IRQ_LEVEL_SHIFT & REEF_IRQ_LEVEL_MASK)
+	((_level >> REEF_IRQ_LEVEL_SHIFT) & REEF_IRQ_LEVEL_MASK)
 #define REEF_IRQ_BIT(_bit) \
 	((_bit >> REEF_IRQ_BIT_SHIFT) & REEF_IRQ_BIT_MASK)
 #define REEF_IRQ_CPU(_cpu) \
