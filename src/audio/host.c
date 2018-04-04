@@ -274,7 +274,7 @@ unwind:
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int host_cmd(struct comp_dev *dev, int cmd, void *data)
+static int host_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret = 0;
 
@@ -285,10 +285,10 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
-	case COMP_CMD_STOP:
+	case COMP_TRIGGER_STOP:
 		ret = host_stop(dev);
 		break;
-	case COMP_CMD_START:
+	case COMP_TRIGGER_START:
 		/* preload first playback period for preloader task */
 		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 			ret = host_copy(dev);
@@ -453,26 +453,28 @@ unwind:
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int host_cmd(struct comp_dev *dev, int cmd, void *data)
+static int host_trigger(struct comp_dev *dev, int cmd)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	trace_host("cmd");
+	trace_host("trg");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	switch (cmd) {
-	case COMP_CMD_PAUSE:
-		dma_stop(hd->dma, hd->chan);
-		break;
-	case COMP_CMD_STOP:
+	case COMP_TRIGGER_STOP:
 		ret = host_stop(dev);
 		break;
-	case COMP_CMD_START:
-		dma_start(hd->dma, hd->chan);
+	case COMP_TRIGGER_START:
+		ret = dma_start(hd->dma, hd->chan);
+		if (ret < 0) {
+			trace_host_error("TsF");
+			trace_error_value(ret);
+			goto out;
+		}
 
 		/* preload first playback period for preloader task */
 		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -488,6 +490,7 @@ static int host_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	}
 
+out:
 	return ret;
 }
 
@@ -703,7 +706,12 @@ static int host_params(struct comp_dev *dev)
 		trace_host_error("eDC");
 		return -ENODEV;
 	}
-	dma_set_config(hd->dma, hd->chan, &hd->config);
+	err = dma_set_config(hd->dma, hd->chan, &hd->config);
+	if (err < 0) {
+		trace_host_error("eDc");
+		dma_channel_put(hd->dma, hd->chan);
+		return err;
+	}
 #endif
 
 	return 0;
@@ -716,7 +724,7 @@ static int host_prepare(struct comp_dev *dev)
 
 	trace_host("pre");
 
-	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
 
@@ -744,7 +752,7 @@ static int host_pointer_reset(struct comp_dev *dev)
 	hd->local_pos = 0;
 	hd->report_pos = 0;
 	dev->position = 0;
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
 }
@@ -847,6 +855,7 @@ static int host_copy(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
+	int ret;
 
 	tracev_host("cpy");
 
@@ -891,13 +900,23 @@ static int host_copy(struct comp_dev *dev)
 	host_gw_dma_update(dev);
 
 	/* tell gateway to copy another period */
-	dma_copy(hd->dma, hd->chan, hd->period_bytes);
+	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes);
+	if (ret < 0)
+		goto out;
 #else
 	/* do DMA transfer */
-	dma_set_config(hd->dma, hd->chan, &hd->config);
-	dma_start(hd->dma, hd->chan);
+	ret = dma_set_config(hd->dma, hd->chan, &hd->config);
+	if (ret < 0)
+		goto out;
+	ret = dma_start(hd->dma, hd->chan);
+	if (ret < 0)
+		goto out;
 #endif
 	return dev->frames;
+out:
+	trace_host_error("CpF");
+	trace_error_value(ret);
+	return ret;
 }
 
 struct comp_driver comp_host = {
@@ -907,7 +926,7 @@ struct comp_driver comp_host = {
 		.free		= host_free,
 		.params		= host_params,
 		.reset		= host_reset,
-		.cmd		= host_cmd,
+		.trigger	= host_trigger,
 		.copy		= host_copy,
 		.prepare	= host_prepare,
 		.host_buffer	= host_buffer,

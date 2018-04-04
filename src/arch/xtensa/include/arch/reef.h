@@ -40,11 +40,6 @@
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32
 
-void *xthal_memcpy(void *dst, const void *src, size_t len);
-
-#define arch_memcpy(dest, src, size) \
-	xthal_memcpy(dest, src, size)
-
 static inline void *arch_get_stack_ptr(void)
 {
 	void *ptr;

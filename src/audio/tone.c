@@ -576,10 +576,6 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	trace_tone("cmd");
 
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
 	switch (cmd) {
 	case COMP_CMD_SET_DATA:
 		ret = tone_cmd_set_data(dev, cdata);
@@ -590,6 +586,13 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 	}
 
 	return ret;
+}
+
+static int tone_trigger(struct comp_dev *dev, int cmd)
+{
+	trace_tone("trg");
+
+	return comp_set_state(dev, cmd);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -633,7 +636,7 @@ static int tone_prepare(struct comp_dev * dev)
 
 	trace_tone("TPp");
 
-	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
 
@@ -646,7 +649,7 @@ static int tone_prepare(struct comp_dev * dev)
 		f = tonegen_get_f(&cd->sg[i]);
 		a = tonegen_get_a(&cd->sg[i]);
 		if (tonegen_init(&cd->sg[i], cd->rate, f, a) < 0) {
-			comp_set_state(dev, COMP_CMD_RESET);
+			comp_set_state(dev, COMP_TRIGGER_RESET);
 			return -EINVAL;
 		}
 	}
@@ -666,7 +669,7 @@ static int tone_reset(struct comp_dev * dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		tonegen_reset(&cd->sg[i]);
 
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
 }
@@ -678,6 +681,7 @@ struct comp_driver comp_tone = {
 		.free = tone_free,
 		.params = tone_params,
 		.cmd = tone_cmd,
+		.trigger = tone_trigger,
 		.copy = tone_copy,
 		.prepare = tone_prepare,
 		.reset = tone_reset,

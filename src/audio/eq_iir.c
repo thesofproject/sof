@@ -424,10 +424,6 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 
 	trace_eq_iir("cmd");
 
-	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
-		return ret;
-
 	switch (cmd) {
 	case COMP_CMD_SET_VALUE:
 		ret = iir_cmd_set_value(dev, cdata);
@@ -438,6 +434,13 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 	}
 
 	return ret;
+}
+
+static int eq_iir_trigger(struct comp_dev *dev, int cmd)
+{
+	trace_eq_iir("trg");
+
+	return comp_set_state(dev, cmd);
 }
 
 /* copy and process stream data from source to sink buffers */
@@ -481,7 +484,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 
 	trace_eq_iir("EPp");
 
-	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
 
@@ -492,13 +495,13 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	 * interrupts pipeline prepare for downstream.
 	 */
 	if (cd->config == NULL) {
-		comp_set_state(dev, COMP_CMD_RESET);
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
 	ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
 	if (ret < 0) {
-		comp_set_state(dev, COMP_CMD_RESET);
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
 
@@ -519,7 +522,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
 
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
 }
 
@@ -530,6 +533,7 @@ struct comp_driver comp_eq_iir = {
 		.free = eq_iir_free,
 		.params = eq_iir_params,
 		.cmd = eq_iir_cmd,
+		.trigger = eq_iir_trigger,
 		.copy = eq_iir_copy,
 		.prepare = eq_iir_prepare,
 		.reset = eq_iir_reset,

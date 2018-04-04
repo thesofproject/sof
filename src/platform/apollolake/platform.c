@@ -78,54 +78,56 @@ static const struct sof_ipc_window sram_window = {
 		.type	= SOF_IPC_EXT_WINDOW,
 	},
 	.num_windows	= NUM_APL_WINDOWS,
-	.window[0]	= {
-		.type	= SOF_IPC_REGION_REGS,
-		.id	= 0,	/* map to host window 0 */
-		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_SW_REG_SIZE,
-		.offset	= 0,
-	},
-	.window[1]	= {
-		.type	= SOF_IPC_REGION_UPBOX,
-		.id	= 0,	/* map to host window 0 */
-		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_DSPBOX_SIZE,
-		.offset	= MAILBOX_SW_REG_SIZE,
-	},
-	.window[2]	= {
-		.type	= SOF_IPC_REGION_DOWNBOX,
-		.id	= 1,	/* map to host window 1 */
-		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_HOSTBOX_SIZE,
-		.offset	= 0,
-	},
-	.window[3]	= {
-		.type	= SOF_IPC_REGION_DEBUG,
-		.id	= 2,	/* map to host window 2 */
-		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_DEBUG_SIZE,
-		.offset	= 0,
-	},
-	.window[4]	= {
-		.type	= SOF_IPC_REGION_EXCEPTION,
-		.id	= 2,	/* map to host window 2 */
-		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_EXCEPTION_SIZE,
-		.offset	= MAILBOX_EXCEPTION_OFFSET,
-	},
-	.window[5]	= {
-		.type	= SOF_IPC_REGION_STREAM,
-		.id	= 2,	/* map to host window 2 */
-		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_STREAM_SIZE,
-		.offset	= MAILBOX_STREAM_OFFSET,
-	},
-	.window[6]	= {
-		.type	= SOF_IPC_REGION_TRACE,
-		.id	= 3,	/* map to host window 3 */
-		.flags	= 0, // TODO: set later
-		.size	= MAILBOX_TRACE_SIZE,
-		.offset	= 0,
+	.window	= {
+		{
+			.type	= SOF_IPC_REGION_REGS,
+			.id	= 0,	/* map to host window 0 */
+			.flags	= 0, // TODO: set later
+			.size	= MAILBOX_SW_REG_SIZE,
+			.offset	= 0,
+		},
+		{
+			.type	= SOF_IPC_REGION_UPBOX,
+			.id	= 0,	/* map to host window 0 */
+			.flags	= 0, // TODO: set later
+			.size	= MAILBOX_DSPBOX_SIZE,
+			.offset	= MAILBOX_SW_REG_SIZE,
+		},
+		{
+			.type	= SOF_IPC_REGION_DOWNBOX,
+			.id	= 1,	/* map to host window 1 */
+			.flags	= 0, // TODO: set later
+			.size	= MAILBOX_HOSTBOX_SIZE,
+			.offset	= 0,
+		},
+		{
+			.type	= SOF_IPC_REGION_DEBUG,
+			.id	= 2,	/* map to host window 2 */
+			.flags	= 0, // TODO: set later
+			.size	= MAILBOX_EXCEPTION_SIZE + MAILBOX_DEBUG_SIZE,
+			.offset	= 0,
+		},
+		{
+			.type	= SOF_IPC_REGION_EXCEPTION,
+			.id	= 2,	/* map to host window 2 */
+			.flags	= 0, // TODO: set later
+			.size	= MAILBOX_EXCEPTION_SIZE,
+			.offset	= MAILBOX_EXCEPTION_OFFSET,
+		},
+		{
+			.type	= SOF_IPC_REGION_STREAM,
+			.id	= 2,	/* map to host window 2 */
+			.flags	= 0, // TODO: set later
+			.size	= MAILBOX_STREAM_SIZE,
+			.offset	= MAILBOX_STREAM_OFFSET,
+		},
+		{
+			.type	= SOF_IPC_REGION_TRACE,
+			.id	= 3,	/* map to host window 3 */
+			.flags	= 0, // TODO: set later
+			.size	= MAILBOX_TRACE_SIZE,
+			.offset	= 0,
+		},
 	},
 };
 

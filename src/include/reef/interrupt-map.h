@@ -39,7 +39,7 @@
 #define REEF_IRQ_NUM_SHIFT	0
 #define REEF_IRQ_NUM_MASK	0xff
 #define REEF_IRQ_LEVEL_MASK	0xff
-#define REEF_IRQ_BIT_MASK	0xff
+#define REEF_IRQ_BIT_MASK	0x1f
 #define REEF_IRQ_CPU_MASK	0xff
 
 #define REEF_IRQ(_bit, _level, _cpu, _number) \

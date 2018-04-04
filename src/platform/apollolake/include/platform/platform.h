@@ -88,6 +88,9 @@ struct reef;
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 
+/* trace bytes flushed during panic */
+#define DMA_FLUSH_TRACE_SIZE    (MAILBOX_TRACE_SIZE >> 2)
+
 /* the interval of DMA trace copying */
 #define DMA_TRACE_PERIOD		500000
 
@@ -122,7 +125,7 @@ struct reef;
 #define platform_trace_point(__x) \
 	sw_reg_write(SRAM_REG_FW_TRACEP, __x)
 
-struct timer *platform_timer;
+extern struct timer *platform_timer;
 
 /*
  * APIs declared here are defined for every platform and IPC mechanism.

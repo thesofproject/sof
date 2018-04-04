@@ -28,51 +28,20 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_IPC_PANIC__
-#define __INCLUDE_SOF_IPC_PANIC__
+#ifndef __INCLUDE_STRING_REEF__
+#define __INCLUDE_STRING_REEF__
 
-#include <reef/reef.h>
-#include <reef/mailbox.h>
-#include <reef/interrupt.h>
-#include <reef/trace.h>
-#include <platform/platform.h>
-#include <uapi/ipc.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <arch/string.h>
 
-/* panic and rewind stack */
-static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames)
-{
-	void *ext_offset;
-	size_t count;
+/* C memcpy for arch that don't have arch_memcpy() */
+void cmemcpy(void *dest, void *src, size_t size);
 
-	/* disable all IRQs */
-	interrupt_global_disable();
-
-	/* dump DSP core registers */
-	ext_offset = arch_dump_regs();
-	count = MAILBOX_EXCEPTION_SIZE -
-		(size_t)(ext_offset - mailbox_get_exception_base());
-
-	/* dump stack frames */
-	p = dump_stack(p, ext_offset, stack_rewind_frames,
-		count * sizeof(uint32_t));
-
-	/* TODO: send IPC oops message to host */
-
-	/* panic */
-	platform_panic(p);
-
-	/* flush last trace messages */
-	trace_flush();
-
-	/* and loop forever */
-	while (1) {};
-}
-
-static inline void panic(uint32_t p)
-{
-	panic_rewind(p, 0);
-}
+#if defined(arch_memcpy)
+#define rmemcpy(dest, src, size) \
+	arch_memcpy(dest, src, size)
+#else
+#define rmemcpy(dest, src, size) \
+	cmemcpy(dest, src, size)
+#endif
 
 #endif

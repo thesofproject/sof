@@ -193,20 +193,20 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 }
 
 /* update pipeline state based on cmd */
-static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
-	int cmd)
+static void pipeline_trigger_sched_comp(struct pipeline *p,
+					struct comp_dev *comp, int cmd)
 {
 	/* only required by the scheduling component */
 	if (p->sched_comp != comp)
 		return;
 
 	switch (cmd) {
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_STOP:
+	case COMP_TRIGGER_PAUSE:
+	case COMP_TRIGGER_STOP:
 		pipeline_schedule_cancel(p);
 		break;
-	case COMP_CMD_START:
-	case COMP_CMD_RELEASE:
+	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_RELEASE:
 		p->xrun_bytes = 0;
 
 		/* playback pipelines need scheduled now, capture pipelines are
@@ -223,9 +223,9 @@ static void pipeline_cmd_update(struct pipeline *p, struct comp_dev *comp,
 			}
 		}
 		break;
-	case COMP_CMD_SUSPEND:
-	case COMP_CMD_RESUME:
-	case COMP_CMD_XRUN:
+	case COMP_TRIGGER_SUSPEND:
+	case COMP_TRIGGER_RESUME:
+	case COMP_TRIGGER_XRUN:
 	default:
 		break;
 	}
@@ -374,12 +374,12 @@ static int component_op_downstream(struct op_data *op_data,
 			comp_install_params(current, previous);
 		err = comp_params(current);
 		break;
-	case COMP_OPS_CMD:
+	case COMP_OPS_TRIGGER:
 		/* send command to the component and update pipeline state  */
-		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
+		err = comp_trigger(current, op_data->cmd);
 		if (err == 0)
-			pipeline_cmd_update(current->pipeline, current,
-				op_data->cmd);
+			pipeline_trigger_sched_comp(current->pipeline, current,
+						    op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the component */
@@ -455,12 +455,12 @@ static int component_op_upstream(struct op_data *op_data,
 			comp_install_params(current, previous);
 		err = comp_params(current);
 		break;
-	case COMP_OPS_CMD:
+	case COMP_OPS_TRIGGER:
 		/* send command to the component and update pipeline state  */
-		err = comp_cmd(current, op_data->cmd, op_data->cmd_data);
+		err = comp_trigger(current, op_data->cmd);
 		if (err == 0)
-			pipeline_cmd_update(current->pipeline, current,
-				op_data->cmd);
+			pipeline_trigger_sched_comp(current->pipeline, current,
+						    op_data->cmd);
 		break;
 	case COMP_OPS_PREPARE:
 		/* prepare the component */
@@ -622,20 +622,19 @@ out:
 }
 
 /* send pipeline component/endpoint a command */
-int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
-	void *data)
+int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
 	struct op_data op_data;
 	int ret;
+	uint32_t flags;
 
 	trace_pipe("cmd");
 
 	op_data.p = p;
-	op_data.op = COMP_OPS_CMD;
+	op_data.op = COMP_OPS_TRIGGER;
 	op_data.cmd = cmd;
-	op_data.cmd_data = data;
 
-	spin_lock(&p->lock);
+	spin_lock_irq(&p->lock, flags);
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* send cmd downstream from host to DAI */
@@ -651,7 +650,7 @@ int pipeline_cmd(struct pipeline *p, struct comp_dev *host, int cmd,
 		trace_error_value(cmd);
 	}
 
-	spin_unlock(&p->lock);
+	spin_unlock_irq(&p->lock, flags);
 	return ret;
 }
 
@@ -1055,7 +1054,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	trace_pipe_error("pxr");
 
 	/* notify all pipeline comps we are in XRUN */
-	ret = pipeline_cmd(p, p->source_comp, COMP_CMD_XRUN, NULL);
+	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
 	if (ret < 0) {
 		trace_pipe_error("px0");
 		return ret;
@@ -1070,7 +1069,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	}
 
 	/* restart pipeline comps */
-	ret = pipeline_cmd(p, p->source_comp, COMP_CMD_START, NULL);
+	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_START);
 	if (ret < 0) {
 		trace_pipe_error("px2");
 		return ret;

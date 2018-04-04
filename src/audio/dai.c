@@ -72,8 +72,6 @@ struct dai_data {
 	uint64_t wallclock;	/* wall clock at stream start */
 };
 
-static int dai_cmd(struct comp_dev *dev, int cmd, void *data);
-
 /* this is called by DMA driver every time descriptor has completed */
 static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
@@ -82,13 +80,13 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct comp_buffer *dma_buffer;
 	uint32_t copied_size;
 
-	trace_dai("irq");
+	tracev_dai("irq");
 
-	/* is stream stopped or paused and we are not handling XRUN ? */
-	if (dev->state != COMP_STATE_ACTIVE && dd->xrun == 0) {
+	/* stop dma copy for pause/stop/xrun */
+	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
 
 		/* stop the DAI */
-		dai_trigger(dd->dai, COMP_CMD_STOP, dev->params.direction);
+		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
 
 		/* tell DMA not to reload */
 		next->size = DMA_RELOAD_END;
@@ -113,9 +111,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 			dcache_writeback_region(dma_buffer->addr,
 				dma_buffer->size);
 		}
-
-		/* inform waiters */
-		wait_completed(&dd->complete);
 		return;
 	}
 
@@ -435,7 +430,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 	trace_dai("pre");
 
-	ret = comp_set_state(dev, COMP_CMD_PREPARE);
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
 
@@ -443,7 +438,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 	if (list_is_empty(&dd->config.elem_list)) {
 		trace_dai_error("wdm");
-		comp_set_state(dev, COMP_CMD_RESET);
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
 
@@ -458,12 +453,15 @@ static int dai_prepare(struct comp_dev *dev)
 	}
 
 	/* dma reconfig not required if XRUN handling */
-	if (dd->xrun)
+	if (dd->xrun) {
+		/* after prepare, we have recovered from xrun */
+		dd->xrun = 0;
 		return ret;
+	}
 
 	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
 	if (ret < 0)
-		comp_set_state(dev, COMP_CMD_RESET);
+		comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return ret;
 }
@@ -492,7 +490,7 @@ static int dai_reset(struct comp_dev *dev)
 	dd->wallclock = 0;
 	dev->position = 0;
 	dd->xrun = 0;
-	comp_set_state(dev, COMP_CMD_RESET);
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
 }
@@ -529,12 +527,12 @@ static void dai_pointer_init(struct comp_dev *dev)
 }
 
 /* used to pass standard and bespoke command (with data) to component */
-static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
+static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_dai("cmd");
+	trace_dai("trg");
 	tracev_value(cmd);
 
 	wait_init(&dd->complete);
@@ -544,14 +542,10 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		return ret;
 
 	switch (cmd) {
-	case COMP_CMD_START:
+	case COMP_TRIGGER_START:
 		dai_pointer_init(dev);
-		/* fall through */
-	case COMP_CMD_RELEASE:
-
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-
 			/* start the DAI */
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
@@ -564,11 +558,30 @@ static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
 		/* update starting wallclock */
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
-	case COMP_CMD_XRUN:
+	case COMP_TRIGGER_RELEASE:
+		/* only start the DAI if we are not XRUN handling */
+		if (dd->xrun == 0) {
+			/* recover the dma status */
+			ret = dma_release(dd->dma, dd->chan);
+			if (ret < 0)
+				return ret;
+			/* start the DAI */
+			ret = dma_start(dd->dma, dd->chan);
+			if (ret < 0)
+				return ret;
+			dai_trigger(dd->dai, cmd, dev->params.direction);
+		} else {
+			dd->xrun = 0;
+		}
+
+		/* update starting wallclock */
+		platform_dai_wallclock(dev, &dd->wallclock);
+		break;
+	case COMP_TRIGGER_XRUN:
 		dd->xrun = 1;
 		/* fall through */
-	case COMP_CMD_PAUSE:
-	case COMP_CMD_STOP:
+	case COMP_TRIGGER_PAUSE:
+	case COMP_TRIGGER_STOP:
 		wait_init(&dd->complete);
 
 		/* wait for DMA to complete */
@@ -638,7 +651,7 @@ static struct comp_driver comp_dai = {
 		.new		= dai_new,
 		.free		= dai_free,
 		.params		= dai_params,
-		.cmd		= dai_cmd,
+		.trigger	= dai_comp_trigger,
 		.copy		= dai_copy,
 		.prepare	= dai_prepare,
 		.reset		= dai_reset,
