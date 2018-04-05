@@ -1,3 +1,11 @@
 EXTRA_DIST = \
-	build.m4 \
-	local.m4
+	buffer.m4 \
+	dai.m4 \
+	mixer.m4 \
+	mixercontrol.m4 \
+	pcm.m4 \
+	pga.m4 \
+	pipeline.m4 \
+	src.m4 \
+	tone.m4 \
+	utils.m4
