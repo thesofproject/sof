@@ -233,9 +233,8 @@ AC_ARG_WITH([dsp-core],
 	[], [with_dsp_core=no])
 
 case "$with_dsp_core" in
-    CHT_audio_hifiep*)
-	# BXT/CHT DSP Core
-	XTENSA_CORE="CHT_audio_hifiep"
+    *)
+	XTENSA_CORE="$with_dsp_core"
 	AC_SUBST(XTENSA_CORE)
     ;;
 
