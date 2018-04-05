@@ -406,7 +406,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sspsp |= SSPSP_STRTDLY(start_delay);
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
-	bdiv_min = config->ssp.tdm_slots * config->sample_valid_bits;
+	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ecc");
 		ret = -EINVAL;
@@ -422,7 +422,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 	sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
-	data_size = config->sample_valid_bits;
+	data_size = config->ssp.sample_valid_bits;
 
 	if (data_size > 16)
 		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));
@@ -438,7 +438,7 @@ static inline int ssp_set_config(struct dai *dai,
 	mdivr = 0x00000fff;
 
 	/* setting TFT and RFT */
-	switch (config->sample_valid_bits) {
+	switch (config->ssp.sample_valid_bits) {
 	case 16:
 		/* use 2 bytes for each slot */
 		tft = active_tx_slots * 2;

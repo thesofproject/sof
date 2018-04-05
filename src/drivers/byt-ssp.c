@@ -431,7 +431,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 	sscr5 |= SSCR5_FRM_ASRT_CLOCKS(frame_len);
 
-	data_size = config->sample_valid_bits;
+	data_size = config->ssp.sample_valid_bits;
 
 	if (data_size > 16)
 		sscr0 |= (SSCR0_EDSS | SSCR0_DSIZE(data_size - 16));

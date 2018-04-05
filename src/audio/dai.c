@@ -628,7 +628,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		dd->config.burst_elems = config->ssp.tdm_slots;
 
 		/* calc frame bytes */
-		switch (config->sample_valid_bits) {
+		switch (config->ssp.sample_valid_bits) {
 		case 16:
 			dev->frame_bytes = 2 * config->ssp.tdm_slots;
 			break;

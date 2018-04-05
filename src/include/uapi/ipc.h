@@ -242,6 +242,7 @@ struct sof_ipc_dai_ssp_params {
 	uint32_t tx_slots;
 
 	/* data */
+	uint32_t sample_valid_bits;
 	uint16_t tdm_slot_width;
 	uint16_t reserved2;	/* alignment */
 
@@ -278,8 +279,6 @@ struct sof_ipc_dai_config {
 	/* physical protocol and clocking */
 	uint16_t format;	/* SOF_DAI_FMT_ */
 	uint16_t reserved;	/* alignment */
-
-	uint32_t sample_valid_bits;
 
 	/* HW specific data */
 	union {
