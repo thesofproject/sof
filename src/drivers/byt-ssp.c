@@ -166,7 +166,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sspsp = SSPSP_ETDS; /* make sure SDO line is tri-stated when inactive */
 
 	ssp->config = *config;
-	ssp->params = config->ssp[0];
+	ssp->params = config->ssp;
 
 	/* clock masters */
 	/*
@@ -240,10 +240,10 @@ static inline int ssp_set_config(struct dai *dai,
 
 #ifdef CLK_TYPE /* not enabled, keep the code for reference */
 	/* TODO: allow topology to define SSP clock type */
-	config->ssp[0].clk_id = SSP_CLK_EXT;
+	config->ssp.clk_id = SSP_CLK_EXT;
 
 	/* clock source */
-	switch (config->ssp[0].clk_id) {
+	switch (config->ssp.clk_id) {
 	case SSP_CLK_AUDIO:
 		sscr0 |= SSCR0_ACS;
 		break;

@@ -282,9 +282,9 @@ struct sof_ipc_dai_config {
 
 	/* HW specific data */
 	union {
-		struct sof_ipc_dai_ssp_params ssp[0];
-		struct sof_ipc_dai_hda_params hda[0];
-		struct sof_ipc_dai_dmic_params dmic[0];
+		struct sof_ipc_dai_ssp_params ssp;
+		struct sof_ipc_dai_hda_params hda;
+		struct sof_ipc_dai_dmic_params dmic;
 	};
 };
 
