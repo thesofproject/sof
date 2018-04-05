@@ -11,7 +11,7 @@ COMP_SRC = \
 	fir.c \
 	tone.c \
 	src.c \
-	src_core.c \
+	src_generic.c \
 	mixer.c \
 	mux.c \
 	volume.c \
