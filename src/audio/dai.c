@@ -622,18 +622,26 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	/* set dma burst elems to slot number */
-	dd->config.burst_elems = config->tdm_slots;
+	switch (config->type) {
+	case SOF_DAI_INTEL_SSP:
+		/* set dma burst elems to slot number */
+		dd->config.burst_elems = config->ssp.tdm_slots;
 
-	/* calc frame bytes */
-	switch (config->sample_valid_bits) {
-	case 16:
-		dev->frame_bytes = 2 * config->tdm_slots;
-		break;
-	case 17 ... 32:
-		dev->frame_bytes = 4 * config->tdm_slots;
+		/* calc frame bytes */
+		switch (config->sample_valid_bits) {
+		case 16:
+			dev->frame_bytes = 2 * config->ssp.tdm_slots;
+			break;
+		case 17 ... 32:
+			dev->frame_bytes = 4 * config->ssp.tdm_slots;
+			break;
+		default:
+			break;
+		}
 		break;
 	default:
+		/* other types of DAIs not handled for now */
+		trace_dai_error("de2");
 		break;
 	}
 

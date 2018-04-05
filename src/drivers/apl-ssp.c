@@ -168,10 +168,10 @@ static inline int ssp_set_config(struct dai *dai,
 	ssto = 0x0;
 
 	/* sstsa dynamic setting is TTSA, default 2 slots */
-	sstsa = config->tx_slots;
+	sstsa = config->ssp.tx_slots;
 
 	/* ssrsa dynamic setting is RTSA, default 2 slots */
-	ssrsa = config->rx_slots;
+	ssrsa = config->ssp.rx_slots;
 
 	/* clock masters */
 	sscr1 &= ~SSCR1_SFRMDIR;
@@ -259,14 +259,14 @@ static inline int ssp_set_config(struct dai *dai,
 #endif
 
 	/* BCLK is generated from MCLK - must be divisable */
-	if (config->mclk_rate % config->bclk_rate) {
+	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
 		trace_ssp_error("ec5");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* divisor must be within SCR range */
-	mdiv = (config->mclk_rate / config->bclk_rate) - 1;
+	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ec6");
 		ret = -EINVAL;
@@ -277,7 +277,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr0 |= SSCR0_SCR(mdiv);
 
 	/* calc frame width based on BCLK and rate - must be divisable */
-	if (config->bclk_rate % config->fsync_rate) {
+	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
 		trace_ssp_error("ec7");
 		ret = -EINVAL;
 		goto out;
@@ -285,15 +285,15 @@ static inline int ssp_set_config(struct dai *dai,
 
 
 	/* must be enough BCLKs for data */
-	bdiv = config->bclk_rate / config->fsync_rate;
-	if (bdiv < config->tdm_slot_width * config->tdm_slots) {
+	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
+	if (bdiv < config->ssp.tdm_slot_width * config->ssp.tdm_slots) {
 		trace_ssp_error("ec8");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
-	if (config->tdm_slot_width > 38) {
+	if (config->ssp.tdm_slot_width > 38) {
 		trace_ssp_error("ec9");
 		ret = -EINVAL;
 		goto out;
@@ -305,7 +305,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		start_delay = 1;
 
-		sscr0 |= SSCR0_FRDC(config->tdm_slots);
+		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
 
 		if (bdiv % 2) {
 			trace_ssp_error("eca");
@@ -331,7 +331,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		start_delay = 0;
 
-		sscr0 |= SSCR0_FRDC(config->tdm_slots);
+		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
 
 		/* LJDFD enable */
 		sscr2 &= ~SSCR2_LJDFD;
@@ -358,7 +358,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		start_delay = 0;
 
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->tdm_slots);
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -372,15 +372,15 @@ static inline int ssp_set_config(struct dai *dai,
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		sspsp |= SSPSP_FSRT;
 
-		active_tx_slots = hweight_32(config->tx_slots);
-		active_rx_slots = hweight_32(config->rx_slots);
+		active_tx_slots = hweight_32(config->ssp.tx_slots);
+		active_rx_slots = hweight_32(config->ssp.rx_slots);
 
 		break;
 	case SOF_DAI_FMT_DSP_B:
 
 		start_delay = 0;
 
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->tdm_slots);
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -393,8 +393,8 @@ static inline int ssp_set_config(struct dai *dai,
 		 */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 
-		active_tx_slots = hweight_32(config->tx_slots);
-		active_rx_slots = hweight_32(config->rx_slots);
+		active_tx_slots = hweight_32(config->ssp.tx_slots);
+		active_rx_slots = hweight_32(config->ssp.rx_slots);
 
 		break;
 	default:
@@ -406,7 +406,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sspsp |= SSPSP_STRTDLY(start_delay);
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
-	bdiv_min = config->tdm_slots * config->sample_valid_bits;
+	bdiv_min = config->ssp.tdm_slots * config->sample_valid_bits;
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ecc");
 		ret = -EINVAL;

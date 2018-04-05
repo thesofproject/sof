@@ -264,14 +264,14 @@ static inline int ssp_set_config(struct dai *dai,
 #endif
 
 	/* BCLK is generated from MCLK - must be divisable */
-	if (config->mclk_rate % config->bclk_rate) {
+	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
 		trace_ssp_error("ec5");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* divisor must be within SCR range */
-	mdiv = (config->mclk_rate / config->bclk_rate) - 1;
+	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ec6");
 		ret = -EINVAL;
@@ -282,23 +282,23 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr0 |= SSCR0_SCR(mdiv);
 
 	/* calc frame width based on BCLK and rate - must be divisable */
-	if (config->bclk_rate % config->fsync_rate) {
+	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
 		trace_ssp_error("ec7");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* must be enouch BCLKs for data */
-	bdiv = config->bclk_rate / config->fsync_rate;
-	if (bdiv < config->tdm_slot_width *
-	    config->tdm_slots) {
+	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
+	if (bdiv < config->ssp.tdm_slot_width *
+	    config->ssp.tdm_slots) {
 		trace_ssp_error("ec8");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
-	if (config->tdm_slot_width > 38) {
+	if (config->ssp.tdm_slot_width > 38) {
 		trace_ssp_error("ec9");
 		ret = -EINVAL;
 		goto out;
@@ -314,7 +314,7 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
 
 		/* set asserted frame length */
-		frame_len = config->tdm_slot_width;
+		frame_len = config->ssp.tdm_slot_width;
 
 		/* handle frame polarity, I2S default is falling/active low */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
@@ -344,7 +344,7 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr3 |= SSCR3_I2S_MODE_EN | SSCR3_I2S_TX_EN | SSCR3_I2S_RX_EN;
 
 		/* set asserted frame length */
-		frame_len = config->tdm_slot_width;
+		frame_len = config->ssp.tdm_slot_width;
 
 		/* LEFT_J default is rising/active high, opposite of I2S */
 		sspsp |= SSPSP_SFRMP(inverted_frame);
@@ -369,7 +369,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		start_delay = 1;
 
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->tdm_slots);
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -386,18 +386,18 @@ static inline int ssp_set_config(struct dai *dai,
 		 * deasserted time of frame)
 		 */
 		if (cbs)
-			sscr4 |= SSCR4_TOT_FRM_PRD(config->tdm_slots *
-					   config->tdm_slot_width);
+			sscr4 |= SSCR4_TOT_FRM_PRD(config->ssp.tdm_slots *
+					   config->ssp.tdm_slot_width);
 
-		active_tx_slots = hweight_32(config->tx_slots);
-		active_rx_slots = hweight_32(config->rx_slots);
+		active_tx_slots = hweight_32(config->ssp.tx_slots);
+		active_rx_slots = hweight_32(config->ssp.rx_slots);
 
 		break;
 	case SOF_DAI_FMT_DSP_B:
 
 		start_delay = 0;
 
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->tdm_slots);
+		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
 		/* set asserted frame length */
 		frame_len = 1;
@@ -414,11 +414,11 @@ static inline int ssp_set_config(struct dai *dai,
 		 * deasserted time of frame
 		 */
 		if (cbs)
-			sscr4 |= SSCR4_TOT_FRM_PRD(config->tdm_slots *
-					   config->tdm_slot_width);
+			sscr4 |= SSCR4_TOT_FRM_PRD(config->ssp.tdm_slots *
+					   config->ssp.tdm_slot_width);
 
-		active_tx_slots = hweight_32(config->tx_slots);
-		active_rx_slots = hweight_32(config->rx_slots);
+		active_tx_slots = hweight_32(config->ssp.tx_slots);
+		active_rx_slots = hweight_32(config->ssp.rx_slots);
 
 		break;
 	default:
@@ -454,8 +454,8 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSCR5, sscr5);
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SFIFOTT, sfifott);
-	ssp_write(dai, SSTSA, config->tx_slots);
-	ssp_write(dai, SSRSA, config->rx_slots);
+	ssp_write(dai, SSTSA, config->ssp.tx_slots);
+	ssp_write(dai, SSRSA, config->ssp.rx_slots);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;

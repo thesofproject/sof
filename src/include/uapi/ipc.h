@@ -231,6 +231,30 @@ struct sof_ipc_dai_ssp_params {
 	struct sof_ipc_hdr hdr;
 	uint16_t mode;   // FIXME: do we need this?
 	uint16_t clk_id; // FIXME: do we need this?
+
+	uint32_t mclk_rate;	/* mclk frequency in Hz */
+	uint32_t fsync_rate;	/* fsync frequency in Hz */
+	uint32_t bclk_rate;	/* bclk frequency in Hz */
+
+	/* TDM */
+	uint32_t tdm_slots;
+	uint32_t rx_slots;
+	uint32_t tx_slots;
+
+	/* data */
+	uint16_t tdm_slot_width;
+	uint16_t reserved2;	/* alignment */
+
+	/* MCLK */
+	uint32_t mclk_direction;
+	uint32_t mclk_keep_active;
+	uint32_t bclk_keep_active;
+	uint32_t fs_keep_active;
+
+	//uint32_t quirks; // FIXME: is 32 bits enough ?
+
+	/* private data, e.g. for quirks */
+	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
 } __attribute__((packed));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
@@ -255,30 +279,7 @@ struct sof_ipc_dai_config {
 	uint16_t format;	/* SOF_DAI_FMT_ */
 	uint16_t reserved;	/* alignment */
 
-	uint32_t mclk_rate;	/* mclk frequency in Hz */
-	uint32_t fsync_rate;	/* fsync frequency in Hz */
-	uint32_t bclk_rate;	/* bclk frequency in Hz */
-
-	/* TDM */
-	uint32_t tdm_slots;
-	uint32_t rx_slots;
-	uint32_t tx_slots;
-
-	/* data */
 	uint32_t sample_valid_bits;
-	uint16_t tdm_slot_width;
-	uint16_t reserved2;	/* alignment */
-
-	/* MCLK */
-	uint32_t mclk_direction;
-	uint32_t mclk_keep_active;
-	uint32_t bclk_keep_active;
-	uint32_t fs_keep_active;
-
-	//uint32_t quirks; // FIXME: is 32 bits enough ?
-
-	/* private data, e.g. for quirks */
-	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
 
 	/* HW specific data */
 	union {
