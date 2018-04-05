@@ -264,8 +264,9 @@ struct sof_ipc_dai_config {
 	uint32_t tx_slot_mask;
 
 	/* data */
-	uint16_t sample_valid_bits;
+	uint32_t sample_valid_bits;
 	uint16_t sample_container_bits;
+	uint16_t reserved2;	/* alignment */
 
 	/* MCLK */
 	uint16_t mclk_always_run;
