@@ -623,15 +623,15 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	/* set dma burst elems to slot number */
-	dd->config.burst_elems = config->num_slots;
+	dd->config.burst_elems = config->tdm_slots;
 
 	/* calc frame bytes */
 	switch (config->sample_valid_bits) {
 	case 16:
-		dev->frame_bytes = 2 * config->num_slots;
+		dev->frame_bytes = 2 * config->tdm_slots;
 		break;
 	case 17 ... 32:
-		dev->frame_bytes = 4 * config->num_slots;
+		dev->frame_bytes = 4 * config->tdm_slots;
 		break;
 	default:
 		break;
