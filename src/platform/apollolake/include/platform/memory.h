@@ -171,7 +171,7 @@
 #define SOF_TEXT_SIZE			0x19000
 
 /* initialized data */
-#define SOF_DATA_SIZE			0x18000
+#define SOF_DATA_SIZE			0x19000
 
 /* bss data */
 #define SOF_BSS_DATA_SIZE		0x2800

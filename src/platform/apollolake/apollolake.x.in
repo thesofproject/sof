@@ -389,6 +389,17 @@ SECTIONS
     LONG(_bss_start)
     LONG(_bss_end)
     _bss_table_end = ABSOLUTE(.);
+    . = ALIGN(4);
+    _symbol_strings_start = ABSOLUTE(.);
+    LONG(_symbol_strings_start)
+    *(._symbol_strings)
+    LONG(_symbol_strings_end)
+    _symbol_strings_end = ABSOLUTE(.);
+    _symbol_table_start = ABSOLUTE(.);
+    LONG(_symbol_table_start)
+    *(._symbol_table)
+    LONG(_symbol_table_end)
+    _symbol_table_end = ABSOLUTE(.);
     _rodata_end = ABSOLUTE(.);
   } >sof_data :sof_data_phdr
 
