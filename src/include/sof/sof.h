@@ -11,6 +11,7 @@
 #include <arch/sof.h>
 #include <sof/common.h>
 #include <sof/lib/memory.h>
+#include <sof/list.h>
 
 struct cascade_root;
 struct clock_info;
@@ -29,6 +30,7 @@ struct timer;
 struct trace;
 struct pipeline_posn;
 struct probe_pdata;
+struct sym_tab;
 
 /*
  * Firmware symbol table.
@@ -123,6 +125,10 @@ struct sof {
 
 	/* pipelines stream position */
 	struct pipeline_posn *pipeline_posn;
+
+	/* module relocator */
+	struct sym_tab *symbol_table;
+	struct list_item module_list;	/* list of modules */
 
 	__aligned(PLATFORM_DCACHE_ALIGN) int alignment[0];
 } __aligned(PLATFORM_DCACHE_ALIGN);

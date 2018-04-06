@@ -308,4 +308,13 @@ struct sof_ipc_comp_ext {
 	uint8_t uuid[SOF_UUID_SIZE];
 } __attribute__((packed, aligned(4)));
 
+/*
+ * Runtime Modules
+ */
+struct ipc_module_new {
+	struct sof_ipc_hdr hdr;
+	struct sof_ipc_host_buffer buffer;
+	uint32_t stream_tag;
+}  __attribute__((packed, aligned(4)));
+
 #endif /* __IPC_TOPOLOGY_H__ */

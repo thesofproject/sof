@@ -71,6 +71,9 @@ struct timer;
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
+/* ISA code for module compliance */
+#define PLATFORM_ISA		{'h', 's', 'w', '0'}
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {

@@ -78,6 +78,9 @@ struct timer;
 /* DSP LPE delay in cycles */
 #define PLATFORM_LPE_DELAY 2000
 
+/* ISA code for module compliance */
+#define PLATFORM_ISA		{'b', 'y', 't', '0'}
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {

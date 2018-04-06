@@ -110,6 +110,9 @@ void platform_wait_for_interrupt(int level);
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;
 
+/* ISA code for module compliance */
+#define PLATFORM_ISA		{'a', 'p', 'l', '0'}
+
 #endif
 #endif /* __PLATFORM_PLATFORM_H__ */
 

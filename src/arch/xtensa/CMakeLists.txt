@@ -59,7 +59,8 @@ target_include_directories(sof_options INTERFACE
 )
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/${platform_folder}/include)
-
+target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/rimage/src/include)
+	
 if(XCC)
 	target_include_directories(sof_options INTERFACE ${ROOT_DIR}/arch/include)
 else()
@@ -211,6 +212,7 @@ add_local_sources(sof
 	xtos/_vectors.S
 	init.c
 	exc-dump.S
+	reloc.c
 )
 
 # TODO: order of these libraries does matter, what is bad,
