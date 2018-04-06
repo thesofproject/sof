@@ -113,6 +113,7 @@ void *rballoc(int zone, uint32_t flags, size_t bytes);
 void bzero(void *s, size_t n);
 void *memset(void *s, int c, size_t n);
 int rstrlen(const char *s);
+int rstrcmp(const char *s1, const char *s2);
 
 /* Heap save/restore contents and context for PM D0/D3 events */
 uint32_t mm_pm_context_size(void);
