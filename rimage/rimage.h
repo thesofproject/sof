@@ -53,6 +53,7 @@ struct module {
 	Elf32_Ehdr hdr;
 	Elf32_Shdr *section;
 	Elf32_Phdr *prg;
+	char *strings;
 
 	uint32_t text_start;
 	uint32_t text_end;

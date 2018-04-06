@@ -51,6 +51,29 @@ static int elf_read_sections(struct image *image, struct module *module)
 		return -errno;
 	}
 
+	/* read in strings */
+	module->strings = calloc(1, section[hdr->e_shstrndx].sh_size);
+	if (!module->strings) {
+		fprintf(stderr, "error: failed %s to read ELF strings for %d\n",
+				module->elf_file, -errno);
+			return -errno;
+	}
+
+	ret = fseek(module->fd, section[hdr->e_shstrndx].sh_offset, SEEK_SET);
+	if (ret < 0) {
+		fprintf(stderr, "error: can't seek to %s stringss %d\n",
+			module->elf_file, ret);
+		return ret;
+	}
+
+	count = fread(module->strings, 1, section[hdr->e_shstrndx].sh_size,
+		      module->fd);
+	if (count != section[hdr->e_shstrndx].sh_size) {
+		fprintf(stderr, "error: failed to read %s strings %d\n",
+			module->elf_file, -errno);
+		return -errno;
+	}
+
 	/* find manifest module data */
 	man_section_idx = elf_find_section(image, module, ".bss");
 	if (man_section_idx < 0) {
@@ -233,7 +256,7 @@ static void elf_module_size(struct image *image, struct module *module,
 			if (module->text_end < section->sh_addr + section->sh_size)
 				module->text_end = section->sh_addr + section->sh_size;
 
-			fprintf(stdout, "\tTEXT\n");
+			fprintf(stdout, "\tTEXT\t");
 		} else {
 			/* initialized data, also calc the writable sections */
 			if (module->data_start > section->sh_addr)
@@ -241,7 +264,7 @@ static void elf_module_size(struct image *image, struct module *module,
 			if (module->data_end < section->sh_addr + section->sh_size)
 				module->data_end = section->sh_addr + section->sh_size;
 
-			fprintf(stdout, "\tDATA\n");
+			fprintf(stdout, "\tDATA\t");
 		}
 		break;
 	case SHT_NOBITS:
@@ -250,9 +273,9 @@ static void elf_module_size(struct image *image, struct module *module,
 			/* updated the .bss segment */
 			module->bss_start = section->sh_addr;
 			module->bss_end = section->sh_addr + section->sh_size;
-			fprintf(stdout, "\tBSS\n");
+			fprintf(stdout, "\tBSS\t");
 		} else {
-			fprintf(stdout, "\tHEAP\n");
+			fprintf(stdout, "\tHEAP\t");
 		}
 		break;
 	default:
@@ -272,7 +295,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 	fprintf(stdout, "  Found %d sections, listing valid sections......\n",
 		module->hdr.e_shnum);
 
-	fprintf(stdout, "\tNo\tStart\t\tEnd\t\tBytes\tType\n");
+	fprintf(stdout, "\tNo\tStart\t\tEnd\t\tBytes\tType\tName\n");
 
 	/* iterate all sections and get size of segments */
 	for (i = 0; i < module->hdr.e_shnum; i++) {
@@ -296,6 +319,8 @@ static void elf_module_limits(struct image *image, struct module *module)
 		/* text or data section */
 		elf_module_size(image, module, section, i);
 
+		/* section name */
+		fprintf(stdout, "%s\n", module->strings + section->sh_name);
 	}
 
 	fprintf(stdout, "\n");
@@ -528,5 +553,6 @@ void elf_free_module(struct image *image, int module_index)
 
 	free(module->prg);
 	free(module->section);
+	free(module->strings);
 	fclose(module->fd);
 }
