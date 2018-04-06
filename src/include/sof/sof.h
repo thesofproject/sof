@@ -30,6 +30,31 @@ struct trace;
 struct pipeline_posn;
 struct probe_pdata;
 
+/*
+ * Firmware symbol table.
+ */
+struct sof_symbol {
+	unsigned long value;
+	const char *name;
+};
+
+#define SOF_SYMBOL_STRING(sym) \
+	static const char _symbolstr_##sym[] \
+	__attribute__((section("_symbol_strings"), aligned(1)))	= #sym
+
+#define SOF_SYMBOL_ELEM(sym) \
+	static const struct sof_symbol _symbol_elem_##sym \
+	__attribute__((used)) \
+	__attribute__((section("_symbol_table"), used)) \
+	= { (unsigned long)&sym, _symbolstr_##sym }
+
+/* functions must be exported to be in the symbol table */
+#define EXPORT(sym) \
+	extern typeof(sym) sym;	\
+	SOF_SYMBOL_STRING(sym); \
+	SOF_SYMBOL_ELEM(sym);
+
+
 /**
  * \brief General firmware context.
  * This structure holds all the global pointers, which can potentially
