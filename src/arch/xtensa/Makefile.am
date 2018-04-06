@@ -33,7 +33,8 @@ sof_SOURCES = \
 	_vectors.S \
 	init.c \
 	timer.c \
-	task.c
+	task.c \
+	reloc.c
 
 if BUILD_CANNONLAKE
 sof_SOURCES += \

@@ -727,6 +727,16 @@ struct sof_ipc_pipe_comp_connect {
 	uint32_t sink_id;
 }  __attribute__((packed));
 
+
+/*
+ * Runtime Modules
+ */
+struct ipc_module_new {
+	struct sof_ipc_hdr hdr;
+	struct sof_ipc_host_buffer buffer;
+	uint32_t stream_tag;
+}  __attribute__((packed));
+
 /*
  * PM
  */
