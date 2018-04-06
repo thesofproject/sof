@@ -65,6 +65,7 @@ void *memcpy(void *dest, const void *src, size_t n)
 	arch_memcpy(dest, src, n);
 	return dest;
 }
+EXPORT(memcpy);
 
 /* generic bzero - TODO: can be optimsed for ARCH ? */
 void bzero(void *s, size_t n)
@@ -84,6 +85,7 @@ void bzero(void *s, size_t n)
 	for (i = 0; i <	r; i++)
 		d8[i] = 0;
 }
+EXPORT(bzero);
 
 /* generic memset - TODO: can be optimsed for ARCH ? */
 void *memset(void *s, int c, size_t n)
@@ -97,6 +99,7 @@ void *memset(void *s, int c, size_t n)
 
 	return s;
 }
+EXPORT(memset);
 
 /* generic strlen - TODO: can be optimsed for ARCH ? */
 int rstrlen(const char *s)
@@ -106,6 +109,7 @@ int rstrlen(const char *s)
 	while(*p++ != 0);
 	return (p - s) - 1;
 }
+EXPORT(rstrlen);
 
 /* generic string compare */
 int rstrcmp(const char *s1, const char *s2)
@@ -122,4 +126,5 @@ int rstrcmp(const char *s1, const char *s2)
 	/* match */
 	return 0;
 }
+EXPORT(rstrcmp);
 

@@ -57,6 +57,7 @@ void _trace_event(uint32_t event)
 	dt[1] = event;
 	dtrace_event((const char *)dt, sizeof(uint64_t) * 2);
 }
+EXPORT(_trace_event);
 
 void _trace_event_atomic(uint32_t event)
 {
@@ -69,6 +70,7 @@ void _trace_event_atomic(uint32_t event)
 	dt[1] = event;
 	dtrace_event_atomic((const char *)dt, sizeof(uint64_t) * 2);
 }
+EXPORT(_trace_event_atomic);
 
 /* send trace events to the local trace buffer and the mailbox */
 void _trace_event_mbox(uint32_t event)
@@ -106,6 +108,7 @@ void _trace_event_mbox(uint32_t event)
 	/* writeback trace data */
 	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
 }
+EXPORT(_trace_event_mbox);
 
 void _trace_event_mbox_atomic(uint32_t event)
 {
@@ -135,6 +138,7 @@ void _trace_event_mbox_atomic(uint32_t event)
 	/* writeback trace data */
 	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
 }
+EXPORT(_trace_event_mbox_atomic);
 
 void trace_flush(void)
 {
@@ -146,11 +150,13 @@ void trace_flush(void)
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
 }
+EXPORT(trace_flush);
 
 void trace_off(void)
 {
 	trace.enable = 0;
 }
+EXPORT(trace_off);
 
 void trace_init(struct sof *sof)
 {

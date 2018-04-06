@@ -169,6 +169,7 @@ int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	/* bytes copied */
 	return bytes_copied;
 }
+EXPORT(dma_copy_to_host);
 
 /* Copy DSP memory to host memory.
  * Copies DSP memory to host in a single PAGE_SIZE or smaller block. Does not
@@ -189,6 +190,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	/* bytes copied */
 	return size;
 }
+EXPORT(dma_copy_to_host_nowait);
 
 #else
 
@@ -238,6 +240,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	/* bytes copied */
 	return local_sg_elem.size;
 }
+EXPORT(dma_copy_to_host_nowait);
 
 #endif
 
@@ -322,6 +325,7 @@ int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	/* bytes copied */
 	return bytes_copied;
 }
+EXPORT(dma_copy_from_host);
 
 /* Copy host memory to DSP memory.
  * Copies host memory to DSP in a single PAGE_SIZE or smaller block. Does not
@@ -372,6 +376,7 @@ int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg
 	/* bytes copied */
 	return local_sg_elem.size;
 }
+EXPORT(dma_copy_from_host_nowait);
 
 int dma_copy_new(struct dma_copy *dc, int dmac)
 {
@@ -396,6 +401,7 @@ int dma_copy_new(struct dma_copy *dc, int dmac)
 
 	return 0;
 }
+EXPORT(dma_copy_new);
 
 #if defined CONFIG_DMA_GW
 

@@ -57,6 +57,7 @@ void sa_enter_idle(struct sof *sof)
 
 	sa->last_idle = platform_timer_get(platform_timer);
 }
+EXPORT(sa_enter_idle);
 
 static uint64_t validate(void *data, uint64_t delay)
 {

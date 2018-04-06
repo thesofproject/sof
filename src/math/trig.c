@@ -31,6 +31,7 @@
  */
 
 #include <stdint.h>
+#include <sof/sof.h>
 #include <sof/audio/format.h>
 #include <sof/math/trig.h>
 
@@ -598,3 +599,4 @@ int32_t sin_fixed(int32_t w) {
 	sine = s0 + q_mults_32x32(frac, delta, Q_SHIFT_BITS_64(31, 31, 31));
     return (int32_t) sine;
 }
+EXPORT(sin_fixed);

@@ -360,11 +360,13 @@ void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 out:
 	spin_unlock_irq(&queue->lock, flags);
 }
+EXPORT(work_schedule);
 
 void work_schedule_default(struct work *w, uint64_t timeout)
 {
 	work_schedule(queue_, w, timeout);
 }
+EXPORT(work_schedule_default);
 
 static void reschedule(struct work_queue *queue, struct work *w, uint64_t time)
 {
@@ -403,6 +405,7 @@ void work_reschedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 
 	reschedule(queue, w, time);
 }
+EXPORT(work_reschedule);
 
 void work_reschedule_default(struct work *w, uint64_t timeout)
 {
@@ -413,11 +416,13 @@ void work_reschedule_default(struct work *w, uint64_t timeout)
 
 	reschedule(queue_, w, time);
 }
+EXPORT(work_reschedule_default);
 
 void work_reschedule_default_at(struct work *w, uint64_t time)
 {
 	reschedule(queue_, w, time);
 }
+EXPORT(work_reschedule_default_at);
 
 void work_cancel(struct work_queue *queue, struct work *w)
 {
@@ -433,11 +438,13 @@ void work_cancel(struct work_queue *queue, struct work *w)
 
 	spin_unlock_irq(&queue->lock, flags);
 }
+EXPORT(work_cancel);
 
 void work_cancel_default(struct work *w)
 {
 	work_cancel(queue_, w);
 }
+EXPORT(work_cancel_default);
 
 struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 {
@@ -463,6 +470,7 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 
 	return queue;
 }
+EXPORT(work_new_queue);
 
 void init_system_workq(struct work_queue_timesource *ts)
 {

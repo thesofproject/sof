@@ -173,6 +173,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
+EXPORT(ipc_platform_send_msg);
 
 int platform_ipc_init(struct ipc *ipc)
 {

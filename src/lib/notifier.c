@@ -48,6 +48,7 @@ void notifier_register(struct notifier *notifier)
 	list_item_prepend(&notifier->list, &_notify.list);
 	spin_unlock(&_notify.lock);
 }
+EXPORT(notifier_register);
 
 void notifier_unregister(struct notifier *notifier)
 {
@@ -55,6 +56,7 @@ void notifier_unregister(struct notifier *notifier)
 	list_item_del(&notifier->list);
 	spin_unlock(&_notify.lock);
 }
+EXPORT(notifier_unregister);
 
 void notifier_event(int id, int message, void *event_data)
 {
@@ -77,6 +79,7 @@ void notifier_event(int id, int message, void *event_data)
 out:
 	spin_unlock(&_notify.lock);
 }
+EXPORT(notifier_event);
 
 void init_system_notify(struct sof *sof)
 {

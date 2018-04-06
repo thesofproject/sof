@@ -405,6 +405,7 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 	spin_unlock_irq(&memmap.lock, flags);
 	return ptr;
 }
+EXPORT(rmalloc);
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {
@@ -417,6 +418,7 @@ void *rzalloc(int zone, uint32_t caps, size_t bytes)
 
 	return ptr;
 }
+EXPORT(rzalloc);
 
 /* allocates continuous buffers */
 void *rballoc(int zone, uint32_t caps, size_t bytes)
@@ -471,6 +473,7 @@ out:
 	spin_unlock_irq(&memmap.lock, flags);
 	return ptr;
 }
+EXPORT(rballoc);
 
 void rfree(void *ptr)
 {
@@ -480,6 +483,7 @@ void rfree(void *ptr)
 	free_block(ptr);
 	spin_unlock_irq(&memmap.lock, flags);
 }
+EXPORT(rfree);
 
 uint32_t mm_pm_context_size(void)
 {

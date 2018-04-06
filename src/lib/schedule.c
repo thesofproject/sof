@@ -280,6 +280,7 @@ void schedule_task_idle(struct task *task, uint64_t deadline)
 {
 	_schedule_task(task, 0, deadline);
 }
+EXPORT(schedule_task_idle);
 
 /*
  * Add a new task to the scheduler to be run and define a scheduling
@@ -301,6 +302,7 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 		schedule();
 	}
 }
+EXPORT(schedule_task);
 
 /* Remove a task from the scheduler when complete */
 void schedule_task_complete(struct task *task)
@@ -314,6 +316,7 @@ void schedule_task_complete(struct task *task)
 	task->state = TASK_STATE_COMPLETED;
 	spin_unlock_irq(&sch->lock, flags);
 }
+EXPORT(schedule_task_complete);
 
 static void scheduler_run(void *unused)
 {
@@ -363,6 +366,7 @@ schedule:
 	/* the scheduler is run in IRQ context */
 	interrupt_set(PLATFORM_SCHEDULE_IRQ);
 }
+EXPORT(schedule);
 
 /* Initialise the scheduler */
 int scheduler_init(struct sof *sof)

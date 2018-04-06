@@ -35,6 +35,7 @@
  * https://en.wikipedia.org/wiki/Euclidean_algorithm#Implementations
  */
 
+#include <sof/sof.h>
 #include <sof/math/numbers.h>
 
 int gcd(int a, int b)
@@ -47,3 +48,4 @@ int gcd(int a, int b)
 	}
 	return a;
 }
+EXPORT(gcd);

@@ -167,6 +167,7 @@ int interrupt_register(uint32_t irq,
 	else
 		return irq_register_child(parent, irq, handler, arg);
 }
+EXPORT(interrupt_register);
 
 void interrupt_unregister(uint32_t irq)
 {
@@ -179,6 +180,7 @@ void interrupt_unregister(uint32_t irq)
 	else
 		irq_unregister_child(parent, irq);
 }
+EXPORT(interrupt_unregister);
 
 uint32_t interrupt_enable(uint32_t irq)
 {
@@ -191,6 +193,7 @@ uint32_t interrupt_enable(uint32_t irq)
 	else
 		return irq_enable_child(parent, irq);
 }
+EXPORT(interrupt_enable);
 
 uint32_t interrupt_disable(uint32_t irq)
 {
@@ -203,3 +206,4 @@ uint32_t interrupt_disable(uint32_t irq)
 	else
 		return irq_disable_child(parent, irq);
 }
+EXPORT(interrupt_disable);
