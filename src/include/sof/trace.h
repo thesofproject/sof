@@ -95,6 +95,7 @@
 #define TRACE_CLASS_EQ_FIR      (19 << 24)
 #define TRACE_CLASS_EQ_IIR      (20 << 24)
 #define TRACE_CLASS_SA		(21 << 24)
+#define TRACE_CLASS_MODULE	(22 << 24)
 
 /* move to config.h */
 #define TRACE	1

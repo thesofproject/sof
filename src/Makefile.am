@@ -8,5 +8,5 @@ SUBDIRS = ipc math audio arch include library
 endif
 
 if BUILD_XTENSA
-SUBDIRS = include init math audio platform tasks drivers ipc lib arch
+SUBDIRS = include init math audio platform tasks drivers ipc lib arch modules
 endif

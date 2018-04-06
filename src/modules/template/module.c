@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,65 +28,29 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
+#include <uapi/manifest.h>
+#include <sof/module.h>
+#include "template.h"
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/list.h>
-#include <arch/sof.h>
-
-struct ipc;
-struct sa;
-
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
+SOF_MODULE_DECL(template);
 
 /*
- * Firmware symbol table.
+ * Each module has an entry in the FW manifest header. This is NOT part of
+ * the SOF executable image but is inserted by object copy as a ELF section
+ * for parsing by rimage (to generate the manifest).
  */
-struct sof_symbol {
-	unsigned long value;
-	const char *name;
+const struct sof_man_module_manifest __attribute__((used)) __attribute__((section("_manifest"), used)) template_manifest = {
+	.module = {
+		.name	= "TEMPLATE",
+		.uuid	= {0x32, 0x8c, 0x39, 0x0e, 0xde, 0x5a, 0x4b, 0xba,
+				0x93, 0xb1, 0xc5, 0x04, 0x32, 0x28, 0x0e, 0xe4},
+		.entry_point = SOF_MODULE_REF(template),
+		.type = {
+				.load_type = SOF_MAN_MOD_TYPE_MODULE,
+				.domain_ll = 1,
+		},
+		.affinity_mask = 3,
+	},
 };
 
-#define SOF_SYMBOL_STRING(sym) \
-	static const char _symbolstr_##sym[] \
-	__attribute__((section("_symbol_strings"), aligned(1)))	= #sym
 
-#define SOF_SYMBOL_ELEM(sym) \
-	static const struct sof_symbol _symbol_elem_##sym \
-	__attribute__((used)) \
-	__attribute__((section("_symbol_table"), used)) \
-	= { (unsigned long)&sym, _symbolstr_##sym }
-
-/* functions must be exported to be in the symbol table */
-#define EXPORT(sym) \
-	extern typeof(sym) sym;	\
-	SOF_SYMBOL_STRING(sym); \
-	SOF_SYMBOL_ELEM(sym);
-
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
-
-	/* ipc */
-	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
-
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
-
-	/* module relocator */
-	struct reloc *reloc;
-	struct list_item module_list;	/* list of modules */
-};
-
-#endif

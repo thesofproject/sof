@@ -28,65 +28,82 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
-
 #include <stdint.h>
 #include <stddef.h>
-#include <sof/list.h>
-#include <arch/sof.h>
+#include <sof/module.h>
+#include <sof/audio/component.h>
 
-struct ipc;
-struct sa;
+/* tracing */
+#define trace_template(__e) trace_event(TRACE_CLASS_VOLUME, __e)
+#define trace_template_error(__e)   trace_error(TRACE_CLASS_VOLUME, __e)
+#define tracev_template(__e)        tracev_event(TRACE_CLASS_VOLUME, __e)
 
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
+static struct comp_dev *template_new(struct sof_ipc_comp *comp)
+{
+	trace_template("new");
 
-/*
- * Firmware symbol table.
- */
-struct sof_symbol {
-	unsigned long value;
-	const char *name;
+	return NULL;
+}
+
+static void template_free(struct comp_dev *dev)
+{
+	trace_template("fre");
+}
+
+/* set component audio stream parameters */
+static int template_params(struct comp_dev *dev)
+{
+
+	return 0;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int template_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	/* template will use buffer "connected" status */
+	return 0;
+}
+
+/* copy and process stream data from source to sink buffers */
+static int template_copy(struct comp_dev *dev)
+{
+
+	return 0;
+}
+
+static int template_reset(struct comp_dev *dev)
+{
+	return 0;
+}
+
+static int template_prepare(struct comp_dev *dev)
+{
+	return 0;
+}
+
+struct comp_driver comp_template = {
+	.type	= SOF_COMP_VOLUME,
+	.ops	= {
+		.new		= template_new,
+		.free		= template_free,
+		.params		= template_params,
+		.cmd		= template_cmd,
+		.copy		= template_copy,
+		.prepare	= template_prepare,
+		.reset		= template_reset,
+	},
 };
 
-#define SOF_SYMBOL_STRING(sym) \
-	static const char _symbolstr_##sym[] \
-	__attribute__((section("_symbol_strings"), aligned(1)))	= #sym
+static int template_init(struct sof_module_dev *dev)
+{
+	comp_register(&comp_template);
+	return 0;
+}
 
-#define SOF_SYMBOL_ELEM(sym) \
-	static const struct sof_symbol _symbol_elem_##sym \
-	__attribute__((used)) \
-	__attribute__((section("_symbol_table"), used)) \
-	= { (unsigned long)&sym, _symbolstr_##sym }
+static int template_exit(struct sof_module_dev *dev)
+{
+	comp_unregister(&comp_template);
+	return 0;
+}
 
-/* functions must be exported to be in the symbol table */
-#define EXPORT(sym) \
-	extern typeof(sym) sym;	\
-	SOF_SYMBOL_STRING(sym); \
-	SOF_SYMBOL_ELEM(sym);
-
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
-
-	/* ipc */
-	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
-
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
-
-	/* module relocator */
-	struct reloc *reloc;
-	struct list_item module_list;	/* list of modules */
-};
-
-#endif
+SOF_MODULE(template, template_init, template_exit);

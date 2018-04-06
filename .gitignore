@@ -20,6 +20,11 @@
 *.dis
 *.lst
 .*
+*.rm
+*.met
+*.uns
+*.ro
+*.debug
 
 Makefile
 Makefile.in
