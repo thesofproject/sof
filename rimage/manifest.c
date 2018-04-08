@@ -163,7 +163,7 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 	if (end > image->image_end)
 		image->image_end = end;
 
-	fprintf(stdout, "\t%d\t0x%x\t0x%x\t0x%x\t%s\n", section_idx,
+	fprintf(stdout, "\t%d\t0x%x\t0x%x\t\t0x%x\t%s\n", section_idx,
 		section->sh_addr, section->sh_size, offset,
 		seg_type == SOF_MAN_SEGMENT_TEXT ? "TEXT" : "DATA");
 
@@ -349,15 +349,15 @@ static int man_module_create(struct image *image, struct module *module,
 
 	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
 
-	fprintf(stdout, "\n\tTEXT\t0x%x\t0x%x\t0x%x\n",
-			module->text_start, module->text_end,
-			module->text_end - module->text_start);
-	fprintf(stdout, "\tDATA\t0x%x\t0x%x\t0x%x\n",
-			module->data_start, module->data_end,
-			module->data_end - module->data_start);
-	fprintf(stdout, "\tBSS\t0x%x\t0x%x\t0x%x\n\n ",
-			module->bss_start, module->bss_end,
-			module->bss_end - module->bss_start);
+	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
+		module->text_start, module->text_end,
+		module->text_end - module->text_start);
+	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
+		module->data_start, module->data_end,
+		module->data_end - module->data_start);
+	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
+		module->bss_start, module->bss_end,
+		module->bss_end - module->bss_start);
 
 	/* main module */
 	/* text section is first */
@@ -401,7 +401,7 @@ static int man_module_create(struct image *image, struct module *module,
 		pages += 1;
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = pages;
 
-	fprintf(stdout, "\tNo\tAddress\t\tSize\tFile\tType\n");
+	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
 
 	/* validate segments */
 	if (man_module_validate(man_module) < 0)
