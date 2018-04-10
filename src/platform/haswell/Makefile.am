@@ -1,5 +1,7 @@
 SUBDIRS = include
 
+EXTRA_DIST = haswell.x.in
+
 noinst_LIBRARIES = libplatform.a
 
 libplatform_a_SOURCES = \

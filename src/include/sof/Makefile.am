@@ -33,4 +33,6 @@ include_HEADERS = \
 	timer.h \
 	trace.h \
 	wait.h \
+	string.h \
+	hda-dma.h \
 	work.h

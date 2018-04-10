@@ -2,6 +2,10 @@ includedir = $(prefix)/include/sof/audio
 
 include_HEADERS = \
 	eq_iir.h \
+	iir.h \
+	fir.h \
+	src_config.h \
+	src.h \
 	eq_fir.h
 
 COMP_SRC = \

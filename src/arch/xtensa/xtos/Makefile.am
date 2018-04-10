@@ -3,6 +3,7 @@ noinst_HEADERS = \
 	xtos-params.h \
 	interrupt-pri.h \
 	window-vectors-new.S \
+	int-highpri-dispatcher.S \
 	int-medpri-dispatcher.S
 
 noinst_LIBRARIES = \

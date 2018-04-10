@@ -1,5 +1,9 @@
 SUBDIRS = include
 
+EXTRA_DIST = \
+	cannonlake.x.in \
+	boot_ldr.x.in
+
 noinst_LIBRARIES = libplatform.a
 
 libplatform_a_SOURCES = \

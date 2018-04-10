@@ -6,4 +6,5 @@ noinst_HEADERS = \
 	spinlock.h \
 	task.h \
 	timer.h \
+	string.h \
 	wait.h
