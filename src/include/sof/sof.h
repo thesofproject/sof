@@ -44,18 +44,6 @@ struct sa;
 	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member));})
 
-/* C memcpy for arch that dont have arch_memcpy() */
-void cmemcpy(void *dest, void *src, size_t size);
-
-// TODO: add detection for arch memcpy
-#if 1
-#define rmemcpy(dest, src, size) \
-	arch_memcpy(dest, src, size)
-#else
-#define rmemcpy(dest, src, size) \
-	cmemcpy(dest, src, size)
-#endif
-
 /* general firmware context */
 struct sof {
 	/* init data */
@@ -70,10 +58,6 @@ struct sof {
 
 	/* DMA for Trace*/
 	struct dma_trace_data *dmat;
-
-	/* private data */
-	void *arch_private;
-	void *plat_private;
 };
 
 #endif
