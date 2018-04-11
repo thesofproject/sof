@@ -134,6 +134,14 @@ int ipc_send_short_msg(uint32_t msg);
 void ipc_platform_do_cmd(struct ipc *ipc);
 void ipc_platform_send_msg(struct ipc *ipc);
 
+/* create a SG page table eme list from a compressed page table */
+int ipc_parse_page_descriptors(uint8_t *page_table,
+			       struct sof_ipc_host_buffer *ring,
+			       struct list_item *elem_list,
+			       uint32_t direction);
+int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
+			     struct sof_ipc_host_buffer *ring);
+
 /*
  * IPC Component creation and destruction.
  */

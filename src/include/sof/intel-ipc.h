@@ -38,7 +38,6 @@ struct intel_ipc_data {
 	/* DMA */
 	struct dma *dmac;
 	uint8_t *page_table;
-	completion_t complete;
 
 	/* PM */
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
