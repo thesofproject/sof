@@ -32,9 +32,7 @@
 #ifndef __INCLUDE_ARCH_STRING_SOF__
 #define __INCLUDE_ARCH_STRING_SOF__
 
-void *xthal_memcpy(void *dst, const void *src, size_t len);
-
 #define arch_memcpy(dest, src, size) \
-	xthal_memcpy(dest, src, size)
+	memcpy(dest, src, size)
 
 #endif
