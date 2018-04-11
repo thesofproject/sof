@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,42 +29,12 @@
  *
  */
 
-#ifndef __INCLUDE_ARCH_SOF__
-#define __INCLUDE_ARCH_SOF__
+#ifndef __INCLUDE_ARCH_STRING_SOF__
+#define __INCLUDE_ARCH_STRING_SOF__
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdio.h>
-#include <execinfo.h>
+void *xthal_memcpy(void *dst, const void *src, size_t len);
 
-/* architecture specific stack frames to dump */
-#define ARCH_STACK_DUMP_FRAMES		32
-
-static inline void *arch_get_stack_ptr(void)
-{
-	void *frames[ARCH_STACK_DUMP_FRAMES];
-	size_t frame_count;
-	size_t i;
-	char **symbols;
-
-	frame_count = backtrace(frames, ARCH_STACK_DUMP_FRAMES);
-	symbols = backtrace_symbols(frames, frame_count);
-
-	fprintf(stderr, "Dumping %zd stack frames.\n", frame_count);
-
-	for (i = 0; i < frame_count; i++)
-		fprintf(stderr, "\t%s\n", symbols[i]);
-
-	free(symbols);
-
-	return NULL;
-}
-
-static inline void *arch_dump_regs(void)
-{
-	return NULL;
-}
+#define arch_memcpy(dest, src, size) \
+	xthal_memcpy(dest, src, size)
 
 #endif

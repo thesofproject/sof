@@ -86,4 +86,9 @@
 	(DRAM0_SIZE - HEAP_MOD_SIZE - HEAP_BUF_SIZE)
 
 #endif
+
+#define MAILBOX_DSPBOX_BASE	0
+#define MAILBOX_HOSTBOX_BASE	0
+#define MAILBOX_BASE		0
+
 #endif
