@@ -83,134 +83,6 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 	return hdr;
 }
 
-#ifdef CONFIG_HOST_PTABLE
-static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
-{
-	struct intel_ipc_data *iipc = (struct intel_ipc_data *)data;
-
-	if (type == DMA_IRQ_TYPE_LLIST)
-		wait_completed(&iipc->complete);
-}
-
-/*
- * Copy the audio buffer page tables from the host to the DSP max of 4K.
- */
-static int get_page_descriptors(struct intel_ipc_data *iipc,
-	struct sof_ipc_host_buffer *ring)
-{
-	struct dma_sg_config config;
-	struct dma_sg_elem elem;
-	struct dma *dma;
-	int chan;
-	int ret = 0;
-
-	/* get DMA channel from DMAC */
-	chan = dma_channel_get(iipc->dmac, 0);
-	if (chan < 0) {
-		trace_ipc_error("ePC");
-		return chan;
-	}
-	dma = iipc->dmac;
-
-	/* set up DMA configuration */
-	config.direction = DMA_DIR_HMEM_TO_LMEM;
-	config.src_width = sizeof(uint32_t);
-	config.dest_width = sizeof(uint32_t);
-	config.cyclic = 0;
-	list_init(&config.elem_list);
-
-	/* set up DMA descriptor */
-	elem.dest = (uint32_t)iipc->page_table;
-	elem.src = ring->phy_addr;
-
-	/* source buffer size is always PAGE_SIZE bytes */
-	/* 20 bits for each page, round up to 32 */
-	elem.size = (ring->pages * 5 * 16 + 31) / 32;
-	list_item_prepend(&elem.list, &config.elem_list);
-
-	ret = dma_set_config(dma, chan, &config);
-	if (ret < 0) {
-		trace_ipc_error("ePs");
-		goto out;
-	}
-
-	/* set up callback */
-	dma_set_cb(dma, chan, DMA_IRQ_TYPE_LLIST, dma_complete, iipc);
-
-	wait_init(&iipc->complete);
-
-	/* start the copy of page table to DSP */
-	dma_start(dma, chan);
-
-	/* wait for DMA to complete */
-	iipc->complete.timeout = PLATFORM_HOST_DMA_TIMEOUT;
-	ret = wait_for_completion_timeout(&iipc->complete);
-
-	/* compressed page tables now in buffer at _ipc->page_table */
-out:
-	dma_channel_put(dma, chan);
-	return ret;
-}
-
-/*
- * Parse the host page tables and create the audio DMA SG configuration
- * for host audio DMA buffer. This involves creating a dma_sg_elem for each
- * page table entry and adding each elem to a list in struct dma_sg_config.
- */
-static int parse_page_descriptors(struct intel_ipc_data *iipc,
-	struct sof_ipc_host_buffer *ring, struct list_item *elem_list,
-	uint32_t direction)
-{
-	int i;
-	uint32_t idx;
-	uint32_t phy_addr;
-	struct dma_sg_elem *e;
-
-	/* the ring size may be not multiple of the page size, the last
-	 * page may be not full used. The used size should be in range
-	 * of (ring->pages - 1, ring->pages] * PAGES.
-	 */
-	if ((ring->size <= HOST_PAGE_SIZE * (ring->pages - 1)) ||
-			(ring->size > HOST_PAGE_SIZE * ring->pages)) {
-		/* error buffer size */
-		trace_ipc_error("eBs");
-		return -EINVAL;
-	}
-
-	for (i = 0; i < ring->pages; i++) {
-		idx = (((i << 2) + i)) >> 1;
-		phy_addr = iipc->page_table[idx] | (iipc->page_table[idx + 1] << 8)
-				| (iipc->page_table[idx + 2] << 16);
-
-		if (i & 0x1)
-			phy_addr <<= 8;
-		else
-			phy_addr <<= 12;
-		phy_addr &= 0xfffff000;
-
-		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
-		if (!e)
-			return -ENOMEM;
-
-		if (direction == SOF_IPC_STREAM_PLAYBACK)
-			e->src = phy_addr;
-		else
-			e->dest = phy_addr;
-
-		/* the last page may be not full used */
-		if (i == (ring->pages - 1))
-			e->size = ring->size - HOST_PAGE_SIZE * i;
-		else
-			e->size = HOST_PAGE_SIZE;
-
-		list_item_append(&e->list, elem_list);
-	}
-
-	return 0;
-}
-#endif
-
 /*
  * Stream IPC Operations.
  */
@@ -258,7 +130,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	list_init(&elem_list);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
-	err = get_page_descriptors(iipc, &pcm_params->params.buffer);
+	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
+				       &pcm_params->params.buffer);
 	if (err < 0) {
 		trace_ipc_error("eAp");
 		goto error;
@@ -268,8 +141,9 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	host = (struct sof_ipc_comp_host *)&cd->comp;
 	ring_size = pcm_params->params.buffer.size;
 
-	err = parse_page_descriptors(iipc, &pcm_params->params.buffer,
-		&elem_list, host->direction);
+	err = ipc_parse_page_descriptors(iipc->page_table,
+					 &pcm_params->params.buffer,
+					 &elem_list, host->direction);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
@@ -656,7 +530,8 @@ static int ipc_dma_trace_config(uint32_t header)
 	list_init(&elem_list);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
-	err = get_page_descriptors(iipc, &params->buffer);
+	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
+				       &params->buffer);
 	if (err < 0) {
 		trace_ipc_error("eCp");
 		goto error;
@@ -667,8 +542,8 @@ static int ipc_dma_trace_config(uint32_t header)
 	/* Parse host tables */
 	ring_size = params->buffer.size;
 
-	err = parse_page_descriptors(iipc, &params->buffer,
-		&elem_list, SOF_IPC_STREAM_CAPTURE);
+	err = ipc_parse_page_descriptors(iipc->page_table, &params->buffer,
+					 &elem_list, SOF_IPC_STREAM_CAPTURE);
 	if (err < 0) {
 		trace_ipc_error("ePP");
 		goto error;
