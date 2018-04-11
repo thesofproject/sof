@@ -42,7 +42,7 @@ MACHINES = \
 
 all: ${MACHINES}
 
-clean:
+clean-local:
 	rm -f *.conf
 	rm -f *.tplg
 

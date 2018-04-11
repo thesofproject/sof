@@ -17,7 +17,7 @@ DEPS = \
 all : *.m4 ${DEPS}
 	./tplg-build.sh
 
-clean:
+clean-local:
 	rm -f *.conf
 	rm -f *.tplg
 
