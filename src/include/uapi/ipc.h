@@ -151,6 +151,7 @@
 #define SOF_MEM_CAPS_HP			(1 << 4) /* high performance */
 #define SOF_MEM_CAPS_DMA			(1 << 5) /* DMA'able */
 #define SOF_MEM_CAPS_CACHE			(1 << 6) /* cacheable */
+#define SOF_MEM_CAPS_EXEC			(1 << 7) /* executable */
 
 /*
  * Command Header - Header for all IPC. Identifies IPC message.
