@@ -110,6 +110,9 @@ struct sof;
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
 
+/* ISA code for module compliance */
+#define PLATFORM_ISA		{'c', 'n', 'l', '0'}
+
 /* Platform defined trace code */
 #define platform_panic(__x) { \
 	sw_reg_write(SRAM_REG_FW_STATUS, (0xdead000 | __x) & 0x3fffffff); \

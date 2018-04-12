@@ -115,6 +115,9 @@ struct sof;
 /* number of SSP ports in platform */
 #define PLATFORM_NUM_SSP	6
 
+/* ISA code for module compliance */
+#define PLATFORM_ISA		{'a', 'p', 'l', '0'}
+
 /* Platform defined panic code */
 #define platform_panic(__x) { \
 	sw_reg_write(SRAM_REG_FW_STATUS, (0xdead000 | __x) & 0x3fffffff); \

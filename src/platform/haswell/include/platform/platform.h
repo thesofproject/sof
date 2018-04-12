@@ -99,6 +99,9 @@ struct sof;
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
 
+/* ISA code for module compliance */
+#define PLATFORM_ISA		{'h', 's', 'w', '0'}
+
 /* Platform defined panic code */
 #define platform_panic(__x) \
 	shim_write(SHIM_IPCD, (SHIM_IPCD_BUSY | 0xdead000 | __x))
