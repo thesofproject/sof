@@ -1,4 +1,4 @@
-modules: template.sof
+all: template.ro
 
 # all module file individially built and then linked below
 template.o: template.c
@@ -9,12 +9,14 @@ module.o: module.c
 	$(CC) $(CFLAGS) $(COMMON_INCDIR) -c module.c
 
 # link all object files togetether into SOF module
-template.sof: module.o template.o
-	$(LD) -r module.o template.o -o template.sof
+template.ro: module.o template.o
+	$(LD) -r module.o template.o -o template.ro.debug
+	$(OBJCOPY) --strip-debug --strip-unneeded template.ro.debug template.ro
 
 clean-local:
 	rm -fr *.o
+	rm -fr *.ro
+	rm -fr *.debug
 
 bin-local:
-	ls
-#rimage
+	rimage -o template-$(FW_NAME).rm -m $(FW_NAME) -r template.ro

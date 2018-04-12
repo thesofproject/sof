@@ -30,7 +30,6 @@
 
 #include <uapi/manifest.h>
 #include <sof/module.h>
-#include "template.h"
 
 SOF_MODULE_DECL(template);
 
@@ -39,7 +38,7 @@ SOF_MODULE_DECL(template);
  * the SOF executable image but is inserted by object copy as a ELF section
  * for parsing by rimage (to generate the manifest).
  */
-const struct sof_man_module_manifest __attribute__((used)) __attribute__((section("_manifest"), used)) template_manifest = {
+const struct sof_man_module_manifest __attribute__((used)) __attribute__((section(".module"), used)) template_manifest = {
 	.module = {
 		.name	= "TEMPLATE",
 		.uuid	= {0x32, 0x8c, 0x39, 0x0e, 0xde, 0x5a, 0x4b, 0xba,

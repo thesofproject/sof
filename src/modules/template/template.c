@@ -94,13 +94,13 @@ struct comp_driver comp_template = {
 	},
 };
 
-static int template_init(struct sof_module_dev *dev)
+static int template_init(struct sof_module *mod)
 {
 	comp_register(&comp_template);
 	return 0;
 }
 
-static int template_exit(struct sof_module_dev *dev)
+static int template_exit(struct sof_module *mod)
 {
 	comp_unregister(&comp_template);
 	return 0;
