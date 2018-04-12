@@ -107,6 +107,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t data_size;
 	uint32_t start_delay;
 	uint32_t frame_end_padding;
+	uint32_t slot_end_padding;
 	uint32_t frame_len = 0;
 	uint32_t bdiv_min;
 	uint32_t tft;
@@ -299,6 +300,20 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
+	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
+	if (bdiv < bdiv_min) {
+		trace_ssp_error("ecc");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	frame_end_padding = bdiv - bdiv_min;
+	if (frame_end_padding > SSPSP2_FEP_MASK) {
+		trace_ssp_error("ecd");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* format */
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
@@ -324,6 +339,28 @@ static inline int ssp_set_config(struct dai *dai,
 		 */
 		sspsp |= SSPSP_SFRMP(inverted_frame);
 		sspsp |= SSPSP_FSRT;
+
+		/*
+		 *  for I2S/LEFT_J, the padding has to happen at the end
+		 * of each slot
+		 */
+		if (frame_end_padding % 2) {
+			trace_ssp_error("ece");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		slot_end_padding = frame_end_padding / 2;
+
+		if (slot_end_padding > 15) {
+			/* can't handle padding over 15 bits */
+			trace_ssp_error("ecf");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		sspsp |= SSPSP_EDMYSTOP((slot_end_padding >> 2) & 0x3);
+		sspsp |= SSPSP_DMYSTOP(slot_end_padding & 0x3);
 
 		break;
 
@@ -353,6 +390,28 @@ static inline int ssp_set_config(struct dai *dai,
 		 */
 		sspsp |= SSPSP_SFRMP(!inverted_frame);
 
+		/*
+		 *  for I2S/LEFT_J, the padding has to happen at the end
+		 * of each slot
+		 */
+		if (frame_end_padding % 2) {
+			trace_ssp_error("ecg");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		slot_end_padding = frame_end_padding / 2;
+
+		if (slot_end_padding > 15) {
+			/* can't handle padding over 15 bits */
+			trace_ssp_error("ech");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		sspsp |= SSPSP_EDMYSTOP((slot_end_padding >> 2) & 0x3);
+		sspsp |= SSPSP_DMYSTOP(slot_end_padding & 0x3);
+
 		break;
 	case SOF_DAI_FMT_DSP_A:
 
@@ -375,6 +434,8 @@ static inline int ssp_set_config(struct dai *dai,
 		active_tx_slots = hweight_32(config->ssp.tx_slots);
 		active_rx_slots = hweight_32(config->ssp.rx_slots);
 
+		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
+
 		break;
 	case SOF_DAI_FMT_DSP_B:
 
@@ -396,6 +457,8 @@ static inline int ssp_set_config(struct dai *dai,
 		active_tx_slots = hweight_32(config->ssp.tx_slots);
 		active_rx_slots = hweight_32(config->ssp.rx_slots);
 
+		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
+
 		break;
 	default:
 		trace_ssp_error("eca");
@@ -405,22 +468,6 @@ static inline int ssp_set_config(struct dai *dai,
 
 	sspsp |= SSPSP_STRTDLY(start_delay);
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
-
-	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
-	if (bdiv < bdiv_min) {
-		trace_ssp_error("ecc");
-		ret = -EINVAL;
-		goto out;
-	}
-
-	frame_end_padding = bdiv - bdiv_min;
-	if (frame_end_padding > SSPSP2_FEP_MASK) {
-		trace_ssp_error("ecd");
-		ret = -EINVAL;
-		goto out;
-	}
-
-	sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
 	data_size = config->ssp.sample_valid_bits;
 
