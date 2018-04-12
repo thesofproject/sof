@@ -283,6 +283,42 @@ static void elf_module_size(struct image *image, struct module *module,
 	}
 }
 
+static void elf_module_size_reloc(struct image *image, struct module *module,
+				  Elf32_Shdr *section, int index)
+{
+	switch (section->sh_type) {
+	case SHT_PROGBITS:
+		/* text or data */
+		if (section->sh_flags & SHF_EXECINSTR) {
+			/* text */
+			module->text_start = 0;
+			module->text_end += section->sh_size;
+
+			fprintf(stdout, "\tTEXT\t");
+		} else {
+			/* initialized data, also calc the writable sections */
+			module->data_start = 0;
+			module->data_end += section->sh_size;
+
+			fprintf(stdout, "\tDATA\t");
+		}
+		break;
+	case SHT_NOBITS:
+		/* bss */
+		if (index == module->bss_index) {
+			/* updated the .bss segment */
+			module->bss_start = section->sh_addr;
+			module->bss_end = section->sh_addr + section->sh_size;
+			fprintf(stdout, "\tBSS\t");
+		} else {
+			fprintf(stdout, "\tHEAP\t");
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 static void elf_module_limits(struct image *image, struct module *module)
 {
 	Elf32_Shdr *section;
@@ -302,22 +338,29 @@ static void elf_module_limits(struct image *image, struct module *module)
 
 		section = &module->section[i];
 
-		/* only check valid sections */
-		if (!(section->sh_flags & valid))
-			continue;
+		/* module bss can sometimes be missed */
+		if (i != module->bss_index) {
 
-		if (section->sh_size == 0)
-			continue;
+			/* only check valid sections */
+			if (!(section->sh_flags & valid))
+				continue;
 
-		if (elf_is_rom(image, section))
-			continue;
+			if (section->sh_size == 0)
+				continue;
+
+			if (elf_is_rom(image, section))
+				continue;
+		}
 
 		fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t%d", i,
 			section->sh_addr, section->sh_addr + section->sh_size,
 			section->sh_size);
 
 		/* text or data section */
-		elf_module_size(image, module, section, i);
+		if (image->reloc)
+			elf_module_size_reloc(image, module, section, i);
+		else
+			elf_module_size(image, module, section, i);
 
 		/* section name */
 		fprintf(stdout, "%s\n", module->strings + section->sh_name);
@@ -387,6 +430,10 @@ int elf_validate_modules(struct image *image)
 	Elf32_Shdr *section;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
 	int i, j, ret;
+
+	/* relocatable modules have no physical addresses until runtime */
+	if (image->reloc)
+		return 0;
 
 	/* for each module */
 	for (i = 0; i < image->num_modules; i++) {
@@ -483,6 +530,15 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 		return -EINVAL;
 	}
 	module->elf_file = name;
+
+	/* get file size */
+	ret = fseek(module->fd, 0, SEEK_END);
+	if (ret < 0)
+		goto hdr_err;
+	module->file_size = ftell(module->fd);
+	ret = fseek(module->fd, 0, SEEK_SET);
+	if (ret < 0)
+		goto hdr_err;
 
 	/* read in elf header */
 	ret = elf_read_hdr(image, module);

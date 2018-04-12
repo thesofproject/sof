@@ -403,7 +403,6 @@ static int man_module_create(struct image *image, struct module *module,
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
 
-	/* validate segments */
 	if (man_module_validate(man_module) < 0)
 		return -EINVAL;
 
@@ -432,6 +431,96 @@ static int man_module_create(struct image *image, struct module *module,
 	fprintf(stdout, "\n");
 
 	/* round module end upto nearest page */
+	if (image->image_end % MAN_PAGE_SIZE) {
+		image->image_end = (image->image_end / MAN_PAGE_SIZE) + 1;
+		image->image_end *= MAN_PAGE_SIZE;
+	}
+
+	fprintf(stdout, " Total pages text %d data %d bss %d module file limit: 0x%x\n\n",
+		man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length,
+		man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length,
+		man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length,
+		image->image_end);
+	return 0;
+}
+
+static int man_module_create_reloc(struct image *image, struct module *module,
+	struct sof_man_module *man_module)
+{
+	/* create module and segments */
+	int err;
+	unsigned int pages;
+	void *buffer = image->fw_image + module->foffset;
+	size_t count;
+
+	image->image_end = 0;
+
+	err = man_get_module_manifest(image, module, man_module);
+	if (err < 0)
+		return err;
+
+	/* stack size ??? convert sizes to PAGES */
+	man_module->instance_bss_size = 1;
+
+	/* max number of instances of this module ?? */
+	man_module->instance_max_count = 1;
+
+	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
+
+	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
+		module->text_start, module->text_end,
+		module->text_end - module->text_start);
+	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
+		module->data_start, module->data_end,
+		module->data_end - module->data_start);
+	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
+		module->bss_start, module->bss_end,
+		module->bss_end - module->bss_start);
+
+	/* main module */
+	/* text section is first */
+	man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset =
+		module->foffset;
+	man_module->segment[SOF_MAN_SEGMENT_TEXT].v_base_addr = 0;
+	man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length = 0;
+
+	/* data section */
+	man_module->segment[SOF_MAN_SEGMENT_RODATA].v_base_addr = 0;
+	man_module->segment[SOF_MAN_SEGMENT_RODATA].file_offset =
+			module->foffset;
+	pages = module->data_file_size / MAN_PAGE_SIZE;
+	if (module->data_file_size % MAN_PAGE_SIZE)
+		pages += 1;
+
+	man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length = pages;
+
+	/* bss is last */
+	man_module->segment[SOF_MAN_SEGMENT_BSS].file_offset = 0;
+	man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr = 0;
+	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = 0;
+
+	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
+
+	/* seek to beginning of file */
+	err = fseek(module->fd, 0, SEEK_SET);
+	if (err < 0) {
+		fprintf(stderr, "error: can't seek to section %d\n", err);
+		return err;
+	}
+
+	count = fread(buffer, 1, module->file_size, module->fd);
+	if (count != module->file_size) {
+		fprintf(stderr, "error: can't read section %d\n", -errno);
+		return -errno;
+	}
+
+	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%x\t%s\n", 0,
+		0, module->file_size, 0, "DATA");
+
+	fprintf(stdout, "\n");
+	image->image_end = module->foffset + module->file_size;
+
+	/* round module end up to nearest page */
 	if (image->image_end % MAN_PAGE_SIZE) {
 		image->image_end = (image->image_end / MAN_PAGE_SIZE) + 1;
 		image->image_end *= MAN_PAGE_SIZE;
@@ -555,7 +644,11 @@ static int man_write_fw(struct image *image)
 			module->foffset = image->image_end;
 		}
 
-		ret = man_module_create(image, module, man_module);
+		if (image->reloc)
+			ret = man_module_create_reloc(image, module,
+						      man_module);
+		else
+			ret = man_module_create(image, module, man_module);
 		if (ret < 0)
 			goto err;
 	}
