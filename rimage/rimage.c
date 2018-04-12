@@ -35,8 +35,10 @@ static const struct adsp *machine[] = {
 
 static void usage(char *name)
 {
-	fprintf(stdout, "%s:\t -m machine -o outfile -k [key] ELF files\n", name);
+	fprintf(stdout, "%s:\t -m machine -o outfile -k [key] ELF files\n",
+		name);
 	fprintf(stdout, "\t -v enable verbose output\n");
+	fprintf(stdout, "\t -r enable relocatable ELF files\n");
 	exit(0);
 }
 
@@ -48,7 +50,7 @@ int main(int argc, char *argv[])
 
 	memset(&image, 0, sizeof(image));
 
-	while ((opt = getopt(argc, argv, "ho:m:vba:sk:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:m:vba:sk:l:r")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -67,6 +69,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'k':
 			image.key_name = optarg;
+			break;
+		case 'r':
+			image.reloc = 1;
 			break;
 		case 'h':
 			usage(argv[0]);

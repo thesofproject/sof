@@ -78,6 +78,9 @@ struct module {
 	int text_file_size;
 	int text_fixup_size;
 	int data_file_size;
+
+	/* total file size */
+	int file_size;
 };
 
 /*
@@ -92,6 +95,7 @@ struct image {
 	const struct adsp *adsp;
 	int abi;
 	int verbose;
+	int reloc;	/* ELF data is relocatable */
 	int num_modules;
 	struct module module[MAX_MODULES];
 	uint32_t image_end;/* module end, equal to output image size */
