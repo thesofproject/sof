@@ -204,6 +204,98 @@ static int simple_write_module(struct image *image, struct module *module)
 	return 0;
 }
 
+static int write_block_reloc(struct image *image, struct module *module)
+{
+	struct snd_sof_blk_hdr block;
+	size_t count;
+	void *buffer;
+	int ret;
+
+	block.size = module->file_size;
+	block.type = SOF_BLK_DATA;
+	block.offset = 0;
+
+	/* write header */
+	count = fwrite(&block, sizeof(block), 1, image->out_fd);
+	if (count != 1)
+		return -errno;
+
+	/* alloc data data */
+	buffer = calloc(1, module->file_size);
+	if (buffer == NULL)
+		return -ENOMEM;
+
+	/* read in section data */
+	ret = fseek(module->fd, 0, SEEK_SET);
+	if (ret < 0) {
+		fprintf(stderr, "error: can't seek to section %d\n", ret);
+		goto out;
+	}
+	count = fread(buffer, 1, module->file_size, module->fd);
+	if (count != module->file_size) {
+		fprintf(stderr, "error: can't read section %d\n", -errno);
+		ret = -errno;
+		goto out;
+	}
+
+	/* write out section data */
+	count = fwrite(buffer, 1, module->file_size, image->out_fd);
+	if (count != module->file_size) {
+		fprintf(stderr, "error: can't write section %d\n", -errno);
+		ret = -errno;
+		goto out;
+	}
+
+	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%8.8lx\t%s\n", block_idx++,
+		0, module->file_size, ftell(image->out_fd),
+		block.type == SOF_BLK_TEXT ? "TEXT" : "DATA");
+
+out:
+	free(buffer);
+	return ret;
+}
+
+static int simple_write_module_reloc(struct image *image, struct module *module)
+{
+	struct snd_sof_mod_hdr hdr;
+	size_t count;
+	int i, err;
+
+	hdr.num_blocks = 1;
+	hdr.size = module->text_size + module->data_size;
+	hdr.type = SOF_FW_BASE; // module
+
+	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
+	if (count != 1) {
+		fprintf(stderr, "error: failed to write section header %d\n",
+			-errno);
+		return -errno;
+	}
+
+	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
+
+	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
+			module->text_start, module->text_end,
+			module->text_end - module->text_start);
+	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
+			module->data_start, module->data_end,
+			module->data_end - module->data_start);
+	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
+			module->bss_start, module->bss_end,
+			module->bss_end - module->bss_start);
+
+	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\t\tType\n");
+
+	err = write_block_reloc(image, module);
+	if (err < 0) {
+		fprintf(stderr, "error: failed to write section #%d\n", i);
+		return err;
+	}
+
+	fprintf(stdout, "\n");
+	return 0;
+}
+
 /* used by others */
 static int simple_write_firmware(struct image *image)
 {
@@ -235,7 +327,10 @@ static int simple_write_firmware(struct image *image)
 
 		fprintf(stdout, "writing module %d %s\n", i, module->elf_file);
 
-		ret = simple_write_module(image, module);
+		if (image->reloc)
+			ret = simple_write_module_reloc(image, module);
+		else
+			ret = simple_write_module(image, module);
 		if (ret < 0) {
 			fprintf(stderr, "error: failed to write module %d\n",
 				i);
