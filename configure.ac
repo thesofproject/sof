@@ -387,6 +387,8 @@ AC_CONFIG_FILES([
 	src/platform/cannonlake/include/platform/Makefile
 	src/platform/cannonlake/include/xtensa/Makefile
 	src/platform/cannonlake/include/xtensa/config/Makefile
+	src/test/Makefile
+	src/test/linker/Makefile
 ])
 AC_OUTPUT
 
