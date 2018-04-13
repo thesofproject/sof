@@ -479,7 +479,17 @@ static inline int ssp_set_config(struct dai *dai,
 #ifdef CONFIG_CANNONLAKE
 	mdivc = 0x1;
 #else
-	mdivc = 0x00100001;
+	if (config->ssp.mclk_rate == 24576000) {
+		/* enable PLL, bypass M/N dividers */
+		mdivc = 0x00100001;
+	} else if (config->ssp.mclk_rate == 19200000) {
+		/* no PLL, use XTAl oscillator as source */
+		mdivc = 0;
+	} else {
+		trace_ssp_error("eci");
+		ret = -EINVAL;
+		goto out;
+	}
 #endif
 	/* bypass divider for MCLK */
 	mdivr = 0x00000fff;
