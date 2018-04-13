@@ -359,8 +359,9 @@ static inline int ssp_set_config(struct dai *dai,
 			goto out;
 		}
 
-		sspsp |= SSPSP_EDMYSTOP((slot_end_padding >> 2) & 0x3);
-		sspsp |= SSPSP_DMYSTOP(slot_end_padding & 0x3);
+		sspsp |= SSPSP_DMYSTOP(slot_end_padding & SSPSP_DMYSTOP_MASK);
+		slot_end_padding >>= SSPSP_DMYSTOP_BITS;
+		sspsp |= SSPSP_EDMYSTOP(slot_end_padding & SSPSP_EDMYSTOP_MASK);
 
 		break;
 
@@ -409,8 +410,9 @@ static inline int ssp_set_config(struct dai *dai,
 			goto out;
 		}
 
-		sspsp |= SSPSP_EDMYSTOP((slot_end_padding >> 2) & 0x3);
-		sspsp |= SSPSP_DMYSTOP(slot_end_padding & 0x3);
+		sspsp |= SSPSP_DMYSTOP(slot_end_padding & SSPSP_DMYSTOP_MASK);
+		slot_end_padding >>= SSPSP_DMYSTOP_BITS;
+		sspsp |= SSPSP_EDMYSTOP(slot_end_padding & SSPSP_EDMYSTOP_MASK);
 
 		break;
 	case SOF_DAI_FMT_DSP_A:
