@@ -16,20 +16,19 @@ DEPS = \
 #
 
 MACHINES = \
-	reef-cht-nocodec.tplg \
-	reef-cht-max98090.tplg \
-	reef-apl-nocodec.tplg \
-	reef-bxt-nocodec.tplg \
-	reef-byt-nocodec.tplg \
-	reef-bdw-rt286.tplg \
-	reef-bdw-rt5640.tplg \
-	reef-byt-rt5640.tplg \
-	reef-byt-rt5645.tplg \
-	reef-byt-rt5651.tplg \
-	reef-byt-da7213.tplg \
-	reef-cnl-rt274.tplg \
-	reef-hsw-rt5640.tplg \
-	reef-apl-tdf8532.tplg
+	sof-cht-nocodec.tplg \
+	sof-cht-max98090.tplg \
+	sof-apl-nocodec.tplg \
+	sof-byt-nocodec.tplg \
+	sof-bdw-rt286.tplg \
+	sof-bdw-rt5640.tplg \
+	sof-byt-rt5640.tplg \
+	sof-byt-rt5645.tplg \
+	sof-byt-rt5651.tplg \
+	sof-byt-da7213.tplg \
+	sof-cnl-rt274.tplg \
+	sof-hsw-rt5640.tplg \
+	sof-apl-tdf8532.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
@@ -47,17 +46,16 @@ clean-local:
 	rm -f *.tplg
 
 EXTRA_DIST = \
-	reef-cht-nocodec.m4 \
-	reef-cht-max98090.m4 \
-	reef-apl-nocodec.m4 \
-	reef-bxt-nocodec.m4 \
-	reef-byt-nocodec.m4 \
-	reef-bdw-rt286.m4 \
-	reef-bdw-rt5640.m4 \
-	reef-byt-rt5640.m4 \
-	reef-byt-rt5645.m4 \
-	reef-byt-rt5651.m4 \
-	reef-byt-da7213.m4 \
-	reef-cnl-rt274.m4 \
-	reef-hsw-rt5640.m4 \
-	reef-apl-tdf8532.m4
+	sof-cht-nocodec.m4 \
+	sof-cht-max98090.m4 \
+	sof-apl-nocodec.m4 \
+	sof-byt-nocodec.m4 \
+	sof-bdw-rt286.m4 \
+	sof-bdw-rt5640.m4 \
+	sof-byt-rt5640.m4 \
+	sof-byt-rt5645.m4 \
+	sof-byt-rt5651.m4 \
+	sof-byt-da7213.m4 \
+	sof-cnl-rt274.m4 \
+	sof-hsw-rt5640.m4 \
+	sof-apl-tdf8532.m4
