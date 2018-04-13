@@ -327,6 +327,16 @@ PEM_KEY_PREFIX="/usr/local/share/rimage"
 AC_DEFINE_UNQUOTED([PEM_KEY_PREFIX], ["$PEM_KEY_PREFIX"], ["Path for PEM keys"])
 AC_SUBST(PEM_KEY_PREFIX)
 
+# Check for doxygen and graphviz - used by make doc
+AC_CHECK_PROG(have_doxygen, doxygen, true, false)
+if test "$have_doxygen" = "false"; then
+	AC_MSG_WARN([Need doxygen to build documentation])
+fi
+AC_CHECK_PROG(have_graphviz, dot, true, false)
+if test "$have_graphviz" = "false"; then
+	AC_MSG_WARN([Need graphviz to build documentation])
+fi
+
 AM_EXTRA_RECURSIVE_TARGETS([bin])
 
 AM_EXTRA_RECURSIVE_TARGETS([vminstall])
