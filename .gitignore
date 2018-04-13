@@ -37,6 +37,8 @@ m4/lt*
 m4/libtool.m4
 libtool
 src/include/version.h
+doc/sof_uapi
+*.doxygen
 
 autom4te*
 config.*

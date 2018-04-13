@@ -28,6 +28,12 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+/**
+ * \file include/uapi/ipc.h
+ * \brief FW Image Manifest definitions.
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
+
 #ifndef SOF_UAPI_MANIFEST_H
 #define SOF_UAPI_MANIFEST_H
 
@@ -211,7 +217,14 @@ struct sof_man_module_manifest {
 	uint32_t text_size;
 };
 
-/* utility to get module pointer from position */
+/**
+ * \brief Utility to get module pointer from position.
+ * \param [in,out] desc FW descriptor in manifest.
+ * \param [in] index Index of the module.
+ * \return Pointer to module descriptor.
+ *
+ * Note that index is not verified against OOB.
+ */
 static inline struct sof_man_module *sof_man_get_module(
 	struct sof_man_fw_desc *desc, int index)
 {

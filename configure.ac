@@ -335,6 +335,7 @@ AC_CONFIG_FILES([
 	Makefile
 	rimage/Makefile
 	rimage/keys/Makefile
+	doc/Makefile
 	src/Makefile
 	src/tasks/Makefile
 	src/init/Makefile

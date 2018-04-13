@@ -29,6 +29,13 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * \file include/uapi/ipc.h
+ * \brief IPC definitions
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * \author Keyon Jie <yang.jie@linux.intel.com>
+ */
+
 #ifndef __INCLUDE_UAPI_IPC_H__
 #define __INCLUDE_UAPI_IPC_H__
 
@@ -219,12 +226,12 @@ struct sof_ipc_compound_hdr {
 #define SOF_DAI_FMT_INV_MASK		0x0f00
 #define SOF_DAI_FMT_MASTER_MASK		0xf000
 
-/* types of DAI */
+/** \brief Types of DAI */
 enum sof_ipc_dai_type {
-	SOF_DAI_INTEL_NONE = 0,
-	SOF_DAI_INTEL_SSP,
-	SOF_DAI_INTEL_DMIC,
-	SOF_DAI_INTEL_HDA,
+	SOF_DAI_INTEL_NONE = 0,	/**< None */
+	SOF_DAI_INTEL_SSP,		/**< Intel SSP */
+	SOF_DAI_INTEL_DMIC,		/**< Intel DMIC */
+	SOF_DAI_INTEL_HDA,		/**< Intel HD/A */
 };
 
 /* SSP Configuration Request - SOF_IPC_DAI_SSP_CONFIG */

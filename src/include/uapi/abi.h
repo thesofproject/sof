@@ -28,24 +28,34 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+/**
+ * \file include/uapi/abi.h
+ * \brief ABI definitions
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
+
 #ifndef __INCLUDE_UAPI_ABI_H__
 #define __INCLUDE_UAPI_ABI_H__
 
+/** \brief SOF ABI version number. */
 #define SOF_ABI_VERSION		1
-#define SOF_ABI_MAGIC		0x00464F53	/* "SOF\0" */
 
-/*
- * Header for all non IPC ABI data. Identifies data type, size and ABI.
+/** \brief SOF ABI magic number "SOF\0". */
+#define SOF_ABI_MAGIC		0x00464F53
+
+/**
+ * \brief Header for all non IPC ABI data.
+ *
+ * Identifies data type, size and ABI.
  * Used by any bespoke component data structures or binary blobs.
  */
-
 struct sof_abi_hdr {
-	uint32_t magic;		/* 'S', 'O', 'F', '\0' */
-	uint32_t type;		/* component specific type */
-	uint32_t size;		/* size in bytes of data excluding this struct */
-	uint32_t abi;		/* SOF ABI version */
-	uint32_t comp_abi;	/* component specific ABI version */
-	char data[0];
+	uint32_t magic;		/**< 'S', 'O', 'F', '\0' */
+	uint32_t type;		/**< component specific type */
+	uint32_t size;		/**< size in bytes of data excl. this struct */
+	uint32_t abi;		/**< SOF ABI version */
+	uint32_t comp_abi;	/**< component specific ABI version */
+	char data[0];		/**< data */
 }  __attribute__((packed));
 
 #endif

@@ -1,7 +1,7 @@
 if BUILD_RIMAGE
 SUBDIRS = rimage
 else
-SUBDIRS = src
+SUBDIRS = doc src
 endif
 
 ACLOCAL_AMFLAGS = -I m4
@@ -38,6 +38,11 @@ dist-hook:
 	./version.sh $(top_srcdir)
 	cat .version > $(distdir)/.tarball-version
 	cat .version > $(distdir)/.version
+
+doc-dummy:
+
+doc: doc-dummy
+	$(MAKE) -C doc doc
 
 all-local:
 	rm -f $(top_srcdir)/src/include/version.h
