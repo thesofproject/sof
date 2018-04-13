@@ -144,8 +144,8 @@ do
 				simple_test nocodec $mode "NoCodec" $format $ssp s16le 20 16 1920000 19200000 $protocol
 				simple_test nocodec $mode "NoCodec" $format $ssp s24le 25 24 2400000 19200000 $protocol
 
-				simple_test nocodec $mode "SSP${ssp}-Codec" $format $ssp s16le 20 16 1920000 19200000 $protocol
-				simple_test nocodec $mode "SSP${ssp}-Codec" $format $ssp s24le 25 24 2400000 19200000 $protocol
+				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s16le 20 16 1920000 19200000 $protocol
+				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s24le 25 24 2400000 19200000 $protocol
 			done
 		done
 		simple_test nocodec passthrough "NoCodec" s16le $ssp s16le 20 16 1920000 19200000 $protocol
