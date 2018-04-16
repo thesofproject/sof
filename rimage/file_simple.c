@@ -259,7 +259,7 @@ static int simple_write_module_reloc(struct image *image, struct module *module)
 {
 	struct snd_sof_mod_hdr hdr;
 	size_t count;
-	int i, err;
+	int err;
 
 	hdr.num_blocks = 1;
 	hdr.size = module->text_size + module->data_size;
@@ -288,7 +288,7 @@ static int simple_write_module_reloc(struct image *image, struct module *module)
 
 	err = write_block_reloc(image, module);
 	if (err < 0) {
-		fprintf(stderr, "error: failed to write section #%d\n", i);
+		fprintf(stderr, "error: failed to write section #%d\n", err);
 		return err;
 	}
 
