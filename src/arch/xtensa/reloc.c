@@ -38,6 +38,12 @@
 
 #define XCC_MOD_OFFSET		0x8
 
+#define XTENSA_OPCODE_CALLN	0x5
+#define XTENSA_OPMASK_CALLN	0xf
+
+#define XTENSA_OPCODE_L32R	0x1
+#define XTENSA_OPMASK_L32R	0xf
+
 struct section {
 	struct elf32_section_hdr *shdr;
 	void *data;
@@ -94,14 +100,85 @@ static inline uint32_t elf_get_symbol_addr(struct reloc *reloc,
 	return 0;
 }
 
-static int elf_reloc_section(struct reloc *reloc, struct section *section,
-	struct rela *rela)
+static int elf_reloc_section(struct reloc *reloc,
+			     struct elf32_relocation *item,
+			     struct elf32_symbol *symbol,
+				 void *section_base)
+{
+	unsigned char *rloc;
+	uint32_t rval;
+	const char *symbol_name;
+
+	/* reloc location */
+	rloc = reloc->elf + reloc->sect_hdr[symbol->st_shndx].sh_offset +
+	       item->r_offset;
+
+	/* calc value depending on type */
+	switch (ELF32_ST_BIND(symbol->st_info)) {
+	case STB_GLOBAL:
+
+		/* get symbol name */
+		symbol_name = elf_get_string(reloc, symbol->st_name);
+		if (!symbol_name)
+			return -EINVAL;
+
+		/* get symbol address */
+		rval = elf_get_symbol_addr(reloc, symbol_name);
+		if (rval == 0)
+			return -EINVAL;
+
+		rval += item->r_addend;
+		break;
+	case STB_LOCAL:
+	case STB_WEAK:
+	default:
+		rval = (uint32_t)section_base + item->r_addend;
+		break;
+	}
+
+	/* relocate based on reloc type */
+	switch (ELF32_R_TYPE(item->r_info)) {
+	case R_XTENSA_NONE:
+	case R_XTENSA_ASM_EXPAND:
+	case R_XTENSA_DIFF8:
+	case R_XTENSA_DIFF16:
+	case R_XTENSA_DIFF32:
+		/* nothing to do for these relocs */
+		break;
+	case R_XTENSA_32:
+	case R_XTENSA_PLT:
+		/* add value to location as 32 bit value */
+		*(uint32_t *)rloc += rval;
+		break;
+
+	case R_XTENSA_SLOT0_OP:
+		/* both these calls are PC relative - do we need to reloc ? */
+		if ((rloc[0] & XTENSA_OPMASK_CALLN) == XTENSA_OPCODE_CALLN) {
+
+			trace_value(0xca11);
+
+		} else if ((rloc[0] & XTENSA_OPMASK_L32R) ==
+			   XTENSA_OPCODE_L32R) {
+
+			trace_value(0x1325);
+		}
+		break;
+
+	default:
+		/* cant reloc this type */
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int elf_reloc_sections(struct reloc *reloc, struct section *section,
+	struct rela *rela, void *section_base)
 {
 	struct elf32_symbol *sym;
-	uint32_t addr;
 	int i;
 	int num_relocs;
-	const char *symbol_name;
+	int err;
 
 	/* make sure section and relocation tables exist */
 	if (section == NULL || section->shdr == NULL)
@@ -114,36 +191,13 @@ static int elf_reloc_section(struct reloc *reloc, struct section *section,
 	/* for each relocation */
 	for (i = 0; i < num_relocs; i++) {
 
-		/* make sure relocation is valid type */
-		if (ELF32_R_TYPE(rela->item[i].r_info) == R_XTENSA_SLOT0_OP)
-			continue;
-		if (ELF32_R_TYPE(rela->item[i].r_info) == R_XTENSA_ASM_EXPAND)
-			continue;
-
-		/* get symbol table entry for relocaton */
+		/* get symbol table entry for relocation */
 		sym = &reloc->symbol[ELF32_R_SYM(rela->item[i].r_info)];
 
-		/* symbol must have a name TODO: misses data */
-		if (sym->st_name == 0)
-			continue;
-
-		/* symbol must be global */
-		if (ELF32_ST_BIND(sym->st_info) != STB_GLOBAL)
-			continue;
-
-		/* get symbol name */
-		symbol_name = elf_get_string(reloc, sym->st_name);
-		if (!symbol_name)
-			return -EINVAL;
-
-		/* get symbol address */
-		addr = elf_get_symbol_addr(reloc, symbol_name);
-		if (addr == 0)
-			return -EINVAL;
-
-		/* add text value to address at offset */
-		*((uint32_t *)(section->data + rela->item[i].r_offset)) =
-			addr + rela->item[i].r_addend;
+		err = elf_reloc_section(reloc, &rela->item[i], sym,
+					section_base);
+		if (err < 0)
+			return err;
 	}
 
 	return 0;
@@ -320,16 +374,23 @@ int arch_elf_parse_sections(struct sof_module *smod)
 
 int arch_elf_reloc_sections(struct sof_module *smod)
 {
-	int i;
 	int ret;
 
-	/* relocate each section */
-	for (i = SOF_DATA_SECTION; i <= SOF_TEXT_SECTION; i++) {
-		ret = elf_reloc_section(reloc, &reloc->section[i],
-					&reloc->rela[i]);
-		if (ret < 0)
-			goto err;
-	}
+	/* relocate each rela */
+	ret = elf_reloc_sections(reloc, &reloc->section[SOF_TEXT_SECTION],
+				&reloc->rela[SOF_TEXT_SECTION], smod->text);
+	if (ret < 0)
+		goto err;
+
+	ret = elf_reloc_sections(reloc, &reloc->section[SOF_DATA_SECTION],
+				&reloc->rela[SOF_DATA_SECTION], smod->data);
+	if (ret < 0)
+		goto err;
+
+	ret = elf_reloc_sections(reloc, &reloc->section[SOF_RODATA_SECTION],
+				&reloc->rela[SOF_RODATA_SECTION], smod->rodata);
+	if (ret < 0)
+		goto err;
 
 	/* write and invalidate text section */
 	rmemcpy(smod->text, reloc->section[SOF_TEXT_SECTION].data,

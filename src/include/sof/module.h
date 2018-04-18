@@ -89,9 +89,15 @@ struct elf32_section_hdr {
 #define ELF32_R_TYPE(val)		((val) & 0xff)
 
 /* relocation types - r_info */
-#define R_XTENSA_32_PCREL	14
-#define R_XTENSA_SLOT0_OP	20
+#define R_XTENSA_NONE           0
+#define R_XTENSA_32          1
+#define R_XTENSA_PLT            6
 #define R_XTENSA_ASM_EXPAND	11
+#define R_XTENSA_32_PCREL	14
+#define R_XTENSA_DIFF8		17
+#define R_XTENSA_DIFF16		18
+#define R_XTENSA_DIFF32		19
+#define R_XTENSA_SLOT0_OP	20
 
 /* ELF 32bit relocation entry */
 struct elf32_relocation {
