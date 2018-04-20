@@ -1,4 +1,4 @@
-EXTRA_DIST=sof_uapi.doxygen
+EXTRA_DIST=sof_uapi.doxygen.in
 
 AM_CPPFLAGS=-I$(top_srcdir)/include
 
