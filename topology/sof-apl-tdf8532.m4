@@ -77,13 +77,13 @@ PCM_DUPLEX_ADD(Port2, 4, 1, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 # BE configurations - overrides config in ACPI if present
 #
 DAI_CONFIG(SSP, 4, SSP4-Codec, DSP_B, 32,
-	DAI_CLOCK(mclk, 24576000, slave),
-	DAI_CLOCK(bclk, 12288000, slave),
-	DAI_CLOCK(fsync, 48000, slave),
+	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+	DAI_CLOCK(bclk, 12288000, codec_slave),
+	DAI_CLOCK(fsync, 48000, codec_slave),
 	DAI_TDM(8, 32, 15, 15))
 
 DAI_CONFIG(SSP, 2, SSP2-Codec, I2S, 16,
-	DAI_CLOCK(mclk, 24576000, slave),
-	DAI_CLOCK(bclk, 1536000, slave),
-	DAI_CLOCK(fsync, 48000, slave),
+	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+	DAI_CLOCK(bclk, 1536000, codec_slave),
+	DAI_CLOCK(fsync, 48000, codec_slave),
 	DAI_TDM(2, 16, 3, 3))
