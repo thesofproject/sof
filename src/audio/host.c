@@ -466,6 +466,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_STOP:
+		ret = dma_stop(hd->dma, hd->chan);
 		ret = host_stop(dev);
 		break;
 	case COMP_TRIGGER_START:
