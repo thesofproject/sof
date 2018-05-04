@@ -173,6 +173,8 @@ do
 done
 
 # for CNL
+simple_test nocodec passthrough "NoCodec" s16le 2 s16le 25 16 2400000 24000000 I2S
+simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 24000000 I2S
 simple_test nocodec volume "NoCodec" s16le 2 s16le 25 16 2400000 24000000 I2S
 simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 24000000 I2S
 simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 24000000 I2S
