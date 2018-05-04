@@ -115,7 +115,9 @@ struct sof;
 #define platform_panic(__x) { \
 	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, \
 			     (0xdead000 | (__x)) & 0x3fffffff); \
-	ipc_write(IPC_DIPCIDR, 0x80000000 | ((0xdead000 | __x) & 0x3fffffff)); \
+	ipc_write(IPC_DIPCIDD, MAILBOX_EXCEPTION_OFFSET + 2 * 0x20000); \
+	ipc_write(IPC_DIPCIDR, 0x80000000 | \
+		  ((0xdead000 | (__x)) & 0x3fffffff)); \
 }
 
 /* Platform defined trace code */

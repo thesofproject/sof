@@ -25,7 +25,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Authors: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *	    Xiuli Pan <xiuli.pan@linux.intel.com>
  */
 
 #ifndef __PLATFORM_PLATFORM_H__
@@ -100,8 +101,10 @@ struct sof;
 #define PLATFORM_IDLE_TIME	750000
 
 /* Platform defined panic code */
-#define platform_panic(__x) \
-	shim_write(SHIM_IPCD, (SHIM_IPCD_BUSY | 0xdead000 | __x))
+#define platform_panic(__x) { \
+	shim_write(SHIM_IPCX, MAILBOX_EXCEPTION_OFFSET & 0x3fffffff); \
+	shim_write(SHIM_IPCD, (SHIM_IPCD_BUSY | 0xdead000 | __x)); \
+}
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
