@@ -273,9 +273,68 @@ struct sof_ipc_dai_hda_params {
 } __attribute__((packed));
 
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
+
+/* This struct is defined per 2ch PDM controller available in the platform.
+ * Normally it is sufficient to set the used microphone specific enables to 1
+ * and keep other parameters as zero. The customizations are:
+ *
+ * 1. If a device mixes different microphones types with different polarity
+ * and/or the absolute polarity matters the PCM signal from a microphone
+ * can be inverted with the controls.
+ *
+ * 2. If the microphones in a stereo pair do not appear in captured stream
+ * in desired order due to board schematics choises they can be swapped with
+ * the clk_edge parameter.
+ *
+ * 3. If PDM bit errors are seen in capture (poor quality) the skew parameter
+ * that delays the sampling time of data by half cycles of DMIC source clock
+ * can be tried for improvement. However there is no guarantee for this to fix
+ * data integrity problems.
+ */
+struct sof_ipc_dai_dmic_pdm_ctrl {
+	uint16_t enable_mic_a; /* Use A (left) channel mic (0 or 1)*/
+	uint16_t enable_mic_b; /* Use B (right) channel mic (0 or 1)*/
+	uint16_t polarity_mic_a; /* Optionally invert mic A signal (0 or 1) */
+	uint16_t polarity_mic_b; /* Optionally invert mic B signal (0 or 1) */
+	uint16_t clk_edge; /* Optionally swap data clock edge (0 or 1) */
+	uint16_t skew; /* Adjust PDM data sampling vs. clock (0..15) */
+} __attribute__((packed));
+
+/* This struct contains the global settings for all 2ch PDM controllers. The
+ * version number used in configuration data is checked vs. version used by
+ * device driver src/drivers/dmic.c need to match. It is incremented from
+ * initial value 1 if updates done for the to driver would alter the operation
+ * of the microhone.
+ *
+ * Note: The microphone clock (pdmclk_min, pdmclk_max, duty_min, duty_max)
+ * parameters need to be set as defined in microphone data sheet. E.g. clock
+ * range 1.0 - 3.2 MHz is usually supported microphones. Some microphones are
+ * multi-mode capable and there may be denied mic clock frequencies between
+ * the modes. In such case set the clock range limits of the desired mode to
+ * avoid the driver to set clock to an illegal rate.
+ *
+ * The duty cycle could be set to 48-52% if not known. Generally these
+ * parameters can be altered within data sheet specified limits to match
+ * required audio application performance power.
+ *
+ * The microphone clock needs to be usually about 50-80 times the used audio
+ * sample rate. With highest sample rates above 48 kHz this can relaxed
+ * somewhat.
+ */
 struct sof_ipc_dai_dmic_params {
 	struct sof_ipc_hdr hdr;
-	/* TODO */
+	uint32_t driver_ipc_version; /* Version (1..N) */
+	uint32_t pdmclk_min; /* Minimum microphone clock in Hz (100000..N) */
+	uint32_t pdmclk_max; /* Maximum microphone clock in Hz (min...N) */
+	uint32_t fifo_fs_a;  /* FIFO A sample rate in Hz (8000..96000) */
+	uint32_t fifo_fs_b;  /* FIFO B sample rate in Hz (8000..96000) */
+	/* TODO: FIFO word lengths can be retrieved from SOF_DAI_FMT */
+	uint16_t fifo_bits_a; /* FIFO A word length (16 or 24) */
+	uint16_t fifo_bits_b; /* FIFO B word length (16 or 24) */
+	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
+	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
+	uint32_t number_of_pdm_controllers; /* Number 2ch controllers (2) */
+	struct sof_ipc_dai_dmic_pdm_ctrl pdm[];
 } __attribute__((packed));
 
 /* general purpose DAI configuration */
