@@ -3,7 +3,9 @@
 # Dependencies
 #
 
-
+if XARGS
+export USE_XARGS=yes
+endif
 
 DEPS = \
 	../dsps/*.m4 \

@@ -5,6 +5,8 @@ AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([rmbox/rmbox.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CHECK_HEADER([sof/uapi/abi.h])
+AC_CHECK_PROG([XARGS], xargs, "yes", "no", [$PATH])
+AM_CONDITIONAL(XARGS, test "$XARGS" = "yes")
 
 AC_CANONICAL_HOST
 
