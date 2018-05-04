@@ -42,6 +42,7 @@
 #include <sof/clock.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/math/numbers.h>
 #include <uapi/ipc.h>
 
 #include "src_config.h"
