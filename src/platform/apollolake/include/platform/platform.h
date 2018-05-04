@@ -27,6 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Xiuli Pan <xiuli.pan@linux.intel.com>
  */
 
 #ifndef __PLATFORM_PLATFORM_H__
@@ -117,13 +118,14 @@ struct sof;
 
 /* Platform defined panic code */
 #define platform_panic(__x) { \
-	sw_reg_write(SRAM_REG_FW_STATUS, (0xdead000 | __x) & 0x3fffffff); \
+	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, \
+			     (0xdead000 | (__x)) & 0x3fffffff); \
 	ipc_write(IPC_DIPCI, 0x80000000 | ((0xdead000 | __x) & 0x3fffffff)); \
 }
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
-	sw_reg_write(SRAM_REG_FW_TRACEP, __x)
+	mailbox_sw_reg_write(SRAM_REG_FW_TRACEP, (__x))
 
 extern struct timer *platform_timer;
 
