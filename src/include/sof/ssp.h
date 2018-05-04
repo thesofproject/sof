@@ -38,8 +38,6 @@
 #include <sof/trace.h>
 #include <sof/wait.h>
 
-#define BIT(x) (1 << (x))
-
 #define SSP_CLK_AUDIO	0
 #define SSP_CLK_NET_PLL	1
 #define SSP_CLK_EXT	2
