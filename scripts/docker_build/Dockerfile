@@ -14,7 +14,7 @@
 # docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git -v <soft git dir>:/home/sof/work/soft.git --user `id -u` sof ./incremental.sh
 #
 
-FROM ubuntu
+FROM ubuntu:16.04
 ARG UID=1000
 
 RUN apt-get -y update && \
