@@ -596,23 +596,27 @@ static void ssp_start(struct dai *dai, int direction)
 }
 
 /* stop the SSP for either playback or capture */
-static void ssp_stop(struct dai *dai)
+static void ssp_stop(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
 	spin_lock(&ssp->lock);
 
-	/* stop Rx if we are not capturing */
-	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE) {
+	/* stop Rx if neeed */
+	if (direction == DAI_DIR_CAPTURE &&
+	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x0 << 8);
+		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
 		trace_ssp("Ss0");
 	}
 
-	/* stop Tx if we are not playing */
-	if (ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+	/* stop Tx if needed */
+	if (direction == DAI_DIR_PLAYBACK &&
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp_update_bits(dai, SSTSA, 0x1 << 8, 0x0 << 8);
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
 		trace_ssp("Ss1");
 	}
 
@@ -647,8 +651,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_PAUSE:
-		ssp->state[direction] = COMP_STATE_PAUSED;
-		ssp_stop(dai);
+		ssp_stop(dai, direction);
 		break;
 	case COMP_TRIGGER_RESUME:
 		ssp_context_restore(dai);
