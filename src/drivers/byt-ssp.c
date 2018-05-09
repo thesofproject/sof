@@ -514,6 +514,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_CAPTURE &&
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
+		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
 		trace_ssp("Ss0");
 	}
 
@@ -521,6 +522,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	if (direction == DAI_DIR_PLAYBACK &&
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
+		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
 		trace_ssp("Ss1");
 	}
 
