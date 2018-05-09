@@ -99,9 +99,11 @@ struct dai *dai_get(uint32_t type, uint32_t index)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
-		if (ssp[i].type == type && ssp[i].index == index)
-			return &ssp[i];
+	if (type == SOF_DAI_INTEL_SSP) {
+		for (i = 0; i < ARRAY_SIZE(ssp); i++) {
+			if (ssp[i].type == type && ssp[i].index == index)
+				return &ssp[i];
+		}
 	}
 
 	return NULL;
