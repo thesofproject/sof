@@ -88,7 +88,7 @@
 #define IRQ_BIT_LVL5_DMIC		6
 #define IRQ_BIT_LVL5_SSP(x)		(0 + x)
 
-/* Level 2 Peripheral IRQ mappings */
+/* Priority 2 Peripheral IRQ mappings */
 #define IRQ_EXT_HP_GPDMA_LVL2(xcpu) \
 	SOF_IRQ(IRQ_BIT_LVL2_HP_GP_DMA0(0), 2, xcpu, IRQ_NUM_EXT_LEVEL2)
 #define IRQ_EXT_IDC_LVL2(xcpu) \
@@ -106,7 +106,7 @@
 #define IRQ_EXT_SHA256_LVL2(xcpu) \
 	SOF_IRQ(IRQ_BIT_LVL2_SHA256, 2, xcpu, IRQ_NUM_EXT_LEVEL2)
 
-/* Level 3 Peripheral IRQ mappings */
+/* Priority 3 Peripheral IRQ mappings */
 #define IRQ_EXT_CODE_DMA_LVL3(xcpu) \
 	SOF_IRQ(IRQ_BIT_LVL3_CODE_LOADER, 3, xcpu, IRQ_NUM_EXT_LEVEL3)
 #define IRQ_EXT_HOST_DMA_IN_LVL3(xcpu, channel) \
@@ -114,17 +114,17 @@
 #define IRQ_EXT_HOST_DMA_OUT_LVL3(xcpu, channel) \
 	SOF_IRQ(IRQ_BIT_LVL3_HOST_STREAM_OUT(channel), 3, xcpu, IRQ_NUM_EXT_LEVEL3)
 
-/* Level 4 Peripheral IRQ mappings */
+/* Priority 4 Peripheral IRQ mappings */
 #define IRQ_EXT_LINK_DMA_IN_LVL4(xcpu, channel) \
 	SOF_IRQ(IRQ_BIT_LVL4_LINK_STREAM_IN(channel), 4, xcpu, IRQ_NUM_EXT_LEVEL4)
 #define IRQ_EXT_LINK_DMA_OUT_LVL4(xcpu, channel) \
 	SOF_IRQ(IRQ_BIT_LVL4_LINK_STREAM_OUT(channel), 4, xcpu, IRQ_NUM_EXT_LEVEL4)
 
-/* Level 5 Peripheral IRQ mappings */
+/* Priority 5 Peripheral IRQ mappings */
 #define IRQ_EXT_LP_GPDMA0_LVL5(xcpu, channel) \
-	SOF_IRQ(IRQ_BIT_LVL5_LP_GP_DMA0, 5, xcpu, IRQ_NUM_EXT_LEVEL5)
-#define IRQ_EXT_LP_GPDMA1_LVL4(xcpu, channel) \
-	SOF_IRQ(IRQ_BIT_LVL5_LP_GP_DMA1, 4, xcpu, IRQ_NUM_EXT_LEVEL4)
+	SOF_ID_IRQ(0, IRQ_BIT_LVL5_LP_GP_DMA0, 5, xcpu, IRQ_NUM_EXT_LEVEL5)
+#define IRQ_EXT_LP_GPDMA1_LVL5(xcpu, channel) \
+	SOF_ID_IRQ(1, IRQ_BIT_LVL5_LP_GP_DMA0, 5, xcpu, IRQ_NUM_EXT_LEVEL5)
 #define IRQ_EXT_SSP0_LVL5(xcpu) \
 	SOF_IRQ(IRQ_BIT_LVL5_SSP(0), 5, xcpu, IRQ_NUM_EXT_LEVEL5)
 #define IRQ_EXT_SSP1_LVL5(xcpu) \
@@ -161,7 +161,7 @@
 
 void platform_interrupt_init(void);
 
-struct irq_parent *platform_irq_get_parent(uint32_t irq);
+struct irq_desc *platform_irq_get_parent(uint32_t irq);
 void platform_interrupt_set(int irq);
 void platform_interrupt_clear(uint32_t irq, uint32_t mask);
 uint32_t platform_interrupt_get_enabled(void);

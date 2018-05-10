@@ -39,6 +39,8 @@
 
 struct sof;
 
+#define MAX_CORE_COUNT 2
+
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256

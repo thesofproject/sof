@@ -90,7 +90,7 @@
 
 static inline void platform_interrupt_init(void) {}
 
-static inline struct irq_parent *platform_irq_get_parent(uint32_t irq)
+static inline struct irq_desc *platform_irq_get_parent(uint32_t irq)
 {
 	return NULL;
 }
