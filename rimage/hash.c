@@ -35,7 +35,7 @@
 void module_sha256_create(struct image *image)
 {
 	image->md = EVP_sha256();
-	image->mdctx = EVP_MD_CTX_create();
+	image->mdctx = EVP_MD_CTX_new();
 
 	EVP_DigestInit_ex(image->mdctx, image->md, NULL);
 }
@@ -53,7 +53,7 @@ void module_sha256_complete(struct image *image, uint8_t *hash)
 	int i;
 #endif
 	EVP_DigestFinal_ex(image->mdctx, md_value, &md_len);
-	EVP_MD_CTX_destroy(image->mdctx);
+	EVP_MD_CTX_free(image->mdctx);
 
 	memcpy(hash, md_value, md_len);
 #if DEBUG_HASH
