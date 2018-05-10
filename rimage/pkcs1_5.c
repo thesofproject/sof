@@ -21,6 +21,7 @@
 #include <openssl/bio.h>
 #include <openssl/sha.h>
 #include <openssl/objects.h>
+#include <openssl/bn.h>
 #include <stdio.h>
 #include <errno.h>
 
@@ -56,6 +57,7 @@ int pkcs_sign(struct image *image, struct fw_image_manifest *man,
 	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
 	FILE *fp;
+	const BIGNUM *n, *e, *d;
 	unsigned char digest[SHA256_DIGEST_LENGTH], mod[MAN_RSA_KEY_MODULUS_LEN];
 	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
 	char path[256];
@@ -114,8 +116,9 @@ int pkcs_sign(struct image *image, struct fw_image_manifest *man,
 		fprintf(stderr, "error: failed to sign manifest\n");
 
 	/* copy public key modulus and exponent to manifest */
-	BN_bn2bin(priv_rsa->n, mod);
-	BN_bn2bin(priv_rsa->e, (unsigned char *)man->css.exponent);
+	RSA_get0_key(priv_rsa, &n, &e, &d);
+	BN_bn2bin(n, mod);
+	BN_bn2bin(e, (unsigned char *)man->css.exponent);
 
 	/* modulus is reveresd  */
 	for (i = 0; i < MAN_RSA_KEY_MODULUS_LEN; i++)
