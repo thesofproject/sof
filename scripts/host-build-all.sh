@@ -10,6 +10,6 @@ set -e
 pwd=`pwd`
 
 # Build library for host platform architecture
-./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
+./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu
 make
 make install
