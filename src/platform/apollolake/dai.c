@@ -32,6 +32,7 @@
 #include <sof/sof.h>
 #include <sof/dai.h>
 #include <sof/ssp.h>
+#include <sof/dmic.h>
 #include <sof/stream.h>
 #include <sof/audio/component.h>
 #include <platform/platform.h>
@@ -146,6 +147,55 @@ static struct dai ssp[PLATFORM_NUM_SSP] = {
 	.ops		= &ssp_ops,
 },};
 
+#if defined CONFIG_DMIC
+
+static struct dai dmic[2] = {
+	/* Testing idea if DMIC FIFOs A and B to access the same microphones
+	 * with two different sample rate and PCM format could be presented
+	 * similarly as SSP0..N. The difference however is that the DMIC
+	 * programming is global and not per FIFO.
+	 */
+
+	/* Primary FIFO A */
+	{
+		.type = SOF_DAI_INTEL_DMIC,
+		.index = 0,
+		.plat_data = {
+			.base = DMIC_BASE,
+			.irq = IRQ_EXT_DMIC_LVL5(0),
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+				.offset = 0, /* No playback */
+				.handshake = 0,
+			},
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+				.offset = DMIC_BASE + OUTDATA0,
+				.handshake = DMA_HANDSHAKE_DMIC_CH0,
+			}
+		},
+		.ops = &dmic_ops,
+	},
+	/* Secondary FIFO B */
+	{
+		.type = SOF_DAI_INTEL_DMIC,
+		.index = 1,
+		.plat_data = {
+			.base = DMIC_BASE,
+			.irq = IRQ_EXT_DMIC_LVL5(0),
+			.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+				.offset = 0, /* No playback */
+				.handshake = 0,
+			},
+			.fifo[SOF_IPC_STREAM_CAPTURE] = {
+				.offset = DMIC_BASE + OUTDATA1,
+				.handshake = DMA_HANDSHAKE_DMIC_CH1,
+			}
+		},
+		.ops = &dmic_ops,
+	}
+};
+
+#endif
+
 struct dai *dai_get(uint32_t type, uint32_t index)
 {
 	int i;
@@ -156,6 +206,15 @@ struct dai *dai_get(uint32_t type, uint32_t index)
 				return &ssp[i];
 		}
 	}
+
+#if defined CONFIG_DMIC
+	if (type == SOF_DAI_INTEL_DMIC) {
+		for (i = 0; i < ARRAY_SIZE(dmic); i++) {
+			if (dmic[i].type == type && dmic[i].index == index)
+				return &dmic[i];
+		}
+	}
+#endif
 
 	return NULL;
 }

@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2016, Intel Corporation
  * All rights reserved.
@@ -171,7 +172,11 @@
 #define SOF_TEXT_SIZE			0x19000
 
 /* initialized data */
+#if defined CONFIG_DMIC
+#define SOF_DATA_SIZE			0x1a000
+#else
 #define SOF_DATA_SIZE			0x19000
+#endif
 
 /* bss data */
 #define SOF_BSS_DATA_SIZE		0x2800
