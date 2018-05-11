@@ -26,13 +26,15 @@ endif
 if BUILD_APOLLOLAKE
 libdrivers_a_SOURCES += \
 	apl-ssp.c \
-	hda-dma.c
+	hda-dma.c \
+	dmic.c
 endif
 
 if BUILD_CANNONLAKE
 libdrivers_a_SOURCES += \
 	apl-ssp.c \
-	hda-dma.c
+	hda-dma.c \
+	dmic.c
 endif
 
 libdrivers_a_CFLAGS = \
