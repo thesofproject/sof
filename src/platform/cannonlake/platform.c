@@ -210,6 +210,7 @@ int platform_init(struct sof *sof)
 {
 	struct dma *dmac;
 	struct dai *ssp;
+	struct dai *dmic0;
 	int i;
 
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
@@ -288,6 +289,16 @@ int platform_init(struct sof *sof)
 			return -ENODEV;
 		dai_probe(ssp);
 	}
+
+	/* Init DMIC. Note that the two PDM controllers and four microphones
+	 * supported max. those are available in platform are handled by dmic0.
+	 */
+	trace_point(TRACE_BOOT_PLATFORM_DMIC);
+	dmic0 = dai_get(SOF_DAI_INTEL_DMIC, 0);
+	if (!dmic0)
+		return -ENODEV;
+
+	dai_probe(dmic0);
 
 	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(sof->dmat);

@@ -108,8 +108,8 @@
 #define L2_HP_SRAM_TLB_BASE	0x00003000
 
 /* DMICs */
-#define DMIC_BASE		0x00004000
-#define DMIC_SIZE		0x00004000
+#define DMIC_BASE		0x00010000
+#define DMIC_SIZE		0x00008000
 
 /* SSP */
 #define SSP_BASE(x)		(0x00077000 + x * SSP_SIZE)
@@ -240,7 +240,11 @@
 #define SOF_TEXT_SIZE		0x18000
 
 /* initialized data */
+#if defined CONFIG_DMIC
+#define SOF_DATA_SIZE		0x1b000
+#else
 #define SOF_DATA_SIZE		0x19000
+#endif
 
 /* bss data */
 #define SOF_BSS_DATA_SIZE		0x8000
