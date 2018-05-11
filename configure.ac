@@ -44,6 +44,12 @@ if test "$have_rimage" = "yes"; then
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
 
+# Disable DMIC driver if requested, by default build for supported platforms
+AC_ARG_ENABLE([dmic], AS_HELP_STRING([--disable-dmic], [Disable DMIC driver]))
+AS_IF([test "x$enable_dmic" != "xno"], [
+	AC_DEFINE([CONFIG_DMIC], [1], [Configure to build DMIC driver])
+])
+
 # Architecture support
 AC_ARG_WITH([arch],
         AS_HELP_STRING([--with-arch], [Specify DSP architecture]),
