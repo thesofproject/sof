@@ -82,7 +82,8 @@ int pkcs_sign(struct image *image, struct fw_image_manifest *man,
 	fprintf(stdout, " pkcs: signing with key %s\n", image->key_name);
 	fp = fopen(image->key_name, "r");
 	if (fp == NULL) {
-		fprintf(stderr, "error: can't open file %s %d\n", path, -errno);
+		fprintf(stderr, "error: can't open file %s %d\n",
+			image->key_name, -errno);
 		return -errno;
 	}
 	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
