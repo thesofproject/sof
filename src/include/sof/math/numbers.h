@@ -40,8 +40,19 @@
 
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
 
-/* Divide function that returns ceil() of quotient */
-int ceil_divide(int a, int b);
+/* This is a divide function that returns ceil of the quotient.
+ * E.g. ceil_divide(9, 3) returns 3, ceil_divide(10, 3) returns 4.
+ */
+static inline int ceil_divide(int a, int b)
+{
+	int c;
+
+	c = a / b;
+	if (c * b < a)
+		c++;
+
+	return c;
+}
 
 /* Find indices of equal values in a vector of integer values */
 int find_equal_int16(int16_t idx[], int16_t vec[], int n, int vec_length,

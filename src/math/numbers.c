@@ -49,20 +49,6 @@ int gcd(int a, int b)
 	return a;
 }
 
-/* This is a divide function that returns ceil of the quotient.
- * E.g. ceil_divide(9, 3) returns 3, ceil_divide(10, 3) returns 4.
- */
-int ceil_divide(int a, int b)
-{
-	int c;
-
-	c = a / b;
-	if (c * b < a)
-		c++;
-
-	return c;
-}
-
 /* This function searches from vec[] (of length vec_length) integer values
  * of n. The indexes to equal values is returned in idx[]. The function
  * returns the number of found matches. The max_results should be set to
