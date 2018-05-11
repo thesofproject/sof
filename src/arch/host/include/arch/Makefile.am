@@ -6,4 +6,5 @@ include_HEADERS = \
 	sof.h \
 	spinlock.h \
 	timer.h \
+	string.h \
 	wait.h
