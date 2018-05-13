@@ -32,6 +32,7 @@
 #define __PLATFORM_SHIM_H__
 
 #include <platform/memory.h>
+#include <sof/io.h>
 #include <stdint.h>
 
 #define SHIM_CSR		0x00
@@ -94,12 +95,12 @@
 #define SHIM_CLKCTL_SMOS(x)	(x << 24)
 #define SHIM_CLKCTL_MASK		(3 << 24)
 #define SHIM_CLKCTL_DCPLCG	(1 << 18)
-#define SHIM_CLKCTL_SSP1_EN	(1 << 17)
-#define SHIM_CLKCTL_SSP0_EN	(1 << 16)
+#define SHIM_CLKCTL_EN_SSP(x)	(1 << (16 + x))
 
 /* CSR2 / CS2 */
 #define SHIM_CSR2_SDFD_SSP0	(1 << 1)
 #define SHIM_CSR2_SDFD_SSP1	(1 << 2)
+#define SHIM_CSR2_SFCR_SSP(x)	(1 << (27 + x))
 
 /* LTRC */
 #define SHIM_LTRC_VAL(x)		(x << 0)
@@ -124,6 +125,12 @@ static inline uint32_t shim_read(uint32_t reg)
 static inline void shim_write(uint32_t reg, uint32_t val)
 {
 	*((volatile uint32_t*)(SHIM_BASE + reg)) = val;
+}
+
+static inline void shim_update_bits(uint32_t reg, uint32_t mask,
+	uint32_t value)
+{
+	io_reg_update_bits(SHIM_BASE + reg, mask, value);
 }
 
 #endif

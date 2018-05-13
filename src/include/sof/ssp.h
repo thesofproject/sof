@@ -120,10 +120,7 @@ extern const struct dai_ops ssp_ops;
 #define SSCR1_TTE	(1 << 30)
 #define SSCR1_TTELP	(1 << 31)
 
-#if defined CONFIG_BAYTRAIL ||\
-	defined CONFIG_CHERRYTRAIL ||\
-	defined CONFIG_BROADWELL ||\
-	defined CONFIG_HASWELL
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
 /* SSCR2 bits */
 #define SSCR2_URUN_FIX0	BIT(0)
 #define SSCR2_URUN_FIX1	BIT(1)
@@ -135,7 +132,8 @@ extern const struct dai_ops ssp_ops;
 #define SSCR2_ASRC_CNTR_CLR		BIT(9)
 #define SSCR2_ASRC_FRM_CNRT_EN		BIT(10)
 #define SSCR2_ASRC_INTR_MASK		BIT(11)
-#elif defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#elif defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+		|| defined CONFIG_HASWELL || defined CONFIG_BROADWELL
 #define SSCR2_TURM1		BIT(1)
 #define SSCR2_SDFD		BIT(14)
 #define SSCR2_SDPM		BIT(16)
