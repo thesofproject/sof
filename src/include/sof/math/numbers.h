@@ -33,6 +33,29 @@
 #ifndef NUMBERS_H
 #define NUMBERS_H
 
+#include <stdint.h>
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
+
+/* Divide function that returns ceil() of quotient */
+int ceil_divide(int a, int b);
+
+/* Find indices of equal values in a vector of integer values */
+int find_equal_int16(int16_t idx[], int16_t vec[], int n, int vec_length,
+	int max_results);
+
+/* Return the smallest value found in a vector */
+int16_t find_min_int16(int16_t vec[], int vec_length);
+
+/* Return the largest absolute value found in a vector */
+int32_t find_max_abs_int32(int32_t vec[], int vec_length);
+
+/* Count the left shift amount to normalize a 32 bit signed integer value
+ * without causing overflow. Input value 0 will result to 31.
+ */
+int norm_int32(int32_t val);
 
 #endif /* NUMBERS_H */

@@ -123,7 +123,7 @@
 
 /* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
 #define SHIM_CLKCTL_LPGPDMAFDCGB(x)	(0x1 << (26 + x))
-#define SHIM_CLKCTL_DMICFDCGB(x)	(0x1 << 24)
+#define SHIM_CLKCTL_DMICFDCGB           (0x1 << 24)
 #define SHIM_CLKCTL_I2SFDCGB(x)		(0x1 << (20 + x))
 #define SHIM_CLKCTL_I2SEFDCGB(x)	(0x1 << (18 + x))
 #define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))

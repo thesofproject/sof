@@ -32,6 +32,12 @@ void ri_css_hdr_create(struct image *image)
 	/* get local time and date */
 	gettimeofday(&tv, NULL);
 	date = localtime(&tv.tv_sec);
+
+	if (!date) {
+		fprintf(stderr, "error: cant get localtime %d\n", -errno);
+		return;
+	}
+
 	date->tm_year += 1900;
 	fprintf(stdout, " css: set build date to %d:%2.2d:%2.2d\n",
 		date->tm_year, date->tm_mon, date->tm_mday);

@@ -639,6 +639,11 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			break;
 		}
 		break;
+	case SOF_DAI_INTEL_DMIC:
+		/* TODO: No hardwired values here. */
+		dd->config.burst_elems = 2;
+		dev->frame_bytes = 8;
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		trace_dai_error("de2");

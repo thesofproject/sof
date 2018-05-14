@@ -34,24 +34,31 @@
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
 #include <arch/interrupt.h>
+#include <arch/cpu.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-static void parent_level2_handler(void *data)
+static inline void irq_lvl2_handler(void *data,
+				    int level,
+				    uint32_t ilxsd,
+				    uint32_t ilxmsd,
+				    uint32_t ilxmcd)
 {
-	struct irq_parent *parent = (struct irq_parent *)data;
-	struct irq_child * child = NULL;
+	struct irq_desc *parent = (struct irq_desc *)data;
+	struct irq_desc *child = NULL;
+	struct list_item *clist;
 	uint32_t status;
 	uint32_t i = 0;
+	uint32_t unmask = 0;
 
 	/* mask the parent IRQ */
-	arch_interrupt_disable_mask(1 << IRQ_NUM_EXT_LEVEL2);
+	arch_interrupt_disable_mask(1 << level);
 
 	/* mask all child interrupts */
-	status = irq_read(REG_IRQ_IL2SD(0));
-	irq_write(REG_IRQ_IL2MSD(0), status);
+	status = irq_read(ilxsd);
+	irq_write(ilxmsd, status);
 
 	/* handle each child */
 	while (status) {
@@ -61,16 +68,21 @@ static void parent_level2_handler(void *data)
 			goto next;
 
 		/* get child if any and run handler */
-		child = parent->child[i];
-		if (child && child->handler) {
-			child->handler(child->handler_arg);
+		list_for_item(clist, &parent->child[i]) {
+			child = container_of(clist, struct irq_desc, irq_list);
 
-			/* unmask this bit i interrupt */
-			irq_write(REG_IRQ_IL2MCD(0), 0x1 << i);
-		} else {
-			/* nobody cared ? */
-			trace_irq_error("nbc");
+			if (child && child->handler) {
+				child->handler(child->handler_arg);
+				unmask = 1;
+			} else {
+				/* nobody cared ? */
+				trace_irq_error("nbc");
+			}
 		}
+
+		/* unmask this bit i interrupt */
+		if (unmask)
+			irq_write(ilxmcd, 0x1 << i);
 
 next:
 		status >>= 1;
@@ -78,158 +90,73 @@ next:
 	}
 
 	/* clear parent and unmask */
-	arch_interrupt_clear(IRQ_NUM_EXT_LEVEL2);
-	arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_LEVEL2);
+	arch_interrupt_clear(level);
+	arch_interrupt_enable_mask(1 << level);
 }
 
-static void parent_level3_handler(void *data)
+#define IRQ_LVL2_HANDLER(n) int core = cpu_get_id(); \
+				irq_lvl2_handler(data, \
+				 IRQ_NUM_EXT_LEVEL##n, \
+				 REG_IRQ_IL##n##SD(core), \
+				 REG_IRQ_IL##n##MSD(core), \
+				 REG_IRQ_IL##n##MCD(core))
+
+static void irq_lvl2_level2_handler(void *data)
 {
-	struct irq_parent *parent = (struct irq_parent *)data;
-	struct irq_child * child = NULL;
-	uint32_t status;
-	uint32_t i = 0;
-
-	/* mask the parent IRQ */
-	arch_interrupt_disable_mask(1 << IRQ_NUM_EXT_LEVEL3);
-
-	/* mask all child interrupts */
-	status = irq_read(REG_IRQ_IL3SD(0));
-	irq_write(REG_IRQ_IL3MSD(0), status);
-
-	/* handle each child */
-	while (status) {
-
-		/* any IRQ for this child bit ? */
-		if ((status & 0x1) == 0)
-			goto next;
-
-		/* get child if any and run handler */
-		child = parent->child[i];
-		if (child && child->handler) {
-			child->handler(child->handler_arg);
-
-			/* unmask this bit i interrupt */
-			irq_write(REG_IRQ_IL3MCD(0), 0x1 << i);
-		} else {
-			/* nobody cared ? */
-			trace_irq_error("nbc");
-		}
-
-next:
-		status >>= 1;
-		i++;
-	}
-
-	/* clear parent and unmask */
-	arch_interrupt_clear(IRQ_NUM_EXT_LEVEL3);
-	arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_LEVEL3);
+	IRQ_LVL2_HANDLER(2);
 }
 
-static void parent_level4_handler(void *data)
+static void irq_lvl2_level3_handler(void *data)
 {
-	struct irq_parent *parent = (struct irq_parent *)data;
-	struct irq_child * child = NULL;
-	uint32_t status;
-	uint32_t i = 0;
-
-	/* mask the parent IRQ */
-	arch_interrupt_disable_mask(1 << IRQ_NUM_EXT_LEVEL4);
-
-	/* mask all child interrupts */
-	status = irq_read(REG_IRQ_IL4SD(0));
-	irq_write(REG_IRQ_IL4MSD(0), status);
-
-	/* handle each child */
-	while (status) {
-
-		/* any IRQ for this child bit ? */
-		if ((status & 0x1) == 0)
-			goto next;
-
-		/* get child if any and run handler */
-		child = parent->child[i];
-		if (child && child->handler) {
-			child->handler(child->handler_arg);
-
-			/* unmask this bit i interrupt */
-			irq_write(REG_IRQ_IL4MCD(0), 0x1 << i);
-		} else {
-			/* nobody cared ? */
-			trace_irq_error("nbc");
-		}
-
-next:
-		status >>= 1;
-		i++;
-	}
-
-	/* clear parent and unmask */
-	arch_interrupt_clear(IRQ_NUM_EXT_LEVEL4);
-	arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_LEVEL4);
+	IRQ_LVL2_HANDLER(3);
 }
 
-static void parent_level5_handler(void *data)
+static void irq_lvl2_level4_handler(void *data)
 {
-	struct irq_parent *parent = (struct irq_parent *)data;
-	struct irq_child * child = NULL;
-	uint32_t status;
-	uint32_t i = 0;
+	IRQ_LVL2_HANDLER(4);
+}
 
-	/* mask the parent IRQ */
-	arch_interrupt_disable_mask(1 << IRQ_NUM_EXT_LEVEL5);
-
-	/* mask all child interrupts */
-	status = irq_read(REG_IRQ_IL5SD(0));
-	irq_write(REG_IRQ_IL5MSD(0), status);
-
-	/* handle each child */
-	while (status) {
-
-		/* any IRQ for this child bit ? */
-		if ((status & 0x1) == 0)
-			goto next;
-
-		/* get child if any and run handler */
-		child = parent->child[i];
-		if (child && child->handler) {
-			child->handler(child->handler_arg);
-
-			/* unmask this bit i interrupt */
-			irq_write(REG_IRQ_IL5MCD(0), 0x1 << i);
-		} else {
-			/* nobody cared ? */
-			trace_irq_error("nbc");
-		}
-
-next:
-		status >>= 1;
-		i++;
-	}
-
-	/* clear parent and unmask */
-	arch_interrupt_clear(IRQ_NUM_EXT_LEVEL5);
-	arch_interrupt_enable_mask(1 << IRQ_NUM_EXT_LEVEL5);
+static void irq_lvl2_level5_handler(void *data)
+{
+	IRQ_LVL2_HANDLER(5);
 }
 
 /* DSP internal interrupts */
-static struct irq_parent dsp_irq[4] = {
-	{IRQ_NUM_EXT_LEVEL2, parent_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, parent_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, parent_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, parent_level5_handler, },
+static struct irq_desc dsp_irq[MAX_CORE_COUNT][4] = {
+	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
+	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
+	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
+	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+
+	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
+	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
+	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
+	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+
+	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
+	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
+	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
+	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+
+	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
+	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
+	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
+	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
 };
 
-struct irq_parent *platform_irq_get_parent(uint32_t irq)
+struct irq_desc *platform_irq_get_parent(uint32_t irq)
 {
+	int core = cpu_get_id();
+
 	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL2:
-		return &dsp_irq[0];
+		return &dsp_irq[core][0];
 	case IRQ_NUM_EXT_LEVEL3:
-		return &dsp_irq[1];
+		return &dsp_irq[core][1];
 	case IRQ_NUM_EXT_LEVEL4:
-		return &dsp_irq[2];
+		return &dsp_irq[core][2];
 	case IRQ_NUM_EXT_LEVEL5:
-		return &dsp_irq[3];
+		return &dsp_irq[core][3];
 	default:
 		return NULL;
 	}
@@ -242,19 +169,21 @@ uint32_t platform_interrupt_get_enabled(void)
 
 void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 {
+	int core = cpu_get_id();
+
 	/* mask external interrupt bit */
 	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MSD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL5MSD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MSD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL4MSD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MSD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL3MSD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MSD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL2MSD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	default:
 		break;
@@ -264,19 +193,21 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
+	int core = cpu_get_id();
+
 	/* unmask external interrupt bit */
 	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MCD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL5MCD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MCD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL4MCD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MCD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL3MCD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MCD(0), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL2MCD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
 	default:
 		break;
@@ -290,15 +221,18 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 
 void platform_interrupt_init(void)
 {
-	int i;
+	int i, j;
+	int core = cpu_get_id();
 
 	/* mask all external IRQs by default */
-	irq_write(REG_IRQ_IL2MSD(0), REG_IRQ_IL2MD_ALL);
-	irq_write(REG_IRQ_IL3MSD(0), REG_IRQ_IL3MD_ALL);
-	irq_write(REG_IRQ_IL4MSD(0), REG_IRQ_IL4MD_ALL);
-	irq_write(REG_IRQ_IL5MSD(0), REG_IRQ_IL5MD_ALL);
+	irq_write(REG_IRQ_IL2MSD(core), REG_IRQ_IL2MD_ALL);
+	irq_write(REG_IRQ_IL3MSD(core), REG_IRQ_IL3MD_ALL);
+	irq_write(REG_IRQ_IL4MSD(core), REG_IRQ_IL4MD_ALL);
+	irq_write(REG_IRQ_IL5MSD(core), REG_IRQ_IL5MD_ALL);
 
-	for (i = 0; i < ARRAY_SIZE(dsp_irq); i++) {
-		spinlock_init(&dsp_irq[i].lock);
+	for (i = 0; i < ARRAY_SIZE(dsp_irq[core]); i++) {
+		spinlock_init(&dsp_irq[core][i].lock);
+		for (j = 0; j < PLATFORM_IRQ_CHILDREN; j++)
+			list_init(&dsp_irq[core][i].child[j]);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,44 +25,19 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Rander Wang <rander.wang@linux.intel.com>
+ *
  */
 
-#ifndef __INCLUDE_IO__
-#define __INCLUDE_IO__
+#ifndef __INCLUDE_ARCH_CPU__
+#define __INCLUDE_ARCH_CPU__
 
-#include <stdint.h>
-
-/* Macros for register bits access */
-#define BIT(b)			(1 << (b))
-#define MASK(b_hi, b_lo)	((1 << ((b_hi) - (b_lo) + 1)) - 1)
-#define SET_BIT(b, x)		(((x) & 1) << (b))
-#define SET_BITS(b_hi, b_lo, x)	\
-	(((x) & ((1 << ((b_hi) - (b_lo) + 1)) - 1)) << (b_lo))
-
-static inline uint32_t io_reg_read(uint32_t reg)
+static inline int cpu_get_id(void)
 {
-	return *((volatile uint32_t*)reg);
-}
+	int prid;
 
-static inline void io_reg_write(uint32_t reg, uint32_t val)
-{
-	*((volatile uint32_t*)reg) = val;
-}
-
-static inline void io_reg_update_bits(uint32_t reg, uint32_t mask, uint32_t value)
-{
-	io_reg_write(reg, (io_reg_read(reg) & (~mask)) | (value & mask));
-}
-
-static inline uint16_t io_reg_read16(uint32_t reg)
-{
-	return *((volatile uint16_t*)reg);
-}
-
-static inline void io_reg_write16(uint32_t reg, uint16_t val)
-{
-	*((volatile uint16_t*)reg) = val;
+	__asm__("rsr.prid %0" : "=a"(prid));
+	return prid;
 }
 
 #endif

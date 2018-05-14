@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,44 +25,36 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ *
  */
 
-#ifndef __INCLUDE_IO__
-#define __INCLUDE_IO__
+/* PDM decimation FIR filters */
 
-#include <stdint.h>
+#include "pdm_decim_fir.h"
+#include "pdm_decim_int32_02_4288_5100_010_095.h"
+#include "pdm_decim_int32_02_4375_5100_010_095.h"
+#include "pdm_decim_int32_03_3850_5100_010_095.h"
+#include "pdm_decim_int32_03_4375_5100_010_095.h"
+#include "pdm_decim_int32_04_4375_5100_010_095.h"
+#include "pdm_decim_int32_05_4331_5100_010_095.h"
+#include "pdm_decim_int32_06_4156_5100_010_095.h"
+#include "pdm_decim_int32_08_4156_5380_010_090.h"
 
-/* Macros for register bits access */
-#define BIT(b)			(1 << (b))
-#define MASK(b_hi, b_lo)	((1 << ((b_hi) - (b_lo) + 1)) - 1)
-#define SET_BIT(b, x)		(((x) & 1) << (b))
-#define SET_BITS(b_hi, b_lo, x)	\
-	(((x) & ((1 << ((b_hi) - (b_lo) + 1)) - 1)) << (b_lo))
+#define DMIC_FIR_LIST_LENGTH 8
 
-static inline uint32_t io_reg_read(uint32_t reg)
-{
-	return *((volatile uint32_t*)reg);
-}
-
-static inline void io_reg_write(uint32_t reg, uint32_t val)
-{
-	*((volatile uint32_t*)reg) = val;
-}
-
-static inline void io_reg_update_bits(uint32_t reg, uint32_t mask, uint32_t value)
-{
-	io_reg_write(reg, (io_reg_read(reg) & (~mask)) | (value & mask));
-}
-
-static inline uint16_t io_reg_read16(uint32_t reg)
-{
-	return *((volatile uint16_t*)reg);
-}
-
-static inline void io_reg_write16(uint32_t reg, uint16_t val)
-{
-	*((volatile uint16_t*)reg) = val;
-}
-
-#endif
+/* Note: Higher spec filter must be before lower spec filter
+ * if there are multiple filters for a decimation factor. The naming
+ * scheme of coefficients set is:
+ * <type>_<decim factor>_<rel passband>_<rel stopband>_<ripple>_<attenuation>
+ */
+struct pdm_decim *fir_list[DMIC_FIR_LIST_LENGTH] = {
+	&pdm_decim_int32_02_4375_5100_010_095,
+	&pdm_decim_int32_02_4288_5100_010_095,
+	&pdm_decim_int32_03_4375_5100_010_095,
+	&pdm_decim_int32_03_3850_5100_010_095,
+	&pdm_decim_int32_04_4375_5100_010_095,
+	&pdm_decim_int32_05_4331_5100_010_095,
+	&pdm_decim_int32_06_4156_5100_010_095,
+	&pdm_decim_int32_08_4156_5380_010_090,
+};

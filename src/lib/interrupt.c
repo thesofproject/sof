@@ -38,127 +38,143 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-int irq_register_child(struct irq_parent *parent, int irq,
-	void (*handler)(void *arg), void *arg)
+static int irq_register_child(struct irq_desc *parent, int irq,
+			      void (*handler)(void *arg), void *arg);
+static void irq_unregister_child(struct irq_desc *parent, int irq);
+static uint32_t irq_enable_child(struct irq_desc *parent, int irq);
+static uint32_t irq_disable_child(struct irq_desc *parent, int irq);
+
+static int irq_register_child(struct irq_desc *parent, int irq,
+			      void (*handler)(void *arg), void *arg)
 {
 	int ret = 0;
+	struct irq_desc *child;
 
 	if (parent == NULL)
 		return -EINVAL;
 
 	spin_lock(&parent->lock);
 
-	/* does child already exist ? */
-	if (parent->child[SOF_IRQ_BIT(irq)]) {
-		/* already registered, return */
+	/* init child */
+	child = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+			sizeof(struct irq_desc));
+	if (!child) {
+		ret = -ENOMEM;
 		goto finish;
 	}
 
-	/* init child */
-	parent->child[SOF_IRQ_BIT(irq)] =
-		rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-			sizeof(struct irq_child));
-	parent->child[SOF_IRQ_BIT(irq)]->enabled = 0;
-	parent->child[SOF_IRQ_BIT(irq)]->handler = handler;
-	parent->child[SOF_IRQ_BIT(irq)]->handler_arg = arg;
+	child->enabled_count = 0;
+	child->handler = handler;
+	child->handler_arg = arg;
+	child->id = SOF_IRQ_ID(irq);
+
+	list_item_append(&child->irq_list, &parent->child[SOF_IRQ_BIT(irq)]);
 
 	/* do we need to register parent ? */
 	if (parent->num_children == 0) {
-		ret = arch_interrupt_register(parent->num,
-			parent->handler, parent);
+		ret = arch_interrupt_register(parent->irq,
+					      parent->handler, parent);
 	}
 
 	/* increment number of children */
-	parent->num_children += 1;
+	parent->num_children++;
 
 finish:
 	spin_unlock(&parent->lock);
 	return ret;
-
 }
 
-void irq_unregister_child(struct irq_parent *parent, int irq)
+static void irq_unregister_child(struct irq_desc *parent, int irq)
 {
 	spin_lock(&parent->lock);
+	struct irq_desc *child;
+	struct list_item *clist;
 
 	/* does child already exist ? */
-	if (!parent->child[SOF_IRQ_BIT(irq)])
+	if (list_is_empty(&parent->child[SOF_IRQ_BIT(irq)]))
 		goto finish;
 
-	/* free child */
-	parent->num_children -= 1;
-	rfree(parent->child[SOF_IRQ_BIT(irq)]);
-	parent->child[SOF_IRQ_BIT(irq)] = NULL;
+	list_for_item(clist, &parent->child[SOF_IRQ_BIT(irq)]) {
+		child = container_of(clist, struct irq_desc, irq_list);
+
+		if (SOF_IRQ_ID(irq) == child->id) {
+			list_item_del(&child->irq_list);
+			rfree(child);
+			parent->num_children--;
+		}
+	}
 
 	/*
 	 * unregister the root interrupt if the this l2 is
 	 * the last registered one.
 	 */
 	if (parent->num_children == 0)
-		arch_interrupt_unregister(parent->num);
+		arch_interrupt_unregister(parent->irq);
 
 finish:
 	spin_unlock(&parent->lock);
 }
 
-uint32_t irq_enable_child(struct irq_parent *parent, int irq)
+static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 {
-	struct irq_child *child;
+	struct irq_desc *child;
+	struct list_item *clist;
 
 	spin_lock(&parent->lock);
-
-	child = parent->child[SOF_IRQ_BIT(irq)];
-
-	/* already enabled ? */
-	if (child->enabled)
-		goto finish;
 
 	/* enable the parent interrupt */
 	if (parent->enabled_count == 0)
 		arch_interrupt_enable_mask(1 << SOF_IRQ_NUMBER(irq));
-	child->enabled = 1;
-	parent->enabled_count++;
 
-	/* enable the child interrupt */
-	platform_interrupt_unmask(irq, 0);
+	list_for_item(clist, &parent->child[SOF_IRQ_BIT(irq)]) {
+		child = container_of(clist, struct irq_desc, irq_list);
 
-finish:
+		if ((SOF_IRQ_ID(irq) == child->id) &&
+		    !child->enabled_count) {
+			child->enabled_count = 1;
+			parent->enabled_count++;
+
+			/* enable the child interrupt */
+			platform_interrupt_unmask(irq, 0);
+		}
+	}
+
 	spin_unlock(&parent->lock);
 	return 0;
 
 }
 
-uint32_t irq_disable_child(struct irq_parent *parent, int irq)
+static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 {
-	struct irq_child *child;
+	struct irq_desc *child;
+	struct list_item *clist;
 
 	spin_lock(&parent->lock);
 
-	child = parent->child[SOF_IRQ_BIT(irq)];
+	list_for_item(clist, &parent->child[SOF_IRQ_BIT(irq)]) {
+		child = container_of(clist, struct irq_desc, irq_list);
 
-	/* already disabled ? */
-	if (!child->enabled)
-		goto finish;
+		if ((SOF_IRQ_ID(irq) == child->id) &&
+		    child->enabled_count) {
+			child->enabled_count = 0;
+			parent->enabled_count--;
+		}
+	}
 
-	/* disable the child interrupt */
-	platform_interrupt_mask(irq, 0);
-	child->enabled = 0;
-
-	/* disable the parent interrupt */
-	parent->enabled_count--;
-	if (parent->enabled_count == 0)
+	if (parent->enabled_count == 0) {
+		/* disable the child interrupt */
+		platform_interrupt_mask(irq, 0);
 		arch_interrupt_disable_mask(1 << SOF_IRQ_NUMBER(irq));
+	}
 
-finish:
 	spin_unlock(&parent->lock);
 	return 0;
-
 }
 
 int interrupt_register(uint32_t irq,
 	void (*handler)(void *arg), void *arg)
 {
-	struct irq_parent *parent;
+	struct irq_desc *parent;
 
 	/* no parent means we are registering DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);
@@ -170,7 +186,7 @@ int interrupt_register(uint32_t irq,
 
 void interrupt_unregister(uint32_t irq)
 {
-	struct irq_parent *parent;
+	struct irq_desc *parent;
 
 	/* no parent means we are unregistering DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);
@@ -182,7 +198,7 @@ void interrupt_unregister(uint32_t irq)
 
 uint32_t interrupt_enable(uint32_t irq)
 {
-	struct irq_parent *parent;
+	struct irq_desc *parent;
 
 	/* no parent means we are enabling DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);
@@ -194,7 +210,7 @@ uint32_t interrupt_enable(uint32_t irq)
 
 uint32_t interrupt_disable(uint32_t irq)
 {
-	struct irq_parent *parent;
+	struct irq_desc *parent;
 
 	/* no parent means we are disabling DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);

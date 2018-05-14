@@ -26,6 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Xiuli Pan <xiuli.pan@linux.intel.com>
  */
 
 #ifndef __INCLUDE_MAILBOX__
@@ -35,6 +36,11 @@
 #include <arch/cache.h>
 #include <stdint.h>
 #include <sof/string.h>
+
+/* For those platform did not have SW_REG window, use DEBUG at now */
+#ifndef MAILBOX_SW_REG_BASE
+#define MAILBOX_SW_REG_BASE MAILBOX_DEBUG_BASE
+#endif  /* MAILBOX_SW_REG_BASE */
 
 /* 4k should be enough for everyone ..... */
 #define IPC_MAX_MAILBOX_BYTES 0x1000
@@ -98,6 +104,14 @@ void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 	rmemcpy((void *)(MAILBOX_STREAM_BASE + offset), src, bytes);
 	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
 				bytes);
+}
+
+static inline
+void mailbox_sw_reg_write(size_t offset, uint32_t src)
+{
+	*((volatile uint32_t*)(MAILBOX_SW_REG_BASE + offset)) = src;
+	dcache_writeback_region((void *)(MAILBOX_SW_REG_BASE + offset),
+				sizeof(src));
 }
 
 #endif

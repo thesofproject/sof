@@ -27,6 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Xiuli Pan <xiuli.pan@linux.intel.com>
  */
 
 #ifndef __PLATFORM_PLATFORM_H__
@@ -103,7 +104,7 @@ struct sof;
 /* Platform defined panic code */
 #define platform_panic(__x) { \
 	shim_write(SHIM_IPCDL, (0xdead000 | (__x & 0xfff))); \
-	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY); \
+	shim_write(SHIM_IPCDH, (SHIM_IPCDH_BUSY | MAILBOX_EXCEPTION_OFFSET)); \
 }
 
 /* Platform defined trace code */

@@ -1054,7 +1054,7 @@ static void dw_dma_irq_handler(void *data)
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr) {
-		trace_dma_error("eI0");
+		return;
 	}
 
 	tracev_dma("DIr");
@@ -1144,32 +1144,6 @@ static void dw_dma_irq_handler(void *data)
 	}
 }
 
-#if defined CONFIG_CANNONLAKE
-/*All the dma share the same interrupt on CNL, so check each dma*/
-/*controller when interrupt coming, then do the work            */
-static void dw_dma_irq_cnl(void *data)
-{
-	struct dma *dma;
-	uint32_t status_intr;
-
-	/*check interrupt status of DMA controller 0*/
-	dma = dma_get(DMA_GP_LP_DMAC0);
-	if (dma) {
-		status_intr = dw_read(dma, DW_INTR_STATUS);
-		if (status_intr)
-			dw_dma_irq_handler(dma);
-	}
-
-	/*check interrupt status of DMA controller 1*/
-	dma = dma_get(DMA_GP_LP_DMAC1);
-	if (dma) {
-		status_intr = dw_read(dma, DW_INTR_STATUS);
-		if (status_intr)
-			dw_dma_irq_handler(dma);
-	}
-}
-#endif
-
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
@@ -1192,11 +1166,7 @@ static int dw_dma_probe(struct dma *dma)
 	}
 
 	/* register our IRQ handler */
-#if defined CONFIG_CANNONLAKE
-	interrupt_register(dma_irq(dma), dw_dma_irq_cnl, dma);
-#else
 	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);
-#endif
 	interrupt_enable(dma_irq(dma));
 
 	return 0;

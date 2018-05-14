@@ -32,9 +32,6 @@
 #ifndef SRC_H
 #define SRC_H
 
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
 struct src_param {
 	int fir_s1;
 	int fir_s2;
