@@ -84,9 +84,6 @@ struct host_data {
 	uint32_t period_bytes;
 	uint32_t period_count;
 
-#if defined CONFIG_DMA_GW
-	uint32_t first_copy;
-#endif
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 };
@@ -477,12 +474,12 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 			goto out;
 		}
 
-		/* preload first playback period for preloader task */
+		/*
+		 * host dma will copy the first period once it is started,
+		 * automatically.
+		 * Here update the pointers to reflect the real case.
+		 */
 		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-			/*
-			 * host dma will not start copy at this point yet,
-			 * just produce empty period bytes for it.
-			 */
 			comp_update_buffer_produce(hd->dma_buffer,
 						   hd->period_bytes);
 		}
@@ -736,10 +733,6 @@ static int host_prepare(struct comp_dev *dev)
 	hd->split_remaining = 0;
 	dev->position = 0;
 
-#if defined CONFIG_DMA_GW
-	hd->first_copy = 1;
-#endif
-
 	return 0;
 }
 
@@ -863,19 +856,6 @@ static int host_copy(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
-#if defined CONFIG_DMA_GW
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
-	    hd->first_copy) {
-		/*
-		 * host dma will not start copy at this point yet, just produce
-		 * empty period bytes for it.
-		 */
-		comp_update_buffer_produce(hd->dma_buffer,
-					   hd->period_bytes);
-		hd->first_copy = 0;
-		return 0;
-	}
-#endif
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
 
@@ -896,14 +876,17 @@ static int host_copy(struct comp_dev *dev)
 	}
 
 #if defined CONFIG_DMA_GW
-
-	/* update host pointers from last period */
-	host_gw_dma_update(dev);
-
 	/* tell gateway to copy another period */
 	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes);
 	if (ret < 0)
 		goto out;
+
+	/*
+	 * update host pointers for the new copied period.
+	 * fixme: do we need wait and check to make sure
+	 * the new copy is finished here?
+	 */
+	host_gw_dma_update(dev);
 #else
 	/* do DMA transfer */
 	ret = dma_set_config(hd->dma, hd->chan, &hd->config);
