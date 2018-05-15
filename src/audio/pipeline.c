@@ -154,7 +154,7 @@ static void disconnect_upstream(struct pipeline *p, struct comp_dev *start,
 		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id)
 			continue;
 
-		connect_upstream(p, start, buffer->source);
+		disconnect_upstream(p, start, buffer->source);
 	}
 
 	/* disconnect source from buffer */
@@ -183,7 +183,7 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 		if (buffer->sink->comp.pipeline_id != p->ipc_pipe.pipeline_id)
 			continue;
 
-		connect_downstream(p, start, buffer->sink);
+		disconnect_downstream(p, start, buffer->sink);
 	}
 
 	/* disconnect source from buffer */
