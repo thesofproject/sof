@@ -4,6 +4,12 @@ the docker build container.
 
 Note: This script assumes the sof.git/ and soft.git/ directories are siblings.
 
+Note2: In order to run docker as non sudo/root user please run.
+
+sudo usermod -aG docker your-user-name
+
+Then logout and login again.
+
 Quick Start:
 
 First, build the docker container. This step needs to be done initially and
