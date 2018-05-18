@@ -70,5 +70,43 @@ define(`W_DATA',
 `	tuples STR($2)'
 `}')
 
+dnl VIRTUAL_DAPM_ROUTE_OUT(name, dai type, dai index, direction, index)
+define(`VIRTUAL_DAPM_ROUTE_OUT',
+`SectionWidget.STR($1) {'
+`       index STR($5)'
+`       type "aif_out"'
+`       no_pm "true"'
+`}'
+`SectionGraph.STR($2) {'
+`       index STR($5)'
+`'
+`       lines ['
+`               dapm($1,$2$3.$4)'
+`       ]'
+`}')
+
+dnl VIRTUAL_DAPM_ROUTE_IN(name, dai type, dai index, direction, index)
+define(`VIRTUAL_DAPM_ROUTE_IN',
+`SectionWidget.STR($1) {'
+`       index STR($5)'
+`       type "aif_in"'
+`       no_pm "true"'
+`}'
+`SectionGraph.STR($2) {'
+`       index STR($5)'
+`'
+`       lines ['
+`               dapm($2$3.$4, $1)'
+`       ]'
+`}')
+
+dnl VIRTUAL_WIDGET(name, index)
+define(`VIRTUAL_WIDGET',
+`SectionWidget.STR($1) {'
+`       index STR($2)'
+`       type "mixer"'
+`       no_pm "true"'
+`}')
+
 divert(0) dnl
 
