@@ -36,6 +36,7 @@
 #include <sof/ssp.h>
 #include <sof/alloc.h>
 #include <sof/interrupt.h>
+#include <sof/math/numbers.h>
 #include <config.h>
 
 /* tracing */
@@ -114,6 +115,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t rft;
 	uint32_t active_tx_slots = 2;
 	uint32_t active_rx_slots = 2;
+	uint32_t sample_width = 2;
 
 	bool inverted_frame = false;
 	int ret = 0;
@@ -499,21 +501,22 @@ static inline int ssp_set_config(struct dai *dai,
 	/* setting TFT and RFT */
 	switch (config->ssp.sample_valid_bits) {
 	case 16:
-		/* use 2 bytes for each slot */
-		tft = active_tx_slots * 2;
-		rft = active_rx_slots * 2;
-		break;
+			/* use 2 bytes for each slot */
+			sample_width = 2;
+			break;
 	case 24:
 	case 32:
-		/* use 4 bytes for each slot */
-		tft = active_tx_slots * 4;
-		rft = active_rx_slots * 4;
-		break;
+			/* use 4 bytes for each slot */
+			sample_width = 4;
+			break;
 	default:
-		trace_ssp_error("ecd");
-		ret = -EINVAL;
-		goto out;
+			trace_ssp_error("ecd");
+			ret = -EINVAL;
+			goto out;
 	}
+
+	tft = MIN(8, sample_width * active_tx_slots);
+	rft = MIN(8, sample_width * active_rx_slots);
 
 	sscr3 |= SSCR3_TX(tft) | SSCR3_RX(rft);
 
