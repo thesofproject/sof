@@ -932,9 +932,11 @@ static void dw_dma_irq_handler(void *data)
 		dw_write(dma, DW_CLEAR_ERR, status_err & i);
 	}
 
+	mask = 0x1 << i;
+
 	/* clear interrupts for channel*/
-	dw_write(dma, DW_CLEAR_BLOCK, status_block);
-	dw_write(dma, DW_CLEAR_TFR, status_tfr);
+	dw_write(dma, DW_CLEAR_BLOCK, status_block & mask);
+	dw_write(dma, DW_CLEAR_TFR, status_tfr & mask);
 
 	/* skip if channel is not running */
 	if (p->chan[i].status != COMP_STATE_ACTIVE) {
@@ -942,7 +944,6 @@ static void dw_dma_irq_handler(void *data)
 		return;
 	}
 
-	mask = 0x1 << i;
 
 #if DW_USE_HW_LLI
 		/* end of a LLI block */
