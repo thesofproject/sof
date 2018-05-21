@@ -54,3 +54,9 @@ SectionVendorTokens."sof_comp_tokens" {
 	SOF_TKN_COMP_FORMAT			"402"
 	SOF_TKN_COMP_PRELOAD_COUNT		"403"
 }
+
+SectionVendorTokens."sof_ssp_tokens" {
+	SOF_TKN_INTEL_SSP_MCLK_KEEP_ACTIVE	"500"
+	SOF_TKN_INTEL_SSP_BCLK_KEEP_ACTIVE	"501"
+	SOF_TKN_INTEL_SSP_FS_KEEP_ACTIVE	"502"
+}
