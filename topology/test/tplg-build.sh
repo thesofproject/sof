@@ -32,7 +32,8 @@ M4_STRINGS=""
 #
 
 function simple_test {
-	for i in ${SIMPLE_TESTS[@]}
+	TESTS=("${!12}")
+	for i in ${TESTS[@]}
 	do
 		TFILE="$i$5-${11}-$2-$4-$6-48k-$((${10} / 1000))k-$1"
 		if [ "$USE_XARGS" == "yes" ]
@@ -67,54 +68,23 @@ function simple_test {
 	done
 }
 
-# process m4 tone test -
-# tone_test(name, pipe_name, be_name, format, dai_id, dai_format, dai_phy_bits, dai_data_bits dai_bclk)
-# 1) name - test filename suffix
-# 2) pipe_name - test component pipeline filename in sof/
-# 3) be_name - BE DAI link name in machine driver, used for matching
-# 4) format - PCM sample format
-# 5) dai_id - SSP port number
-# 6) dai_format - SSP sample format
-# 7) dai_phy_bits - SSP physical number of BLKCs per slot/channel
-# 8) dai_data_bits - SSP number of valid data bits per slot/channel
-# 9) dai_bclk - SSP BCLK in HZ
-# 10) dai_mclk - SSP MCLK in HZ
-#
-function tone_test {
-	TFILE="$TONE_TEST$5-$2-$4-$6-48k-$1"
-	echo "M4 pre-processing test $TONE_TEST -> ${TFILE}"
-	m4 \
-		-DTEST_PIPE_NAME="$2" \
-		-DTEST_DAI_LINK_NAME="$3" \
-		-DTEST_SSP_PORT=$5 \
-		-DTEST_SSP_FORMAT=$6 \
-		-DTEST_PIPE_FORMAT=$4 \
-		-DTEST_SSP_BCLK=$9 \
-		-DTEST_SSP_MCLK=${10} \
-		-DTEST_SSP_PHY_BITS=$7 \
-		-DTEST_SSP_DATA_BITS=$8 \
-		$TONE_TEST.m4 > ${TFILE}.conf
-	echo "Compiling test $TONE_TEST -> ${TFILE}.tplg"
-	alsatplg -v 1 -c ${TFILE}.conf -o ${TFILE}.tplg
-}
-
 echo "Preparing topology build input..."
 
 # Pre-process the simple tests
-simple_test nocodec passthrough "NoCodec" s16le 2 s16le 20 16 1920000 19200000 I2S
-simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S
-simple_test nocodec volume "NoCodec" s16le 2 s16le 20 16 1920000 19200000 I2S
-simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S
-simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 19200000 I2S
-simple_test nocodec src "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S
+simple_test nocodec passthrough "NoCodec" s16le 2 s16le 20 16 1920000 19200000 I2S SIMPLE_TESTS[@]
+simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec" s16le 2 s16le 20 16 1920000 19200000 I2S SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
+simple_test nocodec src "NoCodec" s24le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
 
-simple_test codec passthrough "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000 I2S
-simple_test codec passthrough "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S
-simple_test codec volume "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000 I2S
-simple_test codec volume "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S
-simple_test codec volume "SSP2-Codec" s24le 2 s16le 20 16 1920000 19200000 I2S
-simple_test codec volume "SSP2-Codec" s16le 2 s24le 25 24 2400000 19200000 I2S
-simple_test codec src "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S
+simple_test codec passthrough "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000 I2S SIMPLE_TESTS[@]
+simple_test codec passthrough "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
+simple_test codec volume "SSP2-Codec" s16le 2 s16le 20 16 1920000 19200000 I2S SIMPLE_TESTS[@]
+simple_test codec volume "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
+simple_test codec volume "SSP2-Codec" s24le 2 s16le 20 16 1920000 19200000 I2S SIMPLE_TESTS[@]
+simple_test codec volume "SSP2-Codec" s16le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
+simple_test codec src "SSP2-Codec" s24le 2 s24le 25 24 2400000 19200000 I2S SIMPLE_TESTS[@]
 
 # for APL
 APL_PROTOCOL_TESTS=(I2S LEFT_J DSP_A DSP_B)
@@ -130,22 +100,22 @@ do
 		do
 			for format in ${APL_FORMAT_TESTS[@]}
 			do
-				simple_test nocodec $mode "NoCodec" $format $ssp s16le 16 16 1536000 24576000 $protocol
-				simple_test nocodec $mode "NoCodec" $format $ssp s24le 32 24 3072000 24576000 $protocol
-				simple_test nocodec $mode "NoCodec" $format $ssp s32le 32 32 3072000 24576000 $protocol
+				simple_test nocodec $mode "NoCodec" $format $ssp s16le 16 16 1536000 24576000 $protocol SIMPLE_TESTS[@]
+				simple_test nocodec $mode "NoCodec" $format $ssp s24le 32 24 3072000 24576000 $protocol SIMPLE_TESTS[@]
+				simple_test nocodec $mode "NoCodec" $format $ssp s32le 32 32 3072000 24576000 $protocol SIMPLE_TESTS[@]
 
-				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s16le 16 16 1536000 24576000 $protocol
-				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s24le 32 24 3072000 24576000 $protocol
-				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s32le 32 32 3072000 24576000 $protocol
+				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s16le 16 16 1536000 24576000 $protocol SIMPLE_TESTS[@]
+				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s24le 32 24 3072000 24576000 $protocol SIMPLE_TESTS[@]
+				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s32le 32 32 3072000 24576000 $protocol SIMPLE_TESTS[@]
 			done
 		done
-		simple_test nocodec passthrough "NoCodec" s16le $ssp s16le 16 16 1536000 24576000 $protocol
-		simple_test nocodec passthrough "NoCodec" s24le $ssp s24le 32 24 3072000 24576000 $protocol
-		simple_test nocodec passthrough "NoCodec" s32le $ssp s32le 32 32 3072000 24576000 $protocol
+		simple_test nocodec passthrough "NoCodec" s16le $ssp s16le 16 16 1536000 24576000 $protocol SIMPLE_TESTS[@]
+		simple_test nocodec passthrough "NoCodec" s24le $ssp s24le 32 24 3072000 24576000 $protocol SIMPLE_TESTS[@]
+		simple_test nocodec passthrough "NoCodec" s32le $ssp s32le 32 32 3072000 24576000 $protocol SIMPLE_TESTS[@]
 
-		simple_test codec passthrough "SSP${ssp}-Codec" s16le $ssp s16le 16 16 1536000 24576000 $protocol
-		simple_test codec passthrough "SSP${ssp}-Codec"	s24le $ssp s24le 32 24 3072000 24576000 $protocol
-		simple_test codec passthrough "SSP${ssp}-Codec"	s32le $ssp s32le 32 32 3072000 24576000 $protocol
+		simple_test codec passthrough "SSP${ssp}-Codec" s16le $ssp s16le 16 16 1536000 24576000 $protocol SIMPLE_TESTS[@]
+		simple_test codec passthrough "SSP${ssp}-Codec"	s24le $ssp s24le 32 24 3072000 24576000 $protocol SIMPLE_TESTS[@]
+		simple_test codec passthrough "SSP${ssp}-Codec"	s32le $ssp s32le 32 32 3072000 24576000 $protocol SIMPLE_TESTS[@]
 	done
 done
 
@@ -157,32 +127,32 @@ do
 		do
 			for format in ${APL_FORMAT_TESTS[@]}
 			do
-				simple_test nocodec $mode "NoCodec" $format $ssp s16le 20 16 1920000 19200000 $protocol
-				simple_test nocodec $mode "NoCodec" $format $ssp s24le 25 24 2400000 19200000 $protocol
+				simple_test nocodec $mode "NoCodec" $format $ssp s16le 20 16 1920000 19200000 $protocol SIMPLE_TESTS[@]
+				simple_test nocodec $mode "NoCodec" $format $ssp s24le 25 24 2400000 19200000 $protocol SIMPLE_TESTS[@]
 
-				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s16le 20 16 1920000 19200000 $protocol
-				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s24le 25 24 2400000 19200000 $protocol
+				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s16le 20 16 1920000 19200000 $protocol SIMPLE_TESTS[@]
+				simple_test codec $mode "SSP${ssp}-Codec" $format $ssp s24le 25 24 2400000 19200000 $protocol SIMPLE_TESTS[@]
 			done
 		done
-		simple_test nocodec passthrough "NoCodec" s16le $ssp s16le 20 16 1920000 19200000 $protocol
-		simple_test nocodec passthrough "NoCodec" s24le $ssp s24le 25 24 2400000 19200000 $protocol
+		simple_test nocodec passthrough "NoCodec" s16le $ssp s16le 20 16 1920000 19200000 $protocol SIMPLE_TESTS[@]
+		simple_test nocodec passthrough "NoCodec" s24le $ssp s24le 25 24 2400000 19200000 $protocol SIMPLE_TESTS[@]
 
-		simple_test codec passthrough "SSP${ssp}-Codec" s16le $ssp s16le 20 16 1920000 19200000 $protocol
-		simple_test codec passthrough "SSP${ssp}-Codec" s24le $ssp s24le 25 24 2400000 19200000 $protocol
+		simple_test codec passthrough "SSP${ssp}-Codec" s16le $ssp s16le 20 16 1920000 19200000 $protocol SIMPLE_TESTS[@]
+		simple_test codec passthrough "SSP${ssp}-Codec" s24le $ssp s24le 25 24 2400000 19200000 $protocol SIMPLE_TESTS[@]
 	done
 done
 
 # for CNL
-simple_test nocodec passthrough "NoCodec" s16le 2 s16le 25 16 2400000 24000000 I2S
-simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 24000000 I2S
-simple_test nocodec volume "NoCodec" s16le 2 s16le 25 16 2400000 24000000 I2S
-simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 24000000 I2S
-simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 24000000 I2S
-simple_test nocodec volume "NoCodec" s24le 2 s16le 25 16 2400000 24000000 I2S
-simple_test nocodec src "NoCodec" s24le 4 s24le 25 24 2400000 24000000 I2S
+simple_test nocodec passthrough "NoCodec" s16le 2 s16le 25 16 2400000 24000000 I2S SIMPLE_TESTS[@]
+simple_test nocodec passthrough "NoCodec" s24le 2 s24le 25 24 2400000 24000000 I2S SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec" s16le 2 s16le 25 16 2400000 24000000 I2S SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec" s16le 2 s24le 25 24 2400000 24000000 I2S SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec" s24le 2 s24le 25 24 2400000 24000000 I2S SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec" s24le 2 s16le 25 16 2400000 24000000 I2S SIMPLE_TESTS[@]
+simple_test nocodec src "NoCodec" s24le 4 s24le 25 24 2400000 24000000 I2S SIMPLE_TESTS[@]
 
 # Tone test: Tone component only supports s32le currently
-tone_test codec tone "SSP2-Codec" s32le 2 s16le 20 16 1920000 19200000
+simple_test codec tone "SSP2-Codec" s32le 2 s16le 20 16 1920000 19200000 I2S TONE_TEST[@]
 
 if [ "$USE_XARGS" == "yes" ]
 then
