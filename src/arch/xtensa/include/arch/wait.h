@@ -30,7 +30,7 @@
 
 #include <xtensa/xtruntime.h>
 
-#if defined(CONFIG_CANNONLAKE)
+#if defined(PLATFORM_WAITI_DELAY)
 
 static inline void arch_wait_for_interrupt(int level)
 {
