@@ -61,7 +61,6 @@ sof_LDADD = \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../math/libsof_math.a \
-	libreset.a \
 	xtos/libxtos.a \
 	xtos/libxlevel2.a \
 	xtos/libxlevel3.a \
@@ -111,11 +110,6 @@ boot_ldr_CCASFLAGS = \
 boot_ldr_LDADD = \
 	hal/libhal.a \
 	libreset.a \
-	xtos/libxtos.a \
-	xtos/libxlevel2.a \
-	xtos/libxlevel3.a \
-	xtos/libxlevel4.a \
-	xtos/libxlevel5.a \
 	-lgcc
 
 boot_ldr_LDFLAGS = \

@@ -400,6 +400,11 @@ static int man_module_create(struct image *image, struct module *module,
 	if ((module->bss_end - module->bss_start) % MAN_PAGE_SIZE)
 		pages += 1;
 	man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.length = pages;
+	if (pages == 0) {
+		man_module->segment[SOF_MAN_SEGMENT_BSS].flags.ul = 0;
+		man_module->segment[SOF_MAN_SEGMENT_BSS].flags.r.type =
+				SOF_MAN_SEGMENT_EMPTY;
+	}
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\tType\n");
 
