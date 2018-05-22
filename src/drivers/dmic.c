@@ -334,6 +334,11 @@ static void match_modes(struct matched_modes *c, struct decim_modes *a,
 		return;
 	}
 
+	/* Ensure that num_of_modes is sane. */
+	if (a->num_of_modes > DMIC_MAX_MODES ||
+		b->num_of_modes > DMIC_MAX_MODES)
+		return;
+
 	/* Check for request only for FIFO A or B. In such case pass list for
 	 * A or B as such.
 	 */
@@ -633,7 +638,7 @@ static int select_mode(struct dmic_configuration *cfg,
 static inline void ipm_helper(int *ipm, int stereo[], int swap[],
 	struct sof_ipc_dai_dmic_params *dmic)
 {
-	int pdm[DMIC_HW_CONTROLLERS];
+	int pdm[DMIC_HW_CONTROLLERS] = {0};
 	int cnt;
 	int i;
 
