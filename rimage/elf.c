@@ -77,9 +77,12 @@ static int elf_read_sections(struct image *image, struct module *module)
 	/* find manifest module data */
 	man_section_idx = elf_find_section(image, module, ".bss");
 	if (man_section_idx < 0) {
-		return -EINVAL;
+		/* no bss - it is OK for boot_ldr */
+		module->bss_start = 0;
+		module->bss_end = 0;
+	} else {
+		module->bss_index = man_section_idx;
 	}
-	module->bss_index = man_section_idx;
 
 	fprintf(stdout, " BSS module metadata section at index %d\n",
 		man_section_idx);
@@ -325,7 +328,8 @@ static void elf_module_limits(struct image *image, struct module *module)
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
 	int i;
 
-	module->text_start = module->data_start = module->bss_start = 0xffffffff;
+	module->text_start = module->data_start = 0xffffffff;
+	module->bss_start = 0;
 	module->text_end = module->data_end = module->bss_end = 0;
 
 	fprintf(stdout, "  Found %d sections, listing valid sections......\n",
