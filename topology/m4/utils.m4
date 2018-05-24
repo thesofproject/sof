@@ -74,7 +74,7 @@ dnl VIRTUAL_DAPM_ROUTE_OUT(name, dai type, dai index, direction, index)
 define(`VIRTUAL_DAPM_ROUTE_OUT',
 `SectionWidget.STR($1) {'
 `       index STR($5)'
-`       type "aif_out"'
+`       type "output"'
 `       no_pm "true"'
 `}'
 `SectionGraph.STR($2) {'
@@ -89,7 +89,7 @@ dnl VIRTUAL_DAPM_ROUTE_IN(name, dai type, dai index, direction, index)
 define(`VIRTUAL_DAPM_ROUTE_IN',
 `SectionWidget.STR($1) {'
 `       index STR($5)'
-`       type "aif_in"'
+`       type "input"'
 `       no_pm "true"'
 `}'
 `SectionGraph.STR($2) {'
@@ -104,7 +104,7 @@ dnl VIRTUAL_WIDGET(name, index)
 define(`VIRTUAL_WIDGET',
 `SectionWidget.STR($1) {'
 `       index STR($2)'
-`       type "mixer"'
+`       type "out_drv"'
 `       no_pm "true"'
 `}')
 
