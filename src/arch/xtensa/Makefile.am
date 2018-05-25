@@ -61,6 +61,7 @@ sof_LDADD = \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../math/libsof_math.a \
+	libreset.a \
 	xtos/libxtos.a \
 	xtos/libxlevel2.a \
 	xtos/libxlevel3.a \
