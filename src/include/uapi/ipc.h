@@ -292,6 +292,7 @@ struct sof_ipc_dai_hda_params {
  * data integrity problems.
  */
 struct sof_ipc_dai_dmic_pdm_ctrl {
+	uint16_t id; /* PDM controller ID */
 	uint16_t enable_mic_a; /* Use A (left) channel mic (0 or 1)*/
 	uint16_t enable_mic_b; /* Use B (right) channel mic (0 or 1)*/
 	uint16_t polarity_mic_a; /* Optionally invert mic A signal (0 or 1) */
@@ -322,7 +323,6 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
  * somewhat.
  */
 struct sof_ipc_dai_dmic_params {
-	struct sof_ipc_hdr hdr;
 	uint32_t driver_ipc_version; /* Version (1..N) */
 	uint32_t pdmclk_min; /* Minimum microphone clock in Hz (100000..N) */
 	uint32_t pdmclk_max; /* Maximum microphone clock in Hz (min...N) */
@@ -333,7 +333,7 @@ struct sof_ipc_dai_dmic_params {
 	uint16_t fifo_bits_b; /* FIFO B word length (16 or 24) */
 	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
 	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
-	uint32_t number_of_pdm_controllers; /* Number 2ch controllers (2) */
+	uint32_t num_pdm_active; /* Number of active controllers */
 	struct sof_ipc_dai_dmic_pdm_ctrl pdm[];
 } __attribute__((packed));
 

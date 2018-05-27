@@ -49,11 +49,6 @@
  */
 #define DMIC_FIR_PIPELINE_OVERHEAD 5
 
-/* Force a 48 kHz config while kernel driver IPC is under construction. Remove
- * or undefine when it's available.
- */
-#define DMIC_FORCE_CONFIG
-
 struct decim_modes {
 	int16_t clkdiv[DMIC_MAX_MODES];
 	int16_t mcic[DMIC_MAX_MODES];
@@ -648,7 +643,7 @@ static inline void ipm_helper(int *ipm, int stereo[], int swap[],
 	 * left (A) or mono right (B) mode. Mono right mode is setup as channel
 	 * swapped mono left.
 	 */
-	for (i = 0; i < dmic->number_of_pdm_controllers; i++) {
+	for (i = 0; i < dmic->num_pdm_active; i++) {
 		cnt = 0;
 		if (dmic->pdm[i].enable_mic_a > 0)
 			cnt++;
@@ -693,7 +688,7 @@ static inline void source_ipm_helper(int source[], int *ipm, int stereo[],
 	 * swapped mono left. The function returns also in array source[] the
 	 * indice of enabled pdm controllers to be used for IPM configuration.
 	 */
-	for (i = 0; i < dmic->number_of_pdm_controllers; i++) {
+	for (i = 0; i < dmic->num_pdm_active; i++) {
 		if (dmic->pdm[i].enable_mic_a > 0 ||
 			dmic->pdm[i].enable_mic_b > 0) {
 			pdm[i] = 1;
@@ -719,7 +714,7 @@ static inline void source_ipm_helper(int source[], int *ipm, int stereo[],
 
 	/* IPM bit field is set to count of active pdm controllers. */
 	*ipm = pdm[0];
-	for (i = 0; i < dmic->number_of_pdm_controllers; i++)
+	for (i = 0; i < dmic->num_pdm_active; i++)
 		*ipm += pdm[i];
 }
 #endif
@@ -782,7 +777,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 	}
 
 	/* Sanity checks */
-	if (dmic->number_of_pdm_controllers > DMIC_HW_CONTROLLERS) {
+	if (dmic->num_pdm_active > DMIC_HW_CONTROLLERS) {
 		trace_dmic_error("num");
 		return -EINVAL;
 	}
@@ -1016,45 +1011,40 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 
 static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 {
-	struct decim_modes modes_a;
-	struct decim_modes modes_b;
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	struct sof_ipc_dai_dmic_params *prm;
 	struct matched_modes modes_ab;
 	struct dmic_configuration cfg;
-	int ret;
-	struct sof_ipc_dai_dmic_params *prm = &config->dmic;
-	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	struct decim_modes modes_a;
+	struct decim_modes modes_b;
+	int num_pdm_active = config->dmic.num_pdm_active;
+	size_t size;
+	int i, j, ret = 0;
 
 	trace_dmic("dsc");
 
-#if defined DMIC_FORCE_CONFIG
-	/* This is a temporary workaound to set parameters while
-	 * there is no driver and topology scripts support to
-	 * set these. Also the PCM sample format(s) and sample rate(s)
-	 * setting would be better to be common with other DAI types.
+	/*
+	 * "config" might contain pdm controller params for only
+	 * the active controllers
+	 * "prm" is initialized with default params for all HW controllers
 	 */
-	prm->driver_ipc_version = 1;
-	prm->pdmclk_min =  500000; /* Min 500 kHz */
-	prm->pdmclk_max = 4800000; /* Max 4.80 MHz */
-	prm->fifo_fs_a = 48000;
-	prm->fifo_fs_b = 0;
-	prm->fifo_bits_a = 32;
-	prm->fifo_bits_b = 32;
-	prm->duty_min = 40; /* Min. 40% */
-	prm->duty_max = 60; /* Max. 60% */
-	prm->number_of_pdm_controllers = 2;
-	prm->pdm[0].clk_edge = 0;
-	prm->pdm[0].enable_mic_a = 1; /* Left */
-	prm->pdm[0].enable_mic_b = 1; /* Right */
-	prm->pdm[0].polarity_mic_a = 0;
-	prm->pdm[0].polarity_mic_b = 0;
-	prm->pdm[0].skew = 0;
-	prm->pdm[1].clk_edge = 0;
-	prm->pdm[1].enable_mic_a = 0; /* Left */
-	prm->pdm[1].enable_mic_b = 0; /* Right */
-	prm->pdm[1].polarity_mic_a = 0;
-	prm->pdm[1].polarity_mic_b = 0;
-	prm->pdm[1].skew = 0;
-#endif
+	size = sizeof(*prm) + DMIC_HW_CONTROLLERS
+		* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
+	prm = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, size);
+
+	/* copy the command DAI config params and DMIC params */
+	memcpy(prm, &config->dmic, sizeof(struct sof_ipc_dai_config));
+
+	/* copy the pdm controller params from ipc */
+	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
+		prm->pdm[i].id = i;
+		for (j = 0; j < num_pdm_active; j++) {
+			/* copy the pdm controller params id the id's match */
+			if (prm->pdm[i].id == config->dmic.pdm[j].id)
+				memcpy(&prm->pdm[i], &config->dmic.pdm[j],
+				       sizeof(prm->pdm[i]));
+		}
+	}
 
 	trace_value(prm->driver_ipc_version);
 	trace_value(prm->pdmclk_min);
@@ -1065,11 +1055,12 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	trace_value(prm->fifo_bits_b);
 	trace_value(prm->duty_min);
 	trace_value(prm->duty_max);
-	trace_value(prm->number_of_pdm_controllers);
+	trace_value(prm->num_pdm_active);
 
 	if (prm->driver_ipc_version != DMIC_IPC_VERSION) {
 		trace_dmic_error("ver");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto finish;
 	}
 
 	/* Match and select optimal decimators configuration for FIFOs A and B
@@ -1081,20 +1072,23 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	find_modes(&modes_a, prm, prm->fifo_fs_a);
 	if (modes_a.num_of_modes == 0 && prm->fifo_fs_a > 0) {
 		trace_dmic_error("amo");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto finish;
 	}
 
 	find_modes(&modes_b, prm, prm->fifo_fs_b);
 	if (modes_b.num_of_modes == 0 && prm->fifo_fs_b > 0) {
 		trace_dmic_error("bmo");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto finish;
 	}
 
 	match_modes(&modes_ab, &modes_a, &modes_b);
 	ret = select_mode(&cfg, &modes_ab);
 	if (ret < 0) {
 		trace_dmic_error("smo");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto finish;
 	}
 
 	trace_dmic("cfg");
@@ -1115,12 +1109,17 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	ret = configure_registers(dai, &cfg, prm);
 	if (ret < 0) {
 		trace_dmic_error("cor");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto finish;
 	}
 
 	dmic->state = COMP_STATE_PREPARE;
 
-	return 0;
+finish:
+	/* free config params */
+	rfree(prm);
+
+	return ret;
 }
 
 /* start the DMIC for capture */
