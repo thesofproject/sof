@@ -131,6 +131,7 @@ static inline int ssp_set_config(struct dai *dai,
 	}
 
 	trace_ssp("cos");
+	trace_value(config->format);
 
 	/* reset SSP settings */
 	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
