@@ -61,7 +61,6 @@ sof_LDADD = \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../math/libsof_math.a \
-	libreset.a \
 	xtos/libxtos.a \
 	xtos/libxlevel2.a \
 	xtos/libxlevel3.a \
@@ -69,6 +68,11 @@ sof_LDADD = \
 	xtos/libxlevel5.a \
 	hal/libhal.a \
 	-lgcc
+
+if !BUILD_BOOTLOADER
+sof_LDADD += \
+	libreset.a
+endif
 
 sof_LDFLAGS = \
 	$(ARCH_LDFLAGS) -Wl,-Map=sof-$(FW_NAME).map \
