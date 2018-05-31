@@ -12,9 +12,9 @@ export M4PATH="../:../m4:../common"
 
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.
-SIMPLE_TESTS=(test-ssp test-capture-ssp test-playback-ssp)
-TONE_TEST=test-tone-playback-ssp
-DMIC_TEST=test-capture-ssp
+SIMPLE_TESTS=(test-all test-capture test-playback)
+TONE_TEST=test-tone-playback
+DMIC_TEST=test-capture
 TEST_STRINGS=""
 M4_STRINGS=""
 # process m4 simple tests -
@@ -40,12 +40,17 @@ function simple_test {
 	fi
 	for i in ${TESTS[@]}
 	do
-		TFILE="$i$6-${12}-$2-$4-$7-48k-$((${11} / 1000))k-$1"
 		if [ "$USE_XARGS" == "yes" ]
 		then
 			#if DAI type is SSP, define the SSP specific params
 			if [ $5 == "SSP" ]
 			then
+				if [ $i == "test-all" ]
+				then
+					TFILE="test-ssp$6-${12}-$2-$4-$7-48k-$((${11} / 1000))k-$1"
+				else
+					TFILE="$i-ssp$6-${12}-$2-$4-$7-48k-$((${11} / 1000))k-$1"
+				fi
 				#create input string for batch m4 processing
 				M4_STRINGS+="-DTEST_PIPE_NAME=$2,-DTEST_DAI_LINK_NAME=$3\
 					-DTEST_DAI_PORT=$6,-DTEST_DAI_FORMAT=$7\
