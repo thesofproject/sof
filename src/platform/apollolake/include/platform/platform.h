@@ -65,7 +65,7 @@ struct sof;
 
 /* Platform stream capabilities */
 #define PLATFORM_MAX_CHANNELS	4
-#define PLATFORM_MAX_STREAMS	5
+#define PLATFORM_MAX_STREAMS	16
 
 /* clock source used by scheduler for deadline calculations */
 #define PLATFORM_SCHED_CLOCK	CLK_SSP
