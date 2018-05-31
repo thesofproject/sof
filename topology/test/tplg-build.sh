@@ -157,12 +157,14 @@ simple_test codec tone "SSP2-Codec" s32le 2 s16le 20 16 1920000 19200000 I2S TON
 if [ "$USE_XARGS" == "yes" ]
 then
 	echo "Batch processing m4 files..."
-	M4_STRINGS=${M4_STRINGS%?};
+	M4_STRINGS=${M4_STRINGS%?}
 	#m4 processing
 	echo $M4_STRINGS | tr " " "," | tr '\n' '\0' | xargs -P0 -d ',' -n12 bash -c 'm4 "${@:1:${#}-1}" > ${12}.conf' m4
 
 	#execute alsatplg to create topology binary
 	TEST_STRINGS=${TEST_STRINGS%?}
-	echo $TEST_STRINGS | tr '\n' '\0' | xargs -d ',' -P0 -n1 -I string alsatplg -v 1 -c string".conf" -o string".tplg"
+	echo $TEST_STRINGS | tr '\n' ',' |\
+		xargs -d ',' -P0 -n1 -I string alsatplg -v 1 -c\
+			string".conf" -o string".tplg"
 fi
 
