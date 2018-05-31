@@ -68,8 +68,11 @@ PCM_CAPTURE_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_2)
 #
 # TEST_SSP_DATA_BITS bit I2S using TEST_SSP_PHY_BITS bit sample conatiner on SSP TEST_DAI_PORT
 #
-DAI_CONFIG(SSP, TEST_SSP_PORT, 0, TEST_DAI_LINK_NAME, TEST_SSP_MODE, TEST_SSP_DATA_BITS,
-	DAI_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-	DAI_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
-	DAI_CLOCK(fsync, 48000, codec_slave),
-	DAI_TDM(2, TEST_SSP_PHY_BITS, 3, 3))
+DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT, 0, TEST_DAI_LINK_NAME,
+	   SSP_CONFIG(TEST_SSP_MODE,
+		      DAI_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
+		      DAI_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+		      DAI_CLOCK(fsync, 48000, codec_slave),
+		      DAI_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
+		      SSP_SAMPLE_BITS(TEST_DAI_TYPE, TEST_DAI_PORT,
+				      TEST_SSP_DATA_BITS)))

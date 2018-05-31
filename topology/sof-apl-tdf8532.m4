@@ -187,41 +187,49 @@ PCM_DUPLEX_ADD(Port5, 5, 5, 5, PIPELINE_PCM_9, PIPELINE_PCM_10)
 #
 # BE configurations - overrides config in ACPI if present
 #
-DAI_CONFIG(SSP, 4, 4, SSP4-Codec, DSP_B, 32,
-	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
-	DAI_CLOCK(bclk, 12288000, codec_slave),
-	DAI_CLOCK(fsync, 48000, codec_slave),
-	DAI_TDM(8, 32, 15, 15))
 
-DAI_CONFIG(SSP, 2, 2, SSP2-Codec, I2S, 16,
-	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
-	DAI_CLOCK(bclk, 1536000, codec_slave),
-	DAI_CLOCK(fsync, 48000, codec_slave),
-	DAI_TDM(2, 16, 3, 3))
+DAI_CONFIG(SSP, 4, 4, SSP4-Codec,
+	   SSP_CONFIG(DSP_B, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+		      DAI_CLOCK(bclk, 12288000, codec_slave),
+		      DAI_CLOCK(fsync, 48000, codec_slave),
+		      DAI_TDM(8, 32, 15, 15),
+		      SSP_SAMPLE_BITS(SSP, 4, 32)))
 
-DAI_CONFIG(SSP, 0, 0, SSP0-Codec, I2S, 16,
-	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
-	DAI_CLOCK(bclk, 1536000, codec_slave),
-	DAI_CLOCK(fsync, 48000, codec_slave),
-	DAI_TDM(2, 16, 3, 3))
+DAI_CONFIG(SSP, 2, 2, SSP2-Codec,
+	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+		      DAI_CLOCK(bclk, 1536000, codec_slave),
+		      DAI_CLOCK(fsync, 48000, codec_slave),
+		      DAI_TDM(2, 16, 3, 3),
+		      SSP_SAMPLE_BITS(SSP, 2, 16)))
 
-DAI_CONFIG(SSP, 1, 1, SSP1-Codec, I2S, 16,
-	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
-	DAI_CLOCK(bclk, 1536000, codec_slave),
-	DAI_CLOCK(fsync, 48000, codec_slave),
-	DAI_TDM(2, 16, 3, 3))
+DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
+	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+		      DAI_CLOCK(bclk, 1536000, codec_slave),
+		      DAI_CLOCK(fsync, 48000, codec_slave),
+		      DAI_TDM(2, 16, 3, 3),
+		      SSP_SAMPLE_BITS(SSP, 0, 16)))
 
-DAI_CONFIG(SSP, 3, 3, SSP3-Codec, I2S, 16,
-	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
-	DAI_CLOCK(bclk, 1536000, codec_slave),
-	DAI_CLOCK(fsync, 48000, codec_slave),
-	DAI_TDM(2, 16, 3, 3))
+DAI_CONFIG(SSP, 1, 1, SSP1-Codec,
+	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+		      DAI_CLOCK(bclk, 1536000, codec_slave),
+		      DAI_CLOCK(fsync, 48000, codec_slave),
+		      DAI_TDM(2, 16, 3, 3),
+		      SSP_SAMPLE_BITS(SSP, 1, 16)))
 
-DAI_CONFIG(SSP, 5, 5, SSP5-Codec, I2S, 16,
-	DAI_CLOCK(mclk, 24576000, codec_mclk_in),
-	DAI_CLOCK(bclk, 1536000, codec_slave),
-	DAI_CLOCK(fsync, 48000, codec_slave),
-	DAI_TDM(2, 16, 3, 3))
+DAI_CONFIG(SSP, 3, 3, SSP3-Codec,
+	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+		      DAI_CLOCK(bclk, 1536000, codec_slave),
+		      DAI_CLOCK(fsync, 48000, codec_slave),
+		      DAI_TDM(2, 16, 3, 3),
+		      SSP_SAMPLE_BITS(SSP, 3, 16)))
+
+DAI_CONFIG(SSP, 5, 5, SSP5-Codec,
+	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+		      DAI_CLOCK(bclk, 1536000, codec_slave),
+		      DAI_CLOCK(fsync, 48000, codec_slave),
+		      DAI_TDM(2, 16, 3, 3),
+		      SSP_SAMPLE_BITS(SSP, 5, 16)))
+
 
 VIRTUAL_DAPM_ROUTE_IN(BtHfp_ssp0_in, SSP, 0, IN, 0)
 VIRTUAL_DAPM_ROUTE_OUT(BtHfp_ssp0_out, SSP, 0, OUT, 1)
@@ -245,4 +253,3 @@ VIRTUAL_WIDGET(ssp3 Rx, 18)
 VIRTUAL_WIDGET(ssp4 Tx, 19)
 VIRTUAL_WIDGET(ssp5 Tx, 20)
 VIRTUAL_WIDGET(ssp5 Rx, 21)
-
