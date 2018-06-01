@@ -1,0 +1,23 @@
+The host testbench is meant to serve as a vehicle to test components for functionality
+and quality of processed samples.
+
+Compilation steps:
+
+Run the host-build-all.sh to build the required libraries for the testbench.
+It should also build the testbench executable.
+
+Running the Testbench:
+
+The test can be invoked by running the "testbench" bin in the src/host directory.
+
+Compile and run using script provided (Recommended):
+
+Set up the input arguments for the test in
+"host-testbench.sh" and invoke it to compile the host libraries
+and execute the testbench.
+
+Known Limitations:
+
+1. Currently, testbench code supports simple volume topologies only.
+
+2. When setting up arguments, please keep the same file format for input and output files
