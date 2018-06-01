@@ -7,6 +7,16 @@ AM_CPPFLAGS = -I $(SOF_INC) $(SOF_INCDIR) $(DEFINE)
 AM_CFLAGS = -g -Wall
 AM_LDFLAGS = -L$(prefix)/lib
 
+bin_PROGRAMS = testbench
+
+testbench_SOURCES = \
+	testbench.c
+
+testbench_LDADD = \
+	-ldl -lm -lsof_ipc \
+	libtb_common.a \
+	-lsof
+
 noinst_LIBRARIES = libtb_common.a
 
 libtb_common_a_SOURCES = \
