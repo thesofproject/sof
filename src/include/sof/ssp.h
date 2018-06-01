@@ -55,12 +55,12 @@
 #define SSTSA		0x30
 #define SSRSA		0x34
 #define SSTSS		0x38
+#define SSCR2		0x40
 
 #if defined CONFIG_BAYTRAIL ||\
 	defined CONFIG_CHERRYTRAIL ||\
 	defined CONFIG_BROADWELL ||\
 	defined CONFIG_HASWELL
-#define SSCR2		0x40
 #define SFIFOTT		0x6C
 #define SSCR3		0x70
 #define SSCR4		0x74
@@ -159,14 +159,13 @@ extern const struct dai_ops ssp_ops;
 #define SSPSP_DMYSTOP_BITS	2
 #define SSPSP_DMYSTOP_MASK	((0x1 << SSPSP_DMYSTOP_BITS) - 1)
 #define SSPSP_FSRT		(1 << 25)
-
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
 #define SSPSP_EDMYSTOP(x)	((x) << 26)
 #define SSPSP_EDMYSTOP_MASK	0x7
+
+#define SSPSP2			0x44
 #define SSPSP2_FEP_MASK		0xff
-#define SSTSS		0x38
-#define SSCR2		0x40
-#define SSPSP2		0x44
+
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
 #define SSCR3		0x48
 #define SSIOC		0x4C
 

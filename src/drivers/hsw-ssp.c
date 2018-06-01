@@ -77,11 +77,16 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t sscr1;
 	uint32_t sscr2;
 	uint32_t sspsp;
+	uint32_t sspsp2;
 	uint32_t mdiv;
 	uint32_t bdiv;
 	uint32_t data_size;
 	uint32_t start_delay;
+	uint32_t frame_end_padding;
+	uint32_t slot_end_padding;
 	uint32_t frame_len = 0;
+	uint32_t bdiv_min;
+	uint32_t format;
 	bool inverted_frame = false;
 	int ret = 0;
 
@@ -129,6 +134,9 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
 	sspsp = SSPSP_ETDS; /* make sure SDO line is tri-stated when inactive */
+
+	/* sspsp2 no dynamic setting */
+	sspsp2 = 0x0;
 
 	ssp->config = *config;
 	ssp->params = config->ssp;
@@ -252,29 +260,83 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
+	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
+	if (bdiv < bdiv_min) {
+		trace_ssp_error("ecc");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	frame_end_padding = bdiv - bdiv_min;
+	if (frame_end_padding > SSPSP2_FEP_MASK) {
+		trace_ssp_error("ecd");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* format */
-	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
+	format = config->format & SOF_DAI_FMT_FORMAT_MASK;
+	switch (format) {
 	case SOF_DAI_FMT_I2S:
-
-		start_delay = 1;
-
-		/* set asserted frame length */
-		frame_len = config->ssp.tdm_slot_width;
-
-		/* handle frame polarity, I2S default is falling/active low */
-		sspsp |= SSPSP_SFRMP(!inverted_frame);
-
-		break;
-
 	case SOF_DAI_FMT_LEFT_J:
 
-		start_delay = 0;
+		if (format == SOF_DAI_FMT_I2S) {
+			start_delay = 1;
 
-		/* set asserted frame length */
-		frame_len = config->ssp.tdm_slot_width;
+		/*
+		 * handle frame polarity, I2S default is falling/active low,
+		 * non-inverted(inverted_frame=0) -- active low(SFRMP=0),
+		 * inverted(inverted_frame=1) -- rising/active high(SFRMP=1),
+		 * so, we should set SFRMP to inverted_frame.
+		 */
+			sspsp |= SSPSP_SFRMP(inverted_frame);
+			sspsp |= SSPSP_FSRT;
 
-		/* LEFT_J default is rising/active high, opposite of I2S */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		} else {
+			start_delay = 0;
+
+		/*
+		 * handle frame polarity, LEFT_J default is rising/active high,
+		 * non-inverted(inverted_frame=0) -- active high(SFRMP=1),
+		 * inverted(inverted_frame=1) -- falling/active low(SFRMP=0),
+		 * so, we should set SFRMP to !inverted_frame.
+		 */
+			sspsp |= SSPSP_SFRMP(!inverted_frame);
+		}
+
+		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
+
+		if (bdiv % 2) {
+			trace_ssp_error("eca");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		/* set asserted frame length to half frame length */
+		frame_len = bdiv / 2;
+
+		/*
+		 *  for I2S/LEFT_J, the padding has to happen at the end
+		 * of each slot
+		 */
+		if (frame_end_padding % 2) {
+			trace_ssp_error("ece");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		slot_end_padding = frame_end_padding / 2;
+
+		if (slot_end_padding > 15) {
+			/* can't handle padding over 15 bits */
+			trace_ssp_error("ecf");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		sspsp |= SSPSP_DMYSTOP(slot_end_padding & SSPSP_DMYSTOP_MASK);
+		slot_end_padding >>= SSPSP_DMYSTOP_BITS;
+		sspsp |= SSPSP_EDMYSTOP(slot_end_padding & SSPSP_EDMYSTOP_MASK);
 
 		break;
 	case SOF_DAI_FMT_DSP_A:
@@ -288,6 +350,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		/* handle frame polarity, DSP_A default is rising/active high */
 		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
 		break;
 	case SOF_DAI_FMT_DSP_B:
@@ -301,6 +364,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		/* handle frame polarity, DSP_A default is rising/active high */
 		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
 		break;
 	default:
@@ -329,6 +393,7 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSPSP, sspsp);
 	ssp_write(dai, SSTSA, config->ssp.tx_slots);
 	ssp_write(dai, SSRSA, config->ssp.rx_slots);
+	ssp_write(dai, SSPSP2, sspsp2);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
