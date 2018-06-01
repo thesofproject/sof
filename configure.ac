@@ -381,6 +381,7 @@ AC_CONFIG_FILES([
 	src/library/include/Makefile
 	src/library/include/platform/Makefile
 	src/lib/Makefile
+	src/host/Makefile
 	src/platform/Makefile
 	src/platform/baytrail/Makefile
 	src/platform/baytrail/include/Makefile

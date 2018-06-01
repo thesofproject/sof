@@ -4,7 +4,7 @@ export COMMON_INCDIR = \
 	$(PLATFORM_INCDIR)
 
 if BUILD_LIB
-SUBDIRS = ipc math audio arch include library
+SUBDIRS = ipc math audio arch include library host
 endif
 
 if BUILD_XTENSA
