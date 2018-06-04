@@ -44,5 +44,7 @@ doc-dummy:
 doc: doc-dummy
 	$(MAKE) -C doc doc
 
+if !BUILD_RIMAGE
 all-local:
 	rm -f $(top_srcdir)/src/include/version.h
+endif

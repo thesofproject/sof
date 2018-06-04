@@ -15,12 +15,8 @@
 #include "cse.h"
 #include "plat_auth.h"
 #include "manifest.h"
-
-/* hard coded atm - will pass this in from cmd line and git */
-#define MAN_FW_HDR_VERSION_MAJOR	9
-#define MAN_FW_HDR_VERSION_MINOR	22
-#define MAN_FW_HDR_VERSION_HOTFIX	1
-#define MAN_FW_HDR_VERSION_BUILD	0x7da
+#include <config.h>
+#include <version.h>
 
 /* manifest template */
 struct fw_image_manifest apl_manifest = {
@@ -65,10 +61,10 @@ struct fw_image_manifest apl_manifest = {
 		.header_id	= MAN_CSS_HDR_ID,
 		.padding	= 0,
 		.version = {
-			.major_version	= MAN_FW_HDR_VERSION_MAJOR,
-			.minor_version	= MAN_FW_HDR_VERSION_MINOR,
-			.hotfix_version = MAN_FW_HDR_VERSION_HOTFIX,
-			.build_version	= MAN_FW_HDR_VERSION_BUILD,
+			.major_version	= SOF_MAJOR,
+			.minor_version	= SOF_MINOR,
+			.hotfix_version = 0,
+			.build_version	= SOF_BUILD,
 		},
 		.modulus_size	= MAN_CSS_MOD_SIZE,
 		.exponent_size	= MAN_CSS_EXP_SIZE,
@@ -134,10 +130,10 @@ struct fw_image_manifest apl_manifest = {
 			.preload_page_count	= 0,	/* size in pages from $CPD */
 			.fw_image_flags	= SOF_MAN_FW_HDR_FLAGS,
 			.feature_mask	= SOF_MAN_FW_HDR_FEATURES,
-			.major_version	= MAN_FW_HDR_VERSION_MAJOR,
-			.minor_version	= MAN_FW_HDR_VERSION_MINOR,
-			.hotfix_version	= MAN_FW_HDR_VERSION_HOTFIX,
-			.build_version	= MAN_FW_HDR_VERSION_BUILD,
+			.major_version	= SOF_MAJOR,
+			.minor_version	= SOF_MINOR,
+			.hotfix_version	= 0,
+			.build_version	= SOF_BUILD,
 			.load_offset	= MAN_DESC_OFFSET,
 		},
 	},
