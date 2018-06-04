@@ -57,10 +57,12 @@
 #define SHIM_CSR_STALL		(0x1 << 10)
 #define SHIM_CSR_SDPM0          (0x1 << 11)
 #define SHIM_CSR_SDPM1          (0x1 << 12)
+#define SHIM_CSR_PCE		(0x1 << 15)
 #define SHIM_CSR_SFCR0          (0x1 << 27)
 #define SHIM_CSR_SFCR1          (0x1 << 28)
 #define SHIM_CSR_DCS(x)         (x << 4)
 #define SHIM_CSR_DCS_MASK       (0x7 << 4)
+#define SHIM_CSR_SFCR_SSP(x)	(1 << (27 + x))
 
 /*  ISRX 0x18 */
 #define SHIM_ISRX_BUSY		(0x1 << 1)
@@ -100,7 +102,6 @@
 /* CSR2 / CS2 */
 #define SHIM_CSR2_SDFD_SSP0	(1 << 1)
 #define SHIM_CSR2_SDFD_SSP1	(1 << 2)
-#define SHIM_CSR2_SFCR_SSP(x)	(1 << (27 + x))
 
 /* LTRC */
 #define SHIM_LTRC_VAL(x)		(x << 0)

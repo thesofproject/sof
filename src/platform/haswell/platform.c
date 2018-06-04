@@ -221,6 +221,23 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 	}
 }
 
+/* init shim registers */
+static void platform_init_shim(void)
+{
+	/* disable power gate */
+	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
+			   SHIM_CLKCTL_DCPLCG,
+			   SHIM_CLKCTL_DCPLCG);
+
+	/* disable parity check */
+	io_reg_update_bits(SHIM_BASE + SHIM_CSR, SHIM_CSR_PCE, 0);
+
+	/* enable DMA finsh on ssp ports */
+	io_reg_update_bits(SHIM_BASE + SHIM_CSR2,
+			   SHIM_CSR2_SDFD_SSP0 | SHIM_CSR2_SDFD_SSP1,
+			   SHIM_CSR2_SDFD_SSP0 | SHIM_CSR2_SDFD_SSP1);
+}
+
 int platform_init(struct sof *sof)
 {
 	struct dma *dmac0;
@@ -234,6 +251,7 @@ int platform_init(struct sof *sof)
 	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
+	platform_init_shim();
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();

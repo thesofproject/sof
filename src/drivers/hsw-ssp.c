@@ -102,9 +102,6 @@ static inline int ssp_set_config(struct dai *dai,
 
 	trace_ssp("cos");
 
-	/* unset free running clock */
-	shim_update_bits(SHIM_CSR2, SHIM_CSR2_SFCR_SSP(dai->index), 0);
-
 	/* disable clock */
 	shim_update_bits(SHIM_CLKCTL, SHIM_CLKCTL_EN_SSP(dai->index), 0);
 
@@ -405,8 +402,6 @@ static inline int ssp_set_config(struct dai *dai,
 	/* enable free running clock */
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
-	shim_update_bits(SHIM_CSR2, SHIM_CSR2_SFCR_SSP(dai->index),
-			 SHIM_CSR2_SFCR_SSP(dai->index));
 
 out:
 	spin_unlock(&ssp->lock);
