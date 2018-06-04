@@ -91,6 +91,12 @@ function simple_test {
 				#if DAI type is SSP, define the SSP specific params
 				if [ $5 == "SSP" ]
 				then
+					if [ $i == "test-all" ]
+					then
+						TFILE="test-ssp$6-${12}-$2-$4-$7-48k-$((${11} / 1000))k-$1"
+					else
+						TFILE="$i-ssp$6-${12}-$2-$4-$7-48k-$((${11} / 1000))k-$1"
+					fi
 					echo "M4 pre-processing test $i -> ${TFILE}"
 					m4 ${M4_FLAGS} \
 						-DTEST_PIPE_NAME="$2" \
