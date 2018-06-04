@@ -236,7 +236,6 @@ enum sof_ipc_dai_type {
 
 /* SSP Configuration Request - SOF_IPC_DAI_SSP_CONFIG */
 struct sof_ipc_dai_ssp_params {
-	struct sof_ipc_hdr hdr;
 	uint16_t mode;   // FIXME: do we need this?
 	uint16_t clk_id; // FIXME: do we need this?
 
