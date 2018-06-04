@@ -473,7 +473,6 @@ struct sof_ipc_pcm_params {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
 	struct sof_ipc_stream_params params;
-	enum sof_ipc_chmap channel_map[];
 }  __attribute__((packed));
 
 /* PCM params info reply - SOF_IPC_STREAM_PCM_PARAMS_REPLY */
