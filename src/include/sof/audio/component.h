@@ -77,8 +77,8 @@
 #define COMP_TRIGGER_START	1	/* start component stream */
 #define COMP_TRIGGER_PAUSE	2	/* pause the component stream */
 #define COMP_TRIGGER_RELEASE	3	/* release paused component stream */
-#define COMP_TRIGGER_SUSPEND	5	/* suspend component */
-#define COMP_TRIGGER_RESUME	6	/* resume component */
+#define COMP_TRIGGER_SUSPEND	4	/* suspend component */
+#define COMP_TRIGGER_RESUME	5	/* resume component */
 #define COMP_TRIGGER_RESET	6	/* reset component */
 #define COMP_TRIGGER_PREPARE	7	/* prepare component */
 #define COMP_TRIGGER_XRUN	8	/* XRUN component */
