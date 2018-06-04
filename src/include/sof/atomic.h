@@ -40,6 +40,16 @@ static inline void atomic_init(atomic_t *a, int32_t value)
 	arch_atomic_init(a, value);
 }
 
+static inline int32_t atomic_read(const atomic_t *a)
+{
+	return arch_atomic_read(a);
+}
+
+static inline void atomic_set(atomic_t *a, int32_t value)
+{
+	arch_atomic_set(a, value);
+}
+
 static inline void atomic_add(atomic_t *a, int32_t value)
 {
 	arch_atomic_add(a, value);

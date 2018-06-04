@@ -39,9 +39,19 @@ typedef struct {
 	volatile int32_t value;
 } atomic_t;
 
-static inline void arch_atomic_init(atomic_t *a, int32_t value)
+static inline int32_t arch_atomic_read(const atomic_t *a)
+{
+	return (*(volatile int32_t *)&a->value);
+}
+
+static inline void arch_atomic_set(atomic_t *a, int32_t value)
 {
 	a->value = value;
+}
+
+static inline void arch_atomic_init(atomic_t *a, int32_t value)
+{
+	arch_atomic_set(a, value);
 }
 
 static inline void arch_atomic_add(atomic_t *a, int32_t value)
