@@ -198,7 +198,8 @@ extern const struct dai_ops ssp_ops;
 #define SFIFOTT_TX(x)		((x) - 1)
 #define SFIFOTT_RX(x)		(((x) - 1) << 16)
 
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE ||\
+	defined CONFIG_HASWELL || defined CONFIG_BROADWELL
 #define SSTSA_TSEN			BIT(8)
 #define SSRSA_RSEN			BIT(8)
 

@@ -439,11 +439,13 @@ static void ssp_start(struct dai *dai, int direction)
 				SSCR1_TSRE | SSCR1_EBCEI);
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 		ssp_update_bits(dai, SSCR0, SSCR0_TIM, 0);
+		ssp_update_bits(dai, SSTSA, SSTSA_TSEN, SSTSA_TSEN);
 	} else {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE | SSCR1_EBCEI,
 				SSCR1_RSRE | SSCR1_EBCEI);
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 		ssp_update_bits(dai, SSCR0, SSCR0_RIM, 0);
+		ssp_update_bits(dai, SSRSA, SSRSA_RSEN, SSRSA_RSEN);
 	}
 
 	/* enable port */
