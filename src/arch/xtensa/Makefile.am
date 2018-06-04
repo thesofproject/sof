@@ -144,13 +144,23 @@ MODULE_COPY=
 MODULE_INSERT=
 endif
 
+if USE_MEU
+RIMAGE=rimage -o sof-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS) -s $(MEU_OFFSET)
+MEU=$(MEU_PATH)/meu -w ./ -s sof-$(FW_NAME) -key $(PRIVATE_KEY) -stp /usr/bin/openssl -f $(MEU_PATH)/generic_meu_conf.xml \
+	-mnver 0.0.0.0 -o sof-$(FW_NAME).ri
+else
+RIMAGE=rimage -o sof-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS)
+MEU=
+endif
+
 bin-local: $(BIN_FLAGS)
 	cp sof sof-$(FW_NAME)
 	$(MODULE_COPY)
 	$(MODULE_INSERT)
 	$(OBJDUMP) -S sof-$(FW_NAME) > sof-$(FW_NAME).lst
 	$(OBJDUMP) -D sof-$(FW_NAME) > sof-$(FW_NAME).dis
-	rimage -o sof-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS)
+	$(RIMAGE)
+	$(MEU)
 
 vminstall-local:
 	scp -P 5555 sof-*.ri root@localhost:/lib/firmware/intel/

@@ -27,8 +27,35 @@ AC_SUBST(ASFLAGS)
 
 # Cross compiler tool libgcc and headers
 AC_ARG_WITH([root-dir],
-        AS_HELP_STRING([--with-root-dir], [Specify location of cross gcc libraries and headers]),
-        [], [with_root_dir=no])
+		AS_HELP_STRING([--with-root-dir], [Specify location of cross gcc libraries and headers]),
+		[], [with_root_dir=no])
+
+# MEU location
+AC_ARG_WITH([meu],
+		AS_HELP_STRING([--with-meu], [Specify location of MEU tool]),
+		[], [with_meu=no])
+if test "x$with_meu" != "xno"; then
+	MEU_PATH="$with_meu"
+	AC_SUBST(MEU_PATH)
+
+	MEU_VERSION=$($with_meu/meu -ver | grep "Version:" | cut -d" " -f6)
+	AX_COMPARE_VERSION([$MEU_VERSION], [ge], [12.0.0.1035], [MEU_OFFSET=1088], [MEU_OFFSET=1152])
+	AC_SUBST(MEU_OFFSET)
+fi
+AM_CONDITIONAL(USE_MEU, test "x$with_meu" != "xno")
+
+# Private key location
+AC_ARG_WITH([key],
+		AS_HELP_STRING([--with-key], [Specify location of private key]),
+		[], [with_key=no])
+if test "x$with_meu" != "xno"; then
+	if test "x$with_key" != "xno"; then
+		PRIVATE_KEY="$with_key"
+		AC_SUBST(PRIVATE_KEY)
+	else
+		AC_MSG_ERROR([Private key location not specified])
+	fi
+fi
 
 # check if we are building FW image or library
 AC_ARG_ENABLE(library, [AS_HELP_STRING([--enable-library],[build library])], have_library=$enableval, have_library=no)

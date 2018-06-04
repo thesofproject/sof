@@ -19,6 +19,7 @@
 .build
 *.dis
 *.lst
+*.log
 .*
 
 Makefile
