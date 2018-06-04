@@ -99,7 +99,7 @@ struct image {
 	int num_modules;
 	struct module module[MAX_MODULES];
 	uint32_t image_end;/* module end, equal to output image size */
-	int dump_sections;
+	int meu_offset;
 
 	/* SHA 256 */
 	const char *key_name;
@@ -140,6 +140,7 @@ struct adsp {
 
 	enum machine_id machine_id;
 	int (*write_firmware)(struct image *image);
+	int (*write_firmware_meu)(struct image *image);
 	struct fw_image_manifest *man;
 };
 

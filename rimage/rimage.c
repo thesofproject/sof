@@ -39,6 +39,7 @@ static void usage(char *name)
 		name);
 	fprintf(stdout, "\t -v enable verbose output\n");
 	fprintf(stdout, "\t -r enable relocatable ELF files\n");
+	fprintf(stdout, "\t -s MEU signing offset\n");
 	exit(0);
 }
 
@@ -50,7 +51,7 @@ int main(int argc, char *argv[])
 
 	memset(&image, 0, sizeof(image));
 
-	while ((opt = getopt(argc, argv, "ho:m:vba:sk:l:r")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:m:vba:s:k:l:r")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -62,7 +63,7 @@ int main(int argc, char *argv[])
 			image.verbose = 1;
 			break;
 		case 's':
-			image.dump_sections = 1;
+			image.meu_offset = atoi(optarg);
 			break;
 		case 'a':
 			image.abi = atoi(optarg);
@@ -130,7 +131,10 @@ found:
 	}
 
 	/* process and write output */
-	ret = image.adsp->write_firmware(&image);
+	if (image.meu_offset)
+		ret = image.adsp->write_firmware_meu(&image);
+	else
+		ret = image.adsp->write_firmware(&image);
 out:
 	/* close files */
 	if (image.out_fd)

@@ -18,15 +18,16 @@
 #include "manifest.h"
 #include "plat_auth.h"
 
-void ri_adsp_meta_data_create(struct image *image)
+void ri_adsp_meta_data_create(struct image *image, int meta_start_offset,
+	int meta_end_offset)
 {
 	struct sof_man_adsp_meta_file_ext *meta =
-		image->fw_image + MAN_META_EXT_OFFSET;
+		image->fw_image + meta_start_offset;
 
 	fprintf(stdout, " meta: completing ADSP manifest\n");
 
 	meta->comp_desc[0].limit_offset = MAN_DESC_OFFSET + image->image_end
-		- MAN_FW_DESC_OFFSET;
+		- meta_end_offset;
 
 	fprintf(stdout, " meta: limit is 0x%x\n",
 		meta->comp_desc[0].limit_offset);
