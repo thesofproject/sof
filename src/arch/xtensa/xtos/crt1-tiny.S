@@ -34,6 +34,7 @@
 #include <xtensa/coreasm.h>
 #include <xtensa/xtensa-versions.h>
 #include <xtensa/simcall.h>
+#include <config.h>
 
 
 // Imports
@@ -63,7 +64,8 @@ _start:
 	//  See crt1-boards.S for assumptions on entry to _start ,
 	//  and for comments on what is being done in this file.
 
-#if !XCHAL_HAVE_HALT || !XCHAL_HAVE_BOOTLOADER		// not needed for Xtensa TX
+// not needed for Xtensa TX
+#if !XCHAL_HAVE_HALT || !defined(CONFIG_BOOT_LOADER)
 	movi	a0, 0		// mark base of call stack
 #endif
 
@@ -85,7 +87,7 @@ _start:
 	// This code only supports .bss, not multiple *.bss sections.
 	// Corresponding code in crt1-boards.S does, and is faster but bigger.
 
-#if !XCHAL_HAVE_BOOTLOADER
+#if !defined(CONFIG_BOOT_LOADER)
 	movi	a6, _bss_start
 	movi	a7, _bss_end
 	bgeu	a6, a7, 2f

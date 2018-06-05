@@ -127,12 +127,6 @@
 #define ROM_BASE		0xBEFE0000
 #define ROM_SIZE		0x00002000
 
-#define TEXT_BASE		0xb0039000
-#define TEXT_LENGTH		0xB000
-#define DATA_BASE		0xb0044000
-#define DATA_LENGTH		0x4000
-
-
 /*
  * The HP SRAM Region on Cannonlake is organised like this :-
  * +--------------------------------------------------------------------------+
@@ -167,6 +161,7 @@
  */
 
 /* HP SRAM */
+#define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
 #define HP_SRAM_SIZE		0x002F0000
 
@@ -183,9 +178,6 @@
 #define HEAP_RT_COUNT512		8
 #define HEAP_RT_COUNT1024		4
 
-/* text and data share the same L2 SRAM on Cannonlake */
-#define SOF_TEXT_START		0xBE040400
-#define SOF_TEXT_START_SIZE		0x40
 #define L2_VECTOR_SIZE		0x1000
 
 /* HP SRAM windows */
@@ -236,8 +228,10 @@
 #define HEAP_HP_BUFFER_COUNT \
 			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
-#define SOF_TEXT_BASE		(SOF_TEXT_START + SOF_TEXT_START_SIZE)
-#define SOF_TEXT_SIZE		0x18000
+/* text and data share the same HP L2 SRAM on Cannonlake */
+#define SOF_TEXT_START		0xBE040400
+#define SOF_TEXT_BASE		(SOF_TEXT_START)
+#define SOF_TEXT_SIZE		(0x18000 - 0x400)
 
 /* initialized data */
 #if defined CONFIG_DMIC
@@ -339,7 +333,8 @@
 #define SOF_LP_STACK_END			(SOF_LP_STACK_BASE - SOF_LP_STACK_SIZE)
 
 
-/* Vector and literal sizes - not in core-isa.h */
+/* Vector and literal sizes - do not use core-isa.h */
+#define SOF_MEM_VECBASE			HP_SRAM_VECBASE_RESET
 #define SOF_MEM_VECT_LIT_SIZE		0x8
 #define SOF_MEM_VECT_TEXT_SIZE		0x38
 #define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + SOF_MEM_VECT_LIT_SIZE)
@@ -354,19 +349,18 @@
 #define SOF_MEM_RO_SIZE			0x8
 
 /* boot loader in IMR */
+#define IMR_BOOT_LDR_MANIFEST_BASE	0xB0032000
+#define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
+
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB0038000
-#define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x40
+#define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x66
 #define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + IMR_BOOT_LDR_TEXT_ENTRY_SIZE)
-#define IMR_BOOT_LDR_LIT_SIZE		0x70
+#define IMR_BOOT_LDR_LIT_SIZE		0x20
 #define IMR_BOOT_LDR_TEXT_BASE		(IMR_BOOT_LDR_LIT_BASE + IMR_BOOT_LDR_LIT_SIZE)
 #define IMR_BOOT_LDR_TEXT_SIZE		0x1C00
-#define IMR_BOOT_LDR_TEXT1_BASE		(IMR_BOOT_LDR_TEXT_BASE + IMR_BOOT_LDR_TEXT_SIZE)
-#define IMR_BOOT_LDR_TEXT1_SIZE		0x2000
-#define IMR_BOOT_LDR_DATA_BASE		0xB0002000
+#define IMR_BOOT_LDR_DATA_BASE		0xB0039000
 #define IMR_BOOT_LDR_DATA_SIZE		0x1000
 #define IMR_BOOT_LDR_BSS_BASE		0xB0100000
 #define IMR_BOOT_LDR_BSS_SIZE		0x10000
-#define IMR_BOOT_LDR_MANIFEST_BASE	0xB0032000
-#define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
 
 #endif

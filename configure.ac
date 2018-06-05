@@ -183,6 +183,7 @@ case "$with_platform" in
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apololake])
+	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
@@ -235,6 +236,7 @@ case "$with_platform" in
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_CANNONLAKE], [1], [Configure for Cannonlake])
+	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
@@ -256,7 +258,7 @@ AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
 AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
 AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
 AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "cnl")
+AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 
@@ -370,6 +372,9 @@ if test "$have_graphviz" = "false"; then
 	AC_MSG_WARN([Need graphviz to build documentation])
 fi
 
+# Check for compiler type
+AM_CONDITIONAL(XCC, test "$CC" = "xt-xcc")
+
 AM_EXTRA_RECURSIVE_TARGETS([bin])
 
 AM_EXTRA_RECURSIVE_TARGETS([vminstall])
@@ -394,7 +399,7 @@ AC_CONFIG_FILES([
 	src/arch/host/include/Makefile
 	src/arch/host/include/arch/Makefile
 	src/audio/Makefile
-        src/math/Makefile
+	src/math/Makefile
 	src/drivers/Makefile
 	src/include/Makefile
 	src/include/sof/Makefile
@@ -412,24 +417,28 @@ AC_CONFIG_FILES([
 	src/platform/Makefile
 	src/platform/baytrail/Makefile
 	src/platform/baytrail/include/Makefile
+	src/platform/baytrail/include/arch/Makefile
+	src/platform/baytrail/include/arch/xtensa/Makefile
+	src/platform/baytrail/include/arch/xtensa/config/Makefile
 	src/platform/baytrail/include/platform/Makefile
-	src/platform/baytrail/include/xtensa/Makefile
-	src/platform/baytrail/include/xtensa/config/Makefile
 	src/platform/apollolake/Makefile
 	src/platform/apollolake/include/Makefile
+	src/platform/apollolake/include/arch/Makefile
+	src/platform/apollolake/include/arch/xtensa/Makefile
+	src/platform/apollolake/include/arch/xtensa/config/Makefile
 	src/platform/apollolake/include/platform/Makefile
-	src/platform/apollolake/include/xtensa/Makefile
-	src/platform/apollolake/include/xtensa/config/Makefile
 	src/platform/haswell/Makefile
 	src/platform/haswell/include/Makefile
+	src/platform/haswell/include/arch/Makefile
+	src/platform/haswell/include/arch/xtensa/Makefile
+	src/platform/haswell/include/arch/xtensa/config/Makefile
 	src/platform/haswell/include/platform/Makefile
-	src/platform/haswell/include/xtensa/Makefile
-	src/platform/haswell/include/xtensa/config/Makefile
 	src/platform/cannonlake/Makefile
 	src/platform/cannonlake/include/Makefile
+	src/platform/cannonlake/include/arch/Makefile
+	src/platform/cannonlake/include/arch/xtensa/Makefile
+	src/platform/cannonlake/include/arch/xtensa/config/Makefile
 	src/platform/cannonlake/include/platform/Makefile
-	src/platform/cannonlake/include/xtensa/Makefile
-	src/platform/cannonlake/include/xtensa/config/Makefile
 ])
 AC_OUTPUT
 

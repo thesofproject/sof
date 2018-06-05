@@ -25,6 +25,8 @@
    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
+#if !defined __XCC__
+
 #ifndef XTENSA_SPECREG_H
 #define XTENSA_SPECREG_H
 
@@ -104,3 +106,9 @@
 #define INTCLEAR	227
 
 #endif /* XTENSA_SPECREG_H */
+
+#else
+
+#error "xcc should not use this header"
+
+#endif /* __XCC__ */

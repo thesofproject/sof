@@ -5,5 +5,4 @@ noinst_HEADERS = \
 	specreg.h \
 	system.h \
 	tie.h \
-	core-isa-boot.h \
 	tie-asm.h

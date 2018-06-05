@@ -30,8 +30,19 @@ export SOF_INCDIR = \
 export ARCH_INCDIR = \
 	-I $(SRC_DIR)/arch/$(ARCH)/include \
 	-I $(SRC_DIR)/arch/$(ARCH)/xtos
-export PLATFORM_INCDIR = \
-	-I $(SRC_DIR)/platform/$(PLATFORM)/include
+
+PLATFORM_INCDIR = -I $(SRC_DIR)/platform/$(PLATFORM)/include
+
+if XCC
+PLATFORM_INCDIR += \
+	-I $(ROOT_DIR)/arch/include
+else
+PLATFORM_INCDIR += \
+	-I $(SRC_DIR)/platform/$(PLATFORM)/include/arch
+endif
+
+export PLATFORM_INCDIR
+
 endif
 
 dist-hook:

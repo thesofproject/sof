@@ -33,7 +33,10 @@
 #define __PLATFORM_SHIM_H__
 
 #include <platform/memory.h>
+
+#ifndef ASSEMBLY
 #include <stdint.h>
+#endif
 
 /* DSP IPC for Host Registers */
 #define IPC_DIPCT		0x00
@@ -146,8 +149,18 @@
 #define SHIM_PWRSTS		0x92
 #define SHIM_LPSCTL		0x94
 
+/* HP SRAM Power Gating */
+#define SHIM_HSPGCTL		0x80
+#define SHIM_HPGISTS		0xb0
+
 #define SHIM_LPSCTL_FDSPRUN	(0X1 << 9)
 #define SHIM_LPSCTL_FDMARUN	(0X1 << 8)
+
+#define SHIM_L2_MECS		(SHIM_BASE + 0xd0)
+
+#define SHIM_L2_CACHE_CTRL	(SHIM_BASE + 0x500)
+#define SHIM_L2_PREF_CFG	(SHIM_BASE + 0x508)
+#define SHIM_L2_CACHE_PREF	(SHIM_BASE + 0x510)
 
 
 /* host windows */
@@ -156,6 +169,8 @@
 
 #define DMWBA_ENABLE		(1 << 0)
 #define DMWBA_READONLY		(1 << 1)
+
+#ifndef ASSEMBLY
 
 static inline uint32_t shim_read(uint32_t reg)
 {
@@ -179,12 +194,14 @@ static inline void shim_write64(uint32_t reg, uint64_t val)
 
 static inline uint32_t sw_reg_read(uint32_t reg)
 {
-	return *((volatile uint32_t*)(SRAM_SW_REG_BASE + reg));
+	return *((volatile uint32_t*)((SRAM_SW_REG_BASE -
+		SRAM_ALIAS_OFFSET) + reg));
 }
 
 static inline void sw_reg_write(uint32_t reg, uint32_t val)
 {
-	*((volatile uint32_t*)(SRAM_SW_REG_BASE + reg)) = val;
+	*((volatile uint32_t*)((SRAM_SW_REG_BASE -
+		SRAM_ALIAS_OFFSET) + reg)) = val;
 }
 
 static inline uint32_t mn_reg_read(uint32_t reg)
@@ -216,5 +233,6 @@ static inline void ipc_write(uint32_t reg, uint32_t val)
 {
 	*((volatile uint32_t*)(IPC_HOST_BASE + reg)) = val;
 }
+#endif
 
 #endif

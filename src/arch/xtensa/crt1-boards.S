@@ -29,6 +29,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <xtensa/coreasm.h>
+#include <config.h>
 // DF #include "xtos-internal.h"
 //#include <xtensa/../../src/xtos/xtos-internal.h>
 
@@ -112,7 +113,9 @@ _start:
 	// It is also the return address, where zero indicates
 	// that the frame used by _start is the bottommost frame.
 	//
-#if !XCHAL_HAVE_HALT || !XCHAL_HAVE_BOOTLOADER		// not needed for Xtensa TX
+
+// not needed for Xtensa TX
+#if !XCHAL_HAVE_HALT || !defined(CONFIG_BOOT_LOADER)
 	movi	a0, 0		// keep this register zero.
 #endif
 
@@ -120,7 +123,7 @@ _start:
 #include "reset-unneeded.S"
 #endif
 
-#if XCHAL_HAVE_BOOTLOADER
+#if defined(CONFIG_BOOT_LOADER)
 	.weak	_Level2FromVector
 	.weak	_Level3FromVector
 	.weak	_Level4FromVector
@@ -148,13 +151,16 @@ _start:
 
 	/*
 	 *  Now that sp (a1) is set, we can set PS as per the application
-	 *  (user vector mode, enable interrupts, enable window exceptions if applicable).
+	 *  (user vector mode, enable interrupts,
+	 *  enable window exceptions if applicable).
 	 */
 #if XCHAL_HAVE_EXCEPTIONS
 # ifdef __XTENSA_CALL0_ABI__
-	movi	a3, PS_UM		// PS.WOE = 0, PS.UM = 1, PS.EXCM = 0, PS.INTLEVEL = 0
-# else  
-	movi	a3, PS_UM|PS_WOE	// PS.WOE = 1, PS.UM = 1, PS.EXCM = 0, PS.INTLEVEL = 0
+	// PS.WOE = 0, PS.UM = 1, PS.EXCM = 0, PS.INTLEVEL = 0
+	movi	a3, PS_UM
+# else
+	// PS.WOE = 1, PS.UM = 1, PS.EXCM = 0, PS.INTLEVEL = 0
+	movi	a3, PS_UM|PS_WOE
 # endif
 	wsr	a3, PS
 	rsync
@@ -188,7 +194,8 @@ _start:
 	CALLX	a4
 1:
 
-#if !XCHAL_HAVE_BOOTLOADER	/* boot loader takes care of zeroing BSS */
+/* boot loader takes care of zeroing BSS */
+#if !defined(CONFIG_BOOT_LOADER)
 	/*
 	 *  Clear the BSS (uninitialized data) segments.
 	 *  This code supports multiple zeroed sections (*.bss).
@@ -231,9 +238,11 @@ _start:
 #endif
 
 
-	//  We can now call C code, the C calling environment has been initialized.
+	//  We can now call C code,
+	//  the C calling environment has been initialized.
 	//
-	//  From this point on, we use ABI-specific macros to refer to registers a0 .. a15
+	//  From this point on, we use ABI-specific macros to refer
+	//  to registers a0 .. a15
 	//  (ARG#).
 
 
@@ -255,12 +264,12 @@ _start:
 	//  Initialize the board (eg. the UART on the XT2000).
 	//CALL	board_init
 
-	/* 
+	/*
 	 *  Call __clibrary_init to initialize the C library:
 	 *
-	 *  void __clibrary_init(int argc, char ** argv, char ** environ, 
+	 *  void __clibrary_init(int argc, char ** argv, char ** environ,
 	 *		void(*init_func)(void), void(*fini_func)(void));
-	 */	
+	 */
 
 	//  Pass an empty argv array, with an empty string as the program name.
 #if 0
@@ -278,7 +287,8 @@ _start:
 	movi	ARG3, _start_envp	// envp = [0]
 	l32i	ARG1, ARG1, 0		// argc = 1
 	CALL	main
-	//  The return value is the same register as the first outgoing argument.
+	//  The return value is the same register
+	//  as the first outgoing argument.
 //	CALL	exit			// exit with main's return value
 	// Does not return here.
 
@@ -291,13 +301,13 @@ _start_argv:
 	.word	_start_null	// empty program name
 _start_null:
 _start_envp:
-	.word	0		// end of argv array, empty string, empty environ
+	.word	0	// end of argv array, empty string, empty environ
 _start_argc:
-	.word	1		// one argument (program name)
+	.word	1	// one argument (program name)
 	.text
 
 #endif /* !HALT */
 
 	.size	_start, . - _start
 
-//#endif 
+//#endif

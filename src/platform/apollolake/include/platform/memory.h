@@ -127,29 +127,7 @@
 #define ROM_BASE		0xBEFE0000
 #define ROM_SIZE		0x00002000
 
-/*
- * The L2 SRAM Heap and Stack on Apololake are organised like this :-
- *
- * +--------------------------------------------------------------------------+
- * | Offset              | Region         |  Size                             |
- * +---------------------+----------------+-----------------------------------+
- * | L2_SRAM_BASE        | RO Data        |  SOF_DATA_SIZE                   |
- * |                     | Data           |                                   |
- * |                     | BSS            |                                   |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_SYSTEM_BASE    | System Heap    |  HEAP_SYSTEM_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_RUNTIME_BASE   | Runtime Heap   |  HEAP_RUNTIME_SIZE                |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_END      | Stack          |  SOF_STACK_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_BASE     |                |                                   |
- * +---------------------+----------------+-----------------------------------+
- */
-
-/* L2 SRAM */
+/* IMR accessible via L2$ */
 #define L2_SRAM_BASE		0xA000A000
 #define L2_SRAM_SIZE		0x00056000
 
@@ -163,23 +141,7 @@
 #define HEAP_RT_COUNT512		8
 #define HEAP_RT_COUNT1024		4
 
-/* text and data share the same L2 SRAM on Broxton */
-#define SOF_TEXT_START			L2_SRAM_BASE
-#define SOF_TEXT_START_SIZE		0x400
 #define L2_VECTOR_SIZE			0x1000
-
-#define SOF_TEXT_BASE			(L2_SRAM_BASE + L2_VECTOR_SIZE)
-#define SOF_TEXT_SIZE			0x19000
-
-/* initialized data */
-#if defined CONFIG_DMIC
-#define SOF_DATA_SIZE			0x1a000
-#else
-#define SOF_DATA_SIZE			0x19000
-#endif
-
-/* bss data */
-#define SOF_BSS_DATA_SIZE		0x2800
 
 /* Heap configuration */
 #define HEAP_SYSTEM_BASE \
@@ -202,11 +164,6 @@
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
-
-/* Stack configuration */
-#define SOF_STACK_SIZE			0x1000
-#define SOF_STACK_BASE			(L2_SRAM_BASE + L2_SRAM_SIZE)
-#define SOF_STACK_END			(SOF_STACK_BASE - SOF_STACK_SIZE)
 
 /*
  * The HP SRAM Region Apololake is organised like this :-
@@ -232,8 +189,17 @@
  */
 
 /* HP SRAM */
+#define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
-#define HP_SRAM_SIZE		0x00020000
+#define HP_SRAM_SIZE		0x00080000
+
+/* HP SRAM Heap */
+#define HEAP_HP_BUFFER_BASE	HP_SRAM_BASE
+#define HEAP_HP_BUFFER_SIZE	0x8000
+
+#define HEAP_HP_BUFFER_BLOCK_SIZE	0x180
+#define HEAP_HP_BUFFER_COUNT \
+	(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
 /* HP SRAM windows */
 
@@ -278,21 +244,27 @@
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
-/* HP SRAM Heap */
-#define HEAP_HP_BUFFER_BASE	HP_SRAM_BASE
-#define HEAP_HP_BUFFER_SIZE \
-		(HP_SRAM_SIZE - \
-		SRAM_TRACE_SIZE - \
-		SRAM_DEBUG_SIZE - \
-		SRAM_EXCEPT_SIZE - \
-		SRAM_STREAM_SIZE - \
-		SRAM_INBOX_SIZE - \
-		SRAM_OUTBOX_SIZE - \
-		SRAM_SW_REG_SIZE)
+#define HP_SRAM_VECBASE_RESET	(HP_SRAM_WIN0_BASE + HP_SRAM_WIN0_SIZE)
 
-#define HEAP_HP_BUFFER_BLOCK_SIZE	0x180
-#define HEAP_HP_BUFFER_COUNT \
-	(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
+
+#define SOF_TEXT_START		(HP_SRAM_VECBASE_RESET + 0x400)
+#define SOF_TEXT_BASE		(SOF_TEXT_START)
+#define SOF_TEXT_SIZE		(0x19000 - 0x400)
+
+/* initialized data */
+#if defined CONFIG_DMIC
+#define SOF_DATA_SIZE		0x1b000
+#else
+#define SOF_DATA_SIZE		0x19000
+#endif
+
+/* bss data */
+#define SOF_BSS_DATA_SIZE	0x2800
+
+/* Stack configuration */
+#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE)
+#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_SIZE)
 
 /*
  * The LP SRAM Heap and Stack on Apollolake are organised like this :-
@@ -369,9 +341,31 @@
 #define SOF_MEM_ERROR_TEXT_SIZE	0x180
 #define SOF_MEM_ERROR_LIT_SIZE		0x8
 
-#define SOF_MEM_RESET_TEXT_SIZE	0x268
-#define SOF_MEM_RESET_LIT_SIZE		0x8
+#define SOF_MEM_VECBASE			HP_SRAM_VECBASE_RESET
 #define SOF_MEM_VECBASE_LIT_SIZE	0x178
 
 #define SOF_MEM_RO_SIZE		0x8
+
+/* boot loader in IMR */
+#define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB000A000
+#define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x66
+#define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + \
+					IMR_BOOT_LDR_TEXT_ENTRY_SIZE)
+#define IMR_BOOT_LDR_LIT_SIZE		0x70
+#define IMR_BOOT_LDR_TEXT_BASE		(IMR_BOOT_LDR_LIT_BASE + \
+					IMR_BOOT_LDR_LIT_SIZE)
+#define IMR_BOOT_LDR_TEXT_SIZE		0x1C00
+#define IMR_BOOT_LDR_TEXT1_BASE		(IMR_BOOT_LDR_TEXT_BASE + IMR_BOOT_LDR_TEXT_SIZE)
+#define IMR_BOOT_LDR_TEXT1_SIZE		0x2000
+#define IMR_BOOT_LDR_DATA_BASE		0xB0002000
+#define IMR_BOOT_LDR_DATA_SIZE		0x1000
+#define IMR_BOOT_LDR_BSS_BASE		0xB0100000
+#define IMR_BOOT_LDR_BSS_SIZE		0x10000
+
+/** \brief Manifest base address in IMR - used by boot loader copy procedure. */
+#define IMR_BOOT_LDR_MANIFEST_BASE	0xB0004000
+
+/** \brief Manifest size (seems unused). */
+#define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
+
 #endif

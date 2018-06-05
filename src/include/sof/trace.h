@@ -47,6 +47,9 @@
 #define TRACE_BOOT_LDR_MANIFEST	0x120
 #define TRACE_BOOT_LDR_JUMP		0x150
 
+#define TRACE_BOOT_LDR_PARSE_MODULE	0x210
+#define TRACE_BOOT_LDR_PARSE_SEGMENT	0x220
+
 /* general trace init codes - only used at boot when main trace is not available */
 #define TRACE_BOOT_START		0x1000
 #define TRACE_BOOT_ARCH		0x2000

@@ -29,6 +29,8 @@
    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
+#if !defined __XCC__
+
 #ifndef _XTENSA_CORE_TIE_H
 #define _XTENSA_CORE_TIE_H
 
@@ -167,3 +169,9 @@
 	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8
 
 #endif /*_XTENSA_CORE_TIE_H*/
+
+#else
+
+#error "xcc should not use this header"
+
+#endif /* __XCC__ */

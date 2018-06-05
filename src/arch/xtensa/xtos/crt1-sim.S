@@ -28,6 +28,7 @@
 #include <xtensa/simcall.h>
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
+#include <config.h>
 
 
 // Exports
@@ -184,7 +185,9 @@ _start:
 
 
 	/*  The new ISS simcall only appeared after RB-2007.2:  */
-#if !XCHAL_HAVE_BOOTLOADER && (XCHAL_HW_MAX_VERSION > XTENSA_HWVERSION_RB_2007_2)	/* pre-LX2 cores only */
+#if !defined(CONFIG_BOOT_LOADER) &&
+	/* pre-LX2 cores only */
+	(XCHAL_HW_MAX_VERSION > XTENSA_HWVERSION_RB_2007_2)
 	/*
 	 *  Clear the BSS (uninitialized data) segments.
 	 *  This code supports multiple zeroed sections (*.bss).

@@ -5,9 +5,16 @@ noinst_PROGRAMS = \
 
 # generate linker script from platform headers
 LINK_SCRIPT = ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
-LINK_DEPS = \
-	../../platform/$(PLATFORM)/include/platform/memory.h \
-	../../platform/$(PLATFORM)/include/xtensa/config/core-isa*
+
+LINK_DEPS = ../../platform/$(PLATFORM)/include/platform/memory.h
+
+if XCC
+LINK_DEPS += \
+	$(ROOT_DIR)/arch/include/xtensa/config/core-isa*
+else
+LINK_DEPS += \
+	../../platform/$(PLATFORM)/include/arch/xtensa/config/core-isa*
+endif
 
 nodist_sof_SOURCES = $(LINK_SCRIPT).in
 BUILT_SOURCES = $(LINK_SCRIPT)
@@ -35,7 +42,7 @@ sof_SOURCES = \
 	timer.c \
 	task.c
 
-if BUILD_CANNONLAKE
+if BUILD_BOOTLOADER
 sof_SOURCES += \
 	main-entry.S
 endif

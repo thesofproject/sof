@@ -14,12 +14,6 @@ OUTPUT_ARCH(xtensa)
 
 MEMORY
 {
-  vector_reset_text :
-        org = XCHAL_RESET_VECTOR0_PADDR,
-        len = SOF_MEM_RESET_TEXT_SIZE
-  vector_reset_lit :
-        org = XCHAL_RESET_VECTOR0_PADDR + SOF_MEM_RESET_TEXT_SIZE,
-        len = SOF_MEM_RESET_LIT_SIZE
   vector_memory_lit :
         org = XCHAL_MEMERROR_VECTOR_PADDR + SOF_MEM_ERROR_LIT_SIZE,
         len = SOF_MEM_ERROR_LIT_SIZE
@@ -27,65 +21,62 @@ MEMORY
         org = XCHAL_MEMERROR_VECTOR_PADDR,
         len = SOF_MEM_ERROR_TEXT_SIZE
   vector_base_text :
-        org = XCHAL_VECBASE_RESET_PADDR,
+        org = SOF_MEM_VECBASE,
         len = SOF_MEM_VECBASE_LIT_SIZE
   vector_int2_lit :
-        org = XCHAL_INTLEVEL2_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL2_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int2_text :
-        org = XCHAL_INTLEVEL2_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL2_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int3_lit :
-        org = XCHAL_INTLEVEL3_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL3_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int3_text :
-        org = XCHAL_INTLEVEL3_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL3_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int4_lit :
-        org = XCHAL_INTLEVEL4_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL4_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int4_text :
-        org = XCHAL_INTLEVEL4_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL4_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int5_lit :
-        org = XCHAL_INTLEVEL5_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL5_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int5_text :
-        org = XCHAL_INTLEVEL5_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL5_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int6_lit :
-        org = XCHAL_INTLEVEL6_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL6_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int6_text :
-        org = XCHAL_INTLEVEL6_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL6_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int7_lit :
-        org = XCHAL_INTLEVEL7_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL7_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int7_text :
-        org = XCHAL_INTLEVEL7_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_INTLEVEL7_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_kernel_lit :
-        org = XCHAL_KERNEL_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_KERNEL_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_kernel_text :
-        org = XCHAL_KERNEL_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_KERNEL_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_user_lit :
-        org = XCHAL_USER_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_USER_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_user_text :
-        org = XCHAL_USER_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_USER_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_double_lit :
-        org = XCHAL_DOUBLEEXC_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_VECBASE + XCHAL_DOUBLEEXC_VECOFS - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_double_text :
-        org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
+        org = SOF_MEM_VECBASE + XCHAL_DOUBLEEXC_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
-  sof_text_start :
-        org = SOF_TEXT_START,
-        len = SOF_TEXT_START_SIZE,
   sof_text :
         org = SOF_TEXT_BASE,
         len = SOF_TEXT_SIZE,
@@ -111,8 +102,6 @@ MEMORY
 
 PHDRS
 {
-  vector_reset_text_phdr PT_LOAD;
-  vector_reset_lit_phdr PT_LOAD;
   vector_memory_lit_phdr PT_LOAD;
   vector_memory_text_phdr PT_LOAD;
   vector_base_text_phdr PT_LOAD;
@@ -134,7 +123,6 @@ PHDRS
   vector_user_text_phdr PT_LOAD;
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
-  sof_text_start_phdr PT_LOAD;
   sof_text_phdr PT_LOAD;
   sof_data_phdr PT_LOAD;
   sof_bss_data_phdr PT_LOAD;
@@ -171,27 +159,6 @@ PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
 SECTIONS
 {
-  .ResetVector.text : ALIGN(4)
-  {
-    _ResetVector_text_start = ABSOLUTE(.);
-    KEEP (*(.ResetVector.text))
-    _ResetVector_text_end = ABSOLUTE(.);
-  } >vector_reset_text :vector_reset_text_phdr
-
-  .ResetVector.literal : ALIGN(4)
-  {
-    _ResetVector_literal_start = ABSOLUTE(.);
-    *(.ResetVector.literal)
-    _ResetVector_literal_end = ABSOLUTE(.);
-  } >vector_reset_lit :vector_reset_lit_phdr
-
- .MemoryExceptionVector.literal : ALIGN(4)
-  {
-    _MemoryExceptionVector_literal_start = ABSOLUTE(.);
-    KEEP (*(.MemoryExceptionVector.literal))
-    _MemoryExceptionVector_literal_end = ABSOLUTE(.);
-  } >vector_memory_lit :vector_memory_lit_phdr
-
   .MemoryExceptionVector.text : ALIGN(4)
   {
     _MemoryExceptionVector_text_start = ABSOLUTE(.);
@@ -199,7 +166,7 @@ SECTIONS
     _MemoryExceptionVector_text_end = ABSOLUTE(.);
   } >vector_memory_text :vector_memory_text_phdr
 
-   .WindowVectors.text : ALIGN(4)
+  .WindowVectors.text : ALIGN(4)
   {
     _WindowVectors_text_start = ABSOLUTE(.);
     KEEP (*(.WindowVectors.text))
@@ -332,17 +299,11 @@ SECTIONS
     _DoubleExceptionVector_text_end = ABSOLUTE(.);
   } >vector_double_text :vector_double_text_phdr
 
-  .MainEntry.text : ALIGN(4)
-  {
-    _MainEntry_text_start = ABSOLUTE(.);
-    KEEP (*(.MainEntry.text))
-    _MainEntry_text_end = ABSOLUTE(.);
-  } >sof_text_start :sof_text_start_phdr
-
   .text : ALIGN(4)
   {
     _stext = .;
     _text_start = ABSOLUTE(.);
+    KEEP (*(.MainEntry.text))
     *(.entry.text)
     *(.init.literal)
     KEEP(*(.init))

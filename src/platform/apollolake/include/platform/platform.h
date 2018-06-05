@@ -33,6 +33,7 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#include <platform/platcfg.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>
 #include <uapi/ipc.h>

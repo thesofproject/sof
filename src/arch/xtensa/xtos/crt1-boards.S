@@ -30,6 +30,7 @@
 
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
+#include <config.h>
 
 
 // Exports
@@ -92,7 +93,9 @@ _start:
 	// It is also the return address, where zero indicates
 	// that the frame used by _start is the bottommost frame.
 	//
-#if !XCHAL_HAVE_HALT || !XCHAL_HAVE_BOOTLOADER		// not needed for Xtensa TX
+
+// not needed for Xtensa TX
+#if !XCHAL_HAVE_HALT || !defined(CONFIG_BOOT_LOADER)
 	movi	a0, 0		// keep this register zero.
 #endif
 
@@ -152,8 +155,8 @@ _start:
 	CALLX	a4
 1:
 
-
-#if !XCHAL_HAVE_BOOTLOADER	/* boot loader takes care of zeroing BSS */
+/* boot loader takes care of zeroing BSS */
+#if !defined(CONFIG_BOOT_LOADER)
 
 # ifdef __XTENSA_CALL0_ABI__
 	// Clear a0 again as possible CALLX to __memmap_init changed it.

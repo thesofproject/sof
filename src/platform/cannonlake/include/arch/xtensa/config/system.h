@@ -31,6 +31,7 @@
    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
+#if !defined __XCC__
 
 #ifndef XTENSA_CONFIG_SYSTEM_H
 #define XTENSA_CONFIG_SYSTEM_H
@@ -269,3 +270,9 @@
 
 
 #endif /*XTENSA_CONFIG_SYSTEM_H*/
+
+#else
+
+#error "xcc should not use this header"
+
+#endif /* __XCC__ */

@@ -37,8 +37,9 @@
 
 #include <config.h>
 #include <platform/shim.h>
+#include <platform/platcfg.h>
 #include <xtensa/corebits.h>
-#include <xtensa/config/core-isa-boot.h>
+#include <xtensa/config/core-isa.h>
 
 	.type   boot_pri_core, @function
 	.type   boot_sec_core, @function
@@ -55,17 +56,61 @@ boot_entry:
 
 	.align 4
 	.literal_position
+#if defined(PLATFORM_RESET_MHE_AT_BOOT)
 l2_mecs:
 	.word SHIM_L2_MECS
+#endif
+
+#if defined(PLATFORM_DISABLE_L2CACHE_AT_BOOT)
+l2_cache_pref:
+	.word SHIM_L2_PREF_CFG
+#endif
+
+sof_stack_base:
+	.word SOF_STACK_BASE
+
+wnd0_base:
+	.word DMWBA(0)
+
+wnd0_size:
+	.word DMWLO(0)
+
+wnd0_base_val:
+	.word HP_SRAM_WIN0_BASE | DMWBA_READONLY | DMWBA_ENABLE
+
+wnd0_size_val:
+	.word HP_SRAM_WIN0_SIZE | 0x7
 
 boot_init:
 	.align 4
-#if defined(CONFIG_CANNONLAKE)
+#if defined(PLATFORM_DISABLE_L2CACHE_AT_BOOT)
+	l32r a3, l2_cache_pref
+	movi a5, 0
+	s32i a5, a3, 0
+	memw
+#endif
+
+#if defined(PLATFORM_RESET_MHE_AT_BOOT)
 	/* reset memory hole */
 	l32r a3, l2_mecs
 	movi a5, 0
 	s32i a5, a3, 0
 #endif
+
+	/* reprogram stack to the area defined by main FW */
+	l32r	a3, sof_stack_base
+	mov		sp, a3
+
+	/* realloc memory window0 to
+	continue reporting boot progress */
+	l32r	a3, wnd0_size
+	l32r	a5, wnd0_size_val
+	s32i	a5, a3, 0
+	memw
+	l32r	a3, wnd0_base
+	l32r	a5, wnd0_base_val
+	s32i	a5, a3, 0
+	memw
 
 #if (XCHAL_DCACHE_IS_COHERENT || XCHAL_LOOP_BUFFER_SIZE) && \
 	XCHAL_HW_MIN_VERSION >= XTENSA_HWVERSION_RE_2012_0

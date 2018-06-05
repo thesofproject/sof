@@ -1,1 +1,1 @@
-SUBDIRS = platform xtensa
+SUBDIRS = arch platform

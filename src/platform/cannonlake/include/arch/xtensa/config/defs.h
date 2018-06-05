@@ -25,6 +25,8 @@
    and earlier Xtensa releases.  It includes only a subset of the
    available header files.  */
 
+#if !defined __XCC__
+
 #ifndef _XTENSA_BASE_HEADER
 #define _XTENSA_BASE_HEADER
 
@@ -36,3 +38,9 @@
 
 #endif /* __XTENSA__ */
 #endif /* !_XTENSA_BASE_HEADER */
+
+#else
+
+#error "xcc should not use this header"
+
+#endif /* __XCC__ */

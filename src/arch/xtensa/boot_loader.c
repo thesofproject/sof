@@ -33,6 +33,7 @@
 #include <sof/trace.h>
 #include <sof/io.h>
 #include <uapi/manifest.h>
+#include <platform/platform.h>
 #include <platform/memory.h>
 
 /* entry point to main firmware */
@@ -41,7 +42,7 @@ extern void _ResetVector(void);
 void boot_pri_core(void);
 void boot_sec_core(void);
 
-#if defined(CONFIG_CANNONLAKE)
+#if defined(CONFIG_BOOT_LOADER)
 
 /* memcopy used by boot loader */
 static inline void bmemcpy(void *dest, void *src, size_t bytes)
@@ -77,6 +78,7 @@ static void parse_module(struct sof_man_fw_header *hdr,
 	/* each module has 3 segments */
 	for (i = 0; i < 3; i++) {
 
+		platform_trace_point(TRACE_BOOT_LDR_PARSE_SEGMENT + i);
 		switch (mod->segment[i].flags.r.type) {
 		case SOF_MAN_SEGMENT_TEXT:
 		case SOF_MAN_SEGMENT_DATA:
@@ -112,6 +114,7 @@ static void parse_manifest(void)
 	/* copy module to SRAM  - skip bootloader module */
 	for (i = 1; i < hdr->num_module_entries; i++) {
 
+		platform_trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
 		mod = sof_man_get_module(desc, i);
 		parse_module(hdr, mod);
 	}
@@ -119,6 +122,7 @@ static void parse_manifest(void)
 #endif
 
 /* power on HPSRAM */
+#if defined(CONFIG_CANNONLAKE)
 static int32_t hp_sram_init(void)
 {
 	int delay_count = 256;
@@ -158,6 +162,14 @@ static int32_t hp_sram_init(void)
 
 	return 0;
 }
+#endif
+
+#if defined(CONFIG_APOLLOLAKE)
+static uint32_t hp_sram_init(void)
+{
+	return 0;
+}
+#endif
 
 /* boot secondary core - i.e core ID > 0 */
 void boot_sec_core(void)
@@ -185,7 +197,7 @@ void boot_pri_core(void)
 		return;
 	}
 
-#if defined(CONFIG_CANNONLAKE)
+#if defined(CONFIG_BOOT_LOADER)
 	/* parse manifest and copy modules */
 	platform_trace_point(TRACE_BOOT_LDR_MANIFEST);
 	parse_manifest();

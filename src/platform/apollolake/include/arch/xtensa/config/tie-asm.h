@@ -29,6 +29,8 @@
    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
 
+#if !defined __XCC__
+
 #ifndef _XTENSA_CORE_TIE_ASM_H
 #define _XTENSA_CORE_TIE_ASM_H
 
@@ -237,3 +239,9 @@
 	.macro xchal_cp7_load	p a b c d continue=0 ofs=-1 select=-1 ; .endm
 
 #endif /*_XTENSA_CORE_TIE_ASM_H*/
+
+#else
+
+#error "xcc should not use this header"
+
+#endif /* __XCC__ */

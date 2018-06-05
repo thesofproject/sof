@@ -35,7 +35,7 @@
 #include "xtos-internal.h"
 #include <config.h>
 
-#if XCHAL_HAVE_BOOTLOADER
+#if CONFIG_BOOT_LOADER
 #include <platform/memory.h>
 #endif
 
@@ -119,7 +119,7 @@ _reset_sram:
 #  endif
 # endif
 
-#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
+#if defined(CONFIG_BOOT_LOADER)
 	.section .ResetHandler.text, "ax"
 	j	_ResetHandler
 #endif
@@ -525,7 +525,7 @@ unpackdone:
 	 */
 #if HAVE_XSR
 
-#if !XCHAL_HAVE_BOOTLOADER
+#if !defined(CONFIG_BOOT_LOADER)
 /*  For asm macros; works for positive a,b smaller than 1000:  */
 # define GREATERTHAN(a,b)	(((b)-(a)) & ~0xFFF)
 
@@ -579,7 +579,7 @@ unpackdone:
 	 *  Note:  This needs to be call0 regardless of the selected ABI.
 	 */
 
-#if XCHAL_HAVE_BOOTLOADER
+#if CONFIG_BOOT_LOADER
 		/*ToDo refine the _start*/
 		movi a0, SOF_TEXT_START
 		callx0 a0
