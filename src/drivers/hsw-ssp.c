@@ -111,26 +111,16 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* reset SSP settings */
 	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
-
 	sscr0 = SSCR0_MOD | SSCR0_PSP;
-
-	/*
-	 * FIXME: PINTE and RWOT are not set in sscr1
-	 *   sscr1 = SSCR1_PINTE | SSCR1_RWOT;
-	 */
 
 	/* sscr1 dynamic settings are TFT, RFT, SFRMDIR, SCLKDIR, SCFR */
 	sscr1 = SSCR1_TTE | SSCR1_TTELP;
 
-#ifdef ENABLE_TIE_RIE /* FIXME: not enabled, difference with SST driver */
-	//sscr1 |= SSCR1_TIE | SSCR1_RIE;
-#endif
-
-	// FIXME COE does this ?
+	/* enable Transmit underrun mode 1 */
 	sscr2 = SSCR2_TURM1;
 
 	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
-	sspsp = SSPSP_ETDS; /* make sure SDO line is tri-stated when inactive */
+	sspsp = 0x0;
 
 	/* sspsp2 no dynamic setting */
 	sspsp2 = 0x0;
@@ -138,32 +128,23 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp->config = *config;
 	ssp->params = config->ssp;
 
-	/* clock masters */
-	/*
-	 * On TNG/BYT/CHT, the SSP wrapper generates the fs even in master mode,
-	 * the master/slave choice depends on the clock type
-	 */
-	sscr1 |= SSCR1_SFRMDIR;
-
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
-		//sscr0 |= SSCR0_ECS; /* external clock used */
-		sscr1 |= SSCR1_SCLKDIR;
-
+		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
+#ifdef ENABLE_SSRCR1_SCFR
+		sscr1 |= SSCR1_SCFR;
+#endif
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
-#ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
-		sscr1 |= SSCR1_SCFR;
-#endif
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
-		sscr0 |= SSCR0_ECS; /* external clock used */
 		sscr1 |= SSCR1_SCLKDIR;
-		break;
-	case SOF_DAI_FMT_CBS_CFM:
-#ifdef ENABLE_SSRCR1_SCFR /* FIXME: is this needed ? */
+#ifdef ENABLE_SSRCR1_SCFR
 		sscr1 |= SSCR1_SCFR;
 #endif
+		break;
+	case SOF_DAI_FMT_CBS_CFM:
+		sscr1 |= SSCR1_SFRMDIR;
 		break;
 	default:
 		trace_ssp_error("ec2");
@@ -346,7 +327,7 @@ static inline int ssp_set_config(struct dai *dai,
 		frame_len = 1;
 
 		/* handle frame polarity, DSP_A default is rising/active high */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
 		break;
@@ -359,8 +340,8 @@ static inline int ssp_set_config(struct dai *dai,
 		/* set asserted frame length */
 		frame_len = 1;
 
-		/* handle frame polarity, DSP_A default is rising/active high */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		/* handle frame polarity, DSP_B default is rising/active high */
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
 		break;
