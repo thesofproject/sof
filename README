@@ -24,7 +24,7 @@ If building library for host platform, run the following configure. Please modif
 the --prefix option to choose the directory for installing the library files and
 headers
 
-./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$pwd/../host-root/
+./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$PWD/../host-root/
 
 4) make
 
