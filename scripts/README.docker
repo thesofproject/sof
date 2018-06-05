@@ -16,7 +16,8 @@ First, build the docker container. This step needs to be done initially and
 when the toolchain or alsa dependencies are updated.
 
 cd scripts/docker_build
-docker build --build-arg UID=$(id -u) -t sof .
+
+./docker-build.sh
 
 After the container is built, it can be used to run the scripts.
 

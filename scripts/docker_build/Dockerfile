@@ -17,6 +17,13 @@
 FROM ubuntu:16.04
 ARG UID=1000
 
+# Set up proxy from host
+COPY apt.conf /etc/apt/
+ARG host_http_proxy
+ARG host_https_proxy
+ENV http_proxy $host_http_proxy
+ENV https_proxy $host_https_proxy
+
 RUN apt-get -y update && \
 	    apt-get install -y \
 	    	autoconf \
@@ -49,11 +56,17 @@ RUN apt-get clean
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 70 --slave /usr/bin/g++ g++ /usr/bin/g++-7
 
 # Use ToT alsa utils for the latest topology patches.
-RUN mkdir -p /root/alsa-build
-RUN cd /root/alsa-build && git clone git://git.alsa-project.org/alsa-lib.git
-RUN cd /root/alsa-build && git clone git://git.alsa-project.org/alsa-utils.git
-RUN cd /root/alsa-build/alsa-lib && ./gitcompile &&  make install
-RUN cd /root/alsa-build/alsa-utils && ./gitcompile &&  make install
+RUN mkdir -p /root/alsa-build && cd /root/alsa-build && \
+	if [ "x$http_proxy" = "x" ]; then \
+		git clone git://git.alsa-project.org/alsa-lib.git && \
+		git clone git://git.alsa-project.org/alsa-utils.git ; \
+	else \
+		git clone http://git.alsa-project.org/http/alsa-lib.git && \
+		git clone http://git.alsa-project.org/http/alsa-utils.git; \
+	fi && \
+cd /root/alsa-build/alsa-lib && ./gitcompile &&  make install && \
+cd /root/alsa-build/alsa-utils && ./gitcompile &&  make install && \
+cd /root/ && rm -rf alsa-build
 
 RUN useradd --create-home -d /home/sof -u $UID -G sudo sof
 RUN echo "sof:test0000" | chpasswd
