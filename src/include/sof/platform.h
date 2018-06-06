@@ -25,52 +25,36 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Marcin Maka <marcin.maka@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_IPC_PANIC__
-#define __INCLUDE_SOF_IPC_PANIC__
+#ifndef __INCLUDE_SOF_PLATFORM_H__
+#define __INCLUDE_SOF_PLATFORM_H__
 
 #include <sof/sof.h>
-#include <sof/mailbox.h>
-#include <sof/interrupt.h>
-#include <sof/trace.h>
-#include <platform/platform.h>
-#include <uapi/ipc.h>
-#include <stdint.h>
-#include <stdlib.h>
 
-/* panic and rewind stack */
-static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames)
-{
-	void *ext_offset;
-	size_t count;
+/*
+ * APIs declared here are defined for every platform.
+ */
 
-	/* disable all IRQs */
-	interrupt_global_disable();
+/**
+ * \brief Platform specific implementation of the On Boot Complete handler.
+ * \param[in] boot_message Boot status code.
+ * \return 0 if successful, error code otherwise.
+ */
+int platform_boot_complete(uint32_t boot_message);
 
-	/* dump DSP core registers */
-	ext_offset = arch_dump_regs();
-	count = MAILBOX_EXCEPTION_SIZE -
-		(size_t)(ext_offset - mailbox_get_exception_base());
+/**
+ * \brief Platform initialization entry, called during FW initialization.
+ * \param[in] sof Context.
+ * \return 0 if successful, error code otherwise.
+ */
+int platform_init(struct sof *sof);
 
-	/* dump stack frames */
-	p = dump_stack(p, ext_offset, stack_rewind_frames,
-		count * sizeof(uint32_t));
-
-	/* panic - send IPC oops message to host */
-	platform_panic(p);
-
-	/* flush last trace messages */
-	trace_flush();
-
-	/* and loop forever */
-	while (1) {};
-}
-
-static inline void panic(uint32_t p)
-{
-	panic_rewind(p, 0);
-}
+/**
+ * \brief Called by the panic handler.
+ * \param[in] p Panic cause, one of SOF_IPC_PANIC_... codes.
+ */
+static inline void platform_panic(uint32_t p);
 
 #endif

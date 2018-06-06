@@ -33,6 +33,7 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#include <sof/platform.h>
 #include <platform/platcfg.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>
@@ -120,11 +121,11 @@ struct sof;
 #define PLATFORM_NUM_SSP	6
 
 /* Platform defined panic code */
-#define platform_panic(__x) { \
-	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, \
-			     (0xdead000 | (__x)) & 0x3fffffff); \
-	ipc_write(IPC_DIPCIE, MAILBOX_EXCEPTION_OFFSET + 2 * 0x20000); \
-	ipc_write(IPC_DIPCI, 0x80000000 | ((0xdead000 | (__x)) & 0x3fffffff)); \
+static inline void platform_panic(uint32_t p)
+{
+	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, p & 0x3fffffff);
+	ipc_write(IPC_DIPCIE, MAILBOX_EXCEPTION_OFFSET + 2 * 0x20000);
+	ipc_write(IPC_DIPCI, 0x80000000 | (p & 0x3fffffff));
 }
 
 /* Platform defined trace code */
@@ -136,10 +137,6 @@ extern struct timer *platform_timer;
 /*
  * APIs declared here are defined for every platform and IPC mechanism.
  */
-
-int platform_boot_complete(uint32_t boot_message);
-
-int platform_init(struct sof *sof);
 
 int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 	uint32_t bclk_fs);

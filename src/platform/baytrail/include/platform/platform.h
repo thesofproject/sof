@@ -33,6 +33,7 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#include <sof/platform.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>
 #include <uapi/ipc.h>
@@ -102,20 +103,13 @@ struct sof;
 #define PLATFORM_IDLE_TIME	750000
 
 /* Platform defined panic code */
-#define platform_panic(__x) { \
-	shim_write(SHIM_IPCDL, (0xdead000 | (__x & 0xfff))); \
-	shim_write(SHIM_IPCDH, (SHIM_IPCDH_BUSY | MAILBOX_EXCEPTION_OFFSET)); \
+static inline void platform_panic(uint32_t p)
+{
+	shim_write(SHIM_IPCDL, p);
+	shim_write(SHIM_IPCDH, (SHIM_IPCDH_BUSY | MAILBOX_EXCEPTION_OFFSET));
 }
 
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
 	shim_write(SHIM_IPCXL, (__x & 0x3fffffff))
-/*
- * APIs declared here are defined for every platform and IPC mechanism.
- */
-
-int platform_boot_complete(uint32_t boot_message);
-
-int platform_init(struct sof *sof);
-
 #endif
