@@ -81,6 +81,18 @@ wnd0_base_val:
 wnd0_size_val:
 	.word HP_SRAM_WIN0_SIZE | 0x7
 
+wnd0_status_address:
+	.word HP_SRAM_WIN0_BASE
+
+wnd0_error_address:
+	.word HP_SRAM_WIN0_BASE | 0x4
+
+fw_loaded_status_value:
+	.word	0x00000005
+
+fw_no_errors_value:
+	.word	0x00000000
+
 boot_init:
 	.align 4
 #if defined(PLATFORM_DISABLE_L2CACHE_AT_BOOT)
@@ -100,6 +112,16 @@ boot_init:
 	/* reprogram stack to the area defined by main FW */
 	l32r	a3, sof_stack_base
 	mov		sp, a3
+
+	/* set status register to 0x00000005 in wnd0 */
+	l32r	a3,	fw_loaded_status_value
+	l32r	a5,	wnd0_status_address
+	s32i	a3, a5, 0
+
+	/* set error register to 0x00 in wnd0 */
+	l32r	a3, fw_no_errors_value
+	l32r	a5,	wnd0_error_address
+	s32i	a3, a5, 0
 
 	/* realloc memory window0 to
 	continue reporting boot progress */
