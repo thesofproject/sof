@@ -462,6 +462,25 @@ static int tone_params(struct comp_dev *dev)
 	return 0;
 }
 
+static int tone_cmd_get_value(struct comp_dev *dev,
+			      struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int j;
+
+	trace_tone("mgt");
+
+	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
+		for (j = 0; j < cdata->num_elems; j++) {
+			cdata->chanv[j].channel = j;
+			cdata->chanv[j].value = !cd->sg[j].mute;
+			trace_value(j);
+			trace_value(cd->sg[j].mute);
+		}
+	}
+	return 0;
+}
+
 static int tone_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -480,6 +499,7 @@ static int tone_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cd
 				trace_tone_error("che");
 				return -EINVAL;
 			}
+
 			if (val)
 				tonegen_unmute(&cd->sg[ch]);
 			else
@@ -582,6 +602,9 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_SET_VALUE:
 		ret = tone_cmd_set_value(dev, cdata);
+		break;
+	case COMP_CMD_GET_VALUE:
+		ret = tone_cmd_get_value(dev, cdata);
 		break;
 	}
 
