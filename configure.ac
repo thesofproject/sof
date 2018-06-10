@@ -358,7 +358,11 @@ if test "$have_rimage" = "yes"; then
 	fi
 fi
 
+if test "x$prefix" == "xNONE"; then
 PEM_KEY_PREFIX="/usr/local/share/rimage"
+else
+PEM_KEY_PREFIX=$prefix"/share/rimage"
+fi
 AC_DEFINE_UNQUOTED([PEM_KEY_PREFIX], ["$PEM_KEY_PREFIX"], ["Path for PEM keys"])
 AC_SUBST(PEM_KEY_PREFIX)
 
@@ -448,6 +452,7 @@ echo "
 Target Architecture:           ${ARCH}
 Target Platform:               ${PLATFORM}
 Target Core:                   ${XTENSA_CORE}
+Install Prefix:                ${prefix}
 PEM:                           ${PEM_KEY_PREFIX}
 
 Compiler:                      ${CC}
