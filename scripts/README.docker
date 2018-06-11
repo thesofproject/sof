@@ -22,6 +22,8 @@ cd scripts/docker_build
 After the container is built, it can be used to run the scripts.
 
 To build for baytrail:
+./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt
+or (may need password test0000 for rimage install)
 ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh byt
 
 To rebuild the topology in soft.git:

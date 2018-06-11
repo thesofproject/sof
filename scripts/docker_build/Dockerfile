@@ -36,9 +36,7 @@ RUN apt-get -y update && \
 		gperf \
 		help2man \
 		libncurses5-dev \
-		libncurses5-dev \
 		libssl-dev \
-		libtool \
 		libtool \
 		libtool-bin \
 		pkg-config \
@@ -61,9 +59,9 @@ cd /root/alsa-build/alsa-lib && ./gitcompile &&  make install && \
 cd /root/alsa-build/alsa-utils && ./gitcompile &&  make install && \
 cd /root/ && rm -rf alsa-build
 
-RUN useradd --create-home -d /home/sof -u $UID -G sudo sof
-RUN echo "sof:test0000" | chpasswd
-RUN adduser sof sudo
+# Set up sof user
+RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
+echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
 
 # pull all sof repositories that are needed
@@ -111,21 +109,11 @@ RUN for arch in byt hsw bxt cnl; do \
 	make distclean; \
 done
 
-USER sof
-WORKDIR /home/sof/sof.git
-RUN ./autogen.sh
-RUN ./configure --enable-rimage
-RUN make
-USER root
-RUN make install
 
 # Create direcroties for the host machines sof/soft directories to be mounted.
-USER sof
-RUN mkdir -p /home/sof/work/sof
-RUN mkdir -p /home/sof/work/soft
+RUN mkdir -p /home/sof/work/sof.git && \
+    mkdir -p /home/sof/work/soft.git
+
 
 USER sof
 WORKDIR /home/sof/work/sof.git/
-
-# Default to building all.
-CMD ./scripts/xtensa-build-all.sh
