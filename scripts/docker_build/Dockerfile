@@ -64,50 +64,34 @@ RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
 echo "sof:test0000" | chpasswd && adduser sof sudo
 ENV HOME /home/sof
 
-# pull all sof repositories that are needed
+# build cross compiler
 USER sof
-RUN git clone git://git.alsa-project.org/sound-open-firmware.git /home/sof/sof.git
-RUN git clone git://git.alsa-project.org/sound-open-firmware-tools.git /home/sof/soft.git
-RUN git clone https://github.com/01org/osadsp-crosstool-ng.git /home/sof/ct-ng.git
-RUN git clone https://github.com/jcmvbkbc/newlib-xtensa.git /home/sof/newlib-xtensa.git
 
-USER sof
-RUN mkdir -p /home/sof/bin
-WORKDIR /home/sof/soft.git
-RUN ./autogen.sh
-RUN ./configure --prefix=/home/sof/bin
-RUN make
-RUN make install
+RUN cd /home/sof && git clone https://github.com/01org/osadsp-crosstool-ng.git /home/sof/ct-ng.git && \
+cd ct-ng.git && ./bootstrap && ./configure --prefix=`pwd` && \
+	make && make install && \
+	for arch in byt hsw bxt cnl; do \
+		./ct-ng xtensa-${arch}-elf && \
+		./ct-ng build ; \
+	done && \
+	mkdir -p /home/sof/work/ && \
+	cp -r builds/xtensa-*-elf /home/sof/work/ && cd /home/sof/ && sudo rm -rf ct-ng.git
 
-ENV PATH="/home/sof/bin/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-byt-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-hsw-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-bxt-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-cnl-elf/bin:${PATH}"
 
-USER sof
-WORKDIR /home/sof/ct-ng.git
-RUN for arch in byt hsw bxt cnl; do \
-	./bootstrap && \
-	./configure --prefix=`pwd` && \
-	make && \
-	make install && \
-	./ct-ng xtensa-${arch}-elf && \
-	./ct-ng build && \
-	make distclean; \
-done
-
-ENV PATH="/home/sof/ct-ng.git/builds/xtensa-byt-elf/bin:${PATH}"
-ENV PATH="/home/sof/ct-ng.git/builds/xtensa-hsw-elf/bin:${PATH}"
-ENV PATH="/home/sof/ct-ng.git/builds/xtensa-bxt-elf/bin:${PATH}"
-ENV PATH="/home/sof/ct-ng.git/builds/xtensa-cnl-elf/bin:${PATH}"
-
-USER sof
-WORKDIR /home/sof/newlib-xtensa.git
-RUN git checkout -b xtensa origin/xtensa
-RUN for arch in byt hsw bxt cnl; do \
-	./configure --target=xtensa-${arch}-elf \
+RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newlib-xtensa.git && \
+	cd newlib-xtensa.git && git checkout -b xtensa origin/xtensa && \
+	for arch in byt hsw bxt cnl; do \
+		./configure --target=xtensa-${arch}-elf \
 		--prefix=/home/sof/work/xtensa-root && \
-	make && \
-	make install && \
-	make distclean; \
-done
+		make && \
+		make install && \
+		make distclean; \
+	done && \
+	cd /home/sof/ && sudo rm -rf newlib-xtensa.git
 
 
 # Create direcroties for the host machines sof/soft directories to be mounted.
