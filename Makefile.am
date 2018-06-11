@@ -1,7 +1,7 @@
 if BUILD_RIMAGE
 SUBDIRS = rimage
 else
-SUBDIRS = doc src
+SUBDIRS = doc src test
 endif
 
 ACLOCAL_AMFLAGS = -I m4

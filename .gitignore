@@ -52,3 +52,9 @@ boot_ldr-*
 boot_module
 module
 rimage/rimage
+
+tap-driver.sh
+test-driver
+test/*.log
+test/*.trs
+

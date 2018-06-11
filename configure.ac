@@ -128,6 +128,30 @@ esac
 AM_CONDITIONAL(BUILD_XTENSA, test "$ARCH" = "xtensa")
 AM_CONDITIONAL(BUILD_HOST, test "$ARCH" = "host")
 
+# Cmocka tests
+AC_ARG_WITH([cmocka-prefix],
+	AS_HELP_STRING([--with-cmocka-prefix], [Path to cmocka]),
+	[], [with_cmocka_prefix="no"])
+
+if test "x$with_arch" != "xno"; then
+	if test "x$with_cmocka_prefix" = "xno"; then
+		if test "$ARCH" = "xtensa"; then
+			AC_MSG_WARN([Need cmocka to run unit tests. Path to cmocka not specified. Please use --with-cmocka-prefix option.])
+		else
+			# in case of native build, cmocka may be installed
+			PKG_CHECK_EXISTS(cmocka,
+				[],
+				[AC_MSG_WARN([Need cmocka to run unit tests. No cmocka library found. Please install cmocka or use --with-cmocka-prefix option.])]
+			)
+		fi
+	else
+		CMOCKA_PREFIX="$with_cmocka_prefix"
+		AC_SUBST(CMOCKA_PREFIX)
+	fi
+fi
+
+AM_CONDITIONAL(HAVE_CMOCKA_PREFIX, test "x$with_cmocka_prefix" != "xno")
+
 # Platform support
 AC_ARG_WITH([platform],
         AS_HELP_STRING([--with-platform], [Specify Host Platform]),
@@ -443,7 +467,10 @@ AC_CONFIG_FILES([
 	src/platform/cannonlake/include/arch/xtensa/Makefile
 	src/platform/cannonlake/include/arch/xtensa/config/Makefile
 	src/platform/cannonlake/include/platform/Makefile
+	test/Makefile
+	test/cmocka/Makefile
 ])
+AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AC_OUTPUT
 
 echo "
