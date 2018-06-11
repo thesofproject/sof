@@ -14,7 +14,7 @@
 # docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git -v <soft git dir>:/home/sof/work/soft.git --user `id -u` sof ./incremental.sh
 #
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 ARG UID=1000
 
 # Set up proxy from host
@@ -47,13 +47,6 @@ RUN apt-get -y update && \
 		texinfo \
 		udev \
 		wget
-
-# Use gcc/g++ 7.
-RUN add-apt-repository ppa:ubuntu-toolchain-r/test -y
-RUN apt-get -y update
-RUN apt-get install -y gcc-7 g++-7
-RUN apt-get clean
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 70 --slave /usr/bin/g++ g++ /usr/bin/g++-7
 
 # Use ToT alsa utils for the latest topology patches.
 RUN mkdir -p /root/alsa-build && cd /root/alsa-build && \
