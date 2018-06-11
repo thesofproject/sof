@@ -38,19 +38,19 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 4, s32le,
 	48, 1000, 0, 0, 0, 1, SSP, 4, s32le, 2)
 
-# Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s16le.
+# Low Latency playback pipeline 2 on PCM 1 using max 8 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 # Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
-	2, 1, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 2, s16le, 2)
+	2, 1, 8, s32le,
+	48, 1000, 0, 0, 0, 1, SSP, 2, s32le, 2)
 
-# Low Latency capture pipeline 3 on PCM 1 using max 2 channels of s16le.
+# Low Latency capture pipeline 3 on PCM 1 using max 8 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 # Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
-	3, 1, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 2, s16le, 2)
+	3, 1, 8, s32le,
+	48, 1000, 0, 0, 0, 1, SSP, 2, s32le, 2)
 
 # Low Latency playback pipeline 4 on PCM 2 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -114,17 +114,17 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	48, 1000, 0, 0)
 
 # playback DAI is SSP2 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, SSP, 2, SSP2-Codec,
-	PIPELINE_SOURCE_2, 2, s16le,
+	PIPELINE_SOURCE_2, 2, s32le,
 	48, 1000, 0, 0)
 
 # capture DAI is SSP2 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 2, SSP2-Codec,
-	PIPELINE_SINK_3, 2, s16le,
+	PIPELINE_SINK_3, 2, s32le,
 	48, 1000, 0, 0)
 
 # playback DAI is SSP0 using 2 periods
@@ -196,11 +196,11 @@ DAI_CONFIG(SSP, 4, 4, SSP4-Codec,
 		      SSP_SAMPLE_BITS(SSP, 4, 32)))
 
 DAI_CONFIG(SSP, 2, 2, SSP2-Codec,
-	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
-		      DAI_CLOCK(bclk, 1536000, codec_slave),
+	   SSP_CONFIG(DSP_B, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
+		      DAI_CLOCK(bclk, 12288000, codec_slave),
 		      DAI_CLOCK(fsync, 48000, codec_slave),
-		      DAI_TDM(2, 16, 3, 3),
-		      SSP_SAMPLE_BITS(SSP, 2, 16)))
+		      DAI_TDM(2, 32, 255, 255),
+		      SSP_SAMPLE_BITS(SSP, 2, 32)))
 
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24576000, codec_mclk_in),
