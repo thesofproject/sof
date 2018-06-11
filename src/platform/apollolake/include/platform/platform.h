@@ -120,6 +120,9 @@ struct sof;
 /* number of SSP ports in platform */
 #define PLATFORM_NUM_SSP	6
 
+/* DSP default delay in cycles */
+#define PLATFORM_DEFAULT_DELAY	12
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {

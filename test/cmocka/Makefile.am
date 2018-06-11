@@ -21,6 +21,29 @@ LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
 LDADD = -lcmocka
 
+# list tests
+
+check_PROGRAMS += list_init
+list_init_SOURCES = src/list/list_init.c
+
+check_PROGRAMS += list_is_empty
+list_is_empty_SOURCES = src/list/list_is_empty.c
+
+check_PROGRAMS += list_item_append
+list_item_append_SOURCES = src/list/list_item_append.c
+
+check_PROGRAMS += list_item_del
+list_item_del_SOURCES = src/list/list_item_del.c
+
+check_PROGRAMS += list_item_is_last
+list_item_is_last_SOURCES = src/list/list_item_is_last.c
+
+check_PROGRAMS += list_item_prepend
+list_item_prepend_SOURCES = src/list/list_item_prepend.c
+
+check_PROGRAMS += list_item
+list_item_SOURCES = src/list/list_item.c
+
 # math/numbers tests
 
 check_PROGRAMS += gcd

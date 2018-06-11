@@ -145,4 +145,16 @@ static inline int wait_for_completion_timeout(completion_t *comp)
 	}
 }
 
+/**
+ * \brief Waits at least passed number of clocks.
+ * \param[in] number_of_clks Minimum number of clocks to wait.
+ */
+static inline void wait_delay(uint64_t number_of_clks)
+{
+	uint64_t current = platform_timer_get(platform_timer);
+
+	while ((platform_timer_get(platform_timer) - current) < number_of_clks)
+		idelay(PLATFORM_DEFAULT_DELAY);
+}
+
 #endif
