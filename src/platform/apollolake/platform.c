@@ -186,10 +186,9 @@ static void platform_memory_windows_init(void)
 
 int platform_init(struct sof *sof)
 {
-	struct dma *dmac;
 	struct dai *ssp;
 	struct dai *dmic0;
-	int i;
+	int i, ret;
 
 	platform_interrupt_init();
 
@@ -244,25 +243,10 @@ int platform_init(struct sof *sof)
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
-	dmac = dma_get(DMA_GP_LP_DMAC0);
-	if (dmac == NULL)
+	ret = dmac_init();
+	if (ret < 0)
 		return -ENODEV;
-	dma_probe(dmac);
 
-	dmac = dma_get(DMA_GP_LP_DMAC1);
-	if (dmac == NULL)
-		return -ENODEV;
-	dma_probe(dmac);
-
-	dmac = dma_get(DMA_HOST_OUT_DMAC);
-	if (dmac == NULL)
-		return -ENODEV;
-	dma_probe(dmac);
-
-	dmac = dma_get(DMA_HOST_IN_DMAC);
-	if (dmac == NULL)
-		return -ENODEV;
-	dma_probe(dmac);
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);

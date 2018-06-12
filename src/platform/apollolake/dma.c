@@ -181,3 +181,22 @@ struct dma *dma_get(int dmac_id)
 
 	return NULL;
 }
+
+/* Initialize all platform DMAC's */
+int dmac_init(void)
+{
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(dma); i++) {
+		ret = dma_probe(&dma[i]);
+		if (ret < 0) {
+
+			/* trace failed DMAC ID */
+			trace_error(TRACE_CLASS_DMA, "edi");
+			trace_error_value(dma[i].plat_data.id);
+			return ret;
+		}
+	}
+
+	return 0;
+}

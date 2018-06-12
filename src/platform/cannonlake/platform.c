@@ -208,10 +208,9 @@ static struct timer platform_ext_timer = {
 
 int platform_init(struct sof *sof)
 {
-	struct dma *dmac;
 	struct dai *ssp;
 	struct dai *dmic0;
-	int i;
+	int i, ret;
 
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
@@ -261,25 +260,9 @@ int platform_init(struct sof *sof)
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
-	dmac = dma_get(DMA_GP_LP_DMAC0);
-	if (!dmac)
+	ret = dmac_init();
+	if (ret < 0)
 		return -ENODEV;
-	dma_probe(dmac);
-
-	dmac = dma_get(DMA_GP_LP_DMAC1);
-	if (!dmac)
-		return -ENODEV;
-	dma_probe(dmac);
-
-	dmac = dma_get(DMA_HOST_OUT_DMAC);
-	if (!dmac)
-		return -ENODEV;
-	dma_probe(dmac);
-
-	dmac = dma_get(DMA_HOST_IN_DMAC);
-	if (!dmac)
-		return -ENODEV;
-	dma_probe(dmac);
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);

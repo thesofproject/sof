@@ -290,15 +290,10 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 int platform_init(struct sof *sof)
 {
 #if defined CONFIG_BAYTRAIL
-	struct dma *dmac0;
-	struct dma *dmac1;
 	struct dai *ssp0;
 	struct dai *ssp1;
 	struct dai *ssp2;
 #elif defined CONFIG_CHERRYTRAIL
-	struct dma *dmac0;
-	struct dma *dmac1;
-	struct dma *dmac2;
 	struct dai *ssp0;
 	struct dai *ssp1;
 	struct dai *ssp2;
@@ -308,6 +303,7 @@ int platform_init(struct sof *sof)
 #else
 #error Undefined platform
 #endif
+	int ret;
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
@@ -356,22 +352,9 @@ int platform_init(struct sof *sof)
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
-	dmac0 = dma_get(DMA_ID_DMAC0);
-	if (dmac0 == NULL)
+	ret = dmac_init();
+	if (ret < 0)
 		return -ENODEV;
-	dma_probe(dmac0);
-
-	dmac1 = dma_get(DMA_ID_DMAC1);
-	if (dmac1 == NULL)
-		return -ENODEV;
-	dma_probe(dmac1);
-
-#if defined CONFIG_CHERRYTRAIL
-	dmac2 = dma_get(DMA_ID_DMAC1);
-	if (dmac2 == NULL)
-		return -ENODEV;
-	dma_probe(dmac2);
-#endif
 
 	/* mask SSP 0 - 2 interrupts */
 	shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) | 0x00000038);

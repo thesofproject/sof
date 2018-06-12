@@ -135,3 +135,29 @@ struct dma *dma_get(int dmac_id)
 		return NULL;
 	}
 }
+
+/* Initialize all platform DMAC's */
+int dmac_init(void)
+{
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(dma); i++) {
+		ret = dma_probe(&dma[i]);
+		if (ret < 0) {
+
+			/* trace failed DMAC ID */
+			trace_error(TRACE_CLASS_DMA, "edi");
+			trace_error_value(dma[i].plat_data.id);
+			return ret;
+		}
+	}
+
+	/* clear the masks for dsp of the dmacs */
+	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
+			   SHIM_IMRD_DMAC0, 0);
+
+	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
+			   SHIM_IMRD_DMAC1, 0);
+
+	return 0;
+}

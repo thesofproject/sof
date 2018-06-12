@@ -140,6 +140,9 @@ struct dma_int {
 
 struct dma *dma_get(int dmac_id);
 
+/* initialize all platform DMAC's */
+int dmac_init(void);
+
 #define dma_set_drvdata(dma, data) \
 	dma->private = data
 #define dma_get_drvdata(dma) \

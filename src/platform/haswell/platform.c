@@ -240,10 +240,9 @@ static void platform_init_shim(void)
 
 int platform_init(struct sof *sof)
 {
-	struct dma *dmac0;
-	struct dma *dmac1;
 	struct dai *ssp0;
 	struct dai *ssp1;
+	int ret;
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
@@ -280,23 +279,9 @@ int platform_init(struct sof *sof)
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
-	dmac0 = dma_get(DMA_ID_DMAC0);
-	if (dmac0 == NULL)
+	ret = dmac_init();
+	if (ret < 0)
 		return -ENODEV;
-	dma_probe(dmac0);
-
-	/* clear the masks for dsp of the dmac*/
-	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
-			SHIM_IMRD_DMAC0, 0);
-
-	dmac1 = dma_get(DMA_ID_DMAC1);
-	if (dmac1 == NULL)
-		return -ENODEV;
-	dma_probe(dmac1);
-
-	/* clear the masks for dsp of the dmac*/
-	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
-			SHIM_IMRD_DMAC1, 0);
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
