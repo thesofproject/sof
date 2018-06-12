@@ -204,6 +204,9 @@ simple_test nocodec src "NoCodec" s24le SSP 4 s24le 25 24 2400000 24000000 I2S S
 
 # Tone test: Tone component only supports s32le currently
 simple_test codec tone "SSP2-Codec" s32le SSP 2 s16le 20 16 1920000 19200000 I2S TONE_TEST[@]
+#Tone Test for APL
+simple_test codec tone "SSP5-Codec" s32le SSP 5 s24le 32 24 3072000 24576000 I2S TONE_TEST[@]
+simple_test codec tone "SSP5-Codec" s32le SSP 5 s32le 32 32 3072000 24576000 I2S TONE_TEST[@]
 
 #DMIC Test
 simple_test nocodec passthrough "DMIC0" s32le DMIC 0 s32le 1 500000 4800000\
