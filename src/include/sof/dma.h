@@ -38,15 +38,22 @@
 #include <sof/sof.h>
 #include <sof/wait.h>
 
-/* types of DMA directions */
-enum dma_copy_dir {
-	DMA_DIR_MEM_TO_MEM = 0,	/* local memcpy */
-	DMA_DIR_HMEM_TO_LMEM,	/* host to local memcpy */
-	DMA_DIR_LMEM_TO_HMEM,	/* local to host memcpy */
-	DMA_DIR_MEM_TO_DEV,
-	DMA_DIR_DEV_TO_MEM,
-	DMA_DIR_DEV_TO_DEV,
-};
+/* DMA direction bitmasks used to define DMA copy direction */
+#define DMA_DIR_MEM_TO_MEM	(1 << 0) /* local memory copy */
+#define DMA_DIR_HMEM_TO_LMEM	(1 << 1) /* host memory to local mem copy */
+#define DMA_DIR_LMEM_TO_HMEM	(1 << 2) /* local mem to host mem copy */
+#define DMA_DIR_MEM_TO_DEV	(1 << 3) /* local mem to dev copy */
+#define DMA_DIR_DEV_TO_MEM	(1 << 4) /* dev to local mem copy */
+#define DMA_DIR_DEV_TO_DEV	(1 << 5) /* dev to dev copy */
+
+/* DMA capabilities bitmasks used to define the type of DMA */
+#define DMA_CAP_GP_LP		(1 << 0)
+#define DMA_CAP_GP_HP		(1 << 1)
+
+/* DMA dev type bitmasks used to define the type of DMA */
+#define DMA_DEV_HDA		(1 << 0)
+#define DMA_DEV_SSP		(1 << 1)
+#define DMA_DEV_DMIC		(1 << 2)
 
 /* DMA IRQ types */
 #define DMA_IRQ_TYPE_BLOCK	(1 << 0)
@@ -73,7 +80,7 @@ struct dma_sg_config {
 	uint32_t src_width;	/* in bytes */
 	uint32_t dest_width;	/* in bytes */
 	uint32_t burst_elems;
-	enum dma_copy_dir direction;
+	uint32_t direction;
 	uint32_t src_dev;
 	uint32_t dest_dev;
 	uint32_t cyclic;		/* circular buffer */
@@ -118,6 +125,9 @@ struct dma_ops {
 /* DMA platform data */
 struct dma_plat_data {
 	uint32_t id;
+	uint32_t dir; /* bitmask of supported copy directions */
+	uint32_t caps; /* bitmask of supported capabilities */
+	uint32_t devs; /* bitmask of supported devs */
 	uint32_t base;
 	uint32_t channels;
 	uint32_t irq;

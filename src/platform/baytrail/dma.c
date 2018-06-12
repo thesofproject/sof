@@ -143,10 +143,15 @@ static struct dw_drv_plat_data dmac2 = {
 };
 #endif
 
-static struct dma dma[] = {
+struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_DMAC0,
+		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
+				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV |
+				  DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
+		.caps		= DMA_CAP_GP_HP,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HDA,
 		.base		= DMA0_BASE,
 		.irq		= IRQ_NUM_EXT_DMAC0,
 		.drv_plat_data	= &dmac0,
@@ -156,6 +161,11 @@ static struct dma dma[] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_DMAC1,
+		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
+				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV |
+				  DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
+		.caps		= DMA_CAP_GP_HP,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HDA,
 		.base		= DMA1_BASE,
 		.irq		= IRQ_NUM_EXT_DMAC1,
 		.drv_plat_data	= &dmac1,
@@ -166,6 +176,11 @@ static struct dma dma[] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_DMAC2,
+		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
+				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV |
+				  DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
+		.caps		= DMA_CAP_GP_HP,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HDA,
 		.base		= DMA2_BASE,
 		.irq		= IRQ_NUM_EXT_DMAC2,
 		.drv_plat_data	= &dmac2,

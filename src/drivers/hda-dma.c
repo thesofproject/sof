@@ -84,7 +84,7 @@ struct hda_chan_data {
 	uint32_t status;
 	uint32_t desc_count;
 	uint32_t desc_avail;
-	enum dma_copy_dir direction;
+	uint32_t direction;
 };
 
 struct dma_pdata {

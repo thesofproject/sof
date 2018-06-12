@@ -249,7 +249,7 @@
 /* data for each DMA channel */
 struct dma_chan_data {
 	uint32_t status;
-	enum dma_copy_dir direction;
+	uint32_t direction;
 	struct dw_lli2 *lli;
 	struct dw_lli2 *lli_current;
 	uint32_t desc_count;

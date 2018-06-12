@@ -33,6 +33,13 @@
 #define __PLATFORM_DMA_H__
 
 #include <stdint.h>
+#include <sof/dma.h>
+
+#if defined CONFIG_CHERRYTRAIL
+#define PLATFORM_NUM_DMACS	3
+#else
+#define PLATFORM_NUM_DMACS	2
+#endif
 
 #define DMA_ID_DMAC0	0
 #define DMA_ID_DMAC1	1
@@ -52,5 +59,7 @@
 #define DMA_HANDSHAKE_SSP5_TX	11
 #define DMA_HANDSHAKE_SSP6_RX	12
 #define DMA_HANDSHAKE_SSP6_TX	13
+
+extern struct dma dma[PLATFORM_NUM_DMACS];
 
 #endif

@@ -33,6 +33,10 @@
 #ifndef __PLATFORM_DMA_H__
 #define __PLATFORM_DMA_H__
 
+#include <sof/dma.h>
+
+#define PLATFORM_NUM_DMACS	6
+
 /* available DMACs */
 #define DMA_GP_LP_DMAC0		0
 #define DMA_GP_LP_DMAC1		1
@@ -68,5 +72,7 @@
 #define DMA_HANDSHAKE_SSP4_RX	11
 #define DMA_HANDSHAKE_SSP5_TX	12
 #define DMA_HANDSHAKE_SSP5_RX	13
+
+extern struct dma dma[PLATFORM_NUM_DMACS];
 
 #endif

@@ -537,6 +537,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	else
 		hd->dma = dma_get(DMA_HOST_IN_DMAC);
 #endif
+
 	if (hd->dma == NULL) {
 		trace_host_error("eDM");
 		goto error;
