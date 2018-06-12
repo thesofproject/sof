@@ -68,14 +68,16 @@ ENV HOME /home/sof
 USER sof
 
 RUN cd /home/sof && git clone https://github.com/01org/osadsp-crosstool-ng.git /home/sof/ct-ng.git && \
-cd ct-ng.git && ./bootstrap && ./configure --prefix=`pwd` && \
+	mkdir -p /home/sof/work/ && \
+	cd ct-ng.git && ./bootstrap && ./configure --prefix=`pwd` && \
 	make && make install && \
 	for arch in byt hsw bxt cnl; do \
 		./ct-ng xtensa-${arch}-elf && \
-		./ct-ng build ; \
+		sed -i 's#${CT_TOP_DIR}\/builds#\/home\/sof\/work#g' .config && \
+		./ct-ng build && \
+		./ct-ng distclean ; \
 	done && \
-	mkdir -p /home/sof/work/ && \
-	cp -r builds/xtensa-*-elf /home/sof/work/ && cd /home/sof/ && sudo rm -rf ct-ng.git
+	cd /home/sof/ && rm -rf ct-ng.git
 
 ENV PATH="/home/sof/work/xtensa-byt-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-hsw-elf/bin:${PATH}"
@@ -91,7 +93,7 @@ RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newl
 		make install && \
 		make distclean; \
 	done && \
-	cd /home/sof/ && sudo rm -rf newlib-xtensa.git
+	cd /home/sof/ && rm -rf newlib-xtensa.git
 
 
 # Create direcroties for the host machines sof/soft directories to be mounted.
