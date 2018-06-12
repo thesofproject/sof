@@ -180,7 +180,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 	trace_buffer("dtn");
 
 	/* init DMA copy context */
-	ret = dma_copy_new(&d->dc, PLATFORM_TRACE_DMAC);
+	ret = dma_copy_new(&d->dc);
 	if (ret < 0) {
 		trace_buffer_error("edm");
 		rfree(buffer->addr);

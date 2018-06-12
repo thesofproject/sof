@@ -373,7 +373,7 @@ int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg
 	return local_sg_elem.size;
 }
 
-int dma_copy_new(struct dma_copy *dc, int dmac)
+int dma_copy_new(struct dma_copy *dc)
 {
 	uint32_t dir, cap, dev;
 

@@ -277,7 +277,7 @@ struct dma_copy {
 };
 
 /* init dma copy context */
-int dma_copy_new(struct dma_copy *dc, int dmac);
+int dma_copy_new(struct dma_copy *dc);
 
 /* free dma copy context resources */
 static inline void dma_copy_free(struct dma_copy *dc)
