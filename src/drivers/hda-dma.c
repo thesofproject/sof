@@ -29,6 +29,7 @@
  *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#include <sof/atomic.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
@@ -145,6 +146,8 @@ static int hda_dma_channel_get(struct dma *dma, int channel)
 	if (p->chan[channel].status == COMP_STATE_INIT) {
 		p->chan[channel].status = COMP_STATE_READY;
 
+		atomic_add(&dma->num_channels_busy, 1);
+
 		/* return channel */
 		spin_unlock_irq(&dma->lock, flags);
 		return channel;
@@ -173,6 +176,8 @@ static void hda_dma_channel_put(struct dma *dma, int channel)
 	spin_lock_irq(&dma->lock, flags);
 	hda_dma_channel_put_unlocked(dma, channel);
 	spin_unlock_irq(&dma->lock, flags);
+
+	atomic_sub(&dma->num_channels_busy, 1);
 }
 
 static int hda_dma_start(struct dma *dma, int channel)
@@ -399,6 +404,9 @@ static int hda_dma_probe(struct dma *dma)
 	/* init channel status */
 	for (i = 0; i < HDA_DMA_MAX_CHANS; i++)
 		hda_pdata->chan[i].status = COMP_STATE_INIT;
+
+	/* init number of channels draining */
+	atomic_init(&dma->num_channels_busy, 0);
 
 	return 0;
 }

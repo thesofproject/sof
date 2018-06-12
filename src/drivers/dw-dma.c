@@ -43,6 +43,7 @@
  *    used to construct the DMA configuration for the host client 1 above.
  */
 
+#include <sof/atomic.h>
 #include <sof/debug.h>
 #include <sof/sof.h>
 #include <sof/dma.h>
@@ -309,6 +310,8 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 
 		p->chan[i].status = COMP_STATE_READY;
 
+		atomic_add(&dma->num_channels_busy, 1);
+
 		/* unmask block, transfer and error interrupts for channel */
 		dw_write(dma, DW_MASK_TFR, INT_UNMASK(i));
 		dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(i));
@@ -347,6 +350,8 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	p->chan[channel].status = COMP_STATE_INIT;
 	p->chan[channel].cb = NULL;
 	p->chan[channel].desc_count = 0;
+
+	atomic_sub(&dma->num_channels_busy, 1);
 }
 
 /* channel must not be running when this is called */
@@ -1033,6 +1038,9 @@ static int dw_dma_probe(struct dma *dma)
 		interrupt_enable(dma_int[i]->irq);
 	}
 
+	/* init number of channels draining */
+	atomic_init(&dma->num_channels_busy, 0);
+
 	return 0;
 }
 
@@ -1169,6 +1177,9 @@ static int dw_dma_probe(struct dma *dma)
 	/* register our IRQ handler */
 	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);
 	interrupt_enable(dma_irq(dma));
+
+	/* init number of channels draining */
+	atomic_init(&dma->num_channels_busy, 0);
 
 	return 0;
 }

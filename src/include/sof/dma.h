@@ -37,6 +37,7 @@
 #include <sof/lock.h>
 #include <sof/sof.h>
 #include <sof/wait.h>
+#include <arch/atomic.h>
 
 /* DMA direction bitmasks used to define DMA copy direction */
 #define DMA_DIR_MEM_TO_MEM	(1 << 0) /* local memory copy */
@@ -139,6 +140,7 @@ struct dma {
 	struct dma_plat_data plat_data;
 	spinlock_t lock;
 	const struct dma_ops *ops;
+	atomic_t num_channels_busy; /* number of channels draining */
 	void *private;
 };
 
