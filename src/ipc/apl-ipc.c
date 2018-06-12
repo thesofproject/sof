@@ -177,6 +177,7 @@ out:
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc;
+	uint32_t dir, caps, dev;
 	int i;
 
 	_ipc = ipc;
@@ -198,8 +199,11 @@ int platform_ipc_init(struct ipc *ipc)
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 
-	/* dma */
-	iipc->dmac = dma_get(DMA_GP_LP_DMAC0);
+	/* request GP DMA with shared access privilege */
+	caps = 0;
+	dir = DMA_DIR_HMEM_TO_LMEM;
+	dev = DMA_DEV_HDA;
+	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;

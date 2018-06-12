@@ -65,6 +65,7 @@ sof_LDADD = \
 	../../lib/libcore.a \
 	../../platform/$(PLATFORM)/libplatform.a \
 	../../ipc/libsof_ipc.a \
+	../../lib/libdma.a \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../math/libsof_math.a \

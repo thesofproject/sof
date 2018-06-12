@@ -56,6 +56,10 @@
 #define DMA_DEV_SSP		(1 << 1)
 #define DMA_DEV_DMIC		(1 << 2)
 
+/* DMA access privilege flag */
+#define DMA_ACCESS_EXCLUSIVE	1
+#define DMA_ACCESS_SHARED	0
+
 /* DMA IRQ types */
 #define DMA_IRQ_TYPE_BLOCK	(1 << 0)
 #define DMA_IRQ_TYPE_LLIST	(1 << 1)
@@ -150,7 +154,7 @@ struct dma_int {
 	uint32_t irq;
 };
 
-struct dma *dma_get(int dmac_id);
+struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 
 /* initialize all platform DMAC's */
 int dmac_init(void);

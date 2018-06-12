@@ -503,6 +503,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_host *host;
 	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
 	struct dma_sg_elem *elem;
+	uint32_t dir, caps, dma_dev;
 
 	trace_host("new");
 
@@ -529,15 +530,15 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, hd);
 
-#if !defined CONFIG_DMA_GW
-	hd->dma = dma_get(ipc_host->dmac_id);
-#else
+	/* request HDA DMA with shared access privilege */
 	if (ipc_host->direction == SOF_IPC_STREAM_PLAYBACK)
-		hd->dma = dma_get(DMA_HOST_OUT_DMAC);
+		dir =  DMA_DIR_HMEM_TO_LMEM;
 	else
-		hd->dma = dma_get(DMA_HOST_IN_DMAC);
-#endif
+		dir =  DMA_DIR_LMEM_TO_HMEM;
 
+	caps = 0;
+	dma_dev = DMA_DEV_HDA;
+	hd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (hd->dma == NULL) {
 		trace_host_error("eDM");
 		goto error;

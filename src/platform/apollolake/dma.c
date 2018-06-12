@@ -190,18 +190,6 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 	.ops		= &hda_link_dma_ops,
 },};
 
-struct dma *dma_get(int dmac_id)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(dma); i++) {
-		if (dma[i].plat_data.id == dmac_id)
-			return &dma[i];
-	}
-
-	return NULL;
-}
-
 /* Initialize all platform DMAC's */
 int dmac_init(void)
 {

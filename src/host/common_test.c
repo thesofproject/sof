@@ -200,7 +200,7 @@ struct dai *dai_get(uint32_t type, uint32_t index)
 	return NULL;
 }
 
-struct dma *dma_get(int dmac_id)
+struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags)
 {
 	return NULL;
 }

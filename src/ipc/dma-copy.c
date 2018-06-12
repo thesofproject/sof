@@ -375,7 +375,13 @@ int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg
 
 int dma_copy_new(struct dma_copy *dc, int dmac)
 {
-	dc->dmac = dma_get(dmac);
+	uint32_t dir, cap, dev;
+
+	/* request HDA DMA in the dir LMEM->HMEM with shared access */
+	dir = DMA_DIR_LMEM_TO_HMEM;
+	dev = DMA_DEV_HDA;
+	cap = 0;
+	dc->dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
 	if (dc->dmac == NULL) {
 		trace_dma_error("ec0");
 		return -ENODEV;

@@ -132,18 +132,6 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 	.ops		= &dw_dma_ops,
 },};
 
-struct dma *dma_get(int dmac_id)
-{
-	switch (dmac_id) {
-	case DMA_ID_DMAC0:
-		return &dma[0];
-	case DMA_ID_DMAC1:
-		return &dma[1];
-	default:
-		return NULL;
-	}
-}
-
 /* Initialize all platform DMAC's */
 int dmac_init(void)
 {

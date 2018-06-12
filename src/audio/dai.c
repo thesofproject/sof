@@ -176,6 +176,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_dai *dai;
 	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)comp;
 	struct dai_data *dd;
+	uint32_t dir, caps, dma_dev;
 
 	trace_dai("new");
 
@@ -201,7 +202,11 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		goto error;
 	}
 
-	dd->dma = dma_get(ipc_dai->dmac_id);
+	/* request GP LP DMA with shared access privilege */
+	dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
+	caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+	dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC;
+	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (dd->dma == NULL) {
 		trace_dai_error("eDd");
 		goto error;
