@@ -144,7 +144,7 @@ struct dma {
 	struct dma_plat_data plat_data;
 	spinlock_t lock;
 	const struct dma_ops *ops;
-	atomic_t num_channels_busy; /* number of channels draining */
+	atomic_t num_channels_busy; /* number of busy channels */
 	void *private;
 };
 
