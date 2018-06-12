@@ -30,7 +30,7 @@ C_CONTROLMIXER(Tone Volume, PIPELINE_ID,
 
 # Switch type Mixer Control with max value of 1
 C_CONTROLMIXER(Tone Switch, PIPELINE_ID,
-	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
+	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
 	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
 	false,
 	,
