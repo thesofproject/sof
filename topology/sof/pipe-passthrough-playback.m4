@@ -15,9 +15,9 @@ include(`pipeline.m4')
 # Components and Buffers
 #
 
-# Host "Passthrough Playback" PCM uses pipeline DMAC and channel
+# Host "Passthrough Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, 2)
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

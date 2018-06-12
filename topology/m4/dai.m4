@@ -7,7 +7,7 @@ define(`N_DAI', DAI_NAME)
 define(`N_DAI_OUT', DAI_NAME`.OUT')
 define(`N_DAI_IN', DAI_NAME`.IN')
 
-dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source, preload, data)
+dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source, preload)
 define(`W_DAI_OUT',
 `SectionVendorTuples."'N_DAI_OUT($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
@@ -57,11 +57,10 @@ define(`W_DAI_OUT',
 `		"'N_DAI_OUT($2)`_data_w_comp"'
 `		"'N_DAI_OUT($2)`_data_str"'
 `		"'N_DAI_OUT($2)`_data_comp_str"'
-`		"'$8`"'
 `	]'
 `}')
 
-dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source, preload, data)
+dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source, preload)
 define(`W_DAI_IN',
 `SectionVendorTuples."'N_DAI_IN($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
@@ -111,7 +110,6 @@ define(`W_DAI_IN',
 `		"'N_DAI_IN($2)`_data_w_comp"'
 `		"'N_DAI_IN($2)`_data_str"'
 `		"'N_DAI_IN($2)`_data_comp_str"'
-`		"'$8`"'
 `	]'
 `}')
 

@@ -8,7 +8,7 @@ include(`pipeline.m4')
 #
 # DAI definitions
 #
-W_DAI_IN(DAI_TYPE, DAI_INDEX, DAI_BE, DAI_FORMAT, 2, 0, 0, dai0c_plat_conf)
+W_DAI_IN(DAI_TYPE, DAI_INDEX, DAI_BE, DAI_FORMAT, 2, 0, 0)
 
 #
 # DAI pipeline - always use 0 for DAIs

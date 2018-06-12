@@ -30,24 +30,21 @@ include(`dsps/hsw.m4')
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s32le,
-	48, 1000, 0, 0, 1, 1)
+	48, 1000, 0, 0)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 2 for PCM audio capture data
 PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	2, 0, 2, s32le,
-	48, 1000, 0, 0, 1, 2)
+	48, 1000, 0, 0)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # Schedule 192 frames per 4000us deadline on core 0 with priority 1
-# Use DMAC 0 channel 3 for PCM audio playback data
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
-	192, 4000, 1, 0, 1, 3)
+	192, 4000, 1, 0)
 
 # Tone Playback pipeline 5 using max 2 channels of s32le.
 # Schedule 192 frames per 4000us deadline on core 0 with priority 2

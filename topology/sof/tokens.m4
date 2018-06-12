@@ -15,8 +15,6 @@ SectionVendorTokens."sof_buffer_tokens" {
 }
 
 SectionVendorTokens."sof_dai_tokens" {
-	SOF_TKN_DAI_DMAC			"151"
-	SOF_TKN_DAI_DMAC_CHAN			"152"
 	SOF_TKN_DAI_DMAC_CONFIG			"153"
 	SOF_TKN_DAI_TYPE			"154"
 	SOF_TKN_DAI_INDEX			"155"
@@ -43,8 +41,6 @@ SectionVendorTokens."sof_src_tokens" {
 }
 
 SectionVendorTokens."sof_pcm_tokens" {
-	SOF_TKN_PCM_DMAC			"351"
-	SOF_TKN_PCM_DMAC_CHAN			"352"
 	SOF_TKN_PCM_DMAC_CONFIG			"353"
 }
 

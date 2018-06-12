@@ -16,9 +16,9 @@ include(`pipeline.m4')
 # Components and Buffers
 #
 
-# Host "Passthrough Playback" PCM uses pipeline DMAC and channel
+# Host "Passthrough Playback" PCM
 # with 4 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 4, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 4, 0, 2)
 
 #
 # SRC Configuration

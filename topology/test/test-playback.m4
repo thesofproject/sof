@@ -39,11 +39,10 @@ include(`dsps/byt.m4')
 
 # Passthrough playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 
 PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 	1, 0, 2, TEST_PIPE_FORMAT,
-	48, 1000, 0, 0, 0, 1,
+	48, 1000, 0, 0,
 	TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_FORMAT, 2)
 #
 # DAI configuration

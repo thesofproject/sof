@@ -27,9 +27,9 @@ C_CONTROLMIXER(PCM PCM_ID Capture Volume, PIPELINE_ID,
 # Components and Buffers
 #
 
-# Host "Low Latency Capture" PCM uses pipeline DMAC and channel
+# Host "Low Latency Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Low Latency Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 0)
+W_PCM_CAPTURE(PCM_ID, Low Latency Capture, 0, 2, 0)
 
 # "Capture Volume" has 2 sink and source periods for host and DAI ping-pong
 W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, LIST(`		', "PCM PCM_ID Capture Volume PIPELINE_ID"))

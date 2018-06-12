@@ -15,9 +15,9 @@ include(`pipeline.m4')
 # Components and Buffers
 #
 
-# Host "Passthrough Capture" PCM uses pipeline DMAC and channel
+# Host "Passthrough Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 2)
+W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2, 2)
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

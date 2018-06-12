@@ -33,73 +33,63 @@ include(`dsps/bxt.m4')
 
 # Low Latency playback pipeline 1 on PCM 0 using max 4 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 4, s32le,
-	48, 1000, 0, 0, 0, 1, SSP, 4, s32le, 2)
+	48, 1000, 0, 0, SSP, 4, s32le, 2)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 8 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	2, 1, 8, s32le,
-	48, 1000, 0, 0, 0, 1, SSP, 2, s32le, 2)
+	48, 1000, 0, 0, SSP, 2, s32le, 2)
 
 # Low Latency capture pipeline 3 on PCM 1 using max 8 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	3, 1, 8, s32le,
-	48, 1000, 0, 0, 0, 1, SSP, 2, s32le, 2)
+	48, 1000, 0, 0, SSP, 2, s32le, 2)
 
 # Low Latency playback pipeline 4 on PCM 2 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	4, 2, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 0, s16le, 2)
+	48, 1000, 0, 0, SSP, 0, s16le, 2)
 
 # Low Latency capture pipeline 5 on PCM 2 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	5, 2, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 0, s16le, 2)
+	48, 1000, 0, 0, SSP, 0, s16le, 2)
 
 # Low Latency capture pipeline 6 on PCM 3 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	6, 3, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 1, s16le, 2)
+	48, 1000, 0, 0, SSP, 1, s16le, 2)
 
 # Low Latency playback pipeline 7 on PCM 4 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	7, 4, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 3, s16le, 2)
+	48, 1000, 0, 0, SSP, 3, s16le, 2)
 
 # Low Latency capture pipeline 8 on PCM 4 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	8, 4, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 3, s16le, 2)
+	48, 1000, 0, 0, SSP, 3, s16le, 2)
 
 # Low Latency playback pipeline 9 on PCM 5 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	9, 5, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 5, s16le, 2)
+	48, 1000, 0, 0, SSP, 5, s16le, 2)
 
 # Low Latency capture pipeline 10 on PCM 5 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-# Use DMAC 0 channel 1 for PCM audio playback data
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	10, 5, 2, s16le,
-	48, 1000, 0, 0, 0, 1, SSP, 5, s16le, 2)
+	48, 1000, 0, 0, SSP, 5, s16le, 2)
 
 
 #

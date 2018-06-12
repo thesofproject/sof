@@ -33,7 +33,7 @@ define(`W_PIPELINE',
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core, dmac, dmac_chan)
+dnl     frames, deadline, priority, core)
 define(`PIPELINE_PCM_ADD',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
@@ -43,8 +43,6 @@ define(`PIPELINE_PCM_ADD',
 `undefine(`SCHEDULE_DEADLINE')'
 `undefine(`SCHEDULE_PRIORITY')'
 `undefine(`SCHEDULE_CORE')'
-`undefine(`PIPELINE_DMAC')'
-`undefine(`PIPELINE_DMAC_CHAN')'
 `define(`PIPELINE_ID', $2)'
 `define(`PCM_ID', $3)'
 `define(`PIPELINE_CHANNELS', $4)'
@@ -53,14 +51,12 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_DEADLINE', $7)'
 `define(`SCHEDULE_PRIORITY', $8)'
 `define(`SCHEDULE_CORE', $9)'
-`define(`PIPELINE_DMAC', $10)'
-`define(`PIPELINE_DMAC_CHAN', $11)'
 `include($1)'
 )
 
 dnl PIPELINE_PCM_DAI_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core, dmac, dmac_chan,
+dnl     frames, deadline, priority, core,
 dnl     dai type, dai_index, dai format, periods)
 define(`PIPELINE_PCM_DAI_ADD',
 `undefine(`PCM_ID')'
@@ -71,8 +67,6 @@ define(`PIPELINE_PCM_DAI_ADD',
 `undefine(`SCHEDULE_DEADLINE')'
 `undefine(`SCHEDULE_PRIORITY')'
 `undefine(`SCHEDULE_CORE')'
-`undefine(`PIPELINE_DMAC')'
-`undefine(`PIPELINE_DMAC_CHAN')'
 `undefine(`DAI_TYPE')'
 `undefine(`DAI_INDEX')'
 `undefine(`DAI_FORMAT')'
@@ -85,13 +79,11 @@ define(`PIPELINE_PCM_DAI_ADD',
 `define(`SCHEDULE_DEADLINE', $7)'
 `define(`SCHEDULE_PRIORITY', $8)'
 `define(`SCHEDULE_CORE', $9)'
-`define(`PIPELINE_DMAC', $10)'
-`define(`PIPELINE_DMAC_CHAN', $11)'
-`define(`DAI_TYPE', STR($12))'
-`define(`DAI_INDEX', STR($13))'
-`define(`DAI_FORMAT', $14)'
-`define(`DAI_PERIODS', $15)'
-`define(`DAI_NAME', $12$13)'
+`define(`DAI_TYPE', STR($10))'
+`define(`DAI_INDEX', STR($11))'
+`define(`DAI_FORMAT', $12)'
+`define(`DAI_PERIODS', $13)'
+`define(`DAI_NAME', $10$11)'
 `include($1)'
 )
 

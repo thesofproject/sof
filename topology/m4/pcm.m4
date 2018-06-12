@@ -6,29 +6,19 @@ dnl PCM name)
 define(`N_PCMP', `PCM'$1`P')
 define(`N_PCMC', `PCM'$1`C')
 
-dnl W_PCM_PLAYBACK(pcm, stream, dmac, dmac_chan, periods_sink, periods_source, preload)
+dnl W_PCM_PLAYBACK(pcm, stream, periods_sink, periods_source, preload)
 dnl  PCM platform configuration
 define(`W_PCM_PLAYBACK',
 `SectionVendorTuples."'N_PCMP($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
-`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
+`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
+`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($5)
 `	}'
 `}'
 `SectionData."'N_PCMP($1)`_data_w_comp" {'
 `	tuples "'N_PCMP($1)`_tuples_w_comp"'
-`}'
-`SectionVendorTuples."'N_PCMP($1)`_tuples" {'
-`	tokens "sof_pcm_tokens"'
-`	tuples."word" {'
-`		SOF_TKN_PCM_DMAC'	STR($3)
-`		SOF_TKN_PCM_DMAC_CHAN'	STR($4)
-`	}'
-`}'
-`SectionData."'N_PCMP($1)`_data" {'
-`	tuples "'N_PCMP($1)`_tuples"'
 `}'
 `SectionWidget."'N_PCMP($1)`" {'
 `	index "'PIPELINE_ID`"'
@@ -36,34 +26,23 @@ define(`W_PCM_PLAYBACK',
 `	no_pm "true"'
 `	stream_name "'$2` '$1`"'
 `	data ['
-`		"'N_PCMP($1)`_data"'
 `		"'N_PCMP($1)`_data_w_comp"'
 `	]'
 `}')
 
 
-dnl W_PCM_CAPTURE(pcm, stream, dmac, dmac_chan, periods_sink, periods_source, preload)
+dnl W_PCM_CAPTURE(pcm, stream, periods_sink, periods_source, preload)
 define(`W_PCM_CAPTURE',
 `SectionVendorTuples."'N_PCMC($1)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
-`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
+`		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
+`		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
+`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($5)
 `	}'
 `}'
 `SectionData."'N_PCMC($1)`_data_w_comp" {'
 `	tuples "'N_PCMC($1)`_tuples_w_comp"'
-`}'
-`SectionVendorTuples."'N_PCMC($1)`_tuples" {'
-`	tokens "sof_pcm_tokens"'
-`	tuples."word" {'
-`		SOF_TKN_PCM_DMAC'	STR($3)
-`		SOF_TKN_PCM_DMAC_CHAN'	STR($4)
-`	}'
-`}'
-`SectionData."'N_PCMC($1)`_data" {'
-`	tuples "'N_PCMC($1)`_tuples"'
 `}'
 `SectionWidget."'N_PCMC($1)`" {'
 `	index "'PIPELINE_ID`"'
@@ -71,7 +50,6 @@ define(`W_PCM_CAPTURE',
 `	no_pm "true"'
 `	stream_name "'$2` '$1`"'
 `	data ['
-`		"'N_PCMC($1)`_data"'
 `		"'N_PCMC($1)`_data_w_comp"'
 `	]'
 `}')

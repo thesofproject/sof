@@ -29,9 +29,9 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 # Components and Buffers
 #
 
-# Host "Passthrough Capture" PCM uses pipeline DMAC and channel
+# Host "Passthrough Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Passthrough Capture, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 0, 2, 2)
+W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2, 2)
 
 # "Volume" has 2 source and 2 sink periods
 W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "Master Capture Volume PIPELINE_ID"))

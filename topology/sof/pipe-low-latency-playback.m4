@@ -52,9 +52,9 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 # Components and Buffers
 #
 
-# Host "Low latency Playback" PCM uses pipeline DMAC and channel
+# Host "Low latency Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, PIPELINE_DMAC, PIPELINE_DMAC_CHAN, 2, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, 2, 0, 2)
 
 # "Playback Volume" has 1 sink period and 2 source periods for host ping-pong
 W_PGA(0, PIPELINE_FORMAT, 1, 2, 1, LIST(`		', "PCM PCM_ID Playback Volume PIPELINE_ID"))
