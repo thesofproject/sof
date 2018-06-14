@@ -1032,8 +1032,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
 	prm = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, size);
 
-	/* copy the command DAI config params and DMIC params */
-	memcpy(prm, &config->dmic, sizeof(struct sof_ipc_dai_config));
+	/* copy the DMIC params */
+	memcpy(prm, &config->dmic, sizeof(struct sof_ipc_dai_dmic_params));
 
 	/* copy the pdm controller params from ipc */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
