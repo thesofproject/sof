@@ -6,7 +6,8 @@ include_HEADERS = \
 	fir.h \
 	src_config.h \
 	src.h \
-	eq_fir.h
+	eq_fir.h \
+	volume.h
 
 COMP_SRC = \
 	eq_iir.c \
@@ -19,6 +20,7 @@ COMP_SRC = \
 	mixer.c \
 	mux.c \
 	volume.c \
+	volume_generic.c \
 	switch.c \
 	dai.c \
 	host.c \
@@ -44,6 +46,10 @@ EQ_FIR_SRC = \
 EQ_IIR_SRC = \
 	eq_iir.c \
 	iir.c
+
+VOLUME_SRC = \
+	volume.c \
+	volume_generic.c
 
 if BUILD_LIB
 
@@ -109,7 +115,7 @@ libsof_eq_iir_la_LDFLAGS = \
 # libsof_volume
 lib_LTLIBRARIES  += libsof_volume.la
 
-libsof_volume_la_SOURCES = volume.c
+libsof_volume_la_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -240,7 +246,7 @@ libsof_eq_iir_sse42_la_LDFLAGS = \
 # libsof_volume
 lib_LTLIBRARIES  += libsof_volume_sse42.la
 
-libsof_volume_sse42_la_SOURCES = volume.c
+libsof_volume_sse42_la_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_sse42_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -377,7 +383,7 @@ libsof_eq_iir_avx_la_LDFLAGS = \
 # libsof_volume
 lib_LTLIBRARIES  += libsof_volume_avx.la
 
-libsof_volume_avx_la_SOURCES = volume.c
+libsof_volume_avx_la_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_avx_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -514,7 +520,7 @@ libsof_eq_iir_avx2_la_LDFLAGS = \
 # libsof_volume
 lib_LTLIBRARIES  += libsof_volume_avx2.la
 
-libsof_volume_avx2_la_SOURCES = volume.c
+libsof_volume_avx2_la_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_avx2_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -652,7 +658,7 @@ libsof_eq_iir_fma_la_LDFLAGS = \
 # libsof_volume
 lib_LTLIBRARIES  += libsof_volume_fma.la
 
-libsof_volume_fma_la_SOURCES = volume.c
+libsof_volume_fma_la_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_fma_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -768,7 +774,7 @@ libsof_eq_iir_a_CFLAGS = \
 # libsof_volume
 lib_LIBRARIES  += libsof_volume.a
 
-libsof_volume_a_SOURCES = volume.c
+libsof_volume_a_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -855,7 +861,7 @@ libsof_eq_iir_hifi2ep_a_CFLAGS = \
 # libsof_volume
 lib_LIBRARIES  += libsof_volume_hifi2ep.a
 
-libsof_volume_hifi2ep_a_SOURCES = volume.c
+libsof_volume_hifi2ep_a_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_hifi2ep_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -947,7 +953,7 @@ libsof_eq_iir_hifi3_a_CFLAGS = \
 # libsof_volume
 lib_LIBRARIES  += libsof_volume_hifi3.a
 
-libsof_volume_hifi3_a_SOURCES = volume.c
+libsof_volume_hifi3_a_SOURCES = $(VOLUME_SRC)
 
 libsof_volume_hifi3_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
@@ -1016,6 +1022,8 @@ libaudio_a_SOURCES = \
 	mixer.c \
 	mux.c \
 	volume.c \
+	volume_generic.c \
+	volume_hifi3.c \
 	switch.c \
 	dai.c \
 	host.c \

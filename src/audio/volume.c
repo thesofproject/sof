@@ -27,9 +27,9 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
 #include <sof/sof.h>
@@ -39,503 +39,7 @@
 #include <sof/alloc.h>
 #include <sof/work.h>
 #include <sof/clock.h>
-#include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
-#include <sof/audio/format.h>
-
-#define trace_volume(__e)	trace_event(TRACE_CLASS_VOLUME, __e)
-#define tracev_volume(__e)	tracev_event(TRACE_CLASS_VOLUME, __e)
-#define trace_volume_error(__e)	trace_error(TRACE_CLASS_VOLUME, __e)
-
-/* this should ramp from 0dB to mute in 64ms.
- * i.e 2^16 -> 0 in 32 * 2048 steps each lasting 2ms
- */
-#define VOL_RAMP_US	2000
-#define VOL_RAMP_STEP	(1 << 11)
-#define VOL_MAX		(1 << 16)
-#define VOL_MIN		0
-
-/*
- * Simple volume control
- *
- * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB)
- *
- * Currently we use 16 bit data for copies to/from DAIs and HOST PCM buffers,
- * 32 bit data is used in all other cases for overhead.
- * TODO: Add 24 bit (4 byte aligned) support using HiFi2 EP SIMD.
- */
-
-/* volume component private data */
-struct comp_data {
-	uint32_t source_period_bytes;
-	uint32_t sink_period_bytes;
-	enum sof_ipc_frame source_format;
-	enum sof_ipc_frame sink_format;
-	uint32_t chan[SOF_IPC_MAX_CHANNELS];
-	uint32_t volume[SOF_IPC_MAX_CHANNELS];	/* current volume */
-	uint32_t tvolume[SOF_IPC_MAX_CHANNELS];	/* target volume */
-	uint32_t mvolume[SOF_IPC_MAX_CHANNELS];	/* mute volume */
-	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source, uint32_t frames);
-	struct work volwork;
-
-	/* host volume readback */
-	struct sof_ipc_ctrl_value_chan *hvol;
-};
-
-struct comp_func_map {
-	uint16_t source;	/* source format */
-	uint16_t sink;		/* sink format */
-	uint16_t channels;	/* channel number for the stream */
-	void (*func)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source, uint32_t frames);
-};
-
-/* volume scaling functions for stereo input */
-
-/* copy and scale volume from 16 bit source buffer to 32 bit dest buffer */
-static void vol_s16_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t *) source->r_ptr;
-	int32_t *dest = (int32_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.15 --> Q1.31 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = (int32_t)src[i] * cd->volume[0];
-		dest[i + 1] = (int32_t)src[i + 1] * cd->volume[1];
-	}
-}
-
-/* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
-static void vol_s32_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *) source->r_ptr;
-	int16_t *dest = (int16_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.31 --> Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = (int16_t)q_multsr_sat_32x32(
-			src[i], cd->volume[0], Q_SHIFT_BITS_64(31, 16, 15));
-		dest[i + 1] = (int16_t)q_multsr_sat_32x32(
-			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(31, 16, 15));
-	}
-}
-
-/* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
-static void vol_s32_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *) source->r_ptr;
-	int32_t *dest = (int32_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.31 --> Q1.31 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = q_multsr_sat_32x32(
-			src[i], cd->volume[0], Q_SHIFT_BITS_64(31, 16, 31));
-		dest[i + 1] = q_multsr_sat_32x32(
-			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(31, 16, 31));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 16 bit dest buffer */
-static void vol_s16_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t *) source->r_ptr;
-	int16_t *dest = (int16_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.15 --> Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = q_multsr_sat_16x16(
-			src[i], cd->volume[0], Q_SHIFT_BITS_32(15, 16, 15));
-		dest[i + 1] = q_multsr_sat_16x16(
-			src[i + 1], cd->volume[1], Q_SHIFT_BITS_32(15, 16, 15));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
-static void vol_s16_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t *) source->r_ptr;
-	int32_t *dest = (int32_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = q_multsr_sat_32x32(
-			src[i], cd->volume[0], Q_SHIFT_BITS_64(15, 16, 23));
-		dest[i + 1] = q_multsr_sat_32x32(
-			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(15, 16, 23));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
-static void vol_s24_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *) source->r_ptr;
-	int16_t *dest = (int16_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.23 --> Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = (int16_t)q_multsr_sat_32x32(
-			sign_extend_s24(src[i]), cd->volume[0],
-			Q_SHIFT_BITS_64(23, 16, 15));
-		dest[i + 1] = (int16_t)q_multsr_sat_32x32(
-			sign_extend_s24(src[i + 1]), cd->volume[1],
-			Q_SHIFT_BITS_64(23, 16, 15));
-	}
-}
-
-/* copy and scale volume from 32 bit source buffer to 24 bit on 32 bit boundary dest buffer */
-static void vol_s32_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *) source->r_ptr;
-	int32_t *dest = (int32_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.31 --> Q1.23 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = q_multsr_sat_32x32(
-			src[i], cd->volume[0], Q_SHIFT_BITS_64(31, 16, 23));
-		dest[i + 1] = q_multsr_sat_32x32(
-			src[i + 1], cd->volume[1], Q_SHIFT_BITS_64(31, 16, 23));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 24 bit on 32 bit boundary dest buffer */
-static void vol_s24_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *) source->r_ptr;
-	int32_t *dest = (int32_t *) sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.23 --> Q1.31 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = q_multsr_sat_32x32(
-			sign_extend_s24(src[i]), cd->volume[0],
-			Q_SHIFT_BITS_64(23, 16, 31));
-		dest[i + 1] = q_multsr_sat_32x32(
-			sign_extend_s24(src[i + 1]), cd->volume[1],
-			Q_SHIFT_BITS_64(23, 16, 31));
-	}
-}
-
-/* Copy and scale volume from 24 bit source buffer to 24 bit on 32 bit boundary
- * dest buffer.
- */
-static void vol_s24_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t i, *src = (int32_t*) source->r_ptr;
-	int32_t *dest = (int32_t*) sink->w_ptr;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.23 --> Q1.23 and volume is Q1.16 */
-	for (i = 0; i < frames * 2; i += 2) {
-		dest[i] = q_multsr_sat_32x32(
-			sign_extend_s24(src[i]), cd->volume[0],
-			Q_SHIFT_BITS_64(23, 16, 23));
-		dest[i + 1] = q_multsr_sat_32x32(
-			sign_extend_s24(src[i + 1]), cd->volume[1],
-			Q_SHIFT_BITS_64(23, 16, 23));
-	}
-}
-
-/* volume scaling functions for 4-channel input */
-
-/* copy and scale volume from 16 bit source buffer to 32 bit dest buffer */
-static void vol_s16_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.15 --> Q1.31 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = (int32_t)src[i] * cd->volume[0];
-		dest[i + 1] = (int32_t)src[i + 1] * cd->volume[1];
-		dest[i + 2] = (int32_t)src[i + 2] * cd->volume[2];
-		dest[i + 3] = (int32_t)src[i + 3] * cd->volume[3];
-	}
-}
-
-/* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
-static void vol_s32_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *)source->r_ptr;
-	int16_t *dest = (int16_t *)sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.31 --> Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = (int16_t)q_multsr_sat_32x32(src[i], cd->volume[0],
-						      Q_SHIFT_BITS_64(31, 16,
-								      15));
-		dest[i + 1] = (int16_t)q_multsr_sat_32x32(src[i + 1],
-							  cd->volume[1],
-							  Q_SHIFT_BITS_64(31,
-									  16,
-									  15));
-		dest[i + 2] = (int16_t)q_multsr_sat_32x32(src[i + 2],
-							  cd->volume[2],
-							  Q_SHIFT_BITS_64(31,
-									  16,
-									  15));
-		dest[i + 3] = (int16_t)q_multsr_sat_32x32(src[i + 3],
-							  cd->volume[3],
-							  Q_SHIFT_BITS_64(31,
-									  16,
-									  15));
-	}
-}
-
-/* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
-static void vol_s32_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.31 --> Q1.31 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = q_multsr_sat_32x32(src[i], cd->volume[0],
-					     Q_SHIFT_BITS_64(31, 16, 31));
-		dest[i + 1] = q_multsr_sat_32x32(src[i + 1], cd->volume[1],
-						 Q_SHIFT_BITS_64(31, 16, 31));
-		dest[i + 2] = q_multsr_sat_32x32(src[i + 2], cd->volume[2],
-						 Q_SHIFT_BITS_64(31, 16, 31));
-		dest[i + 3] = q_multsr_sat_32x32(src[i + 3], cd->volume[3],
-						 Q_SHIFT_BITS_64(31, 16, 31));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 16 bit dest buffer */
-static void vol_s16_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *dest = (int16_t *)sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.15 --> Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = q_multsr_sat_16x16(src[i], cd->volume[0],
-					     Q_SHIFT_BITS_32(15, 16, 15));
-		dest[i + 1] = q_multsr_sat_16x16(src[i + 1], cd->volume[1],
-						 Q_SHIFT_BITS_32(15, 16, 15));
-		dest[i + 2] = q_multsr_sat_16x16(src[i + 2], cd->volume[2],
-						 Q_SHIFT_BITS_32(15, 16, 15));
-		dest[i + 3] = q_multsr_sat_16x16(src[i + 3], cd->volume[3],
-						 Q_SHIFT_BITS_32(15, 16, 15));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary buffer
- */
-static void vol_s16_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int16_t *src = (int16_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = q_multsr_sat_32x32(src[i], cd->volume[0],
-					     Q_SHIFT_BITS_64(15, 16, 23));
-		dest[i + 1] = q_multsr_sat_32x32(src[i + 1], cd->volume[1],
-						 Q_SHIFT_BITS_64(15, 16, 23));
-		dest[i + 2] = q_multsr_sat_32x32(src[i + 2], cd->volume[2],
-						 Q_SHIFT_BITS_64(15, 16, 23));
-		dest[i + 3] = q_multsr_sat_32x32(src[i + 3], cd->volume[3],
-						 Q_SHIFT_BITS_64(15, 16, 23));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
- */
-static void vol_s24_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *)source->r_ptr;
-	int16_t *dest = (int16_t *)sink->w_ptr;
-	int32_t i, sample;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.23 --> Q1.15 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		sample = sign_extend_s24(src[i]);
-		dest[i] = (int16_t)q_multsr_sat_32x32(sample, cd->volume[0],
-						      Q_SHIFT_BITS_64(23, 16,
-								      15));
-		sample = sign_extend_s24(src[i + 1]);
-		dest[i + 1] = (int16_t)q_multsr_sat_32x32(sample,
-							  cd->volume[1],
-							  Q_SHIFT_BITS_64(23,
-									  16,
-									  15));
-		sample = sign_extend_s24(src[i + 2]);
-		dest[i + 2] = (int16_t)q_multsr_sat_32x32(sample,
-							  cd->volume[2],
-							  Q_SHIFT_BITS_64(23,
-									  16,
-									  15));
-		sample = sign_extend_s24(src[i + 3]);
-		dest[i + 3] = (int16_t)q_multsr_sat_32x32(sample,
-							  cd->volume[3],
-							  Q_SHIFT_BITS_64(23,
-									  16,
-									  15));
-	}
-}
-
-/* copy and scale volume from 32 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
- */
-static void vol_s32_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.31 --> Q1.23 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = q_multsr_sat_32x32(src[i], cd->volume[0],
-					     Q_SHIFT_BITS_64(31, 16, 23));
-		dest[i + 1] = q_multsr_sat_32x32(src[i + 1], cd->volume[1],
-						 Q_SHIFT_BITS_64(31, 16, 23));
-		dest[i + 2] = q_multsr_sat_32x32(src[i + 2], cd->volume[2],
-						 Q_SHIFT_BITS_64(31, 16, 23));
-		dest[i + 3] = q_multsr_sat_32x32(src[i + 3], cd->volume[3],
-						 Q_SHIFT_BITS_64(31, 16, 23));
-	}
-}
-
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
- */
-static void vol_s24_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
-	int32_t i;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.23 --> Q1.31 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = q_multsr_sat_32x32(sign_extend_s24(src[i]),
-					     cd->volume[0],
-					     Q_SHIFT_BITS_64(23, 16, 31));
-		dest[i + 1] = q_multsr_sat_32x32(sign_extend_s24(src[i + 1]),
-						 cd->volume[1],
-						 Q_SHIFT_BITS_64(23, 16, 31));
-		dest[i + 2] = q_multsr_sat_32x32(sign_extend_s24(src[i + 2]),
-						 cd->volume[2],
-						 Q_SHIFT_BITS_64(23, 16, 31));
-		dest[i + 3] = q_multsr_sat_32x32(sign_extend_s24(src[i + 3]),
-						 cd->volume[3],
-						 Q_SHIFT_BITS_64(23, 16, 31));
-	}
-}
-
-/* Copy and scale volume from 24 bit source buffer to 24 bit on 32 bit boundary
- * dest buffer.
- */
-static void vol_s24_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source, uint32_t frames)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int32_t i, *src = (int32_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
-
-	/* buffer sizes are always divisible by period frames */
-	/* Samples are Q1.23 --> Q1.23 and volume is Q1.16 */
-	for (i = 0; i < frames * 4; i += 4) {
-		dest[i] = q_multsr_sat_32x32(sign_extend_s24(src[i]),
-					     cd->volume[0],
-					     Q_SHIFT_BITS_64(23, 16, 23));
-		dest[i + 1] = q_multsr_sat_32x32(sign_extend_s24(src[i + 1]),
-						 cd->volume[1],
-						 Q_SHIFT_BITS_64(23, 16, 23));
-		dest[i + 2] = q_multsr_sat_32x32(sign_extend_s24(src[i + 2]),
-						 cd->volume[2],
-						 Q_SHIFT_BITS_64(23, 16, 23));
-		dest[i + 3] = q_multsr_sat_32x32(sign_extend_s24(src[i + 3]),
-						 cd->volume[3],
-						 Q_SHIFT_BITS_64(23, 16, 23));
-	}
-}
-
-/* map of source and sink buffer formats to volume function */
-static const struct comp_func_map func_map[] = {
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, 2, vol_s16_to_s16_2ch},
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, 2, vol_s16_to_s32_2ch},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, 2, vol_s32_to_s16_2ch},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, 2, vol_s32_to_s32_2ch},
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, 2, vol_s16_to_s24_2ch},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, 2, vol_s24_to_s16_2ch},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, 2, vol_s32_to_s24_2ch},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, 2, vol_s24_to_s32_2ch},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, 2, vol_s24_to_s24_2ch},
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, 4, vol_s16_to_s16_4ch},
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, 4, vol_s16_to_s32_4ch},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, 4, vol_s32_to_s16_4ch},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, 4, vol_s32_to_s32_4ch},
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, 4, vol_s16_to_s24_4ch},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, 4, vol_s24_to_s16_4ch},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, 4, vol_s32_to_s24_4ch},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, 4, vol_s24_to_s32_4ch},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, 4, vol_s24_to_s24_4ch},
-};
+#include "volume.h"
 
 /* synchronise host mmap() volume with real value */
 static void vol_sync_host(struct comp_data *cd, uint32_t chan)
@@ -570,9 +74,8 @@ static uint64_t vol_work(void *data, uint64_t delay)
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 
 		/* skip if target reached */
-		if (cd->volume[i] == cd->tvolume[i]) {
+		if (cd->volume[i] == cd->tvolume[i])
 			continue;
-		}
 
 		vol = cd->volume[i];
 
@@ -620,7 +123,8 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_volume *vol;
-	struct sof_ipc_comp_volume *ipc_vol = (struct sof_ipc_comp_volume *)comp;
+	struct sof_ipc_comp_volume *ipc_vol =
+		(struct sof_ipc_comp_volume *)comp;
 	struct comp_data *cd;
 	int i;
 
@@ -664,8 +168,8 @@ static void volume_free(struct comp_dev *dev)
 }
 
 /*
- * Set volume component audio stream paramters - All done in prepare() since
- * wee need to know source and sink component params.
+ * Set volume component audio stream parameters - All done in prepare() since
+ * we need to know source and sink component params.
  */
 static int volume_params(struct comp_dev *dev)
 {
@@ -717,7 +221,8 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 		cd->tvolume[chan] = cd->mvolume[chan];
 }
 
-static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int volume_ctrl_set_cmd(struct comp_dev *dev,
+			       struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
@@ -775,7 +280,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *c
 	return 0;
 }
 
-static int volume_ctrl_get_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int volume_ctrl_get_cmd(struct comp_dev *dev,
+			       struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
@@ -839,12 +345,15 @@ static int volume_copy(struct comp_dev *dev)
 	tracev_volume("cpy");
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	source = list_first_item(&dev->bsource_list,
+				 struct comp_buffer, sink_list);
+	sink = list_first_item(&dev->bsink_list,
+			       struct comp_buffer, source_list);
 
 	/* make sure source component buffer has enough data available and that
 	 * the sink component buffer has enough free bytes for copy. Also
-	 * check for XRUNs */
+	 * check for XRUNs
+	 */
 	if (source->avail < cd->source_period_bytes) {
 		trace_volume_error("xru");
 		comp_underrun(dev, source, cd->source_period_bytes, 0);
@@ -857,7 +366,7 @@ static int volume_copy(struct comp_dev *dev)
 	}
 
 	/* copy and scale volume */
-	cd->scale_vol(dev, sink, source, dev->frames);
+	cd->scale_vol(dev, sink, source);
 
 	/* calc new free and available */
 	comp_update_buffer_produce(sink, cd->sink_period_bytes);
@@ -868,7 +377,7 @@ static int volume_copy(struct comp_dev *dev)
 
 /*
  * Volume component is usually first and last in pipelines so it makes sense
- * to also do some type conversion here too.
+ * to also do some type conversion too.
  */
 static int volume_prepare(struct comp_dev *dev)
 {
@@ -887,8 +396,10 @@ static int volume_prepare(struct comp_dev *dev)
 		return ret;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */
-	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer, sink_list);
-	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sourceb = list_first_item(&dev->bsource_list,
+				  struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list,
+				struct comp_buffer, source_list);
 
 	/* get source data format */
 	switch (sourceb->source->comp.type) {
@@ -958,33 +469,24 @@ static int volume_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	/* map the volume function for source and sink buffers */
-	for (i = 0; i < ARRAY_SIZE(func_map); i++) {
-
-		if (cd->source_format != func_map[i].source)
-			continue;
-		if (cd->sink_format != func_map[i].sink)
-			continue;
-		if (dev->params.channels != func_map[i].channels)
-			continue;
-
-		cd->scale_vol = func_map[i].func;
-		goto found;
+	cd->scale_vol = vol_get_processing_function(dev);
+	if (!cd->scale_vol) {
+		trace_volume_error("vp3");
+		trace_error_value(cd->source_format);
+		trace_error_value(cd->sink_format);
+		trace_error_value(dev->params.channels);
+		ret = -EINVAL;
+		goto err;
 	}
-	trace_volume_error("vp3");
-	trace_error_value(cd->source_format);
-	trace_error_value(cd->sink_format);
-	trace_error_value(dev->params.channels);
 
-err:
-	comp_set_state(dev, COMP_TRIGGER_RESET);
-	return ret;
-
-found:
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		vol_sync_host(cd, i);
 
 	return 0;
+
+err:
+	comp_set_state(dev, COMP_TRIGGER_RESET);
+	return ret;
 }
 
 static int volume_reset(struct comp_dev *dev)
