@@ -96,7 +96,12 @@ do
 		PLATFORM="apollolake"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 		ROOT="$pwd/../xtensa-root/xtensa-bxt-elf"
-		HOST="xtensa-bxt-elf"
+		if [ -x xtensa-bxt-elf-gcc ]
+		then
+			HOST="xtensa-bxt-elf"
+		else
+			HOST="xtensa-apl-elf"
+		fi
 		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 	fi
 	if [ $j == "cnl" ]
