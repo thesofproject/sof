@@ -58,41 +58,79 @@ else
 	PATH=$pwd/local/bin:$PATH
 fi
 
+OLDPATH=$PATH
+
 # build platform
 for j in ${PLATFORMS[@]}
 do
 	if [ $j == "byt" ]
 	then
 		PLATFORM="baytrail"
-		ROOT="xtensa-byt-elf"
+		XTENSA_CORE="Intel_HiFiEP"
+		ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
+		HOST="xtensa-byt-elf"
+		XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 	fi
 	if [ $j == "cht" ]
 	then
 		PLATFORM="cherrytrail"
-		ROOT="xtensa-byt-elf"
+		XTENSA_CORE="CHT_audio_hifiep"
+		ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
+		HOST="xtensa-byt-elf"
+		XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 	fi
 	if [ $j == "bdw" ]
 	then
 		PLATFORM="broadwell"
-		ROOT="xtensa-hsw-elf"
+		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
+		HOST="xtensa-hsw-elf"
 	fi
 	if [ $j == "hsw" ]
 	then
 		PLATFORM="haswell"
-		ROOT="xtensa-hsw-elf"
+		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
+		HOST="xtensa-hsw-elf"
 	fi
 	if [ $j == "apl" ]
 	then
 		PLATFORM="apollolake"
-		ROOT="xtensa-bxt-elf"
+		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
+		ROOT="$pwd/../xtensa-root/xtensa-bxt-elf"
+		HOST="xtensa-bxt-elf"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 	fi
 	if [ $j == "cnl" ]
 	then
 		PLATFORM="cannonlake"
-		ROOT="xtensa-cnl-elf"
+		XTENSA_CORE="X6H3CNL_2016_4_linux"
+		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
+		HOST="xtensa-cnl-elf"
+		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 	fi
-	PATH=$pwd/../xtensa-root/$ROOT/bin:$PATH
-	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$pwd/../xtensa-root/$ROOT --host=$ROOT
+	if [ $XTENSA_TOOLS_ROOT ]
+	then
+		XTENSA_TOOLS_DIR="$XTENSA_TOOLS_ROOT/install/tools/$XTENSA_TOOLS_VERSION"
+		XTENSA_BUILDS_DIR="$XTENSA_TOOLS_ROOT/install/builds/$XTENSA_TOOLS_VERSION"
+
+		# make sure the required version of xtensa tools is installed
+		if [ -d $XTENSA_TOOLS_DIR ]
+			then
+				XCC="xt-xcc"
+		fi
+	fi
+
+	# update ROOT directory for xt-xcc
+	if [ $XCC == "xt-xcc" ]
+	then
+		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
+		XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
+		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
+	else
+		PATH=$pwd/../$HOST/bin:$OLDPATH
+	fi
+
+	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST CC=$XCC --with-dsp-core=$XTENSA_CORE
+
 	make clean
 	make
 	make bin
