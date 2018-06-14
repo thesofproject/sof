@@ -116,6 +116,8 @@ do
 		if [ -d $XTENSA_TOOLS_DIR ]
 			then
 				XCC="xt-xcc"
+			else
+				XCC="none"
 		fi
 	fi
 
