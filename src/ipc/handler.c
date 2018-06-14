@@ -62,6 +62,9 @@
 #define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
 #define iCS(x) ((x >> SOF_CMD_TYPE_SHIFT) & 0xfff)
 
+#define IPC_INVALID_SIZE(ipc) \
+	(sizeof(*(ipc)) != ipc->hdr.size)
+
 /* IPC context - shared with platform IPC driver */
 struct ipc *_ipc;
 
@@ -106,12 +109,18 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 	trace_ipc("SAl");
 
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(pcm_params)) {
+		trace_ipc_error("eAS");
+		return -EINVAL;
+	}
+
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, pcm_params->comp_id);
 	if (pcm_dev == NULL) {
 		trace_ipc_error("eAC");
 		trace_error_value(pcm_params->comp_id);
-		return -EINVAL;
+		return -ENODEV;
 	}
 
 	/* sanity check comp */
@@ -214,6 +223,12 @@ static int ipc_stream_pcm_free(uint32_t header)
 
 	trace_ipc("SFr");
 
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(free_req)) {
+		trace_ipc_error("eFs");
+		return -EINVAL;
+	}
+
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, free_req->comp_id);
 	if (pcm_dev == NULL) {
@@ -242,6 +257,12 @@ static int ipc_stream_position(uint32_t header)
 	trace_ipc("pos");
 
 	memset(&posn, 0, sizeof(posn));
+
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(stream)) {
+		trace_ipc_error("ePs");
+		return -EINVAL;
+	}
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
@@ -313,6 +334,12 @@ static int ipc_stream_trigger(uint32_t header)
 	int ret;
 
 	trace_ipc("tri");
+
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(stream)) {
+		trace_ipc_error("eRs");
+		return -EINVAL;
+	}
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
@@ -525,6 +552,12 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	trace_ipc("DA1");
 
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(params)) {
+		trace_ipc_error("DAs");
+		return -EINVAL;
+	}
+
 #ifdef CONFIG_HOST_PTABLE
 
 	list_init(&elem_list);
@@ -734,6 +767,12 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 
 	trace_ipc("Ipn");
 
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(ipc_pipeline)) {
+		trace_ipc_error("Ips");
+		return -EINVAL;
+	}
+
 	ret = ipc_pipeline_new(_ipc, ipc_pipeline);
 	if (ret < 0) {
 		trace_ipc_error("pn1");
@@ -764,6 +803,12 @@ static int ipc_glb_tplg_comp_connect(uint32_t header)
 
 	trace_ipc("Icn");
 
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(connect)) {
+		trace_ipc_error("Ics");
+		return -EINVAL;
+	}
+
 	return ipc_comp_connect(_ipc, connect);
 }
 
@@ -773,6 +818,12 @@ static int ipc_glb_tplg_free(uint32_t header,
 	struct sof_ipc_free *ipc_free = _ipc->comp_data;
 
 	trace_ipc("Tcf");
+
+	/* sanity check size */
+	if (IPC_INVALID_SIZE(ipc_free)) {
+		trace_ipc_error("Tcs");
+		return -EINVAL;
+	}
 
 	/* free the object */
 	free_func(_ipc, ipc_free->id);
