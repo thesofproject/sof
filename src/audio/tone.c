@@ -422,6 +422,8 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	comp_set_drvdata(dev, cd);
 	cd->tone_func = tone_s32_default;
 
+	cd->rate = ipc_tone->sample_rate;
+
 	/* Reset tone generator and set channels volumes to default */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		tonegen_reset(&cd->sg[i]);
@@ -664,7 +666,6 @@ static int tone_prepare(struct comp_dev * dev)
 		return ret;
 
 	cd->channels = dev->params.channels;
-	cd->rate = dev->params.rate;
 	tracev_value(cd->channels);
 	tracev_value(cd->rate);
 
