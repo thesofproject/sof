@@ -25,8 +25,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Marcin Maka <marcin.maka@linux.intel.com>
- * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
+ * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
  */
 
 #include <sof/math/numbers.h>
@@ -36,32 +35,34 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-static void test_math_numbers_gcd_for_5083_and_391_equals_391(void **state)
+static void test_math_numbers_find_min_int16_for_2_equals_2(void **state)
 {
-	int r;
+	(void)state;
 
-	(void) state;
+	int16_t vec[] = {2};
+	int r = find_min_int16(vec, sizeof(vec) / sizeof(int16_t));
 
-	r = gcd(5083, 391);
-	assert_int_equal(r, 391);
+	assert_int_equal(r, 2);
 }
 
-static void test_math_numbers_gcd_for_12_and_9_equals_3(void **state)
+static void test_math_numbers_find_min_int16_for_5_2_3_4_1_equals_1
+	(void **state)
 {
-	int r;
+	(void)state;
 
-	(void) state;
+	int16_t vec[] = {5, 2, 3, 4, 1};
+	int r = find_min_int16(vec, sizeof(vec) / sizeof(int16_t));
 
-	r = gcd(12, 9);
-	assert_int_equal(r, 3);
+	assert_int_equal(r, 1);
 }
 
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test
-			(test_math_numbers_gcd_for_5083_and_391_equals_391),
-		cmocka_unit_test(test_math_numbers_gcd_for_12_and_9_equals_3),
+			(test_math_numbers_find_min_int16_for_2_equals_2),
+		cmocka_unit_test
+			(test_math_numbers_find_min_int16_for_5_2_3_4_1_equals_1)
 	};
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);

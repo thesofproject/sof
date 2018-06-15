@@ -25,43 +25,55 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Marcin Maka <marcin.maka@linux.intel.com>
- * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
+ * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
  */
 
 #include <sof/math/numbers.h>
 
+#include <stdio.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <math.h>
 #include <cmocka.h>
 
-static void test_math_numbers_gcd_for_5083_and_391_equals_391(void **state)
+static void test_math_numbers_ceil_divide(void **state)
 {
-	int r;
+	(void)state;
 
-	(void) state;
+	int params[8] = {
+		-1000,
+		300,
+		123,
+		-10,
+		1337,
+		-6,
+		999,
+		-2
+	};
 
-	r = gcd(5083, 391);
-	assert_int_equal(r, 391);
-}
+	int i, j;
 
-static void test_math_numbers_gcd_for_12_and_9_equals_3(void **state)
-{
-	int r;
+	for (i = 0; i < 8; ++i) {
+		for (j = 0; j < 8; ++j) {
+			int ref = ceilf((float)params[i] / (float)params[j]);
+			int r = ceil_divide(params[i], params[j]);
 
-	(void) state;
+			if (r != ref) {
+				printf("%s: %d / %d = %d (ref: %d)\n", __func__,
+				       params[i], params[j], r, ref);
+			}
 
-	r = gcd(12, 9);
-	assert_int_equal(r, 3);
+			assert_int_equal(r, ref);
+		}
+	}
+
 }
 
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test
-			(test_math_numbers_gcd_for_5083_and_391_equals_391),
-		cmocka_unit_test(test_math_numbers_gcd_for_12_and_9_equals_3),
+		cmocka_unit_test(test_math_numbers_ceil_divide)
 	};
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
