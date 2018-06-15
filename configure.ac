@@ -133,16 +133,16 @@ AC_ARG_WITH([cmocka-prefix],
 	AS_HELP_STRING([--with-cmocka-prefix], [Path to cmocka]),
 	[], [with_cmocka_prefix="no"])
 
+# in case of native build, cmocka may be installed
+HAVE_CMOCKA_PKG=no
+AC_CHECK_LIB(cmocka, _cmocka_run_group_tests, [HAVE_CMOCKA_PKG=yes])
+
 if test "x$with_arch" != "xno"; then
 	if test "x$with_cmocka_prefix" = "xno"; then
 		if test "$ARCH" = "xtensa"; then
 			AC_MSG_WARN([Need cmocka to run unit tests. Path to cmocka not specified. Please use --with-cmocka-prefix option.])
-		else
-			# in case of native build, cmocka may be installed
-			PKG_CHECK_EXISTS(cmocka,
-				[],
-				[AC_MSG_WARN([Need cmocka to run unit tests. No cmocka library found. Please install cmocka or use --with-cmocka-prefix option.])]
-			)
+		elif test "x$HAVE_CMOCKA_PKG" = "xno"; then
+			AC_MSG_WARN([Need cmocka to run unit tests. No cmocka library found. Please install cmocka or use --with-cmocka-prefix option.])
 		fi
 	else
 		CMOCKA_PREFIX="$with_cmocka_prefix"
