@@ -63,9 +63,8 @@
 #define TONE_GAIN(v) Q_CONVERT_FLOAT(v, 31)
 
 /* Set default tone amplitude and frequency */
-#define TONE_AMPLITUDE_DEFAULT TONE_GAIN(0.5)      /*  -6 dB  */
-#define TONE_FREQUENCY_DEFAULT TONE_FREQ(82.41)    /* E2 note */
-
+#define TONE_AMPLITUDE_DEFAULT TONE_GAIN(0.1)      /*  -20 dB  */
+#define TONE_FREQUENCY_DEFAULT TONE_FREQ(997.0)
 #define TONE_NUM_FS            13       /* Table size for 8-192 kHz range */
 
 /* 2*pi/Fs lookup tables in Q1.31 for each Fs */
