@@ -450,16 +450,18 @@ static int tone_params(struct comp_dev *dev)
 
 	trace_tone("par");
 
+	/* Tone supports only S32_LE PCM format atm */
+	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
+		return -EINVAL;
+
+	trace_value(config->frame_fmt);
+	dev->params.frame_fmt = config->frame_fmt;
+
 	/* Need to compute this in non-host endpoint */
-	dev->frame_bytes =
-		dev->params.sample_container_bytes * dev->params.channels;
+	dev->frame_bytes = comp_frame_bytes(dev);
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames * dev->frame_bytes;
-
-	/* EQ supports only S32_LE PCM format */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
-		return -EINVAL;
 
 	return 0;
 }
