@@ -358,7 +358,7 @@ static inline int ssp_set_config(struct dai *dai,
 		frame_len = 1;
 
 		/* handle frame polarity, DSP_A default is rising/active high */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		if (cfs) {
 			/* set sscr frame polarity in DSP/master mode only */
 			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
@@ -386,7 +386,7 @@ static inline int ssp_set_config(struct dai *dai,
 		frame_len = 1;
 
 		/* handle frame polarity, DSP_A default is rising/active high */
-		sspsp |= SSPSP_SFRMP(inverted_frame);
+		sspsp |= SSPSP_SFRMP(!inverted_frame);
 		if (cfs) {
 			/* set sscr frame polarity in DSP/master mode only */
 			sscr5 |= SSCR5_FRM_POLARITY(inverted_frame);
