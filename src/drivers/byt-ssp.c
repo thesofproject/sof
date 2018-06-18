@@ -133,7 +133,10 @@ static inline int ssp_set_config(struct dai *dai,
 	 */
 
 	/* sscr1 dynamic settings are TFT, RFT, SFRMDIR, SCLKDIR, SCFR */
-	sscr1 = SSCR1_TTE;
+	sscr1 = 0;
+#ifdef ENABLE_SSCR1_TRISTATE
+	sscr1 |= SSCR1_TTE; /* make sure SDO line is tri-stated when inactive */
+#endif
 #ifdef ENABLE_TIE_RIE /* FIXME: not enabled, difference with SST driver */
 	sscr1 |= SSCR1_TIE | SSCR1_RIE;
 #endif
@@ -171,7 +174,7 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr5 = 0x0;
 
 	/* sspsp dynamic settings are SCMODE, SFRMP, DMYSTRT, SFRMWDTH */
-	sspsp = SSPSP_ETDS; /* make sure SDO line is tri-stated when inactive */
+	sspsp = SSPSP_ETDS; /* last value (bit 0) */
 
 	ssp->config = *config;
 	ssp->params = config->ssp;
