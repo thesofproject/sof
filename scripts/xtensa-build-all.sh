@@ -96,7 +96,10 @@ do
 		PLATFORM="apollolake"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 		ROOT="$pwd/../xtensa-root/xtensa-bxt-elf"
-		if [ -x xtensa-bxt-elf-gcc ]
+
+		# test APL compiler aliases and ignore set -e here
+		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
+		if [ $? == 0 ]
 		then
 			HOST="xtensa-bxt-elf"
 		else
