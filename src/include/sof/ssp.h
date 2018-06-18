@@ -215,6 +215,11 @@ extern const struct dai_ops ssp_ops;
 #define SSIOC_SCOE	BIT(5)
 #endif
 
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#define MNDSS(x)	((x) << 20)
+#define MCDSS(x)	((x) << 16)
+#endif
+
 /* tracing */
 #define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)

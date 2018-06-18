@@ -44,6 +44,10 @@
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
 #define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
 
+#define F_19200_kHz 19200000
+#define F_24000_kHz 24000000
+#define F_24576_kHz 24576000
+
 /* FIXME: move this to a helper and optimize */
 static int hweight_32(uint32_t mask)
 {
@@ -103,6 +107,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t bdiv;
 	uint32_t mdivc;
 	uint32_t mdivr;
+	uint32_t mdivr_val;
 	uint32_t i2s_m;
 	uint32_t i2s_n;
 	uint32_t data_size;
@@ -233,21 +238,104 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-if CONFIG_APOLLOLAKE
-	sscr0 |= SSCR0_MOD | SSCR0_ACS | SSCR0_ECS;
-#else
 	sscr0 |= SSCR0_MOD | SSCR0_ACS;
+
+	mdivc = 0x1;
+#ifdef CONFIG_CANNONLAKE
+	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24000_kHz) {
+		trace_ssp_error("eci");
+		ret = -EINVAL;
+		goto out;
+	}
+	if (!config->ssp.bclk_rate ||
+	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
+		trace_ssp_error("ecj");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (F_24000_kHz % config->ssp.mclk_rate == 0) {
+		mdivr_val = F_24000_kHz / config->ssp.mclk_rate;
+	} else {
+		trace_ssp_error("eck");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (F_24000_kHz % config->ssp.bclk_rate == 0) {
+		mdiv = F_24000_kHz / config->ssp.bclk_rate;
+	} else {
+		trace_ssp_error("ecl");
+		ret = -EINVAL;
+		goto out;
+	}
+#else
+	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24576_kHz) {
+		trace_ssp_error("eci");
+		ret = -EINVAL;
+		goto out;
+	}
+	if (!config->ssp.bclk_rate ||
+	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
+		trace_ssp_error("ecj");
+		ret = -EINVAL;
+		goto out;
+	}
+	if (F_24576_kHz % config->ssp.mclk_rate == 0) {
+		/* select Audio Cardinal clock for MCLK */
+		mdivc |= MCDSS(1);
+		mdivr_val = F_24576_kHz / config->ssp.mclk_rate;
+	} else if (config->ssp.mclk_rate <= F_19200_kHz &&
+		   F_19200_kHz % config->ssp.mclk_rate == 0) {
+		mdivr_val = F_19200_kHz / config->ssp.mclk_rate;
+	} else {
+		trace_ssp_error("eck");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (F_24576_kHz % config->ssp.bclk_rate == 0) {
+		/* select Audio Cardinal clock for M/N dividers */
+		mdivc |= MNDSS(1);
+		mdiv = F_24576_kHz / config->ssp.bclk_rate;
+		/* select M/N output for bclk */
+		sscr0 |= SSCR0_ECS;
+	} else if (F_19200_kHz % config->ssp.bclk_rate == 0) {
+		mdiv = F_19200_kHz / config->ssp.bclk_rate;
+	} else {
+		trace_ssp_error("ecl");
+		ret = -EINVAL;
+		goto out;
+	}
 #endif
 
-	/* BCLK is generated from MCLK - must be divisable */
-	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
-		trace_ssp_error("ec5");
+	switch (mdivr_val) {
+	case 1:
+		mdivr = 0x00000fff; /* bypass divider for MCLK */
+		break;
+	case 2:
+		mdivr = 0x0; /* 1/2 */
+		break;
+	case 4:
+		mdivr = 0x2; /* 1/4 */
+		break;
+	case 8:
+		mdivr = 0x6; /* 1/8 */
+		break;
+	default:
+		trace_ssp_error("ecm");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (config->ssp.mclk_id > 1) {
+		trace_ssp_error("ecn");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* divisor must be within SCR range */
-	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
+	mdiv -= 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ec6");
 		ret = -EINVAL;
@@ -263,7 +351,6 @@ if CONFIG_APOLLOLAKE
 		ret = -EINVAL;
 		goto out;
 	}
-
 
 	/* must be enough BCLKs for data */
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
@@ -458,24 +545,6 @@ if CONFIG_APOLLOLAKE
 	else
 		sscr0 |= SSCR0_DSIZE(data_size);
 
-#ifdef CONFIG_CANNONLAKE
-	mdivc = 0x1;
-#else
-	if (config->ssp.mclk_rate == 24576000) {
-		/* enable PLL, bypass M/N dividers */
-		mdivc = 0x00100001;
-	} else if (config->ssp.mclk_rate == 19200000) {
-		/* no PLL, use XTAl oscillator as source */
-		mdivc = 0;
-	} else {
-		trace_ssp_error("eci");
-		ret = -EINVAL;
-		goto out;
-	}
-#endif
-	/* bypass divider for MCLK */
-	mdivr = 0x00000fff;
-
 	/* setting TFT and RFT */
 	switch (config->ssp.sample_valid_bits) {
 	case 16:
@@ -523,7 +592,7 @@ if CONFIG_APOLLOLAKE
 
 	/* TODO: move this into M/N driver */
 	mn_reg_write(0x0, mdivc);
-	mn_reg_write(0x80, mdivr);
+	mn_reg_write(0x80 + config->ssp.mclk_id * 0x4, mdivr);
 	mn_reg_write(0x100 + config->id * 0x8 + 0x0, i2s_m);
 	mn_reg_write(0x100 + config->id * 0x8 + 0x4, i2s_n);
 
