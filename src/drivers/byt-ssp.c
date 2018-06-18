@@ -239,31 +239,6 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-#ifdef CLK_TYPE /* not enabled, keep the code for reference */
-	/* TODO: allow topology to define SSP clock type */
-	config->ssp.clk_id = SSP_CLK_EXT;
-
-	/* clock source */
-	switch (config->ssp.clk_id) {
-	case SSP_CLK_AUDIO:
-		sscr0 |= SSCR0_ACS;
-		break;
-	case SSP_CLK_NET_PLL:
-		sscr0 |= SSCR0_MOD;
-		break;
-	case SSP_CLK_EXT:
-		sscr0 |= SSCR0_ECS;
-		break;
-	case SSP_CLK_NET:
-		sscr0 |= SSCR0_NCS | SSCR0_MOD;
-		break;
-	default:
-		trace_ssp_error("ec4");
-		ret = -EINVAL;
-		goto out;
-	}
-#endif
-
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
 		trace_ssp_error("ec5");
