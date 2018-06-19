@@ -483,6 +483,8 @@ Install Prefix:                ${prefix}
 PEM:                           ${PEM_KEY_PREFIX}
 
 Compiler:                      ${CC}
+OBJCOPY:                       ${OBJCOPY}
+OBJDUMP:                       ${OBJDUMP}
 CFLAGS:                        ${CFLAGS}
 LDFLAGS:                       ${LDFLAGS}
 ARCH_CFLAGS:                   ${ARCH_CFLAGS}
