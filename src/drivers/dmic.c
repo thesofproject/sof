@@ -820,7 +820,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 		OUTCONTROL0_FCI(0) |
 		OUTCONTROL0_BFTH(bfth) |
 		OUTCONTROL0_OF(of0) |
-		OUTCONTROL0_NUMBER_OF_DECIMATORS(ipm) |
+		OUTCONTROL0_IPM(ipm) |
 		OUTCONTROL0_IPM_SOURCE_1(source[0]) |
 		OUTCONTROL0_IPM_SOURCE_2(source[1]) |
 		OUTCONTROL0_IPM_SOURCE_3(source[2]) |
@@ -835,7 +835,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 		OUTCONTROL1_FCI(0) |
 		OUTCONTROL1_BFTH(bfth) |
 		OUTCONTROL1_OF(of1) |
-		OUTCONTROL1_NUMBER_OF_DECIMATORS(ipm) |
+		OUTCONTROL1_IPM(ipm) |
 		OUTCONTROL1_IPM_SOURCE_1(source[0]) |
 		OUTCONTROL1_IPM_SOURCE_2(source[1]) |
 		OUTCONTROL1_IPM_SOURCE_3(source[2]) |
