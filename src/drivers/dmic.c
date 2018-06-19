@@ -119,6 +119,19 @@ struct pdm_controllers_configuration {
 /* Internal precision in gains computation, e.g. Q4.28 in int32_t */
 #define DMIC_FIR_SCALE_Q 28
 
+/* Used in unmute ramp values calculation */
+#define DMIC_HW_FIR_GAIN_MAX ((1 << (DMIC_HW_BITS_FIR_GAIN - 1)) - 1)
+
+/* Hardwired log ramp parameters. The first value is the initial logarithmic
+ * gain and the second value is the multiplier for gain to achieve the linear
+ * decibels change over time. Currently the coefficient GM needs to be
+ * calculated manually. The 300 ms ramp should ensure clean sounding start with
+ * any microphone. However it is likely unnecessarily long for machine hearing.
+ * TODO: Add ramp characteristic passing via topology.
+ */
+#define LOGRAMP_GI 33954 /* -90 dB, Q2.30*/
+#define LOGRAMP_GM 16959 /* Gives 300 ms ramp for -90..0 dB, Q2.14 */
+
 /* tracing */
 #define trace_dmic(__e) trace_event(TRACE_CLASS_DMIC, __e)
 #define trace_dmic_error(__e) trace_error(TRACE_CLASS_DMIC, __e)
@@ -183,6 +196,74 @@ static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 	io_reg_update_bits(dai_base(dai) + reg, mask, value);
 }
 #endif
+
+/* this ramps volume changes over time */
+static uint64_t dmic_work(void *data, uint64_t delay)
+{
+	struct dai *dai = (struct dai *)data;
+	struct dmic_pdata *dmic = dai_get_drvdata(dai);
+	int32_t gval;
+	uint32_t val;
+	int i;
+
+	tracev_dmic("wrk");
+	spin_lock(&dmic->lock);
+
+	/* Increment gain with logaritmic step.
+	 * Gain is Q2.30 and gain modifier is Q2.14.
+	 */
+	dmic->startcount++;
+	dmic->gain = Q_MULTSR_32X32((int64_t)dmic->gain,
+				    LOGRAMP_GM, 30, 14, 30);
+
+	/* Gain is stored as Q2.30, while HW register is Q1.19 so shift
+	 * the value right by 11.
+	 */
+	gval = dmic->gain >> 11;
+
+	/* Note that DMIC gain value zero has a special purpose. Value zero
+	 * sets gain bypass mode in HW. Zero value will be applied after ramp
+	 * is complete. It is because exact 1.0 gain is not possible with Q1.19.
+	 */
+	if (gval > DMIC_HW_FIR_GAIN_MAX)
+		gval = 0;
+
+	/* Write gain to registers */
+	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
+		if (!dmic->enable[i])
+			continue;
+
+		if (dmic->startcount == DMIC_UNMUTE_CIC)
+			dmic_update_bits(dai, base[i] + CIC_CONTROL,
+					 CIC_CONTROL_MIC_MUTE_BIT, 0);
+
+		if (dmic->startcount == DMIC_UNMUTE_FIR) {
+			if (dmic->fifo_a)
+				dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
+						 FIR_CONTROL_A_MUTE_BIT, 0);
+
+			if (dmic->fifo_b)
+				dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
+						 FIR_CONTROL_B_MUTE_BIT, 0);
+		}
+		if (dmic->fifo_a) {
+			val = OUT_GAIN_LEFT_A_GAIN(gval);
+			dmic_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
+			dmic_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
+		}
+		if (dmic->fifo_b) {
+			val = OUT_GAIN_LEFT_B_GAIN(gval);
+			dmic_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
+			dmic_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
+		}
+	}
+	spin_unlock(&dmic->lock);
+
+	if (gval)
+		return DMIC_UNMUTE_RAMP_US;
+	else
+		return 0;
+}
 
 /* This function returns a raw list of potential microphone clock and decimation
  * modes for achieving requested sample rates. The search is constrained by
@@ -745,8 +826,8 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 	struct dmic_pdata *pdata = dai_get_drvdata(dai);
 	int array_a = 0;
 	int array_b = 0;
-	int cic_mute = 0;
-	int fir_mute = 0;
+	int cic_mute = 1;
+	int fir_mute = 1;
 	int bfth = 1; /* Should be 3 for 8 entries, 1 is 2 entries */
 	int th = 0; /* Used with TIE=1 */
 
@@ -1026,6 +1107,9 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 	trace_dmic("dsc");
 
+	/* Initialize start sequence handler */
+	work_init(&dmic->dmicwork, dmic_work, dai, WORK_ASYNC);
+
 	/*
 	 * "config" might contain pdm controller params for only
 	 * the active controllers
@@ -1139,6 +1223,8 @@ static void dmic_start(struct dai *dai)
 	spin_lock(&dmic->lock);
 	trace_dmic("sta");
 	dmic->state = COMP_STATE_ACTIVE;
+	dmic->startcount = 0;
+	dmic->gain = LOGRAMP_GI; /* Initial gain value */
 
 	if (dmic->fifo_a) {
 		trace_dmic("ffa");
@@ -1210,6 +1296,9 @@ static void dmic_start(struct dai *dai)
 	 * start of audio capture would contain clicks and/or noise and it
 	 * is not suppressed by gain ramp somewhere in the capture pipe.
 	 */
+
+	work_schedule_default(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US);
+
 	trace_dmic("run");
 }
 /* stop the DMIC for capture */
@@ -1230,12 +1319,21 @@ static void dmic_stop(struct dai *dai)
 		OUTCONTROL1_SIP_BIT | OUTCONTROL1_FINIT_BIT,
 		OUTCONTROL1_FINIT_BIT);
 
-	/* Set soft reset for all PDM controllers.
+	/* Set soft reset and mute on for all PDM controllers.
 	 */
 	trace_dmic("sre");
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		dmic_update_bits(dai, base[i] + CIC_CONTROL,
-			CIC_CONTROL_SOFT_RESET_BIT, CIC_CONTROL_SOFT_RESET_BIT);
+				 CIC_CONTROL_SOFT_RESET_BIT |
+				 CIC_CONTROL_MIC_MUTE_BIT,
+				 CIC_CONTROL_SOFT_RESET_BIT |
+				 CIC_CONTROL_MIC_MUTE_BIT);
+		dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
+				 FIR_CONTROL_A_MUTE_BIT,
+				 FIR_CONTROL_A_MUTE_BIT);
+		dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
+				 FIR_CONTROL_B_MUTE_BIT,
+				 FIR_CONTROL_B_MUTE_BIT);
 	}
 
 	spin_unlock(&dmic->lock);
