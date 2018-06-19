@@ -628,9 +628,8 @@ static int select_mode(struct dmic_configuration *cfg,
  * HW versions. This helper function returns a suitable IPM bit field
  * value to use.
  */
-#if DMIC_HW_VERSION == 1
 
-static inline void ipm_helper(int *ipm, int stereo[], int swap[],
+static inline void ipm_helper1(int *ipm, int stereo[], int swap[],
 	struct sof_ipc_dai_dmic_params *dmic)
 {
 	int pdm[DMIC_HW_CONTROLLERS] = {0};
@@ -672,9 +671,9 @@ static inline void ipm_helper(int *ipm, int stereo[], int swap[],
 		*ipm = 2;
 }
 
-#elif DMIC_HW_VERSION == 2
+#if DMIC_HW_VERSION == 2
 
-static inline void source_ipm_helper(int source[], int *ipm, int stereo[],
+static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 	int swap[], struct sof_ipc_dai_dmic_params *dmic)
 {
 	int pdm[DMIC_HW_CONTROLLERS];
@@ -788,7 +787,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 	of1 = (dmic->fifo_bits_b == 32) ? 2 : 0;
 
 #if DMIC_HW_VERSION == 1
-	ipm_helper(&ipm, stereo, swap, dmic);
+	ipm_helper1(&ipm, stereo, swap, dmic);
 	val = OUTCONTROL0_TIE(0) |
 		OUTCONTROL0_SIP(0) |
 		OUTCONTROL0_FINIT(1) |
@@ -813,7 +812,11 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 #endif
 
 #if DMIC_HW_VERSION == 2
-	source_ipm_helper(source, &ipm, stereo, swap, dmic);
+#if DMIC_HW_CONTROLLERS > 2
+	ipm_helper2(source, &ipm, stereo, swap, dmic);
+#else
+	ipm_helper1(&ipm, stereo, swap, dmic);
+#endif
 	val = OUTCONTROL0_TIE(0) |
 		OUTCONTROL0_SIP(0) |
 		OUTCONTROL0_FINIT(1) |
