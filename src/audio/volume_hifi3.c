@@ -28,14 +28,27 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+/**
+ * \file audio/volume_hifi3.c
+ * \brief Volume HiFi3 processing implementation
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
+
 #include "volume.h"
 
 #if defined(__XCC__) && XCHAL_HAVE_HIFI3
 
 #include <xtensa/tie/xt_hifi3.h>
 
+/** \brief Volume scale ratio. */
 #define VOL_SCALE (uint32_t)((double)INT32_MAX / VOL_MAX)
 
+/**
+ * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ */
 static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			   struct comp_buffer *source)
 {
@@ -78,6 +91,12 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+/**
+ * \brief HiFi3 enabled volume processing from 16 bit to x bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ */
 static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source)
 {
@@ -129,6 +148,12 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+/**
+ * \brief HiFi3 enabled volume processing from x bit to 16 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ */
 static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source)
 {
@@ -179,6 +204,12 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+/**
+ * \brief HiFi3 enabled volume processing from 24/32 bit to 24/32 or 32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ */
 static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -228,6 +259,12 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
+/**
+ * \brief HiFi3 enabled volume processing from 32 bit to 24/32 or 32 bit.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ */
 static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {

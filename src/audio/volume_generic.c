@@ -30,13 +30,27 @@
  *         Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+/**
+ * \file audio/volume_generic.c
+ * \brief Volume generic processing implementation
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
+ *          Keyon Jie <yang.jie@linux.intel.com>\n
+ *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
+
 #include "volume.h"
 
 #ifdef CONFIG_GENERIC
 
-/* volume scaling functions for stereo input */
-
-/* copy and scale volume from 16 bit source buffer to 32 bit dest buffer */
+/**
+ * \brief Volume processing from 16 bit to 32 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 16 bit source buffer
+ * to 32 bit destination buffer for 2 channels.
+ */
 static void vol_s16_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -53,7 +67,15 @@ static void vol_s16_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
+/**
+ * \brief Volume processing from 32 bit to 16 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 32 bit source buffer
+ * to 16 bit destination buffer for 2 channels.
+ */
 static void vol_s32_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -72,7 +94,15 @@ static void vol_s32_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
+/**
+ * \brief Volume processing from 32 bit to 32 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 32 bit source buffer
+ * to 32 bit destination buffer for 2 channels.
+ */
 static void vol_s32_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -91,7 +121,15 @@ static void vol_s32_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 16 bit dest buffer */
+/**
+ * \brief Volume processing from 16 bit to 16 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 16 bit source buffer
+ * to 16 bit destination buffer for 2 channels.
+ */
 static void vol_s16_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -110,8 +148,14 @@ static void vol_s16_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
+/**
+ * \brief Volume processing from 16 bit to 24/32 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 16 bit source buffer
+ * to 24/32 bit destination buffer for 2 channels.
  */
 static void vol_s16_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -131,8 +175,14 @@ static void vol_s16_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
+/**
+ * \brief Volume processing from 24/32 bit to 16 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 24/32 bit source buffer
+ * to 16 bit destination buffer for 2 channels.
  */
 static void vol_s24_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -154,8 +204,14 @@ static void vol_s24_to_s16_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 32 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
+/**
+ * \brief Volume processing from 32 bit to 24/32 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 32 bit source buffer
+ * to 24/32 bit destination buffer for 2 channels.
  */
 static void vol_s32_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -175,8 +231,14 @@ static void vol_s32_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
+/**
+ * \brief Volume processing from 24/32 bit to 32 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 24/32 bit source buffer
+ * to 32 bit destination buffer for 2 channels.
  */
 static void vol_s24_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -198,8 +260,14 @@ static void vol_s24_to_s32_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 24 bit source buffer to 24 bit on 32 bit boundary
- * dest buffer.
+/**
+ * \brief Volume processing from 24/32 bit to 24/32 bit in 2 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 24/32 bit source buffer
+ * to 24/32 bit destination buffer for 2 channels.
  */
 static void vol_s24_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -220,9 +288,15 @@ static void vol_s24_to_s24_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* volume scaling functions for 4-channel input */
-
-/* copy and scale volume from 16 bit source buffer to 32 bit dest buffer */
+/**
+ * \brief Volume processing from 16 bit to 32 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 16 bit source buffer
+ * to 32 bit destination buffer for 4 channels.
+ */
 static void vol_s16_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -241,7 +315,15 @@ static void vol_s16_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 32 bit source buffer to 16 bit dest buffer */
+/**
+ * \brief Volume processing from 32 bit to 16 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 32 bit source buffer
+ * to 16 bit destination buffer for 4 channels.
+ */
 static void vol_s32_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -274,7 +356,15 @@ static void vol_s32_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 32 bit source buffer to 32 bit dest buffer */
+/**
+ * \brief Volume processing from 32 bit to 32 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 32 bit source buffer
+ * to 32 bit destination buffer for 4 channels.
+ */
 static void vol_s32_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -297,7 +387,15 @@ static void vol_s32_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 16 bit dest buffer */
+/**
+ * \brief Volume processing from 16 bit to 16 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 16 bit source buffer
+ * to 16 bit destination buffer for 4 channels.
+ */
 static void vol_s16_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
 {
@@ -320,8 +418,14 @@ static void vol_s16_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary buffer
+/**
+ * \brief Volume processing from 16 bit to 24/32 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 16 bit source buffer
+ * to 24/32 bit destination buffer for 4 channels.
  */
 static void vol_s16_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -345,8 +449,14 @@ static void vol_s16_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
+/**
+ * \brief Volume processing from 24/32 bit to 16 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 24/32 bit source buffer
+ * to 16 bit destination buffer for 4 channels.
  */
 static void vol_s24_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -384,8 +494,14 @@ static void vol_s24_to_s16_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 32 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
+/**
+ * \brief Volume processing from 32 bit to 24/32 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 32 bit source buffer
+ * to 24/32 bit destination buffer for 4 channels.
  */
 static void vol_s32_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -409,8 +525,14 @@ static void vol_s32_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* copy and scale volume from 16 bit source buffer to 24 bit
- * on 32 bit boundary dest buffer
+/**
+ * \brief Volume processing from 24/32 bit to 32 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 24/32 bit source buffer
+ * to 32 bit destination buffer for 4 channels.
  */
 static void vol_s24_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)
@@ -438,8 +560,14 @@ static void vol_s24_to_s32_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/* Copy and scale volume from 24 bit source buffer to 24 bit on 32 bit boundary
- * dest buffer.
+/**
+ * \brief Volume processing from 24/32 bit to 24/32 bit in 4 channels.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] sink Destination buffer.
+ * \param[in,out] source Source buffer.
+ *
+ * Copy and scale volume from 24/32 bit source buffer
+ * to 24/32 bit destination buffer for 4 channels.
  */
 static void vol_s24_to_s24_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source)

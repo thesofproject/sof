@@ -30,6 +30,14 @@
  *         Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+/**
+ * \file audio/volume.c
+ * \brief Volume component implementation
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
+ *          Keyon Jie <yang.jie@linux.intel.com>\n
+ *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
+
 #include <stddef.h>
 #include <errno.h>
 #include <sof/sof.h>
@@ -41,7 +49,11 @@
 #include <sof/clock.h>
 #include "volume.h"
 
-/* synchronise host mmap() volume with real value */
+/**
+ * \brief Synchronize host mmap() volume with real value.
+ * \param[in,out] cd Volume component private data.
+ * \param[in] chan Channel number.
+ */
 static void vol_sync_host(struct comp_data *cd, uint32_t chan)
 {
 	if (cd->hvol == NULL)
@@ -55,13 +67,23 @@ static void vol_sync_host(struct comp_data *cd, uint32_t chan)
 	}
 }
 
+/**
+ * \brief Update volume with target value.
+ * \param[in,out] cd Volume component private data.
+ * \param[in] chan Channel number.
+ */
 static void vol_update(struct comp_data *cd, uint32_t chan)
 {
 	cd->volume[chan] = cd->tvolume[chan];
 	vol_sync_host(cd, chan);
 }
 
-/* this ramps volume changes over time */
+/**
+ * \brief Ramps volume changes over time.
+ * \param[in,out] data Volume base component device.
+ * \param[in] delay Update time.
+ * \return Time until next work.
+ */
 static uint64_t vol_work(void *data, uint64_t delay)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
@@ -119,6 +141,12 @@ static uint64_t vol_work(void *data, uint64_t delay)
 		return 0;
 }
 
+/**
+ * \brief Creates volume component.
+ * \param[in,out] data Volume base component device.
+ * \param[in] delay Update time.
+ * \return Pointer to volume base component device.
+ */
 static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
@@ -157,6 +185,10 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	return dev;
 }
 
+/**
+ * \brief Frees volume component.
+ * \param[in,out] dev Volume base component device.
+ */
 static void volume_free(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -167,9 +199,12 @@ static void volume_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-/*
- * Set volume component audio stream parameters - All done in prepare() since
- * we need to know source and sink component params.
+/**
+ * \brief Sets volume component audio stream parameters.
+ * \param[in,out] dev Volume base component device.
+ * \return Error code.
+ *
+ * All done in prepare() since we need to know source and sink component params.
  */
 static int volume_params(struct comp_dev *dev)
 {
@@ -183,6 +218,12 @@ static int volume_params(struct comp_dev *dev)
 	return 0;
 }
 
+/**
+ * \brief Sets channel target volume.
+ * \param[in,out] dev Volume base component device.
+ * \param[in] chan Channel number.
+ * \param[in] vol Target volume.
+ */
 static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -202,6 +243,11 @@ static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 	cd->tvolume[chan] = v;
 }
 
+/**
+ * \brief Mutes channel.
+ * \param[in,out] dev Volume base component device.
+ * \param[in] chan Channel number.
+ */
 static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -212,6 +258,11 @@ static inline void volume_set_chan_mute(struct comp_dev *dev, int chan)
 	cd->tvolume[chan] = 0;
 }
 
+/**
+ * \brief Unmutes channel.
+ * \param[in,out] dev Volume base component device.
+ * \param[in] chan Channel number.
+ */
 static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -221,6 +272,12 @@ static inline void volume_set_chan_unmute(struct comp_dev *dev, int chan)
 		cd->tvolume[chan] = cd->mvolume[chan];
 }
 
+/**
+ * \brief Sets volume control command.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] cdata Control command data.
+ * \return Error code.
+ */
 static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			       struct sof_ipc_ctrl_data *cdata)
 {
@@ -280,6 +337,12 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 	return 0;
 }
 
+/**
+ * \brief Gets volume control command.
+ * \param[in,out] dev Volume base component device.
+ * \param[in,out] cdata Control command data.
+ * \return Error code.
+ */
 static int volume_ctrl_get_cmd(struct comp_dev *dev,
 			       struct sof_ipc_ctrl_data *cdata)
 {
@@ -311,7 +374,13 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 	return 0;
 }
 
-/* used to pass standard and bespoke commands (with data) to component */
+/**
+ * \brief Used to pass standard and bespoke commands (with data) to component.
+ * \param[in,out] dev Volume base component device.
+ * \param[in] cmd Command type.
+ * \param[in,out] data Control command data.
+ * \return Error code.
+ */
 static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
@@ -328,6 +397,12 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	}
 }
 
+/**
+ * \brief Sets volume component state.
+ * \param[in,out] dev Volume base component device.
+ * \param[in] cmd Command type.
+ * \return Error code.
+ */
 static int volume_trigger(struct comp_dev *dev, int cmd)
 {
 	trace_volume("trg");
@@ -335,7 +410,11 @@ static int volume_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
-/* copy and process stream data from source to sink buffers */
+/**
+ * \brief Copies and processes stream data.
+ * \param[in,out] dev Volume base component device.
+ * \return Error code.
+ */
 static int volume_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -375,9 +454,13 @@ static int volume_copy(struct comp_dev *dev)
 	return dev->frames;
 }
 
-/*
+/**
+ * \brief Prepares volume component for processing.
+ * \param[in,out] dev Volume base component device.
+ * \return Error code.
+ *
  * Volume component is usually first and last in pipelines so it makes sense
- * to also do some type conversion too.
+ * to also do some type of conversion here.
  */
 static int volume_prepare(struct comp_dev *dev)
 {
@@ -489,6 +572,11 @@ err:
 	return ret;
 }
 
+/**
+ * \brief Resets volume component.
+ * \param[in,out] dev Volume base component device.
+ * \return Error code.
+ */
 static int volume_reset(struct comp_dev *dev)
 {
 	trace_volume("res");
@@ -497,6 +585,7 @@ static int volume_reset(struct comp_dev *dev)
 	return 0;
 }
 
+/** \brief Volume component definition. */
 struct comp_driver comp_volume = {
 	.type	= SOF_COMP_VOLUME,
 	.ops	= {
@@ -511,6 +600,9 @@ struct comp_driver comp_volume = {
 	},
 };
 
+/**
+ * \brief Initializes volume component.
+ */
 void sys_comp_volume_init(void)
 {
 	comp_register(&comp_volume);
