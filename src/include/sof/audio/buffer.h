@@ -164,7 +164,7 @@ static inline int comp_buffer_can_copy_bytes(struct comp_buffer *source,
 static inline uint32_t comp_buffer_get_copy_bytes(struct comp_buffer *source,
 	struct comp_buffer *sink)
 {
-	if (source->avail < sink->free)
+	if (source->avail > sink->free)
 		return sink->free;
 	else
 		return source->avail;
