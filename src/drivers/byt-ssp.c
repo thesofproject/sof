@@ -457,14 +457,29 @@ static inline int ssp_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("loo");
+	trace_ssp("los");
+
+	if (ssp->lbm == lbm)
+		return 0;
+
 	spin_lock(&ssp->lock);
-
+	ssp->lbm = lbm;
 	ssp_update_bits(dai, SSCR1, SSCR1_LBM, lbm ? SSCR1_LBM : 0);
-
 	spin_unlock(&ssp->lock);
 
 	return 0;
+}
+
+static inline int ssp_get_loopback_mode(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	int ret;
+
+	trace_ssp("log");
+	spin_lock(&ssp->lock);
+	ret = ssp->lbm;
+	spin_unlock(&ssp->lock);
+	return ret;
 }
 
 /* start the SSP for either playback or capture */
@@ -608,4 +623,5 @@ const struct dai_ops ssp_ops = {
 	.pm_context_restore	= ssp_context_restore,
 	.probe			= ssp_probe,
 	.set_loopback_mode	= ssp_set_loopback_mode,
+	.get_loopback_mode	= ssp_get_loopback_mode,
 };
