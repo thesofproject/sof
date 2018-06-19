@@ -33,4 +33,6 @@
 
 #define PLATFORM_RESET_MHE_AT_BOOT	1
 
+#define PLATFORM_CORE_COUNT		4
+
 #endif

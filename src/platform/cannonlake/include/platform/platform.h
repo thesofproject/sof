@@ -47,8 +47,6 @@ struct sof;
 #define PLATFORM_SSP_COUNT 3
 #define MAX_GPDMA_COUNT 2
 
-#define MAX_CORE_COUNT 4
-
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
