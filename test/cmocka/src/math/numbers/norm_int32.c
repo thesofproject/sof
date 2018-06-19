@@ -53,11 +53,11 @@ static void test_math_numbers_norm_int32_for_35_equals_10(void **state)
 	assert_int_equal(r, 25);
 }
 
-static void test_math_numbers_norm_int32_for_2147483648_equals_0(void **state)
+static void test_math_numbers_norm_int32_for_2147483647_equals_0(void **state)
 {
 	(void)state;
 
-	int r = norm_int32(2147483648);
+	int r = norm_int32(2147483647);
 
 	assert_int_equal(r, 0);
 }
@@ -69,7 +69,7 @@ int main(void)
 		cmocka_unit_test
 			(test_math_numbers_norm_int32_for_35_equals_10),
 		cmocka_unit_test
-			(test_math_numbers_norm_int32_for_2147483648_equals_0)
+			(test_math_numbers_norm_int32_for_2147483647_equals_0)
 	};
 
 	cmocka_set_message_output(CM_OUTPUT_TAP);
