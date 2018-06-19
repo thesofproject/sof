@@ -16,10 +16,35 @@ AM_CFLAGS += -I$(CMOCKA_PREFIX)/include
 AM_LDFLAGS += -L$(CMOCKA_PREFIX)/lib
 endif
 
+if BUILD_XTENSA
+AM_CFLAGS += -I../../src/arch/xtensa/include
+AM_CFLAGS += -I../../src/platform/apollolake/include
+endif
+
+if BUILD_HOST
+AM_CFLAGS += -I../../src/arch/host/include
+endif
+
 CFLAGS := $(filter-out -nostdlib,$(CFLAGS))
 LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
 LDADD = -lcmocka
+
+check_PROGRAMS += buffer_new
+buffer_new_SOURCES = src/audio/buffer/buffer_new.c src/audio/buffer/mock.c
+buffer_new_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+check_PROGRAMS += buffer_write
+buffer_write_SOURCES = src/audio/buffer/buffer_write.c src/audio/buffer/mock.c
+buffer_write_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+check_PROGRAMS += buffer_wrap
+buffer_wrap_SOURCES = src/audio/buffer/buffer_wrap.c src/audio/buffer/mock.c
+buffer_wrap_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+check_PROGRAMS += buffer_copy
+buffer_copy_SOURCES = src/audio/buffer/buffer_copy.c src/audio/buffer/mock.c
+buffer_copy_LDADD =  ../../src/audio/libaudio.a $(LDADD)
 
 # list tests
 
