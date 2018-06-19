@@ -49,29 +49,29 @@ static inline void arch_spinlock_init(spinlock_t *lock)
 
 static inline void arch_spin_lock(spinlock_t *lock)
 {
-	uint32_t result;
+	uint32_t result, current;
 
 	__asm__ __volatile__(
-		"       movi    %0, 0\n"
-		"       wsr     %0, scompare1\n"
-		"1:     movi    %0, 1\n"
-		"       s32c1i  %0, %1, 0\n"
-		"       bnez    %0, 1b\n"
-		: "=&a" (result)
+		"1:     l32i    %1, %2, 0\n"
+		"       wsr     %1, scompare1\n"
+		"       movi    %0, 1\n"
+		"       s32c1i  %0, %2, 0\n"
+		"       bne     %0, %1, 1b\n"
+		: "=&a" (result), "=&a" (current)
 		: "a" (&lock->lock)
 		: "memory");
 }
 
 static inline int arch_try_lock(spinlock_t *lock)
 {
-	uint32_t result;
+	uint32_t result, current;
 
 	__asm__ __volatile__(
-		"       movi    %0, 0\n"
-		"       wsr     %0, scompare1\n"
+		"       l32i    %1, %2, 0\n"
+		"       wsr     %1, scompare1\n"
 		"       movi    %0, 1\n"
-		"       s32c1i  %0, %1, 0\n"
-		: "=&a" (result)
+		"       s32c1i  %0, %2, 0\n"
+		: "=&a" (result), "=&a" (current)
 		: "a" (&lock->lock)
 		: "memory");
 
