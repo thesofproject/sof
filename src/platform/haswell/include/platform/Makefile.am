@@ -5,6 +5,6 @@ noinst_HEADERS = \
 	mailbox.h \
 	memory.h \
 	platform.h \
+	pm_runtime.h \
 	shim.h \
 	timer.h
-	

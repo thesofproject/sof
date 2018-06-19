@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,71 +25,53 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic DSP initialisation. This calls architecture and platform specific
- * initialisation functions.
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <stddef.h>
-#include <sof/init.h>
-#include <sof/task.h>
-#include <sof/debug.h>
-#include <sof/panic.h>
-#include <sof/alloc.h>
-#include <sof/notifier.h>
-#include <sof/work.h>
+/**
+ * \file include/sof/pm_runtime.h
+ * \brief Runtime power management header file
+ * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
+
+#ifndef __INCLUDE_PM_RUNTIME__
+#define __INCLUDE_PM_RUNTIME__
+
+#include <sof/lock.h>
 #include <sof/trace.h>
-#include <sof/schedule.h>
-#include <sof/dma-trace.h>
-#include <sof/pm_runtime.h>
-#include <platform/platform.h>
 
-/* main firmware context */
-static struct sof sof;
+/** \brief Power management trace function. */
+#define trace_pm(__e)	trace_event_atomic(TRACE_CLASS_POWER, __e)
 
-int main(int argc, char *argv[])
-{
-	int err;
+/** \brief Power management trace value function. */
+#define trace_pm_value(__e)	trace_value_atomic(__e)
 
-	trace_point(TRACE_BOOT_START);
+/** \brief Runtime power management context */
+enum pm_runtime_context {
+	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
+};
 
-	/* setup context */
-	sof.argc = argc;
-	sof.argv = argv;
+/** \brief Runtime power management data. */
+struct pm_runtime_data {
+	spinlock_t lock;	/**< lock mechanism */
+	void *platform_data;	/**< platform specific data */
+};
 
-	/* init architecture */
-	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(&sof);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_ARCH);
+/**
+ * \brief Initializes runtime power management.
+ */
+void pm_runtime_init(void);
 
-	/* initialise system services */
-	trace_point(TRACE_BOOT_SYS_HEAP);
-	init_heap(&sof);
+/**
+ * \brief Retrieves power management resource.
+ * \param[in] context Type of power management context.
+ */
+void pm_runtime_get(enum pm_runtime_context context);
 
-	trace_init(&sof);
+/**
+ * \brief Releases power management resource.
+ * \param[in] context Type of power management context.
+ */
+void pm_runtime_put(enum pm_runtime_context context);
 
-	trace_point(TRACE_BOOT_SYS_NOTE);
-	init_system_notify(&sof);
-
-	trace_point(TRACE_BOOT_SYS_SCHED);
-	scheduler_init(&sof);
-
-	trace_point(TRACE_BOOT_SYS_POWER);
-	pm_runtime_init();
-
-	/* init the platform */
-	err = platform_init(&sof);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_PLATFORM);
-
-	trace_point(TRACE_BOOT_PLATFORM);
-
-	/* should not return */
-	err = do_task(&sof);
-
-	/* should never get here */
-	panic(SOF_IPC_PANIC_TASK);
-	return err;
-}
+#endif /* __INCLUDE_PM_RUNTIME__ */

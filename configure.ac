@@ -283,6 +283,7 @@ AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
 AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
 AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
+AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
 
@@ -467,6 +468,10 @@ AC_CONFIG_FILES([
 	src/platform/cannonlake/include/arch/xtensa/Makefile
 	src/platform/cannonlake/include/arch/xtensa/config/Makefile
 	src/platform/cannonlake/include/platform/Makefile
+	src/platform/intel/Makefile
+	src/platform/intel/include/Makefile
+	src/platform/intel/include/platform/Makefile
+	src/platform/intel/include/platform/cavs/Makefile
 	test/Makefile
 	test/cmocka/Makefile
 ])

@@ -62,6 +62,7 @@
 #define TRACE_BOOT_SYS_HEAP		(TRACE_BOOT_SYS + 0x300)
 #define TRACE_BOOT_SYS_NOTE		(TRACE_BOOT_SYS + 0x400)
 #define TRACE_BOOT_SYS_SCHED		(TRACE_BOOT_SYS + 0x500)
+#define TRACE_BOOT_SYS_POWER		(TRACE_BOOT_SYS + 0x600)
 
 /* platform/device specific codes */
 #define TRACE_BOOT_PLATFORM_ENTRY	(TRACE_BOOT_PLATFORM + 0x100)
@@ -99,6 +100,7 @@
 #define TRACE_CLASS_EQ_IIR      (20 << 24)
 #define TRACE_CLASS_SA		(21 << 24)
 #define TRACE_CLASS_DMIC	(22 << 24)
+#define TRACE_CLASS_POWER	(23 << 24)
 
 /* move to config.h */
 #define TRACE	1

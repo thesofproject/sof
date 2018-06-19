@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,71 +25,42 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic DSP initialisation. This calls architecture and platform specific
- * initialisation functions.
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <stddef.h>
-#include <sof/init.h>
-#include <sof/task.h>
-#include <sof/debug.h>
-#include <sof/panic.h>
-#include <sof/alloc.h>
-#include <sof/notifier.h>
-#include <sof/work.h>
-#include <sof/trace.h>
-#include <sof/schedule.h>
-#include <sof/dma-trace.h>
-#include <sof/pm_runtime.h>
-#include <platform/platform.h>
+/**
+ * \file platform/intel/platform/cavs/include/pm_runtime.h
+ * \brief Runtime power management header file for cAVS
+ * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
 
-/* main firmware context */
-static struct sof sof;
+#ifndef __INCLUDE_CAVS_PM_RUNTIME__
+#define __INCLUDE_CAVS_PM_RUNTIME__
 
-int main(int argc, char *argv[])
+#include <platform/pm_runtime.h>
+
+extern struct pm_runtime_data *_prd;
+
+/**
+ * \brief Forces Host DMAs to exit L1.
+ */
+static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 {
-	int err;
+	uint32_t flags;
 
-	trace_point(TRACE_BOOT_START);
+	spin_lock_irq(&_prd->lock, flags);
 
-	/* setup context */
-	sof.argc = argc;
-	sof.argv = argv;
+	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
+		shim_write(SHIM_SVCFG,
+			   shim_read(SHIM_SVCFG) | SHIM_SVCFG_FORCE_L1_EXIT);
 
-	/* init architecture */
-	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(&sof);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_ARCH);
+		wait_delay(PLATFORM_FORCE_L1_EXIT_TIME);
 
-	/* initialise system services */
-	trace_point(TRACE_BOOT_SYS_HEAP);
-	init_heap(&sof);
+		shim_write(SHIM_SVCFG,
+			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
+	}
 
-	trace_init(&sof);
-
-	trace_point(TRACE_BOOT_SYS_NOTE);
-	init_system_notify(&sof);
-
-	trace_point(TRACE_BOOT_SYS_SCHED);
-	scheduler_init(&sof);
-
-	trace_point(TRACE_BOOT_SYS_POWER);
-	pm_runtime_init();
-
-	/* init the platform */
-	err = platform_init(&sof);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_PLATFORM);
-
-	trace_point(TRACE_BOOT_PLATFORM);
-
-	/* should not return */
-	err = do_task(&sof);
-
-	/* should never get here */
-	panic(SOF_IPC_PANIC_TASK);
-	return err;
+	spin_unlock_irq(&_prd->lock, flags);
 }
+
+#endif /* __INCLUDE_CAVS_PM_RUNTIME__ */

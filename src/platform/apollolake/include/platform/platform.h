@@ -120,6 +120,9 @@ struct sof;
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
+/* minimal L1 exit time in cycles */
+#define PLATFORM_FORCE_L1_EXIT_TIME	12288
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {

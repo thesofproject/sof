@@ -162,6 +162,9 @@
 #define SHIM_L2_PREF_CFG	(SHIM_BASE + 0x508)
 #define SHIM_L2_CACHE_PREF	(SHIM_BASE + 0x510)
 
+#define SHIM_SVCFG			0xF4
+#define SHIM_SVCFG_FORCE_L1_EXIT	(0x1 << 1)
+
 
 /* host windows */
 #define DMWBA(x)		(HOST_WIN_BASE(x) + 0x0)

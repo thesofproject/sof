@@ -191,6 +191,9 @@
 #define ALHO_CSO_FLAG		(1 << 1)
 #define ALHO_CFO_FLAG		(1 << 2)
 
+#define SHIM_SVCFG			0xF4
+#define SHIM_SVCFG_FORCE_L1_EXIT	(0x1 << 1)
+
 /* host windows */
 #define DMWBA(x)		(HOST_WIN_BASE(x) + 0x0)
 #define DMWLO(x)		(HOST_WIN_BASE(x) + 0x4)

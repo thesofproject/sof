@@ -13,7 +13,8 @@ libplatform_a_SOURCES = \
 	clk.c \
 	timer.c \
 	interrupt.c \
-	memory.c
+	memory.c \
+	pm_runtime.c
 
 libplatform_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

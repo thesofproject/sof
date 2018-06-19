@@ -35,4 +35,5 @@ include_HEADERS = \
 	wait.h \
 	string.h \
 	hda-dma.h \
-	work.h
+	work.h \
+	pm_runtime.h

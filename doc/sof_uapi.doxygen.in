@@ -6,7 +6,8 @@ GENERATE_MAN     = NO
 GENERATE_XML	 = YES
 
 CASE_SENSE_NAMES = NO
-INPUT            = @top_srcdir@/src/include/uapi
+INPUT            = @top_srcdir@/src/include/uapi \
+                   @top_srcdir@/src/include/sof
 EXCLUDE		 =
 RECURSIVE	 = YES
 FILE_PATTERNS    = *.c *.h

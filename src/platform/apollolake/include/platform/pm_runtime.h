@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,71 +25,41 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *
- * Generic DSP initialisation. This calls architecture and platform specific
- * initialisation functions.
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <stddef.h>
-#include <sof/init.h>
-#include <sof/task.h>
-#include <sof/debug.h>
-#include <sof/panic.h>
-#include <sof/alloc.h>
-#include <sof/notifier.h>
-#include <sof/work.h>
-#include <sof/trace.h>
-#include <sof/schedule.h>
-#include <sof/dma-trace.h>
+/**
+ * \file platform/apollolake/include/platform/pm_runtime.h
+ * \brief Runtime power management header file for Apollolake
+ * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
+
+#ifndef __INCLUDE_PLATFORM_PM_RUNTIME__
+#define __INCLUDE_PLATFORM_PM_RUNTIME__
+
 #include <sof/pm_runtime.h>
-#include <platform/platform.h>
 
-/* main firmware context */
-static struct sof sof;
+/** \brief Platform specific runtime power management data. */
+struct platform_pm_runtime_data {
+	/* TBD */
+};
 
-int main(int argc, char *argv[])
-{
-	int err;
+/**
+ * \brief Initializes platform specific runtime power management.
+ * \param[in,out] prd Runtime power management data.
+ */
+void platform_pm_runtime_init(struct pm_runtime_data *prd);
 
-	trace_point(TRACE_BOOT_START);
+/**
+ * \brief Retrieves platform specific power management resource.
+ * \param[in] context Type of power management context.
+ */
+void platform_pm_runtime_get(enum pm_runtime_context context);
 
-	/* setup context */
-	sof.argc = argc;
-	sof.argv = argv;
+/**
+ * \brief Releases platform specific power management resource.
+ * \param[in] context Type of power management context.
+ */
+void platform_pm_runtime_put(enum pm_runtime_context context);
 
-	/* init architecture */
-	trace_point(TRACE_BOOT_ARCH);
-	err = arch_init(&sof);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_ARCH);
-
-	/* initialise system services */
-	trace_point(TRACE_BOOT_SYS_HEAP);
-	init_heap(&sof);
-
-	trace_init(&sof);
-
-	trace_point(TRACE_BOOT_SYS_NOTE);
-	init_system_notify(&sof);
-
-	trace_point(TRACE_BOOT_SYS_SCHED);
-	scheduler_init(&sof);
-
-	trace_point(TRACE_BOOT_SYS_POWER);
-	pm_runtime_init();
-
-	/* init the platform */
-	err = platform_init(&sof);
-	if (err < 0)
-		panic(SOF_IPC_PANIC_PLATFORM);
-
-	trace_point(TRACE_BOOT_PLATFORM);
-
-	/* should not return */
-	err = do_task(&sof);
-
-	/* should never get here */
-	panic(SOF_IPC_PANIC_TASK);
-	return err;
-}
+#endif /* __INCLUDE_PLATFORM_PM_RUNTIME__ */
