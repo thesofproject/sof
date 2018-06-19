@@ -124,8 +124,12 @@ do
 		if [ -d $XTENSA_TOOLS_DIR ]
 			then
 				XCC="xt-xcc"
+				XTOBJCOPY="xt-objcopy"
+				XTOBJDUMP="xt-objdump"
 			else
 				XCC="none"
+				XTOBJCOPY="none"
+				XTOBJDUMP="none"
 		fi
 	fi
 
@@ -133,13 +137,14 @@ do
 	if [ $XCC == "xt-xcc" ]
 	then
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
-		XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
+		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
 	else
 		PATH=$pwd/../$HOST/bin:$OLDPATH
 	fi
 
-	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST CC=$XCC --with-dsp-core=$XTENSA_CORE
+	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST \
+		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP --with-dsp-core=$XTENSA_CORE
 
 	make clean
 	make
