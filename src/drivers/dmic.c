@@ -714,7 +714,7 @@ static inline void source_ipm_helper(int source[], int *ipm, int stereo[],
 
 	/* IPM bit field is set to count of active pdm controllers. */
 	*ipm = pdm[0];
-	for (i = 0; i < dmic->num_pdm_active; i++)
+	for (i = 1; i < dmic->num_pdm_active; i++)
 		*ipm += pdm[i];
 }
 #endif
