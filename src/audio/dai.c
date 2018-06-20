@@ -645,9 +645,39 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		}
 		break;
 	case SOF_DAI_INTEL_DMIC:
-		/* TODO: No hardwired values here. */
-		dd->config.burst_elems = 2;
-		dev->frame_bytes = 8;
+		/* The frame bytes setting follows only FIFO A setting in
+		 * this DMIC driver version.
+		 */
+		trace_dai("did");
+
+		/* We can use always the largest burst length. */
+		dd->config.burst_elems = 8;
+
+		/* Set frame size in bytes to match the configuration. */
+		if (config->dmic.num_pdm_active > 1) {
+			/* For two or more controllers capture from each
+			 * controller must be stereo.
+			 */
+			dev->frame_bytes = 2 * config->dmic.num_pdm_active *
+				config->dmic.fifo_bits_a >> 3;
+		} else {
+			/* For one controller the capture can be mono or
+			 * stereo. In mono configuration only one of mic A or B
+			 * is enabled.
+			 */
+			if (config->dmic.pdm[0].enable_mic_a +
+				config->dmic.pdm[0].enable_mic_b == 1)
+				dev->frame_bytes =
+					config->dmic.fifo_bits_a >> 3;
+			else
+				dev->frame_bytes = 2 *
+					config->dmic.fifo_bits_a >> 3;
+		}
+		trace_value(config->dmic.fifo_bits_a);
+		trace_value(config->dmic.num_pdm_active);
+		trace_value(config->dmic.pdm[0].enable_mic_a);
+		trace_value(config->dmic.pdm[0].enable_mic_b);
+		trace_value(dev->frame_bytes);
 		break;
 	default:
 		/* other types of DAIs not handled for now */

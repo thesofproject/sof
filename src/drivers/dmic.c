@@ -828,7 +828,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 	int array_b = 0;
 	int cic_mute = 1;
 	int fir_mute = 1;
-	int bfth = 1; /* Should be 3 for 8 entries, 1 is 2 entries */
+	int bfth = 3; /* Should be 3 for 8 entries, 1 is 2 entries */
 	int th = 0; /* Used with TIE=1 */
 
 	/* Normal start sequence */
