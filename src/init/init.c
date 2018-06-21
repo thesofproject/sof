@@ -44,7 +44,7 @@
 #include <sof/dma-trace.h>
 #include <platform/platform.h>
 
-/* TO REMOVE: test CI */
+/* TO REMOVE: test CI 2 */
 
 /* main firmware context */
 static struct sof sof;
