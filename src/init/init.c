@@ -44,6 +44,9 @@
 #include <sof/dma-trace.h>
 #include <platform/platform.h>
 
+
+/* insert test commit for QA */
+
 /* main firmware context */
 static struct sof sof;
 
