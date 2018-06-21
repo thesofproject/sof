@@ -1,23 +1,25 @@
+SUBDIRS = intel
+
 if BUILD_BAYTRAIL
-SUBDIRS = baytrail
+SUBDIRS += baytrail
 endif
 
 if BUILD_CHERRYTRAIL
-SUBDIRS = baytrail 
+SUBDIRS += baytrail
 endif
 
 if BUILD_APOLLOLAKE
-SUBDIRS = apollolake
+SUBDIRS += apollolake
 endif
 
 if BUILD_HASWELL
-SUBDIRS = haswell
+SUBDIRS += haswell
 endif
 
 if BUILD_BROADWELL
-SUBDIRS = haswell
+SUBDIRS += haswell
 endif
 
 if BUILD_CANNONLAKE
-SUBDIRS = cannonlake
+SUBDIRS += cannonlake
 endif

@@ -42,6 +42,7 @@
 #include <sof/dma.h>
 #include <sof/io.h>
 #include <sof/ipc.h>
+#include <sof/pm_runtime.h>
 #include <sof/wait.h>
 #include <platform/dma.h>
 #include <arch/cache.h>
@@ -128,6 +129,9 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 
 	host_dma_reg_write(dma, channel, DGLLPI, bytes);
 	host_dma_reg_write(dma, channel, DGLPIBI, bytes);
+
+	/* Force Host DMA to exit L1 */
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
 
 	return 0;
 }

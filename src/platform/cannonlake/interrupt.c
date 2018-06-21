@@ -36,6 +36,7 @@
 #include <arch/interrupt.h>
 #include <arch/cpu.h>
 #include <platform/interrupt.h>
+#include <platform/platcfg.h>
 #include <platform/shim.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -122,7 +123,7 @@ static void irq_lvl2_level5_handler(void *data)
 }
 
 /* DSP internal interrupts */
-static struct irq_desc dsp_irq[MAX_CORE_COUNT][4] = {
+static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },

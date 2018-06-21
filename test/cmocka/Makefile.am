@@ -16,10 +16,35 @@ AM_CFLAGS += -I$(CMOCKA_PREFIX)/include
 AM_LDFLAGS += -L$(CMOCKA_PREFIX)/lib
 endif
 
+if BUILD_XTENSA
+AM_CFLAGS += -I../../src/arch/xtensa/include
+AM_CFLAGS += -I../../src/platform/apollolake/include
+endif
+
+if BUILD_HOST
+AM_CFLAGS += -I../../src/arch/host/include
+endif
+
 CFLAGS := $(filter-out -nostdlib,$(CFLAGS))
 LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
 LDADD = -lcmocka
+
+check_PROGRAMS += buffer_new
+buffer_new_SOURCES = src/audio/buffer/buffer_new.c src/audio/buffer/mock.c
+buffer_new_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+check_PROGRAMS += buffer_write
+buffer_write_SOURCES = src/audio/buffer/buffer_write.c src/audio/buffer/mock.c
+buffer_write_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+check_PROGRAMS += buffer_wrap
+buffer_wrap_SOURCES = src/audio/buffer/buffer_wrap.c src/audio/buffer/mock.c
+buffer_wrap_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+check_PROGRAMS += buffer_copy
+buffer_copy_SOURCES = src/audio/buffer/buffer_copy.c src/audio/buffer/mock.c
+buffer_copy_LDADD =  ../../src/audio/libaudio.a $(LDADD)
 
 # list tests
 
@@ -49,6 +74,30 @@ list_item_SOURCES = src/list/list_item.c
 check_PROGRAMS += gcd
 gcd_SOURCES = src/math/numbers/gcd.c
 gcd_LDADD = ../../src/math/libsof_math.a $(LDADD)
+
+check_PROGRAMS += ceil_divide
+ceil_divide_SOURCES = src/math/numbers/ceil_divide.c
+ceil_divide_LDADD = ../../src/math/libsof_math.a -lm $(LDADD)
+
+check_PROGRAMS += find_equal_int16
+find_equal_int16_SOURCES = src/math/numbers/find_equal_int16.c
+find_equal_int16_LDADD = ../../src/math/libsof_math.a $(LDADD)
+
+check_PROGRAMS += find_min_int16
+find_min_int16_SOURCES = src/math/numbers/find_min_int16.c
+find_min_int16_LDADD = ../../src/math/libsof_math.a $(LDADD)
+
+check_PROGRAMS += find_max_abs_int32
+find_max_abs_int32_SOURCES = src/math/numbers/find_max_abs_int32.c
+find_max_abs_int32_LDADD = ../../src/math/libsof_math.a $(LDADD)
+
+check_PROGRAMS += norm_int32
+norm_int32_SOURCES = src/math/numbers/norm_int32.c
+norm_int32_LDADD = ../../src/math/libsof_math.a $(LDADD)
+
+check_PROGRAMS += sin_fixed
+sin_fixed_SOURCES = src/math/trig/sin_fixed.c
+sin_fixed_LDADD = ../../src/math/libsof_math.a $(LDADD)
 
 # all our binaries are test cases
 TESTS = $(check_PROGRAMS)

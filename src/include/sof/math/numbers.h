@@ -48,7 +48,15 @@ static inline int ceil_divide(int a, int b)
 	int c;
 
 	c = a / b;
-	if (c * b < a)
+
+	/* First, we check whether the signs of the params are different.
+	 * If they are, we already know the result is going to be negative and
+	 * therefore, is going to be already rounded up (truncated).
+	 *
+	 * If the signs are the same, we check if there was any remainder in
+	 * the division by multiplying the number back.
+	 */
+	if (!((a ^ b) & (1 << ((sizeof(int) * 8) - 1))) && c * b != a)
 		c++;
 
 	return c;

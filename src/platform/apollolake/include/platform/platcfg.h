@@ -35,4 +35,6 @@
 
 #define PLATFORM_DISABLE_L2CACHE_AT_BOOT	1
 
+#define PLATFORM_CORE_COUNT			2
+
 #endif

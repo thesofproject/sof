@@ -9,7 +9,8 @@ libcore_a_SOURCES = \
 	schedule.c \
 	agent.c \
 	interrupt.c \
-	dma-trace.c
+	dma-trace.c \
+	pm_runtime.c
 
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \

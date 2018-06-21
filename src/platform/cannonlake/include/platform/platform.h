@@ -47,8 +47,6 @@ struct sof;
 #define PLATFORM_SSP_COUNT 3
 #define MAX_GPDMA_COUNT 2
 
-#define MAX_CORE_COUNT 4
-
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
@@ -116,6 +114,9 @@ struct sof;
 
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
+
+/* minimal L1 exit time in cycles */
+#define PLATFORM_FORCE_L1_EXIT_TIME	8192
 
 /* Platform defined trace code */
 static inline void platform_panic(uint32_t p)

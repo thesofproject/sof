@@ -42,6 +42,7 @@
 #include <sof/trace.h>
 #include <sof/schedule.h>
 #include <sof/dma-trace.h>
+#include <sof/pm_runtime.h>
 #include <platform/platform.h>
 
 /* main firmware context */
@@ -74,6 +75,9 @@ int main(int argc, char *argv[])
 
 	trace_point(TRACE_BOOT_SYS_SCHED);
 	scheduler_init(&sof);
+
+	trace_point(TRACE_BOOT_SYS_POWER);
+	pm_runtime_init();
 
 	/* init the platform */
 	err = platform_init(&sof);

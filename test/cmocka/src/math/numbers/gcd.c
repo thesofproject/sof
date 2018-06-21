@@ -59,7 +59,8 @@ static void test_math_numbers_gcd_for_12_and_9_equals_3(void **state)
 int main(void)
 {
 	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(test_math_numbers_gcd_for_5083_and_391_equals_391),
+		cmocka_unit_test
+			(test_math_numbers_gcd_for_5083_and_391_equals_391),
 		cmocka_unit_test(test_math_numbers_gcd_for_12_and_9_equals_3),
 	};
 

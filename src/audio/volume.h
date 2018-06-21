@@ -28,6 +28,14 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+/**
+ * \file audio/volume.h
+ * \brief Volume component header file
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>\n
+ *          Keyon Jie <yang.jie@linux.intel.com>\n
+ *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
+
 #ifndef VOLUME_H
 #define VOLUME_H
 
@@ -47,49 +55,70 @@
 
 #endif
 
+/** \brief Volume trace function. */
 #define trace_volume(__e)	trace_event(TRACE_CLASS_VOLUME, __e)
+
+/** \brief Volume trace value function. */
 #define tracev_volume(__e)	tracev_event(TRACE_CLASS_VOLUME, __e)
+
+/** \brief Volume trace error function. */
 #define trace_volume_error(__e)	trace_error(TRACE_CLASS_VOLUME, __e)
 
-/* this should ramp from 0dB to mute in 64ms.
- * i.e 2^16 -> 0 in 32 * 2048 steps each lasting 2ms
+/**
+ * \brief Volume ramp time in microseconds.
+ *
+ * This should ramp from 0dB to mute in 64ms.
+ * i.e. 2^16 -> 0 in 32 * 2048 steps each lasting 2ms.
  */
 #define VOL_RAMP_US	2000
+
+/** \brief Volume ramp step. */
 #define VOL_RAMP_STEP	(1 << 11)
+
+/** \brief Volume maximum value. */
 #define VOL_MAX		(1 << 16)
+
+/** \brief Volume minimum value. */
 #define VOL_MIN		0
 
-/* volume component private data */
+/**
+ * \brief Volume component private data.
+ *
+ * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
+ */
 struct comp_data {
-	uint32_t source_period_bytes;
-	uint32_t sink_period_bytes;
-	enum sof_ipc_frame source_format;
-	enum sof_ipc_frame sink_format;
-	uint32_t volume[SOF_IPC_MAX_CHANNELS];	/* current volume */
-	uint32_t tvolume[SOF_IPC_MAX_CHANNELS];	/* target volume */
-	uint32_t mvolume[SOF_IPC_MAX_CHANNELS];	/* mute volume */
+	uint32_t source_period_bytes;		/**< source number of period bytes */
+	uint32_t sink_period_bytes;		/**< sink number of period bytes */
+	enum sof_ipc_frame source_format;	/**< source frame format */
+	enum sof_ipc_frame sink_format;		/**< sink frame format */
+	uint32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
+	uint32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
+	uint32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source);
-	struct work volwork;
-
-	/* host volume readback */
-	struct sof_ipc_ctrl_value_chan *hvol;
+		struct comp_buffer *source);	/**< volume processing function */
+	struct work volwork;			/**< volume scheduled work function */
+	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 };
 
+/** \brief Volume processing functions map. */
 struct comp_func_map {
-	uint16_t source;	/* source format */
-	uint16_t sink;		/* sink format */
-	uint16_t channels;	/* channel number for the stream */
+	uint16_t source;			/**< source frame format */
+	uint16_t sink;				/**< sink frame format */
+	uint16_t channels;			/**< number of stream channels */
 	void (*func)(struct comp_dev *dev, struct comp_buffer *sink,
-		     struct comp_buffer *source);
+		struct comp_buffer *source);	/**< volume processing function */
 };
 
-/* map of source and sink buffer formats to volume function */
+/** \brief Map of formats with dedicated processing functions. */
 extern const struct comp_func_map func_map[];
 
 typedef void (*scale_vol)(struct comp_dev *, struct comp_buffer *,
 			  struct comp_buffer *);
 
+/**
+ * \brief Retrievies volume processing function.
+ * \param[in,out] dev Volume base component device.
+ */
 scale_vol vol_get_processing_function(struct comp_dev *dev);
 
 #endif /* VOLUME_H */
