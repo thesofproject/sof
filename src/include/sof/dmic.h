@@ -37,6 +37,14 @@
 
 #if defined CONFIG_DMIC
 
+/* The microphones create a low frequecy thump sound when clock is enabled.
+ * The unmute linear gain ramp chacteristic is defined here.
+ * NOTE: Do not set any of these to 0.
+ */
+#define DMIC_UNMUTE_RAMP_US	1000	/* 1 ms (in microseconds) */
+#define DMIC_UNMUTE_CIC		1	/* Unmute CIC at 1 ms */
+#define DMIC_UNMUTE_FIR		2	/* Unmute FIR at 2 ms */
+
 #if defined CONFIG_APOLLOLAKE
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
@@ -160,7 +168,7 @@
 #define OUTCONTROL0_FCI(x)			SET_BIT(24, x)
 #define OUTCONTROL0_BFTH(x)			SET_BITS(23, 20, x)
 #define OUTCONTROL0_OF(x)			SET_BITS(19, 18, x)
-#define OUTCONTROL0_NUMBER_OF_DECIMATORS(x)	SET_BITS(17, 15, x)
+#define OUTCONTROL0_IPM(x)                      SET_BITS(17, 15, x)
 #define OUTCONTROL0_IPM_SOURCE_1(x)		SET_BITS(14, 13, x)
 #define OUTCONTROL0_IPM_SOURCE_2(x)		SET_BITS(12, 11, x)
 #define OUTCONTROL0_IPM_SOURCE_3(x)		SET_BITS(10, 9, x)
@@ -178,7 +186,7 @@
 #define OUTCONTROL1_FCI(x)			SET_BIT(24, x)
 #define OUTCONTROL1_BFTH(x)			SET_BITS(23, 20, x)
 #define OUTCONTROL1_OF(x)			SET_BITS(19, 18, x)
-#define OUTCONTROL1_NUMBER_OF_DECIMATORS(x)	SET_BITS(17, 15, x)
+#define OUTCONTROL1_IPM(x)                      SET_BITS(17, 15, x)
 #define OUTCONTROL1_IPM_SOURCE_1(x)		SET_BITS(14, 13, x)
 #define OUTCONTROL1_IPM_SOURCE_2(x)		SET_BITS(12, 11, x)
 #define OUTCONTROL1_IPM_SOURCE_3(x)		SET_BITS(10, 9, x)
@@ -311,6 +319,9 @@ struct dmic_pdata {
 	completion_t drain_complete;
 	struct sof_ipc_dai_config config;
 	struct sof_ipc_dai_dmic_params params;
+	struct work dmicwork;
+	int32_t startcount;
+	int32_t gain;
 };
 
 extern const struct dai_ops dmic_ops;
