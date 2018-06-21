@@ -255,7 +255,7 @@ static int mixer_copy(struct comp_dev *dev)
 			comp_underrun(dev, sources[i], sources[i]->avail,
 				md->period_bytes);
 		} else if (res > 0) {
-			trace_mixer_error("xru");
+			trace_mixer_error("xro");
 			comp_overrun(dev, sources[i], sink->free,
 				md->period_bytes);
 		}
