@@ -116,7 +116,7 @@ struct sof;
 #define PLATFORM_DEFAULT_DELAY	12
 
 /* minimal L1 exit time in cycles */
-#define PLATFORM_FORCE_L1_EXIT_TIME	8192
+#define PLATFORM_FORCE_L1_EXIT_TIME	482
 
 /* Platform defined trace code */
 static inline void platform_panic(uint32_t p)
