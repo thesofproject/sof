@@ -95,7 +95,6 @@ do
 	then
 		PLATFORM="apollolake"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
-		ROOT="$pwd/../xtensa-root/xtensa-bxt-elf"
 
 		# test APL compiler aliases and ignore set -e here
 		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
@@ -105,6 +104,8 @@ do
 		else
 			HOST="xtensa-apl-elf"
 		fi
+
+		ROOT="$pwd/../xtensa-root/$HOST"
 		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 	fi
 	if [ $j == "cnl" ]
