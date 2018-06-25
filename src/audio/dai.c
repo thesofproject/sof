@@ -212,16 +212,6 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->last_bytes = 0;
 	dd->xrun = 0;
 
-	/* get DMA channel from DMAC1 */
-	dd->chan = dma_channel_get(dd->dma, 0);
-	if (dd->chan < 0){
-		trace_dai_error("eDc");
-		goto error;
-	}
-
-	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
-				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
 	dev->state = COMP_STATE_READY;
 	dev->is_dma_connected = 1;
 	return dev;
@@ -382,6 +372,7 @@ static int dai_params(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	int err;
 
 	trace_dai("par");
 
@@ -412,14 +403,30 @@ static int dai_params(struct comp_dev *dev)
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = dma_buffer->addr;
 
-		return dai_playback_params(dev);
+		err = dai_playback_params(dev);
+		if (err < 0)
+			return err;
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = dma_buffer->addr;
 
-		return dai_capture_params(dev);
+		err = dai_capture_params(dev);
+		if (err < 0)
+			return err;
 	}
+
+	/* get DMA channel from DMAC1 */
+	dd->chan = dma_channel_get(dd->dma, 0);
+	if (dd->chan < 0) {
+		trace_dai_error("eDc");
+		return -ENODEV;
+	}
+
+	/* set up callback - todo: unify */
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
+				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	return 0;
 }
 
 static int dai_prepare(struct comp_dev *dev)

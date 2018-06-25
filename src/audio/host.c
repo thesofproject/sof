@@ -526,18 +526,6 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	list_init(&hd->local.elem_list);
 	list_item_prepend(&elem->list, &hd->config.elem_list);
 
-#if !defined CONFIG_DMA_GW
-	/* get DMA channel from DMAC */
-	hd->chan = dma_channel_get(hd->dma, 0);
-	if (hd->chan < 0) {
-		trace_host_error("eDC");
-		goto error;
-	}
-
-	/* set up callback */
-	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST, host_dma_cb, dev);
-#endif
-
 	/* init posn data. TODO: other fields */
 	hd->posn.comp_id = comp->id;
 	dev->state = COMP_STATE_READY;
@@ -677,20 +665,25 @@ static int host_params(struct comp_dev *dev)
 
 	host_elements_reset(dev);
 
-#if defined CONFIG_DMA_GW
 	dev->params.stream_tag -= 1;
-	/* get DMA channel from DMAC */
+	/* get DMA channel from DMAC
+	 * note: stream_tag is ignored by dw-dma
+	 */
 	hd->chan = dma_channel_get(hd->dma, dev->params.stream_tag);
 	if (hd->chan < 0) {
 		trace_host_error("eDC");
 		return -ENODEV;
 	}
+#if defined CONFIG_DMA_GW
 	err = dma_set_config(hd->dma, hd->chan, &hd->config);
 	if (err < 0) {
 		trace_host_error("eDc");
 		dma_channel_put(hd->dma, hd->chan);
 		return err;
 	}
+#else
+	/* set up callback */
+	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST, host_dma_cb, dev);
 #endif
 
 	return 0;

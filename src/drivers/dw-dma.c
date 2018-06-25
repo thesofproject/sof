@@ -297,6 +297,8 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 	uint32_t flags;
 	int i;
 
+	(void) req_chan; /* unused */
+
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("Dgt");
