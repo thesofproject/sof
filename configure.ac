@@ -22,6 +22,7 @@ AC_OUTPUT([
 	topology/common/Makefile
 	topology/platform/Makefile
 	topology/platform/intel/Makefile
+	topology/platform/common/Makefile
 	topology/m4/Makefile
 	topology/sof/Makefile
 	topology/test/Makefile

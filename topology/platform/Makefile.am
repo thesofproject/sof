@@ -1,1 +1,1 @@
-SUBDIRS = intel
+SUBDIRS = intel common

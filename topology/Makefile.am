@@ -7,6 +7,7 @@ SUBDIRS = test m4 sof common platform
 
 DEPS = \
 	platform/intel/*.m4 \
+	platform/common/*.m4 \
 	common/*.m4 \
 	m4/*.m4 \
 	sof/*.m4
@@ -34,7 +35,7 @@ MACHINES = \
 .PRECIOUS: %.conf
 
 %.conf : %.m4 ${DEPS}
-	m4 -I m4 -I common $< > $@
+	m4 -I m4 -I common -I platform/common $< > $@
 
 %.tplg : %.conf
 	alsatplg -v 1 -c $< -o $@

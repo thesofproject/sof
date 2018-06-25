@@ -6,6 +6,7 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
+include(`ssp.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -91,8 +92,8 @@ PCM_DUPLEX_ADD(Low Latency, 6, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 # BE configurations - overrides config in ACPI if present
 #
 DAI_CONFIG(SSP, 2, 0, SSP2-Codec,
-	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 19200000, codec_mclk_in),
-		      DAI_CLOCK(bclk, 2400000, codec_slave),
-		      DAI_CLOCK(fsync, 48000, codec_slave),
-		      DAI_TDM(2, 25, 3, 3),
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 2400000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 25, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 2, 24)))

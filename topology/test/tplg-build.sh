@@ -8,7 +8,7 @@
 set -e
 
 # M4 preprocessor flags
-export M4PATH="../:../m4:../common:../platform/intel"
+export M4PATH="../:../m4:../common:../platform/intel:../platform/common"
 
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.

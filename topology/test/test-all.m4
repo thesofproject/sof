@@ -4,6 +4,7 @@
 
 # Include topology builder
 include(`dai.m4')
+include(`ssp.m4')
 include(`utils.m4')
 include(`pipeline.m4')
 
@@ -86,9 +87,9 @@ PCM_DUPLEX_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 #
 DAI_CONFIG(TEST_DAI_TYPE, TEST_DAI_PORT, 0, TEST_DAI_LINK_NAME,
 	   SSP_CONFIG(TEST_SSP_MODE,
-		      DAI_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
-		      DAI_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
-		      DAI_CLOCK(fsync, 48000, codec_slave),
-		      DAI_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
+		      SSP_CLOCK(mclk, TEST_SSP_MCLK, codec_mclk_in),
+		      SSP_CLOCK(bclk, TEST_SSP_BCLK, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, TEST_SSP_PHY_BITS, 3, 3),
 		      SSP_CONFIG_DATA(TEST_DAI_TYPE, TEST_DAI_PORT,
 				      TEST_SSP_DATA_BITS)))
