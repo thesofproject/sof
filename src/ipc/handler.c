@@ -34,6 +34,7 @@
  *
  */
 
+#include <stdbool.h>
 #include <sof/debug.h>
 #include <sof/timer.h>
 #include <sof/interrupt.h>
@@ -86,6 +87,71 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 	return hdr;
 }
 
+/* check if a pipeline is hostless when walking downstream */
+static bool is_hostless_downstream(struct comp_dev *current)
+{
+	struct list_item *clist;
+
+	/* check if current is a HOST comp */
+	if (current->comp.type == SOF_COMP_HOST ||
+	    current->comp.type == SOF_COMP_SG_HOST)
+		return false;
+
+	/* check if the pipeline has a HOST comp downstream */
+	list_for_item(clist, &current->bsink_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* don't go downstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		/* dont go downstream if this comp belongs to another pipe */
+		if (buffer->sink->comp.pipeline_id != current->comp.pipeline_id)
+			continue;
+
+		/* return if there's a host comp downstream */
+		if (!is_hostless_downstream(buffer->sink))
+			return false;
+	}
+
+	return true;
+}
+
+/* check if a pipeline is hostless when walking upstream */
+static bool is_hostless_upstream(struct comp_dev *current)
+{
+	struct list_item *clist;
+
+	/* check if current is a HOST comp */
+	if (current->comp.type == SOF_COMP_HOST ||
+	    current->comp.type == SOF_COMP_SG_HOST)
+		return false;
+
+	/* check if the pipeline has a HOST comp upstream */
+	list_for_item(clist, &current->bsource_list) {
+		struct comp_buffer *buffer;
+
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* don't go upstream if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		/* dont go upstream if this comp belongs to another pipeline */
+		if (buffer->source->comp.pipeline_id !=
+		    current->comp.pipeline_id)
+			continue;
+
+		/* return if there is a host comp upstream */
+		if (!is_hostless_upstream(buffer->source))
+			return false;
+	}
+
+	return true;
+}
+
 /*
  * Stream IPC Operations.
  */
@@ -134,8 +200,14 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd = pcm_dev->cd;
 	cd->params = pcm_params->params;
 
-#ifdef CONFIG_HOST_PTABLE
+	/*
+	 * walk in both directions to check if the pipeline is hostless
+	 * skip page table set up if it is
+	 */
+	if (is_hostless_downstream(cd) && is_hostless_upstream(cd))
+		goto pipe_params;
 
+#ifdef CONFIG_HOST_PTABLE
 	list_init(&elem_list);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
@@ -171,6 +243,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		rfree(elem);
 	}
 #endif
+
+pipe_params:
 
 	/* configure pipeline audio params */
 	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, pcm_params);

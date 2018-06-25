@@ -63,9 +63,8 @@
 #define TONE_GAIN(v) Q_CONVERT_FLOAT(v, 31)
 
 /* Set default tone amplitude and frequency */
-#define TONE_AMPLITUDE_DEFAULT TONE_GAIN(0.5)      /*  -6 dB  */
-#define TONE_FREQUENCY_DEFAULT TONE_FREQ(82.41)    /* E2 note */
-
+#define TONE_AMPLITUDE_DEFAULT TONE_GAIN(0.1)      /*  -20 dB  */
+#define TONE_FREQUENCY_DEFAULT TONE_FREQ(997.0)
 #define TONE_NUM_FS            13       /* Table size for 8-192 kHz range */
 
 /* 2*pi/Fs lookup tables in Q1.31 for each Fs */
@@ -422,6 +421,8 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	comp_set_drvdata(dev, cd);
 	cd->tone_func = tone_s32_default;
 
+	cd->rate = ipc_tone->sample_rate;
+
 	/* Reset tone generator and set channels volumes to default */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		tonegen_reset(&cd->sg[i]);
@@ -448,17 +449,38 @@ static int tone_params(struct comp_dev *dev)
 
 	trace_tone("par");
 
+	/* Tone supports only S32_LE PCM format atm */
+	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
+		return -EINVAL;
+
+	trace_value(config->frame_fmt);
+	dev->params.frame_fmt = config->frame_fmt;
+
 	/* Need to compute this in non-host endpoint */
-	dev->frame_bytes =
-		dev->params.sample_container_bytes * dev->params.channels;
+	dev->frame_bytes = comp_frame_bytes(dev);
 
 	/* calculate period size based on config */
 	cd->period_bytes = dev->frames * dev->frame_bytes;
 
-	/* EQ supports only S32_LE PCM format */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
-		return -EINVAL;
+	return 0;
+}
 
+static int tone_cmd_get_value(struct comp_dev *dev,
+			      struct sof_ipc_ctrl_data *cdata)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int j;
+
+	trace_tone("mgt");
+
+	if (cdata->cmd == SOF_CTRL_CMD_SWITCH) {
+		for (j = 0; j < cdata->num_elems; j++) {
+			cdata->chanv[j].channel = j;
+			cdata->chanv[j].value = !cd->sg[j].mute;
+			trace_value(j);
+			trace_value(cd->sg[j].mute);
+		}
+	}
 	return 0;
 }
 
@@ -480,6 +502,7 @@ static int tone_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cd
 				trace_tone_error("che");
 				return -EINVAL;
 			}
+
 			if (val)
 				tonegen_unmute(&cd->sg[ch]);
 			else
@@ -583,6 +606,9 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_SET_VALUE:
 		ret = tone_cmd_set_value(dev, cdata);
 		break;
+	case COMP_CMD_GET_VALUE:
+		ret = tone_cmd_get_value(dev, cdata);
+		break;
 	}
 
 	return ret;
@@ -641,7 +667,6 @@ static int tone_prepare(struct comp_dev * dev)
 		return ret;
 
 	cd->channels = dev->params.channels;
-	cd->rate = dev->params.rate;
 	tracev_value(cd->channels);
 	tracev_value(cd->rate);
 

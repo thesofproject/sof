@@ -715,6 +715,7 @@ struct sof_ipc_comp_mux {
 struct sof_ipc_comp_tone {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
+	int32_t sample_rate;
 	int32_t frequency;
 	int32_t amplitude;
 	int32_t freq_mult;
