@@ -19,6 +19,7 @@ endif
 if BUILD_XTENSA
 AM_CFLAGS += -I../../src/arch/xtensa/include
 AM_CFLAGS += -I../../src/platform/apollolake/include
+AM_CFLAGS += -I../../src/audio
 endif
 
 if BUILD_HOST
@@ -29,6 +30,14 @@ CFLAGS := $(filter-out -nostdlib,$(CFLAGS))
 LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
 LDADD = -lcmocka
+
+# volume tests
+
+check_PROGRAMS += volume_process
+volume_process_SOURCES = src/audio/volume/volume_process.c
+volume_process_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+# buffer tests
 
 check_PROGRAMS += buffer_new
 buffer_new_SOURCES = src/audio/buffer/buffer_new.c src/audio/buffer/mock.c
