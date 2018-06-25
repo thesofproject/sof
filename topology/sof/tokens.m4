@@ -18,7 +18,6 @@ SectionVendorTokens."sof_dai_tokens" {
 	SOF_TKN_DAI_DMAC_CONFIG			"153"
 	SOF_TKN_DAI_TYPE			"154"
 	SOF_TKN_DAI_INDEX			"155"
-	SOF_TKN_DAI_SAMPLE_BITS			"156"
 }
 
 SectionVendorTokens."sof_sched_tokens" {
@@ -56,6 +55,7 @@ SectionVendorTokens."sof_ssp_tokens" {
 	SOF_TKN_INTEL_SSP_BCLK_KEEP_ACTIVE	"501"
 	SOF_TKN_INTEL_SSP_FS_KEEP_ACTIVE	"502"
 	SOF_TKN_INTEL_SSP_MCLK_ID		"503"
+	SOF_TKN_INTEL_SSP_SAMPLE_BITS		"504"
 }
 
 SectionVendorTokens."sof_dmic_tokens" {
