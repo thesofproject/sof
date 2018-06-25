@@ -5,6 +5,7 @@
 # Include topology builder
 include(`dai.m4')
 include(`ssp.m4')
+include(`dmic.m4')
 include(`utils.m4')
 include(`pipeline.m4')
 

@@ -4,5 +4,6 @@ EXTRA_DIST = \
 	byt.m4 \
 	cht.m4 \
 	hsw.m4 \
-	cnl.m4
+	cnl.m4 \
+	dmic.m4
 
