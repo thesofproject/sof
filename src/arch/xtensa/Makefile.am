@@ -50,8 +50,8 @@ endif
 sof_CFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ARCH_CFLAGS) \
-	$(SOF_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)
 
 sof_CCASFLAGS = \
 	$(ARCH_INCDIR) \
@@ -111,8 +111,8 @@ boot_ldr_SOURCES = \
 boot_ldr_CFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ARCH_CFLAGS) \
-	$(SOF_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)
 
 boot_ldr_CCASFLAGS = \
 	$(ARCH_INCDIR) \

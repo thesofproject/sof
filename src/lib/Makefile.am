@@ -15,8 +15,8 @@ libcore_a_SOURCES = \
 libcore_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
-	$(SOF_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)
 
 libdma_a_SOURCES = \
 	dma.c
@@ -24,5 +24,5 @@ libdma_a_SOURCES = \
 libdma_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
-	$(SOF_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)
