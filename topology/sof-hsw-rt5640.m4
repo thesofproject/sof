@@ -14,7 +14,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Haswell DSP configuration
-include(`dsps/hsw.m4')
+include(`platform/intel/hsw.m4')
 
 #
 # Define the pipelines

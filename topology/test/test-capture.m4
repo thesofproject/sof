@@ -14,7 +14,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Baytrail DSP configuration
-include(`dsps/byt.m4')
+include(`byt.m4')
 
 #
 # Machine Specific Config - !! MUST BE SET TO MATCH TEST MACHINE DRIVER !!

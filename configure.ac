@@ -20,7 +20,8 @@ AC_OUTPUT([
 	rmbox/Makefile
 	topology/Makefile
 	topology/common/Makefile
-	topology/dsps/Makefile
+	topology/platform/Makefile
+	topology/platform/intel/Makefile
 	topology/m4/Makefile
 	topology/sof/Makefile
 	topology/test/Makefile

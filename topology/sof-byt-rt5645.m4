@@ -14,7 +14,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Baytrail DSP configuration
-include(`dsps/byt.m4')
+include(`platform/intel/byt.m4')
 
 #
 # Define the pipelines

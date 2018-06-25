@@ -14,7 +14,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include CherryTrail DSP configuration
-include(`dsps/cht.m4')
+include(`platform/intel/cht.m4')
 
 #
 # Define the pipelines

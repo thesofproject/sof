@@ -14,7 +14,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Broadwell DSP configuration
-include(`dsps/bdw.m4')
+include(`platform/intel/bdw.m4')
 
 #
 # Define the pipelines

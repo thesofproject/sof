@@ -3,10 +3,10 @@
 # Dependencies
 #
 
-SUBDIRS = test m4 sof common dsps
+SUBDIRS = test m4 sof common platform
 
 DEPS = \
-	dsps/*.m4 \
+	platform/intel/*.m4 \
 	common/*.m4 \
 	m4/*.m4 \
 	sof/*.m4
