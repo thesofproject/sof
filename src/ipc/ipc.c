@@ -404,24 +404,12 @@ int ipc_parse_page_descriptors(uint8_t *page_table,
 		else
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
-
 		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
-		if (!e)
-			return -ENOMEM;
-
-		if (direction == SOF_IPC_STREAM_PLAYBACK)
-			e->src = phy_addr;
-		else
-			e->dest = phy_addr;
-
-		/* the last page may be not full used */
-		if (i == (ring->pages - 1))
-			e->size = ring->size - HOST_PAGE_SIZE * i;
-		else
-			e->size = HOST_PAGE_SIZE;
-
-		list_item_append(&e->list, elem_list);
+		//e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
+		err = dma_sg_alloc(&config.elem_array, config.direction,
+				elem_num, elem_size, elem_addr, 0);
+		if (err < 0)
+			return err;
 	}
 
 	return 0;

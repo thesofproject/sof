@@ -48,13 +48,13 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	int32_t *offset)
 {
 	struct dma_sg_elem *host_sg_elem;
-	struct list_item *plist;
+	int i;
 	int32_t _offset = *offset;
- 
-	/* find host element with host_offset */
-	list_for_item(plist, &host_sg->elem_list) {
 
-		host_sg_elem = container_of(plist, struct dma_sg_elem, list);
+	/* find host element with host_offset */
+	for (i = 0; i < host_sg->elem_array.count; i++) {
+
+		host_sg_elem = host_sg->elem_array.elems + i;
 
 		/* is offset in this elem ? */
 		if (_offset >= 0 && _offset < host_sg_elem->size) {
@@ -85,6 +85,15 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 }
 
 #endif
+
+#if defined CONFIG_DMA_GW
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return dma_copy_to_host_nowait(dc, host_sg, host_offset, local_ptr,
+		size);
+}
+#else
 
 /* Copy DSP memory to host memory.
  * copies DSP memory to host in PAGE_SIZE or smaller blocks and waits/sleeps
@@ -137,7 +146,7 @@ int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 		err = dma_start(dc->dmac, dc->chan);
 		if (err < 0)
 			return err;
-	
+
 		/* wait for DMA to complete */
 		err = wait_for_completion_timeout(&dc->complete);
 		if (err < 0) {
@@ -169,6 +178,7 @@ int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	/* bytes copied */
 	return bytes_copied;
 }
+#endif
 
 /* Copy DSP memory to host memory.
  * Copies DSP memory to host in a single PAGE_SIZE or smaller block. Does not
@@ -241,6 +251,14 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 
 #endif
 
+#if defined CONFIG_DMA_GW
+int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+	int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return dma_copy_from_host_nowait(dc, host_sg, host_offset, local_ptr,
+		size);
+}
+#else
 /* Copy host memory to DSP memory.
  * Copies host memory to host in PAGE_SIZE or smaller blocks and waits/sleeps
  * between blocks. Cant be used in IRQ context.
@@ -322,6 +340,7 @@ int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	/* bytes copied */
 	return bytes_copied;
 }
+#endif
 
 /* Copy host memory to DSP memory.
  * Copies host memory to DSP in a single PAGE_SIZE or smaller block. Does not
@@ -349,7 +368,8 @@ int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
-	list_init(&config.elem_list);
+	config.elem_array.count = 1;
+	config.elem_array.elems = &local_sg_elem;
 
 	/* configure local DMA elem */
 	local_sg_elem.dest = (uint32_t)local_ptr;
@@ -358,7 +378,6 @@ int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg
 		local_sg_elem.size = HOST_PAGE_SIZE - offset;
 	else
 		local_sg_elem.size = size;
-	list_item_prepend(&local_sg_elem.list, &config.elem_list);
 
 	/* start the DMA */
 	err = dma_set_config(dc->dmac, dc->chan, &config);

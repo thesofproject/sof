@@ -546,7 +546,7 @@ int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
 
 	/* first make sure SG buffer has enough space on host for DSP context */
 	used = mm_pm_context_size();
-	if (used > dma_sg_get_size(sg))
+	if (used > dma_sg_get_size(&sg->elem_array))
 		return -EINVAL;
 
 	/* copy memory maps to SG */
