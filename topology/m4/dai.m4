@@ -134,7 +134,7 @@ define(`DAI_TDM',
 `	tx_slots	'STR($3)
 `	rx_slots	'STR($4)
 )
-dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp sample bits)
+dnl SSP_CONFIG(format, mclk, bclk, fsync, tdm, ssp_config_data)
 define(`SSP_CONFIG',
 `	format		"'$1`"'
 `	'$2
@@ -145,12 +145,16 @@ define(`SSP_CONFIG',
 $6
 )
 
-dnl SSP_SAMPLE_BITS(type, idx, valid bits)
-define(`SSP_SAMPLE_BITS',
+dnl SSP_CONFIG_DATA(type, idx, valid bits, mclk_id)
+dnl mclk_id is optional
+define(`SSP_CONFIG_DATA',
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples" {'
-`	tokens "sof_dai_tokens"'
+`	tokens "sof_ssp_tokens"'
 `	tuples."word" {'
-`		SOF_TKN_DAI_SAMPLE_BITS'	STR($3)
+`		SOF_TKN_INTEL_SSP_SAMPLE_BITS'	STR($3)
+`	}'
+`	tuples."short" {'
+`		SOF_TKN_INTEL_SSP_MCLK_ID'	ifelse($4, `', "0", STR($4))
 `	}'
 `}'
 `SectionData."'N_DAI_CONFIG($1$2)`_data" {'

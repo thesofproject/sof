@@ -67,7 +67,7 @@ DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 		      DAI_CLOCK(bclk, 4800000, codec_slave),
 		      DAI_CLOCK(fsync, 48000, codec_slave),
 		      DAI_TDM(4, 25, 3, 3),
-		      SSP_SAMPLE_BITS(SSP, 0, 24)))
+		      SSP_CONFIG_DATA(SSP, 0, 24)))
 
 VIRTUAL_DAPM_ROUTE_OUT(codec0_out, SSP, 0, OUT, 0)
 VIRTUAL_DAPM_ROUTE_OUT(codec1_out, SSP, 0, OUT, 1)

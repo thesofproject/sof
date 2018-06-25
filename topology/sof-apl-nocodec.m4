@@ -95,4 +95,4 @@ DAI_CONFIG(SSP, 2, 0, NoCodec,
 		      DAI_CLOCK(bclk, 2400000, codec_slave),
 		      DAI_CLOCK(fsync, 48000, codec_slave),
 		      DAI_TDM(2, 25, 3, 3),
-		      SSP_SAMPLE_BITS(SSP, 2, 24)))
+		      SSP_CONFIG_DATA(SSP, 2, 24)))
