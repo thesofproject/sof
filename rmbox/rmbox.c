@@ -46,6 +46,10 @@
 #define TRACE_CLASS_TONE        (18 << 24)
 #define TRACE_CLASS_EQ_FIR      (19 << 24)
 #define TRACE_CLASS_EQ_IIR      (20 << 24)
+#define TRACE_CLASS_SA          (21 << 24)
+#define TRACE_CLASS_DMIC        (22 << 24)
+#define TRACE_CLASS_POWER       (23 << 24)
+
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
@@ -162,6 +166,12 @@ static void show_trace(uint64_t val, uint64_t addr, uint64_t *timestamp, double 
 		trace = "eq-fir";
 	else if (class == TRACE_CLASS_EQ_IIR)
 		trace = "eq-iir";
+	else if (class == TRACE_CLASS_SA)
+		trace = "sa";
+	else if (class == TRACE_CLASS_DMIC)
+		trace = "dmic";
+	else if (class == TRACE_CLASS_POWER)
+		trace = "pm";
 	else {
 		printf("value 0x%8.8x\n", (uint32_t)val);
 		return;
