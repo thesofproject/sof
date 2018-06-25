@@ -6,5 +6,5 @@ libtasks_a_SOURCES = \
 libtasks_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
-	$(SOF_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)

@@ -1,7 +1,7 @@
 export COMMON_INCDIR = \
+	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR) \
-	$(ARCH_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(ARCH_INCDIR)
 
 if BUILD_LIB
 SUBDIRS = ipc math audio arch include library host

@@ -39,6 +39,6 @@ endif
 
 libdrivers_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
+	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR) \
-	$(ARCH_INCDIR) \
-	$(PLATFORM_INCDIR)
+	$(ARCH_INCDIR)
