@@ -448,7 +448,9 @@ static int volume_copy(struct comp_dev *dev)
 	cd->scale_vol(dev, sink, source);
 
 	/* calc new free and available */
+	dcache_writeback_region(sink->w_ptr, cd->sink_period_bytes);
 	comp_update_buffer_produce(sink, cd->sink_period_bytes);
+
 	comp_update_buffer_consume(source, cd->source_period_bytes);
 
 	return dev->frames;
