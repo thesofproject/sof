@@ -6,6 +6,7 @@
 include(`pipeline.m4')
 include(`utils.m4')
 include(`dai.m4')
+include(`ssp.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -14,7 +15,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Broadwell DSP configuration
-include(`dsps/bdw.m4')
+include(`platform/intel/bdw.m4')
 
 #
 # Define the pipelines
@@ -91,8 +92,8 @@ PCM_DUPLEX_ADD(Low Latency, 6, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 # BE configurations - overrides config in ACPI if present
 #
 DAI_CONFIG(SSP, 0, 0, Codec,
-	   SSP_CONFIG(I2S, DAI_CLOCK(mclk, 24000000, codec_mclk_in),
-		      DAI_CLOCK(bclk, 2400000, codec_slave),
-		      DAI_CLOCK(fsync, 48000, codec_slave),
-		      DAI_TDM(2, 25, 3, 3),
-		      SSP_SAMPLE_BITS(SSP, 0, 24)))
+	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 2400000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(2, 25, 3, 3),
+		      SSP_CONFIG_DATA(SSP, 0, 24)))

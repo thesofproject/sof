@@ -6,6 +6,7 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
+include(`ssp.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -14,7 +15,7 @@ include(`common/tlv.m4')
 include(`sof/tokens.m4')
 
 # Include Apollolake DSP configuration
-include(`dsps/cnl.m4')
+include(`platform/intel/cnl.m4')
 
 #
 # Define the pipelines
@@ -63,11 +64,11 @@ PCM_DUPLEX_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 # BE configurations - overrides config in ACPI if present
 #
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
-	   SSP_CONFIG(DSP_B, DAI_CLOCK(mclk, 24000000, codec_mclk_in),
-		      DAI_CLOCK(bclk, 4800000, codec_slave),
-		      DAI_CLOCK(fsync, 48000, codec_slave),
-		      DAI_TDM(4, 25, 3, 3),
-		      SSP_SAMPLE_BITS(SSP, 0, 24)))
+	   SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 4800000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(4, 25, 3, 3),
+		      SSP_CONFIG_DATA(SSP, 0, 24)))
 
 VIRTUAL_DAPM_ROUTE_OUT(codec0_out, SSP, 0, OUT, 0)
 VIRTUAL_DAPM_ROUTE_OUT(codec1_out, SSP, 0, OUT, 1)

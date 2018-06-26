@@ -8,7 +8,7 @@ export USE_XARGS=yes
 endif
 
 DEPS = \
-	../dsps/*.m4 \
+	../platform/intel/*.m4 \
 	../common/*.m4 \
 	../m4/*.m4 \
 	../sof/*.m4
