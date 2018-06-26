@@ -57,4 +57,13 @@ $11
 `}'
 )
 
+dnl DMIC PDM configurations
+dnl macros to get the number of active pdm's and their config
+define(`MONO_PDM0_MICA', `1, LIST(`', PDM_TUPLES(0, 1, 0, 0, 0, 0, 0))')
+define(`MONO_PDM0_MICB', `1, LIST(`', PDM_TUPLES(0, 0, 1, 0, 0, 0, 0))')
+define(`STEREO_PDM0', `1, LIST(`', PDM_TUPLES(0, 1, 1, 0, 0, 0, 0))')
+define(`STEREO_PDM1', `1, LIST(`', PDM_TUPLES(1, 1, 1, 0, 0, 0, 0))')
+define(`FOUR_CH_PDM0_PDM1',
+	`2, LIST(`', PDM_TUPLES(0, 1, 1, 0, 0, 0, 0), PDM_TUPLES(1, 1, 1, 0, 0, 0, 0))')
+
 divert(0)dnl
