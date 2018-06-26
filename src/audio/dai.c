@@ -124,7 +124,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		comp_update_buffer_consume(dma_buffer, copied_size);
 
 		/* writeback buffer contents from cache */
-		dcache_writeback_region(dma_buffer->r_ptr, copied_size);
+		//dcache_writeback_region(dma_buffer->r_ptr, copied_size);
 
 		/* update host position(in bytes offset) for drivers */
 		dev->position += copied_size;
