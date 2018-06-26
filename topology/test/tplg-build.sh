@@ -47,7 +47,7 @@ function simple_test {
 	do
 		if [ $5 == "DMIC" ]
 		then
-			TFILE="$i-dmic$6-$2-$4-$7-48k-$1"
+			TFILE="$i-dmic$6-${14}-$2-$4-$7-$((${13} / 1000))k-$1"
 			echo "M4 pre-processing test $i -> ${TFILE}"
 			m4 ${M4_FLAGS} \
 				-DTEST_PIPE_NAME="$2" \
@@ -61,8 +61,8 @@ function simple_test {
 				-DTEST_DMIC_CLK_MAX=${10} \
 				-DTEST_DMIC_DUTY_MIN=${11} \
 				-DTEST_DMIC_DUTY_MAX=${12} \
-				-DTEST_PDM_ACTIVE=${13} \
-				-DTEST_DMIC_SAMPLE_RATE=${14} \
+				-DTEST_DMIC_SAMPLE_RATE=${13} \
+				-DTEST_DMIC_PDM_CONFIG=${14} \
 				$i.m4 > ${TFILE}.conf
 			echo "Compiling test $i -> ${TFILE}.tplg"
 			alsatplg -v 1 -c ${TFILE}.conf -o ${TFILE}.tplg
@@ -218,9 +218,23 @@ simple_test codec tone "SSP2-Codec" s32le SSP 2 s16le 20 16 1920000 19200000 I2S
 simple_test codec tone "SSP5-Codec" s32le SSP 5 s24le 32 24 3072000 24576000 I2S 0 TONE_TEST[@]
 simple_test codec tone "SSP5-Codec" s32le SSP 5 s32le 32 32 3072000 24576000 I2S 0 TONE_TEST[@]
 
-#DMIC Test
-simple_test nocodec passthrough "DMIC0" s32le DMIC 0 s32le 1 500000 4800000\
-	40 60 1 48000 DMIC_TEST[@]
+# DMIC Test Topologies for APL/GLK
+DMIC_PDM_CONFIGS=(MONO_PDM0_MICA MONO_PDM0_MICB STEREO_PDM0 STEREO_PDM1 FOUR_CH_PDM0_PDM1)
+DMIC_SAMPLE_RATE=(8000 16000 24000 32000 48000 64000 96000)
+DMIC_SAMPLE_FORMATS=(s16le s32le)
+
+for pdm in ${DMIC_PDM_CONFIGS[@]}
+do
+	for rate in ${DMIC_SAMPLE_RATE[@]}
+	do
+		for format in ${DMIC_SAMPLE_FORMATS[@]}
+		do
+			simple_test nocodec passthrough "DMIC0" $format DMIC 0\
+				$format 1 500000 4800000 40 60 $rate $pdm\
+				DMIC_TEST[@]
+		done
+	done
+done
 
 if [ "$USE_XARGS" == "yes" ]
 then
