@@ -134,21 +134,12 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	/* update buffer positions */
 	dma_buffer = hd->dma_buffer;
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-
-		/* invalidate audio data */
-		dcache_invalidate_region(dma_buffer->w_ptr, local_elem->size);
-
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		/* recalc available buffer space */
 		comp_update_buffer_produce(hd->dma_buffer, local_elem->size);
-
-	} else {
+	else
 		/* recalc available buffer space */
 		comp_update_buffer_consume(hd->dma_buffer, local_elem->size);
-
-		/* writeback audio data */
-		dcache_writeback_region(dma_buffer->r_ptr, local_elem->size);
-	}
 
 	/* new local period, update host buffer position blks */
 	hd->local_pos += local_elem->size;
@@ -319,19 +310,12 @@ static void host_gw_dma_update(struct comp_dev *dev)
 	/* update buffer positions */
 	dma_buffer = hd->dma_buffer;
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		/* invalidate audio data */
-		dcache_invalidate_region(dma_buffer->w_ptr, local_elem->size);
-
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		/* recalc available buffer space */
 		comp_update_buffer_produce(hd->dma_buffer, local_elem->size);
-	} else {
+	else
 		/* recalc available buffer space */
 		comp_update_buffer_consume(hd->dma_buffer, local_elem->size);
-
-		/* writeback audio data */
-		dcache_writeback_region(dma_buffer->r_ptr, local_elem->size);
-	}
 
 	dev->position += local_elem->size;
 
@@ -565,6 +549,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	/* init posn data. TODO: other fields */
 	hd->posn.comp_id = comp->id;
 	dev->state = COMP_STATE_READY;
+	dev->is_dma_connected = 1;
 	return dev;
 
 error:

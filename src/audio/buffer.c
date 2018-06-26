@@ -99,3 +99,73 @@ void buffer_free(struct comp_buffer *buffer)
 	rfree(buffer->addr);
 	rfree(buffer);
 }
+
+void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&buffer->lock, flags);
+
+	if (buffer->source->is_dma_connected)
+		dcache_invalidate_region(buffer->w_ptr, bytes);
+	else if (buffer->sink->is_dma_connected)
+		dcache_writeback_region(buffer->w_ptr, bytes);
+
+	buffer->w_ptr += bytes;
+
+	/* check for pointer wrap */
+	if (buffer->w_ptr >= buffer->end_addr)
+		buffer->w_ptr = buffer->addr + (buffer->w_ptr - buffer->end_addr);
+
+	/* calculate available bytes */
+	if (buffer->r_ptr < buffer->w_ptr)
+		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+	else if (buffer->r_ptr == buffer->w_ptr)
+		buffer->avail = buffer->size; /* full */
+	else
+		buffer->avail = buffer->size - (buffer->r_ptr - buffer->w_ptr);
+
+	/* calculate free bytes */
+	buffer->free = buffer->size - buffer->avail;
+
+	spin_unlock_irq(&buffer->lock, flags);
+
+	tracev_buffer("pro");
+	tracev_value((buffer->avail << 16) | buffer->free);
+	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
+	tracev_value((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr));
+}
+
+void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&buffer->lock, flags);
+
+	buffer->r_ptr += bytes;
+
+	/* check for pointer wrap */
+	if (buffer->r_ptr >= buffer->end_addr)
+		buffer->r_ptr = buffer->addr + (buffer->r_ptr - buffer->end_addr);
+
+	/* calculate available bytes */
+	if (buffer->r_ptr < buffer->w_ptr)
+		buffer->avail = buffer->w_ptr - buffer->r_ptr;
+	else if (buffer->r_ptr == buffer->w_ptr)
+		buffer->avail = 0; /* empty */
+	else
+		buffer->avail = buffer->size - (buffer->r_ptr - buffer->w_ptr);
+
+	/* calculate free bytes */
+	buffer->free = buffer->size - buffer->avail;
+
+	if (buffer->sink->is_dma_connected)
+		dcache_writeback_region(buffer->r_ptr, bytes);
+
+	spin_unlock_irq(&buffer->lock, flags);
+
+	tracev_buffer("con");
+	tracev_value((buffer->avail << 16) | buffer->free);
+	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
+	tracev_value((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr));
+}

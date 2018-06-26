@@ -173,12 +173,13 @@ struct comp_driver {
 struct comp_dev {
 
 	/* runtime */
-	uint16_t state;		/* COMP_STATE_ */
-	uint16_t is_endpoint;	/* component is end point in pipeline */
-	spinlock_t lock;	/* lock for this component */
-	uint64_t position;	/* component rendering position */
-	uint32_t frames;	/* number of frames we copy to sink */
-	uint32_t frame_bytes;	/* frames size copied to sink in bytes */
+	uint16_t state;			/* COMP_STATE_ */
+	uint16_t is_endpoint;		/* component is end point in pipeline */
+	uint16_t is_dma_connected;	/* component is connected to DMA */
+	spinlock_t lock;		/* lock for this component */
+	uint64_t position;		/* component rendering position */
+	uint32_t frames;		/* number of frames we copy to sink */
+	uint32_t frame_bytes;		/* frames size copied to sink in bytes */
 	struct pipeline *pipeline;	/* pipeline we belong to */
 
 	/* common runtime configuration for downstream/upstream */

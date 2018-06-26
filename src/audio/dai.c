@@ -123,9 +123,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		/* recalc available buffer space */
 		comp_update_buffer_consume(dma_buffer, copied_size);
 
-		/* writeback buffer contents from cache */
-		dcache_writeback_region(dma_buffer->r_ptr, copied_size);
-
 		/* update host position(in bytes offset) for drivers */
 		dev->position += copied_size;
 		if (dd->dai_pos) {
@@ -143,9 +140,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
-
-		/* invalidate buffer contents */
-		dcache_invalidate_region(dma_buffer->w_ptr, dd->period_bytes);
 
 		/* recalc available buffer space */
 		comp_update_buffer_produce(dma_buffer, dd->period_bytes);
@@ -229,6 +223,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
 				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
 	dev->state = COMP_STATE_READY;
+	dev->is_dma_connected = 1;
 	return dev;
 
 error:
