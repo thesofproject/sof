@@ -77,3 +77,7 @@ SectionVendorTokens."sof_dmic_pdm_tokens" {
 	SOF_TKN_INTEL_DMIC_PDM_CLK_EDGE		"705"
 	SOF_TKN_INTEL_DMIC_PDM_SKEW		"706"
 }
+
+SectionVendorTokens."sof_tone_tokens" {
+	SOF_TKN_TONE_SAMPLE_RATE		"800"
+}

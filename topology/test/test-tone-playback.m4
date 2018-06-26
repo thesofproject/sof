@@ -36,6 +36,9 @@ include(`dsps/byt.m4')
 #  Tone --B0--> volume --B1--> SSP2
 #
 
+# Set sample rate for tone
+define(`TONE_SAMPLE_RATE', 48000)
+
 # Tone Playback pipeline 5 using max 2 channels of TEST_PIPE_FORMAT.
 # Schedule with 48 frame per 1000us deadline on core 0 with priority 0
 PIPELINE_ADD(sof/pipe-tone.m4,

@@ -15,8 +15,15 @@ define(`W_TONE',
 `		SOF_TKN_COMP_PRELOAD_COUNT'		STR($5)
 `	}'
 `}'
+`SectionVendorTuples."'N_TONE($1)`_tone_tuples_w" {'
+`	tokens "sof_tone_tokens"'
+`	tuples."word" {'
+`		SOF_TKN_TONE_SAMPLE_RATE'		ifdef(TONE_SAMPLE_RATE, STR(TONE_SAMPLE_RATE), "48000")
+`	}'
+`}'
 `SectionData."'N_TONE($1)`_data_w" {'
 `	tuples "'N_TONE($1)`_tuples_w"'
+`	tuples "'N_TONE($1)`_tone_tuples_w"'
 `}'
 `SectionVendorTuples."'N_TONE($1)`_tuples_str" {'
 `	tokens "sof_comp_tokens"'
