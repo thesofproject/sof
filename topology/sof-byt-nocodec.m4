@@ -74,14 +74,14 @@ SectionGraph."pipe-byt-nocodec" {
 # playback DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 2, NoCodec,
+	1, SSP, 2, NoCodec-2,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, SSP, 2, NoCodec,
+	2, SSP, 2, NoCodec-2,
 	PIPELINE_SINK_2, 2, s24le,
 	48, 1000, 0, 0)
 
@@ -91,7 +91,7 @@ PCM_DUPLEX_ADD(Low Latency, 6, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 #
 # BE configurations - overrides config in ACPI if present
 #
-DAI_CONFIG(SSP, 2, 0, NoCodec,
+DAI_CONFIG(SSP, 2, 0, NoCodec-2,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 19200000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
