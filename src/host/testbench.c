@@ -40,6 +40,14 @@
 
 #define TESTBENCH_NCH 2 /* Stereo */
 
+/* shared library look up table */
+struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
+{"file", "", SND_SOC_TPLG_DAPM_AIF_IN, "", 0, NULL},
+{"vol", "libsof_volume.so", SND_SOC_TPLG_DAPM_PGA, "sys_comp_volume_init", 0,
+	NULL},
+{"src", "libsof_src.so", SND_SOC_TPLG_DAPM_SRC, "sys_comp_src_init", 0, NULL},
+};
+
 /* main firmware context */
 static struct sof sof;
 static int fr_id; /* comp id for fileread */
@@ -50,41 +58,53 @@ int debug;
 
 /*
  * Parse shared library from user input
- * Currently only handles volume comp
+ * Currently only handles volume and src comp
+ * This function takes in the libraries to be used as an input in the format:
+ * "vol=libsof_volume.so,src=libsof_src.so,..."
+ * The function parses the above string to identify the following:
+ * component type and the library name and sets up the library handle
+ * for the component and stores it in the shared library table
  */
-static void parse_libraries(char *libs, void *handle)
+static void parse_libraries(char *libs)
 {
 	char *lib_token, *comp_token;
 	char *token = strtok_r(libs, ",", &lib_token);
 	char message[DEBUG_MSG_LEN];
+	int index;
 
 	while (token) {
+
+		/* get component type */
 		char *token1 = strtok_r(token, "=", &comp_token);
 
-		/* parse shared library for volume component */
-		if (strcmp(token1, "vol") == 0) {
-			while (token1) {
-				token1 = strtok_r(NULL, "=", &comp_token);
-				if (!token1)
-					return;
+		/* get shared library index from library table */
+		index = get_index_by_name(token1, lib_table);
 
-				/* close shared library object */
-				if (handle)
-					dlclose(handle);
-
-				/* open volume shared library object */
-				handle = dlopen(token1, RTLD_LAZY);
-				if (!handle) {
-					fprintf(stderr, "error: %s\n",
-						dlerror());
-					exit(EXIT_FAILURE);
-				}
-
-				sprintf(message, "opening vol shared lib %s\n",
-					token1);
-				debug_print(message);
-			}
+		if (index < 0) {
+			fprintf(stderr, "error: unsupported comp type\n");
+			break;
 		}
+
+		/* get shared library name */
+		token1 = strtok_r(NULL, "=", &comp_token);
+		if (!token1)
+			break;
+
+		/* close default shared library object */
+		if (lib_table[index].handle)
+			dlclose(lib_table[index].handle);
+
+		/* open volume shared library object */
+		lib_table[index].handle = dlopen(token1, RTLD_LAZY);
+		if (!lib_table[index].handle) {
+			fprintf(stderr, "error: %s\n", dlerror());
+			exit(EXIT_FAILURE);
+		}
+
+		sprintf(message, "opening shared lib %s\n", token1);
+		debug_print(message);
+
+		/* next library */
 		token = strtok_r(NULL, ",", &lib_token);
 	}
 }
@@ -131,6 +151,25 @@ static void free_comps(void)
 	}
 }
 
+static int set_up_library_table(void)
+{
+	int i;
+
+	/* set up default shared libraries */
+	for (i = 1; i < NUM_WIDGETS_SUPPORTED; i++) {
+
+		/* open default shared library */
+		lib_table[i].handle =
+				dlopen(lib_table[i].library_name, RTLD_LAZY);
+		if (!lib_table[i].handle) {
+			fprintf(stderr, "error: %s\n", dlerror());
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	struct ipc_comp_dev *pcm_dev;
@@ -144,19 +183,14 @@ int main(int argc, char **argv)
 	clock_t tic, toc;
 	double c_realtime, t_exec;
 	int fs, n_in, n_out, ret;
-	int option = 0;
+	int i, option = 0;
 
-	/* volume component share library handle */
-	void *vol_handle = NULL;
 
-	/* TODO: create a shared library table for all components */
-	/*set up default volume shared library */
-	if (!vol_handle) {
-		vol_handle = dlopen("libsof_volume.so", RTLD_LAZY);
-		if (!vol_handle) {
-			fprintf(stderr, "error: %s\n", dlerror());
-			exit(EXIT_FAILURE);
-		}
+	/* set up shared library look up table */
+	ret = set_up_library_table();
+	if (ret < 0) {
+		fprintf(stderr, "error: setting up shared libraried\n");
+		exit(EXIT_FAILURE);
 	}
 
 	/* set up trace class definition table from trace header */
@@ -187,7 +221,7 @@ int main(int argc, char **argv)
 
 		/* override default libraries */
 		case 'a':
-			parse_libraries(optarg, vol_handle);
+			parse_libraries(optarg);
 			break;
 
 		/* enable debug prints */
@@ -217,7 +251,7 @@ int main(int argc, char **argv)
 
 	/* parse topology file and create pipeline */
 	if (parse_topology(tplg_file, &sof, &fr_id, &fw_id, &sched_id, bits_in,
-			   input_file, output_file, vol_handle, pipeline) < 0) {
+	    input_file, output_file, lib_table, pipeline) < 0) {
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}
@@ -290,9 +324,11 @@ int main(int argc, char **argv)
 	free(tplg_file);
 	free(output_file);
 
-	/* close shared library object */
-	if (vol_handle)
-		dlclose(vol_handle);
+	/* close shared library objects */
+	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
+		if (lib_table[i].handle)
+			dlclose(lib_table[i].handle);
+	}
 
 	return EXIT_SUCCESS;
 }

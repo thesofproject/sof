@@ -44,9 +44,10 @@
 
 char *input_file;
 char *output_file;
-void *volume_lib;
+
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];
+struct shared_lib_table *lib_table;
 
 /*
  * Register component driver
@@ -54,37 +55,39 @@ char pipeline_string[DEBUG_MSG_LEN];
  */
 static void register_comp(int comp_type)
 {
-	static int pga_reg;
-	static int file_reg;
+	int index;
+	char message[DEBUG_MSG_LEN];
 
-	switch (comp_type) {
-	case SND_SOC_TPLG_DAPM_PGA:
-		/* register comp driver if not already registered */
-		if (!pga_reg) {
-			debug_print("register pga comp driver\n");
-
-			/* register volume driver */
-			void (*sys_comp_volume_init)() =
-				(void (*)(void))dlsym(volume_lib,
-						      "sys_comp_volume_init");
-			sys_comp_volume_init();
-			pga_reg = 1;
-		}
-		break;
-	case SND_SOC_TPLG_DAPM_DAI_IN:
-	case SND_SOC_TPLG_DAPM_AIF_IN:
-		/* register comp driver if not already registered */
-		if (!file_reg) {
-			debug_print("register file comp driver\n");
-
-			/* register file driver */
+	/* register file comp driver (no shared library needed) */
+	if (comp_type == SND_SOC_TPLG_DAPM_DAI_IN ||
+	    comp_type == SND_SOC_TPLG_DAPM_AIF_IN) {
+		if (!lib_table[0].register_drv) {
 			sys_comp_file_init();
-			file_reg = 1;
+			lib_table[0].register_drv = 1;
+			debug_print("registered file comp driver\n");
 		}
-		break;
-	default:
-		break;
+		return;
 	}
+
+	/* get index of comp in shared library table */
+	index = get_index_by_type(comp_type, lib_table);
+	if (index < 0)
+		return;
+
+	/* register comp driver if not already registered */
+	if (!lib_table[index].register_drv) {
+		sprintf(message, "registered comp driver for %s\n",
+			lib_table[index].comp_name);
+		debug_print(message);
+
+		/* register comp driver */
+		void (*comp_init)() =
+			(void (*)(void))dlsym(lib_table[index].handle,
+					      lib_table[index].comp_init);
+		comp_init();
+		lib_table[index].register_drv = 1;
+	}
+
 }
 
 /* read vendor tuples array from topology */
@@ -680,8 +683,9 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 
 /* parse topology file and set up pipeline */
 int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
-		   int *sched_id, char *bits_in, char *in_file,
-		   char *out_file, void *volume_library, char *pipeline_msg)
+		    int *sched_id, char *bits_in, char *in_file,
+		    char *out_file, struct shared_lib_table *library_table,
+		    char *pipeline_msg)
 {
 	struct snd_soc_tplg_hdr *hdr;
 
@@ -692,9 +696,6 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 	int i, ret = 0;
 	size_t file_size, size;
 
-	/* set volume library */
-	volume_lib = volume_library;
-
 	/* open topology file */
 	file = fopen(filename, "rb");
 	if (!file) {
@@ -702,9 +703,7 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 		return -EINVAL;
 	}
 
-	/* set up fileread and  filewrite file names */
-	input_file = strdup(in_file);
-	output_file = strdup(out_file);
+	lib_table = library_table;
 
 	/* file size */
 	fseek(file, 0, SEEK_END);

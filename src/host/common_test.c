@@ -193,6 +193,34 @@ int tb_pipeline_params(struct ipc *ipc, int nch, char *bits_in,
 	return ret;
 }
 
+/* getindex of shared library from table */
+int get_index_by_name(char *comp_type,
+		      struct shared_lib_table *lib_table)
+{
+	int i;
+
+	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
+		if (!strcmp(comp_type, lib_table[i].comp_name))
+			return i;
+	}
+
+	return -EINVAL;
+}
+
+/* getindex of shared library from table by widget type*/
+int get_index_by_type(uint32_t comp_type,
+		      struct shared_lib_table *lib_table)
+{
+	int i;
+
+	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
+		if (comp_type == lib_table[i].widget_type)
+			return i;
+	}
+
+	return -EINVAL;
+}
+
 /* The following definitions are to satisfy libsof linker errors */
 
 struct dai *dai_get(uint32_t type, uint32_t index)
