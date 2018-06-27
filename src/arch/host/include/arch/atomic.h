@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,35 +26,44 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
+ *	   Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
+ *
  */
 
-#ifndef __PLATFORM_HOST_PLATFORM_H__
-#define __PLATFORM_HOST_PLATFORM_H__
+#ifndef __ARCH_ATOMIC_H_
+#define __ARCH_ATOMIC_H_
 
-#include <platform/shim.h>
-#include <platform/interrupt.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <errno.h>
 
-/* Host page size */
-#define HOST_PAGE_SIZE		4096
+typedef struct {
+	volatile int32_t value;
+} atomic_t;
 
-/* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	4
-#define PLATFORM_MAX_STREAMS	5
+static inline int32_t arch_atomic_read(const atomic_t *a)
+{
+	return (*(volatile int32_t *)&a->value);
+}
 
-/* DMA channel drain timeout in microseconds */
-#define PLATFORM_DMA_TIMEOUT	1333
+static inline void arch_atomic_set(atomic_t *a, int32_t value)
+{
+	a->value = value;
+}
 
-/* IPC page data copy timeout */
-#define PLATFORM_IPC_DMA_TIMEOUT 2000
+static inline void arch_atomic_init(atomic_t *a, int32_t value)
+{
+	arch_atomic_set(a, value);
+}
 
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
+/* use gcc atomic built-ins for host library */
+static inline void arch_atomic_add(atomic_t *a, int32_t value)
+{
+	__sync_fetch_and_add(&a->value, value);
+}
 
-static inline void platform_panic(uint32_t p) {}
-
-extern struct timer *platform_timer;
+static inline void arch_atomic_sub(atomic_t *a, int32_t value)
+{
+	__sync_fetch_and_sub(&a->value, value);
+}
 
 #endif
