@@ -18,7 +18,7 @@ HOST_LIB=$HOST_ROOT/lib
 INFMT=s${BITS_IN}le
 OUTFMT=s${BITS_IN}le
 MCLK=24576k
-TPLG=../topology/test/test-playback-ssp2-I2S-${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
+TPLG=../topology/test/test-playback-ssp2-mclk-0-I2S-${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
 
 # If binary test vectors
 if [ ${FN_IN: -4} == ".raw" ]; then
