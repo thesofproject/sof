@@ -128,6 +128,9 @@ esac
 AM_CONDITIONAL(BUILD_XTENSA, test "$ARCH" = "xtensa")
 AM_CONDITIONAL(BUILD_HOST, test "$ARCH" = "host")
 
+# check for xtensa extension
+AM_CONDITIONAL(BUILD_XTENSA_SMP, test "$with_arch" = "xtensa-smp")
+
 # Cmocka tests
 AC_ARG_WITH([cmocka-prefix],
 	AS_HELP_STRING([--with-cmocka-prefix], [Path to cmocka]),
@@ -422,8 +425,12 @@ AC_CONFIG_FILES([
 	src/arch/xtensa/include/arch/Makefile
 	src/arch/xtensa/include/xtensa/Makefile
 	src/arch/xtensa/include/xtensa/config/Makefile
-	src/arch/xtensa/hal/Makefile
-	src/arch/xtensa/xtos/Makefile
+	src/arch/xtensa/smp/Makefile
+	src/arch/xtensa/smp/hal/Makefile
+	src/arch/xtensa/smp/xtos/Makefile
+	src/arch/xtensa/up/Makefile
+	src/arch/xtensa/up/hal/Makefile
+	src/arch/xtensa/up/xtos/Makefile
 	src/arch/host/Makefile
 	src/arch/host/include/Makefile
 	src/arch/host/include/arch/Makefile

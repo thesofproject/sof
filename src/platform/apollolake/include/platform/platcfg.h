@@ -37,4 +37,6 @@
 
 #define PLATFORM_CORE_COUNT			2
 
+#define PLATFORM_MASTER_CORE_ID			0
+
 #endif

@@ -1,5 +1,5 @@
 /*  xtruntime-frames.h  -  exception stack frames for single-threaded run-time  */
-/* $Id: //depot/rel/Eaglenest/Xtensa/OS/include/xtensa/xtruntime-frames.h#1 $ */
+/* $Id: //depot/rel/Foxhill/dot.8/Xtensa/OS/include/xtensa/xtruntime-frames.h#1 $ */
 
 /*
  * Copyright (c) 2002-2012 Tensilica Inc.
@@ -125,6 +125,25 @@ STRUCT_AFIELD(long,4,UEXC_,pad, ALIGNPAD)	/* 16-byte alignment padding */
 /*STRUCT_AFIELD_A(char,1,XCHAL_CPEXTRA_SA_ALIGN,UEXC_,ureg, (XCHAL_CPEXTRA_SA_SIZE+3)&-4)*/	/* not used */
 STRUCT_END(UserFrame)
 
+/*
+ * xtos_structures_pointers contains ptrs to all structures created for
+ * each processor individually.
+ *
+ * To access the core specific structure from ASM (after threadptr is set):
+ * xtos_addr_percore a13, _xtos_interrupt_table
+ *
+ * Access to the core specific structure from C is not supported!
+ */
+STRUCT_BEGIN
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_enabled)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_intstruct)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_interrupt_table)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_interrupt_mask_table)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_2)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_3)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_4)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_5)
+STRUCT_END(xtos_structures_pointers)
 
 #if defined(_ASMLANGUAGE) || defined(__ASSEMBLER__)
 

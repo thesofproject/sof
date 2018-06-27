@@ -32,12 +32,28 @@
 #ifndef __INCLUDE_ARCH_CPU__
 #define __INCLUDE_ARCH_CPU__
 
+#include <xtensa/config/core.h>
+#include <platform/platcfg.h>
+
 static inline int cpu_get_id(void)
 {
 	int prid;
-
+#if XCHAL_HAVE_PRID
 	__asm__("rsr.prid %0" : "=a"(prid));
+#else
+	prid = PLATFORM_MASTER_CORE_ID;
+#endif
 	return prid;
+}
+
+static inline void cpu_write_threadptr(int threadptr)
+{
+#if XCHAL_HAVE_THREADPTR
+	__asm__ __volatile__(
+		"wur.threadptr %0" : : "a" (threadptr) : "memory");
+#else
+#error "Core support for XCHAL_HAVE_THREADPTR is required"
+#endif
 }
 
 #endif
