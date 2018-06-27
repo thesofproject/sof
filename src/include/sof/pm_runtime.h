@@ -41,10 +41,11 @@
 #include <sof/trace.h>
 
 /** \brief Power management trace function. */
-#define trace_pm(__e)	trace_event_atomic(TRACE_CLASS_POWER, __e)
+#define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
+#define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
 
 /** \brief Power management trace value function. */
-#define trace_pm_value(__e)	trace_value_atomic(__e)
+#define tracev_pm_value(__e)	tracev_value(__e)
 
 /** \brief Runtime power management context */
 enum pm_runtime_context {

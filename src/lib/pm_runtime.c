@@ -53,7 +53,7 @@ void pm_runtime_init(void)
 
 void pm_runtime_get(enum pm_runtime_context context)
 {
-	trace_pm("get");
+	tracev_pm("get");
 
 	switch (context) {
 	default:
@@ -64,7 +64,7 @@ void pm_runtime_get(enum pm_runtime_context context)
 
 void pm_runtime_put(enum pm_runtime_context context)
 {
-	trace_pm("put");
+	tracev_pm("put");
 
 	switch (context) {
 	default:
