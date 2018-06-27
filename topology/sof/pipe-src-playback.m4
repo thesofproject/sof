@@ -17,8 +17,8 @@ include(`pipeline.m4')
 #
 
 # Host "Passthrough Playback" PCM
-# with 4 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 4, 0, 2)
+# with 5 sink and 0 source periods
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 5, 0, 2)
 
 #
 # SRC Configuration
@@ -28,11 +28,11 @@ W_VENDORTUPLES(media_src_tokens, sof_src_tokens, LIST(`		', `SOF_TKN_SRC_RATE_OU
 
 W_DATA(media_src_conf, media_src_tokens)
 
-# "SRC" has 4 source and 4 sink periods
-W_SRC(0, PIPELINE_FORMAT, 4, 4, media_src_conf, 2)
+# "SRC" has 5 source and 4 sink periods
+W_SRC(0, PIPELINE_FORMAT, 5, 4, media_src_conf, 2)
 
 # Playback Buffers
-W_BUFFER(0, COMP_BUFFER_SIZE(4,
+W_BUFFER(0, COMP_BUFFER_SIZE(5,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_HOST_MEM_CAP)
 W_BUFFER(1, COMP_BUFFER_SIZE(4,
