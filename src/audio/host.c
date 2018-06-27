@@ -121,7 +121,6 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct dma_sg_elem *local_elem;
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
-	struct comp_buffer *dma_buffer;
 	uint32_t next_size;
 	uint32_t need_copy = 0;
 	uint32_t period_bytes = hd->period_bytes;
@@ -130,9 +129,6 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		struct dma_sg_elem, list);
 
 	tracev_host("irq");
-
-	/* update buffer positions */
-	dma_buffer = hd->dma_buffer;
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		/* recalc available buffer space */
@@ -300,15 +296,11 @@ static void host_gw_dma_update(struct comp_dev *dev)
 	struct dma_sg_elem *local_elem;
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
-	struct comp_buffer *dma_buffer;
 
 	local_elem = list_first_item(&hd->config.elem_list,
 				     struct dma_sg_elem, list);
 
 	tracev_host("upd");
-
-	/* update buffer positions */
-	dma_buffer = hd->dma_buffer;
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		/* recalc available buffer space */
