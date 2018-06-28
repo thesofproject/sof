@@ -177,8 +177,6 @@ int main(int argc, char **argv)
 	struct sof_ipc_pipe_new *ipc_pipe;
 	struct comp_dev *cd;
 	struct file_comp_data *frcd, *fwcd;
-	char *tplg_file = NULL, *input_file = NULL;
-	char *output_file = NULL, *bits_in = "S32_LE";
 	char pipeline[DEBUG_MSG_LEN];
 	clock_t tic, toc;
 	double c_realtime, t_exec;
@@ -238,7 +236,7 @@ int main(int argc, char **argv)
 	}
 
 	/* check args */
-	if (!tplg_file || !input_file || !output_file) {
+	if (!tplg_file || !input_file || !output_file || !bits_in) {
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
