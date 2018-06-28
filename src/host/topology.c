@@ -567,6 +567,73 @@ static int load_controls(struct sof *sof, int num_kcontrols)
 	return 0;
 }
 
+/* load src dapm widget */
+static int load_src(struct sof *sof, int comp_id, int pipeline_id,
+		    int size)
+{
+	struct sof_ipc_comp_src src = {0};
+	struct snd_soc_tplg_vendor_array *array = NULL;
+	size_t total_array_size = 0, read_size;
+	int ret = 0;
+
+	/* allocate memory for vendor tuple array */
+	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
+	if (!array) {
+		fprintf(stderr, "error: mem alloc for src vendor array\n");
+		return -EINVAL;
+	}
+
+	/* read vendor tokens */
+	while (total_array_size < size) {
+		read_size = sizeof(struct snd_soc_tplg_vendor_array);
+		ret = fread(array, read_size, 1, file);
+		if (ret != 1)
+			return -EINVAL;
+		read_array(array);
+
+		/* parse comp tokens */
+		ret = sof_parse_tokens(&src.config, comp_tokens,
+				       ARRAY_SIZE(comp_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse src comp_tokens %d\n",
+				size);
+			return -EINVAL;
+		}
+
+		/* parse src tokens */
+		ret = sof_parse_tokens(&src, src_tokens,
+				       ARRAY_SIZE(src_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse src tokens %d\n", size);
+			return -EINVAL;
+		}
+
+		total_array_size += array->size;
+
+		/* read next array */
+		array = (void *)array + array->size;
+	}
+
+	array = (void *)array - size;
+
+	/* configure src */
+	src.comp.id = comp_id;
+	src.comp.hdr.size = sizeof(struct sof_ipc_comp_src);
+	src.comp.type = SOF_COMP_SRC;
+	src.comp.pipeline_id = pipeline_id;
+
+	/* load src component */
+	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&src) < 0) {
+		fprintf(stderr, "error: new src comp\n");
+		return -EINVAL;
+	}
+
+	free(array);
+	return 0;
+}
+
 /* load dapm widget */
 static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 		       int *sched_id, char *bits_in,
@@ -659,6 +726,15 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 				  widget->priv.size,
 				  sched_id) < 0) {
 			printf("error: load buffer\n");
+			return -EINVAL;
+		}
+		break;
+
+	/* load src widget */
+	case(SND_SOC_TPLG_DAPM_SRC):
+		if (load_src(sof, temp_comp_list[comp_index].id,
+			     pipeline_id, widget->priv.size) < 0) {
+			printf("error: load src\n");
 			return -EINVAL;
 		}
 		break;
@@ -825,9 +901,6 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 			printf("error: unknown token type %d\n", array->type);
 			return -EINVAL;
 		}
-
-		/* next array */
-		array = (void *)array + asize;
 	}
 	return 0;
 }
