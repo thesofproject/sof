@@ -171,22 +171,9 @@ static int set_up_library_table(void)
 	return 0;
 }
 
-int main(int argc, char **argv)
+static void parse_input_args(int argc, char **argv)
 {
-	struct ipc_comp_dev *pcm_dev;
-	struct pipeline *p;
-	struct sof_ipc_pipe_new *ipc_pipe;
-	struct comp_dev *cd;
-	struct file_comp_data *frcd, *fwcd;
-	char pipeline[DEBUG_MSG_LEN];
-	clock_t tic, toc;
-	double c_realtime, t_exec;
-	int n_in, n_out, ret;
-	int i, option = 0;
-
-	/* initialize input and output sample rates */
-	fs_in = 0;
-	fs_out = 0;
+	int option = 0;
 
 	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:")) != -1) {
 		switch (option) {
@@ -237,6 +224,37 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
+}
+
+int main(int argc, char **argv)
+{
+	struct ipc_comp_dev *pcm_dev;
+	struct pipeline *p;
+	struct sof_ipc_pipe_new *ipc_pipe;
+	struct comp_dev *cd;
+	struct file_comp_data *frcd, *fwcd;
+	char pipeline[DEBUG_MSG_LEN];
+	clock_t tic, toc;
+	double c_realtime, t_exec;
+	int n_in, n_out, ret;
+	int i;
+
+	/* initialize input and output sample rates */
+	fs_in = 0;
+	fs_out = 0;
+
+	/* set up shared library look up table */
+	ret = set_up_library_table();
+	if (ret < 0) {
+		fprintf(stderr, "error: setting up shared libraried\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* set up trace class definition table from trace header */
+	setup_trace_table();
+
+	/* command line arguments*/
+	parse_input_args(argc, argv);
 
 	/* check args */
 	if (!tplg_file || !input_file || !output_file || !bits_in) {
