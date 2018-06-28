@@ -118,6 +118,7 @@ static void print_usage(char *executable)
 	printf("input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n");
 	printf("Example Usage:\n");
 	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
+	printf("-r 48000 -R 96000 ");
 	printf("-b S16_LE -a vol=libsof_volume.so\n");
 }
 
@@ -180,22 +181,14 @@ int main(int argc, char **argv)
 	char pipeline[DEBUG_MSG_LEN];
 	clock_t tic, toc;
 	double c_realtime, t_exec;
-	int fs, n_in, n_out, ret;
+	int n_in, n_out, ret;
 	int i, option = 0;
 
+	/* initialize input and output sample rates */
+	fs_in = 0;
+	fs_out = 0;
 
-	/* set up shared library look up table */
-	ret = set_up_library_table();
-	if (ret < 0) {
-		fprintf(stderr, "error: setting up shared libraried\n");
-		exit(EXIT_FAILURE);
-	}
-
-	/* set up trace class definition table from trace header */
-	setup_trace_table();
-
-	/* command line arguments*/
-	while ((option = getopt(argc, argv, "hdi:o:t:b:a:")) != -1) {
+	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -220,6 +213,16 @@ int main(int argc, char **argv)
 		/* override default libraries */
 		case 'a':
 			parse_libraries(optarg);
+			break;
+
+		/* input sample rate */
+		case 'r':
+			fs_in = atoi(optarg);
+			break;
+
+		/* output sample rate */
+		case 'R':
+			fs_out = atoi(optarg);
 			break;
 
 		/* enable debug prints */
@@ -265,7 +268,12 @@ int main(int argc, char **argv)
 	p = pcm_dev->cd->pipeline;
 	ipc_pipe = &p->ipc_pipe;
 
-	fs = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+	/* input and output sample rate */
+	if (!fs_in)
+		fs_in = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+
+	if (!fs_out)
+		fs_out = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
 
 	/* set pipeline params and trigger start */
 	if (tb_pipeline_start(sof.ipc, TESTBENCH_NCH, bits_in, ipc_pipe) < 0) {
@@ -295,7 +303,7 @@ int main(int argc, char **argv)
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
 	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
-	c_realtime = (double)n_out / TESTBENCH_NCH / fs / t_exec;
+	c_realtime = (double)n_out / TESTBENCH_NCH / fs_out / t_exec;
 
 	/* free all components/buffers in pipeline */
 	free_comps();
@@ -310,6 +318,8 @@ int main(int argc, char **argv)
 	printf("Test Pipeline:\n");
 	printf("%s\n", pipeline);
 	printf("Input bit format: %s\n", bits_in);
+	printf("Input sample rate: %d\n", fs_in);
+	printf("Output sample rate: %d\n", fs_out);
 	printf("Output written to file: \"%s\"\n", output_file);
 	printf("Input sample count: %d\n", n_in);
 	printf("Output sample count: %d\n", n_out);

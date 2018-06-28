@@ -128,14 +128,13 @@ int tb_pipeline_params(struct ipc *ipc, int nch, char *bits_in,
 	struct pipeline *p;
 	struct comp_dev *cd;
 	struct sof_ipc_pcm_params params;
-	int fs, deadline;
+	int deadline;
 	char message[DEBUG_MSG_LEN];
 
 	deadline = ipc_pipe->deadline;
-	fs = deadline * ipc_pipe->frames_per_sched;
 
 	/* Compute period from sample rates */
-	fs_period = (int)(0.9999 + fs * deadline / 1e6);
+	fs_period = (int)(0.9999 + fs_in * deadline / 1e6);
 	sprintf(message, "period sample count %d\n", fs_period);
 	debug_print(message);
 
@@ -144,7 +143,7 @@ int tb_pipeline_params(struct ipc *ipc, int nch, char *bits_in,
 	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
 	params.params.frame_fmt = find_format(bits_in);
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
-	params.params.rate = fs;
+	params.params.rate = fs_in;
 	params.params.channels = nch;
 	switch (params.params.frame_fmt) {
 	case(SOF_IPC_FRAME_S16_LE):

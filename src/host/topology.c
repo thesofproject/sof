@@ -618,6 +618,18 @@ static int load_src(struct sof *sof, int comp_id, int pipeline_id,
 
 	array = (void *)array - size;
 
+	/* set testbench input and output sample rate from topology */
+	if (!fs_out) {
+		fs_out = src.sink_rate;
+
+		if (!fs_in)
+			fs_in = src.source_rate;
+		else
+			src.source_rate = fs_in;
+	} else {
+		src.sink_rate = fs_out;
+	}
+
 	/* configure src */
 	src.comp.id = comp_id;
 	src.comp.hdr.size = sizeof(struct sof_ipc_comp_src);
