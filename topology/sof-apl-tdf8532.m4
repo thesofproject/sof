@@ -190,7 +190,7 @@ DAI_CONFIG(SSP, 2, 2, SSP2-Codec,
 	   SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 12288000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
-		      SSP_TDM(2, 32, 255, 255),
+		      SSP_TDM(8, 32, 255, 255),
 		      SSP_CONFIG_DATA(SSP, 2, 32)))
 
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
