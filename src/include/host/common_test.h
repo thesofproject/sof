@@ -48,6 +48,14 @@ char *input_file; /* input file name */
 char *output_file; /* output file name */
 char *bits_in; /* input bit format */
 
+/*
+ * input and output sample rate parameters
+ * By default, these are calculated from pipeline frames_per_sched and deadline
+ * But they can also be overridden via input arguments to the testbench
+ */
+uint32_t fs_in;
+uint32_t fs_out;
+
 #define DEBUG_MSG_LEN		256
 #define MAX_LIB_NAME_LEN	256
 
