@@ -42,6 +42,12 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 
+/* common input parameters for the testbench */
+char *tplg_file; /* topology file to use */
+char *input_file; /* input file name */
+char *output_file; /* output file name */
+char *bits_in; /* input bit format */
+
 #define DEBUG_MSG_LEN		256
 #define MAX_LIB_NAME_LEN	256
 

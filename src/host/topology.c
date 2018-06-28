@@ -42,9 +42,6 @@
 #include "host/topology.h"
 #include "host/file.h"
 
-char *input_file;
-char *output_file;
-
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];
 struct shared_lib_table *lib_table;
@@ -776,9 +773,9 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 	size_t file_size, size;
 
 	/* open topology file */
-	file = fopen(filename, "rb");
+	file = fopen(tplg_file, "rb");
 	if (!file) {
-		fprintf(stderr, "error: opening file %s\n", filename);
+		fprintf(stderr, "error: opening file %s\n", tplg_file);
 		return -EINVAL;
 	}
 
