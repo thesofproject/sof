@@ -43,6 +43,7 @@
 #include <sof/work.h>
 #include <sof/debug.h>
 #include <sof/trace.h>
+#include <sof/cpu-usage.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -56,6 +57,10 @@ int do_task(struct sof *sof)
 #ifdef STATIC_PIPE
 	struct audio_data pdata;
 #endif
+
+	uint32_t cyc;
+	struct cpu_usage *usg;
+
 	/* init default audio components */
 	sys_comp_init();
 	sys_comp_dai_init();
@@ -78,12 +83,18 @@ int do_task(struct sof *sof)
 	/* let host know DSP boot is complete */
 	platform_boot_complete(0);
 
+	usg = calc_cpu_usage_init();
+
 	/* main audio IPC processing loop */
 	while (1) {
+
+		cyc = platform_get_cpu_count();
 
 		/* sleep until next IPC or DMA */
 		sa_enter_idle(sof);
 		wait_for_interrupt(0);
+
+		usg->accum_cycles += platform_get_cpu_count() - cyc;
 
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
