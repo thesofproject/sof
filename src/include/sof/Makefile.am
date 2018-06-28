@@ -36,4 +36,5 @@ include_HEADERS = \
 	string.h \
 	hda-dma.h \
 	work.h \
-	pm_runtime.h
+	pm_runtime.h \
+	cpu-usage.h
