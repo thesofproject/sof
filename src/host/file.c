@@ -645,7 +645,7 @@ static int file_prepare(struct comp_dev *dev)
 	}
 
 	if (!buffer) {
-		printf("error: no sink/source buffer\n");
+		fprintf(stderr, "error: no sink/source buffer\n");
 		return -EINVAL;
 	}
 
@@ -655,7 +655,7 @@ static int file_prepare(struct comp_dev *dev)
 		ret = buffer_set_size(buffer, dev->frames * 2 *
 			periods * dev->params.channels);
 		if (ret < 0) {
-			printf("error: file buffer size set\n");
+			fprintf(stderr, "error: file buffer size set\n");
 			return ret;
 		}
 		buffer_reset_pos(buffer);
