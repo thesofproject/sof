@@ -31,7 +31,7 @@ include(`platform/intel/bxt.m4')
 # PCM4 ----> volume -----> SSP4
 #      <---- Volume <----- SSP4
 # PCM5 ----> volume -----> SSP5
-#      <---- volume <----- SSP3
+#      <---- volume <----- SSP5
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s16le.
