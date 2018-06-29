@@ -34,8 +34,8 @@ function [d, nt, nt_use, nt_skip] = find_test_signal(x, test)
 fprintf('Finding test start marker...\n');
 s = sync_chirp(test.fs, 'up');
 nx = length(x);
-n_half = round(nx/2);
-n = min(round(test.fs*test.sm), n_half);
+n_seek = round(test.fs*(test.idle_t + test.mark_t));
+n = min(round(test.fs*test.sm), n_seek);
 y = x(1:n);
 [r, lags] = xcorr(y, s);
 [r_max, idx] = max(r);
@@ -44,7 +44,8 @@ d_start = lags(idx);
 %% Find end marker
 fprintf('Finding test end marker...\n');
 s = sync_chirp(test.fs, 'down');
-n = min(round(test.fs*test.em),n_half);
+n_seek = round(test.fs*(2*test.idle_t + test.mark_t));
+n = min(round(test.fs*test.em),n_seek);
 y = x(end-n+1:end);
 [r, lags] = xcorr(y, s);
 [r_max, idx] = max(r);

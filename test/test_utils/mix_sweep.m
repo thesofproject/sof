@@ -45,8 +45,8 @@ test.mark_a_db = mark_start.a_db;
 test.ts = mark_start.t;
 
 %% Idle time to start and end
-t_idle0 = 0.5;
-n_idle = round(test.fs*t_idle0);
+test.idle_t = 0.5;
+n_idle = round(test.fs*test.idle_t);
 t_idle = n_idle/test.fs;
 x = zeros(test.nf*test.na*test.nt +mark_start.n +mark_end.n +2*n_idle, ...
         test.nch, 'int32');
