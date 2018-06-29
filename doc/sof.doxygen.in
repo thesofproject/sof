@@ -1,5 +1,5 @@
 PROJECT_NAME     = "Sound Open Firmware"
-OUTPUT_DIRECTORY = sof_uapi
+OUTPUT_DIRECTORY = doxygen
 GENERATE_LATEX   = NO
 GENERATE_RTF	 = NO
 GENERATE_MAN     = NO
