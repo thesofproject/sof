@@ -90,16 +90,16 @@ int pkcs_sign(struct image *image, struct fw_image_manifest *man,
 		return -ENOMEM;
 
 	/* load in RSA private key from PEM file */
-	if (image->key_name == NULL) {
+	if (!image->key_name)
 		sprintf(path, "%s/otc_private_key.pem", PEM_KEY_PREFIX);
-		image->key_name = path;
-	}
+	else
+		strcpy(path, image->key_name);
 
-	fprintf(stdout, " pkcs: signing with key %s\n", image->key_name);
-	fp = fopen(image->key_name, "r");
+	fprintf(stdout, " pkcs: signing with key %s\n", path);
+	fp = fopen(path, "r");
 	if (fp == NULL) {
 		fprintf(stderr, "error: can't open file %s %d\n",
-			image->key_name, -errno);
+			path, -errno);
 		return -errno;
 	}
 	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
