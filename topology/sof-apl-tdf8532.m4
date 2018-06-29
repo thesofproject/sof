@@ -97,27 +97,6 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 # DAIs configuration
 #
 
-# playback DAI is SSP4 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 4, SSP4-Codec,
-	PIPELINE_SOURCE_1, 2, s32le,
-	48, 1000, 0, 0)
-
-# playback DAI is SSP2 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-	2, SSP, 2, SSP2-Codec,
-	PIPELINE_SOURCE_2, 2, s32le,
-	48, 1000, 0, 0)
-
-# capture DAI is SSP2 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-capture.m4,
-	3, SSP, 2, SSP2-Codec,
-	PIPELINE_SINK_3, 2, s32le,
-	48, 1000, 0, 0)
-
 # playback DAI is SSP0 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -139,6 +118,20 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_6, 2, s16le,
 	48, 1000, 0, 0)
 
+# playback DAI is SSP2 using 2 periods
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	2, SSP, 2, SSP2-Codec,
+	PIPELINE_SOURCE_2, 2, s32le,
+	48, 1000, 0, 0)
+
+# capture DAI is SSP2 using 2 periods
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	3, SSP, 2, SSP2-Codec,
+	PIPELINE_SINK_3, 2, s32le,
+	48, 1000, 0, 0)
+
 # playback DAI is SSP3 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
@@ -151,6 +144,13 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 DAI_ADD(sof/pipe-dai-capture.m4,
 	8, SSP, 3, SSP3-Codec,
 	PIPELINE_SINK_8, 2, s16le,
+	48, 1000, 0, 0)
+
+# playback DAI is SSP4 using 2 periods
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	1, SSP, 4, SSP4-Codec,
+	PIPELINE_SOURCE_1, 2, s32le,
 	48, 1000, 0, 0)
 
 # playback DAI is SSP5 using 2 periods
@@ -168,31 +168,16 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	48, 1000, 0, 0)
 
 # PCM Low Latency, id 0
-PCM_PLAYBACK_ADD(Port4, 0, 0, 0, PIPELINE_PCM_1)
-PCM_DUPLEX_ADD(Port2, 1, 1, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 PCM_DUPLEX_ADD(Port0, 2, 2, 2, PIPELINE_PCM_4, PIPELINE_PCM_5)
 PCM_CAPTURE_ADD(Port1, 3, 3, 3, PIPELINE_PCM_6)
+PCM_DUPLEX_ADD(Port2, 1, 1, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
 PCM_DUPLEX_ADD(Port3, 4, 4, 4, PIPELINE_PCM_7, PIPELINE_PCM_8)
+PCM_PLAYBACK_ADD(Port4, 0, 0, 0, PIPELINE_PCM_1)
 PCM_DUPLEX_ADD(Port5, 5, 5, 5, PIPELINE_PCM_9, PIPELINE_PCM_10)
 
 #
 # BE configurations - overrides config in ACPI if present
 #
-
-DAI_CONFIG(SSP, 4, 4, SSP4-Codec,
-	   SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 12288000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
-		      SSP_TDM(8, 32, 15, 15),
-		      SSP_CONFIG_DATA(SSP, 4, 32)))
-
-DAI_CONFIG(SSP, 2, 2, SSP2-Codec,
-	   SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 12288000, codec_slave),
-		      SSP_CLOCK(fsync, 48000, codec_slave),
-		      SSP_TDM(2, 32, 255, 255),
-		      SSP_CONFIG_DATA(SSP, 2, 32)))
-
 DAI_CONFIG(SSP, 0, 0, SSP0-Codec,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 1536000, codec_slave),
@@ -207,12 +192,26 @@ DAI_CONFIG(SSP, 1, 1, SSP1-Codec,
 		      SSP_TDM(2, 16, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 1, 16)))
 
+DAI_CONFIG(SSP, 2, 2, SSP2-Codec,
+	   SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 12288000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(8, 32, 255, 255),
+		      SSP_CONFIG_DATA(SSP, 2, 32)))
+
 DAI_CONFIG(SSP, 3, 3, SSP3-Codec,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
 		      SSP_CLOCK(bclk, 1536000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 16, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 3, 16)))
+
+DAI_CONFIG(SSP, 4, 4, SSP4-Codec,
+	   SSP_CONFIG(DSP_B, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 12288000, codec_slave),
+		      SSP_CLOCK(fsync, 48000, codec_slave),
+		      SSP_TDM(8, 32, 15, 15),
+		      SSP_CONFIG_DATA(SSP, 4, 32)))
 
 DAI_CONFIG(SSP, 5, 5, SSP5-Codec,
 	   SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24576000, codec_mclk_in),
