@@ -33,6 +33,9 @@
 #ifndef __XTOS_STRUCTS_H__
 #define __XTOS_STRUCTS_H__
 
+struct irq_task;
+struct schedule_data;
+
 struct thread_data {
 	xtos_structures_pointers xtos_ptrs;
 };
@@ -45,6 +48,14 @@ struct xtos_core_data {
 	int xtos_stack_for_interrupt_5[XTOS_INT_STACK_SIZE / 4];
 
 	struct thread_data *thread_data_ptr;
+};
+
+struct core_context {
+	struct thread_data td;
+	struct irq_task *irq_low_task;
+	struct irq_task *irq_med_task;
+	struct irq_task *irq_high_task;
+	struct schedule_data *sch;
 };
 
 void _xtos_initialize_pointers_per_core(void);

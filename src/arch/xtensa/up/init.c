@@ -28,53 +28,35 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <xtensa/xtruntime.h>
-#include <xtensa/hal.h>
 #include <platform/memory.h>
 #include <sof/interrupt.h>
 #include <platform/interrupt.h>
 #include <sof/mailbox.h>
+#include <arch/init.h>
 #include <arch/task.h>
-#include <sof/panic.h>
 #include <sof/init.h>
 #include <sof/lock.h>
 #include <stdint.h>
 
+/**
+ * \file arch/xtensa/up/init.c
+ * \brief Xtensa UP initialization functions
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
+
 #if DEBUG_LOCKS
+/** \brief Debug lock. */
 uint32_t lock_dbg_atomic = 0;
+
+/** \brief Debug locks per user. */
 uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
 #endif
 
-static void exception(void)
-{
-	/* now panic and rewind 8 stack frames. */
-	/* TODO: we could invoke a GDB stub here */
-	panic_rewind(SOF_IPC_PANIC_EXCEPTION, 8 * sizeof(uint32_t));
-}
-
-static void register_exceptions(void)
-{
-	_xtos_set_exception_handler(
-		EXCCAUSE_ILLEGAL, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_SYSCALL, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_DIVIDE_BY_ZERO, (void*) &exception);
-
-	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_DATA_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_ADDR_ERROR, (void*) &exception);
-
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_DATA_ERROR, (void*) &exception);
-}
-
-/* do any architecture init here */
+/**
+ * \brief Initializes architecture.
+ * \param[in,out] sof Firmware main context.
+ * \return Error status.
+ */
 int arch_init(struct sof *sof)
 {
 	register_exceptions();
@@ -82,7 +64,3 @@ int arch_init(struct sof *sof)
 	return 0;
 }
 
-/* called from assembler context with no return or func parameters */
-void __memmap_init(void)
-{
-}

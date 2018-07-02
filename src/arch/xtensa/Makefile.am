@@ -46,19 +46,22 @@ libreset_a_CCASFLAGS = \
 	-mtext-section-literals
 
 sof_SOURCES = \
-	timer.c \
-	task.c
+	timer.c
 
 if BUILD_XTENSA_SMP
 sof_SOURCES += \
 	smp/xtos/crt1-boards.S \
 	smp/xtos/_vectors.S \
-	smp/init.c
+	smp/init.c \
+	smp/schedule.c \
+	smp/task.c
 else
 sof_SOURCES += \
 	up/xtos/crt1-boards.S \
 	up/xtos/_vectors.S \
-	up/init.c
+	up/init.c \
+	up/schedule.c \
+	up/task.c
 endif
 
 if BUILD_BOOTLOADER

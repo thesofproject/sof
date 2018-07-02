@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,26 +26,37 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
  */
 
-#ifndef __INCLUDE_TASK_H__
-#define __INCLUDE_TASK_H__
+/**
+ * \file arch/xtensa/up/task.c
+ * \brief Xtensa UP task implementation file
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
 
 #include <arch/task.h>
 
-struct sof;
-struct task;
+/** \brief IRQ low task data pointer. */
+static struct irq_task *irq_low_task;
 
-int do_task(struct sof *sof);
+/** \brief IRQ medium task data pointer. */
+static struct irq_task *irq_med_task;
 
-static inline void allocate_tasks(void)
+/** \brief IRQ high task data pointer. */
+static struct irq_task *irq_high_task;
+
+struct irq_task **task_irq_low_get()
 {
-	arch_allocate_tasks();
+	return &irq_low_task;
 }
 
-static inline void run_task(struct task *task)
+struct irq_task **task_irq_med_get()
 {
-	arch_run_task(task);
+	return &irq_med_task;
 }
 
-#endif
+struct irq_task **task_irq_high_get()
+{
+	return &irq_high_task;
+}

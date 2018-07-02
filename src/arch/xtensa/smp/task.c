@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,26 +26,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
  */
 
-#ifndef __INCLUDE_TASK_H__
-#define __INCLUDE_TASK_H__
+/**
+ * \file arch/xtensa/smp/task.c
+ * \brief Xtensa SMP task implementation file
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
 
+#include <xtos-structs.h>
+#include <arch/cpu.h>
 #include <arch/task.h>
 
-struct sof;
-struct task;
-
-int do_task(struct sof *sof);
-
-static inline void allocate_tasks(void)
+struct irq_task **task_irq_low_get()
 {
-	arch_allocate_tasks();
+	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
+
+	return &ctx->irq_low_task;
 }
 
-static inline void run_task(struct task *task)
+struct irq_task **task_irq_med_get()
 {
-	arch_run_task(task);
+	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
+
+	return &ctx->irq_med_task;
 }
 
-#endif
+struct irq_task **task_irq_high_get()
+{
+	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
+
+	return &ctx->irq_high_task;
+}

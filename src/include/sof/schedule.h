@@ -39,6 +39,7 @@
 #include <sof/list.h>
 #include <sof/work.h>
 
+struct schedule_data;
 struct sof;
 
 /* task states */
@@ -73,6 +74,8 @@ struct task {
 	/* runtime duration in scheduling clock base */
 	uint64_t max_rtime;		/* max time taken to run */
 };
+
+struct schedule_data **arch_schedule_get(void);
 
 void schedule(void);
 

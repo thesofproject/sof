@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,26 +26,60 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
  */
 
-#ifndef __INCLUDE_TASK_H__
-#define __INCLUDE_TASK_H__
+/**
+ * \file arch/xtensa/include/arch/init.h
+ * \brief Arch init header file
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
 
-#include <arch/task.h>
+#ifndef __ARCH_INIT_H__
+#define __ARCH_INIT_H__
 
-struct sof;
-struct task;
+#include <xtensa/hal.h>
+#include <xtensa/xtruntime.h>
+#include <sof/panic.h>
 
-int do_task(struct sof *sof);
-
-static inline void allocate_tasks(void)
+/**
+ * \brief Called in the case of exception.
+ */
+static inline void exception(void)
 {
-	arch_allocate_tasks();
+	/* now panic and rewind 8 stack frames. */
+	/* TODO: we could invoke a GDB stub here */
+	panic_rewind(SOF_IPC_PANIC_EXCEPTION, 8 * sizeof(uint32_t));
 }
 
-static inline void run_task(struct task *task)
+/**
+ * \brief Registers exception handlers.
+ */
+static inline void register_exceptions(void)
 {
-	arch_run_task(task);
+	_xtos_set_exception_handler(
+		EXCCAUSE_ILLEGAL, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_SYSCALL, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_DIVIDE_BY_ZERO, (void *)&exception);
+
+	_xtos_set_exception_handler(
+		EXCCAUSE_INSTR_DATA_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_INSTR_ADDR_ERROR, (void *)&exception);
+
+	_xtos_set_exception_handler(
+		EXCCAUSE_LOAD_STORE_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_LOAD_STORE_DATA_ERROR, (void *)&exception);
 }
+
+/**
+ * \brief Called from assembler context with no return or parameters.
+ */
+static inline void __memmap_init(void) { }
 
 #endif
