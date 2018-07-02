@@ -41,6 +41,11 @@
 
 #include <uapi/abi.h>
 
+/** \addtogroup sof_uapi uAPI
+ *  SOF uAPI specification.
+ *  @{
+ */
+
 /*
  * IPC messages have a prefixed 32 bit identifier made up as follows :-
  *
@@ -940,5 +945,7 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t sar;
 	uint32_t stack;
 }  __attribute__((packed));
+
+/** @}*/
 
 #endif

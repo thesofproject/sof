@@ -29,6 +29,13 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * \file include/sof/dma.h
+ * \brief DMA Drivers definition
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * \author Keyon Jie <yang.jie@linux.intel.com>
+ */
+
 #ifndef __INCLUDE_DMA_H__
 #define __INCLUDE_DMA_H__
 
@@ -38,6 +45,11 @@
 #include <sof/sof.h>
 #include <sof/wait.h>
 #include <arch/atomic.h>
+
+/** \addtogroup sof_dma_drivers DMA Drivers
+ *  DMA Drivers API specification.
+ *  @{
+ */
 
 /* DMA direction bitmasks used to define DMA copy direction */
 #define DMA_DIR_MEM_TO_MEM	(1 << 0) /* local memory copy */
@@ -298,5 +310,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
 
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag);
+
+/** @}*/
 
 #endif
