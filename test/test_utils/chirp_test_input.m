@@ -77,7 +77,7 @@ test.fn_out =  sprintf('chirp_test_out.%s', test.fmt);
 test.a_db = -0.1; % Near full scale
 test.a = 10^(test.a_db/20);
 test.f_min = 20;
-test.f_max = test.fs/2;
+test.f_max = 0.99*test.fs/2;
 test.cl = 2.0;
 
 

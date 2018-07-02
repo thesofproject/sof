@@ -43,8 +43,8 @@ test.mark_a_db = mark_start.a_db;
 test.ts = mark_start.t;
 
 %% Idle time to start and end
-t_idle0 = 0.5;
-n_idle = round(test.fs*t_idle0);
+test.idle_t = 0.5;
+n_idle = round(test.fs*test.idle_t);
 t_idle = n_idle/test.fs;
 x = zeros(test.nt + mark_start.n + mark_end.n +2*n_idle, test.nch, 'int32');
 
@@ -65,7 +65,7 @@ i1 = n_idle+mark_start.n+1;
 i2 = i1+test.nt-1;
 fprintf('Mixing %.1f dBFS chirp ...\n', test.a_db);
 tc = ((1:round(test.cl*test.fs))-1)/test.fs;
-s = test.a * chirp(tc, test.f_min, test.tl, test.f_max, 'linear');
+s = test.a * chirp(tc, test.f_min, test.tl, test.f_max, 'linear', 90);
 sign = 1;
 for ch=test.ch
         x(i1:i2, ch) = dither_and_quantize(sign * s, test.bits_in);

@@ -38,7 +38,7 @@ if nx < 1
 end
 
 %% Find sync
-[d, nt, nt_use, nt_skip] = find_test_signal(x, test);
+[d, nt, nt_use, nt_skip] = find_test_signal(x(:,test.ch(1)), test);
 
 %% Trim sample
 i1 = d+nt_skip;
