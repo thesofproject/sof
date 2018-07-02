@@ -41,8 +41,7 @@
 #include <xtensa/corebits.h>
 #include <xtensa/config/core-isa.h>
 
-	.type   boot_pri_core, @function
-	.type   boot_sec_core, @function
+	.type   boot_master_core, @function
 
 	.begin	literal_prefix	.boot_entry
 	.section .boot_entry.text, "ax"
@@ -145,16 +144,16 @@ boot_init:
 #endif
 
 	/* determine core we are running on */
-	rsr a2, PRID
-	beqz a2, 1f
+	rsr.prid	a2
+	movi		a3, PLATFORM_MASTER_CORE_ID
+	beq			a2, a3, 1f
 
-	/* we are seconadry core, so boot it */
-	call8 boot_sec_core
+	/* no core should get here */
 	j dead
 
 1:
 	/* we are primary core so boot it */
-	call8 boot_pri_core
+	call8 boot_master_core
 
 dead:
 	/* should never get here - we are dead */
