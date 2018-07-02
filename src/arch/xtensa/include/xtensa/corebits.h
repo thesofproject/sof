@@ -5,7 +5,7 @@
  *  This file is not generated, ie. it is processor configuration independent.)
  */
 
-/* $Id: //depot/rel/Eaglenest/Xtensa/OS/include/xtensa/corebits.h#2 $ */
+/* $Id: //depot/rel/Foxhill/dot.8/Xtensa/OS/include/xtensa/corebits.h#1 $ */
 
 /*
  * Copyright (c) 2005-2011 Tensilica Inc.
@@ -106,6 +106,14 @@
 #define PS_INTLEVEL_SHIFT	0
 #define PS_INTLEVEL_MASK	0x0000000F
 #define PS_INTLEVEL(n)		((n)&PS_INTLEVEL_MASK)		/* n = 0..15 */
+/*  ABI-derived field values:  */
+#ifdef __XTENSA_CALL0_ABI__
+#define PS_WOE_ABI		0
+#define PS_WOECALL4_ABI		0
+#else
+#define PS_WOE_ABI		PS_WOE				/* 0x40000 */
+#define PS_WOECALL4_ABI		(PS_WOE | PS_CALLINC(1))	/* 0x50000, per call4 */
+#endif
 /*  Backward compatibility (deprecated):  */
 #define PS_PROGSTACK_SHIFT	PS_UM_SHIFT
 #define PS_PROGSTACK_MASK	PS_UM_MASK

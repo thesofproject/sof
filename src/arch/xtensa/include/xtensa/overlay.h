@@ -27,8 +27,18 @@
 #define OVERLAY_H
 
 
+#include <xtensa/xtruntime.h>
+
+
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+
+// Overlays not supported for CALL0 ABI
+#if defined (__XTENSA_CALL0_ABI__)
+#undef  XT_DISABLE_OVERLAYS
+#define XT_DISABLE_OVERLAYS    1
 #endif
 
 // Define this to turn off overlay support
@@ -68,13 +78,37 @@ extern struct ovly_table _ovly_table[];
 void xt_overlay_map(int ov_id);
 int  xt_overlay_map_async(int ov_id);
 int  xt_overlay_map_in_progress(void);
-int  xt_overlay_get_id(void);
 unsigned int xt_overlay_get_state(unsigned int pc);
 unsigned int xt_overlay_check_map(unsigned int * pc, unsigned int * ps,
                                   unsigned int ovstate, unsigned int sp);
 int  xt_overlay_start_map(void * dst, void * src, unsigned int len, int ov_id);
 int  xt_overlay_is_mapping(int ov_id);
 void xt_overlay_fatal_error(int ov_id);
+
+
+// Returns the current overlay ID. If no overlay is mapped or an overlay
+// is in the middle of being mapped, returns -1. Inlined to avoid calling
+// out of overlay (wastes cycles, can end up reading wrong ID on interrupt
+// activity).
+//
+static inline int __attribute__((always_inline)) xt_overlay_get_id(void)
+{
+extern short _mapping_id;
+extern short _ovly_id;
+
+    int ret;
+    unsigned int flags = XTOS_SET_INTLEVEL(15);
+
+    if (_mapping_id >= 0) {
+        ret = -1;
+    }
+    else {
+        ret = _ovly_id;
+    }
+
+    XTOS_RESTORE_INTLEVEL(flags);
+    return ret;
+}
 
 
 // The following macros are used to declare numbered overlays and generate

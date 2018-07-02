@@ -27,9 +27,17 @@ export SOF_INCDIR = \
 	-I $(SRC_DIR)/include \
 	-I $(ROOT_DIR)/include
 
-export ARCH_INCDIR = \
-	-I $(SRC_DIR)/arch/$(ARCH)/include \
-	-I $(SRC_DIR)/arch/$(ARCH)/xtos
+ARCH_INCDIR = -I $(SRC_DIR)/arch/$(ARCH)/include
+
+if BUILD_XTENSA_SMP
+ARCH_INCDIR += \
+	-I $(SRC_DIR)/arch/$(ARCH)/smp/xtos
+else
+ARCH_INCDIR += \
+	-I $(SRC_DIR)/arch/$(ARCH)/up/xtos
+endif
+
+export ARCH_INCDIR
 
 PLATFORM_INCDIR = -I $(SRC_DIR)/platform/$(PLATFORM)/include
 
