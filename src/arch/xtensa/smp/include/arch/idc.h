@@ -74,7 +74,6 @@ struct idc {
 	uint32_t done_bit_mask;		/**< done interrupt mask */
 	uint32_t msg_pending;		/**< is message pending */
 	struct idc_msg received_msg;	/**< received message */
-	struct idc_msg msg_to_send;	/**< message to be sent */
 };
 
 /**
@@ -142,12 +141,11 @@ static void idc_irq_handler(void *arg)
 
 /**
  * \brief Sends IDC message.
+ * \param[in,out] msg Pointer to IDC message.
  */
-static inline void arch_idc_send_msg(void)
+static inline void arch_idc_send_msg(struct idc_msg *msg)
 {
 	struct idc *idc = *idc_get();
-
-	struct idc_msg msg = idc->msg_to_send;
 	int core = cpu_get_id();
 	uint32_t flags;
 
@@ -155,8 +153,8 @@ static inline void arch_idc_send_msg(void)
 
 	spin_lock_irq(&idc->lock, flags);
 
-	idc_write(IPC_IDCIETC(msg.core), core, msg.extension);
-	idc_write(IPC_IDCITC(msg.core), core, msg.header | IPC_IDCITC_BUSY);
+	idc_write(IPC_IDCIETC(msg->core), core, msg->extension);
+	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
 
 	spin_unlock_irq(&idc->lock, flags);
 }
