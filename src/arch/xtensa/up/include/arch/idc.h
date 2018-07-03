@@ -37,10 +37,12 @@
 #ifndef __ARCH_IDC_H__
 #define __ARCH_IDC_H__
 
+struct idc_msg;
+
 /**
  * \brief Sends IDC message.
  */
-static inline void arch_idc_send_msg(void) { }
+static inline void arch_idc_send_msg(struct idc_msg *msg) { }
 
 /**
  * \brief Checks for pending IDC messages.

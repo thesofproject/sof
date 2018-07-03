@@ -31,7 +31,9 @@
 #ifndef __INCLUDE_PLATFORM_IDC_H__
 #define __INCLUDE_PLATFORM_IDC_H__
 
-static inline void idc_send_msg(void) { }
+struct idc_msg;
+
+static inline void idc_send_msg(struct idc_msg *msg) { }
 
 static inline void idc_process_msg_queue(void) { }
 
