@@ -251,8 +251,11 @@ int main(int argc, char **argv)
 	}
 
 	/* set up trace class definition table from trace header */
-	setup_trace_table();
-
+	ret = setup_trace_table();
+	if (ret < 0) {
+		fprintf(stderr, "error: setting up trace header table\n");
+		exit(EXIT_FAILURE);
+	}
 	/* command line arguments*/
 	parse_input_args(argc, argv);
 

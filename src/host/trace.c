@@ -45,7 +45,7 @@ static int test_bench_trace = 1;
 int num_trace_classes;
 
 /* set up trace class identifier table based on SOF trace header file */
-void setup_trace_table(void)
+int setup_trace_table(void)
 {
 	char buffer[2048];
 	char *trace = "sof/trace.h";
@@ -62,6 +62,7 @@ void setup_trace_table(void)
 	if (!fp) {
 		fprintf(stderr, "error: opening trace include file %s\n",
 			trace_filename);
+		return -EINVAL;
 	}
 
 	/* find number of trace classes defined */
@@ -114,6 +115,7 @@ void setup_trace_table(void)
 	}
 	fclose(fp);
 	free(trace_filename);
+	return 0;
 }
 
 void free_trace_table(void)
