@@ -28,72 +28,60 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <xtensa/xtruntime.h>
-#include <xtensa/hal.h>
+/**
+ * \file arch/xtensa/smp/init.c
+ * \brief Xtensa SMP initialization functions
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
+
 #include <xtos-structs.h>
 #include <platform/memory.h>
 #include <sof/interrupt.h>
 #include <platform/interrupt.h>
 #include <sof/mailbox.h>
 #include <arch/cpu.h>
+#include <arch/init.h>
 #include <arch/task.h>
-#include <sof/panic.h>
 #include <sof/init.h>
 #include <sof/lock.h>
 #include <stdint.h>
 
 #if DEBUG_LOCKS
+/** \brief Debug lock. */
 uint32_t lock_dbg_atomic = 0;
+
+/** \brief Debug locks per user. */
 uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
 #endif
 
-static struct thread_data td;
+/** \brief Core context for master core. */
+static struct core_context master_core_ctx;
 
+/** \brief Core context pointers for all the cores. */
+struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
+
+/** \brief Xtos core data for master core. */
 struct xtos_core_data master_core_data;
+
+/** \brief Xtos core data pointers for all the cores. */
 struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 
-static void exception(void)
-{
-	/* now panic and rewind 8 stack frames. */
-	/* TODO: we could invoke a GDB stub here */
-	panic_rewind(SOF_IPC_PANIC_EXCEPTION, 8 * sizeof(uint32_t));
-}
-
-static void register_exceptions(void)
-{
-	_xtos_set_exception_handler(
-		EXCCAUSE_ILLEGAL, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_SYSCALL, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_DIVIDE_BY_ZERO, (void*) &exception);
-
-	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_DATA_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_ADDR_ERROR, (void*) &exception);
-
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void*) &exception);
-	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_DATA_ERROR, (void*) &exception);
-}
-
+/**
+ * \brief Initializes core specific data.
+ */
 static void initialize_pointers_per_core(void)
 {
 	int core = cpu_get_id();
 	struct xtos_core_data *core_data = core_data_ptr[core];
-	struct thread_data *thread_data_ptr;
 
-	if (core == PLATFORM_MASTER_CORE_ID)
-		master_core_data.thread_data_ptr = &td;
+	if (core == PLATFORM_MASTER_CORE_ID) {
+		master_core_data.thread_data_ptr = &master_core_ctx.td;
+		core_ctx_ptr[PLATFORM_MASTER_CORE_ID] = &master_core_ctx;
+	}
 
-	thread_data_ptr = core_data->thread_data_ptr;
-	cpu_write_threadptr((int)thread_data_ptr);
+	cpu_write_threadptr((int)core_ctx_ptr[core]);
 
-	xtos_structures_pointers *p = &(thread_data_ptr->xtos_ptrs);
+	xtos_structures_pointers *p = &core_data->thread_data_ptr->xtos_ptrs;
 	p->xtos_enabled = &core_data->xtos_int_data.xtos_enabled;
 	p->xtos_intstruct = &core_data->xtos_int_data;
 	p->xtos_interrupt_table = &core_data->xtos_int_data.xtos_interrupt_table.array[0];
@@ -104,16 +92,15 @@ static void initialize_pointers_per_core(void)
 	p->xtos_stack_for_interrupt_5 = core_data->xtos_stack_for_interrupt_5;
 }
 
-/* do any architecture init here */
+/**
+ * \brief Initializes architecture.
+ * \param[in,out] sof Firmware main context.
+ * \return Error status.
+ */
 int arch_init(struct sof *sof)
 {
 	initialize_pointers_per_core();
 	register_exceptions();
 	arch_assign_tasks();
 	return 0;
-}
-
-/* called from assembler context with no return or func parameters */
-void __memmap_init(void)
-{
 }

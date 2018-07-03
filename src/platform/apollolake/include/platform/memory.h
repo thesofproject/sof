@@ -259,7 +259,7 @@
 #endif
 
 /* bss data */
-#define SOF_BSS_DATA_SIZE	0x8200
+#define SOF_BSS_DATA_SIZE	0x8300
 
 /* Stack configuration */
 #define SOF_STACK_SIZE		0x1000

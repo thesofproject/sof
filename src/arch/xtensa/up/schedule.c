@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,27 +25,22 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ *
  */
 
-#ifndef __INCLUDE_TASK_H__
-#define __INCLUDE_TASK_H__
+/**
+ * \file arch/xtensa/up/schedule.c
+ * \brief Xtensa UP schedule implementation file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
 
-#include <arch/task.h>
+#include <sof/schedule.h>
 
-struct sof;
-struct task;
+/** \brief Schedule data pointer. */
+static struct schedule_data *sch;
 
-int do_task(struct sof *sof);
-
-static inline void allocate_tasks(void)
+struct schedule_data **arch_schedule_get()
 {
-	arch_allocate_tasks();
+	return &sch;
 }
-
-static inline void run_task(struct task *task)
-{
-	arch_run_task(task);
-}
-
-#endif
