@@ -31,9 +31,11 @@ ARCH_INCDIR = -I $(SRC_DIR)/arch/$(ARCH)/include
 
 if BUILD_XTENSA_SMP
 ARCH_INCDIR += \
+	-I $(SRC_DIR)/arch/$(ARCH)/smp/include \
 	-I $(SRC_DIR)/arch/$(ARCH)/smp/xtos
 else
 ARCH_INCDIR += \
+	-I $(SRC_DIR)/arch/$(ARCH)/up/include \
 	-I $(SRC_DIR)/arch/$(ARCH)/up/xtos
 endif
 

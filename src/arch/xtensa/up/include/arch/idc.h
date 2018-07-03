@@ -28,38 +28,28 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include "xtos-internal.h"
+/**
+ * \file arch/xtensa/up/include/arch/idc.h
+ * \brief Xtensa UP architecture IDC header file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
 
-#ifndef __XTOS_STRUCTS_H__
-#define __XTOS_STRUCTS_H__
+#ifndef __ARCH_IDC_H__
+#define __ARCH_IDC_H__
 
-struct idc;
-struct irq_task;
-struct schedule_data;
+/**
+ * \brief Sends IDC message.
+ */
+static inline void arch_idc_send_msg(void) { }
 
-struct thread_data {
-	xtos_structures_pointers xtos_ptrs;
-};
+/**
+ * \brief Checks for pending IDC messages.
+ */
+static inline void arch_idc_process_msg_queue(void) { }
 
-struct xtos_core_data {
-	struct XtosInterruptStructure xtos_int_data;
-	int xtos_stack_for_interrupt_2[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_3[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_4[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_5[XTOS_INT_STACK_SIZE / 4];
+/**
+ * \brief Initializes IDC data and registers for interrupt.
+ */
+static inline void arch_idc_init(void) { }
 
-	struct thread_data *thread_data_ptr;
-};
-
-struct core_context {
-	struct thread_data td;
-	struct irq_task *irq_low_task;
-	struct irq_task *irq_med_task;
-	struct irq_task *irq_high_task;
-	struct schedule_data *sch;
-	struct idc *idc;
-};
-
-void _xtos_initialize_pointers_per_core(void);
-
-#endif /* __XTOS_STRUCTS_H__ */
+#endif

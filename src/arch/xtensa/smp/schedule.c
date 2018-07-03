@@ -39,7 +39,7 @@
 #include <arch/cpu.h>
 #include <sof/schedule.h>
 
-struct schedule_data **arch_schedule_get()
+struct schedule_data **arch_schedule_get(void)
 {
 	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
 

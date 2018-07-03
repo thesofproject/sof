@@ -46,17 +46,17 @@ static struct irq_task *irq_med_task;
 /** \brief IRQ high task data pointer. */
 static struct irq_task *irq_high_task;
 
-struct irq_task **task_irq_low_get()
+struct irq_task **task_irq_low_get(void)
 {
 	return &irq_low_task;
 }
 
-struct irq_task **task_irq_med_get()
+struct irq_task **task_irq_med_get(void)
 {
 	return &irq_med_task;
 }
 
-struct irq_task **task_irq_high_get()
+struct irq_task **task_irq_high_get(void)
 {
 	return &irq_high_task;
 }

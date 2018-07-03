@@ -64,6 +64,34 @@
 #define IPC_DIPCCTL_IPCIDIE	(1 << 1)
 #define IPC_DIPCCTL_IPCTBIE	(1 << 0)
 
+#define IPC_DSP_OFFSET		0x10
+
+/* DSP IPC for intra DSP communication */
+#define IPC_IDCTFC(x)		(0x0 + x * IPC_DSP_OFFSET)
+#define IPC_IDCTEFC(x)		(0x4 + x * IPC_DSP_OFFSET)
+#define IPC_IDCITC(x)		(0x8 + x * IPC_DSP_OFFSET)
+#define IPC_IDCIETC(x)		(0xc + x * IPC_DSP_OFFSET)
+#define IPC_IDCCTL		0x50
+
+/* IDCTFC */
+#define IPC_IDCTFC_BUSY		(1 << 31)
+#define IPC_IDCTFC_MSG_MASK	0x7FFFFFFF
+
+/* IDCTEFC */
+#define IPC_IDCTEFC_MSG_MASK	0x3FFFFFFF
+
+/* IDCITC */
+#define IPC_IDCITC_BUSY		(1 << 31)
+#define IPC_IDCITC_MSG_MASK	0x7FFFFFFF
+
+/* IDCIETC */
+#define IPC_IDCIETC_DONE	(1 << 30)
+#define IPC_IDCIETC_MSG_MASK	0x3FFFFFFF
+
+/* IDCCTL */
+#define IPC_IDCCTL_IDCIDIE(x)	(0x100 << (x))
+#define IPC_IDCCTL_IDCTBIE(x)	(0x1 << (x))
+
 #define IRQ_CPU_OFFSET	0x40
 
 #define REG_IRQ_IL2MSD(xcpu)	(0x0 + (xcpu * IRQ_CPU_OFFSET))
@@ -235,6 +263,16 @@ static inline uint32_t ipc_read(uint32_t reg)
 static inline void ipc_write(uint32_t reg, uint32_t val)
 {
 	*((volatile uint32_t*)(IPC_HOST_BASE + reg)) = val;
+}
+
+static inline uint32_t idc_read(uint32_t reg, uint32_t core_id)
+{
+	return *((volatile uint32_t*)(IPC_DSP_BASE(core_id) + reg));
+}
+
+static inline void idc_write(uint32_t reg, uint32_t core_id, uint32_t val)
+{
+	*((volatile uint32_t*)(IPC_DSP_BASE(core_id) + reg)) = val;
 }
 #endif
 

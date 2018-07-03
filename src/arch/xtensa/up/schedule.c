@@ -40,7 +40,7 @@
 /** \brief Schedule data pointer. */
 static struct schedule_data *sch;
 
-struct schedule_data **arch_schedule_get()
+struct schedule_data **arch_schedule_get(void)
 {
 	return &sch;
 }
