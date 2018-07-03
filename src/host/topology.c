@@ -42,11 +42,9 @@
 #include "host/topology.h"
 #include "host/file.h"
 
-char *input_file;
-char *output_file;
-void *volume_lib;
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];
+struct shared_lib_table *lib_table;
 
 /*
  * Register component driver
@@ -54,37 +52,39 @@ char pipeline_string[DEBUG_MSG_LEN];
  */
 static void register_comp(int comp_type)
 {
-	static int pga_reg;
-	static int file_reg;
+	int index;
+	char message[DEBUG_MSG_LEN];
 
-	switch (comp_type) {
-	case SND_SOC_TPLG_DAPM_PGA:
-		/* register comp driver if not already registered */
-		if (!pga_reg) {
-			debug_print("register pga comp driver\n");
-
-			/* register volume driver */
-			void (*sys_comp_volume_init)() =
-				(void (*)(void))dlsym(volume_lib,
-						      "sys_comp_volume_init");
-			sys_comp_volume_init();
-			pga_reg = 1;
-		}
-		break;
-	case SND_SOC_TPLG_DAPM_DAI_IN:
-	case SND_SOC_TPLG_DAPM_AIF_IN:
-		/* register comp driver if not already registered */
-		if (!file_reg) {
-			debug_print("register file comp driver\n");
-
-			/* register file driver */
+	/* register file comp driver (no shared library needed) */
+	if (comp_type == SND_SOC_TPLG_DAPM_DAI_IN ||
+	    comp_type == SND_SOC_TPLG_DAPM_AIF_IN) {
+		if (!lib_table[0].register_drv) {
 			sys_comp_file_init();
-			file_reg = 1;
+			lib_table[0].register_drv = 1;
+			debug_print("registered file comp driver\n");
 		}
-		break;
-	default:
-		break;
+		return;
 	}
+
+	/* get index of comp in shared library table */
+	index = get_index_by_type(comp_type, lib_table);
+	if (index < 0)
+		return;
+
+	/* register comp driver if not already registered */
+	if (!lib_table[index].register_drv) {
+		sprintf(message, "registered comp driver for %s\n",
+			lib_table[index].comp_name);
+		debug_print(message);
+
+		/* register comp driver */
+		void (*comp_init)() =
+			(void (*)(void))dlsym(lib_table[index].handle,
+					      lib_table[index].comp_init);
+		comp_init();
+		lib_table[index].register_drv = 1;
+	}
+
 }
 
 /* read vendor tuples array from topology */
@@ -133,7 +133,7 @@ static int read_array(struct snd_soc_tplg_vendor_array *array)
 		}
 		break;
 	default:
-		printf("error: unknown token type %d\n", array->type);
+		fprintf(stderr, "error: unknown token type %d\n", array->type);
 		return -EINVAL;
 	}
 	return 0;
@@ -152,7 +152,7 @@ static int load_graph(struct sof *sof, struct comp_info *temp_comp_list,
 	size = sizeof(struct snd_soc_tplg_dapm_graph_elem);
 	graph_elem = (struct snd_soc_tplg_dapm_graph_elem *)malloc(size);
 	if (!graph_elem) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -247,7 +247,7 @@ static int load_fileread(struct sof *sof, int comp_id, int pipeline_id,
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -264,7 +264,8 @@ static int load_fileread(struct sof *sof, int comp_id, int pipeline_id,
 				       ARRAY_SIZE(comp_tokens), array,
 				       array->size);
 		if (ret != 0) {
-			printf("error: parse fileread tokens %d\n", size);
+			fprintf(stderr, "error: parse fileread tokens %d\n",
+				size);
 			return -EINVAL;
 		}
 		total_array_size += array->size;
@@ -304,7 +305,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -322,7 +323,8 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 				       ARRAY_SIZE(comp_tokens), array,
 				       array->size);
 		if (ret != 0) {
-			printf("error: parse filewrite tokens %d\n", size);
+			fprintf(stderr, "error: parse filewrite tokens %d\n",
+				size);
 			return -EINVAL;
 		}
 		total_array_size += array->size;
@@ -360,7 +362,7 @@ static int load_pga(struct sof *sof, int comp_id, int pipeline_id,
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -377,7 +379,7 @@ static int load_pga(struct sof *sof, int comp_id, int pipeline_id,
 				       ARRAY_SIZE(comp_tokens), array,
 				       array->size);
 		if (ret != 0) {
-			printf("error: parse pga tokens %d\n", size);
+			fprintf(stderr, "error: parse pga tokens %d\n", size);
 			return -EINVAL;
 		}
 		total_array_size += array->size;
@@ -415,7 +417,7 @@ static int load_pipeline(struct sof *sof, struct sof_ipc_pipe_new *pipeline,
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
 	if (!array) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -435,7 +437,8 @@ static int load_pipeline(struct sof *sof, struct sof_ipc_pipe_new *pipeline,
 				       ARRAY_SIZE(sched_tokens), array,
 				       array->size);
 		if (ret != 0) {
-			printf("error: parse pipeline tokens %d\n", size);
+			fprintf(stderr, "error: parse pipeline tokens %d\n",
+				size);
 			return -EINVAL;
 		}
 		total_array_size += array->size;
@@ -468,28 +471,28 @@ static int load_controls(struct sof *sof, int num_kcontrols)
 	size = sizeof(struct snd_soc_tplg_ctl_hdr);
 	ctl_hdr = (struct snd_soc_tplg_ctl_hdr *)malloc(size);
 	if (!ctl_hdr) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
 	size = sizeof(struct snd_soc_tplg_mixer_control);
 	mixer_ctl = (struct snd_soc_tplg_mixer_control *)malloc(size);
 	if (!mixer_ctl) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
 	size = sizeof(struct snd_soc_tplg_enum_control);
 	enum_ctl = (struct snd_soc_tplg_enum_control *)malloc(size);
 	if (!enum_ctl) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
 	size = sizeof(struct snd_soc_tplg_bytes_control);
 	bytes_ctl = (struct snd_soc_tplg_bytes_control *)malloc(size);
 	if (!bytes_ctl) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -551,7 +554,7 @@ static int load_controls(struct sof *sof, int num_kcontrols)
 			fseek(file, bytes_ctl->priv.size, SEEK_CUR);
 			break;
 		default:
-			printf("control type not supported\n");
+			printf("info: control type not supported\n");
 			return -EINVAL;
 		}
 	}
@@ -561,6 +564,85 @@ static int load_controls(struct sof *sof, int num_kcontrols)
 	free(enum_ctl);
 	free(bytes_ctl);
 	free(ctl_hdr);
+	return 0;
+}
+
+/* load src dapm widget */
+static int load_src(struct sof *sof, int comp_id, int pipeline_id,
+		    int size)
+{
+	struct sof_ipc_comp_src src = {0};
+	struct snd_soc_tplg_vendor_array *array = NULL;
+	size_t total_array_size = 0, read_size;
+	int ret = 0;
+
+	/* allocate memory for vendor tuple array */
+	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
+	if (!array) {
+		fprintf(stderr, "error: mem alloc for src vendor array\n");
+		return -EINVAL;
+	}
+
+	/* read vendor tokens */
+	while (total_array_size < size) {
+		read_size = sizeof(struct snd_soc_tplg_vendor_array);
+		ret = fread(array, read_size, 1, file);
+		if (ret != 1)
+			return -EINVAL;
+		read_array(array);
+
+		/* parse comp tokens */
+		ret = sof_parse_tokens(&src.config, comp_tokens,
+				       ARRAY_SIZE(comp_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse src comp_tokens %d\n",
+				size);
+			return -EINVAL;
+		}
+
+		/* parse src tokens */
+		ret = sof_parse_tokens(&src, src_tokens,
+				       ARRAY_SIZE(src_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse src tokens %d\n", size);
+			return -EINVAL;
+		}
+
+		total_array_size += array->size;
+
+		/* read next array */
+		array = (void *)array + array->size;
+	}
+
+	array = (void *)array - size;
+
+	/* set testbench input and output sample rate from topology */
+	if (!fs_out) {
+		fs_out = src.sink_rate;
+
+		if (!fs_in)
+			fs_in = src.source_rate;
+		else
+			src.source_rate = fs_in;
+	} else {
+		src.sink_rate = fs_out;
+	}
+
+	/* configure src */
+	src.comp.id = comp_id;
+	src.comp.hdr.size = sizeof(struct sof_ipc_comp_src);
+	src.comp.type = SOF_COMP_SRC;
+	src.comp.pipeline_id = pipeline_id;
+
+	/* load src component */
+	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&src) < 0) {
+		fprintf(stderr, "error: new src comp\n");
+		return -EINVAL;
+	}
+
+	free(array);
 	return 0;
 }
 
@@ -580,7 +662,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 	size = sizeof(struct snd_soc_tplg_dapm_widget);
 	widget = (struct snd_soc_tplg_dapm_widget *)malloc(size);
 	if (!widget) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -614,7 +696,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 	case(SND_SOC_TPLG_DAPM_PGA):
 		if (load_pga(sof, temp_comp_list[comp_index].id,
 			     pipeline_id, widget->priv.size) < 0) {
-			printf("error: load pga\n");
+			fprintf(stderr, "error: load pga\n");
 			return -EINVAL;
 		}
 		break;
@@ -624,7 +706,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 		if (load_fileread(sof, temp_comp_list[comp_index].id,
 				  pipeline_id, widget->priv.size, bits_in,
 				  fr_id, sched_id) < 0) {
-			printf("error: load fileread\n");
+			fprintf(stderr, "error: load fileread\n");
 			return -EINVAL;
 		}
 		break;
@@ -634,7 +716,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 		if (load_filewrite(sof, temp_comp_list[comp_index].id,
 				   pipeline_id, widget->priv.size,
 				   fw_id) < 0) {
-			printf("error: load filewrite\n");
+			fprintf(stderr, "error: load filewrite\n");
 			return -EINVAL;
 		}
 		break;
@@ -643,7 +725,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 	case(SND_SOC_TPLG_DAPM_BUFFER):
 		if (load_buffer(sof, temp_comp_list[comp_index].id,
 				pipeline_id, widget->priv.size) < 0) {
-			printf("error: load buffer\n");
+			fprintf(stderr, "error: load buffer\n");
 			return -EINVAL;
 		}
 		break;
@@ -655,14 +737,23 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 				  pipeline_id,
 				  widget->priv.size,
 				  sched_id) < 0) {
-			printf("error: load buffer\n");
+			fprintf(stderr, "error: load buffer\n");
+			return -EINVAL;
+		}
+		break;
+
+	/* load src widget */
+	case(SND_SOC_TPLG_DAPM_SRC):
+		if (load_src(sof, temp_comp_list[comp_index].id,
+			     pipeline_id, widget->priv.size) < 0) {
+			fprintf(stderr, "error: load src\n");
 			return -EINVAL;
 		}
 		break;
 
 	/* unsupported widgets */
 	default:
-		printf("Widget type not supported %d\n",
+		printf("info: Widget type not supported %d\n",
 		       widget->id);
 		break;
 	}
@@ -670,7 +761,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 	/* load widget kcontrols */
 	if (widget->num_kcontrols > 0)
 		if (load_controls(sof, widget->num_kcontrols) < 0) {
-			printf("error: load buffer\n");
+			fprintf(stderr, "error: load buffer\n");
 			return -EINVAL;
 		}
 
@@ -680,8 +771,9 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 
 /* parse topology file and set up pipeline */
 int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
-		   int *sched_id, char *bits_in, char *in_file,
-		   char *out_file, void *volume_library, char *pipeline_msg)
+		    int *sched_id, char *bits_in, char *in_file,
+		    char *out_file, struct shared_lib_table *library_table,
+		    char *pipeline_msg)
 {
 	struct snd_soc_tplg_hdr *hdr;
 
@@ -692,19 +784,14 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 	int i, ret = 0;
 	size_t file_size, size;
 
-	/* set volume library */
-	volume_lib = volume_library;
-
 	/* open topology file */
-	file = fopen(filename, "rb");
+	file = fopen(tplg_file, "rb");
 	if (!file) {
-		fprintf(stderr, "error: opening file %s\n", filename);
+		fprintf(stderr, "error: opening file %s\n", tplg_file);
 		return -EINVAL;
 	}
 
-	/* set up fileread and  filewrite file names */
-	input_file = strdup(in_file);
-	output_file = strdup(out_file);
+	lib_table = library_table;
 
 	/* file size */
 	fseek(file, 0, SEEK_END);
@@ -715,7 +802,7 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 	size = sizeof(struct snd_soc_tplg_hdr);
 	hdr = (struct snd_soc_tplg_hdr *)malloc(size);
 	if (!hdr) {
-		printf("error: mem alloc\n");
+		fprintf(stderr, "error: mem alloc\n");
 		return -EINVAL;
 	}
 
@@ -752,7 +839,7 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 		case SND_SOC_TPLG_TYPE_DAPM_GRAPH:
 			if (load_graph(sof, temp_comp_list, hdr->count,
 				       num_comps, hdr->index) < 0) {
-				printf("error: pipeline graph\n");
+				fprintf(stderr, "error: pipeline graph\n");
 				return -EINVAL;
 			}
 
@@ -793,7 +880,8 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 
 		/* validate asize */
 		if (asize < 0) { /* FIXME: A zero-size array makes no sense */
-			printf("error: invalid array size 0x%x\n", asize);
+			fprintf(stderr, "error: invalid array size 0x%x\n",
+				asize);
 			return -EINVAL;
 		}
 
@@ -801,7 +889,8 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 		priv_size -= asize;
 
 		if (priv_size < 0) {
-			printf("error: invalid array size 0x%x\n", asize);
+			fprintf(stderr, "error: invalid array size 0x%x\n",
+				asize);
 			return -EINVAL;
 		}
 
@@ -823,12 +912,10 @@ int sof_parse_tokens(void *object, const struct sof_topology_token *tokens,
 					      array);
 			break;
 		default:
-			printf("error: unknown token type %d\n", array->type);
+			fprintf(stderr, "error: unknown token type %d\n",
+				array->type);
 			return -EINVAL;
 		}
-
-		/* next array */
-		array = (void *)array + asize;
 	}
 	return 0;
 }
