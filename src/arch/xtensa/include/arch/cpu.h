@@ -56,4 +56,16 @@ static inline void cpu_write_threadptr(int threadptr)
 #endif
 }
 
+static inline int cpu_read_threadptr(void)
+{
+	int threadptr;
+#if XCHAL_HAVE_THREADPTR
+	__asm__ __volatile__(
+		"rur.threadptr %0" : "=a"(threadptr));
+#else
+#error "Core support for XCHAL_HAVE_THREADPTR is required"
+#endif
+	return threadptr;
+}
+
 #endif
