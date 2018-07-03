@@ -87,6 +87,11 @@ struct hda_chan_data {
 	uint32_t desc_count;
 	uint32_t desc_avail;
 	uint32_t direction;
+
+	void (*cb)(void *data, uint32_t type,
+		   struct dma_sg_elem *next); /* client callback */
+	void *cb_data;		/* client callback data */
+	int cb_type;		/* callback type */
 };
 
 struct dma_pdata {
@@ -116,7 +121,20 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 /* notify DMA to copy bytes */
 static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 {
+	/* TODO: struct dma_pdata *p = dma_get_drvdata(dma); */
+
 	tracev_host("GwU");
+
+	/* TODO: implement wp/rp polling, work queue
+	 * client's callback may be called always from work callback
+	 * and call here work callback internally for host scenario.
+	 *
+	 * if (p->chan[channel].cb)
+	 *	p->chan[channel].cb(p->chan[channel].cb_data,
+	 *		DMA_IRQ_TYPE_LLIST,
+	 *		NULL);
+	 *
+	 */
 
 	/* reset BSC before start next copy */
 	hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
@@ -170,6 +188,9 @@ static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
 
 	/* set new state */
 	p->chan[channel].status = COMP_STATE_INIT;
+	p->chan[channel].cb = NULL;
+	p->chan[channel].cb_type = 0;
+	p->chan[channel].cb_data = NULL;
 }
 
 /* channel must not be running when this is called */
@@ -386,7 +407,16 @@ static int hda_dma_set_cb(struct dma *dma, int channel, int type,
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 	void *data)
 {
-	return -EINVAL;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
+	p->chan[channel].cb = cb;
+	p->chan[channel].cb_data = data;
+	p->chan[channel].cb_type = type;
+	spin_unlock_irq(&dma->lock, flags);
+
+	return 0;
 }
 
 static int hda_dma_probe(struct dma *dma)

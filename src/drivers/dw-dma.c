@@ -351,6 +351,8 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	/* set new state */
 	p->chan[channel].status = COMP_STATE_INIT;
 	p->chan[channel].cb = NULL;
+	p->chan[channel].cb_type = 0;
+	p->chan[channel].cb_data = NULL;
 	p->chan[channel].desc_count = 0;
 
 	atomic_sub(&dma->num_channels_busy, 1);
