@@ -36,7 +36,9 @@
 struct sof;
 struct task;
 
-int do_task(struct sof *sof);
+int do_task_master_core(struct sof *sof);
+
+int do_task_slave_core(struct sof *sof);
 
 static inline void allocate_tasks(void)
 {
