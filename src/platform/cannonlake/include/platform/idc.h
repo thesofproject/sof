@@ -28,38 +28,24 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include "xtos-internal.h"
+#ifndef __INCLUDE_PLATFORM_IDC_H__
+#define __INCLUDE_PLATFORM_IDC_H__
 
-#ifndef __XTOS_STRUCTS_H__
-#define __XTOS_STRUCTS_H__
+#include <arch/idc.h>
 
-struct idc;
-struct irq_task;
-struct schedule_data;
+static inline void idc_send_msg(void)
+{
+	arch_idc_send_msg();
+}
 
-struct thread_data {
-	xtos_structures_pointers xtos_ptrs;
-};
+static inline void idc_process_msg_queue(void)
+{
+	arch_idc_process_msg_queue();
+}
 
-struct xtos_core_data {
-	struct XtosInterruptStructure xtos_int_data;
-	int xtos_stack_for_interrupt_2[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_3[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_4[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_5[XTOS_INT_STACK_SIZE / 4];
+static inline void idc_init(void)
+{
+	arch_idc_init();
+}
 
-	struct thread_data *thread_data_ptr;
-};
-
-struct core_context {
-	struct thread_data td;
-	struct irq_task *irq_low_task;
-	struct irq_task *irq_med_task;
-	struct irq_task *irq_high_task;
-	struct schedule_data *sch;
-	struct idc *idc;
-};
-
-void _xtos_initialize_pointers_per_core(void);
-
-#endif /* __XTOS_STRUCTS_H__ */
+#endif

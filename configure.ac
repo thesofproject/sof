@@ -427,9 +427,13 @@ AC_CONFIG_FILES([
 	src/arch/xtensa/include/xtensa/config/Makefile
 	src/arch/xtensa/smp/Makefile
 	src/arch/xtensa/smp/hal/Makefile
+	src/arch/xtensa/smp/include/Makefile
+	src/arch/xtensa/smp/include/arch/Makefile
 	src/arch/xtensa/smp/xtos/Makefile
 	src/arch/xtensa/up/Makefile
 	src/arch/xtensa/up/hal/Makefile
+	src/arch/xtensa/up/include/Makefile
+	src/arch/xtensa/up/include/arch/Makefile
 	src/arch/xtensa/up/xtos/Makefile
 	src/arch/host/Makefile
 	src/arch/host/include/Makefile
