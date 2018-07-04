@@ -87,6 +87,7 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 	return hdr;
 }
 
+#ifdef CONFIG_HOST_PTABLE
 /* check if a pipeline is hostless when walking downstream */
 static bool is_hostless_downstream(struct comp_dev *current)
 {
@@ -151,6 +152,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 
 	return true;
 }
+#endif
 
 /*
  * Stream IPC Operations.
@@ -200,15 +202,15 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd = pcm_dev->cd;
 	cd->params = pcm_params->params;
 
+#ifdef CONFIG_HOST_PTABLE
+	list_init(&elem_list);
+
 	/*
 	 * walk in both directions to check if the pipeline is hostless
 	 * skip page table set up if it is
 	 */
 	if (is_hostless_downstream(cd) && is_hostless_upstream(cd))
 		goto pipe_params;
-
-#ifdef CONFIG_HOST_PTABLE
-	list_init(&elem_list);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
@@ -242,9 +244,9 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		list_item_del(&elem->list);
 		rfree(elem);
 	}
-#endif
 
 pipe_params:
+#endif
 
 	/* configure pipeline audio params */
 	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, pcm_params);
