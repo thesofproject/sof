@@ -513,7 +513,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		dir =  DMA_DIR_LMEM_TO_HMEM;
 
 	caps = 0;
-	dma_dev = DMA_DEV_HDA;
+	dma_dev = DMA_DEV_HOST;
 	hd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (hd->dma == NULL) {
 		trace_host_error("eDM");

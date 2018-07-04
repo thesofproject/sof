@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,35 +28,13 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_IO__
-#define __INCLUDE_IO__
+#ifndef __INCLUDE_BIT__
+#define __INCLUDE_BIT__
 
-#include <stdint.h>
-#include <sof/bit.h>
-
-static inline uint32_t io_reg_read(uint32_t reg)
-{
-	return *((volatile uint32_t*)reg);
-}
-
-static inline void io_reg_write(uint32_t reg, uint32_t val)
-{
-	*((volatile uint32_t*)reg) = val;
-}
-
-static inline void io_reg_update_bits(uint32_t reg, uint32_t mask, uint32_t value)
-{
-	io_reg_write(reg, (io_reg_read(reg) & (~mask)) | (value & mask));
-}
-
-static inline uint16_t io_reg_read16(uint32_t reg)
-{
-	return *((volatile uint16_t*)reg);
-}
-
-static inline void io_reg_write16(uint32_t reg, uint16_t val)
-{
-	*((volatile uint16_t*)reg) = val;
-}
+#define BIT(b)			(1 << (b))
+#define MASK(b_hi, b_lo)	((1 << ((b_hi) - (b_lo) + 1)) - 1)
+#define SET_BIT(b, x)		(((x) & 1) << (b))
+#define SET_BITS(b_hi, b_lo, x)	\
+	(((x) & ((1 << ((b_hi) - (b_lo) + 1)) - 1)) << (b_lo))
 
 #endif

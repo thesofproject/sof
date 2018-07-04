@@ -228,7 +228,7 @@ int platform_ipc_init(struct ipc *ipc)
 	/* request HDA DMA with shared access privilege */
 	caps = 0;
 	dir = DMA_DIR_HMEM_TO_LMEM;
-	dev = DMA_DEV_HDA;
+	dev = DMA_DEV_HOST;
 	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* PM */

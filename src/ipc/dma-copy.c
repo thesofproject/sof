@@ -379,7 +379,7 @@ int dma_copy_new(struct dma_copy *dc)
 
 	/* request HDA DMA in the dir LMEM->HMEM with shared access */
 	dir = DMA_DIR_LMEM_TO_HMEM;
-	dev = DMA_DEV_HDA;
+	dev = DMA_DEV_HOST;
 	cap = 0;
 	dc->dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
 	if (dc->dmac == NULL) {
