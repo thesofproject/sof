@@ -28,10 +28,21 @@
  * Author: Marcin Maka <marcin.maka@linux.intel.com>
  */
 
+ /**
+  * \file include/sof/platform.h
+  * \brief Platform API definition
+  * \author Marcin Maka <marcin.maka@linux.intel.com>
+  */
+
 #ifndef __INCLUDE_SOF_PLATFORM_H__
 #define __INCLUDE_SOF_PLATFORM_H__
 
 #include <sof/sof.h>
+
+/** \addtogroup platform_api Platform API
+ *  Platform API specification.
+ *  @{
+ */
 
 /*
  * APIs declared here are defined for every platform.
@@ -53,8 +64,10 @@ int platform_init(struct sof *sof);
 
 /**
  * \brief Called by the panic handler.
- * \param[in] p Panic cause, one of SOF_IPC_PANIC_... codes.
+ * \param[in] p Panic cause, one of SOF_IPC_PANIC_... codes (see ipc.h).
  */
 static inline void platform_panic(uint32_t p);
+
+/** @}*/
 
 #endif
