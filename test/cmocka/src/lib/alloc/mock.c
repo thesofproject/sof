@@ -30,6 +30,8 @@
 
 #include <stdint.h>
 
+#include <sof/alloc.h>
+
 struct dma_copy;
 struct dma_sg_config;
 
