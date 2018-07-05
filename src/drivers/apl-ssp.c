@@ -185,7 +185,6 @@ static inline int ssp_set_config(struct dai *dai,
 	/* clock masters */
 	sscr1 &= ~SSCR1_SFRMDIR;
 
-	trace_value(config->format);
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
 		sscr0 |= SSCR0_ECS; /* external clock used */
@@ -579,16 +578,16 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSTSA, sstsa);
 	ssp_write(dai, SSRSA, ssrsa);
 
-	trace_value(sscr0);
-	trace_value(sscr1);
-	trace_value(ssto);
-	trace_value(sspsp);
-	trace_value(sstsa);
-	trace_value(ssrsa);
-	trace_value(sscr2);
-	trace_value(sspsp2);
-	trace_value(sscr3);
-	trace_value(ssioc);
+	tracev_value(sscr0);
+	tracev_value(sscr1);
+	tracev_value(ssto);
+	tracev_value(sspsp);
+	tracev_value(sstsa);
+	tracev_value(ssrsa);
+	tracev_value(sscr2);
+	tracev_value(sspsp2);
+	tracev_value(sscr3);
+	tracev_value(ssioc);
 
 	/* TODO: move this into M/N driver */
 	mn_reg_write(0x0, mdivc);
