@@ -71,6 +71,13 @@ if test "$have_rimage" = "yes"; then
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
 
+# check if we are building docs
+AC_ARG_ENABLE(doc, [AS_HELP_STRING([--enable-doc],[build doc])], have_doc=$enableval, have_doc=no)
+if test "$have_doc" = "yes"; then
+	AC_DEFINE([CONFIG_DOC], [1], [Configure to build doc])
+fi
+AM_CONDITIONAL(BUILD_DOC, test "$have_doc" = "yes")
+
 # Disable DMIC driver if requested, by default build for supported platforms
 AC_ARG_ENABLE([dmic], AS_HELP_STRING([--disable-dmic], [Disable DMIC driver]))
 AS_IF([test "x$enable_dmic" != "xno"], [
@@ -119,7 +126,7 @@ case "$with_arch" in
 	AC_SUBST(ARCH)
     ;;
     *)
-	if test "$have_rimage" = "no"; then
+	if test "$have_rimage" = "no" && test "$have_doc" = "no" ; then
 		AC_MSG_ERROR([DSP architecture not specified])
 	fi
     ;;
@@ -268,7 +275,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
     *)
-	if test "$have_rimage" = "no"; then
+	if test "$have_rimage" = "no" && test "$have_doc" = "no"; then
 		if test "$ARCH" = "host"; then
 			PLATFORM="host"
 			AC_SUBST(PLATFORM)
