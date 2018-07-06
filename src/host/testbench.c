@@ -40,6 +40,14 @@
 
 #define TESTBENCH_NCH 2 /* Stereo */
 
+/* shared library look up table */
+struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
+{"file", "", SND_SOC_TPLG_DAPM_AIF_IN, "", 0, NULL},
+{"vol", "libsof_volume.so", SND_SOC_TPLG_DAPM_PGA, "sys_comp_volume_init", 0,
+	NULL},
+{"src", "libsof_src.so", SND_SOC_TPLG_DAPM_SRC, "sys_comp_src_init", 0, NULL},
+};
+
 /* main firmware context */
 static struct sof sof;
 static int fr_id; /* comp id for fileread */
@@ -50,41 +58,53 @@ int debug;
 
 /*
  * Parse shared library from user input
- * Currently only handles volume comp
+ * Currently only handles volume and src comp
+ * This function takes in the libraries to be used as an input in the format:
+ * "vol=libsof_volume.so,src=libsof_src.so,..."
+ * The function parses the above string to identify the following:
+ * component type and the library name and sets up the library handle
+ * for the component and stores it in the shared library table
  */
-static void parse_libraries(char *libs, void *handle)
+static void parse_libraries(char *libs)
 {
 	char *lib_token, *comp_token;
 	char *token = strtok_r(libs, ",", &lib_token);
 	char message[DEBUG_MSG_LEN];
+	int index;
 
 	while (token) {
+
+		/* get component type */
 		char *token1 = strtok_r(token, "=", &comp_token);
 
-		/* parse shared library for volume component */
-		if (strcmp(token1, "vol") == 0) {
-			while (token1) {
-				token1 = strtok_r(NULL, "=", &comp_token);
-				if (!token1)
-					return;
+		/* get shared library index from library table */
+		index = get_index_by_name(token1, lib_table);
 
-				/* close shared library object */
-				if (handle)
-					dlclose(handle);
-
-				/* open volume shared library object */
-				handle = dlopen(token1, RTLD_LAZY);
-				if (!handle) {
-					fprintf(stderr, "error: %s\n",
-						dlerror());
-					exit(EXIT_FAILURE);
-				}
-
-				sprintf(message, "opening vol shared lib %s\n",
-					token1);
-				debug_print(message);
-			}
+		if (index < 0) {
+			fprintf(stderr, "error: unsupported comp type\n");
+			break;
 		}
+
+		/* get shared library name */
+		token1 = strtok_r(NULL, "=", &comp_token);
+		if (!token1)
+			break;
+
+		/* close default shared library object */
+		if (lib_table[index].handle)
+			dlclose(lib_table[index].handle);
+
+		/* open volume shared library object */
+		lib_table[index].handle = dlopen(token1, RTLD_LAZY);
+		if (!lib_table[index].handle) {
+			fprintf(stderr, "error: %s\n", dlerror());
+			exit(EXIT_FAILURE);
+		}
+
+		sprintf(message, "opening shared lib %s\n", token1);
+		debug_print(message);
+
+		/* next library */
 		token = strtok_r(NULL, ",", &lib_token);
 	}
 }
@@ -98,6 +118,7 @@ static void print_usage(char *executable)
 	printf("input_format should be S16_LE, S32_LE, S24_LE or FLOAT_LE\n");
 	printf("Example Usage:\n");
 	printf("%s -i in.txt -o out.txt -t test.tplg ", executable);
+	printf("-r 48000 -R 96000 ");
 	printf("-b S16_LE -a vol=libsof_volume.so\n");
 }
 
@@ -131,39 +152,30 @@ static void free_comps(void)
 	}
 }
 
-int main(int argc, char **argv)
+static int set_up_library_table(void)
 {
-	struct ipc_comp_dev *pcm_dev;
-	struct pipeline *p;
-	struct sof_ipc_pipe_new *ipc_pipe;
-	struct comp_dev *cd;
-	struct file_comp_data *frcd, *fwcd;
-	char *tplg_file = NULL, *input_file = NULL;
-	char *output_file = NULL, *bits_in = "S32_LE";
-	char pipeline[DEBUG_MSG_LEN];
-	clock_t tic, toc;
-	double c_realtime, t_exec;
-	int fs, n_in, n_out, ret;
-	int option = 0;
+	int i;
 
-	/* volume component share library handle */
-	void *vol_handle = NULL;
+	/* set up default shared libraries */
+	for (i = 1; i < NUM_WIDGETS_SUPPORTED; i++) {
 
-	/* TODO: create a shared library table for all components */
-	/*set up default volume shared library */
-	if (!vol_handle) {
-		vol_handle = dlopen("libsof_volume.so", RTLD_LAZY);
-		if (!vol_handle) {
+		/* open default shared library */
+		lib_table[i].handle =
+				dlopen(lib_table[i].library_name, RTLD_LAZY);
+		if (!lib_table[i].handle) {
 			fprintf(stderr, "error: %s\n", dlerror());
-			exit(EXIT_FAILURE);
+			return -EINVAL;
 		}
 	}
 
-	/* set up trace class definition table from trace header */
-	setup_trace_table();
+	return 0;
+}
 
-	/* command line arguments*/
-	while ((option = getopt(argc, argv, "hdi:o:t:b:a:")) != -1) {
+static void parse_input_args(int argc, char **argv)
+{
+	int option = 0;
+
+	while ((option = getopt(argc, argv, "hdi:o:t:b:a:r:R:")) != -1) {
 		switch (option) {
 		/* input sample file */
 		case 'i':
@@ -187,7 +199,17 @@ int main(int argc, char **argv)
 
 		/* override default libraries */
 		case 'a':
-			parse_libraries(optarg, vol_handle);
+			parse_libraries(optarg);
+			break;
+
+		/* input sample rate */
+		case 'r':
+			fs_in = atoi(optarg);
+			break;
+
+		/* output sample rate */
+		case 'R':
+			fs_out = atoi(optarg);
 			break;
 
 		/* enable debug prints */
@@ -202,9 +224,43 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	}
+}
+
+int main(int argc, char **argv)
+{
+	struct ipc_comp_dev *pcm_dev;
+	struct pipeline *p;
+	struct sof_ipc_pipe_new *ipc_pipe;
+	struct comp_dev *cd;
+	struct file_comp_data *frcd, *fwcd;
+	char pipeline[DEBUG_MSG_LEN];
+	clock_t tic, toc;
+	double c_realtime, t_exec;
+	int n_in, n_out, ret;
+	int i;
+
+	/* initialize input and output sample rates */
+	fs_in = 0;
+	fs_out = 0;
+
+	/* set up shared library look up table */
+	ret = set_up_library_table();
+	if (ret < 0) {
+		fprintf(stderr, "error: setting up shared libraried\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* set up trace class definition table from trace header */
+	ret = setup_trace_table();
+	if (ret < 0) {
+		fprintf(stderr, "error: setting up trace header table\n");
+		exit(EXIT_FAILURE);
+	}
+	/* command line arguments*/
+	parse_input_args(argc, argv);
 
 	/* check args */
-	if (!tplg_file || !input_file || !output_file) {
+	if (!tplg_file || !input_file || !output_file || !bits_in) {
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
@@ -217,7 +273,7 @@ int main(int argc, char **argv)
 
 	/* parse topology file and create pipeline */
 	if (parse_topology(tplg_file, &sof, &fr_id, &fw_id, &sched_id, bits_in,
-			   input_file, output_file, vol_handle, pipeline) < 0) {
+	    input_file, output_file, lib_table, pipeline) < 0) {
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}
@@ -233,7 +289,12 @@ int main(int argc, char **argv)
 	p = pcm_dev->cd->pipeline;
 	ipc_pipe = &p->ipc_pipe;
 
-	fs = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+	/* input and output sample rate */
+	if (!fs_in)
+		fs_in = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+
+	if (!fs_out)
+		fs_out = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
 
 	/* set pipeline params and trigger start */
 	if (tb_pipeline_start(sof.ipc, TESTBENCH_NCH, bits_in, ipc_pipe) < 0) {
@@ -263,7 +324,7 @@ int main(int argc, char **argv)
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
 	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
-	c_realtime = (double)n_out / TESTBENCH_NCH / fs / t_exec;
+	c_realtime = (double)n_out / TESTBENCH_NCH / fs_out / t_exec;
 
 	/* free all components/buffers in pipeline */
 	free_comps();
@@ -278,6 +339,8 @@ int main(int argc, char **argv)
 	printf("Test Pipeline:\n");
 	printf("%s\n", pipeline);
 	printf("Input bit format: %s\n", bits_in);
+	printf("Input sample rate: %d\n", fs_in);
+	printf("Output sample rate: %d\n", fs_out);
 	printf("Output written to file: \"%s\"\n", output_file);
 	printf("Input sample count: %d\n", n_in);
 	printf("Output sample count: %d\n", n_out);
@@ -290,9 +353,11 @@ int main(int argc, char **argv)
 	free(tplg_file);
 	free(output_file);
 
-	/* close shared library object */
-	if (vol_handle)
-		dlclose(vol_handle);
+	/* close shared library objects */
+	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
+		if (lib_table[i].handle)
+			dlclose(lib_table[i].handle);
+	}
 
 	return EXIT_SUCCESS;
 }

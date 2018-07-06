@@ -31,6 +31,13 @@ LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
 LDADD = -lcmocka
 
+# memory allocator test
+
+if BUILD_XTENSA
+check_PROGRAMS += alloc
+alloc_SOURCES = src/lib/alloc/alloc.c src/lib/alloc/mock.c ../../src/lib/alloc.c ../../src/platform/apollolake/memory.c
+endif
+
 # volume tests
 
 check_PROGRAMS += volume_process

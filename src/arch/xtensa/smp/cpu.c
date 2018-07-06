@@ -26,53 +26,81 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ *
  */
 
 /**
- * \file include/sof/pm_runtime.h
- * \brief Runtime power management header file
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * \file arch/xtensa/smp/cpu.c
+ * \brief Xtensa SMP CPU implementation file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PM_RUNTIME__
-#define __INCLUDE_PM_RUNTIME__
-
+#include <arch/alloc.h>
+#include <arch/atomic.h>
+#include <arch/cpu.h>
+#include <arch/idc.h>
+#include <platform/platform.h>
 #include <sof/lock.h>
-#include <sof/trace.h>
+#include <sof/schedule.h>
 
-/** \brief Power management trace function. */
-#define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
-#define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
+static uint32_t active_cores_mask = 0x1;
+static spinlock_t lock = { 0 };
 
-/** \brief Power management trace value function. */
-#define tracev_pm_value(__e)	tracev_value(__e)
+void arch_cpu_enable_core(int id)
+{
+	uint32_t flags;
 
-/** \brief Runtime power management context */
-enum pm_runtime_context {
-	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
-};
+	spin_lock_irq(&lock, flags);
 
-/** \brief Runtime power management data. */
-struct pm_runtime_data {
-	spinlock_t lock;	/**< lock mechanism */
-	void *platform_data;	/**< platform specific data */
-};
+	if (!(active_cores_mask & (1 << id))) {
+		/* allocate resources for core */
+		alloc_core_context(id);
 
-/**
- * \brief Initializes runtime power management.
- */
-void pm_runtime_init(void);
+		/* make it possible for the slave core to receive IDC interrupt */
+		idc_write(IPC_IDCCTL, id, IPC_IDCCTL_IDCTBIE(arch_cpu_get_id()));
+		platform_interrupt_unmask(PLATFORM_IDC_INTERRUPT(id), 0);
 
-/**
- * \brief Retrieves power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_get(enum pm_runtime_context context);
+		/* send IDC power up message */
+		struct idc_msg power_up = {
+			IDC_POWER_UP_MESSAGE, IDC_POWER_UP_EXTENSION, id };
 
-/**
- * \brief Releases power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_put(enum pm_runtime_context context);
+		arch_idc_send_msg(&power_up);
 
-#endif /* __INCLUDE_PM_RUNTIME__ */
+		active_cores_mask |= (1 << id);
+	}
+
+	spin_unlock_irq(&lock, flags);
+}
+
+void arch_cpu_disable_core(int id)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&lock, flags);
+
+	if (active_cores_mask & (1 << id)) {
+		struct idc_msg power_down = { IDC_POWER_DOWN_MESSAGE, 0, id };
+
+		arch_idc_send_msg(&power_down);
+
+		active_cores_mask ^= (1 << id);
+	}
+
+	spin_unlock_irq(&lock, flags);
+}
+
+void cpu_power_down(void)
+{
+	arch_interrupt_global_disable();
+
+	idc_free();
+
+	scheduler_free();
+
+	free_core_context(arch_cpu_get_id());
+
+	dcache_writeback_invalidate_all();
+
+	while (1)
+		arch_wait_for_interrupt(0);
+}

@@ -29,50 +29,29 @@
  */
 
 /**
- * \file include/sof/pm_runtime.h
- * \brief Runtime power management header file
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * \file include/sof/cpu.h
+ * \brief CPU header file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PM_RUNTIME__
-#define __INCLUDE_PM_RUNTIME__
+#ifndef __SOF_CPU_H__
+#define __SOF_CPU_H__
 
-#include <sof/lock.h>
-#include <sof/trace.h>
+#include <arch/cpu.h>
 
-/** \brief Power management trace function. */
-#define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
-#define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
+static inline int cpu_get_id(void)
+{
+	return arch_cpu_get_id();
+}
 
-/** \brief Power management trace value function. */
-#define tracev_pm_value(__e)	tracev_value(__e)
+static inline void cpu_enable_core(int id)
+{
+	arch_cpu_enable_core(id);
+}
 
-/** \brief Runtime power management context */
-enum pm_runtime_context {
-	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
-};
+static inline void cpu_disable_core(int id)
+{
+	arch_cpu_disable_core(id);
+}
 
-/** \brief Runtime power management data. */
-struct pm_runtime_data {
-	spinlock_t lock;	/**< lock mechanism */
-	void *platform_data;	/**< platform specific data */
-};
-
-/**
- * \brief Initializes runtime power management.
- */
-void pm_runtime_init(void);
-
-/**
- * \brief Retrieves power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_get(enum pm_runtime_context context);
-
-/**
- * \brief Releases power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_put(enum pm_runtime_context context);
-
-#endif /* __INCLUDE_PM_RUNTIME__ */
+#endif

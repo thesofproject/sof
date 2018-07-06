@@ -25,54 +25,45 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *	   Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
+ *
  */
 
-/**
- * \file include/sof/pm_runtime.h
- * \brief Runtime power management header file
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#ifndef __ARCH_ATOMIC_H_
+#define __ARCH_ATOMIC_H_
 
-#ifndef __INCLUDE_PM_RUNTIME__
-#define __INCLUDE_PM_RUNTIME__
+#include <stdint.h>
+#include <errno.h>
 
-#include <sof/lock.h>
-#include <sof/trace.h>
+typedef struct {
+	volatile int32_t value;
+} atomic_t;
 
-/** \brief Power management trace function. */
-#define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
-#define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
+static inline int32_t arch_atomic_read(const atomic_t *a)
+{
+	return (*(volatile int32_t *)&a->value);
+}
 
-/** \brief Power management trace value function. */
-#define tracev_pm_value(__e)	tracev_value(__e)
+static inline void arch_atomic_set(atomic_t *a, int32_t value)
+{
+	a->value = value;
+}
 
-/** \brief Runtime power management context */
-enum pm_runtime_context {
-	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
-};
+static inline void arch_atomic_init(atomic_t *a, int32_t value)
+{
+	arch_atomic_set(a, value);
+}
 
-/** \brief Runtime power management data. */
-struct pm_runtime_data {
-	spinlock_t lock;	/**< lock mechanism */
-	void *platform_data;	/**< platform specific data */
-};
+/* use gcc atomic built-ins for host library */
+static inline void arch_atomic_add(atomic_t *a, int32_t value)
+{
+	__sync_fetch_and_add(&a->value, value);
+}
 
-/**
- * \brief Initializes runtime power management.
- */
-void pm_runtime_init(void);
+static inline void arch_atomic_sub(atomic_t *a, int32_t value)
+{
+	__sync_fetch_and_sub(&a->value, value);
+}
 
-/**
- * \brief Retrieves power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_get(enum pm_runtime_context context);
-
-/**
- * \brief Releases power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_put(enum pm_runtime_context context);
-
-#endif /* __INCLUDE_PM_RUNTIME__ */
+#endif

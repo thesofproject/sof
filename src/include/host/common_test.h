@@ -42,7 +42,34 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 
+/* common input parameters for the testbench */
+char *tplg_file; /* topology file to use */
+char *input_file; /* input file name */
+char *output_file; /* output file name */
+char *bits_in; /* input bit format */
+
+/*
+ * input and output sample rate parameters
+ * By default, these are calculated from pipeline frames_per_sched and deadline
+ * But they can also be overridden via input arguments to the testbench
+ */
+uint32_t fs_in;
+uint32_t fs_out;
+
 #define DEBUG_MSG_LEN		256
+#define MAX_LIB_NAME_LEN	256
+
+/* number of widgets types supported in testbench */
+#define NUM_WIDGETS_SUPPORTED	3
+
+struct shared_lib_table {
+	char *comp_name;
+	char library_name[MAX_LIB_NAME_LEN];
+	uint32_t widget_type;
+	const char *comp_init;
+	int register_drv;
+	void *handle;
+};
 
 extern int debug;
 
@@ -62,4 +89,9 @@ int tb_pipeline_params(struct ipc *ipc, int nch, char *bits_in,
 
 void debug_print(char *message);
 
+int get_index_by_name(char *comp_name,
+		      struct shared_lib_table *lib_table);
+
+int get_index_by_type(uint32_t comp_type,
+		      struct shared_lib_table *lib_table);
 #endif

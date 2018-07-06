@@ -35,7 +35,11 @@
 #include <xtensa/config/core.h>
 #include <platform/platcfg.h>
 
-static inline int cpu_get_id(void)
+void arch_cpu_enable_core(int id);
+
+void arch_cpu_disable_core(int id);
+
+static inline int arch_cpu_get_id(void)
 {
 	int prid;
 #if XCHAL_HAVE_PRID

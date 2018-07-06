@@ -26,53 +26,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ *
  */
 
 /**
- * \file include/sof/pm_runtime.h
- * \brief Runtime power management header file
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * \file arch/xtensa/up/cpu.c
+ * \brief Xtensa UP CPU implementation file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PM_RUNTIME__
-#define __INCLUDE_PM_RUNTIME__
+#include <arch/cpu.h>
 
-#include <sof/lock.h>
-#include <sof/trace.h>
+void arch_cpu_enable_core(int id) { }
 
-/** \brief Power management trace function. */
-#define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
-#define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
-
-/** \brief Power management trace value function. */
-#define tracev_pm_value(__e)	tracev_value(__e)
-
-/** \brief Runtime power management context */
-enum pm_runtime_context {
-	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
-};
-
-/** \brief Runtime power management data. */
-struct pm_runtime_data {
-	spinlock_t lock;	/**< lock mechanism */
-	void *platform_data;	/**< platform specific data */
-};
-
-/**
- * \brief Initializes runtime power management.
- */
-void pm_runtime_init(void);
-
-/**
- * \brief Retrieves power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_get(enum pm_runtime_context context);
-
-/**
- * \brief Releases power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_put(enum pm_runtime_context context);
-
-#endif /* __INCLUDE_PM_RUNTIME__ */
+void arch_cpu_disable_core(int id) { }

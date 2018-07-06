@@ -52,6 +52,7 @@ if BUILD_XTENSA_SMP
 sof_SOURCES += \
 	smp/xtos/crt1-boards.S \
 	smp/xtos/_vectors.S \
+	smp/cpu.c \
 	smp/init.c \
 	smp/schedule.c \
 	smp/task.c
@@ -59,6 +60,7 @@ else
 sof_SOURCES += \
 	up/xtos/crt1-boards.S \
 	up/xtos/_vectors.S \
+	up/cpu.c \
 	up/init.c \
 	up/schedule.c \
 	up/task.c

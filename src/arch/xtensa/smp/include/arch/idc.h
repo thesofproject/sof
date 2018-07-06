@@ -54,11 +54,25 @@
 /** \brief IDC trace error function. */
 #define trace_idc_error(__e)	trace_error(TRACE_CLASS_IDC, __e)
 
-/** \brief IDC header mask. */
-#define IDC_HEADER(x)		((x) & 0x7fffffff)
 
-/** \brief IDC extension mask. */
-#define IDC_EXTENSION(x)	((x) & 0x0fffffff)
+/** \brief ROM wake version parsed by ROM during core wake up. */
+#define IDC_ROM_WAKE_VERSION	0x2
+
+/** \brief ROM control version parsed by ROM during core wake up. */
+#define IDC_ROM_CONTROL_VERSION	0x1
+
+// TODO: refactor below defines after universal IDC message template
+//       will be defined and ready
+
+/** \brief Power up message header. */
+#define IDC_POWER_UP_MESSAGE \
+		(IDC_ROM_WAKE_VERSION | (IDC_ROM_CONTROL_VERSION << 24))
+
+/** \brief Power up message extension. */
+#define IDC_POWER_UP_EXTENSION	(SOF_TEXT_START >> 2)
+
+/** \brief Power down message header. */
+#define IDC_POWER_DOWN_MESSAGE	0x7FFFFFFF
 
 /** \brief IDC message. */
 struct idc_msg {
@@ -75,6 +89,8 @@ struct idc {
 	uint32_t msg_pending;		/**< is message pending */
 	struct idc_msg received_msg;	/**< received message */
 };
+
+extern void cpu_power_down(void);
 
 /**
  * \brief Returns IDC data.
@@ -166,7 +182,11 @@ static inline void arch_idc_send_msg(struct idc_msg *msg)
  */
 static inline int32_t idc_cmd(struct idc_msg *msg)
 {
-	/* execute message based on type */
+	/* right now we only handle power down */
+	/* TODO: universal implementation */
+	if (msg->header == IDC_POWER_DOWN_MESSAGE)
+		cpu_power_down();
+
 	return 0;
 }
 
