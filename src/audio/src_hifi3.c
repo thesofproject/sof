@@ -199,10 +199,10 @@ static inline void fir_filter(ae_f32 *rp, const void *cp, ae_f32 *wp0,
 	 */
 	ae_f64 a0;
 	ae_f64 a1;
-	ae_f24x2 data2;
-	ae_f24x2 coef2;
-	ae_f24x2 d0;
-	ae_f24x2 d1;
+	ae_f24x2 data2 = AE_ZERO24();
+	ae_f24x2 coef2 = AE_ZERO24();
+	ae_f24x2 d0 = AE_ZERO24();
+	ae_f24x2 d1 = AE_ZERO24();
 	ae_f24x2 *coefp;
 	ae_f24x2 *dp;
 	ae_f24 *dp1;
@@ -332,7 +332,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	 * 16x integers
 	 *  7x address pointers,
 	 */
-	ae_int32x2 q;
+	ae_int32x2 q = AE_ZERO32();
 	ae_f32 *rp;
 	ae_f32 *wp;
 	int i;
@@ -448,7 +448,7 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 	 * 16x integers
 	 *  7x address pointers,
 	 */
-	ae_int32x2 q;
+	ae_int32x2 q = AE_ZERO32();
 	ae_f32 *rp;
 	ae_f32 *wp;
 	int i;
