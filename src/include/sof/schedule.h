@@ -110,4 +110,6 @@ static inline void schedule_task_config(struct task *task, uint16_t priority,
 
 int scheduler_init(struct sof *sof);
 
+void scheduler_free(void);
+
 #endif

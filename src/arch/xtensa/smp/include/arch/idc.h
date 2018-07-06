@@ -259,7 +259,7 @@ static inline void arch_idc_init(void)
 
 	/* initialize idc data */
 	struct idc **idc = idc_get();
-	*idc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**idc));
+	*idc = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**idc));
 	spinlock_init(&((*idc)->lock));
 	(*idc)->busy_bit_mask = idc_get_busy_bit_mask(core);
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
@@ -272,6 +272,31 @@ static inline void arch_idc_init(void)
 	/* enable BUSY and DONE (only for master core) interrupts */
 	idc_write(IPC_IDCCTL, core,
 		  (*idc)->busy_bit_mask | (*idc)->done_bit_mask);
+}
+
+/**
+ * \brief Frees IDC data and unregisters interrupt.
+ */
+static inline void idc_free(void)
+{
+	int core = arch_cpu_get_id();
+	int i = 0;
+	uint32_t idctfc;
+
+	trace_idc("IDF");
+
+	/* disable and unregister interrupt */
+	interrupt_disable(PLATFORM_IDC_INTERRUPT(core));
+	interrupt_unregister(PLATFORM_IDC_INTERRUPT(core));
+
+	/* clear BUSY bits */
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		idctfc = idc_read(IPC_IDCTFC(i), core);
+		if (idctfc & IPC_IDCTFC_BUSY)
+			idc_write(IPC_IDCTFC(i), core, idctfc);
+	}
+
+	rfree(*idc_get());
 }
 
 #endif
