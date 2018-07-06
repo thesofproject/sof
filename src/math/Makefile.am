@@ -6,6 +6,7 @@ libsof_math_la_SOURCES = \
 	numbers.c
 
 libsof_math_la_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(COMMON_INCDIR)
 else
@@ -16,6 +17,7 @@ libsof_math_a_SOURCES = \
 	numbers.c
 
 libsof_math_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(COMMON_INCDIR)
 endif

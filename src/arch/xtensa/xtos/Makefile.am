@@ -62,7 +62,7 @@ libxlevel2_a_SOURCES = \
 
 libxlevel2_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=2
@@ -72,7 +72,7 @@ libxlevel3_a_SOURCES = \
 
 libxlevel3_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=3
@@ -82,7 +82,7 @@ libxlevel4_a_SOURCES = \
 
 libxlevel4_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=4
@@ -92,7 +92,7 @@ libxlevel5_a_SOURCES = \
 
 libxlevel5_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=5
@@ -103,7 +103,7 @@ libxlevel6_a_SOURCES = \
 
 libxlevel6_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS) \
 	-D_INTERRUPT_LEVEL=6
@@ -142,12 +142,13 @@ libxtos_a_SOURCES = \
 
 libxtos_a_CFLAGS = \
 	$(ARCH_INCDIR) \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS)
 
 libxtos_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS)

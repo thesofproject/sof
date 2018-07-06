@@ -86,17 +86,13 @@ case "$with_arch" in
     xtensa*)
 
 	ARCH_CFLAGS="-mtext-section-literals"
-	AC_SUBST(ARCH_CFLAGS)
 
 	ARCH_LDFLAGS="-nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static"
-	AC_SUBST(XTENSA_LDFLAGS)
 
-	# extra CFLAGS defined here otherwise configure working gcc tests fails.
-	CFLAGS="${CFLAGS:+$CFLAGS }-fno-inline-functions -nostdlib -mlongcalls"
-	LDFLAGS="${LDFLAGS:+$LDFLAGS }-nostdlib"
-
-	#ARCH_ASFLAGS=""
-	AC_SUBST(ARCH_ASFLAGS)
+	# automake FLAGS defined here
+	AM_CFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
+	AM_LDFLAGS="-nostdlib"
+	AM_CCASFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
 
 	ARCH="xtensa"
 	AC_SUBST(ARCH)
@@ -109,11 +105,11 @@ case "$with_arch" in
     host*)
 
 	ARCH_CFLAGS="-g"
-	AC_SUBST(ARCH_CFLAGS)
 
-	# extra CFLAGS defined here otherwise configure working gcc tests fails.
-	CFLAGS="${CFLAGS:+$CFLAGS } -O3"
-	LDFLAGS="${LDFLAGS:+$LDFLAGS }-lpthread"
+	# automake FLAGS defined here
+	AM_CFLAGS="-O3"
+	AM_LDFLAGS="-lpthread"
+	AM_CCASFLAGS="-O3"
 
 	ARCH="host"
 	AC_SUBST(ARCH)
@@ -124,6 +120,13 @@ case "$with_arch" in
 	fi
     ;;
 esac
+
+AC_SUBST(ARCH_CFLAGS)
+AC_SUBST(ARCH_LDFLAGS)
+
+AC_SUBST(AM_CFLAGS)
+AC_SUBST(AM_LDFLAGS)
+AC_SUBST(AM_CCASFLAGS)
 
 AM_CONDITIONAL(BUILD_XTENSA, test "$ARCH" = "xtensa")
 AM_CONDITIONAL(BUILD_HOST, test "$ARCH" = "host")
@@ -494,5 +497,8 @@ CFLAGS:                        ${CFLAGS}
 LDFLAGS:                       ${LDFLAGS}
 ARCH_CFLAGS:                   ${ARCH_CFLAGS}
 ARCH_LDFLAGS:                  ${ARCH_LDFLAGS}
+A@&t@M_CFLAGS:                     ${AM_CFLAGS}
+A@&t@M_LDFLAGS:                    ${AM_LDFLAGS}
+A@&t@M_CCASFLAGS:                  ${AM_CCASFLAGS}
 "
 

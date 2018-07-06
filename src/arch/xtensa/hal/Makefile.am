@@ -223,12 +223,13 @@ libhal_a_SOURCES = \
 
 libhal_a_CFLAGS = \
 	$(ARCH_INCDIR) \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS)
 
 libhal_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(PLATFORM_DEFS)

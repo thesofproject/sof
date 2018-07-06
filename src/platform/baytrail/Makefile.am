@@ -13,6 +13,7 @@ libplatform_a_SOURCES = \
 	memory.c
 
 libplatform_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \

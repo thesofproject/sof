@@ -31,7 +31,7 @@ libreset_a_SOURCES = \
 libreset_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ASFLAGS) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR) \
 	-mtext-section-literals
 
@@ -49,6 +49,7 @@ endif
 
 sof_CFLAGS = \
 	$(ARCH_INCDIR) \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR)
@@ -56,7 +57,7 @@ sof_CFLAGS = \
 sof_CCASFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ASFLAGS) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR)
 
 sof_LDADD = \
@@ -83,6 +84,7 @@ sof_LDADD += \
 endif
 
 sof_LDFLAGS = \
+	$(AM_LDFLAGS) \
 	$(ARCH_LDFLAGS) -Wl,-Map=sof-$(FW_NAME).map \
 	-T ../../platform/$(PLATFORM)/$(PLATFORM_LDSCRIPT)
 
@@ -110,6 +112,7 @@ boot_ldr_SOURCES = \
 
 boot_ldr_CFLAGS = \
 	$(ARCH_INCDIR) \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR)
@@ -117,7 +120,7 @@ boot_ldr_CFLAGS = \
 boot_ldr_CCASFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ASFLAGS) \
-	$(ARCH_ASFLAGS) \
+	$(AM_CCASFLAGS) \
 	$(PLATFORM_INCDIR)
 
 boot_ldr_LDADD = \
@@ -126,6 +129,7 @@ boot_ldr_LDADD = \
 	-lgcc
 
 boot_ldr_LDFLAGS = \
+	$(AM_LDFLAGS) \
 	$(ARCH_LDFLAGS) \
 	-T ../../platform/$(PLATFORM)/$(PLATFORM_BOOT_LDR_LDSCRIPT)
 

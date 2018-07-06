@@ -5,11 +5,13 @@ libsof_ipc_la_SOURCES = \
 	ipc.c
 
 libsof_ipc_la_LDFLAGS = \
+	$(AM_LDFLAGS) \
 	-version-info `echo $(VERSION) | cut -d '.' -f 1` \
 	-no-undefined \
 	-export-dynamic
 
 libsof_ipc_la_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(COMMON_INCDIR)
 else
@@ -67,6 +69,7 @@ libsof_ipc_a_SOURCES = \
 endif
 
 libsof_ipc_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(COMMON_INCDIR)
 endif
