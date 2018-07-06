@@ -25,51 +25,33 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Rander Wang <rander.wang@linux.intel.com>
- *
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ARCH_CPU__
-#define __INCLUDE_ARCH_CPU__
+/**
+ * \file include/sof/cpu.h
+ * \brief CPU header file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
 
-#include <xtensa/config/core.h>
-#include <platform/platcfg.h>
+#ifndef __SOF_CPU_H__
+#define __SOF_CPU_H__
 
-void arch_cpu_enable_core(int id);
+#include <arch/cpu.h>
 
-void arch_cpu_disable_core(int id);
-
-static inline int arch_cpu_get_id(void)
+static inline int cpu_get_id(void)
 {
-	int prid;
-#if XCHAL_HAVE_PRID
-	__asm__("rsr.prid %0" : "=a"(prid));
-#else
-	prid = PLATFORM_MASTER_CORE_ID;
-#endif
-	return prid;
+	return arch_cpu_get_id();
 }
 
-static inline void cpu_write_threadptr(int threadptr)
+static inline void cpu_enable_core(int id)
 {
-#if XCHAL_HAVE_THREADPTR
-	__asm__ __volatile__(
-		"wur.threadptr %0" : : "a" (threadptr) : "memory");
-#else
-#error "Core support for XCHAL_HAVE_THREADPTR is required"
-#endif
+	arch_cpu_enable_core(id);
 }
 
-static inline int cpu_read_threadptr(void)
+static inline void cpu_disable_core(int id)
 {
-	int threadptr;
-#if XCHAL_HAVE_THREADPTR
-	__asm__ __volatile__(
-		"rur.threadptr %0" : "=a"(threadptr));
-#else
-#error "Core support for XCHAL_HAVE_THREADPTR is required"
-#endif
-	return threadptr;
+	arch_cpu_disable_core(id);
 }
 
 #endif

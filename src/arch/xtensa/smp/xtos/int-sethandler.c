@@ -42,7 +42,7 @@ _xtos_handler _xtos_set_interrupt_handler_arg( int n, _xtos_handler f, void *arg
         ret = 0;     /* priority level too high to safely handle in C */
     }
     else {
-        entry = &(core_data_ptr[cpu_get_id()]->xtos_int_data.xtos_interrupt_table.array[MAPINT(n)]);
+        entry = &(core_data_ptr[arch_cpu_get_id()]->xtos_int_data.xtos_interrupt_table.array[MAPINT(n)]);
         old = entry->handler;
         if (f) {
             entry->handler = f;

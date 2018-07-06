@@ -71,7 +71,7 @@ struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
  */
 static void initialize_pointers_per_core(void)
 {
-	int core = cpu_get_id();
+	int core = arch_cpu_get_id();
 	struct xtos_core_data *core_data = core_data_ptr[core];
 
 	if (core == PLATFORM_MASTER_CORE_ID) {

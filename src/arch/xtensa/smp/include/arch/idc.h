@@ -54,11 +54,25 @@
 /** \brief IDC trace error function. */
 #define trace_idc_error(__e)	trace_error(TRACE_CLASS_IDC, __e)
 
-/** \brief IDC header mask. */
-#define IDC_HEADER(x)		((x) & 0x7fffffff)
 
-/** \brief IDC extension mask. */
-#define IDC_EXTENSION(x)	((x) & 0x0fffffff)
+/** \brief ROM wake version parsed by ROM during core wake up. */
+#define IDC_ROM_WAKE_VERSION	0x2
+
+/** \brief ROM control version parsed by ROM during core wake up. */
+#define IDC_ROM_CONTROL_VERSION	0x1
+
+// TODO: refactor below defines after universal IDC message template
+//       will be defined and ready
+
+/** \brief Power up message header. */
+#define IDC_POWER_UP_MESSAGE \
+		(IDC_ROM_WAKE_VERSION | (IDC_ROM_CONTROL_VERSION << 24))
+
+/** \brief Power up message extension. */
+#define IDC_POWER_UP_EXTENSION	(SOF_TEXT_START >> 2)
+
+/** \brief Power down message header. */
+#define IDC_POWER_DOWN_MESSAGE	0x7FFFFFFF
 
 /** \brief IDC message. */
 struct idc_msg {
@@ -76,6 +90,8 @@ struct idc {
 	struct idc_msg received_msg;	/**< received message */
 };
 
+extern void cpu_power_down_core(void);
+
 /**
  * \brief Returns IDC data.
  * \return Pointer to pointer of IDC data.
@@ -87,6 +103,13 @@ static inline struct idc **idc_get(void)
 	return &ctx->idc;
 }
 
+static inline void idc_enable_interrupts(int target_core, int source_core)
+{
+	idc_write(IPC_IDCCTL, target_core,
+		  IPC_IDCCTL_IDCTBIE(source_core));
+	platform_interrupt_unmask(PLATFORM_IDC_INTERRUPT(target_core), 0);
+}
+
 /**
  * \brief IDC interrupt handler.
  * \param[in,out] arg Pointer to IDC data.
@@ -94,7 +117,7 @@ static inline struct idc **idc_get(void)
 static void idc_irq_handler(void *arg)
 {
 	struct idc *idc = arg;
-	int core = cpu_get_id();
+	int core = arch_cpu_get_id();
 	uint32_t idctfc;
 	uint32_t idctefc;
 	uint32_t idcietc;
@@ -146,7 +169,7 @@ static void idc_irq_handler(void *arg)
 static inline void arch_idc_send_msg(struct idc_msg *msg)
 {
 	struct idc *idc = *idc_get();
-	int core = cpu_get_id();
+	int core = arch_cpu_get_id();
 	uint32_t flags;
 
 	tracev_idc("Msg");
@@ -166,7 +189,11 @@ static inline void arch_idc_send_msg(struct idc_msg *msg)
  */
 static inline int32_t idc_cmd(struct idc_msg *msg)
 {
-	/* execute message based on type */
+	/* right now we only handle power down */
+	/* TODO: universal implementation */
+	if (msg->header == IDC_POWER_DOWN_MESSAGE)
+		cpu_power_down_core();
+
 	return 0;
 }
 
@@ -176,7 +203,7 @@ static inline int32_t idc_cmd(struct idc_msg *msg)
  */
 static inline void idc_do_cmd(struct idc *idc)
 {
-	int core = cpu_get_id();
+	int core = arch_cpu_get_id();
 	int initiator = idc->received_msg.core;
 
 	trace_idc("Cmd");
@@ -253,7 +280,7 @@ static inline uint32_t idc_get_done_bit_mask(int core)
  */
 static inline void arch_idc_init(void)
 {
-	int core = cpu_get_id();
+	int core = arch_cpu_get_id();
 
 	trace_idc("IDI");
 

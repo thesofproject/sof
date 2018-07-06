@@ -33,7 +33,7 @@
 #include <sof/sof.h>
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
-#include <arch/cpu.h>
+#include <sof/cpu.h>
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
 #include <platform/platcfg.h>
