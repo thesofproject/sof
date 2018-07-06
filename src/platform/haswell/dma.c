@@ -112,7 +112,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.base		= DMA0_BASE,
 		.dir		= DMA_DIR_MEM_TO_MEM,
 		.caps		= DMA_CAP_GP_HP | DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HDA,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HOST,
 		.irq		= IRQ_NUM_EXT_DMAC0,
 		.drv_plat_data	= &dmac0,
 	},
@@ -125,7 +125,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV |
 				  DMA_DIR_HMEM_TO_LMEM | DMA_DIR_LMEM_TO_HMEM,
 		.caps		= DMA_CAP_GP_HP | DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HDA,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HOST,
 		.irq		= IRQ_NUM_EXT_DMAC1,
 		.drv_plat_data	= &dmac1,
 	},

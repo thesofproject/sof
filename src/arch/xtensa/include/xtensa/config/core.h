@@ -10,7 +10,7 @@
  */
 
 /*
- * Copyright (c) 2005-2014 Cadence Design Systems, Inc.
+ * Copyright (c) 2005-2015 Cadence Design Systems, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -83,6 +83,54 @@
 #define XCHAL_SEP2			},{
 #endif
 
+
+/*----------------------------------------------------------------------
+                                ERRATA
+  ----------------------------------------------------------------------*/
+
+/*
+ *  Erratum T1020.H13, T1030.H7, T1040.H10, T1050.H4 (fixed in T1040.3 and T1050.1;
+ *  relevant only in XEA1, kernel-vector mode, level-one interrupts and overflows enabled):
+ */
+#define XCHAL_MAYHAVE_ERRATUM_XEA1KWIN  (XCHAL_HAVE_XEA1 && \
+                                         (XCHAL_HW_RELEASE_AT_OR_BELOW(1040,2) != 0 \
+                                          || XCHAL_HW_RELEASE_AT(1050,0)))
+/*
+ *  Erratum 453 present in RE-2013.2 up to RF-2014.0, fixed in RF-2014.1.
+ *  Applies to specific set of configuration options.
+ *  Part of the workaround is to add ISYNC at certain points in the code.
+ *  The workaround gated by this macro can be disabled if not needed, e.g. if
+ *  zero-overhead loop buffer will be disabled, by defining _NO_ERRATUM_453.
+ */
+#if (   XCHAL_HW_MAX_VERSION >= XTENSA_HWVERSION_RE_2013_2 && \
+        XCHAL_HW_MIN_VERSION <= XTENSA_HWVERSION_RF_2014_0 && \
+        XCHAL_ICACHE_SIZE != 0    && XCHAL_HAVE_PIF /*covers also AXI/AHB*/ && \
+        XCHAL_HAVE_LOOPS          && XCHAL_LOOP_BUFFER_SIZE != 0 && \
+        XCHAL_CLOCK_GATING_GLOBAL && !defined(_NO_ERRATUM_453) )
+#define XCHAL_ERRATUM_453       1
+#else
+#define XCHAL_ERRATUM_453       0
+#endif
+
+/*
+ *  Erratum 497 present in RE-2012.2 up to RG/RF-2015.2
+ *  Applies to specific set of configuration options.
+ *  Workaround is to add MEMWs after at most 8 cache WB instructions
+ */
+#if ( ((XCHAL_HW_MAX_VERSION >= XTENSA_HWVERSION_RE_2012_0 &&    \
+        XCHAL_HW_MIN_VERSION <= XTENSA_HWVERSION_RF_2015_2) ||   \
+       (XCHAL_HW_MAX_VERSION >= XTENSA_HWVERSION_RG_2015_0 &&    \
+        XCHAL_HW_MIN_VERSION <= XTENSA_HWVERSION_RG_2015_2)     \
+      ) && \
+      XCHAL_DCACHE_IS_WRITEBACK && \
+      XCHAL_HAVE_AXI && \
+      XCHAL_HAVE_PIF_WR_RESP && \
+      XCHAL_HAVE_PIF_REQ_ATTR &&  !defined(_NO_ERRATUM_497) \
+    )
+#define XCHAL_ERRATUM_497       1
+#else
+#define XCHAL_ERRATUM_497       0
+#endif
 
 
 /*----------------------------------------------------------------------
@@ -267,7 +315,10 @@
 			XCHAL_SEP	XCHAL_INTTYPE_MASK_EXTERN_LEVEL	\
 			XCHAL_SEP	XCHAL_INTTYPE_MASK_TIMER	\
 			XCHAL_SEP	XCHAL_INTTYPE_MASK_NMI		\
-			XCHAL_SEP	XCHAL_INTTYPE_MASK_WRITE_ERROR
+			XCHAL_SEP	XCHAL_INTTYPE_MASK_WRITE_ERROR	\
+			XCHAL_SEP	XCHAL_INTTYPE_MASK_IDMA_DONE	\
+			XCHAL_SEP	XCHAL_INTTYPE_MASK_IDMA_ERR	\
+			XCHAL_SEP	XCHAL_INTTYPE_MASK_GS_ERR
 
 /*  Interrupts that can be cleared using the INTCLEAR special register:  */
 #define XCHAL_INTCLEARABLE_MASK	(XCHAL_INTTYPE_MASK_SOFTWARE+XCHAL_INTTYPE_MASK_EXTERN_EDGE+XCHAL_INTTYPE_MASK_WRITE_ERROR)
@@ -714,9 +765,9 @@
 #define XCHAL_CACHE_PREFCTL_DEFAULT	0x00044	/* enabled, not aggressive */
 #elif XCHAL_HW_MIN_VERSION < XTENSA_HWVERSION_RF_2014_0
 #define XCHAL_CACHE_PREFCTL_DEFAULT	0x01044	/* + enable prefetch to L1 */
-#elif XCHAL_PREFETCH_ENTRIES >= 16
+#elif ((XCHAL_PREFETCH_ENTRIES >= 16) && XCHAL_HAVE_CACHE_BLOCKOPS)
 #define XCHAL_CACHE_PREFCTL_DEFAULT	0x81044	/* 12 entries for block ops */
-#elif XCHAL_PREFETCH_ENTRIES >= 8
+#elif ((XCHAL_PREFETCH_ENTRIES >= 8) && XCHAL_HAVE_CACHE_BLOCKOPS)
 #define XCHAL_CACHE_PREFCTL_DEFAULT	0x51044	/* 5 entries for block ops */
 #else
 #define XCHAL_CACHE_PREFCTL_DEFAULT	0x01044	/* 0 entries for block ops */
@@ -779,11 +830,39 @@
 #endif
 #if XCHAL_DCACHE_LINE_LOCKABLE
 # define XCHAL_DCACHE_TAG_L_SHIFT	(XCHAL_DCACHE_TAG_D_SHIFT+1)
-# define XCHAL_DCACHE_TAG_L		(1 << XCHAL_DCACHE_TAG_D_SHIFT)	/* lock bit */
+# define XCHAL_DCACHE_TAG_L		(1 << XCHAL_DCACHE_TAG_L_SHIFT)	/* lock bit */
 #else
 # define XCHAL_DCACHE_TAG_L_SHIFT	XCHAL_DCACHE_TAG_D_SHIFT
 # define XCHAL_DCACHE_TAG_L		0	/* no lock bit */
 #endif
+
+/*  Whether MEMCTL register has anything useful  */
+#define XCHAL_USE_MEMCTL		(((XCHAL_LOOP_BUFFER_SIZE > 0)	||      \
+					XCHAL_DCACHE_IS_COHERENT	||      \
+					XCHAL_HAVE_ICACHE_DYN_WAYS	||      \
+					XCHAL_HAVE_DCACHE_DYN_WAYS)	&&      \
+					(XCHAL_HW_MIN_VERSION >= XTENSA_HWVERSION_RE_2012_0))
+
+#if XCHAL_DCACHE_IS_COHERENT
+#define _MEMCTL_SNOOP_EN		0x02		/* Enable snoop */
+#else
+#define _MEMCTL_SNOOP_EN		0x00		/* Don't enable snoop */
+#endif
+
+#if (XCHAL_LOOP_BUFFER_SIZE == 0) || XCHAL_ERRATUM_453
+#define _MEMCTL_L0IBUF_EN		0x00		/* No loop buffer or don't enable */
+#else
+#define _MEMCTL_L0IBUF_EN		0x01		/* Enable loop buffer */
+#endif
+
+/*  Default MEMCTL values:  */
+#if XCHAL_HAVE_ICACHE_DYN_WAYS || XCHAL_HAVE_DCACHE_DYN_WAYS
+#define XCHAL_CACHE_MEMCTL_DEFAULT	(0xFFFFFF00 | _MEMCTL_L0IBUF_EN)
+#else
+#define XCHAL_CACHE_MEMCTL_DEFAULT	(0x00000000 | _MEMCTL_L0IBUF_EN)
+#endif
+
+#define XCHAL_SNOOP_LB_MEMCTL_DEFAULT	(_MEMCTL_SNOOP_EN | _MEMCTL_L0IBUF_EN)
 
 
 /*----------------------------------------------------------------------
@@ -1323,35 +1402,6 @@ extern const unsigned int  XCJOIN(Xthal_cp_mask_,XCHAL_CP7_IDENT);
 							   ((major) >= 2000 && XCHAL_HAVE_XEA1)) ? 0 : XTHAL_MAYBE)
 # define XCHAL_HW_RELEASE_MAJOR_AT(major)		XCHAL_HW_RELEASE_AT(major,0)
 #endif
-
-/*
- *  Specific errata:
- */
-
-/*
- *  Erratum T1020.H13, T1030.H7, T1040.H10, T1050.H4 (fixed in T1040.3 and T1050.1;
- *  relevant only in XEA1, kernel-vector mode, level-one interrupts and overflows enabled):
- */
-#define XCHAL_MAYHAVE_ERRATUM_XEA1KWIN	(XCHAL_HAVE_XEA1 && \
-					 (XCHAL_HW_RELEASE_AT_OR_BELOW(1040,2) != 0 \
-					  || XCHAL_HW_RELEASE_AT(1050,0)))
-/*
- *  Erratum 453 present in RE-2013.2 up to RF-2014.0, fixed in RF-2014.1.
- *  Applies to specific set of configuration options.
- *  Part of the workaround is to add ISYNC at certain points in the code.
- *  The workaround gated by this macro can be disabled if not needed, e.g. if
- *  zero-overhead loop buffer will be disabled, by defining _NO_ERRATUM_453.
- */
-#if (	XCHAL_HW_MAX_VERSION >= XTENSA_HWVERSION_RE_2013_2 && \
-	XCHAL_HW_MIN_VERSION <= XTENSA_HWVERSION_RF_2014_0 && \
-	XCHAL_ICACHE_SIZE != 0    && XCHAL_HAVE_PIF /*covers also AXI/AHB*/ && \
-	XCHAL_HAVE_LOOPS          && XCHAL_LOOP_BUFFER_SIZE != 0 && \
-	XCHAL_CLOCK_GATING_GLOBAL && !defined(_NO_ERRATUM_453) )
-#define XCHAL_ERRATUM_453	1
-#else
-#define XCHAL_ERRATUM_453	0
-#endif
-
 
 
 #endif /*XTENSA_CONFIG_CORE_H*/

@@ -29,6 +29,13 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+/**
+ * \file include/sof/dma.h
+ * \brief DMA Drivers definition
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * \author Keyon Jie <yang.jie@linux.intel.com>
+ */
+
 #ifndef __INCLUDE_DMA_H__
 #define __INCLUDE_DMA_H__
 
@@ -37,32 +44,41 @@
 #include <sof/lock.h>
 #include <sof/sof.h>
 #include <sof/wait.h>
+#include <sof/bit.h>
 #include <arch/atomic.h>
 
+/** \addtogroup sof_dma_drivers DMA Drivers
+ *  DMA Drivers API specification.
+ *  @{
+ */
+
 /* DMA direction bitmasks used to define DMA copy direction */
-#define DMA_DIR_MEM_TO_MEM	(1 << 0) /* local memory copy */
-#define DMA_DIR_HMEM_TO_LMEM	(1 << 1) /* host memory to local mem copy */
-#define DMA_DIR_LMEM_TO_HMEM	(1 << 2) /* local mem to host mem copy */
-#define DMA_DIR_MEM_TO_DEV	(1 << 3) /* local mem to dev copy */
-#define DMA_DIR_DEV_TO_MEM	(1 << 4) /* dev to local mem copy */
-#define DMA_DIR_DEV_TO_DEV	(1 << 5) /* dev to dev copy */
+#define DMA_DIR_MEM_TO_MEM	BIT(0) /**< local memory copy */
+#define DMA_DIR_HMEM_TO_LMEM	BIT(1) /**< host memory to local mem copy */
+#define DMA_DIR_LMEM_TO_HMEM	BIT(2) /**< local mem to host mem copy */
+#define DMA_DIR_MEM_TO_DEV	BIT(3) /**< local mem to dev copy */
+#define DMA_DIR_DEV_TO_MEM	BIT(4) /**< dev to local mem copy */
+#define DMA_DIR_DEV_TO_DEV	BIT(5) /**< dev to dev copy */
 
 /* DMA capabilities bitmasks used to define the type of DMA */
-#define DMA_CAP_GP_LP		(1 << 0)
-#define DMA_CAP_GP_HP		(1 << 1)
+#define DMA_CAP_HDA		BIT(0) /**< HDA DMA */
+#define DMA_CAP_GP_LP		BIT(1) /**< GP LP DMA */
+#define DMA_CAP_GP_HP		BIT(2) /**< GP HP DMA */
 
 /* DMA dev type bitmasks used to define the type of DMA */
-#define DMA_DEV_HDA		(1 << 0)
-#define DMA_DEV_SSP		(1 << 1)
-#define DMA_DEV_DMIC		(1 << 2)
+
+#define DMA_DEV_HOST		BIT(0) /**< connectable to host */
+#define DMA_DEV_HDA		BIT(1) /**< connectable to HD/A link */
+#define DMA_DEV_SSP		BIT(2) /**< connectable to SSP fifo */
+#define DMA_DEV_DMIC		BIT(3) /**< connectable to DMIC fifo */
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
 #define DMA_ACCESS_SHARED	0
 
 /* DMA IRQ types */
-#define DMA_IRQ_TYPE_BLOCK	(1 << 0)
-#define DMA_IRQ_TYPE_LLIST	(1 << 1)
+#define DMA_IRQ_TYPE_BLOCK	BIT(0)
+#define DMA_IRQ_TYPE_LLIST	BIT(1)
 
 
 /* We will use this macro in cb handler to inform dma that
@@ -298,5 +314,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
 
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag);
+
+/** @}*/
 
 #endif

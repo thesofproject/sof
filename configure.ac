@@ -71,6 +71,13 @@ if test "$have_rimage" = "yes"; then
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
 
+# check if we are building docs
+AC_ARG_ENABLE(doc, [AS_HELP_STRING([--enable-doc],[build doc])], have_doc=$enableval, have_doc=no)
+if test "$have_doc" = "yes"; then
+	AC_DEFINE([CONFIG_DOC], [1], [Configure to build doc])
+fi
+AM_CONDITIONAL(BUILD_DOC, test "$have_doc" = "yes")
+
 # Disable DMIC driver if requested, by default build for supported platforms
 AC_ARG_ENABLE([dmic], AS_HELP_STRING([--disable-dmic], [Disable DMIC driver]))
 AS_IF([test "x$enable_dmic" != "xno"], [
@@ -119,7 +126,7 @@ case "$with_arch" in
 	AC_SUBST(ARCH)
     ;;
     *)
-	if test "$have_rimage" = "no"; then
+	if test "$have_rimage" = "no" && test "$have_doc" = "no" ; then
 		AC_MSG_ERROR([DSP architecture not specified])
 	fi
     ;;
@@ -127,6 +134,9 @@ esac
 
 AM_CONDITIONAL(BUILD_XTENSA, test "$ARCH" = "xtensa")
 AM_CONDITIONAL(BUILD_HOST, test "$ARCH" = "host")
+
+# check for xtensa extension
+AM_CONDITIONAL(BUILD_XTENSA_SMP, test "$with_arch" = "xtensa-smp")
 
 # Cmocka tests
 AC_ARG_WITH([cmocka-prefix],
@@ -265,7 +275,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
     *)
-	if test "$have_rimage" = "no"; then
+	if test "$have_rimage" = "no" && test "$have_doc" = "no"; then
 		if test "$ARCH" = "host"; then
 			PLATFORM="host"
 			AC_SUBST(PLATFORM)
@@ -422,8 +432,16 @@ AC_CONFIG_FILES([
 	src/arch/xtensa/include/arch/Makefile
 	src/arch/xtensa/include/xtensa/Makefile
 	src/arch/xtensa/include/xtensa/config/Makefile
-	src/arch/xtensa/hal/Makefile
-	src/arch/xtensa/xtos/Makefile
+	src/arch/xtensa/smp/Makefile
+	src/arch/xtensa/smp/hal/Makefile
+	src/arch/xtensa/smp/include/Makefile
+	src/arch/xtensa/smp/include/arch/Makefile
+	src/arch/xtensa/smp/xtos/Makefile
+	src/arch/xtensa/up/Makefile
+	src/arch/xtensa/up/hal/Makefile
+	src/arch/xtensa/up/include/Makefile
+	src/arch/xtensa/up/include/arch/Makefile
+	src/arch/xtensa/up/xtos/Makefile
 	src/arch/host/Makefile
 	src/arch/host/include/Makefile
 	src/arch/host/include/arch/Makefile

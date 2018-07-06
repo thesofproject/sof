@@ -36,6 +36,7 @@
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/interrupt.h>
+#include <platform/idc.h>
 #include <uapi/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>
@@ -276,6 +277,10 @@ int platform_init(struct sof *sof)
 		return -ENODEV;
 
 	dai_probe(dmic0);
+
+	/* initialize IDC mechanism */
+	trace_point(TRACE_BOOT_PLATFORM_IDC);
+	idc_init();
 
 	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(sof->dmat);

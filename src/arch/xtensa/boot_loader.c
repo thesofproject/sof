@@ -39,8 +39,7 @@
 /* entry point to main firmware */
 extern void _ResetVector(void);
 
-void boot_pri_core(void);
-void boot_sec_core(void);
+void boot_master_core(void);
 
 #if defined(CONFIG_BOOT_LOADER)
 
@@ -171,18 +170,8 @@ static uint32_t hp_sram_init(void)
 }
 #endif
 
-/* boot secondary core - i.e core ID > 0 */
-void boot_sec_core(void)
-{
-	/* TODO: prepare C stack for this core */
-	while (1);
-
-	/* now call SOF entry */
-	_ResetVector();
-}
-
-/* boot primary core - i.e. core ID == 0 */
-void boot_pri_core(void)
+/* boot master core */
+void boot_master_core(void)
 {
 	int32_t result;
 

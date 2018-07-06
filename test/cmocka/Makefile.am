@@ -18,7 +18,7 @@ endif
 
 if BUILD_XTENSA
 AM_CFLAGS += -I../../src/arch/xtensa/include
-AM_CFLAGS += -I../../src/platform/apollolake/include
+AM_CFLAGS += -I../../src/platform/$(PLATFORM)/include
 AM_CFLAGS += -I../../src/audio
 endif
 

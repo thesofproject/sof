@@ -138,8 +138,8 @@
 #define HEAP_RT_COUNT64			64
 #define HEAP_RT_COUNT128		32
 #define HEAP_RT_COUNT256		64
-#define HEAP_RT_COUNT512		8
-#define HEAP_RT_COUNT1024		4
+#define HEAP_RT_COUNT512		32
+#define HEAP_RT_COUNT1024		0
 
 #define L2_VECTOR_SIZE			0x1000
 
@@ -259,7 +259,7 @@
 #endif
 
 /* bss data */
-#define SOF_BSS_DATA_SIZE	0x2800
+#define SOF_BSS_DATA_SIZE	0x8300
 
 /* Stack configuration */
 #define SOF_STACK_SIZE		0x1000
