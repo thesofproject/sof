@@ -374,7 +374,7 @@ int scheduler_init(struct sof *sof)
 	trace_pipe("ScI");
 
 	struct schedule_data **sch = arch_schedule_get();
-	*sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**sch));
+	*sch = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**sch));
 	list_init(&((*sch)->list));
 	spinlock_init(&((*sch)->lock));
 	(*sch)->clock = PLATFORM_SCHED_CLOCK;
@@ -388,4 +388,27 @@ int scheduler_init(struct sof *sof)
 	allocate_tasks();
 
 	return 0;
+}
+
+/* Frees scheduler */
+void scheduler_free(void)
+{
+	struct schedule_data **sch = arch_schedule_get();
+	uint32_t flags;
+
+	spin_lock_irq(&(*sch)->lock, flags);
+
+	/* disable and unregister scheduler interrupt */
+	interrupt_disable(PLATFORM_SCHEDULE_IRQ);
+	interrupt_unregister(PLATFORM_SCHEDULE_IRQ);
+
+	/* free arch tasks */
+	arch_free_tasks();
+
+	work_cancel_default(&(*sch)->work);
+	list_item_del(&(*sch)->list);
+
+	spin_unlock_irq(&(*sch)->lock, flags);
+
+	rfree(*sch);
 }

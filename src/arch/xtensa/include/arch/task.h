@@ -171,24 +171,65 @@ static inline void arch_allocate_tasks(void)
 {
 	/* irq low */
 	struct irq_task **low = task_irq_low_get();
-	*low = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**low));
+	*low = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**low));
 	list_init(&((*low)->list));
 	spinlock_init(&((*low)->lock));
 	(*low)->irq = PLATFORM_IRQ_TASK_LOW;
 
 	/* irq medium */
 	struct irq_task **med = task_irq_med_get();
-	*med = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**med));
+	*med = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**med));
 	list_init(&((*med)->list));
 	spinlock_init(&((*med)->lock));
 	(*med)->irq = PLATFORM_IRQ_TASK_MED;
 
 	/* irq high */
 	struct irq_task **high = task_irq_high_get();
-	*high = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**high));
+	*high = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**high));
 	list_init(&((*high)->list));
 	spinlock_init(&((*high)->lock));
 	(*high)->irq = PLATFORM_IRQ_TASK_HIGH;
+}
+
+/**
+ * \brief Frees IRQ tasks.
+ */
+static inline void arch_free_tasks(void)
+{
+	uint32_t flags;
+
+	/* free IRQ low task */
+	struct irq_task **low = task_irq_low_get();
+
+	spin_lock_irq(&(*low)->lock, flags);
+	interrupt_disable(PLATFORM_IRQ_TASK_LOW);
+	interrupt_unregister(PLATFORM_IRQ_TASK_LOW);
+	list_item_del(&(*low)->list);
+	spin_unlock_irq(&(*low)->lock, flags);
+
+	rfree(*low);
+
+	/* free IRQ medium task */
+	struct irq_task **med = task_irq_med_get();
+
+	spin_lock_irq(&(*med)->lock, flags);
+	interrupt_disable(PLATFORM_IRQ_TASK_MED);
+	interrupt_unregister(PLATFORM_IRQ_TASK_MED);
+	list_item_del(&(*med)->list);
+	spin_unlock_irq(&(*med)->lock, flags);
+
+	rfree(*med);
+
+	/* free IRQ high task */
+	struct irq_task **high = task_irq_high_get();
+
+	spin_lock_irq(&(*high)->lock, flags);
+	interrupt_disable(PLATFORM_IRQ_TASK_HIGH);
+	interrupt_unregister(PLATFORM_IRQ_TASK_HIGH);
+	list_item_del(&(*high)->list);
+	spin_unlock_irq(&(*high)->lock, flags);
+
+	rfree(*high);
 }
 
 /**
