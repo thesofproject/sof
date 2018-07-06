@@ -117,6 +117,9 @@ static void *rmalloc_sys(size_t bytes)
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
 
+	dcache_writeback_invalidate_region(&memmap.system,
+					   sizeof(memmap.system));
+
 	return ptr;
 }
 
@@ -135,6 +138,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 	hdr->used = 1;
 	heap->info.used += map->block_size;
 	heap->info.free -= map->block_size;
+	dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 
 	/* find next free */
 	for (i = map->first_free; i < map->count; ++i) {
@@ -150,6 +154,9 @@ static void *alloc_block(struct mm_heap *heap, int level,
 #if DEBUG_BLOCK_ALLOC
 	alloc_memset_region(ptr, map->block_size, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
+
+	dcache_writeback_invalidate_region(map, sizeof(*map));
+	dcache_writeback_invalidate_region(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -201,11 +208,13 @@ found:
 	hdr->size = count;
 	heap->info.used += count * map->block_size;
 	heap->info.free -= count * map->block_size;
+	dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 
 	/* allocate each block */
 	for (current = start; current < end; current++) {
 		hdr = &map->block[current];
 		hdr->used = 1;
+		dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 	}
 
 	/* do we need to find a new first free block ? */
@@ -226,6 +235,9 @@ found:
 #if DEBUG_BLOCK_ALLOC
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
+
+	dcache_writeback_invalidate_region(map, sizeof(*map));
+	dcache_writeback_invalidate_region(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -334,6 +346,7 @@ found:
 		block_map->free_count++;
 		heap->info.used -= block_map->block_size;
 		heap->info.free += block_map->block_size;
+		dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 	}
 
 	/* set first free block */
@@ -343,6 +356,9 @@ found:
 #if DEBUG_BLOCK_FREE
 	alloc_memset_region(ptr, block_map->block_size * (i - 1), DEBUG_BLOCK_FREE_VALUE);
 #endif
+
+	dcache_writeback_invalidate_region(block_map, sizeof(*block_map));
+	dcache_writeback_invalidate_region(heap, sizeof(*heap));
 }
 
 /* allocate single block for runtime */
@@ -612,6 +628,8 @@ void init_heap(struct sof *sof)
 
 			current_map = &heap->map[j];
 			current_map->base = heap->heap;
+			dcache_writeback_region(current_map,
+						sizeof(*current_map));
 
 			for (k = 1; k < heap->blocks; k++) {
 				next_map = &heap->map[k];
@@ -619,6 +637,8 @@ void init_heap(struct sof *sof)
 					current_map->block_size *
 					current_map->count;
 				current_map = &heap->map[k];
+				dcache_writeback_region(current_map,
+							sizeof(*current_map));
 			}
 		}
 	}
@@ -631,6 +651,8 @@ void init_heap(struct sof *sof)
 
 			current_map = &heap->map[j];
 			current_map->base = heap->heap;
+			dcache_writeback_region(current_map,
+						sizeof(*current_map));
 
 			for (k = 1; k < heap->blocks; k++) {
 				next_map = &heap->map[k];
@@ -638,6 +660,8 @@ void init_heap(struct sof *sof)
 					current_map->block_size *
 					current_map->count;
 				current_map = &heap->map[k];
+				dcache_writeback_region(current_map,
+							sizeof(*current_map));
 			}
 		}
 	}
