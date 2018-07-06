@@ -30,7 +30,8 @@ MACHINES = \
 	sof-cnl-rt274.tplg \
 	sof-hsw-rt5640.tplg \
 	sof-apl-tdf8532.tplg \
-	sof-apl-pcm512x.tplg
+	sof-apl-pcm512x.tplg \
+	sof-glk-codec.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
@@ -61,4 +62,5 @@ EXTRA_DIST = \
 	sof-cnl-rt274.m4 \
 	sof-hsw-rt5640.m4 \
 	sof-apl-tdf8532.m4 \
-	sof-apl-pcm512x.m4
+	sof-apl-pcm512x.m4 \
+	sof-glk-codec.m4
