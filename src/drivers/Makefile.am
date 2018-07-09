@@ -38,6 +38,7 @@ libdrivers_a_SOURCES += \
 endif
 
 libdrivers_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR) \
