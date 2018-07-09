@@ -42,6 +42,10 @@
 
 static struct dma_trace_data *trace_data = NULL;
 
+static int dma_trace_get_avali_data(struct dma_trace_data *d,
+				    struct dma_trace_buf *buffer,
+				    int avail);
+
 static uint64_t trace_work(void *data, uint64_t delay)
 {
 	struct dma_trace_data *d = (struct dma_trace_data *)data;
@@ -50,25 +54,7 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	unsigned long flags;
 	uint32_t avail = buffer->avail;
 	int32_t size;
-	uint32_t hsize;
-	uint32_t lsize;
-
-	if (d->host_offset == d->host_size)
-		d->host_offset = 0;
-
-#if defined CONFIG_DMA_GW
-	/*
-	 * there isn't DMA completion callback in GW DMA copying.
-	 * so we send previous position always before the next copying
-	 * for guaranteeing previous DMA copying is finished.
-	 * This function will be called once every 500ms at least even
-	 * if no new trace is filled.
-	 */
-	if (d->old_host_offset != d->host_offset) {
-		ipc_dma_trace_send_position();
-		d->old_host_offset = d->host_offset;
-	}
-#endif
+	uint32_t overflow;
 
 	/* any data to copy ? */
 	if (avail == 0)
@@ -77,33 +63,19 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	/* DMA trace copying is working */
 	d->copy_in_progress = 1;
 
-	/* make sure we dont write more than buffer */
+	/* make sure we don't write more than buffer */
 	if (avail > DMA_TRACE_LOCAL_SIZE) {
-		d->overflow = avail - DMA_TRACE_LOCAL_SIZE;
+		overflow = avail - DMA_TRACE_LOCAL_SIZE;
 		avail = DMA_TRACE_LOCAL_SIZE;
 	} else {
-		d->overflow = 0;
+		overflow = 0;
 	}
 
-	/* copy to host in sections if we wrap */
-	lsize = hsize = avail;
+	/* dma gateway supports wrap mode copy, but GPDMA doesn't*/
+	/* support, so do it differently based on HW features */
+	size = dma_trace_get_avali_data(d, buffer, avail);
 
-	/* host buffer wrap ? */
-	if (d->host_offset + avail > d->host_size)
-		hsize = d->host_size - d->host_offset;
-
-	/* local buffer wrap ? */
-	if (buffer->r_ptr + avail > buffer->end_addr)
-		lsize = buffer->end_addr - buffer->r_ptr;
-
-	/* get smallest size */
-	if (hsize < lsize)
-		size = hsize;
-	else
-		size = lsize;
-
-	/* writeback trace data */
-	dcache_writeback_region((void*)buffer->r_ptr, size);
+	d->overflow = overflow;
 
 	/* copy this section to host */
 	size = dma_copy_to_host_nowait(&d->dc, config, d->host_offset,
@@ -115,6 +87,8 @@ static uint64_t trace_work(void *data, uint64_t delay)
 
 	/* update host pointer and check for wrap */
 	d->host_offset += size;
+	if (d->host_offset == d->host_size)
+		d->host_offset = 0;
 
 	/* update local pointer and check for wrap */
 	buffer->r_ptr += size;
@@ -267,6 +241,68 @@ static int dma_trace_start(struct dma_trace_data *d)
 	return err;
 }
 
+static int dma_trace_get_avali_data(struct dma_trace_data *d,
+				    struct dma_trace_buf *buffer,
+				    int avail)
+{
+	int size;
+
+	/* there isn't DMA completion callback in GW DMA copying.
+	 * so we send previous position always before the next copying
+	 * for guaranteeing previous DMA copying is finished.
+	 * This function will be called once every 500ms at least even
+	 * if no new trace is filled.
+	 */
+	if (d->old_host_offset != d->host_offset) {
+		ipc_dma_trace_send_position();
+		d->old_host_offset = d->host_offset;
+	}
+
+	/* writeback trace data */
+	if (buffer->r_ptr + avail <= buffer->end_addr) {
+		dcache_writeback_region((void *)buffer->r_ptr, avail);
+	} else {
+		size = buffer->end_addr - buffer->r_ptr + 1;
+
+		/* warp case, flush tail and head of trace buffer */
+		dcache_writeback_region((void *)buffer->r_ptr, size);
+		dcache_writeback_region((void *)buffer->addr, avail - size);
+	}
+
+	return avail;
+}
+#else
+static int dma_trace_get_avali_data(struct dma_trace_data *d,
+				    struct dma_trace_buf *buffer,
+				    int avail)
+{
+	uint32_t hsize;
+	uint32_t lsize;
+	int32_t size;
+
+	/* copy to host in sections if we wrap */
+	lsize = avail;
+	hsize = avail;
+
+	/* host buffer wrap ? */
+	if (d->host_offset + avail > d->host_size)
+		hsize = d->host_size - d->host_offset;
+
+	/* local buffer wrap ? */
+	if (buffer->r_ptr + avail > buffer->end_addr)
+		lsize = buffer->end_addr - buffer->r_ptr;
+
+	/* get smallest size */
+	if (hsize < lsize)
+		size = hsize;
+	else
+		size = lsize;
+
+	/* writeback trace data */
+	dcache_writeback_region((void *)buffer->r_ptr, size);
+
+	return size;
+}
 #endif
 
 int dma_trace_enable(struct dma_trace_data *d)
