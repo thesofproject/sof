@@ -6,10 +6,12 @@ if BUILD_XTENSA
 LOG_COMPILER = xt-run
 endif
 
-AM_CFLAGS = \
+override AM_CFLAGS := \
+	$(filter-out -nostdlib,$(AM_CFLAGS)) \
 	$(SOF_INCDIR)
 
-AM_LDFLAGS =
+override AM_LDFLAGS := \
+	$(filter-out -nostdlib,$(AM_LDFLAGS))
 
 if HAVE_CMOCKA_PREFIX
 AM_CFLAGS += -I$(CMOCKA_PREFIX)/include
@@ -25,9 +27,6 @@ endif
 if BUILD_HOST
 AM_CFLAGS += -I../../src/arch/host/include
 endif
-
-CFLAGS := $(filter-out -nostdlib,$(CFLAGS))
-LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
 LDADD = -lcmocka
 
