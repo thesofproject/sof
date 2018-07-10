@@ -26,6 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #include <stdint.h>
@@ -38,11 +39,13 @@ struct dma_sg_config;
 int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 		       int32_t host_offset, void *local_ptr, int32_t size)
 {
+	return 0;
 }
 
 int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 		     int32_t host_offset, void *local_ptr, int32_t size)
 {
+	return 0;
 }
 
 void _trace_event_mbox_atomic(uint32_t e)
