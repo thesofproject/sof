@@ -122,7 +122,7 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 {
 	/* TODO: struct dma_pdata *p = dma_get_drvdata(dma); */
-
+	struct dma_pdata *p = dma_get_drvdata(dma);
 	tracev_host("GwU");
 
 	/* TODO: implement wp/rp polling, work queue
@@ -135,6 +135,12 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 	 *		NULL);
 	 *
 	 */
+
+	if (p->chan[channel].cb) {
+		p->chan[channel].cb(p->chan[channel].cb_data,
+				DMA_IRQ_TYPE_LLIST,
+				NULL);
+	}
 
 	/* reset BSC before start next copy */
 	hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
