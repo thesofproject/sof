@@ -34,7 +34,7 @@
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
 #include <arch/interrupt.h>
-#include <arch/cpu.h>
+#include <sof/cpu.h>
 #include <platform/interrupt.h>
 #include <platform/platcfg.h>
 #include <platform/shim.h>

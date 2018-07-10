@@ -25,51 +25,79 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Rander Wang <rander.wang@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  *
  */
 
-#ifndef __INCLUDE_ARCH_CPU__
-#define __INCLUDE_ARCH_CPU__
+/**
+ * \file arch/xtensa/smp/cpu.c
+ * \brief Xtensa SMP CPU implementation file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
 
-#include <xtensa/config/core.h>
-#include <platform/platcfg.h>
+#include <arch/alloc.h>
+#include <arch/atomic.h>
+#include <arch/cpu.h>
+#include <arch/idc.h>
+#include <platform/platform.h>
+#include <sof/lock.h>
+#include <sof/schedule.h>
 
-void arch_cpu_enable_core(int id);
+static uint32_t active_cores_mask = 0x1;
+static spinlock_t lock = { 0 };
 
-void arch_cpu_disable_core(int id);
-
-static inline int arch_cpu_get_id(void)
+void arch_cpu_enable_core(int id)
 {
-	int prid;
-#if XCHAL_HAVE_PRID
-	__asm__("rsr.prid %0" : "=a"(prid));
-#else
-	prid = PLATFORM_MASTER_CORE_ID;
-#endif
-	return prid;
+	struct idc_msg power_up = {
+		IDC_POWER_UP_MESSAGE, IDC_POWER_UP_EXTENSION, id };
+	uint32_t flags;
+
+	spin_lock_irq(&lock, flags);
+
+	if (!(active_cores_mask & (1 << id))) {
+		/* allocate resources for core */
+		alloc_core_context(id);
+
+		/* enable IDC interrupt for the the slave core */
+		idc_enable_interrupts(id, arch_cpu_get_id());
+
+		/* send IDC power up message */
+		arch_idc_send_msg(&power_up);
+
+		active_cores_mask |= (1 << id);
+	}
+
+	spin_unlock_irq(&lock, flags);
 }
 
-static inline void cpu_write_threadptr(int threadptr)
+void arch_cpu_disable_core(int id)
 {
-#if XCHAL_HAVE_THREADPTR
-	__asm__ __volatile__(
-		"wur.threadptr %0" : : "a" (threadptr) : "memory");
-#else
-#error "Core support for XCHAL_HAVE_THREADPTR is required"
-#endif
+	struct idc_msg power_down = { IDC_POWER_DOWN_MESSAGE, 0, id };
+	uint32_t flags;
+
+	spin_lock_irq(&lock, flags);
+
+	if (active_cores_mask & (1 << id)) {
+		arch_idc_send_msg(&power_down);
+
+		active_cores_mask ^= (1 << id);
+	}
+
+	spin_unlock_irq(&lock, flags);
 }
 
-static inline int cpu_read_threadptr(void)
+void cpu_power_down_core(void)
 {
-	int threadptr;
-#if XCHAL_HAVE_THREADPTR
-	__asm__ __volatile__(
-		"rur.threadptr %0" : "=a"(threadptr));
-#else
-#error "Core support for XCHAL_HAVE_THREADPTR is required"
-#endif
-	return threadptr;
-}
+	arch_interrupt_global_disable();
 
-#endif
+	idc_free();
+
+	scheduler_free();
+
+	free_core_context(arch_cpu_get_id());
+
+	dcache_writeback_invalidate_all();
+
+	while (1)
+		arch_wait_for_interrupt(0);
+}
