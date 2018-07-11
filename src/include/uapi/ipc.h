@@ -837,10 +837,6 @@ struct sof_ipc_fw_version {
 /* FW ready Message - sent by firmware when boot has completed */
 struct sof_ipc_fw_ready {
 	struct sof_ipc_hdr hdr;
-	uint32_t dspbox_offset;	 /* dsp initiated IPC mailbox */
-	uint32_t hostbox_offset; /* host initiated IPC mailbox */
-	uint32_t dspbox_size;
-	uint32_t hostbox_size;
 	struct sof_ipc_fw_version version;
 } __attribute__((packed));
 
