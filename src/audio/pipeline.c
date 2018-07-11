@@ -206,7 +206,6 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 		pipeline_schedule_cancel(p);
 		break;
 	case COMP_TRIGGER_START:
-	case COMP_TRIGGER_RELEASE:
 		p->xrun_bytes = 0;
 
 		/* playback pipelines need scheduled now, capture pipelines are
@@ -221,6 +220,22 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 				/* DAI - schedule initial pipeline fill when next idle */
 				pipeline_schedule_copy_idle(p);
 			}
+		}
+		break;
+	case COMP_TRIGGER_RELEASE:
+		p->xrun_bytes = 0;
+
+		/* in resume process, capture must be
+		 * scheduled to to avoid the xrun in DAI component
+		 */
+		if (p->ipc_pipe.timer) {
+			/* timer - schedule initial copy */
+			pipeline_schedule_copy(p, 0);
+		} else {
+			/* DAI - schedule initial
+			 * pipeline fill when next idle
+			 */
+			pipeline_schedule_copy_idle(p);
 		}
 		break;
 	case COMP_TRIGGER_SUSPEND:
