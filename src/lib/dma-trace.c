@@ -92,8 +92,8 @@ static uint64_t trace_work(void *data, uint64_t delay)
 
 	/* update local pointer and check for wrap */
 	buffer->r_ptr += size;
-	if (buffer->r_ptr == buffer->end_addr)
-		buffer->r_ptr = buffer->addr;
+	if (buffer->r_ptr >= buffer->end_addr)
+		buffer->r_ptr -= DMA_TRACE_LOCAL_SIZE;
 
 out:
 	spin_lock_irq(&d->lock, flags);
