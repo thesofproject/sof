@@ -159,7 +159,8 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
-	if (buffer->sink->is_dma_connected)
+	if (buffer->sink->is_dma_connected &&
+	    !buffer->source->is_dma_connected)
 		dcache_writeback_region(buffer->r_ptr, bytes);
 
 	spin_unlock_irq(&buffer->lock, flags);
