@@ -740,7 +740,7 @@ static int host_stop(struct comp_dev *dev)
 	/* reset elements, to let next start from original one */
 	host_elements_reset(dev);
 
-	dev->state = COMP_STATE_PAUSED;
+	dev->state = COMP_STATE_PREPARE;
 	return 0;
 }
 
