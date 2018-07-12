@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <sof/alloc.h>
+
 void _trace_event(uint32_t e)
 {
 	(void)e;

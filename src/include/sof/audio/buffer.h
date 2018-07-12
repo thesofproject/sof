@@ -139,4 +139,11 @@ static inline int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	return 0;
 }
 
+static inline void buffer_zero(struct comp_buffer *buffer)
+{
+	tracev_buffer("BZr");
+
+	bzero(buffer->addr, buffer->size);
+}
+
 #endif

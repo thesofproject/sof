@@ -25,54 +25,33 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-/**
- * \file include/sof/pm_runtime.h
- * \brief Runtime power management header file
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#include <stdint.h>
 
-#ifndef __INCLUDE_PM_RUNTIME__
-#define __INCLUDE_PM_RUNTIME__
+#include <sof/alloc.h>
 
-#include <sof/lock.h>
-#include <sof/trace.h>
+struct dma_copy;
+struct dma_sg_config;
 
-/** \brief Power management trace function. */
-#define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
-#define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
+int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		       int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return 0;
+}
 
-/** \brief Power management trace value function. */
-#define tracev_pm_value(__e)	tracev_value(__e)
+int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
+		     int32_t host_offset, void *local_ptr, int32_t size)
+{
+	return 0;
+}
 
-/** \brief Runtime power management context */
-enum pm_runtime_context {
-	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
-};
+void _trace_event_mbox_atomic(uint32_t e)
+{
+}
 
-/** \brief Runtime power management data. */
-struct pm_runtime_data {
-	spinlock_t lock;	/**< lock mechanism */
-	void *platform_data;	/**< platform specific data */
-};
-
-/**
- * \brief Initializes runtime power management.
- */
-void pm_runtime_init(void);
-
-/**
- * \brief Retrieves power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_get(enum pm_runtime_context context);
-
-/**
- * \brief Releases power management resource.
- * \param[in] context Type of power management context.
- */
-void pm_runtime_put(enum pm_runtime_context context);
-
-#endif /* __INCLUDE_PM_RUNTIME__ */
+void trace_flush(void)
+{
+}

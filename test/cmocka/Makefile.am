@@ -6,10 +6,12 @@ if BUILD_XTENSA
 LOG_COMPILER = xt-run
 endif
 
-AM_CFLAGS = \
+override AM_CFLAGS := \
+	$(filter-out -nostdlib,$(AM_CFLAGS)) \
 	$(SOF_INCDIR)
 
-AM_LDFLAGS =
+override AM_LDFLAGS := \
+	$(filter-out -nostdlib,$(AM_LDFLAGS))
 
 if HAVE_CMOCKA_PREFIX
 AM_CFLAGS += -I$(CMOCKA_PREFIX)/include
@@ -26,10 +28,14 @@ if BUILD_HOST
 AM_CFLAGS += -I../../src/arch/host/include
 endif
 
-CFLAGS := $(filter-out -nostdlib,$(CFLAGS))
-LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
-
 LDADD = -lcmocka
+
+# memory allocator test
+
+if BUILD_XTENSA
+check_PROGRAMS += alloc
+alloc_SOURCES = src/lib/alloc/alloc.c src/lib/alloc/mock.c ../../src/lib/alloc.c ../../src/platform/apollolake/memory.c
+endif
 
 # volume tests
 

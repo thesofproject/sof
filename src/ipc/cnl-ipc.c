@@ -69,7 +69,7 @@ static void irq_handler(void *arg)
 
 	/* new message from host */
 	if (dipctdr & IPC_DIPCTDR_BUSY) {
-		trace_ipc("Nms");
+		tracev_ipc("Nms");
 
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCTBIE);

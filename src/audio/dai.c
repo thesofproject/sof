@@ -521,6 +521,17 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_RELEASE:
+		/* before release, we clear the buffer data to 0s,
+		 * then there is no history data sent out after release.
+		 * this is only supported at capture mode.
+		 */
+		if (dev->params.direction == SOF_IPC_STREAM_CAPTURE) {
+			struct comp_buffer *dma_buffer =
+			list_first_item(&dev->bsink_list,
+					struct comp_buffer, source_list);
+			buffer_zero(dma_buffer);
+		}
+
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover the dma status */

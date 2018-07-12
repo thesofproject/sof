@@ -50,6 +50,11 @@
 /* IPC page data copy timeout */
 #define PLATFORM_IPC_DMA_TIMEOUT 2000
 
+/* DSP default delay in cycles */
+#define PLATFORM_DEFAULT_DELAY	12
+
 static inline void platform_panic(uint32_t p) {}
+
+extern struct timer *platform_timer;
 
 #endif

@@ -17,6 +17,7 @@ libplatform_a_SOURCES = \
 	pm_runtime.c
 
 libplatform_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
@@ -28,6 +29,7 @@ module_SOURCES = \
 	base_module.c
 
 module_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR)
@@ -36,6 +38,7 @@ boot_module_SOURCES = \
 	boot_module.c
 
 boot_module_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR)

@@ -13,6 +13,7 @@ libcore_a_SOURCES = \
 	pm_runtime.c
 
 libcore_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
@@ -22,6 +23,7 @@ libdma_a_SOURCES = \
 	dma.c
 
 libdma_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
