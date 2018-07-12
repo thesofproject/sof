@@ -117,30 +117,55 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 {
 	io_reg_update_bits(dma_chan_base(dma, chan) + reg,  mask, value);
 }
+static uint64_t hda_work(void *data, uint64_t delay)
+{
+	struct dai *dai = (struct dai *)data;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+		int32_t gval;
+		uint32_t val;
+		int i;
 
+		tracev_client("wrk");
+
+		spin_lock(&dmic->lock);
+
+		spin_unlock(&dmic->lock);
+
+	return 0;
+}
 /* notify DMA to copy bytes */
 static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 {
-	/* TODO: struct dma_pdata *p = dma_get_drvdata(dma); */
+
+
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	tracev_host("GwU");
 
 	/* TODO: implement wp/rp polling, work queue
 	 * client's callback may be called always from work callback
 	 * and call here work callback internally for host scenario.
-	 *
-	 * if (p->chan[channel].cb)
-	 *	p->chan[channel].cb(p->chan[channel].cb_data,
-	 *		DMA_IRQ_TYPE_LLIST,
-	 *		NULL);
-	 *
-	 */
+	*/
 
-	if (p->chan[channel].cb) {
+	uint32_t dgbwp = host_dma_reg_read(dma, channel, DGBWP);
+	uint32_t dgbs = host_dma_reg_read(dma, channel, DGBS);
+	uint32_t dgbrp = host_dma_reg_read(dma, channel, DGBRP);
+
+	/* function takes into account clock values for different platforms.*/
+	uint64_t HDA_LINK_1MS_US = 1000;
+
+	work_schedule_default(dma,HDA_LINK_1MS_US);
+
+	spin_lock_irq(&dma->lock, flags);
+	if ((dgbwp << 8) == 0 && (dgbrp << 8) != 0) {
+	    if (p->chan[channel].cb) {
+
 		p->chan[channel].cb(p->chan[channel].cb_data,
-				DMA_IRQ_TYPE_LLIST,
-				NULL);
+				DMA_IRQ_TYPE_LLIST, NULL);
+
 	}
+
+
+	spin_unlock_irq(&dma->lock, flags);
 
 	/* reset BSC before start next copy */
 	hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
@@ -149,10 +174,13 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 	 * set BFPI to let host gateway knows we have read size,
 	 * which will trigger next copy start.
 	 */
+
 	host_dma_reg_write(dma, channel, DGBFPI, bytes);
 
 	host_dma_reg_write(dma, channel, DGLLPI, bytes);
 	host_dma_reg_write(dma, channel, DGLPIBI, bytes);
+
+	}
 
 	/* Force Host DMA to exit L1 */
 	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
