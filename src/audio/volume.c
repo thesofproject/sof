@@ -286,7 +286,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 	int j;
 
 	/* validate */
-	if (cdata->num_elems == 0 || cdata->num_elems >= SOF_IPC_MAX_CHANNELS) {
+	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
 		trace_volume_error("gs0");
 		return -EINVAL;
 	}
