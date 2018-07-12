@@ -164,7 +164,6 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 
 	}
 
-
 	spin_unlock_irq(&dma->lock, flags);
 
 	/* reset BSC before start next copy */
