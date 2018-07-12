@@ -106,9 +106,20 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	spin_lock_irq(&buffer->lock, flags);
 
-	if (buffer->source->is_dma_connected)
+	/*
+	 * new data produce, handle consistency for buffer and cache:
+	 * 1. source(DMA) --> buffer --> sink(non-DMA): invalidate cache.
+	 * 2. source(non-DMA) --> buffer --> sink(DMA): write back to memory.
+	 * 3. source(DMA) --> buffer --> sink(DMA): do nothing.
+	 * 4. source(non-DMA) --> buffer --> sink(non-DMA): do nothing.
+	 */
+	if (buffer->source->is_dma_connected &&
+	    !buffer->sink->is_dma_connected)
+		/* need invalidate cache for sink component to use */
 		dcache_invalidate_region(buffer->w_ptr, bytes);
-	else if (buffer->sink->is_dma_connected)
+	else if (!buffer->source->is_dma_connected &&
+		 buffer->sink->is_dma_connected)
+		/* need write back to memory for sink component to use */
 		dcache_writeback_region(buffer->w_ptr, bytes);
 
 	buffer->w_ptr += bytes;
