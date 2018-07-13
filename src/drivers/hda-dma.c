@@ -213,13 +213,7 @@ static int hda_dma_start(struct dma *dma, int channel)
 	/* full buffer is copied at startup */
 	p->chan[channel].desc_avail = p->chan[channel].desc_count;
 
-	/* for render let's wait for buffer full */
-	if (p->chan[channel].direction == DMA_DIR_HMEM_TO_LMEM) {
-		do {
-			idelay(PLATFORM_DEFAULT_DELAY);
-			dgcs = host_dma_reg_read(dma, channel, DGCS);
-		} while (!(dgcs & DGCS_BF));
-	}
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
 out:
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
