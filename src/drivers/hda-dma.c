@@ -117,22 +117,6 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 {
 	io_reg_update_bits(dma_chan_base(dma, chan) + reg,  mask, value);
 }
-static uint64_t hda_work(void *data, uint64_t delay)
-{
-	struct dai *dai = (struct dai *)data;
-	struct dma_pdata *p = dma_get_drvdata(dma);
-		int32_t gval;
-		uint32_t val;
-		int i;
-
-		tracev_client("wrk");
-
-		spin_lock(&dmic->lock);
-
-		spin_unlock(&dmic->lock);
-
-	return 0;
-}
 /* notify DMA to copy bytes */
 static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 {
@@ -152,8 +136,6 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 
 	/* function takes into account clock values for different platforms.*/
 	uint64_t HDA_LINK_1MS_US = 1000;
-
-	work_schedule_default(dma,HDA_LINK_1MS_US);
 
 	spin_lock_irq(&dma->lock, flags);
 	if ((dgbwp << 8) == 0 && (dgbrp << 8) != 0) {
