@@ -120,8 +120,6 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 /* notify DMA to copy bytes */
 static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 {
-
-
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	tracev_host("GwU");
 
@@ -135,33 +133,29 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes)
 	uint32_t dgbrp = host_dma_reg_read(dma, channel, DGBRP);
 
 	/* function takes into account clock values for different platforms.*/
-	uint64_t HDA_LINK_1MS_US = 1000;
+	uint32_t vdgbs = (dgbs & (0x17 < 3))  << 7;
 
 	spin_lock_irq(&dma->lock, flags);
-	if ((dgbwp << 8) == 0 && (dgbrp << 8) != 0) {
-	    if (p->chan[channel].cb) {
-
-		p->chan[channel].cb(p->chan[channel].cb_data,
-				DMA_IRQ_TYPE_LLIST, NULL);
-
+	if ((dgbwp << 8 * 2) > vdgbs) {
+		if (p->chan[channel].cb) {
+			p->chan[channel].cb(p->chan[channel].cb_data,
+					DMA_IRQ_TYPE_LLIST, NULL);
+		}
+		if ((dgbwp << 8) == 0 && ((dgbrp << 8) != 0)) {
+			hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
+			/*
+			 * set BFPI to let host gateway knows we have read size,
+			 * which will trigger next copy start.
+			 */
+			host_dma_reg_write(dma, channel, DGBFPI, bytes);
+			host_dma_reg_write(dma, channel, DGLLPI, bytes);
+			host_dma_reg_write(dma, channel, DGLPIBI, bytes);
+		}
 	}
-
 	spin_unlock_irq(&dma->lock, flags);
 
 	/* reset BSC before start next copy */
-	hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
 
-	/*
-	 * set BFPI to let host gateway knows we have read size,
-	 * which will trigger next copy start.
-	 */
-
-	host_dma_reg_write(dma, channel, DGBFPI, bytes);
-
-	host_dma_reg_write(dma, channel, DGLLPI, bytes);
-	host_dma_reg_write(dma, channel, DGLPIBI, bytes);
-
-	}
 
 	/* Force Host DMA to exit L1 */
 	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
@@ -226,6 +220,7 @@ static int hda_dma_start(struct dma *dma, int channel)
 	uint32_t flags;
 	uint32_t dgcs;
 	int ret = 0;
+	uint64_t HDA_LINK_1MS_US = 1000;
 
 	spin_lock_irq(&dma->lock, flags);
 
@@ -257,6 +252,9 @@ static int hda_dma_start(struct dma *dma, int channel)
 		} while (!(dgcs & DGCS_BF));
 	}
 out:
+	work_schedule_default(hda_dma_copy(dma, channel,
+			p->chan[channel].cb_data),
+			HDA_LINK_1MS_US);
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
 }
@@ -479,7 +477,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.probe		= hda_dma_probe,
 };
 
-const struct dma_ops hda_link_dma_ops = {
+const struct dma_ops hda_lhost_copyink_dma_ops = {
 	.channel_get	= hda_dma_channel_get,
 	.channel_put	= hda_dma_channel_put,
 	.start		= hda_dma_start,
