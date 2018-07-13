@@ -61,6 +61,12 @@ check_PROGRAMS += buffer_copy
 buffer_copy_SOURCES = src/audio/buffer/buffer_copy.c src/audio/buffer/mock.c
 buffer_copy_LDADD =  ../../src/audio/libaudio.a $(LDADD)
 
+# component tests
+
+check_PROGRAMS += component_set_state
+component_set_state_SOURCES = src/audio/component/component_set_state.c src/audio/component/mock.c
+component_set_state_LDADD = ../../src/audio/libaudio.a $(LDADD)
+
 # list tests
 
 check_PROGRAMS += list_init
