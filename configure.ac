@@ -110,9 +110,9 @@ case "$with_arch" in
 	ARCH_CFLAGS="-g"
 
 	# automake FLAGS defined here
-	AM_CFLAGS="-O3"
+	AM_CFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 	AM_LDFLAGS="-lpthread"
-	AM_CCASFLAGS="-O3"
+	AM_CCASFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 
 	ARCH="host"
 	AC_SUBST(ARCH)
