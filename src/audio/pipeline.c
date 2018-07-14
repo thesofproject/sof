@@ -605,13 +605,14 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct op_data op_data;
 	int ret = -1;
+	uint32_t flags;
 
 	trace_pipe("pre");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PREPARE;
 
-	spin_lock(&p->lock);
+	spin_lock_irq(&p->lock, flags);
 
 	/* playback pipelines can be preloaded from host before trigger */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -632,7 +633,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	}
 
 out:
-	spin_unlock(&p->lock);
+	spin_unlock_irq(&p->lock, flags);
 	return ret;
 }
 
@@ -687,13 +688,14 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 {
 	struct op_data op_data;
 	int ret;
+	uint32_t flags;
 
 	trace_pipe("Par");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PARAMS;
 
-	spin_lock(&p->lock);
+	spin_lock_irq(&p->lock, flags);
 
 	host->params = params->params;
 
@@ -710,7 +712,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 		trace_error_value(host->comp.id);
 	}
 
-	spin_unlock(&p->lock);
+	spin_unlock_irq(&p->lock, flags);
 	return ret;
 }
 
@@ -719,13 +721,14 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 {
 	struct op_data op_data;
 	int ret;
+	uint32_t flags;
 
 	trace_pipe("PRe");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_RESET;
 
-	spin_lock(&p->lock);
+	spin_lock_irq(&p->lock, flags);
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* send reset downstream from host to DAI */
@@ -740,7 +743,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 		trace_error_value(host->comp.id);
 	}
 
-	spin_unlock(&p->lock);
+	spin_unlock_irq(&p->lock, flags);
 	return ret;
 }
 
