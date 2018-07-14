@@ -18,9 +18,6 @@ AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
 
 AC_CANONICAL_HOST
 
-# General compiler flags
-CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
-
 # General assembler flags
 ASFLAGS="-DASSEMBLY"
 AC_SUBST(ASFLAGS)
@@ -93,6 +90,11 @@ case "$with_arch" in
 	AM_CFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
 	AM_LDFLAGS="-nostdlib"
 	AM_CCASFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
+
+	# GCC needs these additional flags on top of any user flags.
+	CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	LDFLAGS="${LDFLAGS:+$LDFLAGS } ${AM_LDFLAGS}"
+	CCASFLAGS="${CCASFLAGS:+$CCASFLAGS } ${AM_CCASFLAGS}"
 
 	ARCH="xtensa"
 	AC_SUBST(ARCH)
