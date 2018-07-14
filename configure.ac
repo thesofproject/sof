@@ -65,6 +65,7 @@ AM_CONDITIONAL(BUILD_LIB, test "$have_library" = "yes")
 AC_ARG_ENABLE(rimage, [AS_HELP_STRING([--enable-rimage],[build rimage tool])], have_rimage=$enableval, have_rimage=no)
 if test "$have_rimage" = "yes"; then
 	AC_DEFINE([CONFIG_RIMAGE], [1], [Configure to build rimage])
+	AM_CFLAGS="-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
 
