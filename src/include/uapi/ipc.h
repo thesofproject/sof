@@ -101,6 +101,7 @@
 #define SOF_IPC_PM_CLK_SET			SOF_CMD_TYPE(0x004)
 #define SOF_IPC_PM_CLK_GET			SOF_CMD_TYPE(0x005)
 #define SOF_IPC_PM_CLK_REQ			SOF_CMD_TYPE(0x006)
+#define SOF_IPC_PM_CORE_ENABLE			SOF_CMD_TYPE(0x007)
 
 /* component runtime config - multiple different types */
 #define SOF_IPC_COMP_SET_VALUE			SOF_CMD_TYPE(0x001)
@@ -815,6 +816,12 @@ struct sof_ipc_pm_ctx {
 	uint32_t num_elems;
 	uint32_t size;
 	struct sof_ipc_pm_ctx_elem elems[];
+};
+
+/* enable or disable cores - SOF_IPC_PM_CORE_ENABLE */
+struct sof_ipc_pm_core_config {
+	struct sof_ipc_hdr hdr;
+	uint32_t enable_mask;
 };
 
 /*
