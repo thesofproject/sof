@@ -64,7 +64,7 @@ if BUILD_HOST
 # common linker flags for host libs
 host_lib_ldflags = \
 	$(AM_LDFLAGS) \
-	-version-info `echo $(VERSION) | cut -d '.' -f 1` \
+	-version-info `echo $(VERSION) | cut -d '.' -f 1 | cut -d '0' -f 2` \
 	-no-undefined \
 	-export-dynamic
 

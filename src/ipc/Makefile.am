@@ -6,7 +6,7 @@ libsof_ipc_la_SOURCES = \
 
 libsof_ipc_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
-	-version-info `echo $(VERSION) | cut -d '.' -f 1` \
+	-version-info `echo $(VERSION) | cut -d '.' -f 1 | cut -d '0' -f 2` \
 	-no-undefined \
 	-export-dynamic
 

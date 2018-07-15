@@ -18,9 +18,6 @@ AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
 
 AC_CANONICAL_HOST
 
-# General compiler flags
-CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
-
 # General assembler flags
 ASFLAGS="-DASSEMBLY"
 AC_SUBST(ASFLAGS)
@@ -68,6 +65,7 @@ AM_CONDITIONAL(BUILD_LIB, test "$have_library" = "yes")
 AC_ARG_ENABLE(rimage, [AS_HELP_STRING([--enable-rimage],[build rimage tool])], have_rimage=$enableval, have_rimage=no)
 if test "$have_rimage" = "yes"; then
 	AC_DEFINE([CONFIG_RIMAGE], [1], [Configure to build rimage])
+	AM_CFLAGS="-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
 
@@ -94,6 +92,11 @@ case "$with_arch" in
 	AM_LDFLAGS="-nostdlib"
 	AM_CCASFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
 
+	# GCC needs these additional flags on top of any user flags.
+	CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	LDFLAGS="${LDFLAGS:+$LDFLAGS } ${AM_LDFLAGS}"
+	CCASFLAGS="${CCASFLAGS:+$CCASFLAGS } ${AM_CCASFLAGS}"
+
 	ARCH="xtensa"
 	AC_SUBST(ARCH)
 
@@ -107,9 +110,9 @@ case "$with_arch" in
 	ARCH_CFLAGS="-g"
 
 	# automake FLAGS defined here
-	AM_CFLAGS="-O3"
+	AM_CFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 	AM_LDFLAGS="-lpthread"
-	AM_CCASFLAGS="-O3"
+	AM_CCASFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 
 	ARCH="host"
 	AC_SUBST(ARCH)
