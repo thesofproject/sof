@@ -77,6 +77,7 @@ static int setup(void **state)
 	/* allocate and set new device */
 	vol_state->dev = test_malloc(COMP_SIZE(struct sof_ipc_comp_volume));
 	vol_state->dev->params.channels = parameters->channels;
+	vol_state->dev->frames = parameters->frames;
 
 	/* allocate and set new data */
 	cd = test_malloc(sizeof(*cd));
