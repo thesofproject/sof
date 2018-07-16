@@ -61,6 +61,32 @@ static int hweight_32(uint32_t mask)
 	return count;
 }
 
+/* empty SSP receive FIFO */
+static void ssp_empty_rx_fifo(struct dai *dai)
+{
+	struct ssp_pdata *ssp = dai_get_drvdata(dai);
+	uint32_t sssr;
+	uint32_t entries;
+	uint32_t i;
+
+	spin_lock(&ssp->lock);
+
+	sssr = ssp_read(dai, SSSR);
+
+	/* clear interrupt */
+	if (sssr & SSSR_ROR)
+		ssp_write(dai, SSSR, sssr);
+
+	/* empty fifo */
+	if (sssr & SSSR_RNE) {
+		entries = (ssp_read(dai, SSCR3) & SSCR3_RFL_MASK) >> 8;
+		for (i = 0; i < entries + 1; i++)
+			ssp_read(dai, SSDR);
+	}
+
+	spin_unlock(&ssp->lock);
+}
+
 /* save SSP context prior to entering D3 */
 static int ssp_context_store(struct dai *dai)
 {
@@ -657,6 +683,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	    ssp->state[SOF_IPC_STREAM_CAPTURE] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x0 << 8);
+		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
 		trace_ssp("Ss0");
 	}
@@ -746,6 +773,8 @@ static int ssp_probe(struct dai *dai)
 	interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
 	platform_interrupt_unmask(ssp_irq(dai), 1);
 	interrupt_enable(ssp_irq(dai));
+
+	ssp_empty_rx_fifo(dai);
 
 	return 0;
 }
