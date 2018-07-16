@@ -6,6 +6,9 @@ if BUILD_XTENSA
 LOG_COMPILER = xt-run
 endif
 
+# cmocka needs stdlib
+override LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
+
 override AM_CFLAGS := \
 	$(filter-out -nostdlib,$(AM_CFLAGS)) \
 	$(SOF_INCDIR)

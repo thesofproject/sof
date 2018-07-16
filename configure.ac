@@ -89,13 +89,13 @@ case "$with_arch" in
 
 	# automake FLAGS defined here
 	AM_CFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
-	AM_LDFLAGS="-nostdlib"
-	AM_CCASFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
+	AM_LDFLAGS=""
+	AM_CCASFLAGS=""
 
 	# GCC needs these additional flags on top of any user flags.
 	CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
-	LDFLAGS="${LDFLAGS:+$LDFLAGS } ${AM_LDFLAGS}"
-	CCASFLAGS="${CCASFLAGS:+$CCASFLAGS } ${AM_CCASFLAGS}"
+	LDFLAGS="${LDFLAGS:+$LDFLAGS } -nostdlib"
+	CCASFLAGS="${CCASFLAGS:+$CCASFLAGS } -fno-inline-functions -nostdlib -mlongcalls"
 
 	ARCH="xtensa"
 	AC_SUBST(ARCH)
