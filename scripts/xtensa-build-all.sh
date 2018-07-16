@@ -67,7 +67,6 @@ do
 	then
 		PLATFORM="baytrail"
 		XTENSA_CORE="Intel_HiFiEP"
-		ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
 		HOST="xtensa-byt-elf"
 		XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 	fi
@@ -75,29 +74,27 @@ do
 	then
 		PLATFORM="cherrytrail"
 		XTENSA_CORE="CHT_audio_hifiep"
-		ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
 		HOST="xtensa-byt-elf"
 		XTENSA_TOOLS_VERSION="RD-2012.5-linux"
 	fi
 	if [ $j == "bdw" ]
 	then
 		PLATFORM="broadwell"
-		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 		HOST="xtensa-hsw-elf"
 	fi
 	if [ $j == "hsw" ]
 	then
 		PLATFORM="haswell"
-		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 		HOST="xtensa-hsw-elf"
 	fi
 	if [ $j == "apl" ]
 	then
 		PLATFORM="apollolake"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
+		HOST="xtensa-bxt-elf"
 
 		# test APL compiler aliases and ignore set -e here
-		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
+		type $pwd/../xtensa-root/$HOST/bin/xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
 		if [ $? == 0 ]
 		then
 			HOST="xtensa-bxt-elf"
@@ -105,14 +102,12 @@ do
 			HOST="xtensa-apl-elf"
 		fi
 
-		ROOT="$pwd/../xtensa-root/$HOST"
 		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
 	fi
 	if [ $j == "cnl" ]
 	then
 		PLATFORM="cannonlake"
 		XTENSA_CORE="X6H3CNL_2016_4_linux"
-		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 		HOST="xtensa-cnl-elf"
 		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 	fi
@@ -134,14 +129,15 @@ do
 		fi
 	fi
 
-	# update ROOT directory for xt-xcc
-	if [ $XCC == "xt-xcc" ]
+	# update ROOT directory and PATH
+	if [ "$XCC" == "xt-xcc" ]
 	then
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
 	else
-		PATH=$pwd/../$HOST/bin:$OLDPATH
+		ROOT="$pwd/../xtensa-root/$HOST"
+		PATH=$ROOT/bin:$OLDPATH
 	fi
 
 	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST \
