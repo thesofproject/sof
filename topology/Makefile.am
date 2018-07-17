@@ -31,7 +31,8 @@ MACHINES = \
 	sof-hsw-rt5640.tplg \
 	sof-apl-tdf8532.tplg \
 	sof-apl-pcm512x.tplg \
-	sof-glk-codec.tplg
+	sof-glk-codec.tplg \
+	sof-icl-nocodec.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
