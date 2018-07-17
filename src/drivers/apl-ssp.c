@@ -28,6 +28,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
  *         Rander Wang <rander.wang@linux.intel.com>
+ *         Kamil Kulesza <kamil.kulesza@linux.intel.com>
  */
 
 #include <errno.h>
@@ -44,6 +45,12 @@
 #define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
 #define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
 
+/* M/N Register offsets */
+#define	MDIVCTRL	0x00
+#define	MDIVXR(mclk_id)	(0x80 + 0x4 * mclk_id)
+#define	I2SY_MDIVMVAL(conf_id)	(0x100 + conf_id * 0x8)
+#define	I2SY_MDIVNVAL(conf_id)	(0x100 + conf_id * 0x8 + 0x4)
+
 #define F_19200_kHz 19200000
 #define F_24000_kHz 24000000
 #define F_24576_kHz 24576000
@@ -59,6 +66,24 @@ static int hweight_32(uint32_t mask)
 		mask >>= 1;
 	}
 	return count;
+}
+
+/**
+ * \brief Write M/N dividers value to M/N Clock Synthesizer Registers.
+ * \param[in] mclk_id Master clock id
+ * \param[in] config_id Configuration id
+ * \param[in] mdivctrl MCLK Divider Control Register (MDIVCTRL)
+ * \param[in] mdivr MCLK Divider ratio (MDIVxR)
+ * \param[in] n Value of N divider
+ * \param[in] m Value of M divider
+ */
+static void set_i2s_mn_divs(uint16_t mclk_id, uint32_t config_id,
+		uint32_t mdivctrl, uint32_t mdivr, uint32_t m, uint32_t n)
+{
+	mn_reg_write(MDIVCTRL, mdivctrl);
+	mn_reg_write(MDIVXR(mclk_id), mdivr);
+	mn_reg_write(I2SY_MDIVMVAL(config_id), m);
+	mn_reg_write(I2SY_MDIVNVAL(config_id), n);
 }
 
 /* save SSP context prior to entering D3 */
@@ -108,12 +133,10 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t mdivc;
 	uint32_t mdivr;
 	uint32_t mdivr_val;
-	uint32_t i2s_m;
-	uint32_t i2s_n;
 	uint32_t data_size;
 	uint32_t start_delay;
-	uint32_t frame_end_padding;
-	uint32_t slot_end_padding;
+	uint32_t frame_end_padding = 0;
+	uint32_t slot_end_padding = 0;
 	uint32_t frame_len = 0;
 	uint32_t bdiv_min;
 	uint32_t tft;
@@ -123,6 +146,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t sample_width = 2;
 
 	bool inverted_frame = false;
+	bool calculate_mn = false;
 	int ret = 0;
 
 	spin_lock(&ssp->lock);
@@ -166,12 +190,6 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* ssioc dynamic setting is SFCR */
 	ssioc = SSIOC_SCOE;
-
-	/* i2s_m M divider setting, default 1 */
-	i2s_m = 0x1;
-
-	/* i2s_n N divider setting, default 1 */
-	i2s_n = 0x1;
 
 	/* ssto no dynamic setting */
 	ssto = 0x0;
@@ -303,9 +321,16 @@ static inline int ssp_set_config(struct dai *dai,
 	} else if (F_19200_kHz % config->ssp.bclk_rate == 0) {
 		mdiv = F_19200_kHz / config->ssp.bclk_rate;
 	} else {
-		trace_ssp_error("ecl");
-		ret = -EINVAL;
-		goto out;
+		/* select M/N output for bclk */
+		sscr0 |= SSCR0_ECS;
+		/*
+		 * Need M/N for calculate correct bclk.
+		 * Now set mdiv = 1 and set flag to calculate M, N and
+		 * SCR values later.
+		 */
+		calculate_mn = true;
+		/* set SCR = 1 (mdiv - 1) to ensure 50/50 duty cycle */
+		mdiv = 2;
 	}
 #endif
 
@@ -567,6 +592,27 @@ static inline int ssp_set_config(struct dai *dai,
 
 	sscr3 |= SSCR3_TX(tft) | SSCR3_RX(rft);
 
+	/*
+	 * Find SCR and M/N dividers. It's required example
+	 * for fractional fsync rate (44,1khz etc.).
+	 */
+	if (calculate_mn) {
+		struct i2s_mn_divs *mn = calculate_i2s_mn_divs(
+				config->ssp.mclk_rate / (mdiv + 1),
+				config->ssp.fsync_rate, active_tx_slots,
+				sample_width * 8, slot_end_padding,
+				frame_end_padding);
+
+		if (mn == NULL) {
+			trace_ssp_error("ece");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		set_i2s_mn_divs(config->ssp.mclk_id, config->id, mdivc, mdivr,
+					mn->m, mn->n);
+	}
+
 	trace_ssp("coe");
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
@@ -589,12 +635,6 @@ static inline int ssp_set_config(struct dai *dai,
 	trace_value(sspsp2);
 	trace_value(sscr3);
 	trace_value(ssioc);
-
-	/* TODO: move this into M/N driver */
-	mn_reg_write(0x0, mdivc);
-	mn_reg_write(0x80 + config->ssp.mclk_id * 0x4, mdivr);
-	mn_reg_write(0x100 + config->id * 0x8 + 0x0, i2s_m);
-	mn_reg_write(0x100 + config->id * 0x8 + 0x4, i2s_n);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;

@@ -26,6 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Kamil Kulesza <kamil.kulesza@linux.intel.com>
  */
 
 #ifndef __INCLUDE_SSP__
@@ -37,6 +38,10 @@
 #include <sof/work.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
+#include <sof/math/numbers.h>
+
+/* BCLK rate from M/N dividers */
+#define	BCLK_MN(mclk, m, n)	(mclk * ((float)m / (float)n))
 
 #define SSP_CLK_AUDIO	0
 #define SSP_CLK_NET_PLL	1
@@ -240,6 +245,58 @@ struct ssp_pdata {
 	struct sof_ipc_dai_config config;
 	struct sof_ipc_dai_ssp_params params;
 };
+
+/**
+ * \struct i2s_divs
+ * \brief This structure represents M and N dividers for SSP master clock.
+ * \details When SSC0.ECS = 1: BCLK = master clock * (M / N).
+ * \var i2s_divs::m
+ * The M ratio. M = 0 stops generation of BCLK.
+ * \var i2s_divs::n
+ * The N ratio, where M/N < 1/2. N = 0 is illegal and will create unpredictable
+ * behavior.
+ */
+struct i2s_mn_divs {
+	uint32_t m;
+	uint32_t n;
+};
+
+/**
+ * \brief Calculate M/N dividers for SSP master clock
+ * \param[in] mclk Value of master clock rate in Hz
+ * \param[in] fsync Value of frame clock rate in Hz
+ * \param[in] slots Number of active slots (channels)
+ * \param[in] sample_width One sample size in bits
+ * \param[in] sep Number of slot end padding bits
+ * \param[in] fep Number of frame end padding bits
+ * \return Pointer to i2s_divs structure with information about clock dividers
+ */
+static inline struct i2s_mn_divs *calculate_i2s_mn_divs(uint32_t mclk,
+		uint32_t fsync, uint32_t slots, uint32_t sample_width,
+		uint32_t sep, uint32_t fep)
+{
+	uint32_t bits_to_send = slots * (sample_width + sep) + fep;
+	uint32_t bits_width = fsync * bits_to_send;
+	uint32_t gcd_div = gcd(mclk, bits_width);
+	uint32_t bclk;
+
+	struct i2s_mn_divs *mn;
+
+	mn = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+		COMP_SIZE(struct i2s_mn_divs));
+
+	if (mn == NULL)
+		return NULL;
+
+	mn->m = bits_width / gcd_div;
+	mn->n = mclk / gcd_div;
+	bclk = BCLK_MN(mclk, mn->m, mn->n);
+
+	if (bclk >= (mclk / 2) || bclk / fsync < bits_to_send || (bclk % fsync))
+		return NULL;
+
+	return mn;
+}
 
 static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
 {

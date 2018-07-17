@@ -123,5 +123,10 @@ check_PROGRAMS += sin_fixed
 sin_fixed_SOURCES = src/math/trig/sin_fixed.c
 sin_fixed_LDADD = ../../src/math/libsof_math.a $(LDADD)
 
+# ssp tests
+check_PROGRAMS += calculate_i2s_mn_divs
+calculate_i2s_mn_divs_SOURCES = src/ssp/calculate_i2s_mn_divs.c src/ssp/mock.c
+calculate_i2s_mn_divs_LDADD = ../../src/math/libsof_math.a $(LDADD)
+
 # all our binaries are test cases
 TESTS = $(check_PROGRAMS)
