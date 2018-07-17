@@ -1,28 +1,41 @@
 #!/bin/bash
 
-rmmod sof_pci_dev
-rmmod sof_acpi_dev
-rmmod snd_soc_acpi_intel_match
-rmmod snd_sof_intel_byt
-rmmod snd_sof_intel_hsw
-rmmod snd_sof_intel_bdw
-rmmod snd_sof_intel_apl
-rmmod snd_sof_intel_cnl
-rmmod snd_sof_intel_hda_common
-rmmod snd_sof
+remove_module() {
 
-rmmod snd_soc_sst_bytcr_rt5640
-rmmod snd_soc_sst_bytcr_rt5651
-rmmod snd_soc_sst_cht_bsw_rt5645
-rmmod snd_soc_sst_cht_bsw_rt5670
-rmmod snd_soc_sst_byt_cht_da7213
-rmmod snd_sof_nocodec
+    MODULE="$1"
 
-rmmod snd_soc_rt5670
-rmmod snd_soc_rt5645
-rmmod snd_soc_rt5651
-rmmod snd_soc_rt5640
-rmmod snd_soc_rl6231
-rmmod snd_soc_da7213
+    if lsmod | grep "$MODULE" &> /dev/null ; then
+	echo "Removing $MODULE"
+	rmmod $MODULE
+    else
+	echo "skipping $MODULE, not loaded"
+    fi
+}
 
-rmmod snd_soc_acpi
+remove_module sof_pci_dev
+remove_module sof_acpi_dev
+remove_module snd_soc_acpi_intel_match
+remove_module snd_sof_intel_byt
+remove_module snd_sof_intel_hsw
+remove_module snd_sof_intel_bdw
+remove_module snd_sof_intel_hda_common
+remove_module snd_sof_xtensa_dsp
+
+remove_module snd_soc_sst_bytcr_rt5640
+remove_module snd_soc_sst_bytcr_rt5651
+remove_module snd_soc_sst_cht_bsw_rt5645
+remove_module snd_soc_sst_cht_bsw_rt5670
+remove_module snd_soc_sst_byt_cht_da7213
+remove_module snd_soc_sst_bxt_pcm512x
+remove_module snd_sof_nocodec
+remove_module snd_sof
+
+remove_module snd_soc_rt5670
+remove_module snd_soc_rt5645
+remove_module snd_soc_rt5651
+remove_module snd_soc_rt5640
+remove_module snd_soc_rl6231
+remove_module snd_soc_da7213
+remove_module snd_soc_pcm512x_i2c
+remove_module snd_soc_pcm512x
+remove_module snd_soc_acpi
