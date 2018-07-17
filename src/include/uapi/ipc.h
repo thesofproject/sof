@@ -689,8 +689,8 @@ struct sof_ipc_comp_volume {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	uint32_t channels;
-	int32_t min_value;
-	int32_t max_value;
+	uint32_t min_value;
+	uint32_t max_value;
 	enum sof_volume_ramp ramp;
 	uint32_t initial_ramp;	/* ramp space in ms */
 }  __attribute__((packed));
