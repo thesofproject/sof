@@ -727,7 +727,6 @@ static int host_pointer_reset(struct comp_dev *dev)
 	hd->local_pos = 0;
 	hd->report_pos = 0;
 	dev->position = 0;
-	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
 }
@@ -740,7 +739,6 @@ static int host_stop(struct comp_dev *dev)
 	/* reset elements, to let next start from original one */
 	host_elements_reset(dev);
 
-	dev->state = COMP_STATE_PAUSED;
 	return 0;
 }
 
