@@ -162,13 +162,13 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_RESET:
 		/* reset always succeeds */
-		dev->state = COMP_STATE_READY;
 		if (dev->state == COMP_STATE_ACTIVE ||
 			dev->state == COMP_STATE_PAUSED) {
 			trace_comp_error("CER");
 			trace_error_value(dev->state);
 			ret = 0;
 		}
+		dev->state = COMP_STATE_READY;
 		break;
 	case COMP_TRIGGER_PREPARE:
 		if (dev->state == COMP_STATE_PREPARE ||
