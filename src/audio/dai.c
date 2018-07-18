@@ -64,6 +64,7 @@ struct dai_data {
 	uint32_t period_bytes;
 	completion_t complete;
 	int xrun;		/* true if we are doing xrun recovery */
+	int pointer_init;	/* true if buffer pointer was initialized */
 
 	uint32_t last_bytes;    /* the last bytes(<period size) it copies. */
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
@@ -211,6 +212,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->dai_pos_blks = 0;
 	dd->last_bytes = 0;
 	dd->xrun = 0;
+	dd->pointer_init = 0;
 
 	/* get DMA channel from DMAC1 */
 	dd->chan = dma_channel_get(dd->dma, 0);
@@ -454,6 +456,8 @@ static int dai_prepare(struct comp_dev *dev)
 	/* write back buffer contents from cache */
 	dcache_writeback_region(dma_buffer->addr, dma_buffer->size);
 
+	dd->pointer_init = 0;
+
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
 		/* after prepare, we have recovered from xrun */
@@ -492,6 +496,7 @@ static int dai_reset(struct comp_dev *dev)
 	dd->wallclock = 0;
 	dev->position = 0;
 	dd->xrun = 0;
+	dd->pointer_init = 0;
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
@@ -526,6 +531,8 @@ static void dai_pointer_init(struct comp_dev *dev)
 			break;
 		}
 	}
+
+	dd->pointer_init = 1;
 }
 
 /* used to pass standard and bespoke command (with data) to component */
@@ -545,7 +552,8 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		dai_pointer_init(dev);
+		if (!dd->pointer_init)
+			dai_pointer_init(dev);
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* start the DAI */
