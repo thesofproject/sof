@@ -1061,6 +1061,22 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	}
 }
 
+/* copy data from upstream source endpoints to downstream endpoints*/
+static int pipeline_copy(struct comp_dev *dev)
+{
+	int err;
+
+	err = pipeline_copy_from_upstream(dev, dev);
+	if (err < 0)
+		return err;
+
+	err = pipeline_copy_to_downstream(dev, dev);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+
 /* recover the pipeline from a XRUN condition */
 static int pipeline_xrun_recover(struct pipeline *p)
 {
@@ -1088,6 +1104,17 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	if (ret < 0) {
 		trace_pipe_error("px2");
 		return ret;
+	}
+
+	/* for playback copy it here, because scheduling won't work
+	 * on this interrupt level
+	 */
+	if (p->sched_comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		ret = pipeline_copy(p->sched_comp);
+		if (ret < 0) {
+			trace_pipe_error("px3");
+			return ret;
+		}
 	}
 
 	return 0;
@@ -1125,25 +1152,15 @@ static void pipeline_task(void *arg)
 	if (p->xrun_bytes) {
 		err = pipeline_xrun_recover(p);
 		if (err < 0)
-			return;  /* failed - host will stop this pipeline */
+			return; /* failed - host will stop this pipeline */
 		goto sched;
 	}
 
-	/* copy data from upstream source endpoints to downstream endpoints */
-	err = pipeline_copy_from_upstream(dev, dev);
+	err = pipeline_copy(dev);
 	if (err < 0) {
 		err = pipeline_xrun_recover(p);
 		if (err < 0)
-			return;  /* failed - host will stop this pipeline */
-		goto sched;
-	}
-
-	err = pipeline_copy_to_downstream(dev, dev);
-	if (err < 0) {
-		err = pipeline_xrun_recover(p);
-		if (err < 0)
-			return;  /* failed - host will stop this pipeline */
-		goto sched;
+			return; /* failed - host will stop this pipeline */
 	}
 
 sched:
