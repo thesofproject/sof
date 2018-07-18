@@ -232,6 +232,9 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		goto error;
 	}
 
+	// TODO: parse out structure should be an array passed to
+	// comp_host_buffer() and copied there at once
+
 	list_for_item(plist, &elem_list) {
 		elem = container_of(plist, struct dma_sg_elem, list);
 
@@ -651,6 +654,9 @@ static int ipc_dma_trace_config(uint32_t header)
 	/* Parse host tables */
 	ring_size = params->buffer.size;
 
+	// TODO: parse out structure should be an array passed to
+	// dma_trace_host_buffer() and copied there at once
+
 	err = ipc_parse_page_descriptors(iipc->page_table, &params->buffer,
 					 &elem_list, SOF_IPC_STREAM_CAPTURE);
 	if (err < 0) {
@@ -755,7 +761,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		trace_error_value(data->comp_id);
 		return -ENODEV;
 	}
-	
+
 	/* get component values */
 	ret = comp_cmd(comp_dev->cd, cmd, data);
 	if (ret < 0) {
