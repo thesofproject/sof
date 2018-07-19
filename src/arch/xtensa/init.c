@@ -54,24 +54,84 @@ static void exception(void)
 
 static void register_exceptions(void)
 {
+
+	/* 0 - 9 */
 	_xtos_set_exception_handler(
-		EXCCAUSE_ILLEGAL, (void*) &exception);
+		EXCCAUSE_ILLEGAL, (void *)&exception);
 	_xtos_set_exception_handler(
-		EXCCAUSE_SYSCALL, (void*) &exception);
+		EXCCAUSE_SYSCALL, (void *)&exception);
 	_xtos_set_exception_handler(
-		EXCCAUSE_DIVIDE_BY_ZERO, (void*) &exception);
+		EXCCAUSE_INSTR_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_LOAD_STORE_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_LEVEL1_INTERRUPT, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_ALLOCA, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_DIVIDE_BY_ZERO, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_SPECULATION, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_PRIVILEGED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_UNALIGNED, (void *)&exception);
+
+	/* Reserved				10..11 */
 
 	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_DATA_ERROR, (void*) &exception);
+		EXCCAUSE_INSTR_DATA_ERROR, (void *)&exception);
 	_xtos_set_exception_handler(
-		EXCCAUSE_INSTR_ADDR_ERROR, (void*) &exception);
+		EXCCAUSE_LOAD_STORE_DATA_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_INSTR_ADDR_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_ITLB_MISS, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_ITLB_MULTIHIT, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_INSTR_RING, (void *)&exception);
+
+	/* Reserved				19 */
 
 	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ERROR, (void*) &exception);
+		EXCCAUSE_INSTR_PROHIBITED, (void *)&exception);
+
+	/* Reserved				21..23 */
 	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_ADDR_ERROR, (void*) &exception);
+		EXCCAUSE_DTLB_MISS, (void *)&exception);
 	_xtos_set_exception_handler(
-		EXCCAUSE_LOAD_STORE_DATA_ERROR, (void*) &exception);
+		EXCCAUSE_DTLB_MULTIHIT, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_LOAD_STORE_RING, (void *)&exception);
+
+	/* Reserved				27 */
+	_xtos_set_exception_handler(
+		EXCCAUSE_LOAD_PROHIBITED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_STORE_PROHIBITED, (void *)&exception);
+
+	/* Reserved				30..31 */
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP0_DISABLED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP1_DISABLED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP2_DISABLED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP3_DISABLED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP4_DISABLED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP5_DISABLED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP6_DISABLED, (void *)&exception);
+	_xtos_set_exception_handler(
+		EXCCAUSE_CP7_DISABLED, (void *)&exception);
+
+	/* Reserved				40..63 */
 }
 
 /* do any architecture init here */
