@@ -16,6 +16,7 @@ include(`sof/tokens.m4')
 
 # Include Apollolake DSP configuration
 include(`platform/intel/bxt.m4')
+include(`platform/intel/dmic.m4')
 
 #
 # Define the pipelines
@@ -32,6 +33,7 @@ include(`platform/intel/bxt.m4')
 #      <---- Volume <----- SSP4
 # PCM5 ----> volume -----> SSP5
 #      <---- volume <----- SSP5
+# PCM6 <---- volume <----- DMIC6 (DMIC01)
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s16le.
@@ -106,6 +108,12 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	12, 5, 2, s16le,
 	48, 1000, 0, 0, SSP, 5, s16le, 2)
 
+# Passthrough capture pipeline 13 on PCM 6 using max 4 channels.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-capture.m4,
+	13, 6, 4, s32le,
+	48, 1000, 0, 0,
+	DMIC, 0, s32le, 2)
 
 #
 # DAIs configuration
@@ -195,6 +203,13 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_12, 2, s16le,
 	48, 1000, 0, 0)
 
+# capture DAI is DMIC 0 using 2 periods
+# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	13, DMIC, 0, NoCodec-6,
+	PIPELINE_SINK_13, 2, s32le,
+	48, 1000, 0, 0)
+
 # PCM Low Latency, id 0
 PCM_DUPLEX_ADD(Port0, 0, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(Port1, 1, 1, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
@@ -202,6 +217,7 @@ PCM_DUPLEX_ADD(Port2, 2, 2, 2, PIPELINE_PCM_5, PIPELINE_PCM_6)
 PCM_DUPLEX_ADD(Port3, 3, 3, 3, PIPELINE_PCM_7, PIPELINE_PCM_8)
 PCM_DUPLEX_ADD(Port4, 4, 4, 4, PIPELINE_PCM_9, PIPELINE_PCM_10)
 PCM_DUPLEX_ADD(Port5, 5, 5, 5, PIPELINE_PCM_11, PIPELINE_PCM_12)
+PCM_CAPTURE_ADD(DMIC01, 6, 6, 6, PIPELINE_PCM_13)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -248,4 +264,9 @@ DAI_CONFIG(SSP, 5, 5, NoCodec-5,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 16, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 5, 16)))
+
+DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
+	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
+		DMIC_WORD_LENGTH(s32le), DMIC, 0,
+		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
 
