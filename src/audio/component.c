@@ -122,8 +122,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		if (dev->state == COMP_STATE_PREPARE ||
-			dev->state == COMP_STATE_PAUSED) {
+		if (dev->state == COMP_STATE_PREPARE) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
 			trace_comp_error("CES");
@@ -142,7 +141,8 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
-		if (dev->state == COMP_STATE_ACTIVE) {
+		if (dev->state == COMP_STATE_ACTIVE ||
+		    dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
 			trace_comp_error("CEs");
