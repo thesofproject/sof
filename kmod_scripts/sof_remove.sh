@@ -27,6 +27,8 @@ remove_module snd_soc_sst_cht_bsw_rt5645
 remove_module snd_soc_sst_cht_bsw_rt5670
 remove_module snd_soc_sst_byt_cht_da7213
 remove_module snd_soc_sst_bxt_pcm512x
+remove_module snd_soc_sst_bxt_tdf8532
+remove_module snd_soc_cnl_rt274
 remove_module snd_sof_nocodec
 remove_module snd_sof
 
@@ -38,4 +40,6 @@ remove_module snd_soc_rl6231
 remove_module snd_soc_da7213
 remove_module snd_soc_pcm512x_i2c
 remove_module snd_soc_pcm512x
+remove_module snd_soc_tdf8532
+remove_module snd_soc_rt274
 remove_module snd_soc_acpi
