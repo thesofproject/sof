@@ -25,8 +25,8 @@ clean-local:
 
 
 EXTRA_DIST = \
-	test-capture-ssp.m4 \
-	test-playback-ssp.m4 \
-	test-tone-playback-ssp.m4 \
-	test-ssp.m4 \
+	test-capture.m4 \
+	test-playback.m4 \
+	test-tone-playback.m4 \
+	test-all.m4 \
 	tplg-build.sh
