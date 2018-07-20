@@ -83,6 +83,7 @@ struct host_data {
 	uint32_t next_inc;
 	uint32_t period_bytes;
 	uint32_t period_count;
+	uint32_t pointer_init;
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
@@ -425,6 +426,22 @@ unwind:
 	return -ENOMEM;
 }
 
+/*
+ * Host DMA will copy the first period once it is started, automatically.
+ * Here update the pointers to reflect the real case.
+ */
+static void host_pointer_init(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	/* not required for capture streams */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		comp_update_buffer_produce(hd->dma_buffer,
+					   hd->period_bytes);
+
+	hd->pointer_init = 1;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int host_trigger(struct comp_dev *dev, int cmd)
 {
@@ -452,15 +469,8 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 			goto out;
 		}
 
-		/*
-		 * host dma will copy the first period once it is started,
-		 * automatically.
-		 * Here update the pointers to reflect the real case.
-		 */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-			comp_update_buffer_produce(hd->dma_buffer,
-						   hd->period_bytes);
-		}
+		if (!hd->pointer_init)
+			host_pointer_init(dev);
 		break;
 	default:
 		break;
@@ -540,6 +550,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	/* init posn data. TODO: other fields */
 	hd->posn.comp_id = comp->id;
+	hd->pointer_init = 0;
 	dev->state = COMP_STATE_READY;
 	dev->is_dma_connected = 1;
 	return dev;
@@ -712,6 +723,7 @@ static int host_prepare(struct comp_dev *dev)
 		*hd->host_pos = 0;
 	hd->report_pos = 0;
 	hd->split_remaining = 0;
+	hd->pointer_init = 0;
 	dev->position = 0;
 
 	return 0;
@@ -815,6 +827,7 @@ static int host_reset(struct comp_dev *dev)
 #endif
 
 	host_pointer_reset(dev);
+	hd->pointer_init = 0;
 	hd->host_pos = NULL;
 	hd->source = NULL;
 	hd->sink = NULL;
