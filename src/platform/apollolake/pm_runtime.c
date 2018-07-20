@@ -38,6 +38,7 @@
 #include <platform/platform.h>
 #include <platform/pm_runtime.h>
 #include <platform/cavs/pm_runtime.h>
+#include <platform/power_down.h>
 
 /** \brief Runtime power management data pointer. */
 struct pm_runtime_data *_prd;
@@ -65,3 +66,16 @@ void platform_pm_runtime_put(enum pm_runtime_context context)
 		break;
 	}
 }
+
+void platform_pm_runtime_power_off(void)
+{
+	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
+	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
+	//TODO: mask to be used in the future for run-time power management of
+	//SRAM banks
+	/* power down entire HPSRAM */
+	hpsram_mask[0] = 0x1;
+
+	power_down(true, hpsram_mask);
+}
+
