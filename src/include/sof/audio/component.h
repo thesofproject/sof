@@ -49,16 +49,31 @@
  *
  * States may transform as below:-
  *
- * 1) i.e. Initialisation to playback and pause/release
- * init --> setup --> prepare --> active <-> paused --+
- *                       ^                             |
- *                       +-----------------------------+
  *
- * 2) i.e. Suspend
+ *                            -------------
+ *                   pause    |           |    stop/xrun
+ *              +-------------| ACTIVITY  |---------------+
+ *              |             |           |               |      prepare
+ *              |             -------------               |   +-----------+
+ *              |                ^     ^                  |   |           |
+ *              |                |     |                  |   |           |
+ *              v                |     |                  v   |           |
+ *       -------------           |     |             -------------        |
+ *       |           |   release |     |   start     |           |        |
+ *       |   PAUSED  |-----------+     +-------------|  PREPARE  |<-------+
+ *       |           |                               |           |
+ *       -------------                               -------------
+ *              |                                      ^     ^
+ *              |               stop/xrun              |     |
+ *              +--------------------------------------+     |
+ *                                                           | prepare
+ *                            -------------                  |
+ *                            |           |                  |
+ *                ----------->|   READY   |------------------+
+ *                    reset   |           |
+ *                            -------------
  *
- * setup --> suspend --> setup OR
- * prepare --> suspend -> prepare OR
- * paused --> suspend --> paused
+ *
  */
 
 #define COMP_STATE_INIT		0	/* component being initialised */
