@@ -581,13 +581,14 @@ static int ipc_pm_context_save(uint32_t header)
 
 static int ipc_pm_context_restore(uint32_t header)
 {
-//	struct sof_ipc_pm_ctx pm_ctx = _ipc->comp_data;
+	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
 	trace_ipc("PMr");
 
-	/* now restore the context */
+	/* restore context placeholder */
+	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
-	return 0;
+	return 1;
 }
 
 static int ipc_glb_pm_message(uint32_t header)
