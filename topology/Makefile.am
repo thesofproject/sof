@@ -65,4 +65,4 @@ EXTRA_DIST = \
 	sof-apl-tdf8532.m4 \
 	sof-apl-pcm512x.m4 \
 	sof-glk-codec.m4 \
-	sof-icl-nocodec.tplg
+	sof-icl-nocodec.m4
