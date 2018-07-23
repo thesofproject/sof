@@ -350,7 +350,7 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 	int j;
 
 	/* validate */
-	if (cdata->num_elems == 0 || cdata->num_elems >= SOF_IPC_MAX_CHANNELS) {
+	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
 		trace_volume_error("gc0");
 		tracev_value(cdata->num_elems);
 		return -EINVAL;
