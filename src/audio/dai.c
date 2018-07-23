@@ -191,7 +191,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, dd);
 
-	dd->dai = dai_get(dai->type, dai->index);
+	dd->dai = dai_get(dai->type, dai->dai_index);
 	if (dd->dai == NULL) {
 		trace_dai_error("eDg");
 		goto error;

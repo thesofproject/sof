@@ -89,7 +89,7 @@
 	{.comp = scomp, .no_irq = hno_irq, \
 	 .dmac_config = hconfig}
 #define SPIPE_DAI(scomp, ddai_type, ddai_idx, ddmac, dchan, dconfig) \
-	{.comp = scomp, .type = ddai_type, .index = ddai_idx, \
+	{.comp = scomp, .type = ddai_type, .dai_index = ddai_idx, \
 	 .dmac_config = dconfig}
 #define SPIPE_VOL(scomp, vmin, vmax) \
 	{.comp = scomp, .min_value = vmin, .max_value = vmax}

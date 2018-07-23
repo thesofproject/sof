@@ -489,11 +489,11 @@ static int ipc_dai_config(uint32_t header)
 	trace_ipc("DsF");
 
 	/* get DAI */
-	dai = dai_get(config->type, config->id);
+	dai = dai_get(config->type, config->dai_index);
 	if (dai == NULL) {
 		trace_ipc_error("eDi");
 		trace_error_value(config->type);
-		trace_error_value(config->id);
+		trace_error_value(config->dai_index);
 		return -ENODEV;
 	}
 
