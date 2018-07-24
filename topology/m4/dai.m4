@@ -128,7 +128,7 @@ dnl DAI_CONFIG(type, idx, link_id, name, ssp_config/dmic_config)
 define(`DAI_CONFIG',
 `SectionHWConfig."'$1$2`" {'
 `'
-`	id		"'$2`"'
+`	id		"'$3`"'
 `'
 `	ifelse($1, `SSP', $5, `}')'
 `ifelse($1, `DMIC', $5, `')'
@@ -148,7 +148,7 @@ define(`DAI_CONFIG',
 `SectionBE."'$4`" {'
 `	id "'$3`"'
 `	index "0"'
-`	default_hw_conf_id	"'$2`"'
+`	default_hw_conf_id	"'$3`"'
 `'
 `	hw_configs ['
 `		"'$1$2`"'
