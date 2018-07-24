@@ -65,8 +65,6 @@ static void register_exceptions(void)
 	_xtos_set_exception_handler(
 		EXCCAUSE_LOAD_STORE_ERROR, (void *)&exception);
 	_xtos_set_exception_handler(
-		EXCCAUSE_LEVEL1_INTERRUPT, (void *)&exception);
-	_xtos_set_exception_handler(
 		EXCCAUSE_ALLOCA, (void *)&exception);
 	_xtos_set_exception_handler(
 		EXCCAUSE_DIVIDE_BY_ZERO, (void *)&exception);
