@@ -41,7 +41,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	48, 1000, 0, 0)
 
 # PCM Low Latency, id 0
-PCM_PLAYBACK_ADD(Port5, 0, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
+PCM_PLAYBACK_ADD(Port5, 0, PIPELINE_PCM_1)
 
 #
 # BE configurations - overrides config in ACPI if present

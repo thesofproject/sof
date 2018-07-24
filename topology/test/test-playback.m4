@@ -59,7 +59,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	48, 1000, 0, 0)
 
 # PCM Passthrough
-PCM_PLAYBACK_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_1)
+PCM_PLAYBACK_ADD(Passthrough, 0, PIPELINE_PCM_1)
 
 #
 # BE configurations - overrides config in ACPI if present
