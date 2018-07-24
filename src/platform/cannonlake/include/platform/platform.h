@@ -44,7 +44,12 @@ struct sof;
 
 #define PLATFORM_WAITI_DELAY	1
 
-#define PLATFORM_SSP_COUNT 3
+/* number of SSP ports in platform */
+#define PLATFORM_NUM_SSP	3
+
+/* number of SSP ports in platform */
+#define PLATFORM_NUM_DMIC	2
+
 #define MAX_GPDMA_COUNT 2
 
 /* Host page size */

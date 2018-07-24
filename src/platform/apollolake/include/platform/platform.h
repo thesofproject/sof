@@ -115,6 +115,9 @@ struct sof;
 /* number of SSP ports in platform */
 #define PLATFORM_NUM_SSP	6
 
+/* number of SSP ports in platform */
+#define PLATFORM_NUM_DMIC	2
+
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 

@@ -219,7 +219,7 @@ static struct timer platform_ext_timer = {
 int platform_init(struct sof *sof)
 {
 	struct dai *ssp;
-	struct dai *dmic0;
+	struct dai *dmic;
 	int i, ret;
 
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
@@ -276,7 +276,7 @@ int platform_init(struct sof *sof)
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	for(i = 0; i < PLATFORM_SSP_COUNT; i++) {
+	for (i = 0; i < PLATFORM_NUM_SSP; i++) {
 		ssp = dai_get(SOF_DAI_INTEL_SSP, i);
 		if (ssp == NULL)
 			return -ENODEV;
@@ -287,11 +287,12 @@ int platform_init(struct sof *sof)
 	 * supported max. those are available in platform are handled by dmic0.
 	 */
 	trace_point(TRACE_BOOT_PLATFORM_DMIC);
-	dmic0 = dai_get(SOF_DAI_INTEL_DMIC, 0);
-	if (!dmic0)
-		return -ENODEV;
-
-	dai_probe(dmic0);
+	for (i = 0; i < PLATFORM_NUM_DMIC; i++) {
+		dmic = dai_get(SOF_DAI_INTEL_DMIC, i);
+		if (!dmic)
+			return -ENODEV;
+		dai_probe(dmic);
+	}
 
 	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(sof->dmat);
