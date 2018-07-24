@@ -619,8 +619,8 @@ static inline int ssp_set_config(struct dai *dai,
 	/* TODO: move this into M/N driver */
 	mn_reg_write(0x0, mdivc);
 	mn_reg_write(0x80 + config->ssp.mclk_id * 0x4, mdivr);
-	mn_reg_write(0x100 + config->id * 0x8 + 0x0, i2s_m);
-	mn_reg_write(0x100 + config->id * 0x8 + 0x4, i2s_n);
+	mn_reg_write(0x100 + config->dai_index * 0x8 + 0x0, i2s_m);
+	mn_reg_write(0x100 + config->dai_index * 0x8 + 0x4, i2s_n);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
