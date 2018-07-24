@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
 {
 	int err;
 
+	/* TO REMOVE/CI: test update on the same pull request */
+
 	trace_point(TRACE_BOOT_START);
 
 	/* setup context */
