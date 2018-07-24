@@ -94,6 +94,10 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 		/* inform waiters */
 		wait_completed(&dd->complete);
+
+		/* for capture do nothing to avoid buffer ptr inconsistency */
+		if (dev->params.direction == SOF_IPC_STREAM_CAPTURE)
+			return;
 	}
 
 	/* is our pipeline handling an XRUN ? */
