@@ -62,5 +62,4 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 
 	spin_unlock_irq(&_prd->lock, flags);
 }
-
 #endif /* __INCLUDE_CAVS_PM_RUNTIME__ */

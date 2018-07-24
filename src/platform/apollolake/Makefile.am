@@ -14,13 +14,20 @@ libplatform_a_SOURCES = \
 	timer.c \
 	interrupt.c \
 	memory.c \
-	pm_runtime.c
+	pm_runtime.c \
+	power_down.S
 
 libplatform_a_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR)
+
+libplatform_a_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ASFLAGS) \
+	$(ARCH_ASFLAGS) \
+	$(PLATFORM_INCDIR)
 
 noinst_PROGRAMS = module boot_module
 
