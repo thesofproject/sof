@@ -34,7 +34,7 @@
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
 #include <arch/interrupt.h>
-#include <arch/cpu.h>
+#include <sof/cpu.h>
 #include <platform/interrupt.h>
 #include <platform/platcfg.h>
 #include <platform/shim.h>
@@ -147,7 +147,7 @@ static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
 
 struct irq_desc *platform_irq_get_parent(uint32_t irq)
 {
-	int core = cpu_get_id();
+	int core = SOF_IRQ_CPU(irq);
 
 	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL2:
@@ -170,7 +170,7 @@ uint32_t platform_interrupt_get_enabled(void)
 
 void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 {
-	int core = cpu_get_id();
+	int core = SOF_IRQ_CPU(irq);
 
 	/* mask external interrupt bit */
 	switch (SOF_IRQ_NUMBER(irq)) {
@@ -194,7 +194,7 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
-	int core = cpu_get_id();
+	int core = SOF_IRQ_CPU(irq);
 
 	/* unmask external interrupt bit */
 	switch (SOF_IRQ_NUMBER(irq)) {

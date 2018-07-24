@@ -56,7 +56,7 @@ static int irq_register_child(struct irq_desc *parent, int irq,
 	spin_lock(&parent->lock);
 
 	/* init child */
-	child = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+	child = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 			sizeof(struct irq_desc));
 	if (!child) {
 		ret = -ENOMEM;

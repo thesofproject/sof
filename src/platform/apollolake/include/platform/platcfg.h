@@ -43,4 +43,6 @@
 
 #define PLATFORM_HPSRAM_SEGMENTS		1
 
+#define PLATFORM_MASTER_CORE_ID			0
+
 #endif
