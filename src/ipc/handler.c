@@ -442,6 +442,18 @@ static int ipc_stream_trigger(uint32_t header)
 		return 0;
 	}
 
+	/* when START command comes, the pipeline has to be prepared.
+	 * This case has to be taken into account:
+	 * when ALSA has XRUN, it will send stop/start commands to FW
+	 * and try to recover the pipepine. If we did not prepare
+	 * the pipeline before start, the recover process will fail.
+	 */
+	if (cmd == COMP_TRIGGER_START) {
+		ret = pipeline_prepare(pcm_dev->cd->pipeline, pcm_dev->cd);
+		if (ret < 0)
+			trace_ipc_error("eR1");
+	}
+
 	/* trigger the component */
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	if (ret < 0) {
