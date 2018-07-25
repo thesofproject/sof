@@ -36,89 +36,87 @@ include(`platform/intel/dmic.m4')
 # PCM6 <---- volume <----- DMIC6 (DMIC01)
 #
 
-dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core,
-dnl     dai type, dai_index, dai format, periods)
+dnl     frames, deadline, priority, core)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s16le,
-	48, 1000, 0, 0, SSP, 0, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 2, s16le,
-	48, 1000, 0, 0, SSP, 0, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency playback pipeline 3 on PCM 1 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	3, 1, 2, s16le,
-	48, 1000, 0, 0, SSP, 1, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency capture pipeline 4 on PCM 1 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	4, 1, 2, s16le,
-	48, 1000, 0, 0, SSP, 1, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency playback pipeline 5 on PCM 2 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	5, 2, 2, s16le,
-	48, 1000, 0, 0, SSP, 2, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency capture pipeline 6 on PCM 2 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	6, 2, 2, s16le,
-	48, 1000, 0, 0, SSP, 2, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency playback pipeline 7 on PCM 3 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	7, 3, 2, s16le,
-	48, 1000, 0, 0, SSP, 3, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency capture pipeline 8 on PCM 3 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	8, 3, 2, s16le,
-	48, 1000, 0, 0, SSP, 3, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency playback pipeline 9 on PCM 4 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	9, 4, 2, s16le,
-	48, 1000, 0, 0, SSP, 4, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency capture pipeline 10 on PCM 4 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	10, 4, 2, s16le,
-	48, 1000, 0, 0, SSP, 4, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency playback pipeline 11 on PCM 5 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	11, 5, 2, s16le,
-	48, 1000, 0, 0, SSP, 5, s16le, 2)
+	48, 1000, 0, 0)
 
 # Low Latency capture pipeline 12 on PCM 5 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	12, 5, 2, s16le,
-	48, 1000, 0, 0, SSP, 5, s16le, 2)
+	48, 1000, 0, 0)
 
 # Passthrough capture pipeline 13 on PCM 6 using max 4 channels.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_DAI_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	13, 6, 4, s32le,
-	48, 1000, 0, 0,
-	DMIC, 0, s32le, 2)
+	48, 1000, 0, 0)
 
 #
 # DAIs configuration
