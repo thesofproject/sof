@@ -33,6 +33,15 @@ endif
 
 LDADD = -lcmocka
 
+# mixer tests
+check_PROGRAMS += mixer
+mixer_SOURCES = src/audio/mixer/mixer_test.c \
+				src/audio/mixer/mock.c \
+				src/audio/mixer/comp_mock.c \
+				../../src/audio/buffer.c \
+				../../src/audio/mixer.c
+mixer_LDADD = -lm $(LDADD)
+
 # memory allocator test
 
 if BUILD_XTENSA
