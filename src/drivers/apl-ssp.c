@@ -588,8 +588,10 @@ static inline int ssp_set_config(struct dai *dai,
 			goto out;
 	}
 
-	tft = MIN(8, sample_width * active_tx_slots);
-	rft = MIN(8, sample_width * active_rx_slots);
+	tft = MIN(SSP_FIFO_DEPTH - SSP_FIFO_WATERMARK,
+		  sample_width * active_tx_slots);
+	rft = MIN(SSP_FIFO_DEPTH - SSP_FIFO_WATERMARK,
+		  sample_width * active_rx_slots);
 
 	sscr3 |= SSCR3_TX(tft) | SSCR3_RX(rft);
 
