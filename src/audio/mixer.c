@@ -36,6 +36,7 @@
 #include <sof/stream.h>
 #include <sof/alloc.h>
 #include <sof/audio/component.h>
+#include <sof/audio/format.h>
 
 #define trace_mixer(__e)	trace_event(TRACE_CLASS_MIXER, __e)
 #define tracev_mixer(__e)	tracev_event(TRACE_CLASS_MIXER, __e)
@@ -66,15 +67,13 @@ static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
 		val[1] = 0;
 		for (j = 0; j < num_sources; j++) {
 			src = sources[j]->r_ptr;
-
-			/* TODO: clamp */
 			val[0] += src[i];
 			val[1] += src[i + 1];
 		}
 
-		/* TODO: best place for attenuation ? */
-		dest[i] = (val[0] >> (num_sources >> 1));
-		dest[i + 1] = (val[1] >> (num_sources >> 1));
+		/* Saturate to 32 bits */
+		dest[i] = sat_int32(val[0]);
+		dest[i + 1] = sat_int32(val[1]);
 	}
 }
 
