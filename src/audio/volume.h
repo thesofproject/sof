@@ -93,6 +93,9 @@
  */
 #define VOL_MAX		(1 << VOL_QXY_Y)
 
+/** \brief Volume 0dB value. */
+#define VOL_ZERO_DB	(1 << 16)
+
 /** \brief Volume minimum value. */
 #define VOL_MIN		0
 
@@ -109,6 +112,8 @@ struct comp_data {
 	uint32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	uint32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
 	uint32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
+	uint32_t min_volume;			/**< minimum volume level */
+	uint32_t max_volume;			/**< maximum volume level */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source);	/**< volume processing function */
 	struct work volwork;			/**< volume scheduled work function */
