@@ -208,34 +208,20 @@ static inline int ssp_set_config(struct dai *dai,
 	/* ssrsa dynamic setting is RTSA, default 2 slots */
 	ssrsa = config->ssp.rx_slots;
 
-	/* clock masters */
-	sscr1 &= ~SSCR1_SFRMDIR;
-
 	trace_value(config->format);
 	switch (config->format & SOF_DAI_FMT_MASTER_MASK) {
 	case SOF_DAI_FMT_CBM_CFM:
-		sscr0 |= SSCR0_ECS; /* external clock used */
-		sscr1 |= SSCR1_SCLKDIR;
-		/*
-		 * FIXME: does SSRC1.SCFR need to be set
-		 * when codec is master ?
-		 */
+		sscr1 |= SSCR1_SCLKDIR | SSCR1_SFRMDIR;
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
 		sscr1 |= SSCR1_SCFR;
-		ssioc |= SSIOC_SFCR;
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
-		sscr0 |= SSCR0_ECS; /* external clock used */
 		sscr1 |= SSCR1_SCLKDIR;
-		/*
-		 * FIXME: does SSRC1.SCFR need to be set
-		 * when codec is master ?
-		 */
 		/* FIXME: this mode has not been tested */
 		break;
 	case SOF_DAI_FMT_CBS_CFM:
-		sscr1 |= SSCR1_SCFR;
+		sscr1 |= SSCR1_SCFR | SSCR1_SFRMDIR;
 		/* FIXME: this mode has not been tested */
 		break;
 	default:
