@@ -64,19 +64,34 @@
 /** \brief Volume trace error function. */
 #define trace_volume_error(__e)	trace_error(TRACE_CLASS_VOLUME, __e)
 
+//** \brief Volume gain Qx.y integer x number of bits including sign bit. */
+#define VOL_QXY_X 2
+
+//** \brief Volume gain Qx.y fractional y number of bits. */
+#define VOL_QXY_Y 16
+
 /**
- * \brief Volume ramp time in microseconds.
- *
- * This should ramp from 0dB to mute in 64ms.
- * i.e. 2^16 -> 0 in 32 * 2048 steps each lasting 2ms.
+ * \brief Volume ramp update rate in microseconds.
+ * Update volume gain value every 1 ms.
  */
-#define VOL_RAMP_US	2000
+#define VOL_RAMP_US 1000
 
-/** \brief Volume ramp step. */
-#define VOL_RAMP_STEP	(1 << 11)
+/**
+ * \brief Volume linear ramp length in milliseconds.
+ * Use linear ramp length of 250 ms from mute to unity gain. The linear ramp
+ * step in Q1.16 to use in vol_work function  is computed from the length.
+ */
+#define VOL_RAMP_LENGTH_MS 250
+#define VOL_RAMP_STEP Q_CONVERT_FLOAT(1.0 / 1000 * \
+				      VOL_RAMP_US / VOL_RAMP_LENGTH_MS, \
+				      VOL_QXY_Y)
 
-/** \brief Volume maximum value. */
-#define VOL_MAX		(1 << 16)
+/**
+ * \brief Volume maximum value.
+ * TODO: This should be 1 << (VOL_QX_BITS + VOL_QY_BITS - 1) - 1 but
+ * the current volume code cannot handle the full Q1.16 range correctly.
+ */
+#define VOL_MAX		(1 << VOL_QXY_Y)
 
 /** \brief Volume minimum value. */
 #define VOL_MIN		0
