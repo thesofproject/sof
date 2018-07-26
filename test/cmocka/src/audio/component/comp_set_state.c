@@ -54,7 +54,8 @@ struct test_case {
 
 #define TEST_CASE(type, in_state, cmd, out_state) \
 	{(type), (in_state), (cmd), (out_state), \
-	("comp_set_state__" #type "__" #in_state "__" #cmd "__" #out_state)}
+	("test_audio_component_comp_set_state__" \
+	 #type "__" #in_state "__" #cmd "__" #out_state)}
 
 
 /*
@@ -213,7 +214,7 @@ static void test_audio_component_comp_set_state_fail(struct test_case *tc)
 	assert_int_equal(comp_set_state(&test_drv, tc->cmd), -EINVAL);
 }
 
-static void test_comp_set_state(void **state)
+static void test_audio_component_comp_set_state(void **state)
 {
 	struct test_case *tc = *((struct test_case **) state);
 
@@ -240,7 +241,7 @@ int main(void)
 		struct CMUnitTest *t = &tests[i];
 
 		t->name = test_cases[i].name;
-		t->test_func = test_comp_set_state;
+		t->test_func = test_audio_component_comp_set_state;
 		t->initial_state = &test_cases[i];
 		t->setup_func = NULL;
 		t->teardown_func = NULL;

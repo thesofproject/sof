@@ -280,7 +280,7 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 	}
 }
 
-static void test_vol(void **state)
+static void test_audio_vol(void **state)
 {
 	struct vol_test_state *vol_state = *state;
 	struct comp_data *cd = comp_get_drvdata(vol_state->dev);
@@ -340,8 +340,8 @@ int main(void)
 	struct CMUnitTest tests[ARRAY_SIZE(parameters)];
 
 	for (i = 0; i < ARRAY_SIZE(parameters); i++) {
-		tests[i].name = "test_vol";
-		tests[i].test_func = test_vol;
+		tests[i].name = "test_audio_vol";
+		tests[i].test_func = test_audio_vol;
 		tests[i].setup_func = setup;
 		tests[i].teardown_func = teardown;
 		tests[i].initial_state = &parameters[i];

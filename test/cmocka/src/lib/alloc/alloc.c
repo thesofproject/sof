@@ -56,7 +56,7 @@ struct test_case {
 
 #define TEST_CASE(bytes, zone, caps, num, type, name_base) \
 	{(bytes), (zone), (caps), (num), (type), \
-	(name_base "__" #zone "__" #bytes "x" #num)}
+	("test_lib_alloc_" name_base "__" #zone "__" #bytes "x" #num)}
 
 static struct test_case test_cases[] = {
 	/*
@@ -236,7 +236,7 @@ static void *alloc(struct test_case *tc)
 	return mem;
 }
 
-static void test_alloc_bulk_free(struct test_case *tc)
+static void test_lib_alloc_bulk_free(struct test_case *tc)
 {
 	void **all_mem = malloc(sizeof(void *) * tc->alloc_num);
 	int i;
@@ -254,7 +254,7 @@ static void test_alloc_bulk_free(struct test_case *tc)
 	rfree(all_mem);
 }
 
-static void test_alloc_immediate_free(struct test_case *tc)
+static void test_lib_alloc_immediate_free(struct test_case *tc)
 {
 	int i;
 
@@ -266,7 +266,7 @@ static void test_alloc_immediate_free(struct test_case *tc)
 	}
 }
 
-static void test_alloc_zero(struct test_case *tc)
+static void test_lib_alloc_zero(struct test_case *tc)
 {
 	void **all_mem = malloc(sizeof(void *) * tc->alloc_num);
 	int i;
@@ -289,21 +289,21 @@ static void test_alloc_zero(struct test_case *tc)
 	rfree(all_mem);
 }
 
-static void test_alloc(void **state)
+static void test_lib_alloc(void **state)
 {
 	struct test_case *tc = *((struct test_case **)state);
 
 	switch (tc->type) {
 	case TEST_BULK:
-		test_alloc_bulk_free(tc);
+		test_lib_alloc_bulk_free(tc);
 		break;
 
 	case TEST_ZERO:
-		test_alloc_zero(tc);
+		test_lib_alloc_zero(tc);
 		break;
 
 	case TEST_IMMEDIATE_FREE:
-		test_alloc_immediate_free(tc);
+		test_lib_alloc_immediate_free(tc);
 		break;
 	}
 }
@@ -318,7 +318,7 @@ int main(void)
 		struct CMUnitTest *t = &tests[i];
 
 		t->name = test_cases[i].name;
-		t->test_func = test_alloc;
+		t->test_func = test_lib_alloc;
 		t->initial_state = &test_cases[i];
 		t->setup_func = NULL;
 		t->teardown_func = NULL;
