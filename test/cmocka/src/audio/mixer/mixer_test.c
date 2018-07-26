@@ -38,6 +38,7 @@
 #include <sof/ipc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/format.h>
 
 #include "comp_mock.h"
 
@@ -100,11 +101,10 @@ static struct mix_test_case mix_test_cases[] = {
 	TEST_CASE(2, 2),
 	TEST_CASE(2, 4),
 	TEST_CASE(2, 8),
+	TEST_CASE(3, 2),
 	TEST_CASE(4, 2),
-	/* These tests will not pass with the current implementation of mixer */
-	//TEST_CASE(3, 2),
-	//TEST_CASE(6, 2),
-	//TEST_CASE(8, 2)
+	TEST_CASE(6, 2),
+	TEST_CASE(8, 2)
 };
 
 static struct sof_ipc_comp mixer = {
@@ -287,7 +287,7 @@ static void test_audio_mixer_copy(void **state)
 			sum += samples[smp];
 		}
 
-		sum /= tc->num_sources;
+		sum = sat_int32(sum);
 
 		uint32_t *out_samples = post_mixer_buf->addr;
 
