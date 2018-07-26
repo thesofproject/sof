@@ -88,7 +88,7 @@ struct mix_test_case {
 	{ \
 		.num_sources = (_num_sources), \
 		.num_chans = (_num_chans), \
-		.name = ("mixer_copy_" \
+		.name = ("test_audio_mixer_copy_" \
 			 #_num_sources "_srcs_" \
 			 #_num_chans "ch"), \
 		.sources = NULL \
