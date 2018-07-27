@@ -242,11 +242,11 @@ static inline int ssp_set_config(struct dai *dai,
 		inverted_frame = true; /* handled later with format */
 		break;
 	case SOF_DAI_FMT_IB_IF:
-		sspsp |= SSPSP_SCMODE(2);
+		sspsp |= SSPSP_SCMODE(1);
 		inverted_frame = true; /* handled later with format */
 		break;
 	case SOF_DAI_FMT_IB_NF:
-		sspsp |= SSPSP_SCMODE(2);
+		sspsp |= SSPSP_SCMODE(1);
 		break;
 	default:
 		trace_ssp_error("ec3");
