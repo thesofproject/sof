@@ -332,10 +332,20 @@ static int dai_capture_params(struct comp_dev *dev)
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
-	config->src_width = comp_sample_bytes(dev);
-	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 1;
 	config->src_dev = dd->dai->plat_data.fifo[1].handshake;
+
+	switch (config->dai_type) {
+	case SOF_DAI_INTEL_DMIC:
+		config->burst_elems = 8;
+		config->src_width = 4;
+		config->dest_width = 4;
+		break;
+	default:
+		config->src_width = comp_sample_bytes(dev);
+		config->dest_width = comp_sample_bytes(dev);
+		break;
+	}
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_item(&dev->bsink_list,
@@ -647,6 +657,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
+	dd->config.dai_type = config->type;
 	switch (config->type) {
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
@@ -669,9 +680,6 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 * this DMIC driver version.
 		 */
 		trace_dai("did");
-
-		/* We can use always the largest burst length. */
-		dd->config.burst_elems = 8;
 
 		/* Set frame size in bytes to match the configuration. */
 		if (config->dmic.num_pdm_active > 1) {
