@@ -61,6 +61,7 @@
 	defined CONFIG_CHERRYTRAIL ||\
 	defined CONFIG_BROADWELL ||\
 	defined CONFIG_HASWELL
+#define SFIFOL		0x68
 #define SFIFOTT		0x6C
 #define SSCR3		0x70
 #define SSCR4		0x74
@@ -197,6 +198,10 @@ extern const struct dai_ops ssp_ops;
 /* SFIFOTT bits */
 #define SFIFOTT_TX(x)		((x) - 1)
 #define SFIFOTT_RX(x)		(((x) - 1) << 16)
+
+/* SFIFOL bits */
+#define SFIFOL_TFL(x)		((x) & 0xFFFF)
+#define SFIFOL_RFL(x)		((x) >> 16)
 
 #if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE ||\
 	defined CONFIG_HASWELL || defined CONFIG_BROADWELL
