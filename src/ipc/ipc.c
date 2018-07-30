@@ -333,8 +333,10 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
+	struct sof_ipc_comp_dai *dai;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
+	struct comp_dev *dev;
 	int ret = 0;
 
 	/* for each component */
@@ -347,10 +349,20 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			switch (icd->cd->comp.type) {
 			case SOF_COMP_DAI:
 			case SOF_COMP_SG_DAI:
-				ret = comp_dai_config(icd->cd, config);
-				if (ret < 0) {
-					trace_ipc_error("eCD");
-					return ret;
+				dev = icd->cd;
+				dai = (struct sof_ipc_comp_dai *)&dev->comp;
+
+				/*
+				 * set config if comp dai_index matches
+				 * config dai_index.
+				 */
+				if (dai->dai_index == config->dai_index &&
+				    dai->type == config->type) {
+					ret = comp_dai_config(dev, config);
+					if (ret < 0) {
+						trace_ipc_error("eCD");
+						return ret;
+					}
 				}
 				break;
 			default:
