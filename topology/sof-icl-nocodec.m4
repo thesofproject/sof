@@ -58,7 +58,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	48, 1000, 0, 0)
 
 # PCM Low Latency
-PCM_DUPLEX_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
+PCM_DUPLEX_ADD(Passthrough, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
 #
 # BE configurations - overrides config in ACPI if present

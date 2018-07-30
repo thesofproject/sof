@@ -71,46 +71,56 @@ define(`PCM_CAPABILITIES',
 `	buffer_size_max	STR($12)'
 `}')
 
-dnl PCM_CAPTURE_ADD(name, pipeline, pcm_id, dai_id, capture)
-define(`PCM_CAPTURE_ADD',
+dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
+define(`PCM_PLAYBACK_ADD',
 `SectionPCM.STR($1) {'
 `'
-`	index STR($2)'
-`'
 `	# used for binding to the PCM'
-`	id STR($3)'
+`	id STR($2)'
 `'
-`	dai.STR($1 $3) {'
-`		id STR($4)'
-`	}'
-`'
-`	pcm."capture" {'
-`'
-`		capabilities STR($5)'
-`	}'
-`}')
-
-dnl PCM_DUPLEX_ADD(name, pipeline, pcm_id, dai_id, playback, capture)
-define(`PCM_DUPLEX_ADD',
-`SectionPCM.STR($1) {'
-`'
-`	index STR($2)'
-`'
-`	# used for binding to the PCM'
-`	id STR($3)'
-`'
-`	dai.STR($1 $3) {'
-`		id STR($4)'
-`	}'
-`'
-`	pcm."capture" {'
-`'
-`		capabilities STR($6)'
+`	dai.STR($1 $2) {'
 `	}'
 `'
 `	pcm."playback" {'
 `'
-`		capabilities STR($5)'
+`		capabilities STR($3)'
+`	}'
+`}')
+
+dnl PCM_CAPTURE_ADD(name, pcm_id, capture)
+define(`PCM_CAPTURE_ADD',
+`SectionPCM.STR($1) {'
+`'
+`	# used for binding to the PCM'
+`	id STR($2)'
+`'
+`	dai.STR($1 $2) {'
+`	}'
+`'
+`	pcm."capture" {'
+`'
+`		capabilities STR($3)'
+`	}'
+`}')
+
+dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
+define(`PCM_DUPLEX_ADD',
+`SectionPCM.STR($1) {'
+`'
+`	# used for binding to the PCM'
+`	id STR($2)'
+`'
+`	dai.STR($1 $2) {'
+`	}'
+`'
+`	pcm."capture" {'
+`'
+`		capabilities STR($4)'
+`	}'
+`'
+`	pcm."playback" {'
+`'
+`		capabilities STR($3)'
 `	}'
 `}')
 
