@@ -194,11 +194,29 @@ static void platform_memory_windows_init(void)
 	dcache_writeback_region((void *)HP_SRAM_WIN3_BASE, HP_SRAM_WIN3_SIZE);
 }
 
+/* init HW  */
+static void platform_init_hw(void)
+{
+	io_reg_write(SHIM_GENO, SHIM_GENO_SHIMOSEL |
+		     SHIM_GENO_MDIVOSEL | SHIM_GENO_DIOPTOSEL);
+
+	io_reg_write(SHIM_DSPIOPO,
+		     SHIM_DSPIOPO_DMICOSEL | SHIM_DSPIOPO_I2SOSEL);
+
+	io_reg_write(SHIM_LPGPDMAC(0),
+		     SHIM_LPGPDMAC_CHOSEL | SHIM_LPGPDMAC_CTLOSEL);
+	io_reg_write(SHIM_LPGPDMAC(1),
+		     SHIM_LPGPDMAC_CHOSEL | SHIM_LPGPDMAC_CTLOSEL);
+}
+
 int platform_init(struct sof *sof)
 {
 	struct dai *ssp;
 	struct dai *dmic0;
 	int i, ret;
+
+	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
+	platform_init_hw();
 
 	platform_interrupt_init();
 
