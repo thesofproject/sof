@@ -118,6 +118,12 @@ struct sof;
 /* minimal L1 exit time in cycles */
 #define PLATFORM_FORCE_L1_EXIT_TIME	482
 
+/* the SSP port fifo depth */
+#define SSP_FIFO_DEPTH		16
+
+/* the watermark for the SSP fifo depth setting */
+#define SSP_FIFO_WATERMARK	8
+
 /* Platform defined trace code */
 static inline void platform_panic(uint32_t p)
 {
