@@ -77,6 +77,29 @@ int scheduler_init(struct sof *sof)
 	return 0;
 }
 
+void schedule_task_init(struct task *task, void(*func)(void *),
+	void *data)
+{
+	task->core = 0;
+	task->state = TASK_STATE_INIT;
+	task->func = func;
+	task->data = data;
+}
+
+void schedule_task_free(struct task *task)
+{
+	task->state = TASK_STATE_FREE;
+	task->func = NULL;
+	task->data = NULL;
+}
+
+void schedule_task_config(struct task *task, uint16_t priority,
+	uint16_t core)
+{
+	task->priority = priority;
+	task->core = core;
+}
+
 /* The following definitions are to satisfy libsof linker errors */
 
 void schedule(void)
