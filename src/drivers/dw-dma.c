@@ -1188,6 +1188,8 @@ static void dw_dma_irq_handler(void *data)
 			switch (next.size) {
 			case DMA_RELOAD_END:
 				p->chan[i].status = COMP_STATE_PREPARE;
+				p->chan[i].lli_current =
+					(struct dw_lli2 *)p->chan[i].lli_current->llp;
 				break;
 			case DMA_RELOAD_LLI:
 				dw_dma_chan_reload_lli(dma, i);
