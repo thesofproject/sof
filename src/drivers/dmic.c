@@ -1150,6 +1150,18 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		goto finish;
 	}
 
+	if (prm->fifo_bits_a != 16 && prm->fifo_bits_a != 32) {
+		trace_dmic_error("fba");
+		ret = -EINVAL;
+		goto finish;
+	}
+
+	if (prm->fifo_bits_b != 16 && prm->fifo_bits_b != 32) {
+		trace_dmic_error("fbb");
+		ret = -EINVAL;
+		goto finish;
+	}
+
 	/* Match and select optimal decimators configuration for FIFOs A and B
 	 * paths. This setup phase is still abstract. Successful completion
 	 * points struct cfg to FIR coefficients and contains the scale value

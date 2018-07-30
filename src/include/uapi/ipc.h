@@ -329,8 +329,8 @@ struct sof_ipc_dai_dmic_params {
 	uint32_t fifo_fs_a;  /* FIFO A sample rate in Hz (8000..96000) */
 	uint32_t fifo_fs_b;  /* FIFO B sample rate in Hz (8000..96000) */
 	/* TODO: FIFO word lengths can be retrieved from SOF_DAI_FMT */
-	uint16_t fifo_bits_a; /* FIFO A word length (16 or 24) */
-	uint16_t fifo_bits_b; /* FIFO B word length (16 or 24) */
+	uint16_t fifo_bits_a; /* FIFO A word length (16 or 32) */
+	uint16_t fifo_bits_b; /* FIFO B word length (16 or 32) */
 	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
 	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
 	uint32_t num_pdm_active; /* Number of active controllers */
