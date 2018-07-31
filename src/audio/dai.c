@@ -586,10 +586,6 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			/* recover the dma status */
-			ret = dma_release(dd->dma, dd->chan);
-			if (ret < 0)
-				return ret;
 			/* start the DAI */
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
