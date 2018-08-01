@@ -31,7 +31,8 @@ MACHINES = \
 	sof-hsw-rt5640.tplg \
 	sof-apl-tdf8532.tplg \
 	sof-apl-pcm512x.tplg \
-	sof-glk-codec.tplg \
+	sof-apl-da7219.tplg \
+	sof-glk-da7219.tplg \
 	sof-icl-nocodec.tplg
 
 # Uncomment the following line if you want to debug conf files
@@ -64,5 +65,6 @@ EXTRA_DIST = \
 	sof-hsw-rt5640.m4 \
 	sof-apl-tdf8532.m4 \
 	sof-apl-pcm512x.m4 \
-	sof-glk-codec.m4 \
+	sof-apl-da7219.m4 \
+	sof-glk-da7219.m4 \
 	sof-icl-nocodec.m4
