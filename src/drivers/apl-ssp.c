@@ -252,7 +252,9 @@ static inline int ssp_set_config(struct dai *dai,
 
 	sscr0 |= SSCR0_MOD | SSCR0_ACS;
 
-	mdivc = 0x1;
+	mdivc = mn_reg_read(0x0);
+	mdivc |= 0x1;
+
 #ifdef CONFIG_CANNONLAKE
 	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24000_kHz) {
 		trace_ssp_error("eci");
