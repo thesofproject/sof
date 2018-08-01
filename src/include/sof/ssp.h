@@ -133,9 +133,13 @@ extern const struct dai_ops ssp_ops;
 #elif defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
 		|| defined CONFIG_HASWELL || defined CONFIG_BROADWELL
 #define SSCR2_TURM1		BIT(1)
+#define SSCR2_PSPSRWFDFD	BIT(3)
+#define SSCR2_PSPSTWFDFD	BIT(4)
 #define SSCR2_SDFD		BIT(14)
 #define SSCR2_SDPM		BIT(16)
 #define SSCR2_LJDFD		BIT(17)
+#define SSCR2_MMRATF		BIT(18)
+#define SSCR2_SMTATF		BIT(19)
 #endif
 
 
