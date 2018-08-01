@@ -225,18 +225,24 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 	case COMP_TRIGGER_RELEASE:
 		p->xrun_bytes = 0;
 
-		/* in resume process, capture must be
-		 * scheduled to to avoid the xrun in DAI component
-		 */
-		if (p->ipc_pipe.timer) {
-			/* timer - schedule initial copy */
-			pipeline_schedule_copy(p, 0);
-		} else {
-			/* DAI - schedule initial
-			 * pipeline fill when next idle
+#if !defined CONFIG_DMA_GW
+		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+#endif
+			/* in resume process, capture must be
+			 * scheduled to to avoid the xrun in DAI component
 			 */
-			pipeline_schedule_copy_idle(p);
+			if (p->ipc_pipe.timer) {
+				/* timer - schedule initial copy */
+				pipeline_schedule_copy(p, 0);
+			} else {
+				/* DAI - schedule initial
+				 * pipeline fill when next idle
+				 */
+				pipeline_schedule_copy_idle(p);
+			}
+#if !defined CONFIG_DMA_GW
 		}
+#endif
 		break;
 	case COMP_TRIGGER_SUSPEND:
 	case COMP_TRIGGER_RESUME:
