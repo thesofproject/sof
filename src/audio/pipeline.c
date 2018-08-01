@@ -204,13 +204,18 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
 		pipeline_schedule_cancel(p);
+		p->status = COMP_STATE_PAUSED;
 		break;
+	case COMP_TRIGGER_RELEASE:
 	case COMP_TRIGGER_START:
 		p->xrun_bytes = 0;
 
 		/* playback pipelines need scheduled now, capture pipelines are
-		 * scheduled once their initial DMA period is filled by the DAI */
-		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		 * scheduled once their initial DMA period is filled by the DAI
+		 * or in resume process
+		 */
+		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK ||
+		    p->status == COMP_STATE_PAUSED) {
 
 			/* pipelines are either scheduled by timers or DAI/DMA interrupts */
 			if (p->ipc_pipe.timer) {
@@ -221,22 +226,7 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 				pipeline_schedule_copy_idle(p);
 			}
 		}
-		break;
-	case COMP_TRIGGER_RELEASE:
-		p->xrun_bytes = 0;
-
-		/* in resume process, capture must be
-		 * scheduled to to avoid the xrun in DAI component
-		 */
-		if (p->ipc_pipe.timer) {
-			/* timer - schedule initial copy */
-			pipeline_schedule_copy(p, 0);
-		} else {
-			/* DAI - schedule initial
-			 * pipeline fill when next idle
-			 */
-			pipeline_schedule_copy_idle(p);
-		}
+		p->status = COMP_STATE_ACTIVE;
 		break;
 	case COMP_TRIGGER_SUSPEND:
 	case COMP_TRIGGER_RESUME:
@@ -632,6 +622,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		component_prepare_buffers_upstream(dev, dev, NULL);
 	}
 
+	p->status = COMP_STATE_PREPARE;
 out:
 	spin_unlock_irq(&p->lock, flags);
 	return ret;
