@@ -6,6 +6,7 @@ services:
   - docker
 
 before_install:
+  - touch apt.conf
   - docker build --build-arg UID=$(id -u) -f ./scripts/docker_build/Dockerfile -t sof .
 
 script:
