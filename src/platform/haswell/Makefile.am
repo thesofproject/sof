@@ -2,9 +2,9 @@ SUBDIRS = include
 
 EXTRA_DIST = haswell.x.in
 
-noinst_LIBRARIES = libplatform.a
+noinst_LTLIBRARIES = libplatform.la
 
-libplatform_a_SOURCES = \
+libplatform_la_SOURCES = \
 	platform.c \
 	dai.c \
 	dma.c \
@@ -12,7 +12,7 @@ libplatform_a_SOURCES = \
 	timer.c \
 	memory.c
 
-libplatform_a_CFLAGS = \
+libplatform_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \

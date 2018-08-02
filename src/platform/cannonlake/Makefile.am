@@ -4,19 +4,13 @@ EXTRA_DIST = \
 	cannonlake.x.in \
 	boot_ldr.x.in
 
-noinst_LIBRARIES = libplatform.a
+noinst_LTLIBRARIES = libplatform.la
 
-libplatform_a_SOURCES = \
-	../intel/cavs/platform.c \
-	../intel/cavs/dai.c \
-	../intel/cavs/dma.c \
-	../intel/cavs/clk.c \
-	../intel/cavs/timer.c \
-	../intel/cavs/interrupt.c \
-	../intel/cavs/memory.c \
-	../intel/cavs/pm_runtime.c
+libplatform_la_LIBADD = ../intel/cavs/libcavsplatform.la
 
-libplatform_a_CFLAGS = \
+libplatform_la_SOURCES =
+
+libplatform_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
