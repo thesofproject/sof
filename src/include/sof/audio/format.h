@@ -53,6 +53,13 @@
 #define MINUS_80DB_Q1_31     214748  /* 10^(-80/20) */
 #define MINUS_90DB_Q1_31      67909  /* 10^(-90/20) */
 
+/* Align the number to the nearest alignment value */
+#define ALIGN_UP(size, alignment) \
+	(((size) % (alignment) == 0) ? (size) : \
+	((size) - ((size) % (alignment)) + (alignment)))
+#define ALIGN_DOWN(size, alignment) \
+	((size) - ((size) % (alignment)))
+
 /* Compute the number of shifts
  * This will result in a compiler overflow error if shift bits are out of
  * range as INT64_MAX/MIN is greater than 32 bit Q shift parameter
