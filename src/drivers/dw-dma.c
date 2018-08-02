@@ -484,18 +484,29 @@ out:
 static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	int  ret = 0;
+	int ret = 0;
+	int i = 0;
+	struct dw_lli2 *lli;
 	uint32_t flags;
 
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_dma("DDi");
 
-	/* is channel stii active ? */
-	if ((dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
-		trace_dma_error("ea0");
-		trace_error_value(channel);
+	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
+
+#if DW_USE_HW_LLI
+	for (i = 0; i < p->chan[channel].desc_count; i++) {
+		lli = p->chan[channel].lli;
+		lli->ctrl_hi &= ~DW_CTLH_DONE(1);
+		lli++;
 	}
+
+	dcache_writeback_region(p->chan[channel].lli,
+			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
+#endif
+
+	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
 
