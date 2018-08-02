@@ -61,6 +61,18 @@ static inline void arch_interrupt_unregister(int irq)
 #define arch_interrupt_disable_mask(mask) \
 	_xtos_ints_off(mask)
 
+static inline uint32_t arch_interrupt_get_level(void)
+{
+	uint32_t level;
+
+	__asm__ __volatile__(
+		"       rsr.ps %0\n"
+		"       extui  %0, %0, 0, 4\n"
+		: "=&a" (level) :: "memory");
+
+	return level;
+}
+
 static inline void arch_interrupt_set(int irq)
 {
 	irq = SOF_IRQ_NUMBER(irq);

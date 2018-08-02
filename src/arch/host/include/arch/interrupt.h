@@ -45,6 +45,7 @@ static inline int arch_interrupt_register(int irq,
 static inline void arch_interrupt_unregister(int irq) {}
 static inline uint32_t arch_interrupt_enable_mask(uint32_t mask) {return 0; }
 static inline uint32_t arch_interrupt_disable_mask(uint32_t mask) {return 0; }
+static inline uint32_t arch_interrupt_get_level(void) { return 0; }
 static inline void arch_interrupt_set(int irq) {}
 static inline void arch_interrupt_clear(int irq) {}
 static inline uint32_t arch_interrupt_get_enabled(void) {return 0; }
