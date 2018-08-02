@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
  *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #include <platform/memory.h>
@@ -43,16 +44,24 @@
 #include <sof/dai.h>
 #include <sof/dma.h>
 #include <sof/sof.h>
+#include <sof/agent.h>
 #include <sof/work.h>
 #include <sof/clock.h>
 #include <sof/ipc.h>
-#include <sof/agent.h>
 #include <sof/io.h>
 #include <sof/trace.h>
 #include <sof/audio/component.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
+
+#if defined(CONFIG_APOLLOLAKE)
+#define SSP_COUNT PLATFORM_NUM_SSP
+#define SSP_CLOCK_FREQUENCY 19200000
+#elif defined(CONFIG_CANNONLAKE)
+#define SSP_COUNT PLATFORM_SSP_COUNT
+#define SSP_CLOCK_FREQUENCY 24000000
+#endif
 
 static const struct sof_ipc_fw_ready ready = {
 	.hdr = {
@@ -69,18 +78,18 @@ static const struct sof_ipc_fw_ready ready = {
 	},
 };
 
-#define SRAM_WINDOW_HOST_OFFSET(x)	(0x80000 + x * 0x20000)
+#define SRAM_WINDOW_HOST_OFFSET(x) (0x80000 + x * 0x20000)
 
-#define NUM_CNL_WINDOWS		7
+#define NUM_WINDOWS 7
 
 static const struct sof_ipc_window sram_window = {
 	.ext_hdr	= {
 		.hdr.cmd = SOF_IPC_FW_READY,
 		.hdr.size = sizeof(struct sof_ipc_window) +
-			sizeof(struct sof_ipc_window_elem) * NUM_CNL_WINDOWS,
+			sizeof(struct sof_ipc_window_elem) * NUM_WINDOWS,
 		.type	= SOF_IPC_EXT_WINDOW,
 	},
-	.num_windows	= NUM_CNL_WINDOWS,
+	.num_windows	= NUM_WINDOWS,
 	.window	= {
 		{
 			.type	= SOF_IPC_REGION_REGS,
@@ -154,9 +163,18 @@ int platform_boot_complete(uint32_t boot_message)
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
 		sram_window.ext_hdr.hdr.size);
 
+	#if defined(CONFIG_APOLLOLAKE)
+	/* boot now complete so we can relax the CPU */
+	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+
+	/* tell host we are ready */
+	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
+	ipc_write(IPC_DIPCI, 0x80000000 | SOF_IPC_FW_READY);
+	#elif defined(CONFIG_CANNONLAKE)
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | SOF_IPC_FW_READY);
+	#endif
 
 	return 0;
 }
@@ -194,6 +212,7 @@ static void platform_memory_windows_init(void)
 	dcache_writeback_region((void *)HP_SRAM_WIN3_BASE, HP_SRAM_WIN3_SIZE);
 }
 
+#if defined(CONFIG_CANNONLAKE)
 /* init HW  */
 static void platform_init_hw(void)
 {
@@ -201,7 +220,7 @@ static void platform_init_hw(void)
 		GENO_MDIVOSEL | GENO_DIOPTOSEL);
 
 	io_reg_write(DSP_INIT_IOPO,
-		IOPO_DMIC_FLAG |IOPO_I2S_FLAG);
+		IOPO_DMIC_FLAG | IOPO_I2S_FLAG);
 
 	io_reg_write(DSP_INIT_ALHO,
 		ALHO_ASO_FLAG | ALHO_CSO_FLAG | ALHO_CFO_FLAG);
@@ -216,6 +235,7 @@ static struct timer platform_ext_timer = {
 	.id = TIMER3,
 	.irq = IRQ_EXT_TSTAMP0_LVL2(0),
 };
+#endif
 
 int platform_init(struct sof *sof)
 {
@@ -223,8 +243,10 @@ int platform_init(struct sof *sof)
 	struct dai *dmic0;
 	int i, ret;
 
+	#if defined(CONFIG_CANNONLAKE)
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
+	#endif
 
 	platform_interrupt_init();
 
@@ -235,7 +257,11 @@ int platform_init(struct sof *sof)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
+	#if defined(CONFIG_APOLLOLAKE)
+	platform_timer_start(&platform_generic_queue.timer);
+	#elif defined(CONFIG_CANNONLAKE)
 	platform_timer_start(&platform_ext_timer);
+	#endif
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
@@ -250,14 +276,34 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
 	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
 
-	/* set SSP clock to 24M */
+	/* set SSP clock */
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
-	clock_set_freq(CLK_SSP, 24000000);
+	clock_set_freq(CLK_SSP, SSP_CLOCK_FREQUENCY);
 
 	/* initialise the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(sof);
 
+	#if defined(CONFIG_APOLLOLAKE)
+	/* disable PM for boot */
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
+		SHIM_CLKCTL_LPGPDMAFDCGB(0) |
+		SHIM_CLKCTL_LPGPDMAFDCGB(1) |
+		SHIM_CLKCTL_I2SFDCGB(3) |
+		SHIM_CLKCTL_I2SFDCGB(2) |
+		SHIM_CLKCTL_I2SFDCGB(1) |
+		SHIM_CLKCTL_I2SFDCGB(0) |
+		SHIM_CLKCTL_DMICFDCGB |
+		SHIM_CLKCTL_I2SEFDCGB(1) |
+		SHIM_CLKCTL_I2SEFDCGB(0) |
+		SHIM_CLKCTL_TCPAPLLS |
+		SHIM_CLKCTL_RAPLLC |
+		SHIM_CLKCTL_RXOSCC |
+		SHIM_CLKCTL_RFROSCC |
+		SHIM_CLKCTL_TCPLCG(0) | SHIM_CLKCTL_TCPLCG(1));
+
+	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
+	#elif defined(CONFIG_CANNONLAKE)
 	/* prevent Core0 clock gating. */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
 		SHIM_CLKCTL_TCPLCG(0));
@@ -268,6 +314,7 @@ int platform_init(struct sof *sof)
 
 	/* prevent DSP Common power gating */
 	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
+	#endif
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -275,9 +322,10 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return -ENODEV;
 
+
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	for(i = 0; i < PLATFORM_SSP_COUNT; i++) {
+	for (i = 0; i < SSP_COUNT; i++) {
 		ssp = dai_get(SOF_DAI_INTEL_SSP, i);
 		if (ssp == NULL)
 			return -ENODEV;

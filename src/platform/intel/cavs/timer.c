@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,8 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #include <platform/timer.h>
@@ -58,7 +60,7 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 		ticks = 1;
 
 	/* set new value and run */
-	shim_write64(SHIM_DSPWCT0C, (uint64_t)ticks);
+	shim_write64(SHIM_DSPWCT0C, ticks);
 	shim_write(SHIM_DSPWCTCS,
 		shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0A);
 

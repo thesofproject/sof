@@ -7,14 +7,14 @@ EXTRA_DIST = \
 noinst_LIBRARIES = libplatform.a
 
 libplatform_a_SOURCES = \
-	platform.c \
-	dai.c \
-	dma.c \
-	clk.c \
-	timer.c \
-	interrupt.c \
-	memory.c \
-	pm_runtime.c \
+	../intel/cavs/platform.c \
+	../intel/cavs/dai.c \
+	../intel/cavs/dma.c \
+	../intel/cavs/clk.c \
+	../intel/cavs/timer.c \
+	../intel/cavs/interrupt.c \
+	../intel/cavs/memory.c \
+	../intel/cavs/pm_runtime.c \
 	power_down.S
 
 libplatform_a_CFLAGS = \

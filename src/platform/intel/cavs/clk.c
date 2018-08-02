@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
  *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #include <sof/clock.h>
@@ -65,18 +66,43 @@ struct freq_table {
 static struct clk_pdata *clk_pdata;
 
 /* increasing frequency order */
+
+#if defined(CONFIG_APOLLOLAKE)
+static const struct freq_table cpu_freq[] = {
+	{100000000, 100, 0x3},
+	{200000000, 200, 0x1},
+	{400000000, 400, 0x0}, /* default */
+};
+#elif defined(CONFIG_CANNONLAKE)
 static const struct freq_table cpu_freq[] = {
 	{120000000, 120, 0x0},
 	{400000000, 400, 0x4},
 };
+#endif
 
+/*
+ * XTAL clock, used as Wall Clock(external timer),
+ */
+
+#if defined(CONFIG_APOLLOLAKE)
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19,},	/* default */
+	{24576000, 24,},
+};
+#elif defined(CONFIG_CANNONLAKE)
 static const struct freq_table ssp_freq[] = {
 	{19200000, 19,},
 	{24000000, 24,},	/* default */
 };
+#endif
 
+#if defined(CONFIG_APOLLOLAKE)
+#define CPU_DEFAULT_IDX		2
+#define SSP_DEFAULT_IDX		0
+#elif defined(CONFIG_CANNONLAKE)
 #define CPU_DEFAULT_IDX		1
 #define SSP_DEFAULT_IDX		1
+#endif
 
 static inline uint32_t get_freq(const struct freq_table *table, int size,
 	unsigned int hz)
@@ -138,6 +164,10 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 			&notify_data);
 
 		/* set CPU frequency request for CCU */
+		#if defined(CONFIG_APOLLOLAKE)
+		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
+				SHIM_CLKCTL_HDCS, 0);
+		#endif
 		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
 				SHIM_CLKCTL_DPCS_MASK(0), cpu_freq[idx].enc);
 
@@ -191,8 +221,7 @@ uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 
 void init_platform_clocks(void)
 {
-	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		sizeof(*clk_pdata));
+	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
 
 	spinlock_init(&clk_pdata->clk[0].lock);
 	spinlock_init(&clk_pdata->clk[1].lock);

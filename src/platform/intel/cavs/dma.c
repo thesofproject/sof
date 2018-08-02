@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
  *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #include <sof/dma.h>
@@ -39,72 +40,86 @@
 #include <stdint.h>
 #include <string.h>
 
+#if defined(CONFIG_APOLLOLAKE)
+#define DMAC0_CLASS 1
+#define DMAC1_CLASS 2
+#define DMAC_HOST_OUT_CHANNELS_COUNT 6
+#define DMAC_LINK_IN_CHANNELS_COUNT 8
+#define DMAC_LINK_OUT_CHANNELS_COUNT 8
+#elif defined(CONFIG_CANNONLAKE)
+#define DMAC0_CLASS 6
+#define DMAC1_CLASS 7
+#define DMAC_HOST_OUT_CHANNELS_COUNT 9
+#define DMAC_LINK_IN_CHANNELS_COUNT 9
+#define DMAC_LINK_OUT_CHANNELS_COUNT 7
+#endif
+
 static struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 	.chan[1] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 	.chan[2] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 	.chan[3] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 	.chan[4] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 	.chan[5] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 	.chan[6] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 	.chan[7] = {
-		.class	= 6,
+		.class	= DMAC0_CLASS,
 		.weight = 0,
 	},
 };
 
 static struct dw_drv_plat_data dmac1 = {
 	.chan[0] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 	.chan[1] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 	.chan[2] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 	.chan[3] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 	.chan[4] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 	.chan[5] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 	.chan[6] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 	.chan[7] = {
-		.class	= 7,
+		.class	= DMAC1_CLASS,
 		.weight = 0,
 	},
 };
@@ -119,7 +134,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
 		.base		= LP_GP_DMA_BASE(0),
 		.channels	= 8,
-		.irq = IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
+		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
 		.drv_plat_data	= &dmac0,
 	},
 	.ops		= &dw_dma_ops,
@@ -133,7 +148,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
 		.base		= LP_GP_DMA_BASE(1),
 		.channels	= 8,
-		.irq = IRQ_EXT_LP_GPDMA1_LVL5(0, 0),
+		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0, 0),
 		.drv_plat_data	= &dmac1,
 	},
 	.ops		= &dw_dma_ops,
@@ -146,7 +161,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_HOST,
 		.base		= GTW_HOST_IN_STREAM_BASE(0),
 		.channels	= 7,
-		.irq = IRQ_EXT_HOST_DMA_IN_LVL3(0, 0),
+		.irq		= IRQ_EXT_HOST_DMA_IN_LVL3(0, 0),
 		.chan_size	= GTW_HOST_IN_STREAM_SIZE,
 	},
 	.ops		= &hda_host_dma_ops,
@@ -158,8 +173,8 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.caps		= DMA_CAP_HDA,
 		.devs		= DMA_DEV_HOST,
 		.base		= GTW_HOST_OUT_STREAM_BASE(0),
-		.channels	= 9,
-		.irq = IRQ_EXT_HOST_DMA_OUT_LVL3(0, 0),
+		.channels	= DMAC_HOST_OUT_CHANNELS_COUNT,
+		.irq		= IRQ_EXT_HOST_DMA_OUT_LVL3(0, 0),
 		.chan_size	= GTW_HOST_OUT_STREAM_SIZE,
 	},
 	.ops		= &hda_host_dma_ops,
@@ -171,8 +186,8 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.caps		= DMA_CAP_HDA,
 		.devs		= DMA_DEV_HDA,
 		.base		= GTW_LINK_IN_STREAM_BASE(0),
-		.channels	= 9,
-		.irq = IRQ_EXT_LINK_DMA_IN_LVL4(0, 0),
+		.channels	= DMAC_LINK_IN_CHANNELS_COUNT,
+		.irq		= IRQ_EXT_LINK_DMA_IN_LVL4(0, 0),
 		.chan_size	= GTW_LINK_IN_STREAM_SIZE,
 	},
 	.ops		= &hda_link_dma_ops,
@@ -184,8 +199,8 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.caps		= DMA_CAP_HDA,
 		.devs		= DMA_DEV_HDA,
 		.base		= GTW_LINK_OUT_STREAM_BASE(0),
-		.channels	= 7,
-		.irq = IRQ_EXT_LINK_DMA_OUT_LVL4(0, 0),
+		.channels	= DMAC_LINK_OUT_CHANNELS_COUNT,
+		.irq		= IRQ_EXT_LINK_DMA_OUT_LVL4(0, 0),
 		.chan_size	= GTW_LINK_OUT_STREAM_SIZE,
 	},
 	.ops		= &hda_link_dma_ops,

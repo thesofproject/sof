@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
  *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #include <sof/sof.h>
@@ -36,6 +37,7 @@
 #include <sof/dmic.h>
 #include <sof/stream.h>
 #include <sof/audio/component.h>
+#include <platform/platform.h>
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>
@@ -94,9 +96,64 @@ static struct dai ssp[] = {
 		}
 	},
 	.ops		= &ssp_ops,
-},};
+},
+#if defined(CONFIG_APOLLOLAKE)
+{
+	.type = SOF_DAI_INTEL_SSP,
+	.index = 3,
+	.plat_data = {
+		.base		= SSP_BASE(3),
+		.irq		= IRQ_EXT_SSP3_LVL5(0),
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset		= SSP_BASE(3) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP3_TX,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset		= SSP_BASE(3) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP3_RX,
+		}
+	},
+	.ops		= &ssp_ops,
+},
+{
+	.type = SOF_DAI_INTEL_SSP,
+	.index = 4,
+	.plat_data = {
+		.base		= SSP_BASE(4),
+		.irq		= IRQ_EXT_SSP4_LVL5(0),
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset 	= SSP_BASE(4) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP4_TX,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset 	= SSP_BASE(4) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP4_RX,
+		}
+	},
+	.ops		= &ssp_ops,
+},
+{
+	.type = SOF_DAI_INTEL_SSP,
+	.index = 5,
+	.plat_data = {
+		.base		= SSP_BASE(5),
+		.irq		= IRQ_EXT_SSP5_LVL5(0),
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset 	= SSP_BASE(5) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP5_TX,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset 	= SSP_BASE(5) + SSDR,
+			.handshake	= DMA_HANDSHAKE_SSP5_RX,
+		}
+	},
+	.ops		= &ssp_ops,
+},
+#endif
+};
 
 #if defined CONFIG_DMIC
+
 static struct dai dmic[2] = {
 	/* Testing idea if DMIC FIFOs A and B to access the same microphones
 	 * with two different sample rate and PCM format could be presented
@@ -141,6 +198,7 @@ static struct dai dmic[2] = {
 		.ops = &dmic_ops,
 	}
 };
+
 #endif
 
 struct dai *dai_get(uint32_t type, uint32_t index)
