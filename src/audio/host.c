@@ -745,12 +745,6 @@ static int host_pointer_reset(struct comp_dev *dev)
 
 static int host_stop(struct comp_dev *dev)
 {
-	/* reset host side buffer pointers */
-	host_pointer_reset(dev);
-
-	/* reset elements, to let next start from original one */
-	host_elements_reset(dev);
-
 	return 0;
 }
 
