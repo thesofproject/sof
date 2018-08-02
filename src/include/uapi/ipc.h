@@ -226,15 +226,6 @@ struct sof_ipc_compound_hdr {
 #define SOF_DAI_FMT_INV_MASK		0x0f00
 #define SOF_DAI_FMT_MASTER_MASK		0xf000
 
-#define SOF_DAI_INTEL_SSP_QUIRK_TINTE		(1 << 0) /* ssc1: TINTE */
-#define SOF_DAI_INTEL_SSP_QUIRK_PINTE		(1 << 1) /* ssc1: PINTE */
-#define SOF_DAI_INTEL_SSP_QUIRK_SMTATF		(1 << 2) /* ssc2: SMTATF */
-#define SOF_DAI_INTEL_SSP_QUIRK_MMRATF		(1 << 3) /* ssc2: MMRATF */
-#define SOF_DAI_INTEL_SSP_QUIRK_PSPSTWFDFD	(1 << 4) /* ssc2: PSPSTWFDFD */
-#define SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD	(1 << 5) /* ssc2: PSPSRWFDFD*/
- /* here is the possibility to define others aux macros */
-
-
 /** \brief Types of DAI */
 enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_NONE = 0,	/**< None */
@@ -268,7 +259,7 @@ struct sof_ipc_dai_ssp_params {
 	uint32_t bclk_keep_active;
 	uint32_t fs_keep_active;
 
-	uint32_t quirks; // FIXME: is 32 bits enough ?
+	//uint32_t quirks; // FIXME: is 32 bits enough ?
 
 	/* private data, e.g. for quirks */
 	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
