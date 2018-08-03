@@ -44,6 +44,7 @@
 #include <sof/ipc.h>
 #include <sof/pm_runtime.h>
 #include <sof/wait.h>
+#include <sof/audio/format.h>
 #include <platform/dma.h>
 #include <arch/cache.h>
 #include <uapi/ipc.h>
@@ -367,7 +368,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	host_dma_reg_write(dma, channel, DGBS,  buffer_bytes);
 	host_dma_reg_write(dma, channel, DGBFPI,  0);
 	host_dma_reg_write(dma, channel, DGBSP,  period_bytes);
-	host_dma_reg_write(dma, channel, DGMBS,  period_bytes);
+	host_dma_reg_write(dma, channel, DGMBS,  ALIGN_UP(period_bytes, 32));
 	host_dma_reg_write(dma, channel, DGLLPI,  0);
 	host_dma_reg_write(dma, channel, DGLPIBI,  0);
 
