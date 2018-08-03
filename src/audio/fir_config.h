@@ -30,83 +30,47 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/audio/component.h>
-#include <sof/audio/format.h>
-#include <uapi/eq.h>
-#include "fir_config.h"
+#ifndef FIR_CONFIG_H
 
-#if FIR_GENERIC
+/* Get platforms configuration */
+#include <config.h>
 
-#include "fir.h"
-
-/*
- * EQ FIR algorithm code
+/* If next defines are set to 1 the EQ is configured automatically. Setting
+ * to zero temporarily is useful is for testing needs.
+ * Setting EQ_FIR_AUTOARCH to 0 allows to manually set the code variant.
  */
+#define FIR_AUTOARCH    1
 
-void fir_reset(struct fir_state_32x16 *fir)
-{
-	fir->rwi = 0;
-	fir->length = 0;
-	fir->delay_size = 0;
-	fir->out_shift = 0;
-	fir->coef = NULL;
-	/* There may need to know the beginning of dynamic allocation after
-	 * reset so omitting setting also fir->delay to NULL.
-	 */
-}
+/* Force manually some code variant when EQ_FIR_AUTODSP is set to zero. These
+ * are useful in code debugging.
+ */
+#if FIR_AUTOARCH == 0
+#define FIR_GENERIC	0
+#define FIR_HIFIEP	0
+#define FIR_HIFI3	1
+#endif
 
-int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
-{
-	struct sof_eq_fir_coef_data *setup;
+/* Select optimized code variant when xt-xcc compiler is used */
+#if FIR_AUTOARCH == 1
+#if defined __XCC__
+#include <xtensa/config/core-isa.h>
+#define FIR_GENERIC	0
+#if XCHAL_HAVE_HIFI2EP == 1
+#define FIR_HIFIEP	1
+#define FIR_HIFI3	0
+#endif
+#if XCHAL_HAVE_HIFI3 == 1
+#define FIR_HIFI3	1
+#define FIR_HIFIEP	0
+#endif
+#else
+/* GCC */
+#define FIR_GENERIC	1
+#define FIR_HIFIEP	0
+#define FIR_HIFI3	0
+#endif
+#endif
 
-	setup = (struct sof_eq_fir_coef_data *)config;
-	fir->rwi = 0;
-	fir->length = (int)setup->length;
-	fir->out_shift = (int)setup->out_shift;
-	fir->coef = &setup->coef[0];
-	fir->delay = NULL;
-	fir->delay_size = 0;
-
-	/* Check for sane FIR length. The length is constrained to be a
-	 * multiple of 4 for optimized code.
-	 */
-	if (fir->length > SOF_EQ_FIR_MAX_LENGTH || fir->length < 1)
-		return -EINVAL;
-
-	return fir->length;
-}
-
-void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
-{
-	fir->delay = *data;
-	fir->delay_size = fir->length;
-	*data += fir->delay_size; /* Point to next delay line start */
-}
-
-void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,
-		struct comp_buffer *sink, int frames, int nch)
-{
-	struct fir_state_32x16 *filter;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int32_t *x;
-	int32_t *y;
-	int ch;
-	int i;
-
-	for (ch = 0; ch < nch; ch++) {
-		filter = &fir[ch];
-		x = src++;
-		y = snk++;
-		for (i = 0; i < frames; i++) {
-			*y = fir_32x16(filter, *x);
-			x += nch;
-			y += nch;
-		}
-	}
-}
+#define FIR_CONFIG_H
 
 #endif
