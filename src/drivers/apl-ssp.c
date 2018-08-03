@@ -149,6 +149,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t sample_width = 2;
 
 	bool inverted_frame = false;
+	bool cfs = false;
 	int ret = 0;
 
 	spin_lock(&ssp->lock);
@@ -215,10 +216,13 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_CBS_CFS:
 		sscr1 |= SSCR1_SCFR;
+		cfs = true;
 		break;
 	case SOF_DAI_FMT_CBM_CFS:
 		sscr1 |= SSCR1_SCLKDIR;
 		/* FIXME: this mode has not been tested */
+
+		cfs = true;
 		break;
 	case SOF_DAI_FMT_CBS_CFM:
 		sscr1 |= SSCR1_SCFR | SSCR1_SFRMDIR;
@@ -254,6 +258,40 @@ static inline int ssp_set_config(struct dai *dai,
 
 	mdivc = mn_reg_read(0x0);
 	mdivc |= 0x1;
+
+	/* Additional hardware settings */
+
+	/* Receiver Time-out Interrupt Disabled/Enabled */
+	sscr1 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_TINTE) ?
+		SSCR1_TINTE : 0;
+
+	/* Peripheral Trailing Byte Interrupts Disable/Enable */
+	sscr1 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PINTE) ?
+		SSCR1_PINTE : 0;
+
+	/* Transmit data are driven at the same/opposite clock edge specified
+	 * in SSPSP.SCMODE[1:0]
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_SMTATF) ?
+		SSCR2_SMTATF : 0;
+
+	/* Receive data are sampled at the same/opposite clock edge specified
+	 * in SSPSP.SCMODE[1:0]
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_MMRATF) ?
+		SSCR2_MMRATF : 0;
+
+	/* Enable/disable the fix for PSP slave mode TXD wait for frame
+	 * de-assertion before starting the second channel
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSTWFDFD) ?
+		SSCR2_PSPSTWFDFD : 0;
+
+	/* Enable/disable the fix for PSP master mode FSRT with dummy stop &
+	 * frame end padding capability
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) ?
+		SSCR2_PSPSRWFDFD : 0;
 
 #ifdef CONFIG_CANNONLAKE
 	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24000_kHz) {
@@ -503,7 +541,21 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
 		/* set asserted frame length */
-		frame_len = 1;
+		frame_len = 1; /* default */
+
+		if (cfs && ssp->params.frame_pulse_width > 0 &&
+			ssp->params.frame_pulse_width <=
+			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
+			frame_len = ssp->params.frame_pulse_width;
+		}
+
+		/* frame_pulse_width must less or equal 38 */
+		if (ssp->params.frame_pulse_width >
+			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
+			trace_ssp_error("efa");
+			ret = -EINVAL;
+			goto out;
+		}
 
 		/*
 		 * handle frame polarity, DSP_A default is rising/active high,
@@ -527,8 +579,21 @@ static inline int ssp_set_config(struct dai *dai,
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
 		/* set asserted frame length */
-		frame_len = 1;
+		frame_len = 1; /* default */
 
+		if (cfs && ssp->params.frame_pulse_width > 0 &&
+			ssp->params.frame_pulse_width <=
+			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
+			frame_len = ssp->params.frame_pulse_width;
+		}
+
+		/* frame_pulse_width must less or equal 38 */
+		if (ssp->params.frame_pulse_width >
+			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
+			trace_ssp_error("efb");
+			ret = -EINVAL;
+			goto out;
+		}
 		/*
 		 * handle frame polarity, DSP_B default is rising/active high,
 		 * non-inverted(inverted_frame=0) -- active high(SFRMP=1),
