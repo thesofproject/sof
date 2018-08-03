@@ -89,23 +89,37 @@
 
 struct dma;
 
+/**
+ * \brief Element of SG list (replaced with array).
+ */
 struct dma_sg_elem {
-	uint32_t src;
-	uint32_t dest;
-	uint32_t size;
-	struct list_item list;
+	uint32_t src;	/**< source address */
+	uint32_t dest;	/**< destination address */
+	uint32_t size;	/**< size (in bytes) */
 };
 
-/* DMA physical SG params */
+/**
+ * \brief SG array.
+ */
+struct dma_sg_elem_array {
+	uint32_t count;             /**< number of elements in elems */
+	struct dma_sg_elem *elems;  /**< elements */
+};
+
+/**
+ * \brief DMA physical SG parameters.
+ *
+ * This is a common configuration for all DMA types.
+ */
 struct dma_sg_config {
-	uint32_t src_width;	/* in bytes */
-	uint32_t dest_width;	/* in bytes */
+	uint32_t src_width;                   /**< in bytes */
+	uint32_t dest_width;                  /**< in bytes */
 	uint32_t burst_elems;
 	uint32_t direction;
 	uint32_t src_dev;
 	uint32_t dest_dev;
-	uint32_t cyclic;		/* circular buffer */
-	struct list_item elem_list;	/* list of dma_sg elems */
+	uint32_t cyclic;                      /**< circular buffer */
+	struct dma_sg_elem_array elem_array;  /**< array of SG elements */
 };
 
 struct dma_chan_status {
@@ -268,18 +282,26 @@ static inline int dma_probe(struct dma *dma)
 	return dma->ops->probe(dma);
 }
 
-/* get the size of SG buffer */
-static inline uint32_t dma_sg_get_size(struct dma_sg_config *sg)
+static inline void dma_sg_init(struct dma_sg_elem_array  *elem_array)
 {
-	struct dma_sg_elem *sg_elem;
-	struct list_item *plist;
+	elem_array->count = 0;
+	elem_array->elems = NULL;
+}
+
+int dma_sg_alloc(struct dma_sg_elem_array *elem_array, uint32_t direction,
+	uint32_t period_count, uint32_t period_bytes,
+	uintptr_t dma_buffer_addr, uintptr_t external_addr);
+
+void dma_sg_free(struct dma_sg_elem_array *elem_array);
+
+/* get the size of SG buffer */
+static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *elem_array)
+{
+	int i;
 	uint32_t size = 0;
 
-	list_for_item(plist, &sg->elem_list) {
-
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
-		size += sg_elem->size;
-	}
+	for (i = 0; i < elem_array->count; i++)
+		size += elem_array->elems[i].size;
 
 	return size;
 }

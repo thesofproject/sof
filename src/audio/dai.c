@@ -209,22 +209,12 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		goto error;
 	}
 
-	list_init(&dd->config.elem_list);
+	dma_sg_init(&dd->config.elem_array);
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->last_bytes = 0;
 	dd->xrun = 0;
 
-	/* get DMA channel from DMAC1 */
-	dd->chan = dma_channel_get(dd->dma, 0);
-	if (dd->chan < 0){
-		trace_dai_error("eDc");
-		goto error;
-	}
-
-	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
-				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
 	dev->state = COMP_STATE_READY;
 	dev->is_dma_connected = 1;
 	return dev;
@@ -251,11 +241,7 @@ static int dai_playback_params(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct sof_ipc_comp_config *source_config;
-	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
-	struct list_item *elist;
-	struct list_item *tlist;
-	int i;
 	int err;
 	uint32_t buffer_size;
 
@@ -283,35 +269,19 @@ static int dai_playback_params(struct comp_dev *dev)
 		return err;
 	}
 
-	if (list_is_empty(&config->elem_list)) {
-		/* set up cyclic list of DMA elems */
-		for (i = 0; i < source_config->periods_sink; i++) {
-
-			elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-				sizeof(*elem));
-			if (elem == NULL)
-				goto err_unwind;
-
-			elem->size = dd->period_bytes;
-			elem->src = (uintptr_t)(dma_buffer->r_ptr) +
-				i * dd->period_bytes;
-
-			elem->dest = dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK);
-
-			list_item_append(&elem->list, &config->elem_list);
+	if (config->elem_array.elems == NULL) {
+		err = dma_sg_alloc(&config->elem_array,
+			config->direction,
+			source_config->periods_sink,
+			dd->period_bytes, (uintptr_t)(dma_buffer->r_ptr),
+			dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK));
+		if (err < 0) {
+			trace_dai_error("ep3");
+			return err;
 		}
 	}
 
 	return 0;
-
-err_unwind:
-	trace_dai_error("ep3");
-	list_for_item_safe(elist, tlist, &config->elem_list) {
-		elem = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&elem->list);
-		rfree(elem);
-	}
-	return -ENOMEM;
 }
 
 static int dai_capture_params(struct comp_dev *dev)
@@ -319,11 +289,7 @@ static int dai_capture_params(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	struct sof_ipc_comp_config *sink_config;
-	struct dma_sg_elem *elem;
 	struct comp_buffer *dma_buffer;
-	struct list_item *elist;
-	struct list_item *tlist;
-	int i;
 	int err;
 	uint32_t buffer_size;
 
@@ -351,33 +317,19 @@ static int dai_capture_params(struct comp_dev *dev)
 		return err;
 	}
 
-	if (list_is_empty(&config->elem_list)) {
-		/* set up cyclic list of DMA elems */
-		for (i = 0; i < sink_config->periods_source; i++) {
-
-			elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-				sizeof(*elem));
-			if (elem == NULL)
-				goto err_unwind;
-
-			elem->size = dd->period_bytes;
-			elem->dest = (uintptr_t)(dma_buffer->w_ptr) +
-				i * dd->period_bytes;
-			elem->src = dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE);
-			list_item_append(&elem->list, &config->elem_list);
+	if (config->elem_array.elems == NULL) {
+		err = dma_sg_alloc(&config->elem_array,
+			config->direction,
+			sink_config->periods_source,
+			dd->period_bytes, (uintptr_t)(dma_buffer->w_ptr),
+			dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE));
+		if (err < 0) {
+			trace_dai_error("ec3");
+			return err;
 		}
 	}
 
 	return 0;
-
-err_unwind:
-	trace_dai_error("ec3");
-	list_for_item_safe(elist, tlist, &config->elem_list) {
-		elem = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&elem->list);
-		rfree(elem);
-	}
-	return -ENOMEM;
 }
 
 static int dai_params(struct comp_dev *dev)
@@ -385,6 +337,7 @@ static int dai_params(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	int err;
 
 	trace_dai("par");
 
@@ -415,14 +368,30 @@ static int dai_params(struct comp_dev *dev)
 			struct comp_buffer, sink_list);
 		dma_buffer->r_ptr = dma_buffer->addr;
 
-		return dai_playback_params(dev);
+		err = dai_playback_params(dev);
+		if (err < 0)
+			return err;
 	} else {
 		dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 		dma_buffer->w_ptr = dma_buffer->addr;
 
-		return dai_capture_params(dev);
+		err = dai_capture_params(dev);
+		if (err < 0)
+			return err;
 	}
+
+	/* get DMA channel from DMAC1 */
+	dd->chan = dma_channel_get(dd->dma, 0);
+	if (dd->chan < 0) {
+		trace_dai_error("eDc");
+		return -ENODEV;
+	}
+
+	/* set up callback - todo: unify */
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
+				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	return 0;
 }
 
 static int dai_prepare(struct comp_dev *dev)
@@ -439,7 +408,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 	dev->position = 0;
 
-	if (list_is_empty(&dd->config.elem_list)) {
+	if (dd->config.elem_array.elems == NULL) {
 		trace_dai_error("wdm");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
@@ -473,17 +442,10 @@ static int dai_reset(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct list_item *elist;
-	struct list_item *tlist;
-	struct dma_sg_elem *elem;
 
 	trace_dai("res");
 
-	list_for_item_safe(elist, tlist, &config->elem_list) {
-		elem = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&elem->list);
-		rfree(elem);
-	}
+	dma_sg_free(&config->elem_array);
 
 	dd->dai_pos_blks = 0;
 	if (dd->dai_pos)

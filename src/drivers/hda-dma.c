@@ -87,6 +87,11 @@ struct hda_chan_data {
 	uint32_t desc_count;
 	uint32_t desc_avail;
 	uint32_t direction;
+
+	void (*cb)(void *data, uint32_t type,
+		   struct dma_sg_elem *next); /* client callback */
+	void *cb_data;		/* client callback data */
+	int cb_type;		/* callback type */
 };
 
 struct dma_pdata {
@@ -114,21 +119,33 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 }
 
 /* notify DMA to copy bytes */
-static int hda_dma_copy(struct dma *dma, int channel, int bytes)
+static int hda_dma_copy(struct dma *dma, int channel, int bytes, int commit)
 {
-	tracev_host("GwU");
+	uint32_t flags;
+	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	/* reset BSC before start next copy */
-	hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
 
-	/*
-	 * set BFPI to let host gateway knows we have read size,
-	 * which will trigger next copy start.
-	 */
-	host_dma_reg_write(dma, channel, DGBFPI, bytes);
 
-	host_dma_reg_write(dma, channel, DGLLPI, bytes);
-	host_dma_reg_write(dma, channel, DGLPIBI, bytes);
+	if (commit > 0) {
+
+		idelay(PLATFORM_DEFAULT_DELAY);
+		hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
+		/*
+		 * set BFPI to let host gateway knows we have read size,
+		 * which will trigger next copy start.
+		 */
+		host_dma_reg_write(dma, channel, DGBFPI, bytes);
+		host_dma_reg_write(dma, channel, DGLLPI, bytes);
+		host_dma_reg_write(dma, channel, DGLPIBI, bytes);
+	}
+
+	spin_lock_irq(&dma->lock, flags);
+
+		if (p->chan[channel].cb) {
+			p->chan[channel].cb(p->chan[channel].cb_data,
+					DMA_IRQ_TYPE_LLIST, NULL);
+		}
+	spin_unlock_irq(&dma->lock, flags);
 
 	/* Force Host DMA to exit L1 */
 	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
@@ -170,6 +187,9 @@ static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
 
 	/* set new state */
 	p->chan[channel].status = COMP_STATE_INIT;
+	p->chan[channel].cb = NULL;
+	p->chan[channel].cb_type = 0;
+	p->chan[channel].cb_data = NULL;
 }
 
 /* channel must not be running when this is called */
@@ -213,6 +233,11 @@ static int hda_dma_start(struct dma *dma, int channel)
 	/* full buffer is copied at startup */
 	p->chan[channel].desc_avail = p->chan[channel].desc_count;
 out:
+//TODO: Test this code for link
+	/*work_schedule_default(hda_dma_copy(dma, channel,
+	 * p->chan[channel].cb_data),
+	 * HDA_LINK_1MS_US);
+	 */
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
 }
@@ -289,26 +314,21 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct list_item *plist;
 	struct dma_sg_elem *sg_elem;
 	uint32_t buffer_addr = 0;
 	uint32_t period_bytes = 0;
 	uint32_t buffer_bytes = 0;
-	uint32_t desc_count = 0;
 	uint32_t flags;
 	uint32_t addr;
 	uint32_t dgcs;
+	int i;
 	int ret = 0;
 
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_host("Dsc");
 
-	/* get number of SG elems */
-	list_for_item(plist, &config->elem_list)
-		desc_count++;
-
-	if (desc_count == 0) {
+	if (config->elem_array.count == 0) {
 		trace_host_error("eD1");
 		ret = -EINVAL;
 		goto out;
@@ -316,11 +336,11 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
-	p->chan[channel].desc_count = desc_count;
+	p->chan[channel].desc_count = config->elem_array.count;
 
 	/* validate - HDA only supports continuous elems of same size  */
-	list_for_item(plist, &config->elem_list) {
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
+	for (i = 0; i < config->elem_array.count; i++) {
+		sg_elem = config->elem_array.elems + i;
 
 		if (config->direction == DMA_DIR_HMEM_TO_LMEM)
 			addr = sg_elem->dest;
@@ -391,7 +411,16 @@ static int hda_dma_set_cb(struct dma *dma, int channel, int type,
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 	void *data)
 {
-	return -EINVAL;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
+	p->chan[channel].cb = cb;
+	p->chan[channel].cb_data = data;
+	p->chan[channel].cb_type = type;
+	spin_unlock_irq(&dma->lock, flags);
+
+	return 0;
 }
 
 static int hda_dma_probe(struct dma *dma)
@@ -446,4 +475,3 @@ const struct dma_ops hda_link_dma_ops = {
 	.pm_context_store		= hda_dma_pm_context_store,
 	.probe		= hda_dma_probe,
 };
-

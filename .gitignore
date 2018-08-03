@@ -20,6 +20,7 @@
 *.dis
 *.lst
 *.log
+*.tar.bz2
 .*
 
 Makefile
