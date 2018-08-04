@@ -487,6 +487,7 @@ AC_CONFIG_FILES([
 	src/platform/cannonlake/include/arch/xtensa/config/Makefile
 	src/platform/cannonlake/include/platform/Makefile
 	src/platform/intel/Makefile
+	src/platform/intel/cavs/Makefile
 	src/platform/intel/include/Makefile
 	src/platform/intel/include/platform/Makefile
 	src/platform/intel/include/platform/cavs/Makefile

@@ -4,26 +4,19 @@ EXTRA_DIST = \
 	apollolake.x.in \
 	boot_ldr.x.in
 
-noinst_LIBRARIES = libplatform.a
+noinst_LTLIBRARIES = libplatform.la
 
-libplatform_a_SOURCES = \
-	platform.c \
-	dai.c \
-	dma.c \
-	clk.c \
-	timer.c \
-	interrupt.c \
-	memory.c \
-	pm_runtime.c \
-	power_down.S
+libplatform_la_LIBADD = ../intel/cavs/libcavsplatform.la
 
-libplatform_a_CFLAGS = \
+libplatform_la_SOURCES = power_down.S
+
+libplatform_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR)
 
-libplatform_a_CCASFLAGS = \
+libplatform_la_CCASFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ASFLAGS) \
 	$(ARCH_ASFLAGS) \

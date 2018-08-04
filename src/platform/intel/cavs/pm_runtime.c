@@ -29,8 +29,8 @@
  */
 
 /**
- * \file platform/apollolake/pm_runtime.c
- * \brief Runtime power management implementation specific for Apollolake
+ * \file platform/intel/cavs/pm_runtime.c
+ * \brief Runtime power management implementation for Apollolake & Cannonlake
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
@@ -38,7 +38,11 @@
 #include <platform/platform.h>
 #include <platform/pm_runtime.h>
 #include <platform/cavs/pm_runtime.h>
+
+#if defined(CONFIG_APOLLOLAKE)
+//TODO: add support or at least stub api for Cannonlake
 #include <platform/power_down.h>
+#endif
 
 /** \brief Runtime power management data pointer. */
 struct pm_runtime_data *_prd;
@@ -67,6 +71,7 @@ void platform_pm_runtime_put(enum pm_runtime_context context)
 	}
 }
 
+#if defined(CONFIG_APOLLOLAKE)
 void platform_pm_runtime_power_off(void)
 {
 	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
@@ -78,4 +83,4 @@ void platform_pm_runtime_power_off(void)
 
 	power_down(true, hpsram_mask);
 }
-
+#endif

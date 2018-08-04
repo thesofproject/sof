@@ -87,7 +87,7 @@ sof_LDADD = \
 	../../init/libinit.a \
 	../../tasks/libtasks.a \
 	../../lib/libcore.a \
-	../../platform/$(PLATFORM)/libplatform.a \
+	../../platform/$(PLATFORM)/libplatform.la \
 	../../ipc/libsof_ipc.a \
 	../../lib/libdma.a \
 	../../audio/libaudio.a \

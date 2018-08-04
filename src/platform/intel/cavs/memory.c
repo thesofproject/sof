@@ -26,9 +26,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 #include <sof/alloc.h>
+
+#if defined(CONFIG_APOLLOLAKE)
+#define TOTAL_HEAP_SIZE (HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
+	HEAP_HP_BUFFER_SIZE + HEAP_LP_BUFFER_SIZE)
+#elif defined(CONFIG_CANNONLAKE)
+#define TOTAL_HEAP_SIZE (HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
+	HEAP_BUFFER_SIZE)
+#endif
 
 /* Heap blocks for modules */
 static struct block_hdr mod_block16[HEAP_RT_COUNT16];
@@ -114,6 +123,5 @@ struct mm memmap = {
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
-	.total = {.free = HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE +
-			HEAP_HP_BUFFER_SIZE + HEAP_LP_BUFFER_SIZE,},
+	.total = {.free = TOTAL_HEAP_SIZE,},
 };

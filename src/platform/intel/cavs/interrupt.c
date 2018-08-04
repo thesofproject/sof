@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,13 +28,15 @@
  * Author: Keyon Jie <yang.jie@linux.intel.com>
  *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
+ *
  */
 
 #include <sof/sof.h>
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
-#include <arch/interrupt.h>
 #include <sof/cpu.h>
+#include <arch/interrupt.h>
 #include <platform/interrupt.h>
 #include <platform/platcfg.h>
 #include <platform/shim.h>
@@ -124,6 +126,7 @@ static void irq_lvl2_level5_handler(void *data)
 
 /* DSP internal interrupts */
 static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
+	#if defined(CONFIG_CANNONLAKE)
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
@@ -133,6 +136,7 @@ static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
 	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	#endif
 
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
