@@ -41,6 +41,9 @@
 
 struct sof;
 
+/* DGMBS align value */
+#define PLATFORM_HDA_BUFFER_ALIGNMENT	0x20
+
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
