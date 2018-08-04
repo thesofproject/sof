@@ -596,7 +596,12 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_XRUN:
 		dd->xrun = 1;
-		/* fall through */
+		/* stop the DAI unconditionally */
+		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
+		ret = dma_stop(dd->dma, dd->chan);
+		if (ret < 0)
+			return ret;
+		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
 		wait_init(&dd->complete);
