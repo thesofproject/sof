@@ -485,9 +485,11 @@ static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	int ret = 0;
+	uint32_t flags;
+#if DW_USE_HW_LLI
 	int i = 0;
 	struct dw_lli2 *lli;
-	uint32_t flags;
+#endif
 
 	spin_lock_irq(&dma->lock, flags);
 
