@@ -31,14 +31,6 @@
 
 #include <sof/alloc.h>
 
-#if defined(CONFIG_APOLLOLAKE)
-#define TOTAL_HEAP_SIZE (HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
-	HEAP_HP_BUFFER_SIZE + HEAP_LP_BUFFER_SIZE)
-#elif defined(CONFIG_CANNONLAKE)
-#define TOTAL_HEAP_SIZE (HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE + \
-	HEAP_BUFFER_SIZE)
-#endif
-
 /* Heap blocks for modules */
 static struct block_hdr mod_block16[HEAP_RT_COUNT16];
 static struct block_hdr mod_block32[HEAP_RT_COUNT32];
@@ -46,7 +38,6 @@ static struct block_hdr mod_block64[HEAP_RT_COUNT64];
 static struct block_hdr mod_block128[HEAP_RT_COUNT128];
 static struct block_hdr mod_block256[HEAP_RT_COUNT256];
 static struct block_hdr mod_block512[HEAP_RT_COUNT512];
-static struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
 
 /* Heap memory map for modules */
 static struct block_map rt_heap_map[] = {
@@ -56,7 +47,6 @@ static struct block_map rt_heap_map[] = {
 	BLOCK_DEF(128, HEAP_RT_COUNT128, mod_block128),
 	BLOCK_DEF(256, HEAP_RT_COUNT256, mod_block256),
 	BLOCK_DEF(512, HEAP_RT_COUNT512, mod_block512),
-	BLOCK_DEF(1024, HEAP_RT_COUNT1024, mod_block1024),
 };
 
 /* Heap blocks for buffers */
@@ -123,5 +113,7 @@ struct mm memmap = {
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
-	.total = {.free = TOTAL_HEAP_SIZE,},
+	.total = {.free = HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE +
+			HEAP_BUFFER_SIZE + HEAP_HP_BUFFER_SIZE +
+			HEAP_LP_BUFFER_SIZE,},
 };
