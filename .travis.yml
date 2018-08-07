@@ -6,8 +6,7 @@ services:
   - docker
 
 before_install:
-  - touch apt.conf
-  - docker build --build-arg UID=$(id -u) -f ./scripts/docker_build/Dockerfile -t sof .
+  - docker pull xiulipan/sof
 
 script:
-  - docker run -it -v `pwd`:/home/sof/work/sof.git -v `pwd`/../soft.git:/home/sof/work/soft.git --user `id -u` sof ./scripts/xtensa-build-all.sh -l
+  - docker run -it -v `pwd`:/home/sof/work/sof.git -v `pwd`/../soft.git:/home/sof/work/soft.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -l
