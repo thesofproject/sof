@@ -49,6 +49,12 @@ check_PROGRAMS += alloc
 alloc_SOURCES = src/lib/alloc/alloc.c src/lib/alloc/mock.c ../../src/lib/alloc.c ../../src/platform/apollolake/memory.c
 endif
 
+# lib/lib tests
+
+check_PROGRAMS += rstrcmp
+rstrcmp_SOURCES = src/lib/lib/rstrcmp.c
+rstrcmp_LDADD = ../../src/lib/libcore.a $(LDADD)
+
 # volume tests
 
 check_PROGRAMS += volume_process
