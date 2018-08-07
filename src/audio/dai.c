@@ -197,9 +197,21 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	/* TODO: hda: retrieve req'ed caps from the dai,
 	 * dmas are not cross-compatible.
 	 */
-	dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
-	caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
-	dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC;
+	switch (dai->type) {
+	case SOF_DAI_INTEL_HDA:
+		dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
+				DMA_DIR_DEV_TO_MEM : DMA_DIR_MEM_TO_DEV;
+		caps = DMA_CAP_HDA;
+		dma_dev = DMA_DEV_HDA;
+		break;
+	case SOF_DAI_INTEL_SSP:
+	case SOF_DAI_INTEL_DMIC:
+	default:
+		dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
+		caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+		dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC;
+		break;
+	}
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (dd->dma == NULL) {
 		trace_dai_error("eDd");
@@ -701,6 +713,13 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		trace_value(config->dmic.pdm[0].enable_mic_a);
 		trace_value(config->dmic.pdm[0].enable_mic_b);
 		trace_value(dev->frame_bytes);
+		break;
+	case SOF_DAI_INTEL_HDA:
+		/* set to some non-zero value to satisfy the condition below,
+		 * it is recalculated in dai_params() later
+		 * this is temp until dai/hda model is changed.
+		 */
+		dev->frame_bytes = 4;
 		break;
 	default:
 		/* other types of DAIs not handled for now */

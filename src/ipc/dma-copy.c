@@ -182,7 +182,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int ret;
 
 	/* tell gateway to copy */
-	ret = dma_copy(dc->dmac, dc->chan, size);
+	ret = dma_copy(dc->dmac, dc->chan, size, 0);
 	if (ret < 0)
 		return ret;
 

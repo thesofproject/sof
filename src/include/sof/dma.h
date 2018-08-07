@@ -80,6 +80,8 @@
 #define DMA_IRQ_TYPE_BLOCK	BIT(0)
 #define DMA_IRQ_TYPE_LLIST	BIT(1)
 
+/* DMA copy flags */
+#define DMA_COPY_NO_COMMIT	BIT(0)
 
 /* We will use this macro in cb handler to inform dma that
  * we need to stop the reload for special purpose
@@ -124,7 +126,7 @@ struct dma_ops {
 
 	int (*start)(struct dma *dma, int channel);
 	int (*stop)(struct dma *dma, int channel);
-	int (*copy)(struct dma *dma, int channel, int bytes);
+	int (*copy)(struct dma *dma, int channel, int bytes, uint32_t flags);
 	int (*pause)(struct dma *dma, int channel);
 	int (*release)(struct dma *dma, int channel);
 	int (*status)(struct dma *dma, int channel,
@@ -226,9 +228,10 @@ static inline int dma_stop(struct dma *dma, int channel)
 	return dma->ops->stop(dma, channel);
 }
 
-static inline int dma_copy(struct dma *dma, int channel, int bytes)
+static inline int dma_copy(struct dma *dma, int channel, int bytes,
+			   uint32_t flags)
 {
-	return dma->ops->copy(dma, channel, bytes);
+	return dma->ops->copy(dma, channel, bytes, flags);
 }
 
 static inline int dma_pause(struct dma *dma, int channel)

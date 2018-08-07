@@ -863,7 +863,8 @@ static int host_copy(struct comp_dev *dev)
 
 #if defined CONFIG_DMA_GW
 	/* tell gateway to copy another period */
-	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes);
+	/* TODO: flags to be used by preload */
+	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes, 0);
 	if (ret < 0)
 		goto out;
 
