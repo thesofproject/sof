@@ -119,6 +119,12 @@ int rstrcmp(const char *s1, const char *s2)
 		s2++;
 	}
 
+	/* did both string end */
+	if (*s1 != 0)
+		return 1;
+	if (*s2 != 0)
+		return -1;
+
 	/* match */
 	return 0;
 }
