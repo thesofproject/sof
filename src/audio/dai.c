@@ -213,18 +213,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->xrun = 0;
 	dd->pointer_init = 0;
 
-	/* get DMA channel from DMAC1 */
-	dd->chan = dma_channel_get(dd->dma, 0);
-	if (dd->chan < 0){
-		trace_dai_error("eDc");
-		goto error;
-	}
-
-	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
-				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
 	dev->state = COMP_STATE_READY;
-	dev->is_dma_connected = 1;
 	return dev;
 
 error:
@@ -391,6 +380,18 @@ static int dai_params(struct comp_dev *dev)
 		trace_dai_error("wdp");
 		return -EINVAL;
 	}
+
+	/* get DMA channel, once the stream_tag is known */
+	dd->chan = dma_channel_get(dd->dma, dev->params.stream_tag);
+	if (dd->chan < 0) {
+		trace_dai_error("eDc");
+		return -EINVAL;
+	}
+
+	/* set up callback */
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
+				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	dev->is_dma_connected = 1;
 
 	/* for DAI, we should configure its frame_fmt from topology */
 	dev->params.frame_fmt = dconfig->frame_fmt;
