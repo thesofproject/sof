@@ -552,6 +552,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
+		trace_dai("tsa");
 		if (!dd->pointer_init)
 			dai_pointer_init(dev);
 		/* only start the DAI if we are not XRUN handling */
@@ -595,15 +596,15 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_XRUN:
+		trace_dai("txr");
 		dd->xrun = 1;
 		/* stop the DAI unconditionally */
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
 		ret = dma_stop(dd->dma, dd->chan);
-		if (ret < 0)
-			return ret;
 		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
+		trace_dai("tsp");
 		wait_init(&dd->complete);
 
 		/* wait for DMA to complete */
@@ -612,6 +613,10 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		if (ret < 0) {
 			trace_dai_error("ed0");
 			trace_error_value(cmd);
+			/* forced stop of DMA+DAI to avoid refcount issues */
+			dai_trigger(dd->dai, COMP_TRIGGER_STOP,
+				    dev->params.direction);
+			ret = dma_stop(dd->dma, dd->chan);
 		}
 		break;
 	default:
