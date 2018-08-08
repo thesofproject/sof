@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 MAXLOOPS=100
 COUNTER=0
 
