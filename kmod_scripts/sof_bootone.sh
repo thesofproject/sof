@@ -8,7 +8,7 @@ sleep 1
 unset FW_BOOT
 unset ERROR
 FW_BOOT=$(dmesg | grep sof-audio | grep "boot complete")
-ERROR=$(dmesg | grep sof-audio | grep "error")
+ERROR=$(dmesg | grep sof-audio | grep -v "DSP trace buffer overflow" | grep "error")
 
 if [ ! -z "$ERROR" ] || [ -z "$FW_BOOT" ]
 then
