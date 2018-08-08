@@ -55,6 +55,13 @@ check_PROGRAMS += rstrcmp
 rstrcmp_SOURCES = src/lib/lib/rstrcmp.c
 rstrcmp_LDADD = ../../src/lib/libcore.a $(LDADD)
 
+#pipeline tests
+check_PROGRAMS += pipeline_new
+pipeline_new_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_mocks_rzalloc.c
+
+check_PROGRAMS += pipeline_new_allocation
+pipeline_new_allocation_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new_allocation.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_new_allocation_mocks.c
+
 # volume tests
 
 check_PROGRAMS += volume_process
