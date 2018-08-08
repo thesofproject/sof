@@ -55,7 +55,12 @@ check_PROGRAMS += rstrcmp
 rstrcmp_SOURCES = src/lib/lib/rstrcmp.c
 rstrcmp_LDADD = ../../src/lib/libcore.a $(LDADD)
 
-#pipeline tests
+check_PROGRAMS += bzero
+bzero_SOURCES = src/lib/lib/bzero.c
+bzero_LDADD = ../../src/lib/libcore.a $(LDADD)
+
+# pipeline tests
+
 check_PROGRAMS += pipeline_new
 pipeline_new_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_mocks_rzalloc.c
 
