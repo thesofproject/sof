@@ -1,0 +1,14 @@
+sudo: required
+
+language: c
+
+services:
+  - docker
+
+before_install:
+  - docker pull xiulipan/sof
+  - echo -e '#!/bin/bash \n./autogen.sh && ./configure && make' > quickbuild.sh
+  - chmod 755 quickbuild.sh
+
+script:
+  - docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./quickbuild.sh
