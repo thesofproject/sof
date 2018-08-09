@@ -56,13 +56,6 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	int32_t size;
 	uint32_t overflow;
 
-	/* any data to copy ? */
-	if (avail == 0)
-		return DMA_TRACE_PERIOD;
-
-	/* DMA trace copying is working */
-	d->copy_in_progress = 1;
-
 	/* make sure we don't write more than buffer */
 	if (avail > DMA_TRACE_LOCAL_SIZE) {
 		overflow = avail - DMA_TRACE_LOCAL_SIZE;
@@ -75,7 +68,14 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	/* support, so do it differently based on HW features */
 	size = dma_trace_get_avali_data(d, buffer, avail);
 
+	/* any data to copy ? */
+	if (size == 0)
+		return DMA_TRACE_PERIOD;
+
 	d->overflow = overflow;
+
+	/* DMA trace copying is working */
+	d->copy_in_progress = 1;
 
 	/* copy this section to host */
 	size = dma_copy_to_host_nowait(&d->dc, config, d->host_offset,
@@ -258,6 +258,9 @@ static int dma_trace_get_avali_data(struct dma_trace_data *d,
 		d->old_host_offset = d->host_offset;
 	}
 
+	if (avail == 0)
+		return 0;
+
 	/* writeback trace data */
 	if (buffer->r_ptr + avail <= buffer->end_addr) {
 		dcache_writeback_region((void *)buffer->r_ptr, avail);
@@ -283,6 +286,9 @@ static int dma_trace_get_avali_data(struct dma_trace_data *d,
 	/* copy to host in sections if we wrap */
 	lsize = avail;
 	hsize = avail;
+
+	if (avail == 0)
+		return 0;
 
 	/* host buffer wrap ? */
 	if (d->host_offset + avail > d->host_size)
