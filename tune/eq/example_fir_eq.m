@@ -36,17 +36,16 @@ ascii_blob_fn = 'example_fir_eq.txt';
 binary_blob_fn = 'example_fir_eq.blob';
 endian = 'little';
 fs = 48e3;
-bits = 16;
 
 %% Design FIR loudness equalizer
-eq_loud = loudness_fir_eq(fs, 1);
+eq_loud = loudness_fir_eq(fs);
 
 %% Define a passthru EQ with one tap
 b_pass = 1;
 
 %% Quantize filter coefficients for both equalizers
-bq_pass = eq_fir_blob_quant(b_pass, bits);
-bq_loud = eq_fir_blob_quant(eq_loud.b_fir, bits);
+bq_pass = eq_fir_blob_quant(b_pass);
+bq_loud = eq_fir_blob_quant(eq_loud.b_fir);
 
 %% Build blob
 platform_max_channels = 4;   % Setup max 4 channels EQ
@@ -64,14 +63,7 @@ eq_blob_write(binary_blob_fn, bp);
 
 end
 
-function eq = loudness_fir_eq(fs, fn)
-
-if nargin < 2
-        fn = 1;
-end
-if nargin < 1
-        fs = 48e3;
-end
+function eq = loudness_fir_eq(fs)
 
 %% Derived from Fletcher-Munson curves for 80 and 60 phon
 f = [ 20,21,22,24,25,27,28,30,32,34,36,38,40,43,45,48,51,54,57,60,64, ...
@@ -103,17 +95,19 @@ eq = eq_defaults();
 eq.fs = fs;
 eq.target_f = f;            % Set EQ frequency response target: frequency vector
 eq.target_m_db = m;         % Set EQ frequency response target: magnitude
+eq.norm_type = 'loudness';  % Can be loudness/peak/1k to select normalize criteria
+eq.norm_offs_db = 0;        % E.g. -1 would leave 1 dB headroom if used with peak
+
+eq.enable_fir = 1;          % By default both FIR and IIR disabled, enable one
 eq.fir_beta = 3.5;          % Use with care, low value can corrupt
 eq.fir_length = 107;        % Gives just < 255 bytes
 eq.fir_autoband = 0;        % Select manually frequency limits
 eq.fmin_fir = 100;          % Equalization starts from 100 Hz
 eq.fmax_fir = 20e3;         % Equalization ends at 20 kHz
 eq.fir_minph = 1;           % If no linear phase required, check result carefully if 1
-eq.norm_type = 'loudness';  % Can be loudness/peak/1k to select normalize criteria
-eq.norm_offs_db = 0;        % E.g. -1 would leave 1 dB headroom if used with peak
 eq = eq_compute(eq);
 
 %% Plot
-eq_plot(eq, fn);
+eq_plot(eq);
 
 end

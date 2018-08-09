@@ -38,7 +38,7 @@ endian = 'little';
 fs = 48e3;
 
 %% Design IIR loudness equalizer
-eq_loud = loudness_iir_eq(fs, 2);
+eq_loud = loudness_iir_eq(fs);
 
 %% Define a passthru IIR EQ equalizer
 b_pass = [1 0 0];
@@ -66,14 +66,7 @@ end
 
 %%
 
-function eq = loudness_iir_eq(fs, fn)
-
-if nargin < 2
-        fn = 1;
-end
-if nargin < 1
-        fs = 48e3;
-end
+function eq = loudness_iir_eq(fs)
 
 %% Derived from Fletcher-Munson curves for 80 and 60 phon
 f = [ 20,21,22,24,25,27,28,30,32,34,36,38,40,43,45,48,51,54,57,60,64, ...
@@ -105,11 +98,9 @@ eq = eq_defaults();
 eq.fs = fs;
 eq.target_f = f;
 eq.target_m_db = m;
-eq.enable_fir = 0;
 eq.enable_iir = 1;
 eq.norm_type = 'loudness';
 eq.norm_offs_db = 0;
-
 
 %% Manually setup low-shelf and high shelf parametric equalizers
 %
@@ -131,6 +122,6 @@ eq.peq = [ ...
 eq = eq_compute(eq);
 
 %% Plot
-eq_plot(eq, fn);
+eq_plot(eq);
 
 end
