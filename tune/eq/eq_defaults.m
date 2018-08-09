@@ -55,7 +55,7 @@ p.fir_length = 63;
 p.fir_minph = 0; % 0 = linear phase, 1 = minimum phase
 % Adjust fmin_fir, fmax_fir automatically for least gain loss in FIR
 p.fir_autoband = 1;
-p.enable_fir = 1;
+p.enable_fir = 0;
 
 % IIR conf
 p.iir_biquads_max = 6;
@@ -106,6 +106,6 @@ p.p_fmin = 10;
 p.p_fmax = 30e3;
 p.name = '';
 p.norm_type = 'loudness'; % loudness/peak/1k
-p.norm_offs_db = 1;
+p.norm_offs_db = 0;
 
 end

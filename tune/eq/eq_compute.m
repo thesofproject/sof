@@ -30,6 +30,11 @@ function eq = eq_compute( eq )
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
+%% Sanity checks
+if eq.enable_iir == 0 && eq.enable_fir == 0
+        fprintf('Warning: Nothing to do. Please enable FIR or IIR!\n');
+end
+
 %% Extrapolate response to 0..fs/2, convert to logaritmic grid, and smooth
 %  with 1/N octave filter
 eq = preprocess_responses(eq);

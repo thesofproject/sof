@@ -35,16 +35,13 @@ PEQ_HP1 = 1; PEQ_HP2 = 2; PEQ_LP1 = 3; PEQ_LP2 = 4;
 PEQ_LS1 = 5; PEQ_LS2 = 6; PEQ_HS1 = 7; PEQ_HS2 = 8;
 PEQ_PN2 = 9; PEQ_LP4 = 10; PEQ_HP4 = 11;
 
-%figure(100);
-%fv = logspace(log10(20),log10(20e3),500);
-%hold on;
 sp = size(peq);
 b_t = 1; a_t = 1;
 for i=1:sp(1)
         type = peq(i,1);
         f = peq(i,2);
         g = peq(i,3);
-        bw = peq(i,4);
+        Q = peq(i,4);
         if f < fs/2
                 switch peq(i,1)
                         case PEQ_HP1, [b0, a0] = butter(1, 2*f/fs, 'high');
@@ -57,20 +54,13 @@ for i=1:sp(1)
                         case PEQ_LS2, [b0, a0] = low_shelf_2nd(f, g, fs);
                         case PEQ_HS1, [b0, a0] = high_shelf_1st(f, g, fs);
                         case PEQ_HS2, [b0, a0] = high_shelf_2nd(f, g, fs);
-                        case PEQ_PN2, [b0, a0] = peak_2nd(f, g, bw, fs);
+                        case PEQ_PN2, [b0, a0] = peak_2nd(f, g, Q, fs);
                         otherwise
                                 error('Unknown parametric EQ type');
                 end
-                %h = freqz(b0, a0, fv, fs);
-                %semilogx(fv, 20*log10(abs(h)),'g--');
                 b_t=conv(b_t, b0); a_t = conv(a_t, a0);
         end
 end
-%h = freqz(b_t, a_t, fv, fs);
-%semilogx(fv, 20*log10(abs(h)),'b');
-%hold off; grid on; axis([20 20e3 -1 12]);
-%xlabel('Frequency (Hz)'); ylabel('Magnitude (dB)');
-%print -dpng peq.png;
 end
 
 function [b, a] = low_shelf_1st(fhz, gdb, fs)
@@ -125,10 +115,12 @@ function [b, a] = peak_2nd(fhz, gdb, Q, fs)
 	a = [1 a1 / a0 a2 / a0];
 end
 
-
 function [b, a] = my_bilinear(sb, sa, fs)
-t = 1/fs;
-[b, a] = bilinear(sb, sa, t);
+if exist('OCTAVE_VERSION', 'builtin')
+        [b, a] = bilinear(sb, sa, 1/fs);
+else
+        [b, a] = bilinear(sb, sa, fs);
+end
 end
 
 function sw = wmap(w, fs)
