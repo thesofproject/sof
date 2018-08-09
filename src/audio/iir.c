@@ -39,6 +39,7 @@
 #endif
 
 #include <sof/audio/format.h>
+#include <uapi/eq.h>
 #include "iir.h"
 
 /*
@@ -79,7 +80,11 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 	int i;
 	int j;
 	int d = 0; /* Index to delays */
-	int c = 2; /* Index to coefficient a2 */
+	int c = 0; /* Index to coefficient a2 */
+
+	/* Bypass is set with number of biquads set to zero. */
+	if (!iir->biquads)
+		return x;
 
 	/* Coefficients order in coef[] is {a2, a1, b2, b1, b0, shift, gain} */
 	in = x;
@@ -89,44 +94,49 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 			 * Q2.30 x Q1.31 -> Q3.61
 			 * Shift Q3.61 to Q3.31 with rounding
 			 */
-			acc = ((int64_t) iir->coef[c + 4]) * in + iir->delay[d];
-			tmp = (int32_t) Q_SHIFT_RND(acc, 61, 31);
+			acc = ((int64_t)iir->coef[c + 4]) * in + iir->delay[d];
+			tmp = (int32_t)Q_SHIFT_RND(acc, 61, 31);
 
 			/* Compute 1st delay */
 			acc = iir->delay[d + 1];
-			acc += ((int64_t) iir->coef[c + 3]) * in; /* Coef  b1 */
-			acc += ((int64_t) iir->coef[c + 1]) * tmp; /* Coef a1 */
+			acc += ((int64_t)iir->coef[c + 3]) * in; /* Coef  b1 */
+			acc += ((int64_t)iir->coef[c + 1]) * tmp; /* Coef a1 */
 			iir->delay[d] = acc;
 
 			/* Compute 2nd delay */
-			acc = ((int64_t) iir->coef[c + 2]) * in; /* Coef  b2 */
-			acc += ((int64_t) iir->coef[c]) * tmp; /* Coef a2 */
+			acc = ((int64_t)iir->coef[c + 2]) * in; /* Coef  b2 */
+			acc += ((int64_t)iir->coef[c]) * tmp; /* Coef a2 */
 			iir->delay[d + 1] = acc;
 
-			/* Gain, output shift, prepare for next biquad
-			 * Q2.14 x Q1.31 -> Q3.45, shift too Q3.31 and saturate
+			/* Apply gain Q2.14 x Q1.31 -> Q3.45 */
+			acc = ((int64_t)iir->coef[c + 6]) * tmp; /* Gain */
+
+			/* Apply biquad output shift right parameter
+			 * simultaneously with Q3.45 to Q3.31 conversion. Then
+			 * saturate to 32 bits Q1.31 and prepare for next
+			 * biquad.
 			 */
-			acc = ((int64_t) iir->coef[c + 6]) * tmp; /* Gain */
 			acc = Q_SHIFT_RND(acc, 45 + iir->coef[c + 5], 31);
 			in = sat_int32(acc);
 			c += 7; /* Next coefficients section */
 			d += 2; /* Next biquad delays */
 		}
 		/* Output of previous section is in variable in */
-		out = sat_int32((int64_t) out + in);
+		out = sat_int32((int64_t)out + in);
 	}
 	return out;
 }
 
-size_t iir_init_coef_df2t(struct iir_state_df2t *iir, int32_t config[])
+size_t iir_init_coef_df2t(struct iir_state_df2t *iir,
+			  struct sof_eq_iir_header_df2t *config)
 {
-	iir->mute = 0;
-	iir->biquads = (int) config[0];
-	iir->biquads_in_series = (int) config[1];
-	iir->coef = &config[0]; /* TODO: Could change this to config[2] */
+	iir->biquads = config->num_sections;
+	iir->biquads_in_series = config->num_sections_in_series;
+	iir->coef = config->biquads;
 	iir->delay = NULL;
 
-	if ((iir->biquads > IIR_DF2T_BIQUADS_MAX) || (iir->biquads < 1)) {
+	if (iir->biquads > SOF_EQ_IIR_DF2T_BIQUADS_MAX ||
+	    iir->biquads == 0) {
 		iir_reset_df2t(iir);
 		return -EINVAL;
 	}
@@ -136,24 +146,17 @@ size_t iir_init_coef_df2t(struct iir_state_df2t *iir, int32_t config[])
 
 void iir_init_delay_df2t(struct iir_state_df2t *iir, int64_t **delay)
 {
-	iir->delay = *delay; /* Delay line of this IIR */
-	*delay += 2 * iir->biquads; /* Point to next IIR delay line start */
+	/* Set delay line of this IIR */
+	iir->delay = *delay;
 
-}
-
-void iir_mute_df2t(struct iir_state_df2t *iir)
-{
-	iir->mute = 1;
-}
-
-void iir_unmute_df2t(struct iir_state_df2t *iir)
-{
-	iir->mute = 0;
+	/* Point to next IIR delay line start. The DF2T biquad uses two
+	 * memory elements.
+	 */
+	*delay += 2 * iir->biquads;
 }
 
 void iir_reset_df2t(struct iir_state_df2t *iir)
 {
-	iir->mute = 1;
 	iir->biquads = 0;
 	iir->biquads_in_series = 0;
 	iir->coef = NULL;
