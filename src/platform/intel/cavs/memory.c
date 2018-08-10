@@ -32,8 +32,6 @@
 #include <sof/alloc.h>
 
 /* Heap blocks for modules */
-static struct block_hdr mod_block16[HEAP_RT_COUNT16];
-static struct block_hdr mod_block32[HEAP_RT_COUNT32];
 static struct block_hdr mod_block64[HEAP_RT_COUNT64];
 static struct block_hdr mod_block128[HEAP_RT_COUNT128];
 static struct block_hdr mod_block256[HEAP_RT_COUNT256];
@@ -41,8 +39,6 @@ static struct block_hdr mod_block512[HEAP_RT_COUNT512];
 
 /* Heap memory map for modules */
 static struct block_map rt_heap_map[] = {
-	BLOCK_DEF(16, HEAP_RT_COUNT16, mod_block16),
-	BLOCK_DEF(32, HEAP_RT_COUNT32, mod_block32),
 	BLOCK_DEF(64, HEAP_RT_COUNT64, mod_block64),
 	BLOCK_DEF(128, HEAP_RT_COUNT128, mod_block128),
 	BLOCK_DEF(256, HEAP_RT_COUNT256, mod_block256),
