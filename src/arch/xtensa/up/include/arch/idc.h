@@ -41,8 +41,12 @@ struct idc_msg;
 
 /**
  * \brief Sends IDC message.
+ * \param[in,out] msg Pointer to IDC message.
+ * \param[in] mode Is message blocking or not.
+ * \return Error code.
  */
-static inline void arch_idc_send_msg(struct idc_msg *msg) { }
+static inline int arch_idc_send_msg(struct idc_msg *msg,
+				    uint32_t mode) { return 0; }
 
 /**
  * \brief Checks for pending IDC messages.

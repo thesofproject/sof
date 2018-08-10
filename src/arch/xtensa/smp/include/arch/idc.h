@@ -55,6 +55,15 @@
 #define trace_idc_error(__e)	trace_error(TRACE_CLASS_IDC, __e)
 
 
+/** \brief IDC send blocking flag. */
+#define IDC_BLOCKING		0
+
+/** \brief IDC send non-blocking flag. */
+#define IDC_NON_BLOCKING	1
+
+/** \brief IDC send timeout in cycles. */
+#define IDC_TIMEOUT	800000
+
 /** \brief ROM wake version parsed by ROM during core wake up. */
 #define IDC_ROM_WAKE_VERSION	0x2
 
@@ -165,11 +174,16 @@ static void idc_irq_handler(void *arg)
 /**
  * \brief Sends IDC message.
  * \param[in,out] msg Pointer to IDC message.
+ * \param[in] mode Is message blocking or not.
+ * \return Error code.
  */
-static inline void arch_idc_send_msg(struct idc_msg *msg)
+static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	struct idc *idc = *idc_get();
 	int core = arch_cpu_get_id();
+	int ret = 0;
+	uint32_t timeout = 0;
+	uint32_t idcietc;
 	uint32_t flags;
 
 	tracev_idc("Msg");
@@ -179,7 +193,23 @@ static inline void arch_idc_send_msg(struct idc_msg *msg)
 	idc_write(IPC_IDCIETC(msg->core), core, msg->extension);
 	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
 
+	if (mode == IDC_BLOCKING) {
+		do {
+			idelay(PLATFORM_DEFAULT_DELAY);
+			timeout += PLATFORM_DEFAULT_DELAY;
+			idcietc = idc_read(IPC_IDCIETC(msg->core), core);
+		} while (!(idcietc & IPC_IDCIETC_DONE) &&
+			 timeout < IDC_TIMEOUT);
+
+		if (timeout >= IDC_TIMEOUT) {
+			trace_idc_error("eS0");
+			ret = -ETIME;
+		}
+	}
+
 	spin_unlock_irq(&idc->lock, flags);
+
+	return ret;
 }
 
 /**

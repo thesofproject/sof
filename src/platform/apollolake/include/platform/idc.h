@@ -33,9 +33,9 @@
 
 #include <arch/idc.h>
 
-static inline void idc_send_msg(struct idc_msg *msg)
+static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
-	arch_idc_send_msg(msg);
+	return arch_idc_send_msg(msg, mode);
 }
 
 static inline void idc_process_msg_queue(void)

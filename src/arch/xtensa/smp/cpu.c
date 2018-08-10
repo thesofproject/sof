@@ -62,7 +62,7 @@ void arch_cpu_enable_core(int id)
 		idc_enable_interrupts(id, arch_cpu_get_id());
 
 		/* send IDC power up message */
-		arch_idc_send_msg(&power_up);
+		arch_idc_send_msg(&power_up, IDC_NON_BLOCKING);
 
 		active_cores_mask |= (1 << id);
 	}
@@ -78,7 +78,7 @@ void arch_cpu_disable_core(int id)
 	spin_lock_irq(&lock, flags);
 
 	if (active_cores_mask & (1 << id)) {
-		arch_idc_send_msg(&power_down);
+		arch_idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
 		active_cores_mask ^= (1 << id);
 	}
