@@ -126,7 +126,7 @@
 #define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
 
 /* Get message component id */
-#define SOF_IPC_MESSAGE_ID(x)			(x & 0xffff)
+#define SOF_IPC_MESSAGE_ID(x)			((x) & 0xffff)
 
 /* maximum message size for mailbox Tx/Rx */
 #define SOF_IPC_MSG_MAX_SIZE			128
@@ -240,7 +240,6 @@ struct sof_ipc_compound_hdr {
 #define SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD	(1 << 5)
  /* here is the possibility to define others aux macros */
 
-
 #define SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX		38
 
 /** \brief Types of DAI */
@@ -347,13 +346,13 @@ struct sof_ipc_dai_dmic_params {
 	uint32_t pdmclk_max; /* Maximum microphone clock in Hz (min...N) */
 	uint32_t fifo_fs_a;  /* FIFO A sample rate in Hz (8000..96000) */
 	uint32_t fifo_fs_b;  /* FIFO B sample rate in Hz (8000..96000) */
-	/* TODO: FIFO word lengths can be retrieved from SOF_DAI_FMT */
 	uint16_t fifo_bits_a; /* FIFO A word length (16 or 32) */
 	uint16_t fifo_bits_b; /* FIFO B word length (16 or 32) */
 	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
 	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
-	uint32_t num_pdm_active; /* Number of active controllers */
-	struct sof_ipc_dai_dmic_pdm_ctrl pdm[];
+	uint32_t num_pdm_active; /* Number of active pdm controllers */
+	/* variable number of pdm controller config */
+	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __attribute__((packed));
 
 /* general purpose DAI configuration */
