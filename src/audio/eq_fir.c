@@ -175,7 +175,17 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 	/* Initialize 1st phase */
 	trace_eq("asr");
 	for (i = 0; i < nch; i++) {
-		resp = assign_response[i];
+		/* If the configuration blob contains less channels for
+		 * response assign to channels than the current channels count
+		 * use the first channel response to remaining channels. E.g.
+		 * a blob that contains just a mono EQ can be used for stereo
+		 * stream by using the same response for all channels.
+		 */
+		if (i < config->channels_in_config)
+			resp = assign_response[i];
+		else
+			resp = assign_response[0];
+
 		trace_value(resp);
 		if (resp >= config->number_of_responses || resp < 0) {
 			trace_eq_error("eas");
