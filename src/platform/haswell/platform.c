@@ -34,6 +34,7 @@
 #include <platform/dma.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
+#include <platform/platcfg.h>
 #include <uapi/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>
@@ -124,7 +125,8 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-static struct work_queue_timesource platform_generic_queue = {
+struct work_queue_timesource platform_generic_queue[] = {
+{
 	.timer	 = {
 		.id = TIMER1,	/* internal timer */
 		.irq = IRQ_NUM_TIMER2,
@@ -134,9 +136,11 @@ static struct work_queue_timesource platform_generic_queue = {
 	.timer_set	= arch_timer_set,
 	.timer_clear	= arch_timer_clear,
 	.timer_get	= arch_timer_get_system,
+},
 };
 
-struct timer *platform_timer = &platform_generic_queue.timer;
+struct timer *platform_timer =
+	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -257,7 +261,7 @@ int platform_init(struct sof *sof)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue);
+	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);
