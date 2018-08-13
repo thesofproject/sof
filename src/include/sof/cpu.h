@@ -54,4 +54,9 @@ static inline void cpu_disable_core(int id)
 	arch_cpu_disable_core(id);
 }
 
+static inline int cpu_is_core_enabled(int id)
+{
+	return arch_cpu_is_core_enabled(id);
+}
+
 #endif

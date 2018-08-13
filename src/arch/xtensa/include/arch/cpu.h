@@ -39,6 +39,8 @@ void arch_cpu_enable_core(int id);
 
 void arch_cpu_disable_core(int id);
 
+int arch_cpu_is_core_enabled(int id);
+
 static inline int arch_cpu_get_id(void)
 {
 	int prid;

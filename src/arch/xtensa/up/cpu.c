@@ -40,3 +40,5 @@
 void arch_cpu_enable_core(int id) { }
 
 void arch_cpu_disable_core(int id) { }
+
+int arch_cpu_is_core_enabled(int id) { return 1; }

@@ -86,6 +86,11 @@ void arch_cpu_disable_core(int id)
 	spin_unlock_irq(&lock, flags);
 }
 
+int arch_cpu_is_core_enabled(int id)
+{
+	return active_cores_mask & (1 << id);
+}
+
 void cpu_power_down_core(void)
 {
 	arch_interrupt_global_disable();
