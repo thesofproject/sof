@@ -242,6 +242,7 @@ struct sof_ipc_compound_hdr {
 
 
 #define SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX		38
+#define SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX		31
 
 /** \brief Types of DAI */
 enum sof_ipc_dai_type {
@@ -279,7 +280,7 @@ struct sof_ipc_dai_ssp_params {
 	uint16_t frame_pulse_width;
 	uint32_t quirks; // FIXME: is 32 bits enough ?
 
-	uint16_t padding;
+	uint16_t tdm_per_slot_padding_flag;
 	/* private data, e.g. for quirks */
 	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
 } __attribute__((packed));
