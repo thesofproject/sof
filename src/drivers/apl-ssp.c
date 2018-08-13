@@ -137,7 +137,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t i2s_m;
 	uint32_t i2s_n;
 	uint32_t data_size;
-	uint32_t start_delay;
+	uint32_t start_delay = 0;
 	uint32_t frame_end_padding;
 	uint32_t slot_end_padding;
 	uint32_t frame_len = 0;
@@ -536,45 +536,14 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_DSP_A:
 
-		start_delay = 0;
-
-		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
-
-		/* set asserted frame length */
-		frame_len = 1; /* default */
-
-		if (cfs && ssp->params.frame_pulse_width > 0 &&
-			ssp->params.frame_pulse_width <=
-			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
-			frame_len = ssp->params.frame_pulse_width;
-		}
-
-		/* frame_pulse_width must less or equal 38 */
-		if (ssp->params.frame_pulse_width >
-			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
-			trace_ssp_error("efa");
-			ret = -EINVAL;
-			goto out;
-		}
-
-		/*
-		 * handle frame polarity, DSP_A default is rising/active high,
-		 * non-inverted(inverted_frame=0) -- active high(SFRMP=1),
-		 * inverted(inverted_frame=1) -- falling/active low(SFRMP=0),
-		 * so, we should set SFRMP to !inverted_frame.
-		 */
-		sspsp |= SSPSP_SFRMP(!inverted_frame);
+		start_delay = 1;
 		sspsp |= SSPSP_FSRT;
 
-		active_tx_slots = hweight_32(config->ssp.tx_slots);
-		active_rx_slots = hweight_32(config->ssp.rx_slots);
+		/* fallthrough */
 
-		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
-
-		break;
 	case SOF_DAI_FMT_DSP_B:
 
-		start_delay = 0;
+		/* default start_delay value is set to 0 */
 
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
@@ -604,6 +573,32 @@ static inline int ssp_set_config(struct dai *dai,
 
 		active_tx_slots = hweight_32(config->ssp.tx_slots);
 		active_rx_slots = hweight_32(config->ssp.rx_slots);
+
+		/*
+		 * handle TDM mode, TDM mode has padding at the end of
+		 * each slot. The amount of padding is equal to result of
+		 * subtracting slot width and valid bits per slot.
+		 */
+		if (ssp->params.tdm_per_slot_padding_flag) {
+			frame_end_padding = bdiv - config->ssp.tdm_slots *
+				config->ssp.tdm_slot_width;
+
+			slot_end_padding = config->ssp.tdm_slot_width -
+				config->ssp.sample_valid_bits;
+
+			if (slot_end_padding >
+				SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
+				trace_ssp_error("esb");
+				ret = -EINVAL;
+				goto out;
+			}
+
+			sspsp |= SSPSP_DMYSTOP(slot_end_padding &
+				SSPSP_DMYSTOP_MASK);
+			slot_end_padding >>= SSPSP_DMYSTOP_BITS;
+			sspsp |= SSPSP_EDMYSTOP(slot_end_padding &
+				SSPSP_EDMYSTOP_MASK);
+		}
 
 		sspsp2 |= (frame_end_padding & SSPSP2_FEP_MASK);
 
