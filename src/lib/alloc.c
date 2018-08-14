@@ -35,6 +35,7 @@
 #include <sof/panic.h>
 #include <sof/trace.h>
 #include <sof/lock.h>
+#include <sof/cpu.h>
 #include <platform/memory.h>
 #include <stdint.h>
 
@@ -104,21 +105,26 @@ static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 /* allocate from system memory pool */
 static void *rmalloc_sys(size_t bytes)
 {
-	void *ptr = (void *)memmap.system.heap;
+	void *ptr;
+
+	/* system memory reserved only for master core */
+	if (cpu_get_id() != PLATFORM_MASTER_CORE_ID) {
+		trace_mem_error("eM0");
+		return NULL;
+	}
+
+	ptr = (void *)memmap.system.heap;
 
 	/* always succeeds or panics */
 	memmap.system.heap += bytes;
 	if (memmap.system.heap >= HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE) {
-		trace_mem_error("eMd");
+		trace_mem_error("eM1");
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
 #if DEBUG_BLOCK_ALLOC
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
-
-	dcache_writeback_invalidate_region(&memmap.system,
-					   sizeof(memmap.system));
 
 	return ptr;
 }
