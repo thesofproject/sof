@@ -1,0 +1,1 @@
+SUBDIRS = hal include xtos

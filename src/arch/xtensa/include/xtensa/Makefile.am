@@ -28,6 +28,8 @@ noinst_HEADERS = \
 	trax.h \
 	uart-16550.h \
 	xtensa-libdb-macros.h \
-	xtruntime-frames.h
+	xtruntime-frames.h \
+	mpuasm.h \
+	idmaasm.h
 
 SUBDIRS = config

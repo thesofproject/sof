@@ -198,6 +198,9 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	}
 
 	/* request GP LP DMA with shared access privilege */
+	/* TODO: hda: retrieve req'ed caps from the dai,
+	 * dmas are not cross-compatible.
+	 */
 	dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
 	caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
 	dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC;

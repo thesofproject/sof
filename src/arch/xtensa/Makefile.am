@@ -1,4 +1,8 @@
-SUBDIRS = hal xtos include
+if BUILD_XTENSA_SMP
+SUBDIRS = smp include
+else
+SUBDIRS = up include
+endif
 
 noinst_PROGRAMS = \
 	sof
@@ -25,8 +29,14 @@ $(LINK_SCRIPT): Makefile $(LINK_SCRIPT).in $(LINK_DEPS)
 noinst_LIBRARIES = \
 	libreset.a
 
+if BUILD_XTENSA_SMP
 libreset_a_SOURCES = \
-	reset-vector.S
+	smp/xtos/memctl_default.S \
+	smp/xtos/reset-vector.S
+else
+libreset_a_SOURCES = \
+	up/xtos/reset-vector.S
+endif
 
 libreset_a_CCASFLAGS = \
 	$(ARCH_INCDIR) \
@@ -36,11 +46,25 @@ libreset_a_CCASFLAGS = \
 	-mtext-section-literals
 
 sof_SOURCES = \
-	crt1-boards.S \
-	_vectors.S \
-	init.c \
-	timer.c \
-	task.c
+	timer.c
+
+if BUILD_XTENSA_SMP
+sof_SOURCES += \
+	smp/xtos/crt1-boards.S \
+	smp/xtos/_vectors.S \
+	smp/cpu.c \
+	smp/init.c \
+	smp/schedule.c \
+	smp/task.c
+else
+sof_SOURCES += \
+	up/xtos/crt1-boards.S \
+	up/xtos/_vectors.S \
+	up/cpu.c \
+	up/init.c \
+	up/schedule.c \
+	up/task.c
+endif
 
 if BUILD_BOOTLOADER
 sof_SOURCES += \
@@ -64,19 +88,31 @@ sof_LDADD = \
 	../../init/libinit.a \
 	../../tasks/libtasks.a \
 	../../lib/libcore.a \
-	../../platform/$(PLATFORM)/libplatform.a \
+	../../platform/$(PLATFORM)/libplatform.la \
 	../../ipc/libsof_ipc.a \
 	../../lib/libdma.a \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.a \
 	../../math/libsof_math.a \
-	xtos/libxtos.a \
-	xtos/libxlevel2.a \
-	xtos/libxlevel3.a \
-	xtos/libxlevel4.a \
-	xtos/libxlevel5.a \
-	hal/libhal.a \
 	-lgcc
+
+if BUILD_XTENSA_SMP
+sof_LDADD += \
+	smp/xtos/libxtos.a \
+	smp/xtos/libxlevel2.a \
+	smp/xtos/libxlevel3.a \
+	smp/xtos/libxlevel4.a \
+	smp/xtos/libxlevel5.a \
+	smp/hal/libhal.a
+else
+sof_LDADD += \
+	up/xtos/libxtos.a \
+	up/xtos/libxlevel2.a \
+	up/xtos/libxlevel3.a \
+	up/xtos/libxlevel4.a \
+	up/xtos/libxlevel5.a \
+	up/hal/libhal.a
+endif
 
 if !BUILD_BOOTLOADER
 sof_LDADD += \
@@ -107,8 +143,15 @@ $(LINK_BOOT_LDR_SCRIPT): Makefile $(LINK_BOOT_LDR_SCRIPT).in $(LINK_DEPS)
 
 boot_ldr_SOURCES = \
 	boot_entry.S \
-	_vectors.S \
 	boot_loader.c
+
+if BUILD_XTENSA_SMP
+boot_ldr_SOURCES += \
+	smp/xtos/_vectors.S
+else
+boot_ldr_SOURCES += \
+	up/xtos/_vectors.S
+endif
 
 boot_ldr_CFLAGS = \
 	$(ARCH_INCDIR) \
@@ -124,9 +167,16 @@ boot_ldr_CCASFLAGS = \
 	$(PLATFORM_INCDIR)
 
 boot_ldr_LDADD = \
-	hal/libhal.a \
 	libreset.a \
 	-lgcc
+
+if BUILD_XTENSA_SMP
+boot_ldr_LDADD += \
+	smp/hal/libhal.a
+else
+boot_ldr_LDADD += \
+	up/hal/libhal.a
+endif
 
 boot_ldr_LDFLAGS = \
 	$(AM_LDFLAGS) \

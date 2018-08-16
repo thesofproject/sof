@@ -47,7 +47,8 @@ typedef struct {
     char	toolver[24];	/* 30: tool + version used for capture/save (up to 23 chars) */
     char	reserved2[40];	/* 48: (reserved - could be hostname used for dump (up to 39 chars)) */
     unsigned	configid[2];	/* 70: processor ConfigID values, 0 if unknown */
-    unsigned	reserved3[2];	/* 78: (reserved) */
+    unsigned	ts_freq;	/* 78: timestamp frequency, 0 if not specified */
+    unsigned	reserved3;	/* 7C: (reserved) */
     unsigned	id;		/* 80: TRAX registers at time of save (0 if not read) */
     unsigned	control;
     unsigned	status; 

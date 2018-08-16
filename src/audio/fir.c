@@ -33,17 +33,14 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-
-#ifdef MODULE_TEST
-#include <stdio.h>
-#endif
-
+#include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include "fir.h"
+#include <uapi/eq.h>
+#include "fir_config.h"
 
-#ifdef MODULE_TEST
-#include <stdio.h>
-#endif
+#if FIR_GENERIC
+
+#include "fir.h"
 
 /*
  * EQ FIR algorithm code
@@ -51,11 +48,9 @@
 
 void fir_reset(struct fir_state_32x16 *fir)
 {
-	fir->mute = 1;
 	fir->rwi = 0;
 	fir->length = 0;
 	fir->delay_size = 0;
-	fir->in_shift = 0;
 	fir->out_shift = 0;
 	fir->coef = NULL;
 	/* There may need to know the beginning of dynamic allocation after
@@ -65,19 +60,20 @@ void fir_reset(struct fir_state_32x16 *fir)
 
 int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
 {
-	struct fir_coef_32x16 *setup;
+	struct sof_eq_fir_coef_data *setup;
 
-	setup = (struct fir_coef_32x16 *) config;
-	fir->mute = 0;
+	setup = (struct sof_eq_fir_coef_data *)config;
 	fir->rwi = 0;
-	fir->length = (int) setup->length;
-	fir->in_shift = (int) setup->in_shift;
-	fir->out_shift = (int) setup->out_shift;
-	fir->coef = &setup->coef;
+	fir->length = (int)setup->length;
+	fir->out_shift = (int)setup->out_shift;
+	fir->coef = &setup->coef[0];
 	fir->delay = NULL;
 	fir->delay_size = 0;
 
-	if ((fir->length > MAX_FIR_LENGTH) || (fir->length < 1))
+	/* Check for sane FIR length. The length is constrained to be a
+	 * multiple of 4 for optimized code.
+	 */
+	if (fir->length > SOF_EQ_FIR_MAX_LENGTH || fir->length < 1)
 		return -EINVAL;
 
 	return fir->length;
@@ -89,3 +85,28 @@ void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 	fir->delay_size = fir->length;
 	*data += fir->delay_size; /* Point to next delay line start */
 }
+
+void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		struct comp_buffer *sink, int frames, int nch)
+{
+	struct fir_state_32x16 *filter;
+	int32_t *src = (int32_t *)source->r_ptr;
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	int32_t *x;
+	int32_t *y;
+	int ch;
+	int i;
+
+	for (ch = 0; ch < nch; ch++) {
+		filter = &fir[ch];
+		x = src++;
+		y = snk++;
+		for (i = 0; i < frames; i++) {
+			*y = fir_32x16(filter, *x);
+			x += nch;
+			y += nch;
+		}
+	}
+}
+
+#endif

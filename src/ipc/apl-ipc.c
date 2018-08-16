@@ -51,6 +51,7 @@
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc.h>
 #include <sof/intel-ipc.h>
+#include <platform/pm_runtime.h>
 
 extern struct ipc *_ipc;
 
@@ -136,8 +137,8 @@ done:
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1)
-			wait_for_interrupt(0);
+		/* no return - memory will be powered off */
+		platform_pm_runtime_power_off();
 	}
 
 	tracev_ipc("CmD");
@@ -199,10 +200,10 @@ int platform_ipc_init(struct ipc *ipc)
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 
-	/* request GP DMA with shared access privilege */
+	/* request HDA DMA with shared access privilege */
 	caps = 0;
 	dir = DMA_DIR_HMEM_TO_LMEM;
-	dev = DMA_DEV_HDA;
+	dev = DMA_DEV_HOST;
 	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* PM */

@@ -39,6 +39,7 @@
 #include <sof/list.h>
 #include <sof/work.h>
 
+struct schedule_data;
 struct sof;
 
 /* task states */
@@ -74,6 +75,8 @@ struct task {
 	uint64_t max_rtime;		/* max time taken to run */
 };
 
+struct schedule_data **arch_schedule_get(void);
+
 void schedule(void);
 
 void schedule_task(struct task *task, uint64_t start, uint64_t deadline);
@@ -106,5 +109,7 @@ static inline void schedule_task_config(struct task *task, uint16_t priority,
 }
 
 int scheduler_init(struct sof *sof);
+
+void scheduler_free(void);
 
 #endif

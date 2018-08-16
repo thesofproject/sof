@@ -9,6 +9,7 @@ include_HEADERS = \
 	alloc.h \
 	atomic.h \
 	clock.h \
+	cpu.h \
 	dai.h \
 	debug.h \
 	dma.h \

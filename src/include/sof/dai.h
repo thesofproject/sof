@@ -29,11 +29,23 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+ /**
+  * \file include/sof/dai.h
+  * \brief DAI Drivers definition
+  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+  * \author Keyon Jie <yang.jie@linux.intel.com>
+  */
+
 #ifndef __INCLUDE_DAI_H__
 #define __INCLUDE_DAI_H__
 
 #include <stdint.h>
 #include <sof/audio/component.h>
+
+/** \addtogroup sof_dai_drivers DAI Drivers
+ *  DAI Drivers API specification.
+ *  @{
+ */
 
 #define DAI_CLOCK_IN		0
 #define DAI_CLOCK_OUT		1
@@ -56,7 +68,9 @@
 
 struct dai;
 
-/* DAI operations - all optional */
+/**
+ * \brief DAI operations - all optional
+ */
 struct dai_ops {
 	int (*set_config)(struct dai *dai, struct sof_ipc_dai_config *config);
 	int (*trigger)(struct dai *dai, int cmd, int direction);
@@ -66,16 +80,21 @@ struct dai_ops {
 	int (*set_loopback_mode)(struct dai *dai, uint32_t lbm);
 };
 
-/* DAI slot map to audio channel */
+/**
+ * \brief DAI slot map to audio channel
+ */
 struct dai_slot_map {
-	uint32_t channel;	/* channel ID - CHAN_ID_ */
-	uint32_t slot;		/* physical slot index */
+	uint32_t channel;	/**< channel ID - CHAN_ID_ */
+	uint32_t slot;		/**< physical slot index */
 };
 
+/**
+ * \brief DAI Type.
+ */
 enum dai_type {
-	DAI_TYPE_INTEL_SSP	= 0,
-	DAI_TYPE_INTEL_HDA,
-	DAI_TYPE_INTEL_DMIC,
+	DAI_TYPE_INTEL_SSP	= 0,  /**< Intel SSP */
+	DAI_TYPE_INTEL_HDA,           /**< Intel HD/A */
+	DAI_TYPE_INTEL_DMIC,          /**< Intel DMIC */
 };
 
 
@@ -87,7 +106,9 @@ struct dai_plat_fifo_data {
 	uint32_t handshake;
 };
 
-/* DAI platform data */
+/**
+ * \brief DAI platform data
+ */
 struct dai_plat_data {
 	uint32_t base;
 	uint32_t irq;
@@ -116,41 +137,55 @@ struct dai *dai_get(uint32_t type, uint32_t index);
 #define dai_fifo(dai, direction) \
 	dai->plat_data.fifo[direction].offset
 
-/* Digital Audio interface formatting */
+/**
+ * \brief Digital Audio interface formatting
+ */
 static inline int dai_set_config(struct dai *dai,
 	struct sof_ipc_dai_config *config)
 {
 	return dai->ops->set_config(dai, config);
 }
 
-/* Digital Audio interface formatting */
+/**
+ * \brief Digital Audio interface formatting
+ */
 static inline int dai_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
 	return dai->ops->set_loopback_mode(dai, lbm);
 }
 
-/* Digital Audio interface trigger */
+/**
+ * \brief Digital Audio interface trigger
+ */
 static inline int dai_trigger(struct dai *dai, int cmd, int direction)
 {
 	return dai->ops->trigger(dai, cmd, direction);
 }
 
-/* Digital Audio interface PM context store */
+/**
+ * \brief Digital Audio interface PM context store
+ */
 static inline int dai_pm_context_store(struct dai *dai)
 {
 	return dai->ops->pm_context_store(dai);
 }
 
-/* Digital Audio interface PM context restore */
+/**
+ * \brief Digital Audio interface PM context restore
+ */
 static inline int dai_pm_context_restore(struct dai *dai)
 {
 	return dai->ops->pm_context_restore(dai);
 }
 
-/* Digital Audio interface Probe */
+/**
+ * \brief Digital Audio interface Probe
+ */
 static inline int dai_probe(struct dai *dai)
 {
 	return dai->ops->probe(dai);
 }
+
+/** @}*/
 
 #endif

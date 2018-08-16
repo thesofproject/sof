@@ -62,4 +62,11 @@ void platform_pm_runtime_get(enum pm_runtime_context context);
  */
 void platform_pm_runtime_put(enum pm_runtime_context context);
 
+
+/**
+ * \brief Power gates platform specific hardware resources.
+ * \param[in] context Type of power management context.
+ */
+void platform_pm_runtime_power_off(void);
+
 #endif /* __INCLUDE_PLATFORM_PM_RUNTIME__ */

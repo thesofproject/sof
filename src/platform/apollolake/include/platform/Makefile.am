@@ -1,6 +1,7 @@
 noinst_HEADERS = \
 	clk.h \
 	dma.h \
+	idc.h \
 	interrupt.h \
 	mailbox.h \
 	memory.h \
@@ -8,4 +9,6 @@ noinst_HEADERS = \
 	platform.h \
 	pm_runtime.h \
 	shim.h \
-	timer.h
+	timer.h \
+	asm_memory_management.h \
+	power_down.h

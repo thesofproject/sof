@@ -41,6 +41,11 @@
 
 #include <uapi/abi.h>
 
+/** \addtogroup sof_uapi uAPI
+ *  SOF uAPI specification.
+ *  @{
+ */
+
 /*
  * IPC messages have a prefixed 32 bit identifier made up as follows :-
  *
@@ -96,6 +101,7 @@
 #define SOF_IPC_PM_CLK_SET			SOF_CMD_TYPE(0x004)
 #define SOF_IPC_PM_CLK_GET			SOF_CMD_TYPE(0x005)
 #define SOF_IPC_PM_CLK_REQ			SOF_CMD_TYPE(0x006)
+#define SOF_IPC_PM_CORE_ENABLE			SOF_CMD_TYPE(0x007)
 
 /* component runtime config - multiple different types */
 #define SOF_IPC_COMP_SET_VALUE			SOF_CMD_TYPE(0x001)
@@ -832,6 +838,12 @@ struct sof_ipc_pm_ctx {
 	struct sof_ipc_pm_ctx_elem elems[];
 };
 
+/* enable or disable cores - SOF_IPC_PM_CORE_ENABLE */
+struct sof_ipc_pm_core_config {
+	struct sof_ipc_hdr hdr;
+	uint32_t enable_mask;
+};
+
 /*
  * Firmware boot and version
  */
@@ -961,5 +973,7 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t sar;
 	uint32_t stack;
 }  __attribute__((packed));
+
+/** @}*/
 
 #endif
