@@ -54,6 +54,8 @@
 
 extern struct ipc *_ipc;
 
+static int host_ready = 1;
+
 /* test code to check working IRQ */
 static void irq_handler(void *arg)
 {
@@ -95,6 +97,8 @@ static void irq_handler(void *arg)
 
 		/* unmask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
+
+		host_ready = 1;
 	}
 
 }
@@ -157,6 +161,9 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
+	if (!host_ready)
+		goto out;
+
 	/* now send the message */
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg, list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
@@ -168,6 +175,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	ipc_write(IPC_DIPCIE, 0);
 	ipc_write(IPC_DIPCI, 0x80000000 | msg->header);
 
+	host_ready = 0;
 	list_item_append(&msg->list, &ipc->empty_list);
 
 out:
