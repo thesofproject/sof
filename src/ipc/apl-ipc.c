@@ -157,6 +157,9 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
+	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
+		goto out;
+
 	/* now send the message */
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg, list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
@@ -166,7 +169,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 
 	/* now interrupt host to tell it we have message sent */
 	ipc_write(IPC_DIPCIE, 0);
-	ipc_write(IPC_DIPCI, 0x80000000 | msg->header);
+	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
 
 	list_item_append(&msg->list, &ipc->empty_list);
 
