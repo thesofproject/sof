@@ -137,7 +137,6 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t i2s_m;
 	uint32_t i2s_n;
 	uint32_t data_size;
-	uint32_t start_delay = 0;
 	uint32_t frame_end_padding;
 	uint32_t slot_end_padding;
 	uint32_t frame_len = 0;
@@ -150,6 +149,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 	bool inverted_frame = false;
 	bool cfs = false;
+	bool start_delay = false;
 	int ret = 0;
 
 	spin_lock(&ssp->lock);
@@ -437,7 +437,7 @@ static inline int ssp_set_config(struct dai *dai,
 	switch (config->format & SOF_DAI_FMT_FORMAT_MASK) {
 	case SOF_DAI_FMT_I2S:
 
-		start_delay = 1;
+		start_delay = true;
 
 		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
 
@@ -457,7 +457,6 @@ static inline int ssp_set_config(struct dai *dai,
 		 * so, we should set SFRMP to inverted_frame.
 		 */
 		sspsp |= SSPSP_SFRMP(inverted_frame);
-		sspsp |= SSPSP_FSRT;
 
 		/*
 		 *  for I2S/LEFT_J, the padding has to happen at the end
@@ -486,7 +485,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 	case SOF_DAI_FMT_LEFT_J:
 
-		start_delay = 0;
+		/* default start_delay value is set to false */
 
 		sscr0 |= SSCR0_FRDC(config->ssp.tdm_slots);
 
@@ -536,14 +535,13 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	case SOF_DAI_FMT_DSP_A:
 
-		start_delay = 1;
-		sspsp |= SSPSP_FSRT;
+		start_delay = true;
 
 		/* fallthrough */
 
 	case SOF_DAI_FMT_DSP_B:
 
-		/* default start_delay value is set to 0 */
+		/* default start_delay value is set to false */
 
 		sscr0 |= SSCR0_MOD | SSCR0_FRDC(config->ssp.tdm_slots);
 
@@ -609,7 +607,9 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	sspsp |= SSPSP_STRTDLY(start_delay);
+	if (start_delay)
+		sspsp |= SSPSP_FSRT;
+
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
 	data_size = config->ssp.sample_valid_bits;
