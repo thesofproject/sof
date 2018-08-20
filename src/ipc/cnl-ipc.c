@@ -157,6 +157,10 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
+	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
+	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
+		goto out;
+
 	/* now send the message */
 	msg = list_first_item(&ipc->msg_list, struct ipc_msg, list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
