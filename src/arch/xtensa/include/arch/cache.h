@@ -36,6 +36,8 @@
 #include <xtensa/config/core.h>
 #include <xtensa/hal.h>
 
+#define DCACHE_LINE_SIZE	XCHAL_DCACHE_LINESIZE
+
 static inline void dcache_writeback_region(void *addr, size_t size)
 {
 #if XCHAL_DCACHE_SIZE > 0
