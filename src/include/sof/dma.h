@@ -164,12 +164,6 @@ struct dma {
 	void *private;
 };
 
-struct dma_int {
-	struct dma *dma;
-	uint32_t channel;
-	uint32_t irq;
-};
-
 struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 
 /* initialize all platform DMAC's */
@@ -181,8 +175,8 @@ int dmac_init(void);
 	dma->private;
 #define dma_base(dma) \
 	dma->plat_data.base
-#define dma_irq(dma) \
-	dma->plat_data.irq
+#define dma_irq(dma, cpu) \
+	(dma->plat_data.irq + (cpu << SOF_IRQ_CPU_SHIFT))
 #define dma_chan_size(dma) \
 	dma->plat_data.chan_size
 #define dma_chan_base(dma, chan) \
