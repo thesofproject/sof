@@ -55,7 +55,8 @@ sof_SOURCES += \
 	smp/cpu.c \
 	smp/init.c \
 	smp/schedule.c \
-	smp/task.c
+	smp/task.c \
+	smp/work.c
 else
 sof_SOURCES += \
 	up/xtos/crt1-boards.S \
@@ -63,7 +64,8 @@ sof_SOURCES += \
 	up/cpu.c \
 	up/init.c \
 	up/schedule.c \
-	up/task.c
+	up/task.c \
+	up/work.c
 endif
 
 if BUILD_BOOTLOADER

@@ -30,81 +30,17 @@
  */
 
 /**
- * \file arch/xtensa/smp/cpu.c
- * \brief Xtensa SMP CPU implementation file
+ * \file arch/xtensa/up/work.c
+ * \brief Xtensa UP work queue implementation file
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <arch/alloc.h>
-#include <arch/atomic.h>
-#include <arch/cpu.h>
-#include <arch/idc.h>
-#include <platform/platform.h>
-#include <sof/lock.h>
-#include <sof/schedule.h>
+#include <sof/work.h>
 
-static uint32_t active_cores_mask = 0x1;
-static spinlock_t lock = { 0 };
+/** \brief Generic system work queue. */
+static struct work_queue *queue;
 
-void arch_cpu_enable_core(int id)
+struct work_queue **arch_work_queue_get(void)
 {
-	struct idc_msg power_up = {
-		IDC_POWER_UP_MESSAGE, IDC_POWER_UP_EXTENSION, id };
-	uint32_t flags;
-
-	spin_lock_irq(&lock, flags);
-
-	if (!(active_cores_mask & (1 << id))) {
-		/* allocate resources for core */
-		alloc_core_context(id);
-
-		/* enable IDC interrupt for the the slave core */
-		idc_enable_interrupts(id, arch_cpu_get_id());
-
-		/* send IDC power up message */
-		arch_idc_send_msg(&power_up, IDC_NON_BLOCKING);
-
-		active_cores_mask |= (1 << id);
-	}
-
-	spin_unlock_irq(&lock, flags);
-}
-
-void arch_cpu_disable_core(int id)
-{
-	struct idc_msg power_down = { IDC_POWER_DOWN_MESSAGE, 0, id };
-	uint32_t flags;
-
-	spin_lock_irq(&lock, flags);
-
-	if (active_cores_mask & (1 << id)) {
-		arch_idc_send_msg(&power_down, IDC_NON_BLOCKING);
-
-		active_cores_mask ^= (1 << id);
-	}
-
-	spin_unlock_irq(&lock, flags);
-}
-
-int arch_cpu_is_core_enabled(int id)
-{
-	return active_cores_mask & (1 << id);
-}
-
-void cpu_power_down_core(void)
-{
-	arch_interrupt_global_disable();
-
-	idc_free();
-
-	scheduler_free();
-
-	free_system_workq();
-
-	free_core_context(arch_cpu_get_id());
-
-	dcache_writeback_invalidate_all();
-
-	while (1)
-		arch_wait_for_interrupt(0);
+	return &queue;
 }
