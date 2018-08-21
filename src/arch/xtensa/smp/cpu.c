@@ -49,7 +49,7 @@ static spinlock_t lock = { 0 };
 void arch_cpu_enable_core(int id)
 {
 	struct idc_msg power_up = {
-		IDC_POWER_UP_MESSAGE, IDC_POWER_UP_EXTENSION, id };
+		IDC_MSG_POWER_UP, IDC_MSG_POWER_UP_EXT, id };
 	uint32_t flags;
 
 	spin_lock_irq(&lock, flags);
@@ -72,7 +72,8 @@ void arch_cpu_enable_core(int id)
 
 void arch_cpu_disable_core(int id)
 {
-	struct idc_msg power_down = { IDC_POWER_DOWN_MESSAGE, 0, id };
+	struct idc_msg power_down = {
+		IDC_MSG_POWER_DOWN, IDC_MSG_POWER_DOWN_EXT, id };
 	uint32_t flags;
 
 	spin_lock_irq(&lock, flags);

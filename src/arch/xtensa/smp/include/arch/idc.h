@@ -67,21 +67,30 @@
 /** \brief ROM wake version parsed by ROM during core wake up. */
 #define IDC_ROM_WAKE_VERSION	0x2
 
-/** \brief ROM control version parsed by ROM during core wake up. */
-#define IDC_ROM_CONTROL_VERSION	0x1
+/** \brief IDC message type. */
+#define IDC_TYPE_SHIFT		24
+#define IDC_TYPE_MASK		0x7f
+#define IDC_TYPE(x)		(((x) & IDC_TYPE_MASK) << IDC_TYPE_SHIFT)
 
-// TODO: refactor below defines after universal IDC message template
-//       will be defined and ready
+/** \brief IDC message header. */
+#define IDC_HEADER_MASK		0xffffff
+#define IDC_HEADER(x)		((x) & IDC_HEADER_MASK)
 
-/** \brief Power up message header. */
-#define IDC_POWER_UP_MESSAGE \
-		(IDC_ROM_WAKE_VERSION | (IDC_ROM_CONTROL_VERSION << 24))
+/** \brief IDC message extension. */
+#define IDC_EXTENSION_MASK	0x3fffffff
+#define IDC_EXTENSION(x)	((x) & IDC_EXTENSION_MASK)
 
-/** \brief Power up message extension. */
-#define IDC_POWER_UP_EXTENSION	(SOF_TEXT_START >> 2)
+/** \brief IDC power up message. */
+#define IDC_MSG_POWER_UP	(IDC_TYPE(0x1) | \
+					IDC_HEADER(IDC_ROM_WAKE_VERSION))
+#define IDC_MSG_POWER_UP_EXT	IDC_EXTENSION(SOF_TEXT_START >> 2)
 
-/** \brief Power down message header. */
-#define IDC_POWER_DOWN_MESSAGE	0x7FFFFFFF
+/** \brief IDC power down message. */
+#define IDC_MSG_POWER_DOWN	IDC_TYPE(0x2)
+#define IDC_MSG_POWER_DOWN_EXT	IDC_EXTENSION(0x0)
+
+/** \brief Decodes IDC message type. */
+#define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 
 /** \brief IDC message. */
 struct idc_msg {
@@ -215,16 +224,19 @@ static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 /**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
- * \return Error status.
  */
-static inline int32_t idc_cmd(struct idc_msg *msg)
+static inline void idc_cmd(struct idc_msg *msg)
 {
-	/* right now we only handle power down */
-	/* TODO: universal implementation */
-	if (msg->header == IDC_POWER_DOWN_MESSAGE)
-		cpu_power_down_core();
+	uint32_t type = iTS(msg->header);
 
-	return 0;
+	switch (type) {
+	case iTS(IDC_MSG_POWER_DOWN):
+		cpu_power_down_core();
+		break;
+	default:
+		trace_idc_error("eTc");
+		trace_error_value(msg->header);
+	}
 }
 
 /**
