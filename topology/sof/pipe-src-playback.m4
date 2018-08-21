@@ -17,8 +17,8 @@ include(`pipeline.m4')
 #
 
 # Host "Passthrough Playback" PCM
-# with 5 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 5, 0, 2)
+# with 3 sink and 0 source periods
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 3, 0, 2)
 
 #
 # SRC Configuration
@@ -28,14 +28,14 @@ W_VENDORTUPLES(media_src_tokens, sof_src_tokens, LIST(`		', `SOF_TKN_SRC_RATE_OU
 
 W_DATA(media_src_conf, media_src_tokens)
 
-# "SRC" has 5 source and 4 sink periods
-W_SRC(0, PIPELINE_FORMAT, 5, 4, media_src_conf, 2)
+# "SRC" has 3 source and 3 sink periods
+W_SRC(0, PIPELINE_FORMAT, 3, 3, media_src_conf, 2)
 
 # Playback Buffers
-W_BUFFER(0, COMP_BUFFER_SIZE(5,
+W_BUFFER(0, COMP_BUFFER_SIZE(3,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_HOST_MEM_CAP)
-W_BUFFER(1, COMP_BUFFER_SIZE(4,
+W_BUFFER(1, COMP_BUFFER_SIZE(3,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_DAI_MEM_CAP)
 
@@ -61,5 +61,5 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_I
 # PCM Configuration
 #
 
-PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 8000, 96000, 2, 4, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 8000, 192000, 2, 8, 2, 16, 192, 16384, 65536, 65536)
 
