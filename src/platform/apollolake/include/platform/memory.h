@@ -359,4 +359,10 @@
 /** \brief Manifest size (seems unused). */
 #define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
 
+#define SRAM_ALIAS_OFFSET	0x20000000
+#define uncache_to_cache(address) \
+	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
+#define cache_to_uncache(address) \
+	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+
 #endif
