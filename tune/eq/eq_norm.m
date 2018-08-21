@@ -39,7 +39,7 @@ i1k = find(eq.f > 1e3, 1, 'first') - 1;
 m_max_fir = max(eq.fir_eq_db);
 m_max_iir = max(eq.iir_eq_db);
 sens_fir = sum(m_lin_fir.*w_lin)/sum(w_lin);
-sens_iir = sum(m_lin_fir.*w_lin)/sum(w_lin);
+sens_iir = sum(m_lin_iir.*w_lin)/sum(w_lin);
 g_offs = 10^(eq.norm_offs_db/20);
 
 %% Determine scaling gain

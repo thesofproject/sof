@@ -52,7 +52,16 @@ plot_pz = 0;
 plot_fr = 0;
 
 %% Convert IIR to 2nd order sections
-[sos, gain] = tf2sos(eq_b , eq_a);
+if exist('OCTAVE_VERSION', 'builtin')
+        [sos, gain] = tf2sos(eq_b, eq_a);
+else
+        % TODO: tf2sos produces in Matlab EQs with zero output due to
+        % very high gain variations within biquad. Need to investigate if
+        % this is incorrect usage and a bug here.
+        [sos, gain] = tf2sos(eq_b, eq_a, 'UP', Inf);
+        fprintf('Warning: Problems have been seen with some IIR designs.\n');
+        fprintf('Warning: Please check the result.\n');
+end
 sz = size(sos);
 nbr_sections = sz(1);
 n_section_header = 2;

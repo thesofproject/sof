@@ -1,3 +1,5 @@
+function example_spk_eq()
+
 %% Design an example speaker equalizer with the provided sample data
 %  This equalizer by default uses a FIR and IIR components those should be
 %  both in the speaker pipeline.
@@ -42,7 +44,7 @@ eq = eq_defaults();
 eq.fs = 48e3;               % Default sample rate in SOF
 eq.enable_fir = 1;          % Try enabling and disabling FIR part
 eq.enable_iir = 1;          % Try enabling and disabling IIR part
-eq.norm_type = 'loudness';  % Preserve loudness approximately
+eq.norm_type = 'peak';      % Scale filters to have peak at 0 dB
 eq.norm_offs_db = 0;        % Can be used to control gain
 eq.p_fmin = 100;            % With this data start plots from 100 Hz
 eq.p_fmax = 20e3;           % and end to 20 kHz.
@@ -98,8 +100,8 @@ eq.raw_m_db = [ ...
 if eq.enable_iir;
 	eq.peq = [ ...
 			 eq.PEQ_HP2   100 NaN NaN; ...
-			 eq.PEQ_PN2  1480  -6 2.0; ...
-			 eq.PEQ_PN2  7600 -12 1.3; ...
+			 eq.PEQ_PN2  1480  -7 2.0; ...
+			 eq.PEQ_PN2  7600 -11 1.3; ...
 			 eq.PEQ_LP2 14500 NaN NaN; ...
 		 ];
 end
@@ -111,8 +113,8 @@ if eq.enable_fir
 	eq.fir_beta = 4;
 	eq.fir_length = 63;
 	eq.fir_autoband = 0;
-	eq.fmin_fir = 1000;
-	eq.fmax_fir = 13e3;
+	eq.fmin_fir = 900;
+	eq.fmax_fir = 10700;
 end
 
 %% Design EQ
@@ -125,21 +127,28 @@ eq_plot(eq, 1);
 platform_max_channels = 2;  % Identical two speakers
 assign_response = [0 0];    % Switch to response #0
 num_responses = 1;          % Single response
-bq_fir = eq_fir_blob_quant(eq.b_fir);
-bm_fir = eq_fir_blob_merge(platform_max_channels, ...
-		       num_responses, ...
-		       assign_response, ...
-		       [ bq_fir ]);
-bp_fir = eq_fir_blob_pack(bm_fir);
-eq_alsactl_write('example_spk_eq_fir.txt', bp_fir);
-eq_blob_write('example_spk_eq_fir.blob', bp_fir);
+if eq.enable_fir
+        bq_fir = eq_fir_blob_quant(eq.b_fir);
+        bm_fir = eq_fir_blob_merge(platform_max_channels, ...
+                num_responses, ...
+                assign_response, ...
+                [ bq_fir ]);
+        bp_fir = eq_fir_blob_pack(bm_fir);
+        eq_alsactl_write('example_spk_eq_fir.txt', bp_fir);
+        eq_blob_write('example_spk_eq_fir.blob', bp_fir);
+end
 
 %% Export IIR part
-bq_iir = eq_iir_blob_quant(eq.b_p, eq.a_p);
-bm_iir = eq_iir_blob_merge(platform_max_channels, ...
-		       num_responses, ...
-		       assign_response, ...
-		       [ bq_iir ]);
-bp_iir = eq_iir_blob_pack(bm_iir);
-eq_alsactl_write('example_spk_eq_iir.txt', bp_iir);
-eq_blob_write('example_spk_eq_iir.blob', bp_iir);
+if eq.enable_iir
+        bq_iir = eq_iir_blob_quant(eq.b_p, eq.a_p);
+        bm_iir = eq_iir_blob_merge(platform_max_channels, ...
+                num_responses, ...
+                assign_response, ...
+                [ bq_iir ]);
+        bp_iir = eq_iir_blob_pack(bm_iir);
+        eq_alsactl_write('example_spk_eq_iir.txt', bp_iir);
+        eq_blob_write('example_spk_eq_iir.blob', bp_iir);
+end
+
+end
+

@@ -30,6 +30,10 @@ function eq_plot(eq, fn)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
+if nargin < 2
+        fn = 1;
+end
+
 %% Raw measured response
 if length(eq.raw_m_db) > 2
         % Raw without EQ
