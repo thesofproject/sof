@@ -576,6 +576,54 @@ static int eq_fir_reset(struct comp_dev *dev)
 	return 0;
 }
 
+static void eq_fir_cache(struct comp_dev *dev, int cmd)
+{
+	struct comp_data *cd;
+	int i;
+
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		trace_eq("wtb");
+
+		cd = comp_get_drvdata(dev);
+
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			if (cd->fir[i].delay)
+				dcache_writeback_invalidate_region
+					(cd->fir[i].delay,
+					 cd->fir[i].length * sizeof(int32_t));
+		}
+
+		if (cd->config)
+			dcache_writeback_invalidate_region(cd->config,
+							   cd->config->size);
+
+		dcache_writeback_invalidate_region(cd, sizeof(*cd));
+		dcache_writeback_invalidate_region(dev, sizeof(*dev));
+		break;
+
+	case COMP_CACHE_INVALIDATE:
+		trace_eq("inv");
+
+		dcache_invalidate_region(dev, sizeof(*dev));
+
+		cd = comp_get_drvdata(dev);
+		dcache_invalidate_region(cd, sizeof(*cd));
+
+		if (cd->config)
+			dcache_invalidate_region(cd->config,
+						 cd->config->size);
+
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			if (cd->fir[i].delay)
+				dcache_invalidate_region
+					(cd->fir[i].delay,
+					 cd->fir[i].length * sizeof(int32_t));
+		}
+		break;
+	}
+}
+
 struct comp_driver comp_eq_fir = {
 	.type = SOF_COMP_EQ_FIR,
 	.ops = {
@@ -587,6 +635,7 @@ struct comp_driver comp_eq_fir = {
 		.copy = eq_fir_copy,
 		.prepare = eq_fir_prepare,
 		.reset = eq_fir_reset,
+		.cache = eq_fir_cache,
 	},
 };
 

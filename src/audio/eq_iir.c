@@ -571,6 +571,54 @@ static int eq_iir_reset(struct comp_dev *dev)
 	return 0;
 }
 
+static void eq_iir_cache(struct comp_dev *dev, int cmd)
+{
+	struct comp_data *cd;
+	int i;
+
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		trace_eq("wtb");
+
+		cd = comp_get_drvdata(dev);
+
+		if (cd->config)
+			dcache_writeback_invalidate_region(cd->config,
+							   cd->config->size);
+
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			if (cd->iir[i].delay)
+				dcache_writeback_invalidate_region
+				(cd->iir[i].delay,
+				 2 * cd->iir[i].biquads * sizeof(int64_t));
+		}
+
+		dcache_writeback_invalidate_region(cd, sizeof(*cd));
+		dcache_writeback_invalidate_region(dev, sizeof(*dev));
+		break;
+
+	case COMP_CACHE_INVALIDATE:
+		trace_eq("inv");
+
+		dcache_invalidate_region(dev, sizeof(*dev));
+
+		cd = comp_get_drvdata(dev);
+		dcache_invalidate_region(cd, sizeof(*cd));
+
+		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+			if (cd->iir[i].delay)
+				dcache_invalidate_region
+				(cd->iir[i].delay,
+				 2 * cd->iir[i].biquads * sizeof(int64_t));
+		}
+
+		if (cd->config)
+			dcache_invalidate_region(cd->config,
+						 cd->config->size);
+		break;
+	}
+}
+
 struct comp_driver comp_eq_iir = {
 	.type = SOF_COMP_EQ_IIR,
 	.ops = {
@@ -582,6 +630,7 @@ struct comp_driver comp_eq_iir = {
 		.copy = eq_iir_copy,
 		.prepare = eq_iir_prepare,
 		.reset = eq_iir_reset,
+		.cache = eq_iir_cache,
 	},
 };
 

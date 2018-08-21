@@ -99,6 +99,13 @@
 
 #define COMP_CMD_IPC_MMAP_VOL(chan)	(216 + chan)	/* Volume */
 
+/* component cache operations */
+
+/* writeback and invalidate component data */
+#define COMP_CACHE_WRITEBACK_INV	0
+/* invalidate component data */
+#define COMP_CACHE_INVALIDATE		1
+
 /* component operations */
 #define COMP_OPS_PARAMS		0
 #define COMP_OPS_TRIGGER	1
@@ -156,6 +163,9 @@ struct comp_ops {
 	/* position */
 	int (*position)(struct comp_dev *dev,
 		struct sof_ipc_stream_posn *posn);
+
+	/* cache operation on component data */
+	void (*cache)(struct comp_dev *dev, int cmd);
 };
 
 
@@ -212,6 +222,8 @@ struct comp_dev {
 	c->private = data
 #define comp_get_drvdata(c) \
 	c->private;
+
+typedef void (*cache_command)(void *, size_t);
 
 void sys_comp_init(void);
 
@@ -303,6 +315,13 @@ static inline int comp_position(struct comp_dev *dev,
 	if (dev->drv->ops.position)
 		return dev->drv->ops.position(dev, posn);
 	return 0;
+}
+
+/* component cache command */
+static inline void comp_cache(struct comp_dev *dev, int cmd)
+{
+	if (dev->drv->ops.cache)
+		dev->drv->ops.cache(dev, cmd);
 }
 
 /* default base component initialisations */
