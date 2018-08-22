@@ -458,6 +458,7 @@ AC_CONFIG_FILES([
 	src/include/sof/audio/Makefile
 	src/include/sof/audio/coefficients/Makefile
 	src/include/sof/audio/coefficients/src/Makefile
+	src/include/sof/drivers/Makefile
 	src/include/sof/math/Makefile
 	src/include/uapi/Makefile
 	src/ipc/Makefile

@@ -3,6 +3,7 @@ noinst_LTLIBRARIES = libdrivers.la
 libdrivers_la_SOURCES = \
 	dmic.c \
 	hda-dma.c \
+	interrupt.c \
 	ssp.c
 
 libdrivers_la_CFLAGS = \

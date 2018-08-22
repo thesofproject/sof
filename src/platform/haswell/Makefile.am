@@ -5,7 +5,6 @@ EXTRA_DIST = haswell.x.in
 noinst_LTLIBRARIES = libplatform.la
 
 libplatform_la_SOURCES = \
-	interrupt.c \
 	platform.c \
 	dai.c \
 	dma.c \

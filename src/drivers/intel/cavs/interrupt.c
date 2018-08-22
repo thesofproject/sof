@@ -65,7 +65,6 @@ static inline void irq_lvl2_handler(void *data,
 
 	/* handle each child */
 	while (status) {
-
 		/* any IRQ for this child bit ? */
 		if ((status & 0x1) == 0)
 			goto next;
@@ -193,7 +192,6 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 	default:
 		break;
 	}
-
 }
 
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
@@ -217,7 +215,6 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 	default:
 		break;
 	}
-
 }
 
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)

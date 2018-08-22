@@ -1,6 +1,7 @@
 noinst_LTLIBRARIES = libdrivers.la
 
 libdrivers_la_SOURCES = \
+	interrupt.c \
 	ssp.c
 
 libdrivers_la_CFLAGS = \
