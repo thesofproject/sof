@@ -55,7 +55,7 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_item(clist, &ipc->comp_list) {
+	list_for_item(clist, cache_to_uncache(&ipc->comp_list)) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -131,8 +131,11 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	icd->cd = cd;
 	icd->type = COMP_TYPE_COMPONENT;
 
+	dcache_writeback_invalidate_region(icd, sizeof(*icd));
+
 	/* add new component to the list */
-	list_item_append(&icd->list, &ipc->comp_list);
+	list_item_append(cache_to_uncache(&icd->list),
+			 cache_to_uncache(&ipc->comp_list));
 	return ret;
 }
 
@@ -184,8 +187,11 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	ibd->cb = buffer;
 	ibd->type = COMP_TYPE_BUFFER;
 
+	dcache_writeback_invalidate_region(ibd, sizeof(*ibd));
+
 	/* add new buffer to the list */
-	list_item_append(&ibd->list, &ipc->comp_list);
+	list_item_append(cache_to_uncache(&ibd->list),
+			 cache_to_uncache(&ipc->comp_list));
 	return ret;
 }
 
@@ -290,8 +296,11 @@ int ipc_pipeline_new(struct ipc *ipc,
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
 
+	dcache_writeback_invalidate_region(ipc_pipe, sizeof(*ipc_pipe));
+
 	/* add new pipeline to the list */
-	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+	list_item_append(cache_to_uncache(&ipc_pipe->list),
+			 cache_to_uncache(&ipc->comp_list));
 	return 0;
 }
 
@@ -338,7 +347,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	int ret = 0;
 
 	/* for each component */
-	list_for_item(clist, &ipc->comp_list) {
+	list_for_item(clist, cache_to_uncache(&ipc->comp_list)) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -513,7 +522,10 @@ int ipc_init(struct sof *sof)
 	for (i = 0; i < PLATFORM_MAX_STREAMS; i++)
 		sof->ipc->posn_map[i] = NULL;
 
-	list_init(&sof->ipc->comp_list);
+	dcache_writeback_invalidate_region(sof->ipc, sizeof(*sof->ipc));
+
+	/* component list shared between cores */
+	list_init(cache_to_uncache(&sof->ipc->comp_list));
 
 	return platform_ipc_init(sof->ipc);
 }
