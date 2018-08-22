@@ -6,20 +6,25 @@ libdrivers_la_CFLAGS = \
 	$(SOF_INCDIR) \
 	$(ARCH_INCDIR)
 
+# This lib just includes lib for specific platform
 libdrivers_la_SOURCES =
 
 if BUILD_BAYTRAIL
-libdrivers_la_SOURCES += baytrail/ssp.c
+SUBDIRS = baytrail
+libdrivers_la_LIBADD = baytrail/libdrivers.la
 endif
 
 if BUILD_CHERRYTRAIL
-libdrivers_la_SOURCES += baytrail/ssp.c
+SUBDIRS = baytrail
+libdrivers_la_LIBADD = baytrail/libdrivers.la
 endif
 
 if BUILD_HASWELL
-libdrivers_la_SOURCES += haswell/ssp.c
+SUBDIRS = haswell
+libdrivers_la_LIBADD = haswell/libdrivers.la
 endif
 
 if BUILD_BROADWELL
-libdrivers_la_SOURCES += haswell/ssp.c
+SUBDIRS = haswell
+libdrivers_la_LIBADD = haswell/libdrivers.la
 endif
