@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,68 +25,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_INTERRUPT__
-#define __INCLUDE_INTERRUPT__
+#ifndef __INCLUDE_DRIVERS_INTERRUPT__
+#define __INCLUDE_DRIVERS_INTERRUPT__
 
-#include <stdint.h>
-#include <arch/interrupt.h>
-#include <platform/interrupt.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/trace.h>
-#include <sof/debug.h>
-#include <sof/lock.h>
-#include <sof/list.h>
+#include <sof/interrupt.h>
 
-#define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
-#define trace_irq_error(__e)	trace_error(TRACE_CLASS_IRQ,  __e)
+void platform_interrupt_init(void);
 
-struct irq_desc {
-	/* irq must be first for constructor */
-	int irq;        /* logical IRQ number */
-
-	/* handler is optional for constructor */
-	void (*handler)(void *arg);
-	void *handler_arg;
-
-	/* to identify interrupt with the same IRQ */
-	int id;
-	spinlock_t lock;
-	uint32_t enabled_count;
-
-	/* to link to other irq_desc */
-	struct list_item irq_list;
-
-	uint32_t num_children;
-	struct list_item child[PLATFORM_IRQ_CHILDREN];
-};
-
-int interrupt_register(uint32_t irq,
-	void(*handler)(void *arg), void *arg);
-void interrupt_unregister(uint32_t irq);
-uint32_t interrupt_enable(uint32_t irq);
-uint32_t interrupt_disable(uint32_t irq);
-
-static inline void interrupt_set(int irq)
-{
-	arch_interrupt_set(SOF_IRQ_NUMBER(irq));
-}
-
-static inline void interrupt_clear(int irq)
-{
-	arch_interrupt_clear(SOF_IRQ_NUMBER(irq));
-}
-
-static inline uint32_t interrupt_global_disable(void)
-{
-	return arch_interrupt_global_disable();
-}
-
-static inline void interrupt_global_enable(uint32_t flags)
-{
-	arch_interrupt_global_enable(flags);
-}
+struct irq_desc *platform_irq_get_parent(uint32_t irq);
+void platform_interrupt_set(int irq);
+void platform_interrupt_clear(uint32_t irq, uint32_t mask);
+uint32_t platform_interrupt_get_enabled(void);
+void platform_interrupt_mask(uint32_t irq, uint32_t mask);
+void platform_interrupt_unmask(uint32_t irq, uint32_t mask);
 
 #endif
