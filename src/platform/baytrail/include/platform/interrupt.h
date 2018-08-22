@@ -88,13 +88,9 @@
 /* no nested interrupts */
 #define PLATFORM_IRQ_CHILDREN	0
 
-static inline void platform_interrupt_init(void) {}
+void platform_interrupt_init(void);
 
-static inline struct irq_desc *platform_irq_get_parent(uint32_t irq)
-{
-	return NULL;
-}
-
+struct irq_desc *platform_irq_get_parent(uint32_t irq);
 void platform_interrupt_set(int irq);
 void platform_interrupt_clear(uint32_t irq, uint32_t mask);
 uint32_t platform_interrupt_get_enabled(void);
