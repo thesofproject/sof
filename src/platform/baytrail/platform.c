@@ -203,7 +203,7 @@ int platform_init(struct sof *sof)
 	platform_ipc_pmc_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
+	drivers_clock_init();
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);

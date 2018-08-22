@@ -294,7 +294,7 @@ int platform_init(struct sof *sof)
 	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
+	drivers_clock_init();
 
 	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);

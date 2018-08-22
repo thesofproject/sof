@@ -220,7 +220,7 @@ uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 			clk_pdata->clk[clock].ticks_per_usec;
 }
 
-void init_platform_clocks(void)
+void drivers_clock_init(void)
 {
 	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
 

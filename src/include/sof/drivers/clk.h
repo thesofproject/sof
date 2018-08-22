@@ -31,6 +31,6 @@
 #ifndef __INCLUDE_DRIVERS_CLK__
 #define __INCLUDE_DRIVERS_CLK__
 
-void init_platform_clocks(void);
+void drivers_clock_init(void);
 
 #endif
