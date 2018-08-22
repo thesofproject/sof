@@ -149,7 +149,7 @@
 #define DW_CTLL_RELOAD_DST		(1 << 31)
 
 /* Haswell / Broadwell specific registers */
-#if defined (CONFIG_HASWELL) || defined (CONFIG_BROADWELL)
+#if defined(CONFIG_HASWELL) || defined(CONFIG_BROADWELL)
 
 /* CTL_HI */
 #define DW_CTLH_DONE(x)			((x) << 12)
@@ -166,7 +166,7 @@
 #define DW_CFG_LOW_DEF				0x0
 #define DW_CFG_HIGH_DEF			0x4
 
-#elif defined (CONFIG_BAYTRAIL) || defined (CONFIG_CHERRYTRAIL)
+#elif defined(CONFIG_BAYTRAIL) || defined(CONFIG_CHERRYTRAIL)
 /* baytrail specific registers */
 
 /* CTL_LO */
@@ -198,7 +198,7 @@
 #define DW_CFG_LOW_DEF			0x00000003
 #define DW_CFG_HIGH_DEF		0x0
 
-#elif defined (CONFIG_APOLLOLAKE) || defined (CONFIG_CANNONLAKE)
+#elif defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 
 /* CTL_LO */
 #define DW_CTLL_S_GATH_EN		(1 << 17)
@@ -267,9 +267,12 @@ struct dma_chan_data {
 	uint32_t cfg_hi;
 	struct dma_id id;
 
-	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);	/* client callback function */
-	void *cb_data;		/* client callback data */
-	int cb_type;		/* callback type */
+	/* client callback function */
+	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);
+	/* client callback data */
+	void *cb_data;
+	/* callback type */
+	int cb_type;
 };
 
 /* private data for DW DMA engine */
@@ -403,7 +406,8 @@ static int dw_dma_start(struct dma *dma, int channel)
 	}
 
 	/* write interrupt clear registers for the channel:
-	ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr*/
+	 * ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr
+	 */
 	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
 	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
 	dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << channel);
@@ -682,7 +686,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		lli_desc->ctrl_lo |= DW_CTLL_DST_MSIZE(msize);
 		lli_desc->ctrl_lo |= DW_CTLL_INT_EN; /* enable interrupt */
 
-		/* config the SINC and DINC field of CTL_LOn, SRC/DST_PER filed of CFGn */
+		/* config the SINC and DINC field of CTL_LOn,
+		 * SRC/DST_PER filed of CFGn
+		 */
 		switch (config->direction) {
 		case DMA_DIR_LMEM_TO_HMEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M;
@@ -703,7 +709,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
 			lli_desc->dar =
-				(uint32_t)sg_elem->dest | PLATFORM_HOST_DMA_MASK;
+				(uint32_t)sg_elem->dest
+				| PLATFORM_HOST_DMA_MASK;
 			lli_desc->sar = (uint32_t)sg_elem->src;
 			break;
 		case DMA_DIR_MEM_TO_MEM:
@@ -713,8 +720,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
-			lli_desc->sar = (uint32_t)sg_elem->src | PLATFORM_HOST_DMA_MASK;
-			lli_desc->dar = (uint32_t)sg_elem->dest | PLATFORM_HOST_DMA_MASK;
+			lli_desc->sar = (uint32_t)sg_elem->src
+					| PLATFORM_HOST_DMA_MASK;
+			lli_desc->dar = (uint32_t)sg_elem->dest
+					| PLATFORM_HOST_DMA_MASK;
 			break;
 		case DMA_DIR_MEM_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2P;
@@ -726,7 +735,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 #endif
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_DST_PER(config->dest_dev);
-			lli_desc->sar = (uint32_t)sg_elem->src | PLATFORM_HOST_DMA_MASK;
+			lli_desc->sar = (uint32_t)sg_elem->src
+					| PLATFORM_HOST_DMA_MASK;
 			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		case DMA_DIR_DEV_TO_MEM:
@@ -740,7 +750,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_SRC_PER(config->src_dev);
 			lli_desc->sar = (uint32_t)sg_elem->src;
-			lli_desc->dar = (uint32_t)sg_elem->dest | PLATFORM_HOST_DMA_MASK;
+			lli_desc->dar = (uint32_t)sg_elem->dest
+					| PLATFORM_HOST_DMA_MASK;
 			break;
 		case DMA_DIR_DEV_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2P;
@@ -774,7 +785,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
 		/* for bdw, the unit is transaction--TR_WIDTH. */
-		lli_desc->ctrl_hi = (sg_elem->size / (1 << (lli_desc->ctrl_lo >> 4 & 0x7)))
+		lli_desc->ctrl_hi = (sg_elem->size /
+			(1 << (lli_desc->ctrl_lo >> 4 & 0x7)))
 			& DW_CTLH_BLOCK_TS_MASK;
 #endif
 
@@ -1131,11 +1143,13 @@ static void dw_dma_irq_handler(void *data)
 	uint32_t mask;
 	uint32_t pmask;
 	int i;
+#if DW_USE_HW_LLI
+	const size_t lli_current_size = sizeof(*p->chan[i].lli_current);
+#endif
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
-	if (!status_intr) {
+	if (!status_intr)
 		return;
-	}
 
 	tracev_dma("DIr");
 
@@ -1150,9 +1164,8 @@ static void dw_dma_irq_handler(void *data)
 	/* TODO: handle errors, just clear them atm */
 	status_err = dw_read(dma, DW_STATUS_ERR);
 	dw_write(dma, DW_CLEAR_ERR, status_err);
-	if (status_err) {
+	if (status_err)
 		trace_dma_error("eI1");
-	}
 
 	/* clear platform and DSP interrupt */
 	pmask = status_block | status_tfr | status_err;
@@ -1190,8 +1203,9 @@ static void dw_dma_irq_handler(void *data)
 			}
 
 			p->chan[i].lli_current->ctrl_hi &= ~DW_CTLH_DONE(1);
+
 			dcache_writeback_region(p->chan[i].lli_current,
-						sizeof(*p->chan[i].lli_current));
+						lli_current_size);
 
 			p->chan[i].lli_current =
 				(struct dw_lli2 *)p->chan[i].lli_current->llp;
@@ -1217,11 +1231,15 @@ static void dw_dma_irq_handler(void *data)
 			 * otherwise, reload lli
 			 */
 			switch (next.size) {
-			case DMA_RELOAD_END:
+			case DMA_RELOAD_END: {
 				p->chan[i].status = COMP_STATE_PREPARE;
+
+				void *llp = (void *)p->chan[i].lli_current->llp;
+
 				p->chan[i].lli_current =
-					(struct dw_lli2 *)p->chan[i].lli_current->llp;
+					(struct dw_lli2 *)llp;
 				break;
+			}
 			case DMA_RELOAD_LLI:
 				dw_dma_chan_reload_lli(dma, i);
 				break;
