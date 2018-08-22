@@ -4,7 +4,6 @@ libcavsplatform_la_SOURCES = \
 	platform.c \
 	dai.c \
 	dma.c \
-	clk.c \
 	timer.c \
 	memory.c \
 	pm_runtime.c

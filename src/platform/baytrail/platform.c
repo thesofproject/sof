@@ -45,6 +45,7 @@
 #include <sof/sof.h>
 #include <sof/work.h>
 #include <sof/clock.h>
+#include <sof/drivers/clk.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
 #include <sof/agent.h>

@@ -26,8 +26,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+#include <sof/drivers/clk.h>
 #include <sof/clock.h>
 #include <sof/io.h>
 #include <sof/sof.h>
@@ -38,6 +40,7 @@
 #include <platform/clk.h>
 #include <platform/shim.h>
 #include <platform/timer.h>
+#include <platform/pmc.h>
 #include <config.h>
 #include <stdint.h>
 #include <limits.h>
@@ -47,6 +50,8 @@
 struct clk_data {
 	uint32_t freq;
 	uint32_t ticks_per_usec;
+
+	/* for synchronizing freq set for each clock */
 	spinlock_t lock;
 };
 
@@ -57,31 +62,60 @@ struct clk_pdata {
 struct freq_table {
 	uint32_t freq;
 	uint32_t ticks_per_usec;
-	uint32_t fabric;
 	uint32_t enc;
 };
 
 static struct clk_pdata *clk_pdata;
 
+#if defined CONFIG_BAYTRAIL
 /* increasing frequency order */
 static const struct freq_table cpu_freq[] = {
-	{32000000, 80, 32000000, 0x6},
-	{80000000, 80, 80000000, 0x2},
-	{160000000, 160, 80000000, 0x1},
-	{320000000, 320, 160000000, 0x4},/* default */
-	{320000000, 320, 80000000, 0x0},
-	{160000000, 160, 160000000, 0x5},
+	{25000000, 25, 0x0},
+	{25000000, 25, 0x1},
+	{50000000, 50, 0x2},
+	{50000000, 50, 0x3},	/* default */
+	{100000000, 100, 0x4},
+	{200000000, 200, 0x5},
+	{267000000, 267, 0x6},
+	{343000000, 343, 0x7},
 };
 
 static const struct freq_table ssp_freq[] = {
-	{24000000, 24, 0, 0},	/* default */
+	{19200000, 19, PMC_SET_SSP_19M2},
+	{25000000, 25, PMC_SET_SSP_25M},	/* default */
+};
+
+#define CPU_DEFAULT_IDX		3
+#define SSP_DEFAULT_IDX		1
+
+#elif defined CONFIG_CHERRYTRAIL
+
+/* increasing frequency order */
+static const struct freq_table cpu_freq[] = {
+	{19200000, 19, 0x0},
+	{19200000, 19, 0x1},
+	{38400000, 38, 0x2},
+	{50000000, 50, 0x3},	/* default */
+	{100000000, 100, 0x4},
+	{200000000, 200, 0x5},
+	{267000000, 267, 0x6},
+	{343000000, 343, 0x7},
+};
+
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19, PMC_SET_SSP_19M2},	/* default */
+	{25000000, 25, PMC_SET_SSP_25M},
 };
 
 #define CPU_DEFAULT_IDX		3
 #define SSP_DEFAULT_IDX		0
 
+#else
+#error No target defined
+#endif
+
 static inline uint32_t get_freq(const struct freq_table *table, int size,
-	unsigned int hz)
+				unsigned int hz)
 {
 	uint32_t i;
 
@@ -122,6 +156,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	struct clock_notify_data notify_data;
 	uint32_t idx;
 	uint32_t flags;
+	int err = 0;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
@@ -138,18 +173,48 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 
 		/* tell anyone interested we are about to change CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
-			&notify_data);
+			       &notify_data);
 
 		/* set CPU frequency request for CCU */
-		io_reg_update_bits(SHIM_BASE + SHIM_CSR,
-						SHIM_CSR_DCS_MASK,
-						SHIM_CSR_DCS(cpu_freq[idx].enc));
+		io_reg_update_bits(SHIM_BASE + SHIM_FR_LAT_REQ,
+				   SHIM_FR_LAT_CLK_MASK, cpu_freq[idx].enc);
+
+		/* send freq request to SC */
+		err = ipc_pmc_send_msg(PMC_SET_LPECLK);
+		if (err == 0) {
+			/* update clock frequency */
+			clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
+			clk_pdata->clk[clock].ticks_per_usec =
+				cpu_freq[idx].ticks_per_usec;
+		}
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
-			&notify_data);
+			       &notify_data);
 		break;
 	case CLK_SSP:
+		/* get nearest frequency that is >= requested Hz */
+		idx = get_freq(ssp_freq, ARRAY_SIZE(ssp_freq), hz);
+		notify_data.freq = ssp_freq[idx].freq;
+
+		/* tell anyone interested we are about to change CPU freq */
+		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_PRE,
+			       &notify_data);
+
+		/* send SSP freq request to SC */
+		err = ipc_pmc_send_msg(ssp_freq[idx].enc);
+		if (err == 0) {
+			/* update clock frequency */
+			clk_pdata->clk[clock].freq = ssp_freq[idx].freq;
+			clk_pdata->clk[clock].ticks_per_usec =
+				ssp_freq[idx].ticks_per_usec;
+		}
+
+		/* tell anyone interested we have now changed CPU freq */
+		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_POST,
+			       &notify_data);
+		break;
+
 	default:
 		break;
 	}
@@ -200,7 +265,7 @@ uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 
 void init_platform_clocks(void)
 {
-	clk_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
+	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
 
 	spinlock_init(&clk_pdata->clk[0].lock);
 	spinlock_init(&clk_pdata->clk[1].lock);

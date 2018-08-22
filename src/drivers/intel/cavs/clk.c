@@ -31,6 +31,7 @@
  *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
+#include <sof/drivers/clk.h>
 #include <sof/clock.h>
 #include <sof/io.h>
 #include <sof/sof.h>
@@ -51,6 +52,8 @@ struct clk_data {
 	uint32_t freq;
 	uint32_t ticks_per_usec;
 	uint32_t ticks_per_msec;
+
+	/* for synchronizing freq set for each clock */
 	spinlock_t lock;
 };
 
@@ -107,7 +110,7 @@ static const struct freq_table ssp_freq[] = {
 #endif
 
 static inline uint32_t get_freq(const struct freq_table *table, int size,
-	unsigned int hz)
+				unsigned int hz)
 {
 	uint32_t i;
 
@@ -163,19 +166,19 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 
 		/* tell anyone interested we are about to change CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
-			&notify_data);
+			       &notify_data);
 
 		/* set CPU frequency request for CCU */
 		#if defined(CONFIG_APOLLOLAKE)
 		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
-				SHIM_CLKCTL_HDCS, 0);
+				   SHIM_CLKCTL_HDCS, 0);
 		#endif
 		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
-				SHIM_CLKCTL_DPCS_MASK(0), cpu_freq[idx].enc);
+				   SHIM_CLKCTL_DPCS_MASK(0), cpu_freq[idx].enc);
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
-			&notify_data);
+			       &notify_data);
 		break;
 	case CLK_SSP:
 	default:
