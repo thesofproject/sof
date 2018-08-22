@@ -1421,7 +1421,7 @@ static void dmic_irq_handler(void *data)
 	trace_value(val);
 
 	/* clear IRQ */
-	platform_interrupt_clear(dmic_irq(dai), 1);
+	drivers_interrupt_clear(dmic_irq(dai), 1);
 }
 
 static int dmic_probe(struct dai *dai)
@@ -1442,7 +1442,7 @@ static int dmic_probe(struct dai *dai)
 	/* register our IRQ handler */
 	interrupt_register(dmic_irq(dai), dmic_irq_handler, dai);
 
-	platform_interrupt_unmask(dmic_irq(dai), 1);
+	drivers_interrupt_unmask(dmic_irq(dai), 1);
 	interrupt_enable(dmic_irq(dai));
 
 	return 0;

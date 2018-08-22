@@ -101,7 +101,7 @@ int slave_core_init(struct sof *sof)
 	trace_point(TRACE_BOOT_SYS_SCHED);
 	scheduler_init(sof);
 
-	platform_interrupt_init();
+	drivers_interrupt_init();
 
 	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue[cpu_get_id()]);

@@ -412,7 +412,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
 
 	/* clear platform interrupt */
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()), 1 << channel);
+	drivers_interrupt_clear(dma_irq(dma, cpu_get_id()), 1 << channel);
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
@@ -1112,7 +1112,7 @@ static void dw_dma_irq_handler(void *data)
 
 	/* clear platform and DSP interrupt */
 	pmask = status_block | status_tfr | status_err;
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()), pmask);
+	drivers_interrupt_clear(dma_irq(dma, cpu_get_id()), pmask);
 
 	/* confirm IRQ cleared */
 	status_block_new = dw_read(dma, DW_STATUS_BLOCK);

@@ -281,7 +281,7 @@ int platform_init(struct sof *sof)
 	platform_init_hw();
 	#endif
 
-	platform_interrupt_init();
+	drivers_interrupt_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 	platform_memory_windows_init();

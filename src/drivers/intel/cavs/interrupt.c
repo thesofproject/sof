@@ -148,7 +148,7 @@ static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
 	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
 };
 
-struct irq_desc *platform_irq_get_parent(uint32_t irq)
+struct irq_desc *drivers_interrupt_irq_get_parent(uint32_t irq)
 {
 	int core = SOF_IRQ_CPU(irq);
 
@@ -166,12 +166,12 @@ struct irq_desc *platform_irq_get_parent(uint32_t irq)
 	}
 }
 
-uint32_t platform_interrupt_get_enabled(void)
+uint32_t drivers_interrupt_get_enabled(void)
 {
 	return 0;
 }
 
-void platform_interrupt_mask(uint32_t irq, uint32_t mask)
+void drivers_interrupt_mask(uint32_t irq, uint32_t mask)
 {
 	int core = SOF_IRQ_CPU(irq);
 
@@ -194,7 +194,7 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 	}
 }
 
-void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
+void drivers_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
 	int core = SOF_IRQ_CPU(irq);
 
@@ -217,11 +217,11 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 	}
 }
 
-void platform_interrupt_clear(uint32_t irq, uint32_t mask)
+void drivers_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 }
 
-void platform_interrupt_init(void)
+void drivers_interrupt_init(void)
 {
 	int i, j;
 	int core = cpu_get_id();

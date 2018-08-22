@@ -492,7 +492,7 @@ static void ssp_irq_handler(void *data)
 
 	/* clear IRQ */
 	ssp_write(dai, SSSR, ssp_read(dai, SSSR));
-	platform_interrupt_clear(ssp_irq(dai), 1);
+	drivers_interrupt_clear(ssp_irq(dai), 1);
 }
 
 static int ssp_probe(struct dai *dai)
@@ -512,7 +512,7 @@ static int ssp_probe(struct dai *dai)
 	/* register our IRQ handler */
 	interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
 
-	platform_interrupt_unmask(ssp_irq(dai), 1);
+	drivers_interrupt_unmask(ssp_irq(dai), 1);
 	interrupt_enable(ssp_irq(dai));
 
 	return 0;

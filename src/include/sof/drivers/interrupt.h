@@ -33,13 +33,13 @@
 
 #include <sof/interrupt.h>
 
-void platform_interrupt_init(void);
+void drivers_interrupt_init(void);
 
-struct irq_desc *platform_irq_get_parent(uint32_t irq);
-void platform_interrupt_set(int irq);
-void platform_interrupt_clear(uint32_t irq, uint32_t mask);
-uint32_t platform_interrupt_get_enabled(void);
-void platform_interrupt_mask(uint32_t irq, uint32_t mask);
-void platform_interrupt_unmask(uint32_t irq, uint32_t mask);
+struct irq_desc *drivers_interrupt_irq_get_parent(uint32_t irq);
+void drivers_interrupt_set(int irq);
+void drivers_interrupt_clear(uint32_t irq, uint32_t mask);
+uint32_t drivers_interrupt_get_enabled(void);
+void drivers_interrupt_mask(uint32_t irq, uint32_t mask);
+void drivers_interrupt_unmask(uint32_t irq, uint32_t mask);
 
 #endif

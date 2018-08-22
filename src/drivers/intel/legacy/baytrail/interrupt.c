@@ -34,20 +34,20 @@
 #include <sof/sof.h>
 #include <sof/interrupt.h>
 
-void platform_interrupt_init(void) {}
+void drivers_interrupt_init(void) {}
 
-struct irq_desc *platform_irq_get_parent(uint32_t irq)
+struct irq_desc *drivers_interrupt_irq_get_parent(uint32_t irq)
 {
 	return NULL;
 }
 
-void platform_interrupt_set(int irq)
+void drivers_interrupt_set(int irq)
 {
 	arch_interrupt_set(irq);
 }
 
 /* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
-void platform_interrupt_clear(uint32_t irq, uint32_t mask)
+void drivers_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
@@ -94,12 +94,12 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 }
 
 /* TODO: expand this to 64 bit - should we just return mask of IRQ numbers */
-uint32_t platform_interrupt_get_enabled(void)
+uint32_t drivers_interrupt_get_enabled(void)
 {
 	return shim_read(SHIM_PIMR);
 }
 
-void platform_interrupt_mask(uint32_t irq, uint32_t mask)
+void drivers_interrupt_mask(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
@@ -136,7 +136,7 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 	}
 }
 
-void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
+void drivers_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
