@@ -1,44 +1,14 @@
-noinst_LIBRARIES = libdrivers.a
+SUBDIRS = intel
 
-libdrivers_a_SOURCES = \
-	dw-dma.c
+noinst_LTLIBRARIES = libdrivers.la
 
-if BUILD_BAYTRAIL
-libdrivers_a_SOURCES += \
-	byt-ssp.c
-endif
-
-if BUILD_CHERRYTRAIL
-libdrivers_a_SOURCES += \
-	byt-ssp.c
-endif
-
-if BUILD_HASWELL
-libdrivers_a_SOURCES += \
-	hsw-ssp.c
-endif
-
-if BUILD_BROADWELL
-libdrivers_a_SOURCES += \
-	hsw-ssp.c
-endif
-
-if BUILD_APOLLOLAKE
-libdrivers_a_SOURCES += \
-	apl-ssp.c \
-	hda-dma.c \
-	dmic.c
-endif
-
-if BUILD_CANNONLAKE
-libdrivers_a_SOURCES += \
-	apl-ssp.c \
-	hda-dma.c \
-	dmic.c
-endif
-
-libdrivers_a_CFLAGS = \
+libdrivers_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR) \
 	$(ARCH_INCDIR)
+
+# This lib is just composition of convenience libraries
+libdrivers_la_SOURCES =
+
+libdrivers_la_LIBADD = intel/libdrivers.la

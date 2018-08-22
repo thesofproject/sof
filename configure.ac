@@ -448,6 +448,9 @@ AC_CONFIG_FILES([
 	src/audio/Makefile
 	src/math/Makefile
 	src/drivers/Makefile
+	src/drivers/intel/Makefile
+	src/drivers/intel/cavs/Makefile
+	src/drivers/intel/legacy/Makefile
 	src/include/Makefile
 	src/include/sof/Makefile
 	src/include/sof/audio/Makefile
