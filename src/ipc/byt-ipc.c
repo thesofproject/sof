@@ -150,9 +150,6 @@ done:
 	ipcxh |= SHIM_IPCXH_DONE;
 	shim_write(SHIM_IPCXH, ipcxh);
 
-	/* unmask busy interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
-
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
@@ -163,6 +160,18 @@ done:
 	}
 
 	tracev_ipc("CmD");
+}
+
+void ipc_platform_mask_irq(void)
+{
+	/* mask busy interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
+}
+
+void ipc_platform_unmask_irq(void)
+{
+	/* unmask busy interrupt */
+	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
