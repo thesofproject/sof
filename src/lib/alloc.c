@@ -103,7 +103,7 @@ static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 #endif
 
 /* allocate from system memory pool */
-static void *rmalloc_sys(size_t bytes)
+static void *rmalloc_sys(int zone, size_t bytes)
 {
 	void *ptr;
 
@@ -125,6 +125,9 @@ static void *rmalloc_sys(size_t bytes)
 #if DEBUG_BLOCK_ALLOC
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
+
+	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+		ptr = cache_to_uncache(ptr);
 
 	return ptr;
 }
@@ -368,10 +371,11 @@ found:
 }
 
 /* allocate single block for runtime */
-static void *rmalloc_runtime(uint32_t caps, size_t bytes)
+static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
 	int i;
+	void *ptr = NULL;
 
 	/* check runtime heap for capabilities */
 	heap = get_runtime_heap_from_caps(caps);
@@ -395,8 +399,15 @@ find:
 			continue;
 
 		/* free block space exists */
-		return alloc_block(heap, i, caps);
+		ptr = alloc_block(heap, i, caps);
+
+		break;
 	}
+
+	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+		ptr = cache_to_uncache(ptr);
+
+	return ptr;
 
 error:
 	trace_mem_error("eMm");
@@ -412,12 +423,12 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 
 	spin_lock_irq(&memmap.lock, flags);
 
-	switch (zone) {
+	switch (zone & RZONE_TYPE_MASK) {
 	case RZONE_SYS:
-		ptr = rmalloc_sys(bytes);
+		ptr = rmalloc_sys(zone, bytes);
 		break;
 	case RZONE_RUNTIME:
-		ptr = rmalloc_runtime(caps, bytes);
+		ptr = rmalloc_runtime(zone, caps, bytes);
 		break;
 	default:
 		trace_mem_error("eMz");
@@ -490,6 +501,9 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 	ptr = alloc_cont_blocks(heap, heap->blocks - 1, caps, bytes);
 
 out:
+	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED))
+		ptr = cache_to_uncache(ptr);
+
 	spin_unlock_irq(&memmap.lock, flags);
 	return ptr;
 }
