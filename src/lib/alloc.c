@@ -113,6 +113,11 @@ static void *rmalloc_sys(size_t bytes)
 		return NULL;
 	}
 
+	/* align address to dcache line size */
+	if (memmap.system.heap % PLATFORM_DCACHE_ALIGN)
+		memmap.system.heap += PLATFORM_DCACHE_ALIGN -
+			(memmap.system.heap % PLATFORM_DCACHE_ALIGN);
+
 	ptr = (void *)memmap.system.heap;
 
 	/* always succeeds or panics */
