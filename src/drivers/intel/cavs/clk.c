@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,11 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
+#include <sof/drivers/clk.h>
 #include <sof/clock.h>
 #include <sof/io.h>
 #include <sof/sof.h>
@@ -39,7 +42,6 @@
 #include <platform/clk.h>
 #include <platform/shim.h>
 #include <platform/timer.h>
-#include <platform/pmc.h>
 #include <config.h>
 #include <stdint.h>
 #include <limits.h>
@@ -64,61 +66,51 @@ struct freq_table {
 
 static struct clk_pdata *clk_pdata;
 
-#if defined CONFIG_BAYTRAIL
 /* increasing frequency order */
+
+#if defined(CONFIG_APOLLOLAKE)
 static const struct freq_table cpu_freq[] = {
-	{25000000, 25, 0x0},
-	{25000000, 25, 0x1},
-	{50000000, 50, 0x2},
-	{50000000, 50, 0x3},	/* default */
-	{100000000, 100, 0x4},
-	{200000000, 200, 0x5},
-	{267000000, 267, 0x6},
-	{343000000, 343, 0x7},
+	{100000000, 100, 0x3},
+	{200000000, 200, 0x1},
+	{400000000, 400, 0x0}, /* default */
 };
-
-static const struct freq_table ssp_freq[] = {
-	{19200000, 19, PMC_SET_SSP_19M2},
-	{25000000, 25, PMC_SET_SSP_25M},	/* default */
-};
-
-#define CPU_DEFAULT_IDX		3
-#define SSP_DEFAULT_IDX		1
-
-#elif defined CONFIG_CHERRYTRAIL
-
-/* increasing frequency order */
+#elif defined(CONFIG_CANNONLAKE)
 static const struct freq_table cpu_freq[] = {
-	{19200000, 19, 0x0},
-	{19200000, 19, 0x1},
-	{38400000, 38, 0x2},
-	{50000000, 50, 0x3},	/* default */
-	{100000000, 100, 0x4},
-	{200000000, 200, 0x5},
-	{267000000, 267, 0x6},
-	{343000000, 343, 0x7},
+	{120000000, 120, 0x0},
+	{400000000, 400, 0x4},
 };
-
-static const struct freq_table ssp_freq[] = {
-	{19200000, 19, PMC_SET_SSP_19M2},	/* default */
-	{25000000, 25, PMC_SET_SSP_25M},
-};
-
-#define CPU_DEFAULT_IDX		3
-#define SSP_DEFAULT_IDX		0
-
-#else
-#error No target defined
 #endif
 
+/*
+ * XTAL clock, used as Wall Clock(external timer),
+ */
 
+#if defined(CONFIG_APOLLOLAKE)
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19,},	/* default */
+	{24576000, 24,},
+};
+#elif defined(CONFIG_CANNONLAKE)
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19,},
+	{24000000, 24,},	/* default */
+};
+#endif
+
+#if defined(CONFIG_APOLLOLAKE)
+#define CPU_DEFAULT_IDX		2
+#define SSP_DEFAULT_IDX		0
+#elif defined(CONFIG_CANNONLAKE)
+#define CPU_DEFAULT_IDX		1
+#define SSP_DEFAULT_IDX		1
+#endif
 
 static inline uint32_t get_freq(const struct freq_table *table, int size,
 	unsigned int hz)
 {
 	uint32_t i;
 
-	/* find lowest available frequency that is >= requested Hz */
+	/* find lowest available frequency that is >= requested hz */
 	for (i = 0; i < size; i++) {
 		if (hz <= table[i].freq)
 			return i;
@@ -155,17 +147,15 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	struct clock_notify_data notify_data;
 	uint32_t idx;
 	uint32_t flags;
-	int err = 0;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
 
-	/* atomic context for chaining clocks */
+	/* atomic context for chaning clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
 	case CLK_CPU:
-
 		/* get nearest frequency that is >= requested Hz */
 		idx = get_freq(cpu_freq, ARRAY_SIZE(cpu_freq), hz);
 		notify_data.freq = cpu_freq[idx].freq;
@@ -175,47 +165,18 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 			&notify_data);
 
 		/* set CPU frequency request for CCU */
-		io_reg_update_bits(SHIM_BASE + SHIM_FR_LAT_REQ,
-				SHIM_FR_LAT_CLK_MASK, cpu_freq[idx].enc);
-
-		/* send freq request to SC */
-		err = ipc_pmc_send_msg(PMC_SET_LPECLK);
-		if (err == 0) {
-
-			/* update clock frequency */
-			clk_pdata->clk[clock].freq = cpu_freq[idx].freq;
-			clk_pdata->clk[clock].ticks_per_usec =
-				cpu_freq[idx].ticks_per_usec;
-		}
+		#if defined(CONFIG_APOLLOLAKE)
+		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
+				SHIM_CLKCTL_HDCS, 0);
+		#endif
+		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
+				SHIM_CLKCTL_DPCS_MASK(0), cpu_freq[idx].enc);
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
 			&notify_data);
 		break;
 	case CLK_SSP:
-		/* get nearest frequency that is >= requested Hz */
-		idx = get_freq(ssp_freq, ARRAY_SIZE(ssp_freq), hz);
-		notify_data.freq = ssp_freq[idx].freq;
-
-		/* tell anyone interested we are about to change CPU freq */
-		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_PRE,
-			&notify_data);
-
-		/* send SSP freq request to SC */
-		err = ipc_pmc_send_msg(ssp_freq[idx].enc);
-		if (err == 0) {
-
-			/* update clock frequency */
-			clk_pdata->clk[clock].freq = ssp_freq[idx].freq;
-			clk_pdata->clk[clock].ticks_per_usec =
-				ssp_freq[idx].ticks_per_usec;
-		}
-
-		/* tell anyone interested we have now changed CPU freq */
-		notifier_event(NOTIFIER_ID_SSP_FREQ, CLOCK_NOTIFY_POST,
-			&notify_data);
-		break;
-
 	default:
 		break;
 	}

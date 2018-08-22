@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2016, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
- *         Rander Wang <rander.wang@intel.com>
- *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
+#include <sof/drivers/clk.h>
 #include <sof/clock.h>
 #include <sof/io.h>
 #include <sof/sof.h>
@@ -60,56 +58,35 @@ struct clk_pdata {
 struct freq_table {
 	uint32_t freq;
 	uint32_t ticks_per_usec;
+	uint32_t fabric;
 	uint32_t enc;
 };
 
 static struct clk_pdata *clk_pdata;
 
 /* increasing frequency order */
-
-#if defined(CONFIG_APOLLOLAKE)
 static const struct freq_table cpu_freq[] = {
-	{100000000, 100, 0x3},
-	{200000000, 200, 0x1},
-	{400000000, 400, 0x0}, /* default */
+	{32000000, 80, 32000000, 0x6},
+	{80000000, 80, 80000000, 0x2},
+	{160000000, 160, 80000000, 0x1},
+	{320000000, 320, 160000000, 0x4},/* default */
+	{320000000, 320, 80000000, 0x0},
+	{160000000, 160, 160000000, 0x5},
 };
-#elif defined(CONFIG_CANNONLAKE)
-static const struct freq_table cpu_freq[] = {
-	{120000000, 120, 0x0},
-	{400000000, 400, 0x4},
-};
-#endif
 
-/*
- * XTAL clock, used as Wall Clock(external timer),
- */
-
-#if defined(CONFIG_APOLLOLAKE)
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19,},	/* default */
-	{24576000, 24,},
+	{24000000, 24, 0, 0},	/* default */
 };
-#elif defined(CONFIG_CANNONLAKE)
-static const struct freq_table ssp_freq[] = {
-	{19200000, 19,},
-	{24000000, 24,},	/* default */
-};
-#endif
 
-#if defined(CONFIG_APOLLOLAKE)
-#define CPU_DEFAULT_IDX		2
+#define CPU_DEFAULT_IDX		3
 #define SSP_DEFAULT_IDX		0
-#elif defined(CONFIG_CANNONLAKE)
-#define CPU_DEFAULT_IDX		1
-#define SSP_DEFAULT_IDX		1
-#endif
 
 static inline uint32_t get_freq(const struct freq_table *table, int size,
 	unsigned int hz)
 {
 	uint32_t i;
 
-	/* find lowest available frequency that is >= requested hz */
+	/* find lowest available frequency that is >= requested Hz */
 	for (i = 0; i < size; i++) {
 		if (hz <= table[i].freq)
 			return i;
@@ -150,11 +127,12 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
 
-	/* atomic context for chaning clocks */
+	/* atomic context for chaining clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
 	case CLK_CPU:
+
 		/* get nearest frequency that is >= requested Hz */
 		idx = get_freq(cpu_freq, ARRAY_SIZE(cpu_freq), hz);
 		notify_data.freq = cpu_freq[idx].freq;
@@ -164,12 +142,9 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 			&notify_data);
 
 		/* set CPU frequency request for CCU */
-		#if defined(CONFIG_APOLLOLAKE)
-		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
-				SHIM_CLKCTL_HDCS, 0);
-		#endif
-		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
-				SHIM_CLKCTL_DPCS_MASK(0), cpu_freq[idx].enc);
+		io_reg_update_bits(SHIM_BASE + SHIM_CSR,
+			SHIM_CSR_DCS_MASK,
+			SHIM_CSR_DCS(cpu_freq[idx].enc));
 
 		/* tell anyone interested we have now changed CPU freq */
 		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
@@ -221,7 +196,7 @@ uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 
 void init_platform_clocks(void)
 {
-	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
+	clk_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
 
 	spinlock_init(&clk_pdata->clk[0].lock);
 	spinlock_init(&clk_pdata->clk[1].lock);

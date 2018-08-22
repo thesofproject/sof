@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,17 +25,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
+ * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __PLATFORM_CLOCK__
-#define __PLATFORM_CLOCK__
+#ifndef __INCLUDE_DRIVERS_CLK__
+#define __INCLUDE_DRIVERS_CLK__
 
-#define CLK_CPU		0
-#define CLK_SSP		1
-
-#define CLK_DEFAULT_CPU_HZ	400000000
-#define CLK_MAX_CPU_HZ		400000000
+void init_platform_clocks(void);
 
 #endif
