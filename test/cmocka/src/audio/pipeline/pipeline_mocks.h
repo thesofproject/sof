@@ -44,3 +44,11 @@ struct pipeline_new_setup_data {
 	struct sof_ipc_pipe_new ipc_data;
 	struct comp_dev *comp_data;
 };
+
+struct pipeline_connect_upstream_data {
+	struct pipeline p;
+	struct comp_dev *first;
+	struct comp_dev *second;
+	struct comp_buffer *b1;
+	struct comp_buffer *b2;
+};
