@@ -34,6 +34,7 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <sof/bit.h>
 #include <sof/dma.h>
 #include <platform/memory.h>
 
@@ -53,9 +54,17 @@ struct sof;
  *
  * See platform/memory.h for heap size configuration and mappings.
  */
-#define RZONE_SYS		0
-#define RZONE_RUNTIME	1
-#define RZONE_BUFFER	2
+
+/* heap zone types */
+#define RZONE_SYS	BIT(0)
+#define RZONE_RUNTIME	BIT(1)
+#define RZONE_BUFFER	BIT(2)
+
+/* heap zone flags */
+#define RZONE_FLAG_UNCACHED	BIT(4)
+
+#define RZONE_TYPE_MASK	0xf
+#define RZONE_FLAG_MASK	0xf0
 
 struct mm_info {
 	uint32_t used;
