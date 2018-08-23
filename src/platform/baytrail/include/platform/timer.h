@@ -47,8 +47,6 @@
 struct comp_dev;
 struct sof_ipc_stream_posn;
 
-extern struct timer *platform_timer;
-
 int platform_timer_set(struct timer *timer, uint64_t ticks);
 void platform_timer_clear(struct timer *timer);
 uint64_t platform_timer_get(struct timer *timer);

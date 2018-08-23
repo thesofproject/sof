@@ -114,8 +114,8 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 	*wallclock = shim_read64(SHIM_DSPWC);
 }
 
-int platform_timer_register(struct timer *timer,
-	void (*handler)(void *arg), void *arg)
+static int platform_timer_register(struct timer *timer,
+				   void (*handler)(void *arg), void *arg)
 {
 	return interrupt_register(timer->irq, handler, arg);
 }
