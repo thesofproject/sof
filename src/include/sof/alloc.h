@@ -131,4 +131,12 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg);
 
 /* heap initialisation */
 void init_heap(struct sof *sof);
+
+/* flush block map from cache to sram */
+static inline void flush_block_map(struct block_map *map)
+{
+	dcache_writeback_invalidate_region(map->block,
+					   sizeof(*map->block) * map->count);
+	dcache_writeback_invalidate_region(map, sizeof(*map));
+}
 #endif
