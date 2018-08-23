@@ -215,11 +215,13 @@ int platform_ipc_init(struct ipc *ipc)
 	for (i = 0; i < MSG_QUEUE_SIZE; i++)
 		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
+#ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		PLATFORM_PAGE_TABLE_SIZE);
 	if (iipc->page_table)
 		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
+#endif
 
 	/* request GP DMA with shared access privilege */
 	caps = 0;
