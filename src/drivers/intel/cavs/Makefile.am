@@ -5,7 +5,8 @@ libdrivers_la_SOURCES = \
 	dmic.c \
 	hda-dma.c \
 	interrupt.c \
-	ssp.c
+	ssp.c \
+	timer.c
 
 libdrivers_la_CFLAGS = \
 	$(ARCH_CFLAGS) \

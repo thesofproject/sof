@@ -35,6 +35,7 @@
 #include <platform/shim.h>
 #include <sof/debug.h>
 #include <sof/audio/component.h>
+#include <sof/drivers/timer.h>
 #include <stdint.h>
 
 void platform_timer_start(struct timer *timer)
@@ -42,7 +43,7 @@ void platform_timer_start(struct timer *timer)
 	/* run timer */
 	shim_write64(SHIM_DSPWCT0C, 0);
 	shim_write(SHIM_DSPWCTCS,
-		shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0A);
+		   shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0A);
 }
 
 void platform_timer_stop(struct timer *timer)
@@ -50,7 +51,7 @@ void platform_timer_stop(struct timer *timer)
 	/* stop timer */
 	shim_write64(SHIM_DSPWCT0C, 0);
 	shim_write(SHIM_DSPWCTCS,
-		shim_read(SHIM_DSPWCTCS) & ~SHIM_DSPWCTCS_T0A);
+		   shim_read(SHIM_DSPWCTCS) & ~SHIM_DSPWCTCS_T0A);
 }
 
 int platform_timer_set(struct timer *timer, uint64_t ticks)
@@ -62,7 +63,7 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 	/* set new value and run */
 	shim_write64(SHIM_DSPWCT0C, ticks);
 	shim_write(SHIM_DSPWCTCS,
-		shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0A);
+		   shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0A);
 
 	return 0;
 }
@@ -71,7 +72,7 @@ void platform_timer_clear(struct timer *timer)
 {
 	/* write 1 to clear the timer interrupt */
 	shim_write(SHIM_DSPWCTCS,
-		shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0T);
+		   shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0T);
 }
 
 uint64_t platform_timer_get(struct timer *timer)
@@ -82,7 +83,7 @@ uint64_t platform_timer_get(struct timer *timer)
 
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,
-	struct sof_ipc_stream_posn *posn)
+			     struct sof_ipc_stream_posn *posn)
 {
 	int err;
 
@@ -94,7 +95,7 @@ void platform_host_timestamp(struct comp_dev *host,
 
 /* get timestamp for DAI stream DMA position */
 void platform_dai_timestamp(struct comp_dev *dai,
-	struct sof_ipc_stream_posn *posn)
+			    struct sof_ipc_stream_posn *posn)
 {
 	int err;
 

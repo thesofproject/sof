@@ -43,6 +43,7 @@
 #include <sof/trace.h>
 #include <sof/lock.h>
 #include <platform/interrupt.h>
+#include <sof/drivers/timer.h>
 
 #if DEBUG_LOCKS
 #define wait_atomic_check	\

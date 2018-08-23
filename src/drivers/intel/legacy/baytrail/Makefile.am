@@ -3,7 +3,8 @@ noinst_LTLIBRARIES = libdrivers.la
 libdrivers_la_SOURCES = \
 	clk.c \
 	interrupt.c \
-	ssp.c
+	ssp.c \
+	timer.c
 
 libdrivers_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
