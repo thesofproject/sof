@@ -143,27 +143,7 @@ out:
 
 int dma_trace_init_early(struct sof *sof)
 {
-	struct dma_trace_buf *buffer;
-
 	trace_data = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*trace_data));
-	buffer = &trace_data->dmatb;
-
-	/* allocate new buffer */
-	buffer->addr = rballoc(RZONE_RUNTIME,
-			       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-			       DMA_TRACE_LOCAL_SIZE);
-	if (buffer->addr == NULL) {
-		trace_buffer_error("ebm");
-		return -ENOMEM;
-	}
-
-	bzero(buffer->addr, DMA_TRACE_LOCAL_SIZE);
-
-	/* initialise the DMA buffer */
-	buffer->size = DMA_TRACE_LOCAL_SIZE;
-	buffer->w_ptr = buffer->r_ptr = buffer->addr;
-	buffer->end_addr = buffer->addr + buffer->size;
-	buffer->avail = 0;
 
 	list_init(&trace_data->config.elem_list);
 	spinlock_init(&trace_data->lock);
@@ -174,7 +154,6 @@ int dma_trace_init_early(struct sof *sof)
 
 int dma_trace_init_complete(struct dma_trace_data *d)
 {
-	struct dma_trace_buf *buffer = &d->dmatb;
 	int ret;
 
 	trace_buffer("dtn");
@@ -183,7 +162,6 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 	ret = dma_copy_new(&d->dc);
 	if (ret < 0) {
 		trace_buffer_error("edm");
-		rfree(buffer->addr);
 		return ret;
 	}
 
@@ -209,6 +187,31 @@ int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
 	d->host_size = host_size;
 
 	list_item_append(&e->list, &d->config.elem_list);
+	return 0;
+}
+
+static int dma_trace_buffer_init(struct dma_trace_data *d)
+{
+	struct dma_trace_buf *buffer = &d->dmatb;
+
+	/* allocate new buffer */
+	buffer->addr = rballoc(RZONE_RUNTIME,
+			       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+			       DMA_TRACE_LOCAL_SIZE);
+	if (!buffer->addr) {
+		trace_buffer_error("ebm");
+		return -ENOMEM;
+	}
+
+	bzero(buffer->addr, DMA_TRACE_LOCAL_SIZE);
+
+	/* initialise the DMA buffer */
+	buffer->size = DMA_TRACE_LOCAL_SIZE;
+	buffer->w_ptr = buffer->addr;
+	buffer->r_ptr = buffer->addr;
+	buffer->end_addr = buffer->addr + buffer->size;
+	buffer->avail = 0;
+
 	return 0;
 }
 
@@ -271,9 +274,14 @@ static int dma_trace_start(struct dma_trace_data *d)
 
 int dma_trace_enable(struct dma_trace_data *d)
 {
-#if defined CONFIG_DMA_GW
 	int err;
 
+	/* initialize dma trace buffer */
+	err = dma_trace_buffer_init(d);
+	if (err < 0)
+		return err;
+
+#if defined CONFIG_DMA_GW
 	/*
 	 * GW DMA need finish DMA config and start before
 	 * host driver trigger start DMA
@@ -296,10 +304,16 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 void dma_trace_flush(void *t)
 {
-	struct dma_trace_buf *buffer = &trace_data->dmatb;
-	uint32_t avail = buffer->avail;
+	struct dma_trace_buf *buffer = NULL;
+	uint32_t avail;
 	int32_t size;
 	int32_t wrap_count;
+
+	if (!trace_data || !trace_data->dmatb.addr)
+		return;
+
+	buffer = &trace_data->dmatb;
+	avail = buffer->avail;
 
 	/* number of bytes to flush */
 	if (avail > DMA_FLUSH_TRACE_SIZE) {
@@ -359,8 +373,8 @@ void dtrace_event(const char *e, uint32_t length)
 	struct dma_trace_buf *buffer = NULL;
 	unsigned long flags;
 
-	if (trace_data == NULL ||
-		length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
+	if (!trace_data || !trace_data->dmatb.addr ||
+	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
 		return;
 
 	buffer = &trace_data->dmatb;
@@ -391,8 +405,8 @@ void dtrace_event(const char *e, uint32_t length)
 
 void dtrace_event_atomic(const char *e, uint32_t length)
 {
-	if (trace_data == NULL ||
-		length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
+	if (!trace_data || !trace_data->dmatb.addr ||
+	    length > DMA_TRACE_LOCAL_SIZE / 8 || length == 0)
 		return;
 
 	dtrace_add_event(e, length);
