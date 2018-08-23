@@ -158,8 +158,8 @@ static void test_lib_lib_bzero_char_zero_middle_beg(void **state)
 
 	(void) state;
 
-	bzero(test_data->str+test_data_zero_middle->beg,
-		test_data_zero_middle->len);
+	bzero(test_data->str + test_data_zero_middle->beg,
+	      test_data_zero_middle->len);
 	assert_int_equal(check_test_arr(default_char),
 		test_data_zero_middle->beg);
 }
