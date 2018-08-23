@@ -35,6 +35,7 @@
 #include <platform/interrupt.h>
 #include <sof/debug.h>
 #include <sof/audio/component.h>
+#include <sof/drivers/timer.h>
 #include <stdint.h>
 
 struct timer_data {
@@ -112,12 +113,12 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 		/* cant be in the past */
 		arch_interrupt_global_enable(flags);
 		return -EINVAL;
-	} else {
-		/* set for checking at next timeout */
-		time = ticks;
-		timer->hitimeout = hitimeout;
-		timer->lowtimeout = ticks;
 	}
+
+	/* set for checking at next timeout */
+	time = ticks;
+	timer->hitimeout = hitimeout;
+	timer->lowtimeout = ticks;
 
 	/* set new value and run */
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
@@ -148,7 +149,7 @@ uint64_t platform_timer_get(struct timer *timer)
 
 	/* check and see whether 32bit IRQ is pending for timer */
 	if (arch_interrupt_get_status() & IRQ_MASK_EXT_TIMER &&
-		shim_read(SHIM_EXT_TIMER_CNTLL) == 1) {
+	    shim_read(SHIM_EXT_TIMER_CNTLL) == 1) {
 		/* yes, overflow has occurred but handler has not run */
 		high = timer->hitime + 1;
 	} else {
@@ -165,7 +166,7 @@ uint64_t platform_timer_get(struct timer *timer)
 
 /* get timestamp for host stream DMA position */
 void platform_host_timestamp(struct comp_dev *host,
-	struct sof_ipc_stream_posn *posn)
+			     struct sof_ipc_stream_posn *posn)
 {
 	int err;
 
@@ -177,7 +178,7 @@ void platform_host_timestamp(struct comp_dev *host,
 
 /* get timestamp for DAI stream DMA position */
 void platform_dai_timestamp(struct comp_dev *dai,
-	struct sof_ipc_stream_posn *posn)
+			    struct sof_ipc_stream_posn *posn)
 {
 	int err;
 
@@ -199,7 +200,7 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 }
 
 static int platform_timer_register(struct timer *timer,
-	void(*handler)(void *arg), void *arg)
+				   void (*handler)(void *arg), void *arg)
 {
 	struct timer_data *tdata = &xtimer[0];
 	uint32_t flags;
@@ -211,7 +212,8 @@ static int platform_timer_register(struct timer *timer,
 	timer->timer_data = tdata;
 	timer->hitime = 0;
 	timer->hitimeout = 0;
-	ret = arch_interrupt_register(timer->id, platform_timer_64_handler, timer);
+	ret = arch_interrupt_register(timer->id,
+				      platform_timer_64_handler, timer);
 	arch_interrupt_global_enable(flags);
 
 	return ret;

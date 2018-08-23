@@ -1,3 +1,4 @@
 noinst_HEADERS = \
 	clk.h \
-	interrupt.h
+	interrupt.h \
+	timer.h

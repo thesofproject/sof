@@ -6,7 +6,8 @@ libdrivers_la_SOURCES = \
 	hda-dma.c \
 	hda.c \
 	interrupt.c \
-	ssp.c
+	ssp.c \
+	timer.c
 
 libdrivers_la_CFLAGS = \
 	$(AM_CFLAGS) \
