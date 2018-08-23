@@ -576,7 +576,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		if (p->chan[channel].lli)
 			rfree(p->chan[channel].lli);
 		p->chan[channel].lli = rzalloc(RZONE_RUNTIME,
-			SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+			SOF_MEM_CAPS_RAM,
 			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
 		if (p->chan[channel].lli == NULL) {
 			trace_dma_error("eD1");
