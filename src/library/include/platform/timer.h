@@ -39,16 +39,21 @@
 struct comp_dev;
 struct sof_ipc_stream_posn;
 
+// TODO: functions below should go to some drivers mocks else for host library
+
 /* get timestamp for host stream DMA position */
-static inline void platform_host_timestamp(struct comp_dev *host,
-	struct sof_ipc_stream_posn *posn) {}
+static inline void drivers_timer_host_timestamp(struct comp_dev *host,
+						struct sof_ipc_stream_posn *pos)
+{}
 
 /* get timestamp for DAI stream DMA position */
-static inline void platform_dai_timestamp(struct comp_dev *dai,
-	struct sof_ipc_stream_posn *posn) {}
+static inline void drivers_timer_dai_timestamp(struct comp_dev *dai,
+					       struct sof_ipc_stream_posn *pos)
+{}
 
 /* get current wallclock for componnent */
-static inline void platform_dai_wallclock(struct comp_dev *dai,
-	uint64_t *wallclock) {}
+static inline void drivers_timer_dai_wallclock(struct comp_dev *dai,
+					       uint64_t *wallclock)
+{}
 
 #endif

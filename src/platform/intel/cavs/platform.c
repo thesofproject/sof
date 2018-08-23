@@ -152,9 +152,9 @@ struct work_queue_timesource platform_generic_queue[] = {
 	},
 	.clk		= CLK_SSP,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
+	.timer_set	= drivers_timer_set,
+	.timer_clear	= drivers_timer_clear,
+	.timer_get	= drivers_timer_get,
 },
 {
 	.timer	 = {
@@ -163,9 +163,9 @@ struct work_queue_timesource platform_generic_queue[] = {
 	},
 	.clk		= CLK_SSP,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
+	.timer_set	= drivers_timer_set,
+	.timer_clear	= drivers_timer_clear,
+	.timer_get	= drivers_timer_get,
 },
 #if defined(CONFIG_CANNONLAKE)
 {
@@ -175,9 +175,9 @@ struct work_queue_timesource platform_generic_queue[] = {
 	},
 	.clk		= CLK_SSP,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
+	.timer_set	= drivers_timer_set,
+	.timer_clear	= drivers_timer_clear,
+	.timer_get	= drivers_timer_get,
 },
 {
 	.timer	 = {
@@ -186,9 +186,9 @@ struct work_queue_timesource platform_generic_queue[] = {
 	},
 	.clk		= CLK_SSP,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
+	.timer_set	= drivers_timer_set,
+	.timer_clear	= drivers_timer_clear,
+	.timer_get	= drivers_timer_get,
 },
 #endif
 };
@@ -291,7 +291,7 @@ int platform_init(struct sof *sof)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(platform_timer);
+	drivers_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	drivers_clock_init();

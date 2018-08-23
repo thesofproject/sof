@@ -1007,7 +1007,7 @@ static int timestamp_downstream(struct comp_dev *start,
 
 		if (current->comp.type == SOF_COMP_DAI ||
 			current->comp.type == SOF_COMP_SG_DAI) {
-			platform_dai_timestamp(current, posn);
+			drivers_timer_dai_timestamp(current, posn);
 			return 1;
 		}
 	}
@@ -1052,7 +1052,7 @@ static int timestamp_upstream(struct comp_dev *start,
 
 		if (current->comp.type == SOF_COMP_DAI ||
 			current->comp.type == SOF_COMP_SG_DAI) {
-			platform_dai_timestamp(current, posn);
+			drivers_timer_dai_timestamp(current, posn);
 			return 1;
 		}
 	}
@@ -1085,7 +1085,7 @@ upstream:
 void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	struct sof_ipc_stream_posn *posn)
 {
-	platform_host_timestamp(host, posn);
+	drivers_timer_host_timestamp(host, posn);
 
 	if (host->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		timestamp_downstream(host, host, posn);
@@ -1099,7 +1099,7 @@ static void xrun(struct comp_dev *dev, void *data)
 	struct sof_ipc_stream_posn *posn = data;
 
 	/* get host timestamps */
-	platform_host_timestamp(dev, posn);
+	drivers_timer_host_timestamp(dev, posn);
 
 	/* send XRUN to host */
 	ipc_stream_send_xrun(dev, posn);

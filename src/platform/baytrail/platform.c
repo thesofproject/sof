@@ -135,9 +135,9 @@ struct work_queue_timesource platform_generic_queue[] = {
 	},
 	.clk		= PLATFORM_WORKQ_CLOCK,
 	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
+	.timer_set	= drivers_timer_set,
+	.timer_clear	= drivers_timer_clear,
+	.timer_get	= drivers_timer_get,
 },
 };
 
@@ -210,7 +210,7 @@ int platform_init(struct sof *sof)
 	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(platform_timer);
+	drivers_timer_start(platform_timer);
 
 	/* init the system agent */
 	sa_init(sof);

@@ -179,7 +179,7 @@ uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 		_current = arch_timer_get_system(NULL);
 		break;
 	case CLK_SSP:
-		_current = platform_timer_get(platform_timer);
+		_current = drivers_timer_get(platform_timer);
 		break;
 	default:
 		return 0;

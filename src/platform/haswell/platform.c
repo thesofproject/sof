@@ -199,7 +199,7 @@ int platform_init(struct sof *sof)
 	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(platform_timer);
+	drivers_timer_start(platform_timer);
 
 	/* init the system agent */
 	sa_init(sof);

@@ -80,7 +80,7 @@ static void platform_timer_64_handler(void *arg)
 	shim_write(SHIM_EXT_TIMER_CNTLL, timeout);
 }
 
-void platform_timer_start(struct timer *timer)
+void drivers_timer_start(struct timer *timer)
 {
 	/* run timer */
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_RUN);
@@ -88,14 +88,14 @@ void platform_timer_start(struct timer *timer)
 }
 
 /* this seems to stop rebooting with RTD3 ???? */
-void platform_timer_stop(struct timer *timer)
+void drivers_timer_stop(struct timer *timer)
 {
 	/* run timer */
 	shim_write(SHIM_EXT_TIMER_CNTLL, 0);
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_CLEAR);
 }
 
-int platform_timer_set(struct timer *timer, uint64_t ticks)
+int drivers_timer_set(struct timer *timer, uint64_t ticks)
 {
 	uint32_t time = 1;
 	uint32_t hitimeout = ticks >> 32;
@@ -129,13 +129,13 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 	return 0;
 }
 
-void platform_timer_clear(struct timer *timer)
+void drivers_timer_clear(struct timer *timer)
 {
 	/* we don't use the timer clear bit as we only need to clear the ISR */
 	shim_write(SHIM_PISR, SHIM_PISR_EXT_TIMER);
 }
 
-uint64_t platform_timer_get(struct timer *timer)
+uint64_t drivers_timer_get(struct timer *timer)
 {
 	uint64_t time;
 	uint32_t flags;
@@ -165,8 +165,8 @@ uint64_t platform_timer_get(struct timer *timer)
 }
 
 /* get timestamp for host stream DMA position */
-void platform_host_timestamp(struct comp_dev *host,
-			     struct sof_ipc_stream_posn *posn)
+void drivers_timer_host_timestamp(struct comp_dev *host,
+				  struct sof_ipc_stream_posn *posn)
 {
 	int err;
 
@@ -177,8 +177,8 @@ void platform_host_timestamp(struct comp_dev *host,
 }
 
 /* get timestamp for DAI stream DMA position */
-void platform_dai_timestamp(struct comp_dev *dai,
-			    struct sof_ipc_stream_posn *posn)
+void drivers_timer_dai_timestamp(struct comp_dev *dai,
+				 struct sof_ipc_stream_posn *posn)
 {
 	int err;
 
@@ -188,15 +188,15 @@ void platform_dai_timestamp(struct comp_dev *dai,
 		posn->flags |= SOF_TIME_DAI_VALID;
 
 	/* get SSP wallclock - DAI sets this to stream start value */
-	posn->wallclock = platform_timer_get(platform_timer) - posn->wallclock;
+	posn->wallclock = drivers_timer_get(platform_timer) - posn->wallclock;
 	posn->flags |= SOF_TIME_WALL_VALID | SOF_TIME_WALL_64;
 }
 
 /* get current wallclock for component */
-void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+void drivers_timer_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on BYT */
-	*wallclock = platform_timer_get(platform_timer);
+	*wallclock = drivers_timer_get(platform_timer);
 }
 
 static int platform_timer_register(struct timer *timer,

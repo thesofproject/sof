@@ -559,7 +559,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		/* update starting wallclock */
-		platform_dai_wallclock(dev, &dd->wallclock);
+		drivers_timer_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_RELEASE:
 		/* only start the DAI if we are not XRUN handling */
@@ -578,7 +578,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		}
 
 		/* update starting wallclock */
-		platform_dai_wallclock(dev, &dd->wallclock);
+		drivers_timer_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_XRUN:
 		dd->xrun = 1;

@@ -177,7 +177,7 @@ static struct task *schedule_edf(void)
 	tracev_pipe("edf");
 
 	/* get the current time */
-	current = platform_timer_get(platform_timer);
+	current = drivers_timer_get(platform_timer);
 
 	/* get next task to be scheduled */
 	task = edf_get_next(current, NULL);
@@ -250,7 +250,7 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	}
 
 	/* get the current time */
-	current = platform_timer_get(platform_timer);
+	current = drivers_timer_get(platform_timer);
 
 	/* calculate start time - TODO: include MIPS */
 	if (start == 0)

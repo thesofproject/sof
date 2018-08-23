@@ -53,7 +53,7 @@ void _trace_event(uint32_t event)
 	if (!trace.enable)
 		return;
 
-	dt[0] = platform_timer_get(platform_timer);
+	dt[0] = drivers_timer_get(platform_timer);
 	dt[1] = event;
 	dtrace_event((const char *)dt, sizeof(uint64_t) * 2);
 }
@@ -65,7 +65,7 @@ void _trace_event_atomic(uint32_t event)
 	if (!trace.enable)
 		return;
 
-	dt[0] = platform_timer_get(platform_timer);
+	dt[0] = drivers_timer_get(platform_timer);
 	dt[1] = event;
 	dtrace_event_atomic((const char *)dt, sizeof(uint64_t) * 2);
 }
@@ -82,7 +82,7 @@ void _trace_event_mbox(uint32_t event)
 	if (!trace.enable)
 		return;
 
-	time = platform_timer_get(platform_timer);
+	time = drivers_timer_get(platform_timer);
 
 	dt[0] = time;
 	dt[1] = event;
@@ -116,7 +116,7 @@ void _trace_event_mbox_atomic(uint32_t event)
 	if (!trace.enable)
 		return;
 
-	time = platform_timer_get(platform_timer);
+	time = drivers_timer_get(platform_timer);
 
 	dt[0] = time;
 	dt[1] = event;

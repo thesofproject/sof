@@ -152,9 +152,9 @@ static inline int wait_for_completion_timeout(completion_t *comp)
  */
 static inline void wait_delay(uint64_t number_of_clks)
 {
-	uint64_t current = platform_timer_get(platform_timer);
+	uint64_t current = drivers_timer_get(platform_timer);
 
-	while ((platform_timer_get(platform_timer) - current) < number_of_clks)
+	while ((drivers_timer_get(platform_timer) - current) < number_of_clks)
 		idelay(PLATFORM_DEFAULT_DELAY);
 }
 

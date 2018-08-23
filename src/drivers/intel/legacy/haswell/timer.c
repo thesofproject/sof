@@ -36,34 +36,34 @@
 #include <sof/drivers/timer.h>
 #include <stdint.h>
 
-void platform_timer_start(struct timer *timer)
+void drivers_timer_start(struct timer *timer)
 {
 	arch_timer_enable(timer);
 }
 
-void platform_timer_stop(struct timer *timer)
+void drivers_timer_stop(struct timer *timer)
 {
 	arch_timer_disable(timer);
 }
 
-int platform_timer_set(struct timer *timer, uint64_t ticks)
+int drivers_timer_set(struct timer *timer, uint64_t ticks)
 {
 	return arch_timer_set(timer, ticks);
 }
 
-void platform_timer_clear(struct timer *timer)
+void drivers_timer_clear(struct timer *timer)
 {
 	arch_timer_clear(timer);
 }
 
-uint64_t platform_timer_get(struct timer *timer)
+uint64_t drivers_timer_get(struct timer *timer)
 {
 	return arch_timer_get_system(timer);
 }
 
 /* get timestamp for host stream DMA position */
-void platform_host_timestamp(struct comp_dev *host,
-			     struct sof_ipc_stream_posn *posn)
+void drivers_timer_host_timestamp(struct comp_dev *host,
+				  struct sof_ipc_stream_posn *posn)
 {
 	int err;
 
@@ -74,8 +74,8 @@ void platform_host_timestamp(struct comp_dev *host,
 }
 
 /* get timestamp for DAI stream DMA position */
-void platform_dai_timestamp(struct comp_dev *dai,
-			    struct sof_ipc_stream_posn *posn)
+void drivers_timer_dai_timestamp(struct comp_dev *dai,
+				 struct sof_ipc_stream_posn *posn)
 {
 	int err;
 
@@ -90,7 +90,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 }
 
 /* get current wallclock for componnent */
-void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+void drivers_timer_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 {
 	/* only 1 wallclock on HSW */
 	*wallclock = timer_get_system(platform_timer);

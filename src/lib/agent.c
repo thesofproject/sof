@@ -55,7 +55,7 @@ void sa_enter_idle(struct sof *sof)
 {
 	struct sa *sa = sof->sa;
 
-	sa->last_idle = platform_timer_get(platform_timer);
+	sa->last_idle = drivers_timer_get(platform_timer);
 }
 
 static uint64_t validate(void *data, uint64_t delay)
@@ -64,7 +64,7 @@ static uint64_t validate(void *data, uint64_t delay)
 	uint64_t current;
 	uint64_t delta;
 
-	current = platform_timer_get(platform_timer);
+	current = drivers_timer_get(platform_timer);
 	delta = current - sa->last_idle;
 
 	/* were we last idle longer than timeout */
@@ -91,7 +91,7 @@ void sa_init(struct sof *sof)
 	trace_sa_value(sa->ticks);
 
 	/* set lst idle time to now to give time for boot completion */
-	sa->last_idle = platform_timer_get(platform_timer) + sa->ticks;
+	sa->last_idle = drivers_timer_get(platform_timer) + sa->ticks;
 	work_init(&sa->work, validate, sa, WORK_ASYNC);
 	work_schedule_default(&sa->work, PLATFORM_IDLE_TIME);
 }
