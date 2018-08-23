@@ -73,7 +73,6 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		return NULL;
 	}
 
-	bzero(buffer->addr, desc->size);
 	memcpy(&buffer->ipc_buffer, desc, sizeof(*desc));
 
 	buffer->size = buffer->alloc_size = desc->size;
@@ -83,6 +82,8 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	buffer->free = buffer->ipc_buffer.size;
 	buffer->avail = 0;
 	buffer->connected = 0;
+
+	buffer_zero(buffer);
 
 	spinlock_init(&buffer->lock);
 

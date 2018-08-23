@@ -106,11 +106,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 				struct comp_buffer, sink_list);
 
 			/* fill buffer with silence */
-			bzero(dma_buffer->addr, dma_buffer->size);
-
-			/* writeback buffer contents from cache */
-			dcache_writeback_region(dma_buffer->addr,
-				dma_buffer->size);
+			buffer_zero(dma_buffer);
 		}
 		return;
 	}
@@ -456,6 +452,7 @@ static int dai_prepare(struct comp_dev *dev)
 			struct comp_buffer, source_list);
 	}
 
+	/* TODO: not sure what this wb is for? */
 	/* write back buffer contents from cache */
 	dcache_writeback_region(dma_buffer->addr, dma_buffer->size);
 

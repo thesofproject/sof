@@ -247,7 +247,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
 	/* clear mailbox for early trace and debug */
-	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
+	bzero((void *)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 	platform_init_shim();
