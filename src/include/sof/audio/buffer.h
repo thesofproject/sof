@@ -85,6 +85,15 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
+static inline void buffer_zero(struct comp_buffer *buffer)
+{
+	tracev_buffer("BZr");
+
+	bzero(buffer->addr, buffer->size);
+	if (buffer->ipc_buffer.caps & SOF_MEM_CAPS_DMA)
+		dcache_writeback_region(buffer->addr, buffer->size);
+}
+
 /* get the max number of bytes that can be copied between sink and source */
 static inline int comp_buffer_can_copy_bytes(struct comp_buffer *source,
 	struct comp_buffer *sink, uint32_t bytes)
@@ -122,7 +131,7 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer)
 	buffer->avail = 0;
 
 	/* clear buffer contents */
-	bzero(buffer->addr, buffer->size);
+	buffer_zero(buffer);
 }
 
 /* set the runtime size of a buffer in bytes and improve the data cache */
@@ -137,13 +146,6 @@ static inline int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	buffer->end_addr = buffer->addr + size;
 	buffer->size = size;
 	return 0;
-}
-
-static inline void buffer_zero(struct comp_buffer *buffer)
-{
-	tracev_buffer("BZr");
-
-	bzero(buffer->addr, buffer->size);
 }
 
 #endif

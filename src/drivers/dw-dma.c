@@ -591,7 +591,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	/* initialise descriptors */
 	bzero(p->chan[channel].lli, sizeof(struct dw_lli2) *
-		p->chan[channel].desc_count);
+	      p->chan[channel].desc_count);
 	lli_desc = lli_desc_head = p->chan[channel].lli;
 	lli_desc_tail = p->chan[channel].lli + p->chan[channel].desc_count - 1;
 
