@@ -30,6 +30,14 @@
 
 #include <xtensa/xtruntime.h>
 
+/* returns previous mask */
+#define arch_interrupt_enable_mask(mask) \
+	_xtos_ints_on(mask)
+
+/* returns previous mask */
+#define arch_interrupt_disable_mask(mask) \
+	_xtos_ints_off(mask)
+
 #if defined(PLATFORM_WAITI_DELAY)
 
 static inline void arch_wait_for_interrupt(int level)
@@ -59,6 +67,17 @@ static inline void arch_wait_for_interrupt(int level)
 }
 
 #endif
+
+static inline void arch_wait_for_interrupt_mask(int level, uint32_t mask)
+{
+	/* unmask IRQ source */
+	arch_interrupt_enable_mask(mask);
+
+	arch_wait_for_interrupt(level);
+
+	/* mask IRQ source */
+	arch_interrupt_disable_mask(mask);
+}
 
 static inline void idelay(int n)
 {

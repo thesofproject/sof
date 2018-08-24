@@ -60,12 +60,18 @@ typedef struct {
 } completion_t;
 
 void arch_wait_for_interrupt(int level);
+void arch_wait_for_interrupt_mask(int level, uint32_t mask);
 
 static inline void wait_for_interrupt(int level)
 {
+	arch_wait_for_interrupt(level);
+}
+
+static inline void wait_for_interrupt_mask(int level, uint32_t mask)
+{
 	tracev_event(TRACE_CLASS_WAIT, "WFE");
 	wait_atomic_check;
-	arch_wait_for_interrupt(level);
+	arch_wait_for_interrupt_mask(level, mask);
 	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }
 
