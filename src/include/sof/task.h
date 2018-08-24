@@ -40,9 +40,9 @@ int do_task_master_core(struct sof *sof);
 
 int do_task_slave_core(struct sof *sof);
 
-static inline void allocate_tasks(void)
+static inline int allocate_tasks(void)
 {
-	arch_allocate_tasks();
+	return arch_allocate_tasks();
 }
 
 static inline void run_task(struct task *task)

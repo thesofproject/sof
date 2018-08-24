@@ -345,12 +345,23 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 	case SOF_CTRL_CMD_BINARY:
 		trace_eq("gbi");
 
+		struct sof_eq_fir_config *cfg =
+			(struct sof_eq_fir_config *)cdata->data->data;
+
 		/* Copy back to user space */
-		bs = cd->config->size;
+		bs = cfg->size;
 		if (bs > SOF_EQ_FIR_MAX_SIZE || bs < 1)
 			return -EINVAL;
-		if (!cd->config)
+		if (!cd->config) {
+			cd->config = rzalloc(RZONE_RUNTIME,
+					     SOF_MEM_CAPS_RAM,
+					     bs);
+
+			if (!cd->config)
+				return -ENOMEM;
+
 			memcpy(cdata->data->data, cd->config, bs);
+		}
 		break;
 	default:
 		trace_eq_error("egt");

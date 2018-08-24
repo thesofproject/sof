@@ -375,6 +375,10 @@ int scheduler_init(struct sof *sof)
 
 	struct schedule_data **sch = arch_schedule_get();
 	*sch = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**sch));
+
+	if (!*sch)
+		return -ENOMEM;
+
 	list_init(&((*sch)->list));
 	spinlock_init(&((*sch)->lock));
 	(*sch)->clock = PLATFORM_SCHED_CLOCK;
@@ -385,9 +389,9 @@ int scheduler_init(struct sof *sof)
 	interrupt_enable(PLATFORM_SCHEDULE_IRQ);
 
 	/* allocate arch tasks */
-	allocate_tasks();
+	int tasks_result = allocate_tasks();
 
-	return 0;
+	return tasks_result;
 }
 
 /* Frees scheduler */

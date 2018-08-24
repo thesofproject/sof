@@ -167,11 +167,15 @@ static inline void arch_run_task(struct task *task)
 /**
  * \brief Allocates IRQ tasks.
  */
-static inline void arch_allocate_tasks(void)
+static inline int arch_allocate_tasks(void)
 {
 	/* irq low */
 	struct irq_task **low = task_irq_low_get();
 	*low = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**low));
+
+	if (!*low)
+		return -ENOMEM;
+
 	list_init(&((*low)->list));
 	spinlock_init(&((*low)->lock));
 	(*low)->irq = PLATFORM_IRQ_TASK_LOW;
@@ -179,6 +183,10 @@ static inline void arch_allocate_tasks(void)
 	/* irq medium */
 	struct irq_task **med = task_irq_med_get();
 	*med = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**med));
+
+	if (!*med)
+		return -ENOMEM;
+
 	list_init(&((*med)->list));
 	spinlock_init(&((*med)->lock));
 	(*med)->irq = PLATFORM_IRQ_TASK_MED;
@@ -186,9 +194,15 @@ static inline void arch_allocate_tasks(void)
 	/* irq high */
 	struct irq_task **high = task_irq_high_get();
 	*high = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**high));
+
+	if (!*high)
+		return -ENOMEM;
+
 	list_init(&((*high)->list));
 	spinlock_init(&((*high)->lock));
 	(*high)->irq = PLATFORM_IRQ_TASK_HIGH;
+
+	return 0;
 }
 
 /**
