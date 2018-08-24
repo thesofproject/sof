@@ -48,7 +48,7 @@
 #include <sof/work.h>
 #include <sof/clock.h>
 #include "volume.h"
-
+#include <sof/math/numbers.h>
 /**
  * \brief Synchronize host mmap() volume with real value.
  * \param[in,out] cd Volume component private data.
@@ -192,14 +192,15 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	comp_set_drvdata(dev, cd);
 	work_init(&cd->volwork, vol_work, dev, WORK_ASYNC);
 
-	/* set the default volumes */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		cd->volume[i] = VOL_ZERO_DB;
-		cd->tvolume[i] = VOL_ZERO_DB;
-	}
-
 	/* set volume min/max levels */
 	vol_set_min_max_levels(cd, ipc_vol->min_value, ipc_vol->max_value);
+
+	/* set the default volumes */
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+		cd->volume[i]  =  MAX(MIN(cd->max_volume,
+						  VOL_ZERO_DB), cd->min_volume);
+		cd->tvolume[i] =  cd->volume[i];
+	}
 
 	dev->state = COMP_STATE_READY;
 	return dev;
