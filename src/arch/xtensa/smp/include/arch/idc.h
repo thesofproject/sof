@@ -42,6 +42,7 @@
 #include <platform/interrupt.h>
 #include <platform/platform.h>
 #include <sof/alloc.h>
+#include <sof/ipc.h>
 #include <sof/lock.h>
 #include <sof/trace.h>
 
@@ -89,8 +90,24 @@
 #define IDC_MSG_POWER_DOWN	IDC_TYPE(0x2)
 #define IDC_MSG_POWER_DOWN_EXT	IDC_EXTENSION(0x0)
 
+/** \brief IDC trigger pipeline message. */
+#define IDC_MSG_PPL_COMP_SHIFT		4
+#define IDC_MSG_PPL_COMP(x)		((x) << IDC_MSG_PPL_COMP_SHIFT)
+#define IDC_MSG_PPL_CMD_MASK		0xf
+#define IDC_MSG_PPL_CMD(x)		((x) & IDC_MSG_PPL_CMD_MASK)
+#define IDC_MSG_PPL_TRIGGER		IDC_TYPE(0x3)
+#define IDC_MSG_PPL_TRIGGER_EXT(x, y)	IDC_EXTENSION( \
+						IDC_MSG_PPL_COMP(x) | \
+						IDC_MSG_PPL_CMD(y))
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
+
+/** \brief Decodes component id from IDC trigger pipeline message. */
+#define iPTComp(x)	((x) >> IDC_MSG_PPL_COMP_SHIFT)
+
+/** \brief Decodes command from IDC trigger pipeline message. */
+#define iPTCommand(x)	((x) & IDC_MSG_PPL_CMD_MASK)
 
 /** \brief IDC message. */
 struct idc_msg {
@@ -108,6 +125,7 @@ struct idc {
 	struct idc_msg received_msg;	/**< received message */
 };
 
+extern struct ipc *_ipc;
 extern void cpu_power_down_core(void);
 
 /**
@@ -221,6 +239,36 @@ static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	return ret;
 }
 
+static inline int idc_pipeline_trigger(uint32_t comp_id, uint32_t cmd)
+{
+	struct ipc_comp_dev *pcm_dev;
+	int ret;
+
+	/* check whether component exists */
+	pcm_dev = ipc_get_comp(_ipc, comp_id);
+	if (!pcm_dev)
+		return -ENODEV;
+
+	/* check whether we are executing from the right core */
+	if (arch_cpu_get_id() != pcm_dev->cd->pipeline->ipc_pipe.core)
+		return -EINVAL;
+
+	/* invalidate pipeline on start */
+	if (cmd == COMP_TRIGGER_START)
+		pipeline_cache(pcm_dev->cd->pipeline,
+			       pcm_dev->cd, COMP_CACHE_INVALIDATE);
+
+	/* trigger pipeline */
+	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
+
+	/* writeback pipeline on stop */
+	if (cmd == COMP_TRIGGER_STOP)
+		pipeline_cache(pcm_dev->cd->pipeline,
+			       pcm_dev->cd, COMP_CACHE_WRITEBACK_INV);
+
+	return ret;
+}
+
 /**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
@@ -232,6 +280,10 @@ static inline void idc_cmd(struct idc_msg *msg)
 	switch (type) {
 	case iTS(IDC_MSG_POWER_DOWN):
 		cpu_power_down_core();
+		break;
+	case iTS(IDC_MSG_PPL_TRIGGER):
+		idc_pipeline_trigger(iPTComp(msg->extension),
+				     iPTCommand(msg->extension));
 		break;
 	default:
 		trace_idc_error("eTc");
