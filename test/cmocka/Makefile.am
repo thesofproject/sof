@@ -9,6 +9,9 @@ endif
 # cmocka needs stdlib
 override LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
+# turn of optimization if You need to debug UT using Xplorer
+#override CFLAGS := $(filter-out -O2,$(CFLAGS))
+
 override AM_CFLAGS := \
 	$(filter-out -nostdlib,$(AM_CFLAGS)) \
 	$(SOF_INCDIR)
@@ -66,6 +69,9 @@ pipeline_new_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_n
 
 check_PROGRAMS += pipeline_new_allocation
 pipeline_new_allocation_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new_allocation.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_new_allocation_mocks.c
+
+check_PROGRAMS += pipeline_connect_upstream
+pipeline_connect_upstream_SOURCES = ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_connect_upstream.c src/audio/pipeline/pipeline_mocks_rzalloc.c
 
 # volume tests
 
