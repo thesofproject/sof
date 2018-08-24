@@ -113,6 +113,7 @@
 #define COMP_OPS_COPY		3
 #define COMP_OPS_BUFFER		4
 #define COMP_OPS_RESET		5
+#define COMP_OPS_CACHE		6
 
 #define trace_comp(__e)	trace_event(TRACE_CLASS_COMP, __e)
 #define trace_comp_error(__e)	trace_error(TRACE_CLASS_COMP, __e)
@@ -399,6 +400,20 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 	trace_value((min_bytes << 16) | copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
+}
+
+static inline cache_command comp_get_cache_command(int cmd)
+{
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		return &dcache_writeback_invalidate_region;
+	case COMP_CACHE_INVALIDATE:
+		return &dcache_invalidate_region;
+	default:
+		trace_comp_error("cu0");
+		trace_error_value(cmd);
+		return NULL;
+	}
 }
 
 #endif
