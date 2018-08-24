@@ -366,38 +366,28 @@ static int ipc_stream_position(uint32_t header)
 int ipc_stream_send_position(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	struct sof_ipc_hdr hdr;
-
 	tracev_ipc("Pos");
-	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
-			      cdev->comp.id;
+	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
+			cdev->comp.id;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	hdr.cmd = posn->rhdr.hdr.cmd;
-	hdr.size = sizeof(hdr);
-
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
-				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
+				      sizeof(*posn), 0);
 }
 
 /* send stream position TODO: send compound message  */
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	struct sof_ipc_hdr hdr;
-
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_XRUN;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	hdr.cmd = posn->rhdr.hdr.cmd;
-	hdr.size = sizeof(hdr);
-
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
-				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
+				      sizeof(*posn), 0);
 }
 
 static int ipc_stream_trigger(uint32_t header)
@@ -736,7 +726,7 @@ int ipc_dma_trace_send_position(void)
 	posn.rhdr.hdr.size = sizeof(posn);
 
 	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,
-		sizeof(posn), NULL, 0, NULL, NULL, 1);
+				      sizeof(posn), 1);
 }
 
 static int ipc_glb_debug_message(uint32_t header)
@@ -1090,9 +1080,8 @@ static inline struct ipc_msg *msg_find(struct ipc *ipc, uint32_t header,
 	}
 }
 
-int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
-	void *tx_data, size_t tx_bytes, void *rx_data,
-	size_t rx_bytes, void (*cb)(void*, void*), void *cb_data, uint32_t replace)
+int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
+			   size_t tx_bytes, uint32_t replace)
 {
 	struct ipc_msg *msg = NULL;
 	uint32_t flags, found = 0;
@@ -1119,9 +1108,6 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	/* prepare the message */
 	msg->header = header;
 	msg->tx_size = tx_bytes;
-	msg->rx_size = rx_bytes;
-	msg->cb_data = cb_data;
-	msg->cb = cb;
 
 	/* copy mailbox data to message */
 	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
