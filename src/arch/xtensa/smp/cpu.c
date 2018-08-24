@@ -54,7 +54,7 @@ void arch_cpu_enable_core(int id)
 
 	spin_lock_irq(&lock, flags);
 
-	if (!(active_cores_mask & (1 << id))) {
+	if (!arch_cpu_is_core_enabled(id)) {
 		/* allocate resources for core */
 		alloc_core_context(id);
 
@@ -78,7 +78,7 @@ void arch_cpu_disable_core(int id)
 
 	spin_lock_irq(&lock, flags);
 
-	if (active_cores_mask & (1 << id)) {
+	if (arch_cpu_is_core_enabled(id)) {
 		arch_idc_send_msg(&power_down, IDC_NON_BLOCKING);
 
 		active_cores_mask ^= (1 << id);
