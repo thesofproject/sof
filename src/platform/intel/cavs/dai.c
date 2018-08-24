@@ -45,6 +45,9 @@
 #include <string.h>
 #include <config.h>
 
+/* TODO: ops should be declared by their respective dai headers */
+extern const struct dai_ops hda_ops;
+
 static struct dai ssp[] = {
 {
 	.type = SOF_DAI_INTEL_SSP,
@@ -201,6 +204,75 @@ static struct dai dmic[2] = {
 
 #endif
 
+/* TODO: numbers to be defined and shared with HD/A dmas */
+static struct dai hda[(6 + 7)] = {
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 0,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 1,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 2,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 3,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 4,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 5,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 6,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 7,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 8,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 9,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 10,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 11,
+		.ops = &hda_ops
+	},
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.index = 12,
+		.ops = &hda_ops
+	}
+};
+
 struct dai *dai_get(uint32_t type, uint32_t index)
 {
 	int i;
@@ -220,6 +292,11 @@ struct dai *dai_get(uint32_t type, uint32_t index)
 		}
 	}
 #endif
-
+	if (type == SOF_DAI_INTEL_HDA) {
+		for (i = 0; i < ARRAY_SIZE(hda); i++) {
+			if (hda[i].type == type && hda[i].index == index)
+				return &hda[i];
+		}
+	}
 	return NULL;
 }

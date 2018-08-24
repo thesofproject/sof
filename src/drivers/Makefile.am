@@ -27,6 +27,7 @@ if BUILD_APOLLOLAKE
 libdrivers_a_SOURCES += \
 	apl-ssp.c \
 	hda-dma.c \
+	cavs-hda.c \
 	dmic.c
 endif
 
