@@ -83,7 +83,11 @@ int do_task(struct sof *sof)
 
 		/* sleep until next IPC or DMA */
 		sa_enter_idle(sof);
-		wait_for_interrupt(0);
+
+		/* only handle IPC before ipc_process_msg_queue */
+		ipc_process_set_ready();
+		wait_for_interrupt_mask(0, 1 << 3 | 1 << 2);
+		ipc_process_set_unready();
 
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();

@@ -131,9 +131,6 @@ done:
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) |IPC_DIPCTDR_BUSY);
 	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) |IPC_DIPCTDA_BUSY );
 
-	/* unmask Busy interrupt */
-	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
-
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
@@ -142,6 +139,18 @@ done:
 	}
 
 	tracev_ipc("CmD");
+}
+
+void ipc_platform_mask_irq(void)
+{
+	/* mask Busy interrupt */
+	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCTBIE);
+}
+
+void ipc_platform_unmask_irq(void)
+{
+	/* unmask Busy interrupt */
+	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)

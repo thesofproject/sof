@@ -119,6 +119,8 @@ int ipc_init(struct sof *sof);
 int platform_ipc_init(struct ipc *ipc);
 void ipc_free(struct ipc *ipc);
 
+void ipc_process_set_ready(void);
+void ipc_process_set_unready(void);
 int ipc_process_msg_queue(void);
 
 int ipc_stream_send_position(struct comp_dev *cdev,
@@ -131,6 +133,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	size_t rx_bytes, void (*cb)(void*, void*), void *cb_data, uint32_t replace);
 int ipc_send_short_msg(uint32_t msg);
 
+void ipc_platform_mask_irq(void);
+void ipc_platform_unmask_irq(void);
 void ipc_platform_do_cmd(struct ipc *ipc);
 void ipc_platform_send_msg(struct ipc *ipc);
 

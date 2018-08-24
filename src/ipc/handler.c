@@ -1119,6 +1119,18 @@ out:
 	return ret;
 }
 
+void ipc_process_set_unready(void)
+{
+	/* not ready to handle ipc irq, mask it */
+	ipc_platform_mask_irq();
+}
+
+void ipc_process_set_ready(void)
+{
+	/* ready to handle ipc irq, unmask it */
+	ipc_platform_unmask_irq();
+}
+
 /* process current message */
 int ipc_process_msg_queue(void)
 {
