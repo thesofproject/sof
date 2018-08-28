@@ -82,29 +82,34 @@ struct ipc_msg {
 	void *cb_data;
 };
 
-struct ipc {
-	/* messaging */
-	uint32_t host_msg;		/* current message from host */
-	struct ipc_msg *dsp_msg;		/* current message to host */
-	uint32_t host_pending;
+struct ipc_shared_context {
+	struct ipc_msg *dsp_msg;	/* current message to host */
 	uint32_t dsp_pending;
 	struct list_item msg_list;
 	struct list_item empty_list;
-	spinlock_t lock;
 	struct ipc_msg message[MSG_QUEUE_SIZE];
+
+	struct list_item comp_list;	/* list of component devices */
+};
+
+struct ipc {
+	/* messaging */
+	uint32_t host_msg;		/* current message from host */
+	uint32_t host_pending;
+	spinlock_t lock;
 	void *comp_data;
 
 	/* RX call back */
 	int (*cb)(struct ipc_msg *msg);
-
-	/* pipelines, components and buffers */
-	struct list_item comp_list;		/* list of component devices */
 
 	/* DMA for Trace*/
 	struct dma_trace_data *dmat;
 
 	/* mmap for posn_offset */
 	struct pipeline *posn_map[PLATFORM_MAX_STREAMS];
+
+	/* context shared between cores */
+	struct ipc_shared_context *shared_ctx;
 
 	void *private;
 };

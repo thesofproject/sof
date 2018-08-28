@@ -55,7 +55,7 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_item(clist, cache_to_uncache(&ipc->comp_list)) {
+	list_for_item(clist, &ipc->shared_ctx->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -132,7 +132,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	icd->type = COMP_TYPE_COMPONENT;
 
 	/* add new component to the list */
-	list_item_append(&icd->list, cache_to_uncache(&ipc->comp_list));
+	list_item_append(&icd->list, &ipc->shared_ctx->comp_list);
 	return ret;
 }
 
@@ -185,7 +185,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	ibd->type = COMP_TYPE_BUFFER;
 
 	/* add new buffer to the list */
-	list_item_append(&ibd->list, cache_to_uncache(&ipc->comp_list));
+	list_item_append(&ibd->list, &ipc->shared_ctx->comp_list);
 	return ret;
 }
 
@@ -291,7 +291,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
 
 	/* add new pipeline to the list */
-	list_item_append(&ipc_pipe->list, cache_to_uncache(&ipc->comp_list));
+	list_item_append(&ipc_pipe->list, &ipc->shared_ctx->comp_list);
 	return 0;
 }
 
@@ -338,7 +338,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 	int ret = 0;
 
 	/* for each component */
-	list_for_item(clist, cache_to_uncache(&ipc->comp_list)) {
+	list_for_item(clist, &ipc->shared_ctx->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -513,10 +513,22 @@ int ipc_init(struct sof *sof)
 	for (i = 0; i < PLATFORM_MAX_STREAMS; i++)
 		sof->ipc->posn_map[i] = NULL;
 
-	dcache_writeback_invalidate_region(sof->ipc, sizeof(*sof->ipc));
+	spinlock_init(&sof->ipc->lock);
 
-	/* component list shared between cores */
-	list_init(cache_to_uncache(&sof->ipc->comp_list));
+	sof->ipc->shared_ctx = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED,
+				       SOF_MEM_CAPS_RAM,
+				       sizeof(*sof->ipc->shared_ctx));
+
+	dcache_writeback_region(sof->ipc, sizeof(*sof->ipc));
+
+	sof->ipc->shared_ctx->dsp_msg = NULL;
+	list_init(&sof->ipc->shared_ctx->empty_list);
+	list_init(&sof->ipc->shared_ctx->msg_list);
+	list_init(&sof->ipc->shared_ctx->comp_list);
+
+	for (i = 0; i < MSG_QUEUE_SIZE; i++)
+		list_item_prepend(&sof->ipc->shared_ctx->message[i].list,
+				  &sof->ipc->shared_ctx->empty_list);
 
 	return platform_ipc_init(sof->ipc);
 }
