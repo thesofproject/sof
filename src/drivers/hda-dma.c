@@ -84,8 +84,7 @@
 
 #define HDA_DMA_MAX_CHANS		9
 
-/* TODO: 10% adjustment for inaccurate queue timer */
-#define HDA_LINK_1MS_US	1010
+#define HDA_LINK_1MS_US	1000
 
 struct hda_chan_data {
 	struct dma *dma;
