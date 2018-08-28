@@ -50,6 +50,7 @@
 struct clk_data {
 	uint32_t freq;
 	uint32_t ticks_per_usec;
+	uint32_t ticks_per_msec;
 	spinlock_t lock;
 };
 
@@ -60,6 +61,7 @@ struct clk_pdata {
 struct freq_table {
 	uint32_t freq;
 	uint32_t ticks_per_usec;
+	uint32_t ticks_per_msec;
 	uint32_t enc;
 };
 
@@ -69,14 +71,14 @@ static struct clk_pdata *clk_pdata;
 
 #if defined(CONFIG_APOLLOLAKE)
 static const struct freq_table cpu_freq[] = {
-	{100000000, 100, 0x3},
-	{200000000, 200, 0x1},
-	{400000000, 400, 0x0}, /* default */
+	{100000000, 100, 100000, 0x3},
+	{200000000, 200, 200000, 0x1},
+	{400000000, 400, 400000, 0x0}, /* default */
 };
 #elif defined(CONFIG_CANNONLAKE)
 static const struct freq_table cpu_freq[] = {
-	{120000000, 120, 0x0},
-	{400000000, 400, 0x4},
+	{120000000, 120, 120000, 0x0},
+	{400000000, 400, 400000, 0x4},
 };
 #endif
 
@@ -86,13 +88,13 @@ static const struct freq_table cpu_freq[] = {
 
 #if defined(CONFIG_APOLLOLAKE)
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19,},	/* default */
-	{24576000, 24,},
+	{19200000, 19, 19200, },	/* default */
+	{24576000, 24, 24576, },
 };
 #elif defined(CONFIG_CANNONLAKE)
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19,},
-	{24000000, 24,},	/* default */
+	{19200000, 19, 19200, },
+	{24000000, 24, 24000, },	/* default */
 };
 #endif
 
@@ -194,6 +196,11 @@ uint64_t clock_us_to_ticks(int clock, uint64_t us)
 	return clk_pdata->clk[clock].ticks_per_usec * us;
 }
 
+uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
+{
+	return clk_pdata->clk[clock].ticks_per_msec * ms;
+}
+
 uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 {
 	uint64_t _current;
@@ -230,7 +237,11 @@ void init_platform_clocks(void)
 	clk_pdata->clk[CLK_CPU].freq = cpu_freq[CPU_DEFAULT_IDX].freq;
 	clk_pdata->clk[CLK_CPU].ticks_per_usec =
 			cpu_freq[CPU_DEFAULT_IDX].ticks_per_usec;
+	clk_pdata->clk[CLK_CPU].ticks_per_msec =
+			cpu_freq[CPU_DEFAULT_IDX].ticks_per_msec;
 	clk_pdata->clk[CLK_SSP].freq = ssp_freq[SSP_DEFAULT_IDX].freq;
 	clk_pdata->clk[CLK_SSP].ticks_per_usec =
 			ssp_freq[SSP_DEFAULT_IDX].ticks_per_usec;
+	clk_pdata->clk[CLK_SSP].ticks_per_msec =
+			ssp_freq[SSP_DEFAULT_IDX].ticks_per_msec;
 }
