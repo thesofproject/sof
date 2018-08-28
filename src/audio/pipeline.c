@@ -44,6 +44,9 @@
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/cpu.h>
+#include <sof/idc.h>
+#include <platform/idc.h>
 
 struct pipeline_data {
 	spinlock_t lock;
@@ -719,6 +722,42 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	spin_unlock_irq(&p->lock, flags);
 }
 
+static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
+				    int cmd)
+{
+	struct idc_msg pipeline_trigger = {
+		IDC_MSG_PPL_TRIGGER,
+		IDC_MSG_PPL_TRIGGER_EXT(host->comp.id, cmd),
+		p->ipc_pipe.core };
+	int ret;
+
+	/* check if requested core is enabled */
+	if (!cpu_is_core_enabled(p->ipc_pipe.core)) {
+		trace_pipe_error("pt0");
+		trace_error_value(p->ipc_pipe.core);
+		return -EINVAL;
+	}
+
+	/* writeback pipeline on start */
+	if (cmd == COMP_TRIGGER_START)
+		pipeline_cache(p, host, COMP_CACHE_WRITEBACK_INV);
+
+	/* send IDC pipeline trigger message */
+	ret = idc_send_msg(&pipeline_trigger, IDC_BLOCKING);
+	if (ret < 0) {
+		trace_pipe_error("pt1");
+		trace_error_value(host->comp.id);
+		trace_error_value(cmd);
+		return ret;
+	}
+
+	/* invalidate pipeline on stop */
+	if (cmd == COMP_TRIGGER_STOP)
+		pipeline_cache(p, host, COMP_CACHE_INVALIDATE);
+
+	return ret;
+}
+
 /* send pipeline component/endpoint a command */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
@@ -727,6 +766,10 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	uint32_t flags;
 
 	trace_pipe("cmd");
+
+	/* if current core is different than requested */
+	if (p->ipc_pipe.core != cpu_get_id())
+		return pipeline_trigger_on_core(p, host, cmd);
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_TRIGGER;
