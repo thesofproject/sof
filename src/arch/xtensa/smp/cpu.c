@@ -43,6 +43,11 @@
 #include <sof/lock.h>
 #include <sof/schedule.h>
 
+/* cpu tracing */
+#define trace_cpu(__e) trace_event(TRACE_CLASS_CPU, __e)
+#define trace_cpu_error(__e) trace_error(TRACE_CLASS_CPU, __e)
+#define tracev_cpu(__e) tracev_event(TRACE_CLASS_CPU, __e)
+
 static uint32_t active_cores_mask = 0x1;
 static spinlock_t lock = { 0 };
 

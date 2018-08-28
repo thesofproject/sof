@@ -103,6 +103,7 @@
 #define TRACE_CLASS_DMIC	(22 << 24)
 #define TRACE_CLASS_POWER	(23 << 24)
 #define TRACE_CLASS_IDC		(24 << 24)
+#define TRACE_CLASS_CPU		(25 << 24)
 
 /* move to config.h */
 #define TRACE	1
