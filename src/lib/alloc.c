@@ -518,13 +518,18 @@ void rfree(void *ptr)
 uint32_t mm_pm_context_size(void)
 {
 	uint32_t size = 0;
+	struct mm_heap *heap;
 	int i;
 
 	/* calc context size for each area  */
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++)
-		size += cache_to_uncache(&memmap.buffer[i])->info.used;
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++)
-		size += cache_to_uncache(&memmap.runtime[i])->info.used;
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
+		heap = cache_to_uncache(&memmap.buffer[i]);
+		size += heap->info.used;
+	}
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
+		heap = cache_to_uncache(&memmap.runtime[i]);
+		size += heap->info.used;
+	}
 	size += memmap.system.info.used;
 
 	/* add memory maps */
@@ -539,17 +544,15 @@ uint32_t mm_pm_context_size(void)
 	memmap.total.used = memmap.system.info.used;
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		memmap.total.free +=
-			cache_to_uncache(&memmap.buffer[i])->info.free;
-		memmap.total.used +=
-			cache_to_uncache(&memmap.buffer[i])->info.used;
+		heap = cache_to_uncache(&memmap.buffer[i]);
+		memmap.total.free += heap->info.free;
+		memmap.total.used += heap->info.used;
 	}
 
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		memmap.total.free =
-			cache_to_uncache(&memmap.runtime[i])->info.free;
-		memmap.total.used =
-			cache_to_uncache(&memmap.runtime[i])->info.used;
+		heap = cache_to_uncache(&memmap.runtime[i]);
+		memmap.total.free = heap->info.free;
+		memmap.total.used = heap->info.used;
 	}
 
 	return size;
