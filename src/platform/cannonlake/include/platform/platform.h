@@ -54,6 +54,9 @@ struct sof;
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
 
+/* IDC Interrupt */
+#define PLATFORM_IDC_INTERRUPT(x)	IRQ_EXT_IDC_LVL2(x)
+
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERUPT	IRQ_EXT_IPC_LVL2(0)
 

@@ -76,6 +76,7 @@
 #define TRACE_BOOT_PLATFORM_DMA		(TRACE_BOOT_PLATFORM + 0x180)
 #define TRACE_BOOT_PLATFORM_SSP		(TRACE_BOOT_PLATFORM + 0x190)
 #define TRACE_BOOT_PLATFORM_DMIC	(TRACE_BOOT_PLATFORM + 0x1a0)
+#define TRACE_BOOT_PLATFORM_IDC		(TRACE_BOOT_PLATFORM + 0x1b0)
 
 /* trace event classes - high 8 bits*/
 #define TRACE_CLASS_IRQ		(1 << 24)
@@ -101,6 +102,7 @@
 #define TRACE_CLASS_SA		(21 << 24)
 #define TRACE_CLASS_DMIC	(22 << 24)
 #define TRACE_CLASS_POWER	(23 << 24)
+#define TRACE_CLASS_IDC		(24 << 24)
 
 /* move to config.h */
 #define TRACE	1

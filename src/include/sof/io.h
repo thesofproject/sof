@@ -32,13 +32,7 @@
 #define __INCLUDE_IO__
 
 #include <stdint.h>
-
-/* Macros for register bits access */
-#define BIT(b)			(1 << (b))
-#define MASK(b_hi, b_lo)	((1 << ((b_hi) - (b_lo) + 1)) - 1)
-#define SET_BIT(b, x)		(((x) & 1) << (b))
-#define SET_BITS(b_hi, b_lo, x)	\
-	(((x) & ((1 << ((b_hi) - (b_lo) + 1)) - 1)) << (b_lo))
+#include <sof/bit.h>
 
 static inline uint32_t io_reg_read(uint32_t reg)
 {

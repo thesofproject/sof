@@ -103,7 +103,7 @@
  */
 	.macro	_cacheattr_get	tlb
 #if XCHAL_HAVE_CACHEATTR
-	rsr	a2, CACHEATTR
+	rsr.cacheattr	a2
 #elif XCHAL_CA_8X512
 	//  We have a config that "mimics" CACHEATTR using a simplified
 	//  "MMU" composed of a single statically-mapped way.
@@ -253,7 +253,7 @@
  */
 	.macro	cacheattr_is_enabled	label
 #if XCHAL_HAVE_CACHEATTR
-	rsr	a2, CACHEATTR
+	rsr.cacheattr	a2
 	movi	a3, XCHAL_ALLCA_ENAMASK
 #elif XCHAL_CA_8X512
 	icacheattr_get
@@ -400,7 +400,7 @@
 #if XCHAL_HAVE_CACHEATTR
 # if XCHAL_ICACHE_LINESIZE < 4
 	//  No i-cache, so can always safely write to CACHEATTR:
-	wsr	a2, CACHEATTR
+	wsr.cacheattr	a2
 # else
 	//  The Athens micro-architecture, when using the old
 	//  exception architecture option (ie. with the CACHEATTR register)
@@ -414,7 +414,7 @@
 	j	1f
 	.begin	no-transform
 	.align	16 /*XCHAL_ICACHE_LINESIZE*/	// align to within an I-cache line
-1:	wsr	a2, CACHEATTR
+1:	wsr.cacheattr	a2
 	isync
 	.end	no-transform
 	nop
@@ -423,8 +423,6 @@
 #elif XCHAL_CA_8X512
 	//  DTLB and ITLB are independent, but to keep semantics
 	//  of this macro we simply write to both.
-// TODO: This is used by the MCG FW to init the D/I caches. It's not working here,
-// maybe due to differences in core-isa.h ????
 	icacheattr_set
 	dcacheattr_set
 #else

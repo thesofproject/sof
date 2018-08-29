@@ -194,9 +194,24 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	}
 
 	/* request GP LP DMA with shared access privilege */
-	dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
-	caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
-	dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC;
+	/* TODO: hda: retrieve req'ed caps from the dai,
+	 * dmas are not cross-compatible.
+	 */
+	switch (dai->type) {
+	case SOF_DAI_INTEL_HDA:
+		dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
+				DMA_DIR_DEV_TO_MEM : DMA_DIR_MEM_TO_DEV;
+		caps = DMA_CAP_HDA;
+		dma_dev = DMA_DEV_HDA;
+		break;
+	case SOF_DAI_INTEL_SSP:
+	case SOF_DAI_INTEL_DMIC:
+	default:
+		dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
+		caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
+		dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC;
+		break;
+	}
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (dd->dma == NULL) {
 		trace_dai_error("eDd");
@@ -210,18 +225,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->xrun = 0;
 	dd->pointer_init = 0;
 
-	/* get DMA channel from DMAC1 */
-	dd->chan = dma_channel_get(dd->dma, 0);
-	if (dd->chan < 0){
-		trace_dai_error("eDc");
-		goto error;
-	}
-
-	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
-				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
 	dev->state = COMP_STATE_READY;
-	dev->is_dma_connected = 1;
 	return dev;
 
 error:
@@ -388,6 +392,18 @@ static int dai_params(struct comp_dev *dev)
 		trace_dai_error("wdp");
 		return -EINVAL;
 	}
+
+	/* get DMA channel, once the stream_tag is known */
+	dd->chan = dma_channel_get(dd->dma, dev->params.stream_tag);
+	if (dd->chan < 0) {
+		trace_dai_error("eDc");
+		return -EINVAL;
+	}
+
+	/* set up callback */
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
+				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	dev->is_dma_connected = 1;
 
 	/* for DAI, we should configure its frame_fmt from topology */
 	dev->params.frame_fmt = dconfig->frame_fmt;
@@ -697,6 +713,13 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		trace_value(config->dmic.pdm[0].enable_mic_a);
 		trace_value(config->dmic.pdm[0].enable_mic_b);
 		trace_value(dev->frame_bytes);
+		break;
+	case SOF_DAI_INTEL_HDA:
+		/* set to some non-zero value to satisfy the condition below,
+		 * it is recalculated in dai_params() later
+		 * this is temp until dai/hda model is changed.
+		 */
+		dev->frame_bytes = 4;
 		break;
 	default:
 		/* other types of DAIs not handled for now */

@@ -170,6 +170,24 @@ extern int xtbsp_uart_init(unsigned baud, unsigned ndata,
 #define xtbsp_uart_init_default() xtbsp_uart_init(38400, 8, 0, 1)
 
 /*
+ Extended init routine for 'portable' UART. Allows specifying the UART
+ base address and interrupt number (if interrupt operation desired).
+ Meant for use on platforms other than the FPGA boards (e.g. XTSC sim
+ or Palladium).
+
+ NOTE: Using the 'portable' UART may require that you implement function
+ xtbsp_clock_freq_hz() if your target platform does not provide it.
+ We recommend you implement it as a weak function so that it can be
+ overridden by the target platform implementation if available.
+ */
+extern int xtbsp_uart_init_ex(unsigned uart_baseaddr,
+                              unsigned uart_intnum,
+                              unsigned baud,
+                              unsigned ndata,
+                              unsigned parity,
+                              unsigned nstop);
+
+/*
 (Wait for and) Input a single char from the UART.
 Any pending xtbsp_uart_int_rx interrupt is cleared.
 */

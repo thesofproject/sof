@@ -168,6 +168,11 @@ uint64_t clock_us_to_ticks(int clock, uint64_t us)
 	return clk_pdata->clk[clock].ticks_per_usec * us;
 }
 
+uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
+{
+	return clk_pdata->clk[clock].ticks_per_usec * ms * 1000;
+}
+
 uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
 {
 	uint64_t _current;

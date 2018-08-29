@@ -58,6 +58,7 @@
 #include <uapi/ipc.h>
 #include <sof/intel-ipc.h>
 #include <sof/dma-trace.h>
+#include <sof/cpu.h>
 #include <config.h>
 
 #define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
@@ -591,6 +592,25 @@ static int ipc_pm_context_restore(uint32_t header)
 	return 1;
 }
 
+static int ipc_pm_core_enable(uint32_t header)
+{
+	struct sof_ipc_pm_core_config *pm_core_config = _ipc->comp_data;
+	int i = 0;
+
+	trace_ipc("PMc");
+
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		if (i != PLATFORM_MASTER_CORE_ID) {
+			if (pm_core_config->enable_mask & (1 << i))
+				cpu_enable_core(i);
+			else
+				cpu_disable_core(i);
+		}
+	}
+
+	return 0;
+}
+
 static int ipc_glb_pm_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
@@ -602,6 +622,8 @@ static int ipc_glb_pm_message(uint32_t header)
 		return ipc_pm_context_restore(header);
 	case iCS(SOF_IPC_PM_CTX_SIZE):
 		return ipc_pm_context_size(header);
+	case iCS(SOF_IPC_PM_CORE_ENABLE):
+		return ipc_pm_core_enable(header);
 	case iCS(SOF_IPC_PM_CLK_SET):
 	case iCS(SOF_IPC_PM_CLK_GET):
 	case iCS(SOF_IPC_PM_CLK_REQ):

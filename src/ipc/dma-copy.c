@@ -182,7 +182,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int ret;
 
 	/* tell gateway to copy */
-	ret = dma_copy(dc->dmac, dc->chan, size);
+	ret = dma_copy(dc->dmac, dc->chan, size, 0);
 	if (ret < 0)
 		return ret;
 
@@ -379,7 +379,7 @@ int dma_copy_new(struct dma_copy *dc)
 
 	/* request HDA DMA in the dir LMEM->HMEM with shared access */
 	dir = DMA_DIR_LMEM_TO_HMEM;
-	dev = DMA_DEV_HDA;
+	dev = DMA_DEV_HOST;
 	cap = 0;
 	dc->dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
 	if (dc->dmac == NULL) {

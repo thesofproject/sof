@@ -67,13 +67,14 @@
 #define DGLPIBI		0x28
 
 /* DGCS */
-#define DGCS_SCS	(1 << 31)
-#define DGCS_GEN	(1 << 26)
-#define DGCS_FWCB      (1 << 23)
-#define DGCS_BSC	(1 << 11)
-#define DGCS_BF		(1 << 9) /* buffer full */
-#define DGCS_BNE	(1 << 8) /* buffer not empty */
-#define DGCS_FIFORDY	(1 << 5) /* enable FIFO */
+#define DGCS_SCS	BIT(31)
+#define DGCS_GEN	BIT(26)
+#define DGCS_FWCB	BIT(23)
+#define DGCS_BSC	BIT(11)
+#define DGCS_BOR	BIT(10) /* buffer overrun */
+#define DGCS_BF		BIT(9)  /* buffer full */
+#define DGCS_BNE	BIT(8)  /* buffer not empty */
+#define DGCS_FIFORDY	BIT(5)  /* enable FIFO */
 
 /* DGBBA */
 #define DGBBA_MASK	0xffff80
@@ -83,12 +84,25 @@
 
 #define HDA_DMA_MAX_CHANS		9
 
+#define HDA_LINK_1MS_US	1000
+
 struct hda_chan_data {
+	struct dma *dma;
+	uint32_t index;
 	uint32_t stream_id;
 	uint32_t status;
 	uint32_t desc_count;
 	uint32_t desc_avail;
 	uint32_t direction;
+
+	uint32_t period_bytes;
+	uint32_t buffer_bytes;
+	struct work dma_ch_work;
+
+	void (*cb)(void *data, uint32_t type,
+		   struct dma_sg_elem *next); /* client callback */
+	void *cb_data;		/* client callback data */
+	int cb_type;		/* callback type */
 };
 
 struct dma_pdata {
@@ -96,6 +110,8 @@ struct dma_pdata {
 	int32_t num_channels;
 	struct hda_chan_data chan[HDA_DMA_MAX_CHANS];
 };
+
+static int hda_dma_stop(struct dma *dma, int channel);
 
 static inline uint32_t host_dma_reg_read(struct dma *dma, uint32_t chan,
 	uint32_t reg)
@@ -115,27 +131,131 @@ static inline void hda_update_bits(struct dma *dma, uint32_t chan,
 	io_reg_update_bits(dma_chan_base(dma, chan) + reg,  mask, value);
 }
 
-/* notify DMA to copy bytes */
-static int hda_dma_copy(struct dma *dma, int channel, int bytes)
+static inline void hda_dma_inc_fp(struct dma *dma, uint32_t chan,
+				  uint32_t value)
 {
-	tracev_host("GwU");
-
-	/* reset BSC before start next copy */
-	hda_update_bits(dma, channel, DGCS, DGCS_BSC, DGCS_BSC);
-
-	/*
-	 * set BFPI to let host gateway knows we have read size,
-	 * which will trigger next copy start.
+	host_dma_reg_write(dma, chan, DGBFPI, value);
+	/* TODO: wp update, not rp should inc LLPI and LPIBI in the
+	 * coupled input DMA
 	 */
-	host_dma_reg_write(dma, channel, DGBFPI, bytes);
+	host_dma_reg_write(dma, chan, DGLLPI, value);
+	host_dma_reg_write(dma, chan, DGLPIBI, value);
+}
 
-	host_dma_reg_write(dma, channel, DGLLPI, bytes);
-	host_dma_reg_write(dma, channel, DGLPIBI, bytes);
+static inline void hda_dma_inc_link_fp(struct dma *dma, uint32_t chan,
+				       uint32_t value)
+{
+	host_dma_reg_write(dma, chan, DGBFPI, value);
+	/* TODO: wp update should inc LLPI and LPIBI in the input DMA */
+}
+
+/* TODO: might be implemented as buffer_size - get_data_size() */
+static inline uint32_t hda_dma_get_free_size(struct dma *dma, uint32_t chan)
+{
+	const uint32_t cs = host_dma_reg_read(dma, chan, DGCS);
+	const uint32_t bs = host_dma_reg_read(dma, chan, DGBS);
+	const uint32_t rp = host_dma_reg_read(dma, chan, DGBRP);
+	const uint32_t wp = host_dma_reg_read(dma, chan, DGBRP);
+	int32_t fs;
+
+	if (cs & DGCS_BF)
+		return 0; /* buffer is full */
+	if (!(cs & DGCS_BNE))
+		return bs; /* buffer is empty */
+	fs = rp - wp;
+	if (wp >= rp)
+		fs += bs;
+	return fs;
+}
+
+static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
+{
+	const uint32_t cs = host_dma_reg_read(dma, chan, DGCS);
+	const uint32_t bs = host_dma_reg_read(dma, chan, DGBS);
+	const uint32_t rp = host_dma_reg_read(dma, chan, DGBRP);
+	const uint32_t wp = host_dma_reg_read(dma, chan, DGBRP);
+
+	uint32_t ds;
+
+	if (!(cs & DGCS_BNE))
+		return 0; /* buffer is empty */
+	ds = wp - rp;
+	if (ds <= 0)
+		ds += bs;
+
+	return ds;
+}
+
+static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
+			   int bytes, uint32_t flags)
+{
+	struct dma_sg_elem next;
+	uint32_t dgcs = 0;
+
+	tracev_host("GwU");
+	if (flags & DMA_COPY_NO_COMMIT) {
+		/* delay to fill the buffer, only for the first time
+		 * for _input_ dma.
+		 */
+		idelay(PLATFORM_DEFAULT_DELAY);
+	} else {
+		/* clear link xruns */
+		dgcs = host_dma_reg_read(dma, chan->index, DGCS);
+		if (dgcs & DGCS_BOR)
+			hda_update_bits(dma, chan->index,
+					DGCS, DGCS_BOR, DGCS_BOR);
+
+		/* make sure that previous transfer is complete */
+		if (chan->direction == DMA_DIR_MEM_TO_DEV) {
+			while (hda_dma_get_free_size(dma, chan->index) <
+			       bytes)
+				idelay(PLATFORM_DEFAULT_DELAY);
+		}
+
+		/*
+		 * set BFPI to let host gateway knows we have read size,
+		 * which will trigger next copy start.
+		 */
+		if (chan->direction == DMA_DIR_MEM_TO_DEV)
+			hda_dma_inc_link_fp(dma, chan->index, bytes);
+		else
+			hda_dma_inc_fp(dma, chan->index, bytes);
+	}
+
+	spin_lock_irq(&dma->lock, flags);
+	if (chan->cb) {
+		next.src = DMA_RELOAD_LLI;
+		next.dest = DMA_RELOAD_LLI;
+		next.size = DMA_RELOAD_LLI;
+		chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, &next);
+		if (next.size == DMA_RELOAD_END) {
+			/* disable channel, finished */
+			hda_dma_stop(dma, chan->index);
+		}
+	}
+	spin_unlock_irq(&dma->lock, flags);
 
 	/* Force Host DMA to exit L1 */
 	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
 
 	return 0;
+}
+
+static uint64_t hda_dma_work(void *data, uint64_t delay)
+{
+	struct hda_chan_data *chan = (struct hda_chan_data *)data;
+
+	hda_dma_copy_ch(chan->dma, chan, chan->period_bytes, 0);
+	/* next time to re-arm (TODO: should sub elapsed time?) */
+	return HDA_LINK_1MS_US;
+}
+
+/* notify DMA to copy bytes */
+static int hda_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+
+	return hda_dma_copy_ch(dma, &p->chan[channel], bytes, flags);
 }
 
 /* acquire the specific DMA channel */
@@ -172,6 +292,12 @@ static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
 
 	/* set new state */
 	p->chan[channel].status = COMP_STATE_INIT;
+	p->chan[channel].period_bytes = 0;
+	p->chan[channel].buffer_bytes = 0;
+	p->chan[channel].cb = NULL;
+	p->chan[channel].cb_type = 0;
+	p->chan[channel].cb_data = NULL;
+	work_init(&p->chan[channel].dma_ch_work, NULL, NULL, 0);
 }
 
 /* channel must not be running when this is called */
@@ -216,6 +342,18 @@ static int hda_dma_start(struct dma *dma, int channel)
 	p->chan[channel].desc_avail = p->chan[channel].desc_count;
 
 	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
+
+	/* activate timer if configured in cyclic mode */
+	if (p->chan[channel].dma_ch_work.cb) {
+		work_schedule_default(&p->chan[channel].dma_ch_work,
+				      HDA_LINK_1MS_US);
+	}
+
+	/* start link output transfer now */
+	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV)
+		hda_dma_inc_link_fp(dma, channel,
+				    p->chan[channel].buffer_bytes);
+
 out:
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
@@ -223,6 +361,7 @@ out:
 
 static int hda_dma_release(struct dma *dma, int channel)
 {
+	/* TODO: to be removed, no longer called by anyone */
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
 
@@ -265,6 +404,9 @@ static int hda_dma_stop(struct dma *dma, int channel)
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_host("DDi");
+
+	if (p->chan[channel].dma_ch_work.cb)
+		work_cancel_default(&p->chan[channel].dma_ch_work);
 
 	/* disable the channel */
 	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
@@ -326,7 +468,8 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	list_for_item(plist, &config->elem_list) {
 		sg_elem = container_of(plist, struct dma_sg_elem, list);
 
-		if (config->direction == DMA_DIR_HMEM_TO_LMEM)
+		if (config->direction == DMA_DIR_HMEM_TO_LMEM ||
+		    config->direction == DMA_DIR_DEV_TO_MEM)
 			addr = sg_elem->dest;
 		else
 			addr = sg_elem->src;
@@ -352,27 +495,41 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 		if (buffer_addr == 0)
 			buffer_addr = addr;
 	}
+	p->chan[channel].period_bytes = period_bytes;
+	p->chan[channel].buffer_bytes = buffer_bytes;
+
+	/* initialize timer */
+	if (config->cyclic) {
+		work_init(&p->chan[channel].dma_ch_work, hda_dma_work,
+			  &p->chan[channel], WORK_SYNC);
+	}
+
+	/* init channel in HW */
+	host_dma_reg_write(dma, channel, DGBBA,  buffer_addr);
+	host_dma_reg_write(dma, channel, DGBS,  buffer_bytes);
+
+	if (config->direction == DMA_DIR_LMEM_TO_HMEM ||
+	    config->direction == DMA_DIR_HMEM_TO_LMEM)
+		host_dma_reg_write(dma, channel, DGMBS,
+				   ALIGN_UP(period_bytes,
+					    PLATFORM_HDA_BUFFER_ALIGNMENT));
 
 	/* firmware control buffer */
 	dgcs = DGCS_FWCB;
 
 	/* set DGCS.SCS bit to 1 for 16bit(2B) container */
-	if ((config->direction == DMA_DIR_HMEM_TO_LMEM &&
+	if ((config->direction & (DMA_DIR_HMEM_TO_LMEM | DMA_DIR_DEV_TO_MEM) &&
 	     config->dest_width <= 2) ||
-	    (config->direction == DMA_DIR_LMEM_TO_HMEM &&
+	    (config->direction & (DMA_DIR_LMEM_TO_HMEM | DMA_DIR_MEM_TO_DEV) &&
 	     config->src_width <= 2))
 		dgcs |= DGCS_SCS;
 
-	/* init channel in HW */
+	/* set DGCS.FIFORDY for output dma */
+	if ((config->cyclic && config->direction == DMA_DIR_MEM_TO_DEV) ||
+	    (!config->cyclic && config->direction == DMA_DIR_LMEM_TO_HMEM))
+		dgcs |= DGCS_FIFORDY;
+
 	host_dma_reg_write(dma, channel, DGCS, dgcs);
-	host_dma_reg_write(dma, channel, DGBBA,  buffer_addr);
-	host_dma_reg_write(dma, channel, DGBS,  buffer_bytes);
-	host_dma_reg_write(dma, channel, DGBFPI,  0);
-	host_dma_reg_write(dma, channel, DGBSP,  period_bytes);
-	host_dma_reg_write(dma, channel, DGMBS,
-			ALIGN_UP(period_bytes, PLATFORM_HDA_BUFFER_ALIGNMENT));
-	host_dma_reg_write(dma, channel, DGLLPI,  0);
-	host_dma_reg_write(dma, channel, DGLPIBI,  0);
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
 out:
@@ -396,13 +553,23 @@ static int hda_dma_set_cb(struct dma *dma, int channel, int type,
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 	void *data)
 {
-	return -EINVAL;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
+	p->chan[channel].cb = cb;
+	p->chan[channel].cb_data = data;
+	p->chan[channel].cb_type = type;
+	spin_unlock_irq(&dma->lock, flags);
+
+	return 0;
 }
 
 static int hda_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *hda_pdata;
 	int i;
+	struct hda_chan_data *chan;
 
 	/* allocate private data */
 	hda_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*hda_pdata));
@@ -411,8 +578,13 @@ static int hda_dma_probe(struct dma *dma)
 	spinlock_init(&dma->lock);
 
 	/* init channel status */
-	for (i = 0; i < HDA_DMA_MAX_CHANS; i++)
-		hda_pdata->chan[i].status = COMP_STATE_INIT;
+	chan = hda_pdata->chan;
+
+	for (i = 0; i < HDA_DMA_MAX_CHANS; i++, chan++) {
+		chan->dma = dma;
+		chan->index = i;
+		chan->status = COMP_STATE_INIT;
+	}
 
 	/* init number of channels draining */
 	atomic_init(&dma->num_channels_busy, 0);

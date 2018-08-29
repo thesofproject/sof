@@ -44,7 +44,7 @@
 #include <platform/clk.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <arch/task.h>
+#include <sof/task.h>
 
 struct schedule_data {
 	spinlock_t lock;
@@ -52,8 +52,6 @@ struct schedule_data {
 	uint32_t clock;
 	struct work work;
 };
-
-static struct schedule_data *sch;
 
 #define SLOT_ALIGN_TRIES	10
 
@@ -94,6 +92,7 @@ static inline void edf_reschedule(struct task *task, uint64_t current)
 static inline struct task *edf_get_next(uint64_t current,
 	struct task *ignore)
 {
+	struct schedule_data *sch = *arch_schedule_get();
 	struct task *task;
 	struct task *next_task = NULL;
 	struct list_item *clist;
@@ -197,7 +196,7 @@ static struct task *schedule_edf(void)
 		/* yes, run current task */
 		task->start = current;
 		task->state = TASK_STATE_RUNNING;
-		arch_run_task(task);
+		run_task(task);
 	}
 
 	/* tell caller about future task */
@@ -208,6 +207,7 @@ static struct task *schedule_edf(void)
 /* delete task from scheduler */
 static int schedule_task_del(struct task *task)
 {
+	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
 	int ret = 0;
 
@@ -234,6 +234,7 @@ out:
 
 static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 {
+	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
 	uint64_t current;
 
@@ -305,6 +306,7 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 /* Remove a task from the scheduler when complete */
 void schedule_task_complete(struct task *task)
 {
+	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
 
 	tracev_pipe("com");
@@ -324,12 +326,14 @@ static void scheduler_run(void *unused)
 	/* EDF is only scheduler supported atm */
 	future_task = schedule_edf();
 	if (future_task)
-		work_reschedule_default_at(&sch->work, future_task->start);
+		work_reschedule_default_at(&((*arch_schedule_get())->work),
+					   future_task->start);
 }
 
 /* run the scheduler */
 void schedule(void)
 {
+	struct schedule_data *sch = *arch_schedule_get();
 	struct list_item *tlist;
 	struct task *task;
 	uint32_t flags;
@@ -369,18 +373,46 @@ int scheduler_init(struct sof *sof)
 {
 	trace_pipe("ScI");
 
-	sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sch));
-	list_init(&sch->list);
-	spinlock_init(&sch->lock);
-	sch->clock = PLATFORM_SCHED_CLOCK;
-	work_init(&sch->work, sch_work, sch, WORK_ASYNC);
+	struct schedule_data **sch = arch_schedule_get();
+	*sch = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**sch));
+
+	if (!*sch)
+		return -ENOMEM;
+
+	list_init(&((*sch)->list));
+	spinlock_init(&((*sch)->lock));
+	(*sch)->clock = PLATFORM_SCHED_CLOCK;
+	work_init(&((*sch)->work), sch_work, *sch, WORK_ASYNC);
 
 	/* configure scheduler interrupt */
 	interrupt_register(PLATFORM_SCHEDULE_IRQ, scheduler_run, NULL);
 	interrupt_enable(PLATFORM_SCHEDULE_IRQ);
 
 	/* allocate arch tasks */
-	arch_allocate_tasks();
+	int tasks_result = allocate_tasks();
 
-	return 0;
+	return tasks_result;
+}
+
+/* Frees scheduler */
+void scheduler_free(void)
+{
+	struct schedule_data **sch = arch_schedule_get();
+	uint32_t flags;
+
+	spin_lock_irq(&(*sch)->lock, flags);
+
+	/* disable and unregister scheduler interrupt */
+	interrupt_disable(PLATFORM_SCHEDULE_IRQ);
+	interrupt_unregister(PLATFORM_SCHEDULE_IRQ);
+
+	/* free arch tasks */
+	arch_free_tasks();
+
+	work_cancel_default(&(*sch)->work);
+	list_item_del(&(*sch)->list);
+
+	spin_unlock_irq(&(*sch)->lock, flags);
+
+	rfree(*sch);
 }

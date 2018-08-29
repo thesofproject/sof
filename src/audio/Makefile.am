@@ -4,9 +4,9 @@ include_HEADERS = \
 	eq_iir.h \
 	iir.h \
 	fir.h \
+	fir_config.h \
 	src_config.h \
 	src.h \
-	eq_fir.h \
 	volume.h
 
 COMP_SRC = \
@@ -891,6 +891,8 @@ libaudio_a_SOURCES = \
 	iir.c \
 	eq_fir.c \
 	fir.c \
+	fir_hifi2ep.c \
+	fir_hifi3.c \
 	tone.c \
 	src.c \
 	src_generic.c \
