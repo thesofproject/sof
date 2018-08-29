@@ -712,6 +712,81 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	return 0;
 }
 
+static int dai_ctrl_set_cmd(struct comp_dev *dev,
+			    struct sof_ipc_ctrl_data *cdata)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int ret = 0;
+	int val;
+
+	/* validate */
+	if (cdata->num_elems != 1) {
+		trace_dai_error("xs0");
+		return -EINVAL;
+	}
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_SWITCH:
+		val = cdata->compv[0].uvalue;
+		trace_dai("dcs");
+		trace_value(cdata->comp_id);
+		trace_value(val);
+		dai_set_loopback_mode(dd->dai, val);
+		break;
+
+	default:
+		trace_dai_error("gs1");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
+static int dai_ctrl_get_cmd(struct comp_dev *dev,
+			    struct sof_ipc_ctrl_data *cdata)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int val;
+
+	/* validate */
+	if (cdata->num_elems != 1) {
+		trace_dai_error("xg0");
+		return -EINVAL;
+	}
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_SWITCH:
+		val = dai_get_loopback_mode(dd->dai);
+		trace_dai("dcg");
+		trace_value(cdata->comp_id);
+		trace_value(val);
+		cdata->compv[0].uvalue = val;
+		break;
+
+	default:
+		trace_dai_error("xcc");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int dai_cmd(struct comp_dev *dev, int cmd, void *data)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	trace_dai("cmd");
+
+	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+		return dai_ctrl_set_cmd(dev, cdata);
+	case COMP_CMD_GET_VALUE:
+		return dai_ctrl_get_cmd(dev, cdata);
+	default:
+		return -EINVAL;
+	}
+}
+
 static struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.ops	= {
@@ -724,6 +799,7 @@ static struct comp_driver comp_dai = {
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
 		.position	= dai_position,
+		.cmd		= dai_cmd,
 	},
 };
 

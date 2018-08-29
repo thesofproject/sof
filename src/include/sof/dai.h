@@ -64,6 +64,7 @@ struct dai_ops {
 	int (*pm_context_store)(struct dai *dai);
 	int (*probe)(struct dai *dai);
 	int (*set_loopback_mode)(struct dai *dai, uint32_t lbm);
+	int (*get_loopback_mode)(struct dai *dai);
 };
 
 /* DAI slot map to audio channel */
@@ -127,6 +128,11 @@ static inline int dai_set_config(struct dai *dai,
 static inline int dai_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
 	return dai->ops->set_loopback_mode(dai, lbm);
+}
+
+static inline int dai_get_loopback_mode(struct dai *dai)
+{
+	return dai->ops->get_loopback_mode(dai);
 }
 
 /* Digital Audio interface trigger */
