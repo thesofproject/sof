@@ -495,6 +495,8 @@ static int dai_reset(struct comp_dev *dev)
 
 	trace_dai("res");
 
+	dma_channel_put(dd->dma, dd->chan);
+
 	list_for_item_safe(elist, tlist, &config->elem_list) {
 		elem = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
