@@ -357,4 +357,10 @@
 #define IMR_BOOT_LDR_BSS_BASE		0xB0100000
 #define IMR_BOOT_LDR_BSS_SIZE		0x10000
 
+#define SRAM_ALIAS_OFFSET	0x20000000
+#define uncache_to_cache(address) \
+	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
+#define cache_to_uncache(address) \
+	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+
 #endif

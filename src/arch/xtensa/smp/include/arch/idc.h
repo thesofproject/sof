@@ -42,63 +42,11 @@
 #include <platform/interrupt.h>
 #include <platform/platform.h>
 #include <sof/alloc.h>
+#include <sof/idc.h>
+#include <sof/ipc.h>
 #include <sof/lock.h>
-#include <sof/trace.h>
 
-/** \brief IDC trace function. */
-#define trace_idc(__e)	trace_event(TRACE_CLASS_IDC, __e)
-
-/** \brief IDC trace value function. */
-#define tracev_idc(__e)	tracev_event(TRACE_CLASS_IDC, __e)
-
-/** \brief IDC trace error function. */
-#define trace_idc_error(__e)	trace_error(TRACE_CLASS_IDC, __e)
-
-
-/** \brief IDC send blocking flag. */
-#define IDC_BLOCKING		0
-
-/** \brief IDC send non-blocking flag. */
-#define IDC_NON_BLOCKING	1
-
-/** \brief IDC send timeout in cycles. */
-#define IDC_TIMEOUT	800000
-
-/** \brief ROM wake version parsed by ROM during core wake up. */
-#define IDC_ROM_WAKE_VERSION	0x2
-
-/** \brief ROM control version parsed by ROM during core wake up. */
-#define IDC_ROM_CONTROL_VERSION	0x1
-
-// TODO: refactor below defines after universal IDC message template
-//       will be defined and ready
-
-/** \brief Power up message header. */
-#define IDC_POWER_UP_MESSAGE \
-		(IDC_ROM_WAKE_VERSION | (IDC_ROM_CONTROL_VERSION << 24))
-
-/** \brief Power up message extension. */
-#define IDC_POWER_UP_EXTENSION	(SOF_TEXT_START >> 2)
-
-/** \brief Power down message header. */
-#define IDC_POWER_DOWN_MESSAGE	0x7FFFFFFF
-
-/** \brief IDC message. */
-struct idc_msg {
-	uint32_t header;	/**< header value */
-	uint32_t extension;	/**< extension value */
-	uint32_t core;		/**< core id */
-};
-
-/** \brief IDC data. */
-struct idc {
-	spinlock_t lock;		/**< lock mechanism */
-	uint32_t busy_bit_mask;		/**< busy interrupt mask */
-	uint32_t done_bit_mask;		/**< done interrupt mask */
-	uint32_t msg_pending;		/**< is message pending */
-	struct idc_msg received_msg;	/**< received message */
-};
-
+extern struct ipc *_ipc;
 extern void cpu_power_down_core(void);
 
 /**
@@ -212,19 +160,56 @@ static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	return ret;
 }
 
+static inline int idc_pipeline_trigger(uint32_t comp_id, uint32_t cmd)
+{
+	struct ipc_comp_dev *pcm_dev;
+	int ret;
+
+	/* check whether component exists */
+	pcm_dev = ipc_get_comp(_ipc, comp_id);
+	if (!pcm_dev)
+		return -ENODEV;
+
+	/* check whether we are executing from the right core */
+	if (arch_cpu_get_id() != pcm_dev->cd->pipeline->ipc_pipe.core)
+		return -EINVAL;
+
+	/* invalidate pipeline on start */
+	if (cmd == COMP_TRIGGER_START)
+		pipeline_cache(pcm_dev->cd->pipeline,
+			       pcm_dev->cd, COMP_CACHE_INVALIDATE);
+
+	/* trigger pipeline */
+	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
+
+	/* writeback pipeline on stop */
+	if (cmd == COMP_TRIGGER_STOP)
+		pipeline_cache(pcm_dev->cd->pipeline,
+			       pcm_dev->cd, COMP_CACHE_WRITEBACK_INV);
+
+	return ret;
+}
+
 /**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
- * \return Error status.
  */
-static inline int32_t idc_cmd(struct idc_msg *msg)
+static inline void idc_cmd(struct idc_msg *msg)
 {
-	/* right now we only handle power down */
-	/* TODO: universal implementation */
-	if (msg->header == IDC_POWER_DOWN_MESSAGE)
-		cpu_power_down_core();
+	uint32_t type = iTS(msg->header);
 
-	return 0;
+	switch (type) {
+	case iTS(IDC_MSG_POWER_DOWN):
+		cpu_power_down_core();
+		break;
+	case iTS(IDC_MSG_PPL_TRIGGER):
+		idc_pipeline_trigger(iPTComp(msg->extension),
+				     iPTCommand(msg->extension));
+		break;
+	default:
+		trace_idc_error("eTc");
+		trace_error_value(msg->header);
+	}
 }
 
 /**

@@ -30,41 +30,24 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-/* A full 22th order equalizer with 11 biquads cover octave bands 1-11 in
- * in the 0 - 20 kHz bandwidth.
- */
-#define IIR_DF2T_BIQUADS_MAX 11
+#ifndef IIR_H
+#define IIR_H
+
+#include <uapi/eq.h>
 
 struct iir_state_df2t {
-	int mute; /* Set to 1 to mute EQ output, 0 otherwise */
-	int biquads; /* Number of IIR 2nd order sections total */
-	int biquads_in_series; /* Number of IIR 2nd order sections in series*/
+	unsigned int biquads; /* Number of IIR 2nd order sections total */
+	unsigned int biquads_in_series; /* Number of IIR 2nd order sections
+					 * in series.
+					 */
 	int32_t *coef; /* Pointer to IIR coefficients */
 	int64_t *delay; /* Pointer to IIR delay line */
 };
 
-#define NHEADER_DF2T 2
-
-struct iir_header_df2t {
-	int32_t num_sections;
-	int32_t num_sections_in_series;
-};
-
-#define NBIQUAD_DF2T 7
-
-struct iir_biquad_df2t {
-	int32_t a2; /* Q2.30 */
-	int32_t a1; /* Q2.30 */
-	int32_t b2; /* Q2.30 */
-	int32_t b1; /* Q2.30 */
-	int32_t b0; /* Q2.30 */
-	int32_t output_shift; /* Number of right shifts */
-	int32_t output_gain;  /* Q2.14 */
-};
-
 int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x);
 
-size_t iir_init_coef_df2t(struct iir_state_df2t *iir, int32_t config[]);
+size_t iir_init_coef_df2t(struct iir_state_df2t *iir,
+			  struct sof_eq_iir_header_df2t *config);
 
 void iir_init_delay_df2t(struct iir_state_df2t *iir, int64_t **delay);
 
@@ -73,3 +56,5 @@ void iir_mute_df2t(struct iir_state_df2t *iir);
 void iir_unmute_df2t(struct iir_state_df2t *iir);
 
 void iir_reset_df2t(struct iir_state_df2t *iir);
+
+#endif

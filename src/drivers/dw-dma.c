@@ -58,6 +58,7 @@
 #include <sof/trace.h>
 #include <sof/wait.h>
 #include <sof/audio/component.h>
+#include <sof/cpu.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <platform/interrupt.h>
@@ -250,6 +251,11 @@
 /* number of tries to wait for reset */
 #define DW_DMA_CFG_TRIES	10000
 
+struct dma_id {
+	struct dma *dma;
+	uint32_t channel;
+};
+
 /* data for each DMA channel */
 struct dma_chan_data {
 	uint32_t status;
@@ -259,8 +265,7 @@ struct dma_chan_data {
 	uint32_t desc_count;
 	uint32_t cfg_lo;
 	uint32_t cfg_hi;
-	struct dma *dma;
-	int32_t channel;
+	struct dma_id id;
 
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);	/* client callback function */
 	void *cb_data;		/* client callback data */
@@ -276,6 +281,8 @@ struct dma_pdata {
 static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel);
 static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 		struct dma_sg_elem *next);
+static inline void dw_dma_interrupt_register(struct dma *dma, int channel);
+static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel);
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
 {
@@ -404,7 +411,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
 
 	/* clear platform interrupt */
-	platform_interrupt_clear(dma_irq(dma), 1 << channel);
+	platform_interrupt_clear(dma_irq(dma, cpu_get_id()), 1 << channel);
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
@@ -427,6 +434,10 @@ static int dw_dma_start(struct dma *dma, int channel)
 	/* write channel config */
 	dw_write(dma, DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
 	dw_write(dma, DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
+
+	/* enable interrupt only for the first start */
+	if (p->chan[channel].status == COMP_STATE_PREPARE)
+		dw_dma_interrupt_register(dma, channel);
 
 	/* enable the channel */
 	p->chan[channel].status = COMP_STATE_ACTIVE;
@@ -509,6 +520,9 @@ static int dw_dma_stop(struct dma *dma, int channel)
 #endif
 
 	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+
+	/* disable interrupt */
+	dw_dma_interrupt_unregister(dma, channel);
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
 
@@ -957,13 +971,13 @@ found:
 /* external layer 2 interrupt for dmac */
 static void dw_dma_irq_handler(void *data)
 {
-	struct dma_int *dma_int = (struct dma_int *)data;
-	struct dma *dma = dma_int->dma;
+	struct dma_id *dma_id = (struct dma_id *)data;
+	struct dma *dma = dma_id->dma;
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_sg_elem next;
 	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
 	uint32_t mask;
-	int i = dma_int->channel;
+	int i = dma_id->channel;
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr) {
@@ -1058,7 +1072,6 @@ static void dw_dma_irq_handler(void *data)
 
 static int dw_dma_probe(struct dma *dma)
 {
-	struct dma_int *dma_int[DW_MAX_CHAN];
 	struct dma_pdata *dw_pdata;
 	int i;
 
@@ -1072,29 +1085,34 @@ static int dw_dma_probe(struct dma *dma)
 
 	/* init work */
 	for (i = 0; i < dma->plat_data.channels; i++) {
-		dw_pdata->chan[i].dma = dma;
-		dw_pdata->chan[i].channel = i;
+		dw_pdata->chan[i].id.dma = dma;
+		dw_pdata->chan[i].id.channel = i;
 		dw_pdata->chan[i].status = COMP_STATE_INIT;
-
-		dma_int[i] = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-				     sizeof(struct dma_int));
-
-		dma_int[i]->dma = dma;
-		dma_int[i]->channel = i;
-		dma_int[i]->irq = dma->plat_data.irq +
-				(i << SOF_IRQ_BIT_SHIFT);
-
-		/* register our IRQ handler */
-		interrupt_register(dma_int[i]->irq,
-				   dw_dma_irq_handler,
-				   dma_int[i]);
-		interrupt_enable(dma_int[i]->irq);
 	}
 
 	/* init number of channels draining */
 	atomic_init(&dma->num_channels_busy, 0);
 
 	return 0;
+}
+
+static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t irq = dma_irq(dma, cpu_get_id()) +
+		(channel << SOF_IRQ_BIT_SHIFT);
+
+	interrupt_register(irq, dw_dma_irq_handler, &p->chan[channel].id);
+	interrupt_enable(irq);
+}
+
+static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
+{
+	uint32_t irq = dma_irq(dma, cpu_get_id()) +
+		(channel << SOF_IRQ_BIT_SHIFT);
+
+	interrupt_disable(irq);
+	interrupt_unregister(irq);
 }
 
 #else
@@ -1138,7 +1156,7 @@ static void dw_dma_irq_handler(void *data)
 
 	/* clear platform and DSP interrupt */
 	pmask = status_block | status_tfr | status_err;
-	platform_interrupt_clear(dma_irq(dma), pmask);
+	platform_interrupt_clear(dma_irq(dma, cpu_get_id()), pmask);
 
 	/* confirm IRQ cleared */
 	status_block_new = dw_read(dma, DW_STATUS_BLOCK);
@@ -1231,19 +1249,31 @@ static int dw_dma_probe(struct dma *dma)
 
 	/* init work */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
-		dw_pdata->chan[i].dma = dma;
-		dw_pdata->chan[i].channel = i;
+		dw_pdata->chan[i].id.dma = dma;
+		dw_pdata->chan[i].id.channel = i;
 		dw_pdata->chan[i].status = COMP_STATE_INIT;
 	}
-
-	/* register our IRQ handler */
-	interrupt_register(dma_irq(dma), dw_dma_irq_handler, dma);
-	interrupt_enable(dma_irq(dma));
 
 	/* init number of channels draining */
 	atomic_init(&dma->num_channels_busy, 0);
 
 	return 0;
+}
+
+static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
+{
+	uint32_t irq = dma_irq(dma, cpu_get_id());
+
+	interrupt_register(irq, dw_dma_irq_handler, dma);
+	interrupt_enable(irq);
+}
+
+static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
+{
+	uint32_t irq = dma_irq(dma, cpu_get_id());
+
+	interrupt_disable(irq);
+	interrupt_unregister(irq);
 }
 #endif
 

@@ -44,6 +44,9 @@
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/cpu.h>
+#include <sof/idc.h>
+#include <platform/idc.h>
 
 struct pipeline_data {
 	spinlock_t lock;
@@ -394,6 +397,10 @@ static int component_op_downstream(struct op_data *op_data,
 		/* component should reset and free resources */
 		err = comp_reset(current);
 		break;
+	case COMP_OPS_CACHE:
+		/* cache operation */
+		comp_cache(current, op_data->cmd);
+		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
 		trace_pipe_error("eOi");
@@ -474,6 +481,10 @@ static int component_op_upstream(struct op_data *op_data,
 	case COMP_OPS_RESET:
 		/* component should reset and free resources */
 		err = comp_reset(current);
+		break;
+	case COMP_OPS_CACHE:
+		/* cache operation */
+		comp_cache(current, op_data->cmd);
 		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	default:
@@ -628,6 +639,132 @@ out:
 	return ret;
 }
 
+static void component_cache_buffers_downstream(struct comp_dev *start,
+					       struct comp_dev *current,
+					       struct comp_buffer *buffer,
+					       cache_command cache_cmd)
+{
+	struct list_item *clist;
+
+	if (current != start && buffer) {
+		cache_cmd(buffer, sizeof(*buffer));
+
+		/* stop if we reach an endpoint */
+		if (current->is_endpoint)
+			return;
+	}
+
+	/* travel further */
+	list_for_item(clist, &current->bsink_list) {
+		buffer = container_of(clist, struct comp_buffer, source_list);
+
+		/* stop going if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		component_cache_buffers_downstream(start, buffer->sink,
+						   buffer, cache_cmd);
+	}
+}
+
+static void component_cache_buffers_upstream(struct comp_dev *start,
+					     struct comp_dev *current,
+					     struct comp_buffer *buffer,
+					     cache_command cache_cmd)
+{
+	struct list_item *clist;
+
+	if (current != start && buffer) {
+		cache_cmd(buffer, sizeof(*buffer));
+
+		/* stop if we reach an endpoint */
+		if (current->is_endpoint)
+			return;
+	}
+
+	/* travel further */
+	list_for_item(clist, &current->bsource_list) {
+		buffer = container_of(clist, struct comp_buffer, sink_list);
+
+		/* stop going if this component is not connected */
+		if (!buffer->connected)
+			continue;
+
+		component_cache_buffers_upstream(start, buffer->source,
+						 buffer, cache_cmd);
+	}
+}
+
+void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
+{
+	cache_command cache_cmd = comp_get_cache_command(cmd);
+	struct op_data op_data;
+	uint32_t flags;
+
+	trace_pipe("cac");
+
+	op_data.p = p;
+	op_data.op = COMP_OPS_CACHE;
+	op_data.cmd = cmd;
+
+	spin_lock_irq(&p->lock, flags);
+
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		/* execute cache operation on components downstream */
+		component_op_downstream(&op_data, dev, dev, NULL);
+
+		/* execute cache operation on buffers downstream */
+		component_cache_buffers_downstream(dev, dev, NULL, cache_cmd);
+	} else {
+		/* execute cache operation on components upstream */
+		component_op_upstream(&op_data, dev, dev, NULL);
+
+		/* execute cache operation on buffers upstream */
+		component_cache_buffers_upstream(dev, dev, NULL, cache_cmd);
+	}
+
+	/* execute cache operation on pipeline itself */
+	cache_cmd(p, sizeof(*p));
+
+	spin_unlock_irq(&p->lock, flags);
+}
+
+static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
+				    int cmd)
+{
+	struct idc_msg pipeline_trigger = {
+		IDC_MSG_PPL_TRIGGER,
+		IDC_MSG_PPL_TRIGGER_EXT(host->comp.id, cmd),
+		p->ipc_pipe.core };
+	int ret;
+
+	/* check if requested core is enabled */
+	if (!cpu_is_core_enabled(p->ipc_pipe.core)) {
+		trace_pipe_error("pt0");
+		trace_error_value(p->ipc_pipe.core);
+		return -EINVAL;
+	}
+
+	/* writeback pipeline on start */
+	if (cmd == COMP_TRIGGER_START)
+		pipeline_cache(p, host, COMP_CACHE_WRITEBACK_INV);
+
+	/* send IDC pipeline trigger message */
+	ret = idc_send_msg(&pipeline_trigger, IDC_BLOCKING);
+	if (ret < 0) {
+		trace_pipe_error("pt1");
+		trace_error_value(host->comp.id);
+		trace_error_value(cmd);
+		return ret;
+	}
+
+	/* invalidate pipeline on stop */
+	if (cmd == COMP_TRIGGER_STOP)
+		pipeline_cache(p, host, COMP_CACHE_INVALIDATE);
+
+	return ret;
+}
+
 /* send pipeline component/endpoint a command */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
@@ -636,6 +773,10 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	uint32_t flags;
 
 	trace_pipe("cmd");
+
+	/* if current core is different than requested */
+	if (p->ipc_pipe.core != cpu_get_id())
+		return pipeline_trigger_on_core(p, host, cmd);
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_TRIGGER;

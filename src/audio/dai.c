@@ -735,6 +735,58 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	return 0;
 }
 
+static void dai_cache(struct comp_dev *dev, int cmd)
+{
+	struct dai_data *dd;
+	struct list_item *item;
+	struct dma_sg_elem *e;
+
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		trace_dai("wtb");
+
+		dd = comp_get_drvdata(dev);
+
+		list_for_item(item, &dd->config.elem_list) {
+			e = container_of(item, struct dma_sg_elem, list);
+			dcache_writeback_invalidate_region(e, sizeof(*e));
+			dcache_writeback_invalidate_region(item,
+							   sizeof(*item));
+		}
+
+		dcache_writeback_invalidate_region(dd->dai, sizeof(*dd->dai));
+		dcache_writeback_invalidate_region(dd->dai->private,
+						   dd->dai->private_size);
+		dcache_writeback_invalidate_region(dd->dma, sizeof(*dd->dma));
+		dcache_writeback_invalidate_region(dd->dma->private,
+						   dd->dma->private_size);
+		dcache_writeback_invalidate_region(dd, sizeof(*dd));
+		dcache_writeback_invalidate_region(dev, sizeof(*dev));
+		break;
+
+	case COMP_CACHE_INVALIDATE:
+		trace_dai("inv");
+
+		dcache_invalidate_region(dev, sizeof(*dev));
+
+		dd = comp_get_drvdata(dev);
+		dcache_invalidate_region(dd, sizeof(*dd));
+		dcache_invalidate_region(dd->dma, sizeof(*dd->dma));
+		dcache_invalidate_region(dd->dma->private,
+					 dd->dma->private_size);
+		dcache_invalidate_region(dd->dai, sizeof(*dd->dai));
+		dcache_invalidate_region(dd->dai->private,
+					 dd->dai->private_size);
+
+		list_for_item(item, &dd->config.elem_list) {
+			dcache_invalidate_region(item, sizeof(*item));
+			e = container_of(item, struct dma_sg_elem, list);
+			dcache_invalidate_region(e, sizeof(*e));
+		}
+		break;
+	}
+}
+
 static struct comp_driver comp_dai = {
 	.type	= SOF_COMP_DAI,
 	.ops	= {
@@ -747,6 +799,7 @@ static struct comp_driver comp_dai = {
 		.reset		= dai_reset,
 		.dai_config	= dai_config,
 		.position	= dai_position,
+		.cache		= dai_cache,
 	},
 };
 

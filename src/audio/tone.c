@@ -699,6 +699,31 @@ static int tone_reset(struct comp_dev * dev)
 	return 0;
 }
 
+static void tone_cache(struct comp_dev *dev, int cmd)
+{
+	struct comp_data *cd;
+
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		trace_tone("wtb");
+
+		cd = comp_get_drvdata(dev);
+
+		dcache_writeback_invalidate_region(cd, sizeof(*cd));
+		dcache_writeback_invalidate_region(dev, sizeof(*dev));
+		break;
+
+	case COMP_CACHE_INVALIDATE:
+		trace_tone("inv");
+
+		dcache_invalidate_region(dev, sizeof(*dev));
+
+		cd = comp_get_drvdata(dev);
+		dcache_invalidate_region(cd, sizeof(*cd));
+		break;
+	}
+}
+
 struct comp_driver comp_tone = {
 	.type = SOF_COMP_TONE,
 	.ops = {
@@ -710,6 +735,7 @@ struct comp_driver comp_tone = {
 		.copy = tone_copy,
 		.prepare = tone_prepare,
 		.reset = tone_reset,
+		.cache = tone_cache,
 	},
 };
 

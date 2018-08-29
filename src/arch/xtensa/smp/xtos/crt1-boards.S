@@ -29,6 +29,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <xtensa/cacheasm.h>
+#include <xtensa/cacheattrasm.h>
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
 #include <config.h>
@@ -165,6 +166,21 @@ xtos_per_core:
 	writesr	excsave 4 a4
 	movi	a4, _Level5FromVector
 	writesr	excsave 5 a4
+#endif
+
+xtos_per_core_cacheattr:
+	get_prid	a5
+#if PLATFORM_MASTER_CORE_ID == 0
+	beqz		a5, xtos_per_core_obtain_xtos_structs
+#else
+	movi		a4, PLATFORM_MASTER_CORE_ID
+	beq		a5, a4, xtos_per_core_obtain_xtos_structs
+#endif
+#if XCHAL_HAVE_CACHEATTR || XCHAL_HAVE_MIMIC_CACHEATTR || \
+		XCHAL_HAVE_XLT_CACHEATTR || \
+		(XCHAL_HAVE_PTP_MMU && XCHAL_HAVE_SPANNING_WAY)
+	movi	a2, _memmap_cacheattr_reset /* absolute symbol, not a ptr */
+	cacheattr_set /* set CACHEATTR from a2 (clobbers a3-a8) */
 #endif
 
 // Obtain core structs from given address.

@@ -85,7 +85,7 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	int i;
 
 	for (i = 0; i < heap->blocks; i++) {
-		size += block_get_size(&heap->map[i]);
+		size += block_get_size(cache_to_uncache(&heap->map[i]));
 	}
 
 	return size;
@@ -103,7 +103,7 @@ static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 #endif
 
 /* allocate from system memory pool */
-static void *rmalloc_sys(size_t bytes)
+static void *rmalloc_sys(int zone, size_t bytes)
 {
 	void *ptr;
 
@@ -112,6 +112,11 @@ static void *rmalloc_sys(size_t bytes)
 		trace_mem_error("eM0");
 		return NULL;
 	}
+
+	/* align address to dcache line size */
+	if (memmap.system.heap % PLATFORM_DCACHE_ALIGN)
+		memmap.system.heap += PLATFORM_DCACHE_ALIGN -
+			(memmap.system.heap % PLATFORM_DCACHE_ALIGN);
 
 	ptr = (void *)memmap.system.heap;
 
@@ -126,6 +131,9 @@ static void *rmalloc_sys(size_t bytes)
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
 
+	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+		ptr = cache_to_uncache(ptr);
+
 	return ptr;
 }
 
@@ -133,8 +141,8 @@ static void *rmalloc_sys(size_t bytes)
 static void *alloc_block(struct mm_heap *heap, int level,
 	uint32_t caps)
 {
-	struct block_map *map = &heap->map[level];
-	struct block_hdr *hdr = &map->block[map->first_free];
+	struct block_map *map = cache_to_uncache(&heap->map[level]);
+	struct block_hdr *hdr = cache_to_uncache(&map->block[map->first_free]);
 	void *ptr;
 	int i;
 
@@ -144,12 +152,11 @@ static void *alloc_block(struct mm_heap *heap, int level,
 	hdr->used = 1;
 	heap->info.used += map->block_size;
 	heap->info.free -= map->block_size;
-	dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 
 	/* find next free */
 	for (i = map->first_free; i < map->count; ++i) {
 
-		hdr = &map->block[i];
+		hdr = cache_to_uncache(&map->block[i]);
 
 		if (hdr->used == 0) {
 			map->first_free = i;
@@ -161,9 +168,6 @@ static void *alloc_block(struct mm_heap *heap, int level,
 	alloc_memset_region(ptr, map->block_size, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
 
-	dcache_writeback_invalidate_region(map, sizeof(*map));
-	dcache_writeback_invalidate_region(heap, sizeof(*heap));
-
 	return ptr;
 }
 
@@ -171,8 +175,8 @@ static void *alloc_block(struct mm_heap *heap, int level,
 static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	uint32_t caps, size_t bytes)
 {
-	struct block_map *map = &heap->map[level];
-	struct block_hdr *hdr = &map->block[map->first_free];
+	struct block_map *map = cache_to_uncache(&heap->map[level]);
+	struct block_hdr *hdr;
 	void *ptr;
 	unsigned int start;
 	unsigned int current;
@@ -190,7 +194,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 		/* check that we have enough free blocks from start pos */
 		end = start + count;
 		for (current = start; current < end; current++) {
-			hdr = &map->block[current];
+			hdr = cache_to_uncache(&map->block[current]);
 
 			/* is block used */
 			if (hdr->used)
@@ -210,17 +214,15 @@ found:
 	/* found some free blocks */
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
-	hdr = &map->block[start];
+	hdr = cache_to_uncache(&map->block[start]);
 	hdr->size = count;
 	heap->info.used += count * map->block_size;
 	heap->info.free -= count * map->block_size;
-	dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 
 	/* allocate each block */
 	for (current = start; current < end; current++) {
-		hdr = &map->block[current];
+		hdr = cache_to_uncache(&map->block[current]);
 		hdr->used = 1;
-		dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 	}
 
 	/* do we need to find a new first free block ? */
@@ -229,7 +231,7 @@ found:
 		/* find next free */
 		for (i = map->first_free + count; i < map->count; ++i) {
 
-			hdr = &map->block[i];
+			hdr = cache_to_uncache(&map->block[i]);
 
 			if (hdr->used == 0) {
 				map->first_free = i;
@@ -242,9 +244,6 @@ found:
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
 #endif
 
-	dcache_writeback_invalidate_region(map, sizeof(*map));
-	dcache_writeback_invalidate_region(heap, sizeof(*heap));
-
 	return ptr;
 }
 
@@ -255,7 +254,7 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 
 	/* find mm_heap that ptr belongs to */
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = &memmap.runtime[i];
+		heap = cache_to_uncache(&memmap.runtime[i]);
 
 		if ((uint32_t)ptr >= heap->heap &&
 			(uint32_t)ptr < heap->heap + heap->size)
@@ -263,7 +262,7 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	}
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = &memmap.buffer[i];
+		heap = cache_to_uncache(&memmap.buffer[i]);
 
 		if ((uint32_t)ptr >= heap->heap &&
 			(uint32_t)ptr < heap->heap + heap->size)
@@ -281,7 +280,7 @@ static struct mm_heap *get_runtime_heap_from_caps(uint32_t caps)
 
 	/* find first heap that support type */
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = &memmap.runtime[i];
+		heap = cache_to_uncache(&memmap.runtime[i]);
 		mask = heap->caps & caps;
 		if (mask == caps)
 			return heap;
@@ -298,7 +297,7 @@ static struct mm_heap *get_buffer_heap_from_caps(uint32_t caps)
 
 	/* find first heap that support type */
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = &memmap.buffer[i];
+		heap = cache_to_uncache(&memmap.buffer[i]);
 		mask = heap->caps & caps;
 		if (mask == caps)
 			return heap;
@@ -325,11 +324,11 @@ static void free_block(void *ptr)
 		return;
 
 	/* find block that ptr belongs to */
-	for (i = 0; i < heap->blocks; i++) {
-		block_map = &heap->map[i];
+	for (i = 0; i < heap->blocks - 1; i++) {
+		block_map = cache_to_uncache(&heap->map[i + 1]);
+
 		/* is ptr in this block */
-		if ((uint32_t)ptr < (block_map->base +
-		    (block_map->block_size * block_map->count)))
+		if ((uint32_t)ptr < block_map->base)
 			goto found;
 	}
 
@@ -338,19 +337,21 @@ static void free_block(void *ptr)
 	return;
 
 found:
+	/* the block i is it */
+	block_map = cache_to_uncache(&heap->map[i]);
+
 	/* calculate block header */
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
-	hdr = &block_map->block[block];
+	hdr = cache_to_uncache(&block_map->block[block]);
 
 	/* free block header and continuous blocks */
 	for (i = block; i < block + hdr->size; i++) {
-		hdr = &block_map->block[i];
+		hdr = cache_to_uncache(&block_map->block[i]);
 		hdr->size = 0;
 		hdr->used = 0;
 		block_map->free_count++;
 		heap->info.used -= block_map->block_size;
 		heap->info.free += block_map->block_size;
-		dcache_writeback_invalidate_region(hdr, sizeof(*hdr));
 	}
 
 	/* set first free block */
@@ -360,16 +361,15 @@ found:
 #if DEBUG_BLOCK_FREE
 	alloc_memset_region(ptr, block_map->block_size * (i - 1), DEBUG_BLOCK_FREE_VALUE);
 #endif
-
-	dcache_writeback_invalidate_region(block_map, sizeof(*block_map));
-	dcache_writeback_invalidate_region(heap, sizeof(*heap));
 }
 
 /* allocate single block for runtime */
-static void *rmalloc_runtime(uint32_t caps, size_t bytes)
+static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
+	struct block_map *map;
 	int i;
+	void *ptr = NULL;
 
 	/* check runtime heap for capabilities */
 	heap = get_runtime_heap_from_caps(caps);
@@ -383,18 +383,26 @@ static void *rmalloc_runtime(uint32_t caps, size_t bytes)
 
 find:
 	for (i = 0; i < heap->blocks; i++) {
+		map = cache_to_uncache(&heap->map[i]);
 
 		/* is block big enough */
-		if (heap->map[i].block_size < bytes)
+		if (map->block_size < bytes)
 			continue;
 
 		/* does block have free space */
-		if (heap->map[i].free_count == 0)
+		if (map->free_count == 0)
 			continue;
 
 		/* free block space exists */
-		return alloc_block(heap, i, caps);
+		ptr = alloc_block(heap, i, caps);
+
+		break;
 	}
+
+	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+		ptr = cache_to_uncache(ptr);
+
+	return ptr;
 
 error:
 	trace_mem_error("eMm");
@@ -410,12 +418,12 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 
 	spin_lock_irq(&memmap.lock, flags);
 
-	switch (zone) {
+	switch (zone & RZONE_TYPE_MASK) {
 	case RZONE_SYS:
-		ptr = rmalloc_sys(bytes);
+		ptr = rmalloc_sys(zone, bytes);
 		break;
 	case RZONE_RUNTIME:
-		ptr = rmalloc_runtime(caps, bytes);
+		ptr = rmalloc_runtime(zone, caps, bytes);
 		break;
 	default:
 		trace_mem_error("eMz");
@@ -442,6 +450,7 @@ void *rzalloc(int zone, uint32_t caps, size_t bytes)
 void *rballoc(int zone, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
+	struct block_map *map;
 	int i;
 	uint32_t flags;
 	void *ptr = NULL;
@@ -454,13 +463,14 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 
 	/* will request fit in single block */
 	for (i = 0; i < heap->blocks; i++) {
+		map = cache_to_uncache(&heap->map[i]);
 
 		/* is block big enough */
-		if (heap->map[i].block_size < bytes)
+		if (map->block_size < bytes)
 			continue;
 
 		/* does block have free space */
-		if (heap->map[i].free_count == 0)
+		if (map->free_count == 0)
 			continue;
 
 		/* allocate block */
@@ -478,9 +488,10 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 
 		/* find best block size for request */
 		for (i = 0; i < heap->blocks; i++) {
+			map = cache_to_uncache(&heap->map[i]);
 
 			/* allocate is block size smaller than request */
-			if (heap->map[i].block_size < bytes)
+			if (map->block_size < bytes)
 				alloc_cont_blocks(heap, i, caps, bytes);
 		}
 	}
@@ -488,6 +499,9 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 	ptr = alloc_cont_blocks(heap, heap->blocks - 1, caps, bytes);
 
 out:
+	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED))
+		ptr = cache_to_uncache(ptr);
+
 	spin_unlock_irq(&memmap.lock, flags);
 	return ptr;
 }
@@ -504,20 +518,25 @@ void rfree(void *ptr)
 uint32_t mm_pm_context_size(void)
 {
 	uint32_t size = 0;
+	struct mm_heap *heap;
 	int i;
 
 	/* calc context size for each area  */
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++)
-		size += memmap.buffer[i].info.used;
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++)
-		size += memmap.runtime[i].info.used;
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
+		heap = cache_to_uncache(&memmap.buffer[i]);
+		size += heap->info.used;
+	}
+	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
+		heap = cache_to_uncache(&memmap.runtime[i]);
+		size += heap->info.used;
+	}
 	size += memmap.system.info.used;
 
 	/* add memory maps */
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++)
-		size += heap_get_size(&memmap.buffer[i]);
+		size += heap_get_size(cache_to_uncache(&memmap.buffer[i]));
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++)
-		size += heap_get_size(&memmap.runtime[i]);
+		size += heap_get_size(cache_to_uncache(&memmap.runtime[i]));
 	size += heap_get_size(&memmap.system);
 
 	/* recalc totals */
@@ -525,13 +544,15 @@ uint32_t mm_pm_context_size(void)
 	memmap.total.used = memmap.system.info.used;
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		memmap.total.free += memmap.buffer[i].info.free;
-		memmap.total.used += memmap.buffer[i].info.used;
+		heap = cache_to_uncache(&memmap.buffer[i]);
+		memmap.total.free += heap->info.free;
+		memmap.total.used += heap->info.used;
 	}
 
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		memmap.total.free = memmap.runtime[i].info.free;
-		memmap.total.used = memmap.runtime[i].info.used;
+		heap = cache_to_uncache(&memmap.runtime[i]);
+		memmap.total.free = heap->info.free;
+		memmap.total.used = heap->info.used;
 	}
 
 	return size;
@@ -632,8 +653,7 @@ void init_heap(struct sof *sof)
 
 			current_map = &heap->map[j];
 			current_map->base = heap->heap;
-			dcache_writeback_region(current_map,
-						sizeof(*current_map));
+			flush_block_map(current_map);
 
 			for (k = 1; k < heap->blocks; k++) {
 				next_map = &heap->map[k];
@@ -641,10 +661,11 @@ void init_heap(struct sof *sof)
 					current_map->block_size *
 					current_map->count;
 				current_map = &heap->map[k];
-				dcache_writeback_region(current_map,
-							sizeof(*current_map));
+				flush_block_map(current_map);
 			}
 		}
+
+		dcache_writeback_invalidate_region(heap, sizeof(*heap));
 	}
 
 	/* initialise runtime map */
@@ -655,8 +676,7 @@ void init_heap(struct sof *sof)
 
 			current_map = &heap->map[j];
 			current_map->base = heap->heap;
-			dcache_writeback_region(current_map,
-						sizeof(*current_map));
+			flush_block_map(current_map);
 
 			for (k = 1; k < heap->blocks; k++) {
 				next_map = &heap->map[k];
@@ -664,9 +684,10 @@ void init_heap(struct sof *sof)
 					current_map->block_size *
 					current_map->count;
 				current_map = &heap->map[k];
-				dcache_writeback_region(current_map,
-							sizeof(*current_map));
+				flush_block_map(current_map);
 			}
 		}
+
+		dcache_writeback_invalidate_region(heap, sizeof(*heap));
 	}
 }

@@ -21,6 +21,16 @@
 *.lst
 *.log
 .*
+*.html
+*.js
+*.png
+*.md5
+*.xml
+*.css
+*.xsd
+*.patch
+*.xslt
+*.mbox
 
 Makefile
 Makefile.in

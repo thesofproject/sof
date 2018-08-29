@@ -1004,8 +1004,9 @@ static inline struct ipc_msg *msg_get_empty(struct ipc *ipc)
 {
 	struct ipc_msg *msg = NULL;
 
-	if (!list_is_empty(&ipc->empty_list)) {
-		msg = list_first_item(&ipc->empty_list, struct ipc_msg, list);
+	if (!list_is_empty(&ipc->shared_ctx->empty_list)) {
+		msg = list_first_item(&ipc->shared_ctx->empty_list,
+				      struct ipc_msg, list);
 		list_item_del(&msg->list);
 	}
 
@@ -1028,7 +1029,7 @@ static inline struct ipc_msg *ipc_glb_stream_message_find(struct ipc *ipc,
 	case iCS(SOF_IPC_STREAM_POSITION):
 
 		/* iterate host message list for searching */
-		list_for_item(plist, &ipc->msg_list) {
+		list_for_item(plist, &ipc->shared_ctx->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd) {
 				old_posn = (struct sof_ipc_stream_posn *)msg->tx_data;
@@ -1058,7 +1059,7 @@ static inline struct ipc_msg *ipc_glb_trace_message_find(struct ipc *ipc,
 	switch (cmd) {
 	case iCS(SOF_IPC_TRACE_DMA_POSITION):
 		/* iterate host message list for searching */
-		list_for_item(plist, &ipc->msg_list) {
+		list_for_item(plist, &ipc->shared_ctx->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd)
 				return msg;
@@ -1132,8 +1133,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 
 	if (!found) {
 		/* now queue the message */
-		ipc->dsp_pending = 1;
-		list_item_append(&msg->list, &ipc->msg_list);
+		ipc->shared_ctx->dsp_pending = 1;
+		list_item_append(&msg->list, &ipc->shared_ctx->msg_list);
 	}
 
 out:
@@ -1144,7 +1145,7 @@ out:
 /* process current message */
 int ipc_process_msg_queue(void)
 {
-	if (_ipc->dsp_pending)
+	if (_ipc->shared_ctx->dsp_pending)
 		ipc_platform_send_msg(_ipc);
 	return 0;
 }

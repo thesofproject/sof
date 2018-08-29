@@ -760,6 +760,69 @@ out:
 	return ret;
 }
 
+static void host_cache(struct comp_dev *dev, int cmd)
+{
+	struct host_data *hd;
+	struct list_item *item;
+	struct dma_sg_elem *e;
+
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		trace_host("wtb");
+
+		hd = comp_get_drvdata(dev);
+
+		list_for_item(item, &hd->config.elem_list) {
+			e = container_of(item, struct dma_sg_elem, list);
+			dcache_writeback_invalidate_region(e, sizeof(*e));
+			dcache_writeback_invalidate_region(item,
+							   sizeof(*item));
+		}
+
+#if !defined CONFIG_DMA_GW
+		list_for_item(item, &hd->local.elem_list) {
+			e = container_of(item, struct dma_sg_elem, list);
+			dcache_writeback_invalidate_region(e, sizeof(*e));
+			dcache_writeback_invalidate_region(item,
+							   sizeof(*item));
+		}
+#endif
+
+		dcache_writeback_invalidate_region(hd->dma, sizeof(*hd->dma));
+		dcache_writeback_invalidate_region(hd->dma->private,
+						   hd->dma->private_size);
+		dcache_writeback_invalidate_region(hd, sizeof(*hd));
+		dcache_writeback_invalidate_region(dev, sizeof(*dev));
+		break;
+
+	case COMP_CACHE_INVALIDATE:
+		trace_host("inv");
+
+		dcache_invalidate_region(dev, sizeof(*dev));
+
+		hd = comp_get_drvdata(dev);
+		dcache_invalidate_region(hd, sizeof(*hd));
+		dcache_invalidate_region(hd->dma, sizeof(*hd->dma));
+		dcache_invalidate_region(hd->dma->private,
+					 hd->dma->private_size);
+
+#if !defined CONFIG_DMA_GW
+		list_for_item(item, &hd->local.elem_list) {
+			dcache_invalidate_region(item, sizeof(*item));
+			e = container_of(item, struct dma_sg_elem, list);
+			dcache_invalidate_region(e, sizeof(*e));
+		}
+#endif
+
+		list_for_item(item, &hd->config.elem_list) {
+			dcache_invalidate_region(item, sizeof(*item));
+			e = container_of(item, struct dma_sg_elem, list);
+			dcache_invalidate_region(e, sizeof(*e));
+		}
+		break;
+	}
+}
+
 struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.ops	= {
@@ -774,6 +837,7 @@ struct comp_driver comp_host = {
 		.host_buffer	= host_buffer,
 #endif
 		.position	= host_position,
+		.cache		= host_cache,
 	},
 };
 

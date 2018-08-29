@@ -337,6 +337,31 @@ static int mixer_prepare(struct comp_dev *dev)
 	return downstream;
 }
 
+static void mixer_cache(struct comp_dev *dev, int cmd)
+{
+	struct mixer_data *md;
+
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		trace_mixer("wtb");
+
+		md = comp_get_drvdata(dev);
+
+		dcache_writeback_invalidate_region(md, sizeof(*md));
+		dcache_writeback_invalidate_region(dev, sizeof(*dev));
+		break;
+
+	case COMP_CACHE_INVALIDATE:
+		trace_mixer("inv");
+
+		dcache_invalidate_region(dev, sizeof(*dev));
+
+		md = comp_get_drvdata(dev);
+		dcache_invalidate_region(md, sizeof(*md));
+		break;
+	}
+}
+
 struct comp_driver comp_mixer = {
 	.type	= SOF_COMP_MIXER,
 	.ops	= {
@@ -347,6 +372,7 @@ struct comp_driver comp_mixer = {
 		.trigger	= mixer_trigger,
 		.copy		= mixer_copy,
 		.reset		= mixer_reset,
+		.cache		= mixer_cache,
 	},
 };
 

@@ -143,7 +143,8 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-static struct work_queue_timesource platform_generic_queue = {
+struct work_queue_timesource platform_generic_queue[] = {
+{
 	.timer	 = {
 		.id = TIMER3, /* external timer */
 		.irq = IRQ_EXT_TSTAMP0_LVL2(0),
@@ -153,9 +154,46 @@ static struct work_queue_timesource platform_generic_queue = {
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
+},
+{
+	.timer	 = {
+		.id = TIMER3, /* external timer */
+		.irq = IRQ_EXT_TSTAMP0_LVL2(1),
+	},
+	.clk		= CLK_SSP,
+	.notifier	= NOTIFIER_ID_SSP_FREQ,
+	.timer_set	= platform_timer_set,
+	.timer_clear	= platform_timer_clear,
+	.timer_get	= platform_timer_get,
+},
+#if defined(CONFIG_CANNONLAKE)
+{
+	.timer	 = {
+		.id = TIMER3, /* external timer */
+		.irq = IRQ_EXT_TSTAMP0_LVL2(2),
+	},
+	.clk		= CLK_SSP,
+	.notifier	= NOTIFIER_ID_SSP_FREQ,
+	.timer_set	= platform_timer_set,
+	.timer_clear	= platform_timer_clear,
+	.timer_get	= platform_timer_get,
+},
+{
+	.timer	 = {
+		.id = TIMER3, /* external timer */
+		.irq = IRQ_EXT_TSTAMP0_LVL2(3),
+	},
+	.clk		= CLK_SSP,
+	.notifier	= NOTIFIER_ID_SSP_FREQ,
+	.timer_set	= platform_timer_set,
+	.timer_clear	= platform_timer_clear,
+	.timer_get	= platform_timer_get,
+},
+#endif
 };
 
-struct timer *platform_timer = &platform_generic_queue.timer;
+struct timer *platform_timer =
+	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -230,11 +268,6 @@ static void platform_init_hw(void)
 	io_reg_write(DSP_INIT_LPGPDMA(1),
 		LPGPDMA_CHOSEL_FLAG | LPGPDMA_CTLOSEL_FLAG);
 }
-
-static struct timer platform_ext_timer = {
-	.id = TIMER3,
-	.irq = IRQ_EXT_TSTAMP0_LVL2(0),
-};
 #endif
 
 int platform_init(struct sof *sof)
@@ -257,17 +290,13 @@ int platform_init(struct sof *sof)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	#if defined(CONFIG_APOLLOLAKE)
-	platform_timer_start(&platform_generic_queue.timer);
-	#elif defined(CONFIG_CANNONLAKE)
-	platform_timer_start(&platform_ext_timer);
-	#endif
+	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	init_platform_clocks();
 
 	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue);
+	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
 
 	/* init the system agent */
 	sa_init(sof);

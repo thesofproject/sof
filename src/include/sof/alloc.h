@@ -34,6 +34,7 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <sof/bit.h>
 #include <sof/dma.h>
 #include <platform/memory.h>
 
@@ -53,9 +54,17 @@ struct sof;
  *
  * See platform/memory.h for heap size configuration and mappings.
  */
-#define RZONE_SYS		0
-#define RZONE_RUNTIME	1
-#define RZONE_BUFFER	2
+
+/* heap zone types */
+#define RZONE_SYS	BIT(0)
+#define RZONE_RUNTIME	BIT(1)
+#define RZONE_BUFFER	BIT(2)
+
+/* heap zone flags */
+#define RZONE_FLAG_UNCACHED	BIT(4)
+
+#define RZONE_TYPE_MASK	0xf
+#define RZONE_FLAG_MASK	0xf0
 
 struct mm_info {
 	uint32_t used;
@@ -74,7 +83,7 @@ struct block_map {
 	uint16_t first_free;	/* index of first free block */
 	struct block_hdr *block;	/* base block header */
 	uint32_t base;		/* base address of space */
-} __attribute__ ((packed));
+} __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
 
 #define BLOCK_DEF(sz, cnt, hdr) \
 	{.block_size = sz, .count = cnt, .free_count = cnt, .block = hdr}
@@ -86,7 +95,7 @@ struct mm_heap {
 	uint32_t size;
 	uint32_t caps;
 	struct mm_info info;
-};
+} __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
 
 /* heap block memory map */
 struct mm {
@@ -99,7 +108,7 @@ struct mm {
 
 	struct mm_info total;
 	spinlock_t lock;	/* all allocs and frees are atomic */
-};
+} __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
 
 /* heap allocation and free */
 void *rmalloc(int zone, uint32_t caps, size_t bytes);
@@ -122,4 +131,12 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg);
 
 /* heap initialisation */
 void init_heap(struct sof *sof);
+
+/* flush block map from cache to sram */
+static inline void flush_block_map(struct block_map *map)
+{
+	dcache_writeback_invalidate_region(map->block,
+					   sizeof(*map->block) * map->count);
+	dcache_writeback_invalidate_region(map, sizeof(*map));
+}
 #endif

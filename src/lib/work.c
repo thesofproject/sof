@@ -71,9 +71,6 @@ struct work_queue {
 	uint64_t run_ticks;	/* ticks when last run */
 };
 
-/* generic system work queue */
-static struct work_queue *queue_;
-
 static inline int work_set_timer(struct work_queue *queue, uint64_t ticks)
 {
 	int ret;
@@ -375,7 +372,7 @@ out:
 
 void work_schedule_default(struct work *w, uint64_t timeout)
 {
-	work_schedule(queue_, w, timeout);
+	work_schedule(*arch_work_queue_get(), w, timeout);
 }
 
 static void reschedule(struct work_queue *queue, struct work *w, uint64_t time)
@@ -418,17 +415,18 @@ void work_reschedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 
 void work_reschedule_default(struct work *w, uint64_t timeout)
 {
+	struct work_queue *queue = *arch_work_queue_get();
 	uint64_t time;
 
 	/* convert timeout micro seconds to CPU clock ticks */
-	time = queue_->ticks_per_usec * timeout + work_get_timer(queue_);
+	time = queue->ticks_per_usec * timeout + work_get_timer(queue);
 
-	reschedule(queue_, w, time);
+	reschedule(queue, w, time);
 }
 
 void work_reschedule_default_at(struct work *w, uint64_t time)
 {
-	reschedule(queue_, w, time);
+	reschedule(*arch_work_queue_get(), w, time);
 }
 
 void work_cancel(struct work_queue *queue, struct work *w)
@@ -448,7 +446,7 @@ void work_cancel(struct work_queue *queue, struct work *w)
 
 void work_cancel_default(struct work *w)
 {
-	work_cancel(queue_, w);
+	work_cancel(*arch_work_queue_get(), w);
 }
 
 struct work_queue *work_new_queue(struct work_queue_timesource *ts)
@@ -456,7 +454,7 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 	struct work_queue *queue;
 
 	/* init work queue */
-	queue = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*queue_));
+	queue = rmalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*queue));
 
 	list_init(&queue->work);
 	spinlock_init(&queue->lock);
@@ -479,5 +477,22 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 
 void init_system_workq(struct work_queue_timesource *ts)
 {
-	queue_ = work_new_queue(ts);
+	struct work_queue **queue = arch_work_queue_get();
+	*queue = work_new_queue(ts);
+}
+
+void free_system_workq(void)
+{
+	struct work_queue **queue = arch_work_queue_get();
+	uint32_t flags;
+
+	spin_lock_irq(&(*queue)->lock, flags);
+
+	timer_unregister(&(*queue)->ts->timer);
+	notifier_unregister(&(*queue)->notifier);
+	list_item_del(&(*queue)->work);
+
+	spin_unlock_irq(&(*queue)->lock, flags);
+
+	rfree(*queue);
 }

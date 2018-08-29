@@ -62,7 +62,7 @@ static void do_notify(void)
 	tracev_ipc("Not");
 
 	spin_lock_irq(&_ipc->lock, flags);
-	msg = _ipc->dsp_msg;
+	msg = _ipc->shared_ctx->dsp_msg;
 	if (msg == NULL)
 		goto out;
 
@@ -74,7 +74,7 @@ static void do_notify(void)
 	if (msg->cb)
 		msg->cb(msg->cb_data, msg->rx_data);
 
-	list_item_append(&msg->list, &_ipc->empty_list);
+	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
 
 out:
 	spin_unlock_irq(&_ipc->lock, flags);
@@ -176,8 +176,8 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	spin_lock_irq(&ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&ipc->msg_list)) {
-		ipc->dsp_pending = 0;
+	if (list_is_empty(&ipc->shared_ctx->msg_list)) {
+		ipc->shared_ctx->dsp_pending = 0;
 		goto out;
 	}
 
@@ -186,17 +186,18 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 
 	/* now send the message */
-	msg = list_first_item(&ipc->msg_list, struct ipc_msg, list);
+	msg = list_first_item(&ipc->shared_ctx->msg_list, struct ipc_msg,
+			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	ipc->dsp_msg = msg;
+	ipc->shared_ctx->dsp_msg = msg;
 	tracev_ipc("Msg");
 
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCDL, msg->header);
 	shim_write(SHIM_IPCDH, SHIM_IPCDH_BUSY);
 
-	list_item_append(&msg->list, &ipc->empty_list);
+	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
 out:
 	spin_unlock_irq(&ipc->lock, flags);
@@ -206,7 +207,6 @@ int platform_ipc_init(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc;
 	uint32_t imrd, dir, caps, dev;
-	int i;
 
 	_ipc = ipc;
 
@@ -214,23 +214,14 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
-	_ipc->dsp_msg = NULL;
-	list_init(&ipc->empty_list);
-	list_init(&ipc->msg_list);
-	spinlock_init(&ipc->lock);
 
-	for (i = 0; i < MSG_QUEUE_SIZE; i++)
-		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
-
-	/* schedule */
-	schedule_task_init(&_ipc->ipc_task, ipc_process_task, _ipc);
-	schedule_task_config(&_ipc->ipc_task, 0, 0);
-
+#ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		PLATFORM_PAGE_TABLE_SIZE);
 	if (iipc->page_table)
 		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
+#endif
 
 	/* request HDA DMA with shared access privilege */
 	caps = 0;

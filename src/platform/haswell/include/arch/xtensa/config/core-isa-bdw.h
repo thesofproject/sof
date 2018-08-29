@@ -208,10 +208,10 @@
 				CACHE
   ----------------------------------------------------------------------*/
 
-#define XCHAL_ICACHE_LINESIZE		128	/* I-cache line size in bytes */
-#define XCHAL_DCACHE_LINESIZE		128	/* D-cache line size in bytes */
-#define XCHAL_ICACHE_LINEWIDTH		7	/* log2(I line size in bytes) */
-#define XCHAL_DCACHE_LINEWIDTH		7	/* log2(D line size in bytes) */
+#define XCHAL_ICACHE_LINESIZE		0	/* I-cache line size in bytes */
+#define XCHAL_DCACHE_LINESIZE		0	/* D-cache line size in bytes */
+#define XCHAL_ICACHE_LINEWIDTH		0	/* log2(I line size in bytes) */
+#define XCHAL_DCACHE_LINEWIDTH		0	/* log2(D line size in bytes) */
 
 #define XCHAL_ICACHE_SIZE		0	/* I-cache size in bytes or 0 */
 #define XCHAL_DCACHE_SIZE		0	/* D-cache size in bytes or 0 */

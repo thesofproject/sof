@@ -104,6 +104,8 @@ struct sof_eq_fir_coef_data {
 
 #define SOF_EQ_IIR_MAX_SIZE 1024 /* Max size allowed for coef data in bytes */
 
+#define SOF_EQ_IIR_MAX_RESPONSES 8 /* A blob can define max 8 IIR EQs */
+
 /* eq_iir_configuration
  *     uint32_t channels_in_config
  *         This describes the number of channels in this EQ config data. It
@@ -140,9 +142,37 @@ struct sof_eq_fir_coef_data {
  */
 
 struct sof_eq_iir_config {
+	uint32_t size;
 	uint32_t channels_in_config;
 	uint32_t number_of_responses;
-	int32_t data[];
+	int32_t data[]; /* eq_assign[channels], eq 0, eq 1, ... */
 };
+
+struct sof_eq_iir_header_df2t {
+	uint32_t num_sections;
+	uint32_t num_sections_in_series;
+	int32_t biquads[]; /* Repeated biquad coefficients */
+};
+
+struct sof_eq_iir_biquad_df2t {
+	int32_t a2; /* Q2.30 */
+	int32_t a1; /* Q2.30 */
+	int32_t b2; /* Q2.30 */
+	int32_t b1; /* Q2.30 */
+	int32_t b0; /* Q2.30 */
+	int32_t output_shift; /* Number of right shifts */
+	int32_t output_gain;  /* Q2.14 */
+};
+
+/* A full 22th order equalizer with 11 biquads cover octave bands 1-11 in
+ * in the 0 - 20 kHz bandwidth.
+ */
+#define SOF_EQ_IIR_DF2T_BIQUADS_MAX 11
+
+/* The number of int32_t words in sof_eq_iir_header_df2t */
+#define SOF_EQ_IIR_NHEADER_DF2T 2
+
+/* The number of int32_t words in sof_eq_iir_biquad_df2t */
+#define SOF_EQ_IIR_NBIQUAD_DF2T 7
 
 #endif /* EQ_H */
