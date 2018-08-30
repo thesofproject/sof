@@ -124,7 +124,6 @@ static void eq_fir_free_delaylines(struct fir_state_32x16 fir[])
 
 	if (data) {
 		trace_eq("fr1");
-		trace_value((uint32_t)data);
 
 		rfree(data);
 
@@ -222,7 +221,6 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 	for (i = 0; i < nch; i++) {
 		resp = assign_response[i];
 		if (resp >= 0) {
-			trace_value((uint32_t)fir_data);
 			trace_value(fir->length);
 			fir_init_delay(&fir[i], &fir_data);
 		}

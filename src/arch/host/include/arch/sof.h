@@ -42,6 +42,9 @@
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32
 
+/* data cache line alignment */
+#define PLATFORM_DCACHE_ALIGN	sizeof(uint32_t)
+
 static inline void *arch_get_stack_ptr(void)
 {
 	void *frames[ARCH_STACK_DUMP_FRAMES];
