@@ -3,7 +3,7 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 %%
 % src_test - test with SRC test bench objective audio quality parameters
 %
-% src_test(fs_in, fs_out)
+% src_test(bits_in, bits_out, fs_in, fs_out)
 %
 % bits_in  - input word length
 % bits_out - output word length
@@ -456,7 +456,9 @@ else
         title(tstr);
 end
 pfn = sprintf('plots/%s_src_%d_%d.png', testacronym, t.fs1, t.fs2);
-print(pfn, '-dpng');
+% The print command caused a strange error with __osmesa_print__
+% so disable it for now until solved.
+%print(pfn, '-dpng');
 if t.close_plot_windows
 	close all;
 end
