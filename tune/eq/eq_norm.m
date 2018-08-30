@@ -61,13 +61,13 @@ end
 %% Adjust FIR and IIR gains if enabled
 if eq.enable_fir && eq.enable_iir
         eq.b_fir = eq.b_fir * g_fir * g_offs;
-        eq.b_p = eq.b_p * g_iir * g_offs;
+        eq.p_k = eq.p_k * g_iir * g_offs;
 end
 if eq.enable_fir && eq.enable_iir == 0
         eq.b_fir = eq.b_fir * g_fir * g_offs;
 end
 if eq.enable_fir == 0 && eq.enable_iir
-        eq.b_p = eq.b_p * g_iir * g_offs;
+        eq.p_k = eq.p_k * g_iir * g_offs;
 end
 
 %% Re-compute response after adjusting gain

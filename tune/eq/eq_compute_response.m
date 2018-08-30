@@ -1,4 +1,4 @@
-function [m, ph, gd] = eq_compute_response(b, a, f, fs)
+function [m, ph, gd] = eq_compute_response(z, p, k, f, fs)
 
 %%
 % Copyright (c) 2016, Intel Corporation
@@ -30,16 +30,43 @@ function [m, ph, gd] = eq_compute_response(b, a, f, fs)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
-h = freqz(b, a, f, fs);
-m = 20*log10(abs(h));
-ph = 180/pi*angle(h);
+switch nargin
+        case 3
+                b = z;  % 1st arg
+                f = p;  % 2nd arg
+                fs = k; % 3rd arg
+                h = freqz(b, 1, f, fs);
+                m = 20*log10(abs(h));
+                ph = 180/pi*angle(h);
 
-lb = length(b);
-la = length(a);
-if lb == 1 && la == 1
-	gd = zeros(1, length(f));
-else
-	gd = 1/fs*grpdelay(b, a, f, fs);
+                if length(b) == 1
+                        gd = zeros(1, length(f));
+                else
+			if exist('OCTAVE_VERSION', 'builtin')
+				% grpdelay() has some issue so better to not show a plot
+				gd = NaN * zeros(1, length(f));
+			else
+				gd = 1/fs*grpdelay(b, 1, f, fs);
+			end
+                end
+        case 5
+                [b, a] = zp2tf(z, p, k);
+                h = freqz(b, a, f, fs);
+                m = 20*log10(abs(h));
+                ph = 180/pi*angle(h);
+
+                if length(z) == 0 && length(p) == 0
+                        gd = zeros(1, length(f));
+                else
+			if exist('OCTAVE_VERSION', 'builtin')
+				% grpdelay() has some issue so better to not show a plot
+				gd = NaN * zeros(1, length(f));
+			else
+				gd = 1/fs*grpdelay(b, a, f, fs);
+			end
+                end
+        otherwise
+                error('Incorrect input parameters');
 end
 
 end
