@@ -42,9 +42,9 @@ eq = preprocess_responses(eq);
 %% Define target (e.g. speaker) response as parametric filter. This could also
 %  be numerical data interpolated to the grid.
 if length(eq.parametric_target_response) > 0
-        [eq.b_t, eq.a_t] = eq_define_parametric_eq( ...
+        [eq.t_z, eq.t_p, eq.t_k] = eq_define_parametric_eq( ...
                 eq.parametric_target_response, eq.fs);
-        eq.t_db = eq_compute_response(eq.b_t, eq.a_t, eq.f, eq.fs);
+        eq.t_db = eq_compute_response(eq.t_z, eq.t_p, eq.t_k, eq.f, eq.fs);
 end
 
 if isempty(eq.t_db)
@@ -64,16 +64,15 @@ eq.err_db = eq.t_db - eq.m_db;
 
 %% Parametric IIR EQ definition
 if eq.enable_iir
-        [eq.b_p, eq.a_p] = eq_define_parametric_eq(eq.peq, eq.fs);
-        if length(eq.b_p) > 2*eq.iir_biquads_max+1
+        [eq.p_z, eq.p_p, eq.p_k] = eq_define_parametric_eq(eq.peq, eq.fs);
+        if max(length(eq.p_z), length(eq.p_p)) > 2*eq.iir_biquads_max
                 error('Maximum number of IIR biquads is exceeded');
         end
 else
-        eq.b_p = 1;
-        eq.a_p = 1;
+        [eq.p_z, eq.p_p, eq.p_k] = tf2zp(1, 1);
 end
-[eq.iir_eq_db, eq.iir_eq_ph, eq.iir_eq_gd] = eq_compute_response(eq.b_p, ...
-        eq.a_p, eq.f, eq.fs);
+[eq.iir_eq_db, eq.iir_eq_ph, eq.iir_eq_gd] = eq_compute_response(eq.p_z, ...
+        eq.p_p, eq.p_k, eq.f, eq.fs);
 
 
 %% FIR EQ computation

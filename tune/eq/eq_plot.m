@@ -115,7 +115,7 @@ if length(eq.b_fir) > 1
 end
 
 %% IIR filter
-if length(eq.b_p) > 1
+if length(eq.p_z) > 1 || length(eq.p_p) > 1
         % Response
 	fh=figure(fn); fn = fn+1;
 	semilogx(eq.f, eq.iir_eq_db);
@@ -128,7 +128,7 @@ if length(eq.b_p) > 1
 
         % Polar
         fh=figure(fn); fn = fn+1;
-        zplane(eq.b_p, eq.a_p);
+        zplane(eq.p_z, eq.p_p);
         grid on;
         tstr = sprintf('IIR zeros and poles: %s', eq.name);
         title(tstr);
@@ -137,7 +137,8 @@ if length(eq.b_p) > 1
         ti = 50e-3;
         x = zeros(1, ti * round(eq.fs));
         x(1) = 1;
-        y = filter(eq.b_p, eq.a_p, x);
+        sos = zp2sos(eq.p_z, eq.p_p, eq.p_k);
+        y = sosfilt(sos, x);
 	fh=figure(fn); fn = fn+1;
         t = (0:(length(x)-1)) / eq.fs;
         plot(t, y);
@@ -149,28 +150,29 @@ if length(eq.b_p) > 1
 end
 
 %% Group delay
-fh=figure(fn); fn = fn+1;
-if eq.enable_fir && eq.enable_iir
-        semilogx(eq.f, eq.tot_eq_gd * 1e3, ...
-                eq.f, eq.fir_eq_gd * 1e3, '--', ...
-                eq.f, eq.iir_eq_gd * 1e3, '--');
-        legend('Combined','FIR','IIR');
+if ~exist('OCTAVE_VERSION', 'builtin')
+	% Skip plot if running in Octave due to incorrect result
+	fh=figure(fn); fn = fn+1;
+	if eq.enable_fir && eq.enable_iir
+		semilogx(eq.f, eq.tot_eq_gd * 1e3, ...
+			 eq.f, eq.fir_eq_gd * 1e3, '--', ...
+			 eq.f, eq.iir_eq_gd * 1e3, '--');
+		legend('Combined','FIR','IIR');
+	end
+	if eq.enable_fir && eq.enable_iir == 0
+		semilogx(eq.f, eq.fir_eq_gd * 1e3);
+		legend('FIR');
+	end
+	if eq.enable_fir == 0 && eq.enable_iir
+		semilogx(eq.f, eq.iir_eq_gd * 1e3);
+		legend('IIR');
+	end
+	grid on;
+	xlabel('Frequency (Hz)');
+	ylabel('Group delay (ms)');
+	ax = axis; axis([eq.p_fmin eq.p_fmax ax(3:4)]);
+	tstr = sprintf('Filter group delay: %s', eq.name);
+	title(tstr);
 end
-if eq.enable_fir && eq.enable_iir == 0
-        semilogx(eq.f, eq.fir_eq_gd * 1e3);
-        legend('FIR');
-end
-if eq.enable_fir == 0 && eq.enable_iir
-        semilogx(eq.f, eq.iir_eq_gd * 1e3);
-        legend('IIR');
-end
-grid on;
-xlabel('Frequency (Hz)');
-ylabel('Group delay (ms)');
-ax = axis; axis([eq.p_fmin eq.p_fmax ax(3:4)]);
-tstr = sprintf('Filter group delay: %s', eq.name);
-title(tstr);
-
-
 
 end

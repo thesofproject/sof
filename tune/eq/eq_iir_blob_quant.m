@@ -1,12 +1,12 @@
-function iir_resp = eq_iir_blob_quant(eq_b, eq_a)
+function iir_resp = eq_iir_blob_quant(eq_z, eq_p, eq_k)
 
 %% Convert IIR coefficients to 2nd order sections and quantize
 %
-%  iir_resp = eq_iir_blob_quant(b, a, bits)
+%  iir_resp = eq_iir_blob_quant(z, p, k)
 %
-%  b - numerator coefficients
-%  a - denominator coefficients
-%  bits - number of bits to quantize
+%  z - zeros
+%  p - poles
+%  k - gain
 %
 %  iir_resp - vector to setup an IIR equalizer with number of sections, shifts,
 %  and quantized coefficients
@@ -47,21 +47,41 @@ bits_iir = 32; % Q2.30
 qf_iir = 30;
 bits_gain = 16; % Q2.14
 qf_gain = 14;
-scale_max = -3; % dB, scale biquad L-inf norm
+scale_max = -6; % dB, scale biquads peak gain to this
 plot_pz = 0;
 plot_fr = 0;
 
 %% Convert IIR to 2nd order sections
-if exist('OCTAVE_VERSION', 'builtin')
-        [sos, gain] = tf2sos(eq_b, eq_a);
-else
-        % TODO: tf2sos produces in Matlab EQs with zero output due to
-        % very high gain variations within biquad. Need to investigate if
-        % this is incorrect usage and a bug here.
-        [sos, gain] = tf2sos(eq_b, eq_a, 'UP', Inf);
-        fprintf('Warning: Problems have been seen with some IIR designs.\n');
-        fprintf('Warning: Please check the result.\n');
+%  This a simple implementation of zp2sos() function. It is not used here due
+%  to utilization of rather strong scaling and resulting low SNR with the
+%  available word length in EQ in SOF. This poles and zeros allocation to
+%  biquads is base only in ascending sort of angular frequency.
+sz = length(eq_z);
+sp = length(eq_p);
+sk = length(eq_k);
+nb = max(sz, sp)/2;
+az = angle(eq_z);
+ap = angle(eq_p);
+[~, iz] = sort(abs(az));
+[~, ip] = sort(abs(ap));
+eq_z = eq_z(iz);
+eq_p = eq_p(ip);
+sos = zeros(nb, 6);
+for i = 1:nb
+        j = 2*(i-1)+1;
+        if i == 1
+                [b, a] = zp2tf(eq_z(j:j+1), eq_p(j:j+1), eq_k);
+        else
+                [b, a] = zp2tf(eq_z(j:j+1), eq_p(j:j+1), 1);
+        end
+        sos(i,1:3) = b;
+        sos(i,4:6) = a;
 end
+gain = 1;
+
+%% Convert 2nd order sections to SOF parameters format and scale the biquads
+%  with criteria below (Gain max -6 dB at any frequency). Then calculate 
+%  scaling shifts and finally gain multiplier for output.
 sz = size(sos);
 nbr_sections = sz(1);
 n_section_header = 2;
@@ -70,10 +90,10 @@ iir_resp = int32(zeros(1,n_section_header+nbr_sections*n_section));
 iir_resp(1) = nbr_sections;
 iir_resp(2) = nbr_sections; % Note: All sections in series
 
+scale_max_lin = 10^(scale_max/20);
 for n=1:nbr_sections
         b = sos(n,1:3);
         a = sos(n,4:6);
-
         if plot_pz
                 figure
                 zplane(b,a);
@@ -84,14 +104,12 @@ for n=1:nbr_sections
         np = 1024;
         [h, w] = freqz(b, a, np);
         hm = max(abs(h));
-        scale = 10^(scale_max/20)/hm;
+        scale = scale_max_lin/hm;
         gain_remain = 1/scale;
         gain = gain*gain_remain;
         b = b * scale;
-
         ma = max(abs(a));
         mb = max(abs(b));
-
         if plot_fr
                 figure
                 [h, w] = freqz(b, a, np);
@@ -118,6 +136,8 @@ for n=1:nbr_sections
         iir_resp(m+2:m+4) =  eq_coef_quant( b(3:-1:1), bits_iir, qf_iir);
         iir_resp(m+5) = section_shift;
         iir_resp(m+6) = eq_coef_quant( section_gain, bits_gain, qf_gain);
+
+	%fprintf('sec=%d, shift=%d, gain=%f\n', n, section_shift, section_gain);
 
 end
 

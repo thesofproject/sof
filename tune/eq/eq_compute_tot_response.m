@@ -31,8 +31,8 @@ function eq = eq_compute_tot_response(eq)
 %
 
 % FIR response and combined IIR+FIR EQ
-[eq.iir_eq_db, eq.iir_eq_ph, eq.iir_eq_gd] = eq_compute_response(eq.b_p, eq.a_p, eq.f, eq.fs);
-[eq.fir_eq_db, eq.fir_eq_ph, eq.fir_eq_gd] = eq_compute_response(eq.b_fir, 1, eq.f, eq.fs);
+[eq.iir_eq_db, eq.iir_eq_ph, eq.iir_eq_gd] = eq_compute_response(eq.p_z, eq.p_p, eq.p_k, eq.f, eq.fs);
+[eq.fir_eq_db, eq.fir_eq_ph, eq.fir_eq_gd] = eq_compute_response(eq.b_fir, eq.f, eq.fs);
 eq.tot_eq_db = eq.iir_eq_db + eq.fir_eq_db;
 eq.tot_eq_gd = eq.iir_eq_gd + eq.fir_eq_gd;
 

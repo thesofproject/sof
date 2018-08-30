@@ -1,4 +1,4 @@
-function [b_t, a_t] = eq_define_parametric_eq(peq, fs)
+function [z, p, k] = eq_define_parametric_eq(peq, fs)
 
 %%
 % Copyright (c) 2016, Intel Corporation
@@ -36,20 +36,27 @@ PEQ_LS1 = 5; PEQ_LS2 = 6; PEQ_HS1 = 7; PEQ_HS2 = 8;
 PEQ_PN2 = 9; PEQ_LP4 = 10; PEQ_HP4 = 11;
 
 sp = size(peq);
-b_t = 1; a_t = 1;
+z = [];
+p = [];
+k = 1;
 for i=1:sp(1)
         type = peq(i,1);
         f = peq(i,2);
         g = peq(i,3);
         Q = peq(i,4);
         if f < fs/2
+                a0 = [];
+                b0 = [];
+                z0 = [];
+                p0 = [];
+                k0 = [];
                 switch peq(i,1)
-                        case PEQ_HP1, [b0, a0] = butter(1, 2*f/fs, 'high');
-                        case PEQ_HP2, [b0, a0] = butter(2, 2*f/fs, 'high');
-                        case PEQ_HP4, [b0, a0] = butter(4, 2*f/fs, 'high');
-                        case PEQ_LP1, [b0, a0] = butter(1, 2*f/fs);
-                        case PEQ_LP2, [b0, a0] = butter(2, 2*f/fs);
-                        case PEQ_LP4, [b0, a0] = butter(4, 2*f/fs);
+                        case PEQ_HP1, [z0, p0, k0] = butter(1, 2*f/fs, 'high');
+                        case PEQ_HP2, [z0, p0, k0] = butter(2, 2*f/fs, 'high');
+                        case PEQ_HP4, [z0, p0, k0] = butter(4, 2*f/fs, 'high');
+                        case PEQ_LP1, [z0, p0, k0] = butter(1, 2*f/fs);
+                        case PEQ_LP2, [z0, p0, k0] = butter(2, 2*f/fs);
+                        case PEQ_LP4, [z0, p0, k0] = butter(4, 2*f/fs);
                         case PEQ_LS1, [b0, a0] = low_shelf_1st(f, g, fs);
                         case PEQ_LS2, [b0, a0] = low_shelf_2nd(f, g, fs);
                         case PEQ_HS1, [b0, a0] = high_shelf_1st(f, g, fs);
@@ -58,7 +65,14 @@ for i=1:sp(1)
                         otherwise
                                 error('Unknown parametric EQ type');
                 end
-                b_t=conv(b_t, b0); a_t = conv(a_t, a0);
+                if length(a0) > 0
+                        [z0, p0, k0] = tf2zp(b0, a0);
+                end
+                if length(k0) > 0
+                        z = [z ; z0(:)];
+                        p = [p ; p0(:)];
+                        k = k * k0;
+                end
         end
 end
 end

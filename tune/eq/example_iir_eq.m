@@ -41,12 +41,11 @@ fs = 48e3;
 eq_loud = loudness_iir_eq(fs);
 
 %% Define a passthru IIR EQ equalizer
-b_pass = [1 0 0];
-a_pass = [1 0 0];
+[z_pass, p_pass, k_pass] = tf2zp([1 0 0],[1 0 0]);
 
 %% Quantize and pack filter coefficients plus shifts etc.
-bq_pass = eq_iir_blob_quant(b_pass, a_pass);
-bq_loud = eq_iir_blob_quant(eq_loud.b_p, eq_loud.a_p);
+bq_pass = eq_iir_blob_quant(z_pass, p_pass, k_pass);
+bq_loud = eq_iir_blob_quant(eq_loud.p_z, eq_loud.p_p, eq_loud.p_k);
 
 %% Build blob
 platform_max_channels = 4;   % Setup max 4 channels EQ

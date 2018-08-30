@@ -58,7 +58,7 @@ p.fir_autoband = 1;
 p.enable_fir = 0;
 
 % IIR conf
-p.iir_biquads_max = 6;
+p.iir_biquads_max = 8;
 p.enable_iir = 0;
 
 % Initialize other fields those are computed later to allow use of struct
@@ -73,15 +73,17 @@ p.num_responses = 0;
 p.m_db_s = [];
 p.gd_s_s = [];
 p.logsmooth_noct = 0;
-p.b_t = [];
-p.a_t = [];
+p.t_z = [];
+p.t_p = [];
+p.t_k = [];
 p.t_db = [];
 p.m_db_abs = 0;
 p.m_db_offs = 0;
 p.raw_m_noalign_db = [];
 p.err_db = [];
-p.b_p = 0;
-p.a_p = 0;
+p.p_z = [];
+p.p_p = [];
+p.p_k = [];
 p.iir_eq_db = [];
 p.iir_eq_ph = [];
 p.iir_eq_gd = [];
