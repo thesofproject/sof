@@ -29,7 +29,7 @@ fi
 
 # Run command
 CMD0=$HOST_EXE
-CMD1="-d -x $FS1 -y $FS2 -i $FN_IN -o $FN_OUT -t $TPLG -a src=libsof_${COMP}.so $CMDFMT"
+CMD1="-d -r $FS1 -R $FS2 -i $FN_IN -o $FN_OUT -t $TPLG -a src=libsof_${COMP}.so $CMDFMT"
 CMD="$CMD0 $CMD1"
 export LD_LIBRARY_PATH=$HOST_LIB
 
