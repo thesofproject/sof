@@ -47,6 +47,7 @@
 #define F_19200_kHz 19200000
 #define F_24000_kHz 24000000
 #define F_24576_kHz 24576000
+#define F_38400_kHz 38400000
 
 /* FIXME: move this to a helper and optimize */
 static int hweight_32(uint32_t mask)
@@ -293,7 +294,35 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) ?
 		SSCR2_PSPSRWFDFD : 0;
 
-#ifdef CONFIG_CANNONLAKE
+#if defined(CONFIG_ICELAKE)
+	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_38400_kHz) {
+		trace_ssp_error("eci");
+		ret = -EINVAL;
+		goto out;
+	}
+	if (!config->ssp.bclk_rate ||
+	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
+		trace_ssp_error("ecj");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (F_38400_kHz % config->ssp.mclk_rate == 0) {
+		mdivr_val = F_38400_kHz / config->ssp.mclk_rate;
+	} else {
+		trace_ssp_error("eck");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (F_38400_kHz % config->ssp.bclk_rate == 0) {
+		mdiv = F_38400_kHz / config->ssp.bclk_rate;
+	} else {
+		trace_ssp_error("ecl");
+		ret = -EINVAL;
+		goto out;
+	}
+#elif defined(CONFIG_CANNONLAKE)
 	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24000_kHz) {
 		trace_ssp_error("eci");
 		ret = -EINVAL;

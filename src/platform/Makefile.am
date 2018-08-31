@@ -23,3 +23,7 @@ endif
 if BUILD_CANNONLAKE
 SUBDIRS += cannonlake
 endif
+
+if BUILD_ICELAKE
+SUBDIRS += icelake
+endif

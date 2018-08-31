@@ -68,6 +68,14 @@ libsof_ipc_a_SOURCES = \
 	dma-copy.c
 endif
 
+if BUILD_ICELAKE
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	handler.c \
+	cnl-ipc.c \
+	dma-copy.c
+endif
+
 libsof_ipc_a_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \

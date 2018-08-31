@@ -280,6 +280,25 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
+    icelake*)
+
+	PLATFORM_LDSCRIPT="icelake.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="icelake"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="icl"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi4_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_ICELAKE], [1], [Configure for Icelake])
+	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
+    ;;
     *)
 	if test "$have_rimage" = "no" && test "$have_doc" = "no"; then
 		if test "$ARCH" = "host"; then
@@ -298,10 +317,11 @@ AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
 AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
 AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
 AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
+AM_CONDITIONAL(BUILD_ICELAKE,  test "$FW_NAME" = "icl")
+AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl")
+AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl")
+AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl")
+AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl")
 
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],
@@ -497,6 +517,12 @@ AC_CONFIG_FILES([
 	src/platform/cannonlake/include/arch/xtensa/Makefile
 	src/platform/cannonlake/include/arch/xtensa/config/Makefile
 	src/platform/cannonlake/include/platform/Makefile
+	src/platform/icelake/Makefile
+	src/platform/icelake/include/Makefile
+	src/platform/icelake/include/arch/Makefile
+	src/platform/icelake/include/arch/xtensa/Makefile
+	src/platform/icelake/include/arch/xtensa/config/Makefile
+	src/platform/icelake/include/platform/Makefile
 	src/platform/intel/Makefile
 	src/platform/intel/cavs/Makefile
 	src/platform/intel/include/Makefile

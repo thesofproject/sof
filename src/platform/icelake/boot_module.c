@@ -25,63 +25,30 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-/**
- * \file platform/intel/cavs/pm_runtime.c
- * \brief Runtime power management implementation for Apollolake, Cannonlake
- *        and Icelake
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+#include <uapi/manifest.h>
+#include <platform/memory.h>
+
+/*
+ * Each module has an entry in the FW manifest header. This is NOT part of
+ * the SOF executable image but is inserted by object copy as a ELF section
+ * for parsing by rimage (to genrate the manifest).
  */
+struct sof_man_module_manifest icl_bootldr_manifest = {
+	.module = {
+		.name	= "BRNGUP",
+		.uuid	= {0xf3, 0xe4, 0x79, 0x2b, 0x75, 0x46, 0x49, 0xf6,
+				0x89, 0xdf, 0x3b, 0xc1, 0x94, 0xa9, 0x1a, 0xeb},
+		.entry_point = IMR_BOOT_LDR_TEXT_ENTRY_BASE,
+		.type = {
+				.load_type = SOF_MAN_MOD_TYPE_MODULE,
+				.domain_ll = 1,
+		},
+		.affinity_mask = 3,
+	},
+};
 
-#include <sof/alloc.h>
-#include <platform/platform.h>
-#include <platform/pm_runtime.h>
-#include <platform/cavs/pm_runtime.h>
-
-#if defined(CONFIG_APOLLOLAKE)
-//TODO: add support or at least stub api for Cannonlake & Icelake
-#include <platform/power_down.h>
-#endif
-
-/** \brief Runtime power management data pointer. */
-struct pm_runtime_data *_prd;
-
-void platform_pm_runtime_init(struct pm_runtime_data *prd)
-{
-	struct platform_pm_runtime_data *pprd;
-
-	_prd = prd;
-
-	pprd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*pprd));
-	_prd->platform_data = pprd;
-}
-
-void platform_pm_runtime_get(enum pm_runtime_context context)
-{
-	/* Action based on context */
-}
-
-void platform_pm_runtime_put(enum pm_runtime_context context)
-{
-	switch (context) {
-	case PM_RUNTIME_HOST_DMA_L1:
-		cavs_pm_runtime_force_host_dma_l1_exit();
-		break;
-	}
-}
-
-#if defined(CONFIG_APOLLOLAKE)
-void platform_pm_runtime_power_off(void)
-{
-	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
-	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
-	//TODO: mask to be used in the future for run-time power management of
-	//SRAM banks
-	/* power down entire HPSRAM */
-	hpsram_mask[0] = 0x1;
-
-	power_down(true, hpsram_mask);
-}
-#endif
+/* not used, but stops linker complaining */
+int _start;

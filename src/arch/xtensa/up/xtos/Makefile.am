@@ -52,6 +52,12 @@ noinst_LIBRARIES += libxlevel6.a
 VECTOR_DEFS += -D__SPLIT__level6
 endif
 
+if BUILD_ICELAKE
+PLATFORM_DEFS = $(VECTOR_DEFS)
+noinst_LIBRARIES += libxlevel6.a
+VECTOR_DEFS += -D__SPLIT__level6
+endif
+
 LEVEL_SRC = \
 	int-handler.S \
 	int-vector.S \
