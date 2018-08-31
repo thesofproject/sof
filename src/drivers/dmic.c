@@ -1118,6 +1118,10 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	size = sizeof(*prm) + DMIC_HW_CONTROLLERS
 		* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
 	prm = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, size);
+	if (!prm) {
+		trace_dmic_error("eac");
+		return -ENOMEM;
+	}
 
 	/* copy the DMIC params */
 	memcpy(prm, &config->dmic, sizeof(struct sof_ipc_dai_dmic_params));
@@ -1444,6 +1448,10 @@ static int dmic_probe(struct dai *dai)
 
 	/* allocate private data */
 	dmic = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*dmic));
+	if (!dmic) {
+		trace_dmic_error("eap");
+		return -ENOMEM;
+	}
 	dai_set_drvdata(dai, dmic);
 
 	spinlock_init(&dmic->lock);
