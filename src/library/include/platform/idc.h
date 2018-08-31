@@ -25,49 +25,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
- *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
- *	   Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/ipc.h>
-#include <sof/intel-ipc.h>
+#ifndef __INCLUDE_PLATFORM_IDC_H__
+#define __INCLUDE_PLATFORM_IDC_H__
 
-/* testbench ipc */
-struct ipc *_ipc;
-
-int platform_ipc_init(struct ipc *ipc)
-{
-	struct intel_ipc_data *iipc;
-
-	_ipc = ipc;
-
-	/* init ipc data */
-	iipc = malloc(sizeof(struct intel_ipc_data));
-	ipc_set_drvdata(_ipc, iipc);
-
-	/* allocate page table buffer */
-	iipc->page_table = malloc(HOST_PAGE_SIZE);
-	if (iipc->page_table)
-		bzero(iipc->page_table, HOST_PAGE_SIZE);
-
-	/* PM */
-	iipc->pm_prepare_D3 = 0;
-
-	return 0;
-}
-
-/* The following definitions are to satisfy libsof linker errors */
-
-int ipc_stream_send_position(struct comp_dev *cdev,
-			     struct sof_ipc_stream_posn *posn)
+static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	return 0;
 }
 
-int ipc_stream_send_xrun(struct comp_dev *cdev,
-			 struct sof_ipc_stream_posn *posn)
+static inline void idc_process_msg_queue(void)
 {
-	return 0;
 }
+
+static inline void idc_init(void)
+{
+}
+
+#endif

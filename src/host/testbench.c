@@ -129,7 +129,7 @@ static void free_comps(void)
 	struct list_item *temp;
 	struct ipc_comp_dev *icd = NULL;
 
-	list_for_item_safe(clist, temp, &sof.ipc->comp_list) {
+	list_for_item_safe(clist, temp, &sof.ipc->shared_ctx->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:

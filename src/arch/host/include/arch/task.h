@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,35 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
- *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
- *	   Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
  */
 
-#include <sof/ipc.h>
-#include <sof/intel-ipc.h>
+/**
+ * \file arch/xtensa/include/arch/task.h
+ * \brief Arch task header file
+ * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ */
 
-/* testbench ipc */
-struct ipc *_ipc;
+#ifndef __ARCH_TASK_H_
+#define __ARCH_TASK_H_
 
-int platform_ipc_init(struct ipc *ipc)
-{
-	struct intel_ipc_data *iipc;
+#include <sof/schedule.h>
 
-	_ipc = ipc;
-
-	/* init ipc data */
-	iipc = malloc(sizeof(struct intel_ipc_data));
-	ipc_set_drvdata(_ipc, iipc);
-
-	/* allocate page table buffer */
-	iipc->page_table = malloc(HOST_PAGE_SIZE);
-	if (iipc->page_table)
-		bzero(iipc->page_table, HOST_PAGE_SIZE);
-
-	/* PM */
-	iipc->pm_prepare_D3 = 0;
-
-	return 0;
-}
-
-/* The following definitions are to satisfy libsof linker errors */
-
-int ipc_stream_send_position(struct comp_dev *cdev,
-			     struct sof_ipc_stream_posn *posn)
+/**
+ * \brief Allocates IRQ tasks.
+ */
+static inline int arch_allocate_tasks(void)
 {
 	return 0;
 }
 
-int ipc_stream_send_xrun(struct comp_dev *cdev,
-			 struct sof_ipc_stream_posn *posn)
+/**
+ * \brief Runs task.
+ * \param[in,out] task Task data.
+ */
+static inline void arch_run_task(struct task *task)
 {
-	return 0;
 }
+
+#endif
