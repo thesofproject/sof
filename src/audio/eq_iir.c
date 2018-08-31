@@ -160,7 +160,8 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
-	    config->channels_in_config > PLATFORM_MAX_CHANNELS) {
+	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
+	    !config->channels_in_config) {
 		trace_eq_error("ech");
 		return -EINVAL;
 	}
@@ -352,10 +353,10 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 		trace_eq("gbi");
 
 		/* Copy back to user space */
-		bs = cd->config->size;
-		if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0)
-			return -EINVAL;
-		if (!cd->config) {
+		if (cd->config) {
+			bs = cd->config->size;
+			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0)
+				return -EINVAL;
 			memcpy(cdata->data->data, cd->config, bs);
 		} else {
 			trace_eq_error("ecn");
