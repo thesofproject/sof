@@ -67,7 +67,8 @@ int debug;
  */
 static void parse_libraries(char *libs)
 {
-	char *lib_token, *comp_token;
+	char *lib_token = NULL;
+	char *comp_token = NULL;
 	char *token = strtok_r(libs, ",", &lib_token);
 	char message[DEBUG_MSG_LEN];
 	int index;
