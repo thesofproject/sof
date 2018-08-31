@@ -112,4 +112,7 @@ static inline void platform_panic(uint32_t p)
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
 	shim_write(SHIM_IPCXL, (__x & 0x3fffffff))
+
+extern struct timer *platform_timer;
+
 #endif

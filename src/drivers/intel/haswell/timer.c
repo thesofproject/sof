@@ -28,65 +28,82 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_INTERRUPT__
-#define __INCLUDE_INTERRUPT__
-
-#include <stdint.h>
-#include <arch/interrupt.h>
+#include <platform/timer.h>
+#include <platform/shim.h>
 #include <platform/interrupt.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/trace.h>
 #include <sof/debug.h>
-#include <sof/lock.h>
-#include <sof/list.h>
+#include <sof/audio/component.h>
+#include <sof/drivers/timer.h>
+#include <stdint.h>
 
-#define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
-#define trace_irq_error(__e)	trace_error(TRACE_CLASS_IRQ,  __e)
-
-struct irq_desc {
-	/* irq must be first for constructor */
-	int irq;        /* logical IRQ number */
-
-	/* handler is optional for constructor */
-	void (*handler)(void *arg);
-	void *handler_arg;
-
-	/* to identify interrupt with the same IRQ */
-	int id;
-	spinlock_t lock;
-	uint32_t enabled_count;
-
-	/* to link to other irq_desc */
-	struct list_item irq_list;
-
-	uint32_t num_children;
-	struct list_item child[PLATFORM_IRQ_CHILDREN];
-};
-
-int interrupt_register(uint32_t irq,
-	void(*handler)(void *arg), void *arg);
-void interrupt_unregister(uint32_t irq);
-uint32_t interrupt_enable(uint32_t irq);
-uint32_t interrupt_disable(uint32_t irq);
-
-static inline void interrupt_set(int irq)
+void platform_timer_start(struct timer *timer)
 {
-	arch_interrupt_set(SOF_IRQ_NUMBER(irq));
+	arch_timer_enable(timer);
 }
 
-static inline void interrupt_clear(int irq)
+void platform_timer_stop(struct timer *timer)
 {
-	arch_interrupt_clear(SOF_IRQ_NUMBER(irq));
+	arch_timer_disable(timer);
 }
 
-static inline uint32_t interrupt_global_disable(void)
+int platform_timer_set(struct timer *timer, uint64_t ticks)
 {
-	return arch_interrupt_global_disable();
+	return arch_timer_set(timer, ticks);
 }
 
-static inline void interrupt_global_enable(uint32_t flags)
+void platform_timer_clear(struct timer *timer)
 {
-	arch_interrupt_global_enable(flags);
+	arch_timer_clear(timer);
 }
 
-#endif
+uint64_t platform_timer_get(struct timer *timer)
+{
+	return arch_timer_get_system(timer);
+}
+
+/* get timestamp for host stream DMA position */
+void platform_host_timestamp(struct comp_dev *host,
+			     struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get host postion */
+	err = comp_position(host, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_HOST_VALID | SOF_TIME_HOST_64;
+}
+
+/* get timestamp for DAI stream DMA position */
+void platform_dai_timestamp(struct comp_dev *dai,
+			    struct sof_ipc_stream_posn *posn)
+{
+	int err;
+
+	/* get DAI postion */
+	err = comp_position(dai, posn);
+	if (err == 0)
+		posn->flags |= SOF_TIME_DAI_VALID;
+
+	/* get SSP wallclock - DAI sets this to stream start value */
+	posn->wallclock = timer_get_system(platform_timer) - posn->wallclock;
+	posn->flags |= SOF_TIME_WALL_VALID | SOF_TIME_WALL_64;
+}
+
+/* get current wallclock for componnent */
+void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
+{
+	/* only 1 wallclock on HSW */
+	*wallclock = timer_get_system(platform_timer);
+}
+
+int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
+{
+	switch (timer->id) {
+	case TIMER0:
+	case TIMER1:
+	case TIMER2:
+		return arch_timer_register(timer, handler, arg);
+	default:
+		return -EINVAL;
+	}
+}

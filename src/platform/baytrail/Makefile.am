@@ -8,8 +8,6 @@ libplatform_la_SOURCES = \
 	platform.c \
 	dai.c \
 	dma.c \
-	clk.c \
-	timer.c \
 	memory.c
 
 libplatform_la_CFLAGS = \

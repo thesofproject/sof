@@ -1,6 +1,13 @@
-SUBDIRS = intel
-
 noinst_LTLIBRARIES = libdrivers.la
+
+libdrivers_la_SOURCES = \
+	clk.c \
+	dmic.c \
+	hda-dma.c \
+	hda.c \
+	interrupt.c \
+	ssp.c \
+	timer.c
 
 libdrivers_la_CFLAGS = \
 	$(AM_CFLAGS) \
@@ -8,8 +15,3 @@ libdrivers_la_CFLAGS = \
 	$(PLATFORM_INCDIR) \
 	$(SOF_INCDIR) \
 	$(ARCH_INCDIR)
-
-# This lib is just composition of convenience libraries
-libdrivers_la_SOURCES =
-
-libdrivers_la_LIBADD = intel/libdrivers.la

@@ -38,6 +38,4 @@
 #define CLK_DEFAULT_CPU_HZ	400000000
 #define CLK_MAX_CPU_HZ		400000000
 
-void init_platform_clocks(void);
-
 #endif
