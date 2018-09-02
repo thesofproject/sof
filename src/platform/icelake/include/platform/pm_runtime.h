@@ -29,59 +29,37 @@
  */
 
 /**
- * \file platform/intel/cavs/pm_runtime.c
- * \brief Runtime power management implementation for Apollolake, Cannonlake
- *        and Icelake
+ * \file platform/icelake/include/platform/pm_runtime.h
+ * \brief Runtime power management header file for Icelake
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/alloc.h>
-#include <platform/platform.h>
-#include <platform/pm_runtime.h>
-#include <platform/cavs/pm_runtime.h>
+#ifndef __INCLUDE_PLATFORM_PM_RUNTIME__
+#define __INCLUDE_PLATFORM_PM_RUNTIME__
 
-#if defined(CONFIG_APOLLOLAKE)
-//TODO: add support or at least stub api for Cannonlake & Icelake
-#include <platform/power_down.h>
-#endif
+#include <sof/pm_runtime.h>
 
-/** \brief Runtime power management data pointer. */
-struct pm_runtime_data *_prd;
+/** \brief Platform specific runtime power management data. */
+struct platform_pm_runtime_data {
+	/* TBD */
+};
 
-void platform_pm_runtime_init(struct pm_runtime_data *prd)
-{
-	struct platform_pm_runtime_data *pprd;
+/**
+ * \brief Initializes platform specific runtime power management.
+ * \param[in,out] prd Runtime power management data.
+ */
+void platform_pm_runtime_init(struct pm_runtime_data *prd);
 
-	_prd = prd;
+/**
+ * \brief Retrieves platform specific power management resource.
+ * \param[in] context Type of power management context.
+ */
+void platform_pm_runtime_get(enum pm_runtime_context context);
 
-	pprd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*pprd));
-	_prd->platform_data = pprd;
-}
+/**
+ * \brief Releases platform specific power management resource.
+ * \param[in] context Type of power management context.
+ */
+void platform_pm_runtime_put(enum pm_runtime_context context);
 
-void platform_pm_runtime_get(enum pm_runtime_context context)
-{
-	/* Action based on context */
-}
-
-void platform_pm_runtime_put(enum pm_runtime_context context)
-{
-	switch (context) {
-	case PM_RUNTIME_HOST_DMA_L1:
-		cavs_pm_runtime_force_host_dma_l1_exit();
-		break;
-	}
-}
-
-#if defined(CONFIG_APOLLOLAKE)
-void platform_pm_runtime_power_off(void)
-{
-	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
-	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
-	//TODO: mask to be used in the future for run-time power management of
-	//SRAM banks
-	/* power down entire HPSRAM */
-	hpsram_mask[0] = 0x1;
-
-	power_down(true, hpsram_mask);
-}
-#endif
+#endif /* __INCLUDE_PLATFORM_PM_RUNTIME__ */

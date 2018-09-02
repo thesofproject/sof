@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,63 +25,54 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Rander Wang <rander.wang@intel.com>
  */
 
-/**
- * \file platform/intel/cavs/pm_runtime.c
- * \brief Runtime power management implementation for Apollolake, Cannonlake
- *        and Icelake
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#ifndef __PLATFORM_DMA_H__
+#define __PLATFORM_DMA_H__
 
-#include <sof/alloc.h>
-#include <platform/platform.h>
-#include <platform/pm_runtime.h>
-#include <platform/cavs/pm_runtime.h>
+#include <sof/dma.h>
 
-#if defined(CONFIG_APOLLOLAKE)
-//TODO: add support or at least stub api for Cannonlake & Icelake
-#include <platform/power_down.h>
-#endif
+#define PLATFORM_NUM_DMACS	6
 
-/** \brief Runtime power management data pointer. */
-struct pm_runtime_data *_prd;
+/* available DMACs */
+#define DMA_GP_LP_DMAC0		0
+#define DMA_GP_LP_DMAC1		1
+#define DMA_GP_HP_DMAC0		2
+#define DMA_GP_HP_DMAC1		3
+#define DMA_HOST_IN_DMAC	4
+#define DMA_HOST_OUT_DMAC	5
+#define DMA_LINK_IN_DMAC	6
+#define DMA_LINK_OUT_DMAC	7
 
-void platform_pm_runtime_init(struct pm_runtime_data *prd)
-{
-	struct platform_pm_runtime_data *pprd;
+/* mappings - TODO improve API to get type */
+#define DMA_ID_DMAC0	DMA_HOST_IN_DMAC
+#define DMA_ID_DMAC1	DMA_GP_LP_DMAC0
+#define DMA_ID_DMAC2	DMA_HOST_OUT_DMAC
+#define DMA_ID_DMAC3	DMA_GP_HP_DMAC0
+#define DMA_ID_DMAC4	DMA_GP_LP_DMAC1
+#define DMA_ID_DMAC5	DMA_GP_HP_DMAC1
+#define DMA_ID_DMAC6	DMA_LINK_IN_DMAC
+#define DMA_ID_DMAC7	DMA_LINK_OUT_DMAC
 
-	_prd = prd;
+/* handshakes */
+#define DMA_HANDSHAKE_DMIC_CH0	0
+#define DMA_HANDSHAKE_DMIC_CH1	1
+#define DMA_HANDSHAKE_SSP0_TX	2
+#define DMA_HANDSHAKE_SSP0_RX	3
+#define DMA_HANDSHAKE_SSP1_TX	4
+#define DMA_HANDSHAKE_SSP1_RX	5
+#define DMA_HANDSHAKE_SSP2_TX	6
+#define DMA_HANDSHAKE_SSP2_RX	7
+#define DMA_HANDSHAKE_SSP3_TX	8
+#define DMA_HANDSHAKE_SSP3_RX	9
+#define DMA_HANDSHAKE_SSP4_TX	10
+#define DMA_HANDSHAKE_SSP4_RX	11
+#define DMA_HANDSHAKE_SSP5_TX	12
+#define DMA_HANDSHAKE_SSP5_RX	13
 
-	pprd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*pprd));
-	_prd->platform_data = pprd;
-}
+extern struct dma dma[PLATFORM_NUM_DMACS];
 
-void platform_pm_runtime_get(enum pm_runtime_context context)
-{
-	/* Action based on context */
-}
-
-void platform_pm_runtime_put(enum pm_runtime_context context)
-{
-	switch (context) {
-	case PM_RUNTIME_HOST_DMA_L1:
-		cavs_pm_runtime_force_host_dma_l1_exit();
-		break;
-	}
-}
-
-#if defined(CONFIG_APOLLOLAKE)
-void platform_pm_runtime_power_off(void)
-{
-	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
-	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
-	//TODO: mask to be used in the future for run-time power management of
-	//SRAM banks
-	/* power down entire HPSRAM */
-	hpsram_mask[0] = 0x1;
-
-	power_down(true, hpsram_mask);
-}
 #endif

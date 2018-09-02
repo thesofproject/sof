@@ -198,7 +198,8 @@
 #define DW_CFG_LOW_DEF			0x00000003
 #define DW_CFG_HIGH_DEF		0x0
 
-#elif defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
+#elif defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE) \
+	|| defined(CONFIG_ICELAKE)
 
 /* CTL_LO */
 #define DW_CTLL_S_GATH_EN		(1 << 17)
@@ -242,7 +243,8 @@
 #define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
 
 /* HW Linked list support, only enabled for APL/CNL at the moment */
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+	|| defined CONFIG_ICELAKE
 #define DW_USE_HW_LLI	1
 #else
 #define DW_USE_HW_LLI	0
@@ -780,7 +782,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 		/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
-	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+	|| defined CONFIG_ICELAKE
 		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
 			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
@@ -899,7 +902,8 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 
 	/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
-	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+	|| defined CONFIG_ICELAKE
 		lli->ctrl_hi = DW_CTLH_CLASS(p->class) |
 			(next->size & DW_CTLH_BLOCK_TS_MASK);
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
@@ -968,8 +972,9 @@ found:
 
 	/* set channel priorities */
 	for (i = 0; i <  DW_MAX_CHAN; i++) {
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL ||\
-	defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
+	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+	|| defined CONFIG_ICELAKE
 		dw_write(dma, DW_CTRL_HIGH(i),
 			 DW_CTLH_CLASS(dp->chan[i].class));
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL

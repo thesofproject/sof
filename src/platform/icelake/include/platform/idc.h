@@ -28,60 +28,24 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-/**
- * \file platform/intel/cavs/pm_runtime.c
- * \brief Runtime power management implementation for Apollolake, Cannonlake
- *        and Icelake
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#ifndef __INCLUDE_PLATFORM_IDC_H__
+#define __INCLUDE_PLATFORM_IDC_H__
 
-#include <sof/alloc.h>
-#include <platform/platform.h>
-#include <platform/pm_runtime.h>
-#include <platform/cavs/pm_runtime.h>
+#include <arch/idc.h>
 
-#if defined(CONFIG_APOLLOLAKE)
-//TODO: add support or at least stub api for Cannonlake & Icelake
-#include <platform/power_down.h>
-#endif
-
-/** \brief Runtime power management data pointer. */
-struct pm_runtime_data *_prd;
-
-void platform_pm_runtime_init(struct pm_runtime_data *prd)
+static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
-	struct platform_pm_runtime_data *pprd;
-
-	_prd = prd;
-
-	pprd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*pprd));
-	_prd->platform_data = pprd;
+	return arch_idc_send_msg(msg, mode);
 }
 
-void platform_pm_runtime_get(enum pm_runtime_context context)
+static inline void idc_process_msg_queue(void)
 {
-	/* Action based on context */
+	arch_idc_process_msg_queue();
 }
 
-void platform_pm_runtime_put(enum pm_runtime_context context)
+static inline void idc_init(void)
 {
-	switch (context) {
-	case PM_RUNTIME_HOST_DMA_L1:
-		cavs_pm_runtime_force_host_dma_l1_exit();
-		break;
-	}
+	arch_idc_init();
 }
 
-#if defined(CONFIG_APOLLOLAKE)
-void platform_pm_runtime_power_off(void)
-{
-	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
-	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
-	//TODO: mask to be used in the future for run-time power management of
-	//SRAM banks
-	/* power down entire HPSRAM */
-	hpsram_mask[0] = 0x1;
-
-	power_down(true, hpsram_mask);
-}
 #endif

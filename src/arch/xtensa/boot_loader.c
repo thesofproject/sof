@@ -121,7 +121,7 @@ static void parse_manifest(void)
 #endif
 
 /* power on HPSRAM */
-#if defined(CONFIG_CANNONLAKE)
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 static int32_t hp_sram_init(void)
 {
 	int delay_count = 256;

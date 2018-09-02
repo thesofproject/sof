@@ -62,6 +62,9 @@
 #elif defined(CONFIG_CANNONLAKE)
 #define SSP_COUNT PLATFORM_SSP_COUNT
 #define SSP_CLOCK_FREQUENCY 24000000
+#elif defined(CONFIG_ICELAKE)
+#define SSP_COUNT PLATFORM_SSP_COUNT
+#define SSP_CLOCK_FREQUENCY 38400000
 #endif
 
 static const struct sof_ipc_fw_ready ready = {
@@ -167,7 +170,7 @@ struct work_queue_timesource platform_generic_queue[] = {
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
 },
-#if defined(CONFIG_CANNONLAKE)
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 {
 	.timer	 = {
 		.id = TIMER3, /* external timer */
@@ -209,7 +212,7 @@ int platform_boot_complete(uint32_t boot_message)
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCI, 0x80000000 | SOF_IPC_FW_READY);
-	#elif defined(CONFIG_CANNONLAKE)
+	#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | SOF_IPC_FW_READY);
@@ -251,7 +254,7 @@ static void platform_memory_windows_init(void)
 	dcache_writeback_region((void *)HP_SRAM_WIN3_BASE, HP_SRAM_WIN3_SIZE);
 }
 
-#if defined(CONFIG_CANNONLAKE)
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 /* init HW  */
 static void platform_init_hw(void)
 {
@@ -277,7 +280,7 @@ int platform_init(struct sof *sof)
 	struct dai *dmic0;
 	int i, ret;
 
-	#if defined(CONFIG_CANNONLAKE)
+	#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
 	#endif
@@ -333,7 +336,7 @@ int platform_init(struct sof *sof)
 		SHIM_CLKCTL_TCPLCG(0) | SHIM_CLKCTL_TCPLCG(1));
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
-	#elif defined(CONFIG_CANNONLAKE)
+	#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 	/* prevent Core0 clock gating. */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
 		SHIM_CLKCTL_TCPLCG(0));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,63 +25,25 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Rander Wang <rander.wang@intel.com>
  */
 
-/**
- * \file platform/intel/cavs/pm_runtime.c
- * \brief Runtime power management implementation for Apollolake, Cannonlake
- *        and Icelake
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#ifndef __PLATFORM_TIMER_H__
+#define __PLATFORM_TIMER_H__
 
-#include <sof/alloc.h>
-#include <platform/platform.h>
-#include <platform/pm_runtime.h>
-#include <platform/cavs/pm_runtime.h>
+#include <stdint.h>
+#include <sof/timer.h>
+#include <platform/interrupt.h>
 
-#if defined(CONFIG_APOLLOLAKE)
-//TODO: add support or at least stub api for Cannonlake & Icelake
-#include <platform/power_down.h>
-#endif
+#define TIMER_COUNT	5
 
-/** \brief Runtime power management data pointer. */
-struct pm_runtime_data *_prd;
+/* timer numbers must use associated IRQ number */
+#define TIMER0		IRQ_NUM_TIMER1
+#define TIMER1		IRQ_NUM_TIMER2
+#define TIMER2		IRQ_NUM_TIMER3
+#define TIMER3		IRQ_EXT_TSTAMP0_LVL2(0)
+#define TIMER4		IRQ_EXT_TSTAMP1_LVL2(0)
 
-void platform_pm_runtime_init(struct pm_runtime_data *prd)
-{
-	struct platform_pm_runtime_data *pprd;
-
-	_prd = prd;
-
-	pprd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*pprd));
-	_prd->platform_data = pprd;
-}
-
-void platform_pm_runtime_get(enum pm_runtime_context context)
-{
-	/* Action based on context */
-}
-
-void platform_pm_runtime_put(enum pm_runtime_context context)
-{
-	switch (context) {
-	case PM_RUNTIME_HOST_DMA_L1:
-		cavs_pm_runtime_force_host_dma_l1_exit();
-		break;
-	}
-}
-
-#if defined(CONFIG_APOLLOLAKE)
-void platform_pm_runtime_power_off(void)
-{
-	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
-	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
-	//TODO: mask to be used in the future for run-time power management of
-	//SRAM banks
-	/* power down entire HPSRAM */
-	hpsram_mask[0] = 0x1;
-
-	power_down(true, hpsram_mask);
-}
 #endif
