@@ -133,6 +133,9 @@ struct sof;
 /* the watermark for the SSP fifo depth setting */
 #define SSP_FIFO_WATERMARK	8
 
+/* minimal SSP port stop delay in cycles */
+#define PLATFORM_SSP_STOP_DELAY	2400
+
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {

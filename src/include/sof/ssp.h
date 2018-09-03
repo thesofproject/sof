@@ -146,12 +146,13 @@ extern const struct dai_ops ssp_ops;
 
 
 /* SSR bits */
-#define SSSR_TNF	(1 << 2)
-#define SSSR_RNE	(1 << 3)
-#define SSSR_BSY	(1 << 4)
-#define SSSR_TFS	(1 << 5)
-#define SSSR_RFS	(1 << 6)
-#define SSSR_ROR	(1 << 7)
+#define SSSR_TNF	BIT(2)
+#define SSSR_RNE	BIT(3)
+#define SSSR_BSY	BIT(4)
+#define SSSR_TFS	BIT(5)
+#define SSSR_RFS	BIT(6)
+#define SSSR_ROR	BIT(7)
+#define SSSR_TUR	BIT(21)
 
 /* SSPSP bits */
 #define SSPSP_SCMODE(x)		((x) << 0)
