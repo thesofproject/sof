@@ -324,11 +324,12 @@ static void free_block(void *ptr)
 		return;
 
 	/* find block that ptr belongs to */
-	for (i = 0; i < heap->blocks - 1; i++) {
-		block_map = cache_to_uncache(&heap->map[i + 1]);
+	for (i = 0; i < heap->blocks; i++) {
+		block_map = cache_to_uncache(&heap->map[i]);
 
 		/* is ptr in this block */
-		if ((uint32_t)ptr < block_map->base)
+		if ((uint32_t)ptr < (block_map->base +
+		    (block_map->block_size * block_map->count)))
 			goto found;
 	}
 
@@ -337,9 +338,6 @@ static void free_block(void *ptr)
 	return;
 
 found:
-	/* the block i is it */
-	block_map = cache_to_uncache(&heap->map[i]);
-
 	/* calculate block header */
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
 	hdr = cache_to_uncache(&block_map->block[block]);
