@@ -498,8 +498,8 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 
 #if DW_USE_HW_LLI
+	lli = p->chan[channel].lli;
 	for (i = 0; i < p->chan[channel].desc_count; i++) {
-		lli = p->chan[channel].lli;
 		lli->ctrl_hi &= ~DW_CTLH_DONE(1);
 		lli++;
 	}
