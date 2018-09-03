@@ -1131,7 +1131,12 @@ void pipeline_schedule_copy_idle(struct pipeline *p)
 
 void pipeline_schedule_cancel(struct pipeline *p)
 {
-	schedule_task_complete(&p->pipe_task);
+	int err;
+
+	/* cancel and wait for pipeline to complete */
+	err = schedule_task_cancel(&p->pipe_task, 1);
+	if (err < 0)
+		trace_pipe_error("pC0");
 }
 
 static void pipeline_task(void *arg)
