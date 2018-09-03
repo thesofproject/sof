@@ -77,6 +77,7 @@ static inline void list_item_del(struct list_item *item)
 {
 	item->next->prev = item->prev;
 	item->prev->next = item->next;
+	list_init(item);
 }
 
 /* is list item the last item in list ? */
