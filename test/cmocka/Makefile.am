@@ -81,6 +81,10 @@ check_PROGRAMS += rstrcmp
 rstrcmp_SOURCES = src/lib/lib/rstrcmp.c
 rstrcmp_LDADD = ../../src/lib/libcore.a $(LDADD)
 
+check_PROGRAMS += rstrlen
+rstrlen_SOURCES = src/lib/lib/rstrlen.c
+rstrlen_LDADD = ../../src/lib/libcore.a $(LDADD)
+
 check_PROGRAMS += bzero
 bzero_SOURCES = src/lib/lib/bzero.c
 bzero_LDADD = ../../src/lib/libcore.a $(LDADD)
