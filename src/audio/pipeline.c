@@ -724,7 +724,10 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	}
 
 	/* execute cache operation on pipeline itself */
-	cache_cmd(p, sizeof(*p));
+	if (cache_cmd)
+		cache_cmd(p, sizeof(*p));
+	else
+		trace_pipe_error("ccN");
 
 	spin_unlock_irq(&p->lock, flags);
 }
