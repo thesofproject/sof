@@ -34,3 +34,9 @@ xtensa-byt-elf-objcopy -I binary -O elf32-xtensa-le -B xtensa image.bin image.bi
 
 xtensa-byt-elf-objdump -D image.bin.elf > image.dis.txt
 
+tests
+=====
+
+To generate all test configuration files:
+
+make tests
