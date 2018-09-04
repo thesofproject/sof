@@ -3,7 +3,7 @@
 # Dependencies
 #
 
-SUBDIRS = test m4 sof common platform
+SUBDIRS = m4 sof common platform
 
 DEPS = \
 	platform/intel/*.m4 \
