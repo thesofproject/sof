@@ -174,6 +174,7 @@ static struct task *schedule_edf(void)
 	struct task *task;
 	struct task *future_task = NULL;
 	uint64_t current;
+	uint32_t flags;
 
 	tracev_pipe("edf");
 
@@ -196,7 +197,15 @@ static struct task *schedule_edf(void)
 	} else {
 		/* yes, run current task */
 		task->start = current;
+
+		/* init task for running */
+		wait_init(&task->complete);
+		spin_lock_irq(&sch->lock, flags);
 		task->state = TASK_STATE_RUNNING;
+		list_item_del(&task->list);
+		spin_unlock_irq(&sch->lock, flags);
+
+		/* now run task at correct run level */
 		arch_run_task(task);
 	}
 
@@ -204,33 +213,43 @@ static struct task *schedule_edf(void)
 	return future_task;
 }
 
-#if 0 /* FIXME: is this needed ? */
-/* delete task from scheduler */
-static int schedule_task_del(struct task *task)
+/* cancel and delete task from scheduler - won't stop it if already running */
+int schedule_task_cancel(struct task *task, int wait)
 {
 	uint32_t flags;
 	int ret = 0;
 
 	tracev_pipe("del");
 
-	/* add task to list */
 	spin_lock_irq(&sch->lock, flags);
 
-	/* is task already running ? */
-	if (task->state == TASK_STATE_RUNNING) {
-		ret = -EAGAIN;
-		goto out;
+	/* check current task state */
+	switch (task->state) {
+	case TASK_STATE_QUEUED:
+		/* delete task */
+		task->state = TASK_STATE_CANCEL;
+		list_item_del(&task->list);
+		break;
+	case TASK_STATE_RUNNING:
+		/* already running, nothing we can do about it atm */
+		if (wait) {
+			task->complete.timeout = SCHEDULE_TASK_MAX_TIME_SLICE;
+			spin_unlock_irq(&sch->lock, flags);
+			ret = wait_for_completion_timeout(&task->complete);
+			goto out;
+		} else {
+			ret = -EBUSY;
+		}
+		break;
+	default:
+		break;
 	}
 
-	list_item_del(&task->list);
-	task->state = TASK_STATE_COMPLETED;
+	spin_unlock_irq(&sch->lock, flags);
 
 out:
-	spin_unlock_irq(&sch->lock, flags);
 	return ret;
 }
-#endif
-
 
 static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 {
@@ -310,9 +329,11 @@ void schedule_task_complete(struct task *task)
 	tracev_pipe("com");
 
 	spin_lock_irq(&sch->lock, flags);
-	list_item_del(&task->list);
 	task->state = TASK_STATE_COMPLETED;
 	spin_unlock_irq(&sch->lock, flags);
+
+	/* tell any waiter that task has completed */
+	wait_completed(&task->complete);
 }
 
 static void scheduler_run(void *unused)
