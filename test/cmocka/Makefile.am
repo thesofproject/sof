@@ -19,6 +19,8 @@ override AM_CFLAGS := \
 override AM_LDFLAGS := \
 	$(filter-out -nostdlib,$(AM_LDFLAGS))
 
+AM_CFLAGS += -I./include
+
 if HAVE_CMOCKA_PREFIX
 AM_CFLAGS += -I$(CMOCKA_PREFIX)/include
 AM_LDFLAGS += -L$(CMOCKA_PREFIX)/lib
@@ -85,9 +87,9 @@ check_PROGRAMS += rstrlen
 rstrlen_SOURCES = src/lib/lib/rstrlen.c
 rstrlen_LDADD = ../../src/lib/libcore.a $(LDADD)
 
-check_PROGRAMS += bzero
-bzero_SOURCES = src/lib/lib/bzero.c
-bzero_LDADD = ../../src/lib/libcore.a $(LDADD)
+check_PROGRAMS += strcheck
+strcheck_SOURCES = src/lib/lib/strcheck.c
+strcheck_LDADD = ../../src/lib/libcore.a $(LDADD)
 
 # volume tests
 

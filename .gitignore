@@ -65,6 +65,10 @@ rimage/rimage
 
 tap-driver.sh
 test-driver
-test/*.log
-test/*.trs
+*.trs
 
+# ignore build files in tests
+test/cmocka/*
+!test/cmocka/*.
+!test/cmocka/src
+!test/cmocka/include 
