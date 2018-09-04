@@ -494,7 +494,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	int res;
 
-	trace_comp("EqI");
+	tracev_comp("cpy");
 
 	/* get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
@@ -526,30 +526,22 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_eq("EPp");
+	trace_eq("pre");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
 
+	/* Initialize EQ */
 	cd->eq_iir_func = eq_iir_passthrough;
-
-	/* Initialize EQ. Note that if EQ has not received command to
-	 * configure the response the EQ prepare returns an error that
-	 * interrupts pipeline prepare for downstream.
-	 */
-	if (!cd->config) {
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return -EINVAL;
+	if (cd->config) {
+		ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
+		if (ret < 0) {
+			comp_set_state(dev, COMP_TRIGGER_RESET);
+			return ret;
+		}
+		cd->eq_iir_func = eq_iir_s32_default;
 	}
-
-	ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
-	if (ret < 0) {
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return ret;
-	}
-
-	cd->eq_iir_func = eq_iir_s32_default;
 
 	return 0;
 }
@@ -559,7 +551,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 	int i;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_eq("ERe");
+	trace_eq("res");
 
 	eq_iir_free_delaylines(cd->iir);
 	eq_iir_free_parameters(&cd->config);
