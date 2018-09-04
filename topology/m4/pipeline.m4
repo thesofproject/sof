@@ -52,6 +52,7 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_PRIORITY', $8)'
 `define(`SCHEDULE_CORE', $9)'
 `include($1)'
+`DEBUG_PCM_ADD($1, $3)'
 )
 
 dnl PIPELINE_PCM_DAI_ADD(pipeline,

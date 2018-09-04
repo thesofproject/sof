@@ -18,6 +18,8 @@ include(`sof/tokens.m4')
 include(`platform/intel/bxt.m4')
 include(`platform/intel/dmic.m4')
 
+DEBUG_START
+
 #
 # Define the pipelines
 #
@@ -138,7 +140,4 @@ VIRTUAL_DAPM_ROUTE_OUT(Capture, SSP, 0, OUT, 16)
 VIRTUAL_DAPM_ROUTE_OUT(SoC DMIC, SSP, 0, OUT, 17)
 VIRTUAL_DAPM_ROUTE_IN(codec0_in, SSP, 0, IN, 18)
 
-
-
-
-
+DEBUG_END

@@ -1,5 +1,7 @@
 divert(-1)
 
+include(`debug.m4')
+
 dnl Define macros for DAI IN/OUT widgets and DAI config
 
 dnl DAI name)
@@ -158,7 +160,9 @@ define(`DAI_CONFIG',
 `		"'N_DAI_CONFIG($1$2)`_data_common"'
 `ifelse($1, `DMIC',`		"'N_DAI_CONFIG($1$2)`_pdm_data"', `')'
 `	]'
-`}')
+`}'
+`DEBUG_DAI_CONFIG($1, $3)'
+)
 
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
@@ -189,6 +193,7 @@ define(`DAI_ADD',
 `define(`SCHEDULE_PRIORITY', $11)'
 `define(`SCHEDULE_CORE', $12)'
 `include($1)'
+`DEBUG_DAI($3, $4)'
 )
 
 divert(0)dnl
