@@ -17,6 +17,8 @@ include(`sof/tokens.m4')
 # Include Apollolake DSP configuration
 include(`platform/intel/bxt.m4')
 
+DEBUG_START
+
 #
 # Define the pipelines
 #
@@ -53,3 +55,5 @@ DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 		SSP_CLOCK(fsync, 48000, codec_slave),
 		SSP_TDM(2, 32, 3, 3),
 		SSP_CONFIG_DATA(SSP, 5, 24)))
+
+DEBUG_END

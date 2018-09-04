@@ -1,5 +1,7 @@
 divert(-1)
 
+include(`debug.m4')
+
 define(`concat',`$1$2')
 
 define(`STR', `"'$1`"')
@@ -24,7 +26,7 @@ dnl Memory capabilities
 define(`MEMCAPS', `pushdef(`i', $#) pushdef(`j', `1') SUM_LOOP($@)')
 
 dnl create direct DAPM/pipeline link between 2 widgets)
-define(`dapm', `"$1, , $2"')
+define(`dapm', `"$1, , $2"'`DEBUG_GRAPH($1, $2)')
 
 dnl COMP_SAMPLE_SIZE(FMT)
 define(`COMP_SAMPLE_SIZE',
