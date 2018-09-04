@@ -158,14 +158,14 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 		    child->enabled_count) {
 			child->enabled_count = 0;
 			parent->enabled_count--;
+
+			/* disable the child interrupt */
+			platform_interrupt_mask(irq, 0);
 		}
 	}
 
-	if (parent->enabled_count == 0) {
-		/* disable the child interrupt */
-		platform_interrupt_mask(irq, 0);
+	if (parent->enabled_count == 0)
 		arch_interrupt_disable_mask(1 << SOF_IRQ_NUMBER(irq));
-	}
 
 	spin_unlock(&parent->lock);
 	return 0;
