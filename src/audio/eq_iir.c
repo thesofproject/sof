@@ -532,24 +532,16 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	if (ret < 0)
 		return ret;
 
+	/* Initialize EQ */
 	cd->eq_iir_func = eq_iir_passthrough;
-
-	/* Initialize EQ. Note that if EQ has not received command to
-	 * configure the response the EQ prepare returns an error that
-	 * interrupts pipeline prepare for downstream.
-	 */
-	if (!cd->config) {
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return -EINVAL;
+	if (cd->config) {
+		ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
+		if (ret < 0) {
+			comp_set_state(dev, COMP_TRIGGER_RESET);
+			return ret;
+		}
+		cd->eq_iir_func = eq_iir_s32_default;
 	}
-
-	ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
-	if (ret < 0) {
-		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return ret;
-	}
-
-	cd->eq_iir_func = eq_iir_s32_default;
 
 	return 0;
 }
