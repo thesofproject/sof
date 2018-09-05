@@ -23,11 +23,11 @@ sudo make install
 
 Baytrail :-
 
-`./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf`
+```./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf```
 
 Cherrytrail :-
 
-`./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf`
+```./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf```
 
 Library for Host Platform :-
 If building library for host platform, run the following configure. Please modify
@@ -56,4 +56,4 @@ TODO?
 
 ## License
 
-This project is licensed under the BSD Clause 3 - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the BSD Clause 3 - see the [LICENCE](LICENCE) file for details
