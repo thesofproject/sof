@@ -50,14 +50,14 @@ static inline void atomic_set(atomic_t *a, int32_t value)
 	arch_atomic_set(a, value);
 }
 
-static inline void atomic_add(atomic_t *a, int32_t value)
+static inline int32_t atomic_add(atomic_t *a, int32_t value)
 {
-	arch_atomic_add(a, value);
+	return arch_atomic_add(a, value);
 }
 
-static inline void atomic_sub(atomic_t *a, int32_t value)
+static inline int32_t atomic_sub(atomic_t *a, int32_t value)
 {
-	arch_atomic_sub(a, value);
+	return arch_atomic_sub(a, value);
 }
 
 #endif

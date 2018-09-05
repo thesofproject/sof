@@ -56,14 +56,14 @@ static inline void arch_atomic_init(atomic_t *a, int32_t value)
 }
 
 /* use gcc atomic built-ins for host library */
-static inline void arch_atomic_add(atomic_t *a, int32_t value)
+static inline int32_t arch_atomic_add(atomic_t *a, int32_t value)
 {
-	__sync_fetch_and_add(&a->value, value);
+	return __sync_fetch_and_add(&a->value, value);
 }
 
-static inline void arch_atomic_sub(atomic_t *a, int32_t value)
+static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
 {
-	__sync_fetch_and_sub(&a->value, value);
+	return __sync_fetch_and_sub(&a->value, value);
 }
 
 #endif
