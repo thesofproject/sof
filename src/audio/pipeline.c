@@ -162,7 +162,7 @@ static void disconnect_upstream(struct pipeline *p, struct comp_dev *start,
 
 	/* disconnect source from buffer */
 	spin_lock(&current->lock);
-	list_item_del(&current->bsource_list);
+	list_item_del_init(&current->bsource_list);
 	spin_unlock(&current->lock);
 }
 
@@ -191,7 +191,7 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 
 	/* disconnect source from buffer */
 	spin_lock(&current->lock);
-	list_item_del(&current->bsink_list);
+	list_item_del_init(&current->bsink_list);
 	spin_unlock(&current->lock);
 }
 
