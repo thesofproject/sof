@@ -3,6 +3,10 @@
 ### Status
 [![Build Status](https://travis-ci.org/thesofproject/sof.svg?branch=master)](https://travis-ci.org/thesofproject/sof)
 
+### Documentation
+
+See [docs](https://thesofproject.github.io/latest/index.html)
+
 ### Prerequisites
 
 * Docker
