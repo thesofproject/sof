@@ -59,9 +59,11 @@
 
 /* IIR component private data */
 struct comp_data {
+	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS];
 	struct sof_eq_iir_config *config;
 	uint32_t period_bytes;
-	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS];
+	int64_t *iir_delay;
+	size_t iir_delay_size;
 	void (*eq_iir_func)(struct comp_dev *dev,
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
@@ -119,28 +121,24 @@ static void eq_iir_free_parameters(struct sof_eq_iir_config **config)
 	*config = NULL;
 }
 
-static void eq_iir_free_delaylines(struct iir_state_df2t *iir)
+static void eq_iir_free_delaylines(struct comp_data *cd)
 {
+	struct iir_state_df2t *iir = cd->iir;
 	int i = 0;
-	int64_t *delay = NULL;
 
-	/* 1st active EQ delay line data is at beginning of the single
-	 * allocated buffer
+	/* Free the common buffer for all EQs and point then
+	 * each IIR channel delay line to NULL.
 	 */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		if (iir[i].delay && !delay)
-			delay = iir[i].delay;
-
-		/* Point all delays to NULL to avoid duplicated free later */
+	rfree(cd->iir_delay);
+	cd->iir_delay_size = 0;
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir[i].delay = NULL;
-	}
-
-	rfree(delay); /* Check for null is done in rfree() */
 }
 
-static int eq_iir_setup(struct iir_state_df2t iir[],
-			struct sof_eq_iir_config *config, int nch)
+static int eq_iir_setup(struct comp_data *cd, int nch)
 {
+	struct iir_state_df2t *iir = cd->iir;
+	struct sof_eq_iir_config *config = cd->config;
 	struct sof_eq_iir_header_df2t *lookup[SOF_EQ_IIR_MAX_RESPONSES];
 	struct sof_eq_iir_header_df2t *eq;
 	int64_t *iir_delay;
@@ -152,7 +150,7 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 	int resp;
 
 	/* Free existing IIR channels data if it was allocated */
-	eq_iir_free_delaylines(iir);
+	eq_iir_free_delaylines(cd);
 
 	trace_eq("fse");
 	trace_value(config->channels_in_config);
@@ -223,17 +221,19 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 	/* If all channels were set to bypass there's no need to
 	 * allocate delay. Just return with success.
 	 */
+	cd->iir_delay = NULL;
+	cd->iir_delay_size = size_sum;
 	if (!size_sum)
 		return 0;
-
 	/* Allocate all IIR channels data in a big chunk and clear it */
-	iir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
-	if (!iir_delay)
+	cd->iir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
+	if (!cd->iir_delay)
 		return -ENOMEM;
 
-	memset(iir_delay, 0, size_sum);
+	memset(cd->iir_delay, 0, size_sum);
 
 	/* Initialize 2nd phase to set EQ delay lines pointers */
+	iir_delay = cd->iir_delay;
 	for (i = 0; i < nch; i++) {
 		resp = assign_response[i];
 		if (resp >= 0)
@@ -242,20 +242,19 @@ static int eq_iir_setup(struct iir_state_df2t iir[],
 	return 0;
 }
 
-static int eq_iir_switch_response(struct iir_state_df2t iir[],
-				  struct sof_eq_iir_config *config,
-				  uint32_t ch, int32_t response)
+static int eq_iir_switch_store(struct iir_state_df2t iir[],
+			       struct sof_eq_iir_config *config,
+			       uint32_t ch, int32_t response)
 {
-	int ret;
-
-	/* Copy assign response from update and re-initialize EQ */
-	if (!config || ch >= PLATFORM_MAX_CHANNELS)
+	/* Copy assign response from update. The EQ is initialized later
+	 * when all channels have been updated.
+	 */
+	if (!config || ch >= config->channels_in_config)
 		return -EINVAL;
 
 	config->data[ch] = response;
-	ret = eq_iir_setup(iir, config, PLATFORM_MAX_CHANNELS);
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -284,8 +283,9 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
-
 	cd->eq_iir_func = eq_iir_passthrough;
+	cd->iir_delay = NULL;
+	cd->iir_delay_size = 0;
 	cd->config = NULL;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
@@ -300,7 +300,7 @@ static void eq_iir_free(struct comp_dev *dev)
 
 	trace_eq("fre");
 
-	eq_iir_free_delaylines(cd->iir);
+	eq_iir_free_delaylines(cd);
 	eq_iir_free_parameters(&cd->config);
 
 	rfree(cd);
@@ -396,10 +396,10 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 			for (i = 0; i < (int)cdata->num_elems; i++) {
 				tracev_value(compv[i].index);
 				tracev_value(compv[i].svalue);
-				ret = eq_iir_switch_response(cd->iir,
-							     cd->config,
-							     compv[i].index,
-							     compv[i].svalue);
+				ret = eq_iir_switch_store(cd->iir,
+							  cd->config,
+							  compv[i].index,
+							  compv[i].svalue);
 				if (ret < 0) {
 					trace_eq_error("esw");
 					return -EINVAL;
@@ -433,19 +433,11 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		if (!cd->config)
 			return -EINVAL;
 
+		/* Just copy the configurate. The EQ will be initialized in
+		 * prepare().
+		 */
 		memcpy(cd->config, cdata->data->data, bs);
 
-		/* Initialize all channels, the actual number of channels may
-		 * not be set yet.
-		 */
-		ret = eq_iir_setup(cd->iir, cd->config, PLATFORM_MAX_CHANNELS);
-		if (ret == 0) {
-			cd->eq_iir_func = eq_iir_s32_default;
-			trace_eq("iok");
-		} else {
-			cd->eq_iir_func = eq_iir_passthrough;
-			trace_eq_error("eis");
-		}
 		break;
 	default:
 		trace_eq_error("esd");
@@ -470,6 +462,12 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 		break;
 	case COMP_CMD_GET_DATA:
 		ret = iir_cmd_get_data(dev, cdata);
+		break;
+	case COMP_CMD_SET_VALUE:
+		trace_eq("isv");
+		break;
+	case COMP_CMD_GET_VALUE:
+		trace_eq("igv");
 		break;
 	default:
 		trace_eq_error("ecm");
@@ -535,7 +533,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	/* Initialize EQ */
 	cd->eq_iir_func = eq_iir_passthrough;
 	if (cd->config) {
-		ret = eq_iir_setup(cd->iir, cd->config, dev->params.channels);
+		ret = eq_iir_setup(cd, dev->params.channels);
 		if (ret < 0) {
 			comp_set_state(dev, COMP_TRIGGER_RESET);
 			return ret;
@@ -553,7 +551,7 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 	trace_eq("res");
 
-	eq_iir_free_delaylines(cd->iir);
+	eq_iir_free_delaylines(cd);
 	eq_iir_free_parameters(&cd->config);
 
 	cd->eq_iir_func = eq_iir_s32_default;
@@ -566,25 +564,19 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 static void eq_iir_cache(struct comp_dev *dev, int cmd)
 {
-	struct comp_data *cd;
-	int i;
+	struct comp_data *cd = comp_get_drvdata(dev);
 
 	switch (cmd) {
 	case COMP_CACHE_WRITEBACK_INV:
 		trace_eq("wtb");
 
-		cd = comp_get_drvdata(dev);
-
 		if (cd->config)
 			dcache_writeback_invalidate_region(cd->config,
 							   cd->config->size);
 
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-			if (cd->iir[i].delay)
-				dcache_writeback_invalidate_region
-				(cd->iir[i].delay,
-				 2 * cd->iir[i].biquads * sizeof(int64_t));
-		}
+		if (cd->iir_delay)
+			dcache_writeback_invalidate_region(cd->iir_delay,
+							   cd->iir_delay_size);
 
 		dcache_writeback_invalidate_region(cd, sizeof(*cd));
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
@@ -594,16 +586,11 @@ static void eq_iir_cache(struct comp_dev *dev, int cmd)
 		trace_eq("inv");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
-
-		cd = comp_get_drvdata(dev);
 		dcache_invalidate_region(cd, sizeof(*cd));
 
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-			if (cd->iir[i].delay)
-				dcache_invalidate_region
-				(cd->iir[i].delay,
-				 2 * cd->iir[i].biquads * sizeof(int64_t));
-		}
+		if (cd->iir_delay)
+			dcache_invalidate_region(cd->iir_delay,
+						 cd->iir_delay_size);
 
 		if (cd->config)
 			dcache_invalidate_region(cd->config,
