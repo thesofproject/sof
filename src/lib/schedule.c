@@ -141,9 +141,11 @@ static inline struct task *edf_get_next(uint64_t current,
 			trace_pipe("ed!");
 
 			/* have we already tried to rescheule ? */
-			if (reschedule++)
+			if (!reschedule) {
+				reschedule++;
+				trace_pipe("edr");
 				edf_reschedule(task, current);
-			else {
+			} else {
 				/* reschedule failed */
 				list_item_del(&task->list);
 				task->state = TASK_STATE_CANCEL;
