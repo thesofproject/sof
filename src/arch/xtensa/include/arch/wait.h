@@ -29,12 +29,19 @@
  */
 
 #include <xtensa/xtruntime.h>
+#include <arch/interrupt.h>
+#include <sof/panic.h>
+
 
 #if defined(PLATFORM_WAITI_DELAY)
 
 static inline void arch_wait_for_interrupt(int level)
 {
 	int i;
+
+	/* can only eneter WFI when at runlevel 0 i.e. not IRQ level */
+	if (arch_interrupt_get_level() > 0)
+		panic(SOF_IPC_PANIC_WFI);
 
 	/* this sequnce must be atomic on LX6 */
 	XTOS_SET_INTLEVEL(5);
@@ -55,7 +62,11 @@ static inline void arch_wait_for_interrupt(int level)
 
 static inline void arch_wait_for_interrupt(int level)
 {
-	 asm volatile("waiti 0");
+	/* can only eneter WFI when at runlevel 0 i.e. not IRQ level */
+	if (arch_interrupt_get_level() > 0)
+		panic(SOF_IPC_PANIC_WFI);
+
+	asm volatile("waiti 0");
 }
 
 #endif
