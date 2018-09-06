@@ -81,7 +81,7 @@
 #define DMA_IRQ_TYPE_LLIST	BIT(1)
 
 /* DMA copy flags */
-#define DMA_COPY_NO_COMMIT	BIT(0)
+#define DMA_COPY_PRELOAD	BIT(0)
 
 /* We will use this macro in cb handler to inform dma that
  * we need to stop the reload for special purpose

@@ -86,11 +86,15 @@
 
 #define HDA_LINK_1MS_US	1000
 
+#define HDA_STATE_PRELOAD	BIT(0)
+#define HDA_STATE_BF_WAIT	BIT(1)
+
 struct hda_chan_data {
 	struct dma *dma;
 	uint32_t index;
 	uint32_t stream_id;
-	uint32_t status;
+	uint32_t status;	/* common status */
+	uint32_t state;		/* hda specific additional state */
 	uint32_t desc_count;
 	uint32_t desc_avail;
 	uint32_t direction;
@@ -186,41 +190,76 @@ static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
 	return ds;
 }
 
-static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
-			   int bytes, uint32_t flags)
+static int hda_dma_preload(struct dma *dma, struct hda_chan_data *chan)
 {
-	struct dma_sg_elem next;
+	struct dma_sg_elem next = {
+			.src = DMA_RELOAD_LLI,
+			.dest = DMA_RELOAD_LLI,
+			.size = DMA_RELOAD_LLI
+	};
+	int i;
+	int period_cnt;
+
+	/* waiting for buffer full after start
+	 * first try is unblocking, then blocking
+	 */
+	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) &&
+	       (chan->state & HDA_STATE_BF_WAIT))
+		;
+
+	if (host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) {
+		chan->state &= ~(HDA_STATE_PRELOAD | HDA_STATE_BF_WAIT);
+		if (chan->cb) {
+			/* loop over each period */
+			period_cnt = chan->buffer_bytes /
+					chan->period_bytes;
+			for (i = 0; i < period_cnt; i++)
+				chan->cb(chan->cb_data,
+					 DMA_IRQ_TYPE_LLIST, &next);
+			/* do not need to test out next in this path */
+		}
+	} else {
+		/* next call in pre-load state will be blocking */
+		chan->state |= HDA_STATE_BF_WAIT;
+	}
+
+	return 0;
+}
+
+static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
+			   int bytes)
+{
+	struct dma_sg_elem next = {
+			.src = DMA_RELOAD_LLI,
+			.dest = DMA_RELOAD_LLI,
+			.size = DMA_RELOAD_LLI
+	};
+	uint32_t flags;
 	uint32_t dgcs = 0;
 
 	tracev_host("GwU");
-	if (flags & DMA_COPY_NO_COMMIT) {
-		/* delay to fill the buffer, only for the first time
-		 * for _input_ dma.
-		 */
-		idelay(PLATFORM_DEFAULT_DELAY);
-	} else {
-		/* clear link xruns */
-		dgcs = host_dma_reg_read(dma, chan->index, DGCS);
-		if (dgcs & DGCS_BOR)
-			hda_update_bits(dma, chan->index,
-					DGCS, DGCS_BOR, DGCS_BOR);
 
-		/* make sure that previous transfer is complete */
-		if (chan->direction == DMA_DIR_MEM_TO_DEV) {
-			while (hda_dma_get_free_size(dma, chan->index) <
-			       bytes)
-				idelay(PLATFORM_DEFAULT_DELAY);
-		}
+	/* clear link xruns */
+	dgcs = host_dma_reg_read(dma, chan->index, DGCS);
+	if (dgcs & DGCS_BOR)
+		hda_update_bits(dma, chan->index,
+				DGCS, DGCS_BOR, DGCS_BOR);
 
-		/*
-		 * set BFPI to let host gateway knows we have read size,
-		 * which will trigger next copy start.
-		 */
-		if (chan->direction == DMA_DIR_MEM_TO_DEV)
-			hda_dma_inc_link_fp(dma, chan->index, bytes);
-		else
-			hda_dma_inc_fp(dma, chan->index, bytes);
+	/* make sure that previous transfer is complete */
+	if (chan->direction == DMA_DIR_MEM_TO_DEV) {
+		while (hda_dma_get_free_size(dma, chan->index) <
+		       bytes)
+			idelay(PLATFORM_DEFAULT_DELAY);
 	}
+
+	/*
+	 * set BFPI to let host gateway knows we have read size,
+	 * which will trigger next copy start.
+	 */
+	if (chan->direction == DMA_DIR_MEM_TO_DEV)
+		hda_dma_inc_link_fp(dma, chan->index, bytes);
+	else
+		hda_dma_inc_fp(dma, chan->index, bytes);
 
 	spin_lock_irq(&dma->lock, flags);
 	if (chan->cb) {
@@ -245,8 +284,8 @@ static uint64_t hda_dma_work(void *data, uint64_t delay)
 {
 	struct hda_chan_data *chan = (struct hda_chan_data *)data;
 
-	hda_dma_copy_ch(chan->dma, chan, chan->period_bytes, 0);
-	/* next time to re-arm (TODO: should sub elapsed time?) */
+	hda_dma_copy_ch(chan->dma, chan, chan->period_bytes);
+	/* next time to re-arm */
 	return HDA_LINK_1MS_US;
 }
 
@@ -254,8 +293,15 @@ static uint64_t hda_dma_work(void *data, uint64_t delay)
 static int hda_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct hda_chan_data *chan = p->chan + channel;
 
-	return hda_dma_copy_ch(dma, &p->chan[channel], bytes, flags);
+	if (flags & DMA_COPY_PRELOAD)
+		chan->state |= HDA_STATE_PRELOAD;
+
+	if (chan->state & HDA_STATE_PRELOAD)
+		return hda_dma_preload(dma, chan);
+	else
+		return hda_dma_copy_ch(dma, chan, bytes);
 }
 
 /* acquire the specific DMA channel */
@@ -292,6 +338,7 @@ static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
 
 	/* set new state */
 	p->chan[channel].status = COMP_STATE_INIT;
+	p->chan[channel].state = 0;
 	p->chan[channel].period_bytes = 0;
 	p->chan[channel].buffer_bytes = 0;
 	p->chan[channel].cb = NULL;
@@ -495,6 +542,12 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 		if (buffer_addr == 0)
 			buffer_addr = addr;
 	}
+	/* buffer size must be multiple of hda dma burst size */
+	if (buffer_bytes % PLATFORM_HDA_BUFFER_ALIGNMENT) {
+		ret = -EINVAL;
+		goto out;
+	}
+
 	p->chan[channel].period_bytes = period_bytes;
 	p->chan[channel].buffer_bytes = buffer_bytes;
 
@@ -511,7 +564,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	if (config->direction == DMA_DIR_LMEM_TO_HMEM ||
 	    config->direction == DMA_DIR_HMEM_TO_LMEM)
 		host_dma_reg_write(dma, channel, DGMBS,
-				   ALIGN_UP(period_bytes,
+				   ALIGN_UP(buffer_bytes,
 					    PLATFORM_HDA_BUFFER_ALIGNMENT));
 
 	/* firmware control buffer */

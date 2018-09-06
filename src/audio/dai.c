@@ -48,6 +48,9 @@
 #define DAI_PLAYBACK_STREAM	0
 #define DAI_CAPTURE_STREAM	1
 
+#define DAI_PTR_INIT_DAI	1	/* buffer ptr initialized by dai */
+#define DAI_PTR_INIT_HOST	2	/* buffer ptr initialized by host */
+
 /* tracing */
 #define trace_dai(__e) trace_event(TRACE_CLASS_DAI, __e)
 #define trace_dai_error(__e)   trace_error(TRACE_CLASS_DAI, __e)
@@ -529,6 +532,8 @@ static void dai_pointer_init(struct comp_dev *dev)
 	struct comp_buffer *dma_buffer;
 	struct dai_data *dd = comp_get_drvdata(dev);
 
+	dd->pointer_init = DAI_PTR_INIT_DAI;
+
 	/* not required for capture streams */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dma_buffer = list_first_item(&dev->bsource_list,
@@ -538,6 +543,7 @@ static void dai_pointer_init(struct comp_dev *dev)
 		case SOF_COMP_HOST:
 		case SOF_COMP_SG_HOST:
 			/* buffer is preloaded and advanced by host DMA engine */
+			dd->pointer_init = DAI_PTR_INIT_HOST;
 			break;
 		default:
 			/* advance source pipeline w_ptr by one period
@@ -546,8 +552,6 @@ static void dai_pointer_init(struct comp_dev *dev)
 			break;
 		}
 	}
-
-	dd->pointer_init = 1;
 }
 
 /* used to pass standard and bespoke command (with data) to component */
@@ -570,8 +574,12 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		trace_dai("tsa");
 		if (!dd->pointer_init)
 			dai_pointer_init(dev);
-		/* only start the DAI if we are not XRUN handling */
-		if (dd->xrun == 0) {
+		/* only start the DAI if we are not XRUN handling
+		 * and the ptr is not initialized by the host as in this
+		 * case start is deferred to the first copy call as the buffer
+		 * is populated by the host only then
+		 */
+		if (dd->xrun == 0 && dd->pointer_init != DAI_PTR_INIT_HOST) {
 			/* start the DAI */
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
@@ -644,6 +652,18 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
+	struct dai_data *dd = comp_get_drvdata(dev);
+	int ret;
+
+	if (dd->pointer_init == DAI_PTR_INIT_HOST) {
+		/* start the DAI */
+		ret = dma_start(dd->dma, dd->chan);
+		if (ret < 0)
+			return ret;
+		dai_trigger(dd->dai, COMP_TRIGGER_START, dev->params.direction);
+		dd->pointer_init = DAI_PTR_INIT_DAI; /* next copy just quits */
+		platform_dai_wallclock(dev, &dd->wallclock);
+	}
 	return 0;
 }
 
