@@ -105,6 +105,9 @@
 #define TRACE_CLASS_IDC		(24 << 24)
 #define TRACE_CLASS_CPU		(25 << 24)
 
+/* trace core id */
+#define TRACE_CORE_ID(x)	((uint64_t)(x) << 32)
+
 /* move to config.h */
 #define TRACE	1
 #define TRACEV	0

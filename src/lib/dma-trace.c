@@ -38,11 +38,12 @@
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <sof/lock.h>
+#include <sof/cpu.h>
 #include <stdint.h>
 
 static struct dma_trace_data *trace_data = NULL;
 
-static int dma_trace_get_avali_data(struct dma_trace_data *d,
+static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
 
@@ -64,9 +65,10 @@ static uint64_t trace_work(void *data, uint64_t delay)
 		overflow = 0;
 	}
 
-	/* dma gateway supports wrap mode copy, but GPDMA doesn't*/
-	/* support, so do it differently based on HW features */
-	size = dma_trace_get_avali_data(d, buffer, avail);
+	/* dma gateway supports wrap mode copy, but GPDMA doesn't
+	 * support, so do it differently based on HW features
+	 */
+	size = dma_trace_get_avail_data(d, buffer, avail);
 
 	/* any data to copy ? */
 	if (size == 0)
@@ -98,7 +100,7 @@ static uint64_t trace_work(void *data, uint64_t delay)
 out:
 	spin_lock_irq(&d->lock, flags);
 
-	/* disregard any old messages and dont resend them if we overflow */
+	/* disregard any old messages and don't resend them if we overflow */
 	if (size > 0) {
 		if (d->overflow)
 			buffer->avail = DMA_TRACE_LOCAL_SIZE - size;
@@ -117,7 +119,8 @@ out:
 
 int dma_trace_init_early(struct sof *sof)
 {
-	trace_data = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*trace_data));
+	trace_data = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+			     sizeof(*trace_data));
 
 	list_init(&trace_data->config.elem_list);
 	spinlock_init(&trace_data->lock);
@@ -145,7 +148,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 }
 
 int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
-		uint32_t host_size)
+			  uint32_t host_size)
 {
 	struct dma_sg_elem *e;
 
@@ -178,6 +181,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	}
 
 	bzero(buffer->addr, DMA_TRACE_LOCAL_SIZE);
+	dcache_writeback_invalidate_region(buffer->addr, DMA_TRACE_LOCAL_SIZE);
 
 	/* initialise the DMA buffer */
 	buffer->size = DMA_TRACE_LOCAL_SIZE;
@@ -244,7 +248,7 @@ static int dma_trace_start(struct dma_trace_data *d)
 	return err;
 }
 
-static int dma_trace_get_avali_data(struct dma_trace_data *d,
+static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail)
 {
@@ -266,19 +270,19 @@ static int dma_trace_get_avali_data(struct dma_trace_data *d,
 
 	/* writeback trace data */
 	if (buffer->r_ptr + avail <= buffer->end_addr) {
-		dcache_writeback_region((void *)buffer->r_ptr, avail);
+		dcache_writeback_invalidate_region(buffer->r_ptr, avail);
 	} else {
 		size = buffer->end_addr - buffer->r_ptr + 1;
 
-		/* warp case, flush tail and head of trace buffer */
-		dcache_writeback_region((void *)buffer->r_ptr, size);
-		dcache_writeback_region((void *)buffer->addr, avail - size);
+		/* wrap case, flush tail and head of trace buffer */
+		dcache_writeback_invalidate_region(buffer->r_ptr, size);
+		dcache_writeback_invalidate_region(buffer->addr, avail - size);
 	}
 
 	return avail;
 }
 #else
-static int dma_trace_get_avali_data(struct dma_trace_data *d,
+static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail)
 {
@@ -308,7 +312,7 @@ static int dma_trace_get_avali_data(struct dma_trace_data *d,
 		size = lsize;
 
 	/* writeback trace data */
-	dcache_writeback_region((void *)buffer->r_ptr, size);
+	dcache_writeback_invalidate_region(buffer->r_ptr, size);
 
 	return size;
 }
@@ -341,6 +345,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	d->enabled = 1;
 	work_schedule_default(&d->dmat_work, DMA_TRACE_PERIOD);
+
 	return 0;
 }
 
@@ -381,7 +386,7 @@ void dma_trace_flush(void *t)
 	}
 
 	/* writeback trace data */
-	dcache_writeback_region(t, size);
+	dcache_writeback_invalidate_region((void *)t, size);
 }
 
 static void dtrace_add_event(const char *e, uint32_t length)
@@ -395,14 +400,18 @@ static void dtrace_add_event(const char *e, uint32_t length)
 	if (margin > length) {
 		/* no wrap */
 		memcpy(buffer->w_ptr, e, length);
+		dcache_writeback_invalidate_region(buffer->w_ptr, length);
 		buffer->w_ptr += length;
 	} else {
 
 		/* data is bigger than remaining margin so we wrap */
 		memcpy(buffer->w_ptr, e, margin);
+		dcache_writeback_invalidate_region(buffer->w_ptr, margin);
 		buffer->w_ptr = buffer->addr;
 
 		memcpy(buffer->w_ptr, e + margin, length - margin);
+		dcache_writeback_invalidate_region(buffer->w_ptr,
+						   length - margin);
 		buffer->w_ptr += length - margin;
 	}
 
@@ -424,9 +433,11 @@ void dtrace_event(const char *e, uint32_t length)
 	spin_lock_irq(&trace_data->lock, flags);
 	dtrace_add_event(e, length);
 
-	/* if DMA trace copying is working */
-	/* don't check if local buffer is half full */
-	if (trace_data->copy_in_progress) {
+	/* if DMA trace copying is working or slave core
+	 * don't check if local buffer is half full
+	 */
+	if (trace_data->copy_in_progress ||
+	    cpu_get_id() != PLATFORM_MASTER_CORE_ID) {
 		spin_unlock_irq(&trace_data->lock, flags);
 		return;
 	}
@@ -438,11 +449,11 @@ void dtrace_event(const char *e, uint32_t length)
 	    buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2)) {
 		work_reschedule_default(&trace_data->dmat_work,
 		DMA_TRACE_RESCHEDULE_TIME);
-		/* reschedule should not be intrrupted */
-		/* just like we are in copy progress */
+		/* reschedule should not be interrupted
+		 * just like we are in copy progress
+		 */
 		trace_data->copy_in_progress = 1;
 	}
-
 }
 
 void dtrace_event_atomic(const char *e, uint32_t length)
