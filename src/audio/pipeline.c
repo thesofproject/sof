@@ -1134,7 +1134,7 @@ void pipeline_schedule_cancel(struct pipeline *p)
 	int err;
 
 	/* cancel and wait for pipeline to complete */
-	err = schedule_task_cancel(&p->pipe_task, 1);
+	err = schedule_task_cancel(&p->pipe_task);
 	if (err < 0)
 		trace_pipe_error("pC0");
 }
