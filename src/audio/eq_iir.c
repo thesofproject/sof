@@ -564,12 +564,13 @@ static int eq_iir_reset(struct comp_dev *dev)
 
 static void eq_iir_cache(struct comp_dev *dev, int cmd)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *cd;
 
 	switch (cmd) {
 	case COMP_CACHE_WRITEBACK_INV:
 		trace_eq("wtb");
 
+		cd = comp_get_drvdata(dev);
 		if (cd->config)
 			dcache_writeback_invalidate_region(cd->config,
 							   cd->config->size);
@@ -586,6 +587,11 @@ static void eq_iir_cache(struct comp_dev *dev, int cmd)
 		trace_eq("inv");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
+
+		/* Note: The component data need to be retrieved after
+		 * the dev data has been invalidated.
+		 */
+		cd = comp_get_drvdata(dev);
 		dcache_invalidate_region(cd, sizeof(*cd));
 
 		if (cd->iir_delay)
