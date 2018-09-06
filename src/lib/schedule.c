@@ -269,6 +269,13 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 		return 0;
 	}
 
+	/* is task already running ? - not enough MIPS to complete ? */
+	if (task->state == TASK_STATE_QUEUED) {
+		trace_pipe("tsq");
+		spin_unlock_irq(&sch->lock, flags);
+		return 0;
+	}
+
 	/* get the current time */
 	current = platform_timer_get(platform_timer);
 
