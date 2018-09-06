@@ -87,7 +87,7 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline);
 
 void schedule_task_idle(struct task *task, uint64_t deadline);
 
-int schedule_task_cancel(struct task *task, int wait);
+int schedule_task_cancel(struct task *task);
 
 void schedule_task_complete(struct task *task);
 

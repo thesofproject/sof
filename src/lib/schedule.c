@@ -215,7 +215,7 @@ static struct task *schedule_edf(void)
 }
 
 /* cancel and delete task from scheduler - won't stop it if already running */
-int schedule_task_cancel(struct task *task, int wait)
+int schedule_task_cancel(struct task *task)
 {
 	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
@@ -225,31 +225,17 @@ int schedule_task_cancel(struct task *task, int wait)
 
 	spin_lock_irq(&sch->lock, flags);
 
-	/* check current task state */
-	switch (task->state) {
-	case TASK_STATE_QUEUED:
+	/* check current task state, delete it if it is queued
+	 * if it is already running, nothing we can do about it atm
+	 */
+	if (task->state == TASK_STATE_QUEUED) {
 		/* delete task */
 		task->state = TASK_STATE_CANCEL;
 		list_item_del(&task->list);
-		break;
-	case TASK_STATE_RUNNING:
-		/* already running, nothing we can do about it atm */
-		if (wait) {
-			task->complete.timeout = SCHEDULE_TASK_MAX_TIME_SLICE;
-			spin_unlock_irq(&sch->lock, flags);
-			ret = wait_for_completion_timeout(&task->complete);
-			goto out;
-		} else {
-			ret = -EBUSY;
-		}
-		break;
-	default:
-		break;
 	}
 
 	spin_unlock_irq(&sch->lock, flags);
 
-out:
 	return ret;
 }
 
