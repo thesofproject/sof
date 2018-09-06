@@ -110,7 +110,7 @@ struct sof;
  * the interval of reschedule DMA trace copying in special case like half
  * fullness of local DMA trace buffer
  */
-#define DMA_TRACE_RESCHEDULE_TIME	500
+#define DMA_TRACE_RESCHEDULE_TIME	100
 
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
