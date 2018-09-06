@@ -32,7 +32,6 @@
 // This pull request is only for test CI test. Please do not marge it!
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <errno.h>
 #include <sof/sof.h>
@@ -54,6 +53,8 @@
 #define tracev_host(__e)	tracev_event(TRACE_CLASS_HOST, __e)
 #define trace_host_error(__e)	trace_error(TRACE_CLASS_HOST, __e)
 
+static int host_copy(struct comp_dev *dev);
+
 struct hc_buf {
 	/* host buffer info */
 	struct list_item elem_list;
@@ -61,15 +62,6 @@ struct hc_buf {
 	uint32_t current_end;
 };
 
-/**
- * \brief Host component data.
- *
- * Host reports local position in the host buffer every params.host_period_bytes
- * if the latter is != 0. report_pos is used to track progress since the last
- * multiple of host_period_bytes.
- *
- * host_size is the host buffer size (in bytes) specified in the IPC parameters.
- */
 struct host_data {
 	/* local DMA config */
 	struct dma *dma;
@@ -78,34 +70,28 @@ struct host_data {
 	completion_t complete;
 	struct comp_buffer *dma_buffer;
 
-	uint32_t period_bytes;	/**< Size of a single period (in bytes) */
-	uint32_t period_count;	/**< Number of periods */
-	uint32_t pointer_init;
-
-	/* host position reporting related */
-	uint32_t host_size;	/**< Host buffer size (in bytes) */
-	uint32_t report_pos;	/**< Position in current report period */
-	uint32_t local_pos;	/**< Local position in host buffer */
-
 	/* local and host DMA buffer info */
-#if !defined CONFIG_DMA_GW
 	struct hc_buf host;
 	struct hc_buf local;
+	uint32_t host_size;
+	/* host position reporting related */
+	volatile uint32_t *host_pos;    /* read/write pos, update to mailbox for host side */
+	uint32_t report_pos;		/* position in current report period */
+	uint32_t local_pos;		/* the host side buffer local read/write position, in bytes */
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;
 	uint32_t split_remaining;
 	uint32_t next_inc;
-#endif
+	uint32_t period_bytes;
+	uint32_t period_count;
+	uint32_t pointer_init;
 
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 };
 
 static int host_stop(struct comp_dev *dev);
-static int host_copy_int(struct comp_dev *dev, bool preload_run);
-
-#if !defined CONFIG_DMA_GW
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
@@ -120,7 +106,7 @@ static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 	return elem;
 }
 
-#endif
+#if !defined CONFIG_DMA_GW
 
 /*
  * Host period copy between DSP and host DMA completion.
@@ -136,16 +122,14 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
-#if !defined CONFIG_DMA_GW
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
 	uint32_t next_size;
 	uint32_t need_copy = 0;
 	uint32_t period_bytes = hd->period_bytes;
-#endif
 
 	local_elem = list_first_item(&hd->config.elem_list,
-				     struct dma_sg_elem, list);
+		struct dma_sg_elem, list);
 
 	tracev_host("irq");
 
@@ -156,34 +140,32 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		/* recalc available buffer space */
 		comp_update_buffer_consume(hd->dma_buffer, local_elem->size);
 
+	/* new local period, update host buffer position blks */
+	hd->local_pos += local_elem->size;
 	dev->position += local_elem->size;
 
-	/* new local period, update host buffer position blks
-	 * local_pos is queried by the ops.potision() API
-	 */
-	hd->local_pos += local_elem->size;
-
-	/* buffer overlap, hard code host buffer size at the moment ? */
+	/* buffer overlap ? */
 	if (hd->local_pos >= hd->host_size)
 		hd->local_pos = 0;
 
+	/* send IPC message to driver if needed */
+	hd->report_pos += local_elem->size;
+	hd->posn.host_posn += local_elem->size;
+
 	/* NO_IRQ mode if host_period_size == 0 */
-	if (dev->params.host_period_bytes != 0) {
-		hd->report_pos += local_elem->size;
-
-		/* send IPC message to driver if needed */
-		if (hd->report_pos >= dev->params.host_period_bytes) {
-			hd->report_pos = 0;
-
-			/* send timestamped position to host
-			 * (updates position first, by calling ops.position())
-			 */
-			pipeline_get_timestamp(dev->pipeline, dev, &hd->posn);
-			ipc_stream_send_position(dev, &hd->posn);
+	if (dev->params.host_period_bytes != 0 &&
+		hd->report_pos >= dev->params.host_period_bytes) {
+		hd->report_pos = 0;
+		/* update for host side */
+		if (hd->host_pos) {
+			*hd->host_pos = hd->local_pos;
 		}
+
+		/* send timestamps to host */
+		pipeline_get_timestamp(dev->pipeline, dev, &hd->posn);
+		ipc_stream_send_position(dev, &hd->posn);
 	}
 
-#if !defined CONFIG_DMA_GW
 	/* update src and dest positions and check for overflow */
 	local_elem->src += local_elem->size;
 	local_elem->dest += local_elem->size;
@@ -236,7 +218,6 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	/* let any waiters know we have completed */
 	wait_completed(&hd->complete);
-#endif
 }
 
 static int create_local_elems(struct comp_dev *dev)
@@ -262,21 +243,14 @@ static int create_local_elems(struct comp_dev *dev)
 				i * hd->period_bytes;
 
 		e->size = hd->period_bytes;
-#if defined CONFIG_DMA_GW
-		list_item_append(&e->list, &hd->config.elem_list);
-#else
+
 		list_item_append(&e->list, &hd->local.elem_list);
-#endif
 	}
 
 	return 0;
 
 unwind:
-#if defined CONFIG_DMA_GW
-	list_for_item_safe(elist, tlist, &hd->config.elem_list) {
-#else
 	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
-#endif
 		e = container_of(elist, struct dma_sg_elem, list);
 		list_item_del(&e->list);
 		rfree(e);
@@ -286,16 +260,191 @@ unwind:
 	return -ENOMEM;
 }
 
-/**
- * \brief Command handler.
- * \param[in,out] dev Device
- * \param[in] cmd Command
- * \return 0 if successful, error code otherwise.
- *
- * Used to pass standard and bespoke commands (with data) to component.
- * This function is common for all dma types, with one exception:
- * dw-dma is run on demand, so no start()/stop() is issued.
+/* used to pass standard and bespoke commands (with data) to component */
+static int host_trigger(struct comp_dev *dev, int cmd)
+{
+	int ret = 0;
+
+	trace_host("cmd");
+
+	ret = comp_set_state(dev, cmd);
+	if (ret < 0)
+		return ret;
+
+	switch (cmd) {
+	case COMP_TRIGGER_STOP:
+		ret = host_stop(dev);
+		break;
+	case COMP_TRIGGER_START:
+		/* preload first playback period for preloader task */
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+			ret = host_copy(dev);
+			if (ret == dev->frames)
+				ret = 0;
+			// wait for completion ?
+		}
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+#else
+
+static void host_gw_dma_update(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *local_elem;
+	struct dma_sg_elem *source_elem;
+	struct dma_sg_elem *sink_elem;
+
+	local_elem = list_first_item(&hd->config.elem_list,
+				     struct dma_sg_elem, list);
+
+	tracev_host("upd");
+
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		/* recalc available buffer space */
+		comp_update_buffer_produce(hd->dma_buffer, local_elem->size);
+	else
+		/* recalc available buffer space */
+		comp_update_buffer_consume(hd->dma_buffer, local_elem->size);
+
+	dev->position += local_elem->size;
+
+	/* new local period, update host buffer position blks */
+	hd->local_pos += local_elem->size;
+
+	/* buffer overlap, hard code host buffer size at the moment ? */
+	if (hd->local_pos >= hd->host_size)
+		hd->local_pos = 0;
+
+	/* send IPC message to driver if needed */
+	hd->report_pos += local_elem->size;
+	/* update for host side */
+	if (hd->host_pos)
+		*hd->host_pos = hd->local_pos;
+
+	/* NO_IRQ mode if host_period_size == 0 */
+	if (dev->params.host_period_bytes != 0 &&
+	    hd->report_pos >= dev->params.host_period_bytes) {
+		hd->report_pos = 0;
+
+		/* send timestamps to host */
+		pipeline_get_timestamp(dev->pipeline, dev, &hd->posn);
+		ipc_stream_send_position(dev, &hd->posn);
+	}
+
+	/* update src/dest positions for local buf, and check for overflow */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		local_elem->dest += local_elem->size;
+		if (local_elem->dest == hd->sink->current_end) {
+			/* end of elem, so use next */
+			sink_elem = next_buffer(hd->sink);
+			hd->sink->current_end = sink_elem->dest +
+				sink_elem->size;
+			local_elem->dest = sink_elem->dest;
+		}
+	} else {
+		local_elem->src += local_elem->size;
+		if (local_elem->src == hd->source->current_end) {
+			/* end of elem, so use next */
+			source_elem = next_buffer(hd->source);
+			hd->source->current_end = source_elem->src +
+				source_elem->size;
+			local_elem->src = source_elem->src;
+		}
+	}
+}
+
+static int create_local_elems(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *e;
+	struct dma_sg_elem *ec;
+	struct dma_sg_elem *local_elem;
+	struct list_item *elist;
+	struct list_item *tlist;
+	int i;
+
+	/* TODO: simplify elem storage by using an array */
+	for (i = 0; i < hd->period_count; i++) {
+		/* allocate new host DMA elem and add it to our list */
+		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
+		if (e == NULL)
+			goto unwind;
+
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+			e->dest = (uintptr_t)(hd->dma_buffer->addr) +
+				i * hd->period_bytes;
+		else
+			e->src = (uintptr_t)(hd->dma_buffer->addr) +
+				i * hd->period_bytes;
+
+		e->size = hd->period_bytes;
+
+		list_item_append(&e->list, &hd->local.elem_list);
+
+		/*
+		 * for dma gateway, we don't allocate extra sg elements in
+		 * host_buffer, so, we need create them here and add them
+		 * to config.elem_list.
+		 * And, as the first element has been added at host_new, so
+		 * add from the 2nd element here.
+		 */
+		if (i == 0)
+			continue;
+
+		/* allocate new host DMA elem and add it to our list */
+		ec = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*ec));
+		if (!ec)
+			goto unwind;
+
+		*ec = *e;
+		list_item_append(&ec->list, &hd->config.elem_list);
+
+	}
+
+	return 0;
+
+unwind:
+	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
+		e = container_of(elist, struct dma_sg_elem, list);
+		list_item_del(&e->list);
+		rfree(e);
+	}
+
+	local_elem = list_first_item(&hd->config.elem_list,
+				     struct dma_sg_elem, list);
+	list_for_item_safe(elist, tlist, &local_elem->list) {
+		ec = container_of(elist, struct dma_sg_elem, list);
+		list_item_del(&ec->list);
+		rfree(ec);
+	}
+
+	trace_host_error("el0");
+	return -ENOMEM;
+}
+
+/*
+ * Host DMA will copy the first period once it is started, automatically.
+ * Here update the pointers to reflect the real case.
  */
+static void host_pointer_init(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	/* not required for capture streams */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		comp_update_buffer_produce(hd->dma_buffer,
+					   hd->period_bytes);
+
+	hd->pointer_init = 1;
+}
+
+/* used to pass standard and bespoke commands (with data) to component */
 static int host_trigger(struct comp_dev *dev, int cmd)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -312,32 +461,18 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		ret = host_stop(dev);
 		/* fall through */
 	case COMP_TRIGGER_XRUN:
-/* TODO: add attribute to dma interface and do run-time if() here */
-#if defined CONFIG_DMA_GW
 		ret = dma_stop(hd->dma, hd->chan);
-#endif
 		break;
 	case COMP_TRIGGER_START:
-#if defined CONFIG_DMA_GW
 		ret = dma_start(hd->dma, hd->chan);
 		if (ret < 0) {
 			trace_host_error("TsF");
 			trace_error_value(ret);
 			goto out;
 		}
-#endif
-		/* preload first playback period for preloader task */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-			if (!hd->pointer_init) {
-				ret = host_copy_int(dev, true);
 
-				if (ret == dev->frames)
-					ret = 0;
-				// wait for completion ?
-
-				hd->pointer_init = 1;
-			}
-		}
+		if (!hd->pointer_init)
+			host_pointer_init(dev);
 		break;
 	default:
 		break;
@@ -347,16 +482,16 @@ out:
 	return ret;
 }
 
+#endif
+
 static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct host_data *hd;
 	struct sof_ipc_comp_host *host;
 	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
+	struct dma_sg_elem *elem;
 	uint32_t dir, caps, dma_dev;
-#if !defined CONFIG_DMA_GW
-	struct dma_sg_elem *elem = NULL;
-#endif
 
 	trace_host("new");
 
@@ -374,6 +509,13 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
+	elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*elem));
+	if (elem == NULL) {
+		rfree(dev);
+		rfree(hd);
+		return NULL;
+	}
+
 	comp_set_drvdata(dev, hd);
 
 	/* request HDA DMA with shared access privilege */
@@ -383,7 +525,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		dir =  DMA_DIR_LMEM_TO_HMEM;
 
 	caps = 0;
-	dma_dev = DMA_DEV_HOST;
+	dma_dev = DMA_DEV_HDA;
 	hd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (hd->dma == NULL) {
 		trace_host_error("eDM");
@@ -392,14 +534,20 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	/* init buffer elems */
 	list_init(&hd->config.elem_list);
-#if !defined CONFIG_DMA_GW
 	list_init(&hd->host.elem_list);
 	list_init(&hd->local.elem_list);
-
-	elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*elem));
-	if (!elem)
-		goto error;
 	list_item_prepend(&elem->list, &hd->config.elem_list);
+
+#if !defined CONFIG_DMA_GW
+	/* get DMA channel from DMAC */
+	hd->chan = dma_channel_get(hd->dma, 0);
+	if (hd->chan < 0) {
+		trace_host_error("eDC");
+		goto error;
+	}
+
+	/* set up callback */
+	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST, host_dma_cb, dev);
 #endif
 
 	/* init posn data. TODO: other fields */
@@ -410,9 +558,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	return dev;
 
 error:
-#if !defined CONFIG_DMA_GW
 	rfree(elem);
-#endif
 	rfree(hd);
 	rfree(dev);
 	return NULL;
@@ -437,7 +583,6 @@ static void host_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-#if !defined CONFIG_DMA_GW
 static int host_elements_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -467,7 +612,6 @@ static int host_elements_reset(struct comp_dev *dev)
 
 	return 0;
 }
-#endif
 
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev)
@@ -485,20 +629,18 @@ static int host_params(struct comp_dev *dev)
 
 	/* determine source and sink buffer elems */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-#if !defined CONFIG_DMA_GW
+
 		hd->source = &hd->host;
 		hd->sink = &hd->local;
-#endif
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 		hd->period_count = cconfig->periods_sink;
 	} else {
-#if !defined CONFIG_DMA_GW
+
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
-#endif
 		hd->dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
 
@@ -546,20 +688,16 @@ static int host_params(struct comp_dev *dev)
 	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 0;
 
-#if !defined CONFIG_DMA_GW
 	host_elements_reset(dev);
-#endif
 
+#if defined CONFIG_DMA_GW
 	dev->params.stream_tag -= 1;
-	/* get DMA channel from DMAC
-	 * note: stream_tag is ignored by dw-dma
-	 */
+	/* get DMA channel from DMAC */
 	hd->chan = dma_channel_get(hd->dma, dev->params.stream_tag);
 	if (hd->chan < 0) {
 		trace_host_error("eDC");
 		return -ENODEV;
 	}
-#if defined CONFIG_DMA_GW
 	err = dma_set_config(hd->dma, hd->chan, &hd->config);
 	if (err < 0) {
 		trace_host_error("eDc");
@@ -567,10 +705,7 @@ static int host_params(struct comp_dev *dev)
 		return err;
 	}
 #endif
-	/* set up callback */
-	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST,
-		   host_dma_cb,
-		   dev);
+
 	return 0;
 }
 
@@ -586,10 +721,10 @@ static int host_prepare(struct comp_dev *dev)
 		return ret;
 
 	hd->local_pos = 0;
+	if (hd->host_pos)
+		*hd->host_pos = 0;
 	hd->report_pos = 0;
-#if !defined CONFIG_DMA_GW
 	hd->split_remaining = 0;
-#endif
 	hd->pointer_init = 0;
 	dev->position = 0;
 
@@ -601,6 +736,8 @@ static int host_pointer_reset(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	/* reset buffer pointers */
+	if (hd->host_pos)
+		*hd->host_pos = 0;
 	hd->local_pos = 0;
 	hd->report_pos = 0;
 	dev->position = 0;
@@ -624,7 +761,6 @@ static int host_position(struct comp_dev *dev,
 	return 0;
 }
 
-#if !defined CONFIG_DMA_GW
 static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
 		uint32_t host_size)
 {
@@ -641,7 +777,6 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
 	list_item_append(&e->list, &hd->host.elem_list);
 	return 0;
 }
-#endif
 
 static int host_reset(struct comp_dev *dev)
 {
@@ -652,7 +787,6 @@ static int host_reset(struct comp_dev *dev)
 
 	trace_host("res");
 
-#if !defined CONFIG_DMA_GW
 	/* free all host DMA elements */
 	list_for_item_safe(elist, tlist, &hd->host.elem_list) {
 		e = container_of(elist, struct dma_sg_elem, list);
@@ -666,7 +800,6 @@ static int host_reset(struct comp_dev *dev)
 		list_item_del(&e->list);
 		rfree(e);
 	}
-#endif
 
 #if defined CONFIG_DMA_GW
 	dma_stop(hd->dma, hd->chan);
@@ -676,16 +809,14 @@ static int host_reset(struct comp_dev *dev)
 			    struct dma_sg_elem, list);
 	/*
 	 * here free dma_sg_elem those allocated in create_local_elems(),
-	 * we should keep header and the first local elem after reset (but only
-	 * for dw-dma since hda-dma allocates the full list again)
+	 * we should keep header and the first local elem after reset
 	 */
 	list_for_item_safe(elist, tlist, &e->list) {
 		e = container_of(elist, struct dma_sg_elem, list);
-#if !defined CONFIG_DMA_GW
+
 		/* should not free the header, finished */
 		if (elist == &hd->config.elem_list)
 			break;
-#endif
 		list_item_del(&e->list);
 		rfree(e);
 	}
@@ -693,10 +824,9 @@ static int host_reset(struct comp_dev *dev)
 
 	host_pointer_reset(dev);
 	hd->pointer_init = 0;
-#if !defined CONFIG_DMA_GW
+	hd->host_pos = NULL;
 	hd->source = NULL;
 	hd->sink = NULL;
-#endif
 	dev->state = COMP_STATE_READY;
 
 	return 0;
@@ -704,11 +834,6 @@ static int host_reset(struct comp_dev *dev)
 
 /* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
-{
-	return host_copy_int(dev, false);
-}
-
-static int host_copy_int(struct comp_dev *dev, bool preload_run)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
@@ -737,17 +862,19 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run)
 			return 0;
 		}
 	}
-/* TODO: this could be run-time if() based on the same attribute
- * as in the host_trigger().
- */
+
 #if defined CONFIG_DMA_GW
 	/* tell gateway to copy another period */
-	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes,
-		       preload_run ? DMA_COPY_NO_COMMIT : 0);
+	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes);
 	if (ret < 0)
 		goto out;
 
-	/* note: update() moved to callback */
+	/*
+	 * update host pointers for the new copied period.
+	 * fixme: do we need wait and check to make sure
+	 * the new copy is finished here?
+	 */
+	host_gw_dma_update(dev);
 #else
 	/* do DMA transfer */
 	ret = dma_set_config(hd->dma, hd->chan, &hd->config);
@@ -764,69 +891,6 @@ out:
 	return ret;
 }
 
-static void host_cache(struct comp_dev *dev, int cmd)
-{
-	struct host_data *hd;
-	struct list_item *item;
-	struct dma_sg_elem *e;
-
-	switch (cmd) {
-	case COMP_CACHE_WRITEBACK_INV:
-		trace_host("wtb");
-
-		hd = comp_get_drvdata(dev);
-
-		list_for_item(item, &hd->config.elem_list) {
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_writeback_invalidate_region(e, sizeof(*e));
-			dcache_writeback_invalidate_region(item,
-							   sizeof(*item));
-		}
-
-#if !defined CONFIG_DMA_GW
-		list_for_item(item, &hd->local.elem_list) {
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_writeback_invalidate_region(e, sizeof(*e));
-			dcache_writeback_invalidate_region(item,
-							   sizeof(*item));
-		}
-#endif
-
-		dcache_writeback_invalidate_region(hd->dma, sizeof(*hd->dma));
-		dcache_writeback_invalidate_region(hd->dma->private,
-						   hd->dma->private_size);
-		dcache_writeback_invalidate_region(hd, sizeof(*hd));
-		dcache_writeback_invalidate_region(dev, sizeof(*dev));
-		break;
-
-	case COMP_CACHE_INVALIDATE:
-		trace_host("inv");
-
-		dcache_invalidate_region(dev, sizeof(*dev));
-
-		hd = comp_get_drvdata(dev);
-		dcache_invalidate_region(hd, sizeof(*hd));
-		dcache_invalidate_region(hd->dma, sizeof(*hd->dma));
-		dcache_invalidate_region(hd->dma->private,
-					 hd->dma->private_size);
-
-#if !defined CONFIG_DMA_GW
-		list_for_item(item, &hd->local.elem_list) {
-			dcache_invalidate_region(item, sizeof(*item));
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_invalidate_region(e, sizeof(*e));
-		}
-#endif
-
-		list_for_item(item, &hd->config.elem_list) {
-			dcache_invalidate_region(item, sizeof(*item));
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_invalidate_region(e, sizeof(*e));
-		}
-		break;
-	}
-}
-
 struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.ops	= {
@@ -837,11 +901,8 @@ struct comp_driver comp_host = {
 		.trigger	= host_trigger,
 		.copy		= host_copy,
 		.prepare	= host_prepare,
-#if !defined CONFIG_DMA_GW
 		.host_buffer	= host_buffer,
-#endif
 		.position	= host_position,
-		.cache		= host_cache,
 	},
 };
 
