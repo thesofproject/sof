@@ -141,9 +141,11 @@ static inline struct task *edf_get_next(uint64_t current,
 			trace_pipe("ed!");
 
 			/* have we already tried to rescheule ? */
-			if (reschedule++)
+			if (!reschedule) {
+				reschedule++;
+				trace_pipe("edr");
 				edf_reschedule(task, current);
-			else {
+			} else {
 				/* reschedule failed */
 				list_item_del(&task->list);
 				task->state = TASK_STATE_CANCEL;
@@ -263,6 +265,13 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	/* is task already running ? - not enough MIPS to complete ? */
 	if (task->state == TASK_STATE_RUNNING) {
 		trace_pipe("tsk");
+		spin_unlock_irq(&sch->lock, flags);
+		return 0;
+	}
+
+	/* is task already running ? - not enough MIPS to complete ? */
+	if (task->state == TASK_STATE_QUEUED) {
+		trace_pipe("tsq");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
