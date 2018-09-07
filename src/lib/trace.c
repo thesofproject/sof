@@ -35,6 +35,7 @@
 #include <platform/timer.h>
 #include <sof/lock.h>
 #include <sof/dma-trace.h>
+#include <sof/cpu.h>
 #include <stdint.h>
 
 struct trace {
@@ -43,18 +44,18 @@ struct trace {
 	spinlock_t lock;
 };
 
-static struct trace trace;
+static struct trace *trace;
 
 /* send trace events only to the local trace buffer */
 void _trace_event(uint32_t event)
 {
 	uint64_t dt[2];
 
-	if (!trace.enable)
+	if (!trace->enable)
 		return;
 
 	dt[0] = platform_timer_get(platform_timer);
-	dt[1] = event;
+	dt[1] = event | TRACE_CORE_ID(cpu_get_id());
 	dtrace_event((const char *)dt, sizeof(uint64_t) * 2);
 }
 
@@ -62,11 +63,11 @@ void _trace_event_atomic(uint32_t event)
 {
 	uint64_t dt[2];
 
-	if (!trace.enable)
+	if (!trace->enable)
 		return;
 
 	dt[0] = platform_timer_get(platform_timer);
-	dt[1] = event;
+	dt[1] = event | TRACE_CORE_ID(cpu_get_id());
 	dtrace_event_atomic((const char *)dt, sizeof(uint64_t) * 2);
 }
 
@@ -79,32 +80,32 @@ void _trace_event_mbox(uint32_t event)
 
 	volatile uint64_t *t;
 
-	if (!trace.enable)
+	if (!trace->enable)
 		return;
 
 	time = platform_timer_get(platform_timer);
 
 	dt[0] = time;
-	dt[1] = event;
+	dt[1] = event | TRACE_CORE_ID(cpu_get_id());
 	dtrace_event((const char *)dt, sizeof(uint64_t) * 2);
 
 	/* send event by mail box too. */
-	spin_lock_irq(&trace.lock, flags);
+	spin_lock_irq(&trace->lock, flags);
 
 	/* write timestamp and event to trace buffer */
-	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
-	trace.pos += (sizeof(uint64_t) << 1);
+	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace->pos);
+	trace->pos += (sizeof(uint64_t) << 1);
 
-	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
-		trace.pos = 0;
+	if (trace->pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace->pos = 0;
 
-	spin_unlock_irq(&trace.lock, flags);
+	spin_unlock_irq(&trace->lock, flags);
 
 	t[0] = time;
-	t[1] = event;
+	t[1] = event | TRACE_CORE_ID(cpu_get_id());
 
 	/* writeback trace data */
-	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
+	dcache_writeback_invalidate_region((void *)t, sizeof(uint64_t) * 2);
 }
 
 void _trace_event_mbox_atomic(uint32_t event)
@@ -113,27 +114,27 @@ void _trace_event_mbox_atomic(uint32_t event)
 	uint64_t dt[2];
 	uint64_t time;
 
-	if (!trace.enable)
+	if (!trace->enable)
 		return;
 
 	time = platform_timer_get(platform_timer);
 
 	dt[0] = time;
-	dt[1] = event;
+	dt[1] = event | TRACE_CORE_ID(cpu_get_id());
 	dtrace_event_atomic((const char *)dt, sizeof(uint64_t) * 2);
 
 	/* write timestamp and event to trace buffer */
-	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
-	trace.pos += (sizeof(uint64_t) << 1);
+	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace->pos);
+	trace->pos += (sizeof(uint64_t) << 1);
 
-	if (trace.pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
-		trace.pos = 0;
+	if (trace->pos > MAILBOX_TRACE_SIZE - sizeof(uint64_t) * 2)
+		trace->pos = 0;
 
 	t[0] = time;
-	t[1] = event;
+	t[1] = event | TRACE_CORE_ID(cpu_get_id());
 
 	/* writeback trace data */
-	dcache_writeback_region((void *)t, sizeof(uint64_t) * 2);
+	dcache_writeback_invalidate_region((void *)t, sizeof(uint64_t) * 2);
 }
 
 void trace_flush(void)
@@ -141,7 +142,7 @@ void trace_flush(void)
 	volatile uint64_t *t;
 
 	/* get mailbox position */
-	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace.pos);
+	t = (volatile uint64_t *)(MAILBOX_TRACE_BASE + trace->pos);
 
 	/* flush dma trace messages */
 	dma_trace_flush((void *)t);
@@ -149,13 +150,20 @@ void trace_flush(void)
 
 void trace_off(void)
 {
-	trace.enable = 0;
+	trace->enable = 0;
 }
 
 void trace_init(struct sof *sof)
 {
 	dma_trace_init_early(sof);
-	trace.enable = 1;
-	trace.pos = 0;
-	spinlock_init(&trace.lock);
+
+	trace = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+			sizeof(*trace));
+	trace->enable = 1;
+	trace->pos = 0;
+	spinlock_init(&trace->lock);
+
+	bzero((void *)MAILBOX_TRACE_BASE, MAILBOX_TRACE_SIZE);
+	dcache_writeback_invalidate_region((void *)MAILBOX_TRACE_BASE,
+					   MAILBOX_TRACE_SIZE);
 }
