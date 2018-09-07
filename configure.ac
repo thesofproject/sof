@@ -65,7 +65,7 @@ AM_CONDITIONAL(BUILD_LIB, test "$have_library" = "yes")
 AC_ARG_ENABLE(rimage, [AS_HELP_STRING([--enable-rimage],[build rimage tool])], have_rimage=$enableval, have_rimage=no)
 if test "$have_rimage" = "yes"; then
 	AC_DEFINE([CONFIG_RIMAGE], [1], [Configure to build rimage])
-	AM_CFLAGS="-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	AM_CFLAGS="-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3"
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
 
@@ -117,9 +117,9 @@ case "$with_arch" in
 	ARCH_CFLAGS="-g"
 
 	# automake FLAGS defined here
-	AM_CFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	AM_CFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3"
 	AM_LDFLAGS="-lpthread"
-	AM_CCASFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	AM_CCASFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3"
 
 	ARCH="host"
 	AC_SUBST(ARCH)
@@ -403,7 +403,7 @@ fi
 AM_CONDITIONAL(HAVE_HIFI3, test "$have_hifi3" = "yes")
 AC_SUBST(HIFI3_CFLAGS)
 
-# Test after CFLAGS set othewise test of cross compiler fails. 
+# Test after CFLAGS set othewise test of cross compiler fails.
 AM_PROG_AS
 AM_PROG_AR
 AC_PROG_CC
@@ -554,4 +554,3 @@ A@&t@M_CFLAGS:                     ${AM_CFLAGS}
 A@&t@M_LDFLAGS:                    ${AM_LDFLAGS}
 A@&t@M_CCASFLAGS:                  ${AM_CCASFLAGS}
 "
-
