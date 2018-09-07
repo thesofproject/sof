@@ -246,12 +246,12 @@ static void platform_memory_windows_init(void)
 	bzero((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
 	dcache_writeback_region((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
 
-	/* window3, for trace */
+	/* window3, for trace
+	 * zeroed by trace initialization
+	 */
 	io_reg_write(DMWLO(3), HP_SRAM_WIN3_SIZE | 0x7);
 	io_reg_write(DMWBA(3), HP_SRAM_WIN3_BASE
 		| DMWBA_READONLY | DMWBA_ENABLE);
-	bzero((void *)HP_SRAM_WIN3_BASE, HP_SRAM_WIN3_SIZE);
-	dcache_writeback_region((void *)HP_SRAM_WIN3_BASE, HP_SRAM_WIN3_SIZE);
 }
 
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
