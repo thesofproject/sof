@@ -565,8 +565,16 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		trace_dai("tsa");
-		if (!dd->pointer_init)
+		if (!dd->pointer_init) {
 			dai_pointer_init(dev);
+		} else if (dd->xrun == 0) {
+			/* set valid buffer pointer */
+			dai_buffer_process(dev);
+
+			/* recover valid start position */
+			ret = dma_release(dd->dma, dd->chan);
+		}
+
 		/* only start the DAI if we are not XRUN handling
 		 * and the ptr is not initialized by the host as in this
 		 * case start is deferred to the first copy call as the buffer
