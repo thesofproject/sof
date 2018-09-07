@@ -543,8 +543,18 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		trace_dai("tsa");
-		if (!dd->pointer_init)
+		if (!dd->pointer_init) {
 			dai_pointer_init(dev);
+		} else {
+			/* recover state for ALSA XRUN */
+			if (dd->xrun == 0) {
+				/* set valid buffer pointer */
+				dai_buffer_process(dev);
+
+				/* recover valid start position */
+				ret = dma_release(dd->dma, dd->chan);
+			}
+		}
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* start the DAI */
