@@ -37,11 +37,18 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-int ipc_stream_send_xrun(struct comp_dev *cdev,
-	struct sof_ipc_stream_posn *posn);
+#define PIPELINE_ID_SAME 3
+#define PIPELINE_ID_DIFFERENT 4
 
-struct pipeline_new_setup_data {
-	struct sof_ipc_pipe_new ipc_data;
-	struct comp_dev *comp_data;
+struct pipeline_connect_data {
+	struct pipeline p;
+	struct comp_dev *first;
+	struct comp_dev *second;
+	struct comp_buffer *b1;
+	struct comp_buffer *b2;
 };
+
+struct pipeline_connect_data *get_standard_connect_objects(void);
+
+void cleanup_test_data(struct pipeline_connect_data *data);
 
