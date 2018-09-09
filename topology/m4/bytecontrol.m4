@@ -27,7 +27,12 @@ define(`CONTROLBYTES_EXTOPS',
 `		put STR($3)'
 `	}')
 
-dnl C_CONTROLMIXER(name, index, ops, base, num_regs, mask, max, tlv)
+define(`CONTROLBYTES_PRIV',
+`SectionData.STR($1) {'
+`	$2'
+`}')
+
+dnl C_CONTROLMIXER(name, index, ops, base, num_regs, mask, max, tlv, priv)
 define(`C_CONTROLBYTES',
 `SectionControlBytes.STR($1) {'
 `'
@@ -48,6 +53,9 @@ define(`C_CONTROLBYTES',
 `		tlv_write'
 `		tlv_read'
 `		tlv_callback'
+`	]'
+`	data ['
+`		$10'
 `	]'
 `}')
 

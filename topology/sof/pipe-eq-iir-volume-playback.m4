@@ -2,7 +2,7 @@
 #
 # Pipeline Endpoints for connection are :-
 #
-#  host PCM_P --> B0 --> EQ_IIR 0 --> B1  --> EQ_FIR 0 --> B2 --> Volume 0 --> B3 --> sink DAI0
+#  host PCM_P --> B0 --> EQ 0 --> B1 --> Volume 0 --> B2 --> sink DAI0
 
 # Include topology builder
 include(`utils.m4')
@@ -14,7 +14,6 @@ include(`mixercontrol.m4')
 include(`bytecontrol.m4')
 include(`pipeline.m4')
 include(`eq_iir.m4')
-include(`eq_fir.m4')
 
 #
 # Controls
@@ -48,22 +47,6 @@ C_CONTROLBYTES(EQIIR, PIPELINE_ID,
 	,
 	EQIIR_priv)
 
-# EQ initial parameters, in this case flat response
-CONTROLBYTES_PRIV(EQFIR_priv,
-`	bytes "0x18,0x00,0x00,0x00,0x02,0x00,0x01,0x00,'
-`	0x00,0x00,0x00,0x00,0x04,0x00,0xff,0xff,'
-`	0x00,0x40,0x00,0x00,0x00,0x00,0x00,0x00"'
-)
-
-# EQ Bytes control with max value of 255
-C_CONTROLBYTES(EQFIR, PIPELINE_ID,
-	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
-	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
-	, , ,
-	CONTROLBYTES_MAX(, 316),
-	,
-	EQFIR_priv)
-
 #
 # Components and Buffers
 #
@@ -78,9 +61,6 @@ W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "Master Playback Volume PIPELINE_I
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "EQIIR"))
 
-# "EQ 0" has 2 sink period and 2 source periods
-W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "EQFIR"))
-
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
@@ -89,16 +69,13 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_HOST_MEM_CAP)
 W_BUFFER(2, COMP_BUFFER_SIZE(2,
-	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
-	PLATFORM_HOST_MEM_CAP)
-W_BUFFER(3, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(DAI_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_DAI_MEM_CAP)
 
 #
 # Pipeline Graph
 #
-#  host host PCM_P --> B0 --> EQ_IIR 0 --> B1  --> EQ_FIR 0 --> B2 --> Volume 0 --> B3 --> sink DAI0
+#  host PCM_P --> B0 --> EQ 0 --> B1 --> Volume 0 --> B2 --> sink DAI0
 
 P_GRAPH(pipe-pass-vol-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
@@ -106,16 +83,15 @@ P_GRAPH(pipe-pass-vol-playback-PIPELINE_ID, PIPELINE_ID,
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_EQ_IIR(0), N_BUFFER(0))',
 	`dapm(N_BUFFER(1), N_EQ_IIR(0))',
-	`dapm(N_EQ_FIR(0), N_BUFFER(1))',
-	`dapm(N_BUFFER(2), N_EQ_FIR(0))',
-	`dapm(N_PGA(0), N_BUFFER(2))',
-	`dapm(N_BUFFER(3), N_PGA(0))'))
+	`dapm(N_PGA(0), N_BUFFER(1))',
+	`dapm(N_BUFFER(2), N_PGA(0))'))
 
 #
 # Pipeline Source and Sinks
 #
-indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(3))
+indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(2))
 indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_ID)
+
 
 #
 # PCM Configuration
