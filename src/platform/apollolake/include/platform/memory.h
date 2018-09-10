@@ -143,7 +143,7 @@
 #define HEAP_SYSTEM_BASE \
 	(SOF_TEXT_BASE + SOF_TEXT_SIZE +\
 	SOF_DATA_SIZE + SOF_BSS_DATA_SIZE)
-#define HEAP_SYSTEM_SIZE		0x8000
+#define HEAP_SYSTEM_SIZE		0x9000
 
 #define HEAP_RUNTIME_BASE		(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
 #define HEAP_RUNTIME_SIZE \
@@ -243,6 +243,7 @@
 #define SOF_TEXT_SIZE		(0x19000 - 0x400)
 
 /* initialized data */
+#define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
 #if defined CONFIG_DMIC
 #define SOF_DATA_SIZE		0x1b000
 #else
@@ -250,6 +251,7 @@
 #endif
 
 /* bss data */
+#define SOF_BSS_DATA_START	(SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE)
 #define SOF_BSS_DATA_SIZE	0x8700
 
 /* Stack configuration */

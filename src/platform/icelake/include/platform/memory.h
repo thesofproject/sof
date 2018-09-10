@@ -230,6 +230,7 @@
 #define SOF_TEXT_SIZE		(0x18000 - 0x400)
 
 /* initialized data */
+#define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
 #if defined CONFIG_DMIC
 #define SOF_DATA_SIZE		0x1b000
 #else
@@ -237,7 +238,8 @@
 #endif
 
 /* bss data */
-#define SOF_BSS_DATA_SIZE		0x10900
+#define SOF_BSS_DATA_START	(SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE)
+#define SOF_BSS_DATA_SIZE	0x10900
 
 /* Heap configuration */
 #define HEAP_SYSTEM_BASE		(SOF_TEXT_BASE + SOF_TEXT_SIZE + \
