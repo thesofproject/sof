@@ -87,7 +87,8 @@ void sa_init(struct sof *sof)
 	sof->sa = sa;
 
 	/* set default tick timout */
-	sa->ticks = clock_us_to_ticks(PLATFORM_WORKQ_CLOCK, PLATFORM_IDLE_TIME);
+	sa->ticks = clock_ms_to_ticks(PLATFORM_WORKQ_CLOCK,
+				      PLATFORM_IDLE_TIME / 1000);
 	trace_sa_value(sa->ticks);
 
 	/* set lst idle time to now to give time for boot completion */
