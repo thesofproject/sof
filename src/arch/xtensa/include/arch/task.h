@@ -106,16 +106,16 @@ static inline void task_set_data(struct task *task)
 
 	switch (task->priority) {
 	case TASK_PRI_MED + 1 ... TASK_PRI_LOW:
-		irq_task = irq_low_task;
+		irq_task = *task_irq_low_get();
 		dst = &irq_task->list;
 		break;
 	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
-		irq_task = irq_high_task;
+		irq_task = *task_irq_high_get();
 		dst = &irq_task->list;
 		break;
 	case TASK_PRI_MED:
 	default:
-		irq_task = irq_med_task;
+		irq_task = *task_irq_med_get();
 		dst = &irq_task->list;
 		break;
 	}

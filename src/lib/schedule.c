@@ -172,6 +172,7 @@ static uint64_t sch_work(void *data, uint64_t delay)
  */
 static struct task *schedule_edf(void)
 {
+	struct schedule_data *sch = *arch_schedule_get();
 	struct task *task;
 	struct task *future_task = NULL;
 	uint64_t current;
