@@ -252,4 +252,6 @@ void init_platform_clocks(void)
 			ssp_freq[SSP_DEFAULT_IDX].ticks_per_usec;
 	clk_pdata->clk[CLK_SSP].ticks_per_msec =
 			ssp_freq[SSP_DEFAULT_IDX].ticks_per_msec;
+
+	dcache_writeback_region(clk_pdata, sizeof(*clk_pdata));
 }

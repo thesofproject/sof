@@ -81,10 +81,10 @@ MEMORY
         org = SOF_TEXT_BASE,
         len = SOF_TEXT_SIZE,
   sof_data :
-        org = SOF_TEXT_BASE + SOF_TEXT_SIZE,
+        org = SOF_DATA_START,
         len = SOF_DATA_SIZE
   sof_bss_data :
-        org = SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE,
+        org = SOF_BSS_DATA_START,
         len = SOF_BSS_DATA_SIZE
   system_heap :
         org = HEAP_SYSTEM_BASE,

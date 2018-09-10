@@ -72,6 +72,9 @@ static inline void alloc_core_context(int core)
 	core_ctx_ptr[core] = core_ctx;
 	dcache_writeback_invalidate_region(core_ctx_ptr,
 					   sizeof(core_ctx_ptr));
+
+	/* writeback bss region to share static pointers */
+	dcache_writeback_region((void *)SOF_BSS_DATA_START, SOF_BSS_DATA_SIZE);
 }
 
 /**
