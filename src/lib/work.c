@@ -38,6 +38,7 @@
 #include <sof/lock.h>
 #include <sof/notifier.h>
 #include <sof/debug.h>
+#include <sof/cpu.h>
 #include <platform/clk.h>
 #include <platform/platform.h>
 #include <limits.h>
@@ -463,11 +464,13 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 	queue->ticks_per_msec = clock_ms_to_ticks(queue->ts->clk, 1);
 	queue->window_size = queue->ticks_per_usec * PLATFORM_WORKQ_WINDOW;
 
-	/* notification of clk changes */
-	queue->notifier.cb = work_notify;
-	queue->notifier.cb_data = queue;
-	queue->notifier.id = ts->notifier;
-	notifier_register(&queue->notifier);
+	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID) {
+		/* notification of clk changes */
+		queue->notifier.cb = work_notify;
+		queue->notifier.cb_data = queue;
+		queue->notifier.id = ts->notifier;
+		notifier_register(&queue->notifier);
+	}
 
 	/* register system timer */
 	timer_register(&queue->ts->timer, queue_run, queue);
@@ -489,7 +492,10 @@ void free_system_workq(void)
 	spin_lock_irq(&(*queue)->lock, flags);
 
 	timer_unregister(&(*queue)->ts->timer);
-	notifier_unregister(&(*queue)->notifier);
+
+	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
+		notifier_unregister(&(*queue)->notifier);
+
 	list_item_del(&(*queue)->work);
 
 	spin_unlock_irq(&(*queue)->lock, flags);
