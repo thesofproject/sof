@@ -165,6 +165,7 @@ static inline int ssp_set_config(struct dai *dai,
 	uint32_t active_rx_slots = 2;
 	uint32_t sample_width = 2;
 
+	bool inverted_bclk = false;
 	bool inverted_frame = false;
 	bool cfs = false;
 	bool start_delay = false;
@@ -260,16 +261,26 @@ static inline int ssp_set_config(struct dai *dai,
 		inverted_frame = true; /* handled later with format */
 		break;
 	case SOF_DAI_FMT_IB_IF:
-		sspsp |= SSPSP_SCMODE(2);
+		inverted_bclk = true; /* handled later with bclk idle */
 		inverted_frame = true; /* handled later with format */
 		break;
 	case SOF_DAI_FMT_IB_NF:
-		sspsp |= SSPSP_SCMODE(2);
+		inverted_bclk = true; /* handled later with bclk idle */
 		break;
 	default:
 		trace_ssp_error("ec3");
 		ret = -EINVAL;
 		goto out;
+	}
+
+	/* supporting bclk idle state */
+	if (ssp->params.clks_control &
+		SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_IDLE_HIGH) {
+		/* bclk idle state high */
+		sspsp |= SSPSP_SCMODE((inverted_bclk ^ 0x3) & 0x3);
+	} else {
+		/* bclk idle state low */
+		sspsp |= SSPSP_SCMODE(inverted_bclk);
 	}
 
 	sscr0 |= SSCR0_MOD | SSCR0_ACS;
