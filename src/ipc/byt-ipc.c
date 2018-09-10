@@ -215,6 +215,10 @@ int platform_ipc_init(struct ipc *ipc)
 		sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
+	/* schedule */
+	schedule_task_init(&_ipc->ipc_task, ipc_process_task, _ipc);
+	schedule_task_config(&_ipc->ipc_task, 0, 0);
+
 #ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
