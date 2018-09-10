@@ -134,8 +134,9 @@
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT64			256
 #define HEAP_RT_COUNT128		32
-#define HEAP_RT_COUNT256		64
-#define HEAP_RT_COUNT512		32
+#define HEAP_RT_COUNT256		128
+#define HEAP_RT_COUNT512		8
+#define HEAP_RT_COUNT1024		4
 
 #define L2_VECTOR_SIZE			0x1000
 
