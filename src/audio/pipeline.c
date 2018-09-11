@@ -203,7 +203,6 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 	switch (cmd) {
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
-		pipeline_schedule_cancel(p);
 		p->status = COMP_STATE_PAUSED;
 		break;
 	case COMP_TRIGGER_RELEASE:
@@ -771,8 +770,11 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* don't go upstream if this component is not connected */
-		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
+		if (!buffer->connected)
 			continue;
+
+		if (buffer->source->state != COMP_STATE_ACTIVE)
+			trace_pipe_error("pus");
 
 		/* don't go upstream if this source is from another pipeline */
 		if (buffer->source->pipeline != current->pipeline)
@@ -834,8 +836,11 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
+		if (!buffer->connected)
 			continue;
+
+		if (buffer->sink->state != COMP_STATE_ACTIVE)
+			trace_pipe_error("pds");
 
 		/* don't go downstream if this sink is from another pipeline */
 		if (buffer->sink->pipeline != current->pipeline)
