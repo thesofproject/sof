@@ -72,6 +72,18 @@ static inline void list_item_append(struct list_item *item,
 	list->prev = item;
 }
 
+/* insert new item to the position of the list */
+static inline void list_item_insert(struct list_item *item,
+				    struct list_item *pos)
+{
+	struct list_item *tmp = pos->next;
+
+	item->next = tmp;
+	item->prev = pos;
+	pos->next = item;
+	tmp->prev = item;
+}
+
 /* delete item from the list leaves deleted list item
  *in undefined state list_is_empty won't return true
  */
