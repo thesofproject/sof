@@ -839,8 +839,6 @@ static int host_copy(struct comp_dev *dev)
 
 	tracev_host("cpy");
 
-	if (dev->state != COMP_STATE_ACTIVE)
-		return 0;
 
 	local_elem = list_first_item(&hd->config.elem_list,
 		struct dma_sg_elem, list);
