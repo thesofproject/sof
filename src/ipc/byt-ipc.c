@@ -221,7 +221,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, ipc_process_task, _ipc);
-	schedule_task_config(&_ipc->ipc_task, 0, 0);
+	schedule_task_config(&_ipc->ipc_task, TASK_PRI_IPC, 0);
 
 	/* allocate page table buffer */
 	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
