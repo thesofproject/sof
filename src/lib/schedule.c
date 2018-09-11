@@ -98,6 +98,7 @@ static inline struct task *edf_get_next(uint64_t current,
 	struct list_item *clist;
 	struct list_item *tlist;
 	uint64_t next_delta = UINT64_MAX;
+	int next_priority = TASK_PRI_LOW;
 	uint64_t delta;
 	uint64_t deadline;
 	int reschedule = 0;
@@ -126,15 +127,21 @@ static inline struct task *edf_get_next(uint64_t current,
 		/* include the length of task in deadline calc */
 		deadline = task->deadline - task->max_rtime;
 
-		/* get earliest deadline */
 		if (current < deadline) {
 			delta = deadline - current;
 
-			if (delta < next_delta) {
+			/* get highest priority */
+			if (task->priority < next_priority) {
+				next_priority = task->priority;
 				next_delta = delta;
 				next_task = task;
+			} else if (task->priority == next_priority) {
+				/* get earliest deadline */
+				if (delta < next_delta) {
+					next_delta = delta;
+					next_task = task;
+				}
 			}
-
 		} else {
 			/* missed scheduling - will be rescheduled */
 			trace_pipe("ed!");
