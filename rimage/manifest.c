@@ -143,6 +143,7 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 		break;
 	case SHT_NOBITS:
 		seg_type = SOF_MAN_SEGMENT_BSS;
+		/* FALLTHRU */
 	default:
 		return 0;
 	}
