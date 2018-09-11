@@ -18,6 +18,17 @@ AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
 
 AC_CANONICAL_HOST
 
+# Macro to set flag if supported
+AC_DEFUN([ADD_OPTIONAL_AM_CFLAGS],
+         [SAVED_CFLAGS="$CFLAGS"
+          CFLAGS="-Werror $1"
+          AC_MSG_CHECKING([whether $CC supports $1])
+          AC_COMPILE_IFELSE([AC_LANG_SOURCE([int main(void) { return 0; }])],
+                            [AC_MSG_RESULT([yes])]
+                            [AM_CFLAGS="$AM_CFLAGS $1"],
+                            [AC_MSG_RESULT([no])])
+          CFLAGS="$SAVED_CFLAGS"])
+
 # General assembler flags
 ASFLAGS="-DASSEMBLY"
 AC_SUBST(ASFLAGS)
@@ -63,9 +74,11 @@ AM_CONDITIONAL(BUILD_LIB, test "$have_library" = "yes")
 
 # check if we are building tools
 AC_ARG_ENABLE(rimage, [AS_HELP_STRING([--enable-rimage],[build rimage tool])], have_rimage=$enableval, have_rimage=no)
+IMPLICIT_FALLTHROUGH_FLAG=""
 if test "$have_rimage" = "yes"; then
 	AC_DEFINE([CONFIG_RIMAGE], [1], [Configure to build rimage])
 	AM_CFLAGS="-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	IMPLICIT_FALLTHROUGH_FLAG="-Wimplicit-fallthrough=3"
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
 
@@ -118,6 +131,7 @@ case "$with_arch" in
 
 	# automake FLAGS defined here
 	AM_CFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	IMPLICIT_FALLTHROUGH_FLAG="-Wimplicit-fallthrough=3"
 	AM_LDFLAGS="-lpthread"
 	AM_CCASFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 
@@ -130,6 +144,8 @@ case "$with_arch" in
 	fi
     ;;
 esac
+
+ADD_OPTIONAL_AM_CFLAGS([-Wimplicit-fallthrough=3])
 
 AC_SUBST(ARCH_CFLAGS)
 AC_SUBST(ARCH_LDFLAGS)
