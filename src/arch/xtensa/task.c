@@ -53,13 +53,13 @@ static inline uint32_t task_get_irq(struct task *task)
 	uint32_t irq;
 
 	switch (task->priority) {
-	case TASK_PRI_MED + 1 ... TASK_PRI_LOW:
+	case TASK_PRI_MED + 6 ... TASK_PRI_LOW:
 		irq = PLATFORM_IRQ_TASK_LOW;
 		break;
-	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
+	case TASK_PRI_HIGH ... TASK_PRI_MED - 6:
 		irq = PLATFORM_IRQ_TASK_HIGH;
 		break;
-	case TASK_PRI_MED:
+	case TASK_PRI_MED - 5 ... TASK_PRI_MED + 5:
 	default:
 		irq = PLATFORM_IRQ_TASK_MED;
 		break;
@@ -72,26 +72,38 @@ static inline void task_set_data(struct task *task)
 {
 	struct list_item *dst = NULL;
 	struct irq_task *irq_task;
+	struct list_item *clist;
+	struct task *ctask;
 	uint32_t flags;
 
 	switch (task->priority) {
-	case TASK_PRI_MED + 1 ... TASK_PRI_LOW:
+	case TASK_PRI_MED + 6 ... TASK_PRI_LOW:
 		irq_task = irq_low_task;
 		dst = &irq_task->list;
 		break;
-	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
+	case TASK_PRI_HIGH ... TASK_PRI_MED - 6:
 		irq_task = irq_high_task;
 		dst = &irq_task->list;
 		break;
-	case TASK_PRI_MED:
+	case TASK_PRI_MED - 5 ... TASK_PRI_MED + 5:
 	default:
 		irq_task = irq_med_task;
 		dst = &irq_task->list;
 		break;
 	}
 
+	/* find position in the list to append the item */
+	list_for_item(clist, &irq_task->list) {
+		trace_event(TRACE_CLASS_PIPE, "ins");
+		ctask = container_of(clist, struct task, irq_list);
+		if (task->priority >= ctask->priority)
+			dst = clist;
+		else
+			break;
+	}
+
 	spin_lock_irq(&irq_task->lock, flags);
-	list_item_append(&task->irq_list, dst);
+	list_item_insert(&task->irq_list, dst);
 	spin_unlock_irq(&irq_task->lock, flags);
 }
 
