@@ -69,6 +69,9 @@
 #define mailbox_get_debug_size() \
 	MAILBOX_DEBUG_SIZE
 
+// TODO: this should be BUILD_MAILBOX
+#if !defined CONFIG_SUECREEK
+
 static inline
 void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
 {
@@ -113,5 +116,6 @@ void mailbox_sw_reg_write(size_t offset, uint32_t src)
 	dcache_writeback_region((void *)(MAILBOX_SW_REG_BASE + offset),
 				sizeof(src));
 }
+#endif
 
 #endif

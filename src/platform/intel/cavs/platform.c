@@ -59,7 +59,7 @@
 #if defined(CONFIG_APOLLOLAKE)
 #define SSP_COUNT PLATFORM_NUM_SSP
 #define SSP_CLOCK_FREQUENCY 19200000
-#elif defined(CONFIG_CANNONLAKE)
+#elif defined(CONFIG_CANNONLAKE) || defined (CONFIG_SUECREEK)
 #define SSP_COUNT PLATFORM_SSP_COUNT
 #define SSP_CLOCK_FREQUENCY 24000000
 #elif defined(CONFIG_ICELAKE)
@@ -82,6 +82,8 @@ static const struct sof_ipc_fw_ready ready = {
 	},
 };
 
+// TODO: this should be BUILD_MAILBOX
+#if !defined CONFIG_SUECREEK
 #define SRAM_WINDOW_HOST_OFFSET(x) (0x80000 + x * 0x20000)
 
 #define NUM_WINDOWS 7
@@ -146,6 +148,7 @@ static const struct sof_ipc_window sram_window = {
 		},
 	},
 };
+#endif
 
 struct work_queue_timesource platform_generic_queue[] = {
 {
@@ -170,7 +173,7 @@ struct work_queue_timesource platform_generic_queue[] = {
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
 },
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) || defined (CONFIG_SUECREEK)
 {
 	.timer	 = {
 		.id = TIMER3, /* external timer */
@@ -199,6 +202,14 @@ struct work_queue_timesource platform_generic_queue[] = {
 struct timer *platform_timer =
 	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
+// TODO: this should be BUILD_MAILBOX
+#if defined CONFIG_SUECREEK
+int platform_boot_complete(uint32_t boot_message)
+{
+	return 0;
+}
+
+#else
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
@@ -220,7 +231,11 @@ int platform_boot_complete(uint32_t boot_message)
 
 	return 0;
 }
+#endif
 
+
+// TODO: this should be BUILD_MAILBOX
+#if !defined CONFIG_SUECREEK
 static void platform_memory_windows_init(void)
 {
 	/* window0, for fw status & outbox/uplink mbox */
@@ -253,8 +268,9 @@ static void platform_memory_windows_init(void)
 	bzero((void *)HP_SRAM_WIN3_BASE, HP_SRAM_WIN3_SIZE);
 	dcache_writeback_region((void *)HP_SRAM_WIN3_BASE, HP_SRAM_WIN3_SIZE);
 }
+#endif
 
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) || defined (CONFIG_SUECREEK)
 /* init HW  */
 static void platform_init_hw(void)
 {
@@ -280,7 +296,7 @@ int platform_init(struct sof *sof)
 	struct dai *dmic0;
 	int i, ret;
 
-	#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+	#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) || defined(CONFIG_SUECREEK)
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
 	#endif
@@ -288,8 +304,10 @@ int platform_init(struct sof *sof)
 	platform_interrupt_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
+// TODO: this should be BUILD_MAILBOX
+#if !defined CONFIG_SUECREEK
 	platform_memory_windows_init();
-
+#endif
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 
 	/* init work queues and clocks */
