@@ -78,6 +78,10 @@ pipeline_connect_upstream_SOURCES = $(pipeline_cpu_c) ../../src/audio/pipeline.c
 check_PROGRAMS += pipeline_free
 pipeline_free_SOURCES = $(pipeline_cpu_c) ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_free.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
 
+check_PROGRAMS += pipeline_buffer_connect
+pipeline_buffer_connect_SOURCES = $(pipeline_cpu_c) ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_buffer_connect.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
+
+
 endif
 
 # lib/lib tests
