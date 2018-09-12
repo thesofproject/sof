@@ -46,7 +46,7 @@
 #define DMAC_HOST_OUT_CHANNELS_COUNT 6
 #define DMAC_LINK_IN_CHANNELS_COUNT 8
 #define DMAC_LINK_OUT_CHANNELS_COUNT 8
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) || defined(CONFIG_SUECREEK)
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
 #define DMAC_HOST_OUT_CHANNELS_COUNT 9
@@ -124,6 +124,55 @@ static struct dw_drv_plat_data dmac1 = {
 	},
 };
 
+// TODO: check IRQs and base addresses
+// TODO: this should be BUILD_MAILBOX
+#if defined CONFIG_SUECREEK
+struct dma dma[PLATFORM_NUM_DMACS] = {
+{	/* HP GP DMAC 0 */
+	.plat_data = {
+		.id		= DMA_GP_LP_DMAC0,
+		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
+				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
+		.caps		= DMA_CAP_GP_LP,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
+		.base		= LP_GP_DMA_BASE(0),
+		.channels	= 8,
+		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
+		.drv_plat_data	= &dmac0,
+	},
+	.ops		= &dw_dma_ops,
+},
+{	/* HP GP DMAC 1 */
+	.plat_data = {
+		.id		= DMA_GP_LP_DMAC1,
+		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
+				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
+		.caps		= DMA_CAP_GP_LP,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
+		.base		= LP_GP_DMA_BASE(1),
+		.channels	= 8,
+		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0, 0),
+		.drv_plat_data	= &dmac1,
+	},
+	.ops		= &dw_dma_ops,
+},
+{	/* HP GP DMAC 2 */
+	.plat_data = {
+		.id		= DMA_GP_LP_DMAC2,
+		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
+				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
+		.caps		= DMA_CAP_GP_LP,
+		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
+		.base		= LP_GP_DMA_BASE(1),
+		.channels	= 8,
+		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0, 0),
+		.drv_plat_data	= &dmac1,
+	},
+	.ops		= &dw_dma_ops,
+},
+};
+
+#else
 struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
@@ -205,6 +254,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 	},
 	.ops		= &hda_link_dma_ops,
 },};
+#endif
 
 /* Initialize all platform DMAC's */
 int dmac_init(void)

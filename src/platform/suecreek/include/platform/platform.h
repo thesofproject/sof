@@ -136,6 +136,8 @@ struct sof;
 /* minimal SSP port stop delay in cycles */
 #define PLATFORM_SSP_STOP_DELAY	3000
 
+// TODO: need UART versions
+#if 0
 /* Platform defined trace code */
 static inline void platform_panic(uint32_t p)
 {
@@ -147,7 +149,14 @@ static inline void platform_panic(uint32_t p)
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
 	mailbox_sw_reg_write(SRAM_REG_FW_TRACEP, (__x))
+#else
+static inline void platform_panic(uint32_t p)
+{
+}
 
+/* Platform defined trace code */
+#define platform_trace_point(__x)
+#endif
 extern struct timer *platform_timer;
 
 /*
