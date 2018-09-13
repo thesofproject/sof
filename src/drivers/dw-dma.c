@@ -144,8 +144,12 @@
 #define DW_CTLL_SMS(x)			((x) << 25)
 #define DW_CTLL_LLP_D_EN		(1 << 27)
 #define DW_CTLL_LLP_S_EN		(1 << 28)
-#define DW_CTLL_RELOAD_SRC		(1 << 30)
-#define DW_CTLL_RELOAD_DST		(1 << 31)
+
+/* CFG_LO */
+#define DW_CFGL_CTL_HI_UPD_EN		(1 << 5)
+#define DW_CFGL_CH_DRAIN		(1 << 10)
+#define DW_CFGL_RELOAD_SRC		(1 << 30)
+#define DW_CFGL_RELOAD_DST		(1 << 31)
 
 /* Haswell / Broadwell specific registers */
 #if defined (CONFIG_HASWELL) || defined (CONFIG_BROADWELL)
@@ -178,9 +182,6 @@
 #define DW_CTLH_CLASS(x)		((x) << 29)
 #define DW_CTLH_WEIGHT(x)		((x) << 18)
 
-/* CFG_LO */
-#define DW_CFG_CH_DRAIN		0x400
-
 /* CFG_HI */
 #define DW_CFGH_SRC_PER(x)		((x) << 0)
 #define DW_CFGH_DST_PER(x)		((x) << 4)
@@ -209,11 +210,6 @@
 #define DW_CTLH_CLASS(x)		((x) << 29)
 #define DW_CTLH_WEIGHT(x)		((x) << 18)
 
-/* CFG_LO */
-#define DW_CFG_CTL_HI_UPD_EN		(1 << 5)
-#define DW_CFG_CH_DRAIN			(1 << 10)
-#define DW_CFG_RELOAD_SRC		(1 << 30)
-#define DW_CFG_RELOAD_DST		(1 << 31)
 
 /* CFG_HI */
 #define DW_CFGH_SRC_PER(x)		(x << 0)
@@ -241,7 +237,8 @@
 #define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
 
 /* HW Linked list support, only enabled for APL/CNL at the moment */
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE || \
+	defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
 #define DW_USE_HW_LLI	1
 #else
 #define DW_USE_HW_LLI	0
@@ -701,7 +698,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 #if DW_USE_HW_LLI
 			lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN;
 			lli_desc->ctrl_hi |= DW_CTLH_DONE(1);
-			p->chan[channel].cfg_lo |= DW_CFG_RELOAD_DST;
+			p->chan[channel].cfg_lo |= DW_CFGL_RELOAD_DST;
 #endif
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_DST_PER(config->dest_dev);
@@ -714,7 +711,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 #if DW_USE_HW_LLI
 			lli_desc->ctrl_lo |= DW_CTLL_LLP_D_EN;
 			lli_desc->ctrl_hi |= DW_CTLH_DONE(0);
-			p->chan[channel].cfg_lo |= DW_CFG_RELOAD_SRC;
+			p->chan[channel].cfg_lo |= DW_CFGL_RELOAD_SRC;
 #endif
 			p->chan[channel].cfg_hi |=
 				DW_CFGH_SRC_PER(config->src_dev);
@@ -765,7 +762,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	}
 
 #if DW_USE_HW_LLI
-	p->chan[channel].cfg_lo |= DW_CFG_CTL_HI_UPD_EN;
+	p->chan[channel].cfg_lo |= DW_CFGL_CTL_HI_UPD_EN;
 #endif
 
 	/* end of list or cyclic buffer ? */
