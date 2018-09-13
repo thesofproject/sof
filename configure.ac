@@ -541,9 +541,6 @@ AC_CONFIG_FILES([
 	src/platform/icelake/include/platform/Makefile
 	src/platform/intel/Makefile
 	src/platform/intel/cavs/Makefile
-	src/platform/intel/include/Makefile
-	src/platform/intel/include/platform/Makefile
-	src/platform/intel/include/platform/cavs/Makefile
 	test/Makefile
 	test/cmocka/Makefile
 ])
