@@ -89,12 +89,13 @@ static void irq_unregister_child(struct irq_desc *parent, int irq)
 	spin_lock(&parent->lock);
 	struct irq_desc *child;
 	struct list_item *clist;
+	struct list_item *tlist;
 
 	/* does child already exist ? */
 	if (list_is_empty(&parent->child[SOF_IRQ_BIT(irq)]))
 		goto finish;
 
-	list_for_item(clist, &parent->child[SOF_IRQ_BIT(irq)]) {
+	list_for_item_safe(clist, tlist, &parent->child[SOF_IRQ_BIT(irq)]) {
 		child = container_of(clist, struct irq_desc, irq_list);
 
 		if (SOF_IRQ_ID(irq) == child->id) {
