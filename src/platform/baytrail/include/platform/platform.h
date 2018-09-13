@@ -94,13 +94,16 @@ struct sof;
  * the interval of reschedule DMA trace copying in special case like half
  * fullness of local DMA trace buffer
  */
-#define DMA_TRACE_RESCHEDULE_TIME	5
+#define DMA_TRACE_RESCHEDULE_TIME	100
 
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
 
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
+
+/* DSP LPE delay in cycles */
+#define PLATFORM_LPE_DELAY 2000
 
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)

@@ -167,7 +167,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_comp_host *host = NULL;
 	struct list_item elem_list;
 	struct dma_sg_elem *elem;
-	struct list_item *plist;
+	struct list_item *clist;
+	struct list_item *tlist;
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
@@ -233,8 +234,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		goto error;
 	}
 
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 
 		err = comp_host_buffer(cd, elem, ring_size);
 		if (err < 0) {
@@ -279,8 +280,8 @@ pipe_params:
 
 error:
 #ifdef CONFIG_HOST_PTABLE
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
 		rfree(elem);
 	}
@@ -635,14 +636,14 @@ static int ipc_glb_pm_message(uint32_t header)
 /*
  * Debug IPC Operations.
  */
-
 static int ipc_dma_trace_config(uint32_t header)
 {
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct list_item elem_list;
 	struct dma_sg_elem *elem;
-	struct list_item *plist;
+	struct list_item *clist;
+	struct list_item *tlist;
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
@@ -681,8 +682,8 @@ static int ipc_dma_trace_config(uint32_t header)
 		goto error;
 	}
 
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 
 		err = dma_trace_host_buffer(_ipc->dmat, elem, ring_size);
 		if (err < 0) {
@@ -715,8 +716,8 @@ static int ipc_dma_trace_config(uint32_t header)
 
 error:
 #ifdef CONFIG_HOST_PTABLE
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
 		rfree(elem);
 	}
