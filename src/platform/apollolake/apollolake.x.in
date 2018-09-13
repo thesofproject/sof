@@ -235,7 +235,7 @@ SECTIONS
     _wnd3_end = ABSOLUTE(.);
   } >wnd3 :wnd3_phdr
 
-   .WindowVectors.text : ALIGN(4)
+  .WindowVectors.text : ALIGN(4)
   {
     _WindowVectors_text_start = ABSOLUTE(.);
     KEEP (*(.WindowVectors.text))
@@ -557,9 +557,9 @@ SECTIONS
   .buffer_heap (NOLOAD) : ALIGN(8)
   {
     . = ALIGN (32);
-    _system_heap_start = ABSOLUTE(.);
+    _buffer_heap_start = ABSOLUTE(.);
     . = . + HEAP_BUFFER_SIZE;
-    _system_heap_end = ABSOLUTE(.);
+    _buffer_heap_end = ABSOLUTE(.);
   } >buffer_heap :buffer_heap_phdr
 
   .sof_stack (NOLOAD) : ALIGN(8)

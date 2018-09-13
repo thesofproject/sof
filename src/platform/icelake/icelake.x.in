@@ -98,6 +98,21 @@ MEMORY
   sof_stack :
         org = SOF_STACK_END,
         len = SOF_STACK_BASE - SOF_STACK_END
+  buffer_hp_heap :
+        org = HEAP_HP_BUFFER_BASE,
+        len = HEAP_HP_BUFFER_SIZE
+  wnd0 :
+        org = HP_SRAM_WIN0_BASE,
+        len = HP_SRAM_WIN0_SIZE
+  wnd1 :
+        org = HP_SRAM_WIN1_BASE,
+        len = HP_SRAM_WIN1_SIZE
+  wnd2 :
+        org = HP_SRAM_WIN2_BASE,
+        len = HP_SRAM_WIN2_SIZE
+  wnd3 :
+        org = HP_SRAM_WIN3_BASE,
+        len = HP_SRAM_WIN3_SIZE
 }
 
 PHDRS
@@ -130,6 +145,11 @@ PHDRS
   runtime_heap_phdr PT_LOAD;
   buffer_heap_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
+  buffer_hp_heap_phdr PT_LOAD;
+  wnd0_phdr PT_LOAD;
+  wnd1_phdr PT_LOAD;
+  wnd2_phdr PT_LOAD;
+  wnd3_phdr PT_LOAD;
 }
 
 /*  Default entry point:  */
@@ -165,6 +185,46 @@ SECTIONS
     KEEP (*(.MemoryExceptionVector.text))
     _MemoryExceptionVector_text_end = ABSOLUTE(.);
   } >vector_memory_text :vector_memory_text_phdr
+
+  .buffer_hp_heap (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _buffer_hp_heap_start = ABSOLUTE(.);
+    . = . + HEAP_HP_BUFFER_SIZE;
+    _buffer_hp_heap_end = ABSOLUTE(.);
+  } >buffer_hp_heap :buffer_hp_heap_phdr
+
+  .wnd0 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd0_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN0_SIZE;
+    _wnd0_end = ABSOLUTE(.);
+  } >wnd0 :wnd0_phdr
+
+  .wnd1 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd1_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN1_SIZE;
+    _wnd1_end = ABSOLUTE(.);
+  } >wnd1 :wnd1_phdr
+
+  .wnd2 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd2_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN2_SIZE;
+    _wnd2_end = ABSOLUTE(.);
+  } >wnd2 :wnd2_phdr
+
+  .wnd3 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd3_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN3_SIZE;
+    _wnd3_end = ABSOLUTE(.);
+  } >wnd3 :wnd3_phdr
 
   .WindowVectors.text : ALIGN(4)
   {
@@ -489,9 +549,9 @@ SECTIONS
   .buffer_heap (NOLOAD) : ALIGN(8)
   {
     . = ALIGN (32);
-    _system_heap_start = ABSOLUTE(.);
+    _buffer_heap_start = ABSOLUTE(.);
     . = . + HEAP_BUFFER_SIZE;
-    _system_heap_end = ABSOLUTE(.);
+    _buffer_heap_end = ABSOLUTE(.);
   } >buffer_heap :buffer_heap_phdr
 
   .sof_stack (NOLOAD) : ALIGN(8)
