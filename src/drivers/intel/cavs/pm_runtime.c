@@ -29,7 +29,7 @@
  */
 
 /**
- * \file platform/intel/cavs/pm_runtime.c
+ * \file drivers/intel/cavs/pm_runtime.c
  * \brief Runtime power management implementation for Apollolake, Cannonlake
  *        and Icelake
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
@@ -37,16 +37,37 @@
 
 #include <sof/alloc.h>
 #include <platform/platform.h>
-#include <platform/pm_runtime.h>
-#include <platform/cavs/pm_runtime.h>
+#include <sof/drivers/pm_runtime.h>
 
 #if defined(CONFIG_APOLLOLAKE)
 //TODO: add support or at least stub api for Cannonlake & Icelake
-#include <platform/power_down.h>
+#include "apollolake/power_down.h"
 #endif
 
 /** \brief Runtime power management data pointer. */
 struct pm_runtime_data *_prd;
+
+/**
+ * \brief Forces Host DMAs to exit L1.
+ */
+static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&_prd->lock, flags);
+
+	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
+		shim_write(SHIM_SVCFG,
+			   shim_read(SHIM_SVCFG) | SHIM_SVCFG_FORCE_L1_EXIT);
+
+		wait_delay(PLATFORM_FORCE_L1_EXIT_TIME);
+
+		shim_write(SHIM_SVCFG,
+			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
+	}
+
+	spin_unlock_irq(&_prd->lock, flags);
+}
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
@@ -83,5 +104,10 @@ void platform_pm_runtime_power_off(void)
 	hpsram_mask[0] = 0x1;
 
 	power_down(true, hpsram_mask);
+}
+#else
+void platform_pm_runtime_power_off(void)
+{
+	//TODO: for other platforms
 }
 #endif

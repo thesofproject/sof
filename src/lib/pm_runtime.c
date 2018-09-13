@@ -36,7 +36,7 @@
 
 #include <sof/pm_runtime.h>
 #include <sof/alloc.h>
-#include <platform/pm_runtime.h>
+#include <sof/drivers/pm_runtime.h>
 
 /** \brief Runtime power management data pointer. */
 static struct pm_runtime_data *prd;

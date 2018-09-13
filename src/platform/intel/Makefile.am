@@ -1,5 +1,3 @@
-SUBDIRS = include
-
 if BUILD_CAVS
-SUBDIRS += cavs
+SUBDIRS = cavs
 endif

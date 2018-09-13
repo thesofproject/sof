@@ -51,7 +51,7 @@
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc.h>
 #include <sof/intel-ipc.h>
-#include <platform/pm_runtime.h>
+#include <sof/drivers/pm_runtime.h>
 
 extern struct ipc *_ipc;
 

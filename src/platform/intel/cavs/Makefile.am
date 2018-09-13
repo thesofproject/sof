@@ -4,8 +4,7 @@ libcavsplatform_la_SOURCES = \
 	platform.c \
 	dai.c \
 	dma.c \
-	memory.c \
-	pm_runtime.c
+	memory.c
 
 libcavsplatform_la_CFLAGS = \
 	$(AM_CFLAGS) \

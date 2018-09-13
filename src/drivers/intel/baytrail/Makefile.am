@@ -3,6 +3,7 @@ noinst_LTLIBRARIES = libdrivers.la
 libdrivers_la_SOURCES = \
 	clk.c \
 	interrupt.c \
+	pm_runtime.c \
 	ssp.c \
 	timer.c
 

@@ -7,6 +7,5 @@ noinst_HEADERS = \
 	memory.h \
 	platcfg.h \
 	platform.h \
-	pm_runtime.h \
 	shim.h \
 	timer.h

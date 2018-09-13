@@ -25,48 +25,29 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 /**
- * \file platform/apollolake/include/platform/pm_runtime.h
- * \brief Runtime power management header file for Apollolake
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ * \file drivers/intel/haswell/pm_runtime.c
+ * \brief Runtime power management stub
+ * \author Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_PM_RUNTIME__
-#define __INCLUDE_PLATFORM_PM_RUNTIME__
+#include <sof/drivers/pm_runtime.h>
 
-#include <sof/pm_runtime.h>
+void platform_pm_runtime_init(struct pm_runtime_data *prd)
+{
+}
 
-/** \brief Platform specific runtime power management data. */
-struct platform_pm_runtime_data {
-	/* TBD */
-};
+void platform_pm_runtime_get(enum pm_runtime_context context)
+{
+}
 
-/**
- * \brief Initializes platform specific runtime power management.
- * \param[in,out] prd Runtime power management data.
- */
-void platform_pm_runtime_init(struct pm_runtime_data *prd);
+void platform_pm_runtime_put(enum pm_runtime_context context)
+{
+}
 
-/**
- * \brief Retrieves platform specific power management resource.
- * \param[in] context Type of power management context.
- */
-void platform_pm_runtime_get(enum pm_runtime_context context);
-
-/**
- * \brief Releases platform specific power management resource.
- * \param[in] context Type of power management context.
- */
-void platform_pm_runtime_put(enum pm_runtime_context context);
-
-
-/**
- * \brief Power gates platform specific hardware resources.
- * \param[in] context Type of power management context.
- */
-void platform_pm_runtime_power_off(void);
-
-#endif /* __INCLUDE_PLATFORM_PM_RUNTIME__ */
+void platform_pm_runtime_power_off(void)
+{
+}

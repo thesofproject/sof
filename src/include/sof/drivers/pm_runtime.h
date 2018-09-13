@@ -29,13 +29,13 @@
  */
 
 /**
- * \file platform/cannonlake/include/platform/pm_runtime.h
- * \brief Runtime power management header file for Cannonlake
+ * \file include/sof/drivers/pm_runtime.h
+ * \brief Runtime power management header file
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_PM_RUNTIME__
-#define __INCLUDE_PLATFORM_PM_RUNTIME__
+#ifndef __INCLUDE_DRIVERS_PM_RUNTIME__
+#define __INCLUDE_DRIVERS_PM_RUNTIME__
 
 #include <sof/pm_runtime.h>
 
@@ -62,4 +62,10 @@ void platform_pm_runtime_get(enum pm_runtime_context context);
  */
 void platform_pm_runtime_put(enum pm_runtime_context context);
 
-#endif /* __INCLUDE_PLATFORM_PM_RUNTIME__ */
+/**
+ * \brief Power gates platform specific hardware resources.
+ * \param[in] context Type of power management context.
+ */
+void platform_pm_runtime_power_off(void);
+
+#endif /* __INCLUDE_DRIVERS_PM_RUNTIME__ */

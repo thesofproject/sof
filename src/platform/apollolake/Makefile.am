@@ -8,7 +8,7 @@ noinst_LTLIBRARIES = libplatform.la
 
 libplatform_la_LIBADD = ../intel/cavs/libcavsplatform.la
 
-libplatform_la_SOURCES = power_down.S
+libplatform_la_SOURCES =
 
 libplatform_la_CFLAGS = \
 	$(ARCH_CFLAGS) \
