@@ -32,9 +32,6 @@ MEMORY
   sof_stack :
         org = SOF_STACK_END,
         len = SOF_STACK_BASE - SOF_STACK_END
-  wnd0 :
-        org = HP_SRAM_WIN0_BASE,
-        len = HP_SRAM_WIN0_SIZE
 }
 
 PHDRS
@@ -45,7 +42,6 @@ PHDRS
   sof_data_phdr PT_LOAD;
   sof_bss_data_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
-  wnd0_phdr PT_LOAD;
 }
 
 /*  Default entry point:  */
@@ -180,8 +176,6 @@ SECTIONS
   PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
   __stack = SOF_STACK_BASE;
-  __wnd0 = HP_SRAM_WIN0_BASE;
-  __wnd0_size = HP_SRAM_WIN0_SIZE;
 
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }

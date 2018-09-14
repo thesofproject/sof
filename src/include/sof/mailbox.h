@@ -70,7 +70,54 @@
 	MAILBOX_DEBUG_SIZE
 
 // TODO: this should be BUILD_MAILBOX
-#if !defined CONFIG_SUECREEK
+#if defined CONFIG_SUECREEK
+
+static inline
+void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
+{
+	//rmemcpy((void *)(MAILBOX_DSPBOX_BASE + offset), src, bytes);
+	//dcache_writeback_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+}
+
+static inline
+void mailbox_dspbox_read(void *dest, size_t offset, size_t bytes)
+{
+	//dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+	//rmemcpy(dest, (void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+}
+
+static inline
+void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
+{
+	//rmemcpy((void *)(MAILBOX_HOSTBOX_BASE + offset), src, bytes);
+	//dcache_writeback_region((void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
+}
+
+static inline
+void mailbox_hostbox_read(void *dest, size_t offset, size_t bytes)
+{
+	//dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE + offset),
+	//			 bytes);
+	//rmemcpy(dest, (void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
+}
+
+static inline
+void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
+{
+	//rmemcpy((void *)(MAILBOX_STREAM_BASE + offset), src, bytes);
+	//dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
+	//			bytes);
+}
+
+static inline
+void mailbox_sw_reg_write(size_t offset, uint32_t src)
+{
+	//*((volatile uint32_t*)(MAILBOX_SW_REG_BASE + offset)) = src;
+	//dcache_writeback_region((void *)(MAILBOX_SW_REG_BASE + offset),
+	//			sizeof(src));
+}
+
+#else
 
 static inline
 void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
