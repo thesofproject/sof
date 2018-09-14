@@ -98,6 +98,9 @@ MEMORY
   sof_stack :
         org = SOF_STACK_END,
         len = SOF_STACK_BASE - SOF_STACK_END
+  static_log_entries_seg (!ari) :
+        org = LOG_ENTRY_ELF_BASE,
+        len = LOG_ENTRY_ELF_SIZE
 }
 
 PHDRS
@@ -132,6 +135,7 @@ PHDRS
   runtime_heap_phdr PT_LOAD;
   buffer_heap_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
+  static_log_entries_phdr PT_NOTE;
 }
 
 /*  Default entry point:  */
@@ -504,5 +508,10 @@ SECTIONS
     . = . + SOF_STACK_SIZE;
     _sof_stack_end = ABSOLUTE(.);
   } >sof_stack :sof_stack_phdr
+
+  .static_log_entries (COPY) : ALIGN(1024)
+  {
+    *(*.static_log*)
+  } > static_log_entries_seg :static_log_entries_phdr
 }
 

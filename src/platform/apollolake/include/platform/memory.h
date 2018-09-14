@@ -155,6 +155,8 @@
 #define HEAP_BUFFER_BLOCK_SIZE	0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
+#define LOG_ENTRY_ELF_BASE	0x20000000
+#define LOG_ENTRY_ELF_SIZE	0x2000000
 
 /*
  * The HP SRAM Region Apololake is organised like this :-

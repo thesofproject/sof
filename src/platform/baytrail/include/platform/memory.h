@@ -75,6 +75,9 @@
 #define SSP5_BASE	0xFF2A6000
 #define SSP5_SIZE	0x00001000
 
+#define LOG_ENTRY_ELF_BASE	0x20000000
+#define LOG_ENTRY_ELF_SIZE	0x2000000
+
 /*
  * The Heap and Stack on Baytrail are organised like this :-
  *
