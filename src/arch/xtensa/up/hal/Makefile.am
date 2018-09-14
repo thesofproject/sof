@@ -204,6 +204,16 @@ PLATFORM_DEFS = \
 	$(CACHE_DEFS)
 endif
 
+if BUILD_SUECREEK
+PLATFORM_DEFS = \
+    $(STATE_DEFS_CNL) \
+    $(DISASS_DEFS) \
+    $(MISC_DEFS) \
+    $(INTERRUPTS_DEFS) \
+    $(CACHE_DEFS)
+endif
+
+
 noinst_LIBRARIES = libhal.a
 
 libhal_a_SOURCES = \
