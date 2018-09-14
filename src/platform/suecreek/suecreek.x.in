@@ -338,7 +338,7 @@ SECTIONS
     _ResetHandler_text_start = ABSOLUTE(.);
     KEEP (*(.ResetHandler.text))
     _ResetHandler_text_end = ABSOLUTE(.);
-  } >reef_text_start :reef_text_start_phdr
+  } >sof_text_start :sof_text_start_phdr
 
   .text : ALIGN(4)
   {

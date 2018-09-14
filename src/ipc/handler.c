@@ -74,6 +74,7 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 {
 	struct sof_ipc_hdr *hdr = _ipc->comp_data;
 
+#if !defined CONFIG_SUECREEK
 	/* read component values from the inbox */
 	mailbox_hostbox_read(hdr, 0, sizeof(*hdr));
 
@@ -85,6 +86,10 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 
 	/* read rest of component data */
 	mailbox_hostbox_read(hdr + 1, sizeof(*hdr), hdr->size - sizeof(*hdr));
+#else
+	/* read the header from spi buffer */
+	//TODO...
+#endif
 	return hdr;
 }
 
@@ -274,7 +279,13 @@ pipe_params:
 	reply.rhdr.error = 0;
 	reply.comp_id = pcm_params->comp_id;
 	reply.posn_offset = posn_offset;
+
+#if !defined CONFIG_SUECREEK
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 1;
 
 error:
@@ -357,10 +368,14 @@ static int ipc_stream_position(uint32_t header)
 	/* get the stream positions and timestamps */
 	pipeline_get_timestamp(pcm_dev->cd->pipeline, pcm_dev->cd, &posn);
 
+#if !defined CONFIG_SUECREEK
 	/* copy positions to stream region */
 	mailbox_stream_write(pcm_dev->cd->pipeline->posn_offset,
 			     &posn, sizeof(posn));
-
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 1;
 }
 
@@ -379,7 +394,12 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 	hdr.cmd = posn->rhdr.hdr.cmd;
 	hdr.size = sizeof(hdr);
 
+#if !defined CONFIG_SUECREEK
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
 				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
 }
@@ -397,7 +417,12 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 	hdr.cmd = posn->rhdr.hdr.cmd;
 	hdr.size = sizeof(hdr);
 
+#if !defined CONFIG_SUECREEK
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
 				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
 }
@@ -539,8 +564,13 @@ static int ipc_pm_context_size(uint32_t header)
 
 	/* TODO: calculate the context and size of host buffers required */
 
+#if !defined CONFIG_SUECREEK
 	/* write the context to the host driver */
 	mailbox_hostbox_write(0, &pm_ctx, sizeof(pm_ctx));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 1;
 }
 
@@ -572,9 +602,14 @@ static int ipc_pm_context_save(uint32_t header)
 	/* TODO: save the context */
 	//reply.entries_no = 0;
 
+#if !defined CONFIG_SUECREEK
 	/* write the context to the host driver */
 	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
-
+#else
+	/* write data into spi buffer */
+	//TODO...
+	trace_value(pm_ctx->num_elems);	/* to pass compiling */
+#endif
 	//iipc->pm_prepare_D3 = 1;
 
 	return 1;
@@ -586,9 +621,14 @@ static int ipc_pm_context_restore(uint32_t header)
 
 	trace_ipc("PMr");
 
+#if !defined CONFIG_SUECREEK
 	/* restore context placeholder */
 	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
-
+#else
+	/* write data into spi buffer */
+	//TODO...
+	trace_value(pm_ctx->num_elems); /* to pass compiling */
+#endif
 	return 1;
 }
 
@@ -710,7 +750,13 @@ static int ipc_dma_trace_config(uint32_t header)
 	reply.hdr.size = sizeof(reply);
 	reply.hdr.cmd = header;
 	reply.error = 0;
+
+#if !defined CONFIG_SUECREEK
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 0;
 
 error:
@@ -786,8 +832,13 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 		return ret;
 	}
 
+#if !defined CONFIG_SUECREEK
 	/* write component values to the outbox */
 	mailbox_hostbox_write(0, data, data->rhdr.hdr.size);
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 1;
 }
 
@@ -831,7 +882,12 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	reply.rhdr.hdr.cmd = header;
 	reply.rhdr.error = 0;
 	reply.offset = 0; /* TODO: set this up for mmaped components */
+#if !defined CONFIG_SUECREEK
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 1;
 }
 
@@ -854,7 +910,12 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	reply.rhdr.hdr.cmd = header;
 	reply.rhdr.error = 0;
 	reply.offset = 0; /* TODO: set this up for mmaped components */
+#if !defined CONFIG_SUECREEK
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 1;
 }
 
@@ -883,7 +944,12 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	reply.rhdr.hdr.cmd = header;
 	reply.rhdr.error = 0;
 	reply.offset = 0; /* TODO: set this up for mmaped components */
+#if !defined CONFIG_SUECREEK
 	mailbox_hostbox_write(0, &reply, sizeof(reply));
+#else
+	/* write data into spi buffer */
+	//TODO...
+#endif
 	return 1;
 }
 

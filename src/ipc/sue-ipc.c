@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *	Keyon Jie <yang.jie@linux.intel.com>
+	Rander Wang <rander.wang@intel.com>
  */
 
 #include <sof/debug.h>
@@ -48,77 +50,16 @@
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/panic.h>
 #include <uapi/ipc.h>
 #include <sof/intel-ipc.h>
 
 extern struct ipc *_ipc;
 
-static void do_notify(void)
-{
-	uint32_t flags;
-	struct ipc_msg *msg;
-
-	tracev_ipc("Not");
-
-	spin_lock_irq(&_ipc->lock, flags);
-	msg = _ipc->shared_ctx->dsp_msg;
-	if (msg == NULL)
-		goto out;
-
-	/* copy the data returned from DSP */
-	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
-		mailbox_dspbox_read(msg->rx_data, 0, msg->rx_size);
-
-	/* any callback ? */
-	if (msg->cb)
-		msg->cb(msg->cb_data, msg->rx_data);
-
-	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
-
-out:
-	spin_unlock_irq(&_ipc->lock, flags);
-
-	/* clear DONE bit - tell Host we have completed */
-	shim_write(SHIM_IPCD, 0);
-
-	/* unmask Done interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DONE);
-}
-
+/* test code to check working IRQ */
 static void irq_handler(void *arg)
 {
-	uint32_t isr;
-
-	tracev_ipc("IRQ");
-
-	/* Interrupt arrived, check src */
-	isr = shim_read(SHIM_ISRD);
-
-	if (isr & SHIM_ISRD_DONE) {
-
-		/* Mask Done interrupt before return */
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
-		interrupt_clear(PLATFORM_IPC_INTERRUPT);
-		do_notify();
-	}
-
-	if (isr & SHIM_ISRD_BUSY) {
-
-		/* Mask Busy interrupt before return */
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
-		interrupt_clear(PLATFORM_IPC_INTERRUPT);
-
-		/* TODO: place message in Q and process later */
-		/* It's not Q ATM, may overwrite */
-		if (_ipc->host_pending) {
-			trace_ipc_error("Pen");
-		} else {
-			_ipc->host_msg = shim_read(SHIM_IPCX);
-			_ipc->host_pending = 1;
-			ipc_schedule_process(_ipc);
-		}
-	}
+    /* should be called by spi interrupt */
+    //TODO
 }
 
 void ipc_platform_do_cmd(struct ipc *ipc)
@@ -127,38 +68,40 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	struct sof_ipc_reply reply;
 	int32_t err;
 
-	tracev_ipc("Cmd");
+	trace_ipc("Cmd");
 
 	/* perform command and return any error */
 	err = ipc_cmd();
 	if (err > 0) {
 		goto done; /* reply created and copied by cmd() */
-	} else {
+	} else if (err < 0) {
 		/* send std error reply */
 		reply.error = err;
+	} else if (err == 0) {
+		/* send std reply */
+		reply.error = 0;
 	}
 
 	/* send std error/ok reply */
 	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
 	reply.hdr.size = sizeof(reply);
-	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	/* fill the reply message into the spi buffer */
+	//TODO
+
+	/*
+	 * toggle GPIO level to trigger interrupt to host,
+	 * host will do the spi read operation.
+	 */
+	//TODO
 
 done:
 	ipc->host_pending = 0;
 
-	/* clear BUSY bit and set DONE bit - accept new messages */
-	shim_write(SHIM_IPCX, SHIM_IPCX_DONE);
-
-	/* unmask busy interrupt */
-	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
-
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1) {
-			trace_ipc("pme");
+		while (1)
 			wait_for_interrupt(0);
-		}
 	}
 
 	tracev_ipc("CmD");
@@ -177,20 +120,16 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
-	/* can't send nofication when one is in progress */
-	if (shim_read(SHIM_IPCD) & (SHIM_IPCD_BUSY | SHIM_IPCD_DONE))
-		goto out;
-
-	/* now send the message */
+	/* fill message into buffer */
 	msg = list_first_item(&ipc->shared_ctx->msg_list, struct ipc_msg,
 			      list);
-	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
-	list_item_del(&msg->list);
-	ipc->shared_ctx->dsp_msg = msg;
-	tracev_ipc("Msg");
+	//TODO
 
-	/* now interrupt host to tell it we have message sent */
-	shim_write(SHIM_IPCD, SHIM_IPCD_BUSY);
+	/*
+	 * toggle GPIO level to trigger interrupt to host,
+	 * host will do the spi read operation.
+	 */
+	//TODO
 
 	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
@@ -201,13 +140,13 @@ out:
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc;
-	uint32_t imrd, dir, caps, dev;
+	uint32_t dir, caps, dev;
 
 	_ipc = ipc;
 
 	/* init ipc data */
 	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		sizeof(struct intel_ipc_data));
+		       sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* schedule */
@@ -216,13 +155,13 @@ int platform_ipc_init(struct ipc *ipc)
 
 #ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
-	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		PLATFORM_PAGE_TABLE_SIZE);
+	iipc->page_table = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+				   HOST_PAGE_SIZE);
 	if (iipc->page_table)
-		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
+		bzero(iipc->page_table, HOST_PAGE_SIZE);
 #endif
 
-	/* request GP DMA with shared access privilege */
+	/* request HDA DMA with shared access privilege */
 	caps = 0;
 	dir = DMA_DIR_HMEM_TO_LMEM;
 	dev = DMA_DEV_HOST;
@@ -235,11 +174,5 @@ int platform_ipc_init(struct ipc *ipc)
 	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, NULL);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT);
 
-	/* Unmask Busy and Done interrupts */
-	imrd = shim_read(SHIM_IMRD);
-	imrd &= ~(SHIM_IMRD_BUSY | SHIM_IMRD_DONE);
-	shim_write(SHIM_IMRD, imrd);
-
 	return 0;
 }
-
