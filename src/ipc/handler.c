@@ -743,6 +743,22 @@ int ipc_dma_trace_send_position(void)
 		sizeof(posn), NULL, 0, NULL, NULL, 1);
 }
 
+static int ipc_dma_trace_ts(uint32_t header)
+{
+	struct sof_ipc_dma_trace_ts *ts = _ipc->comp_data;
+	struct sof_ipc_reply reply;
+
+	/* set time shift */
+	platform_timer->shift = ts->ts;
+
+	/* write component values to the outbox */
+	reply.hdr.size = sizeof(reply);
+	reply.hdr.cmd = header;
+	reply.error = 0;
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 0;
+}
+
 static int ipc_glb_debug_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
@@ -752,6 +768,8 @@ static int ipc_glb_debug_message(uint32_t header)
 	switch (cmd) {
 	case iCS(SOF_IPC_TRACE_DMA_PARAMS):
 		return ipc_dma_trace_config(header);
+	case iCS(SOF_IPC_TRACE_TIME_SHIFT):
+		return ipc_dma_trace_ts(header);
 	default:
 		trace_ipc_error("eDc");
 		trace_error_value(header);

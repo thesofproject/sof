@@ -131,6 +131,7 @@
 /* trace and debug */
 #define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x001)
 #define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
+#define SOF_IPC_TRACE_TIME_SHIFT		SOF_CMD_TYPE(0x003)
 
 /* Get message component id */
 #define SOF_IPC_MESSAGE_ID(x)			((x) & 0xffff)
@@ -960,6 +961,11 @@ struct sof_ipc_dma_trace_posn {
 	uint32_t host_offset;	/* Offset of DMA host buffer */
 	uint32_t overflow;	/* overflow bytes if any */
 	uint32_t messages;	/* total trace messages */
+}  __attribute__((packed));
+
+struct sof_ipc_dma_trace_ts {
+	struct sof_ipc_hdr hdr;
+	uint64_t ts;
 }  __attribute__((packed));
 
 /*
