@@ -106,26 +106,28 @@ static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 static void *rmalloc_sys(int zone, size_t bytes)
 {
 	void *ptr;
+	struct mm_heap *cpu_heap;
+	size_t alignment = 0;
 
-	/* system memory reserved only for master core */
-	if (cpu_get_id() != PLATFORM_MASTER_CORE_ID) {
-		trace_mem_error("eM0");
-		return NULL;
-	}
+	/* use the heap dedicated for the current core */
+	cpu_heap = memmap.system + cpu_get_id();
 
 	/* align address to dcache line size */
-	if (memmap.system.heap % PLATFORM_DCACHE_ALIGN)
-		memmap.system.heap += PLATFORM_DCACHE_ALIGN -
-			(memmap.system.heap % PLATFORM_DCACHE_ALIGN);
-
-	ptr = (void *)memmap.system.heap;
+	if (cpu_heap->info.used % PLATFORM_DCACHE_ALIGN)
+		alignment = PLATFORM_DCACHE_ALIGN -
+			(cpu_heap->info.used % PLATFORM_DCACHE_ALIGN);
 
 	/* always succeeds or panics */
-	memmap.system.heap += bytes;
-	if (memmap.system.heap >= HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE) {
+	if (alignment + bytes > cpu_heap->info.free) {
 		trace_mem_error("eM1");
 		panic(SOF_IPC_PANIC_MEM);
 	}
+	cpu_heap->info.used += alignment;
+
+	ptr = (void *)(cpu_heap->heap + cpu_heap->info.used);
+
+	cpu_heap->info.used += bytes;
+	cpu_heap->info.free -= alignment + bytes;
 
 #if DEBUG_BLOCK_ALLOC
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
@@ -528,18 +530,27 @@ uint32_t mm_pm_context_size(void)
 		heap = cache_to_uncache(&memmap.runtime[i]);
 		size += heap->info.used;
 	}
-	size += memmap.system.info.used;
+	for (i = 0; i < PLATFORM_HEAP_SYSTEM; i++) {
+		heap = cache_to_uncache(&memmap.system[i]);
+		size += heap->info.used;
+	}
 
 	/* add memory maps */
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++)
 		size += heap_get_size(cache_to_uncache(&memmap.buffer[i]));
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++)
 		size += heap_get_size(cache_to_uncache(&memmap.runtime[i]));
-	size += heap_get_size(&memmap.system);
+	for (i = 0; i < PLATFORM_HEAP_SYSTEM; i++)
+		size += heap_get_size(cache_to_uncache(&memmap.system[i]));
 
+	memmap.total.free = 0;
+	memmap.total.used = 0;
 	/* recalc totals */
-	memmap.total.free = memmap.system.info.free;
-	memmap.total.used = memmap.system.info.used;
+	for (i = 0; i < PLATFORM_HEAP_SYSTEM; i++) {
+		heap = cache_to_uncache(&memmap.system[i]);
+		memmap.total.free += heap->info.free;
+		memmap.total.used += heap->info.used;
+	}
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
 		heap = cache_to_uncache(&memmap.buffer[i]);
@@ -579,10 +590,12 @@ int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
 		return ret;
 
 	/* copy system memory contents to SG */
-	ret = dma_copy_to_host(dc, sg, offset + ret,
-		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
-	if (ret < 0)
-		return ret;
+
+	/* TODO: does it work? heap ptr points to free location, not to base */
+//	ret = dma_copy_to_host(dc, sg, offset + ret,
+//		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
+//	if (ret < 0)
+//		return ret;
 
 	/* copy module memory contents to SG */
 	// TODO: iterate over module block map and copy contents of each block
@@ -611,10 +624,10 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 		return ret;
 
 	/* copy system memory contents from SG */
-	ret = dma_copy_to_host(dc, sg, offset + ret,
-		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
-	if (ret < 0)
-		return ret;
+//	ret = dma_copy_to_host(dc, sg, offset + ret,
+//		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
+//	if (ret < 0)
+//		return ret;
 
 	/* copy module memory contents from SG */
 	// TODO: iterate over module block map and copy contents of each block
@@ -625,6 +638,24 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 	// to the host. This is the same block order used by the context store
 
 	return 0;
+}
+
+void free_heap(int zone)
+{
+	struct mm_heap *cpu_heap;
+
+	/* to be called by slave cores only for sys heap,
+	 * otherwise this is critical flow issue.
+	 */
+	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
+	    zone != RZONE_SYS) {
+		trace_mem_error("eMf");
+		panic(SOF_IPC_PANIC_MEM);
+	}
+
+	cpu_heap = memmap.system + cpu_get_id();
+	cpu_heap->info.used = 0;
+	cpu_heap->info.free = cpu_heap->size;
 }
 
 /* initialise map */
@@ -638,7 +669,7 @@ void init_heap(struct sof *sof)
 	int k;
 
 	/* sanity check for malformed images or loader issues */
-	if (memmap.system.heap != HEAP_SYSTEM_BASE)
+	if (memmap.system[0].heap != HEAP_SYSTEM_0_BASE)
 		panic(SOF_IPC_PANIC_MEM);
 
 	spinlock_init(&memmap.lock);

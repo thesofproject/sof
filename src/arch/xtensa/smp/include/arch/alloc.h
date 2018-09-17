@@ -51,7 +51,7 @@ static inline void alloc_core_context(int core)
 {
 	struct core_context *core_ctx;
 
-	core_ctx = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*core_ctx));
+	core_ctx = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*core_ctx));
 	dcache_writeback_invalidate_region(core_ctx, sizeof(*core_ctx));
 
 	/* xtos_core_data is a big struct, so allocate it from system heap
@@ -83,7 +83,6 @@ static inline void alloc_core_context(int core)
  */
 static inline void free_core_context(int core)
 {
-	rfree(core_ctx_ptr[core]);
 	dcache_writeback_invalidate_region(core_ctx_ptr[core],
 					   sizeof(*core_ctx_ptr[core]));
 }

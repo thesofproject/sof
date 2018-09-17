@@ -87,8 +87,8 @@ MEMORY
         org = SOF_BSS_DATA_START,
         len = SOF_BSS_DATA_SIZE
   system_heap :
-        org = HEAP_SYSTEM_BASE,
-        len = HEAP_SYSTEM_SIZE
+        org = HEAP_SYSTEM_0_BASE,
+        len = HEAP_SYSTEM_T_SIZE
   runtime_heap :
         org = HEAP_RUNTIME_BASE,
         len = HEAP_RUNTIME_SIZE
@@ -469,7 +469,7 @@ SECTIONS
   __stack = SOF_STACK_BASE;
 
   /* System Heap */
-  _system_heap = HEAP_SYSTEM_BASE;
+  _system_heap = HEAP_SYSTEM_0_BASE;
 
 
   /* module heap */
@@ -534,7 +534,7 @@ SECTIONS
   {
     . = ALIGN (32);
     _system_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYSTEM_SIZE;
+    . = . + HEAP_SYSTEM_T_SIZE;
     _system_heap_end = ABSOLUTE(.);
   } >system_heap :system_heap_phdr
 

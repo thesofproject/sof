@@ -66,13 +66,36 @@ static struct block_map lp_buf_heap_map[] = {
 };
 
 struct mm memmap = {
-	.system = {
-		.heap = HEAP_SYSTEM_BASE,
-		.size = HEAP_SYSTEM_SIZE,
-		.info = {.free = HEAP_SYSTEM_SIZE,},
+	.system[0] = {
+		.heap = HEAP_SYSTEM_0_BASE,
+		.size = HEAP_SYSTEM_0_SIZE,
+		.info = {.free = HEAP_SYSTEM_0_SIZE,},
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 			SOF_MEM_CAPS_CACHE,
 	},
+	.system[1] = {
+		.heap = HEAP_SYSTEM_1_BASE,
+		.size = HEAP_SYSTEM_1_SIZE,
+		.info = {.free = HEAP_SYSTEM_1_SIZE,},
+		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+			SOF_MEM_CAPS_CACHE,
+	},
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+	.system[2] = {
+		.heap = HEAP_SYSTEM_2_BASE,
+		.size = HEAP_SYSTEM_2_SIZE,
+		.info = {.free = HEAP_SYSTEM_2_SIZE,},
+		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+			SOF_MEM_CAPS_CACHE,
+	},
+	.system[3] = {
+		.heap = HEAP_SYSTEM_3_BASE,
+		.size = HEAP_SYSTEM_3_SIZE,
+		.info = {.free = HEAP_SYSTEM_3_SIZE,},
+		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+			SOF_MEM_CAPS_CACHE,
+	},
+#endif
 	.runtime[0] = {
 		.blocks = ARRAY_SIZE(rt_heap_map),
 		.map = rt_heap_map,
@@ -109,7 +132,7 @@ struct mm memmap = {
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
-	.total = {.free = HEAP_SYSTEM_SIZE + HEAP_RUNTIME_SIZE +
+	.total = {.free = HEAP_SYSTEM_T_SIZE + HEAP_RUNTIME_SIZE +
 			HEAP_BUFFER_SIZE + HEAP_HP_BUFFER_SIZE +
 			HEAP_LP_BUFFER_SIZE,},
 };

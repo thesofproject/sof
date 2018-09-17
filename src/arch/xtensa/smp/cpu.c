@@ -111,6 +111,9 @@ void cpu_power_down_core(void)
 
 	dcache_writeback_invalidate_all();
 
+	/* free entire sys heap, an instance dedicated for this core */
+	free_heap(RZONE_SYS);
+
 	while (1)
 		arch_wait_for_interrupt(0);
 }

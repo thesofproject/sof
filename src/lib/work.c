@@ -455,7 +455,7 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 	struct work_queue *queue;
 
 	/* init work queue */
-	queue = rmalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*queue));
+	queue = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*queue));
 
 	list_init(&queue->work);
 	spinlock_init(&queue->lock);
@@ -499,6 +499,4 @@ void free_system_workq(void)
 	list_item_del(&(*queue)->work);
 
 	spin_unlock_irq(&(*queue)->lock, flags);
-
-	rfree(*queue);
 }

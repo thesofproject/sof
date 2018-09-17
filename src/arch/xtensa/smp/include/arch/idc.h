@@ -301,7 +301,7 @@ static inline void arch_idc_init(void)
 
 	/* initialize idc data */
 	struct idc **idc = idc_get();
-	*idc = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**idc));
+	*idc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**idc));
 	spinlock_init(&((*idc)->lock));
 	(*idc)->busy_bit_mask = idc_get_busy_bit_mask(core);
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
@@ -337,8 +337,6 @@ static inline void idc_free(void)
 		if (idctfc & IPC_IDCTFC_BUSY)
 			idc_write(IPC_IDCTFC(i), core, idctfc);
 	}
-
-	rfree(*idc_get());
 }
 
 #endif

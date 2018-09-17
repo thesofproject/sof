@@ -374,7 +374,7 @@ int scheduler_init(struct sof *sof)
 	trace_pipe("ScI");
 
 	struct schedule_data **sch = arch_schedule_get();
-	*sch = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(**sch));
+	*sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**sch));
 
 	if (!*sch)
 		return -ENOMEM;
@@ -413,6 +413,4 @@ void scheduler_free(void)
 	list_item_del(&(*sch)->list);
 
 	spin_unlock_irq(&(*sch)->lock, flags);
-
-	rfree(*sch);
 }
