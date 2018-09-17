@@ -56,7 +56,7 @@ struct sof;
 #define TASK_PRI_MED	0
 #define TASK_PRI_HIGH	-20
 
-#define TASK_PRI_IPC	1
+#define TASK_PRI_IPC	6
 
 /* maximun task time slice in microseconds */
 #define SCHEDULE_TASK_MAX_TIME_SLICE	5000
