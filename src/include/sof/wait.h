@@ -42,7 +42,10 @@
 #include <sof/interrupt.h>
 #include <sof/trace.h>
 #include <sof/lock.h>
+#include <sof/clock.h>
+#include <platform/clk.h>
 #include <platform/interrupt.h>
+#include <platform/platform.h>
 
 #if DEBUG_LOCKS
 #define wait_atomic_check	\
@@ -52,6 +55,8 @@
 #else
 #define wait_atomic_check
 #endif
+
+#define DEFAULT_TRY_TIMES 8
 
 typedef struct {
 	uint32_t complete;
@@ -155,6 +160,29 @@ static inline void wait_delay(uint64_t number_of_clks)
 
 	while ((platform_timer_get(platform_timer) - current) < number_of_clks)
 		idelay(PLATFORM_DEFAULT_DELAY);
+}
+
+static inline int poll_for_completion_delay(completion_t *comp, uint64_t us)
+{
+	uint64_t tick = clock_us_to_ticks(CLK_CPU, us);
+	uint32_t tries = DEFAULT_TRY_TIMES;
+	uint64_t delta = tick / tries;
+
+	if (!delta) {
+		delta = us;
+		tries = 1;
+	}
+
+	while (!wait_is_completed(comp)) {
+		if (!tries--) {
+			trace_error(TRACE_CLASS_WAIT, "ewt");
+			return -EIO;
+		}
+
+		wait_delay(delta);
+	}
+
+	return 0;
 }
 
 #endif
