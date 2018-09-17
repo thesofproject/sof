@@ -98,6 +98,7 @@ static inline struct task *edf_get_next(uint64_t current,
 	struct list_item *clist;
 	struct list_item *tlist;
 	uint64_t next_delta = UINT64_MAX;
+	int next_priority = TASK_PRI_LOW;
 	uint64_t delta;
 	uint64_t deadline;
 	int reschedule = 0;
@@ -126,23 +127,31 @@ static inline struct task *edf_get_next(uint64_t current,
 		/* include the length of task in deadline calc */
 		deadline = task->deadline - task->max_rtime;
 
-		/* get earliest deadline */
 		if (current < deadline) {
 			delta = deadline - current;
 
-			if (delta < next_delta) {
+			/* get highest priority */
+			if (task->priority < next_priority) {
+				next_priority = task->priority;
 				next_delta = delta;
 				next_task = task;
+			} else if (task->priority == next_priority) {
+				/* get earliest deadline */
+				if (delta < next_delta) {
+					next_delta = delta;
+					next_task = task;
+				}
 			}
-
 		} else {
 			/* missed scheduling - will be rescheduled */
 			trace_pipe("ed!");
 
 			/* have we already tried to rescheule ? */
-			if (reschedule++)
+			if (!reschedule) {
+				reschedule++;
+				trace_pipe("edr");
 				edf_reschedule(task, current);
-			else {
+			} else {
 				/* reschedule failed */
 				list_item_del(&task->list);
 				task->state = TASK_STATE_CANCEL;
@@ -170,9 +179,11 @@ static uint64_t sch_work(void *data, uint64_t delay)
  */
 static struct task *schedule_edf(void)
 {
+	struct schedule_data *sch = *arch_schedule_get();
 	struct task *task;
 	struct task *future_task = NULL;
 	uint64_t current;
+	uint32_t flags;
 
 	tracev_pipe("edf");
 
@@ -195,7 +206,15 @@ static struct task *schedule_edf(void)
 	} else {
 		/* yes, run current task */
 		task->start = current;
+
+		/* init task for running */
+		wait_init(&task->complete);
+		spin_lock_irq(&sch->lock, flags);
 		task->state = TASK_STATE_RUNNING;
+		list_item_del(&task->list);
+		spin_unlock_irq(&sch->lock, flags);
+
+		/* now run task at correct run level */
 		run_task(task);
 	}
 
@@ -203,9 +222,8 @@ static struct task *schedule_edf(void)
 	return future_task;
 }
 
-#if 0 /* FIXME: is this needed ? */
-/* delete task from scheduler */
-static int schedule_task_del(struct task *task)
+/* cancel and delete task from scheduler - won't stop it if already running */
+int schedule_task_cancel(struct task *task)
 {
 	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
@@ -213,24 +231,21 @@ static int schedule_task_del(struct task *task)
 
 	tracev_pipe("del");
 
-	/* add task to list */
 	spin_lock_irq(&sch->lock, flags);
 
-	/* is task already running ? */
-	if (task->state == TASK_STATE_RUNNING) {
-		ret = -EAGAIN;
-		goto out;
+	/* check current task state, delete it if it is queued
+	 * if it is already running, nothing we can do about it atm
+	 */
+	if (task->state == TASK_STATE_QUEUED) {
+		/* delete task */
+		task->state = TASK_STATE_CANCEL;
+		list_item_del(&task->list);
 	}
 
-	list_item_del(&task->list);
-	task->state = TASK_STATE_COMPLETED;
-
-out:
 	spin_unlock_irq(&sch->lock, flags);
+
 	return ret;
 }
-#endif
-
 
 static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 {
@@ -245,6 +260,13 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	/* is task already running ? - not enough MIPS to complete ? */
 	if (task->state == TASK_STATE_RUNNING) {
 		trace_pipe("tsk");
+		spin_unlock_irq(&sch->lock, flags);
+		return 0;
+	}
+
+	/* is task already running ? - not enough MIPS to complete ? */
+	if (task->state == TASK_STATE_QUEUED) {
+		trace_pipe("tsq");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
@@ -312,9 +334,11 @@ void schedule_task_complete(struct task *task)
 	tracev_pipe("com");
 
 	spin_lock_irq(&sch->lock, flags);
-	list_item_del(&task->list);
 	task->state = TASK_STATE_COMPLETED;
 	spin_unlock_irq(&sch->lock, flags);
+
+	/* tell any waiter that task has completed */
+	wait_completed(&task->complete);
 }
 
 static void scheduler_run(void *unused)

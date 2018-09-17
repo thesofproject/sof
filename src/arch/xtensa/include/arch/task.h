@@ -101,20 +101,28 @@ static inline uint32_t task_get_irq(struct task *task)
 static inline void task_set_data(struct task *task)
 {
 	struct list_item *dst = NULL;
+	struct irq_task *irq_task;
+	uint32_t flags;
 
 	switch (task->priority) {
 	case TASK_PRI_MED + 1 ... TASK_PRI_LOW:
-		dst = &((*task_irq_low_get())->list);
+		irq_task = *task_irq_low_get();
+		dst = &irq_task->list;
 		break;
 	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
-		dst = &((*task_irq_high_get())->list);
+		irq_task = *task_irq_high_get();
+		dst = &irq_task->list;
 		break;
 	case TASK_PRI_MED:
 	default:
-		dst = &((*task_irq_med_get())->list);
+		irq_task = *task_irq_med_get();
+		dst = &irq_task->list;
 		break;
 	}
+
+	spin_lock_irq(&irq_task->lock, flags);
 	list_item_append(&task->irq_list, dst);
+	spin_unlock_irq(&irq_task->lock, flags);
 }
 
 /**
@@ -129,21 +137,19 @@ static void _irq_task(void *arg)
 	struct task *task;
 	uint32_t flags;
 
-	/* intentionally don't lock list to have task added from schedule irq */
-	list_for_item(tlist, &irq_task->list) {
-		task = container_of(tlist, struct task, irq_list);
+	spin_lock_irq(&irq_task->lock, flags);
+	list_for_item_safe(clist, tlist, &irq_task->list) {
 
-		if (task->func)
+		task = container_of(clist, struct task, irq_list);
+		list_item_del(clist);
+
+		spin_unlock_irq(&irq_task->lock, flags);
+
+		if (task->func && task->state == TASK_STATE_RUNNING)
 			task->func(task->data);
 
 		schedule_task_complete(task);
-	}
-
-	spin_lock_irq(&irq_task->lock, flags);
-
-	list_for_item_safe(clist, tlist, &irq_task->list) {
-		task = container_of(clist, struct task, irq_list);
-		list_item_del(&task->irq_list);
+		spin_lock_irq(&irq_task->lock, flags);
 	}
 
 	interrupt_clear(irq_task->irq);

@@ -38,6 +38,7 @@
 #include <sof/lock.h>
 #include <sof/list.h>
 #include <sof/work.h>
+#include <sof/wait.h>
 
 struct schedule_data;
 struct sof;
@@ -56,6 +57,10 @@ struct sof;
 #define TASK_PRI_MED	0
 #define TASK_PRI_HIGH	-20
 
+#define TASK_PRI_IPC	1
+
+/* maximun task time slice in microseconds */
+#define SCHEDULE_TASK_MAX_TIME_SLICE	5000
 
 /* task descriptor */
 struct task {
@@ -73,6 +78,7 @@ struct task {
 
 	/* runtime duration in scheduling clock base */
 	uint64_t max_rtime;		/* max time taken to run */
+	completion_t complete;
 };
 
 struct schedule_data **arch_schedule_get(void);
@@ -82,6 +88,8 @@ void schedule(void);
 void schedule_task(struct task *task, uint64_t start, uint64_t deadline);
 
 void schedule_task_idle(struct task *task, uint64_t deadline);
+
+int schedule_task_cancel(struct task *task);
 
 void schedule_task_complete(struct task *task);
 
