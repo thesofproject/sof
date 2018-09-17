@@ -119,6 +119,7 @@
 #define INT_UNMASK_ALL			0xFFFF
 #define CHAN_ENABLE(chan)		(0x101 << chan)
 #define CHAN_DISABLE(chan)		(0x100 << chan)
+#define CHAN_MASK(chan)		(0x1 << chan)
 
 #define DW_CFG_CH_SUSPEND		0x100
 #define DW_CFG_CH_FIFO_EMPTY		0x200
@@ -474,6 +475,31 @@ out:
 	return 0;
 }
 
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
+static int dw_dma_stop(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	int ret = 0;
+	uint32_t flags;
+	uint32_t val = 0;
+
+	spin_lock_irq(&dma->lock, flags);
+
+	trace_dma("DDi");
+
+	ret = poll_for_register_delay(dma_base(dma) + DW_DMA_CHAN_EN,
+				      CHAN_MASK(channel), val,
+				      PLATFORM_DMA_TIMEOUT);
+	if (ret < 0)
+		trace_dma_error("esp");
+
+	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	p->chan[channel].status = COMP_STATE_PREPARE;
+
+	spin_unlock_irq(&dma->lock, flags);
+	return ret;
+}
+#else
 static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -508,6 +534,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
 }
+#endif
 
 /* fill in "status" with current DMA channel state and position */
 static int dw_dma_status(struct dma *dma, int channel,
