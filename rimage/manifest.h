@@ -90,4 +90,5 @@ struct fw_image_manifest {
 
 extern struct fw_image_manifest apl_manifest;
 extern struct fw_image_manifest cnl_manifest;
+
 #endif
