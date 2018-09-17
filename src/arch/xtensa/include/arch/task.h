@@ -138,6 +138,9 @@ static void _irq_task(void *arg)
 	uint32_t flags;
 
 	spin_lock_irq(&irq_task->lock, flags);
+
+	interrupt_clear(irq_task->irq);
+
 	list_for_item_safe(clist, tlist, &irq_task->list) {
 
 		task = container_of(clist, struct task, irq_list);
@@ -151,8 +154,6 @@ static void _irq_task(void *arg)
 		schedule_task_complete(task);
 		spin_lock_irq(&irq_task->lock, flags);
 	}
-
-	interrupt_clear(irq_task->irq);
 
 	spin_unlock_irq(&irq_task->lock, flags);
 }
