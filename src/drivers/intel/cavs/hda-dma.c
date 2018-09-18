@@ -153,25 +153,6 @@ static inline void hda_dma_inc_link_fp(struct dma *dma, uint32_t chan,
 	/* TODO: wp update should inc LLPI and LPIBI in the input DMA */
 }
 
-/* TODO: might be implemented as buffer_size - get_data_size() */
-static inline uint32_t hda_dma_get_free_size(struct dma *dma, uint32_t chan)
-{
-	const uint32_t cs = host_dma_reg_read(dma, chan, DGCS);
-	const uint32_t bs = host_dma_reg_read(dma, chan, DGBS);
-	const uint32_t rp = host_dma_reg_read(dma, chan, DGBRP);
-	const uint32_t wp = host_dma_reg_read(dma, chan, DGBRP);
-	int32_t fs;
-
-	if (cs & DGCS_BF)
-		return 0; /* buffer is full */
-	if (!(cs & DGCS_BNE))
-		return bs; /* buffer is empty */
-	fs = rp - wp;
-	if (wp >= rp)
-		fs += bs;
-	return fs;
-}
-
 static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
 {
 	const uint32_t cs = host_dma_reg_read(dma, chan, DGCS);
@@ -188,6 +169,13 @@ static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
 		ds += bs;
 
 	return ds;
+}
+
+static inline uint32_t hda_dma_get_free_size(struct dma *dma, uint32_t chan)
+{
+	const uint32_t bs = host_dma_reg_read(dma, chan, DGBS);
+
+	return bs - hda_dma_get_data_size(dma, chan);
 }
 
 static int hda_dma_preload(struct dma *dma, struct hda_chan_data *chan)
