@@ -515,56 +515,10 @@ void rfree(void *ptr)
 	spin_unlock_irq(&memmap.lock, flags);
 }
 
+/* TODO: all mm_pm_...() routines to be implemented for IMR storage */
 uint32_t mm_pm_context_size(void)
 {
-	uint32_t size = 0;
-	struct mm_heap *heap;
-	int i;
-
-	/* calc context size for each area  */
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = cache_to_uncache(&memmap.buffer[i]);
-		size += heap->info.used;
-	}
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = cache_to_uncache(&memmap.runtime[i]);
-		size += heap->info.used;
-	}
-	for (i = 0; i < PLATFORM_HEAP_SYSTEM; i++) {
-		heap = cache_to_uncache(&memmap.system[i]);
-		size += heap->info.used;
-	}
-
-	/* add memory maps */
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++)
-		size += heap_get_size(cache_to_uncache(&memmap.buffer[i]));
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++)
-		size += heap_get_size(cache_to_uncache(&memmap.runtime[i]));
-	for (i = 0; i < PLATFORM_HEAP_SYSTEM; i++)
-		size += heap_get_size(cache_to_uncache(&memmap.system[i]));
-
-	memmap.total.free = 0;
-	memmap.total.used = 0;
-	/* recalc totals */
-	for (i = 0; i < PLATFORM_HEAP_SYSTEM; i++) {
-		heap = cache_to_uncache(&memmap.system[i]);
-		memmap.total.free += heap->info.free;
-		memmap.total.used += heap->info.used;
-	}
-
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = cache_to_uncache(&memmap.buffer[i]);
-		memmap.total.free += heap->info.free;
-		memmap.total.used += heap->info.used;
-	}
-
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = cache_to_uncache(&memmap.runtime[i]);
-		memmap.total.free = heap->info.free;
-		memmap.total.used = heap->info.used;
-	}
-
-	return size;
+	return 0;
 }
 
 /*
@@ -574,38 +528,7 @@ uint32_t mm_pm_context_size(void)
  */
 int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
 {
-	uint32_t used;
-	int32_t offset = 0;
-	int32_t ret;
-
-	/* first make sure SG buffer has enough space on host for DSP context */
-	used = mm_pm_context_size();
-	if (used > dma_sg_get_size(sg))
-		return -EINVAL;
-
-	/* copy memory maps to SG */
-	ret = dma_copy_to_host(dc, sg, offset,
-		(void *)&memmap, sizeof(memmap));
-	if (ret < 0)
-		return ret;
-
-	/* copy system memory contents to SG */
-
-	/* TODO: does it work? heap ptr points to free location, not to base */
-//	ret = dma_copy_to_host(dc, sg, offset + ret,
-//		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
-//	if (ret < 0)
-//		return ret;
-
-	/* copy module memory contents to SG */
-	// TODO: iterate over module block map and copy contents of each block
-	// to the host.
-
-	/* copy buffer memory contents to SG */
-	// TODO: iterate over buffer block map and copy contents of each block
-	// to the host.
-
-	return ret;
+	return -ENOTSUP;
 }
 
 /*
@@ -614,30 +537,7 @@ int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
  */
 int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 {
-	int32_t offset = 0;
-	int32_t ret;
-
-	/* copy memory maps from SG */
-	ret = dma_copy_from_host(dc, sg, offset,
-		(void *)&memmap, sizeof(memmap));
-	if (ret < 0)
-		return ret;
-
-	/* copy system memory contents from SG */
-//	ret = dma_copy_to_host(dc, sg, offset + ret,
-//		(void *)memmap.system.heap, (int32_t)(memmap.system.size));
-//	if (ret < 0)
-//		return ret;
-
-	/* copy module memory contents from SG */
-	// TODO: iterate over module block map and copy contents of each block
-	// to the host. This is the same block order used by the context store
-
-	/* copy buffer memory contents from SG */
-	// TODO: iterate over buffer block map and copy contents of each block
-	// to the host. This is the same block order used by the context store
-
-	return 0;
+	return -ENOTSUP;
 }
 
 void free_heap(int zone)
