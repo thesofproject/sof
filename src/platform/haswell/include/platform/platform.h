@@ -40,7 +40,7 @@
 struct sof;
 
 /* IPC Interrupt */
-#define PLATFORM_IPC_INTERUPT	IRQ_NUM_EXT_IA
+#define PLATFORM_IPC_INTERRUPT	IRQ_NUM_EXT_IA
 
 /* Host page size */
 #define HOST_PAGE_SIZE			4096

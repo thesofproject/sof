@@ -215,8 +215,8 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERUPT, irq_handler, NULL);
-	interrupt_enable(PLATFORM_IPC_INTERUPT);
+	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, NULL);
+	interrupt_enable(PLATFORM_IPC_INTERRUPT);
 
 	/* enable IPC interrupts from host */
 	ipc_write(IPC_DIPCCTL, IPC_DIPCCTL_IPCIDIE | IPC_DIPCCTL_IPCTBIE);
