@@ -199,7 +199,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	switch (dai->type) {
 	case SOF_DAI_INTEL_HDA:
 		dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
-				DMA_DIR_DEV_TO_MEM : DMA_DIR_MEM_TO_DEV;
+				DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
 		caps = DMA_CAP_HDA;
 		dma_dev = DMA_DEV_HDA;
 		break;

@@ -182,7 +182,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Link In DMAC */
 	.plat_data = {
 		.id		= DMA_LINK_IN_DMAC,
-		.dir		= DMA_DIR_MEM_TO_DEV,
+		.dir		= DMA_DIR_DEV_TO_MEM,
 		.caps		= DMA_CAP_HDA,
 		.devs		= DMA_DEV_HDA,
 		.base		= GTW_LINK_IN_STREAM_BASE(0),
@@ -195,7 +195,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Link out DMAC */
 	.plat_data = {
 		.id		= DMA_LINK_OUT_DMAC,
-		.dir		= DMA_DIR_DEV_TO_MEM,
+		.dir		= DMA_DIR_MEM_TO_DEV,
 		.caps		= DMA_CAP_HDA,
 		.devs		= DMA_DEV_HDA,
 		.base		= GTW_LINK_OUT_STREAM_BASE(0),
