@@ -103,13 +103,9 @@ static inline struct task *edf_get_next(uint64_t current,
 	uint64_t delta;
 	uint64_t deadline;
 	int reschedule = 0;
-	uint32_t flags;
  
-	spin_lock_irq(&sch->lock, flags);
-
 	/* any tasks in the scheduler ? */
 	if (list_is_empty(&sch->list)) {
-		spin_unlock_irq(&sch->lock, flags);
 		return NULL;
 	}
 
@@ -160,7 +156,6 @@ static inline struct task *edf_get_next(uint64_t current,
 		}
 	}
 
-	spin_unlock_irq(&sch->lock, flags);
 	return next_task;
 }
 
@@ -187,35 +182,40 @@ static struct task *schedule_edf(void)
 
 	tracev_pipe("edf");
 
-	/* get the current time */
-	current = platform_timer_get(platform_timer);
-
-	/* get next task to be scheduled */
-	task = edf_get_next(current, NULL);
-
 	interrupt_clear(PLATFORM_SCHEDULE_IRQ);
 
-	/* any tasks ? */
-	if (task == NULL)
-		return NULL;
-
-	/* can task be started now ? */
-	if (task->start > current) {
-		/* no, then schedule wake up */
-		future_task = task;
-	} else {
-		/* yes, run current task */
-		task->start = current;
-
-		/* init task for running */
-		wait_init(&task->complete);
+	while (!list_is_empty(&sch->list)) {
 		spin_lock_irq(&sch->lock, flags);
-		task->state = TASK_STATE_RUNNING;
-		list_item_del(&task->list);
+
+		/* get the current time */
+		current = platform_timer_get(platform_timer);
+
+		/* get next task to be scheduled */
+		task = edf_get_next(current, NULL);
 		spin_unlock_irq(&sch->lock, flags);
 
-		/* now run task at correct run level */
-		arch_run_task(task);
+		/* any tasks ? */
+		if (!task)
+			return NULL;
+
+		/* can task be started now ? */
+		if (task->start <= current) {
+			/* yes, run current task */
+			task->start = current;
+
+			/* init task for running */
+			spin_lock_irq(&sch->lock, flags);
+			task->state = TASK_STATE_RUNNING;
+			list_item_del(&task->list);
+			spin_unlock_irq(&sch->lock, flags);
+
+			/* now run task at correct run level */
+			arch_run_task(task);
+		} else {
+			/* no, then schedule wake up */
+			future_task = task;
+			break;
+		}
 	}
 
 	/* tell caller about future task */
