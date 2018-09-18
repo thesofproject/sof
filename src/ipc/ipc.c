@@ -501,8 +501,9 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	}
 
 	/* wait for DMA to complete */
-	complete.timeout = PLATFORM_HOST_DMA_TIMEOUT;
-	ret = wait_for_completion_timeout(&complete);
+	ret = poll_for_completion_delay(&complete, PLATFORM_DMA_TIMEOUT);
+	if (ret < 0)
+		trace_ipc_error("eDt");
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
