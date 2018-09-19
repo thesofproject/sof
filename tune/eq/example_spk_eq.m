@@ -136,6 +136,7 @@ if eq.enable_fir
         bp_fir = eq_fir_blob_pack(bm_fir);
         eq_alsactl_write('example_spk_eq_fir.txt', bp_fir);
         eq_blob_write('example_spk_eq_fir.blob', bp_fir);
+	eq_tplg_write('example_spk_eq_fir.m4', bp_fir, 'FIR');
 end
 
 %% Export IIR part
@@ -148,7 +149,7 @@ if eq.enable_iir
         bp_iir = eq_iir_blob_pack(bm_iir);
         eq_alsactl_write('example_spk_eq_iir.txt', bp_iir);
         eq_blob_write('example_spk_eq_iir.blob', bp_iir);
+	eq_tplg_write('example_spk_eq_iir.m4', bp_iir, 'IIR');
 end
 
 end
-

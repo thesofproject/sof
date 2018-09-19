@@ -34,6 +34,7 @@ function example_fir_eq()
 
 ascii_blob_fn = 'example_fir_eq.txt';
 binary_blob_fn = 'example_fir_eq.blob';
+tplg_blob_fn = 'example_fir_eq.m4';
 endian = 'little';
 fs = 48e3;
 
@@ -60,6 +61,7 @@ bm = eq_fir_blob_merge(platform_max_channels, ...
 bp = eq_fir_blob_pack(bm, endian);
 eq_alsactl_write(ascii_blob_fn, bp);
 eq_blob_write(binary_blob_fn, bp);
+eq_tplg_write(tplg_blob_fn, bp, 'FIR');
 
 end
 
@@ -100,7 +102,7 @@ eq.norm_offs_db = 0;        % E.g. -1 would leave 1 dB headroom if used with pea
 
 eq.enable_fir = 1;          % By default both FIR and IIR disabled, enable one
 eq.fir_beta = 3.5;          % Use with care, low value can corrupt
-eq.fir_length = 107;        % Gives just < 255 bytes
+eq.fir_length = 136;        % Gives just < 316 bytes
 eq.fir_autoband = 0;        % Select manually frequency limits
 eq.fmin_fir = 100;          % Equalization starts from 100 Hz
 eq.fmax_fir = 20e3;         % Equalization ends at 20 kHz

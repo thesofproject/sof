@@ -34,6 +34,7 @@ function example_iir_eq()
 
 blob_fn = 'example_iir_eq.blob';
 alsa_fn = 'example_iir_eq.txt';
+tplg_fn = 'example_iir_eq.m4';
 endian = 'little';
 fs = 48e3;
 
@@ -60,6 +61,7 @@ bm = eq_iir_blob_merge(platform_max_channels, ...
 bp = eq_iir_blob_pack(bm);
 eq_blob_write(blob_fn, bp);
 eq_alsactl_write(alsa_fn, bp);
+eq_tplg_write(tplg_fn, bp, 'IIR');
 
 end
 
