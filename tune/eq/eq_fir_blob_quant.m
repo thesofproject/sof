@@ -44,15 +44,31 @@ if nargin < 2
 	bits = 16;
 end
 
+%% Quantize
 [bq, shift] = eq_fir_quantize(b, bits);
 
-nb = length(bq);
+%% Check trailing zeros
+nf = length(bq);
+nz = nf;
+while bq(nz) == 0
+	nz = nz - 1;
+end
+if nz < nf
+	nb = nz + 1;
+	fprintf(1,'Note: Filter length was reduced to %d -> %d due to trailing zeros.\n', ...
+		nf, nb);
+	bq = bq(1:nb);
+else
+	nb = nf;
+end
+
+%% Make length multiple of four (optimized FIR core)
 mod4 = mod(nb, 4);
 if mod4 > 0
 	pad = zeros(1,4-mod4);
 	bqp = [bq pad];
 	nnew = length(bqp);
-	fprintf(1,'Note: Filter length was %d, padded length into %d,\n', nb, nnew);
+	fprintf(1,'Note: Filter length was %d, padded length into %d.\n', nb, nnew);
 else
 	nnew = nb;
 	bqp = bq;
