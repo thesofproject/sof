@@ -87,6 +87,11 @@ void schedule_task_idle(struct task *task, uint64_t deadline)
 {
 }
 
+int schedule_task_cancel(struct task *task)
+{
+	return 0;
+}
+
 /* testbench work definition */
 
 void work_schedule_default(struct work *w, uint64_t timeout)

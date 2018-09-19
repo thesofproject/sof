@@ -32,7 +32,19 @@
 #define __INCLUDE_IO__
 
 #include <stdint.h>
+#include <config.h>
 #include <sof/bit.h>
+
+#if defined CONFIG_LIB
+
+static inline uint32_t io_reg_read(uint32_t reg) {return 0;}
+static inline void io_reg_write(uint32_t reg, uint32_t val) {}
+static inline void io_reg_update_bits(uint32_t reg, uint32_t mask,
+				      uint32_t value) {}
+static inline uint16_t io_reg_read16(uint32_t reg) {return 0;}
+static inline void io_reg_write16(uint32_t reg, uint16_t val) {}
+
+#else
 
 static inline uint32_t io_reg_read(uint32_t reg)
 {
@@ -58,5 +70,7 @@ static inline void io_reg_write16(uint32_t reg, uint16_t val)
 {
 	*((volatile uint16_t*)reg) = val;
 }
+
+#endif
 
 #endif
