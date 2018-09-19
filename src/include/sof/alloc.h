@@ -100,7 +100,7 @@ struct mm_heap {
 /* heap block memory map */
 struct mm {
 	/* system heap - used during init cannot be freed */
-	struct mm_heap system;
+	struct mm_heap system[PLATFORM_HEAP_SYSTEM];
 	/* general heap for components */
 	struct mm_heap runtime[PLATFORM_HEAP_RUNTIME];
 	/* general component buffer heap */
@@ -131,6 +131,9 @@ int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg);
 
 /* heap initialisation */
 void init_heap(struct sof *sof);
+
+/* frees entire heap (supported for slave core system heap atm) */
+void free_heap(int zone);
 
 /* flush block map from cache to sram */
 static inline void flush_block_map(struct block_map *map)

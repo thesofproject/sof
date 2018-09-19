@@ -209,12 +209,10 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 
 	trace_eq("all");
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	fir_data = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		length_sum * sizeof(int32_t));
+	fir_data = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+			   length_sum * sizeof(int32_t));
 	if (!fir_data)
 		return -ENOMEM;
-
-	memset(fir_data, 0, length_sum * sizeof(int32_t));
 
 	/* Initialize 2nd phase to set EQ delay lines pointers */
 	trace_eq("ini");

@@ -59,7 +59,7 @@ static struct block_map buf_heap_map[] = {
 };
 
 struct mm memmap = {
-	.system = {
+	.system[0] = {
 		.heap = HEAP_SYSTEM_BASE,
 		.size = HEAP_SYSTEM_SIZE,
 		.info = {.free = HEAP_SYSTEM_SIZE,},

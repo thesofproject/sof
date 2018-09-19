@@ -88,6 +88,8 @@ int master_core_init(struct sof *sof)
 	return err;
 }
 
+/* TODO: should be compiled only on master/slave arch platforms */
+/* TODO: rename core -> cpu ? */
 int slave_core_init(struct sof *sof)
 {
 	int err;
