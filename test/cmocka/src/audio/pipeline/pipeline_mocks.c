@@ -55,6 +55,12 @@ void schedule_task_idle(struct task *task, uint64_t deadline)
 	(void)task;
 }
 
+int schedule_task_cancel(struct task *task)
+{
+	(void)task;
+	return 0;
+}
+
 void rfree(void *ptr)
 {
 	(void)ptr;
