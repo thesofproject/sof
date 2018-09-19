@@ -115,6 +115,14 @@
 #define SSP_BASE(x)		(0x00077000 + x * SSP_SIZE)
 #define SSP_SIZE		0x0000200
 
+/* SPI */
+#define SPI_BASE		0x00080000
+#define SPI_SIZE		0x00000400
+
+/* Global Control */
+#define IO_GLOB_CONTROL_BASE	0x00081C00
+#define IO_GLOB_CONTROL_SIZE	0x00000400
+
 /* low power DMACs */
 #define LP_GP_DMA_SIZE		0x00001000
 #define LP_GP_DMA_BASE(x)	(0x0007C000 + x * LP_GP_DMA_SIZE)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,43 +25,38 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
- *         Rander Wang <rander.wang@intel.com>
+ * Author: Zhigang.wu <zhigang.wu@linux.intel.com>
  */
+#include <platform/memory.h>
+#include <sof/spi.h>
 
-#ifndef __PLATFORM_DMA_H__
-#define __PLATFORM_DMA_H__
+static void spi_irq_handler(void *data)
+{
+}
 
-#include <sof/dma.h>
+static int spi_set_config(struct spi *spi, struct sof_spi_config *config)
+{
+	return 0;
+}
 
-#define PLATFORM_NUM_DMACS	3
+static int spi_read(struct spi *spi, void *buf, uint32_t len)
+{
+	return 0;
+}
 
-/* available DMACs */
-#define DMA_GP_LP_DMAC0		0
-#define DMA_GP_LP_DMAC1		1
-#define DMA_GP_LP_DMAC2		2
+static int spi_write(struct spi *spi, void *buf, uint32_t len)
+{
+	return 0;
+}
 
+static int spi_probe(struct spi *spi)
+{
+	return 0;
+}
 
-/* mappings - TODO improve API to get type */
-#define DMA_ID_DMAC0	DMA_GP_LP_DMAC0
-#define DMA_ID_DMAC1	DMA_GP_LP_DMAC1
-#define DMA_ID_DMAC2	DMA_GP_LP_DMAC1
-
-/* handshakes */
-#define DMA_HANDSHAKE_DMIC_CH0	0
-#define DMA_HANDSHAKE_DMIC_CH1	1
-#define DMA_HANDSHAKE_SSP0_RX	2
-#define DMA_HANDSHAKE_SSP0_TX	3
-#define DMA_HANDSHAKE_SSP1_RX	4
-#define DMA_HANDSHAKE_SSP1_TX	5
-#define DMA_HANDSHAKE_SSP2_RX	6
-#define DMA_HANDSHAKE_SSP2_TX	7
-#define DMA_HANDSHAKE_SSP3_RX	8
-#define DMA_HANDSHAKE_SSP3_TX	9
-#define DMA_HANDSHAKE_SPI_TX	26
-#define DMA_HANDSHAKE_SPI_RX	27
-
-extern struct dma dma[PLATFORM_NUM_DMACS];
-
-#endif
+const struct spi_ops spi_ops = {
+	.set_config		= spi_set_config,
+	.read			= spi_read,
+	.write			= spi_write,
+	.probe			= spi_probe,
+};

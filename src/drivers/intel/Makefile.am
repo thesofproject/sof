@@ -36,4 +36,9 @@ SUBDIRS = haswell
 libdrivers_la_LIBADD = haswell/libdrivers.la
 endif
 
+if BUILD_SUECREEK
+SUBDIRS = suecreek
+libdrivers_la_LIBADD = suecreek/libdrivers.la
+endif
+
 endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,43 +25,45 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
- *         Rander Wang <rander.wang@intel.com>
+ * Author: Zhigang.wu <zhigang.wu@linux.intel.com>
  */
 
-#ifndef __PLATFORM_DMA_H__
-#define __PLATFORM_DMA_H__
+#include <sof/sof.h>
+#include <platform/interrupt.h>
+#include <platform/memory.h>
+#include <platform/dma.h>
+#include <sof/spi.h>
+#include <string.h>
+#include <config.h>
 
-#include <sof/dma.h>
+static struct spi spi[] = {
+{
+	.type  = SOF_SPI_INTEL_SLAVE,
+	.index = 0,
+	.plat_data = {
+		.base		= SPI_BASE,
+		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
+		.fifo[SPI_TYPE_INTEL_RECEIVE] = {
+			.offset		= DR,
+			.handshake	= DMA_HANDSHAKE_SPI_RX,
+		},
+		.fifo[SPI_TYPE_INTEL_TRANSMIT] = {
+			.offset		= DR,
+			.handshake	= DMA_HANDSHAKE_SPI_TX,
+		}
+	},
+	.ops = &spi_ops,
+},
+};
 
-#define PLATFORM_NUM_DMACS	3
+struct spi *spi_get(uint32_t type)
+{
+	int i;
 
-/* available DMACs */
-#define DMA_GP_LP_DMAC0		0
-#define DMA_GP_LP_DMAC1		1
-#define DMA_GP_LP_DMAC2		2
+	for (i = 0; i < ARRAY_SIZE(spi); i++) {
+		if (spi[i].type == type)
+			return &spi[i];
+	}
 
-
-/* mappings - TODO improve API to get type */
-#define DMA_ID_DMAC0	DMA_GP_LP_DMAC0
-#define DMA_ID_DMAC1	DMA_GP_LP_DMAC1
-#define DMA_ID_DMAC2	DMA_GP_LP_DMAC1
-
-/* handshakes */
-#define DMA_HANDSHAKE_DMIC_CH0	0
-#define DMA_HANDSHAKE_DMIC_CH1	1
-#define DMA_HANDSHAKE_SSP0_RX	2
-#define DMA_HANDSHAKE_SSP0_TX	3
-#define DMA_HANDSHAKE_SSP1_RX	4
-#define DMA_HANDSHAKE_SSP1_TX	5
-#define DMA_HANDSHAKE_SSP2_RX	6
-#define DMA_HANDSHAKE_SSP2_TX	7
-#define DMA_HANDSHAKE_SSP3_RX	8
-#define DMA_HANDSHAKE_SSP3_TX	9
-#define DMA_HANDSHAKE_SPI_TX	26
-#define DMA_HANDSHAKE_SPI_RX	27
-
-extern struct dma dma[PLATFORM_NUM_DMACS];
-
-#endif
+	return NULL;
+}
