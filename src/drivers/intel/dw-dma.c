@@ -1139,7 +1139,8 @@ static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
 	uint32_t irq = dma_irq(dma, cpu_get_id()) +
 		(channel << SOF_IRQ_BIT_SHIFT);
 
-	interrupt_register(irq, dw_dma_irq_handler, &p->chan[channel].id);
+	interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler,
+			   &p->chan[channel].id);
 	interrupt_enable(irq);
 }
 
@@ -1307,7 +1308,7 @@ static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
 {
 	uint32_t irq = dma_irq(dma, cpu_get_id());
 
-	interrupt_register(irq, dw_dma_irq_handler, dma);
+	interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler, dma);
 	interrupt_enable(irq);
 }
 

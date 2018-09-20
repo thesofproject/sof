@@ -244,17 +244,17 @@ static inline void arch_free_tasks(void)
 static inline int arch_assign_tasks(void)
 {
 	/* irq low */
-	interrupt_register(PLATFORM_IRQ_TASK_LOW, _irq_task,
+	interrupt_register(PLATFORM_IRQ_TASK_LOW, IRQ_AUTO_UNMASK, _irq_task,
 			   task_irq_low_get());
 	interrupt_enable(PLATFORM_IRQ_TASK_LOW);
 
 	/* irq medium */
-	interrupt_register(PLATFORM_IRQ_TASK_MED, _irq_task,
+	interrupt_register(PLATFORM_IRQ_TASK_MED, IRQ_AUTO_UNMASK, _irq_task,
 			   task_irq_med_get());
 	interrupt_enable(PLATFORM_IRQ_TASK_MED);
 
 	/* irq high */
-	interrupt_register(PLATFORM_IRQ_TASK_HIGH, _irq_task,
+	interrupt_register(PLATFORM_IRQ_TASK_HIGH, IRQ_AUTO_UNMASK, _irq_task,
 			   task_irq_high_get());
 	interrupt_enable(PLATFORM_IRQ_TASK_HIGH);
 

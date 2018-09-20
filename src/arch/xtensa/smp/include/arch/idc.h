@@ -307,7 +307,7 @@ static inline void arch_idc_init(void)
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IDC_INTERRUPT(core),
+	interrupt_register(PLATFORM_IDC_INTERRUPT(core), IRQ_AUTO_UNMASK,
 			   idc_irq_handler, *idc);
 	interrupt_enable(PLATFORM_IDC_INTERRUPT(core));
 

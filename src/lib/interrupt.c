@@ -38,13 +38,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-static int irq_register_child(struct irq_desc *parent, int irq,
+static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg);
 static void irq_unregister_child(struct irq_desc *parent, int irq);
 static uint32_t irq_enable_child(struct irq_desc *parent, int irq);
 static uint32_t irq_disable_child(struct irq_desc *parent, int irq);
 
-static int irq_register_child(struct irq_desc *parent, int irq,
+static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg)
 {
 	int ret = 0;
@@ -67,6 +67,7 @@ static int irq_register_child(struct irq_desc *parent, int irq,
 	child->handler = handler;
 	child->handler_arg = arg;
 	child->id = SOF_IRQ_ID(irq);
+	child->unmask = unmask;
 
 	list_item_append(&child->irq_list, &parent->child[SOF_IRQ_BIT(irq)]);
 
@@ -171,8 +172,8 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 	return 0;
 }
 
-int interrupt_register(uint32_t irq,
-	void (*handler)(void *arg), void *arg)
+int interrupt_register(uint32_t irq, int unmask, void (*handler)(void *arg),
+		       void *arg)
 {
 	struct irq_desc *parent;
 
@@ -181,7 +182,7 @@ int interrupt_register(uint32_t irq,
 	if (parent == NULL)
 		return arch_interrupt_register(irq, handler, arg);
 	else
-		return irq_register_child(parent, irq, handler, arg);
+		return irq_register_child(parent, irq, unmask, handler, arg);
 }
 
 void interrupt_unregister(uint32_t irq)

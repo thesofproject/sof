@@ -232,7 +232,8 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, NULL);
+	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
+			   irq_handler, NULL);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT);
 
 	/* Unmask Busy and Done interrupts */

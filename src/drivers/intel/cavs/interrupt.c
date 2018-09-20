@@ -43,11 +43,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-static inline void irq_lvl2_handler(void *data,
-				    int level,
-				    uint32_t ilxsd,
-				    uint32_t ilxmsd,
-				    uint32_t ilxmcd)
+static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
+				    uint32_t ilxmsd, uint32_t ilxmcd)
 {
 	struct irq_desc *parent = (struct irq_desc *)data;
 	struct irq_desc *child = NULL;
@@ -75,7 +72,7 @@ static inline void irq_lvl2_handler(void *data,
 
 			if (child && child->handler) {
 				child->handler(child->handler_arg);
-				unmask = 1;
+				unmask = child->unmask;
 			} else {
 				/* nobody cared ? */
 				trace_irq_error("nbc");
