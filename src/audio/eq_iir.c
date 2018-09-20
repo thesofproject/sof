@@ -552,7 +552,6 @@ static int eq_iir_reset(struct comp_dev *dev)
 	trace_eq("res");
 
 	eq_iir_free_delaylines(cd);
-	eq_iir_free_parameters(&cd->config);
 
 	cd->eq_iir_func = eq_iir_s32_default;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
