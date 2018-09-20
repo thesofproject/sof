@@ -91,23 +91,33 @@
 
 struct dma;
 
+/**
+ *  \brief Element of SG list (as array item).
+ */
 struct dma_sg_elem {
-	uint32_t src;
-	uint32_t dest;
-	uint32_t size;
-	struct list_item list;
+	uint32_t src;	/**< source address */
+	uint32_t dest;	/**< destination address */
+	uint32_t size;	/**< size (in bytes) */
+};
+
+/**
+ * \brief SG elem array.
+ */
+struct dma_sg_elem_array {
+	uint32_t count;			/**< number of elements in elems */
+	struct dma_sg_elem *elems;	/**< elements */
 };
 
 /* DMA physical SG params */
 struct dma_sg_config {
-	uint32_t src_width;	/* in bytes */
-	uint32_t dest_width;	/* in bytes */
+	uint32_t src_width;			/* in bytes */
+	uint32_t dest_width;			/* in bytes */
 	uint32_t burst_elems;
 	uint32_t direction;
 	uint32_t src_dev;
 	uint32_t dest_dev;
-	uint32_t cyclic;		/* circular buffer */
-	struct list_item elem_list;	/* list of dma_sg elems */
+	uint32_t cyclic;			/* circular buffer */
+	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
 };
 
 struct dma_chan_status {
@@ -267,18 +277,44 @@ static inline int dma_probe(struct dma *dma)
 	return dma->ops->probe(dma);
 }
 
-/* get the size of SG buffer */
-static inline uint32_t dma_sg_get_size(struct dma_sg_config *sg)
+static inline void dma_sg_init(struct dma_sg_elem_array *ea)
 {
-	struct dma_sg_elem *sg_elem;
-	struct list_item *plist;
+	ea->count = 0;
+	ea->elems = NULL;
+}
+
+int dma_sg_alloc(struct dma_sg_elem_array *ea, uint32_t direction,
+		 uint32_t buffer_count, uint32_t buffer_bytes,
+		 uintptr_t dma_buffer_addr, uintptr_t external_addr);
+
+void dma_sg_free(struct dma_sg_elem_array *ea);
+
+static inline void dma_sg_cache_wb_inv(struct dma_sg_elem_array *ea)
+{
+	dcache_writeback_invalidate_region(ea->elems,
+					   ea->count *
+					   sizeof(struct dma_sg_elem));
+}
+
+static inline void dma_sg_cache_inv(struct dma_sg_elem_array *ea)
+{
+	dcache_invalidate_region(ea->elems,
+				 ea->count * sizeof(struct dma_sg_elem));
+}
+
+/**
+ * \brief Get the total size of SG buffer
+ *
+ * \param ea Array of SG elements.
+ * \return Size of the buffer.
+ */
+static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
+{
+	int i;
 	uint32_t size = 0;
 
-	list_for_item(plist, &sg->elem_list) {
-
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
-		size += sg_elem->size;
-	}
+	for (i = 0 ; i < ea->count; i++)
+		size += ea->elems[i].size;
 
 	return size;
 }

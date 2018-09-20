@@ -122,7 +122,7 @@ int dma_trace_init_early(struct sof *sof)
 	trace_data = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			     sizeof(*trace_data));
 
-	list_init(&trace_data->config.elem_list);
+	dma_sg_init(&trace_data->config.elem_array);
 	spinlock_init(&trace_data->lock);
 	sof->dmat = trace_data;
 
@@ -147,25 +147,17 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 	return 0;
 }
 
-int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
+#if defined(CONFIG_HOST_PTABLE)
+int dma_trace_host_buffer(struct dma_trace_data *d,
+			  struct dma_sg_elem_array *elem_array,
 			  uint32_t host_size)
 {
-	struct dma_sg_elem *e;
-
-	/* allocate new host DMA elem and add it to our list */
-	e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
-	if (e == NULL)
-		return -ENOMEM;
-
-	/* copy fields - excluding possibly non-initialized elem->src */
-	e->dest = elem->dest;
-	e->size = elem->size;
-
 	d->host_size = host_size;
+	d->config.elem_array = *elem_array;
 
-	list_item_append(&e->list, &d->config.elem_list);
 	return 0;
 }
+#endif
 
 static int dma_trace_buffer_init(struct dma_trace_data *d)
 {
@@ -198,10 +190,8 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 static int dma_trace_start(struct dma_trace_data *d)
 {
 	struct dma_sg_config config;
-	struct dma_sg_elem *e;
 	uint32_t elem_size, elem_addr, elem_num;
 	int err = 0;
-	int i;
 
 	err = dma_copy_set_stream_tag(&d->dc, d->stream_tag);
 	if (err < 0)
@@ -220,31 +210,16 @@ static int dma_trace_start(struct dma_trace_data *d)
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
-	list_init(&config.elem_list);
 
-	/* generate local elem list for local trace buffer */
-	e = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*e) * elem_num);
-	if (!e)
-		return -ENOMEM;
-
-	for (i = 0; i < elem_num; i++) {
-		e[i].dest = 0;
-		e[i].src = elem_addr;
-		e[i].size = elem_size; /* the minimum size of DMA copy */
-
-		list_item_append(&e[i].list, &config.elem_list);
-		elem_addr += elem_size;
-	}
+	err = dma_sg_alloc(&config.elem_array, config.direction,
+			   elem_num, elem_size, elem_addr, 0);
 
 	err = dma_set_config(d->dc.dmac, d->dc.chan, &config);
-	if (err < 0) {
-		rfree(e);
+	if (err < 0)
 		return err;
-	}
 
 	err = dma_start(d->dc.dmac, d->dc.chan);
 
-	rfree(e);
 	return err;
 }
 

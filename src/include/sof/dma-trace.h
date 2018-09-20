@@ -70,8 +70,9 @@ struct dma_trace_data {
 
 int dma_trace_init_early(struct sof *sof);
 int dma_trace_init_complete(struct dma_trace_data *d);
-int dma_trace_host_buffer(struct dma_trace_data *d, struct dma_sg_elem *elem,
-	uint32_t host_size);
+int dma_trace_host_buffer(struct dma_trace_data *d,
+			  struct dma_sg_elem_array *elem_array,
+			  uint32_t host_size);
 int dma_trace_enable(struct dma_trace_data *d);
 void dma_trace_flush(void *t);
 

@@ -52,10 +52,12 @@
 #define tracev_host(__e)	tracev_event(TRACE_CLASS_HOST, __e)
 #define trace_host_error(__e)	trace_error(TRACE_CLASS_HOST, __e)
 
+/**
+ * \brief Host buffer info.
+ */
 struct hc_buf {
-	/* host buffer info */
-	struct list_item elem_list;
-	struct list_item *current;
+	struct dma_sg_elem_array elem_array; /**< array of SG elements */
+	uint32_t current;		/**< index of current element */
 	uint32_t current_end;
 };
 
@@ -107,15 +109,11 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run);
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
-	struct dma_sg_elem *elem;
-
-	if (list_item_is_last(hc->current, &hc->elem_list))
-		elem = list_first_item(&hc->elem_list, struct dma_sg_elem, list);
-	else
-		elem = list_first_item(hc->current, struct dma_sg_elem, list);
-
-	hc->current = &elem->list;
-	return elem;
+	if (!hc->elem_array.elems || !hc->elem_array.count)
+		return NULL;
+	if (++hc->current == hc->elem_array.count)
+		hc->current = 0;
+	return hc->elem_array.elems + hc->current;
 }
 
 #endif
@@ -142,8 +140,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	uint32_t period_bytes = hd->period_bytes;
 #endif
 
-	local_elem = list_first_item(&hd->config.elem_list,
-				     struct dma_sg_elem, list);
+	local_elem = hd->config.elem_array.elems;
 
 	tracev_host("irq");
 
@@ -240,48 +237,25 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 static int create_local_elems(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *e;
-	struct list_item *elist;
-	struct list_item *tlist;
-	int i;
+	struct dma_sg_elem_array *elem_array;
+	int err;
 
-	/* TODO: simplify elem storage by using an array */
-	for (i = 0; i < hd->period_count; i++) {
-		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
-		if (e == NULL)
-			goto unwind;
-
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-			e->dest = (uintptr_t)(hd->dma_buffer->addr) +
-				i * hd->period_bytes;
-		else
-			e->src = (uintptr_t)(hd->dma_buffer->addr) +
-				i * hd->period_bytes;
-
-		e->size = hd->period_bytes;
 #if defined CONFIG_DMA_GW
-		list_item_append(&e->list, &hd->config.elem_list);
+	elem_array = &hd->config.elem_array;
 #else
-		list_item_append(&e->list, &hd->local.elem_list);
+	elem_array = &hd->local.elem_array;
 #endif
-	}
+	err = dma_sg_alloc(elem_array,
+			   dev->params.direction,
+			   hd->period_count,
+			   hd->period_bytes, (uintptr_t)(hd->dma_buffer->addr),
+			   0);
 
+	if (err < 0) {
+		trace_host_error("el0");
+		return err;
+	}
 	return 0;
-
-unwind:
-#if defined CONFIG_DMA_GW
-	list_for_item_safe(elist, tlist, &hd->config.elem_list) {
-#else
-	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
-#endif
-		e = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&e->list);
-		rfree(e);
-	}
-
-	trace_host_error("el0");
-	return -ENOMEM;
 }
 
 /**
@@ -353,7 +327,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
 	uint32_t dir, caps, dma_dev;
 #if !defined CONFIG_DMA_GW
-	struct dma_sg_elem *elem = NULL;
+	int err;
 #endif
 
 	trace_host("new");
@@ -389,15 +363,15 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	}
 
 	/* init buffer elems */
-	list_init(&hd->config.elem_list);
-#if !defined CONFIG_DMA_GW
-	list_init(&hd->host.elem_list);
-	list_init(&hd->local.elem_list);
+#if defined CONFIG_DMA_GW
+	dma_sg_init(&hd->config.elem_array);
+#else
+	dma_sg_init(&hd->host.elem_array);
+	dma_sg_init(&hd->local.elem_array);
 
-	elem = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*elem));
-	if (!elem)
+	err = dma_sg_alloc(&hd->config.elem_array, dir, 1, 0, 0, 0);
+	if (err < 0)
 		goto error;
-	list_item_prepend(&elem->list, &hd->config.elem_list);
 #endif
 
 	/* init posn data. TODO: other fields */
@@ -408,9 +382,6 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	return dev;
 
 error:
-#if !defined CONFIG_DMA_GW
-	rfree(elem);
-#endif
 	rfree(hd);
 	rfree(dev);
 	return NULL;
@@ -419,18 +390,14 @@ error:
 static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *elem;
 
 	trace_host("fre");
-
-	elem = list_first_item(&hd->config.elem_list,
-		struct dma_sg_elem, list);
 
 #if !defined CONFIG_DMA_GW
 	dma_channel_put(hd->dma, hd->chan);
 #endif
 
-	rfree(elem);
+	dma_sg_free(&hd->config.elem_array);
 	rfree(hd);
 	rfree(dev);
 }
@@ -444,20 +411,17 @@ static int host_elements_reset(struct comp_dev *dev)
 	struct dma_sg_elem *local_elem;
 
 	/* setup elem to point to first source elem */
-	source_elem = list_first_item(&hd->source->elem_list,
-		struct dma_sg_elem, list);
-	hd->source->current = &source_elem->list;
+	source_elem = hd->source->elem_array.elems;
+	hd->source->current = 0;
 	hd->source->current_end = source_elem->src + source_elem->size;
 
 	/* setup elem to point to first sink elem */
-	sink_elem = list_first_item(&hd->sink->elem_list,
-		struct dma_sg_elem, list);
-	hd->sink->current = &sink_elem->list;
+	sink_elem = hd->sink->elem_array.elems;
+	hd->sink->current = 0;
 	hd->sink->current_end = sink_elem->dest + sink_elem->size;
 
 	/* local element */
-	local_elem = list_first_item(&hd->config.elem_list,
-		struct dma_sg_elem, list);
+	local_elem = hd->config.elem_array.elems;
 	local_elem->dest = sink_elem->dest;
 	local_elem->size =  hd->period_bytes;
 	local_elem->src = source_elem->src;
@@ -623,20 +587,14 @@ static int host_position(struct comp_dev *dev,
 }
 
 #if !defined CONFIG_DMA_GW
-static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
-		uint32_t host_size)
+static int host_buffer(struct comp_dev *dev,
+		       struct dma_sg_elem_array *elem_array,
+		       uint32_t host_size)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *e;
 
-	/* allocate new host DMA elem and add it to our list */
-	e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
-	if (e == NULL)
-		return -ENOMEM;
+	hd->host.elem_array = *elem_array;
 
-	*e = *elem;
-
-	list_item_append(&e->list, &hd->host.elem_list);
 	return 0;
 }
 #endif
@@ -644,42 +602,23 @@ static int host_buffer(struct comp_dev *dev, struct dma_sg_elem *elem,
 static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *e;
-	struct list_item *elist;
-	struct list_item *tlist;
 
 	trace_host("res");
 
 #if !defined CONFIG_DMA_GW
 	/* free all host DMA elements */
-	list_for_item_safe(elist, tlist, &hd->host.elem_list) {
-		e = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&e->list);
-		rfree(e);
-	}
+	dma_sg_free(&hd->host.elem_array);
 
 	/* free all local DMA elements */
-	list_for_item_safe(elist, tlist, &hd->local.elem_list) {
-		e = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(&e->list);
-		rfree(e);
-	}
+	dma_sg_free(&hd->local.elem_array);
 #endif
 
 #if defined CONFIG_DMA_GW
 	dma_stop(hd->dma, hd->chan);
 	dma_channel_put(hd->dma, hd->chan);
 
-	/*
-	 * here free dma_sg_elem those allocated in create_local_elems(),
-	 * we should only keep header since hda-dma allocates the full
-	 * list again
-	 */
-	list_for_item_safe(elist, tlist, &hd->config.elem_list) {
-		e = container_of(elist, struct dma_sg_elem, list);
-		list_item_del(elist);
-		rfree(e);
-	}
+	/* free array for hda-dma only, do not free single one for dw-dma */
+	dma_sg_free(&hd->config.elem_array);
 #endif
 
 	host_pointer_reset(dev);
@@ -710,8 +649,7 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run)
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
-	local_elem = list_first_item(&hd->config.elem_list,
-		struct dma_sg_elem, list);
+	local_elem = hd->config.elem_array.elems;
 
 	/* enough free or avail to copy ? */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -758,8 +696,6 @@ out:
 static void host_cache(struct comp_dev *dev, int cmd)
 {
 	struct host_data *hd;
-	struct list_item *item;
-	struct dma_sg_elem *e;
 
 	switch (cmd) {
 	case COMP_CACHE_WRITEBACK_INV:
@@ -767,20 +703,10 @@ static void host_cache(struct comp_dev *dev, int cmd)
 
 		hd = comp_get_drvdata(dev);
 
-		list_for_item(item, &hd->config.elem_list) {
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_writeback_invalidate_region(e, sizeof(*e));
-			dcache_writeback_invalidate_region(item,
-							   sizeof(*item));
-		}
+		dma_sg_cache_wb_inv(&hd->config.elem_array);
 
 #if !defined CONFIG_DMA_GW
-		list_for_item(item, &hd->local.elem_list) {
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_writeback_invalidate_region(e, sizeof(*e));
-			dcache_writeback_invalidate_region(item,
-							   sizeof(*item));
-		}
+		dma_sg_cache_wb_inv(&hd->local.elem_array);
 #endif
 
 		dcache_writeback_invalidate_region(hd->dma, sizeof(*hd->dma));
@@ -802,18 +728,10 @@ static void host_cache(struct comp_dev *dev, int cmd)
 					 hd->dma->private_size);
 
 #if !defined CONFIG_DMA_GW
-		list_for_item(item, &hd->local.elem_list) {
-			dcache_invalidate_region(item, sizeof(*item));
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_invalidate_region(e, sizeof(*e));
-		}
+		dma_sg_cache_inv(&hd->local.elem_array);
 #endif
 
-		list_for_item(item, &hd->config.elem_list) {
-			dcache_invalidate_region(item, sizeof(*item));
-			e = container_of(item, struct dma_sg_elem, list);
-			dcache_invalidate_region(e, sizeof(*e));
-		}
+		dma_sg_cache_inv(&hd->config.elem_array);
 		break;
 	}
 }

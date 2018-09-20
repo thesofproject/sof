@@ -30,6 +30,7 @@
 
 #include <sof/dma.h>
 #include <sof/atomic.h>
+#include <sof/alloc.h>
 #include <platform/dma.h>
 
 /*
@@ -86,4 +87,42 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	}
 
 	return NULL;
+}
+
+int dma_sg_alloc(struct dma_sg_elem_array *elem_array, uint32_t direction,
+		 uint32_t buffer_count, uint32_t buffer_bytes,
+		 uintptr_t dma_buffer_addr, uintptr_t external_addr)
+{
+	int i;
+
+	elem_array->elems = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+				    sizeof(struct dma_sg_elem) * buffer_count);
+	if (!elem_array->elems)
+		return -ENOMEM;
+
+	for (i = 0; i < buffer_count; i++) {
+		elem_array->elems[i].size = buffer_bytes;
+		// TODO: may count offsets once
+		switch (direction) {
+		case DMA_DIR_MEM_TO_DEV:
+		case DMA_DIR_LMEM_TO_HMEM:
+			elem_array->elems[i].src = dma_buffer_addr;
+			elem_array->elems[i].dest = external_addr;
+			break;
+		default:
+			elem_array->elems[i].src = external_addr;
+			elem_array->elems[i].dest = dma_buffer_addr;
+			break;
+		}
+
+		dma_buffer_addr += buffer_bytes;
+	}
+	elem_array->count = buffer_count;
+	return 0;
+}
+
+void dma_sg_free(struct dma_sg_elem_array *elem_array)
+{
+	rfree(elem_array->elems);
+	dma_sg_init(elem_array);
 }

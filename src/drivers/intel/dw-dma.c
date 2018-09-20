@@ -582,12 +582,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct list_item *plist;
 	struct dma_sg_elem *sg_elem;
 	struct dw_lli2 *lli_desc;
 	struct dw_lli2 *lli_desc_head;
 	struct dw_lli2 *lli_desc_tail;
-	uint32_t desc_count = 0;
 	uint32_t flags;
 	uint32_t msize = 3;/* default msize */
 	int i, ret = 0;
@@ -601,20 +599,16 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	p->chan[channel].cfg_lo = DW_CFG_LOW_DEF;
 	p->chan[channel].cfg_hi = DW_CFG_HIGH_DEF;
 
-	/* get number of SG elems */
-	list_for_item(plist, &config->elem_list)
-		desc_count++;
-
-	if (desc_count == 0) {
+	if (!config->elem_array.count) {
 		trace_dma_error("eD0");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* do we need to realloc descriptors */
-	if (desc_count != p->chan[channel].desc_count) {
+	if (config->elem_array.count != p->chan[channel].desc_count) {
 
-		p->chan[channel].desc_count = desc_count;
+		p->chan[channel].desc_count = config->elem_array.count;
 
 		/* allocate descriptors for channel */
 		if (p->chan[channel].lli)
@@ -647,9 +641,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	}
 
 	/* fill in lli for the elem in the list */
-	list_for_item(plist, &config->elem_list) {
+	for (i = 0; i < config->elem_array.count; i++) {
 
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
+		sg_elem = config->elem_array.elems + i;
 
 		/* write CTL_LOn for each lli */
 		switch (config->src_width) {
