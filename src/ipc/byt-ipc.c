@@ -111,10 +111,13 @@ static void irq_handler(void *arg)
 
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
-		if (_ipc->host_pending)
+		if (_ipc->host_pending) {
 			trace_ipc_error("Pen");
-		_ipc->host_msg = shim_read(SHIM_IPCXL);
-		_ipc->host_pending = 1;
+		} else {
+			_ipc->host_msg = shim_read(SHIM_IPCXL);
+			_ipc->host_pending = 1;
+			ipc_schedule_process(_ipc);
+		}
 	}
 }
 
@@ -156,10 +159,7 @@ done:
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1) {
-			trace_ipc("pme");
-			wait_for_interrupt(0);
-		}
+		while (1) {};
 	}
 
 	tracev_ipc("CmD");
@@ -218,6 +218,10 @@ int platform_ipc_init(struct ipc *ipc)
 
 	for (i = 0; i < MSG_QUEUE_SIZE; i++)
 		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
+
+	/* schedule */
+	schedule_task_init(&_ipc->ipc_task, ipc_process_task, _ipc);
+	schedule_task_config(&_ipc->ipc_task, 0, 0);
 
 	/* allocate page table buffer */
 	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,

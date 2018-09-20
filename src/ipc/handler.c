@@ -1145,9 +1145,18 @@ out:
 /* process current message */
 int ipc_process_msg_queue(void)
 {
-	if (_ipc->host_pending)
-		ipc_platform_do_cmd(_ipc);
 	if (_ipc->dsp_pending)
 		ipc_platform_send_msg(_ipc);
 	return 0;
+}
+
+void ipc_process_task(void *data)
+{
+	if (_ipc->host_pending)
+		ipc_platform_do_cmd(_ipc);
+}
+
+void ipc_schedule_process(struct ipc *ipc)
+{
+	schedule_task(&ipc->ipc_task, 0, 100);
 }
