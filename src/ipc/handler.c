@@ -85,6 +85,9 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 
 	/* read rest of component data */
 	mailbox_hostbox_read(hdr + 1, sizeof(*hdr), hdr->size - sizeof(*hdr));
+
+	dcache_writeback_region(hdr, hdr->size);
+
 	return hdr;
 }
 

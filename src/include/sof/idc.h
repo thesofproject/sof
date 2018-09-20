@@ -83,23 +83,11 @@
 #define IDC_MSG_POWER_DOWN_EXT	IDC_EXTENSION(0x0)
 
 /** \brief IDC trigger pipeline message. */
-#define IDC_MSG_PPL_COMP_SHIFT		4
-#define IDC_MSG_PPL_COMP(x)		((x) << IDC_MSG_PPL_COMP_SHIFT)
-#define IDC_MSG_PPL_CMD_MASK		0xf
-#define IDC_MSG_PPL_CMD(x)		((x) & IDC_MSG_PPL_CMD_MASK)
 #define IDC_MSG_PPL_TRIGGER		IDC_TYPE(0x3)
-#define IDC_MSG_PPL_TRIGGER_EXT(x, y)	IDC_EXTENSION( \
-						IDC_MSG_PPL_COMP(x) | \
-						IDC_MSG_PPL_CMD(y))
+#define IDC_MSG_PPL_TRIGGER_EXT(x)	IDC_EXTENSION(x)
 
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
-
-/** \brief Decodes component id from IDC trigger pipeline message. */
-#define iPTComp(x)	((x) >> IDC_MSG_PPL_COMP_SHIFT)
-
-/** \brief Decodes command from IDC trigger pipeline message. */
-#define iPTCommand(x)	((x) & IDC_MSG_PPL_CMD_MASK)
 
 /** \brief IDC message. */
 struct idc_msg {
