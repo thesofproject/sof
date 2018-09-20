@@ -670,21 +670,14 @@ static int host_reset(struct comp_dev *dev)
 	dma_stop(hd->dma, hd->chan);
 	dma_channel_put(hd->dma, hd->chan);
 
-	e = list_first_item(&hd->config.elem_list,
-			    struct dma_sg_elem, list);
 	/*
 	 * here free dma_sg_elem those allocated in create_local_elems(),
-	 * we should keep header and the first local elem after reset (but only
-	 * for dw-dma since hda-dma allocates the full list again)
+	 * we should only keep header since hda-dma allocates the full
+	 * list again
 	 */
-	list_for_item_safe(elist, tlist, &e->list) {
+	list_for_item_safe(elist, tlist, &hd->config.elem_list) {
 		e = container_of(elist, struct dma_sg_elem, list);
-#if !defined CONFIG_DMA_GW
-		/* should not free the header, finished */
-		if (elist == &hd->config.elem_list)
-			break;
-#endif
-		list_item_del(&e->list);
+		list_item_del(elist);
 		rfree(e);
 	}
 #endif
