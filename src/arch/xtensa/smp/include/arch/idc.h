@@ -60,6 +60,11 @@ static inline struct idc **idc_get(void)
 	return &ctx->idc;
 }
 
+/**
+ * \brief Enables IDC interrupts.
+ * \param[in] target_core Target core id.
+ * \param[in] source_core Source core id.
+ */
 static inline void idc_enable_interrupts(int target_core, int source_core)
 {
 	idc_write(IPC_IDCCTL, target_core,
@@ -160,13 +165,22 @@ static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	return ret;
 }
 
-static inline int idc_pipeline_trigger(uint32_t comp_id, uint32_t cmd)
+/**
+ * \brief Executes IDC pipeline trigger message.
+ * \param[in] cmd Trigger command.
+ * \return Error code.
+ */
+static inline int idc_pipeline_trigger(uint32_t cmd)
 {
+	struct sof_ipc_stream *data = _ipc->comp_data;
 	struct ipc_comp_dev *pcm_dev;
 	int ret;
 
+	/* invalidate stream data */
+	dcache_invalidate_region(data, sizeof(*data));
+
 	/* check whether component exists */
-	pcm_dev = ipc_get_comp(_ipc, comp_id);
+	pcm_dev = ipc_get_comp(_ipc, data->comp_id);
 	if (!pcm_dev)
 		return -ENODEV;
 
@@ -203,8 +217,7 @@ static inline void idc_cmd(struct idc_msg *msg)
 		cpu_power_down_core();
 		break;
 	case iTS(IDC_MSG_PPL_TRIGGER):
-		idc_pipeline_trigger(iPTComp(msg->extension),
-				     iPTCommand(msg->extension));
+		idc_pipeline_trigger(msg->extension);
 		break;
 	default:
 		trace_idc_error("eTc");

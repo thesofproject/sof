@@ -735,10 +735,8 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
 				    int cmd)
 {
-	struct idc_msg pipeline_trigger = {
-		IDC_MSG_PPL_TRIGGER,
-		IDC_MSG_PPL_TRIGGER_EXT(host->comp.id, cmd),
-		p->ipc_pipe.core };
+	struct idc_msg pipeline_trigger = { IDC_MSG_PPL_TRIGGER,
+		IDC_MSG_PPL_TRIGGER_EXT(cmd), p->ipc_pipe.core };
 	int ret;
 
 	/* check if requested core is enabled */
