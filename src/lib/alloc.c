@@ -344,6 +344,10 @@ found:
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
 	hdr = cache_to_uncache(&block_map->block[block]);
 
+	/* report a error if prt is not aligned to block */
+	if (block_map->base + block_map->block_size * block != (uint32_t)ptr)
+		panic(SOF_IPC_PANIC_MEM);
+
 	/* free block header and continuous blocks */
 	for (i = block; i < block + hdr->size; i++) {
 		hdr = cache_to_uncache(&block_map->block[i]);
