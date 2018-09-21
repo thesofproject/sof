@@ -107,3 +107,18 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 		return -EINVAL;
 	}
 }
+
+void timer_unregister(struct timer *timer)
+{
+	interrupt_unregister(timer->irq);
+}
+
+void timer_enable(struct timer *timer)
+{
+	interrupt_enable(timer->irq);
+}
+
+void timer_disable(struct timer *timer)
+{
+	interrupt_disable(timer->irq);
+}
