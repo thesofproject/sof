@@ -205,6 +205,40 @@ static inline int idc_pipeline_trigger(uint32_t cmd)
 }
 
 /**
+ * \brief Executes IDC component command message.
+ * \param[in] cmd Component command.
+ * \return Error code.
+ */
+static inline int idc_component_command(uint32_t cmd)
+{
+	struct sof_ipc_ctrl_data *data = _ipc->comp_data;
+	struct ipc_comp_dev *comp_dev;
+	int ret;
+
+	/* invalidate control data */
+	dcache_invalidate_region(data, sizeof(*data));
+	dcache_invalidate_region(data + 1,
+				 data->rhdr.hdr.size - sizeof(*data));
+
+	/* check whether component exists */
+	comp_dev = ipc_get_comp(_ipc, data->comp_id);
+	if (!comp_dev)
+		return -ENODEV;
+
+	/* check whether we are executing from the right core */
+	if (arch_cpu_get_id() != comp_dev->cd->pipeline->ipc_pipe.core)
+		return -EINVAL;
+
+	/* execute component command */
+	ret = comp_cmd(comp_dev->cd, cmd, data);
+
+	/* writeback control data */
+	dcache_writeback_region(data, data->rhdr.hdr.size);
+
+	return ret;
+}
+
+/**
  * \brief Executes IDC message based on type.
  * \param[in,out] msg Pointer to IDC message.
  */
@@ -218,6 +252,9 @@ static inline void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_PPL_TRIGGER):
 		idc_pipeline_trigger(msg->extension);
+		break;
+	case iTS(IDC_MSG_COMP_CMD):
+		idc_component_command(msg->extension);
 		break;
 	default:
 		trace_idc_error("eTc");

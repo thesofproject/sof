@@ -86,6 +86,10 @@
 #define IDC_MSG_PPL_TRIGGER		IDC_TYPE(0x3)
 #define IDC_MSG_PPL_TRIGGER_EXT(x)	IDC_EXTENSION(x)
 
+/** \brief IDC component command message. */
+#define IDC_MSG_COMP_CMD	IDC_TYPE(0x4)
+#define IDC_MSG_COMP_CMD_EXT(x)	IDC_EXTENSION(x)
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 
