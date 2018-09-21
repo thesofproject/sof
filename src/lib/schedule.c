@@ -409,7 +409,8 @@ int scheduler_init(struct sof *sof)
 	work_init(&((*sch)->work), sch_work, *sch, WORK_ASYNC);
 
 	/* configure scheduler interrupt */
-	interrupt_register(PLATFORM_SCHEDULE_IRQ, scheduler_run, NULL);
+	interrupt_register(PLATFORM_SCHEDULE_IRQ, IRQ_AUTO_UNMASK,
+			   scheduler_run, NULL);
 	interrupt_enable(PLATFORM_SCHEDULE_IRQ);
 
 	/* allocate arch tasks */

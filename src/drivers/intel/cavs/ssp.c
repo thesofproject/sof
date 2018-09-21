@@ -881,7 +881,8 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
 	/* register our IRQ handler */
-	interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
+	interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
+			   dai);
 	platform_interrupt_unmask(ssp_irq(dai), 1);
 	interrupt_enable(ssp_irq(dai));
 

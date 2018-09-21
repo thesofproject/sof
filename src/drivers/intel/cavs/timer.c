@@ -118,7 +118,7 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 static int platform_timer_register(struct timer *timer,
 				   void (*handler)(void *arg), void *arg)
 {
-	return interrupt_register(timer->irq, handler, arg);
+	return interrupt_register(timer->irq, IRQ_AUTO_UNMASK, handler, arg);
 }
 
 int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)

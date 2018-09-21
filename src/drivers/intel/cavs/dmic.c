@@ -1460,7 +1460,8 @@ static int dmic_probe(struct dai *dai)
 	dmic->state = COMP_STATE_READY;
 
 	/* register our IRQ handler */
-	interrupt_register(dmic_irq(dai), dmic_irq_handler, dai);
+	interrupt_register(dmic_irq(dai), IRQ_AUTO_UNMASK, dmic_irq_handler,
+			   dai);
 
 	platform_interrupt_unmask(dmic_irq(dai), 1);
 	interrupt_enable(dmic_irq(dai));

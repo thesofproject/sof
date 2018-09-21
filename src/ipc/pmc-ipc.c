@@ -173,7 +173,8 @@ int platform_ipc_pmc_init(void)
 		sizeof(struct intel_ipc_pmc_data));
 
 	/* configure interrupt */
-	interrupt_register(IRQ_NUM_EXT_PMC, irq_handler, NULL);
+	interrupt_register(IRQ_NUM_EXT_PMC, IRQ_AUTO_UNMASK, irq_handler,
+			   NULL);
 	interrupt_enable(IRQ_NUM_EXT_PMC);
 
 	/* Unmask Busy and Done interrupts */

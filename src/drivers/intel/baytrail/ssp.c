@@ -617,12 +617,14 @@ static int ssp_probe(struct dai *dai)
 	 */
 	if (ssp_irq(dai) >= IRQ_CHT_SSP_OFFSET)
 		interrupt_register(ssp_irq(dai) - IRQ_CHT_SSP_OFFSET,
-			ssp_irq_handler, dai);
+				   IRQ_AUTO_UNMASK, ssp_irq_handler, dai);
 	else
-		interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
+		interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK,
+				   ssp_irq_handler, dai);
 #else
 	/* register our IRQ handler */
-	interrupt_register(ssp_irq(dai), ssp_irq_handler, dai);
+	interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
+			   dai);
 #endif
 	platform_interrupt_unmask(ssp_irq(dai), 1);
 	interrupt_enable(ssp_irq(dai));
