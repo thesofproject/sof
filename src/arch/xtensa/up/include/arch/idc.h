@@ -49,11 +49,6 @@ static inline int arch_idc_send_msg(struct idc_msg *msg,
 				    uint32_t mode) { return 0; }
 
 /**
- * \brief Checks for pending IDC messages.
- */
-static inline void arch_idc_process_msg_queue(void) { }
-
-/**
  * \brief Initializes IDC data and registers for interrupt.
  */
 static inline void arch_idc_init(void) { }

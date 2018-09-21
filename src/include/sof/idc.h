@@ -37,6 +37,7 @@
 #ifndef __INCLUDE_IDC_H__
 #define __INCLUDE_IDC_H__
 
+#include <sof/schedule.h>
 #include <sof/trace.h>
 
 /** \brief IDC trace function. */
@@ -56,6 +57,9 @@
 
 /** \brief IDC send timeout in cycles. */
 #define IDC_TIMEOUT	800000
+
+/** \brief IDC task deadline. */
+#define IDC_DEADLINE	100
 
 /** \brief ROM wake version parsed by ROM during core wake up. */
 #define IDC_ROM_WAKE_VERSION	0x2
@@ -101,8 +105,8 @@ struct idc {
 	spinlock_t lock;		/**< lock mechanism */
 	uint32_t busy_bit_mask;		/**< busy interrupt mask */
 	uint32_t done_bit_mask;		/**< done interrupt mask */
-	uint32_t msg_pending;		/**< is message pending */
 	struct idc_msg received_msg;	/**< received message */
+	struct task idc_task;		/**< IDC processing task */
 };
 
 #endif
