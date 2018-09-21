@@ -27,6 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
  */
 
 #ifndef __INCLUDE_TRACE__
@@ -40,6 +41,7 @@
 #include <sof/timer.h>
 #include <platform/platform.h>
 #include <platform/timer.h>
+#include <uapi/logging.h>
 
 /* bootloader trace values */
 #define TRACE_BOOT_LDR_ENTRY		0x100
@@ -105,79 +107,155 @@
 #define TRACE_CLASS_IDC		(24 << 24)
 #define TRACE_CLASS_CPU		(25 << 24)
 
-/* trace core id */
-#define TRACE_CORE_ID(x)	((uint64_t)(x) << 32)
-
 /* move to config.h */
 #define TRACE	1
 #define TRACEV	0
 #define TRACEE	1
 #define TRACEM	0 /* send all trace messages to mbox and local trace buffer */
 
-void _trace_event(uint32_t event);
-void _trace_event_mbox(uint32_t event);
-void _trace_event_atomic(uint32_t event);
-void _trace_event_mbox_atomic(uint32_t event);
+void _trace_event0(uint32_t log_entry);
+void _trace_event_mbox0(uint32_t log_entry);
+void _trace_event_atomic0(uint32_t log_entry);
+void _trace_event_mbox_atomic0(uint32_t log_entry);
+
+void _trace_event1(uint32_t log_entry, uint32_t param);
+void _trace_event_mbox1(uint32_t log_entry, uint32_t param);
+void _trace_event_atomic1(uint32_t log_entry, uint32_t param);
+void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param);
+
+void _trace_event2(uint32_t log_entry, uint32_t param1, uint32_t param2);
+void _trace_event_mbox2(uint32_t log_entry, uint32_t param1, uint32_t param2);
+void _trace_event_atomic2(uint32_t log_entry, uint32_t param1, uint32_t param2);
+void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t param1,
+	uint32_t param2);
+
+void _trace_event3(uint32_t log_entry, uint32_t param1, uint32_t param2,
+	uint32_t param3);
+void _trace_event_mbox3(uint32_t log_entry, uint32_t param1, uint32_t param2,
+	uint32_t param3);
+void _trace_event_atomic3(uint32_t log_entry, uint32_t param1, uint32_t param2,
+	uint32_t param3);
+void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t param1,
+	uint32_t param2, uint32_t param3);
+
 void trace_flush(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
 
 #if TRACE
 
+typedef void(*log_func)();
+
+/*
+ * Log entry declaration
+ *
+ * Each log_entry defines anonymous type, with all compile-time data
+ * associated with it, to save on transmission. It is then placed by the linker
+ * in .static_log_entries section of ELF.
+ */
+#define _DECLARE_LOG_ENTRY(lvl, format, comp_id, params)\
+	__attribute__((section(".static_log." #lvl)))	\
+	static const struct {				\
+		uint32_t level;				\
+		uint32_t component_id;			\
+		uint32_t params_num;			\
+		uint32_t line_idx;			\
+		uint32_t file_name_len;			\
+		const char file_name[sizeof(__FILE__)];	\
+		uint32_t text_len;			\
+		const char text[sizeof(format)];	\
+	} log_entry = {					\
+		lvl,					\
+		comp_id,				\
+		params,					\
+		__LINE__,				\
+		sizeof(__FILE__),			\
+		__FILE__,				\
+		sizeof(format),				\
+		format					\
+	}
+
+#define BASE_LOG(function_name, entry, ...)			\
+{								\
+	log_func log_function = NULL;				\
+	if (PP_NARG(__VA_ARGS__) == 0)				\
+		log_function = (log_func)&function_name##0;	\
+	if (PP_NARG(__VA_ARGS__) == 1)				\
+		log_function = (log_func)&function_name##1;	\
+	if (PP_NARG(__VA_ARGS__) == 2)				\
+		log_function = (log_func)&function_name##2;	\
+	if (PP_NARG(__VA_ARGS__) == 3)				\
+		log_function = (log_func)&function_name##3;	\
+	log_function(entry, ##__VA_ARGS__);			\
+}
+
+#define __log_message(func_name, lvl, comp_id, format, ...)		\
+{									\
+	_DECLARE_LOG_ENTRY(lvl, format, comp_id, PP_NARG(__VA_ARGS__));	\
+	BASE_LOG(func_name, (uint32_t)&log_entry, ##__VA_ARGS__)	\
+}
+
+#define _log_message(mbox, atomic, level, comp_id, format, ...)	\
+	__log_message(_trace_event##mbox##atomic, level,	\
+		comp_id, format, ##__VA_ARGS__)
+
 /* send all trace to mbox and local trace buffer */
 #if TRACEM
-#define trace_event(__c, __e) \
-	_trace_event_mbox(__c | (__e[0] << 16) | (__e[1] << 8) | __e[2])
-#define trace_event_atomic(__c, __e) \
-	_trace_event_mbox_atomic(__c | (__e[0] << 16) | (__e[1] << 8) | __e[2])
+#define trace_event(__c, __e, ...) \
+	_log_message(_mbox,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#define trace_event_atomic(__c, __e, ...) \
+	_log_message(_mbox, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
 /* send trace events only to the local trace buffer */
 #else
-#define trace_event(__c, __e) \
-	_trace_event(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
-#define trace_event_atomic(__c, __e) \
-	_trace_event_atomic(__c | (__e[0] << 16) | (__e[1] <<8) | __e[2])
+#define trace_event(__c, __e, ...) \
+	_log_message(,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#define trace_event_atomic(__c, __e, ...) \
+	_log_message(, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
 #endif
-#define trace_value(x)	_trace_event(x)
-#define trace_value_atomic(x)	_trace_event_atomic(x)
+#define trace_value(x)		trace_event(0, "value %d", x)
+#define trace_value_atomic(x)	trace_event_atomic(0, "value %d", x)
 
 #define trace_point(x) platform_trace_point(x)
 
 /* verbose tracing */
 #if TRACEV
-#define tracev_event(__c, __e) trace_event(__c, __e)
-#define tracev_value(x)	_trace_event(x)
-#define tracev_event_atomic(__c, __e) trace_event_atomic(__c, __e)
-#define tracev_value_atomic(x)	_trace_event_atomic(x)
+#define tracev_event(__c, __e, ...) trace_event(__c, __e, ##__VA_ARGS__)
+#define tracev_value(x)	trace_value(x)
+#define tracev_event_atomic(__c, __e, ...) \
+	trace_event_atomic(__c, __e, ##__VA_ARGS__)
+#define tracev_value_atomic(x)	trace_value_atomic(x)
 #else
-#define tracev_event(__c, __e)
+#define tracev_event(__c, __e, ...)
 #define tracev_value(x)
-#define tracev_event_atomic(__c, __e)
+#define tracev_event_atomic(__c, __e, ...)
 #define tracev_value_atomic(x)
 #endif
 
 /* error tracing */
 #if TRACEE
-#define trace_error(__c, __e) \
-	_trace_event_mbox_atomic(__c | (__e[0] << 16) | (__e[1] << 8) | __e[2])
-#define trace_error_atomic(__c, __e) \
-	_trace_event_mbox_atomic(__c | (__e[0] << 16) | (__e[1] << 8) | __e[2])
+#define trace_error(__c, __e, ...) \
+	_log_message(,, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
+#define trace_error_atomic(__c, __e, ...) \
+	_log_message(, _atomic, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
 /* write back error value to mbox */
-#define trace_error_value(x) _trace_event_mbox_atomic(x)
-#define trace_error_value_atomic(x) _trace_event_mbox_atomic(x)
+#define trace_error_value(x) \
+	trace_error(0, "value %d", x)
+#define trace_error_value_atomic(x) \
+	trace_error_atomic(0, "value %d", x)
 #else
-#define trace_error(__c, __e)
-#define trace_error_atomic(__c, __e)
+#define trace_error(__c, __e, ...)
+#define trace_error_atomic(__c, __e, ...)
 #define trace_error_value(x)
 #define trace_error_value_atomic(x)
 #endif
 
 #else
 
-#define trace_event(x, e)
-#define trace_error(c, e)
+#define trace_event(x, e, ...)
+#define trace_error(c, e, ...)
 #define trace_value(x)
 #define trace_point(x)
-#define tracev_event(__c, __e)
+#define tracev_event(__c, __e, ...)
 #define tracev_value(x)
 
 #endif
