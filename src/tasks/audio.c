@@ -103,9 +103,6 @@ int do_task_slave_core(struct sof *sof)
 		/* sleep until next IDC */
 		wait_for_interrupt(0);
 
-		/* now process any IDC messages from master core */
-		idc_process_msg_queue();
-
 		/* schedule any idle tasks */
 		schedule();
 	}

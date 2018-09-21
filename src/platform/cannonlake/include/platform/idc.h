@@ -38,11 +38,6 @@ static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	return arch_idc_send_msg(msg, mode);
 }
 
-static inline void idc_process_msg_queue(void)
-{
-	arch_idc_process_msg_queue();
-}
-
 static inline void idc_init(void)
 {
 	arch_idc_init();

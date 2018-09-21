@@ -104,7 +104,7 @@ static void idc_irq_handler(void *arg)
 			idc->received_msg.extension =
 					idctefc & IPC_IDCTEFC_MSG_MASK;
 
-			idc->msg_pending = 1;
+			schedule_task(&idc->idc_task, 0, IDC_DEADLINE);
 
 			break;
 		}
@@ -227,10 +227,11 @@ static inline void idc_cmd(struct idc_msg *msg)
 
 /**
  * \brief Handles received IDC message.
- * \param[in,out] idc Pointer to IDC data.
+ * \param[in,out] data Pointer to IDC data.
  */
-static inline void idc_do_cmd(struct idc *idc)
+static inline void idc_do_cmd(void *data)
 {
+	struct idc *idc = data;
 	int core = arch_cpu_get_id();
 	int initiator = idc->received_msg.core;
 
@@ -238,25 +239,12 @@ static inline void idc_do_cmd(struct idc *idc)
 
 	idc_cmd(&idc->received_msg);
 
-	idc->msg_pending = 0;
-
 	/* clear BUSY bit */
 	idc_write(IPC_IDCTFC(initiator), core,
 		  idc_read(IPC_IDCTFC(initiator), core) | IPC_IDCTFC_BUSY);
 
 	/* enable BUSY interrupt */
 	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask | idc->done_bit_mask);
-}
-
-/**
- * \brief Checks for pending IDC messages.
- */
-static inline void arch_idc_process_msg_queue(void)
-{
-	struct idc *idc = *idc_get();
-
-	if (idc->msg_pending)
-		idc_do_cmd(idc);
 }
 
 /**
@@ -319,6 +307,10 @@ static inline void arch_idc_init(void)
 	(*idc)->busy_bit_mask = idc_get_busy_bit_mask(core);
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
 
+	/* process task */
+	schedule_task_init(&(*idc)->idc_task, idc_do_cmd, *idc);
+	schedule_task_config(&(*idc)->idc_task, TASK_PRI_IDC, core);
+
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IDC_INTERRUPT(core), IRQ_AUTO_UNMASK,
 			   idc_irq_handler, *idc);
@@ -334,6 +326,7 @@ static inline void arch_idc_init(void)
  */
 static inline void idc_free(void)
 {
+	struct idc *idc = *idc_get();
 	int core = arch_cpu_get_id();
 	int i = 0;
 	uint32_t idctfc;
@@ -350,6 +343,8 @@ static inline void idc_free(void)
 		if (idctfc & IPC_IDCTFC_BUSY)
 			idc_write(IPC_IDCTFC(i), core, idctfc);
 	}
+
+	schedule_task_free(&idc->idc_task);
 }
 
 #endif
