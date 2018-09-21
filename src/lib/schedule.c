@@ -252,6 +252,7 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
 	uint64_t current;
+	uint64_t ticks_per_ms;
 
 	tracev_pipe("ad!");
 
@@ -274,15 +275,17 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	/* get the current time */
 	current = platform_timer_get(platform_timer);
 
+	ticks_per_ms = clock_ms_to_ticks(sch->clock, 1);
+
 	/* calculate start time - TODO: include MIPS */
 	if (start == 0)
 		task->start = current;
 	else
-		task->start = task->start + clock_us_to_ticks(sch->clock, start) -
+		task->start = task->start + ticks_per_ms * start / 1000 -
 			PLATFORM_SCHEDULE_COST;
 
 	/* calculate deadline - TODO: include MIPS */
-	task->deadline = task->start + clock_us_to_ticks(sch->clock, deadline);
+	task->deadline = task->start + ticks_per_ms * deadline / 1000;
 
 	/* add task to list */
 	list_item_append(&task->list, &sch->list);

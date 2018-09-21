@@ -50,7 +50,6 @@
 
 struct clk_data {
 	uint32_t freq;
-	uint32_t ticks_per_usec;
 	uint32_t ticks_per_msec;
 
 	/* for synchronizing freq set for each clock */
@@ -63,7 +62,6 @@ struct clk_pdata {
 
 struct freq_table {
 	uint32_t freq;
-	uint32_t ticks_per_usec;
 	uint32_t ticks_per_msec;
 	uint32_t enc;
 };
@@ -74,14 +72,14 @@ static struct clk_pdata *clk_pdata;
 
 #if defined(CONFIG_APOLLOLAKE)
 static const struct freq_table cpu_freq[] = {
-	{100000000, 100, 100000, 0x3},
-	{200000000, 200, 200000, 0x1},
-	{400000000, 400, 400000, 0x0}, /* default */
+	{100000000, 100000, 0x3},
+	{200000000, 200000, 0x1},
+	{400000000, 400000, 0x0}, /* default */
 };
 #elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 static const struct freq_table cpu_freq[] = {
-	{120000000, 120, 120000, 0x0},
-	{400000000, 400, 400000, 0x4},
+	{120000000, 120000, 0x0},
+	{400000000, 400000, 0x4},
 };
 #endif
 
@@ -91,18 +89,18 @@ static const struct freq_table cpu_freq[] = {
 
 #if defined(CONFIG_APOLLOLAKE)
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19, 19200, },	/* default */
-	{24576000, 24, 24576, },
+	{19200000, 19200, },	/* default */
+	{24576000, 24576, },
 };
 #elif defined(CONFIG_CANNONLAKE)
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19, 19200, },
-	{24000000, 24, 24000, },	/* default */
+	{19200000, 19200, },
+	{24000000, 24000, },	/* default */
 };
 #elif defined(CONFIG_ICELAKE)
 static const struct freq_table ssp_freq[] = {
-	{19200000, 19, 19200, },
-	{38400000, 38, 38400, },	/* default */
+	{19200000, 19200, },
+	{38400000, 38400, },	/* default */
 };
 #endif
 
@@ -129,28 +127,6 @@ static inline uint32_t get_freq(const struct freq_table *table, int size,
 	return size - 1;
 }
 
-void clock_enable(int clock)
-{
-	switch (clock) {
-	case CLK_CPU:
-		break;
-	case CLK_SSP:
-	default:
-		break;
-	}
-}
-
-void clock_disable(int clock)
-{
-	switch (clock) {
-	case CLK_CPU:
-		break;
-	case CLK_SSP:
-	default:
-		break;
-	}
-}
-
 uint32_t clock_set_freq(int clock, uint32_t hz)
 {
 	struct clock_notify_data notify_data;
@@ -158,7 +134,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	uint32_t flags;
 
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
-	notify_data.old_ticks_per_usec = clk_pdata->clk[clock].ticks_per_usec;
+	notify_data.old_ticks_per_msec = clk_pdata->clk[clock].ticks_per_msec;
 
 	/* atomic context for chaning clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
@@ -194,44 +170,9 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	return clk_pdata->clk[clock].freq;
 }
 
-uint32_t clock_get_freq(int clock)
-{
-	return clk_pdata->clk[clock].freq;
-}
-
-uint64_t clock_us_to_ticks(int clock, uint64_t us)
-{
-	return clk_pdata->clk[clock].ticks_per_usec * us;
-}
-
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 {
 	return clk_pdata->clk[clock].ticks_per_msec * ms;
-}
-
-uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current)
-{
-	uint64_t _current;
-
-	// TODO: change timer APIs to clk APIs ??
-	switch (clock) {
-	case CLK_CPU:
-		_current = arch_timer_get_system(NULL);
-		break;
-	case CLK_SSP:
-		_current = platform_timer_get(platform_timer);
-		break;
-	default:
-		return 0;
-	}
-
-	*current = _current;
-	if (_current >= previous)
-		return (_current - previous) /
-			clk_pdata->clk[clock].ticks_per_usec;
-	else
-		return (_current + (ULONG_LONG_MAX - previous)) /
-			clk_pdata->clk[clock].ticks_per_usec;
 }
 
 void init_platform_clocks(void)
@@ -243,13 +184,9 @@ void init_platform_clocks(void)
 
 	/* set defaults */
 	clk_pdata->clk[CLK_CPU].freq = cpu_freq[CPU_DEFAULT_IDX].freq;
-	clk_pdata->clk[CLK_CPU].ticks_per_usec =
-			cpu_freq[CPU_DEFAULT_IDX].ticks_per_usec;
 	clk_pdata->clk[CLK_CPU].ticks_per_msec =
 			cpu_freq[CPU_DEFAULT_IDX].ticks_per_msec;
 	clk_pdata->clk[CLK_SSP].freq = ssp_freq[SSP_DEFAULT_IDX].freq;
-	clk_pdata->clk[CLK_SSP].ticks_per_usec =
-			ssp_freq[SSP_DEFAULT_IDX].ticks_per_usec;
 	clk_pdata->clk[CLK_SSP].ticks_per_msec =
 			ssp_freq[SSP_DEFAULT_IDX].ticks_per_msec;
 
