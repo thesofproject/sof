@@ -115,5 +115,5 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Low Latency Playback PCM_I
 
 
 # PCM capabilities supported by FW
-PCM_CAPABILITIES(Low Latency Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 48000, 48000, 2, 2, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(Low Latency Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 48000, 48000, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
