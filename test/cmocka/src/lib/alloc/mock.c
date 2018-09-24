@@ -48,8 +48,15 @@ int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	return 0;
 }
 
-void _trace_event_mbox_atomic(uint32_t e)
+void _trace_event0(uint32_t log_entry)
 {
+	(void)log_entry;
+}
+
+void _trace_event1(uint32_t log_entry, uint32_t param)
+{
+	(void)log_entry;
+	(void)param;
 }
 
 void trace_flush(void)

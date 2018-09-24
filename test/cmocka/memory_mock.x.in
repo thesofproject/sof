@@ -1,0 +1,10 @@
+SECTIONS
+{
+
+    .static_log_entries (COPY) : ALIGN(1024)
+    {
+      *(*.static_log*)
+    }
+
+}
+INSERT AFTER .text;
