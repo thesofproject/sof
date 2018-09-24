@@ -192,7 +192,7 @@ typedef void(*log_func)();
 #define __log_message(func_name, lvl, comp_id, format, ...)		\
 {									\
 	_DECLARE_LOG_ENTRY(lvl, format, comp_id, PP_NARG(__VA_ARGS__));	\
-	BASE_LOG(func_name, (uint32_t)&log_entry, ##__VA_ARGS__)	\
+	BASE_LOG(func_name, &log_entry, ##__VA_ARGS__)	\
 }
 
 #define _log_message(mbox, atomic, level, comp_id, format, ...)	\
