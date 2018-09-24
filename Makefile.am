@@ -1,4 +1,4 @@
-SUBDIRS = logger rmbox topology
+SUBDIRS = logger rmbox topology eqctl
 TESTDIR = topology/test
 
 tests:
