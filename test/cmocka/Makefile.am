@@ -39,6 +39,16 @@ endif
 
 LDADD = -lcmocka
 
+# generate linker script
+LINK_SCRIPT = memory_mock.x
+
+BUILT_SOURCES = $(LINK_SCRIPT)
+CLEANFILES = $(LINK_SCRIPT)
+$(LINK_SCRIPT): Makefile $(LINK_SCRIPT).in
+	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) - >$@
+
+AM_LDFLAGS += -T $(LINK_SCRIPT)
+
 # mixer tests
 check_PROGRAMS += mixer
 mixer_SOURCES = src/audio/mixer/mixer_test.c \
