@@ -40,6 +40,15 @@
 
 struct sof;
 
+/*! \def PLATFORM_DEFAULT_CLOCK
+ *  \brief clock source for audio pipeline
+ *
+ *  There are two types of clock: cpu clock which is a internal clock in
+ *  xtensa core, and ssp clock which is provided by external HW IP.
+ *  The choice depends on HW features on different platform
+ */
+#define PLATFORM_DEFAULT_CLOCK CLK_SSP
+
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERRUPT	IRQ_NUM_EXT_IA
 
@@ -67,7 +76,7 @@ struct sof;
 #define PLATFORM_MAX_STREAMS	5
 
 /* clock source used by scheduler for deadline calculations */
-#define PLATFORM_SCHED_CLOCK	CLK_SSP
+#define PLATFORM_SCHED_CLOCK	PLATFORM_DEFAULT_CLOCK
 
 /* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
@@ -79,7 +88,7 @@ struct sof;
 #define PLATFORM_WORKQ_WINDOW	2000
 
 /* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	CLK_SSP
+#define PLATFORM_WORKQ_CLOCK	PLATFORM_DEFAULT_CLOCK
 
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
