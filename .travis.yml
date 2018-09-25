@@ -10,3 +10,4 @@ before_install:
 
 script:
   - docker run -it -v `pwd`:/home/sof/work/sof.git -v `pwd`/../soft.git:/home/sof/work/soft.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -l
+  - docker run -it -v `pwd`:/home/sof/work/sof.git -v `pwd`/../soft.git:/home/sof/work/soft.git --user `id -u` xiulipan/sof ./scripts/host-build-all.sh -l
