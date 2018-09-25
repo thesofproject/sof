@@ -68,6 +68,7 @@ struct module {
 	int num_bss;
 	int fw_size;
 	int bss_index;
+	int logs_index;
 
 	/* sizes do not include any gaps */
 	int bss_size;
@@ -90,7 +91,9 @@ struct module {
 struct image {
 
 	const char *out_file;
+	const char *ldc_out_file;
 	FILE *out_fd;
+	FILE *ldc_out_fd;
 	void *pos;
 
 	const struct adsp *adsp;
@@ -144,6 +147,8 @@ struct adsp {
 	int (*write_firmware_meu)(struct image *image);
 	struct fw_image_manifest *man;
 };
+
+int write_logs_dictionary(struct image *image);
 
 void module_sha256_create(struct image *image);
 void module_sha256_update(struct image *image, uint8_t *data, size_t bytes);
