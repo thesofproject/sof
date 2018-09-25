@@ -345,6 +345,60 @@ static int simple_write_firmware(struct image *image)
 	return 0;
 }
 
+int write_logs_dictionary(struct image *image)
+{
+	struct snd_sof_logs_header header;
+	int i, ret = 0;
+	void *buffer = NULL;
+
+	memcpy(header.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE);
+	header.data_offset = sizeof(struct snd_sof_logs_header);
+
+	for (i = 0; i < image->num_modules; i++) {
+		struct module *module = &image->module[i];
+
+		if (module->logs_index > 0) {
+			Elf32_Shdr *section = &module->section[module->logs_index];
+
+			header.base_address = section->sh_addr;
+			header.data_length = section->sh_size;
+
+			fwrite(&header, sizeof(struct snd_sof_logs_header), 1,
+				image->ldc_out_fd);
+
+			buffer = calloc(1, section->sh_size);
+			if (!buffer)
+				return -ENOMEM;
+
+			fseek(module->fd, section->sh_offset, SEEK_SET);
+			size_t count = fread(buffer, 1, section->sh_size,
+				module->fd);
+			if (count != section->sh_size) {
+				fprintf(stderr, "error: can't read section %d\n",
+					-errno);
+				ret = -errno;
+				goto out;
+			}
+			count = fwrite(buffer, 1, section->sh_size,
+				image->ldc_out_fd);
+			if (count != section->sh_size) {
+				fprintf(stderr, "error: can't write section %d\n",
+					-errno);
+				ret = -errno;
+				goto out;
+			}
+
+			fprintf(stdout, "logs dictionary: size %d\n\n",
+				header.data_length + header.data_offset);
+		}
+	}
+out:
+	if (buffer)
+		free(buffer);
+
+	return ret;
+}
+
 const struct adsp machine_byt = {
 	.name = "byt",
 	.iram_base = BYT_IRAM_BASE,

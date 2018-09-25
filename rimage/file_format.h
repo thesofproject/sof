@@ -67,6 +67,9 @@
 #define SND_SOF_FW_ABI		1
 #define SND_SOF_FW_SIG		"Reef"
 
+#define SND_SOF_LOGS_SIG_SIZE	4
+#define SND_SOF_LOGS_SIG	"Logs"
+
 /*
  * Firmware module is made up of 1 . N blocks of different types. The
  * Block header is used to determine where and how block is to be copied in the
@@ -114,4 +117,13 @@ struct snd_sof_fw_header {
 	uint32_t abi;		/* version of header format */
 } __attribute__((packed));
 
+/*
+ * Logs dictionary file header.
+ */
+struct snd_sof_logs_header {
+	unsigned char sig[SND_SOF_LOGS_SIG_SIZE]; /* "Logs" */
+	uint32_t base_address;	/* address of log entries section */
+	uint32_t data_length;	/* amount of bytes following this header */
+	uint32_t data_offset;	/* offset to first entry in this file */
+};
 #endif
