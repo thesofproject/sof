@@ -128,7 +128,7 @@ LABEL(_Level,FromVector):
 	// Change stack pointer
 	xtos_stack_addr_percore	a13, _INTERRUPT_LEVEL, xtos_stack_for_interrupt
 	s32i					a1, a13, 0
-	addi					a1, a13, XTOS_STACK_FOR_INTERRUPT_SIZE
+	addi					a1, a13, XTOS_INT_STACK_SIZE
 
 /* Load the handler from the table, initialize two args (interrupt
  * number and exception stack frame), then call the interrupt handler.

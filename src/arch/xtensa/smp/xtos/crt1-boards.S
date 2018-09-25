@@ -168,7 +168,6 @@ xtos_per_core:
 	writesr	excsave 5 a4
 #endif
 
-xtos_per_core_cacheattr:
 	get_prid	a5
 #if PLATFORM_MASTER_CORE_ID == 0
 	beqz		a5, xtos_per_core_obtain_xtos_structs
@@ -176,11 +175,20 @@ xtos_per_core_cacheattr:
 	movi		a4, PLATFORM_MASTER_CORE_ID
 	beq		a5, a4, xtos_per_core_obtain_xtos_structs
 #endif
+
+xtos_per_core_cacheattr:
 #if XCHAL_HAVE_CACHEATTR || XCHAL_HAVE_MIMIC_CACHEATTR || \
 		XCHAL_HAVE_XLT_CACHEATTR || \
 		(XCHAL_HAVE_PTP_MMU && XCHAL_HAVE_SPANNING_WAY)
 	movi	a2, _memmap_cacheattr_reset /* absolute symbol, not a ptr */
 	cacheattr_set /* set CACHEATTR from a2 (clobbers a3-a8) */
+#endif
+
+xtos_per_core_vecbase:
+#if XCHAL_HAVE_VECBASE
+	/* note: absolute symbol, not a ptr */
+	movi	a2, _memmap_vecbase_reset
+	wsr.vecbase	a2
 #endif
 
 // Obtain core structs from given address.
