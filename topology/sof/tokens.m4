@@ -82,3 +82,7 @@ SectionVendorTokens."sof_dmic_pdm_tokens" {
 SectionVendorTokens."sof_tone_tokens" {
 	SOF_TKN_TONE_SAMPLE_RATE		"800"
 }
+
+SectionVendorTokens."sof_effect_tokens" {
+	SOF_TKN_EFFECT_TYPE			"900"
+}
