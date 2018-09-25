@@ -118,7 +118,20 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 static int platform_timer_register(struct timer *timer,
 				   void (*handler)(void *arg), void *arg)
 {
-	return interrupt_register(timer->irq, IRQ_AUTO_UNMASK, handler, arg);
+	int err;
+
+	/* register timer interrupt */
+	err = interrupt_register(timer->irq, IRQ_MANUAL_UNMASK, handler, arg);
+	if (err < 0)
+		return err;
+
+	/* enable timer interrupt */
+	interrupt_enable(timer->irq);
+
+	/* disable timer interrupt on core level */
+	timer_disable(timer);
+
+	return err;
 }
 
 int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
@@ -132,5 +145,56 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 		return platform_timer_register(timer, handler, arg);
 	default:
 		return -EINVAL;
+	}
+}
+
+static void platform_timer_unregister(struct timer *timer)
+{
+	/* disable timer interrupt */
+	interrupt_disable(timer->irq);
+
+	/* unregister timer interrupt */
+	interrupt_unregister(timer->irq);
+}
+
+void timer_unregister(struct timer *timer)
+{
+	switch (timer->id) {
+	case TIMER0:
+	case TIMER1:
+	case TIMER2:
+		interrupt_unregister(timer->irq);
+		break;
+	case TIMER3:
+		platform_timer_unregister(timer);
+		break;
+	}
+}
+
+void timer_enable(struct timer *timer)
+{
+	switch (timer->id) {
+	case TIMER0:
+	case TIMER1:
+	case TIMER2:
+		interrupt_enable(timer->irq);
+		break;
+	case TIMER3:
+		platform_interrupt_unmask(timer->irq, 0);
+		break;
+	}
+}
+
+void timer_disable(struct timer *timer)
+{
+	switch (timer->id) {
+	case TIMER0:
+	case TIMER1:
+	case TIMER2:
+		interrupt_disable(timer->irq);
+		break;
+	case TIMER3:
+		platform_interrupt_mask(timer->irq, 0);
+		break;
 	}
 }
