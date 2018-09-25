@@ -74,10 +74,23 @@ struct comp_data {
  * EQ IIR algorithm code
  */
 
-static void eq_iir_passthrough(struct comp_dev *dev,
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink,
-			       uint32_t frames)
+static void eq_iir_s16_passthrough(struct comp_dev *dev,
+				   struct comp_buffer *source,
+				   struct comp_buffer *sink,
+				   uint32_t frames)
+{
+	int16_t *src = (int16_t *)source->r_ptr;
+	int16_t *dest = (int16_t *)sink->w_ptr;
+	int nch = dev->params.channels;
+	int n = frames * nch;
+
+	memcpy(dest, src, n * sizeof(int16_t));
+}
+
+static void eq_iir_s32_passthrough(struct comp_dev *dev,
+				   struct comp_buffer *source,
+				   struct comp_buffer *sink,
+				   uint32_t frames)
 {
 	int32_t *src = (int32_t *)source->r_ptr;
 	int32_t *dest = (int32_t *)sink->w_ptr;
@@ -85,6 +98,66 @@ static void eq_iir_passthrough(struct comp_dev *dev,
 	int n = frames * nch;
 
 	memcpy(dest, src, n * sizeof(int32_t));
+}
+
+static void eq_iir_s16_default(struct comp_dev *dev,
+			       struct comp_buffer *source,
+			       struct comp_buffer *sink,
+			       uint32_t frames)
+
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct iir_state_df2t *filter;
+	int16_t *src = (int16_t *)source->r_ptr;
+	int16_t *snk = (int16_t *)sink->w_ptr;
+	int16_t *x;
+	int16_t *y;
+	int32_t z;
+	int ch;
+	int i;
+	int nch = dev->params.channels;
+
+	for (ch = 0; ch < nch; ch++) {
+		filter = &cd->iir[ch];
+		x = src++;
+		y = snk++;
+		for (i = 0; i < frames; i++) {
+			z = iir_df2t(filter, *x << 16);
+			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
+			x += nch;
+			y += nch;
+		}
+	}
+}
+
+static void eq_iir_s24_default(struct comp_dev *dev,
+			       struct comp_buffer *source,
+			       struct comp_buffer *sink,
+			       uint32_t frames)
+
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct iir_state_df2t *filter;
+	int32_t *src = (int32_t *)source->r_ptr;
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	int32_t *x;
+	int32_t *y;
+	int32_t z;
+	int ch;
+	int i;
+	int nch = dev->params.channels;
+
+	for (ch = 0; ch < nch; ch++) {
+		filter = &cd->iir[ch];
+		x = src++;
+		y = snk++;
+		for (i = 0; i < frames; i++) {
+			z = iir_df2t(filter, *x << 8);
+			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
+			x += nch;
+			y += nch;
+		}
+	}
 }
 
 static void eq_iir_s32_default(struct comp_dev *dev,
@@ -283,7 +356,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
-	cd->eq_iir_func = eq_iir_passthrough;
+	cd->eq_iir_func = eq_iir_s32_passthrough;
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
 	cd->config = NULL;
@@ -332,10 +405,6 @@ static int eq_iir_params(struct comp_dev *dev)
 		trace_eq_error("eSz");
 		return err;
 	}
-
-	/* EQ supports only S32_LE PCM format */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
-		return -EINVAL;
 
 	return 0;
 }
@@ -522,6 +591,7 @@ static int eq_iir_copy(struct comp_dev *dev)
 static int eq_iir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	int ret;
 
 	trace_eq("pre");
@@ -531,14 +601,44 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		return ret;
 
 	/* Initialize EQ */
-	cd->eq_iir_func = eq_iir_passthrough;
 	if (cd->config) {
 		ret = eq_iir_setup(cd, dev->params.channels);
 		if (ret < 0) {
 			comp_set_state(dev, COMP_TRIGGER_RESET);
 			return ret;
 		}
-		cd->eq_iir_func = eq_iir_s32_default;
+		switch (config->frame_fmt) {
+		case SOF_IPC_FRAME_S16_LE:
+			trace_eq("i16");
+			cd->eq_iir_func = eq_iir_s16_default;
+			break;
+		case SOF_IPC_FRAME_S24_4LE:
+			trace_eq("i24");
+			cd->eq_iir_func = eq_iir_s24_default;
+			break;
+		case SOF_IPC_FRAME_S32_LE:
+			trace_eq("i32");
+			cd->eq_iir_func = eq_iir_s32_default;
+			break;
+		default:
+			trace_eq_error("eef");
+			return -EINVAL;
+		}
+	} else {
+		switch (config->frame_fmt) {
+		case SOF_IPC_FRAME_S16_LE:
+			trace_eq("p16");
+			cd->eq_iir_func = eq_iir_s16_passthrough;
+			break;
+		case SOF_IPC_FRAME_S24_4LE:
+		case SOF_IPC_FRAME_S32_LE:
+			trace_eq("p32");
+			cd->eq_iir_func = eq_iir_s32_passthrough;
+			break;
+		default:
+			trace_eq_error("epf");
+			return -EINVAL;
+		}
 	}
 
 	return 0;
