@@ -45,7 +45,8 @@ struct work_queue;
 #define WORK_SYNC	(1 << 0)	/* work is scheduled synchronously */
 
 struct work {
-	uint64_t (*cb)(void*, uint64_t udelay);	/* returns reschedule timeout in msecs */
+	/* returns reschedule timeout in usecs */
+	uint64_t (*cb)(void *data, uint64_t udelay);
 	void *cb_data;
 	struct list_item list;
 	uint64_t timeout;

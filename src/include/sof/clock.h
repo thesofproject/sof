@@ -39,22 +39,14 @@
 
 struct clock_notify_data {
 	uint32_t old_freq;
-	uint32_t old_ticks_per_usec;
+	uint32_t old_ticks_per_msec;
 	uint32_t freq;
-	uint32_t ticks_per_usec;
+	uint32_t ticks_per_msec;
 };
-
-void clock_enable(int clock);
-void clock_disable(int clock);
 
 uint32_t clock_set_freq(int clock, unsigned int hz);
 
-uint32_t clock_get_freq(int clock);
-
-uint64_t clock_us_to_ticks(int clock, uint64_t us);
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
-
-uint64_t clock_time_elapsed(int clock, uint64_t previous, uint64_t *current);
 
 void clock_register_notifier(int clock, struct notifier *notifier);
 
