@@ -53,12 +53,14 @@
 #include <platform/shim.h>
 #include <platform/dma.h>
 #include <platform/timer.h>
+#include <platform/idc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc.h>
 #include <sof/intel-ipc.h>
 #include <sof/dma-trace.h>
 #include <sof/cpu.h>
+#include <sof/idc.h>
 #include <config.h>
 
 #define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
@@ -767,6 +769,29 @@ static int ipc_glb_debug_message(uint32_t header)
  * Topology IPC Operations.
  */
 
+static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
+			struct sof_ipc_ctrl_data *data)
+{
+	struct idc_msg comp_cmd_msg;
+	int core = dev->pipeline->ipc_pipe.core;
+
+	/* pipeline scheduled on current core */
+	if (cpu_get_id() == core)
+		return comp_cmd(dev, cmd, data);
+
+	/* check if requested core is enabled */
+	if (!cpu_is_core_enabled(core))
+		return -EINVAL;
+
+	/* build IDC message */
+	comp_cmd_msg.header = IDC_MSG_COMP_CMD;
+	comp_cmd_msg.extension = IDC_MSG_COMP_CMD_EXT(cmd);
+	comp_cmd_msg.core = core;
+
+	/* send IDC component command message */
+	return idc_send_msg(&comp_cmd_msg, IDC_BLOCKING);
+}
+
 /* get/set component values or runtime data */
 static int ipc_comp_value(uint32_t header, uint32_t cmd)
 {
@@ -785,7 +810,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	}
 	
 	/* get component values */
-	ret = comp_cmd(comp_dev->cd, cmd, data);
+	ret = ipc_comp_cmd(comp_dev->cd, cmd, data);
 	if (ret < 0) {
 		trace_ipc_error("eVG");
 		return ret;
