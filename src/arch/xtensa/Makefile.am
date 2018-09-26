@@ -209,11 +209,11 @@ MODULE_INSERT=
 endif
 
 if USE_MEU
-RIMAGE=rimage -o sof-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS) -s $(MEU_OFFSET)
+RIMAGE=rimage -o sof-$(FW_NAME).ri -p sof-$(FW_NAME).ldc -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS) -s $(MEU_OFFSET)
 MEU=$(MEU_PATH)/meu -w ./ -s sof-$(FW_NAME) -key $(PRIVATE_KEY) -stp /usr/bin/openssl -f $(MEU_PATH)/generic_meu_conf.xml \
 	-mnver 0.0.0.0 -o sof-$(FW_NAME).ri
 else
-RIMAGE=rimage -o sof-$(FW_NAME).ri -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS)
+RIMAGE=rimage -o sof-$(FW_NAME).ri -p sof-$(FW_NAME).ldc -m $(FW_NAME) $(RIMAGE_BOOT_FLAGS) $(RIMAGE_FLAGS)
 MEU=
 endif
 
