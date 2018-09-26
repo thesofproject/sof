@@ -344,6 +344,10 @@ found:
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
 	hdr = cache_to_uncache(&block_map->block[block]);
 
+	/* report a error if prt is not aligned to block */
+	if (block_map->base + block_map->block_size * block != (uint32_t)ptr)
+		panic(SOF_IPC_PANIC_MEM);
+
 	/* free block header and continuous blocks */
 	for (i = block; i < block + hdr->size; i++) {
 		hdr = cache_to_uncache(&block_map->block[i]);
@@ -359,7 +363,9 @@ found:
 		block_map->first_free = block;
 
 #if DEBUG_BLOCK_FREE
-	alloc_memset_region(ptr, block_map->block_size * (i - 1), DEBUG_BLOCK_FREE_VALUE);
+	/* memset the whole block incase some not aligned ptr*/
+	alloc_memset_region((void *)(block_map->base + block_map->block_size * block),
+			    block_map->block_size * (i - block), DEBUG_BLOCK_FREE_VALUE);
 #endif
 }
 
