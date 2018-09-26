@@ -132,7 +132,7 @@ static void eq_fir_free_delaylines(struct fir_state_32x16 fir[])
 }
 
 static int eq_fir_setup(struct fir_state_32x16 fir[],
-	struct sof_eq_fir_config *config, int nch)
+			struct sof_eq_fir_config *config, int nch)
 {
 	int i;
 	int j;
@@ -228,7 +228,8 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 }
 
 static int eq_fir_switch_response(struct fir_state_32x16 fir[],
-	struct sof_eq_fir_config *config, uint32_t ch, int32_t response)
+				  struct sof_eq_fir_config *config,
+				  uint32_t ch, int32_t response)
 {
 	int ret;
 
@@ -249,21 +250,20 @@ static int eq_fir_switch_response(struct fir_state_32x16 fir[],
 static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_eq_fir *eq_fir;
-	struct sof_ipc_comp_eq_fir *ipc_eq_fir
-		= (struct sof_ipc_comp_eq_fir *)comp;
 	struct comp_data *cd;
+	struct sof_ipc_comp_eq_fir *ipc_fir
+		= (struct sof_ipc_comp_eq_fir *)comp;
+	size_t bs;
 	int i;
 
 	trace_eq("new");
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		COMP_SIZE(struct sof_ipc_comp_eq_fir));
+		      COMP_SIZE(struct sof_ipc_comp_eq_fir));
 	if (!dev)
 		return NULL;
 
-	eq_fir = (struct sof_ipc_comp_eq_fir *)&dev->comp;
-	memcpy(eq_fir, ipc_eq_fir, sizeof(struct sof_ipc_comp_eq_fir));
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_eq_fir));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -273,9 +273,29 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
+	bs = ipc_fir->size;
+	if (bs > SOF_EQ_FIR_MAX_SIZE) {
+		rfree(dev);
+		rfree(cd);
+		return NULL;
+	}
+
 	cd->eq_fir_func = eq_fir_passthrough;
 	cd->eq_fir_func_odd = eq_fir_passthrough;
 	cd->config = NULL;
+
+	/* Allocate and make a copy of the blob and setup FIR */
+	if (bs > 0) {
+		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
+		if (!cd->config) {
+			rfree(dev);
+			rfree(cd);
+			return NULL;
+		}
+
+		memcpy(cd->config, ipc_fir->data, bs);
+	}
+
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 
@@ -499,9 +519,9 @@ static int eq_fir_copy(struct comp_dev *dev)
 
 	/* get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-		sink_list);
+				 sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-		source_list);
+			       source_list);
 
 	/* make sure source component buffer has enough data available and that
 	 * the sink component buffer has enough free bytes for copy. Also

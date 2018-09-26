@@ -338,6 +338,9 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	struct sof_ipc_comp_eq_iir *ipc_iir =
+		(struct sof_ipc_comp_eq_iir *)comp;
+	size_t bs;
 	int i;
 
 	trace_eq("new");
@@ -356,10 +359,31 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
+
 	cd->eq_iir_func = eq_iir_s32_passthrough;
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
 	cd->config = NULL;
+
+	bs = ipc_iir->size;
+	if (bs > SOF_EQ_IIR_MAX_SIZE) {
+		rfree(dev);
+		rfree(cd);
+		return NULL;
+	}
+
+	/* Allocate and make a copy of the blob and setup IIR */
+	if (bs > 0) {
+		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
+		if (!cd->config) {
+			rfree(dev);
+			rfree(cd);
+			return NULL;
+		}
+
+		memcpy(cd->config, ipc_iir->data, bs);
+	}
+
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		iir_reset_df2t(&cd->iir[i]);
 
