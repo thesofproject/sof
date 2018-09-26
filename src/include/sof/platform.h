@@ -69,12 +69,6 @@ int platform_boot_complete(uint32_t boot_message);
  */
 int platform_init(struct sof *sof);
 
-/**
- * \brief Called by the panic handler.
- * \param[in] p Panic cause, one of SOF_IPC_PANIC_... codes (see ipc.h).
- */
-static inline void platform_panic(uint32_t p);
-
 /** @}*/
 
 #endif
