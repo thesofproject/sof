@@ -44,6 +44,7 @@
 #include <platform/timer.h>
 #include <platform/platform.h>
 #include <platform/clk.h>
+#include <sof/drivers/timer.h>
 
 #define trace_sa(__e)	trace_event_atomic(TRACE_CLASS_SA, __e)
 #define trace_sa_value(__e)	trace_value_atomic(__e)
