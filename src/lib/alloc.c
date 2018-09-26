@@ -71,6 +71,14 @@ extern struct mm memmap;
  */
 
 
+/* flush block map from cache to sram */
+static inline void flush_block_map(struct block_map *map)
+{
+	dcache_writeback_invalidate_region(map->block,
+					   sizeof(*map->block) * map->count);
+	dcache_writeback_invalidate_region(map, sizeof(*map));
+}
+
 /* total size of block */
 static inline uint32_t block_get_size(struct block_map *map)
 {
