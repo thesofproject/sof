@@ -45,12 +45,14 @@ static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames)
 {
 	void *ext_offset;
 	size_t count;
+	uint32_t oldps;
 
 	/* disable all IRQs */
-	interrupt_global_disable();
+	oldps = interrupt_global_disable();
 
 	/* dump DSP core registers */
-	ext_offset = arch_dump_regs();
+	ext_offset = arch_dump_regs(oldps);
+
 	count = MAILBOX_EXCEPTION_SIZE -
 		(size_t)(ext_offset - mailbox_get_exception_base());
 
