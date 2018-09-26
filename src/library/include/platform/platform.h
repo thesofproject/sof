@@ -62,6 +62,9 @@
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
+/* default platform clock */
+#define PLATFORM_DEFAULT_CLOCK	CLK_SSP
+
 static inline void platform_panic(uint32_t p) {}
 
 extern struct timer *platform_timer;
