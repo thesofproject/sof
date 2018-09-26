@@ -178,15 +178,19 @@ typedef void(*log_func)();
 #define BASE_LOG(function_name, entry, ...)			\
 {								\
 	log_func log_function = NULL;				\
-	if (PP_NARG(__VA_ARGS__) == 0)				\
+	if (PP_NARG(__VA_ARGS__) == 0) {			\
 		log_function = (log_func)&function_name##0;	\
-	if (PP_NARG(__VA_ARGS__) == 1)				\
+		log_function(entry, ##__VA_ARGS__);		\
+	} else if (PP_NARG(__VA_ARGS__) == 1) {			\
 		log_function = (log_func)&function_name##1;	\
-	if (PP_NARG(__VA_ARGS__) == 2)				\
+		log_function(entry, ##__VA_ARGS__);		\
+	} else if (PP_NARG(__VA_ARGS__) == 2) {			\
 		log_function = (log_func)&function_name##2;	\
-	if (PP_NARG(__VA_ARGS__) == 3)				\
+		log_function(entry, ##__VA_ARGS__);		\
+	} else if (PP_NARG(__VA_ARGS__) == 3) {			\
 		log_function = (log_func)&function_name##3;	\
-	log_function(entry, ##__VA_ARGS__);			\
+		log_function(entry, ##__VA_ARGS__);		\
+	}							\
 }
 
 #define __log_message(func_name, lvl, comp_id, format, ...)		\
