@@ -97,6 +97,9 @@ struct sof;
 /* platform WorkQ clock */
 #define PLATFORM_WORKQ_CLOCK	PLATFORM_DEFAULT_CLOCK
 
+/* work queue default timeout in microseconds */
+#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
+
 /* Host finish work schedule delay in microseconds */
 #define PLATFORM_HOST_FINISH_DELAY	100
 

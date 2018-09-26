@@ -39,6 +39,7 @@
 #include <sof/notifier.h>
 #include <sof/debug.h>
 #include <sof/cpu.h>
+#include <sof/atomic.h>
 #include <platform/clk.h>
 #include <platform/platform.h>
 #include <limits.h>
@@ -69,27 +70,56 @@ struct work_queue {
 	struct work_queue_timesource *ts;	/* time source for work queue */
 	uint32_t ticks_per_msec;	/* ticks per msec */
 	uint64_t run_ticks;	/* ticks when last run */
+	atomic_t num_work;	/* number of queued work items */
 };
 
-static inline int work_set_timer(struct work_queue *queue, uint64_t ticks)
+struct work_queue_shared_context {
+	atomic_t total_num_work;	/* number of total queued work items */
+	atomic_t timer_clients;		/* number of timer clients */
+
+	/* registered timers */
+	struct timer *timers[PLATFORM_CORE_COUNT];
+};
+
+static struct work_queue_shared_context *work_shared_ctx;
+
+/* calculate next timeout */
+static inline uint64_t queue_calc_next_timeout(struct work_queue *queue,
+					       uint64_t start)
 {
-	int ret;
-
-	ret = queue->ts->timer_set(&queue->ts->timer, ticks);
-	timer_enable(&queue->ts->timer);
-
-	return ret;
-}
-
-static inline void work_clear_timer(struct work_queue *queue)
-{
-	queue->ts->timer_clear(&queue->ts->timer);
-	timer_disable(&queue->ts->timer);
+	return queue->ticks_per_msec * queue->timeout / 1000 + start;
 }
 
 static inline uint64_t work_get_timer(struct work_queue *queue)
 {
 	return queue->ts->timer_get(&queue->ts->timer);
+}
+
+static inline void work_set_timer(struct work_queue *queue)
+{
+	uint64_t ticks;
+
+	if (atomic_add(&queue->num_work, 1) == 1)
+		work_shared_ctx->timers[cpu_get_id()] = &queue->ts->timer;
+
+	if (atomic_add(&work_shared_ctx->total_num_work, 1) == 1) {
+		ticks = queue_calc_next_timeout(queue, work_get_timer(queue));
+		queue->ts->timer_set(&queue->ts->timer, ticks);
+		atomic_add(&work_shared_ctx->timer_clients, 1);
+		timer_enable(&queue->ts->timer);
+	}
+}
+
+static inline void work_clear_timer(struct work_queue *queue)
+{
+	if (!atomic_sub(&work_shared_ctx->total_num_work, 1))
+		queue->ts->timer_clear(&queue->ts->timer);
+
+	if (!atomic_sub(&queue->num_work, 1)) {
+		timer_disable(&queue->ts->timer);
+		atomic_sub(&work_shared_ctx->timer_clients, 1);
+		work_shared_ctx->timers[cpu_get_id()] = NULL;
+	}
 }
 
 /* is there any work pending in the current time window ? */
@@ -167,6 +197,7 @@ static void run_work(struct work_queue *queue, uint32_t *flags)
 	struct work *work;
 	uint64_t reschedule_usecs;
 	uint64_t udelay;
+	int cpu = cpu_get_id();
 
 	/* check each work item in queue for pending */
 	list_for_item_safe(wlist, tlist, &queue->work) {
@@ -185,9 +216,15 @@ static void run_work(struct work_queue *queue, uint32_t *flags)
 			spin_lock_irq(&queue->lock, *flags);
 
 			/* do we need reschedule this work ? */
-			if (reschedule_usecs == 0)
+			if (reschedule_usecs == 0) {
 				list_item_del(&work->list);
-			else {
+				atomic_sub(&work_shared_ctx->total_num_work,
+					   1);
+
+				/* don't enable irq, if no more work to do */
+				if (!atomic_sub(&queue->num_work, 1))
+					work_shared_ctx->timers[cpu] = NULL;
+			} else {
 				/* get next work timeout */
 				work_next_timeout(queue, work, reschedule_usecs);
 			}
@@ -208,44 +245,9 @@ static inline uint64_t calc_delta_ticks(uint64_t current, uint64_t work)
 		return work - current;
 }
 
-/* calculate next timeout */
-static void queue_get_next_timeout(struct work_queue *queue)
-{
-	struct list_item *wlist;
-	struct work *work;
-	uint64_t delta = ULONG_LONG_MAX;
-	uint64_t current;
-	uint64_t d;
-	uint64_t ticks;
-
-	/* only recalc if work list not empty */
-	if (list_is_empty(&queue->work)) {
-		queue->timeout = 0;
-		return;
-	}
-
-	ticks = current = work_get_timer(queue);
-
-	/* find time for next work */
-	list_for_item(wlist, &queue->work) {
-
-		work = container_of(wlist, struct work, list);
-
-		d = calc_delta_ticks(current, work->timeout);
-
-		/* is work next ? */
-		if (d < delta) {
-			ticks = work->timeout;
-			delta = d;
-		}
-	}
-
-	queue->timeout = ticks;
-}
-
 /* re calculate timers for queue after CPU frequency change */
 static void queue_recalc_timers(struct work_queue *queue,
-	struct clock_notify_data *clk_data)
+				struct clock_notify_data *clk_data)
 {
 	struct list_item *wlist;
 	struct work *work;
@@ -273,12 +275,39 @@ static void queue_recalc_timers(struct work_queue *queue,
 	}
 }
 
+/* enable all registered timers */
+static void queue_enable_registered_timers(void)
+{
+	int i;
+
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		if (work_shared_ctx->timers[i]) {
+			atomic_add(&work_shared_ctx->timer_clients, 1);
+			timer_enable(work_shared_ctx->timers[i]);
+		}
+	}
+}
+
+/* reschedule queue */
 static void queue_reschedule(struct work_queue *queue)
 {
-	queue_get_next_timeout(queue);
+	uint64_t ticks;
 
-	if (queue->timeout)
-		work_set_timer(queue, queue->timeout);
+	/* clear only if all timer clients are done */
+	if (!atomic_sub(&work_shared_ctx->timer_clients, 1)) {
+		/* clear timer */
+		queue->ts->timer_clear(&queue->ts->timer);
+
+		/* re-arm only if there is work to do */
+		if (atomic_read(&work_shared_ctx->total_num_work)) {
+			/* re-arm timer */
+			ticks = queue_calc_next_timeout(queue,
+							queue->run_ticks);
+			queue->ts->timer_set(&queue->ts->timer, ticks);
+
+			queue_enable_registered_timers();
+		}
+	}
 }
 
 /* run the work queue */
@@ -287,12 +316,11 @@ static void queue_run(void *data)
 	struct work_queue *queue = (struct work_queue *)data;
 	uint32_t flags;
 
-	/* clear interrupt */
-	work_clear_timer(queue);
+	queue->run_ticks = work_get_timer(queue);
+
+	timer_disable(&queue->ts->timer);
 
 	spin_lock_irq(&queue->lock, flags);
-
-	queue->run_ticks = work_get_timer(queue);
 
 	/* work can take variable time to complete so we re-check the
 	  queue after running all the pending work to make sure no new work
@@ -325,7 +353,6 @@ static void work_notify(int message, void *data, void *event_data)
 		queue->window_size =
 			queue->ticks_per_msec * PLATFORM_WORKQ_WINDOW / 1000;
 		queue_recalc_timers(queue, clk_data);
-		queue_reschedule(queue);
 	} else if (message == CLOCK_NOTIFY_PRE) {
 		/* CPU frequency update pending */
 	}
@@ -357,8 +384,7 @@ void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 	/* insert work into list */
 	list_item_prepend(&w->list, &queue->work);
 
-	/* re-calc timer and re-arm */
-	queue_reschedule(queue);
+	work_set_timer(queue);
 
 out:
 	spin_unlock_irq(&queue->lock, flags);
@@ -389,10 +415,11 @@ static void reschedule(struct work_queue *queue, struct work *w, uint64_t time)
 	/* not found insert work into list */
 	list_item_prepend(&w->list, &queue->work);
 
+	work_set_timer(queue);
+
 found:
 	/* re-calc timer and re-arm */
 	w->timeout = time;
-	queue_reschedule(queue);
 
 	spin_unlock_irq(&queue->lock, flags);
 }
@@ -427,15 +454,25 @@ void work_reschedule_default_at(struct work *w, uint64_t time)
 
 void work_cancel(struct work_queue *queue, struct work *w)
 {
+	struct work *work;
+	struct list_item *wlist;
 	uint32_t flags;
 
 	spin_lock_irq(&queue->lock, flags);
 
+	/* check to see if we are scheduled */
+	list_for_item(wlist, &queue->work) {
+		work = container_of(wlist, struct work, list);
+
+		/* found it */
+		if (work == w) {
+			work_clear_timer(queue);
+			break;
+		}
+	}
+
 	/* remove work from list */
 	list_item_del(&w->list);
-
-	/* re-calc timer and re-arm */
-	queue_reschedule(queue);
 
 	spin_unlock_irq(&queue->lock, flags);
 }
@@ -454,10 +491,14 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 
 	list_init(&queue->work);
 	spinlock_init(&queue->lock);
+	atomic_init(&queue->num_work, 0);
 	queue->ts = ts;
 	queue->ticks_per_msec = clock_ms_to_ticks(queue->ts->clk, 1);
 	queue->window_size = queue->ticks_per_msec *
 		PLATFORM_WORKQ_WINDOW / 1000;
+
+	/* TODO: configurable through IPC */
+	queue->timeout = PLATFORM_WORKQ_DEFAULT_TIMEOUT;
 
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID) {
 		/* notification of clk changes */
@@ -476,7 +517,16 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 void init_system_workq(struct work_queue_timesource *ts)
 {
 	struct work_queue **queue = arch_work_queue_get();
+
 	*queue = work_new_queue(ts);
+
+	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID) {
+		work_shared_ctx = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED,
+					  SOF_MEM_CAPS_RAM,
+					  sizeof(*work_shared_ctx));
+		atomic_init(&work_shared_ctx->total_num_work, 0);
+		atomic_init(&work_shared_ctx->timer_clients, 0);
+	}
 }
 
 void free_system_workq(void)
