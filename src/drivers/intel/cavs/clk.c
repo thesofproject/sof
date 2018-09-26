@@ -32,6 +32,7 @@
  */
 
 #include <sof/drivers/clk.h>
+#include <sof/drivers/timer.h>
 #include <sof/clock.h>
 #include <sof/io.h>
 #include <sof/sof.h>
