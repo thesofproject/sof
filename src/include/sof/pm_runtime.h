@@ -39,6 +39,7 @@
 
 #include <sof/lock.h>
 #include <sof/trace.h>
+#include <sof/wait.h>
 
 /** \brief Power management trace function. */
 #define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
