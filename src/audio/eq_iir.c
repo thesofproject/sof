@@ -448,6 +448,7 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 		/* Copy back to user space */
 		if (cd->config) {
 			bs = cd->config->size;
+			trace_value(bs);
 			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0)
 				return -EINVAL;
 			memcpy(cdata->data->data, cd->config, bs);
@@ -506,6 +507,18 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		break;
 	case SOF_CTRL_CMD_BINARY:
 		trace_eq("sbi");
+
+		if (dev->state != COMP_STATE_READY) {
+			/* It is a valid request but currently this is not
+			 * supported during playback/capture. The driver will
+			 * re-send data in next resume when idle and the new
+			 * EQ configuration will be used when playback/capture
+			 * starts.
+			 */
+			trace_eq_error("esr");
+			return -EBUSY;
+		}
+
 		/* Check and free old config */
 		eq_iir_free_parameters(&cd->config);
 
@@ -518,8 +531,10 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		cfg = (struct sof_eq_iir_config *)cdata->data->data;
 		bs = cfg->size;
 		trace_value(bs);
-		if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0)
+		if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0) {
+			trace_eq_error("eis");
 			return -EINVAL;
+		}
 
 		/* Allocate and make a copy of the blob and setup IIR */
 		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
@@ -664,7 +679,6 @@ static int eq_iir_prepare(struct comp_dev *dev)
 			return -EINVAL;
 		}
 	}
-
 	return 0;
 }
 
