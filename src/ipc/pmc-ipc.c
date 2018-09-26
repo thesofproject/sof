@@ -126,7 +126,7 @@ static void irq_handler(void *arg)
 int ipc_pmc_send_msg(uint32_t message)
 {
 	uint32_t ipclpesch;
-	int try = 0;
+	int ret;
 
 	trace_ipc("SMs");
 
@@ -142,21 +142,13 @@ int ipc_pmc_send_msg(uint32_t message)
 	shim_write(SHIM_IPCLPESCL, 0);
 	shim_write(SHIM_IPCLPESCH, SHIM_IPCLPESCH_BUSY | message);
 
-	/* check status */
-	ipclpesch = shim_read(SHIM_IPCLPESCH);
-
-	while (ipclpesch & SHIM_IPCLPESCH_BUSY) {
-		/* now wait for clock change */
-		idelay(PLATFORM_LPE_DELAY);
-		ipclpesch = shim_read(SHIM_IPCLPESCH);
-
-		try++;
-		if (try > 10)
-			break;
-	}
+	/* wait for idle status */
+	ret = poll_for_register_delay(SHIM_BASE + SHIM_IPCLPESCH,
+				      SHIM_IPCLPESCH_BUSY, 0,
+				      PLATFORM_LPE_DELAY);
 
 	/* did command succeed */
-	if (ipclpesch & SHIM_IPCLPESCH_BUSY) {
+	if (ret < 0) {
 		trace_ipc_error("ePf");
 		return -EINVAL;
 	}
