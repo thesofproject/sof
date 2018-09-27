@@ -31,6 +31,7 @@ MACHINES = \
 	sof-hsw-rt5640.tplg \
 	sof-apl-tdf8532.tplg \
 	sof-apl-pcm512x.tplg \
+	sof-apl-rt298.tplg \
 	sof-apl-wm8804.tplg \
 	sof-apl-da7219.tplg \
 	sof-glk-da7219.tplg \
@@ -66,6 +67,7 @@ EXTRA_DIST = \
 	sof-hsw-rt5640.m4 \
 	sof-apl-tdf8532.m4 \
 	sof-apl-pcm512x.m4 \
+	sof-apl-rt298.m4 \
 	sof-apl-wm8804.m4 \
 	sof-apl-da7219.m4 \
 	sof-glk-da7219.m4 \
