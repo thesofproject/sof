@@ -32,6 +32,7 @@
 #include <stdlib.h>
 
 #include <sof/alloc.h>
+#include <sof/trace.h>
 
 void _trace_event0(uint32_t log_entry)
 {

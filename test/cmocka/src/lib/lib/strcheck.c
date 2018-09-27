@@ -27,6 +27,7 @@
  * Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
  */
 #include <sof/alloc.h>
+#include <sof/dma.h>
 
 #include <stdarg.h>
 #include <setjmp.h>
