@@ -34,11 +34,14 @@ fi
 # now build the firmware (depends on rimage)
 rm -fr src/arch/xtensa/*.ri
 
+# clear build log
+rm -fr build.log
+
 # fail on any errors
 set -e
 
 # run autogen.sh
-./autogen.sh
+./autogen.sh 1>>build.log
 
 pwd=`pwd`
 
@@ -46,15 +49,15 @@ pwd=`pwd`
 # make sure rimage is built and aligned with code
 if [[ "x$BUILD_LOCAL" == "x" ]]
 then
-	./configure --enable-rimage
-	make
-	sudo make install
+	./configure --enable-rimage 1>>build.log
+	make 1>>build.log
+	sudo make install 1>>build.log
 else
 	echo "BUILD in local folder!"
 	rm -rf $pwd/local/
-	./configure --enable-rimage --prefix=$pwd/local
-	make
-	make install
+	./configure --enable-rimage --prefix=$pwd/local 1>>build.log
+	make 1>>build.log
+	make install 1>>build.log
 	PATH=$pwd/local/bin:$PATH
 fi
 
@@ -143,7 +146,7 @@ do
 	fi
 
 	# update ROOT directory for xt-xcc
-	if [ $XCC == "xt-xcc" ]
+	if [ "$XCC" == "xt-xcc" ]
 	then
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
@@ -153,11 +156,11 @@ do
 	fi
 
 	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST \
-		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP --with-dsp-core=$XTENSA_CORE
+		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP --with-dsp-core=$XTENSA_CORE 1>>build.log
 
-	make clean
-	make
-	make bin
+	make clean 1>>build.log
+	make 1>>build.log
+	make bin 1>>build.log
 done
 
 # list all the images
