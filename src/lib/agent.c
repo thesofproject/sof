@@ -87,9 +87,9 @@ void sa_init(struct sof *sof)
 	sa = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sa));
 	sof->sa = sa;
 
-	/* set default tick timeout */
-	sa->ticks = clock_ms_to_ticks(PLATFORM_WORKQ_CLOCK, 1) *
-		PLATFORM_IDLE_TIME / 1000;
+	/* set default tick timout */
+	sa->ticks = clock_ms_to_ticks(PLATFORM_WORKQ_CLOCK,
+				      PLATFORM_IDLE_TIME / 1000);
 	trace_sa_value(sa->ticks);
 
 	/* set lst idle time to now to give time for boot completion */
