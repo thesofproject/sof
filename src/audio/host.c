@@ -423,14 +423,16 @@ static void host_free(struct comp_dev *dev)
 
 	trace_host("fre");
 
-	elem = list_first_item(&hd->config.elem_list,
-		struct dma_sg_elem, list);
-
 #if !defined CONFIG_DMA_GW
 	dma_channel_put(hd->dma, hd->chan);
 #endif
 
-	rfree(elem);
+	if (!list_is_empty(&hd->config.elem_list)) {
+		elem = list_first_item(&hd->config.elem_list,
+				       struct dma_sg_elem, list);
+		rfree(elem);
+	}
+
 	rfree(hd);
 	rfree(dev);
 }
