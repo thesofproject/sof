@@ -62,7 +62,8 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 
 	/* set new value and run */
 	shim_write64(SHIM_DSPWCT0C, ticks);
-	shim_write(SHIM_DSPWCTCS, SHIM_DSPWCTCS_T0A);
+	shim_write(SHIM_DSPWCTCS,
+		   shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0A);
 
 	return 0;
 }
@@ -70,7 +71,8 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 void platform_timer_clear(struct timer *timer)
 {
 	/* write 1 to clear the timer interrupt */
-	shim_write(SHIM_DSPWCTCS, SHIM_DSPWCTCS_T0T);
+	shim_write(SHIM_DSPWCTCS,
+		   shim_read(SHIM_DSPWCTCS) | SHIM_DSPWCTCS_T0T);
 }
 
 uint64_t platform_timer_get(struct timer *timer)
