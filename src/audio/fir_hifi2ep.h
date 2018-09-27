@@ -44,7 +44,6 @@ struct fir_state_32x16 {
 	ae_p24f *delay; /* Pointer to FIR delay line */
 	ae_p24f *delay_end; /* Pointer to FIR delay line end */
 	ae_p16x2s *coef; /* Pointer to FIR coefficients */
-	int mute; /* Set to 1 to mute EQ output, 0 otherwise */
 	int taps; /* Number of FIR taps */
 	int length; /* Number of FIR taps plus input length (even) */
 	int in_shift; /* Amount of right shifts at input */
@@ -53,7 +52,8 @@ struct fir_state_32x16 {
 
 void fir_reset(struct fir_state_32x16 *fir);
 
-int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[]);
+size_t fir_init_coef(struct fir_state_32x16 *fir,
+		     struct sof_eq_fir_coef_data *config);
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
@@ -64,18 +64,6 @@ void eq_fir_2x_s32_hifiep(struct fir_state_32x16 fir[],
 
 void eq_fir_s32_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		       struct comp_buffer *sink, int frames, int nch);
-
-/* The next trivial functions are inlined */
-
-static inline void fir_mute(struct fir_state_32x16 *fir)
-{
-	fir->mute = 1;
-}
-
-static inline void fir_unmute(struct fir_state_32x16 *fir)
-{
-	fir->mute = 0;
-}
 
 /* Setup circular buffer for FIR input data delay */
 static inline void fir_hifiep_setup_circular(struct fir_state_32x16 *fir)
@@ -113,6 +101,12 @@ static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t *x,
 	ae_p16x2s *coefp = fir->coef;
 	const int taps_div_4 = fir->taps >> 2;
 	const int inc = sizeof(int32_t);
+
+	/* Bypass samples if taps count is zero. */
+	if (!taps_div_4) {
+		*y = *x;
+		return;
+	}
 
 	/* Write sample to delay */
 	a = AE_LQ32F_I((ae_q32s *)x, 0);
@@ -183,6 +177,13 @@ static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t *x0,
 	ae_p16x2s *coefp = fir->coef;
 	const int taps_div_4 = fir->taps >> 2;
 	const int inc = 2 * sizeof(int32_t);
+
+	/* Bypass samples if taps count is zero. */
+	if (!taps_div_4) {
+		*y0 = *x0;
+		*y1 = *x1;
+		return;
+	}
 
 	/* Write samples to delay */
 	a = AE_LQ32F_I((ae_q32s *)x0, 0);

@@ -61,6 +61,8 @@ struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS];
 	struct sof_eq_fir_config *config;
 	uint32_t period_bytes;
+	int32_t *fir_delay;
+	size_t fir_delay_size;
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
@@ -89,60 +91,38 @@ static void eq_fir_passthrough(struct fir_state_32x16 fir[],
 
 static void eq_fir_free_parameters(struct sof_eq_fir_config **config)
 {
-	if (*config)
-		rfree(*config);
-
+	rfree(*config);
 	*config = NULL;
 }
 
-static void eq_fir_clear_delaylines(struct fir_state_32x16 fir[])
+static void eq_fir_free_delaylines(struct comp_data *cd)
 {
+	struct fir_state_32x16 *fir = cd->fir;
 	int i = 0;
 
-	/* 1st active EQ data is at beginning of the single allocated buffer */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		if (fir[i].delay) {
-			memset(fir[i].delay, 0,
-			       fir[i].length * sizeof(int32_t));
-		}
-	}
-}
-
-static void eq_fir_free_delaylines(struct fir_state_32x16 fir[])
-{
-	int i = 0;
-	int32_t *data = NULL;
-
-	/* 1st active EQ data is at beginning of the single allocated buffer */
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		if (fir[i].delay && !data)
-			data = (int32_t *)fir[i].delay;
-
-		/* Set all to NULL to avoid duplicated free later */
+	/* Free the common buffer for all EQs and point then
+	 * each FIR channel delay line to NULL.
+	 */
+	rfree(cd->fir_delay);
+	cd->fir_delay_size = 0;
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir[i].delay = NULL;
-	}
-
-	if (data) {
-		trace_eq("fr1");
-
-		rfree(data);
-
-		trace_eq("fr2");
-	}
 }
 
-static int eq_fir_setup(struct fir_state_32x16 fir[],
-			struct sof_eq_fir_config *config, int nch)
+static int eq_fir_setup(struct comp_data *cd, int nch)
 {
+	struct fir_state_32x16 *fir = cd->fir;
+	struct sof_eq_fir_config *config = cd->config;
+	struct sof_eq_fir_coef_data *lookup[SOF_EQ_FIR_MAX_RESPONSES];
+	struct sof_eq_fir_coef_data *eq;
+	int32_t *fir_delay;
+	int16_t *coef_data;
+	int16_t *assign_response;
+	int resp;
 	int i;
 	int j;
-	int idx;
-	int length;
-	int resp;
-	int32_t *fir_data;
-	int16_t *coef_data, *assign_response;
-	int response_index[PLATFORM_MAX_CHANNELS];
-	int length_sum = 0;
+	size_t s;
+	size_t size_sum = 0;
 
 	trace_eq("fse");
 	trace_value(config->channels_in_config);
@@ -153,94 +133,105 @@ static int eq_fir_setup(struct fir_state_32x16 fir[],
 		return -EINVAL;
 	}
 
+	/* Sanity checks */
+	if (nch > PLATFORM_MAX_CHANNELS ||
+	    config->channels_in_config > PLATFORM_MAX_CHANNELS ||
+	    !config->channels_in_config) {
+		trace_eq_error("ech");
+		return -EINVAL;
+	}
+	if (config->number_of_responses > SOF_EQ_FIR_MAX_RESPONSES) {
+		trace_eq_error("enr");
+		return -EINVAL;
+	}
+
 	/* Collect index of respose start positions in all_coefficients[]  */
 	j = 0;
 	assign_response = &config->data[0];
 	coef_data = &config->data[config->channels_in_config];
 	trace_eq("idx");
-	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
+	for (i = 0; i < SOF_EQ_FIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			response_index[i] = j;
 			trace_value(j);
+			eq = (struct sof_eq_fir_coef_data *)&coef_data[j];
+			lookup[i] = eq;
 			j += SOF_EQ_FIR_COEF_NHEADER + coef_data[j];
 		} else {
-			response_index[i] = 0;
+			lookup[i] = NULL;
 		}
 	}
 
-	/* Free existing FIR channels data if it was allocated */
-	eq_fir_free_delaylines(fir);
-
 	/* Initialize 1st phase */
-	trace_eq("asr");
 	for (i = 0; i < nch; i++) {
-		/* If the configuration blob contains less channels for
-		 * response assign to channels than the current channels count
-		 * use the first channel response to remaining channels. E.g.
-		 * a blob that contains just a mono EQ can be used for stereo
-		 * stream by using the same response for all channels.
+		/* Check for not reading past blob response to channel assign
+		 * map. If the blob has smaller channel map then apply for
+		 * additional channels the response that was used for the first
+		 * channel. This allows to use mono blobs to setup multi
+		 * channel equalization without stopping to an error.
 		 */
 		if (i < config->channels_in_config)
 			resp = assign_response[i];
 		else
 			resp = assign_response[0];
 
-		trace_value(resp);
-		if (resp >= config->number_of_responses || resp < 0) {
-			trace_eq_error("eas");
-			trace_value(resp);
-			return -EINVAL;
+		if (resp < 0) {
+			/* Initialize EQ channel to bypass and continue with
+			 * next channel response.
+			 */
+			fir_reset(&fir[i]);
+			continue;
 		}
 
-		/* Initialize EQ coefficients. Each channel EQ returns the
-		 * number of samples it needs to store into the delay line. The
-		 * sum is used to allocate storate for all EQs.
-		 */
-		idx = response_index[resp];
-		length = fir_init_coef(&fir[i], &coef_data[idx]);
-		if (length > 0) {
-			length_sum += length;
-		} else {
-			trace_eq_error("ecl");
-			trace_value(length);
+		if (resp >= config->number_of_responses)
 			return -EINVAL;
-		}
+
+		/* Initialize EQ coefficients. */
+		eq = lookup[resp];
+		s = fir_init_coef(&fir[i], eq);
+		if (s > 0)
+			size_sum += s;
+		else
+			return -EINVAL;
 	}
 
-	trace_eq("all");
+	/* If all channels were set to bypass there's no need to
+	 * allocate delay. Just return with success.
+	 */
+	cd->fir_delay = NULL;
+	cd->fir_delay_size = size_sum;
+	if (!size_sum)
+		return 0;
+
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	fir_data = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-			   length_sum * sizeof(int32_t));
-	if (!fir_data)
+	cd->fir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
+	if (!cd->fir_delay)
 		return -ENOMEM;
 
 	/* Initialize 2nd phase to set EQ delay lines pointers */
-	trace_eq("ini");
+	fir_delay = cd->fir_delay;
 	for (i = 0; i < nch; i++) {
 		resp = assign_response[i];
 		if (resp >= 0) {
-			trace_value(fir->length);
-			fir_init_delay(&fir[i], &fir_data);
+			fir_init_delay(&fir[i], &fir_delay);
 		}
 	}
 
 	return 0;
 }
 
-static int eq_fir_switch_response(struct fir_state_32x16 fir[],
-				  struct sof_eq_fir_config *config,
-				  uint32_t ch, int32_t response)
+static int eq_fir_switch_store(struct fir_state_32x16 fir[],
+			       struct sof_eq_fir_config *config,
+			       uint32_t ch, int32_t response)
 {
-	int ret;
-
-	/* Copy assign response from update and re-initialize EQ */
-	if (!config || ch >= PLATFORM_MAX_CHANNELS)
+	/* Copy assign response from update. The EQ is initialized later
+	 * when all channels have been updated.
+	 */
+	if (!config || ch >= config->channels_in_config)
 		return -EINVAL;
 
 	config->data[ch] = response;
-	ret = eq_fir_setup(fir, config, PLATFORM_MAX_CHANNELS);
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -309,7 +300,7 @@ static void eq_fir_free(struct comp_dev *dev)
 
 	trace_eq("fre");
 
-	eq_fir_free_delaylines(cd->fir);
+	eq_fir_free_delaylines(cd);
 	eq_fir_free_parameters(&cd->config);
 
 	rfree(cd);
@@ -373,7 +364,7 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 		}
 		break;
 	default:
-		trace_eq_error("egt");
+		trace_eq_error("egd");
 		ret = -EINVAL;
 		break;
 	}
@@ -390,8 +381,6 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 	int i;
 	int ret = 0;
 
-	/* TODO: determine if data is DMAed or appended to cdata */
-
 	/* Check version from ABI header */
 	if (cdata->data->comp_abi != SOF_EQ_FIR_ABI_VERSION) {
 		trace_eq_error("eab");
@@ -407,10 +396,10 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			for (i = 0; i < (int)cdata->num_elems; i++) {
 				tracev_value(compv[i].index);
 				tracev_value(compv[i].svalue);
-				ret = eq_fir_switch_response(cd->fir,
-							     cd->config,
-							     compv[i].index,
-							     compv[i].svalue);
+				ret = eq_fir_switch_store(cd->fir,
+							  cd->config,
+							  compv[i].index,
+							  compv[i].svalue);
 				if (ret < 0) {
 					trace_eq_error("esw");
 					return -EINVAL;
@@ -425,6 +414,17 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 	case SOF_CTRL_CMD_BINARY:
 		trace_eq("sbi");
 
+		if (dev->state != COMP_STATE_READY) {
+			/* It is a valid request but currently this is not
+			 * supported during playback/capture. The driver will
+			 * re-send data in next resume when idle and the new
+			 * EQ configuration will be used when playback/capture
+			 * starts.
+			 */
+			trace_eq_error("esr");
+			return -EBUSY;
+		}
+
 		/* Check and free old config */
 		eq_fir_free_parameters(&cd->config);
 
@@ -437,40 +437,21 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		cfg = (struct sof_eq_fir_config *)cdata->data->data;
 		bs = cfg->size;
 		trace_value(bs);
-		if (bs > SOF_EQ_FIR_MAX_SIZE || bs < 1)
+		if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0)
 			return -EINVAL;
 
+		/* Allocate buffer for copy of the blob. */
 		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config)
 			return -EINVAL;
 
-		memcpy(cd->config, cdata->data->data, bs);
-		ret = eq_fir_setup(cd->fir, cd->config, PLATFORM_MAX_CHANNELS);
-		if (ret == 0) {
-#if 1
-#if FIR_GENERIC
-			cd->eq_fir_func = eq_fir_s32;
-			cd->eq_fir_func_odd = eq_fir_s32;
-#endif
-#if FIR_HIFIEP
-			cd->eq_fir_func = eq_fir_2x_s32_hifiep;
-			cd->eq_fir_func_odd = eq_fir_s32_hifiep;
-#endif
-#if FIR_HIFI3
-			cd->eq_fir_func = eq_fir_2x_s32_hifi3;
-			cd->eq_fir_func_odd = eq_fir_s32_hifi3;
-#endif
-#endif
-			trace_eq("fok");
-		} else {
-			cd->eq_fir_func = eq_fir_passthrough;
-			cd->eq_fir_func_odd = eq_fir_passthrough;
-			trace_eq_error("ept");
-			return -EINVAL;
-		}
+		/* Just copy the configuration. The EQ will be initialized in
+		 * prepare().
+		 */
+		memcpy(cd->config, cfg, bs);
 		break;
 	default:
-		trace_eq_error("ecm");
+		trace_eq_error("esd");
 		ret = -EINVAL;
 		break;
 	}
@@ -493,6 +474,15 @@ static int eq_fir_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_GET_DATA:
 		ret = fir_cmd_get_data(dev, cdata);
 		break;
+	case COMP_CMD_SET_VALUE:
+		trace_eq("isv");
+		break;
+	case COMP_CMD_GET_VALUE:
+		trace_eq("igv");
+		break;
+	default:
+		trace_eq_error("ecm");
+		ret = -EINVAL;
 	}
 
 	return ret;
@@ -559,7 +549,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	/* Initialize EQ */
 	cd->eq_fir_func = eq_fir_passthrough;
 	if (cd->config) {
-		ret = eq_fir_setup(cd->fir, cd->config, dev->params.channels);
+		ret = eq_fir_setup(cd, dev->params.channels);
 		if (ret < 0) {
 			comp_set_state(dev, COMP_TRIGGER_RESET);
 			return ret;
@@ -586,11 +576,17 @@ static int eq_fir_prepare(struct comp_dev *dev)
 
 static int eq_fir_reset(struct comp_dev *dev)
 {
+	int i;
 	struct comp_data *cd = comp_get_drvdata(dev);
 
 	trace_eq("res");
 
-	eq_fir_clear_delaylines(cd->fir);
+	eq_fir_free_delaylines(cd);
+
+	cd->eq_fir_func = eq_fir_passthrough;
+	cd->eq_fir_func_odd = eq_fir_passthrough;
+	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
+		fir_reset(&cd->fir[i]);
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return 0;
@@ -599,24 +595,18 @@ static int eq_fir_reset(struct comp_dev *dev)
 static void eq_fir_cache(struct comp_dev *dev, int cmd)
 {
 	struct comp_data *cd;
-	int i;
 
 	switch (cmd) {
 	case COMP_CACHE_WRITEBACK_INV:
 		trace_eq("wtb");
 
 		cd = comp_get_drvdata(dev);
-
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-			if (cd->fir[i].delay)
-				dcache_writeback_invalidate_region
-					(cd->fir[i].delay,
-					 cd->fir[i].length * sizeof(int32_t));
-		}
-
 		if (cd->config)
 			dcache_writeback_invalidate_region(cd->config,
 							   cd->config->size);
+		if (cd->fir_delay)
+			dcache_writeback_invalidate_region(cd->fir_delay,
+							   cd->fir_delay_size);
 
 		dcache_writeback_invalidate_region(cd, sizeof(*cd));
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
@@ -627,19 +617,19 @@ static void eq_fir_cache(struct comp_dev *dev, int cmd)
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 
+		/* Note: The component data need to be retrieved after
+		 * the dev data has been invalidated.
+		 */
 		cd = comp_get_drvdata(dev);
 		dcache_invalidate_region(cd, sizeof(*cd));
 
+		if (cd->fir_delay)
+			dcache_invalidate_region(cd->fir_delay,
+						 cd->fir_delay_size);
 		if (cd->config)
 			dcache_invalidate_region(cd->config,
 						 cd->config->size);
 
-		for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-			if (cd->fir[i].delay)
-				dcache_invalidate_region
-					(cd->fir[i].delay,
-					 cd->fir[i].length * sizeof(int32_t));
-		}
 		break;
 	}
 }

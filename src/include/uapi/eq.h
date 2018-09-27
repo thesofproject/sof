@@ -44,6 +44,8 @@
 
 #define SOF_EQ_FIR_MAX_LENGTH 192 /* Max length for individual filter */
 
+#define SOF_EQ_FIR_MAX_RESPONSES 8 /* A blob can define max 8 FIR EQs */
+
 /*
  * eq_fir_configuration data structure contains this information
  *     uint32_t size

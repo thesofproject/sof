@@ -50,7 +50,6 @@ void fir_reset(struct fir_state_32x16 *fir)
 {
 	fir->rwi = 0;
 	fir->length = 0;
-	fir->delay_size = 0;
 	fir->out_shift = 0;
 	fir->coef = NULL;
 	/* There may need to know the beginning of dynamic allocation after
@@ -58,17 +57,14 @@ void fir_reset(struct fir_state_32x16 *fir)
 	 */
 }
 
-int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
+size_t fir_init_coef(struct fir_state_32x16 *fir,
+		     struct sof_eq_fir_coef_data *config)
 {
-	struct sof_eq_fir_coef_data *setup;
-
-	setup = (struct sof_eq_fir_coef_data *)config;
 	fir->rwi = 0;
-	fir->length = (int)setup->length;
-	fir->out_shift = (int)setup->out_shift;
-	fir->coef = &setup->coef[0];
+	fir->length = (int)config->length;
+	fir->out_shift = (int)config->out_shift;
+	fir->coef = &config->coef[0];
 	fir->delay = NULL;
-	fir->delay_size = 0;
 
 	/* Check for sane FIR length. The length is constrained to be a
 	 * multiple of 4 for optimized code.
@@ -76,14 +72,13 @@ int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
 	if (fir->length > SOF_EQ_FIR_MAX_LENGTH || fir->length < 1)
 		return -EINVAL;
 
-	return fir->length;
+	return fir->length * sizeof(int32_t);
 }
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 {
 	fir->delay = *data;
-	fir->delay_size = fir->length;
-	*data += fir->delay_size; /* Point to next delay line start */
+	*data += fir->length; /* Point to next delay line start */
 }
 
 void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,

@@ -58,10 +58,11 @@
 #if XCHAL_HAVE_HIFI2EP == 1
 #define FIR_HIFIEP	1
 #define FIR_HIFI3	0
-#endif
-#if XCHAL_HAVE_HIFI3 == 1
+#elif XCHAL_HAVE_HIFI3 == 1
 #define FIR_HIFI3	1
 #define FIR_HIFIEP	0
+#else
+#error "No HIFIEP or HIFI3 found. Cannot build FIR module."
 #endif
 #else
 /* GCC */

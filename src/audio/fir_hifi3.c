@@ -48,34 +48,28 @@
 
 void fir_reset(struct fir_state_32x16 *fir)
 {
-	fir->mute = 1;
+	fir->taps = 0;
 	fir->length = 0;
 	fir->out_shift = 0;
-	fir->rwp = NULL;
-	fir->delay = NULL;
-	fir->delay_end = NULL;
 	fir->coef = NULL;
 	/* There may need to know the beginning of dynamic allocation after
 	 * reset so omitting setting also fir->delay to NULL.
 	 */
 }
 
-int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
+size_t fir_init_coef(struct fir_state_32x16 *fir,
+		     struct sof_eq_fir_coef_data *config)
 {
-	struct sof_eq_fir_coef_data *setup;
-
 	/* The length is taps plus two since the filter computes two
 	 * samples per call. Length plus one would be minimum but the add
 	 * must be even. The even length is needed for 64 bit loads from delay
 	 * lines with 32 bit samples.
 	 */
-	setup = (struct sof_eq_fir_coef_data *)config;
-	fir->mute = 0;
 	fir->rwp = NULL;
-	fir->taps = (int)setup->length;
+	fir->taps = (int)config->length;
 	fir->length = fir->taps + 2;
-	fir->out_shift = (int)setup->out_shift;
-	fir->coef = (ae_f16x4 *)&setup->coef[0];
+	fir->out_shift = (int)config->out_shift;
+	fir->coef = (ae_f16x4 *)&config->coef[0];
 	fir->delay = NULL;
 	fir->delay_end = NULL;
 
@@ -86,7 +80,7 @@ int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[])
 	if (fir->taps & 3)
 		return -EINVAL;
 
-	return fir->length;
+	return fir->length * sizeof(int32_t);
 }
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
@@ -100,13 +94,8 @@ void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data)
 void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
 		      int *rshift)
 {
-	if (fir->mute) {
-		*lshift = 0;
-		*rshift = 31;
-	} else {
-		*lshift = (fir->out_shift < 0) ? -fir->out_shift : 0;
-		*rshift = (fir->out_shift > 0) ? fir->out_shift : 0;
-	}
+	*lshift = (fir->out_shift < 0) ? -fir->out_shift : 0;
+	*rshift = (fir->out_shift > 0) ? fir->out_shift : 0;
 }
 
 /* For even frame lengths use FIR filter that processes two sequential
@@ -131,8 +120,7 @@ void eq_fir_2x_s32_hifi3(struct fir_state_32x16 fir[],
 	int inc = nch << 1;
 
 	for (ch = 0; ch < nch; ch++) {
-		/* Get FIR instance and get shifts to e.g. apply mute
-		 * without overhead.
+		/* Get FIR instance and get shifts.
 		 */
 		f = &fir[ch];
 		fir_get_lrshifts(f, &lshift, &rshift);
