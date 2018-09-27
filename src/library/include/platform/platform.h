@@ -46,6 +46,11 @@
  */
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU
 
+/*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
+ *  \brief work queue default timeout in microseconds
+ */
+#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
+
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 

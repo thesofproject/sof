@@ -49,6 +49,11 @@ struct sof;
  */
 #define PLATFORM_DEFAULT_CLOCK CLK_SSP
 
+/*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
+ *  \brief work queue default timeout in microseconds
+ */
+#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
+
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERRUPT	IRQ_NUM_EXT_IA
 
