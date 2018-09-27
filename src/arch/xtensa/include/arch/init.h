@@ -48,7 +48,7 @@ static inline void exception(void)
 {
 	/* now panic and rewind 8 stack frames. */
 	/* TODO: we could invoke a GDB stub here */
-	panic_rewind(SOF_IPC_PANIC_EXCEPTION, 8 * sizeof(uint32_t));
+	panic_rewind(SOF_IPC_PANIC_EXCEPTION, 8 * sizeof(uint32_t), NULL);
 }
 
 /**

@@ -35,8 +35,9 @@
 #include <string.h>
 #include <stdint.h>
 #include <sof/bit.h>
-#include <sof/dma.h>
+#include <sof/platform.h>
 #include <platform/memory.h>
+#include <arch/spinlock.h>
 
 struct sof;
 
@@ -65,6 +66,9 @@ struct sof;
 
 #define RZONE_TYPE_MASK	0xf
 #define RZONE_FLAG_MASK	0xf0
+
+struct dma_copy;
+struct dma_sg_config;
 
 struct mm_info {
 	uint32_t used;
@@ -135,11 +139,4 @@ void init_heap(struct sof *sof);
 /* frees entire heap (supported for slave core system heap atm) */
 void free_heap(int zone);
 
-/* flush block map from cache to sram */
-static inline void flush_block_map(struct block_map *map)
-{
-	dcache_writeback_invalidate_region(map->block,
-					   sizeof(*map->block) * map->count);
-	dcache_writeback_invalidate_region(map, sizeof(*map));
-}
 #endif

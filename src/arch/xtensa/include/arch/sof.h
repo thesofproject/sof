@@ -52,7 +52,7 @@ static inline void *arch_get_stack_ptr(void)
 	return ptr;
 }
 
-static inline void *arch_dump_regs(void)
+static inline void *arch_dump_regs(uint32_t ps)
 {
 	struct sof_ipc_dsp_oops_xtensa *x =
 		(struct sof_ipc_dsp_oops_xtensa *) mailbox_get_exception_base();
@@ -62,7 +62,7 @@ static inline void *arch_dump_regs(void)
 	/* Exception Vector address - 0x4 */
 	__asm__ __volatile__ ("rsr %0, EXCVADDR" : "=a" (x->excvaddr) : : "memory");
 	/* Exception Processor State - 0x8 */
-	__asm__ __volatile__ ("rsr %0, PS" : "=a" (x->ps) : : "memory");
+	x->ps = ps;
 	/* Level 1 Exception PC - 0xc */
 	__asm__ __volatile__ ("rsr %0, EPC1" : "=a" (x->epc1) : : "memory");
 	/* Level 2 Exception PC - 0x10 */
