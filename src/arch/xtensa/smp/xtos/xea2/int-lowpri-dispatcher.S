@@ -318,9 +318,7 @@ _LevelOneInterrupt:			// this label makes tracebacks through interrupts look nic
 	 *  NOTE:  Reading the INTERRUPT register *must* be done at PS.INTLEVEL <= 1
 	 *  otherwise we might incorrectly see higher priority interrupts.
 	 */
-	movi	a13, 0xCCC
-	movi	a14, 0xbe00e000
-	s32i	a13, a14, 0
+
 
 	xtos_addr_percore	a14, xtos_intstruct		// address of interrupt management globals
 	rsr.interrupt	a15			// interrupts pending
