@@ -32,57 +32,69 @@
 #include <sof/atomic.h>
 #include <platform/dma.h>
 
-/*
- * API to request a platform DMAC.
- * Users can request DMAC based on dev type, copy direction, capabilities
- * and access privilege.
- * For exclusive access, ret DMAC with no channels draining.
- * For shared access, ret DMAC with the least number of channels draining.
- */
+struct dma_info {
+	struct dma *dma_array;
+	size_t num_dmas;
+};
+
+static struct dma_info lib_dma = {
+	.dma_array = NULL,
+	.num_dmas = 0
+};
+
+void dma_install(struct dma *dma_array, size_t num_dmas)
+{
+	lib_dma.dma_array = dma_array;
+	lib_dma.num_dmas = num_dmas;
+}
 
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
-	int i, ch_count;
+	int ch_count;
 	int min_ch_count = INT32_MAX;
-	int dma_index = -1;
+	struct dma *d = NULL, *dmin = NULL;
 
-	for (i = 0; i < PLATFORM_NUM_DMACS; i++) {
-
+	if (!lib_dma.num_dmas) {
+		trace_error(TRACE_CLASS_DMA, "No DMAs installed");
+		return NULL;
+	}
+	for (d = lib_dma.dma_array; d < lib_dma.dma_array + lib_dma.num_dmas;
+	     d++) {
 		/* skip if this DMAC does not support the requested dir */
-		if (dir && (dma[i].plat_data.dir & dir) == 0)
+		if (dir && (d->plat_data.dir & dir) == 0)
 			continue;
 
 		/* skip if this DMAC does not support the requested caps */
-		if (cap && (dma[i].plat_data.caps & cap) == 0)
+		if (cap && (d->plat_data.caps & cap) == 0)
 			continue;
 
 		/* skip if this DMAC does not support the requested dev */
-		if (dev && (dma[i].plat_data.devs & dev) == 0)
+		if (dev && (d->plat_data.devs & dev) == 0)
 			continue;
 
 		/* if exclusive access is requested */
 		if (flags & DMA_ACCESS_EXCLUSIVE) {
 
 			/* ret DMA with no channels draining */
-			if (!atomic_read(&dma[i].num_channels_busy))
-				return &dma[i];
+			if (!atomic_read(&d->num_channels_busy))
+				return d;
 		} else {
 
 			/* get number of channels draining in this DMAC*/
-			ch_count = atomic_read(&dma[i].num_channels_busy);
+			ch_count = atomic_read(&d->num_channels_busy);
 
 			/* pick DMAC with the least num of channels draining */
 			if (ch_count < min_ch_count) {
-				dma_index = i;
+				dmin = d;
 				min_ch_count = ch_count;
 			}
 		}
 	}
 
 	/* return DMAC */
-	if (dma_index >= 0) {
-		tracev_value(dma[dma_index].plat_data.id);
-		return &dma[dma_index];
+	if (dmin) {
+		tracev_value(dmin->plat_data.id);
+		return dmin;
 	}
 
 	return NULL;

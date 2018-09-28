@@ -40,6 +40,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#define CAVS_PLATFORM_NUM_DMACS		6
+
 #if defined(CONFIG_APOLLOLAKE)
 #define DMAC0_CLASS 1
 #define DMAC1_CLASS 2
@@ -124,7 +126,7 @@ static struct dw_drv_plat_data dmac1 = {
 	},
 };
 
-struct dma dma[PLATFORM_NUM_DMACS] = {
+static struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -221,6 +223,9 @@ int dmac_init(void)
 			return ret;
 		}
 	}
+
+	/* tell the lib DMAs are ready to use */
+	dma_install(dma, ARRAY_SIZE(dma));
 
 	return 0;
 }

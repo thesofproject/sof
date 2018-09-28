@@ -60,6 +60,6 @@
 #define DMA_HANDSHAKE_SSP6_RX	12
 #define DMA_HANDSHAKE_SSP6_TX	13
 
-extern struct dma dma[PLATFORM_NUM_DMACS];
+int dmac_init(void);
 
 #endif

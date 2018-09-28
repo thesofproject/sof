@@ -167,10 +167,25 @@ struct dma {
 	uint32_t private_size;
 };
 
-struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
+/**
+ *  \brief Plugs platform specific DMA array once initialized into the lib.
+ *
+ *  Lib serves the DMAs to other FW elements by dma_get()
+ *
+ *  \param[in] dma_array Array of DMAs.
+ *  \param[in] num_dmas Number of elements in dma_array.
+ */
+void dma_install(struct dma *dma_array, size_t num_dmas);
 
-/* initialize all platform DMAC's */
-int dmac_init(void);
+/**
+ * \brief API to request a platform DMAC.
+ *
+ * Users can request DMAC based on dev type, copy direction, capabilities
+ * and access privilege.
+ * For exclusive access, ret DMAC with no channels draining.
+ * For shared access, ret DMAC with the least number of channels draining.
+ */
+struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 
 #define dma_set_drvdata(dma, data) \
 	dma->private = data; \
