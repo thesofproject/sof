@@ -155,5 +155,8 @@ int dmac_init(void)
 	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
 			   SHIM_IMRD_DMAC1, 0);
 
+	/* tell the lib DMAs are ready to use */
+	dma_install(dma, ARRAY_SIZE(dma));
+
 	return 0;
 }

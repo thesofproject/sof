@@ -206,5 +206,8 @@ int dmac_init(void)
 		}
 	}
 
+	/* tell the lib DMAs are ready to use */
+	dma_install(dma, ARRAY_SIZE(dma));
+
 	return 0;
 }
