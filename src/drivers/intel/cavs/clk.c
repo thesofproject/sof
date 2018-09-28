@@ -137,7 +137,7 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	notify_data.old_freq = clk_pdata->clk[clock].freq;
 	notify_data.old_ticks_per_msec = clk_pdata->clk[clock].ticks_per_msec;
 
-	/* atomic context for chaning clocks */
+	/* atomic context for changing clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
@@ -155,6 +155,8 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
 				   SHIM_CLKCTL_HDCS, 0);
 		#endif
+
+		/* TODO: should handle all cores or pass the index as arg */
 		io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
 				   SHIM_CLKCTL_DPCS_MASK(0), cpu_freq[idx].enc);
 

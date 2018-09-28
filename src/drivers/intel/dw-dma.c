@@ -1112,6 +1112,13 @@ static int dw_dma_probe(struct dma *dma)
 	struct dma_pdata *dw_pdata;
 	int i;
 
+	if (dma_get_drvdata(dma))
+		return 0; /* already probed */
+#if defined(CONFIG_APOLLOLAKE)
+	/* disable dynamic clock gating */
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
+		   SHIM_CLKCTL_LPGPDMAFDCGB(dma->plat_data.id));
+#endif
 	/* allocate private data */
 	dw_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);

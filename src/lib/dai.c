@@ -48,14 +48,21 @@ void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types)
 
 struct dai *dai_get(uint32_t type, uint32_t index)
 {
-	int i;
+	int i, ret;
 	struct dai_type_info *dti;
 
 	for (dti = lib_dai.dai_type_array;
 	     dti < lib_dai.dai_type_array + lib_dai.num_dai_types; dti++)
 		if (dti->type == type)
 			for (i = 0; i < dti->num_dais; i++)
-				if (dti->dai_array[i].index == index)
+				if (dti->dai_array[i].index == index) {
+					ret = dai_probe(dti->dai_array + i);
+					if (ret < 0) {
+						trace_error(TRACE_CLASS_DAI,
+							    "probe failed");
+						return NULL;
+					}
 					return dti->dai_array + i;
+				}
 	return NULL;
 }

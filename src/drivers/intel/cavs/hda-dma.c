@@ -612,6 +612,9 @@ static int hda_dma_probe(struct dma *dma)
 	int i;
 	struct hda_chan_data *chan;
 
+	if (dma_get_drvdata(dma))
+		return 0; /* already probed */
+
 	/* allocate private data */
 	hda_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*hda_pdata));
 	dma_set_drvdata(dma, hda_pdata);

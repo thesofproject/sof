@@ -115,7 +115,7 @@ _PD_SWITCH_TO_XTAL_CLOCK:
     // TODO: move to CLOCK hal macros
     movi temp_reg0, (SHIM_BASE + SHIM_CLKCTL)
     movi temp_reg1, ~(SHIM_CLKCTL_HDOCS | SHIM_CLKCTL_LDOCS)
-    movi temp_reg2, (SHIM_CLKCTL_LDCS | SHIM_CLKCTL_HDCS)
+    movi temp_reg2, (SHIM_CLKCTL_LDCS_XTAL | SHIM_CLKCTL_HDCS_XTAL)
     l32i temp_reg3, temp_reg0, 0
     // Reset LDOCS & HDOCS bits to select XTAL
     and temp_reg3, temp_reg3, temp_reg1

@@ -296,19 +296,9 @@ static struct dai_type_info dti[] = {
 
 int dai_init(void)
 {
-	int i;
+	/* no probing before first use */
 
-	/* init SSP ports */
-	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	for (i = 0; i < DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT; i++)
-		dai_probe(ssp + i);
-
-	/* Init DMIC. Note that the two PDM controllers and four microphones
-	 * supported max. those are available in platform are handled by dmic0.
-	 */
-	trace_point(TRACE_BOOT_PLATFORM_DMIC);
-
-	dai_probe(dmic + 0);
+	/* TODO: dynamic dai initialization based on platform settings */
 
 	dai_install(dti, ARRAY_SIZE(dti));
 	return 0;

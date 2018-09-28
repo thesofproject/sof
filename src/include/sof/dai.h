@@ -156,7 +156,7 @@ struct dai *dai_get(uint32_t type, uint32_t index);
 	dai->private = data; \
 	dai->private_size = sizeof(*data)
 #define dai_get_drvdata(dai) \
-	dai->private;
+	dai->private
 #define dai_base(dai) \
 	dai->plat_data.base
 #define dai_irq(dai) \
