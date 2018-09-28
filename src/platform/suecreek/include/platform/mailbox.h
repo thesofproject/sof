@@ -35,61 +35,42 @@
 
 #include <platform/memory.h>
 
-/* TODO: no SHM mailbox on SUE, must be sent via SPI */
-#if 0
-#define MAILBOX_HOST_OFFSET	0x144000
+/*
+ * The Window Region on Suecreek HPSRAM is organised like this :-
+ * +--------------------------------------------------------------------------+
+ * | Offset              | Region         |  Size                             |
+ * +---------------------+----------------+-----------------------------------+
+ * | SRAM_TRACE_BASE     | Trace Buffer   |  SRAM_TRACE_SIZE                  |
+ * +---------------------+----------------+-----------------------------------+
+ * | SRAM_DEBUG_BASE     | Debug data     |  SRAM_DEBUG_SIZE                  |
+ * +---------------------+----------------+-----------------------------------+
+ * | SRAM_INBOX_BASE     | Inbox          |  SRAM_INBOX_SIZE                  |
+ * +---------------------+----------------+-----------------------------------+
+ * | SRAM_OUTBOX_BASE    | Outbox         |  SRAM_MAILBOX_SIZE                |
+ * +---------------------+----------------+-----------------------------------+
+ */
 
-#define MAILBOX_OUTBOX_OFFSET	0x0
-#define MAILBOX_OUTBOX_SIZE	0x400
-#define MAILBOX_OUTBOX_BASE \
-	(MAILBOX_BASE + MAILBOX_OUTBOX_OFFSET)
+#define MAILBOX_TRACE_SIZE	SRAM_TRACE_SIZE
+#define MAILBOX_TRACE_BASE	SRAM_TRACE_BASE
 
-#define MAILBOX_INBOX_OFFSET	MAILBOX_OUTBOX_SIZE
-#define MAILBOX_INBOX_SIZE	0x400
-#define MAILBOX_INBOX_BASE \
-	(MAILBOX_BASE + MAILBOX_INBOX_OFFSET)
+#define MAILBOX_DEBUG_SIZE	SRAM_DEBUG_SIZE
+#define MAILBOX_DEBUG_BASE	SRAM_DEBUG_BASE
 
-#define MAILBOX_EXCEPTION_OFFSET \
-	(MAILBOX_INBOX_SIZE + MAILBOX_OUTBOX_SIZE)
-#define MAILBOX_EXCEPTION_SIZE	0x100
-#define MAILBOX_EXCEPTION_BASE \
-	(MAILBOX_BASE + MAILBOX_EXCEPTION_OFFSET)
+#define MAILBOX_EXCEPTION_SIZE	SRAM_EXCEPT_SIZE
+#define MAILBOX_EXCEPTION_BASE	SRAM_EXCEPT_BASE
+#define MAILBOX_EXCEPTION_OFFSET  SRAM_DEBUG_SIZE
 
-#define MAILBOX_DEBUG_OFFSET \
-	(MAILBOX_EXCEPTION_SIZE + MAILBOX_EXCEPTION_OFFSET)
-#define MAILBOX_DEBUG_SIZE	0x100
-#define MAILBOX_DEBUG_BASE \
-	(MAILBOX_BASE + MAILBOX_DEBUG_OFFSET)
+#define MAILBOX_STREAM_SIZE    SRAM_STREAM_SIZE
+#define MAILBOX_STREAM_BASE    SRAM_STREAM_BASE
+#define MAILBOX_STREAM_OFFSET  (SRAM_DEBUG_SIZE + SRAM_EXCEPT_SIZE)
 
-#define MAILBOX_STREAM_OFFSET \
-	(MAILBOX_DEBUG_SIZE + MAILBOX_DEBUG_OFFSET)
-#define MAILBOX_STREAM_SIZE	0x200
-#define MAILBOX_STREAM_BASE \
-	(MAILBOX_BASE + MAILBOX_STREAM_OFFSET)
+#define MAILBOX_HOSTBOX_SIZE	SRAM_INBOX_SIZE
+#define MAILBOX_HOSTBOX_BASE	SRAM_INBOX_BASE
 
-#define MAILBOX_TRACE_OFFSET \
-	(MAILBOX_STREAM_SIZE + MAILBOX_STREAM_OFFSET)
-#define MAILBOX_TRACE_SIZE	0x380
-#define MAILBOX_TRACE_BASE \
-	(MAILBOX_BASE + MAILBOX_TRACE_OFFSET)
+#define MAILBOX_DSPBOX_SIZE	SRAM_OUTBOX_SIZE
+#define MAILBOX_DSPBOX_BASE	SRAM_OUTBOX_BASE
 
-#endif
-
-// TODO need added to linker map
-
-#define MAILBOX_DEBUG_SIZE	0
-#define MAILBOX_DEBUG_BASE 	0
-
-#define MAILBOX_HOSTBOX_SIZE	0
-#define MAILBOX_HOSTBOX_BASE 	0
-
-#define MAILBOX_DSPBOX_SIZE	0
-#define MAILBOX_DSPBOX_BASE 	0
-
-#define MAILBOX_TRACE_SIZE	0
-#define MAILBOX_TRACE_BASE 	0
-
-#define MAILBOX_EXCEPTION_SIZE	0
-#define MAILBOX_EXCEPTION_BASE 0
+#define MAILBOX_SW_REG_SIZE	0
+#define MAILBOX_SW_REG_BASE	0
 
 #endif
