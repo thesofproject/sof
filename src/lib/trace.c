@@ -48,7 +48,7 @@ struct trace {
 static struct trace *trace;
 
 /* calculates total message size, both header and payload */
-#define message_size(args_num) \
+#define MESSAGE_SIZE(args_num) \
 	((sizeof(struct log_entry_header) + (1 + args_num) * sizeof(uint32_t)) \
 	/ sizeof(uint32_t))
 
@@ -72,10 +72,10 @@ static void put_header(volatile uint32_t *dst, uint64_t timestamp)
 /* send trace events only to the local trace buffer */
 void _trace_event0(uint32_t log_entry)
 {
-	uint32_t message_size_dwords = message_size(0);
+	uint32_t message_size_dwords = MESSAGE_SIZE(0);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(0)];
 
 	if (!trace->enable)
 		return;
@@ -88,10 +88,10 @@ void _trace_event0(uint32_t log_entry)
 
 void _trace_event_atomic0(uint32_t log_entry)
 {
-	uint32_t message_size_dwords = message_size(0);
+	uint32_t message_size_dwords = MESSAGE_SIZE(0);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(0)];
 
 	if (!trace->enable)
 		return;
@@ -107,10 +107,10 @@ void _trace_event_atomic0(uint32_t log_entry)
 void _trace_event_mbox0(uint32_t log_entry)
 {
 	unsigned long flags;
-	uint32_t message_size_dwords = message_size(0);
+	uint32_t message_size_dwords = MESSAGE_SIZE(0);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(0)];
 	uint64_t time;
 
 	volatile uint32_t *t;
@@ -149,10 +149,10 @@ void _trace_event_mbox0(uint32_t log_entry)
 void _trace_event_mbox_atomic0(uint32_t log_entry)
 {
 	volatile uint32_t *t;
-	uint32_t message_size_dwords = message_size(0);
+	uint32_t message_size_dwords = MESSAGE_SIZE(0);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(0)];
 	uint64_t time;
 
 	if (!trace->enable)
@@ -184,10 +184,10 @@ void _trace_event_mbox_atomic0(uint32_t log_entry)
 /* send trace events only to the local trace buffer */
 void _trace_event1(uint32_t log_entry, uint32_t param)
 {
-	uint32_t message_size_dwords = message_size(1);
+	uint32_t message_size_dwords = MESSAGE_SIZE(1);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(1)];
 
 	if (!trace->enable)
 		return;
@@ -201,10 +201,10 @@ void _trace_event1(uint32_t log_entry, uint32_t param)
 
 void _trace_event_atomic1(uint32_t log_entry, uint32_t param)
 {
-	uint32_t message_size_dwords = message_size(1);
+	uint32_t message_size_dwords = MESSAGE_SIZE(1);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(1)];
 
 	if (!trace->enable)
 		return;
@@ -221,10 +221,10 @@ void _trace_event_atomic1(uint32_t log_entry, uint32_t param)
 void _trace_event_mbox1(uint32_t log_entry, uint32_t param)
 {
 	unsigned long flags;
-	uint32_t message_size_dwords = message_size(1);
+	uint32_t message_size_dwords = MESSAGE_SIZE(1);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(1)];
 	uint64_t time;
 
 	volatile uint32_t *t;
@@ -265,10 +265,10 @@ void _trace_event_mbox1(uint32_t log_entry, uint32_t param)
 void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
 {
 	volatile uint32_t *t;
-	uint32_t message_size_dwords = message_size(1);
+	uint32_t message_size_dwords = MESSAGE_SIZE(1);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(1)];
 	uint64_t time;
 
 	if (!trace->enable)
@@ -302,10 +302,10 @@ void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
 /* send trace events only to the local trace buffer */
 void _trace_event2(uint32_t log_entry, uint32_t param1, uint32_t param2)
 {
-	uint32_t message_size_dwords = message_size(2);
+	uint32_t message_size_dwords = MESSAGE_SIZE(2);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(2)];
 
 	if (!trace->enable)
 		return;
@@ -320,10 +320,10 @@ void _trace_event2(uint32_t log_entry, uint32_t param1, uint32_t param2)
 
 void _trace_event_atomic2(uint32_t log_entry, uint32_t param1, uint32_t param2)
 {
-	uint32_t message_size_dwords = message_size(2);
+	uint32_t message_size_dwords = MESSAGE_SIZE(2);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(2)];
 
 	if (!trace->enable)
 		return;
@@ -341,10 +341,10 @@ void _trace_event_atomic2(uint32_t log_entry, uint32_t param1, uint32_t param2)
 void _trace_event_mbox2(uint32_t log_entry, uint32_t param1, uint32_t param2)
 {
 	unsigned long flags;
-	uint32_t message_size_dwords = message_size(2);
+	uint32_t message_size_dwords = MESSAGE_SIZE(2);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(2)];
 	uint64_t time;
 
 	volatile uint32_t *t;
@@ -388,10 +388,10 @@ void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t param1,
 	uint32_t param2)
 {
 	volatile uint32_t *t;
-	uint32_t message_size_dwords = message_size(2);
+	uint32_t message_size_dwords = MESSAGE_SIZE(2);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(2)];
 	uint64_t time;
 
 	if (!trace->enable)
@@ -428,10 +428,10 @@ void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t param1,
 void _trace_event3(uint32_t log_entry, uint32_t param1, uint32_t param2,
 	uint32_t param3)
 {
-	uint32_t message_size_dwords = message_size(3);
+	uint32_t message_size_dwords = MESSAGE_SIZE(3);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(3)];
 
 	if (!trace->enable)
 		return;
@@ -448,10 +448,10 @@ void _trace_event3(uint32_t log_entry, uint32_t param1, uint32_t param2,
 void _trace_event_atomic3(uint32_t log_entry, uint32_t param1, uint32_t param2,
 	uint32_t param3)
 {
-	uint32_t message_size_dwords = message_size(3);
+	uint32_t message_size_dwords = MESSAGE_SIZE(3);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(3)];
 
 	if (!trace->enable)
 		return;
@@ -471,10 +471,10 @@ void _trace_event_mbox3(uint32_t log_entry, uint32_t param1, uint32_t param2,
 	uint32_t param3)
 {
 	unsigned long flags;
-	uint32_t message_size_dwords = message_size(3);
+	uint32_t message_size_dwords = MESSAGE_SIZE(3);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(3)];
 	uint64_t time;
 
 	volatile uint32_t *t;
@@ -520,10 +520,10 @@ void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t param1,
 	uint32_t param2, uint32_t param3)
 {
 	volatile uint32_t *t;
-	uint32_t message_size_dwords = message_size(3);
+	uint32_t message_size_dwords = MESSAGE_SIZE(3);
 	uint32_t payload_offset = sizeof(struct log_entry_header)
 		/ sizeof(uint32_t);
-	uint32_t dt[message_size_dwords];
+	uint32_t dt[MESSAGE_SIZE(3)];
 	uint64_t time;
 
 	if (!trace->enable)
