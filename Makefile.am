@@ -1,4 +1,4 @@
-SUBDIRS = rmbox topology
+SUBDIRS = logger rmbox topology
 TESTDIR = topology/test
 
 tests:
