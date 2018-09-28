@@ -36,6 +36,12 @@
 #include <platform/platform.h>
 #include <platform/memory.h>
 
+#if defined CONFIG_SUECREEK
+#define MANIFEST_BASE	BOOT_LDR_MANIFEST_BASE
+#else
+#define MANIFEST_BASE	IMR_BOOT_LDR_MANIFEST_BASE
+#endif
+
 /* entry point to main firmware */
 extern void _ResetVector(void);
 
@@ -105,7 +111,7 @@ static void parse_module(struct sof_man_fw_header *hdr,
 static void parse_manifest(void)
 {
 	struct sof_man_fw_desc *desc =
-		(struct sof_man_fw_desc *)IMR_BOOT_LDR_MANIFEST_BASE;
+		(struct sof_man_fw_desc *)MANIFEST_BASE;
 	struct sof_man_fw_header *hdr = &desc->header;
 	struct sof_man_module *mod;
 	int i;
@@ -121,7 +127,8 @@ static void parse_manifest(void)
 #endif
 
 /* power on HPSRAM */
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
+	|| defined(CONFIG_SUECREEK)
 static int32_t hp_sram_init(void)
 {
 	int delay_count = 256;
