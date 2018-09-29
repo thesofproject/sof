@@ -37,6 +37,7 @@
 #include <sof/alloc.h>
 #include <sof/interrupt.h>
 #include <sof/math/numbers.h>
+#include <platform/dai.h>
 #include <config.h>
 
 /* tracing */
@@ -871,6 +872,15 @@ static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
 
+	if (dai_get_drvdata(dai))
+		return 0; /* already probed */
+#if defined(CONFIG_APOLLOLAKE)
+	/* Disable dynamic clock gating for i2s before touching any register */
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
+		   (dai->index < DAI_NUM_SSP_BASE ?
+		    SHIM_CLKCTL_I2SFDCGB(dai->index) :
+		    SHIM_CLKCTL_I2SEFDCGB(dai->index)));
+#endif
 	/* allocate private data */
 	ssp = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);

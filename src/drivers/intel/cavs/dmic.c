@@ -1444,8 +1444,14 @@ static int dmic_probe(struct dai *dai)
 {
 	struct dmic_pdata *dmic;
 
-	trace_dmic("pro");
+	if (dai_get_drvdata(dai))
+		return 0; /* already probed */
 
+	trace_dmic("pro");
+#if defined(CONFIG_APOLLOLAKE)
+	/* Disable dynamic clock gating for dmic before touching any register */
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_DMICFDCGB);
+#endif
 	/* allocate private data */
 	dmic = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*dmic));
 	if (!dmic) {

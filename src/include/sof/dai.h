@@ -125,13 +125,38 @@ struct dai {
 	uint32_t private_size;
 };
 
+/**
+ * \brief Array of DAIs grouped by type.
+ */
+struct dai_type_info {
+	uint32_t type;		/**< Type */
+	struct dai *dai_array;	/**< Array of DAIs */
+	size_t num_dais;	/**< Number of elements in dai_array */
+};
+
+/**
+ * \brief Plugs platform specific DAI array once initialized into the lib.
+ *
+ * Lib serves the DAIs to other FW elements with dai_get()
+ *
+ * \param[in] dai_type_array Array of DAI arrays grouped by type.
+ * \param[in] num_dai_types Number of elements in the dai_type_array.
+ */
+void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types);
+
+/**
+ * \brief API to request a platform DAI.
+ *
+ * \param[in] type Type of requested DAI.
+ * \param[in] index Index of requested DAI.
+ */
 struct dai *dai_get(uint32_t type, uint32_t index);
 
 #define dai_set_drvdata(dai, data) \
 	dai->private = data; \
 	dai->private_size = sizeof(*data)
 #define dai_get_drvdata(dai) \
-	dai->private;
+	dai->private
 #define dai_base(dai) \
 	dai->plat_data.base
 #define dai_irq(dai) \

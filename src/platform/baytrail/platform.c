@@ -33,6 +33,7 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/pmc.h>
@@ -231,6 +232,10 @@ int platform_init(struct sof *sof)
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	ret = dmac_init();
+	if (ret < 0)
+		return -ENODEV;
+
+	ret = dai_init();
 	if (ret < 0)
 		return -ENODEV;
 

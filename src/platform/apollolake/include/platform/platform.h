@@ -130,9 +130,6 @@ struct sof;
 /* platform has low power memory type */
 #define PLATFORM_MEM_HAS_LP_RAM
 
-/* number of SSP ports in platform */
-#define PLATFORM_NUM_SSP	6
-
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 

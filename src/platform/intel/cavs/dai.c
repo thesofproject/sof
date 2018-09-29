@@ -41,6 +41,7 @@
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <stdint.h>
 #include <string.h>
 #include <config.h>
@@ -273,30 +274,32 @@ static struct dai hda[(6 + 7)] = {
 	}
 };
 
-struct dai *dai_get(uint32_t type, uint32_t index)
-{
-	int i;
-
-	if (type == SOF_DAI_INTEL_SSP) {
-		for (i = 0; i < ARRAY_SIZE(ssp); i++) {
-			if (ssp[i].type == type && ssp[i].index == index)
-				return &ssp[i];
-		}
-	}
-
+static struct dai_type_info dti[] = {
+	{
+		.type = SOF_DAI_INTEL_SSP,
+		.dai_array = ssp,
+		.num_dais = ARRAY_SIZE(ssp)
+	},
 #if defined CONFIG_DMIC
-	if (type == SOF_DAI_INTEL_DMIC) {
-		for (i = 0; i < ARRAY_SIZE(dmic); i++) {
-			if (dmic[i].type == type && dmic[i].index == index)
-				return &dmic[i];
-		}
-	}
+	{
+		.type = SOF_DAI_INTEL_DMIC,
+		.dai_array = dmic,
+		.num_dais = ARRAY_SIZE(dmic)
+	},
 #endif
-	if (type == SOF_DAI_INTEL_HDA) {
-		for (i = 0; i < ARRAY_SIZE(hda); i++) {
-			if (hda[i].type == type && hda[i].index == index)
-				return &hda[i];
-		}
+	{
+		.type = SOF_DAI_INTEL_HDA,
+		.dai_array = hda,
+		.num_dais = ARRAY_SIZE(hda)
 	}
-	return NULL;
+};
+
+int dai_init(void)
+{
+	/* no probing before first use */
+
+	/* TODO: dynamic dai initialization based on platform settings */
+
+	dai_install(dti, ARRAY_SIZE(dti));
+	return 0;
 }

@@ -50,7 +50,7 @@ void dma_install(struct dma *dma_array, size_t num_dmas)
 
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
-	int ch_count;
+	int ch_count, ret;
 	int min_ch_count = INT32_MAX;
 	struct dma *d = NULL, *dmin = NULL;
 
@@ -94,6 +94,12 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	/* return DMAC */
 	if (dmin) {
 		tracev_value(dmin->plat_data.id);
+		ret = dma_probe(dmin);
+		if (ret < 0) {
+			trace_error(TRACE_CLASS_DMA, "edi");
+			trace_error_value(dmin->plat_data.id);
+			return NULL;
+		}
 		return dmin;
 	}
 

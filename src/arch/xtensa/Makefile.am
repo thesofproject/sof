@@ -93,6 +93,7 @@ sof_LDADD = \
 	../../platform/$(PLATFORM)/libplatform.la \
 	../../ipc/libsof_ipc.a \
 	../../lib/libdma.a \
+	../../lib/libdai.a \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.la \
 	../../math/libsof_math.a \

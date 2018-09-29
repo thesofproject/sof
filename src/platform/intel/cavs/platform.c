@@ -35,13 +35,13 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/interrupt.h>
 #include <platform/idc.h>
 #include <uapi/ipc.h>
 #include <sof/mailbox.h>
-#include <sof/dai.h>
 #include <sof/dma.h>
 #include <sof/sof.h>
 #include <sof/agent.h>
@@ -57,13 +57,10 @@
 #include <version.h>
 
 #if defined(CONFIG_APOLLOLAKE)
-#define SSP_COUNT PLATFORM_NUM_SSP
 #define SSP_CLOCK_FREQUENCY 19200000
 #elif defined(CONFIG_CANNONLAKE)
-#define SSP_COUNT PLATFORM_SSP_COUNT
 #define SSP_CLOCK_FREQUENCY 24000000
 #elif defined(CONFIG_ICELAKE)
-#define SSP_COUNT PLATFORM_SSP_COUNT
 #define SSP_CLOCK_FREQUENCY 38400000
 #endif
 
@@ -276,9 +273,7 @@ static void platform_init_hw(void)
 
 int platform_init(struct sof *sof)
 {
-	struct dai *ssp;
-	struct dai *dmic0;
-	int i, ret;
+	int ret;
 
 	#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
@@ -305,38 +300,36 @@ int platform_init(struct sof *sof)
 	/* init the system agent */
 	sa_init(sof);
 
-	/* Set CPU to default frequency for booting */
+	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
-	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
 
-	/* set SSP clock */
-	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
-	clock_set_freq(CLK_SSP, SSP_CLOCK_FREQUENCY);
+#if defined(CONFIG_APOLLOLAKE)
+	/* initialize PM for boot */
 
-	/* initialise the host IPC mechanisms */
-	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init(sof);
+	/* TODO: there are two clk freqs CRO & CRO/4
+	 * Running on CRO all the time atm
+	 */
 
-	#if defined(CONFIG_APOLLOLAKE)
-	/* disable PM for boot */
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
-		SHIM_CLKCTL_LPGPDMAFDCGB(0) |
-		SHIM_CLKCTL_LPGPDMAFDCGB(1) |
-		SHIM_CLKCTL_I2SFDCGB(3) |
-		SHIM_CLKCTL_I2SFDCGB(2) |
-		SHIM_CLKCTL_I2SFDCGB(1) |
-		SHIM_CLKCTL_I2SFDCGB(0) |
-		SHIM_CLKCTL_DMICFDCGB |
-		SHIM_CLKCTL_I2SEFDCGB(1) |
-		SHIM_CLKCTL_I2SEFDCGB(0) |
-		SHIM_CLKCTL_TCPAPLLS |
-		SHIM_CLKCTL_RAPLLC |
-		SHIM_CLKCTL_RXOSCC |
-		SHIM_CLKCTL_RFROSCC |
-		SHIM_CLKCTL_TCPLCG(0) | SHIM_CLKCTL_TCPLCG(1));
+	/* TODO: do not do local clock gating until making sure that
+	 * tensilica core timer is unused.
+	 * Could not find any arch_timer_set/timer_set() direct calls
+	 * on cavs platforms atm.
+	 */
+	shim_write(SHIM_CLKCTL,
+		   SHIM_CLKCTL_HDCS_PLL | /* HP domain clocked by PLL */
+		   SHIM_CLKCTL_LDCS_PLL | /* LP domain clocked by PLL */
+		   SHIM_CLKCTL_DPCS_DIV1(0) | /* Core 0 clk not divided */
+		   SHIM_CLKCTL_DPCS_DIV1(1) | /* Core 1 clk not divided */
+		   SHIM_CLKCTL_HPMPCS_DIV2 | /* HP mem clock div by 2 */
+		   SHIM_CLKCTL_LPMPCS_DIV4 | /* LP mem clock div by 4 */
+		   SHIM_CLKCTL_TCPAPLLS_DIS |
+		   SHIM_CLKCTL_TCPLCG_DIS(0) | SHIM_CLKCTL_TCPLCG_DIS(1));
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
-	#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+	/* TODO: need to merge as for APL */
+	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
+
 	/* prevent Core0 clock gating. */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
 		SHIM_CLKCTL_TCPLCG(0));
@@ -347,7 +340,11 @@ int platform_init(struct sof *sof)
 
 	/* prevent DSP Common power gating */
 	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
-	#endif
+#endif
+
+	/* initialise the host IPC mechanisms */
+	trace_point(TRACE_BOOT_PLATFORM_IPC);
+	ipc_init(sof);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
@@ -355,25 +352,10 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return -ENODEV;
 
-
-	/* init SSP ports */
-	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	for (i = 0; i < SSP_COUNT; i++) {
-		ssp = dai_get(SOF_DAI_INTEL_SSP, i);
-		if (ssp == NULL)
-			return -ENODEV;
-		dai_probe(ssp);
-	}
-
-	/* Init DMIC. Note that the two PDM controllers and four microphones
-	 * supported max. those are available in platform are handled by dmic0.
-	 */
-	trace_point(TRACE_BOOT_PLATFORM_DMIC);
-	dmic0 = dai_get(SOF_DAI_INTEL_DMIC, 0);
-	if (!dmic0)
+	/* init DAIs */
+	ret = dai_init();
+	if (ret < 0)
 		return -ENODEV;
-
-	dai_probe(dmic0);
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);

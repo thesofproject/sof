@@ -191,7 +191,7 @@ struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 	dma->private = data; \
 	dma->private_size = sizeof(*data)
 #define dma_get_drvdata(dma) \
-	dma->private;
+	dma->private
 #define dma_base(dma) \
 	dma->plat_data.base
 #define dma_irq(dma, cpu) \
