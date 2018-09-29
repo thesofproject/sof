@@ -140,3 +140,17 @@ HDA_DAI_CONFIG(3, 1, iDisp1)
 HDA_DAI_CONFIG(4, 2, iDisp2)
 HDA_DAI_CONFIG(5, 3, iDisp3)
 
+
+VIRTUAL_DAPM_ROUTE_IN(codec0_in, HDA, 0, IN, 1)
+VIRTUAL_DAPM_ROUTE_IN(codec1_in, HDA, 1, IN, 2)
+VIRTUAL_DAPM_ROUTE_OUT(codec0_out, HDA, 0, OUT, 3)
+VIRTUAL_DAPM_ROUTE_OUT(codec1_out, HDA, 1, OUT, 4)
+
+# codec2 is not supported in dai links but it exists
+# in dapm routes, so hack this one to HDA1
+VIRTUAL_DAPM_ROUTE_IN(codec2_in, HDA, 1, IN, 5)
+VIRTUAL_DAPM_ROUTE_OUT(codec2_out, HDA, 1, OUT, 6)
+
+VIRTUAL_DAPM_ROUTE_OUT(iDisp1_out, HDA, 3, OUT, 7)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp2_out, HDA, 4, OUT, 8)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp3_out, HDA, 5, OUT, 9)
