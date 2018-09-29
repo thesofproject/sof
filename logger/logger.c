@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include "/usr/local/include/sof/uapi/logging.h"
+#include <sof/uapi/logging.h>
 
 #define CEIL(a, b) ((a+b-1)/b)
 
