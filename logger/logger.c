@@ -44,7 +44,7 @@ struct dma_log {
 	uint32_t address;
 };
 
-static int fetch_entry(FILE *f_ldc, FILE *f_dma, uint32_t base_address,
+static int fetch_entry(FILE *f_ldc, FILE *f_in, uint32_t base_address,
 	uint32_t data_offset, struct dma_log dma_log);
 static void print_table_header(void);
 static void print_entry_params(struct dma_log dma_log, struct ldc_entry);
@@ -95,14 +95,15 @@ static void print_entry_params(struct dma_log dma_log,
 
 static void usage(char *name)
 {
-	fprintf(stdout, "Usage %s <file(s)>\n", name);
-	fprintf(stdout, "%s:\t Parse traces logs\n", name);
-	fprintf(stdout, "%s:\t -l *.ldc_file\t-d dma_dump_file\n", name);
+	fprintf(stdout, "Usage %s <option(s)> <file(s)>\n", name);
+	fprintf(stdout, "%s:\t \t\t\tParse traces logs\n", name);
+	fprintf(stdout, "%s:\t -l *.ldc_file\t-i in_file\n", name);
+	fprintf(stdout, "%s:\t -t\t\t\tDisplay dma trace data\n", name);
 	exit(0);
 }
 
 
-static int fetch_entry(FILE *f_ldc, FILE *f_dma, uint32_t base_address,
+static int fetch_entry(FILE *f_ldc, FILE *f_in, uint32_t base_address,
 	uint32_t data_offset, struct dma_log dma_log)
 {
 
@@ -176,9 +177,9 @@ static int fetch_entry(FILE *f_ldc, FILE *f_dma, uint32_t base_address,
 	entry.params = (uint32_t *) malloc(sizeof(uint32_t) *
 		entry.header.params_num);
 	ret = fread(entry.params, sizeof(uint32_t), entry.header.params_num, 
-		f_dma);
+		f_in);
 	if (ret != entry.header.params_num) {
-		ret = -ferror(f_dma);
+		ret = -ferror(f_in);
 		goto out;
 	}
 	
@@ -198,57 +199,92 @@ out:
 	return ret;
 }
 
-int main(int argc, char *argv[])
+static int logger_read(const char *in_file, FILE *f_ldc, struct snd_sof_logs_header *snd)
 {
 	struct dma_log dma_log;
+	FILE *f_in = NULL;
+	int ret = 0;
+
+	f_in = fopen(in_file, "r");
+
+	if (f_in == NULL) {
+		fprintf(stderr, "Error while opening %s. \n", in_file);
+		ret = errno;
+		goto out;
+	}
+
+	print_table_header();
+
+	while (!feof(f_in)) {
+
+		/* getting entry parameters from dma dump */
+		ret = fread(&dma_log, sizeof(dma_log), 1, f_in);
+		if (!ret) {
+			ret = -ferror(f_in);
+			goto out;
+		}
+
+		/* checking log address */
+		if ((dma_log.address < snd->base_address) ||
+			(dma_log.address > (snd->base_address + snd->data_length)))
+			continue;
+
+		/* fetching entry from elf dump*/
+		ret = fetch_entry(f_ldc, f_in, snd->base_address,
+			snd->data_offset, dma_log);
+		if (ret)
+			break;
+	}
+
+out:
+	if (f_ldc) fclose(f_ldc);
+	if (f_in) fclose(f_in);
+
+	return ret;
+
+}
+
+int main(int argc, char *argv[])
+{
 	struct snd_sof_logs_header snd;
-
-	int ret;
-	int opt;
-
-	const char *ldc_dir = NULL; 
-	const char *dma_dump = NULL; 
+	const char *ldc_file = NULL;
+	const char *in_file = NULL;
+	int opt, trace = 0, ret = 0;
+	FILE *f_ldc = NULL;
 	
-	while ((opt = getopt(argc, argv, "l:d:")) != -1) {
+	while ((opt = getopt(argc, argv, "l:i:th")) != -1) {
 		switch (opt) {
 		case 'l':
-			ldc_dir = optarg;
+			ldc_file = optarg;
 			break;
-		case 'd':
-			dma_dump = optarg;
+		case 'i':
+			in_file = optarg;
 			break;
+		case 't':
+			trace = 1;
+			break;
+		case 'h':
 		default:
 			usage(argv[0]);
 		}
 	}
 
-	if (!ldc_dir) {
+	if (!ldc_file) {
 		fprintf(stderr, "error: invalid ldc file.\n");
-		return -EINVAL;
-	}
-	if (!dma_dump) {
-		fprintf(stderr, "error: invalid dma_dump file.\n");
+		usage(argv[0]);
 		return -EINVAL;
 	}
 
-	FILE *f_ldc = fopen(ldc_dir, "r");
-	FILE *f_dma = fopen(dma_dump, "r");
+	f_ldc = fopen(ldc_file, "r");
 
 	if (f_ldc == NULL) {
-		fprintf(stderr, "Error while opening %s. \n", ldc_dir);
-		ret = errno;
-		goto out;
-	}
-
-	if (f_dma == NULL) {
-		fprintf(stderr, "Error while opening %s. \n", dma_dump);
+		fprintf(stderr, "Error while opening %s. \n", ldc_file);
 		ret = errno;
 		goto out;
 	}
 
 	/* set file positions to the beginning */
 	rewind(f_ldc);
-	rewind(f_dma);
 
 	/* veryfing ldc signature */
 	ret = fread(&snd, sizeof(snd), 1, f_ldc);
@@ -263,31 +299,17 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
-	print_table_header();
+	/* dma trace requested */
+	if (trace)
+		return logger_read("/sys/kernel/debug/sof/trace", f_ldc, &snd);
 
-	while (!feof(f_dma)) {
+	/* default option with no infile is to dump errors/debug data */
+	if (!in_file)
+		return logger_read("/sys/kernel/debug/sof/etrace", f_ldc, &snd);
 
-		/* getting entry parameters from dma dump */
-		ret = fread(&dma_log, sizeof(dma_log), 1, f_dma);
-		if (!ret) {
-			ret = -ferror(f_dma);
-			goto out;
-		}
+	return logger_read(in_file, f_ldc, &snd);
 
-		/* checking log address */
-		if ((dma_log.address < snd.base_address) ||
-			(dma_log.address > (snd.base_address + snd.data_length)))
-			continue;
-
-		/* fetching entry from elf dump*/
-		ret = fetch_entry(f_ldc, f_dma, snd.base_address,
-			snd.data_offset, dma_log);
-		if (ret) goto out;
-	}
-
-	ret = 0;
 out:
-	if (f_dma) fclose(f_dma);
 	if (f_ldc) fclose(f_ldc);
 
 	return ret;
