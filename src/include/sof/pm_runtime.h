@@ -41,6 +41,11 @@
 #include <sof/trace.h>
 #include <sof/wait.h>
 
+/** \addtogroup pm_runtime PM Runtime
+ *  PM runtime specification.
+ *  @{
+ */
+
 /** \brief Power management trace function. */
 #define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
 #define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
@@ -48,9 +53,16 @@
 /** \brief Power management trace value function. */
 #define tracev_pm_value(__e)	tracev_value(__e)
 
+/* PM runtime flags */
+
+#define RPM_ASYNC		0x01	/**< Request is asynchronous */
+
 /** \brief Runtime power management context */
 enum pm_runtime_context {
 	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
+	SSP_CLK,			/**< SSP Clock */
+	DMIC_CLK,			/**< DMIC Clock */
+	DW_DMAC_CLK			/**< DW DMAC Clock */
 };
 
 /** \brief Runtime power management data. */
@@ -65,15 +77,29 @@ struct pm_runtime_data {
 void pm_runtime_init(void);
 
 /**
- * \brief Retrieves power management resource.
+ * \brief Retrieves power management resource (async).
+ *
  * \param[in] context Type of power management context.
+ * \param[in] index Index of the device.
  */
-void pm_runtime_get(enum pm_runtime_context context);
+void pm_runtime_get(enum pm_runtime_context context, uint32_t index);
+
+/**
+ * \brief Retrieves power management resource.
+ *
+ * \param[in] context Type of power management context.
+ * \param[in] index Index of the device.
+ */
+void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index);
 
 /**
  * \brief Releases power management resource.
+ *
  * \param[in] context Type of power management context.
+ * \param[in] index Index of the device.
  */
-void pm_runtime_put(enum pm_runtime_context context);
+void pm_runtime_put(enum pm_runtime_context context, uint32_t index);
+
+/** @}*/
 
 #endif /* __INCLUDE_PM_RUNTIME__ */

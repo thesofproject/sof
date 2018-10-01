@@ -263,7 +263,7 @@ static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	spin_unlock_irq(&dma->lock, flags);
 
 	/* Force Host DMA to exit L1 */
-	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	return 0;
 }
@@ -376,7 +376,7 @@ static int hda_dma_start(struct dma *dma, int channel)
 	/* full buffer is copied at startup */
 	p->chan[channel].desc_avail = p->chan[channel].desc_count;
 
-	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1);
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	/* activate timer if configured in cyclic mode */
 	if (p->chan[channel].dma_ch_work.cb) {
