@@ -51,24 +51,35 @@ void pm_runtime_init(void)
 	platform_pm_runtime_init(prd);
 }
 
-void pm_runtime_get(enum pm_runtime_context context)
+void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 {
 	tracev_pm("get");
 
 	switch (context) {
 	default:
-		platform_pm_runtime_get(context);
+		platform_pm_runtime_get(context, index, RPM_ASYNC);
 		break;
 	}
 }
 
-void pm_runtime_put(enum pm_runtime_context context)
+void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
+{
+	tracev_pm("get");
+
+	switch (context) {
+	default:
+		platform_pm_runtime_get(context, index, 0);
+		break;
+	}
+}
+
+void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 {
 	tracev_pm("put");
 
 	switch (context) {
 	default:
-		platform_pm_runtime_put(context);
+		platform_pm_runtime_put(context, index, 0);
 		break;
 	}
 }

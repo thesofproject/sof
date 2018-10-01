@@ -58,16 +58,20 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd)
 	_prd->platform_data = pprd;
 }
 
-void platform_pm_runtime_get(enum pm_runtime_context context)
+void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
+			     uint32_t flags)
 {
 	/* Action based on context */
 }
 
-void platform_pm_runtime_put(enum pm_runtime_context context)
+void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
+			     uint32_t flags)
 {
 	switch (context) {
 	case PM_RUNTIME_HOST_DMA_L1:
 		cavs_pm_runtime_force_host_dma_l1_exit();
+		break;
+	default:
 		break;
 	}
 }
