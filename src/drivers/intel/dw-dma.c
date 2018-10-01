@@ -200,7 +200,7 @@
 #define DW_CFG_HIGH_DEF		0x0
 
 #elif defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE) \
-	|| defined(CONFIG_ICELAKE)
+	|| defined(CONFIG_ICELAKE) || defined CONFIG_SUECREEK
 
 /* CTL_LO */
 #define DW_CTLL_S_GATH_EN		(1 << 17)
@@ -245,7 +245,7 @@
 
 /* HW Linked list support, only enabled for APL/CNL at the moment */
 #if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE
+	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 #define DW_USE_HW_LLI	1
 #else
 #define DW_USE_HW_LLI	0
@@ -803,7 +803,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
 	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE
+	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
 			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
@@ -923,7 +923,7 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
 	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE
+	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 		lli->ctrl_hi = DW_CTLH_CLASS(p->class) |
 			(next->size & DW_CTLH_BLOCK_TS_MASK);
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
@@ -994,7 +994,7 @@ found:
 	for (i = 0; i <  DW_MAX_CHAN; i++) {
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
 	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE
+	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 		dw_write(dma, DW_CTRL_HIGH(i),
 			 DW_CTLH_CLASS(dp->chan[i].class));
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl icl)
+SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl)
 if [ "$#" -eq 0 ]
 then
 	PLATFORMS=${SUPPORTED_PLATFORMS[@]}
@@ -116,6 +116,14 @@ do
 		HOST="xtensa-cnl-elf"
 		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
 	fi
+	if [ $j == "sue" ]
+        then
+                PLATFORM="suecreek"
+                XTENSA_CORE="X6H3CNL_2016_4_linux"
+                ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
+                HOST="xtensa-cnl-elf"
+                XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+        fi
 	if [ $j == "icl" ]
 	then
 		PLATFORM="icelake"

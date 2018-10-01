@@ -68,6 +68,7 @@ l2_cache_pref:
 sof_stack_base:
 	.word SOF_STACK_BASE
 
+#if !defined CONFIG_SUECREEK
 wnd0_base:
 	.word DMWBA(0)
 
@@ -85,6 +86,7 @@ wnd0_status_address:
 
 wnd0_error_address:
 	.word HP_SRAM_WIN0_BASE | 0x4
+#endif
 
 fw_loaded_status_value:
 	.word	0x00000005
@@ -112,6 +114,7 @@ boot_init:
 	l32r	a3, sof_stack_base
 	mov		sp, a3
 
+#if !defined CONFIG_SUECREEK
 	/* set status register to 0x00000005 in wnd0 */
 	l32r	a3,	fw_loaded_status_value
 	l32r	a5,	wnd0_status_address
@@ -132,6 +135,7 @@ boot_init:
 	l32r	a5, wnd0_base_val
 	s32i	a5, a3, 0
 	memw
+#endif
 
 #if (XCHAL_DCACHE_IS_COHERENT || XCHAL_LOOP_BUFFER_SIZE) && \
 	XCHAL_HW_MIN_VERSION >= XTENSA_HWVERSION_RE_2012_0

@@ -828,6 +828,11 @@ err:
 #define CNL_DSP_IMR_BASE_ENTRY	0xb0038000
 #define CNL_DSP_HP_BASE_ENTRY	0xbe040000
 
+#define ADSP_SUE_DSP_ROM_BASE	0xBEFE0000
+#define ADSP_SUE_DSP_ROM_SIZE	0x00002000
+#define SUE_DSP_IMR_BASE_ENTRY	0xb0038000
+#define SUE_DSP_HP_BASE_ENTRY	0xbe000000
+
 #define ADSP_ICL_DSP_ROM_BASE	0xBEFE0000
 #define ADSP_ICL_DSP_ROM_SIZE	0x00002000
 #define ICL_DSP_IMR_BASE_ENTRY	0xb0038000
@@ -878,4 +883,20 @@ const struct adsp machine_icl = {
 	.write_firmware = man_write_fw,
 	.write_firmware_meu = man_write_fw_meu,
 	.man = &cnl_manifest, // use the same as CNL
+};
+
+const struct adsp machine_sue = {
+	.name = "sue",
+	.rom_base = ADSP_SUE_DSP_ROM_BASE,
+	.rom_size = ADSP_SUE_DSP_ROM_SIZE,
+	.imr_base = SUE_DSP_IMR_BASE_ENTRY,
+	.imr_size = 0x100000,
+	.sram_base = SUE_DSP_HP_BASE_ENTRY,
+	.sram_size = 0x100000,
+	.image_size = 0x100000,
+	.dram_offset = 0,
+	.machine_id = MACHINE_SUECREEK,
+	.write_firmware = man_write_fw,
+	.write_firmware_meu = man_write_fw_meu,
+	.man = &cnl_manifest,
 };

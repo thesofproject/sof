@@ -77,7 +77,8 @@ static const struct freq_table cpu_freq[] = {
 	{200000000, 200000, 0x1},
 	{400000000, 400000, 0x0}, /* default */
 };
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
+	|| defined(CONFIG_SUECREEK)
 static const struct freq_table cpu_freq[] = {
 	{120000000, 120000, 0x0},
 	{400000000, 400000, 0x4},
@@ -93,7 +94,7 @@ static const struct freq_table ssp_freq[] = {
 	{19200000, 19200, },	/* default */
 	{24576000, 24576, },
 };
-#elif defined(CONFIG_CANNONLAKE)
+#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_SUECREEK)
 static const struct freq_table ssp_freq[] = {
 	{19200000, 19200, },
 	{24000000, 24000, },	/* default */
@@ -108,7 +109,8 @@ static const struct freq_table ssp_freq[] = {
 #if defined(CONFIG_APOLLOLAKE)
 #define CPU_DEFAULT_IDX		2
 #define SSP_DEFAULT_IDX		0
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
+	|| defined(CONFIG_SUECREEK)
 #define CPU_DEFAULT_IDX		1
 #define SSP_DEFAULT_IDX		1
 #endif

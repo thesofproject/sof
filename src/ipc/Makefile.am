@@ -68,6 +68,14 @@ libsof_ipc_a_SOURCES = \
 	dma-copy.c
 endif
 
+if BUILD_SUECREEK
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	handler.c \
+	sue-ipc.c \
+	dma-copy.c
+endif
+
 if BUILD_ICELAKE
 libsof_ipc_a_SOURCES = \
 	ipc.c \
