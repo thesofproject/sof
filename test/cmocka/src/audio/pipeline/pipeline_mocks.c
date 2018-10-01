@@ -30,6 +30,8 @@
 
 #include "pipeline_mocks.h"
 
+struct ipc *_ipc;
+
 void platform_dai_timestamp(struct comp_dev *dai,
 	struct sof_ipc_stream_posn *posn)
 {
@@ -88,4 +90,19 @@ void _trace_event1(uint32_t log_entry, uint32_t param)
 {
 	(void)log_entry;
 	(void)param;
+}
+
+int arch_cpu_is_core_enabled(int id)
+{
+	return 1;
+}
+
+void cpu_power_down_core(void) { }
+
+struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
+{
+	(void)ipc;
+	(void)id;
+
+	return NULL;
 }

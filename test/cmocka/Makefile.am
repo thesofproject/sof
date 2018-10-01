@@ -70,23 +70,17 @@ mixer_LDADD = -lm $(LDADD)
 
 if BUILD_XTENSA
 
-if BUILD_XTENSA_SMP
-pipeline_cpu_c = ../../src/arch/xtensa/smp/cpu.c
-else
-pipeline_cpu_c = ../../src/arch/xtensa/up/cpu.c
-endif
-
 check_PROGRAMS += pipeline_new
-pipeline_new_SOURCES = $(pipeline_cpu_c) ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_mocks_rzalloc.c
+pipeline_new_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_mocks_rzalloc.c
 
 check_PROGRAMS += pipeline_new_allocation
-pipeline_new_allocation_SOURCES = $(pipeline_cpu_c) ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new_allocation.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_new_allocation_mocks.c
+pipeline_new_allocation_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new_allocation.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_new_allocation_mocks.c
 
 check_PROGRAMS += pipeline_connect_upstream
-pipeline_connect_upstream_SOURCES = $(pipeline_cpu_c) ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_connect_upstream.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
+pipeline_connect_upstream_SOURCES = ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_connect_upstream.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
 
 check_PROGRAMS += pipeline_free
-pipeline_free_SOURCES = $(pipeline_cpu_c) ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_free.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
+pipeline_free_SOURCES = ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_free.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
 
 endif
 
