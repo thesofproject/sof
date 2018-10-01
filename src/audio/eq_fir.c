@@ -204,11 +204,8 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
 	cd->fir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
-	if (!cd->fir_delay) {
-		trace_eq_error("eda");
-		trace_value(size_sum);
+	if (!cd->fir_delay)
 		return -ENOMEM;
-	}
 
 	/* Initialize 2nd phase to set EQ delay lines pointers */
 	fir_delay = cd->fir_delay;
