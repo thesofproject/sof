@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <errno.h>
 #include <alsa/asoundlib.h>
 
 #define SOF_CTRL_CMD_BINARY 3 /* TODO: From uapi ipc */
@@ -64,7 +65,13 @@ static int read_setup(unsigned int *data, char setup[], size_t smax)
 	int n_max = smax / sizeof(unsigned int);
 	int separator;
 
+	/* open input file */
 	fh = fopen(setup, "r");
+	if (!fh) {
+		fprintf(stderr, "error: %s\n", strerror(errno));
+		return -errno;
+	}
+
 	while (fscanf(fh, "%u", &data[n]) != EOF && n < n_max) {
 		if (n > 0)
 			fprintf(stdout, ",");
