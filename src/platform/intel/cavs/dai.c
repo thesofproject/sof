@@ -41,6 +41,7 @@
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <stdint.h>
 #include <string.h>
 #include <config.h>
@@ -204,99 +205,51 @@ static struct dai dmic[2] = {
 
 #endif
 
-/* TODO: numbers to be defined and shared with HD/A dmas */
-static struct dai hda[(6 + 7)] = {
+static struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
+
+static struct dai_type_info dti[] = {
 	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 0,
-		.ops = &hda_ops
+		.type = SOF_DAI_INTEL_SSP,
+		.dai_array = ssp,
+		.num_dais = ARRAY_SIZE(ssp)
 	},
+#if defined CONFIG_DMIC
 	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 1,
-		.ops = &hda_ops
+		.type = SOF_DAI_INTEL_DMIC,
+		.dai_array = dmic,
+		.num_dais = ARRAY_SIZE(dmic)
 	},
+#endif
 	{
 		.type = SOF_DAI_INTEL_HDA,
-		.index = 2,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 3,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 4,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 5,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 6,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 7,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 8,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 9,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 10,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 11,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 12,
-		.ops = &hda_ops
+		.dai_array = hda,
+		.num_dais = ARRAY_SIZE(hda)
 	}
 };
 
-struct dai *dai_get(uint32_t type, uint32_t index)
+int dai_init(void)
 {
 	int i;
 
-	if (type == SOF_DAI_INTEL_SSP) {
-		for (i = 0; i < ARRAY_SIZE(ssp); i++) {
-			if (ssp[i].type == type && ssp[i].index == index)
-				return &ssp[i];
-		}
+	/* init hd/a, note that size depends on the platform caps */
+	for (i = 0; i < ARRAY_SIZE(hda); i++) {
+		hda[i].type = SOF_DAI_INTEL_HDA;
+		hda[i].index = i;
+		hda[i].ops = &hda_ops;
 	}
 
-#if defined CONFIG_DMIC
-	if (type == SOF_DAI_INTEL_DMIC) {
-		for (i = 0; i < ARRAY_SIZE(dmic); i++) {
-			if (dmic[i].type == type && dmic[i].index == index)
-				return &dmic[i];
-		}
-	}
-#endif
-	if (type == SOF_DAI_INTEL_HDA) {
-		for (i = 0; i < ARRAY_SIZE(hda); i++) {
-			if (hda[i].type == type && hda[i].index == index)
-				return &hda[i];
-		}
-	}
-	return NULL;
+	/* init SSP ports */
+	trace_point(TRACE_BOOT_PLATFORM_SSP);
+	for (i = 0; i < DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT; i++)
+		dai_probe(ssp + i);
+
+	/* Init DMIC. Note that the two PDM controllers and four microphones
+	 * supported max. those are available in platform are handled by dmic0.
+	 */
+	trace_point(TRACE_BOOT_PLATFORM_DMIC);
+
+	dai_probe(dmic + 0);
+
+	dai_install(dti, ARRAY_SIZE(dti));
+	return 0;
 }

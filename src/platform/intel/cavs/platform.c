@@ -35,6 +35,7 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/interrupt.h>
@@ -57,13 +58,10 @@
 #include <version.h>
 
 #if defined(CONFIG_APOLLOLAKE)
-#define SSP_COUNT PLATFORM_NUM_SSP
 #define SSP_CLOCK_FREQUENCY 19200000
 #elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_SUECREEK)
-#define SSP_COUNT PLATFORM_SSP_COUNT
 #define SSP_CLOCK_FREQUENCY 24000000
 #elif defined(CONFIG_ICELAKE)
-#define SSP_COUNT PLATFORM_SSP_COUNT
 #define SSP_CLOCK_FREQUENCY 38400000
 #endif
 
@@ -292,9 +290,7 @@ static void platform_init_hw(void)
 
 int platform_init(struct sof *sof)
 {
-	struct dai *ssp;
-	struct dai *dmic0;
-	int i, ret;
+	int ret;
 
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
 	|| defined(CONFIG_SUECREEK)
@@ -377,24 +373,9 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return -ENODEV;
 
-	/* init SSP ports */
-	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	for (i = 0; i < SSP_COUNT; i++) {
-		ssp = dai_get(SOF_DAI_INTEL_SSP, i);
-		if (ssp == NULL)
-			return -ENODEV;
-		dai_probe(ssp);
-	}
-
-	/* Init DMIC. Note that the two PDM controllers and four microphones
-	 * supported max. those are available in platform are handled by dmic0.
-	 */
-	trace_point(TRACE_BOOT_PLATFORM_DMIC);
-	dmic0 = dai_get(SOF_DAI_INTEL_DMIC, 0);
-	if (!dmic0)
+	ret = dai_init();
+	if (ret < 0)
 		return -ENODEV;
-
-	dai_probe(dmic0);
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);

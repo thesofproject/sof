@@ -58,7 +58,6 @@ struct sof;
 
 #define PLATFORM_WAITI_DELAY	1
 
-#define PLATFORM_SSP_COUNT 3
 #define MAX_GPDMA_COUNT 2
 
 /* DGMBS align value */

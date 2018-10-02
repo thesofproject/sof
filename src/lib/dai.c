@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,68 +25,40 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Marcin Maka <marcin.maka@linux.intel.com>
  */
 
-#include <sof/sof.h>
 #include <sof/dai.h>
-#include <sof/ssp.h>
-#include <sof/stream.h>
-#include <sof/audio/component.h>
-#include <platform/memory.h>
-#include <platform/interrupt.h>
-#include <platform/dma.h>
-#include <platform/dai.h>
-#include <stdint.h>
-#include <string.h>
-#include <config.h>
 
-static struct dai ssp[2] = {
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 0,
-	.plat_data = {
-		.base		= SSP0_BASE,
-		.irq		= IRQ_NUM_EXT_SSP0,
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset		= SSP0_BASE + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP0_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset		= SSP0_BASE + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP0_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 1,
-	.plat_data = {
-		.base		= SSP1_BASE,
-		.irq		= IRQ_NUM_EXT_SSP1,
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset		= SSP1_BASE + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP1_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset		= SSP1_BASE + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP1_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-}};
-
-static struct dai_type_info dti[] = {
-	{
-		.type = SOF_DAI_INTEL_SSP,
-		.dai_array = ssp,
-		.num_dais = ARRAY_SIZE(ssp)
-	}
+struct dai_info {
+	struct dai_type_info *dai_type_array;
+	size_t num_dai_types;
 };
 
-int dai_init(void)
+static struct dai_info lib_dai = {
+	.dai_type_array = NULL,
+	.num_dai_types = 0
+};
+
+void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types)
 {
-	dai_install(dti, ARRAY_SIZE(dti));
-	return 0;
+	lib_dai.dai_type_array = dai_type_array;
+	lib_dai.num_dai_types = num_dai_types;
+}
+
+struct dai *dai_get(uint32_t type, uint32_t index)
+{
+	int i;
+	struct dai_type_info *dti;
+
+	for (dti = lib_dai.dai_type_array;
+	     dti < lib_dai.dai_type_array + lib_dai.num_dai_types; dti++) {
+		if (dti->type == type) {
+			for (i = 0; i < dti->num_dais; i++) {
+				if (dti->dai_array[i].index == index)
+					return dti->dai_array + i;
+			}
+		}
+	}
+	return NULL;
 }
