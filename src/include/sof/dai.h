@@ -122,7 +122,6 @@ struct dai {
 	struct dai_plat_data plat_data;
 	const struct dai_ops *ops;
 	void *private;
-	uint32_t private_size;
 };
 
 /**
@@ -153,8 +152,7 @@ void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types);
 struct dai *dai_get(uint32_t type, uint32_t index);
 
 #define dai_set_drvdata(dai, data) \
-	dai->private = data; \
-	dai->private_size = sizeof(*data)
+	dai->private = data;
 #define dai_get_drvdata(dai) \
 	dai->private;
 #define dai_base(dai) \

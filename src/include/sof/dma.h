@@ -164,7 +164,6 @@ struct dma {
 	const struct dma_ops *ops;
 	atomic_t num_channels_busy; /* number of busy channels */
 	void *private;
-	uint32_t private_size;
 };
 
 /**
@@ -188,8 +187,7 @@ void dma_install(struct dma *dma_array, size_t num_dmas);
 struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 
 #define dma_set_drvdata(dma, data) \
-	dma->private = data; \
-	dma->private_size = sizeof(*data)
+	dma->private = data;
 #define dma_get_drvdata(dma) \
 	dma->private;
 #define dma_base(dma) \

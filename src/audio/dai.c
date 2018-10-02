@@ -765,11 +765,7 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 		}
 
 		dcache_writeback_invalidate_region(dd->dai, sizeof(*dd->dai));
-		dcache_writeback_invalidate_region(dd->dai->private,
-						   dd->dai->private_size);
 		dcache_writeback_invalidate_region(dd->dma, sizeof(*dd->dma));
-		dcache_writeback_invalidate_region(dd->dma->private,
-						   dd->dma->private_size);
 		dcache_writeback_invalidate_region(dd, sizeof(*dd));
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
 		break;
@@ -782,11 +778,7 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 		dd = comp_get_drvdata(dev);
 		dcache_invalidate_region(dd, sizeof(*dd));
 		dcache_invalidate_region(dd->dma, sizeof(*dd->dma));
-		dcache_invalidate_region(dd->dma->private,
-					 dd->dma->private_size);
 		dcache_invalidate_region(dd->dai, sizeof(*dd->dai));
-		dcache_invalidate_region(dd->dai->private,
-					 dd->dai->private_size);
 
 		list_for_item(item, &dd->config.elem_list) {
 			dcache_invalidate_region(item, sizeof(*item));
