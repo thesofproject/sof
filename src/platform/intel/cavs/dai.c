@@ -205,74 +205,7 @@ static struct dai dmic[2] = {
 
 #endif
 
-/* TODO: numbers to be defined and shared with HD/A dmas */
-static struct dai hda[(6 + 7)] = {
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 0,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 1,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 2,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 3,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 4,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 5,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 6,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 7,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 8,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 9,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 10,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 11,
-		.ops = &hda_ops
-	},
-	{
-		.type = SOF_DAI_INTEL_HDA,
-		.index = 12,
-		.ops = &hda_ops
-	}
-};
+static struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
 
 static struct dai_type_info dti[] = {
 	{
@@ -297,6 +230,13 @@ static struct dai_type_info dti[] = {
 int dai_init(void)
 {
 	int i;
+
+	/* init hd/a, note that size depends on the platform caps */
+	for (i = 0; i < ARRAY_SIZE(hda); i++) {
+		hda[i].type = SOF_DAI_INTEL_HDA;
+		hda[i].index = i;
+		hda[i].ops = &hda_ops;
+	}
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
