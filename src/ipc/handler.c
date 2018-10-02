@@ -1140,7 +1140,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 		msg = msg_get_empty(ipc);
 
 	if (msg == NULL) {
-		trace_ipc_error("eQb");
+		trace_error(TRACE_CLASS_IPC, "eQb header 0x08x replace %d",
+			    header, replace);
 		ret = -EBUSY;
 		goto out;
 	}

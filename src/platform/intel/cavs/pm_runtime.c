@@ -38,7 +38,7 @@
 #include <sof/alloc.h>
 #include <platform/platform.h>
 #include <platform/pm_runtime.h>
-#include <platform/cavs/pm_runtime.h>
+#include <platform/dai.h>
 
 #if defined(CONFIG_APOLLOLAKE)
 //TODO: add support or at least stub api for Cannonlake & Icelake
@@ -47,6 +47,68 @@
 
 /** \brief Runtime power management data pointer. */
 struct pm_runtime_data *_prd;
+
+/**
+ * \brief Forces Host DMAs to exit L1.
+ */
+static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&_prd->lock, flags);
+
+	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
+		shim_write(SHIM_SVCFG,
+			   shim_read(SHIM_SVCFG) | SHIM_SVCFG_FORCE_L1_EXIT);
+
+		wait_delay(PLATFORM_FORCE_L1_EXIT_TIME);
+
+		shim_write(SHIM_SVCFG,
+			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
+	}
+
+	spin_unlock_irq(&_prd->lock, flags);
+}
+
+static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
+{
+#if defined(CONFIG_APOLLOLAKE)
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
+		   (index < DAI_NUM_SSP_BASE ?
+		    SHIM_CLKCTL_I2SFDCGB(index) :
+		    SHIM_CLKCTL_I2SEFDCGB(index)));
+
+	trace_event(TRACE_CLASS_POWER,
+		    "dis-ssp-clk-gating index %d CLKCTL %08x",
+		    index, shim_read(SHIM_CLKCTL));
+#endif
+}
+
+#if defined(CONFIG_DMIC)
+static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
+{
+#if defined(CONFIG_APOLLOLAKE)
+	(void)index;
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_DMICFDCGB);
+
+	trace_event(TRACE_CLASS_POWER,
+		    "dis-dmic-clk-gating index %d CLKCTL %08x",
+		    index, shim_read(SHIM_CLKCTL));
+#endif
+}
+#endif
+
+static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
+{
+#if defined(CONFIG_APOLLOLAKE)
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
+		   SHIM_CLKCTL_LPGPDMAFDCGB(index));
+
+	trace_event(TRACE_CLASS_POWER,
+		    "dis-dwdma-clk-gating index %d CLKCTL %08x",
+		    index, shim_read(SHIM_CLKCTL));
+#endif
+}
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
@@ -62,6 +124,21 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 			     uint32_t flags)
 {
 	/* Action based on context */
+	switch (context) {
+	case SSP_CLK:
+		cavs_pm_runtime_dis_ssp_clk_gating(index);
+		break;
+#if defined(CONFIG_DMIC)
+	case DMIC_CLK:
+		cavs_pm_runtime_dis_dmic_clk_gating(index);
+		break;
+#endif
+	case DW_DMAC_CLK:
+		cavs_pm_runtime_dis_dwdma_clk_gating(index);
+		break;
+	default:
+		break;
+	}
 }
 
 void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,

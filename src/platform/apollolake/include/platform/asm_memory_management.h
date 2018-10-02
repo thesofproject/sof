@@ -40,6 +40,7 @@
 #warning "ASSEMBLY macro not defined."
 #endif
 
+#include <sof/bit.h>
 #include <platform/shim.h>
 #include <platform/platcfg.h>
 

@@ -612,12 +612,16 @@ static int hda_dma_probe(struct dma *dma)
 	int i;
 	struct hda_chan_data *chan;
 
+	trace_event(TRACE_CLASS_DMA, "hda-dma-probe %p id %d",
+		    (uintptr_t)dma, dma->plat_data.id);
+
+	if (dma_get_drvdata(dma))
+		return -EEXIST; /* already created */
+
 	/* allocate private data */
 	hda_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			    sizeof(*hda_pdata));
 	dma_set_drvdata(dma, hda_pdata);
-
-	spinlock_init(&dma->lock);
 
 	/* init channel status */
 	chan = hda_pdata->chan;

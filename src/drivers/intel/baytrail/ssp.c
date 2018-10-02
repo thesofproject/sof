@@ -57,12 +57,11 @@ static int hweight_32(uint32_t mask)
 /* empty SSP receive FIFO */
 static void ssp_empty_rx_fifo(struct dai *dai)
 {
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sssr;
 	uint32_t entries;
 	uint32_t i;
 
-	spin_lock(&ssp->lock);
+	spin_lock(&dai->lock);
 
 	sssr = ssp_read(dai, SSSR);
 
@@ -77,7 +76,7 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 			ssp_read(dai, SSDR);
 	}
 
-	spin_unlock(&ssp->lock);
+	spin_unlock(&dai->lock);
 }
 
 /* save SSP context prior to entering D3 */
@@ -132,7 +131,7 @@ static inline int ssp_set_config(struct dai *dai,
 	bool cbs = false;
 	int ret = 0;
 
-	spin_lock(&ssp->lock);
+	spin_lock(&dai->lock);
 
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
@@ -473,7 +472,7 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
 out:
-	spin_unlock(&ssp->lock);
+	spin_unlock(&dai->lock);
 
 	return ret;
 }
@@ -481,14 +480,12 @@ out:
 /* Digital Audio interface formatting */
 static inline int ssp_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
-	struct ssp_pdata *ssp = dai_get_drvdata(dai);
-
 	trace_ssp("loo");
-	spin_lock(&ssp->lock);
+	spin_lock(&dai->lock);
 
 	ssp_update_bits(dai, SSCR1, SSCR1_LBM, lbm ? SSCR1_LBM : 0);
 
-	spin_unlock(&ssp->lock);
+	spin_unlock(&dai->lock);
 
 	return 0;
 }
@@ -498,7 +495,7 @@ static void ssp_start(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	spin_lock(&ssp->lock);
+	spin_lock(&dai->lock);
 
 	/* enable port */
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
@@ -512,7 +509,7 @@ static void ssp_start(struct dai *dai, int direction)
 	else
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, SSCR1_RSRE);
 
-	spin_unlock(&ssp->lock);
+	spin_unlock(&dai->lock);
 }
 
 /* stop the SSP for either playback or capture */
@@ -520,7 +517,7 @@ static void ssp_stop(struct dai *dai, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	spin_lock(&ssp->lock);
+	spin_lock(&dai->lock);
 
 	/* stop Rx if neeed */
 	if (direction == DAI_DIR_CAPTURE &&
@@ -548,7 +545,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		trace_ssp("Ss2");
 	}
 
-	spin_unlock(&ssp->lock);
+	spin_unlock(&dai->lock);
 }
 
 static int ssp_trigger(struct dai *dai, int cmd, int direction)
@@ -607,7 +604,7 @@ static int ssp_probe(struct dai *dai)
 		      sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
-	spinlock_init(&ssp->lock);
+	spinlock_init(&dai->lock);
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;

@@ -162,6 +162,7 @@ struct dma_plat_data {
 struct dma {
 	struct dma_plat_data plat_data;
 	spinlock_t lock;
+	int sref;		/**< simple ref counter, guarded by lock */
 	const struct dma_ops *ops;
 	atomic_t num_channels_busy; /* number of busy channels */
 	void *private;
@@ -190,7 +191,7 @@ struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 #define dma_set_drvdata(dma, data) \
 	dma->private = data;
 #define dma_get_drvdata(dma) \
-	dma->private;
+	dma->private
 #define dma_base(dma) \
 	dma->plat_data.base
 #define dma_irq(dma, cpu) \

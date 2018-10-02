@@ -317,7 +317,6 @@
 
 /* DMIC private data */
 struct dmic_pdata {
-	spinlock_t lock; /* Spinlock that's used in registers IO */
 	uint16_t fifo_a;
 	uint16_t fifo_b;
 	uint16_t enable[DMIC_HW_CONTROLLERS];

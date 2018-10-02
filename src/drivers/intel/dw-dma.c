@@ -57,6 +57,7 @@
 #include <sof/lock.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
+#include <sof/pm_runtime.h>
 #include <sof/audio/component.h>
 #include <sof/cpu.h>
 #include <platform/dma.h>
@@ -1275,6 +1276,12 @@ static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
 	int i;
+
+	if (dma_get_drvdata(dma))
+		return -EEXIST; /* already created */
+
+	/* disable dynamic clock gating */
+	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
 	/* allocate private data */
 	dw_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,

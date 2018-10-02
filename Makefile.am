@@ -43,11 +43,6 @@ export ARCH_INCDIR
 
 PLATFORM_INCDIR = -I $(SRC_DIR)/platform/$(PLATFORM)/include
 
-if BUILD_CAVS
-PLATFORM_INCDIR += \
-	-I $(SRC_DIR)/platform/intel/include
-endif
-
 if XCC
 PLATFORM_INCDIR += \
 	-I $(ROOT_DIR)/arch/include

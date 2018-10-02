@@ -231,25 +231,26 @@ int dai_init(void)
 {
 	int i;
 
+	/* init ssp */
+	/* TODO: move all the properties initialization here */
+	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
+		/* initialize spin locks early to enable ref counting */
+		spinlock_init(&ssp[i].lock);
+	}
+
 	/* init hd/a, note that size depends on the platform caps */
 	for (i = 0; i < ARRAY_SIZE(hda); i++) {
 		hda[i].type = SOF_DAI_INTEL_HDA;
 		hda[i].index = i;
 		hda[i].ops = &hda_ops;
+		spinlock_init(&hda[i].lock);
 	}
 
-	/* init SSP ports */
-	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	for (i = 0; i < DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT; i++)
-		dai_probe(ssp + i);
-
-	/* Init DMIC. Note that the two PDM controllers and four microphones
-	 * supported max. those are available in platform are handled by dmic0.
-	 */
-	trace_point(TRACE_BOOT_PLATFORM_DMIC);
-
-	dai_probe(dmic + 0);
-
+#if defined(CONFIG_DMIC)
+	/* init dmic */
+	for (i = 0; i < ARRAY_SIZE(dmic); i++)
+		spinlock_init(&dmic[i].lock);
+#endif
 	dai_install(dti, ARRAY_SIZE(dti));
 	return 0;
 }

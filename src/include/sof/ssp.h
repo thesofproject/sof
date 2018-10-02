@@ -249,7 +249,6 @@ struct ssp_pdata {
 	uint32_t sscr0;
 	uint32_t sscr1;
 	uint32_t psp;
-	spinlock_t lock;
 	uint32_t state[2];		/* SSP_STATE_ for each direction */
 	completion_t drain_complete;
 	struct sof_ipc_dai_config config;
