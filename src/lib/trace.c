@@ -37,6 +37,7 @@
 #include <sof/lock.h>
 #include <sof/dma-trace.h>
 #include <sof/cpu.h>
+#include <sof/preproc.h>
 #include <stdint.h>
 
 struct trace {
@@ -69,634 +70,140 @@ static void put_header(volatile uint32_t *dst, uint64_t timestamp)
 	}
 }
 
-/* send trace events only to the local trace buffer */
-void _trace_event0(uint32_t log_entry)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(0);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(0)];
+/* TODO: it should be possible to do this for arbitrary array, passed as an arg
+ * something like:
+ * #define FOO(array, i, _) array[payload_offset + 1 + i] =\
+ *     META_CONCAT(param, i);
+ * #define BAR(array, arg_count) META_SEQ_FROM_0_TO(arg_count, FOO(array))
+ */
+#define _TRACE_EVENT_NTH_IMPL_DT_STEP(i, _)\
+	dt[payload_offset + 1 + i] = META_CONCAT(param, i);
+#define _TRACE_EVENT_NTH_IMPL_T_STEP(i, _)\
+	t[payload_offset + 1 + i] = META_CONCAT(param, i);
+#define _TRACE_EVENT_NTH_IMPL_DT(arg_count)\
+	META_SEQ_FROM_0_TO(arg_count, _TRACE_EVENT_NTH_IMPL_DT_STEP)
+#define _TRACE_EVENT_NTH_IMPL_T(arg_count)\
+	META_SEQ_FROM_0_TO(arg_count, _TRACE_EVENT_NTH_IMPL_T_STEP)
 
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
+/* _trace_event function with poor people's version of constexpr if */
+#define _TRACE_EVENT_NTH_IMPL(is_mbox, is_atomic, arg_count)\
+_TRACE_EVENT_NTH(META_CONCAT(\
+/*if is_mbox  , append _mbox   to function name*/\
+META_IF_ELSE(is_mbox)(_mbox)(),\
+/*if is_atomic, append _atomic to function name*/\
+META_IF_ELSE(is_atomic)(_atomic)()\
+), arg_count)\
+{\
+	const uint32_t msg_size_dwords = MESSAGE_SIZE(arg_count);\
+	const uint32_t payload_offset = sizeof(struct log_entry_header)\
+		/ sizeof(uint32_t);\
+	uint32_t dt[MESSAGE_SIZE(arg_count)];\
+	META_IF_ELSE(is_mbox)\
+	(\
+		volatile uint32_t *t;\
+		META_IF_ELSE(is_atomic)()(unsigned long flags;)\
+	)()\
+\
+	if (!trace->enable)\
+		return;\
+\
+	META_IF_ELSE(is_mbox)\
+	(\
+		uint64_t time = platform_timer_get(platform_timer);\
+		put_header(dt, time);\
+	)\
+	(\
+		put_header(dt, platform_timer_get(platform_timer));\
+	)\
+\
+	dt[payload_offset] = log_entry;\
+	_TRACE_EVENT_NTH_IMPL_DT(arg_count)\
+	META_IF_ELSE(is_atomic)\
+		(dtrace_event_atomic)\
+		(dtrace_event)\
+			((const char *)dt, sizeof(uint32_t) * msg_size_dwords);\
+	META_IF_ELSE(is_mbox)\
+	(\
+		META_IF_ELSE(is_atomic)()(\
+			/* send event by mail box too. */\
+			spin_lock_irq(&trace->lock, flags);\
+		)\
+		/* write timestamp and event to trace buffer */\
+		t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);\
+		trace->pos += sizeof(uint32_t) * msg_size_dwords;\
+\
+		if (trace->pos > MAILBOX_TRACE_SIZE\
+			- sizeof(uint32_t) * msg_size_dwords)\
+		trace->pos = 0;\
+\
+		META_IF_ELSE(is_atomic)()(spin_unlock_irq(&trace->lock, flags);)\
+\
+		put_header(t, time);\
+		t[payload_offset] = log_entry;\
+		_TRACE_EVENT_NTH_IMPL_T(arg_count)\
+\
+		/* writeback trace data */\
+		dcache_writeback_region\
+			((void *)t, sizeof(uint32_t) * msg_size_dwords);\
+	)()\
 }
 
-void _trace_event_atomic0(uint32_t log_entry)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(0);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(0)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events to the local trace buffer and the mailbox */
-void _trace_event_mbox0(uint32_t log_entry)
-{
-	unsigned long flags;
-	uint32_t message_size_dwords = MESSAGE_SIZE(0);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(0)];
-	uint64_t time;
-
-	volatile uint32_t *t;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-
-	dt[payload_offset] = log_entry;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-
-	/* send event by mail box too. */
-	spin_lock_irq(&trace->lock, flags);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	spin_unlock_irq(&trace->lock, flags);
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_mbox_atomic0(uint32_t log_entry)
-{
-	volatile uint32_t *t;
-	uint32_t message_size_dwords = MESSAGE_SIZE(0);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(0)];
-	uint64_t time;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-	dt[payload_offset] = log_entry;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events only to the local trace buffer */
-void _trace_event1(uint32_t log_entry, uint32_t param)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(1);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(1)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_atomic1(uint32_t log_entry, uint32_t param)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(1);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(1)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events to the local trace buffer and the mailbox */
-void _trace_event_mbox1(uint32_t log_entry, uint32_t param)
-{
-	unsigned long flags;
-	uint32_t message_size_dwords = MESSAGE_SIZE(1);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(1)];
-	uint64_t time;
-
-	volatile uint32_t *t;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-
-	/* send event by mail box too. */
-	spin_lock_irq(&trace->lock, flags);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	spin_unlock_irq(&trace->lock, flags);
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
-{
-	volatile uint32_t *t;
-	uint32_t message_size_dwords = MESSAGE_SIZE(1);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(1)];
-	uint64_t time;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events only to the local trace buffer */
-void _trace_event2(uint32_t log_entry, uint32_t param1, uint32_t param2)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(2);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(2)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_atomic2(uint32_t log_entry, uint32_t param1, uint32_t param2)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(2);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(2)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events to the local trace buffer and the mailbox */
-void _trace_event_mbox2(uint32_t log_entry, uint32_t param1, uint32_t param2)
-{
-	unsigned long flags;
-	uint32_t message_size_dwords = MESSAGE_SIZE(2);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(2)];
-	uint64_t time;
-
-	volatile uint32_t *t;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-
-	/* send event by mail box too. */
-	spin_lock_irq(&trace->lock, flags);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	spin_unlock_irq(&trace->lock, flags);
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param1;
-	t[payload_offset + 2] = param2;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t param1,
-	uint32_t param2)
-{
-	volatile uint32_t *t;
-	uint32_t message_size_dwords = MESSAGE_SIZE(2);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(2)];
-	uint64_t time;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param1;
-	t[payload_offset + 2] = param2;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events only to the local trace buffer */
-void _trace_event3(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(3);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(3)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_atomic3(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(3);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(3)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events to the local trace buffer and the mailbox */
-void _trace_event_mbox3(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3)
-{
-	unsigned long flags;
-	uint32_t message_size_dwords = MESSAGE_SIZE(3);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(3)];
-	uint64_t time;
-
-	volatile uint32_t *t;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-
-	/* send event by mail box too. */
-	spin_lock_irq(&trace->lock, flags);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	spin_unlock_irq(&trace->lock, flags);
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param1;
-	t[payload_offset + 2] = param2;
-	t[payload_offset + 3] = param3;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t param1,
-	uint32_t param2, uint32_t param3)
-{
-	volatile uint32_t *t;
-	uint32_t message_size_dwords = MESSAGE_SIZE(3);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(3)];
-	uint64_t time;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param1;
-	t[payload_offset + 2] = param2;
-	t[payload_offset + 3] = param3;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events only to the local trace buffer */
-void _trace_event4(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3, uint32_t param4)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(4);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(4)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dt[payload_offset + 4] = param4;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_atomic4(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3, uint32_t param4)
-{
-	uint32_t message_size_dwords = MESSAGE_SIZE(4);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(4)];
-
-	if (!trace->enable)
-		return;
-
-	put_header(dt, platform_timer_get(platform_timer));
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dt[payload_offset + 4] = param4;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-/* send trace events to the local trace buffer and the mailbox */
-void _trace_event_mbox4(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3, uint32_t param4)
-{
-	unsigned long flags;
-	uint32_t message_size_dwords = MESSAGE_SIZE(4);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(4)];
-	uint64_t time;
-
-	volatile uint32_t *t;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dt[payload_offset + 4] = param4;
-	dtrace_event((const char *)dt, sizeof(uint32_t) * message_size_dwords);
-
-	/* send event by mail box too. */
-	spin_lock_irq(&trace->lock, flags);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	spin_unlock_irq(&trace->lock, flags);
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param1;
-	t[payload_offset + 2] = param2;
-	t[payload_offset + 3] = param3;
-	t[payload_offset + 4] = param4;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
-
-void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t param1,
-	uint32_t param2, uint32_t param3, uint32_t param4)
-{
-	volatile uint32_t *t;
-	uint32_t message_size_dwords = MESSAGE_SIZE(4);
-	uint32_t payload_offset = sizeof(struct log_entry_header)
-		/ sizeof(uint32_t);
-	uint32_t dt[MESSAGE_SIZE(4)];
-	uint64_t time;
-
-	if (!trace->enable)
-		return;
-
-	time = platform_timer_get(platform_timer);
-
-	put_header(dt, time);
-	dt[payload_offset] = log_entry;
-	dt[payload_offset + 1] = param1;
-	dt[payload_offset + 2] = param2;
-	dt[payload_offset + 3] = param3;
-	dt[payload_offset + 4] = param4;
-	dtrace_event_atomic((const char *)dt,
-		sizeof(uint32_t) * message_size_dwords);
-
-	/* write timestamp and event to trace buffer */
-	t = (volatile uint32_t *)(MAILBOX_TRACE_BASE + trace->pos);
-	trace->pos += sizeof(uint32_t) * message_size_dwords;
-
-	if (trace->pos > MAILBOX_TRACE_SIZE
-		- sizeof(uint32_t) * message_size_dwords)
-		trace->pos = 0;
-
-	put_header(t, time);
-	t[payload_offset] = log_entry;
-	t[payload_offset + 1] = param1;
-	t[payload_offset + 2] = param2;
-	t[payload_offset + 3] = param3;
-	t[payload_offset + 4] = param4;
-
-	/* writeback trace data */
-	dcache_writeback_region((void *)t,
-		sizeof(uint32_t) * message_size_dwords);
-}
+#define _TRACE_EVENT_NTH_IMPL_GROUP(arg_count)\
+	/* send trace events only to the local trace buffer */\
+	_TRACE_EVENT_NTH_IMPL(0, 0, arg_count)\
+	_TRACE_EVENT_NTH_IMPL(0, 1, arg_count)\
+	/* send trace events to the local trace buffer and the mailbox */\
+	_TRACE_EVENT_NTH_IMPL(1, 0, arg_count)\
+	_TRACE_EVENT_NTH_IMPL(1, 1, arg_count)
+
+
+/* Implementation of
+ * void _trace_event1(            uint32_t log_entry) {...}
+ * void _trace_event_mbox1(       uint32_t log_entry) {...}
+ * void _trace_event_atomic1(     uint32_t log_entry) {...}
+ * void _trace_event_mbox_atomic1(uint32_t log_entry) {...}
+ */
+_TRACE_EVENT_NTH_IMPL_GROUP(0)
+
+/* Implementation of
+ * void _trace_event1(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox1(       uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_atomic1(     uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t params...) {...}
+ */
+_TRACE_EVENT_NTH_IMPL_GROUP(1)
+
+/* Implementation of
+ * void _trace_event2(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox2(       uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_atomic2(     uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t params...) {...}
+ */
+_TRACE_EVENT_NTH_IMPL_GROUP(2)
+
+/* Implementation of
+ * void _trace_event3(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox3(       uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_atomic3(     uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t params...) {...}
+ */
+_TRACE_EVENT_NTH_IMPL_GROUP(3)
+
+/* Implementation of
+ * void _trace_event4(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox4(       uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_atomic4(     uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t params...) {...}
+ */
+_TRACE_EVENT_NTH_IMPL_GROUP(4)
+
+/* Implementation of
+ * void _trace_event5(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox5(       uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_atomic5(     uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic5(uint32_t log_entry, uint32_t params...) {...}
+ */
+_TRACE_EVENT_NTH_IMPL_GROUP(5)
 
 void trace_flush(void)
 {

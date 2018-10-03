@@ -31,6 +31,7 @@
  *	   Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
  */
 
+#include <sof/preproc.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -142,134 +143,84 @@ static char *get_trace_class(uint32_t trace_class)
 	return "value";
 }
 
-/* print trace event */
-void _trace_event0(uint32_t event)
-{
-	char a, b, c;
-	char *trace_class = NULL;
+#define META_SEQ_STEP_param_procD(i, _) META_CONCAT(param, i) %d
 
-	if (test_bench_trace > 0) {
-		a = event & 0xff;
-		b = (event >> 8) & 0xff;
-		c = (event >> 16) & 0xff;
-
-		/* look up subsystem from trace class table */
-		trace_class = strdup(get_trace_class(event >> 24));
-
-		/* print trace event stderr*/
-		if (strcmp(trace_class, "value") == 0)
-			fprintf(stderr, "Trace value %d\n", event);
-		else
-			fprintf(stderr, "Trace %s %c%c%c\n", trace_class,
-				c, b, a);
-	}
-
-	free(trace_class);
-}
-
-void _trace_event_mbox_atomic0(uint32_t event)
-{
-	_trace_event0(event);
-}
+#define HOST_TRACE_EVENT_NTH(postfix, vararg_count)\
+	META_FUNC_WITH_VARARGS(_trace_event, postfix, void,\
+	META_CONCAT(, uint32_t event),\
+	vararg_count, META_SEQ_STEP_param_uint32_t)
 
 /* print trace event */
-void _trace_event1(uint32_t event, uint32_t param)
-{
-	char a, b, c;
-	char *trace_class = NULL;
-
-	if (test_bench_trace > 0) {
-		a = event & 0xff;
-		b = (event >> 8) & 0xff;
-		c = (event >> 16) & 0xff;
-
-		/* look up subsystem from trace class table */
-		trace_class = strdup(get_trace_class(event >> 24));
-
-		/* print trace event stderr*/
-		if (strcmp(trace_class, "value") == 0)
-			fprintf(stderr, "Trace value %d, param1 %d\n", event,
-				param);
-		else
-			fprintf(stderr, "Trace %s %c%c%c\n", trace_class,
-				c, b, a);
-	}
-
-	free(trace_class);
+#define HOST_TRACE_EVENT_NTH_IMPL(arg_count)\
+HOST_TRACE_EVENT_NTH(, arg_count)\
+{\
+	char a, b, c;\
+	\
+	if (test_bench_trace > 0) {\
+		/* look up subsystem from trace class table */\
+		char *trace_class = strdup(get_trace_class(event >> 24));\
+		\
+		a = event & 0xff;\
+		b = (event >> 8) & 0xff;\
+		c = (event >> 16) & 0xff;\
+		\
+		/* print trace event stderr*/\
+		if (!strcmp(trace_class, "value"))\
+			fprintf(stderr,\
+			"Trace value %d, "META_QUOTE(\
+				META_SEQ_FROM_0_TO(\
+					arg_count, META_SEQ_STEP_param_procD\
+				))"\n"\
+			, event META_SEQ_FROM_0_TO(arg_count, META_SEQ_STEP_param));\
+		else\
+			fprintf(stderr,\
+			"Trace %s %c%c%c\n"\
+			, trace_class, c, b, a);\
+		if (trace_class)\
+			free(trace_class);\
+	}\
+}\
+HOST_TRACE_EVENT_NTH(_mbox_atomic, arg_count)\
+{\
+	META_CONCAT(_trace_event, arg_count)\
+		(event META_SEQ_FROM_0_TO(arg_count,META_SEQ_STEP_param));\
 }
 
-void _trace_event_mbox_atomic1(uint32_t event, uint32_t param)
-{
-	_trace_event1(event, param);
-}
+/* Implementation of
+ * void _trace_event0(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic0(uint32_t log_entry, uint32_t params...) {...}
+ */
+HOST_TRACE_EVENT_NTH_IMPL(0);
 
-/* print trace event */
-void _trace_event2(uint32_t event, uint32_t param1, uint32_t param2)
-{
-	char a, b, c;
-	char *trace_class = NULL;
+/* Implementation of
+ * void _trace_event1(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t params...) {...}
+ */
+HOST_TRACE_EVENT_NTH_IMPL(1);
 
-	if (test_bench_trace > 0) {
-		a = event & 0xff;
-		b = (event >> 8) & 0xff;
-		c = (event >> 16) & 0xff;
+/* Implementation of
+ * void _trace_event2(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t params...) {...}
+ */
+HOST_TRACE_EVENT_NTH_IMPL(2);
 
-		/* look up subsystem from trace class table */
-		trace_class = strdup(get_trace_class(event >> 24));
+/* Implementation of
+ * void _trace_event3(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t params...) {...}
+ */
+HOST_TRACE_EVENT_NTH_IMPL(3);
 
-		/* print trace event stderr*/
-		if (strcmp(trace_class, "value") == 0)
-			fprintf(stderr,
-				"Trace value %d, param1 %d param2 %d\n",
-				event, param1, param2);
-		else
-			fprintf(stderr, "Trace %s %c%c%c\n", trace_class,
-				c, b, a);
-	}
+/* Implementation of
+ * void _trace_event4(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t params...) {...}
+ */
+HOST_TRACE_EVENT_NTH_IMPL(4);
 
-	free(trace_class);
-}
-
-void _trace_event_mbox_atomic2(uint32_t event, uint32_t param1,
-			       uint32_t param2)
-{
-	_trace_event2(event, param1, param2);
-}
-
-/* print trace event */
-void _trace_event3(uint32_t event, uint32_t param1, uint32_t param2,
-		   uint32_t param3)
-{
-	char a, b, c;
-	char *trace_class = NULL;
-
-	if (test_bench_trace > 0) {
-		a = event & 0xff;
-		b = (event >> 8) & 0xff;
-		c = (event >> 16) & 0xff;
-
-		/* look up subsystem from trace class table */
-		trace_class = strdup(get_trace_class(event >> 24));
-
-		/* print trace event stderr*/
-		if (strcmp(trace_class, "value") == 0)
-			fprintf
-			(stderr,
-			"Trace value %d, param1 %d param2 %d param3 %d\n",
-			event, param1, param2, param3);
-		else
-			fprintf(stderr, "Trace %s %c%c%c\n", trace_class,
-				c, b, a);
-	}
-
-	free(trace_class);
-}
-
-void _trace_event_mbox_atomic3(uint32_t event, uint32_t param1,
-			       uint32_t param2, uint32_t param3)
-{
-	_trace_event3(event, param1, param2, param3);
-}
+/* Implementation of
+ * void _trace_event5(            uint32_t log_entry, uint32_t params...) {...}
+ * void _trace_event_mbox_atomic5(uint32_t log_entry, uint32_t params...) {...}
+ */
+HOST_TRACE_EVENT_NTH_IMPL(5);
 
 /* enable trace in testbench */
 void tb_enable_trace(bool enable)

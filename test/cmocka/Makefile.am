@@ -83,6 +83,33 @@ pipeline_free_SOURCES = ../../src/audio/pipeline.c src/audio/pipeline/pipeline_m
 
 endif
 
+# lib/preproc tests
+
+check_PROGRAMS += preproc_varargs_count
+preproc_varargs_count_SOURCES =\
+	src/lib/preproc/varargs_count.c
+
+check_PROGRAMS += preproc_concat
+preproc_concat_SOURCES =\
+	src/lib/preproc/concat.c
+
+check_PROGRAMS += preproc_seq
+preproc_seq_SOURCES =\
+	src/lib/preproc/seq.c
+
+check_PROGRAMS += preproc_defer
+preproc_defer_SOURCES =\
+	src/lib/preproc/defer.c
+
+check_PROGRAMS += preproc_get_arg
+preproc_get_arg_SOURCES =\
+	src/lib/preproc/get_arg.c
+
+# debugability tests
+
+check_PROGRAMS += debugability_macros
+debugability_macros_SOURCES = src/debugability/macros.c
+
 # lib/lib tests
 
 check_PROGRAMS += rstrcmp

@@ -39,6 +39,7 @@
 #include <sof/mailbox.h>
 #include <sof/debug.h>
 #include <sof/timer.h>
+#include <sof/preproc.h>
 #include <platform/platform.h>
 #include <platform/timer.h>
 #include <uapi/logging.h>
@@ -80,45 +81,99 @@
 #define TRACE_BOOT_PLATFORM_DMIC	(TRACE_BOOT_PLATFORM + 0x1a0)
 #define TRACE_BOOT_PLATFORM_IDC		(TRACE_BOOT_PLATFORM + 0x1b0)
 
+/* trace event classes - high 8 bits*/
+#define TRACE_CLASS_IRQ		(1 << 24)
+#define TRACE_CLASS_IPC		(2 << 24)
+#define TRACE_CLASS_PIPE	(3 << 24)
+#define TRACE_CLASS_HOST	(4 << 24)
+#define TRACE_CLASS_DAI		(5 << 24)
+#define TRACE_CLASS_DMA		(6 << 24)
+#define TRACE_CLASS_SSP		(7 << 24)
+#define TRACE_CLASS_COMP	(8 << 24)
+#define TRACE_CLASS_WAIT	(9 << 24)
+#define TRACE_CLASS_LOCK	(10 << 24)
+#define TRACE_CLASS_MEM		(11 << 24)
+#define TRACE_CLASS_MIXER	(12 << 24)
+#define TRACE_CLASS_BUFFER	(13 << 24)
+#define TRACE_CLASS_VOLUME	(14 << 24)
+#define TRACE_CLASS_SWITCH	(15 << 24)
+#define TRACE_CLASS_MUX		(16 << 24)
+#define TRACE_CLASS_SRC         (17 << 24)
+#define TRACE_CLASS_TONE        (18 << 24)
+#define TRACE_CLASS_EQ_FIR      (19 << 24)
+#define TRACE_CLASS_EQ_IIR      (20 << 24)
+#define TRACE_CLASS_SA		(21 << 24)
+#define TRACE_CLASS_DMIC	(22 << 24)
+#define TRACE_CLASS_POWER	(23 << 24)
+#define TRACE_CLASS_IDC		(24 << 24)
+#define TRACE_CLASS_CPU		(25 << 24)
+
 /* move to config.h */
 #define TRACE	1
 #define TRACEV	0
 #define TRACEE	1
 #define TRACEM	0 /* send all trace messages to mbox and local trace buffer */
 
-void _trace_event0(uint32_t log_entry);
-void _trace_event_mbox0(uint32_t log_entry);
-void _trace_event_atomic0(uint32_t log_entry);
-void _trace_event_mbox_atomic0(uint32_t log_entry);
+#define _TRACE_EVENT_NTH(postfix, vararg_count)\
+	META_FUNC_WITH_VARARGS(_trace_event, postfix, void,\
+	META_CONCAT(, uint32_t log_entry),\
+	vararg_count, META_SEQ_STEP_param_uint32_t)
 
-void _trace_event1(uint32_t log_entry, uint32_t param);
-void _trace_event_mbox1(uint32_t log_entry, uint32_t param);
-void _trace_event_atomic1(uint32_t log_entry, uint32_t param);
-void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param);
+#define _TRACE_EVENT_NTH_DECLARE_GROUP(arg_count)\
+	_TRACE_EVENT_NTH(, arg_count);\
+	_TRACE_EVENT_NTH(_mbox, arg_count);\
+	_TRACE_EVENT_NTH(_atomic, arg_count);\
+	_TRACE_EVENT_NTH(_mbox_atomic, arg_count);
 
-void _trace_event2(uint32_t log_entry, uint32_t param1, uint32_t param2);
-void _trace_event_mbox2(uint32_t log_entry, uint32_t param1, uint32_t param2);
-void _trace_event_atomic2(uint32_t log_entry, uint32_t param1, uint32_t param2);
-void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t param1,
-	uint32_t param2);
+/* Declaration of
+ * void _trace_event0            (uint32_t log_entry);
+ * void _trace_event_mbox0       (uint32_t log_entry);
+ * void _trace_event_atomic0     (uint32_t log_entry);
+ * void _trace_event_mbox_atomic0(uint32_t log_entry);
+ */
+_TRACE_EVENT_NTH_DECLARE_GROUP(0)
 
-void _trace_event3(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3);
-void _trace_event_mbox3(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3);
-void _trace_event_atomic3(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3);
-void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t param1,
-	uint32_t param2, uint32_t param3);
+/* Declaration of
+ * void _trace_event1            (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox1       (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_atomic1     (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t params...);
+ */
+_TRACE_EVENT_NTH_DECLARE_GROUP(1)
 
-void _trace_event4(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3, uint32_t param4);
-void _trace_event_mbox4(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3, uint32_t param4);
-void _trace_event_atomic4(uint32_t log_entry, uint32_t param1, uint32_t param2,
-	uint32_t param3, uint32_t param4);
-void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t param1,
-	uint32_t param2, uint32_t param3, uint32_t param4);
+/* Declaration of
+ * void _trace_event2            (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox2       (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_atomic2     (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t params...);
+ */
+_TRACE_EVENT_NTH_DECLARE_GROUP(2)
+
+/* Declaration of
+ * void _trace_event3            (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox3       (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_atomic3     (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t params...);
+ */
+_TRACE_EVENT_NTH_DECLARE_GROUP(3)
+
+/* Declaration of
+ * void _trace_event4            (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox4       (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_atomic4     (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t params...);
+ */
+_TRACE_EVENT_NTH_DECLARE_GROUP(4)
+
+/* Declaration of
+ * void _trace_event5            (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox5       (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_atomic5     (uint32_t log_entry, uint32_t params...);
+ * void _trace_event_mbox_atomic5(uint32_t log_entry, uint32_t params...);
+ */
+_TRACE_EVENT_NTH_DECLARE_GROUP(5)
+
+#define _TRACE_EVENT_MAX_ARGUMENT_COUNT 5
 
 void trace_flush(void);
 void trace_off(void);
@@ -133,9 +188,8 @@ void trace_init(struct sof *sof);
  * It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
  * above, it might also propagate log messages to mbox if desired.
  *
- * First argument is always class of event being logged, as defined in
- * uapi/logging.h.
- * Second argument is string literal in printf format, followed by up to 4
+ * First argument is always class of event being logged, as defined above.
+ * Second argument is string literal in printf format, followed by up to 3
  * parameters (uint32_t), that are used to expand into string fromat when
  * parsing log data.
  *
@@ -227,28 +281,21 @@ typedef void(*log_func)();
 		format					\
 	}
 
-#define BASE_LOG(function_name, entry, ...)				\
-{									\
-	log_func log_function = NULL;					\
-	if (PP_NARG(__VA_ARGS__) == 0) {				\
-		log_function = (log_func)&function_name##0;		\
-		log_function(entry, ##__VA_ARGS__);			\
-	} else if (PP_NARG(__VA_ARGS__) == 1) {				\
-		log_function = (log_func)&function_name##1;		\
-		log_function(entry, ##__VA_ARGS__);			\
-	} else if (PP_NARG(__VA_ARGS__) == 2) {				\
-		log_function = (log_func)&function_name##2;		\
-		log_function(entry, ##__VA_ARGS__);			\
-	} else if (PP_NARG(__VA_ARGS__) == 3) {				\
-		log_function = (log_func)&function_name##3;		\
-		log_function(entry, ##__VA_ARGS__);			\
-	} else if (PP_NARG(__VA_ARGS__) == 4) {				\
-		log_function = (log_func)&function_name##4;		\
-		log_function(entry, ##__VA_ARGS__);			\
-	} else {							\
-		STATIC_ASSERT(PP_NARG(__VA_ARGS__) <= 4,		\
-			unsupported_amount_of_params_in_trace_event);	\
-	}								\
+#define BASE_LOG_ASSERT_FAIL_MSG \
+unsupported_amount_of_params_in_trace_event\
+_thrown_from_macro_BASE_LOG_in_trace_h
+
+#define BASE_LOG(function_name, entry, ...)\
+{\
+	STATIC_ASSERT(\
+		_TRACE_EVENT_MAX_ARGUMENT_COUNT >=\
+			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),\
+		BASE_LOG_ASSERT_FAIL_MSG\
+	);\
+	log_func log_function = (log_func)&\
+		META_CONCAT(function_name,\
+			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));\
+	log_function(entry, ##__VA_ARGS__);\
 }
 
 #define __log_message(func_name, lvl, comp_id, format, ...)		\
