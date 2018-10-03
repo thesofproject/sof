@@ -114,6 +114,10 @@ void cpu_power_down_core(void)
 	/* free entire sys heap, an instance dedicated for this core */
 	free_heap(RZONE_SYS);
 
+	/* arch_wait_for_interrupt() not used, because it will cause panic.
+	 * This code is executed on irq lvl > 0, which is expected.
+	 * Core will be put into reset by host anyway.
+	 */
 	while (1)
-		arch_wait_for_interrupt(0);
+		asm volatile("waiti 0");
 }
