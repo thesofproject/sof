@@ -69,13 +69,13 @@ struct work_queue {
 	struct notifier notifier;	/* notify CPU freq changes */
 	struct work_queue_timesource *ts;	/* time source for work queue */
 	uint32_t ticks_per_msec;	/* ticks per msec */
-	uint64_t run_ticks;	/* ticks when last run */
 	atomic_t num_work;	/* number of queued work items */
 };
 
 struct work_queue_shared_context {
 	atomic_t total_num_work;	/* number of total queued work items */
 	atomic_t timer_clients;		/* number of timer clients */
+	uint64_t last_tick;		/* time of last tick */
 
 	/* registered timers */
 	struct timer *timers[PLATFORM_CORE_COUNT];
@@ -104,6 +104,7 @@ static inline void work_set_timer(struct work_queue *queue)
 
 	if (atomic_add(&work_shared_ctx->total_num_work, 1) == 1) {
 		ticks = queue_calc_next_timeout(queue, work_get_timer(queue));
+		work_shared_ctx->last_tick = ticks;
 		queue->ts->timer_set(&queue->ts->timer, ticks);
 		atomic_add(&work_shared_ctx->timer_clients, 1);
 		timer_enable(&queue->ts->timer);
@@ -185,7 +186,7 @@ static inline void work_next_timeout(struct work_queue *queue,
 		work->timeout += next_d;
 	} else {
 		/* calc next run based on work request */
-		work->timeout = next_d + queue->run_ticks;
+		work->timeout = next_d + work_shared_ctx->last_tick;
 	}
 }
 
@@ -301,8 +302,10 @@ static void queue_reschedule(struct work_queue *queue)
 		/* re-arm only if there is work to do */
 		if (atomic_read(&work_shared_ctx->total_num_work)) {
 			/* re-arm timer */
-			ticks = queue_calc_next_timeout(queue,
-							queue->run_ticks);
+			ticks = queue_calc_next_timeout
+				(queue,
+				 work_shared_ctx->last_tick);
+			work_shared_ctx->last_tick = ticks;
 			queue->ts->timer_set(&queue->ts->timer, ticks);
 
 			queue_enable_registered_timers();
@@ -315,8 +318,6 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 	uint32_t flags;
-
-	queue->run_ticks = work_get_timer(queue);
 
 	timer_disable(&queue->ts->timer);
 
