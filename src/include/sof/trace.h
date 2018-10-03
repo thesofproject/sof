@@ -144,6 +144,75 @@ void trace_init(struct sof *sof);
 
 #if TRACE
 
+/*
+ * trace_event macro definition
+ *
+ * trace_event() macro is used for logging events that occur at runtime.
+ * It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
+ * above, it might also propagate log messages to mbox if desired.
+ *
+ * First argument is always class of event being logged, as defined above.
+ * Second argument is string literal in printf format, followed by up to 3
+ * parameters (uint32_t), that are used to expand into string fromat when
+ * parsing log data.
+ *
+ * All compile-time accessible data (verbosity, class, source file name, line
+ * index and string literal) are linked into .static_log_entries section
+ * of binary and then extracted by rimage, so they do not contribute to loadable
+ * image size. This way more elaborate log messages are possible and encouraged,
+ * for better debugging experience, without worrying about runtime performance.
+ */
+#if TRACEM
+/* send all trace to mbox and local trace buffer */
+#define trace_event(__c, __e, ...) \
+	_log_message(_mbox,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#define trace_event_atomic(__c, __e, ...) \
+	_log_message(_mbox, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#else
+/* send trace events only to the local trace buffer */
+#define trace_event(__c, __e, ...) \
+	_log_message(,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#define trace_event_atomic(__c, __e, ...) \
+	_log_message(, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#endif
+#define trace_value(x)		trace_event(0, "value %u", x)
+#define trace_value_atomic(x)	trace_event_atomic(0, "value %u", x)
+
+#define trace_point(x) platform_trace_point(x)
+
+/* verbose tracing */
+#if TRACEV
+#define tracev_event(__c, __e, ...) trace_event(__c, __e, ##__VA_ARGS__)
+#define tracev_value(x)	trace_value(x)
+#define tracev_event_atomic(__c, __e, ...) \
+	trace_event_atomic(__c, __e, ##__VA_ARGS__)
+#define tracev_value_atomic(x)	trace_value_atomic(x)
+#else
+#define tracev_event(__c, __e, ...)
+#define tracev_event_atomic(__c, __e, ...)
+
+#define tracev_value(x)
+#define tracev_value_atomic(x)
+#endif
+
+/* error tracing */
+#if TRACEE
+#define trace_error(__c, __e, ...) \
+	_log_message(,, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
+#define trace_error_atomic(__c, __e, ...) \
+	_log_message(, _atomic, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
+/* write back error value to mbox */
+#define trace_error_value(x) \
+	trace_error(0, "value %u", x)
+#define trace_error_value_atomic(x) \
+	trace_error_atomic(0, "value %u", x)
+#else
+#define trace_error(__c, __e, ...)
+#define trace_error_atomic(__c, __e, ...)
+#define trace_error_value(x)
+#define trace_error_value_atomic(x)
+#endif
+
 typedef void(*log_func)();
 
 /*
@@ -203,64 +272,27 @@ typedef void(*log_func)();
 	__log_message(_trace_event##mbox##atomic, level,	\
 		comp_id, format, ##__VA_ARGS__)
 
-/* send all trace to mbox and local trace buffer */
-#if TRACEM
-#define trace_event(__c, __e, ...) \
-	_log_message(_mbox,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
-#define trace_event_atomic(__c, __e, ...) \
-	_log_message(_mbox, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
-/* send trace events only to the local trace buffer */
-#else
-#define trace_event(__c, __e, ...) \
-	_log_message(,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
-#define trace_event_atomic(__c, __e, ...) \
-	_log_message(, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
-#endif
-#define trace_value(x)		trace_event(0, "value %d", x)
-#define trace_value_atomic(x)	trace_event_atomic(0, "value %d", x)
 
-#define trace_point(x) platform_trace_point(x)
-
-/* verbose tracing */
-#if TRACEV
-#define tracev_event(__c, __e, ...) trace_event(__c, __e, ##__VA_ARGS__)
-#define tracev_value(x)	trace_value(x)
-#define tracev_event_atomic(__c, __e, ...) \
-	trace_event_atomic(__c, __e, ##__VA_ARGS__)
-#define tracev_value_atomic(x)	trace_value_atomic(x)
 #else
-#define tracev_event(__c, __e, ...)
-#define tracev_value(x)
-#define tracev_event_atomic(__c, __e, ...)
-#define tracev_value_atomic(x)
-#endif
 
-/* error tracing */
-#if TRACEE
-#define trace_error(__c, __e, ...) \
-	_log_message(,, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
-#define trace_error_atomic(__c, __e, ...) \
-	_log_message(, _atomic, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
-/* write back error value to mbox */
-#define trace_error_value(x) \
-	trace_error(0, "value %d", x)
-#define trace_error_value_atomic(x) \
-	trace_error_atomic(0, "value %d", x)
-#else
+#define trace_event(__c, __e, ...)
+#define trace_event_atomic(__c, __e, ...)
+
 #define trace_error(__c, __e, ...)
 #define trace_error_atomic(__c, __e, ...)
+
 #define trace_error_value(x)
 #define trace_error_value_atomic(x)
-#endif
 
-#else
-
-#define trace_event(x, e, ...)
-#define trace_error(c, e, ...)
 #define trace_value(x)
+#define trace_value_atomic(x)
+
 #define trace_point(x)
+
 #define tracev_event(__c, __e, ...)
+#define tracev_event_atomic(__c, __e, ...)
 #define tracev_value(x)
+#define tracev_value_atomic(x)
 
 #endif
 
