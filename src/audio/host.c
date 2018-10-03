@@ -786,8 +786,6 @@ static void host_cache(struct comp_dev *dev, int cmd)
 #endif
 
 		dcache_writeback_invalidate_region(hd->dma, sizeof(*hd->dma));
-		dcache_writeback_invalidate_region(hd->dma->private,
-						   hd->dma->private_size);
 		dcache_writeback_invalidate_region(hd, sizeof(*hd));
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
 		break;
@@ -800,8 +798,6 @@ static void host_cache(struct comp_dev *dev, int cmd)
 		hd = comp_get_drvdata(dev);
 		dcache_invalidate_region(hd, sizeof(*hd));
 		dcache_invalidate_region(hd->dma, sizeof(*hd->dma));
-		dcache_invalidate_region(hd->dma->private,
-					 hd->dma->private_size);
 
 #if !defined CONFIG_DMA_GW
 		list_for_item(item, &hd->local.elem_list) {

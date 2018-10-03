@@ -397,11 +397,8 @@ static int component_op_downstream(struct op_data *op_data,
 		/* component should reset and free resources */
 		err = comp_reset(current);
 		break;
-	case COMP_OPS_CACHE:
-		/* cache operation */
-		comp_cache(current, op_data->cmd);
-		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
+	case COMP_OPS_CACHE:
 	default:
 		trace_pipe_error("eOi");
 		trace_error_value(op_data->op);
@@ -482,11 +479,8 @@ static int component_op_upstream(struct op_data *op_data,
 		/* component should reset and free resources */
 		err = comp_reset(current);
 		break;
-	case COMP_OPS_CACHE:
-		/* cache operation */
-		comp_cache(current, op_data->cmd);
-		break;
 	case COMP_OPS_BUFFER: /* handled by other API call */
+	case COMP_OPS_CACHE:
 	default:
 		trace_pipe_error("eOi");
 		trace_error_value(op_data->op);
@@ -639,89 +633,79 @@ out:
 	return ret;
 }
 
-static void component_cache_buffers_downstream(struct comp_dev *start,
-					       struct comp_dev *current,
-					       struct comp_buffer *buffer,
-					       cache_command cache_cmd)
+static void component_cache_downstream(int cmd, struct comp_dev *start,
+				       struct comp_dev *current,
+				       struct comp_dev *previous)
 {
+	cache_command cache_cmd = comp_get_cache_command(cmd);
 	struct list_item *clist;
+	struct comp_buffer *buffer;
 
-	if (current != start && buffer) {
-		cache_cmd(buffer, sizeof(*buffer));
+	comp_cache(current, cmd);
 
-		/* stop if we reach an endpoint */
-		if (current->is_endpoint)
-			return;
-	}
+	/* we finish walking the graph if we reach the DAI */
+	if (current != start && current->is_endpoint)
+		return;
 
-	/* travel further */
+	/* now run this operation downstream */
 	list_for_item(clist, &current->bsink_list) {
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* stop going if this component is not connected */
+		if (cache_cmd)
+			cache_cmd(buffer, sizeof(*buffer));
+
+		/* don't go downstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
-		component_cache_buffers_downstream(start, buffer->sink,
-						   buffer, cache_cmd);
+		component_cache_downstream(cmd, start, buffer->sink, current);
 	}
 }
 
-static void component_cache_buffers_upstream(struct comp_dev *start,
-					     struct comp_dev *current,
-					     struct comp_buffer *buffer,
-					     cache_command cache_cmd)
+static void component_cache_upstream(int cmd, struct comp_dev *start,
+				     struct comp_dev *current,
+				     struct comp_dev *previous)
 {
+	cache_command cache_cmd = comp_get_cache_command(cmd);
 	struct list_item *clist;
+	struct comp_buffer *buffer;
 
-	if (current != start && buffer) {
-		cache_cmd(buffer, sizeof(*buffer));
+	comp_cache(current, cmd);
 
-		/* stop if we reach an endpoint */
-		if (current->is_endpoint)
-			return;
-	}
+	/* we finish walking the graph if we reach the DAI */
+	if (current != start && current->is_endpoint)
+		return;
 
-	/* travel further */
+	/* now run this operation upstream */
 	list_for_item(clist, &current->bsource_list) {
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* stop going if this component is not connected */
+		if (cache_cmd)
+			cache_cmd(buffer, sizeof(*buffer));
+
+		/* don't go upstream if this component is not connected */
 		if (!buffer->connected)
 			continue;
 
-		component_cache_buffers_upstream(start, buffer->source,
-						 buffer, cache_cmd);
+		component_cache_upstream(cmd, start, buffer->source, current);
 	}
 }
 
 void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 {
 	cache_command cache_cmd = comp_get_cache_command(cmd);
-	struct op_data op_data;
 	uint32_t flags;
 
 	trace_pipe("cac");
 
-	op_data.p = p;
-	op_data.op = COMP_OPS_CACHE;
-	op_data.cmd = cmd;
-
 	spin_lock_irq(&p->lock, flags);
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		/* execute cache operation on components downstream */
-		component_op_downstream(&op_data, dev, dev, NULL);
-
-		/* execute cache operation on buffers downstream */
-		component_cache_buffers_downstream(dev, dev, NULL, cache_cmd);
-	} else {
-		/* execute cache operation on components upstream */
-		component_op_upstream(&op_data, dev, dev, NULL);
-
-		/* execute cache operation on buffers upstream */
-		component_cache_buffers_upstream(dev, dev, NULL, cache_cmd);
-	}
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		/* execute cache op on components and buffers downstream */
+		component_cache_downstream(cmd, dev, dev, NULL);
+	else
+		/* execute cache op on components and buffers upstream */
+		component_cache_upstream(cmd, dev, dev, NULL);
 
 	/* execute cache operation on pipeline itself */
 	if (cache_cmd)

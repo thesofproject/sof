@@ -1113,7 +1113,8 @@ static int dw_dma_probe(struct dma *dma)
 	int i;
 
 	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
+	dw_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+			   sizeof(*dw_pdata));
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(&dma->lock);
