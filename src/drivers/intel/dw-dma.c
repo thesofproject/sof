@@ -269,6 +269,8 @@ struct dma_chan_data {
 	uint32_t cfg_lo;
 	uint32_t cfg_hi;
 	struct dma_id id;
+	uint32_t timer_delay;
+	struct work dma_ch_work;
 
 	/* client callback function */
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);
@@ -289,6 +291,7 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 		struct dma_sg_elem *next);
 static inline void dw_dma_interrupt_register(struct dma *dma, int channel);
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel);
+static uint64_t dw_dma_work(void *data, uint64_t delay);
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
 {
@@ -328,11 +331,6 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 
 		atomic_add(&dma->num_channels_busy, 1);
 
-		/* unmask block, transfer and error interrupts for channel */
-		dw_write(dma, DW_MASK_TFR, INT_UNMASK(i));
-		dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(i));
-		dw_write(dma, DW_MASK_ERR, INT_UNMASK(i));
-
 		/* return channel */
 		spin_unlock_irq(&dma->lock, flags);
 		return i;
@@ -351,10 +349,12 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 
 	tracev_dma("Dpt");
 
-	/* mask block, transfer and error interrupts for channel */
-	dw_write(dma, DW_MASK_TFR, INT_MASK(channel));
-	dw_write(dma, DW_MASK_BLOCK, INT_MASK(channel));
-	dw_write(dma, DW_MASK_ERR, INT_MASK(channel));
+	if (!p->chan[channel].timer_delay) {
+		/* mask block, transfer and error interrupts for channel */
+		dw_write(dma, DW_MASK_TFR, INT_MASK(channel));
+		dw_write(dma, DW_MASK_BLOCK, INT_MASK(channel));
+		dw_write(dma, DW_MASK_ERR, INT_MASK(channel));
+	}
 
 	/* free the lli allocated by set_config*/
 	if (p->chan[channel].lli) {
@@ -366,6 +366,9 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	p->chan[channel].status = COMP_STATE_INIT;
 	p->chan[channel].cb = NULL;
 	p->chan[channel].desc_count = 0;
+
+	if (p->chan[channel].timer_delay)
+		work_init(&p->chan[channel].dma_ch_work, NULL, NULL, 0);
 
 	atomic_sub(&dma->num_channels_busy, 1);
 }
@@ -408,17 +411,20 @@ static int dw_dma_start(struct dma *dma, int channel)
 		goto out;
 	}
 
-	/* write interrupt clear registers for the channel:
-	 * ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr
-	 */
-	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
+	if (!p->chan[channel].timer_delay) {
+		/* write interrupt clear registers for the channel:
+		 * ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr
+		 */
+		dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
+		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+		dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << channel);
+		dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << channel);
+		dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
 
-	/* clear platform interrupt */
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()), 1 << channel);
+		/* clear platform interrupt */
+		platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
+					 1 << channel);
+	}
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
@@ -442,8 +448,12 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_CFG_LOW(channel), p->chan[channel].cfg_lo);
 	dw_write(dma, DW_CFG_HIGH(channel), p->chan[channel].cfg_hi);
 
-	/* enable interrupt only for the first start */
-	if (p->chan[channel].status == COMP_STATE_PREPARE)
+	if (p->chan[channel].timer_delay)
+		/* activate timer for timer driven scheduling */
+		work_schedule_default(&p->chan[channel].dma_ch_work,
+				      p->chan[channel].timer_delay);
+	else if (p->chan[channel].status == COMP_STATE_PREPARE)
+		/* enable interrupt only for the first start */
 		dw_dma_interrupt_register(dma, channel);
 
 	/* enable the channel */
@@ -504,13 +514,18 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	trace_dma("DDi");
 
+	if (p->chan[channel].timer_delay)
+		work_cancel_default(&p->chan[channel].dma_ch_work);
+
 	ret = poll_for_register_delay(dma_base(dma) + DW_DMA_CHAN_EN,
 				      CHAN_MASK(channel), val,
 				      PLATFORM_DMA_TIMEOUT);
 	if (ret < 0)
 		trace_dma_error("esp");
 
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	if (!p->chan[channel].timer_delay)
+		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+
 	p->chan[channel].status = COMP_STATE_PREPARE;
 
 	spin_unlock_irq(&dma->lock, flags);
@@ -531,6 +546,9 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	trace_dma("DDi");
 
+	if (p->chan[channel].timer_delay)
+		work_cancel_default(&p->chan[channel].dma_ch_work);
+
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 
 #if DW_USE_HW_LLI
@@ -544,10 +562,12 @@ static int dw_dma_stop(struct dma *dma, int channel)
 			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
 #endif
 
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	if (!p->chan[channel].timer_delay) {
+		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
 
-	/* disable interrupt */
-	dw_dma_interrupt_unregister(dma, channel);
+		/* disable interrupt */
+		dw_dma_interrupt_unregister(dma, channel);
+	}
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
 
@@ -598,6 +618,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
+	p->chan[channel].timer_delay = config->timer_delay;
 	p->chan[channel].cfg_lo = DW_CFG_LOW_DEF;
 	p->chan[channel].cfg_hi = DW_CFG_HIGH_DEF;
 
@@ -644,6 +665,15 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 				break;
 			}
 		}
+	}
+
+	if (!p->chan[channel].timer_delay) {
+		/* unmask block, transfer and error interrupts
+		 * for channel
+		 */
+		dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
+		dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
+		dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
 	}
 
 	/* fill in lli for the elem in the list */
@@ -841,6 +871,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
 	p->chan[channel].lli_current = p->chan[channel].lli;
+
+	if (p->chan[channel].timer_delay)
+		work_init(&p->chan[channel].dma_ch_work, dw_dma_work,
+			  &p->chan[channel].id, WORK_SYNC);
 out:
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
@@ -1004,8 +1038,56 @@ found:
 	}
 }
 
-#ifdef CONFIG_APOLLOLAKE
-/* external layer 2 interrupt for dmac */
+static void dw_dma_process_block(struct dma_chan_data *chan,
+				 struct dma_sg_elem *next)
+{
+	/* reload lli by default */
+	next->src = DMA_RELOAD_LLI;
+	next->dest = DMA_RELOAD_LLI;
+	next->size = DMA_RELOAD_LLI;
+
+	if (chan->cb)
+		chan->cb(chan->cb_data, DMA_IRQ_TYPE_BLOCK, next);
+
+	if (next->size == DMA_RELOAD_END) {
+		trace_dma("LSo");
+
+		/* disable channel, finished */
+		dw_write(chan->id.dma, DW_DMA_CHAN_EN,
+			 CHAN_DISABLE(chan->id.channel));
+		chan->status = COMP_STATE_PREPARE;
+	}
+
+	chan->lli_current->ctrl_hi &= ~DW_CTLH_DONE(1);
+	dcache_writeback_region(chan->lli_current, sizeof(*chan->lli_current));
+
+	chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
+}
+
+static uint64_t dw_dma_work(void *data, uint64_t delay)
+{
+	struct dma_id *dma_id = (struct dma_id *)data;
+	struct dma *dma = dma_id->dma;
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_sg_elem next;
+	int i = dma_id->channel;
+
+	tracev_dma("wrk");
+
+	/* skip if channel is not running */
+	if (p->chan[i].status != COMP_STATE_ACTIVE) {
+		trace_dma_error("eDs");
+		goto out;
+	}
+
+	dw_dma_process_block(&p->chan[i], &next);
+
+out:
+	return next.size == DMA_RELOAD_END ? 0 : p->chan[i].timer_delay;
+}
+
+#if CONFIG_APOLLOLAKE
+/* interrupt handler for DW DMA */
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma_id *dma_id = (struct dma_id *)data;
@@ -1047,91 +1129,10 @@ static void dw_dma_irq_handler(void *data)
 		return;
 	}
 
-#if DW_USE_HW_LLI
 	/* end of a LLI block */
 	if (status_block & mask &&
-	    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
-		next.src = DMA_RELOAD_LLI;
-		next.dest = DMA_RELOAD_LLI;
-		/* will reload lli by default */
-		next.size = DMA_RELOAD_LLI;
-		p->chan[i].cb(p->chan[i].cb_data,
-				DMA_IRQ_TYPE_BLOCK, &next);
-		if (next.size == DMA_RELOAD_END) {
-			trace_dma("LSo");
-			/* disable channel, finished */
-			dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
-			p->chan[i].status = COMP_STATE_PREPARE;
-		}
-
-		p->chan[i].lli_current->ctrl_hi &= ~DW_CTLH_DONE(1);
-		dcache_writeback_region(p->chan[i].lli_current,
-					sizeof(*p->chan[i].lli_current));
-
-		p->chan[i].lli_current =
-			(struct dw_lli2 *)p->chan[i].lli_current->llp;
-	}
-#endif
-	/* end of a transfer */
-	if ((status_tfr & mask) &&
-	    (p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)) {
-		trace_value(status_tfr);
-
-		next.src = DMA_RELOAD_LLI;
-		next.dest = DMA_RELOAD_LLI;
-		next.size = DMA_RELOAD_LLI; /* will reload lli by default */
-		if (p->chan[i].cb)
-			p->chan[i].cb(p->chan[i].cb_data,
-				DMA_IRQ_TYPE_LLIST, &next);
-
-		/* check for reload channel:
-		 * next.size is DMA_RELOAD_END, stop this dma copy;
-		 * next.size > 0 but not DMA_RELOAD_LLI, use next
-		 * element for next copy;
-		 * if we are waiting for pause, pause it;
-		 * otherwise, reload lli
-		 */
-		switch (next.size) {
-		case DMA_RELOAD_END:
-			p->chan[i].status = COMP_STATE_PREPARE;
-			break;
-		case DMA_RELOAD_LLI:
-			/* reload lli, but let's check if it is paused */
-			if (p->chan[i].status != COMP_STATE_PAUSED)
-				dw_dma_chan_reload_lli(dma, i);
-			break;
-		default:
-			dw_dma_chan_reload_next(dma, i, &next);
-			break;
-		}
-	}
-}
-
-static int dw_dma_probe(struct dma *dma)
-{
-	struct dma_pdata *dw_pdata;
-	int i;
-
-	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			   sizeof(*dw_pdata));
-	dma_set_drvdata(dma, dw_pdata);
-
-	spinlock_init(&dma->lock);
-
-	dw_dma_setup(dma);
-
-	/* init work */
-	for (i = 0; i < dma->plat_data.channels; i++) {
-		dw_pdata->chan[i].id.dma = dma;
-		dw_pdata->chan[i].id.channel = i;
-		dw_pdata->chan[i].status = COMP_STATE_INIT;
-	}
-
-	/* init number of channels draining */
-	atomic_init(&dma->num_channels_busy, 0);
-
-	return 0;
+	    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK)
+		dw_dma_process_block(&p->chan[i], &next);
 }
 
 static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
@@ -1153,10 +1154,40 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 	interrupt_disable(irq);
 	interrupt_unregister(irq);
 }
-
 #else
+static void dw_dma_process_transfer(struct dma_chan_data *chan,
+				    struct dma_sg_elem *next)
+{
+	/* reload lli by default */
+	next->src = DMA_RELOAD_LLI;
+	next->dest = DMA_RELOAD_LLI;
+	next->size = DMA_RELOAD_LLI;
 
-/* this will probably be called at the end of every period copied */
+	if (chan->cb)
+		chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, next);
+
+	/* check for reload channel:
+	 * next.size is DMA_RELOAD_END, stop this dma copy;
+	 * next.size > 0 but not DMA_RELOAD_LLI, use next
+	 * element for next copy;
+	 * if we are waiting for pause, pause it;
+	 * otherwise, reload lli
+	 */
+	switch (next->size) {
+	case DMA_RELOAD_END:
+		chan->status = COMP_STATE_PREPARE;
+		chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
+		break;
+	case DMA_RELOAD_LLI:
+		dw_dma_chan_reload_lli(chan->id.dma, chan->id.channel);
+		break;
+	default:
+		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next);
+		break;
+	}
+}
+
+/* interrupt handler for DMA */
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = (struct dma *)data;
@@ -1170,9 +1201,6 @@ static void dw_dma_irq_handler(void *data)
 	uint32_t mask;
 	uint32_t pmask;
 	int i;
-#if DW_USE_HW_LLI
-	const size_t lli_current_size = sizeof(*p->chan[i].lli_current);
-#endif
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr)
@@ -1205,7 +1233,7 @@ static void dw_dma_irq_handler(void *data)
 		trace_error_value(status_block_new);
 	}
 
-	for (i = 0; i < DW_MAX_CHAN; i++) {
+	for (i = 0; i < dma->plat_data.channels; i++) {
 
 		/* skip if channel is not running */
 		if (p->chan[i].status != COMP_STATE_ACTIVE)
@@ -1216,93 +1244,14 @@ static void dw_dma_irq_handler(void *data)
 #if DW_USE_HW_LLI
 		/* end of a LLI block */
 		if (status_block & mask &&
-		    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK) {
-			next.src = DMA_RELOAD_LLI;
-			next.dest = DMA_RELOAD_LLI;
-			next.size = DMA_RELOAD_LLI;
-			p->chan[i].cb(p->chan[i].cb_data,
-					DMA_IRQ_TYPE_BLOCK, &next);
-			if (next.size == DMA_RELOAD_END) {
-				trace_dma("LSo");
-				/* disable channel, finished */
-				dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(i));
-				p->chan[i].status = COMP_STATE_PREPARE;
-			}
-
-			p->chan[i].lli_current->ctrl_hi &= ~DW_CTLH_DONE(1);
-
-			dcache_writeback_region(p->chan[i].lli_current,
-						lli_current_size);
-
-			p->chan[i].lli_current =
-				(struct dw_lli2 *)p->chan[i].lli_current->llp;
-		}
+		    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK)
+			dw_dma_process_block(&p->chan[i], &next);
 #endif
 		/* end of a transfer */
-		if ((status_tfr & mask) &&
-			(p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)) {
-
-			next.src = DMA_RELOAD_LLI;
-			next.dest = DMA_RELOAD_LLI;
-			/* will reload lli by default */
-			next.size = DMA_RELOAD_LLI;
-			if (p->chan[i].cb)
-				p->chan[i].cb(p->chan[i].cb_data,
-					DMA_IRQ_TYPE_LLIST, &next);
-
-			/* check for reload channel:
-			 * next.size is DMA_RELOAD_END, stop this dma copy;
-			 * next.size > 0 but not DMA_RELOAD_LLI, use next
-			 * element for next copy;
-			 * if we are waiting for pause, pause it;
-			 * otherwise, reload lli
-			 */
-			switch (next.size) {
-			case DMA_RELOAD_END: {
-				p->chan[i].status = COMP_STATE_PREPARE;
-
-				void *llp = (void *)p->chan[i].lli_current->llp;
-
-				p->chan[i].lli_current =
-					(struct dw_lli2 *)llp;
-				break;
-			}
-			case DMA_RELOAD_LLI:
-				dw_dma_chan_reload_lli(dma, i);
-				break;
-			default:
-				dw_dma_chan_reload_next(dma, i, &next);
-				break;
-			}
-		}
+		if (status_tfr & mask &&
+		    p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)
+			dw_dma_process_transfer(&p->chan[i], &next);
 	}
-}
-
-static int dw_dma_probe(struct dma *dma)
-{
-	struct dma_pdata *dw_pdata;
-	int i;
-
-	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		sizeof(*dw_pdata));
-	dma_set_drvdata(dma, dw_pdata);
-
-	spinlock_init(&dma->lock);
-
-	dw_dma_setup(dma);
-
-	/* init work */
-	for (i = 0; i < DW_MAX_CHAN; i++) {
-		dw_pdata->chan[i].id.dma = dma;
-		dw_pdata->chan[i].id.channel = i;
-		dw_pdata->chan[i].status = COMP_STATE_INIT;
-	}
-
-	/* init number of channels draining */
-	atomic_init(&dma->num_channels_busy, 0);
-
-	return 0;
 }
 
 static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
@@ -1321,6 +1270,33 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 	interrupt_unregister(irq);
 }
 #endif
+
+static int dw_dma_probe(struct dma *dma)
+{
+	struct dma_pdata *dw_pdata;
+	int i;
+
+	/* allocate private data */
+	dw_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+			   sizeof(*dw_pdata));
+	dma_set_drvdata(dma, dw_pdata);
+
+	spinlock_init(&dma->lock);
+
+	dw_dma_setup(dma);
+
+	/* init work */
+	for (i = 0; i < dma->plat_data.channels; i++) {
+		dw_pdata->chan[i].id.dma = dma;
+		dw_pdata->chan[i].id.channel = i;
+		dw_pdata->chan[i].status = COMP_STATE_INIT;
+	}
+
+	/* init number of channels draining */
+	atomic_init(&dma->num_channels_busy, 0);
+
+	return 0;
+}
 
 const struct dma_ops dw_dma_ops = {
 	.channel_get	= dw_dma_channel_get,

@@ -219,15 +219,8 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 		 */
 		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK ||
 		    p->status == COMP_STATE_PAUSED) {
-
-			/* pipelines are either scheduled by timers or DAI/DMA interrupts */
-			if (p->ipc_pipe.timer) {
-				/* timer - schedule initial copy */
-				pipeline_schedule_copy(p, 0);
-			} else {
-				/* DAI - schedule initial pipeline fill when next idle */
-				pipeline_schedule_copy_idle(p);
-			}
+			/* schedule initial pipeline fill when next idle */
+			pipeline_schedule_copy_idle(p);
 		}
 		p->status = COMP_STATE_ACTIVE;
 		break;
@@ -1290,11 +1283,6 @@ static void pipeline_task(void *arg)
 
 sched:
 	tracev_pipe("PWe");
-
-	/* now reschedule the task */
-	/* TODO: add in scheduling cost and any timer drift */
-	if (p->ipc_pipe.timer)
-		pipeline_schedule_copy(p, p->ipc_pipe.deadline);
 }
 
 /* init pipeline */

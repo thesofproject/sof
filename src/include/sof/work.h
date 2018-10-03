@@ -65,9 +65,11 @@ struct work_queue_timesource {
 
 /* initialise our work */
 #define work_init(w, x, xd, xflags) \
-	(w)->cb = x; \
-	(w)->cb_data = xd; \
-	(w)->flags = xflags;
+	do { \
+		(w)->cb = x; \
+		(w)->cb_data = xd; \
+		(w)->flags = xflags; \
+	} while (0)
 
 struct work_queue **arch_work_queue_get(void);
 
