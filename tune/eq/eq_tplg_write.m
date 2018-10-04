@@ -1,4 +1,4 @@
-function eq_tplg_write(fn, blob8, eqtype)
+function eq_tplg_write(fn, blob8, eqtype, comment)
 
 %%
 % Copyright (c) 2018, Intel Corporation
@@ -30,6 +30,10 @@ function eq_tplg_write(fn, blob8, eqtype)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
+if nargin < 4
+	comment = 'Exported EQ';
+end
+
 %% Pad blob length to multiple of four bytes
 n_orig = length(blob8);
 n_new = ceil(n_orig/4)*4;
@@ -39,8 +43,8 @@ blob8_new(1:n_orig) = blob8;
 %% Write blob
 fh = fopen(fn, 'w');
 nl = 8;
-fprintf(fh, '`SectionData."''N_EQ_%s($1)`_data_bytes" {''\n', ...
-       upper(eqtype));
+fprintf(fh, '# %s %s\n', comment, date());
+fprintf(fh, 'CONTROLBYTES_PRIV(EQ%s_priv,\n', upper(eqtype));
 fprintf(fh, '`       bytes "');
 for i = 1:nl:n_new
 	if i > 1
@@ -57,7 +61,7 @@ for i = 1:nl:n_new
 	end
 	fprintf(fh, '''\n');
 end
-fprintf(fh, '`}''\n');
+fprintf(fh, ')\n');
 fclose(fh);
 
 end
