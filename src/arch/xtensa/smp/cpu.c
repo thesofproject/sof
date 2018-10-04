@@ -107,12 +107,10 @@ void cpu_power_down_core(void)
 
 	free_system_workq();
 
-	free_core_context(arch_cpu_get_id());
-
-	dcache_writeback_invalidate_all();
-
 	/* free entire sys heap, an instance dedicated for this core */
 	free_heap(RZONE_SYS);
+
+	dcache_writeback_invalidate_all();
 
 	/* arch_wait_for_interrupt() not used, because it will cause panic.
 	 * This code is executed on irq lvl > 0, which is expected.

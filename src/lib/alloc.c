@@ -111,14 +111,14 @@ static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
 #endif
 
 /* allocate from system memory pool */
-static void *rmalloc_sys(int zone, size_t bytes)
+static void *rmalloc_sys(int zone, int core, size_t bytes)
 {
 	void *ptr;
 	struct mm_heap *cpu_heap;
 	size_t alignment = 0;
 
-	/* use the heap dedicated for the current core */
-	cpu_heap = memmap.system + cpu_get_id();
+	/* use the heap dedicated for the selected core */
+	cpu_heap = cache_to_uncache(memmap.system + core);
 
 	/* align address to dcache line size */
 	if (cpu_heap->info.used % PLATFORM_DCACHE_ALIGN)
@@ -434,7 +434,7 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 
 	switch (zone & RZONE_TYPE_MASK) {
 	case RZONE_SYS:
-		ptr = rmalloc_sys(zone, bytes);
+		ptr = rmalloc_sys(zone, cpu_get_id(), bytes);
 		break;
 	case RZONE_RUNTIME:
 		ptr = rmalloc_runtime(zone, caps, bytes);
@@ -456,6 +456,22 @@ void *rzalloc(int zone, uint32_t caps, size_t bytes)
 	if (ptr != NULL) {
 		bzero(ptr, bytes);
 	}
+
+	return ptr;
+}
+
+void *rzalloc_core_sys(int core, size_t bytes)
+{
+	uint32_t flags;
+	void *ptr = NULL;
+
+	spin_lock_irq(&memmap.lock, flags);
+
+	ptr = rmalloc_sys(RZONE_SYS, core, bytes);
+	if (ptr)
+		bzero(ptr, bytes);
+
+	spin_unlock_irq(&memmap.lock, flags);
 
 	return ptr;
 }
@@ -567,7 +583,7 @@ void free_heap(int zone)
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
-	cpu_heap = memmap.system + cpu_get_id();
+	cpu_heap = cache_to_uncache(memmap.system + cpu_get_id());
 	cpu_heap->info.used = 0;
 	cpu_heap->info.free = cpu_heap->size;
 }
