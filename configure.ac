@@ -137,6 +137,8 @@ case "$with_arch" in
 
 	ARCH="host"
 	AC_SUBST(ARCH)
+
+	AC_CHECK_HEADERS([sound/asoc.h])
     ;;
     *)
 	if test "$have_rimage" = "no" && test "$have_doc" = "no" ; then
