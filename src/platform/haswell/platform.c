@@ -68,6 +68,7 @@ static const struct sof_ipc_fw_ready ready = {
 		.date = __DATE__,
 		.time = __TIME__,
 		.tag = SOF_TAG,
+		.abi_version = SOF_ABI_VERSION,
 	},
 	/* TODO: add capabilities */
 };
