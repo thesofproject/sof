@@ -51,17 +51,11 @@ static inline void alloc_core_context(int core)
 {
 	struct core_context *core_ctx;
 
-	core_ctx = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*core_ctx));
+	core_ctx = rzalloc_core_sys(core, sizeof(*core_ctx));
 	dcache_writeback_invalidate_region(core_ctx, sizeof(*core_ctx));
 
-	/* xtos_core_data is a big struct, so allocate it from system heap
-	 * and never free again. Allocating from runtime heap would be
-	 * a waste of a very big memory block.
-	 */
-	if (!core_data_ptr[core])
-		core_data_ptr[core] = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-					      sizeof(*core_data_ptr[core]));
-
+	core_data_ptr[core] = rzalloc_core_sys(core,
+					       sizeof(*core_data_ptr[core]));
 	core_data_ptr[core]->thread_data_ptr = &core_ctx->td;
 	dcache_writeback_invalidate_region(core_data_ptr[core],
 					   sizeof(*core_data_ptr[core]));
@@ -75,16 +69,6 @@ static inline void alloc_core_context(int core)
 
 	/* writeback bss region to share static pointers */
 	dcache_writeback_region((void *)SOF_BSS_DATA_START, SOF_BSS_DATA_SIZE);
-}
-
-/**
- * \brief Frees memory allocated for core specific data.
- * \param[in] core Slave core for which data needs to be freed.
- */
-static inline void free_core_context(int core)
-{
-	dcache_writeback_invalidate_region(core_ctx_ptr[core],
-					   sizeof(*core_ctx_ptr[core]));
 }
 
 #endif

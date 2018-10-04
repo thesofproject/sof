@@ -122,6 +122,9 @@ void rfree(void *ptr);
 /* heap allocation and free for buffers on 1k boundary */
 void *rballoc(int zone, uint32_t flags, size_t bytes);
 
+/* system heap allocation for specific core */
+void *rzalloc_core_sys(int core, size_t bytes);
+
 /* utility */
 void bzero(void *s, size_t n);
 void *memset(void *s, int c, size_t n);
