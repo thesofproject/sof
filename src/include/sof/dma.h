@@ -107,6 +107,7 @@ struct dma_sg_config {
 	uint32_t src_dev;
 	uint32_t dest_dev;
 	uint32_t cyclic;		/* circular buffer */
+	enum sof_ipc_dai_type dai_type;
 	struct list_item elem_list;	/* list of dma_sg elems */
 };
 
