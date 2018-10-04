@@ -470,26 +470,21 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct list_item *plist;
 	struct dma_sg_elem *sg_elem;
 	uint32_t buffer_addr = 0;
 	uint32_t period_bytes = 0;
 	uint32_t buffer_bytes = 0;
-	uint32_t desc_count = 0;
 	uint32_t flags;
 	uint32_t addr;
 	uint32_t dgcs;
+	int i;
 	int ret = 0;
 
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_host("Dsc");
 
-	/* get number of SG elems */
-	list_for_item(plist, &config->elem_list)
-		desc_count++;
-
-	if (desc_count == 0) {
+	if (!config->elem_array.count) {
 		trace_host_error("eD1");
 		ret = -EINVAL;
 		goto out;
@@ -497,11 +492,11 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
-	p->chan[channel].desc_count = desc_count;
+	p->chan[channel].desc_count = config->elem_array.count;
 
 	/* validate - HDA only supports continuous elems of same size  */
-	list_for_item(plist, &config->elem_list) {
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
+	for (i = 0; i < config->elem_array.count; i++) {
+		sg_elem = config->elem_array.elems + i;
 
 		if (config->direction == DMA_DIR_HMEM_TO_LMEM ||
 		    config->direction == DMA_DIR_DEV_TO_MEM)
