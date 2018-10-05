@@ -49,52 +49,38 @@ struct system_time {
 	uint32_t val_u;  /* Upper dword of current host time value */
 };
 
+/* trace event classes - high 8 bits*/
+#define TRACE_CLASS_IRQ		(1 << 24)
+#define TRACE_CLASS_IPC		(2 << 24)
+#define TRACE_CLASS_PIPE	(3 << 24)
+#define TRACE_CLASS_HOST	(4 << 24)
+#define TRACE_CLASS_DAI		(5 << 24)
+#define TRACE_CLASS_DMA		(6 << 24)
+#define TRACE_CLASS_SSP		(7 << 24)
+#define TRACE_CLASS_COMP	(8 << 24)
+#define TRACE_CLASS_WAIT	(9 << 24)
+#define TRACE_CLASS_LOCK	(10 << 24)
+#define TRACE_CLASS_MEM		(11 << 24)
+#define TRACE_CLASS_MIXER	(12 << 24)
+#define TRACE_CLASS_BUFFER	(13 << 24)
+#define TRACE_CLASS_VOLUME	(14 << 24)
+#define TRACE_CLASS_SWITCH	(15 << 24)
+#define TRACE_CLASS_MUX		(16 << 24)
+#define TRACE_CLASS_SRC         (17 << 24)
+#define TRACE_CLASS_TONE        (18 << 24)
+#define TRACE_CLASS_EQ_FIR      (19 << 24)
+#define TRACE_CLASS_EQ_IIR      (20 << 24)
+#define TRACE_CLASS_SA		(21 << 24)
+#define TRACE_CLASS_DMIC	(22 << 24)
+#define TRACE_CLASS_POWER	(23 << 24)
+#define TRACE_CLASS_IDC		(24 << 24)
+#define TRACE_CLASS_CPU		(25 << 24)
+
 #define LOG_ENABLE		1  /* Enable logging */
 #define LOG_DISABLE		0  /* Disable logging */
 
 #define LOG_LEVEL_CRITICAL	1  /* (FDK fatal) */
-#define LOG_LEVEL_HIGH		2  /* (FDK error) */
-#define LOG_LEVEL_MEDIUM	3  /* (FDK warning) */
-#define LOG_LEVEL_LOW		4
-#define LOG_LEVEL_VERBOSE	5
-
-/*
- * Logging configuration per single core.
- *
- * (cavs: LogState).
- */
-struct log_state_core {
-	uint32_t enabled; /* LOG_ENABLE / LOG_DISABLE */
-	uint32_t level;   /* Logging level, one of LOG_LEVEL_. */
-};
-
-/*
- * Logging settings.
- *
- * Aging timer period pecifies how frequently FW sends Log Buffer Status
- * notification for new entries in case the usual notification sending
- * criteria are not met (half of the buffer is full).
- *
- * FIFO full timer period specifies the latency of logging 'dropped log
- * entries' information after the content is consumed by the driver but no
- * new log entry appears (which would trigger logging 'dropped entries' as
- * well).
- *
- * Core mask indicates which cores are targeted by the message.
- * Bit[i] set to 1 means that configuration for i-th core, specified in
- * logs_core[i] is valid.
- *
- * Logs core array specifies logging settings for each core. i-th entry is
- * processed by FW only if bit[i] of core_mask is set.
- *
- * (cavs: LogStateInfo).
- */
-struct log_state {
-	uint32_t aging_timer_period;        /* Aging timer period */
-	uint32_t fifo_full_timer_period;    /* FIFO full timer period */
-	uint32_t core_mask;                 /* Mask of cores */
-	struct log_state_core logs_core[0]; /* Logging state per core */
-};
+#define LOG_LEVEL_VERBOSE	2
 
 /*
  * Layout of a log fifo.
