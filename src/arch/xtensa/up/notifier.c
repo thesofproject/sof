@@ -26,44 +26,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ *
  */
 
-#include "xtos-internal.h"
+/**
+ * \file arch/xtensa/up/notifier.c
+ * \brief Xtensa UP notifier implementation file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
 
-#ifndef __XTOS_STRUCTS_H__
-#define __XTOS_STRUCTS_H__
+#include <sof/notifier.h>
 
-struct idc;
-struct irq_task;
-struct notify;
-struct schedule_data;
-struct work_queue;
+/** \brief Notify data pointer. */
+static struct notify *notify;
 
-struct thread_data {
-	xtos_structures_pointers xtos_ptrs;
-};
-
-struct xtos_core_data {
-	struct XtosInterruptStructure xtos_int_data;
-	int xtos_stack_for_interrupt_2[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_3[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_4[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_5[XTOS_INT_STACK_SIZE / 4];
-
-	struct thread_data *thread_data_ptr;
-};
-
-struct core_context {
-	struct thread_data td;
-	struct irq_task *irq_low_task;
-	struct irq_task *irq_med_task;
-	struct irq_task *irq_high_task;
-	struct schedule_data *sch;
-	struct work_queue *queue;
-	struct notify *notify;
-	struct idc *idc;
-};
-
-void _xtos_initialize_pointers_per_core(void);
-
-#endif /* __XTOS_STRUCTS_H__ */
+struct notify **arch_notify_get(void)
+{
+	return &notify;
+}
