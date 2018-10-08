@@ -58,5 +58,6 @@ const struct dai_ops hda_ops = {
 	.pm_context_store	= hda_dummy,
 	.pm_context_restore	= hda_dummy,
 	.probe			= hda_dummy,
+	.remove			= hda_dummy,
 	.set_loopback_mode	= hda_set_loopback_mode
 };

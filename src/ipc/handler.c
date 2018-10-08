@@ -472,7 +472,7 @@ static int ipc_dai_config(uint32_t header)
 	trace_ipc("DsF");
 
 	/* get DAI */
-	dai = dai_get(config->type, config->dai_index);
+	dai = dai_get(config->type, config->dai_index, 0 /* existing only */);
 	if (dai == NULL) {
 		trace_ipc_error("eDi");
 		trace_error_value(config->type);
@@ -482,6 +482,7 @@ static int ipc_dai_config(uint32_t header)
 
 	/* configure DAI */
 	ret = dai_set_config(dai, config);
+	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
 		trace_ipc_error("eDC");
 		return ret;

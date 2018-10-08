@@ -84,6 +84,20 @@ static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
 #endif
 }
 
+static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
+{
+#if defined(CONFIG_APOLLOLAKE)
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) &
+		   ~(index < DAI_NUM_SSP_BASE ?
+		    SHIM_CLKCTL_I2SFDCGB(index) :
+		    SHIM_CLKCTL_I2SEFDCGB(index)));
+
+	trace_event(TRACE_CLASS_POWER,
+		    "en-ssp-clk-gating index %d CLKCTL %08x",
+		    index, shim_read(SHIM_CLKCTL));
+#endif
+}
+
 #if defined(CONFIG_DMIC)
 static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 {
@@ -93,6 +107,19 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 
 	trace_event(TRACE_CLASS_POWER,
 		    "dis-dmic-clk-gating index %d CLKCTL %08x",
+		    index, shim_read(SHIM_CLKCTL));
+#endif
+}
+
+static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
+{
+#if defined(CONFIG_APOLLOLAKE)
+	(void)index;
+	shim_write(SHIM_CLKCTL,
+		   shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_DMICFDCGB);
+
+	trace_event(TRACE_CLASS_POWER,
+		    "en-dmic-clk-gating index %d CLKCTL %08x",
 		    index, shim_read(SHIM_CLKCTL));
 #endif
 }
@@ -106,6 +133,18 @@ static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
 
 	trace_event(TRACE_CLASS_POWER,
 		    "dis-dwdma-clk-gating index %d CLKCTL %08x",
+		    index, shim_read(SHIM_CLKCTL));
+#endif
+}
+
+static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
+{
+#if defined(CONFIG_APOLLOLAKE)
+	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) &
+		   ~SHIM_CLKCTL_LPGPDMAFDCGB(index));
+
+	trace_event(TRACE_CLASS_POWER,
+		    "en-dwdma-clk-gating index %d CLKCTL %08x",
 		    index, shim_read(SHIM_CLKCTL));
 #endif
 }
@@ -147,6 +186,17 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 	switch (context) {
 	case PM_RUNTIME_HOST_DMA_L1:
 		cavs_pm_runtime_force_host_dma_l1_exit();
+		break;
+	case SSP_CLK:
+		cavs_pm_runtime_en_ssp_clk_gating(index);
+		break;
+#if defined(CONFIG_DMIC)
+	case DMIC_CLK:
+		cavs_pm_runtime_en_dmic_clk_gating(index);
+		break;
+#endif
+	case DW_DMAC_CLK:
+		cavs_pm_runtime_en_dwdma_clk_gating(index);
 		break;
 	default:
 		break;

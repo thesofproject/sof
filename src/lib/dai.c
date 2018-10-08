@@ -30,6 +30,8 @@
 
 #include <sof/dai.h>
 
+#define trace_dai(__e, ...) trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
+
 struct dai_info {
 	struct dai_type_info *dai_type_array;
 	size_t num_dai_types;
@@ -57,7 +59,7 @@ static inline struct dai_type_info *dai_find_type(uint32_t type)
 	return NULL;
 }
 
-struct dai *dai_get(uint32_t type, uint32_t index)
+struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	int ret = 0;
 	struct dai_type_info *dti;
@@ -73,25 +75,38 @@ struct dai *dai_get(uint32_t type, uint32_t index)
 		/* device created? */
 		spin_lock(&d->lock);
 		if (d->sref == 0) {
-			trace_event(TRACE_CLASS_DAI,
-				    "dai-probe type %d index %d",
-				    type, index);
-
-			ret = dai_probe(d);
-			if (ret < 0) {
-				trace_error(TRACE_CLASS_DAI,
-					    "probe failed %d",
-					    ret);
-			}
+			if (flags & DAI_CREAT)
+				ret = dai_probe(d);
+			else
+				ret = -ENODEV;
 		}
 		if (!ret)
 			d->sref++;
-		trace_event(TRACE_CLASS_DAI, "dai-get %p sref %d",
-			    (uintptr_t)d, d->sref);
+
+		trace_dai("dai-get %p sref %d", (uintptr_t)d, d->sref);
+
 		spin_unlock(&d->lock);
+
 		return !ret ? d : NULL;
 	}
 	trace_error(TRACE_CLASS_DAI, "dai-get type %d index %d not found",
 		    type, index);
 	return NULL;
+}
+
+void dai_put(struct dai *dai)
+{
+	int ret;
+
+	spin_lock(&dai->lock);
+	if (--dai->sref == 0) {
+		ret = dai_remove(dai);
+		if (ret < 0) {
+			trace_error(TRACE_CLASS_DAI,
+				    "dai-remove failed ret %d", ret);
+		}
+	}
+	trace_event(TRACE_CLASS_DAI, "dai-put %p sref %d", (uintptr_t)dai,
+		    dai->sref);
+	spin_unlock(&dai->lock);
 }

@@ -63,8 +63,14 @@
 #define DAI_NUM_SLOT_MAPS	8
 
 /* DAI flags */
-#define DAI_FLAGS_IRQ_CB	(1 << 0)	/* irq used for copy() timer */
 
+/** \brief IRQ used for copy() timer */
+#define DAI_FLAGS_IRQ_CB	BIT(0)
+
+/* DAI get() flags */
+
+/** \brief If the device does not exist it will be created */
+#define DAI_CREAT		BIT(0)
 
 struct dai;
 
@@ -77,6 +83,7 @@ struct dai_ops {
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
 	int (*probe)(struct dai *dai);
+	int (*remove)(struct dai *dai);
 	int (*set_loopback_mode)(struct dai *dai, uint32_t lbm);
 };
 
@@ -140,8 +147,16 @@ void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types);
  *
  * \param[in] type Type of requested DAI.
  * \param[in] index Index of requested DAI.
+ * \param[in] flags Flags (CREATE)
  */
-struct dai *dai_get(uint32_t type, uint32_t index);
+struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags);
+
+/**
+ * \brief API to release a platform DAI.
+ *
+ * @param[in] dai DAI to relese.
+ */
+void dai_put(struct dai *dai);
 
 #define dai_set_drvdata(dai, data) \
 	dai->private = data;
@@ -201,6 +216,14 @@ static inline int dai_pm_context_restore(struct dai *dai)
 static inline int dai_probe(struct dai *dai)
 {
 	return dai->ops->probe(dai);
+}
+
+/**
+ * \brief Digital Audio interface Remove
+ */
+static inline int dai_remove(struct dai *dai)
+{
+	return dai->ops->remove(dai);
 }
 
 /** @}*/

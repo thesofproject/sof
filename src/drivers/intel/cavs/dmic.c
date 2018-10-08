@@ -1475,6 +1475,20 @@ static int dmic_probe(struct dai *dai)
 	return 0;
 }
 
+static int dmic_remove(struct dai *dai)
+{
+	interrupt_disable(dmic_irq(dai));
+	platform_interrupt_mask(dmic_irq(dai), 0);
+	interrupt_unregister(dmic_irq(dai));
+
+	pm_runtime_put_sync(DMIC_CLK, dai->index);
+
+	rfree(dma_get_drvdata(dai));
+	dai_set_drvdata(dai, NULL);
+
+	return 0;
+}
+
 /* DMIC has no loopback support */
 static inline int dmic_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
@@ -1482,12 +1496,13 @@ static inline int dmic_set_loopback_mode(struct dai *dai, uint32_t lbm)
 }
 
 const struct dai_ops dmic_ops = {
-	.trigger = dmic_trigger,
-	.set_config = dmic_set_config,
-	.pm_context_store = dmic_context_store,
-	.pm_context_restore = dmic_context_restore,
-	.probe = dmic_probe,
-	.set_loopback_mode = dmic_set_loopback_mode,
+	.trigger		= dmic_trigger,
+	.set_config		= dmic_set_config,
+	.pm_context_store	= dmic_context_store,
+	.pm_context_restore	= dmic_context_restore,
+	.probe			= dmic_probe,
+	.remove			= dmic_remove,
+	.set_loopback_mode	= dmic_set_loopback_mode,
 };
 
 #endif

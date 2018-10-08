@@ -223,14 +223,22 @@ int get_index_by_type(uint32_t comp_type,
 
 /* The following definitions are to satisfy libsof linker errors */
 
-struct dai *dai_get(uint32_t type, uint32_t index)
+struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 {
 	return NULL;
+}
+
+void dai_put(struct dai *dai)
+{
 }
 
 struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags)
 {
 	return NULL;
+}
+
+void dma_put(struct dma *dma)
+{
 }
 
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,

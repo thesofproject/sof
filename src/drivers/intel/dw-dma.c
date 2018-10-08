@@ -1299,6 +1299,14 @@ static int dw_dma_probe(struct dma *dma)
 	return 0;
 }
 
+static int dw_dma_remove(struct dma *dma)
+{
+	pm_runtime_put_sync(DW_DMAC_CLK, dma->plat_data.id);
+	rfree(dma_get_drvdata(dma));
+	dma_set_drvdata(dma, NULL);
+	return 0;
+}
+
 const struct dma_ops dw_dma_ops = {
 	.channel_get	= dw_dma_channel_get,
 	.channel_put	= dw_dma_channel_put,
@@ -1312,4 +1320,5 @@ const struct dma_ops dw_dma_ops = {
 	.pm_context_restore		= dw_dma_pm_context_restore,
 	.pm_context_store		= dw_dma_pm_context_store,
 	.probe		= dw_dma_probe,
+	.remove		= dw_dma_remove,
 };

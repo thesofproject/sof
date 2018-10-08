@@ -79,6 +79,17 @@ void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 
 	switch (context) {
 	default:
+		platform_pm_runtime_put(context, index, RPM_ASYNC);
+		break;
+	}
+}
+
+void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
+{
+	tracev_pm("put");
+
+	switch (context) {
+	default:
 		platform_pm_runtime_put(context, index, 0);
 		break;
 	}
