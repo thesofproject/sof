@@ -42,6 +42,7 @@ static void usage(void)
 	fprintf(stdout, "%s:\t -i infile -o outfile\tDump infile contents to outfile\n", APP_NAME);
 #ifdef LOGGER_FORMAT
 	fprintf(stdout, "%s:\t -l *.ldc_file\t-i in_file\n", APP_NAME);
+	fprintf(stdout, "%s:\t -p \tinput from stdin\n", APP_NAME);
 #endif
 	fprintf(stdout, "%s:\t -c\t\t\tSet timestamp clock in MHz\n", APP_NAME);
 	fprintf(stdout, "%s:\t -s\t\t\tTake a snapshot of state\n", APP_NAME);
@@ -122,10 +123,11 @@ int main(int argc, char *argv[])
 	config.in_fd = NULL;
 #ifdef LOGGER_FORMAT
 	config.ldc_file = NULL;
+	config.input_std = 0;
 #endif
 
 #ifdef LOGGER_FORMAT
-	while ((opt = getopt(argc, argv, "ho:i:l:s:m:c:t")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:l:ps:m:c:t")) != -1) {
 #else
 	while ((opt = getopt(argc, argv, "ho:i:s:m:c:t")) != -1) {
 #endif
@@ -147,6 +149,9 @@ int main(int argc, char *argv[])
 #ifdef LOGGER_FORMAT
 		case 'l':
 			config.ldc_file = optarg;
+			break;
+		case 'p':
+			config.input_std = 1;
 			break;
 #endif
 		case 'h':
@@ -190,7 +195,12 @@ int main(int argc, char *argv[])
 	if (!config.in_file)
 		config.in_file = "/sys/kernel/debug/sof/etrace";
 
-	if (config.in_file) {
+#ifdef LOGGER_FORMAT
+	if (config.input_std) {
+		config.in_fd = stdin;
+	} else
+#endif
+	{
 		config.in_fd = fopen(config.in_file, "r");
 		if (!config.in_fd) {
 			fprintf(stderr, "error: Unable to open in file %s\n",

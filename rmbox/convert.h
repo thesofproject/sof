@@ -35,6 +35,7 @@ struct convert_config {
 #ifdef LOGGER_FORMAT
 	const char *ldc_file;
 	FILE* ldc_fd;
+	int input_std;
 #endif
 };
 
