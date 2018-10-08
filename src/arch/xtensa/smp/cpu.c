@@ -107,6 +107,8 @@ void cpu_power_down_core(void)
 
 	free_system_workq();
 
+	free_system_notify();
+
 	/* free entire sys heap, an instance dedicated for this core */
 	free_heap(RZONE_SYS);
 

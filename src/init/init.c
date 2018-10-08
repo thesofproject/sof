@@ -100,6 +100,9 @@ int slave_core_init(struct sof *sof)
 	if (err < 0)
 		panic(SOF_IPC_PANIC_ARCH);
 
+	trace_point(TRACE_BOOT_SYS_NOTE);
+	init_system_notify(sof);
+
 	trace_point(TRACE_BOOT_SYS_SCHED);
 	scheduler_init(sof);
 
