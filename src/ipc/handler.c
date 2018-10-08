@@ -935,6 +935,7 @@ static int ipc_glb_tplg_free(uint32_t header,
 		int (*free_func)(struct ipc *ipc, uint32_t id))
 {
 	struct sof_ipc_free *ipc_free = _ipc->comp_data;
+	int ret;
 
 	trace_ipc("Tcf");
 
@@ -945,9 +946,14 @@ static int ipc_glb_tplg_free(uint32_t header,
 	}
 
 	/* free the object */
-	free_func(_ipc, ipc_free->id);
+	ret = free_func(_ipc, ipc_free->id);
 
-	return 0;
+	if (ret < 0) {
+		trace_error(TRACE_CLASS_IPC,
+			    "ipc-glb-tplg-free free_func failed %d", ret);
+	}
+
+	return ret;
 }
 
 static int ipc_glb_tplg_message(uint32_t header)
