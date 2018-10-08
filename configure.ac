@@ -18,7 +18,6 @@ AC_PROG_CC
 
 AC_OUTPUT([
 	Makefile
-	logger/Makefile
 	rmbox/Makefile
 	eqctl/Makefile
 	topology/Makefile
