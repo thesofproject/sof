@@ -1,5 +1,6 @@
 *.o
 *.Po
+*.so*
 *~
 *.a
 *.la
@@ -21,6 +22,16 @@
 *.lst
 *.log
 .*
+*.html
+*.js
+*.png
+*.md5
+*.xml
+*.css
+*.xsd
+*.patch
+*.xslt
+*.mbox
 
 Makefile
 Makefile.in
@@ -38,7 +49,7 @@ m4/lt*
 m4/libtool.m4
 libtool
 src/include/version.h
-doc/sof_uapi
+doc/doxygen
 *.doxygen
 
 autom4te*
@@ -55,6 +66,10 @@ rimage/rimage
 
 tap-driver.sh
 test-driver
-test/*.log
-test/*.trs
+*.trs
 
+# ignore build files in tests
+test/cmocka/*
+!test/cmocka/*.
+!test/cmocka/src
+!test/cmocka/include 

@@ -61,6 +61,7 @@
 	defined CONFIG_CHERRYTRAIL ||\
 	defined CONFIG_BROADWELL ||\
 	defined CONFIG_HASWELL
+#define SFIFOL		0x68
 #define SFIFOTT		0x6C
 #define SSCR3		0x70
 #define SSCR4		0x74
@@ -131,21 +132,27 @@ extern const struct dai_ops ssp_ops;
 #define SSCR2_ASRC_FRM_CNRT_EN		BIT(10)
 #define SSCR2_ASRC_INTR_MASK		BIT(11)
 #elif defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+		|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK \
 		|| defined CONFIG_HASWELL || defined CONFIG_BROADWELL
 #define SSCR2_TURM1		BIT(1)
+#define SSCR2_PSPSRWFDFD	BIT(3)
+#define SSCR2_PSPSTWFDFD	BIT(4)
 #define SSCR2_SDFD		BIT(14)
 #define SSCR2_SDPM		BIT(16)
 #define SSCR2_LJDFD		BIT(17)
+#define SSCR2_MMRATF		BIT(18)
+#define SSCR2_SMTATF		BIT(19)
 #endif
 
 
 /* SSR bits */
-#define SSSR_TNF	(1 << 2)
-#define SSSR_RNE	(1 << 3)
-#define SSSR_BSY	(1 << 4)
-#define SSSR_TFS	(1 << 5)
-#define SSSR_RFS	(1 << 6)
-#define SSSR_ROR	(1 << 7)
+#define SSSR_TNF	BIT(2)
+#define SSSR_RNE	BIT(3)
+#define SSSR_BSY	BIT(4)
+#define SSSR_TFS	BIT(5)
+#define SSSR_RFS	BIT(6)
+#define SSSR_ROR	BIT(7)
+#define SSSR_TUR	BIT(21)
 
 /* SSPSP bits */
 #define SSPSP_SCMODE(x)		((x) << 0)
@@ -165,7 +172,8 @@ extern const struct dai_ops ssp_ops;
 #define SSPSP2			0x44
 #define SSPSP2_FEP_MASK		0xff
 
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 #define SSCR3		0x48
 #define SSIOC		0x4C
 
@@ -198,8 +206,14 @@ extern const struct dai_ops ssp_ops;
 #define SFIFOTT_TX(x)		((x) - 1)
 #define SFIFOTT_RX(x)		(((x) - 1) << 16)
 
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE ||\
-	defined CONFIG_HASWELL || defined CONFIG_BROADWELL
+/* SFIFOL bits */
+#define SFIFOL_TFL(x)		((x) & 0xFFFF)
+#define SFIFOL_RFL(x)		((x) >> 16)
+
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+	|| defined CONFIG_SUECREEK \
+	|| defined CONFIG_ICELAKE \
+	|| defined CONFIG_HASWELL || defined CONFIG_BROADWELL
 #define SSTSA_TSEN			BIT(8)
 #define SSRSA_RSEN			BIT(8)
 
@@ -215,7 +229,8 @@ extern const struct dai_ops ssp_ops;
 #define SSIOC_SCOE	BIT(5)
 #endif
 
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
+	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 #define MNDSS(x)	((x) << 20)
 #define MCDSS(x)	((x) << 16)
 #endif

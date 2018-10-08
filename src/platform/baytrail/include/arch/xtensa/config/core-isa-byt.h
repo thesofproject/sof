@@ -208,21 +208,21 @@
 				CACHE
   ----------------------------------------------------------------------*/
 
-#define XCHAL_ICACHE_LINESIZE		128	/* I-cache line size in bytes */
-#define XCHAL_DCACHE_LINESIZE		128	/* D-cache line size in bytes */
-#define XCHAL_ICACHE_LINEWIDTH		7	/* log2(I line size in bytes) */
-#define XCHAL_DCACHE_LINEWIDTH		7	/* log2(D line size in bytes) */
+#define XCHAL_ICACHE_LINESIZE		0	/* I-cache line size in bytes */
+#define XCHAL_DCACHE_LINESIZE		0	/* D-cache line size in bytes */
+#define XCHAL_ICACHE_LINEWIDTH		0	/* log2(I line size in bytes) */
+#define XCHAL_DCACHE_LINEWIDTH		0	/* log2(D line size in bytes) */
 
-#define XCHAL_ICACHE_SIZE		49152	/* I-cache size in bytes or 0 */
-#define XCHAL_DCACHE_SIZE		98304	/* D-cache size in bytes or 0 */
+#define XCHAL_ICACHE_SIZE		0	/* I-cache size in bytes or 0 */
+#define XCHAL_DCACHE_SIZE		0	/* D-cache size in bytes or 0 */
 
-#define XCHAL_DCACHE_IS_WRITEBACK	1	/* writeback feature */
+#define XCHAL_DCACHE_IS_WRITEBACK	0	/* writeback feature */
 #define XCHAL_DCACHE_IS_COHERENT	0	/* MP coherence feature */
 
-#define XCHAL_HAVE_PREFETCH		1	/* PREFCTL register */
+#define XCHAL_HAVE_PREFETCH		0	/* PREFCTL register */
 #define XCHAL_HAVE_PREFETCH_L1		0	/* prefetch to L1 dcache */
-#define XCHAL_PREFETCH_CASTOUT_LINES	1	/* dcache pref. castout bufsz */
-#define XCHAL_PREFETCH_ENTRIES		8	/* cache prefetch entries */
+#define XCHAL_PREFETCH_CASTOUT_LINES	0	/* dcache pref. castout bufsz */
+#define XCHAL_PREFETCH_ENTRIES		0	/* cache prefetch entries */
 #define XCHAL_PREFETCH_BLOCK_ENTRIES	0	/* prefetch block streams */
 #define XCHAL_HAVE_CACHE_BLOCKOPS	0	/* block prefetch for caches */
 #define XCHAL_HAVE_ICACHE_TEST		0	/* Icache test instructions */

@@ -45,7 +45,8 @@ struct work_queue;
 #define WORK_SYNC	(1 << 0)	/* work is scheduled synchronously */
 
 struct work {
-	uint64_t (*cb)(void*, uint64_t udelay);	/* returns reschedule timeout in msecs */
+	/* returns reschedule timeout in usecs */
+	uint64_t (*cb)(void *data, uint64_t udelay);
 	void *cb_data;
 	struct list_item list;
 	uint64_t timeout;
@@ -64,9 +65,13 @@ struct work_queue_timesource {
 
 /* initialise our work */
 #define work_init(w, x, xd, xflags) \
-	(w)->cb = x; \
-	(w)->cb_data = xd; \
-	(w)->flags = xflags;
+	do { \
+		(w)->cb = x; \
+		(w)->cb_data = xd; \
+		(w)->flags = xflags; \
+	} while (0)
+
+struct work_queue **arch_work_queue_get(void);
 
 /* schedule/cancel work on work queue */
 void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout);
@@ -84,5 +89,8 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts);
 
 /* init system workq */
 void init_system_workq(struct work_queue_timesource *ts);
+
+/* free system workq */
+void free_system_workq(void);
 
 #endif

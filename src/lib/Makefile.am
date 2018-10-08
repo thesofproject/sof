@@ -1,4 +1,4 @@
-noinst_LIBRARIES = libcore.a libdma.a
+noinst_LIBRARIES = libcore.a libdma.a libdai.a
 
 libcore_a_SOURCES = \
 	lib.c \
@@ -13,6 +13,7 @@ libcore_a_SOURCES = \
 	pm_runtime.c
 
 libcore_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \
@@ -22,6 +23,17 @@ libdma_a_SOURCES = \
 	dma.c
 
 libdma_a_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(ARCH_CFLAGS) \
+	$(ARCH_INCDIR) \
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)
+
+libdai_a_SOURCES = \
+	dai.c
+
+libdai_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \
 	$(PLATFORM_INCDIR) \

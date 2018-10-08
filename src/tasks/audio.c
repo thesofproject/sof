@@ -37,6 +37,7 @@
 #include <sof/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/agent.h>
+#include <platform/idc.h>
 #include <platform/interrupt.h>
 #include <platform/shim.h>
 #include <sof/audio/pipeline.h>
@@ -51,7 +52,7 @@ struct audio_data {
 	struct pipeline *p;
 };
 
-int do_task(struct sof *sof)
+int do_task_master_core(struct sof *sof)
 {
 #ifdef STATIC_PIPE
 	struct audio_data pdata;
@@ -64,10 +65,10 @@ int do_task(struct sof *sof)
 	sys_comp_mux_init();
 	sys_comp_switch_init();
 	sys_comp_volume_init();
-        sys_comp_src_init();
-        sys_comp_tone_init();
-        sys_comp_eq_iir_init();
-        sys_comp_eq_fir_init();
+	sys_comp_src_init();
+	sys_comp_tone_init();
+	sys_comp_eq_iir_init();
+	sys_comp_eq_fir_init();
 
 #if STATIC_PIPE
 	/* init static pipeline */
@@ -80,13 +81,27 @@ int do_task(struct sof *sof)
 
 	/* main audio IPC processing loop */
 	while (1) {
-
 		/* sleep until next IPC or DMA */
 		sa_enter_idle(sof);
 		wait_for_interrupt(0);
 
 		/* now process any IPC messages from host */
 		ipc_process_msg_queue();
+
+		/* schedule any idle tasks */
+		schedule();
+	}
+
+	/* something bad happened */
+	return -EIO;
+}
+
+int do_task_slave_core(struct sof *sof)
+{
+	/* main audio IDC processing loop */
+	while (1) {
+		/* sleep until next IDC */
+		wait_for_interrupt(0);
 
 		/* schedule any idle tasks */
 		schedule();

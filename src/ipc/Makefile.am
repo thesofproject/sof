@@ -5,11 +5,13 @@ libsof_ipc_la_SOURCES = \
 	ipc.c
 
 libsof_ipc_la_LDFLAGS = \
-	-version-info `echo $(VERSION) | cut -d '.' -f 1` \
+	$(AM_LDFLAGS) \
+	-version-info `echo $(VERSION) | cut -d '.' -f 1 | cut -d '0' -f 2` \
 	-no-undefined \
 	-export-dynamic
 
 libsof_ipc_la_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(COMMON_INCDIR)
 else
@@ -66,7 +68,24 @@ libsof_ipc_a_SOURCES = \
 	dma-copy.c
 endif
 
+if BUILD_SUECREEK
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	handler.c \
+	sue-ipc.c \
+	dma-copy.c
+endif
+
+if BUILD_ICELAKE
+libsof_ipc_a_SOURCES = \
+	ipc.c \
+	handler.c \
+	cnl-ipc.c \
+	dma-copy.c
+endif
+
 libsof_ipc_a_CFLAGS = \
+	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(COMMON_INCDIR)
 endif

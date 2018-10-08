@@ -81,14 +81,14 @@ MEMORY
         org = SOF_TEXT_BASE,
         len = SOF_TEXT_SIZE,
   sof_data :
-        org = SOF_TEXT_BASE + SOF_TEXT_SIZE,
+        org = SOF_DATA_START,
         len = SOF_DATA_SIZE
   sof_bss_data :
-        org = SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE,
+        org = SOF_BSS_DATA_START,
         len = SOF_BSS_DATA_SIZE
   system_heap :
-        org = HEAP_SYSTEM_BASE,
-        len = HEAP_SYSTEM_SIZE
+        org = HEAP_SYSTEM_0_BASE,
+        len = HEAP_SYSTEM_T_SIZE
   runtime_heap :
         org = HEAP_RUNTIME_BASE,
         len = HEAP_RUNTIME_SIZE
@@ -98,6 +98,24 @@ MEMORY
   sof_stack :
         org = SOF_STACK_END,
         len = SOF_STACK_BASE - SOF_STACK_END
+  buffer_hp_heap :
+        org = HEAP_HP_BUFFER_BASE,
+        len = HEAP_HP_BUFFER_SIZE
+  wnd0 :
+        org = HP_SRAM_WIN0_BASE,
+        len = HP_SRAM_WIN0_SIZE
+  wnd1 :
+        org = HP_SRAM_WIN1_BASE,
+        len = HP_SRAM_WIN1_SIZE
+  wnd2 :
+        org = HP_SRAM_WIN2_BASE,
+        len = HP_SRAM_WIN2_SIZE
+  wnd3 :
+        org = HP_SRAM_WIN3_BASE,
+        len = HP_SRAM_WIN3_SIZE
+  static_log_entries_seg (!ari) :
+        org = LOG_ENTRY_ELF_BASE,
+        len = LOG_ENTRY_ELF_SIZE
 }
 
 PHDRS
@@ -130,6 +148,12 @@ PHDRS
   runtime_heap_phdr PT_LOAD;
   buffer_heap_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
+  buffer_hp_heap_phdr PT_LOAD;
+  wnd0_phdr PT_LOAD;
+  wnd1_phdr PT_LOAD;
+  wnd2_phdr PT_LOAD;
+  wnd3_phdr PT_LOAD;
+  static_log_entries_phdr PT_NOTE;
 }
 
 /*  Default entry point:  */
@@ -137,24 +161,10 @@ ENTRY(_MainEntry)
 _rom_store_table = 0;
 
 /* ABI0 does not use Window base */
-PROVIDE(_memmap_vecbase_reset = XCHAL_VECBASE_RESET_PADDR);
+PROVIDE(_memmap_vecbase_reset = HP_SRAM_VECBASE_RESET);
 
 /* Various memory-map dependent cache attribute settings: */
-_memmap_cacheattr_wb_base = 0x44024000;
-_memmap_cacheattr_wt_base = 0x11021000;
-_memmap_cacheattr_bp_base = 0x22022000;
-_memmap_cacheattr_unused_mask = 0x00F00FFF;
-_memmap_cacheattr_wb_trapnull = 0x4422422F;
-_memmap_cacheattr_wba_trapnull = 0x4422422F;
 _memmap_cacheattr_wbna_trapnull = 0xFF42FFF2;
-_memmap_cacheattr_wt_trapnull = 0x1122122F;
-_memmap_cacheattr_bp_trapnull = 0x2222222F;
-_memmap_cacheattr_wb_strict = 0x44F24FFF;
-_memmap_cacheattr_wt_strict = 0x11F21FFF;
-_memmap_cacheattr_bp_strict = 0x22F22FFF;
-_memmap_cacheattr_wb_allvalid = 0x44224222;
-_memmap_cacheattr_wt_allvalid = 0x11221222;
-_memmap_cacheattr_bp_allvalid = 0x22222222;
 PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
 SECTIONS
@@ -165,6 +175,46 @@ SECTIONS
     KEEP (*(.MemoryExceptionVector.text))
     _MemoryExceptionVector_text_end = ABSOLUTE(.);
   } >vector_memory_text :vector_memory_text_phdr
+
+  .buffer_hp_heap (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _buffer_hp_heap_start = ABSOLUTE(.);
+    . = . + HEAP_HP_BUFFER_SIZE;
+    _buffer_hp_heap_end = ABSOLUTE(.);
+  } >buffer_hp_heap :buffer_hp_heap_phdr
+
+  .wnd0 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd0_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN0_SIZE;
+    _wnd0_end = ABSOLUTE(.);
+  } >wnd0 :wnd0_phdr
+
+  .wnd1 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd1_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN1_SIZE;
+    _wnd1_end = ABSOLUTE(.);
+  } >wnd1 :wnd1_phdr
+
+  .wnd2 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd2_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN2_SIZE;
+    _wnd2_end = ABSOLUTE(.);
+  } >wnd2 :wnd2_phdr
+
+  .wnd3 (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _wnd3_start = ABSOLUTE(.);
+    . = . + HP_SRAM_WIN3_SIZE;
+    _wnd3_end = ABSOLUTE(.);
+  } >wnd3 :wnd3_phdr
 
   .WindowVectors.text : ALIGN(4)
   {
@@ -409,7 +459,7 @@ SECTIONS
   __stack = SOF_STACK_BASE;
 
   /* System Heap */
-  _system_heap = HEAP_SYSTEM_BASE;
+  _system_heap = HEAP_SYSTEM_0_BASE;
 
 
   /* module heap */
@@ -474,7 +524,7 @@ SECTIONS
   {
     . = ALIGN (32);
     _system_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYSTEM_SIZE;
+    . = . + HEAP_SYSTEM_T_SIZE;
     _system_heap_end = ABSOLUTE(.);
   } >system_heap :system_heap_phdr
 
@@ -489,9 +539,9 @@ SECTIONS
   .buffer_heap (NOLOAD) : ALIGN(8)
   {
     . = ALIGN (32);
-    _system_heap_start = ABSOLUTE(.);
+    _buffer_heap_start = ABSOLUTE(.);
     . = . + HEAP_BUFFER_SIZE;
-    _system_heap_end = ABSOLUTE(.);
+    _buffer_heap_end = ABSOLUTE(.);
   } >buffer_heap :buffer_heap_phdr
 
   .sof_stack (NOLOAD) : ALIGN(8)
@@ -501,4 +551,9 @@ SECTIONS
     . = . + SOF_STACK_SIZE;
     _sof_stack_end = ABSOLUTE(.);
   } >sof_stack :sof_stack_phdr
+
+  .static_log_entries (COPY) : ALIGN(1024)
+  {
+    *(*.static_log*)
+  } > static_log_entries_seg :static_log_entries_phdr
 }

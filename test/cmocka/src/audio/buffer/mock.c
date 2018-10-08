@@ -31,14 +31,18 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-void _trace_event(uint32_t e)
+#include <sof/alloc.h>
+#include <sof/trace.h>
+
+void _trace_event0(uint32_t log_entry)
 {
-	(void)e;
+	(void)log_entry;
 }
 
-void _trace_event_mbox_atomic(uint32_t e)
+void _trace_event1(uint32_t log_entry, uint32_t param)
 {
-	(void)e;
+	(void)log_entry;
+	(void)param;
 }
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)

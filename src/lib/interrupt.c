@@ -38,13 +38,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-static int irq_register_child(struct irq_desc *parent, int irq,
+static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg);
 static void irq_unregister_child(struct irq_desc *parent, int irq);
 static uint32_t irq_enable_child(struct irq_desc *parent, int irq);
 static uint32_t irq_disable_child(struct irq_desc *parent, int irq);
 
-static int irq_register_child(struct irq_desc *parent, int irq,
+static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg)
 {
 	int ret = 0;
@@ -67,6 +67,7 @@ static int irq_register_child(struct irq_desc *parent, int irq,
 	child->handler = handler;
 	child->handler_arg = arg;
 	child->id = SOF_IRQ_ID(irq);
+	child->unmask = unmask;
 
 	list_item_append(&child->irq_list, &parent->child[SOF_IRQ_BIT(irq)]);
 
@@ -89,17 +90,17 @@ static void irq_unregister_child(struct irq_desc *parent, int irq)
 	spin_lock(&parent->lock);
 	struct irq_desc *child;
 	struct list_item *clist;
+	struct list_item *tlist;
 
 	/* does child already exist ? */
 	if (list_is_empty(&parent->child[SOF_IRQ_BIT(irq)]))
 		goto finish;
 
-	list_for_item(clist, &parent->child[SOF_IRQ_BIT(irq)]) {
+	list_for_item_safe(clist, tlist, &parent->child[SOF_IRQ_BIT(irq)]) {
 		child = container_of(clist, struct irq_desc, irq_list);
 
 		if (SOF_IRQ_ID(irq) == child->id) {
 			list_item_del(&child->irq_list);
-			rfree(child);
 			parent->num_children--;
 		}
 	}
@@ -158,21 +159,21 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 		    child->enabled_count) {
 			child->enabled_count = 0;
 			parent->enabled_count--;
+
+			/* disable the child interrupt */
+			platform_interrupt_mask(irq, 0);
 		}
 	}
 
-	if (parent->enabled_count == 0) {
-		/* disable the child interrupt */
-		platform_interrupt_mask(irq, 0);
+	if (parent->enabled_count == 0)
 		arch_interrupt_disable_mask(1 << SOF_IRQ_NUMBER(irq));
-	}
 
 	spin_unlock(&parent->lock);
 	return 0;
 }
 
-int interrupt_register(uint32_t irq,
-	void (*handler)(void *arg), void *arg)
+int interrupt_register(uint32_t irq, int unmask, void (*handler)(void *arg),
+		       void *arg)
 {
 	struct irq_desc *parent;
 
@@ -181,7 +182,7 @@ int interrupt_register(uint32_t irq,
 	if (parent == NULL)
 		return arch_interrupt_register(irq, handler, arg);
 	else
-		return irq_register_child(parent, irq, handler, arg);
+		return irq_register_child(parent, irq, unmask, handler, arg);
 }
 
 void interrupt_unregister(uint32_t irq)

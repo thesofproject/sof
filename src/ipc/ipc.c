@@ -55,7 +55,7 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
 
-	list_for_item(clist, &ipc->comp_list) {
+	list_for_item(clist, &ipc->shared_ctx->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -121,8 +121,8 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		sizeof(struct ipc_comp_dev));
+	icd = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+		      sizeof(struct ipc_comp_dev));
 	if (icd == NULL) {
 		trace_ipc_error("eCm");
 		rfree(cd);
@@ -132,7 +132,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	icd->type = COMP_TYPE_COMPONENT;
 
 	/* add new component to the list */
-	list_item_append(&icd->list, &ipc->comp_list);
+	list_item_append(&icd->list, &ipc->shared_ctx->comp_list);
 	return ret;
 }
 
@@ -175,8 +175,8 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 		return -ENOMEM;
 	}
 
-	ibd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		sizeof(struct ipc_comp_dev));
+	ibd = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+		      sizeof(struct ipc_comp_dev));
 	if (ibd == NULL) {
 		rfree(buffer);
 		return -ENOMEM;
@@ -185,7 +185,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	ibd->type = COMP_TYPE_BUFFER;
 
 	/* add new buffer to the list */
-	list_item_append(&ibd->list, &ipc->comp_list);
+	list_item_append(&ibd->list, &ipc->shared_ctx->comp_list);
 	return ret;
 }
 
@@ -280,8 +280,8 @@ int ipc_pipeline_new(struct ipc *ipc,
 	}
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		sizeof(struct ipc_comp_dev));
+	ipc_pipe = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
+			   SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
 	if (ipc_pipe == NULL) {
 		pipeline_free(pipe);
 		return -ENOMEM;
@@ -291,7 +291,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
 
 	/* add new pipeline to the list */
-	list_item_append(&ipc_pipe->list, &ipc->comp_list);
+	list_item_append(&ipc_pipe->list, &ipc->shared_ctx->comp_list);
 	return 0;
 }
 
@@ -333,12 +333,14 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 {
+	struct sof_ipc_comp_dai *dai;
 	struct ipc_comp_dev *icd;
 	struct list_item *clist;
+	struct comp_dev *dev;
 	int ret = 0;
 
 	/* for each component */
-	list_for_item(clist, &ipc->comp_list) {
+	list_for_item(clist, &ipc->shared_ctx->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		switch (icd->type) {
 		case COMP_TYPE_COMPONENT:
@@ -347,10 +349,20 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 			switch (icd->cd->comp.type) {
 			case SOF_COMP_DAI:
 			case SOF_COMP_SG_DAI:
-				ret = comp_dai_config(icd->cd, config);
-				if (ret < 0) {
-					trace_ipc_error("eCD");
-					return ret;
+				dev = icd->cd;
+				dai = (struct sof_ipc_comp_dai *)&dev->comp;
+
+				/*
+				 * set config if comp dai_index matches
+				 * config dai_index.
+				 */
+				if (dai->dai_index == config->dai_index &&
+				    dai->type == config->type) {
+					ret = comp_dai_config(dev, config);
+					if (ret < 0) {
+						trace_ipc_error("eCD");
+						return ret;
+					}
 				}
 				break;
 			default:
@@ -489,8 +501,9 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	}
 
 	/* wait for DMA to complete */
-	complete.timeout = PLATFORM_HOST_DMA_TIMEOUT;
-	ret = wait_for_completion_timeout(&complete);
+	ret = poll_for_completion_delay(&complete, PLATFORM_DMA_TIMEOUT);
+	if (ret < 0)
+		trace_ipc_error("eDt");
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
@@ -513,7 +526,22 @@ int ipc_init(struct sof *sof)
 	for (i = 0; i < PLATFORM_MAX_STREAMS; i++)
 		sof->ipc->posn_map[i] = NULL;
 
-	list_init(&sof->ipc->comp_list);
+	spinlock_init(&sof->ipc->lock);
+
+	sof->ipc->shared_ctx = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED,
+				       SOF_MEM_CAPS_RAM,
+				       sizeof(*sof->ipc->shared_ctx));
+
+	dcache_writeback_region(sof->ipc, sizeof(*sof->ipc));
+
+	sof->ipc->shared_ctx->dsp_msg = NULL;
+	list_init(&sof->ipc->shared_ctx->empty_list);
+	list_init(&sof->ipc->shared_ctx->msg_list);
+	list_init(&sof->ipc->shared_ctx->comp_list);
+
+	for (i = 0; i < MSG_QUEUE_SIZE; i++)
+		list_item_prepend(&sof->ipc->shared_ctx->message[i].list,
+				  &sof->ipc->shared_ctx->empty_list);
 
 	return platform_ipc_init(sof->ipc);
 }

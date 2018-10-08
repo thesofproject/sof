@@ -31,13 +31,21 @@
 #ifndef __INCLUDE_INIT_H__
 #define __INCLUDE_INIT_H__
 
+#include <platform/platcfg.h>
+#include <sof/work.h>
+
 struct sof;
+
+extern struct work_queue_timesource
+	platform_generic_queue[PLATFORM_CORE_COUNT];
 
 /* main firmware entry point - argc and argv not currently used */
 int main(int argc, char *argv[]);
 
-int arch_init(struct sof *sof);
+int master_core_init(struct sof *sof);
 
-void __memmap_init(void);
+int slave_core_init(struct sof *sof);
+
+int arch_init(struct sof *sof);
 
 #endif

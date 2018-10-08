@@ -40,8 +40,22 @@
 
 struct sof;
 
+/*! \def PLATFORM_DEFAULT_CLOCK
+ *  \brief clock source for audio pipeline
+ *
+ *  There are two types of clock: cpu clock which is a internal clock in
+ *  xtensa core, and ssp clock which is provided by external HW IP.
+ *  The choice depends on HW features on different platform
+ */
+#define PLATFORM_DEFAULT_CLOCK CLK_SSP
+
+/*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
+ *  \brief work queue default timeout in microseconds
+ */
+#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
+
 /* IPC Interrupt */
-#define PLATFORM_IPC_INTERUPT	IRQ_NUM_EXT_IA
+#define PLATFORM_IPC_INTERRUPT	IRQ_NUM_EXT_IA
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
@@ -67,7 +81,7 @@ struct sof;
 #define PLATFORM_MAX_STREAMS	5
 
 /* clock source used by scheduler for deadline calculations */
-#define PLATFORM_SCHED_CLOCK	CLK_SSP
+#define PLATFORM_SCHED_CLOCK	PLATFORM_DEFAULT_CLOCK
 
 /* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
@@ -79,7 +93,7 @@ struct sof;
 #define PLATFORM_WORKQ_WINDOW	2000
 
 /* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	CLK_SSP
+#define PLATFORM_WORKQ_CLOCK	PLATFORM_DEFAULT_CLOCK
 
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
@@ -94,13 +108,16 @@ struct sof;
  * the interval of reschedule DMA trace copying in special case like half
  * fullness of local DMA trace buffer
  */
-#define DMA_TRACE_RESCHEDULE_TIME	5000
+#define DMA_TRACE_RESCHEDULE_TIME	100
 
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
 
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
+
+/* DSP LPE delay in cycles */
+#define PLATFORM_LPE_DELAY 2000
 
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
@@ -112,4 +129,7 @@ static inline void platform_panic(uint32_t p)
 /* Platform defined trace code */
 #define platform_trace_point(__x) \
 	shim_write(SHIM_IPCXL, (__x & 0x3fffffff))
+
+extern struct timer *platform_timer;
+
 #endif

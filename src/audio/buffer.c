@@ -73,7 +73,6 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		return NULL;
 	}
 
-	bzero(buffer->addr, desc->size);
 	memcpy(&buffer->ipc_buffer, desc, sizeof(*desc));
 
 	buffer->size = buffer->alloc_size = desc->size;
@@ -83,6 +82,8 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	buffer->free = buffer->ipc_buffer.size;
 	buffer->avail = 0;
 	buffer->connected = 0;
+
+	buffer_zero(buffer);
 
 	spinlock_init(&buffer->lock);
 
@@ -106,9 +107,20 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	spin_lock_irq(&buffer->lock, flags);
 
-	if (buffer->source->is_dma_connected)
+	/*
+	 * new data produce, handle consistency for buffer and cache:
+	 * 1. source(DMA) --> buffer --> sink(non-DMA): invalidate cache.
+	 * 2. source(non-DMA) --> buffer --> sink(DMA): write back to memory.
+	 * 3. source(DMA) --> buffer --> sink(DMA): do nothing.
+	 * 4. source(non-DMA) --> buffer --> sink(non-DMA): do nothing.
+	 */
+	if (buffer->source->is_dma_connected &&
+	    !buffer->sink->is_dma_connected)
+		/* need invalidate cache for sink component to use */
 		dcache_invalidate_region(buffer->w_ptr, bytes);
-	else if (buffer->sink->is_dma_connected)
+	else if (!buffer->source->is_dma_connected &&
+		 buffer->sink->is_dma_connected)
+		/* need write back to memory for sink component to use */
 		dcache_writeback_region(buffer->w_ptr, bytes);
 
 	buffer->w_ptr += bytes;
@@ -159,7 +171,8 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
-	if (buffer->sink->is_dma_connected)
+	if (buffer->sink->is_dma_connected &&
+	    !buffer->source->is_dma_connected)
 		dcache_writeback_region(buffer->r_ptr, bytes);
 
 	spin_unlock_irq(&buffer->lock, flags);

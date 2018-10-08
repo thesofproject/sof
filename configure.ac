@@ -18,8 +18,16 @@ AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
 
 AC_CANONICAL_HOST
 
-# General compiler flags
-CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+# Macro to set flag if supported
+AC_DEFUN([ADD_OPTIONAL_AM_CFLAGS],
+         [SAVED_CFLAGS="$CFLAGS"
+          CFLAGS="-Werror $1"
+          AC_MSG_CHECKING([whether $CC supports $1])
+          AC_COMPILE_IFELSE([AC_LANG_SOURCE([int main(void) { return 0; }])],
+                            [AC_MSG_RESULT([yes])]
+                            [AM_CFLAGS="$AM_CFLAGS $1"],
+                            [AC_MSG_RESULT([no])])
+          CFLAGS="$SAVED_CFLAGS"])
 
 # General assembler flags
 ASFLAGS="-DASSEMBLY"
@@ -66,10 +74,20 @@ AM_CONDITIONAL(BUILD_LIB, test "$have_library" = "yes")
 
 # check if we are building tools
 AC_ARG_ENABLE(rimage, [AS_HELP_STRING([--enable-rimage],[build rimage tool])], have_rimage=$enableval, have_rimage=no)
+IMPLICIT_FALLTHROUGH_FLAG=""
 if test "$have_rimage" = "yes"; then
 	AC_DEFINE([CONFIG_RIMAGE], [1], [Configure to build rimage])
+	AM_CFLAGS="-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	IMPLICIT_FALLTHROUGH_FLAG="-Wimplicit-fallthrough=3"
 fi
 AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
+
+# check if we are building docs
+AC_ARG_ENABLE(doc, [AS_HELP_STRING([--enable-doc],[build doc])], have_doc=$enableval, have_doc=no)
+if test "$have_doc" = "yes"; then
+	AC_DEFINE([CONFIG_DOC], [1], [Configure to build doc])
+fi
+AM_CONDITIONAL(BUILD_DOC, test "$have_doc" = "yes")
 
 # Disable DMIC driver if requested, by default build for supported platforms
 AC_ARG_ENABLE([dmic], AS_HELP_STRING([--disable-dmic], [Disable DMIC driver]))
@@ -86,17 +104,18 @@ case "$with_arch" in
     xtensa*)
 
 	ARCH_CFLAGS="-mtext-section-literals"
-	AC_SUBST(ARCH_CFLAGS)
 
 	ARCH_LDFLAGS="-nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static"
-	AC_SUBST(XTENSA_LDFLAGS)
 
-	# extra CFLAGS defined here otherwise configure working gcc tests fails.
-	CFLAGS="${CFLAGS:+$CFLAGS }-fno-inline-functions -nostdlib -mlongcalls"
-	LDFLAGS="${LDFLAGS:+$LDFLAGS }-nostdlib"
+	# automake FLAGS defined here
+	AM_CFLAGS="-fno-inline-functions -nostdlib -mlongcalls"
+	AM_LDFLAGS=""
+	AM_CCASFLAGS=""
 
-	#ARCH_ASFLAGS=""
-	AC_SUBST(ARCH_ASFLAGS)
+	# GCC needs these additional flags on top of any user flags.
+	CFLAGS="${CFLAGS:+$CFLAGS } -O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	LDFLAGS="${LDFLAGS:+$LDFLAGS } -nostdlib"
+	CCASFLAGS="${CCASFLAGS:+$CCASFLAGS } -fno-inline-functions -nostdlib -mlongcalls"
 
 	ARCH="xtensa"
 	AC_SUBST(ARCH)
@@ -109,24 +128,37 @@ case "$with_arch" in
     host*)
 
 	ARCH_CFLAGS="-g"
-	AC_SUBST(ARCH_CFLAGS)
 
-	# extra CFLAGS defined here otherwise configure working gcc tests fails.
-	CFLAGS="${CFLAGS:+$CFLAGS } -O3"
-	LDFLAGS="${LDFLAGS:+$LDFLAGS }-lpthread"
+	# automake FLAGS defined here
+	AM_CFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
+	IMPLICIT_FALLTHROUGH_FLAG="-Wimplicit-fallthrough=3"
+	AM_LDFLAGS="-lpthread"
+	AM_CCASFLAGS="-O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 
 	ARCH="host"
 	AC_SUBST(ARCH)
     ;;
     *)
-	if test "$have_rimage" = "no"; then
+	if test "$have_rimage" = "no" && test "$have_doc" = "no" ; then
 		AC_MSG_ERROR([DSP architecture not specified])
 	fi
     ;;
 esac
 
+ADD_OPTIONAL_AM_CFLAGS([-Wimplicit-fallthrough=3])
+
+AC_SUBST(ARCH_CFLAGS)
+AC_SUBST(ARCH_LDFLAGS)
+
+AC_SUBST(AM_CFLAGS)
+AC_SUBST(AM_LDFLAGS)
+AC_SUBST(AM_CCASFLAGS)
+
 AM_CONDITIONAL(BUILD_XTENSA, test "$ARCH" = "xtensa")
 AM_CONDITIONAL(BUILD_HOST, test "$ARCH" = "host")
+
+# check for xtensa extension
+AM_CONDITIONAL(BUILD_XTENSA_SMP, test "$with_arch" = "xtensa-smp")
 
 # Cmocka tests
 AC_ARG_WITH([cmocka-prefix],
@@ -264,8 +296,45 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
     ;;
+   suecreek*)
+
+	PLATFORM_LDSCRIPT="suecreek.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="suecreek"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="sue"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi4_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_SUECREEK], [1], [Configure for Suecreek])
+	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+    ;;
+    icelake*)
+
+	PLATFORM_LDSCRIPT="icelake.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="icelake"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="icl"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi4_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_ICELAKE], [1], [Configure for Icelake])
+	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
+    ;;
     *)
-	if test "$have_rimage" = "no"; then
+	if test "$have_rimage" = "no" && test "$have_doc" = "no"; then
 		if test "$ARCH" = "host"; then
 			PLATFORM="host"
 			AC_SUBST(PLATFORM)
@@ -282,10 +351,12 @@ AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
 AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
 AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
 AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
-AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl")
+AM_CONDITIONAL(BUILD_SUECREEK,  test "$FW_NAME" = "sue")
+AM_CONDITIONAL(BUILD_ICELAKE,  test "$FW_NAME" = "icl")
+AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
+AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
+AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
+AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
 
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],
@@ -422,19 +493,32 @@ AC_CONFIG_FILES([
 	src/arch/xtensa/include/arch/Makefile
 	src/arch/xtensa/include/xtensa/Makefile
 	src/arch/xtensa/include/xtensa/config/Makefile
-	src/arch/xtensa/hal/Makefile
-	src/arch/xtensa/xtos/Makefile
+	src/arch/xtensa/smp/Makefile
+	src/arch/xtensa/smp/hal/Makefile
+	src/arch/xtensa/smp/include/Makefile
+	src/arch/xtensa/smp/include/arch/Makefile
+	src/arch/xtensa/smp/xtos/Makefile
+	src/arch/xtensa/up/Makefile
+	src/arch/xtensa/up/hal/Makefile
+	src/arch/xtensa/up/include/Makefile
+	src/arch/xtensa/up/include/arch/Makefile
+	src/arch/xtensa/up/xtos/Makefile
 	src/arch/host/Makefile
 	src/arch/host/include/Makefile
 	src/arch/host/include/arch/Makefile
 	src/audio/Makefile
 	src/math/Makefile
 	src/drivers/Makefile
+	src/drivers/intel/Makefile
+	src/drivers/intel/baytrail/Makefile
+	src/drivers/intel/haswell/Makefile
+	src/drivers/intel/cavs/Makefile
 	src/include/Makefile
 	src/include/sof/Makefile
 	src/include/sof/audio/Makefile
 	src/include/sof/audio/coefficients/Makefile
 	src/include/sof/audio/coefficients/src/Makefile
+	src/include/sof/drivers/Makefile
 	src/include/sof/math/Makefile
 	src/include/uapi/Makefile
 	src/ipc/Makefile
@@ -468,7 +552,20 @@ AC_CONFIG_FILES([
 	src/platform/cannonlake/include/arch/xtensa/Makefile
 	src/platform/cannonlake/include/arch/xtensa/config/Makefile
 	src/platform/cannonlake/include/platform/Makefile
+	src/platform/suecreek/Makefile
+        src/platform/suecreek/include/Makefile
+        src/platform/suecreek/include/arch/Makefile
+        src/platform/suecreek/include/arch/xtensa/Makefile
+        src/platform/suecreek/include/arch/xtensa/config/Makefile
+        src/platform/suecreek/include/platform/Makefile
+	src/platform/icelake/Makefile
+	src/platform/icelake/include/Makefile
+	src/platform/icelake/include/arch/Makefile
+	src/platform/icelake/include/arch/xtensa/Makefile
+	src/platform/icelake/include/arch/xtensa/config/Makefile
+	src/platform/icelake/include/platform/Makefile
 	src/platform/intel/Makefile
+	src/platform/intel/cavs/Makefile
 	src/platform/intel/include/Makefile
 	src/platform/intel/include/platform/Makefile
 	src/platform/intel/include/platform/cavs/Makefile
@@ -494,5 +591,8 @@ CFLAGS:                        ${CFLAGS}
 LDFLAGS:                       ${LDFLAGS}
 ARCH_CFLAGS:                   ${ARCH_CFLAGS}
 ARCH_LDFLAGS:                  ${ARCH_LDFLAGS}
+A@&t@M_CFLAGS:                     ${AM_CFLAGS}
+A@&t@M_LDFLAGS:                    ${AM_LDFLAGS}
+A@&t@M_CCASFLAGS:                  ${AM_CCASFLAGS}
 "
 

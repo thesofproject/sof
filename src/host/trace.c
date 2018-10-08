@@ -45,7 +45,7 @@ static int test_bench_trace = 1;
 int num_trace_classes;
 
 /* set up trace class identifier table based on SOF trace header file */
-void setup_trace_table(void)
+int setup_trace_table(void)
 {
 	char buffer[2048];
 	char *trace = "sof/trace.h";
@@ -62,6 +62,7 @@ void setup_trace_table(void)
 	if (!fp) {
 		fprintf(stderr, "error: opening trace include file %s\n",
 			trace_filename);
+		return -EINVAL;
 	}
 
 	/* find number of trace classes defined */
@@ -114,6 +115,7 @@ void setup_trace_table(void)
 	}
 	fclose(fp);
 	free(trace_filename);
+	return 0;
 }
 
 void free_trace_table(void)
@@ -141,7 +143,7 @@ static char *get_trace_class(uint32_t trace_class)
 }
 
 /* print trace event */
-void _trace_event(uint32_t event)
+void _trace_event0(uint32_t event)
 {
 	char a, b, c;
 	char *trace_class = NULL;
@@ -165,9 +167,108 @@ void _trace_event(uint32_t event)
 	free(trace_class);
 }
 
-void _trace_event_mbox_atomic(uint32_t event)
+void _trace_event_mbox_atomic0(uint32_t event)
 {
-	_trace_event(event);
+	_trace_event0(event);
+}
+
+/* print trace event */
+void _trace_event1(uint32_t event, uint32_t param)
+{
+	char a, b, c;
+	char *trace_class = NULL;
+
+	if (test_bench_trace > 0) {
+		a = event & 0xff;
+		b = (event >> 8) & 0xff;
+		c = (event >> 16) & 0xff;
+
+		/* look up subsystem from trace class table */
+		trace_class = strdup(get_trace_class(event >> 24));
+
+		/* print trace event stderr*/
+		if (strcmp(trace_class, "value") == 0)
+			fprintf(stderr, "Trace value %d, param1 %d\n", event,
+				param);
+		else
+			fprintf(stderr, "Trace %s %c%c%c\n", trace_class,
+				c, b, a);
+	}
+
+	free(trace_class);
+}
+
+void _trace_event_mbox_atomic1(uint32_t event, uint32_t param)
+{
+	_trace_event1(event, param);
+}
+
+/* print trace event */
+void _trace_event2(uint32_t event, uint32_t param1, uint32_t param2)
+{
+	char a, b, c;
+	char *trace_class = NULL;
+
+	if (test_bench_trace > 0) {
+		a = event & 0xff;
+		b = (event >> 8) & 0xff;
+		c = (event >> 16) & 0xff;
+
+		/* look up subsystem from trace class table */
+		trace_class = strdup(get_trace_class(event >> 24));
+
+		/* print trace event stderr*/
+		if (strcmp(trace_class, "value") == 0)
+			fprintf(stderr,
+				"Trace value %d, param1 %d param2 %d\n",
+				event, param1, param2);
+		else
+			fprintf(stderr, "Trace %s %c%c%c\n", trace_class,
+				c, b, a);
+	}
+
+	free(trace_class);
+}
+
+void _trace_event_mbox_atomic2(uint32_t event, uint32_t param1,
+			       uint32_t param2)
+{
+	_trace_event2(event, param1, param2);
+}
+
+/* print trace event */
+void _trace_event3(uint32_t event, uint32_t param1, uint32_t param2,
+		   uint32_t param3)
+{
+	char a, b, c;
+	char *trace_class = NULL;
+
+	if (test_bench_trace > 0) {
+		a = event & 0xff;
+		b = (event >> 8) & 0xff;
+		c = (event >> 16) & 0xff;
+
+		/* look up subsystem from trace class table */
+		trace_class = strdup(get_trace_class(event >> 24));
+
+		/* print trace event stderr*/
+		if (strcmp(trace_class, "value") == 0)
+			fprintf
+			(stderr,
+			"Trace value %d, param1 %d param2 %d param3 %d\n",
+			event, param1, param2, param3);
+		else
+			fprintf(stderr, "Trace %s %c%c%c\n", trace_class,
+				c, b, a);
+	}
+
+	free(trace_class);
+}
+
+void _trace_event_mbox_atomic3(uint32_t event, uint32_t param1,
+			       uint32_t param2, uint32_t param3)
+{
+	_trace_event3(event, param1, param2, param3);
 }
 
 /* enable trace in testbench */

@@ -40,6 +40,8 @@ enum machine_id {
 	MACHINE_BROADWELL,
 	MACHINE_APOLLOLAKE,
 	MACHINE_CANNONLAKE,
+	MACHINE_ICELAKE,
+	MACHINE_SUECREEK,
 	MACHINE_MAX
 };
 
@@ -67,6 +69,7 @@ struct module {
 	int num_bss;
 	int fw_size;
 	int bss_index;
+	int logs_index;
 
 	/* sizes do not include any gaps */
 	int bss_size;
@@ -89,7 +92,9 @@ struct module {
 struct image {
 
 	const char *out_file;
+	const char *ldc_out_file;
 	FILE *out_fd;
+	FILE *ldc_out_fd;
 	void *pos;
 
 	const struct adsp *adsp;
@@ -144,6 +149,8 @@ struct adsp {
 	struct fw_image_manifest *man;
 };
 
+int write_logs_dictionary(struct image *image);
+
 void module_sha256_create(struct image *image);
 void module_sha256_update(struct image *image, uint8_t *data, size_t bytes);
 void module_sha256_complete(struct image *image, uint8_t *hash);
@@ -170,5 +177,7 @@ extern const struct adsp machine_hsw;
 extern const struct adsp machine_bdw;
 extern const struct adsp machine_apl;
 extern const struct adsp machine_cnl;
+extern const struct adsp machine_icl;
+extern const struct adsp machine_sue;
 
 #endif

@@ -5,4 +5,5 @@ include_HEADERS = \
 	abi.h \
 	eq.h  \
 	tone.h \
-	manifest.h
+	manifest.h \
+	logging.h

@@ -64,6 +64,34 @@
 #define IPC_DIPCCTL_IPCIDIE	(1 << 1)
 #define IPC_DIPCCTL_IPCTBIE	(1 << 0)
 
+#define IPC_DSP_OFFSET		0x10
+
+/* DSP IPC for intra DSP communication */
+#define IPC_IDCTFC(x)		(0x0 + x * IPC_DSP_OFFSET)
+#define IPC_IDCTEFC(x)		(0x4 + x * IPC_DSP_OFFSET)
+#define IPC_IDCITC(x)		(0x8 + x * IPC_DSP_OFFSET)
+#define IPC_IDCIETC(x)		(0xc + x * IPC_DSP_OFFSET)
+#define IPC_IDCCTL		0x50
+
+/* IDCTFC */
+#define IPC_IDCTFC_BUSY		(1 << 31)
+#define IPC_IDCTFC_MSG_MASK	0x7FFFFFFF
+
+/* IDCTEFC */
+#define IPC_IDCTEFC_MSG_MASK	0x3FFFFFFF
+
+/* IDCITC */
+#define IPC_IDCITC_BUSY		(1 << 31)
+#define IPC_IDCITC_MSG_MASK	0x7FFFFFFF
+
+/* IDCIETC */
+#define IPC_IDCIETC_DONE	(1 << 30)
+#define IPC_IDCIETC_MSG_MASK	0x3FFFFFFF
+
+/* IDCCTL */
+#define IPC_IDCCTL_IDCIDIE(x)	(0x100 << (x))
+#define IPC_IDCCTL_IDCTBIE(x)	(0x1 << (x))
+
 #define IRQ_CPU_OFFSET	0x40
 
 #define REG_IRQ_IL2MSD(xcpu)	(0x0 + (xcpu * IRQ_CPU_OFFSET))
@@ -124,6 +152,8 @@
 #define SHIM_CLKCTL_RXOSCC	(0x1 << 30)
 #define SHIM_CLKCTL_RFROSCC	(0x1 << 29)
 
+#define SHIM_LDOCTL		0xA4
+
 /* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
 #define SHIM_CLKCTL_LPGPDMAFDCGB(x)	(0x1 << (26 + x))
 #define SHIM_CLKCTL_DMICFDCGB           (0x1 << 24)
@@ -137,9 +167,11 @@
 #define SHIM_CLKCTL_TCPAPLLS	(0x1 << 7)
 
 /* 0--from PLL, 1--from oscillator */
+#define SHIM_CLKCTL_LDCS	(0x1 << 5)
 #define SHIM_CLKCTL_HDCS	(0x1 << 4)
 
-/* Oscillator select */
+/* Oscillator clock select select 0--XTAL, 1--Fast RING*/
+#define SHIM_CLKCTL_LDOCS	(0x1 << 3)
 #define SHIM_CLKCTL_HDOCS	(0x1 << 2)
 
 /* HP memory clock PLL divisor */
@@ -149,14 +181,34 @@
 #define SHIM_PWRSTS		0x92
 #define SHIM_LPSCTL		0x94
 
-/* HP SRAM Power Gating */
+/* HP & LP SRAM Power Gating */
 #define SHIM_HSPGCTL		0x80
-#define SHIM_HPGISTS		0xb0
+#define SHIM_LSPGCTL		0x84
+#define SHIM_SPSREQ		0xa0
+
+#define SHIM_SPSREQ_RVNNP	(0x1 << 0)
+
+#define SHIM_HSPGISTS		0xb0
+#define SHIM_LSPGISTS		0xb4
+
 
 #define SHIM_LPSCTL_FDSPRUN	(0X1 << 9)
 #define SHIM_LPSCTL_FDMARUN	(0X1 << 8)
 
 #define SHIM_L2_MECS		(SHIM_BASE + 0xd0)
+
+#define SHIM_LPGPDMAC(x)	(0x1110 + (2 * x))
+#define SHIM_LPGPDMAC_CTLOSEL	(1 << 15)
+#define SHIM_LPGPDMAC_CHOSEL	(0xFF)
+
+#define SHIM_DSPIOPO		0x1118
+#define SHIM_DSPIOPO_DMICOSEL	(1 << 0)
+#define SHIM_DSPIOPO_I2SOSEL	(0x3F << 8)
+
+#define SHIM_GENO		0x111C
+#define SHIM_GENO_SHIMOSEL	(1 << 0)
+#define SHIM_GENO_MDIVOSEL	(1 << 1)
+#define SHIM_GENO_DIOPTOSEL	(1 << 2)
 
 #define SHIM_L2_CACHE_CTRL	(SHIM_BASE + 0x500)
 #define SHIM_L2_PREF_CFG	(SHIM_BASE + 0x508)
@@ -235,6 +287,16 @@ static inline uint32_t ipc_read(uint32_t reg)
 static inline void ipc_write(uint32_t reg, uint32_t val)
 {
 	*((volatile uint32_t*)(IPC_HOST_BASE + reg)) = val;
+}
+
+static inline uint32_t idc_read(uint32_t reg, uint32_t core_id)
+{
+	return *((volatile uint32_t*)(IPC_DSP_BASE(core_id) + reg));
+}
+
+static inline void idc_write(uint32_t reg, uint32_t core_id, uint32_t val)
+{
+	*((volatile uint32_t*)(IPC_DSP_BASE(core_id) + reg)) = val;
 }
 #endif
 

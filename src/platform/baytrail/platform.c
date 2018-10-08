@@ -33,9 +33,11 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/pmc.h>
+#include <platform/platcfg.h>
 #include <uapi/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>
@@ -44,6 +46,7 @@
 #include <sof/sof.h>
 #include <sof/work.h>
 #include <sof/clock.h>
+#include <sof/drivers/clk.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
 #include <sof/agent.h>
@@ -66,6 +69,7 @@ static const struct sof_ipc_fw_ready ready = {
 		.date = __DATE__,
 		.time = __TIME__,
 		.tag = SOF_TAG,
+		.abi_version = SOF_ABI_VERSION,
 	},
 	/* TODO: add capabilities */
 };
@@ -125,7 +129,8 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-static struct work_queue_timesource platform_generic_queue = {
+struct work_queue_timesource platform_generic_queue[] = {
+{
 	.timer	 = {
 		.id = TIMER3,	/* external timer */
 		.irq = IRQ_NUM_EXT_TIMER,
@@ -135,9 +140,11 @@ static struct work_queue_timesource platform_generic_queue = {
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
+},
 };
 
-struct timer *platform_timer = &platform_generic_queue.timer;
+struct timer *platform_timer =
+	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -158,133 +165,6 @@ int platform_boot_complete(uint32_t boot_message)
 	/* clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ); */
 
 	return 0;
-}
-
-/* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
-void platform_interrupt_clear(uint32_t irq, uint32_t mask)
-{
-	switch (irq) {
-	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_PISR, mask << 3);
-		interrupt_clear(irq);
-		break;
-	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_PISR, mask << 4);
-		interrupt_clear(irq);
-		break;
-	case IRQ_NUM_EXT_SSP2:
-		shim_write(SHIM_PISR, mask << 5);
-		interrupt_clear(irq);
-		break;
-	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_PISR, mask << 16);
-		interrupt_clear(irq);
-		break;
-	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_PISR, mask << 24);
-		interrupt_clear(irq);
-		break;
-#if defined CONFIG_CHERRYTRAIL
-	case IRQ_NUM_EXT_DMAC2:
-		shim_write(SHIM_PISRH, mask << 0);
-		interrupt_clear(irq);
-		break;
-	case IRQ_NUM_EXT_SSP3:
-		shim_write(SHIM_PISRH, mask << 8);
-		interrupt_clear(irq);
-		break;
-	case IRQ_NUM_EXT_SSP4:
-		shim_write(SHIM_PISRH, mask << 9);
-		interrupt_clear(irq);
-		break;
-	case IRQ_NUM_EXT_SSP5:
-		shim_write(SHIM_PISRH, mask << 10);
-		interrupt_clear(irq);
-		break;
-#endif
-	default:
-		break;
-	}
-}
-
-/* TODO: expand this to 64 bit - should we just return mask of IRQ numbers */
-uint32_t platform_interrupt_get_enabled(void)
-{
-	return shim_read(SHIM_PIMR);
-}
-
-void platform_interrupt_mask(uint32_t irq, uint32_t mask)
-{
-	switch (irq) {
-	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_PIMR, mask << 3);
-		break;
-	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_PIMR, mask << 4);
-		break;
-	case IRQ_NUM_EXT_SSP2:
-		shim_write(SHIM_PIMR, mask << 5);
-		break;
-	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_PIMR, mask << 16);
-		break;
-	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_PIMR, mask << 24);
-		break;
-#if defined CONFIG_CHERRYTRAIL
-	case IRQ_NUM_EXT_DMAC2:
-		shim_write(SHIM_PIMRH, mask << 8);
-		break;
-	case IRQ_NUM_EXT_SSP3:
-		shim_write(SHIM_PIMRH, mask << 0);
-		break;
-	case IRQ_NUM_EXT_SSP4:
-		shim_write(SHIM_PIMRH, mask << 1);
-		break;
-	case IRQ_NUM_EXT_SSP5:
-		shim_write(SHIM_PIMRH, mask << 2);
-		break;
-#endif
-	default:
-		break;
-	}
-}
-
-void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
-{
-	switch (irq) {
-	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 3));
-		break;
-	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 4));
-		break;
-	case IRQ_NUM_EXT_SSP2:
-		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 5));
-		break;
-	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 16));
-		break;
-	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(mask << 24));
-		break;
-#if defined CONFIG_CHERRYTRAIL
-	case IRQ_NUM_EXT_DMAC2:
-		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 8));
-		break;
-	case IRQ_NUM_EXT_SSP3:
-		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 0));
-		break;
-	case IRQ_NUM_EXT_SSP4:
-		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 1));
-		break;
-	case IRQ_NUM_EXT_SSP5:
-		shim_write(SHIM_PIMRH, shim_read(SHIM_PIMRH) & ~(mask << 2));
-		break;
-#endif
-	default:
-		break;
-	}
 }
 
 int platform_init(struct sof *sof)
@@ -308,7 +188,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
 	/* clear mailbox for early trace and debug */
-	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
+	bzero((void *)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 
@@ -329,7 +209,7 @@ int platform_init(struct sof *sof)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue);
+	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);
@@ -353,6 +233,10 @@ int platform_init(struct sof *sof)
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	ret = dmac_init();
+	if (ret < 0)
+		return -ENODEV;
+
+	ret = dai_init();
 	if (ret < 0)
 		return -ENODEV;
 

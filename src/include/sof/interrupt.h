@@ -34,6 +34,7 @@
 #include <stdint.h>
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/trace.h>
 #include <sof/debug.h>
 #include <sof/lock.h>
@@ -42,6 +43,9 @@
 #define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
 #define trace_irq_error(__e)	trace_error(TRACE_CLASS_IRQ,  __e)
 
+#define IRQ_MANUAL_UNMASK	0
+#define IRQ_AUTO_UNMASK		1
+
 struct irq_desc {
 	/* irq must be first for constructor */
 	int irq;        /* logical IRQ number */
@@ -49,6 +53,9 @@ struct irq_desc {
 	/* handler is optional for constructor */
 	void (*handler)(void *arg);
 	void *handler_arg;
+
+	/* whether irq should be automatically unmasked */
+	int unmask;
 
 	/* to identify interrupt with the same IRQ */
 	int id;
@@ -62,8 +69,8 @@ struct irq_desc {
 	struct list_item child[PLATFORM_IRQ_CHILDREN];
 };
 
-int interrupt_register(uint32_t irq,
-	void(*handler)(void *arg), void *arg);
+int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
+		       void *arg);
 void interrupt_unregister(uint32_t irq);
 uint32_t interrupt_enable(uint32_t irq);
 uint32_t interrupt_disable(uint32_t irq);

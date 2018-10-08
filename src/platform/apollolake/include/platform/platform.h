@@ -41,12 +41,27 @@
 
 struct sof;
 
+/*! \def PLATFORM_DEFAULT_CLOCK
+ *  \brief clock source for audio pipeline
+ *
+ *  There are two types of clock: cpu clock which is a internal clock in
+ *  xtensa core, and ssp clock which is provided by external HW IP.
+ *  The choice depends on HW features on different platform
+ */
+#define PLATFORM_DEFAULT_CLOCK CLK_SSP
+
+/* DGMBS align value */
+#define PLATFORM_HDA_BUFFER_ALIGNMENT	0x20
+
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
 
+/* IDC Interrupt */
+#define PLATFORM_IDC_INTERRUPT(x)	IRQ_EXT_IDC_LVL2(x)
+
 /* IPC Interrupt */
-#define PLATFORM_IPC_INTERUPT	IRQ_EXT_IPC_LVL2(0)
+#define PLATFORM_IPC_INTERRUPT	IRQ_EXT_IPC_LVL2(0)
 
 /* pipeline IRQ */
 #define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE4
@@ -64,11 +79,11 @@ struct sof;
 #define PLATFORM_HOST_DMA_MASK	0x00000000
 
 /* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	4
+#define PLATFORM_MAX_CHANNELS	8
 #define PLATFORM_MAX_STREAMS	16
 
 /* clock source used by scheduler for deadline calculations */
-#define PLATFORM_SCHED_CLOCK	CLK_SSP
+#define PLATFORM_SCHED_CLOCK	PLATFORM_DEFAULT_CLOCK
 
 /* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
 #define PLATFORM_DMA_TIMEOUT	1333
@@ -80,7 +95,10 @@ struct sof;
 #define PLATFORM_WORKQ_WINDOW	2000
 
 /* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	CLK_SSP
+#define PLATFORM_WORKQ_CLOCK	PLATFORM_DEFAULT_CLOCK
+
+/* work queue default timeout in microseconds */
+#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
 
 /* Host finish work schedule delay in microseconds */
 #define PLATFORM_HOST_FINISH_DELAY	100
@@ -101,7 +119,7 @@ struct sof;
  * the interval of reschedule DMA trace copying in special case like half
  * fullness of local DMA trace buffer
  */
-#define DMA_TRACE_RESCHEDULE_TIME	5000
+#define DMA_TRACE_RESCHEDULE_TIME	100
 
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
@@ -112,14 +130,20 @@ struct sof;
 /* platform has low power memory type */
 #define PLATFORM_MEM_HAS_LP_RAM
 
-/* number of SSP ports in platform */
-#define PLATFORM_NUM_SSP	6
-
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
 /* minimal L1 exit time in cycles */
 #define PLATFORM_FORCE_L1_EXIT_TIME	585
+
+/* the SSP port fifo depth */
+#define SSP_FIFO_DEPTH		16
+
+/* the watermark for the SSP fifo depth setting */
+#define SSP_FIFO_WATERMARK	8
+
+/* minimal SSP port stop delay in cycles */
+#define PLATFORM_SSP_STOP_DELAY	2400
 
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)

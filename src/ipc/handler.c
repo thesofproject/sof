@@ -53,11 +53,14 @@
 #include <platform/shim.h>
 #include <platform/dma.h>
 #include <platform/timer.h>
+#include <platform/idc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc.h>
 #include <sof/intel-ipc.h>
 #include <sof/dma-trace.h>
+#include <sof/cpu.h>
+#include <sof/idc.h>
 #include <config.h>
 
 #define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
@@ -84,9 +87,13 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 
 	/* read rest of component data */
 	mailbox_hostbox_read(hdr + 1, sizeof(*hdr), hdr->size - sizeof(*hdr));
+
+	dcache_writeback_region(hdr, hdr->size);
+
 	return hdr;
 }
 
+#ifdef CONFIG_HOST_PTABLE
 /* check if a pipeline is hostless when walking downstream */
 static bool is_hostless_downstream(struct comp_dev *current)
 {
@@ -151,6 +158,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 
 	return true;
 }
+#endif
 
 /*
  * Stream IPC Operations.
@@ -164,7 +172,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_comp_host *host = NULL;
 	struct list_item elem_list;
 	struct dma_sg_elem *elem;
-	struct list_item *plist;
+	struct list_item *clist;
+	struct list_item *tlist;
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
@@ -200,15 +209,15 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd = pcm_dev->cd;
 	cd->params = pcm_params->params;
 
+#ifdef CONFIG_HOST_PTABLE
+	list_init(&elem_list);
+
 	/*
 	 * walk in both directions to check if the pipeline is hostless
 	 * skip page table set up if it is
 	 */
 	if (is_hostless_downstream(cd) && is_hostless_upstream(cd))
 		goto pipe_params;
-
-#ifdef CONFIG_HOST_PTABLE
-	list_init(&elem_list);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
@@ -230,8 +239,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		goto error;
 	}
 
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 
 		err = comp_host_buffer(cd, elem, ring_size);
 		if (err < 0) {
@@ -242,9 +251,9 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		list_item_del(&elem->list);
 		rfree(elem);
 	}
-#endif
 
 pipe_params:
+#endif
 
 	/* configure pipeline audio params */
 	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, pcm_params);
@@ -276,8 +285,8 @@ pipe_params:
 
 error:
 #ifdef CONFIG_HOST_PTABLE
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
 		rfree(elem);
 	}
@@ -365,38 +374,28 @@ static int ipc_stream_position(uint32_t header)
 int ipc_stream_send_position(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	struct sof_ipc_hdr hdr;
-
 	tracev_ipc("Pos");
-	posn->rhdr.hdr.cmd =  SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
-			      cdev->comp.id;
+	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
+		cdev->comp.id;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	hdr.cmd = posn->rhdr.hdr.cmd;
-	hdr.size = sizeof(hdr);
-
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
-				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
+				      sizeof(*posn), 0);
 }
 
 /* send stream position TODO: send compound message  */
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	struct sof_ipc_hdr hdr;
-
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_XRUN;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
-	hdr.cmd = posn->rhdr.hdr.cmd;
-	hdr.size = sizeof(hdr);
-
 	mailbox_stream_write(cdev->pipeline->posn_offset, posn, sizeof(*posn));
-	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, &hdr,
-				      sizeof(hdr), NULL, 0, NULL, NULL, 0);
+	return ipc_queue_host_message(_ipc, posn->rhdr.hdr.cmd, posn,
+				      sizeof(*posn), 0);
 }
 
 static int ipc_stream_trigger(uint32_t header)
@@ -487,11 +486,11 @@ static int ipc_dai_config(uint32_t header)
 	trace_ipc("DsF");
 
 	/* get DAI */
-	dai = dai_get(config->type, config->id);
+	dai = dai_get(config->type, config->dai_index);
 	if (dai == NULL) {
 		trace_ipc_error("eDi");
 		trace_error_value(config->type);
-		trace_error_value(config->id);
+		trace_error_value(config->dai_index);
 		return -ENODEV;
 	}
 
@@ -544,6 +543,7 @@ static int ipc_pm_context_size(uint32_t header)
 static int ipc_pm_context_save(uint32_t header)
 {
 	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
+	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 
 	trace_ipc("PMs");
 
@@ -572,18 +572,38 @@ static int ipc_pm_context_save(uint32_t header)
 	/* write the context to the host driver */
 	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
-	//iipc->pm_prepare_D3 = 1;
+	iipc->pm_prepare_D3 = 1;
 
 	return 1;
 }
 
 static int ipc_pm_context_restore(uint32_t header)
 {
-//	struct sof_ipc_pm_ctx pm_ctx = _ipc->comp_data;
+	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
 	trace_ipc("PMr");
 
-	/* now restore the context */
+	/* restore context placeholder */
+	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
+
+	return 1;
+}
+
+static int ipc_pm_core_enable(uint32_t header)
+{
+	struct sof_ipc_pm_core_config *pm_core_config = _ipc->comp_data;
+	int i = 0;
+
+	trace_ipc("PMc");
+
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		if (i != PLATFORM_MASTER_CORE_ID) {
+			if (pm_core_config->enable_mask & (1 << i))
+				cpu_enable_core(i);
+			else
+				cpu_disable_core(i);
+		}
+	}
 
 	return 0;
 }
@@ -599,6 +619,8 @@ static int ipc_glb_pm_message(uint32_t header)
 		return ipc_pm_context_restore(header);
 	case iCS(SOF_IPC_PM_CTX_SIZE):
 		return ipc_pm_context_size(header);
+	case iCS(SOF_IPC_PM_CORE_ENABLE):
+		return ipc_pm_core_enable(header);
 	case iCS(SOF_IPC_PM_CLK_SET):
 	case iCS(SOF_IPC_PM_CLK_GET):
 	case iCS(SOF_IPC_PM_CLK_REQ):
@@ -610,14 +632,14 @@ static int ipc_glb_pm_message(uint32_t header)
 /*
  * Debug IPC Operations.
  */
-
 static int ipc_dma_trace_config(uint32_t header)
 {
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct list_item elem_list;
 	struct dma_sg_elem *elem;
-	struct list_item *plist;
+	struct list_item *clist;
+	struct list_item *tlist;
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
@@ -656,8 +678,8 @@ static int ipc_dma_trace_config(uint32_t header)
 		goto error;
 	}
 
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 
 		err = dma_trace_host_buffer(_ipc->dmat, elem, ring_size);
 		if (err < 0) {
@@ -690,8 +712,8 @@ static int ipc_dma_trace_config(uint32_t header)
 
 error:
 #ifdef CONFIG_HOST_PTABLE
-	list_for_item(plist, &elem_list) {
-		elem = container_of(plist, struct dma_sg_elem, list);
+	list_for_item_safe(clist, tlist, &elem_list) {
+		elem = container_of(clist, struct dma_sg_elem, list);
 		list_item_del(&elem->list);
 		rfree(elem);
 	}
@@ -714,7 +736,7 @@ int ipc_dma_trace_send_position(void)
 	posn.rhdr.hdr.size = sizeof(posn);
 
 	return ipc_queue_host_message(_ipc, posn.rhdr.hdr.cmd, &posn,
-		sizeof(posn), NULL, 0, NULL, NULL, 1);
+				      sizeof(posn), 1);
 }
 
 static int ipc_glb_debug_message(uint32_t header)
@@ -737,6 +759,29 @@ static int ipc_glb_debug_message(uint32_t header)
  * Topology IPC Operations.
  */
 
+static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
+			struct sof_ipc_ctrl_data *data)
+{
+	struct idc_msg comp_cmd_msg;
+	int core = dev->pipeline->ipc_pipe.core;
+
+	/* pipeline scheduled on current core */
+	if (cpu_get_id() == core)
+		return comp_cmd(dev, cmd, data);
+
+	/* check if requested core is enabled */
+	if (!cpu_is_core_enabled(core))
+		return -EINVAL;
+
+	/* build IDC message */
+	comp_cmd_msg.header = IDC_MSG_COMP_CMD;
+	comp_cmd_msg.extension = IDC_MSG_COMP_CMD_EXT(cmd);
+	comp_cmd_msg.core = core;
+
+	/* send IDC component command message */
+	return idc_send_msg(&comp_cmd_msg, IDC_BLOCKING);
+}
+
 /* get/set component values or runtime data */
 static int ipc_comp_value(uint32_t header, uint32_t cmd)
 {
@@ -755,7 +800,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	}
 	
 	/* get component values */
-	ret = comp_cmd(comp_dev->cd, cmd, data);
+	ret = ipc_comp_cmd(comp_dev->cd, cmd, data);
 	if (ret < 0) {
 		trace_ipc_error("eVG");
 		return ret;
@@ -979,8 +1024,9 @@ static inline struct ipc_msg *msg_get_empty(struct ipc *ipc)
 {
 	struct ipc_msg *msg = NULL;
 
-	if (!list_is_empty(&ipc->empty_list)) {
-		msg = list_first_item(&ipc->empty_list, struct ipc_msg, list);
+	if (!list_is_empty(&ipc->shared_ctx->empty_list)) {
+		msg = list_first_item(&ipc->shared_ctx->empty_list,
+				      struct ipc_msg, list);
 		list_item_del(&msg->list);
 	}
 
@@ -1003,7 +1049,7 @@ static inline struct ipc_msg *ipc_glb_stream_message_find(struct ipc *ipc,
 	case iCS(SOF_IPC_STREAM_POSITION):
 
 		/* iterate host message list for searching */
-		list_for_item(plist, &ipc->msg_list) {
+		list_for_item(plist, &ipc->shared_ctx->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd) {
 				old_posn = (struct sof_ipc_stream_posn *)msg->tx_data;
@@ -1033,7 +1079,7 @@ static inline struct ipc_msg *ipc_glb_trace_message_find(struct ipc *ipc,
 	switch (cmd) {
 	case iCS(SOF_IPC_TRACE_DMA_POSITION):
 		/* iterate host message list for searching */
-		list_for_item(plist, &ipc->msg_list) {
+		list_for_item(plist, &ipc->shared_ctx->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd)
 				return msg;
@@ -1068,9 +1114,8 @@ static inline struct ipc_msg *msg_find(struct ipc *ipc, uint32_t header,
 	}
 }
 
-int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
-	void *tx_data, size_t tx_bytes, void *rx_data,
-	size_t rx_bytes, void (*cb)(void*, void*), void *cb_data, uint32_t replace)
+int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
+			   size_t tx_bytes, uint32_t replace)
 {
 	struct ipc_msg *msg = NULL;
 	uint32_t flags, found = 0;
@@ -1097,9 +1142,6 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 	/* prepare the message */
 	msg->header = header;
 	msg->tx_size = tx_bytes;
-	msg->rx_size = rx_bytes;
-	msg->cb_data = cb_data;
-	msg->cb = cb;
 
 	/* copy mailbox data to message */
 	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
@@ -1107,8 +1149,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header,
 
 	if (!found) {
 		/* now queue the message */
-		ipc->dsp_pending = 1;
-		list_item_append(&msg->list, &ipc->msg_list);
+		ipc->shared_ctx->dsp_pending = 1;
+		list_item_append(&msg->list, &ipc->shared_ctx->msg_list);
 	}
 
 out:
@@ -1119,9 +1161,18 @@ out:
 /* process current message */
 int ipc_process_msg_queue(void)
 {
-	if (_ipc->host_pending)
-		ipc_platform_do_cmd(_ipc);
-	if (_ipc->dsp_pending)
+	if (_ipc->shared_ctx->dsp_pending)
 		ipc_platform_send_msg(_ipc);
 	return 0;
+}
+
+void ipc_process_task(void *data)
+{
+	if (_ipc->host_pending)
+		ipc_platform_do_cmd(_ipc);
+}
+
+void ipc_schedule_process(struct ipc *ipc)
+{
+	schedule_task(&ipc->ipc_task, 0, 100);
 }

@@ -54,7 +54,7 @@ static inline void arch_atomic_init(atomic_t *a, int32_t value)
 	arch_atomic_set(a, value);
 }
 
-static inline void arch_atomic_add(atomic_t *a, int32_t value)
+static inline int32_t arch_atomic_add(atomic_t *a, int32_t value)
 {
 	int32_t result, current;
 
@@ -67,9 +67,11 @@ static inline void arch_atomic_add(atomic_t *a, int32_t value)
 		: "=&a" (result), "=&a" (current)
 		: "a" (&a->value), "a" (value)
 		: "memory");
+
+	return (*(volatile int32_t *)&a->value);
 }
 
-static inline void arch_atomic_sub(atomic_t *a, int32_t value)
+static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
 {
 	int32_t result, current;
 
@@ -82,6 +84,8 @@ static inline void arch_atomic_sub(atomic_t *a, int32_t value)
 		: "=&a" (result), "=&a" (current)
 		: "a" (&a->value), "a" (value)
 		: "memory");
+
+	return (*(volatile int32_t *)&a->value);
 }
 
 #endif

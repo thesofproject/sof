@@ -69,7 +69,7 @@ static void irq_handler(void *arg)
 
 	/* new message from host */
 	if (dipctdr & IPC_DIPCTDR_BUSY) {
-		trace_ipc("Nms");
+		tracev_ipc("Nms");
 
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCTBIE);
@@ -78,10 +78,13 @@ static void irq_handler(void *arg)
 
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
-		if (_ipc->host_pending)
+		if (_ipc->host_pending) {
 			trace_ipc_error("Pen");
-		_ipc->host_msg = msg;
-		_ipc->host_pending = 1;
+		} else {
+			_ipc->host_msg = msg;
+			_ipc->host_pending = 1;
+			ipc_schedule_process(_ipc);
+		}
 	}
 
 	/* reply message(done) from host */
@@ -152,23 +155,28 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	spin_lock_irq(&ipc->lock, flags);
 
 	/* any messages to send ? */
-	if (list_is_empty(&ipc->msg_list)) {
-		ipc->dsp_pending = 0;
+	if (list_is_empty(&ipc->shared_ctx->msg_list)) {
+		ipc->shared_ctx->dsp_pending = 0;
 		goto out;
 	}
 
+	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
+	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
+		goto out;
+
 	/* now send the message */
-	msg = list_first_item(&ipc->msg_list, struct ipc_msg, list);
+	msg = list_first_item(&ipc->shared_ctx->msg_list, struct ipc_msg,
+			      list);
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
-	ipc->dsp_msg = msg;
+	ipc->shared_ctx->dsp_msg = msg;
 	tracev_ipc("Msg");
 
 	/* now interrupt host to tell it we have message sent */
 	ipc_write(IPC_DIPCIDD, 0);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
 
-	list_item_append(&msg->list, &ipc->empty_list);
+	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
 out:
 	spin_unlock_irq(&ipc->lock, flags);
@@ -178,7 +186,6 @@ int platform_ipc_init(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc;
 	uint32_t dir, caps, dev;
-	int i;
 
 	_ipc = ipc;
 
@@ -186,31 +193,32 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
-	_ipc->dsp_msg = NULL;
-	list_init(&ipc->empty_list);
-	list_init(&ipc->msg_list);
-	spinlock_init(&ipc->lock);
-	for (i = 0; i < MSG_QUEUE_SIZE; i++)
-		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
+	/* schedule */
+	schedule_task_init(&_ipc->ipc_task, ipc_process_task, _ipc);
+	schedule_task_config(&_ipc->ipc_task, TASK_PRI_IPC, 0);
+
+#ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 			HOST_PAGE_SIZE);
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
+#endif
 
-	/* request GP DMA with shared access privilege */
+	/* request HDA DMA with shared access privilege */
 	caps = 0;
 	dir = DMA_DIR_HMEM_TO_LMEM;
-	dev = DMA_DEV_HDA;
+	dev = DMA_DEV_HOST;
 	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERUPT, irq_handler, NULL);
-	interrupt_enable(PLATFORM_IPC_INTERUPT);
+	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
+			   irq_handler, NULL);
+	interrupt_enable(PLATFORM_IPC_INTERRUPT);
 
 	/* enable IPC interrupts from host */
 	ipc_write(IPC_DIPCCTL, IPC_DIPCCTL_IPCIDIE | IPC_DIPCCTL_IPCTBIE);

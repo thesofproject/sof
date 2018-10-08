@@ -3,10 +3,11 @@ About
 
 Firmware binary signing is for audio DSP is mandatory on Intel products from
 Skylake onwards. i.e. no code signing on Baytrail, Cherrytrail, Braswell,
-Haswell and Broadwell but mandatory on Skylake, Kabylake, Apollolake and
-Cannonlake.
+Haswell and Broadwell but mandatory on Skylake, Kabylake, Apollolake,
+Cannonlake and Icelake.
 
-rimage can now sign firmware binaries for Apollolake and Cannonlake targets.
+rimage can now sign firmware binaries for Apollolake,
+Cannonlake and Icelake targets.
 This is done automatically as part of the "make bin" part of the build.
 
 

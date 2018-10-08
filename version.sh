@@ -1,3 +1,4 @@
+#!/bin/bash
 
 # version for configure, make dist and FW etc
 # usage "version.sh dir"
@@ -11,7 +12,13 @@ else
 fi
 
 # get version from git tag
-GIT_TAG=`git describe --abbrev=4`
+GIT_TAG=`git describe --abbrev=4 2>/dev/null`
+
+# may fail to get git describe in some case, add this fallback to handle error
+if [[ "x$GIT_TAG" == "x" ]]
+then
+	GIT_TAG="v0.0-0-g0000"
+fi
 
 # Some releases have a SOF_FW_XXX_ prefix on the tag and this prefix
 # must be stripped for usage in version.h. i.e. we just need the number.

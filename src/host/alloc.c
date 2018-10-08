@@ -46,10 +46,7 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {
-	void *x;
-
-	x = calloc(1, bytes);
-	return x;
+	return calloc(bytes, 1);
 }
 
 void rfree(void *ptr)

@@ -68,6 +68,9 @@
 
 #endif
 
+#define LOG_ENTRY_ELF_BASE	0x20000000
+#define LOG_ENTRY_ELF_SIZE	0x2000000
+
 /*
  * The Heap and Stack on Haswell/Broadwell are organised like this :-
  *
@@ -107,7 +110,9 @@
 #define SOF_DATA_SIZE			0xa000
 
 #define HEAP_SYSTEM_BASE		(DRAM0_BASE + SOF_DATA_SIZE)
-#define HEAP_SYSTEM_SIZE		0x2000
+#define HEAP_SYSTEM_SIZE		0x3000
+
+#define HEAP_SYSTEM_0_BASE		HEAP_SYSTEM_BASE
 
 #define HEAP_RUNTIME_BASE		(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
 #define HEAP_RUNTIME_SIZE \
@@ -124,6 +129,7 @@
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT		(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
+#define PLATFORM_HEAP_SYSTEM		1 /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		1
 
@@ -144,5 +150,8 @@
 #define SOF_MEM_VECBASE_LIT_SIZE	0x178
 
 #define SOF_MEM_RO_SIZE		0x8
+
+#define uncache_to_cache(address)	address
+#define cache_to_uncache(address)	address
 
 #endif

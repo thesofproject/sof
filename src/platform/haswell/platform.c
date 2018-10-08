@@ -32,8 +32,10 @@
 #include <platform/mailbox.h>
 #include <platform/shim.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <platform/clk.h>
 #include <platform/timer.h>
+#include <platform/platcfg.h>
 #include <uapi/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>
@@ -42,6 +44,7 @@
 #include <sof/sof.h>
 #include <sof/work.h>
 #include <sof/clock.h>
+#include <sof/drivers/clk.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
 #include <sof/agent.h>
@@ -65,6 +68,7 @@ static const struct sof_ipc_fw_ready ready = {
 		.date = __DATE__,
 		.time = __TIME__,
 		.tag = SOF_TAG,
+		.abi_version = SOF_ABI_VERSION,
 	},
 	/* TODO: add capabilities */
 };
@@ -124,7 +128,8 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-static struct work_queue_timesource platform_generic_queue = {
+struct work_queue_timesource platform_generic_queue[] = {
+{
 	.timer	 = {
 		.id = TIMER1,	/* internal timer */
 		.irq = IRQ_NUM_TIMER2,
@@ -134,9 +139,11 @@ static struct work_queue_timesource platform_generic_queue = {
 	.timer_set	= arch_timer_set,
 	.timer_clear	= arch_timer_clear,
 	.timer_get	= arch_timer_get_system,
+},
 };
 
-struct timer *platform_timer = &platform_generic_queue.timer;
+struct timer *platform_timer =
+	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -153,72 +160,6 @@ int platform_boot_complete(uint32_t boot_message)
 	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
 
 	return 0;
-}
-
-void platform_interrupt_set(int irq)
-{
-	arch_interrupt_set(irq);
-}
-
-/* clear mask in PISR, bits are W1C in docs but some bits need preserved ?? */
-void platform_interrupt_clear(uint32_t irq, uint32_t mask)
-{
-	switch (irq) {
-	case IRQ_NUM_EXT_DMAC0:
-	case IRQ_NUM_EXT_DMAC1:
-	case IRQ_NUM_EXT_SSP0:
-	case IRQ_NUM_EXT_SSP1:
-		interrupt_clear(irq);
-		break;
-	default:
-		break;
-	}
-}
-
-/* TODO: expand this to 64 bit - should we just return mask of IRQ numbers */
-uint32_t platform_interrupt_get_enabled(void)
-{
-	return shim_read(SHIM_IMRD);
-}
-
-void platform_interrupt_mask(uint32_t irq, uint32_t mask)
-{
-	switch (irq) {
-	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_IMRD, SHIM_IMRD_SSP0);
-		break;
-	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_IMRD, SHIM_IMRD_SSP1);
-		break;
-	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_IMRD, SHIM_IMRD_DMAC0);
-		break;
-	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_IMRD, SHIM_IMRD_DMAC1);
-		break;
-	default:
-		break;
-	}
-}
-
-void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
-{
-	switch (irq) {
-	case IRQ_NUM_EXT_SSP0:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_SSP0);
-		break;
-	case IRQ_NUM_EXT_SSP1:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_SSP1);
-		break;
-	case IRQ_NUM_EXT_DMAC0:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DMAC0);
-		break;
-	case IRQ_NUM_EXT_DMAC1:
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DMAC1);
-		break;
-	default:
-		break;
-	}
 }
 
 /* init shim registers */
@@ -247,7 +188,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
 	/* clear mailbox for early trace and debug */
-	bzero((void*)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
+	bzero((void *)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 	platform_init_shim();
@@ -257,7 +198,7 @@ int platform_init(struct sof *sof)
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue);
+	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);
@@ -280,6 +221,10 @@ int platform_init(struct sof *sof)
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	ret = dmac_init();
+	if (ret < 0)
+		return -ENODEV;
+
+	ret = dai_init();
 	if (ret < 0)
 		return -ENODEV;
 

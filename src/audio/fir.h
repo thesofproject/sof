@@ -30,25 +30,18 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+#ifndef FIR_H
+#define FIR_H
+
+#include "fir_config.h"
+
+#if FIR_GENERIC
+
 #include <sof/audio/format.h>
 
-#define MAX_FIR_LENGTH 192
-
-#define NHEADER_FIR_COEF_32x16 3
-
-struct fir_coef_32x16 {
-	int16_t length; /* Number of FIR taps */
-	int16_t in_shift; /* Amount of right shifts at input */
-	int16_t out_shift; /* Amount of right shifts at output */
-	int16_t coef; /* FIR coefficients */
-};
-
 struct fir_state_32x16 {
-	int mute; /* Set to 1 to mute EQ output, 0 otherwise */
 	int rwi; /* Circular read and write index */
 	int length; /* Number of FIR taps */
-	int delay_size; /* Actual delay lentgh, must be >= length */
-	int in_shift; /* Amount of right shifts at input */
 	int out_shift; /* Amount of right shifts at output */
 	int16_t *coef; /* Pointer to FIR coefficients */
 	int32_t *delay; /* Pointer to FIR delay line */
@@ -56,21 +49,13 @@ struct fir_state_32x16 {
 
 void fir_reset(struct fir_state_32x16 *fir);
 
-int fir_init_coef(struct fir_state_32x16 *fir, int16_t config[]);
+size_t fir_init_coef(struct fir_state_32x16 *fir,
+		     struct sof_eq_fir_coef_data *config);
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
-/* The next trivial functions are inlined */
-
-static inline void fir_mute(struct fir_state_32x16 *fir)
-{
-	fir->mute = 1;
-}
-
-static inline void fir_unmute(struct fir_state_32x16 *fir)
-{
-	fir->mute = 0;
-}
+void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		struct comp_buffer *sink, int frames, int nch);
 
 /* The next functions are inlined to optmize execution speed */
 
@@ -81,7 +66,7 @@ static inline void fir_part_32x16(int64_t *y, int taps, const int16_t c[],
 
 	/* Data is Q8.24, coef is Q1.15, product is Q9.39 */
 	for (n = 0; n < taps; n++) {
-		*y += (int64_t) c[*ic] * d[*id];
+		*y += (int64_t)c[*ic] * d[*id];
 		(*ic)++;
 		(*id)--;
 	}
@@ -95,8 +80,12 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	int i = 0; /* Start from 1st tap */
 	int tmp_ri;
 
+	/* Bypass is set with length set to zero. */
+	if (!fir->length)
+		return x;
+
 	/* Write sample to delay */
-	fir->delay[fir->rwi] = x >> fir->in_shift;
+	fir->delay[fir->rwi] = x;
 
 	/* Start FIR calculation. Calculate first number of taps possible to
 	 * calculate before circular wrap need.
@@ -104,7 +93,7 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 	n1 = fir->rwi + 1;
 	/* Point to newest sample and advance read index */
 	tmp_ri = (fir->rwi)++;
-	if (fir->rwi == fir->delay_size)
+	if (fir->rwi == fir->length)
 		fir->rwi = 0;
 
 	if (n1 > fir->length) {
@@ -119,14 +108,14 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 		fir_part_32x16(&y, n1, fir->coef, &i, fir->delay, &tmp_ri);
 
 		/* Part 2, unwrap fir_ri, continue rest of filter */
-		tmp_ri = fir->delay_size - 1;
+		tmp_ri = fir->length - 1;
 		fir_part_32x16(&y, n2, fir->coef, &i, fir->delay, &tmp_ri);
 	}
 	/* Q9.39 -> Q9.24, saturate to Q8.24 */
 	y = sat_int32(y >> (15 + fir->out_shift));
 
-	if (fir->mute)
-		return 0;
-	else
-		return (int32_t)y;
+	return (int32_t)y;
 }
+
+#endif
+#endif

@@ -42,7 +42,7 @@ struct trace_class_table *trace_table;
 
 void tb_enable_trace(bool enable);
 
-void setup_trace_table(void);
+int setup_trace_table(void);
 
 void free_trace_table(void);
 

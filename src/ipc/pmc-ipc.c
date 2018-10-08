@@ -126,7 +126,7 @@ static void irq_handler(void *arg)
 int ipc_pmc_send_msg(uint32_t message)
 {
 	uint32_t ipclpesch;
-	uint32_t irq_mask;
+	int ret;
 
 	trace_ipc("SMs");
 
@@ -138,24 +138,17 @@ int ipc_pmc_send_msg(uint32_t message)
 		return -EAGAIN;
 	}
 
-	/* disable all interrupts except for SCU */
-	irq_mask = arch_interrupt_disable_mask(~(1 << IRQ_NUM_EXT_PMC));
-
 	/* send the new message */
 	shim_write(SHIM_IPCLPESCL, 0);
 	shim_write(SHIM_IPCLPESCH, SHIM_IPCLPESCH_BUSY | message);
 
-	/* now wait for clock change */
-	wait_for_interrupt(0);
-
-	/* enable other IRQs */
-	arch_interrupt_enable_mask(irq_mask);
-
-	/* check status */
-	ipclpesch = shim_read(SHIM_IPCLPESCH);
+	/* wait for idle status */
+	ret = poll_for_register_delay(SHIM_BASE + SHIM_IPCLPESCH,
+				      SHIM_IPCLPESCH_BUSY, 0,
+				      PLATFORM_LPE_DELAY);
 
 	/* did command succeed */
-	if (ipclpesch & SHIM_IPCLPESCH_BUSY) {
+	if (ret < 0) {
 		trace_ipc_error("ePf");
 		return -EINVAL;
 	}
@@ -172,7 +165,8 @@ int platform_ipc_pmc_init(void)
 		sizeof(struct intel_ipc_pmc_data));
 
 	/* configure interrupt */
-	interrupt_register(IRQ_NUM_EXT_PMC, irq_handler, NULL);
+	interrupt_register(IRQ_NUM_EXT_PMC, IRQ_AUTO_UNMASK, irq_handler,
+			   NULL);
 	interrupt_enable(IRQ_NUM_EXT_PMC);
 
 	/* Unmask Busy and Done interrupts */

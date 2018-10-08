@@ -134,7 +134,7 @@ static const struct sof_topology_token sched_tokens[] = {
 		offsetof(struct sof_ipc_pipe_new, frames_per_sched), 0},
 	{SOF_TKN_SCHED_TIMER, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_uint32_t,
-		offsetof(struct sof_ipc_pipe_new, timer), 0},
+		offsetof(struct sof_ipc_pipe_new, timer_delay), 0},
 };
 
 /* volume */
@@ -195,8 +195,8 @@ void sof_parse_word_tokens(void *object,
 			   struct snd_soc_tplg_vendor_array *array);
 
 int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
-		   int *sched_id, char *bits_in,
-		   char *in_file, char *out_file, void *volume_library,
-		   char *pipeline);
+		    int *sched_id, char *bits_in, char *in_file,
+		    char *out_file, struct shared_lib_table *library_table,
+		    char *pipeline_msg);
 
 #endif

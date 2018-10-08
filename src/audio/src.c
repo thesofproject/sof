@@ -78,6 +78,7 @@ struct comp_data {
 	int32_t *sbuf_w_ptr;
 	int32_t *sbuf_r_ptr;
 	int sbuf_avail;
+	int prefill;
 	void (*src_func)(struct comp_dev *dev,
 		struct comp_buffer *source,
 		struct comp_buffer *sink,
@@ -606,6 +607,7 @@ static int src_params(struct comp_dev *dev)
 	int err;
 	int frames_is_for_source;
 	int q;
+	int d;
 
 	trace_src("par");
 
@@ -716,6 +718,13 @@ static int src_params(struct comp_dev *dev)
 	 */
 	q = src_ceil_divide(cd->param.blk_out, (int)dev->frames) + 1;
 
+	/* If conversion specific minimum period length is less than
+	 * default period length there is need to pre-fill into sink buffer
+	 * zero PCM samples.
+	 */
+	d = dev->frames - cd->param.blk_out;
+	cd->prefill = (d > 0) ? d * dev->frame_bytes : 0;
+
 	/* Configure downstream buffer */
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 		source_list);
@@ -776,13 +785,26 @@ static int src_copy(struct comp_dev *dev)
 	size_t consumed = 0;
 	size_t produced = 0;
 
-	trace_src("SRC");
+	tracev_src("SRC");
 
 	/* src component needs 1 source and 1 sink buffer */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 		sink_list);
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 		source_list);
+
+	/* In some conversions the first copy run needs to pre-fill buffer
+	 * with sufficient amount of zeros if the min. output block length
+	 * is too short. It prevents xrun for the downstream component. In
+	 * successive copy executions the block length will jitter around the
+	 * nominal period length and xruns won't happen.
+	 */
+	if (cd->prefill && sink->free >= cd->prefill) {
+		tracev_src("psn");
+		tracev_value(cd->prefill);
+		comp_update_buffer_produce(sink, cd->prefill);
+		cd->prefill = 0;
+	}
 
 	/* Calculate needed amount of source buffer and sink buffer
 	 * for one SRC run. The blk_in and blk are minimum condition to
@@ -847,6 +869,41 @@ static int src_reset(struct comp_dev *dev)
 	return 0;
 }
 
+static void src_cache(struct comp_dev *dev, int cmd)
+{
+	struct comp_data *cd;
+
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		trace_src("wtb");
+
+		cd = comp_get_drvdata(dev);
+
+		if (cd->delay_lines)
+			dcache_writeback_invalidate_region
+					(cd->delay_lines,
+					 sizeof(int32_t) * cd->param.total);
+
+		dcache_writeback_invalidate_region(cd, sizeof(*cd));
+		dcache_writeback_invalidate_region(dev, sizeof(*dev));
+		break;
+
+	case COMP_CACHE_INVALIDATE:
+		trace_src("inv");
+
+		dcache_invalidate_region(dev, sizeof(*dev));
+
+		cd = comp_get_drvdata(dev);
+		dcache_invalidate_region(cd, sizeof(*cd));
+
+		if (cd->delay_lines)
+			dcache_invalidate_region
+					(cd->delay_lines,
+					 sizeof(int32_t) * cd->param.total);
+		break;
+	}
+}
+
 struct comp_driver comp_src = {
 	.type = SOF_COMP_SRC,
 	.ops = {
@@ -858,6 +915,7 @@ struct comp_driver comp_src = {
 		.copy = src_copy,
 		.prepare = src_prepare,
 		.reset = src_reset,
+		.cache = src_cache,
 	},
 };
 

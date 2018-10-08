@@ -9,11 +9,13 @@ include_HEADERS = \
 	alloc.h \
 	atomic.h \
 	clock.h \
+	cpu.h \
 	dai.h \
 	debug.h \
 	dma.h \
 	dma-trace.h \
 	dw-dma.h \
+	idc.h \
 	init.h \
 	intel-ipc.h \
 	interrupt.h \

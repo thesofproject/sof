@@ -6,10 +6,20 @@ if BUILD_XTENSA
 LOG_COMPILER = xt-run
 endif
 
-AM_CFLAGS = \
+# cmocka needs stdlib
+override LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
+
+# turn of optimization if You need to debug UT using Xplorer
+#override CFLAGS := $(filter-out -O2,$(CFLAGS))
+
+override AM_CFLAGS := \
+	$(filter-out -nostdlib,$(AM_CFLAGS)) \
 	$(SOF_INCDIR)
 
-AM_LDFLAGS =
+override AM_LDFLAGS := \
+	$(filter-out -nostdlib,$(AM_LDFLAGS))
+
+AM_CFLAGS += -I./include
 
 if HAVE_CMOCKA_PREFIX
 AM_CFLAGS += -I$(CMOCKA_PREFIX)/include
@@ -18,7 +28,8 @@ endif
 
 if BUILD_XTENSA
 AM_CFLAGS += -I../../src/arch/xtensa/include
-AM_CFLAGS += -I../../src/platform/apollolake/include
+AM_CFLAGS += $(ARCH_INCDIR)
+AM_CFLAGS += $(PLATFORM_INCDIR)
 AM_CFLAGS += -I../../src/audio
 endif
 
@@ -26,10 +37,66 @@ if BUILD_HOST
 AM_CFLAGS += -I../../src/arch/host/include
 endif
 
-CFLAGS := $(filter-out -nostdlib,$(CFLAGS))
-LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
-
 LDADD = -lcmocka
+
+# generate linker script
+LINK_SCRIPT = memory_mock.x
+
+BUILT_SOURCES = $(LINK_SCRIPT)
+CLEANFILES = $(LINK_SCRIPT)
+$(LINK_SCRIPT): Makefile $(LINK_SCRIPT).in
+	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) - >$@
+
+AM_LDFLAGS += -T $(LINK_SCRIPT)
+
+# mixer tests
+check_PROGRAMS += mixer
+mixer_SOURCES = src/audio/mixer/mixer_test.c \
+				src/audio/mixer/mock.c \
+				src/audio/mixer/comp_mock.c \
+				../../src/audio/buffer.c \
+				../../src/audio/mixer.c
+mixer_LDADD = -lm $(LDADD)
+
+# memory allocator test
+
+# TODO: fix
+#if BUILD_XTENSA
+#check_PROGRAMS += alloc
+#alloc_SOURCES = src/lib/alloc/alloc.c src/lib/alloc/mock.c ../../src/lib/alloc.c ../../src/platform/intel/cavs/memory.c
+#endif
+
+# pipeline tests
+
+if BUILD_XTENSA
+
+check_PROGRAMS += pipeline_new
+pipeline_new_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_mocks_rzalloc.c
+
+check_PROGRAMS += pipeline_new_allocation
+pipeline_new_allocation_SOURCES = ../../src/audio/pipeline.c  src/audio/pipeline/pipeline_new_allocation.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_new_allocation_mocks.c
+
+check_PROGRAMS += pipeline_connect_upstream
+pipeline_connect_upstream_SOURCES = ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_connect_upstream.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
+
+check_PROGRAMS += pipeline_free
+pipeline_free_SOURCES = ../../src/audio/pipeline.c src/audio/pipeline/pipeline_mocks.c src/audio/pipeline/pipeline_free.c src/audio/pipeline/pipeline_mocks_rzalloc.c src/audio/pipeline/pipeline_connection_mocks.c
+
+endif
+
+# lib/lib tests
+
+check_PROGRAMS += rstrcmp
+rstrcmp_SOURCES = src/lib/lib/rstrcmp.c
+rstrcmp_LDADD = ../../src/lib/libcore.a $(LDADD)
+
+check_PROGRAMS += rstrlen
+rstrlen_SOURCES = src/lib/lib/rstrlen.c
+rstrlen_LDADD = ../../src/lib/libcore.a $(LDADD)
+
+check_PROGRAMS += strcheck
+strcheck_SOURCES = src/lib/lib/strcheck.c
+strcheck_LDADD = ../../src/lib/libcore.a $(LDADD)
 
 # volume tests
 
@@ -54,6 +121,12 @@ buffer_wrap_LDADD =  ../../src/audio/libaudio.a $(LDADD)
 check_PROGRAMS += buffer_copy
 buffer_copy_SOURCES = src/audio/buffer/buffer_copy.c src/audio/buffer/mock.c
 buffer_copy_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+
+# component tests
+
+check_PROGRAMS += comp_set_state
+comp_set_state_SOURCES = src/audio/component/comp_set_state.c src/audio/component/mock.c
+comp_set_state_LDADD = ../../src/audio/libaudio.a $(LDADD)
 
 # list tests
 

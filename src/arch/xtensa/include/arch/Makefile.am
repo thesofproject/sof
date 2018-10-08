@@ -1,6 +1,7 @@
 noinst_HEADERS = \
 	atomic.h \
 	cache.h \
+	init.h \
 	interrupt.h \
 	sof.h \
 	spinlock.h \

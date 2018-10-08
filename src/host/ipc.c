@@ -40,20 +40,12 @@ struct ipc *_ipc;
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc;
-	int i;
 
 	_ipc = ipc;
 
 	/* init ipc data */
 	iipc = malloc(sizeof(struct intel_ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
-	_ipc->dsp_msg = NULL;
-	list_init(&ipc->empty_list);
-	list_init(&ipc->msg_list);
-	spinlock_init(&ipc->lock);
-
-	for (i = 0; i < MSG_QUEUE_SIZE; i++)
-		list_item_prepend(&ipc->message[i].list, &ipc->empty_list);
 
 	/* allocate page table buffer */
 	iipc->page_table = malloc(HOST_PAGE_SIZE);

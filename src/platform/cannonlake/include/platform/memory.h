@@ -127,6 +127,9 @@
 #define ROM_BASE		0xBEFE0000
 #define ROM_SIZE		0x00002000
 
+#define LOG_ENTRY_ELF_BASE	0x20000000
+#define LOG_ENTRY_ELF_SIZE	0x2000000
+
 /*
  * The HP SRAM Region on Cannonlake is organised like this :-
  * +--------------------------------------------------------------------------+
@@ -169,14 +172,11 @@
 #define HP_SRAM_VECBASE_RESET	(HP_SRAM_BASE + 0x40000)
 
 /* Heap section sizes for module pool */
-#define HEAP_RT_COUNT8			0
-#define HEAP_RT_COUNT16			256
-#define HEAP_RT_COUNT32			128
-#define HEAP_RT_COUNT64			64
+#define HEAP_RT_COUNT64			256
 #define HEAP_RT_COUNT128		32
-#define HEAP_RT_COUNT256		16
-#define HEAP_RT_COUNT512		8
-#define HEAP_RT_COUNT1024		4
+#define HEAP_RT_COUNT256		64
+#define HEAP_RT_COUNT512		32
+#define HEAP_RT_COUNT1024		1
 
 #define L2_VECTOR_SIZE		0x1000
 
@@ -231,9 +231,10 @@
 /* text and data share the same HP L2 SRAM on Cannonlake */
 #define SOF_TEXT_START		0xBE040400
 #define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_SIZE		(0x18000 - 0x400)
+#define SOF_TEXT_SIZE		(0x1a000 - 0x400)
 
 /* initialized data */
+#define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
 #if defined CONFIG_DMIC
 #define SOF_DATA_SIZE		0x1b000
 #else
@@ -241,20 +242,31 @@
 #endif
 
 /* bss data */
-#define SOF_BSS_DATA_SIZE		0x8000
+#define SOF_BSS_DATA_START	(SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE)
+#define SOF_BSS_DATA_SIZE	0x10900
 
 /* Heap configuration */
-#define HEAP_SYSTEM_BASE		(SOF_TEXT_BASE + SOF_TEXT_SIZE + \
+#define HEAP_SYSTEM_0_BASE		(SOF_TEXT_BASE + SOF_TEXT_SIZE + \
 					SOF_DATA_SIZE + SOF_BSS_DATA_SIZE)
 
-#define HEAP_SYSTEM_SIZE		0x8000
+#define HEAP_SYSTEM_0_SIZE		0x8000
 
-#define HEAP_RUNTIME_BASE		(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
+#define HEAP_SYSTEM_1_BASE	(HEAP_SYSTEM_0_BASE + HEAP_SYSTEM_0_SIZE)
+#define HEAP_SYSTEM_1_SIZE	0x5000
+
+#define HEAP_SYSTEM_2_BASE	(HEAP_SYSTEM_1_BASE + HEAP_SYSTEM_1_SIZE)
+#define HEAP_SYSTEM_2_SIZE	0x5000
+
+#define HEAP_SYSTEM_3_BASE	(HEAP_SYSTEM_2_BASE + HEAP_SYSTEM_2_SIZE)
+#define HEAP_SYSTEM_3_SIZE	0x5000
+
+#define HEAP_SYSTEM_T_SIZE	(HEAP_SYSTEM_0_SIZE + HEAP_SYSTEM_1_SIZE + \
+				 HEAP_SYSTEM_2_SIZE + HEAP_SYSTEM_3_SIZE)
+
+#define HEAP_RUNTIME_BASE	(HEAP_SYSTEM_3_BASE + HEAP_SYSTEM_3_SIZE)
 #define HEAP_RUNTIME_SIZE \
-	(HEAP_RT_COUNT8 * 8 + HEAP_RT_COUNT16 * 16 + \
-	HEAP_RT_COUNT32 * 32 + HEAP_RT_COUNT64 * 64 + \
-	HEAP_RT_COUNT128 * 128 + HEAP_RT_COUNT256 * 256 + \
-	HEAP_RT_COUNT512 * 512 + HEAP_RT_COUNT1024 * 1024)
+	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
+	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512)
 
 /* Stack configuration */
 #define SOF_STACK_SIZE				0x2000
@@ -323,7 +335,7 @@
 #define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_LP_BUFFER_COUNT	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
 
-
+#define PLATFORM_HEAP_SYSTEM		4 /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
 #define PLATFORM_HEAP_BUFFER		3
 
@@ -355,12 +367,18 @@
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB0038000
 #define IMR_BOOT_LDR_TEXT_ENTRY_SIZE	0x86
 #define IMR_BOOT_LDR_LIT_BASE		(IMR_BOOT_LDR_TEXT_ENTRY_BASE + IMR_BOOT_LDR_TEXT_ENTRY_SIZE)
-#define IMR_BOOT_LDR_LIT_SIZE		0x20
+#define IMR_BOOT_LDR_LIT_SIZE		0x22
 #define IMR_BOOT_LDR_TEXT_BASE		(IMR_BOOT_LDR_LIT_BASE + IMR_BOOT_LDR_LIT_SIZE)
 #define IMR_BOOT_LDR_TEXT_SIZE		0x1C00
 #define IMR_BOOT_LDR_DATA_BASE		0xB0039000
 #define IMR_BOOT_LDR_DATA_SIZE		0x1000
 #define IMR_BOOT_LDR_BSS_BASE		0xB0100000
 #define IMR_BOOT_LDR_BSS_SIZE		0x10000
+
+#define SRAM_ALIAS_OFFSET	0x20000000
+#define uncache_to_cache(address) \
+	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
+#define cache_to_uncache(address) \
+	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
 
 #endif

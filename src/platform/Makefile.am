@@ -23,3 +23,11 @@ endif
 if BUILD_CANNONLAKE
 SUBDIRS += cannonlake
 endif
+
+if BUILD_SUECREEK
+SUBDIRS += suecreek
+endif
+
+if BUILD_ICELAKE
+SUBDIRS += icelake
+endif

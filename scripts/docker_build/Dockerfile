@@ -44,7 +44,9 @@ RUN apt-get -y update && \
 		sudo \
 		texinfo \
 		udev \
-		wget
+		wget \
+		unzip
+
 
 # Use ToT alsa utils for the latest topology patches.
 RUN mkdir -p /root/alsa-build && cd /root/alsa-build && \
@@ -66,27 +68,30 @@ ENV HOME /home/sof
 
 # build cross compiler
 USER sof
-
-RUN cd /home/sof && git clone https://github.com/01org/osadsp-crosstool-ng.git /home/sof/ct-ng.git && \
+RUN cd /home/sof && git clone https://github.com/thesofproject/xtensa-overlay.git && \
+	cd xtensa-overlay && git checkout sof-gcc8.1 && cd ../ && \
+	git clone https://github.com/thesofproject/crosstool-ng.git && \
 	mkdir -p /home/sof/work/ && \
-	cd ct-ng.git && ./bootstrap && ./configure --prefix=`pwd` && \
-	make && make install && \
-	for arch in byt hsw bxt cnl; do \
-		./ct-ng xtensa-${arch}-elf && \
+	cd crosstool-ng && git checkout sof-gcc8.1 && \
+	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
+	for arch in byt hsw apl cnl; do \
+		cp config-${arch}-gcc8.1-gdb8.1 .config && \
+# replace the build dist to save space
 		sed -i 's#${CT_TOP_DIR}\/builds#\/home\/sof\/work#g' .config && \
-		./ct-ng build && \
+# gl_cv_func_getcwd_path_max=yes is used to avoid too-long confdir3/confdir3/...
+		gl_cv_func_getcwd_path_max=yes ./ct-ng build && \
 		./ct-ng distclean ; \
 	done && \
-	cd /home/sof/ && rm -rf ct-ng.git
+	cd /home/sof/ && rm -rf xtensa-overlay && rm -rf crosstool-ng
 
 ENV PATH="/home/sof/work/xtensa-byt-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-hsw-elf/bin:${PATH}"
-ENV PATH="/home/sof/work/xtensa-bxt-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-apl-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-cnl-elf/bin:${PATH}"
 
 RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newlib-xtensa.git && \
 	cd newlib-xtensa.git && git checkout -b xtensa origin/xtensa && \
-	for arch in byt hsw bxt cnl; do \
+	for arch in byt hsw apl cnl; do \
 		./configure --target=xtensa-${arch}-elf \
 		--prefix=/home/sof/work/xtensa-root && \
 		make && \

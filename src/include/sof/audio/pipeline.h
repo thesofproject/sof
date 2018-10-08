@@ -103,6 +103,9 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
 /* reset the pipeline and free resources */
 int pipeline_reset(struct pipeline *p, struct comp_dev *host_cd);
 
+/* perform selected cache command on pipeline */
+void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd);
+
 /* trigger pipeline - atomic */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host_cd, int cmd);
 

@@ -36,6 +36,7 @@
 #include <platform/memory.h>
 #include <platform/interrupt.h>
 #include <platform/dma.h>
+#include <platform/dai.h>
 #include <stdint.h>
 #include <string.h>
 #include <config.h>
@@ -76,14 +77,16 @@ static struct dai ssp[2] = {
 	.ops		= &ssp_ops,
 }};
 
-struct dai *dai_get(uint32_t type, uint32_t index)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
-		if (ssp[i].type == type && ssp[i].index == index)
-			return &ssp[i];
+static struct dai_type_info dti[] = {
+	{
+		.type = SOF_DAI_INTEL_SSP,
+		.dai_array = ssp,
+		.num_dais = ARRAY_SIZE(ssp)
 	}
+};
 
-	return NULL;
+int dai_init(void)
+{
+	dai_install(dti, ARRAY_SIZE(dti));
+	return 0;
 }

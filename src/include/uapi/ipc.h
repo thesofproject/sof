@@ -40,6 +40,12 @@
 #define __INCLUDE_UAPI_IPC_H__
 
 #include <uapi/abi.h>
+#include <sof/io.h>
+
+/** \addtogroup sof_uapi uAPI
+ *  SOF uAPI specification.
+ *  @{
+ */
 
 /*
  * IPC messages have a prefixed 32 bit identifier made up as follows :-
@@ -96,6 +102,7 @@
 #define SOF_IPC_PM_CLK_SET			SOF_CMD_TYPE(0x004)
 #define SOF_IPC_PM_CLK_GET			SOF_CMD_TYPE(0x005)
 #define SOF_IPC_PM_CLK_REQ			SOF_CMD_TYPE(0x006)
+#define SOF_IPC_PM_CORE_ENABLE			SOF_CMD_TYPE(0x007)
 
 /* component runtime config - multiple different types */
 #define SOF_IPC_COMP_SET_VALUE			SOF_CMD_TYPE(0x001)
@@ -126,10 +133,10 @@
 #define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
 
 /* Get message component id */
-#define SOF_IPC_MESSAGE_ID(x)			(x & 0xffff)
+#define SOF_IPC_MESSAGE_ID(x)			((x) & 0xffff)
 
 /* maximum message size for mailbox Tx/Rx */
-#define SOF_IPC_MSG_MAX_SIZE			128
+#define SOF_IPC_MSG_MAX_SIZE			384
 
 /*
  * SOF panic codes
@@ -137,16 +144,17 @@
 #define SOF_IPC_PANIC_MAGIC			0x0dead000
 #define SOF_IPC_PANIC_MAGIC_MASK		0x0ffff000
 #define SOF_IPC_PANIC_CODE_MASK			0x00000fff
-#define SOF_IPC_PANIC_MEM			(SOF_IPC_PANIC_MAGIC | 0)
-#define SOF_IPC_PANIC_WORK			(SOF_IPC_PANIC_MAGIC | 1)
-#define SOF_IPC_PANIC_IPC			(SOF_IPC_PANIC_MAGIC | 2)
-#define SOF_IPC_PANIC_ARCH			(SOF_IPC_PANIC_MAGIC | 3)
-#define SOF_IPC_PANIC_PLATFORM			(SOF_IPC_PANIC_MAGIC | 4)
-#define SOF_IPC_PANIC_TASK			(SOF_IPC_PANIC_MAGIC | 5)
-#define SOF_IPC_PANIC_EXCEPTION			(SOF_IPC_PANIC_MAGIC | 6)
-#define SOF_IPC_PANIC_DEADLOCK			(SOF_IPC_PANIC_MAGIC | 7)
-#define SOF_IPC_PANIC_STACK			(SOF_IPC_PANIC_MAGIC | 8)
-#define SOF_IPC_PANIC_IDLE			(SOF_IPC_PANIC_MAGIC | 9)
+#define SOF_IPC_PANIC_MEM			(SOF_IPC_PANIC_MAGIC | 0x0)
+#define SOF_IPC_PANIC_WORK			(SOF_IPC_PANIC_MAGIC | 0x1)
+#define SOF_IPC_PANIC_IPC			(SOF_IPC_PANIC_MAGIC | 0x2)
+#define SOF_IPC_PANIC_ARCH			(SOF_IPC_PANIC_MAGIC | 0x3)
+#define SOF_IPC_PANIC_PLATFORM			(SOF_IPC_PANIC_MAGIC | 0x4)
+#define SOF_IPC_PANIC_TASK			(SOF_IPC_PANIC_MAGIC | 0x5)
+#define SOF_IPC_PANIC_EXCEPTION			(SOF_IPC_PANIC_MAGIC | 0x6)
+#define SOF_IPC_PANIC_DEADLOCK			(SOF_IPC_PANIC_MAGIC | 0x7)
+#define SOF_IPC_PANIC_STACK			(SOF_IPC_PANIC_MAGIC | 0x8)
+#define SOF_IPC_PANIC_IDLE			(SOF_IPC_PANIC_MAGIC | 0x9)
+#define SOF_IPC_PANIC_WFI			(SOF_IPC_PANIC_MAGIC | 0xa)
 
 /*
  * SOF memory capabilities, add new ones at the end
@@ -226,6 +234,41 @@ struct sof_ipc_compound_hdr {
 #define SOF_DAI_FMT_INV_MASK		0x0f00
 #define SOF_DAI_FMT_MASTER_MASK		0xf000
 
+ /* ssc1: TINTE */
+#define SOF_DAI_INTEL_SSP_QUIRK_TINTE		(1 << 0)
+ /* ssc1: PINTE */
+#define SOF_DAI_INTEL_SSP_QUIRK_PINTE		(1 << 1)
+ /* ssc2: SMTATF */
+#define SOF_DAI_INTEL_SSP_QUIRK_SMTATF		(1 << 2)
+ /* ssc2: MMRATF */
+#define SOF_DAI_INTEL_SSP_QUIRK_MMRATF		(1 << 3)
+ /* ssc2: PSPSTWFDFD */
+#define SOF_DAI_INTEL_SSP_QUIRK_PSPSTWFDFD	(1 << 4)
+ /* ssc2: PSPSRWFDFD */
+#define SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD	(1 << 5)
+ /* here is the possibility to define others aux macros */
+
+#define SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX		38
+#define SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX		31
+
+/* SSP clocks control settings
+ *
+ * Macros for clks_control field in sof_ipc_dai_ssp_params struct.
+ */
+
+/* mclk 0 disable */
+#define SOF_DAI_INTEL_SSP_MCLK_0_DISABLE		BIT(0)
+/* mclk 1 disable */
+#define SOF_DAI_INTEL_SSP_MCLK_1_DISABLE		BIT(1)
+/* mclk keep active */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_MCLK_KA		BIT(2)
+/* bclk keep active */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_KA		BIT(3)
+/* fs keep active */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_FS_KA			BIT(4)
+/* bclk idle */
+#define SOF_DAI_INTEL_SSP_CLKCTRL_BCLK_IDLE_HIGH	BIT(5)
+
 /** \brief Types of DAI */
 enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_NONE = 0,	/**< None */
@@ -255,12 +298,11 @@ struct sof_ipc_dai_ssp_params {
 
 	/* MCLK */
 	uint32_t mclk_direction;
-	uint32_t mclk_keep_active;
-	uint32_t bclk_keep_active;
-	uint32_t fs_keep_active;
 
-	//uint32_t quirks; // FIXME: is 32 bits enough ?
-
+	uint16_t frame_pulse_width;
+	uint16_t tdm_per_slot_padding_flag;
+	uint32_t clks_control;
+	uint32_t quirks; // FIXME: is 32 bits enough ?
 	/* private data, e.g. for quirks */
 	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
 } __attribute__((packed));
@@ -298,6 +340,7 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
 	uint16_t polarity_mic_b; /* Optionally invert mic B signal (0 or 1) */
 	uint16_t clk_edge; /* Optionally swap data clock edge (0 or 1) */
 	uint16_t skew; /* Adjust PDM data sampling vs. clock (0..15) */
+	uint16_t pad; /* Make sure the total size is 4 bytes aligned */
 } __attribute__((packed));
 
 /* This struct contains the global settings for all 2ch PDM controllers. The
@@ -327,20 +370,20 @@ struct sof_ipc_dai_dmic_params {
 	uint32_t pdmclk_max; /* Maximum microphone clock in Hz (min...N) */
 	uint32_t fifo_fs_a;  /* FIFO A sample rate in Hz (8000..96000) */
 	uint32_t fifo_fs_b;  /* FIFO B sample rate in Hz (8000..96000) */
-	/* TODO: FIFO word lengths can be retrieved from SOF_DAI_FMT */
-	uint16_t fifo_bits_a; /* FIFO A word length (16 or 24) */
-	uint16_t fifo_bits_b; /* FIFO B word length (16 or 24) */
+	uint16_t fifo_bits_a; /* FIFO A word length (16 or 32) */
+	uint16_t fifo_bits_b; /* FIFO B word length (16 or 32) */
 	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
 	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
-	uint32_t num_pdm_active; /* Number of active controllers */
-	struct sof_ipc_dai_dmic_pdm_ctrl pdm[];
+	uint32_t num_pdm_active; /* Number of active pdm controllers */
+	/* variable number of pdm controller config */
+	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __attribute__((packed));
 
 /* general purpose DAI configuration */
 struct sof_ipc_dai_config {
 	struct sof_ipc_hdr hdr;
 	enum sof_ipc_dai_type type;
-	uint32_t id;	/* physical number if more than 1 of this type */
+	uint32_t dai_index; /* index of this type dai */
 
 	/* physical protocol and clocking */
 	uint16_t format;	/* SOF_DAI_FMT_ */
@@ -665,7 +708,7 @@ struct sof_ipc_comp_dai {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	enum sof_ipc_stream_direction direction;
-	uint32_t index;
+	uint32_t dai_index; /* index of this type dai */
 	enum sof_ipc_dai_type type;
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
@@ -689,8 +732,8 @@ struct sof_ipc_comp_volume {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	uint32_t channels;
-	int32_t min_value;
-	int32_t max_value;
+	uint32_t min_value;
+	uint32_t max_value;
 	enum sof_volume_ramp ramp;
 	uint32_t initial_ramp;	/* ramp space in ms */
 }  __attribute__((packed));
@@ -730,13 +773,24 @@ struct sof_ipc_comp_tone {
 struct sof_ipc_comp_eq_fir {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
+	uint32_t size;
+	unsigned char data[0];
 } __attribute__((packed));
 
 /* IIR equalizer component */
 struct sof_ipc_comp_eq_iir {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
+	uint32_t size;
+	unsigned char data[0];
 } __attribute__((packed));
+
+/** \brief Types of EFFECT */
+enum sof_ipc_effect_type {
+	SOF_EFFECT_NONE = 0,		/**< None */
+	SOF_EFFECT_INTEL_EQFIR,		/**< Intel FIR */
+	SOF_EFFECT_INTEL_EQIIR,		/**< Intel IIR */
+};
 
 /* frees components, buffers and pipelines
  * SOF_IPC_TPLG_COMP_FREE, SOF_IPC_TPLG_PIPE_FREE, SOF_IPC_TPLG_BUFFER_FREE
@@ -768,7 +822,9 @@ struct sof_ipc_pipe_new {
 	uint32_t mips;		/* worst case instruction count per period */
 	uint32_t frames_per_sched;/* output frames of pipeline, 0 is variable */
 	uint32_t xrun_limit_usecs; /* report xruns greater than limit */
-	uint32_t timer;/* non zero if timer scheduled otherwise DAI scheduled */
+
+	/* non zero if timer scheduled, otherwise DAI DMA irq scheduled */
+	uint32_t timer_delay;
 }  __attribute__((packed));
 
 /* pipeline construction complete - SOF_IPC_TPLG_PIPE_COMPLETE */
@@ -812,6 +868,12 @@ struct sof_ipc_pm_ctx {
 	struct sof_ipc_pm_ctx_elem elems[];
 };
 
+/* enable or disable cores - SOF_IPC_PM_CORE_ENABLE */
+struct sof_ipc_pm_core_config {
+	struct sof_ipc_hdr hdr;
+	uint32_t enable_mask;
+};
+
 /*
  * Firmware boot and version
  */
@@ -832,6 +894,8 @@ struct sof_ipc_fw_version {
 	uint8_t date[12];
 	uint8_t time[10];
 	uint8_t tag[6];
+	uint16_t abi_version;
+	/* Make sure the total size is 4 bytes aligned */
 } __attribute__((packed));
 
 /* FW ready Message - sent by firmware when boot has completed */
@@ -940,5 +1004,17 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t sar;
 	uint32_t stack;
 }  __attribute__((packed));
+
+/*
+ * Commom debug
+ */
+
+/* panic info include filename and line number */
+struct sof_ipc_panic_info {
+	char filename[32];
+	uint32_t linenum;
+}  __attribute__((packed));
+
+/** @}*/
 
 #endif

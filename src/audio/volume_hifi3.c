@@ -57,10 +57,9 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	ae_f32x2 volume;
 	ae_f32x2 mult;
 	ae_f32x2 out_sample;
-	ae_f16x4 in_sample;
+	ae_f16x4 in_sample = AE_ZERO16();
 	size_t channel;
 	int i;
-	int limit = source->size / (dev->params.channels << 1);
 	ae_int16 *in = (ae_int16 *)source->r_ptr;
 	ae_int16 *out = (ae_int16 *)sink->w_ptr;
 
@@ -69,7 +68,7 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < limit; i++) {
+	for (i = 0; i < dev->frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
 			/* Load the input sample */
@@ -105,11 +104,10 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 	ae_f32x2 volume;
 	ae_f32x2 mult;
 	ae_f32x2 out_sample;
-	ae_f16x4 in_sample;
+	ae_f16x4 in_sample = AE_ZERO16();
 	size_t channel;
 	uint8_t shift_left = 0;
 	int i;
-	int limit = source->size / (dev->params.channels << 1);
 	ae_int16 *in = (ae_int16 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
@@ -124,7 +122,7 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < limit; i++) {
+	for (i = 0; i < dev->frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
 			/* Load the input sample */
@@ -161,12 +159,11 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
 	ae_f32x2 volume;
 	ae_f32x2 mult;
-	ae_f32x2 in_sample;
+	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f16x4 out_sample;
 	size_t channel;
 	uint8_t shift_left = 0;
 	int i;
-	int limit = source->size / (dev->params.channels << 2);
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int16 *out = (ae_int16 *)sink->w_ptr;
 
@@ -179,7 +176,7 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < limit; i++) {
+	for (i = 0; i < dev->frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
 			/* Load the input sample */
@@ -216,13 +213,12 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
 	ae_f32x2 volume;
-	ae_f32x2 in_sample;
+	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample;
 	ae_f32x2 mult;
 	size_t channel;
 	uint8_t shift_left = 0;
 	int i;
-	int limit = source->size / (dev->params.channels << 2);
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
@@ -235,7 +231,7 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < limit; i++) {
+	for (i = 0; i < dev->frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
 			/* Load the input sample */
@@ -271,13 +267,12 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
 	ae_f32x2 volume;
-	ae_f32x2 in_sample;
+	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample;
 	ae_f32x2 mult;
 	size_t channel;
 	uint8_t shift_right = 0;
 	int i;
-	int limit = source->size / (dev->params.channels << 2);
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
@@ -290,7 +285,7 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < limit; i++) {
+	for (i = 0; i < dev->frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
 			/* Load the input sample */

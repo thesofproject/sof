@@ -49,16 +49,31 @@
  *
  * States may transform as below:-
  *
- * 1) i.e. Initialisation to playback and pause/release
- * init --> setup --> prepare --> active <-> paused --+
- *                       ^                             |
- *                       +-----------------------------+
  *
- * 2) i.e. Suspend
+ *                            -------------
+ *                   pause    |           |    stop/xrun
+ *              +-------------| ACTIVITY  |---------------+
+ *              |             |           |               |      prepare
+ *              |             -------------               |   +-----------+
+ *              |                ^     ^                  |   |           |
+ *              |                |     |                  |   |           |
+ *              v                |     |                  v   |           |
+ *       -------------           |     |             -------------        |
+ *       |           |   release |     |   start     |           |        |
+ *       |   PAUSED  |-----------+     +-------------|  PREPARE  |<-------+
+ *       |           |                               |           |
+ *       -------------                               -------------
+ *              |                                      ^     ^
+ *              |               stop/xrun              |     |
+ *              +--------------------------------------+     |
+ *                                                           | prepare
+ *                            -------------                  |
+ *                            |           |                  |
+ *                ----------->|   READY   |------------------+
+ *                    reset   |           |
+ *                            -------------
  *
- * setup --> suspend --> setup OR
- * prepare --> suspend -> prepare OR
- * paused --> suspend --> paused
+ *
  */
 
 #define COMP_STATE_INIT		0	/* component being initialised */
@@ -99,6 +114,13 @@
 
 #define COMP_CMD_IPC_MMAP_VOL(chan)	(216 + chan)	/* Volume */
 
+/* component cache operations */
+
+/* writeback and invalidate component data */
+#define COMP_CACHE_WRITEBACK_INV	0
+/* invalidate component data */
+#define COMP_CACHE_INVALIDATE		1
+
 /* component operations */
 #define COMP_OPS_PARAMS		0
 #define COMP_OPS_TRIGGER	1
@@ -106,6 +128,7 @@
 #define COMP_OPS_COPY		3
 #define COMP_OPS_BUFFER		4
 #define COMP_OPS_RESET		5
+#define COMP_OPS_CACHE		6
 
 #define trace_comp(__e)	trace_event(TRACE_CLASS_COMP, __e)
 #define trace_comp_error(__e)	trace_error(TRACE_CLASS_COMP, __e)
@@ -156,6 +179,9 @@ struct comp_ops {
 	/* position */
 	int (*position)(struct comp_dev *dev,
 		struct sof_ipc_stream_posn *posn);
+
+	/* cache operation on component data */
+	void (*cache)(struct comp_dev *dev, int cmd);
 };
 
 
@@ -212,6 +238,8 @@ struct comp_dev {
 	c->private = data
 #define comp_get_drvdata(c) \
 	c->private;
+
+typedef void (*cache_command)(void *, size_t);
 
 void sys_comp_init(void);
 
@@ -305,6 +333,13 @@ static inline int comp_position(struct comp_dev *dev,
 	return 0;
 }
 
+/* component cache command */
+static inline void comp_cache(struct comp_dev *dev, int cmd)
+{
+	if (dev->drv->ops.cache)
+		dev->drv->ops.cache(dev, cmd);
+}
+
 /* default base component initialisations */
 void sys_comp_dai_init(void);
 void sys_comp_host_init(void);
@@ -380,6 +415,20 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 	trace_value((min_bytes << 16) | copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
+}
+
+static inline cache_command comp_get_cache_command(int cmd)
+{
+	switch (cmd) {
+	case COMP_CACHE_WRITEBACK_INV:
+		return &dcache_writeback_invalidate_region;
+	case COMP_CACHE_INVALIDATE:
+		return &dcache_invalidate_region;
+	default:
+		trace_comp_error("cu0");
+		trace_error_value(cmd);
+		return NULL;
+	}
 }
 
 #endif

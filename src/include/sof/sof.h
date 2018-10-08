@@ -44,6 +44,10 @@ struct sa;
 	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member));})
 
+/* count number of var args */
+#define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
+	/ sizeof(unsigned int) - 1)
+
 /* general firmware context */
 struct sof {
 	/* init data */

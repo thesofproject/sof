@@ -51,10 +51,16 @@
 #define DMIC_HW_IOCLK		19200000
 #endif
 
-#if defined CONFIG_CANNONLAKE
+#if defined CONFIG_CANNONLAKE || defined CONFIG_SUECREEK
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		24000000
+#endif
+
+#if defined CONFIG_ICELAKE
+#define DMIC_HW_VERSION		1
+#define DMIC_HW_CONTROLLERS	2
+#define DMIC_HW_IOCLK		38400000
 #endif
 
 #endif
