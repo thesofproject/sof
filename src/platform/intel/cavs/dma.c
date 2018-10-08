@@ -263,18 +263,14 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 /* Initialize all platform DMAC's */
 int dmac_init(void)
 {
-	int i, ret;
+	int i;
+	/* no probing before first use */
 
-	for (i = 0; i < ARRAY_SIZE(dma); i++) {
-		ret = dma_probe(&dma[i]);
-		if (ret < 0) {
+	/* TODO: dynamic init based on platform settings */
 
-			/* trace failed DMAC ID */
-			trace_error(TRACE_CLASS_DMA, "edi");
-			trace_error_value(dma[i].plat_data.id);
-			return ret;
-		}
-	}
+	/* early lock initialization for ref counting */
+	for (i = 0; i < ARRAY_SIZE(dma); i++)
+		spinlock_init(&dma[i].lock);
 
 	/* tell the lib DMAs are ready to use */
 	dma_install(dma, ARRAY_SIZE(dma));

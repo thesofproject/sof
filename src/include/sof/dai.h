@@ -88,16 +88,6 @@ struct dai_slot_map {
 	uint32_t slot;		/**< physical slot index */
 };
 
-/**
- * \brief DAI Type.
- */
-enum dai_type {
-	DAI_TYPE_INTEL_SSP	= 0,  /**< Intel SSP */
-	DAI_TYPE_INTEL_HDA,           /**< Intel HD/A */
-	DAI_TYPE_INTEL_DMIC,          /**< Intel DMIC */
-};
-
-
 struct dai_plat_fifo_data {
 	uint32_t offset;
 	uint32_t width;
@@ -117,8 +107,10 @@ struct dai_plat_data {
 };
 
 struct dai {
-	uint32_t type;
-	uint32_t index;
+	uint32_t type;		/**< type, one of SOF_DAI_... */
+	uint32_t index;		/**< index */
+	spinlock_t lock;
+	int sref;		/**< simple ref counter, guarded by lock */
 	struct dai_plat_data plat_data;
 	const struct dai_ops *ops;
 	void *private;
@@ -154,7 +146,7 @@ struct dai *dai_get(uint32_t type, uint32_t index);
 #define dai_set_drvdata(dai, data) \
 	dai->private = data;
 #define dai_get_drvdata(dai) \
-	dai->private;
+	dai->private
 #define dai_base(dai) \
 	dai->plat_data.base
 #define dai_irq(dai) \

@@ -46,19 +46,52 @@ void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types)
 	lib_dai.num_dai_types = num_dai_types;
 }
 
-struct dai *dai_get(uint32_t type, uint32_t index)
+static inline struct dai_type_info *dai_find_type(uint32_t type)
 {
-	int i;
 	struct dai_type_info *dti;
-
 	for (dti = lib_dai.dai_type_array;
 	     dti < lib_dai.dai_type_array + lib_dai.num_dai_types; dti++) {
-		if (dti->type == type) {
-			for (i = 0; i < dti->num_dais; i++) {
-				if (dti->dai_array[i].index == index)
-					return dti->dai_array + i;
+		if (dti->type == type)
+			return dti;
+	}
+	return NULL;
+}
+
+struct dai *dai_get(uint32_t type, uint32_t index)
+{
+	int ret = 0;
+	struct dai_type_info *dti;
+	struct dai *d;
+
+	dti = dai_find_type(type);
+	if (!dti)
+		return NULL; /* type not found */
+
+	for (d = dti->dai_array; d < dti->dai_array + dti->num_dais; d++) {
+		if (d->index != index)
+			continue;
+		/* device created? */
+		spin_lock(&d->lock);
+		if (d->sref == 0) {
+			trace_event(TRACE_CLASS_DAI,
+				    "dai-probe type %d index %d",
+				    type, index);
+
+			ret = dai_probe(d);
+			if (ret < 0) {
+				trace_error(TRACE_CLASS_DAI,
+					    "probe failed %d",
+					    ret);
 			}
 		}
+		if (!ret)
+			d->sref++;
+		trace_event(TRACE_CLASS_DAI, "dai-get %p sref %d",
+			    (uintptr_t)d, d->sref);
+		spin_unlock(&d->lock);
+		return !ret ? d : NULL;
 	}
+	trace_error(TRACE_CLASS_DAI, "dai-get type %d index %d not found",
+		    type, index);
 	return NULL;
 }

@@ -145,37 +145,72 @@
 #define SHIM_DSPWCTCS_T1A	(0x1 << 1) /* Timer 1 armed */
 #define SHIM_DSPWCTCS_T0A	(0x1 << 0) /* Timer 0 armed */
 
-#define SHIM_CLKCTL		0x78
-#define SHIM_CLKSTS		0x7C
-
-#define SHIM_CLKCTL_RAPLLC	(0x1 << 31)
-#define SHIM_CLKCTL_RXOSCC	(0x1 << 30)
-#define SHIM_CLKCTL_RFROSCC	(0x1 << 29)
-
+/** \brief LDO Control */
 #define SHIM_LDOCTL		0xA4
 
-/* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
-#define SHIM_CLKCTL_LPGPDMAFDCGB(x)	(0x1 << (26 + x))
-#define SHIM_CLKCTL_DMICFDCGB           (0x1 << 24)
-#define SHIM_CLKCTL_I2SFDCGB(x)		(0x1 << (20 + x))
-#define SHIM_CLKCTL_I2SEFDCGB(x)	(0x1 << (18 + x))
-#define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))
+/** \brief Clock control */
+#define SHIM_CLKCTL		0x78
 
-/* Core clock PLL divisor */
+/** \brief Clock status */
+#define SHIM_CLKSTS		0x7C
+
+/** \brief Request Audio PLL Clock */
+#define SHIM_CLKCTL_RAPLLC	BIT(31)
+
+/** \brief Request XTAL Oscillator Clock */
+#define SHIM_CLKCTL_RXOSCC	BIT(30)
+
+/** \brief Request Fast RING Oscillator Clock */
+#define SHIM_CLKCTL_RFROSCC	BIT(29)
+
+/** \brief LP GPDMA Force Dynamic Clock Gating bits, 0: enable */
+#define SHIM_CLKCTL_LPGPDMAFDCGB(x)	BIT(26 + x)
+
+/** \brief DMIC Force Dynamic Clock Gating */
+#define SHIM_CLKCTL_DMICFDCGB           BIT(24)
+
+/** \brief I2S Force Dynamic Clock Gating */
+#define SHIM_CLKCTL_I2SFDCGB(x)		BIT(20 + x)
+
+/** \brief I2S Extension Force Dynamic Clock Gating */
+#define SHIM_CLKCTL_I2SEFDCGB(x)	BIT(18 + x)
+
+/** \brief Tensilica Core Prevent Local Clock Gating */
+#define SHIM_CLKCTL_TCPLCG_EN(x)	BIT(16 + x)
+#define SHIM_CLKCTL_TCPLCG_DIS(x)	0
+
+/** \brief Core clock PLL divisor */
 #define SHIM_CLKCTL_DPCS_MASK(x)	(0x3 << (8 + x * 2))
-/* Prevent Audio PLL Shutdown */
-#define SHIM_CLKCTL_TCPAPLLS	(0x1 << 7)
+#define SHIM_CLKCTL_DPCS_DIV1(x)	(0x0 << (8 + x * 2))
+#define SHIM_CLKCTL_DPCS_DIV2(x)	(0x1 << (8 + x * 2))
+#define SHIM_CLKCTL_DPCS_DIV4(x)	(0x3 << (8 + x * 2))
 
-/* 0--from PLL, 1--from oscillator */
-#define SHIM_CLKCTL_LDCS	(0x1 << 5)
-#define SHIM_CLKCTL_HDCS	(0x1 << 4)
+/** \brief Tensilica Core Prevent Audio PLL Shutdown */
+#define SHIM_CLKCTL_TCPAPLLS_EN		BIT(7)
+#define SHIM_CLKCTL_TCPAPLLS_DIS	0
 
-/* Oscillator clock select select 0--XTAL, 1--Fast RING*/
-#define SHIM_CLKCTL_LDOCS	(0x1 << 3)
-#define SHIM_CLKCTL_HDOCS	(0x1 << 2)
+/** \brief LP domain clock select, 0: PLL, 1: oscillator */
+#define SHIM_CLKCTL_LDCS_XTAL	BIT(5)
+#define SHIM_CLKCTL_LDCS_PLL	0
 
-/* HP memory clock PLL divisor */
-#define SHIM_CLKCTL_HPMPCS	(0x1 << 0)
+/** \brief HP domain clock select */
+#define SHIM_CLKCTL_HDCS	BIT(4)
+#define SHIM_CLKCTL_HDCS_XTAL	BIT(4)
+#define SHIM_CLKCTL_HDCS_PLL	0
+
+/** \brief LP domain oscillator clock select select, 0: XTAL, 1: Fast RING */
+#define SHIM_CLKCTL_LDOCS	BIT(3)
+
+/** \brief HP domain oscillator clock select select, 0: XTAL, 1: Fast RING */
+#define SHIM_CLKCTL_HDOCS	BIT(2)
+
+/** \brief LP memory clock PLL divisor, 0: div by 2, 1: div by 4 */
+#define SHIM_CLKCTL_LPMPCS_DIV4	BIT(1)
+#define SHIM_CLKCTL_LPMPCS_DIV2	0
+
+/** \brief HP memory clock PLL divisor, 0: div by 2, 1: div by 4 */
+#define SHIM_CLKCTL_HPMPCS_DIV4	BIT(0)
+#define SHIM_CLKCTL_HPMPCS_DIV2	0
 
 #define SHIM_PWRCTL		0x90
 #define SHIM_PWRSTS		0x92

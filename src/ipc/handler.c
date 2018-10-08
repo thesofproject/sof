@@ -935,6 +935,7 @@ static int ipc_glb_tplg_free(uint32_t header,
 		int (*free_func)(struct ipc *ipc, uint32_t id))
 {
 	struct sof_ipc_free *ipc_free = _ipc->comp_data;
+	int ret;
 
 	trace_ipc("Tcf");
 
@@ -945,9 +946,14 @@ static int ipc_glb_tplg_free(uint32_t header,
 	}
 
 	/* free the object */
-	free_func(_ipc, ipc_free->id);
+	ret = free_func(_ipc, ipc_free->id);
 
-	return 0;
+	if (ret < 0) {
+		trace_error(TRACE_CLASS_IPC,
+			    "ipc-glb-tplg-free free_func failed %d", ret);
+	}
+
+	return ret;
 }
 
 static int ipc_glb_tplg_message(uint32_t header)
@@ -1134,7 +1140,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 		msg = msg_get_empty(ipc);
 
 	if (msg == NULL) {
-		trace_ipc_error("eQb");
+		trace_error(TRACE_CLASS_IPC, "eQb header 0x08x replace %d",
+			    header, replace);
 		ret = -EBUSY;
 		goto out;
 	}
