@@ -25,12 +25,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_DRIVERS_CLK__
-#define __INCLUDE_DRIVERS_CLK__
+#ifndef __INCLUDE_CLOCK_MAP__
+#define __INCLUDE_CLOCK_MAP__
 
-void init_platform_clocks(void);
+static const struct freq_table cpu_freq[] = {
+	{100000000, 100000, 0x3},
+	{200000000, 200000, 0x1},
+	{400000000, 400000, 0x0}, /* default */
+};
+
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19200, }, /* default */
+	{24576000, 24576, },
+};
 
 #endif

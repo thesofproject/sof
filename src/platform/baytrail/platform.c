@@ -45,13 +45,14 @@
 #include <sof/interrupt.h>
 #include <sof/sof.h>
 #include <sof/work.h>
-#include <sof/clock.h>
-#include <sof/drivers/clk.h>
+#include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
 #include <sof/agent.h>
 #include <sof/dma-trace.h>
 #include <sof/audio/component.h>
+#include <sof/cpu.h>
+#include <sof/notifier.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -205,7 +206,7 @@ int platform_init(struct sof *sof)
 	platform_ipc_pmc_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
+	clock_init();
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
@@ -219,7 +220,7 @@ int platform_init(struct sof *sof)
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
-	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
 

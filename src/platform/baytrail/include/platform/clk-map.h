@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,50 +25,39 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __PLATFORM_HOST_PLATFORM_H__
-#define __PLATFORM_HOST_PLATFORM_H__
+#ifndef __INCLUDE_CLOCK_MAP__
+#define __INCLUDE_CLOCK_MAP__
 
-#include <platform/shim.h>
-#include <platform/interrupt.h>
-#include <stdio.h>
-#include <stdlib.h>
+#if defined CONFIG_BAYTRAIL
+static const struct freq_table cpu_freq[] = {
+	{25000000, 25000, 0x0},
+	{25000000, 25000, 0x1},
+	{50000000, 50000, 0x2},
+	{50000000, 50000, 0x3}, /* default */
+	{100000000, 100000, 0x4},
+	{200000000, 200000, 0x5},
+	{267000000, 267000, 0x6},
+	{343000000, 343000, 0x7},
+};
+#elif defined CONFIG_CHERRYTRAIL
+static const struct freq_table cpu_freq[] = {
+	{19200000, 19200, 0x0},
+	{19200000, 19200, 0x1},
+	{38400000, 38400, 0x2},
+	{50000000, 50000, 0x3}, /* default */
+	{100000000, 100000, 0x4},
+	{200000000, 200000, 0x5},
+	{267000000, 267000, 0x6},
+	{343000000, 343000, 0x7},
+};
+#endif
 
-/*! \def PLATFORM_DEFAULT_CLOCK
- *  \brief clock source for audio pipeline
- *
- *  There are two types of clock: cpu clock which is a internal clock in
- *  xtensa core, and ssp clock which is provided by external HW IP.
- *  The choice depends on HW features on different platform
- */
-#define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
-
-/*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
- *  \brief work queue default timeout in microseconds
- */
-#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
-
-/* Host page size */
-#define HOST_PAGE_SIZE		4096
-
-/* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	4
-#define PLATFORM_MAX_STREAMS	5
-
-/* DMA channel drain timeout in microseconds */
-#define PLATFORM_DMA_TIMEOUT	1333
-
-/* IPC page data copy timeout */
-#define PLATFORM_IPC_DMA_TIMEOUT 2000
-
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
-
-static inline void platform_panic(uint32_t p) {}
-
-extern struct timer *platform_timer;
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19200, PMC_SET_SSP_19M2}, /* default */
+	{25000000, 25000, PMC_SET_SSP_25M},
+};
 
 #endif

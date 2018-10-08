@@ -43,14 +43,15 @@
 #include <sof/interrupt.h>
 #include <sof/sof.h>
 #include <sof/work.h>
-#include <sof/clock.h>
-#include <sof/drivers/clk.h>
+#include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
 #include <sof/agent.h>
 #include <sof/io.h>
 #include <sof/dma-trace.h>
 #include <sof/audio/component.h>
+#include <sof/cpu.h>
+#include <sof/notifier.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -134,7 +135,7 @@ struct work_queue_timesource platform_generic_queue[] = {
 		.id = TIMER1,	/* internal timer */
 		.irq = IRQ_NUM_TIMER2,
 	},
-	.clk		= CLK_CPU,
+	.clk		= CLK_CPU(0),
 	.notifier	= NOTIFIER_ID_CPU_FREQ,
 	.timer_set	= arch_timer_set,
 	.timer_clear	= arch_timer_clear,
@@ -157,7 +158,7 @@ int platform_boot_complete(uint32_t boot_message)
 	shim_write(SHIM_IPCD, outbox | SHIM_IPCD_BUSY);
 
 	/* boot now complete so we can relax the CPU */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 
 	return 0;
 }
@@ -194,7 +195,7 @@ int platform_init(struct sof *sof)
 	platform_init_shim();
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
+	clock_init();
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
@@ -208,7 +209,7 @@ int platform_init(struct sof *sof)
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
-	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	/* set SSP clock to 25M */
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);

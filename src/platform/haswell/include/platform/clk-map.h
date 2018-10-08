@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,31 +25,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CLOCK__
-#define __INCLUDE_CLOCK__
+#ifndef __INCLUDE_CLOCK_MAP__
+#define __INCLUDE_CLOCK_MAP__
 
-#include <sof/notifier.h>
-#include <stdint.h>
-
-#define CLOCK_NOTIFY_PRE	0
-#define CLOCK_NOTIFY_POST	1
-
-struct clock_notify_data {
-	uint32_t old_freq;
-	uint32_t old_ticks_per_msec;
-	uint32_t freq;
-	uint32_t ticks_per_msec;
+static const struct freq_table cpu_freq[] = {
+	{32000000, 32000, 0x6},
+	{80000000, 80000, 0x2},
+	{160000000, 160000, 0x1},
+	{320000000, 320000, 0x4}, /* default */
+	{320000000, 320000, 0x0},
+	{160000000, 160000, 0x5},
 };
 
-uint32_t clock_set_freq(int clock, unsigned int hz);
-
-uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
-
-void clock_register_notifier(int clock, struct notifier *notifier);
-
-int clock_init();
+static const struct freq_table ssp_freq[] = {
+	{24000000, 24000, 0}, /* default */
+};
 
 #endif

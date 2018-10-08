@@ -43,7 +43,7 @@
 #include <sof/interrupt.h>
 #include <sof/trace.h>
 #include <sof/lock.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include <platform/clk.h>
 #include <platform/interrupt.h>
 #include <sof/drivers/timer.h>

@@ -10,7 +10,8 @@ libcore_a_SOURCES = \
 	agent.c \
 	interrupt.c \
 	dma-trace.c \
-	pm_runtime.c
+	pm_runtime.c \
+	clk.c
 
 libcore_a_CFLAGS = \
 	$(AM_CFLAGS) \

@@ -32,7 +32,7 @@
 #include <sof/work.h>
 #include <sof/timer.h>
 #include <sof/list.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include <sof/alloc.h>
 #include <sof/sof.h>
 #include <sof/lock.h>
