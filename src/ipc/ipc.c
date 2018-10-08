@@ -387,7 +387,7 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
  */
 int ipc_parse_page_descriptors(uint8_t *page_table,
 			       struct sof_ipc_host_buffer *ring,
-			       struct list_item *elem_list,
+			       struct dma_sg_elem_array *elem_array,
 			       uint32_t direction)
 {
 	int i;
@@ -406,6 +406,12 @@ int ipc_parse_page_descriptors(uint8_t *page_table,
 		return -EINVAL;
 	}
 
+	elem_array->elems = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+				    sizeof(struct dma_sg_elem) * ring->pages);
+	if (!elem_array->elems)
+		return -ENOMEM;
+	elem_array->count = ring->pages;
+
 	for (i = 0; i < ring->pages; i++) {
 		idx = (((i << 2) + i)) >> 1;
 		phy_addr = page_table[idx] | (page_table[idx + 1] << 8)
@@ -417,10 +423,7 @@ int ipc_parse_page_descriptors(uint8_t *page_table,
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
 
-		/* allocate new host DMA elem and add it to our list */
-		e = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*e));
-		if (!e)
-			return -ENOMEM;
+		e = elem_array->elems + i;
 
 		if (direction == SOF_IPC_STREAM_PLAYBACK)
 			e->src = phy_addr;
@@ -432,8 +435,6 @@ int ipc_parse_page_descriptors(uint8_t *page_table,
 			e->size = ring->size - HOST_PAGE_SIZE * i;
 		else
 			e->size = HOST_PAGE_SIZE;
-
-		list_item_append(&e->list, elem_list);
 	}
 
 	return 0;
@@ -471,7 +472,7 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
-	list_init(&config.elem_list);
+	dma_sg_init(&config.elem_array);
 
 	/* set up DMA descriptor */
 	elem.dest = (uint32_t)page_table;
@@ -480,7 +481,8 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* source buffer size is always PAGE_SIZE bytes */
 	/* 20 bits for each page, round up to 32 */
 	elem.size = (ring->pages * 5 * 16 + 31) / 32;
-	list_item_prepend(&elem.list, &config.elem_list);
+	config.elem_array.elems = &elem;
+	config.elem_array.count = 1;
 
 	ret = dma_set_config(dmac, chan, &config);
 	if (ret < 0) {
