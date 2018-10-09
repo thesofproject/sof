@@ -158,7 +158,7 @@ static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
 	const uint32_t cs = host_dma_reg_read(dma, chan, DGCS);
 	const uint32_t bs = host_dma_reg_read(dma, chan, DGBS);
 	const uint32_t rp = host_dma_reg_read(dma, chan, DGBRP);
-	const uint32_t wp = host_dma_reg_read(dma, chan, DGBRP);
+	const uint32_t wp = host_dma_reg_read(dma, chan, DGBWP);
 
 	uint32_t ds;
 
