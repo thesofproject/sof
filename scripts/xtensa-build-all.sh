@@ -1,6 +1,10 @@
 #!/bin/bash
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl)
+BUILD_RIMAGE=1
+
+pwd=`pwd`
+
 if [ "$#" -eq 0 ]
 then
 	PLATFORMS=${SUPPORTED_PLATFORMS[@]}
@@ -11,6 +15,19 @@ else
 		if [[ "$args" == "-l" ]]
 			then
 			BUILD_LOCAL=1
+
+			# build all images for chosen targets
+			if [ "$#" -eq 1 ]
+			then
+				PLATFORMS=${SUPPORTED_PLATFORMS[@]}
+				break
+			fi
+		elif [[ "$args" == "-lr" ]]
+			then
+			BUILD_LOCAL=1
+			BUILD_RIMAGE=0
+
+			PATH=$pwd/local/bin:$PATH
 
 			# build all images for chosen targets
 			if [ "$#" -eq 1 ]
@@ -40,22 +57,22 @@ set -e
 # run autogen.sh
 ./autogen.sh
 
-pwd=`pwd`
-
-
 # make sure rimage is built and aligned with code
-if [[ "x$BUILD_LOCAL" == "x" ]]
+if [[ "x$BUILD_RIMAGE" == "x1" ]]
 then
-	./configure --enable-rimage
-	make
-	sudo make install
-else
-	echo "BUILD in local folder!"
-	rm -rf $pwd/local/
-	./configure --enable-rimage --prefix=$pwd/local
-	make
-	make install
-	PATH=$pwd/local/bin:$PATH
+	if [[ "x$BUILD_LOCAL" == "x" ]]
+	then
+		./configure --enable-rimage
+		make
+		sudo make install
+	else
+		echo "BUILD in local folder!"
+		rm -rf $pwd/local/
+		./configure --enable-rimage --prefix=$pwd/local
+		make
+		make install
+		PATH=$pwd/local/bin:$PATH
+	fi
 fi
 
 OLDPATH=$PATH
@@ -151,7 +168,7 @@ do
 	fi
 
 	# update ROOT directory for xt-xcc
-	if [ $XCC == "xt-xcc" ]
+	if [ "$XCC" == "xt-xcc" ]
 	then
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
