@@ -20,6 +20,7 @@ MACHINES = \
 	sof-cht-nocodec.tplg \
 	sof-cht-max98090.tplg \
 	sof-apl-hdmi.tplg \
+	sof-whl-hda.tplg \
 	sof-hda-generic.tplg \
 	sof-apl-nocodec.tplg \
 	sof-byt-nocodec.tplg \
@@ -59,6 +60,7 @@ EXTRA_DIST = \
 	sof-cht-nocodec.m4 \
 	sof-cht-max98090.m4 \
 	sof-apl-hdmi.m4 \
+	sof-whl-hda.m4 \
 	sof-hda-generic.m4 \
 	sof-apl-nocodec.m4 \
 	sof-byt-nocodec.m4 \
