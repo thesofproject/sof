@@ -54,7 +54,13 @@ size_t fir_init_coef(struct fir_state_32x16 *fir,
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
-void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,
+void eq_fir_s16(struct fir_state_32x16 *fir, struct comp_buffer *source,
+		struct comp_buffer *sink, int frames, int nch);
+
+void eq_fir_s24(struct fir_state_32x16 *fir, struct comp_buffer *source,
+		struct comp_buffer *sink, int frames, int nch);
+
+void eq_fir_s32(struct fir_state_32x16 *fir, struct comp_buffer *source,
 		struct comp_buffer *sink, int frames, int nch);
 
 /* The next functions are inlined to optmize execution speed */
