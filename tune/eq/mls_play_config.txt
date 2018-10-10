@@ -1,0 +1,5 @@
+play.ssh = 0;         % Set to use remote ssh commands
+play.user = '';       % Set user@domain for ssh
+play.dir = '/tmp';    % directory for temporary files
+play.dev = 'hw:0,0';  % Audio device for playback
+play.nch = 2;         % Number of playback channels to test

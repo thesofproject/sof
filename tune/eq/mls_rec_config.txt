@@ -1,0 +1,5 @@
+rec.ssh = 0;         % Set to 1 for remote capture
+rec.user = '';       % Set to user@domain for ssh
+rec.dir = '/tmp';    % Directory for temporary files
+rec.dev = 'hw:0,0';  % Audio capture device
+rec.nch = 2;         % Number audio capture channels to use
