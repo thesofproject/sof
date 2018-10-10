@@ -111,7 +111,7 @@ static void print_entry_params(FILE *out_fd, struct dma_log dma_log,
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
 
-	fprintf(out_fd, "%s%5u %6u %8s %16.6f %16.6f %20s:%u\t",
+	fprintf(out_fd, "%s%5u %6u %8s %16.6f %16.6f %20s:%-4u\t",
 		entry.header.level == LOG_LEVEL_CRITICAL ? KRED : KNRM,
 		dma_log.header.core_id,
 		entry.header.level,
