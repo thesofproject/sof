@@ -247,10 +247,19 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 	struct sof_ipc_comp_eq_fir *ipc_fir
 		= (struct sof_ipc_comp_eq_fir *)comp;
-	size_t bs;
+	size_t bs = ipc_fir->size;
 	int i;
 
 	trace_eq("new");
+
+	/* Check first before proceeding with dev and cd that coefficients
+	 * blob size is sane.
+	 */
+	if (bs > SOF_EQ_FIR_MAX_SIZE) {
+		trace_eq_error("ens");
+		trace_error_value(bs);
+		return NULL;
+	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_eq_fir));
@@ -267,19 +276,14 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	bs = ipc_fir->size;
-	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		rfree(dev);
-		rfree(cd);
-		return NULL;
-	}
-
 	cd->eq_fir_func = eq_fir_passthrough;
 	cd->eq_fir_func_odd = eq_fir_passthrough;
 	cd->config = NULL;
 
-	/* Allocate and make a copy of the blob and setup FIR */
-	if (bs > 0) {
+	/* Allocate and make a copy of the coefficients blob and reset FIR. If
+	 * the EQ is configured later in run-time the size is zero.
+	 */
+	if (bs) {
 		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config) {
 			rfree(dev);
