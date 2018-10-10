@@ -627,7 +627,6 @@ static int ipc_dma_trace_config(uint32_t header)
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
-	struct sof_ipc_reply reply;
 	int err;
 
 	trace_ipc("DA1");
@@ -681,11 +680,6 @@ static int ipc_dma_trace_config(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	/* write component values to the outbox */
-	reply.hdr.size = sizeof(reply);
-	reply.hdr.cmd = header;
-	reply.error = 0;
-	mailbox_hostbox_write(0, &reply, sizeof(reply));
 	return 0;
 
 error:
