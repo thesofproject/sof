@@ -70,6 +70,7 @@ static inline void print_table_header(FILE *out_fd)
 		"DELTA",
 		"FILE_NAME",
 		"CONTENT");
+	fflush(out_fd);
 }
 
 #define CASE(x) \
@@ -137,6 +138,7 @@ static void print_entry_params(FILE *out_fd, struct dma_log dma_log,
 		break;
 	}
 	fprintf(out_fd, "\n");
+	fflush(out_fd);
 }
 
 static int fetch_entry(struct convert_config *config, uint32_t base_address,
@@ -241,7 +243,6 @@ static int logger_read(struct convert_config *config,
 {
 	struct dma_log dma_log;
 	int ret = 0;
-	
 	print_table_header(config->out_fd);
 	uint64_t last_timestamp = 0;
 
