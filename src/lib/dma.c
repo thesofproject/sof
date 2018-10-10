@@ -124,6 +124,24 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	return NULL;
 }
 
+void dma_put(struct dma *dma)
+{
+	int ret;
+
+	spin_lock(&dma->lock);
+	if (--dma->sref == 0) {
+		ret = dma_remove(dma);
+		if (ret < 0) {
+			trace_error(TRACE_CLASS_DMA,
+				    "dma-remove failed id %d ret %d",
+				    dma->plat_data.id, ret);
+		}
+	}
+	trace_event(TRACE_CLASS_DMA, "dma-put %p sref %d", (uintptr_t)dma,
+		    dma->sref);
+	spin_unlock(&dma->lock);
+}
+
 int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 		 int zone,
 		 uint32_t direction,

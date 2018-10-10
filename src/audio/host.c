@@ -398,6 +398,7 @@ static void host_free(struct comp_dev *dev)
 #if !defined CONFIG_DMA_GW
 	dma_channel_put(hd->dma, hd->chan);
 #endif
+	dma_put(hd->dma);
 
 	dma_sg_free(&hd->config.elem_array);
 	rfree(hd);

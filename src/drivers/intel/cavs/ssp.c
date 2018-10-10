@@ -893,11 +893,26 @@ static int ssp_probe(struct dai *dai)
 	return 0;
 }
 
+static int ssp_remove(struct dai *dai)
+{
+	interrupt_disable(ssp_irq(dai));
+	platform_interrupt_mask(ssp_irq(dai), 0);
+	interrupt_unregister(ssp_irq(dai));
+
+	pm_runtime_put_sync(SSP_CLK, dai->index);
+
+	rfree(dma_get_drvdata(dai));
+	dai_set_drvdata(dai, NULL);
+
+	return 0;
+}
+
 const struct dai_ops ssp_ops = {
 	.trigger		= ssp_trigger,
 	.set_config		= ssp_set_config,
 	.pm_context_store	= ssp_context_store,
 	.pm_context_restore	= ssp_context_restore,
 	.probe			= ssp_probe,
+	.remove			= ssp_remove,
 	.set_loopback_mode	= ssp_set_loopback_mode,
 };

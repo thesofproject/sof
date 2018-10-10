@@ -186,7 +186,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, dd);
 
-	dd->dai = dai_get(dai->type, dai->dai_index);
+	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (dd->dai == NULL) {
 		trace_dai_error("eDg");
 		goto error;
@@ -237,6 +237,9 @@ static void dai_free(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 
 	dma_channel_put(dd->dma, dd->chan);
+	dma_put(dd->dma);
+
+	dai_put(dd->dai);
 
 	rfree(dd);
 	rfree(dev);

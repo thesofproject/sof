@@ -633,6 +633,13 @@ static int hda_dma_probe(struct dma *dma)
 	return 0;
 }
 
+static int hda_dma_remove(struct dma *dma)
+{
+	rfree(dma_get_drvdata(dma));
+	dma_set_drvdata(dma, NULL);
+	return 0;
+}
+
 const struct dma_ops hda_host_dma_ops = {
 	.channel_get	= hda_dma_channel_get,
 	.channel_put	= hda_dma_channel_put,
@@ -647,6 +654,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.pm_context_restore		= hda_dma_pm_context_restore,
 	.pm_context_store		= hda_dma_pm_context_store,
 	.probe		= hda_dma_probe,
+	.remove		= hda_dma_remove,
 };
 
 const struct dma_ops hda_link_dma_ops = {
@@ -663,5 +671,6 @@ const struct dma_ops hda_link_dma_ops = {
 	.pm_context_restore		= hda_dma_pm_context_restore,
 	.pm_context_store		= hda_dma_pm_context_store,
 	.probe		= hda_dma_probe,
+	.remove		= hda_dma_remove,
 };
 

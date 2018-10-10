@@ -154,6 +154,7 @@ struct dma_ops {
 	int (*pm_context_store)(struct dma *dma);
 
 	int (*probe)(struct dma *dma);
+	int (*remove)(struct dma *dma);
 };
 
 /* DMA platform data */
@@ -197,6 +198,13 @@ void dma_install(struct dma *dma_array, size_t num_dmas);
  * For shared access, ret DMAC with the least number of channels draining.
  */
 struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
+
+/**
+ * \brief API to release a platform DMAC.
+ *
+ * @param[in] dma DMAC to relese.
+ */
+void dma_put(struct dma *dma);
 
 #define dma_set_drvdata(dma, data) \
 	dma->private = data;
@@ -290,6 +298,11 @@ static inline int dma_pm_context_store(struct dma *dma)
 static inline int dma_probe(struct dma *dma)
 {
 	return dma->ops->probe(dma);
+}
+
+static inline int dma_remove(struct dma *dma)
+{
+	return dma->ops->remove(dma);
 }
 
 static inline void dma_sg_init(struct dma_sg_elem_array *ea)
