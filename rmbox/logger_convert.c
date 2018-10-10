@@ -136,6 +136,10 @@ static void print_entry_params(FILE *out_fd, struct dma_log dma_log,
 		fprintf(out_fd, entry.text, entry.params[0], entry.params[1],
 			entry.params[2]);
 		break;
+	case 4:
+		fprintf(out_fd, entry.text, entry.params[0], entry.params[1],
+			entry.params[2], entry.params[3]);
+		break;
 	}
 	fprintf(out_fd, "\n");
 	fflush(out_fd);
