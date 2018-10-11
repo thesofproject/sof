@@ -187,6 +187,31 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+/* set period bytes based on source/sink format */
+void comp_set_period_bytes(struct comp_dev *dev, uint32_t frames,
+			   enum sof_ipc_frame *format, uint32_t *period_bytes)
+{
+	struct sof_ipc_comp_config *sconfig;
+
+	/* get data format */
+	switch (dev->comp.type) {
+	case SOF_COMP_DAI:
+	case SOF_COMP_SG_DAI:
+		/* format comes from DAI/comp config */
+		sconfig = COMP_GET_CONFIG(dev);
+		*format = sconfig->frame_fmt;
+		break;
+	case SOF_COMP_HOST:
+	case SOF_COMP_SG_HOST:
+	default:
+		/* format comes from IPC params */
+		*format = dev->params.frame_fmt;
+		break;
+	}
+
+	*period_bytes = frames * comp_frame_bytes(dev);
+}
+
 void sys_comp_init(void)
 {
 	cd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*cd));

@@ -488,7 +488,6 @@ static int volume_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
-	struct sof_ipc_comp_config *sconfig;
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	int i;
 	int ret;
@@ -506,44 +505,13 @@ static int volume_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format */
-	switch (sourceb->source->comp.type) {
-	case SOF_COMP_HOST:
-	case SOF_COMP_SG_HOST:
-		/* source format comes from IPC params */
-		cd->source_format = sourceb->source->params.frame_fmt;
-		cd->source_period_bytes = dev->frames *
-			comp_frame_bytes(sourceb->source);
-		break;
-	case SOF_COMP_DAI:
-	case SOF_COMP_SG_DAI:
-	default:
-		/* source format comes from DAI/comp config */
-		sconfig = COMP_GET_CONFIG(sourceb->source);
-		cd->source_format = sconfig->frame_fmt;
-		cd->source_period_bytes = dev->frames *
-			comp_frame_bytes(sourceb->source);
-		break;
-	}
+	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
+			      &cd->source_period_bytes);
 
 	/* get sink data format */
-	switch (sinkb->sink->comp.type) {
-	case SOF_COMP_HOST:
-	case SOF_COMP_SG_HOST:
-		/* sink format come from IPC params */
-		cd->sink_format = sinkb->sink->params.frame_fmt;
-		cd->sink_period_bytes = dev->frames *
-			comp_frame_bytes(sinkb->sink);
-		break;
-	case SOF_COMP_DAI:
-	case SOF_COMP_SG_DAI:
-	default:
-		/* sink format comes from DAI/comp config */
-		sconfig = COMP_GET_CONFIG(sinkb->sink);
-		cd->sink_format = sconfig->frame_fmt;
-		cd->sink_period_bytes = dev->frames *
-			comp_frame_bytes(sinkb->sink);
-		break;
-	}
+	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
+			      &cd->sink_period_bytes);
+
 	/* rewrite params format for all downstream */
 	dev->params.frame_fmt = cd->sink_format;
 
