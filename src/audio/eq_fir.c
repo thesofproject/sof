@@ -515,7 +515,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 	int ret = 0;
 
 	/* Check version from ABI header */
-	if (cdata->data->comp_abi != SOF_EQ_FIR_ABI_VERSION) {
+	if (cdata->data->comp_abi != SOF_ABI_VERSION) {
 		trace_eq_error("eab");
 		return -EINVAL;
 	}
