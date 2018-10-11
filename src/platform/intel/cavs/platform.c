@@ -47,12 +47,13 @@
 #include <sof/sof.h>
 #include <sof/agent.h>
 #include <sof/work.h>
-#include <sof/clock.h>
-#include <sof/drivers/clk.h>
+#include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/io.h>
 #include <sof/trace.h>
 #include <sof/audio/component.h>
+#include <sof/cpu.h>
+#include <sof/notifier.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -218,7 +219,7 @@ int platform_boot_complete(uint32_t boot_message)
 
 	#if defined(CONFIG_APOLLOLAKE)
 	/* boot now complete so we can relax the CPU */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
@@ -313,7 +314,7 @@ int platform_init(struct sof *sof)
 	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
+	clock_init();
 
 	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
@@ -323,7 +324,6 @@ int platform_init(struct sof *sof)
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
-
 #if defined(CONFIG_APOLLOLAKE)
 	/* initialize PM for boot */
 
@@ -351,7 +351,7 @@ int platform_init(struct sof *sof)
 #elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
 	|| defined(CONFIG_SUECREEK)
 	/* TODO: need to merge as for APL */
-	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	/* prevent Core0 clock gating. */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |

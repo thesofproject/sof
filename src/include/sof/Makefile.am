@@ -8,7 +8,7 @@ includedir = $(prefix)/include/sof/sof
 include_HEADERS = \
 	alloc.h \
 	atomic.h \
-	clock.h \
+	clk.h \
 	cpu.h \
 	dai.h \
 	debug.h \

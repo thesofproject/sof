@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,50 +25,20 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __PLATFORM_HOST_PLATFORM_H__
-#define __PLATFORM_HOST_PLATFORM_H__
+#ifndef __INCLUDE_CLOCK_MAP__
+#define __INCLUDE_CLOCK_MAP__
 
-#include <platform/shim.h>
-#include <platform/interrupt.h>
-#include <stdio.h>
-#include <stdlib.h>
+static const struct freq_table cpu_freq[] = {
+	{120000000, 120000, 0x0},
+	{400000000, 400000, 0x4}, /* default */
+};
 
-/*! \def PLATFORM_DEFAULT_CLOCK
- *  \brief clock source for audio pipeline
- *
- *  There are two types of clock: cpu clock which is a internal clock in
- *  xtensa core, and ssp clock which is provided by external HW IP.
- *  The choice depends on HW features on different platform
- */
-#define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
-
-/*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
- *  \brief work queue default timeout in microseconds
- */
-#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
-
-/* Host page size */
-#define HOST_PAGE_SIZE		4096
-
-/* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	4
-#define PLATFORM_MAX_STREAMS	5
-
-/* DMA channel drain timeout in microseconds */
-#define PLATFORM_DMA_TIMEOUT	1333
-
-/* IPC page data copy timeout */
-#define PLATFORM_IPC_DMA_TIMEOUT 2000
-
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
-
-static inline void platform_panic(uint32_t p) {}
-
-extern struct timer *platform_timer;
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19200, }, /* default */
+	{24000000, 24000, },
+};
 
 #endif

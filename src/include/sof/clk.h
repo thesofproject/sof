@@ -26,49 +26,33 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __PLATFORM_HOST_PLATFORM_H__
-#define __PLATFORM_HOST_PLATFORM_H__
+#ifndef __INCLUDE_CLOCK__
+#define __INCLUDE_CLOCK__
 
-#include <platform/shim.h>
-#include <platform/interrupt.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
 
-/*! \def PLATFORM_DEFAULT_CLOCK
- *  \brief clock source for audio pipeline
- *
- *  There are two types of clock: cpu clock which is a internal clock in
- *  xtensa core, and ssp clock which is provided by external HW IP.
- *  The choice depends on HW features on different platform
- */
-#define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
+#define CLOCK_NOTIFY_PRE	0
+#define CLOCK_NOTIFY_POST	1
 
-/*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
- *  \brief work queue default timeout in microseconds
- */
-#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
+struct clock_notify_data {
+	uint32_t old_freq;
+	uint32_t old_ticks_per_msec;
+	uint32_t freq;
+	uint32_t ticks_per_msec;
+};
 
-/* Host page size */
-#define HOST_PAGE_SIZE		4096
+struct freq_table {
+	uint32_t freq;
+	uint32_t ticks_per_msec;
+	uint32_t enc;
+};
 
-/* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	4
-#define PLATFORM_MAX_STREAMS	5
+uint32_t clock_set_freq(int clock, uint32_t hz);
 
-/* DMA channel drain timeout in microseconds */
-#define PLATFORM_DMA_TIMEOUT	1333
+uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
 
-/* IPC page data copy timeout */
-#define PLATFORM_IPC_DMA_TIMEOUT 2000
-
-/* DSP default delay in cycles */
-#define PLATFORM_DEFAULT_DELAY	12
-
-static inline void platform_panic(uint32_t p) {}
-
-extern struct timer *platform_timer;
+void clock_init(void);
 
 #endif

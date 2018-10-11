@@ -40,7 +40,6 @@
 #include <sof/stream.h>
 #include <sof/dai.h>
 #include <sof/ipc.h>
-#include <platform/clk.h>
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>

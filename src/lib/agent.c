@@ -39,7 +39,7 @@
 #include <sof/debug.h>
 #include <sof/panic.h>
 #include <sof/alloc.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include <sof/trace.h>
 #include <platform/timer.h>
 #include <platform/platform.h>
