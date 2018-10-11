@@ -46,6 +46,8 @@ void cpu_power_down_core(void);
 
 struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
 
+void notifier_notify(void);
+
 struct pipeline_new_setup_data {
 	struct sof_ipc_pipe_new ipc_data;
 	struct comp_dev *comp_data;
