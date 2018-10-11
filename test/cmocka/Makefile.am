@@ -60,11 +60,10 @@ mixer_LDADD = -lm $(LDADD)
 
 # memory allocator test
 
-# TODO: fix
-#if BUILD_XTENSA
-#check_PROGRAMS += alloc
-#alloc_SOURCES = src/lib/alloc/alloc.c src/lib/alloc/mock.c ../../src/lib/alloc.c ../../src/platform/intel/cavs/memory.c
-#endif
+if BUILD_XTENSA
+check_PROGRAMS += alloc
+alloc_SOURCES = src/lib/alloc/alloc.c src/lib/alloc/mock.c ../../src/lib/alloc.c ../../src/platform/intel/cavs/memory.c
+endif
 
 # pipeline tests
 

@@ -32,19 +32,15 @@
 #include <stdint.h>
 
 #include <sof/alloc.h>
+#include <sof/trace.h>
 
 struct dma_copy;
 struct dma_sg_config;
 
-int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
-		       int32_t host_offset, void *local_ptr, int32_t size)
+int rstrlen(const char *s)
 {
-	return 0;
-}
+	(void)s;
 
-int dma_copy_to_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
-		     int32_t host_offset, void *local_ptr, int32_t size)
-{
 	return 0;
 }
 
