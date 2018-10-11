@@ -76,7 +76,7 @@ static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
 		   (index < DAI_NUM_SSP_BASE ?
 		    SHIM_CLKCTL_I2SFDCGB(index) :
-		    SHIM_CLKCTL_I2SEFDCGB(index)));
+		    SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE)));
 
 	trace_event(TRACE_CLASS_POWER,
 		    "dis-ssp-clk-gating index %d CLKCTL %08x",
@@ -90,7 +90,7 @@ static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) &
 		   ~(index < DAI_NUM_SSP_BASE ?
 		    SHIM_CLKCTL_I2SFDCGB(index) :
-		    SHIM_CLKCTL_I2SEFDCGB(index)));
+		    SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE)));
 
 	trace_event(TRACE_CLASS_POWER,
 		    "en-ssp-clk-gating index %d CLKCTL %08x",
