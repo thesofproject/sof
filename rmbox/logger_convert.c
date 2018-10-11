@@ -24,6 +24,10 @@
 
 #define CEIL(a, b) ((a+b-1)/b)
 
+#define TRACE_MAX_PARAMS_COUNT		4
+#define TRACE_MAX_TEXT_LEN		1024
+#define TRACE_MAX_FILENAME_LEN		128
+
 /* logs file signature */
 #define SND_SOF_LOGS_SIG_SIZE	4
 #define SND_SOF_LOGS_SIG	"Logs"
@@ -172,8 +176,13 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 		ret = -ferror(config->ldc_fd);
 		goto out;
 	}
-
+	if (entry.header.file_name_len > TRACE_MAX_FILENAME_LEN) {
+		fprintf(stderr, "Error: Invalid filename length. \n");
+		ret = -EINVAL;
+		goto out;
+	}
 	entry.file_name = (char *)malloc(entry.header.file_name_len);
+
 	if (!entry.file_name) {
 		fprintf(stderr, "error: can't allocate %d byte for "
 			"entry.file_name\n", entry.header.file_name_len);
@@ -200,6 +209,11 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 	}
 
 	/* fetching text */
+	if (entry.text_len > TRACE_MAX_TEXT_LEN) {
+		fprintf(stderr, "Error: Invalid text length. \n");
+		ret = -EINVAL;
+		goto out;
+	}
 	entry.text = (char *)malloc(entry.text_len);
 	if (entry.text == NULL) {
 		fprintf(stderr, "error: can't allocate %d byte for "
@@ -207,7 +221,6 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 		ret = -ENOMEM;
 		goto out;
 	}
-
 	ret = fread(entry.text, sizeof(char), entry.text_len, config->ldc_fd);
 	if (ret != entry.text_len) {
 		ret = -ferror(config->ldc_fd);
@@ -215,8 +228,20 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 	}
 
 	/* fetching entry params from dma dump */
+	if (entry.header.params_num > TRACE_MAX_PARAMS_COUNT) {
+		fprintf(stderr, "Error: Invalid number of parameters. \n");
+		ret = -EINVAL;
+		goto out;
+	}
 	entry.params = (uint32_t *)malloc(sizeof(uint32_t) *
 		entry.header.params_num);
+	if (entry.params == NULL) {
+		fprintf(stderr, "error: can't allocate %d byte for "
+			"entry.params\n", (int)(sizeof(uint32_t) *
+			entry.header.params_num));
+		ret = -ENOMEM;
+		goto out;
+	}
 	ret = fread(entry.params, sizeof(uint32_t), entry.header.params_num,
 		config->in_fd);
 	if (ret != entry.header.params_num) {
