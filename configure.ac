@@ -27,7 +27,7 @@ AC_OUTPUT([
 	topology/platform/common/Makefile
 	topology/m4/Makefile
 	topology/sof/Makefile
-	topology/test/Makefile
+	test/topology/Makefile
 ])
 
 echo "

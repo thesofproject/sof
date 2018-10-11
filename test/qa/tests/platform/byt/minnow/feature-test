@@ -1,0 +1,7 @@
+PCM_playback check_line_in_out_playback
+PCM_playback check_dual_channels_playback
+volume_control get_mixer_properties
+volume_control set_HP_volume_to_minimum
+volume_control set_HP_volume_to_maximum
+volume_control set_ADC_volume_to_minimum
+volume_control set_ADC_volume_to_maximum
