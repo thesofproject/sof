@@ -139,9 +139,8 @@ static inline void set_s32_fir(struct comp_data *cd)
 static inline int set_fir_func(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	switch (config->frame_fmt) {
+	switch (dev->params.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq("f16");
 		set_s16_fir(cd);
@@ -194,9 +193,8 @@ static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 static inline int set_pass_func(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 
-	switch (config->frame_fmt) {
+	switch (dev->params.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		trace_eq("p16");
 		cd->eq_fir_func_even = eq_fir_s16_passthrough;
@@ -671,6 +669,8 @@ static int eq_fir_copy(struct comp_dev *dev)
 static int eq_fir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *sourceb, *sinkb;
 	int ret;
 
 	trace_eq("pre");
@@ -678,6 +678,26 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
+
+	/* EQ components will only ever have 1 source and 1 sink buffer */
+	sourceb = list_first_item(&dev->bsource_list,
+				  struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list,
+				struct comp_buffer, source_list);
+
+	/* set period bytes and frame format */
+	comp_set_period_bytes(sourceb->source, dev->frames,
+			      &dev->params.frame_fmt, &cd->period_bytes);
+
+	/* rewrite frame_bytes for all downstream */
+	dev->frame_bytes = cd->period_bytes / dev->frames;
+
+	/* set downstream buffer size */
+	ret = buffer_set_size(sinkb, cd->period_bytes * config->periods_sink);
+	if (ret < 0) {
+		trace_eq_error("ef0");
+		return ret;
+	}
 
 	/* Initialize EQ */
 	if (cd->config) {

@@ -635,6 +635,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *sourceb, *sinkb;
 	int ret;
 
 	trace_eq("pre");
@@ -643,6 +644,26 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	if (ret < 0)
 		return ret;
 
+	/* EQ components will only ever have 1 source and 1 sink buffer */
+	sourceb = list_first_item(&dev->bsource_list,
+				  struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list,
+				struct comp_buffer, source_list);
+
+	/* set period bytes and frame format */
+	comp_set_period_bytes(sourceb->source, dev->frames,
+			      &dev->params.frame_fmt, &cd->period_bytes);
+
+	/* rewrite frame_bytes for all downstream */
+	dev->frame_bytes = cd->period_bytes / dev->frames;
+
+	/* set downstream buffer size */
+	ret = buffer_set_size(sinkb, cd->period_bytes * config->periods_sink);
+	if (ret < 0) {
+		trace_eq_error("ef0");
+		return ret;
+	}
+
 	/* Initialize EQ */
 	if (cd->config) {
 		ret = eq_iir_setup(cd, dev->params.channels);
@@ -650,7 +671,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 			comp_set_state(dev, COMP_TRIGGER_RESET);
 			return ret;
 		}
-		switch (config->frame_fmt) {
+		switch (dev->params.frame_fmt) {
 		case SOF_IPC_FRAME_S16_LE:
 			trace_eq("i16");
 			cd->eq_iir_func = eq_iir_s16_default;
@@ -668,7 +689,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 			return -EINVAL;
 		}
 	} else {
-		switch (config->frame_fmt) {
+		switch (dev->params.frame_fmt) {
 		case SOF_IPC_FRAME_S16_LE:
 			trace_eq("p16");
 			cd->eq_iir_func = eq_iir_s16_passthrough;
