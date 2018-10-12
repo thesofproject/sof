@@ -22,9 +22,9 @@
 #include "convert.h"
 
 #ifdef LOGGER_FORMAT
-#define APP_NAME "logger"
+#define APP_NAME "sof-logger"
 #else
-#define APP_NAME "rmbox"
+#define APP_NAME "sof-rmbox"
 #endif
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
