@@ -261,7 +261,7 @@
 
 /* bss data */
 #define SOF_BSS_DATA_START	(SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE)
-#define SOF_BSS_DATA_SIZE	0x8700
+#define SOF_BSS_DATA_SIZE	0x9000
 
 /* Stack configuration */
 #define SOF_STACK_SIZE		0x1000

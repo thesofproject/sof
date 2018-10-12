@@ -47,112 +47,7 @@
 #include <string.h>
 #include <config.h>
 
-static struct dai ssp[] = {
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 0,
-	.plat_data = {
-		.base		= SSP_BASE(0),
-		.irq		= IRQ_EXT_SSP0_LVL5(0),
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset		= SSP_BASE(0) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP0_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset		= SSP_BASE(0) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP0_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 1,
-	.plat_data = {
-		.base		= SSP_BASE(1),
-		.irq		= IRQ_EXT_SSP1_LVL5(0),
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset		= SSP_BASE(1) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP1_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset		= SSP_BASE(1) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP1_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 2,
-	.plat_data = {
-		.base		= SSP_BASE(2),
-		.irq		= IRQ_EXT_SSP2_LVL5(0),
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset		= SSP_BASE(2) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP2_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset		= SSP_BASE(2) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP2_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},
-#if defined(CONFIG_APOLLOLAKE)
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 3,
-	.plat_data = {
-		.base		= SSP_BASE(3),
-		.irq		= IRQ_EXT_SSP3_LVL5(0),
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset		= SSP_BASE(3) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP3_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset		= SSP_BASE(3) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP3_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 4,
-	.plat_data = {
-		.base		= SSP_BASE(4),
-		.irq		= IRQ_EXT_SSP4_LVL5(0),
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset 	= SSP_BASE(4) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP4_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset 	= SSP_BASE(4) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP4_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},
-{
-	.type = SOF_DAI_INTEL_SSP,
-	.index = 5,
-	.plat_data = {
-		.base		= SSP_BASE(5),
-		.irq		= IRQ_EXT_SSP5_LVL5(0),
-		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
-			.offset 	= SSP_BASE(5) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP5_TX,
-		},
-		.fifo[SOF_IPC_STREAM_CAPTURE] = {
-			.offset 	= SSP_BASE(5) + SSDR,
-			.handshake	= DMA_HANDSHAKE_SSP5_RX,
-		}
-	},
-	.ops		= &ssp_ops,
-},
-#endif
-};
+static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 
 #if defined CONFIG_DMIC
 
@@ -230,8 +125,20 @@ int dai_init(void)
 	int i;
 
 	/* init ssp */
-	/* TODO: move all the properties initialization here */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
+		ssp[i].type = SOF_DAI_INTEL_SSP;
+		ssp[i].index = i;
+		ssp[i].ops = &ssp_ops;
+		ssp[i].plat_data.base = SSP_BASE(i);
+		ssp[i].plat_data.irq = IRQ_EXT_SSPx_LVL5(i, 0);
+		ssp[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].offset =
+			SSP_BASE(i) + SSDR;
+		ssp[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].handshake =
+			DMA_HANDSHAKE_SSP0_TX + 2 * i;
+		ssp[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset =
+			SSP_BASE(i) + SSDR;
+		ssp[i].plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake =
+			DMA_HANDSHAKE_SSP0_RX + 2 * i;
 		/* initialize spin locks early to enable ref counting */
 		spinlock_init(&ssp[i].lock);
 	}
