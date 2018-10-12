@@ -41,6 +41,12 @@ if nargin < 2
 	endian = 'little';
 end
 
+%% Channels count and assign vector lengths must be the same
+if bs.platform_max_channels ~= length( bs.assign_response)
+	bs
+	error("Channels # and response assign length must match");
+end
+
 %% Shift values for little/big endian
 switch lower(endian)
         case 'little'
@@ -63,12 +69,14 @@ blob8(j:j+3) = w2b(bs.platform_max_channels, sh); j=j+4;
 blob8(j:j+3) = w2b(bs.number_of_responses_defined, sh); j=j+4;
 
 for i=1:bs.platform_max_channels
-        blob8(j:j+3) = w2b(bs.assign_response(i), sh); j=j+4;
+        blob8(j:j+3) = w2b(int32(bs.assign_response(i)), sh);
+	j=j+4;
 end
 
 %% Pack coefficients
 for i=1:length(bs.all_coefficients)
-        blob8(j:j+3) = w2b(bs.all_coefficients(i), sh); j=j+4;
+        blob8(j:j+3) = w2b(int32(bs.all_coefficients(i)), sh);
+	j=j+4;
 end
 fprintf('Blob size is %d bytes.\n', nbytes);
 
