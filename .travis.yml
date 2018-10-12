@@ -13,7 +13,8 @@ stages:
   - deploy
 
 before_install:
-  - docker pull xiulipan/sof
+  - docker pull xiulipan/sof && docker tag xiulipan/sof sof
+  - docker pull xiulipan/sofqemu && docker tag xiulipan/sofqemu sofqemu
 
 install:
   - docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/rimage-build.sh -l
@@ -22,25 +23,34 @@ jobs:
   include:
     - stage: compile
       name: "BYT Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -lr byt
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr byt
+    - stage: compile
+      name: "CHT Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cht
     - stage: compile
       name: "BDW Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -lr bdw
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr bdw
     - stage: compile
       name: "HSW Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -lr hsw
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr hsw
     - stage: compile
       name: "APL Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -lr apl
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr apl
     - stage: compile
       name: "CNL Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -lr cnl
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cnl
     - stage: compile
       name: "SUE Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -lr sue
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr sue
     - stage: compile
       name: "ICL Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -lr icl
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr icl
     - stage: compile
       name: "Host Build"
       script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/host-build-all.sh -l
+    - stage: test
+      name: "BYT Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr byt && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh byt
+    - stage: test
+      name: "CHT Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cht && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh cht
