@@ -50,7 +50,8 @@
 #include <arch/cache.h>
 #include <uapi/ipc.h>
 
-#define trace_host(__e)	trace_event(TRACE_CLASS_HOST, __e)
+#define trace_host(__e, ...)	\
+trace_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
 #define tracev_host(__e)	tracev_event(TRACE_CLASS_HOST, __e)
 #define trace_host_error(__e)	trace_error(TRACE_CLASS_HOST, __e)
 
@@ -396,16 +397,15 @@ out:
 
 static int hda_dma_release(struct dma *dma, int channel)
 {
-	/* TODO: to be removed, no longer called by anyone */
-	struct dma_pdata *p = dma_get_drvdata(dma);
+	/* Implementation left for future alignment
+	 *of dma pointers (if needed)
+	 */
 	uint32_t flags;
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_host("Dpr");
-
-	/* resume and reload DMA */
-	p->chan[channel].status = COMP_STATE_ACTIVE;
+	trace_host("hda-dma-release dma-ptr: %p channel-number: %u",
+			  (uint32_t)dma, channel);
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
