@@ -36,6 +36,7 @@
 #include <sof/alloc.h>
 #include <sof/lock.h>
 #include <sof/notifier.h>
+#include <sof/cpu.h>
 #include <platform/clk.h>
 #include <platform/clk-map.h>
 #include <platform/platcfg.h>
@@ -76,16 +77,20 @@ static inline uint32_t clock_get_freq(const struct freq_table *table,
 
 uint32_t clock_set_freq(int clock, uint32_t hz)
 {
-	struct clock_notify_data notify_data;
+	struct notify_data notify_data;
+	struct clock_notify_data clk_notify_data;
 	set_frequency set_freq = NULL;
 	const struct freq_table *freq_table = NULL;
 	uint32_t freq_table_size = 0;
-	uint32_t notifier_id = 0;
 	uint32_t idx;
 	uint32_t flags;
 
-	notify_data.old_freq = clk_pdata->clk[clock].freq;
-	notify_data.old_ticks_per_msec = clk_pdata->clk[clock].ticks_per_msec;
+	notify_data.data_size = sizeof(clk_notify_data);
+	notify_data.data = &clk_notify_data;
+
+	clk_notify_data.old_freq = clk_pdata->clk[clock].freq;
+	clk_notify_data.old_ticks_per_msec =
+		clk_pdata->clk[clock].ticks_per_msec;
 
 	/* atomic context for changing clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
@@ -95,13 +100,16 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		set_freq = &clock_platform_set_cpu_freq;
 		freq_table = cpu_freq;
 		freq_table_size = ARRAY_SIZE(cpu_freq);
-		notifier_id = NOTIFIER_ID_CPU_FREQ;
+		notify_data.id = NOTIFIER_ID_CPU_FREQ;
+		notify_data.target_core_mask =
+			NOTIFIER_TARGET_CORE_MASK(cpu_get_id());
 		break;
 	case CLK_SSP:
 		set_freq = &clock_platform_set_ssp_freq;
 		freq_table = ssp_freq;
 		freq_table_size = ARRAY_SIZE(ssp_freq);
-		notifier_id = NOTIFIER_ID_SSP_FREQ;
+		notify_data.id = NOTIFIER_ID_SSP_FREQ;
+		notify_data.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
 		break;
 	default:
 		break;
@@ -109,10 +117,11 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 
 	/* get nearest frequency that is >= requested Hz */
 	idx = clock_get_freq(freq_table, freq_table_size, hz);
-	notify_data.freq = freq_table[idx].freq;
+	clk_notify_data.freq = freq_table[idx].freq;
 
 	/* tell anyone interested we are about to change freq */
-	notifier_event(notifier_id, CLOCK_NOTIFY_PRE, &notify_data);
+	notify_data.message = CLOCK_NOTIFY_PRE;
+	notifier_event(&notify_data);
 
 	if (set_freq(freq_table[idx].enc) == 0) {
 		/* update clock frequency */
@@ -122,7 +131,8 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	}
 
 	/* tell anyone interested we have now changed freq */
-	notifier_event(notifier_id, CLOCK_NOTIFY_POST, &notify_data);
+	notify_data.message = CLOCK_NOTIFY_POST;
+	notifier_event(&notify_data);
 
 	spin_unlock_irq(&clk_pdata->clk[clock].lock, flags);
 

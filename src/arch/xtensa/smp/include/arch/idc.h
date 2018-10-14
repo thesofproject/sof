@@ -45,6 +45,7 @@
 #include <sof/idc.h>
 #include <sof/ipc.h>
 #include <sof/lock.h>
+#include <sof/notifier.h>
 
 extern struct ipc *_ipc;
 extern void cpu_power_down_core(void);
@@ -255,6 +256,9 @@ static inline void idc_cmd(struct idc_msg *msg)
 		break;
 	case iTS(IDC_MSG_COMP_CMD):
 		idc_component_command(msg->extension);
+		break;
+	case iTS(IDC_MSG_NOTIFY):
+		notifier_notify();
 		break;
 	default:
 		trace_idc_error("eTc");
