@@ -111,6 +111,15 @@ void _trace_event_atomic3(uint32_t log_entry, uint32_t param1, uint32_t param2,
 void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t param1,
 	uint32_t param2, uint32_t param3);
 
+void _trace_event4(uint32_t log_entry, uint32_t param1, uint32_t param2,
+	uint32_t param3, uint32_t param4);
+void _trace_event_mbox4(uint32_t log_entry, uint32_t param1, uint32_t param2,
+	uint32_t param3, uint32_t param4);
+void _trace_event_atomic4(uint32_t log_entry, uint32_t param1, uint32_t param2,
+	uint32_t param3, uint32_t param4);
+void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t param1,
+	uint32_t param2, uint32_t param3, uint32_t param4);
+
 void trace_flush(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
@@ -124,8 +133,9 @@ void trace_init(struct sof *sof);
  * It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
  * above, it might also propagate log messages to mbox if desired.
  *
- * First argument is always class of event being logged, as defined above.
- * Second argument is string literal in printf format, followed by up to 3
+ * First argument is always class of event being logged, as defined in
+ * uapi/logging.h.
+ * Second argument is string literal in printf format, followed by up to 4
  * parameters (uint32_t), that are used to expand into string fromat when
  * parsing log data.
  *
@@ -217,22 +227,28 @@ typedef void(*log_func)();
 		format					\
 	}
 
-#define BASE_LOG(function_name, entry, ...)			\
-{								\
-	log_func log_function = NULL;				\
-	if (PP_NARG(__VA_ARGS__) == 0) {			\
-		log_function = (log_func)&function_name##0;	\
-		log_function(entry, ##__VA_ARGS__);		\
-	} else if (PP_NARG(__VA_ARGS__) == 1) {			\
-		log_function = (log_func)&function_name##1;	\
-		log_function(entry, ##__VA_ARGS__);		\
-	} else if (PP_NARG(__VA_ARGS__) == 2) {			\
-		log_function = (log_func)&function_name##2;	\
-		log_function(entry, ##__VA_ARGS__);		\
-	} else if (PP_NARG(__VA_ARGS__) == 3) {			\
-		log_function = (log_func)&function_name##3;	\
-		log_function(entry, ##__VA_ARGS__);		\
-	}							\
+#define BASE_LOG(function_name, entry, ...)				\
+{									\
+	log_func log_function = NULL;					\
+	if (PP_NARG(__VA_ARGS__) == 0) {				\
+		log_function = (log_func)&function_name##0;		\
+		log_function(entry, ##__VA_ARGS__);			\
+	} else if (PP_NARG(__VA_ARGS__) == 1) {				\
+		log_function = (log_func)&function_name##1;		\
+		log_function(entry, ##__VA_ARGS__);			\
+	} else if (PP_NARG(__VA_ARGS__) == 2) {				\
+		log_function = (log_func)&function_name##2;		\
+		log_function(entry, ##__VA_ARGS__);			\
+	} else if (PP_NARG(__VA_ARGS__) == 3) {				\
+		log_function = (log_func)&function_name##3;		\
+		log_function(entry, ##__VA_ARGS__);			\
+	} else if (PP_NARG(__VA_ARGS__) == 4) {				\
+		log_function = (log_func)&function_name##4;		\
+		log_function(entry, ##__VA_ARGS__);			\
+	} else {							\
+		STATIC_ASSERT(PP_NARG(__VA_ARGS__) <= 4,		\
+			unsupported_amount_of_params_in_trace_event);	\
+	}								\
 }
 
 #define __log_message(func_name, lvl, comp_id, format, ...)		\
