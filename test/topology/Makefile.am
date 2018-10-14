@@ -8,10 +8,10 @@ export USE_XARGS=yes
 endif
 
 DEPS = \
-	../platform/intel/*.m4 \
-	../common/*.m4 \
-	../m4/*.m4 \
-	../sof/*.m4
+	../../topology/platform/intel/*.m4 \
+	../../topology/common/*.m4 \
+	../../topology/m4/*.m4 \
+	../../topology/sof/*.m4
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf

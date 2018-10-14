@@ -1,5 +1,5 @@
 SUBDIRS = rmbox topology eqctl
-TESTDIR = topology/test
+TESTDIR = test/topology
 
 tests:
 	$(MAKE) -C $(TESTDIR)
