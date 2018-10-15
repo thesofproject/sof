@@ -90,4 +90,11 @@ struct fw_image_manifest_v1_8 {
 
 extern struct fw_image_manifest_v1_8 apl_manifest;
 extern struct fw_image_manifest_v1_8 cnl_manifest;
+
+struct fw_image_manifest_v1_5 {
+	struct css_header_v1_5 header;
+	struct sof_man_fw_desc adsp_fw_bin_desc;
+} __attribute__((packed));
+
+extern struct fw_image_manifest_v1_5 skl_manifest;
 #endif
