@@ -180,10 +180,10 @@ void trace_init(struct sof *sof);
 
 /* error tracing */
 #if TRACEE
-#define trace_error(__c, __e, ...) \
-	_log_message(,, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
+#define trace_error(__c, __e, ...) _log_message(_mbox, _atomic, \
+	LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
 #define trace_error_atomic(__c, __e, ...) \
-	_log_message(, _atomic, LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
+	trace_error(__c, __e, ##__VA_ARGS__)
 /* write back error value to mbox */
 #define trace_error_value(x) \
 	trace_error(0, "value %u", x)

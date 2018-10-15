@@ -92,6 +92,17 @@ void _trace_event1(uint32_t log_entry, uint32_t param)
 	(void)param;
 }
 
+void _trace_event_mbox_atomic0(uint32_t log_entry)
+{
+	(void)log_entry;
+}
+
+void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
+{
+	(void)log_entry;
+	(void)param;
+}
+
 int arch_cpu_is_core_enabled(int id)
 {
 	return 1;
