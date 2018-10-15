@@ -196,6 +196,12 @@ int main(int argc, char *argv[])
 	 */
 	buffer_size = ctrl_size + 2 * sizeof(unsigned int);
 	user_data = calloc(1, buffer_size);
+	if (!user_data) {
+		fprintf(stderr,
+			"Error: Failed to allocate buffer for user data.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	user_data[0] = SOF_CTRL_CMD_BINARY;
 	if (set) {
 		fprintf(stdout, "Applying configuration \"%s\" ", setup);
@@ -242,4 +248,5 @@ int main(int argc, char *argv[])
 		}
 	}
 	free(user_data);
+	return 0;
 }
