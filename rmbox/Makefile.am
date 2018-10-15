@@ -1,12 +1,12 @@
-bin_PROGRAMS = rmbox logger
+bin_PROGRAMS = sof-rmbox sof-logger
 
-rmbox_SOURCES = \
+sof_rmbox_SOURCES = \
 	rmbox.c \
 	rmbox_convert.c
 
-logger_SOURCES = \
+sof_logger_SOURCES = \
 	rmbox.c \
 	logger_convert.c
 
-logger_CFLAGS = \
+sof_logger_CFLAGS = \
 	-DLOGGER_FORMAT
