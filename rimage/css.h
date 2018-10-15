@@ -28,7 +28,7 @@ struct image;
 #define MAN_CSS_MOD_SIZE		(MAN_RSA_KEY_MODULUS_LEN >> 2)
 #define MAN_CSS_EXP_SIZE		(MAN_RSA_KEY_EXPONENT_LEN >> 2)
 #define MAN_CSS_MAN_SIZE		\
-	(sizeof(struct fw_image_manifest) >> 2)
+	(sizeof(struct fw_image_manifest_v1_8) >> 2)
 
 /*
  * RSA Key and Crypto
@@ -44,7 +44,7 @@ struct fw_version {
 	uint16_t build_version;
 } __attribute__((packed));
 
-struct css_header {
+struct css_header_v1_8 {
 	uint32_t header_type;
 	uint32_t header_len;
 	uint32_t header_version;

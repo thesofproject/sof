@@ -19,7 +19,7 @@
 #include <version.h>
 
 /* manifest template */
-struct fw_image_manifest apl_manifest = {
+struct fw_image_manifest_v1_8 apl_manifest = {
 
 	.cse_partition_dir_header = {
 		.header_marker = CSE_HEADER_MAKER,
@@ -36,7 +36,7 @@ struct fw_image_manifest apl_manifest = {
 			/* CssHeader + platformFirmwareAuthenticationExtension - padding */
 			.entry_name = "ADSP.man",
 			.offset = MAN_CSS_HDR_OFFSET,
-			.length = sizeof(struct css_header) +
+			.length = sizeof(struct css_header_v1_8) +
 				PLAT_AUTH_SIZE,
 		},
 		{	/* ADSPMetadataFileExtension */

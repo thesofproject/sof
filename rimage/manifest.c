@@ -90,7 +90,7 @@ static int man_init_image(struct image *image)
 		return -ENOMEM;
 
 	memcpy(image->fw_image, image->adsp->man,
-		sizeof(struct fw_image_manifest));
+		sizeof(struct fw_image_manifest_v1_8));
 
 	return 0;
 }
@@ -656,7 +656,7 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 static int man_write_fw(struct image *image)
 {
 	struct sof_man_fw_desc *desc;
-	struct fw_image_manifest *m;
+	struct fw_image_manifest_v1_8 *m;
 	uint8_t hash[SOF_MAN_MOD_SHA256_LEN];
 	int ret, i;
 
