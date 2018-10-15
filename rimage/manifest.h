@@ -46,7 +46,7 @@
 
 #define MAN_SIG_PKG_OFFSET \
 	(MAN_CSS_HDR_OFFSET + \
-	sizeof(struct css_header))
+	sizeof(struct css_header_v1_8))
 
 #define MAN_PART_INFO_OFFSET \
 	(MAN_SIG_PKG_OFFSET + \
@@ -69,11 +69,11 @@
 /*
  * Firmware manifest header.
  */
-struct fw_image_manifest {
+struct fw_image_manifest_v1_8 {
 	/* MEU tool needs these sections to be 0s */
 	struct CsePartitionDirHeader cse_partition_dir_header;
 	struct CsePartitionDirEntry cse_partition_dir_entry[MAN_CSE_PARTS];
-	struct css_header css;
+	struct css_header_v1_8 css;
 	struct signed_pkg_info_ext signed_pkg;
 	struct partition_info_ext partition_info;
 	uint8_t cse_padding[MAN_CSE_PADDING_SIZE];
@@ -88,6 +88,6 @@ struct fw_image_manifest {
 	struct sof_man_fw_desc desc;	/* at offset MAN_DESC_OFFSET */
 } __attribute__((packed));
 
-extern struct fw_image_manifest apl_manifest;
-extern struct fw_image_manifest cnl_manifest;
+extern struct fw_image_manifest_v1_8 apl_manifest;
+extern struct fw_image_manifest_v1_8 cnl_manifest;
 #endif

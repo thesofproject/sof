@@ -22,7 +22,7 @@
 
 void ri_css_hdr_create(struct image *image)
 {
-	struct css_header *css = image->fw_image + MAN_CSS_HDR_OFFSET;
+	struct css_header_v1_8 *css = image->fw_image + MAN_CSS_HDR_OFFSET;
 	struct tm *date;
 	struct timeval tv;
 	int val;

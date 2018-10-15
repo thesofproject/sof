@@ -68,8 +68,8 @@ static void bytes_swap(uint8_t *ptr, uint32_t size)
  * manifest header (Public Key, Exponent and Signature).
 */
 
-int pkcs_sign(struct image *image, struct fw_image_manifest *man,
-	void *ptr1, unsigned int size1, void *ptr2, unsigned int size2)
+int pkcs_sign(struct image *image, struct fw_image_manifest_v1_8 *man,
+	      void *ptr1, unsigned int size1, void *ptr2, unsigned int size2)
 {
 	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
@@ -151,10 +151,10 @@ int pkcs_sign(struct image *image, struct fw_image_manifest *man,
 
 int ri_manifest_sign(struct image *image)
 {
-	struct fw_image_manifest *man = image->fw_image;
+	struct fw_image_manifest_v1_8 *man = image->fw_image;
 
 	pkcs_sign(image, man, (void *)man + MAN_CSS_HDR_OFFSET,
-		sizeof(struct css_header) -
+		sizeof(struct css_header_v1_8) -
 		(MAN_RSA_KEY_MODULUS_LEN + MAN_RSA_KEY_EXPONENT_LEN +
 		MAN_RSA_SIGNATURE_LEN),
 		(void *)man + MAN_SIG_PKG_OFFSET,
