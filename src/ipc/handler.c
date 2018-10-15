@@ -170,10 +170,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_comp_host *host = NULL;
-	struct list_item elem_list;
-	struct dma_sg_elem *elem;
-	struct list_item *clist;
-	struct list_item *tlist;
+	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_pcm_params *pcm_params = _ipc->comp_data;
@@ -210,7 +207,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd->params = pcm_params->params;
 
 #ifdef CONFIG_HOST_PTABLE
-	list_init(&elem_list);
+	dma_sg_init(&elem_array);
 
 	/*
 	 * walk in both directions to check if the pipeline is hostless
@@ -233,23 +230,16 @@ static int ipc_stream_pcm_params(uint32_t stream)
 
 	err = ipc_parse_page_descriptors(iipc->page_table,
 					 &pcm_params->params.buffer,
-					 &elem_list, host->direction);
+					 &elem_array, host->direction);
 	if (err < 0) {
 		trace_ipc_error("eAP");
 		goto error;
 	}
 
-	list_for_item_safe(clist, tlist, &elem_list) {
-		elem = container_of(clist, struct dma_sg_elem, list);
-
-		err = comp_host_buffer(cd, elem, ring_size);
-		if (err < 0) {
-			trace_ipc_error("ePb");
-			goto error;
-		}
-
-		list_item_del(&elem->list);
-		rfree(elem);
+	err = comp_host_buffer(cd, &elem_array, ring_size);
+	if (err < 0) {
+		trace_ipc_error("ePb");
+		goto error;
 	}
 
 pipe_params:
@@ -285,11 +275,7 @@ pipe_params:
 
 error:
 #ifdef CONFIG_HOST_PTABLE
-	list_for_item_safe(clist, tlist, &elem_list) {
-		elem = container_of(clist, struct dma_sg_elem, list);
-		list_item_del(&elem->list);
-		rfree(elem);
-	}
+	dma_sg_free(&elem_array);
 #endif
 
 	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
@@ -486,7 +472,7 @@ static int ipc_dai_config(uint32_t header)
 	trace_ipc("DsF");
 
 	/* get DAI */
-	dai = dai_get(config->type, config->dai_index);
+	dai = dai_get(config->type, config->dai_index, 0 /* existing only */);
 	if (dai == NULL) {
 		trace_ipc_error("eDi");
 		trace_error_value(config->type);
@@ -496,6 +482,7 @@ static int ipc_dai_config(uint32_t header)
 
 	/* configure DAI */
 	ret = dai_set_config(dai, config);
+	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
 		trace_ipc_error("eDC");
 		return ret;
@@ -636,14 +623,10 @@ static int ipc_dma_trace_config(uint32_t header)
 {
 #ifdef CONFIG_HOST_PTABLE
 	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
-	struct list_item elem_list;
-	struct dma_sg_elem *elem;
-	struct list_item *clist;
-	struct list_item *tlist;
+	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 #endif
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
-	struct sof_ipc_reply reply;
 	int err;
 
 	trace_ipc("DA1");
@@ -656,7 +639,7 @@ static int ipc_dma_trace_config(uint32_t header)
 
 #ifdef CONFIG_HOST_PTABLE
 
-	list_init(&elem_list);
+	dma_sg_init(&elem_array);
 
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
@@ -672,24 +655,18 @@ static int ipc_dma_trace_config(uint32_t header)
 	ring_size = params->buffer.size;
 
 	err = ipc_parse_page_descriptors(iipc->page_table, &params->buffer,
-					 &elem_list, SOF_IPC_STREAM_CAPTURE);
+					 &elem_array, SOF_IPC_STREAM_CAPTURE);
 	if (err < 0) {
 		trace_ipc_error("ePP");
 		goto error;
 	}
 
-	list_for_item_safe(clist, tlist, &elem_list) {
-		elem = container_of(clist, struct dma_sg_elem, list);
-
-		err = dma_trace_host_buffer(_ipc->dmat, elem, ring_size);
-		if (err < 0) {
-			trace_ipc_error("ePb");
-			goto error;
-		}
-
-		list_item_del(&elem->list);
-		rfree(elem);
+	err = dma_trace_host_buffer(_ipc->dmat, &elem_array, ring_size);
+	if (err < 0) {
+		trace_ipc_error("ePb");
+		goto error;
 	}
+
 #else
 	/* stream tag of capture stream for DMA trace */
 	_ipc->dmat->stream_tag = params->stream_tag;
@@ -703,20 +680,11 @@ static int ipc_dma_trace_config(uint32_t header)
 	if (err < 0)
 		goto error;
 
-	/* write component values to the outbox */
-	reply.hdr.size = sizeof(reply);
-	reply.hdr.cmd = header;
-	reply.error = 0;
-	mailbox_hostbox_write(0, &reply, sizeof(reply));
 	return 0;
 
 error:
 #ifdef CONFIG_HOST_PTABLE
-	list_for_item_safe(clist, tlist, &elem_list) {
-		elem = container_of(clist, struct dma_sg_elem, list);
-		list_item_del(&elem->list);
-		rfree(elem);
-	}
+	dma_sg_free(&elem_array);
 #endif
 
 	if (err < 0)
@@ -935,6 +903,7 @@ static int ipc_glb_tplg_free(uint32_t header,
 		int (*free_func)(struct ipc *ipc, uint32_t id))
 {
 	struct sof_ipc_free *ipc_free = _ipc->comp_data;
+	int ret;
 
 	trace_ipc("Tcf");
 
@@ -945,9 +914,14 @@ static int ipc_glb_tplg_free(uint32_t header,
 	}
 
 	/* free the object */
-	free_func(_ipc, ipc_free->id);
+	ret = free_func(_ipc, ipc_free->id);
 
-	return 0;
+	if (ret < 0) {
+		trace_error(TRACE_CLASS_IPC,
+			    "ipc-glb-tplg-free free_func failed %d", ret);
+	}
+
+	return ret;
 }
 
 static int ipc_glb_tplg_message(uint32_t header)
@@ -1134,7 +1108,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 		msg = msg_get_empty(ipc);
 
 	if (msg == NULL) {
-		trace_ipc_error("eQb");
+		trace_error(TRACE_CLASS_IPC, "eQb header 0x08x replace %d",
+			    header, replace);
 		ret = -EBUSY;
 		goto out;
 	}

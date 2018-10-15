@@ -37,7 +37,7 @@
 #include <sof/stream.h>
 #include <sof/alloc.h>
 #include <sof/debug.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include <sof/schedule.h>
 #include <sof/work.h>
 #include <platform/timer.h>

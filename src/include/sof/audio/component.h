@@ -173,8 +173,9 @@ struct comp_ops {
 	int (*copy)(struct comp_dev *dev);
 
 	/* host buffer config */
-	int (*host_buffer)(struct comp_dev *dev, struct dma_sg_elem *elem,
-			uint32_t host_size);
+	int (*host_buffer)(struct comp_dev *dev,
+			   struct dma_sg_elem_array *elem_array,
+			   uint32_t host_size);
 
 	/* position */
 	int (*position)(struct comp_dev *dev,
@@ -267,10 +268,10 @@ static inline int comp_params(struct comp_dev *dev)
  * mandatory for host components, optional for the others.
  */
 static inline int comp_host_buffer(struct comp_dev *dev,
-	struct dma_sg_elem *elem, uint32_t host_size)
+		struct dma_sg_elem_array *elem_array, uint32_t host_size)
 {
 	if (dev->drv->ops.host_buffer)
-		return dev->drv->ops.host_buffer(dev, elem, host_size);
+		return dev->drv->ops.host_buffer(dev, elem_array, host_size);
 	return 0;
 }
 

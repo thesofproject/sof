@@ -63,26 +63,156 @@ struct comp_data {
 	uint32_t period_bytes;
 	int32_t *fir_delay;
 	size_t fir_delay_size;
+	void (*eq_fir_func_even)(struct fir_state_32x16 fir[],
+				 struct comp_buffer *source,
+				 struct comp_buffer *sink,
+				 int frames, int nch);
 	void (*eq_fir_func)(struct fir_state_32x16 fir[],
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
 			    int frames, int nch);
-	void (*eq_fir_func_odd)(struct fir_state_32x16 fir[],
-				struct comp_buffer *source,
-				struct comp_buffer *sink,
-				int frames, int nch);
 };
 
-static void eq_fir_passthrough(struct fir_state_32x16 fir[],
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink,
-			       int frames, int nch)
+/* The optimized FIR functions variants need to be updated into function
+ * set_fir_func. The cd->eq_fir_func is a function that can process any
+ * number of samples. The cd->eq_fir_func_even is for optimized version
+ * that is guaranteed to be called with even samples number.
+ */
+
+#if FIR_HIFI3
+static inline void set_s16_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s16_hifi3;
+	cd->eq_fir_func = eq_fir_s16_hifi3;
+}
+
+static inline void set_s24_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s24_hifi3;
+	cd->eq_fir_func = eq_fir_s24_hifi3;
+}
+
+static inline void set_s32_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s32_hifi3;
+	cd->eq_fir_func = eq_fir_s32_hifi3;
+}
+#elif FIR_HIFIEP
+static inline void set_s16_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s16_hifiep;
+	cd->eq_fir_func = eq_fir_s16_hifiep;
+}
+
+static inline void set_s24_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s24_hifiep;
+	cd->eq_fir_func = eq_fir_s24_hifiep;
+}
+
+static inline void set_s32_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s32_hifiep;
+	cd->eq_fir_func = eq_fir_s32_hifiep;
+}
+#else
+/* FIR_GENERIC */
+static inline void set_s16_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_s16;
+	cd->eq_fir_func = eq_fir_s16;
+}
+
+static inline void set_s24_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_s24;
+	cd->eq_fir_func = eq_fir_s24;
+}
+
+static inline void set_s32_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_s32;
+	cd->eq_fir_func = eq_fir_s32;
+}
+#endif
+
+static inline int set_fir_func(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+
+	switch (config->frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		trace_eq("f16");
+		set_s16_fir(cd);
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+		trace_eq("f24");
+		set_s24_fir(cd);
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		trace_eq("f32");
+		set_s32_fir(cd);
+		break;
+	default:
+		trace_eq_error("eef");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/* Pass-trough functions to replace FIR core while not configured for
+ * response.
+ */
+
+static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
+				   struct comp_buffer *source,
+				   struct comp_buffer *sink,
+				   int frames, int nch)
+{
+	int16_t *src = (int16_t *)source->r_ptr;
+	int16_t *dest = (int16_t *)sink->w_ptr;
+	int n = frames * nch;
+
+	memcpy(dest, src, n * sizeof(int16_t));
+}
+
+static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
+				   struct comp_buffer *source,
+				   struct comp_buffer *sink,
+				   int frames, int nch)
 {
 	int32_t *src = (int32_t *)source->r_ptr;
 	int32_t *dest = (int32_t *)sink->w_ptr;
 	int n = frames * nch;
 
 	memcpy(dest, src, n * sizeof(int32_t));
+}
+
+/* Function to select pass-trough depending on PCM format */
+
+static inline int set_pass_func(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+
+	switch (config->frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		trace_eq("p16");
+		cd->eq_fir_func_even = eq_fir_s16_passthrough;
+		cd->eq_fir_func = eq_fir_s16_passthrough;
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+		trace_eq("p32");
+		cd->eq_fir_func_even = eq_fir_s32_passthrough;
+		cd->eq_fir_func = eq_fir_s32_passthrough;
+		break;
+	default:
+		trace_eq_error("epf");
+		return -EINVAL;
+	}
+	return 0;
 }
 
 /*
@@ -247,10 +377,19 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 	struct sof_ipc_comp_eq_fir *ipc_fir
 		= (struct sof_ipc_comp_eq_fir *)comp;
-	size_t bs;
+	size_t bs = ipc_fir->size;
 	int i;
 
 	trace_eq("new");
+
+	/* Check first before proceeding with dev and cd that coefficients
+	 * blob size is sane.
+	 */
+	if (bs > SOF_EQ_FIR_MAX_SIZE) {
+		trace_eq_error("ens");
+		trace_error_value(bs);
+		return NULL;
+	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_eq_fir));
@@ -267,19 +406,14 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	bs = ipc_fir->size;
-	if (bs > SOF_EQ_FIR_MAX_SIZE) {
-		rfree(dev);
-		rfree(cd);
-		return NULL;
-	}
-
-	cd->eq_fir_func = eq_fir_passthrough;
-	cd->eq_fir_func_odd = eq_fir_passthrough;
+	cd->eq_fir_func_even = eq_fir_s32_passthrough;
+	cd->eq_fir_func = eq_fir_s32_passthrough;
 	cd->config = NULL;
 
-	/* Allocate and make a copy of the blob and setup FIR */
-	if (bs > 0) {
+	/* Allocate and make a copy of the coefficients blob and reset FIR. If
+	 * the EQ is configured later in run-time the size is zero.
+	 */
+	if (bs) {
 		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config) {
 			rfree(dev);
@@ -335,10 +469,6 @@ static int eq_fir_params(struct comp_dev *dev)
 		trace_eq_error("eSz");
 		return err;
 	}
-
-	/* EQ supports only S32_LE PCM format */
-	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE)
-		return -EINVAL;
 
 	return 0;
 }
@@ -527,9 +657,9 @@ static int eq_fir_copy(struct comp_dev *dev)
 	}
 
 	if (dev->frames & 1)
-		sd->eq_fir_func_odd(fir, source, sink, dev->frames, nch);
-	else
 		sd->eq_fir_func(fir, source, sink, dev->frames, nch);
+	else
+		sd->eq_fir_func_even(fir, source, sink, dev->frames, nch);
 
 	/* calc new free and available */
 	comp_update_buffer_consume(source, sd->period_bytes);
@@ -550,31 +680,19 @@ static int eq_fir_prepare(struct comp_dev *dev)
 		return ret;
 
 	/* Initialize EQ */
-	cd->eq_fir_func = eq_fir_passthrough;
 	if (cd->config) {
 		ret = eq_fir_setup(cd, dev->params.channels);
 		if (ret < 0) {
 			comp_set_state(dev, COMP_TRIGGER_RESET);
 			return ret;
 		}
-#if FIR_GENERIC
-		cd->eq_fir_func = eq_fir_s32;
-		cd->eq_fir_func_odd = eq_fir_s32;
-#endif
-#if FIR_HIFIEP
-		cd->eq_fir_func = eq_fir_2x_s32_hifiep;
-		cd->eq_fir_func_odd = eq_fir_s32_hifiep;
-#endif
-#if FIR_HIFI3
-		cd->eq_fir_func = eq_fir_2x_s32_hifi3;
-		cd->eq_fir_func_odd = eq_fir_s32_hifi3;
-#endif
-	}
-	trace_eq("len");
-	trace_value(cd->fir[0].length);
-	trace_value(cd->fir[1].length);
 
-	return 0;
+		ret = set_fir_func(dev);
+		return ret;
+	}
+
+	ret = set_pass_func(dev);
+	return ret;
 }
 
 static int eq_fir_reset(struct comp_dev *dev)
@@ -586,8 +704,8 @@ static int eq_fir_reset(struct comp_dev *dev)
 
 	eq_fir_free_delaylines(cd);
 
-	cd->eq_fir_func = eq_fir_passthrough;
-	cd->eq_fir_func_odd = eq_fir_passthrough;
+	cd->eq_fir_func_even = eq_fir_s32_passthrough;
+	cd->eq_fir_func = eq_fir_s32_passthrough;
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
 		fir_reset(&cd->fir[i]);
 

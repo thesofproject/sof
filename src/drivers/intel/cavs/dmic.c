@@ -31,6 +31,7 @@
 #include <sof/stream.h>
 #include <sof/dmic.h>
 #include <sof/interrupt.h>
+#include <sof/pm_runtime.h>
 #include <sof/math/numbers.h>
 #include <sof/audio/format.h>
 
@@ -207,7 +208,7 @@ static uint64_t dmic_work(void *data, uint64_t delay)
 	int i;
 
 	tracev_dmic("wrk");
-	spin_lock(&dmic->lock);
+	spin_lock(&dai->lock);
 
 	/* Increment gain with logaritmic step.
 	 * Gain is Q2.30 and gain modifier is Q2.14.
@@ -257,7 +258,7 @@ static uint64_t dmic_work(void *data, uint64_t delay)
 			dmic_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
 		}
 	}
-	spin_unlock(&dmic->lock);
+	spin_unlock(&dai->lock);
 
 	if (gval)
 		return DMIC_UNMUTE_RAMP_US;
@@ -1236,7 +1237,7 @@ static void dmic_start(struct dai *dai)
 	int fir_b;
 
 	/* enable port */
-	spin_lock(&dmic->lock);
+	spin_lock(&dai->lock);
 	trace_dmic("sta");
 	dmic->state = COMP_STATE_ACTIVE;
 	dmic->startcount = 0;
@@ -1305,7 +1306,7 @@ static void dmic_start(struct dai *dai)
 			CIC_CONTROL_SOFT_RESET_BIT, 0);
 	}
 
-	spin_unlock(&dmic->lock);
+	spin_unlock(&dai->lock);
 
 	/* Currently there's no DMIC HW internal mutings and wait times
 	 * applied into this start sequence. It can be implemented here if
@@ -1324,7 +1325,7 @@ static void dmic_stop(struct dai *dai)
 	int i;
 
 	trace_dmic("sto")
-	spin_lock(&dmic->lock);
+	spin_lock(&dai->lock);
 	dmic->state = COMP_STATE_PREPARE;
 
 	/* Stop FIFO packers and set FIFO initialize bits */
@@ -1352,7 +1353,7 @@ static void dmic_stop(struct dai *dai)
 				 FIR_CONTROL_B_MUTE_BIT);
 	}
 
-	spin_unlock(&dmic->lock);
+	spin_unlock(&dai->lock);
 }
 
 /* save DMIC context prior to entering D3 */
@@ -1446,6 +1447,12 @@ static int dmic_probe(struct dai *dai)
 
 	trace_dmic("pro");
 
+	if (dai_get_drvdata(dai))
+		return -EEXIST; /* already created */
+
+	/* Disable dynamic clock gating for dmic before touching any reg */
+	pm_runtime_get_sync(DMIC_CLK, dai->index);
+
 	/* allocate private data */
 	dmic = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 		       sizeof(*dmic));
@@ -1454,8 +1461,6 @@ static int dmic_probe(struct dai *dai)
 		return -ENOMEM;
 	}
 	dai_set_drvdata(dai, dmic);
-
-	spinlock_init(&dmic->lock);
 
 	/* Set state, note there is no playback direction support */
 	dmic->state = COMP_STATE_READY;
@@ -1470,6 +1475,20 @@ static int dmic_probe(struct dai *dai)
 	return 0;
 }
 
+static int dmic_remove(struct dai *dai)
+{
+	interrupt_disable(dmic_irq(dai));
+	platform_interrupt_mask(dmic_irq(dai), 0);
+	interrupt_unregister(dmic_irq(dai));
+
+	pm_runtime_put_sync(DMIC_CLK, dai->index);
+
+	rfree(dma_get_drvdata(dai));
+	dai_set_drvdata(dai, NULL);
+
+	return 0;
+}
+
 /* DMIC has no loopback support */
 static inline int dmic_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
@@ -1477,12 +1496,13 @@ static inline int dmic_set_loopback_mode(struct dai *dai, uint32_t lbm)
 }
 
 const struct dai_ops dmic_ops = {
-	.trigger = dmic_trigger,
-	.set_config = dmic_set_config,
-	.pm_context_store = dmic_context_store,
-	.pm_context_restore = dmic_context_restore,
-	.probe = dmic_probe,
-	.set_loopback_mode = dmic_set_loopback_mode,
+	.trigger		= dmic_trigger,
+	.set_config		= dmic_set_config,
+	.pm_context_store	= dmic_context_store,
+	.pm_context_restore	= dmic_context_restore,
+	.probe			= dmic_probe,
+	.remove			= dmic_remove,
+	.set_loopback_mode	= dmic_set_loopback_mode,
 };
 
 #endif

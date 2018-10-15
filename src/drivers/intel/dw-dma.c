@@ -57,6 +57,7 @@
 #include <sof/lock.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
+#include <sof/pm_runtime.h>
 #include <sof/audio/component.h>
 #include <sof/cpu.h>
 #include <platform/dma.h>
@@ -602,12 +603,10 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct list_item *plist;
 	struct dma_sg_elem *sg_elem;
 	struct dw_lli2 *lli_desc;
 	struct dw_lli2 *lli_desc_head;
 	struct dw_lli2 *lli_desc_tail;
-	uint32_t desc_count = 0;
 	uint32_t flags;
 	uint32_t msize = 3;/* default msize */
 	int i, ret = 0;
@@ -622,20 +621,16 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	p->chan[channel].cfg_lo = DW_CFG_LOW_DEF;
 	p->chan[channel].cfg_hi = DW_CFG_HIGH_DEF;
 
-	/* get number of SG elems */
-	list_for_item(plist, &config->elem_list)
-		desc_count++;
-
-	if (desc_count == 0) {
+	if (!config->elem_array.count) {
 		trace_dma_error("eD0");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* do we need to realloc descriptors */
-	if (desc_count != p->chan[channel].desc_count) {
+	if (config->elem_array.count != p->chan[channel].desc_count) {
 
-		p->chan[channel].desc_count = desc_count;
+		p->chan[channel].desc_count = config->elem_array.count;
 
 		/* allocate descriptors for channel */
 		if (p->chan[channel].lli)
@@ -677,9 +672,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	}
 
 	/* fill in lli for the elem in the list */
-	list_for_item(plist, &config->elem_list) {
+	for (i = 0; i < config->elem_array.count; i++) {
 
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
+		sg_elem = config->elem_array.elems + i;
 
 		/* write CTL_LOn for each lli */
 		switch (config->src_width) {
@@ -1276,6 +1271,12 @@ static int dw_dma_probe(struct dma *dma)
 	struct dma_pdata *dw_pdata;
 	int i;
 
+	if (dma_get_drvdata(dma))
+		return -EEXIST; /* already created */
+
+	/* disable dynamic clock gating */
+	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
+
 	/* allocate private data */
 	dw_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			   sizeof(*dw_pdata));
@@ -1298,6 +1299,14 @@ static int dw_dma_probe(struct dma *dma)
 	return 0;
 }
 
+static int dw_dma_remove(struct dma *dma)
+{
+	pm_runtime_put_sync(DW_DMAC_CLK, dma->plat_data.id);
+	rfree(dma_get_drvdata(dma));
+	dma_set_drvdata(dma, NULL);
+	return 0;
+}
+
 const struct dma_ops dw_dma_ops = {
 	.channel_get	= dw_dma_channel_get,
 	.channel_put	= dw_dma_channel_put,
@@ -1311,4 +1320,5 @@ const struct dma_ops dw_dma_ops = {
 	.pm_context_restore		= dw_dma_pm_context_restore,
 	.pm_context_store		= dw_dma_pm_context_store,
 	.probe		= dw_dma_probe,
+	.remove		= dw_dma_remove,
 };

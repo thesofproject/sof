@@ -32,7 +32,7 @@
 #include <sof/work.h>
 #include <sof/timer.h>
 #include <sof/list.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include <sof/alloc.h>
 #include <sof/sof.h>
 #include <sof/lock.h>
@@ -501,13 +501,11 @@ struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 	/* TODO: configurable through IPC */
 	queue->timeout = PLATFORM_WORKQ_DEFAULT_TIMEOUT;
 
-	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID) {
-		/* notification of clk changes */
-		queue->notifier.cb = work_notify;
-		queue->notifier.cb_data = queue;
-		queue->notifier.id = ts->notifier;
-		notifier_register(&queue->notifier);
-	}
+	/* notification of clk changes */
+	queue->notifier.cb = work_notify;
+	queue->notifier.cb_data = queue;
+	queue->notifier.id = ts->notifier;
+	notifier_register(&queue->notifier);
 
 	/* register system timer */
 	timer_register(&queue->ts->timer, queue_run, queue);
@@ -539,8 +537,7 @@ void free_system_workq(void)
 
 	timer_unregister(&(*queue)->ts->timer);
 
-	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID)
-		notifier_unregister(&(*queue)->notifier);
+	notifier_unregister(&(*queue)->notifier);
 
 	list_item_del(&(*queue)->work);
 

@@ -1,5 +1,6 @@
 noinst_HEADERS = \
 	clk.h \
+	clk-map.h \
 	dma.h \
 	idc.h \
 	interrupt.h \

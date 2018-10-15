@@ -44,7 +44,7 @@
  *  xtensa core, and ssp clock which is provided by external HW IP.
  *  The choice depends on HW features on different platform
  */
-#define PLATFORM_DEFAULT_CLOCK CLK_CPU
+#define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
 
 /*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
  *  \brief work queue default timeout in microseconds

@@ -33,12 +33,30 @@
 
 #include <stdint.h>
 #include <sof/list.h>
+#include <sof/lock.h>
 
 struct sof;
 
 /* notifier general IDs */
 #define NOTIFIER_ID_CPU_FREQ	0
 #define NOTIFIER_ID_SSP_FREQ	1
+
+/* notifier target core masks */
+#define NOTIFIER_TARGET_CORE_MASK(x)	(1 << x)
+#define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
+
+struct notify {
+	spinlock_t lock;	/* notifier lock */
+	struct list_item list;	/* list of notifiers */
+};
+
+struct notify_data {
+	uint32_t id;
+	uint32_t message;
+	uint32_t target_core_mask;
+	uint32_t data_size;
+	void *data;
+};
 
 struct notifier {
 	uint32_t id;
@@ -47,11 +65,16 @@ struct notifier {
 	void (*cb)(int message, void *cb_data, void *event_data);
 };
 
+struct notify **arch_notify_get(void);
+
 void notifier_register(struct notifier *notifier);
 void notifier_unregister(struct notifier *notifier);
 
-void notifier_event(int id, int message, void *event_data);
+void notifier_notify(void);
+void notifier_event(struct notify_data *notify_data);
 
 void init_system_notify(struct sof *sof);
+
+void free_system_notify(void);
 
 #endif

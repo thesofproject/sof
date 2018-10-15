@@ -46,7 +46,7 @@
 #include <sof/stream.h>
 #include <sof/alloc.h>
 #include <sof/work.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include "volume.h"
 #include <sof/math/numbers.h>
 /**

@@ -94,6 +94,10 @@
 #define IDC_MSG_COMP_CMD	IDC_TYPE(0x4)
 #define IDC_MSG_COMP_CMD_EXT(x)	IDC_EXTENSION(x)
 
+/** \brief IDC notify message. */
+#define IDC_MSG_NOTIFY		IDC_TYPE(0x5)
+#define IDC_MSG_NOTIFY_EXT	IDC_EXTENSION(0x0)
+
 /** \brief Decodes IDC message type. */
 #define iTS(x)	(((x) >> IDC_TYPE_SHIFT) & IDC_TYPE_MASK)
 

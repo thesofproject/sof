@@ -158,7 +158,7 @@ static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
 	const uint32_t cs = host_dma_reg_read(dma, chan, DGCS);
 	const uint32_t bs = host_dma_reg_read(dma, chan, DGBS);
 	const uint32_t rp = host_dma_reg_read(dma, chan, DGBRP);
-	const uint32_t wp = host_dma_reg_read(dma, chan, DGBRP);
+	const uint32_t wp = host_dma_reg_read(dma, chan, DGBWP);
 
 	uint32_t ds;
 
@@ -470,26 +470,21 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct list_item *plist;
 	struct dma_sg_elem *sg_elem;
 	uint32_t buffer_addr = 0;
 	uint32_t period_bytes = 0;
 	uint32_t buffer_bytes = 0;
-	uint32_t desc_count = 0;
 	uint32_t flags;
 	uint32_t addr;
 	uint32_t dgcs;
+	int i;
 	int ret = 0;
 
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_host("Dsc");
 
-	/* get number of SG elems */
-	list_for_item(plist, &config->elem_list)
-		desc_count++;
-
-	if (desc_count == 0) {
+	if (!config->elem_array.count) {
 		trace_host_error("eD1");
 		ret = -EINVAL;
 		goto out;
@@ -497,11 +492,11 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
-	p->chan[channel].desc_count = desc_count;
+	p->chan[channel].desc_count = config->elem_array.count;
 
 	/* validate - HDA only supports continuous elems of same size  */
-	list_for_item(plist, &config->elem_list) {
-		sg_elem = container_of(plist, struct dma_sg_elem, list);
+	for (i = 0; i < config->elem_array.count; i++) {
+		sg_elem = config->elem_array.elems + i;
 
 		if (config->direction == DMA_DIR_HMEM_TO_LMEM ||
 		    config->direction == DMA_DIR_DEV_TO_MEM)
@@ -612,12 +607,16 @@ static int hda_dma_probe(struct dma *dma)
 	int i;
 	struct hda_chan_data *chan;
 
+	trace_event(TRACE_CLASS_DMA, "hda-dma-probe %p id %d",
+		    (uintptr_t)dma, dma->plat_data.id);
+
+	if (dma_get_drvdata(dma))
+		return -EEXIST; /* already created */
+
 	/* allocate private data */
 	hda_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			    sizeof(*hda_pdata));
 	dma_set_drvdata(dma, hda_pdata);
-
-	spinlock_init(&dma->lock);
 
 	/* init channel status */
 	chan = hda_pdata->chan;
@@ -631,6 +630,13 @@ static int hda_dma_probe(struct dma *dma)
 	/* init number of channels draining */
 	atomic_init(&dma->num_channels_busy, 0);
 
+	return 0;
+}
+
+static int hda_dma_remove(struct dma *dma)
+{
+	rfree(dma_get_drvdata(dma));
+	dma_set_drvdata(dma, NULL);
 	return 0;
 }
 
@@ -648,6 +654,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.pm_context_restore		= hda_dma_pm_context_restore,
 	.pm_context_store		= hda_dma_pm_context_store,
 	.probe		= hda_dma_probe,
+	.remove		= hda_dma_remove,
 };
 
 const struct dma_ops hda_link_dma_ops = {
@@ -664,5 +671,6 @@ const struct dma_ops hda_link_dma_ops = {
 	.pm_context_restore		= hda_dma_pm_context_restore,
 	.pm_context_store		= hda_dma_pm_context_store,
 	.probe		= hda_dma_probe,
+	.remove		= hda_dma_remove,
 };
 

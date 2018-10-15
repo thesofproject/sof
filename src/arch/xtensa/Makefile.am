@@ -54,6 +54,7 @@ sof_SOURCES += \
 	smp/xtos/_vectors.S \
 	smp/cpu.c \
 	smp/init.c \
+	smp/notifier.c \
 	smp/schedule.c \
 	smp/task.c \
 	smp/work.c
@@ -63,6 +64,7 @@ sof_SOURCES += \
 	up/xtos/_vectors.S \
 	up/cpu.c \
 	up/init.c \
+	up/notifier.c \
 	up/schedule.c \
 	up/task.c \
 	up/work.c

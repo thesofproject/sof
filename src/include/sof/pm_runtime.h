@@ -93,12 +93,20 @@ void pm_runtime_get(enum pm_runtime_context context, uint32_t index);
 void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index);
 
 /**
- * \brief Releases power management resource.
+ * \brief Releases power management resource (async).
  *
  * \param[in] context Type of power management context.
  * \param[in] index Index of the device.
  */
 void pm_runtime_put(enum pm_runtime_context context, uint32_t index);
+
+/**
+ * \brief Releases power management resource.
+ *
+ * \param[in] context Type of power management context.
+ * \param[in] index Index of the device.
+ */
+void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index);
 
 /** @}*/
 

@@ -48,6 +48,12 @@ struct sa;
 #define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
 	/ sizeof(unsigned int) - 1)
 
+/* compile-time assertion */
+#define STATIC_ASSERT(COND, MESSAGE)	\
+	__attribute__((unused))		\
+	typedef char assertion_failed_##MESSAGE[(COND) ? 1 : -1]
+
+
 /* general firmware context */
 struct sof {
 	/* init data */

@@ -45,13 +45,14 @@
 #include <sof/interrupt.h>
 #include <sof/sof.h>
 #include <sof/work.h>
-#include <sof/clock.h>
-#include <sof/drivers/clk.h>
+#include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
 #include <sof/agent.h>
 #include <sof/dma-trace.h>
 #include <sof/audio/component.h>
+#include <sof/cpu.h>
+#include <sof/notifier.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -205,7 +206,7 @@ int platform_init(struct sof *sof)
 	platform_ipc_pmc_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
+	clock_init();
 
 	/* init work queues and clocks */
 	trace_point(TRACE_BOOT_SYS_WORK);
@@ -219,7 +220,7 @@ int platform_init(struct sof *sof)
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
-	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
 
@@ -250,33 +251,33 @@ int platform_init(struct sof *sof)
 
 	/* init SSP ports */
 	trace_point(TRACE_BOOT_PLATFORM_SSP);
-	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0);
+	ssp0 = dai_get(SOF_DAI_INTEL_SSP, 0, DAI_CREAT);
 	if (ssp0 == NULL)
 		return -ENODEV;
 	dai_probe(ssp0);
 
-	ssp1 = dai_get(SOF_DAI_INTEL_SSP, 1);
+	ssp1 = dai_get(SOF_DAI_INTEL_SSP, 1, DAI_CREAT);
 	if (ssp1 == NULL)
 		return -ENODEV;
 	dai_probe(ssp1);
 
-	ssp2 = dai_get(SOF_DAI_INTEL_SSP, 2);
+	ssp2 = dai_get(SOF_DAI_INTEL_SSP, 2, DAI_CREAT);
 	if (ssp2 == NULL)
 		return -ENODEV;
 	dai_probe(ssp2);
 
 #if defined CONFIG_CHERRYTRAIL
-	ssp3 = dai_get(SOF_DAI_INTEL_SSP, 3);
+	ssp3 = dai_get(SOF_DAI_INTEL_SSP, 3, DAI_CREAT);
 	if (ssp3 == NULL)
 		return -ENODEV;
 	dai_probe(ssp3);
 
-	ssp4 = dai_get(SOF_DAI_INTEL_SSP, 4);
+	ssp4 = dai_get(SOF_DAI_INTEL_SSP, 4, DAI_CREAT);
 	if (ssp4 == NULL)
 		return -ENODEV;
 	dai_probe(ssp4);
 
-	ssp5 = dai_get(SOF_DAI_INTEL_SSP, 5);
+	ssp5 = dai_get(SOF_DAI_INTEL_SSP, 5, DAI_CREAT);
 	if (ssp5 == NULL)
 		return -ENODEV;
 	dai_probe(ssp5);

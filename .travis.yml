@@ -2,13 +2,55 @@ sudo: required
 
 language: c
 
+git:
+  depth: false
+
 services:
   - docker
+stages:
+  - compile
+  - test
+  - deploy
 
 before_install:
-  - docker pull xiulipan/sof
+  - docker pull xiulipan/sof && docker tag xiulipan/sof sof
+  - docker pull xiulipan/sofqemu && docker tag xiulipan/sofqemu sofqemu
 
-script:
-  - git tag -a v1.2 -m "Travis CI test"
-  - docker run -it -v `pwd`:/home/sof/work/sof.git -v `pwd`/../soft.git:/home/sof/work/soft.git --user `id -u` xiulipan/sof ./scripts/xtensa-build-all.sh -l
-  - docker run -it -v `pwd`:/home/sof/work/sof.git -v `pwd`/../soft.git:/home/sof/work/soft.git --user `id -u` xiulipan/sof ./scripts/host-build-all.sh -l
+install:
+  - docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/rimage-build.sh -l
+
+jobs:
+  include:
+    - stage: compile
+      name: "BYT Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr byt
+    - stage: compile
+      name: "CHT Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cht
+    - stage: compile
+      name: "BDW Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr bdw
+    - stage: compile
+      name: "HSW Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr hsw
+    - stage: compile
+      name: "APL Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr apl
+    - stage: compile
+      name: "CNL Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cnl
+    - stage: compile
+      name: "SUE Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr sue
+    - stage: compile
+      name: "ICL Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr icl
+    - stage: compile
+      name: "Host Build"
+      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/host-build-all.sh -l
+    - stage: test
+      name: "BYT Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr byt && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh byt
+    - stage: test
+      name: "CHT Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cht && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh cht

@@ -30,56 +30,96 @@
 
 #include <sof/notifier.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
 #include <sof/list.h>
+#include <sof/alloc.h>
+#include <sof/cpu.h>
+#include <sof/idc.h>
+#include <platform/idc.h>
 
-/* General purpose notifiers */
-
-struct notify {
-	spinlock_t lock;
-	struct list_item list;	/* list of notifiers */
-};
-
-static struct notify _notify;
+static struct notify_data _notify_data;
 
 void notifier_register(struct notifier *notifier)
 {
-	spin_lock(&_notify.lock);
-	list_item_prepend(&notifier->list, &_notify.list);
-	spin_unlock(&_notify.lock);
+	struct notify *notify = *arch_notify_get();
+
+	spin_lock(&notify->lock);
+	list_item_prepend(&notifier->list, &notify->list);
+	spin_unlock(&notify->lock);
 }
 
 void notifier_unregister(struct notifier *notifier)
 {
-	spin_lock(&_notify.lock);
+	struct notify *notify = *arch_notify_get();
+
+	spin_lock(&notify->lock);
 	list_item_del(&notifier->list);
-	spin_unlock(&_notify.lock);
+	spin_unlock(&notify->lock);
 }
 
-void notifier_event(int id, int message, void *event_data)
+void notifier_notify(void)
 {
+	struct notify *notify = *arch_notify_get();
 	struct list_item *wlist;
 	struct notifier *n;
 
-	spin_lock(&_notify.lock);
+	if (!list_is_empty(&notify->list)) {
+		dcache_invalidate_region(&_notify_data, sizeof(_notify_data));
+		dcache_invalidate_region(_notify_data.data,
+					 _notify_data.data_size);
 
-	if (list_is_empty(&_notify.list))
-		goto out;
+		/* iterate through notifiers and send event to
+		 * interested clients
+		 */
+		list_for_item(wlist, &notify->list) {
+			n = container_of(wlist, struct notifier, list);
+			if (n->id == _notify_data.id)
+				n->cb(_notify_data.message, n->cb_data,
+				      _notify_data.data);
+		}
+	}
+}
 
-	/* iterate through notifiers and send event to interested clients */
-	list_for_item(wlist, &_notify.list) {
+void notifier_event(struct notify_data *notify_data)
+{
+	struct notify *notify = *arch_notify_get();
+	struct idc_msg notify_msg = { IDC_MSG_NOTIFY, IDC_MSG_NOTIFY_EXT };
+	int i = 0;
 
-		n = container_of(wlist, struct notifier, list);
-		if (n->id == id)
-			n->cb(message, n->cb_data, event_data);
+	spin_lock(&notify->lock);
+
+	_notify_data = *notify_data;
+	dcache_writeback_region(_notify_data.data, _notify_data.data_size);
+	dcache_writeback_region(&_notify_data, sizeof(_notify_data));
+
+	/* notify selected targets */
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		if (_notify_data.target_core_mask & (1 << i)) {
+			if (i == cpu_get_id()) {
+				notifier_notify();
+			} else if (cpu_is_core_enabled(i)) {
+				notify_msg.core = i;
+				idc_send_msg(&notify_msg, IDC_BLOCKING);
+			}
+		}
 	}
 
-out:
-	spin_unlock(&_notify.lock);
+	spin_unlock(&notify->lock);
 }
 
 void init_system_notify(struct sof *sof)
 {
-	list_init(&_notify.list);
-	spinlock_init(&_notify.lock);
+	struct notify **notify = arch_notify_get();
+	*notify = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**notify));
+
+	list_init(&(*notify)->list);
+	spinlock_init(&(*notify)->lock);
+}
+
+void free_system_notify(void)
+{
+	struct notify *notify = *arch_notify_get();
+
+	spin_lock(&notify->lock);
+	list_item_del(&notify->list);
+	spin_unlock(&notify->lock);
 }

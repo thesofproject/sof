@@ -28,38 +28,18 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-/**
- * \file platform/intel/platform/cavs/include/pm_runtime.h
- * \brief Runtime power management header file for cAVS
- * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#ifndef __INCLUDE_CLOCK_MAP__
+#define __INCLUDE_CLOCK_MAP__
 
-#ifndef __INCLUDE_CAVS_PM_RUNTIME__
-#define __INCLUDE_CAVS_PM_RUNTIME__
+static const struct freq_table cpu_freq[] = {
+	{100000000, 100000, 0x3},
+	{200000000, 200000, 0x1},
+	{400000000, 400000, 0x0}, /* default */
+};
 
-#include <platform/pm_runtime.h>
+static const struct freq_table ssp_freq[] = {
+	{19200000, 19200, }, /* default */
+	{24576000, 24576, },
+};
 
-extern struct pm_runtime_data *_prd;
-
-/**
- * \brief Forces Host DMAs to exit L1.
- */
-static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
-{
-	uint32_t flags;
-
-	spin_lock_irq(&_prd->lock, flags);
-
-	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
-		shim_write(SHIM_SVCFG,
-			   shim_read(SHIM_SVCFG) | SHIM_SVCFG_FORCE_L1_EXIT);
-
-		wait_delay(PLATFORM_FORCE_L1_EXIT_TIME);
-
-		shim_write(SHIM_SVCFG,
-			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
-	}
-
-	spin_unlock_irq(&_prd->lock, flags);
-}
-#endif /* __INCLUDE_CAVS_PM_RUNTIME__ */
+#endif

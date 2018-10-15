@@ -40,7 +40,7 @@
 #include <sof/stream.h>
 #include <sof/alloc.h>
 #include <sof/work.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/format.h>
@@ -340,10 +340,19 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 	struct sof_ipc_comp_eq_iir *ipc_iir =
 		(struct sof_ipc_comp_eq_iir *)comp;
-	size_t bs;
+	size_t bs = ipc_iir->size;
 	int i;
 
 	trace_eq("new");
+
+	/* Check first before proceeding with dev and cd that coefficients
+	 * blob size is sane.
+	 */
+	if (bs > SOF_EQ_IIR_MAX_SIZE) {
+		trace_eq_error("ens");
+		trace_error_value(bs);
+		return NULL;
+	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		      COMP_SIZE(struct sof_ipc_comp_eq_iir));
@@ -365,15 +374,10 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	cd->iir_delay_size = 0;
 	cd->config = NULL;
 
-	bs = ipc_iir->size;
-	if (bs > SOF_EQ_IIR_MAX_SIZE) {
-		rfree(dev);
-		rfree(cd);
-		return NULL;
-	}
-
-	/* Allocate and make a copy of the blob and setup IIR */
-	if (bs > 0) {
+	/* Allocate and make a copy of the coefficients blob and reset IIR. If
+	 * the EQ is configured later in run-time the size is zero.
+	 */
+	if (bs) {
 		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config) {
 			rfree(dev);

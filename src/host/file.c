@@ -41,7 +41,7 @@
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/work.h>
-#include <sof/clock.h>
+#include <sof/clk.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>

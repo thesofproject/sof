@@ -25,12 +25,22 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ *
  */
 
-#ifndef __INCLUDE_DRIVERS_CLK__
-#define __INCLUDE_DRIVERS_CLK__
+/**
+ * \file arch/xtensa/up/notifier.c
+ * \brief Xtensa UP notifier implementation file
+ * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
 
-void init_platform_clocks(void);
+#include <sof/notifier.h>
 
-#endif
+/** \brief Notify data pointer. */
+static struct notify *notify;
+
+struct notify **arch_notify_get(void)
+{
+	return &notify;
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,25 +26,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Rander Wang <rander.wang@intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#include <sof/drivers/clk.h>
-#include <sof/drivers/timer.h>
-#include <sof/clock.h>
-#include <sof/io.h>
-#include <sof/sof.h>
+#include <sof/clk.h>
 #include <sof/list.h>
 #include <sof/alloc.h>
-#include <sof/notifier.h>
 #include <sof/lock.h>
+#include <sof/notifier.h>
+#include <sof/cpu.h>
 #include <platform/clk.h>
-#include <platform/shim.h>
-#include <platform/timer.h>
+#include <platform/clk-map.h>
+#include <platform/platcfg.h>
 #include <config.h>
 #include <stdint.h>
 #include <limits.h>
 
-#define NUM_CLOCKS	2
+typedef int (*set_frequency)(uint32_t);
 
 struct clk_data {
 	uint32_t freq;
@@ -58,38 +58,14 @@ struct clk_pdata {
 	struct clk_data clk[NUM_CLOCKS];
 };
 
-struct freq_table {
-	uint32_t freq;
-	uint32_t ticks_per_msec;
-	uint32_t fabric;
-	uint32_t enc;
-};
-
 static struct clk_pdata *clk_pdata;
 
-/* increasing frequency order */
-static const struct freq_table cpu_freq[] = {
-	{32000000, 32000, 32000000, 0x6},
-	{80000000, 80000, 80000000, 0x2},
-	{160000000, 160000, 80000000, 0x1},
-	{320000000, 320000, 160000000, 0x4},/* default */
-	{320000000, 320000, 80000000, 0x0},
-	{160000000, 160000, 160000000, 0x5},
-};
-
-static const struct freq_table ssp_freq[] = {
-	{24000000, 24000, 0, 0},	/* default */
-};
-
-#define CPU_DEFAULT_IDX		3
-#define SSP_DEFAULT_IDX		0
-
-static inline uint32_t get_freq(const struct freq_table *table, int size,
-				unsigned int hz)
+static inline uint32_t clock_get_freq(const struct freq_table *table,
+				      uint32_t size, uint32_t hz)
 {
 	uint32_t i;
 
-	/* find lowest available frequency that is >= requested Hz */
+	/* find lowest available frequency that is >= requested hz */
 	for (i = 0; i < size; i++) {
 		if (hz <= table[i].freq)
 			return i;
@@ -101,42 +77,65 @@ static inline uint32_t get_freq(const struct freq_table *table, int size,
 
 uint32_t clock_set_freq(int clock, uint32_t hz)
 {
-	struct clock_notify_data notify_data;
+	struct notify_data notify_data;
+	struct clock_notify_data clk_notify_data;
+	set_frequency set_freq = NULL;
+	const struct freq_table *freq_table = NULL;
+	uint32_t freq_table_size = 0;
 	uint32_t idx;
 	uint32_t flags;
 
-	notify_data.old_freq = clk_pdata->clk[clock].freq;
-	notify_data.old_ticks_per_msec = clk_pdata->clk[clock].ticks_per_msec;
+	notify_data.data_size = sizeof(clk_notify_data);
+	notify_data.data = &clk_notify_data;
 
-	/* atomic context for chaining clocks */
+	clk_notify_data.old_freq = clk_pdata->clk[clock].freq;
+	clk_notify_data.old_ticks_per_msec =
+		clk_pdata->clk[clock].ticks_per_msec;
+
+	/* atomic context for changing clocks */
 	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
-	case CLK_CPU:
-
-		/* get nearest frequency that is >= requested Hz */
-		idx = get_freq(cpu_freq, ARRAY_SIZE(cpu_freq), hz);
-		notify_data.freq = cpu_freq[idx].freq;
-
-		/* tell anyone interested we are about to change CPU freq */
-		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_PRE,
-			       &notify_data);
-
-		/* set CPU frequency request for CCU */
-		io_reg_update_bits(SHIM_BASE + SHIM_CSR,
-				   SHIM_CSR_DCS_MASK,
-				   SHIM_CSR_DCS(cpu_freq[idx].enc));
-
-		/* tell anyone interested we have now changed CPU freq */
-		notifier_event(NOTIFIER_ID_CPU_FREQ, CLOCK_NOTIFY_POST,
-			       &notify_data);
+	case CLK_CPU(0) ... CLK_CPU(PLATFORM_CORE_COUNT - 1):
+		set_freq = &clock_platform_set_cpu_freq;
+		freq_table = cpu_freq;
+		freq_table_size = ARRAY_SIZE(cpu_freq);
+		notify_data.id = NOTIFIER_ID_CPU_FREQ;
+		notify_data.target_core_mask =
+			NOTIFIER_TARGET_CORE_MASK(cpu_get_id());
 		break;
 	case CLK_SSP:
+		set_freq = &clock_platform_set_ssp_freq;
+		freq_table = ssp_freq;
+		freq_table_size = ARRAY_SIZE(ssp_freq);
+		notify_data.id = NOTIFIER_ID_SSP_FREQ;
+		notify_data.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
+		break;
 	default:
 		break;
 	}
 
+	/* get nearest frequency that is >= requested Hz */
+	idx = clock_get_freq(freq_table, freq_table_size, hz);
+	clk_notify_data.freq = freq_table[idx].freq;
+
+	/* tell anyone interested we are about to change freq */
+	notify_data.message = CLOCK_NOTIFY_PRE;
+	notifier_event(&notify_data);
+
+	if (set_freq(freq_table[idx].enc) == 0) {
+		/* update clock frequency */
+		clk_pdata->clk[clock].freq = freq_table[idx].freq;
+		clk_pdata->clk[clock].ticks_per_msec =
+			freq_table[idx].ticks_per_msec;
+	}
+
+	/* tell anyone interested we have now changed freq */
+	notify_data.message = CLOCK_NOTIFY_POST;
+	notifier_event(&notify_data);
+
 	spin_unlock_irq(&clk_pdata->clk[clock].lock, flags);
+
 	return clk_pdata->clk[clock].freq;
 }
 
@@ -145,18 +144,23 @@ uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 	return clk_pdata->clk[clock].ticks_per_msec * ms;
 }
 
-void init_platform_clocks(void)
+void clock_init(void)
 {
-	clk_pdata = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
+	int i = 0;
 
-	spinlock_init(&clk_pdata->clk[0].lock);
-	spinlock_init(&clk_pdata->clk[1].lock);
+	clk_pdata = rmalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+			    sizeof(*clk_pdata));
 
 	/* set defaults */
-	clk_pdata->clk[CLK_CPU].freq = cpu_freq[CPU_DEFAULT_IDX].freq;
-	clk_pdata->clk[CLK_CPU].ticks_per_msec =
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		clk_pdata->clk[i].freq = cpu_freq[CPU_DEFAULT_IDX].freq;
+		clk_pdata->clk[i].ticks_per_msec =
 			cpu_freq[CPU_DEFAULT_IDX].ticks_per_msec;
+		spinlock_init(&clk_pdata->clk[i].lock);
+	}
+
 	clk_pdata->clk[CLK_SSP].freq = ssp_freq[SSP_DEFAULT_IDX].freq;
 	clk_pdata->clk[CLK_SSP].ticks_per_msec =
 			ssp_freq[SSP_DEFAULT_IDX].ticks_per_msec;
+	spinlock_init(&clk_pdata->clk[CLK_SSP].lock);
 }

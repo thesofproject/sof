@@ -57,13 +57,29 @@ size_t fir_init_coef(struct fir_state_32x16 *fir,
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
-void eq_fir_2x_s32_hifiep(struct fir_state_32x16 fir[],
+void eq_fir_s16_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		       struct comp_buffer *sink, int frames, int nch);
+
+void eq_fir_s24_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		       struct comp_buffer *sink, int frames, int nch);
+
+void eq_fir_s32_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		       struct comp_buffer *sink, int frames, int nch);
+
+void eq_fir_2x_s16_hifiep(struct fir_state_32x16 fir[],
 			  struct comp_buffer *source,
 			  struct comp_buffer *sink,
 			  int frames, int nch);
 
-void eq_fir_s32_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
-		       struct comp_buffer *sink, int frames, int nch);
+void eq_fir_2x_s24_hifiep(struct fir_state_32x16 fir[],
+			  struct comp_buffer *source,
+			  struct comp_buffer *sink,
+			  int frames, int nch);
+
+void eq_fir_2x_s32_hifiep(struct fir_state_32x16 fir[],
+			  struct comp_buffer *source,
+			  struct comp_buffer *sink,
+			  int frames, int nch);
 
 /* Setup circular buffer for FIR input data delay */
 static inline void fir_hifiep_setup_circular(struct fir_state_32x16 *fir)
@@ -82,7 +98,7 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t *x,
+static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x,
 				    int32_t *y, int lshift, int rshift)
 {
 	/* This function uses
@@ -104,12 +120,12 @@ static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t *x,
 
 	/* Bypass samples if taps count is zero. */
 	if (!taps_div_4) {
-		*y = *x;
+		*y = x;
 		return;
 	}
 
 	/* Write sample to delay */
-	a = AE_LQ32F_I((ae_q32s *)x, 0);
+	a = AE_CVTQ48A32S(x);
 	AE_SQ32F_C(a, (ae_q32s *)fir->rwp, -sizeof(int32_t));
 
 	/* Note: If the next function is converted to handle two samples
@@ -156,8 +172,8 @@ static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t *x,
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t *x0,
-				       int32_t *x1, int32_t *y0, int32_t *y1,
+static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0,
+				       int32_t x1, int32_t *y0, int32_t *y1,
 				       int lshift, int rshift)
 {
 	/* This function uses
@@ -180,15 +196,15 @@ static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t *x0,
 
 	/* Bypass samples if taps count is zero. */
 	if (!taps_div_4) {
-		*y0 = *x0;
-		*y1 = *x1;
+		*y0 = x0;
+		*y1 = x1;
 		return;
 	}
 
 	/* Write samples to delay */
-	a = AE_LQ32F_I((ae_q32s *)x0, 0);
+	a = AE_CVTQ48A32S(x0);
 	AE_SQ32F_C(a, (ae_q32s *)fir->rwp, -sizeof(int32_t));
-	a = AE_LQ32F_I((ae_q32s *)x1, 0);
+	a = AE_CVTQ48A32S(x1);
 	dp = fir->rwp;
 	AE_SQ32F_C(a, (ae_q32s *)fir->rwp, -sizeof(int32_t));
 

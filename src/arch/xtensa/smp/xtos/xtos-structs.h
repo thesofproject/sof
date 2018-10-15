@@ -35,6 +35,7 @@
 
 struct idc;
 struct irq_task;
+struct notify;
 struct schedule_data;
 struct work_queue;
 
@@ -59,6 +60,7 @@ struct core_context {
 	struct irq_task *irq_high_task;
 	struct schedule_data *sch;
 	struct work_queue *queue;
+	struct notify *notify;
 	struct idc *idc;
 };
 

@@ -30,6 +30,7 @@
 
 #include <sof/dma.h>
 #include <sof/atomic.h>
+#include <sof/alloc.h>
 #include <platform/dma.h>
 
 struct dma_info {
@@ -50,7 +51,7 @@ void dma_install(struct dma *dma_array, size_t num_dmas)
 
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
-	int ch_count;
+	int ch_count, ret;
 	int min_ch_count = INT32_MAX;
 	struct dma *d = NULL, *dmin = NULL;
 
@@ -93,9 +94,90 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 
 	/* return DMAC */
 	if (dmin) {
-		tracev_value(dmin->plat_data.id);
-		return dmin;
+		tracev_event(TRACE_CLASS_DMA, "dma-probe id %d",
+			     dmin->plat_data.id);
+		/* Shared DMA controllers with multiple channels
+		 * may be requested many times, let the probe()
+		 * do on-first-use initialization.
+		 */
+		spin_lock(&dmin->lock);
+		ret = 0;
+		if (dmin->sref == 0) {
+			ret = dma_probe(dmin);
+			if (ret < 0) {
+				trace_error(TRACE_CLASS_DMA,
+					    "dma-probe failed id %d ret %d",
+					    dmin->plat_data.id, ret);
+			}
+		}
+		if (!ret)
+			dmin->sref++;
+		trace_event(TRACE_CLASS_DMA, "dma-get %p sref %d",
+			    (uintptr_t)dmin, dmin->sref);
+		spin_unlock(&dmin->lock);
+		return !ret ? dmin : NULL;
 	}
 
+	trace_error(TRACE_CLASS_DMA,
+		    "dma-get dir 0x%x cap 0x%x dev 0x%x flags 0x%x not found",
+		    dir, cap, dev, flags);
 	return NULL;
+}
+
+void dma_put(struct dma *dma)
+{
+	int ret;
+
+	spin_lock(&dma->lock);
+	if (--dma->sref == 0) {
+		ret = dma_remove(dma);
+		if (ret < 0) {
+			trace_error(TRACE_CLASS_DMA,
+				    "dma-remove failed id %d ret %d",
+				    dma->plat_data.id, ret);
+		}
+	}
+	trace_event(TRACE_CLASS_DMA, "dma-put %p sref %d", (uintptr_t)dma,
+		    dma->sref);
+	spin_unlock(&dma->lock);
+}
+
+int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
+		 int zone,
+		 uint32_t direction,
+		 uint32_t buffer_count, uint32_t buffer_bytes,
+		 uintptr_t dma_buffer_addr, uintptr_t external_addr)
+{
+	int i;
+
+	elem_array->elems = rzalloc(zone, SOF_MEM_CAPS_RAM,
+				    sizeof(struct dma_sg_elem) * buffer_count);
+	if (!elem_array->elems)
+		return -ENOMEM;
+
+	for (i = 0; i < buffer_count; i++) {
+		elem_array->elems[i].size = buffer_bytes;
+		// TODO: may count offsets once
+		switch (direction) {
+		case DMA_DIR_MEM_TO_DEV:
+		case DMA_DIR_LMEM_TO_HMEM:
+			elem_array->elems[i].src = dma_buffer_addr;
+			elem_array->elems[i].dest = external_addr;
+			break;
+		default:
+			elem_array->elems[i].src = external_addr;
+			elem_array->elems[i].dest = dma_buffer_addr;
+			break;
+		}
+
+		dma_buffer_addr += buffer_bytes;
+	}
+	elem_array->count = buffer_count;
+	return 0;
+}
+
+void dma_sg_free(struct dma_sg_elem_array *elem_array)
+{
+	rfree(elem_array->elems);
+	dma_sg_init(elem_array);
 }

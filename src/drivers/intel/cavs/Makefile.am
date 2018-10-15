@@ -1,7 +1,6 @@
 noinst_LTLIBRARIES = libdrivers.la
 
 libdrivers_la_SOURCES = \
-	clk.c \
 	dmic.c \
 	hda-dma.c \
 	hda.c \

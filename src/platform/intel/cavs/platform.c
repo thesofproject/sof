@@ -47,12 +47,13 @@
 #include <sof/sof.h>
 #include <sof/agent.h>
 #include <sof/work.h>
-#include <sof/clock.h>
-#include <sof/drivers/clk.h>
+#include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/io.h>
 #include <sof/trace.h>
 #include <sof/audio/component.h>
+#include <sof/cpu.h>
+#include <sof/notifier.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -218,7 +219,7 @@ int platform_boot_complete(uint32_t boot_message)
 
 	#if defined(CONFIG_APOLLOLAKE)
 	/* boot now complete so we can relax the CPU */
-	clock_set_freq(CLK_CPU, CLK_DEFAULT_CPU_HZ);
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
@@ -313,7 +314,7 @@ int platform_init(struct sof *sof)
 	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
-	init_platform_clocks();
+	clock_init();
 
 	trace_point(TRACE_BOOT_SYS_WORK);
 	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
@@ -321,40 +322,36 @@ int platform_init(struct sof *sof)
 	/* init the system agent */
 	sa_init(sof);
 
-	/* Set CPU to default frequency for booting */
+	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
-	clock_set_freq(CLK_CPU, CLK_MAX_CPU_HZ);
-
-	/* set SSP clock */
-	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
-	clock_set_freq(CLK_SSP, SSP_CLOCK_FREQUENCY);
-
-	/* initialise the host IPC mechanisms */
-	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init(sof);
-
 #if defined(CONFIG_APOLLOLAKE)
-	/* disable PM for boot */
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
-		SHIM_CLKCTL_LPGPDMAFDCGB(0) |
-		SHIM_CLKCTL_LPGPDMAFDCGB(1) |
-		SHIM_CLKCTL_I2SFDCGB(3) |
-		SHIM_CLKCTL_I2SFDCGB(2) |
-		SHIM_CLKCTL_I2SFDCGB(1) |
-		SHIM_CLKCTL_I2SFDCGB(0) |
-		SHIM_CLKCTL_DMICFDCGB |
-		SHIM_CLKCTL_I2SEFDCGB(1) |
-		SHIM_CLKCTL_I2SEFDCGB(0) |
-		SHIM_CLKCTL_TCPAPLLS |
-		SHIM_CLKCTL_RAPLLC |
-		SHIM_CLKCTL_RXOSCC |
-		SHIM_CLKCTL_RFROSCC |
-		SHIM_CLKCTL_TCPLCG(0) | SHIM_CLKCTL_TCPLCG(1));
+	/* initialize PM for boot */
+
+	/* TODO: there are two clk freqs CRO & CRO/4
+	 * Running on CRO all the time atm
+	 */
+
+	/* TODO: do not do local clock gating until making sure that
+	 * tensilica core timer is unused.
+	 * Could not find any arch_timer_set/timer_set() direct calls
+	 * on cavs platforms atm.
+	 */
+	shim_write(SHIM_CLKCTL,
+		   SHIM_CLKCTL_HDCS_PLL | /* HP domain clocked by PLL */
+		   SHIM_CLKCTL_LDCS_PLL | /* LP domain clocked by PLL */
+		   SHIM_CLKCTL_DPCS_DIV1(0) | /* Core 0 clk not divided */
+		   SHIM_CLKCTL_DPCS_DIV1(1) | /* Core 1 clk not divided */
+		   SHIM_CLKCTL_HPMPCS_DIV2 | /* HP mem clock div by 2 */
+		   SHIM_CLKCTL_LPMPCS_DIV4 | /* LP mem clock div by 4 */
+		   SHIM_CLKCTL_TCPAPLLS_DIS |
+		   SHIM_CLKCTL_TCPLCG_DIS(0) | SHIM_CLKCTL_TCPLCG_DIS(1));
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
 
 #elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
 	|| defined(CONFIG_SUECREEK)
+	/* TODO: need to merge as for APL */
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	/* prevent Core0 clock gating. */
 	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
@@ -368,12 +365,17 @@ int platform_init(struct sof *sof)
 	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
 #endif
 
+	/* initialize the host IPC mechanisms */
+	trace_point(TRACE_BOOT_PLATFORM_IPC);
+	ipc_init(sof);
+
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	ret = dmac_init();
 	if (ret < 0)
 		return -ENODEV;
 
+	/* init DAIs */
 	ret = dai_init();
 	if (ret < 0)
 		return -ENODEV;
