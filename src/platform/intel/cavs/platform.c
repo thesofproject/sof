@@ -58,14 +58,6 @@
 #include <string.h>
 #include <version.h>
 
-#if defined(CONFIG_APOLLOLAKE)
-#define SSP_CLOCK_FREQUENCY 19200000
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_SUECREEK)
-#define SSP_CLOCK_FREQUENCY 24000000
-#elif defined(CONFIG_ICELAKE)
-#define SSP_CLOCK_FREQUENCY 38400000
-#endif
-
 static const struct sof_ipc_fw_ready ready = {
 	.hdr = {
 		.cmd = SOF_IPC_FW_READY,
