@@ -85,7 +85,7 @@ measfn = sprintf('mls-%s.wav', id);
 csvfn = sprintf('mls-%s.txt', id);
 
 %% Paths
-addpath('../../test/test_utils');
+addpath('../../test/audio/test_utils');
 
 %% MLS
 n_mls = round(fs*t_mls_s);
