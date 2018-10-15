@@ -733,21 +733,23 @@ static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
 	struct idc_msg comp_cmd_msg;
 	int core = dev->pipeline->ipc_pipe.core;
 
-	/* pipeline scheduled on current core */
-	if (cpu_get_id() == core)
+	/* pipeline running on other core */
+	if (dev->pipeline->status == COMP_STATE_ACTIVE &&
+	    cpu_get_id() != core) {
+		/* check if requested core is enabled */
+		if (!cpu_is_core_enabled(core))
+			return -EINVAL;
+
+		/* build IDC message */
+		comp_cmd_msg.header = IDC_MSG_COMP_CMD;
+		comp_cmd_msg.extension = IDC_MSG_COMP_CMD_EXT(cmd);
+		comp_cmd_msg.core = core;
+
+		/* send IDC component command message */
+		return idc_send_msg(&comp_cmd_msg, IDC_BLOCKING);
+	} else {
 		return comp_cmd(dev, cmd, data);
-
-	/* check if requested core is enabled */
-	if (!cpu_is_core_enabled(core))
-		return -EINVAL;
-
-	/* build IDC message */
-	comp_cmd_msg.header = IDC_MSG_COMP_CMD;
-	comp_cmd_msg.extension = IDC_MSG_COMP_CMD_EXT(cmd);
-	comp_cmd_msg.core = core;
-
-	/* send IDC component command message */
-	return idc_send_msg(&comp_cmd_msg, IDC_BLOCKING);
+	}
 }
 
 /* get/set component values or runtime data */
