@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 
 out:
 	/* close files */
-	if (config.out_file)
+	if (config.out_fd)
 		fclose(config.out_fd);
 
 	if (config.in_fd)
