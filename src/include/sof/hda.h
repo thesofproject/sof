@@ -25,39 +25,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Marcin Maka <marcin.maka@linux.intel.com
+ * Author:	Marcin Maka <marcin.maka@linux.intel.com>
  */
 
-#include <errno.h>
-#include <sof/hda.h>
+#ifndef __INCLUDE_HDA__
+#define __INCLUDE_HDA__
 
-static int hda_trigger(struct dai *dai, int cmd, int direction)
-{
-	return 0;
-}
+#include <sof/dai.h>
 
-static int hda_set_config(struct dai *dai,
-			  struct sof_ipc_dai_config *config)
-{
-	return 0;
-}
+extern const struct dai_ops hda_ops;
 
-static int hda_dummy(struct dai *dai)
-{
-	return 0;
-}
+#endif /* __INCLUDE_HDA__ */
 
-static int hda_set_loopback_mode(struct dai *dai, uint32_t lbm)
-{
-	return -EINVAL;
-}
-
-const struct dai_ops hda_ops = {
-	.trigger		= hda_trigger,
-	.set_config		= hda_set_config,
-	.pm_context_store	= hda_dummy,
-	.pm_context_restore	= hda_dummy,
-	.probe			= hda_dummy,
-	.remove			= hda_dummy,
-	.set_loopback_mode	= hda_set_loopback_mode
-};
