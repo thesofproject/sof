@@ -35,6 +35,7 @@
 #include <sof/dai.h>
 #include <sof/ssp.h>
 #include <sof/dmic.h>
+#include <sof/hda.h>
 #include <sof/stream.h>
 #include <sof/audio/component.h>
 #include <platform/platform.h>
@@ -45,9 +46,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <config.h>
-
-/* TODO: ops should be declared by their respective dai headers */
-extern const struct dai_ops hda_ops;
 
 static struct dai ssp[] = {
 {
