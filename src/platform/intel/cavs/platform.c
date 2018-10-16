@@ -58,14 +58,6 @@
 #include <string.h>
 #include <version.h>
 
-#if defined(CONFIG_APOLLOLAKE)
-#define SSP_CLOCK_FREQUENCY 19200000
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_SUECREEK)
-#define SSP_CLOCK_FREQUENCY 24000000
-#elif defined(CONFIG_ICELAKE)
-#define SSP_CLOCK_FREQUENCY 38400000
-#endif
-
 static const struct sof_ipc_fw_ready ready = {
 	.hdr = {
 		.cmd = SOF_IPC_FW_READY,
@@ -82,7 +74,7 @@ static const struct sof_ipc_fw_ready ready = {
 	},
 };
 
-#if !defined(CONFIG_SUECREEK)
+#if defined(CONFIG_MEM_WND)
 #define SRAM_WINDOW_HOST_OFFSET(x) (0x80000 + x * 0x20000)
 
 #define NUM_WINDOWS 7
@@ -202,39 +194,30 @@ struct work_queue_timesource platform_generic_queue[] = {
 struct timer *platform_timer =
 	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
-#if defined(CONFIG_SUECREEK)
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
-	return 0;
-}
-
-#else
-
-int platform_boot_complete(uint32_t boot_message)
-{
-	mailbox_dspbox_write(0, &ready, sizeof(ready));
+#if defined(CONFIG_MEM_WND)
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
 		sram_window.ext_hdr.hdr.size);
+#endif // defined(CONFIG_MEM_WND)
 
-	#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_APOLLOLAKE)
 	/* boot now complete so we can relax the CPU */
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCI, 0x80000000 | SOF_IPC_FW_READY);
-	#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | SOF_IPC_FW_READY);
-	#endif
-
+#endif
 	return 0;
 }
-#endif
 
-#if !defined(CONFIG_SUECREEK)
+#if defined(CONFIG_MEM_WND)
 static void platform_memory_windows_init(void)
 {
 	/* window0, for fw status & outbox/uplink mbox */
@@ -304,7 +287,7 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 
-#if !defined(CONFIG_SUECREEK)
+#if defined(CONFIG_MEM_WND)
 	platform_memory_windows_init();
 #endif
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);

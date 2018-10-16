@@ -242,6 +242,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
+	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
     ;;
     haswell*)
 
@@ -295,6 +296,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
+	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
     ;;
    suecreek*)
 
@@ -332,6 +334,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
+	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
     ;;
     *)
 	if test "$have_rimage" = "no" && test "$have_doc" = "no"; then
