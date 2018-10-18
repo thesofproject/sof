@@ -51,6 +51,7 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_DEADLINE', $7)'
 `define(`SCHEDULE_PRIORITY', $8)'
 `define(`SCHEDULE_CORE', $9)'
+`define(`DAI_FORMAT', $5)'
 `include($1)'
 `DEBUG_PCM_ADD($1, $3)'
 )
