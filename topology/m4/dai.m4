@@ -26,6 +26,7 @@ define(`W_DAI_OUT',
 `	tokens "sof_dai_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_DAI_INDEX'	$2
+`		SOF_TKN_DAI_DIRECTION'	"0"
 `	}'
 `}'
 `SectionData."'N_DAI_OUT($2)`_data_w" {'
@@ -79,6 +80,7 @@ define(`W_DAI_IN',
 `	tokens "sof_dai_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_DAI_INDEX'	$2
+`		SOF_TKN_DAI_DIRECTION'	"1"
 `	}'
 `}'
 `SectionData."'N_DAI_IN($2)`_data_w" {'
