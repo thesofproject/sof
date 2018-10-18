@@ -23,7 +23,7 @@ void ri_cse_create(struct image *image)
 {
 	struct CsePartitionDirHeader *cse_hdr = image->fw_image;
 	struct sof_man_adsp_meta_file_ext *meta = image->fw_image +
-		MAN_META_EXT_OFFSET;
+		MAN_META_EXT_OFFSET_V1_8;
 	struct CsePartitionDirEntry *cse_entry =
 		image->fw_image + sizeof(*cse_hdr);
 	uint8_t csum = 0, *val = image->fw_image;

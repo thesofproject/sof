@@ -34,18 +34,18 @@ struct fw_image_manifest_v1_8 cnl_manifest = {
 		{
 			/* CssHeader + platformFirmwareAuthenticationExtension - padding */
 			.entry_name = "ADSP.man",
-			.offset = MAN_CSS_HDR_OFFSET,
+			.offset = MAN_CSS_HDR_OFFSET_V1_8,
 			.length = sizeof(struct css_header_v1_8) +
 				PLAT_AUTH_SIZE,
 		},
 		{	/* ADSPMetadataFileExtension */
 			.entry_name = "cavs0015.met",
-			.offset = MAN_META_EXT_OFFSET,
+			.offset = MAN_META_EXT_OFFSET_V1_8,
 			.length = sizeof(struct sof_man_adsp_meta_file_ext),
 		},
 		{	/* AdspFwBinaryDesc */
 			.entry_name = "cavs0015",
-			.offset = MAN_FW_DESC_OFFSET,
+			.offset = MAN_FW_DESC_OFFSET_V1_8,
 			.length = 0,	/* calculated by rimage - */
 		},
 

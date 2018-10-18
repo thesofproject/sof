@@ -39,32 +39,32 @@
 #define MAN_EXT_PADDING			0x20
 #define MAN_DESC_OFFSET			0x2000
 
-#define MAN_CSS_HDR_OFFSET \
+#define MAN_CSS_HDR_OFFSET_V1_8 \
 	(MAN_CSE_HDR_OFFSET + \
 	sizeof(struct CsePartitionDirHeader) + \
 	MAN_CSE_PARTS * sizeof(struct CsePartitionDirEntry))
 
-#define MAN_SIG_PKG_OFFSET \
-	(MAN_CSS_HDR_OFFSET + \
+#define MAN_SIG_PKG_OFFSET_V1_8 \
+	(MAN_CSS_HDR_OFFSET_V1_8 + \
 	sizeof(struct css_header_v1_8))
 
-#define MAN_PART_INFO_OFFSET \
-	(MAN_SIG_PKG_OFFSET + \
+#define MAN_PART_INFO_OFFSET_V1_8 \
+	(MAN_SIG_PKG_OFFSET_V1_8 + \
 	sizeof(struct signed_pkg_info_ext))
 
-#define MAN_META_EXT_OFFSET \
-	(MAN_SIG_PKG_OFFSET + \
+#define MAN_META_EXT_OFFSET_V1_8 \
+	(MAN_SIG_PKG_OFFSET_V1_8 + \
 	sizeof(struct signed_pkg_info_ext) + \
 	sizeof(struct partition_info_ext) + \
 	MAN_CSE_PADDING_SIZE)
 
-#define MAN_FW_DESC_OFFSET \
-	(MAN_META_EXT_OFFSET + \
+#define MAN_FW_DESC_OFFSET_V1_8 \
+	(MAN_META_EXT_OFFSET_V1_8 + \
 	sizeof(struct sof_man_adsp_meta_file_ext) + \
 	MAN_EXT_PADDING)
 
-#define MAN_DESC_PADDING_SIZE	\
-	(MAN_DESC_OFFSET - MAN_FW_DESC_OFFSET)
+#define MAN_DESC_PADDING_SIZE_V1_8	\
+	(MAN_DESC_OFFSET - MAN_FW_DESC_OFFSET_V1_8)
 
 /*
  * Firmware manifest header.
@@ -83,7 +83,7 @@ struct fw_image_manifest_v1_8 {
 	uint8_t reserved[MAN_EXT_PADDING];
 
 	/* start of the unsigned binary for MEU input must start at MAN_DESC_OFFSET */
-	uint8_t padding[MAN_DESC_PADDING_SIZE];
+	uint8_t padding[MAN_DESC_PADDING_SIZE_V1_8];
 
 	struct sof_man_fw_desc desc;	/* at offset MAN_DESC_OFFSET */
 } __attribute__((packed));
