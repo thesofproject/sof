@@ -64,6 +64,23 @@ struct css_header_v1_8 {
 	uint8_t signature[MAN_RSA_SIGNATURE_LEN];
 } __attribute__((packed));
 
+struct css_header_v1_5 {
+	uint32_t    module_type;
+	uint32_t    header_len;
+	uint32_t    header_version;
+	uint32_t    reserved0;          /* must be 0x0 */
+	uint32_t    module_vendor;
+	uint32_t    date;
+	uint32_t    size;
+	uint32_t    key_size;
+	uint32_t    modulus_size;
+	uint32_t    exponent_size;
+	uint32_t    reserved[22];
+	uint8_t     modulus[MAN_RSA_KEY_MODULUS_LEN];
+	uint8_t     exponent[MAN_RSA_KEY_EXPONENT_LEN];
+	uint8_t     signature[MAN_RSA_SIGNATURE_LEN];
+} __attribute__((packed));
+
 void ri_css_hdr_create_v1_8(struct image *image);
 
 #endif
