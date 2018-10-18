@@ -1136,6 +1136,8 @@ static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
 	uint32_t irq = dma_irq(dma, cpu_get_id()) +
 		(channel << SOF_IRQ_BIT_SHIFT);
 
+	trace_event(TRACE_CLASS_DMA, "dw-dma-int-register");
+
 	interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler,
 			   &p->chan[channel].id);
 	interrupt_enable(irq);
@@ -1278,8 +1280,12 @@ static int dw_dma_probe(struct dma *dma)
 	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
 	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			   sizeof(*dw_pdata));
+	dw_pdata = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
+			   SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
+	if (!dw_pdata) {
+		trace_error(TRACE_CLASS_DMA, "alloc failed");
+		return -ENOMEM;
+	}
 	dma_set_drvdata(dma, dw_pdata);
 
 	spinlock_init(&dma->lock);

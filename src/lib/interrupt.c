@@ -55,8 +55,10 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 
 	spin_lock(&parent->lock);
 
-	/* init child */
-	child = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+	/* init child from run-time, may be registered and unregistered
+	 * many times at run-time
+	 */
+	child = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 			sizeof(struct irq_desc));
 	if (!child) {
 		ret = -ENOMEM;
@@ -102,6 +104,7 @@ static void irq_unregister_child(struct irq_desc *parent, int irq)
 		if (SOF_IRQ_ID(irq) == child->id) {
 			list_item_del(&child->irq_list);
 			parent->num_children--;
+			rfree(child);
 		}
 	}
 
