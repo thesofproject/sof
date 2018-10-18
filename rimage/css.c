@@ -20,9 +20,9 @@
 #include "css.h"
 #include "manifest.h"
 
-void ri_css_hdr_create(struct image *image)
+void ri_css_hdr_create_v1_8(struct image *image)
 {
-	struct css_header_v1_8 *css = image->fw_image + MAN_CSS_HDR_OFFSET;
+	struct css_header_v1_8 *css = image->fw_image + MAN_CSS_HDR_OFFSET_V1_8;
 	struct tm *date;
 	struct timeval tv;
 	int val;

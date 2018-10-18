@@ -27,7 +27,7 @@ struct image;
 #define MAN_CSS_KEY_SIZE		(MAN_RSA_KEY_MODULUS_LEN >> 2)
 #define MAN_CSS_MOD_SIZE		(MAN_RSA_KEY_MODULUS_LEN >> 2)
 #define MAN_CSS_EXP_SIZE		(MAN_RSA_KEY_EXPONENT_LEN >> 2)
-#define MAN_CSS_MAN_SIZE		\
+#define MAN_CSS_MAN_SIZE_V1_8		\
 	(sizeof(struct fw_image_manifest_v1_8) >> 2)
 
 /*
@@ -64,6 +64,6 @@ struct css_header_v1_8 {
 	uint8_t signature[MAN_RSA_SIGNATURE_LEN];
 } __attribute__((packed));
 
-void ri_css_hdr_create(struct image *image);
+void ri_css_hdr_create_v1_8(struct image *image);
 
 #endif
