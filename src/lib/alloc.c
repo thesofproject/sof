@@ -127,7 +127,9 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 
 	/* always succeeds or panics */
 	if (alignment + bytes > cpu_heap->info.free) {
-		trace_mem_error("eM1");
+		trace_error(TRACE_CLASS_MEM,
+			    "rmalloc-sys eM1 zone %x core %d bytes %d",
+			    zone, core, bytes);
 		panic(SOF_IPC_PANIC_MEM);
 	}
 	cpu_heap->info.used += alignment;
@@ -419,9 +421,9 @@ find:
 	return ptr;
 
 error:
-	trace_mem_error("eMm");
-	trace_error_value(bytes);
-	trace_error_value(caps);
+	trace_error(TRACE_CLASS_MEM,
+		    "rmalloc-runtime eMm zone %d caps %x bytes %d",
+		    zone, caps, bytes);
 	return NULL;
 }
 
