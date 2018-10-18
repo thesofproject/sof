@@ -348,15 +348,15 @@ int platform_init(struct sof *sof)
 	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
 #endif
 
-	/* initialize the host IPC mechanisms */
-	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init(sof);
-
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	ret = dmac_init();
 	if (ret < 0)
 		return -ENODEV;
+
+	/* initialize the host IPC mechanisms */
+	trace_point(TRACE_BOOT_PLATFORM_IPC);
+	ipc_init(sof);
 
 	/* init DAIs */
 	ret = dai_init();

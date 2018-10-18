@@ -215,15 +215,15 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
 	clock_set_freq(CLK_SSP, 25000000);
 
-	/* initialise the host IPC mechanisms */
-	trace_point(TRACE_BOOT_PLATFORM_IPC);
-	ipc_init(sof);
-
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	ret = dmac_init();
 	if (ret < 0)
 		return -ENODEV;
+
+	/* initialise the host IPC mechanisms */
+	trace_point(TRACE_BOOT_PLATFORM_IPC);
+	ipc_init(sof);
 
 	ret = dai_init();
 	if (ret < 0)
