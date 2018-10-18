@@ -82,15 +82,15 @@ static int man_open_manifest_file(struct image *image)
 	return 0;
 }
 
-static int man_init_image(struct image *image)
+static int man_init_image_v1_8(struct image *image)
 {
 	/* allocate image and copy template manifest */
 	image->fw_image = calloc(image->adsp->image_size, 1);
 	if (image->fw_image == NULL)
 		return -ENOMEM;
 
-	memcpy(image->fw_image, image->adsp->man,
-		sizeof(struct fw_image_manifest));
+	memcpy(image->fw_image, image->adsp->man_v1_8,
+	       sizeof(struct fw_image_manifest_v1_8));
 
 	return 0;
 }
@@ -653,15 +653,15 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 }
 
 /* used by others */
-static int man_write_fw(struct image *image)
+static int man_write_fw_v1_8(struct image *image)
 {
 	struct sof_man_fw_desc *desc;
-	struct fw_image_manifest *m;
+	struct fw_image_manifest_v1_8 *m;
 	uint8_t hash[SOF_MAN_MOD_SHA256_LEN];
 	int ret, i;
 
 	/* init image */
-	ret = man_init_image(image);
+	ret = man_init_image_v1_8(image);
 	if (ret < 0)
 		goto err;
 
@@ -691,10 +691,10 @@ static int man_write_fw(struct image *image)
 	fprintf(stdout, "Firmware completing manifest\n");
 
 	/* create structures from end of file to start of file */
-	ri_adsp_meta_data_create(image, MAN_META_EXT_OFFSET,
-				 MAN_FW_DESC_OFFSET);
+	ri_adsp_meta_data_create(image, MAN_META_EXT_OFFSET_V1_8,
+				 MAN_FW_DESC_OFFSET_V1_8);
 	ri_plat_ext_data_create(image);
-	ri_css_hdr_create(image);
+	ri_css_hdr_create_v1_8(image);
 	ri_cse_create(image);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
@@ -705,11 +705,11 @@ static int man_write_fw(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension - 0x480 to end */
-	ri_hash(image, MAN_FW_DESC_OFFSET, image->image_end
-		- MAN_FW_DESC_OFFSET, m->adsp_file_ext.comp_desc[0].hash);
+	ri_hash(image, MAN_FW_DESC_OFFSET_V1_8, image->image_end
+		- MAN_FW_DESC_OFFSET_V1_8, m->adsp_file_ext.comp_desc[0].hash);
 
 	/* calculate hash for platform auth data - repeated in hash 2 and 4 */
-	ri_hash(image, MAN_META_EXT_OFFSET,
+	ri_hash(image, MAN_META_EXT_OFFSET_V1_8,
 		sizeof(struct sof_man_adsp_meta_file_ext), hash);
 
 	/* hash values in reverse order */
@@ -720,7 +720,7 @@ static int man_write_fw(struct image *image)
 	}
 
 	/* sign manifest */
-	ret = ri_manifest_sign(image);
+	ret = ri_manifest_sign_v1_8(image);
 	if (ret < 0)
 		goto err;
 
@@ -730,8 +730,8 @@ static int man_write_fw(struct image *image)
 		goto err;
 
 	/* write the unsigned files*/
-	ret = man_write_unsigned_mod(image, MAN_META_EXT_OFFSET,
-				     MAN_FW_DESC_OFFSET);
+	ret = man_write_unsigned_mod(image, MAN_META_EXT_OFFSET_V1_8,
+				     MAN_FW_DESC_OFFSET_V1_8);
 	if (ret < 0)
 		goto err;
 
@@ -747,7 +747,7 @@ err:
 }
 
 /* used to sign with MEU */
-static int man_write_fw_meu(struct image *image)
+static int man_write_fw_meu_v1_8(struct image *image)
 {
 	const int meta_start_offset = image->meu_offset -
 		sizeof(struct sof_man_adsp_meta_file_ext) - MAN_EXT_PADDING;
@@ -778,9 +778,9 @@ static int man_write_fw_meu(struct image *image)
 	desc = image->fw_image + MAN_DESC_OFFSET;
 
 	/* copy data */
-	memcpy(meta, &image->adsp->man->adsp_file_ext,
+	memcpy(meta, &image->adsp->man_v1_8->adsp_file_ext,
 	       sizeof(struct sof_man_adsp_meta_file_ext));
-	memcpy(desc, &image->adsp->man->desc,
+	memcpy(desc, &image->adsp->man_v1_8->desc,
 	       sizeof(struct sof_man_fw_desc));
 
 	/* create each module */
@@ -848,9 +848,9 @@ const struct adsp machine_apl = {
 	.image_size = 0x100000,
 	.dram_offset = 0,
 	.machine_id = MACHINE_APOLLOLAKE,
-	.write_firmware = man_write_fw,
-	.write_firmware_meu = man_write_fw_meu,
-	.man = &apl_manifest,
+	.write_firmware = man_write_fw_v1_8,
+	.write_firmware_meu = man_write_fw_meu_v1_8,
+	.man_v1_8 = &apl_manifest,
 };
 
 const struct adsp machine_cnl = {
@@ -864,9 +864,9 @@ const struct adsp machine_cnl = {
 	.image_size = 0x100000,
 	.dram_offset = 0,
 	.machine_id = MACHINE_CANNONLAKE,
-	.write_firmware = man_write_fw,
-	.write_firmware_meu = man_write_fw_meu,
-	.man = &cnl_manifest,
+	.write_firmware = man_write_fw_v1_8,
+	.write_firmware_meu = man_write_fw_meu_v1_8,
+	.man_v1_8 = &cnl_manifest,
 };
 
 const struct adsp machine_icl = {
@@ -880,9 +880,9 @@ const struct adsp machine_icl = {
 	.image_size = 0x100000,
 	.dram_offset = 0,
 	.machine_id = MACHINE_ICELAKE,
-	.write_firmware = man_write_fw,
-	.write_firmware_meu = man_write_fw_meu,
-	.man = &cnl_manifest, // use the same as CNL
+	.write_firmware = man_write_fw_v1_8,
+	.write_firmware_meu = man_write_fw_meu_v1_8,
+	.man_v1_8 = &cnl_manifest, // use the same as CNL
 };
 
 const struct adsp machine_sue = {
@@ -896,7 +896,7 @@ const struct adsp machine_sue = {
 	.image_size = 0x100000,
 	.dram_offset = 0,
 	.machine_id = MACHINE_SUECREEK,
-	.write_firmware = man_write_fw,
-	.write_firmware_meu = man_write_fw_meu,
-	.man = &cnl_manifest,
+	.write_firmware = man_write_fw_v1_8,
+	.write_firmware_meu = man_write_fw_meu_v1_8,
+	.man_v1_8 = &cnl_manifest,
 };

@@ -36,9 +36,10 @@ void ri_adsp_meta_data_create(struct image *image, int meta_start_offset,
 
 void ri_plat_ext_data_create(struct image *image)
 {
-	struct partition_info_ext *part = image->fw_image + MAN_PART_INFO_OFFSET;
+	struct partition_info_ext *part = image->fw_image
+		+ MAN_PART_INFO_OFFSET_V1_8;
 	struct sof_man_adsp_meta_file_ext *meta =
-		image->fw_image + MAN_META_EXT_OFFSET;
+		image->fw_image + MAN_META_EXT_OFFSET_V1_8;
 	struct sof_man_fw_desc *desc = image->fw_image + MAN_DESC_OFFSET;
 
 	fprintf(stdout, " auth: completing authentication manifest\n");

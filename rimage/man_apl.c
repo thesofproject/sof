@@ -19,7 +19,7 @@
 #include <version.h>
 
 /* manifest template */
-struct fw_image_manifest apl_manifest = {
+struct fw_image_manifest_v1_8 apl_manifest = {
 
 	.cse_partition_dir_header = {
 		.header_marker = CSE_HEADER_MAKER,
@@ -35,18 +35,18 @@ struct fw_image_manifest apl_manifest = {
 		{
 			/* CssHeader + platformFirmwareAuthenticationExtension - padding */
 			.entry_name = "ADSP.man",
-			.offset = MAN_CSS_HDR_OFFSET,
-			.length = sizeof(struct css_header) +
+			.offset = MAN_CSS_HDR_OFFSET_V1_8,
+			.length = sizeof(struct css_header_v1_8) +
 				PLAT_AUTH_SIZE,
 		},
 		{	/* ADSPMetadataFileExtension */
 			.entry_name = "cavs0015.met",
-			.offset = MAN_META_EXT_OFFSET,
+			.offset = MAN_META_EXT_OFFSET_V1_8,
 			.length = sizeof(struct sof_man_adsp_meta_file_ext),
 		},
 		{	/* AdspFwBinaryDesc */
 			.entry_name = "cavs0015",
-			.offset = MAN_FW_DESC_OFFSET,
+			.offset = MAN_FW_DESC_OFFSET_V1_8,
 			.length = 0,	/* calculated by rimage - */
 		},
 
