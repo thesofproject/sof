@@ -66,6 +66,23 @@ void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
 	(void)param;
 }
 
+void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t param1,
+			       uint32_t param2)
+{
+	(void)log_entry;
+	(void)param1;
+	(void)param2;
+}
+
+void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t param1,
+			       uint32_t param2, uint32_t param3)
+{
+	(void)log_entry;
+	(void)param1;
+	(void)param2;
+	(void)param3;
+}
+
 void trace_flush(void)
 {
 }
