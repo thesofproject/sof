@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,59 +25,33 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-/**
- * \file include/uapi/ipc/xtensa.h
- * \brief IPC definitions
- * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
- * \author Keyon Jie <yang.jie@linux.intel.com>
- */
+#include <xtensa/config/core-isa.h>
 
-#ifndef __INCLUDE_UAPI_IPC_XTENSA_H__
-#define __INCLUDE_UAPI_IPC_XTENSA_H__
-
-#include <arch/offset-defs.h>
-#include <uapi/ipc/header.h>
-
-/*
- * Architecture specific debug
- */
-
-#define ARCHITECTURE_ID 0x1
-
-/* Xtensa Firmware Oops data */
-struct sof_ipc_dsp_oops_xtensa {
-	struct sof_ipc_dsp_oops_arch_hdr arch_hdr;
-	struct sof_ipc_dsp_oops_plat_hdr plat_hdr;
-	uint32_t exccause;
-	uint32_t excvaddr;
-	uint32_t ps;
-	uint32_t epc1;
-	uint32_t epc2;
-	uint32_t epc3;
-	uint32_t epc4;
-	uint32_t epc5;
-	uint32_t epc6;
-	uint32_t epc7;
-	uint32_t eps2;
-	uint32_t eps3;
-	uint32_t eps4;
-	uint32_t eps5;
-	uint32_t eps6;
-	uint32_t eps7;
-	uint32_t depc;
-	uint32_t intenable;
-	uint32_t interrupt;
-	uint32_t sar;
-	uint32_t debugcause;
-	uint32_t widnowbase;
-	uint32_t windowstart;
-	uint32_t excsave1;
-	uint32_t ar[XCHAL_NUM_AREGS];
-	uint32_t stack;
-} __attribute__((packed));
-
-#endif
+#define REG_OFFSET_EXCCAUSE     0x0
+#define REG_OFFSET_EXCVADDR     0x4
+#define REG_OFFSET_PS           0x8
+#define REG_OFFSET_EPC1         0xc
+#define REG_OFFSET_EPC2         0x10
+#define REG_OFFSET_EPC3         0x14
+#define REG_OFFSET_EPC4         0x18
+#define REG_OFFSET_EPC5         0x1c
+#define REG_OFFSET_EPC6         0x20
+#define REG_OFFSET_EPC7         0x24
+#define REG_OFFSET_EPS2         0x28
+#define REG_OFFSET_EPS3         0x2c
+#define REG_OFFSET_EPS4         0x30
+#define REG_OFFSET_EPS5         0x34
+#define REG_OFFSET_EPS6         0x38
+#define REG_OFFSET_EPS7         0x3c
+#define REG_OFFSET_DEPC         0x40
+#define REG_OFFSET_INTENABLE    0x44
+#define REG_OFFSET_INTERRUPT    0x48
+#define REG_OFFSET_SAR          0x4c
+#define REG_OFFSET_DEBUGCAUSE   0x50
+#define REG_OFFSET_WINDOWBASE   0x54
+#define REG_OFFSET_WINDOWSTART  0x58
+#define REG_OFFSET_EXCSAVE1     0x5c
+#define REG_OFFSET_AR_BEGIN     0x60
+#define REG_OFFSET_AR_END       (REG_OFFSET_AR_BEGIN + 4 * XCHAL_NUM_AREGS)
