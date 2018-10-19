@@ -36,9 +36,12 @@
 #include <stddef.h>
 #include <sof/mailbox.h>
 #include <uapi/ipc/xtensa.h>
+#include <arch/offset-defs.h>
 
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32
+
+void arch_dump_regs_a(void *dump_buf, uint32_t ps);
 
 static inline void *arch_get_stack_ptr(void)
 {
@@ -52,61 +55,34 @@ static inline void *arch_get_stack_ptr(void)
 	return ptr;
 }
 
+static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
+				  uint32_t ps)
+{
+	oops->arch_hdr.arch = ARCHITECTURE_ID;
+	oops->arch_hdr.totalsize = sizeof(*oops);
+#if XCHAL_HW_CONFIGID_RELIABLE
+	oops->plat_hdr.configidhi = XCHAL_HW_CONFIGID0;
+	oops->plat_hdr.configidlo = XCHAL_HW_CONFIGID1;
+#else
+	oops->plat_hdr.configidhi = 0;
+	oops->plat_hdr.configidlo = 0;
+#endif
+	oops->plat_hdr.numaregs = XCHAL_NUM_AREGS;
+	oops->plat_hdr.stackoffset = ((void *)&oops->stack) - (void *)oops;
+
+	arch_dump_regs_a((void *)&oops->exccause, ps);
+}
+
 static inline void *arch_dump_regs(uint32_t ps)
 {
-	struct sof_ipc_dsp_oops_xtensa *x =
-		(struct sof_ipc_dsp_oops_xtensa *) mailbox_get_exception_base();
+	void *buf = (void *)mailbox_get_exception_base();
 
-	/* tell users how much data is here */
-	x->hdr.size = sizeof(*x);
+	fill_core_dump(buf, ps);
 
-	/* Exception Vector number - 0x0 */
-	__asm__ __volatile__ ("rsr %0, EXCCAUSE" : "=a" (x->exccause) : : "memory");
-	/* Exception Vector address - 0x4 */
-	__asm__ __volatile__ ("rsr %0, EXCVADDR" : "=a" (x->excvaddr) : : "memory");
-	/* Exception Processor State - 0x8 */
-	x->ps = ps;
-	/* Level 1 Exception PC - 0xc */
-	__asm__ __volatile__ ("rsr %0, EPC1" : "=a" (x->epc1) : : "memory");
-	/* Level 2 Exception PC - 0x10 */
-	__asm__ __volatile__ ("rsr %0, EPC2" : "=a" (x->epc2) : : "memory");
-	/* Level 3 Exception PC - 0x14 */
-	__asm__ __volatile__ ("rsr %0, EPC3" : "=a" (x->epc3) : : "memory");
-	/* Level 4 Exception PC - 0x18 */
-	__asm__ __volatile__ ("rsr %0, EPC4" : "=a" (x->epc4) : : "memory");
-	/* Level 5 Exception PC - 0x1c */
-	__asm__ __volatile__ ("rsr %0, EPC5" : "=a" (x->epc5) : : "memory");
-	/* Level 6 Exception PC - 0x20 */
-	__asm__ __volatile__ ("rsr %0, EPC6" : "=a" (x->epc6) : : "memory");
-	/* Level 7 Exception PC - 0x24 */
-	__asm__ __volatile__ ("rsr %0, EPC7" : "=a" (x->epc7) : : "memory");
-	/* Level 2 Exception PS - 0x28 */
-	__asm__ __volatile__ ("rsr %0, EPS2" : "=a" (x->eps2) : : "memory");
-	/* Level 3 Exception PS - 0x2c */
-	__asm__ __volatile__ ("rsr %0, EPS3" : "=a" (x->eps3) : : "memory");
-	/* Level 4 Exception PS - 0x30 */
-	__asm__ __volatile__ ("rsr %0, EPS4" : "=a" (x->eps4) : : "memory");
-	/* Level 5 Exception PS - 0x34 */
-	__asm__ __volatile__ ("rsr %0, EPS5" : "=a" (x->eps5) : : "memory");
-	/* Level 6 Exception PS - 0x38 */
-	__asm__ __volatile__ ("rsr %0, EPS6" : "=a" (x->eps6) : : "memory");
-	/* Level 7 Exception PS - 0x3c */
-	__asm__ __volatile__ ("rsr %0, EPS7" : "=a" (x->eps7) : : "memory");
-	/* Double Exception program counter - 0x40 */
-	__asm__ __volatile__ ("rsr %0, DEPC" : "=a" (x->depc) : : "memory");
-	/* Interrupts Enabled - 0x44 */
-	__asm__ __volatile__ ("rsr %0, INTENABLE" : "=a" (x->intenable) : : "memory");
-	/* Interrupts Status - 0x48 */
-	__asm__ __volatile__ ("rsr %0, INTERRUPT" : "=a" (x->interrupt) : : "memory");
-	/* Shift register - 0x4c */
-	__asm__ __volatile__ ("rsr %0, SAR" : "=a" (x->sar) : : "memory");
-	/* Register A1 (stack) - 0x50 */
-	__asm__ __volatile__ ("mov %0, a1" : "=a" (x->stack) : : "memory");
-
-	dcache_writeback_region((void *)x, sizeof(*x));
+	dcache_writeback_region(buf, sizeof(struct sof_ipc_dsp_oops_xtensa));
 
 	/* tell caller extended data can be placed hereafter */
-	return (void *)(x + 1);
+	return ((uint8_t *)buf + sizeof(struct sof_ipc_dsp_oops_xtensa));
 }
 
 #endif
