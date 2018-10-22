@@ -510,7 +510,6 @@ extern void xtos_unhandled_interrupt();
 #define EQUAL(a, b)		((1 << (a)) & (1 << (b)))
 
 #define XTOS_INT_STACK_SIZE	4096
-#define XTOS_IDLE_STACK_SIZE	4096
 
 // sizeof(xtos_enabled)
 #define XTOS_ENABLED_SIZE_PER_CORE	(4)

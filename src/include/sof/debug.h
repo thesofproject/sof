@@ -34,6 +34,7 @@
 
 #include <sof/sof.h>
 #include <sof/mailbox.h>
+#include <sof/cpu.h>
 #include <uapi/ipc.h>
 #include <platform/platform.h>
 #include <stdint.h>
@@ -131,10 +132,10 @@
 static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 	size_t limit)
 {
-	extern void *__stack;
 	extern void *_stack_sentry;
-	void *stack_bottom = (void *)&__stack - sizeof(void *);
-	void *stack_limit = (void *)&_stack_sentry;
+	void *stack_limit = (void *)&_stack_sentry +
+		(cpu_get_id() * SOF_STACK_SIZE);
+	void *stack_bottom = stack_limit + SOF_STACK_SIZE - sizeof(void *);
 	void *stack_top = arch_get_stack_ptr() + offset;
 	size_t size = stack_bottom - stack_top;
 

@@ -1,2 +1,3 @@
 noinst_HEADERS = \
-	idc.h
+	idc.h \
+	memory.h

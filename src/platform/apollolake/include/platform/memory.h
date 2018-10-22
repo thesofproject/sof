@@ -34,6 +34,7 @@
 #define __PLATFORM_MEMORY_H__
 
 #include <config.h>
+#include <arch/memory.h>
 
 /* physical DSP addresses */
 
@@ -264,9 +265,10 @@
 #define SOF_BSS_DATA_SIZE	0x9000
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_SIZE		ARCH_STACK_SIZE
+#define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
 #define SOF_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE)
-#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_SIZE)
+#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
 /*
  * The LP SRAM Heap and Stack on Apollolake are organised like this :-
