@@ -40,7 +40,10 @@ MACHINES = \
 	sof-glk-da7219.tplg \
 	sof-icl-nocodec.tplg \
 	sof-apl-eq-pcm512x.tplg \
-	sof-apl-eq-dmic.tplg
+	sof-apl-eq-dmic.tplg \
+	sof-apl-dmic-2ch.tplg \
+	sof-apl-dmic-4ch.tplg
+
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
@@ -81,4 +84,6 @@ EXTRA_DIST = \
 	sof-glk-da7219.m4 \
 	sof-icl-nocodec.m4 \
 	sof-apl-eq-pcm512x.m4 \
-	sof-apl-eq-dmic.m4
+	sof-apl-eq-dmic.m4 \
+	sof-apl-dmic-4ch.m4 \
+	sof-apl-dmic-2ch.m4
