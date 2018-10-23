@@ -46,7 +46,7 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 
 addpath('std_utils');
 addpath('test_utils');
-addpath('../tune/src');
+addpath('../../tune/src');
 mkdir_check('plots');
 mkdir_check('reports');
 
