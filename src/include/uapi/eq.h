@@ -33,11 +33,6 @@
 
 /* FIR EQ type */
 
-/* Component will reject non-matching configuration. The version number need
- * to be incremented with any ABI changes in function fir_cmd().
- */
-#define SOF_EQ_FIR_ABI_VERSION  1
-
 #define SOF_EQ_FIR_IDX_SWITCH	0
 
 #define SOF_EQ_FIR_MAX_SIZE 4096 /* Max size allowed for coef data in bytes */
@@ -96,11 +91,6 @@ struct sof_eq_fir_coef_data {
 #define SOF_EQ_FIR_COEF_NHEADER 2
 
 /* IIR EQ type */
-
-/* Component will reject non-matching configuration. The version number need
- * to be incremented with any ABI changes in function fir_cmd().
- */
-#define SOF_EQ_IIR_ABI_VERSION  1
 
 #define SOF_EQ_IIR_IDX_SWITCH   0
 

@@ -258,6 +258,10 @@ static inline void comp_free(struct comp_dev *dev)
 /* component state set */
 int comp_set_state(struct comp_dev *dev, int cmd);
 
+/* component set period bytes */
+void comp_set_period_bytes(struct comp_dev *dev, uint32_t frames,
+			   enum sof_ipc_frame *format, uint32_t *period_bytes);
+
 /* component parameter init - mandatory */
 static inline int comp_params(struct comp_dev *dev)
 {
