@@ -10,7 +10,7 @@ FN_IN=$5
 FN_OUT=$6
 
 # The HOST_ROOT path need to be retrived from SOFT .configure command
-HOST_ROOT=../../host-root
+HOST_ROOT=../../../host-root
 HOST_EXE=$HOST_ROOT/bin/testbench
 HOST_LIB=$HOST_ROOT/lib
 
@@ -18,7 +18,7 @@ HOST_LIB=$HOST_ROOT/lib
 INFMT=s${BITS_IN}le
 OUTFMT=s${BITS_IN}le
 MCLK=24576k
-TPLG=../topology/test/test-playback-ssp2-mclk-0-I2S-${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
+TPLG=../../topology/test/test-playback-ssp2-mclk-0-I2S-${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
 
 # If binary test vectors
 if [ ${FN_IN: -4} == ".raw" ]; then
