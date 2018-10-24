@@ -89,8 +89,8 @@ struct sof;
 #define PLATFORM_HOST_DMA_MASK	0x00000000
 
 /* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	4
-#define PLATFORM_MAX_STREAMS	5
+#define PLATFORM_MAX_CHANNELS	8
+#define PLATFORM_MAX_STREAMS	16
 
 /* clock source used by scheduler for deadline calculations */
 #define PLATFORM_SCHED_CLOCK	PLATFORM_DEFAULT_CLOCK
