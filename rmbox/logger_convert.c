@@ -19,7 +19,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-
+#include <sof/uapi/ipc.h>
 #include "convert.h"
 
 #define CEIL(a, b) ((a+b-1)/b)
@@ -32,15 +32,15 @@
 #define SND_SOF_LOGS_SIG_SIZE	4
 #define SND_SOF_LOGS_SIG	"Logs"
 
+/*
+* Logs dictionary file header.
+*/
 struct snd_sof_logs_header {
-	/* "Logs" */
-	unsigned char sig[SND_SOF_LOGS_SIG_SIZE];
-	/* address of log entries section */
-	uint32_t base_address;
-	/* amount of bytes following this header */
-	uint32_t data_length;
-	/* offset to first entry in this file */
-	uint32_t data_offset;
+	unsigned char sig[SND_SOF_LOGS_SIG_SIZE]; /* "Logs" */
+	uint32_t base_address;  /* address of log entries section */
+	uint32_t data_length;   /* amount of bytes following this header */
+	uint32_t data_offset;   /* offset to first entry in this file */
+	struct sof_ipc_fw_version version;
 };
 
 struct ldc_entry_header {
@@ -145,7 +145,7 @@ static void print_entry_params(FILE *out_fd, struct dma_log dma_log,
 			entry.params[2], entry.params[3]);
 		break;
 	}
-	fprintf(out_fd, "\n");
+	fprintf(out_fd, "%s\n", KNRM);
 	fflush(out_fd);
 }
 
@@ -317,6 +317,26 @@ int convert(struct convert_config *config) {
 	if (strncmp(snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
 		fprintf(stderr, "Error: Invalid ldc file signature. \n");
 		return -EINVAL;
+	}
+
+	/* fw verification */
+	if (config->version_fd) {
+		struct sof_ipc_fw_version ver;
+		int i;
+		/* here fw verification should be exploited */
+		count = fread(&ver, sizeof(ver), 1, config->version_fd);
+		if (!count) {
+			fprintf(stderr, "Error while reading %s. \n", config->version_file);
+			return -ferror(config->version_fd);
+		}
+
+		ret = memcmp(&ver, &snd.version, sizeof(struct sof_ipc_fw_version));
+		if (ret) {
+			fprintf(stderr, "Error: fw version in %s file "
+				"does not coincide with fw version in "
+				"%s file. \n", config->ldc_file, config->version_file);
+			return -EINVAL;
+		}
 	}
 
 	return logger_read(config, &snd);

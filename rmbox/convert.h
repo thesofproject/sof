@@ -36,6 +36,9 @@ struct convert_config {
 	const char *ldc_file;
 	FILE* ldc_fd;
 	int input_std;
+	int version_fw;
+	char *version_file;
+	FILE *version_fd;
 #endif
 };
 
