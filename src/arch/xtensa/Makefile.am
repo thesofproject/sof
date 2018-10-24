@@ -24,7 +24,7 @@ nodist_sof_SOURCES = $(LINK_SCRIPT).in
 BUILT_SOURCES = $(LINK_SCRIPT)
 CLEANFILES = $(LINK_SCRIPT)
 $(LINK_SCRIPT): Makefile $(LINK_SCRIPT).in $(LINK_DEPS)
-	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) - >$@
+	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) $(ARCH_INCDIR) - >$@
 
 noinst_LIBRARIES = \
 	libreset.a
@@ -144,7 +144,7 @@ CLEANFILES += $(LINK_BOOT_LDR_SCRIPT)
 
 nodist_boot_ldr_SOURCES = $(LINK_BOOT_LDR_SCRIPT).in
 $(LINK_BOOT_LDR_SCRIPT): Makefile $(LINK_BOOT_LDR_SCRIPT).in $(LINK_DEPS)
-	cat $(LINK_BOOT_LDR_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) - >$@
+	cat $(LINK_BOOT_LDR_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) $(ARCH_INCDIR) - >$@
 
 boot_ldr_SOURCES = \
 	boot_entry.S \

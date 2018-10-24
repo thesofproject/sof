@@ -548,7 +548,7 @@ SECTIONS
   {
     . = ALIGN (4096);
     _sof_stack_start = ABSOLUTE(.);
-    . = . + SOF_STACK_SIZE;
+    . = . + SOF_STACK_TOTAL_SIZE;
     _sof_stack_end = ABSOLUTE(.);
   } >sof_stack :sof_stack_phdr
 

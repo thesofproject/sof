@@ -34,6 +34,7 @@
 #define __PLATFORM_MEMORY_H__
 
 #include <config.h>
+#include <arch/memory.h>
 
 /* physical DSP addresses */
 
@@ -270,9 +271,10 @@
 	HEAP_RT_COUNT1024 * 1024)
 
 /* Stack configuration */
-#define SOF_STACK_SIZE				0x2000
-#define SOF_STACK_BASE				(HP_SRAM_BASE + HP_SRAM_SIZE)
-#define SOF_STACK_END				(SOF_STACK_BASE - SOF_STACK_SIZE)
+#define SOF_STACK_SIZE		ARCH_STACK_SIZE
+#define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
+#define SOF_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE)
+#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
 #define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE	\

@@ -33,6 +33,7 @@
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
 #include <config.h>
+#include <arch/memory.h>
 
 
 // Exports
@@ -64,24 +65,6 @@
 #endif
 
 /**************************************************************************/
-	.macro generate_stack_for_idle core_id
-		.if GREATERTHAN(PLATFORM_CORE_COUNT, \core_id)
-			.section .bss, "aw"
-			.align	XTOS_IDLE_STACK_SIZE
-			.if EQUAL(0, \core_id)
-			.global _stack_start
-_stack_start:
-			.endif
-			.global	_stack_start&core_id
-_stack_start&core_id:
-			.space	XTOS_IDLE_STACK_SIZE
-		.endif
-	.endm
-
-	generate_stack_for_idle 0
-	generate_stack_for_idle 1
-	generate_stack_for_idle 2
-	generate_stack_for_idle 3
 
 	.text
 	.align 4
@@ -248,7 +231,7 @@ xtos_per_core_init_interrupt_mask:
 
 	// Assign stack ptr before PS is initialized to avoid any debugger
 	// side effects and prevent from double exception.
-	xtos_stack_addr_percore_basic	sp, a3, _stack_start, XTOS_IDLE_STACK_SIZE
+	xtos_stack_addr_percore_basic sp, a3, _stack_sentry, ARCH_STACK_SIZE
 
 	/*
 	 *  Now that sp (a1) is set, we can set PS as per the application

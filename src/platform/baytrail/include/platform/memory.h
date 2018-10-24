@@ -32,6 +32,7 @@
 #define __PLATFORM_MEMORY_H__
 
 #include <config.h>
+#include <arch/memory.h>
 
 /* physical DSP addresses */
 
@@ -128,7 +129,7 @@
 
 #define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE \
-	(DRAM0_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_SIZE -\
+	(DRAM0_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_TOTAL_SIZE -\
 	HEAP_SYSTEM_SIZE - SOF_DATA_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
@@ -139,9 +140,10 @@
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */
-#define SOF_STACK_SIZE				0x1000
-#define SOF_STACK_BASE				(DRAM0_BASE + DRAM0_SIZE)
-#define SOF_STACK_END				(SOF_STACK_BASE - SOF_STACK_SIZE)
+#define SOF_STACK_SIZE		ARCH_STACK_SIZE
+#define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
+#define SOF_STACK_BASE		(DRAM0_BASE + DRAM0_SIZE)
+#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
 /* Vector and literal sizes - not in core-isa.h */
 #define SOF_MEM_VECT_LIT_SIZE		0x4
