@@ -79,4 +79,9 @@ void dma_trace_flush(void *t);
 void dtrace_event(const char *e, uint32_t size);
 void dtrace_event_atomic(const char *e, uint32_t length);
 
+static inline uint32_t dtrace_calc_buf_margin(struct dma_trace_buf *buffer)
+{
+	return buffer->end_addr - buffer->w_ptr;
+}
+
 #endif
