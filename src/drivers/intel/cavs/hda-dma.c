@@ -89,6 +89,7 @@ trace_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
 
 #define HDA_STATE_PRELOAD	BIT(0)
 #define HDA_STATE_BF_WAIT	BIT(1)
+#define HDA_STATE_INIT		BIT(2)
 
 struct hda_chan_data {
 	struct dma *dma;
@@ -269,11 +270,43 @@ static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	return 0;
 }
 
+static void hda_dma_init(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
+
+	trace_host("hda-dma-init %p ch %d", (uintptr_t)dma, channel);
+
+	/* enable the channel */
+	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
+			DGCS_GEN | DGCS_FIFORDY);
+
+	/* full buffer is copied at startup */
+	p->chan[channel].desc_avail = p->chan[channel].desc_count;
+
+	p->chan[channel].state &= ~HDA_STATE_INIT;
+
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+
+	/* start link output transfer now */
+	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV)
+		hda_dma_inc_link_fp(dma, channel,
+				    p->chan[channel].buffer_bytes);
+
+	spin_unlock_irq(&dma->lock, flags);
+}
+
 static uint64_t hda_dma_work(void *data, uint64_t delay)
 {
 	struct hda_chan_data *chan = (struct hda_chan_data *)data;
 
-	hda_dma_copy_ch(chan->dma, chan, chan->period_bytes);
+	if (chan->state & HDA_STATE_INIT)
+		hda_dma_init(chan->dma, chan->index);
+	else
+		hda_dma_copy_ch(chan->dma, chan, chan->period_bytes);
+
 	/* next time to re-arm */
 	return HDA_LINK_1MS_US;
 }
@@ -287,10 +320,14 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 	if (flags & DMA_COPY_PRELOAD)
 		chan->state |= HDA_STATE_PRELOAD;
 
-	if (chan->state & HDA_STATE_PRELOAD)
+	if (chan->state & HDA_STATE_INIT)
+		return 0;
+	else if (chan->state & HDA_STATE_PRELOAD)
 		return hda_dma_preload(dma, chan);
 	else
 		return hda_dma_copy_ch(dma, chan, bytes);
+
+	return 0;
 }
 
 /* acquire the specific DMA channel */
@@ -370,25 +407,19 @@ static int hda_dma_start(struct dma *dma, int channel)
 		goto out;
 	}
 
-	/* enable the channel */
-	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
-			DGCS_GEN | DGCS_FIFORDY);
+	p->chan[channel].state |= HDA_STATE_INIT;
 
-	/* full buffer is copied at startup */
-	p->chan[channel].desc_avail = p->chan[channel].desc_count;
-
-	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
-
-	/* activate timer if configured in cyclic mode */
+	/*
+	 * Activate timer if configured in cyclic mode.
+	 * In cyclic mode DMA start is scheduled for later,
+	 * to make sure we stay synchronized with the system work queue.
+	 */
 	if (p->chan[channel].dma_ch_work.cb) {
 		work_schedule_default(&p->chan[channel].dma_ch_work,
 				      HDA_LINK_1MS_US);
+	} else {
+		hda_dma_init(dma, channel);
 	}
-
-	/* start link output transfer now */
-	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV)
-		hda_dma_inc_link_fp(dma, channel,
-				    p->chan[channel].buffer_bytes);
 
 out:
 	spin_unlock_irq(&dma->lock, flags);
@@ -537,7 +568,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	/* initialize timer */
 	if (config->cyclic) {
 		work_init(&p->chan[channel].dma_ch_work, hda_dma_work,
-			  &p->chan[channel], WORK_SYNC);
+			  &p->chan[channel], WORK_ASYNC);
 	}
 
 	/* init channel in HW */
