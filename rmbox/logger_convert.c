@@ -282,10 +282,17 @@ static int logger_read(struct convert_config *config,
 			return -ferror(config->in_fd);
 		}
 
-		/* checking log address */
+		/* checking if received trace address is located in
+		 * entry section in elf file.
+		 */
 		if ((dma_log.address < snd->base_address) ||
-			dma_log.address > snd->base_address + snd->data_length)
+			dma_log.address > snd->base_address + snd->data_length) {
+			/* in case the address is not correct input fd should be
+			 * move forward by one DWORD, not entire struct dma_log
+			 */
+			fseek(config->in_fd, -(sizeof(dma_log) - sizeof(uint32_t)), SEEK_CUR);
 			continue;
+		}
 
 		/* fetching entry from elf dump */
 		ret = fetch_entry(config, snd->base_address, snd->data_offset,
