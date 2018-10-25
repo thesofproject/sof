@@ -145,9 +145,6 @@
 #define SHIM_DSPWCTCS_T1A	(0x1 << 1) /* Timer 1 armed */
 #define SHIM_DSPWCTCS_T0A	(0x1 << 0) /* Timer 0 armed */
 
-/** \brief LDO Control */
-#define SHIM_LDOCTL		0xA4
-
 /** \brief Clock control */
 #define SHIM_CLKCTL		0x78
 
@@ -219,9 +216,21 @@
 /* HP & LP SRAM Power Gating */
 #define SHIM_HSPGCTL		0x80
 #define SHIM_LSPGCTL		0x84
-#define SHIM_SPSREQ		0xa0
+#define SHIM_SPSREQ		    0xa0
 
 #define SHIM_SPSREQ_RVNNP	(0x1 << 0)
+
+/** \brief LDO Control */
+#define SHIM_LDOCTL		0xA4
+
+#define SHIM_LDOCTL_HP_SRAM_MASK	(3 << 0)
+#define SHIM_LDOCTL_LP_SRAM_MASK	(3 << 2)
+#define SHIM_LDOCTL_HP_SRAM_LDO_ON	(3 << 0)
+#define SHIM_LDOCTL_LP_SRAM_LDO_ON	(3 << 2)
+#define SHIM_LDOCTL_HP_SRAM_LDO_BYPASS	BIT(0)
+#define SHIM_LDOCTL_LP_SRAM_LDO_BYPASS	BIT(2)
+#define SHIM_LDOCTL_HP_SRAM_LDO_OFF	(0 << 0)
+#define SHIM_LDOCTL_LP_SRAM_LDO_OFF	(0 << 2)
 
 #define SHIM_HSPGISTS		0xb0
 #define SHIM_LSPGISTS		0xb4
