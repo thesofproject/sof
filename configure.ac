@@ -137,6 +137,7 @@ case "$with_arch" in
 
 	ARCH="host"
 	AC_SUBST(ARCH)
+	AC_DEFINE([CONFIG_HOST], [1], [Configure for Host])
     ;;
     *)
 	if test "$have_rimage" = "no" && test "$have_doc" = "no" ; then

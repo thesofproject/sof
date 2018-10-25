@@ -66,7 +66,11 @@
 #endif
 #else
 /* GCC */
+#if defined(CONFIG_HOST)
+#define SRC_SHORT	0  /* Use high quality 32 bit filter coefficients */
+#else
 #define SRC_SHORT	1  /* Use 16 bit filter coefficients for speed */
+#endif
 #define SRC_GENERIC	1
 #define SRC_HIFIEP	0
 #define SRC_HIFI3	0
