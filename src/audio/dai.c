@@ -351,6 +351,7 @@ static int dai_params(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	int i;
 
 	trace_dai("par");
 
@@ -360,9 +361,24 @@ static int dai_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* get DMA channel, once the backend dma channel is known */
-	dd->chan = dma_channel_get(dd->dma, dev->params.be_dma_ch);
-	if (dd->chan < 0) {
+	/* link dma channel is allocated in host and indexed by id
+	 * Channel value is unused in get function for GP DMA now
+	 */
+	for (i = 0; i < dev->params.be_dma_params.be_count; i++) {
+		if (dev->params.be_dma_params.be_comp_id[i] == dev->comp.id) {
+			int chan = dev->params.be_dma_params.be_dma_ch[i];
+
+			dd->chan = dma_channel_get(dd->dma, chan);
+			if (dd->chan < 0 || dd->chan >= PLATFORM_MAX_CHANNELS) {
+				trace_dai_error("eDc");
+				return -EINVAL;
+			}
+
+			break;
+		}
+	}
+
+	if (i >= dev->params.be_dma_params.be_count) {
 		trace_dai_error("eDc");
 		return -EINVAL;
 	}

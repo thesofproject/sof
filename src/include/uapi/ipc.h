@@ -495,13 +495,18 @@ struct sof_ipc_host_buffer {
 	uint32_t offset;
 } __attribute__((packed));
 
+struct sof_ipc_be_dma_params {
+	uint32_t be_count;
+	uint32_t be_comp_id[SOF_IPC_MAX_CHANNELS];
+	uint32_t be_dma_ch[SOF_IPC_MAX_CHANNELS];
+} __attribute__((packed));
+
 struct sof_ipc_stream_params {
 	struct sof_ipc_host_buffer buffer;
 	enum sof_ipc_stream_direction direction;
 	enum sof_ipc_frame frame_fmt;
 	enum sof_ipc_buffer_format buffer_fmt;
 	uint32_t host_dma_ch;
-	uint32_t be_dma_ch;
 	uint32_t rate;
 	uint32_t channels;
 	uint32_t sample_valid_bytes;
@@ -509,6 +514,7 @@ struct sof_ipc_stream_params {
 	/* for notifying host period has completed - 0 means no period IRQ */
 	uint32_t host_period_bytes;
 	enum sof_ipc_chmap chmap[SOF_IPC_MAX_CHANNELS];	/* channel map */
+	struct sof_ipc_be_dma_params be_dma_params;
 } __attribute__((packed));
 
 /* PCM params info - SOF_IPC_STREAM_PCM_PARAMS */
