@@ -500,8 +500,7 @@ struct sof_ipc_stream_params {
 	enum sof_ipc_stream_direction direction;
 	enum sof_ipc_frame frame_fmt;
 	enum sof_ipc_buffer_format buffer_fmt;
-	uint32_t host_dma_ch;
-	uint32_t be_dma_ch;
+	uint32_t stream_tag;
 	uint32_t rate;
 	uint32_t channels;
 	uint32_t sample_valid_bytes;

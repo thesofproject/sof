@@ -360,8 +360,8 @@ static int dai_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* get DMA channel, once the backend dma channel is known */
-	dd->chan = dma_channel_get(dd->dma, dev->params.be_dma_ch);
+	/* get DMA channel, once the stream_tag is known */
+	dd->chan = dma_channel_get(dd->dma, dev->params.stream_tag);
 	if (dd->chan < 0) {
 		trace_dai_error("eDc");
 		return -EINVAL;
