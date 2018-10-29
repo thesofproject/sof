@@ -87,11 +87,15 @@ static int elf_read_sections(struct image *image, struct module *module)
 	fprintf(stdout, " BSS module metadata section at index %d\n",
 		man_section_idx);
 
-	/* find log entries section */
-	module->logs_index  = elf_find_section(image, module,
-		".static_log_entries");
+	/* find log entries and fw ready sections */
+	module->logs_index = elf_find_section(image, module,
+					      ".static_log_entries");
 	fprintf(stdout, " static log entries section at index %d\n",
 		module->logs_index);
+	module->fw_ready_index = elf_find_section(image, module,
+						  ".fw_ready");
+	fprintf(stdout, " fw ready section at index %d\n",
+		module->fw_ready_index);
 
 	/* parse each section */
 	for (i = 0; i < hdr->e_shnum; i++) {
@@ -352,7 +356,8 @@ static void elf_module_limits(struct image *image, struct module *module)
 		section = &module->section[i];
 
 		/* module bss can sometimes be missed */
-		if (i != module->bss_index && i != module->logs_index) {
+		if (i != module->bss_index && i != module->logs_index &&
+		    i != module->fw_ready_index) {
 
 			/* only check valid sections */
 			if (!(section->sh_flags & valid))

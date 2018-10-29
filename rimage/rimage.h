@@ -70,6 +70,7 @@ struct module {
 	int fw_size;
 	int bss_index;
 	int logs_index;
+	int fw_ready_index;
 
 	/* sizes do not include any gaps */
 	int bss_size;

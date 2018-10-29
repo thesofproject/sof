@@ -357,6 +357,37 @@ int write_logs_dictionary(struct image *image)
 	for (i = 0; i < image->num_modules; i++) {
 		struct module *module = &image->module[i];
 
+		/* extract fw_version from fw_ready message located
+		 * in .fw_ready section
+		 */
+		if (module->fw_ready_index > 0) {
+			Elf32_Shdr *section =
+				&module->section[module->fw_ready_index];
+
+			buffer = calloc(1, sizeof(struct sof_ipc_fw_ready));
+			if (!buffer)
+				return -ENOMEM;
+
+			fseek(module->fd, section->sh_offset, SEEK_SET);
+			size_t count = fread(buffer, 1,
+				sizeof(struct sof_ipc_fw_ready), module->fd);
+
+			if (count != sizeof(struct sof_ipc_fw_ready)) {
+				fprintf(stderr,
+					"error: can't read ready section %d\n",
+					-errno);
+				ret = -errno;
+				goto out;
+			}
+
+			memcpy(&header.version,
+			       &((struct sof_ipc_fw_ready *)buffer)->version,
+			       sizeof(header.version));
+
+			free(buffer);
+			buffer = NULL;
+		}
+
 		if (module->logs_index > 0) {
 			Elf32_Shdr *section = &module->section[module->logs_index];
 
@@ -374,7 +405,8 @@ int write_logs_dictionary(struct image *image)
 			size_t count = fread(buffer, 1, section->sh_size,
 				module->fd);
 			if (count != section->sh_size) {
-				fprintf(stderr, "error: can't read section %d\n",
+				fprintf(stderr,
+					"error: can't read logs section %d\n",
 					-errno);
 				ret = -errno;
 				goto out;
@@ -388,8 +420,10 @@ int write_logs_dictionary(struct image *image)
 				goto out;
 			}
 
-			fprintf(stdout, "logs dictionary: size %d\n\n",
+			fprintf(stdout, "logs dictionary: size %u\n",
 				header.data_length + header.data_offset);
+			fprintf(stdout, "including fw version of size: %lu\n\n",
+				sizeof(header.version));
 		}
 	}
 out:
