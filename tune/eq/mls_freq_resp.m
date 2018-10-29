@@ -169,6 +169,8 @@ fprintf('Done.\n');
 
 [f, m_db,  b] = mls_calc_resp(csvfn, mlsfn, measfn, t_tot, np, f_lo, f_hi);
 
+[f, m_db] = apply_mic_calibration(f, m_db, rec_cfg);
+
 figure
 idx = find(f>1e3, 1, 'first') - 1;
 m_db_align = m_db - m_db(idx);
@@ -273,12 +275,89 @@ function rec = meas_remote_rec_config(fs, fmt)
 			     rec.nch, fmt, fs);
 
 	fprintf('\nThe setttings for remote capture are\n');
-	fprintf('Use ssh   : %d\n', rec.ssh);
-	fprintf('User      : %s\n', rec.user);
-	fprintf('Directory : %s\n', rec.dir);
-	fprintf('Device    : %s\n', rec.dev);
-	fprintf('format    : %s\n', rec.fmt);
-	fprintf('Channels  : %d\n', rec.nch);
+	fprintf('Use ssh          : %d\n', rec.ssh);
+	fprintf('User             : %s\n', rec.user);
+	fprintf('Directory        : %s\n', rec.dir);
+	fprintf('Device           : %s\n', rec.dev);
+	fprintf('format           : %s\n', rec.fmt);
+	fprintf('Channels         : %d\n', rec.nch);
+	fprintf('Calibration Data : %s\n', rec.cal);
+
+	if length(rec.cal) > 0
+		if exist(rec.cal, 'file')
+			[rec.cf, rec.cm, rec.sens, rec.cs] = get_calibration(rec.cal);
+		else
+			error('The calibration file does not exist');
+		end
+	else
+		rec.cf = [];
+		rec.cm = [];
+		rec.sens = [];
+		rec.cs = '';
+	end
+end
+
+% The syntax of ASCII text calibration data is such that first line is
+% text string sometimes within "" or text line about Sensitivity. Such
+% lines are read and stored to description text. The sensitivty is extracted
+% and printed if success but currently it is not utilized by the code.
+%
+% The next lines are <frequency Hz> <magnitude decibels> for
+% measurement data for microphone. If there are more than two numbers
+% per line the other than two first columns are ignored. This code
+% applies inverse of calibration data for measured response calibration.
+
+function [f, m, sens, desc] = get_calibration(fn)
+	fh = fopen(fn, 'r');
+	if fh < 0
+		error('Cannot open calibration data file');
+	end
+	n = 1;
+	f = [];
+	m = [];
+	sens =[];
+	desc = '';
+	str = fgets(fh);
+	idx = findstr(str, '"');
+	while length(idx) > 0
+		line = str(idx(1)+1:idx(2)-1);
+		desc = sprintf('%s%s ', desc, line);
+		str = fgets(fh);
+		idx = findstr(str, '"');
+	end
+	if length(strfind(str, 'Sens'))
+		desc = str;
+		str = fgets(fh);
+	end
+	while str ~= -1
+		d=sscanf(str,'%f');
+		f(n) = d(1);
+		m(n) = d(2);
+		n = n + 1;
+		str = fgets(fh);
+	end
+
+	% Strip possible linefeed from description end
+	if double(desc(end)) == 10
+		desc = desc(1:end-1);
+	end
+	fprintf('Calibration Info : %s\n', desc);
+	i1 = strfind(desc, 'Sens Factor =');
+	i2 = strfind(desc, 'dB');
+	if length(i1) == 1 && length(i2) == 1
+		sens = sscanf(desc(i1+13:i2-1), '%f');
+		fprintf('Calibration Sens : %6.2f dB\n', sens);
+	end
+
+	fprintf('Calibration range: %.2f .. %.2f Hz\n', min(f), max(f));
+	fprintf('Calibration range: %.2f .. %.2f dB\n', min(m), max(m));
+
+	figure;
+	semilogx(f, m);
+	grid on;
+	title(desc);
+	xlabel('Frequency (Hz)');
+	ylabel('Magnitude (dB)');
 end
 
 function [x, seed] = mlsp12(seed, n)
@@ -303,4 +382,31 @@ function [x, seed] = mlsp12(seed, n)
 			x(i) = 0;
 		end
 	end
+end
+
+%% Calibration apply function
+%  Resample microphone calibration data into used grid and
+%  then subtract calibration response from measured
+%  response.
+
+function [cal_f, cal_m_db] = apply_mic_calibration(f, m_db, rec)
+
+	if length(rec.cm) > 0
+		if ~isvector(rec.cm)
+			error('Calibration can be for one channel only');
+		end
+		mic_m_db = interp1(rec.cf, rec.cm, f, 'linear');
+		nans = isnan(mic_m_db);
+		idx = find(nans == 0);
+		cal_f = f(idx);
+		cal_db = mic_m_db(idx);
+		s = size(m_db);
+		for i = 1:s(2)
+			cal_m_db(:,i) = m_db(idx,i) - cal_db(:);
+		end
+	else
+		cal_m_db = m_db;
+		cal_f = f;
+	end
+
 end
