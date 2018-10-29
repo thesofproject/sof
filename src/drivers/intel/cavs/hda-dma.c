@@ -162,11 +162,11 @@ static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
 	const uint32_t rp = host_dma_reg_read(dma, chan, DGBRP);
 	const uint32_t wp = host_dma_reg_read(dma, chan, DGBWP);
 
-	uint32_t ds;
+	int32_t ds;
 
 	if (!(cs & DGCS_BNE))
 		return 0; /* buffer is empty */
-	ds = wp - rp;
+	ds = (int32_t)wp - (int32_t)rp;
 	if (ds <= 0)
 		ds += bs;
 
