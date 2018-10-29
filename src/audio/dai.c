@@ -361,7 +361,7 @@ static int dai_params(struct comp_dev *dev)
 	}
 
 	/* get DMA channel, once the stream_tag is known */
-	dd->chan = dma_channel_get(dd->dma, dev->params.stream_tag);
+	dd->chan = dma_channel_get(dd->dma, dev->params.stream_tag, dev);
 	if (dd->chan < 0) {
 		trace_dai_error("eDc");
 		return -EINVAL;

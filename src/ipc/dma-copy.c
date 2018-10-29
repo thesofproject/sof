@@ -176,7 +176,7 @@ int dma_copy_new(struct dma_copy *dc)
 
 #if !defined CONFIG_DMA_GW
 	/* get DMA channel from DMAC0 */
-	dc->chan = dma_channel_get(dc->dmac, 0);
+	dc->chan = dma_channel_get(dc->dmac, 0, NULL);
 	if (dc->chan < 0) {
 		trace_dma_error("ec1");
 		return dc->chan;
@@ -195,7 +195,7 @@ int dma_copy_new(struct dma_copy *dc)
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 {
 	/* get DMA channel from DMAC */
-	dc->chan = dma_channel_get(dc->dmac, stream_tag - 1);
+	dc->chan = dma_channel_get(dc->dmac, stream_tag - 1, NULL);
 	if (dc->chan < 0) {
 		trace_dma_error("ec1");
 		return -EINVAL;

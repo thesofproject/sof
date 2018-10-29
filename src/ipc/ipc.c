@@ -461,7 +461,7 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	int ret = 0;
 
 	/* get DMA channel from DMAC */
-	chan = dma_channel_get(dmac, 0);
+	chan = dma_channel_get(dmac, 0, NULL);
 	if (chan < 0) {
 		trace_ipc_error("ePC");
 		return chan;

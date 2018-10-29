@@ -311,7 +311,8 @@ static inline void dw_update_bits(struct dma *dma, uint32_t reg, uint32_t mask,
 }
 
 /* allocate next free DMA channel */
-static int dw_dma_channel_get(struct dma *dma, int req_chan)
+static int dw_dma_channel_get(struct dma *dma, int req_chan,
+			      struct comp_dev *dev)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;

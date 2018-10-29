@@ -519,7 +519,7 @@ static int host_params(struct comp_dev *dev)
 	/* get DMA channel from DMAC
 	 * note: stream_tag is ignored by dw-dma
 	 */
-	hd->chan = dma_channel_get(hd->dma, dev->params.stream_tag);
+	hd->chan = dma_channel_get(hd->dma, dev->params.stream_tag, NULL);
 	if (hd->chan < 0) {
 		trace_host_error("eDC");
 		return -ENODEV;

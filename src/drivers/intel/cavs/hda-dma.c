@@ -45,6 +45,7 @@
 #include <sof/pm_runtime.h>
 #include <sof/wait.h>
 #include <sof/audio/format.h>
+#include <sof/hda-dma.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <arch/cache.h>
@@ -331,14 +332,35 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 }
 
 /* acquire the specific DMA channel */
-static int hda_dma_channel_get(struct dma *dma, int channel)
+static int hda_dma_channel_get(struct dma *dma, int channel,
+			       struct comp_dev *dev)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct sof_ipc_dai_hda_params *hda_params;
 	uint32_t flags;
+	int i;
 
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_host("Dgt");
+
+	if (dev) {
+		hda_params = &dev->params.hda;
+
+		/* link dma channel is allocated in host and indexed by id */
+		for (i = 0; i < hda_params->hda_count; i++) {
+			if (hda_params->hda_comp_id[i] == dev->comp.id) {
+				channel = hda_params->hda_dma_ch[i];
+				if (channel >= PLATFORM_MAX_CHANNELS ||
+				    channel < 0) {
+					trace_host_error("eDc");
+					return -EINVAL;
+				}
+			}
+
+			break;
+		}
+	}
 
 	/* use channel if it's free */
 	if (p->chan[channel].status == COMP_STATE_INIT) {
