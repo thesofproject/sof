@@ -63,6 +63,10 @@
 #ifndef __INCLUDE_UAPI_SOF_FW_H__
 #define __INCLUDE_UAPI_SOF_FW_H__
 
+/* Skip inclusion of <sof/io.h> which causes errors */
+#define __INCLUDE_IO__
+#include <uapi/ipc.h>
+
 #define SND_SOF_FW_SIG_SIZE	4
 #define SND_SOF_FW_ABI		1
 #define SND_SOF_FW_SIG		"Reef"
@@ -125,5 +129,6 @@ struct snd_sof_logs_header {
 	uint32_t base_address;	/* address of log entries section */
 	uint32_t data_length;	/* amount of bytes following this header */
 	uint32_t data_offset;	/* offset to first entry in this file */
+	struct sof_ipc_fw_version version;
 };
 #endif
