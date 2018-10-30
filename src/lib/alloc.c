@@ -327,13 +327,12 @@ static void free_block(void *ptr)
 	int i;
 	int block;
 
-	/* sanity check */
-	if (ptr == NULL)
-		return;
-
 	heap = get_heap_from_ptr(ptr);
-	if (heap == NULL)
+	if (!heap) {
+		trace_error(TRACE_CLASS_MEM, "invalid heap %p cpu %d",
+			    (uintptr_t)ptr, cpu_get_id());
 		return;
+	}
 
 	/* find block that ptr belongs to */
 	for (i = 0; i < heap->blocks; i++) {
@@ -346,7 +345,8 @@ static void free_block(void *ptr)
 	}
 
 	/* not found */
-	trace_mem_error("eMF");
+	trace_error(TRACE_CLASS_MEM, "invalid ptr %p cpu %d",
+		    (uintptr_t)ptr, cpu_get_id());
 	return;
 
 found:
@@ -540,8 +540,25 @@ out:
 
 void rfree(void *ptr)
 {
+	struct mm_heap *cpu_heap;
 	uint32_t flags;
 
+	/* sanity check - NULL ptrs are fine */
+	if (!ptr)
+		return;
+
+	/* use the heap dedicated for the selected core */
+	cpu_heap = cache_to_uncache(memmap.system + cpu_get_id());
+
+	/* panic if pointer is from system heap */
+	if (ptr >= (void *)cpu_heap->heap &&
+	    ptr <= (void *)cpu_heap->heap + cpu_heap->size) {
+		trace_error(TRACE_CLASS_MEM, "attempt to free system heap %p cpu %d",
+			    (uintptr_t)ptr, cpu_get_id());
+		panic(SOF_IPC_PANIC_MEM);
+	}
+
+	/* free the block */
 	spin_lock_irq(&memmap.lock, flags);
 	free_block(ptr);
 	spin_unlock_irq(&memmap.lock, flags);
