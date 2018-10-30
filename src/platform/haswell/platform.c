@@ -56,7 +56,8 @@
 #include <string.h>
 #include <version.h>
 
-static const struct sof_ipc_fw_ready ready = {
+static const struct sof_ipc_fw_ready ready
+	__attribute__((section(".fw_ready"))) = {
 	.hdr = {
 		.cmd = SOF_IPC_FW_READY,
 		.size = sizeof(struct sof_ipc_fw_ready),

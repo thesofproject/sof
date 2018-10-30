@@ -555,4 +555,9 @@ SECTIONS
   {
     *(*.static_log*)
   } > static_log_entries_seg :static_log_entries_phdr
+
+  .fw_ready : ALIGN(4)
+  {
+    KEEP (*(.fw_ready))
+  } >sof_data :sof_data_phdr
 }
