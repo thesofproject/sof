@@ -26,11 +26,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Zhigang Wu <zhigang.wu@intel.com>
+ *	Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
  */
 
 #include <errno.h>
-#include <reef/io.h>
-#include <reef/dw-uart.h>
+#include <stdbool.h>
+#include <string.h>
+#include <sof/io.h>
+#include <sof/dw-uart.h>
+#include <sof/string.h>
+#include <sof/util.h>
 
 /* uart register list */
 #define SUE_UART_REG_THR	0
@@ -40,7 +45,19 @@
 #define SUE_UART_REG_FCR	8
 #define SUE_UART_REG_LCR	12
 #define SUE_UART_REG_LSR	20
+#define SUE_UART_REG_TFL	(0x80 * 4)  /* Transmit FIFO Level reg. */
+#define SUE_UART_REG_CPR	(0xF4 * 4)  /* Component Parameter reg. */
 
+#define FCR_FIFO_RX_1		0x00 /* 1 byte in RCVR FIFO */
+#define FCR_FIFO_RX_4		0x40 /* RCVR FIFO 1/4 full  */
+#define FCR_FIFO_RX_8		0x80 /* RCVR FIFO 1/2 full */
+#define FCR_FIFO_RX_14		0xC0 /* RCVR FIFO 2 bytes below full */
+
+/* TX FIFO interrupt levels: trigger interrupt with this bytes in FIFO */
+#define FCR_FIFO_TX_0		0x00 /* TX FIFO empty */
+#define FCR_FIFO_TX_2		0x10 /* 2 bytes in TX FIFO  */
+#define FCR_FIFO_TX_4		0x20 /* TX FIFO 1/4 full */
+#define FCR_FIFO_TX_8		0x30 /* TX FIFO 1/2 full */
 
 #define uart_read(dev, reg)\
 	io_reg_read(dev->port + reg)
@@ -71,7 +88,7 @@
 /* 0-fifo disabled; 1-enabled */
 #define FCR_FIFOE(x)	(x << 0)
 /* 0-mode0, 1-mode1 */
-#define FCR_MODE(x)		(x << 3)
+#define FCR_MODE(x)	(x << 3)
 #define FCR_RCVR_RST	0x2
 #define FCR_XMIT_RST	0x4
 
@@ -118,7 +135,7 @@ void dw_uart_init(uint32_t baud)
 		LCR_DLS(3) | LCR_STOP(0) | LCR_PEN(0));
 
 	/* FIFO enalbe, mode0, Tx/Rx FIFO reset */
-	uart_write(dev, SUE_UART_REG_FCR,
+	uart_write(dev, SUE_UART_REG_FCR, FCR_FIFO_RX_8 | FCR_FIFO_TX_8 |
 		FCR_FIFOE(1) | FCR_MODE(0) | FCR_RCVR_RST | FCR_XMIT_RST);
 
 	/* reset port */
@@ -159,4 +176,108 @@ void dw_uart_write_word(uint32_t word)
 		/* write to output reg */
 		uart_write(dev, SUE_UART_REG_THR, outchar);
 	}
+}
+
+#define DW_UART_FIFO_SIZE 64
+#define DW_UART_FIFO_THRESHOLD (DW_UART_FIFO_SIZE / 2)
+/* Actually the FIFO size can be read out */
+
+#define DW_UART_RING_SIZE 32
+static uint8_t dw_uart_ring[DW_UART_RING_SIZE];
+/* write to head, read from tail */
+static bool dw_uart_ring_empty = true;
+static unsigned int dw_uart_ring_head;
+static unsigned int dw_uart_ring_tail;
+
+static int dw_uart_write_fifo(const uint8_t *data, unsigned int size)
+{
+	struct dw_uart_device * const dev = &uart_dev;
+	unsigned int i, count = DW_UART_FIFO_SIZE -
+		uart_read(dev, SUE_UART_REG_TFL);
+
+	if (count > size)
+		count = size;
+
+	for (i = 0; i < count; i++, data++) {
+		uint32_t value = *data;
+
+		uart_write(dev, SUE_UART_REG_THR, value);
+	}
+
+	return size - count;
+}
+
+static void dw_uart_wait(void)
+{
+	struct dw_uart_device * const dev = &uart_dev;
+
+	while (uart_read(dev, SUE_UART_REG_TFL) > DW_UART_FIFO_THRESHOLD)
+		;
+}
+
+int dw_uart_write_nowait(const uint8_t *data, int size)
+{
+	unsigned int tail_room, head_room, count;
+
+	if (size <= 0 ||
+	    (!dw_uart_ring_empty &&
+	     dw_uart_ring_tail == dw_uart_ring_head))
+		/* No data or ring full */
+		return size;
+
+	if (dw_uart_ring_empty) {
+		/* Ring empty, see if we can write any data in the FIFO */
+		size = dw_uart_write_fifo(data, size);
+		if (size <= 0)
+			return size;
+	}
+
+	/*
+	 * FIFO was filled, no threshold IRQ has triggered yet, ring might have
+	 * data
+	 */
+
+	if (dw_uart_ring_tail <= dw_uart_ring_head) {
+		head_room = sizeof(dw_uart_ring) - dw_uart_ring_head;
+		tail_room = dw_uart_ring_tail;
+	} else {
+		head_room = dw_uart_ring_tail - dw_uart_ring_head;
+		tail_room = 0;
+	}
+
+	count = min(head_room, size);
+	arch_memcpy(dw_uart_ring + dw_uart_ring_head, data, count);
+
+	dw_uart_ring_head += count;
+	if (dw_uart_ring_head == sizeof(dw_uart_ring))
+		dw_uart_ring_head = 0;
+
+	size -= count;
+
+	if (size && tail_room) {
+		count = min(tail_room, size);
+		arch_memcpy(dw_uart_ring, data + head_room, count);
+		dw_uart_ring_head = count;
+		size -= count;
+	}
+
+	dw_uart_ring_empty = false;
+
+	return size;
+}
+
+/* Block until all the data is at least in the ring buffer */
+int dw_uart_write(const uint8_t *data, int size)
+{
+	for (;;) {
+		int ret = dw_uart_write_nowait(data, size);
+		if (ret <= 0)
+			return ret;
+
+		size = ret;
+
+		dw_uart_wait();
+	}
+
+	return 0;
 }

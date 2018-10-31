@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2016, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,19 +25,16 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Zhigang Wu <zhigang.wu@intel.com>
- *	Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
+ * Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
  */
-#ifndef __INCLUDE_DW_UART_H__
-#define __INCLUDE_DW_UART_H__
 
-#define SUE_SYS_CLK_FREQ	38400000
-#define SUE_UART_REG_BASEADDR	0x00080800
-#define SUE_UART_TIMEOUT	25000
+#ifndef __INCLUDE_UTIL_H__
+#define __INCLUDE_UTIL_H__
 
-void dw_uart_init(uint32_t baud);
-void dw_uart_write_word(uint32_t word);
-int dw_uart_write_nowait(const uint8_t *data, int size);
-int dw_uart_write(const uint8_t *data, int size);
+#define min(a, b) ({		\
+	typeof(a) __a = (a);	\
+	typeof(b) __b = (b);	\
+	__a > __b ? __b : __a;	\
+})
 
 #endif
