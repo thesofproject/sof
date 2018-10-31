@@ -183,15 +183,12 @@ _ResetHandler:
 	call0 _call_init
 #endif
 
-#if defined(CONFIG_APOLLOLAKE)
 	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
-	movi	a0, 0
+
+#if defined(CONFIG_APOLLOLAKE)
 	movi	a1, 0
 	movi	a2, 0
-#else
-	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
 #endif
-
 
 #if XCHAL_HAVE_INTERRUPTS	// technically this should be under !FULL_RESET, assuming hard reset
 	wsr	a0, INTENABLE	// make sure that interrupts are shut off (*before* we lower PS.INTLEVEL and PS.EXCM!)
