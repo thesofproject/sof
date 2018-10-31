@@ -98,21 +98,21 @@ int main(int argc, char *argv[])
 		image.ldc_out_file = "out.ldc";
 
 	/* find machine */
-	for (i = 0; i < ARRAY_SIZE(machine); i++) {
+	for (i = 0; i < ARRAY_SIZE(machine); i++)
 		if (!strcmp(mach, machine[i]->name)) {
 			image.adsp = machine[i];
-			goto found;
+			break;
 		}
+
+	if (i == ARRAY_SIZE(machine)) {
+		fprintf(stderr, "error: machine %s not found\n", mach);
+		fprintf(stderr, "error: available machines ");
+		for (i = 0; i < ARRAY_SIZE(machine); i++)
+			fprintf(stderr, "%s, ", machine[i]->name);
+		fprintf(stderr, "\n");
+
+		return -EINVAL;
 	}
-	fprintf(stderr, "error: machine %s not found\n", mach);
-	fprintf(stderr, "error: available machines ");
-	for (i = 0; i < ARRAY_SIZE(machine); i++)
-		fprintf(stderr, "%s, ", machine[i]->name);
-	fprintf(stderr, "\n");
-
-	return -EINVAL;
-
-found:
 
 	/* parse input ELF files */
 	image.num_modules = argc - elf_argc;
