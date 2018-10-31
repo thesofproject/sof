@@ -185,14 +185,11 @@ _ResetHandler:
 	call0 _call_init
 #endif
 
+	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
 #if defined(CONFIG_APOLLOLAKE)  \
 	&& !(defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE))
-	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
-	movi	a0, 0
 	movi	a1, 0
 	movi	a2, 0
-#else
-	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
 #endif
 
 

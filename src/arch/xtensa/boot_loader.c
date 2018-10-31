@@ -137,6 +137,7 @@ static void parse_manifest(void)
 /* power on HPSRAM */
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
 	|| defined(CONFIG_SUECREEK)
+
 static int32_t hp_sram_init(void)
 {
 	int delay_count = 256;
@@ -236,13 +237,14 @@ static int32_t hp_sram_init(void)
 
 	return 0;
 }
-#endif
 
-#if defined(CONFIG_APOLLOLAKE)
+#elif defined(CONFIG_APOLLOLAKE)
+
 static uint32_t hp_sram_init(void)
 {
 	return 0;
 }
+
 #endif
 
 /* boot master core */
