@@ -1118,7 +1118,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 */
 	size = sizeof(*prm) + DMIC_HW_CONTROLLERS
 		* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
-	prm = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, size);
+	prm = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size);
 	if (!prm) {
 		trace_dmic_error("eac");
 		return -ENOMEM;
