@@ -40,6 +40,8 @@
 #include <platform/interrupt.h>
 #include <uapi/ipc.h>
 
+#include <sof/dw-uart.h>
+
 struct sof;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
@@ -168,7 +170,7 @@ static inline void platform_panic(uint32_t p)
 }
 
 /* Platform defined trace code */
-#define platform_trace_point(__x)
+#define platform_trace_point(__x) dw_uart_write_word(__x)
 #endif
 extern struct timer *platform_timer;
 

@@ -34,7 +34,9 @@
 #define SUE_UART_REG_BASEADDR	0x00080800
 #define SUE_UART_TIMEOUT		25000
 
-extern void dw_uart_init(uint32_t baud);
-extern void dw_uart_write_word(uint32_t word);
+void dw_uart_init(uint32_t baud);
+void dw_uart_write_word(uint32_t word);
+int dw_uart_write_nowait(const uint8_t *data, int size);
+int dw_uart_write(const uint8_t *data, int size);
 
 #endif

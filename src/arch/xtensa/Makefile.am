@@ -175,6 +175,11 @@ boot_ldr_LDADD = \
 	libreset.a \
 	-lgcc
 
+if BUILD_SUECREEK
+boot_ldr_LDADD += \
+	../../drivers/libdrivers.la
+endif
+
 if BUILD_XTENSA_SMP
 boot_ldr_LDADD += \
 	smp/hal/libhal.a
@@ -198,7 +203,9 @@ boot_ldr-local:
 	$(OBJDUMP) -S boot_ldr > boot_ldr-$(FW_NAME).lst
 	$(OBJDUMP) -D boot_ldr > boot_ldr-$(FW_NAME).dis
 
+if !BUILD_SUECREEK
 RIMAGE_BOOT_FLAGS += boot_ldr-$(FW_NAME)
+endif
 BIN_FLAGS +=boot_ldr-local
 endif
 
