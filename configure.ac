@@ -65,6 +65,12 @@ if test "x$with_meu" != "xno"; then
 	fi
 fi
 
+#check if we should enable debug build
+AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug],[enable debug, default: no])], enable_debug=$enableval, enable_debug=no)
+if test "$enable_debug" = "yes"; then
+	AC_DEFINE([DEBUG_BUILD], [1], [Configure to build debug version])
+fi
+
 # check if we are building FW image or library
 AC_ARG_ENABLE(library, [AS_HELP_STRING([--enable-library],[build library])], have_library=$enableval, have_library=no)
 if test "$have_library" = "yes"; then

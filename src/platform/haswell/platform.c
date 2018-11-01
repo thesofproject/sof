@@ -64,11 +64,14 @@ static const struct sof_ipc_fw_ready ready
 	},
 	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
 	.version = {
+	/* Add build number and timestamp for debug build */
+#ifdef DEBUG_BUILD
 		.build = SOF_BUILD,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
 		.date = __DATE__,
 		.time = __TIME__,
+#endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
 	},

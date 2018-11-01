@@ -177,7 +177,7 @@ do
 		PATH=$pwd/../$HOST/bin:$OLDPATH
 	fi
 
-	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST \
+	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST --enable-debug=no\
 		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP --with-dsp-core=$XTENSA_CORE
 
 	make clean
