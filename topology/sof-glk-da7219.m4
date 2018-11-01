@@ -52,7 +52,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 #PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	4, 99, 4, s32le,
+	4, 99, 2, s32le,
 	48, 1000, 0, 0)
 
 # Low Latency playback pipeline 5 on PCM 5 using max 2 channels of s32le.
