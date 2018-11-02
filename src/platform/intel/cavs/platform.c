@@ -65,6 +65,7 @@ static const struct sof_ipc_fw_ready ready
 		.size = sizeof(struct sof_ipc_fw_ready),
 	},
 	.version = {
+		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
 #ifdef DEBUG_BUILD

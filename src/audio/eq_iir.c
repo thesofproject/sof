@@ -480,7 +480,7 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 	int ret = 0;
 
 	/* Check version from ABI header */
-	if (cdata->data->comp_abi != SOF_ABI_VERSION) {
+	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
 		trace_eq_error("eab");
 		return -EINVAL;
 	}

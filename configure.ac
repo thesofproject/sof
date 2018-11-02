@@ -14,7 +14,13 @@ m4_define(sof_minor, `cat .version | cut -d. -f2 | cut -d- -f1`)
 m4_define(sof_micro, `cat .version | cut -d. -f3 | cut -d- -f1`)
 AC_DEFINE_UNQUOTED([SOF_MAJOR], sof_major, [Sof major version])
 AC_DEFINE_UNQUOTED([SOF_MINOR], sof_minor, [Sof minor version])
-AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
+
+# micr version can sometimes be NULL, so make it 0
+if test sof_micro != ""; then
+  AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
+else
+  AC_DEFINE_UNQUOTED([SOF_MICRO], 0, [Sof micro version])
+fi
 
 AC_CANONICAL_HOST
 
