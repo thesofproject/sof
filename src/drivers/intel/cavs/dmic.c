@@ -1454,8 +1454,7 @@ static int dmic_probe(struct dai *dai)
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
 	/* allocate private data */
-	dmic = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-		       sizeof(*dmic));
+	dmic = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dmic));
 	if (!dmic) {
 		trace_dmic_error("eap");
 		return -ENOMEM;

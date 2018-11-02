@@ -121,7 +121,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	}
 
 	/* allocate the IPC component container */
-	icd = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+	icd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		      sizeof(struct ipc_comp_dev));
 	if (icd == NULL) {
 		trace_ipc_error("eCm");
@@ -175,7 +175,7 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 		return -ENOMEM;
 	}
 
-	ibd = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+	ibd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		      sizeof(struct ipc_comp_dev));
 	if (ibd == NULL) {
 		rfree(buffer);
@@ -280,13 +280,12 @@ int ipc_pipeline_new(struct ipc *ipc,
 	}
 
 	/* allocate the IPC pipeline container */
-	ipc_pipe = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
+	ipc_pipe = rzalloc(RZONE_RUNTIME,
 			   SOF_MEM_CAPS_RAM, sizeof(struct ipc_comp_dev));
 	if (ipc_pipe == NULL) {
 		pipeline_free(pipe);
 		return -ENOMEM;
 	}
-
 	ipc_pipe->pipeline = pipe;
 	ipc_pipe->type = COMP_TYPE_PIPELINE;
 
@@ -530,8 +529,7 @@ int ipc_init(struct sof *sof)
 
 	spinlock_init(&sof->ipc->lock);
 
-	sof->ipc->shared_ctx = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED,
-				       SOF_MEM_CAPS_RAM,
+	sof->ipc->shared_ctx = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 				       sizeof(*sof->ipc->shared_ctx));
 
 	dcache_writeback_region(sof->ipc, sizeof(*sof->ipc));

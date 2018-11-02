@@ -520,8 +520,7 @@ void init_system_workq(struct work_queue_timesource *ts)
 	*queue = work_new_queue(ts);
 
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID) {
-		work_shared_ctx = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED,
-					  SOF_MEM_CAPS_RAM,
+		work_shared_ctx = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 					  sizeof(*work_shared_ctx));
 		atomic_init(&work_shared_ctx->total_num_work, 0);
 		atomic_init(&work_shared_ctx->timer_clients, 0);

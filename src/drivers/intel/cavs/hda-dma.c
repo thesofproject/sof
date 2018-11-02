@@ -645,8 +645,8 @@ static int hda_dma_probe(struct dma *dma)
 		return -EEXIST; /* already created */
 
 	/* allocate private data */
-	hda_pdata = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
-			    SOF_MEM_CAPS_RAM, sizeof(*hda_pdata));
+	hda_pdata = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+			    sizeof(*hda_pdata));
 	if (!hda_pdata) {
 		trace_error(TRACE_CLASS_DMA, "alloc failed");
 		return -ENOMEM;

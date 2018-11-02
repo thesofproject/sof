@@ -148,8 +148,7 @@ void clock_init(void)
 {
 	int i = 0;
 
-	clk_pdata = rmalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-			    sizeof(*clk_pdata));
+	clk_pdata = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*clk_pdata));
 
 	/* set defaults */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {

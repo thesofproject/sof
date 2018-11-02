@@ -498,8 +498,7 @@ static int ssp_probe(struct dai *dai)
 	struct ssp_pdata *ssp;
 
 	/* allocate private data */
-	ssp = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-		      sizeof(*ssp));
+	ssp = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
 	spinlock_init(&dai->lock);

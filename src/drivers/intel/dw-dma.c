@@ -1280,8 +1280,7 @@ static int dw_dma_probe(struct dma *dma)
 	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
 	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
-			   SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
+	dw_pdata = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
 	if (!dw_pdata) {
 		trace_error(TRACE_CLASS_DMA, "alloc failed");
 		return -ENOMEM;
