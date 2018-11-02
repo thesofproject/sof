@@ -70,7 +70,8 @@ static void connect_upstream(struct pipeline *p, struct comp_dev *start,
 {
 	struct list_item *clist;
 
-	tracev_value(current->comp.id);
+	tracev_pipe_with_ids(p, "connect_upstream(), current->comp.id = %u",
+			     current->comp.id);
 
 	/* complete component init */
 	current->pipeline = p;
@@ -110,7 +111,8 @@ static void connect_downstream(struct pipeline *p, struct comp_dev *start,
 {
 	struct list_item *clist;
 
-	tracev_value(current->comp.id);
+	tracev_pipe_with_ids(p, "connect_downstream(), current->comp.id = %u",
+			     current->comp.id);
 
 	/* complete component init */
 	current->pipeline = p;
@@ -142,7 +144,8 @@ static void disconnect_upstream(struct pipeline *p, struct comp_dev *start,
 {
 	struct list_item *clist;
 
-	tracev_value(current->comp.id);
+	tracev_pipe_with_ids(p, "disconnect_upstream(), current->comp.id = %u",
+			     current->comp.id);
 
 	/* complete component init */
 	current->pipeline = NULL;
@@ -171,7 +174,8 @@ static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
 {
 	struct list_item *clist;
 
-	tracev_value(current->comp.id);
+	tracev_pipe_with_ids(p, "disconnect_downstream(), current->comp.id = "
+			     "%u", current->comp.id);
 
 	/* complete component init */
 	current->pipeline = NULL;
@@ -238,12 +242,12 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 {
 	struct pipeline *p;
 
-	trace_pipe("new");
+	trace_pipe("pipeline_new()");
 
 	/* allocate new pipeline */
 	p = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*p));
 	if (p == NULL) {
-		trace_pipe_error("ePN");
+		trace_pipe_error("pipeline_new() error: Out of Memory");
 		return NULL;
 	}
 
@@ -264,11 +268,12 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 /* pipelines must be inactive */
 int pipeline_free(struct pipeline *p)
 {
-	trace_pipe("fre");
+	trace_pipe_with_ids(p, "pipeline_free()");
 
 	/* make sure we are not in use */
 	if (p->sched_comp->state > COMP_STATE_READY) {
-		trace_pipe_error("epb");
+		trace_pipe_error_with_ids(p, "pipeline_free() error: Pipeline in "
+					  "use");
 		return -EBUSY;
 	}
 
@@ -290,12 +295,13 @@ int pipeline_complete(struct pipeline *p)
 	/* now walk downstream and upstream form "start" component and
 	  complete component task and pipeline init */
 
-	trace_pipe("com");
-	trace_value(p->ipc_pipe.pipeline_id);
+	trace_pipe_with_ids(p, "pipeline_complete(), p->ipc_pipe.pipeline_id = "
+			    "%u", p->ipc_pipe.pipeline_id);
 
 	/* check whether pipeline is already complete */
 	if (p->status != COMP_STATE_INIT) {
-		trace_pipe_error("epc");
+		trace_pipe_error_with_ids(p, "pipeline_complete() error: "
+					  "Pipeline already complete");
 		return -EINVAL;
 	}
 
@@ -309,7 +315,7 @@ int pipeline_complete(struct pipeline *p)
 int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
 	struct comp_buffer *sink_buffer)
 {
-	trace_pipe("cnc");
+	trace_pipe_with_ids(p, "pipeline_comp_connect()");
 
 	/* connect source to buffer */
 	spin_lock(&source_comp->lock);
@@ -321,8 +327,10 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
 	if (sink_buffer->source && sink_buffer->sink)
 		sink_buffer->connected = 1;
 
-	tracev_value((source_comp->comp.id << 16) |
-		sink_buffer->ipc_buffer.comp.id);
+	tracev_pipe_with_ids(p, "pipeline_comp_connect(), (source_comp->comp.id"
+			     " << 16) | sink_buffer->ipc_buffer.comp.id = %08x",
+			     (source_comp->comp.id << 16) |
+			     sink_buffer->ipc_buffer.comp.id);
 	return 0;
 }
 
@@ -330,7 +338,7 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
 int pipeline_buffer_connect(struct pipeline *p,
 	struct comp_buffer *source_buffer, struct comp_dev *sink_comp)
 {
-	trace_pipe("cbc");
+	trace_pipe_with_ids(p, "pipeline_buffer_connect()");
 
 	/* connect sink to buffer */
 	spin_lock(&sink_comp->lock);
@@ -342,8 +350,10 @@ int pipeline_buffer_connect(struct pipeline *p,
 	if (source_buffer->source && source_buffer->sink)
 		source_buffer->connected = 1;
 
-	tracev_value((source_buffer->ipc_buffer.comp.id << 16) |
-		sink_comp->comp.id);
+	tracev_pipe_with_ids(p, "pipeline_buffer_connect(), (source_buffer->"
+			     "ipc_buffer.comp.id << 16) | sink_comp->comp.id = "
+			     "%08x", (source_buffer->ipc_buffer.comp.id << 16) |
+			     sink_comp->comp.id);
 	return 0;
 }
 
@@ -359,8 +369,8 @@ static int component_op_downstream(struct op_data *op_data,
 	struct list_item *clist;
 	int err = 0;
 
-	tracev_pipe("CO-");
-	tracev_value(current->comp.id);
+	tracev_pipe("component_op_downstream(), current->comp.id = %u",
+		    current->comp.id);
 
 	/* do operation on this component */
 	switch (op_data->op) {
@@ -393,20 +403,23 @@ static int component_op_downstream(struct op_data *op_data,
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	case COMP_OPS_CACHE:
 	default:
-		trace_pipe_error("eOi");
-		trace_error_value(op_data->op);
+		trace_pipe_error("component_op_downstream() error: op_data->op"
+				 "= %d", op_data->op);
 		return -EINVAL;
 	}
 
 	/* don't walk the graph any further if this component fails */
 	if (err < 0) {
-		trace_pipe_error("eOp");
+		trace_pipe_error("component_op_downstream() error: err = %d",
+				 err);
 		return err;
 	} else if (err > 0 || (current != start && current->is_endpoint)) {
 		/* we finish walking the graph if we reach the DAI or component is
 		 * currently active and configured already (err > 0).
 		 */
-		tracev_pipe("C-D");
+		tracev_pipe("component_op_downstream() DAI or component "
+			    "currently active or configured already, err = %d",
+			    err);
 		return err;
 	}
 
@@ -441,8 +454,8 @@ static int component_op_upstream(struct op_data *op_data,
 	struct list_item *clist;
 	int err = 0;
 
-	tracev_pipe("CO+");
-	tracev_value(current->comp.id);
+	tracev_pipe("component_op_upstream(), current->comp.id = %u",
+		    current->comp.id);
 
 	/* do operation on this component */
 	switch (op_data->op) {
@@ -475,17 +488,19 @@ static int component_op_upstream(struct op_data *op_data,
 	case COMP_OPS_BUFFER: /* handled by other API call */
 	case COMP_OPS_CACHE:
 	default:
-		trace_pipe_error("eOi");
-		trace_error_value(op_data->op);
+		trace_pipe_error("component_op_upstream() error, op_data->op = "
+				 "%d", op_data->op);
 		return -EINVAL;
 	}
 
 	/* don't walk the graph any further if this component fails */
 	if (err < 0) {
-		trace_pipe_error("eOp");
+		trace_pipe_error("component_op_upstream() error: Component "
+				 "failed, err = %d", err);
 		return err;
 	} else if (err > 0 || (current != start && current->is_endpoint)) {
-		tracev_pipe("C+D");
+		tracev_pipe("component_op_upstream(), err > 0 || (current != "
+			    "start && current->is_endpoint)");
 		return 0;
 	}
 
@@ -539,7 +554,8 @@ static int component_prepare_buffers_upstream(struct comp_dev *start,
 		err = component_prepare_buffers_upstream(start, buffer->source,
 			buffer);
 		if (err < 0) {
-			trace_pipe_error("eBD");
+			trace_pipe_error("component_prepare_buffers_upstream()"
+					 " error: err = %d", err);
 			break;
 		}
 	}
@@ -579,7 +595,8 @@ static int component_prepare_buffers_downstream(struct comp_dev *start,
 		err = component_prepare_buffers_downstream(start, buffer->sink,
 			buffer);
 		if (err < 0) {
-			trace_pipe_error("eBD");
+			trace_pipe_error("component_prepare_buffers_downstream"
+					 "() error: err = %d", err);
 			break;
 		}
 	}
@@ -595,7 +612,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	int ret = -1;
 	uint32_t flags;
 
-	trace_pipe("pre");
+	trace_pipe_with_ids(p, "pipeline_prepare()");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PREPARE;
@@ -689,7 +706,7 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	cache_command cache_cmd = comp_get_cache_command(cmd);
 	uint32_t flags;
 
-	trace_pipe("cac");
+	trace_pipe_with_ids(p, "pipeline_cache()");
 
 	spin_lock_irq(&p->lock, flags);
 
@@ -704,7 +721,8 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	if (cache_cmd)
 		cache_cmd(p, sizeof(*p));
 	else
-		trace_pipe_error("ccN");
+		trace_pipe_error_with_ids(p, "pipeline_cache() error: Missing "
+					  "cache_cmd");
 
 	spin_unlock_irq(&p->lock, flags);
 }
@@ -718,8 +736,10 @@ static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
 
 	/* check if requested core is enabled */
 	if (!cpu_is_core_enabled(p->ipc_pipe.core)) {
-		trace_pipe_error("pt0");
-		trace_error_value(p->ipc_pipe.core);
+		trace_pipe_error_with_ids(p, "pipeline_trigger_on_core() error:"
+					  "Requested core is not enabled, "
+					  "p->ipc_pipe.core = %u",
+					  p->ipc_pipe.core);
 		return -EINVAL;
 	}
 
@@ -730,9 +750,10 @@ static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
 	/* send IDC pipeline trigger message */
 	ret = idc_send_msg(&pipeline_trigger, IDC_BLOCKING);
 	if (ret < 0) {
-		trace_pipe_error("pt1");
-		trace_error_value(host->comp.id);
-		trace_error_value(cmd);
+		trace_pipe_error_with_ids(p, "pipeline_trigger_on_core() error:"
+					  " idc_send_msg returned %d, host->"
+					  "comp.id = %u, cmd = %d",
+					  ret, host->comp.id, cmd);
 		return ret;
 	}
 
@@ -750,7 +771,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	int ret;
 	uint32_t flags;
 
-	trace_pipe("cmd");
+	trace_pipe_with_ids(p, "pipeline_trigger()");
 
 	/* if current core is different than requested */
 	if (p->ipc_pipe.core != cpu_get_id())
@@ -771,9 +792,9 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	}
 
 	if (ret < 0) {
-		trace_ipc_error("pc0");
-		trace_error_value(host->comp.id);
-		trace_error_value(cmd);
+		trace_ipc_error("pipeline_trigger() error: ret = %d, host->"
+				"comp.id = %u, cmd = %d", ret, host->comp.id,
+				cmd);
 	}
 
 	spin_unlock_irq(&p->lock, flags);
@@ -800,7 +821,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	int ret;
 	uint32_t flags;
 
-	trace_pipe("Par");
+	trace_pipe_with_ids(p, "pipeline_params()");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_PARAMS;
@@ -818,8 +839,8 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	}
 
 	if (ret < 0) {
-		trace_ipc_error("pp0");
-		trace_error_value(host->comp.id);
+		trace_ipc_error("pipeline_params() error: ret = %d, host->comp"
+				".id = %u", ret, host->comp.id);
 	}
 
 	spin_unlock_irq(&p->lock, flags);
@@ -833,7 +854,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	int ret;
 	uint32_t flags;
 
-	trace_pipe("PRe");
+	trace_pipe_with_ids(p, "pipeline_reset()");
 
 	op_data.p = p;
 	op_data.op = COMP_OPS_RESET;
@@ -849,8 +870,8 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 	}
 
 	if (ret < 0) {
-		trace_ipc_error("pr0");
-		trace_error_value(host->comp.id);
+		trace_ipc_error("pipeline_reset() error: ret = %d, host->comp."
+				"id = %u", ret, host->comp.id);
 	}
 
 	spin_unlock_irq(&p->lock, flags);
@@ -876,8 +897,8 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 	struct list_item *clist;
 	int err = 0;
 
-	tracev_pipe("CP+");
-	tracev_value(current->comp.id);
+	tracev_pipe("pipeline_copy_from_upstream(), current->comp.id = %u",
+		    current->comp.id);
 
 	/* stop going upstream if we reach an end point in this pipeline */
 	if (current->is_endpoint && current != start)
@@ -900,8 +921,9 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		/* continue upstream */
 		err = pipeline_copy_from_upstream(start, buffer->source);
 		if (err < 0) {
-			trace_pipe_error("ePU");
-			trace_error_value(current->comp.id);
+			trace_pipe_error("pipeline_copy_from_upstream() error:"
+					 " err = %d, current->comp.id = %u",
+					 err, current->comp.id);
 			return err;
 		}
 	}
@@ -911,7 +933,7 @@ copy:
 	err = comp_copy(current);
 
 	/* return back downstream */
-	tracev_pipe("CD+");
+	tracev_pipe("pipeline_copy_from_upstream() buffer from upstream copied");
 	return err;
 }
 
@@ -934,8 +956,8 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 	struct list_item *clist;
 	int err = 0;
 
-	tracev_pipe("CP-");
-	tracev_value(current->comp.id);
+	tracev_pipe("pipeline_copy_to_downstream(), current->comp.id = %u",
+		    current->comp.id);
 
 	/* component copy/process to downstream */
 	if (current != start) {
@@ -963,15 +985,16 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		/* continue downstream */
 		err = pipeline_copy_to_downstream(start, buffer->sink);
 		if (err < 0) {
-			trace_pipe_error("ePD");
-			trace_error_value(current->comp.id);
+			trace_pipe_error("pipeline_copy_to_downstream() error: "
+					 "err = %d, current->comp.id = %u",
+					 err, current->comp.id);
 			return err;
 		}
 	}
 
 out:
 	/* return back upstream */
-	tracev_pipe("CD-");
+	tracev_pipe("pipeline_copy_to_downstream() completed");
 	return err;
 }
 
@@ -1195,12 +1218,14 @@ static int pipeline_xrun_recover(struct pipeline *p)
 {
 	int ret;
 
-	trace_pipe_error("pxr");
+	trace_pipe_error_with_ids(p, "pipeline_xrun_recover()");
 
 	/* notify all pipeline comps we are in XRUN */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
 	if (ret < 0) {
-		trace_pipe_error("px0");
+		trace_pipe_error_with_ids(p, "pipeline_xrun_recover() error: "
+					  "Pipelines notification about XRUN "
+					  "failed, ret = %d", ret);
 		return ret;
 	}
 	p->xrun_bytes = 0;
@@ -1208,14 +1233,18 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	/* prepare the pipeline */
 	ret = pipeline_prepare(p, p->source_comp);
 	if (ret < 0) {
-		trace_pipe_error("px1");
+		trace_pipe_error_with_ids(p, "pipeline_xrun_recover() error: "
+					  "pipeline_prepare() failed, ret = %d",
+					  ret);
 		return ret;
 	}
 
 	/* restart pipeline comps */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_START);
 	if (ret < 0) {
-		trace_pipe_error("px2");
+		trace_pipe_error_with_ids(p, "pipeline_xrun_recover() error: "
+					  "pipeline_trigger() failed, ret = %d",
+					  ret);
 		return ret;
 	}
 
@@ -1225,7 +1254,9 @@ static int pipeline_xrun_recover(struct pipeline *p)
 	if (p->sched_comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		ret = pipeline_copy(p->sched_comp);
 		if (ret < 0) {
-			trace_pipe_error("px3");
+			trace_pipe_error_with_ids(p, "pipeline_xrun_recover() "
+						  "error: pipeline_copy() "
+						  "failed, ret = %d", ret);
 			return ret;
 		}
 	}
@@ -1255,7 +1286,9 @@ void pipeline_schedule_cancel(struct pipeline *p)
 	/* cancel and wait for pipeline to complete */
 	err = schedule_task_cancel(&p->pipe_task);
 	if (err < 0)
-		trace_pipe_error("pC0");
+		trace_pipe_error_with_ids(p, "pipeline_schedule_cancel() error:"
+					  " schedule_task_cancel() failed, err "
+					  "= %d", err);
 }
 
 static void pipeline_task(void *arg)
@@ -1264,7 +1297,7 @@ static void pipeline_task(void *arg)
 	struct comp_dev *dev = p->sched_comp;
 	int err;
 
-	tracev_pipe("PWs");
+	tracev_pipe_with_ids(p, "pipeline_task()");
 
 	/* are we in xrun ? */
 	if (p->xrun_bytes) {
@@ -1282,13 +1315,13 @@ static void pipeline_task(void *arg)
 	}
 
 sched:
-	tracev_pipe("PWe");
+	tracev_pipe("pipeline_task() sched");
 }
 
 /* init pipeline */
 int pipeline_init(void)
 {
-	trace_pipe("PIn");
+	trace_pipe("pipeline_init()");
 
 	pipe_data = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		sizeof(*pipe_data));
