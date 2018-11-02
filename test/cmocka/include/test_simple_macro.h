@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
+#define c_u_t(x) cmocka_unit_test(x)
 
-#include <stdint.h>
-#include <stddef.h>
-#include <arch/sof.h>
-#include <sof/preproc.h>
+#define TEST_HERE_DECLARE(test_func, ...)\
+	TEST_FUNC(TEST_PREFIX, test_func, __VA_ARGS__)
 
-struct ipc;
-struct sa;
-
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
-
-/* count number of var args */
-#define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
-	/ sizeof(unsigned int) - 1)
-
-/* compile-time assertion */
-#define STATIC_ASSERT(COND, MESSAGE)	\
-	__attribute__((unused))		\
-	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
-
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
-
-	/* ipc */
-	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
-
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
-};
-
-#endif
+#define TEST_HERE_USE(test_func, postfix)\
+	c_u_t(META_CONCAT_SEQ_DELIM_(TEST_PREFIX, test_func, postfix))

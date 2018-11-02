@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,62 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
+#include <test_simple_macro.h>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <arch/sof.h>
+#include <sof/alloc.h>
+#include <stdarg.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <sof/preproc.h>
+#include <sof/sof.h>
 
-struct ipc;
-struct sa;
+#define TEST_PREFIX test_lib_preproc
 
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
+#define TEST_FUNC(prefix, test_func, postfix, should_be, ...)\
+static void META_CONCAT_SEQ_DELIM_(prefix, test_func, postfix)(void **state)\
+{\
+	const int r = test_func(__VA_ARGS__);\
+	(void)state;\
+\
+	assert_int_equal(r, should_be);\
+}
+#define A 1
+#define B 2
+#define C 3
 
-/* count number of var args */
-#define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
-	/ sizeof(unsigned int) - 1)
+TEST_HERE_DECLARE(META_CONCAT, 1_nothing,       1, A,     )
+TEST_HERE_DECLARE(META_CONCAT, nothing_2,       2,  , B   )
+TEST_HERE_DECLARE(META_CONCAT, 1_2,            12, A, B   )
+TEST_HERE_DECLARE(META_CONCAT_SEQ, 1_nothing,   1, A,     )
+TEST_HERE_DECLARE(META_CONCAT_SEQ, nothing_2,   2,  , B   )
+TEST_HERE_DECLARE(META_CONCAT_SEQ, 1_2,        12, A, B   )
+TEST_HERE_DECLARE(META_CONCAT_SEQ, 1_2_3,     123, A, B, C)
 
-/* compile-time assertion */
-#define STATIC_ASSERT(COND, MESSAGE)	\
-	__attribute__((unused))		\
-	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
+#undef C
+#undef B
+#undef A
+#undef TEST_FUNC
 
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
+int main(void)
+{
+	const struct CMUnitTest tests[] = {
+		TEST_HERE_USE(META_CONCAT,     1_nothing),
+		TEST_HERE_USE(META_CONCAT,     nothing_2),
+		TEST_HERE_USE(META_CONCAT,     1_2      ),
 
-	/* ipc */
-	struct ipc *ipc;
+		TEST_HERE_USE(META_CONCAT_SEQ, 1_nothing),
+		TEST_HERE_USE(META_CONCAT_SEQ, nothing_2),
+		TEST_HERE_USE(META_CONCAT_SEQ, 1_2      ),
+		TEST_HERE_USE(META_CONCAT_SEQ, 1_2_3    ),
+	};
 
-	/* system agent */
-	struct sa *sa;
+	cmocka_set_message_output(CM_OUTPUT_TAP);
 
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
-};
+	return cmocka_run_group_tests(tests, NULL, NULL);
+}
 
-#endif
+#undef TEST_PREFIX

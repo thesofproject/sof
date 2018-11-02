@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,49 +25,46 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
+#include <sof/alloc.h>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <arch/sof.h>
+#include <stdarg.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
 #include <sof/preproc.h>
+#include <sof/sof.h>
 
-struct ipc;
-struct sa;
+static void test_lib_preproc_get_arg_1(void **state)
+{
+	const char* what_we_get = _META_GET_ARG_1("a", "B", "c", "D", "e");
+	const char* what_we_should_get = "a";
 
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
+	(void)state;
 
-/* count number of var args */
-#define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
-	/ sizeof(unsigned int) - 1)
+	assert_string_equal(what_we_get, what_we_should_get);
+}
 
-/* compile-time assertion */
-#define STATIC_ASSERT(COND, MESSAGE)	\
-	__attribute__((unused))		\
-	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
+static void test_lib_preproc_get_arg_2(void **state)
+{
+	const char* what_we_get = _META_GET_ARG_2("a", "B", "c", "D", "e");
+	const char* what_we_should_get = "B";
 
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
+	(void)state;
 
-	/* ipc */
-	struct ipc *ipc;
+	assert_string_equal(what_we_get, what_we_should_get);
+}
 
-	/* system agent */
-	struct sa *sa;
+int main(void)
+{
+	const struct CMUnitTest tests[] = {
+		cmocka_unit_test(test_lib_preproc_get_arg_1),
+		cmocka_unit_test(test_lib_preproc_get_arg_2),
+	};
 
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
-};
+	cmocka_set_message_output(CM_OUTPUT_TAP);
 
-#endif
+	return cmocka_run_group_tests(tests, NULL, NULL);
+}
