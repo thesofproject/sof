@@ -178,6 +178,7 @@
 struct sof_ipc_hdr {
 	uint32_t cmd;			/* SOF_IPC_GLB_ + cmd */
 	uint32_t size;			/* size of structure */
+	uint32_t reserved[2];		/* pad to 16 bytes */
 }  __attribute__((packed));
 
 /*
@@ -187,6 +188,7 @@ struct sof_ipc_hdr {
 struct sof_ipc_reply {
 	struct sof_ipc_hdr hdr;
 	int32_t error;			/* negative error numbers */
+	uint32_t reserved[3];		/* pad to 32 bytes */
 }  __attribute__((packed));
 
 /*
@@ -201,6 +203,7 @@ struct sof_ipc_reply {
 struct sof_ipc_compound_hdr {
 	struct sof_ipc_hdr hdr;
 	uint32_t count;		/* count of 0 means end of compound sequence */
+	uint32_t reserved[3];   /* pad to 32 bytes */
 }  __attribute__((packed));
 
 /*
@@ -302,14 +305,15 @@ struct sof_ipc_dai_ssp_params {
 	uint16_t frame_pulse_width;
 	uint16_t tdm_per_slot_padding_flag;
 	uint32_t clks_control;
-	uint32_t quirks; // FIXME: is 32 bits enough ?
-	/* private data, e.g. for quirks */
-	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
+	uint32_t quirks;
+	uint32_t reserved[3]; /* pad to 64 bytes */
+	// FIXME, some fields can be reduced to 16 bits
 } __attribute__((packed));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
 struct sof_ipc_dai_hda_params {
-	struct sof_ipc_hdr hdr;
+	// struct sof_ipc_hdr hdr; FIXME: is this needed?
+	uint32_t reserved[16];/* pad to 64 bytes */
 	/* TODO */
 } __attribute__((packed));
 
@@ -341,6 +345,7 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
 	uint16_t clk_edge; /* Optionally swap data clock edge (0 or 1) */
 	uint16_t skew; /* Adjust PDM data sampling vs. clock (0..15) */
 	uint16_t pad; /* Make sure the total size is 4 bytes aligned */
+	uint32_t reserved[4]; /* pad to 32 bytes */
 } __attribute__((packed));
 
 /* This struct contains the global settings for all 2ch PDM controllers. The
@@ -375,6 +380,7 @@ struct sof_ipc_dai_dmic_params {
 	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
 	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
 	uint32_t num_pdm_active; /* Number of active pdm controllers */
+	uint32_t reserved[4]; /* pad to 48 bytes */
 	/* variable number of pdm controller config */
 	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __attribute__((packed));
@@ -382,12 +388,13 @@ struct sof_ipc_dai_dmic_params {
 /* general purpose DAI configuration */
 struct sof_ipc_dai_config {
 	struct sof_ipc_hdr hdr;
-	enum sof_ipc_dai_type type;
+	enum sof_ipc_dai_type type; // FIXME: we should not use enums in IPC structures !!
 	uint32_t dai_index; /* index of this type dai */
 
 	/* physical protocol and clocking */
 	uint16_t format;	/* SOF_DAI_FMT_ */
-	uint16_t reserved;	/* alignment */
+	uint16_t pad1;		/* alignment */
+	uint32_t reserved[5]; 	/* pad to 16 bytes */
 
 	/* HW specific data */
 	union {
@@ -493,13 +500,14 @@ struct sof_ipc_host_buffer {
 	uint32_t pages;
 	uint32_t size;
 	uint32_t offset;
+	uint32_t reserved[4]; /* pad to 32 bytes */
 } __attribute__((packed));
 
 struct sof_ipc_stream_params {
 	struct sof_ipc_host_buffer buffer;
-	enum sof_ipc_stream_direction direction;
-	enum sof_ipc_frame frame_fmt;
-	enum sof_ipc_buffer_format buffer_fmt;
+	enum sof_ipc_stream_direction direction; // FIXME: no enums in IPC!
+	enum sof_ipc_frame frame_fmt;            // FIXME: no enums in IPC!
+	enum sof_ipc_buffer_format buffer_fmt;   // FIXME: no enums in IPC!
 	uint32_t stream_tag;
 	uint32_t rate;
 	uint32_t channels;
@@ -507,13 +515,15 @@ struct sof_ipc_stream_params {
 	uint32_t sample_container_bytes;
 	/* for notifying host period has completed - 0 means no period IRQ */
 	uint32_t host_period_bytes;
-	enum sof_ipc_chmap chmap[SOF_IPC_MAX_CHANNELS];	/* channel map */
+	uint32_t reserved[7];
+	enum sof_ipc_chmap chmap[SOF_IPC_MAX_CHANNELS];	/* channel map */ // FIXME: no enums in IPC!
 } __attribute__((packed));
 
 /* PCM params info - SOF_IPC_STREAM_PCM_PARAMS */
 struct sof_ipc_pcm_params {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
+	uint32_t reserved[3];
 	struct sof_ipc_stream_params params;
 }  __attribute__((packed));
 
@@ -522,12 +532,14 @@ struct sof_ipc_pcm_params_reply {
 	struct sof_ipc_reply rhdr;
 	uint32_t comp_id;
 	uint32_t posn_offset;
+	uint32_t reserved[2];
 }   __attribute__((packed));
 
 /* compressed vorbis params - SOF_IPC_STREAM_VORBIS_PARAMS */
 struct sof_ipc_vorbis_params {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
+	uint32_r reserved[3];
 	struct sof_ipc_stream_params params;
 	/* TODO */
 }  __attribute__((packed));
@@ -536,6 +548,7 @@ struct sof_ipc_vorbis_params {
 struct sof_ipc_stream {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
+	uint32_t reserved[3];
 } __attribute__((packed));
 
 /* flags indicating which time stamps are in sync with each other */
@@ -569,6 +582,7 @@ struct sof_ipc_stream_posn {
 	uint64_t timestamp;	/* system time stamp */
 	uint32_t xrun_comp_id;	/* comp ID of XRUN component */
 	int32_t xrun_size;	/* XRUN size in bytes */
+	uint32_t reserved[8];
 }  __attribute__((packed));
 
 /*
@@ -600,6 +614,7 @@ enum sof_ipc_ctrl_cmd {
 struct sof_ipc_ctrl_value_chan {
 	enum sof_ipc_chmap channel;
 	uint32_t value;
+	uint32_t reserved[3];
 } __attribute__((packed));
 
 /* generic component mapped value data */
@@ -609,6 +624,7 @@ struct sof_ipc_ctrl_value_comp {
 		uint32_t uvalue;
 		int32_t svalue;
 	};
+	uint32_t reserved[2];
 } __attribute__((packed));
 
 /* generic control data */
@@ -617,13 +633,15 @@ struct sof_ipc_ctrl_data {
 	uint32_t comp_id;
 
 	/* control access and data type */
-	enum sof_ipc_ctrl_type type;
-	enum sof_ipc_ctrl_cmd cmd;
+	enum sof_ipc_ctrl_type type; // FIXME: no enums in IPC!
+	enum sof_ipc_ctrl_cmd cmd;   // FIXME: no enums in IPC!
 	uint32_t index; /* control index for comps > 1 control */
+	uint32_t reserved1[4];
 
 	/* control data - can either be appended or DMAed from host */
 	struct sof_ipc_host_buffer buffer;
 	uint32_t num_elems;	/* in array elems or bytes */
+	uint32_t reserved[3];
 
 	/* control data - add new types if needed */
 	union {
@@ -670,8 +688,9 @@ enum sof_comp_type {
 struct sof_ipc_comp {
 	struct sof_ipc_hdr hdr;
 	uint32_t id;
-	enum sof_comp_type type;
+	enum sof_comp_type type; // FIXME: no enums in IPC!
 	uint32_t pipeline_id;
+	uint32_t reserved[5];
 } __attribute__((packed));
 
 /*
@@ -683,6 +702,7 @@ struct sof_ipc_buffer {
 	struct sof_ipc_comp comp;
 	uint32_t size;		/* buffer size in bytes */
 	uint32_t caps;		/* SOF_MEM_CAPS_ */
+	uint32_t reserved[2];
 } __attribute__((packed));
 
 /* generic component config data - must always be after struct sof_ipc_comp */
@@ -690,33 +710,37 @@ struct sof_ipc_comp_config {
 	uint32_t periods_sink;	/* 0 means variable */
 	uint32_t periods_source;	/* 0 means variable */
 	uint32_t preload_count;	/* how many periods to preload */
-	enum sof_ipc_frame frame_fmt;
+	enum sof_ipc_frame frame_fmt; // FIXME: no enums in IPC!
 	uint32_t xrun_action;
+	uint32_t reserved[4];
 } __attribute__((packed));
 
 /* generic host component */
 struct sof_ipc_comp_host {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
-	enum sof_ipc_stream_direction direction;
+	enum sof_ipc_stream_direction direction;// FIXME: no enums in IPC!
 	uint32_t no_irq;	/* don't send periodic IRQ to host/DSP */
 	uint32_t dmac_config; /* DMA engine specific */
+	uint32_t reserved[5];
 }  __attribute__((packed));
 
 /* generic DAI component */
 struct sof_ipc_comp_dai {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
-	enum sof_ipc_stream_direction direction;
+	enum sof_ipc_stream_direction direction; // FIXME: no enums in IPC!
 	uint32_t dai_index; /* index of this type dai */
-	enum sof_ipc_dai_type type;
+	enum sof_ipc_dai_type type;              // FIXME: no enums in IPC!
 	uint32_t dmac_config; /* DMA engine specific */
+	uint32_t reserved[4];
 }  __attribute__((packed));
 
 /* generic mixer component */
 struct sof_ipc_comp_mixer {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
+	uint32_t reserved[4];
 }  __attribute__((packed));
 
 /* volume ramping types */
@@ -734,8 +758,9 @@ struct sof_ipc_comp_volume {
 	uint32_t channels;
 	uint32_t min_value;
 	uint32_t max_value;
-	enum sof_volume_ramp ramp;
+	enum sof_volume_ramp ramp;// FIXME: no enums in IPC!
 	uint32_t initial_ramp;	/* ramp space in ms */
+	uint32_t reserved[3];
 }  __attribute__((packed));
 
 /* generic SRC component */
@@ -746,12 +771,14 @@ struct sof_ipc_comp_src {
 	uint32_t source_rate;	/* source rate or 0 for variable */
 	uint32_t sink_rate;	/* sink rate or 0 for variable */
 	uint32_t rate_mask;	/* SOF_RATE_ supported rates */
+	uint32_t reserved[5];
 } __attribute__((packed));
 
 /* generic MUX component */
 struct sof_ipc_comp_mux {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
+	uint32_t reserved[8];
 } __attribute__((packed));
 
 /* generic tone generator component */
@@ -767,6 +794,7 @@ struct sof_ipc_comp_tone {
 	int32_t period;
 	int32_t repeats;
 	int32_t ramp_step;
+	uint32_t reserved[7];
 } __attribute__((packed));
 
 /* FIR equalizer component */
@@ -774,6 +802,7 @@ struct sof_ipc_comp_eq_fir {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	uint32_t size;
+	uint32_t reserved[7];
 	unsigned char data[0];
 } __attribute__((packed));
 
@@ -782,6 +811,7 @@ struct sof_ipc_comp_eq_iir {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	uint32_t size;
+	uint32_t reserved[7];
 	unsigned char data[0];
 } __attribute__((packed));
 
@@ -798,12 +828,14 @@ enum sof_ipc_effect_type {
 struct sof_ipc_free {
 	struct sof_ipc_hdr hdr;
 	uint32_t id;
+	uint32_t reserved[3];
 } __attribute__((packed));
 
 struct sof_ipc_comp_reply {
 	struct sof_ipc_reply rhdr;
 	uint32_t id;
 	uint32_t offset;
+	uint32_t reserved[2];
 } __attribute__((packed));
 
 /*
@@ -825,17 +857,20 @@ struct sof_ipc_pipe_new {
 
 	/* non zero if timer scheduled, otherwise DAI DMA irq scheduled */
 	uint32_t timer_delay;
+	uint32_t reserved[6];
 }  __attribute__((packed));
 
 /* pipeline construction complete - SOF_IPC_TPLG_PIPE_COMPLETE */
 struct sof_ipc_pipe_ready {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
+	uint32_t reserved[3];
 }  __attribute__((packed));
 
 struct sof_ipc_pipe_free {
 	struct sof_ipc_hdr hdr;
 	uint32_t comp_id;
+	uint32_t reserved[3];
 }  __attribute__((packed));
 
 /* connect two components in pipeline - SOF_IPC_TPLG_COMP_CONNECT */
@@ -843,6 +878,7 @@ struct sof_ipc_pipe_comp_connect {
 	struct sof_ipc_hdr hdr;
 	uint32_t source_id;
 	uint32_t sink_id;
+	uint32_t reserved[2];
 }  __attribute__((packed));
 
 /*
@@ -854,6 +890,7 @@ struct sof_ipc_pm_ctx_elem {
 	uint32_t type;
 	uint32_t size;
 	uint64_t addr;
+	uint32_t reserved[4];
 }  __attribute__((packed));
 
 /*
@@ -865,6 +902,7 @@ struct sof_ipc_pm_ctx {
 	struct sof_ipc_host_buffer buffer;
 	uint32_t num_elems;
 	uint32_t size;
+	uint32_t reserved[2];
 	struct sof_ipc_pm_ctx_elem elems[];
 };
 
@@ -872,6 +910,7 @@ struct sof_ipc_pm_ctx {
 struct sof_ipc_pm_core_config {
 	struct sof_ipc_hdr hdr;
 	uint32_t enable_mask;
+	uint32_t reserved[3];
 };
 
 /*
@@ -895,6 +934,7 @@ struct sof_ipc_fw_version {
 	uint8_t time[10];
 	uint8_t tag[6];
 	uint16_t abi_version;
+	uint32_t reserved[4];
 	/* Make sure the total size is 4 bytes aligned */
 } __attribute__((packed));
 
@@ -905,6 +945,7 @@ struct sof_ipc_fw_ready {
 	uint32_t hostbox_offset; /* host initiated IPC mailbox */
 	uint32_t dspbox_size;
 	uint32_t hostbox_size;
+	uint32_t reserved[4];
 	struct sof_ipc_fw_version version;
 } __attribute__((packed));
 
@@ -925,11 +966,13 @@ enum sof_ipc_region {
 struct sof_ipc_ext_data_hdr {
 	struct sof_ipc_hdr hdr;
 	enum sof_ipc_ext_data type;			/* SOF_IPC_EXT_ */
+	uint32_t reserved[3];
 };
 
 struct sof_ipc_dma_buffer_elem {
 	enum sof_ipc_region type;
 	uint32_t id;	/* platform specific - used to map to host memory */
+	uint32_t reserved[2];
 	struct sof_ipc_host_buffer buffer;
 };
 
@@ -937,6 +980,7 @@ struct sof_ipc_dma_buffer_elem {
 struct sof_ipc_dma_buffer_data {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_buffers;
+	uint32_t reserved[3];
 	/* host files in buffer[n].buffer */
 	struct sof_ipc_dma_buffer_elem buffer[];
 }  __attribute__((packed));
@@ -948,12 +992,14 @@ struct sof_ipc_window_elem {
 	uint32_t size;	/* size of region in bytes */
 	/* offset in window region as windows can be partitioned */
 	uint32_t offset;
+	uint32_t reserved[3];
 };
 
 /* extended data memory windows for IPC, trace and debug */
 struct sof_ipc_window {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_windows;
+	uint32_t reserved[3];
 	struct sof_ipc_window_elem window[];
 }  __attribute__((packed));
 
@@ -966,6 +1012,7 @@ struct sof_ipc_dma_trace_params {
 	struct sof_ipc_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
 	uint32_t stream_tag;
+	uint32_t reserved[3];
 }  __attribute__((packed));
 
 /* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */
@@ -974,6 +1021,7 @@ struct sof_ipc_dma_trace_posn {
 	uint32_t host_offset;	/* Offset of DMA host buffer */
 	uint32_t overflow;	/* overflow bytes if any */
 	uint32_t messages;	/* total trace messages */
+	uint32_t reserved[5];
 }  __attribute__((packed));
 
 /*
@@ -1003,7 +1051,7 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t interrupt;
 	uint32_t sar;
 	uint32_t stack;
-}  __attribute__((packed));
+}  __attribute__((packed)); //FIXME: can we add reserved stuff here?
 
 /*
  * Commom debug
@@ -1013,6 +1061,7 @@ struct sof_ipc_dsp_oops_xtensa {
 struct sof_ipc_panic_info {
 	char filename[32];
 	uint32_t linenum;
+	uint32_t reserved[3];
 }  __attribute__((packed));
 
 /** @}*/
