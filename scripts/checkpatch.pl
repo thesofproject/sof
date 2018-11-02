@@ -2185,6 +2185,7 @@ sub process {
 	my $commit_log_long_line = 0;
 	my $commit_log_has_diff = 0;
 	my $reported_maintainer_file = 0;
+	my $reported_abi_update = 0;
 	my $non_utf8_charset = 0;
 
 	my $last_blank_line = 0;
@@ -2452,6 +2453,14 @@ sub process {
 		if ($line =~ /^\s*signed-off-by:/i) {
 			$signoff++;
 			$in_commit_log = 0;
+		}
+
+# Check if ABI is being updated.  If so, there's probably no need to
+# emit the "does ABI need updating?" message on file add/move/delete
+		if ($line =~ /#define SOF_ABI_MAJOR*/ ||
+		    $line =~ /#define SOF_ABI_MINOR*/ ||
+		    $line =~ /#define SOF_ABI_PATCH*/) {
+			$reported_abi_update = 1;
 		}
 
 # Check if MAINTAINERS is being updated.  If so, there's probably no need to
@@ -3037,6 +3046,14 @@ sub process {
 		    $realline > 2) {
 			WARN("NETWORKING_BLOCK_COMMENT_STYLE",
 			     "networking block comments don't use an empty /* line, use /* Comment...\n" . $hereprev);
+		}
+
+# UAPI ABI version
+		if ($realfile =~ m@^(src/include/uapi/|uapi/)@ &&
+		    $rawline =~ /^\+/ &&
+		    !$reported_abi_update) {
+			WARN("ABI update ??",
+			     "Please update ABI in accordance with http://semver.org\n" . $hereprev);
 		}
 
 # Block comments use * on subsequent lines
