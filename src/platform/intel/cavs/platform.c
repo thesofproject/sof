@@ -65,11 +65,14 @@ static const struct sof_ipc_fw_ready ready
 		.size = sizeof(struct sof_ipc_fw_ready),
 	},
 	.version = {
-		.build = SOF_BUILD,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
+#ifdef DEBUG_BUILD
+		/* only added in debug for reproducability in releases */
+		.build = SOF_BUILD,
 		.date = __DATE__,
 		.time = __TIME__,
+#endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
 	},
