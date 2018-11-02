@@ -76,12 +76,20 @@ struct sof_eq_fir_config {
 	uint32_t size;
 	uint16_t channels_in_config;
 	uint16_t number_of_responses;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	int16_t data[];
 };
 
 struct sof_eq_fir_coef_data {
 	int16_t length; /* Number of FIR taps */
 	int16_t out_shift; /* Amount of right shifts at output */
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	int16_t coef[]; /* FIR coefficients */
 };
 
@@ -137,12 +145,20 @@ struct sof_eq_iir_config {
 	uint32_t size;
 	uint32_t channels_in_config;
 	uint32_t number_of_responses;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	int32_t data[]; /* eq_assign[channels], eq 0, eq 1, ... */
 };
 
 struct sof_eq_iir_header_df2t {
 	uint32_t num_sections;
 	uint32_t num_sections_in_series;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	int32_t biquads[]; /* Repeated biquad coefficients */
 };
 

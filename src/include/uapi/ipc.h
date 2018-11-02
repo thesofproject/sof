@@ -303,8 +303,6 @@ struct sof_ipc_dai_ssp_params {
 	uint16_t tdm_per_slot_padding_flag;
 	uint32_t clks_control;
 	uint32_t quirks; // FIXME: is 32 bits enough ?
-	/* private data, e.g. for quirks */
-	//uint32_t pdata[10]; // FIXME: would really need ~16 u32
 } __attribute__((packed));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
@@ -375,6 +373,10 @@ struct sof_ipc_dai_dmic_params {
 	uint16_t duty_min;    /* Min. mic clock duty cycle in % (20..80) */
 	uint16_t duty_max;    /* Max. mic clock duty cycle in % (min..80) */
 	uint32_t num_pdm_active; /* Number of active pdm controllers */
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	/* variable number of pdm controller config */
 	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __attribute__((packed));
@@ -382,12 +384,15 @@ struct sof_ipc_dai_dmic_params {
 /* general purpose DAI configuration */
 struct sof_ipc_dai_config {
 	struct sof_ipc_hdr hdr;
-	enum sof_ipc_dai_type type;
+	uint32_t type;		/* DAI type - SOF_DAI_ */
 	uint32_t dai_index; /* index of this type dai */
 
 	/* physical protocol and clocking */
 	uint16_t format;	/* SOF_DAI_FMT_ */
-	uint16_t reserved;	/* alignment */
+	uint16_t reserved16;	/* alignment */
+
+	/* reserved */
+	uint32_t reserved[8];
 
 	/* HW specific data */
 	union {
@@ -497,17 +502,17 @@ struct sof_ipc_host_buffer {
 
 struct sof_ipc_stream_params {
 	struct sof_ipc_host_buffer buffer;
-	enum sof_ipc_stream_direction direction;
-	enum sof_ipc_frame frame_fmt;
-	enum sof_ipc_buffer_format buffer_fmt;
-	uint32_t stream_tag;
+	uint32_t direction;	/* SOF_IPC_STREAM_ */
+	uint32_t frame_fmt;	/* SOF_IPC_FRAME_ */
+	uint32_t buffer_fmt;	/* SOF_IPC_BUFFER_ */
 	uint32_t rate;
-	uint32_t channels;
-	uint32_t sample_valid_bytes;
-	uint32_t sample_container_bytes;
+	uint16_t stream_tag;
+	uint16_t channels;
+	uint16_t sample_valid_bytes;
+	uint16_t sample_container_bytes;
 	/* for notifying host period has completed - 0 means no period IRQ */
 	uint32_t host_period_bytes;
-	enum sof_ipc_chmap chmap[SOF_IPC_MAX_CHANNELS];	/* channel map */
+	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/* channel map - SOF_CHMAP_ */
 } __attribute__((packed));
 
 /* PCM params info - SOF_IPC_STREAM_PCM_PARAMS */
@@ -598,7 +603,7 @@ enum sof_ipc_ctrl_cmd {
 
 /* generic channel mapped value data */
 struct sof_ipc_ctrl_value_chan {
-	enum sof_ipc_chmap channel;
+	uint32_t channel;	/* channel map - SOF_CHMAP_ */
 	uint32_t value;
 } __attribute__((packed));
 
@@ -624,6 +629,9 @@ struct sof_ipc_ctrl_data {
 	/* control data - can either be appended or DMAed from host */
 	struct sof_ipc_host_buffer buffer;
 	uint32_t num_elems;	/* in array elems or bytes */
+
+	/* reserved */
+	uint32_t reserved[8];
 
 	/* control data - add new types if needed */
 	union {
@@ -690,15 +698,19 @@ struct sof_ipc_comp_config {
 	uint32_t periods_sink;	/* 0 means variable */
 	uint32_t periods_source;	/* 0 means variable */
 	uint32_t preload_count;	/* how many periods to preload */
-	enum sof_ipc_frame frame_fmt;
+	uint32_t frame_fmt;		/* SOF_IPC_FRAME_ */
 	uint32_t xrun_action;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 } __attribute__((packed));
 
 /* generic host component */
 struct sof_ipc_comp_host {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
-	enum sof_ipc_stream_direction direction;
+	uint32_t direction;	/* SOF_IPC_STREAM_ */
 	uint32_t no_irq;	/* don't send periodic IRQ to host/DSP */
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
@@ -707,9 +719,9 @@ struct sof_ipc_comp_host {
 struct sof_ipc_comp_dai {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
-	enum sof_ipc_stream_direction direction;
+	uint32_t direction;	/* SOF_IPC_STREAM_ */
 	uint32_t dai_index; /* index of this type dai */
-	enum sof_ipc_dai_type type;
+	uint32_t type;		/* DAI type - SOF_DAI_ */
 	uint32_t dmac_config; /* DMA engine specific */
 }  __attribute__((packed));
 
@@ -734,7 +746,7 @@ struct sof_ipc_comp_volume {
 	uint32_t channels;
 	uint32_t min_value;
 	uint32_t max_value;
-	enum sof_volume_ramp ramp;
+	uint32_t ramp;		/* SOF_VOLUME_ */
 	uint32_t initial_ramp;	/* ramp space in ms */
 }  __attribute__((packed));
 
@@ -774,6 +786,10 @@ struct sof_ipc_comp_eq_fir {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	uint32_t size;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	unsigned char data[0];
 } __attribute__((packed));
 
@@ -782,6 +798,10 @@ struct sof_ipc_comp_eq_iir {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
 	uint32_t size;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	unsigned char data[0];
 } __attribute__((packed));
 
@@ -865,6 +885,10 @@ struct sof_ipc_pm_ctx {
 	struct sof_ipc_host_buffer buffer;
 	uint32_t num_elems;
 	uint32_t size;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	struct sof_ipc_pm_ctx_elem elems[];
 };
 
@@ -895,7 +919,10 @@ struct sof_ipc_fw_version {
 	uint8_t time[10];
 	uint8_t tag[6];
 	uint16_t abi_version;
-	/* Make sure the total size is 4 bytes aligned */
+
+	/* reserved */
+	uint32_t reserved[4];
+
 } __attribute__((packed));
 
 /* FW ready Message - sent by firmware when boot has completed */
@@ -906,6 +933,10 @@ struct sof_ipc_fw_ready {
 	uint32_t dspbox_size;
 	uint32_t hostbox_size;
 	struct sof_ipc_fw_version version;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 } __attribute__((packed));
 
 /*
@@ -924,11 +955,11 @@ enum sof_ipc_region {
 
 struct sof_ipc_ext_data_hdr {
 	struct sof_ipc_hdr hdr;
-	enum sof_ipc_ext_data type;			/* SOF_IPC_EXT_ */
+	uint32_t type;		/* SOF_IPC_EXT_ */
 };
 
 struct sof_ipc_dma_buffer_elem {
-	enum sof_ipc_region type;
+	uint32_t type;		/* SOF_IPC_REGION_ */
 	uint32_t id;	/* platform specific - used to map to host memory */
 	struct sof_ipc_host_buffer buffer;
 };
@@ -937,12 +968,16 @@ struct sof_ipc_dma_buffer_elem {
 struct sof_ipc_dma_buffer_data {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_buffers;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	/* host files in buffer[n].buffer */
 	struct sof_ipc_dma_buffer_elem buffer[];
 }  __attribute__((packed));
 
 struct sof_ipc_window_elem {
-	enum sof_ipc_region type;
+	uint32_t type;		/* SOF_IPC_REGION_ */
 	uint32_t id;	/* platform specific - used to map to host memory */
 	uint32_t flags;	/* R, W, RW, etc - to define */
 	uint32_t size;	/* size of region in bytes */
@@ -954,6 +989,10 @@ struct sof_ipc_window_elem {
 struct sof_ipc_window {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_windows;
+
+	/* reserved */
+	uint32_t reserved[4];
+
 	struct sof_ipc_window_elem window[];
 }  __attribute__((packed));
 
