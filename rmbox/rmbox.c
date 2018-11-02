@@ -18,7 +18,6 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
-
 #include "convert.h"
 
 #ifdef LOGGER_FORMAT
