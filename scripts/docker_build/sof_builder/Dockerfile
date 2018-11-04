@@ -102,8 +102,7 @@ RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newl
 
 
 # Create direcroties for the host machines sof/soft directories to be mounted.
-RUN mkdir -p /home/sof/work/sof.git && \
-    mkdir -p /home/sof/work/soft.git
+RUN mkdir -p /home/sof/work/sof.git
 
 
 USER sof

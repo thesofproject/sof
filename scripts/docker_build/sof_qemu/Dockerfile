@@ -51,7 +51,6 @@ RUN cd /home/sof && git clone https://github.com/thesofproject/qemu.git && \
 	make
 
 # Create direcroties for the host machines sof/soft directories to be mounted.
-RUN mkdir -p /home/sof/sof.git && \
-    mkdir -p /home/sof/soft.git
+RUN mkdir -p /home/sof/sof.git
 
 WORKDIR /home/sof/qemu/
