@@ -1,0 +1,16 @@
+%% Recording device configuration
+
+rec.ssh = 0;             % Set to 1 for remote capture
+rec.user = '';           % Set to user@domain for ssh
+rec.dir = '/tmp';        % Directory for temporary files
+rec.dev = 'hw:0,0';      % Audio capture device
+rec.nch = 2;             % Number audio capture channels to use
+
+% Use '' if calibration is not needed. Otherwise set to
+% e.g. '1234567.txt'. Such calibration data format is supported for
+% some reasonably priced measurement microphones. The ASCII text
+% calibration data file is the measured frequency response of the used
+% microphone. Lines in the beginning those start with character " are
+% treated as comment. The successive lines should be <frequency>
+% <magnitude> number pairs. Their unit must be Hz and dB.
+rec.cal = '';

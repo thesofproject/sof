@@ -1,0 +1,7 @@
+How to use sof-eqctl tool
+=========================
+
+This tool helps to access the ext bytes or tlv bytes control of SOF
+equalizer components eq_iir and eq_fir. Please find the documentation
+in https://thesofproject.github.io/latest/getting_started/index.html
+for more information.

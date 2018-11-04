@@ -1,8 +1,14 @@
 AC_PREREQ([2.69])
 AC_INIT([sof],[m4_esyscmd(./version.sh)],[sound-open-firmware@alsa-project.org])
 AC_CONFIG_SRCDIR([src/init/init.c])
+AC_CONFIG_SRCDIR([tools/rmbox/rmbox.c])
+AC_CONFIG_SRCDIR([tools/eqctl/eqctl.c])
 AC_CONFIG_HEADERS([src/include/config.h])
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIRS([m4])
+AC_CHECK_HEADER([sof/uapi/abi.h])
+AC_CHECK_PROG([XARGS], xargs, "yes", "no", [$PATH])
+AM_CONDITIONAL(XARGS, test "$XARGS" = "yes")
 AM_INIT_AUTOMAKE([foreign 1.11 -Wall -Wno-portability subdir-objects silent-rules color-tests dist-xz tar-ustar])
 
 # Initialize maintainer mode
@@ -574,7 +580,19 @@ AC_CONFIG_FILES([
 	test/cmocka/Makefile
 ])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
-AC_OUTPUT
+AC_OUTPUT([
+	Makefile
+	tools/rmbox/Makefile
+	tools/eqctl/Makefile
+	topology/Makefile
+	topology/common/Makefile
+	topology/platform/Makefile
+	topology/platform/intel/Makefile
+	topology/platform/common/Makefile
+	topology/m4/Makefile
+	topology/sof/Makefile
+	test/topology/Makefile
+])
 
 echo "
 ---{ $PACKAGE_NAME $VERSION }---
@@ -586,6 +604,7 @@ Install Prefix:                ${prefix}
 PEM:                           ${PEM_KEY_PREFIX}
 
 Compiler:                      ${CC}
+prefix:                        ${prefix}
 OBJCOPY:                       ${OBJCOPY}
 OBJDUMP:                       ${OBJDUMP}
 CFLAGS:                        ${CFLAGS}
@@ -596,4 +615,3 @@ A@&t@M_CFLAGS:                     ${AM_CFLAGS}
 A@&t@M_LDFLAGS:                    ${AM_LDFLAGS}
 A@&t@M_CCASFLAGS:                  ${AM_CCASFLAGS}
 "
-

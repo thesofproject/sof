@@ -1,5 +1,5 @@
 if BUILD_RIMAGE
-SUBDIRS = rimage
+SUBDIRS = rimage rmbox topology eqctl
 else
 SUBDIRS = doc src test
 endif
@@ -9,6 +9,7 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = version.sh
 
 SRC_DIR = $(abs_top_builddir)/src
+TESTDIR = test/topology
 
 if BUILD_HOST
 export ARCH_INCDIR = \
@@ -69,3 +70,6 @@ if !BUILD_RIMAGE
 all-local:
 	rm -f $(top_srcdir)/src/include/version.h
 endif
+
+tests:
+	$(MAKE) -C $(TESTDIR)

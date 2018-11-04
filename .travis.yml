@@ -22,6 +22,9 @@ install:
 jobs:
   include:
     - stage: compile
+      name: "Tools"
+      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./quickbuild.sh
+    - stage: compile
       name: "BYT Build"
       script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr byt
     - stage: compile
