@@ -39,6 +39,8 @@ enum machine_id {
 	MACHINE_HASWELL,
 	MACHINE_BROADWELL,
 	MACHINE_APOLLOLAKE,
+	MACHINE_KABYLAKE,
+	MACHINE_SKYLAKE,
 	MACHINE_CANNONLAKE,
 	MACHINE_ICELAKE,
 	MACHINE_SUECREEK,
@@ -148,6 +150,7 @@ struct adsp {
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);
 	struct fw_image_manifest_v1_8 *man_v1_8;
+	struct fw_image_manifest_v1_5 *man_v1_5;
 };
 
 int write_logs_dictionary(struct image *image);
@@ -181,5 +184,8 @@ extern const struct adsp machine_apl;
 extern const struct adsp machine_cnl;
 extern const struct adsp machine_icl;
 extern const struct adsp machine_sue;
+extern const struct adsp machine_skl;
+extern const struct adsp machine_kbl;
+
 
 #endif
