@@ -67,7 +67,7 @@
 	(MAN_DESC_OFFSET - MAN_FW_DESC_OFFSET_V1_8)
 
 /*
- * Firmware manifest header.
+ * Firmware manifest header V1.8 used on APL onwards
  */
 struct fw_image_manifest_v1_8 {
 	/* MEU tool needs these sections to be 0s */
