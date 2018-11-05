@@ -688,7 +688,7 @@ static int man_write_fw_v1_8(struct image *image)
 	m->desc.header.num_module_entries = image->num_modules;
 	man_create_modules(image, desc);
 
-	fprintf(stdout, "Firmware completing manifest\n");
+	fprintf(stdout, "Firmware completing manifest v1.8\n");
 
 	/* create structures from end of file to start of file */
 	ri_adsp_meta_data_create(image, MAN_META_EXT_OFFSET_V1_8,
@@ -787,7 +787,7 @@ static int man_write_fw_meu_v1_8(struct image *image)
 	desc->header.num_module_entries = image->num_modules;
 	man_create_modules(image, desc);
 
-	fprintf(stdout, "Firmware completing manifest\n");
+	fprintf(stdout, "Firmware completing manifest v1.8\n");
 
 	/* create structures from end of file to start of file */
 	ri_adsp_meta_data_create(image, meta_start_offset, image->meu_offset);
