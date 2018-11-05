@@ -15,7 +15,7 @@
 #define __MANIFEST_H__
 
 #include <stdint.h>
-#include "uapi/manifest.h"
+#include <uapi/user/manifest.h>
 #include "css.h"
 #include "cse.h"
 #include "plat_auth.h"

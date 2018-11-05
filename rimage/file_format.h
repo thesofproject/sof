@@ -63,9 +63,7 @@
 #ifndef __INCLUDE_UAPI_SOF_FW_H__
 #define __INCLUDE_UAPI_SOF_FW_H__
 
-/* Skip inclusion of <sof/io.h> which causes errors */
-#define __INCLUDE_IO__
-#include <uapi/ipc.h>
+#include <uapi/ipc/info.h>
 
 #define SND_SOF_FW_SIG_SIZE	4
 #define SND_SOF_FW_ABI		1

@@ -24,7 +24,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "uapi/manifest.h"
+#include <uapi/user/manifest.h>
+
 #include "rimage.h"
 #include "file_format.h"
 #include "css.h"
