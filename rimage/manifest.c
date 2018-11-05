@@ -1015,6 +1015,34 @@ const struct adsp machine_apl = {
 	.man_v1_8 = &apl_manifest,
 };
 
+const struct adsp machine_kbl = {
+	.name = "kbl",
+	.rom_base = ADSP_APL_DSP_ROM_BASE,
+	.rom_size = ADSP_APL_DSP_ROM_SIZE,
+	.sram_base = APL_DSP_BASE_ENTRY,
+	.sram_size = 0x100000,
+	.image_size = 0x100000,
+	.dram_offset = 0,
+	.machine_id = MACHINE_KABYLAKE,
+	.write_firmware = man_write_fw_v1_5,
+	.write_firmware_meu = man_write_fw_meu_v1_5,
+	.man_v1_5 = &kbl_manifest,
+};
+
+const struct adsp machine_skl = {
+	.name = "skl",
+	.rom_base = ADSP_APL_DSP_ROM_BASE,
+	.rom_size = ADSP_APL_DSP_ROM_SIZE,
+	.sram_base = APL_DSP_BASE_ENTRY,
+	.sram_size = 0x100000,
+	.image_size = 0x100000,
+	.dram_offset = 0,
+	.machine_id = MACHINE_SKYLAKE,
+	.write_firmware = man_write_fw_v1_5,
+	.write_firmware_meu = man_write_fw_meu_v1_5,
+	.man_v1_5 = &kbl_manifest,
+};
+
 const struct adsp machine_cnl = {
 	.name = "cnl",
 	.rom_base = ADSP_CNL_DSP_ROM_BASE,
