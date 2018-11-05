@@ -98,18 +98,21 @@ struct log_buffer_status {
 	uint32_t core_id;  /* ID of core that logged to other half */
 };
 
-/*
- *  Log entry header.
- *
- * The header is followed by an array of arguments (uint32_t[]).
- * Number of arguments is specified by the params_num field of log_entry,
- * and is 0-based value (entry_len=0 means there is 1 argument).
- */
-struct log_entry_header {
-	uint32_t rsvd : 24;	/* Unused */
-	uint32_t core_id : 8;	/* Reporting core's id */
+#define TRACE_ID_LENGTH 12
 
-	uint64_t timestamp;	/* Timestamp (in dsp ticks) */
+/*
+*  Log entry header.
+*
+* The header is followed by an array of arguments (uint32_t[]).
+* Number of arguments is specified by the params_num field of log_entry
+*/
+struct log_entry_header {
+	uint32_t id_0 : TRACE_ID_LENGTH;	/* e.g. Pipeline ID */
+	uint32_t id_1 : TRACE_ID_LENGTH;	/* e.g. Component ID */
+	uint32_t core_id : 8;		/* Reporting core's id */
+
+	uint64_t timestamp;		/* Timestamp (in dsp ticks) */
+	uintptr_t log_entry_address;	/* Address of log entry in ELF */
 } __attribute__((__packed__));
 
 #endif //#ifndef __INCLUDE_LOGGING__

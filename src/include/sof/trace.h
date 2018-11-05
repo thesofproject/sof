@@ -114,62 +114,88 @@
 #define TRACEE	1
 #define TRACEM	0 /* send all trace messages to mbox and local trace buffer */
 
-#define _TRACE_EVENT_NTH(postfix, vararg_count)\
-	META_FUNC_WITH_VARARGS(_trace_event, postfix, void,\
-	META_CONCAT(, uint32_t log_entry),\
-	vararg_count, META_SEQ_STEP_param_uint32_t)
+#define _TRACE_EVENT_NTH_PARAMS(id_count, param_count)			\
+	uintptr_t log_entry						\
+	META_SEQ_FROM_0_TO(id_count   , META_SEQ_STEP_id_uint32_t)	\
+	META_SEQ_FROM_0_TO(param_count, META_SEQ_STEP_param_uint32_t)
 
-#define _TRACE_EVENT_NTH_DECLARE_GROUP(arg_count)\
-	_TRACE_EVENT_NTH(, arg_count);\
-	_TRACE_EVENT_NTH(_mbox, arg_count);\
-	_TRACE_EVENT_NTH(_atomic, arg_count);\
-	_TRACE_EVENT_NTH(_mbox_atomic, arg_count);
+#define _TRACE_EVENT_NTH(postfix, param_count)			\
+	META_FUNC_WITH_VARARGS(					\
+		_trace_event, META_CONCAT(postfix, param_count),\
+		void, _TRACE_EVENT_NTH_PARAMS(2, param_count)	\
+	)
+
+#define _TRACE_EVENT_NTH_DECLARE_GROUP(arg_count)	\
+	_TRACE_EVENT_NTH(		, arg_count);	\
+	_TRACE_EVENT_NTH(_mbox		, arg_count);	\
+	_TRACE_EVENT_NTH(_atomic	, arg_count);	\
+	_TRACE_EVENT_NTH(_mbox_atomic	, arg_count);
 
 /* Declaration of
- * void _trace_event0            (uint32_t log_entry);
- * void _trace_event_mbox0       (uint32_t log_entry);
- * void _trace_event_atomic0     (uint32_t log_entry);
- * void _trace_event_mbox_atomic0(uint32_t log_entry);
+ * void _trace_event0            (uint32_t log_entry, uint32_t ids...);
+ * void _trace_event_mbox0       (uint32_t log_entry, uint32_t ids...);
+ * void _trace_event_atomic0     (uint32_t log_entry, uint32_t ids...);
+ * void _trace_event_mbox_atomic0(uint32_t log_entry, uint32_t ids...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(0)
 
 /* Declaration of
- * void _trace_event1            (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox1       (uint32_t log_entry, uint32_t params...);
- * void _trace_event_atomic1     (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t params...);
+ * void _trace_event1            (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox1       (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_atomic1     (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(1)
 
 /* Declaration of
- * void _trace_event2            (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox2       (uint32_t log_entry, uint32_t params...);
- * void _trace_event_atomic2     (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t params...);
+ * void _trace_event2            (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox2       (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_atomic2     (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(2)
 
 /* Declaration of
- * void _trace_event3            (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox3       (uint32_t log_entry, uint32_t params...);
- * void _trace_event_atomic3     (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t params...);
+ * void _trace_event3            (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox3       (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_atomic3     (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(3)
 
 /* Declaration of
- * void _trace_event4            (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox4       (uint32_t log_entry, uint32_t params...);
- * void _trace_event_atomic4     (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t params...);
+ * void _trace_event4            (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox4       (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_atomic4     (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox_atomic4(uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(4)
 
 /* Declaration of
- * void _trace_event5            (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox5       (uint32_t log_entry, uint32_t params...);
- * void _trace_event_atomic5     (uint32_t log_entry, uint32_t params...);
- * void _trace_event_mbox_atomic5(uint32_t log_entry, uint32_t params...);
+ * void _trace_event5            (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox5       (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_atomic5     (uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
+ * void _trace_event_mbox_atomic5(uint32_t log_entry, uint32_t ids...,
+ *                                uint32_t params...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(5)
 
@@ -180,38 +206,50 @@ void trace_off(void);
 void trace_init(struct sof *sof);
 
 #if TRACE
-
 /*
- * trace_event macro definition
- *
- * trace_event() macro is used for logging events that occur at runtime.
- * It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
- * above, it might also propagate log messages to mbox if desired.
- *
- * First argument is always class of event being logged, as defined above.
- * Second argument is string literal in printf format, followed by up to 3
- * parameters (uint32_t), that are used to expand into string fromat when
- * parsing log data.
- *
- * All compile-time accessible data (verbosity, class, source file name, line
- * index and string literal) are linked into .static_log_entries section
- * of binary and then extracted by rimage, so they do not contribute to loadable
- * image size. This way more elaborate log messages are possible and encouraged,
- * for better debugging experience, without worrying about runtime performance.
- */
+* trace_event macro definition
+*
+* trace_event() macro is used for logging events that occur at runtime.
+* It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
+* above, it might also propagate log messages to mbox if desired.
+*
+* First argument is always class of event being logged, as defined in
+* uapi/logging.h.
+* Second argument is string literal in printf format, followed by up to 4
+* parameters (uint32_t), that are used to expand into string fromat when
+* parsing log data.
+*
+* All compile-time accessible data (verbosity, class, source file name, line
+* index and string literal) are linked into .static_log_entries section
+* of binary and then extracted by rimage, so they do not contribute to loadable
+* image size. This way more elaborate log messages are possible and encouraged,
+* for better debugging experience, without worrying about runtime performance.
+*/
+#define trace_event(class, format, ...) \
+	_trace_event_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__)
+#define trace_event_atomic(class, format, ...) \
+	_trace_event_atomic_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__)
+
+#define trace_event_with_ids(class, id_0, id_1, format, ...)	\
+	_trace_event_with_ids(class, id_0, id_1, 1, format, ##__VA_ARGS__)
+#define trace_event_atomic_with_ids(class, id_0, id_1, format, ...)	\
+	_trace_event_atomic_with_ids(class, id_0, id_1, 1, format,	\
+				     ##__VA_ARGS__)
+
 #if TRACEM
 /* send all trace to mbox and local trace buffer */
-#define trace_event(__c, __e, ...) \
-	_log_message(_mbox,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
-#define trace_event_atomic(__c, __e, ...) \
-	_log_message(_mbox, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#define __mbox _mbox
 #else
 /* send trace events only to the local trace buffer */
-#define trace_event(__c, __e, ...) \
-	_log_message(,, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
-#define trace_event_atomic(__c, __e, ...) \
-	_log_message(, _atomic, LOG_LEVEL_VERBOSE, __c, __e, ##__VA_ARGS__)
+#define __mbox
 #endif
+#define _trace_event_with_ids(class, id_0, id_1, has_ids, format, ...)	\
+	_log_message(__mbox,, LOG_LEVEL_VERBOSE, class, id_0, id_1,	\
+		     has_ids, format, ##__VA_ARGS__)
+#define _trace_event_atomic_with_ids(class, id_0, id_1, has_ids, format, ...)\
+	_log_message(__mbox, _atomic, LOG_LEVEL_VERBOSE, class, id_0, id_1,  \
+		     has_ids, format, ##__VA_ARGS__)
+
 #define trace_value(x)		trace_event(0, "value %u", x)
 #define trace_value_atomic(x)	trace_event_atomic(0, "value %u", x)
 
@@ -219,14 +257,18 @@ void trace_init(struct sof *sof);
 
 /* verbose tracing */
 #if TRACEV
-#define tracev_event(__c, __e, ...) trace_event(__c, __e, ##__VA_ARGS__)
+#define tracev_event(...) trace_event(__VA_ARGS__)
+#define tracev_event_with_ids(...) trace_event_with_ids(__VA_ARGS__)
+#define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
+#define tracev_event_atomic_with_ids(...) trace_event_with_ids(__VA_ARGS__)
+
 #define tracev_value(x)	trace_value(x)
-#define tracev_event_atomic(__c, __e, ...) \
-	trace_event_atomic(__c, __e, ##__VA_ARGS__)
 #define tracev_value_atomic(x)	trace_value_atomic(x)
 #else
-#define tracev_event(__c, __e, ...)
-#define tracev_event_atomic(__c, __e, ...)
+#define tracev_event(...)
+#define tracev_event_with_ids(...)
+#define tracev_event_atomic(...)
+#define tracev_event_atomic_with_ids(...)
 
 #define tracev_value(x)
 #define tracev_value_atomic(x)
@@ -234,88 +276,86 @@ void trace_init(struct sof *sof);
 
 /* error tracing */
 #if TRACEE
-#define trace_error(__c, __e, ...) _log_message(_mbox, _atomic, \
-	LOG_LEVEL_CRITICAL, __c, __e, ##__VA_ARGS__)
-#define trace_error_atomic(__c, __e, ...) \
-	trace_error(__c, __e, ##__VA_ARGS__)
+#define _trace_error_with_ids(class, id_0, id_1, has_ids, format, ...)	\
+	_log_message(_mbox, _atomic, LOG_LEVEL_CRITICAL, class, id_0,	\
+		     id_1, has_ids, format, ##__VA_ARGS__)
+#define trace_error(class, format, ...)					\
+	_trace_error_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__)
+#define trace_error_with_ids(class, id_0, id_1, format, ...)	\
+	_trace_error_with_ids(class, id_0, id_1, 1, format, ##__VA_ARGS__)
+#define trace_error_atomic(...) trace_error(__VA_ARGS__)
+#define trace_error_atomic_with_ids(...) trace_error_with_ids(__VA_ARGS__)
 /* write back error value to mbox */
-#define trace_error_value(x) \
-	trace_error(0, "value %u", x)
-#define trace_error_value_atomic(x) \
-	trace_error_atomic(0, "value %u", x)
+#define trace_error_value(x)		trace_error(0, "value %u", x)
+#define trace_error_value_atomic(...)	trace_error_value(__VA_ARGS__)
 #else
-#define trace_error(__c, __e, ...)
-#define trace_error_atomic(__c, __e, ...)
+#define trace_error(...)
+#define trace_error_atomic(...)
 #define trace_error_value(x)
 #define trace_error_value_atomic(x)
 #endif
 
-typedef void(*log_func)();
-
-/*
- * Log entry declaration
- *
- * Each log_entry defines anonymous type, with all compile-time data
- * associated with it, to save on transmission. It is then placed by the linker
- * in .static_log_entries section of ELF.
- */
-#define _DECLARE_LOG_ENTRY(lvl, format, comp_id, params)\
-	__attribute__((section(".static_log." #lvl)))	\
-	static const struct {				\
-		uint32_t level;				\
-		uint32_t component_id;			\
-		uint32_t params_num;			\
-		uint32_t line_idx;			\
-		uint32_t file_name_len;			\
-		const char file_name[sizeof(__FILE__)];	\
-		uint32_t text_len;			\
-		const char text[sizeof(format)];	\
-	} log_entry = {					\
-		lvl,					\
-		comp_id,				\
-		params,					\
-		__LINE__,				\
-		sizeof(__FILE__),			\
-		__FILE__,				\
-		sizeof(format),				\
-		format					\
+#define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params, ids)\
+	__attribute__((section(".static_log." #lvl)))		\
+	static const struct {					\
+		uint32_t level;					\
+		uint32_t component_class;			\
+		uint32_t has_ids;				\
+		uint32_t params_num;				\
+		uint32_t line_idx;				\
+		uint32_t file_name_len;				\
+		uint32_t text_len;				\
+		const char file_name[sizeof(__FILE__)];		\
+		const char text[sizeof(format)];		\
+	} log_entry = {						\
+		lvl,						\
+		comp_class,					\
+		ids,						\
+		params,						\
+		__LINE__,					\
+		sizeof(__FILE__),				\
+		sizeof(format),					\
+		__FILE__,					\
+		format						\
 	}
 
 #define BASE_LOG_ASSERT_FAIL_MSG \
 unsupported_amount_of_params_in_trace_event\
 _thrown_from_macro_BASE_LOG_in_trace_h
 
-#define BASE_LOG(function_name, entry, ...)\
-{\
-	STATIC_ASSERT(\
-		_TRACE_EVENT_MAX_ARGUMENT_COUNT >=\
-			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),\
-		BASE_LOG_ASSERT_FAIL_MSG\
-	);\
-	log_func log_function = (log_func)&\
-		META_CONCAT(function_name,\
-			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));\
-	log_function(entry, ##__VA_ARGS__);\
-}
-
-#define __log_message(func_name, lvl, comp_id, format, ...)		\
+#define BASE_LOG(function_name, id_0, id_1, entry, ...)			\
 {									\
-	_DECLARE_LOG_ENTRY(lvl, format, comp_id, PP_NARG(__VA_ARGS__));	\
-	BASE_LOG(func_name, &log_entry, ##__VA_ARGS__)	\
+	STATIC_ASSERT(							\
+		_TRACE_EVENT_MAX_ARGUMENT_COUNT >=			\
+			META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
+		BASE_LOG_ASSERT_FAIL_MSG				\
+	);								\
+	META_CONCAT(function_name,					\
+		    META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__))	\
+			((uintptr_t)entry, id_0, id_1, ##__VA_ARGS__);	\
 }
 
-#define _log_message(mbox, atomic, level, comp_id, format, ...)	\
-	__log_message(_trace_event##mbox##atomic, level,	\
-		comp_id, format, ##__VA_ARGS__)
+#define __log_message(func_name, lvl, comp_class, id_0, id_1, has_ids,	\
+		      format, ...)					\
+{									\
+	_DECLARE_LOG_ENTRY(lvl, format, comp_class,			\
+			   PP_NARG(__VA_ARGS__), has_ids);		\
+	BASE_LOG(func_name, id_0, id_1, &log_entry, ##__VA_ARGS__)	\
+}
 
+#define _log_message(mbox, atomic, level, comp_class, id_0, id_1,	\
+		     has_ids, format, ...)				\
+	__log_message(META_CONCAT_SEQ(_trace_event, mbox, atomic),	\
+		      level, comp_class, id_0, id_1, has_ids, format,	\
+		      ##__VA_ARGS__)
 
 #else
 
-#define trace_event(__c, __e, ...)
-#define trace_event_atomic(__c, __e, ...)
+#define	trace_event(...)
+#define	trace_event_atomic(...)
 
-#define trace_error(__c, __e, ...)
-#define trace_error_atomic(__c, __e, ...)
+#define trace_error_with_ids(...)
+#define trace_error_atomic_with_ids(...)
 
 #define trace_error_value(x)
 #define trace_error_value_atomic(x)
@@ -325,8 +365,10 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 
 #define trace_point(x)
 
-#define tracev_event(__c, __e, ...)
-#define tracev_event_atomic(__c, __e, ...)
+#define tracev_event(...)
+#define tracev_event_with_ids(...)
+#define tracev_event_atomic(...)
+#define tracev_event_atomic_with_ids(...)
 #define tracev_value(x)
 #define tracev_value_atomic(x)
 

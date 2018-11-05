@@ -49,7 +49,7 @@ int num_trace_classes;
 int setup_trace_table(void)
 {
 	char buffer[2048];
-	char *trace = "sof/trace.h";
+	char *trace = "uapi/logging.h";
 	char *trace_filename = malloc(strlen(SOF_INC) + strlen(trace) + 2);
 	char *token;
 	int ret, i = 0;
@@ -143,47 +143,55 @@ static char *get_trace_class(uint32_t trace_class)
 	return "value";
 }
 
-#define META_SEQ_STEP_param_procD(i, _) META_CONCAT(param, i) %d
+#define META_SEQ_STEP_param_procU(i, _) META_CONCAT(param, i) %u
 
-#define HOST_TRACE_EVENT_NTH(postfix, vararg_count)\
-	META_FUNC_WITH_VARARGS(_trace_event, postfix, void,\
-	META_CONCAT(, uint32_t event),\
-	vararg_count, META_SEQ_STEP_param_uint32_t)
+#define HOST_TRACE_EVENT_NTH_PARAMS(id_count, param_count)		\
+	uintptr_t event							\
+	META_SEQ_FROM_0_TO(id_count   , META_SEQ_STEP_id_uint32_t)	\
+	META_SEQ_FROM_0_TO(param_count, META_SEQ_STEP_param_uint32_t)
+
+#define HOST_TRACE_EVENT_NTH(postfix, param_count)			\
+	META_FUNC_WITH_VARARGS(						\
+		_trace_event, META_CONCAT(postfix, param_count),	\
+		 void, HOST_TRACE_EVENT_NTH_PARAMS(2, param_count)	\
+	)
 
 /* print trace event */
-#define HOST_TRACE_EVENT_NTH_IMPL(arg_count)\
-HOST_TRACE_EVENT_NTH(, arg_count)\
-{\
-	char a, b, c;\
-	\
-	if (test_bench_trace > 0) {\
-		/* look up subsystem from trace class table */\
+#define HOST_TRACE_EVENT_NTH_IMPL(arg_count)				\
+HOST_TRACE_EVENT_NTH(, arg_count)					\
+{									\
+	char a, b, c;							\
+									\
+	if (test_bench_trace > 0) {					\
+		/* look up subsystem from trace class table */		\
 		char *trace_class = strdup(get_trace_class(event >> 24));\
-		\
-		a = event & 0xff;\
-		b = (event >> 8) & 0xff;\
-		c = (event >> 16) & 0xff;\
-		\
-		/* print trace event stderr*/\
-		if (!strcmp(trace_class, "value"))\
-			fprintf(stderr,\
-			"Trace value %d, "META_QUOTE(\
-				META_SEQ_FROM_0_TO(\
-					arg_count, META_SEQ_STEP_param_procD\
-				))"\n"\
-			, event META_SEQ_FROM_0_TO(arg_count, META_SEQ_STEP_param));\
-		else\
-			fprintf(stderr,\
-			"Trace %s %c%c%c\n"\
-			, trace_class, c, b, a);\
-		if (trace_class)\
-			free(trace_class);\
-	}\
-}\
-HOST_TRACE_EVENT_NTH(_mbox_atomic, arg_count)\
-{\
-	META_CONCAT(_trace_event, arg_count)\
-		(event META_SEQ_FROM_0_TO(arg_count,META_SEQ_STEP_param));\
+									\
+		a = event & 0xff;					\
+		b = (event >> 8) & 0xff;				\
+		c = (event >> 16) & 0xff;				\
+									\
+		/* print trace event stderr*/				\
+		if (!strcmp(trace_class, "value"))			\
+			fprintf(stderr,					\
+			"Trace value %lu, "META_QUOTE(			\
+				META_SEQ_FROM_0_TO(arg_count,		\
+					META_SEQ_STEP_param_procU	\
+				))"\n"					\
+			, event META_SEQ_FROM_0_TO(arg_count,		\
+				META_SEQ_STEP_param));			\
+		else							\
+			fprintf(stderr,					\
+			"Trace %s %c%c%c\n"				\
+			, trace_class, c, b, a);			\
+		if (trace_class)					\
+			free(trace_class);				\
+	}								\
+}									\
+HOST_TRACE_EVENT_NTH(_mbox_atomic, arg_count)				\
+{									\
+	META_CONCAT(_trace_event, arg_count)				\
+		(event META_SEQ_FROM_0_TO(2, META_SEQ_STEP_id)		\
+		 META_SEQ_FROM_0_TO(arg_count, META_SEQ_STEP_param));	\
 }
 
 /* Implementation of
