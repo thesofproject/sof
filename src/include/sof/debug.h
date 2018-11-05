@@ -35,8 +35,9 @@
 #include <sof/sof.h>
 #include <sof/mailbox.h>
 #include <sof/cpu.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/header.h>
 #include <platform/platform.h>
+#include <platform/memory.h>
 #include <stdint.h>
 #include <stdlib.h>
 

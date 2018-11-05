@@ -28,8 +28,10 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef EQ_H
-#define EQ_H
+#ifndef __INCLUDE_UAPI_USER_EQ_H__
+#define __INCLUDE_UAPI_USER_EQ_H__
+
+#include <uapi/user/header.h>
 
 /* FIR EQ type */
 
@@ -81,7 +83,7 @@ struct sof_eq_fir_config {
 	uint32_t reserved[4];
 
 	int16_t data[];
-};
+} __attribute__((packed));
 
 struct sof_eq_fir_coef_data {
 	int16_t length; /* Number of FIR taps */
@@ -91,7 +93,7 @@ struct sof_eq_fir_coef_data {
 	uint32_t reserved[4];
 
 	int16_t coef[]; /* FIR coefficients */
-};
+} __attribute__((packed));
 
 /* In the struct above there's two words (length, shift) before the actual
  * FIR coefficients. This information is used in parsing of the config blob.
@@ -150,7 +152,7 @@ struct sof_eq_iir_config {
 	uint32_t reserved[4];
 
 	int32_t data[]; /* eq_assign[channels], eq 0, eq 1, ... */
-};
+} __attribute__((packed));
 
 struct sof_eq_iir_header_df2t {
 	uint32_t num_sections;
@@ -160,7 +162,7 @@ struct sof_eq_iir_header_df2t {
 	uint32_t reserved[4];
 
 	int32_t biquads[]; /* Repeated biquad coefficients */
-};
+} __attribute__((packed));
 
 struct sof_eq_iir_biquad_df2t {
 	int32_t a2; /* Q2.30 */
@@ -170,7 +172,7 @@ struct sof_eq_iir_biquad_df2t {
 	int32_t b0; /* Q2.30 */
 	int32_t output_shift; /* Number of right shifts */
 	int32_t output_gain;  /* Q2.14 */
-};
+} __attribute__((packed));
 
 /* A full 22th order equalizer with 11 biquads cover octave bands 1-11 in
  * in the 0 - 20 kHz bandwidth.
@@ -183,4 +185,4 @@ struct sof_eq_iir_biquad_df2t {
 /* The number of int32_t words in sof_eq_iir_biquad_df2t */
 #define SOF_EQ_IIR_NBIQUAD_DF2T 7
 
-#endif /* EQ_H */
+#endif /* __INCLUDE_UAPI_USER_EQ_H__ */

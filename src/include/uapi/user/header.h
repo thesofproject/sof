@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,24 +25,33 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef TONE_H
-#define TONE_H
-
-/* Component will reject non-matching configuration. The version number need
- * to be incremented with any ABI changes in function fir_cmd().
+/**
+ * \file include/uapi/ipc.h
+ * \brief IPC definitions
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * \author Keyon Jie <yang.jie@linux.intel.com>
  */
-#define SOF_TONE_ABI_VERSION		1
 
-#define SOF_TONE_IDX_FREQUENCY		0
-#define SOF_TONE_IDX_AMPLITUDE		1
-#define SOF_TONE_IDX_FREQ_MULT		2
-#define SOF_TONE_IDX_AMPL_MULT		3
-#define SOF_TONE_IDX_LENGTH		4
-#define SOF_TONE_IDX_PERIOD		5
-#define SOF_TONE_IDX_REPEATS		6
-#define SOF_TONE_IDX_LIN_RAMP_STEP	7
+#ifndef __INCLUDE_UAPI_USER_HEADER_H__
+#define __INCLUDE_UAPI_USER_HEADER_H__
 
-#endif /* TONE_ABI_H */
+/**
+ * \brief Header for all non IPC ABI data.
+ *
+ * Identifies data type, size and ABI.
+ * Used by any bespoke component data structures or binary blobs.
+ */
+struct sof_abi_hdr {
+	uint32_t magic;		/**< 'S', 'O', 'F', '\0' */
+	uint32_t type;		/**< component specific type */
+	uint32_t size;		/**< size in bytes of data excl. this struct */
+	uint32_t abi;		/**< SOF ABI version */
+	uint32_t reserved[4];	/**< reserved for future use */
+	uint32_t data[0];	/**< Component data - opaque to core */
+} __attribute__((packed));
+
+#endif

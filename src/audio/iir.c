@@ -39,7 +39,7 @@
 #endif
 
 #include <sof/audio/format.h>
-#include <uapi/eq.h>
+#include <uapi/user/eq.h>
 #include "iir.h"
 
 /*

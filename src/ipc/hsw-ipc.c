@@ -49,7 +49,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/panic.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/header.h>
 #include <sof/intel-ipc.h>
 
 extern struct ipc *_ipc;

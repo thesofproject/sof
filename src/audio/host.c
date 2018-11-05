@@ -46,7 +46,7 @@
 #include <sof/audio/pipeline.h>
 #include <platform/dma.h>
 #include <arch/cache.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/dai.h>
 
 #define trace_host(__e)	trace_event(TRACE_CLASS_HOST, __e)
 #define tracev_host(__e)	tracev_event(TRACE_CLASS_HOST, __e)

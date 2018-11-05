@@ -33,7 +33,7 @@
 #include <errno.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <uapi/eq.h>
+#include <uapi/user/eq.h>
 #include "fir_config.h"
 
 #if FIR_HIFI3

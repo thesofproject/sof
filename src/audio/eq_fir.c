@@ -33,7 +33,7 @@
 #include <stdbool.h>
 #include <sof/sof.h>
 #include <sof/audio/component.h>
-#include <uapi/eq.h>
+#include <uapi/user/eq.h>
 #include "fir_config.h"
 
 #if FIR_GENERIC

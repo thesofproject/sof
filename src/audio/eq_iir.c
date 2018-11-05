@@ -44,8 +44,8 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/format.h>
-#include <uapi/ipc.h>
-#include <uapi/eq.h>
+#include <uapi/ipc/control.h>
+#include <uapi/user/eq.h>
 #include "eq_iir.h"
 #include "iir.h"
 

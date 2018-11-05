@@ -37,7 +37,7 @@
 #include <sof/dai.h>
 #include <sof/lock.h>
 #include <platform/platform.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/topology.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
 #include <sof/dma-trace.h>

@@ -29,8 +29,8 @@
  *         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LOGGING__
-#define __INCLUDE_LOGGING__
+#ifndef __INCLUDE_UAPI_USER_TRACE_H__
+#define __INCLUDE_UAPI_USER_TRACE_H__
 
 #include <stdint.h>
 
@@ -47,7 +47,7 @@
 struct system_time {
 	uint32_t val_l;  /* Lower dword of current host time value */
 	uint32_t val_u;  /* Upper dword of current host time value */
-};
+} __attribute__((packed));
 
 /* trace event classes - high 8 bits*/
 #define TRACE_CLASS_IRQ		(1 << 24)
@@ -89,23 +89,23 @@ struct log_buffer_layout {
 	uint32_t read_ptr;  /*read pointer */
 	uint32_t write_ptr; /* write pointer */
 	uint32_t buffer[0]; /* buffer */
-};
+} __attribute__((packed));
 
 /*
  * Log buffer status reported by FW.
  */
 struct log_buffer_status {
 	uint32_t core_id;  /* ID of core that logged to other half */
-};
+} __attribute__((packed));
 
 #define TRACE_ID_LENGTH 12
 
 /*
-*  Log entry header.
-*
-* The header is followed by an array of arguments (uint32_t[]).
-* Number of arguments is specified by the params_num field of log_entry
-*/
+ *  Log entry header.
+ *
+ * The header is followed by an array of arguments (uint32_t[]).
+ * Number of arguments is specified by the params_num field of log_entry
+ */
 struct log_entry_header {
 	uint32_t id_0 : TRACE_ID_LENGTH;	/* e.g. Pipeline ID */
 	uint32_t id_1 : TRACE_ID_LENGTH;	/* e.g. Component ID */
@@ -113,6 +113,6 @@ struct log_entry_header {
 
 	uint64_t timestamp;		/* Timestamp (in dsp ticks) */
 	uint32_t log_entry_address;	/* Address of log entry in ELF */
-} __attribute__((__packed__));
+} __attribute__((packed));
 
 #endif //#ifndef __INCLUDE_LOGGING__

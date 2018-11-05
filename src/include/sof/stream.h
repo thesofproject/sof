@@ -34,7 +34,7 @@
 
 #include <stdint.h>
 #include <platform/platform.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/stream.h>
 
 enum stream_type {
 	STREAM_TYPE_PCM		= 0,

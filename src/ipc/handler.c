@@ -56,7 +56,12 @@
 #include <platform/idc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/header.h>
+#include <uapi/ipc/pm.h>
+#include <uapi/ipc/stream.h>
+#include <uapi/ipc/topology.h>
+#include <uapi/ipc/pm.h>
+#include <uapi/ipc/control.h>
 #include <sof/intel-ipc.h>
 #include <sof/dma-trace.h>
 #include <sof/cpu.h>

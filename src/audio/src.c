@@ -43,7 +43,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/math/numbers.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/topology.h>
 
 #include "src_config.h"
 #include "src.h"

@@ -34,8 +34,8 @@
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef SOF_UAPI_MANIFEST_H
-#define SOF_UAPI_MANIFEST_H
+#ifndef __INCLUDE_UAPI_USER_MANIFEST_H__
+#define __INCLUDE_UAPI_USER_MANIFEST_H__
 
 #include <stdint.h>
 
@@ -130,7 +130,6 @@ struct sof_man_mod_config {
 	uint32_t obls;		/* output block size, reserved for future use */
 } __attribute__((packed));
 
-
 /*
  * FW Manifest Header
  */
@@ -196,7 +195,6 @@ struct sof_man_component_desc {
 	uint32_t limit_offset;
 	uint32_t attributes[4];
 } __attribute__((packed));
-
 
 /*
  * Audio DSP extended metadata. Used by ROM - Immutable.

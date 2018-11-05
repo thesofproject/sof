@@ -45,8 +45,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/math/trig.h>
-#include <uapi/ipc.h>
-#include <uapi/tone.h>
+#include <uapi/ipc/topology.h>
+#include <uapi/user/tone.h>
 
 #ifdef MODULE_TEST
 #include <stdio.h>

@@ -33,7 +33,7 @@
 #ifndef IIR_H
 #define IIR_H
 
-#include <uapi/eq.h>
+#include <uapi/user/eq.h>
 
 struct iir_state_df2t {
 	unsigned int biquads; /* Number of IIR 2nd order sections total */

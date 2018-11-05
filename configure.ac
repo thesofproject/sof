@@ -577,6 +577,8 @@ AC_CONFIG_FILES([
 	src/include/sof/drivers/Makefile
 	src/include/sof/math/Makefile
 	src/include/uapi/Makefile
+	src/include/uapi/ipc/Makefile
+	src/include/uapi/user/Makefile
 	src/ipc/Makefile
 	src/library/Makefile
 	src/library/include/Makefile

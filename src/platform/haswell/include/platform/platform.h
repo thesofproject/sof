@@ -35,7 +35,6 @@
 #include <sof/platform.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>
-#include <uapi/ipc.h>
 
 struct sof;
 
