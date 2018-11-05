@@ -82,6 +82,19 @@ static int man_open_manifest_file(struct image *image)
 	return 0;
 }
 
+static int man_init_image_v1_5(struct image *image)
+{
+	/* allocate image and copy template manifest */
+	image->fw_image = calloc(image->adsp->image_size, 1);
+	if (!image->fw_image)
+		return -ENOMEM;
+
+	memcpy(image->fw_image, image->adsp->man_v1_5,
+	       sizeof(struct fw_image_manifest_v1_5));
+
+	return 0;
+}
+
 static int man_init_image_v1_8(struct image *image)
 {
 	/* allocate image and copy template manifest */
@@ -653,6 +666,84 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 }
 
 /* used by others */
+static int man_write_fw_v1_5(struct image *image)
+{
+	struct sof_man_fw_desc *desc;
+	struct fw_image_manifest_v1_5 *m;
+	int ret;
+
+	/* init image */
+	ret = man_init_image_v1_5(image);
+	if (ret < 0)
+		goto err;
+
+	/* open ROM image */
+	ret = man_open_rom_file(image);
+	if (ret < 0)
+		goto err;
+
+	/* open unsigned firmware */
+	ret = man_open_unsigned_file(image);
+	if (ret < 0)
+		goto err;
+
+	/* create the manifest */
+	ret = man_open_manifest_file(image);
+	if (ret < 0)
+		goto err;
+
+	/* create the module */
+	m = image->fw_image;
+	desc = image->fw_image + MAN_DESC_OFFSET;
+
+	/* create each module */
+	m->desc.header.num_module_entries = image->num_modules;
+	man_create_modules(image, desc);
+
+	fprintf(stdout, "Firmware completing manifest v1.5\n");
+
+	/* create structures from end of file to start of file */
+	ri_adsp_meta_data_create(image, MAN_META_EXT_OFFSET_V1_8,
+				 MAN_FW_DESC_OFFSET_V1_8);
+	ri_plat_ext_data_create(image);
+	ri_css_hdr_create_v1_8(image);
+	ri_cse_create(image);
+
+	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
+		FILE_TEXT_OFFSET - MAN_DESC_OFFSET + image->image_end,
+		desc->header.preload_page_count);
+
+	/* calculate hash for each module */
+	man_hash_modules(image, desc);
+
+	/* sign manifest */
+	ret = ri_manifest_sign_v1_5(image);
+	if (ret < 0)
+		goto err;
+
+	/* write the firmware */
+	ret = man_write_fw_mod(image);
+	if (ret < 0)
+		goto err;
+
+	/* write the unsigned files*/
+	ret = man_write_unsigned_mod(image, MAN_META_EXT_OFFSET_V1_8,
+				     MAN_FW_DESC_OFFSET_V1_8);
+	if (ret < 0)
+		goto err;
+
+	fprintf(stdout, "Firmware manifest and signing completed !\n");
+	return 0;
+
+err:
+	free(image->rom_image);
+	free(image->fw_image);
+	unlink(image->out_file);
+	unlink(image->out_rom_file);
+	return ret;
+}
+
+/* used by others */
 static int man_write_fw_v1_8(struct image *image)
 {
 	struct sof_man_fw_desc *desc;
@@ -743,6 +834,77 @@ err:
 	free(image->fw_image);
 	unlink(image->out_file);
 	unlink(image->out_rom_file);
+	return ret;
+}
+
+/* used to sign with MEU */
+static int man_write_fw_meu_v1_5(struct image *image)
+{
+	const int meta_start_offset = image->meu_offset -
+		sizeof(struct sof_man_adsp_meta_file_ext) - MAN_EXT_PADDING;
+	struct sof_man_adsp_meta_file_ext *meta;
+	struct sof_man_fw_desc *desc;
+	uint32_t preload_size;
+	int ret;
+
+	/* allocate image */
+	image->fw_image = calloc(image->adsp->image_size, 1);
+	if (!image->fw_image) {
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	/* open unsigned firmware */
+	ret = man_open_unsigned_file(image);
+	if (ret < 0)
+		goto err;
+
+	/* create the manifest */
+	ret = man_open_manifest_file(image);
+	if (ret < 0)
+		goto err;
+
+	/* create the module */
+	meta = image->fw_image + meta_start_offset;
+	desc = image->fw_image + MAN_DESC_OFFSET;
+
+	/* copy data */
+	memcpy(desc, &image->adsp->man_v1_5->desc,
+	       sizeof(struct sof_man_fw_desc));
+
+	/* create each module */
+	desc->header.num_module_entries = image->num_modules;
+	man_create_modules(image, desc);
+
+	fprintf(stdout, "Firmware completing manifest v1.5\n");
+
+	/* create structures from end of file to start of file */
+	ri_adsp_meta_data_create(image, meta_start_offset, image->meu_offset);
+
+	/* write preload page count */
+	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET;
+	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
+	desc->header.preload_page_count = preload_size / MAN_PAGE_SIZE;
+
+	/* calculate hash for each module */
+	man_hash_modules(image, desc);
+
+	/* calculate hash for ADSP meta data extension */
+	ri_hash(image, image->meu_offset, image->image_end -
+		image->meu_offset, meta->comp_desc[0].hash);
+
+	/* write the unsigned files */
+	ret = man_write_unsigned_mod(image, meta_start_offset,
+				     image->meu_offset);
+	if (ret < 0)
+		goto err;
+
+	fprintf(stdout, "Firmware manifest completed!\n");
+	return 0;
+
+err:
+	free(image->fw_image);
+	unlink(image->out_file);
 	return ret;
 }
 
