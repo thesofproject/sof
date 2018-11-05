@@ -615,7 +615,6 @@ void init_heap(struct sof *sof)
 	struct block_map *current_map;
 	int i;
 	int j;
-	int k;
 
 	/* sanity check for malformed images or loader issues */
 	if (memmap.system[0].heap != HEAP_SYSTEM_0_BASE)
@@ -627,20 +626,19 @@ void init_heap(struct sof *sof)
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
 		heap = &memmap.buffer[i];
 
-		for (j = 0; j < heap->blocks; j++) {
+		/* init the map[0] */
+		current_map = &heap->map[0];
+		current_map->base = heap->heap;
+		flush_block_map(current_map);
 
+		/* map[j]'s base is calculated based on map[j-1] */
+		for (j = 1; j < heap->blocks; j++) {
+			next_map = &heap->map[j];
+			next_map->base = current_map->base +
+				current_map->block_size *
+				current_map->count;
 			current_map = &heap->map[j];
-			current_map->base = heap->heap;
 			flush_block_map(current_map);
-
-			for (k = 1; k < heap->blocks; k++) {
-				next_map = &heap->map[k];
-				next_map->base = current_map->base +
-					current_map->block_size *
-					current_map->count;
-				current_map = &heap->map[k];
-				flush_block_map(current_map);
-			}
 		}
 
 		dcache_writeback_invalidate_region(heap, sizeof(*heap));
@@ -650,20 +648,19 @@ void init_heap(struct sof *sof)
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
 		heap = &memmap.runtime[i];
 
-		for (j = 0; j < heap->blocks; j++) {
+		/* init the map[0] */
+		current_map = &heap->map[0];
+		current_map->base = heap->heap;
+		flush_block_map(current_map);
 
+		/* map[j]'s base is calculated based on map[j-1] */
+		for (j = 1; j < heap->blocks; j++) {
+			next_map = &heap->map[j];
+			next_map->base = current_map->base +
+				current_map->block_size *
+				current_map->count;
 			current_map = &heap->map[j];
-			current_map->base = heap->heap;
 			flush_block_map(current_map);
-
-			for (k = 1; k < heap->blocks; k++) {
-				next_map = &heap->map[k];
-				next_map->base = current_map->base +
-					current_map->block_size *
-					current_map->count;
-				current_map = &heap->map[k];
-				flush_block_map(current_map);
-			}
 		}
 
 		dcache_writeback_invalidate_region(heap, sizeof(*heap));
