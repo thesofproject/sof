@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl)
+SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl)
 BUILD_RIMAGE=1
 
 pwd=`pwd`
@@ -111,6 +111,40 @@ do
 	if [ $j == "apl" ]
 	then
 		PLATFORM="apollolake"
+		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
+
+		# test APL compiler aliases and ignore set -e here
+		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
+		if [ $? == 0 ]
+		then
+			HOST="xtensa-bxt-elf"
+		else
+			HOST="xtensa-apl-elf"
+		fi
+
+		ROOT="$pwd/../xtensa-root/$HOST"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+	fi
+	if [ $j == "skl" ]
+	then
+		PLATFORM="skylake"
+		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
+
+		# test APL compiler aliases and ignore set -e here
+		type xtensa-bxt-elf-gcc > /dev/null 2>&1 && true
+		if [ $? == 0 ]
+		then
+			HOST="xtensa-bxt-elf"
+		else
+			HOST="xtensa-apl-elf"
+		fi
+
+		ROOT="$pwd/../xtensa-root/$HOST"
+		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+	fi
+	if [ $j == "kbl" ]
+	then
+		PLATFORM="kabylake"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 		# test APL compiler aliases and ignore set -e here
