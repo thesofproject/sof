@@ -8,6 +8,6 @@
 #  To build topology:
 #  ./scripts/docker-run.sh ./scripts/build_soft.sh
 
-docker run -it -v `pwd`:/home/sof/work/sof.git \
+docker run -i -v `pwd`:/home/sof/work/sof.git \
            -v `pwd`/../soft.git:/home/sof/work/soft.git \
 	   --user `id -u` sof $@
