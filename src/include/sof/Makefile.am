@@ -17,7 +17,6 @@ include_HEADERS = \
 	dw-dma.h \
 	idc.h \
 	init.h \
-	intel-ipc.h \
 	interrupt.h \
 	interrupt-map.h \
 	io.h \

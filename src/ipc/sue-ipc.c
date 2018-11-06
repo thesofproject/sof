@@ -51,7 +51,6 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc/header.h>
-#include <sof/intel-ipc.h>
 
 extern struct ipc *_ipc;
 
@@ -62,7 +61,7 @@ static void irq_handler(void *arg)
 
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
-	struct intel_ipc_data *iipc = ipc_get_drvdata(ipc);
+	struct ipc_data *iipc = ipc_get_drvdata(ipc);
 	struct sof_ipc_reply reply;
 	int32_t err;
 
@@ -129,14 +128,14 @@ out:
 
 int platform_ipc_init(struct ipc *ipc)
 {
-	struct intel_ipc_data *iipc;
+	struct ipc_data *iipc;
 	uint32_t dir, caps, dev;
 
 	_ipc = ipc;
 
 	/* init ipc data */
 	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		sizeof(struct intel_ipc_data));
+		sizeof(struct ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* schedule */
