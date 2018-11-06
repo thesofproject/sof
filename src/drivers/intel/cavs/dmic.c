@@ -1450,6 +1450,8 @@ static int dmic_probe(struct dai *dai)
 	if (dai_get_drvdata(dai))
 		return -EEXIST; /* already created */
 
+	/* Enable DMIC power */
+	pm_runtime_get_sync(DMIC_POW, dai->index);
 	/* Disable dynamic clock gating for dmic before touching any reg */
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
@@ -1482,6 +1484,8 @@ static int dmic_remove(struct dai *dai)
 	interrupt_unregister(dmic_irq(dai));
 
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
+	/* Disable DMIC power */
+	pm_runtime_put_sync(DMIC_POW, dai->index);
 
 	rfree(dma_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);

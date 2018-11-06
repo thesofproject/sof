@@ -123,7 +123,27 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 		    index, shim_read(SHIM_CLKCTL));
 #endif
 }
+static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
+{
+	(void) index;
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
+	|| defined(CONFIG_SUECREEK)
+	/* Enable DMIC power */
+	io_reg_write(DMICLCTL,
+		    (io_reg_read(DMICLCTL) | DMICLCTL_SPA));
 #endif
+}
+static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
+{
+	(void) index;
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
+	|| defined(CONFIG_SUECREEK)
+	/* Disable DMIC power */
+	io_reg_write(DMICLCTL,
+		    (io_reg_read(DMICLCTL) & (~DMICLCTL_SPA)));
+#endif
+}
+#endif /* #if defined(CONFIG_DMIC) */
 
 static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
 {
@@ -171,6 +191,9 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	case DMIC_CLK:
 		cavs_pm_runtime_dis_dmic_clk_gating(index);
 		break;
+	case DMIC_POW:
+		cavs_pm_runtime_en_dmic_power(index);
+		break;
 #endif
 	case DW_DMAC_CLK:
 		cavs_pm_runtime_dis_dwdma_clk_gating(index);
@@ -193,6 +216,9 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 #if defined(CONFIG_DMIC)
 	case DMIC_CLK:
 		cavs_pm_runtime_en_dmic_clk_gating(index);
+		break;
+	case DMIC_POW:
+		cavs_pm_runtime_dis_dmic_power(index);
 		break;
 #endif
 	case DW_DMAC_CLK:
