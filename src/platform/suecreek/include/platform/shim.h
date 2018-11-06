@@ -233,6 +233,9 @@
 #define DMWBA_ENABLE		(1 << 0)
 #define DMWBA_READONLY		(1 << 1)
 
+/* DMIC power ON bit */
+#define DMICLCTL_SPA	((uint32_t) BIT(0))
+
 #ifndef ASSEMBLY
 
 static inline uint16_t shim_read16(uint16_t reg)
