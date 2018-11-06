@@ -49,7 +49,6 @@ fi
 
 
 # now build the firmware (depends on rimage)
-rm -fr src/arch/xtensa/*.ri
 
 # fail on any errors
 set -e
@@ -176,6 +175,9 @@ do
 	else
 		PATH=$pwd/../$HOST/bin:$OLDPATH
 	fi
+
+	# only delete binary related to this build
+	rm -fr src/arch/xtensa/sof-$j.*
 
 	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST \
 		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP --with-dsp-core=$XTENSA_CORE
