@@ -33,6 +33,7 @@
 #define __INCLUDE_DEBUG__
 
 #include <sof/sof.h>
+#include <config.h>
 #include <sof/mailbox.h>
 #include <sof/cpu.h>
 #include <uapi/ipc/header.h>
@@ -41,10 +42,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifdef DEBUG_BUILD
 
-#define DEBUG
-
-#ifdef DEBUG
+#define DEBUG_SET_FW_READY_FLAGS	\
+{				\
+	.build = 1,	\
+	.locks = DEBUG_LOCKS,	\
+	.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+}
 
 /* dump file and line to start of mailbox or shared memory */
 #define dbg() \
@@ -119,6 +124,13 @@
 	dump_at(__o, sizeof(*(__o)) >> 2, __at);
 
 #else
+
+#define DEBUG_SET_FW_READY_FLAGS	\
+{				\
+	.build = 0,	\
+	.locks = DEBUG_LOCKS,	\
+	.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+}
 
 #define dbg()
 #define dbg_at(__x)

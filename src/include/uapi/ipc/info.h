@@ -78,6 +78,14 @@ struct sof_ipc_fw_ready {
 	uint32_t hostbox_size;
 	struct sof_ipc_fw_version version;
 
+	/* Miscellaneous debug flags showing build/debug features enabled */
+	union {
+		uint64_t reserved;
+		uint64_t build:1;
+		uint64_t locks:1;
+		uint64_t locks_verbose:1;
+	} debug;
+
 	/* reserved for future use */
 	uint32_t reserved[4];
 } __attribute__((packed));
