@@ -112,7 +112,7 @@ struct log_entry_header {
 	uint32_t core_id : 8;		/* Reporting core's id */
 
 	uint64_t timestamp;		/* Timestamp (in dsp ticks) */
-	uintptr_t log_entry_address;	/* Address of log entry in ELF */
+	uint32_t log_entry_address;	/* Address of log entry in ELF */
 } __attribute__((__packed__));
 
 #endif //#ifndef __INCLUDE_LOGGING__

@@ -251,12 +251,6 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	/* set up trace class definition table from trace header */
-	ret = setup_trace_table();
-	if (ret < 0) {
-		fprintf(stderr, "error: setting up trace header table\n");
-		exit(EXIT_FAILURE);
-	}
 	/* command line arguments*/
 	parse_input_args(argc, argv);
 
@@ -329,9 +323,6 @@ int main(int argc, char **argv)
 
 	/* free all components/buffers in pipeline */
 	free_comps();
-
-	/* free trace class defs */
-	free_trace_table();
 
 	/* print test summary */
 	printf("==========================================================\n");

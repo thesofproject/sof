@@ -1,34 +1,34 @@
 /*
- * Copyright (c) 2016, Intel Corporation
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *   * Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution.
- *   * Neither the name of the Intel Corporation nor the
- *     names of its contributors may be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
- *         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
- */
+* Copyright (c) 2016, Intel Corporation
+* All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*   * Redistributions of source code must retain the above copyright
+*     notice, this list of conditions and the following disclaimer.
+*   * Redistributions in binary form must reproduce the above copyright
+*     notice, this list of conditions and the following disclaimer in the
+*     documentation and/or other materials provided with the distribution.
+*   * Neither the name of the Intel Corporation nor the
+*     names of its contributors may be used to endorse or promote products
+*     derived from this software without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+* LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+* POSSIBILITY OF SUCH DAMAGE.
+*
+* Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+*         Keyon Jie <yang.jie@linux.intel.com>
+*         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
+*/
 
 #ifndef __INCLUDE_TRACE__
 #define __INCLUDE_TRACE__
@@ -114,6 +114,19 @@
 #define TRACEE	1
 #define TRACEM	0 /* send all trace messages to mbox and local trace buffer */
 
+#ifdef CONFIG_HOST
+extern int test_bench_trace;
+char *get_trace_class(uint32_t trace_class);
+#define _log_message(mbox, atomic, level, comp_class, id_0, id_1,	\
+		     has_ids, format, ...)				\
+{									\
+	if (test_bench_trace) {						\
+		char *msg = "%s " format;				\
+		fprintf(stderr, msg, get_trace_class(comp_class),	\
+			##__VA_ARGS__);					\
+	}								\
+}
+#else
 #define _TRACE_EVENT_NTH_PARAMS(id_count, param_count)			\
 	uintptr_t log_entry						\
 	META_SEQ_FROM_0_TO(id_count   , META_SEQ_STEP_id_uint32_t)	\
@@ -198,7 +211,7 @@ _TRACE_EVENT_NTH_DECLARE_GROUP(4)
  *                                uint32_t params...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(5)
-
+#endif
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 5
 
 void trace_flush(void);
@@ -207,24 +220,24 @@ void trace_init(struct sof *sof);
 
 #if TRACE
 /*
-* trace_event macro definition
-*
-* trace_event() macro is used for logging events that occur at runtime.
-* It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
-* above, it might also propagate log messages to mbox if desired.
-*
-* First argument is always class of event being logged, as defined in
-* uapi/logging.h.
-* Second argument is string literal in printf format, followed by up to 4
-* parameters (uint32_t), that are used to expand into string fromat when
-* parsing log data.
-*
-* All compile-time accessible data (verbosity, class, source file name, line
-* index and string literal) are linked into .static_log_entries section
-* of binary and then extracted by rimage, so they do not contribute to loadable
-* image size. This way more elaborate log messages are possible and encouraged,
-* for better debugging experience, without worrying about runtime performance.
-*/
+ * trace_event macro definition
+ *
+ * trace_event() macro is used for logging events that occur at runtime.
+ * It comes in 2 main flavours, atomic and non-atomic. Depending of definitions
+ * above, it might also propagate log messages to mbox if desired.
+ *
+ * First argument is always class of event being logged, as defined in
+ * uapi/logging.h.
+ * Second argument is string literal in printf format, followed by up to 4
+ * parameters (uint32_t), that are used to expand into string fromat when
+ * parsing log data.
+ *
+ * All compile-time accessible data (verbosity, class, source file name, line
+ * index and string literal) are linked into .static_log_entries section
+ * of binary and then extracted by rimage, so they do not contribute to loadable
+ * image size. This way more elaborate log messages are possible and encouraged,
+ * for better debugging experience, without worrying about runtime performance.
+ */
 #define trace_event(class, format, ...) \
 	_trace_event_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__)
 #define trace_event_atomic(class, format, ...) \
@@ -295,6 +308,7 @@ void trace_init(struct sof *sof);
 #define trace_error_value_atomic(x)
 #endif
 
+#ifndef CONFIG_HOST
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params, ids)\
 	__attribute__((section(".static_log." #lvl)))		\
 	static const struct {					\
@@ -332,7 +346,7 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 	);								\
 	META_CONCAT(function_name,					\
 		    META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__))	\
-			((uintptr_t)entry, id_0, id_1, ##__VA_ARGS__);	\
+			((uint32_t)entry, id_0, id_1, ##__VA_ARGS__);	\
 }
 
 #define __log_message(func_name, lvl, comp_class, id_0, id_1, has_ids,	\
@@ -348,7 +362,7 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 	__log_message(META_CONCAT_SEQ(_trace_event, mbox, atomic),	\
 		      level, comp_class, id_0, id_1, has_ids, format,	\
 		      ##__VA_ARGS__)
-
+#endif
 #else
 
 #define	trace_event(...)

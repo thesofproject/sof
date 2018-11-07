@@ -33,17 +33,6 @@
 #ifndef _TRACE_H
 #define _TRACE_H
 
-struct trace_class_table {
-	int trace_class;
-	char *class_name;
-};
-
-struct trace_class_table *trace_table;
-
 void tb_enable_trace(bool enable);
-
-int setup_trace_table(void);
-
-void free_trace_table(void);
 
 #endif
