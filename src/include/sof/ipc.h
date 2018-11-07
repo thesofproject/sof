@@ -45,9 +45,12 @@
 struct sof;
 struct dai_config;
 
-#define trace_ipc(__e)	trace_event(TRACE_CLASS_IPC, __e)
-#define tracev_ipc(__e)	tracev_event(TRACE_CLASS_IPC, __e)
-#define trace_ipc_error(__e)	trace_error(TRACE_CLASS_IPC, __e)
+#define trace_ipc(format, ...) \
+	trace_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
+#define tracev_ipc(format, ...) \
+	tracev_event(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
+#define trace_ipc_error(format, ...) \
+	trace_error(TRACE_CLASS_IPC, format, ##__VA_ARGS__)
 
 #define MSG_QUEUE_SIZE		12
 
