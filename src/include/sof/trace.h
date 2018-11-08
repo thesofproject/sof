@@ -200,19 +200,9 @@ _TRACE_EVENT_NTH_DECLARE_GROUP(3)
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(4)
 
-/* Declaration of
- * void _trace_event5            (uint32_t log_entry, uint32_t ids...,
- *                                uint32_t params...);
- * void _trace_event_mbox5       (uint32_t log_entry, uint32_t ids...,
- *                                uint32_t params...);
- * void _trace_event_atomic5     (uint32_t log_entry, uint32_t ids...,
- *                                uint32_t params...);
- * void _trace_event_mbox_atomic5(uint32_t log_entry, uint32_t ids...,
- *                                uint32_t params...);
- */
-_TRACE_EVENT_NTH_DECLARE_GROUP(5)
 #endif
-#define _TRACE_EVENT_MAX_ARGUMENT_COUNT 5
+
+#define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
 
 void trace_flush(void);
 void trace_off(void);

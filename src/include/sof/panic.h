@@ -86,7 +86,7 @@ static inline void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 /* panic dump filename and linenumber of the call */
 #define panic(x) __panic((x), (__FILE__), (__LINE__))
 
-static inline void __panic(uint32_t p, char *filename, uint32_t linenum)
+static void __panic(uint32_t p, char *filename, uint32_t linenum)
 {
 	struct sof_ipc_panic_info panicinfo;
 	int strlen;

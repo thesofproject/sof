@@ -702,11 +702,11 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		trace_dai("dai_config(), config->dmic.fifo_bits_a = %u; "
 			  "config->dmic.num_pdm_active = %u; "
 			  "config->dmic.pdm[0].enable_mic_a = %u; "
-			  "config->dmic.pdm[0].enable_mic_b = %u; "
-			  "dev->frame_bytes = %u", config->dmic.fifo_bits_a,
-			  config->dmic.num_pdm_active,
+			  "config->dmic.pdm[0].enable_mic_b = %u;",
+			  config->dmic.fifo_bits_a, config->dmic.num_pdm_active,
 			  config->dmic.pdm[0].enable_mic_a,
-			  config->dmic.pdm[0].enable_mic_b,
+			  config->dmic.pdm[0].enable_mic_b);
+		trace_dai("dai_config(), dev->frame_bytes = %u",
 			  dev->frame_bytes);
 		break;
 	case SOF_DAI_INTEL_HDA:

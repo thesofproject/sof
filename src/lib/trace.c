@@ -223,18 +223,6 @@ _TRACE_EVENT_NTH_IMPL_GROUP(3)
  */
 _TRACE_EVENT_NTH_IMPL_GROUP(4)
 
-/* Implementation of
- * void _trace_event5(            uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox5(       uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_atomic5(     uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- * void _trace_event_mbox_atomic5(uintptr_t log_entry, uint32_t ids...,
- *                                uint32_t params...) {...}
- */
-_TRACE_EVENT_NTH_IMPL_GROUP(5)
-
 void trace_flush(void)
 {
 	volatile uint64_t *t;
