@@ -239,7 +239,47 @@ case "$with_platform" in
 	XTENSA_CORE="hifi3_std"
 	AC_SUBST(XTENSA_CORE)
 
-	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apololake])
+	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apollolake])
+	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
+	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
+    ;;
+   kabylake*)
+
+	PLATFORM_LDSCRIPT="apollolake.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="apollolake"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="kbl"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi3_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apollolake])
+	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
+	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
+	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
+    ;;
+    skylake*)
+
+	PLATFORM_LDSCRIPT="apollolake.x"
+	AC_SUBST(PLATFORM_LDSCRIPT)
+
+	PLATFORM="apollolake"
+	AC_SUBST(PLATFORM)
+
+	FW_NAME="skl"
+	AC_SUBST(FW_NAME)
+
+	XTENSA_CORE="hifi3_std"
+	AC_SUBST(XTENSA_CORE)
+
+	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apollolake])
 	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
@@ -353,14 +393,14 @@ AM_CONDITIONAL(BUILD_BAYTRAIL, test "$FW_NAME" = "byt")
 AM_CONDITIONAL(BUILD_CHERRYTRAIL,  test "$FW_NAME" = "cht")
 AM_CONDITIONAL(BUILD_HASWELL,  test "$FW_NAME" = "hsw")
 AM_CONDITIONAL(BUILD_BROADWELL,  test "$FW_NAME" = "bdw")
-AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl")
+AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_SUECREEK,  test "$FW_NAME" = "sue")
 AM_CONDITIONAL(BUILD_ICELAKE,  test "$FW_NAME" = "icl")
-AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
-AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
-AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
-AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
+AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
+AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
+AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
+AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],

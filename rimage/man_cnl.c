@@ -34,7 +34,7 @@ struct fw_image_manifest_v1_8 cnl_manifest = {
 		{
 			/* CssHeader + platformFirmwareAuthenticationExtension - padding */
 			.entry_name = "ADSP.man",
-			.offset = MAN_CSS_HDR_OFFSET_V1_8,
+			.offset = MAN_CSS_HDR_OFFSET,
 			.length = sizeof(struct css_header_v1_8) +
 				PLAT_AUTH_SIZE,
 		},

@@ -39,6 +39,8 @@ enum machine_id {
 	MACHINE_HASWELL,
 	MACHINE_BROADWELL,
 	MACHINE_APOLLOLAKE,
+	MACHINE_KABYLAKE,
+	MACHINE_SKYLAKE,
 	MACHINE_CANNONLAKE,
 	MACHINE_ICELAKE,
 	MACHINE_SUECREEK,
@@ -148,6 +150,7 @@ struct adsp {
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);
 	struct fw_image_manifest_v1_8 *man_v1_8;
+	struct fw_image_manifest_v1_5 *man_v1_5;
 };
 
 int write_logs_dictionary(struct image *image);
@@ -155,12 +158,17 @@ int write_logs_dictionary(struct image *image);
 void module_sha256_create(struct image *image);
 void module_sha256_update(struct image *image, uint8_t *data, size_t bytes);
 void module_sha256_complete(struct image *image, uint8_t *hash);
+int ri_manifest_sign_v1_5(struct image *image);
 int ri_manifest_sign_v1_8(struct image *image);
 void ri_hash(struct image *image, unsigned offset, unsigned size, uint8_t *hash);
 
-int pkcs_sign_v1_8(struct image *image, struct fw_image_manifest_v1_8 *man,
-		   void *ptr1, unsigned int size1, void *ptr2,
-		   unsigned int size2);
+int pkcs_v1_5_sign_man_v1_5(struct image *image,
+			    struct fw_image_manifest_v1_5 *man,
+			    void *ptr1, unsigned int size1);
+int pkcs_v1_5_sign_man_v1_8(struct image *image,
+			    struct fw_image_manifest_v1_8 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2);
 
 int elf_parse_module(struct image *image, int module_index, const char *name);
 void elf_free_module(struct image *image, int module_index);
@@ -181,5 +189,8 @@ extern const struct adsp machine_apl;
 extern const struct adsp machine_cnl;
 extern const struct adsp machine_icl;
 extern const struct adsp machine_sue;
+extern const struct adsp machine_skl;
+extern const struct adsp machine_kbl;
+
 
 #endif
