@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation.
+ * Copyright (c) 2018, Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -18,6 +18,11 @@
 #include <config.h>
 #include <version.h>
 
+/*
+ * TODO: check if all platform for 1.5 are the same base and length.
+ * if yes, define it as HARDWARE_BUFFER_BASE_V1_5, HARDWARE_BUFFER_LEN_v1_5
+ * if not, define a platform specific base and length.
+ */
 #define KBL_HARDWARE_BUFFER_BASE	0xBE500000
 #define KBL_HARDWARE_BUFFER_LEN		0x4A000
 

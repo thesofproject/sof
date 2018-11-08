@@ -703,11 +703,7 @@ static int man_write_fw_v1_5(struct image *image)
 	fprintf(stdout, "Firmware completing manifest v1.5\n");
 
 	/* create structures from end of file to start of file */
-	ri_adsp_meta_data_create(image, MAN_META_EXT_OFFSET_V1_8,
-				 MAN_FW_DESC_OFFSET_V1_8);
-	ri_plat_ext_data_create(image);
-	ri_css_hdr_create_v1_8(image);
-	ri_cse_create(image);
+	ri_css_hdr_create(image);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
 		FILE_TEXT_OFFSET - MAN_DESC_OFFSET + image->image_end,
@@ -727,8 +723,8 @@ static int man_write_fw_v1_5(struct image *image)
 		goto err;
 
 	/* write the unsigned files*/
-	ret = man_write_unsigned_mod(image, MAN_META_EXT_OFFSET_V1_8,
-				     MAN_FW_DESC_OFFSET_V1_8);
+	ret = man_write_unsigned_mod(image, MAN_META_EXT_OFFSET_V1_5,
+				     MAN_FW_DESC_OFFSET_V1_5);
 	if (ret < 0)
 		goto err;
 
@@ -785,7 +781,7 @@ static int man_write_fw_v1_8(struct image *image)
 	ri_adsp_meta_data_create(image, MAN_META_EXT_OFFSET_V1_8,
 				 MAN_FW_DESC_OFFSET_V1_8);
 	ri_plat_ext_data_create(image);
-	ri_css_hdr_create_v1_8(image);
+	ri_css_hdr_create(image);
 	ri_cse_create(image);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
@@ -985,6 +981,14 @@ err:
 #define ADSP_APL_DSP_ROM_SIZE	0x00002000
 #define APL_DSP_BASE_ENTRY	0xa000a000
 
+#define ADSP_KBL_DSP_ROM_BASE	0xBEFE0000
+#define ADSP_KBL_DSP_ROM_SIZE	0x00002000
+#define KBL_DSP_BASE_ENTRY	0xa000a000
+
+#define ADSP_SKL_DSP_ROM_BASE	0xBEFE0000
+#define ADSP_SKL_DSP_ROM_SIZE	0x00002000
+#define SKL_DSP_BASE_ENTRY	0xa000a000
+
 #define ADSP_CNL_DSP_ROM_BASE	0xBEFE0000
 #define ADSP_CNL_DSP_ROM_SIZE	0x00002000
 #define CNL_DSP_IMR_BASE_ENTRY	0xb0038000
@@ -1017,9 +1021,9 @@ const struct adsp machine_apl = {
 
 const struct adsp machine_kbl = {
 	.name = "kbl",
-	.rom_base = ADSP_APL_DSP_ROM_BASE,
-	.rom_size = ADSP_APL_DSP_ROM_SIZE,
-	.sram_base = APL_DSP_BASE_ENTRY,
+	.rom_base = ADSP_KBL_DSP_ROM_BASE,
+	.rom_size = ADSP_KBL_DSP_ROM_SIZE,
+	.sram_base = KBL_DSP_BASE_ENTRY,
 	.sram_size = 0x100000,
 	.image_size = 0x100000,
 	.dram_offset = 0,
@@ -1031,9 +1035,9 @@ const struct adsp machine_kbl = {
 
 const struct adsp machine_skl = {
 	.name = "skl",
-	.rom_base = ADSP_APL_DSP_ROM_BASE,
-	.rom_size = ADSP_APL_DSP_ROM_SIZE,
-	.sram_base = APL_DSP_BASE_ENTRY,
+	.rom_base = ADSP_SKL_DSP_ROM_BASE,
+	.rom_size = ADSP_SKL_DSP_ROM_SIZE,
+	.sram_base = SKL_DSP_BASE_ENTRY,
 	.sram_size = 0x100000,
 	.image_size = 0x100000,
 	.dram_offset = 0,
