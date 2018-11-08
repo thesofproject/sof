@@ -46,7 +46,11 @@
  * META_COUNT_VARAGS_BEFORE_COMPILE(A,B,C,D) evaluates to 4
  */
 #define META_COUNT_VARAGS_BEFORE_COMPILE(...)\
-	_META_PP_NARG_BEFORE_COMPILE_(_, ##__VA_ARGS__, _META_PP_RSEQ_N())
+	META_DEC(\
+		_META_PP_NARG_BEFORE_COMPILE_(\
+			_, ##__VA_ARGS__, _META_PP_RSEQ_N()\
+		)\
+	)
 
 /* treat x as string while forcing x expansion beforehand */
 #define META_QUOTE(x) _META_QUOTE(x)

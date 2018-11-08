@@ -45,7 +45,11 @@
 static void test_debugability_macros_declare_log_entry(void **state)
 {
 	const char *macro_result = CAPTURE(_DECLARE_LOG_ENTRY(
-		LOG_LEVEL_CRITICAL, "Message", TRACE_CLASS_DMA, 1));
+		LOG_LEVEL_CRITICAL,
+		"Message",
+		TRACE_CLASS_DMA,
+		1
+	));
 	const char *should_be_eq =
 		"__attribute__((section(\".static_log.\""
 		" \"LOG_LEVEL_CRITICAL\"))) "
@@ -53,7 +57,8 @@ static void test_debugability_macros_declare_log_entry(void **state)
 		"uint32_t params_num; uint32_t line_idx; uint32_t file_name_len; "
 		"const char file_name[sizeof(\"src/debugability/macros.c\")]; "
 		"uint32_t text_len; const char text[sizeof(\"Message\")]; } "
-		"log_entry = { 1";
+		"log_entry = { 1(6 << 24)152sizeof(\"src/debugability/macros.c\")"
+		"\"src/debugability/macros.c\"sizeof(\"Message\")\"Message\" }";
 	(void)state;
 
 	assert_string_equal(macro_result, should_be_eq);
@@ -78,32 +83,29 @@ static char *get_should_be(const int param_count)
 {
 	char *result = malloc(sizeof(char) * 1024);
 	char *paramlist = get_param_list(param_count);
-	char *maybe_space = " ";
 	char *maybe_comma = ",";
 
-	if (!param_count)
-		maybe_space = "";
-	else
+	if (param_count)
 		maybe_comma = "";
 
-	/* which format:  0 1 2 3 4 5 6 7 8 9 A*/
-	sprintf(result, "%s%d%s%d%s%s%d%s%s%s%s",
+	/* which format:  0 1 2 3 4 5 6 7 8 9*/
+	sprintf(result, "%s%d%s%d%s%d%s%s%s%s",
 	/*0*/"{ __attribute__((unused)) typedef char assertion_failed_"
 	     META_QUOTE(BASE_LOG_ASSERT_FAIL_MSG)
 	     "[(",
 	/*1*/_TRACE_EVENT_MAX_ARGUMENT_COUNT,
 	/*2*/" >= ",
 	/*3*/param_count,
-	/*4*/maybe_space,
-	/*5*/") ? 1 : -1]; log_func log_function = (log_func)& _trace_event",
-	/*6*/param_count,
-	/*7*/"; log_function(&log_entry",
-	/*8*/maybe_comma,
-	/*9*/paramlist,
-	/*A*/");}"
+	/*4*/") ? 1 : -1]; log_func log_function = (log_func)& _trace_event",
+	/*5*/param_count,
+	/*6*/"; log_function(&log_entry",
+	/*7*/maybe_comma,
+	/*8*/paramlist,
+	/*9*/");}"
 	);
 	if (paramlist)
 		free(paramlist);
+	// TODO: maybe remove all whitespace chars; they're not important here
 	return result;
 }
 

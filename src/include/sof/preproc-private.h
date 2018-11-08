@@ -65,7 +65,8 @@
  * META_COUNT_VARAGS_BEFORE_COMPILE(A,B,C,D) evaluates to 4
  */
 #define _META_PP_NARG_BEFORE_COMPILE_(...) \
-	META_DEC(_META_PP_ARG_N(__VA_ARGS__))
+	_META_PP_ARG_N(__VA_ARGS__)
+
 #define _META_PP_ARG_N(\
 	_1,   _2,  _3,  _4,  _5,  _6,  _7,  _8,  _9, _10, \
 	_11, _12, _13, _14, _15, _16, _17, _18, _19, _20, \
@@ -224,7 +225,7 @@
 /* used by macro MAP, don't use on its own */
 #define _META_MAP_BODY(arg_count, m, ...)\
 	META_IF_ELSE(META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__))(\
-		META_DEFER(2, _META_MAP)()\
+		_META_DEFER_2(_META_MAP)()\
 			(arg_count, m, __VA_ARGS__)\
 	)()
 
@@ -246,7 +247,7 @@
 /* used by macro MAP_AGGREGATE, don't use on its own */
 #define _META_MAP_AGGREGATE_BODY(arg_count, m, aggr, ...)\
 	META_IF_ELSE(META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__))(\
-		META_DEFER(2, _META_MAP_AGGREGATE)()\
+		_META_DEFER_2(_META_MAP_AGGREGATE)()\
 			(arg_count, m, aggr, __VA_ARGS__)\
 	)(aggr)
 
