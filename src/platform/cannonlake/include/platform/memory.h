@@ -232,7 +232,7 @@
 /* text and data share the same HP L2 SRAM on Cannonlake */
 #define SOF_TEXT_START		0xBE040400
 #define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_SIZE		(0x1b000 - 0x400)
+#define SOF_TEXT_SIZE		(0x1b000 - 0x400 + 0x1000)
 
 /* initialized data */
 #define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
