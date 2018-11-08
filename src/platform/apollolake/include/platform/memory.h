@@ -250,7 +250,7 @@
 
 #define SOF_TEXT_START		(HP_SRAM_VECBASE_RESET + 0x400)
 #define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_SIZE		(0x1a000 - 0x400)
+#define SOF_TEXT_SIZE		(0x1a000 - 0x400 + 0x1000)
 
 /* initialized data */
 #define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
