@@ -126,21 +126,12 @@ static inline int16_t q_multsr_16x16(int16_t x, int32_t y, const int shift_bits)
 
 static inline int32_t sat_int32(int64_t x)
 {
-#if 1
-	/* TODO: Is this faster */
 	if (x > INT32_MAX)
 		return INT32_MAX;
 	else if (x < INT32_MIN)
 		return INT32_MIN;
 	else
 		return (int32_t)x;
-#else
-	/* Or this */
-	int64_t y;
-	y = SATP_INT32(x);
-	return (int32_t)SATM_INT32(y);
-
-#endif
 }
 
 static inline int32_t sat_int24(int32_t x)
@@ -165,13 +156,25 @@ static inline int16_t sat_int16(int32_t x)
 
 /* Fractional multiplication with shift and saturation */
 static inline int32_t q_multsr_sat_32x32(int32_t x, int32_t y,
-	const int shift_bits)
+					 const int shift_bits)
 {
 	return sat_int32(((((int64_t)x * y) >> (shift_bits - 1)) + 1) >> 1);
 }
 
+static inline int32_t q_multsr_sat_32x32_24(int32_t x, int32_t y,
+					    const int shift_bits)
+{
+	return sat_int24(((((int64_t)x * y) >> (shift_bits - 1)) + 1) >> 1);
+}
+
+static inline int32_t q_multsr_sat_32x32_16(int32_t x, int32_t y,
+					    const int shift_bits)
+{
+	return sat_int16(((((int64_t)x * y) >> (shift_bits - 1)) + 1) >> 1);
+}
+
 static inline int16_t q_multsr_sat_16x16(int16_t x, int32_t y,
-	const int shift_bits)
+					 const int shift_bits)
 {
 	return sat_int16(((((int32_t)x * y) >> (shift_bits - 1)) + 1) >> 1);
 }

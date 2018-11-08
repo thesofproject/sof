@@ -8,6 +8,6 @@
 #  To build topology:
 #  ./scripts/docker-run.sh ./scripts/build_soft.sh
 
-docker run -it --privileged -v `pwd`:/home/sof/sof.git \
+docker run -i --privileged -v `pwd`:/home/sof/sof.git \
            -v `pwd`/../soft.git:/home/sof/soft.git \
 	   --user `id -u` sofqemu $@

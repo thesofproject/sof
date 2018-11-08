@@ -52,10 +52,12 @@
 #define DAI_PTR_INIT_HOST	2	/* buffer ptr initialized by host */
 
 /* tracing */
-#define trace_dai(__e) trace_event(TRACE_CLASS_DAI, __e)
-#define trace_dai_error(__e)   trace_error(TRACE_CLASS_DAI, __e)
-#define tracev_dai(__e)        tracev_event(TRACE_CLASS_DAI, __e)
-
+#define trace_dai(format, ...) trace_event(TRACE_CLASS_DAI, format,	\
+					   ##__VA_ARGS__)
+#define trace_dai_error(format, ...) trace_error(TRACE_CLASS_DAI, format, \
+						 ##__VA_ARGS__)
+#define tracev_dai(format, ...) tracev_event(TRACE_CLASS_DAI, format,	\
+					     ##__VA_ARGS__)
 
 struct dai_data {
 	/* local DMA config */
@@ -91,7 +93,9 @@ static void dai_buffer_process(struct comp_dev *dev)
 
 		/* make sure there is available bytes for next period */
 		if (dma_buffer->avail < dd->period_bytes) {
-			trace_dai_error("xru");
+			trace_dai_error("dai_buffer_process() error: "
+					"Insufficient bytes for next period. "
+					"comp_underrun()");
 			comp_underrun(dev, dma_buffer, dd->period_bytes, 0);
 		}
 	} else {
@@ -105,7 +109,9 @@ static void dai_buffer_process(struct comp_dev *dev)
 
 		/* make sure there is free bytes for next period */
 		if (dma_buffer->free < dd->period_bytes) {
-			trace_dai_error("xro");
+			trace_dai_error("dai_buffer_process() error: "
+					"Insufficient free bytes for next "
+					"period. comp_overrun()");
 			comp_overrun(dev, dma_buffer, dd->period_bytes, 0);
 		}
 	}
@@ -126,7 +132,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct comp_buffer *dma_buffer;
 
-	tracev_dai("irq");
+	tracev_dai("dai_dma_cb()");
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -168,7 +174,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	struct dai_data *dd;
 	uint32_t dir, caps, dma_dev;
 
-	trace_dai("new");
+	trace_dai("dai_new()");
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_dai));
@@ -188,7 +194,8 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (dd->dai == NULL) {
-		trace_dai_error("eDg");
+		trace_dai_error("dai_new() error: dai_get() failed to create "
+				"DAI.");
 		goto error;
 	}
 
@@ -213,7 +220,8 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	}
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (dd->dma == NULL) {
-		trace_dai_error("eDd");
+		trace_dai_error("dai_new() error: dma_get() failed to get "
+				"shared access to DMA.");
 		goto error;
 	}
 
@@ -272,11 +280,13 @@ static int dai_playback_params(struct comp_dev *dev)
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dma_buffer, buffer_size);
 	if (err < 0) {
-		trace_dai_error("ep1");
-		trace_error_value(source_config->periods_sink);
-		trace_error_value(dd->period_bytes);
-		trace_error_value(buffer_size);
-		trace_error_value(dma_buffer->alloc_size);
+		trace_dai_error("dai_playback_params() error: buffer_set_size()"
+				" failed to resize buffer. "
+				"source_config->periods_sink = %u; "
+				"dd->period_bytes = %u; buffer_size = %u; "
+				"dma_buffer->alloc_size = %u",
+				source_config->periods_sink, dd->period_bytes,
+				buffer_size, dma_buffer->alloc_size);
 		return err;
 	}
 
@@ -288,7 +298,9 @@ static int dai_playback_params(struct comp_dev *dev)
 				   (uintptr_t)(dma_buffer->r_ptr),
 				   dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK));
 		if (err < 0) {
-			trace_dai_error("ep3");
+			trace_dai_error("dai_playback_params() error: "
+					"dma_sg_alloc() failed with err = %d",
+					err);
 			return err;
 		}
 	}
@@ -322,11 +334,13 @@ static int dai_capture_params(struct comp_dev *dev)
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dma_buffer, buffer_size);
 	if (err < 0) {
-		trace_dai_error("ec1");
-		trace_error_value(sink_config->periods_sink);
-		trace_error_value(dd->period_bytes);
-		trace_error_value(buffer_size);
-		trace_error_value(dma_buffer->alloc_size);
+		trace_dai_error("dai_capture_params() error: buffer_set_size()"
+				" failed to resize buffer. "
+				"sink_config->periods_sink = %u; "
+				"dd->period_bytes = %u; buffer_size = %u; "
+				"dma_buffer->alloc_size = %u",
+				sink_config->periods_sink, dd->period_bytes,
+				buffer_size);
 		return err;
 	}
 
@@ -338,7 +352,9 @@ static int dai_capture_params(struct comp_dev *dev)
 				   (uintptr_t)(dma_buffer->w_ptr),
 				   dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE));
 		if (err < 0) {
-			trace_dai_error("ec3");
+			trace_dai_error("dai_capture_params() error: "
+					"dma_sg_alloc() failed with err = %d",
+					err);
 			return err;
 		}
 	}
@@ -352,18 +368,19 @@ static int dai_params(struct comp_dev *dev)
 	struct comp_buffer *dma_buffer;
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 
-	trace_dai("par");
+	trace_dai("dai_params()");
 
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		trace_dai_error("wdp");
+		trace_dai_error("dai_params() error: Component is not in init "
+				"state.");
 		return -EINVAL;
 	}
 
 	/* get DMA channel, once the stream_tag is known */
 	dd->chan = dma_channel_get(dd->dma, dev->params.stream_tag);
 	if (dd->chan < 0) {
-		trace_dai_error("eDc");
+		trace_dai_error("dai_params() error: dma_channel_get() failed");
 		return -EINVAL;
 	}
 
@@ -378,13 +395,15 @@ static int dai_params(struct comp_dev *dev)
 	/* calculate period size based on config */
 	dev->frame_bytes = comp_frame_bytes(dev);
 	if (dev->frame_bytes == 0) {
-		trace_dai_error("ed1");
+		trace_dai_error("dai_params() error: comp_frame_bytes() "
+				"returned 0.");
 		return -EINVAL;
 	}
 
 	dd->period_bytes = dev->frames * dev->frame_bytes;
 	if (dd->period_bytes == 0) {
-		trace_dai_error("ed2");
+		trace_dai_error("dai_params() error: device has no bytes (no "
+				"frames to copy to sink).");
 		return -EINVAL;
 	}
 
@@ -409,7 +428,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct comp_buffer *dma_buffer;
 	int ret = 0;
 
-	trace_dai("pre");
+	trace_dai("dai_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -418,7 +437,8 @@ static int dai_prepare(struct comp_dev *dev)
 	dev->position = 0;
 
 	if (!dd->config.elem_array.elems) {
-		trace_dai_error("wdm");
+		trace_dai_error("dai_prepare() error: Missing "
+				"dd->config.elem_array.elems.");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return -EINVAL;
 	}
@@ -457,7 +477,7 @@ static int dai_reset(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 
-	trace_dai("res");
+	trace_dai("dai_reset()");
 
 	dma_channel_put(dd->dma, dd->chan);
 
@@ -517,8 +537,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	struct comp_buffer *dma_buffer;
 	int ret;
 
-	trace_dai("trg");
-	tracev_value(cmd);
+	trace_dai("dai_comp_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -526,7 +545,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		trace_dai("tsa");
+		trace_dai("dai_comp_trigger(), START");
 		if (!dd->pointer_init)
 			dai_pointer_init(dev);
 		/* only start the DAI if we are not XRUN handling
@@ -582,13 +601,13 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		platform_dai_wallclock(dev, &dd->wallclock);
 		break;
 	case COMP_TRIGGER_XRUN:
-		trace_dai("txr");
+		trace_dai("dai_comp_trigger(), XRUN");
 		dd->xrun = 1;
 
 		/* fallthrough */
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
-		trace_dai("tsp");
+		trace_dai("dai_comp_trigger(), PAUSE/STOP");
 		ret = dma_stop(dd->dma, dd->chan);
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
 		break;
@@ -655,7 +674,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		/* The frame bytes setting follows only FIFO A setting in
 		 * this DMIC driver version.
 		 */
-		trace_dai("did");
+		trace_dai("dai_config(), config->type = SOF_DAI_INTEL_DMIC");
 
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;
@@ -680,11 +699,15 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				dev->frame_bytes = 2 *
 					config->dmic.fifo_bits_a >> 3;
 		}
-		trace_value(config->dmic.fifo_bits_a);
-		trace_value(config->dmic.num_pdm_active);
-		trace_value(config->dmic.pdm[0].enable_mic_a);
-		trace_value(config->dmic.pdm[0].enable_mic_b);
-		trace_value(dev->frame_bytes);
+		trace_dai("dai_config(), config->dmic.fifo_bits_a = %u; "
+			  "config->dmic.num_pdm_active = %u; "
+			  "config->dmic.pdm[0].enable_mic_a = %u; "
+			  "config->dmic.pdm[0].enable_mic_b = %u; "
+			  "dev->frame_bytes = %u", config->dmic.fifo_bits_a,
+			  config->dmic.num_pdm_active,
+			  config->dmic.pdm[0].enable_mic_a,
+			  config->dmic.pdm[0].enable_mic_b,
+			  dev->frame_bytes);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		/* set to some non-zero value to satisfy the condition below,
@@ -695,12 +718,14 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	default:
 		/* other types of DAIs not handled for now */
-		trace_dai_error("de2");
+		trace_dai_error("dai_config() error: Handling of DAIs other "
+				"than SOF_DAI_INTEL_SSP, SOF_DAI_INTEL_DMIC or "
+				"SOF_DAI_INTEL_HDA is not handled for now.");
 		break;
 	}
 
 	if (dev->frame_bytes == 0) {
-		trace_dai_error("de1");
+		trace_dai_error("dai_config() error: dev->frame_bytes == 0");
 		return -EINVAL;
 	}
 
@@ -713,7 +738,7 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_CACHE_WRITEBACK_INV:
-		trace_dai("wtb");
+		trace_dai("dai_cache(), COMP_CACHE_WRITEBACK_INV");
 
 		dd = comp_get_drvdata(dev);
 
@@ -726,7 +751,7 @@ static void dai_cache(struct comp_dev *dev, int cmd)
 		break;
 
 	case COMP_CACHE_INVALIDATE:
-		trace_dai("inv");
+		trace_dai("dai_cache(), COMP_CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 

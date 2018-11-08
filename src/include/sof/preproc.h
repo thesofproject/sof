@@ -166,19 +166,17 @@
 #define META_SEQ_STEP_param_int32_t( i, _) ,  int32_t META_CONCAT(param, i)
 #define META_SEQ_STEP_param_int64_t( i, _) ,  int64_t META_CONCAT(param, i)
 
+#define META_SEQ_STEP_id(i, _) , META_CONCAT(id_, i)
+#define META_SEQ_STEP_id_uint32_t(i, _) , uint32_t META_CONCAT(id_, i)
+
 /* generates function signature
  * for instance with:
  *   prefix=foo ; postfix=__bar ; return_t=void
- *   fixed_args=(int x, int y)
- *   vararg_count=3
- *   vararg_gen_step=
- *     #define META_SEQ_STEP_param_float(i, _) , float META_CONCAT(param, i)
+ *   args=(int x, int y)
  * will produce:
- *  void foo_bar(int x, int y , float param0 , float param1 , float param2)
+ *  void foo_bar(int x, int y)
  */
-#define META_FUNC_WITH_VARARGS(prefix, postfix, return_t,\
-	fixed_args, vararg_count, vararg_gen_step)\
-		return_t META_CONCAT_SEQ(prefix, postfix, vararg_count)\
-		(fixed_args META_SEQ_FROM_0_TO(vararg_count, vararg_gen_step))
+#define META_FUNC_WITH_VARARGS(prefix, postfix, return_t, args)\
+		return_t META_CONCAT(prefix, postfix) (args)
 
 #endif // __INCLUDE_MACRO_METAPROGRAMMING__
