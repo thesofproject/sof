@@ -39,13 +39,13 @@
 #define MAN_EXT_PADDING			0x20
 #define MAN_DESC_OFFSET			0x2000
 
-#define MAN_CSS_HDR_OFFSET_V1_8 \
+#define MAN_CSS_HDR_OFFSET \
 	(MAN_CSE_HDR_OFFSET + \
 	sizeof(struct CsePartitionDirHeader) + \
 	MAN_CSE_PARTS * sizeof(struct CsePartitionDirEntry))
 
 #define MAN_SIG_PKG_OFFSET_V1_8 \
-	(MAN_CSS_HDR_OFFSET_V1_8 + \
+	(MAN_CSS_HDR_OFFSET + \
 	sizeof(struct css_header_v1_8))
 
 #define MAN_PART_INFO_OFFSET_V1_8 \
@@ -65,6 +65,21 @@
 
 #define MAN_DESC_PADDING_SIZE_V1_8	\
 	(MAN_DESC_OFFSET - MAN_FW_DESC_OFFSET_V1_8)
+
+#define MAN_SIG_PKG_OFFSET_V1_5 \
+	(MAN_CSS_HDR_OFFSET + \
+	sizeof(struct css_header_v1_5))
+
+#define MAN_META_EXT_OFFSET_V1_5 \
+	(MAN_SIG_PKG_OFFSET_V1_5 + \
+	sizeof(struct signed_pkg_info_ext) + \
+	sizeof(struct partition_info_ext) + \
+	MAN_CSE_PADDING_SIZE)
+
+#define MAN_FW_DESC_OFFSET_V1_5 \
+	(MAN_META_EXT_OFFSET_V1_5 + \
+	sizeof(struct sof_man_adsp_meta_file_ext) + \
+	MAN_EXT_PADDING)
 
 /*
  * Firmware manifest header V1.8 used on APL onwards
@@ -99,6 +114,10 @@ struct fw_image_manifest_v1_5 {
 	struct sof_man_fw_desc desc;
 } __attribute__((packed));
 
+/*
+ * TODO: verify if we need platform specific manifest, or just
+ * define manifest_v1_5 and manifest_v1_8.
+ */
 extern struct fw_image_manifest_v1_5 skl_manifest;
 extern struct fw_image_manifest_v1_5 kbl_manifest;
 #endif

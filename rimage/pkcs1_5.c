@@ -68,8 +68,9 @@ static void bytes_swap(uint8_t *ptr, uint32_t size)
  * manifest header (Public Key, Exponent and Signature).
 */
 
-int pkcs_sign_v1_5(struct image *image, struct fw_image_manifest_v1_5 *man,
-		   void *ptr1, unsigned int size1)
+int pkcs_v1_5_sign_man_v1_5(struct image *image,
+			    struct fw_image_manifest_v1_5 *man,
+			    void *ptr1, unsigned int size1)
 {
 	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
@@ -159,9 +160,10 @@ int pkcs_sign_v1_5(struct image *image, struct fw_image_manifest_v1_5 *man,
  * manifest header (Public Key, Exponent and Signature).
  */
 
-int pkcs_sign_v1_8(struct image *image, struct fw_image_manifest_v1_8 *man,
-		   void *ptr1, unsigned int size1, void *ptr2,
-		   unsigned int size2)
+int pkcs_v1_5_sign_man_v1_8(struct image *image,
+			    struct fw_image_manifest_v1_8 *man,
+			    void *ptr1, unsigned int size1, void *ptr2,
+			    unsigned int size2)
 {
 	RSA *priv_rsa = NULL;
 	EVP_PKEY *privkey;
@@ -245,8 +247,9 @@ int ri_manifest_sign_v1_5(struct image *image)
 {
 	struct fw_image_manifest_v1_5 *man = image->fw_image;
 
-	pkcs_sign_v1_5(image, man, (void *)man + MAN_CSS_MAN_SIZE_V1_5,
-		       image->image_end - sizeof(*man));
+	pkcs_v1_5_sign_man_v1_5(image, man,
+				(void *)man + MAN_CSS_MAN_SIZE_V1_5,
+				image->image_end - sizeof(*man));
 	return 0;
 }
 
@@ -254,12 +257,13 @@ int ri_manifest_sign_v1_8(struct image *image)
 {
 	struct fw_image_manifest_v1_8 *man = image->fw_image;
 
-	pkcs_sign_v1_8(image, man, (void *)man + MAN_CSS_HDR_OFFSET_V1_8,
-		       sizeof(struct css_header_v1_8) -
-		       (MAN_RSA_KEY_MODULUS_LEN + MAN_RSA_KEY_EXPONENT_LEN +
-		       MAN_RSA_SIGNATURE_LEN),
-		       (void *)man + MAN_SIG_PKG_OFFSET_V1_8,
-		       (man->css.size - man->css.header_len)
-			* sizeof(uint32_t));
+	pkcs_v1_5_sign_man_v1_8(image, man, (void *)man + MAN_CSS_HDR_OFFSET,
+				sizeof(struct css_header_v1_8) -
+				(MAN_RSA_KEY_MODULUS_LEN +
+				 MAN_RSA_KEY_EXPONENT_LEN +
+				 MAN_RSA_SIGNATURE_LEN),
+				(void *)man + MAN_SIG_PKG_OFFSET_V1_8,
+				(man->css.size - man->css.header_len)
+				 * sizeof(uint32_t));
 	return 0;
 }
