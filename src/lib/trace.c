@@ -63,7 +63,7 @@ static struct trace *trace;
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
 static void put_header(volatile uint32_t *dst, uint32_t id_0, uint32_t id_1,
-		       uintptr_t entry, uint64_t timestamp)
+		       uint32_t entry, uint64_t timestamp)
 {
 	struct log_entry_header header;
 
