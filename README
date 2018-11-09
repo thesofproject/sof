@@ -65,10 +65,24 @@ Usage sof-logger <option(s)> <file(s)>
 -p			Get traces from stdin, instead of the default 
 			"/sys/kernel/debug/sof/etrace"
 -c			Set timestamp clock in MHz
+-e			Enable checking firmware version with default verification file 
+			"/sys/kernel/debug/sof/fw_version"
+-v ver_file		Enable checking firmware version with ver_file file, 
+			instead of default: "/sys/kernel/debug/sof/fw_version"
 -s			Take a snapshot of state
 
 
 Examples:
+
+- Get traces from "/sys/kernel/debug/sof/etrace" file, verifies fw_version with
+  "/sys/kernel/debug/sof/fw_version" and prints logs to stdout
+
+  $ sof-logger -l ldc_file -e
+
+- Get traces from "/sys/kernel/debug/sof/etrace" file, verifies fw_version with
+  ver_file file and prints logs to stdout
+
+  $ sof-logger -l ldc_file -v ver_file
 
 - Get traces from "/sys/kernel/debug/sof/etrace" file and prints logs to stdout
 

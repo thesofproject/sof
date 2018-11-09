@@ -19,7 +19,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-
+#include <sof/uapi/ipc.h>
 #include "convert.h"
 
 #define CEIL(a, b) ((a+b-1)/b)
@@ -27,49 +27,47 @@
 #define TRACE_MAX_PARAMS_COUNT		4
 #define TRACE_MAX_TEXT_LEN		1024
 #define TRACE_MAX_FILENAME_LEN		128
+#define TRACE_MAX_IDS_STR		9
 
 /* logs file signature */
 #define SND_SOF_LOGS_SIG_SIZE	4
 #define SND_SOF_LOGS_SIG	"Logs"
 
+/*
+* Logs dictionary file header.
+*/
 struct snd_sof_logs_header {
-	/* "Logs" */
-	unsigned char sig[SND_SOF_LOGS_SIG_SIZE];
-	/* address of log entries section */
-	uint32_t base_address;
-	/* amount of bytes following this header */
-	uint32_t data_length;
-	/* offset to first entry in this file */
-	uint32_t data_offset;
+	unsigned char sig[SND_SOF_LOGS_SIG_SIZE]; /* "Logs" */
+	uint32_t base_address;  /* address of log entries section */
+	uint32_t data_length;   /* amount of bytes following this header */
+	uint32_t data_offset;   /* offset to first entry in this file */
+	struct sof_ipc_fw_version version;
 };
 
 struct ldc_entry_header {
 	uint32_t level;
-	uint32_t component_id;
+	uint32_t component_class;
+	uint32_t has_ids;
 	uint32_t params_num;
 	uint32_t line_idx;
 	uint32_t file_name_len;
+	uint32_t text_len;
 };
 
 struct ldc_entry {
 	struct ldc_entry_header header;
 	char *file_name;
-	uint32_t text_len;
 	char *text;
 	uint32_t *params;
 };
 
-struct dma_log {
-	struct log_entry_header header;
-	uint32_t address;
-};
-
 static inline void print_table_header(FILE *out_fd)
 {
-	fprintf(out_fd, "%5s %6s %8s %16s %16s %24s\t%s\n",
+	fprintf(out_fd, "%5s %6s %12s %7s %16s %16s %24s\t%s\n",
 		"CORE",
 		"LEVEL",
 		"COMP_ID",
+		"",
 		"TIMESTAMP",
 		"DELTA",
 		"FILE_NAME",
@@ -109,19 +107,25 @@ static const char * get_component_name(uint32_t component_id) {
 	}
 }
 
-static void print_entry_params(FILE *out_fd, struct dma_log dma_log,
+static void print_entry_params(FILE *out_fd, struct log_entry_header dma_log,
 	struct ldc_entry entry, uint64_t last_timestamp, double clock)
-{
-	float dt = to_usecs(dma_log.header.timestamp - last_timestamp, clock);
+{	
+	char ids[TRACE_MAX_IDS_STR];
+	float dt = to_usecs(dma_log.timestamp - last_timestamp, clock);
+
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
+	
+	if (entry.header.has_ids)
+		sprintf(ids, "%d.%d", dma_log.id_0, dma_log.id_1);
 
-	fprintf(out_fd, "%s%5u %6u %8s %16.6f %16.6f %20s:%-4u\t",
+	fprintf(out_fd, "%s%5u %6u %12s %-7s %16.6f %16.6f %20s:%-4u\t",
 		entry.header.level == LOG_LEVEL_CRITICAL ? KRED : KNRM,
-		dma_log.header.core_id,
+		dma_log.core_id,
 		entry.header.level,
-		get_component_name(entry.header.component_id),
-		to_usecs(dma_log.header.timestamp, clock),
+		get_component_name(entry.header.component_class),
+		entry.header.has_ids ? ids : "",
+		to_usecs(dma_log.timestamp, clock),
 		dt,
 		entry.file_name,
 		entry.header.line_idx);
@@ -145,12 +149,12 @@ static void print_entry_params(FILE *out_fd, struct dma_log dma_log,
 			entry.params[2], entry.params[3]);
 		break;
 	}
-	fprintf(out_fd, "\n");
+	fprintf(out_fd, "%s\n", KNRM);
 	fflush(out_fd);
 }
 
 static int fetch_entry(struct convert_config *config, uint32_t base_address,
-	uint32_t data_offset, struct dma_log dma_log, uint64_t *last_timestamp)
+	uint32_t data_offset, struct log_entry_header dma_log, uint64_t *last_timestamp)
 {
 	struct ldc_entry entry;
 	long int padding;
@@ -165,7 +169,7 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 	entry.params = NULL;
 
 	/* evaluate entry offset in input file */
-	entry_offset = dma_log.address - base_address;
+	entry_offset = dma_log.log_entry_address - base_address;
 
 	/* set file position to beginning of processed entry */
 	fseek(config->ldc_fd, entry_offset + data_offset, SEEK_SET);
@@ -197,32 +201,21 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 		goto out;
 	}
 
-	/* padding - sequences of chars are aligned to DWORDS */
-	fseek(config->ldc_fd, CEIL(entry.header.file_name_len, sizeof(uint32_t)) *
-		sizeof(uint32_t) - entry.header.file_name_len, SEEK_CUR);
-
-	/* fetching text length */
-	ret = fread(&entry.text_len, sizeof(entry.text_len), 1, config->ldc_fd);
-	if (!ret) {
-		ret = -ferror(config->ldc_fd);
-		goto out;
-	}
-
 	/* fetching text */
-	if (entry.text_len > TRACE_MAX_TEXT_LEN) {
+	if (entry.header.text_len > TRACE_MAX_TEXT_LEN) {
 		fprintf(stderr, "Error: Invalid text length. \n");
 		ret = -EINVAL;
 		goto out;
 	}
-	entry.text = (char *)malloc(entry.text_len);
+	entry.text = (char *)malloc(entry.header.text_len);
 	if (entry.text == NULL) {
 		fprintf(stderr, "error: can't allocate %d byte for "
-			"entry.text\n", entry.text_len);
+			"entry.text\n", entry.header.text_len);
 		ret = -ENOMEM;
 		goto out;
 	}
-	ret = fread(entry.text, sizeof(char), entry.text_len, config->ldc_fd);
-	if (ret != entry.text_len) {
+	ret = fread(entry.text, sizeof(char), entry.header.text_len, config->ldc_fd);
+	if (ret != entry.header.text_len) {
 		ret = -ferror(config->ldc_fd);
 		goto out;
 	}
@@ -252,7 +245,7 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 	/* printing entry content */
 	print_entry_params(config->out_fd, dma_log, entry, *last_timestamp,
 		config->clock);
-	*last_timestamp = dma_log.header.timestamp;
+	*last_timestamp = dma_log.timestamp;
 
 	/* set f_ldc file position to the beginning */
 	rewind(config->ldc_fd);
@@ -270,7 +263,7 @@ out:
 static int logger_read(struct convert_config *config,
 	struct snd_sof_logs_header *snd)
 {
-	struct dma_log dma_log;
+	struct log_entry_header dma_log;
 	int ret = 0;
 	print_table_header(config->out_fd);
 	uint64_t last_timestamp = 0;
@@ -285,8 +278,8 @@ static int logger_read(struct convert_config *config,
 		/* checking if received trace address is located in
 		 * entry section in elf file.
 		 */
-		if ((dma_log.address < snd->base_address) ||
-			dma_log.address > snd->base_address + snd->data_length) {
+		if ((dma_log.log_entry_address < snd->base_address) ||
+			dma_log.log_entry_address > snd->base_address + snd->data_length) {
 			/* in case the address is not correct input fd should be
 			 * move forward by one DWORD, not entire struct dma_log
 			 */
@@ -317,6 +310,26 @@ int convert(struct convert_config *config) {
 	if (strncmp(snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
 		fprintf(stderr, "Error: Invalid ldc file signature. \n");
 		return -EINVAL;
+	}
+
+	/* fw verification */
+	if (config->version_fd) {
+		struct sof_ipc_fw_version ver;
+		int i;
+		/* here fw verification should be exploited */
+		count = fread(&ver, sizeof(ver), 1, config->version_fd);
+		if (!count) {
+			fprintf(stderr, "Error while reading %s. \n", config->version_file);
+			return -ferror(config->version_fd);
+		}
+
+		ret = memcmp(&ver, &snd.version, sizeof(struct sof_ipc_fw_version));
+		if (ret) {
+			fprintf(stderr, "Error: fw version in %s file "
+				"does not coincide with fw version in "
+				"%s file. \n", config->ldc_file, config->version_file);
+			return -EINVAL;
+		}
 	}
 
 	return logger_read(config, &snd);
