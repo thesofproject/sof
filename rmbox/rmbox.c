@@ -111,10 +111,7 @@ static int snapshot(const char *name)
 int main(int argc, char *argv[])
 {
 	struct convert_config config;
-	int opt, count, ret = 0;
-	FILE *in_fd = NULL, *out_fd = NULL;
-	char c, tmp[8] = {0};
-	uint64_t addr = 0, val, timestamp = 0, align = 4, i;
+	int opt, ret = 0;
 
 	config.trace = 0;
 	config.clock = 19.2;
