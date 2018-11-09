@@ -50,7 +50,7 @@
  *
  * Volume multiply for 24 bit input and 16 bit bit output.
  */
-static inline int16_t vol_mult_s24_to_s16(int16_t x, int32_t vol)
+static inline int16_t vol_mult_s24_to_s16(int32_t x, int32_t vol)
 {
 	return (int16_t)q_multsr_sat_32x32_16(sign_extend_s24(x), vol,
 					      Q_SHIFT_BITS_64(23, 16, 15));
