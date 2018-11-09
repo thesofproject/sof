@@ -526,8 +526,8 @@ static inline int ssp_set_config(struct dai *dai,
 
 		slot_end_padding = frame_end_padding / 2;
 
-		if (slot_end_padding > 15) {
-			/* can't handle padding over 15 bits */
+		if (slot_end_padding > SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
+			/* too big padding */
 			trace_ssp_error("ecf");
 			ret = -EINVAL;
 			goto out;
