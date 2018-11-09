@@ -27,7 +27,7 @@
 #define TRACE_MAX_PARAMS_COUNT		4
 #define TRACE_MAX_TEXT_LEN		1024
 #define TRACE_MAX_FILENAME_LEN		128
-#define TRACE_MAX_IDS_STR		9
+#define TRACE_MAX_IDS_STR		10
 
 /* logs file signature */
 #define SND_SOF_LOGS_SIG_SIZE	4
