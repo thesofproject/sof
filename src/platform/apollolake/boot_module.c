@@ -28,7 +28,7 @@
  * Author: Marcin Maka <marcin.maka@linux.intel.com>
  */
 
-#include <uapi/manifest.h>
+#include <uapi/user/manifest.h>
 #include <platform/memory.h>
 
 /*

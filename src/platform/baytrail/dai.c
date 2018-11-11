@@ -37,7 +37,6 @@
 #include <platform/interrupt.h>
 #include <platform/dma.h>
 #include <platform/dai.h>
-#include <uapi/ipc.h>
 #include <stdint.h>
 #include <string.h>
 #include <config.h>

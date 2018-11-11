@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,24 +25,47 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef TONE_H
-#define TONE_H
-
-/* Component will reject non-matching configuration. The version number need
- * to be incremented with any ABI changes in function fir_cmd().
+/**
+ * \file include/uapi/ipc/xtensa.h
+ * \brief IPC definitions
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * \author Keyon Jie <yang.jie@linux.intel.com>
  */
-#define SOF_TONE_ABI_VERSION		1
 
-#define SOF_TONE_IDX_FREQUENCY		0
-#define SOF_TONE_IDX_AMPLITUDE		1
-#define SOF_TONE_IDX_FREQ_MULT		2
-#define SOF_TONE_IDX_AMPL_MULT		3
-#define SOF_TONE_IDX_LENGTH		4
-#define SOF_TONE_IDX_PERIOD		5
-#define SOF_TONE_IDX_REPEATS		6
-#define SOF_TONE_IDX_LIN_RAMP_STEP	7
+#ifndef __INCLUDE_UAPI_IPC_XTENSA_H__
+#define __INCLUDE_UAPI_IPC_XTENSA_H__
 
-#endif /* TONE_ABI_H */
+/*
+ * Architecture specific debug
+ */
+
+/* Xtensa Firmware Oops data */
+struct sof_ipc_dsp_oops_xtensa {
+	uint32_t exccause;
+	uint32_t excvaddr;
+	uint32_t ps;
+	uint32_t epc1;
+	uint32_t epc2;
+	uint32_t epc3;
+	uint32_t epc4;
+	uint32_t epc5;
+	uint32_t epc6;
+	uint32_t epc7;
+	uint32_t eps2;
+	uint32_t eps3;
+	uint32_t eps4;
+	uint32_t eps5;
+	uint32_t eps6;
+	uint32_t eps7;
+	uint32_t depc;
+	uint32_t intenable;
+	uint32_t interrupt;
+	uint32_t sar;
+	uint32_t stack;
+} __attribute__((packed));
+
+#endif

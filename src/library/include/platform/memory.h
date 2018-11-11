@@ -28,8 +28,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __PLATFORM_HOST_MEMORY_H__
-#define __PLATFORM_HOST_MEMORY_H__
+#ifndef __INCLUDE_LIB_PLATFORM_MEMORY_H__
+#define __INCLUDE_LIB_PLATFORM_MEMORY_H__
 
 #include <config.h>
 
@@ -39,52 +39,6 @@
 
 #define HEAP_BUFFER_SIZE	(1024 * 128)
 #define SOF_STACK_SIZE		0x1000
-
-#if 0
-/* physical DSP addresses */
-
-#define IRAM_BASE	0xFF2C0000
-#define IRAM_SIZE	0x00014000
-
-#define DRAM0_BASE	0xFF300000
-#define DRAM0_SIZE	0x00028000
-#define DRAM0_VBASE	0xC0000000
-
-#define MAILBOX_BASE (DRAM0_BASE + DRAM0_SIZE - 0x2000)
-
-
-/* HEAP Constants - WARNING this MUST be aligned with the linker script */
-/* TODO:preproces linker script with this header to align automatically. */
-
-/* Heap section sizes for module pool */
-#define HEAP_MOD_COUNT8			0
-#define HEAP_MOD_COUNT16		256
-#define HEAP_MOD_COUNT32		128
-#define HEAP_MOD_COUNT64		64
-#define HEAP_MOD_COUNT128		32
-#define HEAP_MOD_COUNT256		16
-#define HEAP_MOD_COUNT512		8
-#define HEAP_MOD_COUNT1024		4
-
-/* total Heap for modules - must be aligned with linker script !!! */
-#define HEAP_MOD_SIZE \
-	(HEAP_MOD_COUNT8 * 8 + HEAP_MOD_COUNT16 * 16 + \
-	HEAP_MOD_COUNT32 * 32 + HEAP_MOD_COUNT64 * 64 + \
-	HEAP_MOD_COUNT128 * 128 + HEAP_MOD_COUNT256 * 256 + \
-	HEAP_MOD_COUNT512 * 512 + HEAP_MOD_COUNT1024 * 1024)
-
-/* Heap for buffers */
-#define HEAP_BUF_BLOCK_SIZE	1024
-#define HEAP_BUF_COUNT	111
-#define HEAP_BUF_SIZE (HEAP_BUF_BLOCK_SIZE * HEAP_BUF_COUNT)
-
-/* Remaining DRAM for Stack, data and BSS.
- * TODO: verify no overflow during build
- */
-#define SYSTEM_MEM \
-	(DRAM0_SIZE - HEAP_MOD_SIZE - HEAP_BUF_SIZE)
-
-#endif
 
 #define MAILBOX_DSPBOX_BASE	0
 #define MAILBOX_HOSTBOX_BASE	0

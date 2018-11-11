@@ -37,7 +37,6 @@
 #include <stddef.h>
 #include <time.h>
 #include <stdio.h>
-#include <uapi/ipc.h>
 #include <sof/sof.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>

@@ -125,7 +125,7 @@ static const struct sof_topology_token sched_tokens[] = {
 		offsetof(struct sof_ipc_pipe_new, priority), 0},
 	{SOF_TKN_SCHED_MIPS, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_uint32_t,
-		offsetof(struct sof_ipc_pipe_new, mips), 0},
+		offsetof(struct sof_ipc_pipe_new, period_mips), 0},
 	{SOF_TKN_SCHED_CORE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, core), 0},

@@ -28,8 +28,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_HOST_MAILBOX__
-#define __INCLUDE_PLATFORM_HOST_MAILBOX__
+#ifndef __INCLUDE_LIB_PLATFORM_HOST_MAILBOX__
+#define __INCLUDE_LIB_PLATFORM_HOST_MAILBOX__
 
 #include <platform/memory.h>
 

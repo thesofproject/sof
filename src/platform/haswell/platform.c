@@ -36,7 +36,7 @@
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/platcfg.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/info.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>
 #include <sof/dma.h>
@@ -64,15 +64,19 @@ static const struct sof_ipc_fw_ready ready
 	},
 	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
 	.version = {
-		.build = SOF_BUILD,
+		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
+#ifdef DEBUG_BUILD
+		/* only added in debug for reproducability in releases */
+		.build = SOF_BUILD,
 		.date = __DATE__,
 		.time = __TIME__,
+#endif
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
 	},
-	/* TODO: add capabilities */
+	.debug = DEBUG_SET_FW_READY_FLAGS,
 };
 
 #define NUM_HSW_WINDOWS		6

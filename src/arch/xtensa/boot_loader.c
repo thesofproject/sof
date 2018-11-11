@@ -32,7 +32,7 @@
 #include <arch/wait.h>
 #include <sof/trace.h>
 #include <sof/io.h>
-#include <uapi/manifest.h>
+#include <uapi/user/manifest.h>
 #include <platform/platform.h>
 #include <platform/memory.h>
 

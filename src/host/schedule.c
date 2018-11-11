@@ -68,8 +68,6 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 /* initialize scheduler */
 int scheduler_init(struct sof *sof)
 {
-	trace_pipe("ScI");
-
 	sch = malloc(sizeof(*sch));
 	list_init(&sch->list);
 	spinlock_init(&sch->lock);

@@ -32,19 +32,18 @@
  */
 
 #include <sof/ipc.h>
-#include <sof/intel-ipc.h>
 
 /* testbench ipc */
 struct ipc *_ipc;
 
 int platform_ipc_init(struct ipc *ipc)
 {
-	struct intel_ipc_data *iipc;
+	struct ipc_data *iipc;
 
 	_ipc = ipc;
 
 	/* init ipc data */
-	iipc = malloc(sizeof(struct intel_ipc_data));
+	iipc = malloc(sizeof(struct ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* allocate page table buffer */

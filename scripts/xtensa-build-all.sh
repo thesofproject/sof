@@ -1,13 +1,18 @@
 #!/bin/bash
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl)
-BUILD_RIMAGE=1
+BUILD_RIMAGE=0
+BUILD_DEBUG=no
 
 pwd=`pwd`
 
 if [ "$#" -eq 0 ]
 then
-	PLATFORMS=${SUPPORTED_PLATFORMS[@]}
+	echo "usage: xtensa-build.sh [options] platform(s)"
+	echo "       [-l] Build rimage locally"
+	echo "       [-a] Build all platforms"
+	echo "       [-d] Enable debug build"
+	echo "       Supported platforms ${SUPPORTED_PLATFORMS[@]}"
 else
 	# parse the args
 	for args in $@
@@ -15,26 +20,18 @@ else
 		if [[ "$args" == "-l" ]]
 			then
 			BUILD_LOCAL=1
-
-			# build all images for chosen targets
-			if [ "$#" -eq 1 ]
-			then
-				PLATFORMS=${SUPPORTED_PLATFORMS[@]}
-				break
-			fi
-		elif [[ "$args" == "-lr" ]]
-			then
-			BUILD_LOCAL=1
-			BUILD_RIMAGE=0
+			BUILD_RIMAGE=1
 
 			PATH=$pwd/local/bin:$PATH
 
-			# build all images for chosen targets
-			if [ "$#" -eq 1 ]
+		elif [[ "$args" == "-d" ]]
 			then
-				PLATFORMS=${SUPPORTED_PLATFORMS[@]}
-				break
-			fi
+			BUILD_DEBUG=yes
+
+		# Build all platforms
+		elif [[ "$args" == "-a" ]]
+			then
+			PLATFORMS=${SUPPORTED_PLATFORMS[@]}
 		else
 			for i in ${SUPPORTED_PLATFORMS[@]}
 			do
@@ -47,8 +44,12 @@ else
 	done
 fi
 
-
-# now build the firmware (depends on rimage)
+# check target platform(s) have been passed in
+if [ ${#PLATFORMS[@]} -eq 0 ];
+then
+	echo "Error: No platforms specified. Supported are: ${SUPPORTED_PLATFORMS[@]}"
+	exit 1
+fi
 
 # fail on any errors
 set -e
@@ -213,8 +214,10 @@ do
 	# only delete binary related to this build
 	rm -fr src/arch/xtensa/sof-$j.*
 
-	./configure --with-arch=xtensa --with-platform=$PLATFORM --with-root-dir=$ROOT --host=$HOST \
-		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP --with-dsp-core=$XTENSA_CORE
+	./configure --with-arch=xtensa --with-platform=$PLATFORM \
+		--with-root-dir=$ROOT --host=$HOST --enable-debug=$BUILD_DEBUG \
+		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP \
+		--with-dsp-core=$XTENSA_CORE
 
 	make clean
 	make

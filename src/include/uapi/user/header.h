@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,23 +26,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_INTEL_IPC_H__
-#define __INCLUDE_INTEL_IPC_H__
+/**
+ * \file include/uapi/ipc.h
+ * \brief IPC definitions
+ * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * \author Keyon Jie <yang.jie@linux.intel.com>
+ */
 
-#include <stdint.h>
+#ifndef __INCLUDE_UAPI_USER_HEADER_H__
+#define __INCLUDE_UAPI_USER_HEADER_H__
 
-/* private data for IPC */
-struct intel_ipc_data {
-	/* DMA */
-	struct dma *dmac;
-	uint8_t *page_table;
-
-	/* PM */
-	int pm_prepare_D3;	/* do we need to prepare for D3 */
-};
-
-int ipc_cmd(void);
+/**
+ * \brief Header for all non IPC ABI data.
+ *
+ * Identifies data type, size and ABI.
+ * Used by any bespoke component data structures or binary blobs.
+ */
+struct sof_abi_hdr {
+	uint32_t magic;		/**< 'S', 'O', 'F', '\0' */
+	uint32_t type;		/**< component specific type */
+	uint32_t size;		/**< size in bytes of data excl. this struct */
+	uint32_t abi;		/**< SOF ABI version */
+	uint32_t reserved[4];	/**< reserved for future use */
+	uint32_t data[0];	/**< Component data - opaque to core */
+} __attribute__((packed));
 
 #endif

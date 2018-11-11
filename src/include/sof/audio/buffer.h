@@ -40,7 +40,7 @@
 #include <sof/audio/component.h>
 #include <sof/trace.h>
 #include <sof/schedule.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/topology.h>
 
 /* pipeline tracing */
 #define trace_buffer(__e)	trace_event(TRACE_CLASS_BUFFER, __e)

@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <sof/mailbox.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/xtensa.h>
 
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32

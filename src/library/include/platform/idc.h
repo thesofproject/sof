@@ -28,8 +28,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_IDC_H__
-#define __INCLUDE_PLATFORM_IDC_H__
+#ifndef __INCLUDE_LIB_PLATFORM_IDC_H__
+#define __INCLUDE_LIB_PLATFORM_IDC_H__
 
 static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {

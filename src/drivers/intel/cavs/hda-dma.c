@@ -48,7 +48,7 @@
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <arch/cache.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/topology.h>
 
 #define trace_host(__e, ...)	\
 trace_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)

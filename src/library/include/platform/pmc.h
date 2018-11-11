@@ -28,8 +28,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __PLATFORM_HOST_PMC_H__
-#define __PLATFORM_HOST_PMC_H__
+#ifndef __INCLUDE_LIB_PLATFORM_HOST_PMC_H__
+#define __INCLUDE_LIB_PLATFORM_HOST_PMC_H__
 
 #include <stdint.h>
 

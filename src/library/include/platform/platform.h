@@ -29,8 +29,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __PLATFORM_HOST_PLATFORM_H__
-#define __PLATFORM_HOST_PLATFORM_H__
+#ifndef __INCLUDE_LIB_PLATFORM_PLATFORM_H__
+#define __INCLUDE_LIB_PLATFORM_PLATFORM_H__
 
 #include <platform/shim.h>
 #include <platform/interrupt.h>

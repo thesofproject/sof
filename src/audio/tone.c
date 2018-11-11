@@ -45,8 +45,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/math/trig.h>
-#include <uapi/ipc.h>
-#include <uapi/tone.h>
+#include <uapi/ipc/topology.h>
+#include <uapi/user/tone.h>
 
 #ifdef MODULE_TEST
 #include <stdio.h>
@@ -529,7 +529,7 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 	trace_tone("tri");
 
 	/* Check version from ABI header */
-	if (cdata->data->comp_abi != SOF_TONE_ABI_VERSION) {
+	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
 		trace_tone_error("abi");
 		return -EINVAL;
 	}

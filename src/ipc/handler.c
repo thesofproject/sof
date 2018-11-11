@@ -56,8 +56,12 @@
 #include <platform/idc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <uapi/ipc.h>
-#include <sof/intel-ipc.h>
+#include <uapi/ipc/header.h>
+#include <uapi/ipc/pm.h>
+#include <uapi/ipc/stream.h>
+#include <uapi/ipc/topology.h>
+#include <uapi/ipc/pm.h>
+#include <uapi/ipc/control.h>
 #include <sof/dma-trace.h>
 #include <sof/cpu.h>
 #include <sof/idc.h>
@@ -169,7 +173,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 static int ipc_stream_pcm_params(uint32_t stream)
 {
 #ifdef CONFIG_HOST_PTABLE
-	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_comp_host *host = NULL;
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
@@ -553,7 +557,7 @@ static int ipc_pm_context_size(uint32_t header)
 static int ipc_pm_context_save(uint32_t header)
 {
 	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
-	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 
 	trace_ipc("ipc_pm_context_save()");
 
@@ -645,7 +649,7 @@ static int ipc_glb_pm_message(uint32_t header)
 static int ipc_dma_trace_config(uint32_t header)
 {
 #ifdef CONFIG_HOST_PTABLE
-	struct intel_ipc_data *iipc = ipc_get_drvdata(_ipc);
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 #endif

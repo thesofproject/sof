@@ -42,7 +42,7 @@
 #include <sof/preproc.h>
 #include <platform/platform.h>
 #include <platform/timer.h>
-#include <uapi/logging.h>
+#include <uapi/user/trace.h>
 
 /* bootloader trace values */
 #define TRACE_BOOT_LDR_ENTRY		0x100

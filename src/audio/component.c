@@ -38,7 +38,7 @@
 #include <sof/alloc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/topology.h>
 
 struct comp_data {
 	struct list_item list;		/* list of components */

@@ -32,51 +32,58 @@
  * \file include/uapi/abi.h
  * \brief ABI definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *
+ * SOF ABI versioning is based on Semantic Versioning where we have a given
+ * MAJOR.MINOR.PATCH version number. See https://semver.org/
+ *
+ * Rules for incrementing or changing version :-
+ *
+ * 1) Increment MAJOR version if you make incompatible API changes. MINOR and
+ *    PATCH should be reset to 0.
+ *
+ * 2) Increment MINOR version if you add backwards compatible features or
+ *    changes. PATCH should be reset to 0.
+ *
+ * 3) Increment PATCH version if you add backwards compatible bug fixes.
  */
 
 #ifndef __INCLUDE_UAPI_ABI_H__
 #define __INCLUDE_UAPI_ABI_H__
 
-/** \brief SOF ABI version number. */
-#define SOF_ABI_VER(major, minor, micro) \
-	(((major) << 8) | ((minor) << 4) | (micro))
-#define SOF_ABI_VERSION_MAJOR(version)	(((version) >> 8) & 0xff)
-#define SOF_ABI_VERSION_MINOR(version)	(((version) >> 4) & 0xf)
-#define SOF_ABI_VERSION_MICRO(version)	((version) & 0xf)
+/** \brief SOF ABI version major, minor and patch numbers */
+#define SOF_ABI_MAJOR 2
+#define SOF_ABI_MINOR 0
+#define SOF_ABI_PATCH 0
+
+/** \brief SOF ABI version number. Format within 32bit word is MMmmmppp */
+#define SOF_ABI_MAJOR_SHIFT	24
+#define SOF_ABI_MAJOR_MASK	0xff
+#define SOF_ABI_MINOR_SHIFT	12
+#define SOF_ABI_MINOR_MASK	0xfff
+#define SOF_ABI_PATCH_SHIFT	0
+#define SOF_ABI_PATCH_MASK	0xfff
+
+#define SOF_ABI_VER(major, minor, patch) \
+	(((major) << SOF_ABI_MAJOR_SHIFT) | \
+	((minor) << SOF_ABI_MINOR_SHIFT) | \
+	((patch) << SOF_ABI_PATCH_SHIFT))
+
+#define SOF_ABI_VERSION_MAJOR(version) \
+	(((version) >> SOF_ABI_MAJOR_SHIFT) & SOF_ABI_MAJOR_MASK)
+#define SOF_ABI_VERSION_MINOR(version)	\
+	(((version) >> SOF_ABI_MINOR_SHIFT) & SOF_ABI_MINOR_MASK)
+#define SOF_ABI_VERSION_PATCH(version)	\
+	(((version) >> SOF_ABI_PATCH_SHIFT) & SOF_ABI_PATCH_MASK)
+
 #define SOF_ABI_VERSION_INCOMPATIBLE(sof_ver, client_ver)		\
 	(SOF_ABI_VERSION_MAJOR((sof_ver)) !=				\
-		SOF_ABI_VERSION_MAJOR((client_ver)) ||			\
-		(							\
-			SOF_ABI_VERSION_MAJOR((sof_ver)) ==		\
-				SOF_ABI_VERSION_MAJOR((client_ver)) &&	\
-			SOF_ABI_VERSION_MINOR((sof_ver)) !=		\
-				SOF_ABI_VERSION_MINOR((client_ver))	\
-		)							\
+		SOF_ABI_VERSION_MAJOR((client_ver))			\
 	)
 
-#define SOF_ABI_MAJOR 1
-#define SOF_ABI_MINOR 0
-#define SOF_ABI_MICRO 0
-
-#define SOF_ABI_VERSION SOF_ABI_VER(SOF_ABI_MAJOR, SOF_ABI_MINOR, SOF_ABI_MICRO)
+#define SOF_ABI_VERSION SOF_ABI_VER(SOF_ABI_MAJOR, SOF_ABI_MINOR, SOF_ABI_PATCH)
 
 /** \brief SOF ABI magic number "SOF\0". */
 #define SOF_ABI_MAGIC		0x00464F53
-
-/**
- * \brief Header for all non IPC ABI data.
- *
- * Identifies data type, size and ABI.
- * Used by any bespoke component data structures or binary blobs.
- */
-struct sof_abi_hdr {
-	uint32_t magic;		/**< 'S', 'O', 'F', '\0' */
-	uint32_t type;		/**< component specific type */
-	uint32_t size;		/**< size in bytes of data excl. this struct */
-	uint32_t abi;		/**< SOF ABI version */
-	uint32_t comp_abi;	/**< component specific ABI version */
-	char data[0];		/**< data */
-}  __attribute__((packed));
 
 #endif
 

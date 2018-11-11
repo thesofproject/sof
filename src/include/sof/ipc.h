@@ -37,7 +37,7 @@
 #include <sof/dai.h>
 #include <sof/lock.h>
 #include <platform/platform.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/topology.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>
 #include <sof/dma-trace.h>
@@ -193,4 +193,17 @@ int ipc_dma_trace_send_position(void);
 
 /* get posn offset by pipeline. */
 int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe);
+
+/* private data for IPC */
+struct ipc_data {
+	/* DMA */
+	struct dma *dmac;
+	uint8_t *page_table;
+
+	/* PM */
+	int pm_prepare_D3;	/* do we need to prepare for D3 */
+};
+
+int ipc_cmd(void);
+
 #endif

@@ -46,7 +46,7 @@
 #include <sof/dma.h>
 #include <sof/work.h>
 #include <sof/wait.h>
-#include <sof/intel-ipc.h>
+#include <sof/ipc.h>
 #include <sof/audio/pipeline.h>
 #include "host/common_test.h"
 #include "host/topology.h"

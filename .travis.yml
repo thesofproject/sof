@@ -23,34 +23,34 @@ jobs:
   include:
     - stage: compile
       name: "BYT Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr byt
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt
     - stage: compile
       name: "CHT Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cht
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l cht
     - stage: compile
       name: "BDW Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr bdw
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l bdw
     - stage: compile
       name: "HSW Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr hsw
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l hsw
     - stage: compile
       name: "APL Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr apl
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l apl
     - stage: compile
       name: "CNL Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cnl
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l cnl
     - stage: compile
       name: "SUE Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr sue
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l sue
     - stage: compile
       name: "ICL Build"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr icl
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l icl
     - stage: compile
       name: "Host Build"
       script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/host-build-all.sh -l
     - stage: test
       name: "BYT Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr byt && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh byt
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh byt
     - stage: test
       name: "CHT Boot Test"
-      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -lr cht && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh cht
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l cht && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh cht

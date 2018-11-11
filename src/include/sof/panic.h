@@ -37,7 +37,7 @@
 #include <sof/interrupt.h>
 #include <sof/trace.h>
 #include <platform/platform.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/trace.h>
 #include <stdint.h>
 #include <stdlib.h>
 

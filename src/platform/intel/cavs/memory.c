@@ -30,6 +30,7 @@
  */
 
 #include <sof/alloc.h>
+#include <uapi/ipc/header.h>
 
 /* Heap blocks for modules */
 static struct block_hdr mod_block64[HEAP_RT_COUNT64];

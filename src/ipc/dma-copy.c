@@ -30,7 +30,7 @@
  */
 
 #include <stdint.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/trace.h>
 #include <sof/sof.h>
 #include <sof/debug.h>
 #include <sof/trace.h>

@@ -29,8 +29,8 @@
  */
 
 
-#ifndef __PLATFORM_HOST_TIMER_H__
-#define __PLATFORM_HOST_TIMER_H__
+#ifndef __INCLUDE_LIB_PLATFORM_TIMER_H__
+#define __INCLUDE_LIB_PLATFORM_TIMER_H__
 
 #include <stdint.h>
 #include <sof/timer.h>

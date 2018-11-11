@@ -14,7 +14,13 @@ m4_define(sof_minor, `cat .version | cut -d. -f2 | cut -d- -f1`)
 m4_define(sof_micro, `cat .version | cut -d. -f3 | cut -d- -f1`)
 AC_DEFINE_UNQUOTED([SOF_MAJOR], sof_major, [Sof major version])
 AC_DEFINE_UNQUOTED([SOF_MINOR], sof_minor, [Sof minor version])
-AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
+
+# micr version can sometimes be NULL, so make it 0
+if test sof_micro != ""; then
+  AC_DEFINE_UNQUOTED([SOF_MICRO], sof_micro, [Sof micro version])
+else
+  AC_DEFINE_UNQUOTED([SOF_MICRO], 0, [Sof micro version])
+fi
 
 AC_CANONICAL_HOST
 
@@ -63,6 +69,12 @@ if test "x$with_meu" != "xno"; then
 	else
 		AC_MSG_ERROR([Private key location not specified])
 	fi
+fi
+
+#check if we should enable debug build
+AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug],[enable debug, default: no])], enable_debug=$enableval, enable_debug=no)
+if test "$enable_debug" = "yes"; then
+	AC_DEFINE([DEBUG_BUILD], [1], [Configure to build debug version])
 fi
 
 # check if we are building FW image or library
@@ -565,6 +577,8 @@ AC_CONFIG_FILES([
 	src/include/sof/drivers/Makefile
 	src/include/sof/math/Makefile
 	src/include/uapi/Makefile
+	src/include/uapi/ipc/Makefile
+	src/include/uapi/user/Makefile
 	src/ipc/Makefile
 	src/library/Makefile
 	src/library/include/Makefile

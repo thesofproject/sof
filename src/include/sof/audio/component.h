@@ -42,7 +42,10 @@
 #include <sof/stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/pipeline.h>
-#include <uapi/ipc.h>
+#include <uapi/ipc/control.h>
+#include <uapi/ipc/stream.h>
+#include <uapi/ipc/topology.h>
+#include <uapi/ipc/dai.h>
 
 /*
  * Audio Component States
