@@ -62,7 +62,7 @@ static struct trace *trace;
 
 #define TRACE_ID_MASK ((1 << TRACE_ID_LENGTH) - 1)
 
-static void put_header(volatile uint32_t *dst, uint32_t id_0, uint32_t id_1,
+static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 		       uint32_t entry, uint64_t timestamp)
 {
 	struct log_entry_header header;
@@ -73,31 +73,41 @@ static void put_header(volatile uint32_t *dst, uint32_t id_0, uint32_t id_1,
 	header.timestamp = timestamp;
 	header.log_entry_address = entry;
 
-	int i = 0;
+	memcpy(dst, &header, sizeof(header));
+}
 
-	for (; i < sizeof(struct log_entry_header) / sizeof(uint32_t); i++) {
-		uint32_t *header_ptr = (uint32_t *)&header;
+static void mtrace_event(const char *data, uint32_t length)
+{
+	volatile char *t;
+	uint32_t i, available;
 
-		dst[i] = header_ptr[i];
+	available = MAILBOX_TRACE_SIZE - trace->pos;
+
+	t = (volatile char *)(MAILBOX_TRACE_BASE);
+
+	/* write until we run out of space */
+	for (i = 0; i < available && i < length; i++)
+		t[trace->pos + i] = data[i];
+
+	dcache_writeback_region((void *)&t[trace->pos], i);
+
+	/* if there was more data than space available, wrap back */
+	if (length > available) {
+		for (i = 0; i < length - available; i++)
+			t[i] = data[available + i];
+
+		dcache_writeback_region((void *)t, i);
+		trace->pos = i;
 	}
 }
 
-/* TODO: it should be possible to do this for arbitrary array, passed as an arg
- * something like:
- * #define FOO(array, i, _) array[payload_offset + 1 + i] =\
- *     META_CONCAT(param, i);
- * #define BAR(array, arg_count) META_SEQ_FROM_0_TO(arg_count, FOO(array))
- */
-#define _TRACE_EVENT_NTH_IMPL_DT_STEP(i, _)		\
+#define _TRACE_EVENT_NTH_IMPL_PAYLOAD_STEP(i, _)	\
 	dt[PAYLOAD_OFFSET(i)] = META_CONCAT(param, i);
-#define _TRACE_EVENT_NTH_IMPL_T_STEP(i, _)		\
-	t[PAYLOAD_OFFSET(i)] = META_CONCAT(param, i);
-#define _TRACE_EVENT_NTH_IMPL_DT(arg_count)				\
-	META_SEQ_FROM_0_TO(arg_count, _TRACE_EVENT_NTH_IMPL_DT_STEP)
-#define _TRACE_EVENT_NTH_IMPL_T(arg_count)				\
-	META_SEQ_FROM_0_TO(arg_count, _TRACE_EVENT_NTH_IMPL_T_STEP)
 
-/* _trace_event function with poor people's version of constexpr if */
+#define _TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\
+	META_SEQ_FROM_0_TO(arg_count, _TRACE_EVENT_NTH_IMPL_PAYLOAD_STEP)
+
+ /* _trace_event function with poor people's version of constexpr if */
 #define _TRACE_EVENT_NTH_IMPL(is_mbox, is_atomic, arg_count)		\
 _TRACE_EVENT_NTH(META_CONCAT(						\
 /*if is_mbox  , append _mbox   to function name*/			\
@@ -109,52 +119,30 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 	uint32_t dt[MESSAGE_SIZE_DWORDS(arg_count)];			\
 	META_IF_ELSE(is_mbox)						\
 	(								\
-		volatile uint32_t *t;					\
 		META_IF_ELSE(is_atomic)()(unsigned long flags;)		\
 	)()								\
 									\
 	if (!trace->enable)						\
 		return;							\
 									\
-	META_IF_ELSE(is_mbox)						\
-	(								\
-		uint64_t time = platform_timer_get(platform_timer);	\
-		put_header(dt, id_0, id_1, log_entry, time);		\
-	)								\
-	(								\
-		put_header(dt, id_0, id_1, log_entry,			\
-			   platform_timer_get(platform_timer));		\
-	)								\
+	put_header(dt, id_0, id_1, log_entry,				\
+		   platform_timer_get(platform_timer));			\
 									\
-	_TRACE_EVENT_NTH_IMPL_DT(arg_count)				\
+	_TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\
 	META_IF_ELSE(is_atomic)						\
 		(dtrace_event_atomic)					\
 		(dtrace_event)						\
 			((const char *)dt, MESSAGE_SIZE(arg_count));	\
+	/* send event by mail box too. */				\
 	META_IF_ELSE(is_mbox)						\
 	(								\
 		META_IF_ELSE(is_atomic)()(				\
-			/* send event by mail box too. */		\
 			spin_lock_irq(&trace->lock, flags);		\
 		)							\
-		/* write timestamp and event to trace buffer */		\
-		t = (volatile uint32_t *)(MAILBOX_TRACE_BASE +		\
-		     trace->pos);					\
-		trace->pos += MESSAGE_SIZE(arg_count);			\
-									\
-		if (trace->pos > MAILBOX_TRACE_SIZE			\
-			- MESSAGE_SIZE(arg_count))			\
-			trace->pos = 0;					\
+		mtrace_event((const char *)dt, MESSAGE_SIZE(arg_count));\
 									\
 		META_IF_ELSE(is_atomic)()(spin_unlock_irq(&trace->lock,	\
 							  flags);)	\
-									\
-		put_header(t, id_0, id_1, log_entry, time);		\
-		_TRACE_EVENT_NTH_IMPL_T(arg_count)			\
-									\
-		/* writeback trace data */				\
-		dcache_writeback_region					\
-			((void *)t, MESSAGE_SIZE(arg_count));		\
 	)()								\
 }
 
