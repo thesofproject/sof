@@ -185,7 +185,7 @@ struct sof_ipc_dai_dmic_params {
 	uint32_t reserved[8];
 
 	/**< variable number of pdm controller config */
-	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
+	struct sof_ipc_dai_dmic_pdm_ctrl pdm[];
 } __attribute__((packed));
 
 #endif
