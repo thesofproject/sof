@@ -1069,15 +1069,14 @@ static uint64_t dw_dma_work(void *data, uint64_t delay)
 
 	tracev_dma("wrk");
 
-	/* skip if channel is not running */
 	if (p->chan[i].status != COMP_STATE_ACTIVE) {
 		trace_dma_error("eDs");
-		goto out;
+		/* skip if channel is not running */
+		return 0;
 	}
 
 	dw_dma_process_block(&p->chan[i], &next);
 
-out:
 	return next.size == DMA_RELOAD_END ? 0 : p->chan[i].timer_delay;
 }
 
