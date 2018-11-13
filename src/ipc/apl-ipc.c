@@ -61,14 +61,13 @@ static void irq_handler(void *arg)
 	uint32_t dipcie;
 	uint32_t msg = 0;
 
-	tracev_ipc("IRQ");
-
 	dipct = ipc_read(IPC_DIPCT);
 	dipcie = ipc_read(IPC_DIPCIE);
 
+	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x", dipct, dipcie);
+
 	/* new message from host */
 	if (dipct & IPC_DIPCT_BUSY) {
-		tracev_ipc("Nms");
 
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCTBIE);
@@ -78,7 +77,9 @@ static void irq_handler(void *arg)
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
-			trace_ipc_error("Pen");
+			trace_ipc_error("ipc: dropping msg 0x%x", msg);
+			trace_ipc_error(" dipct 0x%x dipcie 0x%x dipcctl 0x%x",
+					dipct, dipcie, ipc_read(IPC_DIPCCTL));
 		} else {
 			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
@@ -88,7 +89,7 @@ static void irq_handler(void *arg)
 
 	/* reply message(done) from host */
 	if (dipcie & IPC_DIPCIE_DONE) {
-		tracev_ipc("Rpy");
+
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
@@ -107,7 +108,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	struct sof_ipc_reply reply;
 	int32_t err;
 
-	trace_ipc("Cmd");
+	trace_ipc("ipc: msg rx -> 0x%x", ipc->host_msg);
 
 	/* perform command and return any error */
 	err = ipc_cmd();
@@ -141,9 +142,6 @@ done:
 		/* no return - memory will be powered off */
 		platform_pm_runtime_power_off();
 	}
-
-	tracev_ipc("CmD");
-
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
@@ -168,7 +166,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	ipc->shared_ctx->dsp_msg = msg;
-	tracev_ipc("Msg");
+	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
 	ipc_write(IPC_DIPCIE, 0);
