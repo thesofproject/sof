@@ -40,8 +40,8 @@
 #include <platform/pm_runtime.h>
 #include <platform/dai.h>
 
-#if defined(CONFIG_APOLLOLAKE)
-//TODO: add support or at least stub api for Cannonlake & Icelake
+#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
+//TODO: add support or at least stub api for Icelake based on Cannonlake
 #include <platform/power_down.h>
 #endif
 
@@ -229,15 +229,16 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 	}
 }
 
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 void platform_pm_runtime_power_off(void)
 {
-	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS];
+	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS], i;
 	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
-	//TODO: mask to be used in the future for run-time power management of
-	//SRAM banks
+	//TODO: hpsram_mask to be used in the future for run-time
+	//power management of SRAM banks i.e use. HPSRAM_MASK() macro
 	/* power down entire HPSRAM */
-	hpsram_mask[0] = 0x1;
+	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; i++)
+		hpsram_mask[i] = UINT32_MAX;
 
 	power_down(true, hpsram_mask);
 }

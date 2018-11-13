@@ -50,8 +50,14 @@
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+//<<<<<<< HEAD
 #include <uapi/ipc/header.h>
 
+//=======
+//#include <uapi/ipc.h>
+//#include <sof/intel-ipc.h>
+#include <platform/pm_runtime.h>
+//>>>>>>> Added SRAM power gating on D3 entry for cAVS 1.8 (i.e. Cannonlake).
 extern struct ipc *_ipc;
 
 /* test code to check working IRQ */
@@ -139,8 +145,14 @@ done:
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1)
-			wait_for_interrupt(0);
+#if defined(CONFIG_CANNONLAKE)
+		/* no return - memory will be powered off */
+		platform_pm_runtime_power_off();
+#else
+	//TODO: add support for Icelake, consider a spearate file icl-ipc.c
+	while (1)
+		wait_for_interrupt(0);
+#endif
 	}
 
 	tracev_ipc("CmD");

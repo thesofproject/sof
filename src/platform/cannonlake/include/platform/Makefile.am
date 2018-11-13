@@ -10,4 +10,6 @@ noinst_HEADERS = \
 	platform.h \
 	pm_runtime.h \
 	shim.h \
-	timer.h
+	timer.h \
+	asm_memory_management.h \
+	power_down.h
