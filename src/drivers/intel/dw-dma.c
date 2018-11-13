@@ -240,9 +240,12 @@
 #endif
 
 /* tracing */
-#define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)
-#define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
-#define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
+#define trace_dwdma(__e, ...) \
+	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+#define tracev_dwdma(__e, ...) \
+	tracev_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+#define trace_dwdma_error(__e, ...) \
+	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
 
 /* HW Linked list support, only enabled for APL/CNL at the moment */
 #if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
@@ -317,9 +320,16 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 	uint32_t flags;
 	int i;
 
+	if (req_chan >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, req_chan);
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dma("Dgt");
+	trace_dwdma("dw-dma: %d channel %d request", dma->plat_data.id,
+		    req_chan);
 
 	/* find first free non draining channel */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -339,7 +349,8 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 
 	/* DMAC has no free channels */
 	spin_unlock_irq(&dma->lock, flags);
-	trace_dma_error("eG0");
+	trace_dwdma_error("dw-dma: %d channel %d not free", dma->plat_data.id,
+			  req_chan);
 	return -ENODEV;
 }
 
@@ -348,7 +359,13 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
-	tracev_dma("Dpt");
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return;
+	}
+
+	trace_dwdma("dw-dma: %d channel %d put", dma->plat_data.id, channel);
 
 	if (!p->chan[channel].timer_delay) {
 		/* mask block, transfer and error interrupts for channel */
@@ -390,25 +407,34 @@ static int dw_dma_start(struct dma *dma, int channel)
 	uint32_t flags;
 	int ret = 0;
 
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&dma->lock, flags);
 
-	tracev_dma("DEn");
+	trace_dwdma("dw-dma: %d channel put", dma->plat_data.id, channel);
 
 	/* is channel idle, disabled and ready ? */
 	if (p->chan[channel].status != COMP_STATE_PREPARE ||
 		(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
 		ret = -EBUSY;
-		trace_dma_error("eS0");
-		trace_error_value(dw_read(dma, DW_DMA_CHAN_EN));
-		trace_error_value(dw_read(dma, DW_CFG_LOW(channel)));
-		trace_error_value(p->chan[channel].status);
+		trace_dwdma_error("dw-dma: %d channel %d not ready",
+				  dma->plat_data.id, channel);
+		trace_dwdma_error(" ena 0x%x cfglow 0x%x status 0x%x",
+				  dw_read(dma, DW_DMA_CHAN_EN),
+				  dw_read(dma, DW_CFG_LOW(channel)),
+				  p->chan[channel].status);
 		goto out;
 	}
 
 	/* valid stream ? */
 	if (p->chan[channel].lli == NULL) {
 		ret = -EINVAL;
-		trace_dma_error("eS1");
+		trace_dwdma_error("dw-dma: %d channel %d invalid stream",
+				  dma->plat_data.id, channel);
 		goto out;
 	}
 
@@ -471,9 +497,15 @@ static int dw_dma_release(struct dma *dma, int channel)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
 
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dma("Dpr");
+	trace_dwdma("dw-dma: %d channel %d release", dma->plat_data.id, channel);
 
 	/* get next lli for proper release */
 	p->chan[channel].lli_current =
@@ -488,9 +520,15 @@ static int dw_dma_pause(struct dma *dma, int channel)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
 
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dma("Dpa");
+	trace_dwdma("dw-dma: %d channel %d pause", dma->plat_data.id, channel);
 
 	if (p->chan[channel].status != COMP_STATE_ACTIVE)
 		goto out;
@@ -511,9 +549,15 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	uint32_t flags;
 	uint32_t val = 0;
 
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dma("DDi");
+	trace_dwdma("dw-dma: %d channel %d stop", dma->plat_data.id, channel);
 
 	if (p->chan[channel].timer_delay)
 		work_cancel_default(&p->chan[channel].dma_ch_work);
@@ -522,7 +566,8 @@ static int dw_dma_stop(struct dma *dma, int channel)
 				      CHAN_MASK(channel), val,
 				      PLATFORM_DMA_TIMEOUT);
 	if (ret < 0)
-		trace_dma_error("esp");
+		trace_dwdma_error("dw-dma: %d channel %d timeout",
+				  dma->plat_data.id, channel);
 
 	if (!p->chan[channel].timer_delay)
 		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
@@ -543,9 +588,15 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	struct dw_lli2 *lli;
 #endif
 
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dma("DDi");
+	trace_dwdma("dw-dma: %d channel stop", dma->plat_data.id, channel);
 
 	if (p->chan[channel].timer_delay)
 		work_cancel_default(&p->chan[channel].dma_ch_work);
@@ -583,6 +634,12 @@ static int dw_dma_status(struct dma *dma, int channel,
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	status->state = p->chan[channel].status;
 	status->r_pos = dw_read(dma, DW_SAR(channel));
 	status->w_pos = dw_read(dma, DW_DAR(channel));
@@ -611,9 +668,15 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	uint32_t msize = 3;/* default msize */
 	int i, ret = 0;
 
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	spin_lock_irq(&dma->lock, flags);
 
-	tracev_dma("Dsc");
+	trace_dwdma("dw-dma: %d channel %d config", dma->plat_data.id, channel);
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
@@ -622,7 +685,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	p->chan[channel].cfg_hi = DW_CFG_HIGH_DEF;
 
 	if (!config->elem_array.count) {
-		trace_dma_error("eD0");
+		trace_dwdma_error("dw-dma: %d channel %d no elems",
+				  dma->plat_data.id, channel);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -639,7 +703,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
 		if (p->chan[channel].lli == NULL) {
-			trace_dma_error("eD1");
+			trace_dwdma_error("dw-dma: %d channel %d LLI alloc failed",
+					  dma->plat_data.id, channel);
 			ret = -ENOMEM;
 			goto out;
 		}
@@ -698,7 +763,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2);
 			break;
 		default:
-			trace_dma_error("eD2");
+			trace_dwdma_error("dw-dma: %d channel %d invalid src width %d",
+					  dma->plat_data.id, channel,
+					  config->src_width);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -724,7 +791,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2);
 			break;
 		default:
-			trace_dma_error("eD3");
+			trace_dwdma_error("dw-dma: %d channel %d invalid dest width %d",
+					  dma->plat_data.id, channel,
+					  config->dest_width);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -814,13 +883,17 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		default:
-			trace_dma_error("eD4");
+			trace_dwdma_error("dw-dma: %d channel %d invalid direction %d",
+					  dma->plat_data.id, channel,
+					  config->direction);
 			ret = -EINVAL;
 			goto out;
 		}
 
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
-			trace_dma_error("eD5");
+			trace_dwdma_error("dw-dma: %d channel %d block size too big %d",
+					  dma->plat_data.id, channel,
+					  sg_elem->size);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -987,7 +1060,7 @@ static void dw_dma_setup(struct dma *dma)
 		if (dw_read(dma, DW_DMA_CFG) == 0)
 			goto found;
 	}
-	trace_dma_error("eDs");
+	trace_dwdma_error("dw-dma: dmac %d setup failed", dma->plat_data.id);
 	return;
 
 found:
@@ -1045,7 +1118,8 @@ static void dw_dma_process_block(struct dma_chan_data *chan,
 		chan->cb(chan->cb_data, DMA_IRQ_TYPE_BLOCK, next);
 
 	if (next->size == DMA_RELOAD_END) {
-		trace_dma("LSo");
+		trace_dwdma("dw-dma: %d channel block end",
+			    chan->id.dma->plat_data.id, chan->id.channel);
 
 		/* disable channel, finished */
 		dw_write(chan->id.dma, DW_DMA_CHAN_EN,
@@ -1067,10 +1141,12 @@ static uint64_t dw_dma_work(void *data, uint64_t delay)
 	struct dma_sg_elem next;
 	int i = dma_id->channel;
 
-	tracev_dma("wrk");
+	trace_dwdma("dw-dma: %d channel work", dma->plat_data.id,
+		    dma_id->channel);
 
 	if (p->chan[i].status != COMP_STATE_ACTIVE) {
-		trace_dma_error("eDs");
+		trace_dwdma_error("dw-dma: %d channel not running",
+				  dma->plat_data.id, dma_id->channel);
 		/* skip if channel is not running */
 		return 0;
 	}
@@ -1094,11 +1170,12 @@ static void dw_dma_irq_handler(void *data)
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr) {
-		trace_dma_error("eDI");
-		trace_error_value(status_intr);
+		trace_dwdma_error("dw-dma: %d IRQ with no status",
+				  dma->plat_data.id, -1);
 	}
 
-	tracev_dma("irq");
+	tracev_dwdma("dw-dma: %d IRQ status 0x%x", dma->plat_data.id,
+		     status_intr);
 
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
@@ -1107,7 +1184,8 @@ static void dw_dma_irq_handler(void *data)
 	/* TODO: handle errors, just clear them atm */
 	status_err = dw_read(dma, DW_STATUS_ERR);
 	if (status_err) {
-		trace_dma_error("eDi");
+		trace_dwdma("dw-dma: %d IRQ error 0x%", dma->plat_data.id,
+			    status_err);
 		dw_write(dma, DW_CLEAR_ERR, status_err & i);
 	}
 
@@ -1119,7 +1197,8 @@ static void dw_dma_irq_handler(void *data)
 
 	/* skip if channel is not running */
 	if (p->chan[i].status != COMP_STATE_ACTIVE) {
-		trace_dma_error("eDs");
+		trace_dwdma_error("dw-dma: %d channel %d not running",
+				  dma->plat_data.id, dma_id->channel);
 		return;
 	}
 
@@ -1202,7 +1281,8 @@ static void dw_dma_irq_handler(void *data)
 	if (!status_intr)
 		return;
 
-	tracev_dma("DIr");
+	tracev_dwdma("dw-dma: %d IRQ status 0x%x", dma->plat_data.id,
+		     status_intr);
 
 	/* get the source of our IRQ. */
 	status_block = dw_read(dma, DW_STATUS_BLOCK);
@@ -1216,7 +1296,8 @@ static void dw_dma_irq_handler(void *data)
 	status_err = dw_read(dma, DW_STATUS_ERR);
 	dw_write(dma, DW_CLEAR_ERR, status_err);
 	if (status_err)
-		trace_dma_error("eI1");
+		trace_dwdma_error("dw-dma: %d error 0x%x", dma->plat_data.id,
+				  status_err);
 
 	/* clear platform and DSP interrupt */
 	pmask = status_block | status_tfr | status_err;
@@ -1225,8 +1306,8 @@ static void dw_dma_irq_handler(void *data)
 	/* confirm IRQ cleared */
 	status_block_new = dw_read(dma, DW_STATUS_BLOCK);
 	if (status_block_new) {
-		trace_dma_error("eI2");
-		trace_error_value(status_block_new);
+		trace_dwdma_error("dw-dma: %d status block 0x%x not cleared",
+				  dma->plat_data.id, status_block_new);
 	}
 
 	for (i = 0; i < dma->plat_data.channels; i++) {
