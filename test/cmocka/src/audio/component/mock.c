@@ -34,27 +34,9 @@
 #include <sof/alloc.h>
 #include <sof/trace.h>
 
-void _trace_event0(uint32_t log_entry)
-{
-	(void)log_entry;
-}
+#include <mock_trace.h>
 
-void _trace_event1(uint32_t log_entry, uint32_t param)
-{
-	(void)log_entry;
-	(void)param;
-}
-
-void _trace_event_mbox_atomic0(uint32_t log_entry)
-{
-	(void)log_entry;
-}
-
-void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
-{
-	(void)log_entry;
-	(void)param;
-}
+TRACE_IMPL()
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {

@@ -48,19 +48,35 @@ static void test_debugability_macros_declare_log_entry(void **state)
 		LOG_LEVEL_CRITICAL,
 		"Message",
 		TRACE_CLASS_DMA,
+		1,
 		1
 	));
 	const char *should_be_eq =
 		"__attribute__((section(\".static_log.\""
 		" \"LOG_LEVEL_CRITICAL\"))) "
-		"static const struct { uint32_t level; uint32_t component_id; "
-		"uint32_t params_num; uint32_t line_idx; uint32_t file_name_len; "
-		"const char file_name[sizeof(\"src/debugability/macros.c\")]; "
-		"uint32_t text_len; const char text[sizeof(\"Message\")]; } "
-		"log_entry = { 1(6 << 24)152sizeof(\"src/debugability/macros.c\")"
-		"\"src/debugability/macros.c\"sizeof(\"Message\")\"Message\" }";
+		"static const struct "
+		"{ "
+			"uint32_t level; "
+			"uint32_t component_class; "
+			"uint32_t has_ids; "
+			"uint32_t params_num; "
+			"uint32_t line_idx; "
+			"uint32_t file_name_len; "
+			"uint32_t text_len; "
+			"const char file_name[sizeof(\"src/debugability/macros.c\")]; "
+			"const char text[sizeof(\"Message\")]; "
+		"} log_entry = { "
+			"1"
+			"(6 << 24)"
+			"1"
+			"1"
+			"53"
+			"sizeof(\"src/debugability/macros.c\")"
+			"sizeof(\"Message\")"
+			"\"src/debugability/macros.c\""
+			"\"Message\" "
+		"}";
 	(void)state;
-
 	assert_string_equal(macro_result, should_be_eq);
 }
 
@@ -83,25 +99,20 @@ static char *get_should_be(const int param_count)
 {
 	char *result = malloc(sizeof(char) * 1024);
 	char *paramlist = get_param_list(param_count);
-	char *maybe_comma = ",";
 
-	if (param_count)
-		maybe_comma = "";
-
-	/* which format:  0 1 2 3 4 5 6 7 8 9*/
-	sprintf(result, "%s%d%s%d%s%d%s%s%s%s",
+	/* which format:  0 1 2 3 4 5 6 7 8*/
+	sprintf(result, "%s%d%s%d%s%d%s%s%s",
 	/*0*/"{ __attribute__((unused)) typedef char assertion_failed_"
 	     META_QUOTE(BASE_LOG_ASSERT_FAIL_MSG)
 	     "[(",
 	/*1*/_TRACE_EVENT_MAX_ARGUMENT_COUNT,
 	/*2*/" >= ",
 	/*3*/param_count,
-	/*4*/") ? 1 : -1]; log_func log_function = (log_func)& _trace_event",
+	/*4*/") ? 1 : -1]; _trace_event",
 	/*5*/param_count,
-	/*6*/"; log_function(&log_entry",
-	/*7*/maybe_comma,
-	/*8*/paramlist,
-	/*9*/");}"
+	/*6*/" ((uint32_t)&log_entry, 1, 1",
+	/*7*/paramlist,
+	/*8*/"); }"
 	);
 	if (paramlist)
 		free(paramlist);
@@ -109,39 +120,42 @@ static char *get_should_be(const int param_count)
 	return result;
 }
 
-#define test_debugability_macros_base_base(...)\
-do {\
-	_DECLARE_LOG_ENTRY(\
-		LOG_LEVEL_CRITICAL,\
-		"Message",\
-		TRACE_CLASS_DMA,\
-		META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__)\
-	);\
-	const char *macro_result = CAPTURE(BASE_LOG(\
-		_trace_event,\
-		&log_entry,\
-		__VA_ARGS__\
-	));\
-	char *should_be_eq = get_should_be(\
-		META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));\
-\
-	/* to avoid "log_entry not used" warning */\
-	assert_true(log_entry.level == log_entry.level);\
-\
-	(void)state;\
-\
-	assert_string_equal(macro_result, should_be_eq);\
-	if (should_be_eq)\
-		free(should_be_eq);\
-} while (0)\
+#define test_debugability_macros_base_base(...)			\
+do {								\
+	_DECLARE_LOG_ENTRY(					\
+		LOG_LEVEL_CRITICAL,				\
+		"Message",					\
+		TRACE_CLASS_DMA,				\
+		META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__),	\
+		1						\
+	);							\
+	const char *macro_result = CAPTURE(BASE_LOG(		\
+		_trace_event,					\
+		1,						\
+		1,						\
+		&log_entry,					\
+		##__VA_ARGS__					\
+	));							\
+	char *should_be_eq = get_should_be(			\
+		META_COUNT_VARAGS_BEFORE_COMPILE(__VA_ARGS__));	\
+								\
+	/* to avoid "log_entry not used" warning */		\
+	assert_true(log_entry.level == log_entry.level);	\
+								\
+	(void)state;						\
+								\
+	assert_string_equal(macro_result, should_be_eq);	\
+	if (should_be_eq)					\
+		free(should_be_eq);				\
+} while (0)
 
-#define TEST_FUNC_(param_count, ...)\
-static void META_CONCAT_SEQ_DELIM_(\
-	test_debugability_macros_base_log,\
-	param_count,\
-	params)\
-(void **state)\
-{\
+#define TEST_FUNC_(param_count, ...)			\
+static void META_CONCAT_SEQ_DELIM_(			\
+	test_debugability_macros_base_log,		\
+	param_count,					\
+	params)						\
+(void **state)						\
+{							\
 	test_debugability_macros_base_base(__VA_ARGS__);\
 }
 
