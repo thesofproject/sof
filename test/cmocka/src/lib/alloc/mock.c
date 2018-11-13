@@ -34,6 +34,10 @@
 #include <sof/alloc.h>
 #include <sof/trace.h>
 
+#include <mock_trace.h>
+
+TRACE_IMPL()
+
 struct dma_copy;
 struct dma_sg_config;
 
@@ -42,45 +46,6 @@ int rstrlen(const char *s)
 	(void)s;
 
 	return 0;
-}
-
-void _trace_event0(uint32_t log_entry)
-{
-	(void)log_entry;
-}
-
-void _trace_event1(uint32_t log_entry, uint32_t param)
-{
-	(void)log_entry;
-	(void)param;
-}
-
-void _trace_event_mbox_atomic0(uint32_t log_entry)
-{
-	(void)log_entry;
-}
-
-void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
-{
-	(void)log_entry;
-	(void)param;
-}
-
-void _trace_event_mbox_atomic2(uint32_t log_entry, uint32_t param1,
-			       uint32_t param2)
-{
-	(void)log_entry;
-	(void)param1;
-	(void)param2;
-}
-
-void _trace_event_mbox_atomic3(uint32_t log_entry, uint32_t param1,
-			       uint32_t param2, uint32_t param3)
-{
-	(void)log_entry;
-	(void)param1;
-	(void)param2;
-	(void)param3;
 }
 
 void trace_flush(void)

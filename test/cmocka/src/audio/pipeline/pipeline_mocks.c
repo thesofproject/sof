@@ -30,6 +30,10 @@
 
 #include "pipeline_mocks.h"
 
+#include <mock_trace.h>
+
+TRACE_IMPL()
+
 struct ipc *_ipc;
 
 void platform_dai_timestamp(struct comp_dev *dai,
@@ -79,28 +83,6 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
 	return 0;
-}
-
-void _trace_event0(uint32_t log_entry)
-{
-	(void)log_entry;
-}
-
-void _trace_event1(uint32_t log_entry, uint32_t param)
-{
-	(void)log_entry;
-	(void)param;
-}
-
-void _trace_event_mbox_atomic0(uint32_t log_entry)
-{
-	(void)log_entry;
-}
-
-void _trace_event_mbox_atomic1(uint32_t log_entry, uint32_t param)
-{
-	(void)log_entry;
-	(void)param;
 }
 
 int arch_cpu_is_core_enabled(int id)

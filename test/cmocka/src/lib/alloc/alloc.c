@@ -37,6 +37,7 @@
 
 #include <sof/sof.h>
 #include <sof/alloc.h>
+#include <uapi/ipc/header.h>
 
 extern struct mm memmap;
 
