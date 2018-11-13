@@ -157,10 +157,7 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 	uint32_t data_offset, struct log_entry_header dma_log, uint64_t *last_timestamp)
 {
 	struct ldc_entry entry;
-	long int padding;
-
 	uint32_t entry_offset;
-	uint32_t text_len;
 
 	int ret;
 
@@ -307,7 +304,7 @@ int convert(struct convert_config *config) {
 		return -ferror(config->ldc_fd);
 	}
 
-	if (strncmp(snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
+	if (strncmp((char *) snd.sig, SND_SOF_LOGS_SIG, SND_SOF_LOGS_SIG_SIZE)) {
 		fprintf(stderr, "Error: Invalid ldc file signature. \n");
 		return -EINVAL;
 	}
@@ -315,7 +312,7 @@ int convert(struct convert_config *config) {
 	/* fw verification */
 	if (config->version_fd) {
 		struct sof_ipc_fw_version ver;
-		int i;
+
 		/* here fw verification should be exploited */
 		count = fread(&ver, sizeof(ver), 1, config->version_fd);
 		if (!count) {

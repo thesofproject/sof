@@ -115,7 +115,8 @@ static void show_trace(FILE *out_fd, uint64_t val, uint64_t addr,
 int convert(struct convert_config *config)
 {
 	int count, i;
-	char c, tmp[TRACE_BLOCK_SIZE] = { 0 };
+	char c;
+	uint64_t tmp[TRACE_BLOCK_SIZE / sizeof(uint64_t)] = { 0 };
 	uint64_t addr = 0, val, timestamp = 0;
 
 	fprintf(stdout, "using %2.2fMHz timestamp clock\n", config->clock);
@@ -125,12 +126,12 @@ int convert(struct convert_config *config)
 		if (count != TRACE_BLOCK_SIZE)
 			break;
 
-		val = *((uint64_t*)tmp);
-
+		val = *tmp;
 		for (i = 0; i < TRACE_BLOCK_SIZE / 2; i++) {
-			c = tmp[i];
-			tmp[i] = tmp[TRACE_BLOCK_SIZE - i - 1];
-			tmp[TRACE_BLOCK_SIZE - i - 1] = c;
+			c = ((char *) tmp)[i];
+			((char *)tmp)[i] =
+				((char *) tmp)[TRACE_BLOCK_SIZE - i - 1];
+			((char *)tmp)[TRACE_BLOCK_SIZE - i - 1] = c;
 		}
 
 		show_trace(config->out_fd, val, addr, &timestamp, config->clock);
