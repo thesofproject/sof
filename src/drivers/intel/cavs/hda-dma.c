@@ -255,7 +255,7 @@ static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	uint32_t flags;
 	uint32_t dgcs = 0;
 
-	tracev_hddma("hda-dmac: %d channel %d copy 0x%x bytes",
+	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
 		     dma->plat_data.id, chan->index, bytes);
 
 	/* clear link xruns */
@@ -299,7 +299,7 @@ static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	return 0;
 }
 
-static void hda_dma_init(struct dma *dma, int channel)
+static void hda_dma_enable(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
@@ -312,7 +312,8 @@ static void hda_dma_init(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_hddma("dmac %d channel %d init", dma->plat_data.id, channel);
+	trace_hddma("hda-dmac: %d channel %d -> enable", dma->plat_data.id,
+		    channel);
 
 	/* enable the channel */
 	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
@@ -338,7 +339,7 @@ static uint64_t hda_dma_work(void *data, uint64_t delay)
 	struct hda_chan_data *chan = (struct hda_chan_data *)data;
 
 	if (chan->state & HDA_STATE_INIT)
-		hda_dma_init(chan->dma, chan->index);
+		hda_dma_enable(chan->dma, chan->index);
 	else
 		hda_dma_copy_ch(chan->dma, chan, chan->period_bytes);
 
@@ -385,7 +386,8 @@ static int hda_dma_channel_get(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_hddma("hda-dmac: %d channel %d get", dma->plat_data.id, channel);
+	trace_hddma("hda-dmac: %d channel %d -> get", dma->plat_data.id,
+		    channel);
 
 	/* use channel if it's free */
 	if (p->chan[channel].status == COMP_STATE_INIT) {
@@ -479,7 +481,7 @@ static int hda_dma_start(struct dma *dma, int channel)
 		work_schedule_default(&p->chan[channel].dma_ch_work,
 				      HDA_LINK_1MS_US);
 	} else {
-		hda_dma_init(dma, channel);
+		hda_dma_enable(dma, channel);
 	}
 
 out:
@@ -548,7 +550,8 @@ static int hda_dma_stop(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_hddma("hda-dmac: %d channel %d -> stop", dma->plat_data.id, channel);
+	trace_hddma("hda-dmac: %d channel %d -> stop", dma->plat_data.id,
+		    channel);
 
 	if (p->chan[channel].dma_ch_work.cb)
 		work_cancel_default(&p->chan[channel].dma_ch_work);
@@ -604,7 +607,8 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_hddma("hda-dmac: %d channel %d config", dma->plat_data.id, channel);
+	trace_hddma("hda-dmac: %d channel %d -> config", dma->plat_data.id,
+		    channel);
 
 	if (!config->elem_array.count) {
 		trace_hddma_error("hda-dmac: %d channel %d no DMA descriptors",
@@ -738,8 +742,7 @@ static int hda_dma_probe(struct dma *dma)
 	int i;
 	struct hda_chan_data *chan;
 
-	trace_event(TRACE_CLASS_DMA, "dmac :%d probe",
-		    (uintptr_t)dma, dma->plat_data.id);
+	trace_hddma("hda-dmac :%d -> probe", dma->plat_data.id);
 
 	if (dma_get_drvdata(dma))
 		return -EEXIST; /* already created */
@@ -748,7 +751,8 @@ static int hda_dma_probe(struct dma *dma)
 	hda_pdata = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
 			    SOF_MEM_CAPS_RAM, sizeof(*hda_pdata));
 	if (!hda_pdata) {
-		trace_error(TRACE_CLASS_DMA, "alloc failed");
+		trace_hddma_error("hda-dmac: %d alloc failed",
+				  dma->plat_data.id);
 		return -ENOMEM;
 	}
 	dma_set_drvdata(dma, hda_pdata);
@@ -770,6 +774,8 @@ static int hda_dma_probe(struct dma *dma)
 
 static int hda_dma_remove(struct dma *dma)
 {
+	trace_hddma("hda-dmac :%d -> remove", dma->plat_data.id);
+
 	rfree(dma_get_drvdata(dma));
 	dma_set_drvdata(dma, NULL);
 	return 0;
