@@ -92,6 +92,7 @@
 #define HDA_STATE_PRELOAD	BIT(0)
 #define HDA_STATE_BF_WAIT	BIT(1)
 #define HDA_STATE_INIT		BIT(2)
+#define HDA_STATE_RELEASE	BIT(3)
 
 struct hda_chan_data {
 	struct dma *dma;
@@ -281,7 +282,7 @@ static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 		hda_dma_inc_fp(dma, chan->index, bytes);
 
 	spin_lock_irq(&dma->lock, flags);
-	if (chan->cb) {
+	if (chan->cb && !(chan->state & HDA_STATE_RELEASE)) {
 		next.src = DMA_RELOAD_LLI;
 		next.dest = DMA_RELOAD_LLI;
 		next.size = DMA_RELOAD_LLI;
@@ -322,14 +323,15 @@ static void hda_dma_enable(struct dma *dma, int channel)
 	/* full buffer is copied at startup */
 	p->chan[channel].desc_avail = p->chan[channel].desc_count;
 
-	p->chan[channel].state &= ~HDA_STATE_INIT;
-
 	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	/* start link output transfer now */
-	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV)
+	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV &&
+	    !(p->chan[channel].state & HDA_STATE_RELEASE))
 		hda_dma_inc_link_fp(dma, channel,
 				    p->chan[channel].buffer_bytes);
+
+	p->chan[channel].state &= ~(HDA_STATE_INIT | HDA_STATE_RELEASE);
 
 	spin_unlock_irq(&dma->lock, flags);
 }
@@ -337,6 +339,12 @@ static void hda_dma_enable(struct dma *dma, int channel)
 static uint64_t hda_dma_work(void *data, uint64_t delay)
 {
 	struct hda_chan_data *chan = (struct hda_chan_data *)data;
+
+	/* align pointers on release */
+	if (chan->state & HDA_STATE_RELEASE) {
+		hda_dma_inc_link_fp(chan->dma, chan->index,
+				    chan->period_bytes);
+	}
 
 	if (chan->state & HDA_STATE_INIT)
 		hda_dma_enable(chan->dma, chan->index);
@@ -491,9 +499,8 @@ out:
 
 static int hda_dma_release(struct dma *dma, int channel)
 {
-	/* Implementation left for future alignment
-	 *of dma pointers (if needed)
-	 */
+	struct dma_pdata *p = dma_get_drvdata(dma);
+
 	uint32_t flags;
 
 	if (channel >= HDA_DMA_MAX_CHANS) {
@@ -506,6 +513,12 @@ static int hda_dma_release(struct dma *dma, int channel)
 
 	trace_hddma("hda-dmac: %d channel %d -> release", dma->plat_data.id,
 		    channel);
+
+	/*
+	 * Prepare for the handling of release condition on the first work cb.
+	 * This flag will be unset afterwards.
+	 */
+	p->chan[channel].state |= HDA_STATE_RELEASE;
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
@@ -559,6 +572,7 @@ static int hda_dma_stop(struct dma *dma, int channel)
 	/* disable the channel */
 	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
 	p->chan[channel].status = COMP_STATE_PREPARE;
+	p->chan[channel].state = 0;
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
