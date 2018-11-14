@@ -50,14 +50,9 @@
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-//<<<<<<< HEAD
 #include <uapi/ipc/header.h>
-
-//=======
-//#include <uapi/ipc.h>
-//#include <sof/intel-ipc.h>
 #include <platform/pm_runtime.h>
-//>>>>>>> Added SRAM power gating on D3 entry for cAVS 1.8 (i.e. Cannonlake).
+
 extern struct ipc *_ipc;
 
 /* test code to check working IRQ */
@@ -67,14 +62,13 @@ static void irq_handler(void *arg)
 	uint32_t dipcida;
 	uint32_t msg = 0;
 
-	tracev_ipc("IRQ");
-
 	dipctdr = ipc_read(IPC_DIPCTDR);
 	dipcida = ipc_read(IPC_DIPCIDA);
 
+	tracev_ipc("ipc: irq dipctdr 0x%x dipcida 0x%x", dipctdr, dipcida);
+
 	/* new message from host */
 	if (dipctdr & IPC_DIPCTDR_BUSY) {
-		tracev_ipc("Nms");
 
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCTBIE);
@@ -84,7 +78,10 @@ static void irq_handler(void *arg)
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
-			trace_ipc_error("Pen");
+			trace_ipc_error("ipc: dropping msg 0x%x", msg);
+			trace_ipc_error(" dipctdr 0x%x dipcida 0x%x dipcctl 0x%x",
+					dipctdr, dipcida,
+					ipc_read(IPC_DIPCCTL));
 		} else {
 			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
@@ -94,7 +91,7 @@ static void irq_handler(void *arg)
 
 	/* reply message(done) from host */
 	if (dipcida & IPC_DIPCIDA_DONE) {
-		tracev_ipc("Rpy");
+
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
@@ -113,7 +110,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	struct sof_ipc_reply reply;
 	int32_t err;
 
-	trace_ipc("Cmd");
+	trace_ipc("ipc: msg rx -> 0x%x", ipc->host_msg);
 
 	/* perform command and return any error */
 	err = ipc_cmd();
@@ -154,8 +151,6 @@ done:
 		wait_for_interrupt(0);
 #endif
 	}
-
-	tracev_ipc("CmD");
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
@@ -181,7 +176,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	ipc->shared_ctx->dsp_msg = msg;
-	tracev_ipc("Msg");
+	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
 	ipc_write(IPC_DIPCIDD, 0);

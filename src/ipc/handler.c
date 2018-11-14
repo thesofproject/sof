@@ -85,8 +85,7 @@ static inline struct sof_ipc_hdr *mailbox_validate(void)
 
 	/* validate component header */
 	if (hdr->size > SOF_IPC_MSG_MAX_SIZE) {
-		trace_ipc_error("mailbox_validate() error: Invalid size of "
-				"component header.");
+		trace_ipc_error("ipc: msg too big at 0x%x", hdr->size);
 		return NULL;
 	}
 
@@ -184,28 +183,25 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct comp_dev *cd;
 	int err, posn_offset;
 
-	trace_ipc("ipc_stream_pcm_params()");
+	trace_ipc("ipc: comp %d -> params", pcm_params->comp_id);
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(pcm_params)) {
-		trace_ipc_error("ipc_stream_pcm_params() error: Invalid size of"
-				"IPC pcm params.");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*pcm_params), pcm_params->hdr.size);
 		return -EINVAL;
 	}
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, pcm_params->comp_id);
 	if (pcm_dev == NULL) {
-		trace_ipc_error("ipc_stream_pcm_params() error: Requested "
-				"pcm_dev ID = %u not found.",
-				pcm_params->comp_id);
+		trace_ipc_error("ipc: comp %d not found", pcm_params->comp_id);
 		return -ENODEV;
 	}
 
 	/* sanity check comp */
 	if (pcm_dev->cd->pipeline == NULL) {
-		trace_ipc_error("ipc_stream_pcm_params() error: Requested "
-				"pcm_dev ID = %u has no pipeline associated.",
+		trace_ipc_error("ipc: comp %d pipeline not found",
 				pcm_params->comp_id);
 		return -EINVAL;
 	}
@@ -228,9 +224,8 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
 				       &pcm_params->params.buffer);
 	if (err < 0) {
-		trace_ipc_error("ipc_stream_pcm_params() error: "
-				"ipc_get_page_descriptors() failed with err = "
-				"%d", err);
+		trace_ipc_error("ipc: comp %d get descriptors failed %d",
+				pcm_params->comp_id, err);
 		goto error;
 	}
 
@@ -242,16 +237,15 @@ static int ipc_stream_pcm_params(uint32_t stream)
 					 &pcm_params->params.buffer,
 					 &elem_array, host->direction);
 	if (err < 0) {
-		trace_ipc_error("ipc_stream_pcm_params() error: "
-				"ipc_parse_page_descriptors() failed with err ="
-				" %d", err);
+		trace_ipc_error("ipc: comp %d parse descriptors failed %d",
+				pcm_params->comp_id, err);
 		goto error;
 	}
 
 	err = comp_host_buffer(cd, &elem_array, ring_size);
 	if (err < 0) {
-		trace_ipc_error("ipc_stream_pcm_params() error: "
-				"comp_host_buffer() failed with err = %d", err);
+		trace_ipc_error("ipc: comp %d host buffer failed %d",
+				pcm_params->comp_id, err);
 		goto error;
 	}
 
@@ -261,23 +255,26 @@ pipe_params:
 	/* configure pipeline audio params */
 	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, pcm_params);
 	if (err < 0) {
-		trace_ipc_error("ipc_stream_pcm_params() error: "
-				"pipeline_params() failed with err = %d", err);
+		trace_ipc_error("ipc: pipe %d comp %d params failed %d",
+				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+				pcm_params->comp_id, err);
 		goto error;
 	}
 
 	/* prepare pipeline audio params */
 	err = pipeline_prepare(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0) {
-		trace_ipc_error("ipc_stream_pcm_params() error: "
-				"pipeline_prepare() failed with err = %d", err);
+		trace_ipc_error("ipc: pipe %d comp %d prepare failed %d",
+				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+				pcm_params->comp_id, err);
 		goto error;
 	}
 
 	posn_offset = ipc_get_posn_offset(_ipc, pcm_dev->cd->pipeline);
 	if (posn_offset < 0) {
-		trace_ipc_error("ipc_stream_pcm_params() error: "
-				"ipc_get_posn_offset() failed.");
+		trace_ipc_error("ipc: pipe %d comp %d posn offset failed %d",
+				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+				pcm_params->comp_id, err);
 		goto error;
 	}
 	/* write component values to the outbox */
@@ -296,8 +293,9 @@ error:
 
 	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0)
-		trace_ipc_error("ipc_stream_pcm_params() error: "
-				"pipeline_reset() failed with err = %d", err);
+		trace_ipc_error("ipc: pipe %d comp %d reset failed %d",
+				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
+				pcm_params->comp_id, err);
 	return -EINVAL;
 }
 
@@ -307,27 +305,25 @@ static int ipc_stream_pcm_free(uint32_t header)
 	struct sof_ipc_stream *free_req = _ipc->comp_data;
 	struct ipc_comp_dev *pcm_dev;
 
-	trace_ipc("ipc_stream_pcm_free()");
+	trace_ipc("ipc: comp %d -> free", free_req->comp_id);
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(free_req)) {
-		trace_ipc_error("ipc_stream_pcm_free() error: Invalid size of "
-				"IPC.");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*free_req), free_req->hdr.size);
 		return -EINVAL;
 	}
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, free_req->comp_id);
 	if (pcm_dev == NULL) {
-		trace_ipc_error("ipc_stream_pcm_free() error: Requested pcm_dev"
-				" ID = %u not found.", free_req->comp_id);
+		trace_ipc_error("ipc: comp %d not found", free_req->comp_id);
 		return -ENODEV;
 	}
 
 	/* sanity check comp */
 	if (pcm_dev->cd->pipeline == NULL) {
-		trace_ipc_error("ipc_stream_pcm_free() error: Requested pcm_dev"
-				" ID = %u has no pipeline associated.",
+		trace_ipc_error("ipc: comp %d pipeline not found",
 				free_req->comp_id);
 		return -EINVAL;
 	}
@@ -343,22 +339,21 @@ static int ipc_stream_position(uint32_t header)
 	struct sof_ipc_stream_posn posn;
 	struct ipc_comp_dev *pcm_dev;
 
-	trace_ipc("ipc_stream_position()");
+	trace_ipc("ipc: comp %d -> position", stream->comp_id);
 
 	memset(&posn, 0, sizeof(posn));
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(stream)) {
-		trace_ipc_error("ipc_stream_position() error: Invalid size of "
-				"IPC");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*stream), stream->hdr.size);
 		return -EINVAL;
 	}
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
 	if (pcm_dev == NULL) {
-		trace_ipc_error("ipc_stream_position() error: Requested pcm_dev"
-				" ID = %u not found.", stream->comp_id);
+		trace_ipc_error("ipc: comp %d not found", stream->comp_id);
 		return -ENODEV;
 	}
 
@@ -382,7 +377,6 @@ static int ipc_stream_position(uint32_t header)
 int ipc_stream_send_position(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	tracev_ipc("Pos");
 	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_POSITION |
 		cdev->comp.id;
 	posn->rhdr.hdr.size = sizeof(*posn);
@@ -414,20 +408,19 @@ static int ipc_stream_trigger(uint32_t header)
 	uint32_t ipc_cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 	int ret;
 
-	trace_ipc("ipc_stream_trigger()");
+	trace_ipc("ipc: comp %d -> trigger cmd %d", stream->comp_id, ipc_cmd);
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(stream)) {
-		trace_ipc_error("ipc_stream_trigger() error: Invalid size of "
-				"IPC");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*stream), stream->hdr.size);
 		return -EINVAL;
 	}
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, stream->comp_id);
 	if (pcm_dev == NULL) {
-		trace_ipc_error("ipc_stream_trigger() error: Requested pcm_dev "
-				" ID = %u not found.", stream->comp_id);
+		trace_ipc_error("ipc: comp %d not found", stream->comp_id);
 		return -ENODEV;
 	}
 
@@ -452,9 +445,8 @@ static int ipc_stream_trigger(uint32_t header)
 	/* trigger the component */
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	if (ret < 0) {
-		trace_ipc_error("ipc_stream_trigger() error: pipeline_trigger()"
-				" failed with ret = %d, ipc_cmd = %u", ret,
-				ipc_cmd);
+		trace_ipc_error("ipc: comp %d trigger %d failed %d",
+				stream->comp_id, ipc_cmd, ret);
 	}
 
 	return ret;
@@ -479,8 +471,7 @@ static int ipc_glb_stream_message(uint32_t header)
 	case iCS(SOF_IPC_STREAM_POSITION):
 		return ipc_stream_position(header);
 	default:
-		trace_ipc_error("ipc_glb_stream_message() error: Invalid "
-				"command, cmd = %u", cmd);
+		trace_ipc_error("ipc: unknown stream cmd %u", cmd);
 		return -EINVAL;
 	}
 }
@@ -495,13 +486,13 @@ static int ipc_dai_config(uint32_t header)
 	struct dai *dai;
 	int ret;
 
-	trace_ipc("ipc_dai_config()");
+	trace_ipc("ipc: dai %d,%d -> config ", config->type,
+		  config->dai_index);
 
 	/* get DAI */
 	dai = dai_get(config->type, config->dai_index, 0 /* existing only */);
 	if (dai == NULL) {
-		trace_ipc_error("ipc_dai_config() error: Requested DAI not "
-				"found, type = %u, dai_index = %u",
+		trace_ipc_error("ipc: dai %d,%d not found",
 				config->type, config->dai_index);
 		return -ENODEV;
 	}
@@ -510,8 +501,8 @@ static int ipc_dai_config(uint32_t header)
 	ret = dai_set_config(dai, config);
 	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
-		trace_ipc_error("ipc_dai_config() error: dai_set_config() "
-				"failed with ret = %d", ret);
+		trace_ipc_error("ipc: dai %d,%d config failed %d",
+				config->type, config->dai_index, ret);
 		return ret;
 	}
 
@@ -529,8 +520,7 @@ static int ipc_glb_dai_message(uint32_t header)
 	case iCS(SOF_IPC_DAI_LOOPBACK):
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
 	default:
-		trace_ipc_error("ipc_glb_dai_message() error: Invalid command "
-				"header = %u", header);
+		trace_ipc_error("ipc: unknown DAI cmd %u", cmd);
 		return -EINVAL;
 	}
 }
@@ -543,7 +533,7 @@ static int ipc_pm_context_size(uint32_t header)
 {
 	struct sof_ipc_pm_ctx pm_ctx;
 
-	trace_ipc("ipc_pm_context_size()");
+	trace_ipc("ipc: pm -> size");
 
 	bzero(&pm_ctx, sizeof(pm_ctx));
 
@@ -559,7 +549,7 @@ static int ipc_pm_context_save(uint32_t header)
 	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 
-	trace_ipc("ipc_pm_context_save()");
+	trace_ipc("ipc: pm -> save");
 
 	/* TODO: check we are inactive - all streams are suspended */
 
@@ -595,7 +585,7 @@ static int ipc_pm_context_restore(uint32_t header)
 {
 	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
-	trace_ipc("ipc_pm_context_restore()");
+	trace_ipc("ipc: pm -> restore");
 
 	/* restore context placeholder */
 	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
@@ -608,7 +598,8 @@ static int ipc_pm_core_enable(uint32_t header)
 	struct sof_ipc_pm_core_config *pm_core_config = _ipc->comp_data;
 	int i = 0;
 
-	trace_ipc("ipc_pm_core_enable()");
+	trace_ipc("ipc: pm core mask 0x%x -> enable",
+		  pm_core_config->enable_mask);
 
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
 		if (i != PLATFORM_MASTER_CORE_ID) {
@@ -639,6 +630,7 @@ static int ipc_glb_pm_message(uint32_t header)
 	case iCS(SOF_IPC_PM_CLK_GET):
 	case iCS(SOF_IPC_PM_CLK_REQ):
 	default:
+		trace_ipc_error("ipc: unknown pm cmd %u", cmd);
 		return -EINVAL;
 	}
 }
@@ -656,12 +648,11 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
 	int err;
 
-	trace_ipc("ipc_dma_trace_config()");
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(params)) {
-		trace_ipc_error("ipc_dma_trace_config() error: Invalid size of "
-				"IPC");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*params), params->hdr.size);
 		return -EINVAL;
 	}
 
@@ -673,13 +664,9 @@ static int ipc_dma_trace_config(uint32_t header)
 	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
 				       &params->buffer);
 	if (err < 0) {
-		trace_ipc_error("ipc_dma_trace_config() error: "
-				"ipc_get_page_descriptors() failed with err = "
-				"%u", err);
+		trace_ipc_error("ipc: trace failed to get descriptors %u", err);
 		goto error;
 	}
-
-	trace_ipc("ipc_dma_trace_config() Page descriptors acquired.");
 
 	/* Parse host tables */
 	ring_size = params->buffer.size;
@@ -687,16 +674,14 @@ static int ipc_dma_trace_config(uint32_t header)
 	err = ipc_parse_page_descriptors(iipc->page_table, &params->buffer,
 					 &elem_array, SOF_IPC_STREAM_CAPTURE);
 	if (err < 0) {
-		trace_ipc_error("ipc_dma_trace_config() error: "
-				"ipc_parse_page_descriptors() failed with err ="
-				" %d", err);
+		trace_ipc_error("ipc: trace failed to parse descriptors %d",
+				err);
 		goto error;
 	}
 
 	err = dma_trace_host_buffer(_ipc->dmat, &elem_array, ring_size);
 	if (err < 0) {
-		trace_ipc_error("ipc_dma_trace_config() error: "
-				"dma_trace_host_buffer() failed with err = %d",
+		trace_ipc_error("ipc: trace failed to set host buffers %d",
 				err);
 		goto error;
 	}
@@ -708,12 +693,10 @@ static int ipc_dma_trace_config(uint32_t header)
 	/* host buffer size for DMA trace */
 	_ipc->dmat->host_size = params->buffer.size;
 #endif
-	trace_ipc("ipc_dma_trace_config() DMA trace configured.");
 
 	err = dma_trace_enable(_ipc->dmat);
 	if (err < 0) {
-		trace_ipc_error("ipc_dma_trace_config() error: "
-				"dma_trace_enable() failed with err = %d", err);
+		trace_ipc_error("ipc: failed to enable trace %d", err);
 		goto error;
 	}
 
@@ -746,14 +729,13 @@ static int ipc_glb_debug_message(uint32_t header)
 {
 	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
 
-	trace_ipc("ipc_glb_debug_message()");
+	trace_ipc("ipc: debug cmd 0x%x", cmd);
 
 	switch (cmd) {
 	case iCS(SOF_IPC_TRACE_DMA_PARAMS):
 		return ipc_dma_trace_config(header);
 	default:
-		trace_ipc_error("ipc_glb_debug_message() error: Unknown command"
-				", header = %u", header);
+		trace_ipc_error("ipc: unknown debug cmd %u", cmd);
 		return -EINVAL;
 	}
 }
@@ -771,6 +753,7 @@ static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
 	/* pipeline running on other core */
 	if (dev->pipeline->status == COMP_STATE_ACTIVE &&
 	    cpu_get_id() != core) {
+
 		/* check if requested core is enabled */
 		if (!cpu_is_core_enabled(core))
 			return -EINVAL;
@@ -794,21 +777,20 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	struct sof_ipc_ctrl_data *data = _ipc->comp_data;
 	int ret;
 
-	trace_ipc("ipc_comp_value()");
+	trace_ipc("ipc: comp %d -> cmd %d", data->comp_id, data->cmd);
 
 	/* get the component */
 	comp_dev = ipc_get_comp(_ipc, data->comp_id);
 	if (comp_dev == NULL){
-		trace_ipc_error("ipc_comp_value() error: Requested comp_dev ID "
-				"= %u not found.", data->comp_id);
+		trace_ipc_error("ipc: comp %d not found", data->comp_id);
 		return -ENODEV;
 	}
 	
 	/* get component values */
 	ret = ipc_comp_cmd(comp_dev->cd, cmd, data);
 	if (ret < 0) {
-		trace_ipc_error("ipc_comp_value() error: ipc_comp_cmd() failed,"
-				" cmd = %u", cmd);
+		trace_ipc_error("ipc: comp %d cmd %u failed 5d", data->comp_id,
+				data->cmd, ret);
 		return ret;
 	}
 
@@ -831,8 +813,7 @@ static int ipc_glb_comp_message(uint32_t header)
 	case iCS(SOF_IPC_COMP_GET_DATA):
 		return ipc_comp_value(header, COMP_CMD_GET_DATA);
 	default:
-		trace_ipc_error("ipc_glb_comp_message() error: Unknown command,"
-				"header = %u", header);
+		trace_ipc_error("ipc: unknown comp cmd %u", cmd);
 		return -EINVAL;
 	}
 }
@@ -843,13 +824,14 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 	struct sof_ipc_comp_reply reply;
 	int ret;
 
-	trace_ipc("ipc_glb_tplg_comp_new()");
+	trace_ipc("ipc: pipe %d comp %d -> new (type %d)", comp->pipeline_id,
+		  comp->id, comp->type);
 
 	/* register component */
 	ret = ipc_comp_new(_ipc, comp);
 	if (ret < 0) {
-		trace_ipc_error("ipc_glb_tplg_comp_new() error: ipc_comp_new() "
-				"failed.");
+		trace_ipc_error("ipc: pipe %d comp %d creation failed %d",
+				comp->pipeline_id, comp->id, ret);
 		return ret;
 	}
 
@@ -868,12 +850,15 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 	struct sof_ipc_comp_reply reply;
 	int ret;
 
-	trace_ipc("ipc_glb_tplg_buffer_new()");
+	trace_ipc("ipc: pipe %d buffer %d -> new (0x%x bytes)",
+		  ipc_buffer->comp.pipeline_id, ipc_buffer->comp.id,
+		  ipc_buffer->size);
 
 	ret = ipc_buffer_new(_ipc, ipc_buffer);
 	if (ret < 0) {
-		trace_ipc_error("ipc_glb_tplg_buffer_new() error: "
-				"ipc_buffer_new() failed.");
+		trace_ipc_error("ipc: pipe %d buffer %d creation failed %d",
+				ipc_buffer->comp.pipeline_id,
+				ipc_buffer->comp.id, ret);
 		return ret;
 	}
 
@@ -892,19 +877,19 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 	struct sof_ipc_comp_reply reply;
 	int ret;
 
-	trace_ipc("ipc_glb_tplg_pipe_new()");
+	trace_ipc("ipc: pipe %d -> new", ipc_pipeline->pipeline_id);
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(ipc_pipeline)) {
-		trace_ipc_error("ipc_glb_tplg_pipe_new() error: Invalid size of"
-				" IPC");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*ipc_pipeline), ipc_pipeline->hdr.size);
 		return -EINVAL;
 	}
 
 	ret = ipc_pipeline_new(_ipc, ipc_pipeline);
 	if (ret < 0) {
-		trace_ipc_error("ipc_glb_tplg_pipe_new() error: "
-				"ipc_pipeline_new() failed.");
+		trace_ipc_error("ipc: pipe %d creation failed %d",
+				ipc_pipeline->pipeline_id, ret);
 		return ret;
 	}
 
@@ -921,7 +906,7 @@ static int ipc_glb_tplg_pipe_complete(uint32_t header)
 {
 	struct sof_ipc_pipe_ready *ipc_pipeline = _ipc->comp_data;
 
-	trace_ipc("ipc_glb_tplg_pipe_complete()");
+	trace_ipc("ipc: pipe %d -> complete", ipc_pipeline->comp_id);
 
 	return ipc_pipeline_complete(_ipc, ipc_pipeline->comp_id);
 }
@@ -930,12 +915,13 @@ static int ipc_glb_tplg_comp_connect(uint32_t header)
 {
 	struct sof_ipc_pipe_comp_connect *connect = _ipc->comp_data;
 
-	trace_ipc("ipc_glb_tplg_comp_connect()");
+	trace_ipc("ipc: comp sink %d, source %d  -> connect",
+		  connect->sink_id, connect->source_id);
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(connect)) {
-		trace_ipc_error("ipc_glb_tplg_comp_connect() error: Invalid "
-				"size of IPC");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*connect), connect->hdr.size);
 		return -EINVAL;
 	}
 
@@ -948,12 +934,12 @@ static int ipc_glb_tplg_free(uint32_t header,
 	struct sof_ipc_free *ipc_free = _ipc->comp_data;
 	int ret;
 
-	trace_ipc("ipc_glb_tplg_free()");
+	trace_ipc("ipc: comp %d -> free", ipc_free->id);
 
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(ipc_free)) {
-		trace_ipc_error("ipc_glb_tplg_free() error: Invalid size of "
-				"IPC");
+		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
+				sizeof(*ipc_free), ipc_free->hdr.size);
 		return -EINVAL;
 	}
 
@@ -961,8 +947,8 @@ static int ipc_glb_tplg_free(uint32_t header,
 	ret = free_func(_ipc, ipc_free->id);
 
 	if (ret < 0) {
-		trace_ipc_error("ipc_glb_tplg_free() error: free_func() failed "
-				"with ret = %d", ret);
+		trace_ipc_error("ipc: comp %d free failed %d",
+				ipc_free->id, ret);
 	}
 
 	return ret;
@@ -990,8 +976,7 @@ static int ipc_glb_tplg_message(uint32_t header)
 	case iCS(SOF_IPC_TPLG_BUFFER_FREE):
 		return ipc_glb_tplg_free(header, ipc_buffer_free);
 	default:
-		trace_ipc_error("ipc_glb_tplg_message() error: Unknown command,"
-				"header = %u", header);
+		trace_ipc_error("ipc: unknown tplg header %u", header);
 		return -EINVAL;
 	}
 }
@@ -1007,7 +992,7 @@ int ipc_cmd(void)
 
 	hdr = mailbox_validate();
 	if (hdr == NULL) {
-		trace_ipc_error("ipc_cmd() error: Missing IPC header.");
+		trace_ipc_error("ipc: invalid IPC header.");
 		return -EINVAL;
 	}
 
@@ -1031,8 +1016,7 @@ int ipc_cmd(void)
 	case iGS(SOF_IPC_GLB_TRACE_MSG):
 		return ipc_glb_debug_message(hdr->cmd);
 	default:
-		trace_ipc_error("ipc_cmd() error: Unknown command, type = %u",
-				type);
+		trace_ipc_error("ipc: unknown command type %u", type);
 		return -EINVAL;
 	}
 }
@@ -1152,7 +1136,7 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 		msg = msg_get_empty(ipc);
 
 	if (msg == NULL) {
-		trace_ipc_error("ipc_queue_host_message() error: header 0x08x "
+		trace_ipc_error("ipc: msg hdr for 0x08x not found "
 				"replace %d", header, replace);
 		ret = -EBUSY;
 		goto out;

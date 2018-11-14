@@ -40,15 +40,12 @@
 #include <platform/pmc.h>
 #include <platform/shim.h>
 
-
-
 /* private data for IPC */
 struct intel_ipc_pmc_data {
 	uint32_t msg_l;
 	uint32_t msg_h;
 	uint32_t pending;
 };
-
 
 static struct intel_ipc_pmc_data *_pmc;
 
@@ -57,10 +54,8 @@ static void do_cmd(void)
 	uint32_t ipcsc;
 	uint32_t status = 0;
 	
-	trace_ipc("SCm");
-	trace_value(_pmc->msg_l);
+	trace_ipc("pmc: tx -> 0x%x", _pmc->msg_l);
 
-	//status = ipc_cmd();
 	_pmc->pending = 0;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
@@ -73,7 +68,6 @@ static void do_cmd(void)
 	shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) & ~SHIM_IMRLPESC_BUSY);
 }
 
-
 /* process current message */
 int pmc_process_msg_queue(void)
 {
@@ -84,7 +78,7 @@ int pmc_process_msg_queue(void)
 
 static void do_notify(void)
 {
-	trace_ipc("SNo");
+	trace_ipc("pmc: not rx");
 
 	/* clear DONE bit  */
 	shim_write(SHIM_IPCLPESCH, shim_read(SHIM_IPCLPESCH) & ~SHIM_IPCLPESCH_DONE);
@@ -97,10 +91,10 @@ static void irq_handler(void *arg)
 {
 	uint32_t isrlpesc;
 
-	trace_ipc("SIQ");
-
 	/* Interrupt arrived, check src */
 	isrlpesc = shim_read(SHIM_ISRLPESC);
+
+	tracev_ipc("pmc: irq isrlpesc 0x%x", isrlpesc);
 
 	if (isrlpesc & SHIM_ISRLPESC_DONE) {
 
@@ -128,13 +122,13 @@ int ipc_pmc_send_msg(uint32_t message)
 	uint32_t ipclpesch;
 	int ret;
 
-	trace_ipc("SMs");
+	tracev_ipc("pmc: msg tx -> 0x%x", message);
 
 	ipclpesch = shim_read(SHIM_IPCLPESCH);
 
 	/* we can only send new messages if the SC is not busy */
 	if (ipclpesch & SHIM_IPCLPESCH_BUSY) {
-		trace_ipc_error("ePb");
+		trace_ipc_error("pmc: busy 0x%x", ipclpesch);
 		return -EAGAIN;
 	}
 
@@ -149,7 +143,7 @@ int ipc_pmc_send_msg(uint32_t message)
 
 	/* did command succeed */
 	if (ret < 0) {
-		trace_ipc_error("ePf");
+		trace_ipc_error("pmc: command 0x%x failed", message);
 		return -EINVAL;
 	}
 
