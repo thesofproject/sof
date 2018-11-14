@@ -579,12 +579,6 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		eq_fir_free_parameters(&cd->config);
 
 		/* Copy new config, find size from header */
-		if (!cdata->data->data) {
-			trace_eq_error("fir_cmd_set_data() error: "
-				       "invalid cdata->data->data");
-			return -EINVAL;
-		}
-
 		cfg = (struct sof_eq_fir_config *)cdata->data->data;
 		bs = cfg->size;
 		trace_eq("fir_cmd_set_data(): blob size: %u", bs);
