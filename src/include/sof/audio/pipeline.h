@@ -107,10 +107,10 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 void buffer_free(struct comp_buffer *buffer);
 
 /* insert component in pipeline */
-int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
-	struct comp_buffer *sink_buffer);
-int pipeline_buffer_connect(struct pipeline *p,
-	struct comp_buffer *source_buffer, struct comp_dev *sink_comp);
+int pipeline_comp_connect(struct comp_dev *source_comp,
+			  struct comp_buffer *sink_buffer);
+int pipeline_buffer_connect(struct comp_buffer *source_buffer,
+			    struct comp_dev *sink_comp);
 int pipeline_complete(struct pipeline *p);
 
 /* pipeline parameters */
