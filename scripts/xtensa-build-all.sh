@@ -83,6 +83,7 @@ do
 	if [ $j == "byt" ]
 	then
 		PLATFORM="baytrail"
+		ARCH="xtensa"
 		XTENSA_CORE="Intel_HiFiEP"
 		ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
 		HOST="xtensa-byt-elf"
@@ -91,6 +92,7 @@ do
 	if [ $j == "cht" ]
 	then
 		PLATFORM="cherrytrail"
+		ARCH="xtensa"
 		XTENSA_CORE="CHT_audio_hifiep"
 		ROOT="$pwd/../xtensa-root/xtensa-byt-elf"
 		HOST="xtensa-byt-elf"
@@ -99,18 +101,21 @@ do
 	if [ $j == "bdw" ]
 	then
 		PLATFORM="broadwell"
+		ARCH="xtensa"
 		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 		HOST="xtensa-hsw-elf"
 	fi
 	if [ $j == "hsw" ]
 	then
 		PLATFORM="haswell"
+		ARCH="xtensa"
 		ROOT="$pwd/../xtensa-root/xtensa-hsw-elf"
 		HOST="xtensa-hsw-elf"
 	fi
 	if [ $j == "apl" ]
 	then
 		PLATFORM="apollolake"
+		ARCH="xtensa-smp"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 		# test APL compiler aliases and ignore set -e here
@@ -128,6 +133,7 @@ do
 	if [ $j == "skl" ]
 	then
 		PLATFORM="skylake"
+		ARCH="xtensa"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 		# test APL compiler aliases and ignore set -e here
@@ -145,6 +151,7 @@ do
 	if [ $j == "kbl" ]
 	then
 		PLATFORM="kabylake"
+		ARCH="xtensa"
 		XTENSA_CORE="X4H3I16w2D48w3a_2017_8"
 
 		# test APL compiler aliases and ignore set -e here
@@ -162,6 +169,7 @@ do
 	if [ $j == "cnl" ]
 	then
 		PLATFORM="cannonlake"
+		ARCH="xtensa-smp"
 		XTENSA_CORE="X6H3CNL_2016_4_linux"
 		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 		HOST="xtensa-cnl-elf"
@@ -170,6 +178,7 @@ do
 	if [ $j == "sue" ]
         then
                 PLATFORM="suecreek"
+		ARCH="xtensa"
                 XTENSA_CORE="X6H3CNL_2016_4_linux"
                 ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
                 HOST="xtensa-cnl-elf"
@@ -178,6 +187,7 @@ do
 	if [ $j == "icl" ]
 	then
 		PLATFORM="icelake"
+		ARCH="xtensa-smp"
 		XTENSA_CORE="X6H3CNL_2016_4_linux"
 		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 		HOST="xtensa-cnl-elf"
@@ -214,7 +224,7 @@ do
 	# only delete binary related to this build
 	rm -fr src/arch/xtensa/sof-$j.*
 
-	./configure --with-arch=xtensa --with-platform=$PLATFORM \
+	./configure --with-arch=$ARCH --with-platform=$PLATFORM \
 		--with-root-dir=$ROOT --host=$HOST --enable-debug=$BUILD_DEBUG \
 		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP \
 		--with-dsp-core=$XTENSA_CORE
