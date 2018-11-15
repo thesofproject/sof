@@ -28,6 +28,7 @@
 #define TRACE_MAX_TEXT_LEN		1024
 #define TRACE_MAX_FILENAME_LEN		128
 #define TRACE_MAX_IDS_STR		10
+#define TRACE_IDS_MASK			((1 << TRACE_ID_LENGTH) - 1)
 
 /* logs file signature */
 #define SND_SOF_LOGS_SIG_SIZE	4
@@ -117,7 +118,8 @@ static void print_entry_params(FILE *out_fd, struct log_entry_header dma_log,
 		dt = NAN;
 	
 	if (entry.header.has_ids)
-		sprintf(ids, "%d.%d", dma_log.id_0, dma_log.id_1);
+		sprintf(ids, "%d.%d", (dma_log.id_0 & TRACE_IDS_MASK),
+		        (dma_log.id_1 & TRACE_IDS_MASK));
 
 	fprintf(out_fd, "%s%5u %6u %12s %-7s %16.6f %16.6f %20s:%-4u\t",
 		entry.header.level == LOG_LEVEL_CRITICAL ? KRED : KNRM,
