@@ -59,18 +59,21 @@ static void irq_handler(void *arg)
 {
 	uint32_t dipct;
 	uint32_t dipcie;
+	uint32_t dipcctl;
 	uint32_t msg = 0;
 
 	dipct = ipc_read(IPC_DIPCT);
 	dipcie = ipc_read(IPC_DIPCIE);
+	dipcctl = ipc_read(IPC_DIPCCTL);
 
-	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x", dipct, dipcie);
+	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
+		   dipcie, dipcctl);
 
 	/* new message from host */
-	if (dipct & IPC_DIPCT_BUSY) {
+	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
 
 		/* mask Busy interrupt */
-		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCTBIE);
+		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
 
 		msg = dipct & IPC_DIPCT_MSG_MASK;
 
