@@ -204,6 +204,13 @@ do
 done
 
 # for CNL
+simple_test nocodec passthrough "NoCodec-0" s16le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+simple_test nocodec passthrough "NoCodec-2" s24le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec-0" s16le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec-0" s16le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec-0" s24le SSP 0 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+simple_test nocodec volume "NoCodec-0" s24le SSP 0 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
+
 simple_test nocodec passthrough "NoCodec-2" s16le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
 simple_test nocodec passthrough "NoCodec-2" s24le SSP 2 s24le 25 24 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
 simple_test nocodec volume "NoCodec-2" s16le SSP 2 s16le 25 16 2400000 24000000 I2S 0 SIMPLE_TESTS[@]
