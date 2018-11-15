@@ -7,7 +7,7 @@ services:
 
 before_install:
   - docker pull xiulipan/sof
-  - echo -e '#!/bin/bash \n./autogen.sh && ./configure && make' > quickbuild.sh
+  - echo -e '#!/bin/bash \n./autogen.sh && ./configure && make && make tests 1>/dev/null' > quickbuild.sh
   - chmod 755 quickbuild.sh
 
 script:
