@@ -1,5 +1,5 @@
 #
-# Topology for generic Apollolake board with no codec.
+# Topology for generic Apollolake board with no codec and digital mic array.
 #
 
 # Include topology builder
@@ -21,18 +21,12 @@ include(`platform/intel/dmic.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SSP0
-#      <---- volume <----- SSP0
-# PCM1 ----> Volume <----- SSP1
-#      <---- Volume <----- SSP1
-# PCM2 ----> volume -----> SSP2
-#      <---- Volume <----- SSP2
-# PCM3 ----> volume -----> SSP3
-#      <---- volume <----- SSP3
-# PCM4 ----> volume -----> SSP4
-#      <---- Volume <----- SSP4
-# PCM5 ----> volume -----> SSP5
-#      <---- volume <----- SSP5
+# PCM0 <---> volume <----> SSP0
+# PCM1 <---> Volume <----> SSP1
+# PCM2 <---> volume <----> SSP2
+# PCM3 <---> volume <----> SSP3
+# PCM4 <---> volume <----> SSP4
+# PCM5 <---> volume <----> SSP5
 # PCM6 <---- volume <----- DMIC6 (DMIC01)
 #
 
