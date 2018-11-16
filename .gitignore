@@ -20,3 +20,6 @@ rwav/rwav
 *.tplg
 topology/*.conf
 topology/test/*.conf
+eqctl/sof-eqctl
+rmbox/sof-logger
+rmbox/sof-rmbox
