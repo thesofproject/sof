@@ -58,12 +58,12 @@ static void do_notify(void)
 	uint32_t flags;
 	struct ipc_msg *msg;
 
-	tracev_ipc("Not");
-
 	spin_lock_irq(&_ipc->lock, flags);
 	msg = _ipc->shared_ctx->dsp_msg;
 	if (msg == NULL)
 		goto out;
+
+	trace_ipc("ipc: not rx -> 0x%x", msg->header);
 
 	/* copy the data returned from DSP */
 	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
@@ -88,11 +88,12 @@ out:
 static void irq_handler(void *arg)
 {
 	uint32_t isr;
-
-	tracev_ipc("IRQ");
+	uint32_t msg = 0;
 
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);
+
+	tracev_ipc("ipc: irq isr 0x%x", isr);
 
 	if (isr & SHIM_ISRD_DONE) {
 
@@ -108,12 +109,17 @@ static void irq_handler(void *arg)
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
+		msg = shim_read(SHIM_IPCXL);
+
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
-			trace_ipc_error("Pen");
+			trace_ipc_error("ipc: dropping msg 0x%x", msg);
+			trace_ipc_error(" isr 0x%x imrd 0x%x ipcxh 0x%x",
+					isr, shim_read(SHIM_IMRD),
+					shim_read(SHIM_IPCXH));
 		} else {
-			_ipc->host_msg = shim_read(SHIM_IPCXL);
+			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
 			ipc_schedule_process(_ipc);
 		}
@@ -127,7 +133,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	uint32_t ipcxh;
 	int32_t err;
 
-	tracev_ipc("Cmd");
+	trace_ipc("ipc: msg rx -> 0x%x", ipc->host_msg);
 
 	/* perform command and return any error */
 	err = ipc_cmd();
@@ -159,12 +165,9 @@ done:
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
 		while (1) {
-			trace_ipc("pme");
 			wait_for_interrupt(0);
 		}
 	}
-
-	tracev_ipc("CmD");
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
@@ -190,7 +193,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	mailbox_dspbox_write(0, msg->tx_data, msg->tx_size);
 	list_item_del(&msg->list);
 	ipc->shared_ctx->dsp_msg = msg;
-	tracev_ipc("Msg");
+	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
 	shim_write(SHIM_IPCDL, msg->header);
