@@ -21,7 +21,8 @@ libplatform_la_CCASFLAGS = \
 	$(ARCH_INCDIR) \
 	$(ASFLAGS) \
 	$(ARCH_ASFLAGS) \
-	$(PLATFORM_INCDIR)
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)
 
 noinst_PROGRAMS = module boot_module
 

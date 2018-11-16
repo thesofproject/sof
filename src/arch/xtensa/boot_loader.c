@@ -134,7 +134,12 @@ static int32_t hp_sram_init(void)
 	int delay_count = 256;
 	uint32_t status;
 
+#if defined(CONFIG_CANNONLAKE)
+	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_ON);
+#else
+	//TODO: clean up sequence same as for CANNONLAKE
 	shim_write(SHIM_LDOCTL, SHIM_HPMEM_POWER_ON);
+#endif
 
 	/* add some delay before touch power register */
 	idelay(delay_count);
@@ -164,7 +169,13 @@ static int32_t hp_sram_init(void)
 
 	/* add some delay before touch power register */
 	idelay(delay_count);
+
+#if defined(CONFIG_CANNONLAKE)
+	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_BYPASS);
+#else
+	//TODO: clean up sequence same as for CANNONLAKE
 	shim_write(SHIM_LDOCTL, SHIM_LPMEM_POWER_BYPASS);
+#endif
 
 	return 0;
 }
