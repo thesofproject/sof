@@ -20,16 +20,12 @@ include(`platform/intel/bxt.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SSP4
-# PCM1 ----> volume -----> SSP2(Dirana Pb)
-#      <---- Volume <----- SSP2(Dirana Cp)
-# PCM2 ----> volume -----> SSP0(BT HFP out)
-#      <---- volume <----- SSP0(BT HFP in)
-# PCM3 <---- Volume <----- SSP1(HDMI in)
-# PCM4 ----> volume -----> SSP3(Modem out)
-#      <---- volume <----- SSP3(Modem in)
-# PCM5 ----> volume -----> SSP5(TestPin out)
-#      <---- volume <----- SSP3(TestPin in)
+# PCM0 -----> Volume -----> SSP4
+# PCM1 <----> Volume <----> SSP2(Dirana Pb/Cp)
+# PCM2 <----> Volume <----> SSP0(BT HFP out/in)
+# PCM3 <----- Volume <----- SSP1(HDMI in)
+# PCM4 <----> Volume <----> SSP3(Modem out/in)
+# PCM5 <----> Volume <----> SSP5(TestPin out/in)
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 4 channels of s32le.
