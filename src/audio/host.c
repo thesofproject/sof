@@ -284,9 +284,9 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_STOP:
 		ret = host_stop(dev);
-		/* host stop fails, let's return the errno */
+		/* host stop fails, let's emit the error log */
 		if (ret)
-			goto out;
+			trace_host_error("host: stop failed %d", ret);
 		/* fall through */
 	case COMP_TRIGGER_XRUN:
 /* TODO: add attribute to dma interface and do run-time if() here */
