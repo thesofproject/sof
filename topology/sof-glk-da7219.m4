@@ -1,5 +1,5 @@
 #
-# Topology for AppoloLake with headset on SSP2, spk on SSP1 and DMIC capture
+# Topology for GeminiLake with Dialog7219.
 #
 
 # Include topology builder
@@ -24,7 +24,7 @@ include(`platform/intel/dmic.m4')
 #
 # PCM0  ----> volume (pipe 1)   -----> SSP1 (speaker - maxim98357a, BE link 0)
 # PCM1  <---> volume (pipe 2,3) <----> SSP2 (headset - da7219, BE link 1)
-# PCM99 <---- volume (pipe 4)   <----- DMIC0 (dmic capture, BE link 2)
+# PCM99 <---- DMIC0 (dmic capture, BE link 2)
 # PCM5  ----> volume (pipe 5)   -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM6  ----> Volume (pipe 6)   -----> iDisp2 (HDMI/DP playback, BE link 4)
 # PCM7  ----> volume (pipe 7)   -----> iDisp3 (HDMI/DP playback, BE link 5)
