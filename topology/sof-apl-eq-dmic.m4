@@ -20,7 +20,7 @@ include(`platform/intel/dmic.m4')
 #
 # Define the pipelines
 #
-# PCM6 <---- volume <----- DMIC6 (DMIC01)
+# PCM6 <---- EQ IIR <----- DMIC6 (DMIC01)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
