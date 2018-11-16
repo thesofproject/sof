@@ -1,5 +1,5 @@
 #
-# Topology for generic Haswell board with no codec.
+# Topology for generic Haswell board with RT5640.
 #
 
 # Include topology builder
@@ -21,12 +21,12 @@ include(`platform/intel/hsw.m4')
 # Define the pipelines
 #
 # PCM0 ----> volume ---------------+
-#                                  |--low latency mixer ----> volume ---->  SSP2
-# PCM2 ----> SRC -----> volume ----+
+#                                  |--low latency mixer ----> volume ---->  SSP0
+# PCM1 -----> volume ----> SRC ----+
 #                                  |
 #           Tone -----> volume ----+
 #
-# PCM1 <---- Volume <---- SSP0
+# PCM0 <---- Volume <---- SSP0
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
