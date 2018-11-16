@@ -375,13 +375,13 @@ static int dtrace_calc_buf_overflow(struct dma_trace_buf *buffer,
 	uint32_t overflow_margin;
 	uint32_t overflow = 0;
 
-	margin = buffer->end_addr - buffer->w_ptr;
+	margin = dtrace_calc_buf_margin(buffer);
 
 	/* overflow calculating */
 	if (buffer->w_ptr < buffer->r_ptr)
-		overflow_margin = buffer->r_ptr - buffer->w_ptr;
+		overflow_margin = buffer->r_ptr - buffer->w_ptr - 1;
 	else
-		overflow_margin = margin + buffer->r_ptr - buffer->addr;
+		overflow_margin = margin + buffer->r_ptr - buffer->addr - 1;
 
 	if (overflow_margin < length)
 		overflow = length - overflow_margin;
