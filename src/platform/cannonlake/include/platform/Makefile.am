@@ -12,4 +12,5 @@ noinst_HEADERS = \
 	shim.h \
 	timer.h \
 	asm_memory_management.h \
+	asm_ldo_management.h \
 	power_down.h

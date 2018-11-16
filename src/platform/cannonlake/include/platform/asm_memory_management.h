@@ -60,7 +60,6 @@
  * L1 SRAM)
  */
 .macro m_cavs_hpsram_power_down_entire ax, ay, az
-	//TODO: add LDO control
 	// SEGMENT #0
 	movi \az, SHIM_HSPGCTL(0)
 	movi \ax, SHIM_HSPGISTS(0)
@@ -80,11 +79,9 @@
 1 :
 	l32i \ax, \az, 0
 	bne \ax, \ay, 1b
-	// TODO: Add LDO control
 .endm
 
 .macro m_cavs_hpsram_power_change segment_index, mask, ax, ay, az
-	// TODO: Add LDO Control
 	movi \ax, SHIM_HSPGCTL(\segment_index)
 	movi \ay, SHIM_HSPGISTS(\segment_index)
 	s32i \mask, \ax, 0
@@ -93,7 +90,6 @@
 1 :
 	l32i \ax, \ay, 0
 	bne \ax, \mask, 1b
-	// TODO: Add LDO Control
 .endm
 
 .macro m_cavs_lpsram_power_down_entire ax, ay, az

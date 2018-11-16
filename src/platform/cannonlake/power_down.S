@@ -33,7 +33,9 @@
  * \brief Power gating memory banks - implementation specific for Apollolake
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
+#include <platform/shim.h>
 #include <platform/asm_memory_management.h>
+#include <platform/asm_ldo_management.h>
 
 	.section .text, "ax"
 	.align 64
@@ -96,6 +98,18 @@ _PD_DISABLE_HPSRAM:
 	 (hpsram_pwrgating_mask) - do not disable hpsram. */
 beqz pu32_hpsram_mask, _PD_SLEEP
 
+/* mandatory sequence for LDO ON - effectively executes:
+ * m_cavs_s_set_ldo_hpsram_on_state();
+ * WAIT_300NS();
+ */
+	movi temp_reg0, SHIM_LDOCTL_HPSRAM_LDO_ON
+	m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
+	movi temp_reg0, 128
+1 :
+	addi temp_reg0, temp_reg0, -1
+	bnez temp_reg0, 1b
+
+
 /* effectively executes:
  * for (size_t seg_index = (MAX_MEMORY_SEGMENTS - 1); seg_index >= 0;
  * --seg_index) {
@@ -117,7 +131,18 @@ beqz pu32_hpsram_mask, _PD_SLEEP
 	.endr
 
 
-//TODO: add LDO Control
+/* mandatory sequence for LDO OFF - effectively executes:
+ * WAIT_300NS();
+ * m_cavs_set_ldo_hpsram_on_state()
+ */
+	movi temp_reg0, 128
+1 :
+	addi temp_reg0, temp_reg0, -1
+	bnez temp_reg0, 1b
+
+	movi temp_reg0, SHIM_LDOCTL_HPSRAM_LDO_OFF
+	m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
+
 //TODO: add sending IPC reply from L1$ locked code
 
 _PD_SLEEP:
@@ -130,10 +155,11 @@ loop:
 	addi temp_reg0, temp_reg0, -1
 	bnez temp_reg0, loop
 
-	extw
-	extw
-	waiti 5
-	j _PD_SLEEP
+    extw
+    extw
+    waiti 5
+    1:
+    j 1b
 
 .size power_down , . - power_down
 
