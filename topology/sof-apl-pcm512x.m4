@@ -1,5 +1,5 @@
 #
-# Topology for generic Apollolake UP^2 with pcm512x codec.
+# Topology for generic Apollolake UP^2 with pcm512x codec and HDMI.
 #
 
 # Include topology builder
@@ -24,6 +24,9 @@ DEBUG_START
 # Define the pipelines
 #
 # PCM0 ----> volume -----> SSP5 (pcm512x)
+# PCM1 ----> volume -----> iDisp1
+# PCM2 ----> volume -----> iDisp2
+# PCM3 ----> volume -----> iDisp3
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
