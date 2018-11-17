@@ -3,6 +3,8 @@
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl)
 BUILD_RIMAGE=0
 BUILD_DEBUG=no
+BUILD_JOBS=1
+BUILD_JOBS_NEXT=0
 
 pwd=`pwd`
 
@@ -12,6 +14,7 @@ then
 	echo "       [-l] Build rimage locally"
 	echo "       [-a] Build all platforms"
 	echo "       [-d] Enable debug build"
+	echo "       [-j [n]] Set number of make build jobs. Infinite jobs with no arg."
 	echo "       Supported platforms ${SUPPORTED_PLATFORMS[@]}"
 else
 	# parse the args
@@ -28,18 +31,32 @@ else
 			then
 			BUILD_DEBUG=yes
 
+		elif [[ "$args" == "-j" ]]
+			then
+			BUILD_JOBS_NEXT=1
+			BUILD_JOBS=""
+
 		# Build all platforms
 		elif [[ "$args" == "-a" ]]
 			then
 			PLATFORMS=${SUPPORTED_PLATFORMS[@]}
 		else
+			# check for plaform
 			for i in ${SUPPORTED_PLATFORMS[@]}
 			do
 				if [ $i == $args ]
 				then
 					PLATFORMS+=$i" "
+					BUILD_JOBS_NEXT=0
 				fi
 			done
+
+			# check for jobs
+			if [ ${BUILD_JOBS_NEXT} == 1 ]
+				then
+				BUILD_JOBS=$args
+				BUILD_JOBS_NEXT=0
+			fi
 		fi
 	done
 fi
@@ -63,13 +80,13 @@ then
 	if [[ "x$BUILD_LOCAL" == "x" ]]
 	then
 		./configure --enable-rimage
-		make
+		make -j ${BUILD_JOBS}
 		sudo make install
 	else
 		echo "BUILD in local folder!"
 		rm -rf $pwd/local/
 		./configure --enable-rimage --prefix=$pwd/local
-		make
+		make -j ${BUILD_JOBS}
 		make install
 		PATH=$pwd/local/bin:$PATH
 	fi
@@ -230,7 +247,7 @@ do
 		--with-dsp-core=$XTENSA_CORE
 
 	make clean
-	make
+	make -j ${BUILD_JOBS}
 	make bin
 done
 
