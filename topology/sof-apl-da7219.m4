@@ -1,5 +1,5 @@
 #
-# Topology for AppoloLake with headset on SSP1, spk on SSP5 and DMIC capture
+# Topology for ApolloLake with Dialog7219 codec.
 #
 
 # Include topology builder

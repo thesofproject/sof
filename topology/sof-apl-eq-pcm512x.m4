@@ -1,5 +1,5 @@
 #
-# Topology for generic Apollolake UP^2 with pcm512x codec.
+# Topology for generic Apollolake UP^2 with pcm512x codec with equalizer components.
 #
 
 # Include topology builder
@@ -20,7 +20,7 @@ include(`platform/intel/bxt.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> SSP5 (pcm512x)
+# PCM0 ----> EQ IIR ----> EQ FIR ----> volume ----> SSP5 (pcm512x)
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.

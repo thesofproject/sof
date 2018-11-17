@@ -20,9 +20,7 @@ include(`platform/intel/icl.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> Volume ----> SSP0
-#
-# PCM1 <---- Volume <---- SSP0
+# PCM0 <---> Volume <---> SSP0 (NoCodec)
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.

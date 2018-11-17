@@ -1,8 +1,8 @@
-# Capture Passthrough Pipeline and PCM
+# Capture EQ Pipeline and PCM
 #
 # Pipeline Endpoints for connection are :-
 #
-#  host PCM_C <-- B0 <-- sink DAI0
+#  host PCM_C <--- B1 <--- EQ_IIR 0 <-- B0 <-- sink DAI0
 
 # Include topology builder
 include(`utils.m4')

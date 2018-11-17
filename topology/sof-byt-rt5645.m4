@@ -1,5 +1,5 @@
 #
-# Topology for generic Baytrail board with no codec.
+# Topology for generic Baytrail board with RT5645.
 #
 
 # Include topology builder
@@ -22,11 +22,11 @@ include(`platform/intel/byt.m4')
 #
 # PCM0 ----> volume ---------------+
 #                                  |--low latency mixer ----> volume ---->  SSP2
-# PCM2 ----> SRC -----> volume ----+
+# PCM1 -----> volume ----> SRC ----+
 #                                  |
 #           Tone -----> volume ----+
 #
-# PCM1 <---- Volume <---- SSP2
+# PCM0 <---- Volume <---- SSP2
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.

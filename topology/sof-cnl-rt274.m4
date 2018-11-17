@@ -20,9 +20,8 @@ include(`platform/intel/cnl.m4')
 #
 # Define the pipelines
 #
-# PCM0 ----> volume -----> volume ---->  SSP0
+# PCM0 <---> volume <--->  SSP0
 #
-# PCM1 <---- Volume <---- SSP0
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
