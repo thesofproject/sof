@@ -62,6 +62,14 @@ struct ldc_entry {
 	uint32_t *params;
 };
 
+static double to_usecs(uint64_t time, double clk)
+{
+	/* trace timestamp uses CPU system clock at default 25MHz ticks */
+	// TODO: support variable clock rates
+	return (double)time / clk;
+}
+
+
 static inline void print_table_header(FILE *out_fd)
 {
 	fprintf(out_fd, "%5s %6s %12s %7s %16s %16s %24s\t%s\n",

@@ -18,8 +18,6 @@
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
 
-double to_usecs(uint64_t time, double clk);
-
 struct convert_config {
 	const char *out_file;
 	const char *in_file;
@@ -27,14 +25,12 @@ struct convert_config {
 	FILE *in_fd;
 	double clock;
 	int trace;
-#ifdef LOGGER_FORMAT
 	const char *ldc_file;
 	FILE* ldc_fd;
 	int input_std;
 	int version_fw;
 	char *version_file;
 	FILE *version_fd;
-#endif
 };
 
 int convert(struct convert_config *config);
