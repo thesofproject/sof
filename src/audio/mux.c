@@ -42,7 +42,7 @@
 
 static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 {
-	trace_mux("new");
+	trace_mux("mux_new()");
 
 	return NULL;
 }

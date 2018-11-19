@@ -85,7 +85,7 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 		(struct sof_ipc_comp_mixer *)comp;
 	struct mixer_data *md;
 
-	trace_mixer("new");
+	trace_mixer("mixer_new()");
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_mixer));
 	if (dev == NULL)
@@ -109,7 +109,7 @@ static void mixer_free(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
 
-	trace_mixer("fre");
+	trace_mixer("mixer_free()");
 
 	rfree(md);
 	rfree(dev);
@@ -123,19 +123,19 @@ static int mixer_params(struct comp_dev *dev)
 	struct comp_buffer *sink;
 	int ret;
 
-	trace_mixer("par");
+	trace_mixer("mixer_params()");
 
 	/* calculate frame size based on config */
 	dev->frame_bytes = comp_frame_bytes(dev);
 	if (dev->frame_bytes == 0) {
-		trace_mixer_error("mx1");
+		trace_mixer_error("mixer_params() error: frame_bytes = 0");
 		return -EINVAL;
 	}
 
 	/* calculate period size based on config */
 	md->period_bytes = dev->frames * dev->frame_bytes;
 	if (md->period_bytes == 0) {
-		trace_mixer_error("mx2");
+		trace_mixer_error("mixer_params() error: period_bytes = 0");
 		return -EINVAL;
 	}
 
@@ -144,7 +144,8 @@ static int mixer_params(struct comp_dev *dev)
 	/* set downstream buffer size */
 	ret = buffer_set_size(sink, md->period_bytes * config->periods_sink);
 	if (ret < 0) {
-		trace_mixer_error("mx3");
+		trace_mixer_error("mixer_params() error: "
+				  "buffer_set_size() failed");
 		return ret;
 	}
 
@@ -181,7 +182,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret;
 
-	trace_mixer("trg");
+	trace_mixer("mixer_trigger()");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -221,7 +222,7 @@ static int mixer_copy(struct comp_dev *dev)
 	int32_t num_mix_sources = 0;
 	int res;
 
-	tracev_mixer("cpy");
+	tracev_mixer("mixer_copy()");
 
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
@@ -250,11 +251,15 @@ static int mixer_copy(struct comp_dev *dev)
 		 * for copy. Also check for XRUNs */
 		res = comp_buffer_can_copy_bytes(sources[i], sink, md->period_bytes);
 		if (res < 0) {
-			trace_mixer_error("xru");
+			trace_mixer_error("mixer_copy() error: "
+					  "source component buffer "
+					  "has not enough data available");
 			comp_underrun(dev, sources[i], sources[i]->avail,
 				md->period_bytes);
 		} else if (res > 0) {
-			trace_mixer_error("xro");
+			trace_mixer_error("mixer_copy() error: "
+					  "sink component buffer has not "
+					  "enough free bytes for copy");
 			comp_overrun(dev, sources[i], sink->free,
 				md->period_bytes);
 		}
@@ -279,7 +284,7 @@ static int mixer_reset(struct comp_dev *dev)
 	struct list_item * blist;
 	struct comp_buffer *source;
 
-	trace_mixer("res");
+	trace_mixer("mixer_reset()");
 
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
@@ -308,7 +313,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	int downstream = 0;
 	int ret;
 
-	trace_mixer("pre");
+	trace_mixer("mixer_prepare()");
 
 	/* does mixer already have active source streams ? */
 	if (dev->state != COMP_STATE_ACTIVE) {
@@ -343,7 +348,7 @@ static void mixer_cache(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_CACHE_WRITEBACK_INV:
-		trace_mixer("wtb");
+		trace_mixer("mixer_cache(), COMP_CACHE_WRITEBACK_INV");
 
 		md = comp_get_drvdata(dev);
 
@@ -352,7 +357,7 @@ static void mixer_cache(struct comp_dev *dev, int cmd)
 		break;
 
 	case COMP_CACHE_INVALIDATE:
-		trace_mixer("inv");
+		trace_mixer("mixer_cache(), COMP_CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 

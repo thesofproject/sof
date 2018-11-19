@@ -75,7 +75,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				unmask = child->unmask;
 			} else {
 				/* nobody cared ? */
-				trace_irq_error("nbc");
+				trace_irq_error("irq_lvl2_handler() error: "
+						"nbc");
 			}
 		}
 

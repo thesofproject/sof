@@ -50,26 +50,30 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
 	struct comp_buffer *buffer;
 
-	trace_buffer("new");
+	trace_buffer("buffer_new()");
 
 	/* validate request */
 	if (desc->size == 0 || desc->size > HEAP_BUFFER_SIZE) {
-		trace_buffer_error("ebg");
-		trace_error_value(desc->size);
+		trace_buffer_error("buffer_new() error: "
+				   "new size = %u is invalid", desc->size);
 		return NULL;
 	}
 
 	/* allocate new buffer */
 	buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*buffer));
 	if (buffer == NULL) {
-		trace_buffer_error("ebN");
+		trace_buffer_error("buffer_new() error: "
+				   "could not alloc structure");
 		return NULL;
 	}
 
 	buffer->addr = rballoc(RZONE_RUNTIME, desc->caps, desc->size);
 	if (buffer->addr == NULL) {
 		rfree(buffer);
-		trace_buffer_error("ebm");
+		trace_buffer_error("buffer_new() error: "
+				   "could not alloc size = %u "
+				   "bytes of type = %u",
+				   desc->size, desc->caps);
 		return NULL;
 	}
 
@@ -93,7 +97,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 /* free component in the pipeline */
 void buffer_free(struct comp_buffer *buffer)
 {
-	trace_buffer("BFr");
+	trace_buffer("buffer_free()");
 
 	list_item_del(&buffer->source_list);
 	list_item_del(&buffer->sink_list);
@@ -142,10 +146,15 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	spin_unlock_irq(&buffer->lock, flags);
 
-	tracev_buffer("pro");
-	tracev_value((buffer->avail << 16) | buffer->free);
-	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
-	tracev_value((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr));
+	tracev_buffer("comp_update_buffer_produce(), ((buffer->avail << 16) | "
+		      "buffer->free) = %08x, ((buffer->ipc_buffer.comp.id << "
+		      "16) | buffer->size) = %08x",
+		      (buffer->avail << 16) | buffer->free,
+		      (buffer->ipc_buffer.comp.id << 16) | buffer->size);
+	tracev_buffer("comp_update_buffer_produce(), ((buffer->r_ptr - buffer"
+		      "->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
+		      (buffer->r_ptr - buffer->addr) << 16 | 
+		      (buffer->w_ptr - buffer->addr));
 }
 
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
@@ -177,8 +186,9 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	spin_unlock_irq(&buffer->lock, flags);
 
-	tracev_buffer("con");
-	tracev_value((buffer->avail << 16) | buffer->free);
-	tracev_value((buffer->ipc_buffer.comp.id << 16) | buffer->size);
-	tracev_value((buffer->r_ptr - buffer->addr) << 16 | (buffer->w_ptr - buffer->addr));
+	tracev_buffer("comp_update_buffer_consume(), %u, %u, %u",
+		     (buffer->avail << 16) | buffer->free,
+		     (buffer->ipc_buffer.comp.id << 16) | buffer->size,
+		     (buffer->r_ptr - buffer->addr) << 16 |
+		     (buffer->w_ptr - buffer->addr));
 }

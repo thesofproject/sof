@@ -78,15 +78,16 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
 	if (drv == NULL) {
-		trace_comp_error("eCD");
-		trace_error_value(comp->type);
+		trace_comp_error("comp_new() error: driver not found, "
+				 "comp->type = %u", comp->type);
 		return NULL;
 	}
 
 	/* create the new component */
 	cdev = drv->ops.new(comp);
 	if (cdev == NULL) {
-		trace_comp_error("eCN");
+		trace_comp_error("comp_new() error: "
+				 "unable to create the new component");
 		return NULL;
 	}
 
@@ -125,8 +126,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_PREPARE) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
-			trace_comp_error("CES");
-			trace_error_value(dev->state);
+			trace_comp_error("comp_set_state() error: "
+					 "wrong state = %u, "
+					 "COMP_TRIGGER_START", dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -134,8 +136,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
-			trace_comp_error("CEr");
-			trace_error_value(dev->state);
+			trace_comp_error("comp_set_state() error: "
+					 "wrong state = %u, "
+					 "COMP_TRIGGER_RELEASE", dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -145,8 +148,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		    dev->state == COMP_STATE_PAUSED) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
-			trace_comp_error("CEs");
-			trace_error_value(dev->state);
+			trace_comp_error("comp_set_state() error: "
+					 "wrong state = %u, "
+					 "COMP_TRIGGER_STOP/XRUN", dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -155,8 +159,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		if (dev->state == COMP_STATE_ACTIVE)
 			dev->state = COMP_STATE_PAUSED;
 		else {
-			trace_comp_error("CEp");
-			trace_error_value(dev->state);
+			trace_comp_error("comp_set_state() error: "
+					 "wrong state = %u, "
+					 "COMP_TRIGGER_PAUSE", dev->state);
 			ret = -EINVAL;
 		}
 		break;
@@ -164,8 +169,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		/* reset always succeeds */
 		if (dev->state == COMP_STATE_ACTIVE ||
 			dev->state == COMP_STATE_PAUSED) {
-			trace_comp_error("CER");
-			trace_error_value(dev->state);
+			trace_comp_error("comp_set_state() error: "
+					 "wrong state = %u, "
+					 "COMP_TRIGGER_RESET", dev->state);
 			ret = 0;
 		}
 		dev->state = COMP_STATE_READY;
@@ -175,8 +181,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			dev->state == COMP_STATE_READY) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
-			trace_comp_error("CEP");
-			trace_error_value(dev->state);
+			trace_comp_error("comp_set_state() error: "
+					 "wrong state = %u, "
+					 "COMP_TRIGGER_PREPARE", dev->state);
 			ret = -EINVAL;
 		}
 		break;

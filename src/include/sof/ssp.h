@@ -236,9 +236,9 @@ extern const struct dai_ops ssp_ops;
 #endif
 
 /* tracing */
-#define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
-#define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
-#define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
+#define trace_ssp(__e, ...)	trace_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
+#define trace_ssp_error(__e, ...)	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
+#define tracev_ssp(__e, ...)	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
 
 
 #define ssp_irq(ssp) \

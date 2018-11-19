@@ -108,15 +108,15 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	/* check whether component already exists */
 	icd = ipc_get_comp(ipc, comp->id);
 	if (icd != NULL) {
-		trace_ipc_error("eCe");
-		trace_error_value(comp->id);
+		trace_ipc_error("ipc_comp_new() error: comp->id = %u",
+				comp->id);
 		return -EINVAL;
 	}
 
 	/* create component */
 	cd = comp_new(comp);
 	if (cd == NULL) {
-		trace_ipc_error("eCn");
+		trace_ipc_error("ipc_comp_new() error: component cd = NULL");
 		return -EINVAL;
 	}
 
@@ -124,7 +124,7 @@ int ipc_comp_new(struct ipc *ipc, struct sof_ipc_comp *comp)
 	icd = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 		      sizeof(struct ipc_comp_dev));
 	if (icd == NULL) {
-		trace_ipc_error("eCm");
+		trace_ipc_error("ipc_comp_new() error: alloc failed");
 		rfree(cd);
 		return -ENOMEM;
 	}
@@ -162,15 +162,16 @@ int ipc_buffer_new(struct ipc *ipc, struct sof_ipc_buffer *desc)
 	/* check whether buffer already exists */
 	ibd = ipc_get_comp(ipc, desc->comp.id);
 	if (ibd != NULL) {
-		trace_ipc_error("eBe");
-		trace_error_value(desc->comp.id);
+		trace_ipc_error("ipc_buffer_new() error: "
+				"buffer already exists, desc->comp.id = %u",
+				desc->comp.id);
 		return -EINVAL;
 	}
 
 	/* register buffer with pipeline */
 	buffer = buffer_new(desc);
 	if (buffer == NULL) {
-		trace_ipc_error("eBn");
+		trace_ipc_error("ipc_buffer_new() error: buffer_new() failed");
 		rfree(ibd);
 		return -ENOMEM;
 	}
@@ -215,15 +216,17 @@ int ipc_comp_connect(struct ipc *ipc,
 	/* check whether the components already exist */
 	icd_source = ipc_get_comp(ipc, connect->source_id);
 	if (icd_source == NULL) {
-		trace_ipc_error("eCr");
-		trace_error_value(connect->source_id);
+		trace_ipc_error("ipc_comp_connect() error: components already"
+				" exist, connect->source_id = %u",
+				connect->source_id);
 		return -EINVAL;
 	}
 
 	icd_sink = ipc_get_comp(ipc, connect->sink_id);
 	if (icd_sink == NULL) {
-		trace_ipc_error("eCn");
-		trace_error_value(connect->sink_id);
+		trace_ipc_error("ipc_comp_connect() error: components already"
+				" exist, connect->sink_id = %u",
+				connect->sink_id);
 		return -EINVAL;
 	}
 
@@ -235,9 +238,10 @@ int ipc_comp_connect(struct ipc *ipc,
 		icd_sink->type == COMP_TYPE_BUFFER)
 		return pipeline_comp_connect(icd_source->cd, icd_sink->cb);
 	else {
-		trace_ipc_error("eCt");
-		trace_error_value(connect->source_id);
-		trace_error_value(connect->sink_id);
+		trace_ipc_error("ipc_comp_connect() error: invalid source and"
+				" sink types, connect->source_id = %u, "
+				"connect->sink_id = %u",
+				connect->source_id, connect->sink_id);
 		return -EINVAL;
 	}
 }
@@ -253,27 +257,31 @@ int ipc_pipeline_new(struct ipc *ipc,
 	/* check whether the pipeline already exists */
 	ipc_pipe = ipc_get_comp(ipc, pipe_desc->comp_id);
 	if (ipc_pipe != NULL) {
-		trace_ipc_error("ePi");
-		trace_error_value(pipe_desc->comp_id);
+		trace_ipc_error("ipc_pipeline_new() error: pipeline already"
+				" exists, pipe_desc->comp_id = %u",
+				pipe_desc->comp_id);
 		return -EINVAL;
 	}
 
 	/* find the scheduling component */
 	icd = ipc_get_comp(ipc, pipe_desc->sched_id);
 	if (icd == NULL) {
-		trace_ipc_error("ePs");
-		trace_error_value(pipe_desc->sched_id);
+		trace_ipc_error("ipc_pipeline_new() error: cannot find the "
+				"scheduling component, pipe_desc->sched_id"
+				" = %u", pipe_desc->sched_id);
 		return -EINVAL;
 	}
 	if (icd->type != COMP_TYPE_COMPONENT) {
-		trace_ipc_error("ePc");
+		trace_ipc_error("ipc_pipeline_new() error: "
+				"icd->type != COMP_TYPE_COMPONENT");
 		return -EINVAL;
 	}
 
 	/* create the pipeline */
 	pipe = pipeline_new(pipe_desc, icd->cd);
 	if (pipe == NULL) {
-		trace_ipc_error("ePn");
+		trace_ipc_error("ipc_pipeline_new() error: "
+				"pipeline_new() failed");
 		return -ENOMEM;
 	}
 
@@ -306,7 +314,8 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 	/* free buffer and remove from list */
 	ret = pipeline_free(ipc_pipe->pipeline);
 	if (ret < 0) {
-		trace_ipc_error("ePf");
+		trace_ipc_error("ipc_pipeline_free() error: "
+				"pipeline_free() failed");
 		return ret;
 	}
 
@@ -358,7 +367,8 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 				    dai->type == config->type) {
 					ret = comp_dai_config(dev, config);
 					if (ret < 0) {
-						trace_ipc_error("eCD");
+						trace_ipc_error("ipc_comp_dai_config() error: "
+								"comp_dai_config() failed");
 						return ret;
 					}
 				}
@@ -400,7 +410,8 @@ int ipc_parse_page_descriptors(uint8_t *page_table,
 	if ((ring->size <= HOST_PAGE_SIZE * (ring->pages - 1)) ||
 	    (ring->size > HOST_PAGE_SIZE * ring->pages)) {
 		/* error buffer size */
-		trace_ipc_error("eBs");
+		trace_ipc_error("ipc_parse_page_descriptors() error: "
+				"error buffer size");
 		return -EINVAL;
 	}
 
@@ -461,7 +472,7 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* get DMA channel from DMAC */
 	chan = dma_channel_get(dmac, 0);
 	if (chan < 0) {
-		trace_ipc_error("ePC");
+		trace_ipc_error("ipc_get_page_descriptors() error: chan < 0");
 		return chan;
 	}
 
@@ -485,7 +496,8 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	ret = dma_set_config(dmac, chan, &config);
 	if (ret < 0) {
-		trace_ipc_error("ePs");
+		trace_ipc_error("ipc_get_page_descriptors() error: "
+				"dma_set_config() failed");
 		goto out;
 	}
 
@@ -497,14 +509,16 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* start the copy of page table to DSP */
 	ret = dma_start(dmac, chan);
 	if (ret < 0) {
-		trace_ipc_error("ePt");
+		trace_ipc_error("ipc_get_page_descriptors() error: "
+				"dma_start() failed");
 		goto out;
 	}
 
 	/* wait for DMA to complete */
 	ret = poll_for_completion_delay(&complete, PLATFORM_DMA_TIMEOUT);
 	if (ret < 0)
-		trace_ipc_error("eDt");
+		trace_ipc_error("ipc_get_page_descriptors() error: "
+				"poll_for_completion_delay() failed");
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
@@ -516,7 +530,7 @@ out:
 int ipc_init(struct sof *sof)
 {
 	int i;
-	trace_ipc("IPI");
+	trace_ipc("ipc_init()");
 
 	/* init ipc data */
 	sof->ipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sof->ipc));

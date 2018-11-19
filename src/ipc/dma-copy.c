@@ -67,7 +67,8 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	}
 
 	/* host offset in beyond end of SG buffer */
-	trace_dma_error("ex0");
+	trace_dma_error("sg_get_elem_at() error: "
+			"host offset in beyond end of SG buffer");
 	return NULL;
 }
 #endif
@@ -170,7 +171,7 @@ int dma_copy_new(struct dma_copy *dc)
 	cap = 0;
 	dc->dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
 	if (dc->dmac == NULL) {
-		trace_dma_error("ec0");
+		trace_dma_error("dma_copy_new() error: dc->dmac = NULL");
 		return -ENODEV;
 	}
 
@@ -178,7 +179,7 @@ int dma_copy_new(struct dma_copy *dc)
 	/* get DMA channel from DMAC0 */
 	dc->chan = dma_channel_get(dc->dmac, 0);
 	if (dc->chan < 0) {
-		trace_dma_error("ec1");
+		trace_dma_error("dma_copy_new() error: dc->chan < 0");
 		return dc->chan;
 	}
 
@@ -197,7 +198,8 @@ int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 	/* get DMA channel from DMAC */
 	dc->chan = dma_channel_get(dc->dmac, stream_tag - 1);
 	if (dc->chan < 0) {
-		trace_dma_error("ec1");
+		trace_dma_error("dma_copy_set_stream_tag() error: "
+				"dc->chan < 0");
 		return -EINVAL;
 	}
 

@@ -44,10 +44,10 @@
 #define trace_idc(__e)	trace_event(TRACE_CLASS_IDC, __e)
 
 /** \brief IDC trace value function. */
-#define tracev_idc(__e)	tracev_event(TRACE_CLASS_IDC, __e)
+#define tracev_idc(__e, ...)	tracev_event(TRACE_CLASS_IDC, __e, ##__VA_ARGS__)
 
 /** \brief IDC trace error function. */
-#define trace_idc_error(__e)	trace_error(TRACE_CLASS_IDC, __e)
+#define trace_idc_error(__e, ...)	trace_error(TRACE_CLASS_IDC, __e, ##__VA_ARGS__)
 
 /** \brief IDC send blocking flag. */
 #define IDC_BLOCKING		0

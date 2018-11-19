@@ -43,7 +43,7 @@ static struct pm_runtime_data *prd;
 
 void pm_runtime_init(void)
 {
-	trace_pm("ini");
+	trace_pm("pm_runtime_init()");
 
 	prd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*prd));
 	spinlock_init(&prd->lock);
@@ -53,7 +53,7 @@ void pm_runtime_init(void)
 
 void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("get");
+	tracev_pm("pm_runtime_get()");
 
 	switch (context) {
 	default:
@@ -64,7 +64,7 @@ void pm_runtime_get(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("get");
+	tracev_pm("pm_runtime_get_sync()");
 
 	switch (context) {
 	default:
@@ -75,7 +75,7 @@ void pm_runtime_get_sync(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("put");
+	tracev_pm("pm_runtime_put()");
 
 	switch (context) {
 	default:
@@ -86,7 +86,7 @@ void pm_runtime_put(enum pm_runtime_context context, uint32_t index)
 
 void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 {
-	tracev_pm("put");
+	tracev_pm("pm_runtime_put_sync()");
 
 	switch (context) {
 	default:

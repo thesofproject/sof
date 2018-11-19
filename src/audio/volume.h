@@ -56,13 +56,13 @@
 #endif
 
 /** \brief Volume trace function. */
-#define trace_volume(__e)	trace_event(TRACE_CLASS_VOLUME, __e)
+#define trace_volume(__e, ...)	trace_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
 
 /** \brief Volume trace value function. */
-#define tracev_volume(__e)	tracev_event(TRACE_CLASS_VOLUME, __e)
+#define tracev_volume(__e, ...)	tracev_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
 
 /** \brief Volume trace error function. */
-#define trace_volume_error(__e)	trace_error(TRACE_CLASS_VOLUME, __e)
+#define trace_volume_error(__e, ...)	trace_error(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
 
 //** \brief Volume gain Qx.y integer x number of bits including sign bit. */
 #define VOL_QXY_X 2
