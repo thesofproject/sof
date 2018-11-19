@@ -140,12 +140,14 @@ static inline struct task *edf_get_next(uint64_t current,
 			}
 		} else {
 			/* missed scheduling - will be rescheduled */
-			trace_pipe("ed!");
+			trace_pipe("edf_get_next(), "
+				   "missed scheduling - will be rescheduled");
 
 			/* have we already tried to rescheule ? */
 			if (!reschedule) {
 				reschedule++;
-				trace_pipe("edr");
+				trace_pipe("edf_get_next(), "
+					   "didnt tried to reschedule yet");
 				edf_reschedule(task, current);
 			} else {
 				/* reschedule failed */
@@ -161,7 +163,7 @@ static inline struct task *edf_get_next(uint64_t current,
 /* work set in the future when next task can be scheduled */
 static uint64_t sch_work(void *data, uint64_t delay)
 {
-	tracev_pipe("wrk");
+	tracev_pipe("sch_work()");
 	schedule();
 	return 0;
 }
@@ -180,7 +182,7 @@ static struct task *schedule_edf(void)
 	uint64_t current;
 	uint32_t flags;
 
-	tracev_pipe("edf");
+	tracev_pipe("schedule_edf()");
 
 	interrupt_clear(PLATFORM_SCHEDULE_IRQ);
 
@@ -229,7 +231,7 @@ int schedule_task_cancel(struct task *task)
 	uint32_t flags;
 	int ret = 0;
 
-	tracev_pipe("del");
+	tracev_pipe("schedule_task_cancel()");
 
 	spin_lock_irq(&sch->lock, flags);
 
@@ -254,20 +256,20 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	uint64_t current;
 	uint64_t ticks_per_ms;
 
-	tracev_pipe("ad!");
+	tracev_pipe("_schedule_task()");
 
 	spin_lock_irq(&sch->lock, flags);
 
 	/* is task already running ? - not enough MIPS to complete ? */
 	if (task->state == TASK_STATE_RUNNING) {
-		trace_pipe("tsk");
+		trace_pipe("_schedule_task(), task already running");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
 
 	/* is task already running ? - not enough MIPS to complete ? */
 	if (task->state == TASK_STATE_QUEUED) {
-		trace_pipe("tsq");
+		trace_pipe("_schedule_task(), task already queued");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
@@ -334,7 +336,7 @@ void schedule_task_complete(struct task *task)
 	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
 
-	tracev_pipe("com");
+	tracev_pipe("schedule_task_complete()");
 
 	spin_lock_irq(&sch->lock, flags);
 	task->state = TASK_STATE_COMPLETED;
@@ -348,7 +350,7 @@ static void scheduler_run(void *unused)
 {
 	struct task *future_task;
 
-	tracev_pipe("run");
+	tracev_pipe("scheduler_run()");
 
 	/* EDF is only scheduler supported atm */
 	future_task = schedule_edf();
@@ -365,7 +367,7 @@ void schedule(void)
 	struct task *task;
 	uint32_t flags;
 
-	tracev_pipe("sch");
+	tracev_pipe("schedule()");
 
 	spin_lock_irq(&sch->lock, flags);
 
@@ -398,7 +400,7 @@ schedule:
 /* Initialise the scheduler */
 int scheduler_init(struct sof *sof)
 {
-	trace_pipe("ScI");
+	trace_pipe("scheduler_init()");
 
 	struct schedule_data **sch = arch_schedule_get();
 	*sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**sch));

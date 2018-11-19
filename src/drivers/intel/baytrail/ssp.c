@@ -37,9 +37,9 @@
 #include <sof/interrupt.h>
 
 /* tracing */
-#define trace_ssp(__e)	trace_event(TRACE_CLASS_SSP, __e)
-#define trace_ssp_error(__e)	trace_error(TRACE_CLASS_SSP, __e)
-#define tracev_ssp(__e)	tracev_event(TRACE_CLASS_SSP, __e)
+#define trace_ssp(__e, ...)	trace_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
+#define trace_ssp_error(__e, ...)	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
+#define tracev_ssp(__e, ...)	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
 
 /* FIXME: move this to a helper and optimize */
 static int hweight_32(uint32_t mask)
@@ -136,13 +136,13 @@ static inline int ssp_set_config(struct dai *dai,
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
 		ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
-		trace_ssp_error("ec1");
+		trace_ssp_error("ssp_set_config(): "
+				"playback/capture already running");
 		ret = -EINVAL;
 		goto out;
 	}
 
-	trace_ssp("cos");
-	trace_value(config->format);
+	trace_ssp("ssp_set_config(), config->format = %d", config->format);
 
 	/* reset SSP settings */
 	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
@@ -249,7 +249,8 @@ static inline int ssp_set_config(struct dai *dai,
 		cbs = true;
 		break;
 	default:
-		trace_ssp_error("ec2");
+		trace_ssp_error("ssp_set_config() error: "
+				"format & MASTER_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -269,14 +270,16 @@ static inline int ssp_set_config(struct dai *dai,
 		sspsp |= SSPSP_SCMODE(2);
 		break;
 	default:
-		trace_ssp_error("ec3");
+		trace_ssp_error("ssp_set_config() error: "
+				"format & INV_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
-		trace_ssp_error("ec5");
+		trace_ssp_error("ssp_set_config() error: "
+				"MCLK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -284,7 +287,8 @@ static inline int ssp_set_config(struct dai *dai,
 	/* divisor must be within SCR range */
 	mdiv = (config->ssp.mclk_rate / config->ssp.bclk_rate) - 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
-		trace_ssp_error("ec6");
+		trace_ssp_error("ssp_set_config() error: "
+				"divisor is not within SCR range");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -294,7 +298,8 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
-		trace_ssp_error("ec7");
+		trace_ssp_error("ssp_set_config() error: "
+				"BLCK is not divisable");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -303,14 +308,14 @@ static inline int ssp_set_config(struct dai *dai,
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
 	if (bdiv < config->ssp.tdm_slot_width *
 	    config->ssp.tdm_slots) {
-		trace_ssp_error("ec8");
+		trace_ssp_error("ssp_set_config() error: not enough BCLKs");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
 	if (config->ssp.tdm_slot_width > 38) {
-		trace_ssp_error("ec9");
+		trace_ssp_error("ssp_set_config() error: tdm_slot_width > 38");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -433,7 +438,8 @@ static inline int ssp_set_config(struct dai *dai,
 
 		break;
 	default:
-		trace_ssp_error("eca");
+		trace_ssp_error("ssp_set_config() error: "
+				"format & FORMAT_MASK EINVAL");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -455,8 +461,6 @@ static inline int ssp_set_config(struct dai *dai,
 	sfifott = (SFIFOTT_TX(2*active_tx_slots) |
 		   SFIFOTT_RX(2*active_rx_slots));
 
-	trace_ssp("coe");
-
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
 	ssp_write(dai, SSCR2, sscr2);
@@ -471,6 +475,8 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_PREPARE;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_PREPARE;
 
+	trace_ssp("ssp_set_config(), done");
+
 out:
 	spin_unlock(&dai->lock);
 
@@ -480,7 +486,7 @@ out:
 /* Digital Audio interface formatting */
 static inline int ssp_set_loopback_mode(struct dai *dai, uint32_t lbm)
 {
-	trace_ssp("loo");
+	trace_ssp("ssp_set_loopback_mode()");
 	spin_lock(&dai->lock);
 
 	ssp_update_bits(dai, SSCR1, SSCR1_LBM, lbm ? SSCR1_LBM : 0);
@@ -501,7 +507,7 @@ static void ssp_start(struct dai *dai, int direction)
 	ssp_update_bits(dai, SSCR0, SSCR0_SSE, SSCR0_SSE);
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
-	trace_ssp("sta");
+	trace_ssp("ssp_start()");
 
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK)
@@ -525,7 +531,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSCR1, SSCR1_RSRE, 0);
 		ssp_empty_rx_fifo(dai);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PAUSED;
-		trace_ssp("Ss0");
+		trace_ssp("ssp_stop(), RX stop");
 	}
 
 	/* stop Tx if needed */
@@ -533,7 +539,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	    ssp->state[SOF_IPC_STREAM_PLAYBACK] == COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, 0);
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PAUSED;
-		trace_ssp("Ss1");
+		trace_ssp("ssp_stop(), TX stop");
 	}
 
 	/* disable SSP port if no users */
@@ -542,7 +548,7 @@ static void ssp_stop(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
-		trace_ssp("Ss2");
+		trace_ssp("ssp_stop(), SSP port disabled");
 	}
 
 	spin_unlock(&dai->lock);
@@ -552,7 +558,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("tri");
+	trace_ssp("ssp_trigger()");
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -587,8 +593,7 @@ static void ssp_irq_handler(void *data)
 {
 	struct dai *dai = data;
 
-	trace_ssp("irq");
-	trace_value(ssp_read(dai, SSSR));
+	trace_ssp("ssp_irq_handler(), IRQ = %u", ssp_read(dai, SSSR));
 
 	/* clear IRQ */
 	ssp_write(dai, SSSR, ssp_read(dai, SSSR));

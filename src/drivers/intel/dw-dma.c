@@ -1216,7 +1216,7 @@ static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
 	uint32_t irq = dma_irq(dma, cpu_get_id()) +
 		(channel << SOF_IRQ_BIT_SHIFT);
 
-	trace_event(TRACE_CLASS_DMA, "dw-dma-int-register");
+	trace_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register()");
 
 	interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler,
 			   &p->chan[channel].id);
@@ -1365,7 +1365,8 @@ static int dw_dma_probe(struct dma *dma)
 	dw_pdata = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 			   SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
 	if (!dw_pdata) {
-		trace_error(TRACE_CLASS_DMA, "alloc failed");
+		trace_error(TRACE_CLASS_DMA, "dw_dma_probe() error: "
+			    "alloc failed");
 		return -ENOMEM;
 	}
 	dma_set_drvdata(dma, dw_pdata);

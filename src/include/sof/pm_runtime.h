@@ -47,8 +47,8 @@
  */
 
 /** \brief Power management trace function. */
-#define trace_pm(__e)	trace_event(TRACE_CLASS_POWER, __e)
-#define tracev_pm(__e)	tracev_event(TRACE_CLASS_POWER, __e)
+#define trace_pm(__e, ...)	trace_event(TRACE_CLASS_POWER, __e, ##__VA_ARGS__)
+#define tracev_pm(__e, ...)	tracev_event(TRACE_CLASS_POWER, __e, ##__VA_ARGS__)
 
 /** \brief Power management trace value function. */
 #define tracev_pm_value(__e)	tracev_value(__e)

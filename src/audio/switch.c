@@ -42,7 +42,7 @@
 
 static struct comp_dev *switch_new(struct sof_ipc_comp *comp)
 {
-	trace_switch("new");
+	trace_switch("switch_new()");
 
 	return NULL;
 }

@@ -54,7 +54,7 @@
 #define trace_mem(__e)
 #endif
 
-#define trace_mem_error(__e)	trace_error(TRACE_CLASS_MEM, __e)
+#define trace_mem_error(__e, ...)	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
 
 extern struct mm memmap;
 
@@ -128,7 +128,8 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 	/* always succeeds or panics */
 	if (alignment + bytes > cpu_heap->info.free) {
 		trace_error(TRACE_CLASS_MEM,
-			    "rmalloc-sys eM1 zone %x core %d bytes %d",
+			    "rmalloc_sys() error: "
+			    "eM1 zone = %x, core = %d, bytes = %d",
 			    zone, core, bytes);
 		panic(SOF_IPC_PANIC_MEM);
 	}
@@ -224,7 +225,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 	/* not found */
-	trace_mem_error("eCb");
+	trace_mem_error("alloc_cont_blocks() error: not found");
 	return NULL;
 
 found:
@@ -334,7 +335,8 @@ static void free_block(void *ptr)
 
 	heap = get_heap_from_ptr(ptr);
 	if (!heap) {
-		trace_error(TRACE_CLASS_MEM, "invalid heap %p cpu %d",
+		trace_error(TRACE_CLASS_MEM, "free_block() error: invalid "
+			    "heap = %p, cpu = %d",
 			    (uintptr_t)ptr, cpu_get_id());
 		return;
 	}
@@ -350,8 +352,8 @@ static void free_block(void *ptr)
 	}
 
 	/* not found */
-	trace_error(TRACE_CLASS_MEM, "invalid ptr %p cpu %d",
-		    (uintptr_t)ptr, cpu_get_id());
+	trace_error(TRACE_CLASS_MEM, "free_block() error: "
+		    "invalid ptr = %p cpu = %d", (uintptr_t)ptr, cpu_get_id());
 	return;
 
 found:
@@ -427,7 +429,8 @@ find:
 
 error:
 	trace_error(TRACE_CLASS_MEM,
-		    "rmalloc-runtime eMm zone %d caps %x bytes %d",
+		    "rmalloc_runtime() error: "
+		    "eMm zone = %d, caps = %x, bytes = %d",
 		    zone, caps, bytes);
 	return NULL;
 }
@@ -448,7 +451,7 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 		ptr = rmalloc_runtime(zone, caps, bytes);
 		break;
 	default:
-		trace_mem_error("eMz");
+		trace_mem_error("rmalloc() error: invalid zone");
 		break;
 	}
 
@@ -563,7 +566,8 @@ void rfree(void *ptr)
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
 	    ptr <= (void *)cpu_heap->heap + cpu_heap->size) {
-		trace_error(TRACE_CLASS_MEM, "attempt to free system heap %p cpu %d",
+		trace_error(TRACE_CLASS_MEM, "rfree() error: "
+			   "attempt to free system heap = %p, cpu = %d",
 			    (uintptr_t)ptr, cpu_get_id());
 		panic(SOF_IPC_PANIC_MEM);
 	}
@@ -608,7 +612,7 @@ void free_heap(int zone)
 	 */
 	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID ||
 	    zone != RZONE_SYS) {
-		trace_mem_error("eMf");
+		trace_mem_error("free_heap() error: critical flow issue");
 		panic(SOF_IPC_PANIC_MEM);
 	}
 

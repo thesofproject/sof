@@ -56,7 +56,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	struct dma *d = NULL, *dmin = NULL;
 
 	if (!lib_dma.num_dmas) {
-		trace_error(TRACE_CLASS_DMA, "No DMAs installed");
+		trace_error(TRACE_CLASS_DMA, "dma_get(): No DMAs installed");
 		return NULL;
 	}
 	for (d = lib_dma.dma_array; d < lib_dma.dma_array + lib_dma.num_dmas;
@@ -94,7 +94,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 
 	/* return DMAC */
 	if (dmin) {
-		tracev_event(TRACE_CLASS_DMA, "dma-probe id %d",
+		tracev_event(TRACE_CLASS_DMA, "dma_get(), dma-probe id = %d",
 			     dmin->plat_data.id);
 		/* Shared DMA controllers with multiple channels
 		 * may be requested many times, let the probe()
@@ -106,21 +106,22 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 			ret = dma_probe(dmin);
 			if (ret < 0) {
 				trace_error(TRACE_CLASS_DMA,
-					    "dma-probe failed id %d ret %d",
+					    "dma_get() error: dma-probe failed"
+					    " id = %d, ret = %d",
 					    dmin->plat_data.id, ret);
 			}
 		}
 		if (!ret)
 			dmin->sref++;
-		trace_event(TRACE_CLASS_DMA, "dma-get %p sref %d",
+		trace_event(TRACE_CLASS_DMA, "dma_get(), dmin = %p, sref = %d",
 			    (uintptr_t)dmin, dmin->sref);
 		spin_unlock(&dmin->lock);
 		return !ret ? dmin : NULL;
 	}
 
 	trace_error(TRACE_CLASS_DMA,
-		    "dma-get dir 0x%x cap 0x%x dev 0x%x flags 0x%x not found",
-		    dir, cap, dev, flags);
+		    "dma_get() error: dir = 0x%x, cap = 0x%x, dev = 0x%x, "
+		    "flags = 0x%x not found", dir, cap, dev, flags);
 	return NULL;
 }
 
@@ -133,12 +134,12 @@ void dma_put(struct dma *dma)
 		ret = dma_remove(dma);
 		if (ret < 0) {
 			trace_error(TRACE_CLASS_DMA,
-				    "dma-remove failed id %d ret %d",
-				    dma->plat_data.id, ret);
+				    "dma_put() error: dma_remove() failed id"
+				    " = %d, ret = %d", dma->plat_data.id, ret);
 		}
 	}
-	trace_event(TRACE_CLASS_DMA, "dma-put %p sref %d", (uintptr_t)dma,
-		    dma->sref);
+	trace_event(TRACE_CLASS_DMA, "dma_put(), dma = %p, sref = %d",
+		   (uintptr_t)dma, dma->sref);
 	spin_unlock(&dma->lock);
 }
 

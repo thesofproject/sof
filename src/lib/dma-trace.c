@@ -86,7 +86,8 @@ static uint64_t trace_work(void *data, uint64_t delay)
 	size = dma_copy_to_host_nowait(&d->dc, config, d->host_offset,
 		buffer->r_ptr, size);
 	if (size < 0) {
-		trace_buffer_error("ebb");
+		trace_buffer_error("trace_work() error: "
+				   "dma_copy_to_host_nowait() failed");
 		goto out;
 	}
 
@@ -136,12 +137,13 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 {
 	int ret;
 
-	trace_buffer("dtn");
+	trace_buffer("dma_trace_init_complete()");
 
 	/* init DMA copy context */
 	ret = dma_copy_new(&d->dc);
 	if (ret < 0) {
-		trace_buffer_error("edm");
+		trace_buffer_error("dma_trace_init_complete() error: "
+				   "dma_copy_new() failed");
 		return ret;
 	}
 
@@ -171,7 +173,8 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 			       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			       DMA_TRACE_LOCAL_SIZE);
 	if (!buffer->addr) {
-		trace_buffer_error("ebm");
+		trace_buffer_error("dma_trace_buffer_init() error: "
+				   "alloc failed");
 		return -ENOMEM;
 	}
 
@@ -318,7 +321,8 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* validate DMA context */
 	if (d->dc.dmac == NULL || d->dc.chan < 0) {
-		trace_error_atomic(TRACE_CLASS_BUFFER, "eem");
+		trace_error_atomic(TRACE_CLASS_BUFFER, "dma_trace_enable() "
+				   "error: not valid");
 		return -ENODEV;
 	}
 
@@ -413,7 +417,8 @@ static void dtrace_add_event(const char *e, uint32_t length)
 			 * so after it we have to recalculate margin and
 			 * overflow
 			 */
-			trace_error(0, "Number of dropped logs: %u",
+			trace_error(0, "dtrace_add_event() error: "
+				    "number of dropped logs = %u",
 				    tmp_dropped_entries);
 			margin = dtrace_calc_buf_margin(buffer);
 			overflow = dtrace_calc_buf_overflow(buffer, length);

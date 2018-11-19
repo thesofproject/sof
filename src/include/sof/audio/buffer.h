@@ -43,9 +43,9 @@
 #include <uapi/ipc/topology.h>
 
 /* pipeline tracing */
-#define trace_buffer(__e)	trace_event(TRACE_CLASS_BUFFER, __e)
-#define trace_buffer_error(__e)	trace_error(TRACE_CLASS_BUFFER, __e)
-#define tracev_buffer(__e)	tracev_event(TRACE_CLASS_BUFFER, __e)
+#define trace_buffer(__e, ...)	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define trace_buffer_error(__e, ...)	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define tracev_buffer(__e, ...)	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
@@ -87,7 +87,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
 static inline void buffer_zero(struct comp_buffer *buffer)
 {
-	tracev_buffer("BZr");
+	tracev_buffer("buffer_zero()");
 
 	bzero(buffer->addr, buffer->size);
 	if (buffer->ipc_buffer.caps & SOF_MEM_CAPS_DMA)

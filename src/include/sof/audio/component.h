@@ -133,9 +133,9 @@
 #define COMP_OPS_RESET		5
 #define COMP_OPS_CACHE		6
 
-#define trace_comp(__e)	trace_event(TRACE_CLASS_COMP, __e)
-#define trace_comp_error(__e)	trace_error(TRACE_CLASS_COMP, __e)
-#define tracev_comp(__e)	tracev_event(TRACE_CLASS_COMP, __e)
+#define trace_comp(__e, ...)	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define trace_comp_error(__e, ...)	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define tracev_comp(__e, ...)	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 
 struct comp_dev;
 struct comp_buffer;
@@ -290,9 +290,9 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 	if ((cmd == COMP_CMD_SET_DATA)
 		&& ((cdata->data->magic != SOF_ABI_MAGIC)
 		|| (cdata->data->abi != SOF_ABI_VERSION))) {
-		trace_comp_error("abi");
-		trace_error_value(cdata->data->magic);
-		trace_error_value(cdata->data->abi);
+		trace_comp_error("comp_cmd() error: invalid version, "
+				 "data->magic = %u, data->abi = %u",
+				 cdata->data->magic, cdata->data->abi);
 		return -EINVAL;
 	}
 
@@ -408,9 +408,10 @@ static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
 static inline void comp_underrun(struct comp_dev *dev, struct comp_buffer *source,
 	uint32_t copy_bytes, uint32_t min_bytes)
 {
-	trace_comp("Xun");
-	trace_value((dev->comp.id << 16) | source->avail);
-	trace_value((min_bytes << 16) | copy_bytes);
+	trace_comp("comp_underrun(), ((dev->comp.id << 16) | source->avail) ="
+		   " %u, ((min_bytes << 16) | copy_bytes) = %u",
+		  (dev->comp.id << 16) | source->avail,
+		  (min_bytes << 16) | copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)source->avail - copy_bytes);
 }
@@ -418,9 +419,10 @@ static inline void comp_underrun(struct comp_dev *dev, struct comp_buffer *sourc
 static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t copy_bytes, uint32_t min_bytes)
 {
-	trace_comp("Xov");
-	trace_value((dev->comp.id << 16) | sink->free);
-	trace_value((min_bytes << 16) | copy_bytes);
+	trace_comp("comp_overrun(), ((dev->comp.id << 16) | sink->free) = %u, "
+		   "((min_bytes << 16) | copy_bytes) = %u",
+		  (dev->comp.id << 16) | sink->free,
+		  (min_bytes << 16) | copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
 }
@@ -433,8 +435,8 @@ static inline cache_command comp_get_cache_command(int cmd)
 	case COMP_CACHE_INVALIDATE:
 		return &dcache_invalidate_region;
 	default:
-		trace_comp_error("cu0");
-		trace_error_value(cmd);
+		trace_comp_error("comp_get_cache_command() error: "
+				 "invalid cmd = %u", cmd);
 		return NULL;
 	}
 }

@@ -86,13 +86,13 @@ static void idc_irq_handler(void *arg)
 	uint32_t idcietc;
 	uint32_t i;
 
-	tracev_idc("IRQ");
+	tracev_idc("idc_irq_handler()");
 
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
 		idctfc = idc_read(IPC_IDCTFC(i), core);
 
 		if (idctfc & IPC_IDCTFC_BUSY) {
-			trace_idc("Nms");
+			trace_idc("idc_irq_handler(), IPC_IDCTFC_BUSY");
 
 			/* disable BUSY interrupt */
 			idc_write(IPC_IDCCTL, core, idc->done_bit_mask);
@@ -115,7 +115,7 @@ static void idc_irq_handler(void *arg)
 		idcietc = idc_read(IPC_IDCIETC(i), core);
 
 		if (idcietc & IPC_IDCIETC_DONE) {
-			tracev_idc("Rpy");
+			tracev_idc("idc_irq_handler(), IPC_IDCIETC_DONE");
 
 			idc_write(IPC_IDCIETC(i), core,
 				  idcietc | IPC_IDCIETC_DONE);
@@ -140,7 +140,7 @@ static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	uint32_t idcietc;
 	uint32_t flags;
 
-	tracev_idc("Msg");
+	tracev_idc("arch_idc_send_msg()");
 
 	spin_lock_irq(&idc->lock, flags);
 
@@ -156,7 +156,7 @@ static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 			 timeout < IDC_TIMEOUT);
 
 		if (timeout >= IDC_TIMEOUT) {
-			trace_idc_error("eS0");
+			trace_idc_error("arch_idc_send_msg() error: timeout");
 			ret = -ETIME;
 		}
 	}
@@ -261,8 +261,8 @@ static inline void idc_cmd(struct idc_msg *msg)
 		notifier_notify();
 		break;
 	default:
-		trace_idc_error("eTc");
-		trace_error_value(msg->header);
+		trace_idc_error("idc_cmd() error: invalid msg->header = %u",
+				msg->header);
 	}
 }
 
@@ -276,7 +276,7 @@ static inline void idc_do_cmd(void *data)
 	int core = arch_cpu_get_id();
 	int initiator = idc->received_msg.core;
 
-	trace_idc("Cmd");
+	trace_idc("idc_do_cmd()");
 
 	idc_cmd(&idc->received_msg);
 
@@ -339,7 +339,7 @@ static inline void arch_idc_init(void)
 {
 	int core = arch_cpu_get_id();
 
-	trace_idc("IDI");
+	trace_idc("arch_idc_init()");
 
 	/* initialize idc data */
 	struct idc **idc = idc_get();
@@ -372,7 +372,7 @@ static inline void idc_free(void)
 	int i = 0;
 	uint32_t idctfc;
 
-	trace_idc("IDF");
+	trace_idc("idc_free()");
 
 	/* disable and unregister interrupt */
 	interrupt_disable(PLATFORM_IDC_INTERRUPT(core));
