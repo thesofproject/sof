@@ -57,7 +57,7 @@
 #elif defined(CONFIG_SUECREEK)
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
-#define CAVS_PLATFORM_NUM_DMACS		3
+#define CAVS_PLATFORM_NUM_DMACS		2
 #endif
 
 static struct dw_drv_plat_data dmac0 = {
@@ -138,7 +138,7 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
 		.caps		= DMA_CAP_GP_LP,
-		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
+		.devs		= DMA_DEV_SSP | DMA_DEV_SSI | DMA_DEV_DMIC,
 		.base		= LP_GP_DMA_BASE(0),
 		.channels	= 8,
 		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
@@ -160,6 +160,7 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 	},
 	.ops		= &dw_dma_ops,
 },
+#if 0
 {	/* LP GP DMAC 2 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC2,
@@ -174,6 +175,7 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 	},
 	.ops		= &dw_dma_ops,
 },
+#endif
 };
 
 #else

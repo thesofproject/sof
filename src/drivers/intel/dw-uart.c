@@ -34,6 +34,7 @@
 #include <sof/io.h>
 #include <sof/dw-uart.h>
 #include <sof/string.h>
+#include <sof/util.h>
 
 /* uart register list */
 #define SUE_UART_REG_THR	0
@@ -186,12 +187,6 @@ static uint8_t dw_uart_ring[DW_UART_RING_SIZE];
 static bool dw_uart_ring_empty = true;
 static unsigned int dw_uart_ring_head;
 static unsigned int dw_uart_ring_tail;
-
-#define min(a, b) ({		\
-	typeof(a) __a = (a);	\
-	typeof(b) __b = (b);	\
-	__a > __b ? __b : __a;	\
-})
 
 static int dw_uart_write_fifo(const uint8_t *data, unsigned int size)
 {

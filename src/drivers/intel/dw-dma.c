@@ -197,7 +197,7 @@
 #define DW_CH_SAI_ERR			0x0410
 
 /* default initial setup register values */
-#define DW_CFG_LOW_DEF			0x00000003
+#define DW_CFG_LOW_DEF		0x00000003 /* INT_EN | TR_WIDTH=1 */
 #define DW_CFG_HIGH_DEF		0x0
 
 #elif defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE) \
@@ -220,8 +220,8 @@
 #define DW_CFG_RELOAD_DST		(1 << 31)
 
 /* CFG_HI */
-#define DW_CFGH_SRC_PER(x)		(x << 0)
-#define DW_CFGH_DST_PER(x)		(x << 4)
+#define DW_CFGH_SRC_PER(x)		((((x) & 15) << 0) | (((x) & 48) << 24))
+#define DW_CFGH_DST_PER(x)		((((x) & 15) << 4) | (((x) & 48) << 26))
 
 /* FIFO Partition */
 #define DW_FIFO_PARTITION
@@ -387,7 +387,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 static int dw_dma_start(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t flags;
+	uint32_t flags, chan_en;
 	int ret = 0;
 
 	spin_lock_irq(&dma->lock, flags);
@@ -395,8 +395,9 @@ static int dw_dma_start(struct dma *dma, int channel)
 	tracev_dma("DEn");
 
 	/* is channel idle, disabled and ready ? */
+	chan_en = dw_read(dma, DW_DMA_CHAN_EN);
 	if (p->chan[channel].status != COMP_STATE_PREPARE ||
-		(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
+	    (chan_en & (0x1 << channel))) {
 		ret = -EBUSY;
 		trace_dma_error("eS0");
 		trace_error_value(dw_read(dma, DW_DMA_CHAN_EN));
@@ -594,7 +595,7 @@ static int dw_dma_status(struct dma *dma, int channel,
 /*
  * use array to get burst_elems for specific slot number setting.
  * the relation between msize and burst_elems should be
- * 2 ^ burst_elems = burst_elems
+ * 2 ^ msize = burst_elems
  */
 static const uint32_t burst_elems[] = {1, 2, 4, 8};
 
@@ -694,7 +695,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			}
 			break;
 		case 4:
-			/* config the src tr width for 24, 32 bit samples */
+			/* config the src tr width for 32 bit samples */
 			lli_desc->ctrl_lo |= DW_CTLL_SRC_WIDTH(2);
 			break;
 		default:
@@ -720,7 +721,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			}
 			break;
 		case 4:
-			/* config the dest tr width for 24, 32 bit samples */
+			/* config the dest tr width for 32 bit samples */
 			lli_desc->ctrl_lo |= DW_CTLL_DST_WIDTH(2);
 			break;
 		default:
@@ -973,7 +974,7 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 }
 
-static void dw_dma_setup(struct dma *dma)
+static int dw_dma_setup(struct dma *dma)
 {
 	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
 	int i;
@@ -985,13 +986,16 @@ static void dw_dma_setup(struct dma *dma)
 	/* now check that it's 0 */
 	for (i = DW_DMA_CFG_TRIES; i > 0; i--) {
 		if (dw_read(dma, DW_DMA_CFG) == 0)
-			goto found;
+			break;
 	}
-	trace_dma_error("eDs");
-	return;
 
-found:
-	for (i = 0; i <  DW_MAX_CHAN; i++)
+	if (!i) {
+		trace_dma_error("eDs");
+		return -EIO;
+	}
+
+	/* Read the same register 8 times? */
+	for (i = 0; i < DW_MAX_CHAN; i++)
 		dw_read(dma, DW_DMA_CHAN_EN);
 
 #ifdef HAVE_HDDA
@@ -1031,6 +1035,8 @@ found:
 			 DW_CFG_CLASS(dp->chan[i].class));
 #endif
 	}
+
+	return 0;
 }
 
 static void dw_dma_process_block(struct dma_chan_data *chan,
@@ -1271,7 +1277,7 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
-	int i;
+	int i, ret;
 
 	if (dma_get_drvdata(dma))
 		return -EEXIST; /* already created */
@@ -1290,7 +1296,9 @@ static int dw_dma_probe(struct dma *dma)
 
 	spinlock_init(&dma->lock);
 
-	dw_dma_setup(dma);
+	ret = dw_dma_setup(dma);
+	if (ret < 0)
+		return ret;
 
 	/* init work */
 	for (i = 0; i < dma->plat_data.channels; i++) {

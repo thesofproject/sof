@@ -130,7 +130,6 @@ out:
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct intel_ipc_data *iipc;
-	uint32_t dir, caps, dev;
 
 	_ipc = ipc;
 
@@ -150,12 +149,6 @@ int platform_ipc_init(struct ipc *ipc)
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 #endif
-
-	/* request HDA DMA with shared access privilege */
-	caps = 0;
-	dir = DMA_DIR_HMEM_TO_LMEM;
-	dev = DMA_DEV_HOST;
-	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;

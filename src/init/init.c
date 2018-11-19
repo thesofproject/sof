@@ -50,6 +50,9 @@
 /* main firmware context */
 static struct sof sof;
 
+#include <platform/sue-gpio.h>
+#include <sof/wait.h>
+
 int master_core_init(struct sof *sof)
 {
 	int err;
@@ -81,6 +84,9 @@ int master_core_init(struct sof *sof)
 		panic(SOF_IPC_PANIC_PLATFORM);
 
 	trace_point(TRACE_BOOT_PLATFORM);
+
+	/* GPIO14 to signal host IPC IRQ */
+	gpio_config(GPIO14, SUE_GPIO_DIR_OUT);
 
 	/* should not return */
 	err = do_task_master_core(sof);

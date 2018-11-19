@@ -41,7 +41,7 @@ enum IPC_STATE {
 #define SUE_SPI_READ		1
 #define SUE_SPI_WRITE		0
 
-#define SUE_SPI_BASEADDRESS(x)	(x + 0x00080000)
+#define SUE_SPI_BASEADDRESS(x)		(x + 0x00080000)
 #define	SUE_SPI_REG_CTRLR0		SUE_SPI_BASEADDRESS(0x00)
 #define	SUE_SPI_REG_CTRLR1		SUE_SPI_BASEADDRESS(0x04)
 #define	SUE_SPI_REG_SSIENR		SUE_SPI_BASEADDRESS(0x08)
@@ -64,14 +64,12 @@ enum IPC_STATE {
 #define	SUE_SPI_REG_DMATDLR		SUE_SPI_BASEADDRESS(0x50)
 #define	SUE_SPI_REG_DMARDLR		SUE_SPI_BASEADDRESS(0x54)
 #define	SUE_SPI_REG_DR			SUE_SPI_BASEADDRESS(0x60)
-#define	SUE_SPI_REG_SPICTRLR0	SUE_SPI_BASEADDRESS(0xF4)
-
+#define	SUE_SPI_REG_SPICTRLR0		SUE_SPI_BASEADDRESS(0xF4)
 
 enum sspi_type {
 	SPI_DIR_RX  = 0,
 	SPI_DIR_TX,
 };
-
 
 enum {
 	SSPI_TRIGGER_START = 0,
@@ -85,12 +83,10 @@ enum sof_spi_type {
 
 struct spi_dma_config {
 	enum sspi_type type;
-	uint32_t src_width;
-	uint32_t dest_width;
 	uint32_t src_msize;
 	uint32_t dest_msize;
-	uint32_t src_buf;
-	uint32_t dest_buf;
+	void *src_buf;
+	void *dest_buf;
 	uint32_t transfer_len;
 	uint32_t lbm;	/* loopback mode */
 	uint32_t cyclic;
@@ -137,12 +133,13 @@ struct sspi {
 	uint32_t tx_size;
 	uint8_t *rx_buffer;
 	uint8_t *tx_buffer;
-	struct dma *dma;
+	struct dma *dma[2];
 	struct spi_reg_list reg;
 	struct sspi_plat_data plat_data;
 	struct spi_dma_config config[2];
 	const struct sspi_ops *ops;
 	uint32_t ipc_status;
+	completion_t complete;
 
 	struct sof_ipc_hdr hdr;
 };
@@ -169,10 +166,10 @@ struct sspi_ops {
 
 struct sspi *sspi_get(uint32_t type);
 int spi_slave_init(struct sspi *spi, uint32_t type);
+void spi_push(void *data, size_t size);
 
 /* SPI-slave interface formatting */
-static inline int sspi_set_config(struct sspi *spi,
-								struct spi_dma_config *spi_cfg)
+static inline int sspi_set_config(struct sspi *spi, struct spi_dma_config *spi_cfg)
 {
 	return spi->ops->set_config(spi, spi_cfg);
 }
