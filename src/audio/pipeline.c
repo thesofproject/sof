@@ -316,7 +316,8 @@ int pipeline_comp_connect(struct comp_dev *source_comp,
 			  struct comp_buffer *sink_buffer)
 {
 	trace_pipe("pipeline: connect source comp %d -> sink buffer %d",
-		   source_comp->comp.id, sink_buffer->ipc_buffer.comp.id);
+		   source_comp ? source_comp->comp.id : -1,
+		   sink_buffer ? sink_buffer->ipc_buffer.comp.id : -1);
 
 	/* connect source to buffer */
 	spin_lock(&source_comp->lock);
@@ -336,7 +337,8 @@ int pipeline_buffer_connect(struct comp_buffer *source_buffer,
 			    struct comp_dev *sink_comp)
 {
 	trace_pipe("pipeline: connect source buffer %d -> sink comp %d",
-		   source_buffer->ipc_buffer.comp.id, sink_comp->comp.id);
+		   source_buffer ? source_buffer->ipc_buffer.comp.id : -1,
+		   sink_comp ? sink_comp->comp.id : -1);
 
 	/* connect sink to buffer */
 	spin_lock(&sink_comp->lock);
