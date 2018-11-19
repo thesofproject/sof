@@ -15,11 +15,9 @@ aclocal.m4
 compile
 ltmain.sh
 rimage/rimage
-rmbox/rmbox
 rwav/rwav
 *.tplg
 topology/*.conf
 topology/test/*.conf
 eqctl/sof-eqctl
-rmbox/sof-logger
-rmbox/sof-rmbox
+logger/sof-logger
