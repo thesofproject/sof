@@ -205,6 +205,7 @@
 
 #define SHIM_L2_MECS		(SHIM_BASE + 0xd0)
 
+/** \brief LDO Control */
 #define SHIM_LDOCTL		0xA4
 #define SHIM_LDOCTL_HPSRAM_MASK	(3 << 0)
 #define SHIM_LDOCTL_LPSRAM_MASK	(3 << 2)
@@ -214,7 +215,6 @@
 #define SHIM_LDOCTL_LPSRAM_LDO_BYPASS	BIT(2)
 #define SHIM_LDOCTL_HPSRAM_LDO_OFF	(0 << 0)
 #define SHIM_LDOCTL_LPSRAM_LDO_OFF	(0 << 2)
-
 
 #define DSP_INIT_LPGPDMA(x)	(0x71A60 + (2*x))
 #define LPGPDMA_CTLOSEL_FLAG	(1 << 15)
