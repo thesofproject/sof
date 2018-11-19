@@ -58,7 +58,7 @@ bnez \ax, 1b
 movi \ax, (SHIM_BASE + SHIM_LDOCTL)
 l32i \ay, \ax, 0
 
-movi \ax, ~(SHIM_LDOCTL_HP_SRAM_MASK)
+movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK)
 and \ay, \ax, \ay
 or \state, \ay, \state
 
@@ -69,7 +69,7 @@ m_cavs_set_ldo_state \state, \ax
 movi \ax, (SHIM_BASE + SHIM_LDOCTL)
 l32i \ay, \ax, 0
 // LP SRAM mask
-movi \ax, ~(SHIM_LDOCTL_LP_SRAM_MASK)
+movi \ax, ~(SHIM_LDOCTL_LPSRAM_MASK)
 and \ay, \ax, \ay
 or \state, \ay, \state
 
@@ -80,9 +80,9 @@ m_cavs_set_ldo_state \state, \ax
 movi \ay, (SHIM_BASE + SHIM_LDOCTL)
 l32i \az, \ay, 0
 
-movi \ax, ~(SHIM_LDOCTL_HP_SRAM_MASK | SHIM_LDOCTL_LP_SRAM_MASK)
+movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK | SHIM_LDOCTL_LPSRAM_MASK)
 and \az, \ax, \az
-movi \ax, (SHIM_LDOCTL_HP_SRAM_LDO_ON | SHIM_LDOCTL_LP_SRAM_LDO_ON)
+movi \ax, (SHIM_LDOCTL_HPSRAM_LDO_ON | SHIM_LDOCTL_LPSRAM_LDO_ON)
 or \ax, \az, \ax
 
 m_cavs_set_ldo_state \ax, \ay
@@ -98,10 +98,10 @@ movi \ax, 128
 movi \ay, (SHIM_BASE + SHIM_LDOCTL)
 l32i \az, \ay, 0
 
-movi \ax, ~(SHIM_LDOCTL_HP_SRAM_MASK | SHIM_LDOCTL_LP_SRAM_MASK)
+movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK | SHIM_LDOCTL_LPSRAM_MASK)
 and \az, \az, \ax
 
-movi \ax, (SHIM_LDOCTL_HP_SRAM_LDO_OFF | SHIM_LDOCTL_LP_SRAM_LDO_OFF)
+movi \ax, (SHIM_LDOCTL_HPSRAM_LDO_OFF | SHIM_LDOCTL_LPSRAM_LDO_OFF)
 or \ax, \ax, \az
 
 s32i \ax, \ay, 0
@@ -118,10 +118,10 @@ movi \ax, 128
 movi \ay, (SHIM_BASE + SHIM_LDOCTL)
 l32i \az, \ay, 0
 
-movi \ax, ~(SHIM_LDOCTL_HP_SRAM_MASK | SHIM_LDOCTL_LP_SRAM_MASK)
+movi \ax, ~(SHIM_LDOCTL_HPSRAM_MASK | SHIM_LDOCTL_LPSRAM_MASK)
 and \az, \az, \ax
 
-movi \ax, (SHIM_LDOCTL_HP_SRAM_LDO_BYPASS | SHIM_LDOCTL_LP_SRAM_LDO_BYPASS)
+movi \ax, (SHIM_LDOCTL_HPSRAM_LDO_BYPASS | SHIM_LDOCTL_LPSRAM_LDO_BYPASS)
 or \ax, \ax, \az
 
 s32i \ax, \ay, 0

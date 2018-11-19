@@ -88,12 +88,12 @@ power_down:
     beqz b_enable_lpsram, _PD_DISABLE_HPSRAM
 
 _PD_DISABLE_LPSRAM:
-    movi temp_reg0, SHIM_LDOCTL_LP_SRAM_LDO_ON
+    movi temp_reg0, SHIM_LDOCTL_LPSRAM_LDO_ON
     m_cavs_set_lpldo_state temp_reg0, temp_reg1, temp_reg2
 
 		m_cavs_lpsram_power_off temp_reg0, temp_reg1, temp_reg2
 
-    movi temp_reg0, SHIM_LDOCTL_LP_SRAM_LDO_OFF
+    movi temp_reg0, SHIM_LDOCTL_LPSRAM_LDO_OFF
     m_cavs_set_lpldo_state temp_reg0, temp_reg1, temp_reg2
 
     // DISABLE_HPSRAM is aligned so there can be zeros between
@@ -109,13 +109,13 @@ _PD_DISABLE_HPSRAM:
     l32i temp_reg0, pu32_hpsram_mask, 0
     beqz temp_reg0, _PD_SLEEP
 
-    movi temp_reg0, SHIM_LDOCTL_HP_SRAM_LDO_ON
+    movi temp_reg0, SHIM_LDOCTL_HPSRAM_LDO_ON
     m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
     // Disable L2 cache in case it would be enabled
 
     m_cavs_hpsram_power_off temp_reg0, temp_reg1, temp_reg2
 
-    movi temp_reg0, SHIM_LDOCTL_HP_SRAM_LDO_OFF
+    movi temp_reg0, SHIM_LDOCTL_HPSRAM_LDO_OFF
     m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
 
 	// 	For BXT-P we need to deassert VNN request and select slow XTAL
