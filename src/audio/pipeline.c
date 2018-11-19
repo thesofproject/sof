@@ -312,10 +312,11 @@ int pipeline_complete(struct pipeline *p)
 }
 
 /* connect component -> buffer */
-int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
-	struct comp_buffer *sink_buffer)
+int pipeline_comp_connect(struct comp_dev *source_comp,
+			  struct comp_buffer *sink_buffer)
 {
-	trace_pipe_with_ids(p, "pipeline_comp_connect()");
+	trace_pipe("pipeline: connect source comp %d -> sink buffer %d",
+		   source_comp->comp.id, sink_buffer->ipc_buffer.comp.id);
 
 	/* connect source to buffer */
 	spin_lock(&source_comp->lock);
@@ -327,18 +328,15 @@ int pipeline_comp_connect(struct pipeline *p, struct comp_dev *source_comp,
 	if (sink_buffer->source && sink_buffer->sink)
 		sink_buffer->connected = 1;
 
-	tracev_pipe_with_ids(p, "pipeline_comp_connect(), (source_comp->comp.id"
-			     " << 16) | sink_buffer->ipc_buffer.comp.id = %08x",
-			     (source_comp->comp.id << 16) |
-			     sink_buffer->ipc_buffer.comp.id);
 	return 0;
 }
 
 /* connect buffer -> component */
-int pipeline_buffer_connect(struct pipeline *p,
-	struct comp_buffer *source_buffer, struct comp_dev *sink_comp)
+int pipeline_buffer_connect(struct comp_buffer *source_buffer,
+			    struct comp_dev *sink_comp)
 {
-	trace_pipe_with_ids(p, "pipeline_buffer_connect()");
+	trace_pipe("pipeline: connect source buffer %d -> sink comp %d",
+		   source_buffer->ipc_buffer.comp.id, sink_comp->comp.id);
 
 	/* connect sink to buffer */
 	spin_lock(&sink_comp->lock);
@@ -350,10 +348,6 @@ int pipeline_buffer_connect(struct pipeline *p,
 	if (source_buffer->source && source_buffer->sink)
 		source_buffer->connected = 1;
 
-	tracev_pipe_with_ids(p, "pipeline_buffer_connect(), (source_buffer->"
-			     "ipc_buffer.comp.id << 16) | sink_comp->comp.id = "
-			     "%08x", (source_buffer->ipc_buffer.comp.id << 16) |
-			     sink_comp->comp.id);
 	return 0;
 }
 

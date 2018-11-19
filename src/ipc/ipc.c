@@ -230,12 +230,10 @@ int ipc_comp_connect(struct ipc *ipc,
 	/* check source and sink types */
 	if (icd_source->type == COMP_TYPE_BUFFER &&
 		icd_sink->type == COMP_TYPE_COMPONENT)
-		return pipeline_buffer_connect(icd_source->pipeline,
-			icd_source->cb, icd_sink->cd);
+		return pipeline_buffer_connect(icd_source->cb, icd_sink->cd);
 	else if (icd_source->type == COMP_TYPE_COMPONENT &&
 		icd_sink->type == COMP_TYPE_BUFFER)
-		return pipeline_comp_connect(icd_source->pipeline,
-			icd_source->cd, icd_sink->cb);
+		return pipeline_comp_connect(icd_source->cd, icd_sink->cb);
 	else {
 		trace_ipc_error("eCt");
 		trace_error_value(connect->source_id);
