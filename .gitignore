@@ -15,7 +15,6 @@
 *.rom
 *.man
 .version
-.tarball-version
 *.x
 .build
 *.dis
