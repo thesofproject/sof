@@ -44,6 +44,14 @@
 #include <stdint.h>
 #include <limits.h>
 
+/* clock tracing */
+#define trace_clk(__e, ...) \
+	trace_event(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
+#define tracev_clk(__e, ...) \
+	tracev_event(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
+#define trace_clk_error(__e, ...) \
+	trace_error(TRACE_CLASS_CLK, __e, ##__VA_ARGS__)
+
 typedef int (*set_frequency)(uint32_t);
 
 struct clk_data {
@@ -75,7 +83,7 @@ static inline uint32_t clock_get_freq(const struct freq_table *table,
 	return size - 1;
 }
 
-uint32_t clock_set_freq(int clock, uint32_t hz)
+void clock_set_freq(int clock, uint32_t hz)
 {
 	struct notify_data notify_data;
 	struct clock_notify_data clk_notify_data;
@@ -112,7 +120,8 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 		notify_data.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
 		break;
 	default:
-		break;
+		trace_clk_error("clk: invalid clock type %d", clock);
+		goto out;
 	}
 
 	/* get nearest frequency that is >= requested Hz */
@@ -134,9 +143,8 @@ uint32_t clock_set_freq(int clock, uint32_t hz)
 	notify_data.message = CLOCK_NOTIFY_POST;
 	notifier_event(&notify_data);
 
+out:
 	spin_unlock_irq(&clk_pdata->clk[clock].lock, flags);
-
-	return clk_pdata->clk[clock].freq;
 }
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
