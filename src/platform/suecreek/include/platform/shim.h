@@ -243,6 +243,9 @@
 /* DMIC power ON bit */
 #define DMICLCTL_SPA	((uint32_t) BIT(0))
 
+/* DMIC disable clock gating */
+#define DMIC_DCGD	((uint32_t) BIT(30))
+
 #ifndef ASSEMBLY
 
 static inline uint16_t shim_read16(uint16_t reg)
