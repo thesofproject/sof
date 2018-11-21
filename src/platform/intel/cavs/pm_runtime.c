@@ -109,6 +109,13 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 		    "dis-dmic-clk-gating index %d CLKCTL %08x",
 		    index, shim_read(SHIM_CLKCTL));
 #endif
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
+	|| defined(CONFIG_SUECREEK)
+	/* Disable DMIC clock gating */
+	io_reg_write(DMICLCTL,
+		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
+#endif
+
 }
 
 static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
@@ -121,6 +128,12 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 	trace_event(TRACE_CLASS_POWER,
 		    "en-dmic-clk-gating index %d CLKCTL %08x",
 		    index, shim_read(SHIM_CLKCTL));
+#endif
+#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
+	|| defined(CONFIG_SUECREEK)
+	/* Enable DMIC clock gating */
+	io_reg_write(DMICLCTL,
+		    (io_reg_read(DMICLCTL) & ~DMIC_DCGD));
 #endif
 }
 static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
