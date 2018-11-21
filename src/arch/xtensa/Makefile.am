@@ -202,6 +202,66 @@ RIMAGE_BOOT_FLAGS += boot_ldr-$(FW_NAME)
 BIN_FLAGS +=boot_ldr-local
 endif
 
+if BUILD_VM_ROM
+
+# ROM
+noinst_PROGRAMS += \
+	rom
+
+LINK_ROM_SCRIPT = ../../platform/$(PLATFORM)/$(PLATFORM_ROM_LDSCRIPT)
+BUILT_SOURCES += $(LINK_ROM_SCRIPT)
+CLEANFILES += $(LINK_ROM_SCRIPT)
+
+nodist_rom_SOURCES = $(LINK_ROM_SCRIPT).in
+$(LINK_ROM_SCRIPT): Makefile $(LINK_ROM_SCRIPT).in $(LINK_DEPS)
+	cat $(LINK_ROM_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) $(ARCH_INCDIR) - >$@
+
+rom_LDADD = \
+	-lgcc
+
+# SMP ROM uses UP CRT1
+if BUILD_XTENSA_SMP
+rom_SOURCES = \
+	smp/xtos/memctl_default.S \
+	smp/xtos/reset-vector.S \
+	up/xtos/crt1-boards.S
+else
+rom_SOURCES = \
+	up/xtos/reset-vector.S \
+	up/xtos/crt1-boards.S
+endif
+
+rom_CFLAGS = \
+	$(ARCH_INCDIR) \
+	$(AM_CFLAGS) \
+	$(ARCH_CFLAGS) \
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR) \
+	-DCONFIG_VM_ROM
+
+rom_CCASFLAGS = \
+	$(ARCH_INCDIR) \
+	$(ASFLAGS) \
+	$(AM_CCASFLAGS) \
+	$(PLATFORM_INCDIR) \
+	-DCONFIG_VM_ROM
+
+rom_LDFLAGS = \
+	$(AM_LDFLAGS) \
+	$(ARCH_LDFLAGS) \
+	-T ../../platform/$(PLATFORM)/$(PLATFORM_ROM_LDSCRIPT)
+
+rom-local:
+	cp rom rom-$(FW_NAME)
+	$(OBJCOPY) -O binary rom rom-$(FW_NAME).bin
+	$(OBJDUMP) -h -D rom > rom-$(FW_NAME).map
+	$(OBJDUMP) -S rom > rom-$(FW_NAME).lst
+	$(OBJDUMP) -D rom > rom-$(FW_NAME).dis
+
+BIN_FLAGS += rom-local
+
+endif
+
 if BUILD_MODULE
 MODULE_COPY=$(OBJCOPY) -O binary ../../platform/$(PLATFORM)/module mod-$(FW_NAME).bin
 MODULE_INSERT=$(OBJCOPY) --add-section .module=mod-$(FW_NAME).bin \

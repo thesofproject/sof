@@ -525,7 +525,7 @@ unpackdone:
 	 */
 #if HAVE_XSR
 
-#if !defined(CONFIG_BOOT_LOADER)
+#if !defined(CONFIG_BOOT_LOADER) || defined(CONFIG_VM_ROM)
 /*  For asm macros; works for positive a,b smaller than 1000:  */
 # define GREATERTHAN(a,b)	(((b)-(a)) & ~0xFFF)
 
@@ -579,7 +579,7 @@ unpackdone:
 	 *  Note:  This needs to be call0 regardless of the selected ABI.
 	 */
 
-#if CONFIG_BOOT_LOADER
+#if defined(CONFIG_BOOT_LOADER) && !defined(CONFIG_VM_ROM)
 		/*ToDo refine the _start*/
 		movi a0, SOF_TEXT_START
 		callx0 a0
