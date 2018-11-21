@@ -163,6 +163,9 @@
 #define HP_SRAM_SIZE		0x002F0000 /* Should be 48 * 64 - 0x300000 ?? */
 #define HP_SRAM_MASK		0xFF000000
 
+#define REEF_LOAD_OFFSET	0x00100000
+#define REEF_LOAD_BASE		(HP_SRAM_BASE + REEF_LOAD_OFFSET)
+
 /* HP SRAM Base */
 #define HP_SRAM_VECBASE_RESET	(HP_SRAM_BASE + 0x40000)
 
@@ -332,19 +335,28 @@
 #define SOF_MEM_RO_SIZE			0x8
 
 /* code loader */
-#define BOOT_LDR_TEXT_ENTRY_BASE	0xBE000000
+#define BOOT_LDR_TEXT_ENTRY_BASE	REEF_LOAD_BASE
 #define BOOT_LDR_TEXT_ENTRY_SIZE	0x400
 #define BOOT_LDR_LIT_BASE		(BOOT_LDR_TEXT_ENTRY_BASE + BOOT_LDR_TEXT_ENTRY_SIZE)
 #define BOOT_LDR_LIT_SIZE		0x400
 #define BOOT_LDR_TEXT_BASE		(BOOT_LDR_LIT_BASE + BOOT_LDR_LIT_SIZE)
-#define BOOT_LDR_TEXT_SIZE		0x800
+#define BOOT_LDR_TEXT_SIZE		0x1800
 #define BOOT_LDR_DATA_BASE		(BOOT_LDR_TEXT_BASE + BOOT_LDR_TEXT_SIZE)
 #define BOOT_LDR_DATA_SIZE		0x1000
 #define BOOT_LDR_BSS_BASE		(BOOT_LDR_DATA_BASE + BOOT_LDR_DATA_SIZE)
 #define BOOT_LDR_BSS_SIZE		0x100
 
 /* TODO: set this value */
-#define BOOT_LDR_MANIFEST_BASE		0x55aa55aa
+#define MAN_DESC_OFFSET			0x2000	/* from rimage/manifest.h */
+/*
+ * This is a temporary hack until rimage is updated to handle Sue Creek:
+ * currently the resuult of "xtensa-...-objdump -O binary sof-sue" is about
+ * 8250 bytes, reserve 9K for it and create a firmware image with something like
+ * dd if=/dev/zero bs=1 count=$(expr 9216 - $(stat --print=%s boot_ldr-sue.bin)) >> boot_ldr-sue.bin
+ * cat boot_ldr-sue.bin sof-sue.ri > /tmp/sue.img
+ */
+#define BOOT_LDR_MAX_SIZE		(1024 * 9)
+#define BOOT_LDR_MANIFEST_BASE		(REEF_LOAD_BASE + BOOT_LDR_MAX_SIZE + MAN_DESC_OFFSET)
 
 /* code lodar entry point for base fw */
 #define SRAM_VECBASE_RESET	(BOOT_LDR_BSS_BASE + BOOT_LDR_BSS_SIZE)
