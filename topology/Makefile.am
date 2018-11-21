@@ -19,7 +19,6 @@ DEPS = \
 MACHINES = \
 	sof-cht-nocodec.tplg \
 	sof-cht-max98090.tplg \
-	sof-apl-hdmi.tplg \
 	sof-whl-hda.tplg \
 	sof-hda-generic.tplg \
 	sof-apl-nocodec.tplg \
