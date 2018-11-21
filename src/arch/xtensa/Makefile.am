@@ -234,6 +234,5 @@ vminstall-local:
 
 clean-local:
 	rm -fr mod-*
-	rm -fr *.bin
 	rm -fr *.map
 	rm -fr *.dis
