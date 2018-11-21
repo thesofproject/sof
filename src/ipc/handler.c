@@ -540,13 +540,14 @@ static int ipc_pm_context_size(uint32_t header)
 	/* TODO: calculate the context and size of host buffers required */
 
 	/* write the context to the host driver */
-	mailbox_hostbox_write(0, &pm_ctx, sizeof(pm_ctx));
-	return 1;
+	//mailbox_hostbox_write(0, &pm_ctx, sizeof(pm_ctx));
+
+	return 0;
 }
 
 static int ipc_pm_context_save(uint32_t header)
 {
-	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
+	//struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 
 	trace_ipc("ipc: pm -> save");
@@ -574,23 +575,23 @@ static int ipc_pm_context_save(uint32_t header)
 	//reply.entries_no = 0;
 
 	/* write the context to the host driver */
-	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
+	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
 	iipc->pm_prepare_D3 = 1;
 
-	return 1;
+	return 0;
 }
 
 static int ipc_pm_context_restore(uint32_t header)
 {
-	struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
+	//struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
 
 	trace_ipc("ipc: pm -> restore");
 
 	/* restore context placeholder */
-	mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
+	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
-	return 1;
+	return 0;
 }
 
 static int ipc_pm_core_enable(uint32_t header)
