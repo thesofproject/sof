@@ -47,10 +47,6 @@
 #define DMICLCTL_OFFSET 0x04
 #define DMICLCTL	(DMIC_SHIM_BASE + DMICLCTL_OFFSET)
 
-/* cmd IO to audio codecs */
-#define CMD_BASE		0x00001100
-#define CMD_SIZE		0x00000010
-
 /* resource allocation */
 #define RES_BASE		0x00001110
 #define RES_SIZE		0x00000010
@@ -62,10 +58,6 @@
 /* intra DSP  IPC */
 #define IPC_DSP_SIZE		0x00000080
 #define IPC_DSP_BASE(x)		(0x00001200 + x * IPC_DSP_SIZE)
-
-/* SRAM window for HOST */
-#define HOST_WIN_SIZE		0x00000008
-#define HOST_WIN_BASE(x)	(0x00071A00 + x * HOST_WIN_SIZE)
 
 /* IRQ controller */
 #define IRQ_BASE		0x00078800
@@ -86,24 +78,6 @@
 /* high performance DMA position */
 #define HP_GP_DMA_LINK_SIZE	0x00000800
 #define HP_GP_DMA_LINK_BASE(x)	(0x00001D00 + x * HP_GP_DMA_LINK_SIZE)
-
-/* link DMAC stream */
-#define GTW_LINK_OUT_STREAM_SIZE	0x00000020
-#define GTW_LINK_OUT_STREAM_BASE(x) \
-				(0x00072400 + x * GTW_LINK_OUT_STREAM_SIZE)
-
-#define GTW_LINK_IN_STREAM_SIZE	0x00000020
-#define GTW_LINK_IN_STREAM_BASE(x) \
-				(0x00072600 + x * GTW_LINK_IN_STREAM_SIZE)
-
-/* host DMAC stream */
-#define GTW_HOST_OUT_STREAM_SIZE	0x00000040
-#define GTW_HOST_OUT_STREAM_BASE(x) \
-				(0x00072800 + x * GTW_HOST_OUT_STREAM_SIZE)
-
-#define GTW_HOST_IN_STREAM_SIZE		0x00000040
-#define GTW_HOST_IN_STREAM_BASE(x) \
-				(0x00072C00 + x * GTW_HOST_IN_STREAM_SIZE)
 
 /* code loader */
 #define GTW_CODE_LDR_SIZE	0x00000040
@@ -127,7 +101,7 @@
 
 /* high performance DMACs */
 #define HP_GP_DMA_SIZE		0x00001000
-#define HP_GP_DMA_BASE(x)	(0x0000E000 + x * HP_GP_DMA_SIZE)
+#define HP_GP_DMA_BASE(x)	(0x00004000 + x * HP_GP_DMA_SIZE)
 
 /* ROM */
 #define ROM_BASE		0xBEFE0000
