@@ -199,7 +199,9 @@ boot_ldr-local:
 	$(OBJDUMP) -S boot_ldr > boot_ldr-$(FW_NAME).lst
 	$(OBJDUMP) -D boot_ldr > boot_ldr-$(FW_NAME).dis
 
+if !BUILD_SUECREEK
 RIMAGE_BOOT_FLAGS += boot_ldr-$(FW_NAME)
+endif
 BIN_FLAGS +=boot_ldr-local
 endif
 
