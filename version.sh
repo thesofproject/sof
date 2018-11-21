@@ -15,18 +15,14 @@ fi
 GIT_TAG=`git describe --abbrev=4 2>/dev/null`
 
 # may fail to get git describe in some case, add this fallback to handle error
-if [[ "x$GIT_TAG" == "x" ]]; then
-        if  [ -e $DIR/.tarball-version ]; then
-                VER=$(cat $DIR/.tarball-version)
-                echo $VER > $DIR/.version
-        else
-		GIT_TAG="v0.0-0-g0000"
-	fi
+if [[ "x$GIT_TAG" == "x" ]]
+then
+	GIT_TAG="v0.0-0-g0000"
 fi
 
 # Some releases have a SOF_FW_XXX_ prefix on the tag and this prefix
 # must be stripped for usage in version.h. i.e. we just need the number.
-if [ $(expr match "$GIT_TAG" 'SOF_FW_[A-Z]+_' ) -lt 15 ]; then
+if [ $(expr match $GIT_TAG 'SOF_FW_[A-Z]+_' ) -lt 15 ]; then
 	VER=`echo $GIT_TAG | cut -d_ -f4`
 else
 	VER=$GIT_TAG
