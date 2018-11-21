@@ -41,7 +41,8 @@ MACHINES = \
 	sof-apl-eq-pcm512x.tplg \
 	sof-apl-eq-dmic.tplg \
 	sof-apl-dmic-2ch.tplg \
-	sof-apl-dmic-4ch.tplg
+	sof-apl-dmic-4ch.tplg \
+	sof-icl-dmic-4ch.tplg
 
 
 # Uncomment the following line if you want to debug conf files
