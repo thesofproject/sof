@@ -108,6 +108,13 @@ static void parse_module(struct sof_man_fw_header *hdr,
 	}
 }
 
+/* On Sue Creek the boot loader is attached separately, no need to skip it */
+#ifdef CONFIG_SUECREEK
+#define MAN_SKIP_ENTRIES 0
+#else
+#define MAN_SKIP_ENTRIES 1
+#endif
+
 /* parse FW manifest and copy modules */
 static void parse_manifest(void)
 {
@@ -118,7 +125,7 @@ static void parse_manifest(void)
 	int i;
 
 	/* copy module to SRAM  - skip bootloader module */
-	for (i = 1; i < hdr->num_module_entries; i++) {
+	for (i = MAN_SKIP_ENTRIES; i < hdr->num_module_entries; i++) {
 
 		platform_trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
 		mod = sof_man_get_module(desc, i);
