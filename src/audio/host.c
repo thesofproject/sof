@@ -514,10 +514,7 @@ static int host_params(struct comp_dev *dev)
 	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 0;
 
-#if !defined CONFIG_DMA_GW
-	host_elements_reset(dev);
-#endif
-
+#if defined CONFIG_DMA_GW
 	dev->params.stream_tag -= 1;
 	/* get DMA channel from DMAC
 	 * note: stream_tag is ignored by dw-dma
@@ -527,12 +524,21 @@ static int host_params(struct comp_dev *dev)
 		trace_host_error("eDC");
 		return -ENODEV;
 	}
-#if defined CONFIG_DMA_GW
 	err = dma_set_config(hd->dma, hd->chan, &hd->config);
 	if (err < 0) {
 		trace_host_error("eDc");
 		dma_channel_put(hd->dma, hd->chan);
 		return err;
+	}
+#else
+	host_elements_reset(dev);
+	/* get DMA channel from DMAC
+	 * note: stream_tag is ignored by dw-dma
+	 */
+	hd->chan = dma_channel_get(hd->dma, 0);
+	if (hd->chan < 0) {
+		trace_host_error("eDC");
+		return -ENODEV;
 	}
 #endif
 	/* set up callback */
