@@ -14,5 +14,12 @@ src/platform/*               @tlauda
 *.sh                         @jajanusz
 src/include/sof/preproc*.h   @mwierzbix
 test/cmocka/include/*        @mwierzbix
+src/audio/src*               @singalsu
+src/audio/eq*                @singalsu
+src/audio/fir*               @singalsu
+src/audio/iir*               @singalsu
+src/audio/tone.c             @singalsu
+src/drivers/intel/cavs/dmic.c @singalsu
+src/include/sof/dmic.h       @singalsu
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
