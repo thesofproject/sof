@@ -21,5 +21,8 @@ src/audio/iir*               @singalsu
 src/audio/tone.c             @singalsu
 src/drivers/intel/cavs/dmic.c @singalsu
 src/include/sof/dmic.h       @singalsu
+*.am                         @jajanusz
+*.ac                         @jajanusz
+
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
