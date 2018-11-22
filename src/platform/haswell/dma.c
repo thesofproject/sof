@@ -115,6 +115,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HOST,
 		.irq		= IRQ_NUM_EXT_DMAC0,
 		.drv_plat_data	= &dmac0,
+		.channels	= 8,
 	},
 	.ops		= &dw_dma_ops,
 },
@@ -128,6 +129,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_HOST,
 		.irq		= IRQ_NUM_EXT_DMAC1,
 		.drv_plat_data	= &dmac1,
+		.channels	= 8,
 	},
 	.ops		= &dw_dma_ops,
 },};
@@ -135,18 +137,14 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 /* Initialize all platform DMAC's */
 int dmac_init(void)
 {
-	int i, ret;
+	int i;
+	/* no probing before first use */
 
-	for (i = 0; i < ARRAY_SIZE(dma); i++) {
-		ret = dma_probe(&dma[i]);
-		if (ret < 0) {
+	/* TODO: dynamic init based on platform settings */
 
-			/* trace failed DMAC ID */
-			trace_error(TRACE_CLASS_DMA, "edi");
-			trace_error_value(dma[i].plat_data.id);
-			return ret;
-		}
-	}
+	/* early lock initialization for ref counting */
+	for (i = 0; i < ARRAY_SIZE(dma); i++)
+		spinlock_init(&dma[i].lock);
 
 	/* clear the masks for dsp of the dmacs */
 	io_reg_update_bits(SHIM_BASE + SHIM_IMRD,
