@@ -90,6 +90,7 @@ static void mtrace_event(const char *data, uint32_t length)
 		t[trace->pos + i] = data[i];
 
 	dcache_writeback_region((void *)&t[trace->pos], i);
+	trace->pos += length;
 
 	/* if there was more data than space available, wrap back */
 	if (length > available) {
