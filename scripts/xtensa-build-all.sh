@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl)
-BUILD_RIMAGE=0
+BUILD_TOOLS=0
 BUILD_DEBUG=no
 BUILD_JOBS=1
 BUILD_JOBS_NEXT=0
@@ -11,7 +11,7 @@ pwd=`pwd`
 if [ "$#" -eq 0 ]
 then
 	echo "usage: xtensa-build.sh [options] platform(s)"
-	echo "       [-l] Build rimage locally"
+	echo "       [-l] Build tools locally"
 	echo "       [-a] Build all platforms"
 	echo "       [-d] Enable debug build"
 	echo "       [-j [n]] Set number of make build jobs. Infinite jobs with no arg."
@@ -23,7 +23,7 @@ else
 		if [[ "$args" == "-l" ]]
 			then
 			BUILD_LOCAL=1
-			BUILD_RIMAGE=1
+			BUILD_TOOLS=1
 
 			PATH=$pwd/local/bin:$PATH
 
@@ -74,18 +74,18 @@ set -e
 # run autogen.sh
 ./autogen.sh
 
-# make sure rimage is built and aligned with code
-if [[ "x$BUILD_RIMAGE" == "x1" ]]
+# make sure tools is built and aligned with code
+if [[ "x$BUILD_TOOLS" == "x1" ]]
 then
 	if [[ "x$BUILD_LOCAL" == "x" ]]
 	then
-		./configure --enable-rimage
+		./configure --enable-tools
 		make -j ${BUILD_JOBS}
 		sudo make install
 	else
 		echo "BUILD in local folder!"
 		rm -rf $pwd/local/
-		./configure --enable-rimage --prefix=$pwd/local
+		./configure --enable-tools --prefix=$pwd/local
 		make -j ${BUILD_JOBS}
 		make install
 		PATH=$pwd/local/bin:$PATH

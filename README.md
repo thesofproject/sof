@@ -15,10 +15,11 @@ See [docs](https://thesofproject.github.io/latest/index.html)
 
 1. Run `autogen.sh`
 
-2. Build and install the rimage ELF image creator and signing tool
+2. Build and install sof tools: rimage (ELF image creator and signing tool) and
+logger
 
 ```
-./configure --enable-rimage
+./configure --enable-tools
 make
 sudo make install
 ```

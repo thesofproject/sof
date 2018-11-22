@@ -85,14 +85,14 @@ fi
 AM_CONDITIONAL(BUILD_LIB, test "$have_library" = "yes")
 
 # check if we are building tools
-AC_ARG_ENABLE(rimage, [AS_HELP_STRING([--enable-rimage],[build rimage tool])], have_rimage=$enableval, have_rimage=no)
+AC_ARG_ENABLE(tools, [AS_HELP_STRING([--enable-tools],[build sof tools])], have_tools=$enableval, have_tools=no)
 IMPLICIT_FALLTHROUGH_FLAG=""
-if test "$have_rimage" = "yes"; then
-	AC_DEFINE([CONFIG_RIMAGE], [1], [Configure to build rimage])
+if test "$have_tools" = "yes"; then
+	AC_DEFINE([CONFIG_TOOLS], [1], [Configure to build sof tools])
 	AM_CFLAGS="-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes"
 	IMPLICIT_FALLTHROUGH_FLAG="-Wimplicit-fallthrough=3"
 fi
-AM_CONDITIONAL(BUILD_RIMAGE, test "$have_rimage" = "yes")
+AM_CONDITIONAL(BUILD_TOOLS, test "$have_tools" = "yes")
 
 # check if we are building docs
 AC_ARG_ENABLE(doc, [AS_HELP_STRING([--enable-doc],[build doc])], have_doc=$enableval, have_doc=no)
@@ -152,7 +152,7 @@ case "$with_arch" in
 	AC_DEFINE([CONFIG_HOST], [1], [Configure for Host])
     ;;
     *)
-	if test "$have_rimage" = "no" && test "$have_doc" = "no" ; then
+	if test "$have_tools" = "no" && test "$have_doc" = "no" ; then
 		AC_MSG_ERROR([DSP architecture not specified])
 	fi
     ;;
@@ -390,7 +390,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
     ;;
     *)
-	if test "$have_rimage" = "no" && test "$have_doc" = "no"; then
+	if test "$have_tools" = "no" && test "$have_doc" = "no"; then
 		if test "$ARCH" = "host"; then
 			PLATFORM="host"
 			AC_SUBST(PLATFORM)
@@ -504,7 +504,7 @@ AC_CHECK_TOOL([OBJDUMP], [objdump], [])
 
 # Check for openssl - used by rimage
 AC_CHECK_LIB([crypto], [OPENSSL_config], , [have_openssl="no"])
-if test "$have_rimage" = "yes"; then
+if test "$have_tools" = "yes"; then
 	if test "$have_openssl" = "no"; then
 		AC_MSG_ERROR([Need OpenSSL libcrypto for rimage code signing])
 	fi
@@ -537,8 +537,10 @@ AM_EXTRA_RECURSIVE_TARGETS([vminstall])
 
 AC_CONFIG_FILES([
 	Makefile
-	rimage/Makefile
-	rimage/keys/Makefile
+	tools/Makefile
+	tools/logger/Makefile
+	tools/rimage/Makefile
+	tools/rimage/keys/Makefile
 	doc/Makefile
 	src/Makefile
 	src/tasks/Makefile

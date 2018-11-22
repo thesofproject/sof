@@ -1,5 +1,5 @@
-if BUILD_RIMAGE
-SUBDIRS = rimage
+if BUILD_TOOLS
+SUBDIRS = tools
 else
 SUBDIRS = doc src test
 endif
@@ -65,7 +65,7 @@ doc-dummy:
 doc: doc-dummy
 	$(MAKE) -C doc doc
 
-if !BUILD_RIMAGE
+if !BUILD_TOOLS
 all-local:
 	rm -f $(top_srcdir)/src/include/version.h
 endif

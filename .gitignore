@@ -62,7 +62,7 @@ sof-*
 boot_ldr-*
 boot_module
 module
-rimage/rimage
+tools/rimage/rimage
 
 tap-driver.sh
 test-driver
