@@ -413,6 +413,8 @@ AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" 
 AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
+AM_CONDITIONAL(BUILD_VM_ROM,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
+
 
 # DSP core support (Optional)
 AC_ARG_WITH([dsp-core],
@@ -426,6 +428,9 @@ case "$with_dsp_core" in
     ;;
 
 esac
+
+PLATFORM_ROM_LDSCRIPT="rom.x"
+AC_SUBST(PLATFORM_ROM_LDSCRIPT)
 
 PLATFORM_BOOT_LDR_LDSCRIPT="boot_ldr.x"
 AC_SUBST(PLATFORM_BOOT_LDR_LDSCRIPT)

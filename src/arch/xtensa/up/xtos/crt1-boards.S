@@ -29,6 +29,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <xtensa/coreasm.h>
+#include <platform/memory.h>
 #include <config.h>
 // DF #include "xtos-internal.h"
 //#include <xtensa/../../src/xtos/xtos-internal.h>
@@ -93,6 +94,20 @@ _ResetVector:
 	.text
 	.align 4
 	.literal_position
+
+// VM ROM jumps to boot loader in IMR/SRAM
+#if defined(CONFIG_VM_ROM)
+
+#if defined(CONFIG_SUECREEK)
+_boot_ldr_entry:
+	.word BOOT_LDR_TEXT_ENTRY_BASE
+#else
+_boot_ldr_entry:
+	.word IMR_BOOT_LDR_TEXT_ENTRY_BASE
+#endif
+	.align 4
+#endif /* VM_ROM */
+
 _start:
 	//  _start is typically NOT at the beginning of the text segment --
 	//  it is always called from either the reset vector or other code
@@ -195,7 +210,7 @@ _start:
 1:
 
 /* boot loader takes care of zeroing BSS */
-#if !defined(CONFIG_BOOT_LOADER)
+#if !defined(CONFIG_BOOT_LOADER) && !defined(CONFIG_VM_ROM)
 	/*
 	 *  Clear the BSS (uninitialized data) segments.
 	 *  This code supports multiple zeroed sections (*.bss).
@@ -272,6 +287,20 @@ _start:
 	 */
 
 	//  Pass an empty argv array, with an empty string as the program name.
+
+	// VM ROM jumps to bootloader here.
+#if defined(CONFIG_VM_ROM)
+	l32r	a0, _boot_ldr_entry	// load SRAM reset handler address
+#if defined(CONFIG_SUECREEK)
+	callx8	a0		// jump to the handler
+#else
+	callx12	a0
+#endif
+dead:	nop
+	j dead
+
+#endif /* VM ROM */
+
 #if 0
 	movi	ARG1, _start_argc	// argc address
 	movi	ARG2, _start_argv	// argv = ["", 0]
@@ -281,6 +310,8 @@ _start:
 	l32i	ARG1, ARG1, 0		// argc = 1
 	CALL	__clibrary_init
 #endif
+
+#if !defined(CONFIG_VM_ROM)
 	//  Call:   int main(int argc, char ** argv, char ** environ);
 	movi	ARG1, _start_argc	// argc address
 	movi	ARG2, _start_argv	// argv = ["", 0]
@@ -291,6 +322,7 @@ _start:
 	//  as the first outgoing argument.
 //	CALL	exit			// exit with main's return value
 	// Does not return here.
+#endif
 
 	.data
 	//  Mark argc/argv/envp parameters as weak so that an external

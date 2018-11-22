@@ -564,7 +564,7 @@ unpackdone:
 	 */
 #if HAVE_XSR && (XCHAL_HAVE_XEA1 || XCHAL_HAVE_XEA2)
 
-#if !CONFIG_BOOT_LOADER
+#if !defined(CONFIG_BOOT_LOADER)  || defined(CONFIG_VM_ROM)
 # ifndef XCHAL_DEBUGLEVEL		/* debug option not selected? */
 #  define XCHAL_DEBUGLEVEL	99	/* bogus value outside 2..6 */
 # endif
@@ -615,7 +615,7 @@ unpackdone:
 	 *  Note:  This needs to be call0 regardless of the selected ABI.
 	 */
 
-#if CONFIG_BOOT_LOADER
+#if defined(CONFIG_BOOT_LOADER) && !defined(CONFIG_VM_ROM)
 	movi	a0, SOF_TEXT_START
 	callx0	a0
 #else
