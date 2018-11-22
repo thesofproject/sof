@@ -547,6 +547,10 @@ void rfree(void *ptr)
 	if (!ptr)
 		return;
 
+	/* operate only on cached addresses */
+	if (is_uncached(ptr))
+		ptr = uncache_to_cache(ptr);
+
 	/* use the heap dedicated for the selected core */
 	cpu_heap = cache_to_uncache(memmap.system + cpu_get_id());
 

@@ -158,5 +158,6 @@
 
 #define uncache_to_cache(address)	address
 #define cache_to_uncache(address)	address
+#define is_uncached(address)		0
 
 #endif
