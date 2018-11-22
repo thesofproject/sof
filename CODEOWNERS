@@ -7,11 +7,12 @@
 # Order is important. The last matching pattern has the most precedence.
 # So if a pull request only touches javascript files, only these owners
 # will be requested to review.
-test/*             @jajanusz
-src/math/*         @singalsu
-src/arch/xtensa/*  @tlauda
-src/platform/*     @tlauda
-*.sh               @jajanusz
-
+test/*                       @jajanusz
+src/math/*                   @singalsu
+src/arch/xtensa/*            @tlauda
+src/platform/*               @tlauda
+*.sh                         @jajanusz
+src/include/sof/preproc*.h   @mwierzbix
+test/cmocka/include/*        @mwierzbix
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
