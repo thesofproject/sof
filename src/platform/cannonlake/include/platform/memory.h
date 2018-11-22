@@ -173,6 +173,7 @@
 #define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
 #define HP_SRAM_SIZE		0x002F0000
+#define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM Base */
 #define HP_SRAM_VECBASE_RESET	(HP_SRAM_BASE + 0x40000)
@@ -383,10 +384,11 @@
 #define IMR_BOOT_LDR_BSS_BASE		0xB0100000
 #define IMR_BOOT_LDR_BSS_SIZE		0x10000
 
-#define SRAM_ALIAS_OFFSET	0x20000000
 #define uncache_to_cache(address) \
 	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
 #define cache_to_uncache(address) \
 	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+#define is_uncached(address) \
+	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
 
 #endif

@@ -193,6 +193,7 @@
 #define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
 #define HP_SRAM_SIZE		0x00080000
+#define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM Heap */
 #define HEAP_HP_BUFFER_BASE	HP_SRAM_BASE
@@ -373,10 +374,11 @@
 /** \brief Manifest size (seems unused). */
 #define IMR_BOOT_LDR_MANIFEST_SIZE	0x6000
 
-#define SRAM_ALIAS_OFFSET	0x20000000
 #define uncache_to_cache(address) \
 	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))
 #define cache_to_uncache(address) \
 	((__typeof__((address)))((uint32_t)((address)) - SRAM_ALIAS_OFFSET))
+#define is_uncached(address) \
+	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
 
 #endif
