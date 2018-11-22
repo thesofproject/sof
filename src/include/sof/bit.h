@@ -32,9 +32,10 @@
 #define __INCLUDE_BIT__
 
 #define BIT(b)			(1 << (b))
-#define MASK(b_hi, b_lo)	((1 << ((b_hi) - (b_lo) + 1)) - 1)
+#define MASK(b_hi, b_lo)	\
+	(((1ULL << ((b_hi) - (b_lo) + 1ULL)) - 1ULL) << (b_lo))
 #define SET_BIT(b, x)		(((x) & 1) << (b))
 #define SET_BITS(b_hi, b_lo, x)	\
-	(((x) & ((1 << ((b_hi) - (b_lo) + 1)) - 1)) << (b_lo))
+	(((x) & ((1ULL << ((b_hi) - (b_lo) + 1ULL)) - 1ULL)) << (b_lo))
 
 #endif
