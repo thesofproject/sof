@@ -89,7 +89,7 @@
 
 #define HDA_LINK_1MS_US	1000
 
-#define HDA_STATE_PRELOAD	BIT(0)
+#define HDA_STATE_HOST_PRELOAD	BIT(0)
 #define HDA_STATE_BF_WAIT	BIT(1)
 #define HDA_STATE_INIT		BIT(2)
 #define HDA_STATE_RELEASE	BIT(3)
@@ -209,7 +209,7 @@ static inline uint32_t hda_dma_get_free_size(struct dma *dma, uint32_t chan)
 	return bs - hda_dma_get_data_size(dma, chan);
 }
 
-static int hda_dma_preload(struct dma *dma, struct hda_chan_data *chan)
+static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 {
 	struct dma_sg_elem next = {
 			.src = DMA_RELOAD_LLI,
@@ -227,7 +227,7 @@ static int hda_dma_preload(struct dma *dma, struct hda_chan_data *chan)
 		; /* TODO: this should timeout and not wait forever */
 
 	if (host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) {
-		chan->state &= ~(HDA_STATE_PRELOAD | HDA_STATE_BF_WAIT);
+		chan->state &= ~(HDA_STATE_HOST_PRELOAD | HDA_STATE_BF_WAIT);
 		if (chan->cb) {
 			/* loop over each period */
 			period_cnt = chan->buffer_bytes /
@@ -245,8 +245,7 @@ static int hda_dma_preload(struct dma *dma, struct hda_chan_data *chan)
 	return 0;
 }
 
-static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
-			   int bytes)
+static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
 {
 	struct dma_sg_elem next = {
 			.src = DMA_RELOAD_LLI,
@@ -254,6 +253,30 @@ static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 			.size = DMA_RELOAD_LLI
 	};
 	uint32_t flags;
+
+	if (chan->cb) {
+		spin_lock_irq(&dma->lock, flags);
+
+		next.src = DMA_RELOAD_LLI;
+		next.dest = DMA_RELOAD_LLI;
+		next.size = DMA_RELOAD_LLI;
+
+		chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, &next);
+		if (next.size == DMA_RELOAD_END) {
+			/* disable channel, finished */
+			hda_dma_stop(dma, chan->index);
+		}
+
+		spin_unlock_irq(&dma->lock, flags);
+	}
+
+	/* Force Host DMA to exit L1 */
+	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+}
+
+static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
+				int bytes)
+{
 	uint32_t dgcs = 0;
 
 	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
@@ -266,36 +289,31 @@ static int hda_dma_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 				DGCS, DGCS_BOR, DGCS_BOR);
 
 	/* make sure that previous transfer is complete */
-	if (chan->direction == DMA_DIR_MEM_TO_DEV) {
-		while (hda_dma_get_free_size(dma, chan->index) <
-		       bytes)
-			idelay(PLATFORM_DEFAULT_DELAY);
-	}
+	while (hda_dma_get_free_size(dma, chan->index) < bytes)
+		idelay(PLATFORM_DEFAULT_DELAY);
 
 	/*
 	 * set BFPI to let host gateway knows we have read size,
 	 * which will trigger next copy start.
 	 */
-	if (chan->direction == DMA_DIR_MEM_TO_DEV)
-		hda_dma_inc_link_fp(dma, chan->index, bytes);
-	else
-		hda_dma_inc_fp(dma, chan->index, bytes);
+	hda_dma_inc_link_fp(dma, chan->index, bytes);
+	hda_dma_post_copy(dma, chan);
 
-	spin_lock_irq(&dma->lock, flags);
-	if (chan->cb && !(chan->state & HDA_STATE_RELEASE)) {
-		next.src = DMA_RELOAD_LLI;
-		next.dest = DMA_RELOAD_LLI;
-		next.size = DMA_RELOAD_LLI;
-		chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, &next);
-		if (next.size == DMA_RELOAD_END) {
-			/* disable channel, finished */
-			hda_dma_stop(dma, chan->index);
-		}
-	}
-	spin_unlock_irq(&dma->lock, flags);
+	return 0;
+}
 
-	/* Force Host DMA to exit L1 */
-	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+static int hda_dma_host_copy_ch(struct dma *dma, struct hda_chan_data *chan,
+				int bytes)
+{
+	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
+		     dma->plat_data.id, chan->index, bytes);
+
+	/*
+	 * set BFPI to let host gateway knows we have read size,
+	 * which will trigger next copy start.
+	 */
+	hda_dma_inc_fp(dma, chan->index, bytes);
+	hda_dma_post_copy(dma, chan);
 
 	return 0;
 }
@@ -336,7 +354,7 @@ static void hda_dma_enable(struct dma *dma, int channel)
 	spin_unlock_irq(&dma->lock, flags);
 }
 
-static uint64_t hda_dma_work(void *data, uint64_t delay)
+static uint64_t hda_dma_link_work(void *data, uint64_t delay)
 {
 	struct hda_chan_data *chan = (struct hda_chan_data *)data;
 
@@ -349,14 +367,30 @@ static uint64_t hda_dma_work(void *data, uint64_t delay)
 	if (chan->state & HDA_STATE_INIT)
 		hda_dma_enable(chan->dma, chan->index);
 	else
-		hda_dma_copy_ch(chan->dma, chan, chan->period_bytes);
+		hda_dma_link_copy_ch(chan->dma, chan, chan->period_bytes);
 
 	/* next time to re-arm */
 	return HDA_LINK_1MS_US;
 }
 
 /* notify DMA to copy bytes */
-static int hda_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
+static int hda_dma_link_copy(struct dma *dma, int channel, int bytes,
+			     uint32_t flags)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct hda_chan_data *chan = p->chan + channel;
+
+	if (chan->state & HDA_STATE_INIT)
+		return 0;
+	else
+		return hda_dma_link_copy_ch(dma, chan, bytes);
+
+	return 0;
+}
+
+/* notify DMA to copy bytes */
+static int hda_dma_host_copy(struct dma *dma, int channel, int bytes,
+			     uint32_t flags)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct hda_chan_data *chan = p->chan + channel;
@@ -368,14 +402,14 @@ static int hda_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 	}
 
 	if (flags & DMA_COPY_PRELOAD)
-		chan->state |= HDA_STATE_PRELOAD;
+		chan->state |= HDA_STATE_HOST_PRELOAD;
 
 	if (chan->state & HDA_STATE_INIT)
 		return 0;
-	else if (chan->state & HDA_STATE_PRELOAD)
-		return hda_dma_preload(dma, chan);
+	else if (chan->state & HDA_STATE_HOST_PRELOAD)
+		return hda_dma_host_preload(dma, chan);
 	else
-		return hda_dma_copy_ch(dma, chan, bytes);
+		return hda_dma_host_copy_ch(dma, chan, bytes);
 
 	return 0;
 }
@@ -685,7 +719,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* initialize timer */
 	if (config->cyclic) {
-		work_init(&p->chan[channel].dma_ch_work, hda_dma_work,
+		work_init(&p->chan[channel].dma_ch_work, hda_dma_link_work,
 			  &p->chan[channel], WORK_ASYNC);
 	}
 
@@ -800,7 +834,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.channel_put	= hda_dma_channel_put,
 	.start		= hda_dma_start,
 	.stop		= hda_dma_stop,
-	.copy		= hda_dma_copy,
+	.copy		= hda_dma_host_copy,
 	.pause		= hda_dma_pause,
 	.release	= hda_dma_release,
 	.status		= hda_dma_status,
@@ -817,7 +851,7 @@ const struct dma_ops hda_link_dma_ops = {
 	.channel_put	= hda_dma_channel_put,
 	.start		= hda_dma_start,
 	.stop		= hda_dma_stop,
-	.copy		= hda_dma_copy,
+	.copy		= hda_dma_link_copy,
 	.pause		= hda_dma_pause,
 	.release	= hda_dma_release,
 	.status		= hda_dma_status,
