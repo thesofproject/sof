@@ -391,7 +391,9 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
 {
-	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG | SOF_IPC_STREAM_TRIG_XRUN;
+	posn->rhdr.hdr.cmd = SOF_IPC_GLB_STREAM_MSG |
+			     SOF_IPC_STREAM_TRIG_XRUN |
+			     cdev->comp.id;
 	posn->rhdr.hdr.size = sizeof(*posn);
 	posn->comp_id = cdev->comp.id;
 
