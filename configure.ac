@@ -77,6 +77,12 @@ if test "$enable_debug" = "yes"; then
 	AC_DEFINE([DEBUG_BUILD], [1], [Configure to build debug version])
 fi
 
+# check if we are building ROMs
+AC_ARG_ENABLE(roms, [AS_HELP_STRING([--enable-roms],[build roms])], have_roms=$enableval, have_roms=no)
+if test "$have_roms" = "yes"; then
+	AC_DEFINE([CONFIG_ENABLE_ROMS], [1], [Enable building ROMs for QEMU])
+fi
+
 # check if we are building FW image or library
 AC_ARG_ENABLE(library, [AS_HELP_STRING([--enable-library],[build library])], have_library=$enableval, have_library=no)
 if test "$have_library" = "yes"; then
@@ -413,7 +419,7 @@ AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" 
 AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
-AM_CONDITIONAL(BUILD_VM_ROM,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
+AM_CONDITIONAL(BUILD_VM_ROM,  (test "$have_roms" = "yes") && (test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl"))
 
 
 # DSP core support (Optional)
