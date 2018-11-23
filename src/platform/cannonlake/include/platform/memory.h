@@ -163,9 +163,9 @@
  * +---------------------+----------------+-----------------------------------+
  * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_END      | Stack          |  SOF_STACK_SIZE                  |
+ * | SOF_STACK_END       | Stack          |  SOF_STACK_SIZE                   |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_BASE      |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -279,8 +279,11 @@
 /* Stack configuration */
 #define SOF_STACK_SIZE		ARCH_STACK_SIZE
 #define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
-#define SOF_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE)
-#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
+/* SOF_STACK_OFFSET defines how much memory can be power gated */
+#define SOF_STACK_OFFSET	0x150000
+/* SOF_STACK_BASE is moved from end of physical memory by offset */
+#define SOF_STACK_BASE	(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_STACK_OFFSET)
+#define SOF_STACK_END	(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
 #define HEAP_BUFFER_BASE		(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE	\
@@ -288,25 +291,26 @@
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
+#define SOF_MEMORY_SIZE (SOF_STACK_BASE - HP_SRAM_BASE)
 /*
  * The LP SRAM Heap and Stack on Cannonlake are organised like this :-
  *
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
  * +---------------------+----------------+-----------------------------------+
- * | LP_SRAM_BASE        | RO Data        |  SOF_LP_DATA_SIZE                |
+ * | LP_SRAM_BASE        | RO Data        |  SOF_LP_DATA_SIZE                 |
  * |                     | Data           |                                   |
  * |                     | BSS            |                                   |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_SYSTEM_BASE | System Heap    |  HEAP_LP_SYSTEM_SIZE                 |
+ * | HEAP_LP_SYSTEM_BASE | System Heap    |  HEAP_LP_SYSTEM_SIZE              |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_RUNTIME_BASE| Runtime Heap   |  HEAP_LP_RUNTIME_SIZE                |
+ * | HEAP_LP_RUNTIME_BASE| Runtime Heap   |  HEAP_LP_RUNTIME_SIZE             |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE                 |
+ * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE              |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_LP_STACK_END   | Stack          |  SOF_LP_STACK_SIZE                  |
+ * | SOF_LP_STACK_END    | Stack          |  SOF_LP_STACK_SIZE                |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_BASE      |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -366,8 +370,6 @@
 #define SOF_MEM_RESET_TEXT_SIZE	0x268
 #define SOF_MEM_RESET_LIT_SIZE		0x8
 #define SOF_MEM_VECBASE_LIT_SIZE	0x178
-
-#define SOF_MEM_RO_SIZE			0x8
 
 /* boot loader in IMR */
 #define IMR_BOOT_LDR_MANIFEST_BASE	0xB0032000

@@ -43,4 +43,9 @@
 
 #define PLATFORM_MASTER_CORE_ID		0
 
+//TODO: move cAVS memory specific definitions to cavs/memory driver
+#define SRAM_BANK_SIZE	0x10000
+
+#define EBB_SEGMENT_SIZE	32
+
 #endif
