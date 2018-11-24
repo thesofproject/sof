@@ -357,6 +357,10 @@
 
 #define SOF_MEM_RO_SIZE			0x8
 
+/* VM ROM sizes */
+#define ROM_RESET_TEXT_SIZE	0x400
+#define ROM_RESET_LIT_SIZE	0x200
+
 /* code loader */
 #define BOOT_LDR_TEXT_ENTRY_BASE	0xBE000000
 #define BOOT_LDR_TEXT_ENTRY_SIZE	0x400
