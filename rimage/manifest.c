@@ -618,7 +618,8 @@ static int man_write_fw_mod(struct image *image)
 	return 0;
 }
 
-static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc)
+static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
+			      int file_text_offset)
 {
 	struct module *module;
 	struct sof_man_module *man_module;
@@ -631,7 +632,7 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc)
 
 		/* set module file offset */
 		if (i == 0)
-			module->foffset = FILE_TEXT_OFFSET;
+			module->foffset = file_text_offset;
 		else
 			module->foffset = image->image_end;
 
@@ -695,11 +696,11 @@ static int man_write_fw_v1_5(struct image *image)
 
 	/* create the module */
 	m = image->fw_image;
-	desc = image->fw_image + MAN_DESC_OFFSET;
+	desc = image->fw_image + MAN_DESC_OFFSET_V1_5;
 
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc);
+	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
 
 	fprintf(stdout, "Firmware completing manifest v1.5\n");
 
@@ -707,7 +708,7 @@ static int man_write_fw_v1_5(struct image *image)
 	ri_css_hdr_create(image);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
-		FILE_TEXT_OFFSET - MAN_DESC_OFFSET + image->image_end,
+		FILE_TEXT_OFFSET_V1_5 - MAN_DESC_OFFSET_V1_5 + image->image_end,
 		desc->header.preload_page_count);
 
 	/* calculate hash for each module */
@@ -770,11 +771,11 @@ static int man_write_fw_v1_8(struct image *image)
 
 	/* create the module */
 	m = image->fw_image;
-	desc = image->fw_image + MAN_DESC_OFFSET;
+	desc = image->fw_image + MAN_DESC_OFFSET_V1_8;
 
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc);
+	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
 
 	fprintf(stdout, "Firmware completing manifest v1.8\n");
 
@@ -786,7 +787,7 @@ static int man_write_fw_v1_8(struct image *image)
 	ri_cse_create(image);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
-		FILE_TEXT_OFFSET - MAN_DESC_OFFSET + image->image_end,
+		FILE_TEXT_OFFSET_V1_8 - MAN_DESC_OFFSET_V1_8 + image->image_end,
 		desc->header.preload_page_count);
 
 	/* calculate hash for each module */
@@ -863,7 +864,7 @@ static int man_write_fw_meu_v1_5(struct image *image)
 
 	/* create the module */
 	meta = image->fw_image + meta_start_offset;
-	desc = image->fw_image + MAN_DESC_OFFSET;
+	desc = image->fw_image + MAN_DESC_OFFSET_V1_5;
 
 	/* copy data */
 	memcpy(desc, &image->adsp->man_v1_5->desc,
@@ -871,7 +872,7 @@ static int man_write_fw_meu_v1_5(struct image *image)
 
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc);
+	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
 
 	fprintf(stdout, "Firmware completing manifest v1.5\n");
 
@@ -879,7 +880,7 @@ static int man_write_fw_meu_v1_5(struct image *image)
 	ri_adsp_meta_data_create(image, meta_start_offset, image->meu_offset);
 
 	/* write preload page count */
-	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET;
+	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_5;
 	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
 	desc->header.preload_page_count = preload_size / MAN_PAGE_SIZE;
 
@@ -934,7 +935,7 @@ static int man_write_fw_meu_v1_8(struct image *image)
 
 	/* create the module */
 	meta = image->fw_image + meta_start_offset;
-	desc = image->fw_image + MAN_DESC_OFFSET;
+	desc = image->fw_image + MAN_DESC_OFFSET_V1_8;
 
 	/* copy data */
 	memcpy(meta, &image->adsp->man_v1_8->adsp_file_ext,
@@ -944,7 +945,7 @@ static int man_write_fw_meu_v1_8(struct image *image)
 
 	/* create each module */
 	desc->header.num_module_entries = image->num_modules;
-	man_create_modules(image, desc);
+	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_8);
 
 	fprintf(stdout, "Firmware completing manifest v1.8\n");
 
@@ -952,7 +953,7 @@ static int man_write_fw_meu_v1_8(struct image *image)
 	ri_adsp_meta_data_create(image, meta_start_offset, image->meu_offset);
 
 	/* write preload page count */
-	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET;
+	preload_size = meta->comp_desc[0].limit_offset - MAN_DESC_OFFSET_V1_8;
 	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
 	desc->header.preload_page_count = preload_size / MAN_PAGE_SIZE;
 
