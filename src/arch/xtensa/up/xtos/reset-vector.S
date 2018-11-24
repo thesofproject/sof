@@ -85,7 +85,8 @@ _ResetVector:
 
 /* Apollolake+ have reset vector in ROM */
 #if defined(CONFIG_BAYTRAIL) || defined(CONFIG_CHERRYTRAIL) \
-	|| defined (CONFIG_HASWELL) || defined(CONFIG_BROADWELL)
+	|| defined (CONFIG_HASWELL) || defined(CONFIG_BROADWELL) \
+	|| defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE)
 	j	_ResetHandler
 #else
 
@@ -119,7 +120,7 @@ _reset_sram:
 #  endif
 # endif
 
-#if defined(CONFIG_BOOT_LOADER)
+#if defined(CONFIG_BOOT_LOADER) || defined(CONFIG_VM_ROM)
 	.section .ResetHandler.text, "ax"
 	j	_ResetHandler
 #endif
@@ -179,11 +180,13 @@ _ResetHandler:
 
 #endif
 
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_APOLLOLAKE) \
+	&& !(defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE))
 	call0 _call_init
 #endif
 
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_APOLLOLAKE)  \
+	&& !(defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE))
 	movi	a0, 0		// a0 is always 0 in this code, used to initialize lots of things
 	movi	a0, 0
 	movi	a1, 0
@@ -614,7 +617,8 @@ unpackdone:
 	.size	_ResetVector, . - _ResetVector
 #endif
 
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_APOLLOLAKE) \
+	&& !(defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE))
 	.align	4
 	.global	_call_init
 	.type _call_init,@function
