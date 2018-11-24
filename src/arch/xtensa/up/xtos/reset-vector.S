@@ -356,9 +356,15 @@ _ResetHandler:
 #if XCHAL_HAVE_PREFETCH
 	/* Enable cache prefetch if present.  */
 #if defined(CONFIG_APOLLOLAKE)
-	movi.n	a2, 34
+
+#if defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE)
+	movi.n	a2, 0	/* skylake and kabylake */
 #else
-	movi.n	a2, 68
+	movi.n	a2, 34  /* apollolake */
+#endif
+
+#else
+	movi.n	a2, 68  /* eveything else */
 #endif
 	wsr	a2, PREFCTL
 #endif
