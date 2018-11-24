@@ -99,7 +99,7 @@ _reset_sram:
 	.word _ResetHandler
 	.align 4
 .sram_jump:
-	l32r	a0, _reset_sram	// load SRAM reset hanler address
+	l32r	a0, _reset_sram	// load SRAM reset handler address
 	jx	a0		// jump to the hanlder
 #endif
 	.size	_ResetVector, . - _ResetVector
