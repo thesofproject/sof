@@ -293,7 +293,7 @@ case "$with_platform" in
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apollolake])
-	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
+	AC_DEFINE([CONFIG_KABYLAKE], [1], [Configure for Kabylake])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
 	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
@@ -314,6 +314,7 @@ case "$with_platform" in
 	AC_SUBST(XTENSA_CORE)
 
 	AC_DEFINE([CONFIG_APOLLOLAKE], [1], [Configure for Apollolake])
+	AC_DEFINE([CONFIG_SKYLAKE], [1], [Configure for Skylake])
 	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
@@ -435,7 +436,7 @@ AM_CONDITIONAL(BUILD_APOLLOLAKE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "skl" 
 AM_CONDITIONAL(BUILD_CANNONLAKE,  test "$FW_NAME" = "cnl")
 AM_CONDITIONAL(BUILD_SUECREEK,  test "$FW_NAME" = "sue")
 AM_CONDITIONAL(BUILD_ICELAKE,  test "$FW_NAME" = "icl")
-AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
+AM_CONDITIONAL(BUILD_BOOTLOADER,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue")
 AM_CONDITIONAL(BUILD_CAVS,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 AM_CONDITIONAL(BUILD_MODULE,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
 AM_CONDITIONAL(BUILD_APL_SSP,  test "$FW_NAME" = "apl" -o "$FW_NAME" = "cnl" -o "$FW_NAME" = "icl" -o "$FW_NAME" = "sue" -o "$FW_NAME" = "skl" -o "$FW_NAME" = "kbl")
