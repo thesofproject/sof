@@ -26,7 +26,8 @@
 #define XCC_MOD_OFFSET		0x8
 
 /* start offset for base FW module */
-#define FILE_TEXT_OFFSET		0x8000
+#define FILE_TEXT_OFFSET_V1_8		0x8000
+#define FILE_TEXT_OFFSET_V1_5		0x2000
 
 /*
  * CSE values for CNL
@@ -37,7 +38,8 @@
 #define MAN_CSE_HDR_OFFSET		0
 #define MAN_CSE_PADDING_SIZE		0x30
 #define MAN_EXT_PADDING			0x20
-#define MAN_DESC_OFFSET			0x2000
+#define MAN_DESC_OFFSET_V1_8			0x2000
+#define MAN_DESC_OFFSET_V1_5			0x284
 
 #define MAN_CSS_HDR_OFFSET \
 	(MAN_CSE_HDR_OFFSET + \
@@ -64,7 +66,7 @@
 	MAN_EXT_PADDING)
 
 #define MAN_DESC_PADDING_SIZE_V1_8	\
-	(MAN_DESC_OFFSET - MAN_FW_DESC_OFFSET_V1_8)
+	(MAN_DESC_OFFSET_V1_8 - MAN_FW_DESC_OFFSET_V1_8)
 
 #define MAN_SIG_PKG_OFFSET_V1_5 \
 	(MAN_CSS_HDR_OFFSET + \
