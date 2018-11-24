@@ -9,11 +9,20 @@
 
 #include <platform/memory.h>
 #include <xtensa/config/core-isa.h>
+#include <config.h>
 
 OUTPUT_ARCH(xtensa)
 
 MEMORY
 {
+#if defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE)
+  vector_reset_text :
+        org = HP_SRAM_VECBASE_RESET,
+        len = HP_SRAM_RESET_TEXT_SIZE
+  vector_reset_lit :
+        org = HP_SRAM_VECBASE_RESET + HP_SRAM_RESET_TEXT_SIZE,
+        len = HP_SRAM_RESET_LIT_SIZE
+#endif
   vector_memory_lit :
 	org = XCHAL_MEMERROR_VECTOR_PADDR + SOF_MEM_ERROR_LIT_SIZE,
         len = SOF_MEM_ERROR_LIT_SIZE
@@ -165,11 +174,13 @@ PHDRS
 }
 
 /*  Default entry point:  */
+#if !defined(CONFIG_SKYLAKE) && !defined(CONFIG_KABYLAKE)
 ENTRY(_MainEntry)
+#endif
 _rom_store_table = 0;
 
 /* ABI0 does not use Window base */
-PROVIDE(_memmap_vecbase_reset = HP_SRAM_VECBASE_RESET);
+PROVIDE(_memmap_vecbase_reset = SOF_MEM_VECBASE);
 
 /* Various memory-map dependent cache attribute settings: */
 _memmap_cacheattr_wbna_trapnull = 0xFF42FFF2;
@@ -230,6 +241,23 @@ SECTIONS
     . = . + HP_SRAM_WIN3_SIZE;
     _wnd3_end = ABSOLUTE(.);
   } >wnd3 :wnd3_phdr
+
+#if defined(CONFIG_SKYLAKE) || defined(CONFIG_KABYLAKE)
+ .ResetVector.text : ALIGN(4)
+  {
+    _ResetVector_text_start = ABSOLUTE(.);
+    KEEP (*(.ResetVector.text))
+    _ResetVector_text_end = ABSOLUTE(.);
+  } >vector_reset_text :vector_reset_text_phdr
+
+  .ResetVector.literal : ALIGN(4)
+  {
+    _ResetVector_literal_start = ABSOLUTE(.);
+    *(.ResetVector.literal)
+    _ResetVector_literal_end = ABSOLUTE(.);
+  } >vector_reset_lit :vector_reset_lit_phdr
+
+#endif
 
   .WindowVectors.text : ALIGN(4)
   {
