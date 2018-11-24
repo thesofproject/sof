@@ -114,7 +114,7 @@ struct fw_image_manifest_v1_8 apl_manifest = {
 		.imr_type = 3,
 		.comp_desc[0] = {
 			.version = 0,
-			.base_offset = MAN_DESC_OFFSET,
+			.base_offset = MAN_DESC_OFFSET_V1_8,
 			.limit_offset = 0, /* calculated length + MAN_DESC_OFFSET */
 		},
 
@@ -134,7 +134,7 @@ struct fw_image_manifest_v1_8 apl_manifest = {
 			.minor_version	= SOF_MINOR,
 			.hotfix_version	= 0,
 			.build_version	= SOF_BUILD,
-			.load_offset	= MAN_DESC_OFFSET,
+			.load_offset	= MAN_DESC_OFFSET_V1_8,
 		},
 	},
 };

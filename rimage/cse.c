@@ -29,10 +29,10 @@ void ri_cse_create(struct image *image)
 	uint8_t csum = 0, *val = image->fw_image;
 	int i, size;
 
-	fprintf(stdout, " cse: completing CSE manifest\n");
+	fprintf(stdout, " cse: completing CSE V1.8 manifest\n");
 
 	cse_entry[2].length = meta->comp_desc[0].limit_offset -
-		MAN_DESC_OFFSET;
+		MAN_DESC_OFFSET_V1_8;
 
 	/* calculate checksum using BSD algo */
 	size = sizeof(*cse_hdr) + sizeof(*cse_entry) * MAN_CSE_PARTS;
