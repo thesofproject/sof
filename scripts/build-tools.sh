@@ -1,6 +1,6 @@
 #!/bin/sh
-cd ../soft.git
+cd tools
 ./autogen.sh
 ./configure
 make -j$(nproc)
-cd ../sof.git
+cd ../
