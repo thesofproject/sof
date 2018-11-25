@@ -1,0 +1,34 @@
+state.sofsofnocodec {
+	control.1 {
+		iface MIXER
+		name 'PGA1.0 Master Playback Volume 1'
+		value.0 26
+		value.1 26
+		comment {
+			access 'read write'
+			type INTEGER
+			count 2
+			range '0 - 32'
+			dbmin -9999999
+			dbmax 0
+			dbvalue.0 -1200
+			dbvalue.1 -1200
+		}
+	}
+	control.2 {
+		iface MIXER
+		name 'PGA2.0 Master Capture Volume 2'
+		value.0 26
+		value.1 26
+		comment {
+			access 'read write'
+			type INTEGER
+			count 2
+			range '0 - 32'
+			dbmin -9999999
+			dbmax 0
+			dbvalue.0 -1200
+			dbvalue.1 -1200
+		}
+	}
+}

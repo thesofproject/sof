@@ -1,0 +1,36 @@
+Sample rate converter (SRC) Setup Tools
+=======================================
+
+This is a tool to set up SRC conversions sample rates list, define
+quality related parameters, and test the C implementation for a number
+of objective audio quality parameters.
+
+The tools need GNU Octave version 4.0.0 or later with octave-signal
+package.
+
+src_std_int32.m
+---------------
+
+This script creates the default coefficient set and contains nothing
+else but call for src_generate.
+
+src_tiny_int16.m
+----------------
+
+This script creates the tiny coefficient set. The script contains an
+example how to customize the input/output rates matrix and in a simple
+way the scale conversions quality. More controlled quality adjust can
+be done by editing file src_param.m directly. Note that int16
+presentation for SRC coefficients will degrade even the default
+quality.
+
+src_generate.m
+--------------
+
+Creates the header files to include to C into directory "include". A
+report of create modes is written to directory "reports". The
+coefficients need to be copied to directory
+sof.git/src/include/sof/audio/coefficients/src.
+
+The default quality of SRC is defined in module src_param.m. The
+quality impacts the complexity and coefficents tables size of SRC.
