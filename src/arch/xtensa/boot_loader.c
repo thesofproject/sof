@@ -35,6 +35,7 @@
 #include <uapi/user/manifest.h>
 #include <platform/platform.h>
 #include <platform/memory.h>
+#include <platform/platcfg.h>
 
 #if defined CONFIG_SUECREEK
 #define MANIFEST_BASE	BOOT_LDR_MANIFEST_BASE
@@ -133,12 +134,71 @@ static int32_t hp_sram_init(void)
 {
 	int delay_count = 256;
 	uint32_t status;
+#if defined(CONFIG_CANNONLAKE)
+	uint32_t ebb_in_use;
+	uint32_t ebb_mask0, ebb_mask1, ebb_avail_mask0, ebb_avail_mask1;
+#endif
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_ON);
 
 	/* add some delay before touch power register */
 	idelay(delay_count);
 
+#if defined(CONFIG_CANNONLAKE)
+	/* calculate total number of used SRAM banks (EBB)
+	 * to power up only ncecesary banks
+	 */
+	ebb_in_use = ((SOF_MEMORY_SIZE % SRAM_BANK_SIZE) == 0) ?
+	(SOF_MEMORY_SIZE / SRAM_BANK_SIZE) :
+	(SOF_MEMORY_SIZE / SRAM_BANK_SIZE) + 1;
+
+	/* bit masks reflect total number of available EBB (banks) in each
+	 * segment; current implementation supports 2 segments 0,1
+	 */
+	if (PLATFORM_HPSRAM_EBB_COUNT > EBB_SEGMENT_SIZE) {
+		ebb_avail_mask0 = (uint32_t)MASK(EBB_SEGMENT_SIZE - 1, 0);
+		ebb_avail_mask1 = (uint32_t)MASK(PLATFORM_HPSRAM_EBB_COUNT -
+		EBB_SEGMENT_SIZE - 1, 0);
+	} else{
+		ebb_avail_mask0 = (uint32_t)MASK(PLATFORM_HPSRAM_EBB_COUNT - 1,
+		0);
+		ebb_avail_mask1 = 0;
+	}
+
+	/* bit masks of banks that have to be powered up in each segment */
+	if (ebb_in_use > EBB_SEGMENT_SIZE) {
+		ebb_mask0 = (uint32_t)MASK(EBB_SEGMENT_SIZE - 1, 0);
+		ebb_mask1 = (uint32_t)MASK(ebb_in_use - EBB_SEGMENT_SIZE - 1,
+		0);
+	} else{
+		/* assumption that ebb_in_use is > 0 */
+		ebb_mask0 = (uint32_t)MASK(ebb_in_use - 1, 0);
+		ebb_mask1 = 0;
+	}
+
+	/* HSPGCTL, HSRMCTL use reverse logic - 0 means EBB is power gated */
+	io_reg_write(HSPGCTL0, (~ebb_mask0) & ebb_avail_mask0);
+	io_reg_write(HSRMCTL0, (~ebb_mask0) & ebb_avail_mask0);
+	io_reg_write(HSPGCTL1, (~ebb_mask1) & ebb_avail_mask1);
+	io_reg_write(HSRMCTL1, (~ebb_mask1) & ebb_avail_mask1);
+
+	/* query the power status of first part of HP memory */
+	/* to check whether it has been powered up. A few    */
+	/* cycles are needed for it to be powered up         */
+	status = io_reg_read(HSPGISTS0);
+	while (status != ((~ebb_mask0) & ebb_avail_mask0)) {
+		idelay(delay_count);
+		status = io_reg_read(HSPGISTS0);
+	}
+	/* query the power status of second part of HP memory */
+	/* and do as above code                               */
+
+	status = io_reg_read(HSPGISTS1);
+	while (status != ((~ebb_mask1) & ebb_avail_mask1)) {
+		idelay(delay_count);
+		status = io_reg_read(HSPGISTS1);
+	}
+#else
 	/* now all the memory bank has been powered up */
 	io_reg_write(HSPGCTL0, 0);
 	io_reg_write(HSRMCTL0, 0);
@@ -161,7 +221,7 @@ static int32_t hp_sram_init(void)
 		idelay(delay_count);
 		status = io_reg_read(HSPGISTS1);
 	}
-
+#endif
 	/* add some delay before touch power register */
 	idelay(delay_count);
 
