@@ -320,11 +320,6 @@ int platform_init(struct sof *sof)
 	 * Running on CRO all the time atm
 	 */
 
-	/* TODO: do not do local clock gating until making sure that
-	 * tensilica core timer is unused.
-	 * Could not find any arch_timer_set/timer_set() direct calls
-	 * on cavs platforms atm.
-	 */
 	shim_write(SHIM_CLKCTL,
 		   SHIM_CLKCTL_HDCS_PLL | /* HP domain clocked by PLL */
 		   SHIM_CLKCTL_LDCS_PLL | /* LP domain clocked by PLL */
@@ -337,8 +332,29 @@ int platform_init(struct sof *sof)
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
 
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
-	|| defined(CONFIG_SUECREEK)
+#elif defined(CONFIG_CANNONLAKE)
+
+	/* initialize PM for boot */
+	shim_write(SHIM_CLKCTL,
+		   SHIM_CLKCTL_RHROSCC | /* Request High Performance RING Osc */
+		   SHIM_CLKCTL_OCS_HP_RING | /* Select HP RING Oscillator Clk
+					      * for memory
+					      */
+		   SHIM_CLKCTL_HMCS_DIV2 | /* HP mem clock div by 2 */
+		   SHIM_CLKCTL_LMCS_DIV4 | /* LP mem clock div by 4 */
+		   SHIM_CLKCTL_TCPLCG_DIS(0) | /* Allow Local Clk Gating */
+		   SHIM_CLKCTL_TCPLCG_DIS(1) |
+		   SHIM_CLKCTL_TCPLCG_DIS(2) |
+		   SHIM_CLKCTL_TCPLCG_DIS(3));
+
+	/* prevent LP GPDMA 0&1 clock gating */
+	shim_write(SHIM_GPDMA_CLKCTL(0), SHIM_CLKCTL_LPGPDMAFDCGB);
+	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
+
+	/* prevent DSP Common power gating */
+	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
+
+#elif defined(CONFIG_ICELAKE) || defined(CONFIG_SUECREEK)
 	/* TODO: need to merge as for APL */
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
