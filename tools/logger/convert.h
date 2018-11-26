@@ -13,7 +13,8 @@
 * more details.
 */
 #include <stdio.h>
-#include <sof/uapi/logging.h>
+#include <uapi/user/trace.h>
+#include <uapi/ipc/info.h>
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"

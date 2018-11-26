@@ -5,5 +5,6 @@ sof_logger_SOURCES = \
 	convert.c 
 
 sof_logger_CFLAGS = \
+	-I ../../src/include \
 	-Wall \
 	-Werror

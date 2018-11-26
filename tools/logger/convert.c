@@ -19,7 +19,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include <sof/uapi/ipc.h>
 #include "convert.h"
 
 #define CEIL(a, b) ((a+b-1)/b)
