@@ -26,8 +26,8 @@ To build for baytrail:
 or (may need password test0000 for rimage install)
 ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh byt
 
-To rebuild the topology in soft.git:
-./scripts/docker-run.sh ./scripts/build-soft.sh
+To rebuild the topology and logger:
+./scripts/docker-run.sh ./scripts/build-tools.sh
 
 An incremental sof.git build:
 ./scripts/docker-run.sh make
