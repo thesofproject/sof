@@ -21,6 +21,8 @@ src/audio/iir*               @singalsu
 src/audio/tone.c             @singalsu
 src/drivers/intel/cavs/dmic.c @singalsu
 src/include/sof/dmic.h       @singalsu
+src/host/*		     @ranj063
+src/include/host/*	     @ranj063
 *.am                         @jajanusz
 *.ac                         @jajanusz
 
