@@ -40,6 +40,9 @@
 #include <platform/pm_runtime.h>
 #include <platform/dai.h>
 
+#define trace_power(format, ...)	\
+	trace_event(TRACE_CLASS_POWER, format, ##__VA_ARGS__)
+
 #if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 //TODO: add support or at least stub api for Icelake based on Cannonlake
 #include <platform/power_down.h>
@@ -73,41 +76,48 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
 {
 #if defined(CONFIG_APOLLOLAKE)
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
-		   (index < DAI_NUM_SSP_BASE ?
-		    SHIM_CLKCTL_I2SFDCGB(index) :
-		    SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE)));
+	uint32_t shim_reg;
 
-	trace_event(TRACE_CLASS_POWER,
-		    "dis-ssp-clk-gating index %d CLKCTL %08x",
-		    index, shim_read(SHIM_CLKCTL));
+	shim_reg = shim_read(SHIM_CLKCTL) |
+		(index < DAI_NUM_SSP_BASE ?
+			SHIM_CLKCTL_I2SFDCGB(index) :
+			SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE));
+
+	shim_write(SHIM_CLKCTL, shim_reg);
+
+	trace_power("dis-ssp-clk-gating index %d CLKCTL %08x", index, shim_reg);
 #endif
 }
 
 static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 {
 #if defined(CONFIG_APOLLOLAKE)
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) &
-		   ~(index < DAI_NUM_SSP_BASE ?
-		    SHIM_CLKCTL_I2SFDCGB(index) :
-		    SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE)));
+	uint32_t shim_reg;
 
-	trace_event(TRACE_CLASS_POWER,
-		    "en-ssp-clk-gating index %d CLKCTL %08x",
-		    index, shim_read(SHIM_CLKCTL));
+	shim_reg = shim_read(SHIM_CLKCTL) &
+		~(index < DAI_NUM_SSP_BASE ?
+			SHIM_CLKCTL_I2SFDCGB(index) :
+			SHIM_CLKCTL_I2SEFDCGB(index - DAI_NUM_SSP_BASE));
+
+	shim_write(SHIM_CLKCTL, shim_reg);
+
+	trace_power("en-ssp-clk-gating index %d CLKCTL %08x", index, shim_reg);
 #endif
 }
 
 #if defined(CONFIG_DMIC)
 static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 {
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 	(void)index;
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_DMICFDCGB);
+	uint32_t shim_reg;
 
-	trace_event(TRACE_CLASS_POWER,
-		    "dis-dmic-clk-gating index %d CLKCTL %08x",
-		    index, shim_read(SHIM_CLKCTL));
+	shim_reg = shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_DMICFDCGB;
+
+	shim_write(SHIM_CLKCTL, shim_reg);
+
+	trace_power("dis-dmic-clk-gating index %d CLKCTL %08x", index,
+		    shim_reg);
 #endif
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
 	|| defined(CONFIG_SUECREEK)
@@ -115,19 +125,19 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
 #endif
-
 }
 
 static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 {
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 	(void)index;
-	shim_write(SHIM_CLKCTL,
-		   shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_DMICFDCGB);
+	uint32_t shim_reg;
 
-	trace_event(TRACE_CLASS_POWER,
-		    "en-dmic-clk-gating index %d CLKCTL %08x",
-		    index, shim_read(SHIM_CLKCTL));
+	shim_reg = shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_DMICFDCGB;
+
+	shim_write(SHIM_CLKCTL, shim_reg);
+
+	trace_power("en-dmic-clk-gating index %d CLKCTL %08x", index, shim_reg);
 #endif
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
 	|| defined(CONFIG_SUECREEK)
@@ -161,24 +171,48 @@ static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dwdma_clk_gating(uint32_t index)
 {
 #if defined(CONFIG_APOLLOLAKE)
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) |
-		   SHIM_CLKCTL_LPGPDMAFDCGB(index));
+	uint32_t shim_reg;
 
-	trace_event(TRACE_CLASS_POWER,
-		    "dis-dwdma-clk-gating index %d CLKCTL %08x",
-		    index, shim_read(SHIM_CLKCTL));
+	shim_reg = shim_read(SHIM_CLKCTL) | SHIM_CLKCTL_LPGPDMAFDCGB(index);
+
+	shim_write(SHIM_CLKCTL, shim_reg);
+
+	trace_power("dis-dwdma-clk-gating index %d CLKCTL %08x", index,
+		    shim_reg);
+#elif defined(CONFIG_CANNONLAKE)
+	uint32_t shim_reg;
+
+	shim_reg = shim_read(SHIM_GPDMA_CLKCTL(index)) |
+		   SHIM_CLKCTL_LPGPDMAFDCGB;
+
+	shim_write(SHIM_GPDMA_CLKCTL(index), shim_reg);
+
+	trace_power("dis-dwdma-clk-gating index %d GPDMA_CLKCTL %08x", index,
+		    shim_reg);
 #endif
 }
 
 static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
 {
 #if defined(CONFIG_APOLLOLAKE)
-	shim_write(SHIM_CLKCTL, shim_read(SHIM_CLKCTL) &
-		   ~SHIM_CLKCTL_LPGPDMAFDCGB(index));
+	uint32_t shim_reg;
 
-	trace_event(TRACE_CLASS_POWER,
-		    "en-dwdma-clk-gating index %d CLKCTL %08x",
-		    index, shim_read(SHIM_CLKCTL));
+	shim_reg = shim_read(SHIM_CLKCTL) & ~SHIM_CLKCTL_LPGPDMAFDCGB(index);
+
+	shim_write(SHIM_CLKCTL, shim_reg);
+
+	trace_power("en-dwdma-clk-gating index %d CLKCTL %08x", index,
+		    shim_reg);
+#elif defined(CONFIG_CANNONLAKE)
+	uint32_t shim_reg;
+
+	shim_reg = shim_read(SHIM_GPDMA_CLKCTL(index)) &
+		   ~SHIM_CLKCTL_LPGPDMAFDCGB;
+
+	shim_write(SHIM_GPDMA_CLKCTL(index), shim_reg);
+
+	trace_power("en-dwdma-clk-gating index %d GPDMA_CLKCTL %08x", index,
+		    shim_reg);
 #endif
 }
 

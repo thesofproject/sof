@@ -156,34 +156,57 @@
 #define SHIM_DSPWCTCS_T1A	(0x1 << 1) /* Timer 1 armed */
 #define SHIM_DSPWCTCS_T0A	(0x1 << 0) /* Timer 0 armed */
 
+/** \brief Clock control */
 #define SHIM_CLKCTL		0x78
+
+/** \brief Clock status */
 #define SHIM_CLKSTS		0x7C
 
-#define SHIM_PWRCTL		0x90
-#define SHIM_PWRSTS		0x92
-#define SHIM_PWRCTL_TCPDSP0PG	(0x1 << 0)
+/** \brief Request HP RING Oscillator Clock */
+#define SHIM_CLKCTL_RHROSCC	BIT(31)
 
-/* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
-#define SHIM_CLKCTL_LPGPDMAFDCGB(x)	(0x1 << (26 + x))
-#define SHIM_CLKCTL_TCPLCG(x)		(0x1 << (16 + x))
+/** \brief Request XTAL Oscillator Clock */
+#define SHIM_CLKCTL_RXOSCC	BIT(30)
+
+/** \brief Request LP RING Oscillator Clock */
+#define SHIM_CLTCTL_RLROSCC	BIT(29)
+
+/** \brief Tensilica Core Prevent Local Clock Gating */
+#define SHIM_CLKCTL_TCPLCG_EN(x)	BIT(16 + x)
+#define SHIM_CLKCTL_TCPLCG_DIS(x)	0
 
 /* Core clock PLL divisor */
-#define SHIM_CLKCTL_DPCS_MASK(x)	(0x1 << 2)
+#define SHIM_CLKCTL_DPCS_MASK(x)	BIT(2)
 
-/* Prevent Audio PLL Shutdown */
-#define SHIM_CLKCTL_TCPAPLLS	(0x1 << 7)
+/** \brief DMIC Force Dynamic Clock Gating */
+#define SHIM_CLKCTL_DMICFDCGB		BIT(30)
 
-/* 0--from PLL, 1--from oscillator */
-#define SHIM_CLKCTL_HDCS	(0x1 << 4)
+/** \brief Oscillator Clock Select*/
+#define SHIM_CLKCTL_OCS_HP_RING		BIT(2)
+#define SHIM_CLKCTL_OCS_LP_RING		0
 
-/* Oscillator select */
-#define SHIM_CLKCTL_HDOCS	(0x1 << 2)
+/** \brief LP Memory Clock Select */
+#define SHIM_CLKCTL_LMCS_DIV2	0
+#define SHIM_CLKCTL_LMCS_DIV4	BIT(1)
 
-/* HP memory clock PLL divisor */
-#define SHIM_CLKCTL_HPMPCS	(0x1 << 0)
+/** \brief HP Memory Clock Select */
+#define SHIM_CLKCTL_HMCS_DIV2	0
+#define SHIM_CLKCTL_HMCS_DIV4	BIT(0)
 
-#define GPDMA_CLKCTL(x)		(0x78404 + x*0x100)
-#define GPDMA_FDCGB		(0x1 << 0)
+#define SHIM_PWRCTL		0x90
+#define SHIM_PWRCTL_TCPDSP0PG	BIT(0)
+
+#define SHIM_PWRSTS		0x92
+#define SHIM_LPSCTL		0x94
+
+/** \brief GPDMA shim registers Control */
+#define SHIM_GPDMA_BASE_OFFSET	0x6500
+#define SHIM_GPDMA_BASE(x)	(SHIM_GPDMA_BASE_OFFSET + (x) * 0x100)
+/** \brief GPDMA Clock Control */
+#define SHIM_GPDMA_CLKCTL(x)	(SHIM_GPDMA_BASE(x) + 0x4)
+
+/* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
+#define SHIM_CLKCTL_LPGPDMAFDCGB	BIT(0)
 
 #define L2LMCAP			0x71D00
 #define L2MPAT			0x71D04
