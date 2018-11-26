@@ -336,6 +336,22 @@ int convert(struct convert_config *config) {
 				"%s file. \n", config->ldc_file, config->version_file);
 			return -EINVAL;
 		}
+
+		/* logger and version_file abi verification */
+		if SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, ver.abi_version) {
+			fprintf(stderr, "Error: abi version in %s file "
+				"does not coincide with abi version used "
+				"by logger.\n", config->version_file);
+			return -EINVAL;
+		}
+	}
+
+	/* default logger and ldc_file abi verification */
+	if SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, snd.version.abi_version) {
+		fprintf(stderr, "Error: abi version in %s file "
+			"does not coincide with abi version used "
+			"by logger.\n", config->ldc_file);
+		return -EINVAL;
 	}
 
 	return logger_read(config, &snd);
