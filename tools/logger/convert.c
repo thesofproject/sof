@@ -29,21 +29,6 @@
 #define TRACE_MAX_IDS_STR		10
 #define TRACE_IDS_MASK			((1 << TRACE_ID_LENGTH) - 1)
 
-/* logs file signature */
-#define SND_SOF_LOGS_SIG_SIZE	4
-#define SND_SOF_LOGS_SIG	"Logs"
-
-/*
-* Logs dictionary file header.
-*/
-struct snd_sof_logs_header {
-	unsigned char sig[SND_SOF_LOGS_SIG_SIZE]; /* "Logs" */
-	uint32_t base_address;  /* address of log entries section */
-	uint32_t data_length;   /* amount of bytes following this header */
-	uint32_t data_offset;   /* offset to first entry in this file */
-	struct sof_ipc_fw_version version;
-};
-
 struct ldc_entry_header {
 	uint32_t level;
 	uint32_t component_class;

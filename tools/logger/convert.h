@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <uapi/user/trace.h>
 #include <uapi/ipc/info.h>
+#include <rimage/file_format.h>
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"

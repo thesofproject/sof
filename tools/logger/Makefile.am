@@ -6,5 +6,6 @@ sof_logger_SOURCES = \
 
 sof_logger_CFLAGS = \
 	-I ../../src/include \
+	-I ../../ \
 	-Wall \
 	-Werror
