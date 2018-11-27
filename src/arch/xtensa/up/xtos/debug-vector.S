@@ -25,7 +25,10 @@
 #include <xtensa/xtensa-versions.h>
 #include <xtensa/coreasm.h>
 #include <xtensa/config/specreg.h>
+#ifdef SIMULATOR
 #include <xtensa/simcall.h>
+#endif
+#include <sof/gdb/xtensa-defs.h>
 
 #if XCHAL_HAVE_DEBUG && XCHAL_HAVE_EXCEPTIONS
 
@@ -38,29 +41,32 @@
 _DebugExceptionVector:
 
 	isync_erratum453
-# if defined(SIMULATOR) || XCHAL_HW_MIN_VERSION >= XTENSA_HWVERSION_RE_2013_2	/* SIMCALL is NOP in hw? */
+#if ((defined(SIMULATOR) || \
+    (XCHAL_HW_MIN_VERSION >= XTENSA_HWVERSION_RE_2013_2)) \
+    && !defined(CONFIG_GDB_DEBUG)) /* SIMCALL is NOP in hw? */
 	//  In the simulator (ISS), let the debugger (if any is attached)
 	//  handle the debug exception, else simply stop the simulation:
 	//
-	wsr	a2, EXCSAVE+XCHAL_DEBUGLEVEL	// save a2 where simulator expects it
-	movi	a2, SYS_gdb_enter_sktloop
-	simcall					// have ISS handle the debug exception
+	simcall	// have ISS handle the debug exception
 # endif
-# ifndef SIMULATOR
+# if (!defined(SIMULATOR) && !defined(CONFIG_GDB_DEBUG))
 	//  For hardware, this code does not handle debug exceptions.
 	//  To implement a target-side debug monitor, replace this
 	//  vector with a real one that uses target-specific facilities
 	//  to communicate with the debugger.
 	//  
 1:
-#  if XCHAL_HAVE_INTERRUPTS
-	//waiti	XCHAL_DEBUGLEVEL // unexpected debug exception, loop in low-power mode
-#  endif
+	// unexpected debug exception, loop in low-power mode
+	//waiti	XCHAL_DEBUGLEVEL
 	j	1b		// infinite loop - unexpected debug exception
-# endif /*!SIMULATOR*/
+# endif /*!SIMULATOR && !CONFIG_GDB_DEBUG*/
+
+#if defined(CONFIG_GDB_DEBUG)
+	xsr	a2, DEBUG_EXCSAVE
+	jx	a2
+#endif
 
 	.end	literal_prefix
 	.size	_DebugExceptionVector, . - _DebugExceptionVector
 
 #endif /* XCHAL_HAVE_DEBUG && XCHAL_HAVE_EXCEPTIONS */
-

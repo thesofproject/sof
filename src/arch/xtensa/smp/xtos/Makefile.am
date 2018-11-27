@@ -126,6 +126,7 @@ libxtos_a_SOURCES = \
 	core-save.S \
 	core-shutoff.S \
 	double-vector.S \
+	debug-vector.S \
 	xea1/exc-alloca-handler.S \
 	xea1/exc-c-wrapper-handler.S \
 	xea2/exc-c-wrapper-handler.S \

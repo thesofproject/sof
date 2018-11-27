@@ -245,7 +245,7 @@ static void platform_memory_windows_init(void)
 	/* window2, for debug */
 	io_reg_write(DMWLO(2), HP_SRAM_WIN2_SIZE | 0x7);
 	io_reg_write(DMWBA(2), HP_SRAM_WIN2_BASE
-		| DMWBA_READONLY | DMWBA_ENABLE);
+		| DMWBA_ENABLE);
 	bzero((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
 	dcache_writeback_region((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
 
