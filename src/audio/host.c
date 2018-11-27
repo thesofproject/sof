@@ -398,9 +398,6 @@ static void host_free(struct comp_dev *dev)
 
 	trace_host("fre");
 
-#if !defined CONFIG_DMA_GW
-	dma_channel_put(hd->dma, hd->chan);
-#endif
 	dma_put(hd->dma);
 
 	dma_sg_free(&hd->config.elem_array);
@@ -618,6 +615,7 @@ static int host_reset(struct comp_dev *dev)
 	trace_host("res");
 
 #if !defined CONFIG_DMA_GW
+	dma_channel_put(hd->dma, hd->chan);
 	/* free all host DMA elements */
 	dma_sg_free(&hd->host.elem_array);
 
