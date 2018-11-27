@@ -102,11 +102,11 @@ define(`VIRTUAL_DAPM_ROUTE_IN',
 `       ]'
 `}')
 
-dnl VIRTUAL_WIDGET(name, index)
+dnl VIRTUAL_WIDGET(name, type, index)
 define(`VIRTUAL_WIDGET',
 `SectionWidget.STR($1) {'
-`       index STR($2)'
-`       type "out_drv"'
+`       index STR($3)'
+`       type STR($2)'
 `       no_pm "true"'
 `}')
 
