@@ -388,18 +388,6 @@ static int dai_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* get DMA channel, once the stream_tag is known */
-	dd->chan = dma_channel_get(dd->dma, dev->params.stream_tag);
-	if (dd->chan < 0) {
-		trace_dai_error("dai_params() error: dma_channel_get() failed");
-		return -EINVAL;
-	}
-
-	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
-				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
-	dev->is_dma_connected = 1;
-
 	/* for DAI, we should configure its frame_fmt from topology */
 	dev->params.frame_fmt = dconfig->frame_fmt;
 
@@ -489,8 +477,6 @@ static int dai_reset(struct comp_dev *dev)
 	struct dma_sg_config *config = &dd->config;
 
 	trace_dai("dai_reset()");
-
-	dma_channel_put(dd->dma, dd->chan);
 
 	dma_sg_free(&config->elem_array);
 
@@ -663,6 +649,7 @@ static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	int channel = 0;
 
 	switch (config->type) {
 	case SOF_DAI_INTEL_SSP:
@@ -726,6 +713,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 * this is temp until dai/hda model is changed.
 		 */
 		dev->frame_bytes = 4;
+		channel = config->hda.link_dma_ch;
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -739,6 +727,19 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		trace_dai_error("dai_config() error: dev->frame_bytes == 0");
 		return -EINVAL;
 	}
+
+	/* channel is ignored by GP dma get function */
+	dd->chan = dma_channel_get(dd->dma, channel);
+	if (dd->chan < 0) {
+		trace_dai_error("dai_config() error: dma_channel_get() failed");
+		return -EIO;
+	}
+
+	/* set up callback */
+	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
+				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+
+	dev->is_dma_connected = 1;
 
 	return 0;
 }
