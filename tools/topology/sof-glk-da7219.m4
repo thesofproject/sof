@@ -169,27 +169,20 @@ HDA_DAI_CONFIG(3, 3, iDisp1)
 HDA_DAI_CONFIG(4, 4, iDisp2)
 HDA_DAI_CONFIG(5, 5, iDisp3)
 
-## remove warnings with SST hard-coded routes (FIXME)
+## remove warnings with SST hard-coded routes
 
-VIRTUAL_WIDGET(ssp5 Tx, 0)
-VIRTUAL_WIDGET(ssp1 Rx, 1)
-VIRTUAL_WIDGET(ssp1 Tx, 2)
-VIRTUAL_WIDGET(DMIC01 Rx, 3)
-VIRTUAL_WIDGET(DMic, 4)
-VIRTUAL_WIDGET(dmic01_hifi, 5)
-VIRTUAL_WIDGET(hif5-0 Output, 6)
-VIRTUAL_WIDGET(hif6-0 Output, 7)
-VIRTUAL_WIDGET(hif7-0 Output, 8)
-
-VIRTUAL_DAPM_ROUTE_OUT(codec0_out, SSP, 0, OUT, 12)
-VIRTUAL_DAPM_ROUTE_OUT(codec1_out, SSP, 0, OUT, 13)
-VIRTUAL_DAPM_ROUTE_OUT(ssp1 Tx, SSP, 0, OUT, 14)
-VIRTUAL_DAPM_ROUTE_IN(ssp1 Rx, SSP, 0, IN, 15)
-VIRTUAL_DAPM_ROUTE_OUT(Capture, SSP, 0, OUT, 16)
-VIRTUAL_DAPM_ROUTE_OUT(SoC DMIC, SSP, 0, OUT, 17)
-VIRTUAL_DAPM_ROUTE_IN(codec0_in, SSP, 0, IN, 18)
-
-
-
-
-
+VIRTUAL_WIDGET(ssp1 Tx, out_drv, 0)
+VIRTUAL_WIDGET(ssp2 Rx, out_drv, 1)
+VIRTUAL_WIDGET(ssp2 Tx, out_drv, 2)
+VIRTUAL_WIDGET(DMIC01 Rx, out_drv, 3)
+VIRTUAL_WIDGET(DMic, out_drv, 4)
+VIRTUAL_WIDGET(dmic01_hifi, out_drv, 5)
+VIRTUAL_WIDGET(hif5-0 Output, out_drv, 6)
+VIRTUAL_WIDGET(hif6-0 Output, out_drv, 7)
+VIRTUAL_WIDGET(hif7-0 Output, out_drv, 8)
+VIRTUAL_WIDGET(iDisp3_out, out_drv, 9)
+VIRTUAL_WIDGET(iDisp2_out, out_drv, 10)
+VIRTUAL_WIDGET(iDisp1_out, out_drv, 11)
+VIRTUAL_WIDGET(codec0_out, output, 12)
+VIRTUAL_WIDGET(codec1_out, output, 13)
+VIRTUAL_WIDGET(codec0_in, input, 14)
