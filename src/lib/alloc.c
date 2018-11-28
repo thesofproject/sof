@@ -389,15 +389,13 @@ static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 
 	/* check runtime heap for capabilities */
 	heap = get_runtime_heap_from_caps(caps);
-	if (heap)
-		goto find;
+	if (!heap) {
+		/* next check buffer heap for capabilities */
+		heap = get_buffer_heap_from_caps(caps);
+		if (heap == NULL)
+			goto error;
+	}
 
-	/* next check buffer heap for capabilities */
-	heap = get_buffer_heap_from_caps(caps);
-	if (heap == NULL)
-		goto error;
-
-find:
 	for (i = 0; i < heap->blocks; i++) {
 		map = cache_to_uncache(&heap->map[i]);
 
