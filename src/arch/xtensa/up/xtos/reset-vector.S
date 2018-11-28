@@ -590,7 +590,7 @@ unpackdone:
 
 #if defined(CONFIG_BOOT_LOADER) && !defined(CONFIG_VM_ROM)
 		/*ToDo refine the _start*/
-		movi a0, SOF_TEXT_START
+		movi a0, SOF_TEXT_BASE
 		callx0 a0
 #else
 		call0	_start		// jump to _start (in crt1-*.S)
