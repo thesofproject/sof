@@ -7,26 +7,50 @@
 # Order is important. The last matching pattern has the most precedence.
 # So if a pull request only touches javascript files, only these owners
 # will be requested to review.
-test/*					@jajanusz
-src/math/*				@singalsu
-src/arch/xtensa/*			@tlauda
-src/platform/*				@tlauda
-*.sh					@jajanusz
+
+# inlcldue files
 src/include/sof/preproc*.h		@mwierzbix
-test/cmocka/include/*			@mwierzbix
+src/include/sof/dmic.h			@singalsu
+src/include/host/*			@ranj063
+src/include/uapi/ipc/*			@xiulipan
+
+# audio component
 src/audio/src*				@singalsu
 src/audio/eq*				@singalsu
 src/audio/fir*				@singalsu
 src/audio/iir*				@singalsu
 src/audio/tone.c			@singalsu
-src/drivers/intel/cavs/dmic.c		@singalsu
-src/include/sof/dmic.h			@singalsu
-src/host/*				@ranj063
-src/include/host/*			@ranj063
-tools/topology/*			@ranj063
 
+# platfroms
+src/arch/xtensa/*			@tlauda
+src/platform/*				@tlauda
+src/platform/baytrail/*			@xiulipan
+src/platform/haswell/*			@xiulipan
+
+# drivers
+src/drivers/intel/cavs/dmic.c		@singalsu
+
+# other libs
+src/host/*				@ranj063
+src/math/*				@singalsu
+src/ipc/*				@xiulipan
+
+# other helpers
+test/*					@jajanusz
+test/cmocka/include/*			@mwierzbix
+scripts/*				@xiulipan
+rimage/*				@xiulipan
+
+# tools(old soft)
+tools/logger/*				@xiulipan
+tools/topology/*			@ranj063 @xiulipan
+tools/test/*				@xiulipan
+
+# related fileds
 *.am					@jajanusz
 *.ac					@jajanusz
+*.sh					@jajanusz
+*trace.*				@xiulipan
 
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
