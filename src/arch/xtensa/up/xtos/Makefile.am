@@ -120,6 +120,7 @@ libxtos_a_SOURCES = \
 	core-save.S \
 	core-shutoff.S \
 	double-vector.S \
+	debug-vector.S \
 	exc-alloca-handler.S \
 	exc-c-wrapper-handler.S \
 	exc-return.S \

@@ -83,6 +83,12 @@ if test "$have_roms" = "yes"; then
 	AC_DEFINE([CONFIG_ENABLE_ROMS], [1], [Enable building ROMs for QEMU])
 fi
 
+# check if we should enable GDB debugging
+AC_ARG_ENABLE(gdb_debug, [AS_HELP_STRING([--enable-gdb-debug],[gdb debug supported])], enable_gdb_debug=$enableval, have_roms=no)
+if test "$enable_gdb_debug" = "yes"; then
+	AC_DEFINE([CONFIG_GDB_DEBUG], [1], [Enable debugging with GDB])
+fi
+
 # check if we are building FW image or library
 AC_ARG_ENABLE(library, [AS_HELP_STRING([--enable-library],[build library])], have_library=$enableval, have_library=no)
 if test "$have_library" = "yes"; then
@@ -637,6 +643,8 @@ AC_CONFIG_FILES([
 	src/platform/intel/cavs/Makefile
 	test/Makefile
 	test/cmocka/Makefile
+	src/include/sof/gdb/Makefile
+	src/gdb/Makefile
 ])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AC_OUTPUT
