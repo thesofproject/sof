@@ -16,11 +16,11 @@ before_install:
   - docker pull xiulipan/sof && docker tag xiulipan/sof sof
   - docker pull xiulipan/sofqemu && docker tag xiulipan/sofqemu sofqemu
 
-install:
-  - docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/rimage-build.sh -l
-
 jobs:
   include:
+    - stage: compile
+      name: "Tools Build"
+      script: ./scripts/docker-run.sh ./scripts/build-tools.sh
     - stage: compile
       name: "BYT Build"
       script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt
@@ -47,7 +47,7 @@ jobs:
       script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l icl
     - stage: compile
       name: "Host Build"
-      script: docker run -it -v `pwd`:/home/sof/work/sof.git --user `id -u` xiulipan/sof ./scripts/host-build-all.sh -l
+      script: ./scripts/docker-run.sh ./scripts/host-build-all.sh -l
     - stage: test
       name: "BYT Boot Test"
       script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l byt && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh byt
