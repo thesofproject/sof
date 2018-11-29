@@ -25,7 +25,7 @@ C_CONTROLBYTES(EQIIR, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
 	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
 	, , ,
-	CONTROLBYTES_MAX(, 316),
+	CONTROLBYTES_MAX(, 304),
 	,
 	EQIIR_priv)
 
