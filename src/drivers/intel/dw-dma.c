@@ -88,6 +88,8 @@
 	(0x0040 + BYT_CHAN_OFFSET(chan))
 #define DW_CFG_HIGH(chan) \
 	(0x0044 + BYT_CHAN_OFFSET(chan))
+#define DW_DSR(chan) \
+	(0x0050 + BYT_CHAN_OFFSET(chan))
 
 /* registers */
 #define DW_RAW_TFR			0x02C0
@@ -220,8 +222,13 @@
 #define DW_CFG_RELOAD_DST		(1 << 31)
 
 /* CFG_HI */
+#if !defined(CONFIG_SUECREEK)
 #define DW_CFGH_SRC_PER(x)		(x << 0)
 #define DW_CFGH_DST_PER(x)		(x << 4)
+#else
+#define DW_CFGH_SRC_PER(x)	((((x) & 0xf) << 0) | (((x) & 0x30) << 24))
+#define DW_CFGH_DST_PER(x)	((((x) & 0xf) << 4) | (((x) & 0x30) << 26))
+#endif
 
 /* FIFO Partition */
 #define DW_FIFO_PARTITION
@@ -400,6 +407,9 @@ static int dw_dma_start(struct dma *dma, int channel)
 	struct dma_chan_data *chan = p->chan + channel;
 	struct dw_lli2 *lli = chan->lli_current;
 	uint32_t flags;
+#if defined CONFIG_SUECREEK
+	unsigned int words_per_tfr;
+#endif
 	int ret = 0;
 
 	if (channel >= dma->plat_data.channels) {
@@ -449,11 +459,10 @@ static int dw_dma_start(struct dma *dma, int channel)
 	}
 
 #if DW_USE_HW_LLI
-	/* TODO: Revisit: are we using LLP mode or single transfer ? */
-	if (lli) {
-		/* LLP mode - write LLP pointer */
-		dw_write(dma, DW_LLP(channel), (uint32_t)lli);
-	}
+	/* LLP mode - write LLP pointer */
+	dw_write(dma, DW_LLP(channel), lli->ctrl_lo &
+		 (DW_CTLL_LLP_D_EN | DW_CTLL_LLP_S_EN) ?
+		 (uint32_t)lli : 0);
 #endif
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), lli->sar);
@@ -466,6 +475,14 @@ static int dw_dma_start(struct dma *dma, int channel)
 	/* write channel config */
 	dw_write(dma, DW_CFG_LOW(channel), chan->cfg_lo);
 	dw_write(dma, DW_CFG_HIGH(channel), chan->cfg_hi);
+
+#ifdef CONFIG_SUECREEK
+	words_per_tfr = (lli->ctrl_hi & 0x1ffff) >> (lli->ctrl_lo >> 1 & 0x7);
+
+	if (chan->cfg_lo & DW_CFG_RELOAD_SRC)
+		dw_write(dma, DW_DSR(channel),
+			 words_per_tfr | words_per_tfr << 20);
+#endif
 
 	if (chan->timer_delay)
 		/* activate timer for timer driven scheduling */
@@ -853,7 +870,16 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2M | DW_CTLL_SRC_FIX |
 				DW_CTLL_DST_INC;
 #if DW_USE_HW_LLI
+#if !defined CONFIG_SUECREEK
 			lli_desc->ctrl_lo |= DW_CTLL_LLP_D_EN;
+#else
+			/*
+			 * FIXME: replace this with run-time config. This can
+			 * break audio on Sue Creek
+			 */
+			/* Use contiguous auto-reload. Line 3 in table 3-3 */
+			lli_desc->ctrl_lo |= DW_CTLL_D_SCAT_EN;
+#endif
 			chan->cfg_lo |= DW_CFG_RELOAD_SRC;
 #endif
 			chan->cfg_hi |= DW_CFGH_SRC_PER(config->src_dev);
@@ -1040,7 +1066,7 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 }
 
-static void dw_dma_setup(struct dma *dma)
+static int dw_dma_setup(struct dma *dma)
 {
 	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
 	int i;
@@ -1057,7 +1083,7 @@ static void dw_dma_setup(struct dma *dma)
 	if (!i) {
 		trace_dwdma_error("dw-dma: dmac %d setup failed",
 				  dma->plat_data.id);
-		return;
+		return -EIO;
 	}
 
 	for (i = 0; i < DW_MAX_CHAN; i++)
@@ -1100,6 +1126,8 @@ static void dw_dma_setup(struct dma *dma)
 			 DW_CFG_CLASS(dp->chan[i].class));
 #endif
 	}
+
+	return 0;
 }
 
 static void dw_dma_process_block(struct dma_chan_data *chan,
@@ -1361,7 +1389,7 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
-	int i;
+	int i, ret;
 
 	if (dma_get_drvdata(dma))
 		return -EEXIST; /* already created */
@@ -1381,7 +1409,9 @@ static int dw_dma_probe(struct dma *dma)
 
 	spinlock_init(&dma->lock);
 
-	dw_dma_setup(dma);
+	ret = dw_dma_setup(dma);
+	if (ret < 0)
+		return ret;
 
 	/* init work */
 	for (i = 0; i < dma->plat_data.channels; i++) {
