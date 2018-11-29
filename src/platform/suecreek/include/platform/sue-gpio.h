@@ -29,21 +29,23 @@
 #ifndef __GPIO_H__
 #define __GPIO_H__
 
-#define SUE_GPIO_OFFSET(x)		(x + 0x00080C00)
+#include <platform/memory.h>
+
+#define SUE_GPIO_OFFSET(x)	((x) + DW_GPIO_BASE)
 #define SUE_GPIO_PORTA_DAT_REG	SUE_GPIO_OFFSET(0x00)
 #define SUE_GPIO_PORTA_DIR_REG	SUE_GPIO_OFFSET(0x04)
 #define SUE_GPIO_PORTA_CTL_REG	SUE_GPIO_OFFSET(0x08)
 
-#define SUE_IOMUX_OFFSET(x)		(x + 0x00081C00)
+#define SUE_IOMUX_OFFSET(x)	((x) + EXT_CTRL_BASE)
 #define SUE_IOMUX_CTL0_REG	SUE_IOMUX_OFFSET(0x30)
 #define SUE_IOMUX_CTL1_REG	SUE_IOMUX_OFFSET(0x34)
 
 
-#define SUE_LEVEL_HI	(1)
-#define SUE_LEVEL_LO	(0)
+#define SUE_LEVEL_HI		1
+#define SUE_LEVEL_LO		0
 
-#define SUE_GPIO_DIR_OUT	(1)
-#define SUE_GPIO_DIE_IN		(0)
+#define SUE_GPIO_DIR_OUT	1
+#define SUE_GPIO_DIE_IN		0
 
 
 /* the GPIO pin number */
@@ -77,89 +79,8 @@ enum GPIO {
 	GPIO_NUM,
 };
 
-struct gpio_device_config {
-	/* 0 -- not configured as GPIO; 1 -- configured as GPIO */
-	uint8_t	gpio_state[GPIO_NUM];
-};
-
-static struct gpio_device_config gpio_dev_cfg;
-
-static inline int gpio_config(enum GPIO port, int dir)
-{
-	struct gpio_device_config *gpio_cfg = &gpio_dev_cfg;
-	uint32_t shift, value;
-
-	value = 1;	/* value to enable GPIO */
-
-	switch (port) {
-	case GPIO0 ... GPIO7:
-		shift = port << 1;
-		io_reg_update_bits(SUE_IOMUX_CTL1_REG, 3 << shift, value << shift);
-		break;
-	case GPIO8:
-		io_reg_update_bits(SUE_IOMUX_CTL1_REG, 1 << 16, value << 16);
-		break;
-	case GPIO9 ... GPIO12:
-		io_reg_update_bits(SUE_IOMUX_CTL0_REG, 1 << 11, value << 11);
-		break;
-	case GPIO13:
-		io_reg_update_bits(SUE_IOMUX_CTL0_REG, 1 << 0, value << 0);
-		break;
-	case GPIO14:
-		io_reg_update_bits(SUE_IOMUX_CTL0_REG, 1 << 1, value << 1);
-		break;
-	case GPIO15 ... GPIO18:
-		io_reg_update_bits(SUE_IOMUX_CTL0_REG, 1 << 9, value << 9);
-		break;
-	case GPIO19 ... GPIO22:
-		io_reg_update_bits(SUE_IOMUX_CTL0_REG, 1 << 10, value << 10);
-		break;
-	case GPIO23:
-	case GPIO24:
-		io_reg_update_bits(SUE_IOMUX_CTL0_REG, 1 << 16, value << 16);
-		break;
-	case GPIO25:
-		io_reg_update_bits(SUE_IOMUX_CTL0_REG, 1 << 26, value << 26);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	gpio_cfg->gpio_state[port] = 1;
-
-	/* set the direction of GPIO */
-	io_reg_update_bits(SUE_GPIO_PORTA_DIR_REG, 1 << port, dir << port);
-
-	/* set the configuration register for software mode or hardware mode
-	 * default with software mode (0).
-	 * io_reg_update_bits(GPIO_PORTA_CTL_REG, 1<<port, 0<<port);
-	 */
-	return 0;
-}
-
-static inline int gpio_read(enum GPIO port)
-{
-	struct gpio_device_config *gpio_cfg = &gpio_dev_cfg;
-	int level;
-
-	if (!gpio_cfg->gpio_state[port])
-		return -EINVAL;
-
-	level = (io_reg_read(SUE_GPIO_PORTA_DAT_REG) & (1 << port)) >> port;
-
-	return level;
-}
-
-static inline int gpio_write(enum GPIO port, int level)
-{
-	struct gpio_device_config *gpio_cfg = &gpio_dev_cfg;
-
-	if (!gpio_cfg->gpio_state[port])
-		return -EINVAL;
-
-	io_reg_update_bits(SUE_GPIO_PORTA_DAT_REG, 1 << port, level << port);
-
-	return 0;
-}
+int gpio_config(enum GPIO port, int dir);
+int gpio_read(enum GPIO port);
+int gpio_write(enum GPIO port, int level);
 
 #endif
