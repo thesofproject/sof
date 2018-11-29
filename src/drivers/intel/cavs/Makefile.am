@@ -5,6 +5,7 @@ libdrivers_la_SOURCES = \
 	hda-dma.c \
 	hda.c \
 	interrupt.c \
+	spi.c \
 	ssp.c \
 	timer.c
 

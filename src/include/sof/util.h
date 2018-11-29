@@ -37,4 +37,6 @@
 	__a > __b ? __b : __a;	\
 })
 
+#define ALIGN(size, align) (((size) + (align) - 1) & ~((align) - 1))
+
 #endif

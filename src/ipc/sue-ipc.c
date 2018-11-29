@@ -42,6 +42,7 @@
 #include <sof/alloc.h>
 #include <sof/wait.h>
 #include <sof/trace.h>
+#include <sof/spi.h>
 #include <sof/ssp.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
@@ -54,11 +55,6 @@
 
 extern struct ipc *_ipc;
 
-/* test code to check working IRQ */
-static void irq_handler(void *arg)
-{
-}
-
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
@@ -70,6 +66,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	/* perform command and return any error */
 	err = ipc_cmd();
 	if (err > 0) {
+		mailbox_hostbox_read(&reply, 0, sizeof(reply));
 		goto done; /* reply created and copied by cmd() */
 	} else if (err < 0) {
 		/* send std error reply */
@@ -82,9 +79,10 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	/* send std error/ok reply */
 	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
 	reply.hdr.size = sizeof(reply);
-	mailbox_hostbox_write(0, &reply, sizeof(reply));
 
 done:
+	sspi_push(sspi_get(SOF_SPI_INTEL_SLAVE), &reply, sizeof(reply));
+
 	ipc->host_pending = 0;
 
 	// TODO: signal audio work to enter D3 in normal context
@@ -127,7 +125,6 @@ out:
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct ipc_data *iipc;
-	uint32_t dir, caps, dev;
 
 	_ipc = ipc;
 
@@ -148,21 +145,8 @@ int platform_ipc_init(struct ipc *ipc)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 #endif
 
-	/* request HDA DMA with shared access privilege */
-	caps = 0;
-	dir = DMA_DIR_HMEM_TO_LMEM;
-	dev = DMA_DEV_HOST;
-	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
-
 	/* PM */
 	iipc->pm_prepare_D3 = 0;
-
-	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   irq_handler, NULL);
-	interrupt_enable(PLATFORM_IPC_INTERRUPT);
-
-	/* enable IPC interrupts from host */
 
 	return 0;
 }

@@ -54,6 +54,7 @@
 #include <sof/audio/component.h>
 #include <sof/cpu.h>
 #include <sof/notifier.h>
+#include <sof/spi.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -219,6 +220,9 @@ int platform_boot_complete(uint32_t boot_message)
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | SOF_IPC_FW_READY);
+#elif defined(CONFIG_SUECREEK)
+	sspi_push(sspi_get(SOF_SPI_INTEL_SLAVE),
+		  (void *)mailbox_get_dspbox_base(), sizeof(ready));
 #endif
 	return 0;
 }
@@ -281,6 +285,9 @@ static void platform_init_hw(void)
 
 int platform_init(struct sof *sof)
 {
+#if defined(CONFIG_SUECREEK)
+	struct sspi *spi;
+#endif
 	int ret;
 
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
@@ -373,8 +380,24 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
 	idc_init();
 
-	/* Initialize DMA for Trace*/
-	dma_trace_init_complete(sof->dmat);
+#if defined(CONFIG_SUECREEK)
+	/* initialize the SPI slave */
+	spi = sspi_get(SOF_SPI_INTEL_SLAVE);
+	if (spi == NULL)
+		return -ENODEV;
 
+	ret = sspi_probe(spi);
+	if (ret < 0)
+		return ret;
+
+	/* initialize the SPI-SLave module */
+	ret = sspi_slave_init(spi, SOF_SPI_INTEL_SLAVE);
+	if (ret < 0)
+		return ret;
+
+	/* Initialize DMA for Trace*/
+#else
+	dma_trace_init_complete(sof->dmat);
+#endif
 	return 0;
 }

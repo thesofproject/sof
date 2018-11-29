@@ -106,7 +106,7 @@ struct mm memmap = {
 		.size = HEAP_RUNTIME_SIZE,
 		.info = {.free = HEAP_RUNTIME_SIZE,},
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
+			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
 	.buffer[0] = {
 		.blocks = ARRAY_SIZE(buf_heap_map),

@@ -659,6 +659,10 @@ static int ipc_dma_trace_config(uint32_t header)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_SUECREEK
+	return 0;
+#endif
+
 #ifdef CONFIG_HOST_PTABLE
 
 	dma_sg_init(&elem_array);
