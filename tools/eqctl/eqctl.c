@@ -61,6 +61,7 @@ static void usage(char *name)
 static int read_setup(unsigned int *data, char setup[], size_t smax)
 {
 	FILE *fh;
+	unsigned int x;
 	int n = 0;
 	int n_max = smax / sizeof(unsigned int);
 	int separator;
@@ -72,18 +73,29 @@ static int read_setup(unsigned int *data, char setup[], size_t smax)
 		return -errno;
 	}
 
-	while (fscanf(fh, "%u", &data[n]) != EOF && n < n_max) {
+	while (fscanf(fh, "%u", &x) != EOF) {
+		if (n < n_max)
+			data[n] = x;
+
 		if (n > 0)
 			fprintf(stdout, ",");
-		fprintf(stdout, "%u", data[n]);
+
+		fprintf(stdout, "%u", x);
 		separator = fgetc(fh);
 		while (separator != ',' && separator != EOF)
 			separator = fgetc(fh);
 
 		n++;
 	}
-	fclose(fh);
 	fprintf(stdout, "\n");
+
+	if (n > n_max) {
+		fprintf(stderr, "Warning: Read of %d exceeded control size. ",
+			4 * n);
+		fprintf(stderr, "Please check the data file.\n");
+	}
+
+	fclose(fh);
 	return n;
 }
 
@@ -175,6 +187,7 @@ int main(int argc, char *argv[])
 
 	/* Get control attributes from info. */
 	ctrl_size = snd_ctl_elem_info_get_count(info);
+	fprintf(stderr, "Control size is %d.\n", ctrl_size);
 	read = snd_ctl_elem_info_is_tlv_readable(info);
 	write = snd_ctl_elem_info_is_tlv_writable(info);
 	type = snd_ctl_elem_info_get_type(info);
@@ -239,7 +252,7 @@ int main(int argc, char *argv[])
 		 * as the input file format.
 		 */
 		config = (uint32_t *) (user_data + 2);
-		n = config[0] / sizeof(uint32_t);
+		n = user_data[1] / sizeof(uint32_t);
 		for (i = 0; i < n; i++) {
 			if (i == n - 1)
 				fprintf(stdout, "%u\n", config[i]);
