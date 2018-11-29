@@ -1,10 +1,10 @@
-function bs = eq_fir_blob_merge(platform_max_channels, ...
+function bs = eq_fir_blob_merge(channels_in_config, ...
         number_of_responses_defined, assign_response, all_coefficients);
 
 %% Merge equalizer definition into a struct used by successive blob making
 %  functions.
 %
-% bs = eq_fir_blob_merge(platform_max_channels, number_of_responses_defined, ...
+% bs = eq_fir_blob_merge(channels_in_config, number_of_responses_defined, ...
 %        assign_response, all_coefficients);
 %
 
@@ -38,11 +38,11 @@ function bs = eq_fir_blob_merge(platform_max_channels, ...
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
-if length(assign_response) ~= platform_max_channels
+if length(assign_response) ~= channels_in_config
 	error("Incorrect length in EQ assign vector!");
 end
 
-bs.platform_max_channels = platform_max_channels;
+bs.channels_in_config = channels_in_config;
 bs.number_of_responses_defined = number_of_responses_defined;
 bs.assign_response = assign_response;
 bs.all_coefficients = all_coefficients;

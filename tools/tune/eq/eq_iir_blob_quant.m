@@ -80,11 +80,11 @@ end
 gain = 1;
 
 %% Convert 2nd order sections to SOF parameters format and scale the biquads
-%  with criteria below (Gain max -6 dB at any frequency). Then calculate 
+%  with criteria below (Gain max -6 dB at any frequency). Then calculate
 %  scaling shifts and finally gain multiplier for output.
 sz = size(sos);
 nbr_sections = sz(1);
-n_section_header = 2;
+n_section_header = 6; % Two plus reserved[4] in ABI
 n_section = 7;
 iir_resp = int32(zeros(1,n_section_header+nbr_sections*n_section));
 iir_resp(1) = nbr_sections;

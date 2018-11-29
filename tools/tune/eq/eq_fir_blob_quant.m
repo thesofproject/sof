@@ -55,8 +55,8 @@ while bq(nz) == 0
 end
 if nz < nf
 	nb = nz + 1;
-	fprintf(1,'Note: Filter length was reduced to %d -> %d due to trailing zeros.\n', ...
-		nf, nb);
+	fprintf(1, 'Note: Filter length was reduced ');
+	fprintf(1, 'to %d -> %d due to trailing zeros.\n', nf, nb);
 	bq = bq(1:nb);
 else
 	nb = nf;
@@ -68,13 +68,19 @@ if mod4 > 0
 	pad = zeros(1,4-mod4);
 	bqp = [bq pad];
 	nnew = length(bqp);
-	fprintf(1,'Note: Filter length was %d, padded length into %d.\n', nb, nnew);
+	fprintf(1,'Note: Filter length was %d, padded length into %d.\n', ...
+		nb, nnew);
 else
 	nnew = nb;
 	bqp = bq;
 end
 
-fbr = [nnew shift bqp];
+%% Pack data into FIR coefficient format
+%	int16_t length
+%	int16_t out_shift
+%	uint32_t reserved[4]
+%	int16_t coef[]
+fbr = [nnew shift 0 0 0 0 0 0 0 0 bqp];
 
 end
 

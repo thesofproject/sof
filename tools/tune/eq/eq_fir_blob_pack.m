@@ -54,75 +54,88 @@ switch lower(endian)
 end
 
 %% Channels count must be even
-if mod(bs.platform_max_channels, 2) > 0
+if mod(bs.channels_in_config, 2) > 0
 	error("Channels # must be even");
 end
 
 %% Channels cound and assign vector length must be the same
-if bs.platform_max_channels ~= length( bs.assign_response)
+if bs.channels_in_config ~= length( bs.assign_response)
 	bs
 	error("Channels # and response assign length must match");
 end
 
 %% Coefficients vector length must be multiple of 4
 len = length(bs.all_coefficients);
-len_no_header = len - 2 * bs.number_of_responses_defined;
+len_no_header = len - 10 * bs.number_of_responses_defined;
 if mod(len_no_header, 4) > 0
 	bs
 	error("Coefficient data vector length must be multiple of 4");
 end
 
+%% Header format is
+%	uint32_t size;
+%	uint16_t channels_in_config;
+%	uint16_t number_of_responses;
+%	uint32_t reserved[4];
+%	int16_t data[];
+
 %% Pack as 16 bits
-nh16 = 4+bs.platform_max_channels;
+nh16 = 12+bs.channels_in_config;
 h16 = zeros(1, nh16, 'int16');
-h16(3) = bs.platform_max_channels;
+nc16 = length(bs.all_coefficients);
+nb16 = ceil((nh16+nc16)/2)*2;
+h16(1) = 2 * nb16;
+h16(2) = 0;
+h16(3) = bs.channels_in_config;
 h16(4) = bs.number_of_responses_defined;
-for i=1:bs.platform_max_channels
-        h16(4+i) = bs.assign_response(i);
+h16(5) = 0;
+h16(6) = 0;
+h16(7) = 0;
+h16(8) = 0;
+h16(9) = 0;
+h16(10) = 0;
+h16(11) = 0;
+h16(12) = 0;
+for i=1:bs.channels_in_config
+        h16(12+i) = bs.assign_response(i);
 end
 
 %% Merge header and coefficients, make even number of int16 to make it
 %  multiple of int32
-nc16 = length(bs.all_coefficients);
-nb16 = ceil((nh16+nc16)/2)*2;
 blob16 = zeros(1,nb16, 'int16');
 blob16(1:nh16) = h16;
 blob16(nh16+1:nh16+nc16) = int16(bs.all_coefficients);
 
-%% Print as 16 bit hex
-nl = ceil(nb16/16);
-for i = 1:nl
-	m = min(16, nb16-(i-1)*16);
-	for j = 1:m
-		k = (i-1)*16 + j;
-		v =  int32(blob16(k));
-		if v < 0
-			v = 65536+v;
-		end
-		fprintf(1, "%04x ", v);
-	end
-	fprintf(1, "\n");
-end
-fprintf(1, "\n");
-
-
 %% Pack as 8 bits
-nb8 = length(blob16)*2;
-blob8 = zeros(1, nb8, 'uint8');
+nbytes_abi = 8*4;
+nbytes_data = nb16 * 2;
+nbytes = nbytes_abi + nbytes_data;
+blob8 = zeros(1, nbytes, 'uint8');
+
+%% Get ABI information
+[magic, abi] = eq_get_abi();
+
+%% ABI header
 j = 1;
+blob8(j:j+3) = w32b(magic, sh32); j=j+4;
+blob8(j:j+3) = w32b(0, sh32); j=j+4;
+blob8(j:j+3) = w32b(nbytes_data, sh32); j=j+4;
+blob8(j:j+3) = w32b(abi, sh32); j=j+4;
+blob8(j:j+3) = w32b(0, sh32); j=j+4;
+blob8(j:j+3) = w32b(0, sh32); j=j+4;
+blob8(j:j+3) = w32b(0, sh32); j=j+4;
+blob8(j:j+3) = w32b(0, sh32); j=j+4;
+
+%% Component data
 for i = 1:length(blob16)
         blob8(j:j+1) = w16b(blob16(i), sh16);
         j = j+2;
 end
 
-%% Add size into first four bytes
-blob8(1:4) = w32b(nb8, sh32);
-
 %% Done
-fprintf('Blob size is %d bytes.\n', nb8);
+fprintf('Blob size is %d bytes.\n', nbytes);
 
 end
-
 
 function bytes = w16b(word, sh)
 bytes = uint8(zeros(1,2));
