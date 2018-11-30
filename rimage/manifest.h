@@ -28,6 +28,7 @@
 /* start offset for base FW module */
 #define FILE_TEXT_OFFSET_V1_8		0x8000
 #define FILE_TEXT_OFFSET_V1_5		0x2000
+#define FILE_TEXT_OFFSET_V1_5_SUE	0xA000
 
 /*
  * CSE values for CNL
@@ -40,6 +41,7 @@
 #define MAN_EXT_PADDING			0x20
 #define MAN_DESC_OFFSET_V1_8			0x2000
 #define MAN_DESC_OFFSET_V1_5			0x284
+#define MAN_DESC_OFFSET_V1_5_SUE		0x4000
 
 #define MAN_CSS_HDR_OFFSET \
 	(MAN_CSE_HDR_OFFSET + \
@@ -116,10 +118,15 @@ struct fw_image_manifest_v1_5 {
 	struct sof_man_fw_desc desc;
 } __attribute__((packed));
 
+struct fw_image_manifest_v1_5_sue {
+    struct sof_man_fw_desc desc;
+} __attribute__((packed));
+
 /*
  * TODO: verify if we need platform specific manifest, or just
  * define manifest_v1_5 and manifest_v1_8.
  */
 extern struct fw_image_manifest_v1_5 skl_manifest;
 extern struct fw_image_manifest_v1_5 kbl_manifest;
+extern struct fw_image_manifest_v1_5_sue sue_manifest;
 #endif

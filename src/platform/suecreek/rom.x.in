@@ -1,5 +1,5 @@
 /*
- * Linker Script for Apollolake Bootloader.
+ * Linker Script for Suecreek ROM.
  *
  * This script is run through the GNU C preprocessor to align the memory
  * offsets with headers.
@@ -16,12 +16,12 @@ MEMORY
 {
   vector_reset_text :
         org = ROM_BASE,
-        len = 0x400
+        len = ROM_RESET_TEXT_SIZE
   vector_reset_lit :
-        org = ROM_BASE + 0x400,
-        len = 0x100
+        org = ROM_BASE + ROM_RESET_TEXT_SIZE,
+        len = ROM_RESET_LIT_SIZE
   vector_base_text :
-	org = ROM_BASE + 0x800,
+	org = ROM_BASE + ROM_RESET_TEXT_SIZE + ROM_RESET_LIT_SIZE,
         len = SOF_MEM_VECBASE_LIT_SIZE
   vector_int2_lit :
         org = ROM_BASE + XCHAL_INTLEVEL2_VECOFS - SOF_MEM_VECT_LIT_SIZE,
