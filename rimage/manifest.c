@@ -96,6 +96,21 @@ static int man_init_image_v1_5(struct image *image)
 	return 0;
 }
 
+static int man_init_image_v1_5_sue(struct image *image)
+{
+	/* allocate image and copy template manifest */
+	image->fw_image = calloc(image->adsp->image_size, 1);
+	if (!image->fw_image)
+		return -ENOMEM;
+
+	/* copy 1.5 sue manifest */
+	memcpy(image->fw_image + MAN_DESC_OFFSET_V1_5_SUE,
+	       image->adsp->man_v1_5_sue,
+	       sizeof(struct fw_image_manifest_v1_5_sue));
+
+	return 0;
+}
+
 static int man_init_image_v1_8(struct image *image)
 {
 	/* allocate image and copy template manifest */
@@ -451,12 +466,19 @@ static int man_module_create(struct image *image, struct module *module,
 	}
 	fprintf(stdout, "\n");
 
+	/* no need to update end for exec headers */
+	if (module->exec_header) {
+		image->image_end = FILE_TEXT_OFFSET_V1_5_SUE;
+		goto out;
+	}
+
 	/* round module end upto nearest page */
 	if (image->image_end % MAN_PAGE_SIZE) {
 		image->image_end = (image->image_end / MAN_PAGE_SIZE) + 1;
 		image->image_end *= MAN_PAGE_SIZE;
 	}
 
+out:
 	fprintf(stdout, " Total pages text %d data %d bss %d module file limit: 0x%x\n\n",
 		man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length,
 		man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length,
@@ -593,16 +615,6 @@ static int man_write_fw_mod(struct image *image)
 {
 	int count;
 
-	/* write ROM - for VM use only */
-	count = fwrite(image->rom_image, image->adsp->rom_size, 1,
-		image->out_rom_fd);
-	if (count != 1) {
-		fprintf(stderr, "error: failed to write rom %s %d\n",
-			image->out_rom_file, -errno);
-		return -errno;
-	}
-	fclose(image->out_rom_fd);
-
 	/* write manifest and signed image */
 	count = fwrite(image->fw_image,
 			image->image_end,
@@ -624,13 +636,33 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 	struct module *module;
 	struct sof_man_module *man_module;
 	int err;
-	int i;
+	int i = 0, offset = 0;
 
-	for (i = 0; i < image->num_modules; i++) {
-		man_module = sof_man_get_module(desc, i);
-		module = &image->module[i];
+	/* if first module is executable then write before manifest */
+	if (image->adsp->exec_boot_ldr) {
+		man_module = sof_man_get_module(desc, 0);
+		module = &image->module[0];
+
+		fprintf(stdout, "Module: %s used as executable header\n",
+				module->elf_file);
+		module->exec_header = 1;
 
 		/* set module file offset */
+		module->foffset = 0;
+
+		err = man_module_create(image, module, man_module);
+		if (err < 0)
+			return err;
+
+		/* setup man_modules for missing exec loader module */
+		i = 1;
+		offset = 1;
+	}
+
+	for (; i < image->num_modules; i++) {
+		man_module = sof_man_get_module(desc, i - offset);
+		module = &image->module[i];
+
 		if (i == 0)
 			module->foffset = file_text_offset;
 		else
@@ -656,6 +688,12 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 
 	for (i = 0; i < image->num_modules; i++) {
 		man_module = sof_man_get_module(desc, i);
+
+		if (image->adsp->exec_boot_ldr && i == 0) {
+			fprintf(stdout, " module: no need to hash %s\n as its exec header\n",
+				man_module->name);
+			continue;
+		}
 
 		ri_hash(image,
 			man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset,
@@ -705,7 +743,7 @@ static int man_write_fw_v1_5(struct image *image)
 	fprintf(stdout, "Firmware completing manifest v1.5\n");
 
 	/* create structures from end of file to start of file */
-	ri_css_hdr_create(image);
+	ri_css_v1_5_hdr_create(image);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
 		FILE_TEXT_OFFSET_V1_5 - MAN_DESC_OFFSET_V1_5 + image->image_end,
@@ -738,6 +776,58 @@ err:
 	free(image->fw_image);
 	unlink(image->out_file);
 	unlink(image->out_rom_file);
+	return ret;
+}
+
+/* used by others */
+static int man_write_fw_v1_5_sue(struct image *image)
+{
+	struct fw_image_manifest_v1_5_sue *m;
+	uint32_t preload_size;
+	int ret;
+
+	/* init image */
+	ret = man_init_image_v1_5_sue(image);
+	if (ret < 0)
+		goto err;
+
+	/* create the manifest */
+	ret = man_open_manifest_file(image);
+	if (ret < 0)
+		goto err;
+
+	/* create the module */
+	m = image->fw_image + MAN_DESC_OFFSET_V1_5_SUE;
+
+	/* create each module - subtract the boot loader exec header */
+	m->desc.header.num_module_entries = image->num_modules - 1;
+	man_create_modules(image, &m->desc, FILE_TEXT_OFFSET_V1_5_SUE);
+	fprintf(stdout, "Firmware completing manifest v1.5\n");
+
+	/* write preload page count */
+	preload_size = image->image_end - MAN_DESC_OFFSET_V1_5_SUE;
+	preload_size += MAN_PAGE_SIZE - (preload_size % MAN_PAGE_SIZE);
+	m->desc.header.preload_page_count = preload_size / MAN_PAGE_SIZE;
+
+	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
+		FILE_TEXT_OFFSET_V1_5_SUE - MAN_DESC_OFFSET_V1_5_SUE + image->image_end,
+		m->desc.header.preload_page_count);
+
+	/* calculate hash for each module */
+	man_hash_modules(image, &m->desc);
+
+	/* write the firmware */
+	ret = man_write_fw_mod(image);
+	if (ret < 0) {
+		goto err;
+	}
+
+	fprintf(stdout, "Firmware manifest and signing completed !\n");
+	return 0;
+
+err:
+	free(image->fw_image);
+	unlink(image->out_file);
 	return ret;
 }
 
@@ -783,7 +873,7 @@ static int man_write_fw_v1_8(struct image *image)
 	ri_adsp_meta_data_create(image, MAN_META_EXT_OFFSET_V1_8,
 				 MAN_FW_DESC_OFFSET_V1_8);
 	ri_plat_ext_data_create(image);
-	ri_css_hdr_create(image);
+	ri_css_v1_8_hdr_create(image);
 	ri_cse_create(image);
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
@@ -1092,7 +1182,8 @@ const struct adsp machine_sue = {
 	.image_size = 0x100000,
 	.dram_offset = 0,
 	.machine_id = MACHINE_SUECREEK,
-	.write_firmware = man_write_fw_v1_8,
-	.write_firmware_meu = man_write_fw_meu_v1_8,
-	.man_v1_8 = &cnl_manifest,
+	.write_firmware = man_write_fw_v1_5_sue,
+	.write_firmware_meu = man_write_fw_v1_5_sue,
+	.man_v1_5_sue = &sue_manifest,
+	.exec_boot_ldr = 1,
 };
