@@ -42,7 +42,7 @@ if nargin < 2
 end
 
 %% Channels count and assign vector lengths must be the same
-if bs.platform_max_channels ~= length( bs.assign_response)
+if bs.channels_in_config ~= length( bs.assign_response)
 	bs
 	error("Channels # and response assign length must match");
 end
@@ -58,17 +58,37 @@ switch lower(endian)
 end
 
 %% Pack as 8 bits, header
-nbytes_head = (3+bs.platform_max_channels)*4;
+nbytes_abi = 8*4;
+nbytes_head = (7+bs.channels_in_config)*4;
 nbytes_coef = length(bs.all_coefficients)*4;
-nbytes = nbytes_head + nbytes_coef;
+nbytes_data = nbytes_head + nbytes_coef;
+nbytes = nbytes_abi + nbytes_data;
 blob8 = uint8(zeros(1,nbytes));
 
-j = 1;
-blob8(j:j+3) = w2b(nbytes, sh); j=j+4;
-blob8(j:j+3) = w2b(bs.platform_max_channels, sh); j=j+4;
-blob8(j:j+3) = w2b(bs.number_of_responses_defined, sh); j=j+4;
+%% Get ABI information
+[magic, abi] = eq_get_abi();
 
-for i=1:bs.platform_max_channels
+%% ABI header
+j = 1;
+blob8(j:j+3) = w2b(magic, sh); j=j+4;
+blob8(j:j+3) = w2b(0, sh); j=j+4;
+blob8(j:j+3) = w2b(nbytes_data, sh); j=j+4;
+blob8(j:j+3) = w2b(abi, sh); j=j+4;
+blob8(j:j+3) = w2b(0, sh); j=j+4;
+blob8(j:j+3) = w2b(0, sh); j=j+4;
+blob8(j:j+3) = w2b(0, sh); j=j+4;
+blob8(j:j+3) = w2b(0, sh); j=j+4;
+
+%% Component data
+blob8(j:j+3) = w2b(nbytes_data, sh); j=j+4;
+blob8(j:j+3) = w2b(bs.channels_in_config, sh); j=j+4;
+blob8(j:j+3) = w2b(bs.number_of_responses_defined, sh); j=j+4;
+blob8(j:j+3) = w2b(0, sh);j=j+4; % Reserved
+blob8(j:j+3) = w2b(0, sh);j=j+4; % Reserved
+blob8(j:j+3) = w2b(0, sh);j=j+4; % Reserved
+blob8(j:j+3) = w2b(0, sh);j=j+4; % Reserved
+
+for i=1:bs.channels_in_config
         blob8(j:j+3) = w2b(int32(bs.assign_response(i)), sh);
 	j=j+4;
 end

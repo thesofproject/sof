@@ -52,9 +52,10 @@
 #include <stdio.h>
 #endif
 
-#define trace_eq(__e) trace_event(TRACE_CLASS_EQ_FIR, __e)
-#define tracev_eq(__e) tracev_event(TRACE_CLASS_EQ_FIR, __e)
-#define trace_eq_error(__e) trace_error(TRACE_CLASS_EQ_FIR, __e)
+#define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
+#define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
+#define trace_eq_error(__e, ...) \
+	trace_error(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
 
 /* src component private data */
 struct comp_data {
@@ -252,9 +253,8 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 	size_t s;
 	size_t size_sum = 0;
 
-	trace_eq("fse");
-	trace_value(config->channels_in_config);
-	trace_value(config->number_of_responses);
+	trace_eq("FIR setup %d channels map, %d responses",
+		 config->channels_in_config, config->number_of_responses);
 	if (nch > PLATFORM_MAX_CHANNELS ||
 	    config->channels_in_config > PLATFORM_MAX_CHANNELS) {
 		trace_eq_error("ech");
@@ -277,12 +277,11 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 	j = 0;
 	assign_response = &config->data[0];
 	coef_data = &config->data[config->channels_in_config];
-	trace_eq("idx");
 	for (i = 0; i < SOF_EQ_FIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			trace_value(j);
 			eq = (struct sof_eq_fir_coef_data *)&coef_data[j];
 			lookup[i] = eq;
+			trace_eq("FIR response %d offset is %d", i, j);
 			j += SOF_EQ_FIR_COEF_NHEADER + coef_data[j];
 		} else {
 			lookup[i] = NULL;
@@ -320,6 +319,8 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 			size_sum += s;
 		else
 			return -EINVAL;
+
+		trace_eq("FIR ch%d initialized to response %d", i, resp);
 	}
 
 	/* If all channels were set to bypass there's no need to
@@ -378,14 +379,13 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	size_t bs = ipc_fir->size;
 	int i;
 
-	trace_eq("new");
+	trace_eq("FIR new config size %d", bs);
 
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_FIR_MAX_SIZE) {
 		trace_eq_error("ens");
-		trace_error_value(bs);
 		return NULL;
 	}
 
@@ -489,6 +489,8 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0)
 				return -EINVAL;
 			memcpy(cdata->data->data, cd->config, bs);
+			cdata->data->abi = SOF_ABI_VERSION;
+			cdata->data->size = bs;
 		} else {
 			trace_eq_error("ecn");
 			ret = -EINVAL;
@@ -567,14 +569,18 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 
 		cfg = (struct sof_eq_fir_config *)cdata->data->data;
 		bs = cfg->size;
-		trace_value(bs);
-		if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0)
+		trace_eq("FIR cmd config size %d", bs);
+		if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0) {
+			trace_eq_error("efs");
 			return -EINVAL;
+		}
 
 		/* Allocate buffer for copy of the blob. */
 		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config)
+		if (!cd->config) {
+			trace_eq_error("efa");
 			return -EINVAL;
+		}
 
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().

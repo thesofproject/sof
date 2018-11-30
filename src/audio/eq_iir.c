@@ -53,9 +53,10 @@
 #include <stdio.h>
 #endif
 
-#define trace_eq(__e) trace_event(TRACE_CLASS_EQ_IIR, __e)
-#define tracev_eq(__e) tracev_event(TRACE_CLASS_EQ_IIR, __e)
-#define trace_eq_error(__e) trace_error(TRACE_CLASS_EQ_IIR, __e)
+#define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
+#define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
+#define trace_eq_error(__e, ...) \
+	trace_error(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 
 /* IIR component private data */
 struct comp_data {
@@ -225,9 +226,8 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 	/* Free existing IIR channels data if it was allocated */
 	eq_iir_free_delaylines(cd);
 
-	trace_eq("fse");
-	trace_value(config->channels_in_config);
-	trace_value(config->number_of_responses);
+	trace_eq("IIR setup %d channels map, %d responses",
+		 config->channels_in_config, config->number_of_responses);
 
 	/* Sanity checks */
 	if (nch > PLATFORM_MAX_CHANNELS ||
@@ -245,12 +245,11 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 	j = 0;
 	assign_response = &config->data[0];
 	coef_data = &config->data[config->channels_in_config];
-	trace_eq("idx");
 	for (i = 0; i < SOF_EQ_IIR_MAX_RESPONSES; i++) {
 		if (i < config->number_of_responses) {
-			trace_value(j);
 			eq = (struct sof_eq_iir_header_df2t *)&coef_data[j];
 			lookup[i] = eq;
+			trace_eq("IIR response %d offset is %d", i, j);
 			j += SOF_EQ_IIR_NHEADER_DF2T
 				+ SOF_EQ_IIR_NBIQUAD_DF2T * eq->num_sections;
 		} else {
@@ -289,6 +288,8 @@ static int eq_iir_setup(struct comp_data *cd, int nch)
 			size_sum += s;
 		else
 			return -EINVAL;
+
+		trace_eq("IIR ch%d initialized to response %d", i, resp);
 	}
 
 	/* If all channels were set to bypass there's no need to
@@ -343,14 +344,13 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	size_t bs = ipc_iir->size;
 	int i;
 
-	trace_eq("new");
+	trace_eq("IIR new config size %d", bs);
 
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.
 	 */
 	if (bs > SOF_EQ_IIR_MAX_SIZE) {
 		trace_eq_error("ens");
-		trace_error_value(bs);
 		return NULL;
 	}
 
@@ -456,6 +456,8 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0)
 				return -EINVAL;
 			memcpy(cdata->data->data, cd->config, bs);
+			cdata->data->abi = SOF_ABI_VERSION;
+			cdata->data->size = bs;
 		} else {
 			trace_eq_error("ecn");
 			ret = -EINVAL;
@@ -534,7 +536,7 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 
 		cfg = (struct sof_eq_iir_config *)cdata->data->data;
 		bs = cfg->size;
-		trace_value(bs);
+		trace_eq("IIR cmd config size %d", bs);
 		if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0) {
 			trace_eq_error("eis");
 			return -EINVAL;
@@ -542,14 +544,15 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 
 		/* Allocate and make a copy of the blob and setup IIR */
 		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config)
+		if (!cd->config) {
+			trace_eq_error("eia");
 			return -EINVAL;
+		}
 
 		/* Just copy the configurate. The EQ will be initialized in
 		 * prepare().
 		 */
 		memcpy(cd->config, cdata->data->data, bs);
-
 		break;
 	default:
 		trace_eq_error("esd");

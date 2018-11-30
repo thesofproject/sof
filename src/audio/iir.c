@@ -118,8 +118,12 @@ int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 			 */
 			acc = Q_SHIFT_RND(acc, 45 + iir->coef[c + 5], 31);
 			in = sat_int32(acc);
-			c += 7; /* Next coefficients section */
-			d += 2; /* Next biquad delays */
+
+			/* Proceed to next biquad coefficients and delay
+			 * lines.
+			 */
+			c += SOF_EQ_IIR_NBIQUAD_DF2T;
+			d += IIR_DF2T_NUM_DELAYS;
 		}
 		/* Output of previous section is in variable in */
 		out = sat_int32((int64_t)out + in);

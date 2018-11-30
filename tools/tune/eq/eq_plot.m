@@ -100,7 +100,7 @@ if length(eq.b_fir) > 1
 	xlabel('Frequency (Hz)');
 	ylabel('Magnitude (dB)');
         ax = axis; axis([eq.p_fmin eq.p_fmax max(ax(3:4), -40)]);
-        tstr = sprintf('FIR filter normalized response: %s', eq.name);
+        tstr = sprintf('FIR filter absolute response: %s', eq.name);
         title(tstr);
 
         % Impulse response / coefficients
@@ -123,7 +123,7 @@ if length(eq.p_z) > 1 || length(eq.p_p) > 1
 	xlabel('Frequency (Hz)');
 	ylabel('Magnitude (dB)');
         ax = axis; axis([eq.p_fmin eq.p_fmax max(ax(3:4), -40)]);
-        tstr = sprintf('IIR filter normalized response: %s', eq.name);
+        tstr = sprintf('IIR filter absolute response: %s', eq.name);
         title(tstr);
 
         % Polar

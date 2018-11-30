@@ -49,10 +49,10 @@ bq_pass = eq_fir_blob_quant(b_pass);
 bq_loud = eq_fir_blob_quant(eq_loud.b_fir);
 
 %% Build blob
-platform_max_channels = 4;   % Setup max 4 channels EQ
+channels_in_config = 4;      % Setup max 4 channels EQ
 assign_response = [1 1 1 1]; % Switch to response #1
 num_responses = 2;           % Two responses pass, loud
-bm = eq_fir_blob_merge(platform_max_channels, ...
+bm = eq_fir_blob_merge(channels_in_config, ...
 		       num_responses, ...
 		       assign_response, ...
 		       [ bq_pass bq_loud ]);
@@ -101,8 +101,8 @@ eq.norm_type = 'loudness';  % Can be loudness/peak/1k to select normalize criter
 eq.norm_offs_db = 0;        % E.g. -1 would leave 1 dB headroom if used with peak
 
 eq.enable_fir = 1;          % By default both FIR and IIR disabled, enable one
-eq.fir_beta = 3.5;          % Use with care, low value can corrupt
-eq.fir_length = 136;        % Gives just < 316 bytes
+eq.fir_beta = 4.0;          % Use with care, low value can corrupt
+eq.fir_length = 90;         % Gives just < 304 bytes
 eq.fir_autoband = 0;        % Select manually frequency limits
 eq.fmin_fir = 100;          % Equalization starts from 100 Hz
 eq.fmax_fir = 20e3;         % Equalization ends at 20 kHz

@@ -28,39 +28,28 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 	Channel register and shift for Front Left/Right,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
-# EQ initial parameters, in this case flat response
-CONTROLBYTES_PRIV(EQIIR_priv,
-`	bytes "0x38,0x00,0x00,0x00,0x02,0x00,0x00,0x00,'
-`	0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
-`	0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00,'
-`	0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
-`	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
-`	0x00,0x00,0x00,0x00,0x9e,0x73,0x13,0x20,'
-`	0x00,0x00,0x00,0x00,0xb2,0x7f,0x00,0x00"'
-)
+
+# Use coefficients for flat frequency response
+include(`eq_iir_coef_flat.m4')
 
 # EQ Bytes control with max value of 255
 C_CONTROLBYTES(EQIIR, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
 	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
 	, , ,
-	CONTROLBYTES_MAX(, 316),
+	CONTROLBYTES_MAX(, 304),
 	,
 	EQIIR_priv)
 
-# EQ initial parameters, in this case flat response
-CONTROLBYTES_PRIV(EQFIR_priv,
-`	bytes "0x18,0x00,0x00,0x00,0x02,0x00,0x01,0x00,'
-`	0x00,0x00,0x00,0x00,0x04,0x00,0xff,0xff,'
-`	0x00,0x40,0x00,0x00,0x00,0x00,0x00,0x00"'
-)
+# Use coefficients for flat frequency response
+include(`eq_fir_coef_flat.m4')
 
 # EQ Bytes control with max value of 255
 C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
 	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
 	, , ,
-	CONTROLBYTES_MAX(, 316),
+	CONTROLBYTES_MAX(, 304),
 	,
 	EQFIR_priv)
 

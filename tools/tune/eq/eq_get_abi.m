@@ -1,17 +1,10 @@
-function bs = eq_iir_blob_merge(channels_in_config, ...
-        number_of_responses_defined, ...
-        assign_response, ...
-        all_coefficients);
+function [magic, version] = eq_get_abi()
 
-%% Merge equalizer definition into a struct used by successive blob making
-%  functions.
-%
-% bs = eq_iir_blob_merge(channels_in_config, number_of_responses_defined, ...
-%        assign_response, all_coefficients);
-%
+%% Return current SOF magic and version values for ABI header
+% [magic, version] = eq_get_abi()
 
 %%
-% Copyright (c) 2016, Intel Corporation
+% Copyright (c) 2018, Intel Corporation
 % All rights reserved.
 %
 % Redistribution and use in source and binary forms, with or without
@@ -40,13 +33,16 @@ function bs = eq_iir_blob_merge(channels_in_config, ...
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
-if length(assign_response) ~= channels_in_config
-	error("Assign response does not match channels count!");
-end
+%% These need to match kernel and FW ABI version
+sof_abi_major = 2;
+sof_abi_minor = 0;
+sof_abi_patch = 0;
+sof_abi_magic = '00464F53'; % 'SOF\0'
 
-bs.channels_in_config = channels_in_config;
-bs.number_of_responses_defined = number_of_responses_defined;
-bs.assign_response = assign_response;
-bs.all_coefficients = all_coefficients;
+%% Convert to integers
+version = uint32(bitshift(bitand(sof_abi_major, 255), 24) ...
+		 + bitshift(bitand(sof_abi_minor, 4095), 12) ...
+		 + bitshift(bitand(sof_abi_patch, 4095), 0));
+magic = uint32(hex2dec(sof_abi_magic));
 
 end

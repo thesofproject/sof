@@ -35,6 +35,8 @@
 
 #include <uapi/user/eq.h>
 
+#define IIR_DF2T_NUM_DELAYS 2
+
 struct iir_state_df2t {
 	unsigned int biquads; /* Number of IIR 2nd order sections total */
 	unsigned int biquads_in_series; /* Number of IIR 2nd order sections
