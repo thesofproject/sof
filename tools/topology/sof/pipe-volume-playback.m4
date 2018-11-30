@@ -34,7 +34,7 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, 2)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "Master Playback Volume PIPELINE_ID"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
