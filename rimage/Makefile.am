@@ -15,6 +15,7 @@ rimage_SOURCES = \
 	man_apl.c \
 	man_cnl.c \
 	man_kbl.c \
+	man_sue.c \
 	cse.c \
 	css.c \
 	plat_auth.c \

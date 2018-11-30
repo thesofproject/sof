@@ -129,6 +129,62 @@
 #define HP_GP_DMA_SIZE		0x00001000
 #define HP_GP_DMA_BASE(x)	(0x0000E000 + x * HP_GP_DMA_SIZE)
 
+/* DW SPI slave/master */
+#define DW_SPI_SLAVE_BASE	0x80000
+#define DW_SPI_SLAVE_SIZE 	0x400
+#define DW_SPI_MASTER_BASE	0xE000
+#define DW_SPI_MASTER_SIZE	0x400
+
+/* DW I2C controller */
+#define DW_I2C_BASE		0x80400
+#define DW_I2C_SIZE		0x400
+
+/* DW UART controller */
+#define DW_UART_BASE		0x88000
+#define DW_UART_SIZE		0x400
+
+/* DW GPIO controller */
+#define DW_GPIO_BASE		0x80c00
+#define DW_GPIO_SIZE		0x400
+
+/* DW timer */
+#define DW_TIMER_BASE		0x81000
+#define DW_TIMER_SIZE		0x400
+
+/* DW watchdog */
+#define DW_WDT_BASE		0x81400
+#define DW_WDT_SIZE		0x400
+
+/* DW 3rd level IRQ controller */
+#define DW_IRQ_BASE		0x81800
+#define DW_IRQ_SIZE		0x400
+
+/* Misc external controller */
+#define EXT_CTRL_BASE		0x81c00
+#define EXT_CTRL_SIZE		0x400
+
+/* DW USB 2.0 controller */
+#define DW_USB_BASE		0xA0000
+#define DW_USB_SIZE		0x6000
+
+/* Parallel memory controller */
+#define DW_PMEMCTRL_BASE	0xE400
+#define DW_PMEMCTRL_SIZE	0x400
+
+/* GNA controller */
+#define DW_GNA_BASE		0xE800
+#define DW_GNA_SIZE		0x400
+
+/* XIP SPI memory */
+#define DW_SPIMEM_UNCACHE_BASE	0xC0000000
+#define DW_SPIMEM_CACHE_BASE	0xE0000000
+#define DW_SPIMEML_SIZE		0x8000000
+
+/* Parallel memory */
+#define DW_PARMEM_UNCACHE_BASE	0xD0000000
+#define DW_PARMEM_CACHE_BASE	0xF0000000
+#define DW_PARMEML_SIZE		0x4000000
+
 /* ROM */
 #define ROM_BASE		0xBEFE0000
 #define ROM_SIZE		0x00002000
@@ -362,7 +418,7 @@
 #define ROM_RESET_LIT_SIZE	0x200
 
 /* code loader */
-#define BOOT_LDR_TEXT_ENTRY_BASE	0xBE000000
+#define BOOT_LDR_TEXT_ENTRY_BASE	0xBE032000
 #define BOOT_LDR_TEXT_ENTRY_SIZE	0x400
 #define BOOT_LDR_LIT_BASE		(BOOT_LDR_TEXT_ENTRY_BASE + BOOT_LDR_TEXT_ENTRY_SIZE)
 #define BOOT_LDR_LIT_SIZE		0x400
@@ -374,9 +430,9 @@
 #define BOOT_LDR_BSS_SIZE		0x100
 
 /* TODO: set this value */
-#define BOOT_LDR_MANIFEST_BASE		0x55aa55aa
+#define BOOT_LDR_MANIFEST_BASE		(BOOT_LDR_TEXT_ENTRY_BASE + 0x2000)
 
-/* code lodar entry point for base fw */
+/* code loader entry point for base fw */
 #define SRAM_VECBASE_RESET	(BOOT_LDR_BSS_BASE + BOOT_LDR_BSS_SIZE)
 
 //TODO: confirm mapping
