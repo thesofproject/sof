@@ -84,6 +84,7 @@ struct css_header_v1_5 {
 	uint8_t     signature[MAN_RSA_SIGNATURE_LEN];
 } __attribute__((packed));
 
-void ri_css_hdr_create(struct image *image);
+void ri_css_v1_8_hdr_create(struct image *image);
+void ri_css_v1_5_hdr_create(struct image *image);
 
 #endif

@@ -87,6 +87,9 @@ struct module {
 
 	/* total file size */
 	int file_size;
+
+	/* executable header module */
+	int exec_header;
 };
 
 /*
@@ -151,6 +154,8 @@ struct adsp {
 	int (*write_firmware_meu)(struct image *image);
 	struct fw_image_manifest_v1_8 *man_v1_8;
 	struct fw_image_manifest_v1_5 *man_v1_5;
+	struct fw_image_manifest_v1_5_sue *man_v1_5_sue;
+	int exec_boot_ldr;
 };
 
 int write_logs_dictionary(struct image *image);
