@@ -118,7 +118,7 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 	size_t alignment = 0;
 
 	/* use the heap dedicated for the selected core */
-	cpu_heap = cache_to_uncache(memmap.system + core);
+	cpu_heap = memmap.system + core;
 
 	/* align address to dcache line size */
 	if (cpu_heap->info.used % PLATFORM_DCACHE_ALIGN)
@@ -138,6 +138,11 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 
 	cpu_heap->info.used += bytes;
 	cpu_heap->info.free -= alignment + bytes;
+
+	/* other core should have the latest value */
+	if (core != cpu_get_id())
+		dcache_writeback_invalidate_region(cpu_heap,
+						   sizeof(*cpu_heap));
 
 #if DEBUG_BLOCK_ALLOC
 	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
@@ -552,7 +557,7 @@ void rfree(void *ptr)
 		ptr = uncache_to_cache(ptr);
 
 	/* use the heap dedicated for the selected core */
-	cpu_heap = cache_to_uncache(memmap.system + cpu_get_id());
+	cpu_heap = memmap.system + cpu_get_id();
 
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
@@ -606,9 +611,11 @@ void free_heap(int zone)
 		panic(SOF_IPC_PANIC_MEM);
 	}
 
-	cpu_heap = cache_to_uncache(memmap.system + cpu_get_id());
+	cpu_heap = memmap.system + cpu_get_id();
 	cpu_heap->info.used = 0;
 	cpu_heap->info.free = cpu_heap->size;
+
+	dcache_writeback_region(cpu_heap, sizeof(*cpu_heap));
 }
 
 /* initialise map */

@@ -256,6 +256,16 @@ static void *alloc(struct test_case *tc)
 	return mem;
 }
 
+static void alloc_free(void **mem, struct test_case *tc)
+{
+	int i;
+
+	if (tc->alloc_zone != RZONE_SYS) {
+		for (i = 0; i < tc->alloc_num; ++i)
+			rfree(mem[i]);
+	}
+}
+
 static void test_lib_alloc_bulk_free(struct test_case *tc)
 {
 	void **all_mem = malloc(sizeof(void *) * tc->alloc_num);
@@ -268,10 +278,9 @@ static void test_lib_alloc_bulk_free(struct test_case *tc)
 		all_mem[i] = mem;
 	}
 
-	for (i = 0; i < tc->alloc_num; ++i)
-		rfree(all_mem[i]);
+	alloc_free(all_mem, tc);
 
-	rfree(all_mem);
+	free(all_mem);
 }
 
 static void test_lib_alloc_immediate_free(struct test_case *tc)
@@ -303,10 +312,9 @@ static void test_lib_alloc_zero(struct test_case *tc)
 			assert_int_equal(mem[j], 0);
 	}
 
-	for (i = 0; i < tc->alloc_num; ++i)
-		rfree(all_mem[i]);
+	alloc_free(all_mem, tc);
 
-	rfree(all_mem);
+	free(all_mem);
 }
 
 static void test_lib_alloc(void **state)
