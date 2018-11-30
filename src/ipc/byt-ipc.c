@@ -88,14 +88,18 @@ out:
 static void irq_handler(void *arg)
 {
 	uint32_t isr;
+	uint32_t imrd;
 	uint32_t msg = 0;
 
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);
+	imrd = shim_read(SHIM_IMRD);
 
 	tracev_ipc("ipc: irq isr 0x%x", isr);
 
-	if (isr & SHIM_ISRD_DONE) {
+	/* reply message(done) from host */
+	if (isr & SHIM_ISRD_DONE &&
+	    !(imrd & SHIM_IMRD_DONE)) {
 
 		/* Mask Done interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_DONE);
@@ -103,7 +107,9 @@ static void irq_handler(void *arg)
 		do_notify();
 	}
 
-	if (isr & SHIM_ISRD_BUSY) {
+	/* new message from host */
+	if (isr & SHIM_ISRD_BUSY &&
+	    !(imrd & SHIM_IMRD_BUSY)) {
 
 		/* Mask Busy interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
