@@ -90,8 +90,9 @@ static void irq_handler(void *arg)
 	}
 
 	/* reply message(done) from host */
-	if (dipcie & IPC_DIPCIE_DONE) {
+	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE) {
 		tracev_ipc("Rpy");
+
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
