@@ -329,6 +329,14 @@ int convert(struct convert_config *config) {
 			fprintf(stderr, "Error: abi version in %s file "
 				"does not coincide with abi version used "
 				"by logger.\n", config->version_file);
+			fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
+				SOF_ABI_VERSION_MAJOR(SOF_ABI_VERSION),
+				SOF_ABI_VERSION_MINOR(SOF_ABI_VERSION),
+				SOF_ABI_VERSION_PATCH(SOF_ABI_VERSION));
+			fprintf(stderr, "version_file ABI Version is %d:%d:%d\n",
+				SOF_ABI_VERSION_MAJOR(ver.abi_version),
+				SOF_ABI_VERSION_MINOR(ver.abi_version),
+				SOF_ABI_VERSION_PATCH(ver.abi_version));
 			return -EINVAL;
 		}
 	}
@@ -338,8 +346,15 @@ int convert(struct convert_config *config) {
 		fprintf(stderr, "Error: abi version in %s file "
 			"does not coincide with abi version used "
 			"by logger.\n", config->ldc_file);
+			fprintf(stderr, "logger ABI Version is %d:%d:%d\n",
+				SOF_ABI_VERSION_MAJOR(SOF_ABI_VERSION),
+				SOF_ABI_VERSION_MINOR(SOF_ABI_VERSION),
+				SOF_ABI_VERSION_PATCH(SOF_ABI_VERSION));
+			fprintf(stderr, "ldc_file ABI Version is %d:%d:%d\n",
+				SOF_ABI_VERSION_MAJOR(snd.version.abi_version),
+				SOF_ABI_VERSION_MINOR(snd.version.abi_version),
+				SOF_ABI_VERSION_PATCH(snd.version.abi_version));
 		return -EINVAL;
 	}
-
 	return logger_read(config, &snd);
 }
