@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <sof/sof.h>
 #include <sof/audio/component.h>
+#include <sof/ipc.h>
 #include <uapi/user/eq.h>
 #include "fir_config.h"
 
@@ -381,6 +382,11 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	int i;
 
 	trace_eq("eq_fir_new()");
+
+	if (IPC_IS_SIZE_INVALID(ipc_fir->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_EQ_FIR, ipc_fir->config);
+		return NULL;
+	}
 
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.

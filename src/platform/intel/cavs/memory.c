@@ -30,7 +30,6 @@
  */
 
 #include <sof/alloc.h>
-#include <uapi/ipc/header.h>
 
 /* Heap blocks for system runtime for master core */
 static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];

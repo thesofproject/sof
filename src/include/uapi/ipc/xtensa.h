@@ -39,12 +39,15 @@
 #ifndef __INCLUDE_UAPI_IPC_XTENSA_H__
 #define __INCLUDE_UAPI_IPC_XTENSA_H__
 
+#include <uapi/ipc/header.h>
+
 /*
  * Architecture specific debug
  */
 
 /* Xtensa Firmware Oops data */
 struct sof_ipc_dsp_oops_xtensa {
+	struct sof_ipc_hdr hdr;
 	uint32_t exccause;
 	uint32_t excvaddr;
 	uint32_t ps;

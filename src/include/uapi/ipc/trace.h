@@ -50,7 +50,7 @@
 
 /* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */
 struct sof_ipc_dma_trace_params {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_cmd_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
 	uint32_t stream_tag;
 } __attribute__((packed));
@@ -87,6 +87,8 @@ struct sof_ipc_dma_trace_posn {
 
 /* panic info include filename and line number */
 struct sof_ipc_panic_info {
+	struct sof_ipc_hdr hdr;
+	uint32_t code;			/* SOF_IPC_PANIC_ */
 	char filename[SOF_TRACE_FILENAME_SIZE];
 	uint32_t linenum;
 } __attribute__((packed));

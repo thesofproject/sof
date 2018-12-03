@@ -139,19 +139,26 @@
 #define SOF_IPC_MSG_MAX_SIZE			384
 
 /*
- */
-
-
-/*
- * Command Header - Header for all IPC. Identifies IPC message.
+ * Structure Header - Header for all IPC structures except command structs.
  * The size can be greater than the structure size and that means there is
  * extended bespoke data beyond the end of the structure including variable
  * arrays.
  */
 
 struct sof_ipc_hdr {
-	uint32_t cmd;			/**< SOF_IPC_GLB_ + cmd */
 	uint32_t size;			/**< size of structure */
+} __attribute__((packed));
+
+/*
+ * Command Header - Header for all IPC commands. Identifies IPC message.
+ * The size can be greater than the structure size and that means there is
+ * extended bespoke data beyond the end of the structure including variable
+ * arrays.
+ */
+
+struct sof_ipc_cmd_hdr {
+	uint32_t size;			/**< size of structure */
+	uint32_t cmd;			/**< SOF_IPC_GLB_ + cmd */
 } __attribute__((packed));
 
 /*
@@ -159,7 +166,7 @@ struct sof_ipc_hdr {
  * types that must include this at start.
  */
 struct sof_ipc_reply {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_cmd_hdr hdr;
 	int32_t error;			/**< negative error numbers */
 } __attribute__((packed));
 
@@ -173,7 +180,7 @@ struct sof_ipc_reply {
  */
 
 struct sof_ipc_compound_hdr {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_cmd_hdr hdr;
 	uint32_t count;		/**< count of 0 means end of compound sequence */
 } __attribute__((packed));
 

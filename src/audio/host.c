@@ -337,6 +337,11 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	trace_host("host_new()");
 
+	if (IPC_IS_SIZE_INVALID(ipc_host->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_HOST, ipc_host->config);
+		return NULL;
+	}
+
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_host));
 	if (dev == NULL)

@@ -67,6 +67,9 @@
 #define SOF_RATE_CONTINUOUS	(1 << 30)  /**< range */
 #define SOF_RATE_KNOT		(1 << 31)  /**< non-continuous */
 
+/* generic PCM flags for runtime settings */
+#define SOF_PCM_FLAG_XRUN_STOP	(1 << 0) /**< Stop on any XRUN */
+
 /* stream PCM frame format */
 enum sof_ipc_frame {
 	SOF_IPC_FRAME_S16_LE = 0,
@@ -91,15 +94,18 @@ enum sof_ipc_stream_direction {
 
 /* stream ring info */
 struct sof_ipc_host_buffer {
+	struct sof_ipc_hdr hdr;
 	uint32_t phy_addr;
 	uint32_t pages;
 	uint32_t size;
 	uint32_t offset;
+	uint32_t reserved[2];
 } __attribute__((packed));
 
 struct sof_ipc_stream_params {
+	struct sof_ipc_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
-	uint32_t direction;	/**< enum sof_ipc_stream_directio */
+	uint32_t direction;	/**< enum sof_ipc_stream_direction */
 	uint32_t frame_fmt;	/**< enum sof_ipc_frame */
 	uint32_t buffer_fmt;	/**< enum sof_ipc_buffer_format */
 	uint32_t rate;
@@ -111,13 +117,16 @@ struct sof_ipc_stream_params {
 	/* for notifying host period has completed - 0 means no period IRQ */
 	uint32_t host_period_bytes;
 
+	uint32_t reserved[2];
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 } __attribute__((packed));
 
 /* PCM params info - SOF_IPC_STREAM_PCM_PARAMS */
 struct sof_ipc_pcm_params {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_cmd_hdr hdr;
 	uint32_t comp_id;
+	uint32_t flags;		/**< generic PCM flags - SOF_PCM_FLAG_ */
+	uint32_t reserved[2];
 	struct sof_ipc_stream_params params;
 } __attribute__((packed));
 
@@ -130,7 +139,7 @@ struct sof_ipc_pcm_params_reply {
 
 /* free stream - SOF_IPC_STREAM_PCM_PARAMS */
 struct sof_ipc_stream {
-	struct sof_ipc_hdr hdr;
+	struct sof_ipc_cmd_hdr hdr;
 	uint32_t comp_id;
 } __attribute__((packed));
 

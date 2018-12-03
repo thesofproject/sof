@@ -57,6 +57,9 @@ static inline void *arch_dump_regs(uint32_t ps)
 	struct sof_ipc_dsp_oops_xtensa *x =
 		(struct sof_ipc_dsp_oops_xtensa *) mailbox_get_exception_base();
 
+	/* tell users how much data is here */
+	x->hdr.size = sizeof(*x);
+
 	/* Exception Vector number - 0x0 */
 	__asm__ __volatile__ ("rsr %0, EXCCAUSE" : "=a" (x->exccause) : : "memory");
 	/* Exception Vector address - 0x4 */

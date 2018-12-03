@@ -47,8 +47,10 @@
 #include <sof/alloc.h>
 #include <sof/work.h>
 #include <sof/clk.h>
+#include <sof/ipc.h>
 #include "volume.h"
 #include <sof/math/numbers.h>
+
 /**
  * \brief Synchronize host mmap() volume with real value.
  * \param[in,out] cd Volume component private data.
@@ -174,6 +176,11 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	int i;
 
 	trace_volume("volume_new()");
+
+	if (IPC_IS_SIZE_INVALID(ipc_vol->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_VOLUME, ipc_vol->config);
+		return NULL;
+	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_volume));

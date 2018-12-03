@@ -65,6 +65,7 @@ static const struct sof_ipc_fw_ready ready
 	},
 	/* dspbox is for DSP initiated IPC, hostbox is for host initiated IPC */
 	.version = {
+		.hdr.size = sizeof(struct sof_ipc_fw_version),
 		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,

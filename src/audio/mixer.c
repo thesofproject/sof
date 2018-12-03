@@ -35,6 +35,7 @@
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/alloc.h>
+#include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 
@@ -86,6 +87,12 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 	struct mixer_data *md;
 
 	trace_mixer("mixer_new()");
+
+	if (IPC_IS_SIZE_INVALID(ipc_mixer->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_MIXER, ipc_mixer->config);
+		return NULL;
+	}
+
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_mixer));
 	if (dev == NULL)
