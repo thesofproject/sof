@@ -120,6 +120,7 @@ int main(int argc, char *argv[])
 	config.version_file = NULL;
 	config.version_fd = NULL;
 	config.version_fw = 0;
+	config.use_colors = 1;
 
 	while ((opt = getopt(argc, argv, "ho:i:l:ps:m:c:tev:")) != -1) {
 		switch (opt) {
@@ -215,6 +216,8 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 	}
+	if (isatty(fileno(config.out_fd)) != 1)
+		config.use_colors = 0;
 
 	convert(&config);
 
