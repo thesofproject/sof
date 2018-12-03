@@ -17,8 +17,8 @@
 #include <uapi/ipc/info.h>
 #include <rimage/file_format.h>
 
-#define KNRM  "\x1B[0m"
-#define KRED  "\x1B[31m"
+#define KNRM	"\x1B[0m"
+#define KRED	"\x1B[31m"
 
 struct convert_config {
 	const char *out_file;
@@ -33,6 +33,7 @@ struct convert_config {
 	int version_fw;
 	char *version_file;
 	FILE *version_fd;
+	int use_colors;
 };
 
 int convert(struct convert_config *config);
