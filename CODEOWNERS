@@ -12,7 +12,8 @@
 src/include/sof/preproc*.h		@mwierzbix
 src/include/sof/dmic.h			@singalsu
 src/include/host/*			@ranj063
-src/include/uapi/ipc/*			@xiulipan
+src/include/uapi/*			@bardliao
+src/include/uapi/ipc/*			@xiulipan @bardliao
 
 # audio component
 src/audio/src*				@singalsu
@@ -33,7 +34,7 @@ src/drivers/intel/cavs/dmic.c		@singalsu
 # other libs
 src/host/*				@ranj063
 src/math/*				@singalsu
-src/ipc/*				@xiulipan
+src/ipc/*				@xiulipan @bardliao
 
 # other helpers
 test/*					@jajanusz
