@@ -12,6 +12,7 @@ if [ "$#" -eq 0 ]
 then
 	echo "usage: xtensa-build.sh [options] platform(s)"
 	echo "       [-l] Build rimage locally"
+	echo "       [-r] Build rom (gcc only)"
 	echo "       [-a] Build all platforms"
 	echo "       [-d] Enable debug build"
 	echo "       [-j [n]] Set number of make build jobs. Infinite jobs with no arg."
@@ -26,6 +27,10 @@ else
 			BUILD_RIMAGE=1
 
 			PATH=$pwd/local/bin:$PATH
+
+		elif [[ "$args" == "-r" ]]
+			then
+			BUILD_ROM="--enable-roms"
 
 		elif [[ "$args" == "-d" ]]
 			then
@@ -244,7 +249,7 @@ do
 	./configure --with-arch=$ARCH --with-platform=$PLATFORM \
 		--with-root-dir=$ROOT --host=$HOST --enable-debug=$BUILD_DEBUG \
 		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP \
-		--with-dsp-core=$XTENSA_CORE
+		--with-dsp-core=$XTENSA_CORE $BUILD_ROM
 
 	make clean
 	make -j ${BUILD_JOBS}
