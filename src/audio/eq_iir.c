@@ -41,6 +41,7 @@
 #include <sof/alloc.h>
 #include <sof/work.h>
 #include <sof/clk.h>
+#include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/format.h>
@@ -350,6 +351,11 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	int i;
 
 	trace_eq("eq_iir_new()");
+
+	if (IPC_IS_SIZE_INVALID(ipc_iir->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_EQ_IIR, ipc_iir->config);
+		return NULL;
+	}
 
 	/* Check first before proceeding with dev and cd that coefficients
 	 * blob size is sane.

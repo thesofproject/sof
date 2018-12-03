@@ -40,6 +40,7 @@
 #include <sof/dma.h>
 #include <sof/wait.h>
 #include <sof/stream.h>
+#include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <platform/dma.h>
@@ -175,6 +176,11 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	uint32_t dir, caps, dma_dev;
 
 	trace_dai("dai_new()");
+
+	if (IPC_IS_SIZE_INVALID(ipc_dai->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_DAI, ipc_dai->config);
+		return NULL;
+	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_dai));

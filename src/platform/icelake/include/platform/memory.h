@@ -189,11 +189,11 @@
 #define HEAP_SYS_RT_X_COUNT1024		4
 
 /* Heap section sizes for module pool */
-#define HEAP_RT_COUNT64			192
-#define HEAP_RT_COUNT128		32
-#define HEAP_RT_COUNT256		80
-#define HEAP_RT_COUNT512		16
-#define HEAP_RT_COUNT1024		4
+#define HEAP_RT_COUNT64			128
+#define HEAP_RT_COUNT128		64
+#define HEAP_RT_COUNT256		128
+#define HEAP_RT_COUNT512		64
+#define HEAP_RT_COUNT1024		8
 
 #define L2_VECTOR_SIZE		0x1000
 
@@ -248,7 +248,7 @@
 /* text and data share the same HP L2 SRAM on Icelake */
 #define SOF_TEXT_START		0xBE040400
 #define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_SIZE		(0x1c000 - 0x400)
+#define SOF_TEXT_SIZE		(0x1d000 - 0x400)
 
 /* initialized data */
 #define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
@@ -357,8 +357,8 @@
 #define HEAP_RT_LP_COUNT16			256
 #define HEAP_RT_LP_COUNT32			128
 #define HEAP_RT_LP_COUNT64			64
-#define HEAP_RT_LP_COUNT128			32
-#define HEAP_RT_LP_COUNT256			16
+#define HEAP_RT_LP_COUNT128			64
+#define HEAP_RT_LP_COUNT256			96
 #define HEAP_RT_LP_COUNT512			8
 #define HEAP_RT_LP_COUNT1024			4
 

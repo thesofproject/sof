@@ -45,10 +45,12 @@
 #ifdef DEBUG_BUILD
 
 #define DEBUG_SET_FW_READY_FLAGS	\
-{				\
-	.build = 1,	\
-	.locks = DEBUG_LOCKS,	\
-	.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+{					\
+	.bits = {			\
+		.build = 1,		\
+		.locks = DEBUG_LOCKS,	\
+		.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+	},				\
 }
 
 /* dump file and line to start of mailbox or shared memory */
@@ -126,10 +128,12 @@
 #else
 
 #define DEBUG_SET_FW_READY_FLAGS	\
-{				\
-	.build = 0,	\
-	.locks = DEBUG_LOCKS,	\
-	.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+{					\
+	.bits = {			\
+		.build = 0,		\
+		.locks = DEBUG_LOCKS,	\
+		.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+	},				\
 }
 
 #define dbg()

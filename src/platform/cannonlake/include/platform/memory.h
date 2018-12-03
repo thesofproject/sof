@@ -189,9 +189,9 @@
 #define HEAP_SYS_RT_X_COUNT1024		4
 
 /* Heap section sizes for module pool */
-#define HEAP_RT_COUNT64		192
-#define HEAP_RT_COUNT128	32
-#define HEAP_RT_COUNT256	80
+#define HEAP_RT_COUNT64		128
+#define HEAP_RT_COUNT128	64
+#define HEAP_RT_COUNT256	128
 #define HEAP_RT_COUNT512	16
 #define HEAP_RT_COUNT1024	4
 
@@ -253,7 +253,7 @@
 /* initialized data */
 #define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
 #if defined CONFIG_DMIC
-#define SOF_DATA_SIZE		0x1b000
+#define SOF_DATA_SIZE		0x1d000
 #else
 #define SOF_DATA_SIZE		0x19000
 #endif
@@ -361,8 +361,8 @@
 #define HEAP_RT_LP_COUNT16			256
 #define HEAP_RT_LP_COUNT32			128
 #define HEAP_RT_LP_COUNT64			64
-#define HEAP_RT_LP_COUNT128			32
-#define HEAP_RT_LP_COUNT256			16
+#define HEAP_RT_LP_COUNT128			64
+#define HEAP_RT_LP_COUNT256			96
 #define HEAP_RT_LP_COUNT512			8
 #define HEAP_RT_LP_COUNT1024			4
 

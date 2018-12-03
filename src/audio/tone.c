@@ -41,6 +41,7 @@
 #include <sof/alloc.h>
 #include <sof/work.h>
 #include <sof/clk.h>
+#include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
@@ -403,6 +404,11 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 	int i;
 
 	trace_tone("tone_new()");
+
+	if (IPC_IS_SIZE_INVALID(ipc_tone->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_TONE, ipc_tone->config);
+		return NULL;
+	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_tone));

@@ -40,6 +40,7 @@
 #include <sof/alloc.h>
 #include <sof/work.h>
 #include <sof/clk.h>
+#include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/math/numbers.h>
@@ -544,6 +545,11 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	struct comp_data *cd;
 
 	trace_src("src_new()");
+
+	if (IPC_IS_SIZE_INVALID(ipc_src->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_SRC, ipc_src->config);
+		return NULL;
+	}
 
 	/* validate init data - either SRC sink or source rate must be set */
 	if (ipc_src->source_rate == 0 && ipc_src->sink_rate == 0) {
