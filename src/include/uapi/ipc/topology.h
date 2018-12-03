@@ -86,6 +86,18 @@ struct sof_ipc_comp {
  * Component Buffers
  */
 
+/*
+ * SOF memory capabilities, add new ones at the end
+ */
+#define SOF_MEM_CAPS_RAM			(1 << 0)
+#define SOF_MEM_CAPS_ROM			(1 << 1)
+#define SOF_MEM_CAPS_EXT			(1 << 2) /**< external */
+#define SOF_MEM_CAPS_LP			(1 << 3) /**< low power */
+#define SOF_MEM_CAPS_HP			(1 << 4) /**< high performance */
+#define SOF_MEM_CAPS_DMA			(1 << 5) /**< DMA'able */
+#define SOF_MEM_CAPS_CACHE			(1 << 6) /**< cacheable */
+#define SOF_MEM_CAPS_EXEC			(1 << 7) /**< executable */
+
 /* create new component buffer - SOF_IPC_TPLG_BUFFER_NEW */
 struct sof_ipc_buffer {
 	struct sof_ipc_comp comp;

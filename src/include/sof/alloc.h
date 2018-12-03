@@ -38,6 +38,7 @@
 #include <sof/platform.h>
 #include <platform/memory.h>
 #include <arch/spinlock.h>
+#include <uapi/ipc/topology.h>
 
 struct sof;
 
