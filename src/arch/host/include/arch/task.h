@@ -52,8 +52,9 @@ static inline int arch_allocate_tasks(void)
  * \brief Runs task.
  * \param[in,out] task Task data.
  */
-static inline void arch_run_task(struct task *task)
+static inline int arch_run_task(struct task *task)
 {
+	return 0;
 }
 
 #endif
