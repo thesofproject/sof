@@ -46,6 +46,9 @@ rimage/*				@xiulipan
 tools/logger/*				@xiulipan
 tools/topology/*			@ranj063 @xiulipan
 tools/test/*				@xiulipan
+tools/test/audio/*			@singalsu
+tools/eqctl/*				@singalsu
+tools/tune/*				@singalsu
 
 # related fileds
 *.am					@jajanusz
