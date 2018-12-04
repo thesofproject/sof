@@ -94,6 +94,48 @@
 #define HDA_STATE_INIT		BIT(2)
 #define HDA_STATE_RELEASE	BIT(3)
 
+/*
+ * DMA Pointer Trace
+ *
+ *
+ * DMA pointer trace will output hardware DMA pointers and the BNE flag
+ * for n samples after stream start.
+ * It will also show current values on start/stop.
+ * Additionally values after the last copy will be output on stop.
+ *
+ * The trace will output three 32-bit values and context info,
+ * looking like this:
+ * hda-dma-ptr-trace AAAAooBC DDDDEEEE FFFFGGGG <context info>
+ * where:
+ * o - unused
+ * A - indicates the direction of the transfer
+ * B - will be 1 if BNE was set before an operation
+ * C - will be 1 if BNE was set after an operation
+ * D - hardware write pointer before an operation
+ * E - hardware write pointer after an operation
+ * F - hardware read pointer before an operation
+ * G - hardware read pointer after an operation
+ */
+
+#define HDA_DMA_PTR_DBG		0  /* trace DMA pointers */
+#define HDA_DMA_PTR_DBG_NUM_CP	32 /* number of traces to output after start */
+
+#if HDA_DMA_PTR_DBG
+enum hda_dbg_sample {
+	HDA_DBG_PRE = 0,
+	HDA_DBG_POST,
+
+	HDA_DBG_MAX_SAMPLES
+};
+
+struct hda_dbg_data {
+	uint16_t cur_sample;
+	uint16_t last_wp[HDA_DBG_MAX_SAMPLES];
+	uint16_t last_rp[HDA_DBG_MAX_SAMPLES];
+	uint8_t last_bne[HDA_DBG_MAX_SAMPLES];
+};
+#endif
+
 struct hda_chan_data {
 	struct dma *dma;
 	uint32_t index;
@@ -107,6 +149,10 @@ struct hda_chan_data {
 	uint32_t period_bytes;
 	uint32_t buffer_bytes;
 	struct work dma_ch_work;
+
+#if HDA_DMA_PTR_DBG
+	struct hda_dbg_data dbg_data;
+#endif
 
 	void (*cb)(void *data, uint32_t type,
 		   struct dma_sg_elem *next); /* client callback */
@@ -157,6 +203,52 @@ static inline void hda_dma_inc_link_fp(struct dma *dma, uint32_t chan,
 	host_dma_reg_write(dma, chan, DGBFPI, value);
 	/* TODO: wp update should inc LLPI and LPIBI in the input DMA */
 }
+
+#if HDA_DMA_PTR_DBG
+static void hda_dma_dbg_count_reset(struct hda_chan_data *chan)
+{
+	chan->dbg_data.cur_sample = 0;
+}
+
+static void hda_dma_get_dbg_vals(struct hda_chan_data *chan,
+				 enum hda_dbg_sample sample)
+{
+	struct hda_dbg_data *dbg_data = &chan->dbg_data;
+
+	dbg_data->last_wp[sample] =
+		host_dma_reg_read(chan->dma, chan->index, DGBWP);
+	dbg_data->last_rp[sample] =
+		host_dma_reg_read(chan->dma, chan->index, DGBRP);
+	dbg_data->last_bne[sample] =
+		(host_dma_reg_read(chan->dma, chan->index, DGCS) &
+		 DGCS_BNE) ? 1 : 0;
+}
+
+#define hda_dma_ptr_trace(chan, postfix) \
+	do { \
+		struct hda_dbg_data *dbg_data = &(chan)->dbg_data; \
+		if (dbg_data->cur_sample < HDA_DMA_PTR_DBG_NUM_CP) { \
+			uint32_t bne = \
+				dbg_data->last_bne[HDA_DBG_PRE] << 4 | \
+				dbg_data->last_bne[HDA_DBG_POST]; \
+			uint32_t info = ((chan)->direction << 16) | bne; \
+			uint32_t wp = \
+				(dbg_data->last_wp[HDA_DBG_PRE] << 16) | \
+				(dbg_data->last_wp[HDA_DBG_POST] & 0xFFFF); \
+			uint32_t rp = \
+				(dbg_data->last_rp[HDA_DBG_PRE] << 16) | \
+				(dbg_data->last_rp[HDA_DBG_POST] & 0xFFFF); \
+			trace_hddma("hda-dma-ptr-trace %08X %08X %08X " \
+				    postfix, info, wp, rp); \
+			++dbg_data->cur_sample; \
+		} \
+	} while (0)
+
+#else
+#define hda_dma_dbg_count_reset(...)
+#define hda_dma_get_dbg_vals(...)
+#define hda_dma_ptr_trace(...)
+#endif
 
 static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
 {
@@ -282,6 +374,8 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
 		     dma->plat_data.id, chan->index, bytes);
 
+	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE);
+
 	/* clear link xruns */
 	dgcs = host_dma_reg_read(dma, chan->index, DGCS);
 	if (dgcs & DGCS_BOR)
@@ -298,6 +392,9 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	 */
 	hda_dma_inc_link_fp(dma, chan->index, bytes);
 	hda_dma_post_copy(dma, chan);
+
+	hda_dma_get_dbg_vals(chan, HDA_DBG_POST);
+	hda_dma_ptr_trace(chan, "copy");
 
 	return 0;
 }
@@ -334,6 +431,8 @@ static void hda_dma_enable(struct dma *dma, int channel)
 	trace_hddma("hda-dmac: %d channel %d -> enable", dma->plat_data.id,
 		    channel);
 
+	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_PRE);
+
 	/* enable the channel */
 	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
 			DGCS_GEN | DGCS_FIFORDY);
@@ -352,6 +451,9 @@ static void hda_dma_enable(struct dma *dma, int channel)
 	p->chan[channel].state &= ~(HDA_STATE_INIT | HDA_STATE_RELEASE);
 
 	spin_unlock_irq(&dma->lock, flags);
+
+	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_POST);
+	hda_dma_ptr_trace(&p->chan[channel], "enable");
 }
 
 static uint64_t hda_dma_link_work(void *data, uint64_t delay)
@@ -501,6 +603,8 @@ static int hda_dma_start(struct dma *dma, int channel)
 	trace_hddma("hda-dmac: %d channel %d -> start", dma->plat_data.id,
 		    channel);
 
+	hda_dma_dbg_count_reset(&p->chan[channel]);
+
 	/* is channel idle, disabled and ready ? */
 	dgcs = host_dma_reg_read(dma, channel, DGCS);
 	if (p->chan[channel].status != COMP_STATE_PREPARE ||
@@ -597,6 +701,10 @@ static int hda_dma_stop(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
+	hda_dma_dbg_count_reset(&p->chan[channel]);
+	hda_dma_ptr_trace(&p->chan[channel], "last-copy");
+	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_PRE);
+
 	trace_hddma("hda-dmac: %d channel %d -> stop", dma->plat_data.id,
 		    channel);
 
@@ -607,6 +715,9 @@ static int hda_dma_stop(struct dma *dma, int channel)
 	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
 	p->chan[channel].status = COMP_STATE_PREPARE;
 	p->chan[channel].state = 0;
+
+	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_POST);
+	hda_dma_ptr_trace(&p->chan[channel], "stop");
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
