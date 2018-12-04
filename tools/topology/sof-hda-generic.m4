@@ -83,42 +83,42 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # capture DAI is HDA Analog using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-        2, HDA, 0, Analog Playback and Capture,
+        2, HDA, 1, Analog Playback and Capture,
 	PIPELINE_SINK_2, 2, s32le,
 	48, 1000, 0, 0)
 
 # playback DAI is HDA Digital using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-        3, HDA, 1, Digital Playback and Capture,
+        3, HDA, 2, Digital Playback and Capture,
         PIPELINE_SOURCE_3, 2, s32le,
         48, 1000, 0, 0)
 
 # capture DAI is HDA Digital using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-        4, HDA, 1, Digital Playback and Capture,
+        4, HDA, 3, Digital Playback and Capture,
 	PIPELINE_SINK_4, 2, s32le,
 	48, 1000, 0, 0)
 
 # playback DAI is iDisp1 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-        7, HDA, 3, iDisp1,
+        7, HDA, 4, iDisp1,
         PIPELINE_SOURCE_7, 2, s32le,
         48, 1000, 0, 0)
 
 # playback DAI is iDisp2 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-        8, HDA, 4, iDisp2,
+        8, HDA, 5, iDisp2,
         PIPELINE_SOURCE_8, 2, s32le,
         48, 1000, 0, 0)
 
 # playback DAI is iDisp3 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-        9, HDA, 5, iDisp3,
+        9, HDA, 6, iDisp3,
         PIPELINE_SOURCE_9, 2, s32le,
         48, 1000, 0, 0)
 
@@ -136,21 +136,21 @@ PCM_PLAYBACK_ADD(HDMI3, 5, PIPELINE_PCM_9)
 HDA_DAI_CONFIG(0, 4, Analog Playback and Capture)
 HDA_DAI_CONFIG(1, 5, Digital Playback and Capture)
 # 3 HDMI/DP outputs (ID: 3,4,5)
-HDA_DAI_CONFIG(3, 1, iDisp1)
-HDA_DAI_CONFIG(4, 2, iDisp2)
-HDA_DAI_CONFIG(5, 3, iDisp3)
+HDA_DAI_CONFIG(4, 1, iDisp1)
+HDA_DAI_CONFIG(5, 2, iDisp2)
+HDA_DAI_CONFIG(6, 3, iDisp3)
 
 
-VIRTUAL_DAPM_ROUTE_IN(codec0_in, HDA, 0, IN, 1)
-VIRTUAL_DAPM_ROUTE_IN(codec1_in, HDA, 1, IN, 2)
+VIRTUAL_DAPM_ROUTE_IN(codec0_in, HDA, 1, IN, 1)
+VIRTUAL_DAPM_ROUTE_IN(codec1_in, HDA, 3, IN, 2)
 VIRTUAL_DAPM_ROUTE_OUT(codec0_out, HDA, 0, OUT, 3)
-VIRTUAL_DAPM_ROUTE_OUT(codec1_out, HDA, 1, OUT, 4)
+VIRTUAL_DAPM_ROUTE_OUT(codec1_out, HDA, 2, OUT, 4)
 
 # codec2 is not supported in dai links but it exists
 # in dapm routes, so hack this one to HDA1
-VIRTUAL_DAPM_ROUTE_IN(codec2_in, HDA, 1, IN, 5)
-VIRTUAL_DAPM_ROUTE_OUT(codec2_out, HDA, 1, OUT, 6)
+VIRTUAL_DAPM_ROUTE_IN(codec2_in, HDA, 3, IN, 5)
+VIRTUAL_DAPM_ROUTE_OUT(codec2_out, HDA, 2, OUT, 6)
 
-VIRTUAL_DAPM_ROUTE_OUT(iDisp1_out, HDA, 3, OUT, 7)
-VIRTUAL_DAPM_ROUTE_OUT(iDisp2_out, HDA, 4, OUT, 8)
-VIRTUAL_DAPM_ROUTE_OUT(iDisp3_out, HDA, 5, OUT, 9)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp1_out, HDA, 4, OUT, 7)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp2_out, HDA, 5, OUT, 8)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp3_out, HDA, 6, OUT, 9)
