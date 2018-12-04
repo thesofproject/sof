@@ -231,6 +231,7 @@ case "$with_platform" in
 
 	AC_DEFINE([CONFIG_BAYTRAIL], [1], [Configure for Baytrail])
 	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
     cherrytrail*)
 
@@ -248,6 +249,7 @@ case "$with_platform" in
 
 	AC_DEFINE([CONFIG_CHERRYTRAIL], [1], [Configure for Cherrytrail])
 	AC_DEFINE([CONFIG_HOST_PTABLE], [1], [Configure handling host page table])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
    apollolake*)
 
@@ -268,6 +270,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
 	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
    kabylake*)
 
@@ -288,6 +291,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
 	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
     skylake*)
 
@@ -308,6 +312,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
 	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
     haswell*)
 
@@ -362,6 +367,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
 	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
    suecreek*)
 
@@ -380,6 +386,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_SUECREEK], [1], [Configure for Suecreek])
 	AC_DEFINE([CONFIG_BOOT_LOADER], [1], [Configure Boot Loader])
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
     icelake*)
 
@@ -400,6 +407,7 @@ case "$with_platform" in
 	AC_DEFINE([CONFIG_IRQ_MAP], [1], [Configure IRQ maps])
 	AC_DEFINE([CONFIG_DMA_GW], [1], [Configure DMA Gateway])
 	AC_DEFINE([CONFIG_MEM_WND], [1], [Configure Memory Windows])
+	AC_DEFINE([CONFIG_TASK_HAVE_PRIORITY_MEDIUM], [1], [Configure handling medium priority task])
     ;;
     *)
 	if test "$have_rimage" = "no" && test "$have_doc" = "no"; then

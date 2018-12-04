@@ -45,9 +45,9 @@ static inline int allocate_tasks(void)
 	return arch_allocate_tasks();
 }
 
-static inline void run_task(struct task *task)
+static inline int run_task(struct task *task)
 {
-	arch_run_task(task);
+	return arch_run_task(task);
 }
 
 #endif

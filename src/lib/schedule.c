@@ -212,7 +212,11 @@ static struct task *schedule_edf(void)
 			spin_unlock_irq(&sch->lock, flags);
 
 			/* now run task at correct run level */
-			run_task(task);
+			if (run_task(task) < 0) {
+				trace_error(TRACE_CLASS_PIPE,
+					    "schedule_edf() error");
+				break;
+			}
 		} else {
 			/* no, then schedule wake up */
 			future_task = task;
