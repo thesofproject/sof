@@ -796,7 +796,7 @@ static int hda_dma_probe(struct dma *dma)
 		return -EEXIST; /* already created */
 
 	/* allocate private data */
-	hda_pdata = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
+	hda_pdata = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 			    SOF_MEM_CAPS_RAM, sizeof(*hda_pdata));
 	if (!hda_pdata) {
 		trace_hddma_error("hda-dmac: %d alloc failed",

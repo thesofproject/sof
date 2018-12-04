@@ -58,7 +58,7 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 	/* init child from run-time, may be registered and unregistered
 	 * many times at run-time
 	 */
-	child = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	child = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
 			sizeof(struct irq_desc));
 	if (!child) {
 		ret = -ENOMEM;

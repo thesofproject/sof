@@ -48,6 +48,18 @@ static struct block_map rt_heap_map[] = {
 	BLOCK_DEF(1024, HEAP_RT_COUNT1024, mod_block1024),
 };
 
+/* Heap blocks for system runtime */
+static struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
+static struct block_hdr sys_rt_block512[HEAP_SYS_RT_COUNT512];
+static struct block_hdr sys_rt_block1024[HEAP_SYS_RT_COUNT1024];
+
+/* Heap memory for system runtime */
+static struct block_map sys_rt_heap_map[] = {
+	BLOCK_DEF(64, HEAP_SYS_RT_COUNT64, sys_rt_block64),
+	BLOCK_DEF(512, HEAP_SYS_RT_COUNT512, sys_rt_block512),
+	BLOCK_DEF(1024, HEAP_SYS_RT_COUNT1024, sys_rt_block1024),
+};
+
 /* Heap blocks for buffers */
 static struct block_hdr buf_block[HEAP_BUFFER_COUNT];
 static struct block_hdr hp_buf_block[HEAP_HP_BUFFER_COUNT];
@@ -108,6 +120,15 @@ struct mm memmap = {
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 			SOF_MEM_CAPS_CACHE,
 	},
+	.runtime[1] = {
+		.blocks = ARRAY_SIZE(sys_rt_heap_map),
+		.map = sys_rt_heap_map,
+		.heap = HEAP_SYS_RUNTIME_BASE,
+		.size = HEAP_SYS_RUNTIME_SIZE,
+		.info = {.free = HEAP_SYS_RUNTIME_SIZE,},
+		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+			SOF_MEM_CAPS_CACHE,
+	},
 	.buffer[0] = {
 		.blocks = ARRAY_SIZE(buf_heap_map),
 		.map = buf_heap_map,
@@ -136,6 +157,6 @@ struct mm memmap = {
 			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
 	.total = {.free = HEAP_SYSTEM_T_SIZE + HEAP_RUNTIME_SIZE +
-			HEAP_BUFFER_SIZE + HEAP_HP_BUFFER_SIZE +
-			HEAP_LP_BUFFER_SIZE,},
+			HEAP_SYS_RUNTIME_SIZE + HEAP_BUFFER_SIZE +
+			HEAP_HP_BUFFER_SIZE + HEAP_LP_BUFFER_SIZE,},
 };

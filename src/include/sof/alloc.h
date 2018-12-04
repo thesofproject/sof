@@ -45,7 +45,7 @@ struct sof;
  *
  * The heap has three different zones from where memory can be allocated :-
  *
- * 1) System  Zone. Fixed size heap where alloc always succeeds and is never
+ * 1) System Zone. Fixed size heap where alloc always succeeds and is never
  * freed. Used by any init code that will never give up the memory.
  *
  * 2) Runtime Zone. Main and larger heap zone where allocs are not guaranteed to
@@ -53,13 +53,17 @@ struct sof;
  *
  * 3) Buffer Zone. Largest heap zone intended for audio buffers.
  *
+ * 4) System Runtime Zone. Heap zone intended for runtime objects allocated
+ * by the kernel part of the code.
+ *
  * See platform/memory.h for heap size configuration and mappings.
  */
 
 /* heap zone types */
-#define RZONE_SYS	BIT(0)
-#define RZONE_RUNTIME	BIT(1)
-#define RZONE_BUFFER	BIT(2)
+#define RZONE_SYS		BIT(0)
+#define RZONE_RUNTIME		BIT(1)
+#define RZONE_BUFFER		BIT(2)
+#define RZONE_SYS_RUNTIME	BIT(3)
 
 /* heap zone flags */
 #define RZONE_FLAG_UNCACHED	BIT(4)

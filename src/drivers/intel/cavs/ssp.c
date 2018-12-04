@@ -875,8 +875,8 @@ static int ssp_probe(struct dai *dai)
 	pm_runtime_get_sync(SSP_CLK, dai->index);
 
 	/* allocate private data */
-	ssp = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-		      sizeof(*ssp));
+	ssp = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+		      SOF_MEM_CAPS_RAM, sizeof(*ssp));
 	if (!ssp) {
 		trace_error(TRACE_CLASS_DAI, "alloc failed");
 		return -ENOMEM;

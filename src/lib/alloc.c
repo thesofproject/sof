@@ -444,6 +444,7 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 		ptr = rmalloc_sys(zone, cpu_get_id(), bytes);
 		break;
 	case RZONE_RUNTIME:
+	case RZONE_SYS_RUNTIME:
 		ptr = rmalloc_runtime(zone, caps, bytes);
 		break;
 	default:

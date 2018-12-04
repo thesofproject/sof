@@ -1118,7 +1118,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 */
 	size = sizeof(*prm) + DMIC_HW_CONTROLLERS
 		* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
-	prm = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size);
+	prm = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM, size);
 	if (!prm) {
 		trace_dmic_error("eac");
 		return -ENOMEM;
@@ -1456,8 +1456,8 @@ static int dmic_probe(struct dai *dai)
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
 	/* allocate private data */
-	dmic = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
-		       sizeof(*dmic));
+	dmic = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
+		       SOF_MEM_CAPS_RAM, sizeof(*dmic));
 	if (!dmic) {
 		trace_dmic_error("eap");
 		return -ENOMEM;
