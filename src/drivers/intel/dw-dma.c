@@ -699,9 +699,11 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		/* allocate descriptors for channel */
 		if (p->chan[channel].lli)
 			rfree(p->chan[channel].lli);
-		p->chan[channel].lli = rzalloc(RZONE_RUNTIME,
-			SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
-			sizeof(struct dw_lli2) * p->chan[channel].desc_count);
+		p->chan[channel].lli =
+			rzalloc(RZONE_SYS_RUNTIME,
+				SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
+				sizeof(struct dw_lli2) *
+				p->chan[channel].desc_count);
 		if (p->chan[channel].lli == NULL) {
 			trace_dwdma_error("dw-dma: %d channel %d LLI alloc failed",
 					  dma->plat_data.id, channel);
@@ -1360,7 +1362,7 @@ static int dw_dma_probe(struct dma *dma)
 	pm_runtime_get_sync(DW_DMAC_CLK, dma->plat_data.id);
 
 	/* allocate private data */
-	dw_pdata = rzalloc(RZONE_RUNTIME | RZONE_FLAG_UNCACHED,
+	dw_pdata = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 			   SOF_MEM_CAPS_RAM, sizeof(*dw_pdata));
 	if (!dw_pdata) {
 		trace_error(TRACE_CLASS_DMA, "alloc failed");
