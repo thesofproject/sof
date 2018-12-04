@@ -27,46 +27,46 @@ include(`platform/intel/bxt.m4')
 # PCM5  ----> passthrough (pipe 9)   -----> iDisp3 (HDMI/DP playback, BE link 5)
 #
 
-# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
+# Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
-	1, 0, 2, s32le,
+	1, 0, 2, s24le,
 	48, 1000, 0, 0)
 
-# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s32le.
+# Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	2, 0, 2, s32le,
+	2, 0, 2, s24le,
 	48, 1000, 0, 0)
 
-# Low Latency playback pipeline 3 on PCM 1 using max 2 channels of s32le.
+# Low Latency playback pipeline 3 on PCM 1 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
-	3, 1, 2, s32le,
+	3, 1, 2, s24le,
 	48, 1000, 0, 0)
 
-# Low Latency capture pipeline 4 on PCM 1 using max 2 channels of s32le.
+# Low Latency capture pipeline 4 on PCM 1 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	4, 1, 2, s32le,
+	4, 1, 2, s24le,
 	48, 1000, 0, 0)
 
-# Low Latency playback pipeline 7 on PCM 3 using max 2 channels of s32le.
+# Low Latency playback pipeline 7 on PCM 3 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
-        7, 3, 2, s32le,
+        7, 3, 2, s24le,
         48, 1000, 0, 0)
 
-# Low Latency playback pipeline 8 on PCM 4 using max 2 channels of s32le.
+# Low Latency playback pipeline 8 on PCM 4 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
-        8, 4, 2, s32le,
+        8, 4, 2, s24le,
         48, 1000, 0, 0)
 
-# Low Latency playback pipeline 9 on PCM 5 using max 2 channels of s32le.
+# Low Latency playback pipeline 9 on PCM 5 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
-        9, 5, 2, s32le,
+        9, 5, 2, s24le,
         48, 1000, 0, 0)
 
 #
@@ -74,52 +74,52 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-playback.m4,
 #
 
 # playback DAI is HDA Analog using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         1, HDA, 0, Analog Playback and Capture,
-        PIPELINE_SOURCE_1, 2, s32le,
+        PIPELINE_SOURCE_1, 2, s24le,
         48, 1000, 0, 0)
 
 # capture DAI is HDA Analog using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         2, HDA, 1, Analog Playback and Capture,
-	PIPELINE_SINK_2, 2, s32le,
+	PIPELINE_SINK_2, 2, s24le,
 	48, 1000, 0, 0)
 
 # playback DAI is HDA Digital using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         3, HDA, 2, Digital Playback and Capture,
-        PIPELINE_SOURCE_3, 2, s32le,
+        PIPELINE_SOURCE_3, 2, s24le,
         48, 1000, 0, 0)
 
 # capture DAI is HDA Digital using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         4, HDA, 3, Digital Playback and Capture,
-	PIPELINE_SINK_4, 2, s32le,
+	PIPELINE_SINK_4, 2, s24le,
 	48, 1000, 0, 0)
 
 # playback DAI is iDisp1 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         7, HDA, 4, iDisp1,
-        PIPELINE_SOURCE_7, 2, s32le,
+        PIPELINE_SOURCE_7, 2, s24le,
         48, 1000, 0, 0)
 
 # playback DAI is iDisp2 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         8, HDA, 5, iDisp2,
-        PIPELINE_SOURCE_8, 2, s32le,
+        PIPELINE_SOURCE_8, 2, s24le,
         48, 1000, 0, 0)
 
 # playback DAI is iDisp3 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         9, HDA, 6, iDisp3,
-        PIPELINE_SOURCE_9, 2, s32le,
+        PIPELINE_SOURCE_9, 2, s24le,
         48, 1000, 0, 0)
 
 PCM_DUPLEX_ADD(HDA Analog, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
