@@ -332,6 +332,7 @@ static void free_block(void *ptr)
 	struct block_hdr *hdr;
 	int i;
 	int block;
+	int used_blocks;
 
 	heap = get_heap_from_ptr(ptr);
 	if (!heap) {
@@ -366,7 +367,9 @@ found:
 		panic(SOF_IPC_PANIC_MEM);
 
 	/* free block header and continuous blocks */
-	for (i = block; i < block + hdr->size; i++) {
+	used_blocks = block + hdr->size;
+
+	for (i = block; i < used_blocks; i++) {
 		hdr = cache_to_uncache(&block_map->block[i]);
 		hdr->size = 0;
 		hdr->used = 0;
