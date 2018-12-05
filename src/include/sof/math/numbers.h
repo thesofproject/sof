@@ -77,4 +77,12 @@ int32_t find_max_abs_int32(int32_t vec[], int vec_length);
  */
 int norm_int32(int32_t val);
 
+/* merges two 16-bit values into a single 32-bit value */
+#define merge_16b16b(high, low) (((uint32_t)(high) << 16) | \
+				 ((low) & 0xFFFF))
+
+/* merges two 4-bit values into a single 8-bit value */
+#define merge_4b4b(high, low) (((uint8_t)(high) << 4) | \
+			       ((low) & 0xF))
+
 #endif /* NUMBERS_H */
