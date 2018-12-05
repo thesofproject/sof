@@ -35,6 +35,7 @@ src/drivers/intel/cavs/dmic.c		@singalsu
 src/host/*				@ranj063
 src/math/*				@singalsu
 src/ipc/*				@xiulipan @bardliao
+src/lib/*				@libinyang
 
 # other helpers
 test/*					@jajanusz
