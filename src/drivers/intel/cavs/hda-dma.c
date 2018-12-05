@@ -45,6 +45,7 @@
 #include <sof/pm_runtime.h>
 #include <sof/wait.h>
 #include <sof/audio/format.h>
+#include <sof/math/numbers.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <arch/cache.h>
@@ -228,22 +229,22 @@ static void hda_dma_get_dbg_vals(struct hda_chan_data *chan,
 	do { \
 		struct hda_dbg_data *dbg_data = &(chan)->dbg_data; \
 		if (dbg_data->cur_sample < HDA_DMA_PTR_DBG_NUM_CP) { \
-			uint32_t bne = \
-				dbg_data->last_bne[HDA_DBG_PRE] << 4 | \
-				dbg_data->last_bne[HDA_DBG_POST]; \
-			uint32_t info = ((chan)->direction << 16) | bne; \
-			uint32_t wp = \
-				(dbg_data->last_wp[HDA_DBG_PRE] << 16) | \
-				(dbg_data->last_wp[HDA_DBG_POST] & 0xFFFF); \
-			uint32_t rp = \
-				(dbg_data->last_rp[HDA_DBG_PRE] << 16) | \
-				(dbg_data->last_rp[HDA_DBG_POST] & 0xFFFF); \
+			uint32_t bne = merge_4b4b( \
+				dbg_data->last_bne[HDA_DBG_PRE], \
+				dbg_data->last_bne[HDA_DBG_POST]); \
+			uint32_t info = merge_16b16b((chan)->direction, \
+						       bne); \
+			uint32_t wp = merge_16b16b( \
+				dbg_data->last_wp[HDA_DBG_PRE], \
+				dbg_data->last_wp[HDA_DBG_POST]);\
+			uint32_t rp = merge_16b16b( \
+				dbg_data->last_rp[HDA_DBG_PRE], \
+				dbg_data->last_rp[HDA_DBG_POST]);\
 			trace_hddma("hda-dma-ptr-trace %08X %08X %08X " \
 				    postfix, info, wp, rp); \
 			++dbg_data->cur_sample; \
 		} \
 	} while (0)
-
 #else
 #define hda_dma_dbg_count_reset(...)
 #define hda_dma_get_dbg_vals(...)
