@@ -64,3 +64,5 @@ int arch_init(struct sof *sof)
 	return 0;
 }
 
+int slave_core_init(struct sof *sof) { return 0; }
+
