@@ -320,16 +320,9 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 	uint32_t flags;
 	int i;
 
-	if (req_chan >= dma->plat_data.channels) {
-		trace_dwdma_error("dw-dma: %d invalid channel %d",
-				  dma->plat_data.id, req_chan);
-		return -EINVAL;
-	}
-
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dwdma("dw-dma: %d channel %d request", dma->plat_data.id,
-		    req_chan);
+	trace_dwdma("dw-dma %d request channel", dma->plat_data.id);
 
 	/* find first free non draining channel */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -349,8 +342,7 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 
 	/* DMAC has no free channels */
 	spin_unlock_irq(&dma->lock, flags);
-	trace_dwdma_error("dw-dma: %d channel %d not free", dma->plat_data.id,
-			  req_chan);
+	trace_dwdma_error("dw-dma %d no channel is free", dma->plat_data.id);
 	return -ENODEV;
 }
 
