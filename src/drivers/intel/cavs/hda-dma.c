@@ -383,9 +383,11 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 		hda_update_bits(dma, chan->index,
 				DGCS, DGCS_BOR, DGCS_BOR);
 
-	/* make sure that previous transfer is complete */
-	while (hda_dma_get_free_size(dma, chan->index) < bytes)
-		idelay(PLATFORM_DEFAULT_DELAY);
+	/* make sure that previous transfer is complete (playback only) */
+	if (chan->direction == DMA_DIR_MEM_TO_DEV) {
+		while (hda_dma_get_free_size(dma, chan->index) < bytes)
+			idelay(PLATFORM_DEFAULT_DELAY);
+	}
 
 	/*
 	 * set BFPI to let host gateway knows we have read size,
