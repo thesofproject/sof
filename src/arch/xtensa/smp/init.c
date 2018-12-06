@@ -41,9 +41,11 @@
 #include <sof/mailbox.h>
 #include <arch/cpu.h>
 #include <arch/init.h>
-#include <arch/task.h>
 #include <sof/init.h>
 #include <sof/lock.h>
+#include <sof/notifier.h>
+#include <sof/task.h>
+#include <platform/idc.h>
 #include <stdint.h>
 
 #if DEBUG_LOCKS
@@ -103,4 +105,37 @@ int arch_init(struct sof *sof)
 	register_exceptions();
 	arch_assign_tasks();
 	return 0;
+}
+
+int slave_core_init(struct sof *sof)
+{
+	int err;
+
+	/* init architecture */
+	trace_point(TRACE_BOOT_ARCH);
+	err = arch_init(sof);
+	if (err < 0)
+		panic(SOF_IPC_PANIC_ARCH);
+
+	trace_point(TRACE_BOOT_SYS_NOTE);
+	init_system_notify(sof);
+
+	trace_point(TRACE_BOOT_SYS_SCHED);
+	scheduler_init(sof);
+
+	platform_interrupt_init();
+
+	trace_point(TRACE_BOOT_SYS_WORK);
+	init_system_workq(&platform_generic_queue[cpu_get_id()]);
+
+	/* initialize IDC mechanism */
+	trace_point(TRACE_BOOT_PLATFORM_IDC);
+	idc_init();
+
+	trace_point(TRACE_BOOT_PLATFORM);
+
+	/* should not return */
+	err = do_task_slave_core(sof);
+
+	return err;
 }
