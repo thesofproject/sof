@@ -1465,16 +1465,12 @@ static void dmic_irq_handler(void *data)
 static int dmic_probe(struct dai *dai)
 {
 	struct dmic_pdata *dmic;
+	int ret;
 
 	trace_dmic("dmic_probe()");
 
 	if (dai_get_drvdata(dai))
 		return -EEXIST; /* already created */
-
-	/* Enable DMIC power */
-	pm_runtime_get_sync(DMIC_POW, dai->index);
-	/* Disable dynamic clock gating for dmic before touching any reg */
-	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
 	/* allocate private data */
 	dmic = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
@@ -1489,8 +1485,18 @@ static int dmic_probe(struct dai *dai)
 	dmic->state = COMP_STATE_READY;
 
 	/* register our IRQ handler */
-	interrupt_register(dmic_irq(dai), IRQ_AUTO_UNMASK, dmic_irq_handler,
-			   dai);
+	ret = interrupt_register(dmic_irq(dai), IRQ_AUTO_UNMASK,
+				dmic_irq_handler, dai);
+	if (ret < 0) {
+		trace_dmic_error("dmic failed to allocate IRQ");
+		rfree(dmic);
+		return ret;
+	}
+
+	/* Enable DMIC power */
+	pm_runtime_get_sync(DMIC_POW, dai->index);
+	/* Disable dynamic clock gating for dmic before touching any reg */
+	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
 	platform_interrupt_unmask(dmic_irq(dai), 1);
 	interrupt_enable(dmic_irq(dai));

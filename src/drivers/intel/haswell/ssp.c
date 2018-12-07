@@ -506,6 +506,7 @@ static void ssp_irq_handler(void *data)
 static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
+	int ret;
 
 	/* allocate private data */
 	ssp = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
@@ -519,8 +520,13 @@ static int ssp_probe(struct dai *dai)
 
 
 	/* register our IRQ handler */
-	interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
-			   dai);
+	ret = interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
+				 dai);
+	if (ret < 0) {
+		trace_ssp_error("SSP failed to allocate IRQ");
+		rfree(ssp);
+		return ret;
+	}
 
 	platform_interrupt_unmask(ssp_irq(dai), 1);
 	interrupt_enable(ssp_irq(dai));
