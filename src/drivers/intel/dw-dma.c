@@ -407,7 +407,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dwdma("dw-dma: %d channel %d start", dma->plat_data.id, channel);
+	tracev_dwdma("dw-dma: %d channel %d start", dma->plat_data.id, channel);
 
 	/* is channel idle, disabled and ready ? */
 	if (p->chan[channel].status != COMP_STATE_PREPARE ||
@@ -670,7 +670,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_dwdma("dw-dma: %d channel %d config", dma->plat_data.id, channel);
+	tracev_dwdma("dw-dma: %d channel %d config", dma->plat_data.id,
+		     channel);
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
@@ -1114,7 +1115,7 @@ static void dw_dma_process_block(struct dma_chan_data *chan,
 		chan->cb(chan->cb_data, DMA_IRQ_TYPE_BLOCK, next);
 
 	if (next->size == DMA_RELOAD_END) {
-		trace_dwdma("dw-dma: %d channel %d block end",
+		tracev_dwdma("dw-dma: %d channel %d block end",
 			    chan->id.dma->plat_data.id, chan->id.channel);
 
 		/* disable channel, finished */
@@ -1137,8 +1138,8 @@ static uint64_t dw_dma_work(void *data, uint64_t delay)
 	struct dma_sg_elem next;
 	int i = dma_id->channel;
 
-	tracev_dwdma("dw-dma: %d channel work", dma->plat_data.id,
-		     dma_id->channel);
+	trace_dwdma("dw-dma: %d channel work", dma->plat_data.id,
+		    dma_id->channel);
 
 	if (p->chan[i].status != COMP_STATE_ACTIVE) {
 		trace_dwdma_error("dw-dma: %d channel %d not running",
