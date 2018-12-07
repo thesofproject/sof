@@ -52,7 +52,7 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 #PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	4, 99, 2, s32le,
+	4, 99, 4, s16le,
 	48, 1000, 0, 0)
 
 # Low Latency playback pipeline 5 on PCM 5 using max 2 channels of s32le.
@@ -105,7 +105,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 0, dmic01,
-	PIPELINE_SINK_4, 2, s32le,
+	PIPELINE_SINK_4, 2, s16le,
 	48, 1000, 0, 0)
 
 # playback DAI is iDisp1 using 2 periods
@@ -159,10 +159,9 @@ DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 # dmic01 (id: 2)
 DAI_CONFIG(DMIC, 0, 2, dmic01,
 	DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(s32le), DMIC, 0,
+		DMIC_WORD_LENGTH(s16le), DMIC, 0,
 		# FIXME: what is the right configuration
-		# PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
-		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
+		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
 
 # 3 HDMI/DP outputs (ID: 3,4,5)
 HDA_DAI_CONFIG(3, 3, iDisp1)
