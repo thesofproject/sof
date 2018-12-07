@@ -63,7 +63,7 @@ static void do_notify(void)
 	if (msg == NULL)
 		goto out;
 
-	trace_ipc("ipc: not rx -> 0x%x", msg->header);
+	tracev_ipc("ipc: not rx -> 0x%x", msg->header);
 
 	/* copy the data returned from DSP */
 	if (msg->rx_size && msg->rx_size < SOF_IPC_MSG_MAX_SIZE)
