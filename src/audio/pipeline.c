@@ -1327,5 +1327,10 @@ int pipeline_init(void)
 		sizeof(*pipe_data));
 	spinlock_init(&pipe_data->lock);
 
+	if (!pipe_data) {
+		trace_pipe_error("failed to init pipeline");
+		return -ENOMEM;
+	}
+
 	return 0;
 }
