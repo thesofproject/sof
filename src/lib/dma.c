@@ -56,9 +56,11 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	struct dma *d = NULL, *dmin = NULL;
 
 	if (!lib_dma.num_dmas) {
-		trace_error(TRACE_CLASS_DMA, "dma_get(): No DMAs installed");
+		trace_error(TRACE_CLASS_DMA, "dma_get(): No DMACs installed");
 		return NULL;
 	}
+
+	/* find DMAC with free channels that matches request */
 	for (d = lib_dma.dma_array; d < lib_dma.dma_array + lib_dma.num_dmas;
 	     d++) {
 		/* skip if this DMAC does not support the requested dir */
@@ -71,6 +73,11 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 
 		/* skip if this DMAC does not support the requested dev */
 		if (dev && (d->plat_data.devs & dev) == 0)
+			continue;
+
+		/* skip if this DMAC has 1 user per avail channel */
+		/* TODO: this should be fixed in dai.c to allow more users */
+		if (d->sref >= d->plat_data.channels)
 			continue;
 
 		/* if exclusive access is requested */
@@ -92,37 +99,50 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 		}
 	}
 
-	/* return DMAC */
-	if (dmin) {
-		tracev_event(TRACE_CLASS_DMA, "dma_get(), dma-probe id = %d",
-			     dmin->plat_data.id);
-		/* Shared DMA controllers with multiple channels
-		 * may be requested many times, let the probe()
-		 * do on-first-use initialization.
-		 */
-		spin_lock(&dmin->lock);
-		ret = 0;
-		if (dmin->sref == 0) {
-			ret = dma_probe(dmin);
-			if (ret < 0) {
-				trace_error(TRACE_CLASS_DMA,
-					    "dma_get() error: dma-probe failed"
-					    " id = %d, ret = %d",
-					    dmin->plat_data.id, ret);
-			}
+	if (!dmin) {
+		trace_error(TRACE_CLASS_DMA, "No DMAC dir %d caps 0x%x dev 0x%x flags 0x%x",
+			    dir, cap, dev, flags);
+
+		for (d = lib_dma.dma_array; d < lib_dma.dma_array + lib_dma.num_dmas;
+			d++) {
+			trace_error(TRACE_CLASS_DMA, " DMAC ID %d users %d busy channels %d",
+				    d->plat_data.id, d->sref,
+				    atomic_read(&d->num_channels_busy));
+			trace_error(TRACE_CLASS_DMA, "  caps 0x%x dev 0x%x",
+				    d->plat_data.caps, d->plat_data.devs);
 		}
-		if (!ret)
-			dmin->sref++;
-		trace_event(TRACE_CLASS_DMA, "dma_get(), dmin = %p, sref = %d",
-			    (uintptr_t)dmin, dmin->sref);
-		spin_unlock(&dmin->lock);
-		return !ret ? dmin : NULL;
+		return NULL;
 	}
 
-	trace_error(TRACE_CLASS_DMA,
-		    "dma_get() error: dir = 0x%x, cap = 0x%x, dev = 0x%x, "
-		    "flags = 0x%x not found", dir, cap, dev, flags);
-	return NULL;
+	/* return DMAC */
+	tracev_event(TRACE_CLASS_DMA, "dma_get(), dma-probe id = %d",
+		     dmin->plat_data.id);
+
+	/* Shared DMA controllers with multiple channels
+	 * may be requested many times, let the probe()
+	 * do on-first-use initialization.
+	 */
+	spin_lock(&dmin->lock);
+
+	ret = 0;
+	if (dmin->sref == 0) {
+		ret = dma_probe(dmin);
+		if (ret < 0) {
+			trace_error(TRACE_CLASS_DMA,
+				    "dma_get() error: dma-probe failed"
+				    " id = %d, ret = %d",
+				    dmin->plat_data.id, ret);
+		}
+	}
+	if (!ret)
+		dmin->sref++;
+
+	trace_event(TRACE_CLASS_DMA, "dma_get() ID %d sref = %d busy channels %d",
+		    dmin->plat_data.id, dmin->sref,
+		    atomic_read(&dmin->num_channels_busy));
+
+	spin_unlock(&dmin->lock);
+	return !ret ? dmin : NULL;
 }
 
 void dma_put(struct dma *dma)
