@@ -113,7 +113,7 @@ struct sof;
 #define PLATFORM_HOST_FINISH_TIMEOUT	50000
 
 /* local buffer size of DMA tracing */
-#define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
+#define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
 
 /* trace bytes flushed during panic */
 #define DMA_FLUSH_TRACE_SIZE    (MAILBOX_TRACE_SIZE >> 2)
@@ -125,7 +125,7 @@ struct sof;
  * the interval of reschedule DMA trace copying in special case like half
  * fullness of local DMA trace buffer
  */
-#define DMA_TRACE_RESCHEDULE_TIME	5
+#define DMA_TRACE_RESCHEDULE_TIME	500
 
 /* DSP should be idle in this time frame */
 #define PLATFORM_IDLE_TIME	750000
