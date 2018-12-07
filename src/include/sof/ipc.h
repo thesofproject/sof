@@ -123,7 +123,7 @@ struct ipc {
 #define ipc_set_drvdata(ipc, data) \
 	(ipc)->private = data
 #define ipc_get_drvdata(ipc) \
-	(ipc)->private;
+	(ipc)->private
 
 
 int ipc_init(struct sof *sof);
