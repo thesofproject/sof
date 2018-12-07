@@ -885,12 +885,10 @@ static void ssp_irq_handler(void *data)
 static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
+	int ret;
 
 	if (dai_get_drvdata(dai))
 		return -EEXIST; /* already created */
-
-	/* Disable dynamic clock gating before touching any register */
-	pm_runtime_get_sync(SSP_CLK, dai->index);
 
 	/* allocate private data */
 	ssp = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
@@ -906,8 +904,17 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
 	/* register our IRQ handler */
-	interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
-			   dai);
+	ret = interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
+				 dai);
+	if (ret < 0) {
+		trace_ssp_error("SSP failed to allocate IRQ");
+		rfree(ssp);
+		return ret;
+	}
+
+	/* Disable dynamic clock gating before touching any register */
+	pm_runtime_get_sync(SSP_CLK, dai->index);
+
 	platform_interrupt_unmask(ssp_irq(dai), 1);
 	interrupt_enable(ssp_irq(dai));
 

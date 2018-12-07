@@ -293,7 +293,7 @@ struct dma_pdata {
 static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel);
 static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 		struct dma_sg_elem *next);
-static inline void dw_dma_interrupt_register(struct dma *dma, int channel);
+static inline int dw_dma_interrupt_register(struct dma *dma, int channel);
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel);
 static uint64_t dw_dma_work(void *data, uint64_t delay);
 
@@ -473,11 +473,13 @@ static int dw_dma_start(struct dma *dma, int channel)
 				      p->chan[channel].timer_delay);
 	else if (p->chan[channel].status == COMP_STATE_PREPARE)
 		/* enable interrupt only for the first start */
-		dw_dma_interrupt_register(dma, channel);
+		ret = dw_dma_interrupt_register(dma, channel);
 
-	/* enable the channel */
-	p->chan[channel].status = COMP_STATE_ACTIVE;
-	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
+	if (ret == 0) {
+		/* enable the channel */
+		p->chan[channel].status = COMP_STATE_ACTIVE;
+		dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
+	}
 
 out:
 	spin_unlock_irq(&dma->lock, flags);
@@ -1202,17 +1204,24 @@ static void dw_dma_irq_handler(void *data)
 		dw_dma_process_block(&p->chan[i], &next);
 }
 
-static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
+static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_irq(dma, cpu_get_id()) +
 		(channel << SOF_IRQ_BIT_SHIFT);
+	int ret;
 
 	trace_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register()");
 
-	interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler,
-			   &p->chan[channel].id);
+	ret = interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler,
+				 &p->chan[channel].id);
+	if (ret < 0) {
+		trace_dwdma_error("DWDMA failed to allocate IRQ");
+		return ret;
+	}
+
 	interrupt_enable(irq);
+	return 0;
 }
 
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
@@ -1325,12 +1334,19 @@ static void dw_dma_irq_handler(void *data)
 	}
 }
 
-static inline void dw_dma_interrupt_register(struct dma *dma, int channel)
+static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 {
 	uint32_t irq = dma_irq(dma, cpu_get_id());
+	int ret;
 
-	interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler, dma);
+	ret = interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler, dma);
+	if (ret < 0) {
+		trace_dwdma_error("DWDMA failed to allocate IRQ");
+		return ret;
+	}
+
 	interrupt_enable(irq);
+	return 0;
 }
 
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
