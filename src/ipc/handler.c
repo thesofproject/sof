@@ -651,7 +651,6 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct sof_ipc_dma_trace_params *params = _ipc->comp_data;
 	int err;
 
-
 	/* sanity check size */
 	if (IPC_INVALID_SIZE(params)) {
 		trace_ipc_error("ipc:_invalid IPC size 0x%x got 0x%x",
@@ -741,6 +740,21 @@ static int ipc_glb_debug_message(uint32_t header)
 		trace_ipc_error("ipc: unknown debug cmd %u", cmd);
 		return -EINVAL;
 	}
+}
+
+static int ipc_glb_gdb_debug(uint32_t header)
+{
+	/* no furher information needs to be extracted form header */
+	(void) header;
+
+#ifdef CONFIG_GDB_DEBUG
+	/* trigger debug exception */
+	asm volatile("_break 0, 0");
+	return 0;
+#else
+	return -EINVAL;
+#endif
+
 }
 
 /*
@@ -1018,6 +1032,8 @@ int ipc_cmd(void)
 		return ipc_glb_dai_message(hdr->cmd);
 	case iGS(SOF_IPC_GLB_TRACE_MSG):
 		return ipc_glb_debug_message(hdr->cmd);
+	case iGS(SOF_IPC_GLB_GDB_DEBUG):
+		return ipc_glb_gdb_debug(hdr->cmd);
 	default:
 		trace_ipc_error("ipc: unknown command type %u", type);
 		return -EINVAL;

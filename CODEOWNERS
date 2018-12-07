@@ -14,6 +14,7 @@ src/include/sof/dmic.h			@singalsu
 src/include/host/*			@ranj063
 src/include/uapi/*			@bardliao
 src/include/uapi/ipc/*			@xiulipan @bardliao
+src/include/gdb/*			@mrajwa
 
 # audio component
 src/audio/src*				@singalsu
@@ -36,6 +37,7 @@ src/host/*				@ranj063
 src/math/*				@singalsu
 src/ipc/*				@xiulipan @bardliao
 src/lib/*				@libinyang
+src/gdb/*				@mrajwa
 
 # other helpers
 test/*					@jajanusz
