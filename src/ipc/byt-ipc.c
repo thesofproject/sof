@@ -111,12 +111,6 @@ static void irq_handler(void *arg)
 	if (isr & SHIM_ISRD_BUSY &&
 	    !(imrd & SHIM_IMRD_BUSY)) {
 
-		/* Mask Busy interrupt before return */
-		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
-		interrupt_clear(PLATFORM_IPC_INTERRUPT);
-
-		msg = shim_read(SHIM_IPCXL);
-
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
@@ -125,6 +119,14 @@ static void irq_handler(void *arg)
 					isr, shim_read(SHIM_IMRD),
 					shim_read(SHIM_IPCXH));
 		} else {
+
+			/* Mask Busy interrupt before return */
+			shim_write(SHIM_IMRD,
+				   shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
+			interrupt_clear(PLATFORM_IPC_INTERRUPT);
+
+			msg = shim_read(SHIM_IPCXL);
+
 			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
 			ipc_schedule_process(_ipc);

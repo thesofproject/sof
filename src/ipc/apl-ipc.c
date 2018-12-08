@@ -72,11 +72,6 @@ static void irq_handler(void *arg)
 	/* new message from host */
 	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
 
-		/* mask Busy interrupt */
-		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
-
-		msg = dipct & IPC_DIPCT_MSG_MASK;
-
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
@@ -84,6 +79,12 @@ static void irq_handler(void *arg)
 			trace_ipc_error(" dipct 0x%x dipcie 0x%x dipcctl 0x%x",
 					dipct, dipcie, ipc_read(IPC_DIPCCTL));
 		} else {
+
+			/* mask Busy interrupt */
+			ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
+
+			msg = dipct & IPC_DIPCT_MSG_MASK;
+
 			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
 			ipc_schedule_process(_ipc);
