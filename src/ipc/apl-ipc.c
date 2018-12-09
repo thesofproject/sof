@@ -96,8 +96,8 @@ static void irq_handler(void *arg)
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
-		/* clear DONE bit - tell host we have completed the operation */
-		ipc_write(IPC_DIPCIE, ipc_read(IPC_DIPCIE) |IPC_DIPCIE_DONE);
+		/* clear DONE bit */
+		ipc_write(IPC_DIPCIE, ipc_read(IPC_DIPCIE) | ~IPC_DIPCIE_DONE);
 
 		/* unmask Done interrupt */
 		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
