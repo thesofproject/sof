@@ -89,12 +89,12 @@ MEMORY
   system_heap :
         org = HEAP_SYSTEM_0_BASE,
         len = HEAP_SYSTEM_T_SIZE
+  system_runtime_heap :
+        org = HEAP_SYS_RUNTIME_0_BASE,
+        len = HEAP_SYS_RUNTIME_T_SIZE
   runtime_heap :
         org = HEAP_RUNTIME_BASE,
         len = HEAP_RUNTIME_SIZE
-  system_runtime_heap :
-        org = HEAP_SYS_RUNTIME_BASE,
-        len = HEAP_SYS_RUNTIME_SIZE
   buffer_heap :
         org = HEAP_BUFFER_BASE,
         len = HEAP_BUFFER_SIZE
@@ -148,8 +148,8 @@ PHDRS
   sof_data_phdr PT_LOAD;
   sof_bss_data_phdr PT_LOAD;
   system_heap_phdr PT_LOAD;
-  runtime_heap_phdr PT_LOAD;
   system_runtime_heap_phdr PT_LOAD;
+  runtime_heap_phdr PT_LOAD;
   buffer_heap_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
   buffer_hp_heap_phdr PT_LOAD;
@@ -465,12 +465,11 @@ SECTIONS
   /* System Heap */
   _system_heap = HEAP_SYSTEM_0_BASE;
 
+  /* system runtime heap */
+  _system_runtime_heap = HEAP_SYS_RUNTIME_0_BASE;
 
   /* module heap */
   _module_heap = HEAP_RUNTIME_BASE;
-
-  /* system runtime heap */
-  _system_runtime_heap = HEAP_SYS_RUNTIME_BASE;
 
   /* buffer heap */
   _buffer_heap = HEAP_BUFFER_BASE;
@@ -535,6 +534,14 @@ SECTIONS
     _system_heap_end = ABSOLUTE(.);
   } >system_heap :system_heap_phdr
 
+  .system_runtime_heap (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _system_runtime_heap_start = ABSOLUTE(.);
+    . = . + HEAP_SYS_RUNTIME_T_SIZE;
+    _system_runtime_heap_end = ABSOLUTE(.);
+  } >system_runtime_heap :system_runtime_heap_phdr
+
   .runtime_heap (NOLOAD) : ALIGN(8)
   {
     . = ALIGN (32);
@@ -543,13 +550,6 @@ SECTIONS
     _runtime_heap_end = ABSOLUTE(.);
   } >runtime_heap :runtime_heap_phdr
 
-  .system_runtime_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _system_runtime_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYS_RUNTIME_SIZE;
-    _system_runtime_heap_end = ABSOLUTE(.);
-  } >system_runtime_heap :system_runtime_heap_phdr
 
   .buffer_heap (NOLOAD) : ALIGN(8)
   {

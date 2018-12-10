@@ -271,11 +271,16 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	int i;
 
 	/* find mm_heap that ptr belongs to */
+	heap = memmap.system_runtime + cpu_get_id();
+	if ((uint32_t)ptr >= heap->heap &&
+	    (uint32_t)ptr < heap->heap + heap->size)
+		return heap;
+
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
 		heap = cache_to_uncache(&memmap.runtime[i]);
 
 		if ((uint32_t)ptr >= heap->heap &&
-			(uint32_t)ptr < heap->heap + heap->size)
+		    (uint32_t)ptr < heap->heap + heap->size)
 			return heap;
 	}
 
@@ -283,45 +288,57 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 		heap = cache_to_uncache(&memmap.buffer[i]);
 
 		if ((uint32_t)ptr >= heap->heap &&
-			(uint32_t)ptr < heap->heap + heap->size)
+		    (uint32_t)ptr < heap->heap + heap->size)
 			return heap;
 	}
 
 	return NULL;
 }
 
-static struct mm_heap *get_runtime_heap_from_caps(uint32_t caps)
+static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
+					  uint32_t caps)
 {
-	struct mm_heap *heap;
 	uint32_t mask;
 	int i;
 
 	/* find first heap that support type */
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = cache_to_uncache(&memmap.runtime[i]);
-		mask = heap->caps & caps;
+	for (i = 0; i < count; i++) {
+		mask = heap[i].caps & caps;
 		if (mask == caps)
-			return heap;
+			return &heap[i];
 	}
 
 	return NULL;
 }
 
-static struct mm_heap *get_buffer_heap_from_caps(uint32_t caps)
+static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
+			       size_t bytes)
 {
-	struct mm_heap *heap;
-	uint32_t mask;
+	struct block_map *map;
 	int i;
+	void *ptr = NULL;
 
-	/* find first heap that support type */
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = cache_to_uncache(&memmap.buffer[i]);
-		mask = heap->caps & caps;
-		if (mask == caps)
-			return heap;
+	for (i = 0; i < heap->blocks; i++) {
+		map = &heap->map[i];
+
+		/* is block big enough */
+		if (map->block_size < bytes)
+			continue;
+
+		/* does block have free space */
+		if (map->free_count == 0)
+			continue;
+
+		/* free block space exists */
+		ptr = alloc_block(heap, i, caps);
+
+		break;
 	}
 
-	return NULL;
+	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+		ptr = cache_to_uncache(ptr);
+
+	return ptr;
 }
 
 /* free block(s) */
@@ -389,53 +406,47 @@ found:
 #endif
 }
 
+/* allocate single block for system runtime */
+static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
+{
+	struct mm_heap *cpu_heap;
+	void *ptr = NULL;
+
+	/* use the heap dedicated for the selected core */
+	cpu_heap = memmap.system_runtime + core;
+
+	ptr = get_ptr_from_heap(cpu_heap, zone, caps, bytes);
+
+	/* other core should have the latest value */
+	if (core != cpu_get_id())
+		dcache_writeback_invalidate_region(cpu_heap,
+						   sizeof(*cpu_heap));
+
+	return ptr;
+}
+
 /* allocate single block for runtime */
 static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
-	struct block_map *map;
-	int i;
-	void *ptr = NULL;
 
 	/* check runtime heap for capabilities */
-	heap = get_runtime_heap_from_caps(caps);
-	if (heap)
-		goto find;
+	heap = get_heap_from_caps(memmap.runtime, PLATFORM_HEAP_RUNTIME, caps);
+	if (!heap) {
+		/* next check buffer heap for capabilities */
+		heap = get_heap_from_caps(memmap.buffer, PLATFORM_HEAP_BUFFER,
+					  caps);
+		if (!heap) {
+			trace_error(TRACE_CLASS_MEM,
+				    "rmalloc_runtime() error: "
+				    "eMm zone = %d, caps = %x, bytes = %d",
+				    zone, caps, bytes);
 
-	/* next check buffer heap for capabilities */
-	heap = get_buffer_heap_from_caps(caps);
-	if (heap == NULL)
-		goto error;
-
-find:
-	for (i = 0; i < heap->blocks; i++) {
-		map = cache_to_uncache(&heap->map[i]);
-
-		/* is block big enough */
-		if (map->block_size < bytes)
-			continue;
-
-		/* does block have free space */
-		if (map->free_count == 0)
-			continue;
-
-		/* free block space exists */
-		ptr = alloc_block(heap, i, caps);
-
-		break;
+			return NULL;
+		}
 	}
 
-	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
-		ptr = cache_to_uncache(ptr);
-
-	return ptr;
-
-error:
-	trace_error(TRACE_CLASS_MEM,
-		    "rmalloc_runtime() error: "
-		    "eMm zone = %d, caps = %x, bytes = %d",
-		    zone, caps, bytes);
-	return NULL;
+	return get_ptr_from_heap(heap, zone, caps, bytes);
 }
 
 void *rmalloc(int zone, uint32_t caps, size_t bytes)
@@ -449,8 +460,10 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 	case RZONE_SYS:
 		ptr = rmalloc_sys(zone, cpu_get_id(), bytes);
 		break;
-	case RZONE_RUNTIME:
 	case RZONE_SYS_RUNTIME:
+		ptr = rmalloc_sys_runtime(zone, caps, cpu_get_id(), bytes);
+		break;
+	case RZONE_RUNTIME:
 		ptr = rmalloc_runtime(zone, caps, bytes);
 		break;
 	default:
@@ -501,7 +514,7 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 
 	spin_lock_irq(&memmap.lock, flags);
 
-	heap = get_buffer_heap_from_caps(caps);
+	heap = get_heap_from_caps(memmap.buffer, PLATFORM_HEAP_BUFFER, caps);
 	if (heap == NULL)
 		goto out;
 
@@ -626,62 +639,45 @@ void free_heap(int zone)
 	dcache_writeback_region(cpu_heap, sizeof(*cpu_heap));
 }
 
-/* initialise map */
-void init_heap(struct sof *sof)
+static void init_heap_map(struct mm_heap *heap, int count)
 {
-	struct mm_heap *heap;
 	struct block_map *next_map;
 	struct block_map *current_map;
 	int i;
 	int j;
 
+	for (i = 0; i < count; i++) {
+		/* init the map[0] */
+		current_map = &heap[i].map[0];
+		current_map->base = heap[i].heap;
+		flush_block_map(current_map);
+
+		/* map[j]'s base is calculated based on map[j-1] */
+		for (j = 1; j < heap[i].blocks; j++) {
+			next_map = &heap[i].map[j];
+			next_map->base = current_map->base +
+				current_map->block_size *
+				current_map->count;
+			current_map = &heap[i].map[j];
+			flush_block_map(current_map);
+		}
+
+		dcache_writeback_invalidate_region(&heap[i], sizeof(heap[i]));
+	}
+}
+
+/* initialise map */
+void init_heap(struct sof *sof)
+{
 	/* sanity check for malformed images or loader issues */
 	if (memmap.system[0].heap != HEAP_SYSTEM_0_BASE)
 		panic(SOF_IPC_PANIC_MEM);
 
 	spinlock_init(&memmap.lock);
 
-	/* initialise buffer map */
-	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = &memmap.buffer[i];
+	init_heap_map(memmap.system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
 
-		/* init the map[0] */
-		current_map = &heap->map[0];
-		current_map->base = heap->heap;
-		flush_block_map(current_map);
+	init_heap_map(memmap.runtime, PLATFORM_HEAP_RUNTIME);
 
-		/* map[j]'s base is calculated based on map[j-1] */
-		for (j = 1; j < heap->blocks; j++) {
-			next_map = &heap->map[j];
-			next_map->base = current_map->base +
-				current_map->block_size *
-				current_map->count;
-			current_map = &heap->map[j];
-			flush_block_map(current_map);
-		}
-
-		dcache_writeback_invalidate_region(heap, sizeof(*heap));
-	}
-
-	/* initialise runtime map */
-	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = &memmap.runtime[i];
-
-		/* init the map[0] */
-		current_map = &heap->map[0];
-		current_map->base = heap->heap;
-		flush_block_map(current_map);
-
-		/* map[j]'s base is calculated based on map[j-1] */
-		for (j = 1; j < heap->blocks; j++) {
-			next_map = &heap->map[j];
-			next_map->base = current_map->base +
-				current_map->block_size *
-				current_map->count;
-			current_map = &heap->map[j];
-			flush_block_map(current_map);
-		}
-
-		dcache_writeback_invalidate_region(heap, sizeof(*heap));
-	}
+	init_heap_map(memmap.buffer, PLATFORM_HEAP_BUFFER);
 }
