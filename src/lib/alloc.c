@@ -93,7 +93,7 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	int i;
 
 	for (i = 0; i < heap->blocks; i++) {
-		size += block_get_size(cache_to_uncache(&heap->map[i]));
+		size += block_get_size(&heap->map[i]);
 	}
 
 	return size;
@@ -159,8 +159,8 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 static void *alloc_block(struct mm_heap *heap, int level,
 	uint32_t caps)
 {
-	struct block_map *map = cache_to_uncache(&heap->map[level]);
-	struct block_hdr *hdr = cache_to_uncache(&map->block[map->first_free]);
+	struct block_map *map = &heap->map[level];
+	struct block_hdr *hdr = &map->block[map->first_free];
 	void *ptr;
 	int i;
 
@@ -174,7 +174,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 	/* find next free */
 	for (i = map->first_free; i < map->count; ++i) {
 
-		hdr = cache_to_uncache(&map->block[i]);
+		hdr = &map->block[i];
 
 		if (hdr->used == 0) {
 			map->first_free = i;
@@ -193,7 +193,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	uint32_t caps, size_t bytes)
 {
-	struct block_map *map = cache_to_uncache(&heap->map[level]);
+	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
 	void *ptr;
 	unsigned int start;
@@ -212,7 +212,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 		/* check that we have enough free blocks from start pos */
 		end = start + count;
 		for (current = start; current < end; current++) {
-			hdr = cache_to_uncache(&map->block[current]);
+			hdr = &map->block[current];
 
 			/* is block used */
 			if (hdr->used)
@@ -232,14 +232,14 @@ found:
 	/* found some free blocks */
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
-	hdr = cache_to_uncache(&map->block[start]);
+	hdr = &map->block[start];
 	hdr->size = count;
 	heap->info.used += count * map->block_size;
 	heap->info.free -= count * map->block_size;
 
 	/* allocate each block */
 	for (current = start; current < end; current++) {
-		hdr = cache_to_uncache(&map->block[current]);
+		hdr = &map->block[current];
 		hdr->used = 1;
 	}
 
@@ -249,7 +249,7 @@ found:
 		/* find next free */
 		for (i = map->first_free + count; i < map->count; ++i) {
 
-			hdr = cache_to_uncache(&map->block[i]);
+			hdr = &map->block[i];
 
 			if (hdr->used == 0) {
 				map->first_free = i;
@@ -277,7 +277,7 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 		return heap;
 
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
-		heap = cache_to_uncache(&memmap.runtime[i]);
+		heap = &memmap.runtime[i];
 
 		if ((uint32_t)ptr >= heap->heap &&
 		    (uint32_t)ptr < heap->heap + heap->size)
@@ -285,7 +285,7 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	}
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
-		heap = cache_to_uncache(&memmap.buffer[i]);
+		heap = &memmap.buffer[i];
 
 		if ((uint32_t)ptr >= heap->heap &&
 		    (uint32_t)ptr < heap->heap + heap->size)
@@ -361,7 +361,7 @@ static void free_block(void *ptr)
 
 	/* find block that ptr belongs to */
 	for (i = 0; i < heap->blocks; i++) {
-		block_map = cache_to_uncache(&heap->map[i]);
+		block_map = &heap->map[i];
 
 		/* is ptr in this block */
 		if ((uint32_t)ptr < (block_map->base +
@@ -377,7 +377,7 @@ static void free_block(void *ptr)
 found:
 	/* calculate block header */
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
-	hdr = cache_to_uncache(&block_map->block[block]);
+	hdr = &block_map->block[block];
 
 	/* report a error if prt is not aligned to block */
 	if (block_map->base + block_map->block_size * block != (uint32_t)ptr)
@@ -387,7 +387,7 @@ found:
 	used_blocks = block + hdr->size;
 
 	for (i = block; i < used_blocks; i++) {
-		hdr = cache_to_uncache(&block_map->block[i]);
+		hdr = &block_map->block[i];
 		hdr->size = 0;
 		hdr->used = 0;
 		block_map->free_count++;
@@ -520,7 +520,7 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 
 	/* will request fit in single block */
 	for (i = 0; i < heap->blocks; i++) {
-		map = cache_to_uncache(&heap->map[i]);
+		map = &heap->map[i];
 
 		/* is block big enough */
 		if (map->block_size < bytes)
@@ -545,7 +545,7 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 
 		/* find best block size for request */
 		for (i = 0; i < heap->blocks; i++) {
-			map = cache_to_uncache(&heap->map[i]);
+			map = &heap->map[i];
 
 			/* allocate is block size smaller than request */
 			if (map->block_size < bytes)
