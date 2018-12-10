@@ -109,6 +109,8 @@ struct mm_heap {
 struct mm {
 	/* system heap - used during init cannot be freed */
 	struct mm_heap system[PLATFORM_HEAP_SYSTEM];
+	/* system runtime heap - used for runtime system components */
+	struct mm_heap system_runtime[PLATFORM_HEAP_SYSTEM_RUNTIME];
 	/* general heap for components */
 	struct mm_heap runtime[PLATFORM_HEAP_RUNTIME];
 	/* general component buffer heap */
