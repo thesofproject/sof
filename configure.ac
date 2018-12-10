@@ -84,7 +84,7 @@ if test "$have_roms" = "yes"; then
 fi
 
 # check if we should enable GDB debugging
-AC_ARG_ENABLE(gdb_debug, [AS_HELP_STRING([--enable-gdb-debug],[gdb debug supported])], enable_gdb_debug=$enableval, have_roms=no)
+AC_ARG_ENABLE(gdb_debug, [AS_HELP_STRING([--enable-gdb-debug],[gdb debug supported])], enable_gdb_debug=$enableval, enable_gdb_debug=no)
 if test "$enable_gdb_debug" = "yes"; then
 	AC_DEFINE([CONFIG_GDB_DEBUG], [1], [Enable debugging with GDB])
 fi
