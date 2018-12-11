@@ -135,8 +135,8 @@ PHDRS
   sof_data_phdr PT_LOAD;
   sof_data_bss_phdr PT_LOAD;
   system_heap_phdr PT_LOAD;
-  runtime_heap_phdr PT_LOAD;
   system_runtime_heap_phdr PT_LOAD;
+  runtime_heap_phdr PT_LOAD;
   buffer_heap_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
   static_log_entries_phdr PT_NOTE;
