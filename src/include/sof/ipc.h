@@ -96,7 +96,7 @@ struct dai_config;
 			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
 				  rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
-			memcpy(rx, tx, tx->size);			\
+			memcpy(rx, tx, rx_size);			\
 			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
 				  rx->cmd, tx->size, rx_size);		\
 		} else							\
