@@ -581,7 +581,7 @@ void rfree(void *ptr)
 
 	/* panic if pointer is from system heap */
 	if (ptr >= (void *)cpu_heap->heap &&
-	    ptr <= (void *)cpu_heap->heap + cpu_heap->size) {
+	    ptr < (void *)cpu_heap->heap + cpu_heap->size) {
 		trace_error(TRACE_CLASS_MEM, "rfree() error: "
 			   "attempt to free system heap = %p, cpu = %d",
 			    (uintptr_t)ptr, cpu_get_id());
