@@ -1,44 +1,46 @@
 noinst_HEADERS = \
-	src_std_int32_10_21_4583_5000.h \
-	src_std_int32_10_9_4583_5000.h \
-	src_std_int32_1_2_2292_5000.h \
-	src_std_int32_1_2_4583_5000.h \
-	src_std_int32_1_3_2292_5000.h \
-	src_std_int32_1_3_4583_5000.h \
-	src_std_int32_16_7_4125_5000.h \
-	src_std_int32_20_21_4211_5000.h \
-	src_std_int32_20_7_3008_5000.h \
-	src_std_int32_21_20_4211_5000.h \
-	src_std_int32_2_1_2292_5000.h \
-	src_std_int32_21_40_4010_5000.h \
-	src_std_int32_2_1_4583_5000.h \
-	src_std_int32_21_80_4010_5000.h \
-	src_std_int32_2_3_4583_5000.h \
-	src_std_int32_3_1_2292_5000.h \
-	src_std_int32_3_1_4583_5000.h \
-	src_std_int32_32_21_4583_5000.h \
-	src_std_int32_3_2_4583_5000.h \
-	src_std_int32_3_4_4583_5000.h \
-	src_std_int32_40_21_4010_5000.h \
-	src_std_int32_4_3_4583_5000.h \
-	src_std_int32_5_7_4583_5000.h \
-	src_std_int32_7_8_4583_5000.h \
-	src_std_int32_8_21_3274_5000.h \
-	src_std_int32_8_7_2494_5000.h \
-	src_std_int32_8_7_4583_5000.h \
-	src_std_int32_define.h \
-	src_std_int32_table.h \
-	src_tiny_int16_1_2_3281_5000.h \
-	src_tiny_int16_1_3_1641_5000.h \
-	src_tiny_int16_1_3_3281_5000.h \
-	src_tiny_int16_20_21_3015_5000.h \
-	src_tiny_int16_21_20_3015_5000.h \
-	src_tiny_int16_2_1_3281_5000.h \
-	src_tiny_int16_2_3_3281_5000.h \
-	src_tiny_int16_3_1_1641_5000.h \
-	src_tiny_int16_3_1_3281_5000.h \
-	src_tiny_int16_3_2_3281_5000.h \
-	src_tiny_int16_7_8_3281_5000.h \
-	src_tiny_int16_8_7_3281_5000.h \
-	src_tiny_int16_define.h \
-	src_tiny_int16_table.h
+src_std_int32_10_21_4535_5000.h \
+src_std_int32_1_2_2268_5000.h \
+src_std_int32_1_2_4535_5000.h \
+src_std_int32_1_3_2268_5000.h \
+src_std_int32_1_3_4535_5000.h \
+src_std_int32_20_21_4167_5000.h \
+src_std_int32_20_7_2976_5000.h \
+src_std_int32_21_20_4167_5000.h \
+src_std_int32_2_1_2268_5000.h \
+src_std_int32_21_40_3968_5000.h \
+src_std_int32_2_1_4535_5000.h \
+src_std_int32_21_80_3968_5000.h \
+src_std_int32_2_3_4535_5000.h \
+src_std_int32_3_1_2268_5000.h \
+src_std_int32_3_1_4535_5000.h \
+src_std_int32_32_21_4535_5000.h \
+src_std_int32_3_2_4535_5000.h \
+src_std_int32_3_4_4535_5000.h \
+src_std_int32_40_21_3968_5000.h \
+src_std_int32_4_3_4535_5000.h \
+src_std_int32_4_5_4535_5000.h \
+src_std_int32_5_4_4535_5000.h \
+src_std_int32_5_6_4354_5000.h \
+src_std_int32_5_7_4535_5000.h \
+src_std_int32_6_5_4354_5000.h \
+src_std_int32_7_8_4535_5000.h \
+src_std_int32_8_21_3239_5000.h \
+src_std_int32_8_7_2468_5000.h \
+src_std_int32_8_7_4535_5000.h \
+src_std_int32_define.h \
+src_std_int32_table.h \
+src_tiny_int16_1_3_1814_5000.h \
+src_tiny_int16_1_6_1814_5000.h \
+src_tiny_int16_20_21_1667_5000.h \
+src_tiny_int16_21_20_1667_5000.h \
+src_tiny_int16_2_3_1814_5000.h \
+src_tiny_int16_24_25_1814_5000.h \
+src_tiny_int16_25_24_1814_5000.h \
+src_tiny_int16_3_1_1814_5000.h \
+src_tiny_int16_3_2_1814_5000.h \
+src_tiny_int16_6_1_1814_5000.h \
+src_tiny_int16_7_8_1814_5000.h \
+src_tiny_int16_8_7_1814_5000.h \
+src_tiny_int16_define.h \
+src_tiny_int16_table.h
