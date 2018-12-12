@@ -319,11 +319,22 @@ static int dai_capture_params(struct comp_dev *dev)
 
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
-	config->src_width = comp_sample_bytes(dev);
-	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 1;
 	config->timer_delay = dev->pipeline->ipc_pipe.timer_delay;
 	config->src_dev = dd->dai->plat_data.fifo[1].handshake;
+
+	/* TODO: Make this code platform-specific or move it driver callback */
+	if (dd->dai->type == SOF_DAI_INTEL_DMIC) {
+		/* For DMIC the DMA src and dest widths should always be 4 bytes
+		 * due to 32 bit FIFO packer. Setting width to 2 bytes for
+		 * 16 bit format would result in recording at double rate.
+		 */
+		config->src_width = 4;
+		config->dest_width = 4;
+	} else {
+		config->src_width = comp_sample_bytes(dev);
+		config->dest_width = comp_sample_bytes(dev);
+	}
 
 	/* set up local and host DMA elems to reset values */
 	dma_buffer = list_first_item(&dev->bsink_list,
