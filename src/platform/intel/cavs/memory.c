@@ -74,7 +74,10 @@ static struct block_map rt_heap_map[] = {
 /* Heap blocks for buffers */
 static struct block_hdr buf_block[HEAP_BUFFER_COUNT];
 static struct block_hdr hp_buf_block[HEAP_HP_BUFFER_COUNT];
+/* To be removed if Apollolake gets LP memory*/
+#ifndef CONFIG_APOLLOLAKE
 static struct block_hdr lp_buf_block[HEAP_LP_BUFFER_COUNT];
+#endif
 
 /* Heap memory map for buffers */
 static struct block_map buf_heap_map[] = {
@@ -86,10 +89,13 @@ static struct block_map hp_buf_heap_map[] = {
 		hp_buf_block),
 };
 
+/* To be removed if Apollolake gets LP memory*/
+#ifndef CONFIG_APOLLOLAKE
 static struct block_map lp_buf_heap_map[] = {
 	BLOCK_DEF(HEAP_LP_BUFFER_BLOCK_SIZE, HEAP_LP_BUFFER_COUNT,
-		lp_buf_block),
+			  lp_buf_block),
 };
+#endif
 
 struct mm memmap = {
 	.system[0] = {
@@ -187,6 +193,8 @@ struct mm memmap = {
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
 			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
+/* To be removed if Apollolake gets LP memory*/
+#ifndef CONFIG_APOLLOLAKE
 	.buffer[2] = {
 		.blocks = ARRAY_SIZE(lp_buf_heap_map),
 		.map = lp_buf_heap_map,
@@ -196,6 +204,7 @@ struct mm memmap = {
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
+#endif
 	.total = {.free = HEAP_SYSTEM_T_SIZE + HEAP_RUNTIME_SIZE +
 			HEAP_SYS_RUNTIME_T_SIZE + HEAP_BUFFER_SIZE +
 			HEAP_HP_BUFFER_SIZE + HEAP_LP_BUFFER_SIZE,},

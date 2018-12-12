@@ -358,7 +358,7 @@
 #define PLATFORM_HEAP_SYSTEM		2 /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	2 /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_BUFFER		3
+#define PLATFORM_HEAP_BUFFER		2 /* APL  has no lp memory enabled yet*/
 
 /* Stack configuration */
 #define SOF_LP_STACK_SIZE		0x1000
