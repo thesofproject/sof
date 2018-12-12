@@ -1135,8 +1135,8 @@ static uint64_t dw_dma_work(void *data, uint64_t delay)
 	struct dma_sg_elem next;
 	int i = dma_id->channel;
 
-	trace_dwdma("dw-dma: %d channel work", dma->plat_data.id,
-		    dma_id->channel);
+	tracev_dwdma("dw-dma: %d channel work", dma->plat_data.id,
+		     dma_id->channel);
 
 	if (p->chan[i].status != COMP_STATE_ACTIVE) {
 		trace_dwdma_error("dw-dma: %d channel %d not running",
