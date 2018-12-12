@@ -190,6 +190,8 @@ end
 f_p = linspace(0, fs3/2, 2000);
 m_db = 20*log10(abs(freqz(bq, 1, f_p, fs3)));
 i_pb = find(f_p < src.f_pb);
+i_m3 = find(m_db > -3);
+f_m3 = f_p(i_m3(end));
 g_pb = max(m_db(i_pb));
 g_att_lin = 10^(-g_pb/20);
 
@@ -207,13 +209,13 @@ if 1
         plot([src.f_sb src.f_sb],[p_ymin p_ymax], 'r--');
         plot([0 fs3],[-cnv.rs -cnv.rs], 'r--');
         hold off
-        axes('Position', [ 0.58 0.7 0.3 0.2]);
+	axes('Position', [ 0.55 0.5 0.35 0.4]);
         box on;
-        plot(f_p(i_pb), m_db(i_pb));
-        axis([0 src.f_pb -cnv.rp-0.01 cnv.rp+0.01]);
-        hold on
         plot([0 src.f_pb], +0.5*cnv.rp*ones(1,2), 'r--');
+        hold on
         plot([0 src.f_pb], -0.5*cnv.rp*ones(1,2), 'r--');
+        plot(f_p(i_m3), m_db(i_m3));
+        axis([0 f_m3 -3 0.5]);
         hold off
         grid on;
         box off;

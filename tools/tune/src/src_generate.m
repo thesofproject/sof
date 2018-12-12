@@ -1,19 +1,24 @@
-function src_generate(fs_in, fs_out, ctype, fs_inout, profile, qc)
+function src_generate(fs_in, fs_out, fs_inout, cfg);
+
 
 % src_generate - export src conversions for given fs_in and fs_out
 %
 % src_generate(fs_in, fs_out <, ctype, fs_inout>>)
 %
-% fs_in    - vector of input sample rates (M)
-% fs_out   - vector of output sample rates (N)
-% ctype    - coefficient type, use 'int16','int24', 'int32', or 'float'
-% fs_inout - matrix of supported conversions (MxN),
-%            0 = no support, 1 = supported
-%				%
-% if ctype is omitted then ctype defaults to 'int16'.
+% fs_in     - vector of input sample rates (M)
+% fs_out    - vector of output sample rates (N)
+% fs_inout  - matrix of supported conversions (MxN),
+%             0 = no support, 1 = supported
+% cfg       - configuration struct with fields
+%   ctype   - coefficient type, use 'int16','int24', 'int32', or 'float'
+%   profile - differentiate set with identifier, e.g. 'std'
+%   quality - quality factor, usually 1.0
+%   speed   - optimize speed, gives higher RAM size, usually 0
 %
 % If fs_inout matrix is omitted this script will compute coefficients
 % for all fs_in <-> fs_out combinations.
+%
+% If cfg is omitted the script will assume 'int32', 'std', 1.0, 0.
 %
 % Copyright (c) 2016, Intel Corporation
 % All rights reserved.
@@ -44,48 +49,17 @@ function src_generate(fs_in, fs_out, ctype, fs_inout, profile, qc)
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
-if (nargin == 1) || (nargin > 6)
+if (nargin < 2) || (nargin > 4)
 	error('Incorrect arguments for function!');
 end
-if nargin == 0
-	%% Default input and output rates
-        fs_in = [8e3 11025 12e3 16e3 18900 22050 24e3 32e3 44100 48e3 ...
-		     64e3 88.2e3 96e3 176400 192e3];
-
-	fs_out = [8e3 11025 12e3 16e3 18900 22050 24e3 32e3 44100 48e3];
-
-	fs_inout = [ 0 0 0 1 0 0 1 1 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     1 0 0 0 0 0 1 1 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     1 0 0 1 0 0 0 1 0 1 ; ...
-		     1 0 0 1 0 0 1 0 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     1 1 1 1 0 1 1 1 1 0 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ; ...
-		     0 0 0 0 0 0 0 0 0 1 ];
-
-	ctype = 'int32';
-        profile = 'std';
-	qc = 1.0;
-else
-	if nargin < 3
-		ctype = 'int16';
-	end
-	if nargin < 4
-		fs_inout = ones(length(fs_in), length(fs_out));
-        end
-        if nargin < 5
-                profile = '';
-        end
-	if nargin < 6
-		qc = 1.0;
-	end
+if nargin < 4
+	cfg.ctype = 'int32';
+	cfg.profile = 'std';
+	cfg.quality = 1.0;
+	cfg.speed = 0;
+end
+if nargin < 3
+	fs_inout = ones(length(fs_in), length(fs_out));
 end
 
 sio = size(fs_inout);
@@ -95,7 +69,7 @@ end
 
 %% Exported coefficients type int16, int24, int32, float
 
-switch ctype
+switch cfg.ctype
        case 'int16'
 	       coef_label = 'int16';
 	       coef_ctype = 'int16_t';
@@ -112,7 +86,8 @@ switch ctype
 	       coef_bits = 32;
 	       coef_bytes = 4;
        case 'float'
-	       coef_label = 'float'; coef_ctype = 'float';
+	       coef_label = 'float';
+	       coef_ctype = 'float';
 	       coef_bits = 24;
 	       coef_bytes = 4;
        otherwise
@@ -147,9 +122,17 @@ for b = 1:nfso
                 fs1 = fs_in(a);
                 fs2 = fs_out(b);
                 [l1, m1, l2, m2] = src_factor2_lm(fs1, fs2);
+		% If the interpolate/decimate factors are low, use single step
+		% conversion. The increases RAM consumption but lowers the MCPS.
+		if cfg.speed && max(l1 * l2, m1 * m2) < 30
+			l1 = l1 * l2;
+			l2 = 1;
+			m1 = m1 * m2;
+			m2 = 1;
+		end
                 fs3 = fs1*l1/m1;
-                cnv1 = src_param(fs1, fs3, coef_bits, qc);
-                cnv2 = src_param(fs3, fs2, coef_bits, qc);
+                cnv1 = src_param(fs1, fs3, coef_bits, cfg.quality);
+                cnv2 = src_param(fs3, fs2, coef_bits, cfg.quality);
                 if (fs2 < fs1)
                         % When decimating 1st stage passband can be limited
                         % for wider transition band
@@ -190,8 +173,8 @@ for b = 1:nfso
                         defs.blk_in = max(defs.blk_in, src2.blk_in);
                         defs.blk_out = max(defs.blk_out, src2.blk_out);
                         defs.stage_buf_size = max(defs.stage_buf_size, src1.blk_out*stage1_times);
-                        src_export_coef(src1, coef_label, coef_ctype, hdir, profile);
-                        src_export_coef(src2, coef_label, coef_ctype, hdir, profile);
+                        src_export_coef(src1, coef_label, coef_ctype, hdir, cfg.profile);
+                        src_export_coef(src2, coef_label, coef_ctype, hdir, cfg.profile);
                 end
         end
 end
@@ -199,8 +182,8 @@ end
 %% Export modes table
 defs.sum_filter_lengths = src_export_table_2s(fs_in, fs_out, l_2s, m_2s, ...
         pb_2s, sb_2s, taps_2s, coef_label, coef_ctype, ...
-        'sof/audio/coefficients/src/', hdir, profile);
-src_export_defines(defs, coef_label, hdir, profile);
+        'sof/audio/coefficients/src/', hdir, cfg.profile);
+src_export_defines(defs, coef_label, hdir, cfg.profile);
 
 %% Print 2 stage conversion factors
 fn = sprintf('%s/src_2stage.txt', rdir);

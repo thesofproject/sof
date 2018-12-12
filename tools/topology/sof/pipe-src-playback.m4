@@ -16,9 +16,9 @@ include(`pipeline.m4')
 # Components and Buffers
 #
 
-# Host "Passthrough Playback" PCM
+# Host "SRC Playback" PCM
 # with 3 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 3, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, SRC Playback, 3, 0, 2)
 
 #
 # SRC Configuration
@@ -46,7 +46,7 @@ W_BUFFER(1, COMP_BUFFER_SIZE(3,
 
 P_GRAPH(pipe-pass-src-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(N_PCMP(PCM_ID), Passthrough Playback PCM_ID)',
+	`dapm(N_PCMP(PCM_ID), SRC Playback PCM_ID)',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_SRC(0), N_BUFFER(0))',
 	`dapm(N_BUFFER(1), N_SRC(0))'))
@@ -55,11 +55,11 @@ P_GRAPH(pipe-pass-src-playback-PIPELINE_ID, PIPELINE_ID,
 # Pipeline Source and Sinks
 #
 indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(1))
-indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Passthrough Playback PCM_ID)
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), SRC Playback PCM_ID)
 
 #
 # PCM Configuration
 #
 
-PCM_CAPABILITIES(Passthrough Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 8000, 192000, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(SRC Playback PCM_ID, `S24_LE', 8000, 192000, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 

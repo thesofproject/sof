@@ -42,8 +42,8 @@ MACHINES = \
 	sof-apl-eq-dmic.tplg \
 	sof-apl-dmic-2ch.tplg \
 	sof-apl-dmic-4ch.tplg \
-	sof-icl-dmic-4ch.tplg
-
+	sof-icl-dmic-4ch.tplg \
+	sof-apl-src-pcm512x.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
@@ -86,4 +86,5 @@ EXTRA_DIST = \
 	sof-apl-eq-pcm512x.m4 \
 	sof-apl-eq-dmic.m4 \
 	sof-apl-dmic-4ch.m4 \
-	sof-apl-dmic-2ch.m4
+	sof-apl-dmic-2ch.m4 \
+	sof-apl-src-pcm512x.m4

@@ -10,15 +10,21 @@ FN_IN=$5
 FN_OUT=$6
 
 # The HOST_ROOT path need to be retrived from SOFT .configure command
-HOST_ROOT=../../../host-root
+HOST_ROOT=../../../../host-root
 HOST_EXE=$HOST_ROOT/bin/testbench
 HOST_LIB=$HOST_ROOT/lib
 
-# Topology
+# Use topology from component test topologies
 INFMT=s${BITS_IN}le
 OUTFMT=s${BITS_IN}le
 MCLK=24576k
-TPLG=../../topology/test/test-playback-ssp2-mclk-0-I2S-${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
+tplg1=../../test/topology/test-playback-ssp2-mclk-0-I2S-
+tplg2=${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
+TPLG=${tplg1}${tplg2}
+
+# Alternatively use platform specific topologies
+# though currently test fails with this.
+#TPLG=../../topology/sof-apl-src-pcm512x.tplg
 
 # If binary test vectors
 if [ ${FN_IN: -4} == ".raw" ]; then
@@ -29,7 +35,9 @@ fi
 
 # Run command
 CMD0=$HOST_EXE
-CMD1="-d -r $FS1 -R $FS2 -i $FN_IN -o $FN_OUT -t $TPLG -a src=libsof_${COMP}.so $CMDFMT"
+arg1="-d -r $FS1 -R $FS2 -i $FN_IN -o $FN_OUT -t $TPLG"
+arg2="-a src=libsof_${COMP}.so $CMDFMT"
+CMD1="$arg1 $arg2"
 CMD="$CMD0 $CMD1"
 export LD_LIBRARY_PATH=$HOST_LIB
 
