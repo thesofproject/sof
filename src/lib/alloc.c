@@ -40,19 +40,10 @@
 #include <stdint.h>
 
 /* debug to set memory value on every allocation */
-#define DEBUG_BLOCK_ALLOC		0
-#define DEBUG_BLOCK_ALLOC_VALUE		0x6b6b6b6b
+#define DEBUG_BLOCK_FREE 0
+#define DEBUG_BLOCK_FREE_VALUE 0xa5
+#define DEBUG_BLOCK_FREE_VALUE_32 0xa5a5a5a5
 
-/* debug to set memory value on every free TODO: not working atm */
-#define DEBUG_BLOCK_FREE		0
-#define DEBUG_BLOCK_FREE_VALUE		0x5a5a5a5a
-
-/* memory tracing support */
-#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
-#define trace_mem(__e)	trace_event(TRACE_CLASS_MEM, __e)
-#else
-#define trace_mem(__e)
-#endif
 
 #define trace_mem_error(__e, ...) \
 	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
@@ -73,6 +64,32 @@ extern struct mm memmap;
  *    module removal or calls to rfree(). Saved as part of PM context.
  */
 
+#if DEBUG_BLOCK_FREE
+/* Check whole memory region for debug pattern to find if memory was freed
+ * second time
+ */
+static void validate_memory(void *ptr, size_t size)
+{
+	uint32_t *ptr_32 = ptr;
+	int i, not_matching = 0;
+
+	for (i = 0; i < size/4; i++) {
+		if (ptr_32[i] != DEBUG_BLOCK_FREE_VALUE_32)
+			not_matching = 1;
+	}
+
+	if (not_matching) {
+		trace_mem_init("validate_memory() pointer:"
+			"%p freed pattern not detected",
+			(uintptr_t)ptr);
+	} else {
+		trace_mem_error(
+			"validate_memory() freeing pointer:"
+			"%p double free detected",
+			(uintptr_t)ptr);
+	}
+}
+#endif
 
 /* flush block map from cache to sram */
 static inline void flush_block_map(struct block_map *map)
@@ -102,16 +119,53 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	return size;
 }
 
-#if DEBUG_BLOCK_ALLOC || DEBUG_BLOCK_FREE
-static void alloc_memset_region(void *ptr, uint32_t bytes, uint32_t val)
+#if DEBUG_BLOCK_FREE
+static void write_pattern(struct mm_heap *heap_map, int heap_depth,
+						  uint8_t pattern)
 {
-	uint32_t count = bytes >> 2;
-	uint32_t *dest = ptr, i;
+	struct mm_heap *heap;
+	struct block_map *current_map;
+	int i, j;
 
-	for (i = 0; i < count; i++)
-		dest[i] = val;
+	for (i = 0; i < heap_depth; i++) {
+		heap = &heap_map[i];
+
+		for (j = 0; j < heap->blocks; j++) {
+			current_map = &heap->map[j];
+			memset(
+				(void *)current_map->base, pattern,
+				current_map->count * current_map->block_size);
+		}
+	}
 }
 #endif
+
+static void init_heap_map(struct mm_heap *heap, int count)
+{
+	struct block_map *next_map;
+	struct block_map *current_map;
+	int i;
+	int j;
+
+	for (i = 0; i < count; i++) {
+		/* init the map[0] */
+		current_map = &heap[i].map[0];
+		current_map->base = heap[i].heap;
+		flush_block_map(current_map);
+
+		/* map[j]'s base is calculated based on map[j-1] */
+		for (j = 1; j < heap[i].blocks; j++) {
+			next_map = &heap[i].map[j];
+			next_map->base = current_map->base +
+				current_map->block_size *
+				current_map->count;
+			current_map = &heap[i].map[j];
+			flush_block_map(current_map);
+		}
+
+		dcache_writeback_invalidate_region(&heap[i], sizeof(heap[i]));
+	}
+}
 
 /* allocate from system memory pool */
 static void *rmalloc_sys(int zone, int core, size_t bytes)
@@ -148,10 +202,6 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 		dcache_writeback_invalidate_region(cpu_heap,
 						   sizeof(*cpu_heap));
 
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
-#endif
-
 	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
 		ptr = cache_to_uncache(ptr);
 
@@ -184,10 +234,6 @@ static void *alloc_block(struct mm_heap *heap, int level,
 			break;
 		}
 	}
-
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, map->block_size, DEBUG_BLOCK_ALLOC_VALUE);
-#endif
 
 	return ptr;
 }
@@ -261,10 +307,6 @@ found:
 			}
 		}
 	}
-
-#if DEBUG_BLOCK_ALLOC
-	alloc_memset_region(ptr, bytes, DEBUG_BLOCK_ALLOC_VALUE);
-#endif
 
 	return ptr;
 }
@@ -404,9 +446,14 @@ found:
 		block_map->first_free = block;
 
 #if DEBUG_BLOCK_FREE
-	/* memset the whole block incase some not aligned ptr*/
-	alloc_memset_region((void *)(block_map->base + block_map->block_size * block),
-			    block_map->block_size * (i - block), DEBUG_BLOCK_FREE_VALUE);
+	/* memset the whole block incase some not aligned ptr */
+	validate_memory(
+		(void *)(block_map->base + block_map->block_size * block),
+		block_map->block_size * (i - block));
+	memset(
+		(void *)(block_map->base + block_map->block_size * block),
+		DEBUG_BLOCK_FREE_VALUE, block_map->block_size *
+		(i - block));
 #endif
 }
 
@@ -544,7 +591,9 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 		trace_mem_error("rmalloc() error: invalid zone");
 		break;
 	}
-
+#if DEBUG_BLOCK_FREE
+	bzero(ptr, bytes);
+#endif
 	spin_unlock_irq(&memmap.lock, flags);
 	memmap.heap_trace_updated = 1;
 	return ptr;
@@ -634,6 +683,10 @@ void *_balloc(int zone, uint32_t caps, size_t bytes)
 out:
 	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED))
 		ptr = cache_to_uncache(ptr);
+
+#if DEBUG_BLOCK_FREE
+	bzero(ptr, bytes);
+#endif
 
 	spin_unlock_irq(&memmap.lock, flags);
 	return ptr;
@@ -756,33 +809,6 @@ void heap_trace_all(int force)
 	memmap.heap_trace_updated = 0;
 }
 
-static void init_heap_map(struct mm_heap *heap, int count)
-{
-	struct block_map *next_map;
-	struct block_map *current_map;
-	int i;
-	int j;
-
-	for (i = 0; i < count; i++) {
-		/* init the map[0] */
-		current_map = &heap[i].map[0];
-		current_map->base = heap[i].heap;
-		flush_block_map(current_map);
-
-		/* map[j]'s base is calculated based on map[j-1] */
-		for (j = 1; j < heap[i].blocks; j++) {
-			next_map = &heap[i].map[j];
-			next_map->base = current_map->base +
-				current_map->block_size *
-				current_map->count;
-			current_map = &heap[i].map[j];
-			flush_block_map(current_map);
-		}
-
-		dcache_writeback_invalidate_region(&heap[i], sizeof(heap[i]));
-	}
-}
-
 /* initialise map */
 void init_heap(struct sof *sof)
 {
@@ -797,4 +823,11 @@ void init_heap(struct sof *sof)
 	init_heap_map(memmap.runtime, PLATFORM_HEAP_RUNTIME);
 
 	init_heap_map(memmap.buffer, PLATFORM_HEAP_BUFFER);
+
+#if DEBUG_BLOCK_FREE
+	write_pattern((struct mm_heap *)&memmap.buffer, PLATFORM_HEAP_BUFFER,
+				  DEBUG_BLOCK_FREE_VALUE);
+	write_pattern((struct mm_heap *)&memmap.runtime, PLATFORM_HEAP_RUNTIME,
+				  DEBUG_BLOCK_FREE_VALUE);
+#endif
 }
