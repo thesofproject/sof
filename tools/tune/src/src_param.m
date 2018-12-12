@@ -57,7 +57,7 @@ cnv.coef_bits = coef_bits;
 cnv.design = 'kaiser'; % Use firpm or kaiser
 
 %% Default SRC quality
-cnv.c_pb = q * 22/48; % Gives 22 kHz BW @ 48 kHz
+cnv.c_pb = q * 20/44.1; % Gives 20 kHz BW @ 44.1 kHz
 cnv.c_sb = 0.5; % Start stopband at Fs/2
 cnv.rs = 70; % Stopband attenuation in dB
 cnv.rp = 0.1; % Passband ripple in dB
@@ -69,14 +69,14 @@ cnv.filter_length_mult = 4;
 
 %% Exceptions for quality
 if min(fs1, fs2) > 80e3
-	cnv.c_pb = 30e3/min(fs1, fs2); % 30 kHz BW for > 80 kHz
+	cnv.c_pb = 24e3/min(fs1, fs2); % 24 kHz BW for > 80 kHz
 end
 
 %% Sanity checks
 if cnv.c_pb > 0.49
 	error('Too wide passband');
 end
-if cnv.c_pb < 0.15
+if cnv.c_pb < 0.10
 	error('Too narrow passband');
 end
 if cnv.rs > 160

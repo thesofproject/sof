@@ -58,11 +58,11 @@ if nargin < 2
 	bits_out = 32;
 end
 if nargin < 3
-        fs_in_list = [8e3 11025 12e3 16e3 18900 22050 24e3 32e3 44100 48e3 ...
-			  64e3 88.2e3 96e3 176400 192e3];
+        fs_in_list = [8 11.025 12 16 22.050 24 32 44.1 48 ...
+			50 64 88.2 96 176.4 192] * 1e3;
 end
 if nargin < 4
-	fs_out_list = [8e3 11025 12e3 16e3 18900 22050 24e3 32e3 44100 48e3];
+	fs_out_list = [8 11.025 12 16 22.05 24 32 44.1 48 50] * 1e3;
 end
 
 %% Generic test pass/fail criteria

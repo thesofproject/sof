@@ -118,7 +118,7 @@ function print_int_coef(src, fh, vtype, vfn, nbits)
                 fprintf(fh, ',\n');
                 fprintf(fh,'\t%d', cint(n));
         end
-        fprintf(fh,'\n\n};');
+        fprintf(fh,'\n\n};\n');
 end
 
 function cint = coef_quant(src, nbits)
