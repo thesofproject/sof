@@ -93,7 +93,7 @@ struct sof_ipc_fw_ready {
 	uint32_t gdb_enabled;
 
 	/* reserved for future use */
-	uint32_t reserved[4];
+	uint32_t reserved[3];
 } __attribute__((packed));
 
 /*
