@@ -281,6 +281,7 @@ static int load_fileread(struct sof *sof, int comp_id, int pipeline_id,
 	fileread.comp.hdr.size = sizeof(struct sof_ipc_comp_file);
 	fileread.comp.type = SOF_COMP_FILEREAD;
 	fileread.comp.pipeline_id = pipeline_id;
+	fileread.config.hdr.size = sizeof(struct sof_ipc_comp_config);
 
 	/* create fileread component */
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&fileread) < 0) {
@@ -338,6 +339,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 	filewrite.comp.hdr.size = sizeof(struct sof_ipc_comp_file);
 	filewrite.comp.type = SOF_COMP_FILEREAD;
 	filewrite.comp.pipeline_id = pipeline_id;
+	filewrite.config.hdr.size = sizeof(struct sof_ipc_comp_config);
 
 	/* create filewrite component */
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&filewrite) < 0) {
@@ -390,6 +392,7 @@ static int load_pga(struct sof *sof, int comp_id, int pipeline_id,
 	volume.comp.hdr.size = sizeof(struct sof_ipc_comp_volume);
 	volume.comp.type = SOF_COMP_VOLUME;
 	volume.comp.pipeline_id = pipeline_id;
+	volume.config.hdr.size = sizeof(struct sof_ipc_comp_config);
 
 	/* load volume component */
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&volume) < 0) {
@@ -635,6 +638,7 @@ static int load_src(struct sof *sof, int comp_id, int pipeline_id,
 	src.comp.hdr.size = sizeof(struct sof_ipc_comp_src);
 	src.comp.type = SOF_COMP_SRC;
 	src.comp.pipeline_id = pipeline_id;
+	src.config.hdr.size = sizeof(struct sof_ipc_comp_config);
 
 	/* load src component */
 	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&src) < 0) {
