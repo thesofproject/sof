@@ -846,7 +846,7 @@ static int ipc_glb_tplg_comp_new(uint32_t header)
 		  comp.id, comp.type);
 
 	/* register component */
-	ret = ipc_comp_new(_ipc, &comp);
+	ret = ipc_comp_new(_ipc, (struct sof_ipc_comp *)_ipc->comp_data);
 	if (ret < 0) {
 		trace_ipc_error("ipc: pipe %d comp %d creation failed %d",
 				comp.pipeline_id, comp.id, ret);
