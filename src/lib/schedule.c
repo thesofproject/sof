@@ -205,7 +205,7 @@ static struct task *schedule_edf(void)
 
 			/* init task for running */
 			spin_lock_irq(&sch->lock, flags);
-			task->state = TASK_STATE_RUNNING;
+			task->state = TASK_STATE_PENDING;
 			list_item_del(&task->list);
 			spin_unlock_irq(&sch->lock, flags);
 
@@ -258,16 +258,16 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 
 	spin_lock_irq(&sch->lock, flags);
 
-	/* is task already running ? - not enough MIPS to complete ? */
-	if (task->state == TASK_STATE_RUNNING) {
-		trace_pipe("tsk");
+	/* is task already pending ? - not enough MIPS to complete ? */
+	if (task->state == TASK_STATE_PENDING) {
+		trace_pipe("_schedule_task(), task already pending");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
 
-	/* is task already running ? - not enough MIPS to complete ? */
+	/* is task already queued ? - not enough MIPS to complete ? */
 	if (task->state == TASK_STATE_QUEUED) {
-		trace_pipe("tsq");
+		trace_pipe("_schedule_task(), task already queued");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
@@ -342,6 +342,19 @@ void schedule_task_complete(struct task *task)
 
 	/* tell any waiter that task has completed */
 	wait_completed(&task->complete);
+}
+
+/* Update task state to running */
+void schedule_task_running(struct task *task)
+{
+	struct schedule_data *sch = *arch_schedule_get();
+	uint32_t flags;
+
+	tracev_pipe("schedule_task_running()");
+
+	spin_lock_irq(&sch->lock, flags);
+	task->state = TASK_STATE_RUNNING;
+	spin_unlock_irq(&sch->lock, flags);
 }
 
 static void scheduler_run(void *unused)
