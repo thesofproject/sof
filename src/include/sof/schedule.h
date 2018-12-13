@@ -46,11 +46,12 @@ struct sof;
 /* task states */
 #define TASK_STATE_INIT		0	
 #define TASK_STATE_QUEUED	1
-#define TASK_STATE_RUNNING	2
-#define TASK_STATE_PREEMPTED	3
-#define TASK_STATE_COMPLETED	4
-#define TASK_STATE_FREE		5
-#define TASK_STATE_CANCEL	6
+#define TASK_STATE_PENDING	2
+#define TASK_STATE_RUNNING	3
+#define TASK_STATE_PREEMPTED	4
+#define TASK_STATE_COMPLETED	5
+#define TASK_STATE_FREE		6
+#define TASK_STATE_CANCEL	7
 
 /* task priorities - values same as Linux processes, gives scope for future.*/
 #define TASK_PRI_LOW	19
@@ -93,6 +94,8 @@ void schedule_task_idle(struct task *task, uint64_t deadline);
 int schedule_task_cancel(struct task *task);
 
 void schedule_task_complete(struct task *task);
+
+void schedule_task_running(struct task *task);
 
 static inline void schedule_task_init(struct task *task, void (*func)(void *),
 	void *data)

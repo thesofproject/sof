@@ -149,6 +149,7 @@ static void _irq_task(void *arg)
 	struct list_item *clist;
 	struct task *task;
 	uint32_t flags;
+	int run_task = 0;
 
 	spin_lock_irq(&irq_task->lock, flags);
 
@@ -159,13 +160,21 @@ static void _irq_task(void *arg)
 		task = container_of(clist, struct task, irq_list);
 		list_item_del(clist);
 
+		if (task->func && task->state == TASK_STATE_PENDING) {
+			schedule_task_running(task);
+			run_task = 1;
+		} else {
+			run_task = 0;
+		}
+
+		/* run task without holding task lock */
 		spin_unlock_irq(&irq_task->lock, flags);
 
-		if (task->func && task->state == TASK_STATE_RUNNING)
+		if (run_task)
 			task->func(task->data);
 
-		schedule_task_complete(task);
 		spin_lock_irq(&irq_task->lock, flags);
+		schedule_task_complete(task);
 	}
 
 	spin_unlock_irq(&irq_task->lock, flags);
