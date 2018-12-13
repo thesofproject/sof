@@ -1151,7 +1151,7 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 		msg = msg_get_empty(ipc);
 
 	if (msg == NULL) {
-		trace_ipc_error("ipc: msg hdr for 0x08x not found "
+		trace_ipc_error("ipc: msg hdr for 0x%08x not found "
 				"replace %d", header, replace);
 		ret = -EBUSY;
 		goto out;
