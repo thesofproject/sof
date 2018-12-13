@@ -393,5 +393,8 @@ int platform_init(struct sof *sof)
 	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(sof->dmat);
 
+	/* show heap status */
+	heap_trace_all(1);
+
 	return 0;
 }

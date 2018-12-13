@@ -89,6 +89,12 @@ if test "$enable_gdb_debug" = "yes"; then
 	AC_DEFINE([CONFIG_GDB_DEBUG], [1], [Enable debugging with GDB])
 fi
 
+# check if we should enable heap alloc debugging
+AC_ARG_ENABLE(heap_debug, [AS_HELP_STRING([--enable-heap-debug],[heap debug supported])], enable_heap_debug=$enableval, enable_heap_debug=no)
+if test "$enable_heap_debug" = "yes"; then
+	AC_DEFINE([CONFIG_DEBUG_HEAP], [1], [Enable debugging of heap allocations])
+fi
+
 # check if we are building FW image or library
 AC_ARG_ENABLE(library, [AS_HELP_STRING([--enable-library],[build library])], have_library=$enableval, have_library=no)
 if test "$have_library" = "yes"; then
