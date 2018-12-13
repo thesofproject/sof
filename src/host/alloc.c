@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <malloc.h>
 #include <sof/alloc.h>
 #include "host/common_test.h"
 
@@ -57,4 +58,14 @@ void rfree(void *ptr)
 void *rballoc(int zone, uint32_t caps, size_t bytes)
 {
 	return malloc(bytes);
+}
+
+void heap_trace(struct mm_heap *heap, int size)
+{
+	malloc_info(0, stdout);
+}
+
+void heap_trace_all(int force)
+{
+	heap_trace(NULL, 0);
 }

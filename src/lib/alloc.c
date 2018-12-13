@@ -54,7 +54,10 @@
 #define trace_mem(__e)
 #endif
 
-#define trace_mem_error(__e, ...)	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
+#define trace_mem_error(__e, ...) \
+	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
+#define trace_mem_init(__e, ...) \
+	trace_event(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
 
 extern struct mm memmap;
 
@@ -225,7 +228,8 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 	/* not found */
-	trace_mem_error("alloc_cont_blocks() error: not found");
+	trace_mem_error("error: cant find %d cont blocks %d remaining",
+			count, remaining);
 	return NULL;
 
 found:
@@ -406,6 +410,75 @@ found:
 #endif
 }
 
+#if defined CONFIG_DEBUG_HEAP
+
+static void trace_heap_blocks(struct mm_heap *heap)
+{
+	struct block_map *block_map;
+	int i;
+
+	trace_mem_error("heap: 0x%x size %d blocks %d caps 0x%x", heap->heap,
+			heap->size, heap->blocks, heap->caps);
+	trace_mem_error(" used %d free %d", heap->info.used,
+			heap->info.free);
+
+	for (i = 0; i < heap->blocks; i++) {
+		block_map = &heap->map[i];
+
+		trace_mem_error(" block %d base 0x%x size %d count %d", i,
+				block_map->base, block_map->block_size,
+				block_map->count);
+		trace_mem_error("  free %d first at %d",
+				block_map->free_count, block_map->first_free);
+	}
+}
+
+void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes)
+{
+	struct mm_heap *heap;
+	struct mm_heap *current = NULL;
+	int count = 0;
+
+	/* check runtime heap for capabilities */
+	trace_mem_error("heap: using runtime");
+	do {
+		heap = get_runtime_heap_from_caps(caps, current);
+		if (heap) {
+			trace_heap_blocks(heap);
+			count++;
+		}
+		current = heap;
+	} while (heap);
+
+	if (count == 0)
+		trace_mem_error("heap: none found for zone %d caps 0x%x, bytes 0x%x",
+				zone, caps, bytes);
+}
+
+void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
+{
+	struct mm_heap *heap;
+	struct mm_heap *current = NULL;
+	int count = 0;
+
+	/* check buffer heap for capabilities */
+	trace_mem_error("heap: using buffer");
+	do {
+		heap = get_buffer_heap_from_caps(caps, current);
+		if (heap) {
+			trace_heap_blocks(heap);
+			count++;
+		}
+		current = heap;
+	} while (heap);
+
+	if (count == 0)
+		trace_mem_error("heap: none found for zone %d caps 0x%x, bytes 0x%x",
+				zone, caps, bytes);
+}
+
+#endif
+
 /* allocate single block for system runtime */
 static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
 {
@@ -449,7 +522,8 @@ static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 	return get_ptr_from_heap(heap, zone, caps, bytes);
 }
 
-void *rmalloc(int zone, uint32_t caps, size_t bytes)
+/* allocates memory - not for direct use, clients use rmalloc() */
+void *_malloc(int zone, uint32_t caps, size_t bytes)
 {
 	uint32_t flags;
 	void *ptr = NULL;
@@ -472,14 +546,16 @@ void *rmalloc(int zone, uint32_t caps, size_t bytes)
 	}
 
 	spin_unlock_irq(&memmap.lock, flags);
+	memmap.heap_trace_updated = 1;
 	return ptr;
 }
 
-void *rzalloc(int zone, uint32_t caps, size_t bytes)
+/* allocates and clears memory - not for direct use, clients use rzalloc() */
+void *_zalloc(int zone, uint32_t caps, size_t bytes)
 {
 	void *ptr = NULL;
 
-	ptr = rmalloc(zone, caps, bytes);
+	ptr = _malloc(zone, caps, bytes);
 	if (ptr != NULL) {
 		bzero(ptr, bytes);
 	}
@@ -503,8 +579,8 @@ void *rzalloc_core_sys(int core, size_t bytes)
 	return ptr;
 }
 
-/* allocates continuous buffers */
-void *rballoc(int zone, uint32_t caps, size_t bytes)
+/* allocates continuous buffers - not for direct use, clients use rballoc() */
+void *_balloc(int zone, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
 	struct block_map *map;
@@ -592,6 +668,7 @@ void rfree(void *ptr)
 	spin_lock_irq(&memmap.lock, flags);
 	free_block(ptr);
 	spin_unlock_irq(&memmap.lock, flags);
+	memmap.heap_trace_updated = 1;
 }
 
 /* TODO: all mm_pm_...() routines to be implemented for IMR storage */
@@ -637,6 +714,46 @@ void free_heap(int zone)
 	cpu_heap->info.free = cpu_heap->size;
 
 	dcache_writeback_region(cpu_heap, sizeof(*cpu_heap));
+}
+
+void heap_trace(struct mm_heap *heap, int size)
+{
+	struct block_map *current_map;
+	int i;
+	int j;
+
+	for (i = 0; i < size; i++) {
+
+		trace_mem_init(" heap: 0x%x size %d blocks %d caps 0x%x",
+			       heap->heap, heap->size, heap->blocks,
+			       heap->caps);
+		trace_mem_init("  used %d free %d", heap->info.used,
+			       heap->info.free);
+
+		/* map[j]'s base is calculated based on map[j-1] */
+		for (j = 1; j < heap->blocks; j++) {
+			current_map = &heap->map[j];
+
+			trace_mem_init("  block %d base 0x%x size %d count %d",
+				       j, current_map->base,
+				       current_map->block_size,
+				       current_map->count);
+		}
+
+		heap++;
+	}
+}
+
+void heap_trace_all(int force)
+{
+	/* has heap changed since last shown */
+	if (memmap.heap_trace_updated || force) {
+		trace_mem_init("heap: buffer status");
+		heap_trace(memmap.buffer, PLATFORM_HEAP_BUFFER);
+		trace_mem_init("heap: runtime status");
+		heap_trace(memmap.runtime, PLATFORM_HEAP_RUNTIME);
+	}
+	memmap.heap_trace_updated = 0;
 }
 
 static void init_heap_map(struct mm_heap *heap, int count)

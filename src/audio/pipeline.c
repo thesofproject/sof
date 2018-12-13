@@ -282,6 +282,9 @@ int pipeline_free(struct pipeline *p)
 	/* now free the pipeline */
 	rfree(p);
 
+	/* show heap status */
+	heap_trace_all(0);
+
 	return 0;
 }
 
@@ -303,6 +306,10 @@ int pipeline_complete(struct pipeline *p)
 	connect_downstream(p, p->sched_comp, p->sched_comp);
 	connect_upstream(p, p->sched_comp, p->sched_comp);
 	p->status = COMP_STATE_READY;
+
+	/* show heap status */
+	heap_trace_all(0);
+
 	return 0;
 }
 

@@ -118,16 +118,67 @@ struct mm {
 	struct mm_heap buffer[PLATFORM_HEAP_BUFFER];
 
 	struct mm_info total;
+	uint32_t heap_trace_updated;	/* updates that can be presented */
 	spinlock_t lock;	/* all allocs and frees are atomic */
 } __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
 
 /* heap allocation and free */
-void *rmalloc(int zone, uint32_t caps, size_t bytes);
-void *rzalloc(int zone, uint32_t caps, size_t bytes);
+void *_malloc(int zone, uint32_t caps, size_t bytes);
+void *_zalloc(int zone, uint32_t caps, size_t bytes);
+void *_balloc(int zone, uint32_t caps, size_t bytes);
 void rfree(void *ptr);
 
-/* heap allocation and free for buffers on 1k boundary */
-void *rballoc(int zone, uint32_t flags, size_t bytes);
+#if defined CONFIG_DEBUG_HEAP
+
+#define rmalloc(zone, caps, bytes)			\
+	({void *_ptr;					\
+	do {						\
+		_ptr = _malloc(zone, caps, bytes);	\
+		if (!_ptr) {				\
+			trace_error(TRACE_CLASS_MEM,	\
+				   "failed to alloc 0x%x bytes caps 0x%x", \
+				   bytes, caps);	\
+			alloc_trace_runtime_heap(zone, caps, bytes);	\
+		}					\
+	} while (0);					\
+	_ptr; })
+
+#define rzalloc(zone, caps, bytes)			\
+	({void *_ptr;					\
+	do {						\
+		_ptr = _zalloc(zone, caps, bytes);	\
+		if (!_ptr) {				\
+			trace_error(TRACE_CLASS_MEM,	\
+				   "failed to alloc 0x%x bytes caps 0x%x", \
+				   bytes, caps);	\
+			alloc_trace_runtime_heap(zone, caps, bytes);	\
+		}					\
+	} while (0);					\
+	_ptr; })
+
+#define rballoc(zone, caps, bytes)			\
+	({void *_ptr;					\
+	do {						\
+		_ptr = _balloc(zone, caps, bytes);	\
+		if (!_ptr) {				\
+			trace_error(TRACE_CLASS_MEM,	\
+				   "failed to alloc 0x%x bytes caps 0x%x", \
+				   bytes, caps);	\
+			alloc_trace_buffer_heap(zone, caps, bytes);	\
+		}					\
+	} while (0);					\
+	_ptr; })
+
+void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes);
+void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes);
+
+#else
+
+#define rmalloc(zone, caps, bytes)	_malloc(zone, caps, bytes)
+#define rzalloc(zone, caps, bytes)	_zalloc(zone, caps, bytes)
+#define rballoc(zone, caps, bytes)	_balloc(zone, caps, bytes)
+
+#endif
 
 /* system heap allocation for specific core */
 void *rzalloc_core_sys(int core, size_t bytes);
@@ -148,5 +199,9 @@ void init_heap(struct sof *sof);
 
 /* frees entire heap (supported for slave core system heap atm) */
 void free_heap(int zone);
+
+/* status */
+void heap_trace_all(int force);
+void heap_trace(struct mm_heap *heap, int size);
 
 #endif
