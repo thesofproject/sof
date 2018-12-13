@@ -335,7 +335,7 @@ static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
 		break;
 	}
 
-	if ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
+	if (ptr && (zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED)
 		ptr = cache_to_uncache(ptr);
 
 	return ptr;
