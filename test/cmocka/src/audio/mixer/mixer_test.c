@@ -107,10 +107,6 @@ static struct mix_test_case mix_test_cases[] = {
 	TEST_CASE(8, 2)
 };
 
-static struct sof_ipc_comp mixer = {
-	.type = SOF_COMP_MIXER
-};
-
 static struct sof_ipc_comp mock_comp = {
 	.type = SOF_COMP_MOCK
 };
@@ -193,7 +189,19 @@ static int test_group_setup(void **state)
 
 static int test_setup(void **state)
 {
-	mixer_dev_mock = create_comp(&mixer, &mixer_drv_mock);
+	static struct sof_ipc_comp_mixer mixer = {
+		.comp = {
+			.type = SOF_COMP_MIXER,
+		},
+		.config = {
+			.hdr = {
+				.size = sizeof(struct sof_ipc_comp_config)
+			}
+		}
+	};
+
+	mixer_dev_mock = create_comp((struct sof_ipc_comp *)&mixer,
+				     &mixer_drv_mock);
 
 	struct mix_test_case *tc = *((struct mix_test_case **)state);
 
