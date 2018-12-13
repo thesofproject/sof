@@ -79,11 +79,6 @@ static const struct sof_ipc_fw_ready ready
 		.abi_version = SOF_ABI_VERSION,
 	},
 	.debug = DEBUG_SET_FW_READY_FLAGS,
-
-#ifdef CONFIG_GDB_DEBUG
-	.gdb_enabled = CONFIG_GDB_DEBUG
-#endif
-
 };
 
 #if defined(CONFIG_MEM_WND)

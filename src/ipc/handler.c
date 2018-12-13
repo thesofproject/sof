@@ -743,7 +743,8 @@ static int ipc_glb_gdb_debug(uint32_t header)
 	(void) header;
 
 #ifdef CONFIG_GDB_DEBUG
-	/* trigger debug exception */
+	/* TODO: this asm should be in arch/include/debug.h with a generic */
+	/* name and trigger debug exception */
 	asm volatile("_break 0, 0");
 	return 0;
 #else

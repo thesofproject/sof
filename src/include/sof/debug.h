@@ -42,6 +42,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#if defined CONFIG_GDB_DEBUG
+#define DEBUG_GDB	1
+#else
+#define DEBUG_GDB	0
+#endif
+
 #ifdef DEBUG_BUILD
 
 #define DEBUG_SET_FW_READY_FLAGS	\
@@ -50,6 +56,7 @@
 		.build = 1,		\
 		.locks = DEBUG_LOCKS,	\
 		.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+		.gdb = DEBUG_GDB,	\
 	},				\
 }
 
@@ -133,6 +140,7 @@
 		.build = 0,		\
 		.locks = DEBUG_LOCKS,	\
 		.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
+		.gdb = DEBUG_GDB,	\
 	},				\
 }
 
