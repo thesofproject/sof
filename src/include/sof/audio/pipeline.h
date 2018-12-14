@@ -129,9 +129,6 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd);
 /* trigger pipeline - atomic */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host_cd, int cmd);
 
-/* initialise pipeline subsys */
-int pipeline_init(void);
-
 /* static pipeline creation */
 int init_static_pipeline(struct ipc *ipc);
 
