@@ -790,9 +790,6 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	struct sof_ipc_ctrl_data data;
 	int ret;
 
-	/* copy message with ABI safe method */
-	IPC_COPY_CMD(data, _ipc->comp_data);
-
 	trace_ipc("ipc: comp %d -> cmd %d", data.comp_id, data.cmd);
 
 	/* get the component */
@@ -809,6 +806,9 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 				data.cmd, ret);
 		return ret;
 	}
+	
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(data, _ipc->comp_data);
 
 	/* write component values to the outbox */
 	mailbox_hostbox_write(0, &data, data.rhdr.hdr.size);
