@@ -496,7 +496,7 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* configure DAI */
-	ret = dai_set_config(dai, &config);
+	ret = dai_set_config(dai, _ipc->comp_data);
 	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
 		trace_ipc_error("ipc: dai %d,%d config failed %d",
@@ -505,7 +505,7 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* now send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(_ipc, &config);
+	return ipc_comp_dai_config(_ipc, _ipc->comp_data);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -790,25 +790,25 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	struct sof_ipc_ctrl_data data;
 	int ret;
 
-	/* copy message with ABI safe method */
-	IPC_COPY_CMD(data, _ipc->comp_data);
-
-	trace_ipc("ipc: comp %d -> cmd %d", data.comp_id, data.cmd);
+	trace_ipc("ipc: comp %d -> cmd %d", ((struct sof_ipc_ctrl_data *)_ipc->comp_data)->comp_id, ((struct sof_ipc_ctrl_data *)_ipc->comp_data)->cmd);
 
 	/* get the component */
-	comp_dev = ipc_get_comp(_ipc, data.comp_id);
+	comp_dev = ipc_get_comp(_ipc, ((struct sof_ipc_ctrl_data *)_ipc->comp_data)->comp_id);
 	if (comp_dev == NULL){
-		trace_ipc_error("ipc: comp %d not found", data.comp_id);
+		trace_ipc_error("ipc: comp %d not found", ((struct sof_ipc_ctrl_data *)_ipc->comp_data)->comp_id);
 		return -ENODEV;
 	}
 	
 	/* get component values */
-	ret = ipc_comp_cmd(comp_dev->cd, cmd, &data);
+	ret = ipc_comp_cmd(comp_dev->cd, cmd, _ipc->comp_data);
 	if (ret < 0) {
-		trace_ipc_error("ipc: comp %d cmd %u failed %d", data.comp_id,
-				data.cmd, ret);
+		trace_ipc_error("ipc: comp %d cmd %u failed %d", ((struct sof_ipc_ctrl_data *)_ipc->comp_data)->comp_id,
+				((struct sof_ipc_ctrl_data *)_ipc->comp_data)->cmd, ret);
 		return ret;
 	}
+	
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(data, _ipc->comp_data);
 
 	/* write component values to the outbox */
 	mailbox_hostbox_write(0, &data, data.rhdr.hdr.size);
