@@ -361,11 +361,8 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
 			.dest = DMA_RELOAD_LLI,
 			.size = DMA_RELOAD_LLI
 	};
-	uint32_t flags;
 
 	if (chan->cb) {
-		spin_lock_irq(&dma->lock, flags);
-
 		next.src = DMA_RELOAD_LLI;
 		next.dest = DMA_RELOAD_LLI;
 		next.size = DMA_RELOAD_LLI;
@@ -375,8 +372,6 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
 			/* disable channel, finished */
 			hda_dma_stop(dma, chan->index);
 		}
-
-		spin_unlock_irq(&dma->lock, flags);
 	}
 
 	/* Force Host DMA to exit L1 */
@@ -440,18 +435,16 @@ static int hda_dma_host_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	return 0;
 }
 
-static void hda_dma_enable(struct dma *dma, int channel)
+/* lock should be held by caller */
+static void hda_dma_enable_unlock(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t flags;
 
 	if (channel >= HDA_DMA_MAX_CHANS) {
 		trace_hddma_error("hda-dmac: %d invalid channel %d",
 				  dma->plat_data.id, channel);
 		return;
 	}
-
-	spin_lock_irq(&dma->lock, flags);
 
 	trace_hddma("hda-dmac: %d channel %d -> enable", dma->plat_data.id,
 		    channel);
@@ -475,10 +468,19 @@ static void hda_dma_enable(struct dma *dma, int channel)
 
 	p->chan[channel].state &= ~(HDA_STATE_INIT | HDA_STATE_RELEASE);
 
-	spin_unlock_irq(&dma->lock, flags);
-
 	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_POST, HDA_DBG_BOTH);
 	hda_dma_ptr_trace(&p->chan[channel], "enable", HDA_DBG_BOTH);
+}
+
+static void hda_dma_enable(struct dma *dma, int channel)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
+
+	hda_dma_enable_unlock(dma, channel);
+
+	spin_unlock_irq(&dma->lock, flags);
 }
 
 static uint64_t hda_dma_link_work(void *data, uint64_t delay)
@@ -648,12 +650,11 @@ static int hda_dma_start(struct dma *dma, int channel)
 	 * In cyclic mode DMA start is scheduled for later,
 	 * to make sure we stay synchronized with the system work queue.
 	 */
-	if (p->chan[channel].dma_ch_work.cb) {
+	if (p->chan[channel].dma_ch_work.cb)
 		work_schedule_default(&p->chan[channel].dma_ch_work,
 				      HDA_LINK_1MS_US);
-	} else {
-		hda_dma_enable(dma, channel);
-	}
+	else
+		hda_dma_enable_unlock(dma, channel);
 
 out:
 	spin_unlock_irq(&dma->lock, flags);
