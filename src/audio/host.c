@@ -678,14 +678,14 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run)
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (hd->dma_buffer->free < local_elem->size) {
 			/* buffer is enough avail, just return. */
-			trace_host("host_copy_int(), buffer is enough avail");
+			tracev_host("host_copy_int(), buffer is enough avail");
 			return 0;
 		}
 	} else {
 
 		if (hd->dma_buffer->avail < local_elem->size) {
 			/* buffer is enough empty, just return. */
-			trace_host("host_copy_int(), buffer is enough empty");
+			tracev_host("host_copy_int(), buffer is enough empty");
 			return 0;
 		}
 	}
