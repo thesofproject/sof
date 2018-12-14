@@ -108,8 +108,16 @@ void buffer_free(struct comp_buffer *buffer)
 void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 {
 	uint32_t flags;
+	uint32_t head = bytes;
+	uint32_t tail = 0;
 
 	spin_lock_irq(&buffer->lock, flags);
+
+	/* calculate head and tail size for dcache circular wrap ops */
+	if (buffer->w_ptr + bytes > buffer->end_addr) {
+		head = buffer->end_addr - buffer->w_ptr;
+		tail = bytes - head;
+	}
 
 	/*
 	 * new data produce, handle consistency for buffer and cache:
@@ -119,13 +127,19 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	 * 4. source(non-DMA) --> buffer --> sink(non-DMA): do nothing.
 	 */
 	if (buffer->source->is_dma_connected &&
-	    !buffer->sink->is_dma_connected)
+	    !buffer->sink->is_dma_connected) {
 		/* need invalidate cache for sink component to use */
-		dcache_invalidate_region(buffer->w_ptr, bytes);
+		dcache_invalidate_region(buffer->w_ptr, head);
+		if (tail)
+			dcache_invalidate_region(buffer->addr, tail);
+	}
 	else if (!buffer->source->is_dma_connected &&
-		 buffer->sink->is_dma_connected)
+		 buffer->sink->is_dma_connected) {
 		/* need write back to memory for sink component to use */
-		dcache_writeback_region(buffer->w_ptr, bytes);
+		dcache_writeback_region(buffer->w_ptr, head);
+		if (tail)
+			dcache_writeback_region(buffer->addr, tail);
+	}
 
 	buffer->w_ptr += bytes;
 
