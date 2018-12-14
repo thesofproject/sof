@@ -327,7 +327,6 @@ static int mixer_prepare(struct comp_dev *dev)
 
 		/* currently inactive so setup mixer */
 		md->mix_func = mix_n;
-		dev->state = COMP_STATE_PREPARE;
 
 		ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 		if (ret < 0)
