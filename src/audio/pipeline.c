@@ -48,10 +48,6 @@
 #include <sof/idc.h>
 #include <platform/idc.h>
 
-struct pipeline_data {
-	spinlock_t lock;
-};
-
 /* generic operation data used by op graph walk */
 struct op_data {
 	int op;
@@ -61,7 +57,6 @@ struct op_data {
 	void *cmd_data;
 };
 
-static struct pipeline_data *pipe_data;
 static void pipeline_task(void *arg);
 
 /* call op on all upstream components - locks held by caller */
@@ -1316,21 +1311,4 @@ static void pipeline_task(void *arg)
 
 sched:
 	tracev_pipe("pipeline_task() sched");
-}
-
-/* init pipeline */
-int pipeline_init(void)
-{
-	trace_pipe("pipeline_init()");
-
-	pipe_data = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		sizeof(*pipe_data));
-	spinlock_init(&pipe_data->lock);
-
-	if (!pipe_data) {
-		trace_pipe_error("failed to init pipeline");
-		return -ENOMEM;
-	}
-
-	return 0;
 }
