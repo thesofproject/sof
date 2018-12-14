@@ -107,7 +107,7 @@ struct dai_config;
 #define IPC_COPY_CMD(rx, tx) \
 	_IPC_COPY_CMD(((struct sof_ipc_cmd_hdr *)&rx),			\
 			((struct sof_ipc_cmd_hdr *)tx),			\
-			((struct sof_ipc_cmd_hdr *)tx)->size)
+			sizeof(rx))
 
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
