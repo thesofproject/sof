@@ -652,17 +652,20 @@ static int src_params(struct comp_dev *dev)
 	}
 
 	/* Allocate needed memory for delay lines */
+	trace_src("src_params(), source_rate = %u, sink_rate = %u",
+		  source_rate, sink_rate);
+	trace_src("src_params(), params->channels = %u, dev->frames = %u",
+		  params->channels, dev->frames);
 	err = src_buffer_lengths(&cd->param, source_rate, sink_rate,
 		params->channels, dev->frames, frames_is_for_source);
 	if (err < 0) {
-		trace_src_error("src_params() error: "
-				"src_buffer_lengths() failed, "
-				"source_rate = %u, sink_rate = %u, "
-				"params->channels = %u, dev->frames = %u",
-				source_rate, sink_rate, params->channels,
-				dev->frames);
+		trace_src_error(
+			"src_params() error: src_buffer_lengths() failed");
 		return err;
 	}
+
+	trace_src("src_params(), blk_in = %u, blk_out = %u",
+		  cd->param.blk_in, cd->param.blk_out);
 
 	delay_lines_size = sizeof(int32_t) * cd->param.total;
 	if (delay_lines_size == 0) {
