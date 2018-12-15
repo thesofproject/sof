@@ -767,7 +767,8 @@ static int src_ctrl_cmd(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int src_cmd(struct comp_dev *dev, int cmd, void *data)
+static int src_cmd(struct comp_dev *dev, int cmd, void *data,
+		   int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;

@@ -231,7 +231,7 @@ static inline int idc_component_command(uint32_t cmd)
 		return -EINVAL;
 
 	/* execute component command */
-	ret = comp_cmd(comp_dev->cd, cmd, data);
+	ret = comp_cmd(comp_dev->cd, cmd, data, data->rhdr.hdr.size);
 
 	/* writeback control data */
 	dcache_writeback_region(data, data->rhdr.hdr.size);

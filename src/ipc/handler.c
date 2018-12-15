@@ -47,7 +47,7 @@
 #include <sof/alloc.h>
 #include <sof/wait.h>
 #include <sof/trace.h>
-#include <sof/ssp.h>
+#include <sof/math/numbers.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -69,6 +69,56 @@
 
 #define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
 #define iCS(x) ((x >> SOF_CMD_TYPE_SHIFT) & 0xfff)
+
+/*
+ * IPC ABI version compatibility rules :-
+ *
+ * 1) FW binaries will only support one MAJOR ABI version which is advertised
+ *    to host at FW boot.
+ *
+ * 2) Host drivers will support the current and older MAJOR ABI versions of
+ *    the IPC ABI (up to a certain age to be determined by market information).
+ *
+ * 3) MINOR and PATCH ABI versions can differ between host and FW but must be
+ *    backwards compatible on both host and FW.
+ *
+ *    IPC messages sizes can be different for sender and receiver if MINOR or
+ *    PATCH ABI versions differ as new fields can be added to the end of
+ *    messages.
+ *
+ *    i) Sender > receiver: receiver only copies it's own ABI structure size.
+ *
+ *    ii) Receiver > sender: receiver copies its's own ABI size and zero pads
+ *                           new fields. i.e. new structure fields must be non
+ *                           zero to be activated.
+ *
+ *    Guidelines for extending ABI compatible messages :-
+ *
+ *    i) Use reserved fields.
+ *    ii) Grow structure at the end.
+ *    iii) Iff (i) and (ii) are not possible then MAJOR ABI is bumped.
+ */
+
+#define _IPC_COPY_CMD(rx, tx, rx_size)					\
+	do {								\
+		if (rx_size > tx->size) {				\
+			memcpy(rx, tx, tx->size);			\
+			bzero((void *)rx + tx->size, rx_size - tx->size);\
+			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
+				  rx->cmd, rx_size, tx->size);		\
+		} else if (tx->size > rx_size) {			\
+			memcpy(rx, tx, rx_size);			\
+			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
+				  rx->cmd, tx->size, rx_size);		\
+		} else							\
+			memcpy(rx, tx, rx_size);			\
+	} while (0)
+
+/* copies whole message from Tx to Rx, follows above ABI rules */
+#define IPC_COPY_CMD(rx, tx) \
+	_IPC_COPY_CMD(((struct sof_ipc_cmd_hdr *)&rx),			\
+			((struct sof_ipc_cmd_hdr *)tx),			\
+			sizeof(rx))
 
 /* IPC context - shared with platform IPC driver */
 struct ipc *_ipc;
@@ -255,7 +305,8 @@ pipe_params:
 #endif
 
 	/* configure pipeline audio params */
-	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd, &pcm_params);
+	err = pipeline_params(pcm_dev->cd->pipeline, pcm_dev->cd,
+			      (struct sof_ipc_pcm_params *)_ipc->comp_data);
 	if (err < 0) {
 		trace_ipc_error("ipc: pipe %d comp %d params failed %d",
 				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
@@ -496,7 +547,8 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* configure DAI */
-	ret = dai_set_config(dai, &config);
+	ret = dai_set_config(dai,
+			     (struct sof_ipc_dai_config *)_ipc->comp_data);
 	dai_put(dai); /* free ref immediately */
 	if (ret < 0) {
 		trace_ipc_error("ipc: dai %d,%d config failed %d",
@@ -505,7 +557,8 @@ static int ipc_dai_config(uint32_t header)
 	}
 
 	/* now send params to all DAI components who use that physical DAI */
-	return ipc_comp_dai_config(_ipc, &config);
+	return ipc_comp_dai_config(_ipc,
+				  (struct sof_ipc_dai_config *)_ipc->comp_data);
 }
 
 static int ipc_glb_dai_message(uint32_t header)
@@ -758,7 +811,7 @@ static int ipc_glb_gdb_debug(uint32_t header)
  */
 
 static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
-			struct sof_ipc_ctrl_data *data)
+			struct sof_ipc_ctrl_data *data, int size)
 {
 	struct idc_msg comp_cmd_msg;
 	int core = dev->pipeline->ipc_pipe.core;
@@ -779,7 +832,7 @@ static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
 		/* send IDC component command message */
 		return idc_send_msg(&comp_cmd_msg, IDC_BLOCKING);
 	} else {
-		return comp_cmd(dev, cmd, data);
+		return comp_cmd(dev, cmd, data, size);
 	}
 }
 
@@ -787,7 +840,7 @@ static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
 static int ipc_comp_value(uint32_t header, uint32_t cmd)
 {
 	struct ipc_comp_dev *comp_dev;
-	struct sof_ipc_ctrl_data data;
+	struct sof_ipc_ctrl_data data, *_data = _ipc->comp_data;
 	int ret;
 
 	/* copy message with ABI safe method */
@@ -803,7 +856,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	}
 	
 	/* get component values */
-	ret = ipc_comp_cmd(comp_dev->cd, cmd, &data);
+	ret = ipc_comp_cmd(comp_dev->cd, cmd, _data, SOF_IPC_MSG_MAX_SIZE);
 	if (ret < 0) {
 		trace_ipc_error("ipc: comp %d cmd %u failed %d", data.comp_id,
 				data.cmd, ret);
@@ -811,8 +864,19 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 	}
 
 	/* write component values to the outbox */
-	mailbox_hostbox_write(0, &data, data.rhdr.hdr.size);
-	return 1;
+	if (_data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
+	    _data->rhdr.hdr.size < SOF_IPC_MSG_MAX_SIZE) {
+		mailbox_hostbox_write(0, _data, data.rhdr.hdr.size);
+		ret = 1;
+	} else {
+		trace_ipc_error("ipc: comp %d cmd %u returned %d bytes max %d",
+				data.comp_id, data.cmd, _data->rhdr.hdr.size,
+				MIN(MAILBOX_HOSTBOX_SIZE,
+				    SOF_IPC_MSG_MAX_SIZE));
+		ret = -EINVAL;
+	}
+
+	return ret;
 }
 
 static int ipc_glb_comp_message(uint32_t header)
@@ -876,7 +940,7 @@ static int ipc_glb_tplg_buffer_new(uint32_t header)
 		  ipc_buffer.comp.pipeline_id, ipc_buffer.comp.id,
 		  ipc_buffer.size);
 
-	ret = ipc_buffer_new(_ipc, &ipc_buffer);
+	ret = ipc_buffer_new(_ipc, (struct sof_ipc_buffer *)_ipc->comp_data);
 	if (ret < 0) {
 		trace_ipc_error("ipc: pipe %d buffer %d creation failed %d",
 				ipc_buffer.comp.pipeline_id,
@@ -904,7 +968,8 @@ static int ipc_glb_tplg_pipe_new(uint32_t header)
 
 	trace_ipc("ipc: pipe %d -> new", ipc_pipeline.pipeline_id);
 
-	ret = ipc_pipeline_new(_ipc, &ipc_pipeline);
+	ret = ipc_pipeline_new(_ipc,
+			       (struct sof_ipc_pipe_new *)_ipc->comp_data);
 	if (ret < 0) {
 		trace_ipc_error("ipc: pipe %d creation failed %d",
 				ipc_pipeline.pipeline_id, ret);
@@ -942,7 +1007,8 @@ static int ipc_glb_tplg_comp_connect(uint32_t header)
 	trace_ipc("ipc: comp sink %d, source %d  -> connect",
 		  connect.sink_id, connect.source_id);
 
-	return ipc_comp_connect(_ipc, &connect);
+	return ipc_comp_connect(_ipc,
+			(struct sof_ipc_pipe_comp_connect *)_ipc->comp_data);
 }
 
 static int ipc_glb_tplg_free(uint32_t header,

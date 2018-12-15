@@ -471,7 +471,7 @@ static int tone_params(struct comp_dev *dev)
 }
 
 static int tone_cmd_get_value(struct comp_dev *dev,
-			      struct sof_ipc_ctrl_data *cdata)
+			      struct sof_ipc_ctrl_data *cdata, int max_size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
@@ -490,7 +490,8 @@ static int tone_cmd_get_value(struct comp_dev *dev,
 	return 0;
 }
 
-static int tone_cmd_set_value(struct comp_dev *dev, struct sof_ipc_ctrl_data *cdata)
+static int tone_cmd_set_value(struct comp_dev *dev,
+			      struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
@@ -611,7 +612,8 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
+static int tone_cmd(struct comp_dev *dev, int cmd, void *data,
+		    int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
@@ -626,7 +628,7 @@ static int tone_cmd(struct comp_dev *dev, int cmd, void *data)
 		ret = tone_cmd_set_value(dev, cdata);
 		break;
 	case COMP_CMD_GET_VALUE:
-		ret = tone_cmd_get_value(dev, cdata);
+		ret = tone_cmd_get_value(dev, cdata, max_data_size);
 		break;
 	}
 
