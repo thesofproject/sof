@@ -383,7 +383,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
  * \return Error code.
  */
 static int volume_ctrl_get_cmd(struct comp_dev *dev,
-			       struct sof_ipc_ctrl_data *cdata)
+			       struct sof_ipc_ctrl_data *cdata, int size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int j;
@@ -425,7 +425,8 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
  * \param[in,out] data Control command data.
  * \return Error code.
  */
-static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
+static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
+		      int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
@@ -435,7 +436,7 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data)
 	case COMP_CMD_SET_VALUE:
 		return volume_ctrl_set_cmd(dev, cdata);
 	case COMP_CMD_GET_VALUE:
-		return volume_ctrl_get_cmd(dev, cdata);
+		return volume_ctrl_get_cmd(dev, cdata, max_data_size);
 	default:
 		return -EINVAL;
 	}

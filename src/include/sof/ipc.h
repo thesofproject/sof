@@ -59,56 +59,6 @@ struct dai_config;
 #define COMP_TYPE_BUFFER	2
 #define COMP_TYPE_PIPELINE	3
 
-/*
- * IPC ABI version compatibility rules :-
- *
- * 1) FW binaries will only support one MAJOR ABI version which is advertised
- *    to host at FW boot.
- *
- * 2) Host drivers will support the current and older MAJOR ABI versions of
- *    the IPC ABI (up to a certain age to be determined by market information).
- *
- * 3) MINOR and PATCH ABI versions can differ between host and FW but must be
- *    backwards compatible on both host and FW.
- *
- *    IPC messages sizes can be different for sender and receiver if MINOR or
- *    PATCH ABI versions differ as new fields can be added to the end of
- *    messages.
- *
- *    i) Sender > receiver: receiver only copies it's own ABI structure size.
- *
- *    ii) Receiver > sender: receiver copies its's own ABI size and zero pads
- *                           new fields. i.e. new structure fields must be non
- *                           zero to be activated.
- *
- *    Guidelines for extending ABI compatible messages :-
- *
- *    i) Use reserved fields.
- *    ii) Grow structure at the end.
- *    iii) Iff (i) and (ii) are not possible then MAJOR ABI is bumped.
- */
-
-#define _IPC_COPY_CMD(rx, tx, rx_size)					\
-	do {								\
-		if (rx_size > tx->size) {				\
-			memcpy(rx, tx, tx->size);			\
-			bzero((void *)rx + tx->size, rx_size - tx->size);\
-			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
-				  rx->cmd, rx_size, tx->size);		\
-		} else if (tx->size > rx_size) {			\
-			memcpy(rx, tx, rx_size);			\
-			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
-				  rx->cmd, tx->size, rx_size);		\
-		} else							\
-			memcpy(rx, tx, rx_size);			\
-	} while (0)
-
-/* copies whole message from Tx to Rx, follows above ABI rules */
-#define IPC_COPY_CMD(rx, tx) \
-	_IPC_COPY_CMD(((struct sof_ipc_cmd_hdr *)&rx),			\
-			((struct sof_ipc_cmd_hdr *)tx),			\
-			sizeof(rx))
-
 /* validates internal non tail structures within IPC command structure */
 #define IPC_IS_SIZE_INVALID(object)					\
 	object.hdr.size == sizeof(object) ? 0 : 1
