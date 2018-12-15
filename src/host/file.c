@@ -551,7 +551,8 @@ static int file_trigger(struct comp_dev *dev, int cmd)
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int file_cmd(struct comp_dev *dev, int cmd, void *data)
+static int file_cmd(struct comp_dev *dev, int cmd, void *data,
+		    int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;

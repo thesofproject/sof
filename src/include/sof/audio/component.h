@@ -161,7 +161,8 @@ struct comp_ops {
 		struct sof_ipc_dai_config *dai_config);
 
 	/* used to pass standard and bespoke commands (with optional data) */
-	int (*cmd)(struct comp_dev *dev, int cmd, void *data);
+	int (*cmd)(struct comp_dev *dev, int cmd, void *data,
+		   int max_data_size);
 
 	/* atomic - used to start/stop/pause stream operations */
 	int (*trigger)(struct comp_dev *dev, int cmd);
@@ -283,7 +284,8 @@ static inline int comp_host_buffer(struct comp_dev *dev,
 }
 
 /* send component command - mandatory */
-static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
+static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
+			   int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
@@ -296,7 +298,7 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data)
 		return -EINVAL;
 	}
 
-	return dev->drv->ops.cmd(dev, cmd, data);
+	return dev->drv->ops.cmd(dev, cmd, data, max_data_size);
 }
 
 /* trigger component - mandatory and atomic */

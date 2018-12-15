@@ -451,7 +451,7 @@ static int eq_iir_params(struct comp_dev *dev)
 }
 
 static int iir_cmd_get_data(struct comp_dev *dev,
-			    struct sof_ipc_ctrl_data *cdata)
+			    struct sof_ipc_ctrl_data *cdata, int max_size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
@@ -466,7 +466,8 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 		if (cd->config) {
 			bs = cd->config->size;
 			trace_value(bs);
-			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0)
+			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0 ||
+			    bs > max_size)
 				return -EINVAL;
 			memcpy(cdata->data->data, cd->config, bs);
 			cdata->data->abi = SOF_ABI_VERSION;
@@ -587,7 +588,8 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 }
 
 /* used to pass standard and bespoke commands (with data) to component */
-static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
+static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data,
+		      int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 	int ret = 0;
@@ -599,7 +601,7 @@ static int eq_iir_cmd(struct comp_dev *dev, int cmd, void *data)
 		ret = iir_cmd_set_data(dev, cdata);
 		break;
 	case COMP_CMD_GET_DATA:
-		ret = iir_cmd_get_data(dev, cdata);
+		ret = iir_cmd_get_data(dev, cdata, max_data_size);
 		break;
 	case COMP_CMD_SET_VALUE:
 		trace_eq("eq_iir_cmd(), COMP_CMD_SET_VALUE");
