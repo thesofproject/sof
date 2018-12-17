@@ -633,8 +633,7 @@ out:
 }
 
 static void component_cache_downstream(int cmd, struct comp_dev *start,
-				       struct comp_dev *current,
-				       struct comp_dev *previous)
+				       struct comp_dev *current)
 {
 	cache_command cache_cmd = comp_get_cache_command(cmd);
 	struct list_item *clist;
@@ -657,13 +656,12 @@ static void component_cache_downstream(int cmd, struct comp_dev *start,
 		if (!buffer->connected)
 			continue;
 
-		component_cache_downstream(cmd, start, buffer->sink, current);
+		component_cache_downstream(cmd, start, buffer->sink);
 	}
 }
 
 static void component_cache_upstream(int cmd, struct comp_dev *start,
-				     struct comp_dev *current,
-				     struct comp_dev *previous)
+				     struct comp_dev *current)
 {
 	cache_command cache_cmd = comp_get_cache_command(cmd);
 	struct list_item *clist;
@@ -686,7 +684,7 @@ static void component_cache_upstream(int cmd, struct comp_dev *start,
 		if (!buffer->connected)
 			continue;
 
-		component_cache_upstream(cmd, start, buffer->source, current);
+		component_cache_upstream(cmd, start, buffer->source);
 	}
 }
 
@@ -701,10 +699,10 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		/* execute cache op on components and buffers downstream */
-		component_cache_downstream(cmd, dev, dev, NULL);
+		component_cache_downstream(cmd, dev, dev);
 	else
 		/* execute cache op on components and buffers upstream */
-		component_cache_upstream(cmd, dev, dev, NULL);
+		component_cache_upstream(cmd, dev, dev);
 
 	/* execute cache operation on pipeline itself */
 	if (cache_cmd)
