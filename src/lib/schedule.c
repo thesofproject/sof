@@ -337,7 +337,26 @@ void schedule_task_complete(struct task *task)
 	tracev_pipe("com");
 
 	spin_lock_irq(&sch->lock, flags);
-	task->state = TASK_STATE_COMPLETED;
+
+	/* Some high priority HW based IRQ handlers can reschedule tasks
+	 * immediately. i.e. before the task context can change task state
+	 * back to COMPLETED. Check here to make sure we dont clobber
+	 * task->state for regular non IRQ users.
+	 */
+	switch (task->state) {
+	case TASK_STATE_RUNNING:
+		task->state = TASK_STATE_COMPLETED;
+		break;
+	case TASK_STATE_QUEUED:
+	case TASK_STATE_PENDING:
+		/* nothing to do here, high priority IRQ has scheduled us */
+		break;
+	default:
+		trace_error(TRACE_CLASS_PIPE, "unexpected task state %d at task completion",
+			    task->state);
+		task->state = TASK_STATE_COMPLETED;
+		break;
+	}
 	spin_unlock_irq(&sch->lock, flags);
 
 	/* tell any waiter that task has completed */
