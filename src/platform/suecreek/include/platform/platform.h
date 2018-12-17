@@ -39,6 +39,8 @@
 #include <platform/shim.h>
 #include <platform/interrupt.h>
 
+#include <sof/dw-uart.h>
+
 struct sof;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
@@ -148,6 +150,11 @@ struct sof;
 /* minimal SSP port stop delay in cycles */
 #define PLATFORM_SSP_STOP_DELAY	3000
 
+#define PLATFORM_LL_UART_CLK_FREQ	38400000
+#define PLATFORM_LL_UART_REG_BASEADDR	0x00080800
+/* A simple loop counter, checkint the TX empty bit */
+#define PLATFORM_LL_UART_RETRY		25000
+
 // TODO: need UART versions
 #if 0
 /* Platform defined trace code */
@@ -167,7 +174,7 @@ static inline void platform_panic(uint32_t p)
 }
 
 /* Platform defined trace code */
-#define platform_trace_point(__x)
+#define platform_trace_point(__x) dw_uart_write_word(__x)
 #endif
 extern struct timer *platform_timer;
 

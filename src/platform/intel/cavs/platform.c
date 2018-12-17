@@ -383,6 +383,8 @@ int platform_init(struct sof *sof)
 	ret = dw_intc_irq_init();
 	if (ret < 0)
 		return ret;
+
+	dw_uart_init();
 #endif
 
 	/* init DMACs */

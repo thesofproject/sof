@@ -30,6 +30,7 @@
 
 #include <arch/cache.h>
 #include <arch/wait.h>
+#include <sof/dw-uart.h>
 #include <sof/trace.h>
 #include <sof/io.h>
 #include <uapi/user/manifest.h>
@@ -251,6 +252,10 @@ static uint32_t hp_sram_init(void)
 void boot_master_core(void)
 {
 	int32_t result;
+
+#if defined(CONFIG_SUECREEK)
+	dw_uart_ll_init(115200);
+#endif
 
 	/* TODO: platform trace should write to HW IPC regs on CNL */
 	platform_trace_point(TRACE_BOOT_LDR_ENTRY);

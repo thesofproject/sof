@@ -178,7 +178,7 @@ boot_ldr_LDADD = \
 
 if BUILD_SUECREEK
 boot_ldr_LDADD += \
-	../../drivers/libdrivers.la
+	../../drivers/libboot_drv.la
 endif
 
 if BUILD_XTENSA_SMP

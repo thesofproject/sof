@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017-2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,58 +24,44 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
-
 #include <stdint.h>
-#include <stddef.h>
-#include <arch/sof.h>
-#include <sof/preproc.h>
 
-struct ipc;
-struct sa;
+#include <sof/io.h>
+#include <sof/sof.h>
 
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
+#include "dw-uart-priv.h"
 
-#define ALIGN(size, align) (((size) + (align) - 1) & ~((align) - 1))
+#define uart_write uart_write_common
+#define uart_read uart_read_common
 
-#define min(a, b) ({		\
-	typeof(a) __a = (a);	\
-	typeof(b) __b = (b);	\
-	__a > __b ? __b : __a;	\
-})
+void dw_uart_write_word_internal(struct dw_uart_device *dev, uint32_t word)
+{
+	uint8_t bytes[8];
+	uint32_t outchar;
+	int i, j;
+	uint32_t retry;
 
-/* count number of var args */
-#define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
-	/ sizeof(unsigned int) - 1)
+	/* store 8 nibbles of a 32-bit word in an array */
+	for (i = 28, j = 0; j < ARRAY_SIZE(bytes); i -= 4, j++)
+		bytes[j] = (word >> i) & 0xF;
 
-/* compile-time assertion */
-#define STATIC_ASSERT(COND, MESSAGE)	\
-	__attribute__((unused))		\
-	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
+	for (i = 0; i < ARRAY_SIZE(bytes) + 1; i++) {
+		if (i < ARRAY_SIZE(bytes))
+			outchar = bytes[i] > 9 ?
+				bytes[i] - 10 + 'A' : bytes[i] + '0';
+		else
+			/* add '\n' to jump to the new line after each output */
+			outchar = '\n';
 
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
+		/* wait for transmitter to become ready to accept a character */
+		retry = dev->retry;
+		while ((uart_read(dev, SUE_UART_REG_LSR) & LSR_TEMT) == 0)
+			if (retry-- == 0)	/* don't wait too long time */
+				break;
 
-	/* ipc */
-	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
-
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
-};
-
-#endif
+		/* write to output reg */
+		uart_write(dev, SUE_UART_REG_THR, outchar);
+	}
+}

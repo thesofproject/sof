@@ -15,7 +15,17 @@ SUBDIRS = cavs
 libdrivers_la_LIBADD = cavs/libdrivers.la
 
 if BUILD_SUECREEK
-libdrivers_la_SOURCES += sue-gpio.c dw-intc.c
+noinst_LTLIBRARIES += libboot_drv.la
+
+libdrivers_la_SOURCES += dw-intc.c dw-uart.c dw-uart-write-word.c sue-gpio.c
+libboot_drv_la_SOURCES = dw-uart-ll.c dw-uart-write-word.c
+
+libboot_drv_la_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(ARCH_CFLAGS) \
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR) \
+	$(ARCH_INCDIR)
 endif
 
 else

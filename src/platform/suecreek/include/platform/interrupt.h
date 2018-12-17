@@ -116,11 +116,16 @@
 #define IRQ_EXT_HOST_DMA_OUT_LVL3(xcpu, channel) \
 	SOF_IRQ(IRQ_BIT_LVL3_HOST_STREAM_OUT(channel), 3, xcpu, IRQ_NUM_EXT_LEVEL3)
 
+/* The UART is connected to bit 2 of the low 32 bits of the INTC */
+#define IRQ_BIT_UART		2
 /* ID is used to distinguish between low and high 32 interrupt sources */
 #define IRQ_DW_INTC_LOW_ID	0
 #define IRQ_DW_INTC_HIGH_ID	1
 /* Level is used to distinguish INTC from first level controllers */
 #define IRQ_DW_INTC_LEVEL	0x10
+#define IRQ_EXT_HOST_UART(xcpu) \
+	SOF_ID_IRQ(IRQ_DW_INTC_LOW_ID, IRQ_BIT_UART, IRQ_DW_INTC_LEVEL, xcpu, \
+			IRQ_BIT_LVL2_CSME_IPC)
 
 /* Priority 4 Peripheral IRQ mappings */
 #define IRQ_EXT_LINK_DMA_IN_LVL4(xcpu, channel) \
