@@ -59,6 +59,7 @@ void cmemcpy(void *dest, void *src, size_t size)
 }
 #endif
 
+#if !CONFIG_HOST
 /* used by gcc - but uses arch_memcpy internally */
 void *memcpy(void *dest, const void *src, size_t n)
 {
@@ -97,6 +98,7 @@ void *memset(void *s, int c, size_t n)
 
 	return s;
 }
+#endif
 
 /* generic strlen - TODO: can be optimsed for ARCH ? */
 int rstrlen(const char *s)
