@@ -32,11 +32,16 @@
 
 function example_fir_eq()
 
-ascii_blob_fn = 'example_fir_eq.txt';
-binary_blob_fn = 'example_fir_eq.blob';
-tplg_blob_fn = 'example_fir_eq.m4';
+%% Common definitions
 endian = 'little';
 fs = 48e3;
+
+%% -------------------
+%% Example 1: Loudness
+%% -------------------
+ascii_blob_fn = '../../eqctl/eq_fir_loudness.txt';
+binary_blob_fn = 'example_fir_eq.blob';
+tplg_blob_fn = 'example_fir_eq.m4';
 
 %% Design FIR loudness equalizer
 eq_loud = loudness_fir_eq(fs);
@@ -63,7 +68,86 @@ eq_alsactl_write(ascii_blob_fn, bp);
 eq_blob_write(binary_blob_fn, bp);
 eq_tplg_write(tplg_blob_fn, bp, 'FIR');
 
+%% -------------------
+%% Example 2: Mid boost
+%% -------------------
+ascii_blob_fn = '../../eqctl/eq_fir_mid.txt';
+
+%% Define mid frequencies boost EQ
+eq_mid = midboost_fir_eq(fs);
+
+%% Quantize filter coefficients for both equalizers
+bq_pass = eq_fir_blob_quant(eq_mid.b_fir);
+
+%% Build blob
+channels_in_config = 2;    % Setup max 2 channels EQ
+assign_response = [0 0];   % Switch to response #0
+num_responses = 1;         % One response: pass
+bm = eq_fir_blob_merge(channels_in_config, ...
+		       num_responses, ...
+		       assign_response, ...
+		       bq_pass);
+
+%% Pack and write file
+bp = eq_fir_blob_pack(bm, endian);
+eq_alsactl_write(ascii_blob_fn, bp);
+
+%% -------------------
+%% Example 3: Flat EQ
+%% -------------------
+comment = 'Flat FIR EQ';
+ascii_blob_fn = '../../eqctl/eq_fir_flat.txt';
+tplg_blob_fn = '../../topology/m4/eq_fir_coef_flat.m4';
+
+%% Define a passthru EQ with one tap
+b_pass = 1;
+
+%% Quantize filter coefficients for both equalizers
+bq_pass = eq_fir_blob_quant(b_pass);
+
+%% Build blob
+channels_in_config = 2;    % Setup max 2 channels EQ
+assign_response = [0 0];   % Switch to response #0
+num_responses = 1;         % One response: pass
+bm = eq_fir_blob_merge(channels_in_config, ...
+		       num_responses, ...
+		       assign_response, ...
+		       bq_pass);
+
+%% Pack and write file
+bp = eq_fir_blob_pack(bm, endian);
+eq_alsactl_write(ascii_blob_fn, bp);
+eq_tplg_write(tplg_blob_fn, bp, 'FIR', comment);
+
+%% --------------------------
+%% Example 4: Pass-through EQ
+%% --------------------------
+ascii_blob_fn = '../../eqctl/eq_fir_pass.txt';
+
+%% Define a passthru EQ with one tap
+b_pass = 1;
+
+%% Quantize filter coefficients for both equalizers
+bq_pass = eq_fir_blob_quant(b_pass);
+
+%% Build blob
+channels_in_config = 2;    % Setup max 2 channels EQ
+assign_response = [-1 -1]; % Switch to response #0
+num_responses = 1;         % One response: pass
+bm = eq_fir_blob_merge(channels_in_config, ...
+		       num_responses, ...
+		       assign_response, ...
+		       bq_pass);
+
+%% Pack and write file
+bp = eq_fir_blob_pack(bm, endian);
+eq_alsactl_write(ascii_blob_fn, bp);
+
 end
+
+%% -------------------
+%% EQ design functions
+%% -------------------
 
 function eq = loudness_fir_eq(fs)
 
@@ -95,18 +179,46 @@ m = [ 0.00,-0.13,-0.27,-0.39,-0.52,-0.64,-0.77,-0.89,-1.02,-1.16,  ...
 %% Design EQ
 eq = eq_defaults();
 eq.fs = fs;
-eq.target_f = f;            % Set EQ frequency response target: frequency vector
-eq.target_m_db = m;         % Set EQ frequency response target: magnitude
-eq.norm_type = 'loudness';  % Can be loudness/peak/1k to select normalize criteria
-eq.norm_offs_db = 0;        % E.g. -1 would leave 1 dB headroom if used with peak
+eq.target_f = f;            % Set EQ frequency response target: frequencies Hz
+eq.target_m_db = m;         % Set EQ frequency response target: magnitudues dB
+eq.norm_type = 'loudness';  % Normalize criteria can be loudness/peak/1k
+eq.norm_offs_db = 0;        % Offset in dB to normalize
 
 eq.enable_fir = 1;          % By default both FIR and IIR disabled, enable one
 eq.fir_beta = 4.0;          % Use with care, low value can corrupt
-eq.fir_length = 90;         % Gives just < 304 bytes
+eq.fir_length = 86;         % Gives just < 292 bytes
 eq.fir_autoband = 0;        % Select manually frequency limits
 eq.fmin_fir = 100;          % Equalization starts from 100 Hz
 eq.fmax_fir = 20e3;         % Equalization ends at 20 kHz
-eq.fir_minph = 1;           % If no linear phase required, check result carefully if 1
+eq.fir_minph = 1;           % Check result carefully if 1 is used, 0 is safe
+eq = eq_compute(eq);
+
+%% Plot
+eq_plot(eq);
+
+end
+
+function eq = midboost_fir_eq(fs)
+
+eq = eq_defaults();
+
+eq.parametric_target_response = [ ...
+					eq.PEQ_LS2 1000 -12 NaN ; ...
+					eq.PEQ_HS2 7000 -12 NaN ; ...
+				];
+
+%% Design EQ
+eq.fs = fs;
+eq.norm_type = 'peak'; % Can be loudness/peak/1k to select normalize criteria
+eq.norm_offs_db = 0;   % E.g. -1 would leave 1 dB headroom if used with peak
+
+eq.enable_fir = 1;     % By default both FIR and IIR disabled, enable one
+eq.fir_beta = 3.5;     % Use with care, low value can corrupt
+eq.fir_length = 86;    % Gives just < 292 bytes
+eq.fir_autoband = 0;   % Select manually frequency limits
+eq.fmin_fir = 100;     % Equalization starts from 100 Hz
+eq.fmax_fir = 20e3;    % Equalization ends at 20 kHz
+eq.fir_minph = 1;      % If no linear phase required can test with 1
 eq = eq_compute(eq);
 
 %% Plot

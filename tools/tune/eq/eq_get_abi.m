@@ -34,7 +34,7 @@ function [magic, version] = eq_get_abi()
 %
 
 %% These need to match kernel and FW ABI version
-sof_abi_major = 2;
+sof_abi_major = 3;
 sof_abi_minor = 0;
 sof_abi_patch = 0;
 sof_abi_magic = '00464F53'; % 'SOF\0'
