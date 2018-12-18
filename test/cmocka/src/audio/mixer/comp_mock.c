@@ -52,7 +52,8 @@ static int mock_comp_params(struct comp_dev *dev)
 	return 0;
 }
 
-static int mock_comp_cmd(struct comp_dev *dev, int cmd, void *data)
+static int mock_comp_cmd(struct comp_dev *dev, int cmd, void *data,
+			 int max_data_size)
 {
 	return 0;
 }
