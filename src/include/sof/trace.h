@@ -127,7 +127,8 @@ char *get_trace_class(uint32_t trace_class);
 			##__VA_ARGS__);					\
 	}								\
 }
-#else
+#endif
+
 #define _TRACE_EVENT_NTH_PARAMS(id_count, param_count)			\
 	uintptr_t log_entry						\
 	META_SEQ_FROM_0_TO(id_count   , META_SEQ_STEP_id_uint32_t)	\
@@ -200,8 +201,6 @@ _TRACE_EVENT_NTH_DECLARE_GROUP(3)
  *                                uint32_t params...);
  */
 _TRACE_EVENT_NTH_DECLARE_GROUP(4)
-
-#endif
 
 #define _TRACE_EVENT_MAX_ARGUMENT_COUNT 4
 
@@ -353,6 +352,29 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 	__log_message(META_CONCAT_SEQ(_trace_event, mbox, atomic),	\
 		      level, comp_class, id_0, id_1, has_ids, format,	\
 		      ##__VA_ARGS__)
+#else
+#define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params, ids)\
+	static const struct {					\
+		uint32_t level;					\
+		uint32_t component_class;			\
+		uint32_t has_ids;				\
+		uint32_t params_num;				\
+		uint32_t line_idx;				\
+		uint32_t file_name_len;				\
+		uint32_t text_len;				\
+		const char file_name[sizeof(__FILE__)];		\
+		const char text[sizeof(format)];		\
+	} log_entry = {						\
+		lvl,						\
+		comp_class,					\
+		ids,						\
+		params,						\
+		__LINE__,					\
+		sizeof(__FILE__),				\
+		sizeof(format),					\
+		__FILE__,					\
+		format						\
+	}
 #endif
 #else
 

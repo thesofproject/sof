@@ -9,12 +9,14 @@ endif
 # cmocka needs stdlib
 override LDFLAGS := $(filter-out -nostdlib,$(LDFLAGS))
 
-# turn of optimization if You need to debug UT using Xplorer
+# turn off optimization if You need to debug UT using Xplorer
 #override CFLAGS := $(filter-out -O2,$(CFLAGS))
 
 override AM_CFLAGS := \
 	$(filter-out -nostdlib,$(AM_CFLAGS)) \
-	$(SOF_INCDIR)
+	$(SOF_INCDIR) \
+	$(PLATFORM_INCDIR) \
+	-DCHECK
 
 override AM_LDFLAGS := \
 	$(filter-out -nostdlib,$(AM_LDFLAGS))
@@ -47,7 +49,9 @@ CLEANFILES = $(LINK_SCRIPT)
 $(LINK_SCRIPT): Makefile $(LINK_SCRIPT).in
 	cat $(LINK_SCRIPT).in | $(CPP) -P $(PLATFORM_INCDIR) $(SOF_INCDIR) - >$@
 
+if BUILD_XTENSA
 AM_LDFLAGS += -T $(LINK_SCRIPT)
+endif
 
 # mixer tests
 check_PROGRAMS += mixer
@@ -56,6 +60,11 @@ mixer_SOURCES = src/audio/mixer/mixer_test.c \
 				src/audio/mixer/comp_mock.c \
 				../../src/audio/buffer.c \
 				../../src/audio/mixer.c
+
+if BUILD_HOST
+mixer_SOURCES += ../../src/host/trace.c
+endif
+
 mixer_LDADD = -lm $(LDADD)
 
 # memory allocator test
@@ -114,45 +123,111 @@ debugability_macros_SOURCES = src/debugability/macros.c
 
 check_PROGRAMS += rstrcmp
 rstrcmp_SOURCES = src/lib/lib/rstrcmp.c
+if BUILD_HOST
+rstrcmp_SOURCES += ../../src/lib/lib.c
+rstrcmp_LDADD = $(LDADD)
+else
 rstrcmp_LDADD = ../../src/lib/libcore.a $(LDADD)
+endif
 
 check_PROGRAMS += rstrlen
 rstrlen_SOURCES = src/lib/lib/rstrlen.c
+if BUILD_HOST
+rstrlen_SOURCES += ../../src/lib/lib.c
+rstrlen_LDADD = $(LDADD)
+else
 rstrlen_LDADD = ../../src/lib/libcore.a $(LDADD)
+endif
 
 check_PROGRAMS += strcheck
 strcheck_SOURCES = src/lib/lib/strcheck.c
+if BUILD_HOST
+strcheck_SOURCES += ../../src/lib/lib.c
+strcheck_LDADD = $(LDADD)
+else
 strcheck_LDADD = ../../src/lib/libcore.a $(LDADD)
+endif
 
 # volume tests
 
 check_PROGRAMS += volume_process
 volume_process_SOURCES = src/audio/volume/volume_process.c
+volume_process_CFLAGS = -I../../src/audio $(AM_CFLAGS)
+if BUILD_HOST
+volume_process_SOURCES += ../../src/audio/volume.c \
+			../../src/audio/volume_generic.c \
+			../../src/audio/component.c \
+			../../src/audio/buffer.c \
+			../../src/audio/pipeline.c \
+			../../src/ipc/ipc.c
+volume_process_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 volume_process_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+endif
 
 # buffer tests
 
 check_PROGRAMS += buffer_new
 buffer_new_SOURCES = src/audio/buffer/buffer_new.c src/audio/buffer/mock.c
+if BUILD_HOST
+buffer_new_SOURCES += 	../../src/audio/component.c \
+			../../src/audio/buffer.c \
+			../../src/audio/pipeline.c \
+			../../src/ipc/ipc.c
+buffer_new_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 buffer_new_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+endif
 
 check_PROGRAMS += buffer_write
 buffer_write_SOURCES = src/audio/buffer/buffer_write.c src/audio/buffer/mock.c
+if BUILD_HOST
+buffer_write_SOURCES += ../../src/audio/component.c \
+			../../src/audio/buffer.c \
+			../../src/audio/pipeline.c \
+			../../src/ipc/ipc.c
+buffer_write_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 buffer_write_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+endif
 
 check_PROGRAMS += buffer_wrap
 buffer_wrap_SOURCES = src/audio/buffer/buffer_wrap.c src/audio/buffer/mock.c
+if BUILD_HOST
+buffer_wrap_SOURCES += 	../../src/audio/component.c \
+			../../src/audio/buffer.c \
+			../../src/audio/pipeline.c \
+			../../src/ipc/ipc.c
+buffer_wrap_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 buffer_wrap_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+endif
 
 check_PROGRAMS += buffer_copy
 buffer_copy_SOURCES = src/audio/buffer/buffer_copy.c src/audio/buffer/mock.c
+if BUILD_HOST
+buffer_copy_SOURCES += 	../../src/audio/component.c \
+			../../src/audio/buffer.c \
+			../../src/audio/pipeline.c \
+			../../src/ipc/ipc.c
+buffer_copy_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 buffer_copy_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+endif
 
 # component tests
 
 check_PROGRAMS += comp_set_state
 comp_set_state_SOURCES = src/audio/component/comp_set_state.c src/audio/component/mock.c
+if BUILD_HOST
+comp_set_state_SOURCES += 	../../src/audio/component.c \
+			../../src/audio/buffer.c \
+			../../src/audio/pipeline.c \
+			../../src/ipc/ipc.c
+comp_set_state_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 comp_set_state_LDADD = ../../src/audio/libaudio.a $(LDADD)
+endif
 
 # list tests
 
@@ -181,31 +256,67 @@ list_item_SOURCES = src/list/list_item.c
 
 check_PROGRAMS += gcd
 gcd_SOURCES = src/math/numbers/gcd.c
+if BUILD_HOST
+gcd_SOURCES += 	../../src/math/numbers.c
+gcd_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 gcd_LDADD = ../../src/math/libsof_math.a $(LDADD)
+endif
 
 check_PROGRAMS += ceil_divide
 ceil_divide_SOURCES = src/math/numbers/ceil_divide.c
+if BUILD_HOST
+ceil_divide_SOURCES += 	../../src/math/numbers.c
+ceil_divide_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 ceil_divide_LDADD = ../../src/math/libsof_math.a -lm $(LDADD)
+endif
 
 check_PROGRAMS += find_equal_int16
 find_equal_int16_SOURCES = src/math/numbers/find_equal_int16.c
+if BUILD_HOST
+find_equal_int16_SOURCES += 	../../src/math/numbers.c
+find_equal_int16_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 find_equal_int16_LDADD = ../../src/math/libsof_math.a $(LDADD)
+endif
 
 check_PROGRAMS += find_min_int16
 find_min_int16_SOURCES = src/math/numbers/find_min_int16.c
+if BUILD_HOST
+find_min_int16_SOURCES += 	../../src/math/numbers.c
+find_min_int16_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 find_min_int16_LDADD = ../../src/math/libsof_math.a $(LDADD)
+endif
 
 check_PROGRAMS += find_max_abs_int32
 find_max_abs_int32_SOURCES = src/math/numbers/find_max_abs_int32.c
+if BUILD_HOST
+find_max_abs_int32_SOURCES += 	../../src/math/numbers.c
+find_max_abs_int32_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 find_max_abs_int32_LDADD = ../../src/math/libsof_math.a $(LDADD)
+endif
 
 check_PROGRAMS += norm_int32
 norm_int32_SOURCES = src/math/numbers/norm_int32.c
+if BUILD_HOST
+norm_int32_SOURCES += 	../../src/math/numbers.c
+norm_int32_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 norm_int32_LDADD = ../../src/math/libsof_math.a $(LDADD)
+endif
 
 check_PROGRAMS += sin_fixed
 sin_fixed_SOURCES = src/math/trig/sin_fixed.c
+if BUILD_HOST
+sin_fixed_SOURCES += 	../../src/math/numbers.c \
+			../../src/math/trig.c
+sin_fixed_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
+else
 sin_fixed_LDADD = ../../src/math/libsof_math.a $(LDADD)
+endif
 
 # all our binaries are test cases
 TESTS = $(check_PROGRAMS)
