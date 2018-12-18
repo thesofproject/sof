@@ -44,10 +44,15 @@
 
 /*
  * This flag disables firmware-side xrun recovery.
- * It should remain enabled in the situation when the
+ * It should remain set in the situation when the
  * recovery is delegated to the outside of firmware.
  */
-#define NO_XRUN_RECOVERY 0
+#define NO_XRUN_RECOVERY 1
+
+#define PIPELINE_SET_FW_READY_FLAGS \
+( \
+	(NO_XRUN_RECOVERY ? SOF_IPC_INFO_EXTERN_XRUN_RECOV : 0) \
+)
 
 /* pipeline tracing */
 #define trace_pipe(format, ...) \
