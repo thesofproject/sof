@@ -827,7 +827,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	pipeline_comp_xrun(dev, &data, dev->params.direction);
 }
 
-#if NO_XRUN_RECOVERY
+#if EXTERN_XRUN_RECOVERY
 /* recover the pipeline from a XRUN condition */
 static int pipeline_xrun_recover(struct pipeline *p)
 {

@@ -114,6 +114,16 @@ config DMA_FIFO_PARTITION
 
 source "src/Kconfig"
 
+menu "Pipeline"
+
+config EXTERN_XRUN_RECOVERY
+	bool "External xrun recovery"
+	default y
+	help
+	  Select to delegate xrun recovery to outside of the firmware.
+
+endmenu
+
 menu "Debug"
 
 config GDB_DEBUG

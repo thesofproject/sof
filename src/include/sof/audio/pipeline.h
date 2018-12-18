@@ -40,14 +40,19 @@
 #include <sof/audio/component.h>
 #include <sof/trace.h>
 #include <sof/schedule.h>
+#include <uapi/ipc/info.h>
 #include <uapi/ipc/topology.h>
 
-/*
- * This flag disables firmware-side xrun recovery.
- * It should remain enabled in the situation when the
- * recovery is delegated to the outside of firmware.
- */
-#define NO_XRUN_RECOVERY 0
+#if CONFIG_EXTERN_XRUN_RECOVERY
+#define EXTERN_XRUN_RECOVERY	1
+#else
+#define EXTERN_XRUN_RECOVERY	0
+#endif
+
+#define PIPELINE_SET_FW_READY_FLAGS \
+( \
+	(EXTERN_XRUN_RECOVERY ? SOF_IPC_INFO_EXTERN_XRUN_RECOVERY : 0) \
+)
 
 /* pipeline tracing */
 #define trace_pipe(format, ...) \
