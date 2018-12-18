@@ -865,7 +865,7 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 
 	/* write component values to the outbox */
 	if (_data->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
-	    _data->rhdr.hdr.size < SOF_IPC_MSG_MAX_SIZE) {
+	    _data->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
 		mailbox_hostbox_write(0, _data, data.rhdr.hdr.size);
 		ret = 1;
 	} else {
