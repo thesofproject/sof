@@ -37,6 +37,7 @@
 
 /* enable trace by default in testbench */
 int test_bench_trace = 1;
+int debug;
 
 #define CASE(x) case TRACE_CLASS_##x: return #x
 
@@ -69,6 +70,13 @@ char *get_trace_class(uint32_t trace_class)
 		CASE(POWER);
 	default: return "unknown";
 	}
+}
+
+/* print debug messages */
+void debug_print(char *message)
+{
+	if (debug)
+		printf("debug: %s", message);
 }
 
 /* enable trace in testbench */

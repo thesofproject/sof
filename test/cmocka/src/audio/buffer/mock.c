@@ -31,12 +31,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include <config.h>
 #include <sof/alloc.h>
 #include <sof/trace.h>
 
 #include <mock_trace.h>
 
 TRACE_IMPL()
+
+#if !CONFIG_HOST
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {
@@ -58,3 +61,4 @@ void rfree(void *ptr)
 {
 	free(ptr);
 }
+#endif

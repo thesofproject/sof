@@ -1,4 +1,5 @@
 #include <sof/preproc.h>
+#include <sof/trace.h>
 
 #define _TRACE_EVENT_NTH_PARAMS(id_count, param_count)			\
 	uintptr_t log_entry						\

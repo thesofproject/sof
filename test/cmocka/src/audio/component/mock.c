@@ -38,6 +38,8 @@
 
 TRACE_IMPL()
 
+#if !CONFIG_HOST
+
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {
 	(void)zone;
@@ -45,3 +47,5 @@ void *rzalloc(int zone, uint32_t caps, size_t bytes)
 
 	return calloc(bytes, 1);
 }
+
+#endif

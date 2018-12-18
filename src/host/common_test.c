@@ -51,13 +51,6 @@
 #include "host/common_test.h"
 #include "host/topology.h"
 
-/* print debug messages */
-void debug_print(char *message)
-{
-	if (debug)
-		printf("debug: %s", message);
-}
-
 /* testbench helper functions for pipeline setup and trigger */
 
 int tb_pipeline_setup(struct sof *sof)
@@ -251,6 +244,10 @@ int dma_sg_alloc(struct dma_sg_elem_array *elem_array,
 }
 
 void dma_sg_free(struct dma_sg_elem_array *elem_array)
+{
+}
+
+void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
 
