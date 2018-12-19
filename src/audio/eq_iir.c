@@ -63,7 +63,10 @@
 struct comp_data {
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS];
 	struct sof_eq_iir_config *config;
-	uint32_t period_bytes;
+	uint32_t source_period_bytes;
+	uint32_t sink_period_bytes;
+	enum sof_ipc_frame source_format;	/**< source frame format */
+	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	int64_t *iir_delay;
 	size_t iir_delay_size;
 	void (*eq_iir_func)(struct comp_dev *dev,
@@ -76,30 +79,64 @@ struct comp_data {
  * EQ IIR algorithm code
  */
 
-static void eq_iir_s16_passthrough(struct comp_dev *dev,
-				   struct comp_buffer *source,
-				   struct comp_buffer *sink,
-				   uint32_t frames)
+static void eq_iir_s16_pass(struct comp_dev *dev,
+			    struct comp_buffer *source,
+			    struct comp_buffer *sink,
+			    uint32_t frames)
 {
 	int16_t *src = (int16_t *)source->r_ptr;
 	int16_t *dest = (int16_t *)sink->w_ptr;
-	int nch = dev->params.channels;
-	int n = frames * nch;
+	int n = frames * dev->params.channels;
 
 	memcpy(dest, src, n * sizeof(int16_t));
 }
 
-static void eq_iir_s32_passthrough(struct comp_dev *dev,
-				   struct comp_buffer *source,
-				   struct comp_buffer *sink,
-				   uint32_t frames)
+static void eq_iir_s32_pass(struct comp_dev *dev,
+			    struct comp_buffer *source,
+			    struct comp_buffer *sink,
+			    uint32_t frames)
 {
 	int32_t *src = (int32_t *)source->r_ptr;
 	int32_t *dest = (int32_t *)sink->w_ptr;
-	int nch = dev->params.channels;
-	int n = frames * nch;
+	int n = frames * dev->params.channels;
 
 	memcpy(dest, src, n * sizeof(int32_t));
+}
+
+static void eq_iir_s32_16_pass(struct comp_dev *dev,
+			       struct comp_buffer *source,
+			       struct comp_buffer *sink,
+			       uint32_t frames)
+
+{
+	int32_t *src = (int32_t *)source->r_ptr;
+	int16_t *snk = (int16_t *)sink->w_ptr;
+	int n = frames * dev->params.channels;
+	int i;
+
+	for (i = 0; i < n; i++) {
+		*snk = *src >> 16;
+		src++;
+		snk++;
+	}
+}
+
+static void eq_iir_s32_24_pass(struct comp_dev *dev,
+			       struct comp_buffer *source,
+			       struct comp_buffer *sink,
+			       uint32_t frames)
+
+{
+	int32_t *src = (int32_t *)source->r_ptr;
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	int n = frames * dev->params.channels;
+	int i;
+
+	for (i = 0; i < n; i++) {
+		*snk = *src >> 8;
+		src++;
+		snk++;
+	}
 }
 
 static void eq_iir_s16_default(struct comp_dev *dev,
@@ -188,6 +225,105 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 			y += nch;
 		}
 	}
+}
+
+static void eq_iir_s32_16_default(struct comp_dev *dev,
+				  struct comp_buffer *source,
+				  struct comp_buffer *sink,
+				  uint32_t frames)
+
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct iir_state_df2t *filter;
+	int32_t *src = (int32_t *)source->r_ptr;
+	int16_t *snk = (int16_t *)sink->w_ptr;
+	int32_t *x;
+	int16_t *y;
+	int ch;
+	int i;
+	int nch = dev->params.channels;
+
+	for (ch = 0; ch < nch; ch++) {
+		filter = &cd->iir[ch];
+		x = src++;
+		y = snk++;
+		for (i = 0; i < frames; i++) {
+			*y = iir_df2t(filter, *x) >> 16;
+			x += nch;
+			y += nch;
+		}
+	}
+}
+
+static void eq_iir_s32_24_default(struct comp_dev *dev,
+				  struct comp_buffer *source,
+				  struct comp_buffer *sink,
+				  uint32_t frames)
+
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct iir_state_df2t *filter;
+	int32_t *src = (int32_t *)source->r_ptr;
+	int32_t *snk = (int32_t *)sink->w_ptr;
+	int32_t *x;
+	int32_t *y;
+	int ch;
+	int i;
+	int nch = dev->params.channels;
+
+	for (ch = 0; ch < nch; ch++) {
+		filter = &cd->iir[ch];
+		x = src++;
+		y = snk++;
+		for (i = 0; i < frames; i++) {
+			*y = iir_df2t(filter, *x) >> 8;
+			x += nch;
+			y += nch;
+		}
+	}
+}
+
+const struct eq_iir_func_map fm_configured[] = {
+	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s16_default},
+	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S24_4LE, NULL},
+	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S32_LE,  NULL},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  NULL},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, eq_iir_s24_default},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  NULL},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s32_16_default},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S24_4LE, eq_iir_s32_24_default},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_s32_default},
+};
+
+const struct eq_iir_func_map fm_passthrough[] = {
+	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s16_pass},
+	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S24_4LE, NULL},
+	{SOF_IPC_FRAME_S16_LE,  SOF_IPC_FRAME_S32_LE,  NULL},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  NULL},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, eq_iir_s32_pass},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  NULL},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s32_16_pass},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S24_4LE, eq_iir_s32_24_pass},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_s32_pass},
+};
+
+static eq_iir_func eq_iir_find_func(struct comp_data *cd,
+				    const struct eq_iir_func_map *map,
+				    int n)
+{
+	int i;
+
+	/* Find suitable processing function from map. */
+	for (i = 0; i < n; i++) {
+		if ((uint8_t)cd->source_format != map[i].source)
+			continue;
+		if ((uint8_t)cd->sink_format != map[i].sink)
+			continue;
+
+		return map[i].func;
+	}
+
+	return NULL;
 }
 
 static void eq_iir_free_parameters(struct sof_eq_iir_config **config)
@@ -381,7 +517,7 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	cd->eq_iir_func = eq_iir_s32_passthrough;
+	cd->eq_iir_func = eq_iir_s32_pass;
 	cd->iir_delay = NULL;
 	cd->iir_delay_size = 0;
 	cd->config = NULL;
@@ -423,30 +559,9 @@ static void eq_iir_free(struct comp_dev *dev)
 /* set component audio stream parameters */
 static int eq_iir_params(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	struct comp_buffer *sink;
-	int err;
-
 	trace_eq("eq_iir_params()");
 
-	/* Calculate period size based on configuration. First make sure that
-	 * frame_bytes is set.
-	 */
-	dev->frame_bytes =
-		dev->params.sample_container_bytes * dev->params.channels;
-	cd->period_bytes = dev->frames * dev->frame_bytes;
-
-	/* configure downstream buffer */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-	err = buffer_set_size(sink, cd->period_bytes * config->periods_sink);
-	if (err < 0) {
-		trace_eq_error("eq_iir_params() error: "
-			       "buffer_set_size() failed");
-		return err;
-	}
-
+	/* All configuration work is postponed to prepare(). */
 	return 0;
 }
 
@@ -630,7 +745,6 @@ static int eq_iir_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	int res;
 
 	tracev_comp("eq_iir_copy()");
 
@@ -642,20 +756,28 @@ static int eq_iir_copy(struct comp_dev *dev)
 
 	/* make sure source component buffer has enough data available and that
 	 * the sink component buffer has enough free bytes for copy. Also
-	 * check for XRUNs.
+	 * check for XRUNs
 	 */
-	res = comp_buffer_can_copy_bytes(source, sink, cd->period_bytes);
-	if (res) {
+	if (source->avail < cd->source_period_bytes) {
 		trace_eq_error("eq_iir_copy() error: "
-			       "comp_buffer_can_copy_bytes() failed");
+			       "source component buffer"
+			       " has not enough data available");
+		comp_underrun(dev, source, cd->source_period_bytes, 0);
+		return -EIO;	/* xrun */
+	}
+	if (sink->free < cd->sink_period_bytes) {
+		trace_eq_error("eq_iir_copy() error: "
+			       "sink component buffer"
+			       " has not enough free bytes for copy");
+		comp_overrun(dev, sink, cd->sink_period_bytes, 0);
 		return -EIO;	/* xrun */
 	}
 
 	cd->eq_iir_func(dev, source, sink, dev->frames);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, cd->period_bytes);
-	comp_update_buffer_produce(sink, cd->period_bytes);
+	comp_update_buffer_consume(source, cd->source_period_bytes);
+	comp_update_buffer_produce(sink, cd->sink_period_bytes);
 
 	return dev->frames;
 }
@@ -679,15 +801,23 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
-	/* set period bytes and frame format */
-	comp_set_period_bytes(sourceb->source, dev->frames,
-			      &dev->params.frame_fmt, &cd->period_bytes);
+	/* get source data format */
+	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
+			      &cd->source_period_bytes);
+
+	/* get sink data format */
+	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
+			      &cd->sink_period_bytes);
+
+	/* rewrite params format for all downstream */
+	dev->params.frame_fmt = cd->sink_format;
 
 	/* rewrite frame_bytes for all downstream */
-	dev->frame_bytes = cd->period_bytes / dev->frames;
+	dev->frame_bytes = cd->sink_period_bytes / dev->frames;
 
 	/* set downstream buffer size */
-	ret = buffer_set_size(sinkb, cd->period_bytes * config->periods_sink);
+	ret = buffer_set_size(sinkb,
+			      cd->sink_period_bytes * config->periods_sink);
 	if (ret < 0) {
 		trace_eq_error("eq_iir_prepare() error: "
 			       "buffer_set_size() failed");
@@ -695,46 +825,37 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	}
 
 	/* Initialize EQ */
+	trace_eq("eq_iir_prepare(), source_format=%d, sink_format=%d",
+		 cd->source_format, cd->sink_format);
 	if (cd->config) {
 		ret = eq_iir_setup(cd, dev->params.channels);
 		if (ret < 0) {
+			trace_eq_error("eq_iir_prepare() error: "
+				       "eq_iir_setup failed.");
 			comp_set_state(dev, COMP_TRIGGER_RESET);
 			return ret;
 		}
-		switch (dev->params.frame_fmt) {
-		case SOF_IPC_FRAME_S16_LE:
-			trace_eq("eq_iir_prepare(), SOF_IPC_FRAME_S16_LE");
-			cd->eq_iir_func = eq_iir_s16_default;
-			break;
-		case SOF_IPC_FRAME_S24_4LE:
-			trace_eq("eq_iir_prepare(), SOF_IPC_FRAME_S24_4LE");
-			cd->eq_iir_func = eq_iir_s24_default;
-			break;
-		case SOF_IPC_FRAME_S32_LE:
-			trace_eq("eq_iir_prepare(), SOF_IPC_FRAME_S32_LE");
-			cd->eq_iir_func = eq_iir_s32_default;
-			break;
-		default:
+		cd->eq_iir_func = eq_iir_find_func(cd, fm_configured,
+						   ARRAY_SIZE(fm_configured));
+		if (!cd->eq_iir_func) {
 			trace_eq_error("eq_iir_prepare() error: "
-				       "invalid dev->params.frame_fmt");
+					"No processing function available, "
+					"for configured mode.");
+			cd->eq_iir_func = eq_iir_s32_pass;
 			return -EINVAL;
 		}
+		trace_eq("eq_iir_prepare(), IIR is configured.");
 	} else {
-		switch (dev->params.frame_fmt) {
-		case SOF_IPC_FRAME_S16_LE:
-			trace_eq("eq_iir_prepare(), SOF_IPC_FRAME_S16_LE");
-			cd->eq_iir_func = eq_iir_s16_passthrough;
-			break;
-		case SOF_IPC_FRAME_S24_4LE:
-		case SOF_IPC_FRAME_S32_LE:
-			trace_eq("eq_iir_prepare(), SOF_IPC_FRAME_S32_LE");
-			cd->eq_iir_func = eq_iir_s32_passthrough;
-			break;
-		default:
+		cd->eq_iir_func = eq_iir_find_func(cd, fm_passthrough,
+						   ARRAY_SIZE(fm_passthrough));
+		if (!cd->eq_iir_func) {
 			trace_eq_error("eq_iir_prepare() error: "
-				       "invalid dev->params.frame_fmt");
+					"No processing function available, "
+					"for pass-through mode.");
+			cd->eq_iir_func = eq_iir_s32_pass;
 			return -EINVAL;
 		}
+		trace_eq("eq_iir_prepare(), pass-through mode.");
 	}
 	return 0;
 }
