@@ -559,6 +559,19 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		trace_dai("dai_comp_trigger(), START");
 		if (!dd->pointer_init)
 			dai_pointer_init(dev);
+		/* for nono-first init start, we need to recover the buffer
+		 * state as well pointer position as pause/relesas did
+		 */
+		else {
+			/* set valid buffer pointer */
+			dai_buffer_process(dev);
+
+			/* recover valid start position */
+			ret = dma_release(dd->dma, dd->chan);
+			if (ret < 0)
+				return ret;
+		}
+
 		/* only start the DAI if we are not XRUN handling
 		 * and the ptr is not initialized by the host as in this
 		 * case start is deferred to the first copy call as the buffer
