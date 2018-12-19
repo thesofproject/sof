@@ -52,9 +52,9 @@ static void test_audio_pipeline_pipeline_new_memory_allocation(
 	 *in future so expect errors here if any change to pipeline memory
 	 *capabilities or memmory space was made
 	 */
-	expect_value(rzalloc, zone, RZONE_RUNTIME);
-	expect_value(rzalloc, caps, SOF_MEM_CAPS_RAM);
-	expect_value(rzalloc, bytes, sizeof(struct pipeline));
+	expect_value(_zalloc, zone, RZONE_RUNTIME);
+	expect_value(_zalloc, caps, SOF_MEM_CAPS_RAM);
+	expect_value(_zalloc, bytes, sizeof(struct pipeline));
 
 	/*Testing component*/
 	result = pipeline_new(&pipe_desc, cd);
