@@ -37,7 +37,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-void *rzalloc(int zone, uint32_t caps, size_t bytes)
+void *_zalloc(int zone, uint32_t caps, size_t bytes)
 {
 	check_expected(zone);
 	check_expected(caps);
