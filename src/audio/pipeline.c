@@ -1242,19 +1242,6 @@ static int pipeline_xrun_recover(struct pipeline *p)
 		return ret;
 	}
 
-	/* for playback copy it here, because scheduling won't work
-	 * on this interrupt level
-	 */
-	if (p->sched_comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		ret = pipeline_copy(p->sched_comp);
-		if (ret < 0) {
-			trace_pipe_error_with_ids(p, "pipeline_xrun_recover() "
-						  "error: pipeline_copy() "
-						  "failed, ret = %d", ret);
-			return ret;
-		}
-	}
-
 	return 0;
 }
 
