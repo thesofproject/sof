@@ -1149,15 +1149,15 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		}
 	}
 
-	trace_dmic_error("dmic_set_config() error: "
+	trace_dmic("dmic_set_config(): "
 			 "prm driver_ipc_version = %u, "
 			 "prm->num_pdm_active = %u",
 			 prm->driver_ipc_version, prm->num_pdm_active);
-	trace_dmic_error("dmic_set_config() error: pdmclk_min = %u, "
+	trace_dmic("dmic_set_config(): pdmclk_min = %u, "
 			 "pdmclk_max = %u, fifo_fs_a = %u, fifo_fs_b = %u",
 			 prm->pdmclk_min, prm->pdmclk_max, prm->fifo_fs_a,
 			 prm->fifo_fs_b);
-	trace_dmic_error("dmic_set_config() error: prm fifo_bits_a = %u, "
+	trace_dmic("dmic_set_config(): prm fifo_bits_a = %u, "
 			 "fifo_bits_b = %u, duty_min = %u, duty_max = %u",
 			 prm->fifo_bits_a, prm->fifo_bits_b, prm->duty_min,
 			 prm->duty_max);
