@@ -55,8 +55,8 @@
 #define HOST_PAGE_SIZE		4096
 
 /* Platform stream capabilities */
-#define PLATFORM_MAX_CHANNELS	4
-#define PLATFORM_MAX_STREAMS	5
+#define PLATFORM_MAX_CHANNELS	8
+#define PLATFORM_MAX_STREAMS	16
 
 /* DMA channel drain timeout in microseconds */
 #define PLATFORM_DMA_TIMEOUT	1333
