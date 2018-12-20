@@ -133,18 +133,17 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 done:
 	ipc->host_pending = 0;
 
+	/* are we about to enter D3 ? */
+	if (iipc->pm_prepare_D3) {
+		/* no return - memory will be powered off and IPC sent */
+		platform_pm_runtime_power_off();
+	}
+
 	/* write 1 to clear busy, and trigger interrupt to host*/
-	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) |IPC_DIPCT_BUSY );
+	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
 
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
-
-	// TODO: signal audio work to enter D3 in normal context
-	/* are we about to enter D3 ? */
-	if (iipc->pm_prepare_D3) {
-		/* no return - memory will be powered off */
-		platform_pm_runtime_power_off();
-	}
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
