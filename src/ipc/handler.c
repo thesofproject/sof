@@ -611,7 +611,7 @@ static int ipc_pm_context_save(uint32_t header)
 	//mm_pm_context_save(struct dma_sg_config *sg);
 
 	/* mask all DSP interrupts */
-	arch_interrupt_disable_mask(0xffff);
+	arch_interrupt_disable_mask(0xffffffff);
 
 	/* TODO: mask ALL platform interrupts inc DMA */
 
