@@ -116,8 +116,10 @@ preproc_get_arg_SOURCES =\
 
 # debugability tests
 
+if BUILD_XTENSA
 check_PROGRAMS += debugability_macros
 debugability_macros_SOURCES = src/debugability/macros.c
+endif
 
 # lib/lib tests
 
@@ -150,6 +152,9 @@ endif
 
 # volume tests
 
+if BUILD_XTENSA
+# these tests should be able to run on host after some tuning
+
 check_PROGRAMS += volume_process
 volume_process_SOURCES = src/audio/volume/volume_process.c
 volume_process_CFLAGS = -I../../src/audio $(AM_CFLAGS)
@@ -165,7 +170,12 @@ else
 volume_process_LDADD =  ../../src/audio/libaudio.a $(LDADD)
 endif
 
+endif
+
 # buffer tests
+
+if BUILD_XTENSA
+# these tests should be able to run on host after some tuning
 
 check_PROGRAMS += buffer_new
 buffer_new_SOURCES = src/audio/buffer/buffer_new.c src/audio/buffer/mock.c
@@ -213,6 +223,8 @@ buffer_copy_SOURCES += 	../../src/audio/component.c \
 buffer_copy_LDADD =  ../../src/host/libtb_common.a $(LDADD) -ldl
 else
 buffer_copy_LDADD =  ../../src/audio/libaudio.a $(LDADD)
+endif
+
 endif
 
 # component tests
