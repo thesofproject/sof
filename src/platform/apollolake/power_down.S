@@ -146,6 +146,15 @@ _PD_RELEASE_VNN:
 
 	//TODO: add sending IPC reply from L1$ locked code
 
+_PD_SEND_IPC:
+	// Send IPC to host informing of PD completion - Clear BUSY bit by
+	// writting IPC_DIPCT_BUSY to IPC_DIPCT
+	movi temp_reg0, IPC_HOST_BASE
+	l32i temp_reg1, temp_reg0, IPC_DIPCT
+	movi temp_reg2, IPC_DIPCT_BUSY
+	or temp_reg1, temp_reg1, temp_reg2
+	s32i temp_reg1, temp_reg0, IPC_DIPCT
+
 _PD_SLEEP:
     // effecfively executes:
     // xmp_spin()
