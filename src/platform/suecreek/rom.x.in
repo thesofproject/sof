@@ -110,12 +110,8 @@ PHDRS
   vector_double_text_phdr PT_LOAD;
   sof_text_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
-
-  static_log_entries_phdr PT_NOTE;
 }
 
-/*  Default entry point:  */
-ENTRY(_MainEntry)
 _rom_store_table = 0;
 
 /* ABI0 does not use Window base */
