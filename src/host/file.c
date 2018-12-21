@@ -165,8 +165,6 @@ static int read_samples_16(struct comp_dev *dev, struct comp_buffer *sink,
 
 			/* copy sample per channel */
 			for (i = 0; i < nch; i++) {
-				/* read sample from file */
-				ret = fscanf(cd->fs.rfh, "%hd", dest);
 				switch (cd->fs.f_format) {
 				/* text input file */
 				case FILE_TEXT:
