@@ -694,6 +694,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel = 0;
 
+	trace_dai("config comp %d pipe %d dai %d type %d", dev->comp.id,
+		  dev->comp.pipeline_id, config->dai_index, config->type);
+
 	switch (config->type) {
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */

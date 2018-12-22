@@ -181,7 +181,7 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	trace_ssp("ssp_set_config(), config->format = %d", config->format);
+	trace_ssp("ssp_set_config(), config->format = 0x%4x", config->format);
 
 	/* reset SSP settings */
 	/* sscr0 dynamic settings are DSS, EDSS, SCR, FRDC, ECS */
@@ -325,14 +325,16 @@ static inline int ssp_set_config(struct dai *dai,
 #if defined(CONFIG_ICELAKE)
 	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_38400_kHz) {
 		trace_ssp_error("ssp_set_config() error: "
-				"mclk_rate = 0 or > 38400kHz");
+				"invalid MCLK = %d Hz (valid < 38400kHz)",
+				config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
 	if (!config->ssp.bclk_rate ||
 	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
-				"bclk_rate = 0 or > mclk_rate");
+				"BCLK %d Hz = 0 or > MCLK %d Hz",
+				config->ssp.bclk_rate, config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -340,7 +342,8 @@ static inline int ssp_set_config(struct dai *dai,
 	if (F_38400_kHz % config->ssp.mclk_rate == 0) {
 		mdivr_val = F_38400_kHz / config->ssp.mclk_rate;
 	} else {
-		trace_ssp_error("ssp_set_config() error: mclk_rate EINVAL");
+		trace_ssp_error("ssp_set_config() error: 38.4MHz / %d Hz MCLK not divisable",
+				config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -348,21 +351,24 @@ static inline int ssp_set_config(struct dai *dai,
 	if (F_38400_kHz % config->ssp.bclk_rate == 0) {
 		mdiv = F_38400_kHz / config->ssp.bclk_rate;
 	} else {
-		trace_ssp_error("ssp_set_config() error: bclk_rate EINVAL");
+		trace_ssp_error("ssp_set_config() error: 38.4MHz / %d Hz BCLK not divisable",
+				config->ssp.bclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
 #elif defined(CONFIG_CANNONLAKE)
 	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24000_kHz) {
 		trace_ssp_error("ssp_set_config() error: "
-				"mclk_rate = 0 or > 24000kHz");
+				"invalid MCLK = %d Hz (valid < 24000kHz)",
+				config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
 	if (!config->ssp.bclk_rate ||
 	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
-				"bclk_rate = 0 or > mclk_rate");
+				"BCLK %d Hz = 0 or > MCLK %d Hz",
+				config->ssp.bclk_rate, config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -370,7 +376,8 @@ static inline int ssp_set_config(struct dai *dai,
 	if (F_24000_kHz % config->ssp.mclk_rate == 0) {
 		mdivr_val = F_24000_kHz / config->ssp.mclk_rate;
 	} else {
-		trace_ssp_error("ssp_set_config() error: mclk_rate EINVAL");
+		trace_ssp_error("ssp_set_config() error: 24.0MHz / %d Hz MCLK not divisable",
+				config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -378,21 +385,24 @@ static inline int ssp_set_config(struct dai *dai,
 	if (F_24000_kHz % config->ssp.bclk_rate == 0) {
 		mdiv = F_24000_kHz / config->ssp.bclk_rate;
 	} else {
-		trace_ssp_error("ssp_set_config() error: bclk_rate EINVAL");
+		trace_ssp_error("ssp_set_config() error: 24.0MHz / %d Hz BCLK not divisable",
+				config->ssp.bclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
 #else
 	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24576_kHz) {
 		trace_ssp_error("ssp_set_config() error: "
-				"mclk_rate = 0 or > 24576kHz");
+				"invalid MCLK = %d Hz (valid < 24567kHz)",
+				config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
 	if (!config->ssp.bclk_rate ||
 	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
-				"bclk_rate = 0 or > mclk_rate");
+				"BCLK %d Hz = 0 or > MCLK %d Hz",
+				config->ssp.bclk_rate, config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -404,7 +414,8 @@ static inline int ssp_set_config(struct dai *dai,
 		   F_19200_kHz % config->ssp.mclk_rate == 0) {
 		mdivr_val = F_19200_kHz / config->ssp.mclk_rate;
 	} else {
-		trace_ssp_error("ssp_set_config() error: mclk_rate EINVAL");
+		trace_ssp_error("ssp_set_config() error: MCLK %d",
+				config->ssp.mclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -418,7 +429,8 @@ static inline int ssp_set_config(struct dai *dai,
 	} else if (F_19200_kHz % config->ssp.bclk_rate == 0) {
 		mdiv = F_19200_kHz / config->ssp.bclk_rate;
 	} else {
-		trace_ssp_error("ssp_set_config() error: bclk_rate EINVAL");
+		trace_ssp_error("ssp_set_config() error: BCLK %d",
+				config->ssp.bclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -438,13 +450,15 @@ static inline int ssp_set_config(struct dai *dai,
 		mdivr = 0x6; /* 1/8 */
 		break;
 	default:
-		trace_ssp_error("ssp_set_config() error: invalid mdivr_val");
+		trace_ssp_error("ssp_set_config() error: invalid mdivr_val %d",
+				mdivr_val);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	if (config->ssp.mclk_id > 1) {
-		trace_ssp_error("ssp_set_config() error: mclk_id > 1");
+		trace_ssp_error("ssp_set_config() error: mclk ID (%d) > 1",
+				config->ssp.mclk_id);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -453,7 +467,7 @@ static inline int ssp_set_config(struct dai *dai,
 	mdiv -= 1;
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ssp_set_config() error: "
-				"divisor is not within SCR range");
+				"divisor %d is not within SCR range", mdiv);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -464,7 +478,8 @@ static inline int ssp_set_config(struct dai *dai,
 	/* calc frame width based on BCLK and rate - must be divisable */
 	if (config->ssp.bclk_rate % config->ssp.fsync_rate) {
 		trace_ssp_error("ssp_set_config() error: "
-				"bclk_rate is not divisable");
+				"BCLK %d is not divisable by rate %d",
+				config->ssp.bclk_rate, config->ssp.fsync_rate);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -472,21 +487,25 @@ static inline int ssp_set_config(struct dai *dai,
 	/* must be enough BCLKs for data */
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
 	if (bdiv < config->ssp.tdm_slot_width * config->ssp.tdm_slots) {
-		trace_ssp_error("ssp_set_config() error: not enough BCLKs");
+		trace_ssp_error("ssp_set_config() error: not enough BCLKs need %d",
+				config->ssp.tdm_slot_width *
+				config->ssp.tdm_slots);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* tdm_slot_width must be <= 38 for SSP */
 	if (config->ssp.tdm_slot_width > 38) {
-		trace_ssp_error("ssp_set_config() error: tdm_slot_width > 38");
+		trace_ssp_error("ssp_set_config() error: tdm_slot_width %d > 38",
+				config->ssp.tdm_slot_width);
 		ret = -EINVAL;
 		goto out;
 	}
 
 	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
 	if (bdiv < bdiv_min) {
-		trace_ssp_error("ssp_set_config() error: bdiv < bdiv_min");
+		trace_ssp_error("ssp_set_config() error: bdiv(%d) < bdiv_min(%d)",
+				bdiv < bdiv_min);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -494,7 +513,7 @@ static inline int ssp_set_config(struct dai *dai,
 	frame_end_padding = bdiv - bdiv_min;
 	if (frame_end_padding > SSPSP2_FEP_MASK) {
 		trace_ssp_error("ssp_set_config() error: "
-				"frame_end_padding > SSPSP2_FEP_MASK");
+				"frame_end_padding > %d", SSPSP2_FEP_MASK);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -509,7 +528,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		if (bdiv % 2) {
 			trace_ssp_error("ssp_set_config() error: "
-					"bdiv is not divisible by 2");
+					"bdiv %d is not divisible by 2", bdiv);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -531,8 +550,9 @@ static inline int ssp_set_config(struct dai *dai,
 		 */
 		if (frame_end_padding % 2) {
 			trace_ssp_error("ssp_set_config() error: "
-					"frame_end_padding "
-					"is not divisible by 2");
+					"frame_end_padding %d "
+					"is not divisible by 2",
+					frame_end_padding);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -542,7 +562,8 @@ static inline int ssp_set_config(struct dai *dai,
 		if (slot_end_padding > SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
 			/* too big padding */
 			trace_ssp_error("ssp_set_config() error: "
-					"slot_end_padding too big");
+					"slot_end_padding > %d",
+					SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -564,7 +585,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 		if (bdiv % 2) {
 			trace_ssp_error("ssp_set_config() error: "
-					"bdiv is not divisible by 2");
+					"bdiv %d is not divisible by 2", bdiv);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -586,8 +607,9 @@ static inline int ssp_set_config(struct dai *dai,
 		 */
 		if (frame_end_padding % 2) {
 			trace_ssp_error("ssp_set_config() error: "
-					"frame_end_padding "
-					"is not divisible by 2");
+					"frame_end_padding %d "
+					"is not divisible by 2",
+					frame_end_padding);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -597,7 +619,8 @@ static inline int ssp_set_config(struct dai *dai,
 		if (slot_end_padding > 15) {
 			/* can't handle padding over 15 bits */
 			trace_ssp_error("ssp_set_config() error: "
-					"slot_end_padding over 15 bits");
+					"slot_end_padding %d > 15 bits",
+					slot_end_padding);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -632,8 +655,8 @@ static inline int ssp_set_config(struct dai *dai,
 		if (ssp->params.frame_pulse_width >
 			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
 			trace_ssp_error("ssp_set_config() error: "
-					"frame_pulse_width > "
-					"SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX");
+					"frame_pulse_width > %d",
+					SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -663,8 +686,8 @@ static inline int ssp_set_config(struct dai *dai,
 			if (slot_end_padding >
 				SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
 				trace_ssp_error("ssp_set_config() error: "
-						"slot_end_padding > "
-						"SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX");
+						"slot_end_padding > %d",
+						SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX);
 				ret = -EINVAL;
 				goto out;
 			}
@@ -681,7 +704,7 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	default:
 		trace_ssp_error("ssp_set_config() error: "
-				"format & FORMAT_MASK EINVAL");
+				"invalid format 0x%04", config->format);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -711,7 +734,8 @@ static inline int ssp_set_config(struct dai *dai,
 			break;
 	default:
 			trace_ssp_error("ssp_set_config() error: "
-					"sample_valid_bits EINVAL");
+					"sample_valid_bits %d",
+					config->ssp.sample_valid_bits);
 			ret = -EINVAL;
 			goto out;
 	}
@@ -734,12 +758,12 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSTSA, sstsa);
 	ssp_write(dai, SSRSA, ssrsa);
 
-	trace_ssp("ssp_set_config(), sscr0 = %u, sscr1 = %u, ssto = %u, "
-		  "sspsp = %u", sscr0, sscr1, ssto, sspsp);
-	trace_ssp("ssp_set_config(), sscr2 = %u, sspsp2 = %u, sscr3 = %u, "
-		  "ssioc = %u",
+	trace_ssp("ssp_set_config(), sscr0 = 0x%08x, sscr1 = 0x%08x, ssto = 0x%08x, "
+		  "sspsp = 0x%0x", sscr0, sscr1, ssto, sspsp);
+	trace_ssp("ssp_set_config(), sscr2 = 0x%08x, sspsp2 = 0x%08x, sscr3 = 0x%08x, "
+		  "ssioc = 0x%08x",
 		  sscr2, sspsp2, sscr3, ssioc);
-	trace_ssp("ssp_set_config(), ssrsa = %u, sstsa = %u", ssrsa, sstsa);
+	trace_ssp("ssp_set_config(), ssrsa = 0x%08x, sstsa = 0x%08x", ssrsa, sstsa);
 
 	/* TODO: move this into M/N driver */
 	mn_reg_write(0x0, mdivc);
@@ -840,7 +864,7 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 
-	trace_ssp("ssp_trigger()");
+	trace_ssp("ssp_trigger() cmd %d", cmd);
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -875,7 +899,7 @@ static void ssp_irq_handler(void *data)
 {
 	struct dai *dai = data;
 
-	trace_ssp("ssp_irq_handler(), IRQ = %u", ssp_read(dai, SSSR));
+	trace_ssp("ssp_irq_handler(), IRQ = 0x%08x", ssp_read(dai, SSSR));
 
 	/* clear IRQ */
 	ssp_write(dai, SSSR, ssp_read(dai, SSSR));
@@ -907,7 +931,7 @@ static int ssp_probe(struct dai *dai)
 	ret = interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
 				 dai);
 	if (ret < 0) {
-		trace_ssp_error("SSP failed to allocate IRQ");
+		trace_ssp_error("SSP failed to allocate IRQ %d", ssp_irq(dai));
 		rfree(ssp);
 		return ret;
 	}
