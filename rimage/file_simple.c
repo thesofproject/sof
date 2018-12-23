@@ -85,11 +85,17 @@ static int write_block(struct image *image, struct module *module,
 {
 	const struct adsp *adsp = image->adsp;
 	struct snd_sof_blk_hdr block;
+	uint32_t padding = 0;
 	size_t count;
 	void *buffer;
 	int ret;
 
 	block.size = section->sh_size;
+	if (block.size % 4) {
+		/* make block.size divisible by 4 to avoid unaligned accesses */
+		padding = 4 - (block.size % 4);
+		block.size += padding;
+	}
 
 	if (is_iram(image, section)) {
 		block.type = SOF_BLK_TEXT;
@@ -129,8 +135,8 @@ static int write_block(struct image *image, struct module *module,
 	}
 
 	/* write out section data */
-	count = fwrite(buffer, 1, section->sh_size, image->out_fd);
-	if (count != section->sh_size) {
+	count = fwrite(buffer, 1, block.size, image->out_fd);
+	if (count != block.size) {
 		fprintf(stderr, "error: cant write section %d\n", -errno);
 		fprintf(stderr, " foffset %d size 0x%x mem addr 0x%x\n",
 			section->sh_offset, section->sh_size, section->sh_addr);
@@ -144,6 +150,10 @@ static int write_block(struct image *image, struct module *module,
 
 out:
 	free(buffer);
+	/* return padding size */
+	if (ret >= 0)
+		return padding;
+
 	return ret;
 }
 
@@ -154,12 +164,16 @@ static int simple_write_module(struct image *image, struct module *module)
 	size_t count;
 	int i, err;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
+	int ptr_hdr, ptr_cur;
+	uint32_t padding = 0;
 
 	hdr.num_blocks = module->num_sections - module->num_bss;
 	hdr.size = module->text_size + module->data_size +
 		sizeof(struct snd_sof_blk_hdr) * hdr.num_blocks;
 	hdr.type = SOF_FW_BASE;
 
+	/* Get the pointer of writing hdr */
+	ptr_hdr = ftell(image->out_fd);
 	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
 	if (count != 1) {
 		fprintf(stderr, "error: failed to write section header %d\n",
@@ -198,10 +212,25 @@ static int simple_write_module(struct image *image, struct module *module)
 			fprintf(stderr, "error: failed to write section #%d\n", i);
 			return err;
 		}
+		/* write_block will return padding size */
+		padding += err;
 	}
+	hdr.size += padding;
+	/* Record current pointer, will set it back after overwriting hdr */
+	ptr_cur = ftell(image->out_fd);
+	/* overwrite hdr */
+	fseek(image->out_fd, ptr_hdr, SEEK_SET);
+	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
+	if (count != 1) {
+		fprintf(stderr, "error: failed to write section header %d\n",
+			-errno);
+		return -errno;
+	}
+	fseek(image->out_fd, ptr_cur, SEEK_SET);
 
 	fprintf(stdout, "\n");
-	return 0;
+	/* return padding size */
+	return padding;
 }
 
 static int write_block_reloc(struct image *image, struct module *module)
@@ -336,7 +365,14 @@ static int simple_write_firmware(struct image *image)
 				i);
 			return ret;
 		}
+		/* add padding size */
+		hdr.file_size += ret;
 	}
+	/* overwrite hdr */
+	fseek(image->out_fd, 0, SEEK_SET);
+	count = fwrite(&hdr, sizeof(hdr), 1, image->out_fd);
+	if (count != 1)
+		return -errno;
 
 	fprintf(stdout, "firmware: image size %ld (0x%lx) bytes %d modules\n\n",
 			hdr.file_size + sizeof(hdr), hdr.file_size + sizeof(hdr),
