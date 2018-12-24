@@ -160,7 +160,7 @@ static void _irq_task(void *arg)
 		task = container_of(clist, struct task, irq_list);
 		list_item_del(clist);
 
-		if (task->func && task->state == TASK_STATE_PENDING) {
+		if (task->func) {
 			schedule_task_running(task);
 			run_task = 1;
 		} else {

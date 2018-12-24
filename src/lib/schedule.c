@@ -263,17 +263,17 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 
 	spin_lock_irq(&sch->lock, flags);
 
-	/* is task already pending ? - not enough MIPS to complete ? */
-	if (task->state == TASK_STATE_PENDING) {
-		trace_schedule("_schedule_task(), task already pending");
-		spin_unlock_irq(&sch->lock, flags);
-		return 0;
-	}
-
-	/* is task already queued ? - not enough MIPS to complete ? */
-	if (task->state == TASK_STATE_QUEUED) {
-		trace_schedule("_schedule_task(), task already queued");
-		spin_unlock_irq(&sch->lock, flags);
+	/*
+	 * increase pending_cnt, will schedule it after this
+	 * pending one is finished.
+	 */
+	if (task->state == TASK_STATE_PENDING ||
+	    task->state == TASK_STATE_QUEUED ||
+	    task->state == TASK_STATE_RUNNING ||
+	    task->state == TASK_STATE_PREEMPTED) {
+		trace_schedule("task 0x%xalready WIP, schedule it later...",
+				 (uint32_t)(uint32_t *)task);
+		task->pending_cnt++;
 		return 0;
 	}
 
@@ -291,6 +291,9 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 
 	/* calculate deadline - TODO: include MIPS */
 	task->deadline = task->start + ticks_per_ms * deadline / 1000;
+
+	if (task->pending_cnt)
+		task->pending_cnt--;
 
 	/* add task to list */
 	list_item_append(&task->list, &sch->list);
@@ -337,6 +340,8 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 void schedule_task_complete(struct task *task)
 {
 	struct schedule_data *sch = *arch_schedule_get();
+	uint64_t ticks_per_ms;
+	uint64_t deadline;
 	uint32_t flags;
 
 	tracev_schedule("schedule_task_complete()");
@@ -367,6 +372,13 @@ void schedule_task_complete(struct task *task)
 
 	/* tell any waiter that task has completed */
 	wait_completed(&task->complete);
+
+	/* schedule the same pending task */
+	if (task->pending_cnt) {
+		ticks_per_ms = clock_ms_to_ticks(sch->clock, 1);
+		deadline = (task->deadline - task->start) * 1000 / ticks_per_ms;
+		schedule_task(task, 0, deadline);
+	}
 }
 
 /* Update task state to running */
