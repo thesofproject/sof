@@ -1,0 +1,97 @@
+menu "Platform"
+
+choice
+	prompt "Platform"
+	default APOLLOLAKE
+
+config BAYTRAIL
+	bool "Build for Baytrail"
+	select HOST_PTABLE
+	select TASK_HAVE_PRIORITY_MEDIUM
+	help
+	  Select if your target platform is Baytrail-compatible
+
+config CHERRYTRAIL
+	bool "Build for Cherrytrail"
+	select HOST_PTABLE
+	select TASK_HAVE_PRIORITY_MEDIUM
+	help
+	  Select if your target platform is Cherrytrail-compatible
+
+config HASWELL
+	bool "Build for Haswell"
+	select HOST_PTABLE
+	help
+	  Select if your target platform is Haswell-compatible
+
+config BROADWELL
+	bool "Build for Broadwell"
+	select HOST_PTABLE
+	help
+	  Select if your target platform is Broadwell-compatible
+
+config APOLLOLAKE
+	bool "Build for Apollolake"
+	select BOOT_LOADER
+	select IRQ_MAP
+	select DMA_GW
+	select MEM_WND
+	select TASK_HAVE_PRIORITY_MEDIUM
+	select CAVS
+	help
+	  Select if your target platform is Apollolake-compatible
+
+config CANNONLAKE
+	bool "Build for Cannonlake"
+	select BOOT_LOADER
+	select IRQ_MAP
+	select DMA_GW
+	select MEM_WND
+	select TASK_HAVE_PRIORITY_MEDIUM
+	select CAVS
+	help
+	  Select if your target platform is Cannonlake-compatible
+
+config SUECREEK
+	bool "Build for Suecreek"
+	select BOOT_LOADER
+	select IRQ_MAP
+	select TASK_HAVE_PRIORITY_MEDIUM
+	select CAVS
+	help
+	  Select if your target platform is Suecreek-compatible
+
+config ICELAKE
+	bool "Build for Icelake"
+	select BOOT_LOADER
+	select IRQ_MAP
+	select DMA_GW
+	select MEM_WND
+	select TASK_HAVE_PRIORITY_MEDIUM
+	select CAVS
+	help
+	  Select if your target platform is Icelake-compatible
+
+endchoice
+
+config CAVS
+	bool
+	default n
+
+# TODO: it should just take manifest version and offsets
+config FIRMWARE_SHORT_NAME
+	string "Rimage firmware name"
+	default "byt" if BAYTRAIL
+	default "cht" if CHERRYTRAIL
+	default "hsw" if HASWELL
+	default "bdw" if BROADWELL
+	default "apl" if APOLLOLAKE
+	default "cnl" if CANNONLAKE
+	default "sue" if SUECREEK
+	default "icl" if ICELAKE
+	default ""
+	help
+	  3-characters long firmware identifer
+	  used by rimage to decide how to build final binary
+
+endmenu

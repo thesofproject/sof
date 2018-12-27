@@ -1,0 +1,51 @@
+mainmenu "SOF $(PROJECTVERSION) Configuration"
+
+comment "Compiler: $(CC_VERSION_TEXT)"
+
+config HOST_PTABLE
+	bool
+	default n
+
+config TASK_HAVE_PRIORITY_MEDIUM
+	bool
+	default n
+
+config BOOT_LOADER
+	bool
+	default n
+
+config IRQ_MAP
+	bool
+	default n
+
+config DMA_GW
+	bool
+	default n
+
+config MEM_WND
+	bool
+	default n
+
+source "src/Kconfig"
+
+menu "Debug"
+
+config GDB_DEBUG
+	bool "GDB Stub"
+	default n
+	help
+	  Select for GDB debugging
+
+config DEBUG_HEAP
+	bool "Heap debug"
+	default n
+	help
+	  Select for enable heap alloc debugging
+
+config DEBUG_BUILD
+	bool "Debug build"
+	default n
+	help
+	  Select for debug build
+
+endmenu

@@ -1,0 +1,3 @@
+# Generic architecture configs
+
+source "src/arch/$(ARCH)/Kconfig"
