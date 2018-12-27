@@ -191,12 +191,19 @@ static int hda_dma_preload(struct dma *dma, struct hda_chan_data *chan)
 	int i;
 	int period_cnt;
 
+	uint64_t deadline = platform_timer_get(platform_timer) +
+			    clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+					      PLATFORM_HOST_DMA_TIMEOUT / 1000;
+
 	/* waiting for buffer full after start
 	 * first try is unblocking, then blocking
 	 */
 	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) &&
-	       (chan->state & HDA_STATE_BF_WAIT))
-		;
+	       (chan->state & HDA_STATE_BF_WAIT)) {
+		if (deadline < platform_timer_get(platform_timer)) {
+			return -ETIME;
+		}
+	}
 
 	if (host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) {
 		chan->state &= ~(HDA_STATE_PRELOAD | HDA_STATE_BF_WAIT);
