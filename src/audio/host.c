@@ -285,13 +285,17 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_STOP:
 		ret = host_stop(dev);
 		/* host stop fails, let's emit the error log */
-		if (ret)
-			trace_host_error("host: stop failed %d", ret);
+		if (ret < 0)
+			trace_host_error("host_trigger(): host stop failed: %d",
+					 ret);
 		/* fall through */
 	case COMP_TRIGGER_XRUN:
 /* TODO: add attribute to dma interface and do run-time if() here */
 #if defined CONFIG_DMA_GW
 		ret = dma_stop(hd->dma, hd->chan);
+		if (ret < 0)
+			trace_host_error("host_trigger(): dma stop failed: %d",
+					 ret)
 #endif
 		break;
 	case COMP_TRIGGER_START:
