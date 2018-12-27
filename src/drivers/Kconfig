@@ -1,0 +1,10 @@
+menu "Drivers"
+
+config DMIC
+	bool "DMIC driver"
+	depends on CAVS
+	default n
+	help
+	  Select for DMIC driver
+
+endmenu

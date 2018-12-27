@@ -1,0 +1,11 @@
+# Xtensa-specific architecture configs
+
+menu "Xtensa Architecture"
+
+config SMP
+	bool "SMP build"
+	default n
+	help
+	  Build SMP instead of UP
+
+endmenu
