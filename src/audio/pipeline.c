@@ -1271,7 +1271,8 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
  * buffers prior to trigger start. */
 void pipeline_schedule_copy_idle(struct pipeline *p)
 {
-	schedule_task_idle(&p->pipe_task, p->ipc_pipe.deadline);
+//	schedule_task_idle(&p->pipe_task, p->ipc_pipe.deadline);
+	schedule_task(&p->pipe_task, 0, p->ipc_pipe.deadline);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)
