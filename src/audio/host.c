@@ -389,6 +389,8 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		goto error;
 #endif
 
+	hd->chan = DMA_CHAN_INVALID;
+
 	/* init posn data. TODO: other fields */
 	hd->posn.comp_id = comp->id;
 	hd->pointer_init = 0;
@@ -643,6 +645,9 @@ static int host_reset(struct comp_dev *dev)
 	/* free array for hda-dma only, do not free single one for dw-dma */
 	dma_sg_free(&hd->config.elem_array);
 #endif
+
+	/* reset dma channel as we have put it */
+	hd->chan = DMA_CHAN_INVALID;
 
 	host_pointer_reset(dev);
 	hd->pointer_init = 0;
