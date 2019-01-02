@@ -256,6 +256,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
 	dd->pointer_init = 0;
+	dd->chan = DMA_CHAN_INVALID;
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -774,8 +775,10 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		return -EINVAL;
 	}
 
-	/* channel is ignored by GP dma get function */
-	dd->chan = dma_channel_get(dd->dma, channel);
+	if (dd->chan == DMA_CHAN_INVALID)
+		/* get dma channel at first config only */
+		dd->chan = dma_channel_get(dd->dma, channel);
+
 	if (dd->chan < 0) {
 		trace_dai_error_with_ids(dev, "dai_config() error: "
 					 "dma_channel_get() failed");
