@@ -89,6 +89,8 @@
 #define DMA_RELOAD_END	0
 #define DMA_RELOAD_LLI	0xFFFFFFFF
 
+#define DMA_CHAN_INVALID	0xFFFFFFFF
+
 struct dma;
 
 /**
