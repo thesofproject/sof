@@ -171,7 +171,7 @@ define(`DAI_CONFIG',
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     frames, deadline, priority, core, time_domain)
+dnl     deadline, priority, core, time_domain)
 define(`DAI_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`DAI_TYPE')'
@@ -180,7 +180,6 @@ define(`DAI_ADD',
 `undefine(`DAI_BUF')'
 `undefine(`DAI_PERIODS')'
 `undefine(`DAI_FORMAT')'
-`undefine(`SCHEDULE_FRAMES')'
 `undefine(`SCHEDULE_DEADLINE')'
 `undefine(`SCHEDULE_PRIORITY')'
 `undefine(`SCHEDULE_CORE')'
@@ -193,11 +192,10 @@ define(`DAI_ADD',
 `define(`DAI_NAME', $3$4)'
 `define(`DAI_PERIODS', $7)'
 `define(`DAI_FORMAT', $8)'
-`define(`SCHEDULE_FRAMES', $9)'
-`define(`SCHEDULE_DEADLINE', $10)'
-`define(`SCHEDULE_PRIORITY', $11)'
-`define(`SCHEDULE_CORE', $12)'
-`define(`SCHEDULE_TIME_DOMAIN', $13)'
+`define(`SCHEDULE_DEADLINE', $9)'
+`define(`SCHEDULE_PRIORITY', $10)'
+`define(`SCHEDULE_CORE', $11)'
+`define(`SCHEDULE_TIME_DOMAIN', $12)'
 `include($1)'
 `DEBUG_DAI($3, $4)'
 )

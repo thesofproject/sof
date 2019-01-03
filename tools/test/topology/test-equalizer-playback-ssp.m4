@@ -42,8 +42,9 @@ include(`dsps/byt.m4')
 
 PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 	1, 0, 2, TEST_PIPE_FORMAT,
-	48, 1000, 0, 0, 0, 1,
-	SSP, TEST_SSP_PORT, TEST_SSP_FORMAT, 2)
+	1000, 0, 0, 0, 1,
+	SSP, TEST_SSP_PORT, TEST_SSP_FORMAT, 2,
+	48000, 48000, 48000)
 #
 # DAI configuration
 #
@@ -55,7 +56,7 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, TEST_SSP_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SOURCE_1, 2, TEST_SSP_FORMAT,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # PCM Passthrough
 PCM_PLAYBACK_ADD(Passthrough, 3, 0, 0, PIPELINE_PCM_1)

@@ -18,7 +18,6 @@ include(`sof/tokens.m4')
 include(`platform/intel/bxt.m4')
 include(`platform/intel/dmic.m4')
 
-define(KWD_PERIOD_FRAMES, 320)
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 
 #
@@ -36,120 +35,124 @@ define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s32le,
-	48, 1000, 0, 0)
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	2, 1, 2, s32le,
-	48, 1000, 0, 0)
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency capture pipeline 3 on PCM 1 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	3, 1, 2, s32le,
-	48, 1000, 0, 0)
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	4, 99, 4, s16le,
-	48, 1000, 0, 0)
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency playback pipeline 5 on PCM 5 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
         5, 5, 2, s32le,
-        48, 1000, 0, 0)
+        1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency playback pipeline 6 on PCM 6 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
         6, 6, 2, s32le,
-        48, 1000, 0, 0)
+        1000, 0, 0,
+	48000, 48000, 48000)
 
 # Low Latency playback pipeline 7 on PCM 7 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
         7, 7, 2, s32le,
-        48, 1000, 0, 0)
+        1000, 0, 0,
+	48000, 48000, 48000)
 
 #
 # DAIs configuration
 #
 
 # playback DAI is SSP1 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_1, 2, s16le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # playback DAI is SSP2 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, SSP, 2, SSP2-Codec,
 	PIPELINE_SOURCE_2, 2, s16le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # capture DAI is SSP2 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 2, SSP2-Codec,
 	PIPELINE_SINK_3, 2, s16le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # capture DAI is DMIC0 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 0, dmic01,
 	PIPELINE_SINK_4, 2, s16le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # playback DAI is iDisp1 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         5, HDA, 3, iDisp1,
         PIPELINE_SOURCE_5, 2, s32le,
-        48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp2 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         6, HDA, 4, iDisp2,
         PIPELINE_SOURCE_6, 2, s32le,
-        48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp3 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         7, HDA, 5, iDisp3,
         PIPELINE_SOURCE_7, 2, s32le,
-        48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 #
 # KWD configuration
 #
 
 # Passthrough capture pipeline 8 on PCM 8 using max 2 channels.
-# Schedule 320 frames per 20000us deadline on core 0 with priority 0
+# Schedule 20000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
 	8, 8, 2, s16le,
-	KWD_PERIOD_FRAMES,
-	KWD_PIPE_SCH_DEADLINE_US,
-	0, 0)
+	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	48000, 48000, 48000)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s16le format, with 320 frame per 20000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	8, DMIC, 1, dmic16k,
 	PIPELINE_SINK_8, 2, s16le,
-	KWD_PERIOD_FRAMES,
-	KWD_PIPE_SCH_DEADLINE_US,
-	0, 0)
+	KWD_PIPE_SCH_DEADLINE_US, 0, 0)
 
 PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)
 PCM_DUPLEX_ADD(Headset, 1, PIPELINE_PCM_2, PIPELINE_PCM_3)
@@ -161,11 +164,14 @@ PCM_PLAYBACK_ADD(HDMI3, 7, PIPELINE_PCM_7)
 # keyword detector pipe
 dnl PIPELINE_ADD(pipeline,
 dnl     pipe id, max channels, format,
-dnl     frames, deadline, priority, core)
-PIPELINE_ADD(sof/pipe-detect.m4, 9, 2, s16le,
-	KWD_PERIOD_FRAMES,
-	KWD_PIPE_SCH_DEADLINE_US,
-	0, 0, PIPELINE_SCHED_COMP_8)
+dnl     period, priority, core,
+dnl     sched_comp, time_domain,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
+PIPELINE_ADD(sof/pipe-detect.m4,
+	     9, 2, s16le,
+	     KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	     PIPELINE_SCHED_COMP_8, 0,
+	     16000, 16000, 16000))
 
 # Connect pipelines together
 SectionGraph."pipe-sof-apl-keyword-detect" {
