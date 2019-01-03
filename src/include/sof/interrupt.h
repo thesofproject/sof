@@ -69,6 +69,19 @@ struct irq_desc {
 	struct list_item child[PLATFORM_IRQ_CHILDREN];
 };
 
+struct cavs_irq {
+	struct irq_desc *desc;
+	const struct cavs_irq_ops *ops;
+	void *arg;
+	struct list_item ext_ctrl;
+};
+
+struct cavs_irq_ops {
+	void (*mask)(uint32_t irq, uint32_t mask);
+	void (*unmask)(uint32_t irq, uint32_t mask);
+	void (*handler)(const struct cavs_irq *arg);
+};
+
 int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
 		       void *arg);
 void interrupt_unregister(uint32_t irq);
@@ -94,5 +107,8 @@ static inline void interrupt_global_enable(uint32_t flags)
 {
 	arch_interrupt_global_enable(flags);
 }
+
+int platform_register_interrupt_controller(int irq,
+			const struct cavs_irq_ops *ops, void *arg);
 
 #endif

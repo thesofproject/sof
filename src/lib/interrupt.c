@@ -65,6 +65,7 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 		goto finish;
 	}
 
+	child->irq = irq;
 	child->enabled_count = 0;
 	child->handler = handler;
 	child->handler_arg = arg;
@@ -74,7 +75,7 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 	list_item_append(&child->irq_list, &parent->child[SOF_IRQ_BIT(irq)]);
 
 	/* do we need to register parent ? */
-	if (parent->num_children == 0) {
+	if (parent->num_children == 0 && !platform_irq_get_parent(parent->irq)) {
 		ret = arch_interrupt_register(SOF_IRQ_BIT(parent->irq),
 					      parent->handler, parent);
 		if (ret < 0) {

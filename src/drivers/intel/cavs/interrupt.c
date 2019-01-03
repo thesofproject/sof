@@ -32,6 +32,7 @@
  *
  */
 
+#include <sof/alloc.h>
 #include <sof/sof.h>
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
@@ -42,6 +43,86 @@
 #include <platform/shim.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+static struct list_item intc = {&intc, &intc};
+
+static void platform_interrupt_handler(void *arg)
+{
+	const struct cavs_irq *cavs = arg;
+
+	cavs->ops->handler(cavs);
+}
+
+int platform_register_interrupt_controller(int irq,
+				const struct cavs_irq_ops *ops, void *arg)
+{
+	struct cavs_irq *cavs;
+	struct irq_desc *parent, *desc;
+	struct list_item *item;
+	unsigned int i;
+	int ret;
+
+	if (!ops || !ops->mask || !ops->unmask || !ops->handler)
+		return -EINVAL;
+
+	list_for_item (item, &intc) {
+		cavs = container_of(item, struct cavs_irq, ext_ctrl);
+
+		if (irq == cavs->desc->irq)
+			return -EBUSY;
+	}
+
+	cavs = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
+		       sizeof(struct cavs_irq));
+	if (!cavs)
+		return -ENOMEM;
+
+	/* Grab the parent interrupt */
+	ret = interrupt_register(irq, IRQ_AUTO_UNMASK,
+				 platform_interrupt_handler, cavs);
+	if (ret < 0)
+		goto free;
+
+	/* Find our newly registered IRQ descriptor */
+	parent = platform_irq_get_parent(irq);
+	if (!parent || list_is_empty(&parent->child[SOF_IRQ_BIT(irq)])) {
+		ret = -EINVAL;
+		goto unregister;
+	}
+
+	list_for_item (item, &parent->child[SOF_IRQ_BIT(irq)]) {
+		desc = container_of(item, struct irq_desc, irq_list);
+		if (desc->irq == irq)
+			break;
+	}
+
+	if (&desc->irq_list == &parent->child[SOF_IRQ_BIT(irq)]) {
+		/* Not found... */
+		ret = -EPROTO;
+		goto unregister;
+	}
+
+	spinlock_init(&desc->lock);
+	for (i = 0; i < ARRAY_SIZE(desc->child); i++)
+		list_init(desc->child + i);
+
+	cavs->desc = desc;
+	cavs->ops = ops;
+	cavs->arg = arg;
+
+	list_item_append(&cavs->ext_ctrl, &intc);
+
+	interrupt_enable(irq);
+
+	return 0;
+
+unregister:
+	interrupt_unregister(irq);
+free:
+	rfree(cavs);
+
+	return ret;
+}
 
 static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				    uint32_t ilxmsd, uint32_t ilxmcd)
@@ -150,6 +231,22 @@ struct irq_desc *platform_irq_get_parent(uint32_t irq)
 {
 	int core = SOF_IRQ_CPU(irq);
 
+	if (SOF_IRQ_LEVEL(irq) > 0xf) {
+		/* cascaded interrupt */
+		struct list_item *item;
+
+		list_for_item (item, &intc) {
+			const struct cavs_irq *cavs = container_of(item,
+						struct cavs_irq, ext_ctrl);
+			struct irq_desc *desc = cavs->desc;
+
+			if (SOF_IRQ_NUMBER(irq) == SOF_IRQ_NUMBER(desc->irq) &&
+			    SOF_IRQ_ID(irq) == desc->id)
+				return desc;
+		}
+		/* Shouldn't get here... */
+	}
+
 	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL2:
 		return &dsp_irq[core][0];
@@ -173,6 +270,25 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 {
 	int core = SOF_IRQ_CPU(irq);
 
+	if (SOF_IRQ_LEVEL(irq) > 0xf) {
+		/* cascaded interrupt */
+		struct list_item *item;
+
+		list_for_item (item, &intc) {
+			const struct cavs_irq *cavs = container_of(item,
+						struct cavs_irq, ext_ctrl);
+			const struct irq_desc *desc = cavs->desc;
+
+			if (SOF_IRQ_NUMBER(irq) == SOF_IRQ_NUMBER(desc->irq) &&
+			    SOF_IRQ_ID(irq) == desc->id) {
+				cavs->ops->mask(irq, mask);
+				break;
+			}
+		}
+
+		return;
+	}
+
 	/* mask external interrupt bit */
 	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL5:
@@ -195,6 +311,25 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 {
 	int core = SOF_IRQ_CPU(irq);
+
+	if (SOF_IRQ_LEVEL(irq) > 0xf) {
+		/* cascaded interrupt */
+		struct list_item *item;
+
+		list_for_item (item, &intc) {
+			const struct cavs_irq *cavs = container_of(item,
+						struct cavs_irq, ext_ctrl);
+			const struct irq_desc *desc = cavs->desc;
+
+			if (SOF_IRQ_NUMBER(irq) == SOF_IRQ_NUMBER(desc->irq) &&
+			    SOF_IRQ_ID(irq) == desc->id) {
+				cavs->ops->unmask(irq, mask);
+				break;
+			}
+		}
+
+		return;
+	}
 
 	/* unmask external interrupt bit */
 	switch (SOF_IRQ_NUMBER(irq)) {
