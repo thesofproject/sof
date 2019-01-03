@@ -84,48 +84,59 @@ struct polyphase_src {
 struct src_stage_prm {
 	int nch;
 	int times;
-	int32_t *x_rptr;
-	int32_t *x_end_addr;
+	void *x_rptr;
+	void *x_end_addr;
 	size_t x_size;
-	int32_t *y_wptr;
-	int32_t *y_addr;
-	int32_t *y_end_addr;
+	void *y_wptr;
+	void *y_addr;
+	void *y_end_addr;
 	size_t y_size;
+	int shift;
 	struct src_state *state;
 	struct src_stage *stage;
 };
 
-static inline void src_circ_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
+static inline void src_inc_wrap(int32_t **ptr, int32_t *end, size_t size)
 {
 	if (*ptr >= end)
 		*ptr = (int32_t *)((size_t)*ptr - size);
 }
 
-static inline void src_circ_dec_wrap(int32_t **ptr, int32_t *addr, size_t size)
+static inline void src_dec_wrap(int32_t **ptr, int32_t *addr, size_t size)
 {
 	if (*ptr < addr)
 		*ptr = (int32_t *)((size_t)*ptr + size);
 }
 
+static inline void src_inc_wrap_s16(int16_t **ptr, int16_t *end, size_t size)
+{
+	if (*ptr >= end)
+		*ptr = (int16_t *)((size_t)*ptr - size);
+}
+
+static inline void src_dec_wrap_s16(int16_t **ptr, int16_t *addr, size_t size)
+{
+	if (*ptr < addr)
+		*ptr = (int16_t *)((size_t)*ptr + size);
+}
+
 void src_polyphase_reset(struct polyphase_src *src);
 
 int src_polyphase_init(struct polyphase_src *src, struct src_param *p,
-	int32_t *delay_lines_start);
+		       int32_t *delay_lines_start);
 
 int src_polyphase(struct polyphase_src *src, int32_t x[], int32_t y[],
-	int n_in);
+		  int n_in);
 
 void src_polyphase_stage_cir(struct src_stage_prm *s);
 
-void src_polyphase_stage_cir_s24(struct src_stage_prm *s);
+void src_polyphase_stage_cir_s16(struct src_stage_prm *s);
 
 int src_buffer_lengths(struct src_param *p, int fs_in, int fs_out, int nch,
-	int frames, int frames_is_for_source);
+		       int frames, int frames_is_for_source);
 
 int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
-
-int src_ceil_divide(int a, int b);
 
 #endif

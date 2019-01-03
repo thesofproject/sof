@@ -52,7 +52,8 @@
 #if SRC_SHORT /* 16 bit coefficients version */
 
 static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
-	const int taps_div_4, const int shift, const int nch)
+			      const int taps_div_4, const int shift,
+			      const int nch)
 {
 	/* This function uses
 	 * 2x 56 bit registers Q,
@@ -130,7 +131,7 @@ static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
 		 */
 		AE_SQ32F_I(AE_ROUNDSQ32SYM(AE_SRAAQ56(a0, shift)), wp, 0);
 		AE_SQ32F_I(AE_ROUNDSQ32SYM(AE_SRAAQ56(a1, shift)), wp,
-			sizeof(int32_t));
+			   sizeof(int32_t));
 		return;
 	}
 
@@ -183,7 +184,8 @@ static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
 #else /* 32bit coefficients version */
 
 static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
-	const int taps_div_4, const int shift, const int nch)
+			      const int taps_div_4, const int shift,
+			      const int nch)
 {
 	/* This function uses
 	 * 2x 56 bit registers Q,
@@ -265,7 +267,7 @@ static inline void fir_filter(ae_q32s *rp, const void *cp, ae_q32s *wp0,
 		 */
 		AE_SQ32F_I(AE_ROUNDSQ32SYM(AE_SRAAQ56(a0, shift)), wp, 0);
 		AE_SQ32F_I(AE_ROUNDSQ32SYM(AE_SRAAQ56(a1, shift)), wp,
-			sizeof(int32_t));
+			   sizeof(int32_t));
 		return;
 	}
 
@@ -326,7 +328,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	 *  1x 56 bit registers Q,
 	 *  0x 48 bit registers P,
 	 * 16x integers
-	 *  7x address pointers,
+	 * 11x address pointers,
 	 */
 	ae_q56s q;
 	ae_q32s *rp;
@@ -352,6 +354,10 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch);
 	const int nch_x_idm_sz = -nch * cfg->idm * sizeof(int32_t);
 	const int taps_div_4 = cfg->subfilter_length >> 2;
+	int32_t *x_rptr = (int32_t *)s->x_rptr;
+	int32_t *y_wptr = (int32_t *)s->y_wptr;
+	int32_t *x_end_addr = (int32_t *)s->x_end_addr;
+	int32_t *y_end_addr = (int32_t *)s->y_end_addr;
 
 #if SRC_SHORT
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
@@ -369,19 +375,22 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 
 		while (m > 0) {
 			/* Number of words until circular wrap */
-			n_wrap_buf = s->x_end_addr - s->x_rptr;
+			n_wrap_buf = x_end_addr - x_rptr;
 			n_min = (m < n_wrap_buf) ? m : n_wrap_buf;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
 				/* Load 32 bits sample to accumulator */
-				q = AE_LQ32F_I((ae_q32s *)s->x_rptr++, 0);
+				q = AE_LQ32F_I((ae_q32s *)x_rptr++, 0);
+
+				/* Saturating shift left */
+				q = AE_SLLASQ56S(q, s->shift);
 
 				/* Store to circular buffer, advance pointer */
 				AE_SQ32F_C(q, (ae_q32s *)fir->fir_wp, n_sz);
 			}
 
 			/* Check for wrap */
-			src_circ_inc_wrap(&s->x_rptr, s->x_end_addr, s->x_size);
+			src_inc_wrap(&x_rptr, x_end_addr, s->x_size);
 		}
 
 		/* Do filter */
@@ -401,8 +410,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 			fir_filter(rp, cp, wp, taps_div_4, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp += subfilter_size;
-			src_circ_inc_wrap((int32_t **)&wp, out_delay_end,
-				out_size);
+			src_inc_wrap((int32_t **)&wp, out_delay_end, out_size);
 
 			/* Circular advance pointer rp by number of
 			 * channels x input delay multiplier. Loaded value q
@@ -418,30 +426,35 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 		AE_SETCEND0(out_delay_end);
 		m = blk_out_words;
 		while (m > 0) {
-			n_wrap_buf = s->y_end_addr - s->y_wptr;
+			n_wrap_buf = y_end_addr - y_wptr;
 			n_min = (m < n_wrap_buf) ? m : n_wrap_buf;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				/* Circular load followed by linear store */
+				/* Circular load followed by shift right
+				 * for optional s24 and linear store
+				 */
 				AE_LQ32F_C(q, (ae_q32s *)fir->out_rp, sz);
-				AE_SQ32F_I(q, (ae_q32s *)s->y_wptr, 0);
-				s->y_wptr++;
+				q = AE_SRAAQ56(q, s->shift);
+				AE_SQ32F_I(q, (ae_q32s *)y_wptr, 0);
+				y_wptr++;
 			}
 			/* Check wrap */
-			src_circ_inc_wrap(&s->y_wptr, s->y_end_addr, s->y_size);
+			src_inc_wrap(&y_wptr, y_end_addr, s->y_size);
 		}
 	}
+	s->x_rptr = x_rptr;
+	s->y_wptr = y_wptr;
 }
 
-void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
+void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 {
 	/* This function uses
-	 *  1x 56 bit registers Q,
-	 *  0x 48 bit registers P,
+	 *  0x 56 bit registers Q,
+	 *  1x 48 bit registers P,
 	 * 16x integers
-	 *  7x address pointers,
+	 * 11x address pointers,
 	 */
-	ae_q56s q;
+	ae_p24x2s d;
 	ae_q32s *rp;
 	ae_q32s *wp;
 	int i;
@@ -465,6 +478,10 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 		+ (cfg->num_of_subfilters - 1) * cfg->idm) - nch);
 	const int nch_x_idm_sz = -nch * cfg->idm * sizeof(int32_t);
 	const int taps_div_4 = cfg->subfilter_length >> 2;
+	int16_t *x_rptr = (int16_t *)s->x_rptr;
+	int16_t *y_wptr = (int16_t *)s->y_wptr;
+	int16_t *x_end_addr = (int16_t *)s->x_end_addr;
+	int16_t *y_end_addr = (int16_t *)s->y_end_addr;
 
 #if SRC_SHORT
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
@@ -482,25 +499,24 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 
 		while (m > 0) {
 			/* Number of words without circular wrap */
-			n_wrap_buf = s->x_end_addr - s->x_rptr;
+			n_wrap_buf = x_end_addr - x_rptr;
 			n_min = (m < n_wrap_buf) ? m : n_wrap_buf;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				/* Load 32 bits sample to accumulator
-				 * and left shift by 8, advance read
-				 * pointer.
+				/* Load 16 bits sample to 24 bit register
+				 * and advance read pointer.
 				 */
-				q = AE_SLLIQ56(AE_LQ32F_I(
-					(ae_q32s *)s->x_rptr++, 0), 8);
+				d = AE_LP16F_I((ae_p16s *)x_rptr, 0);
+				x_rptr++;
 
-				/* Store to circular buffer, advance
+				/* Store to 32 bit circular buffer, advance
 				 * write pointer.
 				 */
-				AE_SQ32F_C(q, (ae_q32s *)fir->fir_wp, n_sz);
+				AE_SP24F_L_C(d, (ae_p24f *)fir->fir_wp, n_sz);
 			}
 
 			/* Check for wrap */
-			src_circ_inc_wrap(&s->x_rptr, s->x_end_addr, s->x_size);
+			src_inc_wrap_s16(&x_rptr, x_end_addr, s->x_size);
 		}
 
 		/* Do filter */
@@ -508,9 +524,9 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 		rp = (ae_q32s *)fir->fir_wp;
 
 		/* Do circular modification to pointer rp by amount of
-		 * rewind to to data start. Loaded value q is discarded.
+		 * rewind to to data start. Loaded value d is discarded.
 		 */
-		AE_LQ32F_C(q, (ae_q32s *)rp, rewind_sz);
+		AE_LP24F_C(d, (ae_p24f *)rp, rewind_sz);
 
 		/* Reset FIR output write pointer and compute all polyphase
 		 * sub-filters.
@@ -520,14 +536,13 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 			fir_filter(rp, cp, wp, taps_div_4, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp += subfilter_size;
-			src_circ_inc_wrap((int32_t **)&wp, out_delay_end,
-				out_size);
+			src_inc_wrap((int32_t **)&wp, out_delay_end, out_size);
 
 			/* Circular advance pointer rp by number of
-			 * channels x input delay multiplier. Loaded value q
+			 * channels x input delay multiplier. Loaded value d
 			 * is discarded.
 			 */
-			AE_LQ32F_C(q, rp, nch_x_idm_sz);
+			AE_LP24F_C(d, (ae_p24f *)rp, nch_x_idm_sz);
 		}
 
 		/* Output */
@@ -537,26 +552,28 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 		AE_SETCEND0(out_delay_end);
 		m = blk_out_words;
 		while (m > 0) {
-			n_wrap_buf = s->y_end_addr - s->y_wptr;
+			n_wrap_buf = y_end_addr - y_wptr;
 			n_min = (m < n_wrap_buf) ? m : n_wrap_buf;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				/* Circular load for 32 bit sample,
+				/* Circular load for 32 bit sample, get 24
+				 * high bits, circular advance pointer.
+				 */
+				AE_LP24F_C(d, (ae_p24f *)fir->out_rp, sz);
+
+				/* Round Q1.12 value and store as Q1.15 and
 				 * advance pointer.
 				 */
-				AE_LQ32F_C(q, (ae_q32s *)fir->out_rp, sz);
-
-				/* Store value as shifted right by 8 for
-				 * sign extended 24 bit value, advance pointer.
-				 */
-				AE_SQ32F_I(AE_SRAIQ56(q, 8),
-					   (ae_q32s *)s->y_wptr, 0);
-				s->y_wptr++;
+				d = AE_ROUNDSP16SYM(d);
+				AE_SP16F_L_I(d, (ae_p16s *)y_wptr, 0);
+				y_wptr++;
 			}
 			/* Check wrap */
-			src_circ_inc_wrap(&s->y_wptr, s->y_end_addr, s->y_size);
+			src_inc_wrap_s16(&y_wptr, y_end_addr, s->y_size);
 		}
 	}
+	s->x_rptr = x_rptr;
+	s->y_wptr = y_wptr;
 }
 
 #endif

@@ -46,8 +46,10 @@
 #if SRC_SHORT /* 16 bit coefficients version */
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
-	int32_t *fir_start, int32_t *fir_end, const int fir_delay_length,
-	const int taps_x_nch, const int shift, const int nch)
+				      int32_t *fir_start, int32_t *fir_end,
+				      const int fir_delay_length,
+				      const int taps_x_nch,
+				      const int shift, const int nch)
 {
 	int64_t y0;
 	int64_t y1;
@@ -146,8 +148,10 @@ static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 #else /* 32bit coefficients version */
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
-	int32_t *fir_start, int32_t *fir_end, int fir_delay_length,
-	const int taps_x_nch, const int shift, const int nch)
+				      int32_t *fir_start, int32_t *fir_end,
+				      int fir_delay_length,
+				      const int taps_x_nch, const int shift,
+				      const int nch)
 {
 	int64_t y0;
 	int64_t y1;
@@ -272,6 +276,10 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
 	const int taps_x_nch = cfg->subfilter_length * nch;
+	int32_t *x_rptr = (int32_t *)s->x_rptr;
+	int32_t *y_wptr = (int32_t *)s->y_wptr;
+	int32_t *x_end_addr = (int32_t *)s->x_end_addr;
+	int32_t *y_end_addr = (int32_t *)s->y_end_addr;
 
 #if SRC_SHORT
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
@@ -280,65 +288,66 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 #endif
 
 	for (n = 0; n < s->times; n++) {
-		/* Input data */
+		/* Input data, for s24 format s->shift is 8 */
 		m = blk_in_words;
 		while (m > 0) {
 			/* Number of words without circular wrap */
-			n_wrap_buf = s->x_end_addr - s->x_rptr;
+			n_wrap_buf = x_end_addr - x_rptr;
 			n_wrap_fir = fir->fir_wp - fir->fir_delay + 1;
 			n_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
 			n_min = (m < n_min) ? m : n_min;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				*fir->fir_wp = *s->x_rptr;
+				*fir->fir_wp = *x_rptr << s->shift;
 				fir->fir_wp--;
-				s->x_rptr++;
+				x_rptr++;
 			}
 			/* Check for wrap */
-			src_circ_dec_wrap(&fir->fir_wp, fir_delay, fir_size);
-			src_circ_inc_wrap(&s->x_rptr, s->x_end_addr, s->x_size);
+			src_dec_wrap(&fir->fir_wp, fir_delay, fir_size);
+			src_inc_wrap(&x_rptr, x_end_addr, s->x_size);
 		}
 
 		/* Filter */
 		cp = cfg->coefs; /* Reset to 1st coefficient */
 		rp = fir->fir_wp + rewind;
-		src_circ_inc_wrap(&rp, fir_end, fir_size);
+		src_inc_wrap(&rp, fir_end, fir_size);
 		wp = fir->out_rp;
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
 			fir_filter_generic(rp, cp, wp,
-				fir_delay, fir_end, fir_length,
-				taps_x_nch, cfg->shift, nch);
+					   fir_delay, fir_end, fir_length,
+					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp += subfilter_size;
-			src_circ_inc_wrap(&wp, out_delay_end, out_size);
+			src_inc_wrap(&wp, out_delay_end, out_size);
 			rp -= nch_x_idm; /* Next sub-filter start */
-			src_circ_dec_wrap(&rp, fir_delay, fir_size);
+			src_dec_wrap(&rp, fir_delay, fir_size);
 		}
 
-		/* Output */
+		/* Output, for s24 format s->shift is 8 */
 		m = blk_out_words;
 		while (m > 0) {
 			n_wrap_fir = out_delay_end - fir->out_rp;
-			n_wrap_buf = s->y_end_addr - s->y_wptr;
+			n_wrap_buf = y_end_addr - y_wptr;
 			n_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
 			n_min = (m < n_min) ? m : n_min;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				*s->y_wptr = *fir->out_rp;
-				s->y_wptr++;
+				*y_wptr = *fir->out_rp >> s->shift;
+				y_wptr++;
 				fir->out_rp++;
 			}
 			/* Check wrap */
-			src_circ_inc_wrap(&s->y_wptr, s->y_end_addr, s->y_size);
-			src_circ_inc_wrap(&fir->out_rp, out_delay_end,
-				out_size);
+			src_inc_wrap(&y_wptr, y_end_addr, s->y_size);
+			src_inc_wrap(&fir->out_rp, out_delay_end, out_size);
 		}
 	}
+	s->x_rptr = x_rptr;
+	s->y_wptr = y_wptr;
 }
 
-void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
+void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 {
 	int i;
 	int n;
@@ -366,6 +375,10 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 	const int nch_x_idm = nch * cfg->idm;
 	const size_t fir_size = fir->fir_delay_size * sizeof(int32_t);
 	const int taps_x_nch = cfg->subfilter_length * nch;
+	int16_t *x_rptr = (int16_t *)s->x_rptr;
+	int16_t *y_wptr = (int16_t *)s->y_wptr;
+	int16_t *x_end_addr = (int16_t *)s->x_end_addr;
+	int16_t *y_end_addr = (int16_t *)s->y_end_addr;
 
 #if SRC_SHORT
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
@@ -374,62 +387,63 @@ void src_polyphase_stage_cir_s24(struct src_stage_prm *s)
 #endif
 
 	for (n = 0; n < s->times; n++) {
-		/* Input data */
+		/* Input data, used fixed shift by 16 */
 		m = blk_in_words;
 		while (m > 0) {
 			/* Number of words without circular wrap */
-			n_wrap_buf = s->x_end_addr - s->x_rptr;
+			n_wrap_buf = x_end_addr - x_rptr;
 			n_wrap_fir = fir->fir_wp - fir->fir_delay + 1;
 			n_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
 			n_min = (m < n_min) ? m : n_min;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				*fir->fir_wp = *s->x_rptr << 8;
+				*fir->fir_wp = Q_SHIFT_LEFT(*x_rptr, 15, 31);
 				fir->fir_wp--;
-				s->x_rptr++;
+				x_rptr++;
 			}
 			/* Check for wrap */
-			src_circ_dec_wrap(&fir->fir_wp, fir_delay, fir_size);
-			src_circ_inc_wrap(&s->x_rptr, s->x_end_addr, s->x_size);
+			src_dec_wrap(&fir->fir_wp, fir_delay, fir_size);
+			src_inc_wrap_s16(&x_rptr, x_end_addr, s->x_size);
 		}
 
 		/* Filter */
 		cp = cfg->coefs; /* Reset to 1st coefficient */
 		rp = fir->fir_wp + rewind;
-		src_circ_inc_wrap(&rp, fir_end, fir_size);
+		src_inc_wrap(&rp, fir_end, fir_size);
 		wp = fir->out_rp;
 		for (i = 0; i < cfg->num_of_subfilters; i++) {
 			fir_filter_generic(rp, cp, wp,
-				fir_delay, fir_end, fir_length,
-				taps_x_nch, cfg->shift, nch);
+					   fir_delay, fir_end, fir_length,
+					   taps_x_nch, cfg->shift, nch);
 			wp += nch_x_odm;
 			cp += subfilter_size;
-			src_circ_inc_wrap(&wp, out_delay_end, out_size);
+			src_inc_wrap(&wp, out_delay_end, out_size);
 			rp -= nch_x_idm; /* Next sub-filter start */
-			src_circ_dec_wrap(&rp, fir_delay, fir_size);
+			src_dec_wrap(&rp, fir_delay, fir_size);
 		}
 
-		/* Output */
+		/* Output, use fixed shift by 16 */
 		m = blk_out_words;
 		while (m > 0) {
 			n_wrap_fir = out_delay_end - fir->out_rp;
-			n_wrap_buf = s->y_end_addr - s->y_wptr;
+			n_wrap_buf = y_end_addr - y_wptr;
 			n_min = (n_wrap_fir < n_wrap_buf)
 				? n_wrap_fir : n_wrap_buf;
 			n_min = (m < n_min) ? m : n_min;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				*s->y_wptr = *fir->out_rp >> 8;
-				s->y_wptr++;
+				*y_wptr = Q_SHIFT_RND(*fir->out_rp, 31, 15);
+				y_wptr++;
 				fir->out_rp++;
 			}
 			/* Check wrap */
-			src_circ_inc_wrap(&s->y_wptr, s->y_end_addr, s->y_size);
-			src_circ_inc_wrap(&fir->out_rp, out_delay_end,
-				out_size);
+			src_inc_wrap_s16(&y_wptr, y_end_addr, s->y_size);
+			src_inc_wrap(&fir->out_rp, out_delay_end, out_size);
 		}
 	}
+	s->x_rptr = x_rptr;
+	s->y_wptr = y_wptr;
 }
 
 #endif
