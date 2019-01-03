@@ -8,10 +8,10 @@
 # check out sof
 # build docker image:
 # docker build --build-arg UID=$(id -u) -t sof .
-# docker run -it  -v <insert sof dir here>:/home/sof/workdir -v <soft git dir>:/home/sof/work/soft.git --user `id -u` sof
+# docker run -it  -v <insert sof dir here>:/home/sof/workdir --user `id -u` sof
 #
 # For incremental builds:
-# docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git -v <soft git dir>:/home/sof/work/soft.git --user `id -u` sof ./incremental.sh
+# docker run -it  -v <insert sof dir here>:/home/sof/work/sof.git --user `id -u` sof ./incremental.sh
 #
 
 FROM ubuntu:18.04
@@ -101,10 +101,8 @@ RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newl
 	cd /home/sof/ && rm -rf newlib-xtensa.git
 
 
-# Create direcroties for the host machines sof/soft directories to be mounted.
-RUN mkdir -p /home/sof/work/sof.git && \
-    mkdir -p /home/sof/work/soft.git
-
+# Create direcroties for the host machines sof directories to be mounted.
+RUN mkdir -p /home/sof/work/sof.git
 
 USER sof
 WORKDIR /home/sof/work/sof.git/

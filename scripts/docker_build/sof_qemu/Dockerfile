@@ -50,8 +50,7 @@ RUN cd /home/sof && git clone https://github.com/thesofproject/qemu.git && \
 	./configure --prefix=`pwd`/ --target-list=xtensa-softmmu --enable-coroutine-pool && \
 	make
 
-# Create direcroties for the host machines sof/soft directories to be mounted.
-RUN mkdir -p /home/sof/sof.git && \
-    mkdir -p /home/sof/soft.git
+# Create direcroties for the host machines sof directories to be mounted.
+RUN mkdir -p /home/sof/sof.git
 
 WORKDIR /home/sof/qemu/

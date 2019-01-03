@@ -2,9 +2,7 @@ The docker container provided in docker_build sets up a build environment for
 building Sound Open Firmware. A working docker installation is needed to run
 the docker build container.
 
-Note: This script assumes the sof.git/ and soft.git/ directories are siblings.
-
-Note2: In order to run docker as non sudo/root user please run.
+Note: In order to run docker as non sudo/root user please run.
 
 sudo usermod -aG docker your-user-name
 
