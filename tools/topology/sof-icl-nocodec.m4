@@ -24,16 +24,18 @@ include(`platform/intel/icl.m4')
 #
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s24le,
-	48, 1000, 0, 0, SSP, 0, s24le, 2)
+	1000, 0, 0, SSP, 0, s24le, 2,
+	48000, 48000, 48000)
 
 # Low Latency capture pipeline 2 on PCM 0 using max 2 channels of s24le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	2, 0, 2, s24le,
-	48, 1000, 0, 0, SSP, 0, s24le, 2)
+	1000, 0, 0, SSP, 0, s24le, 2,
+	48000, 48000, 48000)
 
 #
 # DAI configuration
@@ -42,18 +44,18 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 #
 
 # playback DAI is SSP0 using 2 periods
-# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, NoCodec-0,
 	PIPELINE_SOURCE_1, 2, s24le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # capture DAI is SSP0 using 2 periods
-# Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, SSP, 0, NoCodec-0,
 	PIPELINE_SINK_2, 2, s24le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # PCM Low Latency
 PCM_DUPLEX_ADD(Passthrough, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)

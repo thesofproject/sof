@@ -1,5 +1,5 @@
 #
-# Topology for generic Haswell board with RT5640.
+# Topology for generic Broadwell board with rt5640.
 #
 
 # Include topology builder
@@ -14,8 +14,8 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Haswell DSP configuration
-include(`platform/intel/hsw.m4')
+# Include Broadwell DSP configuration
+include(`platform/intel/bdw.m4')
 
 #
 # Define the pipelines
@@ -42,14 +42,14 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	48000, 48000, 48000)
 
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# 4000us deadline on core 0 with priority 1
+# 2000us deadline on core 0 with priority 1
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
-	4000, 1, 0,
+	2000, 1, 0,
 	8000, 96000, 48000)
 
 # Connect pipelines together
-SectionGraph."pipe-hsw-rt5640" {
+SectionGraph."pipe-bdw-rt5640" {
 	index "0"
 
 	lines [

@@ -25,14 +25,16 @@ include(`platform/intel/dmic.m4')
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core)
-
+dnl     period, priority, core,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline 1 on PCM 1 using max 4 channels.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 	1, 1, 4, s32le,
-	48, 1000, 0, 0)
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 #
 # DAIs configuration
@@ -41,15 +43,15 @@ PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     frames, deadline, priority, core)
+dnl     deadline, priority, core)
 
 
 # capture DAI is DMIC 0 using 2 periods
-# Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	1, DMIC, 0, dmic01,
 	PIPELINE_SINK_1, 2, s32le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 

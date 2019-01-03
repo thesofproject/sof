@@ -44,14 +44,15 @@ define(`TONE_SAMPLE_RATE', 48000)
 # Schedule with 48 frame per 1000us deadline on core 0 with priority 0
 PIPELINE_ADD(sof/pipe-tone.m4,
 	5, 2, TEST_PIPE_FORMAT,
-	48, 1000, 0, 0, 0)
+	1000, 0, 0, 0, 0,
+	48000, 48000, 48000)
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use TEST_DAI_FORMAT format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	5, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SOURCE_5, 2, TEST_DAI_FORMAT,
-	48, 1000, 2, 0)
+	1000, 2, 0)
 
 #
 # BE configurations - overrides config in ACPI if present

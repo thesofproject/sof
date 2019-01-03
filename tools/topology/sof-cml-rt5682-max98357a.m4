@@ -17,13 +17,16 @@ DEBUG_START
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core)
+dnl     period, priority, core,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 7 on PCM 5 using max 2 channels of s32le.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Set 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-src-volume-playback.m4,
 	7, 5, 2, s32le,
-	48, 1000, 0, 0)
+	1000, 0, 0,
+	48000, 48000, 48000)
 
 #
 # Speaker DAIs configuration
@@ -32,14 +35,14 @@ PIPELINE_PCM_ADD(sof/pipe-src-volume-playback.m4,
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     frames, deadline, priority, core)
+dnl     deadline, priority, core)
 
 # playback DAI is SSP1 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	7, SSP, 1, SSP1-Codec,
 	PIPELINE_SOURCE_7, 2, s16le,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)

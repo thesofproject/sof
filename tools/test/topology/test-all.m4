@@ -43,8 +43,9 @@ include(`byt.m4')
 
 PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 	1, 0, 2, TEST_PIPE_FORMAT,
-	48, 1000, 0, 0,
-	TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_FORMAT, 2)
+	1000, 0, 0,
+	TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_FORMAT, 2,
+	48000, 48000, 48000)
 
 
 # Passthrough playback pipeline 2 on PCM 0 using max 2 channels of s24le.
@@ -52,8 +53,9 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-playback.m4,
 
 PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-capture.m4,
 	2, 0, 2, TEST_PIPE_FORMAT,
-	48, 1000, 0, 0,
-	TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_FORMAT, 2)
+	1000, 0, 0,
+	TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_FORMAT, 2,
+	48000, 48000, 48000)
 
 #
 # DAI configuration
@@ -66,14 +68,14 @@ PIPELINE_PCM_DAI_ADD(sof/pipe-TEST_PIPE_NAME-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SOURCE_1, 2, TEST_DAI_FORMAT,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # capture DAI is SSP TEST_DAI_PORT using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	2, TEST_DAI_TYPE, TEST_DAI_PORT, TEST_DAI_LINK_NAME,
 	PIPELINE_SINK_2, 2, TEST_DAI_FORMAT,
-	48, 1000, 0, 0)
+	1000, 0, 0)
 
 # PCM Passthrough
 PCM_DUPLEX_ADD(Passthrough, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)

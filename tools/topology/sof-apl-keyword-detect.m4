@@ -18,7 +18,6 @@ include(`sof/tokens.m4')
 include(`platform/intel/bxt.m4')
 include(`platform/intel/dmic.m4')
 
-define(KWD_PERIOD_FRAMES, 320)
 define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 
 #
@@ -30,15 +29,16 @@ define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core)
+dnl     period, priority, core,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # Passthrough capture pipeline 1 on PCM 0 using max 2 channels.
-# Schedule 320 frames per 1000us deadline on core 0 with priority 0
+# Schedule 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
 	1, 0, 2, s16le,
-	KWD_PERIOD_FRAMES,
-	KWD_PIPE_SCH_DEADLINE_US,
-	0, 0)
+	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	16000, 16000, 16000)
 
 #
 # DAIs configuration
@@ -47,7 +47,7 @@ PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     frames, deadline, priority, core)
+dnl     deadline, priority, core)
 
 
 # capture DAI is DMIC 0 using 2 periods
@@ -55,18 +55,20 @@ dnl     frames, deadline, priority, core)
 DAI_ADD(sof/pipe-dai-capture.m4,
 	1, DMIC, 1, NoCodec-6,
 	PIPELINE_SINK_1, 2, s16le,
-	KWD_PERIOD_FRAMES,
 	KWD_PIPE_SCH_DEADLINE_US,
 	0, 0)
 
 # keyword detector pipe
 dnl PIPELINE_ADD(pipeline,
 dnl     pipe id, max channels, format,
-dnl     frames, deadline, priority, core)
-PIPELINE_ADD(sof/pipe-detect.m4, 2, 2, s16le,
-	KWD_PERIOD_FRAMES,
-	KWD_PIPE_SCH_DEADLINE_US,
-	0, 0, PIPELINE_SCHED_COMP_1)
+dnl     period, priority, core,
+dnl     sched_comp, time_domain,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate)
+PIPELINE_ADD(sof/pipe-detect.m4,
+	2, 2, s16le,
+	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	PIPELINE_SCHED_COMP_1, 0,
+	16000, 16000, 16000)
 
 # Connect pipelines together
 SectionGraph."pipe-sof-apl-keyword-detect" {
