@@ -15,7 +15,7 @@ SUBDIRS = cavs
 libdrivers_la_LIBADD = cavs/libdrivers.la
 
 if BUILD_SUECREEK
-libdrivers_la_SOURCES += sue-gpio.c
+libdrivers_la_SOURCES += sue-gpio.c dw-intc.c
 endif
 
 else

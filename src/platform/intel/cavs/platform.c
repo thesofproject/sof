@@ -48,6 +48,7 @@
 #include <sof/agent.h>
 #include <sof/work.h>
 #include <sof/clk.h>
+#include <sof/dw-intc.h>
 #include <sof/ipc.h>
 #include <sof/io.h>
 #include <sof/trace.h>
@@ -376,6 +377,12 @@ int platform_init(struct sof *sof)
 
 	/* prevent DSP Common power gating */
 	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
+#endif
+
+#if defined(CONFIG_SUECREEK)
+	ret = dw_intc_irq_init();
+	if (ret < 0)
+		return ret;
 #endif
 
 	/* init DMACs */
