@@ -458,7 +458,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	 * 11x address pointers,
 	 */
 	ae_int32x2 q = AE_ZERO32();
-	ae_int16x4 d;
+	ae_int16x4 d = AE_ZERO16();
 	ae_f32 *rp;
 	ae_f32 *wp;
 	int i;
@@ -508,8 +508,9 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 			n_min = (m < n_wrap_buf) ? m : n_wrap_buf;
 			m -= n_min;
 			for (i = 0; i < n_min; i++) {
-				/* Load a 16 bits sample and left shift by 16,
-				 * advance read and write pointers.
+				/* Load a 16 bits sample into d and left shift
+				 * by 16 into q, advance read and write
+				 * pointers.
 				 */
 				AE_L16_XP(d, (ae_int16 *)x_rptr,
 					  sizeof(ae_int16));
