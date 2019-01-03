@@ -28,6 +28,11 @@
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 %
 
+[n_fail, n_pass] = src_test(16, 16);
+if n_fail > 0 || n_pass < 1
+	fprintf('Error: SRC test with 16 bits data failed.\n');
+        quit(1)
+end
 [n_fail, n_pass] = src_test(24, 24);
 if n_fail > 0 || n_pass < 1
 	fprintf('Error: SRC test with 24 bits data failed.\n');
@@ -39,4 +44,4 @@ if n_fail > 0 || n_pass < 1
         quit(1)
 end
 
-fprintf('Success: SRC test with 24 and 32 bits data passed.\n');
+fprintf('Success: SRC test with 16, 24 and 32 bits data passed.\n');
