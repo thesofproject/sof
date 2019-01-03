@@ -483,7 +483,7 @@ void work_cancel_default(struct work *w)
 	work_cancel(*arch_work_queue_get(), w);
 }
 
-struct work_queue *work_new_queue(struct work_queue_timesource *ts)
+static struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 {
 	struct work_queue *queue;
 

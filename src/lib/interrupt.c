@@ -39,12 +39,6 @@
 #include <stdlib.h>
 
 static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
-			      void (*handler)(void *arg), void *arg);
-static void irq_unregister_child(struct irq_desc *parent, int irq);
-static uint32_t irq_enable_child(struct irq_desc *parent, int irq);
-static uint32_t irq_disable_child(struct irq_desc *parent, int irq);
-
-static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg)
 {
 	int ret = 0;
@@ -95,10 +89,11 @@ finish:
 
 static void irq_unregister_child(struct irq_desc *parent, int irq)
 {
-	spin_lock(&parent->lock);
 	struct irq_desc *child;
 	struct list_item *clist;
 	struct list_item *tlist;
+
+	spin_lock(&parent->lock);
 
 	/* does child already exist ? */
 	if (list_is_empty(&parent->child[SOF_IRQ_BIT(irq)]))

@@ -249,6 +249,8 @@
 /* tracing */
 #define trace_dwdma(__e, ...) \
 	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
+#define trace_dwdma_atomic(__e, ...) \
+	trace_event_atomic(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
 #define tracev_dwdma(__e, ...) \
 	tracev_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
 #define trace_dwdma_error(__e, ...) \
@@ -327,9 +329,9 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 	uint32_t flags;
 	int i;
 
-	spin_lock_irq(&dma->lock, flags);
-
 	trace_dwdma("dw-dma %d request channel", dma->plat_data.id);
+
+	spin_lock_irq(&dma->lock, flags);
 
 	/* find first free non draining channel */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -365,8 +367,6 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 		return;
 	}
 
-	trace_dwdma("dw-dma: %d channel %d put", dma->plat_data.id, channel);
-
 	if (!chan->timer_delay) {
 		/* mask block, transfer and error interrupts for channel */
 		dw_write(dma, DW_MASK_TFR, INT_MASK(channel));
@@ -396,6 +396,8 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 {
 	uint32_t flags;
 
+	trace_dwdma("dw-dma: %d channel %d put", dma->plat_data.id, channel);
+
 	spin_lock_irq(&dma->lock, flags);
 	dw_dma_channel_put_unlocked(dma, channel);
 	spin_unlock_irq(&dma->lock, flags);
@@ -418,9 +420,9 @@ static int dw_dma_start(struct dma *dma, int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	trace_dwdma_atomic("dw-dma: %d channel %d start", dma->plat_data.id, channel);
 
-	trace_dwdma("dw-dma: %d channel %d start", dma->plat_data.id, channel);
+	spin_lock_irq(&dma->lock, flags);
 
 	/* is channel idle, disabled and ready ? */
 	if (chan->status != COMP_STATE_PREPARE ||
@@ -514,9 +516,9 @@ static int dw_dma_release(struct dma *dma, int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
-
 	trace_dwdma("dw-dma: %d channel %d release", dma->plat_data.id, channel);
+
+	spin_lock_irq(&dma->lock, flags);
 
 	/* get next lli for proper release */
 	p->chan[channel].lli_current =
@@ -537,9 +539,9 @@ static int dw_dma_pause(struct dma *dma, int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
-
 	trace_dwdma("dw-dma: %d channel %d pause", dma->plat_data.id, channel);
+
+	spin_lock_irq(&dma->lock, flags);
 
 	if (p->chan[channel].status != COMP_STATE_ACTIVE)
 		goto out;
@@ -566,9 +568,9 @@ static int dw_dma_stop(struct dma *dma, int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
-
 	trace_dwdma("dw-dma: %d channel %d stop", dma->plat_data.id, channel);
+
+	spin_lock_irq(&dma->lock, flags);
 
 	if (chan->timer_delay)
 		work_cancel_default(&chan->dma_ch_work);
@@ -605,9 +607,9 @@ static int dw_dma_stop(struct dma *dma, int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	trace_dwdma_atomic("dw-dma: %d channel %d stop", dma->plat_data.id, channel);
 
-	trace_dwdma("dw-dma: %d channel %d stop", dma->plat_data.id, channel);
+	spin_lock_irq(&dma->lock, flags);
 
 	if (chan->timer_delay)
 		work_cancel_default(&chan->dma_ch_work);
@@ -687,9 +689,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	trace_dwdma_atomic("dw-dma: %d channel %d config", dma->plat_data.id, channel);
 
-	trace_dwdma("dw-dma: %d channel %d config", dma->plat_data.id, channel);
+	spin_lock_irq(&dma->lock, flags);
 
 	/* default channel config */
 	chan->direction = config->direction;
