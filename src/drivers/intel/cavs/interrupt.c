@@ -124,26 +124,26 @@ static void irq_lvl2_level5_handler(void *data)
 /* DSP internal interrupts */
 static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
 	#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	{{SOF_IRQ(IRQ_NUM_EXT_LEVEL2, 0, 0, 0), irq_lvl2_level2_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL3, 0, 0, 0), irq_lvl2_level3_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL4, 0, 0, 0), irq_lvl2_level4_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL5, 0, 0, 0), irq_lvl2_level5_handler, } },
 
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	{{SOF_IRQ(IRQ_NUM_EXT_LEVEL2, 0, 0, 0), irq_lvl2_level2_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL3, 0, 0, 0), irq_lvl2_level3_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL4, 0, 0, 0), irq_lvl2_level4_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL5, 0, 0, 0), irq_lvl2_level5_handler, } },
 	#endif
 
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	{{SOF_IRQ(IRQ_NUM_EXT_LEVEL2, 0, 0, 0), irq_lvl2_level2_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL3, 0, 0, 0), irq_lvl2_level3_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL4, 0, 0, 0), irq_lvl2_level4_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL5, 0, 0, 0), irq_lvl2_level5_handler, } },
 
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	{{SOF_IRQ(IRQ_NUM_EXT_LEVEL2, 0, 0, 0), irq_lvl2_level2_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL3, 0, 0, 0), irq_lvl2_level3_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL4, 0, 0, 0), irq_lvl2_level4_handler, },
+	 {SOF_IRQ(IRQ_NUM_EXT_LEVEL5, 0, 0, 0), irq_lvl2_level5_handler, } },
 };
 
 struct irq_desc *platform_irq_get_parent(uint32_t irq)

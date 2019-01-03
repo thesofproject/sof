@@ -75,12 +75,17 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 
 	/* do we need to register parent ? */
 	if (parent->num_children == 0) {
-		ret = arch_interrupt_register(parent->irq,
+		ret = arch_interrupt_register(SOF_IRQ_BIT(parent->irq),
 					      parent->handler, parent);
+		if (ret < 0) {
+			list_item_del(&child->irq_list);
+			rfree(child);
+		}
 	}
 
-	/* increment number of children */
-	parent->num_children++;
+	if (!ret)
+		/* increment number of children */
+		parent->num_children++;
 
 finish:
 	spin_unlock(&parent->lock);
@@ -109,11 +114,10 @@ static void irq_unregister_child(struct irq_desc *parent, int irq)
 	}
 
 	/*
-	 * unregister the root interrupt if the this l2 is
-	 * the last registered one.
+	 * unregister the root interrupt if this l2 is the last registered one.
 	 */
 	if (parent->num_children == 0)
-		arch_interrupt_unregister(parent->irq);
+		arch_interrupt_unregister(SOF_IRQ_BIT(parent->irq));
 
 finish:
 	spin_unlock(&parent->lock);
@@ -183,7 +187,7 @@ int interrupt_register(uint32_t irq, int unmask, void (*handler)(void *arg),
 	/* no parent means we are registering DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);
 	if (parent == NULL)
-		return arch_interrupt_register(irq, handler, arg);
+		return arch_interrupt_register(SOF_IRQ_BIT(irq), handler, arg);
 	else
 		return irq_register_child(parent, irq, unmask, handler, arg);
 }
@@ -195,7 +199,7 @@ void interrupt_unregister(uint32_t irq)
 	/* no parent means we are unregistering DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);
 	if (parent == NULL)
-		arch_interrupt_unregister(irq);
+		arch_interrupt_unregister(SOF_IRQ_BIT(irq));
 	else
 		irq_unregister_child(parent, irq);
 }
@@ -207,7 +211,7 @@ uint32_t interrupt_enable(uint32_t irq)
 	/* no parent means we are enabling DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);
 	if (parent == NULL)
-		return arch_interrupt_enable_mask(1 << irq);
+		return arch_interrupt_enable_mask(1 << SOF_IRQ_BIT(irq));
 	else
 		return irq_enable_child(parent, irq);
 }
@@ -219,7 +223,7 @@ uint32_t interrupt_disable(uint32_t irq)
 	/* no parent means we are disabling DSP internal IRQ */
 	parent = platform_irq_get_parent(irq);
 	if (parent == NULL)
-		return arch_interrupt_disable_mask(1 << irq);
+		return arch_interrupt_disable_mask(1 << SOF_IRQ_BIT(irq));
 	else
 		return irq_disable_child(parent, irq);
 }

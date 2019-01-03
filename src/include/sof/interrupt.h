@@ -77,12 +77,12 @@ uint32_t interrupt_disable(uint32_t irq);
 
 static inline void interrupt_set(int irq)
 {
-	arch_interrupt_set(SOF_IRQ_NUMBER(irq));
+	arch_interrupt_set(irq);
 }
 
 static inline void interrupt_clear(int irq)
 {
-	arch_interrupt_clear(SOF_IRQ_NUMBER(irq));
+	arch_interrupt_clear(irq);
 }
 
 static inline uint32_t interrupt_global_disable(void)

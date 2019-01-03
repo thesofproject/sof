@@ -57,7 +57,7 @@ static inline int arch_timer_register(struct timer *timer,
 
 	flags = arch_interrupt_global_disable();
 	timer64_register(timer, handler, arg);
-	ret = arch_interrupt_register(timer->id, timer_64_handler, timer);
+	ret = arch_interrupt_register(SOF_IRQ_BIT(timer->irq), timer_64_handler, timer);
 	arch_interrupt_global_enable(flags);
 
 	return ret;
@@ -65,17 +65,17 @@ static inline int arch_timer_register(struct timer *timer,
 
 static inline void arch_timer_unregister(struct timer *timer)
 {
-	arch_interrupt_unregister(timer->id);
+	arch_interrupt_unregister(SOF_IRQ_BIT(timer->irq));
 }
 
 static inline void arch_timer_enable(struct timer *timer)
 {
-	arch_interrupt_enable_mask(1 << timer->irq);
+	arch_interrupt_enable_mask(1 << SOF_IRQ_BIT(timer->irq));
 }
 
 static inline void arch_timer_disable(struct timer *timer)
 {
-	arch_interrupt_disable_mask(1 << timer->irq);
+	arch_interrupt_disable_mask(1 << SOF_IRQ_BIT(timer->irq));
 }
 
 uint64_t arch_timer_get_system(struct timer *timer);
@@ -84,7 +84,7 @@ int arch_timer_set(struct timer *timer, uint64_t ticks);
 
 static inline void arch_timer_clear(struct timer *timer)
 {
-	arch_interrupt_clear(timer->irq);
+	arch_interrupt_clear(SOF_IRQ_BIT(timer->irq));
 }
 
 #endif

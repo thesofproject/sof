@@ -236,8 +236,8 @@ static inline void arch_free_tasks(void)
 	struct irq_task **low = task_irq_low_get();
 
 	spin_lock_irq(&(*low)->lock, flags);
-	interrupt_disable(PLATFORM_IRQ_TASK_LOW);
-	interrupt_unregister(PLATFORM_IRQ_TASK_LOW);
+	interrupt_disable(SOF_IRQ(PLATFORM_IRQ_TASK_LOW, 0, 0, 0));
+	interrupt_unregister(SOF_IRQ(PLATFORM_IRQ_TASK_LOW, 0, 0, 0));
 	list_item_del(&(*low)->list);
 	spin_unlock_irq(&(*low)->lock, flags);
 
@@ -246,8 +246,8 @@ static inline void arch_free_tasks(void)
 	struct irq_task **med = task_irq_med_get();
 
 	spin_lock_irq(&(*med)->lock, flags);
-	interrupt_disable(PLATFORM_IRQ_TASK_MED);
-	interrupt_unregister(PLATFORM_IRQ_TASK_MED);
+	interrupt_disable(SOF_IRQ(PLATFORM_IRQ_TASK_MED, 0, 0, 0));
+	interrupt_unregister(SOF_IRQ(PLATFORM_IRQ_TASK_MED, 0, 0, 0));
 	list_item_del(&(*med)->list);
 	spin_unlock_irq(&(*med)->lock, flags);
 #endif
@@ -256,8 +256,8 @@ static inline void arch_free_tasks(void)
 	struct irq_task **high = task_irq_high_get();
 
 	spin_lock_irq(&(*high)->lock, flags);
-	interrupt_disable(PLATFORM_IRQ_TASK_HIGH);
-	interrupt_unregister(PLATFORM_IRQ_TASK_HIGH);
+	interrupt_disable(SOF_IRQ(PLATFORM_IRQ_TASK_HIGH, 0, 0, 0));
+	interrupt_unregister(SOF_IRQ(PLATFORM_IRQ_TASK_HIGH, 0, 0, 0));
 	list_item_del(&(*high)->list);
 	spin_unlock_irq(&(*high)->lock, flags);
 }
@@ -268,21 +268,21 @@ static inline void arch_free_tasks(void)
 static inline int arch_assign_tasks(void)
 {
 	/* irq low */
-	interrupt_register(PLATFORM_IRQ_TASK_LOW, IRQ_AUTO_UNMASK, _irq_task,
+	interrupt_register(SOF_IRQ(PLATFORM_IRQ_TASK_LOW, 0, 0, 0), IRQ_AUTO_UNMASK, _irq_task,
 			   task_irq_low_get());
-	interrupt_enable(PLATFORM_IRQ_TASK_LOW);
+	interrupt_enable(SOF_IRQ(PLATFORM_IRQ_TASK_LOW, 0, 0, 0));
 
 #ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
 	/* irq medium */
-	interrupt_register(PLATFORM_IRQ_TASK_MED, IRQ_AUTO_UNMASK, _irq_task,
+	interrupt_register(SOF_IRQ(PLATFORM_IRQ_TASK_MED, 0, 0, 0), IRQ_AUTO_UNMASK, _irq_task,
 			   task_irq_med_get());
-	interrupt_enable(PLATFORM_IRQ_TASK_MED);
+	interrupt_enable(SOF_IRQ(PLATFORM_IRQ_TASK_MED, 0, 0, 0));
 #endif
 
 	/* irq high */
-	interrupt_register(PLATFORM_IRQ_TASK_HIGH, IRQ_AUTO_UNMASK, _irq_task,
+	interrupt_register(SOF_IRQ(PLATFORM_IRQ_TASK_HIGH, 0, 0, 0), IRQ_AUTO_UNMASK, _irq_task,
 			   task_irq_high_get());
-	interrupt_enable(PLATFORM_IRQ_TASK_HIGH);
+	interrupt_enable(SOF_IRQ(PLATFORM_IRQ_TASK_HIGH, 0, 0, 0));
 
 	return 0;
 }

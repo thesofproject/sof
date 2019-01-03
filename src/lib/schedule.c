@@ -418,9 +418,9 @@ int scheduler_init(struct sof *sof)
 	work_init(&((*sch)->work), sch_work, *sch, WORK_ASYNC);
 
 	/* configure scheduler interrupt */
-	interrupt_register(PLATFORM_SCHEDULE_IRQ, IRQ_AUTO_UNMASK,
+	interrupt_register(SOF_IRQ(PLATFORM_SCHEDULE_IRQ, 0, 0, 0), IRQ_AUTO_UNMASK,
 			   scheduler_run, NULL);
-	interrupt_enable(PLATFORM_SCHEDULE_IRQ);
+	interrupt_enable(SOF_IRQ(PLATFORM_SCHEDULE_IRQ, 0, 0, 0));
 
 	/* allocate arch tasks */
 	int tasks_result = allocate_tasks();
@@ -437,8 +437,8 @@ void scheduler_free(void)
 	spin_lock_irq(&(*sch)->lock, flags);
 
 	/* disable and unregister scheduler interrupt */
-	interrupt_disable(PLATFORM_SCHEDULE_IRQ);
-	interrupt_unregister(PLATFORM_SCHEDULE_IRQ);
+	interrupt_disable(SOF_IRQ(PLATFORM_SCHEDULE_IRQ, 0, 0, 0));
+	interrupt_unregister(SOF_IRQ(PLATFORM_SCHEDULE_IRQ, 0, 0, 0));
 
 	/* free arch tasks */
 	arch_free_tasks();

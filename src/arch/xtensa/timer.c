@@ -157,7 +157,7 @@ uint64_t arch_timer_get_system(struct timer *timer)
 	low = xthal_get_ccount();
 
 	/* check and see whether 32bit IRQ is pending for timer */
-	if (arch_interrupt_get_status() & (1 << timer->irq) && ccompare == 1) {
+	if (arch_interrupt_get_status() & (1 << SOF_IRQ_BIT(timer->irq)) && ccompare == 1) {
 		/* yes, overflow has occured but handler has not run */
 		high = timer->hitime + 1;
 	} else {

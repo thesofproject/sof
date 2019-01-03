@@ -40,9 +40,9 @@
 #define TIMER_COUNT	5
 
 /* timer numbers must use associated IRQ number */
-#define TIMER0		IRQ_NUM_TIMER1
-#define TIMER1		IRQ_NUM_TIMER2
-#define TIMER2		IRQ_NUM_TIMER3
+#define TIMER0		(SOF_IRQ(IRQ_NUM_TIMER1, 0, 0, 0))
+#define TIMER1		(SOF_IRQ(IRQ_NUM_TIMER2, 0, 0, 0))
+#define TIMER2		(SOF_IRQ(IRQ_NUM_TIMER3, 0, 0, 0))
 #define TIMER3		IRQ_EXT_TSTAMP0_LVL2(0)
 #define TIMER4		IRQ_EXT_TSTAMP1_LVL2(0)
 
