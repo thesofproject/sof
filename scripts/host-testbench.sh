@@ -23,10 +23,10 @@ fs_out="96000"
 # topology file
 # please use simple volume/src topologies for now
 
-topology_file="../soft.git/topology/test/test-playback-ssp2-I2S-volume-s16le-s32le-48k-24576k-codec.tplg"
+topology_file="./tools/test/topology/test-playback-ssp2-I2S-volume-s16le-s32le-48k-24576k-codec.tplg"
 
 #example src topology
-#topology_file="../soft.git/topology/test/test-playback-ssp5-LEFT_J-src-s24le-s24le-48k-19200k-codec.tplg"
+#topology_file="./tools/test/topology/test-playback-ssp5-LEFT_J-src-s24le-s24le-48k-19200k-codec.tplg"
 
 #optional libraries to override
 libraries="vol=libsof_volume.so,src=libsof_src.so"
