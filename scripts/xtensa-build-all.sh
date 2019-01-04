@@ -1,10 +1,13 @@
 #!/bin/bash
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl)
-BUILD_RIMAGE=0
+BUILD_RIMAGE=1
+BUILD_LOCAL=1
 BUILD_DEBUG=no
 BUILD_JOBS=1
 BUILD_JOBS_NEXT=0
+
+PATH=$pwd/local/bin:$PATH
 
 pwd=`pwd`
 
