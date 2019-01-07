@@ -205,13 +205,16 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 	switch (cmd) {
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
+		trace_pipe_with_ids(p, "pipeline_trigger_sched_comp(): "
+				    "PAUSE/STOP");
 		pipeline_schedule_cancel(p);
 		p->status = COMP_STATE_PAUSED;
 		break;
 	case COMP_TRIGGER_RELEASE:
 	case COMP_TRIGGER_START:
 		p->xrun_bytes = 0;
-
+		trace_pipe_with_ids(p, "pipeline_trigger_sched_comp(): "
+				    "RELEASE/START");
 		/* playback pipelines need scheduled now, capture pipelines are
 		 * scheduled once their initial DMA period is filled by the DAI
 		 * or in resume process
@@ -1250,11 +1253,16 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
 	if (p->sched_comp->state == COMP_STATE_ACTIVE) {
 		/* timer driven pipeline should execute task synchronously */
-		if (p->ipc_pipe.timer_delay)
+		if (p->ipc_pipe.timer_delay) {
+			tracev_pipe_with_ids(p, "pipeline_schedule_copy(): "
+					     "copy synchronously");
 			pipeline_copy(p->sched_comp);
-		else
+		} else {
+			tracev_pipe_with_ids(p, "pipeline_schedule_copy(): "
+					     "scheduled pipeline task");
 			schedule_task(&p->pipe_task, start,
 				      p->ipc_pipe.deadline);
+		}
 	}
 }
 
@@ -1302,5 +1310,5 @@ static void pipeline_task(void *arg)
 	}
 
 sched:
-	tracev_pipe("pipeline_task() sched");
+	tracev_pipe_with_ids(p, "pipeline_task() reschedule");
 }

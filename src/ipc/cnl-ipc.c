@@ -67,8 +67,8 @@ static void irq_handler(void *arg)
 	dipcida = ipc_read(IPC_DIPCIDA);
 	dipcctl = ipc_read(IPC_DIPCCTL);
 
-	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
-		   dipcie, dipcctl);
+	tracev_ipc("ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x", dipctdr,
+		   dipcida, dipcctl);
 
 	/* new message from host */
 	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
