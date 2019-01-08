@@ -27,6 +27,7 @@
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Keyon Jie <yang.jie@linux.intel.com>
+ *	   Rander Wang <rander.wang@intel.com>
  */
 
 #include <sof/debug.h>
@@ -57,32 +58,58 @@ extern struct ipc *_ipc;
 /* test code to check working IRQ */
 static void irq_handler(void *arg)
 {
-	uint32_t dipct;
-	uint32_t dipcie;
 	uint32_t dipcctl;
 	uint32_t msg = 0;
+
+#if defined(CONFIG_APOLLOLAKE)
+	uint32_t dipct;
+	uint32_t dipcie;
 
 	dipct = ipc_read(IPC_DIPCT);
 	dipcie = ipc_read(IPC_DIPCIE);
 	dipcctl = ipc_read(IPC_DIPCCTL);
 
 	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
-		   dipcie, dipcctl);
+		dipcie, dipcctl);
+#else
+	uint32_t dipctdr;
+	uint32_t dipcida;
+
+	dipctdr = ipc_read(IPC_DIPCTDR);
+	dipcida = ipc_read(IPC_DIPCIDA);
+	dipcctl = ipc_read(IPC_DIPCCTL);
+
+	tracev_ipc("ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x", dipctdr,
+		dipcida, dipcctl);
+#endif
 
 	/* new message from host */
+#if defined(CONFIG_APOLLOLAKE)
 	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
-
+#else
+	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
+#endif
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
 
+#if defined(CONFIG_APOLLOLAKE)
 		msg = dipct & IPC_DIPCT_MSG_MASK;
+#else
+		msg = dipctdr & IPC_DIPCTDR_MSG_MASK;
+#endif
 
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
 			trace_ipc_error("ipc: dropping msg 0x%x", msg);
+#if defined(CONFIG_APOLLOLAKE)
 			trace_ipc_error(" dipct 0x%x dipcie 0x%x dipcctl 0x%x",
 					dipct, dipcie, ipc_read(IPC_DIPCCTL));
+#else
+			trace_ipc_error(" dipctdr 0x%x dipcida 0x%x dipcctl 0x%x",
+					dipctdr, dipcida,
+					ipc_read(IPC_DIPCCTL));
+#endif
 		} else {
 			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
@@ -91,18 +118,28 @@ static void irq_handler(void *arg)
 	}
 
 	/* reply message(done) from host */
+#if defined(CONFIG_APOLLOLAKE)
 	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE) {
-
+#else
+	if (dipcida & IPC_DIPCIDA_DONE) {
+#endif
 		/* mask Done interrupt */
-		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
+		ipc_write(IPC_DIPCCTL,
+			  ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
 		/* clear DONE bit - tell host we have completed the operation */
-		ipc_write(IPC_DIPCIE, ipc_read(IPC_DIPCIE) |IPC_DIPCIE_DONE);
+#if defined(CONFIG_APOLLOLAKE)
+		ipc_write(IPC_DIPCIE,
+			  ipc_read(IPC_DIPCIE) | IPC_DIPCIE_DONE);
+#else
+		ipc_write(IPC_DIPCIDA,
+			  ipc_read(IPC_DIPCIDA) | IPC_DIPCIDA_DONE);
+#endif
 
 		/* unmask Done interrupt */
-		ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
+		ipc_write(IPC_DIPCCTL,
+			  ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
 	}
-
 }
 
 void ipc_platform_do_cmd(struct ipc *ipc)
@@ -134,16 +171,31 @@ done:
 	ipc->host_pending = 0;
 
 	/* are we about to enter D3 ? */
+#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 	if (iipc->pm_prepare_D3) {
 		/* no return - memory will be powered off and IPC sent */
 		platform_pm_runtime_power_off();
 	}
+#endif
 
 	/* write 1 to clear busy, and trigger interrupt to host*/
+#if defined(CONFIG_APOLLOLAKE)
 	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
+#else
+	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
+	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_BUSY);
+#endif
 
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
+
+#if !defined(CONFIG_APOLLOLAKE) && !defined(CONFIG_CANNONLAKE)
+	if (iipc->pm_prepare_D3) {
+		//TODO: add support for Icelake
+		while (1)
+			wait_for_interrupt(5);
+	}
+#endif
 }
 
 void ipc_platform_send_msg(struct ipc *ipc)
@@ -159,7 +211,12 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
+#if defined(CONFIG_APOLLOLAKE)
 	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
+#else
+	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
+	    ipc_read(IPC_DIPCIDA) & IPC_DIPCIDA_DONE)
+#endif
 		goto out;
 
 	/* now send the message */
@@ -171,8 +228,13 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
+#if defined(CONFIG_APOLLOLAKE)
 	ipc_write(IPC_DIPCIE, 0);
 	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
+#else
+	ipc_write(IPC_DIPCIDD, 0);
+	ipc_write(IPC_DIPCIDR, 0x80000000 | msg->header);
+#endif
 
 	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
@@ -189,7 +251,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* init ipc data */
 	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		sizeof(struct ipc_data));
+		       sizeof(struct ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* schedule */
@@ -199,7 +261,7 @@ int platform_ipc_init(struct ipc *ipc)
 #ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-			HOST_PAGE_SIZE);
+				   HOST_PAGE_SIZE);
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 #endif

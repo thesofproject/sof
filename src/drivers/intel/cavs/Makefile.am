@@ -8,6 +8,26 @@ libdrivers_la_SOURCES = \
 	ssp.c \
 	timer.c
 
+if BUILD_APOLLOLAKE
+libdrivers_la_SOURCES += \
+	ipc.c
+endif
+
+if BUILD_CANNONLAKE
+libdrivers_la_SOURCES += \
+	ipc.c
+endif
+
+if BUILD_ICELAKE
+libdrivers_la_SOURCES += \
+	ipc.c
+endif
+
+if BUILD_SUECREEK
+libdrivers_la_SOURCES += \
+	sue-ipc.c
+endif
+
 libdrivers_la_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
