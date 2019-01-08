@@ -3,6 +3,7 @@ noinst_LTLIBRARIES = libdrivers.la
 libdrivers_la_SOURCES = \
 	interrupt.c \
 	ssp.c \
+	byt-ipc.c \
 	timer.c
 
 libdrivers_la_CFLAGS = \

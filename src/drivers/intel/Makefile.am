@@ -18,11 +18,15 @@ else
 
 if BUILD_BAYTRAIL
 SUBDIRS = baytrail
+libdrivers_la_SOURCES += \
+	pmc-ipc.c
 libdrivers_la_LIBADD = baytrail/libdrivers.la
 endif
 
 if BUILD_CHERRYTRAIL
 SUBDIRS = baytrail
+libdrivers_la_SOURCES += \
+	pmc-ipc.c
 libdrivers_la_LIBADD = baytrail/libdrivers.la
 endif
 
