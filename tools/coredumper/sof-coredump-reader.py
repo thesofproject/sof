@@ -11,6 +11,8 @@ import sys
 import itertools
 import re
 import shutil
+import fcntl
+import time
 from ctypes      import LittleEndianStructure, BigEndianStructure, c_uint32, c_char
 from collections import namedtuple
 from operator    import attrgetter
@@ -236,11 +238,11 @@ def FileInfoFactory(arch, filename_length):
 		)
 	return FileInfo
 
-class Colorer():
+class Colourer():
 	#TODO: Add detection of 8bit/24bit terminal
 	#      Add 8bit/24bit colours (with flag, maybe --colour=24bit)
 	#      Use this below as fallback only
-	__print = partial(stderr_print)
+	__print = partial(stderr_print) 
 	__style = {
 		'o' : fg.red,
 		'O' : fg.yellow,
@@ -248,11 +250,18 @@ class Colorer():
 		'Y' : fg.cyan,
 		'D' : fg.white + bg.red,
 	}
+	matchings          = []
+	matchingsInParenth = []
+	matchingsInStderr  = []
 	def __init__(self):
 		self.matchings = [
-			(
+  			(
 				lambda x: self.enstyleNumHex(x.group()),
-				re.compile(r'\b([a-f0-9]{8})\b')
+				re.compile(r'\b([A-Fa-f0-9]{8})\b')
+			),
+			(
+				lambda x: '0x' + self.enstyleNumHex(x.group(2)),
+				re.compile(r'(0x)([A-Fa-f0-9]{1,})')
 			),
 			(
 				lambda x: self.enstyleNumBin(x.group()),
@@ -269,6 +278,56 @@ class Colorer():
 				r'\2' +
 				self.enstyle(           fg.green , r'\3') ,
 				re.compile(r'(\#)(ar)([0-9]+)\b')
+			),
+			(
+				self.enstyle(bg.green            , r'\1') +
+				rs.all + '\n',
+				re.compile(r'(\(xt-gdb\)\ *)')
+			),
+			(
+				r'\1' +
+				r'\2' +
+				self.enstyle(           fg.green   , r'\3') +
+				r':'  +
+				self.enstyle(           fg.magenta , r'\4') ,
+				re.compile(r'(\bat\b\ *)(.+/)?(.*):([0-9]+)')
+			),
+			(
+				lambda x:\
+					'in '+
+					self.enstyle(fg.green,  x.group(2))+
+					self.enstyleFuncParenth(x.group(3)), 
+				re.compile(r'(\bin\b\ *)([^\ ]+)\ *(\(.*\))')
+			),
+		]
+		self.matchingsInParenth = [
+			(
+				self.enstyle(           fg.yellow   , r'\1') +
+				self.enstyle(           fg.magenta  , r'=' ) +
+				r'\2',
+				re.compile(r'([\-_a-zA-Z0-9]+)\ *=\ *([^,]+)')
+			),
+			(
+				self.enstyle(           fg.magenta  , r'\1') ,
+				re.compile(r'(\ *[\(\)]\ *)')
+			),
+			(
+				self.enstyle(           fg.magenta  , r', ') ,
+				re.compile(r'(\ *,\ *)')
+			),
+		]
+		self.matchingsInStderr = [
+			(
+				self.enstyle(bg.yellow  + fg.black    , r'\1') ,
+				re.compile(r'([Ww]arning)')
+			),
+			(
+				self.enstyle(bg.red     + fg.black    , r'\1') ,
+				re.compile(r'([Ee]rror)')
+			),
+			(
+				self.enstyle(bg.magenta + fg.black    , r'\1') ,
+				re.compile(r'([Ff]atal)')
 			),
 		]
 
@@ -293,6 +352,12 @@ class Colorer():
 		else:
 			return mask
 
+	def enstyleFuncParenth(self, txt):
+		result = txt
+		for repl, regex in self.matchingsInParenth:
+			result = re.sub(regex, repl, result)
+		return result 
+		
 	def enstyleNumBin(self, txt):
 		result = rs.all + bg.magenta + "b"
 		prev = ""
@@ -307,6 +372,8 @@ class Colorer():
 		return result
 
 	def enstyleNumHex(self, txt):
+		if len(txt) < 8:
+			txt = (8-len(txt))*'0' + txt
 		p1 = 'o'
 		p2 = 'y'
 		if txt == "00000000":
@@ -336,20 +403,40 @@ class Colorer():
 		result += rs.all
 		return result
 
+	def enstyleStderr(self, txt):
+		if txt is None:
+			return ''
+		result = txt
+		for repl, regex in self.matchingsInStderr:
+			result = re.sub(regex, repl, result)
+		for repl, regex in self.matchings:
+			result = re.sub(regex, repl, result)
+		return fg.red + result + rs.all
+
 	def enstyle(self, style, txt):
 		return style + txt + rs.all
 
-	def print(self, word):
-		result = word
+	def produce_string(self, txt):
+		result = txt
 		for repl, regex in self.matchings:
 			result = re.sub(regex, repl, result)
-		self.__print(result)
+		return result
 
-def CoreDumpFactory(arch):
-	raiseIfArchNotValid(arch)
-	class CoreDump(arch.endianness):
+	def print(self, txt):
+		self.__print(self.produce_string(txt))
+
+def CoreDumpFactory(dsp_arch):
+	raiseIfArchNotValid(dsp_arch)
+	class CoreDump(dsp_arch.endianness):
 		_fields_ = [(x, c_uint32) for x in
 				[
+					# struct sof_ipc_dsp_oops_header {
+					"arch",
+					"configidhi",
+					"configidlo",
+					"totalsize",
+					"stackoffset",
+					# }
 					"exccause",
 					"excvaddr",
 					"ps"
@@ -367,12 +454,13 @@ def CoreDumpFactory(arch):
 					"excsave1" # to
 				]
 			] + [
-				("a", arch.bitness * c_uint32)
+				("a", dsp_arch.bitness * c_uint32)
 			]
 
 		def __init__(self, columncount):
-			self.arch = arch
+			self.dsp_arch = dsp_arch
 			self._fields_
+			self.ar_regex = re.compile(r'ar[0-9]+')
 			# below: smart column count
 			self._longest_field = len(max([x[0] for x in self._fields_], key=len))
 			if columncount is not None:
@@ -388,14 +476,15 @@ def CoreDumpFactory(arch):
 			)
 
 		def __windowbase_shift(self, iter, direction):
-			return (iter + self.windowbase * AR_WINDOW_WIDTH * direction) % self.arch.bitness
+			return (iter + self.windowbase * AR_WINDOW_WIDTH * direction)\
+				% self.dsp_arch.bitness
 		def windowbase_shift_left(self, iter):
 			return self.__windowbase_shift(iter, -1)
 		def windowbase_shift_right(self, iter):
 			return self.__windowbase_shift(iter,  1)
 
 		def reg_from_string(self, string):
-			if string.startswith("ar"):
+			if self.ar_regex.fullmatch(string):
 				return self.a[self.windowbase_shift_left(int(string[2:]))]
 			else:
 				return self.__getattribute__(string)
@@ -406,21 +495,28 @@ def CoreDumpFactory(arch):
 			return string
 
 		def to_string(self, is_gdb):
+			# in case windowbase in dump has invalid value
+			windowbase_shift = min(
+				self.windowbase * AR_WINDOW_WIDTH,
+				self.dsp_arch.bitness
+			)
 			# flatten + chunk enable to smartly print in N columns
 			string = ''.join([self.fmt(is_gdb, x)
 				for x in flaten(
 					[chunks(word, self.columncount) for word in [
-						["exccause", "excvaddr","ps"],
+						["arch", "totalsize", "stackoffset"],
+						["configidhi", "configidlo"],
+						["exccause", "excvaddr", "ps"],
 						["epc" + str(x) for x in range(1,7+1)],
 						["eps" + str(x) for x in range(2,7+1)],
 						["depc", "intenable", "interrupt", "sar", "debugcause"],
 						["windowbase", "windowstart"],
 						["excsave1"],
-					]] +\
+					]] +
 					[chunks(word, self.columncount_ar) for word in [
 						["ar" + str(x) for x in itertools.chain(
-							range(   self.windowbase * AR_WINDOW_WIDTH, self.arch.bitness),
-							range(0, self.windowbase * AR_WINDOW_WIDTH),
+							range(   windowbase_shift, self.dsp_arch.bitness),
+							range(0, windowbase_shift),
 						)]
 					]]
 				)
@@ -437,8 +533,9 @@ def CoreDumpFactory(arch):
 
 		def fmt_separator(self, name):
 			separator = "|"
-			if name.startswith("ar") and int(name[2:]) % AR_WINDOW_WIDTH == 0 :
-				separator = "#"
+			if self.ar_regex.fullmatch(name):
+				if int(name[2:]) % AR_WINDOW_WIDTH == 0:
+					separator = "#"
 			return separator
 
 		def fmt_pretty_auto(self, name):
@@ -477,7 +574,7 @@ def CoreDumpFactory(arch):
 			for iter, digit in enumerate(binary[1:]):
 				if (digit == '1'):
 					reg = "ar{0}".format(
-						self.windowbase_shift_right(AR_WINDOW_WIDTH * iter)
+						self.windowbase_shift_right(AR_WINDOW_WIDTH * -iter)
 					)
 					string  += "{0:2d} ".format(++fnc_num)
 					string  += self.fmt_pretty_auto(reg).format(
@@ -489,7 +586,7 @@ def CoreDumpFactory(arch):
 	if CoreDump is None:
 		raise RuntimeError(
 			"CoreDumpFactory: failed to produce CoreDump({0})"
-				.format(arch.name)
+				.format(dsp_arch.name)
 		)
 	return CoreDump
 
@@ -500,27 +597,35 @@ class CoreDumpReader(object):
 		)
 		self.file_info    = FileInfoFactory(args.arch, 32)()
 
+		if IS_COLOUR:
+			colourer = Colourer()
 		if args.verbose:
-			if IS_COLOUR:
-				colorer = Colorer()
-				verbosePrint = colorer.print
-			else:
-				verbosePrint = stderr_print
+			verbosePrint =\
+					colourer.print\
+				if IS_COLOUR else\
+					stderr_print
 		else:
 			verbosePrint = lambda *discard_this: None
 
-		if args.stdout:
+		if   args.stdout:
+			stdoutOpen  = lambda: None
 			stdoutPrint = print
-			stdoutClose = lambda : None
+			stdoutClose = lambda: None
+		elif args.outfile:
+			#TODO: open file in stdOutOpen
+			stdoutDest  = open(args.outfile, "w")
+			stdoutOpen  = lambda: None
+			stdoutPrint = stdoutDest.write
+			stdoutClose = stdoutDest.close
 		else:
-			outFile     = open(args.outfile, "w")
-			stdoutPrint = outFile.write
-			stdoutClose = outFile.close
+			raise RuntimeError("CoreDumpReader: No output method.") 
 
-		if args.stdin or not sys.stdin.isatty():
-			inStream = lambda : sys.stdin.buffer
+		if   args.stdin or not sys.stdin.isatty():
+			inStream = lambda: sys.stdin.buffer
+		elif args.infile:
+			inStream = lambda: open(args.infile, "rb")
 		else:
-			inStream = lambda : open(args.infile, "rb")
+			raise RuntimeError("CoreDumpReader: No input method.") 
 
 		with inStream() as cd_file:
 			[cd_file.readinto(x) for x in [
@@ -539,6 +644,7 @@ class CoreDumpReader(object):
 		verbosePrint("Stack dumped from {:08x} dwords num {:d}"
 			.format(stack_base, stack_dw_num))
 
+		stdoutOpen()
 		stdoutPrint("break *0xbefe0000\nrun\n")
 		stdoutPrint(self.core_dump.to_string(1))
 
@@ -555,7 +661,6 @@ class CoreDumpReader(object):
 			# dodac sobie przyklad
 			# ustawiac pc z
 		stdoutPrint("set $pc=&arch_dump_regs_a\nbacktrace\n")
-
 		stdoutClose()
 
 if __name__ == "__main__":
