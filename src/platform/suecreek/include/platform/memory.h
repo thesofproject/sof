@@ -72,11 +72,11 @@
 #define MN_SIZE			0x00000200
 
 /* low power DMA position */
-#define LP_GP_DMA_LINK_SIZE	0x00000080
+#define LP_GP_DMA_LINK_SIZE	0x00000010
 #define LP_GP_DMA_LINK_BASE(x) (0x00001C00 + x * LP_GP_DMA_LINK_SIZE)
 
 /* high performance DMA position */
-#define HP_GP_DMA_LINK_SIZE	0x00000800
+#define HP_GP_DMA_LINK_SIZE	0x00000010
 #define HP_GP_DMA_LINK_BASE(x)	(0x00001D00 + x * HP_GP_DMA_LINK_SIZE)
 
 /* code loader */
