@@ -229,11 +229,30 @@ static int fetch_entry(const struct convert_config *config,
 		ret = -ENOMEM;
 		goto out;
 	}
-	ret = fread(entry.params, sizeof(uint32_t), entry.header.params_num,
-		config->in_fd);
-	if (ret != entry.header.params_num) {
-		ret = -ferror(config->in_fd);
-		goto out;
+
+	if (config->serial_fd < 0) {
+		ret = fread(entry.params, sizeof(uint32_t),
+			    entry.header.params_num, config->in_fd);
+		if (ret != entry.header.params_num) {
+			ret = -ferror(config->in_fd);
+			goto out;
+		}
+	} else {
+		size_t size = sizeof(uint32_t) * entry.header.params_num;
+		uint8_t *n;
+
+		for (n = (uint8_t *)entry.params; size;
+		     n += ret, size -= ret) {
+			ret = read(config->serial_fd, n, size);
+			if (ret < 0) {
+				ret = -errno;
+				goto out;
+			}
+			if (ret != size)
+				fprintf(stderr,
+					"Partial read of %u bytes of %lu.\n",
+					ret, size);
+		}
 	}
 
 	/* printing entry content */
@@ -254,6 +273,58 @@ out:
 	return ret;
 }
 
+static int serial_read(const struct convert_config *config,
+	struct snd_sof_logs_header *snd, uint64_t *last_timestamp)
+{
+	struct log_entry_header dma_log;
+	size_t len;
+	uint32_t *n;
+	int ret;
+
+	for (len = 0, n = (uint32_t *)&dma_log; len < sizeof(dma_log); n++) {
+		ret = read(config->serial_fd, n, sizeof(*n));
+		if (ret < 0)
+			return -errno;
+
+		/* In the beginning we read 1 spurious byte */
+		if (ret < sizeof(*n))
+			n--;
+		else
+			len += ret;
+	}
+
+	/* Skip all trace_point() values, although this test isn't 100% reliable */
+	while ((dma_log.log_entry_address < snd->base_address) ||
+	       dma_log.log_entry_address > snd->base_address + snd->data_length) {
+		/*
+		 * 8 characters and a '\n' come from the serial port, append a
+		 * '\0'
+		 */
+		char s[10];
+		uint8_t *c;
+		size_t len;
+
+		c = (uint8_t *)&dma_log;
+
+		memcpy(s, c, sizeof(s) - 1);
+		s[sizeof(s) - 1] = '\0';
+		fprintf(config->out_fd, "Trace point %s", s);
+
+		memmove(&dma_log, c + 9, sizeof(dma_log) - 9);
+
+		c = (uint8_t *)(&dma_log + 1) - 9;
+		for (len = 9; len; len -= ret, c += ret) {
+			ret = read(config->serial_fd, c, len);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	/* fetching entry from elf dump */
+	return fetch_entry(config, snd->base_address, snd->data_offset,
+			   &dma_log, last_timestamp);
+}
+
 static int logger_read(const struct convert_config *config,
 	struct snd_sof_logs_header *snd)
 {
@@ -261,6 +332,14 @@ static int logger_read(const struct convert_config *config,
 	int ret = 0;
 	print_table_header(config->out_fd);
 	uint64_t last_timestamp = 0;
+
+	if (config->serial_fd >= 0)
+		/* Wait for CTRL-C */
+		for (;;) {
+			ret = serial_read(config, snd, &last_timestamp);
+			if (ret < 0)
+				return ret;
+		}
 
 	while (!feof(config->in_fd)) {
 		/* getting entry parameters from dma dump */

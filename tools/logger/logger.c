@@ -18,6 +18,9 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <termios.h>
 #include "convert.h"
 
 #define APP_NAME "sof-logger"
@@ -42,6 +45,7 @@ static void usage(void)
 	fprintf(stdout, "%s:\t -c\t\t\tSet timestamp clock in MHz\n", APP_NAME);
 	fprintf(stdout, "%s:\t -s\t\t\tTake a snapshot of state\n", APP_NAME);
 	fprintf(stdout, "%s:\t -t\t\t\tDisplay trace data\n", APP_NAME);
+	fprintf(stdout, "%s:\t -u baud\t\tInput data from a UART\n", APP_NAME);
 	exit(0);
 }
 
@@ -102,9 +106,32 @@ static int snapshot(const char *name)
 	return 0;
 }
 
+static int configure_uart(const char *file, unsigned int baud)
+{
+	struct termios tio = {};
+	int ret, fd = open(file, O_RDWR | O_NOCTTY);
+	if (fd < 0)
+		return -errno;
+
+	cfsetspeed(&tio, 115200);
+	cfmakeraw(&tio);
+
+	tio.c_iflag |= IGNBRK;
+
+	tio.c_cflag |= CLOCAL | CREAD | HUPCL;
+
+	tio.c_cc[VTIME] = 1;
+	tio.c_cc[VMIN] = 1;
+
+	ret = tcsetattr(fd, TCSANOW, &tio);
+	return ret < 0 ? -errno : fd;
+}
+
 int main(int argc, char *argv[])
 {
 	struct convert_config config;
+	unsigned int baud = 0;
+	bool do_snapshot = false;
 	int opt, ret = 0;
 
 	config.trace = 0;
@@ -121,8 +148,9 @@ int main(int argc, char *argv[])
 	config.version_fd = NULL;
 	config.version_fw = 0;
 	config.use_colors = 1;
+	config.serial_fd = -EINVAL;
 
-	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:tev:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:")) != -1) {
 		switch (opt) {
 		case 'o':
 			config.out_file = optarg;
@@ -137,7 +165,8 @@ int main(int argc, char *argv[])
 			config.clock = atof(optarg);
 			break;
 		case 's':
-			return snapshot(optarg);
+			do_snapshot = true;
+			break;
 		case 'l':
 			config.ldc_file = optarg;
 			break;
@@ -151,6 +180,9 @@ int main(int argc, char *argv[])
 			config.version_fw = 1;
 			config.version_file = "/sys/kernel/debug/sof/fw_version";
 			break;
+		case 'u':
+			baud = atoi(optarg);
+			break;
 		case 'v':
 			/* enabling checking fw version with ver_file file */
 			config.version_fw = 1;
@@ -161,6 +193,9 @@ int main(int argc, char *argv[])
 			usage();
 		}
 	}
+
+	if (do_snapshot)
+		return baud ? EINVAL : -snapshot(optarg);
 	
 	if (!config.ldc_file) {
 		fprintf(stderr, "error: Missing ldc file\n");
@@ -207,6 +242,12 @@ int main(int argc, char *argv[])
 
 	if (config.input_std) {
 		config.in_fd = stdin;
+	} else if (baud) {
+		config.serial_fd = configure_uart(config.in_file, baud);
+		if (config.serial_fd < 0) {
+			ret = -config.serial_fd;
+			goto out;
+		}
 	} else {
 		config.in_fd = fopen(config.in_file, "r");
 		if (!config.in_fd) {
