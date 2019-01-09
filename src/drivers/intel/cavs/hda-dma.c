@@ -386,10 +386,31 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
 	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 }
 
+static int hda_dma_tx_wait(struct dma *dma, struct hda_chan_data *chan,
+			   int min_bytes, uint32_t timeout_us)
+{
+	uint64_t deadline = platform_timer_get(platform_timer) +
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+				  timeout_us / 1000;
+
+	while (hda_dma_get_free_size(dma, chan->index) < min_bytes) {
+		if (deadline < platform_timer_get(platform_timer)) {
+			trace_hddma_error("hda-dmac: %d tx timeout",
+					  dma->plat_data.id);
+			return -ETIME;
+		}
+
+		idelay(PLATFORM_DEFAULT_DELAY);
+	}
+
+	return 0;
+}
+
 static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 				int bytes)
 {
 	uint32_t dgcs = 0;
+	int ret = 0;
 
 	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
 		     dma->plat_data.id, chan->index, bytes);
@@ -404,8 +425,11 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 
 	/* make sure that previous transfer is complete (playback only) */
 	if (chan->direction == DMA_DIR_MEM_TO_DEV) {
-		while (hda_dma_get_free_size(dma, chan->index) < bytes)
-			idelay(PLATFORM_DEFAULT_DELAY);
+		ret = hda_dma_tx_wait(dma, chan, bytes,
+				      PLATFORM_LINK_DMA_TIMEOUT);
+
+		if (ret)
+			goto fail;
 	}
 
 	/*
@@ -418,7 +442,8 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_LINK);
 	hda_dma_ptr_trace(chan, "link copy", HDA_DBG_LINK);
 
-	return 0;
+fail:
+	return ret;
 }
 
 static int hda_dma_host_copy_ch(struct dma *dma, struct hda_chan_data *chan,
