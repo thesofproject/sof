@@ -36,4 +36,4 @@ struct convert_config {
 	int use_colors;
 };
 
-int convert(struct convert_config *config);
+int convert(const struct convert_config *config);
