@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 	config.version_fw = 0;
 	config.use_colors = 1;
 
-	while ((opt = getopt(argc, argv, "ho:i:l:ps:m:c:tev:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:tev:")) != -1) {
 		switch (opt) {
 		case 'o':
 			config.out_file = optarg;
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 	if (!config.ldc_fd) {
 		fprintf(stderr, "error: Unable to open ldc file %s\n",
 			config.ldc_file);
-		ret = -errno;
+		ret = errno;
 		goto out;
 	}
 
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 		if (!config.version_fd) {
 			fprintf(stderr, "error: Unable to open ver file %s\n",
 				config.version_file);
-			ret = -errno;
+			ret = errno;
 			goto out;
 		}
 	}
@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 		if (!config.out_fd) {
 			fprintf(stderr, "error: Unable to open out file %s\n",
 				config.out_file);
-			ret = -errno;
+			ret = errno;
 			goto out;
 		}
 	} else {
@@ -212,14 +212,14 @@ int main(int argc, char *argv[])
 		if (!config.in_fd) {
 			fprintf(stderr, "error: Unable to open in file %s\n",
 				config.in_file);
-			ret = -errno;
+			ret = errno;
 			goto out;
 		}
 	}
 	if (isatty(fileno(config.out_fd)) != 1)
 		config.use_colors = 0;
 
-	convert(&config);
+	ret = -convert(&config);
 
 out:
 	/* close files */

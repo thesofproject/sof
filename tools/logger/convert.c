@@ -100,57 +100,58 @@ static const char * get_component_name(uint32_t component_id) {
 	}
 }
 
-static void print_entry_params(FILE *out_fd, struct log_entry_header dma_log,
-	struct ldc_entry entry, uint64_t last_timestamp, double clock,
-	int use_colors)
+static void print_entry_params(FILE *out_fd,
+	const struct log_entry_header *dma_log, const struct ldc_entry *entry,
+	uint64_t last_timestamp, double clock, int use_colors)
 {	
 	char ids[TRACE_MAX_IDS_STR];
-	float dt = to_usecs(dma_log.timestamp - last_timestamp, clock);
+	float dt = to_usecs(dma_log->timestamp - last_timestamp, clock);
 
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
 	
-	if (entry.header.has_ids)
-		sprintf(ids, "%d.%d", (dma_log.id_0 & TRACE_IDS_MASK),
-		        (dma_log.id_1 & TRACE_IDS_MASK));
+	if (entry->header.has_ids)
+		sprintf(ids, "%d.%d", (dma_log->id_0 & TRACE_IDS_MASK),
+			(dma_log->id_1 & TRACE_IDS_MASK));
 
 	fprintf(out_fd, "%s%5u %6u %12s %-7s %16.6f %16.6f %20s:%-4u\t",
-		entry.header.level == use_colors ?
+		entry->header.level == use_colors ?
 			(LOG_LEVEL_CRITICAL ? KRED : KNRM) : "",
-		dma_log.core_id,
-		entry.header.level,
-		get_component_name(entry.header.component_class),
-		entry.header.has_ids ? ids : "",
-		to_usecs(dma_log.timestamp, clock),
+		dma_log->core_id,
+		entry->header.level,
+		get_component_name(entry->header.component_class),
+		entry->header.has_ids ? ids : "",
+		to_usecs(dma_log->timestamp, clock),
 		dt,
-		entry.file_name,
-		entry.header.line_idx);
+		entry->file_name,
+		entry->header.line_idx);
 
-	switch (entry.header.params_num) {
+	switch (entry->header.params_num) {
 	case 0:
-		fprintf(out_fd, "%s", entry.text);
+		fprintf(out_fd, "%s", entry->text);
 		break;
 	case 1:
-		fprintf(out_fd, entry.text, entry.params[0]);
+		fprintf(out_fd, entry->text, entry->params[0]);
 		break;
 	case 2:
-		fprintf(out_fd, entry.text, entry.params[0], entry.params[1]);
+		fprintf(out_fd, entry->text, entry->params[0], entry->params[1]);
 		break;
 	case 3:
-		fprintf(out_fd, entry.text, entry.params[0], entry.params[1],
-			entry.params[2]);
+		fprintf(out_fd, entry->text, entry->params[0], entry->params[1],
+			entry->params[2]);
 		break;
 	case 4:
-		fprintf(out_fd, entry.text, entry.params[0], entry.params[1],
-			entry.params[2], entry.params[3]);
+		fprintf(out_fd, entry->text, entry->params[0], entry->params[1],
+			entry->params[2], entry->params[3]);
 		break;
 	}
 	fprintf(out_fd, "%s\n", use_colors ? KNRM : "");
 	fflush(out_fd);
 }
 
-static int fetch_entry(struct convert_config *config, uint32_t base_address,
-	uint32_t data_offset, struct log_entry_header dma_log, uint64_t *last_timestamp)
+static int fetch_entry(const struct convert_config *config,
+	uint32_t base_address, uint32_t data_offset,
+	const struct log_entry_header *dma_log, uint64_t *last_timestamp)
 {
 	struct ldc_entry entry;
 	uint32_t entry_offset;
@@ -162,7 +163,7 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 	entry.params = NULL;
 
 	/* evaluate entry offset in input file */
-	entry_offset = dma_log.log_entry_address - base_address;
+	entry_offset = dma_log->log_entry_address - base_address;
 
 	/* set file position to beginning of processed entry */
 	fseek(config->ldc_fd, entry_offset + data_offset, SEEK_SET);
@@ -236,9 +237,9 @@ static int fetch_entry(struct convert_config *config, uint32_t base_address,
 	}
 
 	/* printing entry content */
-	print_entry_params(config->out_fd, dma_log, entry, *last_timestamp,
+	print_entry_params(config->out_fd, dma_log, &entry, *last_timestamp,
 			   config->clock, config->use_colors);
-	*last_timestamp = dma_log.timestamp;
+	*last_timestamp = dma_log->timestamp;
 
 	/* set f_ldc file position to the beginning */
 	rewind(config->ldc_fd);
@@ -253,7 +254,7 @@ out:
 	return ret;
 }
 
-static int logger_read(struct convert_config *config,
+static int logger_read(const struct convert_config *config,
 	struct snd_sof_logs_header *snd)
 {
 	struct log_entry_header dma_log;
@@ -282,7 +283,7 @@ static int logger_read(struct convert_config *config,
 
 		/* fetching entry from elf dump */
 		ret = fetch_entry(config, snd->base_address, snd->data_offset,
-			dma_log, &last_timestamp);
+				  &dma_log, &last_timestamp);
 		if (ret)
 			break;
 	}
@@ -290,7 +291,7 @@ static int logger_read(struct convert_config *config,
 	return ret;
 }
 
-int convert(struct convert_config *config) {
+int convert(const struct convert_config *config) {
 	struct snd_sof_logs_header snd;
 	int count, ret = 0;
 
