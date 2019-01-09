@@ -339,7 +339,7 @@ case "$with_platform" in
     ;;
     broadwell*)
 
-	PLATFORM_LDSCRIPT="broadwell.x"
+	PLATFORM_LDSCRIPT="haswell.x"
 	AC_SUBST(PLATFORM_LDSCRIPT)
 
 	PLATFORM="haswell"
