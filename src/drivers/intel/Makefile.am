@@ -7,8 +7,6 @@ libdrivers_la_CFLAGS = \
 	$(SOF_INCDIR) \
 	$(ARCH_INCDIR)
 
-libdrivers_la_SOURCES = dw-dma.c
-
 if BUILD_CAVS
 
 SUBDIRS = cavs
@@ -18,14 +16,14 @@ else
 
 if BUILD_BAYTRAIL
 SUBDIRS = baytrail
-libdrivers_la_SOURCES += \
+libdrivers_la_SOURCES = \
 	pmc-ipc.c
 libdrivers_la_LIBADD = baytrail/libdrivers.la
 endif
 
 if BUILD_CHERRYTRAIL
 SUBDIRS = baytrail
-libdrivers_la_SOURCES += \
+libdrivers_la_SOURCES = \
 	pmc-ipc.c
 libdrivers_la_LIBADD = baytrail/libdrivers.la
 endif

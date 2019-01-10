@@ -10,6 +10,6 @@ libdrivers_la_CFLAGS = \
 	$(ARCH_INCDIR)
 
 # This lib is just composition of convenience libraries
-libdrivers_la_SOURCES =
+libdrivers_la_SOURCES = dw-dma.c
 
 libdrivers_la_LIBADD = intel/libdrivers.la
