@@ -99,7 +99,6 @@ sof_LDADD = \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.la \
 	../../math/libsof_math.a \
-	../../gdb/libgdb.a \
 	-lgcc
 
 if BUILD_XTENSA_SMP

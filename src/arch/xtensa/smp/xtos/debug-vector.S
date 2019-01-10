@@ -28,7 +28,7 @@
 #ifdef SIMULATOR
 #include <xtensa/simcall.h>
 #endif
-#include <sof/gdb/xtensa-defs.h>
+#include <arch/gdb/xtensa-defs.h>
 
 #if XCHAL_HAVE_DEBUG && XCHAL_HAVE_EXCEPTIONS
 
