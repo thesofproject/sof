@@ -73,21 +73,12 @@ static inline void list_item_append(struct list_item *item,
 }
 
 /* delete item from the list leaves deleted list item
- *in undefined state list_is_empty won't return true
+ *in undefined state list_is_empty will return true
  */
 static inline void list_item_del(struct list_item *item)
 {
 	item->next->prev = item->prev;
 	item->prev->next = item->next;
-	list_init(item);
-}
-
-/* delete item from the list list iteam will be reinitialised
- * and list_is_empty will return true
- */
-static inline void list_item_del_init(struct list_item *item)
-{
-	list_item_del(item);
 	list_init(item);
 }
 
