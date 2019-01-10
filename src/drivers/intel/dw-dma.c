@@ -646,7 +646,7 @@ static int dw_dma_status(struct dma *dma, int channel,
 /*
  * use array to get burst_elems for specific slot number setting.
  * the relation between msize and burst_elems should be
- * 2 ^ burst_elems = burst_elems
+ * 2 ^ msize = burst_elems
  */
 static const uint32_t burst_elems[] = {1, 2, 4, 8};
 
