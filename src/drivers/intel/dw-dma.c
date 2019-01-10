@@ -539,10 +539,9 @@ out:
 static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	int ret = 0;
 	struct dma_chan_data *chan = p->chan + channel;
+	int ret;
 	uint32_t flags;
-	uint32_t val = 0;
 
 	if (channel >= dma->plat_data.channels) {
 		trace_dwdma_error("dw-dma: %d invalid channel %d",
@@ -558,7 +557,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 		work_cancel_default(&chan->dma_ch_work);
 
 	ret = poll_for_register_delay(dma_base(dma) + DW_DMA_CHAN_EN,
-				      CHAN_MASK(channel), val,
+				      CHAN_MASK(channel), 0,
 				      PLATFORM_DMA_TIMEOUT);
 	if (ret < 0)
 		trace_dwdma_error("dw-dma: %d channel %d timeout",
@@ -576,11 +575,10 @@ static int dw_dma_stop(struct dma *dma, int channel)
 static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	int ret = 0;
 	struct dma_chan_data *chan = p->chan + channel;
 	uint32_t flags;
 #if DW_USE_HW_LLI
-	int i = 0;
+	int i;
 	struct dw_lli2 *lli;
 #endif
 
@@ -620,7 +618,8 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	chan->status = COMP_STATE_PREPARE;
 
 	spin_unlock_irq(&dma->lock, flags);
-	return ret;
+
+	return 0;
 }
 #endif
 
@@ -1162,7 +1161,7 @@ static void dw_dma_irq_handler(void *data)
 	struct dma *dma = dma_id->dma;
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_sg_elem next;
-	uint32_t status_tfr = 0, status_block = 0, status_err = 0, status_intr;
+	uint32_t status_tfr, status_block, status_err, status_intr;
 	uint32_t mask;
 	int i = dma_id->channel;
 
@@ -1273,10 +1272,10 @@ static void dw_dma_irq_handler(void *data)
 	struct dma *dma = (struct dma *)data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_sg_elem next;
-	uint32_t status_tfr = 0;
-	uint32_t status_block = 0;
-	uint32_t status_block_new = 0;
-	uint32_t status_err = 0;
+	uint32_t status_tfr;
+	uint32_t status_block;
+	uint32_t status_block_new;
+	uint32_t status_err;
 	uint32_t status_intr;
 	uint32_t mask;
 	uint32_t pmask;
