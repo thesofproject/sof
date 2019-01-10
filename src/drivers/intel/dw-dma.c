@@ -1053,15 +1053,17 @@ static void dw_dma_setup(struct dma *dma)
 		dw_write(dma, DW_DMA_CFG, 0x0);
 
 	/* now check that it's 0 */
-	for (i = DW_DMA_CFG_TRIES; i > 0; i--) {
+	for (i = DW_DMA_CFG_TRIES; i > 0; i--)
 		if (dw_read(dma, DW_DMA_CFG) == 0)
-			goto found;
-	}
-	trace_dwdma_error("dw-dma: dmac %d setup failed", dma->plat_data.id);
-	return;
+			break;
 
-found:
-	for (i = 0; i <  DW_MAX_CHAN; i++)
+	if (!i) {
+		trace_dwdma_error("dw-dma: dmac %d setup failed",
+				  dma->plat_data.id);
+		return;
+	}
+
+	for (i = 0; i < DW_MAX_CHAN; i++)
 		dw_read(dma, DW_DMA_CHAN_EN);
 
 #ifdef HAVE_HDDA
