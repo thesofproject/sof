@@ -843,7 +843,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 				DW_CTLL_DST_FIX;
 #if DW_USE_HW_LLI
 			lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN;
-			lli_desc->ctrl_hi |= DW_CTLH_DONE(1);
 			chan->cfg_lo |= DW_CFG_RELOAD_DST;
 #endif
 			chan->cfg_hi |= DW_CFGH_DST_PER(config->dest_dev);
@@ -856,7 +855,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 				DW_CTLL_DST_INC;
 #if DW_USE_HW_LLI
 			lli_desc->ctrl_lo |= DW_CTLL_LLP_D_EN;
-			lli_desc->ctrl_hi |= DW_CTLH_DONE(0);
 			chan->cfg_lo |= DW_CFG_RELOAD_SRC;
 #endif
 			chan->cfg_hi |= DW_CFGH_SRC_PER(config->src_dev);
