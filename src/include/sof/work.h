@@ -84,9 +84,6 @@ void work_reschedule_default(struct work *work, uint64_t timeout);
 void work_reschedule_default_at(struct work *w, uint64_t time);
 void work_cancel_default(struct work *work);
 
-/* create new work queue */
-struct work_queue *work_new_queue(struct work_queue_timesource *ts);
-
 /* init system workq */
 void init_system_workq(struct work_queue_timesource *ts);
 
