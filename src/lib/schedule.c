@@ -146,7 +146,7 @@ static inline struct task *edf_get_next(uint64_t current,
 			if (!reschedule) {
 				reschedule++;
 				trace_schedule("edf_get_next(), "
-					   "didnt tried to reschedule yet");
+					       "didn't try to reschedule yet");
 				edf_reschedule(task, current);
 			} else {
 				/* reschedule failed */
