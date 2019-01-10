@@ -31,7 +31,7 @@
  *
  */
 
-#include <sof/gdb/xtensa-defs.h>
+#include <arch/gdb/xtensa-defs.h>
 
 .text
 .global initDebugException

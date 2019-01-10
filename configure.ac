@@ -657,8 +657,8 @@ AC_CONFIG_FILES([
 	src/platform/intel/cavs/Makefile
 	test/Makefile
 	test/cmocka/Makefile
-	src/include/sof/gdb/Makefile
-	src/gdb/Makefile
+	src/arch/xtensa/include/arch/gdb/Makefile
+	src/arch/xtensa/gdb/Makefile
 ])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
 AC_OUTPUT

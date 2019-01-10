@@ -2,6 +2,7 @@ noinst_LIBRARIES = libgdb.a
 
 libgdb_a_SOURCES = \
 	init.S
+	debugexception.S
 
 libgdb_a_CFLAGS = \
 	$(AM_CFLAGS) \
