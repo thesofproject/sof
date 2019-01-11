@@ -72,6 +72,7 @@
 #define DMA_DEV_HDA		BIT(1) /**< connectable to HD/A link */
 #define DMA_DEV_SSP		BIT(2) /**< connectable to SSP fifo */
 #define DMA_DEV_DMIC		BIT(3) /**< connectable to DMIC fifo */
+#define DMA_DEV_SSI		BIT(4) /**< connectable to SSI / SPI fifo */
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
