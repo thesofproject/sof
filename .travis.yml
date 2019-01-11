@@ -54,3 +54,15 @@ jobs:
     - stage: test
       name: "CHT Boot Test"
       script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l cht && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh cht
+    - stage: test
+      name: "BDW Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l bdw && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh bdw
+    - stage: test
+      name: "HSW Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l hsw && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh hsw
+    - stage: test
+      name: "APL Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l -r apl && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh apl
+    - stage: test
+      name: "ICL Boot Test"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l -r icl && ./scripts/docker-qemu.sh ../sof.git/scripts/qemu-check.sh icl
