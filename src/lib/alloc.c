@@ -787,10 +787,12 @@ void heap_trace(struct mm_heap *heap, int size)
 		for (j = 1; j < heap->blocks; j++) {
 			current_map = &heap->map[j];
 
-			trace_mem_init("  block %d base 0x%x size %d count %d",
+			trace_mem_init("  block %d base 0x%x size %d",
 				       j, current_map->base,
-				       current_map->block_size,
-				       current_map->count);
+				       current_map->block_size);
+			trace_mem_init("   count %d free %d",
+				       current_map->count,
+				       current_map->free_count);
 		}
 
 		heap++;
