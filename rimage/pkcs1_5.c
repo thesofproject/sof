@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include "config.h"
 #include "rimage.h"
 #include "css.h"
 #include "manifest.h"
