@@ -1,0 +1,25 @@
+add_local_sources(sof
+	eq_iir.c
+	iir.c
+	eq_fir.c
+	fir.c
+	fir_hifi2ep.c
+	fir_hifi3.c
+	tone.c
+	src.c
+	src_generic.c
+	src_hifi2ep.c
+	src_hifi3.c
+	mixer.c
+	mux.c
+	volume.c
+	volume_generic.c
+	volume_hifi3.c
+	switch.c
+	dai.c
+	host.c
+	pipeline.c
+	pipeline_static.c
+	component.c
+	buffer.c
+)
