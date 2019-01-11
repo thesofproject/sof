@@ -43,7 +43,6 @@
 #include <platform/timer.h>
 #include <platform/clk.h>
 #include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
 #include <sof/task.h>
 
 struct schedule_data {
@@ -140,13 +139,13 @@ static inline struct task *edf_get_next(uint64_t current,
 			}
 		} else {
 			/* missed scheduling - will be rescheduled */
-			trace_pipe("edf_get_next(), "
+			trace_schedule("edf_get_next(), "
 				   "missed scheduling - will be rescheduled");
 
 			/* have we already tried to rescheule ? */
 			if (!reschedule) {
 				reschedule++;
-				trace_pipe("edf_get_next(), "
+				trace_schedule("edf_get_next(), "
 					   "didnt tried to reschedule yet");
 				edf_reschedule(task, current);
 			} else {
@@ -163,7 +162,7 @@ static inline struct task *edf_get_next(uint64_t current,
 /* work set in the future when next task can be scheduled */
 static uint64_t sch_work(void *data, uint64_t delay)
 {
-	tracev_pipe("sch_work()");
+	tracev_schedule("sch_work()");
 	schedule();
 	return 0;
 }
@@ -182,7 +181,7 @@ static struct task *schedule_edf(void)
 	uint64_t current;
 	uint32_t flags;
 
-	tracev_pipe("schedule_edf()");
+	tracev_schedule("schedule_edf()");
 
 	interrupt_clear(PLATFORM_SCHEDULE_IRQ);
 
@@ -213,7 +212,7 @@ static struct task *schedule_edf(void)
 
 			/* now run task at correct run level */
 			if (run_task(task) < 0) {
-				trace_error(TRACE_CLASS_PIPE,
+				trace_error(TRACE_CLASS_SCHEDULE,
 					    "schedule_edf() error");
 				break;
 			}
@@ -235,7 +234,7 @@ int schedule_task_cancel(struct task *task)
 	uint32_t flags;
 	int ret = 0;
 
-	tracev_pipe("schedule_task_cancel()");
+	tracev_schedule("schedule_task_cancel()");
 
 	spin_lock_irq(&sch->lock, flags);
 
@@ -260,20 +259,20 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	uint64_t current;
 	uint64_t ticks_per_ms;
 
-	tracev_pipe("_schedule_task()");
+	tracev_schedule("_schedule_task()");
 
 	spin_lock_irq(&sch->lock, flags);
 
 	/* is task already pending ? - not enough MIPS to complete ? */
 	if (task->state == TASK_STATE_PENDING) {
-		trace_pipe("_schedule_task(), task already pending");
+		trace_schedule("_schedule_task(), task already pending");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
 
 	/* is task already queued ? - not enough MIPS to complete ? */
 	if (task->state == TASK_STATE_QUEUED) {
-		trace_pipe("_schedule_task(), task already queued");
+		trace_schedule("_schedule_task(), task already queued");
 		spin_unlock_irq(&sch->lock, flags);
 		return 0;
 	}
@@ -340,7 +339,7 @@ void schedule_task_complete(struct task *task)
 	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
 
-	tracev_pipe("schedule_task_complete()");
+	tracev_schedule("schedule_task_complete()");
 
 	spin_lock_irq(&sch->lock, flags);
 
@@ -358,8 +357,9 @@ void schedule_task_complete(struct task *task)
 		/* nothing to do here, high priority IRQ has scheduled us */
 		break;
 	default:
-		trace_error(TRACE_CLASS_PIPE, "unexpected task state %d at task completion",
-			    task->state);
+		trace_error(TRACE_CLASS_SCHEDULE, "unexpected task state %d "
+			"at task completion",
+			task->state);
 		task->state = TASK_STATE_COMPLETED;
 		break;
 	}
@@ -375,7 +375,7 @@ void schedule_task_running(struct task *task)
 	struct schedule_data *sch = *arch_schedule_get();
 	uint32_t flags;
 
-	tracev_pipe("schedule_task_running()");
+	tracev_schedule("schedule_task_running()");
 
 	spin_lock_irq(&sch->lock, flags);
 	task->state = TASK_STATE_RUNNING;
@@ -386,7 +386,7 @@ static void scheduler_run(void *unused)
 {
 	struct task *future_task;
 
-	tracev_pipe("scheduler_run()");
+	tracev_schedule("scheduler_run()");
 
 	/* EDF is only scheduler supported atm */
 	future_task = schedule_edf();
@@ -403,7 +403,7 @@ void schedule(void)
 	struct task *task;
 	uint32_t flags;
 
-	tracev_pipe("schedule()");
+	tracev_schedule("schedule()");
 
 	spin_lock_irq(&sch->lock, flags);
 
@@ -436,7 +436,7 @@ schedule:
 /* Initialise the scheduler */
 int scheduler_init(struct sof *sof)
 {
-	trace_pipe("scheduler_init()");
+	trace_schedule("scheduler_init()");
 
 	struct schedule_data **sch = arch_schedule_get();
 	*sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**sch));

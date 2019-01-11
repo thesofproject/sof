@@ -108,6 +108,7 @@
 #define TRACE_CLASS_IDC		(24 << 24)
 #define TRACE_CLASS_CPU		(25 << 24)
 #define TRACE_CLASS_CLK		(26 << 24)
+#define TRACE_CLASS_SCHEDULE	(27 << 24)
 
 /* move to config.h */
 #define TRACE	1
