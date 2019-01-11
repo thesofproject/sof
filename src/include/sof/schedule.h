@@ -40,6 +40,16 @@
 #include <sof/work.h>
 #include <sof/wait.h>
 
+/* schedule tracing */
+#define trace_schedule(format, ...) \
+	trace_event(TRACE_CLASS_SCHEDULE, format, ##__VA_ARGS__)
+
+#define trace_schedule_error(format, ...) \
+	trace_error(TRACE_CLASS_SCHEDULE, format, ##__VA_ARGS__)
+
+#define tracev_schedule(format, ...) \
+	tracev_event(TRACE_CLASS_SCHEDULE, format, ##__VA_ARGS__)
+
 struct schedule_data;
 struct sof;
 
