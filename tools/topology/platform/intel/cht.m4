@@ -29,3 +29,8 @@ W_DATA(pipe_tone_schedule_plat, pipe_tone_schedule_plat_tokens)
 W_VENDORTUPLES(pipe_dai_schedule_plat_tokens, sof_sched_tokens, LIST(`		', `SOF_TKN_SCHED_MIPS	"5000"'))
 
 W_DATA(pipe_dai_schedule_plat, pipe_dai_schedule_plat_tokens)
+
+VIRTUAL_WIDGET(codec_out0, output, 1)
+VIRTUAL_WIDGET(codec_out1, output, 2)
+VIRTUAL_WIDGET(codec_in0, input, 3)
+VIRTUAL_WIDGET(codec_in1, input, 4)
