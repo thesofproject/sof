@@ -200,11 +200,136 @@ ExternalProject_Add(rimage_ep
 	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
 	CMAKE_ARGS -DVERSION_H_PATH=${VERSION_H_PATH}
+		-DPEM_KEY_PREFIX=${PROJECT_SOURCE_DIR}/rimage/keys
 	INSTALL_COMMAND ""
 )
 
 add_custom_target(
 	prepare_fw_copy_for_rimage
-	DEPENDS sof_fw rimage_ep
-	COMMAND cp ${PROJECT_BINARY_DIR}/sof_fw sof_${fw_name} 
+	DEPENDS sof rimage_ep
+	COMMAND cp ${PROJECT_BINARY_DIR}/sof sof_${fw_name}
+)
+
+# bootloader binary
+
+if(build_bootloader)
+	add_executable(bootloader "")
+	target_link_libraries(bootloader PRIVATE sof_options)
+	add_local_sources(bootloader boot_entry.S boot_loader.c)
+	target_link_libraries(bootloader PRIVATE reset)
+	target_link_libraries(bootloader PRIVATE hal)
+	target_link_libraries(bootloader PRIVATE "-lgcc")
+	target_link_libraries(bootloader PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_bootldr_ld_script}")
+	sof_add_ld_script(bootloader ${platform_bootldr_ld_script})
+
+	if(CONFIG_SMP)
+		add_local_sources(bootloader smp/xtos/_vectors.S)
+	else()
+		add_local_sources(bootloader up/xtos/_vectors.S)
+	endif()
+
+	add_custom_target(
+		bootloader_dump
+		COMMAND cp bootloader bootloader_${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/boot_module mod-boot-${fw_name}.bin
+		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-boot-${fw_name}.bin --set-section-flags .module=load,readonly bootloader_${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} -O binary bootloader bootloader_${fw_name}.bin
+		COMMAND ${CMAKE_OBJDUMP} -h -D bootloader > bootloader_${fw_name}.map
+		COMMAND ${CMAKE_OBJDUMP} -S bootloader > bootloader_${fw_name}.lst
+		COMMAND ${CMAKE_OBJDUMP} -D bootloader > bootloader_${fw_name}.dis
+		DEPENDS bootloader boot_module
+		VERBATIM
+		USES_TERMINAL
+	)
+
+	set(bootloader_binary_path bootloader_${fw_name})
+
+	add_custom_target(
+		process_base_module
+		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
+		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof_${fw_name}
+		DEPENDS prepare_fw_copy_for_rimage base_module bootloader_dump
+		VERBATIM
+		USES_TERMINAL
+	)
+else()
+	set(bootloader_binary_path "")
+
+	add_custom_target(process_base_module DEPENDS prepare_fw_copy_for_rimage)
+endif()
+
+add_custom_target(
+	sof_dump
+	COMMAND ${CMAKE_OBJDUMP} -S sof_${fw_name} > sof_${fw_name}.lst
+	COMMAND ${CMAKE_OBJDUMP} -D sof_${fw_name} > sof_${fw_name}.dis
+	DEPENDS process_base_module
+	VERBATIM
+	USES_TERMINAL
+)
+
+if(MEU_PATH)
+	execute_process(
+		COMMAND ${MEU_PATH}/meu -ver
+		COMMAND grep "Version:"
+		COMMAND cut -d " " -f6
+		OUTPUT_VARIABLE MEU_VERSION
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+
+	if(MEU_VERSION VERSION_LESS 12.0.0.1035)
+		set(MEU_OFFSET 1152)
+	else()
+		set(MEU_OFFSET 1088)
+	endif()
+
+	set(otc_private_key ${PROJECT_SOURCE_DIR}/rimage/keys/otc_private_key.pem)
+
+	add_custom_target(
+		run_rimage
+		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
+			-o sof_${fw_name}.ri
+			-p sof_${fw_name}.ldc
+			-m ${fw_name}
+			${bootloader_binary_path}
+			sof_${fw_name}
+			-s ${MEU_OFFSET}
+			-k ${otc_private_key}
+		DEPENDS sof_dump
+		VERBATIM
+		USES_TERMINAL
+	)
+
+	add_custom_target(
+		run_meu
+		COMMAND ${MEU_PATH}/meu -w ./ -s sof_${fw_name}
+			-key ${MEU_PRIVATE_KEY}
+			-stp /usr/bin/openssl
+			-f ${MEU_PATH}/generic_meu_conf.xml
+			-mnver 0.0.0.0 -o sof_${fw_name}.ri
+		DEPENDS run_rimage
+		VERBATIM
+		USES_TERMINAL
+	)
+else()
+	add_custom_target(
+		run_rimage
+		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
+			-o sof_${fw_name}.ri
+			-p sof_${fw_name}.ldc
+			-m ${fw_name}
+			${bootloader_binary_path}
+			sof_${fw_name}
+		DEPENDS sof_dump
+		VERBATIM
+		USES_TERMINAL
+	)
+	add_custom_target(run_meu DEPENDS run_rimage)
+endif()
+
+add_custom_target(
+	bin
+	COMMAND cp sof_${fw_name}.ri ${PROJECT_BINARY_DIR}/sof_${fw_name}.ri
+	DEPENDS run_meu
+	VERBATIM
+	USES_TERMINAL
 )
