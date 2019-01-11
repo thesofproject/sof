@@ -1,0 +1,15 @@
+add_local_sources(sof
+	lib.c
+	alloc.c
+	work.c
+	notifier.c
+	trace.c
+	schedule.c
+	agent.c
+	interrupt.c
+	dma-trace.c
+	pm_runtime.c
+	clk.c
+	dma.c
+	dai.c
+)

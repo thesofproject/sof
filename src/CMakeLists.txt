@@ -1,0 +1,10 @@
+add_subdirectory(arch)
+
+add_subdirectory(audio)
+add_subdirectory(drivers)
+add_subdirectory(init)
+add_subdirectory(ipc)
+add_subdirectory(lib)
+add_subdirectory(math)
+add_subdirectory(platform)
+add_subdirectory(tasks)
