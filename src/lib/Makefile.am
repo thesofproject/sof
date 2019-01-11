@@ -1,4 +1,4 @@
-noinst_LIBRARIES = libcore.a libdma.a libdai.a
+noinst_LIBRARIES = libcore.a libdma.a libdai.a libtplg.a
 
 libcore_a_SOURCES = \
 	lib.c \
@@ -14,6 +14,16 @@ libcore_a_SOURCES = \
 	clk.c
 
 libcore_a_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(ARCH_CFLAGS) \
+	$(ARCH_INCDIR) \
+	$(PLATFORM_INCDIR) \
+	$(SOF_INCDIR)
+
+libtplg_a_SOURCES = \
+	topology.c
+
+libtplg_a_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(ARCH_CFLAGS) \
 	$(ARCH_INCDIR) \

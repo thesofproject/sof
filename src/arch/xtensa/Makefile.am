@@ -96,6 +96,7 @@ sof_LDADD = \
 	../../ipc/libsof_ipc.a \
 	../../lib/libdma.a \
 	../../lib/libdai.a \
+	../../lib/libtplg.a \
 	../../audio/libaudio.a \
 	../../drivers/libdrivers.la \
 	../../math/libsof_math.a \

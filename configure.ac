@@ -125,6 +125,12 @@ AS_IF([test "x$enable_dmic" != "xno"], [
 	AC_DEFINE([CONFIG_DMIC], [1], [Configure to build DMIC driver])
 ])
 
+# Enable FW based topology support if requested, by default keep disabled
+AC_ARG_ENABLE([topology], AS_HELP_STRING([--enable-topology], [Enable topology]))
+AS_IF([test "x$enable_topology" = "xyes"], [
+	AC_DEFINE([CONFIG_TOPOLOGY], [1], [Configure to build topology])
+])
+
 # Architecture support
 AC_ARG_WITH([arch],
         AS_HELP_STRING([--with-arch], [Specify DSP architecture]),
