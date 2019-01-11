@@ -115,6 +115,7 @@ typedef void (*cache_buff_op)(struct comp_buffer *);
 
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
+int buffer_set_size(struct comp_buffer *buffer, uint32_t size);
 void buffer_free(struct comp_buffer *buffer);
 
 /* called by a component after producing data into this buffer */
@@ -198,20 +199,6 @@ static inline void buffer_reset_pos(struct comp_buffer *buffer)
 	buffer_zero(buffer);
 }
 
-/* set the runtime size of a buffer in bytes and improve the data cache */
-/* performance by only using minimum space needed for runtime params */
-static inline int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
-{
-	if (size > buffer->alloc_size)
-		return -ENOMEM;
-	if (size == 0)
-		return -EINVAL;
-
-	buffer->end_addr = buffer->addr + size;
-	buffer->size = size;
-	return 0;
-}
-
 static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
 				    uint32_t idx, uint32_t size)
 {
@@ -224,4 +211,15 @@ static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
 	return current;
 }
 
+static inline void buffer_init(struct comp_buffer *buffer, uint32_t size)
+{
+	buffer->alloc_size = size;
+	buffer->size = size;
+	buffer->w_ptr = buffer->addr;
+	buffer->r_ptr = buffer->addr;
+	buffer->end_addr = buffer->addr + size;
+	buffer->free = size;
+	buffer->avail = 0;
+	buffer_zero(buffer);
+}
 #endif

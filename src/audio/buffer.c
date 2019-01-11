@@ -56,19 +56,51 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	assert(!memcpy_s(&buffer->ipc_buffer, sizeof(buffer->ipc_buffer),
 		       desc, sizeof(*desc)));
 
-	buffer->size = desc->size;
-	buffer->alloc_size = desc->size;
-	buffer->w_ptr = buffer->addr;
-	buffer->r_ptr = buffer->addr;
-	buffer->end_addr = buffer->addr + buffer->ipc_buffer.size;
-	buffer->free = buffer->ipc_buffer.size;
-	buffer->avail = 0;
-
-	buffer_zero(buffer);
+	buffer_init(buffer, desc->size);
 
 	spinlock_init(&buffer->lock);
 
 	return buffer;
+}
+
+int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
+{
+	void *new_ptr = NULL;
+	struct sof_ipc_buffer *desc = NULL;
+
+	/* validate request */
+	if (size == 0 || size > HEAP_BUFFER_SIZE) {
+		trace_buffer_error("resize error: size = %u is invalid", size);
+		return -EINVAL;
+	}
+
+	desc = &buffer->ipc_buffer;
+	if (!desc) {
+		trace_buffer_error("resize error: invalid buffer desc");
+		return -EINVAL;
+	}
+
+	if (size == desc->size)
+		return 0;
+
+	new_ptr = rbrealloc(buffer->addr, RZONE_BUFFER, desc->caps, size);
+
+	/* we couldn't allocate bigger chunk */
+	if (!new_ptr && size > desc->size) {
+		trace_buffer_error("resize error: can't alloc %u bytes type %u",
+				   desc->size, desc->caps);
+		return -ENOMEM;
+	}
+
+	/* use bigger chunk, else just use the old chunk but set smaller */
+	if (new_ptr)
+		buffer->addr = new_ptr;
+
+	desc->size = size;
+
+	buffer_init(buffer, desc->size);
+
+	return 0;
 }
 
 /* free component in the pipeline */
