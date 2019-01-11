@@ -15,7 +15,6 @@
 #include "cse.h"
 #include "plat_auth.h"
 #include "manifest.h"
-#include <config.h>
 #include <version.h>
 
 /* manifest template */
