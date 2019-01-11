@@ -8,8 +8,7 @@
 # So if a pull request only touches javascript files, only these owners
 # will be requested to review.
 
-# inlcldue files
-src/include/sof/preproc*.h		@mwierzbix
+# include files
 src/include/sof/dmic.h			@singalsu
 src/include/host/*			@ranj063
 src/include/uapi/*			@bardliao
@@ -23,7 +22,7 @@ src/audio/fir*				@singalsu
 src/audio/iir*				@singalsu
 src/audio/tone.c			@singalsu
 
-# platfroms
+# platforms
 src/arch/xtensa/*			@tlauda
 src/platform/*				@tlauda
 src/platform/baytrail/*			@xiulipan
@@ -41,7 +40,6 @@ src/gdb/*				@mrajwa
 
 # other helpers
 test/*					@jajanusz
-test/cmocka/include/*			@mwierzbix
 scripts/*				@xiulipan
 rimage/*				@xiulipan
 
