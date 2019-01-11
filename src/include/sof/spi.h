@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2017, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,51 +25,41 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
+#ifndef __INCLUDE_SPI_H__
+#define __INCLUDE_SPI_H__
 
 #include <stdint.h>
-#include <stddef.h>
-#include <arch/sof.h>
-#include <sof/preproc.h>
 
-struct ipc;
-struct sa;
-
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
-
-#define ALIGN(size, align) (((size) + (align) - 1) & ~((align) - 1))
-
-/* count number of var args */
-#define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
-	/ sizeof(unsigned int) - 1)
-
-/* compile-time assertion */
-#define STATIC_ASSERT(COND, MESSAGE)	\
-	__attribute__((unused))		\
-	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
-
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
-
-	/* ipc */
-	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
-
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
+enum spi_type {
+	SOF_SPI_INTEL_SLAVE,
+	SOF_SPI_INTEL_MASTER,
 };
+
+enum spi_xfer_direction {
+	SPI_DIR_RX,
+	SPI_DIR_TX,
+};
+
+struct spi_plat_fifo_data {
+	uint32_t handshake;
+};
+
+struct spi_platform_data {
+	uint32_t base;
+	uint32_t irq;
+	struct spi_plat_fifo_data fifo[2];
+	enum spi_type type;
+};
+
+struct spi;
+
+int spi_push(struct spi *spi, const void *data, size_t size);
+int spi_probe(struct spi *spi);
+struct spi *spi_get(enum spi_type type);
+int spi_install(const struct spi_platform_data *plat, size_t n);
+void spi_init(void);
 
 #endif

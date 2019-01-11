@@ -157,6 +157,10 @@ struct sof;
 /* timer driven scheduling start offset in microseconds */
 #define PLATFORM_TIMER_START_OFFSET	100
 
+/* SSI / SPI GPIO bindings */
+#define PLATFORM_SPI_GPIO_ID	0
+#define PLATFORM_SPI_GPIO_IRQ	14
+
 // TODO: need UART versions
 #if 0
 /* Platform defined trace code */
