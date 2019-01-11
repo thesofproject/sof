@@ -189,3 +189,22 @@ endif()
 target_link_libraries(sof_ld_flags INTERFACE "-lgcc")
 target_link_libraries(sof_ld_flags INTERFACE "-Wl,-Map=sof.map")
 target_link_libraries(sof_ld_flags INTERFACE "-T${PROJECT_BINARY_DIR}/${platform_ld_script}")
+
+# rimage
+
+include(ExternalProject)
+
+ExternalProject_Add(rimage_ep
+	DOWNLOAD_COMMAND ""
+	SOURCE_DIR "${PROJECT_SOURCE_DIR}/rimage"
+	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
+	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
+	CMAKE_ARGS -DVERSION_H_PATH=${VERSION_H_PATH}
+	INSTALL_COMMAND ""
+)
+
+add_custom_target(
+	prepare_fw_copy_for_rimage
+	DEPENDS sof_fw rimage_ep
+	COMMAND cp ${PROJECT_BINARY_DIR}/sof_fw sof_${fw_name} 
+)
