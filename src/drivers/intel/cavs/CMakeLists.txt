@@ -8,7 +8,7 @@ add_local_sources(sof
 )
 
 if(CONFIG_SUECREEK)
-	add_local_sources(sof sue-ipc.c)
+	add_local_sources(sof sue-iomux.c sue-ipc.c)
 else()
 	add_local_sources(sof ipc.c)
 endif()
