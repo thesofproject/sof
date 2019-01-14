@@ -58,8 +58,11 @@ config.*
 *.xz
 src/arch/xtensa/sof
 src/arch/xtensa/boot_ldr
-sof-*
-boot_ldr-*
+src/arch/xtensa/sof-*
+src/arch/xtensa/boot_ldr-*
+src/arch/xtensa/module
+src/arch/xtensa/rom
+src/arch/xtensa/rom-*
 boot_module
 module
 rimage/rimage
