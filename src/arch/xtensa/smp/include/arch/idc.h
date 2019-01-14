@@ -42,6 +42,7 @@
 #include <platform/interrupt.h>
 #include <platform/platform.h>
 #include <sof/alloc.h>
+#include <sof/cache.h>
 #include <sof/idc.h>
 #include <sof/ipc.h>
 #include <sof/lock.h>
@@ -192,7 +193,7 @@ static inline int idc_pipeline_trigger(uint32_t cmd)
 	/* invalidate pipeline on start */
 	if (cmd == COMP_TRIGGER_START)
 		pipeline_cache(pcm_dev->cd->pipeline,
-			       pcm_dev->cd, COMP_CACHE_INVALIDATE);
+			       pcm_dev->cd, CACHE_INVALIDATE);
 
 	/* trigger pipeline */
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
@@ -200,7 +201,7 @@ static inline int idc_pipeline_trigger(uint32_t cmd)
 	/* writeback pipeline on stop */
 	if (cmd == COMP_TRIGGER_STOP)
 		pipeline_cache(pcm_dev->cd->pipeline,
-			       pcm_dev->cd, COMP_CACHE_WRITEBACK_INV);
+			       pcm_dev->cd, CACHE_WRITEBACK_INV);
 
 	return ret;
 }

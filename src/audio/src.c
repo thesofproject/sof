@@ -926,8 +926,8 @@ static void src_cache(struct comp_dev *dev, int cmd)
 	struct comp_data *cd;
 
 	switch (cmd) {
-	case COMP_CACHE_WRITEBACK_INV:
-		trace_src("src_cache(), COMP_CACHE_WRITEBACK_INV");
+	case CACHE_WRITEBACK_INV:
+		trace_src("src_cache(), CACHE_WRITEBACK_INV");
 
 		cd = comp_get_drvdata(dev);
 
@@ -940,8 +940,8 @@ static void src_cache(struct comp_dev *dev, int cmd)
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
 		break;
 
-	case COMP_CACHE_INVALIDATE:
-		trace_src("src_cache(), COMP_CACHE_INVALIDATE");
+	case CACHE_INVALIDATE:
+		trace_src("src_cache(), CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 

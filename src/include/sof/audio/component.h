@@ -42,6 +42,7 @@
 #include <sof/stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/cache.h>
 #include <uapi/ipc/control.h>
 #include <uapi/ipc/stream.h>
 #include <uapi/ipc/topology.h>
@@ -116,13 +117,6 @@
 #define COMP_CMD_IPC_MMAP_PPOS	201	/* DAI presentation position */
 
 #define COMP_CMD_IPC_MMAP_VOL(chan)	(216 + chan)	/* Volume */
-
-/* component cache operations */
-
-/* writeback and invalidate component data */
-#define COMP_CACHE_WRITEBACK_INV	0
-/* invalidate component data */
-#define COMP_CACHE_INVALIDATE		1
 
 /* component operations */
 #define COMP_OPS_PARAMS		0
@@ -432,9 +426,9 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 static inline cache_command comp_get_cache_command(int cmd)
 {
 	switch (cmd) {
-	case COMP_CACHE_WRITEBACK_INV:
+	case CACHE_WRITEBACK_INV:
 		return &dcache_writeback_invalidate_region;
-	case COMP_CACHE_INVALIDATE:
+	case CACHE_INVALIDATE:
 		return &dcache_invalidate_region;
 	default:
 		trace_comp_error("comp_get_cache_command() error: "

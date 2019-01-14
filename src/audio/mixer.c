@@ -354,8 +354,8 @@ static void mixer_cache(struct comp_dev *dev, int cmd)
 	struct mixer_data *md;
 
 	switch (cmd) {
-	case COMP_CACHE_WRITEBACK_INV:
-		trace_mixer("mixer_cache(), COMP_CACHE_WRITEBACK_INV");
+	case CACHE_WRITEBACK_INV:
+		trace_mixer("mixer_cache(), CACHE_WRITEBACK_INV");
 
 		md = comp_get_drvdata(dev);
 
@@ -363,8 +363,8 @@ static void mixer_cache(struct comp_dev *dev, int cmd)
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
 		break;
 
-	case COMP_CACHE_INVALIDATE:
-		trace_mixer("mixer_cache(), COMP_CACHE_INVALIDATE");
+	case CACHE_INVALIDATE:
+		trace_mixer("mixer_cache(), CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 

@@ -730,8 +730,8 @@ static void host_cache(struct comp_dev *dev, int cmd)
 	trace_event(TRACE_CLASS_HOST, "host_cache(), cmd = %d", cmd);
 
 	switch (cmd) {
-	case COMP_CACHE_WRITEBACK_INV:
-		trace_host("host_cache(), COMP_CACHE_WRITEBACK_INV");
+	case CACHE_WRITEBACK_INV:
+		trace_host("host_cache(), CACHE_WRITEBACK_INV");
 
 		hd = comp_get_drvdata(dev);
 
@@ -746,8 +746,8 @@ static void host_cache(struct comp_dev *dev, int cmd)
 		dcache_writeback_invalidate_region(dev, sizeof(*dev));
 		break;
 
-	case COMP_CACHE_INVALIDATE:
-		trace_host("host_cache(), COMP_CACHE_INVALIDATE");
+	case CACHE_INVALIDATE:
+		trace_host("host_cache(), CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 
