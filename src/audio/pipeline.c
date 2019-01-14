@@ -748,7 +748,7 @@ static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
 
 	/* writeback pipeline on start */
 	if (cmd == COMP_TRIGGER_START)
-		pipeline_cache(p, host, COMP_CACHE_WRITEBACK_INV);
+		pipeline_cache(p, host, CACHE_WRITEBACK_INV);
 
 	/* send IDC pipeline trigger message */
 	ret = idc_send_msg(&pipeline_trigger, IDC_BLOCKING);
@@ -762,7 +762,7 @@ static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
 
 	/* invalidate pipeline on stop */
 	if (cmd == COMP_TRIGGER_STOP)
-		pipeline_cache(p, host, COMP_CACHE_INVALIDATE);
+		pipeline_cache(p, host, CACHE_INVALIDATE);
 
 	return ret;
 }
