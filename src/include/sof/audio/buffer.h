@@ -51,7 +51,6 @@
 struct comp_buffer {
 
 	/* runtime data */
-	uint32_t connected;	/* connected in path */
 	uint32_t size;		/* runtime buffer size in bytes (period multiple) */
 	uint32_t alloc_size;	/* allocated size in bytes */
 	uint32_t avail;		/* available bytes for reading */

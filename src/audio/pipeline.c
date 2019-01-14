@@ -330,10 +330,6 @@ int pipeline_comp_connect(struct comp_dev *source_comp,
 	sink_buffer->source = source_comp;
 	spin_unlock(&source_comp->lock);
 
-	/* connect the components */
-	if (sink_buffer->source && sink_buffer->sink)
-		sink_buffer->connected = 1;
-
 	return 0;
 }
 
@@ -349,10 +345,6 @@ int pipeline_buffer_connect(struct comp_buffer *source_buffer,
 	list_item_prepend(&source_buffer->sink_list, &sink_comp->bsource_list);
 	source_buffer->sink = sink_comp;
 	spin_unlock(&sink_comp->lock);
-
-	/* connect the components */
-	if (source_buffer->source && source_buffer->sink)
-		source_buffer->connected = 1;
 
 	return 0;
 }
@@ -431,7 +423,7 @@ static int component_op_downstream(struct op_data *op_data,
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->sink)
 			continue;
 
 		err = component_op_downstream(op_data, start, buffer->sink,
@@ -514,7 +506,7 @@ static int component_op_upstream(struct op_data *op_data,
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* don't go upstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->source)
 			continue;
 
 		err = component_op_upstream(op_data, start, buffer->source,
@@ -550,8 +542,9 @@ static int component_prepare_buffers_upstream(struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* don't go upstream if this component is not connected or active */
-		if (!buffer->connected || buffer->source->state == COMP_STATE_ACTIVE)
+		/* dont go upstream if this component is not connected or active */
+		if (!buffer->source ||
+		    buffer->source->state == COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
@@ -592,8 +585,8 @@ static int component_prepare_buffers_downstream(struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* don't go downstream if this component is not connected or active */
-		if (!buffer->connected || buffer->sink->state == COMP_STATE_ACTIVE)
+		/* dont go downstream if this component is not connected or active */
+		if (!buffer->sink || buffer->sink->state == COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
@@ -669,7 +662,7 @@ static void component_cache_downstream(int cmd, struct comp_dev *start,
 			cache_cmd(buffer, sizeof(*buffer));
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->sink)
 			continue;
 
 		component_cache_downstream(cmd, start, buffer->sink);
@@ -697,7 +690,7 @@ static void component_cache_upstream(int cmd, struct comp_dev *start,
 			cache_cmd(buffer, sizeof(*buffer));
 
 		/* don't go upstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->source)
 			continue;
 
 		component_cache_upstream(cmd, start, buffer->source);
@@ -914,7 +907,8 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* don't go upstream if this component is not connected */
-		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
+		if (!buffer->source ||
+		    buffer->source->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* don't go upstream if this source is from another pipeline */
@@ -978,7 +972,7 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
+		if (!buffer->sink || buffer->sink->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* don't go downstream if this sink is from another pipeline */
@@ -1034,7 +1028,7 @@ downstream:
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected || buffer->sink->state != COMP_STATE_ACTIVE)
+		if (!buffer->sink || buffer->sink->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
@@ -1081,7 +1075,8 @@ upstream:
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected || buffer->source->state != COMP_STATE_ACTIVE)
+		if (!buffer->source ||
+		    buffer->source->state != COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
@@ -1140,7 +1135,7 @@ static void pipeline_for_each_downstream(struct pipeline *p,
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->sink)
 			continue;
 
 		/* continue downstream */
@@ -1168,7 +1163,7 @@ static void pipeline_for_each_upstream(struct pipeline *p,
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->source)
 			continue;
 
 		/* continue downstream */
