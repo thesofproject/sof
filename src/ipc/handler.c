@@ -162,7 +162,7 @@ static bool is_hostless_downstream(struct comp_dev *current)
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
 		/* don't go downstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->sink)
 			continue;
 
 		/* dont go downstream if this comp belongs to another pipe */
@@ -194,7 +194,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
 		/* don't go upstream if this component is not connected */
-		if (!buffer->connected)
+		if (!buffer->source)
 			continue;
 
 		/* dont go upstream if this comp belongs to another pipeline */
