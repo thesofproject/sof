@@ -26,10 +26,11 @@ src/audio/tone.c			@singalsu
 src/arch/xtensa/*			@tlauda
 src/platform/*				@tlauda
 src/platform/baytrail/*			@xiulipan
-src/platform/haswell/*			@xiulipan
+src/platform/haswell/*			@xiulipan @randerwang
 
 # drivers
 src/drivers/intel/cavs/dmic.c		@singalsu
+src/drivers/intel/haswell/*		@randerwang
 
 # other libs
 src/host/*				@ranj063
