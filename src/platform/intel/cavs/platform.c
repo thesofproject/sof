@@ -199,7 +199,92 @@ struct work_queue_timesource platform_generic_queue[] = {
 };
 
 #if defined(CONFIG_SUECREEK)
+#include <sof/gpio.h>
 #include <sof/iomux.h>
+
+const struct gpio_pin_config gpio_data[] = {
+	{	/* GPIO0 */
+		.mux_id = 1,
+		.mux_config = {.bit = 0, .mask = 3, .fn = 1},
+	}, {	/* GPIO1 */
+		.mux_id = 1,
+		.mux_config = {.bit = 2, .mask = 3, .fn = 1},
+	}, {	/* GPIO2 */
+		.mux_id = 1,
+		.mux_config = {.bit = 4, .mask = 3, .fn = 1},
+	}, {	/* GPIO3 */
+		.mux_id = 1,
+		.mux_config = {.bit = 6, .mask = 3, .fn = 1},
+	}, {	/* GPIO4 */
+		.mux_id = 1,
+		.mux_config = {.bit = 8, .mask = 3, .fn = 1},
+	}, {	/* GPIO5 */
+		.mux_id = 1,
+		.mux_config = {.bit = 10, .mask = 3, .fn = 1},
+	}, {	/* GPIO6 */
+		.mux_id = 1,
+		.mux_config = {.bit = 12, .mask = 3, .fn = 1},
+	}, {	/* GPIO7 */
+		.mux_id = 1,
+		.mux_config = {.bit = 14, .mask = 3, .fn = 1},
+	}, {	/* GPIO8 */
+		.mux_id = 1,
+		.mux_config = {.bit = 16, .mask = 1, .fn = 1},
+	}, {	/* GPIO9 */
+		.mux_id = 0,
+		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
+	}, {	/* GPIO10 */
+		.mux_id = 0,
+		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
+	}, {	/* GPIO11 */
+		.mux_id = 0,
+		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
+	}, {	/* GPIO12 */
+		.mux_id = 0,
+		.mux_config = {.bit = 11, .mask = 1, .fn = 1},
+	}, {	/* GPIO13 */
+		.mux_id = 0,
+		.mux_config = {.bit = 0, .mask = 1, .fn = 1},
+	}, {	/* GPIO14 */
+		.mux_id = 0,
+		.mux_config = {.bit = 1, .mask = 1, .fn = 1},
+	}, {	/* GPIO15 */
+		.mux_id = 0,
+		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
+	}, {	/* GPIO16 */
+		.mux_id = 0,
+		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
+	}, {	/* GPIO17 */
+		.mux_id = 0,
+		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
+	}, {	/* GPIO18 */
+		.mux_id = 0,
+		.mux_config = {.bit = 9, .mask = 1, .fn = 1},
+	}, {	/* GPIO19 */
+		.mux_id = 0,
+		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
+	}, {	/* GPIO20 */
+		.mux_id = 0,
+		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
+	}, {	/* GPIO21 */
+		.mux_id = 0,
+		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
+	}, {	/* GPIO22 */
+		.mux_id = 0,
+		.mux_config = {.bit = 10, .mask = 1, .fn = 1},
+	}, {	/* GPIO23 */
+		.mux_id = 0,
+		.mux_config = {.bit = 16, .mask = 1, .fn = 1},
+	}, {	/* GPIO24 */
+		.mux_id = 0,
+		.mux_config = {.bit = 16, .mask = 1, .fn = 1},
+	}, {	/* GPIO25 */
+		.mux_id = 0,
+		.mux_config = {.bit = 26, .mask = 1, .fn = 1},
+	},
+};
+
+const int n_gpios = ARRAY_SIZE(gpio_data);
 
 struct iomux iomux_data[] = {
 	{.base = EXT_CTRL_BASE + 0x30,},
