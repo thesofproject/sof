@@ -198,6 +198,18 @@ struct work_queue_timesource platform_generic_queue[] = {
 #endif
 };
 
+#if defined(CONFIG_SUECREEK)
+#include <sof/iomux.h>
+
+struct iomux iomux_data[] = {
+	{.base = EXT_CTRL_BASE + 0x30,},
+	{.base = EXT_CTRL_BASE + 0x34,},
+	{.base = EXT_CTRL_BASE + 0x38,},
+};
+
+const int n_iomux = ARRAY_SIZE(iomux_data);
+#endif
+
 struct timer *platform_timer =
 	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
