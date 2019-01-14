@@ -18,6 +18,6 @@ rimage/rimage
 rwav/rwav
 *.tplg
 topology/*.conf
-topology/test/*.conf
+test/topology/*.conf
 eqctl/sof-eqctl
 logger/sof-logger
