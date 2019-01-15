@@ -74,6 +74,18 @@ struct comp_buffer {
 	spinlock_t lock; /* component buffer spinlock */
 };
 
+#define buffer_comp_list(buffer, dir) \
+	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
+	 &buffer->sink_list)
+
+#define buffer_set_comp(buffer, comp, dir) \
+	do {						\
+		if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)	\
+			buffer->source = comp;		\
+		else					\
+			buffer->sink = comp;		\
+	} while (0)					\
+
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 void buffer_free(struct comp_buffer *buffer);

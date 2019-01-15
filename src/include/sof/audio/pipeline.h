@@ -70,6 +70,14 @@
 struct ipc_pipeline_dev;
 struct ipc;
 
+/* pipeline connection directions */
+#define PPL_CONN_DIR_COMP_TO_BUFFER	0
+#define PPL_CONN_DIR_BUFFER_TO_COMP	1
+
+/* pipeline processing directions */
+#define PPL_DIR_DOWNSTREAM	0
+#define PPL_DIR_UPSTREAM	1
+
 /*
  * Audio pipeline.
  */
@@ -80,10 +88,6 @@ struct pipeline {
 	/* runtime status */
 	int32_t xrun_bytes;		/* last xrun length */
 	uint32_t status;		/* pipeline status */
-
-	/* lists */
-	struct list_item comp_list;		/* list of components */
-	struct list_item buffer_list;		/* list of buffers */
 
 	/* scheduling */
 	struct task pipe_task;		/* pipeline processing task */
@@ -107,10 +111,10 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
 void buffer_free(struct comp_buffer *buffer);
 
 /* insert component in pipeline */
-int pipeline_comp_connect(struct comp_dev *source_comp,
-			  struct comp_buffer *sink_buffer);
-int pipeline_buffer_connect(struct comp_buffer *source_buffer,
-			    struct comp_dev *sink_comp);
+int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
+		     int dir);
+
+/* complete the pipeline */
 int pipeline_complete(struct pipeline *p);
 
 /* pipeline parameters */

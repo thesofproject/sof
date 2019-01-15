@@ -233,10 +233,12 @@ int ipc_comp_connect(struct ipc *ipc,
 	/* check source and sink types */
 	if (icd_source->type == COMP_TYPE_BUFFER &&
 		icd_sink->type == COMP_TYPE_COMPONENT)
-		return pipeline_buffer_connect(icd_source->cb, icd_sink->cd);
+		return pipeline_connect(icd_sink->cd, icd_source->cb,
+					PPL_CONN_DIR_BUFFER_TO_COMP);
 	else if (icd_source->type == COMP_TYPE_COMPONENT &&
 		icd_sink->type == COMP_TYPE_BUFFER)
-		return pipeline_comp_connect(icd_source->cd, icd_sink->cb);
+		return pipeline_connect(icd_source->cd, icd_sink->cb,
+					PPL_CONN_DIR_COMP_TO_BUFFER);
 	else {
 		trace_ipc_error("ipc_comp_connect() error: invalid source and"
 				" sink types, connect->source_id = %u, "
