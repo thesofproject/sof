@@ -39,6 +39,7 @@
 #ifndef __INCLUDE_DMA_H__
 #define __INCLUDE_DMA_H__
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <sof/list.h>
 #include <sof/lock.h>
@@ -121,6 +122,7 @@ struct dma_sg_config {
 	uint32_t cyclic;			/* circular buffer */
 	uint32_t timer_delay;	/* non zero if timer scheduled */
 	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
+	bool scatter;
 };
 
 struct dma_chan_status {
