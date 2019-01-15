@@ -57,6 +57,8 @@
 #define DMA_HANDSHAKE_SSP2_TX	7
 #define DMA_HANDSHAKE_SSP3_RX	8
 #define DMA_HANDSHAKE_SSP3_TX	9
+#define DMA_HANDSHAKE_SSI_TX	26
+#define DMA_HANDSHAKE_SSI_RX	27
 
 int dmac_init(void);
 
