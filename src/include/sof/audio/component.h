@@ -199,7 +199,6 @@ struct comp_dev {
 
 	/* runtime */
 	uint16_t state;			/* COMP_STATE_ */
-	uint16_t is_endpoint;		/* component is end point in pipeline */
 	uint16_t is_dma_connected;	/* component is connected to DMA */
 	spinlock_t lock;		/* lock for this component */
 	uint64_t position;		/* component rendering position */

@@ -74,8 +74,6 @@ static void connect_upstream(struct pipeline *p, struct comp_dev *start,
 
 	/* we are an endpoint if we have 0 source components */
 	if (list_is_empty(&current->bsource_list)) {
-		current->is_endpoint = 1;
-
 		/* pipeline source comp is current */
 		p->source_comp = current;
 		return;
@@ -112,12 +110,6 @@ static void connect_downstream(struct pipeline *p, struct comp_dev *start,
 	/* complete component init */
 	current->pipeline = p;
 	current->frames = p->ipc_pipe.frames_per_sched;
-
-	/* we are an endpoint if we have 0 sink components */
-	if (list_is_empty(&current->bsink_list)) {
-		current->is_endpoint = 1;
-		return;
-	}
 
 	/* now run this operation downstream */
 	list_for_item(clist, &current->bsink_list) {
@@ -406,7 +398,8 @@ static int component_op_downstream(struct op_data *op_data,
 		trace_pipe_error("component_op_downstream() error: err = %d",
 				 err);
 		return err;
-	} else if (err > 0 || (current != start && current->is_endpoint)) {
+	} else if (err > 0 ||
+		   (current != start && list_is_empty(&current->bsink_list))) {
 		/* we finish walking the graph if we reach the DAI or component is
 		 * currently active and configured already (err > 0).
 		 */
@@ -493,9 +486,11 @@ static int component_op_upstream(struct op_data *op_data,
 		trace_pipe_error("component_op_upstream() error: Component "
 				 "failed, err = %d", err);
 		return err;
-	} else if (err > 0 || (current != start && current->is_endpoint)) {
+	} else if (err > 0 ||
+		   (current != start &&
+		   list_is_empty(&current->bsource_list))) {
 		tracev_pipe("component_op_upstream(), err > 0 || (current != "
-			    "start && current->is_endpoint)");
+			    "start && list_is_empty(&current->bsource_list))");
 		return 0;
 	}
 
@@ -533,7 +528,7 @@ static int component_prepare_buffers_upstream(struct comp_dev *start,
 		buffer_reset_pos(buffer);
 
 		/* stop going downstream if we reach an end point in this pipeline */
-		if (current->is_endpoint)
+		if (list_is_empty(&current->bsource_list))
 			return 0;
 	}
 
@@ -576,7 +571,7 @@ static int component_prepare_buffers_downstream(struct comp_dev *start,
 		buffer_reset_pos(buffer);
 
 		/* stop going downstream if we reach an end point in this pipeline */
-		if (current->is_endpoint)
+		if (list_is_empty(&current->bsink_list))
 			return 0;
 	}
 
@@ -651,7 +646,7 @@ static void component_cache_downstream(int cmd, struct comp_dev *start,
 	comp_cache(current, cmd);
 
 	/* we finish walking the graph if we reach the DAI */
-	if (current != start && current->is_endpoint)
+	if (current != start && list_is_empty(&current->bsink_list))
 		return;
 
 	/* now run this operation downstream */
@@ -679,7 +674,7 @@ static void component_cache_upstream(int cmd, struct comp_dev *start,
 	comp_cache(current, cmd);
 
 	/* we finish walking the graph if we reach the DAI */
-	if (current != start && current->is_endpoint)
+	if (current != start && list_is_empty(&current->bsource_list))
 		return;
 
 	/* now run this operation upstream */
@@ -897,7 +892,7 @@ static int pipeline_copy_from_upstream(struct comp_dev *start,
 		    current->comp.id);
 
 	/* stop going upstream if we reach an end point in this pipeline */
-	if (current->is_endpoint && current != start)
+	if (list_is_empty(&current->bsource_list) && current != start)
 		goto copy;
 
 	/* travel upstream to source end point(s) */
@@ -961,7 +956,7 @@ static int pipeline_copy_to_downstream(struct comp_dev *start,
 		err = comp_copy(current);
 
 		/* stop going downstream if we reach an end point in this pipeline */
-		if (current->is_endpoint)
+		if (list_is_empty(&current->bsink_list))
 			goto out;
 	}
 
@@ -1010,7 +1005,7 @@ static int timestamp_downstream(struct comp_dev *start,
 	if (current != start) {
 
 		/* go downstream if we are not endpoint */
-		if (!current->is_endpoint)
+		if (!list_is_empty(&current->bsink_list))
 			goto downstream;
 
 		if (current->comp.type == SOF_COMP_DAI ||
@@ -1056,7 +1051,7 @@ static int timestamp_upstream(struct comp_dev *start,
 	if (current != start) {
 
 		/* go downstream if we are not endpoint */
-		if (!current->is_endpoint)
+		if (!list_is_empty(&current->bsource_list))
 			goto upstream;
 
 		if (current->comp.type == SOF_COMP_DAI ||
