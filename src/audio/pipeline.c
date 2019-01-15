@@ -59,46 +59,6 @@ struct op_data {
 
 static void pipeline_task(void *arg);
 
-/* call op on all upstream components - locks held by caller */
-static void connect_upstream(struct pipeline *p, struct comp_dev *start,
-			     struct comp_dev *current)
-{
-	struct list_item *clist;
-
-	tracev_pipe_with_ids(p, "connect_upstream(), current->comp.id = %u",
-			     current->comp.id);
-
-	/* complete component init */
-	current->pipeline = p;
-	current->frames = p->ipc_pipe.frames_per_sched;
-
-	/* we are an endpoint if we have 0 source components */
-	if (list_is_empty(&current->bsource_list)) {
-		/* pipeline source comp is current */
-		p->source_comp = current;
-		return;
-	}
-
-	/* now run this operation upstream */
-	list_for_item(clist, &current->bsource_list) {
-		struct comp_buffer *buffer;
-
-		buffer = container_of(clist, struct comp_buffer, sink_list);
-
-		/* don't go upstream if this source is from another pipeline */
-		if (buffer->source->comp.pipeline_id != p->ipc_pipe.pipeline_id) {
-
-			/* pipeline source comp is current unless we go upstream */
-			p->source_comp = current;
-
-			continue;
-		}
-
-		connect_upstream(p, start, buffer->source);
-	}
-
-}
-
 static void connect_downstream(struct pipeline *p, struct comp_dev *start,
 			       struct comp_dev *current)
 {
@@ -281,24 +241,25 @@ int pipeline_free(struct pipeline *p)
 	return 0;
 }
 
-int pipeline_complete(struct pipeline *p)
+int pipeline_complete(struct pipeline *p, struct comp_dev *source)
 {
-	/* now walk downstream and upstream form "start" component and
-	 * complete component task and pipeline init
-	 */
 
-	trace_pipe_with_ids(p, "pipeline_complete(), p->ipc_pipe.pipeline_id = "
-			    "%u", p->ipc_pipe.pipeline_id);
+	trace_pipe_with_ids(p, "pipeline_complete(), p->ipc_pipe.pipeline_id ="
+			    " %u", p->ipc_pipe.pipeline_id);
 
-	/* check whether pipeline is already complete */
+	/* check whether pipeline is already completed */
 	if (p->status != COMP_STATE_INIT) {
 		trace_pipe_error_with_ids(p, "pipeline_complete() error: "
 					  "Pipeline already complete");
 		return -EINVAL;
 	}
 
-	connect_downstream(p, p->sched_comp, p->sched_comp);
-	connect_upstream(p, p->sched_comp, p->sched_comp);
+	/* now walk downstream from source component and
+	 * complete component task and pipeline initialization
+	 */
+	connect_downstream(p, source, source);
+
+	p->source_comp = source;
 	p->status = COMP_STATE_READY;
 
 	/* show heap status */

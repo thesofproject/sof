@@ -78,6 +78,37 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 	return NULL;
 }
 
+static struct ipc_comp_dev *ipc_get_ppl_src_comp(struct ipc *ipc,
+						 uint32_t pipeline_id)
+{
+	struct ipc_comp_dev *icd;
+	struct comp_buffer *buffer;
+	struct list_item *clist;
+
+	/* first try to find the last module in the pipeline */
+	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type == COMP_TYPE_COMPONENT &&
+		    icd->cd->comp.pipeline_id == pipeline_id &&
+		    list_is_empty(&icd->cd->bsource_list))
+			return icd;
+	}
+
+	/* it's connected pipeline, so find the connected module */
+	list_for_item(clist, &ipc->shared_ctx->comp_list) {
+		icd = container_of(clist, struct ipc_comp_dev, list);
+		if (icd->type == COMP_TYPE_COMPONENT &&
+		    icd->cd->comp.pipeline_id == pipeline_id) {
+			buffer = container_of(icd->cd->bsource_list.next,
+					      struct comp_buffer, sink_list);
+			if (buffer->source->comp.pipeline_id != pipeline_id)
+				return icd;
+		}
+	}
+
+	return NULL;
+}
+
 int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe)
 {
 	int i;
@@ -330,14 +361,22 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
+	uint32_t pipeline_id;
+	struct ipc_comp_dev *ipc_source;
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp(ipc, comp_id);
-	if (ipc_pipe == NULL)
+	if (!ipc_pipe)
 		return -EINVAL;
 
-	/* free buffer and remove from list */
-	return pipeline_complete(ipc_pipe->pipeline);
+	pipeline_id = ipc_pipe->pipeline->ipc_pipe.pipeline_id;
+
+	/* get pipeline source component */
+	ipc_source = ipc_get_ppl_src_comp(ipc, pipeline_id);
+	if (!ipc_source)
+		return -EINVAL;
+
+	return pipeline_complete(ipc_pipe->pipeline, ipc_source->cd);
 }
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
