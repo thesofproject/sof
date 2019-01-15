@@ -7,8 +7,15 @@ if(NOT (${CMAKE_VERSION} VERSION_LESS "3.13.0"))
 	cmake_policy(SET CMP0079 OLD)
 endif()
 
-# firmware build supports only xtensa arch for now
-set(ARCH xtensa)
+# TODO: take `host` out of fw build
+option(BUILD_HOST "Build host program" OFF)
+
+if(BUILD_HOST)
+	set(ARCH host)
+else()
+	# firmware build supports only xtensa arch for now
+	set(ARCH xtensa)
+endif()
 
 # let user override built-in toolchains
 if(DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -20,6 +27,21 @@ endif()
 include(scripts/cmake/misc.cmake)
 
 project(SOF C ASM)
+
+# most of other options are set on per-arch and per-target basis
+set(CMAKE_ASM_FLAGS -DASSEMBLY)
+
+# interface library that is used only as container for sof binary options
+# other targets can use it to build with the same options
+add_library(sof_options INTERFACE)
+
+target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
+
+if(BUILD_HOST)
+	add_subdirectory(src)
+	# rest of this file is not needed for host build
+	return()
+endif()
 
 set(PYTHON3 python3)
 
@@ -84,15 +106,6 @@ add_custom_command(OUTPUT ${CONFIG_H_PATH}
 
 add_custom_target(genconfig DEPENDS ${CONFIG_H_PATH})
 
-# most of other options are set on per-arch basis
-set(CMAKE_ASM_FLAGS -DASSEMBLY)
-
-# interface library that is used only as container for sof binary options
-# other targets can use it to build with the same options
-add_library(sof_options INTERFACE)
-
-add_dependencies(sof_options genconfig)
-
 add_library(sof_ld_flags INTERFACE)
 add_library(sof_ld_scripts INTERFACE)
 
@@ -103,8 +116,6 @@ target_link_libraries(sof sof_ld_scripts)
 target_link_libraries(sof sof_ld_flags)
 
 add_dependencies(sof_options genconfig)
-
-target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
 target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
 
 add_subdirectory(src)

@@ -1,0 +1,2 @@
+#define CONFIG_HOST @CONFIG_HOST@
+#define CONFIG_LIB @CONFIG_LIB@
