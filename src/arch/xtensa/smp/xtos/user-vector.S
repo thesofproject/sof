@@ -92,7 +92,7 @@ _UserExceptionFromVector:
 	 *  (registered at run-time) point to xtos_c_wrapper_handler;
 	 *  entries that have no handler point to xtos_unhandled_exception.
 	 */
-	.section	.rodata, "a"
+	.data
 	.global	xtos_exc_handler_table_r
 	.align 4
 xtos_exc_handler_table_r:
