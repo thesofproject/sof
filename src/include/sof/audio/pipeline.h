@@ -115,7 +115,7 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir);
 
 /* complete the pipeline */
-int pipeline_complete(struct pipeline *p);
+int pipeline_complete(struct pipeline *p, struct comp_dev *source);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,
