@@ -61,7 +61,7 @@ static void test_audio_pipeline_complete_wrong_status(void **state)
 	result.status = COMP_STATE_READY;
 
 	/*Testing component*/
-	int error_code = pipeline_complete(&result);
+	int error_code = pipeline_complete(&result, test_data->first);
 
 	assert_int_equal(error_code, -EINVAL);
 }
@@ -74,7 +74,7 @@ static void test_audio_pipeline_complete_ready_state(void **state)
 	cleanup_test_data(test_data);
 
 	/*Testing component*/
-	int error_code = pipeline_complete(&result);
+	int error_code = pipeline_complete(&result, test_data->first);
 
 	assert_int_equal(error_code, 0);
 	assert_int_equal(result.status, COMP_STATE_READY);
@@ -89,10 +89,10 @@ static void test_audio_pipeline_complete_connect_is_endpoint(void **state)
 	cleanup_test_data(test_data);
 
 	/*Testing component*/
-	pipeline_complete(&result);
+	pipeline_complete(&result, test_data->first);
 
 	/*Was not marked as endpoint (bsink and bsource lists empty)*/
-	assert_int_equal(result.sched_comp->is_endpoint, 1);
+	assert_true(list_is_empty(&result.sched_comp->bsource_list));
 }
 
 static void test_audio_pipeline_complete_connect_downstream_variable_set
@@ -104,7 +104,7 @@ static void test_audio_pipeline_complete_connect_downstream_variable_set
 	cleanup_test_data(test_data);
 
 	/*Testing component*/
-	pipeline_complete(&result);
+	pipeline_complete(&result, test_data->first);
 
 	assert_int_equal
 	(
@@ -125,8 +125,6 @@ static void test_audio_pipeline_complete_connect_downstream_ignore_sink
 	/*Connecting first comp to second while second is from other pipeline
 	 *and first has no upstream components
 	 */
-	test_data->first->is_endpoint = 0;
-	test_data->second->is_endpoint = 0;
 	list_item_append(&result.sched_comp->bsink_list,
 					 &test_data->b1->source_list);
 	list_item_append(&test_data->b1->source_list,
@@ -135,10 +133,10 @@ static void test_audio_pipeline_complete_connect_downstream_ignore_sink
 					 &test_data->second->bsource_list);
 
 	/*Testing component*/
-	pipeline_complete(&result);
+	pipeline_complete(&result, test_data->first);
 
-	assert_int_equal(test_data->first->is_endpoint, 1);
-	assert_int_equal(test_data->second->is_endpoint, 0);
+	assert_true(list_is_empty(&test_data->first->bsource_list));
+	assert_false(list_is_empty(&test_data->second->bsource_list));
 }
 
 /*Test going downstream ignoring source from other pipeline*/
@@ -153,8 +151,6 @@ static void test_audio_pipeline_complete_connect_upstream_ignore_source
 	/*Connecting first comp to second while second is from other pipeline
 	 *and first has no downstream components
 	 */
-	test_data->first->is_endpoint = 0;
-	test_data->second->is_endpoint = 0;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
 	test_data->b1->sink = result.sched_comp;
@@ -166,10 +162,10 @@ static void test_audio_pipeline_complete_connect_upstream_ignore_source
 	test_data->b2->sink = test_data->second;
 
 	/*Testing component*/
-	pipeline_complete(&result);
+	pipeline_complete(&result, test_data->first);
 
-	assert_int_equal(test_data->first->is_endpoint, 1);
-	assert_int_equal(test_data->second->is_endpoint, 0);
+	assert_true(list_is_empty(&test_data->first->bsink_list));
+	assert_false(list_is_empty(&test_data->second->bsink_list));
 }
 
 /*Test going downstream all the way*/
@@ -181,8 +177,6 @@ static void test_audio_pipeline_complete_connect_downstream_full(void **state)
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->first->is_endpoint = 0;
-	test_data->second->is_endpoint = 0;
 	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsink_list,
 					 &test_data->b1->source_list);
@@ -197,7 +191,7 @@ static void test_audio_pipeline_complete_connect_downstream_full(void **state)
 	test_data->second->frames = 0;
 
 	/*Testing component*/
-	pipeline_complete(&result);
+	pipeline_complete(&result, test_data->first);
 
 	assert_int_equal(test_data->first->frames,
 					 result.ipc_pipe.frames_per_sched);
@@ -214,8 +208,6 @@ static void test_audio_pipeline_complete_connect_upstream_full(void **state)
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->first->is_endpoint = 0;
-	test_data->second->is_endpoint = 0;
 	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
@@ -223,7 +215,7 @@ static void test_audio_pipeline_complete_connect_upstream_full(void **state)
 	test_data->b1->source = test_data->second;
 
 	/*Testing component*/
-	pipeline_complete(&result);
+	pipeline_complete(&result, test_data->first);
 
 	assert_int_equal(test_data->first->frames,
 					 result.ipc_pipe.frames_per_sched);
@@ -241,8 +233,6 @@ static void test_audio_pipeline_complete_connect_upstream_other_pipeline
 	cleanup_test_data(test_data);
 
 	/*Connecting first comp to second*/
-	test_data->first->is_endpoint = 0;
-	test_data->second->is_endpoint = 0;
 	test_data->second->comp.pipeline_id = PIPELINE_ID_DIFFERENT;
 	list_item_append(&result.sched_comp->bsource_list,
 					 &test_data->b1->sink_list);
@@ -252,7 +242,7 @@ static void test_audio_pipeline_complete_connect_upstream_other_pipeline
 					 &test_data->b1->source_list);
 
 	/*Testing component*/
-	pipeline_complete(&result);
+	pipeline_complete(&result, test_data->first);
 
 	assert_ptr_equal(test_data->first, result.source_comp);
 }

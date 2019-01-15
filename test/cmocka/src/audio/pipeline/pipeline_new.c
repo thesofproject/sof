@@ -72,19 +72,6 @@ static void test_audio_pipeline_pipeline_new_creation(void **state)
 	assert_non_null(result);
 }
 
-static void test_audio_pipeline_new_list_initialization(void **state)
-{
-	struct pipeline_new_setup_data *test_data = *state;
-
-	/*Testing component*/
-	struct pipeline *result = pipeline_new(&test_data->ipc_data,
-	test_data->comp_data);
-
-	/*Check list initialization*/
-	assert_ptr_equal(&result->comp_list, result->comp_list.next);
-	assert_ptr_equal(&result->buffer_list, result->buffer_list.next);
-}
-
 static void test_audio_pipeline_new_sheduler_init(void **state)
 {
 	struct pipeline_new_setup_data *test_data = *state;
@@ -131,7 +118,6 @@ int main(void)
 
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(test_audio_pipeline_pipeline_new_creation),
-		cmocka_unit_test(test_audio_pipeline_new_list_initialization),
 		cmocka_unit_test(test_audio_pipeline_new_sheduler_init),
 		cmocka_unit_test(test_audio_pipeline_new_sheduler_config),
 		cmocka_unit_test(test_audio_pipeline_new_ipc_data_coppy),
