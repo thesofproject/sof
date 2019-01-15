@@ -7,7 +7,6 @@ include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
 include(`ssp.m4')
-include(`hda.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -114,9 +113,8 @@ DAI_CONFIG(SSP, 5, 0, SSP5-Codec,
 		SSP_CONFIG_DATA(SSP, 5, 24)))
 
 # 3 HDMI/DP outputs (ID: 1,2,3)
-dnl HDA_DAI_CONFIG(dai_index, link_id, name)
-HDA_DAI_CONFIG(0, 1, iDisp1)
-HDA_DAI_CONFIG(1, 2, iDisp2)
-HDA_DAI_CONFIG(2, 3, iDisp3)
+DAI_CONFIG(HDA, 0, 1, iDisp1)
+DAI_CONFIG(HDA, 1, 2, iDisp2)
+DAI_CONFIG(HDA, 2, 3, iDisp3)
 
 DEBUG_END
