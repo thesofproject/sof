@@ -58,19 +58,15 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	struct comp_dev *first = calloc(sizeof(struct comp_dev), 1);
 
-	first->is_endpoint = 0;
 	first->comp.id = 3;
 	first->comp.pipeline_id = PIPELINE_ID_SAME;
 	list_init(&first->bsink_list);
 	list_init(&first->bsource_list);
-	list_init(&pipe->comp_list);
-	list_init(&pipe->buffer_list);
 	pipeline_connect_data->first = first;
 	pipe->sched_comp = first;
 
 	struct comp_dev *second = calloc(sizeof(struct comp_dev), 1);
 
-	second->is_endpoint = 0;
 	second->comp.id = 4;
 	second->comp.pipeline_id = PIPELINE_ID_DIFFERENT;
 	list_init(&second->bsink_list);

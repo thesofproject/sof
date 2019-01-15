@@ -118,15 +118,6 @@
 
 #define COMP_CMD_IPC_MMAP_VOL(chan)	(216 + chan)	/* Volume */
 
-/* component operations */
-#define COMP_OPS_PARAMS		0
-#define COMP_OPS_TRIGGER	1
-#define COMP_OPS_PREPARE	2
-#define COMP_OPS_COPY		3
-#define COMP_OPS_BUFFER		4
-#define COMP_OPS_RESET		5
-#define COMP_OPS_CACHE		6
-
 #define trace_comp(__e, ...)	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 #define trace_comp_error(__e, ...)	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 #define tracev_comp(__e, ...)	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
@@ -240,8 +231,6 @@ struct comp_dev {
 #define comp_buffer_list(comp, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? &comp->bsink_list : \
 	 &comp->bsource_list)
-
-typedef void (*cache_command)(void *, size_t);
 
 void sys_comp_init(void);
 
@@ -359,18 +348,15 @@ void sys_comp_tone_init(void);
 void sys_comp_eq_iir_init(void);
 void sys_comp_eq_fir_init(void);
 
-/*
- * Convenience functions to install upstream/downstream common params. Only
- * applicable to single upstream source. Components with > 1 source  or sink
- * must do this manually.
- *
- * This allows params to propagate from the host PCM component downstream on
- * playback and upstream on capture.
- */
-static inline void comp_install_params(struct comp_dev *dev,
-	struct comp_dev *previous)
+static inline int comp_is_single_pipeline(struct comp_dev *current,
+					  struct comp_dev *previous)
 {
-	dev->params = previous->params;
+	return current->comp.pipeline_id == previous->comp.pipeline_id;
+}
+
+static inline int comp_is_active(struct comp_dev *current)
+{
+	return current->state == COMP_STATE_ACTIVE;
 }
 
 static inline uint32_t comp_frame_bytes(struct comp_dev *dev)
@@ -424,20 +410,6 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 		  (min_bytes << 16) | copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
-}
-
-static inline cache_command comp_get_cache_command(int cmd)
-{
-	switch (cmd) {
-	case CACHE_WRITEBACK_INV:
-		return &dcache_writeback_invalidate_region;
-	case CACHE_INVALIDATE:
-		return &dcache_invalidate_region;
-	default:
-		trace_comp_error("comp_get_cache_command() error: "
-				 "invalid cmd = %u", cmd);
-		return NULL;
-	}
 }
 
 #endif

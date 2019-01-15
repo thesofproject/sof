@@ -40,6 +40,7 @@
 #include <sof/audio/component.h>
 #include <sof/trace.h>
 #include <sof/schedule.h>
+#include <sof/cache.h>
 #include <uapi/ipc/topology.h>
 
 /* pipeline tracing */
@@ -78,6 +79,15 @@ struct comp_buffer {
 	((dir) == PPL_DIR_DOWNSTREAM ? &buffer->source_list : \
 	 &buffer->sink_list)
 
+#define buffer_from_list(ptr, type, dir) \
+	((dir) == PPL_DIR_DOWNSTREAM ? \
+	 container_of(ptr, type, source_list) : \
+	 container_of(ptr, type, sink_list))
+
+#define buffer_get_comp(buffer, dir) \
+	((dir) == PPL_DIR_DOWNSTREAM ? buffer->sink : \
+	 buffer->source)
+
 #define buffer_set_comp(buffer, comp, dir) \
 	do {						\
 		if (dir == PPL_CONN_DIR_COMP_TO_BUFFER)	\
@@ -85,6 +95,8 @@ struct comp_buffer {
 		else					\
 			buffer->sink = comp;		\
 	} while (0)					\
+
+typedef void (*cache_buff_op)(struct comp_buffer *);
 
 /* pipeline buffer creation and destruction */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc);
@@ -129,6 +141,30 @@ static inline uint32_t comp_buffer_get_copy_bytes(struct comp_buffer *source,
 		return sink->free;
 	else
 		return source->avail;
+}
+
+static inline void comp_buffer_cache_wtb_inv(struct comp_buffer *buffer)
+{
+	dcache_writeback_invalidate_region(buffer, sizeof(*buffer));
+}
+
+static inline void comp_buffer_cache_inv(struct comp_buffer *buffer)
+{
+	dcache_invalidate_region(buffer, sizeof(*buffer));
+}
+
+static inline cache_buff_op comp_buffer_cache_op(int cmd)
+{
+	switch (cmd) {
+	case CACHE_WRITEBACK_INV:
+		return &comp_buffer_cache_wtb_inv;
+	case CACHE_INVALIDATE:
+		return &comp_buffer_cache_inv;
+	default:
+		trace_buffer_error("comp_buffer_cache_op() error: "
+				   "invalid cmd = %u", cmd);
+		return NULL;
+	}
 }
 
 static inline void buffer_reset_pos(struct comp_buffer *buffer)

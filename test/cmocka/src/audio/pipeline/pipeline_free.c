@@ -58,7 +58,9 @@ static void test_audio_pipeline_free_comp_busy(void **state)
 
 	cleanup_test_data(test_data);
 
+	result.source_comp = test_data->first;
 	result.sched_comp->state = 3;
+
 	/*Testing component*/
 	int err = pipeline_free(&result);
 
@@ -72,7 +74,9 @@ static void test_audio_pipeline_free_return_value(void **state)
 
 	cleanup_test_data(test_data);
 
+	result.source_comp = test_data->first;
 	result.sched_comp->state = COMP_STATE_READY;
+
 	/*Testing component*/
 	int err = pipeline_free(&result);
 
@@ -86,6 +90,8 @@ static void test_audio_pipeline_free_sheduler_task_free(void **state)
 
 	cleanup_test_data(test_data);
 
+	result.source_comp = test_data->first;
+
 	/*Testing component*/
 	pipeline_free(&result);
 
@@ -94,7 +100,7 @@ static void test_audio_pipeline_free_sheduler_task_free(void **state)
 	assert_ptr_equal(NULL, result.pipe_task.func);
 }
 
-static void test_audio_pipeline_free_disconnect_upstream_full(void **state)
+static void test_audio_pipeline_free_disconnect_full(void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
 	struct pipeline result = test_data->p;
@@ -102,50 +108,7 @@ static void test_audio_pipeline_free_disconnect_upstream_full(void **state)
 	cleanup_test_data(test_data);
 
 	/*Set pipeline to check that is null later*/
-	test_data->first->pipeline = &result;
-	test_data->second->pipeline = &result;
-	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
-	test_data->first->comp.pipeline_id = PIPELINE_ID_SAME;
-	list_item_append(&result.sched_comp->bsource_list,
-					 &test_data->b1->sink_list);
-	test_data->b1->sink = result.sched_comp;
-	test_data->b1->source = test_data->second;
-
-	/*Testing component*/
-	pipeline_free(&result);
-
-	assert_ptr_equal(NULL, test_data->second->pipeline);
-	assert_ptr_equal(NULL, test_data->first->pipeline);
-}
-
-static void test_audio_pipeline_free_disconnect_upstream_list_delete
-	(void **state)
-{
-	struct pipeline_connect_data *test_data = *state;
-	struct pipeline result = test_data->p;
-
-	cleanup_test_data(test_data);
-
-	list_item_append(&result.sched_comp->bsource_list,
-					 &test_data->b1->sink_list);
-	test_data->b1->sink = result.sched_comp;
-	test_data->b1->source = test_data->second;
-
-	/*Testing component*/
-	pipeline_free(&result);
-
-	assert_true(list_is_empty(&test_data->second->bsource_list));
-	assert_true(list_is_empty(&test_data->first->bsource_list));
-}
-
-static void test_audio_pipeline_free_disconnect_downstream_full(void **state)
-{
-	struct pipeline_connect_data *test_data = *state;
-	struct pipeline result = test_data->p;
-
-	cleanup_test_data(test_data);
-
-	/*Set pipeline to check that is null later*/
+	result.source_comp = test_data->first;
 	test_data->first->pipeline = &result;
 	test_data->second->pipeline = &result;
 	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
@@ -162,7 +125,7 @@ static void test_audio_pipeline_free_disconnect_downstream_full(void **state)
 	assert_ptr_equal(NULL, test_data->first->pipeline);
 }
 
-static void test_audio_pipeline_free_disconnect_downstream_list_del
+static void test_audio_pipeline_free_disconnect_list_del
 (void **state)
 {
 	struct pipeline_connect_data *test_data = *state;
@@ -170,6 +133,7 @@ static void test_audio_pipeline_free_disconnect_downstream_list_del
 
 	cleanup_test_data(test_data);
 
+	result.source_comp = test_data->first;
 	test_data->b1->source = test_data->first;
 	list_item_append(&result.sched_comp->bsink_list,
 					 &test_data->b1->source_list);
@@ -195,16 +159,10 @@ int main(void)
 			test_audio_pipeline_free_sheduler_task_free
 		),
 		cmocka_unit_test(
-			test_audio_pipeline_free_disconnect_upstream_full
+			test_audio_pipeline_free_disconnect_full
 		),
 		cmocka_unit_test(
-			test_audio_pipeline_free_disconnect_upstream_list_delete
-		),
-		cmocka_unit_test(
-			test_audio_pipeline_free_disconnect_downstream_full
-		),
-		cmocka_unit_test(
-			test_audio_pipeline_free_disconnect_downstream_list_del
+			test_audio_pipeline_free_disconnect_list_del
 		),
 	};
 
