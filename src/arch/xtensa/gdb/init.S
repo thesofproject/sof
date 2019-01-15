@@ -34,16 +34,16 @@
 #include <arch/gdb/xtensa-defs.h>
 
 .text
-.global initDebugException
+.global gdb_init_debug_exception
 .align	4
 
-initDebugException:
+gdb_init_debug_exception:
 	entry	a1, 16
 
 	movi	a3, DebugExceptionEntry
 	wsr	a3, DEBUG_EXCSAVE
 
-	//enable breakpoints
+	/* enable breakpoints */
 	movi a3, 1
 	wsr  a3, IBREAKENABLE
 
@@ -51,4 +51,4 @@ initDebugException:
 	rsync
 	retw
 
-.size	initDebugException, . - initDebugException
+.size	gdb_init_debug_exception, . - gdb_init_debug_exception
