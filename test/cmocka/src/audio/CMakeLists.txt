@@ -1,0 +1,5 @@
+add_subdirectory(buffer)
+add_subdirectory(component)
+add_subdirectory(mixer)
+add_subdirectory(pipeline)
+add_subdirectory(volume)

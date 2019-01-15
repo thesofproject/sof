@@ -58,6 +58,11 @@ endif()
 
 target_include_directories(sof_options INTERFACE ${ROOT_DIR}/include)
 
+if(BUILD_UNIT_TESTS)
+	# rest of this file is not needed for unit tests
+	return()
+endif()
+
 # linker flags
 target_link_libraries(sof_options INTERFACE -nostdlib -Wl,--no-check-sections -ucall_user_start -Wl,-static)
 

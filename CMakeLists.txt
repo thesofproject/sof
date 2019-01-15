@@ -9,6 +9,7 @@ endif()
 
 # TODO: take `host` out of fw build
 option(BUILD_HOST "Build host program" OFF)
+option(BUILD_UNIT_TESTS "Build unit tests" OFF)
 
 if(BUILD_HOST)
 	set(ARCH host)
@@ -106,6 +107,17 @@ add_custom_command(OUTPUT ${CONFIG_H_PATH}
 
 add_custom_target(genconfig DEPENDS ${CONFIG_H_PATH})
 
+add_dependencies(sof_options genconfig)
+target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
+
+if(BUILD_UNIT_TESTS)
+	enable_testing()
+	add_subdirectory(src/arch/${ARCH})
+	add_subdirectory(test)
+	# rest of this file is not needed for unit tests
+	return()
+endif()
+
 add_library(sof_ld_flags INTERFACE)
 add_library(sof_ld_scripts INTERFACE)
 
@@ -114,9 +126,6 @@ add_executable(sof "")
 target_link_libraries(sof sof_options)
 target_link_libraries(sof sof_ld_scripts)
 target_link_libraries(sof sof_ld_flags)
-
-add_dependencies(sof_options genconfig)
-target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
 
 add_subdirectory(src)
 
