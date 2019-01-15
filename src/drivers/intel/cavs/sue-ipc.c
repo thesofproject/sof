@@ -127,7 +127,6 @@ out:
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct ipc_data *iipc;
-	uint32_t dir, caps, dev;
 
 	_ipc = ipc;
 
@@ -139,20 +138,6 @@ int platform_ipc_init(struct ipc *ipc)
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, ipc_process_task, _ipc);
 	schedule_task_config(&_ipc->ipc_task, 0, 0);
-
-#ifdef CONFIG_HOST_PTABLE
-	/* allocate page table buffer */
-	iipc->page_table = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-				   HOST_PAGE_SIZE);
-	if (iipc->page_table)
-		bzero(iipc->page_table, HOST_PAGE_SIZE);
-#endif
-
-	/* request HDA DMA with shared access privilege */
-	caps = 0;
-	dir = DMA_DIR_HMEM_TO_LMEM;
-	dev = DMA_DEV_HOST;
-	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;
