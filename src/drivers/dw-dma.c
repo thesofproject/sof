@@ -88,6 +88,8 @@
 	(0x0040 + BYT_CHAN_OFFSET(chan))
 #define DW_CFG_HIGH(chan) \
 	(0x0044 + BYT_CHAN_OFFSET(chan))
+#define DW_DSR(chan) \
+	(0x0050 + BYT_CHAN_OFFSET(chan))
 
 /* registers */
 #define DW_RAW_TFR			0x02C0
@@ -451,8 +453,10 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
-	/* LLP mode - write LLP pointer */
-	dw_write(dma, DW_LLP(channel), (uint32_t)lli);
+	/* LLP mode - write LLP pointer unless in scatter mode */
+	dw_write(dma, DW_LLP(channel), lli->ctrl_lo &
+		 (DW_CTLL_LLP_D_EN | DW_CTLL_LLP_S_EN) ?
+		 (uint32_t)lli : 0);
 #endif
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), lli->sar);
@@ -465,6 +469,15 @@ static int dw_dma_start(struct dma *dma, int channel)
 	/* write channel config */
 	dw_write(dma, DW_CFG_LOW(channel), chan->cfg_lo);
 	dw_write(dma, DW_CFG_HIGH(channel), chan->cfg_hi);
+
+#if DW_USE_HW_LLI
+	if (lli->ctrl_lo & DW_CTLL_D_SCAT_EN) {
+		unsigned int words_per_tfr = (lli->ctrl_hi & 0x1ffff) >>
+			(lli->ctrl_lo >> 1 & 0x7);
+		dw_write(dma, DW_DSR(channel),
+			 words_per_tfr | words_per_tfr << 20);
+	}
+#endif
 
 	if (chan->timer_delay) {
 		/* add offset for capture to handle external interface start */
@@ -859,7 +872,14 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2M | DW_CTLL_SRC_FIX |
 				DW_CTLL_DST_INC;
 #if DW_USE_HW_LLI
-			lli_desc->ctrl_lo |= DW_CTLL_LLP_D_EN;
+			if (!config->scatter)
+				lli_desc->ctrl_lo |= DW_CTLL_LLP_D_EN;
+			else
+				/*
+				 * Use contiguous auto-reload. Line 3 in
+				 * table 3-3
+				 */
+				lli_desc->ctrl_lo |= DW_CTLL_D_SCAT_EN;
 			chan->cfg_lo |= DW_CFG_RELOAD_SRC;
 #endif
 			chan->cfg_hi |= DW_CFGH_SRC_PER(config->src_dev);
