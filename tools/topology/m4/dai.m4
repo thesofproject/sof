@@ -158,7 +158,7 @@ define(`DAI_CONFIG',
 `		"'$1$2`"'
 `	]'
 `	data ['
-`		"'N_DAI_CONFIG($1$2)`_data"'
+`		ifelse($1, `HDA', `', "'N_DAI_CONFIG($1$2)`_data")'
 `		"'N_DAI_CONFIG($1$2)`_data_common"'
 `ifelse($1, `DMIC',`		"'N_DAI_CONFIG($1$2)`_pdm_data"', `')'
 `	]'
