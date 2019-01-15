@@ -54,6 +54,7 @@
 #include <sof/audio/component.h>
 #include <sof/cpu.h>
 #include <sof/notifier.h>
+#include <sof/spi.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -293,6 +294,18 @@ struct iomux iomux_data[] = {
 };
 
 const int n_iomux = ARRAY_SIZE(iomux_data);
+
+static struct spi_platform_data spi = {
+	.base		= DW_SPI_SLAVE_BASE,
+	.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
+	.type		= SOF_SPI_INTEL_SLAVE,
+	.fifo[SPI_DIR_RX] = {
+		.handshake	= DMA_HANDSHAKE_SSI_RX,
+	},
+	.fifo[SPI_DIR_TX] = {
+		.handshake	= DMA_HANDSHAKE_SSI_TX,
+	}
+};
 #endif
 
 struct timer *platform_timer =
@@ -300,6 +313,10 @@ struct timer *platform_timer =
 
 int platform_boot_complete(uint32_t boot_message)
 {
+#if defined(CONFIG_SUECREEK)
+	return spi_push(spi_get(SOF_SPI_INTEL_SLAVE), &ready, sizeof(ready));
+#endif
+
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 #if defined(CONFIG_MEM_WND)
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
@@ -379,6 +396,9 @@ static void platform_init_hw(void)
 
 int platform_init(struct sof *sof)
 {
+#if defined(CONFIG_SUECREEK)
+	struct spi *spi_dev;
+#endif
 	int ret;
 
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
@@ -487,8 +507,25 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
 	idc_init();
 
+#if defined(CONFIG_SUECREEK)
+	/* initialize the SPI slave */
+	spi_init();
+	ret = spi_install(&spi, 1);
+	if (ret < 0)
+		return ret;
+
+	spi_dev = spi_get(SOF_SPI_INTEL_SLAVE);
+	if (!spi_dev)
+		return -ENODEV;
+
+	/* initialize the SPI-SLave module */
+	ret = spi_probe(spi_dev);
+	if (ret < 0)
+		return ret;
+#else
 	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(sof->dmat);
+#endif
 
 	/* show heap status */
 	heap_trace_all(1);
