@@ -154,7 +154,7 @@ DebugExceptionEntry:
 	wsr	a2, PS
 	rsync
 
-	movi	a4, handle_exception
+	movi	a4, gdb_handle_exception
 	callx4	a4
 
 /*
@@ -217,10 +217,10 @@ DebugExceptionExit:
 Put some important interrupt related registers into memory window
 pointed by DEBUG_GDB_MEM_LOC
 */
-.global debug_exception
+.global gdb_debug_info
 .align	4
 
-debug_exception:
+gdb_debug_info:
 
 	entry	a1, 16
 	movi	a3, DEBUG_GDB_MEM_LOC
@@ -241,4 +241,4 @@ debug_exception:
 	rsync
 	retw
 
-.size	debug_exception, . -debug_exception
+.size	gdb_debug_info, . -gdb_debug_info
