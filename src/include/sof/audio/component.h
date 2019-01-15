@@ -237,6 +237,10 @@ struct comp_dev {
 #define comp_get_drvdata(c) \
 	c->private;
 
+#define comp_buffer_list(comp, dir) \
+	((dir) == PPL_DIR_DOWNSTREAM ? &comp->bsink_list : \
+	 &comp->bsource_list)
+
 typedef void (*cache_command)(void *, size_t);
 
 void sys_comp_init(void);

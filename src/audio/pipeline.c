@@ -247,8 +247,6 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	schedule_task_init(&p->pipe_task, pipeline_task, p);
 	schedule_task_config(&p->pipe_task, pipe_desc->priority,
 			     pipe_desc->core);
-	list_init(&p->comp_list);
-	list_init(&p->buffer_list);
 	spinlock_init(&p->lock);
 	memcpy(&p->ipc_pipe, pipe_desc, sizeof(*pipe_desc));
 
@@ -309,34 +307,18 @@ int pipeline_complete(struct pipeline *p)
 	return 0;
 }
 
-/* connect component -> buffer */
-int pipeline_comp_connect(struct comp_dev *source_comp,
-			  struct comp_buffer *sink_buffer)
+/* connect component and buffer */
+int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
+		     int dir)
 {
-	trace_pipe("pipeline: connect source comp %d -> sink buffer %d",
-		   source_comp->comp.id, sink_buffer->ipc_buffer.comp.id);
+	trace_pipe("pipeline: connect comp %d and buffer %d",
+		   comp->comp.id, buffer->ipc_buffer.comp.id);
 
-	/* connect source to buffer */
-	spin_lock(&source_comp->lock);
-	list_item_prepend(&sink_buffer->source_list, &source_comp->bsink_list);
-	sink_buffer->source = source_comp;
-	spin_unlock(&source_comp->lock);
-
-	return 0;
-}
-
-/* connect buffer -> component */
-int pipeline_buffer_connect(struct comp_buffer *source_buffer,
-			    struct comp_dev *sink_comp)
-{
-	trace_pipe("pipeline: connect source buffer %d -> sink comp %d",
-		   source_buffer->ipc_buffer.comp.id, sink_comp->comp.id);
-
-	/* connect sink to buffer */
-	spin_lock(&sink_comp->lock);
-	list_item_prepend(&source_buffer->sink_list, &sink_comp->bsource_list);
-	source_buffer->sink = sink_comp;
-	spin_unlock(&sink_comp->lock);
+	spin_lock(&comp->lock);
+	list_item_prepend(buffer_comp_list(buffer, dir),
+			  comp_buffer_list(comp, dir));
+	buffer_set_comp(buffer, comp, dir);
+	spin_unlock(&comp->lock);
 
 	return 0;
 }
