@@ -447,11 +447,8 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
-	if (p->chan[channel].lli_current) {
-		/* LLP mode - write LLP pointer */
-		dw_write(dma, DW_LLP(channel),
-			 (uint32_t)p->chan[channel].lli_current);
-	}
+	/* LLP mode - write LLP pointer */
+	dw_write(dma, DW_LLP(channel), (uint32_t)p->chan[channel].lli_current);
 #endif
 	/* channel needs started from scratch, so write SARn, DARn */
 	dw_write(dma, DW_SAR(channel), p->chan[channel].lli_current->sar);
