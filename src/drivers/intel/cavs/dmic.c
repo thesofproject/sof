@@ -170,7 +170,7 @@ static uint32_t dmic_read(struct dai *dai, uint32_t reg)
 }
 
 static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
-	uint32_t value)
+			     uint32_t value)
 {
 	uint32_t new_value;
 	uint32_t old_value = dmic_io[reg >> 2];
@@ -192,7 +192,7 @@ static uint32_t dmic_read(struct dai *dai, uint32_t reg)
 }
 
 static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
-	uint32_t value)
+			     uint32_t value)
 {
 	io_reg_update_bits(dai_base(dai) + reg, mask, value);
 }
@@ -306,13 +306,13 @@ static void find_modes(struct decim_modes *modes,
 
 	/* Check for sane pdm clock, min 100 kHz, max ioclk/2 */
 	if (prm->pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
-		prm->pdmclk_max > DMIC_HW_IOCLK / 2) {
+	    prm->pdmclk_max > DMIC_HW_IOCLK / 2) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock max not in range");
 		return;
 	}
 	if (prm->pdmclk_min < DMIC_HW_PDM_CLK_MIN ||
-		prm->pdmclk_min > prm->pdmclk_max) {
+	    prm->pdmclk_min > prm->pdmclk_max) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock min not in range");
 		return;
@@ -325,13 +325,13 @@ static void find_modes(struct decim_modes *modes,
 		return;
 	}
 	if (prm->duty_min < DMIC_HW_DUTY_MIN ||
-		prm->duty_min > DMIC_HW_DUTY_MAX) {
+	    prm->duty_min > DMIC_HW_DUTY_MAX) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock min not in range");
 		return;
 	}
 	if (prm->duty_max < DMIC_HW_DUTY_MIN ||
-		prm->duty_max > DMIC_HW_DUTY_MAX) {
+	    prm->duty_max > DMIC_HW_DUTY_MAX) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock max not in range");
 		return;
@@ -364,7 +364,7 @@ static void find_modes(struct decim_modes *modes,
 		 * next clkdiv.
 		 */
 		if (osr < osr_min || du_min < prm->duty_min ||
-			du_max > prm->duty_max)
+		    du_max > prm->duty_max)
 			continue;
 
 		/* Loop FIR decimation factors candidates. If the
@@ -380,9 +380,9 @@ static void find_modes(struct decim_modes *modes,
 			ioclk_test = fs * mfir * mcic * clkdiv;
 
 			if (ioclk_test == DMIC_HW_IOCLK &&
-				mcic >= DMIC_HW_CIC_DECIM_MIN &&
-				mcic <= DMIC_HW_CIC_DECIM_MAX &&
-				i < DMIC_MAX_MODES) {
+			    mcic >= DMIC_HW_CIC_DECIM_MIN &&
+			    mcic <= DMIC_HW_CIC_DECIM_MAX &&
+			    i < DMIC_MAX_MODES) {
 				modes->clkdiv[i] = clkdiv;
 				modes->mcic[i] = mcic;
 				modes->mfir[i] = mfir;
@@ -401,7 +401,7 @@ static void find_modes(struct decim_modes *modes,
  * list of compatible settings.
  */
 static void match_modes(struct matched_modes *c, struct decim_modes *a,
-	struct decim_modes *b)
+			struct decim_modes *b)
 {
 	int16_t idx[DMIC_MAX_MODES];
 	int idx_length;
@@ -418,7 +418,7 @@ static void match_modes(struct matched_modes *c, struct decim_modes *a,
 
 	/* Ensure that num_of_modes is sane. */
 	if (a->num_of_modes > DMIC_MAX_MODES ||
-		b->num_of_modes > DMIC_MAX_MODES)
+	    b->num_of_modes > DMIC_MAX_MODES)
 		return;
 
 	/* Check for request only for FIFO A or B. In such case pass list for
@@ -451,7 +451,7 @@ static void match_modes(struct matched_modes *c, struct decim_modes *a,
 	for (n = 0; n < a->num_of_modes; n++) {
 		/* Find all indices of values a->clkdiv[n] in b->clkdiv[] */
 		idx_length = find_equal_int16(idx, b->clkdiv, a->clkdiv[n],
-			b->num_of_modes, 0);
+					      b->num_of_modes, 0);
 		for (m = 0; m < idx_length; m++) {
 			if (b->mcic[idx[m]] == a->mcic[n]) {
 				c->clkdiv[i] = a->clkdiv[n];
@@ -488,7 +488,7 @@ static struct pdm_decim *get_fir(struct dmic_configuration *cfg, int mfir)
 
 	for (i = 0; i < DMIC_FIR_LIST_LENGTH; i++) {
 		if (fir_list[i]->decim_factor == mfir &&
-			fir_list[i]->length <= fir_max_length) {
+		    fir_list[i]->length <= fir_max_length) {
 			/* Store pointer, break from loop to avoid a
 			 * Possible other mode with lower FIR length.
 			 */
@@ -504,7 +504,7 @@ static struct pdm_decim *get_fir(struct dmic_configuration *cfg, int mfir)
  * before write to HW coef RAM. Shift will be programmed to HW register.
  */
 static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
-	const int32_t coef[], int coef_length, int32_t gain)
+			  const int32_t coef[], int coef_length, int32_t gain)
 {
 	int32_t amax;
 	int32_t new_amax;
@@ -520,7 +520,7 @@ static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
 
 	/* Scale max. tap value with FIR gain. */
 	new_amax = Q_MULTSR_32X32((int64_t)amax, fir_gain, 31,
-		DMIC_FIR_SCALE_Q, DMIC_FIR_SCALE_Q);
+				  DMIC_FIR_SCALE_Q, DMIC_FIR_SCALE_Q);
 	if (new_amax <= 0)
 		return -EINVAL;
 
@@ -537,7 +537,7 @@ static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
 	 */
 	*fir_shift = -shift + add_shift;
 	if (*fir_shift < DMIC_HW_FIR_SHIFT_MIN ||
-		*fir_shift > DMIC_HW_FIR_SHIFT_MAX)
+	    *fir_shift > DMIC_HW_FIR_SHIFT_MAX)
 		return -EINVAL;
 
 	/* Compensate shift into FIR coef scaler and store as Q4.20. */
@@ -578,7 +578,7 @@ static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
  * needs compromizes into specifications and is not desirable.
  */
 static int select_mode(struct dmic_configuration *cfg,
-	struct matched_modes *modes)
+		       struct matched_modes *modes)
 {
 	int32_t g_cic;
 	int32_t fir_in_max;
@@ -722,7 +722,7 @@ static int select_mode(struct dmic_configuration *cfg,
  */
 
 static inline void ipm_helper1(int *ipm, int stereo[], int swap[],
-	struct sof_ipc_dai_dmic_params *dmic)
+			       struct sof_ipc_dai_dmic_params *dmic)
 {
 	int pdm[DMIC_HW_CONTROLLERS] = {0};
 	int cnt;
@@ -766,7 +766,7 @@ static inline void ipm_helper1(int *ipm, int stereo[], int swap[],
 #if DMIC_HW_VERSION == 2
 
 static inline void ipm_helper2(int source[], int *ipm, int stereo[],
-	int swap[], struct sof_ipc_dai_dmic_params *dmic)
+			       int swap[], struct sof_ipc_dai_dmic_params *dmic)
 {
 	int pdm[DMIC_HW_CONTROLLERS];
 	int i;
@@ -781,7 +781,7 @@ static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 	 */
 	for (i = 0; i < dmic->num_pdm_active; i++) {
 		if (dmic->pdm[i].enable_mic_a > 0 ||
-			dmic->pdm[i].enable_mic_b > 0) {
+		    dmic->pdm[i].enable_mic_b > 0) {
 			pdm[i] = 1;
 			source[n] = i;
 			n++;
@@ -791,7 +791,7 @@ static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 		}
 
 		if (dmic->pdm[i].enable_mic_a > 0 &&
-			dmic->pdm[i].enable_mic_b > 0) {
+		    dmic->pdm[i].enable_mic_b > 0) {
 			stereo[i] = 1;
 			swap[i] = 0;
 		} else {
@@ -811,7 +811,7 @@ static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 #endif
 
 static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
-	struct sof_ipc_dai_dmic_params *dmic)
+			       struct sof_ipc_dai_dmic_params *dmic)
 {
 	int stereo[DMIC_HW_CONTROLLERS];
 	int swap[DMIC_HW_CONTROLLERS];
@@ -1334,6 +1334,7 @@ static void dmic_start(struct dai *dai)
 
 	trace_dmic("dmic_start(), done");
 }
+
 /* stop the DMIC for capture */
 static void dmic_stop(struct dai *dai)
 {
@@ -1414,7 +1415,7 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 	case COMP_TRIGGER_RELEASE:
 	case COMP_TRIGGER_START:
 		if (dmic->state == COMP_STATE_PREPARE ||
-			dmic->state == COMP_STATE_PAUSED) {
+		    dmic->state == COMP_STATE_PAUSED) {
 			dmic_start(dai);
 		} else {
 			trace_dmic_error("dmic_trigger() error: "
@@ -1486,7 +1487,7 @@ static int dmic_probe(struct dai *dai)
 
 	/* register our IRQ handler */
 	ret = interrupt_register(dmic_irq(dai), IRQ_AUTO_UNMASK,
-				dmic_irq_handler, dai);
+				 dmic_irq_handler, dai);
 	if (ret < 0) {
 		trace_dmic_error("dmic failed to allocate IRQ");
 		rfree(dmic);
