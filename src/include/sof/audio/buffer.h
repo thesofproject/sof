@@ -72,7 +72,7 @@ struct comp_buffer {
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
 
-	spinlock_t lock;
+	spinlock_t lock; /* component buffer spinlock */
 };
 
 /* pipeline buffer creation and destruction */
@@ -96,7 +96,8 @@ static inline void buffer_zero(struct comp_buffer *buffer)
 
 /* get the max number of bytes that can be copied between sink and source */
 static inline int comp_buffer_can_copy_bytes(struct comp_buffer *source,
-	struct comp_buffer *sink, uint32_t bytes)
+					     struct comp_buffer *sink,
+					     uint32_t bytes)
 {
 	/* check for underrun */
 	if (source->avail < bytes)
@@ -111,7 +112,7 @@ static inline int comp_buffer_can_copy_bytes(struct comp_buffer *source,
 }
 
 static inline uint32_t comp_buffer_get_copy_bytes(struct comp_buffer *source,
-	struct comp_buffer *sink)
+						  struct comp_buffer *sink)
 {
 	if (source->avail > sink->free)
 		return sink->free;
@@ -122,12 +123,13 @@ static inline uint32_t comp_buffer_get_copy_bytes(struct comp_buffer *source,
 static inline void buffer_reset_pos(struct comp_buffer *buffer)
 {
 	/* reset read and write pointer to buffer bas */
-	buffer->w_ptr = buffer->r_ptr = buffer->addr;
+	buffer->w_ptr = buffer->addr;
+	buffer->r_ptr = buffer->addr;
 
 	/* free space is buffer size */
 	buffer->free = buffer->size;
 
-	/* ther are no avail samples at reset */
+	/* there are no avail samples at reset */
 	buffer->avail = 0;
 
 	/* clear buffer contents */
