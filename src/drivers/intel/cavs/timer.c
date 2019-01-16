@@ -85,7 +85,7 @@ void platform_host_timestamp(struct comp_dev *host,
 {
 	int err;
 
-	/* get host postion */
+	/* get host position */
 	err = comp_position(host, posn);
 	if (err == 0)
 		posn->flags |= SOF_TIME_HOST_VALID;
@@ -97,7 +97,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 {
 	int err;
 
-	/* get DAI postion */
+	/* get DAI position */
 	err = comp_position(dai, posn);
 	if (err == 0)
 		posn->flags |= SOF_TIME_DAI_VALID;
