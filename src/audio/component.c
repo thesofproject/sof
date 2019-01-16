@@ -77,7 +77,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
-	if (drv == NULL) {
+	if (!drv) {
 		trace_comp_error("comp_new() error: driver not found, "
 				 "comp->type = %u", comp->type);
 		return NULL;
@@ -85,7 +85,7 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 
 	/* create the new component */
 	cdev = drv->ops.new(comp);
-	if (cdev == NULL) {
+	if (!cdev) {
 		trace_comp_error("comp_new() error: "
 				 "unable to create the new component");
 		return NULL;
@@ -156,9 +156,9 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_PAUSE:
 		/* only support pausing for running */
-		if (dev->state == COMP_STATE_ACTIVE)
+		if (dev->state == COMP_STATE_ACTIVE) {
 			dev->state = COMP_STATE_PAUSED;
-		else {
+		} else {
 			trace_comp_error("comp_set_state() error: "
 					 "wrong state = %u, "
 					 "COMP_TRIGGER_PAUSE", dev->state);
@@ -168,7 +168,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_RESET:
 		/* reset always succeeds */
 		if (dev->state == COMP_STATE_ACTIVE ||
-			dev->state == COMP_STATE_PAUSED) {
+		    dev->state == COMP_STATE_PAUSED) {
 			trace_comp_error("comp_set_state() error: "
 					 "wrong state = %u, "
 					 "COMP_TRIGGER_RESET", dev->state);
@@ -178,7 +178,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_PREPARE:
 		if (dev->state == COMP_STATE_PREPARE ||
-			dev->state == COMP_STATE_READY) {
+		    dev->state == COMP_STATE_READY) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
 			trace_comp_error("comp_set_state() error: "
