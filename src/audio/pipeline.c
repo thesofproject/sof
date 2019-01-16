@@ -61,7 +61,7 @@ static void pipeline_task(void *arg);
 
 /* call op on all upstream components - locks held by caller */
 static void connect_upstream(struct pipeline *p, struct comp_dev *start,
-	struct comp_dev *current)
+			     struct comp_dev *current)
 {
 	struct list_item *clist;
 
@@ -102,7 +102,7 @@ static void connect_upstream(struct pipeline *p, struct comp_dev *start,
 }
 
 static void connect_downstream(struct pipeline *p, struct comp_dev *start,
-	struct comp_dev *current)
+			       struct comp_dev *current)
 {
 	struct list_item *clist;
 
@@ -135,7 +135,7 @@ static void connect_downstream(struct pipeline *p, struct comp_dev *start,
 
 /* call op on all upstream components - locks held by caller */
 static void disconnect_upstream(struct pipeline *p, struct comp_dev *start,
-	struct comp_dev *current)
+				struct comp_dev *current)
 {
 	struct list_item *clist;
 
@@ -165,7 +165,7 @@ static void disconnect_upstream(struct pipeline *p, struct comp_dev *start,
 }
 
 static void disconnect_downstream(struct pipeline *p, struct comp_dev *start,
-	struct comp_dev *current)
+				  struct comp_dev *current)
 {
 	struct list_item *clist;
 
@@ -236,7 +236,7 @@ static void pipeline_trigger_sched_comp(struct pipeline *p,
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
-	struct comp_dev *cd)
+			      struct comp_dev *cd)
 {
 	struct pipeline *p;
 
@@ -244,7 +244,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	/* allocate new pipeline */
 	p = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*p));
-	if (p == NULL) {
+	if (!p) {
 		trace_pipe_error("pipeline_new() error: Out of Memory");
 		return NULL;
 	}
@@ -254,7 +254,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	p->status = COMP_STATE_INIT;
 	schedule_task_init(&p->pipe_task, pipeline_task, p);
 	schedule_task_config(&p->pipe_task, pipe_desc->priority,
-		pipe_desc->core);
+			     pipe_desc->core);
 	list_init(&p->comp_list);
 	list_init(&p->buffer_list);
 	spinlock_init(&p->lock);
@@ -294,7 +294,8 @@ int pipeline_free(struct pipeline *p)
 int pipeline_complete(struct pipeline *p)
 {
 	/* now walk downstream and upstream form "start" component and
-	  complete component task and pipeline init */
+	 * complete component task and pipeline init
+	 */
 
 	trace_pipe_with_ids(p, "pipeline_complete(), p->ipc_pipe.pipeline_id = "
 			    "%u", p->ipc_pipe.pipeline_id);
@@ -362,8 +363,9 @@ int pipeline_buffer_connect(struct comp_buffer *source_buffer,
  * positive error code also stop the graph walk on that branch causing the
  * walk to return to a shallower level in the graph. */
 static int component_op_downstream(struct op_data *op_data,
-	struct comp_dev *start, struct comp_dev *current,
-	struct comp_dev *previous)
+				   struct comp_dev *start,
+				   struct comp_dev *current,
+				   struct comp_dev *previous)
 {
 	struct list_item *clist;
 	int err = 0;
@@ -433,7 +435,7 @@ static int component_op_downstream(struct op_data *op_data,
 			continue;
 
 		err = component_op_downstream(op_data, start, buffer->sink,
-			current);
+					      current);
 		if (err < 0)
 			break;
 	}
@@ -445,10 +447,12 @@ static int component_op_downstream(struct op_data *op_data,
  * the operation on each component. Graph walk is stopped on any component
  * returning an error ( < 0) and returns immediately. Components returning a
  * positive error code also stop the graph walk on that branch causing the
- * walk to return to a shallower level in the graph. */
+ * walk to return to a shallower level in the graph.
+ */
 static int component_op_upstream(struct op_data *op_data,
-	struct comp_dev *start, struct comp_dev *current,
-	struct comp_dev *previous)
+				 struct comp_dev *start,
+				 struct comp_dev *current,
+				 struct comp_dev *previous)
 {
 	struct list_item *clist;
 	int err = 0;
@@ -523,7 +527,8 @@ static int component_op_upstream(struct op_data *op_data,
 }
 
 /* walk the graph upstream from start component in any pipeline and prepare
- * the buffer context for each inactive component */
+ * the buffer context for each inactive component
+ */
 static int component_prepare_buffers_upstream(struct comp_dev *start,
 	struct comp_dev *current, struct comp_buffer *buffer)
 {
@@ -545,13 +550,13 @@ static int component_prepare_buffers_upstream(struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, sink_list);
 
-		/* dont go upstream if this component is not connected or active */
+		/* don't go upstream if this component is not connected or active */
 		if (!buffer->connected || buffer->source->state == COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
 		err = component_prepare_buffers_upstream(start, buffer->source,
-			buffer);
+							 buffer);
 		if (err < 0) {
 			trace_pipe_error("component_prepare_buffers_upstream()"
 					 " error: err = %d", err);
@@ -564,7 +569,8 @@ static int component_prepare_buffers_upstream(struct comp_dev *start,
 }
 
 /* walk the graph downstream from start component in any pipeline and prepare
- * the buffer context for each inactive component */
+ * the buffer context for each inactive component
+ */
 static int component_prepare_buffers_downstream(struct comp_dev *start,
 	struct comp_dev *current, struct comp_buffer *buffer)
 {
@@ -586,13 +592,13 @@ static int component_prepare_buffers_downstream(struct comp_dev *start,
 
 		buffer = container_of(clist, struct comp_buffer, source_list);
 
-		/* dont go downstream if this component is not connected or active */
+		/* don't go downstream if this component is not connected or active */
 		if (!buffer->connected || buffer->sink->state == COMP_STATE_ACTIVE)
 			continue;
 
 		/* continue downstream */
 		err = component_prepare_buffers_downstream(start, buffer->sink,
-			buffer);
+							   buffer);
 		if (err < 0) {
 			trace_pipe_error("component_prepare_buffers_downstream"
 					 "() error: err = %d", err);
@@ -1000,7 +1006,8 @@ out:
  * TODO: consider pipeline with multiple DAIs
  */
 static int timestamp_downstream(struct comp_dev *start,
-		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
+				struct comp_dev *current,
+				struct sof_ipc_stream_posn *posn)
 {
 	struct list_item *clist;
 	int res = 0;
@@ -1013,7 +1020,7 @@ static int timestamp_downstream(struct comp_dev *start,
 			goto downstream;
 
 		if (current->comp.type == SOF_COMP_DAI ||
-			current->comp.type == SOF_COMP_SG_DAI) {
+		    current->comp.type == SOF_COMP_SG_DAI) {
 			platform_dai_timestamp(current, posn);
 			return 1;
 		}
@@ -1045,7 +1052,8 @@ downstream:
  * TODO: consider pipeline with multiple DAIs
  */
 static int timestamp_upstream(struct comp_dev *start,
-		struct comp_dev *current, struct sof_ipc_stream_posn *posn)
+			      struct comp_dev *current,
+			      struct sof_ipc_stream_posn *posn)
 {
 	struct list_item *clist;
 	int res = 0;
@@ -1058,7 +1066,7 @@ static int timestamp_upstream(struct comp_dev *start,
 			goto upstream;
 
 		if (current->comp.type == SOF_COMP_DAI ||
-			current->comp.type == SOF_COMP_SG_DAI) {
+		    current->comp.type == SOF_COMP_SG_DAI) {
 			platform_dai_timestamp(current, posn);
 			return 1;
 		}
@@ -1090,7 +1098,7 @@ upstream:
  * Get the timestamps for host and first active DAI found.
  */
 void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
-	struct sof_ipc_stream_posn *posn)
+			    struct sof_ipc_stream_posn *posn)
 {
 	platform_host_timestamp(host, posn);
 
@@ -1114,7 +1122,8 @@ static void xrun(struct comp_dev *dev, void *data)
 
 
 /* walk the graph downstream from start component in any pipeline and run
- * function <func> for each component of type <type> */
+ * function <func> for each component of type <type>
+ */
 static void pipeline_for_each_downstream(struct pipeline *p,
 	enum sof_comp_type type, struct comp_dev *current,
 	void (*func)(struct comp_dev *, void *), void *data)
@@ -1136,12 +1145,13 @@ static void pipeline_for_each_downstream(struct pipeline *p,
 
 		/* continue downstream */
 		pipeline_for_each_downstream(p, type, buffer->sink,
-			func, data);
+					     func, data);
 	}
 }
 
 /* walk the graph upstream from start component in any pipeline and run
- * function <func> for each component of type <type> */
+ * function <func> for each component of type <type>
+ */
 static void pipeline_for_each_upstream(struct pipeline *p,
 	enum sof_comp_type type, struct comp_dev *current,
 	void (*func)(struct comp_dev *, void *), void *data)
@@ -1163,7 +1173,7 @@ static void pipeline_for_each_upstream(struct pipeline *p,
 
 		/* continue downstream */
 		pipeline_for_each_upstream(p, type, buffer->source,
-			func, data);
+					   func, data);
 	}
 }
 
@@ -1171,7 +1181,7 @@ static void pipeline_for_each_upstream(struct pipeline *p,
  * Send an XRUN to each host for this component.
  */
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
-	int32_t bytes)
+		   int32_t bytes)
 {
 	struct sof_ipc_stream_posn posn;
 
@@ -1184,7 +1194,8 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 		return;
 
 	memset(&posn, 0, sizeof(posn));
-	p->xrun_bytes = posn.xrun_size = bytes;
+	p->xrun_bytes = bytes;
+	posn.xrun_size = bytes;
 	posn.xrun_comp_id = dev->comp.id;
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -1194,7 +1205,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	}
 }
 
-/* copy data from upstream source endpoints to downstream endpoints*/
+/* copy data from upstream source endpoints to downstream endpoints */
 static int pipeline_copy(struct comp_dev *dev)
 {
 	int err;
@@ -1268,7 +1279,8 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 
 /* notify pipeline that this component requires buffers emptied/filled
  * when DSP is next idle. This is intended to be used to preload pipeline
- * buffers prior to trigger start. */
+ * buffers prior to trigger start.
+ */
 void pipeline_schedule_copy_idle(struct pipeline *p)
 {
 	schedule_task_idle(&p->pipe_task, p->ipc_pipe.deadline);
