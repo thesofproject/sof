@@ -226,8 +226,9 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		next->dest = local_elem->dest;
 		next->size = local_elem->size;
 		return;
-	} else
-		next->size = DMA_RELOAD_END;
+	}
+
+	next->size = DMA_RELOAD_END;
 
 	/* let any waiters know we have completed */
 	wait_completed(&hd->complete);
@@ -348,14 +349,14 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_host));
-	if (dev == NULL)
+	if (!dev)
 		return NULL;
 
 	host = (struct sof_ipc_comp_host *)&dev->comp;
 	memcpy(host, ipc_host, sizeof(struct sof_ipc_comp_host));
 
 	hd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*hd));
-	if (hd == NULL) {
+	if (!hd) {
 		rfree(dev);
 		return NULL;
 	}
@@ -371,7 +372,8 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	caps = 0;
 	dma_dev = DMA_DEV_HOST;
 	hd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
-	if (hd->dma == NULL) {
+
+	if (!hd->dma) {
 		trace_host_error("host_new() error: dma_get() returned NULL");
 		goto error;
 	}
@@ -600,7 +602,7 @@ static int host_stop(struct comp_dev *dev)
 }
 
 static int host_position(struct comp_dev *dev,
-	struct sof_ipc_stream_posn *posn)
+			 struct sof_ipc_stream_posn *posn)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
@@ -687,7 +689,6 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run)
 			return 0;
 		}
 	} else {
-
 		if (hd->dma_buffer->avail < local_elem->size) {
 			/* buffer is enough empty, just return. */
 			tracev_host("host_copy_int(), buffer is enough empty");
