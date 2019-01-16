@@ -179,19 +179,19 @@ struct dma_pdata {
 static int hda_dma_stop(struct dma *dma, int channel);
 
 static inline uint32_t host_dma_reg_read(struct dma *dma, uint32_t chan,
-	uint32_t reg)
+					 uint32_t reg)
 {
 	return io_reg_read(dma_chan_base(dma, chan) + reg);
 }
 
 static inline void host_dma_reg_write(struct dma *dma, uint32_t chan,
-	uint32_t reg, uint32_t value)
+				      uint32_t reg, uint32_t value)
 {
 	io_reg_write(dma_chan_base(dma, chan) + reg, value);
 }
 
 static inline void hda_update_bits(struct dma *dma, uint32_t chan,
-	uint32_t reg, uint32_t mask, uint32_t value)
+				   uint32_t reg, uint32_t mask, uint32_t value)
 {
 	io_reg_update_bits(dma_chan_base(dma, chan) + reg,  mask, value);
 }
@@ -226,8 +226,9 @@ static void hda_dma_get_dbg_vals(struct hda_chan_data *chan,
 				 enum hda_dbg_src src)
 {
 	struct hda_dbg_data *dbg_data = &chan->dbg_data;
+
 	if ((HDA_DBG_SRC == HDA_DBG_BOTH) || (src == HDA_DBG_BOTH) ||
-		(src == HDA_DBG_SRC)) {
+	    (src == HDA_DBG_SRC)) {
 		dbg_data->last_wp[sample] =
 			host_dma_reg_read(chan->dma, chan->index, DGBWP);
 		dbg_data->last_rp[sample] =
@@ -758,7 +759,7 @@ static int hda_dma_stop(struct dma *dma, int channel)
 
 /* fill in "status" with current DMA channel state and position */
 static int hda_dma_status(struct dma *dma, int channel,
-	struct dma_chan_status *status, uint8_t direction)
+			  struct dma_chan_status *status, uint8_t direction)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -778,7 +779,7 @@ static int hda_dma_status(struct dma *dma, int channel,
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int hda_dma_set_config(struct dma *dma, int channel,
-	struct dma_sg_config *config)
+			      struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_sg_elem *sg_elem;
@@ -836,8 +837,8 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 		/* make sure period_bytes are constant */
 		if (period_bytes && period_bytes != sg_elem->size) {
 			trace_hddma_error("hda-dmac: %d chan %d - period size not constant %d",
-					 dma->plat_data.id, channel,
-					 period_bytes);
+					  dma->plat_data.id, channel,
+					  period_bytes);
 			ret = -EINVAL;
 			goto out;
 		}
