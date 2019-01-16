@@ -65,7 +65,7 @@ struct dma_trace_data {
 	uint32_t enabled;
 	uint32_t copy_in_progress;
 	uint32_t stream_tag;
-	spinlock_t lock;
+	spinlock_t lock; /* dma trace lock */
 };
 
 int dma_trace_init_early(struct sof *sof);
