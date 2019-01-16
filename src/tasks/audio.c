@@ -54,6 +54,7 @@ struct audio_data {
 
 int do_task_master_core(struct sof *sof)
 {
+	int ret;
 #ifdef STATIC_PIPE
 	struct audio_data pdata;
 #endif
@@ -77,7 +78,9 @@ int do_task_master_core(struct sof *sof)
 		panic(SOF_IPC_PANIC_TASK);
 #endif
 	/* let host know DSP boot is complete */
-	platform_boot_complete(0);
+	ret = platform_boot_complete(0);
+	if (ret < 0)
+		return ret;
 
 	/* main audio IPC processing loop */
 	while (1) {
