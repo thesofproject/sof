@@ -110,7 +110,7 @@ int platform_timer_set(struct timer *timer, uint64_t ticks)
 
 	/* same hi 64 bit context as ticks ? */
 	if (hitimeout < timer->hitime) {
-		/* cant be in the past */
+		/* can't be in the past */
 		arch_interrupt_global_enable(flags);
 		return -EINVAL;
 	}
