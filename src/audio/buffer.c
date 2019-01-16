@@ -61,14 +61,14 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 
 	/* allocate new buffer */
 	buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*buffer));
-	if (buffer == NULL) {
+	if (!buffer) {
 		trace_buffer_error("buffer_new() error: "
 				   "could not alloc structure");
 		return NULL;
 	}
 
 	buffer->addr = rballoc(RZONE_RUNTIME, desc->caps, desc->size);
-	if (buffer->addr == NULL) {
+	if (!buffer->addr) {
 		rfree(buffer);
 		trace_buffer_error("buffer_new() error: "
 				   "could not alloc size = %u "
@@ -79,9 +79,11 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 
 	memcpy(&buffer->ipc_buffer, desc, sizeof(*desc));
 
-	buffer->size = buffer->alloc_size = desc->size;
+	buffer->size = desc->size;
+	buffer->alloc_size = desc->size;
 	buffer->ipc_buffer = *desc;
-	buffer->w_ptr = buffer->r_ptr = buffer->addr;
+	buffer->w_ptr = buffer->addr;
+	buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + buffer->ipc_buffer.size;
 	buffer->free = buffer->ipc_buffer.size;
 	buffer->avail = 0;
@@ -132,9 +134,8 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		dcache_invalidate_region(buffer->w_ptr, head);
 		if (tail)
 			dcache_invalidate_region(buffer->addr, tail);
-	}
-	else if (!buffer->source->is_dma_connected &&
-		 buffer->sink->is_dma_connected) {
+	} else if (!buffer->source->is_dma_connected &&
+		   buffer->sink->is_dma_connected) {
 		/* need write back to memory for sink component to use */
 		dcache_writeback_region(buffer->w_ptr, head);
 		if (tail)
@@ -167,7 +168,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		      (buffer->ipc_buffer.comp.id << 16) | buffer->size);
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->r_ptr - buffer"
 		      "->addr) << 16 | (buffer->w_ptr - buffer->addr)) = %08x",
-		      (buffer->r_ptr - buffer->addr) << 16 | 
+		      (buffer->r_ptr - buffer->addr) << 16 |
 		      (buffer->w_ptr - buffer->addr));
 }
 
@@ -181,7 +182,8 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	/* check for pointer wrap */
 	if (buffer->r_ptr >= buffer->end_addr)
-		buffer->r_ptr = buffer->addr + (buffer->r_ptr - buffer->end_addr);
+		buffer->r_ptr = buffer->addr +
+			(buffer->r_ptr - buffer->end_addr);
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
@@ -201,7 +203,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	spin_unlock_irq(&buffer->lock, flags);
 
 	tracev_buffer("comp_update_buffer_consume(), %u, %u, %u",
-		     (buffer->avail << 16) | buffer->free,
+		      (buffer->avail << 16) | buffer->free,
 		     (buffer->ipc_buffer.comp.id << 16) | buffer->size,
 		     (buffer->r_ptr - buffer->addr) << 16 |
 		     (buffer->w_ptr - buffer->addr));
