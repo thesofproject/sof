@@ -70,7 +70,7 @@ static int ssp_context_restore(struct dai *dai)
 
 /* Digital Audio interface formatting */
 static inline int ssp_set_config(struct dai *dai,
-	struct sof_ipc_dai_config *config)
+				 struct sof_ipc_dai_config *config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0;
@@ -94,7 +94,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
-		ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
+	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
 		trace_ssp_error("ssp_set_config() error: "
 				"playback/capture already running");
 		ret = -EINVAL;
@@ -416,7 +416,6 @@ static void ssp_start(struct dai *dai, int direction)
 	/* enable port */
 	ssp->state[direction] = COMP_STATE_ACTIVE;
 
-
 	spin_unlock(&dai->lock);
 }
 
@@ -447,7 +446,7 @@ static void ssp_stop(struct dai *dai, int direction)
 
 	/* disable SSP port if no users */
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE &&
-		ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
@@ -466,12 +465,12 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		if (ssp->state[direction] == COMP_STATE_PREPARE ||
-			ssp->state[direction] == COMP_STATE_PAUSED)
+		    ssp->state[direction] == COMP_STATE_PAUSED)
 			ssp_start(dai, direction);
 		break;
 	case COMP_TRIGGER_RELEASE:
 		if (ssp->state[direction] == COMP_STATE_PAUSED ||
-			ssp->state[direction] == COMP_STATE_PREPARE)
+		    ssp->state[direction] == COMP_STATE_PREPARE)
 			ssp_start(dai, direction);
 		break;
 	case COMP_TRIGGER_STOP:
@@ -517,7 +516,6 @@ static int ssp_probe(struct dai *dai)
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
-
 
 	/* register our IRQ handler */
 	ret = interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
