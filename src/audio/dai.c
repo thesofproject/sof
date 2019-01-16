@@ -1,4 +1,4 @@
- /*
+/*
  * Copyright (c) 2016, Intel Corporation
  * All rights reserved.
  *
@@ -204,14 +204,14 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_dai));
-	if (dev == NULL)
+	if (!dev)
 		return NULL;
 
 	dai = (struct sof_ipc_comp_dai *)&dev->comp;
 	memcpy(dai, ipc_dai, sizeof(struct sof_ipc_comp_dai));
 
 	dd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dd));
-	if (dd == NULL) {
+	if (!dd) {
 		rfree(dev);
 		return NULL;
 	}
@@ -219,7 +219,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	comp_set_drvdata(dev, dd);
 
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
-	if (dd->dai == NULL) {
+	if (!dd->dai) {
 		trace_dai_error("dai_new() error: dai_get() failed to create "
 				"DAI.");
 		goto error;
@@ -245,7 +245,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		break;
 	}
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
-	if (dd->dma == NULL) {
+	if (!dd->dma) {
 		trace_dai_error("dai_new() error: dma_get() failed to get "
 				"shared access to DMA.");
 		goto error;
@@ -442,13 +442,14 @@ static int dai_params(struct comp_dev *dev)
 		dma_buffer->r_ptr = dma_buffer->addr;
 
 		return dai_playback_params(dev);
-	} else {
-		dma_buffer = list_first_item(&dev->bsink_list,
-			struct comp_buffer, source_list);
-		dma_buffer->w_ptr = dma_buffer->addr;
-
-		return dai_capture_params(dev);
 	}
+
+	dma_buffer = list_first_item(&dev->bsink_list,
+				     struct comp_buffer, source_list);
+	dma_buffer->w_ptr = dma_buffer->addr;
+
+	return dai_capture_params(dev);
+
 }
 
 static int dai_prepare(struct comp_dev *dev)
@@ -550,7 +551,8 @@ static void dai_pointer_init(struct comp_dev *dev)
 			break;
 		default:
 			/* advance source pipeline w_ptr by one period
-			 * this places pipeline w_ptr in period before DAI r_ptr */
+			 * this places pipeline w_ptr in period before DAI r_ptr
+			 */
 			comp_update_buffer_produce(dma_buffer, dd->period_bytes);
 			break;
 		}
@@ -573,12 +575,12 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), START");
-		if (!dd->pointer_init)
+		if (!dd->pointer_init) {
 			dai_pointer_init(dev);
-		/* for nono-first init start, we need to recover the buffer
-		 * state as well pointer position as pause/relesas did
-		 */
-		else {
+			/* for nono-first init start, we need to recover the buffer
+			 * state as well pointer position as pause/release did
+			 */
+		} else {
 			/* set valid buffer pointer */
 			dai_buffer_process(dev);
 
