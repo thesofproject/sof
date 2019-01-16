@@ -458,7 +458,7 @@ static int load_pipeline(struct sof *sof, struct sof_ipc_pipe_new *pipeline,
 }
 
 /* load dapm widget kcontrols
- * we dont use controls in the testbench atm.
+ * we don't use controls in the testbench atm.
  * so just skip to the next dapm widget
  */
 static int load_controls(struct sof *sof, int num_kcontrols)
@@ -775,9 +775,9 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 
 /* parse topology file and set up pipeline */
 int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
-		    int *sched_id, char *bits_in, char *in_file,
-		    char *out_file, struct shared_lib_table *library_table,
-		    char *pipeline_msg)
+		   int *sched_id, char *bits_in, char *in_file,
+		   char *out_file, struct shared_lib_table *library_table,
+		   char *pipeline_msg)
 {
 	struct snd_soc_tplg_hdr *hdr;
 
