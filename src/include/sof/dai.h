@@ -159,7 +159,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags);
 void dai_put(struct dai *dai);
 
 #define dai_set_drvdata(dai, data) \
-	dai->private = data;
+	dai->private = data
 #define dai_get_drvdata(dai) \
 	dai->private
 #define dai_base(dai) \
@@ -173,7 +173,7 @@ void dai_put(struct dai *dai);
  * \brief Digital Audio interface formatting
  */
 static inline int dai_set_config(struct dai *dai,
-	struct sof_ipc_dai_config *config)
+				 struct sof_ipc_dai_config *config)
 {
 	return dai->ops->set_config(dai, config);
 }
