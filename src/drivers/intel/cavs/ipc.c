@@ -70,7 +70,7 @@ static void irq_handler(void *arg)
 	dipcctl = ipc_read(IPC_DIPCCTL);
 
 	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
-		dipcie, dipcctl);
+		   dipcie, dipcctl);
 #else
 	uint32_t dipctdr;
 	uint32_t dipcida;
@@ -80,7 +80,7 @@ static void irq_handler(void *arg)
 	dipcctl = ipc_read(IPC_DIPCCTL);
 
 	tracev_ipc("ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x", dipctdr,
-		dipcida, dipcctl);
+		   dipcida, dipcctl);
 #endif
 
 	/* new message from host */
