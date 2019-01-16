@@ -81,22 +81,22 @@
 #define Q_CONVERT_QTOF(x, ny) ((float)(x) / ((int64_t)1 << (ny)))
 
 /* A more clever macro for Q-shifts */
-#define Q_SHIFT(x, src_q, dst_q) ((x)>>((src_q)-(dst_q)))
-#define Q_SHIFT_RND(x, src_q, dst_q) ((((x) >> ((src_q)-(dst_q) -1)) +1) >> 1)
+#define Q_SHIFT(x, src_q, dst_q) ((x) >> ((src_q) - (dst_q)))
+#define Q_SHIFT_RND(x, src_q, dst_q) ((((x) >> ((src_q) - (dst_q) - 1)) + 1) >> 1)
 
 /* Alternative version since compiler does not allow (x >> -1) */
-#define Q_SHIFT_LEFT(x, src_q, dst_q) ((x)<<((dst_q)-(src_q)))
+#define Q_SHIFT_LEFT(x, src_q, dst_q) ((x) << ((dst_q) - (src_q)))
 
 /* Fractional multiplication with shift
  * Note that the parameters px and py must be cast to (int64_t) if other type.
  */
-#define Q_MULTS_32X32(px, py, qx, qy, qp) ((px) * (py) >> (((qx)+(qy)-(qp))))
+#define Q_MULTS_32X32(px, py, qx, qy, qp) ((px) * (py) >> (((qx) + (qy) - (qp))))
 
 /* Fractional multiplication with shift and round
  * Note that the parameters px and py must be cast to (int64_t) if other type.
  */
 #define Q_MULTSR_32X32(px, py, qx, qy, qp) \
-	((((px) * (py) >> ((qx)+(qy)-(qp)-1)) + 1) >> 1)
+	((((px) * (py) >> ((qx) + (qy) - (qp) - 1)) + 1) >> 1)
 
 /* Saturation */
 #define SATP_INT32(x) (((x) > INT32_MAX) ? INT32_MAX : (x))
