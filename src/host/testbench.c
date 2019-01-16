@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 
 	/* parse topology file and create pipeline */
 	if (parse_topology(tplg_file, &sof, &fr_id, &fw_id, &sched_id, bits_in,
-	    input_file, output_file, lib_table, pipeline) < 0) {
+			   input_file, output_file, lib_table, pipeline) < 0) {
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}
