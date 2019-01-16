@@ -39,7 +39,7 @@
 /* scheduler testbench definition */
 
 struct schedule_data {
-	spinlock_t lock;
+	spinlock_t lock; /* schedule lock */
 	struct list_item list; /* list of tasks in priority queue */
 	uint32_t clock;
 };
