@@ -1066,7 +1066,7 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_ENABLE(channel));
 }
 
-static void dw_dma_setup(struct dma *dma)
+static int dw_dma_setup(struct dma *dma)
 {
 	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
 	int i;
@@ -1083,7 +1083,7 @@ static void dw_dma_setup(struct dma *dma)
 	if (!i) {
 		trace_dwdma_error("dw-dma: dmac %d setup failed",
 				  dma->plat_data.id);
-		return;
+		return -EIO;
 	}
 
 	for (i = 0; i < DW_MAX_CHAN; i++)
@@ -1126,6 +1126,8 @@ static void dw_dma_setup(struct dma *dma)
 			 DW_CFG_CLASS(dp->chan[i].class));
 #endif
 	}
+
+	return 0;
 }
 
 static void dw_dma_process_block(struct dma_chan_data *chan,
@@ -1397,7 +1399,7 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
-	int i;
+	int i, ret;
 
 	if (dma_get_drvdata(dma))
 		return -EEXIST; /* already created */
@@ -1417,7 +1419,9 @@ static int dw_dma_probe(struct dma *dma)
 
 	spinlock_init(&dma->lock);
 
-	dw_dma_setup(dma);
+	ret = dw_dma_setup(dma);
+	if (ret < 0)
+		return ret;
 
 	/* init work */
 	for (i = 0; i < dma->plat_data.channels; i++) {
