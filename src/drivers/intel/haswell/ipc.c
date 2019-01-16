@@ -60,7 +60,7 @@ static void do_notify(void)
 
 	spin_lock_irq(&_ipc->lock, flags);
 	msg = _ipc->shared_ctx->dsp_msg;
-	if (msg == NULL)
+	if (!msg)
 		goto out;
 
 	tracev_ipc("ipc: not rx -> 0x%x", msg->header);
@@ -210,7 +210,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* init ipc data */
 	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		sizeof(struct ipc_data));
+		       sizeof(struct ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* schedule */
@@ -220,7 +220,7 @@ int platform_ipc_init(struct ipc *ipc)
 #ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		PLATFORM_PAGE_TABLE_SIZE);
+				   PLATFORM_PAGE_TABLE_SIZE);
 	if (iipc->page_table)
 		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
 #endif
