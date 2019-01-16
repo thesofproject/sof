@@ -5213,55 +5213,10 @@ sub process {
 			     "Use of volatile is usually wrong: see Documentation/process/volatile-considered-harmful.rst\n" . $herecurr);
 		}
 
-# Check for user-visible strings broken across lines, which breaks the ability
-# to grep for the string.  Make exceptions when the previous string ends in a
-# newline (multiple lines in one string constant) or '\t', '\r', ';', or '{'
-# (common in inline assembly) or is a octal \123 or hexadecimal \xaf value
-		if ($line =~ /^\+\s*$String/ &&
-		    $prevline =~ /"\s*$/ &&
-		    $prevrawline !~ /(?:\\(?:[ntr]|[0-7]{1,3}|x[0-9a-fA-F]{1,2})|;\s*|\{\s*)"\s*$/) {
-			if (WARN("SPLIT_STRING",
-				 "quoted string split across lines\n" . $hereprev) &&
-				     $fix &&
-				     $prevrawline =~ /^\+.*"\s*$/ &&
-				     $last_coalesced_string_linenr != $linenr - 1) {
-				my $extracted_string = get_quoted_string($line, $rawline);
-				my $comma_close = "";
-				if ($rawline =~ /\Q$extracted_string\E(\s*\)\s*;\s*$|\s*,\s*)/) {
-					$comma_close = $1;
-				}
-
-				fix_delete_line($fixlinenr - 1, $prevrawline);
-				fix_delete_line($fixlinenr, $rawline);
-				my $fixedline = $prevrawline;
-				$fixedline =~ s/"\s*$//;
-				$fixedline .= substr($extracted_string, 1) . trim($comma_close);
-				fix_insert_line($fixlinenr - 1, $fixedline);
-				$fixedline = $rawline;
-				$fixedline =~ s/\Q$extracted_string\E\Q$comma_close\E//;
-				if ($fixedline !~ /\+\s*$/) {
-					fix_insert_line($fixlinenr, $fixedline);
-				}
-				$last_coalesced_string_linenr = $linenr;
-			}
-		}
-
 # check for missing a space in a string concatenation
 		if ($prevrawline =~ /[^\\]\w"$/ && $rawline =~ /^\+[\t ]+"\w/) {
 			WARN('MISSING_SPACE',
 			     "break quoted strings at a space character\n" . $hereprev);
-		}
-
-# check for an embedded function name in a string when the function is known
-# This does not work very well for -f --file checking as it depends on patch
-# context providing the function name or a single line form for in-file
-# function declarations
-		if ($line =~ /^\+.*$String/ &&
-		    defined($context_function) &&
-		    get_quoted_string($line, $rawline) =~ /\b$context_function\b/ &&
-		    length(get_quoted_string($line, $rawline)) != (length($context_function) + 2)) {
-			WARN("EMBEDDED_FUNCTION_NAME",
-			     "Prefer using '\"%s...\", __func__' to using '$context_function', this function's name, in a string\n" . $herecurr);
 		}
 
 # check for spaces before a quoted newline
