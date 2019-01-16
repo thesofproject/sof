@@ -58,12 +58,12 @@
  */
 static void vol_sync_host(struct comp_data *cd, uint32_t chan)
 {
-	if (cd->hvol == NULL)
+	if (!cd->hvol)
 		return;
 
-	if (chan < SOF_IPC_MAX_CHANNELS)
+	if (chan < SOF_IPC_MAX_CHANNELS) {
 		cd->hvol[chan].value = cd->volume[chan];
-	else {
+	} else {
 		trace_volume_error("vol_sync_host() error: "
 				   "chan = %u < SOF_IPC_MAX_CHANNELS", chan);
 	}
@@ -108,9 +108,9 @@ static uint64_t vol_work(void *data, uint64_t delay)
 			vol += VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (vol >= cd->tvolume[i] || vol >= cd->max_volume)
+			if (vol >= cd->tvolume[i] || vol >= cd->max_volume) {
 				vol_update(cd, i);
-			else {
+			} else {
 				cd->volume[i] = vol;
 				again = 1;
 			}
@@ -123,7 +123,7 @@ static uint64_t vol_work(void *data, uint64_t delay)
 			} else {
 				/* ramp completed ? */
 				if (new_vol <= cd->tvolume[i] ||
-					new_vol <= cd->min_volume) {
+				    new_vol <= cd->min_volume) {
 					vol_update(cd, i);
 				} else {
 					cd->volume[i] = new_vol;
@@ -184,14 +184,14 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_volume));
-	if (dev == NULL)
+	if (!dev)
 		return NULL;
 
 	vol = (struct sof_ipc_comp_volume *)&dev->comp;
 	memcpy(vol, ipc_vol, sizeof(struct sof_ipc_comp_volume));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (cd == NULL) {
+	if (!cd) {
 		rfree(dev);
 		return NULL;
 	}
@@ -205,7 +205,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	/* set the default volumes */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
 		cd->volume[i]  =  MAX(MIN(cd->max_volume,
-						  VOL_ZERO_DB), cd->min_volume);
+					  VOL_ZERO_DB), cd->min_volume);
 		cd->tvolume[i] =  cd->volume[i];
 	}
 
@@ -330,9 +330,9 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				     "channel = %u, value = %u",
 				     cdata->chanv[j].channel, cdata->chanv[j].value);
 			i = cdata->chanv[j].channel;
-			if ((i >= 0) && (i < SOF_IPC_MAX_CHANNELS))
+			if ((i >= 0) && (i < SOF_IPC_MAX_CHANNELS)) {
 				volume_set_chan(dev, i, cdata->chanv[j].value);
-			else {
+			} else {
 				trace_volume_error("volume_ctrl_set_cmd() "
 						   "error: "
 						   "SOF_CTRL_CMD_VOLUME, "
