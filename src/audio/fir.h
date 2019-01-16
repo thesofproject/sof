@@ -66,7 +66,7 @@ void eq_fir_s32(struct fir_state_32x16 *fir, struct comp_buffer *source,
 /* The next functions are inlined to optmize execution speed */
 
 static inline void fir_part_32x16(int64_t *y, int taps, const int16_t c[],
-	int *ic, int32_t d[], int *id)
+				  int *ic, int32_t d[], int *id)
 {
 	int n;
 
@@ -107,7 +107,7 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 		 * is >= 0 after FIR computation.
 		 */
 		fir_part_32x16(&y, fir->length, fir->coef, &i, fir->delay,
-			&tmp_ri);
+			       &tmp_ri);
 	} else {
 		n2 = fir->length - n1;
 		/* Part 1, loop n1 times, fir_ri becomes -1 */
