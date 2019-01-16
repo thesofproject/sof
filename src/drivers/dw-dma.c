@@ -200,8 +200,8 @@
 #define DW_CFG_LOW_DEF			0x00000003
 #define DW_CFG_HIGH_DEF		0x0
 
-#elif defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE) \
-	|| defined(CONFIG_ICELAKE) || defined CONFIG_SUECREEK
+#elif defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE) || \
+	defined(CONFIG_ICELAKE) || defined CONFIG_SUECREEK
 
 /* CTL_LO */
 #define DW_CTLL_S_GATH_EN		(1 << 17)
@@ -248,8 +248,8 @@
 	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
 
 /* HW Linked list support, only enabled for APL/CNL at the moment */
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
+#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE || \
+	defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 #define DW_USE_HW_LLI	1
 #else
 #define DW_USE_HW_LLI	0
@@ -292,7 +292,7 @@ struct dma_pdata {
 
 static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel);
 static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
-		struct dma_sg_elem *next);
+					   struct dma_sg_elem *next);
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel);
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel);
 static uint64_t dw_dma_work(void *data, uint64_t delay);
@@ -308,7 +308,7 @@ static inline uint32_t dw_read(struct dma *dma, uint32_t reg)
 }
 
 static inline void dw_update_bits(struct dma *dma, uint32_t reg, uint32_t mask,
-	uint32_t value)
+				  uint32_t value)
 {
 	io_reg_update_bits(dma_base(dma) + reg, mask, value);
 }
@@ -411,7 +411,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 	/* is channel idle, disabled and ready ? */
 	if (p->chan[channel].status != COMP_STATE_PREPARE ||
-		(dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
+	    (dw_read(dma, DW_DMA_CHAN_EN) & (0x1 << channel))) {
 		ret = -EBUSY;
 		trace_dwdma_error("dw-dma: %d channel %d not ready",
 				  dma->plat_data.id, channel);
@@ -624,7 +624,8 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 /* fill in "status" with current DMA channel state and position */
 static int dw_dma_status(struct dma *dma, int channel,
-	struct dma_chan_status *status, uint8_t direction)
+			 struct dma_chan_status *status,
+			 uint8_t direction)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -651,7 +652,7 @@ static const uint32_t burst_elems[] = {1, 2, 4, 8};
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
 static int dw_dma_set_config(struct dma *dma, int channel,
-	struct dma_sg_config *config)
+			     struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_sg_elem *sg_elem;
@@ -710,7 +711,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	/* initialise descriptors */
 	bzero(p->chan[channel].lli, sizeof(struct dw_lli2) *
 	      p->chan[channel].desc_count);
-	lli_desc = lli_desc_head = p->chan[channel].lli;
+	lli_desc = p->chan[channel].lli;
+	lli_desc_head = p->chan[channel].lli;
 	lli_desc_tail = p->chan[channel].lli + p->chan[channel].desc_count - 1;
 
 	/* configure msize if burst_elems is set */
@@ -896,9 +898,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		}
 
 		/* set transfer size of element */
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
-	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL || \
+	defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE ||	\
+	defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 		lli_desc->ctrl_hi = DW_CTLH_CLASS(p->class) |
 			(sg_elem->size & DW_CTLH_BLOCK_TS_MASK);
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
@@ -1010,7 +1012,7 @@ static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel)
 
 /* reload using callback data */
 static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
-		struct dma_sg_elem *next)
+					   struct dma_sg_elem *next)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_lli2 *lli = p->chan[channel].lli_current;
@@ -1091,9 +1093,9 @@ found:
 
 	/* set channel priorities */
 	for (i = 0; i <  DW_MAX_CHAN; i++) {
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
-	|| defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
+#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL || \
+	defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE || \
+	defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
 		dw_write(dma, DW_CTRL_HIGH(i),
 			 DW_CTLH_CLASS(dp->chan[i].class));
 #elif defined CONFIG_BROADWELL || defined CONFIG_HASWELL
@@ -1116,7 +1118,7 @@ static void dw_dma_process_block(struct dma_chan_data *chan,
 
 	if (next->size == DMA_RELOAD_END) {
 		tracev_dwdma("dw-dma: %d channel %d block end",
-			    chan->id.dma->plat_data.id, chan->id.channel);
+			     chan->id.dma->plat_data.id, chan->id.channel);
 
 		/* disable channel, finished */
 		dw_write(chan->id.dma, DW_DMA_CHAN_EN,
