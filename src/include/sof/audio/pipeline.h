@@ -74,7 +74,7 @@ struct ipc;
  * Audio pipeline.
  */
 struct pipeline {
-	spinlock_t lock;
+	spinlock_t lock; /* pipeline lock */
 	struct sof_ipc_pipe_new ipc_pipe;
 
 	/* runtime status */
@@ -115,7 +115,7 @@ int pipeline_complete(struct pipeline *p);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,
-	struct sof_ipc_pcm_params *params);
+		    struct sof_ipc_pcm_params *params);
 
 /* prepare the pipeline for usage */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *cd);
@@ -142,7 +142,7 @@ void pipeline_schedule_cancel(struct pipeline *p);
 
 /* get time pipeline timestamps from host to dai */
 void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host_dev,
-	struct sof_ipc_stream_posn *posn);
+			    struct sof_ipc_stream_posn *posn);
 
 void pipeline_schedule(void *arg);
 
