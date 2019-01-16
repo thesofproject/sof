@@ -45,7 +45,9 @@ RUN apt-get -y update && \
 		texinfo \
 		udev \
 		wget \
-		unzip
+		unzip \
+		cmake \
+		python3
 
 
 # Use ToT alsa utils for the latest topology patches.
