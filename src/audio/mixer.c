@@ -95,14 +95,14 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_mixer));
-	if (dev == NULL)
+	if (!dev)
 		return NULL;
 
 	mixer = (struct sof_ipc_comp_mixer *)&dev->comp;
 	memcpy(mixer, ipc_mixer, sizeof(struct sof_ipc_comp_mixer));
 
 	md = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*md));
-	if (md == NULL) {
+	if (!md) {
 		rfree(dev);
 		return NULL;
 	}
@@ -162,7 +162,7 @@ static int mixer_params(struct comp_dev *dev)
 static int mixer_source_status_count(struct comp_dev *mixer, uint32_t status)
 {
 	struct comp_buffer *source;
-	struct list_item * blist;
+	struct list_item *blist;
 	int count = 0;
 
 	/* count source with state == status */
@@ -180,7 +180,7 @@ static inline int mixer_sink_status(struct comp_dev *mixer)
 	struct comp_buffer *sink;
 
 	sink = list_first_item(&mixer->bsink_list, struct comp_buffer,
-		source_list);
+			       source_list);
 	return sink->sink->state;
 }
 
@@ -195,7 +195,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	if (ret < 0)
 		return ret;
 
-	switch(cmd) {
+	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
 		if (mixer_sink_status(dev) == COMP_STATE_ACTIVE)
@@ -255,20 +255,21 @@ static int mixer_copy(struct comp_dev *dev)
 
 		/* make sure source component buffer has enough data available
 		 * and that the sink component buffer has enough free bytes
-		 * for copy. Also check for XRUNs */
+		 * for copy. Also check for XRUNs
+		 */
 		res = comp_buffer_can_copy_bytes(sources[i], sink, md->period_bytes);
 		if (res < 0) {
 			trace_mixer_error("mixer_copy() error: "
 					  "source component buffer "
 					  "has not enough data available");
 			comp_underrun(dev, sources[i], sources[i]->avail,
-				md->period_bytes);
+				      md->period_bytes);
 		} else if (res > 0) {
 			trace_mixer_error("mixer_copy() error: "
 					  "sink component buffer has not "
 					  "enough free bytes for copy");
 			comp_overrun(dev, sources[i], sink->free,
-				md->period_bytes);
+				     md->period_bytes);
 		}
 	}
 
@@ -288,7 +289,7 @@ static int mixer_copy(struct comp_dev *dev)
 
 static int mixer_reset(struct comp_dev *dev)
 {
-	struct list_item * blist;
+	struct list_item *blist;
 	struct comp_buffer *source;
 
 	trace_mixer("mixer_reset()");
@@ -315,7 +316,7 @@ static int mixer_reset(struct comp_dev *dev)
 static int mixer_prepare(struct comp_dev *dev)
 {
 	struct mixer_data *md = comp_get_drvdata(dev);
-	struct list_item * blist;
+	struct list_item *blist;
 	struct comp_buffer *source;
 	int downstream = 0;
 	int ret;
@@ -339,7 +340,7 @@ static int mixer_prepare(struct comp_dev *dev)
 
 		/* only prepare downstream if we have no active sources */
 		if (source->source->state == COMP_STATE_PAUSED ||
-				source->source->state == COMP_STATE_ACTIVE) {
+		    source->source->state == COMP_STATE_ACTIVE) {
 			downstream = 1;
 		}
 	}
