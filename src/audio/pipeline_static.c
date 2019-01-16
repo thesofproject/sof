@@ -44,7 +44,6 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 
-
 /* 2 * 32 bit*/
 #define PLATFORM_INT_FRAME_SIZE		8
 /* 2 * 16 bit*/
@@ -115,8 +114,7 @@ struct scomps {
 };
 
 #define SCOMP(ccomps) \
-	{.comps = (struct sof_ipc_comp *)ccomps, .num_comps = ARRAY_SIZE(ccomps)}
-
+	{.comps = (struct sof_ipc_comp *)(ccomps), .num_comps = ARRAY_SIZE(ccomps)}
 
 struct spipe {
 	struct scomps *scomps;
@@ -386,7 +384,7 @@ int init_static_pipeline(struct ipc *ipc)
 					goto error;
 
 				/* next component - sizes not constant */
-				c = (void*)c + c->hdr.size;
+				c = (void *)c + c->hdr.size;
 			}
 		}
 
@@ -418,7 +416,7 @@ int init_static_pipeline(struct ipc *ipc)
 
 error:
 	trace_pipe_error("init_static_pipeline() error");
-	
+
 	for (i = 0; i < ARRAY_SIZE(pipeline); i++) {
 
 		/* free pipeline */
