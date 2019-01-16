@@ -48,7 +48,7 @@ static int hweight_32(uint32_t mask)
 	int count = 0;
 
 	for (i = 0; i < 32; i++) {
-		count += mask&1;
+		count += mask & 1;
 		mask >>= 1;
 	}
 	return count;
@@ -108,7 +108,7 @@ static int ssp_context_restore(struct dai *dai)
 
 /* Digital Audio interface formatting */
 static inline int ssp_set_config(struct dai *dai,
-	struct sof_ipc_dai_config *config)
+				 struct sof_ipc_dai_config *config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0;
@@ -135,7 +135,7 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* is playback/capture already running */
 	if (ssp->state[DAI_DIR_PLAYBACK] == COMP_STATE_ACTIVE ||
-		ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
+	    ssp->state[DAI_DIR_CAPTURE] == COMP_STATE_ACTIVE) {
 		trace_ssp_error("ssp_set_config(): "
 				"playback/capture already running");
 		ret = -EINVAL;
@@ -172,7 +172,6 @@ static inline int ssp_set_config(struct dai *dai,
 #ifdef ENABLE_SSCR2_FIXES /* FIXME: is this needed ? */
 	sscr2 |= SSCR2_UNDRN_FIX_EN | SSCR2_FIFO_EMPTY_FIX_EN;
 #endif
-
 
 	/*
 	 * sscr3 dynamic settings are FRM_MS_EN, I2S_MODE_EN, I2S_FRM_POL,
@@ -458,8 +457,8 @@ static inline int ssp_set_config(struct dai *dai,
 	/* FIXME:
 	 * watermarks - (RFT + 1) should equal DMA SRC_MSIZE
 	 */
-	sfifott = (SFIFOTT_TX(2*active_tx_slots) |
-		   SFIFOTT_RX(2*active_rx_slots));
+	sfifott = (SFIFOTT_TX(2 * active_tx_slots) |
+		   SFIFOTT_RX(2 * active_rx_slots));
 
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
@@ -544,7 +543,7 @@ static void ssp_stop(struct dai *dai, int direction)
 
 	/* disable SSP port if no users */
 	if (ssp->state[SOF_IPC_STREAM_CAPTURE] != COMP_STATE_ACTIVE &&
-		ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
+	    ssp->state[SOF_IPC_STREAM_PLAYBACK] != COMP_STATE_ACTIVE) {
 		ssp_update_bits(dai, SSCR0, SSCR0_SSE, 0);
 		ssp->state[SOF_IPC_STREAM_CAPTURE] = COMP_STATE_PREPARE;
 		ssp->state[SOF_IPC_STREAM_PLAYBACK] = COMP_STATE_PREPARE;
@@ -563,12 +562,12 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		if (ssp->state[direction] == COMP_STATE_PREPARE ||
-			ssp->state[direction] == COMP_STATE_PAUSED)
+		    ssp->state[direction] == COMP_STATE_PAUSED)
 			ssp_start(dai, direction);
 		break;
 	case COMP_TRIGGER_RELEASE:
 		if (ssp->state[direction] == COMP_STATE_PAUSED ||
-			ssp->state[direction] == COMP_STATE_PREPARE)
+		    ssp->state[direction] == COMP_STATE_PREPARE)
 			ssp_start(dai, direction);
 		break;
 	case COMP_TRIGGER_STOP:
