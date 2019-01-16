@@ -222,8 +222,13 @@
 #define DW_CFG_RELOAD_DST		(1 << 31)
 
 /* CFG_HI */
+#if !defined(CONFIG_SUECREEK)
 #define DW_CFGH_SRC_PER(x)		(x << 0)
 #define DW_CFGH_DST_PER(x)		(x << 4)
+#else
+#define DW_CFGH_SRC_PER(x)	((((x) & 0xf) << 0) | (((x) & 0x30) << 24))
+#define DW_CFGH_DST_PER(x)	((((x) & 0xf) << 4) | (((x) & 0x30) << 26))
+#endif
 
 /* FIFO Partition */
 #define DW_FIFO_PARTITION
