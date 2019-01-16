@@ -133,7 +133,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* init ipc data */
 	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		sizeof(struct ipc_data));
+		       sizeof(struct ipc_data));
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* schedule */
@@ -143,7 +143,7 @@ int platform_ipc_init(struct ipc *ipc)
 #ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->page_table = rballoc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-			HOST_PAGE_SIZE);
+				   HOST_PAGE_SIZE);
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 #endif
