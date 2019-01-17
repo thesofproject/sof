@@ -119,6 +119,9 @@ MEMORY
   static_log_entries_seg (!ari) :
         org = LOG_ENTRY_ELF_BASE,
         len = LOG_ENTRY_ELF_SIZE
+  lpsram_mem :
+        org = LP_SRAM_BASE,
+        len = LP_SRAM_SIZE
 }
 
 PHDRS
@@ -158,6 +161,7 @@ PHDRS
   wnd2_phdr PT_LOAD;
   wnd3_phdr PT_LOAD;
   static_log_entries_phdr PT_NOTE;
+  lpsram_mem_phdr PT_LOAD;
 }
 
 /*  Default entry point:  */
@@ -575,4 +579,12 @@ SECTIONS
   {
     KEEP (*(.fw_ready))
   } >sof_data :sof_data_phdr
+
+  .lpsram(NOLOAD) : ALIGN(8)
+  {
+    _lpsram_start = ABSOLUTE(.);
+    KEEP (*(*.lpsram))
+    _lpsram_end = ABSOLUTE(.);
+  } >lpsram_mem :lpsram_mem_phdr
+
 }
