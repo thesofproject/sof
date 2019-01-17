@@ -264,8 +264,11 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 			hdr = &map->block[current];
 
 			/* is block used */
-			if (hdr->used)
+			if (hdr->used) {
+				/* continue after the "current" */
+				start = current;
 				break;
+			}
 		}
 
 		/* enough free blocks ? */
