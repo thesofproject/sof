@@ -32,8 +32,8 @@ RUN apt-get -y update && \
 		libglib2.0-dev \
 		libpixman-1-dev \
 		pkg-config \
-		sudo
-
+		sudo \
+		bsdmainutils
 
 # Set up sof user
 RUN useradd --create-home -d /home/sof -u $UID -G sudo sof && \
