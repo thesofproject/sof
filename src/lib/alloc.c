@@ -650,7 +650,7 @@ void *_balloc(int zone, uint32_t caps, size_t bytes)
 
 	heap = get_heap_from_caps(memmap.buffer, PLATFORM_HEAP_BUFFER, caps);
 	if (heap == NULL)
-		goto out;
+		goto unlock;
 
 	/* will request fit in single block */
 	for (i = 0; i < heap->blocks; i++) {
@@ -698,6 +698,7 @@ out:
 		bzero(ptr, bytes);
 #endif
 
+unlock:
 	spin_unlock_irq(&memmap.lock, flags);
 	return ptr;
 }
