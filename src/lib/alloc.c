@@ -597,9 +597,12 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 		trace_mem_error("rmalloc() error: invalid zone");
 		break;
 	}
+
 #if DEBUG_BLOCK_FREE
-	bzero(ptr, bytes);
+	if (ptr)
+		bzero(ptr, bytes);
 #endif
+
 	spin_unlock_irq(&memmap.lock, flags);
 	memmap.heap_trace_updated = 1;
 	return ptr;
@@ -691,7 +694,8 @@ out:
 		ptr = cache_to_uncache(ptr);
 
 #if DEBUG_BLOCK_FREE
-	bzero(ptr, bytes);
+	if (ptr)
+		bzero(ptr, bytes);
 #endif
 
 	spin_unlock_irq(&memmap.lock, flags);
