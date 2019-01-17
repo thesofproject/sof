@@ -656,40 +656,32 @@ void *_balloc(int zone, uint32_t caps, size_t bytes)
 	for (i = 0; i < heap->blocks; i++) {
 		map = &heap->map[i];
 
-		/* is block big enough */
-		if (map->block_size < bytes)
-			continue;
-
-		/* does block have free space */
-		if (map->free_count == 0)
-			continue;
-
-		/* allocate block */
-		ptr = alloc_block(heap, i, caps);
-		goto out;
-	}
-
-	/* request spans > 1 block */
-
-	/* only 1 choice for block size */
-	if (heap->blocks == 1) {
-		ptr = alloc_cont_blocks(heap, 0, caps, bytes);
-		goto out;
-	} else {
-
-		/* find best block size for request */
-		for (i = 0; i < heap->blocks; i++) {
-			map = &heap->map[i];
-
-			/* allocate is block size smaller than request */
-			if (map->block_size < bytes)
-				alloc_cont_blocks(heap, i, caps, bytes);
+		/* Check if blocks are big enough and at least one is free */
+		if (map->block_size >= bytes && map->free_count) {
+			/* found: grab a block */
+			ptr = alloc_block(heap, i, caps);
+			break;
 		}
 	}
 
-	ptr = alloc_cont_blocks(heap, heap->blocks - 1, caps, bytes);
+	/* request spans > 1 block */
+	if (!ptr) {
+		/*
+		 * Find the best block size for request. We know, that we failed
+		 * to find a single large enough block, so, skip those.
+		 */
+		for (i = heap->blocks - 1; i >= 0; i--) {
+			map = &heap->map[i];
 
-out:
+			/* allocate if block size is smaller than request */
+			if (heap->size >= bytes && map->block_size < bytes) {
+				ptr = alloc_cont_blocks(heap, i, caps, bytes);
+				if (ptr)
+					break;
+			}
+		}
+	}
+
 	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED))
 		ptr = cache_to_uncache(ptr);
 
