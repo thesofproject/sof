@@ -135,7 +135,7 @@ struct mm memmap = {
 		.size = HEAP_SYS_RUNTIME_0_SIZE,
 		.info = {.free = HEAP_SYS_RUNTIME_0_SIZE,},
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
+			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
 	.system_runtime[1] = {
 		.blocks = ARRAY_SIZE(sys_rt_x_heap_map),
@@ -144,7 +144,7 @@ struct mm memmap = {
 		.size = HEAP_SYS_RUNTIME_1_SIZE,
 		.info = {.free = HEAP_SYS_RUNTIME_1_SIZE,},
 		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
+			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
 	},
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 	.system_runtime[2] = {
