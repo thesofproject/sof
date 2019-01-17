@@ -113,7 +113,7 @@ struct pdm_controllers_configuration {
 #define DMIC_HIGH_RATE_MIN_FS	64000
 #define DMIC_HIGH_RATE_OSR_MIN	40
 
-/* Used for scaling FIR coeffcients for HW */
+/* Used for scaling FIR coefficients for HW */
 #define DMIC_HW_FIR_COEF_MAX ((1 << (DMIC_HW_BITS_FIR_COEF - 1)) - 1)
 #define DMIC_HW_FIR_COEF_Q (DMIC_HW_BITS_FIR_COEF - 1)
 
@@ -136,7 +136,7 @@ struct pdm_controllers_configuration {
 /* tracing */
 #define trace_dmic(__e, ...) trace_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
 #define trace_dmic_error(__e, ...) trace_error(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
-#define tracev_dmic(__e, ...) tracev_event(TRACE_CLASS_DMIC, __e ,##__VA_ARGS__)
+#define tracev_dmic(__e, ...) tracev_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
 
 /* Base addresses (in PDM scope) of 2ch PDM controllers and coefficient RAM. */
 static const uint32_t base[4] = {PDM0, PDM1, PDM2, PDM3};
@@ -144,6 +144,10 @@ static const uint32_t coef_base_a[4] = {PDM0_COEFFICIENT_A, PDM1_COEFFICIENT_A,
 	PDM2_COEFFICIENT_A, PDM3_COEFFICIENT_A};
 static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 	PDM2_COEFFICIENT_B, PDM3_COEFFICIENT_B};
+
+/* Global configuration request for DMIC */
+static struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
+static int dmic_active_fifos;
 
 #if defined MODULE_TEST
 #define IO_BYTES_GLOBAL  (PDM0 - OUTCONTROL0)
@@ -239,23 +243,28 @@ static uint64_t dmic_work(void *data, uint64_t delay)
 					 CIC_CONTROL_MIC_MUTE_BIT, 0);
 
 		if (dmic->startcount == DMIC_UNMUTE_FIR) {
-			if (dmic->fifo_a)
+			switch (dai->index) {
+			case 0:
 				dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
 						 FIR_CONTROL_A_MUTE_BIT, 0);
-
-			if (dmic->fifo_b)
+				break;
+			case 1:
 				dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
 						 FIR_CONTROL_B_MUTE_BIT, 0);
+				break;
+			}
 		}
-		if (dmic->fifo_a) {
+		switch (dai->index) {
+		case 0:
 			val = OUT_GAIN_LEFT_A_GAIN(gval);
 			dmic_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
 			dmic_write(dai, base[i] + OUT_GAIN_RIGHT_A, val);
-		}
-		if (dmic->fifo_b) {
+			break;
+		case 1:
 			val = OUT_GAIN_LEFT_B_GAIN(gval);
 			dmic_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
 			dmic_write(dai, base[i] + OUT_GAIN_RIGHT_B, val);
+			break;
 		}
 	}
 	spin_unlock(&dai->lock);
@@ -272,8 +281,7 @@ static uint64_t dmic_work(void *data, uint64_t delay)
  * microphone clock min/max and duty cycle requirements need be checked from
  * used microphone component datasheet.
  */
-static void find_modes(struct decim_modes *modes,
-	struct sof_ipc_dai_dmic_params *prm, uint32_t fs)
+static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 {
 	int clkdiv_min;
 	int clkdiv_max;
@@ -305,42 +313,42 @@ static void find_modes(struct decim_modes *modes,
 		osr_min = DMIC_HIGH_RATE_OSR_MIN;
 
 	/* Check for sane pdm clock, min 100 kHz, max ioclk/2 */
-	if (prm->pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
-	    prm->pdmclk_max > DMIC_HW_IOCLK / 2) {
+	if (dmic_prm[di]->pdmclk_max < DMIC_HW_PDM_CLK_MIN ||
+	    dmic_prm[di]->pdmclk_max > DMIC_HW_IOCLK / 2) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock max not in range");
 		return;
 	}
-	if (prm->pdmclk_min < DMIC_HW_PDM_CLK_MIN ||
-	    prm->pdmclk_min > prm->pdmclk_max) {
+	if (dmic_prm[di]->pdmclk_min < DMIC_HW_PDM_CLK_MIN ||
+	    dmic_prm[di]->pdmclk_min > dmic_prm[di]->pdmclk_max) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock min not in range");
 		return;
 	}
 
 	/* Check for sane duty cycle */
-	if (prm->duty_min > prm->duty_max) {
+	if (dmic_prm[di]->duty_min > dmic_prm[di]->duty_max) {
 		trace_dmic_error("find_modes() error: "
 				 "duty cycle min > max");
 		return;
 	}
-	if (prm->duty_min < DMIC_HW_DUTY_MIN ||
-	    prm->duty_min > DMIC_HW_DUTY_MAX) {
+	if (dmic_prm[di]->duty_min < DMIC_HW_DUTY_MIN ||
+	    dmic_prm[di]->duty_min > DMIC_HW_DUTY_MAX) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock min not in range");
 		return;
 	}
-	if (prm->duty_max < DMIC_HW_DUTY_MIN ||
-	    prm->duty_max > DMIC_HW_DUTY_MAX) {
+	if (dmic_prm[di]->duty_max < DMIC_HW_DUTY_MIN ||
+	    dmic_prm[di]->duty_max > DMIC_HW_DUTY_MAX) {
 		trace_dmic_error("find_modes() error: "
 				 "pdm clock max not in range");
 		return;
 	}
 
 	/* Min and max clock dividers */
-	clkdiv_min = ceil_divide(DMIC_HW_IOCLK, prm->pdmclk_max);
+	clkdiv_min = ceil_divide(DMIC_HW_IOCLK, dmic_prm[di]->pdmclk_max);
 	clkdiv_min = MAX(clkdiv_min, DMIC_HW_CIC_DECIM_MIN);
-	clkdiv_max = DMIC_HW_IOCLK / prm->pdmclk_min;
+	clkdiv_max = DMIC_HW_IOCLK / dmic_prm[di]->pdmclk_min;
 
 	/* Loop possible clock dividers and check based on resulting
 	 * oversampling ratio that CIC and FIR decimation ratios are
@@ -363,8 +371,8 @@ static void find_modes(struct decim_modes *modes,
 		 * not exceed microphone specification. If exceed proceed to
 		 * next clkdiv.
 		 */
-		if (osr < osr_min || du_min < prm->duty_min ||
-		    du_max > prm->duty_max)
+		if (osr < osr_min || du_min < dmic_prm[di]->duty_min ||
+		    du_max > dmic_prm[di]->duty_max)
 			continue;
 
 		/* Loop FIR decimation factors candidates. If the
@@ -484,7 +492,8 @@ static struct pdm_decim *get_fir(struct dmic_configuration *cfg, int mfir)
 	 * overwrite of other register.
 	 */
 	fir_max_length = MIN(DMIC_HW_FIR_LENGTH_MAX,
-		DMIC_HW_IOCLK / fs / 2 - DMIC_FIR_PIPELINE_OVERHEAD);
+			     DMIC_HW_IOCLK / fs / 2 -
+			     DMIC_FIR_PIPELINE_OVERHEAD);
 
 	for (i = 0; i < DMIC_FIR_LIST_LENGTH; i++) {
 		if (fir_list[i]->decim_factor == mfir &&
@@ -513,7 +522,7 @@ static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
 
 	/* Multiply gain passed from CIC with output full scale. */
 	fir_gain = Q_MULTSR_32X32((int64_t)gain, DMIC_HW_SENS_Q28,
-		DMIC_FIR_SCALE_Q, 28, DMIC_FIR_SCALE_Q);
+				  DMIC_FIR_SCALE_Q, 28, DMIC_FIR_SCALE_Q);
 
 	/* Find the largest FIR coefficient value. */
 	amax = find_max_abs_int32((int32_t *)coef, coef_length);
@@ -548,16 +557,16 @@ static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
 
 #if defined MODULE_TEST
 	printf("# FIR gain need Q28 = %d (%f)\n", fir_gain,
-		Q_CONVERT_QTOF(fir_gain, 28));
+	       Q_CONVERT_QTOF(fir_gain, 28));
 	printf("# FIR max coef no gain Q31 = %d (%f)\n", amax,
-		Q_CONVERT_QTOF(amax, 31));
+	       Q_CONVERT_QTOF(amax, 31));
 	printf("# FIR max coef with gain Q28 = %d (%f)\n", new_amax,
-		Q_CONVERT_QTOF(new_amax, 28));
+	       Q_CONVERT_QTOF(new_amax, 28));
 	printf("# FIR coef norm rshift = %d\n", shift);
 	printf("# FIR coef old rshift = %d\n", add_shift);
 	printf("# FIR coef new rshift = %d\n", *fir_shift);
 	printf("# FIR coef scaler Q28 = %d (%f)\n", *fir_scale,
-		Q_CONVERT_QTOF(*fir_scale, 28));
+	       Q_CONVERT_QTOF(*fir_scale, 28));
 #endif
 
 	return 0;
@@ -682,8 +691,8 @@ static int select_mode(struct dmic_configuration *cfg,
 	if (cfg->mfir_a > 0) {
 		cfg->fir_a_length = cfg->fir_a->length;
 		ret = fir_coef_scale(&cfg->fir_a_scale, &cfg->fir_a_shift,
-			cfg->fir_a->shift, cfg->fir_a->coef, cfg->fir_a->length,
-			gain_to_fir);
+				     cfg->fir_a->shift, cfg->fir_a->coef,
+				     cfg->fir_a->length, gain_to_fir);
 		if (ret < 0) {
 			/* Invalid coefficient set found, should not happen. */
 			trace_dmic_error("select_mode() error: "
@@ -699,8 +708,8 @@ static int select_mode(struct dmic_configuration *cfg,
 	if (cfg->mfir_b > 0) {
 		cfg->fir_b_length = cfg->fir_b->length;
 		ret = fir_coef_scale(&cfg->fir_b_scale, &cfg->fir_b_shift,
-			cfg->fir_b->shift, cfg->fir_b->coef, cfg->fir_b->length,
-			gain_to_fir);
+				     cfg->fir_b->shift, cfg->fir_b->coef,
+				     cfg->fir_b->length, gain_to_fir);
 		if (ret < 0) {
 			/* Invalid coefficient set found, should not happen. */
 			trace_dmic_error("select_mode() error: "
@@ -721,8 +730,7 @@ static int select_mode(struct dmic_configuration *cfg,
  * value to use.
  */
 
-static inline void ipm_helper1(int *ipm, int stereo[], int swap[],
-			       struct sof_ipc_dai_dmic_params *dmic)
+static inline void ipm_helper1(int *ipm, int stereo[], int swap[], int di)
 {
 	int pdm[DMIC_HW_CONTROLLERS] = {0};
 	int cnt;
@@ -734,12 +742,12 @@ static inline void ipm_helper1(int *ipm, int stereo[], int swap[],
 	 * left (A) or mono right (B) mode. Mono right mode is setup as channel
 	 * swapped mono left.
 	 */
-	for (i = 0; i < dmic->num_pdm_active; i++) {
+	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		cnt = 0;
-		if (dmic->pdm[i].enable_mic_a > 0)
+		if (dmic_prm[di]->pdm[i].enable_mic_a > 0)
 			cnt++;
 
-		if (dmic->pdm[i].enable_mic_b > 0)
+		if (dmic_prm[di]->pdm[i].enable_mic_b > 0)
 			cnt++;
 
 		/* A PDM controller is used if at least one mic was enabled. */
@@ -750,7 +758,7 @@ static inline void ipm_helper1(int *ipm, int stereo[], int swap[],
 		stereo[i] = cnt;
 
 		/* Swap channels if only mic B is used for mono processing. */
-		swap[i] = dmic->pdm[i].enable_mic_b & !cnt;
+		swap[i] = dmic_prm[di]->pdm[i].enable_mic_b & !cnt;
 	}
 
 	/* IPM indicates active pdm controllers. */
@@ -766,7 +774,7 @@ static inline void ipm_helper1(int *ipm, int stereo[], int swap[],
 #if DMIC_HW_VERSION == 2
 
 static inline void ipm_helper2(int source[], int *ipm, int stereo[],
-			       int swap[], struct sof_ipc_dai_dmic_params *dmic)
+			       int swap[], int di)
 {
 	int pdm[DMIC_HW_CONTROLLERS];
 	int i;
@@ -779,9 +787,9 @@ static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 	 * swapped mono left. The function returns also in array source[] the
 	 * indice of enabled pdm controllers to be used for IPM configuration.
 	 */
-	for (i = 0; i < dmic->num_pdm_active; i++) {
-		if (dmic->pdm[i].enable_mic_a > 0 ||
-		    dmic->pdm[i].enable_mic_b > 0) {
+	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
+		if (dmic_prm[di]->pdm[i].enable_mic_a > 0 ||
+		    dmic_prm[di]->pdm[i].enable_mic_b > 0) {
 			pdm[i] = 1;
 			source[n] = i;
 			n++;
@@ -790,13 +798,13 @@ static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 			swap[i] = 0;
 		}
 
-		if (dmic->pdm[i].enable_mic_a > 0 &&
-		    dmic->pdm[i].enable_mic_b > 0) {
+		if (dmic_prm[di]->pdm[i].enable_mic_a > 0 &&
+		    dmic_prm[di]->pdm[i].enable_mic_b > 0) {
 			stereo[i] = 1;
 			swap[i] = 0;
 		} else {
 			stereo[i] = 0;
-			if (dmic->pdm[i].enable_mic_a == 0)
+			if (dmic_prm[di]->pdm[i].enable_mic_a == 0)
 				swap[i] = 1;
 			else
 				swap[i] = 0;
@@ -805,13 +813,13 @@ static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 
 	/* IPM bit field is set to count of active pdm controllers. */
 	*ipm = pdm[0];
-	for (i = 1; i < dmic->num_pdm_active; i++)
+	for (i = 1; i < DMIC_HW_CONTROLLERS; i++)
 		*ipm += pdm[i];
 }
 #endif
 
-static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
-			       struct sof_ipc_dai_dmic_params *dmic)
+static int configure_registers(struct dai *dai,
+			       struct dmic_configuration *cfg)
 {
 	int stereo[DMIC_HW_CONTROLLERS];
 	int swap[DMIC_HW_CONTROLLERS];
@@ -833,7 +841,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 	int soft_reset;
 	int i;
 	int j;
-
+	int di = dai->index;
 	struct dmic_pdata *pdata = dai_get_drvdata(dai);
 	int array_a = 0;
 	int array_b = 0;
@@ -867,20 +875,17 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 		return -EINVAL;
 	}
 
-	/* Sanity checks */
-	if (dmic->num_pdm_active > DMIC_HW_CONTROLLERS) {
-		trace_dmic_error("configure_registers() error: the requested "
-				 "PDM controllers count exceeds platform "
-				 "capability");
-		return -EINVAL;
-	}
-
 	/* OUTCONTROL0 and OUTCONTROL1 */
-	of0 = (dmic->fifo_bits_a == 32) ? 2 : 0;
-	of1 = (dmic->fifo_bits_b == 32) ? 2 : 0;
+	of0 = (dmic_prm[0]->fifo_bits == 32) ? 2 : 0;
 
-#if DMIC_HW_VERSION == 1
-	ipm_helper1(&ipm, stereo, swap, dmic);
+#if DMIC_HW_FIFOS > 1
+	of1 = (dmic_prm[1]->fifo_bits == 32) ? 2 : 0;
+#else
+	of1 = 0;
+#endif
+
+#if DMIC_HW_VERSION == 1 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS <= 2)
+	ipm_helper1(&ipm, stereo, swap, di);
 	val = OUTCONTROL0_TIE(0) |
 		OUTCONTROL0_SIP(0) |
 		OUTCONTROL0_FINIT(1) |
@@ -904,12 +909,8 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 	trace_dmic("configure_registers(), OUTCONTROL1 = %u", val);
 #endif
 
-#if DMIC_HW_VERSION == 2
-#if DMIC_HW_CONTROLLERS > 2
-	ipm_helper2(source, &ipm, stereo, swap, dmic);
-#else
-	ipm_helper1(&ipm, stereo, swap, dmic);
-#endif
+#if DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
+	ipm_helper2(source, &ipm, stereo, swap, di);
 	val = OUTCONTROL0_TIE(0) |
 		OUTCONTROL0_SIP(0) |
 		OUTCONTROL0_FINIT(1) |
@@ -945,8 +946,8 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 	 * for starting correct parts of the HW.
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		pdata->enable[i] = (dmic->pdm[i].enable_mic_b << 1) |
-			dmic->pdm[i].enable_mic_a;
+		pdata->enable[i] = (dmic_prm[di]->pdm[i].enable_mic_b << 1) |
+			dmic_prm[di]->pdm[i].enable_mic_a;
 	}
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
@@ -954,8 +955,8 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 		val = CIC_CONTROL_SOFT_RESET(soft_reset) |
 			CIC_CONTROL_CIC_START_B(cic_start_b) |
 			CIC_CONTROL_CIC_START_A(cic_start_a) |
-		CIC_CONTROL_MIC_B_POLARITY(dmic->pdm[i].polarity_mic_a) |
-		CIC_CONTROL_MIC_A_POLARITY(dmic->pdm[i].polarity_mic_b) |
+	CIC_CONTROL_MIC_B_POLARITY(dmic_prm[di]->pdm[i].polarity_mic_a) |
+	CIC_CONTROL_MIC_A_POLARITY(dmic_prm[di]->pdm[i].polarity_mic_b) |
 			CIC_CONTROL_MIC_MUTE(cic_mute) |
 			CIC_CONTROL_STEREO_MODE(stereo[i]);
 		dmic_write(dai, base[i] + CIC_CONTROL, val);
@@ -970,12 +971,12 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 		 * since the mono decimation is done with only left channel
 		 * processing active.
 		 */
-		edge = dmic->pdm[i].clk_edge;
+		edge = dmic_prm[di]->pdm[i].clk_edge;
 		if (swap[i])
 			edge = !edge;
 
 		val = MIC_CONTROL_PDM_CLKDIV(cfg->clkdiv - 2) |
-			MIC_CONTROL_PDM_SKEW(dmic->pdm[i].skew) |
+			MIC_CONTROL_PDM_SKEW(dmic_prm[di]->pdm[i].skew) |
 			MIC_CONTROL_CLK_EDGE(edge) |
 			MIC_CONTROL_PDM_EN_B(cic_start_b) |
 			MIC_CONTROL_PDM_EN_A(cic_start_a);
@@ -1001,11 +1002,13 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 
 		val = DC_OFFSET_LEFT_A_DC_OFFS(DCCOMP_TC0);
 		dmic_write(dai, base[i] + DC_OFFSET_LEFT_A, val);
-		trace_dmic("configure_registers(), DC_OFFSET_LEFT_A: = %u", val);
+		trace_dmic("configure_registers(), DC_OFFSET_LEFT_A = %u",
+			   val);
 
 		val = DC_OFFSET_RIGHT_A_DC_OFFS(DCCOMP_TC0);
 		dmic_write(dai, base[i] + DC_OFFSET_RIGHT_A, val);
-		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_A = %u", val);
+		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_A = %u",
+			   val);
 
 		val = OUT_GAIN_LEFT_A_GAIN(0);
 		dmic_write(dai, base[i] + OUT_GAIN_LEFT_A, val);
@@ -1056,7 +1059,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 				31, DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
 			cu = FIR_COEF_A(ci);
 			dmic_write(dai, coef_base_a[i]
-				+ ((length - j - 1) << 2), cu);
+				   + ((length - j - 1) << 2), cu);
 #if defined MODULE_TEST
 			fir_a_max = MAX(fir_a_max, ci);
 			fir_a_min = MIN(fir_a_min, ci);
@@ -1071,7 +1074,7 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 				31, DMIC_FIR_SCALE_Q, DMIC_HW_FIR_COEF_Q);
 			cu = FIR_COEF_B(ci);
 			dmic_write(dai, coef_base_b[i]
-				+ ((length - j - 1) << 2), cu);
+				   + ((length - j - 1) << 2), cu);
 #if defined MODULE_TEST
 			fir_b_max = MAX(fir_b_max, ci);
 			fir_b_min = MIN(fir_b_min, ci);
@@ -1081,25 +1084,14 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 
 #if defined MODULE_TEST
 	printf("# FIR A max Q19 = %d (%f)\n", fir_a_max,
-		Q_CONVERT_QTOF(fir_a_max, 19));
+	       Q_CONVERT_QTOF(fir_a_max, 19));
 	printf("# FIR A min Q19 = %d (%f)\n", fir_a_min,
-		Q_CONVERT_QTOF(fir_a_min, 19));
+	       Q_CONVERT_QTOF(fir_a_min, 19));
 	printf("# FIR B max Q19 = %d (%f)\n", fir_b_max,
-		Q_CONVERT_QTOF(fir_b_max, 19));
+	       Q_CONVERT_QTOF(fir_b_max, 19));
 	printf("# FIR B min Q19 = %d (%f)\n", fir_b_min,
-		Q_CONVERT_QTOF(fir_b_min, 19));
+	       Q_CONVERT_QTOF(fir_b_min, 19));
 #endif
-
-	/* Function dmic_start() uses these to start the used FIFOs */
-	if (cfg->mfir_a > 0)
-		pdata->fifo_a = 1;
-	else
-		pdata->fifo_a = 0;
-
-	if (cfg->mfir_b > 0)
-		pdata->fifo_b = 1;
-	else
-		pdata->fifo_b = 0;
 
 	return 0;
 }
@@ -1107,79 +1099,95 @@ static int configure_registers(struct dai *dai, struct dmic_configuration *cfg,
 static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 {
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
-	struct sof_ipc_dai_dmic_params *prm;
 	struct matched_modes modes_ab;
 	struct dmic_configuration cfg;
 	struct decim_modes modes_a;
 	struct decim_modes modes_b;
-	int num_pdm_active = config->dmic.num_pdm_active;
 	size_t size;
 	int i, j, ret = 0;
+	int di = dai->index;
 
-	trace_dmic("dmic_set_config()");
+	trace_dmic("dmic_set_config(), dai->index = %d", di);
 
 	/* Initialize start sequence handler */
 	work_init(&dmic->dmicwork, dmic_work, dai, WORK_ASYNC);
+
+	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
+		trace_dmic_error("dmic_set_config() error: wrong ipc version");
+		return -EINVAL;
+	}
 
 	/*
 	 * "config" might contain pdm controller params for only
 	 * the active controllers
 	 * "prm" is initialized with default params for all HW controllers
 	 */
-	size = sizeof(*prm) + DMIC_HW_CONTROLLERS
-		* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
-	prm = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM, size);
-	if (!prm) {
-		trace_dmic_error("dmic_set_config() error: "
-				 "prm not initialized");
-		return -ENOMEM;
+	if (!dmic_prm[0]) {
+		size = sizeof(struct sof_ipc_dai_dmic_params)
+			+ DMIC_HW_CONTROLLERS
+			* sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
+		dmic_prm[0] = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
+				      DMIC_HW_FIFOS * size);
+		if (!dmic_prm[0]) {
+			trace_dmic_error("dmic_set_config() error: "
+					 "prm not initialized");
+			return -ENOMEM;
+		}
+		for (i = 1; i < DMIC_HW_FIFOS; i++)
+			dmic_prm[i] = dmic_prm[i - 1] + size;
 	}
 
-	/* copy the DMIC params */
-	memcpy(prm, &config->dmic, sizeof(struct sof_ipc_dai_dmic_params));
+	if (di >= DMIC_HW_FIFOS) {
+		trace_dmic_error("dmic_set_config() error: "
+				 "dai->index exceeds number of FIFOs");
+		return -EINVAL;
+	}
+
+	/* Copy the new DMIC params to persistent.  The last request
+	 * determines the parameters.
+	 */
+	memcpy(dmic_prm[di], &config->dmic,
+	       sizeof(struct sof_ipc_dai_dmic_params));
+
+	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
+		trace_dmic_error("dmic_set_config() error: the requested "
+				 "PDM controllers count exceeds platform "
+				 "capability");
+		return -EINVAL;
+	}
 
 	/* copy the pdm controller params from ipc */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		prm->pdm[i].id = i;
-		for (j = 0; j < num_pdm_active; j++) {
+		dmic_prm[di]->pdm[i].id = i;
+		for (j = 0; j < config->dmic.num_pdm_active; j++) {
 			/* copy the pdm controller params id the id's match */
-			if (prm->pdm[i].id == config->dmic.pdm[j].id)
-				memcpy(&prm->pdm[i], &config->dmic.pdm[j],
-				       sizeof(prm->pdm[i]));
+			if (dmic_prm[di]->pdm[i].id == config->dmic.pdm[j].id)
+				memcpy(&dmic_prm[di]->pdm[i],
+				       &config->dmic.pdm[j],
+				       sizeof(
+				       struct sof_ipc_dai_dmic_pdm_ctrl));
 		}
 	}
 
-	trace_dmic("dmic_set_config(): "
-			 "prm driver_ipc_version = %u, "
-			 "prm->num_pdm_active = %u",
-			 prm->driver_ipc_version, prm->num_pdm_active);
-	trace_dmic("dmic_set_config(): pdmclk_min = %u, "
-			 "pdmclk_max = %u, fifo_fs_a = %u, fifo_fs_b = %u",
-			 prm->pdmclk_min, prm->pdmclk_max, prm->fifo_fs_a,
-			 prm->fifo_fs_b);
-	trace_dmic("dmic_set_config(): prm fifo_bits_a = %u, "
-			 "fifo_bits_b = %u, duty_min = %u, duty_max = %u",
-			 prm->fifo_bits_a, prm->fifo_bits_b, prm->duty_min,
-			 prm->duty_max);
+	trace_dmic("dmic_set_config(), prm "
+		   "config->dmic.num_pdm_active = %u",
+		   config->dmic.num_pdm_active);
+	trace_dmic("dmic_set_config(), prm pdmclk_min = %u, pdmclk_max = %u",
+		   dmic_prm[di]->pdmclk_min, dmic_prm[di]->pdmclk_max);
+	trace_dmic("dmic_set_config(), prm duty_min = %u, duty_max = %u",
+		   dmic_prm[di]->duty_min, dmic_prm[di]->duty_max);
+	trace_dmic("dmic_set_config(), prm fifo_fs = %u, fifo_bits = %u",
+		   dmic_prm[di]->fifo_fs, dmic_prm[di]->fifo_bits);
 
-	if (prm->driver_ipc_version != DMIC_IPC_VERSION) {
-		trace_dmic_error("dmic_set_config() error: wrong ipc version");
-		ret = -EINVAL;
-		goto finish;
-	}
-
-	if (prm->fifo_bits_a != 16 && prm->fifo_bits_a != 32) {
+	switch (dmic_prm[di]->fifo_bits) {
+	case 0:
+	case 16:
+	case 32:
+		break;
+	default:
 		trace_dmic_error("dmic_set_config() error: "
-				 "fifo_bits_a EINVAL");
-		ret = -EINVAL;
-		goto finish;
-	}
-
-	if (prm->fifo_bits_b != 16 && prm->fifo_bits_b != 32) {
-		trace_dmic_error("dmic_set_config() error: "
-				 "fifo_bits_b EINVAL");
-		ret = -EINVAL;
-		goto finish;
+				 "fifo_bits EINVAL");
+		return -EINVAL;
 	}
 
 	/* Match and select optimal decimators configuration for FIFOs A and B
@@ -1188,20 +1196,18 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	 * to use for FIR coefficient RAM write as well as the CIC and FIR
 	 * shift values.
 	 */
-	find_modes(&modes_a, prm, prm->fifo_fs_a);
-	if (modes_a.num_of_modes == 0 && prm->fifo_fs_a > 0) {
+	find_modes(&modes_a, dmic_prm[0]->fifo_fs, di);
+	if (modes_a.num_of_modes == 0 && dmic_prm[0]->fifo_fs > 0) {
 		trace_dmic_error("dmic_set_config() error: "
-				 "num_of_modes = 0 and fifo_fs_a > 0");
-		ret = -EINVAL;
-		goto finish;
+				 "No modes found found for FIFO A");
+		return -EINVAL;
 	}
 
-	find_modes(&modes_b, prm, prm->fifo_fs_b);
-	if (modes_b.num_of_modes == 0 && prm->fifo_fs_b > 0) {
+	find_modes(&modes_b, dmic_prm[1]->fifo_fs, di);
+	if (modes_b.num_of_modes == 0 && dmic_prm[1]->fifo_fs > 0) {
 		trace_dmic_error("dmic_set_config() error: "
-				 "num_of_modes = 0 and fifo_fs_b > 0");
-		ret = -EINVAL;
-		goto finish;
+				 "No modes found for FIFO B");
+		return -EINVAL;
 	}
 
 	match_modes(&modes_ab, &modes_a, &modes_b);
@@ -1209,36 +1215,31 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	if (ret < 0) {
 		trace_dmic_error("dmic_set_config() error: "
 				 "select_mode() failed");
-		ret = -EINVAL;
-		goto finish;
+		return -EINVAL;
 	}
 
-	trace_dmic("dmic_set_config(), cfg clkdiv = %u", cfg.clkdiv);
-	trace_dmic("dmic_set_config(), "
-		   "mcic = %u, mfir_a = %u, mfir_b = %u, cic_shift = %u",
-		   cfg.mcic, cfg.mfir_a, cfg.mfir_b, cfg.cic_shift);
+	trace_dmic("dmic_set_config(), cfg clkdiv = %u, mcic = %u",
+		   cfg.clkdiv, cfg.mcic);
+	trace_dmic("dmic_set_config(), cfg mfir_a = %u, mfir_b = %u",
+		   cfg.mfir_a, cfg.mfir_b);
+	trace_dmic("dmic_set_config(), cfg cic_shift = %u", cfg.cic_shift)
+	trace_dmic("dmic_set_config(), cfg fir_a_shift = %u, "
+		   "cfg.fir_b_shift = %u", cfg.fir_a_shift, cfg.fir_b_shift);
 	trace_dmic("dmic_set_config(), cfg fir_a_length = %u, "
-		   "fir_b_length = %u, fir_a_shift = %u, fir_b_shift = %u",
-		   cfg.fir_a_length, cfg.fir_b_length, cfg.fir_a_shift,
-		   cfg.fir_b_shift);
+		   "fir_b_length = %u", cfg.fir_a_length, cfg.fir_b_length);
 
 	/* Struct reg contains a mirror of actual HW registers. Determine
 	 * register bits configuration from decimator configuration and the
 	 * requested parameters.
 	 */
-	ret = configure_registers(dai, &cfg, prm);
+	ret = configure_registers(dai, &cfg);
 	if (ret < 0) {
 		trace_dmic_error("dmic_set_config() error: "
 				 "cannot configure registers");
-		ret = -EINVAL;
-		goto finish;
+		return -EINVAL;
 	}
 
 	dmic->state = COMP_STATE_PREPARE;
-
-finish:
-	/* free config params */
-	rfree(prm);
 
 	return ret;
 }
@@ -1260,67 +1261,81 @@ static void dmic_start(struct dai *dai)
 	dmic->startcount = 0;
 	dmic->gain = LOGRAMP_GI; /* Initial gain value */
 
-	if (dmic->fifo_a) {
+	switch (dai->index) {
+	case 0:
 		trace_dmic("dmic_start(), dmic->fifo_a");
 		/*  Clear FIFO A initialize, Enable interrupts to DSP,
 		 *  Start FIFO A packer.
 		 */
 		dmic_update_bits(dai, OUTCONTROL0,
-			OUTCONTROL0_FINIT_BIT | OUTCONTROL0_SIP_BIT,
-			OUTCONTROL0_SIP_BIT);
-	}
-	if (dmic->fifo_b) {
+				 OUTCONTROL0_FINIT_BIT | OUTCONTROL0_SIP_BIT,
+				 OUTCONTROL0_SIP_BIT);
+		break;
+	case 1:
 		trace_dmic("dmic_start(), dmic->fifo_b");
 		/*  Clear FIFO B initialize, Enable interrupts to DSP,
 		 *  Start FIFO B packer.
 		 */
 		dmic_update_bits(dai, OUTCONTROL1,
-			OUTCONTROL1_FINIT_BIT | OUTCONTROL1_SIP_BIT,
-			OUTCONTROL1_SIP_BIT);
+				 OUTCONTROL1_FINIT_BIT | OUTCONTROL1_SIP_BIT,
+				 OUTCONTROL1_SIP_BIT);
 	}
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		mic_a = dmic->enable[i] & 1;
 		mic_b = (dmic->enable[i] & 2) >> 1;
-		if (dmic->fifo_a)
+		if (dmic_prm[0]->fifo_fs > 0)
 			fir_a = (dmic->enable[i] > 0) ? 1 : 0;
 		else
 			fir_a = 0;
-		if (dmic->fifo_b)
+
+#if DMIC_HW_FIFOS > 1
+		if (dmic_prm[1]->fifo_fs > 0)
 			fir_b = (dmic->enable[i] > 0) ? 1 : 0;
 		else
 			fir_b = 0;
-
+#else
+		fir_b = 0;
+#endif
 		trace_dmic("dmic_start(), "
 			   "mic_a = %u, mic_b = %u, fir_a = %u, fir_b = %u",
 			   mic_a, mic_b, fir_a, fir_b);
 
 		dmic_update_bits(dai, base[i] + CIC_CONTROL,
-			CIC_CONTROL_CIC_START_A_BIT |
-			CIC_CONTROL_CIC_START_B_BIT,
-			CIC_CONTROL_CIC_START_A(mic_a) |
-			CIC_CONTROL_CIC_START_B(mic_b));
+				 CIC_CONTROL_CIC_START_A_BIT |
+				 CIC_CONTROL_CIC_START_B_BIT,
+				 CIC_CONTROL_CIC_START_A(mic_a) |
+				 CIC_CONTROL_CIC_START_B(mic_b));
 		dmic_update_bits(dai, base[i] + MIC_CONTROL,
-			MIC_CONTROL_PDM_EN_A_BIT |
-			MIC_CONTROL_PDM_EN_B_BIT,
-			MIC_CONTROL_PDM_EN_A(mic_a) |
-			MIC_CONTROL_PDM_EN_B(mic_b));
+				 MIC_CONTROL_PDM_EN_A_BIT |
+				 MIC_CONTROL_PDM_EN_B_BIT,
+				 MIC_CONTROL_PDM_EN_A(mic_a) |
+				 MIC_CONTROL_PDM_EN_B(mic_b));
 
-		dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
-			FIR_CONTROL_A_START_BIT, FIR_CONTROL_A_START(fir_a));
-		dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
-			FIR_CONTROL_B_START_BIT, FIR_CONTROL_B_START(fir_b));
+		switch (dai->index) {
+		case 0:
+			dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
+					 FIR_CONTROL_A_START_BIT,
+					 FIR_CONTROL_A_START(fir_a));
+			break;
+		case 1:
+			dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
+					 FIR_CONTROL_B_START_BIT,
+					 FIR_CONTROL_B_START(fir_b));
+			break;
+		}
 	}
 
 	/* Clear soft reset for all/used PDM controllers. This should
 	 * start capture in sync.
 	 */
-	trace_dmic("dmic_start(), "
-		   "clear soft reset for all/used PDM controllers");
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		dmic_update_bits(dai, base[i] + CIC_CONTROL,
-			CIC_CONTROL_SOFT_RESET_BIT, 0);
+				 CIC_CONTROL_SOFT_RESET_BIT, 0);
 	}
+
+	dmic_active_fifos++;
+	trace_dmic("dmic_start(), dmic_active_fifos = %d", dmic_active_fifos);
 
 	spin_unlock(&dai->lock);
 
@@ -1346,30 +1361,47 @@ static void dmic_stop(struct dai *dai)
 	dmic->state = COMP_STATE_PREPARE;
 
 	/* Stop FIFO packers and set FIFO initialize bits */
-	dmic_update_bits(dai, OUTCONTROL0,
-		OUTCONTROL0_SIP_BIT | OUTCONTROL0_FINIT_BIT,
-		OUTCONTROL0_FINIT_BIT);
-	dmic_update_bits(dai, OUTCONTROL1,
-		OUTCONTROL1_SIP_BIT | OUTCONTROL1_FINIT_BIT,
-		OUTCONTROL1_FINIT_BIT);
+	switch (dai->index) {
+	case 0:
+		dmic_update_bits(dai, OUTCONTROL0,
+				 OUTCONTROL0_SIP_BIT | OUTCONTROL0_FINIT_BIT,
+				 OUTCONTROL0_FINIT_BIT);
+		break;
+	case 1:
+		dmic_update_bits(dai, OUTCONTROL1,
+				 OUTCONTROL1_SIP_BIT | OUTCONTROL1_FINIT_BIT,
+				 OUTCONTROL1_FINIT_BIT);
+		break;
+	}
 
 	/* Set soft reset and mute on for all PDM controllers.
 	 */
-	trace_dmic("dmic_stop(), "
-		   "soft reset and mute on for all PDM controllers");
+	trace_dmic("dmic_stop(), dmic_active_fifos = %d", dmic_active_fifos);
+
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		dmic_update_bits(dai, base[i] + CIC_CONTROL,
-				 CIC_CONTROL_SOFT_RESET_BIT |
-				 CIC_CONTROL_MIC_MUTE_BIT,
-				 CIC_CONTROL_SOFT_RESET_BIT |
-				 CIC_CONTROL_MIC_MUTE_BIT);
-		dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
-				 FIR_CONTROL_A_MUTE_BIT,
-				 FIR_CONTROL_A_MUTE_BIT);
-		dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
-				 FIR_CONTROL_B_MUTE_BIT,
-				 FIR_CONTROL_B_MUTE_BIT);
+		/* Don't stop CIC yet if both FIFOs were active */
+		if (dmic_active_fifos == 1) {
+			dmic_update_bits(dai, base[i] + CIC_CONTROL,
+					 CIC_CONTROL_SOFT_RESET_BIT |
+					 CIC_CONTROL_MIC_MUTE_BIT,
+					 CIC_CONTROL_SOFT_RESET_BIT |
+					 CIC_CONTROL_MIC_MUTE_BIT);
+		}
+		switch (dai->index) {
+		case 0:
+			dmic_update_bits(dai, base[i] + FIR_CONTROL_A,
+					 FIR_CONTROL_A_MUTE_BIT,
+					 FIR_CONTROL_A_MUTE_BIT);
+			break;
+		case 1:
+			dmic_update_bits(dai, base[i] + FIR_CONTROL_B,
+					 FIR_CONTROL_B_MUTE_BIT,
+					 FIR_CONTROL_B_MUTE_BIT);
+			break;
+		}
 	}
+
+	dmic_active_fifos--;
 
 	spin_unlock(&dai->lock);
 }
@@ -1377,12 +1409,7 @@ static void dmic_stop(struct dai *dai)
 /* save DMIC context prior to entering D3 */
 static int dmic_context_store(struct dai *dai)
 {
-	/* TODO: Nothing stored at the moment. Could read the registers into
-	 * persisten memory if needed but the large coef RAM is not desirable
-	 * to copy. It would be better to store selected mode parametesr from
-	 * previous configuration request and re-program registers from
-	 * scratch.
-	 */
+	/* Nothing stored at the moment. */
 	return 0;
 }
 
@@ -1447,17 +1474,21 @@ static int dmic_trigger(struct dai *dai, int cmd, int direction)
 static void dmic_irq_handler(void *data)
 {
 	struct dai *dai = data;
-	uint32_t val;
+	uint32_t val0;
+	uint32_t val1;
 
 	/* Trace OUTSTAT0 register */
-	val = dmic_read(dai, OUTSTAT0);
-	trace_dmic("dmic_irq_handler()");
+	val0 = dmic_read(dai, OUTSTAT0);
+	val1 = dmic_read(dai, OUTSTAT1);
+	trace_dmic("dmic_irq_handler(), OUTSTAT0 = %u", val0);
+	trace_dmic("dmic_irq_handler(), OUTSTAT1 = %u", val1);
 
-	if (val & OUTSTAT0_ROR_BIT)
+	if (val0 & OUTSTAT0_ROR_BIT)
 		trace_dmic_error("dmic_irq_handler() error: "
-				 "full fifo or PDM overrrun");
-
-	trace_dmic("dmic_irq_handler(), OUTSTAT0 = %u", val);
+				 "full fifo A or PDM overrrun");
+	if (val1 & OUTSTAT1_ROR_BIT)
+		trace_dmic_error("dmic_irq_handler() error: "
+				 "full fifo B or PDM overrrun");
 
 	/* clear IRQ */
 	platform_interrupt_clear(dmic_irq(dai), 1);
@@ -1507,6 +1538,8 @@ static int dmic_probe(struct dai *dai)
 
 static int dmic_remove(struct dai *dai)
 {
+	int i;
+
 	interrupt_disable(dmic_irq(dai));
 	platform_interrupt_mask(dmic_irq(dai), 0);
 	interrupt_unregister(dmic_irq(dai));
@@ -1517,6 +1550,10 @@ static int dmic_remove(struct dai *dai)
 
 	rfree(dma_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);
+
+	rfree(dmic_prm[0]);
+	for (i = 0; i < DMIC_HW_FIFOS; i++)
+		dmic_prm[i] = NULL;
 
 	return 0;
 }

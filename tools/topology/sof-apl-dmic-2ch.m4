@@ -20,18 +20,24 @@ include(`platform/intel/dmic.m4')
 #
 # Define the pipelines
 #
-# PCM6 <---- volume <----- DMIC6 (DMIC01)
+# PCM6 <----- DMIC6 (DMIC01)
+# PCM7 <----- DMIC7 (DMIC16k)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 
-
-# Passthrough capture pipeline 1 on PCM 6 using max 2 channels.
+# Passthrough capture pipeline 6 on PCM 6 using max 2 channels.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	1, 6, 2, s32le,
+	6, 6, 2, s32le,
+	48, 1000, 0, 0)
+
+# Passthrough capture pipeline 7 on PCM 7 using max 2 channels.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+	7, 7, 2, s16le,
 	48, 1000, 0, 0)
 
 #
@@ -47,14 +53,21 @@ dnl     frames, deadline, priority, core)
 # capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	1, DMIC, 0, NoCodec-6,
-	PIPELINE_SINK_1, 2, s32le,
+	6, DMIC, 0, NoCodec-6,
+	PIPELINE_SINK_6, 2, s32le,
+	48, 1000, 0, 0)
+
+# capture DAI is DMIC 1 using 2 periods
+# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	7, DMIC, 1, NoCodec-7,
+	PIPELINE_SINK_7, 2, s16le,
 	48, 1000, 0, 0)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
-
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
-PCM_CAPTURE_ADD(DMIC01, 6, PIPELINE_PCM_1)
+PCM_CAPTURE_ADD(DMIC01, 6, PIPELINE_PCM_6)
+PCM_CAPTURE_ADD(DMIC16k, 7, PIPELINE_PCM_7)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -64,8 +77,8 @@ dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 
 DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
 	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
-	   dnl		   sample_rate,
-	   dnl		   fifo word length, type, dai_index, pdm controller config)
+	   dnl		   sample_rate, fifo word length, type, dai_index,
+	   dnl             pdm controller config)
 	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
 		dnl DMIC_WORD_LENGTH(frame_format)
 		DMIC_WORD_LENGTH(s32le), DMIC, 0,
@@ -73,3 +86,13 @@ DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
 		dnl STEREO_PDM0 is a pre-defined pdm config for stereo capture
 		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))
 
+DAI_CONFIG(DMIC, 1, 7, NoCodec-7,
+	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
+	   dnl		   sample_rate, fifo word length, type, dai_index,
+	   dnl             pdm controller config)
+	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
+		dnl DMIC_WORD_LENGTH(frame_format)
+		DMIC_WORD_LENGTH(s16le), DMIC, 1,
+		dnl PDM_CONFIG(type, dai_index, num pdm active, pdm tuples list)
+		dnl STEREO_PDM0 is a pre-defined pdm config for stereo capture
+		PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
