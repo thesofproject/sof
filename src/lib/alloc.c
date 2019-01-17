@@ -168,7 +168,7 @@ static void init_heap_map(struct mm_heap *heap, int count)
 }
 
 /* allocate from system memory pool */
-static void *rmalloc_sys(int zone, int core, size_t bytes)
+static void *rmalloc_sys(int zone, int caps, int core, size_t bytes)
 {
 	void *ptr;
 	struct mm_heap *cpu_heap;
@@ -176,6 +176,8 @@ static void *rmalloc_sys(int zone, int core, size_t bytes)
 
 	/* use the heap dedicated for the selected core */
 	cpu_heap = memmap.system + core;
+	if ((cpu_heap->caps & caps) != caps)
+		panic(SOF_IPC_PANIC_MEM);
 
 	/* align address to dcache line size */
 	if (cpu_heap->info.used % PLATFORM_DCACHE_ALIGN)
@@ -540,6 +542,8 @@ static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
 
 	/* use the heap dedicated for the selected core */
 	cpu_heap = memmap.system_runtime + core;
+	if ((cpu_heap->caps & caps) != caps)
+		panic(SOF_IPC_PANIC_MEM);
 
 	ptr = get_ptr_from_heap(cpu_heap, zone, caps, bytes);
 
@@ -585,7 +589,7 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 
 	switch (zone & RZONE_TYPE_MASK) {
 	case RZONE_SYS:
-		ptr = rmalloc_sys(zone, cpu_get_id(), bytes);
+		ptr = rmalloc_sys(zone, caps, cpu_get_id(), bytes);
 		break;
 	case RZONE_SYS_RUNTIME:
 		ptr = rmalloc_sys_runtime(zone, caps, cpu_get_id(), bytes);
@@ -628,7 +632,7 @@ void *rzalloc_core_sys(int core, size_t bytes)
 
 	spin_lock_irq(&memmap.lock, flags);
 
-	ptr = rmalloc_sys(RZONE_SYS, core, bytes);
+	ptr = rmalloc_sys(RZONE_SYS, 0, core, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
