@@ -536,7 +536,7 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
 static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
 {
 	struct mm_heap *cpu_heap;
-	void *ptr = NULL;
+	void *ptr;
 
 	/* use the heap dedicated for the selected core */
 	cpu_heap = memmap.system_runtime + core;
@@ -608,7 +608,7 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 /* allocates and clears memory - not for direct use, clients use rzalloc() */
 void *_zalloc(int zone, uint32_t caps, size_t bytes)
 {
-	void *ptr = NULL;
+	void *ptr;
 
 	ptr = _malloc(zone, caps, bytes);
 	if (ptr != NULL) {
