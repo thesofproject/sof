@@ -214,7 +214,6 @@
 /* window 1 */
 #define SRAM_INBOX_BASE		(SRAM_OUTBOX_BASE + SRAM_OUTBOX_SIZE)
 #define SRAM_INBOX_SIZE		0x2000
-
 /* window 2 */
 #define SRAM_DEBUG_BASE		(SRAM_INBOX_BASE + SRAM_INBOX_SIZE)
 #define SRAM_DEBUG_SIZE		0x800
@@ -350,7 +349,7 @@
 
 /* LP SRAM */
 #define LP_SRAM_BASE		0xBE800000
-#define LP_SRAM_SIZE		0x00020000
+#define LP_SRAM_SIZE		0x00010000
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_LP_COUNT8			0

@@ -35,6 +35,9 @@ MEMORY
   wnd0 :
         org = HP_SRAM_WIN0_BASE,
         len = HP_SRAM_WIN0_SIZE
+  lpsram_mem :
+        org = LP_SRAM_BASE,
+        len = LP_SRAM_SIZE
 }
 
 PHDRS
@@ -46,6 +49,7 @@ PHDRS
   sof_bss_data_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
   wnd0_phdr PT_LOAD;
+  lpsram_mem_phdr PT_LOAD;
 }
 
 /*  Default entry point:  */
@@ -233,4 +237,10 @@ SECTIONS
     KEEP (*(.xt.profile_files))
     KEEP (*(.gnu.linkonce.xt.profile_files.*))
   }
+  .lpsram(NOLOAD) : ALIGN(8)
+  {
+    _lpsram_start = ABSOLUTE(.);
+    KEEP (*(*.lpsram))
+    _lpsram_end = ABSOLUTE(.);
+  } >lpsram_mem :lpsram_mem_phdr
 }
