@@ -273,15 +273,16 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 
 		/* enough free blocks ? */
 		if (current == end)
-			goto found;
+			break;
 	}
 
-	/* not found */
-	trace_mem_error("error: cant find %d cont blocks %d remaining",
-			count, remaining);
-	return NULL;
+	if (start >= remaining) {
+		/* not found */
+		trace_mem_error("error: cant find %d cont blocks %d remaining",
+				count, remaining);
+		return NULL;
+	}
 
-found:
 	/* found some free blocks */
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
@@ -415,15 +416,17 @@ static void free_block(void *ptr)
 		/* is ptr in this block */
 		if ((uint32_t)ptr < (block_map->base +
 		    (block_map->block_size * block_map->count)))
-			goto found;
+			break;
 	}
 
-	/* not found */
-	trace_error(TRACE_CLASS_MEM, "free_block() error: "
-		    "invalid ptr = %p cpu = %d", (uintptr_t)ptr, cpu_get_id());
-	return;
+	if (i == heap->blocks) {
+		/* not found */
+		trace_error(TRACE_CLASS_MEM,
+			    "free_block() error: invalid ptr = %p cpu = %d",
+			    (uintptr_t)ptr, cpu_get_id());
+		return;
+	}
 
-found:
 	/* calculate block header */
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
 	hdr = &block_map->block[block];
