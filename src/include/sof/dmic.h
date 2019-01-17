@@ -49,18 +49,28 @@
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		19200000
+#define DMIC_HW_FIFOS		2
 #endif
 
-#if defined CONFIG_CANNONLAKE || defined CONFIG_SUECREEK
+#if defined CONFIG_CANNONLAKE
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		24000000
+#define DMIC_HW_FIFOS		2
+#endif
+
+#if defined CONFIG_SUECREEK
+#define DMIC_HW_VERSION		2
+#define DMIC_HW_CONTROLLERS	4
+#define DMIC_HW_IOCLK		19200000
+#define DMIC_HW_FIFOS		2
 #endif
 
 #if defined CONFIG_ICELAKE
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		38400000
+#define DMIC_HW_FIFOS		2
 #endif
 
 #endif
@@ -317,13 +327,9 @@
 
 /* DMIC private data */
 struct dmic_pdata {
-	uint16_t fifo_a;
-	uint16_t fifo_b;
 	uint16_t enable[DMIC_HW_CONTROLLERS];
 	uint32_t state;
 	completion_t drain_complete;
-	struct sof_ipc_dai_config config;
-	struct sof_ipc_dai_dmic_params params;
 	struct work dmicwork;
 	int32_t startcount;
 	int32_t gain;

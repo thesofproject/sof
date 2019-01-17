@@ -84,7 +84,7 @@
 /* IRQ Level 5 bits */
 #define IRQ_BIT_LVL5_LP_GP_DMA1(x)	(24 + x)
 #define IRQ_BIT_LVL5_LP_GP_DMA0(x)	(16 + x)
-#define IRQ_BIT_LVL5_DMIC		6
+#define IRQ_BIT_LVL5_DMIC(x)		6
 #define IRQ_BIT_LVL5_SSP(x)		(0 + x)
 
 /* Level 2 Peripheral IRQ mappings */
@@ -128,8 +128,8 @@
 #define IRQ_EXT_SSPx_LVL5(x, xcpu) \
 	SOF_IRQ(IRQ_BIT_LVL5_SSP(x), 5, xcpu, IRQ_NUM_EXT_LEVEL5)
 
-#define IRQ_EXT_DMIC_LVL5(xcpu) \
-	SOF_IRQ(IRQ_BIT_LVL5_DMIC, 5, xcpu, IRQ_NUM_EXT_LEVEL5)
+#define IRQ_EXT_DMIC_LVL5(x, xcpu) \
+	SOF_IRQ(IRQ_BIT_LVL5_DMIC(x), 5, xcpu, IRQ_NUM_EXT_LEVEL5)
 
 
 /* IRQ Masks */

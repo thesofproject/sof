@@ -695,6 +695,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel = 0;
+	int i;
 
 	trace_dai("config comp %d pipe %d dai %d type %d", dev->comp.id,
 		  dev->comp.pipeline_id, config->dai_index, config->type);
@@ -725,34 +726,39 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;
 
-		/* Set frame size in bytes to match the configuration. */
-		if (config->dmic.num_pdm_active > 1) {
-			/* For two or more controllers capture from each
-			 * controller must be stereo.
-			 */
-			dev->frame_bytes = 2 * config->dmic.num_pdm_active *
-				config->dmic.fifo_bits_a >> 3;
-		} else {
-			/* For one controller the capture can be mono or
-			 * stereo. In mono configuration only one of mic A or B
-			 * is enabled.
-			 */
-			if (config->dmic.pdm[0].enable_mic_a +
-				config->dmic.pdm[0].enable_mic_b == 1)
-				dev->frame_bytes =
-					config->dmic.fifo_bits_a >> 3;
-			else
-				dev->frame_bytes = 2 *
-					config->dmic.fifo_bits_a >> 3;
+		/* Set frame size in bytes to match the configuration. The
+		 * actual width of FIFO appears in IPC always in fifo_bits_a
+		 * for both FIFOs A and B.
+		 */
+		trace_dai_with_ids(dev, "dai_config(), "
+				   "config->dmic.fifo_bits = %u; "
+				   "config->dmic.num_pdm_active = %u;",
+				   config->dmic.fifo_bits,
+				   config->dmic.num_pdm_active);
+		dev->frame_bytes = 0;
+		for (i = 0; i < config->dmic.num_pdm_active; i++) {
+			trace_dai_with_ids(dev, "dai_config, "
+				"config->dmic.pdm[%u].enable_mic_a = %u; ",
+				config->dmic.pdm[i].id,
+				config->dmic.pdm[i].enable_mic_a);
+			trace_dai_with_ids(dev, "dai_config, "
+				"config->dmic.pdm[%u].enable_mic_b = %u; ",
+				config->dmic.pdm[i].id,
+				config->dmic.pdm[i].enable_mic_b);
+			dev->frame_bytes += (config->dmic.fifo_bits >> 3) *
+				(config->dmic.pdm[i].enable_mic_a +
+				 config->dmic.pdm[i].enable_mic_b);
 		}
-		trace_dai_with_ids(dev, "dai_config(), config->dmic.fifo_bits_a"
-				   "= %u; config->dmic.num_pdm_active = %u; "
-				   "config->dmic.pdm[0].enable_mic_a = %u; "
-				   "config->dmic.pdm[0].enable_mic_b = %u;",
-				   config->dmic.fifo_bits_a,
-				   config->dmic.num_pdm_active,
-				   config->dmic.pdm[0].enable_mic_a,
-				   config->dmic.pdm[0].enable_mic_b);
+
+		/* Packing of mono streams from several PDM controllers is not
+		 * supported. In such cases the stream needs to be two
+		 * channels.
+		 */
+		if (config->dmic.num_pdm_active > 1) {
+			dev->frame_bytes = 2 * config->dmic.num_pdm_active *
+				(config->dmic.fifo_bits >> 3);
+		}
+
 		trace_dai_with_ids(dev, "dai_config(), dev->frame_bytes = %u",
 				   dev->frame_bytes);
 		break;
