@@ -154,6 +154,9 @@ struct sof;
 /* minimal SSP port stop delay in cycles */
 #define PLATFORM_SSP_STOP_DELAY	3000
 
+/* timer driven scheduling start offset in microseconds */
+#define PLATFORM_TIMER_START_OFFSET	100
+
 // TODO: need UART versions
 #if 0
 /* Platform defined trace code */
