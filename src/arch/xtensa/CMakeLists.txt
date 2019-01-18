@@ -121,10 +121,6 @@ endfunction()
 
 sof_add_ld_script(sof ${platform_ld_script})
 
-if(CONFIG_BUILD_VM_ROM)
-	sof_add_ld_script(${platform_rom_ld_script})
-endif()
-
 # binaries
 
 add_library(reset STATIC "")
@@ -338,3 +334,43 @@ add_custom_target(
 	VERBATIM
 	USES_TERMINAL
 )
+
+if(CONFIG_BUILD_VM_ROM)
+	add_executable(rom "")
+	target_link_libraries(rom PRIVATE sof_options)
+	target_link_libraries(rom PRIVATE "-lgcc")
+	target_link_libraries(rom PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_rom_ld_script}")
+	sof_add_ld_script(rom ${platform_rom_ld_script})
+
+	# We have to make additional define, because sources
+	# are reused for other objects with different flags.
+	target_compile_definitions(rom PRIVATE -DCONFIG_VM_ROM)
+
+	if(CONFIG_SMP)
+		# SMP ROM uses UP CRT1
+		add_local_sources(rom
+			smp/xtos/memctl_default.S
+			smp/xtos/reset-vector.S
+			up/xtos/crt1-boards.S
+		)
+	else()
+		add_local_sources(rom
+			up/xtos/reset-vector.S
+			up/xtos/crt1-boards.S
+		)
+	endif()
+
+	add_custom_target(
+		rom_dump
+		COMMAND cp rom rom_${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} -O binary rom rom_${fw_name}.bin
+		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom_${fw_name}.map
+		COMMAND ${CMAKE_OBJDUMP} -S rom > rom_${fw_name}.lst
+		COMMAND ${CMAKE_OBJDUMP} -D rom > rom_${fw_name}.dis
+		DEPENDS rom
+		VERBATIM
+		USES_TERMINAL
+	)
+
+	add_dependencies(bin rom_dump)
+endif()
