@@ -48,4 +48,10 @@ config DEBUG_BUILD
 	help
 	  Select for debug build
 
+config BUILD_VM_ROM
+	bool "Build VM ROM"
+	default n
+	help
+	  Select if you want to build VM ROM
+
 endmenu
