@@ -400,6 +400,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	struct dma_chan_data *chan = p->chan + channel;
 	struct dw_lli2 *lli = chan->lli_current;
 	uint32_t flags;
+	int start_offset = 0;
 	int ret = 0;
 
 	if (channel >= dma->plat_data.channels) {
@@ -465,11 +466,15 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_CFG_LOW(channel), chan->cfg_lo);
 	dw_write(dma, DW_CFG_HIGH(channel), chan->cfg_hi);
 
-	if (chan->timer_delay)
+	if (chan->timer_delay) {
+		/* add offset for capture to handle external interface start */
+		if (chan->direction == DMA_DIR_DEV_TO_MEM)
+			start_offset = PLATFORM_TIMER_START_OFFSET;
+
 		/* activate timer for timer driven scheduling */
 		work_schedule_default(&chan->dma_ch_work,
-				      chan->timer_delay);
-	else if (chan->status == COMP_STATE_PREPARE)
+				      chan->timer_delay + start_offset);
+	} else if (p->chan[channel].status == COMP_STATE_PREPARE)
 		/* enable interrupt only for the first start */
 		ret = dw_dma_interrupt_register(dma, channel);
 
