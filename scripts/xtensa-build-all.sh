@@ -1,8 +1,7 @@
 #!/bin/bash
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl)
-BUILD_RIMAGE=1
-BUILD_LOCAL=1
+BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_JOBS=1
 BUILD_JOBS_NEXT=0
@@ -14,7 +13,6 @@ pwd=`pwd`
 if [ "$#" -eq 0 ]
 then
 	echo "usage: xtensa-build.sh [options] platform(s)"
-	echo "       [-l] Build rimage locally"
 	echo "       [-r] Build rom (gcc only)"
 	echo "       [-a] Build all platforms"
 	echo "       [-d] Enable debug build"
@@ -24,16 +22,9 @@ else
 	# parse the args
 	for args in $@
 	do
-		if [[ "$args" == "-l" ]]
+		if [[ "$args" == "-r" ]]
 			then
-			BUILD_LOCAL=1
-			BUILD_RIMAGE=1
-
-			PATH=$pwd/local/bin:$PATH
-
-		elif [[ "$args" == "-r" ]]
-			then
-			BUILD_ROM="--enable-roms"
+			BUILD_ROM=yes
 
 		elif [[ "$args" == "-d" ]]
 			then
@@ -79,28 +70,8 @@ fi
 # fail on any errors
 set -e
 
-# run autogen.sh
-./autogen.sh
-
-# make sure rimage is built and aligned with code
-if [[ "x$BUILD_RIMAGE" == "x1" ]]
-then
-	if [[ "x$BUILD_LOCAL" == "x" ]]
-	then
-		./configure --enable-rimage
-		make -j ${BUILD_JOBS}
-		sudo make install
-	else
-		echo "BUILD in local folder!"
-		rm -rf $pwd/local/
-		./configure --enable-rimage --prefix=$pwd/local
-		make -j ${BUILD_JOBS}
-		make install
-		PATH=$pwd/local/bin:$PATH
-	fi
-fi
-
 OLDPATH=$PATH
+WORKDIR="$pwd"
 
 # build platform
 for j in ${PLATFORMS[@]}
@@ -233,31 +204,50 @@ do
 				XCC="none"
 				XTOBJCOPY="none"
 				XTOBJDUMP="none"
+				echo "XTENSA_TOOLS_DIR is not a directory"
 		fi
 	fi
 
 	# update ROOT directory for xt-xcc
 	if [ "$XCC" == "xt-xcc" ]
 	then
+		TOOLCHAIN=xt
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
 	else
+		TOOLCHAIN=$HOST
 		PATH=$pwd/../$HOST/bin:$OLDPATH
 	fi
 
 	# only delete binary related to this build
 	rm -fr src/arch/xtensa/sof-$j.*
 
-	./configure --with-arch=$ARCH --with-platform=$PLATFORM \
-		--with-root-dir=$ROOT --host=$HOST --enable-debug=$BUILD_DEBUG \
-		CC=$XCC OBJCOPY=$XTOBJCOPY OBJDUMP=$XTOBJDUMP \
-		--with-dsp-core=$XTENSA_CORE $BUILD_ROM
+	rm -fr build_$j
+	mkdir build_$j
+	cd build_$j
 
-	make clean
-	make -j ${BUILD_JOBS}
-	make bin
+	cmake -DTOOLCHAIN=$TOOLCHAIN -DROOT_DIR=$ROOT ..
+	make ${PLATFORM}_defconfig
+
+	rm -fr override.config
+
+	if [[ "x$BUILD_DEBUG" == "xyes" ]]
+	then
+		echo "CONFIG_DEBUG=y" >> override.config
+		make overrideconfig
+	fi
+
+	if [[ "x$BUILD_ROM" == "xyes" ]]
+	then
+		echo "CONFIG_BUILD_VM_ROM=y" >> override.config
+		make overrideconfig
+	fi
+
+	make bin -j ${BUILD_JOBS}
+
+	cd "$WORKDIR"
 done
 
 # list all the images
-ls -l src/arch/xtensa/*.ri
+ls -l build_*/*.ri
