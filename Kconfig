@@ -42,7 +42,7 @@ config DEBUG_HEAP
 	help
 	  Select for enable heap alloc debugging
 
-config DEBUG_BUILD
+config DEBUG
 	bool "Debug build"
 	default n
 	help
