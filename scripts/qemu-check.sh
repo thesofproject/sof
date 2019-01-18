@@ -57,7 +57,7 @@ do
 		SHM_IPC_REG=qemu-bridge-ipc-io
 		OUTBOX_OFFSET="f000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/src/arch/xtensa/rom-$j.bin"
+		ROM="-r ../sof.git/build_$j/src/arch/xtensa/rom_$j.bin"
 	fi
 	if [ $j == "skl" ]
 	then
@@ -65,7 +65,7 @@ do
 		SHM_IPC_REG=qemu-bridge-ipc-io
 		OUTBOX_OFFSET="f000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/src/arch/xtensa/rom-$j.bin"
+		ROM="-r ../sof.git/build_$j/src/arch/xtensa/rom_$j.bin"
 	fi
 	if [ $j == "kbl" ]
 	then
@@ -73,7 +73,7 @@ do
 		SHM_IPC_REG=qemu-bridge-ipc-io
 		OUTBOX_OFFSET="f000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/src/arch/xtensa/rom-$j.bin"
+		ROM="-r ../sof.git/build_$j/src/arch/xtensa/rom_$j.bin"
 	fi
 	if [ $j == "cnl" ]
 	then
@@ -81,7 +81,7 @@ do
 		SHM_IPC_REG=qemu-bridge-ipc-io
 		OUTBOX_OFFSET="5000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/src/arch/xtensa/rom-$j.bin"
+		ROM="-r ../sof.git/build_$j/src/arch/xtensa/rom_$j.bin"
 	fi
 	if [ $j == "icl" ]
 	then
@@ -89,10 +89,10 @@ do
 		SHM_IPC_REG=qemu-bridge-ipc-io
 		OUTBOX_OFFSET="5000"
 		SHM_MBOX=qemu-bridge-hp-sram-mem
-		ROM="-r ../sof.git/src/arch/xtensa/rom-$j.bin"
+		ROM="-r ../sof.git/build_$j/src/arch/xtensa/rom_$j.bin"
 	fi
 
-	./xtensa-host.sh $PLATFORM -k ../sof.git/src/arch/xtensa/sof-$j.ri $ROM -o 2.0 ../sof.git/dump-$j.txt
+	./xtensa-host.sh $PLATFORM -k ../sof.git/build_$j/src/arch/xtensa/sof_$j.ri $ROM -o 2.0 ../sof.git/dump-$j.txt
 	# dump log into sof.git incase running in docker
 
 	# check if ready ipc header is in the ipc regs
