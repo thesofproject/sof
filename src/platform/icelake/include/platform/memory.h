@@ -248,7 +248,7 @@
 /* text and data share the same HP L2 SRAM on Icelake */
 #define SOF_TEXT_START		0xBE040400
 #define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_SIZE		(0x1d000 - 0x400)
+#define SOF_TEXT_SIZE		(0x1e000 - 0x400)
 
 /* initialized data */
 #define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
