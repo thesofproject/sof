@@ -140,6 +140,10 @@ endif()
 
 add_local_sources(sof timer.c)
 
+if(CONFIG_GDB_DEBUG)
+	add_subdirectory(gdb)
+endif()
+
 if(CONFIG_SMP)
 # TODO it should be handled in subdir
 	add_subdirectory(smp)
