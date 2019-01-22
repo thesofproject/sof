@@ -71,8 +71,4 @@ tap-driver.sh
 test-driver
 *.trs
 
-# ignore build files in tests
-test/cmocka/*
-!test/cmocka/*.
-!test/cmocka/src
-!test/cmocka/include 
+__pycache__
