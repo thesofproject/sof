@@ -52,9 +52,13 @@ tools/test/audio/*			@singalsu
 tools/eqctl/*				@singalsu
 tools/tune/*				@singalsu
 
+# build system
+*/CMakeLists.txt			@jajanusz
+*/Kconfig				@jajanusz
+scripts/cmake/*				@jajanusz
+scripts/kconfig/*			@jajanusz
+
 # related fileds
-*.am					@jajanusz
-*.ac					@jajanusz
 *.sh					@jajanusz
 *trace.*				@xiulipan
 
