@@ -76,6 +76,7 @@ WORKDIR="$pwd"
 # build platform
 for j in ${PLATFORMS[@]}
 do
+	HAVE_ROM='no'
 	if [ $j == "byt" ]
 	then
 		PLATFORM="baytrail"
@@ -125,6 +126,7 @@ do
 
 		ROOT="$pwd/../xtensa-root/$HOST"
 		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+		HAVE_ROM='yes'
 	fi
 	if [ $j == "skl" ]
 	then
@@ -143,6 +145,7 @@ do
 
 		ROOT="$pwd/../xtensa-root/$HOST"
 		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+		HAVE_ROM='yes'
 	fi
 	if [ $j == "kbl" ]
 	then
@@ -161,6 +164,7 @@ do
 
 		ROOT="$pwd/../xtensa-root/$HOST"
 		XTENSA_TOOLS_VERSION="RG-2017.8-linux"
+		HAVE_ROM='yes'
 	fi
 	if [ $j == "cnl" ]
 	then
@@ -170,6 +174,7 @@ do
 		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 		HOST="xtensa-cnl-elf"
 		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+		HAVE_ROM='yes'
 	fi
 	if [ $j == "sue" ]
         then
@@ -179,6 +184,7 @@ do
                 ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
                 HOST="xtensa-cnl-elf"
                 XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+		HAVE_ROM='yes'
         fi
 	if [ $j == "icl" ]
 	then
@@ -188,6 +194,7 @@ do
 		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
 		HOST="xtensa-cnl-elf"
 		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+		HAVE_ROM='yes'
 	fi
 	if [ $XTENSA_TOOLS_ROOT ]
 	then
@@ -215,17 +222,20 @@ do
 		ROOT="$XTENSA_BUILDS_DIR/$XTENSA_CORE/xtensa-elf"
 		export XTENSA_SYSTEM=$XTENSA_BUILDS_DIR/$XTENSA_CORE/config
 		PATH=$XTENSA_TOOLS_DIR/XtensaTools/bin:$OLDPATH
+		COMPILER="xcc"
 	else
 		TOOLCHAIN=$HOST
 		PATH=$pwd/../$HOST/bin:$OLDPATH
+		COMPILER="gcc"
 	fi
 
-	# only delete binary related to this build
-	rm -fr src/arch/xtensa/sof-$j.*
+	BUILD_DIR=build_${j}_${COMPILER}
+	echo "Build in "$BUILD_DIR
 
-	rm -fr build_$j
-	mkdir build_$j
-	cd build_$j
+	# only delete binary related to this build
+	rm -fr $BUILD_DIR
+	mkdir $BUILD_DIR
+	cd $BUILD_DIR
 
 	cmake -DTOOLCHAIN=$TOOLCHAIN -DROOT_DIR=$ROOT ..
 	make ${PLATFORM}_defconfig
@@ -238,7 +248,7 @@ do
 		make overrideconfig
 	fi
 
-	if [[ "x$BUILD_ROM" == "xyes" ]]
+	if [[ "x$BUILD_ROM" == "xyes" && "x$HAVE_ROM" == "xyes" ]]
 	then
 		echo "CONFIG_BUILD_VM_ROM=y" >> override.config
 		make overrideconfig
