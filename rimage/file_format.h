@@ -88,9 +88,23 @@ enum snd_sof_fw_blk_type {
 	/* add new block types here */
 };
 
+enum snd_sof_mem_bar_type {
+	SOF_DSP_BAR		= 0,
+	SOF_PCI_BAR		= 1,
+	SOF_IMR_BAR		= 2,
+	SOF_DSP_HDA_BAR		= 3,
+	SOF_DSP_PP_BAR		= 4,
+	SOF_DSP_SPIB_BAR	= 5,
+	SOF_DSP_DRSM_BAR	= 6,
+	SOF_DSP_SDRAM0_BAR	= 7,
+	SOF_DSP_SDRAM1_BAR	= 8,
+	SOF_SND_BARS		= 16
+};
+
 struct snd_sof_blk_hdr {
 	enum snd_sof_fw_blk_type type;
 	uint32_t size;		/* bytes minus this header */
+	uint32_t bar;		/* bar where the base starts */
 	uint32_t offset;	/* offset from base */
 } __attribute__((packed));
 

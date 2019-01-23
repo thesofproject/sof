@@ -24,23 +24,29 @@
 #include "file_format.h"
 
 #define BYT_IRAM_BASE		0xff2c0000
+#define BYT_IRAM_BAR		SOF_DSP_BAR
 #define BYT_IRAM_HOST_OFFSET	0x0C0000
 #define BYT_IRAM_SIZE		(80 * 1024)
 #define BYT_DRAM_BASE		0xff300000
+#define BYT_DRAM_BAR		SOF_DSP_BAR
 #define BYT_DRAM_HOST_OFFSET	0x100000
 #define BYT_DRAM_SIZE		(160 * 1024)
 
 #define HSW_IRAM_BASE		0x00000000
+#define HSW_IRAM_BAR		SOF_DSP_BAR
 #define HSW_IRAM_HOST_OFFSET	0x00080000
 #define HSW_IRAM_SIZE		(384 * 1024)
 #define HSW_DRAM_BASE		0x00400000
+#define HSW_DRAM_BAR		SOF_DSP_BAR
 #define HSW_DRAM_HOST_OFFSET	0x00000000
 #define HSW_DRAM_SIZE		(512 * 1024)
 
 #define BDW_IRAM_BASE		0x00000000
+#define BDW_IRAM_BAR		SOF_DSP_BAR
 #define BDW_IRAM_HOST_OFFSET	0x000A0000
 #define BDW_IRAM_SIZE		(320 * 1024)
 #define BDW_DRAM_BASE		0x00400000
+#define BDW_DRAM_BAR		SOF_DSP_BAR
 #define BDW_DRAM_HOST_OFFSET	0x00000000
 #define BDW_DRAM_SIZE		(640 * 1024)
 
@@ -99,10 +105,12 @@ static int write_block(struct image *image, struct module *module,
 
 	if (is_iram(image, section)) {
 		block.type = SOF_BLK_TEXT;
+		block.bar = adsp->iram_bar;
 		block.offset = section->sh_addr - adsp->iram_base
 			+ adsp->host_iram_offset;
 	} else if (is_dram(image, section)) {
 		block.type = SOF_BLK_DATA;
+		block.bar = adsp->dram_bar;
 		block.offset = section->sh_addr - adsp->dram_base
 			+ adsp->host_dram_offset;
 	} else {
@@ -472,9 +480,11 @@ out:
 const struct adsp machine_byt = {
 	.name = "byt",
 	.iram_base = BYT_IRAM_BASE,
+	.iram_bar = BYT_IRAM_BAR,
 	.iram_size = BYT_IRAM_SIZE,
 	.host_iram_offset = BYT_IRAM_HOST_OFFSET,
 	.dram_base = BYT_DRAM_BASE,
+	.dram_bar = BYT_DRAM_BAR,
 	.dram_size = BYT_DRAM_SIZE,
 	.host_dram_offset = BYT_DRAM_HOST_OFFSET,
 	.machine_id = MACHINE_BAYTRAIL,
@@ -484,9 +494,11 @@ const struct adsp machine_byt = {
 const struct adsp machine_cht = {
 	.name = "cht",
 	.iram_base = BYT_IRAM_BASE,
+	.iram_bar = BYT_IRAM_BAR,
 	.iram_size = BYT_IRAM_SIZE,
 	.host_iram_offset = BYT_IRAM_HOST_OFFSET,
 	.dram_base = BYT_DRAM_BASE,
+	.dram_bar = BYT_DRAM_BAR,
 	.dram_size = BYT_DRAM_SIZE,
 	.host_dram_offset = BYT_DRAM_HOST_OFFSET,
 	.machine_id = MACHINE_CHERRYTRAIL,
@@ -496,9 +508,11 @@ const struct adsp machine_cht = {
 const struct adsp machine_bsw = {
 	.name = "bsw",
 	.iram_base = BYT_IRAM_BASE,
+	.iram_bar = BYT_IRAM_BAR,
 	.iram_size = BYT_IRAM_SIZE,
 	.host_iram_offset = BYT_IRAM_HOST_OFFSET,
 	.dram_base = BYT_DRAM_BASE,
+	.dram_bar = BYT_DRAM_BAR,
 	.dram_size = BYT_DRAM_SIZE,
 	.host_dram_offset = BYT_DRAM_HOST_OFFSET,
 	.machine_id = MACHINE_BRASWELL,
@@ -508,9 +522,11 @@ const struct adsp machine_bsw = {
 const struct adsp machine_hsw = {
 	.name = "hsw",
 	.iram_base = HSW_IRAM_BASE,
+	.iram_bar = HSW_IRAM_BAR,
 	.iram_size = HSW_IRAM_SIZE,
 	.host_iram_offset = HSW_IRAM_HOST_OFFSET,
 	.dram_base = HSW_DRAM_BASE,
+	.dram_bar = HSW_DRAM_BAR,
 	.dram_size = HSW_DRAM_SIZE,
 	.host_dram_offset = HSW_DRAM_HOST_OFFSET,
 	.machine_id = MACHINE_HASWELL,
@@ -520,9 +536,11 @@ const struct adsp machine_hsw = {
 const struct adsp machine_bdw = {
 	.name = "bdw",
 	.iram_base = BDW_IRAM_BASE,
+	.iram_bar = BDW_IRAM_BAR,
 	.iram_size = BDW_IRAM_SIZE,
 	.host_iram_offset = BDW_IRAM_HOST_OFFSET,
 	.dram_base = BDW_DRAM_BASE,
+	.dram_bar = BDW_DRAM_BAR,
 	.dram_size = BDW_DRAM_SIZE,
 	.host_dram_offset = BDW_DRAM_HOST_OFFSET,
 	.machine_id = MACHINE_BROADWELL,

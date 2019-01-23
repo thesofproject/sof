@@ -133,16 +133,26 @@ struct image {
  */
 struct adsp {
 	const char *name;
+
 	uint32_t iram_base;
+	uint32_t iram_bar;
 	uint32_t iram_size;
+
 	uint32_t dram_base;
+	uint32_t dram_bar;
 	uint32_t dram_size;
+
 	uint32_t sram_base;
+	uint32_t sram_bar;
 	uint32_t sram_size;
+
 	uint32_t host_iram_offset;
 	uint32_t host_dram_offset;
+
 	uint32_t rom_base;
+	uint32_t rom_bar;
 	uint32_t rom_size;
+
 	uint32_t imr_base;
 	uint32_t imr_size;
 
