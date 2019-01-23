@@ -208,7 +208,7 @@ ExternalProject_Add(rimage_ep
 add_custom_target(
 	prepare_fw_copy_for_rimage
 	DEPENDS sof rimage_ep
-	COMMAND cp ${PROJECT_BINARY_DIR}/sof sof_${fw_name}
+	COMMAND cp ${PROJECT_BINARY_DIR}/sof sof-${fw_name}
 )
 
 # bootloader binary
@@ -231,24 +231,24 @@ if(build_bootloader)
 
 	add_custom_target(
 		bootloader_dump
-		COMMAND cp bootloader bootloader_${fw_name}
+		COMMAND cp bootloader bootloader-${fw_name}
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/boot_module mod-boot-${fw_name}.bin
-		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-boot-${fw_name}.bin --set-section-flags .module=load,readonly bootloader_${fw_name}
-		COMMAND ${CMAKE_OBJCOPY} -O binary bootloader bootloader_${fw_name}.bin
-		COMMAND ${CMAKE_OBJDUMP} -h -D bootloader > bootloader_${fw_name}.map
-		COMMAND ${CMAKE_OBJDUMP} -S bootloader > bootloader_${fw_name}.lst
-		COMMAND ${CMAKE_OBJDUMP} -D bootloader > bootloader_${fw_name}.dis
+		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-boot-${fw_name}.bin --set-section-flags .module=load,readonly bootloader-${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} -O binary bootloader bootloader-${fw_name}.bin
+		COMMAND ${CMAKE_OBJDUMP} -h -D bootloader > bootloader-${fw_name}.map
+		COMMAND ${CMAKE_OBJDUMP} -S bootloader > bootloader-${fw_name}.lst
+		COMMAND ${CMAKE_OBJDUMP} -D bootloader > bootloader-${fw_name}.dis
 		DEPENDS bootloader boot_module
 		VERBATIM
 		USES_TERMINAL
 	)
 
-	set(bootloader_binary_path bootloader_${fw_name})
+	set(bootloader_binary_path bootloader-${fw_name})
 
 	add_custom_target(
 		process_base_module
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/base_module mod-${fw_name}.bin
-		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof_${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-${fw_name}.bin --set-section-flags .module=load,readonly sof-${fw_name}
 		DEPENDS prepare_fw_copy_for_rimage base_module bootloader_dump
 		VERBATIM
 		USES_TERMINAL
@@ -261,8 +261,8 @@ endif()
 
 add_custom_target(
 	sof_dump
-	COMMAND ${CMAKE_OBJDUMP} -S sof_${fw_name} > sof_${fw_name}.lst
-	COMMAND ${CMAKE_OBJDUMP} -D sof_${fw_name} > sof_${fw_name}.dis
+	COMMAND ${CMAKE_OBJDUMP} -S sof-${fw_name} > sof-${fw_name}.lst
+	COMMAND ${CMAKE_OBJDUMP} -D sof-${fw_name} > sof-${fw_name}.dis
 	DEPENDS process_base_module
 	VERBATIM
 	USES_TERMINAL
@@ -288,11 +288,11 @@ if(MEU_PATH)
 	add_custom_target(
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
-			-o sof_${fw_name}.ri
-			-p sof_${fw_name}.ldc
+			-o sof-${fw_name}.ri
+			-p sof-${fw_name}.ldc
 			-m ${fw_name}
 			${bootloader_binary_path}
-			sof_${fw_name}
+			sof-${fw_name}
 			-s ${MEU_OFFSET}
 			-k ${otc_private_key}
 		DEPENDS sof_dump
@@ -302,11 +302,11 @@ if(MEU_PATH)
 
 	add_custom_target(
 		run_meu
-		COMMAND ${MEU_PATH}/meu -w ./ -s sof_${fw_name}
+		COMMAND ${MEU_PATH}/meu -w ./ -s sof-${fw_name}
 			-key ${MEU_PRIVATE_KEY}
 			-stp /usr/bin/openssl
 			-f ${MEU_PATH}/generic_meu_conf.xml
-			-mnver 0.0.0.0 -o sof_${fw_name}.ri
+			-mnver 0.0.0.0 -o sof-${fw_name}.ri
 		DEPENDS run_rimage
 		VERBATIM
 		USES_TERMINAL
@@ -315,11 +315,11 @@ else()
 	add_custom_target(
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
-			-o sof_${fw_name}.ri
-			-p sof_${fw_name}.ldc
+			-o sof-${fw_name}.ri
+			-p sof-${fw_name}.ldc
 			-m ${fw_name}
 			${bootloader_binary_path}
-			sof_${fw_name}
+			sof-${fw_name}
 		DEPENDS sof_dump
 		VERBATIM
 		USES_TERMINAL
@@ -329,7 +329,7 @@ endif()
 
 add_custom_target(
 	bin
-	COMMAND cp sof_${fw_name}.ri ${PROJECT_BINARY_DIR}/sof_${fw_name}.ri
+	COMMAND cp sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
 	DEPENDS run_meu
 	VERBATIM
 	USES_TERMINAL
@@ -362,11 +362,11 @@ if(CONFIG_BUILD_VM_ROM)
 
 	add_custom_target(
 		rom_dump
-		COMMAND cp rom rom_${fw_name}
-		COMMAND ${CMAKE_OBJCOPY} -O binary rom rom_${fw_name}.bin
-		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom_${fw_name}.map
-		COMMAND ${CMAKE_OBJDUMP} -S rom > rom_${fw_name}.lst
-		COMMAND ${CMAKE_OBJDUMP} -D rom > rom_${fw_name}.dis
+		COMMAND cp rom rom-${fw_name}
+		COMMAND ${CMAKE_OBJCOPY} -O binary rom rom-${fw_name}.bin
+		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom-${fw_name}.map
+		COMMAND ${CMAKE_OBJDUMP} -S rom > rom-${fw_name}.lst
+		COMMAND ${CMAKE_OBJDUMP} -D rom > rom-${fw_name}.dis
 		DEPENDS rom
 		VERBATIM
 		USES_TERMINAL
