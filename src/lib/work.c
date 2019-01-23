@@ -378,14 +378,13 @@ void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 			goto out;
 	}
 
+	w->timeout = queue->ticks_per_msec * timeout / 1000;
+
 	/* convert timeout micro seconds to CPU clock ticks */
 	if (w->flags & WORK_SYNC)
-		w->timeout =
-			queue_calc_next_timeout(queue, work_get_timer(queue));
+		w->timeout += work_get_timer(queue);
 	else
-		w->timeout =
-			queue_calc_next_timeout(queue,
-						work_shared_ctx->last_tick);
+		w->timeout += work_shared_ctx->last_tick;
 
 	/* insert work into list */
 	list_item_prepend(&w->list, &queue->work);
@@ -434,12 +433,13 @@ void work_reschedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 {
 	uint64_t time;
 
+	time = queue->ticks_per_msec * timeout / 1000;
+
 	/* convert timeout micro seconds to CPU clock ticks */
 	if (w->flags & WORK_SYNC)
-		time = queue_calc_next_timeout(queue, work_get_timer(queue));
+		time += work_get_timer(queue);
 	else
-		time = queue_calc_next_timeout(queue,
-					       work_shared_ctx->last_tick);
+		time += work_shared_ctx->last_tick;
 
 	reschedule(queue, w, time);
 }
