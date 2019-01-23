@@ -88,7 +88,6 @@ out:
 static void irq_handler(void *arg)
 {
 	uint32_t isr, imrd;
-	uint32_t msg = 0;
 
 	/* Interrupt arrived, check src */
 	isr = shim_read(SHIM_ISRD);
@@ -110,17 +109,14 @@ static void irq_handler(void *arg)
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
 
-		msg = shim_read(SHIM_IPCX);
-
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
-			trace_ipc_error("ipc: dropping msg 0x%x", msg);
+			trace_ipc_error("ipc: dropping msg");
 			trace_ipc_error(" isr 0x%x imrd 0x%x ipcx 0x%x",
 					isr, shim_read(SHIM_IMRD),
 					shim_read(SHIM_IPCX));
 		} else {
-			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
 			ipc_schedule_process(_ipc);
 		}
@@ -132,8 +128,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
 	struct sof_ipc_reply reply;
 	int32_t err;
-
-	trace_ipc("ipc: msg rx -> 0x%x", ipc->host_msg);
 
 	/* perform command and return any error */
 	err = ipc_cmd();

@@ -59,7 +59,6 @@ extern struct ipc *_ipc;
 static void irq_handler(void *arg)
 {
 	uint32_t dipcctl;
-	uint32_t msg = 0;
 
 #if defined(CONFIG_APOLLOLAKE)
 	uint32_t dipct;
@@ -92,16 +91,10 @@ static void irq_handler(void *arg)
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
 
-#if defined(CONFIG_APOLLOLAKE)
-		msg = dipct & IPC_DIPCT_MSG_MASK;
-#else
-		msg = dipctdr & IPC_DIPCTDR_MSG_MASK;
-#endif
-
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
-			trace_ipc_error("ipc: dropping msg 0x%x", msg);
+			trace_ipc_error("ipc: dropping msg");
 #if defined(CONFIG_APOLLOLAKE)
 			trace_ipc_error(" dipct 0x%x dipcie 0x%x dipcctl 0x%x",
 					dipct, dipcie, ipc_read(IPC_DIPCCTL));
@@ -111,7 +104,6 @@ static void irq_handler(void *arg)
 					ipc_read(IPC_DIPCCTL));
 #endif
 		} else {
-			_ipc->host_msg = msg;
 			_ipc->host_pending = 1;
 			ipc_schedule_process(_ipc);
 		}
@@ -147,8 +139,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
 	struct sof_ipc_reply reply;
 	int32_t err;
-
-	trace_ipc("ipc: msg rx -> 0x%x", ipc->host_msg);
 
 	/* perform command and return any error */
 	err = ipc_cmd();

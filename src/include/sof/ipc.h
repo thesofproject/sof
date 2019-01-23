@@ -106,8 +106,6 @@ struct ipc_shared_context {
 };
 
 struct ipc {
-	/* messaging */
-	uint32_t host_msg;		/* current message from host */
 	uint32_t host_pending;
 	spinlock_t lock;
 	void *comp_data;
