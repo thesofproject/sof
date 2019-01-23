@@ -50,7 +50,13 @@ m4/libtool.m4
 libtool
 src/include/version.h
 doc/doxygen
+CMakeFiles
+generated
+rimage_ep
+CMakeCache.txt
+__pycache__
 *.doxygen
+*.cmake
 
 autom4te*
 config.*
