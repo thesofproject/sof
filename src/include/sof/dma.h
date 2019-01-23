@@ -178,6 +178,11 @@ struct dma {
 	int sref;		/**< simple ref counter, guarded by lock */
 	const struct dma_ops *ops;
 	atomic_t num_channels_busy; /* number of busy channels */
+#ifndef CONFIG_APOLLOLAKE
+	uint32_t mask_irq_channels; /* bitmask of channels with registered IRQs
+				     * on APL each channel has own IRQ handler
+				     */
+#endif
 	void *private;
 };
 

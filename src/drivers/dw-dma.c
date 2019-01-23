@@ -1347,13 +1347,19 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 	uint32_t irq = dma_irq(dma, cpu_get_id());
 	int ret;
 
-	ret = interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler, dma);
-	if (ret < 0) {
-		trace_dwdma_error("DWDMA failed to allocate IRQ");
-		return ret;
+	if (!dma->mask_irq_channels) {
+		ret = interrupt_register(irq, IRQ_AUTO_UNMASK,
+					 dw_dma_irq_handler, dma);
+		if (ret < 0) {
+			trace_dwdma_error("DWDMA failed to allocate IRQ");
+			return ret;
+		}
+
+		interrupt_enable(irq);
 	}
 
-	interrupt_enable(irq);
+	dma->mask_irq_channels = dma->mask_irq_channels | BIT(channel);
+
 	return 0;
 }
 
@@ -1361,8 +1367,12 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 {
 	uint32_t irq = dma_irq(dma, cpu_get_id());
 
-	interrupt_disable(irq);
-	interrupt_unregister(irq);
+	dma->mask_irq_channels = dma->mask_irq_channels & ~BIT(channel);
+
+	if (!dma->mask_irq_channels) {
+		interrupt_disable(irq);
+		interrupt_unregister(irq);
+	}
 }
 #endif
 
@@ -1406,6 +1416,7 @@ static int dw_dma_probe(struct dma *dma)
 
 static int dw_dma_remove(struct dma *dma)
 {
+	tracev_dwdma("dw_dma_remove() id = %u", dma->plat_data.id);
 	pm_runtime_put_sync(DW_DMAC_CLK, dma->plat_data.id);
 	rfree(dma_get_drvdata(dma));
 	dma_set_drvdata(dma, NULL);
