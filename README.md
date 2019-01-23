@@ -10,41 +10,97 @@ See [docs](https://thesofproject.github.io/latest/index.html)
 ### Prerequisites
 
 * Docker
+* CMake (version >= 3.10)
 
 ### Build Instructions
 
-1. Run `autogen.sh`
-
-2. Build and install the rimage ELF image creator and signing tool
-
+1. Create directory in checked out repo for build files:
 ```
-./configure --enable-rimage
-make
-sudo make install
+mkdir build && cd build
 ```
 
-3. Run the following configure based on your platform.
+2. Run configuration for your toolchain:
 
-Baytrail :-
+Baytrail:
 
-```./configure --with-arch=xtensa --with-platform=baytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf```
+```
+cmake -DTOOLCHAIN=xtensa-byt-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-byt-elf ..
+```
 
-Cherrytrail :-
+Cherrytrail:
 
-```./configure --with-arch=xtensa --with-platform=cherrytrail --with-root-dir=$PWD/../xtensa-root/xtensa-byt-elf --host=xtensa-byt-elf```
+```
+cmake -DTOOLCHAIN=xtensa-cht-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-cht-elf ..
+```
 
-Library for Host Platform :-
-If building library for host platform, run the following configure. Please modify
-the --prefix option to choose the directory for installing the library files and
-headers
+Haswell / Broadwell:
 
-`./configure --with-arch=host --enable-library=yes --host=x86_64-unknown-linux-gnu --prefix=$PWD/../host-root/`
+```
+cmake -DTOOLCHAIN=xtensa-hsw-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-hsw-elf ..
+```
 
-4. `make`
+Apollolake:
 
-5. `make bin`
+```
+cmake -DTOOLCHAIN=xtensa-apl-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-apl-elf ..
+```
 
-End with an example of getting some data out of the system or using it for a little demo
+Cannonlake:
+
+```
+cmake -DTOOLCHAIN=xtensa-cnl-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-cnl-elf ..
+```
+
+3. Apply default config for your platform.
+
+Baytrail:
+
+```
+make baytrail_defconfig
+```
+
+Cherrytrail:
+
+```
+make cherrytrail_defconfig
+```
+
+Haswell:
+
+```
+make haswell_defconfig
+```
+
+Broadwell:
+
+```
+make broadwell_defconfig
+```
+
+Apollolake:
+
+```
+make apollolake_defconfig
+```
+
+Cannonlake:
+
+```
+make cannonlake_defconfig
+```
+
+4. (Optional) Customize your configuration
+
+```
+make menuconfig
+```
+
+5. Build firmware
+
+```
+make bin
+# or `make bin -j<jobs>` for parallel build
+```
 
 ## Running the tests
 
@@ -52,11 +108,11 @@ See [unit testing documentation](https://thesofproject.github.io/latest/develope
 
 ## Deployment
 
-Add additional notes about how to deploy this on a live system
+TODO: Add additional notes about how to deploy this on a live system
 
 ## Contributing
 
-TODO?
+See [Contributing to the Project](https://thesofproject.github.io/latest/contribute/index.html)
 
 ## License
 
