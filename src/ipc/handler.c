@@ -66,6 +66,8 @@
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <config.h>
+#include <arch/gdb/init.h>
+#include <sof/gdb/gdb.h>
 
 #define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
 #define iCS(x) ((x >> SOF_CMD_TYPE_SHIFT) & 0xfff)
@@ -796,6 +798,8 @@ static int ipc_glb_gdb_debug(uint32_t header)
 	(void) header;
 
 #ifdef CONFIG_GDB_DEBUG
+	gdb_init_debug_exception();
+	gdb_init();
 	/* TODO: this asm should be in arch/include/debug.h with a generic */
 	/* name and trigger debug exception */
 	asm volatile("_break 0, 0");

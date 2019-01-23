@@ -1,8 +1,12 @@
 #include <sof/gdb/ringbuffer.h>
+#include <platform/memory.h>
 
-volatile struct ring * const rx = (void *) 0x9e008000;
-volatile struct ring * const tx = (void *) 0x9e008120;
-volatile struct ring * const debug = (void *) 0x9e008220;
+#define BUFFER_OFFSET 0x120
+
+volatile struct ring * const rx = (void *) SRAM_DEBUG_BASE;
+volatile struct ring * const tx = (void *) SRAM_DEBUG_BASE + BUFFER_OFFSET;
+volatile struct ring * const debug = (void *) SRAM_DEBUG_BASE +
+					      (2*BUFFER_OFFSET);
 
 void init_buffers(void)
 {
