@@ -1,20 +1,23 @@
 include(ExternalProject)
 
 ExternalProject_Add(cmocka_git
-	GIT_REPOSITORY https://github.com/jajanusz/cmocka
+	GIT_REPOSITORY https://github.com/thesofproject/cmocka
 	PREFIX "${PROJECT_BINARY_DIR}/cmocka_git"
 	BINARY_DIR "${PROJECT_BINARY_DIR}/cmocka_git/build"
 	CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
 		-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-		-DWITH_STATIC_LIB=ON -DWITH_SHARED_LIB=OFF -DWITH_EXAMPLES=OFF
-	BUILD_COMMAND $(MAKE) cmocka_static
+		-DWITH_STATIC_LIB=ON
+		-DWITH_SHARED_LIB=OFF
+		-DWITH_EXAMPLES=OFF
+		-DWITH_POSITION_INDEPENDENT_CODE=OFF
+	BUILD_COMMAND $(MAKE) cmocka-static
 	INSTALL_COMMAND ""
 )
 
 add_library(cmocka STATIC IMPORTED)
 ExternalProject_Get_Property(cmocka_git binary_dir)
 
-set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${binary_dir}/src/libcmocka.a")
+set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${binary_dir}/src/libcmocka-static.a")
 
 add_dependencies(cmocka cmocka_git)
 
