@@ -27,15 +27,19 @@ src/arch/xtensa/*			@tlauda
 src/platform/*				@tlauda
 src/platform/baytrail/*			@xiulipan
 src/platform/haswell/*			@xiulipan @randerwang
+src/platform/suecreek/*			@lyakh
 
 # drivers
 src/drivers/intel/cavs/dmic.c		@singalsu
+src/drivers/intel/cavs/sue-iomux.c	@lyakh
 src/drivers/intel/haswell/*		@randerwang
+src/drivers/dw/*			@lyakh
 
 # other libs
 src/host/*				@ranj063
 src/math/*				@singalsu
 src/ipc/*				@xiulipan @bardliao
+src/ipc/sue-ipc.c			@lyakh
 src/lib/*				@libinyang
 src/gdb/*				@mrajwa
 
