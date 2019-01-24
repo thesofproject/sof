@@ -144,7 +144,6 @@ static int pipeline_comp_complete(struct comp_dev *current, void *data,
 
 	/* complete component init */
 	current->pipeline = ppl_data->p;
-	current->frames = ppl_data->p->ipc_pipe.frames_per_sched;
 
 	pipeline_for_each_comp(current, &pipeline_comp_complete, data,
 			       NULL, dir);
@@ -285,6 +284,17 @@ static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 
 	/* send current params to the component */
 	current->params = ppl_data->params->params;
+
+	/* set frames from samplerate/period, but round integer up */
+	if (current->output_rate != 0) {
+		current->frames = (current->output_rate +
+				   current->pipeline->ipc_pipe.period - 1) /
+			current->pipeline->ipc_pipe.period;
+	} else {
+		current->frames = (current->params.rate +
+				   current->pipeline->ipc_pipe.period - 1) /
+			current->pipeline->ipc_pipe.period;
+	}
 
 	err = comp_params(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)

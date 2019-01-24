@@ -536,6 +536,8 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	cd->polyphase_func = src_polyphase_stage_cir;
 	src_polyphase_reset(&cd->src);
 
+	dev->output_rate = ipc_src->sink_rate;
+
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
