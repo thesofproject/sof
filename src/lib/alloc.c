@@ -642,19 +642,12 @@ void *rzalloc_core_sys(int core, size_t bytes)
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-void *_balloc(int zone, uint32_t caps, size_t bytes)
+static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
+			       size_t bytes)
 {
-	struct mm_heap *heap;
 	struct block_map *map;
 	int i;
-	uint32_t flags;
 	void *ptr = NULL;
-
-	spin_lock_irq(&memmap.lock, flags);
-
-	heap = get_heap_from_caps(memmap.buffer, PLATFORM_HEAP_BUFFER, caps);
-	if (heap == NULL)
-		goto unlock;
 
 	/* will request fit in single block */
 	for (i = 0; i < heap->blocks; i++) {
@@ -694,8 +687,35 @@ void *_balloc(int zone, uint32_t caps, size_t bytes)
 		bzero(ptr, bytes);
 #endif
 
-unlock:
+	return ptr;
+}
+
+/* allocates continuous buffers - not for direct use, clients use rballoc() */
+void *_balloc(int zone, uint32_t caps, size_t bytes)
+{
+	struct mm_heap *heap;
+	unsigned int i, n;
+	void *ptr = NULL;
+	uint32_t flags;
+
+	spin_lock_irq(&memmap.lock, flags);
+
+	for (i = 0, n = PLATFORM_HEAP_BUFFER, heap = memmap.buffer;
+	     i < PLATFORM_HEAP_BUFFER;
+	     i = heap - memmap.buffer + 1, n = PLATFORM_HEAP_BUFFER - i, heap++) {
+		heap = get_heap_from_caps(heap, n, caps);
+		if (!heap)
+			break;
+
+		ptr = alloc_heap_buffer(heap, zone, caps, bytes);
+		if (ptr)
+			break;
+
+		/* Continue from the next heap */
+	}
+
 	spin_unlock_irq(&memmap.lock, flags);
+
 	return ptr;
 }
 
