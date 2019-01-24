@@ -65,8 +65,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	struct sof_ipc_reply reply;
 	int32_t err;
 
-	trace_ipc("ipc: msg rx -> 0x%x", ipc->host_msg);
-
 	/* perform command and return any error */
 	err = ipc_cmd();
 	if (err > 0) {
