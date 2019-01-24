@@ -117,6 +117,7 @@ function(sof_add_ld_script binary_name script_name)
 
 	add_custom_target("ld_script_${script_name}" DEPENDS ${lds_out})
 	add_dependencies(${binary_name} "ld_script_${script_name}")
+	set_target_properties(${binary_name} PROPERTIES LINK_DEPENDS ${lds_in})
 endfunction()
 
 sof_add_ld_script(sof ${platform_ld_script})
