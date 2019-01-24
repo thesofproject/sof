@@ -675,7 +675,7 @@ static int src_params(struct comp_dev *dev)
 	if (!cd->delay_lines)
 		rfree(cd->delay_lines);
 
-	cd->delay_lines = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+	cd->delay_lines = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
 				  delay_lines_size);
 	if (!cd->delay_lines) {
 		trace_src_error("src_params() error: "
