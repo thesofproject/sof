@@ -10,4 +10,5 @@ while [ $COUNTER -lt $MAXLOOPS ]; do
     ./sof_bootone.sh
     dmesg > boot_$COUNTER.bootlog
     let COUNTER+=1
+    sleep 6
 done
