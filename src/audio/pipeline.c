@@ -677,6 +677,7 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 {
 	struct pipeline_data data;
 	struct sof_ipc_stream_posn posn;
+	int ret;
 
 	/* don't flood host */
 	if (p->xrun_bytes)
@@ -685,6 +686,12 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	/* only send when we are running */
 	if (dev->state != COMP_STATE_ACTIVE)
 		return;
+
+	/* notify all pipeline comps we are in XRUN, and stop copying */
+	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
+	if (ret < 0)
+		trace_pipe_error_with_ids(p, "pipeline_xrun() error: Pipelines notification about XRUN failed, ret = %d",
+					  ret);
 
 	memset(&posn, 0, sizeof(posn));
 	p->xrun_bytes = bytes;
@@ -695,22 +702,20 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	pipeline_comp_xrun(dev, &data, dev->params.direction);
 }
 
+#if NO_XRUN_RECOVERY
+/* recover the pipeline from a XRUN condition */
+static int pipeline_xrun_recover(struct pipeline *p)
+{
+	return -EINVAL;
+}
+
+#else
 /* recover the pipeline from a XRUN condition */
 static int pipeline_xrun_recover(struct pipeline *p)
 {
 	int ret;
 
 	trace_pipe_error_with_ids(p, "pipeline_xrun_recover()");
-
-	/* notify all pipeline comps we are in XRUN */
-	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
-	if (ret < 0) {
-		trace_pipe_error_with_ids(p, "pipeline_xrun_recover() error: "
-					  "Pipelines notification about XRUN "
-					  "failed, ret = %d", ret);
-		return ret;
-	}
-	p->xrun_bytes = 0;
 
 	/* prepare the pipeline */
 	ret = pipeline_prepare(p, p->source_comp);
@@ -720,6 +725,9 @@ static int pipeline_xrun_recover(struct pipeline *p)
 					  "ret = %d", ret);
 		return ret;
 	}
+
+	/* reset xrun status as we already in prepared */
+	p->xrun_bytes = 0;
 
 	/* restart pipeline comps */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_START);
@@ -732,6 +740,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 
 	return 0;
 }
+#endif
 
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
@@ -744,6 +753,7 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 			schedule_task(&p->pipe_task, start,
 				      p->ipc_pipe.deadline);
 	}
+
 }
 
 /* notify pipeline that this component requires buffers emptied/filled
@@ -776,17 +786,20 @@ static void pipeline_task(void *arg)
 
 	/* are we in xrun ? */
 	if (p->xrun_bytes) {
+		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0)
-			return; /* failed - host will stop this pipeline */
-		goto sched;
+			goto sched;/* skip copy if still in xrun */
 	}
 
 	err = pipeline_copy(p->sched_comp);
 	if (err < 0) {
+		/* try to recover */
 		err = pipeline_xrun_recover(p);
-		if (err < 0)
+		if (err < 0) {
+			trace_pipe_error_with_ids(p, "pipeline_task(): xrun recover failed! pipeline will be stopped!");
 			return; /* failed - host will stop this pipeline */
+		}
 	}
 
 sched:
