@@ -502,7 +502,8 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	bdiv_min = config->ssp.tdm_slots * config->ssp.sample_valid_bits;
+	bdiv_min = config->ssp.tdm_slots * (config->ssp.tdm_per_slot_padding_flag ?
+		   config->ssp.tdm_slot_width : config->ssp.sample_valid_bits);
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ssp_set_config() error: bdiv(%d) < bdiv_min(%d)",
 				bdiv < bdiv_min);
@@ -512,8 +513,8 @@ static inline int ssp_set_config(struct dai *dai,
 
 	frame_end_padding = bdiv - bdiv_min;
 	if (frame_end_padding > SSPSP2_FEP_MASK) {
-		trace_ssp_error("ssp_set_config() error: "
-				"frame_end_padding > %d", SSPSP2_FEP_MASK);
+		trace_ssp_error("ssp_set_config() error: frame_end_padding "
+				"too big: %u", frame_end_padding);
 		ret = -EINVAL;
 		goto out;
 	}
