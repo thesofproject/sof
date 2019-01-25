@@ -19,7 +19,7 @@ DEPS = \
 MACHINES = \
 	sof-cht-nocodec.tplg \
 	sof-cht-max98090.tplg \
-	sof-hda-generic.tplg \
+	sof-hda-intel-common.tplg \
 	sof-apl-nocodec.tplg \
 	sof-byt-nocodec.tplg \
 	sof-bdw-rt286.tplg \
@@ -66,7 +66,7 @@ EXTRA_DIST = \
 	sof-cht-nocodec.m4 \
 	sof-cht-max98090.m4 \
 	sof-apl-hdmi.m4 \
-	sof-hda-generic.m4 \
+	sof-hda-intel-common.m4 \
 	sof-apl-nocodec.m4 \
 	sof-byt-nocodec.m4 \
 	sof-bdw-rt286.m4 \
