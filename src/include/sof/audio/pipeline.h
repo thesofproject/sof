@@ -42,6 +42,13 @@
 #include <sof/schedule.h>
 #include <uapi/ipc/topology.h>
 
+/*
+ * This flag disables firmware-side xrun recovery.
+ * It should remain enabled in the situation when the
+ * recovery is delegated to the outside of firmware.
+ */
+#define NO_XRUN_RECOVERY 0
+
 /* pipeline tracing */
 #define trace_pipe(format, ...) \
 	trace_event(TRACE_CLASS_PIPE, format, ##__VA_ARGS__)
