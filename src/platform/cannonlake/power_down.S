@@ -30,8 +30,9 @@
 
 /**
  * \file platform/cannonlake/power_down.S
- * \brief Power gating memory banks - implementation specific for Apollolake
- * \author Lech Betlej <lech.betlej@linux.intel.com>
+ * \brief Power gating memory banks - implementation specific for platfroms
+ *  with cAVS 1.8 (i.e. CannonLake) and cAVS 2.0 (i.e. IceLake)
+  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 #include <platform/shim.h>
 #include <platform/asm_memory_management.h>
@@ -53,7 +54,6 @@ literals:
  * A4 - platform type
  * A5 - response_to_ipc
  */
-//TODO: add IPC reply sending before core enters waiti
 
 #define b_enable_lpsram              a2
 #define pu32_hpsram_mask             a3
@@ -143,7 +143,6 @@ beqz pu32_hpsram_mask, _PD_SLEEP
 	movi temp_reg0, SHIM_LDOCTL_HPSRAM_LDO_OFF
 	m_cavs_set_hpldo_state temp_reg0, temp_reg1, temp_reg2
 
-//TODO: add sending IPC reply from L1$ locked code
 _PD_SEND_IPC:
 /* Send IPC to host informing of PD completion - Clear BUSY
  * bit by writing IPC_DIPCTDR_BUSY to IPC_DIPCTDR
