@@ -51,7 +51,6 @@ literals:
  *
  * Finally, core enters waiti.
  */
-//TODO: add IPC reply sending before core enters waiti
 
 #define b_enable_lpsram              a2
 #define pu32_hpsram_mask             a3
@@ -143,8 +142,6 @@ _PD_RELEASE_VNN:
     l32i temp_reg2, temp_reg0, 0
     // We cannot wait for VNN to drop since it can be held by something else
     // and never drop
-
-	//TODO: add sending IPC reply from L1$ locked code
 
 _PD_SEND_IPC:
 	// Send IPC to host informing of PD completion - Clear BUSY bit by
