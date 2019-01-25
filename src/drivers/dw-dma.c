@@ -474,7 +474,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 		/* activate timer for timer driven scheduling */
 		work_schedule_default(&chan->dma_ch_work,
 				      chan->timer_delay + start_offset);
-	} else if (p->chan[channel].status == COMP_STATE_PREPARE)
+	} else if (chan->status == COMP_STATE_PREPARE)
 		/* enable interrupt only for the first start */
 		ret = dw_dma_interrupt_register(dma, channel);
 
