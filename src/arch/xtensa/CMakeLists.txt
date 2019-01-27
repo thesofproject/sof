@@ -16,6 +16,8 @@ elseif(CONFIG_SUECREEK)
 	set(platform_folder suecreek)
 elseif(CONFIG_ICELAKE)
 	set(platform_folder icelake)
+elseif(CONFIG_IMX8)
+	set(platform_folder imx8)
 endif()
 
 set(fw_name ${CONFIG_FIRMWARE_SHORT_NAME})
