@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
+	message(FATAL_ERROR
+		" In-source builds are not supported.\n"
+		" Please remove CMakeCache.txt and the CMakeFiles directory.\n"
+		" Then specify a build directory. Example: cmake -Bbuild ..."
+	)
+endif()
+
 if(NOT (${CMAKE_VERSION} VERSION_LESS "3.13.0"))
 	# CMake 3.13+ has less restrictive rules for target_link_libraries()
 	# Until we make 3.13 as required minimum version we want to
