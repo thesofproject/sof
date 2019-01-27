@@ -10,6 +10,8 @@ elseif(CONFIG_SUECREEK)
 	add_subdirectory(suecreek)
 elseif(CONFIG_ICELAKE)
 	add_subdirectory(icelake)
+elseif(CONFIG_IMX8)
+	add_subdirectory(imx8)
 endif()
 
 if(CONFIG_CAVS)

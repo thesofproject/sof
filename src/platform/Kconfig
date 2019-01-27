@@ -122,6 +122,11 @@ config LIBRARY
 	  Library builds are not intended to be run on DSP, but to be used by
 	  user-space applications.
 
+config IMX8
+	bool "Build for NXP i.MX8"
+	help
+	  Select if your target platform is imx8-compatible
+
 endchoice
 
 config CAVS
@@ -139,6 +144,7 @@ config FIRMWARE_SHORT_NAME
 	default "cnl" if CANNONLAKE
 	default "sue" if SUECREEK
 	default "icl" if ICELAKE
+	default "imx8" if IMX8
 	default ""
 	help
 	  3-characters long firmware identifer
