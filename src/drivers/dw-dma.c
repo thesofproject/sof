@@ -546,7 +546,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	int ret;
 	uint32_t flags;
 
-	if (channel >= dma->plat_data.channels) {
+	if (channel >= dma->plat_data.channels || channel == DMA_CHAN_INVALID) {
 		trace_dwdma_error("dw-dma: %d invalid channel %d",
 				  dma->plat_data.id, channel);
 		return -EINVAL;
@@ -585,7 +585,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	struct dw_lli2 *lli;
 #endif
 
-	if (channel >= dma->plat_data.channels) {
+	if (channel >= dma->plat_data.channels || channel == DMA_CHAN_INVALID) {
 		trace_dwdma_error("dw-dma: %d invalid channel %d",
 				  dma->plat_data.id, channel);
 		return -EINVAL;
