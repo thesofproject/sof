@@ -575,11 +575,16 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	}
 
 	/* copy to downstream immediately */
-	if (current != ppl_data->start && dir == PPL_DIR_DOWNSTREAM)
+	if (current != ppl_data->start && dir == PPL_DIR_DOWNSTREAM) {
 		err = comp_copy(current);
+		if (err < 0)
+			return err;
+	}
 
-	pipeline_for_each_comp(current, &pipeline_comp_copy, data, NULL,
-			       dir);
+	err = pipeline_for_each_comp(current, &pipeline_comp_copy,
+				     data, NULL, dir);
+	if (err < 0)
+		return err;
 
 	if (dir == PPL_DIR_UPSTREAM)
 		err = comp_copy(current);
