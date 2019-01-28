@@ -30,8 +30,8 @@
  */
 
 /**
- * \file include/uapi/ipc.h
- * \brief IPC definitions
+ * \file include/uapi/ipc/control.h
+ * \brief IPC control commands
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */

@@ -31,7 +31,7 @@
 
 /**
  * \file include/uapi/ipc/header.h
- * \brief IPC definitions
+ * \brief IPC command header
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
