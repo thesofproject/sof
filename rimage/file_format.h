@@ -60,8 +60,8 @@
  * Firmware file format .
  */
 
-#ifndef __INCLUDE_UAPI_SOF_FW_H__
-#define __INCLUDE_UAPI_SOF_FW_H__
+#ifndef __INCLUDE_FILE_FORMAT_H__
+#define __INCLUDE_FILE_FORMAT_H__
 
 #include <uapi/ipc/info.h>
 #include <uapi/user/fw.h>
