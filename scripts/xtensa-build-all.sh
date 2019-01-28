@@ -243,7 +243,11 @@ do
 	mkdir $BUILD_DIR
 	cd $BUILD_DIR
 
-	cmake -DTOOLCHAIN=$TOOLCHAIN -DROOT_DIR=$ROOT ..
+	cmake -DTOOLCHAIN=$TOOLCHAIN \
+		-DROOT_DIR=$ROOT \
+		-DCMAKE_VERBOSE_MAKEFILE=ON \
+		..
+
 	make ${PLATFORM}_defconfig
 
 	rm -fr override.config
