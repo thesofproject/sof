@@ -202,10 +202,10 @@ static struct test_case test_cases[] = {
 	TEST_CASE(256, RZONE_BUFFER, SOF_MEM_CAPS_RAM, 8, TEST_BULK,
 		  "rballoc"),
 
-	//TEST_CASE(16,  RZONE_BUFFER, SOF_MEM_CAPS_RAM, 64, TEST_BULK,
-	//	  "rballoc"),
-	//TEST_CASE(4,   RZONE_BUFFER, SOF_MEM_CAPS_RAM, 64, TEST_BULK,
-	//	  "rballoc"),
+	TEST_CASE(16,  RZONE_BUFFER, SOF_MEM_CAPS_RAM, 64, TEST_BULK,
+		  "rballoc"),
+	TEST_CASE(4,   RZONE_BUFFER, SOF_MEM_CAPS_RAM, 64, TEST_BULK,
+		  "rballoc"),
 
 	TEST_CASE(1,   RZONE_BUFFER, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, 2,
 		  TEST_BULK, "rballoc_dma"),
