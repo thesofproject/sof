@@ -40,7 +40,7 @@ src/lib/*				@libinyang
 src/gdb/*				@mrajwa
 
 # other helpers
-test/*					@jajanusz
+test/**					@jajanusz
 scripts/*				@xiulipan
 rimage/*				@xiulipan
 
@@ -53,10 +53,10 @@ tools/eqctl/*				@singalsu
 tools/tune/*				@singalsu
 
 # build system
-*/CMakeLists.txt			@jajanusz
-*/Kconfig				@jajanusz
-scripts/cmake/*				@jajanusz
-scripts/kconfig/*			@jajanusz
+**/CMakeLists.txt			@jajanusz
+**/Kconfig				@jajanusz
+scripts/cmake/**			@jajanusz
+scripts/kconfig/**			@jajanusz
 
 # related fileds
 *.sh					@jajanusz
