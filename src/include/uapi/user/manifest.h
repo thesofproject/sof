@@ -29,7 +29,7 @@
  */
 
 /**
- * \file include/uapi/ipc.h
+ * \file include/uapi/user/manifest.h
  * \brief FW Image Manifest definitions.
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
