@@ -76,3 +76,6 @@ __pycache__
 build*/
 CMakeCache.txt
 CMakeFiles
+doc/*.cmake
+doc/*.ninja
+doc/Makefile
