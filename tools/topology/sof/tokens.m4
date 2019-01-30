@@ -88,3 +88,12 @@ SectionVendorTokens."sof_tone_tokens" {
 SectionVendorTokens."sof_effect_tokens" {
 	SOF_TKN_EFFECT_TYPE			"900"
 }
+
+SectionVendorTokens."sof_detect_tokens" {
+	SOF_TKN_DETECT_ITEM1			"1000"
+}
+
+SectionVendorTokens."sof_pm_tokens" {
+	SOF_TKN_PM_COMP_WAKE_SOURCE		"1100"
+	SOF_TKN_PM_COMP_ACTIVE_IN_PD		"1101"
+}
