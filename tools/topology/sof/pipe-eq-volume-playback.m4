@@ -42,7 +42,7 @@ C_CONTROLBYTES(EQIIR, PIPELINE_ID,
 	EQIIR_priv)
 
 # Use coefficients for flat frequency response
-include(`eq_fir_coef_flat.m4')
+include(`example_fir_eq_long.m4')
 
 # EQ Bytes control with max value of 255
 C_CONTROLBYTES(EQFIR, PIPELINE_ID,
