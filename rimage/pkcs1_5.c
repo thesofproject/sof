@@ -96,7 +96,7 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 	if (!image->key_name)
 		sprintf(path, "%s/otc_private_key.pem", PEM_KEY_PREFIX);
 	else
-		strncpy(path, image->key_name, 256);
+		strncpy(path, image->key_name, sizeof(path) - 1);
 
 	fprintf(stdout, " pkcs: signing with key %s\n", path);
 	fp = fopen(path, "r");
