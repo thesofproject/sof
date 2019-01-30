@@ -61,6 +61,7 @@ static struct block_hdr mod_block128[HEAP_RT_COUNT128];
 static struct block_hdr mod_block256[HEAP_RT_COUNT256];
 static struct block_hdr mod_block512[HEAP_RT_COUNT512];
 static struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
+static struct block_hdr mod_block4096[HEAP_RT_COUNT4096];
 
 /* Heap memory map for modules */
 static struct block_map rt_heap_map[] = {
@@ -69,6 +70,7 @@ static struct block_map rt_heap_map[] = {
 	BLOCK_DEF(256, HEAP_RT_COUNT256, mod_block256),
 	BLOCK_DEF(512, HEAP_RT_COUNT512, mod_block512),
 	BLOCK_DEF(1024, HEAP_RT_COUNT1024, mod_block1024),
+	BLOCK_DEF(4096, HEAP_RT_COUNT4096, mod_block4096),
 };
 
 /* Heap blocks for buffers */
