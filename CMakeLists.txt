@@ -66,11 +66,16 @@ endif()
 # get compiler name and version
 execute_process(
 	COMMAND ${CMAKE_C_COMPILER} --version
-	COMMAND head -n 1
-	OUTPUT_VARIABLE CC_VERSION_TEXT
+	OUTPUT_VARIABLE cc_version_output
 	OUTPUT_STRIP_TRAILING_WHITESPACE
 	ERROR_QUIET
 )
+
+string(REGEX MATCH "^[^\r\n]+" CC_VERSION_TEXT "${cc_version_output}")
+if(NOT CC_VERSION_TEXT)
+	message(WARNING "Couldn't get compiler version")
+	set(CC_VERSION_TEXT 0)
+endif()
 
 set(GENERATED_DIRECTORY ${PROJECT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${GENERATED_DIRECTORY}/include)
