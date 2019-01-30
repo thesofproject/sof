@@ -1064,6 +1064,64 @@ static int ipc_glb_tplg_message(uint32_t header)
 	}
 }
 
+static int ipc_glb_large_message(uint32_t header)
+{
+	struct sof_ipc_comp_reply reply;
+	struct sof_ipc_large_hdr *hdr;
+	struct sof_ipc_comp *lg = (struct sof_ipc_comp *)_ipc->large_data;
+	uint32_t type;
+	uint32_t offset;
+
+	reply.rhdr.hdr.cmd = header;
+	reply.rhdr.hdr.size = sizeof(reply);
+	reply.rhdr.error = 0;
+	reply.offset = 0;
+
+	hdr = (struct sof_ipc_large_hdr *)_ipc->comp_data;
+
+	/* TODO: what is the max large data size? */
+	if (hdr->id == 0) {
+		_ipc->large_data = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+					   SOF_IPC_MSG_MAX_SIZE * 10);
+
+		if (!_ipc->large_data) {
+			reply.rhdr.error = -ENOMEM;
+			goto out;
+		}
+	}
+
+	trace_ipc("ipc: large ipc message id %d count %d size %d", hdr->id,
+		  hdr->count, hdr->hdr.size);
+
+	offset = hdr->id * (SOF_IPC_MSG_MAX_SIZE -
+			   sizeof(struct sof_ipc_large_hdr));
+	memcpy(_ipc->large_data + offset, hdr->data, hdr->hdr.size);
+
+	/* message is complete */
+	if (hdr->id == hdr->count - 1) {
+		type = (hdr->cmd & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+
+		/* call the proper method for the data and free it */
+		switch (type) {
+		case iCS(SOF_IPC_TPLG_COMP_NEW):
+			reply.rhdr.error = ipc_comp_new(_ipc, lg);
+			break;
+		default:
+			trace_ipc_error("ipc: unknown tplg header %u", header);
+			reply.rhdr.error = -EINVAL;
+		}
+
+		rfree(_ipc->large_data);
+		reply.rhdr.hdr.cmd = type;
+	}
+
+out:
+	/* write component values to the outbox */
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+
+	return 1;
+}
+
 /*
  * Global IPC Operations.
  */
@@ -1100,6 +1158,8 @@ int ipc_cmd(void)
 		return ipc_glb_debug_message(hdr->cmd);
 	case iGS(SOF_IPC_GLB_GDB_DEBUG):
 		return ipc_glb_gdb_debug(hdr->cmd);
+	case iGS(SOF_IPC_GLB_LARGE):
+		return ipc_glb_large_message(hdr->cmd);
 	default:
 		trace_ipc_error("ipc: unknown command type %u", type);
 		return -EINVAL;

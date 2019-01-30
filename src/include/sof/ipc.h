@@ -109,6 +109,7 @@ struct ipc {
 	uint32_t host_pending;
 	spinlock_t lock;
 	void *comp_data;
+	unsigned char *large_data;
 
 	/* RX call back */
 	int (*cb)(struct ipc_msg *msg);
