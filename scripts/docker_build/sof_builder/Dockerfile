@@ -52,13 +52,8 @@ RUN apt-get -y update && \
 
 # Use ToT alsa utils for the latest topology patches.
 RUN mkdir -p /root/alsa-build && cd /root/alsa-build && \
-	if [ "x$http_proxy" = "x" ]; then \
-		git clone git://git.alsa-project.org/alsa-lib.git && \
-		git clone git://git.alsa-project.org/alsa-utils.git ; \
-	else \
-		git clone http://git.alsa-project.org/http/alsa-lib.git && \
-		git clone http://git.alsa-project.org/http/alsa-utils.git; \
-	fi && \
+git clone https://github.com/thesofproject/alsa-lib.git && \
+git clone https://github.com/thesofproject/alsa-utils.git && \
 cd /root/alsa-build/alsa-lib && ./gitcompile &&  make install && \
 cd /root/alsa-build/alsa-utils && ./gitcompile &&  make install && \
 cd /root/ && rm -rf alsa-build
