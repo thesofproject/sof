@@ -132,7 +132,7 @@ found:
 
 	/* open outfile for writing */
 	unlink(image.out_file);
-	image.out_fd = fopen(image.out_file, "w");
+	image.out_fd = fopen(image.out_file, "wb");
 	if (image.out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image.out_file, errno);
@@ -147,7 +147,7 @@ found:
 		ret = image.adsp->write_firmware(&image);
 
 	unlink(image.ldc_out_file);
-	image.ldc_out_fd = fopen(image.ldc_out_file, "w");
+	image.ldc_out_fd = fopen(image.ldc_out_file, "wb");
 	if (image.ldc_out_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image.ldc_out_file, errno);

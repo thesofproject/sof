@@ -44,7 +44,7 @@ static int man_open_rom_file(struct image *image)
 		return -ENOMEM;
 
 	/* open ROM outfile for writing */
-	image->out_rom_fd = fopen(image->out_rom_file, "w");
+	image->out_rom_fd = fopen(image->out_rom_file, "wb");
 	if (image->out_rom_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 				image->out_rom_file, errno);
@@ -59,7 +59,7 @@ static int man_open_unsigned_file(struct image *image)
 	unlink(image->out_unsigned_file);
 
 	/* open unsigned FW outfile for writing */
-	image->out_unsigned_fd = fopen(image->out_unsigned_file, "w");
+	image->out_unsigned_fd = fopen(image->out_unsigned_file, "wb");
 	if (image->out_unsigned_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 				image->out_unsigned_file, errno);
@@ -74,7 +74,7 @@ static int man_open_manifest_file(struct image *image)
 	sprintf(image->out_man_file, "%s.met", image->out_file);
 	unlink(image->out_man_file);
 
-	image->out_man_fd = fopen(image->out_man_file, "w");
+	image->out_man_fd = fopen(image->out_man_file, "wb");
 	if (image->out_man_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 				image->out_man_file, errno);
