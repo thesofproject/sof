@@ -541,7 +541,7 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 	module = &image->module[module_index];
 
 	/* open the elf input file */
-	module->fd = fopen(name, "r");
+	module->fd = fopen(name, "rb");
 	if (module->fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for reading %d\n",
 				name, errno);
