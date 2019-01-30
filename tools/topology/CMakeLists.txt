@@ -12,6 +12,7 @@ set(MACHINES
 	sof-cht-rt5682
 	sof-hda-intel-common
 	sof-apl-nocodec
+	sof-apl-keyword-detect
 	sof-byt-nocodec
 	sof-bdw-rt286
 	sof-bdw-rt5640
