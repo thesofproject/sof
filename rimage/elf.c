@@ -30,7 +30,7 @@ static int elf_read_sections(struct image *image, struct module *module)
 	int man_section_idx;
 
 	/* read in section header */
-	ret = fseek(module->fd, hdr->e_shoff, SEEK_SET);
+	ret = fseek(module->fd, hdr->shoff, SEEK_SET);
 	if (ret < 0) {
 		fprintf(stderr, "error: can't seek to %s section header %d\n",
 			module->elf_file, ret);
@@ -38,37 +38,37 @@ static int elf_read_sections(struct image *image, struct module *module)
 	}
 
 	/* allocate space for each section header */
-	section = calloc(sizeof(Elf32_Shdr), hdr->e_shnum);
+	section = calloc(sizeof(Elf32_Shdr), hdr->shnum);
 	if (section == NULL)
 		return -ENOMEM;
 	module->section = section;
 
 	/* read in sections */
-	count = fread(section, sizeof(Elf32_Shdr), hdr->e_shnum, module->fd);
-	if (count != hdr->e_shnum) {
+	count = fread(section, sizeof(Elf32_Shdr), hdr->shnum, module->fd);
+	if (count != hdr->shnum) {
 		fprintf(stderr, "error: failed to read %s section header %d\n",
 			module->elf_file, -errno);
 		return -errno;
 	}
 
 	/* read in strings */
-	module->strings = calloc(1, section[hdr->e_shstrndx].sh_size);
+	module->strings = calloc(1, section[hdr->shstrndx].size);
 	if (!module->strings) {
 		fprintf(stderr, "error: failed %s to read ELF strings for %d\n",
 				module->elf_file, -errno);
 			return -errno;
 	}
 
-	ret = fseek(module->fd, section[hdr->e_shstrndx].sh_offset, SEEK_SET);
+	ret = fseek(module->fd, section[hdr->shstrndx].off, SEEK_SET);
 	if (ret < 0) {
 		fprintf(stderr, "error: can't seek to %s stringss %d\n",
 			module->elf_file, ret);
 		return ret;
 	}
 
-	count = fread(module->strings, 1, section[hdr->e_shstrndx].sh_size,
+	count = fread(module->strings, 1, section[hdr->shstrndx].size,
 		      module->fd);
-	if (count != section[hdr->e_shstrndx].sh_size) {
+	if (count != section[hdr->shstrndx].size) {
 		fprintf(stderr, "error: failed to read %s strings %d\n",
 			module->elf_file, -errno);
 		return -errno;
@@ -98,26 +98,26 @@ static int elf_read_sections(struct image *image, struct module *module)
 		module->fw_ready_index);
 
 	/* parse each section */
-	for (i = 0; i < hdr->e_shnum; i++) {
+	for (i = 0; i < hdr->shnum; i++) {
 
 		/* only write valid sections */
-		if (!(section[i].sh_flags & valid))
+		if (!(section[i].flags & valid))
 			continue;
 
-		switch (section[i].sh_type) {
+		switch (section[i].type) {
 		case SHT_NOBITS:
 			/* bss */
-			module->bss_size += section[i].sh_size;
+			module->bss_size += section[i].size;
 			module->num_bss++;
 			break;
 		case SHT_PROGBITS:
 			/* text or data */
-			module->fw_size += section[i].sh_size;
+			module->fw_size += section[i].size;
 
-			if (section[i].sh_flags & SHF_EXECINSTR)
-				module->text_size += section[i].sh_size;
+			if (section[i].flags & SHF_EXECINSTR)
+				module->text_size += section[i].size;
 			else
-				module->data_size += section[i].sh_size;
+				module->data_size += section[i].size;
 			break;
 		default:
 			continue;
@@ -129,19 +129,19 @@ static int elf_read_sections(struct image *image, struct module *module)
 			continue;
 
 		fprintf(stdout, " %s section-%d: \ttype\t 0x%8.8x\n", module->elf_file,
-			i, section[i].sh_type);
+			i, section[i].type);
 		fprintf(stdout, " %s section-%d: \tflags\t 0x%8.8x\n", module->elf_file,
-			i, section[i].sh_flags);
+			i, section[i].flags);
 		fprintf(stdout, " %s section-%d: \taddr\t 0x%8.8x\n", module->elf_file,
-			i, section[i].sh_addr);
+			i, section[i].vaddr);
 		fprintf(stdout, " %s section-%d: \toffset\t 0x%8.8x\n", module->elf_file,
-			i, section[i].sh_offset);
+			i, section[i].off);
 		fprintf(stdout, " %s section-%d: \tsize\t 0x%8.8x\n", module->elf_file,
-			i, section[i].sh_size);
+			i, section[i].size);
 		fprintf(stdout, " %s section-%d: \tlink\t 0x%8.8x\n", module->elf_file,
-			i, section[i].sh_link);
+			i, section[i].link);
 		fprintf(stdout, " %s section-%d: \tinfo\t 0x%8.8x\n\n", module->elf_file,
-			i, section[i].sh_info);
+			i, section[i].info);
 	}
 
 	return 0;
@@ -155,7 +155,7 @@ static int elf_read_programs(struct image *image, struct module *module)
 	int i, ret;
 
 	/* read in program header */
-	ret = fseek(module->fd, hdr->e_phoff, SEEK_SET);
+	ret = fseek(module->fd, hdr->phoff, SEEK_SET);
 	if (ret < 0) {
 		fprintf(stderr, "error: cant seek to %s program header %d\n",
 			module->elf_file, ret);
@@ -163,42 +163,42 @@ static int elf_read_programs(struct image *image, struct module *module)
 	}
 
 	/* allocate space for programs */
-	prg = calloc(sizeof(Elf32_Phdr), hdr->e_phnum);
+	prg = calloc(sizeof(Elf32_Phdr), hdr->phnum);
 	if (prg == NULL)
 		return -ENOMEM;
 	module->prg = prg;
 
 	/* read in programs */
-	count = fread(prg, sizeof(Elf32_Phdr), hdr->e_phnum, module->fd);
-	if (count != hdr->e_phnum) {
+	count = fread(prg, sizeof(Elf32_Phdr), hdr->phnum, module->fd);
+	if (count != hdr->phnum) {
 		fprintf(stderr, "error: failed to read %s program header %d\n",
 			module->elf_file, -errno);
 		return -errno;
 	}
 
 	/* check each program */
-	for (i = 0; i < hdr->e_phnum; i++) {
+	for (i = 0; i < hdr->phnum; i++) {
 
-		if (prg[i].p_filesz == 0)
+		if (prg[i].filesz == 0)
 			continue;
 
 		if (!image->verbose)
 			continue;
 
 		fprintf(stdout, "%s program-%d: \ttype\t 0x%8.8x\n",
-			module->elf_file, i, prg[i].p_type);
+			module->elf_file, i, prg[i].type);
 		fprintf(stdout, "%s program-%d: \toffset\t 0x%8.8x\n",
-			module->elf_file, i, prg[i].p_offset);
+			module->elf_file, i, prg[i].off);
 		fprintf(stdout, "%s program-%d: \tvaddr\t 0x%8.8x\n",
-			module->elf_file, i, prg[i].p_vaddr);
+			module->elf_file, i, prg[i].vaddr);
 		fprintf(stdout, "%s program-%d: \tpaddr\t 0x%8.8x\n",
-			module->elf_file, i, prg[i].p_paddr);
+			module->elf_file, i, prg[i].paddr);
 		fprintf(stdout, "%s program-%d: \tfsize\t 0x%8.8x\n",
-			module->elf_file, i, prg[i].p_filesz);
+			module->elf_file, i, prg[i].filesz);
 		fprintf(stdout, "%s program-%d: \tmsize\t 0x%8.8x\n",
-			module->elf_file, i, prg[i].p_memsz);
+			module->elf_file, i, prg[i].memsz);
 		fprintf(stdout, "%s program-%d: \tflags\t 0x%8.8x\n\n",
-			module->elf_file, i, prg[i].p_flags);
+			module->elf_file, i, prg[i].flags);
 	}
 
 	return 0;
@@ -221,21 +221,21 @@ static int elf_read_hdr(struct image *image, struct module *module)
 		return 0;
 
 	fprintf(stdout, "%s elf: \tentry point\t 0x%8.8x\n",
-		module->elf_file, hdr->e_entry);
+		module->elf_file, hdr->entry);
 	fprintf(stdout, "%s elf: \tprogram offset\t 0x%8.8x\n",
-		module->elf_file, hdr->e_phoff);
+		module->elf_file, hdr->phoff);
 	fprintf(stdout, "%s elf: \tsection offset\t 0x%8.8x\n",
-		module->elf_file, hdr->e_shoff);
+		module->elf_file, hdr->shoff);
 	fprintf(stdout, "%s elf: \tprogram size\t 0x%8.8x\n",
-		module->elf_file, hdr->e_phentsize);
+		module->elf_file, hdr->phentsize);
 	fprintf(stdout, "%s elf: \tprogram count\t 0x%8.8x\n",
-		module->elf_file, hdr->e_phnum);
+		module->elf_file, hdr->phnum);
 	fprintf(stdout, "%s elf: \tsection size\t 0x%8.8x\n",
-		module->elf_file, hdr->e_shentsize);
+		module->elf_file, hdr->shentsize);
 	fprintf(stdout, "%s elf: \tsection count\t 0x%8.8x\n",
-		module->elf_file, hdr->e_shnum);
+		module->elf_file, hdr->shnum);
 	fprintf(stdout, "%s elf: \tstring index\t 0x%8.8x\n\n",
-		module->elf_file, hdr->e_shstrndx);
+		module->elf_file, hdr->shstrndx);
 
 	return 0;
 }
@@ -244,8 +244,8 @@ int elf_is_rom(struct image *image, Elf32_Shdr *section)
 {
 	uint32_t start, end;
 
-	start = section->sh_addr;
-	end = section->sh_addr + section->sh_size;
+	start = section->vaddr;
+	end = section->vaddr + section->size;
 
 	if (start < image->adsp->rom_base ||
 		start > image->adsp->rom_base + image->adsp->rom_size)
@@ -259,23 +259,23 @@ int elf_is_rom(struct image *image, Elf32_Shdr *section)
 static void elf_module_size(struct image *image, struct module *module,
 	Elf32_Shdr *section, int index)
 {
-	switch (section->sh_type) {
+	switch (section->type) {
 	case SHT_PROGBITS:
 		/* text or data */
-		if (section->sh_flags & SHF_EXECINSTR) {
+		if (section->flags & SHF_EXECINSTR) {
 			/* text */
-			if (module->text_start > section->sh_addr)
-				module->text_start = section->sh_addr;
-			if (module->text_end < section->sh_addr + section->sh_size)
-				module->text_end = section->sh_addr + section->sh_size;
+			if (module->text_start > section->vaddr)
+				module->text_start = section->vaddr;
+			if (module->text_end < section->vaddr + section->size)
+				module->text_end = section->vaddr + section->size;
 
 			fprintf(stdout, "\tTEXT\t");
 		} else {
 			/* initialized data, also calc the writable sections */
-			if (module->data_start > section->sh_addr)
-				module->data_start = section->sh_addr;
-			if (module->data_end < section->sh_addr + section->sh_size)
-				module->data_end = section->sh_addr + section->sh_size;
+			if (module->data_start > section->vaddr)
+				module->data_start = section->vaddr;
+			if (module->data_end < section->vaddr + section->size)
+				module->data_end = section->vaddr + section->size;
 
 			fprintf(stdout, "\tDATA\t");
 		}
@@ -284,8 +284,8 @@ static void elf_module_size(struct image *image, struct module *module,
 		/* bss */
 		if (index == module->bss_index) {
 			/* updated the .bss segment */
-			module->bss_start = section->sh_addr;
-			module->bss_end = section->sh_addr + section->sh_size;
+			module->bss_start = section->vaddr;
+			module->bss_end = section->vaddr + section->size;
 			fprintf(stdout, "\tBSS\t");
 		} else {
 			fprintf(stdout, "\tHEAP\t");
@@ -302,19 +302,19 @@ static void elf_module_size(struct image *image, struct module *module,
 static void elf_module_size_reloc(struct image *image, struct module *module,
 				  Elf32_Shdr *section, int index)
 {
-	switch (section->sh_type) {
+	switch (section->type) {
 	case SHT_PROGBITS:
 		/* text or data */
-		if (section->sh_flags & SHF_EXECINSTR) {
+		if (section->flags & SHF_EXECINSTR) {
 			/* text */
 			module->text_start = 0;
-			module->text_end += section->sh_size;
+			module->text_end += section->size;
 
 			fprintf(stdout, "\tTEXT\t");
 		} else {
 			/* initialized data, also calc the writable sections */
 			module->data_start = 0;
-			module->data_end += section->sh_size;
+			module->data_end += section->size;
 
 			fprintf(stdout, "\tDATA\t");
 		}
@@ -323,8 +323,8 @@ static void elf_module_size_reloc(struct image *image, struct module *module,
 		/* bss */
 		if (index == module->bss_index) {
 			/* updated the .bss segment */
-			module->bss_start = section->sh_addr;
-			module->bss_end = section->sh_addr + section->sh_size;
+			module->bss_start = section->vaddr;
+			module->bss_end = section->vaddr + section->size;
 			fprintf(stdout, "\tBSS\t");
 		} else {
 			fprintf(stdout, "\tHEAP\t");
@@ -346,12 +346,12 @@ static void elf_module_limits(struct image *image, struct module *module)
 	module->text_end = module->data_end = module->bss_end = 0;
 
 	fprintf(stdout, "  Found %d sections, listing valid sections......\n",
-		module->hdr.e_shnum);
+		module->hdr.shnum);
 
 	fprintf(stdout, "\tNo\tStart\t\tEnd\t\tBytes\tType\tName\n");
 
 	/* iterate all sections and get size of segments */
-	for (i = 0; i < module->hdr.e_shnum; i++) {
+	for (i = 0; i < module->hdr.shnum; i++) {
 
 		section = &module->section[i];
 
@@ -360,10 +360,10 @@ static void elf_module_limits(struct image *image, struct module *module)
 		    i != module->fw_ready_index) {
 
 			/* only check valid sections */
-			if (!(section->sh_flags & valid))
+			if (!(section->flags & valid))
 				continue;
 
-			if (section->sh_size == 0)
+			if (section->size == 0)
 				continue;
 
 			if (elf_is_rom(image, section))
@@ -371,8 +371,8 @@ static void elf_module_limits(struct image *image, struct module *module)
 		}
 
 		fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t%d", i,
-			section->sh_addr, section->sh_addr + section->sh_size,
-			section->sh_size);
+			section->vaddr, section->vaddr + section->size,
+			section->size);
 
 		/* text or data section */
 		if (image->reloc)
@@ -381,7 +381,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 			elf_module_size(image, module, section, i);
 
 		/* section name */
-		fprintf(stdout, "%s\n", module->strings + section->sh_name);
+		fprintf(stdout, "%s\n", module->strings + section->name);
 	}
 
 	fprintf(stdout, "\n");
@@ -401,30 +401,30 @@ int elf_validate_section(struct image *image, struct module *module,
 		m = &image->module[i];
 
 		/* for each section */
-		for (j = 0; j < m->hdr.e_shnum; j++) {
+		for (j = 0; j < m->hdr.shnum; j++) {
 			s = &m->section[j];
 
 			if (s == section)
 				continue;
 
 			/* only check valid sections */
-			if (!(s->sh_flags & valid))
+			if (!(s->flags & valid))
 				continue;
 
-			if (s->sh_size == 0)
+			if (s->size == 0)
 				continue;
 
 			/* is section start non overlapping ? */
-			if (section->sh_addr >= s->sh_addr &&
-				section->sh_addr <
-				s->sh_addr + s->sh_size) {
+			if (section->vaddr >= s->vaddr &&
+				section->vaddr <
+				s->vaddr + s->size) {
 				goto err;
 			}
 
 			/* is section end non overlapping ? */
-			if (section->sh_addr + section->sh_size > s->sh_addr &&
-				section->sh_addr + section->sh_size <=
-				s->sh_addr + s->sh_size) {
+			if (section->vaddr + section->size > s->vaddr &&
+				section->vaddr + section->size <=
+				s->vaddr + s->size) {
 				goto err;
 			}
 		}
@@ -436,8 +436,8 @@ err:
 	fprintf(stderr, "error: section overlap between %s:%d and %s:%d\n",
 		module->elf_file, index, m->elf_file, j);
 	fprintf(stderr, "     [0x%x : 0x%x] overlaps with [0x%x :0x%x]\n",
-		section->sh_addr, section->sh_addr + section->sh_size,
-		s->sh_addr, s->sh_addr + s->sh_size);
+		section->vaddr, section->vaddr + section->size,
+		s->vaddr, s->vaddr + s->size);
 	return -EINVAL;
 }
 
@@ -458,14 +458,14 @@ int elf_validate_modules(struct image *image)
 		module = &image->module[i];
 
 		/* for each section */
-		for (j = 0; j < module->hdr.e_shnum; j++) {
+		for (j = 0; j < module->hdr.shnum; j++) {
 			section = &module->section[j];
 
 			/* only check valid sections */
-			if (!(section->sh_flags & valid))
+			if (!(section->flags & valid))
 				continue;
 
-			if (section->sh_size == 0)
+			if (section->size == 0)
 				continue;
 
 			/* is section non overlapping ? */
@@ -487,31 +487,31 @@ int elf_find_section(struct image *image, struct module *module,
 	size_t count;
 	int ret, i;
 
-	section = &module->section[hdr->e_shstrndx];
+	section = &module->section[hdr->shstrndx];
 
 	/* alloc data data */
-	buffer = calloc(1, section->sh_size);
+	buffer = calloc(1, section->size);
 	if (buffer == NULL)
 		return -ENOMEM;
 
 	/* read in section string data */
-	ret = fseek(module->fd, section->sh_offset, SEEK_SET);
+	ret = fseek(module->fd, section->off, SEEK_SET);
 	if (ret < 0) {
 		fprintf(stderr, "error: cant seek to string section %d\n", ret);
 		goto out;
 	}
 
-	count = fread(buffer, 1, section->sh_size, module->fd);
-	if (count != section->sh_size) {
+	count = fread(buffer, 1, section->size, module->fd);
+	if (count != section->size) {
 		fprintf(stderr, "error: can't read string section %d\n", -errno);
 		ret = -errno;
 		goto out;
 	}
 
 	/* find section with name */
-	for (i = 0; i < hdr->e_shnum; i++) {
+	for (i = 0; i < hdr->shnum; i++) {
 		s = &module->section[i];
-		if (!strcmp(name, buffer + s->sh_name)) {
+		if (!strcmp(name, buffer + s->name)) {
 			ret = i;
 			goto out;
 		}

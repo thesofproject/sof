@@ -129,10 +129,10 @@ static uint32_t elf_to_file_offset(struct image *image,
 	struct module *module, struct sof_man_module *man_module,
 	Elf32_Shdr *section)
 {
-	uint32_t elf_addr = section->sh_addr, file_offset = 0;
+	uint32_t elf_addr = section->vaddr, file_offset = 0;
 
-	if (section->sh_type == SHT_PROGBITS) {
-		if (section->sh_flags & SHF_EXECINSTR) {
+	if (section->type == SHT_PROGBITS) {
+		if (section->flags & SHF_EXECINSTR) {
 			/* text segment */
 			file_offset = elf_addr - module->text_start +
 				module->foffset;
@@ -142,7 +142,7 @@ static uint32_t elf_to_file_offset(struct image *image,
 				module->foffset + module->text_fixup_size;
 
 		}
-	} else if (section->sh_type == SHT_NOBITS) {
+	} else if (section->type == SHT_NOBITS) {
 		/* bss segment */
 		file_offset = 0;
 	}
@@ -157,15 +157,15 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 {
 	uint32_t offset = elf_to_file_offset(image, module,
 		man_module, section);
-	uint32_t end = offset + section->sh_size;
+	uint32_t end = offset + section->size;
 	int seg_type = -1;
 	void *buffer = image->fw_image + offset;
 	size_t count;
 
-	switch (section->sh_type) {
+	switch (section->type) {
 	case SHT_PROGBITS:
 		/* text or data */
-		if (section->sh_flags & SHF_EXECINSTR)
+		if (section->flags & SHF_EXECINSTR)
 			seg_type = SOF_MAN_SEGMENT_TEXT;
 		else
 			seg_type = SOF_MAN_SEGMENT_RODATA;
@@ -184,8 +184,8 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 		man_module->segment[seg_type].file_offset == 0)
 		man_module->segment[seg_type].file_offset = offset;
 
-	count = fread(buffer, 1, section->sh_size, module->fd);
-	if (count != section->sh_size) {
+	count = fread(buffer, 1, section->size, module->fd);
+	if (count != section->size) {
 		fprintf(stderr, "error: cant read section %d\n", -errno);
 		return -errno;
 	}
@@ -195,7 +195,7 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 		image->image_end = end;
 
 	fprintf(stdout, "\t%d\t0x%x\t0x%x\t\t0x%x\t%s\n", section_idx,
-		section->sh_addr, section->sh_size, offset,
+		section->vaddr, section->size, offset,
 		seg_type == SOF_MAN_SEGMENT_TEXT ? "TEXT" : "DATA");
 
 	return 0;
@@ -207,7 +207,7 @@ static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
 	int ret;
 
 	/* seek to ELF section */
-	ret = fseek(module->fd, section->sh_offset, SEEK_SET);
+	ret = fseek(module->fd, section->off, SEEK_SET);
 	if (ret < 0) {
 		fprintf(stderr, "error: can't seek to section %d\n", ret);
 		return ret;
@@ -243,11 +243,11 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 
 	/* load in manifest data */
 	/* module built using xcc has preceding bytes */
-	if (section->sh_size > sizeof(sof_mod))
+	if (section->size > sizeof(sof_mod))
 		ret = fseek(module->fd,
-			section->sh_offset + XCC_MOD_OFFSET, SEEK_SET);
+			section->off + XCC_MOD_OFFSET, SEEK_SET);
 	else
-		ret = fseek(module->fd, section->sh_offset, SEEK_SET);
+		ret = fseek(module->fd, section->off, SEEK_SET);
 
 	if (ret < 0) {
 		fprintf(stderr, "error: can't seek to section %d\n", ret);
@@ -443,15 +443,15 @@ static int man_module_create(struct image *image, struct module *module,
 		return -EINVAL;
 
 	/* find all sections and copy to corresponding segments */
-	for (i = 0; i < module->hdr.e_shnum; i++) {
+	for (i = 0; i < module->hdr.shnum; i++) {
 
 		section = &module->section[i];
 
 		/* only check valid sections */
-		if (!(section->sh_flags & valid))
+		if (!(section->flags & valid))
 			continue;
 
-		if (section->sh_size == 0)
+		if (section->size == 0)
 			continue;
 
 		/* text or data section */

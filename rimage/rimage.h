@@ -16,8 +16,9 @@
 #ifndef __RIMAGE_H__
 #define __RIMAGE_H__
 
+#include "elf.h"
+
 #include <stdint.h>
-#include <elf.h>
 #include <stdio.h>
 
 #include <openssl/conf.h>
