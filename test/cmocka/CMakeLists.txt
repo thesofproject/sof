@@ -1,28 +1,37 @@
 include(ExternalProject)
 
-ExternalProject_Add(cmocka_git
-	GIT_REPOSITORY https://github.com/thesofproject/cmocka
-	PREFIX "${PROJECT_BINARY_DIR}/cmocka_git"
-	BINARY_DIR "${PROJECT_BINARY_DIR}/cmocka_git/build"
-	CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
-		-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-		-DWITH_STATIC_LIB=ON
-		-DWITH_EXAMPLES=OFF
-		-DWITH_POSITION_INDEPENDENT_CODE=OFF
-		-DWITH_TINY_CONFIG=ON
-	BUILD_COMMAND $(MAKE) cmocka-static
-	INSTALL_COMMAND ""
-)
-
 add_library(cmocka STATIC IMPORTED)
-ExternalProject_Get_Property(cmocka_git binary_dir)
 
-set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${binary_dir}/src/libcmocka-static.a")
+if(DEFINED CMOCKA_DIRECTORY)
+	# Prebuilt Cmocka lib
+	set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${CMOCKA_DIRECTORY}/lib/libcmocka-static.a")
+	set(CMOCKA_INCLUDE_DIR "${CMOCKA_DIRECTORY}/include")
+else()
+	# Build Cmocka locally
+	ExternalProject_Add(cmocka_git
+		GIT_REPOSITORY https://github.com/thesofproject/cmocka
+		PREFIX "${PROJECT_BINARY_DIR}/cmocka_git"
+		BINARY_DIR "${PROJECT_BINARY_DIR}/cmocka_git/build"
+		CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+			-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+			-DWITH_SHARED_LIB=OFF
+			-DWITH_STATIC_LIB=ON
+			-DWITH_EXAMPLES=OFF
+			-DWITH_POSITION_INDEPENDENT_CODE=OFF
+			-DWITH_TINY_CONFIG=ON
+		BUILD_COMMAND $(MAKE) cmocka-static
+		INSTALL_COMMAND ""
+	)
 
-add_dependencies(cmocka cmocka_git)
+	ExternalProject_Get_Property(cmocka_git binary_dir)
 
-ExternalProject_Get_Property(cmocka_git source_dir)
-set(CMOCKA_INCLUDE_DIR ${source_dir}/include)
+	set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${binary_dir}/src/libcmocka-static.a")
+
+	add_dependencies(cmocka cmocka_git)
+
+	ExternalProject_Get_Property(cmocka_git source_dir)
+	set(CMOCKA_INCLUDE_DIR ${source_dir}/include)
+endif()
 
 # linker script, just for log entries
 set(memory_mock_lds_in ${PROJECT_SOURCE_DIR}/test/cmocka/memory_mock.x.in)
