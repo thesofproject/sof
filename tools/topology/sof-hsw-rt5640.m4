@@ -23,8 +23,6 @@ include(`platform/intel/hsw.m4')
 # PCM0 ----> volume ---------------+
 #                                  |--low latency mixer ----> volume ---->  SSP0
 # PCM1 -----> volume ----> SRC ----+
-#                                  |
-#           Tone -----> volume ----+
 #
 # PCM0 <---- Volume <---- SSP0
 #
@@ -47,12 +45,6 @@ PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
 	192, 4000, 1, 0)
 
-# Tone Playback pipeline 5 using max 2 channels of s32le.
-# Schedule 192 frames per 4000us deadline on core 0 with priority 2
-PIPELINE_ADD(sof/pipe-tone.m4,
-	5, 2, s32le,
-	192, 4000, 2, 0)
-
 # Connect pipelines together
 SectionGraph."pipe-hsw-rt5640" {
 	index "0"
@@ -60,8 +52,6 @@ SectionGraph."pipe-hsw-rt5640" {
 	lines [
 		# media 0
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_3)
-		#tone
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_5)
 	]
 }
 
