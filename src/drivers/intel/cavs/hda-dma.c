@@ -752,7 +752,7 @@ static int hda_dma_stop(struct dma *dma, int channel)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
 
-	if (channel >= HDA_DMA_MAX_CHANS || channel == DMA_CHAN_INVALID) {
+	if (channel >= HDA_DMA_MAX_CHANS || channel < 0) {
 		trace_hddma_error("hda-dmac: %d invalid channel %d",
 				  dma->plat_data.id, channel);
 		return -EINVAL;
