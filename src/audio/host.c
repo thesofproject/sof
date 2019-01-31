@@ -301,6 +301,13 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_START:
 #if defined CONFIG_DMA_GW
+		if (hd->chan < 0) {
+			ret = -EINVAL;
+			trace_host_error("host_trigger() error:"
+							 "no dma channel configured");
+			goto out;
+		}
+
 		ret = dma_start(hd->dma, hd->chan);
 		if (ret < 0) {
 			trace_host_error("host_trigger() error: "
@@ -542,6 +549,7 @@ static int host_params(struct comp_dev *dev)
 		trace_host_error("host_params() error: "
 				 "dma_set_config() failed");
 		dma_channel_put(hd->dma, hd->chan);
+		hd->chan = DMA_CHAN_INVALID;
 		return err;
 	}
 #else
