@@ -25,13 +25,15 @@ void ri_css_v1_8_hdr_create(struct image *image)
 	struct css_header_v1_8 *css = image->fw_image + MAN_CSS_HDR_OFFSET;
 	struct tm *date;
 	struct timeval tv;
+	time_t seconds;
 	int val;
 
 	fprintf(stdout, " cse: completing CSS manifest\n");
 
 	/* get local time and date */
 	gettimeofday(&tv, NULL);
-	date = localtime(&tv.tv_sec);
+	seconds = tv.tv_sec;
+	date = localtime(&seconds);
 
 	if (!date) {
 		fprintf(stderr, "error: cant get localtime %d\n", -errno);
@@ -80,13 +82,15 @@ void ri_css_v1_5_hdr_create(struct image *image)
 	struct css_header_v1_5 *css = image->fw_image;
 	struct tm *date;
 	struct timeval tv;
+	time_t seconds;
 	int val;
 
 	fprintf(stdout, " cse: completing CSS manifest\n");
 
 	/* get local time and date */
 	gettimeofday(&tv, NULL);
-	date = localtime(&tv.tv_sec);
+	seconds = tv.tv_sec;
+	date = localtime(&seconds);
 
 	if (!date) {
 		fprintf(stderr, "error: cant get localtime %d\n", -errno);

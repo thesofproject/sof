@@ -49,8 +49,8 @@ static int is_iram(struct image *image, Elf32_Shdr *section)
 	const struct adsp *adsp = image->adsp;
 	uint32_t start, end;
 
-	start = section->sh_addr;
-	end = section->sh_addr + section->sh_size;
+	start = section->vaddr;
+	end = section->vaddr + section->size;
 
 	if (start < adsp->iram_base)
 		return 0;
@@ -66,8 +66,8 @@ static int is_dram(struct image *image, Elf32_Shdr *section)
 	const struct adsp *adsp = image->adsp;
 	uint32_t start, end;
 
-	start = section->sh_addr;
-	end = section->sh_addr + section->sh_size;
+	start = section->vaddr;
+	end = section->vaddr + section->size;
 
 	if (start < adsp->dram_base)
 		return 0;
@@ -90,7 +90,7 @@ static int write_block(struct image *image, struct module *module,
 	void *buffer;
 	int ret;
 
-	block.size = section->sh_size;
+	block.size = section->size;
 	if (block.size % 4) {
 		/* make block.size divisible by 4 to avoid unaligned accesses */
 		padding = 4 - (block.size % 4);
@@ -99,15 +99,15 @@ static int write_block(struct image *image, struct module *module,
 
 	if (is_iram(image, section)) {
 		block.type = SOF_BLK_TEXT;
-		block.offset = section->sh_addr - adsp->iram_base
+		block.offset = section->vaddr - adsp->iram_base
 			+ adsp->host_iram_offset;
 	} else if (is_dram(image, section)) {
 		block.type = SOF_BLK_DATA;
-		block.offset = section->sh_addr - adsp->dram_base
+		block.offset = section->vaddr - adsp->dram_base
 			+ adsp->host_dram_offset;
 	} else {
 		fprintf(stderr, "error: invalid block address/size 0x%x/0x%x\n",
-			section->sh_addr, section->sh_size);
+			section->vaddr, section->size);
 		return -EINVAL;
 	}
 
@@ -117,18 +117,18 @@ static int write_block(struct image *image, struct module *module,
 		return -errno;
 
 	/* alloc data data */
-	buffer = calloc(1, section->sh_size);
+	buffer = calloc(1, section->size);
 	if (buffer == NULL)
 		return -ENOMEM;
 
 	/* read in section data */
-	ret = fseek(module->fd, section->sh_offset, SEEK_SET);
+	ret = fseek(module->fd, section->off, SEEK_SET);
 	if (ret < 0) {
 		fprintf(stderr, "error: cant seek to section %d\n", ret);
 		goto out;
 	}
-	count = fread(buffer, 1, section->sh_size, module->fd);
-	if (count != section->sh_size) {
+	count = fread(buffer, 1, section->size, module->fd);
+	if (count != section->size) {
 		fprintf(stderr, "error: cant read section %d\n", -errno);
 		ret = -errno;
 		goto out;
@@ -139,13 +139,13 @@ static int write_block(struct image *image, struct module *module,
 	if (count != block.size) {
 		fprintf(stderr, "error: cant write section %d\n", -errno);
 		fprintf(stderr, " foffset %d size 0x%x mem addr 0x%x\n",
-			section->sh_offset, section->sh_size, section->sh_addr);
+			section->off, section->size, section->vaddr);
 		ret = -errno;
 		goto out;
 	}
 
 	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%8.8lx\t%s\n", block_idx++,
-		section->sh_addr, section->sh_size, ftell(image->out_fd),
+		section->vaddr, section->size, ftell(image->out_fd),
 		block.type == SOF_BLK_TEXT ? "TEXT" : "DATA");
 
 out:
@@ -195,16 +195,16 @@ static int simple_write_module(struct image *image, struct module *module)
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\t\tType\n");
 
-	for (i = 0; i < module->hdr.e_shnum; i++) {
+	for (i = 0; i < module->hdr.shnum; i++) {
 
 		section = &module->section[i];
 
 		/* only write valid sections */
-		if (!(module->section[i].sh_flags & valid))
+		if (!(module->section[i].flags & valid))
 			continue;
 
 		/* dont write bss */
-		if (section->sh_type == SHT_NOBITS)
+		if (section->type == SHT_NOBITS)
 			continue;
 
 		err = write_block(image, module, section);
@@ -375,8 +375,9 @@ static int simple_write_firmware(struct image *image)
 		return -errno;
 
 	fprintf(stdout, "firmware: image size %ld (0x%lx) bytes %d modules\n\n",
-			hdr.file_size + sizeof(hdr), hdr.file_size + sizeof(hdr),
-			hdr.num_modules);
+		(long) (hdr.file_size + sizeof(hdr)),
+		(long) (hdr.file_size + sizeof(hdr)),
+		hdr.num_modules);
 
 	return 0;
 }
@@ -404,7 +405,7 @@ int write_logs_dictionary(struct image *image)
 			if (!buffer)
 				return -ENOMEM;
 
-			fseek(module->fd, section->sh_offset, SEEK_SET);
+			fseek(module->fd, section->off, SEEK_SET);
 			size_t count = fread(buffer, 1,
 				sizeof(struct sof_ipc_fw_ready), module->fd);
 
@@ -427,29 +428,29 @@ int write_logs_dictionary(struct image *image)
 		if (module->logs_index > 0) {
 			Elf32_Shdr *section = &module->section[module->logs_index];
 
-			header.base_address = section->sh_addr;
-			header.data_length = section->sh_size;
+			header.base_address = section->vaddr;
+			header.data_length = section->size;
 
 			fwrite(&header, sizeof(struct snd_sof_logs_header), 1,
 				image->ldc_out_fd);
 
-			buffer = calloc(1, section->sh_size);
+			buffer = calloc(1, section->size);
 			if (!buffer)
 				return -ENOMEM;
 
-			fseek(module->fd, section->sh_offset, SEEK_SET);
-			size_t count = fread(buffer, 1, section->sh_size,
+			fseek(module->fd, section->off, SEEK_SET);
+			size_t count = fread(buffer, 1, section->size,
 				module->fd);
-			if (count != section->sh_size) {
+			if (count != section->size) {
 				fprintf(stderr,
 					"error: can't read logs section %d\n",
 					-errno);
 				ret = -errno;
 				goto out;
 			}
-			count = fwrite(buffer, 1, section->sh_size,
+			count = fwrite(buffer, 1, section->size,
 				image->ldc_out_fd);
-			if (count != section->sh_size) {
+			if (count != section->size) {
 				fprintf(stderr, "error: can't write section %d\n",
 					-errno);
 				ret = -errno;
@@ -459,7 +460,7 @@ int write_logs_dictionary(struct image *image)
 			fprintf(stdout, "logs dictionary: size %u\n",
 				header.data_length + header.data_offset);
 			fprintf(stdout, "including fw version of size: %lu\n\n",
-				sizeof(header.version));
+				(unsigned long) sizeof(header.version));
 		}
 	}
 out:

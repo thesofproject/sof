@@ -213,7 +213,7 @@ ExternalProject_Add(rimage_ep
 add_custom_target(
 	prepare_fw_copy_for_rimage
 	DEPENDS sof rimage_ep
-	COMMAND cp ${PROJECT_BINARY_DIR}/sof sof-${fw_name}
+	COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/sof sof-${fw_name}
 )
 
 # bootloader binary
@@ -236,7 +236,7 @@ if(build_bootloader)
 
 	add_custom_target(
 		bootloader_dump
-		COMMAND cp bootloader bootloader-${fw_name}
+		COMMAND ${CMAKE_COMMAND} -E copy bootloader bootloader-${fw_name}
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/boot_module mod-boot-${fw_name}.bin
 		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-boot-${fw_name}.bin --set-section-flags .module=load,readonly bootloader-${fw_name}
 		COMMAND ${CMAKE_OBJCOPY} -O binary bootloader bootloader-${fw_name}.bin
@@ -334,7 +334,7 @@ endif()
 
 add_custom_target(
 	bin
-	COMMAND cp sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
+	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
 	DEPENDS run_meu
 	VERBATIM
 	USES_TERMINAL
@@ -367,7 +367,7 @@ if(CONFIG_BUILD_VM_ROM)
 
 	add_custom_target(
 		rom_dump
-		COMMAND cp rom rom-${fw_name}
+		COMMAND ${CMAKE_COMMAND} -E copy rom rom-${fw_name}
 		COMMAND ${CMAKE_OBJCOPY} -O binary rom rom-${fw_name}.bin
 		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom-${fw_name}.map
 		COMMAND ${CMAKE_OBJDUMP} -S rom > rom-${fw_name}.lst
