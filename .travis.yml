@@ -13,8 +13,8 @@ stages:
   - deploy
 
 before_install:
-  - docker pull xiulipan/sof && docker tag xiulipan/sof sof
-  - docker pull xiulipan/sofqemu && docker tag xiulipan/sofqemu sofqemu
+  - docker pull thesofproject/sof && docker tag thesofproject/sof sof
+  - docker pull thesofproject/sofqemu && docker tag thesofproject/sofqemu sofqemu
 
 jobs:
   include:
