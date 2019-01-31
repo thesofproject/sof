@@ -68,7 +68,7 @@ static int snapshot(const char *name)
 		sprintf(poutname, "%s.%s.txt", name, debugfs[i]);
 
 		/* open debugfs for reading */
-		in_fd = fopen(pinname, "r");
+		in_fd = fopen(pinname, "rb");
 		if (in_fd == NULL) {
 			fprintf(stderr, "error: unable to open %s for reading %d\n",
 				pinname, errno);
@@ -76,7 +76,7 @@ static int snapshot(const char *name)
 		}
 
 		/* open outfile for reading */
-		out_fd = fopen(poutname, "w");
+		out_fd = fopen(poutname, "wb");
 		if (out_fd == NULL) {
 			fprintf(stderr, "error: unable to open %s for writing %d\n",
 				poutname, errno);
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 		usage();
 	}
 
-	config.ldc_fd = fopen(config.ldc_file, "r");
+	config.ldc_fd = fopen(config.ldc_file, "rb");
 	if (!config.ldc_fd) {
 		fprintf(stderr, "error: Unable to open ldc file %s\n",
 			config.ldc_file);
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (config.version_fw) {
-		config.version_fd = fopen(config.version_file, "r");
+		config.version_fd = fopen(config.version_file, "rb");
 		if (!config.version_fd) {
 			fprintf(stderr, "error: Unable to open ver file %s\n",
 				config.version_file);
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 	} else {
-		config.in_fd = fopen(config.in_file, "r");
+		config.in_fd = fopen(config.in_file, "rb");
 		if (!config.in_fd) {
 			fprintf(stderr, "error: Unable to open in file %s\n",
 				config.in_file);
