@@ -98,11 +98,11 @@ static int write_block(struct image *image, struct module *module,
 	}
 
 	if (is_iram(image, section)) {
-		block.type = SOF_BLK_TEXT;
+		block.type = SOF_FW_BLK_TYPE_IRAM;
 		block.offset = section->vaddr - adsp->iram_base
 			+ adsp->host_iram_offset;
 	} else if (is_dram(image, section)) {
-		block.type = SOF_BLK_DATA;
+		block.type = SOF_FW_BLK_TYPE_DRAM;
 		block.offset = section->vaddr - adsp->dram_base
 			+ adsp->host_dram_offset;
 	} else {
@@ -146,7 +146,7 @@ static int write_block(struct image *image, struct module *module,
 
 	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%8.8lx\t%s\n", block_idx++,
 		section->vaddr, section->size, ftell(image->out_fd),
-		block.type == SOF_BLK_TEXT ? "TEXT" : "DATA");
+		block.type == SOF_FW_BLK_TYPE_IRAM ? "TEXT" : "DATA");
 
 out:
 	free(buffer);
@@ -241,7 +241,7 @@ static int write_block_reloc(struct image *image, struct module *module)
 	int ret;
 
 	block.size = module->file_size;
-	block.type = SOF_BLK_DATA;
+	block.type = SOF_FW_BLK_TYPE_DRAM;
 	block.offset = 0;
 
 	/* write header */
@@ -277,7 +277,7 @@ static int write_block_reloc(struct image *image, struct module *module)
 
 	fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%8.8lx\t%s\n", block_idx++,
 		0, module->file_size, ftell(image->out_fd),
-		block.type == SOF_BLK_TEXT ? "TEXT" : "DATA");
+		block.type == SOF_FW_BLK_TYPE_IRAM ? "TEXT" : "DATA");
 
 out:
 	free(buffer);
