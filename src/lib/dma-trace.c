@@ -147,7 +147,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		return ret;
 	}
 
-	work_init(&d->dmat_work, trace_work, d, WORK_ASYNC);
+	work_init(&d->dmat_work, trace_work, d, WORK_MED_PRI, WORK_ASYNC);
 
 	return 0;
 }

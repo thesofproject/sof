@@ -630,7 +630,7 @@ static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
 	p->chan[channel].cb = NULL;
 	p->chan[channel].cb_type = 0;
 	p->chan[channel].cb_data = NULL;
-	work_init(&p->chan[channel].dma_ch_work, NULL, NULL, 0);
+	work_init(&p->chan[channel].dma_ch_work, NULL, NULL, 0, 0);
 }
 
 /* channel must not be running when this is called */
@@ -890,7 +890,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	/* initialize timer */
 	if (config->cyclic) {
 		work_init(&p->chan[channel].dma_ch_work, hda_dma_link_work,
-			  &p->chan[channel], WORK_ASYNC);
+			  &p->chan[channel], WORK_HIGH_PRI, WORK_ASYNC);
 	}
 
 	/* init channel in HW */

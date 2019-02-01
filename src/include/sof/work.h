@@ -44,6 +44,13 @@ struct work_queue;
 #define WORK_ASYNC	(0 << 0)	/* default - work is scheduled asynchronously */
 #define WORK_SYNC	(1 << 0)	/* work is scheduled synchronously */
 
+/* priority levels */
+#define WORK_LOW_PRI	9	/* work lowest priority */
+#define WORK_MED_PRI	4	/* work medium priority */
+#define WORK_HIGH_PRI	0	/* work highest priority */
+
+#define WORK_PRIORITIES	10	/* range of priorities (0 - 9) */
+
 struct work {
 	/* returns reschedule timeout in usecs */
 	uint64_t (*cb)(void *data, uint64_t udelay);
@@ -51,6 +58,7 @@ struct work {
 	struct list_item list;
 	uint64_t timeout;
 	uint32_t pending;
+	uint32_t priority;
 	uint32_t flags;
 };
 
@@ -64,10 +72,11 @@ struct work_queue_timesource {
 };
 
 /* initialise our work */
-#define work_init(w, x, xd, xflags) \
+#define work_init(w, x, xd, xpriority, xflags) \
 	do { \
 		(w)->cb = x; \
 		(w)->cb_data = xd; \
+		(w)->priority = xpriority; \
 		(w)->flags = xflags; \
 	} while (0)
 

@@ -94,6 +94,6 @@ void sa_init(struct sof *sof)
 
 	/* set lst idle time to now to give time for boot completion */
 	sa->last_idle = platform_timer_get(platform_timer) + sa->ticks;
-	work_init(&sa->work, validate, sa, WORK_ASYNC);
+	work_init(&sa->work, validate, sa, WORK_MED_PRI, WORK_ASYNC);
 	work_schedule_default(&sa->work, PLATFORM_IDLE_TIME);
 }

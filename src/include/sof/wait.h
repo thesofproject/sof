@@ -103,7 +103,7 @@ static inline void wait_init(completion_t *comp)
 	volatile completion_t *c = (volatile completion_t *)comp;
 
 	c->complete = 0;
-	work_init(&comp->work, _wait_cb, comp, WORK_ASYNC);
+	work_init(&comp->work, _wait_cb, comp, WORK_MED_PRI, WORK_ASYNC);
 }
 
 static inline void wait_clear(completion_t *comp)

@@ -62,7 +62,7 @@
  */
 
 struct work_queue {
-	struct list_item work;		/* list of work */
+	struct list_item work[WORK_PRIORITIES];	/* list of work per priority */
 	uint64_t timeout;		/* timeout for next queue run */
 	uint32_t window_size;		/* window size for pending work */
 	spinlock_t lock;
@@ -131,42 +131,38 @@ static int is_work_pending(struct work_queue *queue)
 	uint64_t win_end;
 	uint64_t win_start;
 	int pending_count = 0;
+	uint32_t i;
 
 	/* get the current valid window of work */
 	win_end = work_get_timer(queue);
 	win_start = win_end - queue->window_size;
 
-	/* correct the pending flag window for overflow */
-	if (win_end > win_start) {
-
+	/* check every priority level */
+	for (i = 0; i < WORK_PRIORITIES; ++i) {
 		/* mark each valid work item in this time period as pending */
-		list_for_item(wlist, &queue->work) {
-
+		list_for_item(wlist, &queue->work[i]) {
 			work = container_of(wlist, struct work, list);
 
-			/* if work has timed out then mark it as pending to run */
-			if (work->timeout >= win_start && work->timeout <= win_end) {
-				work->pending = 1;
-				pending_count++;
+			/* correct the pending flag window for overflow */
+			if (win_end > win_start) {
+				/* mark pending work */
+				if (work->timeout >= win_start &&
+				    work->timeout <= win_end) {
+					work->pending = 1;
+					pending_count++;
+				} else {
+					work->pending = 0;
+				}
 			} else {
-				work->pending = 0;
-			}
-		}
-	} else {
-
-		/* mark each valid work item in this time period as pending */
-		list_for_item(wlist, &queue->work) {
-
-			work = container_of(wlist, struct work, list);
-
-			/* if work has timed out then mark it as pending to run */
-			if (work->timeout <= win_end ||
-				(work->timeout >= win_start &&
-				work->timeout < ULONG_LONG_MAX)) {
-				work->pending = 1;
-				pending_count++;
-			} else {
-				work->pending = 0;
+				/* mark pending work */
+				if ((work->timeout <= win_end ||
+				     (work->timeout >= win_start &&
+				      work->timeout < ULONG_LONG_MAX))) {
+					work->pending = 1;
+					pending_count++;
+				} else {
+					work->pending = 0;
+				}
 			}
 		}
 	}
@@ -191,7 +187,8 @@ static inline void work_next_timeout(struct work_queue *queue,
 }
 
 /* run all pending work */
-static void run_work(struct work_queue *queue, uint32_t *flags)
+static void run_work(struct work_queue *queue, uint32_t *flags,
+		     uint32_t priority)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
@@ -201,13 +198,11 @@ static void run_work(struct work_queue *queue, uint32_t *flags)
 	int cpu = cpu_get_id();
 
 	/* check each work item in queue for pending */
-	list_for_item_safe(wlist, tlist, &queue->work) {
-
+	list_for_item_safe(wlist, tlist, &queue->work[priority]) {
 		work = container_of(wlist, struct work, list);
 
 		/* run work if its pending and remove from the queue */
 		if (work->pending) {
-
 			udelay = ((work_get_timer(queue) - work->timeout) /
 				queue->ticks_per_msec) * 1000;
 
@@ -227,7 +222,8 @@ static void run_work(struct work_queue *queue, uint32_t *flags)
 					work_shared_ctx->timers[cpu] = NULL;
 			} else {
 				/* get next work timeout */
-				work_next_timeout(queue, work, reschedule_usecs);
+				work_next_timeout(queue, work,
+						  reschedule_usecs);
 			}
 		}
 	}
@@ -255,24 +251,29 @@ static void queue_recalc_timers(struct work_queue *queue,
 	uint64_t delta_ticks;
 	uint64_t delta_msecs;
 	uint64_t current;
+	uint32_t i;
 
 	/* get current time */
 	current = work_get_timer(queue);
 
-	/* re calculate timers for each work item */
-	list_for_item(wlist, &queue->work) {
+	/* recalculate for each priority level */
+	for (i = 0; i < WORK_PRIORITIES; ++i) {
+		/* recalculate timers for each work item */
+		list_for_item(wlist, &queue->work[i]) {
+			work = container_of(wlist, struct work, list);
 
-		work = container_of(wlist, struct work, list);
+			delta_ticks = calc_delta_ticks(current, work->timeout);
+			delta_msecs = delta_ticks /
+				clk_data->old_ticks_per_msec;
 
-		delta_ticks = calc_delta_ticks(current, work->timeout);
-		delta_msecs = delta_ticks / clk_data->old_ticks_per_msec;
-
-		/* is work within next msec, then schedule it now */
-		if (delta_msecs > 0)
-			work->timeout = current + queue->ticks_per_msec *
-				delta_msecs;
-		else
-			work->timeout = current + (queue->ticks_per_msec >> 3);
+			/* is work within next msec, then schedule it now */
+			if (delta_msecs > 0)
+				work->timeout = current +
+					queue->ticks_per_msec * delta_msecs;
+			else
+				work->timeout = current +
+					(queue->ticks_per_msec >> 3);
+		}
 	}
 }
 
@@ -318,16 +319,18 @@ static void queue_run(void *data)
 {
 	struct work_queue *queue = (struct work_queue *)data;
 	uint32_t flags;
+	uint32_t i;
 
 	timer_disable(&queue->ts->timer);
 
 	spin_lock_irq(&queue->lock, flags);
 
-	/* work can take variable time to complete so we re-check the
-	  queue after running all the pending work to make sure no new work
-	  is pending */
-	while (is_work_pending(queue))
-		run_work(queue, &flags);
+	/* run work if there is any pending */
+	if (is_work_pending(queue)) {
+		/* run for each priority level */
+		for (i = 0; i < WORK_PRIORITIES; ++i)
+			run_work(queue, &flags, i);
+	}
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
@@ -370,7 +373,7 @@ void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 	spin_lock_irq(&queue->lock, flags);
 
 	/* check to see if we are already scheduled ? */
-	list_for_item(wlist, &queue->work) {
+	list_for_item(wlist, &queue->work[w->priority]) {
 		work = container_of(wlist, struct work, list);
 
 		/* keep original timeout */
@@ -387,7 +390,7 @@ void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout)
 		w->timeout += work_shared_ctx->last_tick;
 
 	/* insert work into list */
-	list_item_prepend(&w->list, &queue->work);
+	list_item_prepend(&w->list, &queue->work[w->priority]);
 
 	work_set_timer(queue);
 
@@ -408,8 +411,8 @@ static void reschedule(struct work_queue *queue, struct work *w, uint64_t time)
 
 	spin_lock_irq(&queue->lock, flags);
 
-	/* check to see if we are already scheduled ? */
-	list_for_item(wlist, &queue->work) {
+	/* check to see if we are already scheduled */
+	list_for_item(wlist, &queue->work[w->priority]) {
 		work = container_of(wlist, struct work, list);
 
 		/* found it */
@@ -418,7 +421,7 @@ static void reschedule(struct work_queue *queue, struct work *w, uint64_t time)
 	}
 
 	/* not found insert work into list */
-	list_item_prepend(&w->list, &queue->work);
+	list_item_prepend(&w->list, &queue->work[w->priority]);
 
 	work_set_timer(queue);
 
@@ -463,7 +466,7 @@ void work_cancel(struct work_queue *queue, struct work *w)
 	spin_lock_irq(&queue->lock, flags);
 
 	/* check to see if we are scheduled */
-	list_for_item(wlist, &queue->work) {
+	list_for_item(wlist, &queue->work[w->priority]) {
 		work = container_of(wlist, struct work, list);
 
 		/* found it */
@@ -487,11 +490,14 @@ void work_cancel_default(struct work *w)
 static struct work_queue *work_new_queue(struct work_queue_timesource *ts)
 {
 	struct work_queue *queue;
+	uint32_t i;
 
 	/* init work queue */
 	queue = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*queue));
 
-	list_init(&queue->work);
+	for (i = 0; i < WORK_PRIORITIES; ++i)
+		list_init(&queue->work[i]);
+
 	spinlock_init(&queue->lock);
 	atomic_init(&queue->num_work, 0);
 	queue->ts = ts;
@@ -533,6 +539,7 @@ void free_system_workq(void)
 {
 	struct work_queue **queue = arch_work_queue_get();
 	uint32_t flags;
+	uint32_t i;
 
 	spin_lock_irq(&(*queue)->lock, flags);
 
@@ -540,7 +547,8 @@ void free_system_workq(void)
 
 	notifier_unregister(&(*queue)->notifier);
 
-	list_item_del(&(*queue)->work);
+	for (i = 0; i < WORK_PRIORITIES; ++i)
+		list_item_del(&(*queue)->work[i]);
 
 	spin_unlock_irq(&(*queue)->lock, flags);
 }
