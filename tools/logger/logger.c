@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
 	if (config.version_fw) {
 		config.version_fd = fopen(config.version_file, "rb");
 		if (!config.version_fd) {
-			fprintf(stderr, "error: Unable to open ver file %s\n",
+			fprintf(stderr, "error: Unable to open version file %s\n",
 				config.version_file);
 			ret = errno;
 			goto out;
