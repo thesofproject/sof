@@ -298,6 +298,12 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr1 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PINTE) ?
 		SSCR1_PINTE : 0;
 
+	/* Enable/disable internal loopback. Output of transmit serial
+	 * shifter connected to input of receive serial shifter, internally.
+	 */
+	sscr1 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_LBM) ?
+		SSCR1_LBM : 0;
+
 	/* Transmit data are driven at the same/opposite clock edge specified
 	 * in SSPSP.SCMODE[1:0]
 	 */
