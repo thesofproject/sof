@@ -176,7 +176,7 @@ static int fetch_entry(const struct convert_config *config,
 		goto out;
 	}
 	if (entry.header.file_name_len > TRACE_MAX_FILENAME_LEN) {
-		fprintf(stderr, "Error: Invalid filename length. \n");
+		fprintf(stderr, "Error: Invalid filename length or ldc file does not match firmware\n");
 		ret = -EINVAL;
 		goto out;
 	}
