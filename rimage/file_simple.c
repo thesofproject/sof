@@ -43,6 +43,14 @@
 #define BDW_DRAM_HOST_OFFSET	0x00000000
 #define BDW_DRAM_SIZE		(640 * 1024)
 
+#define IMX8_IRAM_BASE		0x596f8000
+#define IMX8_IRAM_HOST_OFFSET	0x10000
+#define IMX8_IRAM_SIZE		0x800
+#define IMX8_DRAM_BASE		0x596e8000
+#define IMX8_DRAM_SIZE		0x8000
+#define IMX8_SRAM_BASE		0x92400000
+#define IMX8_SRAM_SIZE		0x800000
+
 static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
 {
 	const struct adsp *adsp = image->adsp;
@@ -546,5 +554,28 @@ const struct adsp machine_bdw = {
 		},
 	},
 	.machine_id = MACHINE_BROADWELL,
+	.write_firmware = simple_write_firmware,
+};
+
+const struct adsp machine_imx8 = {
+	.name = "imx8",
+	.mem_zones = {
+		[SOF_FW_BLK_TYPE_IRAM] = {
+			.base = IMX8_IRAM_BASE,
+			.size = IMX8_IRAM_SIZE,
+			.host_offset = IMX8_IRAM_HOST_OFFSET,
+		},
+		[SOF_FW_BLK_TYPE_DRAM] = {
+			.base = IMX8_DRAM_BASE,
+			.size = IMX8_DRAM_SIZE,
+			.host_offset = 0,
+		},
+		[SOF_FW_BLK_TYPE_SRAM] = {
+			.base = IMX8_SRAM_BASE,
+			.size = IMX8_SRAM_SIZE,
+			.host_offset = 0,
+		},
+	},
+	.machine_id = MACHINE_IMX8,
 	.write_firmware = simple_write_firmware,
 };
