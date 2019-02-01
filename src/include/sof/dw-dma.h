@@ -64,6 +64,11 @@ struct dw_lli2 {
 	uint32_t ctrl_hi;
 	uint32_t sstat;
 	uint32_t dstat;
+
+	/* align to 32 bytes to not cross cache line
+	 * in case of more than two items
+	 */
+	uint32_t reserved;
 } __attribute__ ((packed));
 
 extern const struct dma_ops dw_dma_ops;
