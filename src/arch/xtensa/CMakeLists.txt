@@ -297,10 +297,10 @@ if(MEU_PATH)
 			-o sof-${fw_name}.ri
 			-p sof-${fw_name}.ldc
 			-m ${fw_name}
-			${bootloader_binary_path}
-			sof-${fw_name}
 			-s ${MEU_OFFSET}
 			-k ${otc_private_key}
+			${bootloader_binary_path}
+			sof-${fw_name}
 		DEPENDS sof_dump
 		VERBATIM
 		USES_TERMINAL
