@@ -24,6 +24,7 @@
 #include <openssl/conf.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <uapi/user/fw.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 #define MAX_MODULES		32
@@ -129,23 +130,18 @@ struct image {
 	char out_unsigned_file[256];
 };
 
+struct mem_zone {
+	uint32_t base;
+	uint32_t size;
+	uint32_t host_offset;
+};
+
 /*
  * Audio DSP descriptor and operations.
  */
 struct adsp {
 	const char *name;
-	uint32_t iram_base;
-	uint32_t iram_size;
-	uint32_t dram_base;
-	uint32_t dram_size;
-	uint32_t sram_base;
-	uint32_t sram_size;
-	uint32_t host_iram_offset;
-	uint32_t host_dram_offset;
-	uint32_t rom_base;
-	uint32_t rom_size;
-	uint32_t imr_base;
-	uint32_t imr_size;
+	struct mem_zone mem_zones[SOF_FW_BLK_TYPE_NUM];
 
 	uint32_t image_size;
 	uint32_t dram_offset;
