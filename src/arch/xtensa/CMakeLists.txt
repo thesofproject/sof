@@ -277,11 +277,12 @@ add_custom_target(
 if(MEU_PATH)
 	execute_process(
 		COMMAND ${MEU_PATH}/meu -ver
-		COMMAND grep "Version:"
-		COMMAND cut -d " " -f6
-		OUTPUT_VARIABLE MEU_VERSION
+		OUTPUT_VARIABLE MEU_VERSION_FULL_TEXT
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
+
+	string(REGEX MATCH "Version:[\t\n ]*([^\t\n ]+)" ignored "${MEU_VERSION_FULL_TEXT}")
+	set(MEU_VERSION ${CMAKE_MATCH_1})
 
 	if(MEU_VERSION VERSION_LESS 12.0.0.1035)
 		set(MEU_OFFSET 1152)
