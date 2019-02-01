@@ -1110,7 +1110,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	trace_dmic("dmic_set_config(), dai->index = %d", di);
 
 	/* Initialize start sequence handler */
-	work_init(&dmic->dmicwork, dmic_work, dai, WORK_ASYNC);
+	work_init(&dmic->dmicwork, dmic_work, dai, WORK_MED_PRI, WORK_ASYNC);
 
 	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
 		trace_dmic_error("dmic_set_config() error: wrong ipc version");

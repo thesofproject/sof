@@ -381,7 +381,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	chan->desc_count = 0;
 
 	if (chan->timer_delay)
-		work_init(&chan->dma_ch_work, NULL, NULL, 0);
+		work_init(&chan->dma_ch_work, NULL, NULL, 0, 0);
 
 	atomic_sub(&dma->num_channels_busy, 1);
 }
@@ -959,7 +959,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	if (chan->timer_delay)
 		work_init(&chan->dma_ch_work, dw_dma_work,
-			  &chan->id, WORK_SYNC);
+			  &chan->id, WORK_HIGH_PRI, WORK_SYNC);
 out:
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;

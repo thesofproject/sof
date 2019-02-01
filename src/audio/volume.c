@@ -197,7 +197,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
-	work_init(&cd->volwork, vol_work, dev, WORK_ASYNC);
+	work_init(&cd->volwork, vol_work, dev, WORK_MED_PRI, WORK_ASYNC);
 
 	/* set volume min/max levels */
 	vol_set_min_max_levels(cd, ipc_vol->min_value, ipc_vol->max_value);

@@ -447,7 +447,7 @@ int scheduler_init(struct sof *sof)
 	list_init(&((*sch)->list));
 	spinlock_init(&((*sch)->lock));
 	(*sch)->clock = PLATFORM_SCHED_CLOCK;
-	work_init(&((*sch)->work), sch_work, *sch, WORK_ASYNC);
+	work_init(&((*sch)->work), sch_work, *sch, WORK_MED_PRI, WORK_ASYNC);
 
 	/* configure scheduler interrupt */
 	interrupt_register(PLATFORM_SCHEDULE_IRQ, IRQ_AUTO_UNMASK,
