@@ -689,6 +689,8 @@ static int hda_dma_start(struct dma *dma, int channel)
 	else
 		hda_dma_enable_unlock(dma, channel);
 
+	p->chan[channel].status = COMP_STATE_ACTIVE;
+
 out:
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;
