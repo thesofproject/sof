@@ -153,7 +153,7 @@ done:
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
-	if (iipc->pm_prepare_D3) {
+	if (iipc->pm_target_state == SOF_PM_STATE_D3) {
 		while (1) {
 			wait_for_interrupt(0);
 		}
@@ -225,7 +225,7 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* PM */
-	iipc->pm_prepare_D3 = 0;
+	iipc->pm_target_state = SOF_PM_STATE_D0;	/* initial value */
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,

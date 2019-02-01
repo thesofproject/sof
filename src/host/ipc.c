@@ -52,7 +52,7 @@ int platform_ipc_init(struct ipc *ipc)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 
 	/* PM */
-	iipc->pm_prepare_D3 = 0;
+	iipc->pm_target_state = SOF_PM_STATE_D0;	/* initial value */
 
 	return 0;
 }

@@ -75,4 +75,49 @@ struct sof_ipc_pm_core_config {
 	uint32_t enable_mask;
 } __attribute__((packed));
 
+/* DSP subsystem power states */
+enum sof_pm_state {
+	SOF_PM_STATE_D0 = 0,	/* D0 only, also initial state */
+	SOF_PM_STATE_D3,	/* D3 DSP subsystem is power gated*/
+	/* internal FW transitions across D0ix substates incl. D0 are allowed */
+	SOF_PM_STATE_D0ix,
+};
+
+/* Flags to allow FW for applying internally clock gating policies */
+enum sof_pm_cg {
+	SOF_PM_CG_ON = 0,	/* Clock gating enabled, */
+	SOF_PM_CG_OFF,		/* Clock gating disabled */
+};
+
+/* Flags to allow FW for applying power gating policies */
+enum sof_pm_pg {
+	SOF_PM_PG_ON = 0,	/* Power gating enabled, */
+	SOF_PM_PG_OFF,		/* Power gating disabled */
+};
+
+/* PM state - SOF_IPC_PM_STATE_SET */
+struct sof_ipc_pm_state {
+	struct sof_ipc_cmd_hdr hdr;
+
+	uint32_t pm_state;	/**< power state SOF_PM_STATE_D.. */
+	/**< flag to disable FW logic for autonomous D0ix<->D0 transitions */
+	uint32_t prevent_power_gating;
+	/**< flag to disable FW logic for autonomous clock gating */
+	uint32_t prevent_clock_gating;
+	/**< reserved for future use */
+	uint32_t reserved[8];
+} __attribute__((packed));
+
+/* PM params info reply - SOF_IPC_PM_STATE_GET */
+struct sof_ipc_pm_state_reply {
+	struct sof_ipc_reply rhdr;
+	uint32_t pm_state;	/**< power state SOF_PM_STATE_D.. */
+	/**< flag to disable FW logic for autonomous D0ix<->D0 transitions */
+	uint32_t prevent_power_gating;
+	/**< flag to disable FW logic for autonomous clock gating */
+	uint32_t prevent_clock_gating;
+	/**< reserved for future use */
+	uint32_t reserved[8];
+} __attribute__((packed));
+
 #endif

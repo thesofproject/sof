@@ -647,7 +647,7 @@ static int ipc_pm_context_save(uint32_t header)
 	/* write the context to the host driver */
 	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
-	iipc->pm_prepare_D3 = 1;
+	iipc->pm_target_state = SOF_PM_STATE_D3;
 
 	return 0;
 }
@@ -687,6 +687,47 @@ static int ipc_pm_core_enable(uint32_t header)
 	return 0;
 }
 
+/* set power management state */
+static int ipc_pm_state_set(uint32_t header)
+{
+	struct sof_ipc_pm_state pm_state;
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
+
+	/* copy message with ABI safe method */
+	IPC_COPY_CMD(pm_state, _ipc->comp_data);
+
+	trace_ipc("ipc: pm state: %d, prevent: cg %d pg %d -> set",
+		  pm_state.pm_state, pm_state.prevent_clock_gating,
+		  pm_state.prevent_power_gating);
+
+	iipc->pm_target_state = pm_state.pm_state;
+	/* TODO: add handling for clock & power gating policies */
+
+	return 0;
+}
+
+/* get power management state */
+static int ipc_pm_state_get(uint32_t header)
+{
+	struct sof_ipc_pm_state_reply reply;
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
+
+	/* write component values to the outbox */
+	reply.rhdr.hdr.size = sizeof(reply);
+	reply.rhdr.hdr.cmd = header;
+	reply.rhdr.error = 0;
+	reply.pm_state = iipc->pm_target_state;
+	reply.prevent_clock_gating = 0; /* TODO: add data handling*/
+	reply.prevent_power_gating = 0; /* TODO: add data handling */
+
+	trace_ipc("ipc: pm state: %d, prevent: cg %d pg %d -> get",
+		  reply.pm_state, reply.prevent_clock_gating,
+		  reply.prevent_power_gating);
+
+	mailbox_hostbox_write(0, &reply, sizeof(reply));
+	return 1;
+}
+
 static int ipc_glb_pm_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
@@ -700,6 +741,10 @@ static int ipc_glb_pm_message(uint32_t header)
 		return ipc_pm_context_size(header);
 	case SOF_IPC_PM_CORE_ENABLE:
 		return ipc_pm_core_enable(header);
+	case SOF_IPC_PM_STATE_SET:
+		return ipc_pm_state_set(header);
+	case SOF_IPC_PM_STATE_GET:
+		return ipc_pm_state_get(header);
 	case SOF_IPC_PM_CLK_SET:
 	case SOF_IPC_PM_CLK_GET:
 	case SOF_IPC_PM_CLK_REQ:

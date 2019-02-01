@@ -160,7 +160,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 
 	/* are we about to enter D3 ? */
 #if CAVS_VERSION < CAVS_VERSION_2_0
-	if (iipc->pm_prepare_D3) {
+	if (iipc->pm_target_state == SOF_PM_STATE_D3) {
 		/* no return - memory will be powered off and IPC sent */
 		platform_pm_runtime_power_off();
 	}
@@ -178,7 +178,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 
 #if CAVS_VERSION == CAVS_VERSION_2_0
-	if (iipc->pm_prepare_D3) {
+	if (iipc->pm_target_state == SOF_PM_STATE_D3) {
 		//TODO: add support for Icelake
 		while (1)
 			wait_for_interrupt(5);
@@ -246,7 +246,7 @@ int platform_ipc_init(struct ipc *ipc)
 			   ipc_process_task, _ipc, 0, 0);
 
 	/* PM */
-	iipc->pm_prepare_D3 = 0;
+	iipc->pm_target_state = SOF_PM_STATE_D0;	/* initial value */
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,

@@ -42,6 +42,7 @@
 #include <sof/audio/component.h>
 #include <sof/dma-trace.h>
 #include <sof/preproc.h>
+#include <uapi/ipc/pm.h>
 
 struct sof;
 struct dai_config;
@@ -211,7 +212,7 @@ struct ipc_data {
 	uint8_t *page_table;
 
 	/* PM */
-	int pm_prepare_D3;	/* do we need to prepare for D3 */
+	uint32_t pm_target_state;	/* SOF_PM_STATE_D.. */
 };
 
 int ipc_cmd(void);
