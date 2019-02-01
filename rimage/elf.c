@@ -243,15 +243,17 @@ static int elf_read_hdr(struct image *image, struct module *module)
 int elf_is_rom(struct image *image, Elf32_Shdr *section)
 {
 	uint32_t start, end;
+	uint32_t base, size;
 
 	start = section->vaddr;
 	end = section->vaddr + section->size;
 
-	if (start < image->adsp->rom_base ||
-		start > image->adsp->rom_base + image->adsp->rom_size)
+	base = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].base;
+	size = image->adsp->mem_zones[SOF_FW_BLK_TYPE_ROM].size;
+
+	if (start < base || start > base + size)
 		return 0;
-	if (end < image->adsp->rom_base ||
-		end > image->adsp->rom_base + image->adsp->rom_size)
+	if (end < base || end > base + size)
 		return 0;
 	return 1;
 }
