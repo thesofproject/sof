@@ -101,6 +101,25 @@ static const char * get_component_name(uint32_t component_id) {
 	}
 }
 
+/* remove superfluous leading file path and shrink to last 20 chars */
+static char *format_file_name(char *file_name_raw)
+{
+		char *name;
+		int len;
+
+		/* most/all string should have "src" */
+		name = strstr(file_name_raw, "src");
+		if (!name)
+			name = file_name_raw;
+
+		/* keep the last 20 chars */
+		len = strlen(name);
+		if (len > 20)
+			name += (len - 20);
+
+		return name;
+}
+
 static void print_entry_params(FILE *out_fd,
 	const struct log_entry_header *dma_log, const struct ldc_entry *entry,
 	uint64_t last_timestamp, double clock, int use_colors)
@@ -124,7 +143,7 @@ static void print_entry_params(FILE *out_fd,
 		entry->header.has_ids ? ids : "",
 		to_usecs(dma_log->timestamp, clock),
 		dt,
-		entry->file_name,
+		format_file_name(entry->file_name),
 		entry->header.line_idx);
 
 	switch (entry->header.params_num) {
