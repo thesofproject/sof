@@ -11,3 +11,5 @@ endif()
 project(SOF_TOOLS C)
 
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}/..")
+
+add_subdirectory(logger)
