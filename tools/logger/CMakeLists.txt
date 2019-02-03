@@ -11,3 +11,5 @@ target_include_directories(sof-logger PRIVATE
 	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
 	"${SOF_ROOT_SOURCE_DIRECTORY}"
 )
+
+install(TARGETS sof-logger DESTINATION bin)

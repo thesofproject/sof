@@ -5,3 +5,5 @@ add_executable(sof-eqctl
 target_link_libraries(sof-eqctl PRIVATE
 	"-lasound"
 )
+
+install(TARGETS sof-eqctl DESTINATION bin)
