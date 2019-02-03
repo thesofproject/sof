@@ -26,6 +26,10 @@ config MEM_WND
 	bool
 	default n
 
+config TIMER_SCHEDULING
+	bool
+	default n
+
 source "src/Kconfig"
 
 menu "Debug"

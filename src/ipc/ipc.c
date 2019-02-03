@@ -296,6 +296,15 @@ int ipc_pipeline_new(struct ipc *ipc,
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_TIMER_SCHEDULING
+	/* check whether timer value is correct */
+	if (!pipe_desc->timer_delay) {
+		trace_ipc_error("ipc_pipeline_new() error: timer_delay "
+				"value is invalid, pipe_desc->timer_delay"
+				" = %u", pipe_desc->timer_delay);
+		return -EINVAL;
+	}
+#else
 	/* find the scheduling component */
 	icd = ipc_get_comp(ipc, pipe_desc->sched_id);
 	if (icd == NULL) {
@@ -309,6 +318,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 				"icd->type != COMP_TYPE_COMPONENT");
 		return -EINVAL;
 	}
+#endif
 
 	/* create the pipeline */
 	pipe = pipeline_new(pipe_desc, icd->cd);
@@ -522,7 +532,6 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
-	config.timer_delay = 0;
 	dma_sg_init(&config.elem_array);
 
 	/* set up DMA descriptor */
