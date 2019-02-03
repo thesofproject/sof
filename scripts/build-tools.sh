@@ -1,9 +1,11 @@
 #!/bin/bash
 cd tools
-./autogen.sh
-./configure
+
+mkdir build_tools
+cd build_tools
+cmake ..
 make -j$(nproc)
 if [[ "$1" == "-t" ]]; then
 	make tests -j$(nproc)
 fi
-cd ../
+cd ../../
