@@ -10,6 +10,13 @@ set -e
 # M4 preprocessor flags
 export M4PATH="../../topology/:../../topology/m4:../../topology/common:../../topology/platform/intel:../../topology/platform/common"
 
+if [ -z "$SOF_TPLG_BUILD_OUTPUT" ]
+then
+      BUILD_OUTPUT="."
+else
+      BUILD_OUTPUT="$SOF_TPLG_BUILD_OUTPUT"
+fi
+
 # Simple component test cases
 # can be used on components with 1 sink and 1 source.
 SIMPLE_TESTS=(test-all test-capture test-playback)
@@ -63,9 +70,9 @@ function simple_test {
 				-DTEST_DMIC_DUTY_MAX=${12} \
 				-DTEST_DMIC_SAMPLE_RATE=${13} \
 				-DTEST_DMIC_PDM_CONFIG=${14} \
-				$i.m4 > ${TFILE}.conf
-			echo "Compiling test $i -> ${TFILE}.tplg"
-			alsatplg -v 1 -c ${TFILE}.conf -o ${TFILE}.tplg
+				$i.m4 > "$BUILD_OUTPUT/${TFILE}.conf"
+			echo "Compiling test $i -> $BUILD_OUTPUT/${TFILE}.tplg"
+			alsatplg -v 1 -c "$BUILD_OUTPUT/${TFILE}.conf" -o "$BUILD_OUTPUT/${TFILE}.tplg"
 		else
 			if [ "$USE_XARGS" == "yes" ]
 			then
@@ -85,9 +92,9 @@ function simple_test {
 						-DTEST_SSP_MCLK=${11},-DTEST_SSP_PHY_BITS=$8\
 						-DTEST_SSP_DATA_BITS=$9,-DTEST_SSP_MODE=${12}\
 						-DTEST_SSP_MCLK_ID=${13},-DTEST_DAI_TYPE=$5\
-						$i.m4,${TFILE},"
+						$i.m4,$BUILD_OUTPUT/${TFILE},"
 					#create input string for batch processing of conf files
-					TEST_STRINGS+=${TFILE}","
+					TEST_STRINGS+="$BUILD_OUTPUT/${TFILE},"
 				fi
 			else
 				#if DAI type is SSP, define the SSP specific params
@@ -113,9 +120,9 @@ function simple_test {
 						-DTEST_SSP_MODE=${12} \
 						-DTEST_SSP_MCLK_ID=${13} \
 						-DTEST_DAI_TYPE=$5 \
-						$i.m4 > ${TFILE}.conf
-					echo "Compiling test $i -> ${TFILE}.tplg"
-					alsatplg -v 1 -c ${TFILE}.conf -o ${TFILE}.tplg
+						$i.m4 > "$BUILD_OUTPUT/${TFILE}.conf"
+					echo "Compiling test $i -> $BUILD_OUTPUT/${TFILE}.tplg"
+					alsatplg -v 1 -c "$BUILD_OUTPUT/${TFILE}.conf" -o "$BUILD_OUTPUT/${TFILE}.tplg"
 				fi
 			fi
 		fi
