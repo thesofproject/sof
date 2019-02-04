@@ -1,0 +1,15 @@
+menu "Audio components"
+
+config COMP_VOLUME
+	bool "Volume component"
+	default y
+	help
+	  Select for Volume component
+
+config COMP_SRC
+	bool "SRC component"
+	default y
+	help
+	  Select for SRC component
+
+endmenu

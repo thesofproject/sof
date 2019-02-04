@@ -3,3 +3,5 @@ source "src/arch/Kconfig"
 source "src/platform/Kconfig"
 
 source "src/drivers/Kconfig"
+
+source "src/audio/Kconfig"
