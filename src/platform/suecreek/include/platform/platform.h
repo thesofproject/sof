@@ -36,9 +36,12 @@
 
 #include <sof/platform.h>
 #include <platform/clk.h>
+#include <platform/memory.h>
 #include <platform/platcfg.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>
+
+#include <sof/uart.h>
 
 struct sof;
 
@@ -162,6 +165,18 @@ struct sof;
 #define PLATFORM_SPI_GPIO_ID	0
 #define PLATFORM_SPI_GPIO_IRQ	14
 
+#define PLATFORM_UART_CLK_FREQ		38400000
+/* A simple loop counter, checking the TX empty bit */
+#define PLATFORM_UART_RETRY		25000
+
+struct uart *dw_uart_init(const struct uart_platform_data *pdata);
+
+#define PLATFORM_TRACE_UART_BASE	DW_UART_BASE
+#define PLATFORM_TRACE_UART_BAUD	115200
+#define PLATFORM_TRACE_UART_INIT	dw_uart_init
+#define PLATFORM_TRACE_UART_IRQ		IRQ_DW_UART
+#define PLATFORM_TRACE_UART_IRQ_DEV	"dw-intc"
+
 // TODO: need UART versions
 #if 0
 /* Platform defined trace code */
@@ -181,7 +196,12 @@ static inline void platform_panic(uint32_t p)
 }
 
 /* Platform defined trace code */
+#ifdef CONFIG_TRACE_UART
+#define platform_trace_point(__x) trace_write_word(__x)
+#else
 #define platform_trace_point(__x)
+#endif
+
 #endif
 extern struct timer *platform_timer;
 

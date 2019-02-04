@@ -56,6 +56,7 @@
 #include <sof/cpu.h>
 #include <sof/notifier.h>
 #include <sof/spi.h>
+#include <sof/uart.h>
 #include <config.h>
 #include <string.h>
 #include <version.h>
@@ -309,6 +310,15 @@ static struct spi_platform_data spi = {
 };
 #endif
 
+#if defined(CONFIG_TRACE_UART)
+static const struct uart_platform_data trace_uart_pdata = {
+	.port		= PLATFORM_TRACE_UART_BASE,
+	.baud		= PLATFORM_TRACE_UART_BAUD,
+	.irq		= PLATFORM_TRACE_UART_IRQ,
+	.irq_dev	= PLATFORM_TRACE_UART_IRQ_DEV,
+};
+#endif
+
 struct timer *platform_timer =
 	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
@@ -487,6 +497,10 @@ int platform_init(struct sof *sof)
 
 	/* prevent DSP Common power gating */
 	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
+#endif
+
+#if defined(CONFIG_TRACE_UART)
+	trace_use_uart(&trace_uart_pdata);
 #endif
 
 	/* init DMACs */

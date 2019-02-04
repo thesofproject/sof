@@ -32,6 +32,7 @@
 #include <arch/wait.h>
 #include <sof/trace.h>
 #include <sof/io.h>
+#include <sof/uart.h>
 #include <uapi/user/manifest.h>
 #include <platform/platform.h>
 #include <platform/memory.h>
@@ -276,10 +277,24 @@ static int32_t lp_sram_init(void)
 }
 #endif
 
+#if defined(CONFIG_TRACE_UART)
+
+struct uart *trace_uart;
+
+static const struct uart_platform_data trace_uart_pdata = {
+	.port = PLATFORM_TRACE_UART_BASE,
+	.baud = PLATFORM_TRACE_UART_BAUD,
+};
+#endif
+
 /* boot master core */
 void boot_master_core(void)
 {
 	int32_t result;
+
+#if defined(CONFIG_TRACE_UART)
+	trace_use_uart(&trace_uart_pdata);
+#endif
 
 	/* TODO: platform trace should write to HW IPC regs on CNL */
 	platform_trace_point(TRACE_BOOT_LDR_ENTRY);

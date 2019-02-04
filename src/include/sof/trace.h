@@ -378,7 +378,24 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 		format						\
 	}
 #endif
-#else
+
+#if defined(CONFIG_TRACE_UART)
+#include <sof/uart.h>
+
+extern struct uart *trace_uart;
+
+static inline void trace_use_uart(const struct uart_platform_data *pdata)
+{
+	trace_uart = PLATFORM_TRACE_UART_INIT(pdata);
+}
+
+static inline void trace_write_word(uint32_t word)
+{
+	uart_write_word(trace_uart, word);
+}
+#endif
+
+#else // TRACE
 
 #define	trace_event(...)
 #define	trace_event_atomic(...)
@@ -401,6 +418,9 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 #define tracev_value(x)
 #define tracev_value_atomic(x)
 
-#endif
+#define trace_use_uart(...)
+#define trace_write_word(...)
+
+#endif // TRACE
 
 #endif

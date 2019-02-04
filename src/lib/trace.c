@@ -109,6 +109,26 @@ static void mtrace_event(const char *data, uint32_t length)
 #define _TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\
 	META_SEQ_FROM_0_TO(arg_count, _TRACE_EVENT_NTH_IMPL_PAYLOAD_STEP)
 
+#ifdef CONFIG_TRACE_UART
+#include <sof/uart.h>
+
+struct uart *trace_uart;
+
+static void hw_trace_event(const char *e, uint32_t length)
+{
+	uart_write(trace_uart, e, length);
+}
+
+static void hw_trace_event_atomic(const char *e, uint32_t length)
+{
+	uart_write_nowait(trace_uart, e, length);
+}
+
+#else
+#define hw_trace_event		dtrace_event
+#define hw_trace_event_atomic	dtrace_event_atomic
+#endif
+
  /* _trace_event function with poor people's version of constexpr if */
 #define _TRACE_EVENT_NTH_IMPL(is_mbox, is_atomic, arg_count)		\
 _TRACE_EVENT_NTH(META_CONCAT(						\
@@ -132,8 +152,8 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 									\
 	_TRACE_EVENT_NTH_PAYLOAD_IMPL(arg_count)			\
 	META_IF_ELSE(is_atomic)						\
-		(dtrace_event_atomic)					\
-		(dtrace_event)						\
+		(hw_trace_event_atomic)					\
+		(hw_trace_event)					\
 			((const char *)dt, MESSAGE_SIZE(arg_count));	\
 	/* send event by mail box too. */				\
 	META_IF_ELSE(is_mbox)						\

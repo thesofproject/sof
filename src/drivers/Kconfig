@@ -96,6 +96,17 @@ endmenu # "Decimation factors"
 
 endif # CAVS_DMIC
 
+config DW_UART
+	bool "DW UART driver"
+	default n
+	select UART
+	help
+	  Enable the DesignWare UART driver
+
+config UART
+	bool
+	default n
+
 endmenu # "Drivers"
 
 config CAVS_VERSION_1_5

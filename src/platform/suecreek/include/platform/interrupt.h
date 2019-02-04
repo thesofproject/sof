@@ -116,6 +116,13 @@
 #define IRQ_EXT_HOST_DMA_OUT_LVL3(xcpu, channel) \
 	SOF_IRQ(IRQ_BIT_LVL3_HOST_STREAM_OUT(channel), 3, xcpu, IRQ_NUM_EXT_LEVEL3)
 
+#if 0
+/* The UART is connected to bit 2 of the low 32 bits of the INTC */
+#define IRQ_DW_UART 2
+#else
+#define IRQ_DW_UART -EINVAL
+#endif
+
 /* Priority 4 Peripheral IRQ mappings */
 #define IRQ_EXT_LINK_DMA_IN_LVL4(xcpu, channel) \
 	SOF_IRQ(IRQ_BIT_LVL4_LINK_STREAM_IN(channel), 4, xcpu, IRQ_NUM_EXT_LEVEL4)
