@@ -42,11 +42,16 @@
 #include <uapi/user/header.h>
 #include <uapi/ipc/header.h>
 
-/*
- * Component Mixers and Controls
+/** \addtogroup sof_uapi_control uAPI Control
+ *  SOF uAPI specification - component controls.
+ *  @{
  */
 
-/* channel positions - uses same values as ALSA */
+/** \name Component Mixers and Controls
+ *  @{
+ */
+
+/** Channel positions - uses same values as ALSA */
 enum sof_ipc_chmap {
 	SOF_CHMAP_UNKNOWN = 0,
 	SOF_CHMAP_NA,		/**< N/A, silent */
@@ -88,20 +93,24 @@ enum sof_ipc_chmap {
 	SOF_CHMAP_LAST = SOF_CHMAP_BRC,
 };
 
-/* control data type and direction */
+/**
+ * Control data type and direction.
+ * SOF_CTRL_TYPE_VALUE_CHAN uses struct sof_ipc_ctrl_value_chan.
+ * SOF_CTRL_TYPE_VALUE_COMP uses struct sof_ipc_ctrl_value_comp.
+ * SOF_CTRL_TYPE_DATA_GET uses sof_abi_hdr.
+ */
 enum sof_ipc_ctrl_type {
-	/*  per channel data - uses struct sof_ipc_ctrl_value_chan */
 	SOF_CTRL_TYPE_VALUE_CHAN_GET = 0,
 	SOF_CTRL_TYPE_VALUE_CHAN_SET,
-	/* component data - uses struct sof_ipc_ctrl_value_comp */
+
 	SOF_CTRL_TYPE_VALUE_COMP_GET,
 	SOF_CTRL_TYPE_VALUE_COMP_SET,
-	/* bespoke data - struct struct sof_abi_hdr */
+
 	SOF_CTRL_TYPE_DATA_GET,
 	SOF_CTRL_TYPE_DATA_SET,
 };
 
-/* control command type */
+/** Control command type. */
 enum sof_ipc_ctrl_cmd {
 	SOF_CTRL_CMD_VOLUME = 0, /**< maps to ALSA volume style controls */
 	SOF_CTRL_CMD_ENUM,	/**< maps to ALSA enum style controls */
@@ -109,13 +118,15 @@ enum sof_ipc_ctrl_cmd {
 	SOF_CTRL_CMD_BINARY,	/**< maps to ALSA binary style controls */
 };
 
-/* generic channel mapped value data */
+/** Generic channel mapped value data. */
 struct sof_ipc_ctrl_value_chan {
 	uint32_t channel;	/**< channel map - enum sof_ipc_chmap */
 	uint32_t value;
 } __attribute__((packed));
 
-/* generic component mapped value data */
+/**
+ * Generic component mapped value data.
+ */
 struct sof_ipc_ctrl_value_comp {
 	uint32_t index;	/**< component source/sink/control index in control */
 	union {
@@ -124,7 +135,9 @@ struct sof_ipc_ctrl_value_comp {
 	};
 } __attribute__((packed));
 
-/* generic control data */
+/**
+ * Generic control data.
+ */
 struct sof_ipc_ctrl_data {
 	struct sof_ipc_reply rhdr;
 	uint32_t comp_id;
@@ -152,7 +165,7 @@ struct sof_ipc_ctrl_data {
 	};
 } __attribute__((packed));
 
-/* event type */
+/** Event type */
 enum sof_ipc_ctrl_event_type {
 	SOF_CTRL_EVENT_GENERIC = 0,	/**< generic event */
 	SOF_CTRL_EVENT_GENERIC_METADATA,	/**< generic event with metadata */
@@ -160,7 +173,9 @@ enum sof_ipc_ctrl_event_type {
 	SOF_CTRL_EVENT_VAD,	/**< voice activity detection event */
 };
 
-/* generic notification data */
+/**
+ * Generic notification data.
+ */
 struct sof_ipc_comp_event {
 	struct sof_ipc_reply rhdr;
 	uint16_t src_comp_type;	/**< COMP_TYPE_ */
@@ -179,4 +194,9 @@ struct sof_ipc_comp_event {
 		uint32_t event_value;
 	};
 } __attribute__((packed));
+
+/** @}*/
+
+/** @}*/
+
 #endif

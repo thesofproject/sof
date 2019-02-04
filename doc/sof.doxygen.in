@@ -7,6 +7,7 @@ GENERATE_XML	 = YES
 
 CASE_SENSE_NAMES = NO
 INPUT            = @top_srcdir@/src/include/uapi \
+                   @top_srcdir@/src/include/uapi/ipc \
                    @top_srcdir@/src/include/sof
 EXCLUDE		 =
 RECURSIVE	 = YES
@@ -15,11 +16,11 @@ EXAMPLE_PATH     = ../test
 IMAGE_PATH	 =
 QUIET            = YES
 
-EXTRACT_ALL	 = NO
-EXTRACT_STATIC	 = NO
+EXTRACT_ALL	 = YES
+EXTRACT_STATIC	 = YES
 WARN_IF_UNDOCUMENTED = NO
 SHOW_INCLUDE_FILES = NO
-JAVADOC_AUTOBRIEF = NO
+JAVADOC_AUTOBRIEF = YES
 INHERIT_DOCS	 = YES
 ENABLED_SECTIONS = ""
 MACRO_EXPANSION  = YES
