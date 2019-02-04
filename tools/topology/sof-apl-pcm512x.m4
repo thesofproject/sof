@@ -90,7 +90,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	4, HDA, 2, iDisp3,
-	PIPELINE_SOURCE_4, s32le,
+	PIPELINE_SOURCE_4, 2, s32le,
 	48, 1000, 0, 0)
 
 # PCM Low Latency, id 0
