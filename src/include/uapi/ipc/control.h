@@ -165,6 +165,71 @@ struct sof_ipc_ctrl_data {
 	};
 } __attribute__((packed));
 
+/**
+ * Error information reported back for APP_CONFIG_PARAM
+ * (aka VENDOR_CONFIG_PARAM) inside the struct sof_ipc_large_data.
+ */
+struct sof_ipc_large_data_status {
+	uint32_t failed_param_index;	/**< index of the failed parameter */
+	uint32_t app_error_code;	/**< app error code */
+} __attribute__((packed));
+
+/**
+ * Application parameter transferred inside struct sof_ipc_large_data.
+ *
+ * <i>priv_param_id</i> bits are assigned as follows:
+ * - [31-8] : parameter instance,
+ * - [7-0]  : parameter type
+ *
+ * In case of GET operation, specifies maximum parameter size accepted
+ * by the host application. When multiple parameters are tunneled inside
+ * a single request/response, the total size of parameters must fit the
+ * single IPC message payload.
+ */
+struct sof_ipc_large_data_app_param {
+	uint32_t param_id;	/**< parameter id */
+	uint32_t size;		/**< size in bytes */
+	uint32_t data[0];	/**< data */
+} __attribute__((packed));
+
+/**
+ * Large control data.
+ *
+ * <i>attribs</i> bits are assigned as follows:
+ * - [31-30] : reserved
+ * - [29]    : init_block - indicates the first fragment,
+ * - [28]    : final_block - indicates the last fragment,
+ * - [27-20] : param_id - ID of the parameter, 0xFF - APP_CONFIG_PARAM,
+ * - [19-0]  : data_off_size - data size / offset.
+ *             In case of the first data fragment (init_block = 1)
+ *             this field specifies the total size (in bytes) of message
+ *             data containing array of parameter specifiers.
+ *             In case of subsequent data fragments it specifies offset
+ *             (in bytes) of the fragment within the fragment blob.
+ *
+ * If large_param_id is set to APP_CONFIG_PARAM, it means that an application
+ * parameters are being tunneled for application - component communication and
+ * the message data contains an array of struct sof_ipc_large_data_app_param
+ * (1 or more). Otherwise it is rather the driver - component communication
+ * level and a single parameter id is specified by the <i>param_id</i>.
+ *
+ * NOTE: Multiple application parameters may be transferred at once but then
+ * they must fit a single IPC message payload (struct sof_ipc_large_data_item).
+ * While a single application/driver parameter may span across as many IPC
+ * messages as needed.
+ *
+ * If the target component fails to apply/retrieve one of the application
+ * tunneled parameters, the status is set an error code and the reply transfers
+ * internal error info as struct sof_ipc_large_data_status back inside
+ * the response payload.
+ */
+struct sof_ipc_large_data {
+	struct sof_ipc_reply rhdr;
+	uint32_t comp_id;	/**< target component device id */
+	uint32_t attribs;	/**< attributes */
+	uint32_t data[0];	/**< data, length specified by attributes */
+} __attribute__((packed));
+
 /** Event type */
 enum sof_ipc_ctrl_event_type {
 	SOF_CTRL_EVENT_GENERIC = 0,	/**< generic event */
@@ -174,7 +239,7 @@ enum sof_ipc_ctrl_event_type {
 };
 
 /**
- * Generic notification data.
+ * Generic notification data
  */
 struct sof_ipc_comp_event {
 	struct sof_ipc_reply rhdr;

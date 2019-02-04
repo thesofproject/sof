@@ -128,6 +128,8 @@
 #define COMP_CMD_GET_VALUE	101     /**< Get value from component */
 #define COMP_CMD_SET_DATA	102     /**< Set data to component */
 #define COMP_CMD_GET_DATA	103     /**< Get data from component */
+#define COMP_CMD_SET_LARGE_DATA	104	/**< Set large data to component */
+#define COMP_CMD_GET_LARGE_DATA	105	/**< Get large data from component */
 /** @}*/
 
 /** \name MMAP IPC status

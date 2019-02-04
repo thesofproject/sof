@@ -900,6 +900,10 @@ static int ipc_glb_comp_message(uint32_t header)
 		return ipc_comp_value(header, COMP_CMD_SET_DATA);
 	case iCS(SOF_IPC_COMP_GET_DATA):
 		return ipc_comp_value(header, COMP_CMD_GET_DATA);
+	case iCS(SOF_IPC_COMP_SET_LARGE_DATA):
+	case iCS(SOF_IPC_COMP_GET_LARGE_DATA):
+		/* TODO: */
+		return -EINVAL;
 	default:
 		trace_ipc_error("ipc: unknown comp cmd %u", cmd);
 		return -EINVAL;
