@@ -46,6 +46,8 @@
 #if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 //TODO: add support or at least stub api for Icelake based on Cannonlake
 #include <platform/power_down.h>
+
+#include <platform/platcfg.h>
 #endif
 
 /** \brief Runtime power management data pointer. */
@@ -285,7 +287,7 @@ void platform_pm_runtime_power_off(void)
 	//power management of SRAM banks i.e use. HPSRAM_MASK() macro
 	/* power down entire HPSRAM */
 	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; i++)
-		hpsram_mask[i] = UINT32_MAX;
+		hpsram_mask[i] = HPSRAM_MASK(i);
 
 	power_down(true, hpsram_mask);
 }

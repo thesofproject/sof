@@ -45,14 +45,6 @@
 #include <platform/shim.h>
 #include <platform/platcfg.h>
 
-#define MAX_EBB_BANKS_IN_SEGMENT	32
-#define HPSRAM_MASK(seg_idx)\
-	((1 << (PLATFORM_HPSRAM_EBB_COUNT\
-	 - MAX_EBB_BANKS_IN_SEGMENT * seg_idx)) - 1)
-#define LPSRAM_MASK	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
-#define MAX_MEMORY_SEGMENTS ((PLATFORM_HPSRAM_EBB_COUNT + \
-	MAX_EBB_BANKS_IN_SEGMENT - 1) / MAX_EBB_BANKS_IN_SEGMENT)
-
 /**
  * powers down entire hpsram. on entry lirerals and code for section from
  * where this code is executed needs to be placed in memory which is not
