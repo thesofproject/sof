@@ -7,15 +7,8 @@ if(NOT BUILD_HOST)
 		fir_hifi2ep.c
 		fir_hifi3.c
 		tone.c
-		src.c
-		src_generic.c
-		src_hifi2ep.c
-		src_hifi3.c
 		mixer.c
 		mux.c
-		volume.c
-		volume_generic.c
-		volume_hifi3.c
 		switch.c
 		dai.c
 		host.c
@@ -24,6 +17,21 @@ if(NOT BUILD_HOST)
 		component.c
 		buffer.c
 	)
+	if(CONFIG_COMP_VOLUME)
+		add_local_sources(sof
+			volume.c
+			volume_generic.c
+			volume_hifi3.c
+		)
+	endif()
+	if(CONFIG_COMP_SRC)
+		add_local_sources(sof
+			src.c
+			src_generic.c
+			src_hifi2ep.c
+			src_hifi3.c
+		)
+	endif()
 	return()
 endif()
 
