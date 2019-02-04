@@ -44,9 +44,6 @@
 #include <platform/shim.h>
 #include <platform/platcfg.h>
 
-#define HPSRAM_MASK	((1 << PLATFORM_HPSRAM_EBB_COUNT) - 1)
-#define LPSRAM_MASK	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
-
 	/* Macro powers down entire hpsram. on entry literals and code for
 	 * section from where this code is executed needs to be placed in
 	 * memory which is not HPSRAM (in case when this code is located in
@@ -56,7 +53,7 @@
 	// SEGMENT #0
 	movi \az, (SHIM_BASE + SHIM_HSPGISTS)
 	movi \ax, (SHIM_BASE + SHIM_HSPGCTL)
-	movi \ay, HPSRAM_MASK
+	movi \ay, HPSRAM_MASK()
 	s32i \ay, \ax, 0
 	memw
 	/* since HPSRAM EBB bank #0 might be used as buffer for legacy
@@ -85,7 +82,7 @@
 	.macro m_cavs_lpsram_power_off ax, ay, az
 	movi \az, (SHIM_BASE + SHIM_LSPGISTS)
 	movi \ax, (SHIM_BASE + SHIM_LSPGCTL)
-	movi \ay, LPSRAM_MASK
+	movi \ay, LPSRAM_MASK()
 	s32i \ay, \ax, 0
 	memw
 	1 :

@@ -96,7 +96,7 @@ _PD_DISABLE_LPSRAM:
 _PD_DISABLE_HPSRAM:
  /* if value in memory pointed by pu32_hpsram_mask = 0
 	 (hpsram_pwrgating_mask) - do not disable hpsram. */
-beqz pu32_hpsram_mask, _PD_SLEEP
+beqz pu32_hpsram_mask, _PD_SEND_IPC
 
 /* mandatory sequence for LDO ON - effectively executes:
  * m_cavs_s_set_ldo_hpsram_on_state();

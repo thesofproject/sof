@@ -45,4 +45,7 @@
 
 #define PLATFORM_MASTER_CORE_ID			0
 
+#define HPSRAM_MASK(ignored)	((1 << PLATFORM_HPSRAM_EBB_COUNT) - 1)
+#define LPSRAM_MASK(ignored)	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
+
 #endif
