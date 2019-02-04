@@ -245,10 +245,30 @@
 #define HEAP_HP_BUFFER_COUNT \
 			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
+#if defined(CONFIG_DMIC)
+#define SOF_TEXT_DMIC_SIZE 0x2000
+#else
+#define SOF_TEXT_DMIC_SIZE 0
+#endif
+
+#if defined(CONFIG_COMP_VOLUME)
+#define SOF_TEXT_VOLUME_SIZE 0x1000
+#else
+#define SOF_TEXT_VOLUME_SIZE 0
+#endif
+
+#if defined(CONFIG_COMP_SRC)
+#define SOF_TEXT_SRC_SIZE 0x1000
+#else
+#define SOF_TEXT_SRC_SIZE 0
+#endif
+
 /* text and data share the same HP L2 SRAM on Cannonlake */
 #define SOF_TEXT_START		0xBE040400
 #define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_SIZE		(0x1b000 - 0x400 + 0x2000)
+#define SOF_TEXT_MIN_SIZE	(0x17000 - 0x400 + 0x2000)
+#define SOF_TEXT_SIZE		(SOF_TEXT_MIN_SIZE + SOF_TEXT_DMIC_SIZE \
+				+ SOF_TEXT_VOLUME_SIZE + SOF_TEXT_SRC_SIZE)
 
 /* initialized data */
 #define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
