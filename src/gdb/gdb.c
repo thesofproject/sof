@@ -322,8 +322,9 @@ while (1) {
 			strcpy((char *)remcom_out_buffer, "E01");
 		}
 		break;
-	/* write memory (binary) */
-	case 'X':
+	/* write memory */
+	case 'X': /* binary mode */
+	case 'M':
 		if (hex_to_int(&request, &addr) && *request++ == ',' &&
 		    hex_to_int(&request, &length) && *request++ == ':') {
 			if (hex_to_mem(request, (void *)addr, length))
