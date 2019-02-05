@@ -48,6 +48,7 @@ static void put_packet(unsigned char *buffer);
 static void parse_request(void);
 static unsigned char *get_packet(void);
 static void gdb_log_exception(char *message);
+static void write_sr(int sr);
 
 /* main buffers */
 static unsigned char remcom_in_buffer[GDB_BUFMAX];
@@ -144,32 +145,74 @@ void gdb_handle_exception(void)
 void parse_request(void)
 {
 	unsigned char *request;
+	unsigned int i;
 	int addr;
+	int length;
 
-	while (1) {
-		request = get_packet();
-		/* Log any exception caused by debug exception */
-		gdb_debug_info(request);
+while (1) {
+	request = get_packet();
+	/* Log any exception caused by debug exception */
+	gdb_debug_info(request);
+	/* Pick incoming request handler */
+	unsigned char command = *request++;
 
-		/* Pick incoming request handler */
-		unsigned char command = *request++;
+	switch (command) {
+	/* Continue normal program execution and leave debug handler */
+	case 'c':
+		if (hex_to_int(&request, &addr))
+			sregs[DEBUG_PC] = addr;
 
-		switch (command) {
-		/* Continue normal program execution and leave debug handler */
-		case 'c':
-			if (hex_to_int(&request, &addr))
-				sregs[DEBUG_PC] = addr;
+		/* return from exception */
+		return;
+	/* insert breakpoint */
+	case 'Z':
+		switch (*request++) {
+		/* HW breakpoint */
+		case '1':
+			if (*request++ == ',' && hex_to_int(&request, &addr) &&
+			    *request++ == ',' && hex_to_int(&request, &length)
+			    && *request == 0) {
+				for (i = 0; i < XCHAL_NUM_IBREAK; ++i) {
+					if (!(sregs[IBREAKENABLE] & (1 << i)) ||
+					sregs[IBREAKA + i] == addr) {
+						sregs[IBREAKA + i] = addr;
+						sregs[IBREAKENABLE] |= (1 << i);
+						write_sr(IBREAKA+i);
+						write_sr(IBREAKENABLE);
+						break;
+					}
+				}
 
-			/* return from exception */
-			return;
-		default:
-			gdb_log_exception("Unknown GDB command.");
+				if (i == XCHAL_NUM_IBREAK) {
+					strcpy((char *) remcom_out_buffer,
+					 "E02");
+				} else {
+					strcpy((char *)remcom_out_buffer, "OK");
+					sregs[INTENABLE]  &=
+					DISABLE_LOWER_INTERRUPTS_MASK;
+					write_sr(INTENABLE);
+				}
+			} else {
+				strcpy((char *)remcom_out_buffer, "E01");
+			}
 			break;
-
+		/* SW breakpoints */
+		default:
+			/* send empty response to indicate thet SW breakpoints
+			 *  are not supported
+			 */
+			strcpy((char *)remcom_out_buffer, "");
+			break;
 		}
-		/* reply to the request */
-		put_packet(remcom_out_buffer);
+		break;
+	default:
+		gdb_log_exception("Unknown GDB command.");
+		break;
+
 	}
+	/* reply to the request */
+	put_packet(remcom_out_buffer);
+}
 }
 
 /*
@@ -231,4 +274,20 @@ static void gdb_log_exception(char *message)
 	while (*message)
 		put_exception_char(*message++);
 
+}
+
+static void write_sr(int sr)
+{
+#ifdef __XTENSA__
+	asm volatile ("movi	a3, 1f + 1\n"
+		      "s8i	%1, a3, 0\n"
+		      "dhwb	a3, 0\n"
+		      "ihi	a3, 0\n"
+		      "isync\n"
+		      "1:\n"
+		      "wsr	%0, lbeg\n"
+		      :
+		      : "r"(sregs[sr]), "r"(sr)
+		      : "a3", "memory");
+#endif
 }
