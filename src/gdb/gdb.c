@@ -52,6 +52,9 @@ static void write_sr(int sr);
 static unsigned char *mem_to_hex(const void *mem_,
 	unsigned char *buf, int count);
 static void read_sr(int sr);
+static unsigned char *hex_to_mem(const unsigned char *buf, void *mem_,
+							int count);
+
 /* main buffers */
 static unsigned char remcom_in_buffer[GDB_BUFMAX];
 static unsigned char remcom_out_buffer[GDB_BUFMAX];
@@ -282,6 +285,30 @@ while (1) {
 			}
 		}
 		break;
+	/* write register */
+	case 'P':
+		if (hex_to_int(&request, &addr) && *(request++) == '=') {
+			int ok = 1;
+
+			if (addr < 0x10) {
+				hex_to_mem(request, aregs + addr, 4);
+			} else if (addr == 0x20) {
+				hex_to_mem(request, sregs + DEBUG_PC, 4);
+			} else if (addr >= 0x100 && addr <
+				0x100 + XCHAL_NUM_AREGS) {
+				hex_to_mem(request, aregs +
+				((addr - windowbase) &	REGISTER_MASK), 4);
+			} else if (addr >= 0x200 && addr < 0x300) {
+				addr &= REGISTER_MASK;
+				hex_to_mem(request, sregs + addr, 4);
+			} else {
+				ok = 0;
+				strcpy((char *)remcom_out_buffer, "E00");
+			}
+			if (ok)
+				strcpy((char *)remcom_out_buffer, "OK");
+		}
+		break;
 	default:
 		gdb_log_exception("Unknown GDB command.");
 		break;
@@ -418,4 +445,42 @@ static void read_sr(int sr)
 		      : "a3", "memory");
 	sregs[sr] = val;
 #endif
+}
+
+/* convert the hex array pointed to by buf into binary to be placed in mem
+ * return a pointer to the character after the last byte written
+ */
+static unsigned char *hex_to_mem(const unsigned char *buf, void *mem_,
+							int count)
+{
+	unsigned char *mem = mem_;
+	int i;
+	unsigned char ch;
+
+	if ((mem == NULL) || (buf == NULL))
+		return NULL;
+	for (i = 0; i < count; i++) {
+		ch = get_hex(*buf++) << 4;
+		ch |= get_hex(*buf++);
+#ifdef __XTENSA__
+	unsigned long tmp;
+	unsigned long addr = (unsigned long)mem;
+
+	asm volatile ("_l32i	%0, %1, 0\n"
+		      "and	%0, %0, %2\n"
+		      "or	%0, %0, %3\n"
+		      "_s32i	%0, %1, 0\n"
+		      "dhwb	%1, 0\n"
+		      "ihi	%1, 0\n"
+		      : "=&r"(tmp)
+		      : "r"(addr & ~3), "r"(0xffffffff ^ (0xff <<
+						(addr & 3) * 8)),
+			"r"(ch << (addr & 3) * 8)
+		      : "memory");
+#endif
+	mem++;
+	}
+
+	dcache_writeback_region((void *)mem, count);
+	return mem;
 }
