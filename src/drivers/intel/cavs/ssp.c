@@ -787,19 +787,6 @@ out:
 	return ret;
 }
 
-/* Digital Audio interface formatting */
-static inline int ssp_set_loopback_mode(struct dai *dai, uint32_t lbm)
-{
-	trace_ssp("ssp_set_loopback_mode()");
-	spin_lock(&dai->lock);
-
-	ssp_update_bits(dai, SSCR1, SSCR1_LBM, lbm ? SSCR1_LBM : 0);
-
-	spin_unlock(&dai->lock);
-
-	return 0;
-}
-
 /* start the SSP for either playback or capture */
 static void ssp_start(struct dai *dai, int direction)
 {
@@ -975,5 +962,4 @@ const struct dai_ops ssp_ops = {
 	.pm_context_restore	= ssp_context_restore,
 	.probe			= ssp_probe,
 	.remove			= ssp_remove,
-	.set_loopback_mode	= ssp_set_loopback_mode,
 };
