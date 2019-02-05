@@ -309,6 +309,19 @@ while (1) {
 				strcpy((char *)remcom_out_buffer, "OK");
 		}
 		break;
+	/* read memory */
+	case 'm':
+		i = hex_to_int(&request, &addr);
+		if (i == VALID_MEM_ADDRESS_LEN &&
+		((addr & FIRST_BYTE_MASK) >> 28) == VALID_MEM_START_BYTE &&
+		*request++ == ',' && hex_to_int(&request, &length)) {
+			if (mem_to_hex((void *)addr, remcom_out_buffer, length))
+				break;
+			strcpy((char *)remcom_out_buffer, "E03");
+		} else {
+			strcpy((char *)remcom_out_buffer, "E01");
+		}
+		break;
 	default:
 		gdb_log_exception("Unknown GDB command.");
 		break;
