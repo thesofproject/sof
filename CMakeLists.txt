@@ -87,6 +87,8 @@ set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
 include(scripts/cmake/version.cmake)
 sof_add_version_h_rule(${PROJECT_SOURCE_DIR}/scripts/cmake/version.cmake)
 
+include(scripts/cmake/dist.cmake)
+
 include(scripts/cmake/defconfigs.cmake)
 
 # cmake itself cannot depend on files that don't exist
