@@ -205,6 +205,39 @@ while (1) {
 			break;
 		}
 		break;
+	case 'z': /* remove HW breakpoint */
+		switch (*request++) {
+		/* remove HW breakpoint */
+		case '1':
+			if (*request++ == ',' && hex_to_int(&request, &addr) &&
+			*request++ == ',' && hex_to_int(&request, &length)) {
+				for (i = 0; i < XCHAL_NUM_IBREAK; ++i) {
+					if (sregs[IBREAKENABLE] & (1 << i) &&
+					    sregs[IBREAKA + i] == addr) {
+						sregs[IBREAKENABLE]
+						&= ~(1 << i);
+						write_sr(IBREAKENABLE);
+						break;
+					}
+				}
+				if (i == XCHAL_NUM_IBREAK)
+					strcpy((char *)remcom_out_buffer,
+					"E02");
+				else
+					strcpy((char *)remcom_out_buffer, "OK");
+			} else {
+				strcpy((char *)remcom_out_buffer, "E01");
+			}
+			break;
+		/* SW breakpoints */
+		default:
+			/* send empty response to indicate thet SW breakpoints
+			 *  are not supported
+			 */
+			strcpy((char *)remcom_out_buffer, "");
+			break;
+		}
+		break;
 	default:
 		gdb_log_exception("Unknown GDB command.");
 		break;
