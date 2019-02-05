@@ -205,7 +205,8 @@ while (1) {
 			break;
 		}
 		break;
-	case 'z': /* remove HW breakpoint */
+	/* remove HW breakpoint */
+	case 'z':
 		switch (*request++) {
 		/* remove HW breakpoint */
 		case '1':
@@ -238,6 +239,19 @@ while (1) {
 			break;
 		}
 		break;
+	/* Single step in the code */
+	case 's':
+		if (hex_to_int(&request, &addr))
+			sregs[DEBUG_PC] = addr;
+		/* leave debug just for one instruction */
+		sregs[ICOUNT] = 0xfffffffe;
+		sregs[ICOUNTLEVEL] = XCHAL_DEBUGLEVEL;
+		/* disable low level interrupts */
+		sregs[INTENABLE]  &= ~DISABLE_LOWER_INTERRUPTS_MASK;
+		write_sr(ICOUNTLEVEL);
+		write_sr(ICOUNT);
+		write_sr(INTENABLE);
+		return;
 	default:
 		gdb_log_exception("Unknown GDB command.");
 		break;
