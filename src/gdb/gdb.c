@@ -49,7 +49,9 @@ static void parse_request(void);
 static unsigned char *get_packet(void);
 static void gdb_log_exception(char *message);
 static void write_sr(int sr);
-
+static unsigned char *mem_to_hex(const void *mem_,
+	unsigned char *buf, int count);
+static void read_sr(int sr);
 /* main buffers */
 static unsigned char remcom_in_buffer[GDB_BUFMAX];
 static unsigned char remcom_out_buffer[GDB_BUFMAX];
@@ -148,6 +150,8 @@ void parse_request(void)
 	unsigned int i;
 	int addr;
 	int length;
+	unsigned int windowbase = (4 * sregs[WINDOWBASE]);
+
 
 while (1) {
 	request = get_packet();
@@ -239,7 +243,7 @@ while (1) {
 			break;
 		}
 		break;
-	/* Single step in the code */
+	/* single step in the code */
 	case 's':
 		if (hex_to_int(&request, &addr))
 			sregs[DEBUG_PC] = addr;
@@ -252,6 +256,32 @@ while (1) {
 		write_sr(ICOUNT);
 		write_sr(INTENABLE);
 		return;
+	/* read register */
+	case 'p':
+		if (hex_to_int(&request, &addr)) {
+			/* read address register in the current window */
+			if (addr < 0x10) {
+				mem_to_hex(aregs + addr, remcom_out_buffer, 4);
+			} else if (addr == 0x20) { /* read PC */
+				mem_to_hex(sregs + DEBUG_PC,
+					remcom_out_buffer, 4);
+			} else if (addr >= 0x100 &&
+					addr < (0x100 + XCHAL_NUM_AREGS)) {
+				mem_to_hex(aregs + ((addr - windowbase) &
+					REGISTER_MASK), remcom_out_buffer, 4);
+			} else if (addr >= 0x200 && addr < 0x300) {
+				/* read special registers */
+				addr &= REGISTER_MASK;
+				read_sr(addr);
+				mem_to_hex(sregs + addr, remcom_out_buffer, 4);
+			} else if (addr >= 0x300 && addr < 0x400) {
+				strcpy((char *)remcom_out_buffer,
+						"out of scope");
+			} else { /* unexpected register number */
+				strcpy((char *)remcom_out_buffer, "E00");
+			}
+		}
+		break;
 	default:
 		gdb_log_exception("Unknown GDB command.");
 		break;
@@ -336,5 +366,56 @@ static void write_sr(int sr)
 		      :
 		      : "r"(sregs[sr]), "r"(sr)
 		      : "a3", "memory");
+#endif
+}
+
+/* Convert the memory pointed to by mem into hex, placing result in buf.
+ * Return a pointer to the last char put in buf (null), in case of mem fault,
+ * return 0.
+ */
+static unsigned char *mem_to_hex(const void *mem_, unsigned char *buf,
+							int count)
+{
+	const unsigned char *mem = mem_;
+	unsigned char ch;
+
+	if ((mem == NULL) || (buf == NULL))
+		return NULL;
+	while (count-- > 0) {
+#ifdef __XTENSA__
+		unsigned long v;
+		unsigned long addr = (unsigned long) mem;
+
+		asm volatile ("_l32i	%0, %1, 0\n"
+			      : "=r"(v)
+			      : "r"(addr & ~3)
+			      : "memory");
+		ch = v >> (addr & 3) * 8;
+#endif
+		mem++;
+		*buf++ = hex_chars[ch >> 4];
+		*buf++ = hex_chars[ch & 0xf];
+	}
+
+	*buf = 0;
+	return buf;
+}
+
+static void read_sr(int sr)
+{
+#ifdef __XTENSA__
+	uint32_t val;
+
+	asm volatile ("movi	a3, 1f + 1\n"
+		      "s8i	%1, a3, 0\n"
+		      "dhwb	a3, 0\n"
+		      "ihi	a3, 0\n"
+		      "isync\n"
+		      "1:\n"
+		      "rsr	%0, lbeg\n"
+		      : "=r"(val)
+		      : "r"(sr)
+		      : "a3", "memory");
+	sregs[sr] = val;
 #endif
 }
