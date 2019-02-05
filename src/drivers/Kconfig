@@ -8,3 +8,22 @@ config DMIC
 	  Select for DMIC driver
 
 endmenu
+
+config CAVS_VERSION_1_5
+	depends on CAVS
+	bool
+	help
+	  Select for CAVS version 1.5
+
+config CAVS_VERSION_1_8
+	depends on CAVS && !CAVS_VERSION_1_5
+	bool
+	help
+	  Select for CAVS version 1.8
+
+config CAVS_VERSION_2_0
+	depends on CAVS && !CAVS_VERSION_1_5 && !CAVS_VERSION_1_8
+	bool
+	help
+	  Select for CAVS version 2.0
+

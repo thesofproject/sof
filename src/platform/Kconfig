@@ -38,6 +38,7 @@ config APOLLOLAKE
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
+	select CAVS_VERSION_1_5
 	help
 	  Select if your target platform is Apollolake-compatible
 
@@ -49,6 +50,7 @@ config CANNONLAKE
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
+	select CAVS_VERSION_1_8
 	help
 	  Select if your target platform is Cannonlake-compatible
 
@@ -58,6 +60,7 @@ config SUECREEK
 	select IRQ_MAP
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
+	select CAVS_VERSION_2_0
 	help
 	  Select if your target platform is Suecreek-compatible
 
@@ -69,6 +72,7 @@ config ICELAKE
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
+	select CAVS_VERSION_2_0
 	help
 	  Select if your target platform is Icelake-compatible
 
