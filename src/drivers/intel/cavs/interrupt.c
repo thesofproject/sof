@@ -36,6 +36,7 @@
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
 #include <sof/cpu.h>
+#include <sof/cavs-version.h>
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
 #include <platform/platcfg.h>
@@ -123,7 +124,7 @@ static void irq_lvl2_level5_handler(void *data)
 
 /* DSP internal interrupts */
 static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
-	#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
@@ -133,7 +134,7 @@ static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
 	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
-	#endif
+#endif
 
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
