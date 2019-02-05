@@ -43,6 +43,7 @@
 #include <sof/wait.h>
 #include <sof/trace.h>
 #include <sof/ssp.h>
+#include <sof/cavs-version.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -60,7 +61,7 @@ static void ipc_irq_handler(void *arg)
 {
 	uint32_t dipcctl;
 
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 	uint32_t dipct;
 	uint32_t dipcie;
 
@@ -83,7 +84,7 @@ static void ipc_irq_handler(void *arg)
 #endif
 
 	/* new message from host */
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
 #else
 	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
@@ -95,7 +96,7 @@ static void ipc_irq_handler(void *arg)
 		/* It's not Q ATM, may overwrite */
 		if (_ipc->host_pending) {
 			trace_ipc_error("ipc: dropping msg");
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 			trace_ipc_error(" dipct 0x%x dipcie 0x%x dipcctl 0x%x",
 					dipct, dipcie, ipc_read(IPC_DIPCCTL));
 #else
@@ -110,7 +111,7 @@ static void ipc_irq_handler(void *arg)
 	}
 
 	/* reply message(done) from host */
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE) {
 #else
 	if (dipcida & IPC_DIPCIDA_DONE) {
@@ -120,7 +121,7 @@ static void ipc_irq_handler(void *arg)
 			  ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
 
 		/* clear DONE bit - tell host we have completed the operation */
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 		ipc_write(IPC_DIPCIE,
 			  ipc_read(IPC_DIPCIE) | IPC_DIPCIE_DONE);
 #else
@@ -161,7 +162,7 @@ done:
 	ipc->host_pending = 0;
 
 	/* are we about to enter D3 ? */
-#if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
+#if CAVS_VERSION < CAVS_VERSION_2_0
 	if (iipc->pm_prepare_D3) {
 		/* no return - memory will be powered off and IPC sent */
 		platform_pm_runtime_power_off();
@@ -169,7 +170,7 @@ done:
 #endif
 
 	/* write 1 to clear busy, and trigger interrupt to host*/
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 	ipc_write(IPC_DIPCT, ipc_read(IPC_DIPCT) | IPC_DIPCT_BUSY);
 #else
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
@@ -179,7 +180,7 @@ done:
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 
-#if !defined(CONFIG_APOLLOLAKE) && !defined(CONFIG_CANNONLAKE)
+#if CAVS_VERSION == CAVS_VERSION_2_0
 	if (iipc->pm_prepare_D3) {
 		//TODO: add support for Icelake
 		while (1)
@@ -201,7 +202,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 		goto out;
 	}
 
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 	if (ipc_read(IPC_DIPCI) & IPC_DIPCI_BUSY)
 #else
 	if (ipc_read(IPC_DIPCIDR) & IPC_DIPCIDR_BUSY ||
@@ -218,7 +219,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	tracev_ipc("ipc: msg tx -> 0x%x", msg->header);
 
 	/* now interrupt host to tell it we have message sent */
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 	ipc_write(IPC_DIPCIE, 0);
 	ipc_write(IPC_DIPCI, IPC_DIPCI_BUSY | msg->header);
 #else
