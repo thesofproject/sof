@@ -8,6 +8,7 @@
 #define FIRST_BYTE_MASK 0xF0000000
 #define VALID_MEM_START_BYTE 0xB
 #define VALID_MEM_ADDRESS_LEN 0x8
+
 void gdb_handle_exception(void);
 void gdb_debug_info(unsigned char *str);
 void gdb_init_debug_exception(void);
