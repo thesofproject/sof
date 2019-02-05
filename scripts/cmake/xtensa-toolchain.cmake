@@ -1,5 +1,7 @@
 message(STATUS "Preparing Xtensa toolchain")
 
+set(CMAKE_USER_MAKE_RULES_OVERRIDE "${CMAKE_CURRENT_LIST_DIR}/xtensa-platform.cmake")
+
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION 1)
 
