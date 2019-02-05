@@ -322,6 +322,18 @@ while (1) {
 			strcpy((char *)remcom_out_buffer, "E01");
 		}
 		break;
+	/* write memory (binary) */
+	case 'X':
+		if (hex_to_int(&request, &addr) && *request++ == ',' &&
+		    hex_to_int(&request, &length) && *request++ == ':') {
+			if (hex_to_mem(request, (void *)addr, length))
+				strcpy((char *)remcom_out_buffer, "OK");
+			else
+				strcpy((char *)remcom_out_buffer, "E03");
+		} else {
+			strcpy((char *)remcom_out_buffer, "E02");
+		}
+		break;
 	default:
 		gdb_log_exception("Unknown GDB command.");
 		break;
