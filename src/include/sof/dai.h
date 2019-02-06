@@ -84,7 +84,6 @@ struct dai_ops {
 	int (*pm_context_store)(struct dai *dai);
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
-	int (*set_loopback_mode)(struct dai *dai, uint32_t lbm);
 };
 
 /**
@@ -176,14 +175,6 @@ static inline int dai_set_config(struct dai *dai,
 				 struct sof_ipc_dai_config *config)
 {
 	return dai->ops->set_config(dai, config);
-}
-
-/**
- * \brief Digital Audio interface formatting
- */
-static inline int dai_set_loopback_mode(struct dai *dai, uint32_t lbm)
-{
-	return dai->ops->set_loopback_mode(dai, lbm);
 }
 
 /**

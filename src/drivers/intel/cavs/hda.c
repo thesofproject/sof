@@ -47,11 +47,6 @@ static int hda_dummy(struct dai *dai)
 	return 0;
 }
 
-static int hda_set_loopback_mode(struct dai *dai, uint32_t lbm)
-{
-	return -EINVAL;
-}
-
 const struct dai_ops hda_ops = {
 	.trigger		= hda_trigger,
 	.set_config		= hda_set_config,
@@ -59,5 +54,4 @@ const struct dai_ops hda_ops = {
 	.pm_context_restore	= hda_dummy,
 	.probe			= hda_dummy,
 	.remove			= hda_dummy,
-	.set_loopback_mode	= hda_set_loopback_mode
 };
