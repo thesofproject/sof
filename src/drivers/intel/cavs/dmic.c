@@ -1558,12 +1558,6 @@ static int dmic_remove(struct dai *dai)
 	return 0;
 }
 
-/* DMIC has no loopback support */
-static inline int dmic_set_loopback_mode(struct dai *dai, uint32_t lbm)
-{
-	return -EINVAL;
-}
-
 const struct dai_ops dmic_ops = {
 	.trigger		= dmic_trigger,
 	.set_config		= dmic_set_config,
@@ -1571,7 +1565,6 @@ const struct dai_ops dmic_ops = {
 	.pm_context_restore	= dmic_context_restore,
 	.probe			= dmic_probe,
 	.remove			= dmic_remove,
-	.set_loopback_mode	= dmic_set_loopback_mode,
 };
 
 #endif
