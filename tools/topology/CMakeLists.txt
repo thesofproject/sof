@@ -11,7 +11,7 @@ set(TPLGS
 	"sof-cht-nocodec\;sof-byt-nocodec\;-DPLATFORM=byt"
 	"sof-cht-max98090\;sof-cht-max98090"
 	"sof-cht-rt5682\;sof-cht-rt5682"
-	"sof-hda-intel-common\;sof-hda-intel-common"
+	"sof-hda-generic\;sof-hda-generic"
 	"sof-apl-nocodec\;sof-apl-nocodec"
 	"sof-apl-keyword-detect\;sof-apl-keyword-detect"
 	"sof-bdw-codec\;sof-bdw-rt286\;-DCODEC=RT286"
