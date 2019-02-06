@@ -1,0 +1,48 @@
+# Kconfig targets
+
+include(${CMAKE_CURRENT_LIST_DIR}/defconfigs.cmake)
+
+add_custom_target(
+	menuconfig
+	COMMAND ${CMAKE_COMMAND} -E env
+		srctree=${PROJECT_SOURCE_DIR}
+		CC_VERSION_TEXT=${CC_VERSION_TEXT}
+		ARCH=${ARCH}
+		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/menuconfig.py
+		${PROJECT_SOURCE_DIR}/Kconfig
+	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
+	VERBATIM
+	USES_TERMINAL
+)
+
+add_custom_target(
+	overrideconfig
+	COMMAND ${CMAKE_COMMAND} -E env
+		srctree=${PROJECT_SOURCE_DIR}
+		CC_VERSION_TEXT=${CC_VERSION_TEXT}
+		ARCH=${ARCH}
+		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/overrideconfig.py
+		${PROJECT_SOURCE_DIR}/Kconfig
+		${PROJECT_BINARY_DIR}/override.config
+	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
+	VERBATIM
+	USES_TERMINAL
+)
+
+add_custom_command(
+	OUTPUT ${CONFIG_H_PATH}
+	COMMAND ${CMAKE_COMMAND} -E env
+		srctree=${PROJECT_SOURCE_DIR}
+		CC_VERSION_TEXT=${CC_VERSION_TEXT}
+		ARCH=${ARCH}
+		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/genconfig.py
+		--header-path ${CONFIG_H_PATH}
+		${PROJECT_SOURCE_DIR}/Kconfig
+	DEPENDS ${DOT_CONFIG_PATH}
+	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
+	COMMENT "Generating ${CONFIG_H_PATH}"
+	VERBATIM
+	USES_TERMINAL
+)
+
+add_custom_target(genconfig DEPENDS ${CONFIG_H_PATH})
