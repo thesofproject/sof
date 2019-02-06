@@ -52,17 +52,6 @@ if(BUILD_HOST)
 	return()
 endif()
 
-if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
-	# FindPythonInterp is bugged and may sometimes be unable to find
-	# Python 3 when both Python 2 & 3 are in PATH,
-	# so it's always better to use CMake 3.12+
-	find_package(PythonInterp 3.0)
-	set(PYTHON3 "${PYTHON_EXECUTABLE}")
-else()
-	find_package(Python3 COMPONENTS Interpreter)
-	set(PYTHON3 "${Python3_EXECUTABLE}")
-endif()
-
 # get compiler name and version
 execute_process(
 	COMMAND ${CMAKE_C_COMPILER} --version
@@ -89,8 +78,6 @@ sof_add_version_h_rule(${PROJECT_SOURCE_DIR}/scripts/cmake/version.cmake)
 
 include(scripts/cmake/dist.cmake)
 
-include(scripts/cmake/defconfigs.cmake)
-
 # cmake itself cannot depend on files that don't exist
 # so to make it regenerate when .config file is created,
 # we make it depend on containing directory
@@ -103,49 +90,18 @@ if(EXISTS ${DOT_CONFIG_PATH})
 	read_kconfig_config(${DOT_CONFIG_PATH})
 endif()
 
-add_custom_target(
-	menuconfig
-	COMMAND ${CMAKE_COMMAND} -E env
-		srctree=${PROJECT_SOURCE_DIR}
-		CC_VERSION_TEXT=${CC_VERSION_TEXT}
-		ARCH=${ARCH}
-		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/menuconfig.py
-		${PROJECT_SOURCE_DIR}/Kconfig
-	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
-	VERBATIM
-	USES_TERMINAL
-)
+if(${CMAKE_VERSION} VERSION_LESS "3.12.0")
+	# FindPythonInterp is bugged and may sometimes be unable to find
+	# Python 3 when both Python 2 & 3 are in PATH,
+	# so it's always better to use CMake 3.12+
+	find_package(PythonInterp 3.0)
+	set(PYTHON3 "${PYTHON_EXECUTABLE}")
+else()
+	find_package(Python3 COMPONENTS Interpreter)
+	set(PYTHON3 "${Python3_EXECUTABLE}")
+endif()
 
-add_custom_target(
-	overrideconfig
-	COMMAND ${CMAKE_COMMAND} -E env
-		srctree=${PROJECT_SOURCE_DIR}
-		CC_VERSION_TEXT=${CC_VERSION_TEXT}
-		ARCH=${ARCH}
-		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/overrideconfig.py
-		${PROJECT_SOURCE_DIR}/Kconfig
-		${PROJECT_BINARY_DIR}/override.config
-	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
-	VERBATIM
-	USES_TERMINAL
-)
-
-add_custom_command(OUTPUT ${CONFIG_H_PATH}
-	COMMAND ${CMAKE_COMMAND} -E env
-		srctree=${PROJECT_SOURCE_DIR}
-		CC_VERSION_TEXT=${CC_VERSION_TEXT}
-		ARCH=${ARCH}
-		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/genconfig.py
-		--header-path ${CONFIG_H_PATH}
-		${PROJECT_SOURCE_DIR}/Kconfig
-	DEPENDS ${DOT_CONFIG_PATH}
-	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
-	COMMENT "Generating ${CONFIG_H_PATH}"
-	VERBATIM
-	USES_TERMINAL
-)
-
-add_custom_target(genconfig DEPENDS ${CONFIG_H_PATH})
+include(scripts/cmake/kconfig.cmake)
 
 add_dependencies(sof_options genconfig)
 target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
