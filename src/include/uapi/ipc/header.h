@@ -43,32 +43,46 @@
 
 /** \addtogroup sof_uapi uAPI
  *  SOF uAPI specification.
- *  @{
- */
-
-/*
+ *
  * IPC messages have a prefixed 32 bit identifier made up as follows :-
  *
  * 0xGCCCNNNN where
- * G is global cmd type (4 bits)
- * C is command type (12 bits)
- * I is the ID number (16 bits) - monotonic and overflows
+ * - G is global cmd type (4 bits)
+ * - C is command type (12 bits)
+ * - I is the ID number (16 bits) - monotonic and overflows
  *
  * This is sent at the start of the IPM message in the mailbox. Messages should
- * not be sent in the doorbell (special exceptions for firmware .
+ * not be sent in the doorbell (special exceptions for firmware).
+
+ *  @{
  */
 
-/* Global Message - Generic */
+/** \name Global Message - Generic
+ *  @{
+ */
+
+/** Shift-left bits to extract the global cmd type */
 #define SOF_GLB_TYPE_SHIFT			28
 #define SOF_GLB_TYPE_MASK			(0xf << SOF_GLB_TYPE_SHIFT)
 #define SOF_GLB_TYPE(x)				((x) << SOF_GLB_TYPE_SHIFT)
 
-/* Command Message - Generic */
+/** @} */
+
+/** \name Command Message - Generic
+ *  @{
+ */
+
+/** Shift-left bits to extract the command type */
 #define SOF_CMD_TYPE_SHIFT			16
 #define SOF_CMD_TYPE_MASK			(0xfff << SOF_CMD_TYPE_SHIFT)
 #define SOF_CMD_TYPE(x)				((x) << SOF_CMD_TYPE_SHIFT)
 
-/* Global Message Types */
+/** @} */
+
+/** \name Global Message Types
+ *  @{
+ */
+
 #define SOF_IPC_GLB_REPLY			SOF_GLB_TYPE(0x1U)
 #define SOF_IPC_GLB_COMPOUND			SOF_GLB_TYPE(0x2U)
 #define SOF_IPC_GLB_TPLG_MSG			SOF_GLB_TYPE(0x3U)
@@ -80,11 +94,13 @@
 #define SOF_IPC_GLB_TRACE_MSG			SOF_GLB_TYPE(0x9U)
 #define SOF_IPC_GLB_GDB_DEBUG                   SOF_GLB_TYPE(0xAU)
 
-/*
- * DSP Command Message Types
+/** @} */
+
+/** \name DSP Command: Topology
+ *  \anchor tplg_cmd_type
+ *  @{
  */
 
-/* topology */
 #define SOF_IPC_TPLG_COMP_NEW			SOF_CMD_TYPE(0x001)
 #define SOF_IPC_TPLG_COMP_FREE			SOF_CMD_TYPE(0x002)
 #define SOF_IPC_TPLG_COMP_CONNECT		SOF_CMD_TYPE(0x003)
@@ -95,7 +111,12 @@
 #define SOF_IPC_TPLG_BUFFER_NEW			SOF_CMD_TYPE(0x020)
 #define SOF_IPC_TPLG_BUFFER_FREE		SOF_CMD_TYPE(0x021)
 
-/* PM */
+/** @} */
+
+/** \name DSP Command: PM
+ *  @{
+ */
+
 #define SOF_IPC_PM_CTX_SAVE			SOF_CMD_TYPE(0x001)
 #define SOF_IPC_PM_CTX_RESTORE			SOF_CMD_TYPE(0x002)
 #define SOF_IPC_PM_CTX_SIZE			SOF_CMD_TYPE(0x003)
@@ -104,18 +125,29 @@
 #define SOF_IPC_PM_CLK_REQ			SOF_CMD_TYPE(0x006)
 #define SOF_IPC_PM_CORE_ENABLE			SOF_CMD_TYPE(0x007)
 
-/* component runtime config - multiple different types */
+/** \name DSP Command: Component runtime config - multiple different types
+ *  @{
+ */
+
 #define SOF_IPC_COMP_SET_VALUE			SOF_CMD_TYPE(0x001)
 #define SOF_IPC_COMP_GET_VALUE			SOF_CMD_TYPE(0x002)
 #define SOF_IPC_COMP_SET_DATA			SOF_CMD_TYPE(0x003)
 #define SOF_IPC_COMP_GET_DATA			SOF_CMD_TYPE(0x004)
 #define SOF_IPC_COMP_NOTIFICATION		SOF_CMD_TYPE(0x005)
 
-/* DAI messages */
+/** @} */
+
+/** \name DSP Command: DAI messages
+ *  @{
+ */
 #define SOF_IPC_DAI_CONFIG			SOF_CMD_TYPE(0x001)
 #define SOF_IPC_DAI_LOOPBACK			SOF_CMD_TYPE(0x002)
 
-/* stream */
+/** @} */
+
+/** \name DSP Command: Stream
+ *  @{
+ */
 #define SOF_IPC_STREAM_PCM_PARAMS		SOF_CMD_TYPE(0x001)
 #define SOF_IPC_STREAM_PCM_PARAMS_REPLY		SOF_CMD_TYPE(0x002)
 #define SOF_IPC_STREAM_PCM_FREE			SOF_CMD_TYPE(0x003)
@@ -129,40 +161,51 @@
 #define SOF_IPC_STREAM_VORBIS_PARAMS		SOF_CMD_TYPE(0x010)
 #define SOF_IPC_STREAM_VORBIS_FREE		SOF_CMD_TYPE(0x011)
 
-/* trace and debug */
+/** @} */
+
+/** \name DSP Command: Trace and debug
+ *  @{
+ */
+
 #define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x001)
 #define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
 
-/* Get message component id */
+/** @} */
+
+/** \name IPC Message Definitions
+ * @{
+ */
+
+/** Get message component id */
 #define SOF_IPC_MESSAGE_ID(x)			((x) & 0xffff)
 
-/* maximum message size for mailbox Tx/Rx */
+/** Maximum message size for mailbox Tx/Rx */
 #define SOF_IPC_MSG_MAX_SIZE			384
 
-/*
+/** @} */
+
+/**
  * Structure Header - Header for all IPC structures except command structs.
  * The size can be greater than the structure size and that means there is
  * extended bespoke data beyond the end of the structure including variable
  * arrays.
  */
-
 struct sof_ipc_hdr {
 	uint32_t size;			/**< size of structure */
 } __attribute__((packed));
 
-/*
+/**
  * Command Header - Header for all IPC commands. Identifies IPC message.
  * The size can be greater than the structure size and that means there is
  * extended bespoke data beyond the end of the structure including variable
  * arrays.
  */
-
 struct sof_ipc_cmd_hdr {
 	uint32_t size;			/**< size of structure */
 	uint32_t cmd;			/**< SOF_IPC_GLB_ + cmd */
 } __attribute__((packed));
 
-/*
+/**
  * Generic reply message. Some commands override this with their own reply
  * types that must include this at start.
  */
@@ -171,7 +214,7 @@ struct sof_ipc_reply {
 	int32_t error;			/**< negative error numbers */
 } __attribute__((packed));
 
-/*
+/**
  * Compound commands - SOF_IPC_GLB_COMPOUND.
  *
  * Compound commands are sent to the DSP as a single IPC operation. The
@@ -179,7 +222,6 @@ struct sof_ipc_reply {
  * identifies the command type and the number of commands before the next
  * header.
  */
-
 struct sof_ipc_compound_hdr {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t count;		/**< count of 0 means end of compound sequence */
