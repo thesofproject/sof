@@ -334,7 +334,7 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 		return 0;
 
 	/* Allocate all FIR channels data in a big chunk and clear it */
-	cd->fir_delay = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
+	cd->fir_delay = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, size_sum);
 	if (!cd->fir_delay) {
 		trace_eq_error("eq_fir_setup() error: alloc failed, size = %u",
 			       size_sum);
@@ -420,7 +420,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	 * the EQ is configured later in run-time the size is zero.
 	 */
 	if (bs) {
-		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
+		cd->config = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
 		if (!cd->config) {
 			rfree(dev);
 			rfree(cd);
@@ -484,7 +484,8 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			    struct sof_ipc_ctrl_data *cdata, int max_size)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-
+	unsigned char *dst, *src;
+	size_t offset;
 	size_t bs;
 	int ret = 0;
 
@@ -492,13 +493,24 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 	case SOF_CTRL_CMD_BINARY:
 		trace_eq("fir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
 
+		max_size -= sizeof(struct sof_ipc_ctrl_data) +
+			sizeof(struct sof_abi_hdr);
+
 		/* Copy back to user space */
 		if (cd->config) {
+			src = (unsigned char *)cd->config;
+			dst = (unsigned char *)cdata->data->data;
 			bs = cd->config->size;
-			if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0 ||
-			    bs > max_size)
-				return -EINVAL;
-			memcpy(cdata->data->data, cd->config, bs);
+			cdata->total_elems = bs;
+			if (bs > max_size)
+				bs = (cdata->msg_id + 1) * max_size > bs ?
+					bs - cdata->msg_id * max_size :
+				  max_size;
+			cdata->num_elems = bs;
+			offset = cdata->msg_id * max_size;
+			trace_eq("fir_cmd_get_data(), %zu %u %u %zu",
+				 bs, cdata->msg_id, max_size, offset);
+			memcpy(dst, src + offset, bs);
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
@@ -520,8 +532,8 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_ctrl_value_comp *compv;
-	struct sof_eq_fir_config *cfg;
-	size_t bs;
+	unsigned char *dst, *src;
+	uint32_t offset;
 	int i;
 	int ret = 0;
 
@@ -569,28 +581,39 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 			return -EBUSY;
 		}
 
-		/* Check and free old config */
-		eq_fir_free_parameters(&cd->config);
-
 		/* Copy new config, find size from header */
-		cfg = (struct sof_eq_fir_config *)cdata->data->data;
-		bs = cfg->size;
-		trace_eq("fir_cmd_set_data(): blob size: %u", bs);
-		if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0)
+		trace_eq("fir_cmd_set_data(): blob size: %u msg_id %u",
+			 cdata->num_elems, cdata->msg_id);
+		if (cdata->total_elems > SOF_EQ_FIR_MAX_SIZE)
 			return -EINVAL;
 
-		/* Allocate buffer for copy of the blob. */
-		cd->config = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, bs);
-		if (!cd->config) {
-			trace_eq_error("fir_cmd_set_data() error: "
-				       "buffer allocation failed");
-			return -EINVAL;
+		if (cdata->msg_id == 0) {
+			/* Check and free old config */
+			eq_fir_free_parameters(&cd->config);
+
+			/* Allocate buffer for copy of the blob. */
+			cd->config = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+					     cdata->total_elems);
+			if (!cd->config) {
+				trace_eq_error("fir_cmd_set_data() error: "
+					       "buffer allocation failed");
+				return -EINVAL;
+			}
 		}
+
+		dst = (unsigned char *)cd->config;
+		src = (unsigned char *)cdata->data->data;
 
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		memcpy(cd->config, cfg, bs);
+		offset = cdata->msg_id * (SOF_IPC_MSG_MAX_SIZE -
+					  (sizeof(struct sof_ipc_ctrl_data) +
+					   sizeof(struct sof_abi_hdr)));
+
+		memcpy(dst + offset, src, cdata->num_elems);
+
+		/* we can check data if offset + num_elems == total_elems */
 		break;
 	default:
 		trace_eq_error("fir_cmd_set_data() error: invalid cdata->cmd");
