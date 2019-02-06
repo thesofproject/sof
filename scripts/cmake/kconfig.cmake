@@ -72,3 +72,18 @@ add_custom_target(
 	VERBATIM
 	USES_TERMINAL
 )
+
+add_custom_target(
+	savedefconfig
+	COMMAND ${CMAKE_COMMAND} -E env
+		srctree=${PROJECT_SOURCE_DIR}
+		CC_VERSION_TEXT=${CC_VERSION_TEXT}
+		ARCH=${ARCH}
+		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/savedefconfig.py
+		${PROJECT_SOURCE_DIR}/Kconfig
+		${PROJECT_BINARY_DIR}/defconfig
+	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
+	COMMENT "Saving minimal configuration to: ${PROJECT_BINARY_DIR}/defconfig"
+	VERBATIM
+	USES_TERMINAL
+)
