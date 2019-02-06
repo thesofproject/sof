@@ -46,3 +46,16 @@ add_custom_command(
 )
 
 add_custom_target(genconfig DEPENDS ${CONFIG_H_PATH})
+
+add_custom_target(
+	olddefconfig
+	COMMAND ${CMAKE_COMMAND} -E env
+		srctree=${PROJECT_SOURCE_DIR}
+		CC_VERSION_TEXT=${CC_VERSION_TEXT}
+		ARCH=${ARCH}
+		${PYTHON3} ${PROJECT_SOURCE_DIR}/scripts/kconfig/olddefconfig.py
+		${PROJECT_SOURCE_DIR}/Kconfig
+	WORKING_DIRECTORY ${GENERATED_DIRECTORY}
+	VERBATIM
+	USES_TERMINAL
+)
