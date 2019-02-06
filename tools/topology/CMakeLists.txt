@@ -12,6 +12,7 @@ set(TPLGS
 	"sof-cht-max98090\;sof-cht-max98090"
 	"sof-cht-rt5682\;sof-cht-rt5682"
 	"sof-hda-generic\;sof-hda-generic"
+	"sof-hda-generic-idisp\;sof-hda-generic-idisp"
 	"sof-apl-nocodec\;sof-apl-nocodec"
 	"sof-apl-keyword-detect\;sof-apl-keyword-detect"
 	"sof-bdw-codec\;sof-bdw-rt286\;-DCODEC=RT286"
