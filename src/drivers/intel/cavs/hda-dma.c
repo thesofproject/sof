@@ -339,6 +339,8 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) &&
 	       (chan->state & HDA_STATE_BF_WAIT)) {
 		if (deadline < platform_timer_get(platform_timer)) {
+			trace_hddma_error("hda-dmac: %d preload timeout",
+					  dma->plat_data.id);
 			return -ETIME;
 		}
 	}
