@@ -33,6 +33,7 @@
 #include <sof/lock.h>
 #include <sof/list.h>
 #include <sof/stream.h>
+#include <sof/ipc.h>
 #include <sof/audio/component.h>
 
 /* tracing */
@@ -40,16 +41,53 @@
 #define trace_mux_error(__e)   trace_error(TRACE_CLASS_MUX, __e)
 #define tracev_mux(__e)        tracev_event(TRACE_CLASS_MUX, __e)
 
+struct mux_data {
+	uint32_t period_bytes;
+	uint32_t mux_value[SOF_IPC_MAX_CHANNELS];
+};
+
 static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 {
+	struct comp_dev *dev;
+	struct sof_ipc_comp_mux *mux;
+	struct sof_ipc_comp_mux *ipc_mux =
+		(struct sof_ipc_comp_mux *)comp;
+	struct mux_data *md;
+
 	trace_mux("mux_new()");
 
-	return NULL;
+	if (IPC_IS_SIZE_INVALID(ipc_mux->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_MUX, ipc_mux->config);
+		return NULL;
+	}
+
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+		COMP_SIZE(struct sof_ipc_comp_mux));
+	if (!dev)
+		return NULL;
+
+	mux = (struct sof_ipc_comp_mux *)&dev->comp;
+	memcpy(mux, ipc_mux, sizeof(struct sof_ipc_comp_mux));
+
+	md = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*md));
+	if (!md) {
+		rfree(dev);
+		return NULL;
+	}
+
+	comp_set_drvdata(dev, md);
+	dev->state = COMP_STATE_READY;
+	return dev;
 }
 
 static void mux_free(struct comp_dev *dev)
 {
+	struct mux_data *md = comp_get_drvdata(dev);
 
+	trace_mux("mux_free()");
+
+	rfree(md);
+	rfree(dev);
 }
 
 /* set component audio stream parameters */
@@ -59,12 +97,94 @@ static int mux_params(struct comp_dev *dev)
 	return 0;
 }
 
+/**
+ * \brief Sets mux control command.
+ * \param[in,out] dev mux base component device.
+ * \param[in,out] cdata Control command data.
+ * \return Error code.
+ */
+static int mux_ctrl_set_cmd(struct comp_dev *dev,
+			       struct sof_ipc_ctrl_data *cdata)
+{
+	struct mux_data *cd = comp_get_drvdata(dev);
+	int j;
+
+	/* validate */
+	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
+		trace_mux_error("mux_ctrl_set_cmd() error: "
+				   "invalid cdata->num_elems");
+		return -EINVAL;
+	}
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_ENUM:
+		/*FIXME: fix logger for mux */
+		trace_mux("mux_ctrl_set_cmd(), SOF_CTRL_CMD_ENUM, ");
+
+		/* save enum value state */
+		for (j = 0; j < cdata->num_elems; j++)
+			cd->mux_value[j] = cdata->chanv[j].value;
+
+		break;
+
+	default:
+		trace_mux_error("invalid cdata->cmd");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * \brief Gets mux control command.
+ * \param[in,out] dev mux base component device.
+ * \param[in,out] cdata Control command data.
+ * \return Error code.
+ */
+static int mux_ctrl_get_cmd(struct comp_dev *dev,
+			       struct sof_ipc_ctrl_data *cdata, int size)
+{
+	struct mux_data *cd = comp_get_drvdata(dev);
+	int j;
+
+	/* validate */
+	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
+		trace_mux_error("invalid cdata->num_elems");
+		return -EINVAL;
+	}
+
+	if (cdata->cmd ==  SOF_CTRL_CMD_ENUM) {
+		trace_mux("mux_ctrl_get_cmd(), SOF_CTRL_CMD_ENUM");
+
+		/* copy current enum value */
+		for (j = 0; j < cdata->num_elems; j++) {
+			cdata->chanv[j].channel = j;
+			cdata->chanv[j].value = cd->mux_value[j];
+		}
+	} else {
+		trace_mux_error("invalid cdata->cmd");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* used to pass standard and bespoke commands (with data) to component */
 static int mux_cmd(struct comp_dev *dev, int cmd, void *data,
 		   int max_data_size)
 {
-	/* mux will use buffer "connected" status */
-	return 0;
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	trace_mux("mux_cmd()");
+
+	switch (cmd) {
+	case COMP_CMD_SET_VALUE:
+		return mux_ctrl_set_cmd(dev, cdata);
+	case COMP_CMD_GET_VALUE:
+		return mux_ctrl_get_cmd(dev, cdata, max_data_size);
+	default:
+		return -EINVAL;
+	}
 }
 
 /* copy and process stream data from source to sink buffers */
