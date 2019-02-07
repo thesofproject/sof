@@ -296,7 +296,8 @@ static void test_audio_vol(void **state)
 		break;
 	}
 
-	cd->scale_vol(vol_state->dev, vol_state->sink, vol_state->source);
+	cd->scale_vol(vol_state->dev, vol_state->sink, vol_state->source,
+		      vol_state->dev->frames);
 
 	vol_state->verify(vol_state->dev, vol_state->sink, vol_state->source);
 }

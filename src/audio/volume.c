@@ -494,7 +494,7 @@ static int volume_copy(struct comp_dev *dev)
 	}
 
 	/* copy and scale volume */
-	cd->scale_vol(dev, sink, source);
+	cd->scale_vol(dev, sink, source, dev->frames);
 
 	/* calc new free and available */
 	comp_update_buffer_produce(sink, cd->sink_period_bytes);

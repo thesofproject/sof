@@ -114,8 +114,9 @@ struct comp_data {
 	uint32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
 	uint32_t min_volume;			/**< minimum volume level */
 	uint32_t max_volume;			/**< maximum volume level */
+	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source);	/**< volume processing function */
+		struct comp_buffer *source, uint32_t frames);
 	struct work volwork;			/**< volume scheduled work function */
 	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 };
@@ -124,21 +125,40 @@ struct comp_data {
 struct comp_func_map {
 	uint16_t source;			/**< source frame format */
 	uint16_t sink;				/**< sink frame format */
-	uint16_t channels;			/**< number of stream channels */
+	/**< volume processing function */
 	void (*func)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source);	/**< volume processing function */
+		struct comp_buffer *source, uint32_t frames);
 };
 
 /** \brief Map of formats with dedicated processing functions. */
 extern const struct comp_func_map func_map[];
 
+/** \brief Number of processing functions. */
+extern const size_t func_count;
+
 typedef void (*scale_vol)(struct comp_dev *, struct comp_buffer *,
-			  struct comp_buffer *);
+			  struct comp_buffer *, uint32_t);
 
 /**
  * \brief Retrievies volume processing function.
  * \param[in,out] dev Volume base component device.
  */
-scale_vol vol_get_processing_function(struct comp_dev *dev);
+inline static scale_vol vol_get_processing_function(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int i;
+
+	/* map the volume function for source and sink buffers */
+	for (i = 0; i < func_count; i++) {
+		if (cd->source_format != func_map[i].source)
+			continue;
+		if (cd->sink_format != func_map[i].sink)
+			continue;
+
+		return func_map[i].func;
+	}
+
+	return NULL;
+}
 
 #endif /* VOLUME_H */
