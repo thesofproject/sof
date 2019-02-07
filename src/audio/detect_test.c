@@ -34,7 +34,9 @@
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/ipc.h>
+#include <sof/notifier.h>
 #include <sof/audio/component.h>
+#include <sof/audio/kpb.h>
 #include <uapi/user/detect_test.h>
 
 /* tracing */
@@ -45,7 +47,14 @@
 #define tracev_keyword(__e, ...) \
 	tracev_event(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 
-#define DETECT_TEST_SPIKE_THRESHOLD 0x00FFFFFF
+#define ACTIVATION_SHIFT 6
+#define ACTIVATION_THRESHOLD 0.7
+
+#define ACTIVATION_THRESHOLD_S16 \
+	((int16_t)((INT16_MAX) * (ACTIVATION_THRESHOLD)))
+
+/* number of samples to be treated as a full keyphrase */
+#define KEYPHRASE_PREAMBLE_LENGTH 1024
 
 struct comp_data {
 	enum sof_ipc_frame source_format;	/**< source frame format */
@@ -53,18 +62,23 @@ struct comp_data {
 
 	struct sof_detect_test_config *config;
 	void *load_memory;	/**< synthetic memory load */
-	int32_t prev_sample;	/**< last samples from previous period */
+	int16_t activation;
 	uint32_t detected;
+	uint32_t detect_preamble; /**< keyphrase preamble length */
+
+	struct notify_data event;
+	struct kpb_event_data event_data;
+	struct kpb_client client_data;
 
 	void (*detect_func)(struct comp_dev *dev,
 			    struct comp_buffer *source, uint32_t frames);
 };
 
-static void detect_test_notify(struct comp_dev *dev)
+static void notify_host(struct comp_dev *dev)
 {
 	struct sof_ipc_comp_event event;
 
-	trace_keyword("detect_test_notify()");
+	trace_keyword("notify_host()");
 
 	event.event_type = SOF_CTRL_EVENT_KD;
 	event.num_elems = 0;
@@ -72,12 +86,42 @@ static void detect_test_notify(struct comp_dev *dev)
 	ipc_send_comp_notification(dev, &event);
 }
 
+static void notify_kbd(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+
+	trace_keyword("notify_kbd(), preamble: %u", cd->detect_preamble);
+
+	cd->client_data.r_ptr = NULL;
+	cd->client_data.sink = NULL;
+	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
+	cd->client_data.history_end = 0; /**< keyphrase end, 0 is now */
+	cd->client_data.history_begin = cd->detect_preamble;
+	/* single channel */
+	cd->client_data.history_depth = cd->detect_preamble * sizeof(int32_t);
+
+	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
+	cd->event_data.client_data = &cd->client_data;
+
+	cd->event.id = NOTIFIER_ID_KPB_CLIENT_EVT;
+	cd->event.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
+	cd->event.data = &cd->event_data;
+
+	notifier_event(&cd->event);
+}
+
+static void detect_test_notify(struct comp_dev *dev)
+{
+	notify_host(dev);
+	notify_kbd(dev);
+}
+
 static void default_detect_test(struct comp_dev *dev,
 				struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	int32_t *src = source->r_ptr;
+	int16_t *src = source->r_ptr;
 	uint32_t count = frames; /**< Assmuming single channel */
 	uint32_t sample;
 
@@ -85,25 +129,20 @@ static void default_detect_test(struct comp_dev *dev,
 	if (cd->config)
 		idelay(cd->config->load_mips * 1000000);
 
-	/* compare with the last sample from previous period */
-	if (!cd->detected && abs(cd->prev_sample - src[0]) >=
-	    DETECT_TEST_SPIKE_THRESHOLD) {
-		detect_test_notify(dev);
-		cd->detected = 1;
-	}
-
 	/* perform detection within current period */
-	for (sample = 1; sample < count; ++sample) {
-		if (!cd->detected &&
-		    abs(src[sample - 1] - src[sample]) >=
-		    DETECT_TEST_SPIKE_THRESHOLD) {
-			detect_test_notify(dev);
-			cd->detected = 1;
+	for (sample = 1; sample < count && !cd->detected; ++sample) {
+		cd->activation += (abs(src[sample]) - cd->activation) >>
+				  ACTIVATION_SHIFT;
+
+		if (cd->detect_preamble >= KEYPHRASE_PREAMBLE_LENGTH) {
+			if (cd->activation >= ACTIVATION_THRESHOLD_S16) {
+				detect_test_notify(dev);
+				cd->detected = 1;
+			}
+		} else {
+			++cd->detect_preamble;
 		}
 	}
-
-	/* remember last sample from the current period */
-	cd->prev_sample = src[count - 1];
 }
 
 static int free_mem_load(struct comp_data *cd)
@@ -209,6 +248,12 @@ static int test_keyword_params(struct comp_dev *dev)
 	if (dev->params.channels != 1) {
 		trace_keyword_error("test_keyword_params() "
 				    "error: only single-channel supported");
+		return -EINVAL;
+	}
+
+	if (dev->params.frame_fmt != SOF_IPC_FRAME_S16_LE) {
+		trace_keyword_error("test_keyword_params() "
+				    "error: only 16-bit format supported");
 		return -EINVAL;
 	}
 
@@ -364,7 +409,9 @@ static int test_keyword_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
+		cd->detect_preamble = 0;
 		cd->detected = 0;
+		cd->activation = 0;
 		break;
 	}
 

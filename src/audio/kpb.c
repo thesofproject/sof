@@ -45,10 +45,13 @@
 #include <sof/audio/buffer.h>
 
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
-static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
-static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
+static int kpb_register_client(struct kpb_comp_data *kpb,
+			       struct kpb_client *cli);
+static void kpb_init_draining(struct kpb_comp_data *kpb,
+			      struct kpb_client *cli);
 static void draining_task(void *arg);
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source);
+static void kpb_buffer_data(struct kpb_comp_data *kpb,
+			    struct comp_buffer *source);
 static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req, size_t *buffer);
 
 /**
@@ -63,7 +66,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		(struct sof_ipc_comp_process *)comp;
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
-	struct comp_data *cd;
+	struct kpb_comp_data *cd;
 
 	trace_kpb("kpb_new()");
 
@@ -127,7 +130,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
  */
 static void kpb_free(struct comp_dev *dev)
 {
-	struct comp_data *kpb = comp_get_drvdata(dev);
+	struct kpb_comp_data *kpb = comp_get_drvdata(dev);
 
 	trace_kpb("kpb_free()");
 
@@ -160,7 +163,7 @@ static int kpb_trigger(struct comp_dev *dev, int cmd)
  */
 static int kpb_prepare(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct kpb_comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
 	int i = 0;
 	struct list_item *blist;
@@ -322,7 +325,7 @@ static int kpb_copy(struct comp_dev *dev)
 {
 	int ret = 0;
 	int update_buffers = 0;
-	struct comp_data *kpb = comp_get_drvdata(dev);
+	struct kpb_comp_data *kpb = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 
@@ -388,7 +391,8 @@ static int kpb_copy(struct comp_dev *dev)
  *
  * \return none
  */
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
+static void kpb_buffer_data(struct kpb_comp_data *kpb,
+			    struct comp_buffer *source)
 {
 	int size_to_copy = kpb->source_period_bytes;
 	int space_avail;
@@ -448,7 +452,7 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
 static void kpb_event_handler(int message, void *cb_data, void *event_data)
 {
 	(void)message;
-	struct comp_data *kpb = (struct comp_data *)cb_data;
+	struct kpb_comp_data *kpb = (struct kpb_comp_data *)cb_data;
 	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
 	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
 
@@ -482,7 +486,8 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
  *	0 - success
  *	-EINVAL - failure.
  */
-static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
+static int kpb_register_client(struct kpb_comp_data *kpb,
+			       struct kpb_client *cli)
 {
 	int ret = 0;
 
@@ -529,7 +534,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
  *	0 - success
  *	-EINVAL - failure.
  */
-static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
+static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 {
 	uint8_t is_sink_ready = (kpb->clients[cli->id].sink->sink->state
                                  == COMP_STATE_ACTIVE) ? 1 : 0;
