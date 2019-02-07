@@ -66,4 +66,11 @@ config COMP_SEL
 	help
 	  Select for SEL component
 
+config COMP_TEST_KEYPHRASE
+	bool "KEYPHRASE_TEST component"
+	default y
+	help
+	  Select for KEYPHRASE_TEST component.
+	  Provides basic functionality for use in testing of keyphrase detection pipelines.
+
 endmenu
