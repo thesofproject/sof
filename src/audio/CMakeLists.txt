@@ -13,6 +13,7 @@ if(NOT BUILD_HOST)
 		src_hifi3.c
 		mixer.c
 		mux.c
+		detect_test.c
 		volume.c
 		volume_generic.c
 		volume_hifi3.c

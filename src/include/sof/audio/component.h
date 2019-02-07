@@ -347,6 +347,7 @@ void sys_comp_src_init(void);
 void sys_comp_tone_init(void);
 void sys_comp_eq_iir_init(void);
 void sys_comp_eq_fir_init(void);
+void sys_comp_keyword_init(void);
 
 static inline int comp_is_single_pipeline(struct comp_dev *current,
 					  struct comp_dev *previous)
