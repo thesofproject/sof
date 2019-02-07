@@ -96,6 +96,24 @@ struct comp_buffer {
 			buffer->sink = comp;		\
 	} while (0)					\
 
+#define buffer_read_frag(buffer, idx, size) \
+	buffer_get_frag(buffer, buffer->r_ptr, idx, size)
+
+#define buffer_read_frag_s16(buffer, idx) \
+	buffer_get_frag(buffer, buffer->r_ptr, idx, sizeof(int16_t))
+
+#define buffer_read_frag_s32(buffer, idx) \
+	buffer_get_frag(buffer, buffer->r_ptr, idx, sizeof(int32_t))
+
+#define buffer_write_frag(buffer, idx, size) \
+	buffer_get_frag(buffer, buffer->w_ptr, idx, size)
+
+#define buffer_write_frag_s16(buffer, idx) \
+	buffer_get_frag(buffer, buffer->w_ptr, idx, sizeof(int16_t))
+
+#define buffer_write_frag_s32(buffer, idx) \
+	buffer_get_frag(buffer, buffer->w_ptr, idx, sizeof(int32_t))
+
 typedef void (*cache_buff_op)(struct comp_buffer *);
 
 /* pipeline buffer creation and destruction */
@@ -195,6 +213,18 @@ static inline int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	buffer->end_addr = buffer->addr + size;
 	buffer->size = size;
 	return 0;
+}
+
+static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
+				    uint32_t idx, uint32_t size)
+{
+	void *current = ptr + (idx * size);
+
+	/* check for pointer wrap */
+	if (current >= buffer->end_addr)
+		current = buffer->addr + (current - buffer->end_addr);
+
+	return current;
 }
 
 #endif
