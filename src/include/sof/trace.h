@@ -112,6 +112,7 @@
 #define TRACE_CLASS_SCHEDULE	(27 << 24)
 #define TRACE_CLASS_KPB		(28 << 24)
 #define TRACE_CLASS_SELECTOR	(29 << 24)
+#define TRACE_CLASS_KEYWORD	(30 << 24)
 
 /* move to config.h */
 #define TRACE	1
