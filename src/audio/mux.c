@@ -33,6 +33,7 @@
 #include <sof/lock.h>
 #include <sof/list.h>
 #include <sof/stream.h>
+#include <sof/ipc.h>
 #include <sof/audio/component.h>
 
 /* tracing */
@@ -40,16 +41,52 @@
 #define trace_mux_error(__e)   trace_error(TRACE_CLASS_MUX, __e)
 #define tracev_mux(__e)        tracev_event(TRACE_CLASS_MUX, __e)
 
+struct mux_data {
+	uint32_t period_bytes;
+};
+
 static struct comp_dev *mux_new(struct sof_ipc_comp *comp)
 {
+	struct comp_dev *dev;
+	struct sof_ipc_comp_mux *mux;
+	struct sof_ipc_comp_mux *ipc_mux =
+		(struct sof_ipc_comp_mux *)comp;
+	struct mux_data *md;
+
 	trace_mux("mux_new()");
 
-	return NULL;
+	if (IPC_IS_SIZE_INVALID(ipc_mux->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_MUX, ipc_mux->config);
+		return NULL;
+	}
+
+	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
+		COMP_SIZE(struct sof_ipc_comp_mux));
+	if (!dev)
+		return NULL;
+
+	mux = (struct sof_ipc_comp_mux *)&dev->comp;
+	memcpy(mux, ipc_mux, sizeof(struct sof_ipc_comp_mux));
+
+	md = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*md));
+	if (!md) {
+		rfree(dev);
+		return NULL;
+	}
+
+	comp_set_drvdata(dev, md);
+	dev->state = COMP_STATE_READY;
+	return dev;
 }
 
 static void mux_free(struct comp_dev *dev)
 {
+	struct mux_data *md = comp_get_drvdata(dev);
 
+	trace_mux("mux_free()");
+
+	rfree(md);
+	rfree(dev);
 }
 
 /* set component audio stream parameters */
