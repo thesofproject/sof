@@ -49,6 +49,7 @@ SectionVendorTokens."sof_comp_tokens" {
 	SOF_TKN_COMP_PERIOD_SOURCE_COUNT	"401"
 	SOF_TKN_COMP_FORMAT			"402"
 	SOF_TKN_COMP_PRELOAD_COUNT		"403"
+	SOF_TKN_COMP_FLAVOUR		"404"
 }
 
 SectionVendorTokens."sof_ssp_tokens" {
