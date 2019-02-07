@@ -11,8 +11,8 @@
 # include files
 src/include/sof/dmic.h			@singalsu
 src/include/host/*			@ranj063
-src/include/uapi/*			@bardliao
-src/include/uapi/ipc/*			@xiulipan @bardliao
+src/include/uapi/**			@bardliao @wwittbrx @zrombel @dbaluta
+src/include/uapi/ipc/*			@xiulipan @bardliao @wwittbrx @zrombel @dbaluta
 src/include/gdb/*			@mrajwa
 
 # audio component
