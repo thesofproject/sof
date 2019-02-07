@@ -9,6 +9,7 @@ if(NOT BUILD_HOST)
 		tone.c
 		mixer.c
 		mux.c
+		detect_test.c
 		switch.c
 		dai.c
 		host.c

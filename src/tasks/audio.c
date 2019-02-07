@@ -70,6 +70,7 @@ int do_task_master_core(struct sof *sof)
 	sys_comp_tone_init();
 	sys_comp_eq_iir_init();
 	sys_comp_eq_fir_init();
+	sys_comp_keyword_init();
 
 #if STATIC_PIPE
 	/* init static pipeline */
