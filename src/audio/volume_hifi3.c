@@ -44,13 +44,24 @@
 #define VOL_SCALE (uint32_t)((double)INT32_MAX / VOL_MAX)
 
 /**
+ * \brief Sets buffer to be circular using HiFi3 functions.
+ * \param[in,out] buffer Circular buffer.
+ */
+static void vol_setup_circular(struct comp_buffer *buffer)
+{
+	AE_SETCBEGIN0(buffer->addr);
+	AE_SETCEND0(buffer->end_addr);
+}
+
+/**
  * \brief HiFi3 enabled volume processing from 16 bit to 16 bit.
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames to process.
  */
 static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			   struct comp_buffer *source)
+			   struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
@@ -68,11 +79,14 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < dev->frames; i++) {
+	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
+			/* Set source as circular buffer */
+			vol_setup_circular(source);
+
 			/* Load the input sample */
-			AE_L16_XP(in_sample, in, sizeof(ae_int16));
+			AE_L16_XC(in_sample, in, sizeof(ae_int16));
 
 			/* Get gain coefficients */
 			volume = *((ae_f32 *)&vol_scaled[channel]);
@@ -83,8 +97,11 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Shift right and round to get 16 in 32 bits */
 			out_sample = AE_SRAA32RS(mult, 16);
 
+			/* Set sink as circular buffer */
+			vol_setup_circular(sink);
+
 			/* Store the output sample */
-			AE_S16_0_XP(AE_MOVF16X4_FROMF32X2(out_sample),
+			AE_S16_0_XC(AE_MOVF16X4_FROMF32X2(out_sample),
 				    out, sizeof(ae_int16));
 		}
 	}
@@ -95,9 +112,10 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames to process.
  */
 static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source)
+			  struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
@@ -122,11 +140,14 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < dev->frames; i++) {
+	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
+			/* Set source as circular buffer */
+			vol_setup_circular(source);
+
 			/* Load the input sample */
-			AE_L16_XP(in_sample, in, sizeof(ae_int16));
+			AE_L16_XC(in_sample, in, sizeof(ae_int16));
 
 			/* Get gain coefficients */
 			volume = *((ae_f32 *)&vol_scaled[channel]);
@@ -140,8 +161,11 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Shift left to get the right alignment */
 			out_sample = AE_SLAA32(out_sample, shift_left);
 
+			/* Set sink as circular buffer */
+			vol_setup_circular(sink);
+
 			/* Store the output sample */
-			AE_S32_L_XP(out_sample, out, sizeof(ae_int32));
+			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
 		}
 	}
 }
@@ -151,9 +175,10 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames to process.
  */
 static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
-			  struct comp_buffer *source)
+			  struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
@@ -176,11 +201,14 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < dev->frames; i++) {
+	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
+			/* Set source as circular buffer */
+			vol_setup_circular(source);
+
 			/* Load the input sample */
-			AE_L32_XP(in_sample, in, sizeof(ae_int32));
+			AE_L32_XC(in_sample, in, sizeof(ae_int32));
 
 			/* Shift left to get the right alignment */
 			in_sample = AE_SLAA32(in_sample, shift_left);
@@ -195,8 +223,11 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			out_sample = AE_MOVF16X4_FROMF32X2
 					(AE_SRLA32(mult, 16));
 
+			/* Set sink as circular buffer */
+			vol_setup_circular(sink);
+
 			/* Store the output sample */
-			AE_S16_0_XP(out_sample, out, sizeof(ae_int16));
+			AE_S16_0_XC(out_sample, out, sizeof(ae_int16));
 		}
 	}
 }
@@ -206,9 +237,10 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames to process.
  */
 static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source)
+			       struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
@@ -231,11 +263,14 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < dev->frames; i++) {
+	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
+			/* Set source as circular buffer */
+			vol_setup_circular(source);
+
 			/* Load the input sample */
-			AE_L32_XP(in_sample, in, sizeof(ae_int32));
+			AE_L32_XC(in_sample, in, sizeof(ae_int32));
 
 			/* Get gain coefficients */
 			volume = *((ae_f32 *)&vol_scaled[channel]);
@@ -249,8 +284,11 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Shift left to get the right alignment */
 			out_sample = AE_SLAA32(out_sample, shift_left);
 
+			/* Set sink as circular buffer */
+			vol_setup_circular(sink);
+
 			/* Store the output sample */
-			AE_S32_L_XP(out_sample, out, sizeof(ae_int32));
+			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
 		}
 	}
 }
@@ -260,9 +298,10 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
  * \param[in,out] dev Volume base component device.
  * \param[in,out] sink Destination buffer.
  * \param[in,out] source Source buffer.
+ * \param[in] frames Number of frames to process.
  */
 static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
-			       struct comp_buffer *source)
+			       struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
@@ -285,11 +324,14 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
-	for (i = 0; i < dev->frames; i++) {
+	for (i = 0; i < frames; i++) {
 		/* Processing per channel */
 		for (channel = 0; channel < dev->params.channels; channel++) {
+			/* Set source as circular buffer */
+			vol_setup_circular(source);
+
 			/* Load the input sample */
-			AE_L32_XP(in_sample, in, sizeof(ae_int32));
+			AE_L32_XC(in_sample, in, sizeof(ae_int32));
 
 			/* Get gain coefficients */
 			volume = *((ae_f32 *)&vol_scaled[channel]);
@@ -300,40 +342,27 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Shift right to get the right alignment */
 			out_sample = AE_SRLA32(mult, shift_right);
 
+			/* Set sink as circular buffer */
+			vol_setup_circular(sink);
+
 			/* Store the output sample */
-			AE_S32_L_XP(out_sample, out, sizeof(ae_int32));
+			AE_S32_L_XC(out_sample, out, sizeof(ae_int32));
 		}
 	}
 }
 
 const struct comp_func_map func_map[] = {
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, 0, vol_s16_to_s16},
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, 0, vol_s16_to_sX},
-	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, 0, vol_s16_to_sX},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, 0, vol_sX_to_s16},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, 0, vol_s24_to_s24_s32},
-	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, 0, vol_s24_to_s24_s32},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, 0, vol_sX_to_s16},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, 0, vol_s32_to_s24_s32},
-	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, 0, vol_s32_to_s24_s32},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE, vol_s16_to_s16},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE, vol_s16_to_sX},
+	{SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE, vol_s16_to_sX},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE, vol_sX_to_s16},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, vol_s24_to_s24_s32},
+	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE, vol_s24_to_s24_s32},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE, vol_sX_to_s16},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE, vol_s32_to_s24_s32},
+	{SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE, vol_s32_to_s24_s32},
 };
 
-scale_vol vol_get_processing_function(struct comp_dev *dev)
-{
-	struct comp_data *cd = comp_get_drvdata(dev);
-	int i;
-
-	/* map the volume function for source and sink buffers */
-	for (i = 0; i < ARRAY_SIZE(func_map); i++) {
-		if (cd->source_format != func_map[i].source)
-			continue;
-		if (cd->sink_format != func_map[i].sink)
-			continue;
-
-		return func_map[i].func;
-	}
-
-	return NULL;
-}
+const size_t func_count = ARRAY_SIZE(func_map);
 
 #endif
