@@ -113,6 +113,7 @@
 #define TRACE_CLASS_SELECTOR	(29 << 24)
 #define TRACE_CLASS_SCHEDULE	(30 << 24)
 #define TRACE_CLASS_SCHEDULE_LL	(31 << 24)
+#define TRACE_CLASS_KEYWORD	(32 << 24)
 
 #ifdef CONFIG_HOST
 extern int test_bench_trace;
