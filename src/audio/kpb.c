@@ -44,6 +44,21 @@
 #include <sof/list.h>
 #include <sof/audio/buffer.h>
 
+/*! Key phrase buffer component */
+struct comp_data {
+	/* runtime data */
+	uint8_t no_of_clients; /**< number of registered clients */
+	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
+	struct hb history_buffer;
+	struct notifier kpb_events; /**< KPB events object */
+	struct task draining_task;
+	struct dd draining_task_data;
+	uint32_t source_period_bytes; /**< source number of period bytes */
+	uint32_t sink_period_bytes; /**< sink number of period bytes */
+	struct sof_kpb_config config;   /**< component configuration data */
+	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
+};
+
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
