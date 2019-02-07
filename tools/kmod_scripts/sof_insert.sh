@@ -5,6 +5,7 @@ insert_module() {
     MODULE="$1"
 
     if modinfo "$MODULE" &> /dev/null ; then
+	echo "Inserting $MODULE"
 	modprobe $MODULE
     else
 	echo "skipping $MODULE, not in tree"
