@@ -67,6 +67,11 @@ if(NOT BUILD_HOST)
 		selector_generic.c
 		)
 	endif()
+	if(CONFIG_COMP_TEST_KEYPHRASE)
+		add_local_sources(sof
+			detect_test.c
+		)
+	endif()
 	return()
 endif()
 
