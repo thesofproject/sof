@@ -37,6 +37,10 @@ include(scripts/cmake/misc.cmake)
 
 project(SOF C ASM)
 
+# intended to be used where PROJECT_SOURCE_DIR is not set
+# for example in standalone scripts like version.cmake
+set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
 # most of other options are set on per-arch and per-target basis
 set(CMAKE_ASM_FLAGS -DASSEMBLY)
 
@@ -74,7 +78,6 @@ set(CONFIG_H_PATH ${GENERATED_DIRECTORY}/include/config.h)
 set(VERSION_H_PATH ${GENERATED_DIRECTORY}/include/version.h)
 
 include(scripts/cmake/version.cmake)
-sof_add_version_h_rule(${PROJECT_SOURCE_DIR}/scripts/cmake/version.cmake)
 
 include(scripts/cmake/dist.cmake)
 
@@ -103,7 +106,7 @@ endif()
 
 include(scripts/cmake/kconfig.cmake)
 
-add_dependencies(sof_options genconfig)
+add_dependencies(sof_options genconfig check_version_h)
 target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
 
 if(BUILD_UNIT_TESTS)
