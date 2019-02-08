@@ -62,15 +62,6 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_1, 1000, s16le,
 	16, 1000, 0, 0)
 
-# Connect pipelines together
-SectionGraph."pipe-sound-trigger" {
-	index "0"
-
-	lines [
-		#key detect
-		dapm(PIPELINE_SINK_1, PIPELINE_SOURCE_1)
-	]
-}
 
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
 PCM_CAPTURE_ADD(DMIC01, 1, PIPELINE_PCM_1)
