@@ -37,9 +37,10 @@ include(scripts/cmake/misc.cmake)
 
 project(SOF C ASM)
 
-# intended to be used where PROJECT_SOURCE_DIR is not set
+# intended to be used where PROJECT_* variables are not set
 # for example in standalone scripts like version.cmake
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set(SOF_ROOT_BINARY_DIRECTORY "${PROJECT_BINARY_DIR}")
 
 # most of other options are set on per-arch and per-target basis
 set(CMAKE_ASM_FLAGS -DASSEMBLY)
@@ -125,6 +126,8 @@ add_executable(sof "")
 target_link_libraries(sof sof_options)
 target_link_libraries(sof sof_ld_scripts)
 target_link_libraries(sof sof_ld_flags)
+
+sof_add_build_counter_rule()
 
 add_subdirectory(src)
 
