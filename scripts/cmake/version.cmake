@@ -50,8 +50,8 @@ if(NOT SOF_TAG)
 	set(SOF_TAG 0)
 endif()
 
-# TODO
-set(SOF_BUILD 0)
+# for SOF_BUILD
+include(${CMAKE_CURRENT_LIST_DIR}/version-build-counter.cmake)
 
 function(sof_check_version_h)
 	string(CONCAT header_content
@@ -82,6 +82,7 @@ if("${CMAKE_SCRIPT_MODE_FILE}" STREQUAL "")
 		COMMAND ${CMAKE_COMMAND}
 			-DVERSION_H_PATH=${VERSION_H_PATH}
 			-DSOF_ROOT_SOURCE_DIRECTORY=${SOF_ROOT_SOURCE_DIRECTORY}
+			-DSOF_ROOT_BINARY_DIRECTORY=${SOF_ROOT_BINARY_DIRECTORY}
 			-P ${VERSION_CMAKE_PATH}
 		COMMENT "Checking ${VERSION_H_PATH}"
 		VERBATIM
