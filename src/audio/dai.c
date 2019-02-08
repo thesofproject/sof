@@ -46,9 +46,6 @@
 #include <platform/dma.h>
 #include <arch/cache.h>
 
-#define DAI_PLAYBACK_STREAM	0
-#define DAI_CAPTURE_STREAM	1
-
 #define DAI_PTR_INIT_DAI	1	/* buffer ptr initialized by dai */
 #define DAI_PTR_INIT_HOST	2	/* buffer ptr initialized by host */
 
