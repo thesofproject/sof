@@ -1,7 +1,16 @@
+# Generates header for which version is taken from (in order of precedence):
+# 	1) .tarball-version file
+#	2) git
+#
+# Version is checked during configuration step and for every target
+# that has check_version_h target as dependency
+
 cmake_minimum_required(VERSION 3.10)
 
+set(VERSION_CMAKE_PATH ${CMAKE_CURRENT_LIST_DIR}/version.cmake)
+
 set(TARBALL_VERSION_FILE_NAME ".tarball-version")
-set(TARBALL_VERSION_SOURCE_PATH "${PROJECT_SOURCE_DIR}/${TARBALL_VERSION_FILE_NAME}")
+set(TARBALL_VERSION_SOURCE_PATH "${SOF_ROOT_SOURCE_DIRECTORY}/${TARBALL_VERSION_FILE_NAME}")
 
 if(EXISTS ${TARBALL_VERSION_SOURCE_PATH})
 	file(STRINGS ${TARBALL_VERSION_SOURCE_PATH} lines ENCODING "UTF-8")
@@ -44,7 +53,7 @@ endif()
 # TODO
 set(SOF_BUILD 0)
 
-function(sof_check_version_h version_h_path)
+function(sof_check_version_h)
 	string(CONCAT header_content
 		"#define SOF_MAJOR ${SOF_MAJOR}\n"
 		"#define SOF_MINOR ${SOF_MINOR}\n"
@@ -53,25 +62,31 @@ function(sof_check_version_h version_h_path)
 		"#define SOF_BUILD ${SOF_BUILD}\n"
 	)
 
-	if(EXISTS "${version_h_path}")
-		file(READ "${version_h_path}" old_version_content)
-		if(header_content STREQUAL old_version_content)
+	if(EXISTS "${VERSION_H_PATH}")
+		file(READ "${VERSION_H_PATH}" old_version_content)
+		if("${header_content}" STREQUAL "${old_version_content}")
+			message(STATUS "Up-to-date ${VERSION_H_PATH}")
 			return()
 		endif()
 	endif()	
 
-	message(STATUS "Generating ${version_h_path}")
-	file(WRITE "${version_h_path}" "${header_content}")
+	message(STATUS "Generating ${VERSION_H_PATH}")
+	file(WRITE "${VERSION_H_PATH}" "${header_content}")
 endfunction()
 
-function(sof_add_version_h_rule
-	version_cmake_path)
-	
-	add_custom_command(OUTPUT ${VERSION_H_PATH}
-		COMMAND ${CMAKE_COMMAND} -DVERSION_H_PATH=${VERSION_H_PATH} -P ${version_cmake_path}
+# Run these only if not run as script
+if("${CMAKE_SCRIPT_MODE_FILE}" STREQUAL "")
+	add_custom_target(
+		check_version_h
+		BYPRODUCTS ${VERSION_H_PATH}
+		COMMAND ${CMAKE_COMMAND}
+			-DVERSION_H_PATH=${VERSION_H_PATH}
+			-DSOF_ROOT_SOURCE_DIRECTORY=${SOF_ROOT_SOURCE_DIRECTORY}
+			-P ${VERSION_CMAKE_PATH}
+		COMMENT "Checking ${VERSION_H_PATH}"
 		VERBATIM
 		USES_TERMINAL
 	)
-endfunction()
+endif()
 
-sof_check_version_h("${VERSION_H_PATH}")
+sof_check_version_h()

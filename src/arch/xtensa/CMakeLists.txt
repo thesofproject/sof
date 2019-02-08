@@ -201,6 +201,7 @@ target_link_libraries(sof_ld_flags INTERFACE "-T${PROJECT_BINARY_DIR}/${platform
 include(ExternalProject)
 
 ExternalProject_Add(rimage_ep
+	DEPENDS check_version_h
 	DOWNLOAD_COMMAND ""
 	SOURCE_DIR "${PROJECT_SOURCE_DIR}/rimage"
 	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
