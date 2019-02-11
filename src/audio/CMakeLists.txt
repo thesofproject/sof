@@ -1,6 +1,5 @@
 if(NOT BUILD_HOST)
 	add_local_sources(sof
-		mux.c
 		switch.c
 		dai.c
 		host.c
@@ -46,6 +45,11 @@ if(NOT BUILD_HOST)
 	if(CONFIG_COMP_MIXER)
 		add_local_sources(sof
 			mixer.c
+		)
+	endif()
+	if(CONFIG_COMP_MUX)
+		add_local_sources(sof
+			mux.c
 		)
 	endif()
 	return()
