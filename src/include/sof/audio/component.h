@@ -494,7 +494,11 @@ static inline void comp_cache(struct comp_dev *dev, int cmd)
 void sys_comp_init(void);
 
 /* default base component initialisations */
+#ifdef CONFIG_COMP_DAI
 void sys_comp_dai_init(void);
+#else
+static inline void sys_comp_dai_init(void) {}
+#endif
 void sys_comp_host_init(void);
 #ifdef CONFIG_COMP_MIXER
 void sys_comp_mixer_init(void);
