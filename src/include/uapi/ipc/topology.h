@@ -64,6 +64,7 @@ enum sof_comp_type {
 	SOF_COMP_EQ_FIR,
 	SOF_COMP_FILEREAD,	/**< host test based file IO */
 	SOF_COMP_FILEWRITE,	/**< host test based file IO */
+	SOF_COMP_KPB, /* A key phrase buffer component */
 };
 
 /* XRUN action for component */
@@ -281,6 +282,18 @@ struct sof_ipc_pipe_comp_connect {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t source_id;
 	uint32_t sink_id;
+} __attribute__((packed));
+
+/* create new component kpb - SOF_IPC_TPLG_KPB_NEW */
+struct sof_ipc_comp_kpb {
+	struct sof_ipc_comp comp;
+	struct sof_ipc_comp_config config;
+	uint32_t size; /**< kpb size in bytes */
+	uint32_t caps; /**< SOF_MEM_CAPS_ */
+	uint8_t no_channels; /**< no of channels */
+	uint32_t history_depth; /**< time of buffering in milliseconds */
+	uint32_t sampling_freq; /**< frequency in hertz */
+	uint8_t sampling_width; /**< number of bits */
 } __attribute__((packed));
 
 #endif

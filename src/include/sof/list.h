@@ -121,5 +121,4 @@ static inline int list_item_is_last(struct list_item *item,
 	for (item = (list)->next, tmp = item->next;\
 		item != (list); \
 		item = tmp, tmp = item->next)
-
 #endif
