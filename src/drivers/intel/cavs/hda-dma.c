@@ -1005,6 +1005,83 @@ static int hda_dma_remove(struct dma *dma)
 	return 0;
 }
 
+static int hda_dma_in_data_size(struct hda_chan_data *chan)
+{
+	int32_t read_ptr;
+	int32_t write_ptr;
+	int size;
+
+	if (!(host_dma_reg_read(chan->dma, chan->index, DGCS) & DGCS_BNE))
+		return 0;
+
+	read_ptr = host_dma_reg_read(chan->dma, chan->index, DGBRP);
+	write_ptr = host_dma_reg_read(chan->dma, chan->index, DGBWP);
+
+	size = write_ptr - read_ptr;
+	if (size <= 0)
+		size += chan->buffer_bytes;
+
+	return size;
+}
+
+static int hda_dma_out_data_size(struct hda_chan_data *chan)
+{
+	uint32_t status;
+	int32_t read_ptr;
+	int32_t write_ptr;
+	int size;
+
+	status = host_dma_reg_read(chan->dma, chan->index, DGCS);
+
+	if (status & DGCS_BF)
+		return 0;
+
+	if (!(status & DGCS_BNE))
+		return chan->buffer_bytes;
+
+	read_ptr = host_dma_reg_read(chan->dma, chan->index, DGBRP);
+	write_ptr = host_dma_reg_read(chan->dma, chan->index, DGBWP);
+
+	size = read_ptr - write_ptr;
+	if (size <= 0)
+		size += chan->buffer_bytes;
+
+	return size;
+}
+
+static int hda_dma_data_size(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct hda_chan_data *chan = &p->chan[channel];
+	int data_size = 0;
+	uint32_t flags;
+
+	if (channel >= HDA_DMA_MAX_CHANS) {
+		trace_hddma_error("hda-dmac: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return 0;
+	}
+
+	tracev_hddma("hda-dmac: %d channel %d -> get_data_size",
+		     dma->plat_data.id, channel);
+
+	spin_lock_irq(&dma->lock, flags);
+
+	if (chan->status != COMP_STATE_ACTIVE)
+		goto out;
+
+	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
+	    chan->direction == DMA_DIR_DEV_TO_MEM)
+		data_size = hda_dma_in_data_size(chan);
+	else
+		data_size = hda_dma_out_data_size(chan);
+
+out:
+	spin_unlock_irq(&dma->lock, flags);
+
+	return data_size;
+}
+
 const struct dma_ops hda_host_dma_ops = {
 	.channel_get	= hda_dma_channel_get,
 	.channel_put	= hda_dma_channel_put,
@@ -1020,6 +1097,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.pm_context_store		= hda_dma_pm_context_store,
 	.probe		= hda_dma_probe,
 	.remove		= hda_dma_remove,
+	.get_data_size	= hda_dma_data_size,
 };
 
 const struct dma_ops hda_link_dma_ops = {
@@ -1037,5 +1115,6 @@ const struct dma_ops hda_link_dma_ops = {
 	.pm_context_store		= hda_dma_pm_context_store,
 	.probe		= hda_dma_probe,
 	.remove		= hda_dma_remove,
+	.get_data_size	= hda_dma_data_size,
 };
 

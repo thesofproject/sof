@@ -272,6 +272,14 @@ struct dma_id {
 	uint32_t channel;
 };
 
+/* pointer data for dma buffer */
+struct dma_ptr_data {
+	uint32_t current_ptr;
+	uint32_t start_ptr;
+	uint32_t end_ptr;
+	uint32_t buffer_bytes;
+};
+
 /* data for each DMA channel */
 struct dma_chan_data {
 	uint32_t status;
@@ -283,6 +291,9 @@ struct dma_chan_data {
 	uint32_t cfg_hi;
 	struct dma_id id;
 	bool timer;
+
+	/* pointer data */
+	struct dma_ptr_data ptr_data;
 
 	/* client callback function */
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);
@@ -382,6 +393,10 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	chan->status = COMP_STATE_INIT;
 	chan->cb = NULL;
 	chan->desc_count = 0;
+	chan->ptr_data.current_ptr = 0;
+	chan->ptr_data.start_ptr = 0;
+	chan->ptr_data.end_ptr = 0;
+	chan->ptr_data.buffer_bytes = 0;
 
 	atomic_sub(&dma->num_channels_busy, 1);
 }
@@ -739,6 +754,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
 	}
 
+	chan->ptr_data.buffer_bytes = 0;
+
 	/* fill in lli for the elem in the list */
 	for (i = 0; i < config->elem_array.count; i++) {
 
@@ -916,6 +933,8 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			& DW_CTLH_BLOCK_TS_MASK;
 #endif
 
+		chan->ptr_data.buffer_bytes += sg_elem->size;
+
 		/* set next descriptor in list */
 		lli_desc->llp = (uint32_t)(lli_desc + 1);
 
@@ -944,6 +963,13 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	chan->status = COMP_STATE_PREPARE;
 	chan->lli_current = chan->lli;
+
+	/* initialize pointers */
+	chan->ptr_data.start_ptr = chan->direction == DMA_DIR_MEM_TO_DEV ?
+		chan->lli->sar : chan->lli->dar;
+	chan->ptr_data.end_ptr = chan->ptr_data.start_ptr +
+		chan->ptr_data.buffer_bytes;
+	chan->ptr_data.current_ptr = chan->ptr_data.start_ptr;
 
 out:
 	spin_unlock_irq(&dma->lock, flags);
@@ -1411,6 +1437,56 @@ static int dw_dma_remove(struct dma *dma)
 	return 0;
 }
 
+static int dw_dma_in_data_size(struct dma_chan_data *chan)
+{
+	int32_t read_ptr = chan->ptr_data.current_ptr;
+	int32_t write_ptr = dw_read(chan->id.dma, DW_DAR(chan->id.channel));
+	int size;
+
+	size = write_ptr - read_ptr;
+	if (size < 0)
+		size += chan->ptr_data.buffer_bytes;
+
+	return size;
+}
+
+static int dw_dma_out_data_size(struct dma_chan_data *chan)
+{
+	int32_t read_ptr = dw_read(chan->id.dma, DW_SAR(chan->id.channel));
+	int32_t write_ptr = chan->ptr_data.current_ptr;
+	int size;
+
+	size = read_ptr - write_ptr;
+	if (size < 0)
+		size += chan->ptr_data.buffer_bytes;
+
+	return size;
+}
+
+static int dw_dma_get_data_size(struct dma *dma, int channel)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = &p->chan[channel];
+	int data_size = 0;
+	uint32_t flags;
+
+	spin_lock_irq(&dma->lock, flags);
+
+	tracev_dwdma("dw-dma: %d channel %d get_data_size",
+		     dma->plat_data.id, channel);
+
+	if (chan->status != COMP_STATE_ACTIVE)
+		goto out;
+
+	data_size = chan->direction == DMA_DIR_MEM_TO_DEV ?
+		dw_dma_out_data_size(chan) : dw_dma_in_data_size(chan);
+
+out:
+	spin_unlock_irq(&dma->lock, flags);
+
+	return data_size;
+}
+
 const struct dma_ops dw_dma_ops = {
 	.channel_get	= dw_dma_channel_get,
 	.channel_put	= dw_dma_channel_put,
@@ -1425,4 +1501,5 @@ const struct dma_ops dw_dma_ops = {
 	.pm_context_store		= dw_dma_pm_context_store,
 	.probe		= dw_dma_probe,
 	.remove		= dw_dma_remove,
+	.get_data_size	= dw_dma_get_data_size,
 };

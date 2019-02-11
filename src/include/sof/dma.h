@@ -160,6 +160,8 @@ struct dma_ops {
 
 	int (*probe)(struct dma *dma);
 	int (*remove)(struct dma *dma);
+
+	int (*get_data_size)(struct dma *dma, int channel);
 };
 
 /* DMA platform data */
@@ -313,6 +315,11 @@ static inline int dma_probe(struct dma *dma)
 static inline int dma_remove(struct dma *dma)
 {
 	return dma->ops->remove(dma);
+}
+
+static inline int dma_get_data_size(struct dma *dma, int channel)
+{
+	return dma->ops->get_data_size(dma, channel);
 }
 
 static inline void dma_sg_init(struct dma_sg_elem_array *ea)
