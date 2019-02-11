@@ -510,7 +510,11 @@ void sys_comp_src_init(void);
 #else
 static inline void sys_comp_src_init(void) {}
 #endif
+#ifdef CONFIG_COMP_TONE
 void sys_comp_tone_init(void);
+#else
+static inline void sys_comp_tone_init(void) {}
+#endif
 #ifdef CONFIG_COMP_IIR
 void sys_comp_eq_iir_init(void);
 #else

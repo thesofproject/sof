@@ -24,4 +24,10 @@ config COMP_IIR
 	help
 	  Select for IIR component
 
+config COMP_TONE
+	bool "Tone component"
+	default y
+	help
+	  Select for Tone component
+
 endmenu

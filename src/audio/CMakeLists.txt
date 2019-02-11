@@ -1,6 +1,5 @@
 if(NOT BUILD_HOST)
 	add_local_sources(sof
-		tone.c
 		mixer.c
 		mux.c
 		switch.c
@@ -38,6 +37,11 @@ if(NOT BUILD_HOST)
 		add_local_sources(sof
 			eq_iir.c
 			iir.c
+		)
+	endif()
+	if(CONFIG_COMP_TONE)
+		add_local_sources(sof
+			tone.c
 		)
 	endif()
 	return()
