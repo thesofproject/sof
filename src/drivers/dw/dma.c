@@ -1170,6 +1170,45 @@ static void dw_dma_process_block(struct dma_chan_data *chan,
 }
 #endif
 
+static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = &p->chan[channel];
+	struct dw_lli2 *ll_uncached = cache_to_uncache(chan->lli_current);
+	struct dma_sg_elem next;
+
+	next.src = DMA_RELOAD_LLI;
+	next.dest = DMA_RELOAD_LLI;
+	next.size = bytes;
+
+	tracev_dwdma("dw-dma: %d channel %d copy", dma->plat_data.id,
+		     channel);
+
+	if (chan->status != COMP_STATE_ACTIVE) {
+		trace_dwdma_error("dw-dma: %d channel %d not running",
+				  dma->plat_data.id, channel);
+
+		/* skip if channel is not running */
+		return 0;
+	}
+
+	if (chan->cb)
+		chan->cb(chan->cb_data, DMA_IRQ_TYPE_BLOCK, &next);
+
+	/* change current pointer */
+	chan->ptr_data.current_ptr += bytes;
+	if (chan->ptr_data.current_ptr >= chan->ptr_data.end_ptr)
+		chan->ptr_data.current_ptr = chan->ptr_data.start_ptr +
+			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
+
+	if (ll_uncached->ctrl_hi & DW_CTLH_DONE(1)) {
+		ll_uncached->ctrl_hi &= ~DW_CTLH_DONE(1);
+		chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
+	}
+
+	return 0;
+}
+
 #if CONFIG_APOLLOLAKE
 /* interrupt handler for DW DMA */
 static void dw_dma_irq_handler(void *data)
@@ -1501,5 +1540,6 @@ const struct dma_ops dw_dma_ops = {
 	.pm_context_store		= dw_dma_pm_context_store,
 	.probe		= dw_dma_probe,
 	.remove		= dw_dma_remove,
+	.copy		= dw_dma_copy,
 	.get_data_size	= dw_dma_get_data_size,
 };

@@ -43,6 +43,7 @@
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/math/numbers.h>
 #include <platform/dma.h>
 #include <arch/cache.h>
 
@@ -93,46 +94,45 @@ struct dai_data {
 	uint64_t wallclock;	/* wall clock at stream start */
 };
 
-static void dai_buffer_process(struct comp_dev *dev)
+static void dai_buffer_process(struct comp_dev *dev, uint32_t bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	void *buffer_ptr;
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		/* recalc available buffer space */
-		comp_update_buffer_consume(dd->dma_buffer, dd->period_bytes);
+		comp_update_buffer_consume(dd->dma_buffer, bytes);
 
 		buffer_ptr = dd->dma_buffer->r_ptr;
 
 		/* make sure there is available bytes for next period */
-		if (dd->dma_buffer->avail < dd->period_bytes) {
+		if (dd->dma_buffer->avail < bytes) {
 			trace_dai_error_with_ids(dev, "dai_buffer_process() "
 						 "error: Insufficient bytes for"
 						 " next period. "
 						 "comp_underrun()");
-			comp_underrun(dev, dd->dma_buffer, dd->period_bytes,
-				      0);
+			comp_underrun(dev, dd->dma_buffer, bytes, 0);
 		}
 	} else {
 		/* recalc available buffer space */
-		comp_update_buffer_produce(dd->dma_buffer, dd->period_bytes);
+		comp_update_buffer_produce(dd->dma_buffer, bytes);
 
 		buffer_ptr = dd->dma_buffer->w_ptr;
 
 		/* make sure there is free bytes for next period */
-		if (dd->dma_buffer->free < dd->period_bytes) {
+		if (dd->dma_buffer->free < bytes) {
 			trace_dai_error_with_ids(dev, "dai_buffer_process() "
 						 "error: Insufficient free "
 						 "bytes for next period. "
 						 "comp_overrun()");
-			comp_overrun(dev, dd->dma_buffer, dd->period_bytes, 0);
+			comp_overrun(dev, dd->dma_buffer, bytes, 0);
 		}
 	}
 
 	/* update host position (in bytes offset) for drivers */
-	dev->position += dd->period_bytes;
+	dev->position += bytes;
 	if (dd->dai_pos) {
-		dd->dai_pos_blks += dd->period_bytes;
+		dd->dai_pos_blks += bytes;
 		*dd->dai_pos = dd->dai_pos_blks +
 			buffer_ptr - dd->dma_buffer->addr;
 	}
@@ -167,11 +167,15 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		return;
 	}
 
-	dai_buffer_process(dev);
+	if (!dd->config.timer) {
+		dai_buffer_process(dev, dd->period_bytes);
 
-	/* notify pipeline that DAI needs its buffer processed */
-	if (dev->state == COMP_STATE_ACTIVE)
-		pipeline_schedule_copy(dev->pipeline, 0);
+		/* notify pipeline that DAI needs its buffer processed */
+		if (dev->state == COMP_STATE_ACTIVE)
+			pipeline_schedule_copy(dev->pipeline, 0);
+	} else {
+		dai_buffer_process(dev, next->size);
+	}
 }
 
 static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
@@ -511,19 +515,26 @@ static void dai_pointer_init(struct comp_dev *dev)
 
 	/* not required for capture streams */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		switch (dd->dma_buffer->source->comp.type) {
-		case SOF_COMP_HOST:
-		case SOF_COMP_SG_HOST:
-			/* buffer is preloaded and advanced by host DMA engine */
+		if (!dd->config.timer) {
+			switch (dd->dma_buffer->source->comp.type) {
+			case SOF_COMP_HOST:
+			case SOF_COMP_SG_HOST:
+				/* buffer is preloaded and advanced by
+				 * host DMA engine
+				 */
+				dd->pointer_init = DAI_PTR_INIT_HOST;
+				break;
+			default:
+				/* advance source pipeline w_ptr by one period
+				 * this places pipeline w_ptr in period before
+				 * DAI r_ptr
+				 */
+				comp_update_buffer_produce(dd->dma_buffer,
+							   dd->period_bytes);
+				break;
+			}
+		} else {
 			dd->pointer_init = DAI_PTR_INIT_HOST;
-			break;
-		default:
-			/* advance source pipeline w_ptr by one period
-			 * this places pipeline w_ptr in period before DAI r_ptr
-			 */
-			comp_update_buffer_produce(dd->dma_buffer,
-						   dd->period_bytes);
-			break;
 		}
 	}
 }
@@ -550,7 +561,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 			 */
 		} else {
 			/* set valid buffer pointer */
-			dai_buffer_process(dev);
+			dai_buffer_process(dev, dd->period_bytes);
 
 			/* recover valid start position */
 			ret = dma_release(dd->dma, dd->chan);
@@ -586,19 +597,24 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			/* set valid buffer pointer */
-			dai_buffer_process(dev);
+			if (!dd->config.timer) {
+				/* set valid buffer pointer */
+				dai_buffer_process(dev, dd->period_bytes);
 
-			/* recover valid start position */
-			ret = dma_release(dd->dma, dd->chan);
-			if (ret < 0)
-				return ret;
+				/* recover valid start position */
+				ret = dma_release(dd->dma, dd->chan);
+				if (ret < 0)
+					return ret;
 
-			/* start the DAI */
-			ret = dma_start(dd->dma, dd->chan);
-			if (ret < 0)
-				return ret;
-			dai_trigger(dd->dai, cmd, dev->params.direction);
+				/* start the DAI */
+				ret = dma_start(dd->dma, dd->chan);
+				if (ret < 0)
+					return ret;
+				dai_trigger(dd->dai, cmd,
+					    dev->params.direction);
+			} else {
+				dd->pointer_init = DAI_PTR_INIT_HOST;
+			}
 		} else {
 			dd->xrun = 0;
 		}
@@ -628,18 +644,59 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	int ret;
+	int ret = 0;
+	int dma_avail_size = 0;
+	int in_size = 0;
+	int out_size = 0;
+	int copy_size = 0;
+
+	tracev_dai_with_ids(dev, "dai_copy()");
 
 	if (dd->pointer_init == DAI_PTR_INIT_HOST) {
+		/* check if buffer is already preloaded */
+		if (dd->config.timer && dd->dma_buffer->avail <
+		    DMA_PRELOAD_THRESHOLD(dd->period_bytes))
+			return 0;
+
 		/* start the DAI */
 		ret = dma_start(dd->dma, dd->chan);
 		if (ret < 0)
 			return ret;
-		dai_trigger(dd->dai, COMP_TRIGGER_START, dev->params.direction);
+		dai_trigger(dd->dai, COMP_TRIGGER_START,
+			    dev->params.direction);
 		dd->pointer_init = DAI_PTR_INIT_DAI; /* next copy just quits */
 		platform_dai_wallclock(dev, &dd->wallclock);
+
+		return 0;
 	}
-	return 0;
+
+	if (dev->state != COMP_STATE_ACTIVE)
+		return 0;
+
+	if (dd->config.timer) {
+		/* for timer scheduling we need to get available data size */
+		dma_avail_size = dma_get_data_size(dd->dma, dd->chan);
+
+		/* calculate minimum size to copy */
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+			in_size = MIN(dd->period_bytes, dd->dma_buffer->avail);
+			out_size = MIN(dd->period_bytes, dma_avail_size);
+		} else {
+			in_size = MIN(dd->period_bytes, dma_avail_size);
+			out_size = MIN(dd->period_bytes, dd->dma_buffer->free);
+		}
+
+		copy_size = MIN(in_size, out_size);
+
+		tracev_dai_with_ids(dev, "dai_copy(), copy_size = 0x%x",
+				    copy_size);
+
+		ret = dma_copy(dd->dma, dd->chan, copy_size, 0);
+		if (ret < 0)
+			trace_dai_error("dai_copy() error: ret = %u", ret);
+	}
+
+	return ret;
 }
 
 static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
