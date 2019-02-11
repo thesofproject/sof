@@ -36,4 +36,10 @@ config COMP_MIXER
 	help
 	  Select for Mixer component
 
+config COMP_MUX
+	bool "MUX component"
+	default y
+	help
+	  Select for MUX component
+
 endmenu
