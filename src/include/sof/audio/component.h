@@ -511,7 +511,11 @@ static inline void sys_comp_src_init(void) {}
 #endif
 void sys_comp_tone_init(void);
 void sys_comp_eq_iir_init(void);
+#ifdef CONFIG_COMP_FIR
 void sys_comp_eq_fir_init(void);
+#else
+static inline void sys_comp_eq_fir_init(void) {}
+#endif
 
 /** @}*/
 
