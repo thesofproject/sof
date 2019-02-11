@@ -37,12 +37,19 @@ struct irq_desc {
 
 	/* to identify interrupt with the same IRQ */
 	int id;
-	spinlock_t lock;
 	uint32_t enabled_count;
 
 	/* to link to other irq_desc */
 	struct list_item irq_list;
+};
 
+/* A descriptor for cascading interrupt controllers */
+struct irq_cascade_desc {
+	/* the interrupt, that this controller is generating */
+	struct irq_desc desc;
+
+	/* protect child lists in the below array */
+	spinlock_t lock;
 	uint32_t num_children;
 	struct list_item child[PLATFORM_IRQ_CHILDREN];
 };
