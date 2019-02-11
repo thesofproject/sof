@@ -295,6 +295,7 @@ static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 	int mcic;
 	int ioclk_test;
 	int osr_min = DMIC_MIN_OSR;
+	int j;
 	int i = 0;
 
 	/* Defaults, empty result */
@@ -382,8 +383,16 @@ static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 		 * is possible. Then check that CIC decimation constraints
 		 * are met. The passed decimation modes are added to array.
 		 */
-		for (mfir = DMIC_HW_FIR_DECIM_MIN;
-			mfir <= DMIC_HW_FIR_DECIM_MAX; mfir++) {
+		j = 0;
+		/* Loop until NULL */
+		while (fir_list[j]) {
+			mfir = fir_list[j]->decim_factor;
+			j++;
+
+			/* Skip if previous decimation factor was the same */
+			if (j > 2 && fir_list[j - 2]->decim_factor == mfir)
+				continue;
+
 			mcic = osr / mfir;
 			ioclk_test = fs * mfir * mcic * clkdiv;
 
@@ -397,6 +406,7 @@ static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 				i++;
 				modes->num_of_modes = i;
 			}
+
 		}
 	}
 #if defined MODULE_TEST
@@ -495,15 +505,21 @@ static struct pdm_decim *get_fir(struct dmic_configuration *cfg, int mfir)
 			     DMIC_HW_IOCLK / fs / 2 -
 			     DMIC_FIR_PIPELINE_OVERHEAD);
 
-	for (i = 0; i < DMIC_FIR_LIST_LENGTH; i++) {
-		if (fir_list[i]->decim_factor == mfir &&
-		    fir_list[i]->length <= fir_max_length) {
-			/* Store pointer, break from loop to avoid a
-			 * Possible other mode with lower FIR length.
-			 */
-			fir = fir_list[i];
-			break;
+	i = 0;
+	/* Loop until NULL */
+	while (fir_list[i]) {
+		if (fir_list[i]->decim_factor == mfir) {
+			if (fir_list[i]->length <= fir_max_length) {
+				/* Store pointer, break from loop to avoid a
+				 * Possible other mode with lower FIR length.
+				 */
+				fir = fir_list[i];
+				break;
+			}
+			trace_dmic("get_fir(), Note length=%d exceeds max=%d",
+				   fir_list[i]->length, fir_max_length);
 		}
+		i++;
 	}
 
 	return fir;

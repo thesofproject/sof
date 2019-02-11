@@ -244,7 +244,7 @@
 #define HEAP_HP_BUFFER_COUNT \
 			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
-#if defined(CONFIG_DMIC)
+#if defined(CONFIG_CAVS_DMIC)
 #define SOF_TEXT_DMIC_SIZE 0x2000
 #else
 #define SOF_TEXT_DMIC_SIZE 0
@@ -271,7 +271,7 @@
 
 /* initialized data */
 #define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
-#if defined CONFIG_DMIC
+#if defined CONFIG_CAVS_DMIC
 #define SOF_DATA_SIZE		0x1b000
 #else
 #define SOF_DATA_SIZE		0x19000

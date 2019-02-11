@@ -12,6 +12,6 @@ else()
 	add_local_sources(sof ipc.c)
 endif()
 
-if(CONFIG_DMIC)
+if(CONFIG_CAVS_DMIC)
 	add_local_sources(sof dmic.c)
 endif()

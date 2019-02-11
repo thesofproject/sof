@@ -32,29 +32,53 @@
 /* PDM decimation FIR filters */
 
 #include "pdm_decim_fir.h"
+
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_2
 #include "pdm_decim_int32_02_4288_5100_010_095.h"
 #include "pdm_decim_int32_02_4375_5100_010_095.h"
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_3
 #include "pdm_decim_int32_03_3850_5100_010_095.h"
 #include "pdm_decim_int32_03_4375_5100_010_095.h"
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_4
 #include "pdm_decim_int32_04_4375_5100_010_095.h"
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_5
 #include "pdm_decim_int32_05_4331_5100_010_095.h"
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_6
 #include "pdm_decim_int32_06_4156_5100_010_095.h"
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_8
 #include "pdm_decim_int32_08_4156_5380_010_090.h"
-
-#define DMIC_FIR_LIST_LENGTH 8
+#endif
 
 /* Note: Higher spec filter must be before lower spec filter
  * if there are multiple filters for a decimation factor. The naming
  * scheme of coefficients set is:
  * <type>_<decim factor>_<rel passband>_<rel stopband>_<ripple>_<attenuation>
  */
-struct pdm_decim *fir_list[DMIC_FIR_LIST_LENGTH] = {
+struct pdm_decim *fir_list[] = {
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_2
 	&pdm_decim_int32_02_4375_5100_010_095,
 	&pdm_decim_int32_02_4288_5100_010_095,
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_3
 	&pdm_decim_int32_03_4375_5100_010_095,
 	&pdm_decim_int32_03_3850_5100_010_095,
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_4
 	&pdm_decim_int32_04_4375_5100_010_095,
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_5
 	&pdm_decim_int32_05_4331_5100_010_095,
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_6
 	&pdm_decim_int32_06_4156_5100_010_095,
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_8
 	&pdm_decim_int32_08_4156_5380_010_090,
+#endif
+	NULL, /* This marks the end of coefficients */
 };
