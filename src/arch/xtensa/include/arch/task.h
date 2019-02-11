@@ -115,11 +115,15 @@ static inline int task_set_data(struct task *task)
 	case TASK_PRI_MED:
 		irq_task = *task_irq_med_get();
 		break;
-#else
+#elif CONFIG_TASK_HAVE_PRIORITY_LOW
 	case TASK_PRI_MED ... TASK_PRI_LOW:
 		irq_task = *task_irq_low_get();
 		break;
 	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
+		irq_task = *task_irq_high_get();
+		break;
+#else
+	case TASK_PRI_HIGH ... TASK_PRI_LOW:
 		irq_task = *task_irq_high_get();
 		break;
 #endif
@@ -205,6 +209,7 @@ static inline int arch_run_task(struct task *task)
  */
 static inline int arch_allocate_tasks(void)
 {
+#ifdef CONFIG_TASK_HAVE_PRIORITY_LOW
 	/* irq low */
 	struct irq_task **low = task_irq_low_get();
 	*low = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**low));
@@ -212,6 +217,7 @@ static inline int arch_allocate_tasks(void)
 	list_init(&((*low)->list));
 	spinlock_init(&((*low)->lock));
 	(*low)->irq = PLATFORM_IRQ_TASK_LOW;
+#endif
 
 #ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
 	/* irq medium */
@@ -241,6 +247,8 @@ static inline void arch_free_tasks(void)
 {
 	uint32_t flags;
 /* TODO: do not want to free the tasks, just the entire heap */
+
+#ifdef CONFIG_TASK_HAVE_PRIORITY_LOW
 	/* free IRQ low task */
 	struct irq_task **low = task_irq_low_get();
 
@@ -249,6 +257,7 @@ static inline void arch_free_tasks(void)
 	interrupt_unregister(PLATFORM_IRQ_TASK_LOW);
 	list_item_del(&(*low)->list);
 	spin_unlock_irq(&(*low)->lock, flags);
+#endif
 
 #ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
 	/* free IRQ medium task */
@@ -276,10 +285,12 @@ static inline void arch_free_tasks(void)
  */
 static inline int arch_assign_tasks(void)
 {
+#ifdef CONFIG_TASK_HAVE_PRIORITY_LOW
 	/* irq low */
 	interrupt_register(PLATFORM_IRQ_TASK_LOW, IRQ_AUTO_UNMASK, _irq_task,
 			   task_irq_low_get());
 	interrupt_enable(PLATFORM_IRQ_TASK_LOW);
+#endif
 
 #ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
 	/* irq medium */

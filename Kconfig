@@ -10,6 +10,10 @@ config TASK_HAVE_PRIORITY_MEDIUM
 	bool
 	default n
 
+config TASK_HAVE_PRIORITY_LOW
+	bool
+	default n
+
 config BOOT_LOADER
 	bool
 	default n
