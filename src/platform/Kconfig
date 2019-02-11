@@ -7,6 +7,7 @@ choice
 config BAYTRAIL
 	bool "Build for Baytrail"
 	select HOST_PTABLE
+	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	help
 	  Select if your target platform is Baytrail-compatible
@@ -14,6 +15,7 @@ config BAYTRAIL
 config CHERRYTRAIL
 	bool "Build for Cherrytrail"
 	select HOST_PTABLE
+	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	help
 	  Select if your target platform is Cherrytrail-compatible
@@ -21,12 +23,14 @@ config CHERRYTRAIL
 config HASWELL
 	bool "Build for Haswell"
 	select HOST_PTABLE
+	select TASK_HAVE_PRIORITY_LOW
 	help
 	  Select if your target platform is Haswell-compatible
 
 config BROADWELL
 	bool "Build for Broadwell"
 	select HOST_PTABLE
+	select TASK_HAVE_PRIORITY_LOW
 	help
 	  Select if your target platform is Broadwell-compatible
 
@@ -36,6 +40,7 @@ config APOLLOLAKE
 	select IRQ_MAP
 	select DMA_GW
 	select MEM_WND
+	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
 	help
@@ -47,6 +52,7 @@ config CANNONLAKE
 	select IRQ_MAP
 	select DMA_GW
 	select MEM_WND
+	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
 	help
@@ -56,6 +62,7 @@ config SUECREEK
 	bool "Build for Suecreek"
 	select BOOT_LOADER
 	select IRQ_MAP
+	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
 	help
@@ -67,6 +74,7 @@ config ICELAKE
 	select IRQ_MAP
 	select DMA_GW
 	select MEM_WND
+	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select CAVS
 	help
