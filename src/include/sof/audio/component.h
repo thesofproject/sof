@@ -581,6 +581,38 @@ static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
 	}
 }
 
+/**
+ * Returns component state based on requested command.
+ * @param cmd Request command.
+ * @return Component state.
+ */
+static inline int comp_get_requested_state(int cmd)
+{
+	int state = COMP_STATE_INIT;
+
+	switch (cmd) {
+	case COMP_TRIGGER_START:
+	case COMP_TRIGGER_RELEASE:
+		state = COMP_STATE_ACTIVE;
+		break;
+	case COMP_TRIGGER_PREPARE:
+	case COMP_TRIGGER_STOP:
+	case COMP_TRIGGER_XRUN:
+		state = COMP_STATE_PREPARE;
+		break;
+	case COMP_TRIGGER_PAUSE:
+		state = COMP_STATE_PAUSED;
+		break;
+	case COMP_TRIGGER_RESET:
+		state = COMP_STATE_READY;
+		break;
+	default:
+		break;
+	}
+
+	return state;
+}
+
 /** @}*/
 
 /** \name XRUN handling.

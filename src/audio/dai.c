@@ -442,7 +442,7 @@ static int dai_prepare(struct comp_dev *dev)
 	trace_dai_with_ids(dev, "dai_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	dev->position = 0;
@@ -537,7 +537,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	trace_dai_with_ids(dev, "dai_comp_trigger(), command = %u", cmd);
 
 	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	switch (cmd) {

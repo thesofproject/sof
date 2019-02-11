@@ -279,7 +279,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	trace_host("host_trigger()");
 
 	ret = comp_set_state(dev, cmd);
-	if (ret < 0)
+	if (ret)
 		goto out;
 
 	switch (cmd) {
@@ -578,7 +578,7 @@ static int host_prepare(struct comp_dev *dev)
 	trace_host("host_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	hd->local_pos = 0;

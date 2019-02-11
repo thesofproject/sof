@@ -119,7 +119,14 @@ void comp_unregister(struct comp_driver *drv)
 
 int comp_set_state(struct comp_dev *dev, int cmd)
 {
+	int requested_state = comp_get_requested_state(cmd);
 	int ret = 0;
+
+	if (dev->state == requested_state) {
+		trace_comp("comp_set_state(), state already set to %u",
+			   dev->state);
+		return 1;
+	}
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -177,8 +184,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		dev->state = COMP_STATE_READY;
 		break;
 	case COMP_TRIGGER_PREPARE:
-		if (dev->state == COMP_STATE_PREPARE ||
-		    dev->state == COMP_STATE_READY) {
+		if (dev->state == COMP_STATE_READY) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
 			trace_comp_error("comp_set_state() error: "
