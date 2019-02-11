@@ -9,6 +9,7 @@ file(GLOB TPLG_DEPS
 set(MACHINES
 	sof-cht-nocodec
 	sof-cht-max98090
+	sof-cht-rt5682
 	sof-hda-intel-common
 	sof-apl-nocodec
 	sof-byt-nocodec
