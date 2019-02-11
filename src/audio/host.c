@@ -44,6 +44,7 @@
 #include <sof/wait.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/math/numbers.h>
 #include <platform/dma.h>
 #include <arch/cache.h>
 #include <uapi/ipc/dai.h>
@@ -132,6 +133,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
+	uint32_t bytes;
 #if !defined CONFIG_DMA_GW
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
@@ -141,22 +143,23 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 #endif
 
 	local_elem = hd->config.elem_array.elems;
+	bytes = hd->config.timer ? next->size : local_elem->size;
 
 	tracev_host("host_dma_cb()");
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		/* recalc available buffer space */
-		comp_update_buffer_produce(hd->dma_buffer, local_elem->size);
+		comp_update_buffer_produce(hd->dma_buffer, bytes);
 	else
 		/* recalc available buffer space */
-		comp_update_buffer_consume(hd->dma_buffer, local_elem->size);
+		comp_update_buffer_consume(hd->dma_buffer, bytes);
 
-	dev->position += local_elem->size;
+	dev->position += bytes;
 
 	/* new local period, update host buffer position blks
 	 * local_pos is queried by the ops.potision() API
 	 */
-	hd->local_pos += local_elem->size;
+	hd->local_pos += bytes;
 
 	/* buffer overlap, hard code host buffer size at the moment ? */
 	if (hd->local_pos >= hd->host_size)
@@ -164,7 +167,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	/* NO_IRQ mode if host_period_size == 0 */
 	if (dev->params.host_period_bytes != 0) {
-		hd->report_pos += local_elem->size;
+		hd->report_pos += bytes;
 
 		/* send IPC message to driver if needed */
 		if (hd->report_pos >= dev->params.host_period_bytes) {
@@ -180,8 +183,8 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 #if !defined CONFIG_DMA_GW
 	/* update src and dest positions and check for overflow */
-	local_elem->src += local_elem->size;
-	local_elem->dest += local_elem->size;
+	local_elem->src += bytes;
+	local_elem->dest += bytes;
 	if (local_elem->src == hd->source->current_end) {
 		/* end of elem, so use next */
 
@@ -316,16 +319,15 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		}
 #endif
 		/* preload first playback period for preloader task */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-			if (!hd->pointer_init) {
-				ret = host_copy_int(dev, true);
+		if (!hd->config.timer && !hd->pointer_init &&
+		    dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+			ret = host_copy_int(dev, true);
 
-				if (ret == dev->frames)
-					ret = 0;
-				// wait for completion ?
+			if (ret == dev->frames)
+				ret = 0;
+			// wait for completion ?
 
-				hd->pointer_init = 1;
-			}
+			hd->pointer_init = 1;
 		}
 		break;
 	default:
@@ -680,25 +682,58 @@ static int host_copy(struct comp_dev *dev)
 static int host_copy_int(struct comp_dev *dev, bool preload_run)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem;
 	int ret;
+	int copy_size = 0;
+	int dma_avail_size = 0;
+	int in_size = 0;
+	int out_size = 0;
+#if defined CONFIG_DMA_GW
+	uint32_t flags = 0;
+#endif
 
 	tracev_host("host_copy_int()");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
-	local_elem = hd->config.elem_array.elems;
+	if (hd->config.timer) {
+		/* for timer scheduling we need to get available data size */
+		dma_avail_size = dma_get_data_size(hd->dma, hd->chan);
+
+		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+#if defined CONFIG_DMA_GW
+			if (!hd->pointer_init)
+				flags = DMA_COPY_PRELOAD;
+#endif
+
+			in_size = MIN(hd->period_bytes, dma_avail_size);
+			out_size = MIN(hd->period_bytes, hd->dma_buffer->free);
+		} else {
+			in_size = MIN(hd->period_bytes, hd->dma_buffer->avail);
+			out_size = MIN(hd->period_bytes, dma_avail_size);
+		}
+
+		copy_size = MIN(in_size, out_size);
+
+		tracev_host("host_copy_int(), copy_size = 0x%x", copy_size);
+	} else {
+#if defined CONFIG_DMA_GW
+		if (preload_run)
+			flags = DMA_COPY_PRELOAD;
+#endif
+
+		copy_size = hd->config.elem_array.elems->size;
+	}
 
 	/* enough free or avail to copy ? */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (hd->dma_buffer->free < local_elem->size) {
+		if (hd->dma_buffer->free < copy_size) {
 			/* buffer is enough avail, just return. */
 			tracev_host("host_copy_int(), buffer is enough avail");
 			return 0;
 		}
 	} else {
-		if (hd->dma_buffer->avail < local_elem->size) {
+		if (hd->dma_buffer->avail < copy_size) {
 			/* buffer is enough empty, just return. */
 			tracev_host("host_copy_int(), buffer is enough empty");
 			return 0;
@@ -709,10 +744,13 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run)
  */
 #if defined CONFIG_DMA_GW
 	/* tell gateway to copy another period */
-	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes,
-		       preload_run ? DMA_COPY_PRELOAD : 0);
+	ret = dma_copy(hd->dma, hd->chan, copy_size, flags);
 	if (ret < 0)
 		goto out;
+
+	if (hd->config.timer && (flags & DMA_COPY_PRELOAD) &&
+	    dev->position >= DMA_PRELOAD_THRESHOLD(hd->period_bytes))
+		hd->pointer_init = 1;
 
 	/* note: update() moved to callback */
 #else

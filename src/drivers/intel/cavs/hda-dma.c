@@ -365,24 +365,20 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 	return 0;
 }
 
-static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
+static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
+			      int bytes)
 {
 	struct dma_sg_elem next = {
 			.src = DMA_RELOAD_LLI,
 			.dest = DMA_RELOAD_LLI,
-			.size = DMA_RELOAD_LLI
+			.size = bytes
 	};
 
 	if (chan->cb) {
-		next.src = DMA_RELOAD_LLI;
-		next.dest = DMA_RELOAD_LLI;
-		next.size = DMA_RELOAD_LLI;
-
 		chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, &next);
-		if (next.size == DMA_RELOAD_END) {
+		if (next.size == DMA_RELOAD_END)
 			/* disable channel, finished */
 			hda_dma_stop(dma, chan->index);
-		}
 	}
 
 	/* Force Host DMA to exit L1 */
@@ -427,7 +423,7 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 				DGCS, DGCS_BOR, DGCS_BOR);
 
 	/* make sure that previous transfer is complete (playback only) */
-	if (chan->direction == DMA_DIR_MEM_TO_DEV) {
+	if (!chan->timer && chan->direction == DMA_DIR_MEM_TO_DEV) {
 		ret = hda_dma_tx_wait(dma, chan, bytes,
 				      PLATFORM_LINK_DMA_TIMEOUT);
 
@@ -436,11 +432,11 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	}
 
 	/*
-	 * set BFPI to let host gateway knows we have read size,
+	 * set BFPI to let link gateway know we have read size,
 	 * which will trigger next copy start.
 	 */
 	hda_dma_inc_link_fp(dma, chan->index, bytes);
-	hda_dma_post_copy(dma, chan);
+	hda_dma_post_copy(dma, chan, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_LINK);
 	hda_dma_ptr_trace(chan, "link copy", HDA_DBG_LINK);
@@ -456,14 +452,22 @@ static int hda_dma_host_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 		     dma->plat_data.id, chan->index, bytes);
 
 	/*
-	 * set BFPI to let host gateway knows we have read size,
+	 * set BFPI to let host gateway know we have read size,
 	 * which will trigger next copy start.
 	 */
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_HOST);
 
-	hda_dma_inc_fp(dma, chan->index, bytes);
-	hda_dma_post_copy(dma, chan);
+	if (chan->timer) {
+		if (!(chan->state & HDA_STATE_HOST_PRELOAD))
+			hda_dma_inc_fp(dma, chan->index, bytes);
+		else
+			chan->state &= ~HDA_STATE_HOST_PRELOAD;
+	} else {
+		hda_dma_inc_fp(dma, chan->index, bytes);
+	}
+
+	hda_dma_post_copy(dma, chan, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_HOST);
 	hda_dma_ptr_trace(chan, "host copy", HDA_DBG_HOST);
@@ -571,7 +575,7 @@ static int hda_dma_host_copy(struct dma *dma, int channel, int bytes,
 
 	if (chan->state & HDA_STATE_INIT)
 		return 0;
-	else if (chan->state & HDA_STATE_HOST_PRELOAD)
+	else if ((chan->state & HDA_STATE_HOST_PRELOAD) && !chan->timer)
 		return hda_dma_host_preload(dma, chan);
 	else
 		return hda_dma_host_copy_ch(dma, chan, bytes);
@@ -682,11 +686,11 @@ static int hda_dma_start(struct dma *dma, int channel)
 	p->chan[channel].state |= HDA_STATE_INIT;
 
 	/*
-	 * Activate timer if configured in cyclic mode.
+	 * Activate timer if configured in cyclic mode and not timer scheduled.
 	 * In cyclic mode DMA start is scheduled for later,
 	 * to make sure we stay synchronized with the system work queue.
 	 */
-	if (p->chan[channel].dma_ch_work.cb)
+	if (p->chan[channel].dma_ch_work.cb && !p->chan[channel].timer)
 		work_schedule_default(&p->chan[channel].dma_ch_work,
 				      HDA_LINK_1MS_US);
 	else
@@ -894,7 +898,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	p->chan[channel].buffer_bytes = buffer_bytes;
 
 	/* initialize timer */
-	if (config->cyclic) {
+	if (config->cyclic && !config->timer) {
 		work_init(&p->chan[channel].dma_ch_work, hda_dma_link_work,
 			  &p->chan[channel], WORK_HIGH_PRI, WORK_ASYNC);
 	}
