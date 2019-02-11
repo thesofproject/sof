@@ -1,6 +1,5 @@
 if(NOT BUILD_HOST)
 	add_local_sources(sof
-		switch.c
 		dai.c
 		host.c
 		pipeline.c
@@ -50,6 +49,11 @@ if(NOT BUILD_HOST)
 	if(CONFIG_COMP_MUX)
 		add_local_sources(sof
 			mux.c
+		)
+	endif()
+	if(CONFIG_COMP_SWITCH)
+		add_local_sources(sof
+			switch.c
 		)
 	endif()
 	return()

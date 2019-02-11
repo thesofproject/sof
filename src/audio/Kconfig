@@ -42,4 +42,10 @@ config COMP_MUX
 	help
 	  Select for MUX component
 
+config COMP_SWITCH
+	bool "Switch component"
+	default y
+	help
+	  Select for Switch component
+
 endmenu

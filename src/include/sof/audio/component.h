@@ -506,7 +506,11 @@ void sys_comp_mux_init(void);
 #else
 static inline void sys_comp_mux_init(void) {}
 #endif
+#ifdef CONFIG_COMP_SWITCH
 void sys_comp_switch_init(void);
+#else
+static inline void sys_comp_switch_init(void) {}
+#endif
 #ifdef CONFIG_COMP_VOLUME
 void sys_comp_volume_init(void);
 #else
