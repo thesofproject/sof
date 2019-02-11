@@ -18,4 +18,10 @@ config COMP_FIR
 	help
 	  Select for FIR component
 
+config COMP_IIR
+	bool "IIR component"
+	default y
+	help
+	  Select for IIR component
+
 endmenu

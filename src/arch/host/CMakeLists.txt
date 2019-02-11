@@ -12,6 +12,7 @@ set(CONFIG_LIB 1)
 set(CONFIG_COMP_VOLUME 1)
 set(CONFIG_COMP_SRC 1)
 set(CONFIG_COMP_FIR 1)
+set(CONFIG_COMP_IIR 1)
 
 configure_file (
 	"${PROJECT_SOURCE_DIR}/src/arch/host/config.h.in"
