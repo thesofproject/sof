@@ -2,10 +2,6 @@ if(NOT BUILD_HOST)
 	add_local_sources(sof
 		eq_iir.c
 		iir.c
-		eq_fir.c
-		fir.c
-		fir_hifi2ep.c
-		fir_hifi3.c
 		tone.c
 		mixer.c
 		mux.c
@@ -30,6 +26,14 @@ if(NOT BUILD_HOST)
 			src_generic.c
 			src_hifi2ep.c
 			src_hifi3.c
+		)
+	endif()
+	if(CONFIG_COMP_FIR)
+		add_local_sources(sof
+			eq_fir.c
+			fir.c
+			fir_hifi2ep.c
+			fir_hifi3.c
 		)
 	endif()
 	return()

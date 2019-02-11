@@ -12,4 +12,10 @@ config COMP_SRC
 	help
 	  Select for SRC component
 
+config COMP_FIR
+	bool "FIR component"
+	default y
+	help
+	  Select for FIR component
+
 endmenu
