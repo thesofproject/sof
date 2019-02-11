@@ -695,7 +695,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	trace_eq("eq_fir_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret < 0)
+	if (ret)
 		return ret;
 
 	/* EQ components will only ever have 1 source and 1 sink buffer */
