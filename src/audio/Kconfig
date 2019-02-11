@@ -30,4 +30,10 @@ config COMP_TONE
 	help
 	  Select for Tone component
 
+config COMP_MIXER
+	bool "Mixer component"
+	default y
+	help
+	  Select for Mixer component
+
 endmenu
