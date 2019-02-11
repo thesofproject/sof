@@ -60,6 +60,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				    uint32_t ilxmsd, uint32_t ilxmcd)
 {
 	struct irq_desc *parent = (struct irq_desc *)data;
+	struct irq_cascade_desc *cascade = container_of(parent,
+						struct irq_cascade_desc, desc);
 	struct irq_desc *child = NULL;
 	struct list_item *clist;
 	uint32_t status;
@@ -93,7 +95,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 			goto next;
 
 		/* get child if any and run handler */
-		list_for_item(clist, &parent->child[i]) {
+		list_for_item(clist, &cascade->child[i]) {
 			child = container_of(clist, struct irq_desc, irq_list);
 
 			if (child && child->handler) {
@@ -142,28 +144,28 @@ static void irq_lvl2_level5_handler(void *data)
 }
 
 /* DSP internal interrupts */
-static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+static struct irq_cascade_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
+	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
 #if PLATFORM_CORE_COUNT > 1
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
 #endif
 #if PLATFORM_CORE_COUNT > 2
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
 #endif
 #if PLATFORM_CORE_COUNT > 3
-	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
-	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
-	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
-	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
+	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
 #endif
 };
 
@@ -173,13 +175,13 @@ struct irq_desc *platform_irq_get_parent(uint32_t irq)
 
 	switch (SOF_IRQ_NUMBER(irq)) {
 	case IRQ_NUM_EXT_LEVEL2:
-		return &dsp_irq[core][0];
+		return &dsp_irq[core][0].desc;
 	case IRQ_NUM_EXT_LEVEL3:
-		return &dsp_irq[core][1];
+		return &dsp_irq[core][1].desc;
 	case IRQ_NUM_EXT_LEVEL4:
-		return &dsp_irq[core][2];
+		return &dsp_irq[core][2].desc;
 	case IRQ_NUM_EXT_LEVEL5:
-		return &dsp_irq[core][3];
+		return &dsp_irq[core][3].desc;
 	default:
 		return NULL;
 	}

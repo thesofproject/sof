@@ -43,11 +43,14 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 {
 	int ret = 0;
 	struct irq_desc *child;
+	struct irq_cascade_desc *cascade;
 
 	if (parent == NULL)
 		return -EINVAL;
 
-	spin_lock(&parent->lock);
+	cascade = container_of(parent, struct irq_cascade_desc, desc);
+
+	spin_lock(&cascade->lock);
 
 	/* init child from run-time, may be registered and unregistered
 	 * many times at run-time
@@ -65,19 +68,19 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 	child->id = SOF_IRQ_ID(irq);
 	child->unmask = unmask;
 
-	list_item_append(&child->irq_list, &parent->child[SOF_IRQ_BIT(irq)]);
+	list_item_append(&child->irq_list, &cascade->child[SOF_IRQ_BIT(irq)]);
 
 	/* do we need to register parent ? */
-	if (parent->num_children == 0) {
+	if (cascade->num_children == 0) {
 		ret = arch_interrupt_register(parent->irq,
 					      parent->handler, parent);
 	}
 
 	/* increment number of children */
-	parent->num_children++;
+	cascade->num_children++;
 
 finish:
-	spin_unlock(&parent->lock);
+	spin_unlock(&cascade->lock);
 	return ret;
 }
 
@@ -86,19 +89,21 @@ static void irq_unregister_child(struct irq_desc *parent, int irq)
 	struct irq_desc *child;
 	struct list_item *clist;
 	struct list_item *tlist;
+	struct irq_cascade_desc *cascade = container_of(parent,
+						struct irq_cascade_desc, desc);
 
-	spin_lock(&parent->lock);
+	spin_lock(&cascade->lock);
 
 	/* does child already exist ? */
-	if (list_is_empty(&parent->child[SOF_IRQ_BIT(irq)]))
+	if (list_is_empty(&cascade->child[SOF_IRQ_BIT(irq)]))
 		goto finish;
 
-	list_for_item_safe(clist, tlist, &parent->child[SOF_IRQ_BIT(irq)]) {
+	list_for_item_safe(clist, tlist, &cascade->child[SOF_IRQ_BIT(irq)]) {
 		child = container_of(clist, struct irq_desc, irq_list);
 
 		if (SOF_IRQ_ID(irq) == child->id) {
 			list_item_del(&child->irq_list);
-			parent->num_children--;
+			cascade->num_children--;
 			rfree(child);
 		}
 	}
@@ -107,25 +112,27 @@ static void irq_unregister_child(struct irq_desc *parent, int irq)
 	 * unregister the root interrupt if the this l2 is
 	 * the last registered one.
 	 */
-	if (parent->num_children == 0)
+	if (cascade->num_children == 0)
 		arch_interrupt_unregister(parent->irq);
 
 finish:
-	spin_unlock(&parent->lock);
+	spin_unlock(&cascade->lock);
 }
 
 static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 {
 	struct irq_desc *child;
 	struct list_item *clist;
+	struct irq_cascade_desc *cascade = container_of(parent,
+						struct irq_cascade_desc, desc);
 
-	spin_lock(&parent->lock);
+	spin_lock(&cascade->lock);
 
 	/* enable the parent interrupt */
 	if (parent->enabled_count == 0)
 		arch_interrupt_enable_mask(1 << SOF_IRQ_NUMBER(irq));
 
-	list_for_item(clist, &parent->child[SOF_IRQ_BIT(irq)]) {
+	list_for_item(clist, &cascade->child[SOF_IRQ_BIT(irq)]) {
 		child = container_of(clist, struct irq_desc, irq_list);
 
 		if ((SOF_IRQ_ID(irq) == child->id) &&
@@ -138,7 +145,7 @@ static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 		}
 	}
 
-	spin_unlock(&parent->lock);
+	spin_unlock(&cascade->lock);
 	return 0;
 
 }
@@ -147,10 +154,12 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 {
 	struct irq_desc *child;
 	struct list_item *clist;
+	struct irq_cascade_desc *cascade = container_of(parent,
+						struct irq_cascade_desc, desc);
 
-	spin_lock(&parent->lock);
+	spin_lock(&cascade->lock);
 
-	list_for_item(clist, &parent->child[SOF_IRQ_BIT(irq)]) {
+	list_for_item(clist, &cascade->child[SOF_IRQ_BIT(irq)]) {
 		child = container_of(clist, struct irq_desc, irq_list);
 
 		if ((SOF_IRQ_ID(irq) == child->id) &&
@@ -166,7 +175,7 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 	if (parent->enabled_count == 0)
 		arch_interrupt_disable_mask(1 << SOF_IRQ_NUMBER(irq));
 
-	spin_unlock(&parent->lock);
+	spin_unlock(&cascade->lock);
 	return 0;
 }
 
