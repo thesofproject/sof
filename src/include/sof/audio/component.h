@@ -497,7 +497,11 @@ void sys_comp_init(void);
 /* default base component initialisations */
 void sys_comp_dai_init(void);
 void sys_comp_host_init(void);
+#ifdef CONFIG_COMP_MIXER
 void sys_comp_mixer_init(void);
+#else
+static inline void sys_comp_mixer_init(void) {}
+#endif
 void sys_comp_mux_init(void);
 void sys_comp_switch_init(void);
 #ifdef CONFIG_COMP_VOLUME
