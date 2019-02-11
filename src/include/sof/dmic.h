@@ -35,7 +35,7 @@
 #include <sof/dai.h>
 #include <sof/io.h>
 
-#if defined CONFIG_DMIC
+#if defined CONFIG_CAVS_DMIC
 
 /* The microphones create a low frequecy thump sound when clock is enabled.
  * The unmute linear gain ramp chacteristic is defined here.

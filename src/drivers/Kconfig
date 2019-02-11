@@ -1,13 +1,102 @@
 menu "Drivers"
 
-config DMIC
-	bool "DMIC driver"
+config CAVS_DMIC
+	bool "Intel cAVS DMIC driver"
 	depends on CAVS
 	default n
 	help
-	  Select for DMIC driver
+	  Select this to enable Intel cAVS DMIC driver. The DMIC driver provides
+	  as DAI the SoC direct attach digital microphones interface.
 
-endmenu
+if CAVS_DMIC
+
+choice
+	prompt "FIR decimation coefficients set"
+	default CAVS_DMIC_FIR_FULL
+
+config CAVS_DMIC_FIR_FULL
+	bool "Full set"
+	select CAVS_DMIC_FIR_DECIMATE_BY_2
+	select CAVS_DMIC_FIR_DECIMATE_BY_3
+	select CAVS_DMIC_FIR_DECIMATE_BY_4
+	select CAVS_DMIC_FIR_DECIMATE_BY_5
+	select CAVS_DMIC_FIR_DECIMATE_BY_6
+	select CAVS_DMIC_FIR_DECIMATE_BY_8
+	help
+	  This option adds to previous all currently defined FIR
+	  coefficients sets to support sample rates 8 - 96 kHz with
+	  several microphone clock rates. The tables increase the size
+	  of the driver so this option should not be used in minimal
+	  systems.
+
+config CAVS_DMIC_FIR_LOW_MEMORY
+	bool "Small set"
+	select CAVS_DMIC_FIR_DECIMATE_BY_2
+	select CAVS_DMIC_FIR_DECIMATE_BY_6
+	help
+	  This option is used to minimize driver footprint but
+	  preserve support for 48 kHz and 16 kHz sample rates
+	  at typical 2.4 MHz microphone clock rate. The option
+	  enables decimation factors 2 and 6.
+
+config CAVS_DMIC_FIR_CUSTOM
+	bool "Custom set"
+	help
+	  This option is used to select each supported decimation
+	  factor.
+
+endchoice
+
+menu "Decimation factors"
+	visible if CAVS_DMIC_FIR_CUSTOM
+
+config CAVS_DMIC_FIR_DECIMATE_BY_2
+	bool "FIR decimate by 2"
+	default n
+	help
+	  This includes FIR coefficients to decimate by 2
+	  into the build.
+
+config CAVS_DMIC_FIR_DECIMATE_BY_3
+	bool "FIR decimate by 3"
+	default n
+	help
+	  This includes FIR coefficients to decimate by 3
+	  into the build.
+
+config CAVS_DMIC_FIR_DECIMATE_BY_4
+	bool "FIR decimate by 4"
+	default n
+	help
+	  This includes FIR coefficients to decimate by 4
+	  into the build.
+
+config CAVS_DMIC_FIR_DECIMATE_BY_5
+	bool "FIR decimate by 5"
+	default n
+	help
+	  This includes FIR coefficients to decimate by 5
+	  into the build.
+
+config CAVS_DMIC_FIR_DECIMATE_BY_6
+	bool "FIR decimate by 6"
+	default n
+	help
+	  This includes FIR coefficients to decimate by 6
+	  into the build.
+
+config CAVS_DMIC_FIR_DECIMATE_BY_8
+	bool "FIR decimate by 8"
+	default n
+	help
+	  This includes FIR coefficients to decimate by 8
+	  into the build.
+
+endmenu # "Decimation factors"
+
+endif # CAVS_DMIC
+
+endmenu # "Drivers"
 
 config CAVS_VERSION_1_5
 	depends on CAVS
@@ -26,4 +115,3 @@ config CAVS_VERSION_2_0
 	bool
 	help
 	  Select for CAVS version 2.0
-
