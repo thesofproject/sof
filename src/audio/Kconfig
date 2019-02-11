@@ -1,5 +1,11 @@
 menu "Audio components"
 
+config COMP_DAI
+	bool "DAI component"
+	default y
+	help
+	  Select for DAI component
+
 config COMP_VOLUME
 	bool "Volume component"
 	default y

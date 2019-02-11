@@ -1,6 +1,5 @@
 if(NOT BUILD_HOST)
 	add_local_sources(sof
-		dai.c
 		host.c
 		pipeline.c
 		pipeline_static.c
@@ -54,6 +53,11 @@ if(NOT BUILD_HOST)
 	if(CONFIG_COMP_SWITCH)
 		add_local_sources(sof
 			switch.c
+		)
+	endif()
+	if(CONFIG_COMP_DAI)
+		add_local_sources(sof
+			dai.c
 		)
 	endif()
 	return()
