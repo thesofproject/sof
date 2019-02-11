@@ -54,4 +54,10 @@ config COMP_SWITCH
 	help
 	  Select for Switch component
 
+  config COMP_KPB
+	bool "KPB component"
+	default y
+	help
+	  Select for KPB component
+
 endmenu
