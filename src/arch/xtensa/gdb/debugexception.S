@@ -154,6 +154,10 @@ DebugExceptionEntry:
 	wsr	a2, PS
 	rsync
 
+	/* reset icountlevel - essential when coming back from single step */
+	movi a2, 0x00
+	wsr a2, ICOUNTLEVEL
+
 	movi	a4, gdb_handle_exception
 	callx4	a4
 
