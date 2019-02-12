@@ -308,11 +308,15 @@ if(MEU_PATH)
 		USES_TERMINAL
 	)
 
+	if(NOT DEFINED MEU_OPENSSL)
+		set(MEU_OPENSSL "/usr/bin/openssl")
+	endif()
+
 	add_custom_target(
 		run_meu
 		COMMAND ${MEU_PATH}/meu -w ./ -s sof-${fw_name}
 			-key ${MEU_PRIVATE_KEY}
-			-stp /usr/bin/openssl
+			-stp ${MEU_OPENSSL}
 			-f ${MEU_PATH}/generic_meu_conf.xml
 			-mnver 0.0.0.0 -o sof-${fw_name}.ri
 		DEPENDS run_rimage
