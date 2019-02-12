@@ -107,7 +107,7 @@ function(sof_add_ld_script binary_name script_name)
 	endforeach()
 
 	add_custom_command(OUTPUT ${lds_out}
-		COMMAND ${CMAKE_C_COMPILER} -E -P ${iflags} - < ${lds_in} > ${lds_out}
+		COMMAND ${CMAKE_C_COMPILER} -E -P ${iflags} -o ${lds_out} -x c ${lds_in}
 		DEPENDS ${lds_in} ${LINK_DEPS} genconfig ${CONFIG_H_PATH}
 		WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 		COMMENT "Generating linker script: ${lds_out}"
