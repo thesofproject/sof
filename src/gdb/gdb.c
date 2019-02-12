@@ -279,7 +279,7 @@ while (1) {
 				mem_to_hex(sregs + addr, remcom_out_buffer, 4);
 			} else if (addr >= 0x300 && addr < 0x400) {
 				strcpy((char *)remcom_out_buffer,
-						"out of scope");
+						"deadbabe");
 			} else { /* unexpected register number */
 				strcpy((char *)remcom_out_buffer, "E00");
 			}
@@ -469,7 +469,7 @@ static void read_sr(int sr)
 		      : "=r"(val)
 		      : "r"(sr)
 		      : "a3", "memory");
-	sregs[sr] = val;
+	//sregs[sr] = val;
 #endif
 }
 
