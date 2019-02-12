@@ -11,10 +11,12 @@
 #include <arch/drivers/interrupt.h>
 #include <platform/drivers/interrupt.h>
 #include <sof/drivers/interrupt-map.h>
+#include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
@@ -24,20 +26,27 @@
 #define IRQ_MANUAL_UNMASK	0
 #define IRQ_AUTO_UNMASK		1
 
+/**
+ * struct irq_child - child IRQ descriptor for cascading IRQ controllers
+ *
+ * @enable_count: IRQ enable counter
+ * @list:	head for IRQ descriptors, sharing this interrupt
+ */
+struct irq_child {
+	int enable_count[PLATFORM_CORE_COUNT];
+	struct list_item list;
+};
+
 struct irq_desc {
-	/* irq must be first for constructor */
 	int irq;        /* logical IRQ number */
 
-	/* handler is optional for constructor */
 	void (*handler)(void *arg);
 	void *handler_arg;
 
 	/* whether irq should be automatically unmasked */
 	int unmask;
 
-	/* to identify interrupt with the same IRQ */
-	int id;
-	uint32_t enabled_count;
+	uint32_t cpu_mask;
 
 	/* to link to other irq_desc */
 	struct list_item irq_list;
@@ -53,10 +62,13 @@ struct irq_cascade_desc {
 	/* to link to the global list of interrupt controllers */
 	struct irq_cascade_desc *next;
 
+	bool global_mask;
+
 	/* protect child lists in the below array */
 	spinlock_t lock;
-	uint32_t num_children;
-	struct list_item child[PLATFORM_IRQ_CHILDREN];
+	int enable_count[PLATFORM_CORE_COUNT];
+	unsigned int num_children[PLATFORM_CORE_COUNT];
+	struct irq_child child[PLATFORM_IRQ_CHILDREN];
 };
 
 /* A descriptor for cascading interrupt controller template */
@@ -64,6 +76,7 @@ struct irq_cascade_tmpl {
 	const char *name;
 	int irq;
 	void (*handler)(void *arg);
+	bool global_mask;
 };
 
 int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
@@ -74,7 +87,6 @@ uint32_t interrupt_disable(uint32_t irq);
 
 void platform_interrupt_init(void);
 
-struct irq_desc *platform_irq_get_parent(uint32_t irq);
 void platform_interrupt_set(uint32_t irq);
 void platform_interrupt_clear(uint32_t irq, uint32_t mask);
 uint32_t platform_interrupt_get_enabled(void);
