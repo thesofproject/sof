@@ -35,6 +35,7 @@
 #include <sof/gdb/gdb.h>
 #include <sof/gdb/ringbuffer.h>
 #include <arch/gdb/xtensa-defs.h>
+#include <arch/gdb/utilities.h>
 #include <sof/string.h>
 #include <signal.h>
 #include <stdint.h>
@@ -48,10 +49,8 @@ static void put_packet(unsigned char *buffer);
 static void parse_request(void);
 static unsigned char *get_packet(void);
 static void gdb_log_exception(char *message);
-static void write_sr(int sr);
-static unsigned char *mem_to_hex(const void *mem_,
-	unsigned char *buf, int count);
-static void read_sr(int sr);
+static unsigned char *mem_to_hex(void *mem_,
+				 unsigned char *buf, int count);
 static unsigned char *hex_to_mem(const unsigned char *buf, void *mem_,
 							int count);
 
@@ -184,8 +183,10 @@ while (1) {
 					sregs[IBREAKA + i] == addr) {
 						sregs[IBREAKA + i] = addr;
 						sregs[IBREAKENABLE] |= (1 << i);
-						write_sr(IBREAKA+i);
-						write_sr(IBREAKENABLE);
+						arch_gdb_write_sr((IBREAKA+i),
+								  sregs);
+						arch_gdb_write_sr(IBREAKENABLE,
+								  sregs);
 						break;
 					}
 				}
@@ -197,7 +198,7 @@ while (1) {
 					strcpy((char *)remcom_out_buffer, "OK");
 					sregs[INTENABLE]  &=
 					DISABLE_LOWER_INTERRUPTS_MASK;
-					write_sr(INTENABLE);
+					arch_gdb_write_sr(INTENABLE, sregs);
 				}
 			} else {
 				strcpy((char *)remcom_out_buffer, "E01");
@@ -224,7 +225,8 @@ while (1) {
 					    sregs[IBREAKA + i] == addr) {
 						sregs[IBREAKENABLE]
 						&= ~(1 << i);
-						write_sr(IBREAKENABLE);
+						arch_gdb_write_sr(IBREAKENABLE,
+								  sregs);
 						break;
 					}
 				}
@@ -250,14 +252,7 @@ while (1) {
 	case 's':
 		if (hex_to_int(&request, &addr))
 			sregs[DEBUG_PC] = addr;
-		/* leave debug just for one instruction */
-		sregs[ICOUNT] = 0xfffffffe;
-		sregs[ICOUNTLEVEL] = XCHAL_DEBUGLEVEL;
-		/* disable low level interrupts */
-		sregs[INTENABLE]  &= ~DISABLE_LOWER_INTERRUPTS_MASK;
-		write_sr(ICOUNTLEVEL);
-		write_sr(ICOUNT);
-		write_sr(INTENABLE);
+		arch_gdb_single_step(sregs);
 		return;
 	/* read register */
 	case 'p':
@@ -273,9 +268,8 @@ while (1) {
 				mem_to_hex(aregs + ((addr - windowbase) &
 					REGISTER_MASK), remcom_out_buffer, 4);
 			} else if (addr >= 0x200 && addr < 0x300) {
-				/* read special registers */
 				addr &= REGISTER_MASK;
-				read_sr(addr);
+				arch_gdb_read_sr(addr);
 				mem_to_hex(sregs + addr, remcom_out_buffer, 4);
 			} else if (addr >= 0x300 && addr < 0x400) {
 				strcpy((char *)remcom_out_buffer,
@@ -406,45 +400,20 @@ static void gdb_log_exception(char *message)
 
 }
 
-static void write_sr(int sr)
-{
-#ifdef __XTENSA__
-	asm volatile ("movi	a3, 1f + 1\n"
-		      "s8i	%1, a3, 0\n"
-		      "dhwb	a3, 0\n"
-		      "ihi	a3, 0\n"
-		      "isync\n"
-		      "1:\n"
-		      "wsr	%0, lbeg\n"
-		      :
-		      : "r"(sregs[sr]), "r"(sr)
-		      : "a3", "memory");
-#endif
-}
-
 /* Convert the memory pointed to by mem into hex, placing result in buf.
  * Return a pointer to the last char put in buf (null), in case of mem fault,
  * return 0.
  */
-static unsigned char *mem_to_hex(const void *mem_, unsigned char *buf,
-							int count)
+static unsigned char *mem_to_hex(void *mem_, unsigned char *buf,
+				 int count)
 {
-	const unsigned char *mem = mem_;
+	unsigned char *mem = mem_;
 	unsigned char ch;
 
 	if ((mem == NULL) || (buf == NULL))
 		return NULL;
 	while (count-- > 0) {
-#ifdef __XTENSA__
-		unsigned long v;
-		unsigned long addr = (unsigned long) mem;
-
-		asm volatile ("_l32i	%0, %1, 0\n"
-			      : "=r"(v)
-			      : "r"(addr & ~3)
-			      : "memory");
-		ch = v >> (addr & 3) * 8;
-#endif
+		ch = arch_gdb_load_from_memory(mem);
 		mem++;
 		*buf++ = hex_chars[ch >> 4];
 		*buf++ = hex_chars[ch & 0xf];
@@ -452,25 +421,6 @@ static unsigned char *mem_to_hex(const void *mem_, unsigned char *buf,
 
 	*buf = 0;
 	return buf;
-}
-
-static void read_sr(int sr)
-{
-#ifdef __XTENSA__
-	uint32_t val;
-
-	asm volatile ("movi	a3, 1f + 1\n"
-		      "s8i	%1, a3, 0\n"
-		      "dhwb	a3, 0\n"
-		      "ihi	a3, 0\n"
-		      "isync\n"
-		      "1:\n"
-		      "rsr	%0, lbeg\n"
-		      : "=r"(val)
-		      : "r"(sr)
-		      : "a3", "memory");
-	//sregs[sr] = val;
-#endif
 }
 
 /* convert the hex array pointed to by buf into binary to be placed in mem
@@ -488,23 +438,8 @@ static unsigned char *hex_to_mem(const unsigned char *buf, void *mem_,
 	for (i = 0; i < count; i++) {
 		ch = get_hex(*buf++) << 4;
 		ch |= get_hex(*buf++);
-#ifdef __XTENSA__
-	unsigned long tmp;
-	unsigned long addr = (unsigned long)mem;
-
-	asm volatile ("_l32i	%0, %1, 0\n"
-		      "and	%0, %0, %2\n"
-		      "or	%0, %0, %3\n"
-		      "_s32i	%0, %1, 0\n"
-		      "dhwb	%1, 0\n"
-		      "ihi	%1, 0\n"
-		      : "=&r"(tmp)
-		      : "r"(addr & ~3), "r"(0xffffffff ^ (0xff <<
-						(addr & 3) * 8)),
-			"r"(ch << (addr & 3) * 8)
-		      : "memory");
-#endif
-	mem++;
+		arch_gdb_memory_load_and_store(mem, ch);
+		mem++;
 	}
 
 	dcache_writeback_region((void *)mem, count);
