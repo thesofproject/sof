@@ -8,15 +8,9 @@
 
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/shim.h>
-#include <stddef.h>
 #include <stdint.h>
 
 void platform_interrupt_init(void) {}
-
-struct irq_desc *platform_irq_get_parent(uint32_t irq)
-{
-	return NULL;
-}
 
 void platform_interrupt_set(uint32_t irq)
 {
