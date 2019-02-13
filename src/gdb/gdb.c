@@ -46,13 +46,13 @@
 static int get_hex(unsigned char ch);
 static int hex_to_int(unsigned char **ptr, int *int_value);
 static void put_packet(unsigned char *buffer);
-static void parse_request(void);
 static unsigned char *get_packet(void);
 static void gdb_log_exception(char *message);
 static unsigned char *mem_to_hex(void *mem_,
 				 unsigned char *buf, int count);
 static unsigned char *hex_to_mem(const unsigned char *buf, void *mem_,
-							int count);
+				 int count);
+static inline int gdb_parser(void);
 
 /* main buffers */
 static unsigned char remcom_in_buffer[GDB_BUFMAX];
@@ -143,10 +143,21 @@ static int get_hex(unsigned char ch)
 void gdb_handle_exception(void)
 {
 	gdb_log_exception("Hello from GDB!");
-	parse_request();
+
+	while (gdb_parser())
+		;/* do nothing */
 }
 
-void parse_request(void)
+/**
+ * \brief Parse incoming GDB packets.
+ * \param[in] none.
+ * \param[out] none.
+ *
+ * Every incoming packet has the format: $packet-data#check-sum
+ * packet-data varies depending on command. Full description
+ * of each command packet can be found in GNU GDB reference manual.
+ */
+static inline int gdb_parser(void)
 {
 	unsigned char *request;
 	unsigned int i;
@@ -154,8 +165,6 @@ void parse_request(void)
 	int length;
 	unsigned int windowbase = (4 * sregs[WINDOWBASE]);
 
-
-while (1) {
 	request = get_packet();
 	/* Log any exception caused by debug exception */
 	gdb_debug_info(request);
@@ -165,16 +174,26 @@ while (1) {
 	switch (command) {
 	/* Continue normal program execution and leave debug handler */
 	case 'c':
+		/* incoming packet has the form $c,ADDRESS#CH, where:
+		 * c - continue command identifier,
+		 * ADDRESS - address on which to continue
+		 * CH - two bytes checksum.
+		 */
 		if (hex_to_int(&request, &addr))
 			sregs[DEBUG_PC] = addr;
 
 		/* return from exception */
-		return;
+		return 0;
 	/* insert breakpoint */
 	case 'Z':
 		switch (*request++) {
 		/* HW breakpoint */
 		case '1':
+		/* Incoming packet has the form $ZX,ADDRESS,LEN,#CH, where:
+		 * Z - breakpoint command identifier, X - 0/1, SW/HW breakpoint
+		 * ADDRESS - address on which breakpoint shall be put
+		 * LEN - address length in bytes, CH - two bytes checksum.
+		 */
 			if (*request++ == ',' && hex_to_int(&request, &addr) &&
 			    *request++ == ',' && hex_to_int(&request, &length)
 			    && *request == 0) {
@@ -197,7 +216,7 @@ while (1) {
 				} else {
 					strcpy((char *)remcom_out_buffer, "OK");
 					sregs[INTENABLE]  &=
-					DISABLE_LOWER_INTERRUPTS_MASK;
+					GDB_DISABLE_LOWER_INTERRUPTS_MASK;
 					arch_gdb_write_sr(INTENABLE, sregs);
 				}
 			} else {
@@ -216,7 +235,11 @@ while (1) {
 	/* remove HW breakpoint */
 	case 'z':
 		switch (*request++) {
-		/* remove HW breakpoint */
+		/* Incoming packet has the form $zX,ADDRESS,LEN,#CH, where:
+		 * Z - breakpoint command identifier, X - 0/1, SW/HW breakpoint
+		 * ADDRESS - address from which breakpoint shall be removed
+		 * LEN - address length in bytes, CH - two bytes checksum.
+		 */
 		case '1':
 			if (*request++ == ',' && hex_to_int(&request, &addr) &&
 			*request++ == ',' && hex_to_int(&request, &length)) {
@@ -236,6 +259,7 @@ while (1) {
 				else
 					strcpy((char *)remcom_out_buffer, "OK");
 			} else {
+				/* respond with error message */
 				strcpy((char *)remcom_out_buffer, "E01");
 			}
 			break;
@@ -250,50 +274,70 @@ while (1) {
 		break;
 	/* single step in the code */
 	case 's':
+		/* incoming packet has the form $s#CH, where:
+		 * s - step command identifier,
+		 * CH - two bytes checksum.
+		 */
 		if (hex_to_int(&request, &addr))
 			sregs[DEBUG_PC] = addr;
 		arch_gdb_single_step(sregs);
-		return;
+		return 0;
 	/* read register */
 	case 'p':
+		/* Incoming packet has the form $p,REGISTER#CH, where:
+		 * p - read register command identifier,
+		 * REGISTER - register number to read,
+		 * CH - two bytes checksum.
+		 */
 		if (hex_to_int(&request, &addr)) {
 			/* read address register in the current window */
-			if (addr < 0x10) {
+			if (addr < GDB_AR_REG_RANGE) {
 				mem_to_hex(aregs + addr, remcom_out_buffer, 4);
-			} else if (addr == 0x20) { /* read PC */
+			} else if (addr == GDB_PC_REG_ID) {
+				/* read PC */
 				mem_to_hex(sregs + DEBUG_PC,
 					remcom_out_buffer, 4);
-			} else if (addr >= 0x100 &&
-					addr < (0x100 + XCHAL_NUM_AREGS)) {
+			} else if (addr >= GDB_AREG_RANGE &&
+				   addr < (GDB_AREG_RANGE + XCHAL_NUM_AREGS)) {
 				mem_to_hex(aregs + ((addr - windowbase) &
-					REGISTER_MASK), remcom_out_buffer, 4);
-			} else if (addr >= 0x200 && addr < 0x300) {
-				addr &= REGISTER_MASK;
+					   GDB_REGISTER_MASK),
+					   remcom_out_buffer, 4);
+			} else if (addr >= GDB_SPEC_REG_RANGE_START &&
+				   addr < GDB_SPEC_REG_RANGE_END) {
+				addr &= GDB_REGISTER_MASK;
 				arch_gdb_read_sr(addr);
 				mem_to_hex(sregs + addr, remcom_out_buffer, 4);
-			} else if (addr >= 0x300 && addr < 0x400) {
+			} else if (addr >= GDB_SPEC_REG_RANGE_END &&
+				   addr < GDB_REG_RANGE_END) {
 				strcpy((char *)remcom_out_buffer,
 						"deadbabe");
-			} else { /* unexpected register number */
+			} else {
+				/* unexpected register number */
 				strcpy((char *)remcom_out_buffer, "E00");
 			}
 		}
 		break;
 	/* write register */
 	case 'P':
+		/* Incoming packet has the form $P,REGISTER#CH, where:
+		 * P - write register command identifier,
+		 * REGISTER - register number to write,
+		 * CH - two bytes checksum.
+		 */
 		if (hex_to_int(&request, &addr) && *(request++) == '=') {
 			int ok = 1;
 
-			if (addr < 0x10) {
+			if (addr < GDB_AR_REG_RANGE) {
 				hex_to_mem(request, aregs + addr, 4);
-			} else if (addr == 0x20) {
+			} else if (addr == GDB_PC_REG_ID) {
 				hex_to_mem(request, sregs + DEBUG_PC, 4);
-			} else if (addr >= 0x100 && addr <
-				0x100 + XCHAL_NUM_AREGS) {
+			} else if (addr >= GDB_AREG_RANGE && addr <
+				   GDB_AREG_RANGE + XCHAL_NUM_AREGS) {
 				hex_to_mem(request, aregs +
-				((addr - windowbase) &	REGISTER_MASK), 4);
-			} else if (addr >= 0x200 && addr < 0x300) {
-				addr &= REGISTER_MASK;
+				((addr - windowbase) &	GDB_REGISTER_MASK), 4);
+			} else if (addr >= GDB_SPEC_REG_RANGE_START &&
+				   addr < GDB_SPEC_REG_RANGE_END) {
+				addr &= GDB_REGISTER_MASK;
 				hex_to_mem(request, sregs + addr, 4);
 			} else {
 				ok = 0;
@@ -305,20 +349,33 @@ while (1) {
 		break;
 	/* read memory */
 	case 'm':
+		/* Incoming packet has the form $m,ADDRESS#CH, where:
+		 * m - read address command identifier,
+		 * ADDRESS - address to read from,
+		 * CH - two bytes checksum.
+		 */
 		i = hex_to_int(&request, &addr);
-		if (i == VALID_MEM_ADDRESS_LEN &&
-		((addr & FIRST_BYTE_MASK) >> 28) == VALID_MEM_START_BYTE &&
-		*request++ == ',' && hex_to_int(&request, &length)) {
+		if (i == GDB_VALID_MEM_ADDRESS_LEN &&
+		    ((addr & GDB_VALID_MEM_START_BYTE) >> 28) ==
+		    GDB_VALID_MEM_START_BYTE &&
+		    *request++ == ',' && hex_to_int(&request, &length)) {
 			if (mem_to_hex((void *)addr, remcom_out_buffer, length))
 				break;
+			/* wrong memory address - respond with error message */
 			strcpy((char *)remcom_out_buffer, "E03");
 		} else {
+			/* wrong packet format - respond with error message */
 			strcpy((char *)remcom_out_buffer, "E01");
 		}
 		break;
 	/* write memory */
 	case 'X': /* binary mode */
 	case 'M':
+		/* Incoming packet has the form $M,ADDRESS#CH, where:
+		 * M - write address command identifier,
+		 * ADDRESS - address to write into,
+		 * CH - two bytes checksum.
+		 */
 		if (hex_to_int(&request, &addr) && *request++ == ',' &&
 		    hex_to_int(&request, &length) && *request++ == ':') {
 			if (hex_to_mem(request, (void *)addr, length))
@@ -336,9 +393,9 @@ while (1) {
 	}
 	/* reply to the request */
 	put_packet(remcom_out_buffer);
-}
-}
 
+	return 1;
+}
 /*
  * While we find nice hex chars, build an int.
  * Return number of chars processed.
@@ -427,7 +484,7 @@ static unsigned char *mem_to_hex(void *mem_, unsigned char *buf,
  * return a pointer to the character after the last byte written
  */
 static unsigned char *hex_to_mem(const unsigned char *buf, void *mem_,
-							int count)
+				 int count)
 {
 	unsigned char *mem = mem_;
 	int i;
