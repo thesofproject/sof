@@ -152,6 +152,7 @@ if(CONFIG_SMP)
 		smp/xtos/crt1-boards.S
 		smp/xtos/_vectors.S
 		smp/cpu.c
+		smp/idc.c
 		smp/init.c
 		smp/notifier.c
 		smp/schedule.c
