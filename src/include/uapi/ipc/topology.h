@@ -62,6 +62,9 @@ enum sof_comp_type {
 	SOF_COMP_BUFFER,
 	SOF_COMP_EQ_IIR,
 	SOF_COMP_EQ_FIR,
+	SOF_COMP_KEYWORD_DETECT,
+	SOF_COMP_VOICE_DETECT,
+	/* keep FILEREAD/FILEWRITE as the last ones */
 	SOF_COMP_FILEREAD,	/**< host test based file IO */
 	SOF_COMP_FILEWRITE,	/**< host test based file IO */
 };
@@ -193,11 +196,13 @@ struct sof_ipc_comp_tone {
 	int32_t ramp_step;
 } __attribute__((packed));
 
-/** \brief Types of processing components */
-enum sof_ipc_process_type {
-	SOF_PROCESS_NONE = 0,		/**< None */
-	SOF_PROCESS_EQFIR,		/**< Intel FIR */
-	SOF_PROCESS_EQIIR,		/**< Intel IIR */
+/** \brief Types of EFFECT */
+enum sof_ipc_effect_type {
+	SOF_EFFECT_NONE = 0,		/**< None */
+	SOF_EFFECT_INTEL_EQFIR,		/**< Intel FIR */
+	SOF_EFFECT_INTEL_EQIIR,		/**< Intel IIR */
+	SOF_PROCESS_KEYWORD_DETECT,     /**< Keyword Detection */
+	SOF_PROCESS_VOICE_DETECT,       /**< Voice Detection */
 };
 
 /* generic "effect", "codec" or proprietary processing component */
