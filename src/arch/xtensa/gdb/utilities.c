@@ -30,7 +30,7 @@
  * Xtensa related functions for GDB.
  *
  */
-#define DISABLE_LOWER_INTERRUPTS_MASK ~0x1F
+#define GDB_DISABLE_LOWER_INTERRUPTS_MASK ~0x1F
 
 #include <arch/gdb/utilities.h>
 #include <arch/gdb/xtensa-defs.h>
@@ -104,7 +104,7 @@ void arch_gdb_single_step(int *sregs)
 	sregs[ICOUNT] = 0xfffffffe;
 	sregs[ICOUNTLEVEL] = XCHAL_DEBUGLEVEL;
 	/* disable low level interrupts */
-	sregs[INTENABLE]  &= ~DISABLE_LOWER_INTERRUPTS_MASK;
+	sregs[INTENABLE]  &= ~GDB_DISABLE_LOWER_INTERRUPTS_MASK;
 	arch_gdb_write_sr(ICOUNTLEVEL, sregs);
 	arch_gdb_write_sr(ICOUNT, sregs);
 	arch_gdb_write_sr(INTENABLE, sregs);
