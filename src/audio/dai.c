@@ -392,10 +392,17 @@ static int dai_params(struct comp_dev *dev)
 
 	trace_dai_with_ids(dev, "dai_params()");
 
+	/* check if already configured */
+	if (dev->state == COMP_STATE_PREPARE) {
+		trace_dai_with_ids(dev, "dai_params() component has been"
+				   "already configured.");
+		return 0;
+	}
+
 	/* can set params on only init state */
 	if (dev->state != COMP_STATE_READY) {
-		trace_dai_error_with_ids(dev, "dai_params() error: Component is"
-					 "not in init state.");
+		trace_dai_error_with_ids(dev, "dai_params() error: Component"
+					 " is not in init state.");
 		return -EINVAL;
 	}
 
