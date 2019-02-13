@@ -47,7 +47,7 @@ struct comp_data {
 
 static struct comp_data *cd;
 
-static struct comp_driver *get_drv(uint32_t type)
+static struct comp_driver *get_drv(uint32_t type, uint16_t flavour)
 {
 	struct list_item *clist;
 	struct comp_driver *drv = NULL;
@@ -58,7 +58,7 @@ static struct comp_driver *get_drv(uint32_t type)
 	list_for_item(clist, &cd->list) {
 
 		drv = container_of(clist, struct comp_driver, list);
-		if (drv->type == type)
+		if (drv->type == type && drv->flavour == flavour)
 			goto out;
 	}
 
@@ -74,9 +74,12 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cdev;
 	struct comp_driver *drv;
+	struct sof_ipc_comp_config *config = (struct sof_ipc_comp_config *)(comp + 1);
+
+	trace_comp("comp->type = %u,comp->flavour = %u", comp->type, config->flavour);
 
 	/* find the driver for our new component */
-	drv = get_drv(comp->type);
+	drv = get_drv(comp->type, config->flavour);
 	if (!drv) {
 		trace_comp_error("comp_new() error: driver not found, "
 				 "comp->type = %u", comp->type);
