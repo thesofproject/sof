@@ -67,6 +67,17 @@ int schedule_task_cancel(struct task *task)
 	return 0;
 }
 
+void work_schedule_default(struct work *w, uint64_t timeout)
+{
+	(void)w;
+	(void)timeout;
+}
+
+void work_cancel_default(struct work *w)
+{
+	(void)w;
+}
+
 void rfree(void *ptr)
 {
 	(void)ptr;

@@ -154,9 +154,6 @@ struct sof;
 /* minimal SSP port stop delay in cycles */
 #define PLATFORM_SSP_STOP_DELAY	3000
 
-/* timer driven scheduling start offset in microseconds */
-#define PLATFORM_TIMER_START_OFFSET	100
-
 /* SSI / SPI GPIO bindings */
 #define PLATFORM_SPI_GPIO_ID	0
 #define PLATFORM_SPI_GPIO_IRQ	14

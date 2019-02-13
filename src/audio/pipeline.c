@@ -58,6 +58,7 @@ struct pipeline_data {
 };
 
 static void pipeline_task(void *arg);
+static uint64_t pipeline_work(void *data, uint64_t delay);
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
@@ -77,13 +78,19 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	/* init pipeline */
 	p->sched_comp = cd;
 	p->status = COMP_STATE_INIT;
-	schedule_task_init(&p->pipe_task, pipeline_task, p);
-	schedule_task_config(&p->pipe_task, pipe_desc->priority,
-			     pipe_desc->core);
 	spinlock_init(&p->lock);
 	memcpy(&p->ipc_pipe, pipe_desc, sizeof(*pipe_desc));
 	p->scheduling_mode = pipe_desc->timer_delay ?
 		PPL_SCHED_TIMER_IRQ : PPL_SCHED_DMA_IRQ;
+
+	if (pipeline_is_timer_driven(p)) {
+		work_init(&p->pipe_work, pipeline_work, p, WORK_HIGH_PRI,
+			  WORK_ASYNC);
+	} else {
+		schedule_task_init(&p->pipe_task, pipeline_task, p);
+		schedule_task_config(&p->pipe_task, pipe_desc->priority,
+				     pipe_desc->core);
+	}
 
 	return p;
 }
@@ -452,8 +459,9 @@ static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 	if (err < 0 || err > 0)
 		return err;
 
-	pipeline_comp_trigger_sched_comp(current->pipeline, current,
-					 ppl_data->cmd);
+	if (!pipeline_is_timer_driven(current->pipeline))
+		pipeline_comp_trigger_sched_comp(current->pipeline, current,
+						 ppl_data->cmd);
 
 	return pipeline_for_each_comp(current, &pipeline_comp_trigger, data,
 				      NULL, dir);
@@ -515,13 +523,28 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	spin_lock_irq(&p->lock, flags);
 
+	if (pipeline_is_timer_driven(p) &&
+	    (cmd == COMP_TRIGGER_STOP || cmd == COMP_TRIGGER_PAUSE)) {
+		work_cancel_default(&p->pipe_work);
+		p->status = COMP_STATE_PAUSED;
+	}
+
 	ret = pipeline_comp_trigger(host, &data, host->params.direction);
 	if (ret < 0) {
 		trace_ipc_error("pipeline_trigger() error: ret = %d, host->"
 				"comp.id = %u, cmd = %d", ret, host->comp.id,
 				cmd);
+		goto out;
 	}
 
+	if (pipeline_is_timer_driven(p) &&
+	    (cmd == COMP_TRIGGER_START || cmd == COMP_TRIGGER_RELEASE)) {
+		work_schedule_default(&p->pipe_work, 0);
+		p->xrun_bytes = 0;
+		p->status = COMP_STATE_ACTIVE;
+	}
+
+out:
 	spin_unlock_irq(&p->lock, flags);
 	return ret;
 }
@@ -577,7 +600,9 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	}
 
 	/* copy to downstream immediately */
-	if (current != ppl_data->start && dir == PPL_DIR_DOWNSTREAM) {
+	if (dir == PPL_DIR_DOWNSTREAM &&
+	    (pipeline_is_timer_driven(current->pipeline) ||
+	     current != ppl_data->start)) {
 		err = comp_copy(current);
 		if (err < 0)
 			return err;
@@ -595,25 +620,29 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 }
 
 /* copy data from upstream source endpoints to downstream endpoints */
-static int pipeline_copy(struct comp_dev *dev)
+static int pipeline_copy(struct pipeline *p)
 {
 	struct pipeline_data data;
 	int ret = 0;
+	struct comp_dev *start = pipeline_is_timer_driven(p) ?
+		p->source_comp : p->sched_comp;
 
-	data.start = dev;
+	data.start = start;
 
-	ret = pipeline_comp_copy(dev, &data, PPL_DIR_UPSTREAM);
-	if (ret < 0) {
-		trace_ipc_error("pipeline_copy() error: ret = %d, dev->comp."
-				"id = %u, dir = %u", ret, dev->comp.id,
-				PPL_DIR_UPSTREAM);
-		return ret;
+	if (!pipeline_is_timer_driven(p)) {
+		ret = pipeline_comp_copy(start, &data, PPL_DIR_UPSTREAM);
+		if (ret < 0) {
+			trace_ipc_error("pipeline_copy() error: ret = %d, "
+					"start->comp.id = %u, dir = %u", ret,
+					start->comp.id, PPL_DIR_UPSTREAM);
+			return ret;
+		}
 	}
 
-	ret = pipeline_comp_copy(dev, &data, PPL_DIR_DOWNSTREAM);
+	ret = pipeline_comp_copy(start, &data, PPL_DIR_DOWNSTREAM);
 	if (ret < 0) {
-		trace_ipc_error("pipeline_copy() error: ret = %d, dev->comp."
-				"id = %u, dir = %u", ret, dev->comp.id,
+		trace_ipc_error("pipeline_copy() error: ret = %d, start->comp."
+				"id = %u, dir = %u", ret, start->comp.id,
 				PPL_DIR_DOWNSTREAM);
 		return ret;
 	}
@@ -752,14 +781,8 @@ static int pipeline_xrun_recover(struct pipeline *p)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
-	if (p->sched_comp->state == COMP_STATE_ACTIVE) {
-		/* timer driven pipeline should execute task synchronously */
-		if (p->ipc_pipe.timer_delay)
-			pipeline_copy(p->sched_comp);
-		else
-			schedule_task(&p->pipe_task, start,
-				      p->ipc_pipe.deadline);
-	}
+	if (p->sched_comp->state == COMP_STATE_ACTIVE)
+		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline);
 
 }
 
@@ -799,7 +822,7 @@ static void pipeline_task(void *arg)
 			goto sched;/* skip copy if still in xrun */
 	}
 
-	err = pipeline_copy(p->sched_comp);
+	err = pipeline_copy(p);
 	if (err < 0) {
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
@@ -811,4 +834,15 @@ static void pipeline_task(void *arg)
 
 sched:
 	tracev_pipe("pipeline_task() sched");
+}
+
+static uint64_t pipeline_work(void *data, uint64_t delay)
+{
+	struct pipeline *p = data;
+
+	tracev_pipe_with_ids(p, "pipeline_work()");
+
+	pipeline_task(data);
+
+	return p->ipc_pipe.timer_delay;
 }

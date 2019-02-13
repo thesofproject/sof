@@ -151,9 +151,6 @@ struct sof;
 /* minimal SSP port stop delay in cycles */
 #define PLATFORM_SSP_STOP_DELAY	4800
 
-/* timer driven scheduling start offset in microseconds */
-#define PLATFORM_TIMER_START_OFFSET	100
-
 /* Platform defined trace code */
 static inline void platform_panic(uint32_t p)
 {

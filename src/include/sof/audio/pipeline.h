@@ -105,6 +105,7 @@ struct pipeline {
 	/* scheduling */
 	enum ppl_sched_mode scheduling_mode;	/* pipeline scheduling mode */
 	struct task pipe_task;		/* pipeline processing task */
+	struct work pipe_work;		/* pipeline processing work */
 	struct comp_dev *sched_comp;	/* component that drives scheduling in this pipe */
 	struct comp_dev *source_comp;	/* source component for this pipe */
 
