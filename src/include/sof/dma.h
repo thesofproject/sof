@@ -121,7 +121,7 @@ struct dma_sg_config {
 	uint32_t src_dev;
 	uint32_t dest_dev;
 	uint32_t cyclic;			/* circular buffer */
-	uint32_t timer_delay;	/* non zero if timer scheduled */
+	bool timer;				/* timer scheduling */
 	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
 	bool scatter;
 };

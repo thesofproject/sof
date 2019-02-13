@@ -533,6 +533,7 @@ static int host_params(struct comp_dev *dev)
 	config->src_width = comp_sample_bytes(dev);
 	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 0;
+	config->timer = pipeline_is_timer_driven(dev->pipeline);
 
 #if defined CONFIG_DMA_GW
 	dev->params.stream_tag -= 1;

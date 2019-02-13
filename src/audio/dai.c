@@ -281,7 +281,7 @@ static int dai_playback_params(struct comp_dev *dev)
 	config->src_width = comp_sample_bytes(dev);
 	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 1;
-	config->timer_delay = dev->pipeline->ipc_pipe.timer_delay;
+	config->timer = pipeline_is_timer_driven(dev->pipeline);
 	config->dest_dev = dd->dai->plat_data.fifo[0].handshake;
 
 	/* set up local and host DMA elems to reset values */
@@ -332,7 +332,7 @@ static int dai_capture_params(struct comp_dev *dev)
 	/* set up DMA configuration */
 	config->direction = DMA_DIR_DEV_TO_MEM;
 	config->cyclic = 1;
-	config->timer_delay = dev->pipeline->ipc_pipe.timer_delay;
+	config->timer = pipeline_is_timer_driven(dev->pipeline);
 	config->src_dev = dd->dai->plat_data.fifo[1].handshake;
 
 	/* TODO: Make this code platform-specific or move it driver callback */

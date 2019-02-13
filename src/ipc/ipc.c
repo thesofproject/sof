@@ -286,6 +286,7 @@ int ipc_pipeline_new(struct ipc *ipc,
 	struct ipc_comp_dev *ipc_pipe;
 	struct pipeline *pipe;
 	struct ipc_comp_dev *icd;
+	struct comp_dev *dev = NULL;
 
 	/* check whether the pipeline already exists */
 	ipc_pipe = ipc_get_comp(ipc, pipe_desc->comp_id);
@@ -296,22 +297,28 @@ int ipc_pipeline_new(struct ipc *ipc,
 		return -EINVAL;
 	}
 
-	/* find the scheduling component */
-	icd = ipc_get_comp(ipc, pipe_desc->sched_id);
-	if (icd == NULL) {
-		trace_ipc_error("ipc_pipeline_new() error: cannot find the "
-				"scheduling component, pipe_desc->sched_id"
-				" = %u", pipe_desc->sched_id);
-		return -EINVAL;
-	}
-	if (icd->type != COMP_TYPE_COMPONENT) {
-		trace_ipc_error("ipc_pipeline_new() error: "
-				"icd->type != COMP_TYPE_COMPONENT");
-		return -EINVAL;
+	/* check scheduling mode */
+	if (!pipe_desc->timer_delay) {
+		/* find the scheduling component */
+		icd = ipc_get_comp(ipc, pipe_desc->sched_id);
+		if (!icd) {
+			trace_ipc_error("ipc_pipeline_new() error: cannot find the "
+					"scheduling component, pipe_desc->sched_id"
+					" = %u", pipe_desc->sched_id);
+			return -EINVAL;
+		}
+
+		if (icd->type != COMP_TYPE_COMPONENT) {
+			trace_ipc_error("ipc_pipeline_new() error: "
+					"icd->type != COMP_TYPE_COMPONENT");
+			return -EINVAL;
+		}
+
+		dev = icd->cd;
 	}
 
 	/* create the pipeline */
-	pipe = pipeline_new(pipe_desc, icd->cd);
+	pipe = pipeline_new(pipe_desc, dev);
 	if (pipe == NULL) {
 		trace_ipc_error("ipc_pipeline_new() error: "
 				"pipeline_new() failed");
@@ -522,7 +529,7 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
-	config.timer_delay = 0;
+	config.timer = 0;
 	dma_sg_init(&config.elem_array);
 
 	/* set up DMA descriptor */

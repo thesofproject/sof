@@ -82,6 +82,8 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 			     pipe_desc->core);
 	spinlock_init(&p->lock);
 	memcpy(&p->ipc_pipe, pipe_desc, sizeof(*pipe_desc));
+	p->scheduling_mode = pipe_desc->timer_delay ?
+		PPL_SCHED_TIMER_IRQ : PPL_SCHED_DMA_IRQ;
 
 	return p;
 }

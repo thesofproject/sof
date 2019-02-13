@@ -85,6 +85,12 @@ struct ipc;
 #define PPL_DIR_DOWNSTREAM	0
 #define PPL_DIR_UPSTREAM	1
 
+/* pipeline scheduling modes */
+enum ppl_sched_mode {
+	PPL_SCHED_DMA_IRQ = 0,
+	PPL_SCHED_TIMER_IRQ,
+};
+
 /*
  * Audio pipeline.
  */
@@ -97,6 +103,7 @@ struct pipeline {
 	uint32_t status;		/* pipeline status */
 
 	/* scheduling */
+	enum ppl_sched_mode scheduling_mode;	/* pipeline scheduling mode */
 	struct task pipe_task;		/* pipeline processing task */
 	struct comp_dev *sched_comp;	/* component that drives scheduling in this pipe */
 	struct comp_dev *source_comp;	/* source component for this pipe */
@@ -107,6 +114,12 @@ struct pipeline {
 
 /* static pipeline */
 extern struct pipeline *pipeline_static;
+
+/* checks if pipeline is scheduled with timer */
+static inline bool pipeline_is_timer_driven(struct pipeline *p)
+{
+	return p->scheduling_mode == PPL_SCHED_TIMER_IRQ;
+}
 
 /* pipeline creation and destruction */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,

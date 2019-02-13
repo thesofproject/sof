@@ -155,6 +155,7 @@ struct hda_chan_data {
 	uint32_t desc_count;
 	uint32_t desc_avail;
 	uint32_t direction;
+	bool timer;
 
 	uint32_t period_bytes;
 	uint32_t buffer_bytes;
@@ -841,6 +842,7 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
+	p->chan[channel].timer = config->timer;
 	p->chan[channel].desc_count = config->elem_array.count;
 
 	/* validate - HDA only supports continuous elems of same size  */
