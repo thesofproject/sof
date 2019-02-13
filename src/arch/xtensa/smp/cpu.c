@@ -40,6 +40,7 @@
 #include <arch/cpu.h>
 #include <arch/idc.h>
 #include <platform/platform.h>
+#include <sof/idc.h>
 #include <sof/lock.h>
 #include <sof/notifier.h>
 #include <sof/schedule.h>
