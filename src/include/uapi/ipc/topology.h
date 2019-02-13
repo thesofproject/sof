@@ -113,9 +113,11 @@ struct sof_ipc_comp_config {
 	uint32_t preload_count;	/**< how many periods to preload */
 	uint32_t frame_fmt;		/**< SOF_IPC_FRAME_ */
 	uint32_t xrun_action;
+	uint16_t flavour;
 
 	/* reserved for future use */
-	uint32_t reserved[2];
+	uint16_t reserved16;
+	uint32_t reserved32;
 } __attribute__((packed));
 
 /* generic host component */
