@@ -44,6 +44,7 @@
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/drivers/timer.h>
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <platform/idc.h>

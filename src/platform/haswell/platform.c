@@ -50,6 +50,7 @@
 #include <sof/io.h>
 #include <sof/dma-trace.h>
 #include <sof/audio/component.h>
+#include <sof/drivers/timer.h>
 #include <sof/cpu.h>
 #include <sof/notifier.h>
 #include <config.h>

@@ -43,6 +43,7 @@
 #include <platform/timer.h>
 #include <platform/clk.h>
 #include <sof/audio/component.h>
+#include <sof/drivers/timer.h>
 #include <sof/task.h>
 
 struct schedule_data {

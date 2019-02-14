@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <sof/clk.h>
 #include <sof/sof.h>
 #include <sof/lock.h>
 #include <sof/list.h>
@@ -45,10 +46,12 @@
 #include <sof/pm_runtime.h>
 #include <sof/wait.h>
 #include <sof/audio/format.h>
+#include <sof/drivers/timer.h>
 #include <sof/math/numbers.h>
 #include <platform/dma.h>
 #include <platform/platform.h>
 #include <arch/cache.h>
+#include <arch/wait.h>
 #include <uapi/ipc/topology.h>
 
 #define trace_hddma(__e, ...) \

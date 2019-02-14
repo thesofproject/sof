@@ -56,6 +56,7 @@
 #include <platform/idc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/drivers/timer.h>
 #include <uapi/ipc/header.h>
 #include <uapi/ipc/pm.h>
 #include <uapi/ipc/stream.h>
