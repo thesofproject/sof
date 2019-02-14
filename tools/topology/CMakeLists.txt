@@ -36,6 +36,7 @@ set(MACHINES
 	sof-icl-dmic-4ch
 	sof-apl-src-pcm512x
 	sof-cml-rt5682
+	sof-whl-rt5682
 	sof-cml-src-rt5682
 	sof-cnl-nocodec
 )
