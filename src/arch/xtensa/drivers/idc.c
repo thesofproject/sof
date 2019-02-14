@@ -374,7 +374,7 @@ void idc_free(void)
 
 	/* disable and unregister interrupt */
 	interrupt_disable(PLATFORM_IDC_INTERRUPT(core));
-	interrupt_unregister(PLATFORM_IDC_INTERRUPT(core));
+	interrupt_unregister(PLATFORM_IDC_INTERRUPT(core), idc);
 
 	/* clear BUSY bits */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {

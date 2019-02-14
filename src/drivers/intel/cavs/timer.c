@@ -102,6 +102,8 @@ static int platform_timer_register(struct timer *timer,
 	if (err < 0)
 		return err;
 
+	timer->irq_arg = arg;
+
 	/* enable timer interrupt */
 	interrupt_enable(timer->irq);
 
@@ -113,11 +115,22 @@ static int platform_timer_register(struct timer *timer,
 
 int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
+	int ret;
+
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		return arch_timer_register(timer, handler, arg);
+		ret = arch_timer_register(timer, handler, arg);
+		/*
+		 * Actually this isn't needed for arch_interrupt_register(),
+		 * since arch_interrupt_unregister() doesn't support interrupt
+		 * sharing and thus doesn't need the handler argument to locate
+		 * the handler, do it just for uniformity
+		 */
+		if (!ret)
+			timer->irq_arg = arg;
+		return ret;
 	case TIMER3:
 		return platform_timer_register(timer, handler, arg);
 	default:
@@ -131,7 +144,7 @@ static void platform_timer_unregister(struct timer *timer)
 	interrupt_disable(timer->irq);
 
 	/* unregister timer interrupt */
-	interrupt_unregister(timer->irq);
+	interrupt_unregister(timer->irq, timer->irq_arg);
 }
 
 void timer_unregister(struct timer *timer)
@@ -140,7 +153,7 @@ void timer_unregister(struct timer *timer)
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_unregister(timer->irq);
+		interrupt_unregister(timer->irq, timer->irq_arg);
 		break;
 	case TIMER3:
 		platform_timer_unregister(timer);

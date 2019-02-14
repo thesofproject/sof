@@ -56,7 +56,7 @@ struct irq_cascade_desc {
 
 int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
 		       void *arg);
-void interrupt_unregister(uint32_t irq);
+void interrupt_unregister(uint32_t irq, const void *arg);
 uint32_t interrupt_enable(uint32_t irq);
 uint32_t interrupt_disable(uint32_t irq);
 
