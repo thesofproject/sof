@@ -35,6 +35,7 @@
 #define __PLATFORM_PLATFORM_H__
 
 #include <sof/platform.h>
+#include <platform/clk.h>
 #include <platform/platcfg.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>

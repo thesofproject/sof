@@ -13,4 +13,5 @@ add_local_sources(sof
 	dma.c
 	dai.c
 	panic.c
+	wait.c
 )
