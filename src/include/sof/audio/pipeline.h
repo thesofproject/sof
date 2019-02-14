@@ -108,6 +108,13 @@ struct pipeline {
 /* static pipeline */
 extern struct pipeline *pipeline_static;
 
+/* checks if two pipelines have the same scheduling component */
+static inline bool pipeline_is_same_sched_comp(struct pipeline *current,
+					       struct pipeline *previous)
+{
+	return current->sched_comp == previous->sched_comp;
+}
+
 /* pipeline creation and destruction */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct comp_dev *cd);
