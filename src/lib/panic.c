@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2018, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,58 +28,70 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_WAIT_H_
-#define __ARCH_WAIT_H_
-
-#include <xtensa/xtruntime.h>
-#include <arch/interrupt.h>
+#include <sof/alloc.h>
+#include <sof/interrupt.h>
+#include <sof/mailbox.h>
 #include <sof/panic.h>
+#include <sof/sof.h>
+#include <sof/trace.h>
+
+#include <platform/platform.h>
 
 #include <uapi/ipc/trace.h>
 
-#if defined(PLATFORM_WAITI_DELAY)
+#include <stdint.h>
+#include <stdlib.h>
 
-static inline void arch_wait_for_interrupt(int level)
+void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 {
-	int i;
-
-	/* can only eneter WFI when at runlevel 0 i.e. not IRQ level */
-	if (arch_interrupt_get_level() > 0)
-		panic(SOF_IPC_PANIC_WFI);
-
-	/* this sequnce must be atomic on LX6 */
-	XTOS_SET_INTLEVEL(5);
-
-	/* LX6 needs a delay */
-	for (i = 0; i < 128; i++)
-		asm volatile("nop");
-
-	/* and to flush all loads/stores prior to wait */
-	asm volatile("isync");
-	asm volatile("extw");
-
-	/* now wait */
-	asm volatile("waiti 0");
+	if (!panic_info)
+		return;
+	rmemcpy(addr, panic_info, sizeof(struct sof_ipc_panic_info));
+	dcache_writeback_region(addr, sizeof(struct sof_ipc_panic_info));
 }
 
-#else
-
-static inline void arch_wait_for_interrupt(int level)
+/* panic and rewind stack */
+void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
+		  struct sof_ipc_panic_info *panic_info)
 {
-	/* can only eneter WFI when at runlevel 0 i.e. not IRQ level */
-	if (arch_interrupt_get_level() > 0)
-		panic(SOF_IPC_PANIC_WFI);
+	void *ext_offset;
+	size_t count;
+	uint32_t oldps;
 
-	asm volatile("waiti 0");
+	/* disable all IRQs */
+	oldps = interrupt_global_disable();
+
+	/* dump DSP core registers */
+	ext_offset = arch_dump_regs(oldps);
+
+	/* dump panic info, filename ane linenum */
+	dump_panicinfo(ext_offset, panic_info);
+	ext_offset += sizeof(struct sof_ipc_panic_info);
+
+	count = MAILBOX_EXCEPTION_SIZE -
+		(size_t)(ext_offset - mailbox_get_exception_base());
+	/* dump stack frames */
+	p = dump_stack(p, ext_offset, stack_rewind_frames, count);
+
+	/* panic - send IPC oops message to host */
+	platform_panic(p);
+
+	/* flush last trace messages */
+	trace_flush();
+
+	/* and loop forever */
+	while (1)
+		;
 }
 
-#endif
-
-static inline void idelay(int n)
+void __panic(uint32_t p, char *filename, uint32_t linenum)
 {
-	while (n--) {
-		asm volatile("nop");
-	}
-}
+	struct sof_ipc_panic_info panicinfo;
+	int strlen;
 
-#endif
+	strlen = rstrlen(filename);
+	panicinfo.linenum = linenum;
+	rmemcpy(panicinfo.filename, filename, strlen + 1);
+
+	panic_rewind(p, 0, &panicinfo);
+}
