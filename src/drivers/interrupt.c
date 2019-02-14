@@ -11,6 +11,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>
@@ -22,6 +23,7 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 	int ret = 0;
 	struct irq_desc *child;
 	struct irq_cascade_desc *cascade;
+	struct list_item *list;
 
 	if (parent == NULL)
 		return -EINVAL;
@@ -29,6 +31,18 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 	cascade = container_of(parent, struct irq_cascade_desc, desc);
 
 	spin_lock(&cascade->lock);
+
+	list_for_item(list, &cascade->child[SOF_IRQ_BIT(irq)]) {
+		child = container_of(list, struct irq_desc, irq_list);
+
+		if (child->handler_arg == arg) {
+			trace_error(TRACE_CLASS_IRQ,
+				    "error: IRQ 0x%x handler argument re-used!",
+				    irq);
+			ret = -EINVAL;
+			goto finish;
+		}
+	}
 
 	/* init child from run-time, may be registered and unregistered
 	 * many times at run-time
@@ -62,7 +76,8 @@ finish:
 	return ret;
 }
 
-static void irq_unregister_child(struct irq_desc *parent, int irq)
+static void irq_unregister_child(struct irq_desc *parent, int irq,
+				 const void *arg)
 {
 	struct irq_desc *child;
 	struct list_item *clist;
@@ -80,6 +95,10 @@ static void irq_unregister_child(struct irq_desc *parent, int irq)
 		child = container_of(clist, struct irq_desc, irq_list);
 
 		if (SOF_IRQ_ID(irq) == child->id) {
+			if (child->handler_arg != arg)
+				trace_error(TRACE_CLASS_IRQ,
+					    "error: IRQ 0x%x handler argument mismatch!",
+					    irq);
 			list_item_del(&child->irq_list);
 			cascade->num_children--;
 			rfree(child);
@@ -170,7 +189,7 @@ int interrupt_register(uint32_t irq, int unmask, void (*handler)(void *arg),
 		return irq_register_child(parent, irq, unmask, handler, arg);
 }
 
-void interrupt_unregister(uint32_t irq)
+void interrupt_unregister(uint32_t irq, const void *arg)
 {
 	struct irq_desc *parent;
 
@@ -179,7 +198,7 @@ void interrupt_unregister(uint32_t irq)
 	if (parent == NULL)
 		arch_interrupt_unregister(irq);
 	else
-		irq_unregister_child(parent, irq);
+		irq_unregister_child(parent, irq, arg);
 }
 
 uint32_t interrupt_enable(uint32_t irq)

@@ -429,7 +429,7 @@ static int edf_scheduler_init(void)
 
 	/* configure scheduler interrupt */
 	interrupt_register(PLATFORM_SCHEDULE_IRQ, IRQ_AUTO_UNMASK,
-			   edf_scheduler_run, NULL);
+			   edf_scheduler_run, sch);
 	interrupt_enable(PLATFORM_SCHEDULE_IRQ);
 
 	/* allocate arch tasks */
@@ -449,7 +449,7 @@ static void edf_scheduler_free(void)
 
 	/* disable and unregister scheduler interrupt */
 	interrupt_disable(PLATFORM_SCHEDULE_IRQ);
-	interrupt_unregister(PLATFORM_SCHEDULE_IRQ);
+	interrupt_unregister(PLATFORM_SCHEDULE_IRQ, sch);
 
 	/* free arch tasks */
 	arch_free_tasks();

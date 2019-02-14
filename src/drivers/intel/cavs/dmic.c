@@ -1552,7 +1552,7 @@ static int dmic_remove(struct dai *dai)
 
 	interrupt_disable(dmic_irq(dai));
 	platform_interrupt_mask(dmic_irq(dai), 0);
-	interrupt_unregister(dmic_irq(dai));
+	interrupt_unregister(dmic_irq(dai), dai);
 
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
 	/* Disable DMIC power */

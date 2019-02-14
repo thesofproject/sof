@@ -16,6 +16,7 @@
 struct timer {
 	uint32_t id;
 	uint32_t irq;
+	void *irq_arg;
 	void *timer_data;	/* used by core */
 	uint32_t hitime;	/* high end of 64bit timer */
 	uint32_t hitimeout;
