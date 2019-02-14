@@ -12,4 +12,5 @@ add_local_sources(sof
 	clk.c
 	dma.c
 	dai.c
+	panic.c
 )
