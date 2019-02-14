@@ -33,6 +33,7 @@
 
 #include <platform/pmc.h>
 #include <sof/io.h>
+#include <platform/shim.h>
 
 #define CLK_CPU(x)	(x)
 #define CLK_SSP		1

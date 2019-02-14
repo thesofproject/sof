@@ -38,6 +38,7 @@
 #include <sof/dma-trace.h>
 #include <sof/cpu.h>
 #include <sof/preproc.h>
+#include <sof/drivers/timer.h>
 #include <stdint.h>
 
 struct trace {

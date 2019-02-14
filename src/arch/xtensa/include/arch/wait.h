@@ -28,10 +28,14 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifndef __ARCH_WAIT_H_
+#define __ARCH_WAIT_H_
+
 #include <xtensa/xtruntime.h>
 #include <arch/interrupt.h>
 #include <sof/panic.h>
 
+#include <uapi/ipc/trace.h>
 
 #if defined(PLATFORM_WAITI_DELAY)
 
@@ -78,3 +82,4 @@ static inline void idelay(int n)
 	}
 }
 
+#endif

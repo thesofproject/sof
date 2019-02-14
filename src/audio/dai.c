@@ -46,6 +46,8 @@
 #include <platform/dma.h>
 #include <arch/cache.h>
 
+#include <sof/drivers/timer.h>
+
 #define DAI_PTR_INIT_DAI	1	/* buffer ptr initialized by dai */
 #define DAI_PTR_INIT_HOST	2	/* buffer ptr initialized by host */
 

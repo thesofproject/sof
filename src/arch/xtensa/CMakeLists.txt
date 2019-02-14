@@ -139,7 +139,7 @@ else()
 	)
 endif()
 
-add_local_sources(sof timer.c)
+add_local_sources(sof task.c timer.c)
 
 if(CONFIG_GDB_DEBUG)
 	add_subdirectory(gdb)
