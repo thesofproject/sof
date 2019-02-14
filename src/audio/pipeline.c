@@ -562,15 +562,23 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 {
 	struct pipeline_data *ppl_data = data;
+	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
+	int is_same_sched =
+		pipeline_is_same_sched_comp(current->pipeline,
+					    ppl_data->start->pipeline);
 	int err = 0;
 
 	tracev_pipe("pipeline_comp_copy(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
 
-	if (!comp_is_single_pipeline(current, ppl_data->start) ||
-	    !comp_is_active(current)) {
-		tracev_pipe("pipeline_comp_copy(), current is from "
-			    "another pipeline or not active");
+	if (!is_single_ppl && !is_same_sched) {
+		tracev_pipe("pipeline_comp_copy(), current is from another "
+			    "pipeline and can't be scheduled together");
+		return err;
+	}
+
+	if (!comp_is_active(current)) {
+		tracev_pipe("pipeline_comp_copy(), current is not active");
 		return err;
 	}
 
