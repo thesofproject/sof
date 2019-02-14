@@ -216,7 +216,7 @@ void arch_free_tasks(void)
 
 	spin_lock_irq(&(*low)->lock, flags);
 	interrupt_disable(PLATFORM_IRQ_TASK_LOW);
-	interrupt_unregister(PLATFORM_IRQ_TASK_LOW);
+	interrupt_unregister(PLATFORM_IRQ_TASK_LOW, task_irq_low_get());
 	list_item_del(&(*low)->list);
 	spin_unlock_irq(&(*low)->lock, flags);
 #endif
@@ -227,7 +227,7 @@ void arch_free_tasks(void)
 
 	spin_lock_irq(&(*med)->lock, flags);
 	interrupt_disable(PLATFORM_IRQ_TASK_MED);
-	interrupt_unregister(PLATFORM_IRQ_TASK_MED);
+	interrupt_unregister(PLATFORM_IRQ_TASK_MED, task_irq_med_get());
 	list_item_del(&(*med)->list);
 	spin_unlock_irq(&(*med)->lock, flags);
 #endif
@@ -237,7 +237,7 @@ void arch_free_tasks(void)
 
 	spin_lock_irq(&(*high)->lock, flags);
 	interrupt_disable(PLATFORM_IRQ_TASK_HIGH);
-	interrupt_unregister(PLATFORM_IRQ_TASK_HIGH);
+	interrupt_unregister(PLATFORM_IRQ_TASK_HIGH, task_irq_high_get());
 	list_item_del(&(*high)->list);
 	spin_unlock_irq(&(*high)->lock, flags);
 }
