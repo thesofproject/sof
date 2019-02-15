@@ -143,7 +143,7 @@ xtos_exc_handler_table_r:
 	.rept	XCHAL_EXCCAUSE_NUM-40
 	.word	xtos_unhandled_exception	//40-63 (reserved for TIE)
 	.endr
-	.data
+	.section .bss
 	.global	xtos_exc_handler_table
 	.align 4
 xtos_exc_handler_table:
