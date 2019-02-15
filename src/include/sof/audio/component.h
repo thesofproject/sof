@@ -214,7 +214,7 @@ struct comp_driver {
 	struct comp_ops ops;	/**< component operations */
 
 	struct list_item list;	/**< list of component drivers */
-};	
+};
 
 /**
  * Audio component base device "class"
@@ -390,9 +390,9 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 {
 	struct sof_ipc_ctrl_data *cdata = data;
 
-	if ((cmd == COMP_CMD_SET_DATA)
-		&& ((cdata->data->magic != SOF_ABI_MAGIC)
-		|| (cdata->data->abi != SOF_ABI_VERSION))) {
+	if (cmd == COMP_CMD_SET_DATA &&
+	    (cdata->data->magic != SOF_ABI_MAGIC ||
+	     SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi))) {
 		trace_comp_error("comp_cmd() error: invalid version, "
 				 "data->magic = %u, data->abi = %u",
 				 cdata->data->magic, cdata->data->abi);

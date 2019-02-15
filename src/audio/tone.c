@@ -538,12 +538,6 @@ static int tone_cmd_set_data(struct comp_dev *dev,
 
 	trace_tone("tone_cmd_set_data()");
 
-	/* Check version from ABI header */
-	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		trace_tone_error("tone_cmd_set_data() error: invalid version");
-		return -EINVAL;
-	}
-
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
 		trace_tone("tone_cmd_set_data(), "
