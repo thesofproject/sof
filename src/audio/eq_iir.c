@@ -611,12 +611,6 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 	int i;
 	int ret = 0;
 
-	/* Check version from ABI header */
-	if (SOF_ABI_VERSION_INCOMPATIBLE(SOF_ABI_VERSION, cdata->data->abi)) {
-		trace_eq_error("iir_cmd_set_data() error: invalid version");
-		return -EINVAL;
-	}
-
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_ENUM:
 		trace_eq("iir_cmd_set_data(), SOF_CTRL_CMD_ENUM");
