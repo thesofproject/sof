@@ -60,7 +60,6 @@ uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
 int arch_init(struct sof *sof)
 {
 	register_exceptions();
-	arch_assign_tasks();
 	return 0;
 }
 

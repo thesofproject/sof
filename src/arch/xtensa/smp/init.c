@@ -101,7 +101,6 @@ int arch_init(struct sof *sof)
 {
 	initialize_pointers_per_core();
 	register_exceptions();
-	arch_assign_tasks();
 	return 0;
 }
 

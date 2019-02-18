@@ -85,9 +85,4 @@ int arch_allocate_tasks(void);
  */
 void arch_free_tasks(void);
 
-/**
- * \brief Assigns IRQ tasks to interrupts.
- */
-int arch_assign_tasks(void);
-
 #endif
