@@ -301,7 +301,8 @@ struct dma_pdata {
 
 static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel);
 static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
-					   struct dma_sg_elem *next);
+					   struct dma_sg_elem *next,
+					   int direction);
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel);
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel);
 static uint64_t dw_dma_work(void *data, uint64_t delay);
@@ -668,6 +669,36 @@ static int dw_dma_status(struct dma *dma, int channel,
 	return 0;
 }
 
+/* mask address for dma to identify memory space.
+ * It is requested by BYT, HSW, BDW. For other
+ * platforms, the mask is zero.
+ */
+static void dw_dma_mask_address(struct dma_sg_elem *sg_elem,
+				uint32_t *sar,
+				uint32_t *dar,
+				uint32_t direction)
+{
+	*sar = sg_elem->src;
+	*dar = sg_elem->dest;
+
+	switch (direction) {
+	case DMA_DIR_LMEM_TO_HMEM:
+	case DMA_DIR_MEM_TO_DEV:
+		*sar |= PLATFORM_HOST_DMA_MASK;
+		break;
+	case DMA_DIR_HMEM_TO_LMEM:
+	case DMA_DIR_DEV_TO_MEM:
+		*dar |= PLATFORM_HOST_DMA_MASK;
+		break;
+	case DMA_DIR_MEM_TO_MEM:
+		*sar |= PLATFORM_HOST_DMA_MASK;
+		*dar |= PLATFORM_HOST_DMA_MASK;
+		break;
+	default:
+		break;
+	}
+}
+
 /*
  * use array to get burst_elems for specific slot number setting.
  * the relation between msize and burst_elems should be
@@ -836,9 +867,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
-			lli_desc->sar =
-				(uint32_t)sg_elem->src | PLATFORM_HOST_DMA_MASK;
-			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		case DMA_DIR_HMEM_TO_LMEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M | DW_CTLL_SRC_INC |
@@ -847,10 +875,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
-			lli_desc->dar =
-				(uint32_t)sg_elem->dest
-				| PLATFORM_HOST_DMA_MASK;
-			lli_desc->sar = (uint32_t)sg_elem->src;
 			break;
 		case DMA_DIR_MEM_TO_MEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M | DW_CTLL_SRC_INC |
@@ -859,10 +883,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
-			lli_desc->sar = (uint32_t)sg_elem->src
-					| PLATFORM_HOST_DMA_MASK;
-			lli_desc->dar = (uint32_t)sg_elem->dest
-					| PLATFORM_HOST_DMA_MASK;
 			break;
 		case DMA_DIR_MEM_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2P | DW_CTLL_SRC_INC |
@@ -872,9 +892,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			chan->cfg_lo |= DW_CFG_RELOAD_DST;
 #endif
 			chan->cfg_hi |= DW_CFGH_DST_PER(config->dest_dev);
-			lli_desc->sar = (uint32_t)sg_elem->src
-					| PLATFORM_HOST_DMA_MASK;
-			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		case DMA_DIR_DEV_TO_MEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2M | DW_CTLL_SRC_FIX |
@@ -891,9 +908,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			chan->cfg_lo |= DW_CFG_RELOAD_SRC;
 #endif
 			chan->cfg_hi |= DW_CFGH_SRC_PER(config->src_dev);
-			lli_desc->sar = (uint32_t)sg_elem->src;
-			lli_desc->dar = (uint32_t)sg_elem->dest
-					| PLATFORM_HOST_DMA_MASK;
 			break;
 		case DMA_DIR_DEV_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2P | DW_CTLL_SRC_FIX |
@@ -904,8 +918,6 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 #endif
 			chan->cfg_hi |= DW_CFGH_SRC_PER(config->src_dev) |
 				DW_CFGH_DST_PER(config->dest_dev);
-			lli_desc->sar = (uint32_t)sg_elem->src;
-			lli_desc->dar = (uint32_t)sg_elem->dest;
 			break;
 		default:
 			trace_dwdma_error("dw-dma: %d channel %d invalid direction %d",
@@ -914,6 +926,9 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 			ret = -EINVAL;
 			goto out;
 		}
+
+		dw_dma_mask_address(sg_elem, &lli_desc->sar, &lli_desc->dar,
+				    config->direction);
 
 		if (sg_elem->size > DW_CTLH_BLOCK_TS_MASK) {
 			trace_dwdma_error("dw-dma: %d channel %d block size too big %d",
@@ -1040,15 +1055,19 @@ static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel)
 
 /* reload using callback data */
 static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
-					   struct dma_sg_elem *next)
+					   struct dma_sg_elem *next,
+					   int direction)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_chan_data *chan = p->chan + channel;
 	struct dw_lli2 *lli = chan->lli_current;
+	uint32_t sar, dar;
+
+	dw_dma_mask_address(next, &sar, &dar, direction);
 
 	/* channel needs started from scratch, so write SARn, DARn */
-	dw_write(dma, DW_SAR(channel), next->src);
-	dw_write(dma, DW_DAR(channel), next->dest);
+	dw_write(dma, DW_SAR(channel), sar);
+	dw_write(dma, DW_DAR(channel), dar);
 
 	/* set transfer size of element */
 #if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL \
@@ -1296,7 +1315,8 @@ static void dw_dma_process_transfer(struct dma_chan_data *chan,
 		dw_dma_chan_reload_lli(chan->id.dma, chan->id.channel);
 		break;
 	default:
-		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next);
+		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next
+						, chan->direction);
 		break;
 	}
 }
