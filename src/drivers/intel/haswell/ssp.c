@@ -337,7 +337,9 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	sspsp |= SSPSP_DMYSTRT(start_delay);
+	if (start_delay)
+		sspsp |= SSPSP_FSRT;
+
 	sspsp |= SSPSP_SFRMWDTH(frame_len);
 
 	data_size = config->ssp.sample_valid_bits;
@@ -347,7 +349,7 @@ static inline int ssp_set_config(struct dai *dai,
 	else
 		sscr0 |= SSCR0_DSIZE(data_size);
 
-	sscr1 |= SSCR1_TFT(0x7) | SSCR1_RFT(0x7);
+	sscr1 |= SSCR1_TFT(0x8) | SSCR1_RFT(0x8);
 
 	ssp_write(dai, SSCR0, sscr0);
 	ssp_write(dai, SSCR1, sscr1);
