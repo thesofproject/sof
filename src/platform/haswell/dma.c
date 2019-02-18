@@ -109,6 +109,7 @@ static struct dw_drv_plat_data dmac1 = {
 struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
+		.id		= DMA_ID_DMAC0,
 		.base		= DMA0_BASE,
 		.dir		= DMA_DIR_MEM_TO_MEM,
 		.caps		= DMA_CAP_GP_HP | DMA_CAP_GP_LP,
@@ -121,6 +122,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 },
 {
 	.plat_data = {
+		.id		= DMA_ID_DMAC1,
 		.base		= DMA1_BASE,
 		.dir		= DMA_DIR_MEM_TO_MEM | DMA_DIR_MEM_TO_DEV |
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV |
