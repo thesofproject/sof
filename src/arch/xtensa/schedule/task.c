@@ -48,29 +48,32 @@ struct irq_task **task_irq_high_get(void)
 	return &ctx->irq_high_task;
 }
 
-/**
- * \brief Retrieves task IRQ level.
- * \param[in,out] task Task data.
- * \return IRQ level.
- */
-static uint32_t task_get_irq(struct task *task)
+static struct irq_task *task_get_irq_task(struct task *task)
 {
-	uint32_t irq;
-
 	switch (task->priority) {
+#ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
 	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_LOW:
-		irq = PLATFORM_IRQ_TASK_LOW;
-		break;
+		return *task_irq_low_get();
 	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
-		irq = PLATFORM_IRQ_TASK_HIGH;
-		break;
+		return *task_irq_high_get();
 	case SOF_TASK_PRI_MED:
+		return *task_irq_med_get();
+#elif CONFIG_TASK_HAVE_PRIORITY_LOW
+	case  SOF_TASK_PRI_MED ... SOF_TASK_PRI_LOW:
+		return *task_irq_low_get();
+	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
+		return *task_irq_high_get();
+#else
+	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_LOW:
+		return *task_irq_high_get();
+#endif
 	default:
-		irq = PLATFORM_IRQ_TASK_MED;
-		break;
+		trace_error(TRACE_CLASS_IRQ,
+			    "task_get_irq_task() error: task priority %d",
+			    task->priority);
 	}
 
-	return irq;
+	return NULL;
 }
 
 /**
@@ -79,39 +82,12 @@ static uint32_t task_get_irq(struct task *task)
  */
 static int task_set_data(struct task *task)
 {
-	struct list_item *dst = NULL;
-	struct irq_task *irq_task;
-	uint32_t flags;
+	struct irq_task *irq_task = task_get_irq_task(task);
+	struct list_item *dst;
+	unsigned long flags;
 
-	switch (task->priority) {
-#if CONFIG_TASK_HAVE_PRIORITY_MEDIUM
-	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_LOW:
-		irq_task = *task_irq_low_get();
-		break;
-	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
-		irq_task = *task_irq_high_get();
-		break;
-	case SOF_TASK_PRI_MED:
-		irq_task = *task_irq_med_get();
-		break;
-#elif CONFIG_TASK_HAVE_PRIORITY_LOW
-	case  SOF_TASK_PRI_MED ... SOF_TASK_PRI_LOW:
-		irq_task = *task_irq_low_get();
-		break;
-	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
-		irq_task = *task_irq_high_get();
-		break;
-#else
-	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_LOW:
-		irq_task = *task_irq_high_get();
-		break;
-#endif
-	default:
-		trace_error(TRACE_CLASS_IRQ,
-			    "task_set_data() error: task priority %d",
-			    task->priority);
+	if (!irq_task)
 		return -EINVAL;
-	}
 
 	dst = &irq_task->list;
 	spin_lock_irq(&irq_task->lock, flags);
@@ -165,22 +141,26 @@ static void _irq_task(void *arg)
 
 int arch_run_task(struct task *task)
 {
-	uint32_t irq;
+	struct irq_task *irq_task = task_get_irq_task(task);
 	int ret;
+
+	if (!irq_task)
+		return -EINVAL;
 
 	ret = task_set_data(task);
 
 	if (ret < 0)
 		return ret;
 
-	irq = task_get_irq(task);
-	interrupt_set(irq);
+	interrupt_set(irq_task->irq);
 
 	return 0;
 }
 
 int arch_allocate_tasks(void)
 {
+	int ret;
+
 #if CONFIG_TASK_HAVE_PRIORITY_LOW
 	/* irq low */
 	struct irq_task **low = task_irq_low_get();
@@ -189,6 +169,12 @@ int arch_allocate_tasks(void)
 	list_init(&((*low)->list));
 	spinlock_init(&((*low)->lock));
 	(*low)->irq = PLATFORM_IRQ_TASK_LOW;
+
+	ret = interrupt_register((*low)->irq, IRQ_AUTO_UNMASK, _irq_task,
+				 task_irq_low_get());
+	if (ret < 0)
+		return ret;
+	interrupt_enable((*low)->irq);
 #endif
 
 #if CONFIG_TASK_HAVE_PRIORITY_MEDIUM
@@ -199,6 +185,12 @@ int arch_allocate_tasks(void)
 	list_init(&((*med)->list));
 	spinlock_init(&((*med)->lock));
 	(*med)->irq = PLATFORM_IRQ_TASK_MED;
+
+	ret = interrupt_register((*med)->irq, IRQ_AUTO_UNMASK, _irq_task,
+				 task_irq_med_get());
+	if (ret < 0)
+		return ret;
+	interrupt_enable((*med)->irq);
 #endif
 
 	/* irq high */
@@ -208,6 +200,12 @@ int arch_allocate_tasks(void)
 	list_init(&((*high)->list));
 	spinlock_init(&((*high)->lock));
 	(*high)->irq = PLATFORM_IRQ_TASK_HIGH;
+
+	ret = interrupt_register((*high)->irq, IRQ_AUTO_UNMASK, _irq_task,
+				 task_irq_high_get());
+	if (ret < 0)
+		return ret;
+	interrupt_enable((*high)->irq);
 
 	return 0;
 }
@@ -222,8 +220,8 @@ void arch_free_tasks(void)
 	struct irq_task **low = task_irq_low_get();
 
 	spin_lock_irq(&(*low)->lock, flags);
-	interrupt_disable(PLATFORM_IRQ_TASK_LOW);
-	interrupt_unregister(PLATFORM_IRQ_TASK_LOW, task_irq_low_get());
+	interrupt_disable((*low)->irq);
+	interrupt_unregister((*low)->irq, task_irq_low_get());
 	list_item_del(&(*low)->list);
 	spin_unlock_irq(&(*low)->lock, flags);
 #endif
@@ -233,8 +231,8 @@ void arch_free_tasks(void)
 	struct irq_task **med = task_irq_med_get();
 
 	spin_lock_irq(&(*med)->lock, flags);
-	interrupt_disable(PLATFORM_IRQ_TASK_MED);
-	interrupt_unregister(PLATFORM_IRQ_TASK_MED, task_irq_med_get());
+	interrupt_disable((*med)->irq);
+	interrupt_unregister((*med)->irq, task_irq_med_get());
 	list_item_del(&(*med)->list);
 	spin_unlock_irq(&(*med)->lock, flags);
 #endif
@@ -243,32 +241,8 @@ void arch_free_tasks(void)
 	struct irq_task **high = task_irq_high_get();
 
 	spin_lock_irq(&(*high)->lock, flags);
-	interrupt_disable(PLATFORM_IRQ_TASK_HIGH);
-	interrupt_unregister(PLATFORM_IRQ_TASK_HIGH, task_irq_high_get());
+	interrupt_disable((*high)->irq);
+	interrupt_unregister((*high)->irq, task_irq_high_get());
 	list_item_del(&(*high)->list);
 	spin_unlock_irq(&(*high)->lock, flags);
-}
-
-int arch_assign_tasks(void)
-{
-#if CONFIG_TASK_HAVE_PRIORITY_LOW
-	/* irq low */
-	interrupt_register(PLATFORM_IRQ_TASK_LOW, IRQ_AUTO_UNMASK, _irq_task,
-			   task_irq_low_get());
-	interrupt_enable(PLATFORM_IRQ_TASK_LOW);
-#endif
-
-#if CONFIG_TASK_HAVE_PRIORITY_MEDIUM
-	/* irq medium */
-	interrupt_register(PLATFORM_IRQ_TASK_MED, IRQ_AUTO_UNMASK, _irq_task,
-			   task_irq_med_get());
-	interrupt_enable(PLATFORM_IRQ_TASK_MED);
-#endif
-
-	/* irq high */
-	interrupt_register(PLATFORM_IRQ_TASK_HIGH, IRQ_AUTO_UNMASK, _irq_task,
-			   task_irq_high_get());
-	interrupt_enable(PLATFORM_IRQ_TASK_HIGH);
-
-	return 0;
 }
