@@ -52,40 +52,40 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
 		shim_write(SHIM_PISR, mask << 3);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	case IRQ_NUM_EXT_SSP1:
 		shim_write(SHIM_PISR, mask << 4);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	case IRQ_NUM_EXT_SSP2:
 		shim_write(SHIM_PISR, mask << 5);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	case IRQ_NUM_EXT_DMAC0:
 		shim_write(SHIM_PISR, mask << 16);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	case IRQ_NUM_EXT_DMAC1:
 		shim_write(SHIM_PISR, mask << 24);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 #if defined CONFIG_CHERRYTRAIL
 	case IRQ_NUM_EXT_DMAC2:
 		shim_write(SHIM_PISRH, mask << 0);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	case IRQ_NUM_EXT_SSP3:
 		shim_write(SHIM_PISRH, mask << 8);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	case IRQ_NUM_EXT_SSP4:
 		shim_write(SHIM_PISRH, mask << 9);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	case IRQ_NUM_EXT_SSP5:
 		shim_write(SHIM_PISRH, mask << 10);
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 #endif
 	default:

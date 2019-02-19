@@ -55,7 +55,7 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 	case IRQ_NUM_EXT_DMAC1:
 	case IRQ_NUM_EXT_SSP0:
 	case IRQ_NUM_EXT_SSP1:
-		interrupt_clear(irq);
+		arch_interrupt_clear(irq);
 		break;
 	default:
 		break;
