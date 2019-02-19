@@ -1499,9 +1499,6 @@ static void dmic_irq_handler(void *data)
 	if (val1 & OUTSTAT1_ROR_BIT)
 		trace_dmic_error("dmic_irq_handler() error: "
 				 "full fifo B or PDM overrrun");
-
-	/* clear IRQ */
-	platform_interrupt_clear(dmic_irq(dai), 1);
 }
 
 static int dmic_probe(struct dai *dai)
