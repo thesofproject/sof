@@ -41,7 +41,7 @@ struct irq_desc *platform_irq_get_parent(uint32_t irq)
 	return NULL;
 }
 
-void platform_interrupt_set(int irq)
+void platform_interrupt_set(uint32_t irq)
 {
 	arch_interrupt_set(irq);
 }
@@ -50,6 +50,14 @@ void platform_interrupt_set(int irq)
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
+	case IRQ_NUM_EXT_PMC:
+	case IRQ_NUM_EXT_IA:
+	case IRQ_NUM_SOFTWARE2:
+	case IRQ_NUM_SOFTWARE3:
+	case IRQ_NUM_SOFTWARE4:
+	case IRQ_NUM_SOFTWARE5:
+		arch_interrupt_clear(irq);
+		break;
 	case IRQ_NUM_EXT_SSP0:
 		shim_write(SHIM_PISR, mask << 3);
 		arch_interrupt_clear(irq);

@@ -42,7 +42,7 @@ struct irq_desc *platform_irq_get_parent(uint32_t irq)
 	return NULL;
 }
 
-void platform_interrupt_set(int irq)
+void platform_interrupt_set(uint32_t irq)
 {
 	arch_interrupt_set(irq);
 }
@@ -55,6 +55,9 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 	case IRQ_NUM_EXT_DMAC1:
 	case IRQ_NUM_EXT_SSP0:
 	case IRQ_NUM_EXT_SSP1:
+	case IRQ_NUM_EXT_IA:
+	case IRQ_NUM_SOFTWARE1:
+	case IRQ_NUM_SOFTWARE2:
 		arch_interrupt_clear(irq);
 		break;
 	default:
