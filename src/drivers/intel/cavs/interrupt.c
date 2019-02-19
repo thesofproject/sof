@@ -210,8 +210,16 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
 	}
 }
 
+void platform_interrupt_set(uint32_t irq)
+{
+	if (!platform_irq_get_parent(irq))
+		arch_interrupt_set(SOF_IRQ_NUMBER(irq));
+}
+
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
+	if (!platform_irq_get_parent(irq))
+		arch_interrupt_clear(SOF_IRQ_NUMBER(irq));
 }
 
 void platform_interrupt_init(void)
