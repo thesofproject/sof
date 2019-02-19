@@ -171,8 +171,7 @@ static void dw_dma_interrupt_clear(struct dma *dma, unsigned int channel)
 	dw_write(dma, DW_CLEAR_ERR, DW_CHAN(channel));
 
 	/* clear platform interrupt */
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
-				 DW_CHAN(channel));
+	interrupt_clear_mask(dma_irq(dma, cpu_get_id()), DW_CHAN(channel));
 }
 
 /* allocate next free DMA channel */
@@ -1094,8 +1093,8 @@ static void dw_dma_irq_handler(void *data)
 	}
 
 	/* clear platform and DSP interrupt */
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
-				 status_src | status_err);
+	interrupt_clear_mask(dma_irq(dma, cpu_get_id()),
+			     status_src | status_err);
 
 	for (i = 0; i < dma->plat_data.channels; i++) {
 		/* skip if channel is not running */

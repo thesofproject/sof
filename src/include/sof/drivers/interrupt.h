@@ -63,7 +63,7 @@ uint32_t interrupt_disable(uint32_t irq);
 void platform_interrupt_init(void);
 
 struct irq_desc *platform_irq_get_parent(uint32_t irq);
-void platform_interrupt_set(int irq);
+void platform_interrupt_set(uint32_t irq);
 void platform_interrupt_clear(uint32_t irq, uint32_t mask);
 uint32_t platform_interrupt_get_enabled(void);
 void platform_interrupt_mask(uint32_t irq, uint32_t mask);
@@ -71,12 +71,17 @@ void platform_interrupt_unmask(uint32_t irq, uint32_t mask);
 
 static inline void interrupt_set(int irq)
 {
-	arch_interrupt_set(SOF_IRQ_NUMBER(irq));
+	platform_interrupt_set(irq);
+}
+
+static inline void interrupt_clear_mask(int irq, uint32_t mask)
+{
+	platform_interrupt_clear(irq, mask);
 }
 
 static inline void interrupt_clear(int irq)
 {
-	arch_interrupt_clear(SOF_IRQ_NUMBER(irq));
+	interrupt_clear_mask(irq, 1);
 }
 
 static inline uint32_t interrupt_global_disable(void)

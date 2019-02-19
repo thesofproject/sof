@@ -15,7 +15,7 @@ struct irq_desc *platform_irq_get_parent(uint32_t irq)
 	return NULL;
 }
 
-void platform_interrupt_set(int irq)
+void platform_interrupt_set(uint32_t irq)
 {
 	arch_interrupt_set(irq);
 }
