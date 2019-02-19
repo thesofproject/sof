@@ -445,6 +445,12 @@ static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 	tracev_pipe("pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
 
+	if (!comp_is_single_pipeline(current, ppl_data->start)) {
+		tracev_pipe_with_ids(current->pipeline, "pipeline_comp_trigger"
+				     "(), current is from another pipeline");
+		return 0;
+	}
+
 	/* send command to the component and update pipeline state */
 	err = comp_trigger(current, ppl_data->cmd);
 	if (err < 0 || err > 0)
@@ -508,7 +514,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	if (p->ipc_pipe.core != cpu_get_id())
 		return pipeline_trigger_on_core(p, host, cmd);
 
-	data.p = p;
+	data.start = host;
 	data.cmd = cmd;
 
 	spin_lock_irq(&p->lock, flags);
