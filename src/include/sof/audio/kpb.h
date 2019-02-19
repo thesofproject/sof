@@ -35,6 +35,7 @@
 #include <platform/platcfg.h>
 #include <sof/notifier.h>
 #include <sof/trace.h>
+#include <sof/schedule.h>
 
 /* KPB tracing */
 #define trace_kpb(__e, ...) trace_event(TRACE_CLASS_KPB, __e, ##__VA_ARGS__)
