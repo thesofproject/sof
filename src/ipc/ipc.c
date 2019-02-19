@@ -99,9 +99,11 @@ static struct ipc_comp_dev *ipc_get_ppl_src_comp(struct ipc *ipc,
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type == COMP_TYPE_COMPONENT &&
 		    icd->cd->comp.pipeline_id == pipeline_id) {
-			buffer = container_of(icd->cd->bsource_list.next,
-					      struct comp_buffer, sink_list);
-			if (buffer->source->comp.pipeline_id != pipeline_id)
+			buffer = list_first_item(&icd->cd->bsource_list,
+						 struct comp_buffer,
+						 sink_list);
+			if (buffer && buffer->source &&
+			    buffer->source->comp.pipeline_id != pipeline_id)
 				return icd;
 		}
 	}
