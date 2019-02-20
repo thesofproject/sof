@@ -61,6 +61,12 @@ if(NOT BUILD_HOST)
 			dai.c
 		)
 	endif()
+	if(CONFIG_COMP_SEL)
+		add_local_sources(sof
+		selector.c
+		selector_generic.c
+		)
+	endif()
 	return()
 endif()
 

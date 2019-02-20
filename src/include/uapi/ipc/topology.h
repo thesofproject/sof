@@ -65,6 +65,7 @@ enum sof_comp_type {
 	SOF_COMP_FILEREAD,	/**< host test based file IO */
 	SOF_COMP_FILEWRITE,	/**< host test based file IO */
 	SOF_COMP_KPB, /* A key phrase buffer component */
+	SOF_COMP_SELECTOR,
 };
 
 /* XRUN action for component */
@@ -161,6 +162,21 @@ struct sof_ipc_comp_volume {
 	uint32_t max_value;
 	uint32_t ramp;		/**< SOF_VOLUME_ */
 	uint32_t initial_ramp;	/**< ramp space in ms */
+} __attribute__((packed));
+
+/* generic selector component */
+struct sof_ipc_comp_selector {
+	struct sof_ipc_comp comp;
+	struct sof_ipc_comp_config config;
+
+	/* selector supports 1 input and 1 output */
+	uint32_t input_channels_count;	/**< accepted values 2 or 4 */
+	uint32_t output_channels_count;	/**< accepted values 1 or 2 or 4 */
+
+	/* note: if 2 or 4 output channels selected, the component works
+	 * in a bypass mode
+	 */
+	uint32_t selected_channel;	/**< 0..3 */
 } __attribute__((packed));
 
 /* generic SRC component */
