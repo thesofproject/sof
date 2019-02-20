@@ -94,3 +94,10 @@ SectionVendorTokens."sof_pm_tokens" {
 	SOF_TKN_PM_COMP_WAKE_SOURCE		"1100"
 	SOF_TKN_PM_COMP_ACTIVE_IN_PD		"1101"
 }
+
+SectionVendorTokens."sof_ch_sel_tokens" {
+	SOF_TKN_CS_IN_CNT			"1200"
+	SOF_TKN_CS_OUT_CNT			"1201"
+	SOF_TKN_CS_OUT_CH_INDEX			"1202"
+}
+
