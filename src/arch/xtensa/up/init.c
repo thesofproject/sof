@@ -36,7 +36,6 @@
 #include <arch/task.h>
 #include <sof/init.h>
 #include <sof/lock.h>
-#include <sof/panic.h>
 #include <stdint.h>
 
 /**
