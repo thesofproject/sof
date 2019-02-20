@@ -80,9 +80,6 @@ MEMORY
   sof_text :
 	org = ROM_BASE + 0x800,
         len = ROM_SIZE,
-  sof_bss_data :
-	org = SOF_BSS_DATA_START,
-        len = SOF_BSS_DATA_SIZE
   sof_stack :
         org = SOF_STACK_END,
         len = SOF_STACK_BASE - SOF_STACK_END

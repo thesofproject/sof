@@ -77,15 +77,9 @@ MEMORY
   vector_double_text :
         org = SOF_MEM_VECBASE + XCHAL_DOUBLEEXC_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
-  sof_text :
-        org = SOF_TEXT_BASE,
-        len = SOF_TEXT_SIZE,
-  sof_data :
-        org = SOF_DATA_START,
-        len = SOF_DATA_SIZE
-  sof_bss_data :
-        org = SOF_BSS_DATA_START,
-        len = SOF_BSS_DATA_SIZE
+  sof_fw :
+        org = SOF_FW_BASE,
+        len = SOF_FW_MAX_SIZE
   system_heap :
         org = HEAP_SYSTEM_0_BASE,
         len = HEAP_SYSTEM_T_SIZE
@@ -144,9 +138,7 @@ PHDRS
   vector_user_text_phdr PT_LOAD;
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
-  sof_text_phdr PT_LOAD;
-  sof_data_phdr PT_LOAD;
-  sof_bss_data_phdr PT_LOAD;
+  sof_fw_phdr PT_LOAD;
   system_heap_phdr PT_LOAD;
   system_runtime_heap_phdr PT_LOAD;
   runtime_heap_phdr PT_LOAD;
@@ -368,9 +360,9 @@ SECTIONS
     KEEP (*(.ResetHandler.text))
     _text_end = ABSOLUTE(.);
     _etext = .;
-  } >sof_text :sof_text_phdr
+  } >sof_fw :sof_fw_phdr
 
-  .rodata : ALIGN(4)
+  .rodata : ALIGN(4096)
   {
     _rodata_start = ABSOLUTE(.);
     *(.rodata)
@@ -406,7 +398,7 @@ SECTIONS
     LONG(_bss_end)
     _bss_table_end = ABSOLUTE(.);
     _rodata_end = ABSOLUTE(.);
-  } >sof_data :sof_data_phdr
+  } >sof_fw :sof_fw_phdr
 
   .data : ALIGN(4)
   {
@@ -424,7 +416,7 @@ SECTIONS
     *(.gnu.linkonce.s2.*)
     KEEP(*(.jcr))
     _data_end = ABSOLUTE(.);
-  } >sof_data :sof_data_phdr
+  } >sof_fw :sof_fw_phdr
 
   .lit4 : ALIGN(4)
   {
@@ -433,9 +425,14 @@ SECTIONS
     *(.lit4.*)
     *(.gnu.linkonce.lit4.*)
     _lit4_end = ABSOLUTE(.);
-  } >sof_data :sof_data_phdr
+  } >sof_fw :sof_fw_phdr
 
-  .bss (NOLOAD) : ALIGN(8)
+  .fw_ready : ALIGN(4)
+  {
+    KEEP (*(.fw_ready))
+  } >sof_fw :sof_fw_phdr
+
+  .bss (NOLOAD) : ALIGN(4096)
   {
     . = ALIGN (8);
     _bss_start = ABSOLUTE(.);
@@ -454,7 +451,7 @@ SECTIONS
     *(COMMON)
     . = ALIGN (8);
     _bss_end = ABSOLUTE(.);
-  } >sof_bss_data :sof_bss_data_phdr
+  } >sof_fw :sof_fw_phdr
 
   /* stack */
   _end = SOF_STACK_END;
@@ -571,9 +568,4 @@ SECTIONS
   {
     *(*.static_log*)
   } > static_log_entries_seg :static_log_entries_phdr
-
-  .fw_ready : ALIGN(4)
-  {
-    KEEP (*(.fw_ready))
-  } >sof_data :sof_data_phdr
 }

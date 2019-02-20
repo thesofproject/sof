@@ -48,7 +48,6 @@ struct sof_man_module_manifest apl_manifest = {
 		},
 		.affinity_mask = 3,
 	},
-	.text_size = SOF_TEXT_SIZE + L2_VECTOR_SIZE,
 };
 
 /* not used, but stops linker complaining */

@@ -152,9 +152,7 @@
 #define L2_VECTOR_SIZE			0x1000
 
 /* Heap configuration */
-#define HEAP_SYSTEM_0_BASE \
-	(SOF_TEXT_BASE + SOF_TEXT_SIZE +\
-	SOF_DATA_SIZE + SOF_BSS_DATA_SIZE)
+#define HEAP_SYSTEM_0_BASE	(SOF_FW_BASE + SOF_FW_MAX_SIZE)
 #define HEAP_SYSTEM_0_SIZE		0x8000
 
 #define HEAP_SYSTEM_1_BASE	(HEAP_SYSTEM_0_BASE + HEAP_SYSTEM_0_SIZE)
@@ -270,24 +268,6 @@
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
-#if defined(CONFIG_CAVS_DMIC)
-#define SOF_TEXT_DMIC_SIZE 0x2000
-#else
-#define SOF_TEXT_DMIC_SIZE 0
-#endif
-
-#if defined(CONFIG_COMP_VOLUME)
-#define SOF_TEXT_VOLUME_SIZE 0x1000
-#else
-#define SOF_TEXT_VOLUME_SIZE 0
-#endif
-
-#if defined(CONFIG_COMP_SRC)
-#define SOF_TEXT_SRC_SIZE 0x1000
-#else
-#define SOF_TEXT_SRC_SIZE 0
-#endif
-
 /* Apollolake HP-SRAM config */
 #if defined(CONFIG_APOLLOLAKE) \
 	&& !(defined(CONFIG_KABYLAKE) || defined(CONFIG_SKYLAKE))
@@ -301,11 +281,11 @@
 #define HP_SRAM_VECBASE_RESET	(HP_SRAM_WIN0_BASE + HP_SRAM_WIN0_SIZE)
 #define HP_SRAM_VECBASE_OFFSET	0x0
 
-#define SOF_TEXT_START		(HP_SRAM_VECBASE_RESET + 0x400)
-#define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_MIN_SIZE	(0x19000 - 0x400)
-#define SOF_TEXT_SIZE		(SOF_TEXT_MIN_SIZE + SOF_TEXT_DMIC_SIZE \
-				+ SOF_TEXT_VOLUME_SIZE + SOF_TEXT_SRC_SIZE)
+#define SOF_FW_START		(HP_SRAM_VECBASE_RESET + 0x400)
+#define SOF_FW_BASE		(SOF_FW_START)
+
+/* max size for all var-size sections (text/rodata/bss) */
+#define SOF_FW_MAX_SIZE		(0x41000 - 0x400)
 
 /* Skylake or kabylake HP-SRAM config */
 #elif defined(CONFIG_KABYLAKE) || defined(CONFIG_SKYLAKE)
@@ -321,27 +301,18 @@
 #define HP_SRAM_RESET_TEXT_SIZE	0x400
 #define HP_SRAM_RESET_LIT_SIZE	0x100
 
-#define SOF_TEXT_START		HP_SRAM_VECBASE_RESET
-#define SOF_TEXT_BASE		(SOF_TEXT_START + 0x1000)
-#define SOF_TEXT_MIN_SIZE	0x18000
-#define SOF_TEXT_SIZE		(SOF_TEXT_MIN_SIZE + SOF_TEXT_DMIC_SIZE \
-				+ SOF_TEXT_VOLUME_SIZE + SOF_TEXT_SRC_SIZE)
+#define SOF_FW_START		HP_SRAM_VECBASE_RESET
+#define SOF_FW_BASE		(SOF_FW_START + 0x1000)
+
+/* max size for all var-size sections (text/rodata/bss) */
+#define SOF_FW_MAX_SIZE		0x40000
 
 #else
 #error Platform not specified
 #endif
 
-/* initialized data */
-#define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
-#if defined CONFIG_CAVS_DMIC
-#define SOF_DATA_SIZE		0x1b000
-#else
-#define SOF_DATA_SIZE		0x19000
-#endif
-
-/* bss data */
-#define SOF_BSS_DATA_START	(SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE)
-#define SOF_BSS_DATA_SIZE	0x9000
+#define SOF_TEXT_START		(SOF_FW_START)
+#define SOF_TEXT_BASE		(SOF_FW_START)
 
 /* Stack configuration */
 #define SOF_STACK_SIZE		ARCH_STACK_SIZE
