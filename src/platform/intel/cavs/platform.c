@@ -500,7 +500,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_DMA);
 	ret = dmac_init();
 	if (ret < 0)
-		return -ENODEV;
+		return ret;
 
 	/* initialize the host IPC mechanisms */
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
@@ -509,7 +509,7 @@ int platform_init(struct sof *sof)
 	/* init DAIs */
 	ret = dai_init();
 	if (ret < 0)
-		return -ENODEV;
+		return ret;
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
