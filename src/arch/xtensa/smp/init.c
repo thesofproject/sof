@@ -44,6 +44,7 @@
 #include <sof/init.h>
 #include <sof/lock.h>
 #include <sof/notifier.h>
+#include <sof/panic.h>
 #include <sof/schedule.h>
 #include <sof/task.h>
 #include <platform/idc.h>
