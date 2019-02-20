@@ -35,8 +35,16 @@
 
 #include <stdint.h>
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define MIN(a, b) ({		\
+	typeof(a) __a = (a);	\
+	typeof(b) __b = (b);	\
+	__a > __b ? __b : __a;	\
+})
+#define MAX(a, b) ({		\
+	typeof(a) __a = (a);	\
+	typeof(b) __b = (b);	\
+	__a < __b ? __b : __a;	\
+})
 
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
 
