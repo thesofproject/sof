@@ -546,6 +546,12 @@ void sys_comp_kpb_init(void);
 #else
 static inline void sys_comp_kpb_init(void) {}
 #endif
+#ifdef CONFIG_COMP_SEL
+void sys_comp_selector_init(void);
+#else
+static inline void sys_comp_selector_init(void) {}
+#endif
+
 /** @}*/
 
 /** \name Helpers.
