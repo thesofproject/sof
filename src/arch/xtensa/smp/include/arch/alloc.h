@@ -42,6 +42,7 @@
 
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
+extern unsigned int _bss_start, _bss_end;
 
 /**
  * \brief Allocates memory for core specific data.
@@ -68,7 +69,8 @@ static inline void alloc_core_context(int core)
 					   sizeof(core_ctx_ptr));
 
 	/* writeback bss region to share static pointers */
-	dcache_writeback_region((void *)SOF_BSS_DATA_START, SOF_BSS_DATA_SIZE);
+	dcache_writeback_region((void *)&_bss_start, \
+		(unsigned int)&_bss_end - (unsigned int)&_bss_start);
 }
 
 #endif

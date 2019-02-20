@@ -244,48 +244,20 @@
 #define HEAP_HP_BUFFER_COUNT \
 			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
-#if defined(CONFIG_CAVS_DMIC)
-#define SOF_TEXT_DMIC_SIZE 0x2000
-#else
-#define SOF_TEXT_DMIC_SIZE 0
-#endif
-
-#if defined(CONFIG_COMP_VOLUME)
-#define SOF_TEXT_VOLUME_SIZE 0x1000
-#else
-#define SOF_TEXT_VOLUME_SIZE 0
-#endif
-
-#if defined(CONFIG_COMP_SRC)
-#define SOF_TEXT_SRC_SIZE 0x1000
-#else
-#define SOF_TEXT_SRC_SIZE 0
-#endif
-
 /* text and data share the same HP L2 SRAM on Icelake */
-#define SOF_TEXT_START		0xBE040400
-#define SOF_TEXT_BASE		(SOF_TEXT_START)
-#define SOF_TEXT_MIN_SIZE	(0x1B000 - 0x400)
-#define SOF_TEXT_SIZE		(SOF_TEXT_MIN_SIZE + SOF_TEXT_DMIC_SIZE \
-				+ SOF_TEXT_VOLUME_SIZE + SOF_TEXT_SRC_SIZE)
+#define SOF_FW_START		0xBE040400
+#define SOF_FW_BASE		(SOF_FW_START)
 
-/* initialized data */
-#define SOF_DATA_START		(SOF_TEXT_BASE + SOF_TEXT_SIZE)
-#if defined CONFIG_CAVS_DMIC
-#define SOF_DATA_SIZE		0x1b000
-#else
-#define SOF_DATA_SIZE		0x19000
-#endif
+/* max size for all var-size sections (text/rodata/bss) */
+#define SOF_FW_MAX_SIZE		(0x4A900 - 0x400)
 
-/* bss data */
-#define SOF_BSS_DATA_START	(SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE)
-#define SOF_BSS_DATA_SIZE	0x10900
+#define SOF_TEXT_START		(SOF_FW_START)
+#define SOF_TEXT_BASE		(SOF_FW_START)
 
 /* Heap configuration */
-#define HEAP_SYSTEM_0_BASE		(SOF_TEXT_BASE + SOF_TEXT_SIZE + \
-					SOF_DATA_SIZE + SOF_BSS_DATA_SIZE)
+#define HEAP_SYSTEM_0_BASE	(SOF_FW_BASE + SOF_FW_MAX_SIZE)
 
-#define HEAP_SYSTEM_0_SIZE		0x8000
+#define HEAP_SYSTEM_0_SIZE	0x8000
 
 #define HEAP_SYSTEM_1_BASE	(HEAP_SYSTEM_0_BASE + HEAP_SYSTEM_0_SIZE)
 #define HEAP_SYSTEM_1_SIZE	0x5000
