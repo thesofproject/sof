@@ -48,16 +48,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
-struct audio_data {
-	struct pipeline *p;
-};
-
 int do_task_master_core(struct sof *sof)
 {
 	int ret;
-#ifdef STATIC_PIPE
-	struct audio_data pdata;
-#endif
+
 	/* init default audio components */
 	sys_comp_init();
 	sys_comp_dai_init();
@@ -73,8 +67,8 @@ int do_task_master_core(struct sof *sof)
 
 #if STATIC_PIPE
 	/* init static pipeline */
-	pdata.p = init_static_pipeline();
-	if (pdata.p == NULL)
+	ret = init_static_pipeline(sof->ipc);
+	if (ret < 0)
 		panic(SOF_IPC_PANIC_TASK);
 #endif
 	/* let host know DSP boot is complete */
