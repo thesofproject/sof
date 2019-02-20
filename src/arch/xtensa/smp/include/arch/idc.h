@@ -43,7 +43,7 @@ void cpu_power_down_core(void);
 
 void idc_enable_interrupts(int target_core, int source_core);
 int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode);
-void arch_idc_init(void);
+int arch_idc_init(void);
 void idc_free(void);
 
 #endif

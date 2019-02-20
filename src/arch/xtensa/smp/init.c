@@ -131,7 +131,9 @@ int slave_core_init(struct sof *sof)
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
-	idc_init();
+	err = idc_init();
+	if (err < 0)
+		return err;
 
 	trace_point(TRACE_BOOT_PLATFORM);
 

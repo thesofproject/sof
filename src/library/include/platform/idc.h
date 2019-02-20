@@ -40,8 +40,9 @@ static inline void idc_process_msg_queue(void)
 {
 }
 
-static inline void idc_init(void)
+static inline int idc_init(void)
 {
+	return 0;
 }
 
 #endif

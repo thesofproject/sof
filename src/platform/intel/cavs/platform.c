@@ -513,7 +513,9 @@ int platform_init(struct sof *sof)
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
-	idc_init();
+	ret = idc_init();
+	if (ret < 0)
+		return ret;
 
 #if defined(CONFIG_DW_SPI)
 	/* initialize the SPI slave */

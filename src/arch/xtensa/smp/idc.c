@@ -328,9 +328,10 @@ static uint32_t idc_get_done_bit_mask(int core)
 /**
  * \brief Initializes IDC data and registers for interrupt.
  */
-void arch_idc_init(void)
+int arch_idc_init(void)
 {
 	int core = arch_cpu_get_id();
+	int ret;
 
 	trace_idc("arch_idc_init()");
 
@@ -346,13 +347,17 @@ void arch_idc_init(void)
 	schedule_task_config(&(*idc)->idc_task, TASK_PRI_IDC, core);
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IDC_INTERRUPT(core), IRQ_AUTO_UNMASK,
-			   idc_irq_handler, *idc);
+	ret = interrupt_register(PLATFORM_IDC_INTERRUPT(core), IRQ_AUTO_UNMASK,
+				 idc_irq_handler, *idc);
+	if (ret < 0)
+		return ret;
 	interrupt_enable(PLATFORM_IDC_INTERRUPT(core));
 
 	/* enable BUSY and DONE (only for master core) interrupts */
 	idc_write(IPC_IDCCTL, core,
 		  (*idc)->busy_bit_mask | (*idc)->done_bit_mask);
+
+	return 0;
 }
 
 /**
