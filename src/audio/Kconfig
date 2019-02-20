@@ -64,6 +64,6 @@ config COMP_SEL
 	bool "Channel selector component"
 	default y
 	help
-	  Select for SRC component
+	  Select for SEL component
 
 endmenu
