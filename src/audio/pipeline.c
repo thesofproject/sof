@@ -120,11 +120,12 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 	/* run this operation further */
 	list_for_item(clist, buffer_list) {
 		buffer = buffer_from_list(clist, struct comp_buffer, dir);
-		buffer_comp = buffer_get_comp(buffer, dir);
 
 		/* execute operation on buffer */
 		if (buff_func)
 			buff_func(buffer);
+
+		buffer_comp = buffer_get_comp(buffer, dir);
 
 		/* don't go further if this component is not connected */
 		if (!buffer_comp)
@@ -364,13 +365,13 @@ static int pipeline_comp_cache(struct comp_dev *current, void *data, int dir)
 	tracev_pipe("pipeline_comp_cache(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
 
+	comp_cache(current, ppl_data->cmd);
+
 	if (!comp_is_single_pipeline(current, ppl_data->start)) {
 		tracev_pipe("pipeline_comp_cache(), "
 			    "current is from another pipeline");
 		return 0;
 	}
-
-	comp_cache(current, ppl_data->cmd);
 
 	return pipeline_for_each_comp(current, &pipeline_comp_cache, data,
 				      comp_buffer_cache_op(ppl_data->cmd),
