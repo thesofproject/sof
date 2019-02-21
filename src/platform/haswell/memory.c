@@ -30,6 +30,7 @@
 
 #include <sof/alloc.h>
 #include <uapi/ipc/header.h>
+#include <platform/memory.h>
 
 /* Heap blocks for system runtime */
 static struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
@@ -109,3 +110,8 @@ struct mm memmap = {
 	.total = {.free = HEAP_SYSTEM_SIZE + HEAP_SYS_RUNTIME_SIZE +
 			HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE,},
 };
+
+void platform_init_memmap(void)
+{
+	/*  memmap has been initialized statically as a part of .data */
+}

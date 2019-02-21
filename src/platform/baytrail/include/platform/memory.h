@@ -34,6 +34,10 @@
 #include <config.h>
 #include <arch/memory.h>
 
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+void platform_init_memmap(void);
+#endif
+
 /* physical DSP addresses */
 
 #define SHIM_BASE	0xFF340000

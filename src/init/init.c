@@ -46,6 +46,7 @@
 #include <sof/cpu.h>
 #include <platform/idc.h>
 #include <platform/platform.h>
+#include <platform/memory.h>
 
 /* main firmware context */
 static struct sof sof;
@@ -62,6 +63,7 @@ int master_core_init(struct sof *sof)
 
 	/* initialise system services */
 	trace_point(TRACE_BOOT_SYS_HEAP);
+	platform_init_memmap();
 	init_heap(sof);
 
 	trace_init(sof);

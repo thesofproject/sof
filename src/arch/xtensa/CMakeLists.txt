@@ -111,7 +111,7 @@ function(sof_add_ld_script binary_name script_name)
 	file(GLOB lds_headers ${glob_predicates})
 
 	add_custom_command(OUTPUT ${lds_out}
-		COMMAND ${CMAKE_C_COMPILER} -E -P ${iflags} -o ${lds_out} -x c ${lds_in}
+		COMMAND ${CMAKE_C_COMPILER} -E -DLINKER -P ${iflags} -o ${lds_out} -x c ${lds_in}
 		DEPENDS ${lds_in} ${LINK_DEPS} genconfig ${CONFIG_H_PATH} ${lds_headers}
 		WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 		COMMENT "Generating linker script: ${lds_out}"

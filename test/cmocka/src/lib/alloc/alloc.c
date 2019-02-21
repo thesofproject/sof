@@ -220,6 +220,7 @@ static struct test_case test_cases[] = {
 static int setup(void **state)
 {
 	sof = malloc(sizeof(struct sof));
+	platform_init_memmap();
 	init_heap(sof);
 
 	return 0;

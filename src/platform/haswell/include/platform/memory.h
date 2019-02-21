@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,10 @@
 
 #include <config.h>
 #include <arch/memory.h>
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+void platform_init_memmap(void);
+#endif
 
 /* physical DSP addresses */
 
