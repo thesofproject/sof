@@ -30,6 +30,8 @@
  */
 
 #include <sof/alloc.h>
+#include <sof/trace.h>
+#include <cavs/memory.h>
 
 /* Heap blocks for system runtime for master core */
 static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
@@ -97,115 +99,93 @@ static struct block_map lp_buf_heap_map[] = {
 };
 #endif
 
-struct mm memmap = {
-	.system[0] = {
-		.heap = HEAP_SYSTEM_0_BASE,
-		.size = HEAP_SYSTEM_0_SIZE,
-		.info = {.free = HEAP_SYSTEM_0_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-	.system[1] = {
-		.heap = HEAP_SYSTEM_1_BASE,
-		.size = HEAP_SYSTEM_1_SIZE,
-		.info = {.free = HEAP_SYSTEM_1_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
-	.system[2] = {
-		.heap = HEAP_SYSTEM_2_BASE,
-		.size = HEAP_SYSTEM_2_SIZE,
-		.info = {.free = HEAP_SYSTEM_2_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-	.system[3] = {
-		.heap = HEAP_SYSTEM_3_BASE,
-		.size = HEAP_SYSTEM_3_SIZE,
-		.info = {.free = HEAP_SYSTEM_3_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-#endif
-	.system_runtime[0] = {
-		.blocks = ARRAY_SIZE(sys_rt_0_heap_map),
-		.map = sys_rt_0_heap_map,
-		.heap = HEAP_SYS_RUNTIME_0_BASE,
-		.size = HEAP_SYS_RUNTIME_0_SIZE,
-		.info = {.free = HEAP_SYS_RUNTIME_0_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
-	},
-	.system_runtime[1] = {
-		.blocks = ARRAY_SIZE(sys_rt_x_heap_map),
-		.map = sys_rt_x_heap_map,
-		.heap = HEAP_SYS_RUNTIME_1_BASE,
-		.size = HEAP_SYS_RUNTIME_1_SIZE,
-		.info = {.free = HEAP_SYS_RUNTIME_1_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
-	},
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
-	.system_runtime[2] = {
-		.blocks = ARRAY_SIZE(sys_rt_x_heap_map),
-		.map = sys_rt_x_heap_map,
-		.heap = HEAP_SYS_RUNTIME_2_BASE,
-		.size = HEAP_SYS_RUNTIME_2_SIZE,
-		.info = {.free = HEAP_SYS_RUNTIME_2_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-	.system_runtime[3] = {
-		.blocks = ARRAY_SIZE(sys_rt_x_heap_map),
-		.map = sys_rt_x_heap_map,
-		.heap = HEAP_SYS_RUNTIME_3_BASE,
-		.size = HEAP_SYS_RUNTIME_3_SIZE,
-		.info = {.free = HEAP_SYS_RUNTIME_3_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-#endif
-	.runtime[0] = {
-		.blocks = ARRAY_SIZE(rt_heap_map),
-		.map = rt_heap_map,
-		.heap = HEAP_RUNTIME_BASE,
-		.size = HEAP_RUNTIME_SIZE,
-		.info = {.free = HEAP_RUNTIME_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-	.buffer[0] = {
-		.blocks = ARRAY_SIZE(buf_heap_map),
-		.map = buf_heap_map,
-		.heap = HEAP_BUFFER_BASE,
-		.size = HEAP_BUFFER_SIZE,
-		.info = {.free = HEAP_BUFFER_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-			SOF_MEM_CAPS_CACHE,
-	},
-	.buffer[1] = {
-		.blocks = ARRAY_SIZE(hp_buf_heap_map),
-		.map = hp_buf_heap_map,
-		.heap = HEAP_HP_BUFFER_BASE,
-		.size = HEAP_HP_BUFFER_SIZE,
-		.info = {.free = HEAP_HP_BUFFER_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
-			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
-	},
-/* To be removed if Apollolake gets LP memory*/
+struct mm memmap;
+
+void platform_init_memmap(void)
+{
+	int i;
+
+	/* .system master core initialization */
+	memmap.system[0].heap = HEAP_SYSTEM_0_BASE;
+	memmap.system[0].size = HEAP_SYSTEM_M_SIZE;
+	memmap.system[0].info.free = HEAP_SYSTEM_M_SIZE;
+	memmap.system[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+		SOF_MEM_CAPS_CACHE;
+
+	/* .system_runtime slave core initialization */
+	memmap.system_runtime[0].blocks = ARRAY_SIZE(sys_rt_0_heap_map);
+	memmap.system_runtime[0].map = sys_rt_0_heap_map;
+	memmap.system_runtime[0].heap = HEAP_SYS_RUNTIME_0_BASE;
+	memmap.system_runtime[0].size = HEAP_SYS_RUNTIME_M_SIZE;
+	memmap.system_runtime[0].info.free = HEAP_SYS_RUNTIME_M_SIZE;
+	memmap.system_runtime[0].caps = SOF_MEM_CAPS_RAM |
+		SOF_MEM_CAPS_EXT | SOF_MEM_CAPS_CACHE |
+		SOF_MEM_CAPS_DMA;
+
+	/* .system and .system_runtime  slave core initialization */
+	for (i = 1; i < PLATFORM_CORE_COUNT; i++) {
+		/* .system init */
+		memmap.system[i].heap = HEAP_SYSTEM_0_BASE +
+			HEAP_SYSTEM_M_SIZE + ((i - 1) * HEAP_SYSTEM_S_SIZE);
+		memmap.system[i].size = HEAP_SYSTEM_S_SIZE;
+		memmap.system[i].info.free = HEAP_SYSTEM_S_SIZE;
+		memmap.system[i].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+			SOF_MEM_CAPS_CACHE;
+
+		/* .system_runtime init */
+		memmap.system_runtime[i].blocks = ARRAY_SIZE(sys_rt_x_heap_map);
+		memmap.system_runtime[i].map = sys_rt_x_heap_map;
+		memmap.system_runtime[i].heap = HEAP_SYS_RUNTIME_0_BASE +
+			HEAP_SYS_RUNTIME_M_SIZE + ((i - 1) *
+			HEAP_SYS_RUNTIME_S_SIZE);
+		memmap.system_runtime[i].size = HEAP_SYS_RUNTIME_S_SIZE;
+		memmap.system_runtime[i].info.free = HEAP_SYS_RUNTIME_S_SIZE;
+		memmap.system_runtime[i].caps = SOF_MEM_CAPS_RAM |
+			SOF_MEM_CAPS_EXT | SOF_MEM_CAPS_CACHE |
+			SOF_MEM_CAPS_DMA;
+	}
+
+	/* .runtime init*/
+	memmap.runtime[0].blocks = ARRAY_SIZE(rt_heap_map);
+	memmap.runtime[0].map = rt_heap_map;
+	memmap.runtime[0].heap = HEAP_RUNTIME_BASE;
+	memmap.runtime[0].size = HEAP_RUNTIME_SIZE;
+	memmap.runtime[0].info.free = HEAP_RUNTIME_SIZE;
+	memmap.runtime[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+		SOF_MEM_CAPS_CACHE;
+
+	/* heap buffer init */
+	memmap.buffer[0].blocks = ARRAY_SIZE(buf_heap_map);
+	memmap.buffer[0].map = buf_heap_map;
+	memmap.buffer[0].heap = HEAP_BUFFER_BASE;
+	memmap.buffer[0].size = HEAP_BUFFER_SIZE;
+	memmap.buffer[0].info.free = HEAP_BUFFER_SIZE;
+	memmap.buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
+		SOF_MEM_CAPS_CACHE;
+
+	/* heap hp buffer init */
+	memmap.buffer[1].blocks = ARRAY_SIZE(hp_buf_heap_map);
+	memmap.buffer[1].map = hp_buf_heap_map;
+	memmap.buffer[1].heap = HEAP_HP_BUFFER_BASE;
+	memmap.buffer[1].size = HEAP_HP_BUFFER_SIZE;
+	memmap.buffer[1].info.free = HEAP_HP_BUFFER_SIZE;
+	memmap.buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
+		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
+
+	/* To be removed if Apollolake gets LP memory*/
 #ifndef CONFIG_APOLLOLAKE
-	.buffer[2] = {
-		.blocks = ARRAY_SIZE(lp_buf_heap_map),
-		.map = lp_buf_heap_map,
-		.heap = HEAP_LP_BUFFER_BASE,
-		.size = HEAP_LP_BUFFER_SIZE,
-		.info = {.free = HEAP_LP_BUFFER_SIZE,},
-		.caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
-			SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA,
-	},
+	/* heap lp buffer init */
+	memmap.buffer[2].blocks = ARRAY_SIZE(lp_buf_heap_map);
+	memmap.buffer[2].map = lp_buf_heap_map;
+	memmap.buffer[2].heap = HEAP_LP_BUFFER_BASE;
+	memmap.buffer[2].size = HEAP_LP_BUFFER_SIZE;
+	memmap.buffer[2].info.free = HEAP_LP_BUFFER_SIZE;
+	memmap.buffer[2].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
+		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 #endif
-	.total = {.free = HEAP_SYSTEM_T_SIZE + HEAP_RUNTIME_SIZE +
-			HEAP_SYS_RUNTIME_T_SIZE + HEAP_BUFFER_SIZE +
-			HEAP_HP_BUFFER_SIZE + HEAP_LP_BUFFER_SIZE,},
-};
+
+	/* .total init */
+	memmap.total.free = HEAP_SYSTEM_T_SIZE + HEAP_SYS_RUNTIME_T_SIZE +
+		HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE + HEAP_HP_BUFFER_SIZE +
+		HEAP_LP_BUFFER_SIZE;
+}
