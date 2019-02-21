@@ -41,25 +41,26 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 
-/* common input parameters for the testbench */
-char *tplg_file; /* topology file to use */
-char *input_file; /* input file name */
-char *output_file; /* output file name */
-char *bits_in; /* input bit format */
-
-/*
- * input and output sample rate parameters
- * By default, these are calculated from pipeline frames_per_sched and deadline
- * But they can also be overridden via input arguments to the testbench
- */
-uint32_t fs_in;
-uint32_t fs_out;
-
 #define DEBUG_MSG_LEN		256
 #define MAX_LIB_NAME_LEN	256
 
 /* number of widgets types supported in testbench */
 #define NUM_WIDGETS_SUPPORTED	3
+
+struct testbench_prm {
+	char *tplg_file; /* topology file to use */
+	char *input_file; /* input file name */
+	char *output_file; /* output file name */
+	char *bits_in; /* input bit format */
+	/*
+	 * input and output sample rate parameters
+	 * By default, these are calculated from pipeline frames_per_sched
+	 * and deadline but they can also be overridden via input arguments
+	 * to the testbench.
+	 */
+	uint32_t fs_in;
+	uint32_t fs_out;
+};
 
 struct shared_lib_table {
 	char *comp_name;
@@ -80,11 +81,13 @@ void sys_comp_filewrite_init(void);
 
 int tb_pipeline_setup(struct sof *sof);
 
-int tb_pipeline_start(struct ipc *ipc, int nch, char *bits_in,
-		      struct sof_ipc_pipe_new *ipc_pipe);
+int tb_pipeline_start(struct ipc *ipc, int nch,
+		      struct sof_ipc_pipe_new *ipc_pipe,
+		      struct testbench_prm *tp);
 
-int tb_pipeline_params(struct ipc *ipc, int nch, char *bits_in,
-		       struct sof_ipc_pipe_new *ipc_pipe);
+int tb_pipeline_params(struct ipc *ipc, int nch,
+		       struct sof_ipc_pipe_new *ipc_pipe,
+		       struct testbench_prm *tp);
 
 void debug_print(char *message);
 

@@ -235,14 +235,15 @@ static int load_buffer(struct sof *sof, int comp_id, int pipeline_id, int size)
 
 /* load fileread component */
 static int load_fileread(struct sof *sof, int comp_id, int pipeline_id,
-			 int size, char *bits_in, int *fr_id, int *sched_id)
+			 int size, int *fr_id, int *sched_id,
+			 struct testbench_prm *tp)
 {
 	struct sof_ipc_comp_file fileread;
 	struct snd_soc_tplg_vendor_array *array = NULL;
 	size_t total_array_size = 0, read_size;
 	int ret = 0;
 
-	fileread.config.frame_fmt = find_format(bits_in);
+	fileread.config.frame_fmt = find_format(tp->bits_in);
 
 	/* allocate memory for vendor tuple array */
 	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
@@ -272,7 +273,7 @@ static int load_fileread(struct sof *sof, int comp_id, int pipeline_id,
 	}
 
 	/* configure fileread */
-	fileread.fn = strdup(input_file);
+	fileread.fn = strdup(tp->input_file);
 	fileread.mode = FILE_READ;
 	fileread.comp.id = comp_id;
 
@@ -296,7 +297,7 @@ static int load_fileread(struct sof *sof, int comp_id, int pipeline_id,
 
 /* load filewrite component */
 static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
-			  int size, int *fw_id)
+			  int size, int *fw_id, struct testbench_prm *tp)
 {
 	struct sof_ipc_comp_file filewrite;
 	struct snd_soc_tplg_vendor_array *array = NULL;
@@ -332,7 +333,7 @@ static int load_filewrite(struct sof *sof, int comp_id, int pipeline_id,
 	}
 
 	/* configure filewrite */
-	filewrite.fn = strdup(output_file);
+	filewrite.fn = strdup(tp->output_file);
 	filewrite.comp.id = comp_id;
 	filewrite.mode = FILE_WRITE;
 	*fw_id = comp_id;
@@ -572,7 +573,7 @@ static int load_controls(struct sof *sof, int num_kcontrols)
 
 /* load src dapm widget */
 static int load_src(struct sof *sof, int comp_id, int pipeline_id,
-		    int size)
+		    int size, struct testbench_prm *tp)
 {
 	struct sof_ipc_comp_src src = {0};
 	struct snd_soc_tplg_vendor_array *array = NULL;
@@ -622,15 +623,15 @@ static int load_src(struct sof *sof, int comp_id, int pipeline_id,
 	array = (void *)array - size;
 
 	/* set testbench input and output sample rate from topology */
-	if (!fs_out) {
-		fs_out = src.sink_rate;
+	if (!tp->fs_out) {
+		tp->fs_out = src.sink_rate;
 
-		if (!fs_in)
-			fs_in = src.source_rate;
+		if (!tp->fs_in)
+			tp->fs_in = src.source_rate;
 		else
-			src.source_rate = fs_in;
+			src.source_rate = tp->fs_in;
 	} else {
-		src.sink_rate = fs_out;
+		src.sink_rate = tp->fs_out;
 	}
 
 	/* configure src */
@@ -651,11 +652,11 @@ static int load_src(struct sof *sof, int comp_id, int pipeline_id,
 }
 
 /* load dapm widget */
-static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
-		       int *sched_id, char *bits_in,
+static int load_widget(struct sof *sof, int *fr_id, int *fw_id, int *sched_id,
 		       struct comp_info *temp_comp_list,
 		       struct sof_ipc_pipe_new *pipeline, int comp_id,
-		       int comp_index, int pipeline_id)
+		       int comp_index, int pipeline_id,
+		       struct testbench_prm *tp)
 {
 	struct snd_soc_tplg_dapm_widget *widget;
 	char message[DEBUG_MSG_LEN];
@@ -708,8 +709,8 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 	/* replace pcm playback component with fileread in testbench */
 	case(SND_SOC_TPLG_DAPM_AIF_IN):
 		if (load_fileread(sof, temp_comp_list[comp_index].id,
-				  pipeline_id, widget->priv.size, bits_in,
-				  fr_id, sched_id) < 0) {
+				  pipeline_id, widget->priv.size,
+				  fr_id, sched_id, tp) < 0) {
 			fprintf(stderr, "error: load fileread\n");
 			return -EINVAL;
 		}
@@ -719,7 +720,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 	case(SND_SOC_TPLG_DAPM_DAI_IN):
 		if (load_filewrite(sof, temp_comp_list[comp_index].id,
 				   pipeline_id, widget->priv.size,
-				   fw_id) < 0) {
+				   fw_id, tp) < 0) {
 			fprintf(stderr, "error: load filewrite\n");
 			return -EINVAL;
 		}
@@ -749,7 +750,7 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 	/* load src widget */
 	case(SND_SOC_TPLG_DAPM_SRC):
 		if (load_src(sof, temp_comp_list[comp_index].id,
-			     pipeline_id, widget->priv.size) < 0) {
+			     pipeline_id, widget->priv.size, tp) < 0) {
 			fprintf(stderr, "error: load src\n");
 			return -EINVAL;
 		}
@@ -774,10 +775,9 @@ static int load_widget(struct sof *sof, int *fr_id, int *fw_id,
 }
 
 /* parse topology file and set up pipeline */
-int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
-		   int *sched_id, char *bits_in, char *in_file,
-		   char *out_file, struct shared_lib_table *library_table,
-		   char *pipeline_msg)
+int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
+		   struct testbench_prm *tp, int *fr_id, int *fw_id,
+		   int *sched_id, char *pipeline_msg)
 {
 	struct snd_soc_tplg_hdr *hdr;
 
@@ -789,9 +789,9 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 	size_t file_size, size;
 
 	/* open topology file */
-	file = fopen(tplg_file, "rb");
+	file = fopen(tp->tplg_file, "rb");
 	if (!file) {
-		fprintf(stderr, "error: opening file %s\n", tplg_file);
+		fprintf(stderr, "error: opening file %s\n", tp->tplg_file);
 		return -EINVAL;
 	}
 
@@ -834,9 +834,9 @@ int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
 
 			for (i = 0; i < hdr->count; i++)
 				load_widget(sof, fr_id, fw_id, sched_id,
-					    bits_in, temp_comp_list,
+					    temp_comp_list,
 					    &pipeline, next_comp_id++,
-					    i, hdr->index);
+					    i, hdr->index, tp);
 			break;
 
 		/* set up component connections from pipeline graph */
