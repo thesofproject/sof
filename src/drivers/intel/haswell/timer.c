@@ -38,7 +38,7 @@
 
 void platform_timer_start(struct timer *timer)
 {
-	arch_timer_enable(timer);
+	//nothing to do on BDW & HSW for cpu timer
 }
 
 void platform_timer_stop(struct timer *timer)
