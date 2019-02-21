@@ -471,7 +471,9 @@ int platform_init(struct sof *sof)
 	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
 
 	/* prevent DSP Common power gating */
-	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
+	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSPPG(0) |
+		     SHIM_PWRCTL_TCPDSPPG(1) | SHIM_PWRCTL_TCPDSPPG(2) |
+		     SHIM_PWRCTL_TCPDSPPG(3));
 
 #elif defined(CONFIG_ICELAKE) || defined(CONFIG_SUECREEK)
 	/* TODO: need to merge as for APL */
