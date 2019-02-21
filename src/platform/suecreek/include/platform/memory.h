@@ -114,7 +114,7 @@
 #define DW_I2C_SIZE		0x400
 
 /* DW UART controller */
-#define DW_UART_BASE		0x88000
+#define DW_UART_BASE		0x80800
 #define DW_UART_SIZE		0x400
 
 /* DW GPIO controller */
