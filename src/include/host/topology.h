@@ -194,9 +194,8 @@ void sof_parse_word_tokens(void *object,
 			   int count,
 			   struct snd_soc_tplg_vendor_array *array);
 
-int parse_topology(char *filename, struct sof *sof, int *fr_id, int *fw_id,
-		   int *sched_id, char *bits_in, char *in_file,
-		   char *out_file, struct shared_lib_table *library_table,
-		   char *pipeline_msg);
+int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
+		   struct testbench_prm *tp, int *fr_id, int *fw_id,
+		   int *sched_id, char *pipeline_msg);
 
 #endif

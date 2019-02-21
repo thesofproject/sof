@@ -76,8 +76,9 @@ int tb_pipeline_setup(struct sof *sof)
 }
 
 /* set up pcm params, prepare and trigger pipeline */
-int tb_pipeline_start(struct ipc *ipc, int nch, char *bits_in,
-		      struct sof_ipc_pipe_new *ipc_pipe)
+int tb_pipeline_start(struct ipc *ipc, int nch,
+		      struct sof_ipc_pipe_new *ipc_pipe,
+		      struct testbench_prm *tp)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
@@ -85,7 +86,7 @@ int tb_pipeline_start(struct ipc *ipc, int nch, char *bits_in,
 	int ret;
 
 	/* set up pipeline params */
-	ret = tb_pipeline_params(ipc, nch, bits_in, ipc_pipe);
+	ret = tb_pipeline_params(ipc, nch, ipc_pipe, tp);
 	if (ret < 0) {
 		fprintf(stderr, "error: pipeline params\n");
 		return -EINVAL;
@@ -114,30 +115,30 @@ int tb_pipeline_start(struct ipc *ipc, int nch, char *bits_in,
 }
 
 /* pipeline pcm params */
-int tb_pipeline_params(struct ipc *ipc, int nch, char *bits_in,
-		       struct sof_ipc_pipe_new *ipc_pipe)
+int tb_pipeline_params(struct ipc *ipc, int nch,
+		       struct sof_ipc_pipe_new *ipc_pipe,
+		       struct testbench_prm *tp)
 {
-	int fs_period, ret = 0;
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
 	struct comp_dev *cd;
 	struct sof_ipc_pcm_params params;
-	int deadline;
 	char message[DEBUG_MSG_LEN];
-
-	deadline = ipc_pipe->deadline;
+	int fs_period;
+	int deadline = ipc_pipe->deadline;
+	int ret = 0;
 
 	/* Compute period from sample rates */
-	fs_period = (int)(0.9999 + fs_in * deadline / 1e6);
+	fs_period = (int)(0.9999 + tp->fs_in * deadline / 1e6);
 	sprintf(message, "period sample count %d\n", fs_period);
 	debug_print(message);
 
 	/* set pcm params */
 	params.comp_id = ipc_pipe->comp_id;
 	params.params.buffer_fmt = SOF_IPC_BUFFER_INTERLEAVED;
-	params.params.frame_fmt = find_format(bits_in);
+	params.params.frame_fmt = find_format(tp->bits_in);
 	params.params.direction = SOF_IPC_STREAM_PLAYBACK;
-	params.params.rate = fs_in;
+	params.params.rate = tp->fs_in;
 	params.params.channels = nch;
 	switch (params.params.frame_fmt) {
 	case(SOF_IPC_FRAME_S16_LE):
@@ -250,4 +251,3 @@ void dma_sg_free(struct dma_sg_elem_array *elem_array)
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
-

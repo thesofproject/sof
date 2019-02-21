@@ -170,7 +170,7 @@ static int set_up_library_table(void)
 	return 0;
 }
 
-static void parse_input_args(int argc, char **argv)
+static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
 {
 	int option = 0;
 
@@ -178,22 +178,22 @@ static void parse_input_args(int argc, char **argv)
 		switch (option) {
 		/* input sample file */
 		case 'i':
-			input_file = strdup(optarg);
+			tp->input_file = strdup(optarg);
 			break;
 
 		/* output sample file */
 		case 'o':
-			output_file = strdup(optarg);
+			tp->output_file = strdup(optarg);
 			break;
 
 		/* topology file */
 		case 't':
-			tplg_file = strdup(optarg);
+			tp->tplg_file = strdup(optarg);
 			break;
 
 		/* input samples bit format */
 		case 'b':
-			bits_in = strdup(optarg);
+			tp->bits_in = strdup(optarg);
 			break;
 
 		/* override default libraries */
@@ -203,12 +203,12 @@ static void parse_input_args(int argc, char **argv)
 
 		/* input sample rate */
 		case 'r':
-			fs_in = atoi(optarg);
+			tp->fs_in = atoi(optarg);
 			break;
 
 		/* output sample rate */
 		case 'R':
-			fs_out = atoi(optarg);
+			tp->fs_out = atoi(optarg);
 			break;
 
 		/* enable debug prints */
@@ -227,6 +227,7 @@ static void parse_input_args(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+	struct testbench_prm tp;
 	struct ipc_comp_dev *pcm_dev;
 	struct pipeline *p;
 	struct sof_ipc_pipe_new *ipc_pipe;
@@ -239,8 +240,8 @@ int main(int argc, char **argv)
 	int i;
 
 	/* initialize input and output sample rates */
-	fs_in = 0;
-	fs_out = 0;
+	tp.fs_in = 0;
+	tp.fs_out = 0;
 
 	/* set up shared library look up table */
 	ret = set_up_library_table();
@@ -250,10 +251,10 @@ int main(int argc, char **argv)
 	}
 
 	/* command line arguments*/
-	parse_input_args(argc, argv);
+	parse_input_args(argc, argv, &tp);
 
 	/* check args */
-	if (!tplg_file || !input_file || !output_file || !bits_in) {
+	if (!tp.tplg_file || !tp.input_file || !tp.output_file || !tp.bits_in) {
 		print_usage(argv[0]);
 		exit(EXIT_FAILURE);
 	}
@@ -265,8 +266,8 @@ int main(int argc, char **argv)
 	}
 
 	/* parse topology file and create pipeline */
-	if (parse_topology(tplg_file, &sof, &fr_id, &fw_id, &sched_id, bits_in,
-			   input_file, output_file, lib_table, pipeline) < 0) {
+	if (parse_topology(&sof, lib_table, &tp, &fr_id, &fw_id, &sched_id,
+			   pipeline) < 0) {
 		fprintf(stderr, "error: parsing topology\n");
 		exit(EXIT_FAILURE);
 	}
@@ -283,14 +284,14 @@ int main(int argc, char **argv)
 	ipc_pipe = &p->ipc_pipe;
 
 	/* input and output sample rate */
-	if (!fs_in)
-		fs_in = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+	if (!tp.fs_in)
+		tp.fs_in = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
 
-	if (!fs_out)
-		fs_out = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+	if (!tp.fs_out)
+		tp.fs_out = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
 
 	/* set pipeline params and trigger start */
-	if (tb_pipeline_start(sof.ipc, TESTBENCH_NCH, bits_in, ipc_pipe) < 0) {
+	if (tb_pipeline_start(sof.ipc, TESTBENCH_NCH, ipc_pipe, &tp) < 0) {
 		fprintf(stderr, "error: pipeline params\n");
 		exit(EXIT_FAILURE);
 	}
@@ -317,7 +318,7 @@ int main(int argc, char **argv)
 	n_in = frcd->fs.n;
 	n_out = fwcd->fs.n;
 	t_exec = (double)(toc - tic) / CLOCKS_PER_SEC;
-	c_realtime = (double)n_out / TESTBENCH_NCH / fs_out / t_exec;
+	c_realtime = (double)n_out / TESTBENCH_NCH / tp.fs_out / t_exec;
 
 	/* free all components/buffers in pipeline */
 	free_comps();
@@ -328,20 +329,20 @@ int main(int argc, char **argv)
 	printf("==========================================================\n");
 	printf("Test Pipeline:\n");
 	printf("%s\n", pipeline);
-	printf("Input bit format: %s\n", bits_in);
-	printf("Input sample rate: %d\n", fs_in);
-	printf("Output sample rate: %d\n", fs_out);
-	printf("Output written to file: \"%s\"\n", output_file);
+	printf("Input bit format: %s\n", tp.bits_in);
+	printf("Input sample rate: %d\n", tp.fs_in);
+	printf("Output sample rate: %d\n", tp.fs_out);
+	printf("Output written to file: \"%s\"\n", tp.output_file);
 	printf("Input sample count: %d\n", n_in);
 	printf("Output sample count: %d\n", n_out);
 	printf("Total execution time: %.2f us, %.2f x realtime\n",
 	       1e3 * t_exec, c_realtime);
 
 	/* free all other data */
-	free(bits_in);
-	free(input_file);
-	free(tplg_file);
-	free(output_file);
+	free(tp.bits_in);
+	free(tp.input_file);
+	free(tp.tplg_file);
+	free(tp.output_file);
 
 	/* close shared library objects */
 	for (i = 0; i < NUM_WIDGETS_SUPPORTED; i++) {
