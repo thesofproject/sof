@@ -27,14 +27,13 @@
 #define IRQ_AUTO_UNMASK		1
 
 /**
- * struct irq_child - child IRQ descriptor for cascading IRQ controllers
- *
- * @enable_count: IRQ enable counter
- * @list:	head for IRQ descriptors, sharing this interrupt
+ * \brief child IRQ descriptor for cascading IRQ controllers.
  */
 struct irq_child {
-	int enable_count[PLATFORM_CORE_COUNT];
-	struct list_item list;
+	int enable_count[PLATFORM_CORE_COUNT];	/**< IRQ enable counter */
+	struct list_item list;			/**< head for IRQ descriptors,
+						  * sharing this interrupt
+						  */
 };
 
 struct irq_desc {
@@ -52,28 +51,56 @@ struct irq_desc {
 	struct list_item irq_list;
 };
 
-/* A descriptor for cascading interrupt controllers */
+/**
+ * \brief cascading IRQ controller operations.
+ */
+struct irq_cascade_ops {
+	void (*mask)(struct irq_desc *desc, uint32_t irq);	/**< mask */
+	void (*unmask)(struct irq_desc *desc, uint32_t irq);	/**< unmask */
+};
+
+/**
+ * \brief cascading interrupt controller descriptor.
+ */
 struct irq_cascade_desc {
-	const char *name;
-
-	/* the interrupt, that this controller is generating */
-	struct irq_desc desc;
-
-	/* to link to the global list of interrupt controllers */
-	struct irq_cascade_desc *next;
-
-	bool global_mask;
-
-	/* protect child lists in the below array */
-	spinlock_t lock;
-	int enable_count[PLATFORM_CORE_COUNT];
-	unsigned int num_children[PLATFORM_CORE_COUNT];
-	struct irq_child child[PLATFORM_IRQ_CHILDREN];
+	const char *name;				/**< name of the
+							  * controller
+							  */
+	const struct irq_cascade_ops *ops;		/**< cascading interrupt
+							  * controller driver
+							  * operations
+							  */
+	struct irq_desc desc;				/**< the interrupt, that
+							  * this controller is
+							  * generating
+							  */
+	struct irq_cascade_desc *next;			/**< link to the global
+							  * list of interrupt
+							  * controllers
+							  */
+	bool global_mask;				/**< the controller
+							  * cannot mask input
+							  * interrupts per core
+							  */
+	spinlock_t lock;				/**< protect child
+							  * lists, enable and
+							  * child counters
+							  */
+	int enable_count[PLATFORM_CORE_COUNT];		/**< enabled child
+							  * interrupt counter
+							  */
+	unsigned int num_children[PLATFORM_CORE_COUNT];	/**< number of children
+							  */
+	struct irq_child child[PLATFORM_IRQ_CHILDREN];	/**< array of child
+							  * lists - one per
+							  * multiplexed IRQ
+							  */
 };
 
 /* A descriptor for cascading interrupt controller template */
 struct irq_cascade_tmpl {
 	const char *name;
+	const struct irq_cascade_ops *ops;
 	int irq;
 	void (*handler)(void *arg);
 	bool global_mask;
@@ -90,8 +117,8 @@ void platform_interrupt_init(void);
 void platform_interrupt_set(uint32_t irq);
 void platform_interrupt_clear(uint32_t irq, uint32_t mask);
 uint32_t platform_interrupt_get_enabled(void);
-void platform_interrupt_mask(uint32_t irq);
-void platform_interrupt_unmask(uint32_t irq);
+void interrupt_mask(uint32_t irq);
+void interrupt_unmask(uint32_t irq);
 
 /*
  * On platforms, supporting cascading interrupts cascaded interrupt numbers
