@@ -51,6 +51,11 @@
  */
 #define LVL2_MAX_TRIES		1000
 
+char irq_name_level2[] = "level2";
+char irq_name_level3[] = "level3";
+char irq_name_level4[] = "level4";
+char irq_name_level5[] = "level5";
+
 /*
  * The level2 handler attempts to try and fairly service interrupt sources by
  * servicing on first come first served basis. If two or more IRQs arrive at the
@@ -144,48 +149,25 @@ static void irq_lvl2_level5_handler(void *data)
 }
 
 /* DSP internal interrupts */
-static struct irq_cascade_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
-	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
-#if PLATFORM_CORE_COUNT > 1
-	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
-#endif
-#if PLATFORM_CORE_COUNT > 2
-	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
-#endif
-#if PLATFORM_CORE_COUNT > 3
-	{{.desc = {IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },},
-	 {.desc = {IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, },} },
-#endif
+static struct irq_cascade_tmpl dsp_irq[4] = {
+	{
+		.name = irq_name_level2,
+		.irq = IRQ_NUM_EXT_LEVEL2,
+		.handler = irq_lvl2_level2_handler,
+	}, {
+		.name = irq_name_level3,
+		.irq = IRQ_NUM_EXT_LEVEL3,
+		.handler = irq_lvl2_level3_handler,
+	}, {
+		.name = irq_name_level4,
+		.irq = IRQ_NUM_EXT_LEVEL4,
+		.handler = irq_lvl2_level4_handler,
+	}, {
+		.name = irq_name_level5,
+		.irq = IRQ_NUM_EXT_LEVEL5,
+		.handler = irq_lvl2_level5_handler,
+	},
 };
-
-struct irq_desc *platform_irq_get_parent(uint32_t irq)
-{
-	int core = SOF_IRQ_CPU(irq);
-
-	switch (SOF_IRQ_NUMBER(irq)) {
-	case IRQ_NUM_EXT_LEVEL2:
-		return &dsp_irq[core][0].desc;
-	case IRQ_NUM_EXT_LEVEL3:
-		return &dsp_irq[core][1].desc;
-	case IRQ_NUM_EXT_LEVEL4:
-		return &dsp_irq[core][2].desc;
-	case IRQ_NUM_EXT_LEVEL5:
-		return &dsp_irq[core][3].desc;
-	default:
-		return NULL;
-	}
-}
 
 uint32_t platform_interrupt_get_enabled(void)
 {
@@ -250,9 +232,10 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 		arch_interrupt_clear(SOF_IRQ_NUMBER(irq));
 }
 
+/* Called on each core: from platform_init() and from slave_core_init() */
 void platform_interrupt_init(void)
 {
-	int i, j;
+	int i;
 	int core = cpu_get_id();
 
 	/* mask all external IRQs by default */
@@ -261,9 +244,9 @@ void platform_interrupt_init(void)
 	irq_write(REG_IRQ_IL4MSD(core), REG_IRQ_IL4MD_ALL);
 	irq_write(REG_IRQ_IL5MSD(core), REG_IRQ_IL5MD_ALL);
 
-	for (i = 0; i < ARRAY_SIZE(dsp_irq[core]); i++) {
-		spinlock_init(&dsp_irq[core][i].lock);
-		for (j = 0; j < PLATFORM_IRQ_CHILDREN; j++)
-			list_init(&dsp_irq[core][i].child[j]);
-	}
+	if (core != PLATFORM_MASTER_CORE_ID)
+		return;
+
+	for (i = 0; i < ARRAY_SIZE(dsp_irq); i++)
+		interrupt_cascade_register(dsp_irq + i);
 }

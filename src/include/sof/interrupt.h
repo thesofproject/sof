@@ -68,8 +68,13 @@ struct irq_desc {
 
 /* A descriptor for cascading interrupt controllers */
 struct irq_cascade_desc {
+	const char *name;
+
 	/* the interrupt, that this controller is generating */
 	struct irq_desc desc;
+
+	/* to link to the global list of interrupt controllers */
+	struct list_item list;
 
 	/* protect child lists in the below array */
 	spinlock_t lock;
@@ -77,11 +82,22 @@ struct irq_cascade_desc {
 	struct list_item child[PLATFORM_IRQ_CHILDREN];
 };
 
+/* A descriptor for cascading interrupt controller template */
+struct irq_cascade_tmpl {
+	const char *name;
+	int irq;
+	void (*handler)(void *arg);
+};
+
 int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
 		       void *arg);
 void interrupt_unregister(uint32_t irq, const void *arg);
 uint32_t interrupt_enable(uint32_t irq);
 uint32_t interrupt_disable(uint32_t irq);
+
+void interrupt_init(void);
+int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl);
+struct irq_desc *interrupt_get_parent(uint32_t irq);
 
 /*
  * On platforms, supporting cascading interrupts cascaded interrupt numbers
