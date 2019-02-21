@@ -63,7 +63,7 @@ void idc_enable_interrupts(int target_core, int source_core)
 {
 	idc_write(IPC_IDCCTL, target_core,
 		  IPC_IDCCTL_IDCTBIE(source_core));
-	platform_interrupt_unmask(PLATFORM_IDC_INTERRUPT(target_core));
+	interrupt_unmask(PLATFORM_IDC_INTERRUPT(target_core));
 }
 
 /**

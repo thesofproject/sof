@@ -70,7 +70,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	unsigned int i, j;
 	int ret;
 
-	if (!tmpl->name)
+	if (!tmpl->name || !tmpl->ops)
 		return -EINVAL;
 
 	/* Make sure not to currupt adjacent data when invalidating cache */
@@ -106,6 +106,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 			list_init(&c->child[j]);
 
 		c->name = tmpl->name;
+		c->ops = tmpl->ops;
 		c->desc.irq = tmpl->irq;
 		c->desc.handler = tmpl->handler;
 		c->desc.handler_arg = &c->desc;
@@ -297,7 +298,7 @@ static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 			parent->enabled_count++;
 
 			/* enable the child interrupt */
-			platform_interrupt_unmask(irq);
+			interrupt_unmask(irq);
 		}
 	}
 
@@ -324,7 +325,7 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 			parent->enabled_count--;
 
 			/* disable the child interrupt */
-			platform_interrupt_mask(irq);
+			interrupt_mask(irq);
 		}
 	}
 

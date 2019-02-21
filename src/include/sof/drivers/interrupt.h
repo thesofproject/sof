@@ -38,7 +38,7 @@ void platform_interrupt_init(void);
 void platform_interrupt_set(uint32_t irq);
 void platform_interrupt_clear(uint32_t irq, uint32_t mask);
 uint32_t platform_interrupt_get_enabled(void);
-void platform_interrupt_mask(uint32_t irq);
-void platform_interrupt_unmask(uint32_t irq);
+void interrupt_mask(uint32_t irq);
+void interrupt_unmask(uint32_t irq);
 
 #endif

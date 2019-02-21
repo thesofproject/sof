@@ -102,7 +102,7 @@ uint32_t platform_interrupt_get_enabled(void)
 	return shim_read(SHIM_PIMR);
 }
 
-void platform_interrupt_mask(uint32_t irq)
+void interrupt_mask(uint32_t irq)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
@@ -139,7 +139,7 @@ void platform_interrupt_mask(uint32_t irq)
 	}
 }
 
-void platform_interrupt_unmask(uint32_t irq)
+void interrupt_unmask(uint32_t irq)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:

@@ -66,17 +66,45 @@ struct irq_desc {
 	struct list_item irq_list;
 };
 
-/* A descriptor for cascading interrupt controllers */
-struct irq_cascade_desc {
-	const char *name;
+/**
+ * struct irq_cascade_ops - cascading IRQ controller operations
+ *
+ * @mask:	mask an interrupt
+ * @unmask:	unmask an interrupt
+ */
+struct irq_cascade_ops {
+	void (*mask)(struct irq_desc *desc, uint32_t irq);
+	void (*unmask)(struct irq_desc *desc, uint32_t irq);
+};
 
-	/* the interrupt, that this controller is generating */
+/**
+ * struct irq_cascade_desc - cascading interrupt controller descriptor
+ *
+ * @name:	name of the controller
+ * @ops:	cascading interrupt controller driver operations
+ * @desc:	the interrupt, that this controller is generating
+ * @list:	link to the global list of interrupt controllers
+ * @lock:	protect child lists in the below array
+ * @num_children: number of children
+ * @child:	array of child lists - one per multiplexed IRQ
+ */
+struct irq_cascade_desc {
+	/*
+	 * The non-volatile part: doesn't change after initialisation, including
+	 * the top part of .desc
+	 */
+	const char *name;
+	const struct irq_cascade_ops *ops;
+
 	struct irq_desc desc;
 
-	/* to link to the global list of interrupt controllers */
+	/*
+	 * The volatile part: changes after initialisation, including the bottom
+	 * part of .desc above
+	 */
+
 	struct list_item list;
 
-	/* protect child lists in the below array */
 	spinlock_t lock;
 	uint32_t num_children;
 	struct list_item child[PLATFORM_IRQ_CHILDREN];
@@ -85,6 +113,7 @@ struct irq_cascade_desc {
 /* A descriptor for cascading interrupt controller template */
 struct irq_cascade_tmpl {
 	const char *name;
+	const struct irq_cascade_ops *ops;
 	int irq;
 	void (*handler)(void *arg);
 };
