@@ -10,6 +10,7 @@
  */
 
 #include <sof/debug/panic.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/init.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
@@ -28,6 +29,8 @@ static struct sof sof;
 int master_core_init(struct sof *sof)
 {
 	int err;
+
+	interrupt_init();
 
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);

@@ -17,6 +17,89 @@
 #include <stddef.h>
 #include <stdint.h>
 
+static spinlock_t cascade_lock;
+static union {
+	struct irq_cascade_desc *list __aligned(PLATFORM_DCACHE_ALIGN);
+	uint8_t bytes[PLATFORM_DCACHE_ALIGN];
+} cascade_root;
+
+int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
+{
+	struct irq_cascade_desc **cascade;
+	unsigned long flags;
+	unsigned int i;
+	int ret;
+
+	if (!tmpl->name)
+		return -EINVAL;
+
+	spin_lock_irq(&cascade_lock, flags);
+
+	dcache_invalidate_region(&cascade_root, sizeof(cascade_root));
+
+	for (cascade = &cascade_root.list; *cascade;
+	     cascade = &(*cascade)->next) {
+		if (!rstrcmp((*cascade)->name, tmpl->name)) {
+			ret = -EEXIST;
+			trace_error(TRACE_CLASS_IRQ,
+				    "error: cascading IRQ controller name duplication!");
+			goto unlock;
+		}
+	}
+
+	*cascade = rmalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
+			   sizeof(**cascade));
+
+	spinlock_init(&(*cascade)->lock);
+	for (i = 0; i < PLATFORM_IRQ_CHILDREN; i++)
+		list_init(&(*cascade)->child[i]);
+
+	(*cascade)->name = tmpl->name;
+	(*cascade)->desc.irq = tmpl->irq;
+	(*cascade)->desc.handler = tmpl->handler;
+	(*cascade)->desc.handler_arg = &(*cascade)->desc;
+
+	if (cascade == &cascade_root.list)
+		/* First descriptor */
+		dcache_writeback_region(&cascade_root, sizeof(cascade_root));
+
+	ret = 0;
+
+unlock:
+	spin_unlock_irq(&cascade_lock, flags);
+
+	return ret;
+}
+
+struct irq_desc *interrupt_get_parent(uint32_t irq)
+{
+	struct irq_cascade_desc *cascade;
+	struct irq_desc *parent = NULL;
+	unsigned long flags;
+
+	if (irq < PLATFORM_IRQ_CHILDREN)
+		return NULL;
+
+	spin_lock_irq(&cascade_lock, flags);
+
+	dcache_invalidate_region(&cascade_root, sizeof(cascade_root));
+
+	for (cascade = cascade_root.list; cascade; cascade = cascade->next)
+		if (SOF_IRQ_NUMBER(irq) == cascade->desc.irq) {
+			parent = &cascade->desc;
+			break;
+		}
+
+	spin_unlock_irq(&cascade_lock, flags);
+
+	return parent;
+}
+
+void interrupt_init(void)
+{
+	spinlock_init(&cascade_lock);
+}
+
 static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg)
 {

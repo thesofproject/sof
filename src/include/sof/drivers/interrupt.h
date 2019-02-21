@@ -45,13 +45,25 @@ struct irq_desc {
 
 /* A descriptor for cascading interrupt controllers */
 struct irq_cascade_desc {
+	const char *name;
+
 	/* the interrupt, that this controller is generating */
 	struct irq_desc desc;
+
+	/* to link to the global list of interrupt controllers */
+	struct irq_cascade_desc *next;
 
 	/* protect child lists in the below array */
 	spinlock_t lock;
 	uint32_t num_children;
 	struct list_item child[PLATFORM_IRQ_CHILDREN];
+};
+
+/* A descriptor for cascading interrupt controller template */
+struct irq_cascade_tmpl {
+	const char *name;
+	int irq;
+	void (*handler)(void *arg);
 };
 
 int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
@@ -74,6 +86,10 @@ void platform_interrupt_unmask(uint32_t irq);
  * have SOF_IRQ_LEVEL(irq) != 0.
  */
 #define interrupt_is_dsp_direct(irq) (!SOF_IRQ_LEVEL(irq))
+
+void interrupt_init(void);
+int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl);
+struct irq_desc *interrupt_get_parent(uint32_t irq);
 
 static inline void interrupt_set(int irq)
 {
