@@ -599,6 +599,7 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 		break;
 	default:
 		trace_mem_error("rmalloc() error: invalid zone");
+		panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
 		break;
 	}
 
