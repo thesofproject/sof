@@ -1,0 +1,10 @@
+# KW configuration file
+
+__panic - NORET
+
+# malloc succeeds for zone = RZONE_SYS (1) or RZONE_SYS|UNCACHED (17)
+_malloc - RET $1 EQ(1) : NE(0)
+_malloc - RET $1 EQ(17) : NE(0)
+
+# core id is used to index arrays, so tell KW the max value
+arch_cpu_get_id - RET 1 : [0,3]
