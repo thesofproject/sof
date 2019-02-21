@@ -465,42 +465,51 @@ static int volume_copy(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *sink;
 	struct comp_buffer *source;
+	uint32_t frames;
+	uint32_t source_bytes;
+	uint32_t sink_bytes;
 
 	tracev_volume("volume_copy()");
 
-	/* volume components will only ever have 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list,
-				 struct comp_buffer, sink_list);
-	sink = list_first_item(&dev->bsink_list,
-			       struct comp_buffer, source_list);
+	/* volume component will only ever have 1 source and 1 sink buffer */
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+				 sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
 
-	/* make sure source component buffer has enough data available and that
-	 * the sink component buffer has enough free bytes for copy. Also
-	 * check for XRUNs
-	 */
-	if (source->avail < cd->source_period_bytes) {
+	/* check for underrun */
+	if (source->avail == 0) {
 		trace_volume_error("volume_copy() error: "
 				   "source component buffer"
 				   " has not enough data available");
-		comp_underrun(dev, source, cd->source_period_bytes, 0);
-		return -EIO;	/* xrun */
+		comp_underrun(dev, source, 0, 0);
+		return -EIO;
 	}
-	if (sink->free < cd->sink_period_bytes) {
+
+	/* check for overrun */
+	if (sink->free == 0) {
 		trace_volume_error("volume_copy() error: "
 				   "sink component buffer"
 				   " has not enough free bytes for copy");
-		comp_overrun(dev, sink, cd->sink_period_bytes, 0);
-		return -EIO;	/* xrun */
+		comp_overrun(dev, sink, 0, 0);
+		return -EIO;
 	}
 
+	frames = comp_avail_frames(source, sink);
+	source_bytes = frames * comp_frame_bytes(source->source);
+	sink_bytes = frames * comp_frame_bytes(sink->sink);
+
+	tracev_volume("volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
+		      source_bytes, sink_bytes);
+
 	/* copy and scale volume */
-	cd->scale_vol(dev, sink, source, dev->frames);
+	cd->scale_vol(dev, sink, source, frames);
 
-	/* calc new free and available */
-	comp_update_buffer_produce(sink, cd->sink_period_bytes);
-	comp_update_buffer_consume(source, cd->source_period_bytes);
+	/* calculate new free and available */
+	comp_update_buffer_produce(sink, sink_bytes);
+	comp_update_buffer_consume(source, source_bytes);
 
-	return dev->frames;
+	return 0;
 }
 
 /**
