@@ -164,7 +164,7 @@ uint32_t platform_interrupt_get_enabled(void)
 	return 0;
 }
 
-void platform_interrupt_mask(uint32_t irq, uint32_t mask)
+void platform_interrupt_mask(uint32_t irq)
 {
 	int core = SOF_IRQ_CPU(irq);
 
@@ -187,7 +187,7 @@ void platform_interrupt_mask(uint32_t irq, uint32_t mask)
 	}
 }
 
-void platform_interrupt_unmask(uint32_t irq, uint32_t mask)
+void platform_interrupt_unmask(uint32_t irq)
 {
 	int core = SOF_IRQ_CPU(irq);
 
