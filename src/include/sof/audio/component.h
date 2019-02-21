@@ -50,6 +50,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/pipeline.h>
 #include <sof/cache.h>
+#include <sof/math/numbers.h>
 #include <uapi/ipc/control.h>
 #include <uapi/ipc/stream.h>
 #include <uapi/ipc/topology.h>
@@ -579,6 +580,15 @@ static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
 	default:
 		return 0;
 	}
+}
+
+static inline uint32_t comp_avail_frames(struct comp_buffer *source,
+					 struct comp_buffer *sink)
+{
+	uint32_t src_frames = source->avail / comp_frame_bytes(source->source);
+	uint32_t sink_frames = sink->free / comp_frame_bytes(sink->sink);
+
+	return MIN(src_frames, sink_frames);
 }
 
 /**
