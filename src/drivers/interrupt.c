@@ -31,7 +31,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	unsigned int i;
 	int ret;
 
-	if (!tmpl->name)
+	if (!tmpl->name || !tmpl->ops)
 		return -EINVAL;
 
 	spin_lock_irq(&cascade_lock, flags);
@@ -56,6 +56,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 		list_init(&(*cascade)->child[i].list);
 
 	(*cascade)->name = tmpl->name;
+	(*cascade)->ops = tmpl->ops;
 	(*cascade)->global_mask = tmpl->global_mask;
 	(*cascade)->desc.irq = tmpl->irq;
 	(*cascade)->desc.handler = tmpl->handler;
@@ -220,7 +221,7 @@ static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 			arch_interrupt_enable_mask(1 << SOF_IRQ_NUMBER(irq));
 
 		/* enable the child interrupt */
-		platform_interrupt_unmask(irq);
+		interrupt_unmask(irq);
 	}
 
 	spin_unlock(&cascade->lock);
@@ -247,7 +248,7 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 			    irq);
 	} else if (!--child->enable_count[child_idx]) {
 		/* disable the child interrupt */
-		platform_interrupt_mask(irq);
+		interrupt_mask(irq);
 
 		/* disable the parent interrupt */
 		if (!--cascade->enable_count[core])

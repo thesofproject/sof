@@ -126,42 +126,35 @@ static void irq_lvl2_level5_handler(void *data)
 	IRQ_LVL2_HANDLER(5);
 }
 
-/* DSP internal interrupts */
-static const struct irq_cascade_tmpl dsp_irq[] = {
-	{
-		.name = irq_name_level2,
-		.irq = IRQ_NUM_EXT_LEVEL2,
-		.handler = irq_lvl2_level2_handler,
-		.global_mask = false,
-	}, {
-		.name = irq_name_level3,
-		.irq = IRQ_NUM_EXT_LEVEL3,
-		.handler = irq_lvl2_level3_handler,
-		.global_mask = false,
-	}, {
-		.name = irq_name_level4,
-		.irq = IRQ_NUM_EXT_LEVEL4,
-		.handler = irq_lvl2_level4_handler,
-		.global_mask = false,
-	}, {
-		.name = irq_name_level5,
-		.irq = IRQ_NUM_EXT_LEVEL5,
-		.handler = irq_lvl2_level5_handler,
-		.global_mask = false,
-	},
-};
-
 uint32_t platform_interrupt_get_enabled(void)
 {
 	return 0;
 }
 
-void platform_interrupt_mask(uint32_t irq)
+void interrupt_mask(uint32_t irq)
+{
+	struct irq_desc *parent = interrupt_get_parent(irq);
+	struct irq_cascade_desc *cascade = container_of(parent,
+						struct irq_cascade_desc, desc);
+	if (parent && cascade->ops->mask)
+		cascade->ops->mask(parent, irq);
+}
+
+void interrupt_unmask(uint32_t irq)
+{
+	struct irq_desc *parent = interrupt_get_parent(irq);
+	struct irq_cascade_desc *cascade = container_of(parent,
+						struct irq_cascade_desc, desc);
+	if (parent && cascade->ops->unmask)
+		cascade->ops->unmask(parent, irq);
+}
+
+static void irq_mask(struct irq_desc *desc, uint32_t irq)
 {
 	int core = SOF_IRQ_CPU(irq);
 
 	/* mask external interrupt bit */
-	switch (SOF_IRQ_NUMBER(irq)) {
+	switch (desc->irq) {
 	case IRQ_NUM_EXT_LEVEL5:
 		irq_write(REG_IRQ_IL5MSD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
@@ -174,17 +167,15 @@ void platform_interrupt_mask(uint32_t irq)
 	case IRQ_NUM_EXT_LEVEL2:
 		irq_write(REG_IRQ_IL2MSD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
-	default:
-		break;
 	}
 }
 
-void platform_interrupt_unmask(uint32_t irq)
+static void irq_unmask(struct irq_desc *desc, uint32_t irq)
 {
 	int core = SOF_IRQ_CPU(irq);
 
 	/* unmask external interrupt bit */
-	switch (SOF_IRQ_NUMBER(irq)) {
+	switch (desc->irq) {
 	case IRQ_NUM_EXT_LEVEL5:
 		irq_write(REG_IRQ_IL5MCD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
@@ -197,10 +188,42 @@ void platform_interrupt_unmask(uint32_t irq)
 	case IRQ_NUM_EXT_LEVEL2:
 		irq_write(REG_IRQ_IL2MCD(core), 1 << SOF_IRQ_BIT(irq));
 		break;
-	default:
-		break;
 	}
 }
+
+static const struct irq_cascade_ops irq_ops = {
+	.mask = irq_mask,
+	.unmask = irq_unmask,
+};
+
+/* DSP internal interrupts */
+static const struct irq_cascade_tmpl dsp_irq[] = {
+	{
+		.name = irq_name_level2,
+		.irq = IRQ_NUM_EXT_LEVEL2,
+		.handler = irq_lvl2_level2_handler,
+		.ops = &irq_ops,
+		.global_mask = false,
+	}, {
+		.name = irq_name_level3,
+		.irq = IRQ_NUM_EXT_LEVEL3,
+		.handler = irq_lvl2_level3_handler,
+		.ops = &irq_ops,
+		.global_mask = false,
+	}, {
+		.name = irq_name_level4,
+		.irq = IRQ_NUM_EXT_LEVEL4,
+		.handler = irq_lvl2_level4_handler,
+		.ops = &irq_ops,
+		.global_mask = false,
+	}, {
+		.name = irq_name_level5,
+		.irq = IRQ_NUM_EXT_LEVEL5,
+		.handler = irq_lvl2_level5_handler,
+		.ops = &irq_ops,
+		.global_mask = false,
+	},
+};
 
 void platform_interrupt_set(uint32_t irq)
 {
