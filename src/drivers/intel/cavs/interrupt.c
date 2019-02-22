@@ -244,13 +244,13 @@ static struct irq_cascade_tmpl dsp_irq[4] = {
 void platform_interrupt_set(uint32_t irq)
 {
 	if (interrupt_is_dsp_direct(irq))
-		arch_interrupt_set(SOF_IRQ_NUMBER(irq));
+		arch_interrupt_set(irq);
 }
 
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	if (interrupt_is_dsp_direct(irq))
-		arch_interrupt_clear(SOF_IRQ_NUMBER(irq));
+		arch_interrupt_clear(irq);
 }
 
 /* Called on each core: from platform_init() and from slave_core_init() */
