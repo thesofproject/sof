@@ -283,7 +283,7 @@ static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 
 	/* enable the parent interrupt */
 	if (parent->enabled_count == 0)
-		arch_interrupt_enable_mask(1 << SOF_IRQ_NUMBER(irq));
+		arch_interrupt_enable_mask(1 << parent->irq);
 
 	list_for_item(clist, &cascade->child[SOF_IRQ_BIT(irq)]) {
 		child = container_of(clist, struct irq_desc, irq_list);
@@ -326,7 +326,7 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 	}
 
 	if (parent->enabled_count == 0)
-		arch_interrupt_disable_mask(1 << SOF_IRQ_NUMBER(irq));
+		arch_interrupt_disable_mask(1 << parent->irq);
 
 	spin_unlock(&cascade->lock);
 	return 0;
