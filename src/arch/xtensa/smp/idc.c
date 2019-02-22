@@ -61,9 +61,11 @@ static struct idc **idc_get(void)
  */
 void idc_enable_interrupts(int target_core, int source_core)
 {
+	struct idc *idc = *idc_get();
+
 	idc_write(IPC_IDCCTL, target_core,
 		  IPC_IDCCTL_IDCTBIE(source_core));
-	interrupt_unmask(PLATFORM_IDC_INTERRUPT(target_core));
+	interrupt_unmask(idc->irq);
 }
 
 /**
@@ -349,11 +351,12 @@ int arch_idc_init(void)
 			   SOF_TASK_PRI_IDC, idc_do_cmd, *idc, core, 0);
 
 	/* configure interrupt */
-	ret = interrupt_register(PLATFORM_IDC_INTERRUPT(core), IRQ_AUTO_UNMASK,
-				 idc_irq_handler, *idc);
+	(*idc)->irq = PLATFORM_IDC_INTERRUPT(core);
+	ret = interrupt_register((*idc)->irq, IRQ_AUTO_UNMASK, idc_irq_handler,
+				 *idc);
 	if (ret < 0)
 		return ret;
-	interrupt_enable(PLATFORM_IDC_INTERRUPT(core));
+	interrupt_enable((*idc)->irq);
 
 	/* enable BUSY and DONE (only for master core) interrupts */
 	idc_write(IPC_IDCCTL, core,
@@ -375,8 +378,8 @@ void idc_free(void)
 	trace_idc("idc_free()");
 
 	/* disable and unregister interrupt */
-	interrupt_disable(PLATFORM_IDC_INTERRUPT(core));
-	interrupt_unregister(PLATFORM_IDC_INTERRUPT(core), idc);
+	interrupt_disable(idc->irq);
+	interrupt_unregister(idc->irq, idc);
 
 	/* clear BUSY bits */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {

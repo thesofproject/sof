@@ -115,6 +115,7 @@ struct idc {
 	uint32_t done_bit_mask;		/**< done interrupt mask */
 	struct idc_msg received_msg;	/**< received message */
 	struct task idc_task;		/**< IDC processing task */
+	int irq;
 };
 
 #endif
