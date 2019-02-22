@@ -51,6 +51,7 @@ struct edf_schedule_data {
 	struct list_item list;	/* list of tasks in priority queue */
 	struct list_item idle_list; /* list of queued idle tasks */
 	uint32_t clock;
+	int irq;
 };
 
 #define SLOT_ALIGN_TRIES	10
@@ -197,7 +198,7 @@ static struct task *sch_edf(void)
 
 	tracev_edf_sch("sch_edf()");
 
-	interrupt_clear(PLATFORM_SCHEDULE_IRQ);
+	interrupt_clear(sch->irq);
 
 	while (!list_is_empty(&sch->list)) {
 		spin_lock_irq(&sch->lock, flags);
@@ -431,7 +432,7 @@ schedule:
 	 */
 
 	/* the scheduler is run in IRQ context */
-	interrupt_set(PLATFORM_SCHEDULE_IRQ);
+	interrupt_set(sch->irq);
 }
 
 /* Initialise the scheduler */
@@ -453,9 +454,9 @@ static int edf_scheduler_init(void)
 	sch->clock = PLATFORM_SCHED_CLOCK;
 
 	/* configure scheduler interrupt */
-	interrupt_register(PLATFORM_SCHEDULE_IRQ, IRQ_AUTO_UNMASK,
-			   edf_scheduler_run, sch);
-	interrupt_enable(PLATFORM_SCHEDULE_IRQ);
+	sch->irq = PLATFORM_SCHEDULE_IRQ;
+	interrupt_register(sch->irq, IRQ_AUTO_UNMASK, edf_scheduler_run, sch);
+	interrupt_enable(sch->irq);
 
 	/* allocate arch tasks */
 	int tasks_result = allocate_tasks();
@@ -473,8 +474,8 @@ static void edf_scheduler_free(void)
 	spin_lock_irq(&sch->lock, flags);
 
 	/* disable and unregister scheduler interrupt */
-	interrupt_disable(PLATFORM_SCHEDULE_IRQ);
-	interrupt_unregister(PLATFORM_SCHEDULE_IRQ, sch);
+	interrupt_disable(sch->irq);
+	interrupt_unregister(sch->irq, sch);
 
 	/* free arch tasks */
 	arch_free_tasks();
