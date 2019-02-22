@@ -100,7 +100,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 			goto next;
 
 		/* get child if any and run handler */
-		list_for_item(clist, &cascade->child[i]) {
+		list_for_item (clist, &cascade->child[i].list) {
 			child = container_of(clist, struct irq_desc, irq_list);
 
 			if (child && child->handler) {

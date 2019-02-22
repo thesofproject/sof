@@ -47,6 +47,17 @@
 #define IRQ_MANUAL_UNMASK	0
 #define IRQ_AUTO_UNMASK		1
 
+/**
+ * struct irq_child - child IRQ descriptor for cascading IRQ controllers
+ *
+ * @enable_count: IRQ enable counter
+ * @list:	head for IRQ descriptors, sharing this interrupt
+ */
+struct irq_child {
+	int enable_count;
+	struct list_item list;
+};
+
 struct irq_desc {
 	/* irq must be first for constructor */
 	int irq;        /* logical IRQ number */
@@ -57,10 +68,6 @@ struct irq_desc {
 
 	/* whether irq should be automatically unmasked */
 	int unmask;
-
-	/* to identify interrupt with the same IRQ */
-	int id;
-	uint32_t enabled_count;
 
 	/* to link to other irq_desc */
 	struct list_item irq_list;
@@ -85,6 +92,7 @@ struct irq_cascade_ops {
  * @desc:	the interrupt, that this controller is generating
  * @list:	link to the global list of interrupt controllers
  * @lock:	protect child lists in the below array
+ * @enable_count: enabled child interrupt counter
  * @num_children: number of children
  * @child:	array of child lists - one per multiplexed IRQ
  */
@@ -106,8 +114,9 @@ struct irq_cascade_desc {
 	struct list_item list;
 
 	spinlock_t lock;
+	int enable_count;
 	uint32_t num_children;
-	struct list_item child[PLATFORM_IRQ_CHILDREN];
+	struct irq_child child[PLATFORM_IRQ_CHILDREN];
 };
 
 /* A descriptor for cascading interrupt controller template */
