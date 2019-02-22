@@ -78,7 +78,7 @@ uint32_t platform_interrupt_get_enabled(void)
 	return shim_read(SHIM_PIMR);
 }
 
-void interrupt_mask(uint32_t irq)
+void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
@@ -115,7 +115,7 @@ void interrupt_mask(uint32_t irq)
 	}
 }
 
-void interrupt_unmask(uint32_t irq)
+void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:

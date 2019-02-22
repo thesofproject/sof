@@ -131,28 +131,26 @@ uint32_t platform_interrupt_get_enabled(void)
 	return 0;
 }
 
-void interrupt_mask(uint32_t irq)
+void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
 	struct irq_desc *parent = interrupt_get_parent(irq);
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
 	if (parent && cascade->ops->mask)
-		cascade->ops->mask(parent, irq);
+		cascade->ops->mask(parent, irq, cpu);
 }
 
-void interrupt_unmask(uint32_t irq)
+void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
 	struct irq_desc *parent = interrupt_get_parent(irq);
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
 	if (parent && cascade->ops->unmask)
-		cascade->ops->unmask(parent, irq);
+		cascade->ops->unmask(parent, irq, cpu);
 }
 
-static void irq_mask(struct irq_desc *desc, uint32_t irq)
+static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 {
-	int core = SOF_IRQ_CPU(irq);
-
 	/* mask external interrupt bit */
 	switch (desc->irq) {
 	case IRQ_NUM_EXT_LEVEL5:
@@ -170,10 +168,8 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq)
 	}
 }
 
-static void irq_unmask(struct irq_desc *desc, uint32_t irq)
+static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 {
-	int core = SOF_IRQ_CPU(irq);
-
 	/* unmask external interrupt bit */
 	switch (desc->irq) {
 	case IRQ_NUM_EXT_LEVEL5:

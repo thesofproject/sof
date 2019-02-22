@@ -221,7 +221,7 @@ static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 			arch_interrupt_enable_mask(1 << SOF_IRQ_NUMBER(irq));
 
 		/* enable the child interrupt */
-		interrupt_unmask(irq);
+		interrupt_unmask(irq, core);
 	}
 
 	spin_unlock(&cascade->lock);
@@ -248,7 +248,7 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 			    irq);
 	} else if (!--child->enable_count[child_idx]) {
 		/* disable the child interrupt */
-		interrupt_mask(irq);
+		interrupt_mask(irq, core);
 
 		/* disable the parent interrupt */
 		if (!--cascade->enable_count[core])

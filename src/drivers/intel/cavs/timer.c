@@ -170,7 +170,7 @@ void timer_enable(struct timer *timer)
 		interrupt_enable(timer->irq);
 		break;
 	case TIMER3:
-		interrupt_unmask(timer->irq);
+		interrupt_unmask(timer->irq, SOF_IRQ_CPU(timer->irq));
 		break;
 	}
 }
@@ -184,7 +184,7 @@ void timer_disable(struct timer *timer)
 		interrupt_disable(timer->irq);
 		break;
 	case TIMER3:
-		interrupt_mask(timer->irq);
+		interrupt_mask(timer->irq, SOF_IRQ_CPU(timer->irq));
 		break;
 	}
 }
