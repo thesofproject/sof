@@ -7,8 +7,9 @@ DSP firmwares for ALSA.
 Building and Installing
 =======================
 
-cmake -Bbuild .
-cd build
+mkdir build_tools
+cd build_tools
+cmake ..
 make
 make install
 
