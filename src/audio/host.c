@@ -298,7 +298,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		ret = dma_stop(hd->dma, hd->chan);
 		if (ret < 0)
 			trace_host_error("host_trigger(): dma stop failed: %d",
-					 ret)
+					 ret);
 #endif
 		break;
 	case COMP_TRIGGER_START:
