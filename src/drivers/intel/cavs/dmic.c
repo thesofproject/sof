@@ -1503,6 +1503,7 @@ static void dmic_irq_handler(void *data)
 
 static int dmic_probe(struct dai *dai)
 {
+	int irq = dmic_irq(dai);
 	struct dmic_pdata *dmic;
 	int ret;
 
@@ -1524,7 +1525,7 @@ static int dmic_probe(struct dai *dai)
 	dmic->state = COMP_STATE_READY;
 
 	/* register our IRQ handler */
-	ret = interrupt_register(dmic_irq(dai), IRQ_AUTO_UNMASK,
+	ret = interrupt_register(irq, IRQ_AUTO_UNMASK,
 				 dmic_irq_handler, dai);
 	if (ret < 0) {
 		trace_dmic_error("dmic failed to allocate IRQ");
@@ -1537,19 +1538,20 @@ static int dmic_probe(struct dai *dai)
 	/* Disable dynamic clock gating for dmic before touching any reg */
 	pm_runtime_get_sync(DMIC_CLK, dai->index);
 
-	interrupt_unmask(dmic_irq(dai));
-	interrupt_enable(dmic_irq(dai));
+	interrupt_unmask(irq, SOF_IRQ_CPU(irq));
+	interrupt_enable(irq);
 
 	return 0;
 }
 
 static int dmic_remove(struct dai *dai)
 {
+	int irq = dmic_irq(dai);
 	int i;
 
-	interrupt_disable(dmic_irq(dai));
-	interrupt_mask(dmic_irq(dai));
-	interrupt_unregister(dmic_irq(dai), dai);
+	interrupt_disable(irq);
+	interrupt_mask(irq, SOF_IRQ_CPU(irq));
+	interrupt_unregister(irq, dai);
 
 	pm_runtime_put_sync(DMIC_CLK, dai->index);
 	/* Disable DMIC power */

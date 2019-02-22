@@ -24,5 +24,5 @@ uint32_t platform_interrupt_get_enabled(void)
 	return 0;
 }
 
-void interrupt_mask(uint32_t irq) {}
-void interrupt_unmask(uint32_t irq) {}
+void interrupt_mask(uint32_t irq, unsigned int cpu) {}
+void interrupt_unmask(uint32_t irq, unsigned int cpu) {}
