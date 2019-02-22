@@ -1239,7 +1239,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		   cfg.clkdiv, cfg.mcic);
 	trace_dmic("dmic_set_config(), cfg mfir_a = %u, mfir_b = %u",
 		   cfg.mfir_a, cfg.mfir_b);
-	trace_dmic("dmic_set_config(), cfg cic_shift = %u", cfg.cic_shift)
+	trace_dmic("dmic_set_config(), cfg cic_shift = %u", cfg.cic_shift);
 	trace_dmic("dmic_set_config(), cfg fir_a_shift = %u, "
 		   "cfg.fir_b_shift = %u", cfg.fir_a_shift, cfg.fir_b_shift);
 	trace_dmic("dmic_set_config(), cfg fir_a_length = %u, "

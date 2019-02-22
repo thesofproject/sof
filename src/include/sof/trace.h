@@ -124,13 +124,13 @@ extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);
 #define _log_message(mbox, atomic, level, comp_class, id_0, id_1,	\
 		     has_ids, format, ...)				\
-{									\
+do {									\
 	if (test_bench_trace) {						\
 		char *msg = "%s " format;				\
 		fprintf(stderr, msg, get_trace_class(comp_class),	\
 			##__VA_ARGS__);					\
 	}								\
-}
+} while (0)
 #endif
 
 #define _TRACE_EVENT_NTH_PARAMS(id_count, param_count)			\
@@ -348,11 +348,11 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 
 #define __log_message(func_name, lvl, comp_class, id_0, id_1, has_ids,	\
 		      format, ...)					\
-{									\
+do {									\
 	_DECLARE_LOG_ENTRY(lvl, format, comp_class,			\
 			   PP_NARG(__VA_ARGS__), has_ids);		\
 	BASE_LOG(func_name, id_0, id_1, &log_entry, ##__VA_ARGS__)	\
-}
+} while (0)
 
 #define _log_message(mbox, atomic, level, comp_class, id_0, id_1,	\
 		     has_ids, format, ...)				\
