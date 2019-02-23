@@ -37,13 +37,15 @@
 
 struct sof;
 
-/* notifier general IDs */
-#define NOTIFIER_ID_CPU_FREQ	0
-#define NOTIFIER_ID_SSP_FREQ	1
-
 /* notifier target core masks */
 #define NOTIFIER_TARGET_CORE_MASK(x)	(1 << x)
 #define NOTIFIER_TARGET_CORE_ALL_MASK	0xFFFFFFFF
+
+enum notify_id {
+	NOTIFIER_ID_CPU_FREQ = 0,
+	NOTIFIER_ID_SSP_FREQ,
+	NOTIFIER_ID_KEY_PHRASE_DETECTED,
+};
 
 struct notify {
 	spinlock_t lock;	/* notifier lock */
@@ -51,7 +53,7 @@ struct notify {
 };
 
 struct notify_data {
-	uint32_t id;
+	enum notify_id id;
 	uint32_t message;
 	uint32_t target_core_mask;
 	uint32_t data_size;
@@ -59,7 +61,7 @@ struct notify_data {
 };
 
 struct notifier {
-	uint32_t id;
+	enum notify_id id;
 	struct list_item list;
 	void *cb_data;
 	void (*cb)(int message, void *cb_data, void *event_data);
