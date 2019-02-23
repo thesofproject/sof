@@ -75,7 +75,6 @@ struct host_data {
 	struct dma *dma;
 	int chan;
 	struct dma_sg_config config;
-	completion_t complete;
 	struct comp_buffer *dma_buffer;
 
 	uint32_t period_bytes;	/**< Size of a single period (in bytes) */
@@ -229,9 +228,6 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	}
 
 	next->size = DMA_RELOAD_END;
-
-	/* let any waiters know we have completed */
-	wait_completed(&hd->complete);
 #endif
 }
 
