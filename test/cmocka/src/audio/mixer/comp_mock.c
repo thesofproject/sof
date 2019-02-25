@@ -58,7 +58,7 @@ static int mock_comp_cmd(struct comp_dev *dev, int cmd, void *data,
 	return 0;
 }
 
-static int mock_comp_copy(struct comp_dev *dev)
+static int mock_comp_copy(struct comp_dev *dev, bool preload)
 {
 	return 0;
 }

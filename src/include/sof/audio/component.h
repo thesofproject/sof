@@ -581,6 +581,27 @@ static inline int comp_is_active(struct comp_dev *current)
 }
 
 /**
+ * Retrieves previous connected component.
+ * @param dev Component device.
+ * @param dir Component stream direction.
+ * @return Previous connected component device.
+ */
+static inline struct comp_dev *comp_get_previous(struct comp_dev *dev, int dir)
+{
+	struct list_item *buffer_list = comp_buffer_list(dev, dir);
+	struct comp_dev *prev = NULL;
+	struct comp_buffer *buffer;
+
+	if (!list_is_empty(buffer_list)) {
+		buffer = buffer_from_list(buffer_list->next,
+					  struct comp_buffer, dir);
+		prev = buffer_get_comp(buffer, dir);
+	}
+
+	return prev;
+}
+
+/**
  * Calculates period size in bytes based on component device's parameters.
  * @param dev Component device.
  * @return Period size in bytes.
