@@ -94,9 +94,8 @@
 #define HDA_LINK_1MS_US	1000
 
 #define HDA_STATE_HOST_PRELOAD	BIT(0)
-#define HDA_STATE_BF_WAIT	BIT(1)
-#define HDA_STATE_INIT		BIT(2)
-#define HDA_STATE_RELEASE	BIT(3)
+#define HDA_STATE_INIT		BIT(1)
+#define HDA_STATE_RELEASE	BIT(2)
 
 /*
  * DMA Pointer Trace
@@ -339,8 +338,7 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 	/* waiting for buffer full after start
 	 * first try is unblocking, then blocking
 	 */
-	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) &&
-	       (chan->state & HDA_STATE_BF_WAIT)) {
+	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF)) {
 		if (deadline < platform_timer_get(platform_timer)) {
 			trace_hddma_error("hda-dmac: %d preload timeout",
 					  dma->plat_data.id);
@@ -348,20 +346,13 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 		}
 	}
 
-	if (host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF) {
-		chan->state &= ~(HDA_STATE_HOST_PRELOAD | HDA_STATE_BF_WAIT);
-		if (chan->cb) {
-			/* loop over each period */
-			period_cnt = chan->buffer_bytes /
-					chan->period_bytes;
-			for (i = 0; i < period_cnt; i++)
-				chan->cb(chan->cb_data,
-					 DMA_IRQ_TYPE_LLIST, &next);
-			/* do not need to test out next in this path */
-		}
-	} else {
-		/* next call in pre-load state will be blocking */
-		chan->state |= HDA_STATE_BF_WAIT;
+	chan->state &= ~HDA_STATE_HOST_PRELOAD;
+	if (chan->cb) {
+		/* loop over each period */
+		period_cnt = chan->buffer_bytes / chan->period_bytes;
+		for (i = 0; i < period_cnt; i++)
+			chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, &next);
+		/* do not need to test out next in this path */
 	}
 
 	return 0;

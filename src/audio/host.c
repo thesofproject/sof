@@ -79,7 +79,6 @@ struct host_data {
 
 	uint32_t period_bytes;	/**< Size of a single period (in bytes) */
 	uint32_t period_count;	/**< Number of periods */
-	uint32_t pointer_init;
 
 	/* host position reporting related */
 	uint32_t host_size;	/**< Host buffer size (in bytes) */
@@ -102,7 +101,7 @@ struct host_data {
 };
 
 static int host_stop(struct comp_dev *dev);
-static int host_copy_int(struct comp_dev *dev, bool preload_run);
+static int host_copy(struct comp_dev *dev);
 
 #if !defined CONFIG_DMA_GW
 
@@ -269,7 +268,9 @@ static int create_local_elems(struct comp_dev *dev)
  */
 static int host_trigger(struct comp_dev *dev, int cmd)
 {
+#if defined CONFIG_DMA_GW
 	struct host_data *hd = comp_get_drvdata(dev);
+#endif
 	int ret = 0;
 
 	trace_host("host_trigger()");
@@ -310,19 +311,11 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 					"dma_start() failed, ret = %u", ret);
 			goto out;
 		}
-#endif
+#else
 		/* preload first playback period for preloader task */
-		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-			if (!hd->pointer_init) {
-				ret = host_copy_int(dev, true);
-
-				if (ret == dev->frames)
-					ret = 0;
-				// wait for completion ?
-
-				hd->pointer_init = 1;
-			}
-		}
+		if (pipeline_is_preload(dev->pipeline))
+			ret = host_copy(dev);
+#endif
 		break;
 	default:
 		break;
@@ -398,7 +391,6 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 	/* init posn data. TODO: other fields */
 	hd->posn.comp_id = comp->id;
-	hd->pointer_init = 0;
 	dev->state = COMP_STATE_READY;
 	dev->is_dma_connected = 1;
 	return dev;
@@ -451,6 +443,22 @@ static int host_elements_reset(struct comp_dev *dev)
 }
 #endif
 
+#if defined CONFIG_DMA_GW
+static void host_buffer_cb(void *data, uint32_t bytes)
+{
+	struct comp_dev *dev = (struct comp_dev *)data;
+	struct host_data *hd = comp_get_drvdata(dev);
+	int ret;
+
+	tracev_host("host_buffer_cb(), bytes = 0x%x", bytes);
+
+	ret = dma_copy(hd->dma, hd->chan, bytes, 0);
+	if (ret < 0)
+		trace_host_error("host_buffer_cb() error: dma_copy() failed, "
+				 "ret = %u", ret);
+}
+#endif
+
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev)
 {
@@ -474,6 +482,12 @@ static int host_params(struct comp_dev *dev)
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 
+#if defined CONFIG_DMA_GW
+		/* set callback on buffer consume */
+		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
+			      BUFF_CB_TYPE_CONSUME);
+#endif
+
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 		hd->period_count = cconfig->periods_sink;
 	} else {
@@ -483,6 +497,12 @@ static int host_params(struct comp_dev *dev)
 #endif
 		hd->dma_buffer = list_first_item(&dev->bsource_list,
 			struct comp_buffer, sink_list);
+
+#if defined CONFIG_DMA_GW
+		/* set callback on buffer produce */
+		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
+			      BUFF_CB_TYPE_PRODUCE);
+#endif
 
 		config->direction = DMA_DIR_LMEM_TO_HMEM;
 		hd->period_count = cconfig->periods_source;
@@ -582,7 +602,6 @@ static int host_prepare(struct comp_dev *dev)
 #if !defined CONFIG_DMA_GW
 	hd->split_remaining = 0;
 #endif
-	hd->pointer_init = 0;
 	dev->position = 0;
 
 	return 0;
@@ -656,7 +675,6 @@ static int host_reset(struct comp_dev *dev)
 	hd->chan = DMA_CHAN_INVALID;
 
 	host_pointer_reset(dev);
-	hd->pointer_init = 0;
 #if !defined CONFIG_DMA_GW
 	hd->source = NULL;
 	hd->sink = NULL;
@@ -669,16 +687,11 @@ static int host_reset(struct comp_dev *dev)
 /* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
 {
-	return host_copy_int(dev, false);
-}
-
-static int host_copy_int(struct comp_dev *dev, bool preload_run)
-{
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
-	int ret;
+	int ret = 0;
 
-	tracev_host("host_copy_int()");
+	tracev_host("host_copy()");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
@@ -689,25 +702,29 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run)
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		if (hd->dma_buffer->free < local_elem->size) {
 			/* buffer is enough avail, just return. */
-			tracev_host("host_copy_int(), buffer is enough avail");
+			tracev_host("host_copy(), buffer is enough avail");
 			return 0;
 		}
 	} else {
 		if (hd->dma_buffer->avail < local_elem->size) {
 			/* buffer is enough empty, just return. */
-			tracev_host("host_copy_int(), buffer is enough empty");
+			tracev_host("host_copy(), buffer is enough empty");
 			return 0;
 		}
 	}
+
 /* TODO: this could be run-time if() based on the same attribute
  * as in the host_trigger().
  */
 #if defined CONFIG_DMA_GW
-	/* tell gateway to copy another period */
-	ret = dma_copy(hd->dma, hd->chan, hd->period_bytes,
-		       preload_run ? DMA_COPY_PRELOAD : 0);
-	if (ret < 0)
-		goto out;
+	/* here only do preload, further copies happen
+	 * in host_buffer_cb()
+	 */
+	if (pipeline_is_preload(dev->pipeline)) {
+		ret = dma_copy(hd->dma, hd->chan, hd->period_bytes, DMA_COPY_PRELOAD);
+		if (ret < 0)
+			goto out;
+	}
 
 	/* note: update() moved to callback */
 #else
@@ -719,9 +736,9 @@ static int host_copy_int(struct comp_dev *dev, bool preload_run)
 	if (ret < 0)
 		goto out;
 #endif
-	return dev->frames;
+	return 0;
 out:
-	trace_host_error("host_copy_int() error: "
+	trace_host_error("host_copy() error: "
 			 "dma_set_config() or dma_start() failed, ret = %u",
 			 ret);
 	return ret;
