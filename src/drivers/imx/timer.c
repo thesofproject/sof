@@ -77,6 +77,7 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
+		timer->irq_arg = arg;
 		return arch_timer_register(timer, handler, arg);
 	default:
 		return -EINVAL;
@@ -85,15 +86,15 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 
 void timer_unregister(struct timer *timer)
 {
-	interrupt_unregister(timer->irq);
+	interrupt_unregister(timer->irq, timer->irq_arg);
 }
 
 void timer_enable(struct timer *timer)
 {
-	interrupt_enable(timer->irq);
+	interrupt_enable(timer->irq, timer->irq_arg);
 }
 
 void timer_disable(struct timer *timer)
 {
-	interrupt_disable(timer->irq);
+	interrupt_disable(timer->irq, timer->irq_arg);
 }

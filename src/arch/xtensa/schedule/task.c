@@ -171,10 +171,10 @@ int arch_allocate_tasks(void)
 	(*low)->irq = PLATFORM_IRQ_TASK_LOW;
 
 	ret = interrupt_register((*low)->irq, IRQ_AUTO_UNMASK, _irq_task,
-				 task_irq_low_get());
+				 low);
 	if (ret < 0)
 		return ret;
-	interrupt_enable((*low)->irq);
+	interrupt_enable((*low)->irq, low);
 #endif
 
 #if CONFIG_TASK_HAVE_PRIORITY_MEDIUM
@@ -187,10 +187,10 @@ int arch_allocate_tasks(void)
 	(*med)->irq = PLATFORM_IRQ_TASK_MED;
 
 	ret = interrupt_register((*med)->irq, IRQ_AUTO_UNMASK, _irq_task,
-				 task_irq_med_get());
+				 med);
 	if (ret < 0)
 		return ret;
-	interrupt_enable((*med)->irq);
+	interrupt_enable((*med)->irq, med);
 #endif
 
 	/* irq high */
@@ -202,10 +202,10 @@ int arch_allocate_tasks(void)
 	(*high)->irq = PLATFORM_IRQ_TASK_HIGH;
 
 	ret = interrupt_register((*high)->irq, IRQ_AUTO_UNMASK, _irq_task,
-				 task_irq_high_get());
+				 high);
 	if (ret < 0)
 		return ret;
-	interrupt_enable((*high)->irq);
+	interrupt_enable((*high)->irq, high);
 
 	return 0;
 }
@@ -220,8 +220,8 @@ void arch_free_tasks(void)
 	struct irq_task **low = task_irq_low_get();
 
 	spin_lock_irq(&(*low)->lock, flags);
-	interrupt_disable((*low)->irq);
-	interrupt_unregister((*low)->irq, task_irq_low_get());
+	interrupt_disable((*low)->irq, low);
+	interrupt_unregister((*low)->irq, low);
 	list_item_del(&(*low)->list);
 	spin_unlock_irq(&(*low)->lock, flags);
 #endif
@@ -231,8 +231,8 @@ void arch_free_tasks(void)
 	struct irq_task **med = task_irq_med_get();
 
 	spin_lock_irq(&(*med)->lock, flags);
-	interrupt_disable((*med)->irq);
-	interrupt_unregister((*med)->irq, task_irq_med_get());
+	interrupt_disable((*med)->irq, med);
+	interrupt_unregister((*med)->irq, med);
 	list_item_del(&(*med)->list);
 	spin_unlock_irq(&(*med)->lock, flags);
 #endif
@@ -241,8 +241,8 @@ void arch_free_tasks(void)
 	struct irq_task **high = task_irq_high_get();
 
 	spin_lock_irq(&(*high)->lock, flags);
-	interrupt_disable((*high)->irq);
-	interrupt_unregister((*high)->irq, task_irq_high_get());
+	interrupt_disable((*high)->irq, high);
+	interrupt_unregister((*high)->irq, high);
 	list_item_del(&(*high)->list);
 	spin_unlock_irq(&(*high)->lock, flags);
 }

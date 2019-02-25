@@ -95,10 +95,10 @@ void timer_unregister(struct timer *timer)
 
 void timer_enable(struct timer *timer)
 {
-	interrupt_enable(timer->irq);
+	interrupt_enable(timer->irq, timer->irq_arg);
 }
 
 void timer_disable(struct timer *timer)
 {
-	interrupt_disable(timer->irq);
+	interrupt_disable(timer->irq, timer->irq_arg);
 }

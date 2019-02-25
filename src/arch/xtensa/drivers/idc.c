@@ -354,7 +354,7 @@ int arch_idc_init(void)
 				 *idc);
 	if (ret < 0)
 		return ret;
-	interrupt_enable((*idc)->irq);
+	interrupt_enable((*idc)->irq, *idc);
 
 	/* enable BUSY and DONE (only for master core) interrupts */
 	idc_write(IPC_IDCCTL, core,
@@ -376,7 +376,7 @@ void idc_free(void)
 	trace_idc("idc_free()");
 
 	/* disable and unregister interrupt */
-	interrupt_disable(idc->irq);
+	interrupt_disable(idc->irq, idc);
 	interrupt_unregister(idc->irq, idc);
 
 	/* clear BUSY bits */
