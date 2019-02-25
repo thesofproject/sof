@@ -31,7 +31,6 @@ W_BUFFER(0, COMP_BUFFER_SIZE(2,
 
 P_GRAPH(pipe-pass-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(N_PCMP(PCM_ID), Passthrough Playback PCM_ID)',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))'))
 
 #

@@ -56,7 +56,6 @@ W_BUFFER(1, COMP_BUFFER_SIZE(2,
 
 P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(Highpass Capture PCM_ID, N_PCMC(PCM_ID))',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(1))',
 	`dapm(N_BUFFER(1), N_EQ_IIR(0))',
         `dapm(N_EQ_IIR(0), N_BUFFER(0))'))

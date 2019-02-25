@@ -79,7 +79,6 @@ W_BUFFER(2, COMP_BUFFER_SIZE(2,
 
 P_GRAPH(pipe-pass-vol-playback-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(N_PCMP(PCM_ID), Passthrough Playback PCM_ID)',
 	`dapm(N_BUFFER(0), N_PCMP(PCM_ID))',
 	`dapm(N_EQ_IIR(0), N_BUFFER(0))',
 	`dapm(N_BUFFER(1), N_EQ_IIR(0))',
