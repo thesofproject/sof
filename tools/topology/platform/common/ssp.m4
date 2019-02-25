@@ -2,11 +2,12 @@ divert(-1)
 
 dnl SSP related macros
 
-dnl SSP_CLOCK(clock, freq, codec_master)
+dnl SSP_CLOCK(clock, freq, codec_master, polarity)
+dnl polarity is optional
 define(`SSP_CLOCK',
 	$1		STR($3)
-	$1_freq	STR($2))
-
+	$1_freq	STR($2)
+	`ifelse($4, `inverted', `$1_invert	"true"',`')')
 
 dnl SSP_TDM(slots, width, tx_mask, rx_mask)
 define(`SSP_TDM',
