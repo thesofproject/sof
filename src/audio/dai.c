@@ -48,9 +48,6 @@
 
 #include <sof/drivers/timer.h>
 
-#define DAI_PTR_INIT_DAI	1	/* buffer ptr initialized by dai */
-#define DAI_PTR_INIT_HOST	2	/* buffer ptr initialized by host */
-
 /* tracing */
 #define trace_dai(format, ...) trace_event(TRACE_CLASS_DAI, format,	\
 					   ##__VA_ARGS__)
@@ -87,7 +84,7 @@ struct dai_data {
 	struct dma *dma;
 	uint32_t period_bytes;
 	int xrun;		/* true if we are doing xrun recovery */
-	int pointer_init;	/* true if buffer pointer was initialized */
+	uint32_t cb_type;	/* last callback type */
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
@@ -95,58 +92,12 @@ struct dai_data {
 	uint64_t wallclock;	/* wall clock at stream start */
 };
 
-static void dai_buffer_process(struct comp_dev *dev)
+static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	void *buffer_ptr;
 
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		/* recalc available buffer space */
-		comp_update_buffer_consume(dd->dma_buffer, dd->period_bytes);
-
-		buffer_ptr = dd->dma_buffer->r_ptr;
-
-		/* make sure there is available bytes for next period */
-		if (dd->dma_buffer->avail < dd->period_bytes) {
-			trace_dai_error_with_ids(dev, "dai_buffer_process() "
-						 "error: Insufficient bytes for"
-						 " next period. "
-						 "comp_underrun()");
-			comp_underrun(dev, dd->dma_buffer, dd->period_bytes,
-				      0);
-		}
-	} else {
-		/* recalc available buffer space */
-		comp_update_buffer_produce(dd->dma_buffer, dd->period_bytes);
-
-		buffer_ptr = dd->dma_buffer->w_ptr;
-
-		/* make sure there is free bytes for next period */
-		if (dd->dma_buffer->free < dd->period_bytes) {
-			trace_dai_error_with_ids(dev, "dai_buffer_process() "
-						 "error: Insufficient free "
-						 "bytes for next period. "
-						 "comp_overrun()");
-			comp_overrun(dev, dd->dma_buffer, dd->period_bytes, 0);
-		}
-	}
-
-	/* update host position (in bytes offset) for drivers */
-	dev->position += dd->period_bytes;
-	if (dd->dai_pos) {
-		dd->dai_pos_blks += dd->period_bytes;
-		*dd->dai_pos = dd->dai_pos_blks +
-			buffer_ptr - dd->dma_buffer->addr;
-	}
-}
-
-/* this is called by DMA driver every time descriptor has completed */
-static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
-{
-	struct comp_dev *dev = (struct comp_dev *)data;
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	tracev_dai_with_ids(dev, "dai_dma_cb()");
+	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -169,11 +120,69 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		return;
 	}
 
-	dai_buffer_process(dev);
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		/* make sure there is available bytes for next period */
+		if (dd->dma_buffer->avail < dd->period_bytes) {
+			trace_dai_error_with_ids(dev, "dai_buffer_process() "
+						 "error: Insufficient bytes for"
+						 " next period. "
+						 "comp_underrun()");
+			comp_underrun(dev, dd->dma_buffer, dd->period_bytes,
+				      0);
+		}
 
-	/* notify pipeline that DAI needs its buffer processed */
-	if (dev->state == COMP_STATE_ACTIVE)
+		/* recalc available buffer space */
+		comp_update_buffer_consume(dd->dma_buffer, dd->period_bytes);
+
+		buffer_ptr = dd->dma_buffer->r_ptr;
+	} else {
+		/* make sure there is free bytes for next period */
+		if (dd->dma_buffer->free < dd->period_bytes) {
+			trace_dai_error_with_ids(dev, "dai_buffer_process() "
+						 "error: Insufficient free "
+						 "bytes for next period. "
+						 "comp_overrun()");
+			comp_overrun(dev, dd->dma_buffer, dd->period_bytes, 0);
+		}
+
+		/* recalc available buffer space */
+		comp_update_buffer_produce(dd->dma_buffer, dd->period_bytes);
+
+		buffer_ptr = dd->dma_buffer->w_ptr;
+	}
+
+	/* update host position (in bytes offset) for drivers */
+	dev->position += dd->period_bytes;
+	if (dd->dai_pos) {
+		dd->dai_pos_blks += dd->period_bytes;
+		*dd->dai_pos = dd->dai_pos_blks +
+			buffer_ptr - dd->dma_buffer->addr;
+	}
+}
+
+/* this is called by DMA driver every time descriptor has completed */
+static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
+{
+	struct comp_dev *dev = (struct comp_dev *)data;
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	tracev_dai_with_ids(dev, "dai_dma_cb()");
+
+	switch (type) {
+	case DMA_CB_TYPE_BLOCK:
+	case DMA_CB_TYPE_LLIST:
+		dd->cb_type = type;
+		next->size = DMA_RELOAD_IGNORE;
 		pipeline_schedule_copy(dev->pipeline, 0);
+		break;
+	case DMA_CB_TYPE_PROCESS:
+		dai_buffer_process(dev, next);
+		break;
+	default:
+		trace_dai_error_with_ids(dev, "dai_dma_cb() error: Wrong "
+					 "callback type = %u", type);
+		break;
+	}
 }
 
 static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
@@ -244,7 +253,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
-	dd->pointer_init = 0;
+	dd->cb_type = 0;
 	dd->chan = DMA_CHAN_INVALID;
 
 	dev->state = COMP_STATE_READY;
@@ -465,7 +474,7 @@ static int dai_prepare(struct comp_dev *dev)
 	/* write back buffer contents from cache */
 	dcache_writeback_region(dd->dma_buffer->addr, dd->dma_buffer->size);
 
-	dd->pointer_init = 0;
+	dd->cb_type = 0;
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -497,42 +506,10 @@ static int dai_reset(struct comp_dev *dev)
 	dd->wallclock = 0;
 	dev->position = 0;
 	dd->xrun = 0;
-	dd->pointer_init = 0;
+	dd->cb_type = 0;
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
-}
-
-/* The playback source pipeline must be advanced by one period so that it
- * does not write to the period that DMA is reading. The configuration of the
- * upstream pipeline is unknown to the DAI but we can check if the source buffer
- * is shared with another DMA engine (which preloads the buffer by one period)
- * and only advance the write pointer when source component is not another
- * DMA engine.
- */
-static void dai_pointer_init(struct comp_dev *dev)
-{
-	struct dai_data *dd = comp_get_drvdata(dev);
-
-	dd->pointer_init = DAI_PTR_INIT_DAI;
-
-	/* not required for capture streams */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		switch (dd->dma_buffer->source->comp.type) {
-		case SOF_COMP_HOST:
-		case SOF_COMP_SG_HOST:
-			/* buffer is preloaded and advanced by host DMA engine */
-			dd->pointer_init = DAI_PTR_INIT_HOST;
-			break;
-		default:
-			/* advance source pipeline w_ptr by one period
-			 * this places pipeline w_ptr in period before DAI r_ptr
-			 */
-			comp_update_buffer_produce(dd->dma_buffer,
-						   dd->period_bytes);
-			break;
-		}
-	}
 }
 
 /* used to pass standard and bespoke command (with data) to component */
@@ -550,27 +527,12 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), START");
-		if (!dd->pointer_init) {
-			dai_pointer_init(dev);
-			/* for nono-first init start, we need to recover the buffer
-			 * state as well pointer position as pause/release did
-			 */
-		} else {
-			/* set valid buffer pointer */
-			dai_buffer_process(dev);
-
-			/* recover valid start position */
-			ret = dma_release(dd->dma, dd->chan);
-			if (ret < 0)
-				return ret;
-		}
 
 		/* only start the DAI if we are not XRUN handling
-		 * and the ptr is not initialized by the host as in this
-		 * case start is deferred to the first copy call as the buffer
-		 * is populated by the host only then
+		 * and the pipeline is not preloaded as in this
+		 * case start is deferred to the first copy call
 		 */
-		if (dd->xrun == 0 && dd->pointer_init != DAI_PTR_INIT_HOST) {
+		if (dd->xrun == 0 && !pipeline_is_preload(dev->pipeline)) {
 			/* start the DAI */
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
@@ -593,9 +555,6 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
-			/* set valid buffer pointer */
-			dai_buffer_process(dev);
-
 			/* recover valid start position */
 			ret = dma_release(dd->dma, dd->chan);
 			if (ret < 0)
@@ -635,18 +594,33 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	int ret;
+	uint32_t flags = 0;
+	int ret = 0;
 
-	if (dd->pointer_init == DAI_PTR_INIT_HOST) {
+	/* start DMA on preload */
+	if (pipeline_is_preload(dev->pipeline)) {
 		/* start the DAI */
 		ret = dma_start(dd->dma, dd->chan);
 		if (ret < 0)
 			return ret;
-		dai_trigger(dd->dai, COMP_TRIGGER_START, dev->params.direction);
-		dd->pointer_init = DAI_PTR_INIT_DAI; /* next copy just quits */
+		dai_trigger(dd->dai, COMP_TRIGGER_START,
+			    dev->params.direction);
 		platform_dai_wallclock(dev, &dd->wallclock);
+
+		return ret;
 	}
-	return 0;
+
+	if (dd->cb_type & DMA_CB_TYPE_BLOCK)
+		flags |= DMA_COPY_BLOCK;
+
+	if (dd->cb_type & DMA_CB_TYPE_LLIST)
+		flags |= DMA_COPY_LLIST;
+
+	ret = dma_copy(dd->dma, dd->chan, dd->period_bytes, flags);
+	if (ret < 0)
+		trace_dai_error("dai_copy() error: ret = %u", ret);
+
+	return ret;
 }
 
 static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
@@ -768,8 +742,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	}
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_BLOCK | DMA_CB_TYPE_LLIST,
-		   dai_dma_cb, dev);
+	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_BLOCK | DMA_CB_TYPE_LLIST |
+		   DMA_CB_TYPE_PROCESS, dai_dma_cb, dev);
 
 	dev->is_dma_connected = 1;
 
