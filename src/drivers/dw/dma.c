@@ -1176,6 +1176,31 @@ static void dw_dma_verify_block(struct dma_chan_data *chan,
 }
 #endif
 
+static void dw_dma_verify_transfer(struct dma_chan_data *chan,
+				   struct dma_sg_elem *next)
+{
+	/* check for reload channel:
+	 * next.size is DMA_RELOAD_END, stop this dma copy;
+	 * next.size > 0 but not DMA_RELOAD_LLI, use next
+	 * element for next copy;
+	 * if we are waiting for pause, pause it;
+	 * otherwise, reload lli
+	 */
+	switch (next->size) {
+	case DMA_RELOAD_END:
+		chan->status = COMP_STATE_PREPARE;
+		chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
+		break;
+	case DMA_RELOAD_LLI:
+		dw_dma_chan_reload_lli(chan->id.dma, chan->id.channel);
+		break;
+	default:
+		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next,
+					chan->direction);
+		break;
+	}
+}
+
 static void dw_dma_irq_callback(struct dma_chan_data *chan,
 				struct dma_sg_elem *next, uint32_t type,
 				void (*verify)(struct dma_chan_data *,
@@ -1191,6 +1216,28 @@ static void dw_dma_irq_callback(struct dma_chan_data *chan,
 
 	if (verify && next->size != DMA_RELOAD_IGNORE)
 		verify(chan, next);
+}
+
+static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
+{
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = &p->chan[channel];
+	struct dma_sg_elem next;
+
+	tracev_dwdma("dw-dma: %d channel %d copy", dma->plat_data.id,
+		     channel);
+
+#if DW_USE_HW_LLI
+	if (flags & DMA_COPY_BLOCK)
+		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
+				    &dw_dma_verify_block);
+#endif
+
+	if (flags & DMA_COPY_LLIST)
+		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
+				    &dw_dma_verify_transfer);
+
+	return 0;
 }
 
 #if CONFIG_APOLLOLAKE
@@ -1277,31 +1324,6 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 	interrupt_unregister(irq);
 }
 #else
-static void dw_dma_verify_transfer(struct dma_chan_data *chan,
-				   struct dma_sg_elem *next)
-{
-	/* check for reload channel:
-	 * next.size is DMA_RELOAD_END, stop this dma copy;
-	 * next.size > 0 but not DMA_RELOAD_LLI, use next
-	 * element for next copy;
-	 * if we are waiting for pause, pause it;
-	 * otherwise, reload lli
-	 */
-	switch (next->size) {
-	case DMA_RELOAD_END:
-		chan->status = COMP_STATE_PREPARE;
-		chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
-		break;
-	case DMA_RELOAD_LLI:
-		dw_dma_chan_reload_lli(chan->id.dma, chan->id.channel);
-		break;
-	default:
-		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next,
-					chan->direction);
-		break;
-	}
-}
-
 /* interrupt handler for DMA */
 static void dw_dma_irq_handler(void *data)
 {
@@ -1514,6 +1536,7 @@ const struct dma_ops dw_dma_ops = {
 	.stop		= dw_dma_stop,
 	.pause		= dw_dma_pause,
 	.release	= dw_dma_release,
+	.copy		= dw_dma_copy,
 	.status		= dw_dma_status,
 	.set_config	= dw_dma_set_config,
 	.set_cb		= dw_dma_set_cb,
