@@ -4,7 +4,7 @@ CURRENT_PATH=`pwd`
 FEATURE_PASS=0
 FEATURE_CNT=0
 TEST_TYPE="functionality_test"
-FIRMWARE_PATH="/lib/firmware/intel"
+FIRMWARE_PATH="/lib/firmware/intel/sof-tplg"
 AMIXER_PATH="tests/platform/asound_state"
 PLATFORM_PATH="tests/platform"
 DATE=`date +%Y_%m_%d_%H_%M`
@@ -27,11 +27,11 @@ switch_tplg() {
 
 	# relink the tplg
 	if [ $PLATFORM == "byt" -a $MACHINE == "minnow" ]; then
-		sudo ln -fs $FIRMWARE_PATH/topology/$tplg_name $FIRMWARE_PATH/sof-$PLATFORM-rt5651.tplg
+		sudo ln -fs $FIRMWARE_PATH/$tplg_name $FIRMWARE_PATH/sof-$PLATFORM-rt5651.tplg
 	elif [ $PLATFORM == "apl" -a  $MACHINE == "up" ]; then
-		sudo ln -fs $FIRMWARE_PATH/topology/$tplg_name $FIRMWARE_PATH/sof-$PLATFORM-nocodec.tplg
+		sudo ln -fs $FIRMWARE_PATH/$tplg_name $FIRMWARE_PATH/sof-$PLATFORM-nocodec.tplg
 	else
-		sudo ln -fs $FIRMWARE_PATH/topology/$tplg_name $FIRMWARE_PATH/sof-$PLATFORM.tplg
+		sudo ln -fs $FIRMWARE_PATH/$tplg_name $FIRMWARE_PATH/sof-$PLATFORM.tplg
 	fi
 	# system will auto reboot for another tplg test
 	sleep 2
