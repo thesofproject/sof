@@ -353,6 +353,8 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		goto out;
 	}
 
+	/* pipeline preload needed only for playback streams */
+	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK;
 	p->status = COMP_STATE_PREPARE;
 
 out:
@@ -574,8 +576,7 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	struct pipeline_data *ppl_data = data;
 	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
 	int is_same_sched =
-		pipeline_is_same_sched_comp(current->pipeline,
-					    ppl_data->start->pipeline);
+		pipeline_is_same_sched_comp(current->pipeline, ppl_data->p);
 	int err = 0;
 
 	tracev_pipe("pipeline_comp_copy(), current->comp.id = %u, dir = %u",
@@ -593,7 +594,7 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	}
 
 	/* copy to downstream immediately */
-	if (current != ppl_data->start && dir == PPL_DIR_DOWNSTREAM) {
+	if (dir == PPL_DIR_DOWNSTREAM) {
 		err = comp_copy(current);
 		if (err < 0)
 			return err;
@@ -610,29 +611,53 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	return err;
 }
 
-/* copy data from upstream source endpoints to downstream endpoints */
-static int pipeline_copy(struct comp_dev *dev)
+/* Copy data across all pipeline components.
+ * For capture pipelines it always starts from source component
+ * and continues downstream. For playback pipelines there are two
+ * possibilities: for preload it starts from sink component and
+ * continues upstream and if not preload, then it first copies
+ * sink component itself and then goes upstream.
+ */
+static int pipeline_copy(struct pipeline *p)
 {
 	struct pipeline_data data;
+	struct comp_dev *start;
+	uint32_t dir;
 	int ret = 0;
 
-	data.start = dev;
+	if (p->source_comp->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		dir = PPL_DIR_UPSTREAM;
+		start = p->sink_comp;
 
-	ret = pipeline_comp_copy(dev, &data, PPL_DIR_UPSTREAM);
-	if (ret < 0) {
-		trace_ipc_error("pipeline_copy() error: ret = %d, dev->comp."
-				"id = %u, dir = %u", ret, dev->comp.id,
-				PPL_DIR_UPSTREAM);
-		return ret;
+		/* if not pipeline preload then copy sink comp first */
+		if (!p->preload) {
+			ret = comp_copy(start);
+			if (ret < 0) {
+				trace_pipe_error("pipeline_copy() error: "
+						 "ret = %d", ret);
+				return ret;
+			}
+
+			start = comp_get_previous(start, dir);
+			if (!start)
+				/* nothing else to do */
+				return ret;
+		}
+	} else {
+		dir = PPL_DIR_DOWNSTREAM;
+		start = p->source_comp;
 	}
 
-	ret = pipeline_comp_copy(dev, &data, PPL_DIR_DOWNSTREAM);
-	if (ret < 0) {
-		trace_ipc_error("pipeline_copy() error: ret = %d, dev->comp."
-				"id = %u, dir = %u", ret, dev->comp.id,
-				PPL_DIR_DOWNSTREAM);
-		return ret;
-	}
+	data.start = start;
+	data.p = p;
+
+	ret = pipeline_comp_copy(start, &data, dir);
+	if (ret < 0)
+		trace_pipe_error("pipeline_copy() error: ret = %d, start"
+				 "->comp.id = %u, dir = %u", ret,
+				 start->comp.id, dir);
+
+	p->preload = false;
 
 	return ret;
 }
@@ -809,7 +834,7 @@ static void pipeline_task(void *arg)
 			goto sched;/* skip copy if still in xrun */
 	}
 
-	err = pipeline_copy(p->sched_comp);
+	err = pipeline_copy(p);
 	if (err < 0) {
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
