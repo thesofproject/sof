@@ -1228,10 +1228,12 @@ static void dw_dma_irq_handler(void *data)
 		return;
 	}
 
+#if DW_USE_HW_LLI
 	/* end of a LLI block */
 	if (status_block & mask &&
 	    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK)
 		dw_dma_process_block(&p->chan[i], &next);
+#endif
 }
 
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
