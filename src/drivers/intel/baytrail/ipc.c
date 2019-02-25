@@ -18,7 +18,6 @@
 #include <sof/spinlock.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
-#include <stddef.h>
 #include <stdint.h>
 
 extern struct ipc *_ipc;
@@ -217,8 +216,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   irq_handler, NULL);
-	interrupt_enable(PLATFORM_IPC_INTERRUPT);
+			   irq_handler, ipc);
+	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
 
 	/* Unmask Busy and Done interrupts */
 	imrd = shim_read(SHIM_IMRD);

@@ -105,7 +105,7 @@ static int platform_timer_register(struct timer *timer,
 	timer->irq_arg = arg;
 
 	/* enable timer interrupt */
-	interrupt_enable(timer->irq);
+	interrupt_enable(timer->irq, arg);
 
 	/* disable timer interrupt on core level */
 	timer_disable(timer);
@@ -141,7 +141,7 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 static void platform_timer_unregister(struct timer *timer)
 {
 	/* disable timer interrupt */
-	interrupt_disable(timer->irq);
+	interrupt_disable(timer->irq, timer->irq_arg);
 
 	/* unregister timer interrupt */
 	interrupt_unregister(timer->irq, timer->irq_arg);
@@ -167,7 +167,7 @@ void timer_enable(struct timer *timer)
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_enable(timer->irq);
+		interrupt_enable(timer->irq, timer->irq_arg);
 		break;
 	case TIMER3:
 		interrupt_unmask(timer->irq, timer->core);
@@ -181,7 +181,7 @@ void timer_disable(struct timer *timer)
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_disable(timer->irq);
+		interrupt_disable(timer->irq, timer->irq_arg);
 		break;
 	case TIMER3:
 		interrupt_mask(timer->irq, timer->core);

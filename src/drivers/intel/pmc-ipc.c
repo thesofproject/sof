@@ -13,7 +13,6 @@
 #include <sof/platform.h>
 #include <ipc/topology.h>
 #include <errno.h>
-#include <stddef.h>
 #include <stdint.h>
 
 /* private data for IPC */
@@ -139,8 +138,8 @@ int platform_ipc_pmc_init(void)
 
 	/* configure interrupt */
 	interrupt_register(IRQ_NUM_EXT_PMC, IRQ_AUTO_UNMASK, irq_handler,
-			   NULL);
-	interrupt_enable(IRQ_NUM_EXT_PMC);
+			   _pmc);
+	interrupt_enable(IRQ_NUM_EXT_PMC, _pmc);
 
 	/* Unmask Busy and Done interrupts */
 	imrlpesc = shim_read(SHIM_IMRLPESC);

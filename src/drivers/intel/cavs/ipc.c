@@ -241,8 +241,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   ipc_irq_handler, NULL);
-	interrupt_enable(PLATFORM_IPC_INTERRUPT);
+			   ipc_irq_handler, ipc);
+	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
 
 	/* enable IPC interrupts from host */
 	ipc_write(IPC_DIPCCTL, IPC_DIPCCTL_IPCIDIE | IPC_DIPCCTL_IPCTBIE);

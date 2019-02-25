@@ -146,7 +146,6 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 	child->handler = handler;
 	child->handler_arg = arg;
 	child->unmask = unmask;
-	child->cpu_mask = 1 << core;
 
 	list_item_append(&child->irq_list, head);
 
@@ -202,18 +201,29 @@ finish:
 	spin_unlock(&cascade->lock);
 }
 
-static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
+static uint32_t irq_enable_child(struct irq_desc *parent, int irq, void *arg)
 {
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
 	unsigned int core = cpu_get_id();
 	struct irq_child *child;
 	unsigned int child_idx;
+	struct list_item *list;
 
 	spin_lock(&cascade->lock);
 
 	child = cascade->child + SOF_IRQ_BIT(irq);
 	child_idx = cascade->global_mask ? 0 : core;
+
+	list_for_item(list, &child->list) {
+		struct irq_desc *d = container_of(list,
+						  struct irq_desc, irq_list);
+
+		if (d->handler_arg == arg) {
+			d->cpu_mask |= 1 << core;
+			break;
+		}
+	}
 
 	if (!child->enable_count[child_idx]++) {
 		/* enable the parent interrupt */
@@ -229,18 +239,29 @@ static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 	return 0;
 }
 
-static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
+static uint32_t irq_disable_child(struct irq_desc *parent, int irq, void *arg)
 {
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
 	unsigned int core = cpu_get_id();
 	struct irq_child *child;
 	unsigned int child_idx;
+	struct list_item *list;
 
 	spin_lock(&cascade->lock);
 
 	child = cascade->child + SOF_IRQ_BIT(irq);
 	child_idx = cascade->global_mask ? 0 : core;
+
+	list_for_item(list, &child->list) {
+		struct irq_desc *d = container_of(list,
+						  struct irq_desc, irq_list);
+
+		if (d->handler_arg == arg) {
+			d->cpu_mask &= ~(1 << core);
+			break;
+		}
+	}
 
 	if (!child->enable_count[child_idx]) {
 		trace_error(TRACE_CLASS_IRQ,
@@ -285,7 +306,7 @@ void interrupt_unregister(uint32_t irq, const void *arg)
 		irq_unregister_child(parent, irq, arg);
 }
 
-uint32_t interrupt_enable(uint32_t irq)
+uint32_t interrupt_enable(uint32_t irq, void *arg)
 {
 	struct irq_desc *parent;
 
@@ -294,10 +315,10 @@ uint32_t interrupt_enable(uint32_t irq)
 	if (parent == NULL)
 		return arch_interrupt_enable_mask(1 << irq);
 	else
-		return irq_enable_child(parent, irq);
+		return irq_enable_child(parent, irq, arg);
 }
 
-uint32_t interrupt_disable(uint32_t irq)
+uint32_t interrupt_disable(uint32_t irq, void *arg)
 {
 	struct irq_desc *parent;
 
@@ -306,5 +327,5 @@ uint32_t interrupt_disable(uint32_t irq)
 	if (parent == NULL)
 		return arch_interrupt_disable_mask(1 << irq);
 	else
-		return irq_disable_child(parent, irq);
+		return irq_disable_child(parent, irq, arg);
 }
