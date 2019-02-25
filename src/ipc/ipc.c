@@ -44,6 +44,14 @@
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
 
+/* Returns pipeline source component */
+#define ipc_get_ppl_src_comp(ipc, ppl_id) \
+	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_UPSTREAM)
+
+/* Returns pipeline sink component */
+#define ipc_get_ppl_sink_comp(ipc, ppl_id) \
+	ipc_get_ppl_comp(ipc, ppl_id, PPL_DIR_DOWNSTREAM)
+
 /*
  * Components, buffers and pipelines all use the same set of monotonic ID
  * numbers passed in by the host. They are stored in different lists, hence
@@ -78,19 +86,20 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id)
 	return NULL;
 }
 
-static struct ipc_comp_dev *ipc_get_ppl_src_comp(struct ipc *ipc,
-						 uint32_t pipeline_id)
+static struct ipc_comp_dev *ipc_get_ppl_comp(struct ipc *ipc,
+					     uint32_t pipeline_id, int dir)
 {
 	struct ipc_comp_dev *icd;
 	struct comp_buffer *buffer;
+	struct comp_dev *buff_comp;
 	struct list_item *clist;
 
-	/* first try to find the last module in the pipeline */
+	/* first try to find the module in the pipeline */
 	list_for_item(clist, &ipc->shared_ctx->comp_list) {
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type == COMP_TYPE_COMPONENT &&
 		    icd->cd->comp.pipeline_id == pipeline_id &&
-		    list_is_empty(&icd->cd->bsource_list))
+		    list_is_empty(comp_buffer_list(icd->cd, dir)))
 			return icd;
 	}
 
@@ -99,11 +108,12 @@ static struct ipc_comp_dev *ipc_get_ppl_src_comp(struct ipc *ipc,
 		icd = container_of(clist, struct ipc_comp_dev, list);
 		if (icd->type == COMP_TYPE_COMPONENT &&
 		    icd->cd->comp.pipeline_id == pipeline_id) {
-			buffer = list_first_item(&icd->cd->bsource_list,
-						 struct comp_buffer,
-						 sink_list);
-			if (buffer && buffer->source &&
-			    buffer->source->comp.pipeline_id != pipeline_id)
+			buffer = buffer_from_list
+					(comp_buffer_list(icd->cd, dir)->next,
+					 struct comp_buffer, dir);
+			buff_comp = buffer_get_comp(buffer, dir);
+			if (buff_comp &&
+			    buff_comp->comp.pipeline_id != pipeline_id)
 				return icd;
 		}
 	}
@@ -364,7 +374,8 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 {
 	struct ipc_comp_dev *ipc_pipe;
 	uint32_t pipeline_id;
-	struct ipc_comp_dev *ipc_source;
+	struct ipc_comp_dev *ipc_ppl_source;
+	struct ipc_comp_dev *ipc_ppl_sink;
 
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp(ipc, comp_id);
@@ -374,11 +385,17 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	pipeline_id = ipc_pipe->pipeline->ipc_pipe.pipeline_id;
 
 	/* get pipeline source component */
-	ipc_source = ipc_get_ppl_src_comp(ipc, pipeline_id);
-	if (!ipc_source)
+	ipc_ppl_source = ipc_get_ppl_src_comp(ipc, pipeline_id);
+	if (!ipc_ppl_source)
 		return -EINVAL;
 
-	return pipeline_complete(ipc_pipe->pipeline, ipc_source->cd);
+	/* get pipeline sink component */
+	ipc_ppl_sink = ipc_get_ppl_sink_comp(ipc, pipeline_id);
+	if (!ipc_ppl_sink)
+		return -EINVAL;
+
+	return pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
+				 ipc_ppl_sink->cd);
 }
 
 int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)

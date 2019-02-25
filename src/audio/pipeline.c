@@ -167,7 +167,8 @@ static int pipeline_comp_complete(struct comp_dev *current, void *data,
 	return 0;
 }
 
-int pipeline_complete(struct pipeline *p, struct comp_dev *source)
+int pipeline_complete(struct pipeline *p, struct comp_dev *source,
+		      struct comp_dev *sink)
 {
 	struct pipeline_data data;
 
@@ -189,6 +190,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source)
 	pipeline_comp_complete(source, &data, PPL_DIR_DOWNSTREAM);
 
 	p->source_comp = source;
+	p->sink_comp = sink;
 	p->status = COMP_STATE_READY;
 
 	/* show heap status */

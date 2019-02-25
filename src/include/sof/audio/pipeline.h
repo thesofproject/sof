@@ -100,6 +100,7 @@ struct pipeline {
 	struct task pipe_task;		/* pipeline processing task */
 	struct comp_dev *sched_comp;	/* component that drives scheduling in this pipe */
 	struct comp_dev *source_comp;	/* source component for this pipe */
+	struct comp_dev *sink_comp;	/* sink component for this pipe */
 
 	/* position update */
 	uint32_t posn_offset;		/* position update array offset*/
@@ -129,7 +130,8 @@ int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir);
 
 /* complete the pipeline */
-int pipeline_complete(struct pipeline *p, struct comp_dev *source);
+int pipeline_complete(struct pipeline *p, struct comp_dev *source,
+		      struct comp_dev *sink);
 
 /* pipeline parameters */
 int pipeline_params(struct pipeline *p, struct comp_dev *cd,
