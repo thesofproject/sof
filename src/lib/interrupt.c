@@ -61,6 +61,12 @@ static struct {
  * specific cores, no task migration is supported.
  */
 
+static int interrupt_register_internal(uint32_t irq, int unmask,
+				       void (*handler)(void *arg),
+				       void *arg, struct irq_desc *desc);
+static void interrupt_unregister_internal(uint32_t irq, const void *arg,
+					  struct irq_desc *desc);
+
 /* register cascading IRQ controllers for all cores */
 int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 {
@@ -216,7 +222,7 @@ void interrupt_init(void)
 }
 
 static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
-			      void (*handler)(void *arg), void *arg)
+		void (*handler)(void *arg), void *arg, struct irq_desc *desc)
 {
 	int hw_irq, ret = 0;
 	struct irq_desc *child;
@@ -255,27 +261,32 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 		}
 	}
 
-	/* init child from run-time, may be registered and unregistered
-	 * many times at run-time
-	 */
-	child = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
-			sizeof(struct irq_desc));
-	if (!child) {
-		ret = -ENOMEM;
-		goto finish;
-	}
+	if (!desc) {
+		/*
+		 * init child from run-time, may be registered and unregistered
+		 * many times at run-time
+		 */
+		child = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
+				sizeof(struct irq_desc));
+		if (!child) {
+			ret = -ENOMEM;
+			goto finish;
+		}
 
-	child->handler = handler;
-	child->handler_arg = arg;
-	child->unmask = unmask;
-	child->irq = irq;
+		child->handler = handler;
+		child->handler_arg = arg;
+		child->unmask = unmask;
+		child->irq = irq;
+	} else {
+		child = desc;
+	}
 
 	list_item_append(&child->irq_list, head);
 
 	/* do we need to register parent ? */
 	if (!cascade->num_children)
-		ret = interrupt_register(parent->irq, IRQ_AUTO_UNMASK,
-					 parent->handler, parent);
+		ret = interrupt_register_internal(parent->irq, IRQ_AUTO_UNMASK,
+					parent->handler, parent, parent);
 
 	/* increment number of children */
 	if (!ret)
@@ -288,7 +299,7 @@ finish:
 }
 
 static void irq_unregister_child(struct irq_desc *parent, int irq,
-				 const void *arg)
+				 const void *arg, struct irq_desc *desc)
 {
 	struct irq_desc *child;
 	struct irq_cascade_desc *cascade = container_of(parent,
@@ -304,14 +315,16 @@ static void irq_unregister_child(struct irq_desc *parent, int irq,
 		if (child->handler_arg == arg) {
 			list_item_del(&child->irq_list);
 			cascade->num_children--;
-			rfree(child);
+			if (!desc)
+				rfree(child);
 
 			/*
 			 * unregister the root interrupt if this child is the
 			 * last registered one.
 			 */
 			if (!cascade->num_children)
-				interrupt_unregister(parent->irq, parent);
+				interrupt_unregister_internal(parent->irq,
+							      parent, parent);
 
 			break;
 		}
@@ -371,6 +384,13 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 int interrupt_register(uint32_t irq, int unmask, void (*handler)(void *arg),
 		       void *arg)
 {
+	return interrupt_register_internal(irq, unmask, handler, arg, NULL);
+}
+
+static int interrupt_register_internal(uint32_t irq, int unmask,
+				       void (*handler)(void *arg),
+				       void *arg, struct irq_desc *desc)
+{
 	struct irq_desc *parent;
 
 	/* no parent means we are registering DSP internal IRQ */
@@ -378,10 +398,16 @@ int interrupt_register(uint32_t irq, int unmask, void (*handler)(void *arg),
 	if (parent == NULL)
 		return arch_interrupt_register(irq, handler, arg);
 	else
-		return irq_register_child(parent, irq, unmask, handler, arg);
+		return irq_register_child(parent, irq, unmask, handler, arg, desc);
 }
 
 void interrupt_unregister(uint32_t irq, const void *arg)
+{
+	interrupt_unregister_internal(irq, arg, NULL);
+}
+
+static void interrupt_unregister_internal(uint32_t irq, const void *arg,
+					  struct irq_desc *desc)
 {
 	struct irq_desc *parent;
 
@@ -390,7 +416,7 @@ void interrupt_unregister(uint32_t irq, const void *arg)
 	if (parent == NULL)
 		arch_interrupt_unregister(irq);
 	else
-		irq_unregister_child(parent, irq, arg);
+		irq_unregister_child(parent, irq, arg, desc);
 }
 
 uint32_t interrupt_enable(uint32_t irq)
