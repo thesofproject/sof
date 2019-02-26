@@ -130,7 +130,8 @@ struct timesource_data platform_generic_queue[] = {
 {
 	.timer	 = {
 		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2(0),
+		.irq = IRQ_EXT_TSTAMP0_LVL2,
+		.irq_name = irq_name_level2,
 		.core = 0,
 	},
 	.clk		= CLK_SSP,
@@ -142,7 +143,8 @@ struct timesource_data platform_generic_queue[] = {
 {
 	.timer	 = {
 		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2(1),
+		.irq = IRQ_EXT_TSTAMP0_LVL2,
+		.irq_name = irq_name_level2,
 		.core = 1,
 	},
 	.clk		= CLK_SSP,
@@ -155,7 +157,8 @@ struct timesource_data platform_generic_queue[] = {
 {
 	.timer	 = {
 		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2(2),
+		.irq = IRQ_EXT_TSTAMP0_LVL2,
+		.irq_name = irq_name_level2,
 		.core = 2,
 	},
 	.clk		= CLK_SSP,
@@ -167,7 +170,8 @@ struct timesource_data platform_generic_queue[] = {
 {
 	.timer	 = {
 		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2(3),
+		.irq = IRQ_EXT_TSTAMP0_LVL2,
+		.irq_name = irq_name_level2,
 		.core = 3,
 	},
 	.clk		= CLK_SSP,

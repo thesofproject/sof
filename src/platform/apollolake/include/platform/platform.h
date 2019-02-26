@@ -21,6 +21,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
+#include <stddef.h>
 #include <stdint.h>
 
 struct timer;
@@ -39,17 +40,23 @@ struct timer;
 #define PLATFORM_PAGE_TABLE_SIZE	256
 
 /* IDC Interrupt */
-#define PLATFORM_IDC_INTERRUPT(x)	IRQ_EXT_IDC_LVL2(x)
+#define PLATFORM_IDC_INTERRUPT		IRQ_EXT_IDC_LVL2
+#define PLATFORM_IDC_INTERRUPT_NAME	irq_name_level2
 
 /* IPC Interrupt */
-#define PLATFORM_IPC_INTERRUPT	IRQ_EXT_IPC_LVL2(0)
+#define PLATFORM_IPC_INTERRUPT		IRQ_BIT_LVL2_HOST_IPC
+#define PLATFORM_IPC_INTERRUPT_NAME	irq_name_level2
 
 /* pipeline IRQ */
-#define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE4
+#define PLATFORM_SCHEDULE_IRQ		IRQ_NUM_SOFTWARE4
+#define PLATFORM_SCHEDULE_IRQ_NAME	NULL
 
 #define PLATFORM_IRQ_TASK_HIGH	IRQ_NUM_SOFTWARE3
+#define PLATFORM_IRQ_TASK_HIGH_NAME NULL
 #define PLATFORM_IRQ_TASK_MED	IRQ_NUM_SOFTWARE2
+#define PLATFORM_IRQ_TASK_MED_NAME NULL
 #define PLATFORM_IRQ_TASK_LOW	IRQ_NUM_SOFTWARE1
+#define PLATFORM_IRQ_TASK_LOW_NAME NULL
 
 #define PLATFORM_SCHEDULE_COST	200
 

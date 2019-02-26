@@ -11,8 +11,6 @@
 #ifndef __PLATFORM_LIB_DMA_H__
 #define __PLATFORM_LIB_DMA_H__
 
-#include <sof/drivers/interrupt-map.h>
-
 /* available DMACs */
 #define DMA_GP_LP_DMAC0		0
 #define DMA_GP_LP_DMAC1		1
@@ -49,8 +47,7 @@
 #define DMA_HANDSHAKE_SSP5_TX	12
 #define DMA_HANDSHAKE_SSP5_RX	13
 
-#define dma_chan_irq(dma, cpu, chan) \
-	(dma_irq(dma, cpu) + (channel << SOF_IRQ_BIT_SHIFT))
+#define dma_chan_irq(dma, chan) (dma_irq(dma) + channel)
 
 int dmac_init(void);
 

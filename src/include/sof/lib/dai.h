@@ -100,7 +100,8 @@ struct dai_plat_fifo_data {
  */
 struct dai_plat_data {
 	uint32_t base;
-	uint32_t irq;
+	int irq;
+	const char *irq_name;
 	uint32_t flags;
 	struct dai_plat_fifo_data fifo[2];
 };

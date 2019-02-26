@@ -107,7 +107,7 @@ static struct dw_drv_plat_data dmac1 = {
 };
 
 #if CONFIG_SUECREEK
-struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
+static struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 {	/* LP GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -117,7 +117,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_SSP | DMA_DEV_SSI | DMA_DEV_DMIC,
 		.base		= LP_GP_DMA_BASE(0),
 		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
+		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0),
+		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac0,
 	},
 	.ops		= &dw_dma_ops,
@@ -131,7 +132,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
 		.base		= LP_GP_DMA_BASE(1),
 		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0, 0),
+		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
+		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac1,
 	},
 	.ops		= &dw_dma_ops,
@@ -145,7 +147,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC,
 		.base		= LP_GP_DMA_BASE(1),
 		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0, 0),
+		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
+		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac1,
 	},
 	.ops		= &dw_dma_ops,
@@ -153,7 +156,7 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 };
 
 #else
-struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
+static struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -164,7 +167,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 				  DMA_DEV_SOUNDWIRE,
 		.base		= LP_GP_DMA_BASE(0),
 		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
+		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0),
+		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac0,
 	},
 	.ops		= &dw_dma_ops,
@@ -179,7 +183,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 				  DMA_DEV_SOUNDWIRE,
 		.base		= LP_GP_DMA_BASE(1),
 		.channels	= 8,
-		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0, 0),
+		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0),
+		.irq_name	= irq_name_level5,
 		.drv_plat_data	= &dmac1,
 	},
 	.ops		= &dw_dma_ops,
@@ -192,7 +197,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_HOST,
 		.base		= GTW_HOST_IN_STREAM_BASE(0),
 		.channels	= 7,
-		.irq		= IRQ_EXT_HOST_DMA_IN_LVL3(0, 0),
+		.irq		= IRQ_EXT_HOST_DMA_IN_LVL3(0),
+		.irq_name	= irq_name_level3,
 		.chan_size	= GTW_HOST_IN_STREAM_SIZE,
 	},
 	.ops		= &hda_host_dma_ops,
@@ -205,7 +211,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_HOST,
 		.base		= GTW_HOST_OUT_STREAM_BASE(0),
 		.channels	= DMAC_HOST_OUT_CHANNELS_COUNT,
-		.irq		= IRQ_EXT_HOST_DMA_OUT_LVL3(0, 0),
+		.irq		= IRQ_EXT_HOST_DMA_OUT_LVL3(0),
+		.irq_name	= irq_name_level3,
 		.chan_size	= GTW_HOST_OUT_STREAM_SIZE,
 	},
 	.ops		= &hda_host_dma_ops,
@@ -218,7 +225,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_HDA,
 		.base		= GTW_LINK_IN_STREAM_BASE(0),
 		.channels	= DMAC_LINK_IN_CHANNELS_COUNT,
-		.irq		= IRQ_EXT_LINK_DMA_IN_LVL4(0, 0),
+		.irq		= IRQ_EXT_LINK_DMA_IN_LVL4(0),
+		.irq_name	= irq_name_level4,
 		.chan_size	= GTW_LINK_IN_STREAM_SIZE,
 	},
 	.ops		= &hda_link_dma_ops,
@@ -231,7 +239,8 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.devs		= DMA_DEV_HDA,
 		.base		= GTW_LINK_OUT_STREAM_BASE(0),
 		.channels	= DMAC_LINK_OUT_CHANNELS_COUNT,
-		.irq		= IRQ_EXT_LINK_DMA_OUT_LVL4(0, 0),
+		.irq		= IRQ_EXT_LINK_DMA_OUT_LVL4(0),
+		.irq_name	= irq_name_level4,
 		.chan_size	= GTW_LINK_OUT_STREAM_SIZE,
 	},
 	.ops		= &hda_link_dma_ops,

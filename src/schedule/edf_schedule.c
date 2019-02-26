@@ -429,7 +429,10 @@ static int edf_scheduler_init(void)
 	sch->clock = PLATFORM_SCHED_CLOCK;
 
 	/* configure scheduler interrupt */
-	sch->irq = PLATFORM_SCHEDULE_IRQ;
+	sch->irq = interrupt_get_irq(PLATFORM_SCHEDULE_IRQ,
+				     PLATFORM_SCHEDULE_IRQ_NAME);
+	if (sch->irq < 0)
+		return sch->irq;
 	interrupt_register(sch->irq, IRQ_AUTO_UNMASK, edf_scheduler_run, sch);
 	interrupt_enable(sch->irq, sch);
 

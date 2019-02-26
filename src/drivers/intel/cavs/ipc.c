@@ -231,6 +231,8 @@ out:
 
 int platform_ipc_init(struct ipc *ipc)
 {
+	int irq;
+
 	_ipc = ipc;
 
 	ipc_set_drvdata(_ipc, NULL);
@@ -240,9 +242,12 @@ int platform_ipc_init(struct ipc *ipc)
 			   ipc_process_task, _ipc, 0, 0);
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   ipc_irq_handler, ipc);
-	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
+	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,
+				PLATFORM_IPC_INTERRUPT_NAME);
+	if (irq < 0)
+		return irq;
+	interrupt_register(irq, IRQ_AUTO_UNMASK, ipc_irq_handler, ipc);
+	interrupt_enable(irq, ipc);
 
 	/* enable IPC interrupts from host */
 	ipc_write(IPC_DIPCCTL, IPC_DIPCCTL_IPCIDIE | IPC_DIPCCTL_IPCTBIE);

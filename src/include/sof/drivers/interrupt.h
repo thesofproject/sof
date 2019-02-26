@@ -10,7 +10,6 @@
 
 #include <arch/drivers/interrupt.h>
 #include <platform/drivers/interrupt.h>
-#include <sof/drivers/interrupt-map.h>
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
@@ -68,6 +67,10 @@ struct irq_cascade_desc {
 	const char *name;				/**< name of the
 							  * controller
 							  */
+	int irq_base;					/**< first virtual IRQ
+							  * number, assigned to
+							  * this controller
+							  */
 	const struct irq_cascade_ops *ops;		/**< cascading interrupt
 							  * controller driver
 							  * operations
@@ -124,13 +127,15 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu);
 
 /*
  * On platforms, supporting cascading interrupts cascaded interrupt numbers
- * have SOF_IRQ_LEVEL(irq) != 0.
+ * are greater than or equal to PLATFORM_IRQ_CHILDREN
  */
-#define interrupt_is_dsp_direct(irq) (!SOF_IRQ_LEVEL(irq))
+#define interrupt_is_dsp_direct(irq) (!PLATFORM_IRQ_CHILDREN || \
+					irq < PLATFORM_IRQ_CHILDREN)
 
 void interrupt_init(void);
 int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl);
 struct irq_desc *interrupt_get_parent(uint32_t irq);
+int interrupt_get_irq(unsigned int irq, const char *cascade);
 
 static inline void interrupt_set(int irq)
 {

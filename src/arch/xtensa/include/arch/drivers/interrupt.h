@@ -10,16 +10,19 @@
 #ifndef __ARCH_DRIVERS_INTERRUPT_H__
 #define __ARCH_DRIVERS_INTERRUPT_H__
 
-#include <sof/drivers/interrupt-map.h>
 #include <xtensa/hal.h>
 #include <xtensa/xtruntime.h>
 #include <stddef.h>
 #include <stdint.h>
 
+extern char irq_name_level2[];
+extern char irq_name_level3[];
+extern char irq_name_level4[];
+extern char irq_name_level5[];
+
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg)
 {
-	irq = SOF_IRQ_NUMBER(irq);
 	xthal_set_intclear(0x1 << irq);
 	_xtos_set_interrupt_handler_arg(irq, handler, arg);
 	return 0;
@@ -27,7 +30,6 @@ static inline int arch_interrupt_register(int irq,
 
 static inline void arch_interrupt_unregister(int irq)
 {
-	irq = SOF_IRQ_NUMBER(irq);
 	_xtos_set_interrupt_handler_arg(irq, NULL, NULL);
 }
 
@@ -53,13 +55,11 @@ static inline uint32_t arch_interrupt_get_level(void)
 
 static inline void arch_interrupt_set(int irq)
 {
-	irq = SOF_IRQ_NUMBER(irq);
 	xthal_set_intset(0x1 << irq);
 }
 
 static inline void arch_interrupt_clear(int irq)
 {
-	irq = SOF_IRQ_NUMBER(irq);
 	xthal_set_intclear(0x1 << irq);
 }
 
