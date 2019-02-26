@@ -29,6 +29,8 @@
 
 #define __aligned(x) __attribute__((__aligned__(x)))
 
+#define ffs(i) __builtin_ffs(i)
+
 /* count number of var args */
 #define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
 	/ sizeof(unsigned int) - 1)
