@@ -1154,8 +1154,32 @@ static int dw_dma_setup(struct dma *dma)
 }
 
 #if DW_USE_HW_LLI
-static void dw_dma_process_block(struct dma_chan_data *chan,
-				 struct dma_sg_elem *next)
+static void dw_dma_verify_block(struct dma_chan_data *chan,
+				struct dma_sg_elem *next)
+{
+	struct dw_lli2 *ll_uncached = cache_to_uncache(chan->lli_current);
+
+	switch (next->size) {
+	case DMA_RELOAD_END:
+		chan->status = COMP_STATE_PREPARE;
+		dw_write(chan->id.dma, DW_DMA_CHAN_EN,
+			 CHAN_DISABLE(chan->id.channel));
+		/* fallthrough */
+	default:
+		if (ll_uncached->ctrl_hi & DW_CTLH_DONE(1)) {
+			ll_uncached->ctrl_hi &= ~DW_CTLH_DONE(1);
+			chan->lli_current =
+				(struct dw_lli2 *)chan->lli_current->llp;
+		}
+		break;
+	}
+}
+#endif
+
+static void dw_dma_irq_callback(struct dma_chan_data *chan,
+				struct dma_sg_elem *next, uint32_t type,
+				void (*verify)(struct dma_chan_data *,
+					       struct dma_sg_elem *))
 {
 	/* reload lli by default */
 	next->src = DMA_RELOAD_LLI;
@@ -1163,24 +1187,11 @@ static void dw_dma_process_block(struct dma_chan_data *chan,
 	next->size = DMA_RELOAD_LLI;
 
 	if (chan->cb)
-		chan->cb(chan->cb_data, DMA_IRQ_TYPE_BLOCK, next);
+		chan->cb(chan->cb_data, type, next);
 
-	if (next->size == DMA_RELOAD_END) {
-		tracev_dwdma("dw-dma: %d channel %d block end",
-			     chan->id.dma->plat_data.id, chan->id.channel);
-
-		/* disable channel, finished */
-		dw_write(chan->id.dma, DW_DMA_CHAN_EN,
-			 CHAN_DISABLE(chan->id.channel));
-		chan->status = COMP_STATE_PREPARE;
-	}
-
-	chan->lli_current->ctrl_hi &= ~DW_CTLH_DONE(1);
-	dcache_writeback_region(chan->lli_current, sizeof(*chan->lli_current));
-
-	chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
+	if (verify && next->size != DMA_RELOAD_IGNORE)
+		verify(chan, next);
 }
-#endif
 
 #if CONFIG_APOLLOLAKE
 /* interrupt handler for DW DMA */
@@ -1231,8 +1242,9 @@ static void dw_dma_irq_handler(void *data)
 #if DW_USE_HW_LLI
 	/* end of a LLI block */
 	if (status_block & mask &&
-	    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK)
-		dw_dma_process_block(&p->chan[i], &next);
+	    p->chan[i].cb_type & DMA_CB_TYPE_BLOCK)
+		dw_dma_irq_callback(&p->chan[i], &next, DMA_CB_TYPE_BLOCK,
+				    &dw_dma_verify_block);
 #endif
 }
 
@@ -1265,17 +1277,9 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 	interrupt_unregister(irq);
 }
 #else
-static void dw_dma_process_transfer(struct dma_chan_data *chan,
-				    struct dma_sg_elem *next)
+static void dw_dma_verify_transfer(struct dma_chan_data *chan,
+				   struct dma_sg_elem *next)
 {
-	/* reload lli by default */
-	next->src = DMA_RELOAD_LLI;
-	next->dest = DMA_RELOAD_LLI;
-	next->size = DMA_RELOAD_LLI;
-
-	if (chan->cb)
-		chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, next);
-
 	/* check for reload channel:
 	 * next.size is DMA_RELOAD_END, stop this dma copy;
 	 * next.size > 0 but not DMA_RELOAD_LLI, use next
@@ -1292,8 +1296,8 @@ static void dw_dma_process_transfer(struct dma_chan_data *chan,
 		dw_dma_chan_reload_lli(chan->id.dma, chan->id.channel);
 		break;
 	default:
-		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next
-						, chan->direction);
+		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next,
+					chan->direction);
 		break;
 	}
 }
@@ -1357,13 +1361,17 @@ static void dw_dma_irq_handler(void *data)
 #if DW_USE_HW_LLI
 		/* end of a LLI block */
 		if (status_block & mask &&
-		    p->chan[i].cb_type & DMA_IRQ_TYPE_BLOCK)
-			dw_dma_process_block(&p->chan[i], &next);
+		    p->chan[i].cb_type & DMA_CB_TYPE_BLOCK)
+			dw_dma_irq_callback(&p->chan[i], &next,
+					    DMA_CB_TYPE_BLOCK,
+					    &dw_dma_verify_block);
 #endif
 		/* end of a transfer */
 		if (status_tfr & mask &&
-		    p->chan[i].cb_type & DMA_IRQ_TYPE_LLIST)
-			dw_dma_process_transfer(&p->chan[i], &next);
+		    p->chan[i].cb_type & DMA_CB_TYPE_LLIST)
+			dw_dma_irq_callback(&p->chan[i], &next,
+					    DMA_CB_TYPE_LLIST,
+					    &dw_dma_verify_transfer);
 	}
 }
 

@@ -580,7 +580,7 @@ static int host_params(struct comp_dev *dev)
 	}
 #endif
 	/* set up callback */
-	dma_set_cb(hd->dma, hd->chan, DMA_IRQ_TYPE_LLIST,
+	dma_set_cb(hd->dma, hd->chan, DMA_CB_TYPE_LLIST,
 		   host_dma_cb,
 		   dev);
 	return 0;
