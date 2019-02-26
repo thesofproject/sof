@@ -223,7 +223,7 @@ struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 void dma_put(struct dma *dma);
 
 #define dma_set_drvdata(dma, data) \
-	dma->private = data;
+	do { dma->private = data; } while (0)
 #define dma_get_drvdata(dma) \
 	dma->private
 #define dma_base(dma) \
