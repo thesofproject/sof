@@ -13,12 +13,18 @@
 #include <sof/drivers/interrupt.h>
 #include <stdint.h>
 
+struct timer_irq {
+	int logical_irq;
+	void *irq_arg;
+};
+
 struct timer {
 	uint32_t id;
-	uint32_t irq;
-	uint32_t core;
-	void *irq_arg;
+	int irq;
+	const char *irq_name;
+	unsigned int core;
 	void *timer_data;	/* used by core */
+	struct timer_irq *tirq;	/* dynamic non-cacheable IRQ data */
 	uint32_t hitime;	/* high end of 64bit timer */
 	uint32_t hitimeout;
 	uint32_t lowtimeout;

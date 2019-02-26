@@ -13,7 +13,6 @@
 #ifndef __SOF_SCHEDULE_LL_SCHEDULE_H__
 #define __SOF_SCHEDULE_LL_SCHEDULE_H__
 
-#include <sof/drivers/timer.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -37,7 +36,5 @@
 struct ll_task_pdata {
 	uint32_t flags;
 };
-
-extern struct timesource_data platform_generic_queue[];
 
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */

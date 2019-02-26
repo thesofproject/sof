@@ -202,7 +202,9 @@ static int platform_timer_register(struct timer *timer,
 
 int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
-	timer->irq_arg = arg;
+	struct timer_irq *tirq = timer->tirq;
+
+	tirq->irq_arg = arg;
 
 	switch (timer->id) {
 	case TIMER0:
@@ -218,15 +220,21 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 
 void timer_unregister(struct timer *timer)
 {
-	interrupt_unregister(timer->irq, timer->irq_arg);
+	struct timer_irq *tirq = timer->tirq;
+
+	interrupt_unregister(timer->irq, tirq->irq_arg);
 }
 
 void timer_enable(struct timer *timer)
 {
-	interrupt_enable(timer->irq, timer->irq_arg);
+	struct timer_irq *tirq = timer->tirq;
+
+	interrupt_enable(timer->irq, tirq->irq_arg);
 }
 
 void timer_disable(struct timer *timer)
 {
-	interrupt_disable(timer->irq, timer->irq_arg);
+	struct timer_irq *tirq = timer->tirq;
+
+	interrupt_disable(timer->irq, tirq->irq_arg);
 }

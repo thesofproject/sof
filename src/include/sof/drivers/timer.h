@@ -24,6 +24,8 @@ struct timesource_data {
 	uint64_t (*timer_get)(struct timer *t);
 };
 
+extern struct timesource_data platform_generic_queue[];
+
 int timer_register(struct timer *timer,
 	void (*handler)(void *arg), void *arg);
 void timer_unregister(struct timer *timer);

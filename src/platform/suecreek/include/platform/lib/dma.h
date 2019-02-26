@@ -37,7 +37,7 @@
 #define DMA_HANDSHAKE_SSI_TX	26
 #define DMA_HANDSHAKE_SSI_RX	27
 
-#define dma_chan_irq(dma, cpu, chan) dma_irq(dma, cpu)
+#define dma_chan_irq(dma, chan) dma_irq(dma)
 
 int dmac_init(void);
 

@@ -19,7 +19,6 @@
 #include <platform/lib/dma.h>
 #include <sof/atomic.h>
 #include <sof/bit.h>
-#include <sof/drivers/interrupt-map.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/wait.h>
 #include <sof/spinlock.h>
@@ -176,7 +175,8 @@ struct dma_plat_data {
 	uint32_t devs; /* bitmask of supported devs */
 	uint32_t base;
 	uint32_t channels;
-	uint32_t irq;
+	int irq;
+	const char *irq_name;
 	uint32_t chan_size;
 	void *drv_plat_data;
 };
@@ -223,8 +223,10 @@ void dma_put(struct dma *dma);
 	dma->private
 #define dma_base(dma) \
 	dma->plat_data.base
-#define dma_irq(dma, cpu) \
-	(dma->plat_data.irq + (cpu << SOF_IRQ_CPU_SHIFT))
+#define dma_irq(dma) \
+	dma->plat_data.irq
+#define dma_irq_name(dma) \
+	dma->plat_data.irq_name
 #define dma_chan_size(dma) \
 	dma->plat_data.chan_size
 #define dma_chan_base(dma, chan) \

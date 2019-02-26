@@ -20,6 +20,7 @@
 #include <sof/lib/clk.h>
 #include <sof/lib/mailbox.h>
 #include <sof/lib/shim.h>
+#include <stddef.h>
 #include <stdint.h>
 
 struct timer;
@@ -40,6 +41,7 @@ struct timer;
 
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERRUPT	IRQ_NUM_EXT_IA
+#define PLATFORM_IPC_INTERRUPT_NAME	NULL
 
 /* Host page size */
 #define HOST_PAGE_SIZE			4096
@@ -47,10 +49,14 @@ struct timer;
 
 /* pipeline IRQ */
 #define PLATFORM_SCHEDULE_IRQ	IRQ_NUM_SOFTWARE2
+#define PLATFORM_SCHEDULE_IRQ_NAME	NULL
 
 #define PLATFORM_IRQ_TASK_HIGH	IRQ_NUM_SOFTWARE2
+#define PLATFORM_IRQ_TASK_HIGH_NAME NULL
 #define PLATFORM_IRQ_TASK_MED	IRQ_NUM_SOFTWARE1
+#define PLATFORM_IRQ_TASK_MED_NAME NULL
 #define PLATFORM_IRQ_TASK_LOW	IRQ_NUM_SOFTWARE1
+#define PLATFORM_IRQ_TASK_LOW_NAME NULL
 
 #define PLATFORM_SCHEDULE_COST	200
 

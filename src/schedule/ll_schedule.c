@@ -58,6 +58,7 @@ struct ll_queue_shared_context {
 
 	/* registered timers */
 	struct timer *timers[PLATFORM_CORE_COUNT];
+	struct timer_irq tirq[PLATFORM_CORE_COUNT];
 };
 
 static struct ll_queue_shared_context *ll_shared_ctx;
@@ -527,9 +528,6 @@ static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
 	queue->notifier.id = ts->notifier;
 	notifier_register(&queue->notifier);
 
-	/* register system timer */
-	timer_register(&queue->ts->timer, queue_run, queue);
-
 	return queue;
 }
 
@@ -545,13 +543,27 @@ static int ll_scheduler_init(void)
 
 	sch_data->ll_sch_data = work_new_queue(ts);
 
-	if (cpu_get_id() == PLATFORM_MASTER_CORE_ID) {
+	if (cpu == PLATFORM_MASTER_CORE_ID) {
+		unsigned int i;
+
 		ll_shared_ctx = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED,
 					SOF_MEM_CAPS_RAM,
 					sizeof(*ll_shared_ctx));
+
+		for (i = 0, ts = platform_generic_queue;
+		     i < PLATFORM_CORE_COUNT; i++, ts++) {
+			ts->timer.tirq = ll_shared_ctx->tirq + i;
+			dcache_writeback_region(&ts->timer.tirq,
+						sizeof(ts->timer.tirq));
+		}
+
 		atomic_init(&ll_shared_ctx->total_num_work, 0);
 		atomic_init(&ll_shared_ctx->timer_clients, 0);
 	}
+
+	/* register system timer */
+	timer_register(&platform_generic_queue[cpu].timer, queue_run,
+		       sch_data->ll_sch_data);
 
 	return ret;
 }
