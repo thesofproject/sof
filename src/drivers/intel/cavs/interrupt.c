@@ -34,7 +34,6 @@
 
 #include <sof/sof.h>
 #include <sof/interrupt.h>
-#include <sof/interrupt-map.h>
 #include <sof/cpu.h>
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
@@ -159,7 +158,7 @@ void interrupt_mask(uint32_t irq)
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
 	if (parent && cascade->ops->mask)
-		cascade->ops->mask(parent, irq);
+		cascade->ops->mask(parent, irq - cascade->irq_base);
 }
 
 void interrupt_unmask(uint32_t irq)
@@ -168,7 +167,7 @@ void interrupt_unmask(uint32_t irq)
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
 	if (parent && cascade->ops->unmask)
-		cascade->ops->unmask(parent, irq);
+		cascade->ops->unmask(parent, irq - cascade->irq_base);
 }
 
 static void irq_mask(struct irq_desc *desc, uint32_t irq)
@@ -178,16 +177,16 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq)
 	/* mask external interrupt bit */
 	switch (desc->irq) {
 	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MSD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL5MSD(core), 1 << irq);
 		break;
 	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MSD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL4MSD(core), 1 << irq);
 		break;
 	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MSD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL3MSD(core), 1 << irq);
 		break;
 	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MSD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL2MSD(core), 1 << irq);
 	}
 }
 
@@ -198,16 +197,16 @@ static void irq_unmask(struct irq_desc *desc, uint32_t irq)
 	/* unmask external interrupt bit */
 	switch (desc->irq) {
 	case IRQ_NUM_EXT_LEVEL5:
-		irq_write(REG_IRQ_IL5MCD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL5MCD(core), 1 << irq);
 		break;
 	case IRQ_NUM_EXT_LEVEL4:
-		irq_write(REG_IRQ_IL4MCD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL4MCD(core), 1 << irq);
 		break;
 	case IRQ_NUM_EXT_LEVEL3:
-		irq_write(REG_IRQ_IL3MCD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL3MCD(core), 1 << irq);
 		break;
 	case IRQ_NUM_EXT_LEVEL2:
-		irq_write(REG_IRQ_IL2MCD(core), 1 << SOF_IRQ_BIT(irq));
+		irq_write(REG_IRQ_IL2MCD(core), 1 << irq);
 	}
 }
 

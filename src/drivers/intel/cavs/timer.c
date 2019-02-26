@@ -119,14 +119,18 @@ static int platform_timer_register(struct timer *timer,
 	int err;
 
 	/* register timer interrupt */
-	err = interrupt_register(timer->irq, IRQ_MANUAL_UNMASK, handler, arg);
+	timer->logical_irq = interrupt_get_irq(timer->irq, timer->irq_name);
+	if (timer->logical_irq < 0)
+		return timer->logical_irq;
+	err = interrupt_register(timer->logical_irq, IRQ_MANUAL_UNMASK, handler,
+				 arg);
 	if (err < 0)
 		return err;
 
 	timer->irq_arg = arg;
 
 	/* enable timer interrupt */
-	interrupt_enable(timer->irq);
+	interrupt_enable(timer->logical_irq);
 
 	/* disable timer interrupt on core level */
 	timer_disable(timer);
@@ -162,10 +166,10 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 static void platform_timer_unregister(struct timer *timer)
 {
 	/* disable timer interrupt */
-	interrupt_disable(timer->irq);
+	interrupt_disable(timer->logical_irq);
 
 	/* unregister timer interrupt */
-	interrupt_unregister(timer->irq, timer->irq_arg);
+	interrupt_unregister(timer->logical_irq, timer->irq_arg);
 }
 
 void timer_unregister(struct timer *timer)
@@ -174,7 +178,7 @@ void timer_unregister(struct timer *timer)
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_unregister(timer->irq, timer->irq_arg);
+		interrupt_unregister(timer->logical_irq, timer->irq_arg);
 		break;
 	case TIMER3:
 		platform_timer_unregister(timer);
@@ -188,10 +192,10 @@ void timer_enable(struct timer *timer)
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_enable(timer->irq);
+		interrupt_enable(timer->logical_irq);
 		break;
 	case TIMER3:
-		interrupt_unmask(timer->irq);
+		interrupt_unmask(timer->logical_irq);
 		break;
 	}
 }
@@ -202,10 +206,10 @@ void timer_disable(struct timer *timer)
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_disable(timer->irq);
+		interrupt_disable(timer->logical_irq);
 		break;
 	case TIMER3:
-		interrupt_mask(timer->irq);
+		interrupt_mask(timer->logical_irq);
 		break;
 	}
 }

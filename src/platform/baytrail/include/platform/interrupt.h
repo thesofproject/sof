@@ -33,7 +33,6 @@
 
 #include <stdint.h>
 #include <sof/string.h>
-#include <sof/interrupt-map.h>
 
 /* IRQ numbers */
 #define IRQ_NUM_SOFTWARE0	0	/* Level 1 */

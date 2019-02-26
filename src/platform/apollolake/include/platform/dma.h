@@ -73,8 +73,7 @@
 #define DMA_HANDSHAKE_SSP5_TX	12
 #define DMA_HANDSHAKE_SSP5_RX	13
 
-#define dma_chan_irq(dma, cpu, chan) \
-	(dma_irq(dma, cpu) + (channel << SOF_IRQ_BIT_SHIFT))
+#define dma_chan_irq(dma, chan) (dma_irq(dma) + channel)
 
 int dmac_init(void);
 

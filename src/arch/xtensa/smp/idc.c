@@ -351,7 +351,10 @@ int arch_idc_init(void)
 			   SOF_TASK_PRI_IDC, idc_do_cmd, *idc, core, 0);
 
 	/* configure interrupt */
-	(*idc)->irq = PLATFORM_IDC_INTERRUPT(core);
+	(*idc)->irq = interrupt_get_irq(PLATFORM_IDC_INTERRUPT,
+					PLATFORM_IDC_INTERRUPT_NAME);
+	if ((*idc)->irq < 0)
+		return (*idc)->irq;
 	ret = interrupt_register((*idc)->irq, IRQ_AUTO_UNMASK, idc_irq_handler,
 				 *idc);
 	if (ret < 0)

@@ -322,8 +322,8 @@
 #define FIR_COEF_A(x)				SET_BITS(19, 0, x)
 #define FIR_COEF_B(x)				SET_BITS(19, 0, x)
 
-#define dmic_irq(dmic) \
-	dmic->plat_data.irq
+#define dmic_irq(dmic) dmic->plat_data.irq
+#define dmic_irq_name(dmic) dmic->plat_data.irq_name
 
 /* DMIC private data */
 struct dmic_pdata {
@@ -333,6 +333,7 @@ struct dmic_pdata {
 	struct task dmicwork;
 	int32_t startcount;
 	int32_t gain;
+	int irq;
 };
 
 extern const struct dai_ops dmic_ops;

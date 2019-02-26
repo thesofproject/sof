@@ -31,7 +31,6 @@
  */
 
 #include <sof/interrupt.h>
-#include <sof/interrupt-map.h>
 #include <sof/alloc.h>
 #include <sof/lock.h>
 #include <sof/list.h>
@@ -45,8 +44,10 @@
  * lost while doing that
  */
 static struct {
-	struct list_item list[PLATFORM_CORE_COUNT]
-		__attribute__((aligned(XCHAL_DCACHE_LINESIZE)));
+	struct {
+		int last_irq;
+		struct list_item list[PLATFORM_CORE_COUNT];
+	} s __attribute__((aligned(XCHAL_DCACHE_LINESIZE)));
 	spinlock_t lock __attribute__((aligned(XCHAL_DCACHE_LINESIZE)));
 } cascade_data;
 
@@ -81,14 +82,14 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 
 	spin_lock_irq(&cascade_data.lock, flags);
 
-	dcache_invalidate_region(cascade_data.list, sizeof(cascade_data.list));
+	dcache_invalidate_region(&cascade_data.s, sizeof(cascade_data.s));
 
 	/*
 	 * All cascading interrupt controllers are always registered for all the
 	 * cores, therefore it is sufficient to do all the checks with the
 	 * current core to avoid cache problems
 	 */
-	list_for_item (list, cascade_data.list + core) {
+	list_for_item (list, cascade_data.s.list + core) {
 		struct irq_cascade_desc *c = container_of(list,
 						struct irq_cascade_desc, list);
 
@@ -110,25 +111,63 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 		c->desc.irq = tmpl->irq;
 		c->desc.handler = tmpl->handler;
 		c->desc.handler_arg = &c->desc;
+		c->irq_base = cascade_data.s.last_irq + 1;
 
-		prev = list_is_empty(cascade_data.list + i) ? NULL :
-			cascade_data.list[i].prev;
+		prev = list_is_empty(cascade_data.s.list + i) ? NULL :
+			cascade_data.s.list[i].prev;
 
 		if (prev)
 			dcache_invalidate_region(prev,
 						 sizeof(struct list_item));
-		list_item_append(&c->list, cascade_data.list + i);
+		list_item_append(&c->list, cascade_data.s.list + i);
 		if (prev)
 			dcache_writeback_region(prev, sizeof(struct list_item));
 	}
 
+	cascade_data.s.last_irq += ARRAY_SIZE(cascade[0].child);
+
 	dcache_writeback_region(cascade,
 				PLATFORM_CORE_COUNT * sizeof(*cascade));
-	dcache_writeback_region(cascade_data.list, sizeof(cascade_data.list));
+	dcache_writeback_region(&cascade_data.s, sizeof(cascade_data.s));
 
 	ret = 0;
 
 unlock:
+	spin_unlock_irq(&cascade_data.lock, flags);
+
+	return ret;
+}
+
+int interrupt_get_irq(unsigned int irq, const char *cascade)
+{
+	struct list_item *list;
+	unsigned long flags;
+	unsigned int cpu = cpu_get_id();
+	int ret = -ENODEV;
+
+	if (!cascade || cascade[0] == '\0')
+		return irq;
+
+	/* If a name is specified, irq must be <= PLATFORM_IRQ_CHILDREN */
+	if (irq >= PLATFORM_IRQ_CHILDREN) {
+		trace_error(TRACE_CLASS_IRQ,
+			    "error: IRQ %d invalid as a child interrupt!");
+		return -EINVAL;
+	}
+
+	spin_lock_irq(&cascade_data.lock, flags);
+
+	list_for_item (list, cascade_data.s.list + cpu) {
+		struct irq_cascade_desc *c = container_of(list,
+						struct irq_cascade_desc, list);
+
+		/* .name is non-volatile */
+		if (!rstrcmp(cascade, c->name)) {
+			ret = c->irq_base + irq;
+			break;
+		}
+	}
+
 	spin_unlock_irq(&cascade_data.lock, flags);
 
 	return ret;
@@ -139,22 +178,19 @@ struct irq_desc *interrupt_get_parent(uint32_t irq)
 	struct list_item *list;
 	struct irq_desc *parent = NULL;
 	unsigned long flags;
-	unsigned int cpu = SOF_IRQ_CPU(irq);
+	unsigned int cpu = cpu_get_id();
 
-	if (irq < PLATFORM_IRQ_CHILDREN)
+	if (interrupt_is_dsp_direct(irq))
 		return NULL;
-
-	/* We should only be called for the current core */
-	if (cpu != cpu_get_id())
-		panic(SOF_IPC_PANIC_PLATFORM);
 
 	spin_lock_irq(&cascade_data.lock, flags);
 
-	list_for_item (list, cascade_data.list + cpu) {
+	list_for_item (list, cascade_data.s.list + cpu) {
 		struct irq_cascade_desc *c = container_of(list,
 						struct irq_cascade_desc, list);
 
-		if (SOF_IRQ_NUMBER(irq) == c->desc.irq) {
+		if (irq >= c->irq_base &&
+		    irq < c->irq_base + PLATFORM_IRQ_CHILDREN) {
 			parent = &c->desc;
 			break;
 		}
@@ -171,27 +207,34 @@ void interrupt_init(void)
 
 	spinlock_init(&cascade_data.lock);
 
-	for (i = 0; i < ARRAY_SIZE(cascade_data.list); i++)
-		list_init(cascade_data.list + i);
+	for (i = 0; i < ARRAY_SIZE(cascade_data.s.list); i++)
+		list_init(cascade_data.s.list + i);
 
-	dcache_writeback_region(cascade_data.list, sizeof(cascade_data.list));
+	cascade_data.s.last_irq = PLATFORM_IRQ_CHILDREN - 1;
+
+	dcache_writeback_region(&cascade_data, sizeof(cascade_data));
 }
 
 static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg)
 {
-	int ret = 0;
+	int hw_irq, ret = 0;
 	struct irq_desc *child;
 	struct irq_cascade_desc *cascade;
 	struct list_item *list, *head;
 
-	if (parent == NULL)
-		return -EINVAL;
-
 	cascade = container_of(parent, struct irq_cascade_desc, desc);
-	head = &cascade->child[SOF_IRQ_BIT(irq)].list;
 
 	spin_lock(&cascade->lock);
+
+	hw_irq = irq - cascade->irq_base;
+
+	if (hw_irq < 0 || cascade->irq_base + PLATFORM_IRQ_CHILDREN <= irq) {
+		ret = -EINVAL;
+		goto finish;
+	}
+
+	head = &cascade->child[hw_irq].list;
 
 	list_for_item (list, head) {
 		child = container_of(list, struct irq_desc, irq_list);
@@ -200,6 +243,13 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			trace_error(TRACE_CLASS_IRQ,
 				    "error: IRQ 0x%x handler argument re-used!",
 				    irq);
+			ret = -EEXIST;
+			goto finish;
+		}
+
+		if (child->unmask != unmask) {
+			trace_error(TRACE_CLASS_IRQ,
+				    "error: IRQ 0x%x flags differ!", irq);
 			ret = -EINVAL;
 			goto finish;
 		}
@@ -218,20 +268,22 @@ static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 	child->handler = handler;
 	child->handler_arg = arg;
 	child->unmask = unmask;
+	child->irq = irq;
 
 	list_item_append(&child->irq_list, head);
 
 	/* do we need to register parent ? */
-	if (cascade->num_children == 0) {
-		ret = arch_interrupt_register(parent->irq,
-					      parent->handler, parent);
-	}
+	if (!cascade->num_children)
+		ret = interrupt_register(parent->irq, IRQ_AUTO_UNMASK,
+					 parent->handler, parent);
 
 	/* increment number of children */
-	cascade->num_children++;
+	if (!ret)
+		cascade->num_children++;
 
 finish:
 	spin_unlock(&cascade->lock);
+
 	return ret;
 }
 
@@ -241,13 +293,10 @@ static void irq_unregister_child(struct irq_desc *parent, int irq,
 	struct irq_desc *child;
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
-	struct list_item *list, *head = &cascade->child[SOF_IRQ_BIT(irq)].list;
+	int hw_irq = irq - cascade->irq_base;
+	struct list_item *list, *head = &cascade->child[hw_irq].list;
 
 	spin_lock(&cascade->lock);
-
-	/* does child already exist ? */
-	if (list_is_empty(head))
-		goto finish;
 
 	list_for_item (list, head) {
 		child = container_of(list, struct irq_desc, irq_list);
@@ -256,18 +305,18 @@ static void irq_unregister_child(struct irq_desc *parent, int irq,
 			list_item_del(&child->irq_list);
 			cascade->num_children--;
 			rfree(child);
+
+			/*
+			 * unregister the root interrupt if this child is the
+			 * last registered one.
+			 */
+			if (!cascade->num_children)
+				interrupt_unregister(parent->irq, parent);
+
 			break;
 		}
 	}
 
-	/*
-	 * unregister the root interrupt if the this l2 is
-	 * the last registered one.
-	 */
-	if (cascade->num_children == 0)
-		arch_interrupt_unregister(parent->irq);
-
-finish:
 	spin_unlock(&cascade->lock);
 }
 
@@ -275,14 +324,14 @@ static uint32_t irq_enable_child(struct irq_desc *parent, int irq)
 {
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
-	struct irq_child *child = cascade->child + SOF_IRQ_BIT(irq);
+	struct irq_child *child = cascade->child + irq - cascade->irq_base;
 
 	spin_lock(&cascade->lock);
 
 	if (!child->enable_count++) {
 		/* enable the parent interrupt */
 		if (!cascade->enable_count++)
-			arch_interrupt_enable_mask(1 << parent->irq);
+			interrupt_enable(parent->irq);
 
 		/* enable the child interrupt */
 		interrupt_unmask(irq);
@@ -297,7 +346,7 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 {
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
-	struct irq_child *child = cascade->child + SOF_IRQ_BIT(irq);
+	struct irq_child *child = cascade->child + irq - cascade->irq_base;
 
 	spin_lock(&cascade->lock);
 
@@ -311,7 +360,7 @@ static uint32_t irq_disable_child(struct irq_desc *parent, int irq)
 
 		/* disable the parent interrupt */
 		if (!--cascade->enable_count)
-			arch_interrupt_disable_mask(1 << parent->irq);
+			interrupt_disable(parent->irq);
 	}
 
 	spin_unlock(&cascade->lock);

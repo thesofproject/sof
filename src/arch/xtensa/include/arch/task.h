@@ -46,7 +46,7 @@
 struct irq_task {
 	spinlock_t lock;	/**< lock */
 	struct list_item list;	/**< list of tasks */
-	uint32_t irq;		/**< IRQ level */
+	int irq;		/**< IRQ level */
 };
 
 struct task;

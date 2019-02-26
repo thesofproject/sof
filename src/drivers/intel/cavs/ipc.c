@@ -233,6 +233,7 @@ out:
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct ipc_data *iipc;
+	int irq;
 
 	_ipc = ipc;
 
@@ -249,9 +250,12 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   ipc_irq_handler, NULL);
-	interrupt_enable(PLATFORM_IPC_INTERRUPT);
+	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,
+				PLATFORM_IPC_INTERRUPT_NAME);
+	if (irq < 0)
+		return irq;
+	interrupt_register(irq, IRQ_AUTO_UNMASK, ipc_irq_handler, ipc);
+	interrupt_enable(irq);
 
 	/* enable IPC interrupts from host */
 	ipc_write(IPC_DIPCCTL, IPC_DIPCCTL_IPCIDIE | IPC_DIPCCTL_IPCTBIE);

@@ -161,10 +161,12 @@ int arch_allocate_tasks(void)
 
 	list_init(&((*low)->list));
 	spinlock_init(&((*low)->lock));
-	(*low)->irq = PLATFORM_IRQ_TASK_LOW;
+	(*low)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_LOW,
+					PLATFORM_IRQ_TASK_LOW_NAME);
+	if ((*low)->irq < 0)
+		return (*low)->irq;
 
-	ret = interrupt_register((*low)->irq, IRQ_AUTO_UNMASK, _irq_task,
-				 task_irq_low_get());
+	ret = interrupt_register((*low)->irq, IRQ_AUTO_UNMASK, _irq_task, low);
 	if (ret < 0)
 		return ret;
 	interrupt_enable((*low)->irq);
@@ -177,10 +179,12 @@ int arch_allocate_tasks(void)
 
 	list_init(&((*med)->list));
 	spinlock_init(&((*med)->lock));
-	(*med)->irq = PLATFORM_IRQ_TASK_MED;
+	(*med)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_MED,
+					PLATFORM_IRQ_TASK_MED_NAME);
+	if ((*med)->irq < 0)
+		return (*med)->irq;
 
-	ret = interrupt_register((*med)->irq, IRQ_AUTO_UNMASK, _irq_task,
-				 task_irq_med_get());
+	ret = interrupt_register((*med)->irq, IRQ_AUTO_UNMASK, _irq_task, med);
 	if (ret < 0)
 		return ret;
 	interrupt_enable((*med)->irq);
@@ -192,10 +196,13 @@ int arch_allocate_tasks(void)
 
 	list_init(&((*high)->list));
 	spinlock_init(&((*high)->lock));
-	(*high)->irq = PLATFORM_IRQ_TASK_HIGH;
+	(*high)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_HIGH,
+					 PLATFORM_IRQ_TASK_HIGH_NAME);
+	if ((*high)->irq < 0)
+		return (*high)->irq;
 
 	ret = interrupt_register((*high)->irq, IRQ_AUTO_UNMASK, _irq_task,
-				 task_irq_high_get());
+				 high);
 	if (ret < 0)
 		return ret;
 	interrupt_enable((*high)->irq);
