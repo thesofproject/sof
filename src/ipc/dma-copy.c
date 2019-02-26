@@ -79,7 +79,7 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	completion_t *comp = (completion_t *)data;
 
-	if (type == DMA_IRQ_TYPE_LLIST)
+	if (type == DMA_CB_TYPE_LLIST)
 		wait_completed(comp);
 
 	ipc_dma_trace_send_position();
@@ -184,7 +184,7 @@ int dma_copy_new(struct dma_copy *dc)
 	}
 
 	dc->complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
-	dma_set_cb(dc->dmac, dc->chan, DMA_IRQ_TYPE_LLIST, dma_complete,
+	dma_set_cb(dc->dmac, dc->chan, DMA_CB_TYPE_LLIST, dma_complete,
 		&dc->complete);
 #endif
 

@@ -78,9 +78,9 @@
 #define DMA_ACCESS_EXCLUSIVE	1
 #define DMA_ACCESS_SHARED	0
 
-/* DMA IRQ types */
-#define DMA_IRQ_TYPE_BLOCK	BIT(0)
-#define DMA_IRQ_TYPE_LLIST	BIT(1)
+/* DMA callback types */
+#define DMA_CB_TYPE_BLOCK	BIT(0)
+#define DMA_CB_TYPE_LLIST	BIT(1)
 
 /* DMA copy flags */
 #define DMA_COPY_PRELOAD	BIT(0)
@@ -88,8 +88,9 @@
 /* We will use this macro in cb handler to inform dma that
  * we need to stop the reload for special purpose
  */
-#define DMA_RELOAD_END	0
-#define DMA_RELOAD_LLI	0xFFFFFFFF
+#define DMA_RELOAD_END		0
+#define DMA_RELOAD_IGNORE	0xFFFFFFFE
+#define DMA_RELOAD_LLI		0xFFFFFFFF
 
 #define DMA_CHAN_INVALID	0xFFFFFFFF
 

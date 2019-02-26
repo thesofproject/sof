@@ -351,7 +351,7 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 		/* loop over each period */
 		period_cnt = chan->buffer_bytes / chan->period_bytes;
 		for (i = 0; i < period_cnt; i++)
-			chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, &next);
+			chan->cb(chan->cb_data, DMA_CB_TYPE_LLIST, &next);
 		/* do not need to test out next in this path */
 	}
 
@@ -371,7 +371,7 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
 		next.dest = DMA_RELOAD_LLI;
 		next.size = DMA_RELOAD_LLI;
 
-		chan->cb(chan->cb_data, DMA_IRQ_TYPE_LLIST, &next);
+		chan->cb(chan->cb_data, DMA_CB_TYPE_LLIST, &next);
 		if (next.size == DMA_RELOAD_END) {
 			/* disable channel, finished */
 			hda_dma_stop(dma, chan->index);

@@ -768,8 +768,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	}
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_IRQ_TYPE_BLOCK |
-				DMA_IRQ_TYPE_LLIST, dai_dma_cb, dev);
+	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_BLOCK | DMA_CB_TYPE_LLIST,
+		   dai_dma_cb, dev);
 
 	dev->is_dma_connected = 1;
 
