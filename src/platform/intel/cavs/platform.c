@@ -292,7 +292,6 @@ struct timer *platform_timer =
 
 static struct spi_platform_data spi = {
 	.base		= DW_SPI_SLAVE_BASE,
-	.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
 	.type		= SOF_SPI_INTEL_SLAVE,
 	.fifo[SPI_DIR_RX] = {
 		.handshake	= DMA_HANDSHAKE_SSI_RX,

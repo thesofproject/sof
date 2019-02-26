@@ -27,7 +27,6 @@ struct spi_plat_fifo_data {
 
 struct spi_platform_data {
 	uint32_t base;
-	uint32_t irq;
 	struct spi_plat_fifo_data fifo[2];
 	enum spi_type type;
 };
