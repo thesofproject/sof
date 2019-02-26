@@ -74,6 +74,8 @@ struct sa;
 	__attribute__((section(".module_init"))) static void(*f)(void) = init
 #endif
 
+#define ffs(i) __builtin_ffs(i)
+
 /* general firmware context */
 struct sof {
 	/* init data */

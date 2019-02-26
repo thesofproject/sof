@@ -39,6 +39,7 @@
 #include <platform/interrupt.h>
 #include <platform/platform.h>
 #include <platform/shim.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <cavs/version.h>
@@ -63,60 +64,61 @@ char irq_name_level5[] = "level5";
 static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				    uint32_t ilxmsd, uint32_t ilxmcd)
 {
-	struct irq_desc *parent = (struct irq_desc *)data;
+	struct irq_desc *parent = data;
 	struct irq_cascade_desc *cascade = container_of(parent,
 						struct irq_cascade_desc, desc);
 	struct irq_desc *child = NULL;
 	struct list_item *clist;
 	uint32_t status;
-	uint32_t i = 0;
 	uint32_t tries = LVL2_MAX_TRIES;
 
 	/* read active interrupt status */
 	status = irq_read(ilxsd);
+	if (!status)
+		return;
 
 	/* handle each child */
-	while (irq_read(ilxsd)) {
+	for (;;) {
+		unsigned int bit = ffs(status) - 1;
+		bool handled = false;
 
-		/* are all IRQs serviced from last status ? */
-		if (status == 0x0) {
-			/* yes, so reload the new status and service again */
-			status = irq_read(ilxsd);
-			i = 0;
-			tries--;
+		status &= ~(1 << bit);
+
+		/* get child if any and run handler */
+		list_for_item (clist, &cascade->child[bit].list) {
+			child = container_of(clist, struct irq_desc, irq_list);
+
+			if (child->handler) {
+				child->handler(child->handler_arg);
+				handled = true;
+			}
 		}
 
+		if (!handled) {
+			/* nobody cared ? */
+			trace_irq_error("irq_lvl2_handler() error: "
+					"nobody cared level %d bit %d",
+					level, bit);
+			/* now mask it */
+			irq_write(ilxmcd, 0x1 << bit);
+		}
+
+		/* are all IRQs serviced from last status ? */
+		if (status)
+			continue;
+
+		/* yes, so reload the new status and service again */
+		status = irq_read(ilxsd);
+		if (!status)
+			break;
+
 		/* any devices continually interrupting / can't be cleared ? */
-		if (!tries) {
+		if (!--tries) {
 			tries = LVL2_MAX_TRIES;
 			trace_irq_error("irq_lvl2_handler() error: "
 					"IRQ storm at level %d status %08X",
 					level, irq_read(ilxsd));
 		}
-
-		/* any IRQ for this child bit ? */
-		if ((status & 0x1) == 0)
-			goto next;
-
-		/* get child if any and run handler */
-		list_for_item (clist, &cascade->child[i].list) {
-			child = container_of(clist, struct irq_desc, irq_list);
-
-			if (child && child->handler) {
-				child->handler(child->handler_arg);
-			} else {
-				/* nobody cared ? */
-				trace_irq_error("irq_lvl2_handler() error: "
-						"nobody cared level %d bit %d",
-						level, i);
-				/* now mask it */
-				irq_write(ilxmcd, 0x1 << i);
-			}
-		}
-
-next:
-		status >>= 1;
-		i++;
 	}
 }
 
