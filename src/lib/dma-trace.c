@@ -409,8 +409,9 @@ static void dtrace_add_event(const char *e, uint32_t length)
 			 * if any dropped entries have appeared and there
 			 * is not any overflow, their amount will be logged
 			 */
+#if TRACEE
 			uint32_t tmp_dropped_entries = dropped_entries;
-
+#endif
 			dropped_entries = 0;
 			/*
 			 * this trace_error invocation causes recursion,
