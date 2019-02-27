@@ -134,25 +134,21 @@ static void parse_manifest(void)
 }
 #endif
 
-/* power on HPSRAM */
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
-	|| defined(CONFIG_SUECREEK)
+/* power off unused HPSRAM */
+#if defined(CONFIG_CANNONLAKE)
 
 static int32_t hp_sram_init(void)
 {
 	int delay_count = 256;
 	uint32_t status;
-#if defined(CONFIG_CANNONLAKE)
 	uint32_t ebb_in_use;
 	uint32_t ebb_mask0, ebb_mask1, ebb_avail_mask0, ebb_avail_mask1;
-#endif
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_ON);
 
 	/* add some delay before touch power register */
 	idelay(delay_count);
 
-#if defined(CONFIG_CANNONLAKE)
 	/* calculate total number of used SRAM banks (EBB)
 	 * to power up only ncecesary banks
 	 */
@@ -206,30 +202,6 @@ static int32_t hp_sram_init(void)
 		idelay(delay_count);
 		status = io_reg_read(HSPGISTS1);
 	}
-#else
-	/* now all the memory bank has been powered up */
-	io_reg_write(HSPGCTL0, 0);
-	io_reg_write(HSRMCTL0, 0);
-	io_reg_write(HSPGCTL1, 0);
-	io_reg_write(HSRMCTL1, 0);
-
-	/* query the power status of first part of HP memory */
-	/* to check whether it has been powered up. A few    */
-	/* cycles are needed for it to be powered up         */
-	status = io_reg_read(HSPGISTS0);
-	while (status) {
-		idelay(delay_count);
-		status = io_reg_read(HSPGISTS0);
-	}
-
-	/* query the power status of second part of HP memory */
-	/* and do as above code                               */
-	status = io_reg_read(HSPGISTS1);
-	while (status) {
-		idelay(delay_count);
-		status = io_reg_read(HSPGISTS1);
-	}
-#endif
 	/* add some delay before touch power register */
 	idelay(delay_count);
 
@@ -238,7 +210,7 @@ static int32_t hp_sram_init(void)
 	return 0;
 }
 
-#elif defined(CONFIG_APOLLOLAKE)
+#else
 
 static uint32_t hp_sram_init(void)
 {
