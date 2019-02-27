@@ -124,6 +124,7 @@ struct comp_data {
 	struct history_buffer his_buf_lp;
 	struct history_buffer his_buf_hp;
 	struct notifier kpb_events; /**< KPB events object */
+	struct task draining_task;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 
