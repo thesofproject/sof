@@ -48,6 +48,7 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_draining_task(void *arg);
+static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -267,8 +268,126 @@ static int kpb_reset(struct comp_dev *dev)
 static int kpb_copy(struct comp_dev *dev)
 {
 	int ret = 0;
+	int update_buffers = 0;
+	struct comp_data *kpb = comp_get_drvdata(dev);
+	struct comp_buffer *source;
+	struct comp_buffer *sink;
 
+	tracev_kpb("kpb_copy()");
+
+	/* get source and sink buffers */
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+				 sink_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
+	/* process source data */
+	/* check if there are valid pointers */
+	if (source && sink) {
+		if (!source->r_ptr || !sink->w_ptr) {
+			return -EINVAL;
+		} else if (sink->free < kpb->sink_period_bytes) {
+			trace_kpb_error("kpb_copy() error: "
+				   "sink component buffer"
+				   " has not enough free bytes for copy");
+			comp_overrun(dev, sink, kpb->sink_period_bytes, 0);
+			/* xrun */
+			return -EIO;
+		} else if (source->avail < kpb->source_period_bytes) {
+			/* xrun */
+			trace_kpb_error("kpb_copy() error: "
+					   "source component buffer"
+					   " has not enough data available");
+			comp_underrun(dev, source, kpb->source_period_bytes,
+				      0);
+			return -EIO;
+		} else {
+			/* sink and source are both ready and have space */
+			/* TODO: copy sink or source period data here? */
+			memcpy(sink->w_ptr, source->r_ptr,
+			       kpb->sink_period_bytes);
+			/* signal update source & sink data */
+			update_buffers = 1;
+		}
+		/* buffer source data internally for future use by clients */
+		if (source->avail <= KPB_MAX_BUFFER_SIZE) {
+			/* TODO: should we copy what is available or just
+			 * a small portion of it?
+			 */
+			kpb_buffer_data(kpb, source);
+		}
+	} else {
+		ret = -EIO;
+	}
+
+	if (update_buffers) {
+		comp_update_buffer_produce(sink, kpb->sink_period_bytes);
+		comp_update_buffer_consume(source, kpb->sink_period_bytes);
+	}
 	return ret;
+}
+
+/**
+ * \brief Buffer real time data stream in
+ *	the internal buffer.
+ *
+ * \param[in] kpb - KPB component data pointer.
+ * \param[in] source pointer to the buffer source.
+ *
+ * \return none
+ */
+static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
+{
+	trace_kpb("kpb_buffer_data()");
+	int size_to_copy = kpb->source_period_bytes;
+	int space_avail;
+	struct history_buffer *hb;
+
+#if KPB_NO_OF_HISTORY_BUFFERS == 2
+
+	while (size_to_copy) {
+		hb = (kpb->his_buf_lp.state == KPB_BUFFER_FREE) ?
+		&kpb->his_buf_lp : &kpb->his_buf_hp;
+		space_avail = (int)hb->end_addr - (int)hb->w_ptr;
+
+		if (size_to_copy > space_avail) {
+			memcpy(hb->w_ptr, source->r_ptr, space_avail);
+			size_to_copy = size_to_copy - space_avail;
+			hb->w_ptr = hb->sta_addr;
+			hb->state = KPB_BUFFER_FULL;
+
+			if (hb->id == KPB_LP)
+				kpb->his_buf_hp.state = KPB_BUFFER_FREE;
+			else
+				kpb->his_buf_lp.state = KPB_BUFFER_FREE;
+		} else  {
+			memcpy(hb->w_ptr, source->r_ptr, size_to_copy);
+			hb->w_ptr += size_to_copy;
+			size_to_copy = 0;
+		}
+	}
+#elif KPB_NO_OF_HISTORY_BUFFERS == 1
+	hb = &kpb->his_buf_hp;
+	space_avail = (int)hb->end_addr - (int)hb->w_ptr;
+
+	if (size_to_copy > space_avail) {
+		/* We need to split copying into two parts
+		 * and wrap buffer pointer
+		 */
+		memcpy(hb->w_ptr, source->r_ptr, space_avail);
+		size_to_copy = size_to_copy - space_avail;
+		hb->w_ptr = hb->sta_addr;
+		memcpy(hb->w_ptr, source->r_ptr, size_to_copy);
+		hb->w_ptr += size_to_copy;
+		size_to_copy = 0;
+
+	} else {
+		memcpy(kpb->w_ptr, source->data_ptr, size_to_copy);
+		kpb->w_ptr += size_to_copy;
+		size_to_copy = 0;
+	}
+#else
+#error "Wrong number of key phrase buffers configured"
+#endif
 }
 
 /**
