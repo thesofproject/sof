@@ -84,11 +84,9 @@
 #define SPIPE_COMP(cid, ctype, csize) \
 	{.id = cid, .type = ctype, .hdr.size = sizeof(struct csize)}
 #define SPIPE_HOST(scomp, hno_irq, hdmac, hchan, hconfig) \
-	{.comp = scomp, .no_irq = hno_irq, \
-	 .dmac_config = hconfig}
+	{.comp = scomp, .no_irq = hno_irq}
 #define SPIPE_DAI(scomp, ddai_type, ddai_idx, ddmac, dchan, dconfig) \
-	{.comp = scomp, .type = ddai_type, .dai_index = ddai_idx, \
-	 .dmac_config = dconfig}
+	{.comp = scomp, .type = ddai_type, .dai_index = ddai_idx}
 #define SPIPE_VOL(scomp, vmin, vmax) \
 	{.comp = scomp, .min_value = vmin, .max_value = vmax}
 #define SPIPE_MIX(scomp) {.comp = scomp}

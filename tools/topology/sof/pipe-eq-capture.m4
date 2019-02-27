@@ -35,10 +35,10 @@ C_CONTROLBYTES(EQIIR, PIPELINE_ID,
 
 # Host "Highpass Capture" PCM
 # with 0 sink and 2 source periods
-W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2, 2)
+W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2)
 
 # "EQ 0" has 2 sink period and 2 source periods
-W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "EQIIR"))
+W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

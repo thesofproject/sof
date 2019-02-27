@@ -42,13 +42,13 @@ W_DATA(media_src_conf, media_src_tokens)
 
 # Host "Low latency Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Media Playback, 2, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Media Playback, 2, 0)
 
 # "Playback Volume" has 2 sink period and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
 
 # "SRC 0" has 2 sink and source periods.
-W_SRC(0, PIPELINE_FORMAT, 2, 2, media_src_conf, 2)
+W_SRC(0, PIPELINE_FORMAT, 2, 2, media_src_conf)
 
 # Media Source Buffers to SRC, make them big enough to deal with 2 * rate.
 W_BUFFER(0, COMP_BUFFER_SIZE(4,

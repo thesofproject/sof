@@ -42,10 +42,10 @@ C_CONTROLMIXER(Tone Switch, PIPELINE_ID,
 #
 
 # "Tone 0" has 2 sink period and 0 source periods
-W_TONE(0, PIPELINE_FORMAT, 2, 0, 0, LIST(`		', "PIPELINE_ID Tone Switch"))
+W_TONE(0, PIPELINE_FORMAT, 2, 0, LIST(`		', "PIPELINE_ID Tone Switch"))
 
 # "Tone Volume" has 2 sink period and 2 source periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, 0, LIST(`		', "PIPELINE_ID Tone Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID Tone Volume"))
 
 # Low Latency Buffers
 W_BUFFER(0,COMP_BUFFER_SIZE(2,

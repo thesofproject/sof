@@ -5,14 +5,13 @@ dnl Defines the macro for SRC widget
 dnl SRC name)
 define(`N_SRC', `SRC'PIPELINE_ID`.'$1)
 
-dnl W_SRC(name, format, periods_sink, periods_source, data, preload)
+dnl W_SRC(name, format, periods_sink, periods_source, data)
 define(`W_SRC',
 `SectionVendorTuples."'N_SRC($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($3)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($4)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($6)
 `	}'
 `}'
 `SectionData."'N_SRC($1)`_data_w" {'

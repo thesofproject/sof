@@ -18,7 +18,7 @@ include(`pipeline.m4')
 
 # Host "Passthrough Capture" PCM
 # with 4 sink and 0 source periods
-W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 4, 0, 2)
+W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 4, 0)
 
 #
 # SRC Configuration
@@ -29,7 +29,7 @@ W_VENDORTUPLES(media_src_tokens, sof_src_tokens, LIST(`		', `SOF_TKN_SRC_RATE_OU
 W_DATA(media_src_conf, media_src_tokens)
 
 # "SRC" has 4 source and 4 sink periods
-W_SRC(0, PIPELINE_FORMAT, 4, 4, media_src_conf, 2)
+W_SRC(0, PIPELINE_FORMAT, 4, 4, media_src_conf)
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(4,

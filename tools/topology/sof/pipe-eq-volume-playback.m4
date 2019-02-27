@@ -59,16 +59,16 @@ C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 
 # Host "Passthrough Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0, 2)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
-W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "EQIIR"))
+W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR"))
 
 # "EQ 0" has 2 sink period and 2 source periods
-W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, 2, LIST(`		', "EQFIR"))
+W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQFIR"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
