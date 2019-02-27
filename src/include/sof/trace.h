@@ -294,8 +294,11 @@ void trace_init(struct sof *sof);
 #define trace_error_value(x)		trace_error(0, "value %u", x)
 #define trace_error_value_atomic(...)	trace_error_value(__VA_ARGS__)
 #else
+#define _trace_error_with_ids(...)
 #define trace_error(...)
+#define trace_error_with_ids(...)
 #define trace_error_atomic(...)
+#define trace_error_atomic_with_ids(...)
 #define trace_error_value(x)
 #define trace_error_value_atomic(x)
 #endif
