@@ -45,6 +45,7 @@
 #include <sof/audio/buffer.h>
 
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
+static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -275,11 +276,13 @@ static int kpb_copy(struct comp_dev *dev)
 static void kpb_event_handler(int message, void *cb_data, void *event_data)
 {
 	(void)message;
+	struct comp_data *kpb = (struct comp_data *)cb_data;
 	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
+	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
 
 	switch (evd->event_id) {
 	case KPB_EVENT_REGISTER_CLIENT:
-		/*TODO*/
+		kpb_register_client(kpb, cli);
 		break;
 	case KPB_EVENT_UNREGISTER_CLIENT:
 		/*TODO*/
@@ -295,6 +298,53 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 				"unsupported command");
 		break;
 	}
+}
+
+/**
+ * \brief Register clients in the system.
+ *
+ * \param[in] dev - kpb device component pointer.
+ * \param[in] cli - pointer to KPB client's data.
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	-EINVAL - failure.
+ */
+static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
+{
+	int ret = 0;
+
+	trace_kpb("kpb_register_client()");
+
+	if (!cli) {
+		trace_kpb_error("kpb_register_client() error: "
+				"no client data");
+		return -EINVAL;
+	}
+	/* Do we have a room for a new client? */
+	if (kpb->no_of_clients >= KPB_MAX_NO_OF_CLIENTS ||
+	    cli->id >= KPB_MAX_NO_OF_CLIENTS) {
+		trace_kpb_error("kpb_register_client() error: "
+				"no free room for client = %u ",
+				cli->id);
+		ret = -EINVAL;
+	} else if (kpb->clients[cli->id].state != KPB_CLIENT_UNREGISTERED) {
+		trace_kpb_error("kpb_register_client() error: "
+				"client = %u already registered",
+				cli->id);
+		ret = -EINVAL;
+	} else {
+		/* client accepted, let's store his data */
+		kpb->clients[cli->id].id  = cli->id;
+		kpb->clients[cli->id].history_depth = cli->history_depth;
+		kpb->clients[cli->id].sink = cli->sink;
+		kpb->clients[cli->id].r_ptr = NULL;
+		kpb->clients[cli->id].state = KPB_CLIENT_BUFFERING;
+		kpb->no_of_clients++;
+		ret = 0;
+	}
+
+	return ret;
 }
 
 struct comp_driver comp_kpb = {
