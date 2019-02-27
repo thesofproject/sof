@@ -15,7 +15,8 @@ SectionVendorTokens."sof_buffer_tokens" {
 }
 
 SectionVendorTokens."sof_dai_tokens" {
-	SOF_TKN_DAI_DMAC_CONFIG			"153"
+# Token retired with ABI 3.2, do not use for new capabilities
+#	SOF_TKN_DAI_DMAC_CONFIG			"153"
 	SOF_TKN_DAI_TYPE			"154"
 	SOF_TKN_DAI_INDEX			"155"
 	SOF_TKN_DAI_DIRECTION			"156"
@@ -48,7 +49,8 @@ SectionVendorTokens."sof_comp_tokens" {
 	SOF_TKN_COMP_PERIOD_SINK_COUNT		"400"
 	SOF_TKN_COMP_PERIOD_SOURCE_COUNT	"401"
 	SOF_TKN_COMP_FORMAT			"402"
-	SOF_TKN_COMP_PRELOAD_COUNT		"403"
+# Token retired with ABI 3.2, do not use for new capabilities
+#	SOF_TKN_COMP_PRELOAD_COUNT		"403"
 }
 
 SectionVendorTokens."sof_ssp_tokens" {

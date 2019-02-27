@@ -63,7 +63,9 @@
 #define SOF_TKN_COMP_PERIOD_SINK_COUNT          400
 #define SOF_TKN_COMP_PERIOD_SOURCE_COUNT        401
 #define SOF_TKN_COMP_FORMAT                     402
-#define SOF_TKN_COMP_PRELOAD_COUNT              403
+/* Token retired with ABI 3.2, do not use for new capabilities
+ * #define SOF_TKN_COMP_PRELOAD_COUNT              403
+ */
 
 struct comp_info {
 	char *name;
@@ -172,9 +174,6 @@ static const struct sof_topology_token comp_tokens[] = {
 	{SOF_TKN_COMP_FORMAT,
 		SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_comp_format,
 		offsetof(struct sof_ipc_comp_config, frame_fmt), 0},
-	{SOF_TKN_COMP_PRELOAD_COUNT,
-		SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
-		offsetof(struct sof_ipc_comp_config, preload_count), 0},
 };
 
 int sof_parse_tokens(void *object,

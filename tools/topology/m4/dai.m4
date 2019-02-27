@@ -9,14 +9,13 @@ define(`N_DAI', DAI_NAME)
 define(`N_DAI_OUT', DAI_NAME`.OUT')
 define(`N_DAI_IN', DAI_NAME`.IN')
 
-dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source, preload)
+dnl W_DAI_OUT(type, index, dai_link, format, periods_sink, periods_source)
 define(`W_DAI_OUT',
 `SectionVendorTuples."'N_DAI_OUT($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
 `	}'
 `}'
 `SectionData."'N_DAI_OUT($2)`_data_w_comp" {'
@@ -63,14 +62,13 @@ define(`W_DAI_OUT',
 `	]'
 `}')
 
-dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source, preload)
+dnl W_DAI_IN(type, index, dai_link, format, periods_sink, periods_source)
 define(`W_DAI_IN',
 `SectionVendorTuples."'N_DAI_IN($2)`_tuples_w_comp" {'
 `	tokens "sof_comp_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_COMP_PERIOD_SINK_COUNT'		STR($5)
 `		SOF_TKN_COMP_PERIOD_SOURCE_COUNT'	STR($6)
-`		SOF_TKN_COMP_PRELOAD_COUNT'		STR($7)
 `	}'
 `}'
 `SectionData."'N_DAI_IN($2)`_data_w_comp" {'
