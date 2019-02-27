@@ -33,6 +33,10 @@ else()
 	set(CMOCKA_INCLUDE_DIR ${source_dir}/include)
 endif()
 
+if(CONFIG_CAVS)
+	target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/intel/cavs/include)
+endif()
+
 # linker script, just for log entries
 set(memory_mock_lds_in ${PROJECT_SOURCE_DIR}/test/cmocka/memory_mock.x.in)
 set(memory_mock_lds_out ${PROJECT_BINARY_DIR}/test/cmocka/memory_mock.x)

@@ -33,44 +33,6 @@
 #ifndef __INCLUDE_PLATFORM_MAILBOX__
 #define __INCLUDE_PLATFORM_MAILBOX__
 
-#include <platform/memory.h>
-
-/*
- * The Window Region on Suecreek HPSRAM is organised like this :-
- * +--------------------------------------------------------------------------+
- * | Offset              | Region         |  Size                             |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_TRACE_BASE     | Trace Buffer   |  SRAM_TRACE_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_DEBUG_BASE     | Debug data     |  SRAM_DEBUG_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_INBOX_BASE     | Inbox          |  SRAM_INBOX_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_OUTBOX_BASE    | Outbox         |  SRAM_MAILBOX_SIZE                |
- * +---------------------+----------------+-----------------------------------+
- */
-
-#define MAILBOX_TRACE_SIZE	SRAM_TRACE_SIZE
-#define MAILBOX_TRACE_BASE	SRAM_TRACE_BASE
-
-#define MAILBOX_DEBUG_SIZE	SRAM_DEBUG_SIZE
-#define MAILBOX_DEBUG_BASE	SRAM_DEBUG_BASE
-
-#define MAILBOX_EXCEPTION_SIZE	SRAM_EXCEPT_SIZE
-#define MAILBOX_EXCEPTION_BASE	SRAM_EXCEPT_BASE
-#define MAILBOX_EXCEPTION_OFFSET  SRAM_DEBUG_SIZE
-
-#define MAILBOX_STREAM_SIZE    SRAM_STREAM_SIZE
-#define MAILBOX_STREAM_BASE    SRAM_STREAM_BASE
-#define MAILBOX_STREAM_OFFSET  (SRAM_DEBUG_SIZE + SRAM_EXCEPT_SIZE)
-
-#define MAILBOX_HOSTBOX_SIZE	SRAM_INBOX_SIZE
-#define MAILBOX_HOSTBOX_BASE	SRAM_INBOX_BASE
-
-#define MAILBOX_DSPBOX_SIZE	SRAM_OUTBOX_SIZE
-#define MAILBOX_DSPBOX_BASE	SRAM_OUTBOX_BASE
-
-#define MAILBOX_SW_REG_SIZE	0
-#define MAILBOX_SW_REG_BASE	0
+#include <cavs/mailbox.h>
 
 #endif
