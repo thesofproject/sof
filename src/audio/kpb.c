@@ -44,6 +44,8 @@
 #include <sof/list.h>
 #include <sof/audio/buffer.h>
 
+static void kpb_event_handler(int message, void *cb_data, void *event_data);
+
 /**
  * \brief Create a key phrase buffer component.
  * \param[in] comp - generic ipc component pointer.
@@ -208,6 +210,14 @@ static int kpb_prepare(struct comp_dev *dev)
 		cd->clients[i].r_ptr = NULL;
 	}
 
+	/* initialize KPB events */
+	cd->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
+	cd->kpb_events.cb_data = cd;
+	cd->kpb_events.cb = kpb_event_handler;
+
+	/* register KPB for async notification */
+	notifier_register(&cd->kpb_events);
+
 	return ret;
 }
 
@@ -253,6 +263,38 @@ static int kpb_copy(struct comp_dev *dev)
 	int ret = 0;
 
 	return ret;
+}
+
+/**
+ * \brief Main event dispatcher.
+ * \param[in] message - not used.
+ * \param[in] cb_data - KPB component internal data.
+ * \param[in] event_data - event specific data.
+ * \return none.
+ */
+static void kpb_event_handler(int message, void *cb_data, void *event_data)
+{
+	(void)message;
+	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
+
+	switch (evd->event_id) {
+	case KPB_EVENT_REGISTER_CLIENT:
+		/*TODO*/
+		break;
+	case KPB_EVENT_UNREGISTER_CLIENT:
+		/*TODO*/
+		break;
+	case KPB_EVENT_BEGIN_DRAINING:
+		/*TODO*/
+		break;
+	case KPB_EVENT_STOP_DRAINING:
+		/*TODO*/
+		break;
+	default:
+		trace_kpb_error("kpb_cmd() error: "
+				"unsupported command");
+		break;
+	}
 }
 
 struct comp_driver comp_kpb = {
