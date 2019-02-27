@@ -33,6 +33,7 @@
 #define __INCLUDE_AUDIO_KPB_H__
 
 #include <platform/platcfg.h>
+#include <sof/notifier.h>
 #include <sof/trace.h>
 
 /* KPB tracing */
@@ -62,6 +63,19 @@ struct kpb_sink {
 	uint32_t *data_ptr;
 	uint32_t data_size;
 	enum kpb_sink_state state;
+};
+
+enum kpb_event {
+	KPB_EVENT_REGISTER_CLIENT = 0,
+	KPB_EVENT_UPDATE_PARAMS,
+	KPB_EVENT_BEGIN_DRAINING,
+	KPB_EVENT_STOP_DRAINING,
+	KPB_EVENT_UNREGISTER_CLIENT,
+};
+
+struct kpb_event_data {
+	enum kpb_event event_id;
+	struct kpb_client *client_data;
 };
 
 enum kpb_client_state {
@@ -109,8 +123,10 @@ struct comp_data {
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
 	struct history_buffer his_buf_lp;
 	struct history_buffer his_buf_hp;
+	struct notifier kpb_events; /**< KPB events object */
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
+
 };
 
 #endif
