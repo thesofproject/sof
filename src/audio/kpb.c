@@ -46,6 +46,8 @@
 
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
+static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
+static void kpb_draining_task(void *arg);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -219,6 +221,9 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* register KPB for async notification */
 	notifier_register(&cd->kpb_events);
 
+	/* initialie draining task */
+	schedule_task_init(&cd->draining_task, kpb_draining_task, cd);
+
 	return ret;
 }
 
@@ -288,7 +293,7 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 		/*TODO*/
 		break;
 	case KPB_EVENT_BEGIN_DRAINING:
-		/*TODO*/
+		kpb_init_draining(kpb, cli);
 		break;
 	case KPB_EVENT_STOP_DRAINING:
 		/*TODO*/
@@ -345,6 +350,44 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 	}
 
 	return ret;
+}
+
+/**
+ * \brief Drain internal buffer into client's sink buffer.
+ *
+ * \param[in] kpb - kpb component data.
+ * \param[in] cli - client's data.
+ *
+ * \return integer representing either:
+ *	0 - success
+ *	-EINVAL - failure.
+ */
+static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
+{
+	uint8_t is_sink_ready = (kpb->clients[cli->id].sink->sink->state
+				 == COMP_STATE_ACTIVE) ? 1 : 0;
+
+	if (kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED) {
+		/* TODO: possibly move this check to draining task
+		 * the doubt is if HOST managed to change the sink state
+		 * at notofication time
+		 */
+		trace_kpb_error("kpb_init_draining() error: "
+				"requested draining for unregistered client");
+	} else if (!is_sink_ready) {
+		trace_kpb_error("kpb_init_draining() error: "
+				"sink not ready for draining");
+	} else {
+		/* add one-time draining task into the scheduler */
+		schedule_task(&kpb->draining_task, 0, 0);
+	}
+}
+
+static void kpb_draining_task(void *arg)
+{
+	/* TODO: while loop drainning history buffer accoriding to
+	 * clients request
+	 */
 }
 
 struct comp_driver comp_kpb = {
