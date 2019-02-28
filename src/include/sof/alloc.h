@@ -39,7 +39,6 @@
 #include <platform/memory.h>
 #include <arch/spinlock.h>
 #include <uapi/ipc/topology.h>
-
 struct sof;
 
 /* Heap Memory Zones
@@ -184,8 +183,9 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes);
 void *rzalloc_core_sys(int core, size_t bytes);
 
 /* utility */
-void bzero(void *s, size_t n);
-void *memset(void *s, int c, size_t n);
+#define bzero(ptr, size) \
+	arch_bzero(ptr, size)
+
 int rstrlen(const char *s);
 int rstrcmp(const char *s1, const char *s2);
 
