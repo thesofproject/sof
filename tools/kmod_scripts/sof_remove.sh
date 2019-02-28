@@ -32,6 +32,7 @@ remove_module snd_soc_sst_byt_cht_da7213
 remove_module snd_soc_sst_bxt_pcm512x
 remove_module snd_soc_sst_bxt_wm8804
 remove_module snd_soc_skl_hda_dsp
+remove_module snd_soc_sst_bxt_da7219_max98357a
 
 remove_module snd_sof
 remove_module snd_sof_nocodec
@@ -44,6 +45,7 @@ remove_module snd_soc_rt5682
 remove_module snd_soc_rl6231
 remove_module snd_soc_rt274
 remove_module snd_soc_da7213
+remove_module snd_soc_da7219
 remove_module snd_soc_pcm512x_i2c
 remove_module snd_soc_pcm512x
 remove_module snd_soc_wm8804_i2c
@@ -51,6 +53,7 @@ remove_module snd_soc_wm8804
 remove_module snd_soc_hdac_hda
 remove_module snd_soc_hdac_hdmi
 remove_module snd_soc_dmic
+remove_module snd_soc_max98357a
 
 remove_module snd_soc_acpi
 remove_module snd_hda_ext_core
