@@ -385,8 +385,12 @@ _thrown_from_macro_BASE_LOG_in_trace_h
 
 #define	trace_event(...)
 #define	trace_event_atomic(...)
+#define trace_event_with_ids(...)
+#define trace_event_atomic_with_ids(...)
 
 #define trace_error_with_ids(...)
+#define trace_error(...)
+#define trace_error_atomic(...)
 #define trace_error_atomic_with_ids(...)
 
 #define trace_error_value(x)

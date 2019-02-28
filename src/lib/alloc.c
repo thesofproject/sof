@@ -797,6 +797,7 @@ void free_heap(int zone)
 	dcache_writeback_region(cpu_heap, sizeof(*cpu_heap));
 }
 
+#if TRACE
 void heap_trace(struct mm_heap *heap, int size)
 {
 	struct block_map *current_map;
@@ -838,6 +839,10 @@ void heap_trace_all(int force)
 	}
 	memmap.heap_trace_updated = 0;
 }
+#else
+void heap_trace_all(int force) { }
+void heap_trace(struct mm_heap *heap, int size) { }
+#endif
 
 /* initialise map */
 void init_heap(struct sof *sof)
