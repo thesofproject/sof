@@ -388,7 +388,9 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
 	}
 
 	/* Force Host DMA to exit L1 */
-	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
+	    chan->direction == DMA_DIR_LMEM_TO_HMEM)
+		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 }
 
 static int hda_dma_tx_wait(struct dma *dma, struct hda_chan_data *chan,
@@ -496,7 +498,10 @@ static void hda_dma_enable_unlock(struct dma *dma, int channel)
 	/* full buffer is copied at startup */
 	p->chan[channel].desc_avail = p->chan[channel].desc_count;
 
-	pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
+	/* Force Host DMA to exit L1 */
+	if (p->chan[channel].direction == DMA_DIR_HMEM_TO_LMEM ||
+	    p->chan[channel].direction == DMA_DIR_LMEM_TO_HMEM)
+		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
 
 	/* start link output transfer now */
 	if (p->chan[channel].direction == DMA_DIR_MEM_TO_DEV &&
