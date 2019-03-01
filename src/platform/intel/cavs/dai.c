@@ -47,7 +47,9 @@
 #include <string.h>
 #include <config.h>
 
+#if CONFIG_CAVS_SSP
 static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
+#endif
 
 #if defined CONFIG_CAVS_DMIC
 
@@ -101,11 +103,13 @@ static struct dai dmic[2] = {
 static struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
 
 static struct dai_type_info dti[] = {
+#if CONFIG_CAVS_SSP
 	{
 		.type = SOF_DAI_INTEL_SSP,
 		.dai_array = ssp,
 		.num_dais = ARRAY_SIZE(ssp)
 	},
+#endif
 #if defined CONFIG_CAVS_DMIC
 	{
 		.type = SOF_DAI_INTEL_DMIC,
@@ -123,7 +127,7 @@ static struct dai_type_info dti[] = {
 int dai_init(void)
 {
 	int i;
-
+#if CONFIG_CAVS_SSP
 	/* init ssp */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
 		ssp[i].type = SOF_DAI_INTEL_SSP;
@@ -142,7 +146,7 @@ int dai_init(void)
 		/* initialize spin locks early to enable ref counting */
 		spinlock_init(&ssp[i].lock);
 	}
-
+#endif
 	/* init hd/a, note that size depends on the platform caps */
 	for (i = 0; i < ARRAY_SIZE(hda); i++) {
 		hda[i].type = SOF_DAI_INTEL_HDA;

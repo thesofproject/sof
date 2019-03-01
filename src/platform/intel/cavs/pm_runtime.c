@@ -75,6 +75,7 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 	spin_unlock_irq(&_prd->lock, flags);
 }
 
+#if CONFIG_CAVS_SSP
 static inline void cavs_pm_runtime_dis_ssp_clk_gating(uint32_t index)
 {
 #if defined(CONFIG_APOLLOLAKE)
@@ -106,6 +107,7 @@ static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 	trace_power("en-ssp-clk-gating index %d CLKCTL %08x", index, shim_reg);
 #endif
 }
+#endif
 
 #if defined(CONFIG_CAVS_DMIC)
 static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
@@ -233,9 +235,11 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 {
 	/* Action based on context */
 	switch (context) {
+#if CONFIG_CAVS_SSP
 	case SSP_CLK:
 		cavs_pm_runtime_dis_ssp_clk_gating(index);
 		break;
+#endif
 #if defined(CONFIG_CAVS_DMIC)
 	case DMIC_CLK:
 		cavs_pm_runtime_dis_dmic_clk_gating(index);
@@ -259,9 +263,11 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 	case PM_RUNTIME_HOST_DMA_L1:
 		cavs_pm_runtime_force_host_dma_l1_exit();
 		break;
+#if CONFIG_CAVS_SSP
 	case SSP_CLK:
 		cavs_pm_runtime_en_ssp_clk_gating(index);
 		break;
+#endif
 #if defined(CONFIG_CAVS_DMIC)
 	case DMIC_CLK:
 		cavs_pm_runtime_en_dmic_clk_gating(index);
