@@ -46,7 +46,8 @@ void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 {
 	if (!panic_info)
 		return;
-	rmemcpy(addr, panic_info, sizeof(struct sof_ipc_panic_info));
+	memcpy_s(addr, sizeof(struct sof_ipc_panic_info),
+		 panic_info, sizeof(struct sof_ipc_panic_info));
 	dcache_writeback_region(addr, sizeof(struct sof_ipc_panic_info));
 }
 
@@ -91,7 +92,7 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 
 	strlen = rstrlen(filename);
 	panicinfo.linenum = linenum;
-	rmemcpy(panicinfo.filename, filename, strlen + 1);
+	memcpy_s(panicinfo.filename, strlen + 1, filename, strlen + 1);
 
 	panic_rewind(p, 0, &panicinfo);
 }

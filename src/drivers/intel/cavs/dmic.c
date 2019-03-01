@@ -1163,8 +1163,11 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	/* Copy the new DMIC params to persistent.  The last request
 	 * determines the parameters.
 	 */
-	memcpy(dmic_prm[di], &config->dmic,
-	       sizeof(struct sof_ipc_dai_dmic_params));
+	if (memcpy_s(dmic_prm[di], sizeof(*dmic_prm[di]), &config->dmic,
+	       sizeof(struct sof_ipc_dai_dmic_params))) {
+		trace_dmic_error("dmic_set_config() error: "
+				 "error copying DMIC params");
+	}
 
 	if (config->dmic.num_pdm_active > DMIC_HW_CONTROLLERS) {
 		trace_dmic_error("dmic_set_config() error: the requested "
@@ -1179,10 +1182,15 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		for (j = 0; j < config->dmic.num_pdm_active; j++) {
 			/* copy the pdm controller params id the id's match */
 			if (dmic_prm[di]->pdm[i].id == config->dmic.pdm[j].id)
-				memcpy(&dmic_prm[di]->pdm[i],
+				if (memcpy_s(&dmic_prm[di]->pdm[i],
+				       sizeof(
+				       dmic_prm[di]->pdm[i]),
 				       &config->dmic.pdm[j],
 				       sizeof(
-				       struct sof_ipc_dai_dmic_pdm_ctrl));
+				       struct sof_ipc_dai_dmic_pdm_ctrl))) {
+					trace_dmic_error("dmic_set_config()"
+					"error: error copying DMIC params");
+				}
 		}
 	}
 

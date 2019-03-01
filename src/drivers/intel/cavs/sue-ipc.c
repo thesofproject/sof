@@ -64,7 +64,8 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	/* perform command and return any error */
 	err = ipc_cmd();
 	if (err > 0) {
-		mailbox_hostbox_read(&reply, 0, sizeof(reply));
+		mailbox_hostbox_read(&reply, SOF_IPC_MSG_MAX_SIZE,
+				     0, sizeof(reply));
 		goto done; /* reply created and copied by cmd() */
 	} else if (err < 0) {
 		/* send std error reply */

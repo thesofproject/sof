@@ -92,7 +92,10 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	}
 
 	/* init component */
-	memcpy(&cdev->comp, comp, sizeof(*comp));
+	if (memcpy_s(&cdev->comp, sizeof(cdev->comp),
+		comp, sizeof(*comp)))
+		return NULL;
+
 	cdev->drv = drv;
 	spinlock_init(&cdev->lock);
 	list_init(&cdev->bsource_list);

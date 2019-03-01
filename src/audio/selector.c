@@ -127,7 +127,11 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	sel = (struct sof_ipc_comp_selector *)&dev->comp;
-	memcpy(sel, ipc_sel, sizeof(struct sof_ipc_comp_selector));
+	if (memcpy_s(sel, sizeof(*sel), ipc_sel,
+	    sizeof(struct sof_ipc_comp_selector))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

@@ -105,7 +105,11 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	mixer = (struct sof_ipc_comp_mixer *)&dev->comp;
-	memcpy(mixer, ipc_mixer, sizeof(struct sof_ipc_comp_mixer));
+	if (memcpy_s(mixer, sizeof(*mixer), ipc_mixer,
+	    sizeof(struct sof_ipc_comp_mixer))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	md = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*md));
 	if (!md) {

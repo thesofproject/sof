@@ -60,14 +60,18 @@ int comp_register(struct comp_driver *drv)
 	switch (drv->type) {
 	case SOF_COMP_MIXER:
 		dst = &mixer_drv_mock;
+		if (memcpy_s(dst, sizeof(mixer_drv_mock),
+			drv, sizeof(struct comp_driver)))
+			return -EINVAL;
 		break;
 
 	case SOF_COMP_MOCK:
 		dst = &drv_mock;
+		if (memcpy_s(dst, sizeof(drv_mock), drv,
+			sizeof(struct comp_driver)))
+			return -EINVAL;
 		break;
 	}
-
-	memcpy(dst, drv, sizeof(struct comp_driver));
 
 	return 0;
 }

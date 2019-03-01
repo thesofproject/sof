@@ -82,7 +82,11 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	schedule_task_config(&p->pipe_task, pipe_desc->priority,
 			     pipe_desc->core);
 	spinlock_init(&p->lock);
-	memcpy(&p->ipc_pipe, pipe_desc, sizeof(*pipe_desc));
+	if (memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
+	   pipe_desc, sizeof(*pipe_desc))) {
+		rfree(p);
+		return NULL;
+	}
 
 	return p;
 }

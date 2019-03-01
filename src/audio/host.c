@@ -349,7 +349,11 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	host = (struct sof_ipc_comp_host *)&dev->comp;
-	memcpy(host, ipc_host, sizeof(struct sof_ipc_comp_host));
+	if (memcpy_s(host, sizeof(*host),
+	   ipc_host, sizeof(struct sof_ipc_comp_host))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	hd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*hd));
 	if (!hd) {

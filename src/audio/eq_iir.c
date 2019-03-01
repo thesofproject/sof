@@ -88,7 +88,7 @@ static void eq_iir_s16_pass(struct comp_dev *dev,
 	int16_t *dest = (int16_t *)sink->w_ptr;
 	int n = frames * dev->params.channels;
 
-	memcpy(dest, src, n * sizeof(int16_t));
+	memcpy_s(dest, n * sizeof(int16_t), src, n * sizeof(int16_t));
 }
 
 static void eq_iir_s32_pass(struct comp_dev *dev,
@@ -100,7 +100,7 @@ static void eq_iir_s32_pass(struct comp_dev *dev,
 	int32_t *dest = (int32_t *)sink->w_ptr;
 	int n = frames * dev->params.channels;
 
-	memcpy(dest, src, n * sizeof(int32_t));
+	memcpy_s(dest, n * sizeof(int32_t), src, n * sizeof(int32_t));
 }
 
 static void eq_iir_s32_16_pass(struct comp_dev *dev,
@@ -507,7 +507,11 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
+	if (memcpy_s(&dev->comp, sizeof(dev->comp),
+	    comp, sizeof(struct sof_ipc_comp_process))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -533,7 +537,8 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 			return NULL;
 		}
 
-		memcpy(cd->config, ipc_iir->data, bs);
+		memcpy_s(cd->config, sizeof(*cd->config),
+			ipc_iir->data, bs);
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -584,7 +589,12 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 			if (bs > SOF_EQ_IIR_MAX_SIZE || bs == 0 ||
 			    bs > max_size)
 				return -EINVAL;
-			memcpy(cdata->data->data, cd->config, bs);
+
+			if (memcpy_s(cdata->data->data,
+			   ((struct sof_abi_hdr *)
+			   (cdata->data))->size, cd->config, bs))
+				return -EINVAL;
+
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
@@ -679,7 +689,11 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configurate. The EQ will be initialized in
 		 * prepare().
 		 */
-		memcpy(cd->config, cdata->data->data, bs);
+
+		if (memcpy_s(cd->config, sizeof(*cd->config),
+		    cdata->data->data, bs))
+			return -EINVAL;
+
 		break;
 	default:
 		trace_eq_error("iir_cmd_set_data() error: invalid cdata->cmd");

@@ -77,7 +77,9 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		return NULL;
 	}
 
-	memcpy(&buffer->ipc_buffer, desc, sizeof(*desc));
+	if (memcpy_s(&buffer->ipc_buffer, sizeof(buffer->ipc_buffer),
+	   desc, sizeof(*desc)))
+		return NULL;
 
 	buffer->size = desc->size;
 	buffer->alloc_size = desc->size;

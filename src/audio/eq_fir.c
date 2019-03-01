@@ -175,7 +175,7 @@ static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
 	int16_t *dest = (int16_t *)sink->w_ptr;
 	int n = frames * nch;
 
-	memcpy(dest, src, n * sizeof(int16_t));
+	memcpy_s(dest, n * sizeof(int16_t), src, n * sizeof(int16_t));
 }
 
 static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
@@ -187,7 +187,7 @@ static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 	int32_t *dest = (int32_t *)sink->w_ptr;
 	int n = frames * nch;
 
-	memcpy(dest, src, n * sizeof(int32_t));
+	memcpy_s(dest, n * sizeof(int32_t), src, n * sizeof(int32_t));
 }
 
 /* Function to select pass-trough depending on PCM format */
@@ -402,7 +402,11 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
+	if (memcpy_s(&dev->comp, sizeof(dev->comp),
+	   comp, sizeof(struct sof_ipc_comp_process))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -427,7 +431,12 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 			return NULL;
 		}
 
-		memcpy(cd->config, ipc_fir->data, bs);
+		if (memcpy_s(cd->config, sizeof(*cd->config),
+		   ipc_fir->data, bs)) {
+			rfree(dev);
+			rfree(cd);
+			return NULL;
+		}
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -498,7 +507,11 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0 ||
 			    bs > max_size)
 				return -EINVAL;
-			memcpy(cdata->data->data, cd->config, bs);
+
+			if (memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
+			   (cdata->data))->size, cd->config, bs))
+				return -EINVAL;
+
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
@@ -590,7 +603,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		memcpy(cd->config, cfg, bs);
+		memcpy_s(cd->config, sizeof(*cd->config), cfg, bs);
 		break;
 	default:
 		trace_eq_error("fir_cmd_set_data() error: invalid cdata->cmd");

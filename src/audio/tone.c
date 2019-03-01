@@ -417,7 +417,11 @@ static struct comp_dev *tone_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	tone = (struct sof_ipc_comp_tone *)&dev->comp;
-	memcpy(tone, ipc_tone, sizeof(struct sof_ipc_comp_tone));
+	if (memcpy_s(tone, sizeof(*tone), ipc_tone,
+	   sizeof(struct sof_ipc_comp_tone))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

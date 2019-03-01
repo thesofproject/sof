@@ -101,7 +101,11 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	kpb = (struct sof_ipc_comp_kpb *)&dev->comp;
-	memcpy(kpb, ipc_kpb, sizeof(struct sof_ipc_comp_kpb));
+	if (memcpy_s(kpb, sizeof(*kpb), ipc_kpb,
+	    sizeof(struct sof_ipc_comp_kpb))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -303,8 +307,10 @@ static int kpb_copy(struct comp_dev *dev)
 		} else {
 			/* sink and source are both ready and have space */
 			/* TODO: copy sink or source period data here? */
-			memcpy(sink->w_ptr, source->r_ptr,
-			       kpb->sink_period_bytes);
+			if (memcpy_s(sink->w_ptr, sink->size, source->r_ptr,
+			       kpb->sink_period_bytes)) {
+				return -EINVAL;
+			}
 			/* signal update source & sink data */
 			update_buffers = 1;
 		}
@@ -350,7 +356,11 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
 		space_avail = (int)hb->end_addr - (int)hb->w_ptr;
 
 		if (size_to_copy > space_avail) {
-			memcpy(hb->w_ptr, source->r_ptr, space_avail);
+			if (memcpy_s(hb->w_ptr, space_avail,
+			    source->r_ptr, space_avail)) {
+				trace_kpb_error("kpb_buffer_data()"
+						"unable to copy data");
+			}
 			size_to_copy = size_to_copy - space_avail;
 			hb->w_ptr = hb->sta_addr;
 			hb->state = KPB_BUFFER_FULL;
@@ -360,7 +370,11 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
 			else
 				kpb->his_buf_lp.state = KPB_BUFFER_FREE;
 		} else  {
-			memcpy(hb->w_ptr, source->r_ptr, size_to_copy);
+			if (memcpy_s(hb->w_ptr, space_avail,
+			    source->r_ptr, size_to_copy)){
+				trace_kpb_error("kpb_buffer_data()"
+						"unable to copy data");
+			}
 			hb->w_ptr += size_to_copy;
 			size_to_copy = 0;
 		}
@@ -373,15 +387,27 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
 		/* We need to split copying into two parts
 		 * and wrap buffer pointer
 		 */
-		memcpy(hb->w_ptr, source->r_ptr, space_avail);
+		if (memcpy_s(hb->w_ptr, space_avail,
+		    source->r_ptr, space_avail)) {
+			trace_kpb_error("kpb_buffer_data()"
+					"unable to copy data");
+		}
 		size_to_copy = size_to_copy - space_avail;
 		hb->w_ptr = hb->sta_addr;
-		memcpy(hb->w_ptr, source->r_ptr, size_to_copy);
+		if (memcpy_s(hb->w_ptr, source->r_ptr,
+		    size_to_copy)) {
+			trace_kpb_error("kpb_buffer_data()"
+					"unable to copy data");
+		}
 		hb->w_ptr += size_to_copy;
 		size_to_copy = 0;
 
 	} else {
-		memcpy(kpb->w_ptr, source->data_ptr, size_to_copy);
+		if (memcpy(kpb->w_ptr, space_avail,
+		    source->data_ptr, size_to_copy)) {
+			trace_kpb_error("kpb_buffer_data()"
+					"unable to copy data");
+		}
 		kpb->w_ptr += size_to_copy;
 		size_to_copy = 0;
 	}

@@ -507,7 +507,10 @@ static void src_copy_s32(struct comp_dev *dev,
 		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
 			n_wrap_src : n_wrap_snk;
 		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		memcpy(snk, src, n_copy * sizeof(int32_t));
+		if (memcpy_s(snk, n_copy * sizeof(int32_t),
+		   src, n_copy * sizeof(int32_t))) {
+			trace_buffer("src_copy_s32() Error copying data");
+		}
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
@@ -542,7 +545,10 @@ static void src_copy_s16(struct comp_dev *dev,
 		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
 			n_wrap_src : n_wrap_snk;
 		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		memcpy(snk, src, n_copy * sizeof(int16_t));
+		if (memcpy_s(snk, n_copy * sizeof(int16_t),
+		   src, n_copy * sizeof(int16_t))) {
+			trace_buffer("src_copy_s32() Error copying data");
+		}
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
@@ -582,7 +588,12 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	src = (struct sof_ipc_comp_src *)&dev->comp;
-	memcpy(src, ipc_src, sizeof(struct sof_ipc_comp_src));
+
+	if (memcpy_s(src, sizeof(*src), ipc_src,
+	    sizeof(struct sof_ipc_comp_src))) {
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
