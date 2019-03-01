@@ -158,6 +158,9 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
+	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_PRODUCE)
+		buffer->cb(buffer->cb_data, bytes);
+
 	spin_unlock_irq(&buffer->lock, flags);
 
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->avail << 16) | "
@@ -198,6 +201,9 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	if (buffer->sink->is_dma_connected &&
 	    !buffer->source->is_dma_connected)
 		dcache_writeback_region(buffer->r_ptr, bytes);
+
+	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
+		buffer->cb(buffer->cb_data, bytes);
 
 	spin_unlock_irq(&buffer->lock, flags);
 
