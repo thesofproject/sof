@@ -70,7 +70,7 @@ if [ $# == 0 ]; then
 	echo "Please specify the PCM to test."
                usage
 else
-	while getopts :t:r:f:c:i:n:d OPT
+	while getopts :t:r:f:c:i:n:d: OPT
 	do
 	case $OPT in
 		t)
