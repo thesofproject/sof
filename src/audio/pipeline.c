@@ -766,14 +766,8 @@ static int pipeline_xrun_recover(struct pipeline *p)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
-	if (p->sched_comp->state == COMP_STATE_ACTIVE) {
-		/* timer driven pipeline should execute task synchronously */
-		if (p->ipc_pipe.timer_delay)
-			pipeline_copy(p->sched_comp);
-		else
-			schedule_task(&p->pipe_task, start,
-				      p->ipc_pipe.deadline);
-	}
+	if (p->sched_comp->state == COMP_STATE_ACTIVE)
+		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline);
 
 }
 

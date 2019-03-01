@@ -524,7 +524,6 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
-	config.timer_delay = 0;
 	dma_sg_init(&config.elem_array);
 
 	/* set up DMA descriptor */
