@@ -62,6 +62,7 @@ cnv.c_sb = 0.5; % Start stopband at Fs/2
 cnv.rs = 70; % Stopband attenuation in dB
 cnv.rp = 0.1; % Passband ripple in dB
 cnv.rp_tot = 0.1; % Max +/- passband ripple allowed, used in test script only
+cnv.gain = -1; % Gain in decibels at 0 Hz
 
 %% Constrain sub-filter lengths. Make subfilters lengths multiple of four
 %  is a good assumption for processors.

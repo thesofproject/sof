@@ -150,6 +150,9 @@ for b = 1:nfso
                                 % Allow half ripple for dual stage SRC parts
                                 cnv1.rp = cnv1.rp/2;
                                 cnv2.rp = cnv2.rp/2;
+				% Distribute gain also
+				cnv1.gain = cnv1.gain/2;
+				cnv2.gain = cnv2.gain/2;
                         end
                         src1 = src_get(cnv1);
                         src2 = src_get(cnv2);
