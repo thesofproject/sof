@@ -96,6 +96,13 @@ endmenu # "Decimation factors"
 
 endif # CAVS_DMIC
 
+config CAVS_SSP
+	bool "Intel cAVS SSP driver"
+	depends on CAVS
+	default n
+	help
+	  Select this to enable Intel cAVS Synchronous Serial Port (SSP) driver.
+
 endmenu # "Drivers"
 
 config CAVS_VERSION_1_5
