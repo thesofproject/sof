@@ -192,8 +192,8 @@ m_db = 20*log10(abs(freqz(bq, 1, f_p, fs3)));
 i_pb = find(f_p < src.f_pb);
 i_m3 = find(m_db > -3);
 f_m3 = f_p(i_m3(end));
-g_pb = max(m_db(i_pb));
-g_att_lin = 10^(-g_pb/20);
+g_dc = m_db(1);
+g_dc_comp_lin = 10^(-g_dc/20);
 
 if 1
         p_ymin = floor((-cnv.rs-50)/10)*10;
@@ -225,7 +225,7 @@ src.subfilter_length = ceil((nfir+1)/src.num_of_subfilters);
 src.filter_length = src.subfilter_length*src.num_of_subfilters;
 src.b = zeros(src.filter_length,1);
 src.gain = 1;
-src.b(1:nfir+1) = b*src.L*g_att_lin;
+src.b(1:nfir+1) = b * src.L * g_dc_comp_lin * 10^(cnv.gain/20);
 m = max(abs(src.b));
 gmax = (32767/32768)/m;
 maxshift = floor(log(gmax)/log(2));
