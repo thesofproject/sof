@@ -48,6 +48,10 @@
 #define trace_buffer_error(__e, ...)	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define tracev_buffer(__e, ...)	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 
+/* buffer callback types */
+#define BUFF_CB_TYPE_PRODUCE	BIT(0)
+#define BUFF_CB_TYPE_CONSUME	BIT(1)
+
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
 
@@ -72,6 +76,11 @@ struct comp_buffer {
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
 
+	/* callbacks */
+	void (*cb)(void *data, uint32_t bytes);
+	void *cb_data;
+	int cb_type;
+
 	spinlock_t lock; /* component buffer spinlock */
 };
 
@@ -95,6 +104,13 @@ struct comp_buffer {
 		else					\
 			buffer->sink = comp;		\
 	} while (0)					\
+
+#define buffer_set_cb(buffer, func, data, type) \
+	do {				\
+		buffer->cb = func;	\
+		buffer->cb_data = data;	\
+		buffer->cb_type = type;	\
+	} while (0)
 
 #define buffer_read_frag(buffer, idx, size) \
 	buffer_get_frag(buffer, buffer->r_ptr, idx, size)

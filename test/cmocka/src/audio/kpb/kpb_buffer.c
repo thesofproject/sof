@@ -215,6 +215,9 @@ static struct comp_buffer *mock_comp_buffer(void **state,
 		buffer->end_addr = buffer->w_ptr + buffer->size;
 		break;
 	}
+
+	buffer->cb = NULL;
+
 	return buffer;
 }
 
