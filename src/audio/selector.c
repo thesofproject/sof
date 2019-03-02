@@ -50,7 +50,6 @@
 #include "selector.h"
 #include <sof/math/numbers.h>
 
-
 /**
  * \brief Validates channel count and index and sets channel count.
  * \details If input data is not supported trace error is displayed and
@@ -89,7 +88,7 @@ static int sel_set_channel_values(struct comp_data *cd, uint32_t in_channels,
 
 	if (ch_idx > (SEL_SOURCE_4CH - 1)) {
 		trace_selector_error("sel_set_channel_values() error: "
-				     "ch_idx = %u", in_channels);
+				     "ch_idx = %u", ch_idx);
 		return -EINVAL;
 	}
 
@@ -108,11 +107,10 @@ static int sel_set_channel_values(struct comp_data *cd, uint32_t in_channels,
 static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
-	struct sof_ipc_comp_selector *sel;
-	struct sof_ipc_comp_selector *ipc_sel =
-		(struct sof_ipc_comp_selector *)comp;
+	struct sof_ipc_comp_process *sel;
+	struct sof_ipc_comp_process *ipc_sel =
+		(struct sof_ipc_comp_process *)comp;
 	struct comp_data *cd;
-	int ret;
 
 	trace_selector("selector_new()");
 
@@ -122,12 +120,12 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_selector));
+		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
 
-	sel = (struct sof_ipc_comp_selector *)&dev->comp;
-	memcpy(sel, ipc_sel, sizeof(struct sof_ipc_comp_selector));
+	sel = (struct sof_ipc_comp_process *)&dev->comp;
+	memcpy(sel, ipc_sel, sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -136,16 +134,6 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
-
-	/* verification of initial parameters */
-	ret = sel_set_channel_values(cd, ipc_sel->input_channels_count,
-				     ipc_sel->output_channels_count,
-				     ipc_sel->selected_channel);
-	if (ret < 0) {
-		rfree(cd);
-		rfree(dev);
-		return NULL;
-	}
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -175,8 +163,41 @@ static void selector_free(struct comp_dev *dev)
 static int selector_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_buffer *sourceb, *sinkb;
+	struct comp_dev *source, *sink;
 
 	trace_selector("selector_params()");
+
+	/* selector component has only 1 source and 1 sink buffer */
+	sourceb = list_first_item(&dev->bsource_list, struct comp_buffer,
+				  sink_list);
+
+	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
+				source_list);
+
+	/* verification of channel counts */
+	/*
+	 * FIXME: where should sel_channel come from?
+	 * from a kcontrol or ipc params
+	 */
+	ret = sel_set_channel_values(cd, sourceb->source->params.channels,
+				     sinkb->sink->params.channels,
+				     cd->sel_channel);
+	if (ret < 0) {
+		trace_selector_error("selector_params() error: ",
+				     "invalid params for selector"
+				     "input ch count %u output ch count %u"
+				     "selected channel %u",
+				     sourceb->source->params.channels,
+				     sinkb->sink->params.channels,
+				     cd->sel_channel);
+
+		return -EINVAL;
+	}
+
+	/* set input/output channel counts based on source/sink params */
+	cd->out_channels_count = sinkb->sink->params.channels;
+	cd->in_channels_count = sourceb->source->params.channels;
 
 	/* rewrite channels number for other components */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
@@ -359,15 +380,6 @@ static int selector_prepare(struct comp_dev *dev)
 	trace_selector("selector_prepare(): sink->params.channels = %u",
 		       sinkb->sink->params.channels);
 
-	/* set downstream buffer size */
-	ret = buffer_set_size(sinkb, cd->sink_period_bytes *
-			      config->periods_sink);
-	if (ret < 0) {
-		trace_selector_error("selector_prepare() error: "
-				     "buffer_set_size() failed");
-		goto err;
-	}
-
 	/* validate */
 	if (cd->sink_period_bytes == 0) {
 		trace_selector_error("selector_prepare() error: "
@@ -386,6 +398,15 @@ static int selector_prepare(struct comp_dev *dev)
 				     dev->frames,
 				     sourceb->source->frame_bytes);
 		ret = -EINVAL;
+		goto err;
+	}
+
+	/* set downstream buffer size */
+	ret = buffer_set_size(sinkb, cd->sink_period_bytes *
+			      config->periods_sink);
+	if (ret < 0) {
+		trace_selector_error("selector_prepare() error: "
+				     "buffer_set_size() failed");
 		goto err;
 	}
 
