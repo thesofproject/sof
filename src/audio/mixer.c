@@ -39,9 +39,12 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 
-#define trace_mixer(__e)	trace_event(TRACE_CLASS_MIXER, __e)
-#define tracev_mixer(__e)	tracev_event(TRACE_CLASS_MIXER, __e)
-#define trace_mixer_error(__e)	trace_error(TRACE_CLASS_MIXER, __e)
+#define trace_mixer(__e, ...) \
+	trace_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
+#define tracev_mixer(__e, ...) \
+	tracev_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
+#define trace_mixer_error(__e, ...) \
+	trace_error(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
 
 /* mixer component private data */
 struct mixer_data {
