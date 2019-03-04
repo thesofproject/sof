@@ -66,6 +66,9 @@ config SUECREEK
 	select IRQ_MAP
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
+	select DW_SPI
+	select INTEL_IOMUX
+	select DW_GPIO
 	select CAVS
 	select CAVS_VERSION_2_0
 	help

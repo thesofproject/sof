@@ -6,8 +6,12 @@ add_local_sources(sof
 	timer.c
 )
 
+if(CONFIG_INTEL_IOMUX)
+	add_local_sources(sof sue-iomux.c)
+endif()
+
 if(CONFIG_SUECREEK)
-	add_local_sources(sof sue-iomux.c sue-ipc.c)
+	add_local_sources(sof sue-ipc.c)
 else()
 	add_local_sources(sof ipc.c)
 endif()
