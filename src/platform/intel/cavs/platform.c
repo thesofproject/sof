@@ -59,6 +59,7 @@
 #include <config.h>
 #include <string.h>
 #include <version.h>
+#include <sof/cavs-version.h>
 
 static const struct sof_ipc_fw_ready ready
 	__attribute__((section(".fw_ready"))) = {
@@ -173,8 +174,7 @@ struct work_queue_timesource platform_generic_queue[] = {
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
 },
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
-	|| defined(CONFIG_SUECREEK)
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 {
 	.timer	 = {
 		.id = TIMER3, /* external timer */
@@ -329,14 +329,14 @@ int platform_boot_complete(uint32_t boot_message)
 		sram_window.ext_hdr.hdr.size);
 #endif // defined(CONFIG_MEM_WND)
 
-#if defined(CONFIG_APOLLOLAKE)
+#if CAVS_VERSION == CAVS_VERSION_1_5
 	/* boot now complete so we can relax the CPU */
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_DEFAULT_CPU_HZ);
 
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIE, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCI, 0x80000000 | SOF_IPC_FW_READY);
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#else
 	/* tell host we are ready */
 	ipc_write(IPC_DIPCIDD, SRAM_WINDOW_HOST_OFFSET(0) >> 12);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | SOF_IPC_FW_READY);
@@ -380,8 +380,7 @@ static void platform_memory_windows_init(void)
 }
 #endif
 
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
-|| defined(CONFIG_SUECREEK)
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 /* init HW  */
 static void platform_init_hw(void)
 {
