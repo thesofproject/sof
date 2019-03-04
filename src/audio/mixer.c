@@ -48,36 +48,39 @@
 
 /* mixer component private data */
 struct mixer_data {
-	uint32_t period_bytes;
 	void (*mix_func)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer **sources, uint32_t count, uint32_t frames);
 };
 
 /* mix N PCM source streams to one sink stream */
 static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
-	struct comp_buffer **sources, uint32_t num_sources, uint32_t frames)
+		  struct comp_buffer **sources, uint32_t num_sources,
+		  uint32_t frames)
 {
 	int32_t *src;
-	int32_t *dest = sink->w_ptr;
-	int32_t count;
-	int64_t val[2];
+	int32_t *dest;
+	int64_t val;
 	int i;
 	int j;
+	int channel;
+	uint32_t frag = 0;
 
-	count = frames * dev->params.channels;
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < dev->params.channels; channel++) {
+			val = 0;
 
-	for (i = 0; i < count; i += 2) {
-		val[0] = 0;
-		val[1] = 0;
-		for (j = 0; j < num_sources; j++) {
-			src = sources[j]->r_ptr;
-			val[0] += src[i];
-			val[1] += src[i + 1];
+			for (j = 0; j < num_sources; j++) {
+				src = buffer_read_frag_s32(sources[j], frag);
+				val += *src;
+			}
+
+			dest = buffer_write_frag_s32(sink, frag);
+
+			/* Saturate to 32 bits */
+			*dest = sat_int32(val);
+
+			frag++;
 		}
-
-		/* Saturate to 32 bits */
-		dest[i] = sat_int32(val[0]);
-		dest[i + 1] = sat_int32(val[1]);
 	}
 }
 
@@ -128,9 +131,9 @@ static void mixer_free(struct comp_dev *dev)
 /* set component audio stream parameters */
 static int mixer_params(struct comp_dev *dev)
 {
-	struct mixer_data *md = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_buffer *sink;
+	uint32_t period_bytes;
 	int ret;
 
 	trace_mixer("mixer_params()");
@@ -143,8 +146,8 @@ static int mixer_params(struct comp_dev *dev)
 	}
 
 	/* calculate period size based on config */
-	md->period_bytes = dev->frames * dev->frame_bytes;
-	if (md->period_bytes == 0) {
+	period_bytes = dev->frames * dev->frame_bytes;
+	if (period_bytes == 0) {
 		trace_mixer_error("mixer_params() error: period_bytes = 0");
 		return -EINVAL;
 	}
@@ -152,7 +155,7 @@ static int mixer_params(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
 
 	/* set downstream buffer size */
-	ret = buffer_set_size(sink, md->period_bytes * config->periods_sink);
+	ret = buffer_set_size(sink, period_bytes * config->periods_sink);
 	if (ret < 0) {
 		trace_mixer_error("mixer_params() error: "
 				  "buffer_set_size() failed");
@@ -230,13 +233,18 @@ static int mixer_copy(struct comp_dev *dev)
 	struct list_item *blist;
 	int32_t i = 0;
 	int32_t num_mix_sources = 0;
-	int res;
+	uint32_t frames = INT32_MAX;
+	uint32_t source_bytes;
+	uint32_t sink_bytes;
 
 	tracev_mixer("mixer_copy()");
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
 
-	/* calculate the highest runtime component status between input streams */
+	/* calculate the highest runtime component status
+	 * between input streams
+	 */
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
 
@@ -253,41 +261,47 @@ static int mixer_copy(struct comp_dev *dev)
 	if (num_mix_sources == 0)
 		return 0;
 
-	/* make sure no sources have underruns */
-	for (i = 0; i < num_mix_sources; i++) {
-
-		/* make sure source component buffer has enough data available
-		 * and that the sink component buffer has enough free bytes
-		 * for copy. Also check for XRUNs
-		 */
-		res = comp_buffer_can_copy_bytes(sources[i], sink, md->period_bytes);
-		if (res < 0) {
-			trace_mixer_error("mixer_copy() error: "
-					  "source component buffer "
-					  "has not enough data available");
-			comp_underrun(dev, sources[i], sources[i]->avail,
-				      md->period_bytes);
-		} else if (res > 0) {
-			trace_mixer_error("mixer_copy() error: "
-					  "sink component buffer has not "
-					  "enough free bytes for copy");
-			comp_overrun(dev, sources[i], sink->free,
-				     md->period_bytes);
-		}
+	/* check for overrun */
+	if (sink->free == 0) {
+		trace_mixer_error("mixer_copy() error: sink component buffer "
+				  "has not enough free bytes for copy");
+		comp_overrun(dev, sink, 0, 0);
+		return -EIO;
 	}
 
+	/* check for underruns */
+	for (i = 0; i < num_mix_sources; i++) {
+		if (sources[i]->avail == 0) {
+			trace_mixer_error("mixer_copy() error: source %u "
+					  "component buffer has not enough "
+					  "data available", i);
+			comp_underrun(dev, sources[i], 0, 0);
+			return -EIO;
+		}
+
+		frames = MIN(frames, comp_avail_frames(sources[i], sink));
+	}
+
+	/* Every source has the same format, so calculate bytes based
+	 * on the first one.
+	 */
+	source_bytes = frames * comp_frame_bytes(sources[0]->source);
+	sink_bytes = frames * comp_frame_bytes(sink->sink);
+
+	tracev_mixer("mixer_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
+		     source_bytes, sink_bytes);
+
 	/* mix streams */
-	md->mix_func(dev, sink, sources, i, dev->frames);
+	md->mix_func(dev, sink, sources, i, frames);
 
-	/* update source buffer pointers for overflow */
+	/* update source buffer pointers */
 	for (i = --num_mix_sources; i >= 0; i--)
-		comp_update_buffer_consume(sources[i], md->period_bytes);
+		comp_update_buffer_consume(sources[i], source_bytes);
 
-	/* calc new free and available */
-	comp_update_buffer_produce(sink, md->period_bytes);
+	/* update sink buffer pointer */
+	comp_update_buffer_produce(sink, sink_bytes);
 
-	/* number of frames sent downstream */
-	return dev->frames;
+	return 0;
 }
 
 static int mixer_reset(struct comp_dev *dev)
