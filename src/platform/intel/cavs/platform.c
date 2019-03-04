@@ -200,9 +200,12 @@ struct work_queue_timesource platform_generic_queue[] = {
 #endif
 };
 
-#if defined(CONFIG_SUECREEK)
-#include <sof/gpio.h>
+#if defined(CONFIG_IOMUX)
 #include <sof/iomux.h>
+#endif
+
+#if defined(CONFIG_DW_GPIO)
+#include <sof/gpio.h>
 
 const struct gpio_pin_config gpio_data[] = {
 	{	/* GPIO0 */
@@ -312,12 +315,14 @@ static struct spi_platform_data spi = {
 struct timer *platform_timer =
 	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
+#if defined(CONFIG_DW_SPI)
 int platform_boot_complete(uint32_t boot_message)
 {
-#if defined(CONFIG_SUECREEK)
 	return spi_push(spi_get(SOF_SPI_INTEL_SLAVE), &ready, sizeof(ready));
-#endif
-
+}
+#else
+int platform_boot_complete(uint32_t boot_message)
+{
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
 #if defined(CONFIG_MEM_WND)
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
@@ -338,6 +343,7 @@ int platform_boot_complete(uint32_t boot_message)
 #endif
 	return 0;
 }
+#endif
 
 #if defined(CONFIG_MEM_WND)
 static void platform_memory_windows_init(void)
@@ -375,7 +381,7 @@ static void platform_memory_windows_init(void)
 #endif
 
 #if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
-	|| defined(CONFIG_SUECREEK)
+|| defined(CONFIG_SUECREEK)
 /* init HW  */
 static void platform_init_hw(void)
 {
@@ -397,7 +403,7 @@ static void platform_init_hw(void)
 
 int platform_init(struct sof *sof)
 {
-#if defined(CONFIG_SUECREEK)
+#if defined(CONFIG_DW_SPI)
 	struct spi *spi_dev;
 #endif
 	int ret;
@@ -510,7 +516,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
 	idc_init();
 
-#if defined(CONFIG_SUECREEK)
+#if defined(CONFIG_DW_SPI)
 	/* initialize the SPI slave */
 	spi_init();
 	ret = spi_install(&spi, 1);
