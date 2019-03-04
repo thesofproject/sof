@@ -65,6 +65,7 @@ int do_task_master_core(struct sof *sof)
 	sys_comp_eq_iir_init();
 	sys_comp_eq_fir_init();
 	sys_comp_selector_init();
+	sys_comp_kpb_init();
 
 #if STATIC_PIPE
 	/* init static pipeline */
