@@ -91,7 +91,7 @@ define(`PIPELINE_PCM_DAI_ADD',
 
 dnl PIPELINE_ADD(pipeline,
 dnl     pipe id, max channels, format,
-dnl     frames, deadline, priority, core)
+dnl     frames, deadline, priority, core, sched_comp)
 define(`PIPELINE_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`PIPELINE_CHANNELS')'
@@ -107,6 +107,7 @@ define(`PIPELINE_ADD',
 `define(`SCHEDULE_DEADLINE', $6)'
 `define(`SCHEDULE_PRIORITY', $7)'
 `define(`SCHEDULE_CORE', $8)'
+`define(`SCHED_COMP', $9)'
 `include($1)'
 )
 
