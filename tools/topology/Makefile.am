@@ -46,7 +46,8 @@ MACHINES = \
 	sof-icl-dmic-4ch.tplg \
 	sof-apl-src-pcm512x.tplg \
 	sof-cml-rt5682.tplg \
-	sof-cnl-nocodec.tplg
+	sof-cnl-nocodec.tplg \
+	sof-cml-rt5682_max98357a.tplg
 
 # Uncomment the following line if you want to debug conf files
 .PRECIOUS: %.conf
@@ -93,4 +94,5 @@ EXTRA_DIST = \
 	sof-apl-dmic-2ch.m4 \
 	sof-apl-src-pcm512x.m4 \
 	sof-cml-rt5682.m4 \
-	sof-cnl-nocodec.m4
+	sof-cnl-nocodec.m4 \
+	sof-cml-rt5682_max98357a.m4
