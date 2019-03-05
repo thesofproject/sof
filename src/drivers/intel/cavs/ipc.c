@@ -145,22 +145,17 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 
 	/* perform command and return any error */
 	err = ipc_cmd();
-	if (err > 0) {
-		goto done; /* reply created and copied by cmd() */
-	} else if (err < 0) {
-		/* send std error reply */
+
+	/* if err > 0, reply created and copied by cmd() */
+	if (err <= 0) {
+		/* send std error/ok reply */
 		reply.error = err;
-	} else if (err == 0) {
-		/* send std reply */
-		reply.error = 0;
+
+		reply.hdr.cmd = SOF_IPC_GLB_REPLY;
+		reply.hdr.size = sizeof(reply);
+		mailbox_hostbox_write(0, &reply, sizeof(reply));
 	}
 
-	/* send std error/ok reply */
-	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-	reply.hdr.size = sizeof(reply);
-	mailbox_hostbox_write(0, &reply, sizeof(reply));
-
-done:
 	ipc->host_pending = 0;
 
 	/* are we about to enter D3 ? */
