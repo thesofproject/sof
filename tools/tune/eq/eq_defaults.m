@@ -43,7 +43,9 @@ p.np_fine = 5000; % 5000 point design grid
 % Parametric EQ IDs
 p.PEQ_HP1 = 1; p.PEQ_HP2 = 2; p.PEQ_LP1 = 3; p.PEQ_LP2 = 4;
 p.PEQ_LS1 = 5; p.PEQ_LS2 = 6; p.PEQ_HS1 = 7; p.PEQ_HS2 = 8;
-p.PEQ_PN2 = 9; p.PEQ_LP4 = 10; p.PEQ_HP4 = 11;
+p.PEQ_PN2 = 9; p.PEQ_LP4 = 10; p.PEQ_HP4 = 11; p.PEQ_LP2G = 12;
+p.PEQ_HP2G = 13; p.PEQ_BP2 = 14; p.PEQ_NC2 = 15; p.PEQ_LS2G = 16;
+p.PEQ_HS2G = 17;
 
 % FIR constraints
 p.fmin_fir = 200; %

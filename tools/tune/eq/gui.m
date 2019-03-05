@@ -95,11 +95,11 @@ function dropdown_callback(h, event)
 			% highpass 4th order
 			set_section_visibility(biquad.Q, "off");
 			set_section_visibility(biquad.gain, "off");
-		case eq.PEQ_LP2R
+		case eq.PEQ_LP2G
 			% lowpass 2nd order with resonnance
 			set_section_visibility(biquad.Q, "on");
 			set_section_visibility(biquad.gain, "off");
-		case eq.PEQ_HP2R
+		case eq.PEQ_HP2G
 			% highpass 2nd order with resonnance
 			set_section_visibility(biquad.Q, "on");
 			set_section_visibility(biquad.gain, "off");
@@ -177,8 +177,9 @@ function initialize_biquad(index, channel, position, main_panes)
 		"lowpass 1st order", "lowpass 2nd order", "lowshelf 1st order", ...
 		"lowshelf 2nd order", "highshelf 1st order", "highshelf 2nd order", ...
 		"peaking 2nd order", "lowpass 4th order", "highpass 4th order", ...
-		"lowpass 2nd with resonnance", "highpass 2nd with resonnance", ...
-		"bandpass 2md order", "notch 2nd order"};
+		"lowpass 2nd order (Google)", "highpass 2nd order (Google)", ...
+		"bandpass 2nd order", "notch 2nd order", "lowshelf 2nd order (Google)", ...
+		"highshelf 2nd order (Google)"};
 	eq = eq_defaults();
 	% UI panels, we have to use absolute positioning
 	%
