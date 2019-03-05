@@ -526,6 +526,8 @@ static int volume_prepare(struct comp_dev *dev)
 	struct comp_buffer *sinkb;
 	struct comp_buffer *sourceb;
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	uint32_t source_period_bytes;
+	uint32_t sink_period_bytes;
 	int i;
 	int ret;
 
@@ -543,20 +545,17 @@ static int volume_prepare(struct comp_dev *dev)
 
 	/* get source data format */
 	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
-			      &cd->source_period_bytes);
+			      &source_period_bytes);
 
 	/* get sink data format */
 	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
-			      &cd->sink_period_bytes);
+			      &sink_period_bytes);
 
 	/* rewrite params format for all downstream */
 	dev->params.frame_fmt = cd->sink_format;
 
-	dev->frame_bytes = cd->sink_period_bytes / dev->frames;
-
 	/* set downstream buffer size */
-	ret = buffer_set_size(sinkb, cd->sink_period_bytes *
-		config->periods_sink);
+	ret = buffer_set_size(sinkb, sink_period_bytes * config->periods_sink);
 	if (ret < 0) {
 		trace_volume_error("volume_prepare() error: "
 				   "buffer_set_size() failed");
@@ -564,17 +563,17 @@ static int volume_prepare(struct comp_dev *dev)
 	}
 
 	/* validate */
-	if (cd->sink_period_bytes == 0) {
+	if (!sink_period_bytes) {
 		trace_volume_error("volume_prepare() error: "
-				   "cd->sink_period_bytes = 0, dev->frames ="
+				   "sink_period_bytes = 0, dev->frames ="
 				   " %u, sinkb->sink->frame_bytes = %u",
 				   dev->frames, sinkb->sink->frame_bytes);
 		ret = -EINVAL;
 		goto err;
 	}
-	if (cd->source_period_bytes == 0) {
+	if (!source_period_bytes) {
 		trace_volume_error("volume_prepare() error: "
-				   "cd->source_period_bytes = 0, "
+				   "source_period_bytes = 0, "
 				   "dev->frames = %u, "
 				   "sourceb->source->frame_bytes = %u",
 				   dev->frames, sourceb->source->frame_bytes);

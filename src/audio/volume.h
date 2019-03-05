@@ -105,8 +105,6 @@
  * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
  */
 struct comp_data {
-	uint32_t source_period_bytes;		/**< source number of period bytes */
-	uint32_t sink_period_bytes;		/**< sink number of period bytes */
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	uint32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
