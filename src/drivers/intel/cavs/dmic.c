@@ -1150,7 +1150,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 			return -ENOMEM;
 		}
 		for (i = 1; i < DMIC_HW_FIFOS; i++)
-			dmic_prm[i] = dmic_prm[i - 1] + size;
+			dmic_prm[i] = (struct sof_ipc_dai_dmic_params *)
+				((uint8_t *)dmic_prm[i - 1] + size);
 	}
 
 	if (di >= DMIC_HW_FIFOS) {
