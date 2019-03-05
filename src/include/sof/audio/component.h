@@ -277,7 +277,7 @@ struct comp_dev {
 
 /** \brief Retrieves the driver private data. */
 #define comp_get_drvdata(c) \
-	c->private;
+	c->private
 
 /** \brief Retrieves the component device buffer list. */
 #define comp_buffer_list(comp, dir) \
