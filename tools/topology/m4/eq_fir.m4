@@ -28,9 +28,9 @@ define(`W_EQ_FIR',
 `	tuples "'N_EQ_FIR($1)`_tuples_str"'
 `}'
 `SectionVendorTuples."'N_EQ_FIR($1)`_tuples_str_type" {'
-`	tokens "sof_effect_tokens"'
+`	tokens "sof_process_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_EFFECT_TYPE'	"EQFIR"
+`		SOF_TKN_PROCESS_TYPE'	"EQFIR"
 `	}'
 `}'
 `SectionData."'N_EQ_FIR($1)`_data_str_type" {'
