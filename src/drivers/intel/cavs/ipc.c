@@ -85,10 +85,11 @@ static void ipc_irq_handler(void *arg)
 
 	/* new message from host */
 #if CAVS_VERSION == CAVS_VERSION_1_5
-	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
+	if (dipct & IPC_DIPCT_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
 #else
-	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE) {
+	if (dipctdr & IPC_DIPCTDR_BUSY && dipcctl & IPC_DIPCCTL_IPCTBIE)
 #endif
+	{
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
 
@@ -112,10 +113,11 @@ static void ipc_irq_handler(void *arg)
 
 	/* reply message(done) from host */
 #if CAVS_VERSION == CAVS_VERSION_1_5
-	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE) {
+	if (dipcie & IPC_DIPCIE_DONE && dipcctl & IPC_DIPCCTL_IPCIDIE)
 #else
-	if (dipcida & IPC_DIPCIDA_DONE) {
+	if (dipcida & IPC_DIPCIDA_DONE)
 #endif
+	{
 		/* mask Done interrupt */
 		ipc_write(IPC_DIPCCTL,
 			  ipc_read(IPC_DIPCCTL) & ~IPC_DIPCCTL_IPCIDIE);
