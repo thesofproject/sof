@@ -130,7 +130,8 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		if (dev->state == COMP_STATE_PREPARE) {
+		if (dev->state == COMP_STATE_PREPARE ||
+		    dev->state == COMP_STATE_INACTIVE) {
 			dev->state = COMP_STATE_ACTIVE;
 		} else {
 			trace_comp_error("comp_set_state() error: "
@@ -152,7 +153,8 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
 		if (dev->state == COMP_STATE_ACTIVE ||
-		    dev->state == COMP_STATE_PAUSED) {
+		    dev->state == COMP_STATE_PAUSED ||
+		    dev->state == COMP_STATE_INACTIVE) {
 			dev->state = COMP_STATE_PREPARE;
 		} else {
 			trace_comp_error("comp_set_state() error: "
@@ -163,7 +165,8 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_PAUSE:
 		/* only support pausing for running */
-		if (dev->state == COMP_STATE_ACTIVE) {
+		if (dev->state == COMP_STATE_ACTIVE ||
+		    dev->state == COMP_STATE_INACTIVE) {
 			dev->state = COMP_STATE_PAUSED;
 		} else {
 			trace_comp_error("comp_set_state() error: "
@@ -190,6 +193,16 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 			trace_comp_error("comp_set_state() error: "
 					 "wrong state = %u, "
 					 "COMP_TRIGGER_PREPARE", dev->state);
+			ret = -EINVAL;
+		}
+		break;
+	case COMP_TRIGGER_DEACTIVATE:
+		if (dev->state == COMP_STATE_ACTIVE) {
+			dev->state = COMP_STATE_INACTIVE;
+		} else {
+			trace_comp_error("comp_set_state() error: "
+					 "wrong state = %u, "
+					 "COMP_TRIGGER_DEACTIVATE", dev->state);
 			ret = -EINVAL;
 		}
 		break;
