@@ -70,8 +70,8 @@
 #include <arch/gdb/init.h>
 #include <sof/gdb/gdb.h>
 
-#define iGS(x) ((x >> SOF_GLB_TYPE_SHIFT) & 0xf)
-#define iCS(x) ((x >> SOF_CMD_TYPE_SHIFT) & 0xfff)
+#define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
+#define iCS(x) ((x) & SOF_CMD_TYPE_MASK)
 
 /*
  * IPC ABI version compatibility rules :-
@@ -454,14 +454,14 @@ static int ipc_stream_trigger(uint32_t header)
 {
 	struct ipc_comp_dev *pcm_dev;
 	struct sof_ipc_stream stream;
-	uint32_t ipc_cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	uint32_t ipc_cmd = iCS(header);
 	uint32_t cmd;
 	int ret;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(stream, _ipc->comp_data);
 
-	trace_ipc("ipc: comp %d -> trigger cmd %d", stream.comp_id, ipc_cmd);
+	trace_ipc("ipc: comp %d -> trigger cmd 0x%x", stream.comp_id, ipc_cmd);
 
 	/* get the pcm_dev */
 	pcm_dev = ipc_get_comp(_ipc, stream.comp_id);
@@ -471,30 +471,30 @@ static int ipc_stream_trigger(uint32_t header)
 	}
 
 	switch (ipc_cmd) {
-	case iCS(SOF_IPC_STREAM_TRIG_START):
+	case SOF_IPC_STREAM_TRIG_START:
 		cmd = COMP_TRIGGER_START;
 		break;
-	case iCS(SOF_IPC_STREAM_TRIG_STOP):
+	case SOF_IPC_STREAM_TRIG_STOP:
 		cmd = COMP_TRIGGER_STOP;
 		break;
-	case iCS(SOF_IPC_STREAM_TRIG_PAUSE):
+	case SOF_IPC_STREAM_TRIG_PAUSE:
 		cmd = COMP_TRIGGER_PAUSE;
 		break;
-	case iCS(SOF_IPC_STREAM_TRIG_RELEASE):
+	case SOF_IPC_STREAM_TRIG_RELEASE:
 		cmd = COMP_TRIGGER_RELEASE;
 		break;
 	/* XRUN is special case- TODO */
-	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
+	case SOF_IPC_STREAM_TRIG_XRUN:
 		return 0;
 	default:
-		trace_ipc_error("ipc: invalid trigger cmd %d", ipc_cmd);
+		trace_ipc_error("ipc: invalid trigger cmd 0x%x", ipc_cmd);
 		return -ENODEV;
 	}
 
 	/* trigger the component */
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
 	if (ret < 0) {
-		trace_ipc_error("ipc: comp %d trigger %d failed %d",
+		trace_ipc_error("ipc: comp %d trigger 0x%x failed %d",
 				stream.comp_id, ipc_cmd, ret);
 	}
 
@@ -503,24 +503,24 @@ static int ipc_stream_trigger(uint32_t header)
 
 static int ipc_glb_stream_message(uint32_t header)
 {
-	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	uint32_t cmd = iCS(header);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_STREAM_PCM_PARAMS):
+	case SOF_IPC_STREAM_PCM_PARAMS:
 		return ipc_stream_pcm_params(header);
-	case iCS(SOF_IPC_STREAM_PCM_FREE):
+	case SOF_IPC_STREAM_PCM_FREE:
 		return ipc_stream_pcm_free(header);
-	case iCS(SOF_IPC_STREAM_TRIG_START):
-	case iCS(SOF_IPC_STREAM_TRIG_STOP):
-	case iCS(SOF_IPC_STREAM_TRIG_PAUSE):
-	case iCS(SOF_IPC_STREAM_TRIG_RELEASE):
-	case iCS(SOF_IPC_STREAM_TRIG_DRAIN):
-	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
+	case SOF_IPC_STREAM_TRIG_START:
+	case SOF_IPC_STREAM_TRIG_STOP:
+	case SOF_IPC_STREAM_TRIG_PAUSE:
+	case SOF_IPC_STREAM_TRIG_RELEASE:
+	case SOF_IPC_STREAM_TRIG_DRAIN:
+	case SOF_IPC_STREAM_TRIG_XRUN:
 		return ipc_stream_trigger(header);
-	case iCS(SOF_IPC_STREAM_POSITION):
+	case SOF_IPC_STREAM_POSITION:
 		return ipc_stream_position(header);
 	default:
-		trace_ipc_error("ipc: unknown stream cmd %u", cmd);
+		trace_ipc_error("ipc: unknown stream cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -566,15 +566,15 @@ static int ipc_dai_config(uint32_t header)
 
 static int ipc_glb_dai_message(uint32_t header)
 {
-	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	uint32_t cmd = iCS(header);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_DAI_CONFIG):
+	case SOF_IPC_DAI_CONFIG:
 		return ipc_dai_config(header);
-	case iCS(SOF_IPC_DAI_LOOPBACK):
+	case SOF_IPC_DAI_LOOPBACK:
 		//return ipc_comp_set_value(header, COMP_CMD_LOOPBACK);
 	default:
-		trace_ipc_error("ipc: unknown DAI cmd %u", cmd);
+		trace_ipc_error("ipc: unknown DAI cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -673,22 +673,22 @@ static int ipc_pm_core_enable(uint32_t header)
 
 static int ipc_glb_pm_message(uint32_t header)
 {
-	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	uint32_t cmd = iCS(header);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_PM_CTX_SAVE):
+	case SOF_IPC_PM_CTX_SAVE:
 		return ipc_pm_context_save(header);
-	case iCS(SOF_IPC_PM_CTX_RESTORE):
+	case SOF_IPC_PM_CTX_RESTORE:
 		return ipc_pm_context_restore(header);
-	case iCS(SOF_IPC_PM_CTX_SIZE):
+	case SOF_IPC_PM_CTX_SIZE:
 		return ipc_pm_context_size(header);
-	case iCS(SOF_IPC_PM_CORE_ENABLE):
+	case SOF_IPC_PM_CORE_ENABLE:
 		return ipc_pm_core_enable(header);
-	case iCS(SOF_IPC_PM_CLK_SET):
-	case iCS(SOF_IPC_PM_CLK_GET):
-	case iCS(SOF_IPC_PM_CLK_REQ):
+	case SOF_IPC_PM_CLK_SET:
+	case SOF_IPC_PM_CLK_GET:
+	case SOF_IPC_PM_CLK_REQ:
 	default:
-		trace_ipc_error("ipc: unknown pm cmd %u", cmd);
+		trace_ipc_error("ipc: unknown pm cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -784,15 +784,15 @@ int ipc_dma_trace_send_position(void)
 
 static int ipc_glb_debug_message(uint32_t header)
 {
-	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	uint32_t cmd = iCS(header);
 
 	trace_ipc("ipc: debug cmd 0x%x", cmd);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_TRACE_DMA_PARAMS):
+	case SOF_IPC_TRACE_DMA_PARAMS:
 		return ipc_dma_trace_config(header);
 	default:
-		trace_ipc_error("ipc: unknown debug cmd %u", cmd);
+		trace_ipc_error("ipc: unknown debug cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -890,19 +890,19 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 
 static int ipc_glb_comp_message(uint32_t header)
 {
-	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	uint32_t cmd = iCS(header);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_COMP_SET_VALUE):
+	case SOF_IPC_COMP_SET_VALUE:
 		return ipc_comp_value(header, COMP_CMD_SET_VALUE);
-	case iCS(SOF_IPC_COMP_GET_VALUE):
+	case SOF_IPC_COMP_GET_VALUE:
 		return ipc_comp_value(header, COMP_CMD_GET_VALUE);
-	case iCS(SOF_IPC_COMP_SET_DATA):
+	case SOF_IPC_COMP_SET_DATA:
 		return ipc_comp_value(header, COMP_CMD_SET_DATA);
-	case iCS(SOF_IPC_COMP_GET_DATA):
+	case SOF_IPC_COMP_GET_DATA:
 		return ipc_comp_value(header, COMP_CMD_GET_DATA);
 	default:
-		trace_ipc_error("ipc: unknown comp cmd %u", cmd);
+		trace_ipc_error("ipc: unknown comp cmd 0x%x", cmd);
 		return -EINVAL;
 	}
 }
@@ -1044,27 +1044,27 @@ static int ipc_glb_tplg_free(uint32_t header,
 
 static int ipc_glb_tplg_message(uint32_t header)
 {
-	uint32_t cmd = (header & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	uint32_t cmd = iCS(header);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_TPLG_COMP_NEW):
+	case SOF_IPC_TPLG_COMP_NEW:
 		return ipc_glb_tplg_comp_new(header);
-	case iCS(SOF_IPC_TPLG_COMP_FREE):
+	case SOF_IPC_TPLG_COMP_FREE:
 		return ipc_glb_tplg_free(header, ipc_comp_free);
-	case iCS(SOF_IPC_TPLG_COMP_CONNECT):
+	case SOF_IPC_TPLG_COMP_CONNECT:
 		return ipc_glb_tplg_comp_connect(header);
-	case iCS(SOF_IPC_TPLG_PIPE_NEW):
+	case SOF_IPC_TPLG_PIPE_NEW:
 		return ipc_glb_tplg_pipe_new(header);
-	case iCS(SOF_IPC_TPLG_PIPE_COMPLETE):
+	case SOF_IPC_TPLG_PIPE_COMPLETE:
 		return ipc_glb_tplg_pipe_complete(header);
-	case iCS(SOF_IPC_TPLG_PIPE_FREE):
+	case SOF_IPC_TPLG_PIPE_FREE:
 		return ipc_glb_tplg_free(header, ipc_pipeline_free);
-	case iCS(SOF_IPC_TPLG_BUFFER_NEW):
+	case SOF_IPC_TPLG_BUFFER_NEW:
 		return ipc_glb_tplg_buffer_new(header);
-	case iCS(SOF_IPC_TPLG_BUFFER_FREE):
+	case SOF_IPC_TPLG_BUFFER_FREE:
 		return ipc_glb_tplg_free(header, ipc_buffer_free);
 	default:
-		trace_ipc_error("ipc: unknown tplg header %u", header);
+		trace_ipc_error("ipc: unknown tplg header 0x%x", header);
 		return -EINVAL;
 	}
 }
@@ -1084,26 +1084,26 @@ int ipc_cmd(void)
 		return -EINVAL;
 	}
 
-	type = (hdr->cmd & SOF_GLB_TYPE_MASK) >> SOF_GLB_TYPE_SHIFT;
+	type = iGS(hdr->cmd);
 
 	switch (type) {
-	case iGS(SOF_IPC_GLB_REPLY):
+	case SOF_IPC_GLB_REPLY:
 		return 0;
-	case iGS(SOF_IPC_GLB_COMPOUND):
+	case SOF_IPC_GLB_COMPOUND:
 		return -EINVAL;	/* TODO */
-	case iGS(SOF_IPC_GLB_TPLG_MSG):
+	case SOF_IPC_GLB_TPLG_MSG:
 		return ipc_glb_tplg_message(hdr->cmd);
-	case iGS(SOF_IPC_GLB_PM_MSG):
+	case SOF_IPC_GLB_PM_MSG:
 		return ipc_glb_pm_message(hdr->cmd);
-	case iGS(SOF_IPC_GLB_COMP_MSG):
+	case SOF_IPC_GLB_COMP_MSG:
 		return ipc_glb_comp_message(hdr->cmd);
-	case iGS(SOF_IPC_GLB_STREAM_MSG):
+	case SOF_IPC_GLB_STREAM_MSG:
 		return ipc_glb_stream_message(hdr->cmd);
-	case iGS(SOF_IPC_GLB_DAI_MSG):
+	case SOF_IPC_GLB_DAI_MSG:
 		return ipc_glb_dai_message(hdr->cmd);
-	case iGS(SOF_IPC_GLB_TRACE_MSG):
+	case SOF_IPC_GLB_TRACE_MSG:
 		return ipc_glb_debug_message(hdr->cmd);
-	case iGS(SOF_IPC_GLB_GDB_DEBUG):
+	case SOF_IPC_GLB_GDB_DEBUG:
 		return ipc_glb_gdb_debug(hdr->cmd);
 	default:
 		trace_ipc_error("ipc: unknown command type %u", type);
@@ -1134,11 +1134,11 @@ static inline struct ipc_msg *ipc_glb_stream_message_find(struct ipc *ipc,
 	uint32_t cmd;
 
 	/* Check whether the command is expected */
-	cmd = (posn->rhdr.hdr.cmd & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	cmd = iCS(posn->rhdr.hdr.cmd);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_STREAM_TRIG_XRUN):
-	case iCS(SOF_IPC_STREAM_POSITION):
+	case SOF_IPC_STREAM_TRIG_XRUN:
+	case SOF_IPC_STREAM_POSITION:
 
 		/* iterate host message list for searching */
 		list_for_item(plist, &ipc->shared_ctx->msg_list) {
@@ -1166,10 +1166,10 @@ static inline struct ipc_msg *ipc_glb_trace_message_find(struct ipc *ipc,
 	uint32_t cmd;
 
 	/* Check whether the command is expected */
-	cmd = (posn->rhdr.hdr.cmd & SOF_CMD_TYPE_MASK) >> SOF_CMD_TYPE_SHIFT;
+	cmd = iCS(posn->rhdr.hdr.cmd);
 
 	switch (cmd) {
-	case iCS(SOF_IPC_TRACE_DMA_POSITION):
+	case SOF_IPC_TRACE_DMA_POSITION:
 		/* iterate host message list for searching */
 		list_for_item(plist, &ipc->shared_ctx->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
@@ -1191,13 +1191,13 @@ static inline struct ipc_msg *msg_find(struct ipc *ipc, uint32_t header,
 	uint32_t type;
 
 	/* use different sub function for different global message type */
-	type = (header & SOF_GLB_TYPE_MASK) >> SOF_GLB_TYPE_SHIFT;
+	type = iGS(header);
 
 	switch (type) {
-	case iGS(SOF_IPC_GLB_STREAM_MSG):
+	case SOF_IPC_GLB_STREAM_MSG:
 		return ipc_glb_stream_message_find(ipc,
 			(struct sof_ipc_stream_posn *)tx_data);
-	case iGS(SOF_IPC_GLB_TRACE_MSG):
+	case SOF_IPC_GLB_TRACE_MSG:
 		return ipc_glb_trace_message_find(ipc,
 			(struct sof_ipc_dma_trace_posn *)tx_data);
 	default:
