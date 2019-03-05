@@ -350,7 +350,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 	fprintf(stdout, "  Found %d sections, listing valid sections......\n",
 		module->hdr.shnum);
 
-	fprintf(stdout, "\tNo\tStart\t\tEnd\t\tBytes\tType\tName\n");
+	fprintf(stdout, "\tNo\tStart\t\tEnd\t\tSize\tType\tName\n");
 
 	/* iterate all sections and get size of segments */
 	for (i = 0; i < module->hdr.shnum; i++) {
@@ -372,7 +372,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 				continue;
 		}
 
-		fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t%d", i,
+		fprintf(stdout, "\t%d\t0x%8.8x\t0x%8.8x\t0x%x", i,
 			section->vaddr, section->vaddr + section->size,
 			section->size);
 
