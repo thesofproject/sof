@@ -70,6 +70,15 @@
  * \verbatim
  *
  *                            -------------
+ *                            |           |
+ *                            | INACTIVE  |
+ *                            |           |
+ *                            -------------
+ *                               ^     |
+ *                  deactivate   |     |   start
+ *                               |     |
+ *                               |     v
+ *                            -------------
  *                   pause    |           |    stop/xrun
  *              +-------------| ACTIVITY  |---------------+
  *              |             |           |               |      prepare
@@ -101,6 +110,7 @@
 #define COMP_STATE_PREPARE	3	/**< Component prepared */
 #define COMP_STATE_PAUSED	4	/**< Component paused */
 #define COMP_STATE_ACTIVE	5	/**< Component active */
+#define COMP_STATE_INACTIVE	6	/**< Component inactive */
 /** @}*/
 
 /** \name Standard Component Stream Commands
@@ -116,6 +126,7 @@
 #define COMP_TRIGGER_RESET	6	/**< Reset component */
 #define COMP_TRIGGER_PREPARE	7	/**< Prepare component */
 #define COMP_TRIGGER_XRUN	8	/**< XRUN component */
+#define COMP_TRIGGER_DEACTIVATE	9	/**< Deactivate component */
 /** @}*/
 
 /** \name Standard Component Control Commands
@@ -653,6 +664,9 @@ static inline int comp_get_requested_state(int cmd)
 		break;
 	case COMP_TRIGGER_RESET:
 		state = COMP_STATE_READY;
+		break;
+	case COMP_TRIGGER_DEACTIVATE:
+		state = COMP_STATE_INACTIVE;
 		break;
 	default:
 		break;
