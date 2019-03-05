@@ -28,9 +28,9 @@ define(`W_EQ_IIR',
 `	tuples "'N_EQ_IIR($1)`_tuples_str"'
 `}'
 `SectionVendorTuples."'N_EQ_IIR($1)`_tuples_str_type" {'
-`	tokens "sof_effect_tokens"'
+`	tokens "sof_process_tokens"'
 `	tuples."string" {'
-`		SOF_TKN_EFFECT_TYPE'	"EQIIR"
+`		SOF_TKN_PROCESS_TYPE'	"EQIIR"
 `	}'
 `}'
 `SectionData."'N_EQ_IIR($1)`_data_str_type" {'
