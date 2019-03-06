@@ -33,7 +33,7 @@
 NUMBER=$#	# number of test pipeline
 PARAMS=$@	# name of test pipeline
 MAXLOOPS=1000	# loop number
-FORMATE=s16_le	# sample formate
+FORMAT=s16_le	# sample format
 CHANNEL=2	# test channel number
 FREQENCY=48000	# sample frequency
 T_TIME=3	# time for each test
@@ -61,7 +61,7 @@ pipeline_test()
 		fi
 
 		# run pipeline
-		$cmd -Dhw:0,$pcmid -f $FORMATE -c $CHANNEL -r $FREQENCY $data &
+		$cmd -Dhw:0,$pcmid -f $FORMAT -c $CHANNEL -r $FREQENCY $data &
 		PID[$index]=$!
 		let index++
 	done
