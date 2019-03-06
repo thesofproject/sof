@@ -44,12 +44,12 @@ static int man_open_rom_file(struct image *image)
 
 	/* allocate ROM image  */
 	image->rom_image = calloc(size, 1);
-	if (image->rom_image == NULL)
+	if (!image->rom_image)
 		return -ENOMEM;
 
 	/* open ROM outfile for writing */
 	image->out_rom_fd = fopen(image->out_rom_file, "wb");
-	if (image->out_rom_fd == NULL) {
+	if (!image->out_rom_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image->out_rom_file, errno);
 	}
@@ -64,7 +64,7 @@ static int man_open_unsigned_file(struct image *image)
 
 	/* open unsigned FW outfile for writing */
 	image->out_unsigned_fd = fopen(image->out_unsigned_file, "wb");
-	if (image->out_unsigned_fd == NULL) {
+	if (!image->out_unsigned_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image->out_unsigned_file, errno);
 	}
@@ -79,7 +79,7 @@ static int man_open_manifest_file(struct image *image)
 	unlink(image->out_man_file);
 
 	image->out_man_fd = fopen(image->out_man_file, "wb");
-	if (image->out_man_fd == NULL) {
+	if (!image->out_man_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image->out_man_file, errno);
 	}
@@ -119,7 +119,7 @@ static int man_init_image_v1_8(struct image *image)
 {
 	/* allocate image and copy template manifest */
 	image->fw_image = calloc(image->adsp->image_size, 1);
-	if (image->fw_image == NULL)
+	if (!image->fw_image)
 		return -ENOMEM;
 
 	memcpy(image->fw_image, image->adsp->man_v1_8,
@@ -1013,7 +1013,7 @@ static int man_write_fw_meu_v1_8(struct image *image)
 
 	/* allocate image */
 	image->fw_image = calloc(image->adsp->image_size, 1);
-	if (image->fw_image == NULL) {
+	if (!image->fw_image) {
 		ret = -ENOMEM;
 		goto err;
 	}

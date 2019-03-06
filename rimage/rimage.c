@@ -93,10 +93,10 @@ int main(int argc, char *argv[])
 	elf_argc = optind;
 
 	/* make sure we have an outfile and machine */
-	if (image.out_file == NULL || mach == NULL)
+	if (!image.out_file || !mach)
 		usage(argv[0]);
 
-	if (image.ldc_out_file == NULL)
+	if (!image.ldc_out_file)
 		image.ldc_out_file = "out.ldc";
 
 	/* find machine */
@@ -133,7 +133,7 @@ found:
 	/* open outfile for writing */
 	unlink(image.out_file);
 	image.out_fd = fopen(image.out_file, "wb");
-	if (image.out_fd == NULL) {
+	if (!image.out_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image.out_file, errno);
 		ret = -EINVAL;
@@ -148,7 +148,7 @@ found:
 
 	unlink(image.ldc_out_file);
 	image.ldc_out_fd = fopen(image.ldc_out_file, "wb");
-	if (image.ldc_out_fd == NULL) {
+	if (!image.ldc_out_fd) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
 			image.ldc_out_file, errno);
 		ret = -EINVAL;

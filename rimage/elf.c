@@ -39,7 +39,7 @@ static int elf_read_sections(struct image *image, struct module *module)
 
 	/* allocate space for each section header */
 	section = calloc(sizeof(Elf32_Shdr), hdr->shnum);
-	if (section == NULL)
+	if (!section)
 		return -ENOMEM;
 	module->section = section;
 
@@ -164,7 +164,7 @@ static int elf_read_programs(struct image *image, struct module *module)
 
 	/* allocate space for programs */
 	prg = calloc(sizeof(Elf32_Phdr), hdr->phnum);
-	if (prg == NULL)
+	if (!prg)
 		return -ENOMEM;
 	module->prg = prg;
 
@@ -493,7 +493,7 @@ int elf_find_section(struct image *image, struct module *module,
 
 	/* alloc data data */
 	buffer = calloc(1, section->size);
-	if (buffer == NULL)
+	if (!buffer)
 		return -ENOMEM;
 
 	/* read in section string data */
@@ -544,7 +544,7 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 
 	/* open the elf input file */
 	module->fd = fopen(name, "rb");
-	if (module->fd == NULL) {
+	if (!module->fd) {
 		fprintf(stderr, "error: unable to open %s for reading %d\n",
 			name, errno);
 		return -EINVAL;

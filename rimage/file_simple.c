@@ -104,7 +104,7 @@ static int write_block(struct image *image, struct module *module,
 
 	/* alloc data data */
 	buffer = calloc(1, section->size);
-	if (buffer == NULL)
+	if (!buffer)
 		return -ENOMEM;
 
 	/* read in section data */
