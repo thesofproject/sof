@@ -238,9 +238,8 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 
 	/* find manifest module data */
 	man_section_idx = elf_find_section(image, module, ".module");
-	if (man_section_idx < 0) {
+	if (man_section_idx < 0)
 		return -EINVAL;
-	}
 
 	fprintf(stdout, " Manifest module metadata section at index %d\n",
 		man_section_idx);
@@ -820,9 +819,8 @@ static int man_write_fw_v1_5_sue(struct image *image)
 
 	/* write the firmware */
 	ret = man_write_fw_mod(image);
-	if (ret < 0) {
+	if (ret < 0)
 		goto err;
-	}
 
 	fprintf(stdout, "Firmware manifest and signing completed !\n");
 	return 0;
