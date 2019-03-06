@@ -430,7 +430,8 @@ static int man_module_create(struct image *image, struct module *module,
 
 	/* bss is last */
 	man_module->segment[SOF_MAN_SEGMENT_BSS].file_offset = 0;
-	man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr = module->bss_start;
+	man_module->segment[SOF_MAN_SEGMENT_BSS].v_base_addr =
+			module->bss_start;
 	pages = (module->bss_end - module->bss_start) / MAN_PAGE_SIZE;
 	if ((module->bss_end - module->bss_start) % MAN_PAGE_SIZE)
 		pages += 1;
@@ -463,7 +464,8 @@ static int man_module_create(struct image *image, struct module *module,
 						   man_module, i);
 
 		if (err < 0) {
-			fprintf(stderr, "error: failed to write section #%d\n", i);
+			fprintf(stderr, "error: failed to write section #%d\n",
+				i);
 			return err;
 		}
 	}
@@ -811,8 +813,8 @@ static int man_write_fw_v1_5_sue(struct image *image)
 	m->desc.header.preload_page_count = preload_size / MAN_PAGE_SIZE;
 
 	fprintf(stdout, "Firmware file size 0x%x page count %d\n",
-		FILE_TEXT_OFFSET_V1_5_SUE - MAN_DESC_OFFSET_V1_5_SUE + image->image_end,
-		m->desc.header.preload_page_count);
+		FILE_TEXT_OFFSET_V1_5_SUE - MAN_DESC_OFFSET_V1_5_SUE +
+		image->image_end, m->desc.header.preload_page_count);
 
 	/* calculate hash for each module */
 	man_hash_modules(image, &m->desc);

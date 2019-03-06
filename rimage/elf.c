@@ -127,20 +127,20 @@ static int elf_read_sections(struct image *image, struct module *module)
 		if (!image->verbose)
 			continue;
 
-		fprintf(stdout, " %s section-%d: \ttype\t 0x%8.8x\n", module->elf_file,
-			i, section[i].type);
-		fprintf(stdout, " %s section-%d: \tflags\t 0x%8.8x\n", module->elf_file,
-			i, section[i].flags);
-		fprintf(stdout, " %s section-%d: \taddr\t 0x%8.8x\n", module->elf_file,
-			i, section[i].vaddr);
-		fprintf(stdout, " %s section-%d: \toffset\t 0x%8.8x\n", module->elf_file,
-			i, section[i].off);
-		fprintf(stdout, " %s section-%d: \tsize\t 0x%8.8x\n", module->elf_file,
-			i, section[i].size);
-		fprintf(stdout, " %s section-%d: \tlink\t 0x%8.8x\n", module->elf_file,
-			i, section[i].link);
-		fprintf(stdout, " %s section-%d: \tinfo\t 0x%8.8x\n\n", module->elf_file,
-			i, section[i].info);
+		fprintf(stdout, " %s section-%d: \ttype\t 0x%8.8x\n",
+			module->elf_file, i, section[i].type);
+		fprintf(stdout, " %s section-%d: \tflags\t 0x%8.8x\n",
+			module->elf_file, i, section[i].flags);
+		fprintf(stdout, " %s section-%d: \taddr\t 0x%8.8x\n",
+			module->elf_file, i, section[i].vaddr);
+		fprintf(stdout, " %s section-%d: \toffset\t 0x%8.8x\n",
+			module->elf_file, i, section[i].off);
+		fprintf(stdout, " %s section-%d: \tsize\t 0x%8.8x\n",
+			module->elf_file, i, section[i].size);
+		fprintf(stdout, " %s section-%d: \tlink\t 0x%8.8x\n",
+			module->elf_file, i, section[i].link);
+		fprintf(stdout, " %s section-%d: \tinfo\t 0x%8.8x\n\n",
+			module->elf_file, i, section[i].info);
 	}
 
 	return 0;
@@ -267,7 +267,8 @@ static void elf_module_size(struct image *image, struct module *module,
 			if (module->text_start > section->vaddr)
 				module->text_start = section->vaddr;
 			if (module->text_end < section->vaddr + section->size)
-				module->text_end = section->vaddr + section->size;
+				module->text_end = section->vaddr +
+					section->size;
 
 			fprintf(stdout, "\tTEXT\t");
 		} else {
@@ -275,7 +276,8 @@ static void elf_module_size(struct image *image, struct module *module,
 			if (module->data_start > section->vaddr)
 				module->data_start = section->vaddr;
 			if (module->data_end < section->vaddr + section->size)
-				module->data_end = section->vaddr + section->size;
+				module->data_end = section->vaddr +
+					section->size;
 
 			fprintf(stdout, "\tDATA\t");
 		}
@@ -501,7 +503,8 @@ int elf_find_section(struct image *image, struct module *module,
 
 	count = fread(buffer, 1, section->size, module->fd);
 	if (count != section->size) {
-		fprintf(stderr, "error: can't read string section %d\n", -errno);
+		fprintf(stderr, "error: can't read string section %d\n",
+			-errno);
 		ret = -errno;
 		goto out;
 	}

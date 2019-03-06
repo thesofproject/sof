@@ -168,7 +168,8 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 	EVP_PKEY *privkey;
 	FILE *fp;
 	const BIGNUM *n, *e, *d;
-	unsigned char digest[SHA256_DIGEST_LENGTH], mod[MAN_RSA_KEY_MODULUS_LEN];
+	unsigned char digest[SHA256_DIGEST_LENGTH];
+	unsigned char mod[MAN_RSA_KEY_MODULUS_LEN];
 	unsigned int siglen = MAN_RSA_SIGNATURE_LEN;
 	char path[256];
 	int ret = -EINVAL, i;
