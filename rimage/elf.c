@@ -99,7 +99,6 @@ static int elf_read_sections(struct image *image, struct module *module)
 
 	/* parse each section */
 	for (i = 0; i < hdr->shnum; i++) {
-
 		/* only write valid sections */
 		if (!(section[i].flags & valid))
 			continue;
@@ -178,7 +177,6 @@ static int elf_read_programs(struct image *image, struct module *module)
 
 	/* check each program */
 	for (i = 0; i < hdr->phnum; i++) {
-
 		if (prg[i].filesz == 0)
 			continue;
 
@@ -354,13 +352,11 @@ static void elf_module_limits(struct image *image, struct module *module)
 
 	/* iterate all sections and get size of segments */
 	for (i = 0; i < module->hdr.shnum; i++) {
-
 		section = &module->section[i];
 
 		/* module bss can sometimes be missed */
 		if (i != module->bss_index && i != module->logs_index &&
 		    i != module->fw_ready_index) {
-
 			/* only check valid sections */
 			if (!(section->flags & valid))
 				continue;
