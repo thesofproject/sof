@@ -55,7 +55,6 @@ void EVP_MD_CTX_free(EVP_MD_CTX *ctx)
 }
 #endif
 
-
 #define DEBUG_HASH 0
 
 void module_sha256_create(struct image *image)

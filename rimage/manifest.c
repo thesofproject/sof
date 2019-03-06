@@ -15,7 +15,6 @@
  *          Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
