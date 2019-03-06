@@ -51,7 +51,7 @@ static int man_open_rom_file(struct image *image)
 	image->out_rom_fd = fopen(image->out_rom_file, "wb");
 	if (image->out_rom_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
-				image->out_rom_file, errno);
+			image->out_rom_file, errno);
 	}
 
 	return 0;
@@ -66,7 +66,7 @@ static int man_open_unsigned_file(struct image *image)
 	image->out_unsigned_fd = fopen(image->out_unsigned_file, "wb");
 	if (image->out_unsigned_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
-				image->out_unsigned_file, errno);
+			image->out_unsigned_file, errno);
 	}
 
 	return 0;
@@ -81,7 +81,7 @@ static int man_open_manifest_file(struct image *image)
 	image->out_man_fd = fopen(image->out_man_file, "wb");
 	if (image->out_man_fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for writing %d\n",
-				image->out_man_file, errno);
+			image->out_man_file, errno);
 	}
 
 	return 0;
@@ -130,8 +130,9 @@ static int man_init_image_v1_8(struct image *image)
 
 /* we should call this after all segments size set up via iterate */
 static uint32_t elf_to_file_offset(struct image *image,
-	struct module *module, struct sof_man_module *man_module,
-	Elf32_Shdr *section)
+				   struct module *module,
+				   struct sof_man_module *man_module,
+				   Elf32_Shdr *section)
 {
 	uint32_t elf_addr = section->vaddr, file_offset = 0;
 
@@ -156,8 +157,9 @@ static uint32_t elf_to_file_offset(struct image *image,
 
 /* write SRAM sections */
 static int man_copy_sram(struct image *image, Elf32_Shdr *section,
-	struct module *module, struct sof_man_module *man_module,
-	int section_idx)
+			 struct module *module,
+			 struct sof_man_module *man_module,
+			 int section_idx)
 {
 	uint32_t offset = elf_to_file_offset(image, module,
 		man_module, section);
@@ -185,7 +187,7 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 	  * the smallest offset of its modules ATM.
 	  */
 	if (man_module->segment[seg_type].file_offset > offset ||
-		man_module->segment[seg_type].file_offset == 0)
+	    man_module->segment[seg_type].file_offset == 0)
 		man_module->segment[seg_type].file_offset = offset;
 
 	count = fread(buffer, 1, section->size, module->fd);
@@ -206,7 +208,8 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 }
 
 static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
-	struct module *module, struct sof_man_module *man_module, int idx)
+				struct module *module,
+				struct sof_man_module *man_module, int idx)
 {
 	int ret;
 
@@ -225,7 +228,7 @@ static int man_copy_elf_section(struct image *image, Elf32_Shdr *section,
 }
 
 static int man_get_module_manifest(struct image *image, struct module *module,
-		struct sof_man_module *man_module)
+				   struct sof_man_module *man_module)
 {
 	Elf32_Shdr *section;
 	struct sof_man_segment_desc *segment;
@@ -249,7 +252,7 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	/* module built using xcc has preceding bytes */
 	if (section->size > sizeof(sof_mod))
 		ret = fseek(module->fd,
-			section->off + XCC_MOD_OFFSET, SEEK_SET);
+			    section->off + XCC_MOD_OFFSET, SEEK_SET);
 	else
 		ret = fseek(module->fd, section->off, SEEK_SET);
 
@@ -362,7 +365,7 @@ err:
 }
 
 static int man_module_create(struct image *image, struct module *module,
-	struct sof_man_module *man_module)
+			     struct sof_man_module *man_module)
 {
 	/* create module and segments */
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
@@ -461,7 +464,7 @@ static int man_module_create(struct image *image, struct module *module,
 		/* text or data section */
 		if (!elf_is_rom(image, section))
 			err = man_copy_elf_section(image, section, module,
-				man_module, i);
+						   man_module, i);
 
 		if (err < 0) {
 			fprintf(stderr, "error: failed to write section #%d\n", i);
@@ -492,7 +495,7 @@ out:
 }
 
 static int man_module_create_reloc(struct image *image, struct module *module,
-	struct sof_man_module *man_module)
+				   struct sof_man_module *man_module)
 {
 	/* create module and segments */
 	int err;
@@ -582,14 +585,14 @@ static int man_module_create_reloc(struct image *image, struct module *module,
 }
 
 static int man_write_unsigned_mod(struct image *image, int meta_start_offset,
-	int meta_end_offset)
+				  int meta_end_offset)
 {
 	int count;
 
 	/* write metadata file for unsigned FW */
 	count = fwrite(image->fw_image + meta_start_offset,
-			sizeof(struct sof_man_adsp_meta_file_ext), 1,
-			image->out_man_fd);
+		       sizeof(struct sof_man_adsp_meta_file_ext), 1,
+		       image->out_man_fd);
 
 	/* did the metadata/manifest write succeed ? */
 	if (count != 1) {
@@ -601,8 +604,8 @@ static int man_write_unsigned_mod(struct image *image, int meta_start_offset,
 
 	/* now prepare the unsigned rimage */
 	count = fwrite(image->fw_image + meta_end_offset,
-			image->image_end - meta_end_offset,
-			1, image->out_unsigned_fd);
+		       image->image_end - meta_end_offset,
+		       1, image->out_unsigned_fd);
 
 	/* did the unsigned FW write succeed ? */
 	if (count != 1) {
@@ -620,9 +623,7 @@ static int man_write_fw_mod(struct image *image)
 	int count;
 
 	/* write manifest and signed image */
-	count = fwrite(image->fw_image,
-			image->image_end,
-			1, image->out_fd);
+	count = fwrite(image->fw_image, image->image_end, 1, image->out_fd);
 
 	/* did the image write succeed ? */
 	if (count != 1) {
@@ -648,7 +649,7 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 		module = &image->module[0];
 
 		fprintf(stdout, "Module: %s used as executable header\n",
-				module->elf_file);
+			module->elf_file);
 		module->exec_header = 1;
 
 		/* set module file offset */
