@@ -90,7 +90,8 @@ void module_sha256_complete(struct image *image, uint8_t *hash)
 #endif
 }
 
-void ri_hash(struct image *image, unsigned int offset, unsigned int size, uint8_t *hash)
+void ri_hash(struct image *image, unsigned int offset, unsigned int size,
+	     uint8_t *hash)
 {
 	module_sha256_create(image);
 	module_sha256_update(image, image->fw_image + offset, size);
