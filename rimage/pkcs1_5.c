@@ -37,11 +37,11 @@ void RSA_get0_key(const RSA *r,
 void RSA_get0_key(const RSA *r,
 		  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
 {
-	if (n != NULL)
+	if (n)
 		*n = r->n;
-	if (e != NULL)
+	if (e)
 		*e = r->e;
-	if (d != NULL)
+	if (d)
 		*d = r->d;
 }
 #endif
@@ -180,7 +180,7 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 
 	/* create new key */
 	privkey = EVP_PKEY_new();
-	if (privkey == NULL)
+	if (!privkey)
 		return -ENOMEM;
 
 	/* load in RSA private key from PEM file */
@@ -191,7 +191,7 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 
 	fprintf(stdout, " pkcs: signing with key %s\n", path);
 	fp = fopen(path, "rb");
-	if (fp == NULL) {
+	if (!fp) {
 		fprintf(stderr, "error: can't open file %s %d\n",
 			path, -errno);
 		return -errno;
