@@ -194,7 +194,8 @@ static int simple_write_module(struct image *image, struct module *module)
 
 		err = write_block(image, module, section);
 		if (err < 0) {
-			fprintf(stderr, "error: failed to write section #%d\n", i);
+			fprintf(stderr, "error: failed to write section #%d\n",
+				i);
 			return err;
 		}
 		/* write_block will return padding size */
@@ -328,7 +329,8 @@ static int simple_write_firmware(struct image *image)
 		module = &image->module[i];
 		module->fw_size += sizeof(struct snd_sof_blk_hdr) *
 				(module->num_sections - module->num_bss);
-		module->fw_size += sizeof(struct snd_sof_mod_hdr) * hdr.num_modules;
+		module->fw_size += sizeof(struct snd_sof_mod_hdr) *
+				hdr.num_modules;
 		hdr.file_size += module->fw_size;
 	}
 
@@ -411,7 +413,8 @@ int write_logs_dictionary(struct image *image)
 		}
 
 		if (module->logs_index > 0) {
-			Elf32_Shdr *section = &module->section[module->logs_index];
+			Elf32_Shdr *section =
+				&module->section[module->logs_index];
 
 			header.base_address = section->vaddr;
 			header.data_length = section->size;
@@ -436,7 +439,8 @@ int write_logs_dictionary(struct image *image)
 			count = fwrite(buffer, 1, section->size,
 				       image->ldc_out_fd);
 			if (count != section->size) {
-				fprintf(stderr, "error: can't write section %d\n",
+				fprintf(stderr,
+					"error: can't write section %d\n",
 					-errno);
 				ret = -errno;
 				goto out;
