@@ -343,9 +343,12 @@ static void elf_module_limits(struct image *image, struct module *module)
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
 	int i;
 
-	module->text_start = module->data_start = 0xffffffff;
+	module->text_start = 0xffffffff;
+	module->data_start = 0xffffffff;
 	module->bss_start = 0;
-	module->text_end = module->data_end = module->bss_end = 0;
+	module->text_end = 0;
+	module->data_end = 0;
+	module->bss_end = 0;
 
 	fprintf(stdout, "  Found %d sections, listing valid sections......\n",
 		module->hdr.shnum);
