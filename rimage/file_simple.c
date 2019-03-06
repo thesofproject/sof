@@ -43,7 +43,8 @@
 #define BDW_DRAM_HOST_OFFSET	0x00000000
 #define BDW_DRAM_SIZE		(640 * 1024)
 
-static int get_mem_zone_type(struct image *image, Elf32_Shdr *section) {
+static int get_mem_zone_type(struct image *image, Elf32_Shdr *section)
+{
 	const struct adsp *adsp = image->adsp;
 	uint32_t start, end, base, size;
 	int i;
