@@ -362,8 +362,8 @@ static int simple_write_firmware(struct image *image)
 		return -errno;
 
 	fprintf(stdout, "firmware: image size %ld (0x%lx) bytes %d modules\n\n",
-		(long) (hdr.file_size + sizeof(hdr)),
-		(long) (hdr.file_size + sizeof(hdr)),
+		(long)(hdr.file_size + sizeof(hdr)),
+		(long)(hdr.file_size + sizeof(hdr)),
 		hdr.num_modules);
 
 	return 0;
@@ -449,7 +449,7 @@ int write_logs_dictionary(struct image *image)
 			fprintf(stdout, "logs dictionary: size %u\n",
 				header.data_length + header.data_offset);
 			fprintf(stdout, "including fw version of size: %lu\n\n",
-				(unsigned long) sizeof(header.version));
+				(unsigned long)sizeof(header.version));
 		}
 	}
 out:
