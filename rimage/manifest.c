@@ -182,8 +182,8 @@ static int man_copy_sram(struct image *image, Elf32_Shdr *section,
 	}
 
 	/* file_offset for segment should not be 0s, we set it to
-	  * the smallest offset of its modules ATM.
-	  */
+	 * the smallest offset of its modules ATM.
+	 */
 	if (man_module->segment[seg_type].file_offset > offset ||
 	    man_module->segment[seg_type].file_offset == 0)
 		man_module->segment[seg_type].file_offset = offset;

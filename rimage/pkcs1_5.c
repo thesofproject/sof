@@ -65,7 +65,7 @@ static void bytes_swap(uint8_t *ptr, uint32_t size)
  * #1-v1_5 of the entire manifest structure, including all
  * extensions, and excluding the last 3 fields of the
  * manifest header (Public Key, Exponent and Signature).
-*/
+ */
 
 int pkcs_v1_5_sign_man_v1_5(struct image *image,
 			    struct fw_image_manifest_v1_5 *man,
