@@ -132,20 +132,20 @@ uint32_t platform_interrupt_get_enabled(void)
 
 void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
-	struct irq_desc *parent = interrupt_get_parent(irq);
-	struct irq_cascade_desc *cascade = container_of(parent,
-						struct irq_cascade_desc, desc);
-	if (parent && cascade->ops->mask)
-		cascade->ops->mask(parent, irq - cascade->irq_base, cpu);
+	struct irq_cascade_desc *cascade = interrupt_get_parent(irq);
+
+	if (cascade && cascade->ops->mask)
+		cascade->ops->mask(&cascade->desc, irq - cascade->irq_base,
+				   cpu);
 }
 
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
-	struct irq_desc *parent = interrupt_get_parent(irq);
-	struct irq_cascade_desc *cascade = container_of(parent,
-						struct irq_cascade_desc, desc);
-	if (parent && cascade->ops->unmask)
-		cascade->ops->unmask(parent, irq - cascade->irq_base, cpu);
+	struct irq_cascade_desc *cascade = interrupt_get_parent(irq);
+
+	if (cascade && cascade->ops->unmask)
+		cascade->ops->unmask(&cascade->desc, irq - cascade->irq_base,
+				     cpu);
 }
 
 static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
