@@ -19,7 +19,6 @@
 
 /* manifest template */
 struct fw_image_manifest_v1_8 cnl_manifest = {
-
 	.cse_partition_dir_header = {
 		.header_marker = CSE_HEADER_MAKER,
 		.nb_entries = MAN_CSE_PARTS,
@@ -85,7 +84,6 @@ struct fw_image_manifest_v1_8 cnl_manifest = {
 	},
 
 	.partition_info = {
-
 		.ext_type	= PART_INFO_EXT_TYPE,
 		.ext_len	= sizeof(struct partition_info_ext),
 

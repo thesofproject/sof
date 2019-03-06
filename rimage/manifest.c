@@ -145,7 +145,6 @@ static uint32_t elf_to_file_offset(struct image *image,
 			/* rodata segment, append to text segment */
 			file_offset = elf_addr - module->data_start +
 				module->foffset + module->text_fixup_size;
-
 		}
 	} else if (section->type == SHT_NOBITS) {
 		/* bss segment */
@@ -330,13 +329,11 @@ static int man_module_validate(struct sof_man_module *man_module)
 	int i, j;
 
 	for (i = 0; i < 3; i++) {
-
 		istart = man_module->segment[i].v_base_addr;
 		iend = istart + man_module->segment[i].flags.r.length *
 			MAN_PAGE_SIZE;
 
 		for (j = 0; j < 3; j++) {
-
 			/* don't validate segment against itself */
 			if (i == j)
 				continue;
@@ -451,7 +448,6 @@ static int man_module_create(struct image *image, struct module *module,
 
 	/* find all sections and copy to corresponding segments */
 	for (i = 0; i < module->hdr.shnum; i++) {
-
 		section = &module->section[i];
 
 		/* only check valid sections */

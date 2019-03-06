@@ -19,7 +19,6 @@
 
 /* manifest template */
 struct fw_image_manifest_v1_5_sue sue_manifest = {
-
 	.desc = {
 		.header = {
 			.header_id	= SOF_MAN_FW_HDR_ID,

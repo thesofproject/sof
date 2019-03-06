@@ -182,7 +182,6 @@ static int simple_write_module(struct image *image, struct module *module)
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\t\tType\n");
 
 	for (i = 0; i < module->hdr.shnum; i++) {
-
 		section = &module->section[i];
 
 		/* only write valid sections */
