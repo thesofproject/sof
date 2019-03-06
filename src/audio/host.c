@@ -129,32 +129,37 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
+#if CONFIG_DMA_GW
+	uint32_t bytes = next->size;
+#else
 	struct dma_sg_elem *local_elem;
-#if !CONFIG_DMA_GW
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
 	uint32_t next_size;
 	uint32_t need_copy = 0;
 	uint32_t period_bytes = hd->period_bytes;
-#endif
+	uint32_t bytes;
 
 	local_elem = hd->config.elem_array.elems;
+
+	bytes = local_elem->size;
+#endif
 
 	tracev_host("host_dma_cb()");
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 		/* recalc available buffer space */
-		comp_update_buffer_produce(hd->dma_buffer, local_elem->size);
+		comp_update_buffer_produce(hd->dma_buffer, bytes);
 	else
 		/* recalc available buffer space */
-		comp_update_buffer_consume(hd->dma_buffer, local_elem->size);
+		comp_update_buffer_consume(hd->dma_buffer, bytes);
 
-	dev->position += local_elem->size;
+	dev->position += bytes;
 
 	/* new local period, update host buffer position blks
 	 * local_pos is queried by the ops.potision() API
 	 */
-	hd->local_pos += local_elem->size;
+	hd->local_pos += bytes;
 
 	/* buffer overlap, hard code host buffer size at the moment ? */
 	if (hd->local_pos >= hd->host_size)
@@ -162,7 +167,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	/* NO_IRQ mode if host_period_size == 0 */
 	if (dev->params.host_period_bytes != 0) {
-		hd->report_pos += local_elem->size;
+		hd->report_pos += bytes;
 
 		/* send IPC message to driver if needed */
 		if (hd->report_pos >= dev->params.host_period_bytes) {
@@ -178,8 +183,8 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 #if !CONFIG_DMA_GW
 	/* update src and dest positions and check for overflow */
-	local_elem->src += local_elem->size;
-	local_elem->dest += local_elem->size;
+	local_elem->src += bytes;
+	local_elem->dest += bytes;
 	if (local_elem->src == hd->source->current_end) {
 		/* end of elem, so use next */
 
@@ -448,11 +453,29 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
+	uint32_t avail_bytes = 0;
+	uint32_t free_bytes = 0;
+	uint32_t copy_bytes = 0;
 	int ret;
 
-	tracev_host("host_buffer_cb(), bytes = 0x%x", bytes);
+	/* get data sizes from DMA */
+	ret = dma_get_data_size(hd->dma, hd->chan, &avail_bytes, &free_bytes);
+	if (ret < 0) {
+		trace_host_error("host_buffer_cb() error: dma_get_data_size() "
+				 "failed, ret = %u", ret);
+		return;
+	}
 
-	ret = dma_copy(hd->dma, hd->chan, bytes, 0);
+	/* calculate minimum size to copy */
+	copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+		MIN(avail_bytes, hd->dma_buffer->free) :
+		MIN(hd->dma_buffer->avail, free_bytes);
+
+	copy_bytes = MIN(copy_bytes, bytes);
+
+	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
+
+	ret = dma_copy(hd->dma, hd->chan, copy_bytes, 0);
 	if (ret < 0)
 		trace_host_error("host_buffer_cb() error: dma_copy() failed, "
 				 "ret = %u", ret);

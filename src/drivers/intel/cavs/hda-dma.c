@@ -350,32 +350,30 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 	if (chan->cb) {
 		/* loop over each period */
 		period_cnt = chan->buffer_bytes / chan->period_bytes;
-		for (i = 0; i < period_cnt; i++)
+		for (i = 0; i < period_cnt; i++) {
+			next.size = chan->period_bytes;
 			chan->cb(chan->cb_data, DMA_CB_TYPE_LLIST, &next);
+		}
 		/* do not need to test out next in this path */
 	}
 
 	return 0;
 }
 
-static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan)
+static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
+			      int bytes)
 {
 	struct dma_sg_elem next = {
 			.src = DMA_RELOAD_LLI,
 			.dest = DMA_RELOAD_LLI,
-			.size = DMA_RELOAD_LLI
+			.size = bytes
 	};
 
 	if (chan->cb) {
-		next.src = DMA_RELOAD_LLI;
-		next.dest = DMA_RELOAD_LLI;
-		next.size = DMA_RELOAD_LLI;
-
 		chan->cb(chan->cb_data, DMA_CB_TYPE_LLIST, &next);
-		if (next.size == DMA_RELOAD_END) {
+		if (next.size == DMA_RELOAD_END)
 			/* disable channel, finished */
 			hda_dma_stop(dma, chan->index);
-		}
 	}
 
 	/* Force Host DMA to exit L1 */
@@ -431,11 +429,11 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	}
 
 	/*
-	 * set BFPI to let host gateway knows we have read size,
+	 * set BFPI to let link gateway know we have read size,
 	 * which will trigger next copy start.
 	 */
 	hda_dma_inc_link_fp(dma, chan->index, bytes);
-	hda_dma_post_copy(dma, chan);
+	hda_dma_post_copy(dma, chan, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_LINK);
 	hda_dma_ptr_trace(chan, "link copy", HDA_DBG_LINK);
@@ -451,14 +449,14 @@ static int hda_dma_host_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 		     dma->plat_data.id, chan->index, bytes);
 
 	/*
-	 * set BFPI to let host gateway knows we have read size,
+	 * set BFPI to let host gateway know we have read size,
 	 * which will trigger next copy start.
 	 */
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_HOST);
 
 	hda_dma_inc_fp(dma, chan->index, bytes);
-	hda_dma_post_copy(dma, chan);
+	hda_dma_post_copy(dma, chan, bytes);
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_HOST);
 	hda_dma_ptr_trace(chan, "host copy", HDA_DBG_HOST);
