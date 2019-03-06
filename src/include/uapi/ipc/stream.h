@@ -98,8 +98,7 @@ struct sof_ipc_host_buffer {
 	uint32_t phy_addr;
 	uint32_t pages;
 	uint32_t size;
-	uint32_t offset;
-	uint32_t reserved[2];
+	uint32_t reserved[3];
 } __attribute__((packed));
 
 struct sof_ipc_stream_params {
