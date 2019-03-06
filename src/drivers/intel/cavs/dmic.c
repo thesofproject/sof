@@ -383,14 +383,11 @@ static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 		 * is possible. Then check that CIC decimation constraints
 		 * are met. The passed decimation modes are added to array.
 		 */
-		j = 0;
-		/* Loop until NULL */
-		while (fir_list[j]) {
+		for (j = 0; fir_list[j]; j++) {
 			mfir = fir_list[j]->decim_factor;
-			j++;
 
 			/* Skip if previous decimation factor was the same */
-			if (j > 2 && fir_list[j - 2]->decim_factor == mfir)
+			if (j > 1 && fir_list[j - 1]->decim_factor == mfir)
 				continue;
 
 			mcic = osr / mfir;
@@ -404,11 +401,12 @@ static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 				modes->mcic[i] = mcic;
 				modes->mfir[i] = mfir;
 				i++;
-				modes->num_of_modes = i;
 			}
-
 		}
 	}
+
+	modes->num_of_modes = i;
+
 #if defined MODULE_TEST
 	printf("# Found %d modes\n", i);
 #endif
