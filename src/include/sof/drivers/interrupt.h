@@ -134,7 +134,7 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu);
 
 void interrupt_init(void);
 int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl);
-struct irq_desc *interrupt_get_parent(uint32_t irq);
+struct irq_cascade_desc *interrupt_get_parent(uint32_t irq);
 int interrupt_get_irq(unsigned int irq, const char *cascade);
 
 static inline void interrupt_set(int irq)
