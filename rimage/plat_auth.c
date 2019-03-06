@@ -19,7 +19,7 @@
 #include "plat_auth.h"
 
 void ri_adsp_meta_data_create(struct image *image, int meta_start_offset,
-	int meta_end_offset)
+			      int meta_end_offset)
 {
 	struct sof_man_adsp_meta_file_ext *meta =
 		image->fw_image + meta_start_offset;

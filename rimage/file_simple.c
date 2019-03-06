@@ -70,7 +70,7 @@ static int get_mem_zone_type(struct image *image, Elf32_Shdr *section) {
 static int block_idx;
 
 static int write_block(struct image *image, struct module *module,
-	Elf32_Shdr *section)
+		       Elf32_Shdr *section)
 {
 	const struct adsp *adsp = image->adsp;
 	struct snd_sof_blk_hdr block;
@@ -170,14 +170,14 @@ static int simple_write_module(struct image *image, struct module *module)
 	fprintf(stdout, "\n\tTotals\tStart\t\tEnd\t\tSize");
 
 	fprintf(stdout, "\n\tTEXT\t0x%8.8x\t0x%8.8x\t0x%x\n",
-			module->text_start, module->text_end,
-			module->text_end - module->text_start);
+		module->text_start, module->text_end,
+		module->text_end - module->text_start);
 	fprintf(stdout, "\tDATA\t0x%8.8x\t0x%8.8x\t0x%x\n",
-			module->data_start, module->data_end,
-			module->data_end - module->data_start);
+		module->data_start, module->data_end,
+		module->data_end - module->data_start);
 	fprintf(stdout, "\tBSS\t0x%8.8x\t0x%8.8x\t0x%x\n\n ",
-			module->bss_start, module->bss_end,
-			module->bss_end - module->bss_start);
+		module->bss_start, module->bss_end,
+		module->bss_end - module->bss_start);
 
 	fprintf(stdout, "\tNo\tAddress\t\tSize\t\tFile\t\tType\n");
 
@@ -418,7 +418,7 @@ int write_logs_dictionary(struct image *image)
 			header.data_length = section->size;
 
 			fwrite(&header, sizeof(struct snd_sof_logs_header), 1,
-				image->ldc_out_fd);
+			       image->ldc_out_fd);
 
 			buffer = calloc(1, section->size);
 			if (!buffer)
@@ -435,7 +435,7 @@ int write_logs_dictionary(struct image *image)
 				goto out;
 			}
 			count = fwrite(buffer, 1, section->size,
-				image->ldc_out_fd);
+				       image->ldc_out_fd);
 			if (count != section->size) {
 				fprintf(stderr, "error: can't write section %d\n",
 					-errno);

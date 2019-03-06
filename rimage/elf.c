@@ -55,7 +55,7 @@ static int elf_read_sections(struct image *image, struct module *module)
 	module->strings = calloc(1, section[hdr->shstrndx].size);
 	if (!module->strings) {
 		fprintf(stderr, "error: failed %s to read ELF strings for %d\n",
-				module->elf_file, -errno);
+			module->elf_file, -errno);
 			return -errno;
 	}
 
@@ -259,7 +259,7 @@ int elf_is_rom(struct image *image, Elf32_Shdr *section)
 }
 
 static void elf_module_size(struct image *image, struct module *module,
-	Elf32_Shdr *section, int index)
+			    Elf32_Shdr *section, int index)
 {
 	switch (section->type) {
 	case SHT_PROGBITS:
@@ -391,7 +391,7 @@ static void elf_module_limits(struct image *image, struct module *module)
 
 /* make sure no section overlap from any modules */
 int elf_validate_section(struct image *image, struct module *module,
-	Elf32_Shdr *section, int index)
+			 Elf32_Shdr *section, int index)
 {
 	struct module *m;
 	Elf32_Shdr *s;
@@ -418,15 +418,15 @@ int elf_validate_section(struct image *image, struct module *module,
 
 			/* is section start non overlapping ? */
 			if (section->vaddr >= s->vaddr &&
-				section->vaddr <
-				s->vaddr + s->size) {
+			    section->vaddr <
+			    s->vaddr + s->size) {
 				goto err;
 			}
 
 			/* is section end non overlapping ? */
 			if (section->vaddr + section->size > s->vaddr &&
-				section->vaddr + section->size <=
-				s->vaddr + s->size) {
+			    section->vaddr + section->size <=
+			    s->vaddr + s->size) {
 				goto err;
 			}
 		}
@@ -481,7 +481,7 @@ int elf_validate_modules(struct image *image)
 }
 
 int elf_find_section(struct image *image, struct module *module,
-		const char *name)
+		     const char *name)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
 	Elf32_Shdr *section, *s;
@@ -546,7 +546,7 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 	module->fd = fopen(name, "rb");
 	if (module->fd == NULL) {
 		fprintf(stderr, "error: unable to open %s for reading %d\n",
-				name, errno);
+			name, errno);
 		return -EINVAL;
 	}
 	module->elf_file = name;

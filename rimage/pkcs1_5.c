@@ -221,8 +221,8 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 
 	/* sign the manifest */
 	ret = RSA_sign(NID_sha256, digest, SHA256_DIGEST_LENGTH,
-		(unsigned char *)man->css.signature,
-		&siglen, priv_rsa);
+		       (unsigned char *)man->css.signature,
+		       &siglen, priv_rsa);
 	if (ret < 0)
 		fprintf(stderr, "error: failed to sign manifest\n");
 
