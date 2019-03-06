@@ -95,13 +95,16 @@ struct dai_data {
 static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	uint32_t bytes = next->size;
 	void *buffer_ptr;
 
 	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
+	/* reload lli by default */
+	next->size = DMA_RELOAD_LLI;
+
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
-
 		/* stop the DAI */
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
 
@@ -111,7 +114,6 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 
 	/* is our pipeline handling an XRUN ? */
 	if (dd->xrun) {
-
 		/* make sure we only playback silence during an XRUN */
 		if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
 			/* fill buffer with silence */
@@ -121,40 +123,39 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 	}
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		/* make sure there is available bytes for next period */
-		if (dd->dma_buffer->avail < dd->period_bytes) {
+		/* make sure there are available bytes for next period */
+		if (dd->dma_buffer->avail < bytes) {
 			trace_dai_error_with_ids(dev, "dai_buffer_process() "
 						 "error: Insufficient bytes for"
 						 " next period. "
 						 "comp_underrun()");
-			comp_underrun(dev, dd->dma_buffer, dd->period_bytes,
-				      0);
+			comp_underrun(dev, dd->dma_buffer, bytes, 0);
 		}
 
 		/* recalc available buffer space */
-		comp_update_buffer_consume(dd->dma_buffer, dd->period_bytes);
+		comp_update_buffer_consume(dd->dma_buffer, bytes);
 
 		buffer_ptr = dd->dma_buffer->r_ptr;
 	} else {
-		/* make sure there is free bytes for next period */
-		if (dd->dma_buffer->free < dd->period_bytes) {
+		/* make sure there are free bytes for next period */
+		if (dd->dma_buffer->free < bytes) {
 			trace_dai_error_with_ids(dev, "dai_buffer_process() "
 						 "error: Insufficient free "
 						 "bytes for next period. "
 						 "comp_overrun()");
-			comp_overrun(dev, dd->dma_buffer, dd->period_bytes, 0);
+			comp_overrun(dev, dd->dma_buffer, bytes, 0);
 		}
 
 		/* recalc available buffer space */
-		comp_update_buffer_produce(dd->dma_buffer, dd->period_bytes);
+		comp_update_buffer_produce(dd->dma_buffer, bytes);
 
 		buffer_ptr = dd->dma_buffer->w_ptr;
 	}
 
 	/* update host position (in bytes offset) for drivers */
-	dev->position += dd->period_bytes;
+	dev->position += bytes;
 	if (dd->dai_pos) {
-		dd->dai_pos_blks += dd->period_bytes;
+		dd->dai_pos_blks += bytes;
 		*dd->dai_pos = dd->dai_pos_blks +
 			buffer_ptr - dd->dma_buffer->addr;
 	}
@@ -595,7 +596,12 @@ static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	uint32_t flags = 0;
+	uint32_t avail_bytes = 0;
+	uint32_t free_bytes = 0;
+	uint32_t copy_bytes = 0;
 	int ret = 0;
+
+	tracev_dai_with_ids(dev, "dai_copy()");
 
 	/* start DMA on preload */
 	if (pipeline_is_preload(dev->pipeline)) {
@@ -610,13 +616,25 @@ static int dai_copy(struct comp_dev *dev)
 		return ret;
 	}
 
+	/* get data sizes from DMA */
+	ret = dma_get_data_size(dd->dma, dd->chan, &avail_bytes, &free_bytes);
+	if (ret < 0)
+		return ret;
+
+	/* calculate minimum size to copy */
+	copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+		MIN(dd->dma_buffer->avail, free_bytes) :
+		MIN(avail_bytes, dd->dma_buffer->free);
+
+	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
+
 	if (dd->cb_type & DMA_CB_TYPE_BLOCK)
 		flags |= DMA_COPY_BLOCK;
 
 	if (dd->cb_type & DMA_CB_TYPE_LLIST)
 		flags |= DMA_COPY_LLIST;
 
-	ret = dma_copy(dd->dma, dd->chan, dd->period_bytes, flags);
+	ret = dma_copy(dd->dma, dd->chan, copy_bytes, flags);
 	if (ret < 0)
 		trace_dai_error("dai_copy() error: ret = %u", ret);
 

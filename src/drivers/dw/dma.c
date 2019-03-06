@@ -318,6 +318,7 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 					   int direction);
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel);
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel);
+static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags);
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
 {
@@ -513,6 +514,9 @@ out:
 static int dw_dma_release(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = p->chan + channel;
+	uint32_t next_ptr;
+	uint32_t bytes_left;
 	uint32_t flags;
 
 	if (channel >= dma->plat_data.channels) {
@@ -526,8 +530,19 @@ static int dw_dma_release(struct dma *dma, int channel)
 	spin_lock_irq(&dma->lock, flags);
 
 	/* get next lli for proper release */
-	p->chan[channel].lli_current =
-		(struct dw_lli2 *)p->chan[channel].lli_current->llp;
+	chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
+
+	/* copy leftover data between current and last lli */
+	next_ptr = DW_DMA_LLI_ADDRESS(chan->lli_current, chan->direction);
+	if (next_ptr >= chan->ptr_data.current_ptr)
+		bytes_left = next_ptr - chan->ptr_data.current_ptr;
+	else
+		/* pointer wrap */
+		bytes_left =
+			(chan->ptr_data.end_ptr - chan->ptr_data.current_ptr) +
+			(next_ptr - chan->ptr_data.start_ptr);
+
+	dw_dma_copy(dma, channel, bytes_left, DMA_COPY_BLOCK);
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
@@ -1206,11 +1221,6 @@ static void dw_dma_irq_callback(struct dma_chan_data *chan,
 				void (*verify)(struct dma_chan_data *,
 					       struct dma_sg_elem *))
 {
-	/* reload lli by default */
-	next->src = DMA_RELOAD_LLI;
-	next->dest = DMA_RELOAD_LLI;
-	next->size = DMA_RELOAD_LLI;
-
 	if (chan->cb)
 		chan->cb(chan->cb_data, type, next);
 
@@ -1222,7 +1232,11 @@ static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_chan_data *chan = &p->chan[channel];
-	struct dma_sg_elem next;
+	struct dma_sg_elem next = {
+		.src = DMA_RELOAD_LLI,
+		.dest = DMA_RELOAD_LLI,
+		.size = bytes
+	};
 
 	tracev_dwdma("dw-dma: %d channel %d copy", dma->plat_data.id,
 		     channel);
@@ -1237,6 +1251,12 @@ static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
 				    &dw_dma_verify_transfer);
 
+	/* change current pointer */
+	chan->ptr_data.current_ptr += bytes;
+	if (chan->ptr_data.current_ptr >= chan->ptr_data.end_ptr)
+		chan->ptr_data.current_ptr = chan->ptr_data.start_ptr +
+			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
+
 	return 0;
 }
 
@@ -1247,10 +1267,14 @@ static void dw_dma_irq_handler(void *data)
 	struct dma_id *dma_id = data;
 	struct dma *dma = dma_id->dma;
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct dma_sg_elem next;
 	uint32_t status_tfr, status_block, status_err, status_intr;
 	uint32_t mask;
 	int i = dma_id->channel;
+	struct dma_sg_elem next = {
+		.src = DMA_RELOAD_LLI,
+		.dest = DMA_RELOAD_LLI,
+		.size = DMA_RELOAD_LLI
+	};
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr) {
@@ -1329,7 +1353,6 @@ static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct dma_sg_elem next;
 	uint32_t status_tfr;
 	uint32_t status_block;
 	uint32_t status_block_new;
@@ -1338,6 +1361,11 @@ static void dw_dma_irq_handler(void *data)
 	uint32_t mask;
 	uint32_t pmask;
 	int i;
+	struct dma_sg_elem next = {
+		.src = DMA_RELOAD_LLI,
+		.dest = DMA_RELOAD_LLI,
+		.size = DMA_RELOAD_LLI
+	};
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr)
