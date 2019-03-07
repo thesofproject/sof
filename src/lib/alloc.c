@@ -465,7 +465,7 @@ static void free_block(void *ptr)
 #endif
 }
 
-#if defined CONFIG_DEBUG_HEAP
+#if CONFIG_DEBUG_HEAP
 
 static void trace_heap_blocks(struct mm_heap *heap)
 {

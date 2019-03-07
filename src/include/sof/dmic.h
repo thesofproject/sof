@@ -35,7 +35,7 @@
 #include <sof/dai.h>
 #include <sof/io.h>
 
-#if defined CONFIG_CAVS_DMIC
+#if CONFIG_CAVS_DMIC
 
 /* The microphones create a low frequecy thump sound when clock is enabled.
  * The unmute linear gain ramp chacteristic is defined here.
@@ -45,28 +45,28 @@
 #define DMIC_UNMUTE_CIC		1	/* Unmute CIC at 1 ms */
 #define DMIC_UNMUTE_FIR		2	/* Unmute FIR at 2 ms */
 
-#if defined CONFIG_APOLLOLAKE
+#if CONFIG_APOLLOLAKE
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		19200000
 #define DMIC_HW_FIFOS		2
 #endif
 
-#if defined CONFIG_CANNONLAKE
+#if CONFIG_CANNONLAKE
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		24000000
 #define DMIC_HW_FIFOS		2
 #endif
 
-#if defined CONFIG_SUECREEK
+#if CONFIG_SUECREEK
 #define DMIC_HW_VERSION		2
 #define DMIC_HW_CONTROLLERS	4
 #define DMIC_HW_IOCLK		19200000
 #define DMIC_HW_FIFOS		2
 #endif
 
-#if defined CONFIG_ICELAKE
+#if CONFIG_ICELAKE
 #define DMIC_HW_VERSION		1
 #define DMIC_HW_CONTROLLERS	2
 #define DMIC_HW_IOCLK		38400000
@@ -75,7 +75,7 @@
 
 #endif
 
-#if defined DMIC_HW_VERSION
+#if DMIC_HW_VERSION
 
 /* Parameters used in modes computation */
 #define DMIC_HW_BITS_CIC		26

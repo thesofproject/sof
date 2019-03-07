@@ -152,7 +152,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 	return 0;
 }
 
-#if defined(CONFIG_HOST_PTABLE)
+#if (CONFIG_HOST_PTABLE)
 int dma_trace_host_buffer(struct dma_trace_data *d,
 			  struct dma_sg_elem_array *elem_array,
 			  uint32_t host_size)
@@ -191,7 +191,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	return 0;
 }
 
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 
 static int dma_trace_start(struct dma_trace_data *d)
 {
@@ -309,7 +309,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 	if (err < 0)
 		return err;
 
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 	/*
 	 * GW DMA need finish DMA config and start before
 	 * host driver trigger start DMA

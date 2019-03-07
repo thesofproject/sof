@@ -35,7 +35,7 @@
 #include <config.h>
 #include <sof/bit.h>
 
-#if defined CONFIG_LIB
+#if CONFIG_LIB
 
 static inline uint32_t io_reg_read(uint32_t reg) {return 0;}
 static inline void io_reg_write(uint32_t reg, uint32_t val) {}

@@ -37,7 +37,7 @@
 #include <platform/memory.h>
 #include <platform/platcfg.h>
 
-#if defined CONFIG_SUECREEK
+#if CONFIG_SUECREEK
 #define MANIFEST_BASE	BOOT_LDR_MANIFEST_BASE
 #else
 #define MANIFEST_BASE	IMR_BOOT_LDR_MANIFEST_BASE

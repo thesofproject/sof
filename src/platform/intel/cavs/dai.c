@@ -51,7 +51,7 @@
 static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 #endif
 
-#if defined CONFIG_CAVS_DMIC
+#if CONFIG_CAVS_DMIC
 
 static struct dai dmic[2] = {
 	/* Testing idea if DMIC FIFOs A and B to access the same microphones
@@ -110,7 +110,7 @@ static struct dai_type_info dti[] = {
 		.num_dais = ARRAY_SIZE(ssp)
 	},
 #endif
-#if defined CONFIG_CAVS_DMIC
+#if CONFIG_CAVS_DMIC
 	{
 		.type = SOF_DAI_INTEL_DMIC,
 		.dai_array = dmic,
@@ -155,7 +155,7 @@ int dai_init(void)
 		spinlock_init(&hda[i].lock);
 	}
 
-#if defined(CONFIG_CAVS_DMIC)
+#if (CONFIG_CAVS_DMIC)
 	/* init dmic */
 	for (i = 0; i < ARRAY_SIZE(dmic); i++)
 		spinlock_init(&dmic[i].lock);
