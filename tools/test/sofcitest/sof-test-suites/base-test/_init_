@@ -1,0 +1,13 @@
+#!/bin/bash
+
+define _TPLG=$tplg
+
+_TPLG_ROOT='/lib/firmware/intel/sof-tplg'
+if [[ ! -f $tplg ]]; then
+    if [[ -f $_TPLG_ROOT/$tplg ]]; then
+        _TPLG=$_TPLG_ROOT/$tplg
+    else
+        _TPLG=
+    fi
+fi
+

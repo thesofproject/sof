@@ -1,0 +1,287 @@
+#!/bin/bash
+
+##############################################################################
+# BEG: dict impentation
+#-----------------------------------------------------------------------------
+# dict string defines as following format:
+#   "{key1=val1; key2=val 2; key3='val3'; ...}"
+#   - the both key & value mustn't include ';' character;
+#   - the key mustn't include space(' ') character;
+#-----------------------------------------------------------------------------
+ATU_MIN_RETRIEVE_ARGC=2
+ATU_EMPTY_DICT='{}'
+ATU_REPL_SP='!'
+
+ATU_EXPORT_VLIST=()
+
+ATU_FUNC_RET_STAT=/tmp/.atu-func.stat
+
+# get the key's value from dict string.
+# param: $1 - dict
+#        $2 - key
+#        $3 - default, if not find the key, the default value will be returned.
+function dict_value
+{
+    local dict=$1
+    local key=$2
+    local default=$3
+    dict="$(echo $dict | sed 's/\([{=;]\) */\1/g; s/  *\([=;}]\)/\1/g')"
+    local ret=$(echo $dict | awk -F$key'=' '{print $2}' | awk -F[';''}'] '{print $1}')
+    [[ -z $ret ]] && echo $default || echo $ret
+}
+
+# update the key's value or insert new key to dict.
+# param: $1 - dict
+#        $2 - "key=val", only one pair as input param;
+function dict_update
+{
+    local dict=$1
+    local kv=$2
+    kv=`echo $kv | sed 's/"//g'`
+    if [[ $kv =~ .*=.* ]]; then
+        # found value need be updated.
+        local key=${kv%=*}
+        local val=${kv#*=}
+        if [[ -z $(dict_value $dict $key) ]]; then
+            # append kv
+            echo ${dict/\}/$kv;\}}
+        else
+            echo $dict | sed 's#\('$key'=\)[^;]*;#\1'$val';#'
+        fi
+    else
+        # no value need be updated, remove key.
+        if [[ -n $(dict_value $dict $kv) ]]; then
+            echo $dict | sed 's#'$kv'[^;]*;##'
+        fi
+    fi
+}
+
+# retrieve the dict, and callback with corresponding key & value.
+# param: $1 - dict
+#        $2 - func_cb
+# note: the callback function should treat all rest args from 2nd as value.
+function dict_retrieve
+{
+    local dict=$1
+    local func_cb=$2
+    [[ ${#@} -lt $ATU_MIN_RETRIEVE_ARGC ]] && return 1
+    if [[ $dict != $ATU_EMPTY_DICT ]]; then
+        local ckvlist=($(echo $dict | sed 's# *\([{}=;]\) *#\1#g; s# #'$ATU_REPL_SP'#g; s#;#" "#g; s#[{}]#"#g'))
+        for ckv in ${ckvlist[@]}; do
+            local key=${ckv%=*}
+            local val=${ckv#*=}
+            $func_cb $key "${val//$ATU_REPL_SP/ }"
+        done
+    fi
+}
+# END: dict implentation
+##############################################################################
+
+
+##############################################################################
+# BEG: log
+# param: $1 tag, $2 content
+function __log
+{
+    [[ -z $NDEBUG ]] && echo $*
+}
+
+function logi
+{
+    __log '[INFO]:' $@
+}
+
+function loge
+{
+    __log '[ERROR]:' $@
+}
+
+function logw
+{
+    __log '[WARNING]:' $@
+}
+
+function rpt
+{
+    echo '[REPORT]:' $@
+}
+# END: log
+##############################################################################
+
+# define a variable which need be exported for child-shell used.
+# param: variable & value, e.g.: foo=bar
+function define
+{
+    local kv=${@:1}
+    if [[ $kv != ${kv%=*} ]]; then
+        eval $kv
+        eval export ${kv%=*}
+        ATU_EXPORT_VLIST=(${ATU_EXPORT_VLIST[@]} ${kv%=*})
+    else
+        eval $kv=${@:2}
+        eval export $kv
+        ATU_EXPORT_VLIST=(${ATU_EXPORT_VLIST[@]} $kv)
+    fi
+}
+
+# undefine a exported variable
+# param: $1 undefined key
+function undefine
+{
+    local key=$1
+    local index=0
+    for k in ${ATU_EXPORT_VLIST[@]}; do
+        [[ $k == $key ]] && {
+            unset $k
+            unset ATU_EXPORT_VLIST[$index]
+            break
+        }
+        index=$((index + 1))
+    done
+}
+
+# dummy code line for empty block within override function
+function __OCCUPY_LINE_DELETE_ME__
+{
+    echo -n
+}
+
+function timestamp
+{
+    local type=$1
+    local ret=""
+    case $type in
+        l)
+            ret=`date '+%s%N'`
+            ;;
+        *)
+            ret=`date '+%y%m%d_%H%M%S'`
+            ;;
+    esac
+    echo $ret
+}
+
+function new_uuid
+{
+    cat /proc/sys/kernel/random/uuid
+}
+
+function tmpfile
+{
+    local tmp=`mktemp -t .XXXXXXXX`
+    echo $tmp
+}
+
+# safe to call funct\ion
+# params: $1 - called function
+#         $2 - params of called func
+function safe_func_call
+{
+    local func=$1
+    [[ -n `declare -F | grep "declare -f $func"` ]] && eval '$func "${@:2}"'
+    atu_set_call_stat $?
+}
+
+function atu_set_call_stat
+{
+    local stat=$1
+    rm -rf $ATU_FUNC_RET_STAT
+    echo $stat > $ATU_FUNC_RET_STAT
+}
+
+function atu_get_call_stat
+{
+    local stat=`cat $ATU_FUNC_RET_STAT`
+    echo $stat
+}
+
+##############################################################################
+# BEG: environment cache and reset
+
+# cache the current environment, and return the cache file path
+function atu_cache_env
+{
+    local cache=$(tmpfile)
+    __atu_fetch_env $cache
+#    declare -p | sed '/declare -r /d; /declare -.r /d; s/^declare -. //g; s/^declare -.. //g' > $cache.src
+#    declare -f >> $cache.src
+    echo $cache
+}
+
+# cleanup the cache file
+function atu_clear_cache
+{
+    local cache=$1
+    if [[ `dirname $cache` != '/tmp' ]]; then
+        logw "Attempt to cleanup invalid cache [$cache], skip clear..."
+    else
+        [[ -f $cache ]] && rm -rf $cache
+#        [[ -f $cache.src ]] && rm -rf $cache.src
+    fi
+}
+
+# reset the environment to specified status via cache file
+# params: $1 - cached environment
+function atu_reset_env 
+{
+    local cache=$1
+    local tmp=$(tmpfile)
+    __atu_fetch_env $tmp
+
+    local envList=($(grep -vxf $cache $tmp))
+    for e in ${envList[@]}; do
+        unset $e
+    done
+    rm -rf $tmp
+
+    # reset cached env
+#    source $cache.src >/dev/null 2>&1
+}
+
+# fetch current whole environment, include variables & functions
+# $1 - cache file
+function __atu_fetch_env
+{
+    local tmp=$1
+    declare -p | sed -n '/declare/p' | awk -F[' ''='] '{print $3}' > $tmp
+    declare -F | sed -n '/declare/p' | cut -d ' ' -f 3 >> $tmp
+}
+# END: environment cache and reset
+##############################################################################
+
+# load the customized options based on suite or project
+# params: $1 - options' dict
+# note: this options should not be changed during the whole suite test phase
+#       until next suite initialized.
+function save_customized_options
+{
+    declare -g __options__="$@"
+}
+
+# get the value of specified customized option key
+# params: $1 - option's key
+# return the corresponding value of key
+function get_customized_option
+{
+    local key=$1
+    [[ -n $__options__ ]] && echo $(dict_value "$__options__" $key)
+}
+
+function set_nw_proxy
+{
+    # add network proxy
+    local hname=`hostname`
+    if [ ${hname:0:2} == "sh" ]; then
+        export http_proxy="http://child-prc.intel.com:913"
+        export https_proxy="https://child-prc.intel.com:913"
+    elif [ ${hname:0:2} == "cd" ]; then
+        export http_proxy="http://shzproxyslb.ice.intel.com:911"
+        export https_proxy="https://shzproxyslb.ice.intel.com:911"
+    fi
+}
+
+function clear_nw_proxy
+{
+    unset http_proxy
+    unset https_proxy
+}

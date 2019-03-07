@@ -1,0 +1,73 @@
+#!/bin/bash
+
+function env_checking
+{
+    local slnkAudioSrc=/etc/sof/audio-src
+    local audioSrcRepo=~/audio-files
+    local pulseAudio=/usr/bin/pulseaudio
+    local repoURL=https://gitlab.devtools.intel.com/sof-ci/audio-files.git
+
+    logi "checking [pulseaudio] ..."
+    if [[ -f $pulseAudio ]]; then
+        logw "[pulseaudio] is alive, kill it ..."
+        echo $sudopwd | sudo -S mv $pulseAudio $pulseAudio.bak
+        echo $sudopwd | sudo -S pkill -9 pulseaudio
+    fi
+    logi "checking [pulseaudio] DONE!"
+
+    # checking and setup the environment for project.
+    logi "checking the bin [expect] ..."
+    expect -v >/dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        logw "[expect] missed, attempt to install the [expect] ..."
+        echo $sudopwd | sudo -S apt install expect -y
+    fi
+    logi "checking the bin [expect] DONE!"
+
+    logi "checking the audio resource files ..."
+
+    if [[ ! -d $audioSrcRepo ]]; then
+        logw "missed the audio resource files, attempt to clone the audio-files repo ..."
+        git clone $repoURL $audioSrcRepo
+        echo $sudopwd | sudo -S bash -c "rm -rf $slnkAudioSrc; ln -s $audioSrcRepo $slnkAudioSrc"
+        logi "clone the audio-files repo DONE!"
+    fi
+
+    [[ ! -d `readlink $slnkAudioSrc` ]] &&
+        echo $sudopwd | sudo -S bash -c "rm -rf $slnkAudioSrc; ln -s $audioSrcRepo $slnkAudioSrc"
+
+    logi "checking the audio resource files DONE!"
+}
+
+## init project relative environment ##
+define _TPLG=$tplg
+
+_TPLG_ROOT='/lib/firmware/intel/sof-tplg'
+if [[ ! -f $tplg ]]; then
+    if [[ -f $_TPLG_ROOT/$tplg ]]; then
+        _TPLG=$_TPLG_ROOT/$tplg
+    else
+        logw "Topology doesn't exist, please check input topology"
+        _TPLG=
+    fi
+fi
+
+define _PLATFORM='unknown'
+
+modVers=`lscpu |grep "Model name" |awk -F " " '{print $6}'`
+case $modVers in
+    'E3826'|'E3845')
+        _PLATFORM="byt"
+        ;;
+    'A3960'|'N4200')
+        _PLATFORM="apl"
+        ;;
+    '0000')
+        _PLATFORM="cnl"
+        ;;
+    *)
+        logw 'Unsupported Model'
+        return 1
+esac
+
+env_checking

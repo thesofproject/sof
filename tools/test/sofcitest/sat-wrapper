@@ -1,0 +1,32 @@
+#!/bin/bash
+#set -x
+TEST_SUITE=platform/apl/up
+SAT_BIN=./sat
+MOD_VER=`lscpu |grep "Model name" |awk -F " " '{print $6}'`
+case $MOD_VER in
+    "E3826" | "E3845")
+        #byt
+        TEST_SUITE=platform/byt/mnb
+        ;;
+
+    "N4200")
+        #apl
+        TEST_SUITE=platform/apl/up
+        ;;
+
+    "0000")
+        #cnl
+        TEST_SUITE=platform/cnl
+        ;;
+
+    *)
+        echo "no matched platform, please confirm it"
+#        exit 1
+        ;;
+esac
+
+CUSTOMIZE_DICT="tplg=sof-apl-?.tplg;codec=nocodec;"
+
+[[ -n $1 ]] && CUSTOMIZE_DICT="tplg=$1;codec=$2"
+#$SAT_BIN -s $TEST_SUITE -C $CUSTOMIZE_DICT -x 
+$SAT_BIN -C $CUSTOMIZE_DICT -x 

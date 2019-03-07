@@ -1,0 +1,40 @@
+#!/bin/bash
+
+PASSED_INFO=""
+FAILED_INFO=""
+
+function __case_passed
+{
+    __OCCUPY_LINE_DELETE_ME__ #case passed post response
+}
+
+function __case_failed
+{
+    __OCCUPY_LINE_DELETE_ME__ #case failed post response
+}
+
+function __execute
+{
+    retrieve_tplg retrieved_param
+    return $?
+}
+
+# retrieve topology callback function
+# param: $1 alsa params
+function retrieved_param
+{
+    local param=$1
+    [[ -z $param ]] && return 1
+
+    local type=$(dict_value $param 'type')
+    local dev=$(dict_value $param 'dev')
+    local rate=$(dict_value $param 'rate')
+    local channel=$(dict_value $param 'channel')
+    local fmt=$(dict_value $param 'fmt')
+
+    if [[ $type == playback || $type == both ]]; then
+        check_speaker $dev $rate $fmt $channel 1
+        [[ $? -ne 0 ]] && return 1
+        wait_confirmed
+    fi
+}

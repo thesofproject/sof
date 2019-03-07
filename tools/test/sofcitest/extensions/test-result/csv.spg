@@ -1,0 +1,123 @@
+#!at-plugin-mode:on
+
+# include the utils
+. $SAT_ROOT/sat-fw/at-utils
+
+# output directory
+__SPG_CSV_OUTPUT=$OUTPUT_ROOT/csv_$(timestamp)
+__SPG_CSV_RESULT_FILE=$__SPG_CSV_OUTPUT/result.csv
+
+function _spg_init
+{
+    #echo "init shell plugin... $FUNCNAME"
+    mkdir -p $__SPG_CSV_OUTPUT
+}
+
+function _spg_uninit
+{
+    echo "init shell plugin... $FUNCNAME"
+}
+
+# prepare the project
+# params: $1 - project Name
+function _at_prepare_project
+{
+    local proj=$1
+    #echo "plugin demo: $FUNCNAME $proj"
+}
+
+# finished the project executing
+# params: $1 - project Name
+function _at_finished_project
+{
+    local proj=$1
+    #echo "plugin demo: $FUNCNAME $proj"
+}
+
+# prepare the test suite
+# params: $1 - test suite
+function _at_exec_suite_prepare
+{
+    # csv: output report title
+    echo "TestCases,Status" > $__SPG_CSV_RESULT_FILE
+}
+
+# get the test suite executing progress
+# params: $1 - test suite
+#         $2 - total cases count
+#         $3 - executed cases count
+#         $4 - status
+function _at_exec_suite_progress
+{
+    local suite=$1
+    local total=$2
+    local execCnt=$3
+    local stat=$4
+    #echo "plugin demo: $FUNCNAME $suite $total $execCnt $stat"
+}
+
+# test suite executed complete.
+# params: $1 - test suite
+#         $2 - status
+function _at_exec_suite_finished
+{
+    local suite=$1
+    local stat=$2
+    #echo "plugin demo: $FUNCNAME $suite $stat"
+
+    dict_retrieve "$stat" __inline_cb_func
+}
+
+# test case ready
+# params: $1 - caseInfo
+function _at_case_ready
+{
+    local info=$1
+    #echo "plugin demo: $FUNCNAME $info"
+
+    dict_retrieve "$info" __inline_cb_func
+}
+
+# test case passed
+# params: $1 - caseInfo
+function _at_case_passed
+{
+    local info=$1
+    local tc=`basename $(dict_value "$info" "name")`
+    echo "$tc,Pass" >> $__SPG_CSV_RESULT_FILE
+}
+
+# test case failed
+# params: $1 - caseInfo
+function _at_case_failed
+{
+    local info=$1
+    local tc=`basename $(dict_value "$info" "name")`
+    echo "$tc,Fail" >> $__SPG_CSV_RESULT_FILE
+}
+
+# test case blocked
+# params: $1 - caseInfo
+function _at_case_blocked
+{
+    local info=$1
+    local tc=`basename $(dict_value "$info" "name")`
+    echo "$tc,Pass" >> $__SPG_CSV_RESULT_FILE
+}
+
+# test case done
+# params: $1 - caseInfo
+function _at_case_done
+{
+    local info=$1
+    #echo "plugin demo: $FUNCNAME $info"
+
+    dict_retrieve "$info" __inline_cb_func
+}
+
+# dict retrieve callback
+function __inline_cb_func
+{
+    local key=$1
+    local val=$2
+}

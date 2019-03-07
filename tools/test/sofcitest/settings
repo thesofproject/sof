@@ -1,0 +1,9 @@
+audio-res=./resource
+
+output-root=./out/
+
+#
+#Log output modes
+enable-log-text=yes
+enable-log-csv=yes
+enable-log-tcr=no

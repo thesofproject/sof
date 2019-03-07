@@ -1,0 +1,12 @@
+_spg_init
+_spg_uninit
+_at_prepare_project
+_at_finished_project
+_at_exec_suite_prepare
+_at_exec_suite_progress
+_at_exec_suite_finished
+_at_case_ready
+_at_case_passed
+_at_case_failed
+_at_case_blocked
+_at_case_done

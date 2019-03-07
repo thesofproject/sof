@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# plugin's virtual functions table
+#__PG_VIRTBL=(_spg_init _spg_uninit)
+__PG_VIRTBL=()
+
+# plugin's temp script files
+__PG_TMP_FILES=()
+
+# initialize the plugins
+# params: $1 - pluginRoot;
+#         $2 - vtbl(virtual function table);
+function init_plugin
+{
+    local pluginRoot=$1
+    local vtbl=(${@:2})
+    __PG_VIRTBL=(${__PG_VIRTBL[@]} ${vtbl[@]})
+
+    local plugins=(`find $pluginRoot -iname "*.spg"`)
+    for p in ${plugins[@]}; do
+        local pluginMode=`head -1 $p | cut -d ':' -f 2`
+        if [[ $pluginMode == on ]]; then
+            local tmp=$(tmpfile)
+            __PG_TMP_FILES=(${__PG_TMP_FILES[@]} $tmp)
+            __construct_virtbl $p $tmp ${__PG_VIRTBL[@]}
+            source $tmp
+        fi
+    done
+    __define_virtual_functions
+    _spg_init
+}
+
+# uninitialize the plugins
+function uninit_plugin
+{
+    _spg_uninit
+    __undef_virtual_functions
+    for f in ${__PG_TMP_FILES[@]}; do
+        __destruct_virtbl $f ${__PG_VIRTBL[@]}
+    done
+    unset __PG_TMP_FILES
+    unset __PG_VIRTBL
+}
+
+# construct the virtual functions table
+# params: $1 - original source;
+#         $2 - temp script;
+#         $3 - virtual function table;
+function __construct_virtbl
+{
+    local src=$1
+    local tmp=$2
+    local vtbl=(${@:3})
+    local prefix=_${tmp##*.}
+
+    cat $src > $tmp
+
+    for vfunc in ${vtbl[@]}; do
+        sed -i 's/function  *'$vfunc'$/function '$prefix$vfunc'/; s/function  *'$vfunc'\([ #(].*\)/function '$prefix$vfunc'\1/' $tmp
+    done
+}
+
+# desctruct the virtual functions table
+# params: $1 - temp script;
+#         $2 - virtual function table;
+function __destruct_virtbl
+{
+    local tmp=$1
+    local vtbl=(${@:2})
+    local prefix=_${tmp##*.}
+
+    for v in ${vtbl[@]}; do
+        unset $prefix$v
+    done
+    rm -rf $tmp
+}
+
+# define the virtual functions for invoker
+function __define_virtual_functions
+{
+    for vfunc in ${__PG_VIRTBL[@]}; do
+        eval "
+            function $vfunc
+            {
+                for tmp in ${__PG_TMP_FILES[@]}; do
+                    local _func=_\${tmp##*.}$vfunc
+                    if [[ -n \`declare -F | grep \"declare -f \$_func\"\` ]]; then
+                        \$_func \$@
+                    fi
+                done
+            }
+        "
+    done
+}
+
+# undefine the virtual functions for invoker
+function __undef_virtual_functions
+{
+    for vfunc in ${__PG_VIRTBL[@]}; do
+        unset $vfunc
+    done
+}

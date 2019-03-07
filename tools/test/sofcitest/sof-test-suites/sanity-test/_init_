@@ -1,0 +1,10 @@
+#!/bin/bash
+
+function wait_confirmed
+{
+    read -p "=> Is the Test Case PASSED? (Y/n):" stat
+    [[ $stat == 'n' || $stat == 'N' ]] && return 1 || return 0
+}
+
+declare -fx wait_confirmed
+

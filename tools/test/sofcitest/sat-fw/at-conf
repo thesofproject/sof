@@ -1,0 +1,137 @@
+#!/bin/bash
+SDT_DICT='dict'
+SDT_ARRAY='array'
+
+function conf_new_proj
+{
+    local conf=$1
+    touch $conf
+    conf_general_upd $conf ""
+}
+
+function conf_general_upd #$1: conf, $2: item
+{
+    _conf_upd $1 $S_GENERAL $2
+}
+
+function conf_general_del #$1: conf, $2: item
+{
+    _conf_del $1 $S_GENERAL $2
+}
+
+function conf_general_load #$1: conf
+{
+    _conf_load_session $1 $S_GENERAL $SDT_DICT
+}
+
+function conf_suite_list_upd #$1: conf, $2: item
+{
+    _conf_upd $1 $S_SUITE_LIST $2
+}
+
+function conf_suite_list_del #$1: conf, $2: item
+{
+    _conf_del $1 $S_SUITE_LIST $2
+}
+
+function conf_suite_list_load #$1: conf
+{
+    _conf_load_session $1 $S_SUITE_LIST $SDT_ARRAY
+}
+
+function conf_customize_upd #$1: conf, $2: item
+{
+    _conf_upd $1 $S_CUSTOMIZE $2
+}
+
+function conf_customize_del #$1: conf, $2: item
+{
+    _conf_del $1 $S_CUSTOMIZE $2
+}
+
+function conf_customize_load #$1: conf
+{
+    _conf_load_session $1 $S_CUSTOMIZE $SDT_DICT
+}
+
+function conf_exclusive_upd #$1: conf, $2: item
+{
+    _conf_upd $1 $S_EXCLUSIVE $2
+}
+
+function conf_exclusive_del #$1: conf, $2: item
+{
+    _conf_del $1 $S_EXCLUSIVE $2
+}
+
+function conf_exclusive_load #$1: conf
+{
+    _conf_load_session $1 $S_EXCLUSIVE $SDT_ARRAY
+}
+#=============================================================================
+function _conf_upd #$1: conf, $2: session, $3: item
+{
+    local conf=$1
+    local session=$2
+    local items=(${3//;/ })
+
+    echo "start update config file [$conf]..."
+
+    for item in ${items[@]}; do
+        grep $session $conf > /dev/null
+        if [[ $? -ne 0 ]]; then
+            # create the new session, and attach item
+            echo "[$session]" >> $conf
+            echo $item >> $conf
+        else
+            local lno=$(sed -n '/\['$session'\]/,/\[/p' $conf | sed -n '/^'${item%=*}'=/=')
+            if [[ -z $lno ]]; then
+                lno=$(sed -n '/\['$session'\]/,/\[/p' $conf | sed -n '/^'$item'$/=')
+                [[ -n $lno ]] && sed -i $lno'd' $conf
+            else
+                sno=$(sed -n '/^\['$session'\]$/=' $conf)
+                sed -i $((sno + lno -1))'d' $conf
+            fi
+            sed -i '/\['$session'\]/a'$item $conf
+        fi
+    done
+
+    logi "update config file done."
+}
+
+function _conf_del #$1: conf, $2: session, $3: item
+{
+    local conf=$1
+    local session=$2
+    local item=$3
+
+    grep $session $conf > /dev/null
+    if [[ $? -eq 0 ]]; then
+        local lno=$(sed -n '/\['$session'\]/,/\[/p' $conf | sed -n '/^'${item%=*}'=/=')
+        if [[ -z $lno ]]; then
+            lno=$(sed -n '/\['$session'\]/,/\[/p' $conf | sed -n '/^'$item'$/=')
+            [[ -n $lno ]] && sed -i $lno'd' $conf
+        else
+            sed -i $lno'd' $conf
+        fi
+    fi
+}
+
+function _conf_load_session #$1: conf, $2: session, $3: type
+{
+    local conf=$1
+    local session=$2
+    local type=$3
+    local datline=$(sed -n '/\['$session'\]/,/\[/p; /^[[:space:]]$/d;' $conf | xargs echo)
+
+    # cleanup current & next session label
+    datline=${datline#*]}
+    datline=${datline%[*}
+
+    if [[ $type == $SDT_DICT ]]; then
+        datline="{${datline// /;}}"
+        datline=${datline/\{;/\{}
+        datline=${datline//;;/;}
+    fi
+    echo "$datline"
+}

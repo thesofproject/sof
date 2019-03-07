@@ -1,0 +1,50 @@
+usage: sat [options]
+Run the automation test suites according specified test project.
+
+  -p {PROJECT}                  Specified the test project which contains all relative test suites for this project;
+                                if -p isn't present, current default project will be used. (sof-test-suites),
+                                if the {PROJECT} doesn't exist, it will prompt user to confirm if need create a {PROJECT};
+                                if -f option present, the {PROJECT} will be created automatically.
+
+  -s {SUITE[;SUITE2;...]}       Select test suite {SUITE}, if not exist, create one manually or automatically (-f present);
+
+  -o {REPORT_ROOT}              Test report output directory, default output is under test project, named 'report' (TODO);
+  -C {KEY=VAL[;KEY2=VAL2;...]}  Specified the customized definition varibles which need saved as project level;
+                                e.g.: tplg=sof-apl-pcm512x.tplg;key=val;
+
+  -c {KEY=VAL[;KEY2=VAL2;...]}  Specified the customized definition varibles which need saved to specified test suites,
+                                it will check the option -s as target test suites;
+                                e.g.: -s platform/byt/mnb -c tplg=sof-apl-pcm512x.tplg;key=val;
+
+  -e {SUTIE=y|n[;SUITE2=y|n;...]}  Enable/disable the test suite with following format: 
+                                   test_suite1=y;test_suite2=n;test_suite3/sub_suite=y; the suite is the relative path of project root;
+
+
+  -f Force confirmed when the new project or case suite missed, and need create automatically;
+  -u Update the whole project's status if cases/suites changed. (TODO)
+  -l List the project's test suites or suites' cases (TODO);
+  -x Execute the test project or test suites (need match the option -s for specified executing test suites);
+  -h Show this help;
+
+example:
+    1. run the suite1 of myProject
+    sat -p myProject -s suite1 -x
+
+    2. query how many test suites in the myProject
+    sat -p myProject -l
+
+    3. add the new test suites in the myProject
+    sat -p myProject -s newSuite
+
+    4. set the common varible for myProject
+    sat -p myProject -C MY_VAR=value1
+
+    5. set the common varible for suite2 of myProject
+    sat -p myProject -s suite2 -c SUB_VAR=value2
+
+
+satwrapper is a simple wrapper of sof test project with sat, and it will auto detect the test platform for sof:
+usage: satwrapper tplg_file
+
+    tplg_file   Specified the topology file which need be tested.
+

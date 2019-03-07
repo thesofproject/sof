@@ -1,0 +1,394 @@
+#!/bin/bash
+
+__auto__=true
+
+TR_PASSED=0
+TR_BLOCKED=192
+TR_FAILED=1
+
+TEMPLATE_ROOT=$SAT_ROOT/template
+
+F_CASES_LIST=.tscl
+F_TMP_CASE_LIST=$(tmpfile)
+
+# callback function when retreiving the config's items, update the relative varibles
+# param: $1 key, $2 val
+function load_conf_callback
+{
+    local key=$1
+    local val=${@:2}
+    if [[ -n $val ]]; then
+        case $key in
+            $K_OUTPUT_ROOT)
+                OUTPUT_ROOT=$val
+                ;;
+
+            $K_REPORT_TYPE)
+                REPORT_TYPE=$val
+                ;;
+
+            $K_ASSIST_BIN)
+                logi "load config callback : "$val
+                if [[ -d $val ]]; then
+                    ASSIST_BIN=$val
+                elif [[ -d $PROJ_ROOT/$val ]]; then
+                    ASSIST_BIN=$PROJ_ROOT/$val
+                fi
+                ;;
+        esac
+    fi
+}
+
+function load_customize_callback
+{
+    local key=$1
+    local val=${@:2}
+    eval export $key=$val
+    __option_dict__=$(dict_update "$__option_dict__" "$key=$val")
+}
+
+# prepare the project, load the project's config file
+# param: $1 project
+function prepare_project
+{
+    local proj=$1
+    local projConf=$(conf_general_load $proj/$F_SUITE_CONF)
+    dict_retrieve $projConf load_conf_callback
+
+    # init output
+    local outFlag=$OUTPUT_ROOT/.out.flg
+    [[ -d $OUTPUT_ROOT && -f $outFlag ]] && rm -rf $OUTPUT_ROOT
+    mkdir -p $OUTPUT_ROOT
+    touch $outFlag
+
+    # load keywords
+    if [[ -d $PROJ_ROOT/$D_KEYWORDS_POOL ]]; then
+        local kfiles=(`find $PROJ_ROOT/$D_KEYWORDS_POOL -maxdepth 1 -type f | xargs echo`)
+        for kf in ${kfiles[@]}; do
+            source $kf
+        done
+        export PATH=$PROJ_ROOT/$D_KEYWORDS_POOL:$PATH
+    fi
+
+    export PATH=$ASSIST_BIN:$PATH
+
+    safe_func_call _at_prepare_project $proj
+}
+
+# finished the project executing.
+function finished_project
+{
+    local proj=$1
+    safe_func_call _at_finished_project $proj
+    # cleanup the project relative environment
+    local envPath=$PATH
+    export PATH=${envPath//$ASSIST_TOOLS:/}
+    [[ -d $PROJ_ROOT/$D_KEYWORDS_POOL ]] && export PATH=${envPath//$PROJ_ROOT\/$D_KEYWORDS_POOL:/}
+}
+
+# execute the test suite
+# param: $1 suite, $2 random
+function execute_suite
+{
+    # suite must be a absolute path.
+    local suite=$1
+    local random=$2
+    local suiteLog=$OUTPUT_ROOT/`basename $suite`/$LOG_FILE
+    [[ ${suite:0:1} != '/' ]] && {
+        logw "Invalid suite path, skipping test suite."
+        return 1
+    }
+
+    logi "Begin executing test suite: ["`basename $suite`"]"
+
+    init_suite $suite
+
+    load_case_list $suite $random
+    local fnList=(`cat $F_TMP_CASE_LIST | xargs echo`)
+    local total=${#fnList[@]}
+    logi "-------------------------- TOTAL CASES [$total] --------------------------"
+    local i=1
+    local passedCnt=0
+    local blockedCnt=0
+    local failedCnt=0
+
+    for fname in ${fnList[@]}; do
+        local res=$TR_PASSED
+        case `basename $fname` in
+            $F_SUITE_CONF|$F_INIT_SH|$F_CASES_LIST)
+                continue
+                ;;
+        esac
+
+        logi "BEG| {$i - $fname}: Executing Case..."
+        if [[ -f $suite/$fname ]]; then
+            __execute_case $suite $fname
+            res=$?
+            case $res in
+                $TR_PASSED)
+                    let passedCnt++
+                    ;;
+                $TR_BLOCKED)
+                    let blockedCnt++
+                    ;;
+                *)
+                    let failedCnt++
+                    ;;
+            esac
+        else
+            let failedCnt++
+            logw "test case doesn't exist, failed to execute!"
+        fi
+        logi "END| {$i - $fname}: Executing Done!"
+
+        local currStat="{total=$total;passed=$passedCnt;failed=$failedCnt;blocked=$blockedCnt;}"
+        safe_func_call _at_exec_suite_progress $suite $total $i "$currStat"
+
+        i=$((i + 1))
+    done
+    rm -rf $F_TMP_CASE_LIST
+
+    local execResult="{total=$total;passed=$passedCnt;failed=$failedCnt;blocked=$blockedCnt;}"
+    logi "End executing test suite: ["`basename $suite`"]"
+    logi "----------------------------------------------------------------"
+    report $suite $total $passedCnt
+    uninit_suite $suite "$execResult" $suiteLog
+}
+
+# report the test result
+# param: $1 suite, $2 total, $3 passedCnt
+function report
+{
+    rpt "========================== Summary =============================="
+    rpt "Test Date: "`date "+%D %T"`
+    rpt "Case Suites: ["$suite"]"
+    rpt "Total Cases : "$total
+    rpt "Passed Count: "$passedCnt
+    rpt "Failed Count: "$((total - passedCnt))
+    rpt "Pass Rate:    "$((passedCnt * 100 / total))"%"
+    rpt "================================================================"
+}
+
+# init the suite recusively from high-level to lower-level
+# param: $1 suite
+function init_suite
+{
+    local suite=$1
+    local curr=$suite
+    local initList=()
+    local custConfList=()
+
+    declare -g __option_dict__='{}'
+
+    # locate the _init_env
+    while [[ -n $curr ]]; do
+        [[ -f $curr/$F_INIT_SH ]] && initList=($curr/$F_INIT_SH ${initList[@]})
+        [[ -f $curr/$F_SUITE_CONF ]] && custConfList=($curr/$F_SUITE_CONF ${initList[@]})
+        curr=${curr%/*}
+    done
+
+    # init the customized variables
+    for conf in ${custConfList[@]}; do
+        local custConf=$(conf_customize_load $conf)
+        dict_retrieve $custConf load_customize_callback
+    done
+
+    # save the customized option for global option using;
+    save_customized_options "$__option_dict__"
+    unset __option_dict__
+
+    # init the environment from high-level to low-level
+    for e in ${initList[@]}; do
+        logi $e
+        source $e
+    done
+
+    safe_func_call _at_exec_suite_prepare "$suite"
+}
+
+# uninit the suite recusively from lower-level to high-level
+# params: $1 - suite
+#         $2 - execute result status "{passed=10;failed=20;blocked=5;}
+#         $3 - logFile
+function uninit_suite
+{
+    local suite=$1
+    local status=$2
+    local logFile=$3
+    safe_func_call _at_exec_suite_finished $suite "$status" $logFile
+
+    local curr=$suite
+    while [[ -n $curr ]]; do
+        [[ -f $curr/$F_UNINIT_SH ]] && source $curr/$F_UNINIT_SH
+        curr=${curr%/*}
+    done
+}
+
+# load case list from fixed test suite case list, or random with current directly.
+# param:  $1 suite, $2 random
+function load_case_list
+{
+    local suite=$1
+    local random=$2
+
+    if [[ -f $suite/$F_CASES_LIST && $random != true ]]; then
+        cp -f $suite/$F_CASES_LIST $F_TMP_CASE_LIST
+    else
+        local flist=(`cd $suite;find $suite -type f`)
+        if [[ $random == true ]]; then
+            # FIXME: need generate real random series.
+            local rflist=()
+            local cnt=${#flist[@]}
+            local i=$((RANDOM % cnt))
+            local bExist=false
+            local k=0
+            while [[ ${#rflist[@]} -ne $cnt ]]; do
+                for rf in ${rflist[@]}; do
+                    if [[ "$rf" == "${flist[i]}" ]]; then
+                        bExist=true
+                        break
+                    fi
+                done
+                if [[ $bExist == false ]]; then
+                    rflist=(${rflist[@]} ${flist[$i]})
+                    i=$(((i + 1) % cnt))
+                else
+                    i=$((RANDOM % cnt))
+                fi
+            done
+            flist=(${rflist[@]})
+        fi
+
+        for f in ${flist[@]}; do
+            case `basename $f` in
+                $F_SUITE_CONF|$F_INIT_SH|$F_CASES_LIST)
+                    continue
+                    ;;
+            esac
+            echo ${f//$suite\//} >> $F_TMP_CASE_LIST
+        done
+    fi
+}
+
+# response the case passed
+# params: $1 - caseInfo
+function _case_passed
+{
+    safe_func_call __case_passed "$*"
+    safe_func_call _at_case_passed "$*"
+    return $TR_PASSED
+}
+
+# response the case failed
+# params: $1 - caseInfo
+function _case_failed
+{
+    safe_func_call __case_failed "$*"
+    safe_func_call _at_case_failed "$*"
+    return $TR_FAILED
+}
+
+# response the case blocked, need user checks status manually.
+# params: $1 - caseInfo
+function _case_blocked
+{
+    safe_func_call __case_blocked "$*"
+    safe_func_call _at_case_blocked "$*"
+    return $TR_BLOCKED
+}
+
+# finish the test case
+# params: $1 - caseInfo {cuid=xxx;name=xxx;file=xxx;suite=xxx;}
+function _case_prepare
+{
+    safe_func_call __case_ready "$*"
+    safe_func_call _at_case_ready "$*"
+}
+
+# finish the test case
+# params: $1 - caseInfo
+function _case_finished
+{
+    safe_func_call __case_done "$*"
+    safe_func_call _at_case_done "$*"
+}
+
+# collect the all relative log data
+# params: $1 - logDir
+function __log_collection
+{
+    local logDir=$1
+
+    # collect the kernel debug data
+    local dbgFs=/sys/kernel/debug/sof
+    local sysDbg=$logDir/sof-sys-dbg
+    mkdir -p $sysDbg
+    # workaround: sleep 5 to release io written for debugfs
+    sleep 5
+    echo $sudopwd | sudo -S su -c "timeout 3 cp -rf $dbgFs/* $sysDbg/.;chmod -R a+w $sysDbg"
+
+    # collect the other relative data
+    local fileList=(
+        /etc/sof/manifest.xml
+        /etc/sof/*.ldc
+        /usr/bin/sof-logger
+    )
+    for f in ${fileList[@]}; do
+        cp -rf $f $logDir
+    done
+
+    dmesg -d > $logDir/dmesg.txt
+}
+
+# execute case
+# params: $1 - test suite
+#         $2 - test case
+#         $3 - extended params for case
+function __execute_case
+{
+    local suite=$1
+    local case=$2
+    local tc=$suite/$case
+    local result=0
+    local cuid=$(new_uuid)
+    local cache=$(atu_cache_env)
+
+    source $tc
+
+    local caseInfo="{cuid=$cuid;name=$case;file=$tc;suite=$suite;}"
+    _case_prepare "$caseInfo"
+
+    local logDir=$OUTPUT_ROOT/`basename $suite`/$case
+    mkdir -p $logDir
+    local logFile=$logDir/$case.txt
+    caseInfo=$(dict_update "$caseInfo" "logdir=$logDir")
+
+    safe_func_call __execute "$caseInfo" ${@:3} 2>&1 | tee $logFile
+    result=$(atu_get_call_stat)
+    case $result in
+        $TR_PASSED)
+            _case_passed "$caseInfo"
+            logi "=== CASE PASSED ===" | tee -a $logFile
+            ;;
+        $TR_BLOCKED)
+            _case_blocked "$caseInfo"
+            logi "=== CASE BLOCKED ===" | tee -a $logFile
+            ;;
+        *)
+            # TODO need add the on/off switcher for case to enable/disable log collection.
+            __log_collection $logDir
+
+            _case_failed "$caseInfo"
+            logi "=== CASE FAILED ===" | tee -a $logFile
+            result=$TR_FAILED
+            ;;
+    esac
+
+    caseInfo=$(dict_update "$caseInfo" "result=$result")
+    _case_finished "$caseInfo"
+
+    atu_reset_env $cache
+    atu_clear_cache $cache
+
+    return $result
+}
