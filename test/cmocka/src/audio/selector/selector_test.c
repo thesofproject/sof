@@ -78,9 +78,9 @@ static int setup(void **state)
 	cd->sink_format = parameters->sink_format;
 	
 	/* prepare paramters that will be used by sel_get_processing_function */
-	cd->in_channels_count = parameters->in_channels;
-	cd->out_channels_count = parameters->out_channels;
-	cd->sel_channel = parameters->sel_channel;
+	cd->config.in_channels_count = parameters->in_channels;
+	cd->config.out_channels_count = parameters->out_channels;
+	cd->config.sel_channel = parameters->sel_channel;
 
 	cd->sel_func = sel_get_processing_function(sel_state->dev);
 
@@ -88,7 +88,7 @@ static int setup(void **state)
 	sel_state->sink = test_malloc(sizeof(*sel_state->sink));
 	sel_state->dev->params.frame_fmt = parameters->sink_format;
 	size = parameters->frames * comp_frame_bytes(sel_state->dev);
-	if(cd->out_channels_count == SEL_SINK_1CH){
+	if (cd->config.out_channels_count == SEL_SINK_1CH){
 		size = size / sel_state->dev->params.channels;
 	}
 	sel_state->sink->w_ptr = test_calloc(parameters->buffer_size_ms,
@@ -154,7 +154,7 @@ static void verify_s16le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint16_t *src = (uint16_t *)source->r_ptr;
 	const uint16_t *dst = (uint16_t *)sink->w_ptr;
-	uint32_t in_channels = cd->in_channels_count;
+	uint32_t in_channels = cd->config.in_channels_count;
 	uint32_t channel;
 	uint32_t i;
 	uint32_t j = 0;
@@ -163,8 +163,8 @@ static void verify_s16le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 
 	for (i = 0; i < source->size / sizeof(uint16_t); i += in_channels) {
 		for (channel = 0; channel < in_channels; channel++) {
-			if (channel == cd->sel_channel) {
-				source_in = src[i + cd->sel_channel];
+			if (channel == cd->config.sel_channel) {
+				source_in = src[i + cd->config.sel_channel];
 				destination = dst[j++];
 				assert_int_equal(source_in, destination);
 			}
@@ -178,7 +178,7 @@ static void verify_s32le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint32_t *src = (uint32_t *)source->r_ptr;
 	const uint32_t *dst = (uint32_t *)sink->w_ptr;
-	uint32_t in_channels = cd->in_channels_count;
+	uint32_t in_channels = cd->config.in_channels_count;
 	uint32_t channel;
 	uint32_t i;
 	uint32_t j = 0;
@@ -187,8 +187,8 @@ static void verify_s32le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 
 	for (i = 0; i < source->size / sizeof(uint32_t); i += in_channels) {
 		for (channel = 0; channel < in_channels; channel++) {
-			if (channel == cd->sel_channel) {
-				source_in = src[i + cd->sel_channel];
+			if (channel == cd->config.sel_channel) {
+				source_in = src[i + cd->config.sel_channel];
 				destination = dst[j++];
 				assert_int_equal(source_in, destination);
 			}
