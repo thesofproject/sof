@@ -799,7 +799,11 @@ static struct comp_driver comp_dai = {
 	},
 };
 
+void sys_comp_dai_init(void);
+
 void sys_comp_dai_init(void)
 {
 	comp_register(&comp_dai);
 }
+
+DECLARE_COMPONENT(sys_comp_dai_init);

@@ -405,7 +405,11 @@ struct comp_driver comp_mixer = {
 	},
 };
 
+void sys_comp_mixer_init(void);
+
 void sys_comp_mixer_init(void)
 {
 	comp_register(&comp_mixer);
 }
+
+DECLARE_COMPONENT(sys_comp_mixer_init);

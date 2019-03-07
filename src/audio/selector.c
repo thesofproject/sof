@@ -50,7 +50,6 @@
 #include "selector.h"
 #include <sof/math/numbers.h>
 
-
 /**
  * \brief Validates channel count and index and sets channel count.
  * \details If input data is not supported trace error is displayed and
@@ -467,8 +466,12 @@ struct comp_driver comp_selector = {
 	},
 };
 
+void sys_comp_selector_init(void);
+
 /** \brief Initializes selector component. */
 void sys_comp_selector_init(void)
 {
 	comp_register(&comp_selector);
 }
+
+DECLARE_COMPONENT(sys_comp_selector_init);

@@ -923,7 +923,11 @@ struct comp_driver comp_eq_iir = {
 	},
 };
 
+void sys_comp_eq_iir_init(void);
+
 void sys_comp_eq_iir_init(void)
 {
 	comp_register(&comp_eq_iir);
 }
+
+DECLARE_COMPONENT(sys_comp_eq_iir_init);

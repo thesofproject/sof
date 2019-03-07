@@ -54,6 +54,9 @@ static int fr_id; /* comp id for fileread */
 static int fw_id; /* comp id for filewrite */
 static int sched_id; /* comp id for scheduling comp */
 
+/* compatible variables, not used */
+intptr_t _comp_init_start, _comp_init_end;
+
 /*
  * Parse shared library from user input
  * Currently only handles volume and src comp
