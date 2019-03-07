@@ -92,9 +92,9 @@ static int sel_set_channel_values(struct comp_data *cd, uint32_t in_channels,
 		return -EINVAL;
 	}
 
-	cd->in_channels_count = in_channels;
-	cd->out_channels_count = out_channels;
-	cd->sel_channel = ch_idx;
+	cd->config.in_channels_count = in_channels;
+	cd->config.out_channels_count = out_channels;
+	cd->config.sel_channel = ch_idx;
 
 	return 0;
 }
@@ -179,9 +179,9 @@ static int selector_params(struct comp_dev *dev)
 
 	/* rewrite channels number for other components */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
-		dev->params.channels = cd->out_channels_count;
+		dev->params.channels = cd->config.out_channels_count;
 	else
-		dev->params.channels = cd->in_channels_count;
+		dev->params.channels = cd->config.in_channels_count;
 
 	return 0;
 }
@@ -193,13 +193,30 @@ static int selector_params(struct comp_dev *dev)
  * \param[in,out] cdata Control command data.
  * \return Error code.
  */
-static int selector_ctrl_set_cmd(struct comp_dev *dev,
-				 struct sof_ipc_ctrl_data *cdata)
+static int selector_ctrl_set_data(struct comp_dev *dev,
+				  struct sof_ipc_ctrl_data *cdata)
 {
-	/* TODO add implementation aligned with SW assumptions */
-	trace_selector("selector_ctrl_set_cmd(), cdata->cmd = %u", cdata->cmd);
+	struct comp_data *cd = comp_get_drvdata(dev);
+	struct sof_sel_config *cfg;
+	int ret = 0;
 
-	return 0;
+	switch (cdata->cmd) {
+		case SOF_CTRL_CMD_BINARY:
+		trace_selector("selector_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
+
+		cfg = (struct sof_sel_config *)cdata->data->data;
+		/* Just copy the configuration & verify input params.*/
+		ret = sel_set_channel_values(cd, cfg->in_channels_count,
+				  cfg->out_channels_count, cfg->sel_channel);
+		break;
+	default:
+		trace_selector_error("selector_ctrl_set_cmd() error: "
+				     "invalid cdata->cmd = %u", cdata->cmd);
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
 
 /**
@@ -209,15 +226,36 @@ static int selector_ctrl_set_cmd(struct comp_dev *dev,
  * \param[in] size Command data size.
  * \return Error code.
  */
-static int selector_ctrl_get_cmd(struct comp_dev *dev,
-				 struct sof_ipc_ctrl_data *cdata, int size)
+static int selector_ctrl_get_data(struct comp_dev *dev,
+				  struct sof_ipc_ctrl_data *cdata, int size)
 {
-	/* TODO add implementation aligned with SW assumptions */
-	cdata->cmd = SOF_CTRL_CMD_ENUM;
-	trace_selector("selector_ctrl_get_cmd(), cdata->cmd = %u",
-		       cdata->index);
+	struct comp_data *cd = comp_get_drvdata(dev);
 
-	return 0;
+	int ret = 0;
+
+	switch (cdata->cmd) {
+	case SOF_CTRL_CMD_BINARY:
+		trace_selector("selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
+
+		/* Copy back to user space */
+		ret = memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
+			      (cdata->data))->size, &(cd->config),
+			      sizeof(cd->config));
+		if (ret < 0)
+			return ret;
+
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = sizeof(cd->config);
+		break;
+
+	default:
+		trace_selector_error("selector_ctrl_get_data() error:"
+				     "invalid cdata->cmd");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
 
 /**
@@ -232,17 +270,29 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 			int max_data_size)
 {
 	struct sof_ipc_ctrl_data *cdata = data;
+	int ret = 0;
 
 	trace_selector("selector_cmd()");
 
 	switch (cmd) {
+	case COMP_CMD_SET_DATA:
+		ret = selector_ctrl_set_data(dev, cdata);
+		break;
+	case COMP_CMD_GET_DATA:
+		ret = selector_ctrl_get_data(dev, cdata, max_data_size);
+		break;
 	case COMP_CMD_SET_VALUE:
-		return selector_ctrl_set_cmd(dev, cdata);
+		trace_selector("selector_cmd(), COMP_CMD_SET_VALUE");
+		break;
 	case COMP_CMD_GET_VALUE:
-		return selector_ctrl_get_cmd(dev, cdata, max_data_size);
+		trace_selector("selector_cmd(), COMP_CMD_GET_VALUE");
+		break;
 	default:
-		return -EINVAL;
+		trace_selector_error("selector_cmd() error: invalid command");
+		ret = -EINVAL;
 	}
+
+	return ret;
 }
 
 /**
@@ -396,7 +446,7 @@ static int selector_prepare(struct comp_dev *dev)
 				     "cd->sink_format = %u, "
 				     "cd->out_channels_count = %u",
 				     cd->source_format, cd->sink_format,
-				     cd->out_channels_count);
+				     cd->config.out_channels_count);
 		ret = -EINVAL;
 		goto err;
 	}

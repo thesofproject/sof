@@ -51,9 +51,9 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
 	int16_t *dest;
 	uint32_t i;
 	uint32_t j = 0;
-	uint32_t nch = cd->in_channels_count;
+	uint32_t nch = cd->config.in_channels_count;
 
-	for (i = cd->sel_channel; i < frames * nch; i += nch) {
+	for (i = cd->config.sel_channel; i < frames * nch; i += nch) {
 		src = buffer_read_frag_s16(source, i);
 		dest = buffer_write_frag_s16(sink, j++);
 		*dest = *src;
@@ -75,9 +75,9 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t *dest;
 	uint32_t i;
 	uint32_t j = 0;
-	uint32_t nch = cd->in_channels_count;
+	uint32_t nch = cd->config.in_channels_count;
 
-	for (i = cd->sel_channel; i < frames * nch; i += nch) {
+	for (i = cd->config.sel_channel; i < frames * nch; i += nch) {
 		src = buffer_read_frag_s32(source, i);
 		dest = buffer_write_frag_s32(sink, j++);
 		*dest = *src;
@@ -102,7 +102,7 @@ static void sel_s16le_nch(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t channel;
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < cd->in_channels_count; channel++) {
+		for (channel = 0; channel < cd->config.in_channels_count; channel++) {
 			src = buffer_read_frag_s16(source, j);
 			dest = buffer_write_frag_s16(sink, j);
 			*dest = *src;
@@ -129,7 +129,7 @@ static void sel_s32le_nch(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t channel;
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < cd->in_channels_count; channel++) {
+		for (channel = 0; channel < cd->config.in_channels_count; channel++) {
 			src = buffer_read_frag_s32(source, j);
 			dest = buffer_write_frag_s32(sink, j);
 			*dest = *src;
@@ -159,7 +159,7 @@ sel_func sel_get_processing_function(struct comp_dev *dev)
 	for (i = 0; i < ARRAY_SIZE(func_table); i++) {
 		if (cd->source_format != func_table[i].source)
 			continue;
-		if (cd->out_channels_count != func_table[i].out_channels)
+		if (cd->config.out_channels_count != func_table[i].out_channels)
 			continue;
 
 		/* TODO: add additional criteria as needed */

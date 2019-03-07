@@ -63,22 +63,25 @@
 #define SEL_SINK_2CH 2
 #define SEL_SINK_4CH 4
 
+/** \brief Selector component configuration data. */
+struct sof_sel_config {
+	/* selector supports 1 input and 1 output */
+	uint32_t in_channels_count;	/**< accepted values 2 or 4 */
+	uint32_t out_channels_count;	/**< accepted values 1 or 2 or 4 */
+	/* note: if 2 or 4 output channels selected the component works in
+	 * a passthrough mode
+	 */
+	uint32_t sel_channel;	/**< 0..3 */
+};
+
+
 /** \brief Selector component private data. */
 struct comp_data {
 	uint32_t source_period_bytes;	/**< source number of period bytes */
 	uint32_t sink_period_bytes;	/**< sink number of period bytes */
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
-
-	/* selector supports 1 input and 1 output */
-	uint32_t in_channels_count;	/**< accepted values 2 or 4 */
-	uint32_t out_channels_count;	/**< accepted values 1 or 2 or 4 */
-
-	/* note: if 2 or 4 output channels selected the component works in
-	 * a passthrough mode
-	 */
-	uint32_t sel_channel;	/**< 0..3 */
-
+	struct sof_sel_config config;	/**< component configuration data */
 	/**< channel selector processing function */
 	void (*sel_func)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
