@@ -160,6 +160,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
 	int i;
+	struct list_item *blist;
+	struct comp_buffer *sink;
 
 	trace_kpb("kpb_prepare()");
 
@@ -225,6 +227,23 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* initialie draining task */
 	schedule_task_init(&cd->draining_task, kpb_draining_task, cd);
 
+	/* search for the channel selector sink.
+	 * NOTE! We assume here that channel selector component device
+	 * is connected to the KPB sinks
+	 */
+	list_for_item(blist, &dev->bsink_list) {
+		sink = container_of(blist, struct comp_buffer, source_list);
+		if (!sink->sink) {
+			ret = -EINVAL;
+			break;
+		}
+		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
+			/* we found proper sink */
+			cd->rt_sink = sink;
+			break;
+		}
+	}
+
 	return ret;
 }
 
@@ -278,8 +297,8 @@ static int kpb_copy(struct comp_dev *dev)
 	/* get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
+	sink = kpb->rt_sink;
+
 	/* process source data */
 	/* check if there are valid pointers */
 	if (source && sink) {

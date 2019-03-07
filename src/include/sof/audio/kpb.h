@@ -128,7 +128,7 @@ struct comp_data {
 	struct task draining_task;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
-
+	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
 };
 
 #endif

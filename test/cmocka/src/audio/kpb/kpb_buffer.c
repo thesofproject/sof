@@ -116,6 +116,7 @@ static int buffering_test_setup(void **state)
 	sink->w_ptr = sink_data;
 	kpb_dev_mock->bsource_list.next = &source->sink_list;
 	kpb_dev_mock->bsink_list.next = &sink->source_list;
+	((struct comp_data *)kpb_dev_mock->private)->rt_sink = sink;
 
 	return 0;
 }
