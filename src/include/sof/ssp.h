@@ -57,10 +57,7 @@
 #define SSTSS		0x38
 #define SSCR2		0x40
 
-#if defined CONFIG_BAYTRAIL ||\
-	defined CONFIG_CHERRYTRAIL ||\
-	defined CONFIG_BROADWELL ||\
-	defined CONFIG_HASWELL
+#if CONFIG_BAYTRAIL || CONFIG_CHERRYTRAIL || CONFIG_BROADWELL || CONFIG_HASWELL
 #define SFIFOL		0x68
 #define SFIFOTT		0x6C
 #define SSCR3		0x70
@@ -119,7 +116,7 @@ extern const struct dai_ops ssp_ops;
 #define SSCR1_TTE	(1 << 30)
 #define SSCR1_TTELP	(1 << 31)
 
-#if defined CONFIG_BAYTRAIL || defined CONFIG_CHERRYTRAIL
+#if CONFIG_BAYTRAIL || CONFIG_CHERRYTRAIL
 /* SSCR2 bits */
 #define SSCR2_URUN_FIX0	BIT(0)
 #define SSCR2_URUN_FIX1	BIT(1)
@@ -131,9 +128,8 @@ extern const struct dai_ops ssp_ops;
 #define SSCR2_ASRC_CNTR_CLR		BIT(9)
 #define SSCR2_ASRC_FRM_CNRT_EN		BIT(10)
 #define SSCR2_ASRC_INTR_MASK		BIT(11)
-#elif defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-		|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK \
-		|| defined CONFIG_HASWELL || defined CONFIG_BROADWELL
+#elif CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE || CONFIG_ICELAKE || \
+	CONFIG_SUECREEK || CONFIG_HASWELL || CONFIG_BROADWELL
 #define SSCR2_TURM1		BIT(1)
 #define SSCR2_PSPSRWFDFD	BIT(3)
 #define SSCR2_PSPSTWFDFD	BIT(4)
@@ -172,8 +168,7 @@ extern const struct dai_ops ssp_ops;
 #define SSPSP2			0x44
 #define SSPSP2_FEP_MASK		0xff
 
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
+#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
 #define SSCR3		0x48
 #define SSIOC		0x4C
 
@@ -210,10 +205,8 @@ extern const struct dai_ops ssp_ops;
 #define SFIFOL_TFL(x)		((x) & 0xFFFF)
 #define SFIFOL_RFL(x)		((x) >> 16)
 
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_SUECREEK \
-	|| defined CONFIG_ICELAKE \
-	|| defined CONFIG_HASWELL || defined CONFIG_BROADWELL
+#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE || CONFIG_SUECREEK \
+	|| CONFIG_ICELAKE || CONFIG_HASWELL || CONFIG_BROADWELL
 #define SSTSA_TSEN			BIT(8)
 #define SSRSA_RSEN			BIT(8)
 
@@ -229,8 +222,7 @@ extern const struct dai_ops ssp_ops;
 #define SSIOC_SCOE	BIT(5)
 #endif
 
-#if defined CONFIG_APOLLOLAKE || defined CONFIG_CANNONLAKE \
-	|| defined CONFIG_ICELAKE || defined CONFIG_SUECREEK
+#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
 #define MNDSS(x)	((x) << 20)
 #define MCDSS(x)	((x) << 16)
 #endif

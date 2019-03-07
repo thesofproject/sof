@@ -44,7 +44,7 @@
 #define trace_dma_error(__e)	trace_error(TRACE_CLASS_DMA, __e)
 #define tracev_dma(__e)	tracev_event(TRACE_CLASS_DMA, __e)
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	int32_t *offset)
 {
@@ -73,7 +73,7 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 }
 #endif
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 
 static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 {
@@ -93,7 +93,7 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
  * Copies DSP memory to host in a single PAGE_SIZE or smaller block. Does not
  * waits/sleeps and can be used in IRQ context.
  */
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 
 int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 			    int32_t host_offset, void *local_ptr, int32_t size)
@@ -175,7 +175,7 @@ int dma_copy_new(struct dma_copy *dc)
 		return -ENODEV;
 	}
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	/* get DMA channel from DMAC0 */
 	dc->chan = dma_channel_get(dc->dmac, 0);
 	if (dc->chan < 0) {
@@ -191,7 +191,7 @@ int dma_copy_new(struct dma_copy *dc)
 	return 0;
 }
 
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 
 int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 {

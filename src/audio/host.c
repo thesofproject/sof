@@ -86,7 +86,7 @@ struct host_data {
 	uint32_t local_pos;	/**< Local position in host buffer */
 
 	/* local and host DMA buffer info */
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	struct hc_buf host;
 	struct hc_buf local;
 	/* pointers set during params to host or local above */
@@ -103,7 +103,7 @@ struct host_data {
 static int host_stop(struct comp_dev *dev);
 static int host_copy(struct comp_dev *dev);
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
@@ -130,7 +130,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem;
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
 	uint32_t next_size;
@@ -176,7 +176,7 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 		}
 	}
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	/* update src and dest positions and check for overflow */
 	local_elem->src += local_elem->size;
 	local_elem->dest += local_elem->size;
@@ -236,7 +236,7 @@ static int create_local_elems(struct comp_dev *dev)
 	struct dma_sg_elem_array *elem_array;
 	int err;
 
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 	elem_array = &hd->config.elem_array;
 #else
 	elem_array = &hd->local.elem_array;
@@ -289,7 +289,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		/* fall through */
 	case COMP_TRIGGER_XRUN:
 /* TODO: add attribute to dma interface and do run-time if() here */
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 		ret = dma_stop(hd->dma, hd->chan);
 		if (ret < 0)
 			trace_host_error("host_trigger(): dma stop failed: %d",
@@ -297,7 +297,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 #endif
 		break;
 	case COMP_TRIGGER_START:
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 		if (hd->chan < 0) {
 			ret = -EINVAL;
 			trace_host_error("host_trigger() error:"
@@ -332,7 +332,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_host *host;
 	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
 	uint32_t dir, caps, dma_dev;
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	int err;
 #endif
 
@@ -375,7 +375,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	}
 
 	/* init buffer elems */
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 	dma_sg_init(&hd->config.elem_array);
 #else
 	dma_sg_init(&hd->host.elem_array);
@@ -414,7 +414,7 @@ static void host_free(struct comp_dev *dev)
 	rfree(dev);
 }
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 static int host_elements_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -475,7 +475,7 @@ static int host_params(struct comp_dev *dev)
 
 	/* determine source and sink buffer elems */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 		hd->source = &hd->host;
 		hd->sink = &hd->local;
 #endif
@@ -491,7 +491,7 @@ static int host_params(struct comp_dev *dev)
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 		hd->period_count = cconfig->periods_sink;
 	} else {
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
 #endif
@@ -550,7 +550,7 @@ static int host_params(struct comp_dev *dev)
 	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 0;
 
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 	dev->params.stream_tag -= 1;
 	/* get DMA channel from DMAC
 	 * note: stream_tag is ignored by dw-dma
@@ -599,7 +599,7 @@ static int host_prepare(struct comp_dev *dev)
 
 	hd->local_pos = 0;
 	hd->report_pos = 0;
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	hd->split_remaining = 0;
 #endif
 	dev->position = 0;
@@ -635,7 +635,7 @@ static int host_position(struct comp_dev *dev,
 	return 0;
 }
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 static int host_buffer(struct comp_dev *dev,
 		       struct dma_sg_elem_array *elem_array,
 		       uint32_t host_size)
@@ -654,7 +654,7 @@ static int host_reset(struct comp_dev *dev)
 
 	trace_host("host_reset()");
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	dma_channel_put(hd->dma, hd->chan);
 	/* free all host DMA elements */
 	dma_sg_free(&hd->host.elem_array);
@@ -663,7 +663,7 @@ static int host_reset(struct comp_dev *dev)
 	dma_sg_free(&hd->local.elem_array);
 #endif
 
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 	dma_stop(hd->dma, hd->chan);
 	dma_channel_put(hd->dma, hd->chan);
 
@@ -675,7 +675,7 @@ static int host_reset(struct comp_dev *dev)
 	hd->chan = DMA_CHAN_INVALID;
 
 	host_pointer_reset(dev);
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 	hd->source = NULL;
 	hd->sink = NULL;
 #endif
@@ -716,7 +716,7 @@ static int host_copy(struct comp_dev *dev)
 /* TODO: this could be run-time if() based on the same attribute
  * as in the host_trigger().
  */
-#if defined CONFIG_DMA_GW
+#if CONFIG_DMA_GW
 	/* here only do preload, further copies happen
 	 * in host_buffer_cb()
 	 */
@@ -758,7 +758,7 @@ static void host_cache(struct comp_dev *dev, int cmd)
 
 		dma_sg_cache_wb_inv(&hd->config.elem_array);
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 		dma_sg_cache_wb_inv(&hd->local.elem_array);
 #endif
 
@@ -776,7 +776,7 @@ static void host_cache(struct comp_dev *dev, int cmd)
 		dcache_invalidate_region(hd, sizeof(*hd));
 		dcache_invalidate_region(hd->dma, sizeof(*hd->dma));
 
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 		dma_sg_cache_inv(&hd->local.elem_array);
 #endif
 
@@ -795,7 +795,7 @@ struct comp_driver comp_host = {
 		.trigger	= host_trigger,
 		.copy		= host_copy,
 		.prepare	= host_prepare,
-#if !defined CONFIG_DMA_GW
+#if !CONFIG_DMA_GW
 		.host_buffer	= host_buffer,
 #endif
 		.position	= host_position,

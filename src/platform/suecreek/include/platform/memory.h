@@ -226,7 +226,7 @@
 #define SOF_TEXT_SIZE		(0x40000 - SOF_TEXT_START_SIZE + 0x1000)
 
 /* initialized data */
-#if defined CONFIG_CAVS_DMIC
+#if CONFIG_CAVS_DMIC
 #define SOF_DATA_SIZE		0x1b000
 #else
 #define SOF_DATA_SIZE		0x19000

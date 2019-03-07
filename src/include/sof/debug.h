@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#if defined CONFIG_GDB_DEBUG
+#if CONFIG_GDB_DEBUG
 #define DEBUG_GDB	1
 #else
 #define DEBUG_GDB	0

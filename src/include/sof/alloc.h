@@ -127,7 +127,7 @@ void *_zalloc(int zone, uint32_t caps, size_t bytes);
 void *_balloc(int zone, uint32_t caps, size_t bytes);
 void rfree(void *ptr);
 
-#if defined CONFIG_DEBUG_HEAP
+#if CONFIG_DEBUG_HEAP
 
 #define rmalloc(zone, caps, bytes)			\
 	({void *_ptr;					\
