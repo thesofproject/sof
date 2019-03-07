@@ -94,7 +94,8 @@ struct block_map {
 } __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
 
 #define BLOCK_DEF(sz, cnt, hdr) \
-	{.block_size = sz, .count = cnt, .free_count = cnt, .block = hdr}
+	{.block_size = sz, .count = cnt, .free_count = cnt, .block = hdr, \
+	 .first_free = 0}
 
 struct mm_heap {
 	uint32_t blocks;
