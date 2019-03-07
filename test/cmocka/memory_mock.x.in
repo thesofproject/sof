@@ -6,5 +6,7 @@ SECTIONS
       *(*.static_log*)
     }
 
+    _comp_init_start = .;
+    _comp_init_end = .;
 }
 INSERT AFTER .text;

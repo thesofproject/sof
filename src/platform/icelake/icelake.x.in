@@ -404,6 +404,13 @@ SECTIONS
     _rodata_end = ABSOLUTE(.);
   } >sof_fw :sof_fw_phdr
 
+  .comp_init : ALIGN(4)
+  {
+    _comp_init_start = ABSOLUTE(.);
+    *(*.comp_init)
+    _comp_init_end = ABSOLUTE(.);
+  } >sof_fw :sof_fw_phdr
+
   .data : ALIGN(4)
   {
     _data_start = ABSOLUTE(.);

@@ -803,7 +803,11 @@ struct comp_driver comp_host = {
 	},
 };
 
+void sys_comp_host_init(void);
+
 void sys_comp_host_init(void)
 {
 	comp_register(&comp_host);
 }
+
+DECLARE_COMPONENT(sys_comp_host_init);

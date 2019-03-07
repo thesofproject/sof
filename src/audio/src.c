@@ -971,7 +971,11 @@ struct comp_driver comp_src = {
 	},
 };
 
+void sys_comp_src_init(void);
+
 void sys_comp_src_init(void)
 {
 	comp_register(&comp_src);
 }
+
+DECLARE_COMPONENT(sys_comp_src_init);

@@ -140,6 +140,17 @@
 #define COMP_CMD_IPC_MMAP_VOL(chan)	(216 + chan)	/**< Volume */
 /** @}*/
 
+/** \name Declare component macro
+ *  \brief Usage at the end of comp file: DECLARE_COMPONENT(sys_comp_*_init);
+ *  @{
+ */
+#ifdef CHECK
+#define DECLARE_COMPONENT(init)
+#else
+#define DECLARE_COMPONENT(init) __attribute__((__used__)) \
+	__attribute__((section(".comp_init"))) static void(*f)(void) = init
+#endif
+
 /** \name Trace macros
  *  @{
  */
@@ -493,64 +504,6 @@ static inline void comp_cache(struct comp_dev *dev, int cmd)
  * To be called once at boot time.
  */
 void sys_comp_init(void);
-
-/* default base component initialisations */
-#ifdef CONFIG_COMP_DAI
-void sys_comp_dai_init(void);
-#else
-static inline void sys_comp_dai_init(void) {}
-#endif
-void sys_comp_host_init(void);
-#ifdef CONFIG_COMP_MIXER
-void sys_comp_mixer_init(void);
-#else
-static inline void sys_comp_mixer_init(void) {}
-#endif
-#ifdef CONFIG_COMP_MUX
-void sys_comp_mux_init(void);
-#else
-static inline void sys_comp_mux_init(void) {}
-#endif
-#ifdef CONFIG_COMP_SWITCH
-void sys_comp_switch_init(void);
-#else
-static inline void sys_comp_switch_init(void) {}
-#endif
-#ifdef CONFIG_COMP_VOLUME
-void sys_comp_volume_init(void);
-#else
-static inline void sys_comp_volume_init(void) {}
-#endif
-#ifdef CONFIG_COMP_SRC
-void sys_comp_src_init(void);
-#else
-static inline void sys_comp_src_init(void) {}
-#endif
-#ifdef CONFIG_COMP_TONE
-void sys_comp_tone_init(void);
-#else
-static inline void sys_comp_tone_init(void) {}
-#endif
-#ifdef CONFIG_COMP_IIR
-void sys_comp_eq_iir_init(void);
-#else
-static inline void sys_comp_eq_iir_init(void) {}
-#endif
-#ifdef CONFIG_COMP_FIR
-void sys_comp_eq_fir_init(void);
-#else
-static inline void sys_comp_eq_fir_init(void) {}
-#endif
-#ifdef CONFIG_COMP_KPB
-void sys_comp_kpb_init(void);
-#else
-static inline void sys_comp_kpb_init(void) {}
-#endif
-#ifdef CONFIG_COMP_SEL
-void sys_comp_selector_init(void);
-#else
-static inline void sys_comp_selector_init(void) {}
-#endif
 
 /** @}*/
 

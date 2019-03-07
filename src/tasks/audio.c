@@ -54,18 +54,6 @@ int do_task_master_core(struct sof *sof)
 
 	/* init default audio components */
 	sys_comp_init();
-	sys_comp_dai_init();
-	sys_comp_host_init();
-	sys_comp_mixer_init();
-	sys_comp_mux_init();
-	sys_comp_switch_init();
-	sys_comp_volume_init();
-	sys_comp_src_init();
-	sys_comp_tone_init();
-	sys_comp_eq_iir_init();
-	sys_comp_eq_fir_init();
-	sys_comp_selector_init();
-	sys_comp_kpb_init();
 
 #if STATIC_PIPE
 	/* init static pipeline */

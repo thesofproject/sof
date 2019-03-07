@@ -227,7 +227,15 @@ void comp_set_period_bytes(struct comp_dev *dev, uint32_t frames,
 
 void sys_comp_init(void)
 {
+	extern intptr_t _comp_init_start, _comp_init_end;
+
 	cd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	list_init(&cd->list);
 	spinlock_init(&cd->lock);
+
+	intptr_t *comp_init = (intptr_t *)(&_comp_init_start);
+
+	for (; comp_init < (intptr_t *)&_comp_init_end; ++comp_init) {
+		((void(*)(void))(*comp_init))();
+	}
 }
