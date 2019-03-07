@@ -250,68 +250,43 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	unsigned int start;
 	unsigned int current;
 	unsigned int count = bytes / map->block_size;
-	unsigned int i;
-	unsigned int remaining = map->count - count;
-	unsigned int end;
+	unsigned int remaining = 0;
 
 	if (bytes % map->block_size)
 		count++;
 
-	/* check for continuous blocks from "start" */
-	for (start = map->first_free; start < remaining; start++) {
+	/* check if we have enough consecutive blocks for requested
+	 * allocation size.
+	 */
+	for (current = map->first_free; current < map->count ||
+	     count > remaining; current++) {
+		hdr = &map->block[current];
 
-		/* check that we have enough free blocks from start pos */
-		end = start + count;
-		for (current = start; current < end; current++) {
-			hdr = &map->block[current];
-
-			/* is block used */
-			if (hdr->used) {
-				/* continue after the "current" */
-				start = current;
-				break;
-			}
-		}
-
-		/* enough free blocks ? */
-		if (current == end)
-			break;
+		if (!hdr->used)
+			remaining++;
 	}
 
-	if (start >= remaining) {
-		/* not found */
-		trace_mem_error("error: cant find %d cont blocks %d remaining",
+	if (count > map->count || remaining < count) {
+		trace_mem_error("error: %d blocks needed for allocation "
+				"but only %d blocks are remaining",
 				count, remaining);
 		return NULL;
 	}
 
-	/* found some free blocks */
+	/* we found enough space, let's allocate it */
+	start = map->first_free;
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
 	hdr = &map->block[start];
 	hdr->size = count;
 	heap->info.used += count * map->block_size;
 	heap->info.free -= count * map->block_size;
+	map->first_free = map->first_free + count;
 
-	/* allocate each block */
-	for (current = start; current < end; current++) {
+	/* update each block */
+	for (current = start; current < count; current++) {
 		hdr = &map->block[current];
 		hdr->used = 1;
-	}
-
-	/* do we need to find a new first free block ? */
-	if (start == map->first_free) {
-
-		/* find next free */
-		for (i = map->first_free + count; i < map->count; ++i) {
-
-			hdr = &map->block[i];
-
-			if (hdr->used == 0) {
-				map->first_free = i;
-				break;
-			}
-		}
 	}
 
 	return ptr;
