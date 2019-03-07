@@ -5,7 +5,7 @@ dnl Define macro for channel selector widget
 dnl Selector name)
 define(`N_SELECTOR', `SELECTOR'PIPELINE_ID`.'$1)
 
-dnl W_SELECTOR(name, format, periods_sink, periods_source, in_chan_cnt, out_chan_cnt, sel_chan_index)
+dnl W_SELECTOR(name, format, periods_sink, periods_source, kcontrols_list)
 define(`W_SELECTOR',
 `SectionVendorTuples."'N_SELECTOR($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
@@ -40,6 +40,9 @@ define(`W_SELECTOR',
 `	data ['
 `		"'N_SELECTOR($1)`_data_w"'
 `		"'N_SELECTOR($1)`_data_str"'
+`	]'
+`	bytes ['
+		$5
 `	]'
 `}')
 
