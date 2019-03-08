@@ -3,6 +3,8 @@
 # fail on any errors
 set -e
 
+rm -rf build_host
+
 mkdir build_host
 cd build_host
 
