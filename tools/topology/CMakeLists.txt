@@ -40,6 +40,7 @@ set(MACHINES
 	sof-whl-rt5682
 	sof-cml-src-rt5682
 	sof-cnl-nocodec
+	sof-glk-src-max98357
 )
 
 add_custom_target(topologies ALL)
