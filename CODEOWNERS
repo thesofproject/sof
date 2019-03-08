@@ -14,6 +14,7 @@ src/include/host/*			@ranj063
 src/include/uapi/**			@bardliao @wwittbrx @zrombel @dbaluta
 src/include/uapi/ipc/*			@xiulipan @bardliao @wwittbrx @zrombel @dbaluta
 src/include/gdb/*			@mrajwa
+src/include/audio/kpb.h			@mrajwa
 
 # audio component
 src/audio/src*				@singalsu
@@ -21,6 +22,7 @@ src/audio/eq*				@singalsu
 src/audio/fir*				@singalsu
 src/audio/iir*				@singalsu
 src/audio/tone.c			@singalsu
+src/audio/kpb.c				@mrajwa
 
 # platforms
 src/arch/xtensa/*			@tlauda
@@ -28,6 +30,7 @@ src/platform/*				@tlauda
 src/platform/baytrail/*			@xiulipan
 src/platform/haswell/*			@xiulipan @randerwang
 src/platform/suecreek/*			@lyakh
+src/arch/xtensa/gdb/*			@mrajwa
 
 # drivers
 src/drivers/intel/cavs/dmic.c		@singalsu
