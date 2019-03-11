@@ -47,8 +47,9 @@
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
-static void kpb_draining_task(void *arg);
+static void draining_task(void *arg);
 static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source);
+static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -243,8 +244,10 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* register KPB for async notification */
 	notifier_register(&cd->kpb_events);
 
-	/* initialie draining task */
-	schedule_task_init(&cd->draining_task, kpb_draining_task, cd);
+	/* initialize draining task */
+	schedule_task_init(&cd->draining_task, draining_task,
+			   &cd->draining_task_data);
+	schedule_task_config(&cd->draining_task, TASK_PRI_MED, 0);
 
 	/* search for the channel selector sink.
 	 * NOTE! We assume here that channel selector component device
@@ -520,6 +523,11 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 {
 	uint8_t is_sink_ready = (kpb->clients[cli->id].sink->sink->state
 				 == COMP_STATE_ACTIVE) ? 1 : 0;
+	size_t history_depth = cli->history_depth;
+	struct hb *buff = &kpb->history_buffer;
+	size_t buffered = 0;
+	size_t read_offset;
+	struct hb *first_buff = buff;
 
 	if (kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED) {
 		/* TODO: possibly move this check to draining task
@@ -531,17 +539,105 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	} else if (!is_sink_ready) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"sink not ready for draining");
+
+	} else if (!kpb_have_enough_history_data(buff, history_depth)) {
+		trace_kpb_error("kpb_init_draining() error: "
+				"not enough data in history buffer");
 	} else {
+		/* draining accepted, find proper buffer to start reading */
+		while (buff->next && buff->next != first_buff) {
+			if (buff->state == KPB_BUFFER_FREE)
+				break;
+			else
+				buff = buff->next;
+		}
+
+		while (buffered < history_depth) {
+			if (buff->state == KPB_BUFFER_FULL) {
+				buffered += (int)buff->end_addr -
+					    (int)buff->start_addr;
+			} else {
+				buffered += (int)buff->w_ptr -
+					    (int)buff->start_addr;
+			}
+
+			buff = buff->next;
+		}
+
+		read_offset = buffered - history_depth;
+
+		if (read_offset > 0)
+			buff->r_ptr = buff->start_addr + read_offset;
+		else
+			buff->r_ptr = buff->start_addr;
+
 		/* add one-time draining task into the scheduler */
-		schedule_task(&kpb->draining_task, 0, 0);
+		kpb->draining_task_data.sink = cli->sink;
+		kpb->draining_task_data.history_buffer = buff;
+
+		schedule_task_idle(&kpb->draining_task, 100);
 	}
 }
 
-static void kpb_draining_task(void *arg)
+static void draining_task(void *arg)
 {
-	/* TODO: while loop drainning history buffer accoriding to
-	 * clients request
-	 */
+	struct dd *draining_data = (struct dd *)arg;
+	struct comp_buffer *sink = draining_data->sink;
+	struct hb *buff = draining_data->history_buffer;
+	size_t size_to_read = (int)buff->end_addr - (int)buff->r_ptr;
+	size_t size_to_copy;
+
+	while (draining_data->history_depth > 0 && sink->avail > 0) {
+		if (size_to_read > sink->avail) {
+			if (sink->avail >= draining_data->history_depth)
+				size_to_copy = draining_data->history_depth;
+			else
+				size_to_copy = sink->avail;
+
+			memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
+			buff->r_ptr += (int)size_to_copy;
+			draining_data->history_depth -= size_to_copy;
+
+			comp_update_buffer_produce(sink, size_to_copy);
+		} else {
+			if (size_to_read >= draining_data->history_depth)
+				size_to_copy = draining_data->history_depth;
+			else
+				size_to_copy = size_to_read;
+
+			memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
+			buff->r_ptr = buff->start_addr;
+			draining_data->history_depth -= size_to_copy;
+			draining_data->history_buffer = buff->next;
+
+			comp_update_buffer_produce(sink, size_to_copy);
+		}
+	}
+}
+
+static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
+{
+	uint8_t ret = 0;
+	size_t buffered_data = 0;
+	struct hb *first_buff = buff;
+
+	while (buffered_data < his_req) {
+		if (buff->state == KPB_BUFFER_FREE) {
+			buffered_data += ((int)buff->w_ptr -
+					  (int)buff->start_addr);
+		} else {
+			buffered_data += ((int)buff->end_addr -
+					  (int)buff->start_addr);
+		}
+
+		if (buff->next && buff->next != first_buff)
+			buff = buff->next;
+		else
+			break;
+	}
+
+	ret = (buffered_data >= his_req) ? 1 : 0;
+	return ret;
 }
 
 static int kpb_params(struct comp_dev *dev)

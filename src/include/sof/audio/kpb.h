@@ -118,6 +118,13 @@ struct hb {
 	struct hb *next; /**< next history buffer */
 };
 
+struct dd {
+	struct comp_buffer *sink;
+	struct hb *history_buffer;
+	size_t history_depth;
+	uint8_t is_draining_active;
+};
+
 /*! Key phrase buffer component */
 struct comp_data {
 	/* runtime data */
@@ -126,6 +133,7 @@ struct comp_data {
 	struct hb history_buffer;
 	struct notifier kpb_events; /**< KPB events object */
 	struct task draining_task;
+	struct dd draining_task_data;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
