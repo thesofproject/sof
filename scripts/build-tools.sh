@@ -1,6 +1,8 @@
 #!/bin/bash
 cd tools
 
+rm -rf build_tools
+
 mkdir build_tools
 cd build_tools
 cmake ..
