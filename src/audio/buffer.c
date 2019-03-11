@@ -112,6 +112,13 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	uint32_t head = bytes;
 	uint32_t tail = 0;
 
+	/* return if no bytes */
+	if (!bytes) {
+		trace_buffer("comp_update_buffer_produce(), "
+			     "no bytes to produce");
+		return;
+	}
+
 	spin_lock_irq(&buffer->lock, flags);
 
 	/* calculate head and tail size for dcache circular wrap ops */
@@ -177,6 +184,13 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
 	uint32_t flags;
+
+	/* return if no bytes */
+	if (!bytes) {
+		trace_buffer("comp_update_buffer_consume(), "
+			     "no bytes to consume");
+		return;
+	}
 
 	spin_lock_irq(&buffer->lock, flags);
 
