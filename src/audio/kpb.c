@@ -130,9 +130,7 @@ static void kpb_free(struct comp_dev *dev)
 
 	trace_kpb("kpb_free()");
 
-	/* reclaim internal buffer memory */
-	rfree(kpb->his_buf_lp.sta_addr);
-	rfree(kpb->his_buf_lp.sta_addr);
+	/* TODO: reclaim internal buffer memory */
 	/* reclaim device & component data memory */
 	rfree(kpb);
 	rfree(dev);
@@ -163,9 +161,19 @@ static int kpb_prepare(struct comp_dev *dev)
 {
 	struct kpb_comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0;
-	int i;
+	int i = 0;
 	struct list_item *blist;
 	struct comp_buffer *sink;
+	struct hb *history_buffer = &cd->history_buffer;
+	struct hb *new_hb = NULL;
+	/*! total allocation size */
+	size_t hb_size = KPB_MAX_BUFFER_SIZE;
+	/*! current allocation size */
+	size_t ca_size = hb_size;
+	/*! memory caps priorites for history buffer */
+	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP,
+				       SOF_MEM_CAPS_RAM};
+	void *ptr = NULL;
 
 	trace_kpb("kpb_prepare()");
 
@@ -178,44 +186,55 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	cd->no_of_clients = 0;
 
-	/* allocate history_buffer/s */
-#if KPB_NO_OF_HISTORY_BUFFERS == 2
+	/* allocate history buffer/s */
+	while (hb_size > 0 && i < ARRAY_SIZE(hb_mcp)) {
+		ptr = rballoc(RZONE_RUNTIME, hb_mcp[i], ca_size);
 
-	cd->his_buf_hp.sta_addr = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-					  KPB_MAX_BUFFER_SIZE - LPSRAM_SIZE);
-	cd->his_buf_lp.sta_addr = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_LP,
-					  LPSRAM_SIZE);
+		if (ptr) {
+			history_buffer->start_addr = ptr;
+			history_buffer->end_addr = ptr + ca_size;
+			history_buffer->w_ptr = ptr;
+			history_buffer->r_ptr = ptr;
+			history_buffer->state = KPB_BUFFER_FREE;
+			hb_size = hb_size - ca_size;
+			history_buffer->next = &cd->history_buffer;
 
-	if (!cd->his_buf_hp.sta_addr || !cd->his_buf_lp.sta_addr) {
+			/* Do we need another buffer? */
+			if (hb_size > 0) {
+				new_hb = rzalloc(RZONE_RUNTIME,
+						 SOF_MEM_CAPS_RAM,
+						 COMP_SIZE(struct hb));
+				history_buffer->next = new_hb;
+				new_hb->state = KPB_BUFFER_OFF;
+				new_hb->next = history_buffer;
+				history_buffer = new_hb;
+				ca_size = hb_size;
+				i++;
+			}
+
+		} else {
+			/* we've failed to allocate ca_size of that hb_mcp
+			 * let's try again with some smaller size.
+			 * NOTE! If we decrement by some small value,
+			 * the allocation will take significant time.
+			 * However, bigger values like HEAP_HP_BUFFER_BLOCK_SIZE
+			 * will result in lower accuracy of allocation.
+			 */
+			ca_size = ca_size - KPB_ALLOCATION_STEP;
+			if (ca_size <= 0) {
+				ca_size = hb_size;
+				i++;
+			}
+			continue;
+		}
+	}
+
+	/* have we succeed in allocation of at least one buffer? */
+	if (!cd->history_buffer.start_addr) {
 		trace_kpb_error("Failed to allocate space for "
-				"KPB bufefrs");
+				"KPB bufefr/s");
 		return -ENOMEM;
 	}
-
-	cd->his_buf_hp.end_addr = cd->his_buf_hp.sta_addr +
-	(KPB_MAX_BUFFER_SIZE - LPSRAM_SIZE);
-
-	cd->his_buf_lp.end_addr = cd->his_buf_lp.sta_addr +
-	LPSRAM_SIZE;
-
-#elif KPB_NO_OF_HISTORY_BUFFERS == 1
-
-	cd->his_buf_hp.sta_addr = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-					  KPB_MAX_BUFFER_SIZE);
-
-	if (!cd->his_buf_hp.sta_addr) {
-		trace_kpb_error("Failed to allocate space for "
-				"KPB bufefrs");
-	return -ENOMEM;
-	}
-
-	cd->his_buf_hp.end_addr = cd->his_buf_hp.sta_addr + KPB_MAX_BUFFER_SIZE;
-
-#else
-#error "Wrong number of key phrase buffers configured"
-#endif
-
-	/* TODO: zeroes both buffers */
 
 	/* initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
@@ -365,57 +384,54 @@ static int kpb_copy(struct comp_dev *dev)
 static void kpb_buffer_data(struct kpb_comp_data *kpb,
 			    struct comp_buffer *source)
 {
-	trace_kpb("kpb_buffer_data()");
 	int size_to_copy = kpb->source_period_bytes;
 	int space_avail;
-	struct history_buffer *hb;
+	struct hb *buff = &kpb->history_buffer;
+	struct hb *first_buff = buff;
 
-#if KPB_NO_OF_HISTORY_BUFFERS == 2
+	trace_kpb("kpb_buffer_data()");
+
+	/* find free buffer */
+	while (buff->next && buff->next != first_buff) {
+		if (buff->state == KPB_BUFFER_FREE)
+			break;
+		else
+			buff = buff->next;
+	}
 
 	while (size_to_copy) {
-		hb = (kpb->his_buf_lp.state == KPB_BUFFER_FREE) ?
-		&kpb->his_buf_lp : &kpb->his_buf_hp;
-		space_avail = (int)hb->end_addr - (int)hb->w_ptr;
+		space_avail = (int)buff->end_addr - (int)buff->w_ptr;
 
 		if (size_to_copy > space_avail) {
-			memcpy(hb->w_ptr, source->r_ptr, space_avail);
+			memcpy(buff->w_ptr, source->r_ptr, space_avail);
 			size_to_copy = size_to_copy - space_avail;
-			hb->w_ptr = hb->sta_addr;
-			hb->state = KPB_BUFFER_FULL;
+			buff->w_ptr = buff->start_addr;
 
-			if (hb->id == KPB_LP)
-				kpb->his_buf_hp.state = KPB_BUFFER_FREE;
-			else
-				kpb->his_buf_lp.state = KPB_BUFFER_FREE;
-		} else  {
-			memcpy(hb->w_ptr, source->r_ptr, size_to_copy);
-			hb->w_ptr += size_to_copy;
+			if (buff->next && buff->next != buff) {
+				buff->state = KPB_BUFFER_FULL;
+				buff = buff->next;
+				buff->state = KPB_BUFFER_FREE;
+			} else {
+				buff->state = KPB_BUFFER_FREE;
+			}
+		} else {
+			memcpy(buff->w_ptr, source->r_ptr, size_to_copy);
+			buff->w_ptr += size_to_copy;
+
+			if (buff->w_ptr == buff->end_addr) {
+				buff->w_ptr = buff->start_addr;
+
+				if (buff->next && buff->next != buff) {
+					buff->state = KPB_BUFFER_FULL;
+					buff = buff->next;
+					buff->state = KPB_BUFFER_FREE;
+				} else {
+					buff->state = KPB_BUFFER_FREE;
+				}
+			}
 			size_to_copy = 0;
 		}
 	}
-#elif KPB_NO_OF_HISTORY_BUFFERS == 1
-	hb = &kpb->his_buf_hp;
-	space_avail = (int)hb->end_addr - (int)hb->w_ptr;
-
-	if (size_to_copy > space_avail) {
-		/* We need to split copying into two parts
-		 * and wrap buffer pointer
-		 */
-		memcpy(hb->w_ptr, source->r_ptr, space_avail);
-		size_to_copy = size_to_copy - space_avail;
-		hb->w_ptr = hb->sta_addr;
-		memcpy(hb->w_ptr, source->r_ptr, size_to_copy);
-		hb->w_ptr += size_to_copy;
-		size_to_copy = 0;
-
-	} else {
-		memcpy(kpb->w_ptr, source->data_ptr, size_to_copy);
-		kpb->w_ptr += size_to_copy;
-		size_to_copy = 0;
-	}
-#else
-#error "Wrong number of key phrase buffers configured"
-#endif
 }
 
 /**
@@ -539,6 +555,12 @@ static uint64_t kpb_draining_task(void *arg)
 	return 0;
 }
 
+static int kpb_params(struct comp_dev *dev)
+{
+	/*TODO*/
+
+	return 0;
+}
 struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.ops = {
@@ -550,7 +572,7 @@ struct comp_driver comp_kpb = {
 		.prepare = kpb_prepare,
 		.reset = kpb_reset,
 		.cache = kpb_cache,
-		.params = NULL,
+		.params = kpb_params,
 	},
 };
 

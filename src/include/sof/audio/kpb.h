@@ -54,6 +54,8 @@
 	KPB_NR_OF_CHANNELS)
 #define KPB_MAX_NO_OF_CLIENTS 2
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
+#define KPB_ALLOCATION_STEP 0x100
+#define KPB_NO_OF_MEM_POOLS 3
 
 enum kpb_sink_state {
 	KPB_SINK_BUSY = 0,
@@ -107,14 +109,13 @@ enum kpb_id {
 	KPB_HP,
 };
 
-struct history_buffer {
-	enum kpb_id id;
-	enum buffer_state state;
+struct hb {
+	enum buffer_state state; /**< state of the buffer */
+	void *start_addr; /**< buffer start address */
+	void *end_addr; /**< buffer end address */
 	void *w_ptr; /**< buffer write pointer */
 	void *r_ptr; /**< buffer read pointer */
-	void *sta_addr;
-	void *end_addr; /**< buffer end address */
-
+	struct hb *next; /**< next history buffer */
 };
 
 /*! Key phrase buffer component */
@@ -122,8 +123,7 @@ struct kpb_comp_data {
 	/* runtime data */
 	uint8_t no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
-	struct history_buffer his_buf_lp;
-	struct history_buffer his_buf_hp;
+	struct hb history_buffer;
 	struct notifier kpb_events; /**< KPB events object */
 	struct task draining_task;
 	uint32_t source_period_bytes; /**< source number of period bytes */
