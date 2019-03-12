@@ -57,7 +57,7 @@
 #include <sof/notifier.h>
 #include <sof/spi.h>
 #include <config.h>
-#include <string.h>
+#include <sof/string.h>
 #include <version.h>
 #include <sof/cavs-version.h>
 

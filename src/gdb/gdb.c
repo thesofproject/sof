@@ -35,7 +35,7 @@
 #include <sof/gdb/gdb.h>
 #include <sof/gdb/ringbuffer.h>
 #include <arch/gdb/xtensa-defs.h>
-#include <string.h>
+#include <sof/string.h>
 #include <signal.h>
 #include <stdint.h>
 #include <xtensa/xtruntime.h>

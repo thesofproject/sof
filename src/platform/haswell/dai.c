@@ -38,7 +38,7 @@
 #include <platform/dma.h>
 #include <platform/dai.h>
 #include <stdint.h>
-#include <string.h>
+#include <sof/string.h>
 #include <config.h>
 
 static struct dai ssp[2] = {

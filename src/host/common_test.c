@@ -36,7 +36,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <sof/string.h>
 #include <math.h>
 #include <arch/sof.h>
 #include <sof/task.h>

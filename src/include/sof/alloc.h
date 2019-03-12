@@ -32,7 +32,8 @@
 #ifndef __INCLUDE_ALLOC__
 #define __INCLUDE_ALLOC__
 
-#include <string.h>
+#include <stdlib.h>
+#include <sof/string.h>
 #include <stdint.h>
 #include <sof/bit.h>
 #include <sof/platform.h>

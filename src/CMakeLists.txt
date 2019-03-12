@@ -4,6 +4,7 @@ if(BUILD_HOST)
 	add_subdirectory(ipc)
 	add_subdirectory(audio)
 	add_subdirectory(host)
+	add_subdirectory(lib)
 	return()
 endif()
 

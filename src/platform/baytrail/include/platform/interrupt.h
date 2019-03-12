@@ -32,7 +32,7 @@
 #define __INCLUDE_PLATFORM_INTERRUPT__
 
 #include <stdint.h>
-#include <string.h>
+#include <sof/string.h>
 #include <sof/interrupt-map.h>
 
 /* IRQ numbers */

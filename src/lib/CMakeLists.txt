@@ -1,3 +1,8 @@
+if(BUILD_HOST)
+	add_local_sources(tb_common lib.c )
+	return()
+endif()
+
 add_local_sources(sof
 	lib.c
 	alloc.c
