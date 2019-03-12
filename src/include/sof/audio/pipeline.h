@@ -123,6 +123,12 @@ static inline bool pipeline_is_preload(struct pipeline *p)
 	return p->preload;
 }
 
+/* checks if pipeline is scheduled with timer */
+static inline bool pipeline_is_timer_driven(struct pipeline *p)
+{
+	return p->ipc_pipe.timer_delay;
+}
+
 /* pipeline creation and destruction */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct comp_dev *cd);
