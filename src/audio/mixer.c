@@ -123,6 +123,7 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_mixer *ipc_mixer =
 		(struct sof_ipc_comp_mixer *)comp;
 	struct mixer_data *md;
+	int err;
 
 	trace_mixer("mixer_new()");
 
@@ -137,7 +138,14 @@ static struct comp_dev *mixer_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	mixer = (struct sof_ipc_comp_mixer *)&dev->comp;
-	memcpy(mixer, ipc_mixer, sizeof(struct sof_ipc_comp_mixer));
+
+	err = memcpy_s(mixer, sizeof(*mixer), ipc_mixer,
+	    sizeof(struct sof_ipc_comp_mixer));
+	if (err) {
+		trace_mixer_error("mixer_new() could not coppy data");
+		rfree(dev);
+		return NULL;
+	}
 
 	md = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*md));
 	if (!md) {

@@ -198,6 +198,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_dai *ipc_dai = (struct sof_ipc_comp_dai *)comp;
 	struct dai_data *dd;
 	uint32_t dir, caps, dma_dev;
+	int err;
 
 	trace_dai("dai_new()");
 
@@ -212,7 +213,15 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	dai = (struct sof_ipc_comp_dai *)&dev->comp;
-	memcpy(dai, ipc_dai, sizeof(struct sof_ipc_comp_dai));
+	err = memcpy_s(dai, sizeof(*dai), ipc_dai,
+	   sizeof(struct sof_ipc_comp_dai));
+	if (err) {
+		trace_dai_error("dai_new() error: 0x%x "
+				"could not coppy data",
+				err);
+		rfree(dev);
+		return NULL;
+	}
 
 	dd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {

@@ -49,6 +49,7 @@
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 {
 	struct comp_buffer *buffer;
+	int err;
 
 	trace_buffer("buffer_new()");
 
@@ -77,7 +78,15 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		return NULL;
 	}
 
-	memcpy(&buffer->ipc_buffer, desc, sizeof(*desc));
+	err = memcpy_s(&buffer->ipc_buffer, sizeof(buffer->ipc_buffer),
+		       desc, sizeof(*desc));
+
+	if (err) {
+		rfree(buffer);
+		trace_buffer_error("buffer_new() error: "
+				   "could not coppy data");
+		return NULL;
+	}
 
 	buffer->size = desc->size;
 	buffer->alloc_size = desc->size;
