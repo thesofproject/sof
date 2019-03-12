@@ -72,36 +72,47 @@
 static inline
 void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
 {
-	rmemcpy((void *)(MAILBOX_DSPBOX_BASE + offset), src, bytes);
+	memcpy_s((void *)(MAILBOX_DSPBOX_BASE + offset),
+		 MAILBOX_DSPBOX_SIZE - offset - MAILBOX_DSPBOX_BASE,
+		 src, bytes);
 	dcache_writeback_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
 }
 
 static inline
-void mailbox_dspbox_read(void *dest, size_t offset, size_t bytes)
+void mailbox_dspbox_read(void *dest, size_t dest_size,
+			 size_t offset, size_t bytes)
 {
-	dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
-	rmemcpy(dest, (void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
+	dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset),
+				 bytes);
+	memcpy_s(dest, dest_size, (void *)(MAILBOX_DSPBOX_BASE + offset),
+		 bytes);
 }
 
 static inline
 void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
 {
-	rmemcpy((void *)(MAILBOX_HOSTBOX_BASE + offset), src, bytes);
+	memcpy_s((void *)(MAILBOX_HOSTBOX_BASE + offset),
+		MAILBOX_HOSTBOX_SIZE - offset - MAILBOX_HOSTBOX_BASE,
+		src, bytes);
 	dcache_writeback_region((void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
 }
 
 static inline
-void mailbox_hostbox_read(void *dest, size_t offset, size_t bytes)
+void mailbox_hostbox_read(void *dest, size_t dest_size,
+			  size_t offset, size_t bytes)
 {
 	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE + offset),
 				 bytes);
-	rmemcpy(dest, (void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
+	memcpy_s(dest, dest_size, (void *)(MAILBOX_HOSTBOX_BASE + offset),
+		 bytes);
 }
 
 static inline
 void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 {
-	rmemcpy((void *)(MAILBOX_STREAM_BASE + offset), src, bytes);
+	memcpy_s((void *)(MAILBOX_STREAM_BASE + offset),
+		MAILBOX_STREAM_SIZE - offset - MAILBOX_STREAM_BASE,
+		src, bytes);
 	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
 				bytes);
 }

@@ -182,8 +182,10 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 		size = limit;
 
 	/* copy stack contents and writeback */
-	rmemcpy(addr, (void*)stack_top, size - sizeof(void *));
-	dcache_writeback_region(addr, size - sizeof(void *));
+	if (memcpy_s(addr, limit, (void *)stack_top, size - sizeof(void *))) {
+		/*add debug stop here ? */
+		dcache_writeback_region(addr, size - sizeof(void *));
+	}
 	return p;
 }
 

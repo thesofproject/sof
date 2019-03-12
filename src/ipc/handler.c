@@ -104,17 +104,30 @@
 
 #define _IPC_COPY_CMD(rx, tx, rx_size)					\
 	do {								\
+		int err = 0;						\
 		if (rx_size > tx->size) {				\
-			memcpy(rx, tx, tx->size);			\
+			err = memcpy_s(rx, rx->size, tx, tx->size);	\
+			if (err != 0) {					\
+				trace_ipc_error("_IPC_COPY_CMD()"	\
+				"unable to copy");			\
+			}						\
 			bzero((void *)rx + tx->size, rx_size - tx->size);\
 			trace_ipc("ipc: hdr 0x%x rx (%d) > tx (%d)",	\
 				  rx->cmd, rx_size, tx->size);		\
 		} else if (tx->size > rx_size) {			\
-			memcpy(rx, tx, rx_size);			\
+			err = memcpy_s(rx, rx->size, tx, rx_size);	\
+			if (err != 0) {					\
+				trace_ipc_error("_IPC_COPY_CMD()"	\
+				"unable to copy");			\
+			}						\
 			trace_ipc("ipc: hdr 0x%x tx (%d) > rx (%d)",	\
 				  rx->cmd, tx->size, rx_size);		\
 		} else							\
-			memcpy(rx, tx, rx_size);			\
+			err = memcpy_s(rx, rx->size, tx, rx_size);	\
+			if (err != 0) {					\
+				trace_ipc_error("_IPC_COPY_CMD()"	\
+				"unable to copy");			\
+			}						\
 	} while (0)
 
 /* copies whole message from Tx to Rx, follows above ABI rules */
@@ -131,7 +144,7 @@ static inline struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	struct sof_ipc_cmd_hdr *hdr = _ipc->comp_data;
 
 	/* read component values from the inbox */
-	mailbox_hostbox_read(hdr, 0, sizeof(*hdr));
+	mailbox_hostbox_read(hdr, SOF_IPC_MSG_MAX_SIZE, 0, sizeof(*hdr));
 
 	/* validate component header */
 	if (hdr->size > SOF_IPC_MSG_MAX_SIZE) {
@@ -140,7 +153,8 @@ static inline struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	}
 
 	/* read rest of component data */
-	mailbox_hostbox_read(hdr + 1, sizeof(*hdr), hdr->size - sizeof(*hdr));
+	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE,
+			     sizeof(*hdr), hdr->size - sizeof(*hdr));
 
 	dcache_writeback_region(hdr, hdr->size);
 
@@ -1247,7 +1261,12 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 
 	/* copy mailbox data to message */
 	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
-		rmemcpy(msg->tx_data, tx_data, tx_bytes);
+		ret = memcpy_s(msg->tx_data, msg->tx_size, tx_data, tx_bytes);
+		if (ret != 0) {
+			trace_ipc_error("ipc_queue_host_message()"
+					"could not coppy data");
+			return -EINVAL;
+		}
 
 	if (!found) {
 		/* now queue the message */
