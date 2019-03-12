@@ -127,6 +127,7 @@ struct dma_sg_config {
 	uint32_t cyclic;			/* circular buffer */
 	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
 	bool scatter;
+	bool irq_disabled;
 };
 
 struct dma_chan_status {

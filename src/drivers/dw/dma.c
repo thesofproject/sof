@@ -294,6 +294,7 @@ struct dma_chan_data {
 	uint32_t cfg_lo;
 	uint32_t cfg_hi;
 	struct dma_id id;
+	bool irq_disabled;
 
 	/* pointer data */
 	struct dma_ptr_data ptr_data;
@@ -334,6 +335,64 @@ static inline void dw_update_bits(struct dma *dma, uint32_t reg, uint32_t mask,
 				  uint32_t value)
 {
 	io_reg_update_bits(dma_base(dma) + reg, mask, value);
+}
+
+static void dw_dma_interrupt_mask(struct dma *dma, int channel)
+{
+	const struct dma_pdata *p = dma_get_drvdata(dma);
+
+	if (p->chan[channel].irq_disabled) {
+		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_mask(): "
+			     "dma %d channel %d not working in irq mode",
+			     dma->plat_data.id, channel);
+		return;
+	}
+
+	/* mask block, transfer and error interrupts for channel */
+	dw_write(dma, DW_MASK_TFR, INT_MASK(channel));
+	dw_write(dma, DW_MASK_BLOCK, INT_MASK(channel));
+	dw_write(dma, DW_MASK_ERR, INT_MASK(channel));
+}
+
+static void dw_dma_interrupt_unmask(struct dma *dma, int channel)
+{
+	const struct dma_pdata *p = dma_get_drvdata(dma);
+
+	if (p->chan[channel].irq_disabled) {
+		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_mask(): "
+			     "dma %d channel %d not working in irq mode",
+			     dma->plat_data.id, channel);
+		return;
+	}
+
+	/* unmask block, transfer and error interrupts for channel */
+	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
+	dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
+}
+
+static void dw_dma_interrupt_clear(struct dma *dma, int channel)
+{
+	const struct dma_pdata *p = dma_get_drvdata(dma);
+
+	if (p->chan[channel].irq_disabled) {
+		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_mask(): "
+			     "dma %d channel %d not working in irq mode",
+			     dma->plat_data.id, channel);
+		return;
+	}
+
+	/* write interrupt clear registers for the channel:
+	 * ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr
+	 */
+	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << channel);
+	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
+
+	/* clear platform interrupt */
+	platform_interrupt_clear(dma_irq(dma, cpu_get_id()), 1 << channel);
 }
 
 /* allocate next free DMA channel */
@@ -381,10 +440,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 		return;
 	}
 
-	/* mask block, transfer and error interrupts for channel */
-	dw_write(dma, DW_MASK_TFR, INT_MASK(channel));
-	dw_write(dma, DW_MASK_BLOCK, INT_MASK(channel));
-	dw_write(dma, DW_MASK_ERR, INT_MASK(channel));
+	dw_dma_interrupt_mask(dma, channel);
 
 	/* free the lli allocated by set_config*/
 	if (chan->lli) {
@@ -455,18 +511,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 		goto out;
 	}
 
-	/* write interrupt clear registers for the channel:
-	 * ClearTfr, ClearBlock, ClearSrcTran, ClearDstTran, ClearErr
-	 */
-	dw_write(dma, DW_CLEAR_TFR, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_SRC_TRAN, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_DST_TRAN, 0x1 << channel);
-	dw_write(dma, DW_CLEAR_ERR, 0x1 << channel);
-
-	/* clear platform interrupt */
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
-				 1 << channel);
+	dw_dma_interrupt_clear(dma, channel);
 
 #if DW_USE_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
@@ -599,7 +644,8 @@ static int dw_dma_stop(struct dma *dma, int channel)
 		trace_dwdma_error("dw-dma: %d channel %d timeout",
 				  dma->plat_data.id, channel);
 
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	if (!chan->irq_disabled)
+		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
 
 	chan->status = COMP_STATE_PREPARE;
 
@@ -641,7 +687,8 @@ static int dw_dma_stop(struct dma *dma, int channel)
 			sizeof(struct dw_lli2) * chan->desc_count);
 #endif
 
-	dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
+	if (!chan->irq_disabled)
+		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
 
 	/* disable interrupt */
 	dw_dma_interrupt_unregister(dma, channel);
@@ -739,6 +786,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 
 	/* default channel config */
 	chan->direction = config->direction;
+	chan->irq_disabled = config->irq_disabled;
 	chan->cfg_lo = DW_CFG_LOW_DEF;
 	chan->cfg_hi = DW_CFG_HIGH_DEF;
 
@@ -786,12 +834,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		}
 	}
 
-	/* unmask block, transfer and error interrupts
-	 * for channel
-	 */
-	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
-	dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
-	dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
+	dw_dma_interrupt_unmask(dma, channel);
 
 	chan->ptr_data.buffer_bytes = 0;
 
@@ -1328,6 +1371,13 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 
 	trace_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register()");
 
+	if (p->chan[channel].irq_disabled) {
+		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register(): "
+			     "dma %d channel %d not working in irq mode",
+			     dma->plat_data.id, channel);
+		return 0;
+	}
+
 	ret = interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler,
 				 &p->chan[channel].id);
 	if (ret < 0) {
@@ -1341,8 +1391,16 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 {
+	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_irq(dma, cpu_get_id()) +
 		(channel << SOF_IRQ_BIT_SHIFT);
+
+	if (p->chan[channel].irq_disabled) {
+		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_unregister(): "
+			     "dma %d channel %d not working in irq mode",
+			     dma->plat_data.id, channel);
+		return;
+	}
 
 	interrupt_disable(irq);
 	interrupt_unregister(irq);
@@ -1427,8 +1485,16 @@ static void dw_dma_irq_handler(void *data)
 
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 {
+	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_irq(dma, cpu_get_id());
 	int ret;
+
+	if (p->chan[channel].irq_disabled) {
+		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register(): "
+			     "dma %d channel %d not working in irq mode",
+			     dma->plat_data.id, channel);
+		return 0;
+	}
 
 	if (!dma->mask_irq_channels) {
 		ret = interrupt_register(irq, IRQ_AUTO_UNMASK,
@@ -1448,7 +1514,15 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 {
+	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_irq(dma, cpu_get_id());
+
+	if (p->chan[channel].irq_disabled) {
+		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_unregister(): "
+			     "dma %d channel %d not working in irq mode",
+			     dma->plat_data.id, channel);
+		return;
+	}
 
 	dma->mask_irq_channels = dma->mask_irq_channels & ~BIT(channel);
 
