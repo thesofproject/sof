@@ -528,6 +528,13 @@ static void kpb_draining_task(void *arg)
 	 */
 }
 
+static int kpb_params(struct comp_dev *dev)
+{
+	trace_kpb("kpb_params()");
+
+	return 0;
+}
+
 struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.ops = {
@@ -539,7 +546,7 @@ struct comp_driver comp_kpb = {
 		.prepare = kpb_prepare,
 		.reset = kpb_reset,
 		.cache = kpb_cache,
-		.params = NULL,
+		.params = kpb_params,
 	},
 };
 
