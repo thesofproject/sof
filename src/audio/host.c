@@ -554,6 +554,7 @@ static int host_params(struct comp_dev *dev)
 		return err;
 	}
 
+#if !CONFIG_DMA_GW
 	/* component buffer size must be divisor of host buffer size */
 	if (hd->host_size % hd->period_bytes) {
 		trace_comp_error("host_params() error: component buffer size "
@@ -562,6 +563,7 @@ static int host_params(struct comp_dev *dev)
 				hd->host_size, hd->period_bytes);
 		return -EINVAL;
 	}
+#endif
 
 	/* create SG DMA elems for local DMA buffer */
 	err = create_local_elems(dev);
