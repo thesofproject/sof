@@ -53,6 +53,7 @@
 #include <arch/cache.h>
 #include <arch/wait.h>
 #include <uapi/ipc/topology.h>
+#include <sof/schedule.h>
 
 #define trace_hddma(__e, ...) \
 	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
@@ -565,7 +566,6 @@ static int hda_dma_start(struct dma *dma, int channel)
 	hda_dma_enable_unlock(dma, channel);
 
 	p->chan[channel].status = COMP_STATE_ACTIVE;
-
 out:
 	spin_unlock_irq(&dma->lock, flags);
 	return ret;

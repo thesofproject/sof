@@ -37,10 +37,10 @@
 
 #include <sof/schedule.h>
 
-/** \brief Schedule data pointer. */
+/** \brief Schedule data pointer */
 static struct schedule_data *sch;
 
-struct schedule_data **arch_schedule_get(void)
+struct schedule_data **arch_schedule_get_data(void)
 {
 	return &sch;
 }

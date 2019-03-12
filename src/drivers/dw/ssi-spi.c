@@ -38,10 +38,9 @@
 #include <sof/io.h>
 #include <sof/ipc.h>
 #include <sof/lock.h>
-#include <sof/schedule.h>
 #include <sof/sof.h>
 #include <sof/spi.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 
 #include <platform/dma.h>
 #include <platform/memory.h>
@@ -309,7 +308,7 @@ static int spi_set_config(struct spi *spi,
 	return spi_slave_dma_set_config(spi, spi_cfg);
 }
 
-static void spi_completion_work(void *data)
+static uint64_t spi_completion_work(void *data)
 {
 	struct spi *spi = data;
 	struct sof_ipc_hdr *hdr;
@@ -343,6 +342,8 @@ static void spi_completion_work(void *data)
 
 		break;
 	}
+
+	return 0;
 }
 
 static void spi_dma_complete(void *data, uint32_t type,
@@ -352,7 +353,7 @@ static void spi_dma_complete(void *data, uint32_t type,
 
 	next->size = DMA_RELOAD_END;
 
-	schedule_task(&spi->completion, 0, 100);
+	schedule_task(&spi->completion, 0, 100, 0);
 }
 
 int spi_push(struct spi *spi, const void *data, size_t size)
@@ -427,8 +428,8 @@ static int spi_slave_init(struct spi *spi)
 	config->dir = SPI_DIR_TX;
 	config->src_buf = spi->tx_buffer;
 
-	schedule_task_init(&spi->completion, spi_completion_work, spi);
-	schedule_task_config(&spi->completion, TASK_PRI_MED, 0);
+	schedule_task_init(&spi->completion, SOF_SCHEDULE_EDF, SOF_TASK_PRI_MED,
+			   spi_completion_work, spi, 0, 0);
 
 	return 0;
 }

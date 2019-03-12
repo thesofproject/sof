@@ -330,7 +330,7 @@ struct dmic_pdata {
 	uint16_t enable[DMIC_HW_CONTROLLERS];
 	uint32_t state;
 	completion_t drain_complete;
-	struct work dmicwork;
+	struct task dmicwork;
 	int32_t startcount;
 	int32_t gain;
 };

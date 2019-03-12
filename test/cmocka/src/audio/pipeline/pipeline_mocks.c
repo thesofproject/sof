@@ -43,22 +43,42 @@ void platform_dai_timestamp(struct comp_dev *dai,
 	(void)posn;
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
+void schedule_task_free(struct task *task)
+{
+	(void)task;
+	task->state = SOF_TASK_STATE_FREE;
+	task->func = NULL;
+	task->data = NULL;
+}
+
+void schedule_edf_task_idle(struct task *task, uint64_t deadline)
 {
 	(void)deadline;
+	(void)task;
+}
+
+void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
+		   uint32_t flags)
+{
+	(void)task;
 	(void)start;
-	(void)task;
-}
-
-void schedule_task_complete(struct task *task)
-{
-	(void)task;
-}
-
-void schedule_task_idle(struct task *task, uint64_t deadline)
-{
 	(void)deadline;
+	(void)flags;
+}
+
+int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
+		       uint64_t (*func)(void *data), void *data, uint16_t core,
+		       uint32_t xflags)
+{
 	(void)task;
+	(void)type;
+	(void)priority;
+	(void)func;
+	(void)data;
+	(void)core;
+	(void)xflags;
+
+	return 0;
 }
 
 int schedule_task_cancel(struct task *task)

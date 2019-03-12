@@ -33,7 +33,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 
 struct sof;
 
@@ -41,7 +41,7 @@ struct sof;
 struct sa {
 	uint64_t last_idle;	/* time of last idle */
 	uint64_t ticks;
-	struct work work;
+	struct task work;
 };
 
 void sa_enter_idle(struct sof *sof);

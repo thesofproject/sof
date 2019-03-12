@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,113 +25,120 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SCHEDULE_H__
-#define __INCLUDE_SOF_SCHEDULE_H__
+/* Generic schedule api header */
+#ifndef __INCLUDE_SOF_SCHEDULER_H__
+#define __INCLUDE_SOF_SCHEDULER_H__
 
 #include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/lock.h>
 #include <sof/list.h>
-#include <sof/work.h>
-#include <sof/wait.h>
+#include <sof/trace.h>
 
 /* schedule tracing */
 #define trace_schedule(format, ...) \
-	trace_event(TRACE_CLASS_SCHEDULE, format, ##__VA_ARGS__)
+	trace_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
 
 #define trace_schedule_error(format, ...) \
-	trace_error(TRACE_CLASS_SCHEDULE, format, ##__VA_ARGS__)
+	trace_error(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
 
 #define tracev_schedule(format, ...) \
-	tracev_event(TRACE_CLASS_SCHEDULE, format, ##__VA_ARGS__)
+	tracev_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
 
-struct schedule_data;
-struct sof;
-
-/* task states */
-#define TASK_STATE_INIT		0	
-#define TASK_STATE_QUEUED	1
-#define TASK_STATE_PENDING	2
-#define TASK_STATE_RUNNING	3
-#define TASK_STATE_PREEMPTED	4
-#define TASK_STATE_COMPLETED	5
-#define TASK_STATE_FREE		6
-#define TASK_STATE_CANCEL	7
-
-/* task priorities - values same as Linux processes, gives scope for future.*/
-#define TASK_PRI_LOW	19
-#define TASK_PRI_MED	0
-#define TASK_PRI_HIGH	-20
-
-#define TASK_PRI_IPC	1
-#define TASK_PRI_IDC	1
-
-/* maximun task time slice in microseconds */
-#define SCHEDULE_TASK_MAX_TIME_SLICE	5000
-
-/* task descriptor */
-struct task {
-	uint16_t core;			/* core id to run on */
-	int16_t priority;		/* scheduling priority TASK_PRI_ */
-	uint64_t start;			/* scheduling earliest start time */
-	uint64_t deadline;		/* scheduling deadline */
-	uint32_t state;			/* TASK_STATE_ */
-	struct list_item list;		/* list in scheduler */
-	struct list_item irq_list;	/* list for assigned irq level */
-
-	/* task function and private data */
-	void *data;
-	void (*func)(void *arg);
-
-	/* runtime duration in scheduling clock base */
-	uint64_t max_rtime;		/* max time taken to run */
-	completion_t complete;
+/* SOF_SCHEDULE_ type comes from topology */
+enum {
+	SOF_SCHEDULE_EDF = 0,	/* EDF scheduler */
+	SOF_SCHEDULE_LL,	/* Low latency scheduler */
+	SOF_SCHEDULE_COUNT
 };
 
-struct schedule_data **arch_schedule_get(void);
+#define SOF_TASK_PRI_LOW	0	/* priority level 0 - low */
+#define SOF_TASK_PRI_MED	4	/* priority level 4 - medium */
+#define SOF_TASK_PRI_HIGH	9	/* priority level 9 - high */
 
-void schedule(void);
+#define SOF_TASK_PRI_COUNT	10	/* range of priorities (0-9) */
 
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline);
+#define SOF_TASK_PRI_IPC	5
+#define SOF_TASK_PRI_IDC	5
 
-void schedule_task_idle(struct task *task, uint64_t deadline);
+/* task states */
+#define SOF_TASK_STATE_INIT		0
+#define SOF_TASK_STATE_QUEUED		1
+#define SOF_TASK_STATE_PENDING		2
+#define SOF_TASK_STATE_RUNNING		3
+#define SOF_TASK_STATE_PREEMPTED	4
+#define SOF_TASK_STATE_COMPLETED	5
+#define SOF_TASK_STATE_FREE		6
+#define SOF_TASK_STATE_CANCEL		7
 
-int schedule_task_cancel(struct task *task);
+/* Scheduler flags */
+/* Sync/Async only supported by ll scheduler atm */
+#define SOF_SCHEDULE_FLAG_ASYNC (0 << 0) /* task scheduled asynchronously */
+#define SOF_SCHEDULE_FLAG_SYNC	(1 << 0) /* task scheduled synchronously */
+#define SOF_SCHEDULE_FLAG_IDLE  (2 << 0)
 
-void schedule_task_complete(struct task *task);
+struct task;
+
+struct scheduler_ops {
+	void (*schedule_task)(struct task *w, uint64_t start,
+			      uint64_t deadline, uint32_t flags);
+	int (*schedule_task_init)(struct task *task, uint32_t xflags);
+	void (*schedule_task_running)(struct task *task);
+	void (*schedule_task_complete)(struct task *task);
+	void (*reschedule_task)(struct task *task, uint64_t start);
+	int (*schedule_task_cancel)(struct task *task);
+	void (*schedule_task_free)(struct task *task);
+	int (*scheduler_init)(void);
+	void (*scheduler_free)(void);
+	void (*scheduler_run)(void);
+};
+
+struct task {
+	uint16_t type;
+	uint64_t start;
+	uint16_t priority;
+	uint16_t state;
+	uint16_t core;
+	void *data;
+	uint64_t (*func)(void *data);
+	struct list_item list;
+	struct list_item irq_list;	/* list for assigned irq level */
+	const struct scheduler_ops *ops;
+	void *private;
+};
+
+struct edf_schedule_data;
+struct ll_schedule_data;
+
+struct schedule_data {
+	struct ll_schedule_data *ll_sch_data;
+	struct edf_schedule_data *edf_sch_data;
+};
+
+struct schedule_data **arch_schedule_get_data(void);
+
+int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
+		       uint64_t (*func)(void *data), void *data, uint16_t core,
+		       uint32_t xflags);
 
 void schedule_task_running(struct task *task);
 
-static inline void schedule_task_init(struct task *task, void (*func)(void *),
-	void *data)
-{
-	task->core = 0;
-	task->state = TASK_STATE_INIT;
-	task->func = func;
-	task->data = data;
-}
+void schedule_task_complete(struct task *task);
 
-static inline void schedule_task_free(struct task *task)
-{
-	task->state = TASK_STATE_FREE;
-	task->func = NULL;
-	task->data = NULL;
-}
+void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
+		   uint32_t flags);
 
-static inline void schedule_task_config(struct task *task, uint16_t priority,
-	uint16_t core)
-{
-	task->priority = priority;
-	task->core = core;
-}
+void reschedule_task(struct task *task, uint64_t start);
 
-int scheduler_init(struct sof *sof);
+void schedule_free(void);
 
-void scheduler_free(void);
+void schedule(void);
 
-#endif
+int scheduler_init(void);
+
+int schedule_task_cancel(struct task *task);
+
+void schedule_task_free(struct task *task);
+
+#endif /* __INCLUDE_SOF_SCHEDULER_H__ */

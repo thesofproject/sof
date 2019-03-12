@@ -42,7 +42,6 @@
 #include <sof/dma.h>
 #include <sof/interrupt.h>
 #include <sof/sof.h>
-#include <sof/work.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
@@ -136,7 +135,7 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-struct work_queue_timesource platform_generic_queue[] = {
+struct timesource_data platform_generic_queue[] = {
 {
 	.timer	 = {
 		.id = TIMER1,	/* internal timer */
@@ -204,9 +203,9 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	clock_init();
 
-	/* init work queues and clocks */
-	trace_point(TRACE_BOOT_SYS_WORK);
-	init_system_workq(&platform_generic_queue[PLATFORM_MASTER_CORE_ID]);
+	/* init scheduler and clocks */
+	trace_point(TRACE_BOOT_SYS_SCHED);
+	scheduler_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);

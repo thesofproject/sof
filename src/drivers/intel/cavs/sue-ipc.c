@@ -132,8 +132,8 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* schedule */
-	schedule_task_init(&_ipc->ipc_task, ipc_process_task, _ipc);
-	schedule_task_config(&_ipc->ipc_task, TASK_PRI_MED, 0);
+	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_MED,
+			   ipc_process_task, _ipc, 0, 0);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;

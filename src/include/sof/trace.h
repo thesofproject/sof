@@ -61,7 +61,6 @@
 #define TRACE_BOOT_PLATFORM		0x4000
 
 /* system specific codes */
-#define TRACE_BOOT_SYS_WORK		(TRACE_BOOT_SYS + 0x100)
 #define TRACE_BOOT_SYS_CPU_FREQ		(TRACE_BOOT_SYS + 0x200)
 #define TRACE_BOOT_SYS_HEAP		(TRACE_BOOT_SYS + 0x300)
 #define TRACE_BOOT_SYS_NOTE		(TRACE_BOOT_SYS + 0x400)
@@ -109,9 +108,10 @@
 #define TRACE_CLASS_IDC		(24 << 24)
 #define TRACE_CLASS_CPU		(25 << 24)
 #define TRACE_CLASS_CLK		(26 << 24)
-#define TRACE_CLASS_SCHEDULE	(27 << 24)
+#define TRACE_CLASS_EDF		(27 << 24)
 #define TRACE_CLASS_KPB		(28 << 24)
 #define TRACE_CLASS_SELECTOR	(29 << 24)
+#define TRACE_CLASS_SCHEDULE	(30 << 24)
 
 /* move to config.h */
 #define TRACE	1

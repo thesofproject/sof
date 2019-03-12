@@ -50,7 +50,7 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
 
-static uint64_t trace_work(void *data, uint64_t delay)
+static uint64_t trace_work(void *data)
 {
 	struct dma_trace_data *d = (struct dma_trace_data *)data;
 	struct dma_trace_buf *buffer = &d->dmatb;
@@ -147,7 +147,8 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		return ret;
 	}
 
-	work_init(&d->dmat_work, trace_work, d, WORK_MED_PRI, WORK_ASYNC);
+	schedule_task_init(&d->dmat_work, SOF_SCHEDULE_LL,
+			   SOF_TASK_PRI_MED, trace_work, d, 0, 0);
 
 	return 0;
 }
@@ -327,7 +328,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 	}
 
 	d->enabled = 1;
-	work_schedule_default(&d->dmat_work, DMA_TRACE_PERIOD);
+	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, 0, 0);
 
 	return 0;
 }
@@ -484,8 +485,8 @@ void dtrace_event(const char *e, uint32_t length)
 	/* schedule copy now if buffer > 50% full */
 	if (trace_data->enabled &&
 	    buffer->avail >= (DMA_TRACE_LOCAL_SIZE / 2)) {
-		work_reschedule_default(&trace_data->dmat_work,
-		DMA_TRACE_RESCHEDULE_TIME);
+		reschedule_task(&trace_data->dmat_work,
+				DMA_TRACE_RESCHEDULE_TIME);
 		/* reschedule should not be interrupted
 		 * just like we are in copy progress
 		 */

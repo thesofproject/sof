@@ -40,7 +40,6 @@
 #include <sof/lock.h>
 #include <sof/list.h>
 #include <sof/stream.h>
-#include <sof/work.h>
 #include <sof/clk.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>

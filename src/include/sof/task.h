@@ -34,7 +34,7 @@
 #include <arch/task.h>
 
 struct sof;
-struct task;
+struct edf_task;
 
 int do_task_master_core(struct sof *sof);
 
