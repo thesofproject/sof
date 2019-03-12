@@ -345,9 +345,9 @@ static struct spipe spipe[] = {
 
 /* pipelines */
 struct sof_ipc_pipe_new pipeline[] = {
-	SPIPE_PIPE(0, 0, 1000, TASK_PRI_HIGH),	/* high pri - 1ms deadline */
-//	SPIPE_PIPE(1, 0, 4000, TASK_PRI_MED),	/* med pri - 4ms deadline */
-//	SPIPE_PIPE(2, 0, 5000, TASK_PRI_LOW),	/* low pri - 5ms deadline */
+	SPIPE_PIPE(0, 0, 1000, SOF_TASK_PRI_HIGH),/* high pri - 1ms deadline */
+//	SPIPE_PIPE(1, 0, 4000, SOF_TASK_PRI_MED),/* med pri - 4ms deadline */
+//	SPIPE_PIPE(2, 0, 5000, SOF_TASK_PRI_LOW),/* low pri - 5ms deadline */
 };
 
 int init_static_pipeline(struct ipc *ipc)

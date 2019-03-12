@@ -39,14 +39,18 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	return 0;
 }
 
-void work_schedule_default(struct work *w, uint64_t timeout)
-{
-}
-
 void notifier_register(struct notifier *notifier)
 {
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
+int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
+		       uint64_t (*func)(void *data), void *data, uint16_t core,
+		       uint32_t xflags)
+{
+	return 0;
+}
+
+void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
+		   uint32_t flags)
 {
 }

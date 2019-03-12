@@ -53,7 +53,7 @@
 #include <sof/timer.h>
 #include <sof/alloc.h>
 #include <sof/interrupt.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 #include <sof/lock.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
@@ -459,7 +459,6 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 	chan->ptr_data.start_ptr = 0;
 	chan->ptr_data.end_ptr = 0;
 	chan->ptr_data.buffer_bytes = 0;
-
 	atomic_sub(&dma->num_channels_busy, 1);
 }
 

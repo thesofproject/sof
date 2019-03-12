@@ -44,7 +44,6 @@
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/work.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
 #include "selector.h"

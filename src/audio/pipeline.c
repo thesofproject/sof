@@ -48,6 +48,7 @@
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <platform/idc.h>
+#include <sof/schedule.h>
 
 /* generic pipeline data used by pipeline_comp_* functions */
 struct pipeline_data {
@@ -58,13 +59,14 @@ struct pipeline_data {
 	int cmd;
 };
 
-static void pipeline_task(void *arg);
+static uint64_t pipeline_task(void *arg);
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 			      struct comp_dev *cd)
 {
 	struct pipeline *p;
+	uint32_t type;
 
 	trace_pipe("pipeline_new()");
 
@@ -78,11 +80,15 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	/* init pipeline */
 	p->sched_comp = cd;
 	p->status = COMP_STATE_INIT;
-	schedule_task_init(&p->pipe_task, pipeline_task, p);
-	schedule_task_config(&p->pipe_task, pipe_desc->priority,
-			     pipe_desc->core);
+
 	spinlock_init(&p->lock);
 	memcpy(&p->ipc_pipe, pipe_desc, sizeof(*pipe_desc));
+
+	/* get pipeline task type */
+	type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :
+		SOF_SCHEDULE_EDF;
+	schedule_task_init(&p->pipe_task, type, pipe_desc->priority,
+			   pipeline_task, p, pipe_desc->core, 0);
 
 	return p;
 }
@@ -797,8 +803,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
 	if (p->sched_comp->state == COMP_STATE_ACTIVE)
-		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline);
-
+		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline, 0);
 }
 
 /* notify pipeline that this component requires buffers emptied/filled
@@ -807,7 +812,8 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
  */
 void pipeline_schedule_copy_idle(struct pipeline *p)
 {
-	schedule_task_idle(&p->pipe_task, p->ipc_pipe.deadline);
+	schedule_task(&p->pipe_task, 0, p->ipc_pipe.deadline,
+		      SOF_SCHEDULE_FLAG_IDLE);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)
@@ -822,7 +828,7 @@ void pipeline_schedule_cancel(struct pipeline *p)
 					  "failed, err = %d", err);
 }
 
-static void pipeline_task(void *arg)
+static uint64_t pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
 	int err;
@@ -843,10 +849,11 @@ static void pipeline_task(void *arg)
 		err = pipeline_xrun_recover(p);
 		if (err < 0) {
 			trace_pipe_error_with_ids(p, "pipeline_task(): xrun recover failed! pipeline will be stopped!");
-			return; /* failed - host will stop this pipeline */
+			goto sched; /* failed - host will stop this pipeline */
 		}
 	}
 
 sched:
 	tracev_pipe("pipeline_task() sched");
+	return p->ipc_pipe.timer_delay;
 }

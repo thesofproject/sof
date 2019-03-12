@@ -47,7 +47,7 @@
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
-static void kpb_draining_task(void *arg);
+static uint64_t kpb_draining_task(void *arg);
 static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source);
 
 /**
@@ -225,7 +225,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	notifier_register(&cd->kpb_events);
 
 	/* initialie draining task */
-	schedule_task_init(&cd->draining_task, kpb_draining_task, cd);
+	schedule_task_init(&cd->draining_task, SOF_SCHEDULE_EDF, 0,
+			   kpb_draining_task, cd, 0, 0);
 
 	/* search for the channel selector sink.
 	 * NOTE! We assume here that channel selector component device
@@ -517,15 +518,16 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 				"sink not ready for draining");
 	} else {
 		/* add one-time draining task into the scheduler */
-		schedule_task(&kpb->draining_task, 0, 0);
+		schedule_task(&kpb->draining_task, 0, 0, 0);
 	}
 }
 
-static void kpb_draining_task(void *arg)
+static uint64_t kpb_draining_task(void *arg)
 {
 	/* TODO: while loop drainning history buffer accoriding to
 	 * clients request
 	 */
+	return 0;
 }
 
 struct comp_driver comp_kpb = {

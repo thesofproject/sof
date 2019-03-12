@@ -41,7 +41,7 @@
 #include <platform/interrupt.h>
 #include <platform/shim.h>
 #include <sof/audio/pipeline.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 #include <sof/debug.h>
 #include <sof/trace.h>
 #include <stdint.h>

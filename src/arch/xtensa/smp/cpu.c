@@ -105,9 +105,7 @@ void cpu_power_down_core(void)
 
 	idc_free();
 
-	scheduler_free();
-
-	free_system_workq();
+	schedule_free();
 
 	free_system_notify();
 

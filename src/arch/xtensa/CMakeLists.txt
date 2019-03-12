@@ -161,7 +161,6 @@ if(CONFIG_SMP)
 		smp/notifier.c
 		smp/schedule.c
 		smp/task.c
-		smp/work.c
 	)
 else()
 	add_subdirectory(up)
@@ -173,7 +172,6 @@ else()
 		up/notifier.c
 		up/schedule.c
 		up/task.c
-		up/work.c
 	)
 endif()
 

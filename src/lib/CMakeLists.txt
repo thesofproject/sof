@@ -6,9 +6,10 @@ endif()
 add_local_sources(sof
 	lib.c
 	alloc.c
-	work.c
+	ll_schedule.c
 	notifier.c
 	trace.c
+	edf_schedule.c
 	schedule.c
 	agent.c
 	interrupt.c

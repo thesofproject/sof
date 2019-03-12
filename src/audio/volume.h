@@ -115,7 +115,7 @@ struct comp_data {
 	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
-	struct work volwork;			/**< volume scheduled work function */
+	struct task volwork;	/**< volume scheduled work function */
 	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 };
 

@@ -31,72 +31,32 @@
  * interrupt source. It should execute quickly and must not sleep or wait.
  */
 
-#ifndef __INCLUDE_WORK__
-#define __INCLUDE_WORK__
+#ifndef __INCLUDE_SOF_LOW_LATENCY_SCHEDULE_H__
+#define __INCLUDE_SOF_LOW_LATENCY_SCHEDULE_H__
 
 #include <stdint.h>
 #include <sof/list.h>
 #include <sof/timer.h>
+#include <sof/alloc.h>
+#include <sof/schedule.h>
+#include <sof/trace.h>
 
 struct work_queue;
 
-/* flags */
-#define WORK_ASYNC	(0 << 0)	/* default - work is scheduled asynchronously */
-#define WORK_SYNC	(1 << 0)	/* work is scheduled synchronously */
+/* range of priorities (0 - SOF_TASK_PRI_COUNT) */
+#define LL_PRIORITIES	SOF_TASK_PRI_COUNT
 
-/* priority levels */
-#define WORK_LOW_PRI	9	/* work lowest priority */
-#define WORK_MED_PRI	4	/* work medium priority */
-#define WORK_HIGH_PRI	0	/* work highest priority */
+#define ll_sch_set_pdata(task, data) \
+	task->private = data
 
-#define WORK_PRIORITIES	10	/* range of priorities (0 - 9) */
+#define ll_sch_get_pdata(task) task->private
 
-struct work {
-	/* returns reschedule timeout in usecs */
-	uint64_t (*cb)(void *data, uint64_t udelay);
-	void *cb_data;
-	struct list_item list;
-	uint64_t timeout;
-	uint32_t pending;
-	uint32_t priority;
+struct ll_task_pdata {
 	uint32_t flags;
 };
 
-struct work_queue_timesource {
-	struct timer timer;
-	int clk;
-	int notifier;
-	int (*timer_set)(struct timer *, uint64_t ticks);
-	void (*timer_clear)(struct timer *);
-	uint64_t (*timer_get)(struct timer *);
-};
+extern struct timesource_data platform_generic_queue[];
 
-/* initialise our work */
-#define work_init(w, x, xd, xpriority, xflags) \
-	do { \
-		(w)->cb = x; \
-		(w)->cb_data = xd; \
-		(w)->priority = xpriority; \
-		(w)->flags = xflags; \
-	} while (0)
+extern struct scheduler_ops schedule_ll_ops;
 
-struct work_queue **arch_work_queue_get(void);
-
-/* schedule/cancel work on work queue */
-void work_schedule(struct work_queue *queue, struct work *w, uint64_t timeout);
-void work_reschedule(struct work_queue *queue, struct work *w, uint64_t timeout);
-void work_cancel(struct work_queue *queue, struct work *work);
-
-/* schedule/cancel work on default system work queue */
-void work_schedule_default(struct work *work, uint64_t timeout);
-void work_reschedule_default(struct work *work, uint64_t timeout);
-void work_reschedule_default_at(struct work *w, uint64_t time);
-void work_cancel_default(struct work *work);
-
-/* init system workq */
-void init_system_workq(struct work_queue_timesource *ts);
-
-/* free system workq */
-void free_system_workq(void);
-
-#endif
+#endif /* __INCLUDE_SOF_LOW_LATENCY_SCHEDULE_H__ */

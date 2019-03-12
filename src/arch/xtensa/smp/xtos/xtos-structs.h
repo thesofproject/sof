@@ -37,7 +37,6 @@ struct idc;
 struct irq_task;
 struct notify;
 struct schedule_data;
-struct work_queue;
 
 struct thread_data {
 	xtos_structures_pointers xtos_ptrs;
@@ -58,8 +57,7 @@ struct core_context {
 	struct irq_task *irq_low_task;
 	struct irq_task *irq_med_task;
 	struct irq_task *irq_high_task;
-	struct schedule_data *sch;
-	struct work_queue *queue;
+	struct schedule_data *sch_data;
 	struct notify *notify;
 	struct idc *idc;
 };

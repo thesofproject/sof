@@ -38,9 +38,7 @@
 #include <sof/debug.h>
 #include <sof/interrupt.h>
 #include <sof/schedule.h>
-
 #include <platform/platform.h>
-
 #include <arch/task.h>
 
 /**
@@ -53,13 +51,13 @@ static uint32_t task_get_irq(struct task *task)
 	uint32_t irq;
 
 	switch (task->priority) {
-	case TASK_PRI_MED + 1 ... TASK_PRI_LOW:
+	case SOF_TASK_PRI_LOW ... SOF_TASK_PRI_MED - 1:
 		irq = PLATFORM_IRQ_TASK_LOW;
 		break;
-	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
+	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_HIGH:
 		irq = PLATFORM_IRQ_TASK_HIGH;
 		break;
-	case TASK_PRI_MED:
+	case SOF_TASK_PRI_MED:
 	default:
 		irq = PLATFORM_IRQ_TASK_MED;
 		break;
@@ -80,24 +78,24 @@ static int task_set_data(struct task *task)
 
 	switch (task->priority) {
 #ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
-	case TASK_PRI_MED + 1 ... TASK_PRI_LOW:
+	case SOF_TASK_PRI_LOW ... SOF_TASK_PRI_MED - 1:
 		irq_task = *task_irq_low_get();
 		break;
-	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
+	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_HIGH:
 		irq_task = *task_irq_high_get();
 		break;
-	case TASK_PRI_MED:
+	case SOF_TASK_PRI_MED:
 		irq_task = *task_irq_med_get();
 		break;
 #elif CONFIG_TASK_HAVE_PRIORITY_LOW
-	case TASK_PRI_MED ... TASK_PRI_LOW:
+	case  SOF_TASK_PRI_LOW ... SOF_TASK_PRI_MED:
 		irq_task = *task_irq_low_get();
 		break;
-	case TASK_PRI_HIGH ... TASK_PRI_MED - 1:
+	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_HIGH:
 		irq_task = *task_irq_high_get();
 		break;
 #else
-	case TASK_PRI_HIGH ... TASK_PRI_LOW:
+	case SOF_TASK_PRI_LOW ... SOF_TASK_PRI_HIGH:
 		irq_task = *task_irq_high_get();
 		break;
 #endif
@@ -134,11 +132,11 @@ static void _irq_task(void *arg)
 	interrupt_clear(irq_task->irq);
 
 	list_for_item_safe(clist, tlist, &irq_task->list) {
-
 		task = container_of(clist, struct task, irq_list);
 		list_item_del(clist);
 
-		if (task->func && task->state == TASK_STATE_PENDING) {
+		if (task->func &&
+		    task->state == SOF_TASK_STATE_PENDING) {
 			schedule_task_running(task);
 			run_task = 1;
 		} else {

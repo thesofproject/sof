@@ -73,7 +73,7 @@ struct shared_lib_table {
 
 extern int debug;
 
-int scheduler_init(struct sof *sof);
+int edf_scheduler_init(void);
 
 void sys_comp_file_init(void);
 

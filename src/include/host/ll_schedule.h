@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,22 +25,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
- *
+ * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
-/**
- * \file arch/xtensa/up/work.c
- * \brief Xtensa UP work queue implementation file
- * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#ifndef _INCLUDE_HOST_LL_SCHEDULE_H_
+#define _INCLUDE_HOST_LL_SCHEDULE_H_
 
-#include <sof/work.h>
+extern struct scheduler_ops schedule_ll_ops;
 
-/** \brief Generic system work queue. */
-static struct work_queue *queue;
-
-struct work_queue **arch_work_queue_get(void)
-{
-	return &queue;
-}
+#endif /* _INCLUDE_HOST_LL_SCHEDULE_H_ */

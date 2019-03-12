@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/schedule.h>
+#include <sof/edf_schedule.h>
 #include "pipeline_mocks.h"
 #include "pipeline_connection_mocks.h"
 #include <stdarg.h>
@@ -95,7 +95,7 @@ static void test_audio_pipeline_free_sheduler_task_free(void **state)
 	/*Testing component*/
 	pipeline_free(&result);
 
-	assert_int_equal(result.pipe_task.state, TASK_STATE_FREE);
+	assert_int_equal(result.pipe_task.state, SOF_TASK_STATE_FREE);
 	assert_ptr_equal(NULL, result.pipe_task.data);
 	assert_ptr_equal(NULL, result.pipe_task.func);
 }

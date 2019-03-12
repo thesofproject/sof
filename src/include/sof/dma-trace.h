@@ -39,7 +39,7 @@
 #include <sof/debug.h>
 #include <sof/timer.h>
 #include <sof/dma.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 #include <platform/platform.h>
 #include <platform/timer.h>
 
@@ -61,7 +61,7 @@ struct dma_trace_data {
 	uint32_t overflow;
 	uint32_t messages;
 	uint32_t host_size;
-	struct work dmat_work;
+	struct task dmat_work;
 	uint32_t enabled;
 	uint32_t copy_in_progress;
 	uint32_t stream_tag;

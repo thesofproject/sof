@@ -36,7 +36,7 @@
 #include <sof/io.h>
 #include <sof/debug.h>
 #include <sof/wait.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 #include <sof/timer.h>
 #include <sof/interrupt.h>
 #include <sof/trace.h>
@@ -54,7 +54,7 @@ int wait_for_completion_timeout(completion_t *comp)
 {
 	volatile completion_t *c = (volatile completion_t *)comp;
 
-	work_schedule_default(&comp->work, comp->timeout);
+	schedule_task(&comp->work, comp->timeout, 0, 0);
 	comp->timeout = 0;
 
 	/* check for completion after every wake from IRQ */
@@ -64,7 +64,7 @@ int wait_for_completion_timeout(completion_t *comp)
 	/* did we complete */
 	if (c->complete) {
 		/* no timeout so cancel work and return 0 */
-		work_cancel_default(&comp->work);
+		schedule_task_cancel(&comp->work);
 
 		return 0;
 	}

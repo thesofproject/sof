@@ -72,35 +72,6 @@ static void test_audio_pipeline_pipeline_new_creation(void **state)
 	assert_non_null(result);
 }
 
-static void test_audio_pipeline_new_sheduler_init(void **state)
-{
-	struct pipeline_new_setup_data *test_data = *state;
-
-	/*Testing component*/
-	struct pipeline *result = pipeline_new(&test_data->ipc_data,
-	test_data->comp_data);
-
-	/*Check if all parameters are passed to sheduler
-	 *(initialization)
-	 */
-	assert_int_equal(result->pipe_task.state, TASK_STATE_INIT);
-	assert_int_equal(result->pipe_task.core, test_data->ipc_data.core);
-}
-
-static void test_audio_pipeline_new_sheduler_config(void **state)
-{
-	struct pipeline_new_setup_data *test_data = *state;
-
-	/*Testing component*/
-	struct pipeline *result = pipeline_new(&test_data->ipc_data,
-	test_data->comp_data);
-
-	/*Pipeline should end in pre init state untli sheduler runs
-	 *task that initializes it
-	 */
-	assert_int_equal(COMP_STATE_INIT, result->status);
-}
-
 static void test_audio_pipeline_new_ipc_data_coppy(void **state)
 {
 	struct pipeline_new_setup_data *test_data = *state;
@@ -115,11 +86,8 @@ static void test_audio_pipeline_new_ipc_data_coppy(void **state)
 
 int main(void)
 {
-
 	const struct CMUnitTest tests[] = {
 		cmocka_unit_test(test_audio_pipeline_pipeline_new_creation),
-		cmocka_unit_test(test_audio_pipeline_new_sheduler_init),
-		cmocka_unit_test(test_audio_pipeline_new_sheduler_config),
 		cmocka_unit_test(test_audio_pipeline_new_ipc_data_coppy),
 	};
 

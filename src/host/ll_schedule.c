@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,23 +25,25 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
- *
+ * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
-/**
- * \file arch/xtensa/smp/work.c
- * \brief Xtensa SMP work queue implementation file
- * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
- */
+#include <sof/audio/component.h>
+#include <sof/task.h>
+#include <stdint.h>
+#include <sof/wait.h>
 
-#include <xtos-structs.h>
-#include <arch/cpu.h>
-#include <sof/work.h>
+/* TODO: Make host ll ops implementation */
+struct scheduler_ops schedule_ll_ops = {
+	.schedule_task = NULL,
+	.schedule_task_init = NULL,
+	.schedule_task_running = NULL,
+	.schedule_task_complete = NULL,
+	.reschedule_task = NULL,
+	.schedule_task_cancel = NULL,
+	.schedule_task_free = NULL,
+	.scheduler_init = NULL,
+	.scheduler_free = NULL,
+	.scheduler_run = NULL
+};
 
-struct work_queue **arch_work_queue_get(void)
-{
-	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
-
-	return &ctx->queue;
-}

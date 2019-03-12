@@ -39,12 +39,12 @@
 
 #include <sof/lock.h>
 #include <sof/trace.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 #include <sof/drivers/timer.h>
 
 typedef struct {
 	uint32_t complete;
-	struct work work;
+	struct task work;
 	uint64_t timeout;
 } completion_t;
 
@@ -59,7 +59,7 @@ static inline void wait_for_interrupt(int level)
 	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }
 
-static uint64_t _wait_cb(void *data, uint64_t delay)
+static uint64_t _wait_cb(void *data)
 {
 	volatile completion_t *wc = (volatile completion_t*)data;
 
@@ -86,7 +86,9 @@ static inline void wait_init(completion_t *comp)
 	volatile completion_t *c = (volatile completion_t *)comp;
 
 	c->complete = 0;
-	work_init(&comp->work, _wait_cb, comp, WORK_MED_PRI, WORK_ASYNC);
+
+	schedule_task_init(&comp->work, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
+			   _wait_cb, comp, 0, 0);
 }
 
 static inline void wait_clear(completion_t *comp)

@@ -34,6 +34,15 @@
 #include <arch/timer.h>
 #include <stdint.h>
 
+struct timesource_data {
+	struct timer timer;
+	int clk;
+	int notifier;
+	int (*timer_set)(struct timer *t, uint64_t ticks);
+	void (*timer_clear)(struct timer *t);
+	uint64_t (*timer_get)(struct timer *t);
+};
+
 int timer_register(struct timer *timer,
 	void(*handler)(void *arg), void *arg);
 void timer_unregister(struct timer *timer);

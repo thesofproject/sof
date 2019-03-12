@@ -35,68 +35,91 @@
 #include <sof/task.h>
 #include <stdint.h>
 #include <sof/wait.h>
+#include "host/edf_schedule.h"
+#include "host/ll_schedule.h"
 
-/* scheduler testbench definition */
-
-struct schedule_data {
-	spinlock_t lock; /* schedule lock */
-	struct list_item list; /* list of tasks in priority queue */
-	uint32_t clock;
+static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
+	&schedule_edf_ops,              /* SOF_SCHEDULE_EDF */
+	&schedule_ll_ops		/* SOF_LL_TASK */
 };
 
-static struct schedule_data *sch;
-
-void schedule_task_complete(struct task *task)
+/* testbench work definition */
+int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
+		       uint64_t (*func)(void *data), void *data, uint16_t core,
+		       uint32_t xflags)
 {
-	list_item_del(&task->list);
-	task->state = TASK_STATE_COMPLETED;
+	task->type = type;
+	task->priority = priority;
+	task->core = core;
+	task->state = SOF_TASK_STATE_INIT;
+	task->func = func;
+	task->data = data;
+
+	return schedulers[task->type]->schedule_task_init(task, xflags);
 }
 
-/* schedule task */
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline)
+void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
+		   uint32_t flags)
 {
-	task->deadline = deadline;
-	list_item_prepend(&task->list, &sch->list);
-	task->state = TASK_STATE_QUEUED;
-
-	if (task->func)
-		task->func(task->data);
-
-	schedule_task_complete(task);
+	if (schedulers[task->type]->schedule_task)
+		schedulers[task->type]->schedule_task(task, start, deadline,
+			flags);
 }
 
-/* initialize scheduler */
-int scheduler_init(struct sof *sof)
+void schedule_task_free(struct task *task)
 {
-	trace_schedule("scheduler_init()");
-	sch = malloc(sizeof(*sch));
-	list_init(&sch->list);
-	spinlock_init(&sch->lock);
-
-	return 0;
+	if (schedulers[task->type]->schedule_task_free)
+		schedulers[task->type]->schedule_task_free(task);
 }
 
-/* The following definitions are to satisfy libsof linker errors */
-
-void schedule(void)
+void reschedule_task(struct task *task, uint64_t start)
 {
-}
-
-void schedule_task_idle(struct task *task, uint64_t deadline)
-{
+	if (schedulers[task->type]->reschedule_task)
+		schedulers[task->type]->reschedule_task(task, start);
 }
 
 int schedule_task_cancel(struct task *task)
 {
-	return 0;
+	int ret = 0;
+
+	if (schedulers[task->type]->schedule_task_cancel)
+		ret = schedulers[task->type]->schedule_task_cancel(task);
+
+	return ret;
 }
 
-/* testbench work definition */
-
-void work_schedule_default(struct work *w, uint64_t timeout)
+int scheduler_init(void)
 {
+	int i = 0;
+	int ret = 0;
+
+	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
+		if (schedulers[i]->scheduler_init) {
+			ret = schedulers[i]->scheduler_init();
+			if (ret < 0)
+				goto out;
+		}
+	}
+out:
+	return ret;
 }
 
-void work_cancel_default(struct work *work)
+void schedule_free(void)
 {
+	int i;
+
+	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
+		if (schedulers[i]->scheduler_free)
+			schedulers[i]->scheduler_free();
+	}
+}
+
+void schedule(void)
+{
+	int i = 0;
+
+	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
+		if (schedulers[i]->scheduler_run)
+			schedulers[i]->scheduler_run();
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,53 +25,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
+ * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
-#include <stdarg.h>
-#include <stddef.h>
-#include <setjmp.h>
-#include <cmocka.h>
+#ifndef _INCLUDE_HOST_EDF_SCHEDULE_H_
+#define _INCLUDE_HOST_EDF_SCHEDULE_H_
 
-#include <sof/alloc.h>
-#include <sof/audio/component.h>
+extern struct scheduler_ops schedule_edf_ops;
 
-#include "comp_mock.h"
-
-#include <mock_trace.h>
-
-TRACE_IMPL()
-
-void *rballoc(int zone, uint32_t caps, size_t bytes)
-{
-	(void)zone;
-	(void)caps;
-
-	return malloc(bytes);
-}
-
-void *rzalloc(int zone, uint32_t caps, size_t bytes)
-{
-	(void)zone;
-	(void)caps;
-
-	return calloc(bytes, 1);
-}
-
-void rfree(void *ptr)
-{
-	free(ptr);
-}
-
-void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
-{
-}
-
-int comp_set_state(struct comp_dev *dev, int cmd)
-{
-	return 0;
-}
-
-void ll_schedule_default(struct task *w, uint64_t timeout)
-{
-}
+#endif /* _INCLUDE_HOST_EDF_SCHEDULE_H_ */

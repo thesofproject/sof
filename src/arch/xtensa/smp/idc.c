@@ -98,7 +98,7 @@ static void idc_irq_handler(void *arg)
 			idc->received_msg.extension =
 					idctefc & IPC_IDCTEFC_MSG_MASK;
 
-			schedule_task(&idc->idc_task, 0, IDC_DEADLINE);
+			schedule_task(&idc->idc_task, 0, IDC_DEADLINE, 0);
 
 			break;
 		}
@@ -263,7 +263,7 @@ static void idc_cmd(struct idc_msg *msg)
  * \brief Handles received IDC message.
  * \param[in,out] data Pointer to IDC data.
  */
-static void idc_do_cmd(void *data)
+static uint64_t idc_do_cmd(void *data)
 {
 	struct idc *idc = data;
 	int core = arch_cpu_get_id();
@@ -279,6 +279,8 @@ static void idc_do_cmd(void *data)
 
 	/* enable BUSY interrupt */
 	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask | idc->done_bit_mask);
+
+	return 0;
 }
 
 /**
@@ -343,8 +345,8 @@ int arch_idc_init(void)
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
 
 	/* process task */
-	schedule_task_init(&(*idc)->idc_task, idc_do_cmd, *idc);
-	schedule_task_config(&(*idc)->idc_task, TASK_PRI_IDC, core);
+	schedule_task_init(&(*idc)->idc_task, SOF_SCHEDULE_EDF,
+			   SOF_TASK_PRI_IDC, idc_do_cmd, *idc, core, 0);
 
 	/* configure interrupt */
 	ret = interrupt_register(PLATFORM_IDC_INTERRUPT(core), IRQ_AUTO_UNMASK,

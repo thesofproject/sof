@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/schedule.h>
+#include <sof/edf_schedule.h>
 #include "pipeline_mocks.h"
 #include <stdarg.h>
 #include <stddef.h>

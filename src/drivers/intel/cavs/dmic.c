@@ -203,7 +203,7 @@ static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 #endif
 
 /* this ramps volume changes over time */
-static uint64_t dmic_work(void *data, uint64_t delay)
+static uint64_t dmic_work(void *data)
 {
 	struct dai *dai = (struct dai *)data;
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
@@ -1124,7 +1124,10 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	trace_dmic("dmic_set_config(), dai->index = %d", di);
 
 	/* Initialize start sequence handler */
-	work_init(&dmic->dmicwork, dmic_work, dai, WORK_MED_PRI, WORK_ASYNC);
+	schedule_task_init(&dmic->dmicwork, SOF_SCHEDULE_LL,
+			   SOF_TASK_PRI_MED, dmic_work, dai, 0,
+			   SOF_SCHEDULE_FLAG_ASYNC);
+
 
 	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {
 		trace_dmic_error("dmic_set_config() error: wrong ipc version");
@@ -1360,7 +1363,7 @@ static void dmic_start(struct dai *dai)
 	 * is not suppressed by gain ramp somewhere in the capture pipe.
 	 */
 
-	work_schedule_default(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US);
+	schedule_task(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US, 0, 0);
 
 	trace_dmic("dmic_start(), done");
 }

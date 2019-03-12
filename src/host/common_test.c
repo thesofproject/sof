@@ -44,7 +44,7 @@
 #include <sof/ipc.h>
 #include <sof/dai.h>
 #include <sof/dma.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 #include <sof/wait.h>
 #include <sof/ipc.h>
 #include <sof/audio/pipeline.h>
@@ -65,7 +65,7 @@ int tb_pipeline_setup(struct sof *sof)
 	}
 
 	/* init scheduler */
-	if (scheduler_init(sof) < 0) {
+	if (scheduler_init() < 0) {
 		fprintf(stderr, "error: scheduler init\n");
 		return -EINVAL;
 	}

@@ -45,7 +45,7 @@
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/work.h>
+#include <sof/schedule.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
 #include "volume.h"
@@ -86,7 +86,7 @@ static void vol_update(struct comp_data *cd, uint32_t chan)
  * \param[in] delay Update time.
  * \return Time until next work.
  */
-static uint64_t vol_work(void *data, uint64_t delay)
+static uint64_t vol_work(void *data)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -197,8 +197,8 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	}
 
 	comp_set_drvdata(dev, cd);
-	work_init(&cd->volwork, vol_work, dev, WORK_MED_PRI, WORK_ASYNC);
-
+	schedule_task_init(&cd->volwork, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
+			   vol_work, dev, 0, 0);
 	/* set volume min/max levels */
 	vol_set_min_max_levels(cd, ipc_vol->min_value, ipc_vol->max_value);
 
@@ -339,7 +339,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 						   "invalid i = %u", i);
 			}
 		}
-		work_schedule_default(&cd->volwork, VOL_RAMP_US);
+		schedule_task(&cd->volwork, VOL_RAMP_US, 0, 0);
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
@@ -364,7 +364,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 						   "invalid i = %u", i);
 			}
 		}
-		work_schedule_default(&cd->volwork, VOL_RAMP_US);
+		schedule_task(&cd->volwork, VOL_RAMP_US, 0, 0);
 		break;
 
 	default:

@@ -59,7 +59,7 @@ void sa_enter_idle(struct sof *sof)
 	sa->last_idle = platform_timer_get(platform_timer);
 }
 
-static uint64_t validate(void *data, uint64_t delay)
+static uint64_t validate(void *data)
 {
 	struct sa *sa = data;
 	uint64_t current;
@@ -94,6 +94,9 @@ void sa_init(struct sof *sof)
 
 	/* set lst idle time to now to give time for boot completion */
 	sa->last_idle = platform_timer_get(platform_timer) + sa->ticks;
-	work_init(&sa->work, validate, sa, WORK_MED_PRI, WORK_ASYNC);
-	work_schedule_default(&sa->work, PLATFORM_IDLE_TIME);
+
+	schedule_task_init(&sa->work, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
+			   validate, sa, 0, 0);
+
+	schedule_task(&sa->work, PLATFORM_IDLE_TIME, 0, 0);
 }
