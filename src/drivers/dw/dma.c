@@ -65,7 +65,7 @@
 #include <platform/interrupt.h>
 #include <errno.h>
 #include <stdint.h>
-#include <string.h>
+#include <sof/string.h>
 #include <config.h>
 
 /* channel registers */

@@ -34,7 +34,7 @@
 #include <platform/interrupt.h>
 #include <platform/dma.h>
 #include <stdint.h>
-#include <string.h>
+#include <sof/string.h>
 
 static struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {

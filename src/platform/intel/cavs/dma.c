@@ -38,7 +38,7 @@
 #include <platform/interrupt.h>
 #include <platform/dma.h>
 #include <stdint.h>
-#include <string.h>
+#include <sof/string.h>
 
 #if defined(CONFIG_APOLLOLAKE)
 #define DMAC0_CLASS 1

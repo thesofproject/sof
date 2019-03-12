@@ -33,6 +33,8 @@
 #define __INCLUDE_ARCH_STRING_SOF__
 
 #include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 
 #define arch_memcpy(dest, src, size) \
 	memcpy(dest, src, size)

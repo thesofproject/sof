@@ -44,7 +44,7 @@
 #include <platform/dma.h>
 #include <platform/dai.h>
 #include <stdint.h>
-#include <string.h>
+#include <sof/string.h>
 #include <config.h>
 
 #if CONFIG_CAVS_SSP

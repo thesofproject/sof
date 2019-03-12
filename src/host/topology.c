@@ -36,7 +36,7 @@
 
 #include <sof/ipc.h>
 #include <stdio.h>
-#include <string.h>
+#include <sof/string.h>
 #include <dlfcn.h>
 #include <sof/audio/component.h>
 #include "host/topology.h"

@@ -54,7 +54,7 @@
 #include <sof/cpu.h>
 #include <sof/notifier.h>
 #include <config.h>
-#include <string.h>
+#include <sof/string.h>
 #include <version.h>
 
 static const struct sof_ipc_fw_ready ready

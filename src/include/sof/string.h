@@ -35,6 +35,8 @@
 
 /* C memcpy for arch that don't have arch_memcpy() */
 void cmemcpy(void *dest, void *src, size_t size);
+int rstrlen(const char *s);
+int rstrcmp(const char *s1, const char *s2);
 
 #if defined(arch_memcpy)
 #define rmemcpy(dest, src, size) \
