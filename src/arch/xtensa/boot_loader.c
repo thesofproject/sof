@@ -219,15 +219,19 @@ static uint32_t hp_sram_init(void)
 
 #endif
 
-#if defined(CONFIG_ICELAKE)
+#if defined(CONFIG_ICELAKE) || defined(CONFIG_APOLLOLAKE)
 static int32_t lp_sram_init(void)
 {
 	int status;
 	unsigned int timeout_counter, delay_count = 256;
 	timeout_counter = delay_count;
 
+#if defined(CONFIG_APOLLOLAKE)
+	uint8_t lspgctl_value;
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_LPSRAM_LDO_ON);
-
+	lspgctl_value = shim_read(LSPGCTL);
+	shim_write(LSPGCTL, lspgctl_value & !LPSRAM_MASK(0));
+#endif
 	/* query the power status of first part of LP memory */
 	/* to check whether it has been powered up. A few    */
 	/* cycles are needed for it to be powered up         */
@@ -264,7 +268,7 @@ void boot_master_core(void)
 		return;
 	}
 
-#if defined(CONFIG_ICELAKE)
+#if defined(CONFIG_ICELAKE) || defined(CONFIG_APOLLOLAKE)
 	/* init the LPSRAM */
 	platform_trace_point(TRACE_BOOT_LDR_LPSRAM);
 
