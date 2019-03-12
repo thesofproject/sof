@@ -120,6 +120,7 @@ struct spi_dma_config {
 	enum spi_xfer_direction dir;
 	void *src_buf;
 	void *dest_buf;
+	uint32_t buffer_size;
 	uint32_t transfer_len;
 };
 
@@ -133,6 +134,7 @@ struct spi {
 	const struct gpio *gpio;
 	uint32_t index;
 	uint32_t chan[2];	/* spi-slave rx/tx dma */
+	uint32_t buffer_size;
 	uint8_t *rx_buffer;
 	uint8_t *tx_buffer;
 	struct dma *dma[2];
@@ -379,7 +381,8 @@ int spi_push(struct spi *spi, const void *data, size_t size)
 	spi->ipc_status = IPC_WRITE;
 
 	/* Actually we have to send IPC messages in one go */
-	rmemcpy(config->src_buf, data, size);
+	assert(!memcpy_s(config->src_buf, config->buffer_size, data, size));
+
 	dcache_writeback_region(config->src_buf, size);
 
 	ret = spi_trigger(spi, SPI_TRIGGER_START, SPI_DIR_TX);
@@ -427,6 +430,7 @@ static int spi_slave_init(struct spi *spi)
 	config = spi->config + SPI_DIR_TX;
 	config->dir = SPI_DIR_TX;
 	config->src_buf = spi->tx_buffer;
+	config->buffer_size = spi->buffer_size;
 
 	spi->completion.private = NULL;
 	return schedule_task_init(&spi->completion, SOF_SCHEDULE_EDF,
@@ -475,6 +479,7 @@ int spi_probe(struct spi *spi)
 
 	spi->tx_buffer = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_DMA,
 				 SPI_BUFFER_SIZE);
+	spi->buffer_size = SPI_BUFFER_SIZE;
 	if (spi->tx_buffer == NULL) {
 		rfree(spi->rx_buffer);
 		trace_ipc_error("eSp");

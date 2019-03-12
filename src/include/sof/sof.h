@@ -57,9 +57,6 @@ struct sa;
 	__attribute__((unused))		\
 	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
 
-/* runtime assertion */
-#define assert(cond) (void)((cond) || (panic(SOF_IPC_PANIC_ASSERT), 0))
-
 /* general firmware context */
 struct sof {
 	/* init data */
