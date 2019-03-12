@@ -67,6 +67,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 {
 	struct pipeline *p;
 	uint32_t type;
+	int err;
 
 	trace_pipe("pipeline_new()");
 
@@ -82,7 +83,13 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	p->status = COMP_STATE_INIT;
 
 	spinlock_init(&p->lock);
-	memcpy(&p->ipc_pipe, pipe_desc, sizeof(*pipe_desc));
+	err = memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
+	   pipe_desc, sizeof(*pipe_desc));
+	if (err) {
+		trace_pipe_error("pipeline_new() could not coppy data");
+		rfree(p);
+		return NULL;
+	}
 
 	/* get pipeline task type */
 	type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :

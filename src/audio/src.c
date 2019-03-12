@@ -561,6 +561,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_src *src;
 	struct sof_ipc_comp_src *ipc_src = (struct sof_ipc_comp_src *)comp;
 	struct comp_data *cd;
+	int err;
 
 	trace_src("src_new()");
 
@@ -582,7 +583,15 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	src = (struct sof_ipc_comp_src *)&dev->comp;
-	memcpy(src, ipc_src, sizeof(struct sof_ipc_comp_src));
+
+	err = memcpy_s(src, sizeof(*src), ipc_src,
+	    sizeof(struct sof_ipc_comp_src));
+	if (err) {
+		trace_src_error("src_new() error: "
+				"could not coppy data");
+		rfree(dev);
+		return NULL;
+	}
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

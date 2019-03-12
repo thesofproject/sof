@@ -379,7 +379,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_process *ipc_fir
 		= (struct sof_ipc_comp_process *)comp;
 	size_t bs = ipc_fir->size;
-	int i;
+	int i, err;
 
 	trace_eq("eq_fir_new()");
 
@@ -401,8 +401,8 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
-
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
+	err = memcpy_s(&dev->comp, sizeof(dev->comp),
+	   comp, sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -427,7 +427,14 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 			return NULL;
 		}
 
-		memcpy(cd->config, ipc_fir->data, bs);
+		err = memcpy_s(cd->config, sizeof(*cd->config),
+		   ipc_fir->data, bs);
+	}
+
+	if (err) {
+		rfree(dev);
+		rfree(cd);
+		return NULL;
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -498,7 +505,11 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			if (bs > SOF_EQ_FIR_MAX_SIZE || bs == 0 ||
 			    bs > max_size)
 				return -EINVAL;
-			memcpy(cdata->data->data, cd->config, bs);
+			ret = memcpy_s(cdata->data->data,
+				      ((struct sof_abi_hdr *)
+				      (cdata->data))->size,
+				      cd->config, bs);
+
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
@@ -590,7 +601,8 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		memcpy(cd->config, cfg, bs);
+		ret = memcpy_s(cd->config, sizeof(*cd->config), cfg, bs);
+
 		break;
 	default:
 		trace_eq_error("fir_cmd_set_data() error: invalid cdata->cmd");

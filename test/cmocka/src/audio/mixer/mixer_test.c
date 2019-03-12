@@ -56,18 +56,23 @@ struct comp_buffer *post_mixer_buf;
 int comp_register(struct comp_driver *drv)
 {
 	void *dst;
-
+	int err;
 	switch (drv->type) {
 	case SOF_COMP_MIXER:
 		dst = &mixer_drv_mock;
+		err = memcpy_s(dst, sizeof(mixer_drv_mock),
+			drv, sizeof(struct comp_driver));
 		break;
 
 	case SOF_COMP_MOCK:
 		dst = &drv_mock;
+		err = memcpy_s(dst, sizeof(drv_mock), drv,
+			sizeof(struct comp_driver));
 		break;
 	}
 
-	memcpy(dst, drv, sizeof(struct comp_driver));
+	if (err)
+		return -EINVAL;
 
 	return 0;
 }
