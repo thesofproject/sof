@@ -286,8 +286,8 @@ struct dma_ptr_data {
 
 /* data for each DMA channel */
 struct dma_chan_data {
-	uint32_t status;
-	uint32_t direction;
+	uint16_t status;
+	uint16_t direction;
 	struct dw_lli2 *lli;
 	struct dw_lli2 *lli_current;
 	uint32_t desc_count;
