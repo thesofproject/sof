@@ -60,10 +60,20 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct sof_ipc_comp_kpb *kpb;
-	struct sof_ipc_comp_kpb *ipc_kpb = (struct sof_ipc_comp_kpb *)comp;
+//	struct sof_ipc_comp_kpb *ipc_kpb = (struct sof_ipc_comp_kpb *)comp;
+	struct sof_ipc_comp_kpb kpb_ipc, *ipc_kpb;
 	struct comp_data *cd;
 
 	trace_kpb("kpb_new()");
+
+	/* We don't have configs from ipc yet, initialize them locally atm. */
+	ipc_kpb = &kpb_ipc;
+
+	ipc_kpb->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+	ipc_kpb->no_channels = KPB_MAX_SUPPORTED_CHANNELS;
+	ipc_kpb->history_depth = KPB_MAX_BUFFER_SIZE;
+	ipc_kpb->sampling_freq = KPB_SAMPLNG_FREQUENCY;
+	ipc_kpb->sampling_width = KPB_SAMPLING_WIDTH;
 
 	/* Validate input parameters */
 	if (IPC_IS_SIZE_INVALID(ipc_kpb->config)) {
