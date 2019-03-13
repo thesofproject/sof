@@ -76,7 +76,7 @@ int do_task_master_core(struct sof *sof)
 		ipc_process_msg_queue();
 
 		/* schedule any idle tasks */
-		schedule();
+		schedule_idle();
 	}
 
 	/* something bad happened */

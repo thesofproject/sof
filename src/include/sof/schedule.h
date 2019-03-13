@@ -70,6 +70,7 @@ struct sof;
 
 #define TASK_PRI_IPC	1
 #define TASK_PRI_IDC	1
+#define TASK_IDLE	20
 
 /* maximun task time slice in microseconds */
 #define SCHEDULE_TASK_MAX_TIME_SLICE	5000
@@ -106,6 +107,8 @@ int schedule_task_cancel(struct task *task);
 void schedule_task_complete(struct task *task);
 
 void schedule_task_running(struct task *task);
+
+void schedule_idle(void);
 
 static inline void schedule_task_init(struct task *task, void (*func)(void *),
 	void *data)

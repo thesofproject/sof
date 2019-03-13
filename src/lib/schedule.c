@@ -49,6 +49,7 @@
 struct schedule_data {
 	spinlock_t lock;
 	struct list_item list;	/* list of tasks in priority queue */
+	struct list_item idle_list;	/* list of queued idle tasks */
 	uint32_t clock;
 	struct work work;
 };
@@ -102,7 +103,7 @@ static inline struct task *edf_get_next(uint64_t current,
 	uint64_t delta;
 	uint64_t deadline;
 	int reschedule = 0;
- 
+
 	/* any tasks in the scheduler ? */
 	if (list_is_empty(&sch->list)) {
 		return NULL;
@@ -293,8 +294,11 @@ static int _schedule_task(struct task *task, uint64_t start, uint64_t deadline)
 	/* calculate deadline - TODO: include MIPS */
 	task->deadline = task->start + ticks_per_ms * deadline / 1000;
 
-	/* add task to list */
-	list_item_append(&task->list, &sch->list);
+	/* add task to the proper list */
+	if (task->priority == TASK_IDLE)
+		list_item_append(&task->list, &sch->idle_list);
+	else
+		list_item_append(&task->list, &sch->list);
 	task->state = TASK_STATE_QUEUED;
 	spin_unlock_irq(&sch->lock, flags);
 
@@ -434,6 +438,29 @@ schedule:
 	interrupt_set(PLATFORM_SCHEDULE_IRQ);
 }
 
+/* scheduler on idle tasks (non prioritized) */
+void schedule_idle(void)
+{
+	struct schedule_data *sch = *arch_schedule_get();
+	struct list_item *tlist;
+	struct task *task;
+
+	/* first check if any higher priority task is waiting */
+	schedule();
+
+	/* invoke unprioritized/idle tasks right away */
+	list_for_item(tlist, &sch->idle_list) {
+		task = container_of(tlist, struct task, list);
+
+		/* run task if we find any queued */
+		if (task->state == TASK_STATE_QUEUED)
+			task->func(task->data);
+
+		/* task done, remove it from the list */
+		list_item_del(tlist);
+	}
+}
+
 /* Initialise the scheduler */
 int scheduler_init(struct sof *sof)
 {
@@ -446,6 +473,7 @@ int scheduler_init(struct sof *sof)
 		return -ENOMEM;
 
 	list_init(&((*sch)->list));
+	list_init(&((*sch)->idle_list));
 	spinlock_init(&((*sch)->lock));
 	(*sch)->clock = PLATFORM_SCHED_CLOCK;
 	work_init(&((*sch)->work), sch_work, *sch, WORK_MED_PRI, WORK_ASYNC);

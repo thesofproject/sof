@@ -65,7 +65,7 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
 static void draining_task(void *arg);
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source);
+static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source, size_t size);
 static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req);
 
 /**
@@ -279,7 +279,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* initialize draining task */
 	schedule_task_init(&cd->draining_task, draining_task,
 			   &cd->draining_task_data);
-	schedule_task_config(&cd->draining_task, TASK_PRI_MED, 0);
+	schedule_task_config(&cd->draining_task, TASK_IDLE, 0);
 
 	/* search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
@@ -347,6 +347,7 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
+	size_t copy_bytes = 0;
 
 	tracev_kpb("kpb_copy()");
 
@@ -360,7 +361,7 @@ static int kpb_copy(struct comp_dev *dev)
 	if (source && sink) {
 		if (!source->r_ptr || !sink->w_ptr) {
 			return -EINVAL;
-		} else if (sink->free < kpb->sink_period_bytes && 0) {
+		} else if (sink->free == 0) {
 			/* TODO: to be removed */
 			trace_kpb_error("kpb_copy() error: "
 				   "sink component buffer"
@@ -368,7 +369,7 @@ static int kpb_copy(struct comp_dev *dev)
 			comp_overrun(dev, sink, kpb->sink_period_bytes, 0);
 			/* xrun */
 			return -EIO;
-		} else if (source->avail < kpb->source_period_bytes && 0) {
+		} else if (source->avail == 0) {
 			/* TODO: to be removed */
 			/* xrun */
 			trace_kpb_error("kpb_copy() error: "
@@ -378,10 +379,10 @@ static int kpb_copy(struct comp_dev *dev)
 				      0);
 			return -EIO;
 		} else {
+			copy_bytes = MIN(sink->free, source->avail);
 			/* sink and source are both ready and have space */
 			/* TODO: copy sink or source period data here? */
-			memcpy(sink->w_ptr, source->r_ptr,
-			       MIN(sink->free, source->avail));
+			memcpy(sink->w_ptr, source->r_ptr, copy_bytes);
 			/* signal update source & sink data */
 			update_buffers = 1;
 		}
@@ -390,15 +391,15 @@ static int kpb_copy(struct comp_dev *dev)
 			/* TODO: should we copy what is available or just
 			 * a small portion of it?
 			 */
-			kpb_buffer_data(kpb, source);
+			kpb_buffer_data(kpb, source, copy_bytes);
 		}
 	} else {
 		ret = -EIO;
 	}
 
 	if (update_buffers) {
-		comp_update_buffer_produce(sink, MIN(sink->free, source->avail));
-		comp_update_buffer_consume(source, MIN(sink->free, source->avail));
+		comp_update_buffer_produce(sink, copy_bytes);
+		comp_update_buffer_consume(source, copy_bytes);
 	}
 	return ret;
 }
@@ -409,12 +410,12 @@ static int kpb_copy(struct comp_dev *dev)
  *
  * \param[in] kpb - KPB component data pointer.
  * \param[in] source pointer to the buffer source.
- *
+ *, siz
  * \return none
  */
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
+static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source, size_t size)
 {
-	int size_to_copy = kpb->source_period_bytes;
+	int size_to_copy = size;
 	int space_avail;
 	struct hb *buff = &kpb->history_buffer;
 	struct hb *first_buff = buff;
@@ -476,7 +477,7 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
 	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
 
-	tracev_kpb("kpb_event_handler()");
+	trace_kpb("kpb_event_handler()");
 
 	switch (evd->event_id) {
 	case KPB_EVENT_REGISTER_CLIENT:
@@ -570,15 +571,15 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 				"wrong client id");
 
 		return;
-	} else if (kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED) {
+	//} else if (kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED) {
 		/* TODO: possibly move this check to draining task
 		 * the doubt is if HOST managed to change the sink state
 		 * at notofication time
 		 */
-		trace_kpb_error("kpb_init_draining() error: "
-				"requested draining for unregistered client");
-
-		return;
+	//	trace_kpb_error("kpb_init_draining() error: "
+	//			"requested draining for unregistered client");
+//
+	//	return;
 	} else if (!is_sink_ready) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"sink not ready for draining");
@@ -624,6 +625,8 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 			}
 		} while (buff != first_buff);
 
+		trace_kpb("kpb_init_draining(), schedule draining");
+
 		/* add one-time draining task into the scheduler */
 		kpb->draining_task_data.sink = kpb->cli_sink;
 		kpb->draining_task_data.history_buffer = buff;
@@ -643,13 +646,13 @@ static void draining_task(void *arg)
 	size_t size_to_read;
 	size_t size_to_copy;
 
-	while (draining_data->history_depth > 0 && sink->avail > 0) {
+	while (draining_data->history_depth > 0 && sink->free > 0) {
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
-		if (size_to_read > sink->avail) {
-			if (sink->avail >= draining_data->history_depth)
+		if (size_to_read > sink->free) {
+			if (sink->free >= draining_data->history_depth)
 				size_to_copy = draining_data->history_depth;
 			else
-				size_to_copy = sink->avail;
+				size_to_copy = sink->free;
 
 			memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
 			buff->r_ptr += (uint32_t)size_to_copy;
