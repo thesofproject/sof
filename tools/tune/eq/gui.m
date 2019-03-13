@@ -306,6 +306,49 @@ function initialize_biquad(index, channel, position, main_panes)
 		"callback", @enable_callback);
 end
 
+function push_config(h, evnt)
+	window = get(h, "userdata").menu_window;
+	ip = get(window.ip_box, "string");
+	user = get(window.user_box, "string");
+	device = str2num(get(window.device_box, "string"));
+	alsa_num = str2num(get(window.alsa_box, "string"));
+	target = struct("ip", ip, "user", user, "device", device, "control", alsa_num);
+
+	temp_file = tempname();
+
+	eq_left = eq_defaults();
+	eq_left.enable_iir = 1;
+	eq_left.peq = build_peq(1, EQ);
+	eq_left.norm_type = 'peak';
+	eq_left.norm_offs_db = 0;
+	eq_left.fs = Fs;
+
+	eq_right = eq_defaults();
+	eq_right.enable_iir = 1;
+	eq_right.peq = build_peq(2, EQ);
+	eq_right.norm_type = 'peak';
+	eq_right.norm_offs_db = 0;
+	eq_right.fs = Fs;
+
+	eq_left  = eq_compute(eq_left);
+	eq_right = eq_compute(eq_right);
+
+	bq_left  = eq_iir_blob_quant(eq_left.p_z,  eq_left.p_p,  eq_left.p_k);
+	bq_right = eq_iir_blob_quant(eq_right.p_z, eq_right.p_p, eq_right.p_k);
+
+	channels_in_config = 2;
+	assign_response = [0 1];
+	num_responses = 2;
+	bm = eq_iir_blob_merge(channels_in_config, ...
+						   num_responses, ...
+						   assign_response, ...
+						   [bq_left bq_right]);
+
+	bp = eq_iir_blob_pack(bm);
+	eq_alsactl_write(temp_file, bp);
+	eq_deploy_to_dut(target, temp_file);
+end
+
 pkg load signal;
 
 % create figure and panel on it
@@ -347,22 +390,45 @@ main_panes(2).plot = plot(log2(w), h, "linewidth", 4);
 axis([log2(nyquist_f / (2 ^ n_octaves)), log2(nyquist_f), -24, 18]);
 grid on;
 % TODO add ability to switch between octaves and log(Hz)
-fn = figure(fn, "toolbar", "none", "menubar", "none", 'Position', [200 200 260 130]); fn = fn + 1;
+fn = figure(fn, "toolbar", "none", "menubar", "none", 'Position', [200 200 300 220]); fn = fn + 1;
 menu_window = struct();
 menu_window.ip_box = uicontrol( ...
 	"style", "edit", ...
-	"position", [80 100 180 30]);
+	"position", [120 190 180 30]);
 menu_window.ip_label = uicontrol( ...
 	"style", "text",
 	"string", "DUT IP:", ...
-	"position", [0 100 80 30]);
+	"position", [0 190 120 30]);
+menu_window.user_box = uicontrol( ...
+	"style", "edit", ...
+	"position", [120 160 180 30]);
+menu_window.user_label = uicontrol( ...
+	"style", "text",
+	"string", "DUT User:", ...
+	"position", [0 160 120 30]);
+menu_window.device_box = uicontrol( ...
+	"style", "edit", ...
+	"position", [120 130 180 30]);
+menu_window.device_label = uicontrol( ...
+	"style", "text",
+	"string", "Device Num:", ...
+	"position", [0 130 120 30]);
+menu_window.alsa_box = uicontrol( ...
+	"style", "edit", ...
+	"position", [120 100 180 30]);
+menu_window.alsa_label = uicontrol( ...
+	"style", "text",
+	"string", "ALSA Ctl Num:", ...
+	"position", [0 100 120 30]);
 menu_window.upload = uicontrol( ...
 	"style", "pushbutton", ...
 	'string', 'Push config to DUT', ...
-	"position", [0 50 260 50]);
+	"callback", @push_config, ...
+	"position", [0 50 300 50], ...
+	"userdata", struct("menu_window", menu_window));
 menu_window.load_dsp = uicontrol( ...
 	"style", "pushbutton", ...
 	'string', 'Load dsp.ini', ...
 	"callback", @eq_load_dsp_ini, ...
-	"position", [0 0 260 50], ...
+	"position", [0 0 300 50], ...
 	"userdata", struct("EQ", EQ));
