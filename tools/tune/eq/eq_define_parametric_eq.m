@@ -126,6 +126,17 @@ function [b, a] = peak_2nd(fhz, gdb, Q, fs)
 	% Reference http://www.musicdsp.org/files/Audio-EQ-Cookbook.txt
 	A = 10^(gdb/40); % Square root of linear gain
 	wc = 2*pi*fhz/fs;
+
+	if Q <= 0
+		% To fix gui edge cases, comment from CRAS code:
+		% When Q = 0, the above formulas have problems. If we
+		% look at the z-transform, we can see that the limit
+		% as Q->0 is A^2, so set the filter that way.
+		b = [A * A, 0, 0]
+		a = [1, 0, 0];
+		return;
+	endif
+
 	alpha = sin(wc)/(2*Q);
 	b0 = 1 + alpha * A;
 	b1 = -2 * cos(wc);
