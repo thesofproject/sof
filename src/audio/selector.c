@@ -106,27 +106,26 @@ static int sel_set_channel_values(struct comp_data *cd, uint32_t in_channels,
  */
 static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 {
+	struct sof_ipc_comp_process *ipc_process =
+		(struct sof_ipc_comp_process *)comp;
+	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
-	struct sof_ipc_comp_selector *sel;
-	struct sof_ipc_comp_selector *ipc_sel =
-		(struct sof_ipc_comp_selector *)comp;
 	struct comp_data *cd;
 	int ret;
 
 	trace_selector("selector_new()");
 
-	if (IPC_IS_SIZE_INVALID(ipc_sel->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_SELECTOR, ipc_sel->config);
+	if (IPC_IS_SIZE_INVALID(ipc_process->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_SELECTOR, ipc_process->config);
 		return NULL;
 	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_selector));
+		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
 
-	sel = (struct sof_ipc_comp_selector *)&dev->comp;
-	memcpy(sel, ipc_sel, sizeof(struct sof_ipc_comp_selector));
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -136,10 +135,12 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
+	memcpy(&cd->config, ipc_process->data, bs);
+
 	/* verification of initial parameters */
-	ret = sel_set_channel_values(cd, ipc_sel->input_channels_count,
-				     ipc_sel->output_channels_count,
-				     ipc_sel->selected_channel);
+	ret = sel_set_channel_values(cd, cd->config.in_channels_count,
+				     cd->config.out_channels_count,
+				     cd->config.sel_channel);
 	if (ret < 0) {
 		rfree(cd);
 		rfree(dev);
