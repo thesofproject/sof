@@ -267,6 +267,9 @@
 /* number of tries to wait for reset */
 #define DW_DMA_CFG_TRIES	10000
 
+/* min number of elems for config with irq disabled */
+#define DW_DMA_CFG_NO_IRQ_MIN_ELEMS	3
+
 /* linked list item address */
 #define DW_DMA_LLI_ADDRESS(lli, dir) \
 	(((dir) == DMA_DIR_MEM_TO_DEV) ? ((lli)->sar) : ((lli)->dar))
@@ -793,6 +796,16 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 	if (!config->elem_array.count) {
 		trace_dwdma_error("dw-dma: %d channel %d no elems",
 				  dma->plat_data.id, channel);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (config->irq_disabled &&
+	    config->elem_array.count < DW_DMA_CFG_NO_IRQ_MIN_ELEMS) {
+		trace_dwdma_error("dw-dma: %d channel %d not enough elems "
+				  "for config with irq disabled",
+				  dma->plat_data.id, channel,
+				  config->elem_array.count);
 		ret = -EINVAL;
 		goto out;
 	}
