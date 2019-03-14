@@ -353,8 +353,11 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		goto out;
 	}
 
-	/* pipeline preload needed only for playback streams */
-	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK;
+	/* pipeline preload needed only for playback streams and capture
+	 * streams scheduled with timer
+	 */
+	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ||
+		pipeline_is_timer_driven(p);
 	p->status = COMP_STATE_PREPARE;
 
 out:
@@ -424,12 +427,12 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 	case COMP_TRIGGER_START:
 		p->xrun_bytes = 0;
 
-		/* playback pipelines need scheduled now, capture pipelines are
-		 * scheduled once their initial DMA period is filled by the DAI
-		 * or in resume process
+		/* playback pipelines need to be scheduled now,
+		 * capture pipelines are scheduled only for
+		 * timer driven scheduling
 		 */
 		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK ||
-		    p->status == COMP_STATE_PAUSED) {
+		    pipeline_is_timer_driven(p)) {
 			/* schedule initial pipeline fill when next idle */
 			pipeline_schedule_copy_idle(p);
 		}
@@ -596,7 +599,7 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	/* copy to downstream immediately */
 	if (dir == PPL_DIR_DOWNSTREAM) {
 		err = comp_copy(current);
-		if (err < 0)
+		if (err < 0 || err > 0)
 			return err;
 	}
 
