@@ -456,6 +456,7 @@ static int dai_params(struct comp_dev *dev)
 static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dma_sg_config *config = &dd->config;
 	int ret = 0;
 
 	trace_dai_with_ids(dev, "dai_prepare()");
@@ -477,7 +478,9 @@ static int dai_prepare(struct comp_dev *dev)
 	/* write back buffer contents from cache */
 	dcache_writeback_region(dd->dma_buffer->addr, dd->dma_buffer->size);
 
-	dd->cb_type = 0;
+	/* set default callback type if irq disabled */
+	if (config->irq_disabled)
+		dd->cb_type = DMA_CB_TYPE_BLOCK;
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
