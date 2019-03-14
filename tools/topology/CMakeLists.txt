@@ -7,13 +7,13 @@ file(GLOB TPLG_DEPS
 )
 
 set(TPLGS
-	"sof-cht-nocodec\;sof-cht-nocodec"
+	"sof-cht-nocodec\;sof-cht-nocodec\;-DPLATFORM=cht"
+	"sof-cht-nocodec\;sof-byt-nocodec\;-DPLATFORM=byt"
 	"sof-cht-max98090\;sof-cht-max98090"
 	"sof-cht-rt5682\;sof-cht-rt5682"
 	"sof-hda-intel-common\;sof-hda-intel-common"
 	"sof-apl-nocodec\;sof-apl-nocodec"
 	"sof-apl-keyword-detect\;sof-apl-keyword-detect"
-	"sof-byt-nocodec\;sof-byt-nocodec"
 	"sof-bdw-rt286\;sof-bdw-rt286"
 	"sof-bdw-rt5640\;sof-bdw-rt5640"
 	"sof-byt-rt5640\;sof-byt-rt5640"
