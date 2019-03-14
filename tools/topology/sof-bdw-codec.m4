@@ -1,5 +1,6 @@
 #
-# Topology for generic Broadwell board with rt286.
+ifelse(CODEC, `RT286', `# Topology for generic Broadwell board with RT286.', `')
+ifelse(CODEC, `RT5640', `# Topology for generic Broadwell board with RT5640.', `')
 #
 
 # Include topology builder
@@ -16,6 +17,9 @@ include(`sof/tokens.m4')
 
 # Include Broadwell DSP configuration
 include(`platform/intel/bdw.m4')
+
+define(PIPE_NAME, ifelse(CODEC, `RT5640', pipe-bdw-rt5640,
+	ifelse(CODEC, `RT286', pipe-bdw-rt286, `')))
 
 #
 # Define the pipelines
@@ -46,7 +50,7 @@ PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	96, 2000, 1, 0)
 
 # Connect pipelines together
-SectionGraph."pipe-bdw-rt286" {
+SectionGraph."PIPE_NAME" {
 	index "0"
 
 	lines [
