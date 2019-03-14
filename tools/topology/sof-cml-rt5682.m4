@@ -112,21 +112,21 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	4, HDA, 0, iDisp1,
 	PIPELINE_SOURCE_4, 2, s32le,
-	48, 1000, 0, 0)
+	48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp2 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	5, HDA, 1, iDisp2,
 	PIPELINE_SOURCE_5, 2, s32le,
-	48, 1000, 0, 0)
+	48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp3 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	6, HDA, 2, iDisp3,
 	PIPELINE_SOURCE_6, 2, s32le,
-	48, 1000, 0, 0)
+	48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
