@@ -1,5 +1,8 @@
 #
-# Topology for generic Baytrail board with no RT5651.
+ifelse(CODEC, `RT5651', `# Topology for generic Baytrail board with RT5651.', `')
+ifelse(CODEC, `RT5640', `# Topology for generic Baytrail board with RT5640.', `')
+ifelse(CODEC, `RT5645', `# Topology for generic Baytrail board with RT5645.', `')
+ifelse(CODEC, `DA7213', `# Topology for generic Baytrail board with DA7213.', `')
 #
 
 # Include topology builder
@@ -16,6 +19,11 @@ include(`sof/tokens.m4')
 
 # Include Baytrail DSP configuration
 include(`platform/intel/byt.m4')
+
+define(PIPE_NAME, ifelse(CODEC, `RT5651', pipe-byt-rt5651,
+	ifelse(CODEC, `RT5640', pipe-byt-rt5640,
+		ifelse(CODEC, `RT5645', pipe-byt-rt5645,
+			ifelse(CODEC, `DA7213', pip-byt-da7213, `')))))
 
 #
 # Define the pipelines
@@ -46,7 +54,7 @@ PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	192, 4000, 1, 0)
 
 # Connect pipelines together
-SectionGraph."pipe-byt-rt5651" {
+SectionGraph."PIPE_NAME" {
 	index "0"
 
 	lines [
