@@ -77,49 +77,49 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
         1, HDA, 0, Analog Playback and Capture,
         PIPELINE_SOURCE_1, 2, s32le,
-        48, 1000, 0, 0)
+        48, 1000, 0, 0, 1000)
 
 # capture DAI is HDA Analog using 2 periods
 # Dai buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         2, HDA, 1, Analog Playback and Capture,
 	PIPELINE_SINK_2, 2, s32le,
-	48, 1000, 0, 0)
+	48, 1000, 0, 0, 1000)
 
 # playback DAI is HDA Digital using 2 periods
 # Dai buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         3, HDA, 2, Digital Playback and Capture,
         PIPELINE_SOURCE_3, 2, s32le,
-        48, 1000, 0, 0)
+        48, 1000, 0, 0, 1000)
 
 # capture DAI is HDA Digital using 2 periods
 # Dai buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
         4, HDA, 3, Digital Playback and Capture,
 	PIPELINE_SINK_4, 2, s32le,
-	48, 1000, 0, 0)
+	48, 1000, 0, 0, 1000)
 
 # playback DAI is iDisp1 using 2 periods
 # Dai buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         7, HDA, 4, iDisp1,
         PIPELINE_SOURCE_7, 2, s32le,
-        48, 1000, 0, 0)
+        48, 1000, 0, 0, 1000)
 
 # playback DAI is iDisp2 using 2 periods
 # Dai buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         8, HDA, 5, iDisp2,
         PIPELINE_SOURCE_8, 2, s32le,
-        48, 1000, 0, 0)
+        48, 1000, 0, 0, 1000)
 
 # playback DAI is iDisp3 using 2 periods
 # Dai buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
         9, HDA, 6, iDisp3,
         PIPELINE_SOURCE_9, 2, s32le,
-        48, 1000, 0, 0)
+        48, 1000, 0, 0, 1000)
 
 PCM_DUPLEX_ADD(HDA Analog, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(HDA Digital, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
