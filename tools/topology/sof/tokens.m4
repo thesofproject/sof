@@ -23,12 +23,12 @@ SectionVendorTokens."sof_dai_tokens" {
 }
 
 SectionVendorTokens."sof_sched_tokens" {
-	SOF_TKN_SCHED_DEADLINE			"200"
+	SOF_TKN_SCHED_PERIOD			"200"
 	SOF_TKN_SCHED_PRIORITY			"201"
 	SOF_TKN_SCHED_MIPS			"202"
 	SOF_TKN_SCHED_CORE			"203"
 	SOF_TKN_SCHED_FRAMES			"204"
-	SOF_TKN_SCHED_TIMER			"205"
+	SOF_TKN_SCHED_TIME_DOMAIN		"205"
 }
 
 SectionVendorTokens."sof_volume_tokens" {
