@@ -347,6 +347,7 @@ endif()
 add_custom_target(
 	bin
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
+	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
 	DEPENDS run_meu
 	VERBATIM
 	USES_TERMINAL
