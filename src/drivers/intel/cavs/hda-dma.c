@@ -91,8 +91,6 @@
 
 #define HDA_DMA_MAX_CHANS		9
 
-#define HDA_LINK_1MS_US	1000
-
 #define HDA_STATE_HOST_PRELOAD	BIT(0)
 #define HDA_STATE_INIT		BIT(1)
 #define HDA_STATE_RELEASE	BIT(2)
@@ -160,7 +158,6 @@ struct hda_chan_data {
 
 	uint32_t period_bytes;
 	uint32_t buffer_bytes;
-	struct work dma_ch_work;
 
 #if HDA_DMA_PTR_DBG
 	struct hda_dbg_data dbg_data;
@@ -270,57 +267,6 @@ static void hda_dma_get_dbg_vals(struct hda_chan_data *chan,
 #define hda_dma_ptr_trace(...)
 #endif
 
-static inline uint32_t hda_dma_get_data_size(struct dma *dma, uint32_t chan)
-{
-	uint32_t cs;
-	uint32_t bs;
-	uint32_t rp;
-	uint32_t wp;
-	int32_t ds;
-
-	if (chan >= HDA_DMA_MAX_CHANS) {
-		trace_hddma_error("hda-dmac: %d invalid channel %d",
-				  dma->plat_data.id, chan);
-		return 0;
-	}
-
-	cs = host_dma_reg_read(dma, chan, DGCS);
-	bs = host_dma_reg_read(dma, chan, DGBS);
-	rp = host_dma_reg_read(dma, chan, DGBRP);
-	wp = host_dma_reg_read(dma, chan, DGBWP);
-
-	if (!(cs & DGCS_BNE))
-		return 0; /* buffer is empty */
-
-	ds = (int32_t)wp - (int32_t)rp;
-	if (ds <= 0) {
-		ds += bs;
-
-		if (ds < 0) {
-			trace_hddma_error("hda-dmac: %d channel %d invalid data size ds 0x%x bs 0x%x",
-					  dma->plat_data.id, chan, ds, bs);
-			return 0;
-		}
-	}
-
-	return ds;
-}
-
-static inline uint32_t hda_dma_get_free_size(struct dma *dma, uint32_t chan)
-{
-	uint32_t bs;
-
-	if (chan >= HDA_DMA_MAX_CHANS) {
-		trace_hddma_error("hda-dmac: %d invalid channel %d",
-				  dma->plat_data.id, chan);
-		return 0;
-	}
-
-	bs = host_dma_reg_read(dma, chan, DGBS);
-
-	return bs - hda_dma_get_data_size(dma, chan);
-}
-
 static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 {
 	struct dma_sg_elem next = {
@@ -370,7 +316,7 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
 	};
 
 	if (chan->cb) {
-		chan->cb(chan->cb_data, DMA_CB_TYPE_LLIST, &next);
+		chan->cb(chan->cb_data, DMA_CB_TYPE_PROCESS, &next);
 		if (next.size == DMA_RELOAD_END)
 			/* disable channel, finished */
 			hda_dma_stop(dma, chan->index);
@@ -380,26 +326,6 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    chan->direction == DMA_DIR_LMEM_TO_HMEM)
 		pm_runtime_put(PM_RUNTIME_HOST_DMA_L1, 0);
-}
-
-static int hda_dma_tx_wait(struct dma *dma, struct hda_chan_data *chan,
-			   int min_bytes, uint32_t timeout_us)
-{
-	uint64_t deadline = platform_timer_get(platform_timer) +
-		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-				  timeout_us / 1000;
-
-	while (hda_dma_get_free_size(dma, chan->index) < min_bytes) {
-		if (deadline < platform_timer_get(platform_timer)) {
-			trace_hddma_error("hda-dmac: %d tx timeout",
-					  dma->plat_data.id);
-			return -ETIME;
-		}
-
-		idelay(PLATFORM_DEFAULT_DELAY);
-	}
-
-	return 0;
 }
 
 static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
@@ -419,15 +345,6 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 		hda_update_bits(dma, chan->index,
 				DGCS, DGCS_BOR, DGCS_BOR);
 
-	/* make sure that previous transfer is complete (playback only) */
-	if (chan->direction == DMA_DIR_MEM_TO_DEV) {
-		ret = hda_dma_tx_wait(dma, chan, bytes,
-				      PLATFORM_LINK_DMA_TIMEOUT);
-
-		if (ret)
-			goto fail;
-	}
-
 	/*
 	 * set BFPI to let link gateway know we have read size,
 	 * which will trigger next copy start.
@@ -438,7 +355,6 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 	hda_dma_get_dbg_vals(chan, HDA_DBG_POST, HDA_DBG_LINK);
 	hda_dma_ptr_trace(chan, "link copy", HDA_DBG_LINK);
 
-fail:
 	return ret;
 }
 
@@ -502,36 +418,6 @@ static void hda_dma_enable_unlock(struct dma *dma, int channel)
 
 	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_POST, HDA_DBG_BOTH);
 	hda_dma_ptr_trace(&p->chan[channel], "enable", HDA_DBG_BOTH);
-}
-
-static void hda_dma_enable(struct dma *dma, int channel)
-{
-	uint32_t flags;
-
-	spin_lock_irq(&dma->lock, flags);
-
-	hda_dma_enable_unlock(dma, channel);
-
-	spin_unlock_irq(&dma->lock, flags);
-}
-
-static uint64_t hda_dma_link_work(void *data, uint64_t delay)
-{
-	struct hda_chan_data *chan = (struct hda_chan_data *)data;
-
-	/* align pointers on release */
-	if (chan->state & HDA_STATE_RELEASE) {
-		hda_dma_inc_link_fp(chan->dma, chan->index,
-				    chan->period_bytes);
-	}
-
-	if (chan->state & HDA_STATE_INIT)
-		hda_dma_enable(chan->dma, chan->index);
-	else
-		hda_dma_link_copy_ch(chan->dma, chan, chan->period_bytes);
-
-	/* next time to re-arm */
-	return HDA_LINK_1MS_US;
 }
 
 /* notify DMA to copy bytes */
@@ -629,7 +515,6 @@ static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
 	p->chan[channel].cb = NULL;
 	p->chan[channel].cb_type = 0;
 	p->chan[channel].cb_data = NULL;
-	work_init(&p->chan[channel].dma_ch_work, NULL, NULL, 0, 0);
 }
 
 /* channel must not be running when this is called */
@@ -677,16 +562,7 @@ static int hda_dma_start(struct dma *dma, int channel)
 
 	p->chan[channel].state |= HDA_STATE_INIT;
 
-	/*
-	 * Activate timer if configured in cyclic mode.
-	 * In cyclic mode DMA start is scheduled for later,
-	 * to make sure we stay synchronized with the system work queue.
-	 */
-	if (p->chan[channel].dma_ch_work.cb)
-		work_schedule_default(&p->chan[channel].dma_ch_work,
-				      HDA_LINK_1MS_US);
-	else
-		hda_dma_enable_unlock(dma, channel);
+	hda_dma_enable_unlock(dma, channel);
 
 	p->chan[channel].status = COMP_STATE_ACTIVE;
 
@@ -768,9 +644,6 @@ static int hda_dma_stop(struct dma *dma, int channel)
 	trace_hddma("hda-dmac: %d channel %d -> stop", dma->plat_data.id,
 		    channel);
 
-	if (p->chan[channel].dma_ch_work.cb)
-		work_cancel_default(&p->chan[channel].dma_ch_work);
-
 	/* disable the channel */
 	hda_update_bits(dma, channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
 	p->chan[channel].status = COMP_STATE_PREPARE;
@@ -836,6 +709,14 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 		goto out;
 	}
 
+	if ((config->direction & (DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM)) &&
+	    !config->irq_disabled) {
+		trace_hddma_error("hda-dmac: %d channel %d HDA Link DMA "
+				  "doesn't support irq scheduling");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* default channel config */
 	p->chan[channel].direction = config->direction;
 	p->chan[channel].desc_count = config->elem_array.count;
@@ -887,12 +768,6 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	p->chan[channel].period_bytes = period_bytes;
 	p->chan[channel].buffer_bytes = buffer_bytes;
-
-	/* initialize timer */
-	if (config->cyclic) {
-		work_init(&p->chan[channel].dma_ch_work, hda_dma_link_work,
-			  &p->chan[channel], WORK_HIGH_PRI, WORK_ASYNC);
-	}
 
 	/* init channel in HW */
 	host_dma_reg_write(dma, channel, DGBBA,  buffer_addr);
