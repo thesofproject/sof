@@ -40,7 +40,7 @@ W_DATA(media_src_conf, media_src_tokens)
 # Components and Buffers
 #
 
-# Host "Low latency Playback" PCM
+# Host "Media Playback" PCM
 # with 2 sink and 0 source periods
 W_PCM_PLAYBACK(PCM_ID, Media Playback, 2, 0)
 
@@ -96,7 +96,7 @@ W_PIPELINE(N_SRC(0), SCHEDULE_DEADLINE, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHE
 
 PCM_CAPABILITIES(Media Playback PCM_ID, `S32_LE,S24_LE,S16_LE', 8000, 192000, 2, PIPELINE_CHANNELS, 2, 32, 192, 262144, 8388608, 8388608)
 
-# PCM Low Latency Playback and Capture
+# PCM Media Playback
 SectionPCM.STR(Media Playback PCM_ID) {
 
 	index STR(PIPELINE_ID)
@@ -108,7 +108,7 @@ SectionPCM.STR(Media Playback PCM_ID) {
 		id STR(PCM_ID)
 	}
 
-	# Playback and Capture Configuration
+	# Playback Configuration
 	pcm."playback" {
 
 		capabilities STR(Media Playback PCM_ID)
