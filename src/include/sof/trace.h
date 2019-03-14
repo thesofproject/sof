@@ -296,13 +296,12 @@ void trace_init(struct sof *sof);
 #define trace_error_value(x)		trace_error(0, "value %u", x)
 #define trace_error_value_atomic(...)	trace_error_value(__VA_ARGS__)
 #else
-#define _trace_error_with_ids(...)
-#define trace_error(...)
-#define trace_error_with_ids(...)
-#define trace_error_atomic(...)
-#define trace_error_atomic_with_ids(...)
-#define trace_error_value(x)
-#define trace_error_value_atomic(x)
+#define trace_error(...) trace_event(__VA_ARGS__)
+#define trace_error_with_ids(...) trace_event_with_ids(__VA_ARGS__)
+#define trace_error_atomic(...) trace_event_atomic(__VA_ARGS__)
+#define trace_error_atomic_with_ids(...) trace_event_atomic_with_ids(__VA_ARGS__)
+#define trace_error_value(x) trace_value(x)
+#define trace_error_value_atomic(x) trace_value_atomic(x)
 #endif
 
 #ifndef CONFIG_HOST
