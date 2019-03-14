@@ -1,5 +1,6 @@
 #
-# Topology for generic CherryTrail board with no codec.
+ifelse(PLATFORM, `cht', `# Topology for generic CherryTrail board with no codec.', `')
+ifelse(PLATFORM, `byt', `# Topology for generic BayTrail board with no codec.', `')
 #
 
 # Include topology builder
@@ -14,8 +15,11 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include CherryTrail DSP configuration
-include(`platform/intel/cht.m4')
+# Include DSP configuration
+ifelse(PLATFORM, `cht', include(`platform/intel/cht.m4'),
+	ifelse(PLATFORM, `byt', include(`platform/intel/byt.m4'), `'))
+define(PIPE_NAME, ifelse(PLATFORM, `cht', pipe-cht-nocodec,
+	ifelse(PLATFORM, `byt', pipe-byt-nocodec, `')))
 
 #
 # Define the pipelines
@@ -46,7 +50,7 @@ PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	192, 4000, 1, 0)
 
 # Connect pipelines together
-SectionGraph."pipe-cht-nocodec" {
+SectionGraph."PIPE_NAME" {
 	index "0"
 
 	lines [
