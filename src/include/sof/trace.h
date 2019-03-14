@@ -267,7 +267,7 @@ void trace_init(struct sof *sof);
 #define tracev_event(...) trace_event(__VA_ARGS__)
 #define tracev_event_with_ids(...) trace_event_with_ids(__VA_ARGS__)
 #define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
-#define tracev_event_atomic_with_ids(...) trace_event_with_ids(__VA_ARGS__)
+#define tracev_event_atomic_with_ids(...) trace_event_atomic_with_ids(__VA_ARGS__)
 
 #define tracev_value(x)	trace_value(x)
 #define tracev_value_atomic(x)	trace_value_atomic(x)
