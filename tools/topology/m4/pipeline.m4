@@ -33,7 +33,7 @@ define(`W_PIPELINE',
 
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
-dnl     frames, deadline, priority, core)
+dnl     frames, deadline, priority, core, timer)
 define(`PIPELINE_PCM_ADD',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
@@ -43,6 +43,7 @@ define(`PIPELINE_PCM_ADD',
 `undefine(`SCHEDULE_DEADLINE')'
 `undefine(`SCHEDULE_PRIORITY')'
 `undefine(`SCHEDULE_CORE')'
+`undefine(`SCHEDULE_TIMER')'
 `define(`PIPELINE_ID', $2)'
 `define(`PCM_ID', $3)'
 `define(`PIPELINE_CHANNELS', $4)'
@@ -51,6 +52,7 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_DEADLINE', $7)'
 `define(`SCHEDULE_PRIORITY', $8)'
 `define(`SCHEDULE_CORE', $9)'
+`define(`SCHEDULE_TIMER', $10)'
 `define(`DAI_FORMAT', $5)'
 `include($1)'
 `DEBUG_PCM_ADD($1, $3)'
@@ -59,7 +61,8 @@ define(`PIPELINE_PCM_ADD',
 dnl PIPELINE_PCM_DAI_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core,
-dnl     dai type, dai_index, dai format, periods)
+dnl     dai type, dai_index, dai format,
+dnl     periods, timer)
 define(`PIPELINE_PCM_DAI_ADD',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
@@ -69,6 +72,7 @@ define(`PIPELINE_PCM_DAI_ADD',
 `undefine(`SCHEDULE_DEADLINE')'
 `undefine(`SCHEDULE_PRIORITY')'
 `undefine(`SCHEDULE_CORE')'
+`undefine(`SCHEDULE_TIMER')'
 `undefine(`DAI_TYPE')'
 `undefine(`DAI_INDEX')'
 `undefine(`DAI_FORMAT')'
@@ -81,6 +85,7 @@ define(`PIPELINE_PCM_DAI_ADD',
 `define(`SCHEDULE_DEADLINE', $7)'
 `define(`SCHEDULE_PRIORITY', $8)'
 `define(`SCHEDULE_CORE', $9)'
+`define(`SCHEDULE_TIMER', $14)'
 `define(`DAI_TYPE', STR($10))'
 `define(`DAI_INDEX', STR($11))'
 `define(`DAI_FORMAT', $12)'
@@ -91,7 +96,8 @@ define(`PIPELINE_PCM_DAI_ADD',
 
 dnl PIPELINE_ADD(pipeline,
 dnl     pipe id, max channels, format,
-dnl     frames, deadline, priority, core, sched_comp)
+dnl     frames, deadline, priority, core,
+dnl     sched_comp, timer)
 define(`PIPELINE_ADD',
 `undefine(`PIPELINE_ID')'
 `undefine(`PIPELINE_CHANNELS')'
@@ -100,6 +106,7 @@ define(`PIPELINE_ADD',
 `undefine(`SCHEDULE_DEADLINE')'
 `undefine(`SCHEDULE_PRIORITY')'
 `undefine(`SCHEDULE_CORE')'
+`undefine(`SCHEDULE_TIMER')'
 `define(`PIPELINE_ID', $2)'
 `define(`PIPELINE_CHANNELS', $3)'
 `define(`PIPELINE_FORMAT', $4)'
@@ -107,6 +114,7 @@ define(`PIPELINE_ADD',
 `define(`SCHEDULE_DEADLINE', $6)'
 `define(`SCHEDULE_PRIORITY', $7)'
 `define(`SCHEDULE_CORE', $8)'
+`define(`SCHEDULE_TIMER', $10)'
 `define(`SCHED_COMP', $9)'
 `include($1)'
 )
