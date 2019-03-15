@@ -12,10 +12,36 @@ include(`buffer.m4')
 include(`pcm.m4')
 include(`dai.m4')
 include(`kpbm.m4')
+include(`mixercontrol.m4')
+include(`bytecontrol.m4')
 include(`pipeline.m4')
 
 dnl Soun Trigger Stream Name)
 define(`N_STS', `Sound Trigger Capture '$1)
+
+#
+# Controls
+#
+
+# kpbm initial parameters
+CONTROLBYTES_PRIV(KPB_priv,
+`       bytes "0x53,0x4f,0x46,0x00,0x00,0x00,0x00,0x00,'
+`       0x18,0x00,0x00,0x00,0x00,0x10,0x00,0x03,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,'
+`       0x80,0x3e,0x00,0x00,0x10,0x00,0x00,0x00"'
+)
+
+# Selector Bytes control with max value of 255
+C_CONTROLBYTES(KPB, PIPELINE_ID,
+	CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
+	CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
+	, , ,
+	CONTROLBYTES_MAX(, 304),
+	,
+	KPB_priv)
 
 #
 # Components and Buffers
@@ -26,7 +52,7 @@ define(`N_STS', `Sound Trigger Capture '$1)
 W_PCM_CAPTURE(PCM_ID, Sound Trigger Capture, 0, 2, 2)
 
 # "KPBM" has 2 source and 2 sink periods
-W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID)
+W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, LIST(`             ', "KPB"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
