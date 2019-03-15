@@ -236,12 +236,7 @@ static void volume_free(struct comp_dev *dev)
  */
 static int volume_params(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
-
 	trace_volume("volume_params()");
-
-	/* rewrite params format for all downstream */
-	dev->params.frame_fmt = cd->sink_format;
 
 	return 0;
 }
@@ -551,8 +546,11 @@ static int volume_prepare(struct comp_dev *dev)
 	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
 			      &sink_period_bytes);
 
-	/* rewrite params format for all downstream */
-	dev->params.frame_fmt = cd->sink_format;
+	/* Rewrite params format for this component to match the host side. */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		dev->params.frame_fmt = cd->source_format;
+	else
+		dev->params.frame_fmt = cd->sink_format;
 
 	/* set downstream buffer size */
 	ret = buffer_set_size(sinkb, sink_period_bytes * config->periods_sink);
