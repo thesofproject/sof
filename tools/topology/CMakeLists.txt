@@ -6,6 +6,14 @@ file(GLOB TPLG_DEPS
 	sof/*.m4
 )
 
+add_custom_target(abi
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/get_abi.sh
+	DEPENDS ${TPLG_DEPS}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+	VERBATIM
+	USES_TERMINAL
+)
+
 set(TPLGS
 	"sof-cht-nocodec\;sof-cht-nocodec\;-DPLATFORM=cht"
 	"sof-cht-nocodec\;sof-byt-nocodec\;-DPLATFORM=byt"
@@ -68,9 +76,11 @@ foreach(tplg ${TPLGS})
 			-I ${CMAKE_CURRENT_SOURCE_DIR}/common
 			-I ${CMAKE_CURRENT_SOURCE_DIR}/platform/common
 			-I ${CMAKE_CURRENT_SOURCE_DIR}
+			-I ${CMAKE_CURRENT_BINARY_DIR}
+			${CMAKE_CURRENT_SOURCE_DIR}/common/abi.m4
 			${CMAKE_CURRENT_SOURCE_DIR}/${input}.m4
 			> ${output}.conf
-		DEPENDS ${TPLG_DEPS}
+		DEPENDS abi
 		VERBATIM
 		USES_TERMINAL
 	)
