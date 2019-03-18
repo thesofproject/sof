@@ -791,7 +791,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	trace_eq("eq_iir_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret)
+	if (ret == COMP_STATE_ALREADY_SET)
 		return ret;
 
 	/* EQ components will only ever have 1 source and 1 sink buffer */
