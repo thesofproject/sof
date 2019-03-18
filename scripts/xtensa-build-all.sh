@@ -18,6 +18,7 @@ then
 	echo "       [-a] Build all platforms"
 	echo "       [-u] Force UP ARCH"
 	echo "       [-d] Enable debug build"
+	echo "       [-c] Configure defconfig"
 	echo "       [-j [n]] Set number of make build jobs. Infinite jobs with no arg."
 	echo "       Supported platforms ${SUPPORTED_PLATFORMS[@]}"
 else
@@ -40,6 +41,10 @@ else
 			then
 			BUILD_JOBS_NEXT=1
 			BUILD_JOBS=""
+
+		elif [[ "$args" == "-c" ]]
+			then
+			MAKE_MENUCONFIG=yes
 
 		# Build all platforms
 		elif [[ "$args" == "-a" ]]
@@ -249,6 +254,11 @@ do
 		..
 
 	make ${PLATFORM}_defconfig
+
+	if [[ "x$MAKE_MENUCONFIG" == "xyes" ]]
+	then
+		make menuconfig
+	fi
 
 	rm -fr override.config
 
