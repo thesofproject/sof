@@ -686,8 +686,11 @@ static int tone_prepare(struct comp_dev *dev)
 	trace_tone("tone_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret == COMP_STATE_ALREADY_SET)
+	if (ret < 0)
 		return ret;
+
+	if (ret == COMP_STATE_ALREADY_SET)
+		return PPL_PATH_STOP;
 
 	cd->channels = dev->params.channels;
 	trace_tone("tone_prepare(), cd->channels = %u, cd->rate = %u",
