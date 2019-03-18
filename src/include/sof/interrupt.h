@@ -83,6 +83,12 @@ void interrupt_unregister(uint32_t irq, const void *arg);
 uint32_t interrupt_enable(uint32_t irq);
 uint32_t interrupt_disable(uint32_t irq);
 
+/*
+ * On platforms, supporting cascading interrupts cascaded interrupt numbers
+ * have SOF_IRQ_LEVEL(irq) != 0.
+ */
+#define interrupt_is_dsp_direct(irq) (!SOF_IRQ_LEVEL(irq))
+
 static inline void interrupt_set(int irq)
 {
 	platform_interrupt_set(irq);
