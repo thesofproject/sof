@@ -167,8 +167,11 @@ static int kpb_prepare(struct comp_dev *dev)
 	trace_kpb("kpb_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret == COMP_STATE_ALREADY_SET)
+	if (ret < 0)
 		return ret;
+
+	if (ret == COMP_STATE_ALREADY_SET)
+		return PPL_PATH_STOP;
 
 	cd->no_of_clients = 0;
 

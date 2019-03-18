@@ -288,7 +288,7 @@ static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 	current->params = ppl_data->params->params;
 
 	err = comp_params(current);
-	if (err < 0 || err > 0)
+	if (err < 0 || err == PPL_PATH_STOP)
 		return err;
 
 	/* save params changes made by component */
@@ -342,7 +342,7 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 		    current->comp.id, dir);
 
 	err = comp_prepare(current);
-	if (err < 0 || err > 0)
+	if (err < 0 || err == PPL_PATH_STOP)
 		return err;
 
 	return pipeline_for_each_comp(current, &pipeline_comp_prepare, data,
@@ -475,7 +475,7 @@ static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 
 	/* send command to the component and update pipeline state */
 	err = comp_trigger(current, ppl_data->cmd);
-	if (err < 0 || err > 0)
+	if (err < 0 || err == PPL_PATH_STOP)
 		return err;
 
 	pipeline_comp_trigger_sched_comp(current->pipeline, current,
@@ -560,7 +560,7 @@ static int pipeline_comp_reset(struct comp_dev *current, void *data, int dir)
 		    current->comp.id, dir);
 
 	err = comp_reset(current);
-	if (err < 0 || err > 0)
+	if (err < 0 || err == PPL_PATH_STOP)
 		return err;
 
 	return pipeline_for_each_comp(current, &pipeline_comp_reset, data,
@@ -612,7 +612,7 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	/* copy to downstream immediately */
 	if (dir == PPL_DIR_DOWNSTREAM) {
 		err = comp_copy(current);
-		if (err < 0 || err > 0)
+		if (err < 0 || err == PPL_PATH_STOP)
 			return err;
 	}
 
