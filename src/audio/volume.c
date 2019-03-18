@@ -535,7 +535,7 @@ static int volume_prepare(struct comp_dev *dev)
 	trace_volume("volume_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret)
+	if (ret == COMP_STATE_ALREADY_SET)
 		return ret;
 
 	/* volume components will only ever have 1 source and 1 sink buffer */

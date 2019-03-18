@@ -140,6 +140,12 @@
 #define COMP_CMD_IPC_MMAP_VOL(chan)	(216 + chan)	/**< Volume */
 /** @}*/
 
+/** \name Component status
+ *  @{
+ */
+#define COMP_STATE_ALREADY_SET	1	/**< Component set state status */
+/** @}*/
+
 /** \name Declare component macro
  *  \brief Usage at the end of comp file: DECLARE_COMPONENT(sys_comp_*_init);
  *  @{

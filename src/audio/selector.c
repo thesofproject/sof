@@ -382,7 +382,7 @@ static int selector_prepare(struct comp_dev *dev)
 	trace_selector("selector_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret)
+	if (ret == COMP_STATE_ALREADY_SET)
 		return ret;
 
 	/* selector component will have 1 source and 1 sink buffer */

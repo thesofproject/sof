@@ -239,7 +239,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	trace_mixer("mixer_trigger()");
 
 	ret = comp_set_state(dev, cmd);
-	if (ret)
+	if (ret == COMP_STATE_ALREADY_SET)
 		return ret;
 
 	switch (cmd) {
