@@ -193,13 +193,16 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	trace_kpb("kpb_prepare()");
 
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret)
+		return ret;
+
 	/* Initialize history buffer */
 	cd->history_buffer.next = &cd->history_buffer;
 	cd->history_buffer.prev = &cd->history_buffer;
 
-	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
-	if (ret)
-		return ret;
+
+
 
 	cd->no_of_clients = 0;
 	/* allocate history buffer/s */
@@ -353,14 +356,16 @@ static int kpb_copy(struct comp_dev *dev)
 	if (source && sink) {
 		if (!source->r_ptr || !sink->w_ptr) {
 			return -EINVAL;
-		} else if (sink->free < kpb->sink_period_bytes) {
+		} else if (sink->free < kpb->sink_period_bytes && 0) {
+			/* TODO: to be removed */
 			trace_kpb_error("kpb_copy() error: "
 				   "sink component buffer"
 				   " has not enough free bytes for copy");
 			comp_overrun(dev, sink, kpb->sink_period_bytes, 0);
 			/* xrun */
 			return -EIO;
-		} else if (source->avail < kpb->source_period_bytes) {
+		} else if (source->avail < kpb->source_period_bytes && 0) {
+			/* TODO: to be removed */
 			/* xrun */
 			trace_kpb_error("kpb_copy() error: "
 					   "source component buffer"
@@ -372,7 +377,7 @@ static int kpb_copy(struct comp_dev *dev)
 			/* sink and source are both ready and have space */
 			/* TODO: copy sink or source period data here? */
 			memcpy(sink->w_ptr, source->r_ptr,
-			       kpb->sink_period_bytes);
+			       MIN(sink->free, source->avail));
 			/* signal update source & sink data */
 			update_buffers = 1;
 		}
@@ -388,8 +393,8 @@ static int kpb_copy(struct comp_dev *dev)
 	}
 
 	if (update_buffers) {
-		comp_update_buffer_produce(sink, kpb->sink_period_bytes);
-		comp_update_buffer_consume(source, kpb->sink_period_bytes);
+		comp_update_buffer_produce(sink, MIN(sink->free, source->avail));
+		comp_update_buffer_consume(source, MIN(sink->free, source->avail));
 	}
 	return ret;
 }
@@ -409,7 +414,7 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
 	int space_avail;
 	struct hb *buff = &kpb->history_buffer;
 	struct hb *first_buff = buff;
-	trace_kpb("kpb_buffer_data()");
+	tracev_kpb("kpb_buffer_data()");
 
 	/* find free buffer */
 	while (buff->next && buff->next != first_buff) {
@@ -466,6 +471,8 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 	struct comp_data *kpb = (struct comp_data *)cb_data;
 	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
 	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
+
+	tracev_kpb("kpb_event_handler()");
 
 	switch (evd->event_id) {
 	case KPB_EVENT_REGISTER_CLIENT:
