@@ -71,6 +71,9 @@ struct comp_data {
 
 	void (*detect_func)(struct comp_dev *dev,
 			    struct comp_buffer *source, uint32_t frames);
+	struct notify_data event;
+	struct kpb_event_data data;
+	struct kpb_client client;
 };
 
 static void notify_host(struct comp_dev *dev)
