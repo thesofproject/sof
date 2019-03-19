@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_math_numbers_norm_int32_for_0_equals_31(void **state)

@@ -32,6 +32,7 @@
 
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_lib_lib_rstrcmp_for_a_and_a_equals_0(void **state)

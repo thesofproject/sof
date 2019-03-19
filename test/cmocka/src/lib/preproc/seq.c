@@ -32,6 +32,7 @@
 #include <sof/alloc.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 #include <sof/preproc.h>

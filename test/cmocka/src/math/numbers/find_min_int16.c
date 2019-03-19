@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_math_numbers_find_min_int16_for_2_equals_2(void **state)

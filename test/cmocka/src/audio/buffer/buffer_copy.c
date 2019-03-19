@@ -37,6 +37,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <math.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_audio_buffer_copy_underrun(void **state)

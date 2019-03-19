@@ -35,6 +35,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <math.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_math_numbers_ceil_divide(void **state)
