@@ -7,11 +7,13 @@ if(DEFINED CMOCKA_DIRECTORY)
 	set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${CMOCKA_DIRECTORY}/lib/libcmocka-static.a")
 	set(CMOCKA_INCLUDE_DIR "${CMOCKA_DIRECTORY}/include")
 else()
+	set(cmocka_binary_directory "${PROJECT_BINARY_DIR}/cmocka_git/build")
+
 	# Build Cmocka locally
 	ExternalProject_Add(cmocka_git
 		GIT_REPOSITORY https://github.com/thesofproject/cmocka
 		PREFIX "${PROJECT_BINARY_DIR}/cmocka_git"
-		BINARY_DIR "${PROJECT_BINARY_DIR}/cmocka_git/build"
+		BINARY_DIR ${cmocka_binary_directory}
 		CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
 			-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
 			-DWITH_SHARED_LIB=OFF
@@ -19,13 +21,11 @@ else()
 			-DWITH_EXAMPLES=OFF
 			-DWITH_POSITION_INDEPENDENT_CODE=OFF
 			-DWITH_TINY_CONFIG=ON
-		BUILD_COMMAND $(MAKE) cmocka-static
+		BUILD_BYPRODUCTS "${cmocka_binary_directory}/src/libcmocka-static.a"
 		INSTALL_COMMAND ""
 	)
 
-	ExternalProject_Get_Property(cmocka_git binary_dir)
-
-	set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${binary_dir}/src/libcmocka-static.a")
+	set_property(TARGET cmocka PROPERTY IMPORTED_LOCATION "${cmocka_binary_directory}/src/libcmocka-static.a")
 
 	add_dependencies(cmocka cmocka_git)
 
