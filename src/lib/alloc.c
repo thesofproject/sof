@@ -772,7 +772,7 @@ void free_heap(int zone)
 	dcache_writeback_region(cpu_heap, sizeof(*cpu_heap));
 }
 
-#if TRACE
+#if CONFIG_TRACE
 void heap_trace(struct mm_heap *heap, int size)
 {
 	struct block_map *current_map;

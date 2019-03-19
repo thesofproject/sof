@@ -5,3 +5,5 @@ source "src/platform/Kconfig"
 source "src/drivers/Kconfig"
 
 source "src/audio/Kconfig"
+
+source "src/lib/Kconfig"

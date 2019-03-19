@@ -113,12 +113,6 @@
 #define TRACE_CLASS_SELECTOR	(29 << 24)
 #define TRACE_CLASS_SCHEDULE	(30 << 24)
 
-/* move to config.h */
-#define TRACE	1
-#define TRACEV	0
-#define TRACEE	1
-#define TRACEM	0 /* send all trace messages to mbox and local trace buffer */
-
 #ifdef CONFIG_HOST
 extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);
@@ -212,7 +206,7 @@ void trace_flush(void);
 void trace_off(void);
 void trace_init(struct sof *sof);
 
-#if TRACE
+#if CONFIG_TRACE
 /*
  * trace_event macro definition
  *
@@ -243,7 +237,7 @@ void trace_init(struct sof *sof);
 	_trace_event_atomic_with_ids(class, id_0, id_1, 1, format,	\
 				     ##__VA_ARGS__)
 
-#if TRACEM
+#if CONFIG_TRACEM
 /* send all trace to mbox and local trace buffer */
 #define __mbox _mbox
 #else
@@ -263,7 +257,7 @@ void trace_init(struct sof *sof);
 #define trace_point(x) platform_trace_point(x)
 
 /* verbose tracing */
-#if TRACEV
+#if CONFIG_TRACEV
 #define tracev_event(...) trace_event(__VA_ARGS__)
 #define tracev_event_with_ids(...) trace_event_with_ids(__VA_ARGS__)
 #define tracev_event_atomic(...) trace_event_atomic(__VA_ARGS__)
@@ -282,7 +276,7 @@ void trace_init(struct sof *sof);
 #endif
 
 /* error tracing */
-#if TRACEE
+#if CONFIG_TRACEE
 #define _trace_error_with_ids(class, id_0, id_1, has_ids, format, ...)	\
 	_log_message(_mbox, _atomic, LOG_LEVEL_CRITICAL, class, id_0,	\
 		     id_1, has_ids, format, ##__VA_ARGS__)

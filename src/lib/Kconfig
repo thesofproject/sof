@@ -1,0 +1,32 @@
+# Trace configs
+
+menu "Trace"
+
+config TRACE
+	bool "Trace"
+	default y
+	help
+	  Enabling traces. All traces (normal and error) are sent by dma.
+
+config TRACEV
+	bool "Trace verbose"
+	depends on TRACE
+	default n
+	help
+	  Enabling verbose traces.
+
+config TRACEE
+	bool "Trace error"
+	depends on TRACE
+	default y
+	help
+	  Sending error traces by mailbox additionally.
+
+config TRACEM
+	bool "Trace mailbox"
+	depends on TRACE
+	default n
+	help
+	  Sending all traces by mailbox additionally.
+
+endmenu
