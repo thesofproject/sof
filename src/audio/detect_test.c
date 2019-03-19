@@ -245,6 +245,9 @@ static int test_keyword_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
+	/* Can't get the correct channels from params yet, just fix it atm */
+	dev->params.channels = 1;
+
 	if (dev->params.channels != 1) {
 		trace_keyword_error("test_keyword_params() "
 				    "error: only single-channel supported");
