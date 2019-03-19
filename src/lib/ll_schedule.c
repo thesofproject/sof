@@ -63,7 +63,7 @@
  */
 
 struct ll_schedule_data {
-	struct list_item work[LL_PRIORITIES];	/* list of ll per priority */
+	struct list_item tasks;			/* list of ll tasks */
 	uint64_t timeout;			/* timeout for next queue run */
 	uint32_t window_size;			/* window size for pending ll */
 	spinlock_t lock;
@@ -141,40 +141,36 @@ static int is_ll_pending(struct ll_schedule_data *queue)
 	uint64_t win_end;
 	uint64_t win_start;
 	int pending_count = 0;
-	int i;
 
 	/* get the current valid window of work */
 	win_end = ll_get_timer(queue);
 	win_start = win_end - queue->window_size;
 
-	/* check every priority level */
-	for (i = (LL_PRIORITIES - 1); i >= 0; i--) {
-		/* mark each valid work item in this time period as pending */
-		list_for_item(wlist, &queue->work[i]) {
-			ll_task = container_of(wlist, struct task, list);
+	/* mark each valid work item in this time period as pending */
+	list_for_item(wlist, &queue->tasks) {
+		ll_task = container_of(wlist, struct task, list);
 
-			/* correct the pending flag window for overflow */
-			if (win_end > win_start) {
-				/* mark pending work */
-				if (ll_task->start >= win_start &&
-				    ll_task->start <= win_end) {
-					ll_task->state =
-						SOF_TASK_STATE_PENDING;
-					pending_count++;
-				} else {
-					ll_task->state = 0;
-				}
+		/* correct the pending flag window for overflow */
+		if (win_end > win_start) {
+			/* mark pending work */
+			if (ll_task->start >= win_start &&
+				ll_task->start <= win_end) {
+				ll_task->state =
+					SOF_TASK_STATE_PENDING;
+				pending_count++;
 			} else {
-				/* mark pending work */
-				if ((ll_task->start <= win_end ||
-				    (ll_task->start >= win_start &&
-				     ll_task->start < ULONG_LONG_MAX))) {
-					ll_task->state =
-						SOF_TASK_STATE_PENDING;
-					pending_count++;
-				} else {
-					ll_task->state = 0;
-				}
+				ll_task->state = 0;
+			}
+		} else {
+			/* mark pending work */
+			if ((ll_task->start <= win_end ||
+				(ll_task->start >= win_start &&
+				ll_task->start < ULONG_LONG_MAX))) {
+				ll_task->state =
+					SOF_TASK_STATE_PENDING;
+				pending_count++;
+			} else {
+				ll_task->state = 0;
 			}
 		}
 	}
@@ -203,8 +199,7 @@ static inline void ll_next_timeout(struct ll_schedule_data *queue,
 }
 
 /* run all pending work */
-static void run_ll(struct ll_schedule_data *queue, uint32_t *flags,
-		   uint32_t priority)
+static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
@@ -213,7 +208,7 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags,
 	int cpu = cpu_get_id();
 
 	/* check each work item in queue for pending */
-	list_for_item_safe(wlist, tlist, &queue->work[priority]) {
+	list_for_item_safe(wlist, tlist, &queue->tasks) {
 		ll_task = container_of(wlist, struct task, list);
 
 		/* run work if its pending and remove from the queue */
@@ -263,28 +258,24 @@ static void queue_recalc_timers(struct ll_schedule_data *queue,
 	uint64_t delta_ticks;
 	uint64_t delta_msecs;
 	uint64_t current;
-	int i;
 
 	/* get current time */
 	current = ll_get_timer(queue);
 
-	/* recalculate for each priority level */
-	for (i = (LL_PRIORITIES - 1); i >= 0; i--) {
-		/* recalculate timers for each work item */
-		list_for_item(wlist, &queue->work[i]) {
-			ll_task = container_of(wlist, struct task, list);
-			delta_ticks = calc_delta_ticks(current, ll_task->start);
-			delta_msecs = delta_ticks /
-				clk_data->old_ticks_per_msec;
+	/* recalculate timers for each work item */
+	list_for_item(wlist, &queue->tasks) {
+		ll_task = container_of(wlist, struct task, list);
+		delta_ticks = calc_delta_ticks(current, ll_task->start);
+		delta_msecs = delta_ticks /
+			clk_data->old_ticks_per_msec;
 
-			/* is work within next msec, then schedule it now */
-			if (delta_msecs > 0)
-				ll_task->start = current +
-					queue->ticks_per_msec * delta_msecs;
-			else
-				ll_task->start = current +
-					(queue->ticks_per_msec >> 3);
-		}
+		/* is work within next msec, then schedule it now */
+		if (delta_msecs > 0)
+			ll_task->start = current +
+				queue->ticks_per_msec * delta_msecs;
+		else
+			ll_task->start = current +
+				(queue->ticks_per_msec >> 3);
 	}
 }
 
@@ -330,7 +321,6 @@ static void queue_run(void *data)
 {
 	struct ll_schedule_data *queue = (struct ll_schedule_data *)data;
 	uint32_t flags;
-	int i;
 
 	timer_disable(&queue->ts->timer);
 
@@ -338,9 +328,7 @@ static void queue_run(void *data)
 
 	/* run work if there is any pending */
 	if (is_ll_pending(queue)) {
-		/* run for each priority level */
-		for (i = (LL_PRIORITIES - 1); i >= 0; i--)
-			run_ll(queue, &flags, i);
+		run_ll(queue, &flags);
 	}
 
 	/* re-calc timer and re-arm */
@@ -374,6 +362,28 @@ static void ll_notify(int message, void *data, void *event_data)
 	spin_unlock_irq(&queue->lock, flags);
 }
 
+static inline void insert_task_to_queue(struct task *w,
+					struct list_item *q_list)
+{
+	struct task *ll_task;
+	struct list_item *wlist;
+
+	/* works are adding to queue in order */
+	list_for_item(wlist, q_list) {
+		ll_task = container_of(wlist, struct task, list);
+		if (w->priority >= ll_task->priority) {
+			list_item_append(&w->list, &ll_task->list);
+			return;
+		}
+	}
+
+	/* if task has not been added, means that it has the lowest
+	 * priority in queue and it should be added at the end of the list
+	 */
+	list_item_append(&w->list, q_list);
+	return;
+}
+
 static void ll_schedule(struct ll_schedule_data *queue, struct task *w,
 			uint64_t start)
 {
@@ -385,7 +395,7 @@ static void ll_schedule(struct ll_schedule_data *queue, struct task *w,
 	spin_lock_irq(&queue->lock, flags);
 
 	/* check to see if we are already scheduled ? */
-	list_for_item(wlist, &queue->work[w->priority]) {
+	list_for_item(wlist, &queue->tasks) {
 		ll_task = container_of(wlist, struct task, list);
 
 		/* keep original start */
@@ -403,7 +413,7 @@ static void ll_schedule(struct ll_schedule_data *queue, struct task *w,
 		w->start += ll_shared_ctx->last_tick;
 
 	/* insert work into list */
-	list_item_prepend(&w->list, &queue->work[w->priority]);
+	insert_task_to_queue(w, &queue->tasks);
 
 	ll_set_timer(queue);
 
@@ -429,7 +439,7 @@ static void reschedule(struct ll_schedule_data *queue, struct task *w,
 	spin_lock_irq(&queue->lock, flags);
 
 	/* check to see if we are already scheduled */
-	list_for_item(wlist, &queue->work[w->priority]) {
+	list_for_item(wlist, &queue->tasks) {
 		ll_task = container_of(wlist, struct task, list);
 
 		/* found it */
@@ -437,8 +447,7 @@ static void reschedule(struct ll_schedule_data *queue, struct task *w,
 			goto found;
 	}
 
-	/* not found insert work into list */
-	list_item_prepend(&w->list, &queue->work[w->priority]);
+	insert_task_to_queue(w, &queue->tasks);
 
 	ll_set_timer(queue);
 
@@ -481,7 +490,7 @@ static int schedule_ll_task_cancel(struct task *w)
 	spin_lock_irq(&queue->lock, flags);
 
 	/* check to see if we are scheduled */
-	list_for_item(wlist, &queue->work[w->priority]) {
+	list_for_item(wlist, &queue->tasks) {
 		ll_task = container_of(wlist, struct task, list);
 
 		/* found it */
@@ -521,13 +530,10 @@ static void schedule_ll_task_free(struct task *w)
 static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
 {
 	struct ll_schedule_data *queue;
-	int i;
 
 	/* init work queue */
 	queue = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*queue));
-
-	for (i = 0; i < LL_PRIORITIES; ++i)
-		list_init(&queue->work[i]);
+	list_init(&queue->tasks);
 
 	spinlock_init(&queue->lock);
 	atomic_init(&queue->num_ll, 0);
@@ -602,7 +608,6 @@ static void ll_scheduler_free(void)
 	struct ll_schedule_data *queue =
 		(*arch_schedule_get_data())->ll_sch_data;
 	uint32_t flags;
-	int i;
 
 	spin_lock_irq(&queue->lock, flags);
 
@@ -610,8 +615,7 @@ static void ll_scheduler_free(void)
 
 	notifier_unregister(&queue->notifier);
 
-	for (i = 0; i < LL_PRIORITIES; ++i)
-		list_item_del(&queue->work[i]);
+	list_item_del(&queue->tasks);
 
 	spin_unlock_irq(&queue->lock, flags);
 }

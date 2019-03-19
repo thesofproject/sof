@@ -43,9 +43,6 @@
 
 struct work_queue;
 
-/* range of priorities (0 - SOF_TASK_PRI_COUNT) */
-#define LL_PRIORITIES	SOF_TASK_PRI_COUNT
-
 #define ll_sch_set_pdata(task, data) \
 	task->private = data
 
