@@ -42,7 +42,7 @@ set(memory_mock_lds_in ${PROJECT_SOURCE_DIR}/test/cmocka/memory_mock.x.in)
 set(memory_mock_lds_out ${PROJECT_BINARY_DIR}/test/cmocka/memory_mock.x)
 
 add_custom_command(OUTPUT ${memory_mock_lds_out}
-	COMMAND cat ${memory_mock_lds_in} | ${CMAKE_C_COMPILER} -E -P - > ${memory_mock_lds_out}
+	COMMAND ${CMAKE_C_COMPILER} -E -DLINKER -P -o ${memory_mock_lds_out} -x c ${memory_mock_lds_in}
 	DEPENDS ${memory_mock_lds_in}
 	WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 	COMMENT "Generating linker script: ${memory_mock_lds_out}"
