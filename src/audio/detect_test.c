@@ -71,9 +71,6 @@ struct comp_data {
 
 	void (*detect_func)(struct comp_dev *dev,
 			    struct comp_buffer *source, uint32_t frames);
-	struct notify_data event;
-	struct kpb_event_data data;
-	struct kpb_client client;
 };
 
 static void notify_host(struct comp_dev *dev)
@@ -246,6 +243,9 @@ static void test_keyword_free(struct comp_dev *dev)
 static int test_keyword_params(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+
+	/* TODO: remove in the future */
+	dev->params.channels = 1;
 
 	if (dev->params.channels != 1) {
 		trace_keyword_error("test_keyword_params() "
