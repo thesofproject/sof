@@ -52,10 +52,42 @@ struct mixer_data {
 		struct comp_buffer **sources, uint32_t count, uint32_t frames);
 };
 
-/* mix N PCM source streams to one sink stream */
-static void mix_n(struct comp_dev *dev, struct comp_buffer *sink,
-		  struct comp_buffer **sources, uint32_t num_sources,
-		  uint32_t frames)
+/* Mix n 16 bit PCM source streams to one sink stream */
+static void mix_n_s16(struct comp_dev *dev, struct comp_buffer *sink,
+		      struct comp_buffer **sources, uint32_t num_sources,
+		      uint32_t frames)
+{
+	int16_t *src;
+	int16_t *dest;
+	int32_t val;
+	int i;
+	int j;
+	int channel;
+	uint32_t frag = 0;
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < dev->params.channels; channel++) {
+			val = 0;
+
+			for (j = 0; j < num_sources; j++) {
+				src = buffer_read_frag_s16(sources[j], frag);
+				val += *src;
+			}
+
+			dest = buffer_write_frag_s16(sink, frag);
+
+			/* Saturate to 16 bits */
+			*dest = sat_int16(val);
+
+			frag++;
+		}
+	}
+}
+
+/* Mix n 32 bit PCM source streams to one sink stream */
+static void mix_n_s32(struct comp_dev *dev, struct comp_buffer *sink,
+		      struct comp_buffer **sources, uint32_t num_sources,
+		      uint32_t frames)
 {
 	int32_t *src;
 	int32_t *dest;
@@ -342,9 +374,9 @@ static int mixer_prepare(struct comp_dev *dev)
 
 	/* does mixer already have active source streams ? */
 	if (dev->state != COMP_STATE_ACTIVE) {
-
 		/* currently inactive so setup mixer */
-		md->mix_func = mix_n;
+		md->mix_func = dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE ?
+			mix_n_s16 : mix_n_s32;
 
 		ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 		if (ret < 0)
