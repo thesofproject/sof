@@ -34,6 +34,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_math_numbers_gcd_for_5083_and_391_equals_391(void **state)

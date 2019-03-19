@@ -67,6 +67,10 @@ function(cmocka_test test_name)
 	target_link_libraries(${test_name} PRIVATE cmocka)
 	target_link_libraries(${test_name} PRIVATE sof_options)
 	target_compile_definitions(${test_name} PRIVATE -DCHECK)
+
+	# Cmocka requires this define for stdint.h that defines uintptr
+	target_compile_definitions(${test_name} PRIVATE -D_UINTPTR_T_DEFINED)
+
 	add_test(NAME ${test_name} COMMAND xt-run --exit_with_target_code ${test_name})
 endfunction()
 

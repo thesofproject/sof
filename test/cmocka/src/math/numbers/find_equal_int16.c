@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_math_numbers_find_equal_int16_for_5_123_5_10_123_500_123_n_123_equals_1_4_and_6

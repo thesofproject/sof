@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_list_list_init_prev_equal_to_root(void **state)

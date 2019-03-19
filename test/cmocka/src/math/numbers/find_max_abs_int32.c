@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 static void test_math_numbers_find_max_abs_int32_for_neg100_99_98_50_equals_100

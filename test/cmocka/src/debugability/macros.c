@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 #include <sof/preproc.h>
@@ -70,7 +71,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"(6 << 24)"
 			"1"
 			"1"
-			"53"
+			"54"
 			"sizeof(\"" __FILE__ "\")"
 			"sizeof(\"Message\")"
 			"\"" __FILE__ "\""

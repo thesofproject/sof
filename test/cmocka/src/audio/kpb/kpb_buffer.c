@@ -33,8 +33,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
-#include <cmocka.h>
 #include <stdint.h>
+#include <cmocka.h>
 #include <stddef.h>
 
 #include <sof/sof.h>
