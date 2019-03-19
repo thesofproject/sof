@@ -443,21 +443,22 @@ void schedule_idle(void)
 {
 	struct schedule_data *sch = *arch_schedule_get();
 	struct list_item *tlist;
+	struct list_item *clist;
 	struct task *task;
 
 	/* first check if any higher priority task is waiting */
 	schedule();
 
 	/* invoke unprioritized/idle tasks right away */
-	list_for_item(tlist, &sch->idle_list) {
-		task = container_of(tlist, struct task, list);
+	list_for_item_safe(clist, tlist, &sch->idle_list) {
+		task = container_of(clist, struct task, list);
 
 		/* run task if we find any queued */
 		if (task->state == TASK_STATE_QUEUED)
 			task->func(task->data);
 
 		/* task done, remove it from the list */
-		list_item_del(tlist);
+		list_item_del(clist);
 	}
 }
 
