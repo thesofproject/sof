@@ -147,6 +147,8 @@ struct kpb_comp_data {
 	struct dd draining_task_data;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
+	enum sof_ipc_frame source_format;       /**< source frame format */
+	enum sof_ipc_frame sink_format;         /**< sink frame format */
 	struct sof_kpb_config config;   /**< component configuration data */
 	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
 };

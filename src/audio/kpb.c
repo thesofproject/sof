@@ -275,7 +275,13 @@ static int kpb_prepare(struct comp_dev *dev)
 			break;
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
-			/* we found proper sink */
+			/*
+			 * we found proper sink, set sink data format
+			 * and period bytes
+			 */
+			comp_set_period_bytes(dev, dev->frames,
+					      &cd->sink_format,
+					      &cd->sink_period_bytes);
 			cd->rt_sink = sink;
 			break;
 		}
