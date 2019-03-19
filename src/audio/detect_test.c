@@ -47,8 +47,11 @@
 #define tracev_keyword(__e, ...) \
 	tracev_event(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 
-#define ACTIVATION_SHIFT 6
-#define ACTIVATION_THRESHOLD 0.7
+/* TODO: too high threshold for DMIC */
+//#define ACTIVATION_SHIFT 6
+//#define ACTIVATION_THRESHOLD 0.7
+#define ACTIVATION_SHIFT 3
+#define ACTIVATION_THRESHOLD 0.5
 
 #define ACTIVATION_THRESHOLD_S16 \
 	((int16_t)((INT16_MAX) * (ACTIVATION_THRESHOLD)))
