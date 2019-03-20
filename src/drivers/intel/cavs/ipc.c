@@ -43,7 +43,6 @@
 #include <sof/wait.h>
 #include <sof/trace.h>
 #include <sof/ssp.h>
-#include <sof/cavs-version.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -53,6 +52,7 @@
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc/header.h>
 #include <platform/pm_runtime.h>
+#include <cavs/version.h>
 
 extern struct ipc *_ipc;
 

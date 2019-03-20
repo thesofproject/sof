@@ -58,7 +58,7 @@
 #include <config.h>
 #include <sof/string.h>
 #include <version.h>
-#include <sof/cavs-version.h>
+#include <cavs/version.h>
 
 static const struct sof_ipc_fw_ready ready
 	__attribute__((section(".fw_ready"))) = {
