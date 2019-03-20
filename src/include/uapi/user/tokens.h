@@ -44,6 +44,7 @@
 #define SOF_TPLG_KCTL_VOL_ID	256
 #define SOF_TPLG_KCTL_ENUM_ID	257
 #define SOF_TPLG_KCTL_BYTES_ID	258
+#define SOF_TPLG_KCTL_SWITCH_ID	259
 
 /*
  * Tokens - must match values in topology configurations
@@ -114,6 +115,9 @@
 #define SOF_TKN_INTEL_DMIC_PDM_POLARITY_B	704
 #define SOF_TKN_INTEL_DMIC_PDM_CLK_EDGE		705
 #define SOF_TKN_INTEL_DMIC_PDM_SKEW		706
+
+/* Tone */
+#define SOF_TKN_TONE_SAMPLE_RATE		800
 
 #define SOF_TKN_EFFECT_TYPE                     900
 
