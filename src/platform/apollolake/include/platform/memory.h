@@ -236,7 +236,11 @@
 
 /* window 3 */
 #define SRAM_TRACE_BASE		SRAM_WND_BASE
+#if CONFIG_TRACE
 #define SRAM_TRACE_SIZE		0x2000
+#else
+#define SRAM_TRACE_SIZE		0
+#endif
 
 /* window 2 */
 #define SRAM_DEBUG_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)

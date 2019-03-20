@@ -253,7 +253,11 @@
 #define SRAM_STREAM_SIZE	0x1000
 
 #define SRAM_TRACE_BASE		(SRAM_STREAM_BASE + SRAM_STREAM_SIZE)
+#if CONFIG_TRACE
 #define SRAM_TRACE_SIZE		0x1000
+#else
+#define SRAM_TRACE_SIZE		0x0
+#endif
 
 /* Suecreek HPSRAM does not have SW_REG window*/
 #define SRAM_SW_REG_BASE	0

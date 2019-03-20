@@ -531,7 +531,7 @@ int platform_init(struct sof *sof)
 	ret = spi_probe(spi_dev);
 	if (ret < 0)
 		return ret;
-#else
+#elif CONFIG_TRACE
 	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(sof->dmat);
 #endif

@@ -65,7 +65,9 @@ int master_core_init(struct sof *sof)
 	platform_init_memmap();
 	init_heap(sof);
 
+#if CONFIG_TRACE
 	trace_init(sof);
+#endif
 
 	trace_point(TRACE_BOOT_SYS_NOTE);
 	init_system_notify(sof);
