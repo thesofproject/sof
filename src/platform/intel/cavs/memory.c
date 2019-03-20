@@ -35,42 +35,50 @@
 
 /* Heap blocks for system runtime for master core */
 static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
-static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
-static struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
+static struct block_hdr sys_rt_0_block128[HEAP_SYS_RT_0_COUNT128];
+static struct block_hdr sys_rt_0_block192[HEAP_SYS_RT_0_COUNT192];
+static struct block_hdr sys_rt_0_block256[HEAP_SYS_RT_0_COUNT256];
+static struct block_hdr sys_rt_0_block320[HEAP_SYS_RT_0_COUNT320];
 
 /* Heap memory for system runtime for master core */
 static struct block_map sys_rt_0_heap_map[] = {
 	BLOCK_DEF(64, HEAP_SYS_RT_0_COUNT64, sys_rt_0_block64),
-	BLOCK_DEF(512, HEAP_SYS_RT_0_COUNT512, sys_rt_0_block512),
-	BLOCK_DEF(1024, HEAP_SYS_RT_0_COUNT1024, sys_rt_0_block1024),
+	BLOCK_DEF(128, HEAP_SYS_RT_0_COUNT128, sys_rt_0_block128),
+	BLOCK_DEF(192, HEAP_SYS_RT_0_COUNT192, sys_rt_0_block192),
+	BLOCK_DEF(256, HEAP_SYS_RT_0_COUNT256, sys_rt_0_block256),
+	BLOCK_DEF(320, HEAP_SYS_RT_0_COUNT320, sys_rt_0_block320),
 };
 
 /* Heap blocks for system runtime for slave core */
 static struct block_hdr sys_rt_x_block64[HEAP_SYS_RT_X_COUNT64];
-static struct block_hdr sys_rt_x_block512[HEAP_SYS_RT_X_COUNT512];
-static struct block_hdr sys_rt_x_block1024[HEAP_SYS_RT_X_COUNT1024];
+static struct block_hdr sys_rt_x_block128[HEAP_SYS_RT_X_COUNT128];
+static struct block_hdr sys_rt_x_block192[HEAP_SYS_RT_X_COUNT192];
+static struct block_hdr sys_rt_x_block256[HEAP_SYS_RT_X_COUNT256];
+static struct block_hdr sys_rt_x_block320[HEAP_SYS_RT_X_COUNT320];
 
 /* Heap memory for system runtime for slave core */
 static struct block_map sys_rt_x_heap_map[] = {
 	BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64, sys_rt_x_block64),
-	BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512, sys_rt_x_block512),
-	BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024, sys_rt_x_block1024),
+	BLOCK_DEF(128, HEAP_SYS_RT_X_COUNT128, sys_rt_x_block128),
+	BLOCK_DEF(192, HEAP_SYS_RT_X_COUNT192, sys_rt_x_block192),
+	BLOCK_DEF(256, HEAP_SYS_RT_X_COUNT256, sys_rt_x_block256),
+	BLOCK_DEF(320, HEAP_SYS_RT_X_COUNT320, sys_rt_x_block320),
 };
 
 /* Heap blocks for modules */
 static struct block_hdr mod_block64[HEAP_RT_COUNT64];
 static struct block_hdr mod_block128[HEAP_RT_COUNT128];
+static struct block_hdr mod_block192[HEAP_RT_COUNT192];
 static struct block_hdr mod_block256[HEAP_RT_COUNT256];
-static struct block_hdr mod_block512[HEAP_RT_COUNT512];
-static struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
+static struct block_hdr mod_block320[HEAP_RT_COUNT320];
 
 /* Heap memory map for modules */
 static struct block_map rt_heap_map[] = {
 	BLOCK_DEF(64, HEAP_RT_COUNT64, mod_block64),
 	BLOCK_DEF(128, HEAP_RT_COUNT128, mod_block128),
+	BLOCK_DEF(192, HEAP_RT_COUNT192, mod_block192),
 	BLOCK_DEF(256, HEAP_RT_COUNT256, mod_block256),
-	BLOCK_DEF(512, HEAP_RT_COUNT512, mod_block512),
-	BLOCK_DEF(1024, HEAP_RT_COUNT1024, mod_block1024),
+	BLOCK_DEF(320, HEAP_RT_COUNT320, mod_block320),
 };
 
 /* Heap blocks for buffers */

@@ -100,21 +100,23 @@ void platform_init_memmap(void);
  * +---------------------+----------------+-----------------------------------+
  */
 
-
 /* Heap section sizes for module pool */
 #define HEAP_RT_COUNT8		0
 #define HEAP_RT_COUNT16		192
 #define HEAP_RT_COUNT32		128
 #define HEAP_RT_COUNT64		64
-#define HEAP_RT_COUNT128	64
-#define HEAP_RT_COUNT256	64
-#define HEAP_RT_COUNT512	8
-#define HEAP_RT_COUNT1024	4
+#define HEAP_RT_COUNT128	32
+#define HEAP_RT_COUNT192	16
+#define HEAP_RT_COUNT256	24
+#define HEAP_RT_COUNT320	4
 
 /* Heap section sizes for system runtime heap */
+#define HEAP_SYS_RT_COUNT32	64
 #define HEAP_SYS_RT_COUNT64	64
-#define HEAP_SYS_RT_COUNT512	8
-#define HEAP_SYS_RT_COUNT1024	4
+#define HEAP_SYS_RT_COUNT128	8
+#define HEAP_SYS_RT_COUNT192	4
+#define HEAP_SYS_RT_COUNT256	4
+#define HEAP_SYS_RT_COUNT320	2
 
 /* Heap configuration */
 #define SOF_DATA_SIZE			0xa000
@@ -126,15 +128,16 @@ void platform_init_memmap(void);
 
 #define HEAP_SYS_RUNTIME_BASE	(HEAP_SYSTEM_BASE + HEAP_SYSTEM_SIZE)
 #define HEAP_SYS_RUNTIME_SIZE \
-	(HEAP_SYS_RT_COUNT64 * 64 + HEAP_SYS_RT_COUNT512 * 512 + \
-	HEAP_SYS_RT_COUNT1024 * 1024)
+	(HEAP_SYS_RT_COUNT32 * 32 + HEAP_SYS_RT_COUNT64 * 64 + \
+	HEAP_SYS_RT_COUNT128 * 128 + HEAP_SYS_RT_COUNT192 * 192 + \
+	HEAP_SYS_RT_COUNT256 * 256 + HEAP_SYS_RT_COUNT320 * 320)
 
 #define HEAP_RUNTIME_BASE	(HEAP_SYS_RUNTIME_BASE + HEAP_SYS_RUNTIME_SIZE)
 #define HEAP_RUNTIME_SIZE \
 	(HEAP_RT_COUNT8 * 8 + HEAP_RT_COUNT16 * 16 + \
 	HEAP_RT_COUNT32 * 32 + HEAP_RT_COUNT64 * 64 + \
-	HEAP_RT_COUNT128 * 128 + HEAP_RT_COUNT256 * 256 + \
-	HEAP_RT_COUNT512 * 512 + HEAP_RT_COUNT1024 * 1024)
+	HEAP_RT_COUNT128 * 128 + HEAP_RT_COUNT192 * 192 + \
+	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT320 * 320)
 
 #define HEAP_BUFFER_BASE	(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
 #define HEAP_BUFFER_SIZE \
@@ -144,6 +147,8 @@ void platform_init_memmap(void);
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT		(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+
+#define PLATFORM_BUFFER_BLOCK_SIZE (HEAP_BUFFER_BLOCK_SIZE - 64)
 
 #define PLATFORM_HEAP_SYSTEM		1 /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */

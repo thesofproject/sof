@@ -580,7 +580,7 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 	uint32_t flags;
 	void *ptr = NULL;
 
-	if (bytes >= HEAP_BUFFER_BLOCK_SIZE)
+	if (bytes >= PLATFORM_BUFFER_BLOCK_SIZE)
 		return rballoc(zone, caps, bytes);
 
 	spin_lock_irq(&memmap.lock, flags);
