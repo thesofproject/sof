@@ -42,6 +42,9 @@ project(SOF C ASM)
 set(SOF_ROOT_SOURCE_DIRECTORY "${PROJECT_SOURCE_DIR}")
 set(SOF_ROOT_BINARY_DIRECTORY "${PROJECT_BINARY_DIR}")
 
+# check git hooks
+include(scripts/cmake/git-hooks.cmake)
+
 # most of other options are set on per-arch and per-target basis
 set(CMAKE_ASM_FLAGS -DASSEMBLY)
 
