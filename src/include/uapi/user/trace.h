@@ -79,6 +79,7 @@ struct system_time {
 #define TRACE_CLASS_KPB		(28 << 24)
 #define TRACE_CLASS_SELECTOR	(29 << 24)
 #define TRACE_CLASS_SCHEDULE	(30 << 24)
+#define TRACE_CLASS_SCHEDULE_LL	(31 << 24)
 
 #define LOG_ENABLE		1  /* Enable logging */
 #define LOG_DISABLE		0  /* Disable logging */

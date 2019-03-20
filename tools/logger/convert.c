@@ -100,6 +100,7 @@ static const char * get_component_name(uint32_t component_id) {
 		CASE(KPB);
 		CASE(SELECTOR);
 		CASE(SCHEDULE);
+		CASE(SCHEDULE_LL);
 	default: return "unknown";
 	}
 }
