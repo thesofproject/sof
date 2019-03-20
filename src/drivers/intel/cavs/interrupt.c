@@ -36,13 +36,13 @@
 #include <sof/interrupt.h>
 #include <sof/interrupt-map.h>
 #include <sof/cpu.h>
-#include <sof/cavs-version.h>
 #include <arch/interrupt.h>
 #include <platform/interrupt.h>
 #include <platform/platcfg.h>
 #include <platform/shim.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <cavs/version.h>
 
 static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				    uint32_t ilxmsd, uint32_t ilxmcd)
