@@ -170,7 +170,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	struct dma_trace_buf *buffer = &d->dmatb;
 
 	/* allocate new buffer */
-	buffer->addr = rballoc(RZONE_BUFFER,
+	buffer->addr = rmalloc(RZONE_BUFFER,
 			       SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA,
 			       DMA_TRACE_LOCAL_SIZE);
 	if (!buffer->addr) {

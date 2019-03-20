@@ -68,7 +68,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		return NULL;
 	}
 
-	buffer->addr = rballoc(RZONE_BUFFER, desc->caps, desc->size);
+	buffer->addr = rmalloc(RZONE_BUFFER, desc->caps, desc->size);
 	if (!buffer->addr) {
 		rfree(buffer);
 		trace_buffer_error("buffer_new() error: "

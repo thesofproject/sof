@@ -55,11 +55,6 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
-void *rballoc(int zone, uint32_t caps, size_t bytes)
-{
-	return malloc(bytes);
-}
-
 void heap_trace(struct mm_heap *heap, int size)
 {
 	malloc_info(0, stdout);

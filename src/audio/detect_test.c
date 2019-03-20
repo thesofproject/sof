@@ -176,7 +176,7 @@ static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 	if (!size)
 		return 0;
 
-	cd->load_memory = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
+	cd->load_memory = rmalloc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
 
 	if (!cd->load_memory) {
 		trace_keyword_error("alloc_mem_load() alloc failed");

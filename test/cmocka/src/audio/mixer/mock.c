@@ -43,7 +43,7 @@
 
 TRACE_IMPL()
 
-void *rballoc(int zone, uint32_t caps, size_t bytes)
+void *rmalloc(int zone, uint32_t caps, size_t bytes)
 {
 	(void)zone;
 	(void)caps;

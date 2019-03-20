@@ -555,11 +555,33 @@ static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 	return get_ptr_from_heap(heap, zone, caps, bytes);
 }
 
+static void *rballoc(int zone, uint32_t caps, size_t bytes)
+{
+	void *ptr;
+
+	ptr = _balloc(zone, caps, bytes);
+
+#if CONFIG_DEBUG_HEAP
+	if (!ptr) {
+		trace_error(TRACE_CLASS_MEM,
+			    "failed to alloc 0x%x bytes caps 0x%x",
+			    bytes, caps);
+
+		alloc_trace_buffer_heap(zone, caps, bytes);
+	}
+#endif
+
+	return ptr;
+}
+
 /* allocates memory - not for direct use, clients use rmalloc() */
 void *_malloc(int zone, uint32_t caps, size_t bytes)
 {
 	uint32_t flags;
 	void *ptr = NULL;
+
+	if (bytes >= HEAP_BUFFER_BLOCK_SIZE)
+		return rballoc(zone, caps, bytes);
 
 	spin_lock_irq(&memmap.lock, flags);
 
@@ -568,23 +590,30 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 		ptr = rmalloc_sys(zone, caps, cpu_get_id(), bytes);
 		break;
 	case RZONE_SYS_RUNTIME:
-		ptr = rmalloc_sys_runtime(zone, caps, cpu_get_id(), bytes);
+		ptr = rmalloc_sys_runtime(zone, caps, cpu_get_id(),
+					  bytes);
 		break;
 	case RZONE_RUNTIME:
 		ptr = rmalloc_runtime(zone, caps, bytes);
 		break;
 	default:
 		trace_mem_error("rmalloc() error: invalid zone");
-		panic(SOF_IPC_PANIC_MEM); /* logic non recoverable problem */
+
+		/* logic non recoverable problem */
+		panic(SOF_IPC_PANIC_MEM);
 		break;
 	}
+
+	spin_unlock_irq(&memmap.lock, flags);
+
+	if (!ptr)
+		ptr = _balloc(zone, caps, bytes);
 
 #if DEBUG_BLOCK_FREE
 	if (ptr)
 		bzero(ptr, bytes);
 #endif
 
-	spin_unlock_irq(&memmap.lock, flags);
 	memmap.heap_trace_updated = 1;
 	return ptr;
 }
@@ -618,7 +647,7 @@ void *rzalloc_core_sys(int core, size_t bytes)
 	return ptr;
 }
 
-/* allocates continuous buffers - not for direct use, clients use rballoc() */
+/* allocates continuous buffers - not for direct use, clients use rmalloc() */
 static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 			       size_t bytes)
 {
@@ -667,7 +696,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 	return ptr;
 }
 
-/* allocates continuous buffers - not for direct use, clients use rballoc() */
+/* allocates continuous buffers - not for direct use, clients use rmalloc() */
 void *_balloc(int zone, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
