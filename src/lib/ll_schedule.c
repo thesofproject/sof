@@ -592,7 +592,7 @@ static int schedule_ll_task_init(struct task *w, uint32_t xflags)
 			   SOF_MEM_CAPS_RAM, sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
-		trace_error(0, "schedule_ll_task_init() error: alloc failed");
+		trace_ll_error("schedule_ll_task_init() error: alloc failed");
 		return -ENOMEM;
 	}
 

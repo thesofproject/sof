@@ -43,6 +43,16 @@
 
 struct work_queue;
 
+/* ll tracing */
+#define trace_ll(format, ...) \
+	trace_event(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
+
+#define trace_ll_error(format, ...) \
+	trace_error(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
+
+#define tracev_ll(format, ...) \
+	tracev_event(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
+
 #define ll_sch_set_pdata(task, data) \
 	task->private = data
 
