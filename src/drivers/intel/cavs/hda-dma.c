@@ -712,7 +712,8 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	if ((config->direction & (DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM)) &&
 	    !config->irq_disabled) {
 		trace_hddma_error("hda-dmac: %d channel %d HDA Link DMA "
-				  "doesn't support irq scheduling");
+				  "doesn't support irq scheduling",
+				  dma->plat_data.id, channel);
 		ret = -EINVAL;
 		goto out;
 	}
