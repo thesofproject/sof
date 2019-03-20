@@ -10,5 +10,9 @@ endif()
 add_local_sources(sof
 	ipc.c
 	handler.c
-	dma-copy.c
 )
+
+if (CONFIG_TRACE)
+	add_local_sources(sof
+		dma-copy.c)
+endif()

@@ -693,6 +693,7 @@ static int ipc_glb_pm_message(uint32_t header)
 	}
 }
 
+#if CONFIG_TRACE
 /*
  * Debug IPC Operations.
  */
@@ -796,6 +797,14 @@ static int ipc_glb_debug_message(uint32_t header)
 		return -EINVAL;
 	}
 }
+#else
+static int ipc_glb_debug_message(uint32_t header)
+{
+	/* traces are disabled - CONFIG_TRACE is not set */
+
+	return -EINVAL;
+}
+#endif
 
 static int ipc_glb_gdb_debug(uint32_t header)
 {

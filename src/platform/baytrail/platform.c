@@ -289,8 +289,10 @@ int platform_init(struct sof *sof)
 	dai_probe(ssp5);
 #endif
 
+#if CONFIG_TRACE
 	/* Initialize DMA for Trace*/
 	dma_trace_init_complete(sof->dmat);
+#endif
 
 	/* show heap status */
 	heap_trace_all(1);

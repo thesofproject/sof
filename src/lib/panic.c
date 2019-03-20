@@ -77,7 +77,9 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	platform_panic(p);
 
 	/* flush last trace messages */
+#if CONFIG_TRACE
 	trace_flush();
+#endif
 
 	/* and loop forever */
 	while (1)
