@@ -13,5 +13,5 @@ cmake -DBUILD_HOST=ON \
 	-DCMAKE_VERBOSE_MAKEFILE=ON \
 	..
 
-make -j4
+make -j$(nproc --all)
 make install
