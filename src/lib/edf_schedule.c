@@ -346,7 +346,7 @@ static void schedule_edf_task_normal(struct task *task, uint64_t start,
 	/* need to run scheduler if task not already running */
 	if (need_sched) {
 		/* rerun scheduler */
-		schedule();
+		schedule_edf();
 	}
 }
 
