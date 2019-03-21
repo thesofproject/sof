@@ -762,9 +762,7 @@ struct comp_driver comp_tone = {
 	},
 };
 
-void sys_comp_tone_init(void);
-
-void sys_comp_tone_init(void)
+static void sys_comp_tone_init(void)
 {
 	comp_register(&comp_tone);
 }
