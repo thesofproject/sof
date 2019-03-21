@@ -545,9 +545,7 @@ struct comp_driver comp_kpb = {
 	},
 };
 
-void sys_comp_kpb_init(void);
-
-void sys_comp_kpb_init(void)
+static void sys_comp_kpb_init(void)
 {
 	comp_register(&comp_kpb);
 }
