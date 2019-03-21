@@ -980,9 +980,7 @@ struct comp_driver comp_src = {
 	},
 };
 
-void sys_comp_src_init(void);
-
-void sys_comp_src_init(void)
+static void sys_comp_src_init(void)
 {
 	comp_register(&comp_src);
 }
