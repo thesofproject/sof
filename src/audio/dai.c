@@ -100,8 +100,9 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 
 	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
-	/* reload lli by default */
-	next->size = DMA_RELOAD_LLI;
+	/* reload lli if the last callback wasn't of llist type */
+	next->size = dd->cb_type == DMA_CB_TYPE_LLIST ? DMA_RELOAD_IGNORE :
+		DMA_RELOAD_LLI;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -171,9 +172,13 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	switch (type) {
 	case DMA_CB_TYPE_BLOCK:
-	case DMA_CB_TYPE_LLIST:
 		dd->cb_type = type;
 		next->size = DMA_RELOAD_IGNORE;
+		pipeline_schedule_copy(dev->pipeline, 0);
+		break;
+	case DMA_CB_TYPE_LLIST:
+		dd->cb_type = type;
+		next->size = DMA_RELOAD_LLI;
 		pipeline_schedule_copy(dev->pipeline, 0);
 		break;
 	case DMA_CB_TYPE_PROCESS:
