@@ -97,9 +97,7 @@ struct comp_driver comp_mux = {
 	},
 };
 
-void sys_comp_mux_init(void);
-
-void sys_comp_mux_init(void)
+static void sys_comp_mux_init(void)
 {
 	comp_register(&comp_mux);
 }
