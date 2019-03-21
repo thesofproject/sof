@@ -133,6 +133,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	config.src_width = sizeof(uint32_t);
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
+	config.irq_disabled = false;
 	dma_sg_init(&config.elem_array);
 
 	/* configure local DMA elem */
