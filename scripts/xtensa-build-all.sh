@@ -4,7 +4,7 @@ SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
-BUILD_JOBS=1
+BUILD_JOBS=$(nproc --all)
 BUILD_JOBS_NEXT=0
 
 PATH=$pwd/local/bin:$PATH
@@ -19,7 +19,8 @@ then
 	echo "       [-u] Force UP ARCH"
 	echo "       [-d] Enable debug build"
 	echo "       [-c] Configure defconfig"
-	echo "       [-j [n]] Set number of make build jobs. Infinite jobs with no arg."
+	echo "       [-j [n]] Set number of make build jobs." \
+		"Jobs=#cores when no flag. Inifinte when no arg."
 	echo "       Supported platforms ${SUPPORTED_PLATFORMS[@]}"
 else
 	# parse the args
