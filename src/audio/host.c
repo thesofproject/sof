@@ -102,8 +102,8 @@ struct host_data {
 
 static int host_stop(struct comp_dev *dev);
 static int host_copy(struct comp_dev *dev);
-
 #if !CONFIG_DMA_GW
+static int host_copy_one_shot(struct comp_dev *dev);
 
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
@@ -235,7 +235,8 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 #endif
 }
 
-static int create_local_elems(struct comp_dev *dev)
+static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
+			      uint32_t buffer_bytes)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem_array *elem_array;
@@ -249,9 +250,8 @@ static int create_local_elems(struct comp_dev *dev)
 	err = dma_sg_alloc(elem_array, RZONE_RUNTIME,
 			   dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
 				DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM,
-			   hd->period_count,
-			   hd->period_bytes, (uintptr_t)(hd->dma_buffer->addr),
-			   0);
+			   buffer_count, buffer_bytes,
+			   (uintptr_t)(hd->dma_buffer->addr), 0);
 
 	if (err < 0) {
 		trace_host_error("create_local_elems() error: "
@@ -319,7 +319,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 #else
 		/* preload first playback period for preloader task */
 		if (pipeline_is_preload(dev->pipeline))
-			ret = host_copy(dev);
+			ret = host_copy_one_shot(dev);
 #endif
 		break;
 	default:
@@ -440,7 +440,8 @@ static int host_elements_reset(struct comp_dev *dev)
 	/* local element */
 	local_elem = hd->config.elem_array.elems;
 	local_elem->dest = sink_elem->dest;
-	local_elem->size =  hd->period_bytes;
+	local_elem->size = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+		sink_elem->size : source_elem->size;
 	local_elem->src = source_elem->src;
 	hd->next_inc =  hd->period_bytes;
 
@@ -448,7 +449,6 @@ static int host_elements_reset(struct comp_dev *dev)
 }
 #endif
 
-#if defined CONFIG_DMA_GW
 static void host_buffer_cb(void *data, uint32_t bytes)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
@@ -475,12 +475,18 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 
 	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
 
+#if CONFIG_DMA_GW
 	ret = dma_copy(hd->dma, hd->chan, copy_bytes, 0);
 	if (ret < 0)
 		trace_host_error("host_buffer_cb() error: dma_copy() failed, "
 				 "ret = %u", ret);
-}
+#else
+	ret = host_copy_one_shot(dev);
+	if (ret < 0)
+		trace_host_error("host_buffer_cb() error: host_copy_one_shot()"
+				 " failed, ret = %u", ret);
 #endif
+}
 
 /* configure the DMA params and descriptors for host buffer IO */
 static int host_params(struct comp_dev *dev)
@@ -489,6 +495,8 @@ static int host_params(struct comp_dev *dev)
 	struct sof_ipc_comp_config *cconfig = COMP_GET_CONFIG(dev);
 	struct dma_sg_config *config = &hd->config;
 	uint32_t buffer_size;
+	uint32_t buffer_count;
+	uint32_t buffer_single_size;
 	int err;
 
 	trace_event(TRACE_CLASS_HOST, "host_params()");
@@ -498,37 +506,43 @@ static int host_params(struct comp_dev *dev)
 
 	/* determine source and sink buffer elems */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-#if !CONFIG_DMA_GW
-		hd->source = &hd->host;
-		hd->sink = &hd->local;
-#endif
 		hd->dma_buffer = list_first_item(&dev->bsink_list,
 			struct comp_buffer, source_list);
 
-#if defined CONFIG_DMA_GW
 		/* set callback on buffer consume */
 		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
 			      BUFF_CB_TYPE_CONSUME);
-#endif
 
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 		hd->period_count = cconfig->periods_sink;
+#if CONFIG_DMA_GW
+		buffer_count = hd->period_count;
+		buffer_single_size = dev->frames * comp_frame_bytes(dev);
+#else
+		buffer_count = 1;
+		buffer_single_size = hd->period_count * dev->frames *
+			comp_frame_bytes(dev);
+
+		hd->source = &hd->host;
+		hd->sink = &hd->local;
+#endif
 	} else {
+		hd->dma_buffer = list_first_item(&dev->bsource_list,
+			struct comp_buffer, sink_list);
+
+		/* set callback on buffer produce */
+		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
+			      BUFF_CB_TYPE_PRODUCE);
+
+		config->direction = DMA_DIR_LMEM_TO_HMEM;
+		hd->period_count = cconfig->periods_source;
+		buffer_count = hd->period_count;
+		buffer_single_size = dev->frames * comp_frame_bytes(dev);
+
 #if !CONFIG_DMA_GW
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
 #endif
-		hd->dma_buffer = list_first_item(&dev->bsource_list,
-			struct comp_buffer, sink_list);
-
-#if defined CONFIG_DMA_GW
-		/* set callback on buffer produce */
-		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
-			      BUFF_CB_TYPE_PRODUCE);
-#endif
-
-		config->direction = DMA_DIR_LMEM_TO_HMEM;
-		hd->period_count = cconfig->periods_source;
 	}
 
 	/* validate period count */
@@ -566,7 +580,7 @@ static int host_params(struct comp_dev *dev)
 #endif
 
 	/* create SG DMA elems for local DMA buffer */
-	err = create_local_elems(dev);
+	err = create_local_elems(dev, buffer_count, buffer_single_size);
 	if (err < 0)
 		return err;
 
@@ -710,6 +724,24 @@ static int host_reset(struct comp_dev *dev)
 	return 0;
 }
 
+#if !CONFIG_DMA_GW
+/* perform one shot copy from source to sink buffers */
+static int host_copy_one_shot(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	int ret;
+
+	/* do DMA transfer */
+	ret = dma_set_config(hd->dma, hd->chan, &hd->config);
+	if (ret < 0)
+		return ret;
+
+	ret = dma_start(hd->dma, hd->chan);
+
+	return ret;
+}
+#endif
+
 /* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
 {
@@ -739,34 +771,27 @@ static int host_copy(struct comp_dev *dev)
 		}
 	}
 
-/* TODO: this could be run-time if() based on the same attribute
- * as in the host_trigger().
- */
+	/* TODO: this could be run-time if() based on the same attribute
+	 * as in the host_trigger().
+	 */
 #if CONFIG_DMA_GW
 	/* here only do preload, further copies happen
 	 * in host_buffer_cb()
 	 */
 	if (pipeline_is_preload(dev->pipeline)) {
-		ret = dma_copy(hd->dma, hd->chan, hd->period_bytes, DMA_COPY_PRELOAD);
-		if (ret < 0)
-			goto out;
+		ret = dma_copy(hd->dma, hd->chan, hd->period_bytes,
+			       DMA_COPY_PRELOAD);
+		if (ret < 0) {
+			trace_host_error("host_copy() error: dma_copy() "
+					 "failed, ret = %u", ret);
+			return ret;
+		}
 	}
-
-	/* note: update() moved to callback */
-#else
-	/* do DMA transfer */
-	ret = dma_set_config(hd->dma, hd->chan, &hd->config);
-	if (ret < 0)
-		goto out;
-	ret = dma_start(hd->dma, hd->chan);
-	if (ret < 0)
-		goto out;
 #endif
-	return 0;
-out:
-	trace_host_error("host_copy() error: "
-			 "dma_set_config() or dma_start() failed, ret = %u",
-			 ret);
+	/* For !CONFIG_DMA_GW preload happens in host_trigger() and
+	 * further copies happen in host_buffer_cb()
+	 */
+
 	return ret;
 }
 
