@@ -85,6 +85,8 @@ int32_t find_max_abs_int32(int32_t vec[], int vec_length);
  */
 int norm_int32(int32_t val);
 
+uint32_t crc32(const void *data, uint32_t size);
+
 /* merges two 16-bit values into a single 32-bit value */
 #define merge_16b16b(high, low) (((uint32_t)(high) << 16) | \
 				 ((low) & 0xFFFF))

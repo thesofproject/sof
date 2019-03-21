@@ -501,15 +501,20 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			src = (unsigned char *)cd->config;
 			dst = (unsigned char *)cdata->data->data;
 			bs = cd->config->size;
-			cdata->total_elems = bs;
-			if (bs > max_size)
-				bs = (cdata->msg_id + 1) * max_size > bs ?
-					bs - cdata->msg_id * max_size :
-				  max_size;
+			cdata->elems_remaining = 0;
+			offset = 0;
+			if (bs > max_size) {
+				bs = (cdata->msg_index + 1) * max_size > bs ?
+					bs - cdata->msg_index * max_size :
+					max_size;
+				offset = cdata->msg_index * max_size;
+				cdata->elems_remaining = cd->config->size -
+					offset;
+			}
 			cdata->num_elems = bs;
-			offset = cdata->msg_id * max_size;
-			trace_eq("fir_cmd_get_data(), %zu %u %u %zu",
-				 bs, cdata->msg_id, max_size, offset);
+			trace_eq("fir_cmd_get_data(), blob size %zu "
+				 "msg index %u max size %u offset %zu", bs,
+				 cdata->msg_index, max_size, offset);
 			memcpy(dst, src + offset, bs);
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
@@ -582,23 +587,31 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		}
 
 		/* Copy new config, find size from header */
-		trace_eq("fir_cmd_set_data(): blob size: %u msg_id %u",
-			 cdata->num_elems, cdata->msg_id);
-		if (cdata->total_elems > SOF_EQ_FIR_MAX_SIZE)
+		trace_eq("fir_cmd_set_data(): blob size: %u msg_index %u",
+			 cdata->num_elems + cdata->elems_remaining,
+			 cdata->msg_index);
+		if (cdata->num_elems + cdata->elems_remaining >
+		    SOF_EQ_FIR_MAX_SIZE)
 			return -EINVAL;
 
-		if (cdata->msg_id == 0) {
+		if (cdata->msg_index == 0) {
 			/* Check and free old config */
 			eq_fir_free_parameters(&cd->config);
 
 			/* Allocate buffer for copy of the blob. */
 			cd->config = rballoc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-					     cdata->total_elems);
+					     cdata->num_elems +
+					     cdata->elems_remaining);
+
 			if (!cd->config) {
 				trace_eq_error("fir_cmd_set_data() error: "
 					       "buffer allocation failed");
 				return -EINVAL;
 			}
+			offset = 0;
+		} else {
+			offset = cd->config->size - cdata->elems_remaining -
+				cdata->num_elems;
 		}
 
 		dst = (unsigned char *)cd->config;
@@ -607,13 +620,9 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		offset = cdata->msg_id * (SOF_IPC_MSG_MAX_SIZE -
-					  (sizeof(struct sof_ipc_ctrl_data) +
-					   sizeof(struct sof_abi_hdr)));
-
 		memcpy(dst + offset, src, cdata->num_elems);
 
-		/* we can check data if offset + num_elems == total_elems */
+		/* we can check data when elems_remaining == 0 */
 		break;
 	default:
 		trace_eq_error("fir_cmd_set_data() error: invalid cdata->cmd");

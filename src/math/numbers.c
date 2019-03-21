@@ -129,3 +129,21 @@ int norm_int32(int32_t val)
 	}
 	return s;
 }
+
+uint32_t crc32(const void *data, uint32_t size)
+{
+	uint32_t crc = 0xFFFFFFFF;
+	uint32_t mask;
+	int i, j;
+
+	for (i = 0; i < size; ++i) {
+		crc = crc ^ ((const uint8_t *)data)[i];
+
+		for (j = 7; j >= 0; --j) {
+			mask = -(crc & 1);
+			crc = (crc >> 1) ^ (0xEDB88320 & mask);
+		}
+	}
+
+	return ~crc;
+}
