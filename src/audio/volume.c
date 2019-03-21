@@ -667,12 +667,10 @@ struct comp_driver comp_volume = {
 	},
 };
 
-void sys_comp_volume_init(void);
-
 /**
  * \brief Initializes volume component.
  */
-void sys_comp_volume_init(void)
+static void sys_comp_volume_init(void)
 {
 	comp_register(&comp_volume);
 }
