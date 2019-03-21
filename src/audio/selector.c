@@ -516,10 +516,8 @@ struct comp_driver comp_selector = {
 	},
 };
 
-void sys_comp_selector_init(void);
-
 /** \brief Initializes selector component. */
-void sys_comp_selector_init(void)
+static void sys_comp_selector_init(void)
 {
 	comp_register(&comp_selector);
 }
