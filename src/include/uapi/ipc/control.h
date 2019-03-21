@@ -150,10 +150,9 @@ struct sof_ipc_ctrl_data {
 	/* control data - can either be appended or DMAed from host */
 	struct sof_ipc_host_buffer buffer;
 	uint32_t num_elems;	/**< in array elems or bytes for data type */
-	uint32_t total_elems;	/**< total size if message is sent in parts */
+	uint32_t elems_remaining;	/**< elems remaining if sent in parts */
 
-	/* for large messages sent in parts */
-	uint32_t msg_id;
+	uint32_t msg_index;	/**< index for large messages sent in parts */
 
 	/* reserved for future use */
 	uint32_t reserved[6];
@@ -189,7 +188,7 @@ struct sof_ipc_comp_event {
 
 	/* reserved for future use */
 	uint32_t reserved[8];
-	
+
 	/* control data - add new types if needed */
 	union {
 		/* data can be used by binary controls */

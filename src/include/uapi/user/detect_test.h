@@ -31,6 +31,11 @@
 #ifndef __INCLUDE_DETECT_TEST_USER_EQ_H__
 #define __INCLUDE_DETECT_TEST_USER_EQ_H__
 
+enum sof_detect_test_data_type {
+	SOF_DETECT_TEST_CONFIG = 0,
+	SOF_DETECT_TEST_MODEL
+};
+
 struct sof_detect_test_config {
 	uint32_t size;
 
@@ -38,8 +43,11 @@ struct sof_detect_test_config {
 	uint32_t load_mips;
 	uint32_t load_memory_size;
 
+	/* length of the keyphrase in milliseconds */
+	uint32_t keyphrase_length;
+
 	/* reserved for future use */
-	uint32_t reserved[5];
+	uint32_t reserved[4];
 } __attribute__((packed));
 
 /* used for binary blob size sanity checks */
