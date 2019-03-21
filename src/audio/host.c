@@ -855,9 +855,7 @@ struct comp_driver comp_host = {
 	},
 };
 
-void sys_comp_host_init(void);
-
-void sys_comp_host_init(void)
+static void sys_comp_host_init(void)
 {
 	comp_register(&comp_host);
 }
