@@ -5,7 +5,7 @@ dnl Define macro for generic detection widget
 dnl Detect name)
 define(`N_DETECT', `DETECT'PIPELINE_ID`.'$1)
 
-dnl W_DETECT(name, format, periods_sink, periods_source, detect_type, stream_name, mixer_list, enum_list)
+dnl W_DETECT(name, format, periods_sink, periods_source, detect_type, stream_name, kcontrols_list)
 define(`W_DETECT',
 `SectionVendorTuples."'N_DETECT($1)`_tuples_w" {'
 `	tokens "sof_comp_tokens"'
@@ -44,12 +44,9 @@ define(`W_DETECT',
 `		"'N_DETECT($1)`_data_w"'
 `		"'N_DETECT($1)`_data_str"'
 `	]'
-`	mixer ['
-		$7
-`	]'
-`	enum ['
-`		$8'
-`	]'
+`       bytes ['
+                $7
+`       ]'
 `}')
 
 divert(0)dnl
