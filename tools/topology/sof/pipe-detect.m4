@@ -40,12 +40,25 @@ C_CONTROLBYTES(SELECTOR, PIPELINE_ID,
 	CONTROLBYTES_MAX(, 304),
 	,
 	SELECTOR_priv)
+
+# Detector initial parameters
+include(`detect_coef.m4')
+
+# EQ Bytes control with max value of 255
+C_CONTROLBYTES(DETECTOR, PIPELINE_ID,
+        CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
+        CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
+        , , ,
+        CONTROLBYTES_MAX(, 304),
+        ,
+        DETECTOR_priv)
+
 #
 # Components and Buffers
 #
 
 # "Detect 0" has 2 sink period and 0 source periods
-W_DETECT(0, PIPELINE_FORMAT, 0, 2, KEYWORD, N_STS(PCM_ID))
+W_DETECT(0, PIPELINE_FORMAT, 0, 2, KEYWORD, N_STS(PCM_ID), LIST(`             ', "DETECTOR"))
 
 W_SELECTOR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "SELECTOR"))
 
