@@ -37,7 +37,7 @@
 #include <stdint.h>
 #include <sof/bit.h>
 #include <sof/platform.h>
-#include <platform/memory.h>
+#include <platform/platform.h>
 #include <arch/spinlock.h>
 #include <uapi/ipc/topology.h>
 struct sof;

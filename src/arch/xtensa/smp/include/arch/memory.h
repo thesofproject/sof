@@ -37,8 +37,6 @@
 #ifndef __ARCH_MEMORY_H__
 #define __ARCH_MEMORY_H__
 
-#include <platform/platcfg.h>
-
 /** \brief Stack size. */
 #define ARCH_STACK_SIZE		0x1000
 

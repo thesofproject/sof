@@ -35,7 +35,6 @@
 #include <uapi/user/manifest.h>
 #include <platform/platform.h>
 #include <platform/memory.h>
-#include <platform/platcfg.h>
 
 #if CONFIG_SUECREEK
 #define MANIFEST_BASE	BOOT_LDR_MANIFEST_BASE

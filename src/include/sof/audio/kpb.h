@@ -32,7 +32,7 @@
 #ifndef __INCLUDE_AUDIO_KPB_H__
 #define __INCLUDE_AUDIO_KPB_H__
 
-#include <platform/platcfg.h>
+#include <platform/platform.h>
 #include <sof/notifier.h>
 #include <sof/trace.h>
 #include <sof/schedule.h>

@@ -37,7 +37,7 @@
 
 #include <config.h>
 #include <platform/shim.h>
-#include <platform/platcfg.h>
+#include <platform/platform.h>
 #include <xtensa/corebits.h>
 #include <xtensa/config/core-isa.h>
 

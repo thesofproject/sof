@@ -46,8 +46,6 @@
 #if defined(CONFIG_APOLLOLAKE) || defined(CONFIG_CANNONLAKE)
 //TODO: add support or at least stub api for Icelake based on Cannonlake
 #include <platform/power_down.h>
-
-#include <platform/platcfg.h>
 #endif
 
 /** \brief Runtime power management data pointer. */

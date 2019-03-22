@@ -31,7 +31,7 @@
 #ifndef __INCLUDE_INIT_H__
 #define __INCLUDE_INIT_H__
 
-#include <platform/platcfg.h>
+#include <platform/platform.h>
 
 struct sof;
 

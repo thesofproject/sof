@@ -35,7 +35,6 @@
 
 #include <config.h>
 #include <arch/memory.h>
-#include <platform/platcfg.h>
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <cavs/memory.h>
