@@ -350,6 +350,9 @@ static int kpb_copy(struct comp_dev *dev)
 				 sink_list);
 	sink = (kpb->state == KPB_BUFFERING) ? kpb->rt_sink : kpb->cli_sink;
 
+	if (kpb->state != KPB_BUFFERING) {
+		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
+	}
 	/* process source data */
 	/* check if there are valid pointers */
 	if (source && sink) {
