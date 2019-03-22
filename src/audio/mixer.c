@@ -38,6 +38,7 @@
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/ut.h>
 
 #define trace_mixer(__e, ...) \
 	trace_event(TRACE_CLASS_MIXER, __e, ##__VA_ARGS__)
@@ -445,7 +446,7 @@ struct comp_driver comp_mixer = {
 	},
 };
 
-static void sys_comp_mixer_init(void)
+UT_STATIC void sys_comp_mixer_init(void)
 {
 	comp_register(&comp_mixer);
 }
