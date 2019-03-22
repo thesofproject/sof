@@ -55,9 +55,11 @@ struct comp_data {
 	struct dd draining_task_data;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
+	uint32_t is_internal_buffer_full;
 	struct sof_kpb_config config;   /**< component configuration data */
 	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
 	struct comp_buffer *cli_sink; /**< draining sink (client) */
+
 
 };
 
@@ -65,8 +67,10 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
 static void draining_task(void *arg);
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source, size_t size);
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req);
+static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
+			    size_t size);
+static uint8_t kpb_has_enough_history_data(struct comp_data *kpb,
+					   struct hb *buff, size_t his_req);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -325,8 +329,11 @@ static void kpb_cache(struct comp_dev *dev, int cmd)
 
 static int kpb_reset(struct comp_dev *dev)
 {
+	struct comp_data *kpb = comp_get_drvdata(dev);
+
 	trace_kpb("kpb_reset()");
 
+	kpb->is_internal_buffer_full = 0;
 	/* TODO: free all buffers allocated at prepare stage*/
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -350,6 +357,7 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	size_t copy_bytes = 0;
+	static size_t buffered;
 
 	tracev_kpb("kpb_copy()");
 
@@ -394,6 +402,12 @@ static int kpb_copy(struct comp_dev *dev)
 			 * a small portion of it?
 			 */
 			kpb_buffer_data(kpb, source, copy_bytes);
+
+			if (buffered < KPB_MAX_BUFFER_SIZE)
+				buffered += copy_bytes;
+			else
+				kpb->is_internal_buffer_full = 1;
+
 		}
 	} else {
 		ret = -EIO;
@@ -586,7 +600,8 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		trace_kpb_error("kpb_init_draining() error: "
 				"sink not ready for draining");
 		return;
-	} else if (!kpb_have_enough_history_data(buff, history_depth)) {
+	} else if (!kpb_has_enough_history_data(kpb, buff, history_depth))
+	{
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
 
@@ -680,11 +695,15 @@ static void draining_task(void *arg)
 
 }
 
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
+static uint8_t kpb_has_enough_history_data(struct comp_data *kpb,
+					   struct hb *buff, size_t his_req)
 {
 	uint8_t ret = 0;
 	size_t buffered_data = 0;
 	struct hb *first_buff = buff;
+
+	if (kpb->is_internal_buffer_full)
+		return 1;
 
 	while (buffered_data < his_req) {
 		if (buff->state == KPB_BUFFER_FREE) {
@@ -707,9 +726,6 @@ static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
 			buff = buff->next;
 		else
 			break;
-
-
-
 	}
 	ret = (buffered_data >= his_req) ? 1 : 0;
 	return ret;
