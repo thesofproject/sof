@@ -57,7 +57,7 @@
 	((int16_t)((INT16_MAX) * (ACTIVATION_THRESHOLD)))
 
 /* number of samples to be treated as a full keyphrase */
-#define KEYPHRASE_PREAMBLE_LENGTH 1024
+#define KEYPHRASE_PREAMBLE_LENGTH (30 * 1024)
 
 struct comp_data {
 	uint32_t period_bytes;		/**< source number of period bytes */
@@ -99,8 +99,9 @@ static void notify_kbd(struct comp_dev *dev)
 	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
 	cd->client_data.history_end = 0; /**< keyphrase end, 0 is now */
 	cd->client_data.history_begin = cd->detect_preamble;
-	/* single channel */
-	cd->client_data.history_depth = cd->detect_preamble * sizeof(int16_t);
+	/* two channels */
+	cd->client_data.history_depth = cd->detect_preamble *
+		sizeof(int16_t) * 2;
 
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
