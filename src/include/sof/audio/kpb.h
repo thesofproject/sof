@@ -57,15 +57,9 @@
 #define KPB_ALLOCATION_STEP 0x100
 #define KPB_NO_OF_MEM_POOLS 3
 
-enum kpb_sink_state {
-	KPB_SINK_BUSY = 0,
-	KPB_SINK_READY,
-};
-
-struct kpb_sink {
-	uint32_t *data_ptr;
-	uint32_t data_size;
-	enum kpb_sink_state state;
+enum kpb_state {
+	KPB_BUFFERING = 0,
+	KPB_DRAINING_ON_DEMAND,
 };
 
 enum kpb_event {
@@ -124,6 +118,7 @@ struct dd {
 	struct hb *history_buffer;
 	size_t history_depth;
 	uint8_t is_draining_active;
+	enum kpb_state *state;
 };
 
 /** \brief kpb component configuration data. */
