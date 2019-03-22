@@ -506,8 +506,9 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
+
 	err = memcpy_s(&dev->comp, sizeof(dev->comp),
-	    comp, sizeof(struct sof_ipc_comp_process));
+		       comp, sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -532,8 +533,8 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 			rfree(cd);
 			return NULL;
 		}
-		err = memcpy_s(cd->config, sizeof(*cd->config),
-			ipc_iir->data, bs);
+
+		err = memcpy_s(cd->config, bs, ipc_iir->data, bs);
 	}
 
 	if (err) {
@@ -689,10 +690,7 @@ static int iir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configurate. The EQ will be initialized in
 		 * prepare().
 		 */
-
-		ret = memcpy_s(cd->config, sizeof(*cd->config),
-		    cdata->data->data, bs);
-
+		ret = memcpy_s(cd->config, bs, cdata->data->data, bs);
 		break;
 	default:
 		trace_eq_error("iir_cmd_set_data() error: invalid cdata->cmd");
