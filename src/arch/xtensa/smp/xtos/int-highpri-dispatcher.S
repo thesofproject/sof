@@ -36,7 +36,7 @@
 
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
-#include <platform/platcfg.h>
+#include <platform/platform.h>
 
 
 #if XCHAL_HAVE_INTERRUPTS && (XCHAL_HAVE_XEA1 || XCHAL_HAVE_XEA2)

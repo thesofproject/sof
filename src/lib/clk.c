@@ -39,7 +39,7 @@
 #include <sof/cpu.h>
 #include <platform/clk.h>
 #include <platform/clk-map.h>
-#include <platform/platcfg.h>
+#include <platform/platform.h>
 #include <config.h>
 #include <stdint.h>
 #include <limits.h>

@@ -34,9 +34,39 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#define PLATFORM_RESET_MHE_AT_BOOT	1
+
+#define PLATFORM_MEM_INIT_AT_BOOT	1
+
+#define PLATFORM_CORE_COUNT		4
+
+#define PLATFORM_LPSRAM_EBB_COUNT	1
+
+#define PLATFORM_HPSRAM_EBB_COUNT	47
+
+#define PLATFORM_HPSRAM_SEGMENTS	2
+
+#define PLATFORM_MASTER_CORE_ID		0
+
+//TODO: move cAVS memory specific definitions to cavs/memory driver
+#define SRAM_BANK_SIZE			0x10000
+
+#define EBB_SEGMENT_SIZE		32
+
+#define MAX_EBB_BANKS_IN_SEGMENT	32
+#define HPSRAM_MASK(seg_idx)\
+	((1 << (PLATFORM_HPSRAM_EBB_COUNT\
+	 - MAX_EBB_BANKS_IN_SEGMENT * seg_idx)) - 1)
+#define LPSRAM_MASK	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
+#define MAX_MEMORY_SEGMENTS ((PLATFORM_HPSRAM_EBB_COUNT + \
+	MAX_EBB_BANKS_IN_SEGMENT - 1) / MAX_EBB_BANKS_IN_SEGMENT)
+#define LPSRAM_BANK_SIZE (64 * 1024)
+#define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * LPSRAM_BANK_SIZE)
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+
 #include <sof/platform.h>
 #include <platform/clk.h>
-#include <platform/platcfg.h>
 #include <platform/shim.h>
 #include <platform/interrupt.h>
 
@@ -178,4 +208,5 @@ int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 
 void platform_ssp_disable_mn(uint32_t ssp_port);
 
+#endif
 #endif

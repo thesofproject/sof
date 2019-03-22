@@ -32,6 +32,17 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#define PLATFORM_CORE_COUNT	1
+
+#define PLATFORM_MASTER_CORE_ID	0
+#define PLATFORM_LPSRAM_EBB_COUNT 1
+
+#define LPSRAM_BANK_SIZE (64 * 1024)
+
+#define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * LPSRAM_BANK_SIZE)
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+
 #include <sof/platform.h>
 #include <platform/clk.h>
 #include <platform/shim.h>
@@ -137,4 +148,5 @@ static inline void platform_panic(uint32_t p)
 
 extern struct timer *platform_timer;
 
+#endif
 #endif

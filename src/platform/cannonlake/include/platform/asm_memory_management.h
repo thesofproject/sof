@@ -43,7 +43,7 @@
 #endif
 
 #include <platform/shim.h>
-#include <platform/platcfg.h>
+#include <platform/platform.h>
 
 /**
  * powers down entire hpsram. on entry lirerals and code for section from

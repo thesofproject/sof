@@ -30,7 +30,7 @@
 #include <xtensa/xtruntime.h>
 #include <xtensa/xtruntime-frames.h>
 #include <xtensa/xtensa-versions.h>
-#include <platform/platcfg.h>
+#include <platform/platform.h>
 #ifndef XTOS_PARAMS_H	/* this to allow indirect inclusion of this header from the outside */
 #include "xtos-params.h"
 #endif
