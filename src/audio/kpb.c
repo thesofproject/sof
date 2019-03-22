@@ -311,8 +311,10 @@ static void kpb_cache(struct comp_dev *dev, int cmd)
 
 static int kpb_reset(struct comp_dev *dev)
 {
-	/* TODO: what data of KPB should we reset here? */
-	return 0;
+	trace_kpb("kpb_reset()");
+
+	/* TODO: free all buffers allocated at prepare stage*/
+	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
 /**
