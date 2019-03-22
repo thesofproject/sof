@@ -43,6 +43,7 @@
 #include <sof/audio/kpb.h>
 #include <sof/list.h>
 #include <sof/audio/buffer.h>
+#include <sof/ut.h>
 
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
@@ -545,7 +546,7 @@ struct comp_driver comp_kpb = {
 	},
 };
 
-static void sys_comp_kpb_init(void)
+UT_STATIC void sys_comp_kpb_init(void)
 {
 	comp_register(&comp_kpb);
 }
