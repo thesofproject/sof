@@ -417,8 +417,8 @@ static int kpb_copy(struct comp_dev *dev)
  */
 static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source, size_t size)
 {
-	int size_to_copy = size;
-	int space_avail;
+	size_t size_to_copy = size;
+	size_t space_avail;
 	struct hb *buff = &kpb->history_buffer;
 	struct hb *first_buff = buff;
 	tracev_kpb("kpb_buffer_data()");
@@ -624,6 +624,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 				break;
 			} else {
 				buff->r_ptr = buff->start_addr + (buffered - history_depth);
+				break;
 			}
 		} while (buff != first_buff);
 
@@ -671,6 +672,7 @@ static void draining_task(void *arg)
 			buff->r_ptr = buff->start_addr;
 			draining_data->history_depth -= size_to_copy;
 			draining_data->history_buffer = buff->next;
+			buff = buff->next;
 
 			comp_update_buffer_produce(sink, size_to_copy);
 		}
