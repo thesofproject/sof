@@ -213,6 +213,14 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
+	/*TODO: to be rewrite */
+	for (i = 0; i < 0x20000; i++){
+		*((char*)cd->history_buffer.start_addr+i) = 0x00;
+	}
+	for (i = 0; i < KPB_MAX_BUFFER_SIZE-0x20000; i++){
+		*((char*)cd->history_buffer.next->start_addr+i) = 0x00;
+	}
+
 	return dev;
 }
 
