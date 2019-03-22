@@ -401,8 +401,9 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
-	err = memcpy_s(&dev->comp, sizeof(dev->comp),
-	   comp, sizeof(struct sof_ipc_comp_process));
+
+	err = memcpy_s(&dev->comp, sizeof(dev->comp), comp,
+		       sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -427,8 +428,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 			return NULL;
 		}
 
-		err = memcpy_s(cd->config, sizeof(*cd->config),
-		   ipc_fir->data, bs);
+		err = memcpy_s(cd->config, bs, ipc_fir->data, bs);
 	}
 
 	if (err) {
@@ -601,8 +601,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		ret = memcpy_s(cd->config, sizeof(*cd->config), cfg, bs);
-
+		ret = memcpy_s(cd->config, bs, cfg, bs);
 		break;
 	default:
 		trace_eq_error("fir_cmd_set_data() error: invalid cdata->cmd");
