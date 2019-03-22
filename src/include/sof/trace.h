@@ -81,38 +81,6 @@
 #define TRACE_BOOT_PLATFORM_DMIC	(TRACE_BOOT_PLATFORM + 0x1a0)
 #define TRACE_BOOT_PLATFORM_IDC		(TRACE_BOOT_PLATFORM + 0x1b0)
 
-/* trace event classes - high 8 bits*/
-#define TRACE_CLASS_IRQ		(1 << 24)
-#define TRACE_CLASS_IPC		(2 << 24)
-#define TRACE_CLASS_PIPE	(3 << 24)
-#define TRACE_CLASS_HOST	(4 << 24)
-#define TRACE_CLASS_DAI		(5 << 24)
-#define TRACE_CLASS_DMA		(6 << 24)
-#define TRACE_CLASS_SSP		(7 << 24)
-#define TRACE_CLASS_COMP	(8 << 24)
-#define TRACE_CLASS_WAIT	(9 << 24)
-#define TRACE_CLASS_LOCK	(10 << 24)
-#define TRACE_CLASS_MEM		(11 << 24)
-#define TRACE_CLASS_MIXER	(12 << 24)
-#define TRACE_CLASS_BUFFER	(13 << 24)
-#define TRACE_CLASS_VOLUME	(14 << 24)
-#define TRACE_CLASS_SWITCH	(15 << 24)
-#define TRACE_CLASS_MUX		(16 << 24)
-#define TRACE_CLASS_SRC         (17 << 24)
-#define TRACE_CLASS_TONE        (18 << 24)
-#define TRACE_CLASS_EQ_FIR      (19 << 24)
-#define TRACE_CLASS_EQ_IIR      (20 << 24)
-#define TRACE_CLASS_SA		(21 << 24)
-#define TRACE_CLASS_DMIC	(22 << 24)
-#define TRACE_CLASS_POWER	(23 << 24)
-#define TRACE_CLASS_IDC		(24 << 24)
-#define TRACE_CLASS_CPU		(25 << 24)
-#define TRACE_CLASS_CLK		(26 << 24)
-#define TRACE_CLASS_EDF		(27 << 24)
-#define TRACE_CLASS_KPB		(28 << 24)
-#define TRACE_CLASS_SELECTOR	(29 << 24)
-#define TRACE_CLASS_SCHEDULE	(30 << 24)
-
 #ifdef CONFIG_HOST
 extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);

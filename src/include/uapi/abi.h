@@ -51,7 +51,7 @@
 #define __INCLUDE_UAPI_ABI_H__
 
 /** \brief SOF ABI version major, minor and patch numbers */
-#define SOF_ABI_MAJOR 3
+#define SOF_ABI_MAJOR 4
 #define SOF_ABI_MINOR 2
 #define SOF_ABI_PATCH 0
 

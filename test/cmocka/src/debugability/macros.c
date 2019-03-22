@@ -68,7 +68,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"const char text[sizeof(\"Message\")]; "
 		"} log_entry = { "
 			"1"
-			"(6 << 24)"
+			"6"
 			"1"
 			"1"
 			"54"
