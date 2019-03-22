@@ -86,6 +86,17 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	struct hb *history_buffer;
+	struct hb *new_hb = NULL;
+	/*! total allocation size */
+	size_t hb_size = KPB_MAX_BUFFER_SIZE;
+	/*! current allocation size */
+	size_t ca_size = hb_size;
+	/*! memory caps priorites for history buffer */
+	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP, SOF_MEM_CAPS_RAM };
+	void *ptr = NULL;
+	size_t _temp = 0;
+	int i = 0;
 
 	trace_kpb("kpb_new()");
 
@@ -138,6 +149,70 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 
 	dev->state = COMP_STATE_READY;
 
+	history_buffer = &cd->history_buffer;
+	/* Initialize history buffer */
+	cd->history_buffer.next = &cd->history_buffer;
+	cd->history_buffer.prev = &cd->history_buffer;
+
+	cd->no_of_clients = 0;
+	cd->state = KPB_BUFFERING;
+
+	/* allocate history buffer/s */
+	while (hb_size > 0 && i < ARRAY_SIZE(hb_mcp)) {
+
+		ptr = rballoc(RZONE_RUNTIME, hb_mcp[i], ca_size);
+
+		if (ptr) {
+			trace_kpb_error("kpb new memory block");
+			history_buffer->start_addr = ptr;
+			history_buffer->end_addr = ptr + ca_size;
+			history_buffer->w_ptr = ptr;
+			history_buffer->r_ptr = ptr;
+			history_buffer->state = KPB_BUFFER_FREE;
+			hb_size = hb_size - ca_size;
+			history_buffer->next = &cd->history_buffer;
+			/* Do we need another buffer? */
+			if (hb_size > 0) {
+
+				new_hb = rzalloc(RZONE_RUNTIME,
+						 SOF_MEM_CAPS_RAM,
+						 sizeof(struct hb));
+
+				history_buffer->next = new_hb;
+				new_hb->state = KPB_BUFFER_OFF;
+				new_hb->prev = history_buffer;
+				history_buffer = new_hb;
+				cd->history_buffer.prev = new_hb;
+				ca_size = hb_size;
+				i++;
+			}
+
+		} else {
+			/* we've failed to allocate ca_size of that hb_mcp
+			 * let's try again with some smaller size.
+			 * NOTE! If we decrement by some small value,
+			 * the allocation will take significant time.
+			 * However, bigger values like HEAP_HP_BUFFER_BLOCK_SIZE
+			 * will result in lower accuracy of allocation.
+			 */
+			_temp = (ca_size - KPB_ALLOCATION_STEP);
+			ca_size = (ca_size < _temp) ? 0 : _temp;
+			if (ca_size == 0) {
+				ca_size = hb_size;
+				i++;
+			}
+			continue;
+		}
+	}
+
+	/* have we succeed in allocation of at least one buffer? */
+	/*TODO: check if we have allocated as much as we wanted */
+	if (!cd->history_buffer.start_addr) {
+		trace_kpb_error("Failed to allocate space for "
+				"KPB bufefr/s");
+		return NULL;
+	}
+
 	return dev;
 }
 
@@ -187,84 +262,12 @@ static int kpb_prepare(struct comp_dev *dev)
 	int i = 0;
 	struct list_item *blist;
 	struct comp_buffer *sink;
-	struct hb *history_buffer = &cd->history_buffer;
-	struct hb *new_hb = NULL;
-	/*! total allocation size */
-	size_t hb_size = KPB_MAX_BUFFER_SIZE;
-	/*! current allocation size */
-	size_t ca_size = hb_size;
-	/*! memory caps priorites for history buffer */
-	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP, SOF_MEM_CAPS_RAM };
-	void *ptr = NULL;
-	size_t _temp = 0;
 
 	trace_kpb("kpb_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret)
 		return ret;
-
-	/* Initialize history buffer */
-	cd->history_buffer.next = &cd->history_buffer;
-	cd->history_buffer.prev = &cd->history_buffer;
-
-	cd->no_of_clients = 0;
-	cd->state = KPB_BUFFERING;
-
-	/* allocate history buffer/s */
-	while (hb_size > 0 && i < ARRAY_SIZE(hb_mcp)) {
-
-		ptr = rballoc(RZONE_RUNTIME, hb_mcp[i], ca_size);
-
-		if (ptr) {
-			history_buffer->start_addr = ptr;
-			history_buffer->end_addr = ptr + ca_size;
-			history_buffer->w_ptr = ptr;
-			history_buffer->r_ptr = ptr;
-			history_buffer->state = KPB_BUFFER_FREE;
-			hb_size = hb_size - ca_size;
-			history_buffer->next = &cd->history_buffer;
-			/* Do we need another buffer? */
-			if (hb_size > 0) {
-
-				new_hb = rzalloc(RZONE_RUNTIME,
-						 SOF_MEM_CAPS_RAM,
-						 sizeof(struct hb));
-
-				history_buffer->next = new_hb;
-				new_hb->state = KPB_BUFFER_OFF;
-				new_hb->prev = history_buffer;
-				history_buffer = new_hb;
-				cd->history_buffer.prev = new_hb;
-				ca_size = hb_size;
-				i++;
-			}
-
-		} else {
-			/* we've failed to allocate ca_size of that hb_mcp
-			 * let's try again with some smaller size.
-			 * NOTE! If we decrement by some small value,
-			 * the allocation will take significant time.
-			 * However, bigger values like HEAP_HP_BUFFER_BLOCK_SIZE
-			 * will result in lower accuracy of allocation.
-			 */
-			_temp = (ca_size - KPB_ALLOCATION_STEP);
-			ca_size = (ca_size < _temp) ? 0 : _temp;
-			if (ca_size == 0) {
-				ca_size = hb_size;
-				i++;
-			}
-			continue;
-		}
-	}
-
-	/* have we succeed in allocation of at least one buffer? */
-	/*TODO: check if we have allocated as much as we wanted */
-	if (!cd->history_buffer.start_addr) {
-		trace_kpb_error("Failed to allocate space for "
-				"KPB bufefr/s");
-		return -ENOMEM;
-	}
 
 	/* initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
