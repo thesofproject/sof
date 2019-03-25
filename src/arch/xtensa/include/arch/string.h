@@ -39,7 +39,7 @@
 #define arch_memcpy(dest, src, size) \
 	xthal_memcpy(dest, src, size)
 
-#if __XCC__ && !defined(CHECK)
+#if __XCC__ && !defined(UNIT_TEST)
 #define arch_bzero(ptr, size)	\
 	memset_s(ptr, size, 0, size)
 #else

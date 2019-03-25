@@ -150,7 +150,7 @@
  *  \brief Usage at the end of comp file: DECLARE_COMPONENT(sys_comp_*_init);
  *  @{
  */
-#ifdef CHECK
+#ifdef UNIT_TEST
 #define DECLARE_COMPONENT(init)
 #else
 #define DECLARE_COMPONENT(init) __attribute__((__used__)) \
