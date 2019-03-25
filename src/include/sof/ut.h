@@ -33,7 +33,7 @@
 
 /* UT_STATIC makes function unit-testable (non-static) when built for unit tests
  */
-#ifdef CHECK
+#ifdef UNIT_TEST
 #define UT_STATIC
 #else
 #define UT_STATIC static

@@ -66,7 +66,7 @@ function(cmocka_test test_name)
 	target_link_libraries(${test_name} PRIVATE "-T${memory_mock_lds_out}")
 	target_link_libraries(${test_name} PRIVATE cmocka)
 	target_link_libraries(${test_name} PRIVATE sof_options)
-	target_compile_definitions(${test_name} PRIVATE -DCHECK)
+	target_compile_definitions(${test_name} PRIVATE -DUNIT_TEST)
 
 	# Cmocka requires this define for stdint.h that defines uintptr
 	target_compile_definitions(${test_name} PRIVATE -D_UINTPTR_T_DEFINED)
