@@ -430,11 +430,14 @@ def CoreDumpFactory(dsp_arch):
 	class CoreDump(dsp_arch.endianness):
 		_fields_ = [(x, c_uint32) for x in
 				[
-					# struct sof_ipc_dsp_oops_header {
+					# struct sof_ipc_dsp_oops_arch_hdr {
 					"arch",
+					"totalsize",
+					# }
+					# struct sof_ipc_dsp_oops_plat_hdr {
 					"configidhi",
 					"configidlo",
-					"totalsize",
+					"numaregs",
 					"stackoffset",
 					# }
 					"exccause",
@@ -505,7 +508,7 @@ def CoreDumpFactory(dsp_arch):
 				for x in flaten(
 					[chunks(word, self.columncount) for word in [
 						["arch", "totalsize", "stackoffset"],
-						["configidhi", "configidlo"],
+						["configidhi", "configidlo", "numaregs"],
 						["exccause", "excvaddr", "ps"],
 						["epc" + str(x) for x in range(1,7+1)],
 						["eps" + str(x) for x in range(2,7+1)],
