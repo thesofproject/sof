@@ -143,7 +143,7 @@
 /** \name Component status
  *  @{
  */
-#define COMP_STATE_ALREADY_SET	1	/**< Component set state status */
+#define COMP_STATUS_STATE_ALREADY_SET	1	/**< Comp set state status */
 /** @}*/
 
 /** \name Declare component macro

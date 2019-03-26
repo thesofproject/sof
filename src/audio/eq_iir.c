@@ -794,7 +794,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	if (ret < 0)
 		return ret;
 
-	if (ret == COMP_STATE_ALREADY_SET)
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_PATH_STOP;
 
 	/* EQ components will only ever have 1 source and 1 sink buffer */

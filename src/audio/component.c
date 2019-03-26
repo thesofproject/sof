@@ -134,7 +134,7 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 	if (dev->state == requested_state) {
 		trace_comp("comp_set_state(), state already set to %u",
 			   dev->state);
-		return COMP_STATE_ALREADY_SET;
+		return COMP_STATUS_STATE_ALREADY_SET;
 	}
 
 	switch (cmd) {
