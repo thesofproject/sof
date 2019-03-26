@@ -288,10 +288,10 @@ int main(int argc, char **argv)
 
 	/* input and output sample rate */
 	if (!tp.fs_in)
-		tp.fs_in = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+		tp.fs_in = ipc_pipe->period * ipc_pipe->frames_per_sched;
 
 	if (!tp.fs_out)
-		tp.fs_out = ipc_pipe->deadline * ipc_pipe->frames_per_sched;
+		tp.fs_out = ipc_pipe->period * ipc_pipe->frames_per_sched;
 
 	/* set pipeline params and trigger start */
 	if (tb_pipeline_start(sof.ipc, TESTBENCH_NCH, ipc_pipe, &tp) < 0) {

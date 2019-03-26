@@ -125,11 +125,11 @@ int tb_pipeline_params(struct ipc *ipc, int nch,
 	struct sof_ipc_pcm_params params;
 	char message[DEBUG_MSG_LEN];
 	int fs_period;
-	int deadline = ipc_pipe->deadline;
+	int period = ipc_pipe->period;
 	int ret = 0;
 
 	/* Compute period from sample rates */
-	fs_period = (int)(0.9999 + tp->fs_in * deadline / 1e6);
+	fs_period = (int)(0.9999 + tp->fs_in * period / 1e6);
 	sprintf(message, "period sample count %d\n", fs_period);
 	debug_print(message);
 

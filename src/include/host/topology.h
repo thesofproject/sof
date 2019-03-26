@@ -44,12 +44,12 @@
 #define SOF_TKN_BUF_CAPS                        101
 
 /* scheduling */
-#define SOF_TKN_SCHED_DEADLINE                  200
+#define SOF_TKN_SCHED_PERIOD                    200
 #define SOF_TKN_SCHED_PRIORITY                  201
 #define SOF_TKN_SCHED_MIPS                      202
 #define SOF_TKN_SCHED_CORE                      203
 #define SOF_TKN_SCHED_FRAMES                    204
-#define SOF_TKN_SCHED_TIMER                     205
+#define SOF_TKN_SCHED_TIME_DOMAIN               205
 
 /* volume */
 #define SOF_TKN_VOLUME_RAMP_STEP_TYPE           250
@@ -119,9 +119,9 @@ static const struct sof_topology_token buffer_tokens[] = {
 
 /* scheduling */
 static const struct sof_topology_token sched_tokens[] = {
-	{SOF_TKN_SCHED_DEADLINE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+	{SOF_TKN_SCHED_PERIOD, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_uint32_t,
-		offsetof(struct sof_ipc_pipe_new, deadline), 0},
+		offsetof(struct sof_ipc_pipe_new, period), 0},
 	{SOF_TKN_SCHED_PRIORITY, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, priority), 0},
@@ -134,9 +134,9 @@ static const struct sof_topology_token sched_tokens[] = {
 	{SOF_TKN_SCHED_FRAMES, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_uint32_t,
 		offsetof(struct sof_ipc_pipe_new, frames_per_sched), 0},
-	{SOF_TKN_SCHED_TIMER, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+	{SOF_TKN_SCHED_TIME_DOMAIN, SND_SOC_TPLG_TUPLE_TYPE_WORD,
 		get_token_uint32_t,
-		offsetof(struct sof_ipc_pipe_new, timer_delay), 0},
+		offsetof(struct sof_ipc_pipe_new, time_domain), 0},
 };
 
 /* volume */

@@ -810,7 +810,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
 	if (p->sched_comp->state == COMP_STATE_ACTIVE)
-		schedule_task(&p->pipe_task, start, p->ipc_pipe.deadline, 0);
+		schedule_task(&p->pipe_task, start, p->ipc_pipe.period, 0);
 }
 
 /* notify pipeline that this component requires buffers emptied/filled
@@ -819,7 +819,7 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
  */
 void pipeline_schedule_copy_idle(struct pipeline *p)
 {
-	schedule_task(&p->pipe_task, 0, p->ipc_pipe.deadline,
+	schedule_task(&p->pipe_task, 0, p->ipc_pipe.period,
 		      SOF_SCHEDULE_FLAG_IDLE);
 }
 
@@ -862,5 +862,5 @@ static uint64_t pipeline_task(void *arg)
 
 sched:
 	tracev_pipe("pipeline_task() sched");
-	return p->ipc_pipe.timer_delay;
+	return p->ipc_pipe.period;
 }

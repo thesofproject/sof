@@ -55,7 +55,7 @@ struct testbench_prm {
 	/*
 	 * input and output sample rate parameters
 	 * By default, these are calculated from pipeline frames_per_sched
-	 * and deadline but they can also be overridden via input arguments
+	 * and period but they can also be overridden via input arguments
 	 * to the testbench.
 	 */
 	uint32_t fs_in;
