@@ -24,7 +24,7 @@ def stderr_print(*args, **kwargs):
 try:
 	from sty import fg, bg, ef, rs, Rule, Render
 	CAN_COLOUR=True
-except ImportError:
+except:
 	CAN_COLOUR=False
 
 ArchDefinition = namedtuple('ArchDefinition', ['name', 'bitness', 'endianness'])
@@ -242,94 +242,96 @@ class Colourer():
 	#TODO: Add detection of 8bit/24bit terminal
 	#      Add 8bit/24bit colours (with flag, maybe --colour=24bit)
 	#      Use this below as fallback only
-	__print = partial(stderr_print) 
-	__style = {
-		'o' : fg.red,
-		'O' : fg.yellow,
-		'y' : fg.blue,
-		'Y' : fg.cyan,
-		'D' : fg.white + bg.red,
-	}
+	__print = partial(stderr_print)
+	if CAN_COLOUR == True:
+		__style = {
+			'o' : fg.red,
+			'O' : fg.yellow,
+			'y' : fg.blue,
+			'Y' : fg.cyan,
+			'D' : fg.white + bg.red,
+		}
 	matchings          = []
 	matchingsInParenth = []
 	matchingsInStderr  = []
 	def __init__(self):
-		self.matchings = [
-  			(
-				lambda x: self.enstyleNumHex(x.group()),
-				re.compile(r'\b([A-Fa-f0-9]{8})\b')
-			),
-			(
-				lambda x: '0x' + self.enstyleNumHex(x.group(2)),
-				re.compile(r'(0x)([A-Fa-f0-9]{1,})')
-			),
-			(
-				lambda x: self.enstyleNumBin(x.group()),
-				re.compile(r'\b(b[01]+)\b')
-			),
-			(
-				r'\1' +
-				r'\2' +
-				self.enstyle(           fg.green , r'\3') ,
-				re.compile(r'(\|)(ar)([0-9]+)\b')
-			),
-			(
-				self.enstyle(bg.green + fg.black , r'\1') +
-				r'\2' +
-				self.enstyle(           fg.green , r'\3') ,
-				re.compile(r'(\#)(ar)([0-9]+)\b')
-			),
-			(
-				self.enstyle(bg.green            , r'\1') +
-				rs.all + '\n',
-				re.compile(r'(\(xt-gdb\)\ *)')
-			),
-			(
-				r'\1' +
-				r'\2' +
-				self.enstyle(           fg.green   , r'\3') +
-				r':'  +
-				self.enstyle(           fg.magenta , r'\4') ,
-				re.compile(r'(\bat\b\ *)(.+/)?(.*):([0-9]+)')
-			),
-			(
-				lambda x:\
-					'in '+
-					self.enstyle(fg.green,  x.group(2))+
-					self.enstyleFuncParenth(x.group(3)), 
-				re.compile(r'(\bin\b\ *)([^\ ]+)\ *(\(.*\))')
-			),
-		]
-		self.matchingsInParenth = [
-			(
-				self.enstyle(           fg.yellow   , r'\1') +
-				self.enstyle(           fg.magenta  , r'=' ) +
-				r'\2',
-				re.compile(r'([\-_a-zA-Z0-9]+)\ *=\ *([^,]+)')
-			),
-			(
-				self.enstyle(           fg.magenta  , r'\1') ,
-				re.compile(r'(\ *[\(\)]\ *)')
-			),
-			(
-				self.enstyle(           fg.magenta  , r', ') ,
-				re.compile(r'(\ *,\ *)')
-			),
-		]
-		self.matchingsInStderr = [
-			(
-				self.enstyle(bg.yellow  + fg.black    , r'\1') ,
-				re.compile(r'([Ww]arning)')
-			),
-			(
-				self.enstyle(bg.red     + fg.black    , r'\1') ,
-				re.compile(r'([Ee]rror)')
-			),
-			(
-				self.enstyle(bg.magenta + fg.black    , r'\1') ,
-				re.compile(r'([Ff]atal)')
-			),
-		]
+		if CAN_COLOUR == True:
+			self.matchings = [
+				(
+					lambda x: self.enstyleNumHex(x.group()),
+					re.compile(r'\b([A-Fa-f0-9]{8})\b')
+				),
+				(
+					lambda x: '0x' + self.enstyleNumHex(x.group(2)),
+					re.compile(r'(0x)([A-Fa-f0-9]{1,})')
+				),
+				(
+					lambda x: self.enstyleNumBin(x.group()),
+					re.compile(r'\b(b[01]+)\b')
+				),
+				(
+					r'\1' +
+					r'\2' +
+					self.enstyle(           fg.green , r'\3') ,
+					re.compile(r'(\|)(ar)([0-9]+)\b')
+				),
+				(
+					self.enstyle(bg.green + fg.black , r'\1') +
+					r'\2' +
+					self.enstyle(           fg.green , r'\3') ,
+					re.compile(r'(\#)(ar)([0-9]+)\b')
+				),
+				(
+					self.enstyle(bg.green            , r'\1') +
+					rs.all + '\n',
+					re.compile(r'(\(xt-gdb\)\ *)')
+				),
+				(
+					r'\1' +
+					r'\2' +
+					self.enstyle(           fg.green   , r'\3') +
+					r':'  +
+					self.enstyle(           fg.magenta , r'\4') ,
+					re.compile(r'(\bat\b\ *)(.+/)?(.*):([0-9]+)')
+				),
+				(
+					lambda x:\
+						'in '+
+						self.enstyle(fg.green,  x.group(2))+
+						self.enstyleFuncParenth(x.group(3)),
+					re.compile(r'(\bin\b\ *)([^\ ]+)\ *(\(.*\))')
+				),
+			]
+			self.matchingsInParenth = [
+				(
+					self.enstyle(           fg.yellow   , r'\1') +
+					self.enstyle(           fg.magenta  , r'=' ) +
+					r'\2',
+					re.compile(r'([\-_a-zA-Z0-9]+)\ *=\ *([^,]+)')
+				),
+				(
+					self.enstyle(           fg.magenta  , r'\1') ,
+					re.compile(r'(\ *[\(\)]\ *)')
+				),
+				(
+					self.enstyle(           fg.magenta  , r', ') ,
+					re.compile(r'(\ *,\ *)')
+				),
+			]
+			self.matchingsInStderr = [
+				(
+					self.enstyle(bg.yellow  + fg.black    , r'\1') ,
+					re.compile(r'([Ww]arning)')
+				),
+				(
+					self.enstyle(bg.red     + fg.black    , r'\1') ,
+					re.compile(r'([Ee]rror)')
+				),
+				(
+					self.enstyle(bg.magenta + fg.black    , r'\1') ,
+					re.compile(r'([Ff]atal)')
+				),
+			]
 
 	def toGroup(self, txt):
 		return [ (label, sum(1 for _ in group))
