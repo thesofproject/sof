@@ -78,7 +78,7 @@ struct ipc_pipeline_dev;
 struct ipc;
 
 /* Pipeline status to stop execution of current path */
-#define PPL_PATH_STOP	1
+#define PPL_STATUS_PATH_STOP	1
 
 /* pipeline connection directions */
 #define PPL_CONN_DIR_COMP_TO_BUFFER	0

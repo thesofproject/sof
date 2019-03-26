@@ -480,7 +480,7 @@ static int dai_prepare(struct comp_dev *dev)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_PATH_STOP;
+		return PPL_STATUS_PATH_STOP;
 
 	dev->position = 0;
 
@@ -548,7 +548,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_PATH_STOP;
+		return PPL_STATUS_PATH_STOP;
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
