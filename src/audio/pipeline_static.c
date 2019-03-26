@@ -96,8 +96,9 @@
 /*
  * Static Pipeline Convenience Constructor
  */
-#define SPIPE_PIPE(pid, pcore, pdeadline, ppriority) \
-	{.pipeline_id = pid, .core = pcore, .deadline = pdeadline, .priority = ppriority}
+#define SPIPE_PIPE(pid, pcore, pperiod, ppriority) \
+	{.pipeline_id = pid, .core = pcore, .period = pperiod, \
+	.priority = ppriority}
 #define SPIPE_PIPE_CONNECT(psource, bsource, bid, psink, bsink) \
 	{.pipeline_source_id = psource, .comp_source_id = bsource, \
 	.buffer_id = bid, .pipeline_sink_id = psink, .comp_sink_id = bsink}
@@ -345,9 +346,9 @@ static struct spipe spipe[] = {
 
 /* pipelines */
 struct sof_ipc_pipe_new pipeline[] = {
-	SPIPE_PIPE(0, 0, 1000, SOF_TASK_PRI_HIGH),/* high pri - 1ms deadline */
-//	SPIPE_PIPE(1, 0, 4000, SOF_TASK_PRI_MED),/* med pri - 4ms deadline */
-//	SPIPE_PIPE(2, 0, 5000, SOF_TASK_PRI_LOW),/* low pri - 5ms deadline */
+	SPIPE_PIPE(0, 0, 1000, SOF_TASK_PRI_HIGH),/* high pri - 1ms period */
+//	SPIPE_PIPE(1, 0, 4000, SOF_TASK_PRI_MED),/* med pri - 4ms period */
+//	SPIPE_PIPE(2, 0, 5000, SOF_TASK_PRI_LOW),/* low pri - 5ms period */
 };
 
 int init_static_pipeline(struct ipc *ipc)
