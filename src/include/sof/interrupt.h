@@ -58,18 +58,21 @@ struct irq_child {
 	struct list_item list;
 };
 
+/**
+ * struct irq_desc - interrupt client descriptor
+ *
+ * @irq:	virtual IRQ number
+ * @handler:	interrupt handler function
+ * @handler_arg: interrupt handler argument
+ * @unmask:	whether irq should be automatically unmasked
+ * @irq_list:	to link to other irq_desc
+ */
 struct irq_desc {
-	/* irq must be first for constructor */
-	int irq;        /* logical IRQ number */
-
-	/* handler is optional for constructor */
+	int irq;
 	void (*handler)(void *arg);
 	void *handler_arg;
-
-	/* whether irq should be automatically unmasked */
 	int unmask;
 
-	/* to link to other irq_desc */
 	struct list_item irq_list;
 };
 
