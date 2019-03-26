@@ -285,7 +285,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		goto out;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET) {
-		ret = PPL_PATH_STOP;
+		ret = PPL_STATUS_PATH_STOP;
 		goto out;
 	}
 
@@ -644,7 +644,7 @@ static int host_prepare(struct comp_dev *dev)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_PATH_STOP;
+		return PPL_STATUS_PATH_STOP;
 
 	hd->local_pos = 0;
 	hd->report_pos = 0;

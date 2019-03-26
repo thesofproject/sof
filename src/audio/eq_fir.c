@@ -704,7 +704,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_PATH_STOP;
+		return PPL_STATUS_PATH_STOP;
 
 	/* EQ components will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list,

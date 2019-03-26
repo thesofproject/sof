@@ -243,7 +243,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_PATH_STOP;
+		return PPL_STATUS_PATH_STOP;
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
@@ -395,7 +395,7 @@ static int mixer_prepare(struct comp_dev *dev)
 			return ret;
 
 		if (ret == COMP_STATUS_STATE_ALREADY_SET)
-			return PPL_PATH_STOP;
+			return PPL_STATUS_PATH_STOP;
 	}
 
 	/* check each mixer source state */

@@ -171,7 +171,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		return ret;
 
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_PATH_STOP;
+		return PPL_STATUS_PATH_STOP;
 
 	cd->no_of_clients = 0;
 
