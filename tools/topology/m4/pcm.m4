@@ -71,6 +71,7 @@ define(`PCM_CAPABILITIES',
 
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 define(`PCM_PLAYBACK_ADD',
+`ifelse(`$#', `3',
 `SectionPCM.STR($1) {'
 `'
 `	# used for binding to the PCM'
@@ -84,10 +85,12 @@ define(`PCM_PLAYBACK_ADD',
 `'
 `		capabilities STR($3)'
 `	}'
-`}')
+`}', `fatal_error(`Invalid parameters ($#) to PCM_PLAYBACK_ADD')')'
+)
 
 dnl PCM_CAPTURE_ADD(name, pcm_id, capture)
 define(`PCM_CAPTURE_ADD',
+`ifelse(`$#', `3',
 `SectionPCM.STR($1) {'
 `'
 `	# used for binding to the PCM'
@@ -101,10 +104,12 @@ define(`PCM_CAPTURE_ADD',
 `'
 `		capabilities STR($3)'
 `	}'
-`}')
+`}', `fatal_error(`Invalid parameters ($#) to PCM_CAPTURE_ADD')')'
+)
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 define(`PCM_DUPLEX_ADD',
+`ifelse(`$#', `4',
 `SectionPCM.STR($1) {'
 `'
 `	# used for binding to the PCM'
@@ -123,6 +128,7 @@ define(`PCM_DUPLEX_ADD',
 `'
 `		capabilities STR($3)'
 `	}'
-`}')
+`}', `fatal_error(`Invalid parameters ($#) to PCM_DUPLEX_ADD')')'
+)
 
 divert(0)dnl

@@ -10,6 +10,9 @@ dnl Argument iterator.
 define(`argn', `ifelse(`$1', 1, ``$2'',
        `argn(decr(`$1'), shift(shift($@)))')')
 
+define(`fatal_error', `errprint(`m4: '__file__: __line__`: fatal error: $*
+')m4exit(1)')
+
 dnl Defines a list of items from a variable number of params.
 dnl Use as last argument in a macro.
 dnl The first argument specifies the number of tabs to be added for formatting
