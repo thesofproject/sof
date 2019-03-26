@@ -228,8 +228,9 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 	int hw_irq, ret = 0;
 	struct irq_desc *child, *parent = &cascade->desc;
 	struct list_item *list, *head;
+	unsigned long flags;
 
-	spin_lock(&cascade->lock);
+	spin_lock_irq(&cascade->lock, flags);
 
 	hw_irq = irq - cascade->irq_base;
 
@@ -291,7 +292,7 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		cascade->num_children++;
 
 finish:
-	spin_unlock(&cascade->lock);
+	spin_unlock_irq(&cascade->lock, flags);
 
 	return ret;
 }
@@ -302,8 +303,9 @@ static void irq_unregister_child(struct irq_cascade_desc *cascade, int irq,
 	struct irq_desc *child, *parent = &cascade->desc;
 	int hw_irq = irq - cascade->irq_base;
 	struct list_item *list, *head = &cascade->child[hw_irq].list;
+	unsigned long flags;
 
-	spin_lock(&cascade->lock);
+	spin_lock_irq(&cascade->lock, flags);
 
 	list_for_item (list, head) {
 		child = container_of(list, struct irq_desc, irq_list);
@@ -326,14 +328,15 @@ static void irq_unregister_child(struct irq_cascade_desc *cascade, int irq,
 		}
 	}
 
-	spin_unlock(&cascade->lock);
+	spin_unlock_irq(&cascade->lock, flags);
 }
 
 static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq)
 {
 	struct irq_child *child = cascade->child + irq - cascade->irq_base;
+	unsigned long flags;
 
-	spin_lock(&cascade->lock);
+	spin_lock_irq(&cascade->lock, flags);
 
 	if (!child->enable_count++) {
 		/* enable the parent interrupt */
@@ -344,7 +347,7 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq)
 		interrupt_unmask(irq);
 	}
 
-	spin_unlock(&cascade->lock);
+	spin_unlock_irq(&cascade->lock, flags);
 
 	return 0;
 }
@@ -352,8 +355,9 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq)
 static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq)
 {
 	struct irq_child *child = cascade->child + irq - cascade->irq_base;
+	unsigned long flags;
 
-	spin_lock(&cascade->lock);
+	spin_lock_irq(&cascade->lock, flags);
 
 	if (!child->enable_count) {
 		trace_error(TRACE_CLASS_IRQ,
@@ -368,7 +372,7 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq)
 			interrupt_disable(cascade->desc.irq);
 	}
 
-	spin_unlock(&cascade->lock);
+	spin_unlock_irq(&cascade->lock, flags);
 
 	return 0;
 }
