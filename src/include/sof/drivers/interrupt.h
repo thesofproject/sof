@@ -35,19 +35,20 @@ struct irq_child {
 						  */
 };
 
+/**
+ * \brief interrupt client descriptor
+ */
 struct irq_desc {
-	int irq;        /* logical IRQ number */
-
-	void (*handler)(void *arg);
-	void *handler_arg;
-
-	/* whether irq should be automatically unmasked */
-	int unmask;
-
-	uint32_t cpu_mask;
-
-	/* to link to other irq_desc */
-	struct list_item irq_list;
+	int irq;			/**< virtual IRQ number */
+	void (*handler)(void *arg);	/**< interrupt handler function */
+	void *handler_arg;		/**< interrupt handler argument */
+	int unmask;			/**< whether irq should be
+					  * automatically unmasked
+					  */
+	uint32_t cpu_mask;		/**< a mask of CPUs on which this
+					  * interrupt is enabled
+					  */
+	struct list_item irq_list;	/**< to link to other irq_desc */
 };
 
 /**
