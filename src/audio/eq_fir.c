@@ -62,7 +62,6 @@
 struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct sof_eq_fir_config *config; /**< pointer to setup blob */
-	uint32_t period_bytes;
 	enum sof_ipc_frame source_format; /**< source frame format */
 	enum sof_ipc_frame sink_format;   /**< sink frame format */
 	int32_t *fir_delay;		  /**< pointer to allocated RAM */
@@ -173,11 +172,16 @@ static void eq_fir_s16_passthrough(struct fir_state_32x16 fir[],
 				   struct comp_buffer *sink,
 				   int frames, int nch)
 {
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *dest = (int16_t *)sink->w_ptr;
+	int16_t *x;
+	int16_t *y;
+	int i;
 	int n = frames * nch;
 
-	memcpy(dest, src, n * sizeof(int16_t));
+	for (i = 0; i < n; i++) {
+		x = buffer_read_frag_s16(source, i);
+		y = buffer_write_frag_s16(sink, i);
+		*y = *x;
+	}
 }
 
 static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
@@ -185,11 +189,16 @@ static void eq_fir_s32_passthrough(struct fir_state_32x16 fir[],
 				   struct comp_buffer *sink,
 				   int frames, int nch)
 {
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
+	int32_t *x;
+	int32_t *y;
+	int i;
 	int n = frames * nch;
 
-	memcpy(dest, src, n * sizeof(int32_t));
+	for (i = 0; i < n; i++) {
+		x = buffer_read_frag_s32(source, i);
+		y = buffer_write_frag_s32(sink, i);
+		*y = *x;
+	}
 }
 
 /* Function to select pass-trough depending on PCM format */
@@ -663,42 +672,32 @@ static int eq_fir_trigger(struct comp_dev *dev, int cmd)
 /* copy and process stream data from source to sink buffers */
 static int eq_fir_copy(struct comp_dev *dev)
 {
-	struct comp_data *sd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
-	int res;
+	struct comp_copy_limits cl;
+	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret;
+	struct fir_state_32x16 *fir = cd->fir;
 	int nch = dev->params.channels;
-	struct fir_state_32x16 *fir = sd->fir;
 
 	tracev_comp("eq_fir_copy()");
 
-	/* get source and sink buffers */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	/* make sure source component buffer has enough data available and that
-	 * the sink component buffer has enough free bytes for copy. Also
-	 * check for XRUNs.
-	 */
-	res = comp_buffer_can_copy_bytes(source, sink, sd->period_bytes);
-	if (res) {
-		trace_eq_error("eq_fir_copy() error: "
-			       "comp_buffer_can_copy_bytes() failed");
-		return -EIO;	/* xrun */
+	/* Get source, sink, number of frames etc. to process. */
+	ret = comp_get_copy_limits(dev, &cl);
+	if (ret < 0) {
+		trace_eq_error("eq_fir_copy(): Failed comp_get_copy_limits()");
+		return ret;
 	}
 
-	if (dev->frames & 1)
-		sd->eq_fir_func(fir, source, sink, dev->frames, nch);
+	/* Run EQ function */
+	if (cl.frames & 1)
+		cd->eq_fir_func(fir, cl.source, cl.sink, cl.frames, nch);
 	else
-		sd->eq_fir_func_even(fir, source, sink, dev->frames, nch);
+		cd->eq_fir_func_even(fir, cl.source, cl.sink, cl.frames, nch);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, sd->period_bytes);
-	comp_update_buffer_produce(sink, sd->period_bytes);
+	comp_update_buffer_consume(cl.source, cl.source_bytes);
+	comp_update_buffer_produce(cl.sink, cl.sink_bytes);
 
-	return dev->frames;
+	return 0;
 }
 
 static int eq_fir_prepare(struct comp_dev *dev)

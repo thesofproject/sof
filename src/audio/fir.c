@@ -85,23 +85,22 @@ void eq_fir_s16(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
 	int16_t *x;
 	int16_t *y;
 	int32_t z;
+	int idx;
 	int ch;
 	int i;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &fir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
+			x = buffer_read_frag_s16(source, idx);
+			y = buffer_write_frag_s16(sink, idx);
 			z = fir_32x16(filter, *x << 16);
 			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
-			x += nch;
-			y += nch;
+			idx += nch;
 		}
 	}
 }
@@ -110,23 +109,22 @@ void eq_fir_s24(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
 	int32_t *x;
 	int32_t *y;
 	int32_t z;
+	int idx;
 	int ch;
 	int i;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &fir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
+			x = buffer_read_frag_s32(source, idx);
+			y = buffer_write_frag_s32(sink, idx);
 			z = fir_32x16(filter, *x << 8);
 			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
-			x += nch;
-			y += nch;
+			idx += nch;
 		}
 	}
 }
@@ -135,21 +133,20 @@ void eq_fir_s32(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *filter;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
 	int32_t *x;
 	int32_t *y;
+	int idx;
 	int ch;
 	int i;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &fir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
+			x = buffer_read_frag_s32(source, idx);
+			y = buffer_write_frag_s32(sink, idx);
 			*y = fir_32x16(filter, *x);
-			x += nch;
-			y += nch;
+			idx += nch;
 		}
 	}
 }
