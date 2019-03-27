@@ -18,6 +18,7 @@ add_local_sources(tb_common
 	schedule.c
 	edf_schedule.c
 	ll_schedule.c
+	panic.c
 	topology.c
 	trace.c
 )

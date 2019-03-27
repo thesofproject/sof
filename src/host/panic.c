@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,55 +25,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
-
-#include <stdint.h>
-#include <stddef.h>
-#include <arch/sof.h>
 #include <sof/panic.h>
-#include <sof/preproc.h>
 
-struct ipc;
-struct sa;
-
-/* use same syntax as Linux for simplicity */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define container_of(ptr, type, member) \
-	({const typeof(((type *)0)->member) *__memberptr = (ptr); \
-	(type *)((char *)__memberptr - offsetof(type, member));})
-
-#define ALIGN(size, align) (((size) + (align) - 1) & ~((align) - 1))
-
-/* count number of var args */
-#define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
-	/ sizeof(unsigned int) - 1)
-
-/* compile-time assertion */
-#define STATIC_ASSERT(COND, MESSAGE)	\
-	__attribute__((unused))		\
-	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
-
-/* runtime assertion */
-#define assert(cond) (void)((cond) || (panic(SOF_IPC_PANIC_ASSERT), 0))
-
-/* general firmware context */
-struct sof {
-	/* init data */
-	int argc;
-	char **argv;
-
-	/* ipc */
-	struct ipc *ipc;
-
-	/* system agent */
-	struct sa *sa;
-
-	/* DMA for Trace*/
-	struct dma_trace_data *dmat;
-};
-
-#endif
+void __panic(uint32_t p, char *filename, uint32_t linenum) { }
