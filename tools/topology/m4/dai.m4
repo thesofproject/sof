@@ -125,9 +125,8 @@ define(`D_DAI', `SectionDAI."'N_DAI`" {'
 
 dnl DAI Config)
 define(`N_DAI_CONFIG', `DAICONFIG.'$1)
-
 dnl DAI_CONFIG(type, idx, link_id, name, ssp_config/dmic_config)
-define(`DAI_CONFIG',
+define(`DO_DAI_CONFIG',
 `SectionHWConfig."'$1$2`" {'
 `'
 `	id		"'$3`"'
@@ -162,6 +161,11 @@ define(`DAI_CONFIG',
 `	]'
 `}'
 `DEBUG_DAI_CONFIG($1, $3)'
+)
+
+dnl DAI_CONFIG(type, idx, link_id, name, ssp_config/dmic_config)
+define(`DAI_CONFIG',
+`ifelse(`$#', `5', `DO_DAI_CONFIG($1, $2, $3, $4, $5)', `$#', `4', `DO_DAI_CONFIG($1, $2, $3, $4)', `fatal_error(`Invalid parameters ($#) to DAI_CONFIG')')'
 )
 
 dnl DAI_ADD(pipeline,
