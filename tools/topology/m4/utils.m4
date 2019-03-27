@@ -107,11 +107,12 @@ define(`VIRTUAL_DAPM_ROUTE_IN',
 
 dnl VIRTUAL_WIDGET(name, type, index)
 define(`VIRTUAL_WIDGET',
+`ifelse(`$#', `3',
 `SectionWidget.STR($1) {'
 `       index STR($3)'
 `       type STR($2)'
 `       no_pm "true"'
-`}')
+`}', `fatal_error(`Invalid parameters ($#) to VIRTUAL_WIDGET')')')
 
 divert(0) dnl
 
