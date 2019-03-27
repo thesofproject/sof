@@ -58,8 +58,6 @@
 struct comp_data {
 	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct sof_eq_iir_config *config;   /**< pointer to setup blob */
-	uint32_t source_period_bytes;
-	uint32_t sink_period_bytes;
 	enum sof_ipc_frame source_format;   /**< source frame format */
 	enum sof_ipc_frame sink_format;     /**< sink frame format */
 	int64_t *iir_delay;		    /**< pointer to allocated RAM */
@@ -74,66 +72,6 @@ struct comp_data {
  * EQ IIR algorithm code
  */
 
-static void eq_iir_s16_pass(struct comp_dev *dev,
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
-			    uint32_t frames)
-{
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *dest = (int16_t *)sink->w_ptr;
-	int n = frames * dev->params.channels;
-
-	memcpy(dest, src, n * sizeof(int16_t));
-}
-
-static void eq_iir_s32_pass(struct comp_dev *dev,
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
-			    uint32_t frames)
-{
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *dest = (int32_t *)sink->w_ptr;
-	int n = frames * dev->params.channels;
-
-	memcpy(dest, src, n * sizeof(int32_t));
-}
-
-static void eq_iir_s32_16_pass(struct comp_dev *dev,
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink,
-			       uint32_t frames)
-
-{
-	int32_t *src = (int32_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
-	int n = frames * dev->params.channels;
-	int i;
-
-	for (i = 0; i < n; i++) {
-		*snk = *src >> 16;
-		src++;
-		snk++;
-	}
-}
-
-static void eq_iir_s32_24_pass(struct comp_dev *dev,
-			       struct comp_buffer *source,
-			       struct comp_buffer *sink,
-			       uint32_t frames)
-
-{
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int n = frames * dev->params.channels;
-	int i;
-
-	for (i = 0; i < n; i++) {
-		*snk = *src >> 8;
-		src++;
-		snk++;
-	}
-}
-
 static void eq_iir_s16_default(struct comp_dev *dev,
 			       struct comp_buffer *source,
 			       struct comp_buffer *sink,
@@ -142,24 +80,23 @@ static void eq_iir_s16_default(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
 	int16_t *x;
 	int16_t *y;
 	int32_t z;
 	int ch;
 	int i;
+	int idx;
 	int nch = dev->params.channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
+			x = buffer_read_frag_s16(source, idx);
+			y = buffer_write_frag_s16(sink, idx);
 			z = iir_df2t(filter, *x << 16);
 			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
-			x += nch;
-			y += nch;
+			idx += nch;
 		}
 	}
 }
@@ -172,24 +109,23 @@ static void eq_iir_s24_default(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
 	int32_t *x;
 	int32_t *y;
 	int32_t z;
+	int idx;
 	int ch;
 	int i;
 	int nch = dev->params.channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
+			x = buffer_read_frag_s32(source, idx);
+			y = buffer_write_frag_s32(sink, idx);
 			z = iir_df2t(filter, *x << 8);
 			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
-			x += nch;
-			y += nch;
+			idx += nch;
 		}
 	}
 }
@@ -202,22 +138,21 @@ static void eq_iir_s32_default(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
 	int32_t *x;
 	int32_t *y;
+	int idx;
 	int ch;
 	int i;
 	int nch = dev->params.channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
+			x = buffer_read_frag_s32(source, idx);
+			y = buffer_write_frag_s32(sink, idx);
 			*y = iir_df2t(filter, *x);
-			x += nch;
-			y += nch;
+			idx += nch;
 		}
 	}
 }
@@ -230,22 +165,23 @@ static void eq_iir_s32_16_default(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
 	int32_t *x;
 	int16_t *y;
+	int32_t z;
+	int idx;
 	int ch;
 	int i;
 	int nch = dev->params.channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
-			*y = iir_df2t(filter, *x) >> 16;
-			x += nch;
-			y += nch;
+			x = buffer_read_frag_s32(source, idx);
+			y = buffer_write_frag_s16(sink, idx);
+			z = iir_df2t(filter, *x);
+			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
+			idx += nch;
 		}
 	}
 }
@@ -258,23 +194,92 @@ static void eq_iir_s32_24_default(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct iir_state_df2t *filter;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
 	int32_t *x;
 	int32_t *y;
+	int32_t z;
+	int idx;
 	int ch;
 	int i;
 	int nch = dev->params.channels;
 
 	for (ch = 0; ch < nch; ch++) {
 		filter = &cd->iir[ch];
-		x = src++;
-		y = snk++;
+		idx = ch;
 		for (i = 0; i < frames; i++) {
-			*y = iir_df2t(filter, *x) >> 8;
-			x += nch;
-			y += nch;
+			x = buffer_read_frag_s32(source, idx);
+			y = buffer_write_frag_s32(sink, idx);
+			z = iir_df2t(filter, *x);
+			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
+			idx += nch;
 		}
+	}
+}
+
+static void eq_iir_s16_pass(struct comp_dev *dev,
+			    struct comp_buffer *source,
+			    struct comp_buffer *sink,
+			    uint32_t frames)
+{
+	int16_t *x;
+	int16_t *y;
+	int i;
+	int n = frames * dev->params.channels;
+
+	for (i = 0; i < n; i++) {
+		x = buffer_read_frag_s16(source, i);
+		y = buffer_write_frag_s16(sink, i);
+		*y = *x;
+	}
+}
+
+static void eq_iir_s32_pass(struct comp_dev *dev,
+			    struct comp_buffer *source,
+			    struct comp_buffer *sink,
+			    uint32_t frames)
+{
+	int32_t *x;
+	int32_t *y;
+	int i;
+	int n = frames * dev->params.channels;
+
+	for (i = 0; i < n; i++) {
+		x = buffer_read_frag_s32(source, i);
+		y = buffer_write_frag_s32(sink, i);
+		*y = *x;
+	}
+}
+
+static void eq_iir_s32_s16_pass(struct comp_dev *dev,
+				struct comp_buffer *source,
+				struct comp_buffer *sink,
+				uint32_t frames)
+{
+	int32_t *x;
+	int16_t *y;
+	int i;
+	int n = frames * dev->params.channels;
+
+	for (i = 0; i < n; i++) {
+		x = buffer_read_frag_s32(source, i);
+		y = buffer_write_frag_s16(sink, i);
+		*y = sat_int16(Q_SHIFT_RND(*x, 31, 15));
+	}
+}
+
+static void eq_iir_s32_s24_pass(struct comp_dev *dev,
+				struct comp_buffer *source,
+				struct comp_buffer *sink,
+				uint32_t frames)
+{
+	int32_t *x;
+	int32_t *y;
+	int i;
+	int n = frames * dev->params.channels;
+
+	for (i = 0; i < n; i++) {
+		x = buffer_read_frag_s32(source, i);
+		y = buffer_write_frag_s16(sink, i);
+		*y = sat_int24(Q_SHIFT_RND(*x, 31, 23));
 	}
 }
 
@@ -297,8 +302,8 @@ const struct eq_iir_func_map fm_passthrough[] = {
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  NULL},
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, eq_iir_s32_pass},
 	{SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  NULL},
-	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s32_16_pass},
-	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S24_4LE, eq_iir_s32_24_pass},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S16_LE,  eq_iir_s32_s16_pass},
+	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S24_4LE, eq_iir_s32_s24_pass},
 	{SOF_IPC_FRAME_S32_LE,  SOF_IPC_FRAME_S32_LE,  eq_iir_s32_pass},
 };
 
@@ -738,44 +743,27 @@ static int eq_iir_trigger(struct comp_dev *dev, int cmd)
 /* copy and process stream data from source to sink buffers */
 static int eq_iir_copy(struct comp_dev *dev)
 {
+	struct comp_copy_limits cl;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	int ret;
 
 	tracev_comp("eq_iir_copy()");
 
-	/* get source and sink buffers */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	/* make sure source component buffer has enough data available and that
-	 * the sink component buffer has enough free bytes for copy. Also
-	 * check for XRUNs
-	 */
-	if (source->avail < cd->source_period_bytes) {
-		trace_eq_error("eq_iir_copy() error: "
-			       "source component buffer"
-			       " has not enough data available");
-		comp_underrun(dev, source, cd->source_period_bytes, 0);
-		return -EIO;	/* xrun */
-	}
-	if (sink->free < cd->sink_period_bytes) {
-		trace_eq_error("eq_iir_copy() error: "
-			       "sink component buffer"
-			       " has not enough free bytes for copy");
-		comp_overrun(dev, sink, cd->sink_period_bytes, 0);
-		return -EIO;	/* xrun */
+	/* Get source, sink, number of frames etc. to process. */
+	ret = comp_get_copy_limits(dev, &cl);
+	if (ret < 0) {
+		trace_eq_error("eq_iir_copy(): Failed comp_copy_helper()");
+		return ret;
 	}
 
-	cd->eq_iir_func(dev, source, sink, dev->frames);
+	/* Run EQ function */
+	cd->eq_iir_func(dev, cl.source, cl.sink, cl.frames);
 
 	/* calc new free and available */
-	comp_update_buffer_consume(source, cd->source_period_bytes);
-	comp_update_buffer_produce(sink, cd->sink_period_bytes);
+	comp_update_buffer_consume(cl.source, cl.source_bytes);
+	comp_update_buffer_produce(cl.sink, cl.sink_bytes);
 
-	return dev->frames;
+	return 0;
 }
 
 static int eq_iir_prepare(struct comp_dev *dev)
