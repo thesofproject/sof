@@ -48,4 +48,8 @@ void *rzalloc(int zone, uint32_t caps, size_t bytes)
 	return calloc(bytes, 1);
 }
 
+void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
+{
+}
+
 #endif
