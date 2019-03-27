@@ -60,11 +60,13 @@
 
 /* src component private data */
 struct comp_data {
-	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS];
-	struct sof_eq_fir_config *config;
+	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	struct sof_eq_fir_config *config; /**< pointer to setup blob */
 	uint32_t period_bytes;
-	int32_t *fir_delay;
-	size_t fir_delay_size;
+	enum sof_ipc_frame source_format; /**< source frame format */
+	enum sof_ipc_frame sink_format;   /**< sink frame format */
+	int32_t *fir_delay;		  /**< pointer to allocated RAM */
+	size_t fir_delay_size;		  /**< allocated size */
 	void (*eq_fir_func_even)(struct fir_state_32x16 fir[],
 				 struct comp_buffer *source,
 				 struct comp_buffer *sink,
@@ -462,30 +464,9 @@ static void eq_fir_free(struct comp_dev *dev)
 /* set component audio stream parameters */
 static int eq_fir_params(struct comp_dev *dev)
 {
-	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
-	int err;
-
 	trace_eq("eq_fir_params()");
 
-	/* Calculate period size based on config. First make sure that
-	 * frame_bytes is set.
-	 */
-	dev->frame_bytes =
-		dev->params.sample_container_bytes * dev->params.channels;
-	cd->period_bytes = dev->frames * dev->frame_bytes;
-
-	/* configure downstream buffer */
-	sink = list_first_item(&dev->bsink_list,
-			       struct comp_buffer, source_list);
-	err = buffer_set_size(sink, cd->period_bytes * config->periods_sink);
-	if (err < 0) {
-		trace_eq_error("eq_fir_params() error: "
-			       "buffer_set_size() failed");
-		return err;
-	}
-
+	/* All configuration work is postponed to prepare(). */
 	return 0;
 }
 
@@ -724,7 +705,10 @@ static int eq_fir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb;
+	uint32_t source_period_bytes;
+	uint32_t sink_period_bytes;
 	int ret;
 
 	trace_eq("eq_fir_prepare()");
@@ -736,33 +720,42 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* EQ components will only ever have 1 source and 1 sink buffer */
+	/* EQ component will only ever have 1 source and 1 sink buffer. */
 	sourceb = list_first_item(&dev->bsource_list,
 				  struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
-	/* set period bytes and frame format */
-	comp_set_period_bytes(sourceb->source, dev->frames,
-			      &dev->params.frame_fmt, &cd->period_bytes);
+	/* get source data format */
+	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
+			      &source_period_bytes);
 
-	/* rewrite frame_bytes for all downstream */
-	dev->frame_bytes = cd->period_bytes / dev->frames;
+	/* get sink data format */
+	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
+			      &sink_period_bytes);
+
+	/* Rewrite params format for this component to match the host side. */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		dev->params.frame_fmt = cd->source_format;
+	else
+		dev->params.frame_fmt = cd->sink_format;
 
 	/* set downstream buffer size */
-	ret = buffer_set_size(sinkb, cd->period_bytes * config->periods_sink);
+	ret = buffer_set_size(sinkb,
+			      sink_period_bytes * config->periods_sink);
 	if (ret < 0) {
 		trace_eq_error("eq_fir_prepare() error: "
 			       "buffer_set_size() failed");
-		return ret;
+		goto err;
 	}
 
 	/* Initialize EQ */
 	if (cd->config) {
 		ret = eq_fir_setup(cd, dev->params.channels);
 		if (ret < 0) {
-			comp_set_state(dev, COMP_TRIGGER_RESET);
-			return ret;
+			trace_eq_error("eq_fir_prepare() error: "
+				       "eq_fir_setup failed.");
+			goto err;
 		}
 
 		ret = set_fir_func(dev);
@@ -770,6 +763,10 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	}
 
 	ret = set_pass_func(dev);
+	return ret;
+
+err:
+	comp_set_state(dev, COMP_TRIGGER_RESET);
 	return ret;
 }
 
