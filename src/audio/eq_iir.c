@@ -35,17 +35,12 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
 #include <sof/schedule.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
 #include <sof/audio/format.h>
-#include <uapi/ipc/control.h>
 #include <uapi/user/eq.h>
 #include "eq_iir.h"
 #include "iir.h"
@@ -61,14 +56,14 @@
 
 /* IIR component private data */
 struct comp_data {
-	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS];
-	struct sof_eq_iir_config *config;
+	struct iir_state_df2t iir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	struct sof_eq_iir_config *config;   /**< pointer to setup blob */
 	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
-	enum sof_ipc_frame source_format;	/**< source frame format */
-	enum sof_ipc_frame sink_format;		/**< sink frame format */
-	int64_t *iir_delay;
-	size_t iir_delay_size;
+	enum sof_ipc_frame source_format;   /**< source frame format */
+	enum sof_ipc_frame sink_format;     /**< sink frame format */
+	int64_t *iir_delay;		    /**< pointer to allocated RAM */
+	size_t iir_delay_size;		    /**< allocated size */
 	void (*eq_iir_func)(struct comp_dev *dev,
 			    struct comp_buffer *source,
 			    struct comp_buffer *sink,
@@ -787,7 +782,10 @@ static int eq_iir_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
-	struct comp_buffer *sourceb, *sinkb;
+	struct comp_buffer *sourceb;
+	struct comp_buffer *sinkb;
+	uint32_t source_period_bytes;
+	uint32_t sink_period_bytes;
 	int ret;
 
 	trace_eq("eq_iir_prepare()");
@@ -799,7 +797,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* EQ components will only ever have 1 source and 1 sink buffer */
+	/* EQ component will only ever have 1 source and 1 sink buffer */
 	sourceb = list_first_item(&dev->bsource_list,
 				  struct comp_buffer, sink_list);
 	sinkb = list_first_item(&dev->bsink_list,
@@ -807,25 +805,25 @@ static int eq_iir_prepare(struct comp_dev *dev)
 
 	/* get source data format */
 	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
-			      &cd->source_period_bytes);
+			      &source_period_bytes);
 
 	/* get sink data format */
 	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
-			      &cd->sink_period_bytes);
+			      &sink_period_bytes);
 
-	/* rewrite params format for all downstream */
-	dev->params.frame_fmt = cd->sink_format;
-
-	/* rewrite frame_bytes for all downstream */
-	dev->frame_bytes = cd->sink_period_bytes / dev->frames;
+	/* Rewrite params format for this component to match the host side. */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		dev->params.frame_fmt = cd->source_format;
+	else
+		dev->params.frame_fmt = cd->sink_format;
 
 	/* set downstream buffer size */
 	ret = buffer_set_size(sinkb,
-			      cd->sink_period_bytes * config->periods_sink);
+			      sink_period_bytes * config->periods_sink);
 	if (ret < 0) {
 		trace_eq_error("eq_iir_prepare() error: "
 			       "buffer_set_size() failed");
-		return ret;
+		goto err;
 	}
 
 	/* Initialize EQ */
@@ -836,8 +834,7 @@ static int eq_iir_prepare(struct comp_dev *dev)
 		if (ret < 0) {
 			trace_eq_error("eq_iir_prepare() error: "
 				       "eq_iir_setup failed.");
-			comp_set_state(dev, COMP_TRIGGER_RESET);
-			return ret;
+			goto err;
 		}
 		cd->eq_iir_func = eq_iir_find_func(cd, fm_configured,
 						   ARRAY_SIZE(fm_configured));
@@ -846,7 +843,8 @@ static int eq_iir_prepare(struct comp_dev *dev)
 					"No processing function available, "
 					"for configured mode.");
 			cd->eq_iir_func = eq_iir_s32_pass;
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 		trace_eq("eq_iir_prepare(), IIR is configured.");
 	} else {
@@ -857,11 +855,16 @@ static int eq_iir_prepare(struct comp_dev *dev)
 					"No processing function available, "
 					"for pass-through mode.");
 			cd->eq_iir_func = eq_iir_s32_pass;
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err;
 		}
 		trace_eq("eq_iir_prepare(), pass-through mode.");
 	}
 	return 0;
+
+err:
+	comp_set_state(dev, COMP_TRIGGER_RESET);
+	return ret;
 }
 
 static int eq_iir_reset(struct comp_dev *dev)
