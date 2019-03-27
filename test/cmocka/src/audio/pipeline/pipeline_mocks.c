@@ -126,3 +126,10 @@ void heap_trace_all(int force)
 {
 	(void)force;
 }
+
+void __panic(uint32_t p, char *filename, uint32_t linenum)
+{
+	(void)p;
+	(void)filename;
+	(void)linenum;
+}
