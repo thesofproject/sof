@@ -341,6 +341,8 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp);
  */
 static inline void comp_free(struct comp_dev *dev)
 {
+	assert(dev->drv->ops.free);
+
 	dev->drv->ops.free(dev);
 }
 
@@ -369,13 +371,15 @@ void comp_set_period_bytes(struct comp_dev *dev, uint32_t frames,
 			   enum sof_ipc_frame *format, uint32_t *period_bytes);
 
 /**
- * Component parameter init - mandatory.
+ * Component parameter init.
  * @param dev Component device.
  * @return 0 if succeeded, error code otherwise.
  */
 static inline int comp_params(struct comp_dev *dev)
 {
-	return dev->drv->ops.params(dev);
+	if (dev->drv->ops.params)
+		return dev->drv->ops.params(dev);
+	return 0;
 }
 
 /**
@@ -395,7 +399,7 @@ static inline int comp_host_buffer(struct comp_dev *dev,
 }
 
 /**
- * Send component command (mandatory).
+ * Send component command.
  * @param dev Component device.
  * @param cmd Command.
  * @param data Command data.
@@ -416,7 +420,9 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
 		return -EINVAL;
 	}
 
-	return dev->drv->ops.cmd(dev, cmd, data, max_data_size);
+	if (dev->drv->ops.cmd)
+		return dev->drv->ops.cmd(dev, cmd, data, max_data_size);
+	return -EINVAL;
 }
 
 /**
@@ -427,17 +433,21 @@ static inline int comp_cmd(struct comp_dev *dev, int cmd, void *data,
  */
 static inline int comp_trigger(struct comp_dev *dev, int cmd)
 {
+	assert(dev->drv->ops.trigger);
+
 	return dev->drv->ops.trigger(dev, cmd);
 }
 
 /**
- * Prepare component - mandatory.
+ * Prepare component.
  * @param dev Component device.
  * @return 0 if succeeded, error code otherwise.
  */
 static inline int comp_prepare(struct comp_dev *dev)
 {
-	return dev->drv->ops.prepare(dev);
+	if (dev->drv->ops.prepare)
+		return dev->drv->ops.prepare(dev);
+	return 0;
 }
 
 /**
@@ -447,17 +457,21 @@ static inline int comp_prepare(struct comp_dev *dev)
  */
 static inline int comp_copy(struct comp_dev *dev)
 {
+	assert(dev->drv->ops.copy);
+
 	return dev->drv->ops.copy(dev);
 }
 
 /**
- * Component reset and free runtime resources -mandatory.
+ * Component reset and free runtime resources.
  * @param dev Component device.
  * @return 0 if succeeded, error code otherwise.
  */
 static inline int comp_reset(struct comp_dev *dev)
 {
-	return dev->drv->ops.reset(dev);
+	if (dev->drv->ops.reset)
+		return dev->drv->ops.reset(dev);
+	return 0;
 }
 
 /**
