@@ -118,7 +118,7 @@ struct history_buffer {
 };
 
 /*! Key phrase buffer component */
-struct comp_data {
+struct kpb_comp_data {
 	/* runtime data */
 	uint8_t no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];

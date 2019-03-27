@@ -80,8 +80,8 @@ void *his_buf_hp;
 /* local function declarations */
 static struct comp_buffer *mock_comp_buffer(void **state,
 					    enum kpb_test_buff_type buff_type);
-static struct comp_data *mock_comp_kpb(void **state, void *hp_buf,
-				       void *lp_buf);
+static struct kpb_comp_data *mock_comp_kpb(void **state, void *hp_buf,
+					   void *lp_buf);
 static struct comp_dev *mock_comp_dev(void);
 
 static int buffering_test_setup(void **state)
@@ -116,7 +116,7 @@ static int buffering_test_setup(void **state)
 	sink->w_ptr = sink_data;
 	kpb_dev_mock->bsource_list.next = &source->sink_list;
 	kpb_dev_mock->bsink_list.next = &sink->source_list;
-	((struct comp_data *)kpb_dev_mock->private)->rt_sink = sink;
+	((struct kpb_comp_data *)kpb_dev_mock->private)->rt_sink = sink;
 
 	return 0;
 }
@@ -125,7 +125,7 @@ static int buffering_test_teardown(void **state)
 {
 	/* free components memory */
 	struct test_case *test_case_data = (struct test_case *)*state;
-	struct comp_data *cd = comp_get_drvdata(kpb_dev_mock);
+	struct kpb_comp_data *cd = comp_get_drvdata(kpb_dev_mock);
 
 	test_free(cd);
 	test_free(source_data);
@@ -154,10 +154,10 @@ static struct comp_dev *mock_comp_dev(void)
 	return dev;
 }
 
-static struct comp_data *mock_comp_kpb(void **state, void *hp_buf,
-				       void *lp_buf)
+static struct kpb_comp_data *mock_comp_kpb(void **state, void *hp_buf,
+					   void *lp_buf)
 {
-	struct comp_data *kpb = test_malloc(sizeof(struct comp_data));
+	struct kpb_comp_data *kpb = test_malloc(sizeof(struct kpb_comp_data));
 	struct test_case *test_case_data = (struct test_case *)*state;
 
 	kpb->source_period_bytes = test_case_data->source_period_bytes;
