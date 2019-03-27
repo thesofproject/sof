@@ -272,6 +272,15 @@ struct comp_dev {
  *  @{
  */
 
+/** \brief Struct for use with comp_get_copy_limits() function. */
+struct comp_copy_limits {
+	struct comp_buffer *sink;
+	struct comp_buffer *source;
+	int frames;
+	int source_bytes;
+	int sink_bytes;
+};
+
 /** \brief Computes size of the component device including ipc config. */
 #define COMP_SIZE(x) \
 	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
@@ -682,6 +691,13 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
 }
+
+/**
+ * Called by component in copy.
+ * @param dev Component device.
+ * @param cl Struct of parameters for use in copy function.
+ */
+int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl);
 
 /** @}*/
 
