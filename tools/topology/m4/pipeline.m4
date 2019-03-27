@@ -35,6 +35,7 @@ dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 define(`PIPELINE_PCM_ADD',
+`ifelse(`$#', `9',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
 `undefine(`PIPELINE_CHANNELS')'
@@ -54,6 +55,7 @@ define(`PIPELINE_PCM_ADD',
 `define(`DAI_FORMAT', $5)'
 `include($1)'
 `DEBUG_PCM_ADD($1, $3)'
+,`fatal_error(`Invalid parameters ($#) to PIPELINE_PCM_ADD')')'
 )
 
 dnl PIPELINE_PCM_DAI_ADD(pipeline,
@@ -61,6 +63,7 @@ dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core,
 dnl     dai type, dai_index, dai format, periods)
 define(`PIPELINE_PCM_DAI_ADD',
+`ifelse(`$#', `13',
 `undefine(`PCM_ID')'
 `undefine(`PIPELINE_ID')'
 `undefine(`PIPELINE_CHANNELS')'
@@ -87,12 +90,14 @@ define(`PIPELINE_PCM_DAI_ADD',
 `define(`DAI_PERIODS', $13)'
 `define(`DAI_NAME', $10$11)'
 `include($1)'
+,`fatal_error(`Invalid parameters ($#) to PIPELINE_PCM_DAI_ADD')')'
 )
 
 dnl PIPELINE_ADD(pipeline,
 dnl     pipe id, max channels, format,
 dnl     frames, deadline, priority, core, sched_comp)
 define(`PIPELINE_ADD',
+`ifelse(`$#', `9',
 `undefine(`PIPELINE_ID')'
 `undefine(`PIPELINE_CHANNELS')'
 `undefine(`PIPELINE_FORMAT')'
@@ -109,6 +114,7 @@ define(`PIPELINE_ADD',
 `define(`SCHEDULE_CORE', $8)'
 `define(`SCHED_COMP', $9)'
 `include($1)'
+,`fatal_error(`Invalid parameters ($#) to PIPELINE_ADD')')'
 )
 
 divert(0)dnl
