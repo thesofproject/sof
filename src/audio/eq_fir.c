@@ -376,6 +376,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	struct sof_ipc_comp_process *fir;
 	struct sof_ipc_comp_process *ipc_fir
 		= (struct sof_ipc_comp_process *)comp;
 	size_t bs = ipc_fir->size;
@@ -402,8 +403,9 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	err = memcpy_s(&dev->comp, sizeof(dev->comp), comp,
-		       sizeof(struct sof_ipc_comp_process));
+	fir = (struct sof_ipc_comp_process *)&dev->comp;
+	err = memcpy_s(fir, sizeof(*fir),
+		       ipc_fir, sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
