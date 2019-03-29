@@ -26,8 +26,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
- *         Liam Girdwood <liam.r.girdwood@linux.intel.com>
- *         Keyon Jie <yang.jie@linux.intel.com>
+ *	 Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *	 Keyon Jie <yang.jie@linux.intel.com>
  */
 
 /* Euclidean algorithm for greatest common denominator from
@@ -128,4 +128,28 @@ int norm_int32(int32_t val)
 		}
 	}
 	return s;
+}
+
+/**
+ * Basic CRC-32 implementation, based on pseudo-code from
+ * https://en.wikipedia.org/wiki/Cyclic_redundancy_check#CRC-32_algorithm
+ * 0xEDB88320 is the reversed polynomial representation
+ */
+uint32_t crc32(const void *data, uint32_t bytes)
+{
+	uint32_t crc = 0xFFFFFFFF;
+	uint32_t cur;
+	int i;
+	int j;
+
+	for (i = 0; i < bytes; ++i) {
+		cur = (crc ^ ((const uint8_t *)data)[i]) & 0xFF;
+
+		for (j = 0; j < 8; ++j)
+			cur = cur & 1 ? (cur >> 1) ^ 0xEDB88320 : cur >> 1;
+
+		crc = cur ^ (crc >> 8);
+	}
+
+	return ~crc;
 }
