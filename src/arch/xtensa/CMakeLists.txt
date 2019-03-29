@@ -272,6 +272,7 @@ endif()
 add_custom_target(
 	sof_dump
 	COMMAND ${CMAKE_OBJDUMP} -S sof-${fw_name} > sof-${fw_name}.lst
+	COMMAND ${CMAKE_OBJDUMP} -h sof-${fw_name} > sof-${fw_name}.map
 	COMMAND ${CMAKE_OBJDUMP} -D sof-${fw_name} > sof-${fw_name}.dis
 	DEPENDS process_base_module
 	VERBATIM
