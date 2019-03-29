@@ -76,11 +76,14 @@ struct comp_data {
 	int32_t *delay_lines;
 	uint32_t sink_rate;
 	uint32_t source_rate;
+	uint32_t sink_format;
+	uint32_t source_format;
 	int32_t *sbuf_w_ptr;
 	int32_t *sbuf_r_ptr;
 	int sbuf_avail;
-	int prefill;
 	int data_shift;
+	int source_frames;
+	int sink_frames;
 	void (*src_func)(struct comp_dev *dev,
 			 struct comp_buffer *source,
 			 struct comp_buffer *sink,
@@ -116,14 +119,11 @@ static int src_find_fs(int fs_list[], int list_length, int fs)
 
 /* Calculates buffers to allocate for a SRC mode */
 int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
-		       int frames, int frames_is_for_source)
+		       int source_frames)
 {
 	struct src_stage *stage1;
 	struct src_stage *stage2;
-	int q;
-	int den;
-	int num;
-	int frames2;
+	int r1;
 
 	if (nch > PLATFORM_MAX_CHANNELS) {
 		trace_src_error("src_buffer_lengths() error: "
@@ -157,58 +157,34 @@ int src_buffer_lengths(struct src_param *a, int fs_in, int fs_out, int nch,
 	a->fir_s1 = nch * src_fir_delay_length(stage1);
 	a->out_s1 = nch * src_out_delay_length(stage1);
 
-	/* Find out how many additional times the SRC can be executed
-	 * while having block size less or equal to max_frames.
+	/* Computing of number of blocks to process is done in
+	 * copy() per each frame.
 	 */
-	if (frames_is_for_source) {
-		/* Times that stage1 needs to run to input length of frames */
-		a->stage1_times_max = ceil_divide(frames, stage1->blk_in);
-		q = frames / stage1->blk_in;
-		a->stage1_times = MAX(q, 1);
-		a->blk_in = a->stage1_times * stage1->blk_in;
-
-		/* Times that stage2 needs to run */
-		den = stage2->blk_in * stage1->blk_in;
-		num = frames * stage2->blk_out * stage1->blk_out;
-		frames2 = ceil_divide(num, den);
-		a->stage2_times_max = ceil_divide(frames2, stage2->blk_out);
-		q = frames2 / stage2->blk_out;
-		a->stage2_times = MAX(q, 1);
-		a->blk_out = a->stage2_times * stage2->blk_out;
-	} else {
-		/* Times that stage2 needs to run to output length of frames */
-		a->stage2_times_max = ceil_divide(frames, stage2->blk_out);
-		q = frames / stage2->blk_out;
-		a->stage2_times = MAX(q, 1);
-		a->blk_out = a->stage2_times * stage2->blk_out;
-
-		/* Times that stage1 needs to run */
-		num = frames * stage2->blk_in * stage1->blk_in;
-		den = stage2->blk_out * stage1->blk_out;
-		frames2 = ceil_divide(num, den);
-		a->stage1_times_max = ceil_divide(frames2, stage1->blk_in);
-		q = frames2 / stage1->blk_in;
-		a->stage1_times = MAX(q, 1);
-		a->blk_in = a->stage1_times * stage1->blk_in;
-	}
+	a->stage1_times = 0;
+	a->stage2_times = 0;
+	a->blk_in = 0;
+	a->blk_out = 0;
 
 	if (stage2->filter_length == 1) {
 		a->fir_s2 = 0;
 		a->out_s2 = 0;
-		a->stage2_times = 0;
-		a->stage2_times_max = 0;
 		a->sbuf_length = 0;
 	} else {
 		a->fir_s2 = nch * src_fir_delay_length(stage2);
 		a->out_s2 = nch * src_out_delay_length(stage2);
-		/* 2x is an empirically tested length. Since the sink buffer
-		 * capability to receive samples varies a shorter stage 2 output
-		 * block will create a peak in internal buffer usage.
-		 */
 
-		/* TODO 1: Equation for needed length */
-		a->sbuf_length = 2 * nch * stage1->blk_out
-			* a->stage1_times_max;
+		/* Stage 1 is repeated max. amount that just exceeds one
+		 * period.
+		 */
+		r1 = source_frames / stage1->blk_in + 1;
+
+		/* Set sbuf length to allow storing two stage 1 output
+		 * periods. This is an empirically found value for no
+		 * xruns to happen with SRC in/out buffers. Due to
+		 * variable number of blocks to process per each stage
+		 * there is no equation known for minimum size.
+		 */
+		a->sbuf_length = 2 * nch * stage1->blk_out * r1;
 	}
 
 	a->src_multich = a->fir_s1 + a->fir_s2 + a->out_s1 + a->out_s2;
@@ -361,8 +337,6 @@ static void src_2s(struct comp_dev *dev,
 	size_t sbuf_size = cd->param.sbuf_length * sizeof(int32_t);
 	int nch = dev->params.channels;
 	int sbuf_free = cd->param.sbuf_length - cd->sbuf_avail;
-	int n1 = 0;
-	int n2 = 0;
 	int avail_b = source->avail;
 	int free_b = sink->free;
 	int sz = dev->params.sample_container_bytes;
@@ -399,6 +373,18 @@ static void src_2s(struct comp_dev *dev,
 	s1.times = cd->param.stage1_times;
 	s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
 	s1_blk_out = s1.times * cd->src.stage1->blk_out * nch;
+
+	/* The sbuf may limit how many times s1 can be looped. It's harder
+	 * to prepare for in advance so the repeats number is adjusted down
+	 * here if need.
+	 */
+	if (s1_blk_out > sbuf_free) {
+		s1.times = sbuf_free / (cd->src.stage1->blk_out * nch);
+		s1_blk_in = s1.times * cd->src.stage1->blk_in * nch;
+		s1_blk_out = s1.times * cd->src.stage1->blk_out * nch;
+		tracev_src("s1.times = %d", s1.times);
+	}
+
 	if (avail_b >= s1_blk_in * sz && sbuf_free >= s1_blk_out) {
 		cd->polyphase_func(&s1);
 
@@ -407,30 +393,19 @@ static void src_2s(struct comp_dev *dev,
 		*n_read += s1.times * cd->src.stage1->blk_in;
 		avail_b -= s1_blk_in * sz;
 		sbuf_free -= s1_blk_out;
-		n1 = s1.times;
 	}
 
-	/* Run one block at time the remaining data for 1st stage. */
-	s1.times = 1;
-	s1_blk_in = cd->src.stage1->blk_in * nch;
-	s1_blk_out = cd->src.stage1->blk_out * nch;
-	while (n1 < cd->param.stage1_times_max &&
-	       avail_b >= s1_blk_in * sz &&
-	       sbuf_free >= s1_blk_out) {
-		cd->polyphase_func(&s1);
-
-		cd->sbuf_w_ptr = s1.y_wptr;
-		cd->sbuf_avail += s1_blk_out;
-		*n_read += cd->src.stage1->blk_in;
-		avail_b -= s1_blk_in * sz;
-		sbuf_free -= s1_blk_out;
-		n1 += s1.times;
-	}
-
-	/* Test if 2nd stage can be run with default block length. */
 	s2.times = cd->param.stage2_times;
 	s2_blk_in = s2.times * cd->src.stage2->blk_in * nch;
 	s2_blk_out = s2.times * cd->src.stage2->blk_out * nch;
+	if (s2_blk_in > cd->sbuf_avail) {
+		s2.times = cd->sbuf_avail / (cd->src.stage2->blk_in * nch);
+		s2_blk_in = s2.times * cd->src.stage2->blk_in * nch;
+		s2_blk_out = s2.times * cd->src.stage2->blk_out * nch;
+		tracev_src("s2.times = %d", s2.times);
+	}
+
+	/* Test if second stage can be run with default block length. */
 	if (cd->sbuf_avail >= s2_blk_in && free_b >= s2_blk_out * sz) {
 		cd->polyphase_func(&s2);
 
@@ -438,23 +413,6 @@ static void src_2s(struct comp_dev *dev,
 		cd->sbuf_avail -= s2_blk_in;
 		free_b -= s2_blk_out * sz;
 		*n_written += s2.times * cd->src.stage2->blk_out;
-		n2 = s2.times;
-	}
-
-	/* Run one block at time the remaining 2nd stage output */
-	s2.times = 1;
-	s2_blk_in = cd->src.stage2->blk_in * nch;
-	s2_blk_out = cd->src.stage2->blk_out * nch;
-	while (n2 < cd->param.stage2_times_max &&
-	       cd->sbuf_avail >= s2_blk_in &&
-	       free_b >= s2_blk_out * sz) {
-		cd->polyphase_func(&s2);
-
-		cd->sbuf_r_ptr = s2.x_rptr;
-		cd->sbuf_avail -= s2_blk_in;
-		free_b -= s2_blk_out * sz;
-		*n_written += cd->src.stage2->blk_out;
-		n2 += s2.times;
 	}
 }
 
@@ -492,7 +450,6 @@ static void src_copy_s32(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int32_t *src = (int32_t *)source->r_ptr;
 	int32_t *snk = (int32_t *)sink->w_ptr;
-	int nch = dev->params.channels;
 	int frames = cd->param.blk_in;
 	int n;
 	int n_wrap_src;
@@ -500,7 +457,7 @@ static void src_copy_s32(struct comp_dev *dev,
 	int n_wrap_min;
 	int n_copy;
 
-	n = frames * nch;
+	n = frames * dev->params.channels;
 	while (n > 0) {
 		n_wrap_src = (int32_t *)source->end_addr - src;
 		n_wrap_snk = (int32_t *)sink->end_addr - snk;
@@ -527,7 +484,6 @@ static void src_copy_s16(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int16_t *src = (int16_t *)source->r_ptr;
 	int16_t *snk = (int16_t *)sink->w_ptr;
-	int nch = dev->params.channels;
 	int frames = cd->param.blk_in;
 	int n;
 	int n_wrap_src;
@@ -535,7 +491,7 @@ static void src_copy_s16(struct comp_dev *dev,
 	int n_wrap_min;
 	int n_copy;
 
-	n = frames * nch;
+	n = frames * dev->params.channels;
 	while (n > 0) {
 		n_wrap_src = (int16_t *)source->end_addr - src;
 		n_wrap_snk = (int16_t *)sink->end_addr - snk;
@@ -634,7 +590,6 @@ static int src_params(struct comp_dev *dev)
 	int32_t *buffer_start;
 	int n = 0;
 	int err;
-	int frames_is_for_source;
 
 	trace_src("src_params()");
 
@@ -647,14 +602,18 @@ static int src_params(struct comp_dev *dev)
 		cd->sink_rate = src->sink_rate;
 		/* re-write our params with output rate for next component */
 		params->rate = cd->sink_rate;
-		frames_is_for_source = 0;
+		cd->source_frames = dev->frames * cd->source_rate /
+			cd->sink_rate;
+		cd->sink_frames = dev->frames;
 	} else {
 		/* params rate is sink rate */
 		cd->source_rate = src->source_rate;
 		cd->sink_rate = params->rate;
 		/* re-write our params with output rate for next component */
 		params->rate = cd->source_rate;
-		frames_is_for_source = 1;
+		cd->source_frames = dev->frames;
+		cd->sink_frames = dev->frames * cd->sink_rate /
+			cd->source_rate;
 	}
 
 	/* Allocate needed memory for delay lines */
@@ -663,8 +622,7 @@ static int src_params(struct comp_dev *dev)
 	trace_src("src_params(), params->channels = %u, dev->frames = %u",
 		  params->channels, dev->frames);
 	err = src_buffer_lengths(&cd->param, cd->source_rate, cd->sink_rate,
-				 params->channels, dev->frames,
-				 frames_is_for_source);
+				 params->channels, cd->source_frames);
 	if (err < 0) {
 		trace_src_error(
 			"src_params() error: src_buffer_lengths() failed");
@@ -718,8 +676,7 @@ static int src_params(struct comp_dev *dev)
 		break;
 	default:
 		/* This is possibly due to missing coefficients for
-		 * requested rates combination. Sink audio will be
-		 * muted if copy() is run.
+		 * requested rates combination.
 		 */
 		trace_src("src_params(), missing coefficients "
 			  "for requested rates combination");
@@ -758,14 +715,60 @@ static int src_trigger(struct comp_dev *dev, int cmd)
 	return comp_set_state(dev, cmd);
 }
 
+static int src_get_copy_limits(struct comp_data *cd,
+			       struct comp_buffer *source,
+			       struct comp_buffer *sink)
+{
+	struct src_param *sp;
+	struct src_stage *s1;
+	struct src_stage *s2;
+	int frames_src;
+	int frames_snk;
+
+	/* Get SRC parameters */
+	sp = &cd->param;
+	s1 = cd->src.stage1;
+	s2 = cd->src.stage2;
+
+	/* Calculate how many blocks can be processed with
+	 * available source and free sink frames amount.
+	 */
+	if (s2->filter_length > 1) {
+		/* Two polyphase filters case */
+		frames_snk = sink->free / comp_frame_bytes(sink->sink);
+		frames_snk = MIN(frames_snk, cd->sink_frames + s2->blk_out);
+		sp->stage2_times = frames_snk / s2->blk_out;
+		frames_src = source->avail / comp_frame_bytes(source->source);
+		frames_src = MIN(frames_src, cd->source_frames + s1->blk_in);
+		sp->stage1_times = frames_src / s1->blk_in;
+		sp->blk_in = sp->stage1_times * s1->blk_in;
+		sp->blk_out = sp->stage2_times * s2->blk_out;
+	} else {
+		/* Single polyphase filter case */
+		frames_snk = sink->free / comp_frame_bytes(sink->sink);
+		frames_snk = MIN(frames_snk, cd->sink_frames + s1->blk_out);
+		sp->stage1_times = frames_snk / s1->blk_out;
+		frames_src = source->avail / comp_frame_bytes(source->source);
+		frames_snk = MIN(frames_src, cd->source_frames + s1->blk_in);
+		sp->stage1_times = MIN(sp->stage1_times,
+				       frames_src / s1->blk_in);
+		sp->blk_in = sp->stage1_times * s1->blk_in;
+		sp->blk_out = sp->stage1_times * s1->blk_out;
+	}
+
+	if (sp->blk_in == 0 || sp->blk_out == 0)
+		return -EIO;
+
+	return 0;
+}
+
 /* copy and process stream data from source to sink buffers */
 static int src_copy(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
-	int need_source;
-	int need_sink;
+	int ret;
 	int consumed = 0;
 	int produced = 0;
 
@@ -777,42 +780,28 @@ static int src_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	/* In some conversions the first copy run needs to pre-fill buffer
-	 * with sufficient amount of zeros if the min. output block length
-	 * is too short. It prevents xrun for the downstream component. In
-	 * successive copy executions the block length will jitter around the
-	 * nominal period length and xruns won't happen.
-	 */
-	if (cd->prefill && sink->free >= cd->prefill) {
-		tracev_src("src_copy(), need to "
-			   "pre-fill buffer, cd->prefill = %u", cd->prefill);
-		comp_update_buffer_produce(sink, cd->prefill);
-		cd->prefill = 0;
+	/* check for underrun */
+	if (source->avail == 0) {
+		trace_src_error("src_copy() error: Empty source buffer.");
+		comp_underrun(dev, source, 0, 0);
+		return -EIO;
 	}
 
-	/* Calculate needed amount of source buffer and sink buffer
-	 * for one SRC run. The blk_in and blk are minimum condition to
-	 * call copy. Copy can consume or produce a slightly larger block
-	 * with the rates where block sizes are not constant. E.g. for
-	 * 1 ms scheduling the blocks can be under or above 1 ms when the
-	 * SRC interval block size constraint prevents exact 1 ms blocks.
-	 */
-	need_source = cd->param.blk_in * dev->frame_bytes;
-	need_sink = cd->param.blk_out * dev->frame_bytes;
-
-	/* make sure source component buffer has enough data available and that
-	 * the sink component buffer has enough free bytes for copy. Also
-	 * check for XRUNs.
-	 */
-	if (source->avail < need_source) {
-		trace_src_error("src_copy() error: source component buffer "
-				"has not enough data available");
-		return -EIO; /* xrun */
+	/* check for overrun */
+	if (sink->free == 0) {
+		trace_src_error("src_copy() error: Full sink buffer.");
+		comp_overrun(dev, sink, 0, 0);
+		return -EIO;
 	}
-	if (sink->free < need_sink) {
-		trace_src_error("src_copy() error: sink component buffer "
-				"has not enough free bytes for copy");
-		return -EIO; /* xrun */
+
+	/* Get from buffers and SRC conversion specific block constraints
+	 * how many frames can be processed. If sufficient number of samples
+	 * is not available the processing is omitted.
+	 */
+	ret = src_get_copy_limits(cd, source, sink);
+	if (ret) {
+		trace_src_error("No data to process.");
+		return ret;
 	}
 
 	cd->src_func(dev, source, sink, &consumed, &produced);
@@ -824,12 +813,12 @@ static int src_copy(struct comp_dev *dev)
 	 * functions must not be called with 0 consumed/produced.
 	 */
 	if (consumed > 0)
-		comp_update_buffer_consume(source, consumed * dev->frame_bytes);
+		comp_update_buffer_consume(source, consumed *
+					   comp_frame_bytes(source->source));
 
-	if (produced > 0) {
-		comp_update_buffer_produce(sink, produced * dev->frame_bytes);
-		return produced;
-	}
+	if (produced > 0)
+		comp_update_buffer_produce(sink, produced *
+					   comp_frame_bytes(sink->sink));
 
 	/* produced no data */
 	return 0;
@@ -838,13 +827,21 @@ static int src_copy(struct comp_dev *dev)
 static int src_prepare(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
-	int q;
-	int d;
-	int err;
+	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
+	struct comp_buffer *sinkb;
+	struct comp_buffer *sourceb;
+	uint32_t source_period_bytes;
+	uint32_t sink_period_bytes;
+	int ret;
 
 	trace_src("src_prepare()");
+
+	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
+	if (ret < 0)
+		return ret;
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		return PPL_STATUS_PATH_STOP;
 
 	/* SRC supports S16_LE, S24_4LE and S32_LE formats */
 	switch (dev->params.frame_fmt) {
@@ -868,53 +865,57 @@ static int src_prepare(struct comp_dev *dev)
 		cd->polyphase_func = src_polyphase_stage_cir;
 		break;
 	default:
+		trace_src_error("src_prepare() error: invalid dev->frame_fmt");
+		return -EINVAL;
+	}
+
+	/* SRC component will only ever have 1 source and 1 sink buffer */
+	sourceb = list_first_item(&dev->bsource_list,
+				  struct comp_buffer, sink_list);
+	sinkb = list_first_item(&dev->bsink_list,
+				struct comp_buffer, source_list);
+
+	/* get source data format */
+	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
+			      &source_period_bytes);
+
+	/* get sink data format */
+	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
+			      &sink_period_bytes);
+
+	/* Rewrite params format for this component to match the host side. */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
+		dev->params.frame_fmt = cd->source_format;
+	else
+		dev->params.frame_fmt = cd->sink_format;
+
+	/* set downstream buffer size */
+	ret = buffer_set_size(sinkb, sink_period_bytes * config->periods_sink);
+	if (ret < 0) {
 		trace_src_error("src_prepare() error: "
-				"invalid config->frame_fmt");
-		return -EINVAL;
+				"buffer_set_size() failed");
+		goto err;
 	}
 
-	/* Calculate period size based on config. First make sure that
-	 * frame_bytes is set.
-	 */
-	dev->frame_bytes =
-		dev->params.sample_container_bytes * dev->params.channels;
-
-	/* The downstream buffer must be at least length of blk_out plus
-	 * a dev->frames and an integer multiple of dev->frames. The
-	 * buffer_set_size will return an error if the required length would
-	 * be too long.
-	 */
-	q = ceil_divide(cd->param.blk_out, (int)dev->frames) + 1;
-
-	/* If conversion specific minimum period length is less than
-	 * default period length there is need to pre-fill into sink buffer
-	 * zero PCM samples.
-	 */
-	d = dev->frames - cd->param.blk_out;
-	cd->prefill = (d > 0) ? d * dev->frame_bytes : 0;
-
-	/* Configure downstream buffer */
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-	err = buffer_set_size(sink, q * dev->frames * dev->frame_bytes);
-	if (err < 0) {
-		trace_src_error("src_params() error: buffer_set_size() failed,"
-				" sink->alloc_size = %u, (q * dev->frames * "
-				"dev->frame_bytes) = %u", sink->alloc_size,
-				q * dev->frames * dev->frame_bytes);
-		return err;
+	/* validate */
+	if (!sink_period_bytes) {
+		trace_src_error("src_prepare() error: "
+				"sink_period_bytes = 0");
+		ret = -EINVAL;
+		goto err;
+	}
+	if (!source_period_bytes) {
+		trace_src_error("src_prepare() error: "
+				"source_period_bytes = 0");
+		ret = -EINVAL;
+		goto err;
 	}
 
-	/* Check that source buffer has sufficient size */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	if (source->size < cd->param.blk_in * dev->frame_bytes) {
-		trace_src_error("src_params() error: source->size < "
-				"cd->param.blk_in * dev->frame_bytes");
-		return -EINVAL;
-	}
+	return 0;
 
-	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
+err:
+	comp_set_state(dev, COMP_TRIGGER_RESET);
+	return ret;
 }
 
 static int src_reset(struct comp_dev *dev)
