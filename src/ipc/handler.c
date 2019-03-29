@@ -435,6 +435,20 @@ int ipc_stream_send_position(struct comp_dev *cdev,
 				      sizeof(*posn), 0);
 }
 
+/* send component notification */
+int ipc_send_comp_notification(struct comp_dev *cdev,
+			       struct sof_ipc_comp_event *event)
+{
+	event->rhdr.hdr.cmd = SOF_IPC_GLB_COMP_MSG |
+		SOF_IPC_COMP_NOTIFICATION | cdev->comp.id;
+	event->rhdr.hdr.size = sizeof(*event);
+	event->src_comp_type = cdev->comp.type;
+	event->src_comp_id = cdev->comp.id;
+
+	return ipc_queue_host_message(_ipc, event->rhdr.hdr.cmd, event,
+				      sizeof(*event), 0);
+}
+
 /* send stream position TODO: send compound message  */
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn)
