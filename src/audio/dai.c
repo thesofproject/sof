@@ -101,8 +101,8 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
 	/* reload lli if the last callback wasn't of llist type */
-	next->size = dd->cb_type == DMA_CB_TYPE_LLIST ? DMA_RELOAD_IGNORE :
-		DMA_RELOAD_LLI;
+	next->size = dd->cb_type == DMA_CB_TYPE_LLI_TRANSFER ?
+		DMA_RELOAD_IGNORE : DMA_RELOAD_LLI;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -171,12 +171,12 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 	tracev_dai_with_ids(dev, "dai_dma_cb()");
 
 	switch (type) {
-	case DMA_CB_TYPE_BLOCK:
+	case DMA_CB_TYPE_LLI_BLOCK:
 		dd->cb_type = type;
 		next->size = DMA_RELOAD_IGNORE;
 		pipeline_schedule_copy(dev->pipeline, 0);
 		break;
-	case DMA_CB_TYPE_LLIST:
+	case DMA_CB_TYPE_LLI_TRANSFER:
 		dd->cb_type = type;
 		next->size = DMA_RELOAD_LLI;
 		pipeline_schedule_copy(dev->pipeline, 0);
@@ -497,7 +497,7 @@ static int dai_prepare(struct comp_dev *dev)
 
 	/* set default callback type if irq disabled */
 	if (config->irq_disabled)
-		dd->cb_type = DMA_CB_TYPE_BLOCK;
+		dd->cb_type = DMA_CB_TYPE_LLI_BLOCK;
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -654,11 +654,11 @@ static int dai_copy(struct comp_dev *dev)
 
 	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
-	if (dd->cb_type & DMA_CB_TYPE_BLOCK)
-		flags |= DMA_COPY_BLOCK;
+	if (dd->cb_type & DMA_CB_TYPE_LLI_BLOCK)
+		flags |= DMA_COPY_LLI_BLOCK;
 
-	if (dd->cb_type & DMA_CB_TYPE_LLIST)
-		flags |= DMA_COPY_LLIST;
+	if (dd->cb_type & DMA_CB_TYPE_LLI_TRANSFER)
+		flags |= DMA_COPY_LLI_TRANSFER;
 
 	ret = dma_copy(dd->dma, dd->chan, copy_bytes, flags);
 	if (ret < 0)
@@ -786,8 +786,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	}
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_BLOCK | DMA_CB_TYPE_LLIST |
-		   DMA_CB_TYPE_PROCESS, dai_dma_cb, dev);
+	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_LLI_BLOCK |
+		   DMA_CB_TYPE_LLI_TRANSFER | DMA_CB_TYPE_PROCESS, dai_dma_cb,
+		   dev);
 
 	dev->is_dma_connected = 1;
 
