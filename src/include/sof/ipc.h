@@ -144,6 +144,8 @@ void ipc_schedule_process(struct ipc *ipc);
 
 int ipc_stream_send_position(struct comp_dev *cdev,
 		struct sof_ipc_stream_posn *posn);
+int ipc_send_comp_notification(struct comp_dev *cdev,
+	struct sof_ipc_comp_event *event);
 int ipc_stream_send_xrun(struct comp_dev *cdev,
 	struct sof_ipc_stream_posn *posn);
 
