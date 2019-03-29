@@ -35,6 +35,7 @@ struct convert_config {
 	FILE *version_fd;
 	int use_colors;
 	int serial_fd;
+	int raw_output;
 };
 
 int convert(const struct convert_config *config);

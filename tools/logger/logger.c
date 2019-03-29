@@ -46,6 +46,7 @@ static void usage(void)
 	fprintf(stdout, "%s:\t -s\t\t\tTake a snapshot of state\n", APP_NAME);
 	fprintf(stdout, "%s:\t -t\t\t\tDisplay trace data\n", APP_NAME);
 	fprintf(stdout, "%s:\t -u baud\t\tInput data from a UART\n", APP_NAME);
+	fprintf(stdout, "%s:\t -r less formatted output for chained log processors\n", APP_NAME);
 	exit(0);
 }
 
@@ -149,8 +150,9 @@ int main(int argc, char *argv[])
 	config.version_fw = 0;
 	config.use_colors = 1;
 	config.serial_fd = -EINVAL;
+	config.raw_output = 0;
 
-	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:i:l:ps:c:u:tev:r")) != -1) {
 		switch (opt) {
 		case 'o':
 			config.out_file = optarg;
@@ -182,6 +184,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'u':
 			baud = atoi(optarg);
+			break;
+		case 'r':
+			config.raw_output = 1;
 			break;
 		case 'v':
 			/* enabling checking fw version with ver_file file */
