@@ -44,8 +44,6 @@ struct src_param {
 	int blk_out;
 	int stage1_times;
 	int stage2_times;
-	int stage1_times_max;
-	int stage2_times_max;
 	int idx_in;
 	int idx_out;
 	int nch;
@@ -133,7 +131,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s);
 void src_polyphase_stage_cir_s16(struct src_stage_prm *s);
 
 int src_buffer_lengths(struct src_param *p, int fs_in, int fs_out, int nch,
-		       int frames, int frames_is_for_source);
+		       int source_frames);
 
 int32_t src_input_rates(void);
 
