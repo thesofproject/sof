@@ -299,7 +299,8 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 		period_cnt = chan->buffer_bytes / chan->period_bytes;
 		for (i = 0; i < period_cnt; i++) {
 			next.size = chan->period_bytes;
-			chan->cb(chan->cb_data, DMA_CB_TYPE_LLIST, &next);
+			chan->cb(chan->cb_data, DMA_CB_TYPE_LLI_TRANSFER,
+				 &next);
 		}
 		/* do not need to test out next in this path */
 	}
