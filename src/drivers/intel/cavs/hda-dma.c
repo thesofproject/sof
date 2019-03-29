@@ -93,8 +93,7 @@
 #define HDA_DMA_MAX_CHANS		9
 
 #define HDA_STATE_HOST_PRELOAD	BIT(0)
-#define HDA_STATE_INIT		BIT(1)
-#define HDA_STATE_RELEASE	BIT(2)
+#define HDA_STATE_RELEASE	BIT(1)
 
 /*
  * DMA Pointer Trace
@@ -416,7 +415,7 @@ static void hda_dma_enable_unlock(struct dma *dma, int channel)
 		hda_dma_inc_link_fp(dma, channel,
 				    p->chan[channel].buffer_bytes);
 
-	p->chan[channel].state &= ~(HDA_STATE_INIT | HDA_STATE_RELEASE);
+	p->chan[channel].state &= ~HDA_STATE_RELEASE;
 
 	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_POST, HDA_DBG_BOTH);
 	hda_dma_ptr_trace(&p->chan[channel], "enable", HDA_DBG_BOTH);
@@ -429,12 +428,7 @@ static int hda_dma_link_copy(struct dma *dma, int channel, int bytes,
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct hda_chan_data *chan = p->chan + channel;
 
-	if (chan->state & HDA_STATE_INIT)
-		return 0;
-	else
-		return hda_dma_link_copy_ch(dma, chan, bytes);
-
-	return 0;
+	return hda_dma_link_copy_ch(dma, chan, bytes);
 }
 
 /* notify DMA to copy bytes */
@@ -453,14 +447,10 @@ static int hda_dma_host_copy(struct dma *dma, int channel, int bytes,
 	if (flags & DMA_COPY_PRELOAD)
 		chan->state |= HDA_STATE_HOST_PRELOAD;
 
-	if (chan->state & HDA_STATE_INIT)
-		return 0;
-	else if (chan->state & HDA_STATE_HOST_PRELOAD)
+	if (chan->state & HDA_STATE_HOST_PRELOAD)
 		return hda_dma_host_preload(dma, chan);
 	else
 		return hda_dma_host_copy_ch(dma, chan, bytes);
-
-	return 0;
 }
 
 /* acquire the specific DMA channel */
@@ -561,8 +551,6 @@ static int hda_dma_start(struct dma *dma, int channel)
 				  p->chan[channel].status);
 		goto out;
 	}
-
-	p->chan[channel].state |= HDA_STATE_INIT;
 
 	hda_dma_enable_unlock(dma, channel);
 
