@@ -589,7 +589,7 @@ static int dw_dma_release(struct dma *dma, int channel)
 			(chan->ptr_data.end_ptr - chan->ptr_data.current_ptr) +
 			(next_ptr - chan->ptr_data.start_ptr);
 
-	dw_dma_copy(dma, channel, bytes_left, DMA_COPY_BLOCK);
+	dw_dma_copy(dma, channel, bytes_left, DMA_COPY_LLI_BLOCK);
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
@@ -1297,12 +1297,12 @@ static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 		     channel);
 
 #if DW_USE_HW_LLI
-	if (flags & DMA_COPY_BLOCK)
+	if (flags & DMA_COPY_LLI_BLOCK)
 		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
 				    &dw_dma_verify_block);
 #endif
 
-	if (flags & DMA_COPY_LLIST)
+	if (flags & DMA_COPY_LLI_TRANSFER)
 		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
 				    &dw_dma_verify_transfer);
 
@@ -1368,8 +1368,8 @@ static void dw_dma_irq_handler(void *data)
 #if DW_USE_HW_LLI
 	/* end of a LLI block */
 	if (status_block & mask &&
-	    p->chan[i].cb_type & DMA_CB_TYPE_BLOCK)
-		dw_dma_irq_callback(&p->chan[i], &next, DMA_CB_TYPE_BLOCK,
+	    p->chan[i].cb_type & DMA_CB_TYPE_LLI_BLOCK)
+		dw_dma_irq_callback(&p->chan[i], &next, DMA_CB_TYPE_LLI_BLOCK,
 				    &dw_dma_verify_block);
 #endif
 }
@@ -1481,16 +1481,16 @@ static void dw_dma_irq_handler(void *data)
 #if DW_USE_HW_LLI
 		/* end of a LLI block */
 		if (status_block & mask &&
-		    p->chan[i].cb_type & DMA_CB_TYPE_BLOCK)
+		    p->chan[i].cb_type & DMA_CB_TYPE_LLI_BLOCK)
 			dw_dma_irq_callback(&p->chan[i], &next,
-					    DMA_CB_TYPE_BLOCK,
+					    DMA_CB_TYPE_LLI_BLOCK,
 					    &dw_dma_verify_block);
 #endif
 		/* end of a transfer */
 		if (status_tfr & mask &&
-		    p->chan[i].cb_type & DMA_CB_TYPE_LLIST)
+		    p->chan[i].cb_type & DMA_CB_TYPE_LLI_TRANSFER)
 			dw_dma_irq_callback(&p->chan[i], &next,
-					    DMA_CB_TYPE_LLIST,
+					    DMA_CB_TYPE_LLI_TRANSFER,
 					    &dw_dma_verify_transfer);
 	}
 }

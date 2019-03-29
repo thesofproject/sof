@@ -513,7 +513,7 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	completion_t *complete = data;
 
-	if (type == DMA_CB_TYPE_LLIST)
+	if (type == DMA_CB_TYPE_LLI_TRANSFER)
 		wait_completed(complete);
 }
 
@@ -562,7 +562,8 @@ int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	}
 
 	/* set up callback */
-	dma_set_cb(dmac, chan, DMA_CB_TYPE_LLIST, dma_complete, &complete);
+	dma_set_cb(dmac, chan, DMA_CB_TYPE_LLI_TRANSFER, dma_complete,
+		   &complete);
 
 	wait_init(&complete);
 
