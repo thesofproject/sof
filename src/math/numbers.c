@@ -129,3 +129,27 @@ int norm_int32(int32_t val)
 	}
 	return s;
 }
+
+/**
+ * Basic CRC-32 implementation based on crc32b from:
+ * http://www.hackersdelight.org/hdcodetxt/crc.c.txt
+ * 0xEDB88320 is the reversed polynomial representation
+ */
+uint32_t crc32(const void *data, uint32_t bytes)
+{
+	uint32_t crc = 0xFFFFFFFF;
+	uint32_t mask;
+	int i;
+	int j;
+
+	for (i = 0; i < bytes; ++i) {
+		crc = crc ^ ((const uint8_t *)data)[i];
+
+		for (j = 7; j >= 0; --j) {
+			mask = -(crc & 1);
+			crc = (crc >> 1) ^ (0xEDB88320 & mask);
+		}
+	}
+
+	return ~crc;
+}
