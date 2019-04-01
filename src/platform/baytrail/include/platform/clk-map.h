@@ -31,6 +31,8 @@
 #ifndef __INCLUDE_CLOCK_MAP__
 #define __INCLUDE_CLOCK_MAP__
 
+#include <sof/clk.h>
+
 #if defined CONFIG_BAYTRAIL
 static const struct freq_table cpu_freq[] = {
 	{25000000, 25000, 0x0},

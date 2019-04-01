@@ -37,6 +37,7 @@
 #include <sof/schedule.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
+#include <platform/clk-map.h>
 
 #define SSP_CLK_AUDIO	0
 #define SSP_CLK_NET_PLL	1
@@ -223,6 +224,11 @@ extern const struct dai_ops ssp_ops;
 #if CONFIG_CAVS
 #define MNDSS(x)	((x) << 20)
 #define MCDSS(x)	((x) << 16)
+#endif
+
+#if CONFIG_CAVS
+/* max possible index in ssp_freq array */
+#define MAX_SSP_FREQ_INDEX (ARRAY_SIZE(ssp_freq) - 1)
 #endif
 
 /* tracing */

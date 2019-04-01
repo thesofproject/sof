@@ -36,6 +36,10 @@
 #define CLOCK_NOTIFY_PRE	0
 #define CLOCK_NOTIFY_POST	1
 
+#define CLOCK_SSP_XTAL_OSCILLATOR		0x0
+#define CLOCK_SSP_AUDIO_CARDINAL		0x1
+#define CLOCK_SSP_PLL_FIXED			0x2
+
 struct clock_notify_data {
 	uint32_t old_freq;
 	uint32_t old_ticks_per_msec;
