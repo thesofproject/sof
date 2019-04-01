@@ -31,6 +31,8 @@
 #ifndef __INCLUDE_CLOCK_MAP__
 #define __INCLUDE_CLOCK_MAP__
 
+#include <sof/clk.h>
+
 static const struct freq_table cpu_freq[] = {
 	{32000000, 32000, 0x6},
 	{80000000, 80000, 0x2},

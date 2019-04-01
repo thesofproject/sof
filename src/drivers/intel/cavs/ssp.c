@@ -45,11 +45,6 @@
 #define trace_ssp_error(__e, ...)	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
 #define tracev_ssp(__e, ...)	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
 
-#define F_19200_kHz 19200000
-#define F_24000_kHz 24000000
-#define F_24576_kHz 24576000
-#define F_38400_kHz 38400000
-
 /* FIXME: move this to a helper and optimize */
 static int hweight_32(uint32_t mask)
 {
@@ -168,6 +163,9 @@ static inline int ssp_set_config(struct dai *dai,
 	bool inverted_frame = false;
 	bool cfs = false;
 	bool start_delay = false;
+
+	int i;
+	int clk_index = -1;
 	int ret = 0;
 
 	spin_lock(&dai->lock);
@@ -328,14 +326,16 @@ static inline int ssp_set_config(struct dai *dai,
 	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) ?
 		SSCR2_PSPSRWFDFD : 0;
 
-#if defined(CONFIG_ICELAKE)
-	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_38400_kHz) {
+	if (!config->ssp.mclk_rate ||
+	    config->ssp.mclk_rate > ssp_freq[MAX_SSP_FREQ_INDEX].freq) {
 		trace_ssp_error("ssp_set_config() error: "
-				"invalid MCLK = %d Hz (valid < 38400kHz)",
-				config->ssp.mclk_rate);
+				"invalid MCLK = %d Hz (valid < %d)",
+				config->ssp.mclk_rate,
+				ssp_freq[MAX_SSP_FREQ_INDEX].freq);
 		ret = -EINVAL;
 		goto out;
 	}
+
 	if (!config->ssp.bclk_rate ||
 	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
@@ -345,80 +345,19 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	if (F_38400_kHz % config->ssp.mclk_rate == 0) {
-		mdivr_val = F_38400_kHz / config->ssp.mclk_rate;
-	} else {
-		trace_ssp_error("ssp_set_config() error: 38.4MHz / %d Hz MCLK not divisable",
-				config->ssp.mclk_rate);
-		ret = -EINVAL;
-		goto out;
+	/* MCLK config */
+	/* searching the smallest possible mclk source */
+	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
+		if (config->ssp.mclk_rate > ssp_freq[i].freq)
+			break;
+
+		if (ssp_freq[i].freq % config->ssp.mclk_rate == 0)
+			clk_index = i;
 	}
 
-	if (F_38400_kHz % config->ssp.bclk_rate == 0) {
-		mdiv = F_38400_kHz / config->ssp.bclk_rate;
-	} else {
-		trace_ssp_error("ssp_set_config() error: 38.4MHz / %d Hz BCLK not divisable",
-				config->ssp.bclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
-#elif defined(CONFIG_CANNONLAKE)
-	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24000_kHz) {
-		trace_ssp_error("ssp_set_config() error: "
-				"invalid MCLK = %d Hz (valid < 24000kHz)",
-				config->ssp.mclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
-	if (!config->ssp.bclk_rate ||
-	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
-		trace_ssp_error("ssp_set_config() error: "
-				"BCLK %d Hz = 0 or > MCLK %d Hz",
-				config->ssp.bclk_rate, config->ssp.mclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if (F_24000_kHz % config->ssp.mclk_rate == 0) {
-		mdivr_val = F_24000_kHz / config->ssp.mclk_rate;
-	} else {
-		trace_ssp_error("ssp_set_config() error: 24.0MHz / %d Hz MCLK not divisable",
-				config->ssp.mclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if (F_24000_kHz % config->ssp.bclk_rate == 0) {
-		mdiv = F_24000_kHz / config->ssp.bclk_rate;
-	} else {
-		trace_ssp_error("ssp_set_config() error: 24.0MHz / %d Hz BCLK not divisable",
-				config->ssp.bclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
-#else
-	if (!config->ssp.mclk_rate || config->ssp.mclk_rate > F_24576_kHz) {
-		trace_ssp_error("ssp_set_config() error: "
-				"invalid MCLK = %d Hz (valid < 24567kHz)",
-				config->ssp.mclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
-	if (!config->ssp.bclk_rate ||
-	    config->ssp.bclk_rate > config->ssp.mclk_rate) {
-		trace_ssp_error("ssp_set_config() error: "
-				"BCLK %d Hz = 0 or > MCLK %d Hz",
-				config->ssp.bclk_rate, config->ssp.mclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
-	if (F_24576_kHz % config->ssp.mclk_rate == 0) {
-		/* select Audio Cardinal clock for MCLK */
-		mdivc |= MCDSS(1);
-		mdivr_val = F_24576_kHz / config->ssp.mclk_rate;
-	} else if (config->ssp.mclk_rate <= F_19200_kHz &&
-		   F_19200_kHz % config->ssp.mclk_rate == 0) {
-		mdivr_val = F_19200_kHz / config->ssp.mclk_rate;
+	if (clk_index >= 0) {
+		mdivc |= MCDSS(ssp_freq[clk_index].enc);
+		mdivr_val = ssp_freq[clk_index].freq / config->ssp.mclk_rate;
 	} else {
 		trace_ssp_error("ssp_set_config() error: MCLK %d",
 				config->ssp.mclk_rate);
@@ -426,21 +365,33 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	if (F_24576_kHz % config->ssp.bclk_rate == 0) {
-		/* select Audio Cardinal clock for M/N dividers */
-		mdivc |= MNDSS(1);
-		mdiv = F_24576_kHz / config->ssp.bclk_rate;
-		/* select M/N output for bclk */
-		sscr0 |= SSCR0_ECS;
-	} else if (F_19200_kHz % config->ssp.bclk_rate == 0) {
-		mdiv = F_19200_kHz / config->ssp.bclk_rate;
+	/* BCLK config */
+	/* searching the smallest possible bclk source */
+	clk_index = -1;
+	for (i = MAX_SSP_FREQ_INDEX; i >= 0; i--) {
+		if (config->ssp.bclk_rate > ssp_freq[i].freq)
+			break;
+
+		if (ssp_freq[i].freq % config->ssp.bclk_rate == 0)
+			clk_index = i;
+	}
+
+	if (clk_index >= 0) {
+		mdivc |= MNDSS(ssp_freq[clk_index].enc);
+		mdiv = ssp_freq[clk_index].freq / config->ssp.bclk_rate;
+
+		/* select M/N output for bclk in case of Audio Cardinal
+		 * or PLL Fixed clock.
+		 */
+		if (ssp_freq[clk_index].enc != CLOCK_SSP_XTAL_OSCILLATOR)
+			sscr0 |= SSCR0_ECS;
 	} else {
 		trace_ssp_error("ssp_set_config() error: BCLK %d",
 				config->ssp.bclk_rate);
 		ret = -EINVAL;
 		goto out;
 	}
-#endif
+
 
 	switch (mdivr_val) {
 	case 1:
