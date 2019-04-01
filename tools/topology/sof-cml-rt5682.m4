@@ -156,8 +156,8 @@ DAI_CONFIG(DMIC, 0, 1, dmic01,
 
 # 3 HDMI/DP outputs (ID: 2,3,4)
 DAI_CONFIG(HDA, 0, 2, iDisp1)
-DAI_CONFIG(HDA, 0, 3, iDisp2)
-DAI_CONFIG(HDA, 0, 4, iDisp3)
+DAI_CONFIG(HDA, 1, 3, iDisp2)
+DAI_CONFIG(HDA, 2, 4, iDisp3)
 
 
 DEBUG_END
