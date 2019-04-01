@@ -52,7 +52,7 @@ scripts/*				@xiulipan
 rimage/*				@xiulipan
 
 # tools(old soft)
-tools/logger/*				@xiulipan
+tools/logger/*				@xiulipan @bkokoszx @akloniex
 tools/topology/*			@ranj063 @xiulipan
 tools/test/*				@xiulipan
 tools/test/audio/*			@singalsu
@@ -67,7 +67,7 @@ scripts/kconfig/**			@jajanusz
 
 # related fileds
 *.sh					@jajanusz
-*trace.*				@xiulipan
+*trace.*				@xiulipan @akloniex
 
 # You can also use email addresses if you prefer.
 #docs/*  docs@example.com
