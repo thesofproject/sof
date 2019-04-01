@@ -371,10 +371,13 @@ static int logger_read(const struct convert_config *config,
 				return ret;
 		}
 
-	while (!feof(config->in_fd)) {
+	while (!ferror(config->in_fd)) {
 		/* getting entry parameters from dma dump */
 		ret = fread(&dma_log, sizeof(dma_log), 1, config->in_fd);
 		if (!ret) {
+			if (config->trace)
+				continue;
+
 			return -ferror(config->in_fd);
 		}
 
