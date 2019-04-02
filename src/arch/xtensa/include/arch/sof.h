@@ -73,16 +73,13 @@ static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
 	arch_dump_regs_a((void *)&oops->exccause, ps);
 }
 
-static inline void *arch_dump_regs(uint32_t ps)
+static inline void arch_dump_regs(uint32_t ps)
 {
 	void *buf = (void *)mailbox_get_exception_base();
 
 	fill_core_dump(buf, ps);
 
 	dcache_writeback_region(buf, sizeof(struct sof_ipc_dsp_oops_xtensa));
-
-	/* tell caller extended data can be placed hereafter */
-	return ((uint8_t *)buf + sizeof(struct sof_ipc_dsp_oops_xtensa));
 }
 
 #endif
