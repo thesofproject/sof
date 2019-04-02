@@ -44,7 +44,7 @@ define(`TONE_SAMPLE_RATE', 48000)
 # Schedule with 48 frame per 1000us deadline on core 0 with priority 0
 PIPELINE_ADD(sof/pipe-tone.m4,
 	5, 2, TEST_PIPE_FORMAT,
-	48, 1000, 0, 0)
+	48, 1000, 0, 0, 0)
 
 # playback DAI is SSP2 using 2 periods
 # Buffers use TEST_DAI_FORMAT format, with 48 frame per 1000us on core 0 with priority 0
