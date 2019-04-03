@@ -273,12 +273,6 @@ class Colourer():
 					r'\1' +
 					r'\2' +
 					self.enstyle(           fg.green , r'\3') ,
-					re.compile(r'(\|)(ar)([0-9]+)\b')
-				),
-				(
-					self.enstyle(bg.green + fg.black , r'\1') +
-					r'\2' +
-					self.enstyle(           fg.green , r'\3') ,
 					re.compile(r'(\#)(ar)([0-9]+)\b')
 				),
 				(
@@ -537,10 +531,7 @@ def CoreDumpFactory(dsp_arch):
 			return separator + "{:" + str(self._longest_field) + "} {:08x} "
 
 		def fmt_separator(self, name):
-			separator = "|"
-			if self.ar_regex.fullmatch(name):
-				if int(name[2:]) % AR_WINDOW_WIDTH == 0:
-					separator = "#"
+			separator = "# "
 			return separator
 
 		def fmt_pretty_auto(self, name):
