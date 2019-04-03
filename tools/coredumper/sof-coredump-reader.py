@@ -11,7 +11,6 @@ import sys
 import itertools
 import re
 import shutil
-import fcntl
 import time
 from ctypes      import LittleEndianStructure, BigEndianStructure, c_uint32, c_char
 from collections import namedtuple
@@ -20,6 +19,9 @@ from functools   import partial
 
 def stderr_print(*args, **kwargs):
 	print(*args, file=sys.stderr, **kwargs)
+
+def stdout_print(*args, **kwargs):
+	print(*args, file=sys.stdout, **kwargs)
 
 try:
 	from sty import fg, bg, ef, rs, Rule, Render
@@ -183,8 +185,6 @@ def parse_params():
 						'action':'store',
 						'nargs' : 1,
 					},),
-			# below makes it impossible to have input file while getting stdin from pipe
-			] + ([] if not sys.stdin.isatty() else [
 				( ( '-i', '--infile'     , ), {
 						'type'   : str,
 						'help'   :'path to sys dump bin',
@@ -192,14 +192,12 @@ def parse_params():
 						'nargs'  : 1,
 					},
 					inputMethod),
-			])],
+			]],
 			key=lambda argtup: (argtup.parent.__hash__(), argtup.name)
 		)
 	]
 
 	parsed = parser.parse_args()
-	if not sys.stdin.isatty():
-		parsed.stdin = True
 
 	if parsed.columncount and not parsed.verbose:
 		stderr_print("INFO: -l option will be ignored without -v")
@@ -245,7 +243,7 @@ class Colourer():
 	#TODO: Add detection of 8bit/24bit terminal
 	#      Add 8bit/24bit colours (with flag, maybe --colour=24bit)
 	#      Use this below as fallback only
-	__print = partial(stderr_print)
+	__print = partial(stdout_print)
 	if CAN_COLOUR == True:
 		__style = {
 			'o' : fg.red,
@@ -566,8 +564,8 @@ def CoreDumpFactory(dsp_arch):
 					fnc_num += 1
 				else:
 					header += " "
-			string += "             {0}\n".format(header)
-			string += "windowstart: {0}\n".format(binary)
+			string += "#              {0}\n".format(header)
+			string += "# windowstart: {0}\n".format(binary)
 
 			fnc_num = 0
 			for iter, digit in enumerate(binary[1:]):
@@ -575,7 +573,7 @@ def CoreDumpFactory(dsp_arch):
 					reg = "ar{0}".format(
 						self.windowbase_shift_right(AR_WINDOW_WIDTH * -iter)
 					)
-					string  += "{0:2d} ".format(++fnc_num)
+					string  += "# {0:2d} ".format(++fnc_num)
 					string  += self.fmt_pretty_auto(reg).format(
 						reg, self.reg_from_string(reg)
 					) + "\n"
@@ -602,7 +600,7 @@ class CoreDumpReader(object):
 			verbosePrint =\
 					colourer.print\
 				if IS_COLOUR else\
-					stderr_print
+					stdout_print
 		else:
 			verbosePrint = lambda *discard_this: None
 
@@ -619,7 +617,7 @@ class CoreDumpReader(object):
 		else:
 			raise RuntimeError("CoreDumpReader: No output method.") 
 
-		if   args.stdin or not sys.stdin.isatty():
+		if   args.stdin:
 			inStream = lambda: sys.stdin.buffer
 		elif args.infile:
 			inStream = lambda: open(args.infile, "rb")
@@ -637,10 +635,10 @@ class CoreDumpReader(object):
 
 		verbosePrint(self.core_dump.windowstart_process())
 
-		verbosePrint("Location: " + str(self.file_info));
+		verbosePrint("# Location: " + str(self.file_info));
 		stack_base = self.core_dump.a[1] + 16
 		stack_dw_num = int(len(self.stack)/AR_WINDOW_WIDTH)
-		verbosePrint("Stack dumped from {:08x} dwords num {:d}"
+		verbosePrint("# Stack dumped from {:08x} dwords num {:d}"
 			.format(stack_base, stack_dw_num))
 
 		stdoutOpen()
