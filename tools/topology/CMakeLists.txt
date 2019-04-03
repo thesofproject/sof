@@ -40,6 +40,7 @@ set(TPLGS
 	"sof-apl-rt298\;sof-apl-rt298"
 	"sof-apl-wm8804\;sof-apl-wm8804"
 	"sof-apl-da7219\;sof-apl-da7219"
+	"sof-glk-da7219-kwd\;sof-glk-da7219-kwd"
 	"sof-glk-da7219\;sof-glk-da7219"
 	"sof-glk-rt5682\;sof-glk-rt5682"
 	"sof-icl-nocodec\;sof-icl-nocodec"
