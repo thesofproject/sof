@@ -506,6 +506,15 @@ def CoreDumpFactory(dsp_arch):
 					[chunks(word, self.columncount) for word in [
 						["arch", "totalsize", "stackoffset"],
 						["configidhi", "configidlo", "numaregs"],
+					]]
+				)
+			])
+
+			string += "\n# CPU registers:\n\n"
+
+			string += ''.join([self.fmt(is_gdb, x)
+				for x in flaten(
+					[chunks(word, self.columncount) for word in [
 						["exccause", "excvaddr", "ps"],
 						["epc" + str(x) for x in range(1,7+1)],
 						["eps" + str(x) for x in range(2,7+1)],
@@ -521,6 +530,7 @@ def CoreDumpFactory(dsp_arch):
 					]]
 				)
 			])
+
 			if not is_gdb:
 				string += "\n"
 			return string
@@ -631,6 +641,7 @@ class CoreDumpReader(object):
 			]]
 			self.stack = cd_file.read()
 
+		verbosePrint("# Core header:\n")
 		verbosePrint(self.core_dump.to_string(0))
 
 		verbosePrint(self.core_dump.windowstart_process())
