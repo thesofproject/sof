@@ -675,6 +675,6 @@ if __name__ == "__main__":
 		if CAN_COLOUR:
 			IS_COLOUR=True
 		else:
-			stderr_print("Cannot color the output: module 'sty' not found!")
+			stderr_print("INFO: Cannot color the output: module 'sty' not found")
 	CoreDumpReader(args)
 
