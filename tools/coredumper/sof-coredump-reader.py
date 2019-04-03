@@ -179,7 +179,7 @@ def parse_params():
 					},),
 				( ( '-l', '--columncount', ), {
 						'type'  : int,
-						'help'  :'set how many colums to group the output in',
+						'help'  :'set how many colums to group the output in, ignored without -v',
 						'action':'store',
 						'nargs' : 1,
 					},),
@@ -200,6 +200,9 @@ def parse_params():
 	parsed = parser.parse_args()
 	if not sys.stdin.isatty():
 		parsed.stdin = True
+
+	if parsed.columncount and not parsed.verbose:
+		stderr_print("INFO: -l option will be ignored without -v")
 
 	return parsed
 
