@@ -666,8 +666,6 @@ class CoreDumpReader(object):
 
 		# TODO: if excsave1 is not empty, pc should be set to that value
 		# (exception mode, not forced panic mode)
-			# dodac sobie przyklad
-			# ustawiac pc z
 		stdoutPrint("set $pc=&arch_dump_regs_a\nbacktrace\n")
 		stdoutClose()
 
