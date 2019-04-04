@@ -266,6 +266,42 @@ static void hda_dma_get_dbg_vals(struct hda_chan_data *chan,
 #define hda_dma_ptr_trace(...)
 #endif
 
+static int hda_dma_wait_for_buffer_full(struct dma *dma,
+					struct hda_chan_data *chan)
+{
+	uint64_t deadline = platform_timer_get(platform_timer) +
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+		PLATFORM_HOST_DMA_TIMEOUT / 1000;
+
+	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF)) {
+		if (deadline < platform_timer_get(platform_timer)) {
+			trace_hddma_error("hda-dmac: %d wait for buffer full "
+					  "timeout", dma->plat_data.id);
+			return -ETIME;
+		}
+	}
+
+	return 0;
+}
+
+static int hda_dma_wait_for_buffer_empty(struct dma *dma,
+					 struct hda_chan_data *chan)
+{
+	uint64_t deadline = platform_timer_get(platform_timer) +
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+		PLATFORM_HOST_DMA_TIMEOUT / 1000;
+
+	while (host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BNE) {
+		if (deadline < platform_timer_get(platform_timer)) {
+			trace_hddma_error("hda-dmac: %d wait for buffer empty "
+					  "timeout", dma->plat_data.id);
+			return -ETIME;
+		}
+	}
+
+	return 0;
+}
+
 static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
 			      int bytes)
 {
@@ -374,7 +410,7 @@ static int hda_dma_host_copy(struct dma *dma, int channel, int bytes,
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct hda_chan_data *chan = p->chan + channel;
-	uint64_t deadline;
+	int ret;
 
 	tracev_hddma("hda-dmac: %d channel %d -> copy 0x%x bytes",
 		     dma->plat_data.id, chan->index, bytes);
@@ -387,25 +423,19 @@ static int hda_dma_host_copy(struct dma *dma, int channel, int bytes,
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_HOST);
 
-	if (flags & DMA_COPY_PRELOAD) {
-		deadline = platform_timer_get(platform_timer) +
-			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-			PLATFORM_HOST_DMA_TIMEOUT / 1000;
-
-		/* waiting for buffer full */
-		while (!(host_dma_reg_read(dma, chan->index, DGCS) &
-			 DGCS_BF)) {
-			if (deadline < platform_timer_get(platform_timer)) {
-				trace_hddma_error("hda-dmac: %d timeout",
-						  dma->plat_data.id);
-				return -ETIME;
-			}
-		}
-	} else {
+	if (!(flags & DMA_COPY_PRELOAD))
 		/* set BFPI to let host gateway know we have read size,
 		 * which will trigger next copy start.
 		 */
 		hda_dma_inc_fp(dma, chan->index, bytes);
+
+	/* blocking mode copy */
+	if (flags & DMA_COPY_BLOCKING) {
+		ret = chan->direction == DMA_DIR_HMEM_TO_LMEM ?
+			hda_dma_wait_for_buffer_full(dma, chan) :
+			hda_dma_wait_for_buffer_empty(dma, chan);
+		if (ret < 0)
+			return ret;
 	}
 
 	hda_dma_post_copy(dma, chan, bytes);
