@@ -836,11 +836,13 @@ int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 			sprintf(message, "number of DAPM widgets %d\n",
 				hdr->count);
 			debug_print(message);
-			size = sizeof(struct comp_info) * hdr->count;
-			temp_comp_list = (struct comp_info *)malloc(size);
-			num_comps = hdr->count;
 
-			for (i = 0; i < hdr->count; i++)
+			num_comps += hdr->count;
+			size = sizeof(struct comp_info) * num_comps;
+			temp_comp_list = (struct comp_info *)
+					 realloc(temp_comp_list, size);
+
+			for (i = (num_comps - hdr->count); i < num_comps; i++)
 				load_widget(sof, fr_id, fw_id, sched_id,
 					    temp_comp_list,
 					    &pipeline, next_comp_id++,
