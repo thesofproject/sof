@@ -788,7 +788,7 @@ static int host_copy(struct comp_dev *dev)
 	 * in host_buffer_cb()
 	 */
 	if (pipeline_is_preload(dev->pipeline)) {
-		ret = dma_copy(hd->dma, hd->chan, hd->period_bytes,
+		ret = dma_copy(hd->dma, hd->chan, hd->dma_buffer->size,
 			       DMA_COPY_PRELOAD);
 		if (ret < 0) {
 			trace_host_error("host_copy() error: dma_copy() "
