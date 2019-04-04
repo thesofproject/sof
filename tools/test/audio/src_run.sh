@@ -10,7 +10,7 @@ FN_IN=$5
 FN_OUT=$6
 
 # The HOST_ROOT path need to be retrived from SOFT .configure command
-HOST_ROOT=../../../../host-root
+HOST_ROOT=../../../build_host/install/
 HOST_EXE=$HOST_ROOT/bin/testbench
 HOST_LIB=$HOST_ROOT/lib
 
@@ -18,7 +18,7 @@ HOST_LIB=$HOST_ROOT/lib
 INFMT=s${BITS_IN}le
 OUTFMT=s${BITS_IN}le
 MCLK=24576k
-tplg1=../../test/topology/test-playback-ssp2-mclk-0-I2S-
+tplg1=../../build_tools/test/topology/test-playback-ssp2-mclk-0-I2S-
 tplg2=${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
 TPLG=${tplg1}${tplg2}
 
