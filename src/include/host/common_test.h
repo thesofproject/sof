@@ -66,7 +66,6 @@ struct shared_lib_table {
 	char *comp_name;
 	char library_name[MAX_LIB_NAME_LEN];
 	uint32_t widget_type;
-	const char *comp_init;
 	int register_drv;
 	void *handle;
 };

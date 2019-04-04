@@ -42,10 +42,9 @@
 
 /* shared library look up table */
 struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
-{"file", "", SND_SOC_TPLG_DAPM_AIF_IN, "", 0, NULL},
-{"vol", "libsof_volume.so", SND_SOC_TPLG_DAPM_PGA, "sys_comp_volume_init", 0,
-	NULL},
-{"src", "libsof_src.so", SND_SOC_TPLG_DAPM_SRC, "sys_comp_src_init", 0, NULL},
+	{"file", "", SND_SOC_TPLG_DAPM_AIF_IN, 0, NULL},
+	{"vol", "libsof_volume.so", SND_SOC_TPLG_DAPM_PGA, 0, NULL},
+	{"src", "libsof_src.so", SND_SOC_TPLG_DAPM_SRC, 0, NULL},
 };
 
 /* main firmware context */
@@ -71,7 +70,6 @@ static void parse_libraries(char *libs)
 	char *lib_token = NULL;
 	char *comp_token = NULL;
 	char *token = strtok_r(libs, ",", &lib_token);
-	char message[DEBUG_MSG_LEN];
 	int index;
 
 	while (token) {
@@ -92,19 +90,9 @@ static void parse_libraries(char *libs)
 		if (!token1)
 			break;
 
-		/* close default shared library object */
-		if (lib_table[index].handle)
-			dlclose(lib_table[index].handle);
-
-		/* open volume shared library object */
-		lib_table[index].handle = dlopen(token1, RTLD_LAZY);
-		if (!lib_table[index].handle) {
-			fprintf(stderr, "error: %s\n", dlerror());
-			exit(EXIT_FAILURE);
-		}
-
-		sprintf(message, "opening shared lib %s\n", token1);
-		debug_print(message);
+		/* set to new name that may be used while loading */
+		strncpy(lib_table[index].library_name, token1,
+			MAX_LIB_NAME_LEN - 1);
 
 		/* next library */
 		token = strtok_r(NULL, ",", &lib_token);
@@ -152,25 +140,6 @@ static void free_comps(void)
 			break;
 		}
 	}
-}
-
-static int set_up_library_table(void)
-{
-	int i;
-
-	/* set up default shared libraries */
-	for (i = 1; i < NUM_WIDGETS_SUPPORTED; i++) {
-
-		/* open default shared library */
-		lib_table[i].handle =
-				dlopen(lib_table[i].library_name, RTLD_LAZY);
-		if (!lib_table[i].handle) {
-			fprintf(stderr, "error: %s\n", dlerror());
-			return -EINVAL;
-		}
-	}
-
-	return 0;
 }
 
 static void parse_input_args(int argc, char **argv, struct testbench_prm *tp)
@@ -245,13 +214,6 @@ int main(int argc, char **argv)
 	/* initialize input and output sample rates */
 	tp.fs_in = 0;
 	tp.fs_out = 0;
-
-	/* set up shared library look up table */
-	ret = set_up_library_table();
-	if (ret < 0) {
-		fprintf(stderr, "error: setting up shared libraried\n");
-		exit(EXIT_FAILURE);
-	}
 
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
