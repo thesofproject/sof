@@ -85,8 +85,9 @@
 
 /* DMA copy flags */
 #define DMA_COPY_PRELOAD	BIT(0)
-#define DMA_COPY_LLI_BLOCK	BIT(1)
-#define DMA_COPY_LLI_TRANSFER	BIT(2)
+#define DMA_COPY_BLOCKING	BIT(1)
+#define DMA_COPY_LLI_BLOCK	BIT(2)
+#define DMA_COPY_LLI_TRANSFER	BIT(3)
 
 /* We will use this macro in cb handler to inform dma that
  * we need to stop the reload for special purpose

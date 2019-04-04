@@ -789,7 +789,7 @@ static int host_copy(struct comp_dev *dev)
 	 */
 	if (pipeline_is_preload(dev->pipeline)) {
 		ret = dma_copy(hd->dma, hd->chan, hd->dma_buffer->size,
-			       DMA_COPY_PRELOAD);
+			       DMA_COPY_PRELOAD | DMA_COPY_BLOCKING);
 		if (ret < 0) {
 			trace_host_error("host_copy() error: dma_copy() "
 					 "failed, ret = %u", ret);
