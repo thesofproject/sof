@@ -161,7 +161,7 @@
 
 /* dump stack as part of panic */
 static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
-				  size_t limit)
+				  size_t limit, uintptr_t *stack_ptr)
 {
 	extern void *_stack_sentry;
 	uintptr_t stack_limit = (uintptr_t)&_stack_sentry +
@@ -169,6 +169,7 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 	uintptr_t stack_bottom = stack_limit + SOF_STACK_SIZE - sizeof(void *);
 	uintptr_t stack_top = (uintptr_t)arch_get_stack_ptr() + offset;
 	size_t size = stack_bottom - stack_top;
+	*stack_ptr = stack_top;
 
 	/* is stack smashed ? */
 	if (stack_top - offset <= stack_limit) {
