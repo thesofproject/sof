@@ -152,6 +152,10 @@
  */
 #ifdef UNIT_TEST
 #define DECLARE_COMPONENT(init)
+#elif CONFIG_HOST
+/* In case of shared libs components are initialised in dlopen */
+#define DECLARE_COMPONENT(init) __attribute__((constructor)) \
+	static void _comp_init(void) { init(); }
 #else
 #define DECLARE_COMPONENT(init) __attribute__((__used__)) \
 	__attribute__((section(".comp_init"))) static void(*f)(void) = init
