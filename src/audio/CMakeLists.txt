@@ -74,8 +74,6 @@ add_library(sof_audio_core SHARED "")
 target_link_libraries(sof_audio_core PRIVATE sof_options)
 target_link_libraries(sof_audio_core PRIVATE -Wl,--export-dynamic)
 add_local_sources(sof_audio_core
-	dai.c
-	host.c
 	pipeline.c
 	component.c
 	buffer.c
