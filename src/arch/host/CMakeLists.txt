@@ -19,6 +19,8 @@ set(CONFIG_COMP_MUX 1)
 set(CONFIG_COMP_SWITCH 1)
 set(CONFIG_COMP_DAI 1)
 set(CONFIG_COMP_SEL 1)
+set(CONFIG_TRACE 1)
+set(CONFIG_TRACEE 1)
 
 configure_file (
 	"${PROJECT_SOURCE_DIR}/src/arch/host/config.h.in"
