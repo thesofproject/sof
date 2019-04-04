@@ -85,6 +85,9 @@ struct host_data {
 	uint32_t report_pos;	/**< Position in current report period */
 	uint32_t local_pos;	/**< Local position in host buffer */
 
+	/* host component attributes */
+	uint32_t copy_blocking;	/**< True for copy in blocking mode */
+
 	/* local and host DMA buffer info */
 #if !CONFIG_DMA_GW
 	struct hc_buf host;
@@ -399,6 +402,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 
 
 	hd->chan = DMA_CHAN_INVALID;
+	hd->copy_blocking = 0;
 
 	/* init posn data. TODO: other fields */
 	hd->posn.comp_id = comp->id;
@@ -462,6 +466,7 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
+	uint32_t flags = 0;
 	int ret;
 
 	/* get data sizes from DMA */
@@ -481,8 +486,11 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 
 	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
 
+	if (hd->copy_blocking)
+		flags |= DMA_COPY_BLOCKING;
+
 #if CONFIG_DMA_GW
-	ret = dma_copy(hd->dma, hd->chan, copy_bytes, 0);
+	ret = dma_copy(hd->dma, hd->chan, copy_bytes, flags);
 	if (ret < 0)
 		trace_host_error("host_buffer_cb() error: dma_copy() failed, "
 				 "ret = %u", ret);
@@ -723,6 +731,8 @@ static int host_reset(struct comp_dev *dev)
 	/* reset dma channel as we have put it */
 	hd->chan = DMA_CHAN_INVALID;
 
+	hd->copy_blocking = 0;
+
 	host_pointer_reset(dev);
 #if !CONFIG_DMA_GW
 	hd->source = NULL;
@@ -845,6 +855,22 @@ static void host_cache(struct comp_dev *dev, int cmd)
 	}
 }
 
+static int host_set_attribute(struct comp_dev *dev, uint32_t type,
+			      uint32_t value)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+
+	switch (type) {
+	case COMP_ATTR_COPY_BLOCKING:
+		hd->copy_blocking = value;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 struct comp_driver comp_host = {
 	.type	= SOF_COMP_HOST,
 	.ops	= {
@@ -860,6 +886,7 @@ struct comp_driver comp_host = {
 #endif
 		.position	= host_position,
 		.cache		= host_cache,
+		.set_attribute	= host_set_attribute,
 	},
 };
 
