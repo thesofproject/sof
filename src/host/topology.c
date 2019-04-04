@@ -53,7 +53,7 @@ struct shared_lib_table *lib_table;
 static void register_comp(int comp_type)
 {
 	int index;
-	char message[DEBUG_MSG_LEN];
+	char message[DEBUG_MSG_LEN + MAX_LIB_NAME_LEN];
 
 	/* register file comp driver (no shared library needed) */
 	if (comp_type == SND_SOC_TPLG_DAPM_DAI_IN ||
@@ -77,11 +77,19 @@ static void register_comp(int comp_type)
 			lib_table[index].comp_name);
 		debug_print(message);
 
-		/* register comp driver */
-		void (*comp_init)() =
-			(void (*)(void))dlsym(lib_table[index].handle,
-					      lib_table[index].comp_init);
-		comp_init();
+		/* open shared library object */
+		sprintf(message, "opening shared lib %s\n",
+			lib_table[index].library_name);
+		debug_print(message);
+
+		lib_table[index].handle = dlopen(lib_table[index].library_name,
+						 RTLD_LAZY);
+		if (!lib_table[index].handle) {
+			fprintf(stderr, "error: %s\n", dlerror());
+			exit(EXIT_FAILURE);
+		}
+
+		/* comp init is executed on lib load */
 		lib_table[index].register_drv = 1;
 	}
 
