@@ -83,6 +83,7 @@
 #define DGCS_BF		BIT(9)  /* buffer full */
 #define DGCS_BNE	BIT(8)  /* buffer not empty */
 #define DGCS_FIFORDY	BIT(5)  /* enable FIFO */
+#define DGCS_GBUSY	BIT(15) /* gateway busy */
 
 /* DGBBA */
 #define DGBBA_MASK	0xffff80
@@ -294,6 +295,7 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 	}
 
 	chan->state &= ~HDA_STATE_HOST_PRELOAD;
+
 	if (chan->cb) {
 		/* loop over each period */
 		period_cnt = chan->buffer_bytes / chan->period_bytes;
@@ -310,12 +312,28 @@ static int hda_dma_host_preload(struct dma *dma, struct hda_chan_data *chan)
 static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
 			      int bytes)
 {
+	uint32_t status;
+	uint64_t delay;
 	struct dma_sg_elem next = {
 			.src = DMA_RELOAD_LLI,
 			.dest = DMA_RELOAD_LLI,
 			.size = bytes
 	};
+	/* wait until DMA finish its copy */
+	status = host_dma_reg_read(chan->dma, chan->index, DGCS);
+	delay = platform_timer_get(platform_timer) +
+			 clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+			 PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
+	while (status & DGCS_BNE || status & DGCS_GBUSY) {
+		if (platform_timer_get(platform_timer) > delay) {
+			tracev_hddma("hda-dmac: copy took more than %d [ms]",
+				     PLATFORM_HOST_DMA_TIMEOUT);
+			break;
+		}
+	}
+
+	/* DMA copy is done, now we can proceed further */
 	if (chan->cb) {
 		chan->cb(chan->cb_data, DMA_CB_TYPE_PROCESS, &next);
 		if (next.size == DMA_RELOAD_END)
