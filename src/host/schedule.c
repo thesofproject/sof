@@ -55,7 +55,10 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->func = func;
 	task->data = data;
 
-	return schedulers[task->type]->schedule_task_init(task, xflags);
+	if (schedulers[task->type]->schedule_task_init)
+		return schedulers[task->type]->schedule_task_init(task, xflags);
+	else
+		return -ENOENT;
 }
 
 void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
