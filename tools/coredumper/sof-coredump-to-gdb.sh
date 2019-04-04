@@ -8,11 +8,15 @@ elf="${1}"
 dump="${2}"
 
 reader_name="sof-coredump-reader.py" # in case it is changed
-reader_output="$(${THIS_SCRIPT_DIR}/${reader_name} -vc -i ${dump} --stdout -l 4)"
+reader_output="$(${THIS_SCRIPT_DIR}/${reader_name} -vc -i ${dump} -l 4 \
+		-o coredump-reader-output.txt)"
 reader_result="$?" # if $reader_name script fails, running xt-gdb is pointless
 if [[ ${reader_result} -ne 0 ]] ; then
 	echo "${reader_name} failed!"
 	exit ${reader_result}
 else
-	xt-gdb "${elf}" < <(echo "${reader_output}")
+	(echo "${reader_output}")
+	echo "quit" >> coredump-reader-output.txt
+	xt-gdb -q "${elf}" --command=coredump-reader-output.txt
+	rm -rf coredump-reader-output.txt
 fi
