@@ -436,6 +436,7 @@ def CoreDumpFactory(dsp_arch):
 					"configidlo",
 					"numaregs",
 					"stackoffset",
+					"stackptr",
 					# }
 					"exccause",
 					"excvaddr",
@@ -504,7 +505,7 @@ def CoreDumpFactory(dsp_arch):
 			string = ''.join([self.fmt(is_gdb, x)
 				for x in flaten(
 					[chunks(word, self.columncount) for word in [
-						["arch", "totalsize", "stackoffset"],
+						["arch", "totalsize", "stackptr", "stackoffset"],
 						["configidhi", "configidlo", "numaregs"],
 					]]
 				)
@@ -647,7 +648,7 @@ class CoreDumpReader(object):
 		verbosePrint(self.core_dump.windowstart_process())
 
 		verbosePrint("# Location: " + str(self.file_info));
-		stack_base = self.core_dump.a[1] + 16
+		stack_base = self.core_dump.stackptr
 		stack_dw_num = int(len(self.stack)/AR_WINDOW_WIDTH)
 		verbosePrint("# Stack dumped from {:08x} dwords num {:d}"
 			.format(stack_base, stack_dw_num))
