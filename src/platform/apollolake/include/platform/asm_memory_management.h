@@ -53,7 +53,7 @@
 	// SEGMENT #0
 	movi \az, (SHIM_BASE + SHIM_HSPGISTS)
 	movi \ax, (SHIM_BASE + SHIM_HSPGCTL)
-	movi \ay, HPSRAM_MASK()
+	movi \ay, HPSRAM_MASK(0)
 	s32i \ay, \ax, 0
 	memw
 	/* since HPSRAM EBB bank #0 might be used as buffer for legacy

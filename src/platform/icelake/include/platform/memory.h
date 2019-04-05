@@ -307,6 +307,8 @@
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
+#define SOF_MEMORY_SIZE		(SOF_STACK_BASE - HP_SRAM_BASE)
+
 /*
  * The LP SRAM Heap and Stack on Icelake are organised like this :-
  *

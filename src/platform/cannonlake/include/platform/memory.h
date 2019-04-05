@@ -35,10 +35,7 @@
 
 #include <config.h>
 #include <arch/memory.h>
-
-#if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <cavs/memory.h>
-#endif
 
 /* physical DSP addresses */
 
