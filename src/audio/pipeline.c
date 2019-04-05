@@ -462,12 +462,19 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 {
 	struct pipeline_data *ppl_data = data;
+	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
+	int is_same_sched =
+		pipeline_is_same_sched_comp(current->pipeline,
+					    ppl_data->start->pipeline);
 	int err = 0;
 
 	tracev_pipe("pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
 
-	if (!comp_is_single_pipeline(current, ppl_data->start)) {
+	/* trigger should propagate to the connected pipelines,
+	 * which need to be scheduled together
+	 */
+	if (!is_single_ppl && !is_same_sched) {
 		tracev_pipe_with_ids(current->pipeline, "pipeline_comp_trigger"
 				     "(), current is from another pipeline");
 		return 0;
