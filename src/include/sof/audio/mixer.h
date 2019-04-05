@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,68 +25,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
+ * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/lock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
-#include <sof/audio/component.h>
+#ifndef __INCLUDE_AUDIO_MIXER_H__
+#define __INCLUDE_AUDIO_MIXER_H__
 
-#include "comp_mock.h"
+#ifdef UNIT_TEST
+void sys_comp_mixer_init(void);
+#endif
 
-static struct comp_dev *mock_comp_new(struct sof_ipc_comp *comp)
-{
-	return calloc(1, sizeof(struct comp_dev));
-}
-
-static void mock_comp_free(struct comp_dev *dev)
-{
-	free(dev);
-}
-
-static int mock_comp_params(struct comp_dev *dev)
-{
-	return 0;
-}
-
-static int mock_comp_cmd(struct comp_dev *dev, int cmd, void *data,
-			 int max_data_size)
-{
-	return 0;
-}
-
-static int mock_comp_copy(struct comp_dev *dev)
-{
-	return 0;
-}
-
-static int mock_comp_reset(struct comp_dev *dev)
-{
-	return 0;
-}
-
-static int mock_comp_prepare(struct comp_dev *dev)
-{
-	return 0;
-}
-
-struct comp_driver comp_mock = {
-	.type	= SOF_COMP_MOCK,
-	.ops	= {
-		.new		= mock_comp_new,
-		.free		= mock_comp_free,
-		.params		= mock_comp_params,
-		.cmd		= mock_comp_cmd,
-		.copy		= mock_comp_copy,
-		.prepare	= mock_comp_prepare,
-		.reset		= mock_comp_reset,
-	},
-};
-
-void sys_comp_mock_init(void)
-{
-	comp_register(&comp_mock);
-}
+#endif

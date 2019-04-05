@@ -40,6 +40,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/audio/mixer.h>
 
 #include "comp_mock.h"
 
