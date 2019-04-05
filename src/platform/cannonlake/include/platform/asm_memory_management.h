@@ -87,7 +87,7 @@
 .macro m_cavs_lpsram_power_down_entire ax, ay, az
 	movi \az, LSPGISTS
 	movi \ax, LSPGCTL
-	movi \ay, LPSRAM_MASK
+	movi \ay, LPSRAM_MASK()
 	s32i \ay, \ax, 0
 	memw
   // assumed that HDA shared dma buffer will be in LPSRAM

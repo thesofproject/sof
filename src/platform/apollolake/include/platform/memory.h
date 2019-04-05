@@ -35,10 +35,8 @@
 
 #include <config.h>
 #include <arch/memory.h>
-
-#if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <cavs/memory.h>
-#endif
+
 /* physical DSP addresses */
 
 /* shim */
@@ -329,6 +327,8 @@
 #define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
 #define SOF_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE)
 #define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
+
+#define SOF_MEMORY_SIZE		(SOF_STACK_BASE - HP_SRAM_BASE)
 
 /*
  * The LP SRAM Heap and Stack on Apollolake are organised like this :-

@@ -33,24 +33,19 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#include <cavs/memory.h>
+
 #define PLATFORM_RESET_MHE_AT_BOOT		1
 
 #define PLATFORM_DISABLE_L2CACHE_AT_BOOT	1
 
-#define PLATFORM_CORE_COUNT			2
-
-#define PLATFORM_LPSRAM_EBB_COUNT		2
-
-#define PLATFORM_HPSRAM_EBB_COUNT		8
-
-#define PLATFORM_HPSRAM_SEGMENTS		1
-
 #define PLATFORM_MASTER_CORE_ID			0
 
-#define HPSRAM_MASK(ignored)	((1 << PLATFORM_HPSRAM_EBB_COUNT) - 1)
-#define LPSRAM_MASK(ignored)	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
-#define LPSRAM_BANK_SIZE (64 * 1024)
-#define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * LPSRAM_BANK_SIZE)
+#define MAX_CORE_COUNT				2
+
+#if PLATFORM_CORE_COUNT > MAX_CORE_COUNT
+#error "Invalid core count - exceeding core limit"
+#endif
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 

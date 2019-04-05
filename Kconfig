@@ -2,6 +2,28 @@ mainmenu "SOF $(PROJECTVERSION) Configuration"
 
 comment "Compiler: $(CC_VERSION_TEXT)"
 
+menu "CAVS"
+
+config HP_MEMORY_BANKS
+	int "HP memory banks count"
+	depends on CAVS
+	default 8
+	help
+	  Available memory banks count for High Performance memory
+	  Lowering available banks could result in lower power consumption
+	  Too low count should result in unresponsive/crashing image due to not
+	  enough space for FW base image
+	  Banks are 64kb in size.
+
+config LP_MEMORY_BANKS
+	int "LP memory banks count"
+	default 1
+	depends on CAVS
+	help
+	  Available memory banks count for Low Power memory
+
+endmenu
+
 config HOST_PTABLE
 	bool
 	default n

@@ -124,27 +124,28 @@ static void irq_lvl2_level5_handler(void *data)
 
 /* DSP internal interrupts */
 static struct irq_desc dsp_irq[PLATFORM_CORE_COUNT][4] = {
-#if CAVS_VERSION >= CAVS_VERSION_1_8
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
 	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
-
+#if PLATFORM_CORE_COUNT > 1
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
 	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
 #endif
-
+#if PLATFORM_CORE_COUNT > 2
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
 	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
-
+#endif
+#if PLATFORM_CORE_COUNT > 3
 	{{IRQ_NUM_EXT_LEVEL2, irq_lvl2_level2_handler, },
 	{IRQ_NUM_EXT_LEVEL3, irq_lvl2_level3_handler, },
 	{IRQ_NUM_EXT_LEVEL4, irq_lvl2_level4_handler, },
 	{IRQ_NUM_EXT_LEVEL5, irq_lvl2_level5_handler, } },
+#endif
 };
 
 struct irq_desc *platform_irq_get_parent(uint32_t irq)
