@@ -5,6 +5,7 @@
 #include <cmocka.h>
 
 #include <sof/alloc.h>
+#include <sof/notifier.h>
 #include <sof/audio/component.h>
 #include <mock_trace.h>
 
