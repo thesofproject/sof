@@ -201,7 +201,6 @@ static void verify_s32le_Xch_to_1ch(struct comp_dev *dev, struct comp_buffer *si
 static void verify_s16le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint16_t *src = (uint16_t *)source->r_ptr;
 	const uint16_t *dst = (uint16_t *)sink->w_ptr;
 	uint32_t channels = dev->params.channels;
@@ -220,7 +219,6 @@ static void verify_s16le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *si
 static void verify_s16le_4ch_to_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint16_t *src = (uint16_t *)source->r_ptr;
 	const uint16_t *dst = (uint16_t *)sink->w_ptr;
 	uint32_t channels = dev->params.channels;
@@ -239,7 +237,6 @@ static void verify_s16le_4ch_to_4ch(struct comp_dev *dev, struct comp_buffer *si
 static void verify_s32le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint32_t *src = (uint32_t *)source->r_ptr;
 	const uint32_t *dst = (uint32_t *)sink->w_ptr;
 	uint32_t channels = dev->params.channels;
@@ -258,7 +255,6 @@ static void verify_s32le_2ch_to_2ch(struct comp_dev *dev, struct comp_buffer *si
 static void verify_s32le_4ch_to_4ch(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	const uint32_t *src = (uint32_t *)source->r_ptr;
 	const uint32_t *dst = (uint32_t *)sink->w_ptr;
 	uint32_t channels = dev->params.channels;
