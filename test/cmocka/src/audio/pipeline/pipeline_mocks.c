@@ -51,12 +51,6 @@ void schedule_task_free(struct task *task)
 	task->data = NULL;
 }
 
-void schedule_edf_task_idle(struct task *task, uint64_t deadline)
-{
-	(void)deadline;
-	(void)task;
-}
-
 void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
 		   uint32_t flags)
 {
