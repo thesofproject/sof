@@ -33,6 +33,7 @@
 
 #include <sof/alloc.h>
 #include <sof/trace.h>
+#include <sof/audio/component.h>
 
 #include <mock_trace.h>
 
