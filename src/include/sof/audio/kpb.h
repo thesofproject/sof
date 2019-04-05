@@ -131,4 +131,8 @@ struct comp_data {
 	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
 };
 
+#ifdef UNIT_TEST
+void sys_comp_kpb_init(void);
+#endif
+
 #endif
