@@ -59,15 +59,16 @@ endif()
 target_include_directories(sof_options INTERFACE ${ROOT_DIR}/include)
 
 if(BUILD_UNIT_TESTS)
-	# rest of this file is not needed for unit tests
-	return()
+	set(stdlib_flag "")
+else()
+	set(stdlib_flag "-nostdlib")
 endif()
 
 # linker flags
-target_link_libraries(sof_options INTERFACE -nostdlib -Wl,--no-check-sections -ucall_user_start -Wl,-static)
+target_link_libraries(sof_options INTERFACE ${stdlib_flag} -Wl,--no-check-sections -ucall_user_start -Wl,-static)
 
 # C & ASM flags
-target_compile_options(sof_options INTERFACE -fno-inline-functions -nostdlib -mlongcalls)
+target_compile_options(sof_options INTERFACE ${stdlib_flag} -fno-inline-functions -mlongcalls)
 
 # C flags
 # TODO: Generator expressions are supported only with Make and Ninja,
@@ -80,6 +81,11 @@ target_compile_options(sof_options INTERFACE -fno-inline-functions -nostdlib -ml
 #   3) custom function that is used instead of target_sources and sets flags
 #      for each added source based on file extension
 target_compile_options(sof_options INTERFACE $<$<COMPILE_LANGUAGE:C>:-O2 -g -Wall -Werror -Wl,-EL -Wmissing-prototypes -mtext-section-literals>)
+
+if(BUILD_UNIT_TESTS)
+	# rest of this file is not needed for unit tests
+	return()
+endif()
 
 if(XCC)
 	file(GLOB LINK_DEPS
