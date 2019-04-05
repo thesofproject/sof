@@ -38,6 +38,7 @@
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
+#include <sof/audio/mixer.h>
 #include <sof/ut.h>
 
 #define trace_mixer(__e, ...) \

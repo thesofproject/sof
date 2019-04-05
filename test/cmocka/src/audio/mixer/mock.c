@@ -72,7 +72,3 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 {
 	return 0;
 }
-
-void ll_schedule_default(struct task *w, uint64_t timeout)
-{
-}
