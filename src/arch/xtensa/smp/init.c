@@ -90,10 +90,6 @@ static void initialize_pointers_per_core(void)
 	p->xtos_intstruct = &core_data->xtos_int_data;
 	p->xtos_interrupt_table = &core_data->xtos_int_data.xtos_interrupt_table.array[0];
 	p->xtos_interrupt_mask_table = &core_data->xtos_int_data.xtos_interrupt_mask_table[0];
-	p->xtos_stack_for_interrupt_2 = core_data->xtos_stack_for_interrupt_2;
-	p->xtos_stack_for_interrupt_3 = core_data->xtos_stack_for_interrupt_3;
-	p->xtos_stack_for_interrupt_4 = core_data->xtos_stack_for_interrupt_4;
-	p->xtos_stack_for_interrupt_5 = core_data->xtos_stack_for_interrupt_5;
 }
 
 /**

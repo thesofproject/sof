@@ -125,11 +125,6 @@ LABEL(_Level,FromVector):
 	wsr.intclear	a12	// clear if edge-trig or s/w or wr/err (else no effect)
 	save_loops_mac16	a1, a13, a14
 
-	// Change stack pointer
-	xtos_stack_addr_percore	a13, _INTERRUPT_LEVEL, xtos_stack_for_interrupt
-	s32i					a1, a13, 0
-	addi					a1, a13, XTOS_INT_STACK_SIZE
-
 /* Load the handler from the table, initialize two args (interrupt
  * number and exception stack frame), then call the interrupt handler.
  * Note: The callx12 preserves the original user task's a4..a15.*/
@@ -165,11 +160,6 @@ LABEL(_Level,FromVector):
 	save_loops_mac16	a1, a13, a14
 
 /* Loop to handle all pending interrupts. */
-
-	// Change stack pointer
-	xtos_stack_addr_percore	a13, _INTERRUPT_LEVEL, xtos_stack_for_interrupt
-	s32i					a1, a13, 0
-	addi					a1, a13, XTOS_INT_STACK_SIZE
 
 LABEL(.L1,_loop0):
 	neg	a12, a15
@@ -245,9 +235,6 @@ LABEL(spurious,int):
 # endif
 	retw
 LABEL(return,from_exc):
-	// a5 contains ptr to stack dedicated for interrupt
-	addi	a5, a5, -XTOS_INT_STACK_SIZE
-	l32i	a5, a5, 0
 
 # if XTOS_CNEST
 	s32i	a2, a5, ESF_TOTALSIZE-20	// restore nested-C-func call-chain ptr
