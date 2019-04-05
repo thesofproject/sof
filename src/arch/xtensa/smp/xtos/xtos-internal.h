@@ -333,17 +333,6 @@ XTOS_PENDING_OFS:	.space	4	/* _xtos_pending variable */
 	add		\ax, \ax, \ay
 	.endm
 
-	// xtos_stack_addr_percore ax, int_level, stack_name
-	// Pointer to dedicated interrupt stack.
-	.macro	xtos_stack_addr_percore ax, int_level, stack_name
-#if XCHAL_HAVE_THREADPTR
-	rur.threadptr	\ax
-	l32i		\ax, \ax, XTOS_PTR_TO_\stack_name\()_&int_level
-#else
-#error "This architecture requires core support for XCHAL_HAVE_THREADPTR"
-#endif
-	.endm
-
 	// xtos_stack_addr_percore_add ax, stack_name, offset
 	// Pointer to dedicated interrupt stack + offset.
 	.macro	xtos_stack_addr_percore_add ax, stack_name, offset
@@ -508,8 +497,6 @@ extern void xtos_unhandled_interrupt();
 /*  For asm macros; works for positive a,b smaller than 1000:  */
 #define GREATERTHAN(a, b)	(((b) - (a)) & ~0xFFF)
 #define EQUAL(a, b)		((1 << (a)) & (1 << (b)))
-
-#define XTOS_INT_STACK_SIZE	4096
 
 // sizeof(xtos_enabled)
 #define XTOS_ENABLED_SIZE_PER_CORE	(4)

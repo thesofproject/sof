@@ -44,11 +44,6 @@ struct thread_data {
 
 struct xtos_core_data {
 	struct XtosInterruptStructure xtos_int_data;
-	int xtos_stack_for_interrupt_2[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_3[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_4[XTOS_INT_STACK_SIZE / 4];
-	int xtos_stack_for_interrupt_5[XTOS_INT_STACK_SIZE / 4];
-
 	struct thread_data *thread_data_ptr;
 };
 
