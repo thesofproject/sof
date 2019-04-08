@@ -73,6 +73,7 @@
 #define DMA_DEV_SSP		BIT(2) /**< connectable to SSP fifo */
 #define DMA_DEV_DMIC		BIT(3) /**< connectable to DMIC fifo */
 #define DMA_DEV_SSI		BIT(4) /**< connectable to SSI / SPI fifo */
+#define DMA_DEV_SOUNDWIRE	BIT(5) /**< connectable to SoundWire link */
 
 /* DMA access privilege flag */
 #define DMA_ACCESS_EXCLUSIVE	1
