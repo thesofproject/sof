@@ -53,7 +53,8 @@ static void kpb_init_draining(struct kpb_comp_data *kpb,
 static uint64_t draining_task(void *arg);
 static void kpb_buffer_data(struct kpb_comp_data *kpb,
 			    struct comp_buffer *source, size_t size);
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req);
+static uint8_t kpb_have_enough_history_data(struct kpb_comp_data *kpb,
+					    struct hb *buff, size_t his_req);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -311,8 +312,11 @@ static void kpb_cache(struct comp_dev *dev, int cmd)
 
 static int kpb_reset(struct comp_dev *dev)
 {
+	struct kpb_comp_data *kpb = comp_get_drvdata(dev);
+
 	trace_kpb("kpb_reset()");
 
+	kpb->is_internal_buffer_full = 0;
 	/* TODO: free all buffers allocated at prepare stage*/
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -336,6 +340,7 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	size_t copy_bytes = 0;
+	static size_t buffered;
 
 	tracev_kpb("kpb_copy()");
 
@@ -380,6 +385,11 @@ static int kpb_copy(struct comp_dev *dev)
 			 * a small portion of it?
 			 */
 			kpb_buffer_data(kpb, source, copy_bytes);
+
+			if (buffered < KPB_MAX_BUFFER_SIZE)
+				buffered += copy_bytes;
+			else
+				kpb->is_internal_buffer_full = 1;
 		}
 	} else {
 		ret = -EIO;
@@ -577,7 +587,7 @@ static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 				"sink not ready for draining");
 
 		return;
-	} else if (!kpb_have_enough_history_data(buff, history_depth)) {
+	} else if (!kpb_have_enough_history_data(kpb, buff, history_depth)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
 
@@ -669,11 +679,15 @@ static uint64_t draining_task(void *arg)
 	return 0;
 }
 
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
+static uint8_t kpb_have_enough_history_data(struct kpb_comp_data *kpb,
+					    struct hb *buff, size_t his_req)
 {
 	uint8_t ret = 0;
 	size_t buffered_data = 0;
 	struct hb *first_buff = buff;
+
+	if (kpb->is_internal_buffer_full)
+		return 1;
 
 	while (buffered_data < his_req) {
 		if (buff->state == KPB_BUFFER_FREE) {
@@ -696,9 +710,6 @@ static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
 			buff = buff->next;
 		else
 			break;
-
-
-
 	}
 	ret = (buffered_data >= his_req) ? 1 : 0;
 	return ret;
