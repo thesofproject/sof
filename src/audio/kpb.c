@@ -40,9 +40,9 @@
 #include <uapi/ipc/topology.h>
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/kpb.h>
 #include <sof/list.h>
-#include <sof/audio/buffer.h>
 #include <sof/ut.h>
 
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
@@ -53,7 +53,7 @@ static void kpb_init_draining(struct kpb_comp_data *kpb,
 static uint64_t draining_task(void *arg);
 static void kpb_buffer_data(struct kpb_comp_data *kpb,
 			    struct comp_buffer *source);
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req, size_t *buffer);
+static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -267,9 +267,9 @@ static int kpb_prepare(struct comp_dev *dev)
 			   SOF_TASK_PRI_MED, draining_task,
 			   &cd->draining_task_data, 0, 0);
 
-	/* search for the channel selector sink.
+	/* search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
-	 * is connected to the KPB sinks
+	 * is connected to the KPB sinks as well as host device.
 	 */
 	list_for_item(blist, &dev->bsink_list) {
 		sink = container_of(blist, struct comp_buffer, source_list);
@@ -278,12 +278,14 @@ static int kpb_prepare(struct comp_dev *dev)
 			break;
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
-			/* we found proper sink */
+			/* we found proper real time sink */
 			cd->rt_sink = sink;
-			break;
+		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
+			cd->cli_sink = sink;
+		} else {
+			continue;
 		}
 	}
-
 	return ret;
 }
 
@@ -545,13 +547,13 @@ static int kpb_register_client(struct kpb_comp_data *kpb,
  */
 static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 {
-	uint8_t is_sink_ready = (kpb->clients[cli->id].sink->sink->state
+	uint8_t is_sink_ready = (kpb->cli_sink->sink->state
 				 == COMP_STATE_ACTIVE) ? 1 : 0;
 	size_t history_depth = cli->history_depth;
 	struct hb *buff = &kpb->history_buffer;
-	size_t buffered = 0;
-	size_t read_offset = 0;
 	struct hb *first_buff = buff;
+	size_t buffered = 0;
+	size_t local_buff_buffered_size = 0;
 
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
@@ -573,7 +575,7 @@ static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 				"sink not ready for draining");
 
 		return;
-	} else if (!kpb_have_enough_history_data(buff, history_depth, &buffered)) {
+	} else if (!kpb_have_enough_history_data(buff, history_depth)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
 
@@ -587,33 +589,34 @@ static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 			buff = buff->next;
 		}
 
-		/*TODO: temp code...*/
-		buffered = 0;
-		while (1) {
+		/* calculate read pointer*/
+		first_buff = buff;
+		do {
+			local_buff_buffered_size = 0;
 
 			if (buff->state == KPB_BUFFER_FREE) {
-				buffered += (uint32_t)buff->w_ptr - (uint32_t)buff->start_addr;
+				local_buff_buffered_size = (uint32_t)buff->w_ptr - (uint32_t)buff->start_addr;
+				buffered += local_buff_buffered_size;
 			} else if (buff->state == KPB_BUFFER_FULL) {
-				buffered += (uint32_t)buff->end_addr - (uint32_t)buff->start_addr;
+				local_buff_buffered_size = (uint32_t)buff->end_addr - (uint32_t)buff->start_addr;
+				buffered += local_buff_buffered_size;
 			} else {
 				trace_kpb_error("kpb_init_draining() error: "
 						"incorrect buffer label");
 			}
 
-			if (buffered > history_depth) {
-				read_offset = buffered - history_depth;
-				buff->r_ptr = buff->start_addr + read_offset;
-				break;
-			} else if (buffered == history_depth) {
+			if (history_depth > buffered) {
+				buff = buff->prev;
+			} else if (history_depth == buffered) {
 				buff->r_ptr = buff->start_addr;
 				break;
 			} else {
-				buff = buff->prev;
+				buff->r_ptr = buff->start_addr + (buffered - history_depth);
 			}
-		}
+		} while (buff != first_buff);
 
 		/* add one-time draining task into the scheduler */
-		kpb->draining_task_data.sink = kpb->clients[cli->id].sink;
+		kpb->draining_task_data.sink = kpb->cli_sink;
 		kpb->draining_task_data.history_buffer = buff;
 		kpb->draining_task_data.history_depth = history_depth;
 		schedule_task(&kpb->draining_task, 0, 100,
@@ -660,7 +663,7 @@ static uint64_t draining_task(void *arg)
 	return 0;
 }
 
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req, size_t *buffered)
+static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
 {
 	uint8_t ret = 0;
 	size_t buffered_data = 0;
@@ -691,8 +694,6 @@ static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req, siz
 
 
 	}
-
-	*buffered = buffered_data;
 	ret = (buffered_data >= his_req) ? 1 : 0;
 	return ret;
 }

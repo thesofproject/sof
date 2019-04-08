@@ -149,6 +149,7 @@ struct kpb_comp_data {
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	struct sof_kpb_config config; /**< component configuration data */
 	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
+	struct comp_buffer *cli_sink; /**< draining sink (client) */
 };
 
 #ifdef UNIT_TEST
