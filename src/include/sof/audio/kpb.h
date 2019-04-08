@@ -48,7 +48,7 @@
 #define	KPB_SAMPLING_WIDTH 16 /**< number of bits */
 #define	KPB_SAMPLNG_FREQUENCY 16000 /* max sampling frequency in Hz */
 #define KPB_NR_OF_CHANNELS 2
-#define KPB_SAMPLE_CONTAINER_SIZE ((KPB_SAMPLING_WIDTH == 32) ? 64 : 32)
+#define KPB_SAMPLE_CONTAINER_SIZE ((KPB_SAMPLING_WIDTH == 16) ? 16 : 32)
 #define KPB_MAX_BUFFER_SIZE ((KPB_SAMPLNG_FREQUENCY / 1000) * \
 	(KPB_SAMPLE_CONTAINER_SIZE / 8) * KPB_MAX_BUFF_TIME * \
 	KPB_NR_OF_CHANNELS)
@@ -116,6 +116,7 @@ struct hb {
 	void *w_ptr; /**< buffer write pointer */
 	void *r_ptr; /**< buffer read pointer */
 	struct hb *next; /**< next history buffer */
+	struct hb *prev; /**< next history buffer */
 };
 
 struct dd {

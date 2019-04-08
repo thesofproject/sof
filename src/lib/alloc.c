@@ -258,8 +258,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	/* check if we have enough consecutive blocks for requested
 	 * allocation size.
 	 */
-	for (current = map->first_free; current < map->count ||
-	     count > remaining; current++) {
+	for (current = map->first_free; current < map->count; current++) {
 		hdr = &map->block[current];
 
 		if (!hdr->used)
@@ -270,11 +269,14 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 		trace_mem_error("error: %d blocks needed for allocation "
 				"but only %d blocks are remaining",
 				count, remaining);
+
+
 		return NULL;
 	}
 
 	/* we found enough space, let's allocate it */
 	start = map->first_free;
+
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
 	hdr = &map->block[start];
@@ -641,6 +643,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 
 	/* request spans > 1 block */
 	if (!ptr) {
+
 		/*
 		 * Find the best block size for request. We know, that we failed
 		 * to find a single large enough block, so, skip those.
@@ -650,6 +653,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 
 			/* allocate if block size is smaller than request */
 			if (heap->size >= bytes && map->block_size < bytes) {
+
+
 				ptr = alloc_cont_blocks(heap, i, caps, bytes);
 				if (ptr)
 					break;

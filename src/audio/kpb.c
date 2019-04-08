@@ -53,7 +53,7 @@ static void kpb_init_draining(struct kpb_comp_data *kpb,
 static uint64_t draining_task(void *arg);
 static void kpb_buffer_data(struct kpb_comp_data *kpb,
 			    struct comp_buffer *source);
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req);
+static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req, size_t *buffer);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -176,11 +176,15 @@ static int kpb_prepare(struct comp_dev *dev)
 	/*! current allocation size */
 	size_t ca_size = hb_size;
 	/*! memory caps priorites for history buffer */
-	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP,
-				       SOF_MEM_CAPS_RAM};
+	int hb_mcp[KPB_NO_OF_MEM_POOLS] = {SOF_MEM_CAPS_LP, SOF_MEM_CAPS_HP, SOF_MEM_CAPS_RAM };
 	void *ptr = NULL;
+	size_t _temp = 0;
 
 	trace_kpb("kpb_prepare()");
+
+	/* Initialize history buffer */
+	cd->history_buffer.next = &cd->history_buffer;
+	cd->history_buffer.prev = &cd->history_buffer;
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -208,11 +212,12 @@ static int kpb_prepare(struct comp_dev *dev)
 			if (hb_size > 0) {
 				new_hb = rzalloc(RZONE_RUNTIME,
 						 SOF_MEM_CAPS_RAM,
-						 COMP_SIZE(struct hb));
+						 sizeof(struct hb));
 				history_buffer->next = new_hb;
 				new_hb->state = KPB_BUFFER_OFF;
-				new_hb->next = history_buffer;
+				new_hb->prev = history_buffer;
 				history_buffer = new_hb;
+				cd->history_buffer.prev = new_hb;
 				ca_size = hb_size;
 				i++;
 			}
@@ -225,8 +230,9 @@ static int kpb_prepare(struct comp_dev *dev)
 			 * However, bigger values like HEAP_HP_BUFFER_BLOCK_SIZE
 			 * will result in lower accuracy of allocation.
 			 */
-			ca_size = ca_size - KPB_ALLOCATION_STEP;
-			if (ca_size <= 0) {
+			_temp = (ca_size - KPB_ALLOCATION_STEP);
+			ca_size = (ca_size < _temp) ? 0 : _temp;
+			if (ca_size == 0) {
 				ca_size = hb_size;
 				i++;
 			}
@@ -235,6 +241,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	}
 
 	/* have we succeed in allocation of at least one buffer? */
+	/*TODO: check if we have allocated as much as we wanted */
 	if (!cd->history_buffer.start_addr) {
 		trace_kpb_error("Failed to allocate space for "
 				"KPB bufefr/s");
@@ -406,7 +413,7 @@ static void kpb_buffer_data(struct kpb_comp_data *kpb,
 	}
 
 	while (size_to_copy) {
-		space_avail = (int)buff->end_addr - (int)buff->w_ptr;
+		space_avail = (uint32_t)buff->end_addr - (uint32_t)buff->w_ptr;
 
 		if (size_to_copy > space_avail) {
 			memcpy(buff->w_ptr, source->r_ptr, space_avail);
@@ -539,23 +546,34 @@ static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 	size_t history_depth = cli->history_depth;
 	struct hb *buff = &kpb->history_buffer;
 	size_t buffered = 0;
-	size_t read_offset;
+	size_t read_offset = 0;
 	struct hb *first_buff = buff;
 
-	if (kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED) {
+	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
+		trace_kpb_error("kpb_init_draining() error: "
+				"wrong client id");
+
+		return;
+	}
+	else if (kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED) {
 		/* TODO: possibly move this check to draining task
 		 * the doubt is if HOST managed to change the sink state
 		 * at notofication time
 		 */
 		trace_kpb_error("kpb_init_draining() error: "
 				"requested draining for unregistered client");
+
+		return;
 	} else if (!is_sink_ready) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"sink not ready for draining");
 
-	} else if (!kpb_have_enough_history_data(buff, history_depth)) {
+		return;
+	} else if (!kpb_have_enough_history_data(buff, history_depth, &buffered)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
+
+		return;
 	} else {
 		/* draining accepted, find proper buffer to start reading */
 		while (buff->next && buff->next != first_buff) {
@@ -565,29 +583,35 @@ static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 			buff = buff->next;
 		}
 
-		while (buffered < history_depth) {
-			if (buff->state == KPB_BUFFER_FULL) {
-				buffered += (int)buff->end_addr -
-					    (int)buff->start_addr;
+		/*TODO: temp code...*/
+		buffered = 0;
+		while (1) {
+
+			if (buff->state == KPB_BUFFER_FREE) {
+				buffered += (uint32_t)buff->w_ptr - (uint32_t)buff->start_addr;
+			} else if (buff->state == KPB_BUFFER_FULL) {
+				buffered += (uint32_t)buff->end_addr - (uint32_t)buff->start_addr;
 			} else {
-				buffered += (int)buff->w_ptr -
-					    (int)buff->start_addr;
+				trace_kpb_error("kpb_init_draining() error: "
+						"incorrect buffer label");
 			}
 
-			buff = buff->next;
+			if (buffered > history_depth) {
+				read_offset = buffered - history_depth;
+				buff->r_ptr = buff->start_addr + read_offset;
+				break;
+			} else if (buffered == history_depth) {
+				buff->r_ptr = buff->start_addr;
+				break;
+			} else {
+				buff = buff->prev;
+			}
 		}
 
-		read_offset = buffered - history_depth;
-
-		if (read_offset > 0)
-			buff->r_ptr = buff->start_addr + read_offset;
-		else
-			buff->r_ptr = buff->start_addr;
-
 		/* add one-time draining task into the scheduler */
-		kpb->draining_task_data.sink = cli->sink;
+		kpb->draining_task_data.sink = kpb->clients[cli->id].sink;
 		kpb->draining_task_data.history_buffer = buff;
-
+		kpb->draining_task_data.history_depth = history_depth;
 		schedule_task(&kpb->draining_task, 0, 100,
 			      SOF_SCHEDULE_FLAG_IDLE);
 	}
@@ -598,10 +622,11 @@ static uint64_t draining_task(void *arg)
 	struct dd *draining_data = (struct dd *)arg;
 	struct comp_buffer *sink = draining_data->sink;
 	struct hb *buff = draining_data->history_buffer;
-	size_t size_to_read = (int)buff->end_addr - (int)buff->r_ptr;
+	size_t size_to_read;
 	size_t size_to_copy;
 
 	while (draining_data->history_depth > 0 && sink->avail > 0) {
+		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
 		if (size_to_read > sink->avail) {
 			if (sink->avail >= draining_data->history_depth)
 				size_to_copy = draining_data->history_depth;
@@ -609,7 +634,7 @@ static uint64_t draining_task(void *arg)
 				size_to_copy = sink->avail;
 
 			memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
-			buff->r_ptr += (int)size_to_copy;
+			buff->r_ptr += (uint32_t)size_to_copy;
 			draining_data->history_depth -= size_to_copy;
 
 			comp_update_buffer_produce(sink, size_to_copy);
@@ -631,7 +656,7 @@ static uint64_t draining_task(void *arg)
 	return 0;
 }
 
-static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
+static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req, size_t *buffered)
 {
 	uint8_t ret = 0;
 	size_t buffered_data = 0;
@@ -639,19 +664,31 @@ static uint8_t kpb_have_enough_history_data(struct hb *buff, size_t his_req)
 
 	while (buffered_data < his_req) {
 		if (buff->state == KPB_BUFFER_FREE) {
-			buffered_data += ((int)buff->w_ptr -
-					  (int)buff->start_addr);
+			if (buff->w_ptr == buff->start_addr &&
+			    buff->next->state == KPB_BUFFER_FULL)
+			{
+				buffered_data += ((uint32_t)buff->end_addr -
+					  (uint32_t)buff->start_addr);
+			} else {
+				buffered_data += ((uint32_t)buff->w_ptr -
+					  (uint32_t)buff->start_addr);
+			}
+
 		} else {
-			buffered_data += ((int)buff->end_addr -
-					  (int)buff->start_addr);
+			buffered_data += ((uint32_t)buff->end_addr -
+					  (uint32_t)buff->start_addr);
 		}
 
 		if (buff->next && buff->next != first_buff)
 			buff = buff->next;
 		else
 			break;
+
+
+
 	}
 
+	*buffered = buffered_data;
 	ret = (buffered_data >= his_req) ? 1 : 0;
 	return ret;
 }
