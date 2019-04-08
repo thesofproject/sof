@@ -227,6 +227,8 @@ def FileInfoFactory(arch, filename_length):
 	raiseIfArchNotValid(arch)
 	class FileInfo(arch.endianness):
 		_fields_ = [
+			("hdr",  c_uint32),
+			("code",  c_uint32),
 			("filename", filename_length * c_char),
 			("line_no",  c_uint32)
 		]
@@ -456,6 +458,8 @@ def CoreDumpFactory(dsp_arch):
 				]
 			] + [
 				("a", dsp_arch.bitness * c_uint32)
+			] + [
+				("stack", c_uint32)
 			]
 
 		def __init__(self, columncount):
