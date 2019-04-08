@@ -45,6 +45,21 @@
 #include <sof/audio/buffer.h>
 #include <sof/ut.h>
 
+/*! KPB private data */
+struct comp_data {
+	/* runtime data */
+	uint8_t no_of_clients; /**< number of registered clients */
+	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
+	struct history_buffer his_buf_lp;
+	struct history_buffer his_buf_hp;
+	struct notifier kpb_events; /**< KPB events object */
+	struct task draining_task;
+	uint32_t source_period_bytes; /**< source number of period bytes */
+	uint32_t sink_period_bytes; /**< sink number of period bytes */
+	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
+};
+
+/*! KPB private functions */
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct kpb_comp_data *kpb,
 			       struct kpb_client *cli);
@@ -53,6 +68,7 @@ static void kpb_init_draining(struct kpb_comp_data *kpb,
 static uint64_t kpb_draining_task(void *arg);
 static void kpb_buffer_data(struct kpb_comp_data *kpb,
 			    struct comp_buffer *source);
+
 
 /**
  * \brief Create a key phrase buffer component.
