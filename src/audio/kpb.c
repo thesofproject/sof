@@ -195,6 +195,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	cd->history_buffer.prev = &cd->history_buffer;
 
 	cd->no_of_clients = 0;
+	cd->state = KPB_BUFFERING;
 
 	/* allocate history buffer/s */
 	while (hb_size > 0 && i < ARRAY_SIZE(hb_mcp)) {
@@ -347,7 +348,7 @@ static int kpb_copy(struct comp_dev *dev)
 	/* get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = kpb->rt_sink;
+	sink = (kpb->state == KPB_BUFFERING) ? kpb->rt_sink : kpb->cli_sink;
 
 	/* process source data */
 	/* check if there are valid pointers */
@@ -634,6 +635,7 @@ static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.sink = kpb->cli_sink;
 		kpb->draining_task_data.history_buffer = buff;
 		kpb->draining_task_data.history_depth = history_depth;
+		kpb->draining_task_data.state = &kpb->state;
 		schedule_task(&kpb->draining_task, 0, 100,
 			      SOF_SCHEDULE_FLAG_IDLE);
 	}
@@ -647,7 +649,7 @@ static uint64_t draining_task(void *arg)
 	size_t size_to_read;
 	size_t size_to_copy;
 
-	while (draining_data->history_depth > 0 && sink->free > 0) {
+	while (draining_data->history_depth > 0) {
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
 		if (size_to_read > sink->free) {
 			if (sink->free >= draining_data->history_depth)
@@ -675,6 +677,8 @@ static uint64_t draining_task(void *arg)
 			comp_update_buffer_produce(sink, size_to_copy);
 		}
 	}
+	/* switch KPB to copy real time stream to clients sink buffer */
+	*(draining_data->state) = KPB_DRAINING_ON_DEMAND;
 
 	return 0;
 }
