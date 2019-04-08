@@ -103,6 +103,13 @@ config CAVS_SSP
 	help
 	  Select this to enable Intel cAVS Synchronous Serial Port (SSP) driver.
 
+config CAVS_SOUNDWIRE
+	bool "Intel cAVS SoundWire driver"
+	depends on CAVS
+	default n
+	help
+	  Select this to enable Intel cAVS SoundWire driver.
+
 endmenu # "Drivers"
 
 config CAVS_VERSION_1_5
