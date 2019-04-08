@@ -47,6 +47,8 @@
 
 #define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * LPSRAM_BANK_SIZE)
 
+#define LPSRAM_MASK(ignored)	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
+
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
 #include <sof/platform.h>
