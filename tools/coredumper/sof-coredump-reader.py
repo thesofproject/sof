@@ -566,28 +566,49 @@ def CoreDumpFactory(dsp_arch):
 
 		def windowstart_process(self):
 			string = ""
-			binary = "b{0:b}".format(self.windowstart)
+			binary = "{0:b}".format(self.windowstart)
+			bit_start = len(binary)-1-self.windowbase
 			fnc_num = 0
-			header = " "
-			for it, c in enumerate(binary[1:]):
+			header = ""
+
+			for it, c in enumerate(binary[bit_start:]):
 				if c != "0":
-					header  += str(fnc_num)
+					header += str(fnc_num)
 					fnc_num += 1
 				else:
 					header += " "
-			string += "#              {0}\n".format(header)
-			string += "# windowstart: {0}\n".format(binary)
+			for it, c in enumerate(binary[:bit_start]):
+				if c != "0":
+					header += str(fnc_num)
+					fnc_num += 1
+				else:
+					header += " "
+			header = header[self.windowbase+1:]+ header[:self.windowbase+1]
 
+			string += "# windowbase: {:0X}\n".format(self.windowbase)
+			string += "#               {0}\n".format(header)
+			string += "# windowstart: b{0}\n\n".format(binary)
+			string += "#      reg         a0         a1\n"
+			string += "#                  (return)   (sptr)\n"
+			string += "#      ---         --------   -------\n"
 			fnc_num = 0
-			for iter, digit in enumerate(binary[1:]):
+			for iter, digit in enumerate(binary[bit_start:]):
 				if (digit == '1'):
-					reg = "ar{0}".format(
-						self.windowbase_shift_right(AR_WINDOW_WIDTH * -iter)
-					)
-					string  += "# {0:2d} ".format(++fnc_num)
-					string  += self.fmt_pretty_auto(reg).format(
+					reg = "ar{0}".format(AR_WINDOW_WIDTH * (self.windowbase - iter))
+					reg1 = "ar{0}".format(AR_WINDOW_WIDTH * (self.windowbase - iter) + 1)
+					string += "# {0:2d} ".format(++fnc_num)
+					string += self.fmt_pretty_auto(reg).format(
 						reg, self.reg_from_string(reg)
-					) + "\n"
+					) + "  {:0x} ".format(self.reg_from_string(reg1)) + "\n"
+					fnc_num += 1
+			for iter, digit in enumerate(binary[:bit_start]):
+				if (digit == '1'):
+					reg = "ar{0}".format(AR_WINDOW_WIDTH * (len(binary) - 1 - iter))
+					reg1 = "ar{0}".format(AR_WINDOW_WIDTH * (len(binary) - 1 - iter) + 1)
+					string += "# {0:2d} ".format(++fnc_num)
+					string += self.fmt_pretty_auto(reg).format(
+						reg, self.reg_from_string(reg)
+					) + "  {:0x} ".format(self.reg_from_string(reg1)) + "\n"
 					fnc_num += 1
 			return string
 
