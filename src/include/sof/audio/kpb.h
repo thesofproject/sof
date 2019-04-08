@@ -107,6 +107,16 @@ enum kpb_id {
 	KPB_HP,
 };
 
+struct hb {
+	enum buffer_state state; /**< state of the buffer */
+	void *start_addr; /**< buffer start address */
+	void *end_addr; /**< buffer end address */
+	void *w_ptr; /**< buffer write pointer */
+	void *r_ptr; /**< buffer read pointer */
+	struct hb *next; /**< next history buffer */
+	struct hb *prev; /**< next history buffer */
+};
+
 struct history_buffer {
 	enum kpb_id id;
 	enum buffer_state state;
