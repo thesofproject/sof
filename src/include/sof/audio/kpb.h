@@ -117,20 +117,6 @@ struct history_buffer {
 
 };
 
-/*! Key phrase buffer component */
-struct kpb_comp_data {
-	/* runtime data */
-	uint8_t no_of_clients; /**< number of registered clients */
-	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
-	struct history_buffer his_buf_lp;
-	struct history_buffer his_buf_hp;
-	struct notifier kpb_events; /**< KPB events object */
-	struct task draining_task;
-	uint32_t source_period_bytes; /**< source number of period bytes */
-	uint32_t sink_period_bytes; /**< sink number of period bytes */
-	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
-};
-
 #ifdef UNIT_TEST
 void sys_comp_kpb_init(void);
 #endif
