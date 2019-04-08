@@ -424,6 +424,7 @@ static void schedule_edf(void)
 	struct edf_schedule_data *sch =
 		(*arch_schedule_get_data())->edf_sch_data;
 	struct list_item *tlist;
+	struct list_item *clist;
 	struct task *edf_task;
 
 	uint32_t flags;
@@ -448,15 +449,15 @@ static void schedule_edf(void)
 	spin_unlock_irq(&sch->lock, flags);
 
 	/* invoke unprioritized/idle tasks right away */
-	list_for_item(tlist, &sch->idle_list) {
-		edf_task = container_of(tlist, struct task, list);
+	list_for_item_safe(clist, tlist, &sch->idle_list) {
+		edf_task = container_of(clist, struct task, list);
 
 		/* run task if we find any queued */
 		if (edf_task->state == SOF_TASK_STATE_QUEUED)
 			edf_task->func(edf_task->data);
 
 		/* task done, remove it from the list */
-		list_item_del(tlist);
+		list_item_del(clist);
 	}
 
 	return;
