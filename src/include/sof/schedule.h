@@ -62,6 +62,8 @@ enum {
 #define SOF_TASK_PRI_IPC	5
 #define SOF_TASK_PRI_IDC	5
 
+#define SOF_TASK_PRI_IDLE	20
+
 /* task states */
 #define SOF_TASK_STATE_INIT		0
 #define SOF_TASK_STATE_QUEUED		1

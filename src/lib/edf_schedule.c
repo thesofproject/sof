@@ -49,6 +49,7 @@
 struct edf_schedule_data {
 	spinlock_t lock;
 	struct list_item list;	/* list of tasks in priority queue */
+	struct list_item idle_list;	/* list of queued idle tasks */
 	uint32_t clock;
 };
 
@@ -308,8 +309,11 @@ static int _sch_edf_task(struct task *task, uint64_t start,
 	/* calculate deadline - TODO: include MIPS */
 	edf_pdata->deadline = task->start + ticks_per_ms * deadline / 1000;
 
-	/* add task to list */
-	list_item_append(&task->list, &sch->list);
+	/* add task to the proper list */
+	if (task->priority == SOF_TASK_PRI_IDLE)
+		list_item_append(&task->list, &sch->idle_list);
+	else
+		list_item_append(&task->list, &sch->list);
 	task->state = SOF_TASK_STATE_QUEUED;
 	spin_unlock_irq(&sch->lock, flags);
 
@@ -442,6 +446,19 @@ static void schedule_edf(void)
 
 	/* no task to schedule */
 	spin_unlock_irq(&sch->lock, flags);
+
+	/* invoke unprioritized/idle tasks right away */
+	list_for_item(tlist, &sch->idle_list) {
+		edf_task = container_of(tlist, struct task, list);
+
+		/* run task if we find any queued */
+		if (edf_task->state == SOF_TASK_STATE_QUEUED)
+			edf_task->func(edf_task->data);
+
+		/* task done, remove it from the list */
+		list_item_del(tlist);
+	}
+
 	return;
 
 schedule:
@@ -468,6 +485,7 @@ static int edf_scheduler_init(void)
 	sch = sch_data->edf_sch_data;
 
 	list_init(&sch->list);
+	list_init(&sch->idle_list);
 	spinlock_init(&sch->lock);
 	sch->clock = PLATFORM_SCHED_CLOCK;
 
