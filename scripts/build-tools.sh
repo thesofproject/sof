@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# fail immediately on any errors
+set -e
+
 cd tools
 
 rm -rf build_tools
