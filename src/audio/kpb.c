@@ -577,7 +577,9 @@ static void kpb_init_draining(struct kpb_comp_data *kpb, struct kpb_client *cli)
 {
 	uint8_t is_sink_ready = (kpb->cli_sink->sink->state
 				 == COMP_STATE_ACTIVE) ? 1 : 0;
-	size_t history_depth = cli->history_depth;
+	size_t history_depth = cli->history_depth * kpb->config.no_channels *
+		(kpb->config.sampling_freq / 1000) *
+		(kpb->config.sampling_width / 8);
 	struct hb *buff = &kpb->history_buffer;
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
