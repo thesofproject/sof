@@ -65,6 +65,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
 static uint64_t kpb_draining_task(void *arg);
 static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source);
 static void kpb_allocate_history_buffer(struct comp_data *kpb);
+static void kpb_clear_history_buffer(struct hb *buff);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -286,7 +287,8 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	cd->no_of_clients = 0;
 
-	/* TODO: zeroes both buffers */
+	/* init history buffer */
+	kpb_clear_history_buffer(cd->history_buffer);
 
 	/* initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
@@ -556,6 +558,28 @@ static uint64_t kpb_draining_task(void *arg)
 	 * clients request
 	 */
 	return 0;
+}
+
+/**
+ * \brief Initialize history buffer by zeroing its memory.
+ * \param[in] buff - pointer to current history buffer.
+ *
+ * \return: none.
+ */
+static void kpb_clear_history_buffer(struct hb *buff)
+{
+	struct hb *first_buff = buff;
+	void *start_addr;
+	size_t size;
+
+	do {
+		start_addr = buff->start_addr;
+		size = start_addr - buff->end_addr;
+
+		bzero(start_addr, size);
+
+		buff = buff->next;
+	} while (buff != first_buff);
 }
 
 struct comp_driver comp_kpb = {
