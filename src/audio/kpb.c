@@ -295,6 +295,9 @@ static int kpb_prepare(struct comp_dev *dev)
 			cd->rt_sink = sink;
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
 			cd->cli_sink = sink;
+			/* switch host to blocking copy mode */
+			comp_set_attribute(cd->cli_sink->sink,
+					   COMP_ATTR_COPY_BLOCKING, 1);
 		} else {
 			continue;
 		}
@@ -693,6 +696,10 @@ static uint64_t draining_task(void *arg)
 			comp_update_buffer_produce(sink, size_to_copy);
 		}
 	}
+
+	/* switch host back to non-blocking copy mode */
+	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
+
 	/* switch KPB to copy real time stream to clients sink buffer */
 	*(draining_data->state) = KPB_DRAINING_ON_DEMAND;
 
