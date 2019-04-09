@@ -56,23 +56,23 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 # with 2 sink and 0 source periods
 W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, 2, 0)
 
-# "Playback Volume" has 1 sink period and 2 source periods for host ping-pong
-W_PGA(0, PIPELINE_FORMAT, 1, 2, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
+# "Playback Volume" has 2 sink periods and 2 source periods for host ping-pong
+W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID PCM PCM_ID Playback Volume"))
 
-# "Master Playback Volume" has 1 source and 2 sink periods for DAI ping-pong
-W_PGA(1, PIPELINE_FORMAT, 2, 1, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+# "Master Playback Volume" has 2 source and 2 sink periods for DAI ping-pong
+W_PGA(1, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
-# Mixer 0 has 1 sink and source periods.
-W_MIXER(0, PIPELINE_FORMAT, 1, 1)
+# Mixer 0 has 2 sink and source periods.
+W_MIXER(0, PIPELINE_FORMAT, 2, 2)
 
 # Low Latency Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_HOST_MEM_CAP)
-W_BUFFER(1, COMP_BUFFER_SIZE(1,
+W_BUFFER(1, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS,SCHEDULE_FRAMES),
 	PLATFORM_COMP_MEM_CAP)
-W_BUFFER(2, COMP_BUFFER_SIZE(1,
+W_BUFFER(2, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_COMP_MEM_CAP)
 W_BUFFER(3, COMP_BUFFER_SIZE(2,
