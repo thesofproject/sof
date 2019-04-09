@@ -355,9 +355,12 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* register KPB for async notification */
 	notifier_register(&cd->kpb_events);
 
-	/* initialie draining task */
-	schedule_task_init(&cd->draining_task, SOF_SCHEDULE_EDF, 0,
-			   kpb_draining_task, cd, 0, 0);
+	/* initialize draining task */
+	/* TODO: this init will be reworked completely once
+	 * PR with scheduling for idle tasks is done.
+	 */
+	schedule_task_init(&cd->draining_task, 0, 0, kpb_draining_task,
+			   &cd->draining_task_data, 0, 0);
 
 	/* search for the channel selector sink.
 	 * NOTE! We assume here that channel selector component device
@@ -747,11 +750,63 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	}
 }
 
+/**
+ * \brief Draining task.
+ *
+ * \param[in] arg - pointer keeping drainig data previously prepared
+ * by kpb_init_draining().
+ *
+ * \return none.
+ */
 static uint64_t kpb_draining_task(void *arg)
 {
-	/* TODO: while loop drainning history buffer accoriding to
-	 * clients request
+	struct dd *draining_data = (struct dd *)arg;
+	struct comp_buffer *sink = draining_data->sink;
+	struct hb *buff = draining_data->history_buffer;
+	size_t history_depth = draining_data->history_depth;
+	size_t size_to_read;
+	size_t size_to_copy;
+	bool move_buffer = false;
+
+	trace_kpb("kpb_draining_task(), start.");
+
+	while (history_depth > 0) {
+		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
+
+		if (size_to_read > sink->free) {
+			if (sink->free >= history_depth) {
+				size_to_copy = history_depth;
+			} else {
+				size_to_copy = sink->free;
+			}
+		} else {
+			if (size_to_read >= history_depth) {
+				size_to_copy = history_depth;
+			} else {
+				size_to_copy = size_to_read;
+				move_buffer = true;
+			}
+		}
+
+		memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
+		buff->r_ptr += (uint32_t)size_to_copy;
+		history_depth -= size_to_copy;
+
+		if (move_buffer) {
+			buff->r_ptr = buff->start_addr;
+			buff = buff->next;
+			move_buffer = false;
+		}
+		if (size_to_copy)
+			comp_update_buffer_produce(sink, size_to_copy);
+	}
+
+	/* Draining is done. Now switch KPB to copy real time stream
+	 * to client's sink
 	 */
+	*draining_data->state = KPB_DRAINING_ON_DEMAND;
+	trace_kpb("kpb_draining_task(), done.");
+
 	return 0;
 }
 
