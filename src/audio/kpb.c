@@ -48,12 +48,13 @@
 /* KPB private data, runtime data */
 struct comp_data {
 	enum kpb_state state; /**< current state of KPB component */
-	uint8_t no_of_clients; /**< number of registered clients */
+	uint32_t kpb_no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
 	struct notifier kpb_events; /**< KPB events object */
 	struct task draining_task;
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
+	struct sof_kpb_config config;   /**< component configuration data */
 	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
 	struct comp_buffer *cli_sink; /**< draining sink (client) */
 	struct hb *history_buffer;
@@ -79,62 +80,70 @@ static void kpb_clear_history_buffer(struct hb *buff);
  */
 static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 {
+	struct sof_ipc_comp_process *ipc_process =
+					(struct sof_ipc_comp_process *)comp;
+	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
-	struct sof_ipc_comp_kpb *kpb;
-	struct sof_ipc_comp_kpb *ipc_kpb = (struct sof_ipc_comp_kpb *)comp;
 	struct comp_data *cd;
 
 	trace_kpb("kpb_new()");
 
 	/* Validate input parameters */
-	if (IPC_IS_SIZE_INVALID(ipc_kpb->config)) {
-		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_KPB, ipc_kpb->config);
-		return NULL;
-	}
-
-	if (ipc_kpb->no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
-		trace_kpb_error("kpb_new() error: "
-		"no of channels exceeded the limit");
-		return NULL;
-	}
-
-	if (ipc_kpb->history_depth > KPB_MAX_BUFFER_SIZE) {
-		trace_kpb_error("kpb_new() error: "
-		"history depth exceeded the limit");
-		return NULL;
-	}
-
-	if (ipc_kpb->sampling_freq != KPB_SAMPLNG_FREQUENCY) {
-		trace_kpb_error("kpb_new() error: "
-		"requested sampling frequency not supported");
-		return NULL;
-	}
-
-	if (ipc_kpb->sampling_width != KPB_SAMPLING_WIDTH) {
-		trace_kpb_error("kpb_new() error: "
-		"requested sampling width not supported");
+	if (IPC_IS_SIZE_INVALID(ipc_process->config)) {
+		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_KPB, ipc_process->config);
 		return NULL;
 	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		      COMP_SIZE(struct sof_ipc_comp_kpb));
+		      COMP_SIZE(struct sof_ipc_comp_process));
 	if (!dev)
 		return NULL;
 
-	kpb = (struct sof_ipc_comp_kpb *)&dev->comp;
-	memcpy(kpb, ipc_kpb, sizeof(struct sof_ipc_comp_kpb));
+	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
-
 	if (!cd) {
 		rfree(dev);
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, cd);
+
+	memcpy(&cd->config, ipc_process->data, bs);
+
+	if (cd->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
+		trace_kpb_error("kpb_new() error: "
+		"no of channels exceeded the limit");
+		return NULL;
+	}
+
+	if (cd->config.history_depth > KPB_MAX_BUFFER_SIZE) {
+		trace_kpb_error("kpb_new() error: "
+		"history depth exceeded the limit");
+		return NULL;
+	}
+
+	if (cd->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
+		trace_kpb_error("kpb_new() error: "
+		"requested sampling frequency not supported");
+		return NULL;
+	}
+
+	if (cd->config.sampling_width != KPB_SAMPLING_WIDTH) {
+		trace_kpb_error("kpb_new() error: "
+		"requested sampling width not supported");
+		return NULL;
+	}
+
 	dev->state = COMP_STATE_READY;
 
-	/* Allocate history buffer */
+	/* Zero number of clients */
+	cd->kpb_no_of_clients = 0;
+
+	/* Set initial state as buffering */
+	cd->state = KPB_BUFFERING;
+
+	/* allocate history buffer */
 	kpb_allocate_history_buffer(cd);
 
 	/*TODO: verify allocation size against requested size */
@@ -289,7 +298,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	cd->no_of_clients = 0;
+	cd->kpb_no_of_clients = 0;
 
 	/* init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
@@ -560,7 +569,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 		return -EINVAL;
 	}
 	/* Do we have a room for a new client? */
-	if (kpb->no_of_clients >= KPB_MAX_NO_OF_CLIENTS ||
+	if (kpb->kpb_no_of_clients >= KPB_MAX_NO_OF_CLIENTS ||
 	    cli->id >= KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_register_client() error: "
 				"no free room for client = %u ",
@@ -578,7 +587,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->clients[cli->id].sink = cli->sink;
 		kpb->clients[cli->id].r_ptr = NULL;
 		kpb->clients[cli->id].state = KPB_CLIENT_BUFFERING;
-		kpb->no_of_clients++;
+		kpb->kpb_no_of_clients++;
 		ret = 0;
 	}
 
