@@ -60,6 +60,7 @@ struct comp_data {
 	struct hb *history_buffer;
 	bool is_internal_buffer_full;
 	size_t buffered_data;
+	struct dd draining_task_data;
 };
 
 /*! KPB private functions */
@@ -646,33 +647,104 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 }
 
 /**
- * \brief Drain internal buffer into client's sink buffer.
+ * \brief Prepare history buffer for draining.
  *
  * \param[in] kpb - kpb component data.
  * \param[in] cli - client's data.
  *
- * \return integer representing either:
- *	0 - success
- *	-EINVAL - failure.
  */
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 {
-	uint8_t is_sink_ready = (kpb->clients[cli->id].sink->sink->state
-				 == COMP_STATE_ACTIVE) ? 1 : 0;
+	bool is_sink_ready = (kpb->cli_sink->sink->state == COMP_STATE_ACTIVE);
+	size_t history_depth = cli->history_depth * kpb->config.no_channels *
+			       (kpb->config.sampling_freq / 1000) *
+			       (kpb->config.sampling_width / 8);
+	struct hb *buff = kpb->history_buffer;
+	struct hb *first_buff = buff;
+	size_t buffered = 0;
+	size_t local_buffered = 0;
 
-	if (kpb->clients[cli->id].state == KPB_CLIENT_UNREGISTERED) {
-		/* TODO: possibly move this check to draining task
-		 * the doubt is if HOST managed to change the sink state
-		 * at notofication time
-		 */
+	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
-				"requested draining for unregistered client");
+				"wrong client id");
+		return;
+	/* TODO: check also if client is registered */
 	} else if (!is_sink_ready) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"sink not ready for draining");
+		return;
+	} else if (0) {
+		/* TODO: check if history buffer has enough data buffered */
+		trace_kpb_error("kpb_init_draining() error: "
+				"not enough data in history buffer");
+
+		return;
 	} else {
-		/* add one-time draining task into the scheduler */
-		schedule_task(&kpb->draining_task, 0, 0, 0);
+		/* Draining accepted, find proper buffer to start reading
+		 * At this point we are guaranteed that there is enough data
+		 * in the history buffer. All we have to do now is to calculate
+		 * read pointer from which we will start draining.
+		 */
+		do {
+			/* Calculate how much data we have stored in
+			 * current buffer.
+			 */
+			local_buffered = 0;
+			buff->r_ptr = buff->start_addr;
+			if (buff->state == KPB_BUFFER_FREE) {
+				local_buffered = (uint32_t)buff->w_ptr -
+						 (uint32_t)buff->start_addr;
+				buffered += local_buffered;
+			} else if (buff->state == KPB_BUFFER_FULL) {
+				local_buffered = (uint32_t)buff->end_addr -
+						 (uint32_t)buff->start_addr;
+				buffered += local_buffered;
+			} else {
+				trace_kpb_error("kpb_init_draining() error: "
+						"incorrect buffer label");
+			}
+			/* Check if this is already sufficient to start draining
+			 * if not, go to previous buffer and continue
+			 * calculations.
+			 */
+			if (history_depth > buffered) {
+				if (buff->prev == first_buff) {
+					/* We went full circle and still don't
+					 * have sufficient data for draining.
+					 * That means we need to look up the
+					 * first buffer again. Our read pointer
+					 * is somewhere between write pointer
+					 * and buffer's end address.
+					 */
+					buff = buff->prev;
+					buffered += (uint32_t)buff->end_addr -
+						    (uint32_t)buff->w_ptr;
+					buff->r_ptr = buff->w_ptr + (buffered -
+						      history_depth);
+					break;
+				}
+				buff = buff->prev;
+			} else if (history_depth == buffered) {
+				buff->r_ptr = buff->start_addr;
+				break;
+			} else {
+				buff->r_ptr = buff->start_addr +
+					      (buffered - history_depth);
+				break;
+			}
+
+		} while (buff != first_buff);
+
+		trace_kpb("kpb_init_draining(), schedule draining r_ptr");
+
+		/* Add one-time draining task into the scheduler. */
+		kpb->draining_task_data.sink = kpb->cli_sink;
+		kpb->draining_task_data.history_buffer = buff;
+		kpb->draining_task_data.history_depth = history_depth;
+		kpb->draining_task_data.state = &kpb->state;
+		/* Pause selector copy. */
+		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
+		/* TODO: schedule draining task */
 	}
 }
 
