@@ -124,6 +124,14 @@ struct hb {
 	struct hb *prev; /**< next history buffer */
 };
 
+struct dd {
+	struct comp_buffer *sink;
+	struct hb *history_buffer;
+	size_t history_depth;
+	uint8_t is_draining_active;
+	enum kpb_state *state;
+};
+
 struct history_buffer {
 	enum kpb_id id;
 	enum buffer_state state;
