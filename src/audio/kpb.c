@@ -63,7 +63,8 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
 static uint64_t kpb_draining_task(void *arg);
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source);
+static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
+			    size_t size);
 static void kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
 
@@ -413,7 +414,7 @@ static int kpb_copy(struct comp_dev *dev)
 			/* TODO: should we copy what is available or just
 			 * a small portion of it?
 			 */
-			kpb_buffer_data(kpb, source);
+			kpb_buffer_data(kpb, source, kpb->sink_period_bytes);
 		}
 	} else {
 		ret = -EIO;
@@ -433,11 +434,71 @@ static int kpb_copy(struct comp_dev *dev)
  * \param[in] kpb - KPB component data pointer.
  * \param[in] source pointer to the buffer source.
  *
- * \return none
  */
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source)
+static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
+			    size_t size)
 {
-	/*TODO: buffer data in history buffer */
+	size_t size_to_copy = size;
+	size_t space_avail;
+	struct hb *buff = kpb->history_buffer;
+	void *read_ptr = source->r_ptr;
+
+	tracev_kpb("kpb_buffer_data()");
+
+	/* Let's store audio stream data in internal history buffer */
+	while (size_to_copy) {
+		/* Check how much space there is in current write buffer */
+		space_avail = (uint32_t)buff->end_addr - (uint32_t)buff->w_ptr;
+
+		if (size_to_copy > space_avail) {
+			/* We have more data to copy than available space
+			 * in this buffer, copy what's available and continue
+			 * with next buffer.
+			 */
+			memcpy(buff->w_ptr, read_ptr, space_avail);
+			/* Update write pointer & requested copy size */
+			buff->w_ptr += space_avail;
+			size_to_copy = size_to_copy - space_avail;
+			/* Update sink read pointer before continuing
+			 * with next buffer.
+			 */
+			read_ptr += space_avail;
+		} else {
+			/* Requested size is smaller or equal to the space
+			 * available in this buffer. In this scenario simply
+			 * copy what was requested.
+			 */
+			memcpy(buff->w_ptr, read_ptr, size_to_copy);
+			/* Update write pointer & requested copy size */
+			buff->w_ptr += size_to_copy;
+			/* Reset requested copy size */
+			size_to_copy = 0;
+		}
+		/* Have we filled whole buffer? */
+		if (buff->w_ptr == buff->end_addr) {
+			/* Reset write pointer back to the beginning
+			 * of the buffer.
+			 */
+			buff->w_ptr = buff->start_addr;
+			/* If we have more buffers use them */
+			if (buff->next && buff->next != buff) {
+				/* Mark current buffer FULL */
+				buff->state = KPB_BUFFER_FULL;
+				/* Use next buffer available on the list
+				 * of buffers.
+				 */
+				buff = buff->next;
+				/* Update also component container,
+				 * so next time we enter buffering function
+				 * we will know right away what is the current
+				 * write buffer
+				 */
+				kpb->history_buffer = buff;
+			}
+			/* Mark buffer as FREE */
+			buff->state = KPB_BUFFER_FREE;
+		}
+	}
 }
 
 /**
