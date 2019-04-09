@@ -59,8 +59,8 @@ enum {
 
 #define SOF_TASK_PRI_COUNT	10	/* range of priorities (0-9) */
 
-#define SOF_TASK_PRI_IPC	5
-#define SOF_TASK_PRI_IDC	5
+#define SOF_TASK_PRI_IPC	SOF_TASK_PRI_LOW
+#define SOF_TASK_PRI_IDC	SOF_TASK_PRI_LOW
 
 #define SOF_TASK_PRI_IDLE	20
 
