@@ -57,6 +57,11 @@
 #define KPB_ALLOCATION_STEP 0x100
 #define KPB_NO_OF_MEM_POOLS 3
 
+enum kpb_state {
+	KPB_BUFFERING = 0,
+	KPB_DRAINING_ON_DEMAND,
+};
+
 enum kpb_sink_state {
 	KPB_SINK_BUSY = 0,
 	KPB_SINK_READY,

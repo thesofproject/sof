@@ -45,9 +45,9 @@
 #include <sof/audio/buffer.h>
 #include <sof/ut.h>
 
-/*! KPB private data */
+/* KPB private data, runtime data */
 struct comp_data {
-	/* runtime data */
+	enum kpb_state state; /**< current state of KPB component */
 	uint8_t no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
 	struct notifier kpb_events; /**< KPB events object */
@@ -55,7 +55,10 @@ struct comp_data {
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
+	struct comp_buffer *cli_sink; /**< draining sink (client) */
 	struct hb *history_buffer;
+	bool is_internal_buffer_full;
+	size_t buffered_data;
 };
 
 /*! KPB private functions */
@@ -369,61 +372,61 @@ static int kpb_reset(struct comp_dev *dev)
 static int kpb_copy(struct comp_dev *dev)
 {
 	int ret = 0;
-	int update_buffers = 0;
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
+	size_t copy_bytes = 0;
 
 	tracev_kpb("kpb_copy()");
 
-	/* get source and sink buffers */
+	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = kpb->rt_sink;
+	sink = (kpb->state == KPB_BUFFERING) ? kpb->rt_sink : kpb->cli_sink;
 
-	/* process source data */
-	/* check if there are valid pointers */
-	if (source && sink) {
-		if (!source->r_ptr || !sink->w_ptr) {
-			return -EINVAL;
-		} else if (sink->free < kpb->sink_period_bytes) {
-			trace_kpb_error("kpb_copy() error: "
-				   "sink component buffer"
-				   " has not enough free bytes for copy");
-			comp_overrun(dev, sink, kpb->sink_period_bytes, 0);
-			/* xrun */
-			return -EIO;
-		} else if (source->avail < kpb->source_period_bytes) {
-			/* xrun */
-			trace_kpb_error("kpb_copy() error: "
-					   "source component buffer"
-					   " has not enough data available");
-			comp_underrun(dev, source, kpb->source_period_bytes,
-				      0);
-			return -EIO;
-		} else {
-			/* sink and source are both ready and have space */
-			/* TODO: copy sink or source period data here? */
-			memcpy(sink->w_ptr, source->r_ptr,
-			       kpb->sink_period_bytes);
-			/* signal update source & sink data */
-			update_buffers = 1;
-		}
-		/* buffer source data internally for future use by clients */
-		if (source->avail <= KPB_MAX_BUFFER_SIZE) {
-			/* TODO: should we copy what is available or just
-			 * a small portion of it?
-			 */
-			kpb_buffer_data(kpb, source, kpb->sink_period_bytes);
-		}
-	} else {
-		ret = -EIO;
+	/* Process source data */
+	/* Check if there are valid pointers */
+	if (!source || !sink)
+		return -EIO;
+	if (!source->r_ptr || !sink->w_ptr)
+		return -EINVAL;
+	/* Check if there is enough free/available space */
+	if (sink->free == 0) {
+		trace_kpb_error("kpb_copy() error: "
+				"sink component buffer"
+				" has not enough free bytes for copy");
+		comp_overrun(dev, sink, sink->free, 0);
+		/* xrun */
+		return -EIO;
+	}
+	if (source->avail == 0) {
+		trace_kpb_error("kpb_copy() error: "
+				"source component buffer"
+				" has not enough data available");
+		comp_underrun(dev, source, source->avail, 0);
+		/* xrun */
+		return -EIO;
 	}
 
-	if (update_buffers) {
-		comp_update_buffer_produce(sink, kpb->sink_period_bytes);
-		comp_update_buffer_consume(source, kpb->sink_period_bytes);
+	/* Sink and source are both ready and have space */
+	copy_bytes = MIN(sink->free, source->avail);
+	memcpy(sink->w_ptr, source->r_ptr, copy_bytes);
+
+	/* Buffer source data internally in history buffer for future
+	 * use by clients.
+	 */
+	if (source->avail <= KPB_MAX_BUFFER_SIZE) {
+		kpb_buffer_data(kpb, source, copy_bytes);
+
+		if (kpb->buffered_data < KPB_MAX_BUFFER_SIZE)
+			kpb->buffered_data += copy_bytes;
+		else
+			kpb->is_internal_buffer_full = true;
 	}
+
+	comp_update_buffer_produce(sink, copy_bytes);
+	comp_update_buffer_consume(source, copy_bytes);
+
 	return ret;
 }
 
