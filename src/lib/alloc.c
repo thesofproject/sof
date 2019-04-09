@@ -258,8 +258,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	/* check if we have enough consecutive blocks for requested
 	 * allocation size.
 	 */
-	for (current = map->first_free; current < map->count ||
-	     count > remaining; current++) {
+	for (current = map->first_free; current < map->count; current++) {
 		hdr = &map->block[current];
 
 		if (!hdr->used)
