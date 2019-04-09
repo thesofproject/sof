@@ -73,6 +73,8 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
 static void kpb_free_history_buffer(struct hb *buff);
+static bool kpb_has_enough_history_data(struct comp_data *kpb,
+					    struct hb *buff, size_t his_req);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -156,8 +158,6 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	/*TODO: verify allocation size against requested size */
-
 	return dev;
 }
 
@@ -181,7 +181,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 	void *new_mem_block = NULL;
 	size_t temp_ca_size = 0;
 	int i = 0;
-	size_t allocated_size;
+	size_t allocated_size = 0;
 
 	/* Initialize history buffer */
 	kpb->history_buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
@@ -673,8 +673,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		trace_kpb_error("kpb_init_draining() error: "
 				"sink not ready for draining");
 		return;
-	} else if (0) {
-		/* TODO: check if history buffer has enough data buffered */
+	} else if (!kpb_has_enough_history_data(kpb, buff, history_depth)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
 
@@ -776,6 +775,54 @@ static void kpb_clear_history_buffer(struct hb *buff)
 
 		buff = buff->next;
 	} while (buff != first_buff);
+}
+
+/**
+ * \brief Verify if KPB has enough data buffered.
+ *
+ * \param[in] kpb - KPB component data pointer.
+ * \param[in] buff - pointer to current history buffer.
+ * \param[in] his_req - requested draining size.
+ *
+ * \return 1 if there is enough data in history buffer
+ *  and 0 otherwise.
+ */
+static bool kpb_has_enough_history_data(struct comp_data *kpb,
+					    struct hb *buff, size_t his_req)
+{
+	size_t buffered_data = 0;
+	struct hb *first_buff = buff;
+
+	/* Quick check if we've already filled internal buffer */
+	if (kpb->is_internal_buffer_full)
+		return his_req <= KPB_MAX_BUFFER_SIZE;
+
+	/* Internal buffer isn't full yet. Verify if what already buffered
+	 * is sufficient for draining request.
+	 */
+	while (buffered_data < his_req) {
+		if (buff->state == KPB_BUFFER_FREE) {
+			if (buff->w_ptr == buff->start_addr &&
+			    buff->next->state == KPB_BUFFER_FULL) {
+				buffered_data += ((uint32_t)buff->end_addr -
+						  (uint32_t)buff->start_addr);
+			} else {
+				buffered_data += ((uint32_t)buff->w_ptr -
+						  (uint32_t)buff->start_addr);
+			}
+
+		} else {
+			buffered_data += ((uint32_t)buff->end_addr -
+					  (uint32_t)buff->start_addr);
+		}
+
+		if (buff->next && buff->next != first_buff)
+			buff = buff->next;
+		else
+			break;
+	}
+
+	return buffered_data >= his_req;
 }
 
 struct comp_driver comp_kpb = {
