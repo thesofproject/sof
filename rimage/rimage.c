@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
 {
 	struct image image;
 	const char *mach = NULL;
+	const char *env_key = NULL;
 	int opt, ret, i, elf_argc = 0;
 
 	memset(&image, 0, sizeof(image));
@@ -88,6 +89,12 @@ int main(int argc, char *argv[])
 		default:
 			break;
 		}
+	}
+
+	env_key = getenv("SOF_RIMAGE_KEY");
+	if (env_key) {
+		fprintf(stdout, "using ENV key %s\n", env_key);
+		image.key_name = env_key;
 	}
 
 	elf_argc = optind;
