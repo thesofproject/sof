@@ -295,7 +295,13 @@ if(MEU_PATH)
 		set(MEU_OFFSET 1088)
 	endif()
 
-	set(otc_private_key ${PROJECT_SOURCE_DIR}/rimage/keys/otc_private_key.pem)
+	if(NOT DEFINED ENV{SOF_RIMAGE_KEY})
+		if(NOT DEFINED SOF_RIMAGE_KEY)
+			set(SOF_RIMAGE_KEY ${PROJECT_SOURCE_DIR}/rimage/keys/otc_private_key.pem)
+		endif()
+	else()
+		set(SOF_RIMAGE_KEY $ENV{SOF_RIMAGE_KEY})
+	endif()
 
 	add_custom_target(
 		run_rimage
@@ -304,7 +310,7 @@ if(MEU_PATH)
 			-p sof-${fw_name}.ldc
 			-m ${fw_name}
 			-s ${MEU_OFFSET}
-			-k ${otc_private_key}
+			-k ${SOF_RIMAGE_KEY}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
@@ -328,12 +334,21 @@ if(MEU_PATH)
 		USES_TERMINAL
 	)
 else()
+	if(NOT DEFINED ENV{SOF_RIMAGE_KEY})
+		if(NOT DEFINED SOF_RIMAGE_KEY)
+			set(SOF_RIMAGE_KEY ${PROJECT_SOURCE_DIR}/rimage/keys/otc_private_key.pem)
+		endif()
+	else()
+		set(SOF_RIMAGE_KEY $ENV{SOF_RIMAGE_KEY})
+	endif()
+
 	add_custom_target(
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
 			-o sof-${fw_name}.ri
 			-p sof-${fw_name}.ldc
 			-m ${fw_name}
+			-k ${SOF_RIMAGE_KEY}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
