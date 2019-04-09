@@ -398,10 +398,24 @@ static void kpb_cache(struct comp_dev *dev, int cmd)
 	/* TODO: writeback history buffer */
 }
 
+/**
+ * \brief Resets KPB component.
+ * \param[in,out] dev KPB base component device.
+ * \return Error code.
+ */
 static int kpb_reset(struct comp_dev *dev)
 {
-	/* TODO: what data of KPB should we reset here? */
-	return 0;
+	struct comp_data *kpb = comp_get_drvdata(dev);
+
+	trace_kpb("kpb_reset()");
+
+	/* Reset history buffer */
+	kpb->is_internal_buffer_full = false;
+	kpb_clear_history_buffer(kpb->history_buffer);
+	/* Reset amount of buffered data */
+	kpb->buffered_data = 0;
+
+	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
 /**
