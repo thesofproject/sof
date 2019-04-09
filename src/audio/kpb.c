@@ -71,6 +71,7 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			    size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
+static void kpb_free_history_buffer(struct hb *buff);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -255,6 +256,28 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 }
 
 /**
+ * \brief Reclaim memory of a history buffer.
+ * \param[in] buff - pointer to current history buffer.
+ *
+ * \return none.
+ */
+static void kpb_free_history_buffer(struct hb *buff)
+{
+	struct hb *_buff;
+
+	/* Free history buffer/s */
+	while (buff) {
+		/* first reclaim HB internal memory, then HB itself. */
+		if (buff->start_addr)
+			rfree(buff->start_addr);
+
+		_buff = buff->next;
+		rfree(buff);
+		buff = _buff;
+	}
+}
+
+/**
  * \brief Reclaim memory of a key phrase buffer.
  * \param[in] dev - component device pointer.
  *
@@ -266,8 +289,10 @@ static void kpb_free(struct comp_dev *dev)
 
 	trace_kpb("kpb_free()");
 
-	/* TODO: reclaim internal buffer memory */
-	/* reclaim device & component data memory */
+	/* Reclaim memory occupied by history buffer */
+	kpb_free_history_buffer(kpb->history_buffer);
+
+	/* Free KPB */
 	rfree(kpb);
 	rfree(dev);
 }
