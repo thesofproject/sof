@@ -99,8 +99,14 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 	int strlen;
 
 	strlen = rstrlen(filename);
+	if (strlen >= SOF_TRACE_FILENAME_SIZE) {
+		rmemcpy(panicinfo.filename, filename + strlen -
+			SOF_TRACE_FILENAME_SIZE, SOF_TRACE_FILENAME_SIZE);
+		rmemcpy(panicinfo.filename, "...", 3);
+	} else {
+		rmemcpy(panicinfo.filename, filename, strlen + 1);
+	}
 	panicinfo.linenum = linenum;
-	rmemcpy(panicinfo.filename, filename, strlen + 1);
 
 	panic_rewind(p, 0, &panicinfo);
 }
