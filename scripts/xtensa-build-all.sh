@@ -19,6 +19,7 @@ then
 	echo "       [-u] Force UP ARCH"
 	echo "       [-d] Enable debug build"
 	echo "       [-c] Configure defconfig"
+	echo "       [-k] Use private key"
 	echo "       [-j [n]] Set number of make build jobs." \
 		"Jobs=#cores when no flag. Inifinte when no arg."
 	echo "       Supported platforms ${SUPPORTED_PLATFORMS[@]}"
@@ -46,6 +47,10 @@ else
 		elif [[ "$args" == "-c" ]]
 			then
 			MAKE_MENUCONFIG=yes
+
+		elif [[ "$args" == "-k" ]]
+			then
+			USE_PRIVATE_KEY=yes
 
 		# Build all platforms
 		elif [[ "$args" == "-a" ]]
@@ -77,6 +82,16 @@ if [ ${#PLATFORMS[@]} -eq 0 ];
 then
 	echo "Error: No platforms specified. Supported are: ${SUPPORTED_PLATFORMS[@]}"
 	exit 1
+fi
+
+if [ "x$USE_PRIVATE_KEY" == "xyes" ]
+then
+	if [ -z ${RIMAGE_PRIVATE_KEY+x} ]
+	then
+		echo "Error: No variable specified for RIMAGE_PRIVATE_KEY"
+		exit 1
+	fi
+	PRIVATE_KEY_OPTION="-DRIMAGE_PRIVATE_KEY=${RIMAGE_PRIVATE_KEY}"
 fi
 
 # fail on any errors
@@ -252,6 +267,7 @@ do
 	cmake -DTOOLCHAIN=$TOOLCHAIN \
 		-DROOT_DIR=$ROOT \
 		-DCMAKE_VERBOSE_MAKEFILE=ON \
+		${PRIVATE_KEY_OPTION} \
 		..
 
 	make ${PLATFORM}_defconfig

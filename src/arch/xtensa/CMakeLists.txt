@@ -285,6 +285,10 @@ add_custom_target(
 	USES_TERMINAL
 )
 
+if(NOT DEFINED RIMAGE_PRIVATE_KEY)
+	set(RIMAGE_PRIVATE_KEY ${PROJECT_SOURCE_DIR}/rimage/keys/otc_private_key.pem)
+endif()
+
 if(MEU_PATH)
 	execute_process(
 		COMMAND ${MEU_PATH}/meu -ver
@@ -301,8 +305,6 @@ if(MEU_PATH)
 		set(MEU_OFFSET 1088)
 	endif()
 
-	set(otc_private_key ${PROJECT_SOURCE_DIR}/rimage/keys/otc_private_key.pem)
-
 	add_custom_target(
 		run_rimage
 		COMMAND ${PROJECT_BINARY_DIR}/rimage_ep/build/rimage
@@ -310,7 +312,7 @@ if(MEU_PATH)
 			-p sof-${fw_name}.ldc
 			-m ${fw_name}
 			-s ${MEU_OFFSET}
-			-k ${otc_private_key}
+			-k ${RIMAGE_PRIVATE_KEY}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
@@ -340,6 +342,7 @@ else()
 			-o sof-${fw_name}.ri
 			-p sof-${fw_name}.ldc
 			-m ${fw_name}
+			-k ${RIMAGE_PRIVATE_KEY}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
