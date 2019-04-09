@@ -54,6 +54,8 @@
 	KPB_NR_OF_CHANNELS)
 #define KPB_MAX_NO_OF_CLIENTS 2
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
+#define KPB_ALLOCATION_STEP 0x100
+#define KPB_NO_OF_MEM_POOLS 3
 
 enum kpb_sink_state {
 	KPB_SINK_BUSY = 0,
