@@ -69,7 +69,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
 static uint64_t kpb_draining_task(void *arg);
 static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			    size_t size);
-static void kpb_allocate_history_buffer(struct comp_data *kpb);
+static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
 
 /**
@@ -85,6 +85,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *cd;
+	size_t allocated_size;
 
 	trace_kpb("kpb_new()");
 
@@ -143,8 +144,15 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	/* Set initial state as buffering */
 	cd->state = KPB_BUFFERING;
 
-	/* allocate history buffer */
-	kpb_allocate_history_buffer(cd);
+	/* Allocate history buffer */
+	allocated_size = kpb_allocate_history_buffer(cd);
+
+	/* Have we allocated what we requested? */
+	if (KPB_MAX_BUFFER_SIZE > allocated_size) {
+		trace_kpb_error("Failed to allocate space for "
+				"KPB buffer/s");
+		return NULL;
+	}
 
 	/*TODO: verify allocation size against requested size */
 
@@ -157,7 +165,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
  *
  * \return: none.
  */
-static void kpb_allocate_history_buffer(struct comp_data *kpb)
+static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 {
 	struct hb *history_buffer;
 	struct hb *new_hb = NULL;
@@ -171,6 +179,7 @@ static void kpb_allocate_history_buffer(struct comp_data *kpb)
 	void *new_mem_block = NULL;
 	size_t temp_ca_size = 0;
 	int i = 0;
+	size_t allocated_size;
 
 	/* Initialize history buffer */
 	kpb->history_buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
@@ -197,6 +206,7 @@ static void kpb_allocate_history_buffer(struct comp_data *kpb)
 			 * Now we initialize it.
 			 */
 			trace_kpb("kpb new memory block: %d", ca_size);
+			allocated_size += ca_size;
 			history_buffer->start_addr = new_mem_block;
 			history_buffer->end_addr = new_mem_block + ca_size;
 			history_buffer->w_ptr = new_mem_block;
@@ -240,6 +250,8 @@ static void kpb_allocate_history_buffer(struct comp_data *kpb)
 			continue;
 		}
 	}
+
+	return allocated_size;
 }
 
 /**
