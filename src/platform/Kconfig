@@ -42,6 +42,7 @@ config APOLLOLAKE
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
+	select HW_LLI
 	select CAVS
 	select CAVS_VERSION_1_5
 	help
@@ -55,6 +56,7 @@ config CANNONLAKE
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
+	select HW_LLI
 	select CAVS
 	select CAVS_VERSION_1_8
 	help
@@ -69,6 +71,7 @@ config SUECREEK
 	select DW_SPI
 	select INTEL_IOMUX
 	select DW_GPIO
+	select HW_LLI
 	select CAVS
 	select CAVS_VERSION_2_0
 	help
@@ -82,6 +85,7 @@ config ICELAKE
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
+	select HW_LLI
 	select CAVS
 	select CAVS_VERSION_2_0
 	help
