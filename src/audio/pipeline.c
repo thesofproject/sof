@@ -530,6 +530,49 @@ static int pipeline_trigger_on_core(struct pipeline *p, struct comp_dev *host,
 	return ret;
 }
 
+/*
+ * trigger handler for pipelines in xrun, used for recovery from host only.
+ * return values:
+ *	0 -- success, further trigger in caller needed.
+ *	PPL_STATUS_PATH_STOP -- done, no more further trigger needed.
+ *	minus -- failed, caller should return failure.
+ */
+static int pipeline_xrun_handle_trigger(struct pipeline *p, int cmd)
+{
+	int ret = 0;
+
+	/* it is expected in paused status for xrun pipeline */
+	if (!p->xrun_bytes || p->status != COMP_STATE_PAUSED)
+		return 0;
+
+	/* in xrun, handle start/stop trigger */
+	switch (cmd) {
+	case COMP_TRIGGER_START:
+		/* in xrun, prepare before trigger start needed */
+		trace_pipe_with_ids(p, "in xrun, prepare it first");
+		/* prepare the pipeline */
+		ret = pipeline_prepare(p, p->source_comp);
+		if (ret < 0) {
+			trace_pipe_error_with_ids(p, "prepare error: ret = %d",
+						  ret);
+			return ret;
+		}
+		/* now ready for start, clear xrun_bytes */
+		p->xrun_bytes = 0;
+		break;
+	case COMP_TRIGGER_STOP:
+		/* in xrun, suppose pipeline is already stopped, ignore it */
+		trace_pipe_with_ids(p, "already stopped in xrun");
+		/* no more further trigger stop needed */
+		ret = PPL_STATUS_PATH_STOP;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 /* trigger pipeline */
 int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
@@ -538,6 +581,18 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	uint32_t flags;
 
 	trace_pipe_with_ids(p, "pipeline_trigger()");
+
+	/* handle pipeline global checks before going into each components */
+	if (p->xrun_bytes) {
+		ret = pipeline_xrun_handle_trigger(p, cmd);
+		if (ret < 0) {
+			trace_pipe_error_with_ids(p, "xrun handle error: ret = %d",
+						  ret);
+			return ret;
+		} else if (ret == PPL_STATUS_PATH_STOP)
+			/* no further action needed*/
+			return 0;
+	}
 
 	/* if current core is different than requested */
 	if (p->ipc_pipe.core != cpu_get_id())
