@@ -96,7 +96,6 @@ struct host_data {
 	struct hc_buf *source;
 	struct hc_buf *sink;
 	uint32_t split_remaining;
-	uint32_t next_inc;
 #endif
 
 	/* stream info */
@@ -453,7 +452,6 @@ static int host_elements_reset(struct comp_dev *dev)
 	local_elem->size = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
 		sink_elem->size : source_elem->size;
 	local_elem->src = source_elem->src;
-	hd->next_inc =  hd->period_bytes;
 
 	return 0;
 }
