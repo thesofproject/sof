@@ -433,6 +433,7 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 	switch (cmd) {
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
+	case COMP_TRIGGER_XRUN:
 		pipeline_schedule_cancel(p);
 		p->status = COMP_STATE_PAUSED;
 		break;
@@ -453,7 +454,6 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 		break;
 	case COMP_TRIGGER_SUSPEND:
 	case COMP_TRIGGER_RESUME:
-	case COMP_TRIGGER_XRUN:
 	default:
 		break;
 	}
@@ -854,7 +854,7 @@ static uint64_t pipeline_task(void *arg)
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0)
-			goto sched;/* skip copy if still in xrun */
+			return 0;/* skip copy if still in xrun */
 	}
 
 	err = pipeline_copy(p);
@@ -863,11 +863,10 @@ static uint64_t pipeline_task(void *arg)
 		err = pipeline_xrun_recover(p);
 		if (err < 0) {
 			trace_pipe_error_with_ids(p, "pipeline_task(): xrun recover failed! pipeline will be stopped!");
-			goto sched; /* failed - host will stop this pipeline */
+			return 0; /* failed - host will stop this pipeline */
 		}
 	}
 
-sched:
 	tracev_pipe("pipeline_task() sched");
 	return p->ipc_pipe.period;
 }
