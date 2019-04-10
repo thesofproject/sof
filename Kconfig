@@ -42,6 +42,19 @@ config DW_GPIO
 	bool
 	default n
 
+config HW_LLI
+	bool
+	default n
+	help
+	  Hardware linked list is the DW-DMA feature, which allows
+	  to automatically reload the next programmed linked list
+	  item from memory without stopping the transfer. Without
+	  it the transfer stops after every lli read and FW needs
+	  to manually setup the next transfer.
+
+	  Any platforms with hardware linked list support
+	  should set this.
+
 source "src/Kconfig"
 
 menu "Debug"

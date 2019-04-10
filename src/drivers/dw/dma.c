@@ -256,14 +256,6 @@
 #define trace_dwdma_error(__e, ...) \
 	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
 
-/* HW Linked list support, only enabled for APL/CNL at the moment */
-#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE || \
-	CONFIG_ICELAKE || CONFIG_SUECREEK
-#define DW_USE_HW_LLI	1
-#else
-#define DW_USE_HW_LLI	0
-#endif
-
 /* number of tries to wait for reset */
 #define DW_DMA_CFG_TRIES	10000
 
@@ -515,7 +507,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 
 	dw_dma_interrupt_clear(dma, channel);
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 	/* TODO: Revisit: are we using LLP mode or single transfer ? */
 	/* LLP mode - write LLP pointer unless in scatter mode */
 	dw_write(dma, DW_LLP(channel), lli->ctrl_lo &
@@ -534,7 +526,7 @@ static int dw_dma_start(struct dma *dma, int channel)
 	dw_write(dma, DW_CFG_LOW(channel), chan->cfg_lo);
 	dw_write(dma, DW_CFG_HIGH(channel), chan->cfg_hi);
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 	if (lli->ctrl_lo & DW_CTLL_D_SCAT_EN) {
 		unsigned int words_per_tfr = (lli->ctrl_hi & 0x1ffff) >>
 			(lli->ctrl_lo >> 1 & 0x7);
@@ -660,7 +652,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_chan_data *chan = p->chan + channel;
 	uint32_t flags;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 	int i;
 	struct dw_lli2 *lli;
 #endif
@@ -678,7 +670,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 	lli = chan->lli;
 	for (i = 0; i < chan->desc_count; i++) {
 		lli->ctrl_hi &= ~DW_CTLH_DONE(1);
@@ -923,7 +915,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		case DMA_DIR_LMEM_TO_HMEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M | DW_CTLL_SRC_INC |
 				DW_CTLL_DST_INC;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
@@ -931,7 +923,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		case DMA_DIR_HMEM_TO_LMEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M | DW_CTLL_SRC_INC |
 				DW_CTLL_DST_INC;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
@@ -939,7 +931,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		case DMA_DIR_MEM_TO_MEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2M | DW_CTLL_SRC_INC |
 				DW_CTLL_DST_INC;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
@@ -947,7 +939,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		case DMA_DIR_MEM_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_M2P | DW_CTLL_SRC_INC |
 				DW_CTLL_DST_FIX;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 			lli_desc->ctrl_lo |= DW_CTLL_LLP_S_EN;
 			chan->cfg_lo |= DW_CFG_RELOAD_DST;
 #endif
@@ -956,7 +948,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		case DMA_DIR_DEV_TO_MEM:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2M | DW_CTLL_SRC_FIX |
 				DW_CTLL_DST_INC;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 			if (!config->scatter)
 				lli_desc->ctrl_lo |= DW_CTLL_LLP_D_EN;
 			else
@@ -972,7 +964,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		case DMA_DIR_DEV_TO_DEV:
 			lli_desc->ctrl_lo |= DW_CTLL_FC_P2P | DW_CTLL_SRC_FIX |
 				DW_CTLL_DST_FIX;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 			lli_desc->ctrl_lo |=
 				DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN;
 #endif
@@ -1020,7 +1012,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		lli_desc++;
 	}
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 	chan->cfg_lo |= DW_CFG_CTL_HI_UPD_EN;
 #endif
 
@@ -1029,7 +1021,7 @@ static int dw_dma_set_config(struct dma *dma, int channel,
 		lli_desc_tail->llp = (uint32_t)lli_desc_head;
 	} else {
 		lli_desc_tail->llp = 0x0;
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 		lli_desc_tail->ctrl_lo &=
 			~(DW_CTLL_LLP_S_EN | DW_CTLL_LLP_D_EN);
 #endif
@@ -1223,7 +1215,7 @@ static int dw_dma_setup(struct dma *dma)
 	return 0;
 }
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 static void dw_dma_verify_block(struct dma_chan_data *chan,
 				struct dma_sg_elem *next)
 {
@@ -1296,7 +1288,7 @@ static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 	tracev_dwdma("dw-dma: %d channel %d copy", dma->plat_data.id,
 		     channel);
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 	if (flags & DMA_COPY_LLI_BLOCK)
 		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
 				    &dw_dma_verify_block);
@@ -1365,7 +1357,7 @@ static void dw_dma_irq_handler(void *data)
 		return;
 	}
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 	/* end of a LLI block */
 	if (status_block & mask &&
 	    p->chan[i].cb_type & DMA_CB_TYPE_LLI_BLOCK)
@@ -1478,7 +1470,7 @@ static void dw_dma_irq_handler(void *data)
 
 		mask = 0x1 << i;
 
-#if DW_USE_HW_LLI
+#if CONFIG_HW_LLI
 		/* end of a LLI block */
 		if (status_block & mask &&
 		    p->chan[i].cb_type & DMA_CB_TYPE_LLI_BLOCK)
