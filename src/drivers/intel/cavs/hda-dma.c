@@ -860,11 +860,17 @@ static int hda_dma_remove(struct dma *dma)
 
 static int hda_dma_avail_data_size(struct hda_chan_data *chan)
 {
+	uint32_t status;
 	int32_t read_ptr;
 	int32_t write_ptr;
 	int size;
 
-	if (!(host_dma_reg_read(chan->dma, chan->index, DGCS) & DGCS_BNE))
+	status = host_dma_reg_read(chan->dma, chan->index, DGCS);
+
+	if (status & DGCS_BF)
+		return chan->buffer_bytes;
+
+	if (!(status & DGCS_BNE))
 		return 0;
 
 	read_ptr = host_dma_reg_read(chan->dma, chan->index, DGBRP);
