@@ -289,6 +289,11 @@ if(NOT DEFINED RIMAGE_PRIVATE_KEY)
 	set(RIMAGE_PRIVATE_KEY ${PROJECT_SOURCE_DIR}/rimage/keys/otc_private_key.pem)
 endif()
 
+if(NOT DEFINED RIMAGE_IMR_TYPE)
+	# default value for non-production firmware
+	set(RIMAGE_IMR_TYPE 3)
+endif()
+
 if(MEU_PATH)
 	execute_process(
 		COMMAND ${MEU_PATH}/meu -ver
@@ -313,6 +318,7 @@ if(MEU_PATH)
 			-m ${fw_name}
 			-s ${MEU_OFFSET}
 			-k ${RIMAGE_PRIVATE_KEY}
+			-i ${RIMAGE_IMR_TYPE}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
@@ -343,6 +349,7 @@ else()
 			-p sof-${fw_name}.ldc
 			-m ${fw_name}
 			-k ${RIMAGE_PRIVATE_KEY}
+			-i ${RIMAGE_IMR_TYPE}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
