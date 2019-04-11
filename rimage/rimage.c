@@ -45,6 +45,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -r enable relocatable ELF files\n");
 	fprintf(stdout, "\t -s MEU signing offset\n");
 	fprintf(stdout, "\t -p log dictionary outfile\n");
+	fprintf(stdout, "\t -i set IMR type\n");
 	exit(0);
 }
 
@@ -53,10 +54,11 @@ int main(int argc, char *argv[])
 	struct image image;
 	const char *mach = NULL;
 	int opt, ret, i, elf_argc = 0;
+	int imr_type = MAN_DEFAULT_IMR_TYPE;
 
 	memset(&image, 0, sizeof(image));
 
-	while ((opt = getopt(argc, argv, "ho:p:m:vba:s:k:l:r")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:p:m:vba:s:k:l:ri:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -81,6 +83,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'r':
 			image.reloc = 1;
+			break;
+		case 'i':
+			imr_type = atoi(optarg);
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -115,6 +120,10 @@ int main(int argc, char *argv[])
 	return -EINVAL;
 
 found:
+
+	/* set IMR Type in found machine definition */
+	if (image.adsp->man_v1_8)
+		image.adsp->man_v1_8->adsp_file_ext.imr_type = imr_type;
 
 	/* parse input ELF files */
 	image.num_modules = argc - elf_argc;

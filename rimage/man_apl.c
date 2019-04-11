@@ -108,7 +108,6 @@ struct fw_image_manifest_v1_8 apl_manifest = {
 	.adsp_file_ext = {
 		.ext_type = 17,
 		.ext_len = sizeof(struct sof_man_adsp_meta_file_ext),
-		.imr_type = 3,
 		.comp_desc[0] = {
 			.version = 0,
 			.base_offset = MAN_DESC_OFFSET_V1_8,
