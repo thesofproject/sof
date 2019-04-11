@@ -68,29 +68,33 @@
 /**
  * States may transform as below:-
  * \verbatim
- *
- *                            -------------
- *                   pause    |           |    stop/xrun
- *              +-------------| ACTIVITY  |---------------+
- *              |             |           |               |      prepare
- *              |             -------------               |   +-----------+
- *              |                ^     ^                  |   |           |
- *              |                |     |                  |   |           |
- *              v                |     |                  v   |           |
- *       -------------           |     |             -------------        |
- *       |           |   release |     |   start     |           |        |
- *       |   PAUSED  |-----------+     +-------------|  PREPARE  |<-------+
- *       |           |                               |           |
- *       -------------                               -------------
- *              |                                      ^     ^
- *              |               stop/xrun              |     |
- *              +--------------------------------------+     |
- *                                                           | prepare
- *                            -------------                  |
- *                            |           |                  |
- *                ----------->|   READY   |------------------+
- *                    reset   |           |
- *                            -------------
+ *                                  +---------------------------------------+
+ *                                  |                                       |
+ *                            -------------                                 |
+ *                   pause    |           |    stop                         |
+ *              +-------------| ACTIVITY  |---------------+                 |
+ *              |             |           |               |      prepare    |
+ *              |             -------------               |   +---------+   |
+ *              |                ^     ^                  |   |         |   |
+ *              |                |     |                  |   |         |   |
+ *              v                |     |                  v   |         |   |
+ *       -------------           |     |             -------------      |   |
+ *       |           |   release |     |   start     |           |      |   |
+ *       |   PAUSED  |-----------+     +-------------|  PREPARE  |<-----+   |
+ *       |           |                               |           |          |
+ *       -------------                               -------------          |
+ *              |                                      ^     ^              |
+ *              |               stop                   |     |              |
+ *              +--------------------------------------+     |              |
+ *                                                           | prepare      |
+ *                            -------------                  |              |
+ *                            |           |                  |              |
+ *                ----------->|   READY   |------------------+              |
+ *                    reset   |           |                                 |
+ *                            -------------                                 |
+ *                                  ^                                       |
+ *                                  |                 xrun                  |
+ *                                  +---------------------------------------+
  *
  * \endverbatim
  */
@@ -662,12 +666,12 @@ static inline int comp_get_requested_state(int cmd)
 		break;
 	case COMP_TRIGGER_PREPARE:
 	case COMP_TRIGGER_STOP:
-	case COMP_TRIGGER_XRUN:
 		state = COMP_STATE_PREPARE;
 		break;
 	case COMP_TRIGGER_PAUSE:
 		state = COMP_STATE_PAUSED;
 		break;
+	case COMP_TRIGGER_XRUN:
 	case COMP_TRIGGER_RESET:
 		state = COMP_STATE_READY;
 		break;
