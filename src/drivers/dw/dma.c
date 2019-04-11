@@ -639,12 +639,23 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
-	ret = poll_for_register_delay(dma_base(dma) + DW_DMA_CHAN_EN,
-				      CHAN_MASK(channel), 0,
+	/* channel cannot be disabled right away, so first we need to
+	 * suspend it and drain the FIFO
+	 */
+	dw_write(dma, DW_CFG_LOW(channel), chan->cfg_lo | DW_CFG_CH_SUSPEND |
+		 DW_CFG_CH_DRAIN);
+
+	/* now we wait for FIFO to be empty */
+	ret = poll_for_register_delay(dma_base(dma) + DW_CFG_LOW(channel),
+				      DW_CFG_CH_FIFO_EMPTY,
+				      DW_CFG_CH_FIFO_EMPTY,
 				      PLATFORM_DMA_TIMEOUT);
 	if (ret < 0)
 		trace_dwdma_error("dw-dma: %d channel %d timeout",
 				  dma->plat_data.id, channel);
+
+	/* channel can be disabled */
+	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 
 	if (!chan->irq_disabled)
 		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
