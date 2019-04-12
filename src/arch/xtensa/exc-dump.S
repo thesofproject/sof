@@ -117,8 +117,6 @@ store_register_loop:
 	memw
 
 dump_special_registers:
-	rsr  a6, EPC1
-	s32i a6, a2, REG_OFFSET_EPC1
 	rsr  a6, EPC2
 	s32i a6, a2, REG_OFFSET_EPC2
 	rsr  a6, EPC3
