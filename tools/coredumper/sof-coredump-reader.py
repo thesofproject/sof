@@ -49,6 +49,41 @@ VALID_ARCHS = {}
 	]]
 ]
 
+# Exception casues:
+# CODE: [Exception cause, excvaddr loaded]
+EXCCAUSE_CODE = {
+	0: ["IllegalInstructionCause: Illegal instruction", False],
+	1: ["SyscallCause: SYSCALL instruction", True],
+	2: ["InstructionFetchErrorCause: Processor internal physical address or data error during instruction fetch", True],
+	3: ["LoadStoreErrorCause: Processor internal physical address or data error during load or store", True],
+	4: ["Level1InterruptCause: Level-1 interrupt as indicated by set level-1 bits in the INTERRUPT register", False],
+	5: ["AllocaCause: MOVSP instruction, if caller's registers are not in the register file", False],
+	6: ["IntegerDivideByZeroCause: QUOS, QUOU, REMS, or REMU divisor operand is zero", False],
+	8: ["PrivilegedCause: Attempt to execute a privileged operation when CRING ? 0", False],
+	9: ["LoadStoreAlignmentCause: Load or store to an unaligned address", True],
+	12: ["InstrPIFDataErrorCause: PIF data error during instruction fetch", True],
+	13: ["LoadStorePIFDataErrorCause: ynchronous PIF data error during LoadStore access", True],
+	14: ["InstrPIFAddrErrorCause: PIF address error during instruction fetch", True],
+	15: ["LoadStorePIFAddrErrorCause: Synchronous PIF address error during LoadStore access", True],
+	16: ["InstTLBMissCause: Error during Instruction TLB refill", True],
+	17: ["InstTLBMultiHitCause: Multiple instruction TLB entries matched", True],
+	18: ["InstFetchPrivilegeCause: An instruction fetch referenced a virtual address at a ring level less than CRING", True],
+	20: ["InstFetchProhibitedCause: An instruction fetch referenced a page mapped with an attribute that does not permit instruction fetch", True],
+	24: ["LoadStoreTLBMissCause: Error during TLB refill for a load or store", True],
+	25: ["LoadStoreTLBMultiHitCause: Multiple TLB entries matched for a load or store", True],
+	26: ["LoadStorePrivilegeCause: A load or store referenced a virtual address at a ring level less than CRING", True],
+	28: ["LoadProhibitedCause: A load referenced a page mapped with an attribute that does not permit loads", True],
+	29: ["StoreProhibitedCause: A store referenced a page mapped with an attribute that does not permit stores", True],
+	32: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False],
+	33: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False],
+	34: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False],
+	35: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False],
+	36: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False],
+	37: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False],
+	38: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False],
+	39: ["CoprocessornDisabled: Coprocessor n instruction when cpn disabled. n varies 0..7 as the cause varies 32..39", False]
+}
+
 def valid_archs_print():
 	archs = ''.join("{0}, ".format(x) for x in VALID_ARCHS)
 	archs = archs[:len(archs)-2]
@@ -672,7 +707,6 @@ class CoreDumpReader(object):
 
 		verbosePrint(self.core_dump.windowstart_process())
 
-		verbosePrint("# Location: " + str(self.file_info));
 		stack_base = self.core_dump.stackptr
 		stack_dw_num = int(len(self.stack)/AR_WINDOW_WIDTH)
 		verbosePrint("# Stack dumped from {:08x} dwords num {:d}"
@@ -690,9 +724,18 @@ class CoreDumpReader(object):
 			stdoutPrint("set *0x{:08x}=0x{:08x}\n"
 				.format(addr, dw))
 
+		if self.core_dump.exccause:
+			verbosePrint("\n# *EXCEPTION*\n")
+			verbosePrint("# exccause: " + EXCCAUSE_CODE[self.core_dump.exccause][0])
+			if EXCCAUSE_CODE[self.core_dump.exccause][1]:
+				verbosePrint("# excvaddr: " + str(self.core_dump.excvaddr))
+			stdoutPrint('p "Exception location:"\nlist *$epc1\n');
+		else:
+			verbosePrint("# Location: " + str(self.file_info));
+
 		# TODO: if excsave1 is not empty, pc should be set to that value
 		# (exception mode, not forced panic mode)
-		stdoutPrint("set $pc=&arch_dump_regs_a\nbacktrace\n")
+		stdoutPrint('set $pc=&arch_dump_regs_a\np "backtrace"\nbacktrace\n')
 		stdoutClose()
 
 if __name__ == "__main__":
