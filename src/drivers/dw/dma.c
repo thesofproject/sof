@@ -1500,7 +1500,9 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 		return 0;
 	}
 
+#if CONFIG_DMA_AGGREGATED_IRQ
 	if (!dma->mask_irq_channels) {
+#endif
 		ret = interrupt_register(irq, IRQ_AUTO_UNMASK,
 					 dw_dma_irq_handler, dma);
 		if (ret < 0) {
@@ -1509,9 +1511,11 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 		}
 
 		interrupt_enable(irq);
+#if CONFIG_DMA_AGGREGATED_IRQ
 	}
 
 	dma->mask_irq_channels = dma->mask_irq_channels | BIT(channel);
+#endif
 
 	return 0;
 }
@@ -1528,12 +1532,16 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 		return;
 	}
 
+#if CONFIG_DMA_AGGREGATED_IRQ
 	dma->mask_irq_channels = dma->mask_irq_channels & ~BIT(channel);
 
 	if (!dma->mask_irq_channels) {
+#endif
 		interrupt_disable(irq);
 		interrupt_unregister(irq);
+#if CONFIG_DMA_AGGREGATED_IRQ
 	}
+#endif
 }
 #endif
 

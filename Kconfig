@@ -55,6 +55,18 @@ config HW_LLI
 	  Any platforms with hardware linked list support
 	  should set this.
 
+config DMA_AGGREGATED_IRQ
+	bool
+	default n
+	help
+	  Some platforms cannot register interrupt per DMA channel
+	  and have the possibility only to register interrupts per
+	  DMA controller, which require manual handling of aggregated
+	  irq.
+
+	  Any platforms with DMA aggregated interrupts support
+	  should set this.
+
 source "src/Kconfig"
 
 menu "Debug"

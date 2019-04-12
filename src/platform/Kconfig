@@ -9,6 +9,7 @@ config BAYTRAIL
 	select HOST_PTABLE
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
+	select DMA_AGGREGATED_IRQ
 	help
 	  Select if your target platform is Baytrail-compatible
 
@@ -17,6 +18,7 @@ config CHERRYTRAIL
 	select HOST_PTABLE
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
+	select DMA_AGGREGATED_IRQ
 	help
 	  Select if your target platform is Cherrytrail-compatible
 
@@ -24,6 +26,7 @@ config HASWELL
 	bool "Build for Haswell"
 	select HOST_PTABLE
 	select TASK_HAVE_PRIORITY_LOW
+	select DMA_AGGREGATED_IRQ
 	help
 	  Select if your target platform is Haswell-compatible
 
@@ -31,6 +34,7 @@ config BROADWELL
 	bool "Build for Broadwell"
 	select HOST_PTABLE
 	select TASK_HAVE_PRIORITY_LOW
+	select DMA_AGGREGATED_IRQ
 	help
 	  Select if your target platform is Broadwell-compatible
 
@@ -57,6 +61,7 @@ config CANNONLAKE
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
+	select DMA_AGGREGATED_IRQ
 	select CAVS
 	select CAVS_VERSION_1_8
 	help
@@ -72,6 +77,7 @@ config SUECREEK
 	select INTEL_IOMUX
 	select DW_GPIO
 	select HW_LLI
+	select DMA_AGGREGATED_IRQ
 	select CAVS
 	select CAVS_VERSION_2_0
 	help
@@ -86,6 +92,7 @@ config ICELAKE
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
+	select DMA_AGGREGATED_IRQ
 	select CAVS
 	select CAVS_VERSION_2_0
 	help
