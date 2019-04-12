@@ -52,7 +52,7 @@ void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 
 /* panic and rewind stack */
 void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
-		  struct sof_ipc_panic_info *panic_info)
+		  struct sof_ipc_panic_info *panic_info, uintptr_t *data)
 {
 	void *ext_offset;
 	size_t count;
@@ -83,7 +83,7 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	/* dump DSP core registers
 	 * after arch_dump_regs() use only inline funcs if needed
 	 */
-	arch_dump_regs(oldps, stack_ptr);
+	arch_dump_regs(oldps, stack_ptr, data);
 
 	/* panic - send IPC oops message to host */
 	platform_panic(p);
@@ -111,5 +111,5 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 			 filename, strlen + 1);
 	}
 
-	panic_rewind(p, 0, &panicinfo);
+	panic_rewind(p, 0, &panicinfo, NULL);
 }

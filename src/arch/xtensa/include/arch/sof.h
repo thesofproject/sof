@@ -56,7 +56,8 @@ static inline void *arch_get_stack_ptr(void)
 }
 
 static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
-				  uint32_t ps, uintptr_t stack_ptr)
+				  uint32_t ps, uintptr_t stack_ptr,
+				  uintptr_t *epc1)
 {
 	oops->arch_hdr.arch = ARCHITECTURE_ID;
 	oops->arch_hdr.totalsize = sizeof(*oops);
@@ -71,14 +72,17 @@ static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
 	oops->plat_hdr.stackoffset = ((void *)&oops->stack) - (void *)oops;
 	oops->plat_hdr.stackptr = stack_ptr;
 
+	oops->epc1 = *epc1;
+
 	arch_dump_regs_a((void *)&oops->exccause, ps);
 }
 
-static inline void arch_dump_regs(uint32_t ps, uintptr_t stack_ptr)
+static inline void arch_dump_regs(uint32_t ps, uintptr_t stack_ptr,
+				  uintptr_t *epc1)
 {
 	void *buf = (void *)mailbox_get_exception_base();
 
-	fill_core_dump(buf, ps, stack_ptr);
+	fill_core_dump(buf, ps, stack_ptr, epc1);
 
 	dcache_writeback_region(buf, sizeof(struct sof_ipc_dsp_oops_xtensa));
 }

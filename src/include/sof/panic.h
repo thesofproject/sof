@@ -38,7 +38,7 @@ struct sof_ipc_panic_info;
 
 void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info);
 void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
-		  struct sof_ipc_panic_info *panic_info);
+		  struct sof_ipc_panic_info *panic_info, uintptr_t *data);
 void __panic(uint32_t p, char *filename, uint32_t linenum);
 
 /* panic dump filename and linenumber of the call */
