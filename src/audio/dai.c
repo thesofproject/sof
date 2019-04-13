@@ -251,11 +251,10 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 		break;
 	case SOF_DAI_INTEL_SSP:
 	case SOF_DAI_INTEL_DMIC:
-	case SOF_DAI_INTEL_SOUNDWIRE:
 	default:
 		dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
 		caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
-		dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_SOUNDWIRE;
+		dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC;
 		break;
 	}
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
