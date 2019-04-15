@@ -51,10 +51,10 @@ static uint32_t task_get_irq(struct task *task)
 	uint32_t irq;
 
 	switch (task->priority) {
-	case SOF_TASK_PRI_LOW ... SOF_TASK_PRI_MED - 1:
+	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_LOW:
 		irq = PLATFORM_IRQ_TASK_LOW;
 		break;
-	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_HIGH:
+	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
 		irq = PLATFORM_IRQ_TASK_HIGH;
 		break;
 	case SOF_TASK_PRI_MED:
@@ -78,24 +78,24 @@ static int task_set_data(struct task *task)
 
 	switch (task->priority) {
 #ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
-	case SOF_TASK_PRI_LOW ... SOF_TASK_PRI_MED - 1:
+	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_LOW:
 		irq_task = *task_irq_low_get();
 		break;
-	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_HIGH:
+	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
 		irq_task = *task_irq_high_get();
 		break;
 	case SOF_TASK_PRI_MED:
 		irq_task = *task_irq_med_get();
 		break;
 #elif CONFIG_TASK_HAVE_PRIORITY_LOW
-	case  SOF_TASK_PRI_LOW ... SOF_TASK_PRI_MED:
+	case  SOF_TASK_PRI_MED ... SOF_TASK_PRI_LOW:
 		irq_task = *task_irq_low_get();
 		break;
-	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_HIGH:
+	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
 		irq_task = *task_irq_high_get();
 		break;
 #else
-	case SOF_TASK_PRI_LOW ... SOF_TASK_PRI_HIGH:
+	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_LOW:
 		irq_task = *task_irq_high_get();
 		break;
 #endif

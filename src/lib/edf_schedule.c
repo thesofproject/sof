@@ -142,7 +142,7 @@ static inline struct task *edf_get_next(uint64_t current, struct task *ignore)
 			delta = deadline - current;
 
 			/* get highest priority */
-			if (edf_task->priority > next_priority) {
+			if (edf_task->priority < next_priority) {
 				next_priority = edf_task->priority;
 				next_delta = delta;
 				edf_task_next = edf_task;

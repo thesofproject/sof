@@ -53,9 +53,9 @@ enum {
 	SOF_SCHEDULE_COUNT
 };
 
-#define SOF_TASK_PRI_LOW	0	/* priority level 0 - low */
+#define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
 #define SOF_TASK_PRI_MED	4	/* priority level 4 - medium */
-#define SOF_TASK_PRI_HIGH	9	/* priority level 9 - high */
+#define SOF_TASK_PRI_LOW	9	/* priority level 9 - low */
 
 #define SOF_TASK_PRI_COUNT	10	/* range of priorities (0-9) */
 
