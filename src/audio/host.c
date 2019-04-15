@@ -632,8 +632,8 @@ static int host_params(struct comp_dev *dev)
 	}
 #endif
 	/* set up callback */
-	dma_set_cb(hd->dma, hd->chan, DMA_CB_TYPE_LLI_TRANSFER |
-		   DMA_CB_TYPE_PROCESS, host_dma_cb, dev);
+	dma_set_cb(hd->dma, hd->chan, DMA_CB_TYPE_IRQ |
+		   DMA_CB_TYPE_COPY, host_dma_cb, dev);
 
 	return 0;
 }

@@ -84,7 +84,6 @@ struct dai_data {
 	struct dma *dma;
 	uint32_t period_bytes;
 	int xrun;		/* true if we are doing xrun recovery */
-	uint32_t cb_type;	/* last callback type */
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
@@ -100,9 +99,8 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 
 	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
-	/* reload lli if the last callback wasn't of llist type */
-	next->size = dd->cb_type == DMA_CB_TYPE_LLI_TRANSFER ?
-		DMA_RELOAD_IGNORE : DMA_RELOAD_LLI;
+	/* lli already reloaded */
+	next->size = DMA_RELOAD_IGNORE;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -166,22 +164,14 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
-	struct dai_data *dd = comp_get_drvdata(dev);
 
 	tracev_dai_with_ids(dev, "dai_dma_cb()");
 
 	switch (type) {
-	case DMA_CB_TYPE_LLI_BLOCK:
-		dd->cb_type = type;
-		next->size = DMA_RELOAD_IGNORE;
+	case DMA_CB_TYPE_IRQ:
 		pipeline_schedule_copy(dev->pipeline, 0);
 		break;
-	case DMA_CB_TYPE_LLI_TRANSFER:
-		dd->cb_type = type;
-		next->size = DMA_RELOAD_LLI;
-		pipeline_schedule_copy(dev->pipeline, 0);
-		break;
-	case DMA_CB_TYPE_PROCESS:
+	case DMA_CB_TYPE_COPY:
 		dai_buffer_process(dev, next);
 		break;
 	default:
@@ -269,7 +259,6 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
-	dd->cb_type = 0;
 	dd->chan = DMA_CHAN_INVALID;
 
 	dev->state = COMP_STATE_READY;
@@ -471,7 +460,6 @@ static int dai_params(struct comp_dev *dev)
 static int dai_prepare(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dma_sg_config *config = &dd->config;
 	int ret = 0;
 
 	trace_dai_with_ids(dev, "dai_prepare()");
@@ -495,10 +483,6 @@ static int dai_prepare(struct comp_dev *dev)
 	/* TODO: not sure what this wb is for? */
 	/* write back buffer contents from cache */
 	dcache_writeback_region(dd->dma_buffer->addr, dd->dma_buffer->size);
-
-	/* set default callback type if irq disabled */
-	if (config->irq_disabled)
-		dd->cb_type = DMA_CB_TYPE_LLI_BLOCK;
 
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
@@ -530,7 +514,6 @@ static int dai_reset(struct comp_dev *dev)
 	dd->wallclock = 0;
 	dev->position = 0;
 	dd->xrun = 0;
-	dd->cb_type = 0;
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
@@ -621,7 +604,6 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 static int dai_copy(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
-	uint32_t flags = 0;
 	uint32_t avail_bytes = 0;
 	uint32_t free_bytes = 0;
 	uint32_t copy_bytes = 0;
@@ -655,13 +637,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
-	if (dd->cb_type & DMA_CB_TYPE_LLI_BLOCK)
-		flags |= DMA_COPY_LLI_BLOCK;
-
-	if (dd->cb_type & DMA_CB_TYPE_LLI_TRANSFER)
-		flags |= DMA_COPY_LLI_TRANSFER;
-
-	ret = dma_copy(dd->dma, dd->chan, copy_bytes, flags);
+	ret = dma_copy(dd->dma, dd->chan, copy_bytes, 0);
 	if (ret < 0)
 		trace_dai_error("dai_copy() error: ret = %u", ret);
 
@@ -787,9 +763,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	}
 
 	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_LLI_BLOCK |
-		   DMA_CB_TYPE_LLI_TRANSFER | DMA_CB_TYPE_PROCESS, dai_dma_cb,
-		   dev);
+	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_IRQ | DMA_CB_TYPE_COPY,
+		   dai_dma_cb, dev);
 
 	dev->is_dma_connected = 1;
 

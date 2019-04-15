@@ -266,11 +266,6 @@
 #define DW_DMA_LLI_ADDRESS(lli, dir) \
 	(((dir) == DMA_DIR_MEM_TO_DEV) ? ((lli)->sar) : ((lli)->dar))
 
-struct dma_id {
-	struct dma *dma;
-	uint32_t channel;
-};
-
 /* pointer data for dma buffer */
 struct dma_ptr_data {
 	uint32_t current_ptr;
@@ -288,7 +283,6 @@ struct dma_chan_data {
 	uint32_t desc_count;
 	uint32_t cfg_lo;
 	uint32_t cfg_hi;
-	struct dma_id id;
 	bool irq_disabled;
 
 	/* pointer data */
@@ -361,8 +355,11 @@ static void dw_dma_interrupt_unmask(struct dma *dma, int channel)
 	}
 
 	/* unmask block, transfer and error interrupts for channel */
-	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
+#if CONFIG_HW_LLI
 	dw_write(dma, DW_MASK_BLOCK, INT_UNMASK(channel));
+#else
+	dw_write(dma, DW_MASK_TFR, INT_UNMASK(channel));
+#endif
 	dw_write(dma, DW_MASK_ERR, INT_UNMASK(channel));
 }
 
@@ -581,7 +578,7 @@ static int dw_dma_release(struct dma *dma, int channel)
 			(chan->ptr_data.end_ptr - chan->ptr_data.current_ptr) +
 			(next_ptr - chan->ptr_data.start_ptr);
 
-	dw_dma_copy(dma, channel, bytes_left, DMA_COPY_LLI_BLOCK);
+	dw_dma_copy(dma, channel, bytes_left, 0);
 
 	spin_unlock_irq(&dma->lock, flags);
 	return 0;
@@ -691,10 +688,6 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	dcache_writeback_region(chan->lli,
 			sizeof(struct dw_lli2) * chan->desc_count);
 #endif
-
-	if (!chan->irq_disabled)
-		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
-
 	/* disable interrupt */
 	dw_dma_interrupt_unregister(dma, channel);
 
@@ -1226,17 +1219,18 @@ static int dw_dma_setup(struct dma *dma)
 	return 0;
 }
 
-#if CONFIG_HW_LLI
-static void dw_dma_verify_block(struct dma_chan_data *chan,
-				struct dma_sg_elem *next)
+static void dw_dma_verify_transfer(struct dma *dma, int channel,
+				   struct dma_sg_elem *next)
 {
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = p->chan + channel;
+#if CONFIG_HW_LLI
 	struct dw_lli2 *ll_uncached = cache_to_uncache(chan->lli_current);
 
 	switch (next->size) {
 	case DMA_RELOAD_END:
 		chan->status = COMP_STATE_PREPARE;
-		dw_write(chan->id.dma, DW_DMA_CHAN_EN,
-			 CHAN_DISABLE(chan->id.channel));
+		dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
 		/* fallthrough */
 	default:
 		if (ll_uncached->ctrl_hi & DW_CTLH_DONE(1)) {
@@ -1246,12 +1240,7 @@ static void dw_dma_verify_block(struct dma_chan_data *chan,
 		}
 		break;
 	}
-}
-#endif
-
-static void dw_dma_verify_transfer(struct dma_chan_data *chan,
-				   struct dma_sg_elem *next)
-{
+#else
 	/* check for reload channel:
 	 * next.size is DMA_RELOAD_END, stop this dma copy;
 	 * next.size > 0 but not DMA_RELOAD_LLI, use next
@@ -1265,25 +1254,32 @@ static void dw_dma_verify_transfer(struct dma_chan_data *chan,
 		chan->lli_current = (struct dw_lli2 *)chan->lli_current->llp;
 		break;
 	case DMA_RELOAD_LLI:
-		dw_dma_chan_reload_lli(chan->id.dma, chan->id.channel);
+		dw_dma_chan_reload_lli(dma, channel);
 		break;
 	default:
-		dw_dma_chan_reload_next(chan->id.dma, chan->id.channel, next,
-					chan->direction);
+		dw_dma_chan_reload_next(dma, channel, next, chan->direction);
 		break;
 	}
+#endif
 }
 
-static void dw_dma_irq_callback(struct dma_chan_data *chan,
-				struct dma_sg_elem *next, uint32_t type,
-				void (*verify)(struct dma_chan_data *,
-					       struct dma_sg_elem *))
+static void dw_dma_irq_callback(struct dma *dma, int channel,
+				struct dma_sg_elem *next, uint32_t type)
 {
-	if (chan->cb)
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = p->chan + channel;
+
+	if (channel >= dma->plat_data.channels) {
+		trace_dwdma_error("dw-dma: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return;
+	}
+
+	if (chan->cb && chan->cb_type & type)
 		chan->cb(chan->cb_data, type, next);
 
-	if (verify && next->size != DMA_RELOAD_IGNORE)
-		verify(chan, next);
+	if (next->size != DMA_RELOAD_IGNORE)
+		dw_dma_verify_transfer(dma, channel, next);
 }
 
 static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
@@ -1299,15 +1295,7 @@ static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 	tracev_dwdma("dw-dma: %d channel %d copy", dma->plat_data.id,
 		     channel);
 
-#if CONFIG_HW_LLI
-	if (flags & DMA_COPY_LLI_BLOCK)
-		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
-				    &dw_dma_verify_block);
-#endif
-
-	if (flags & DMA_COPY_LLI_TRANSFER)
-		dw_dma_irq_callback(chan, &next, DMA_CB_TYPE_PROCESS,
-				    &dw_dma_verify_transfer);
+	dw_dma_irq_callback(dma, channel, &next, DMA_CB_TYPE_COPY);
 
 	/* change current pointer */
 	chan->ptr_data.current_ptr += bytes;
@@ -1318,121 +1306,15 @@ static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 	return 0;
 }
 
-#if CONFIG_APOLLOLAKE
-/* interrupt handler for DW DMA */
-static void dw_dma_irq_handler(void *data)
-{
-	struct dma_id *dma_id = data;
-	struct dma *dma = dma_id->dma;
-	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t status_tfr, status_block, status_err, status_intr;
-	uint32_t mask;
-	int i = dma_id->channel;
-	struct dma_sg_elem next = {
-		.src = DMA_RELOAD_LLI,
-		.dest = DMA_RELOAD_LLI,
-		.size = DMA_RELOAD_LLI
-	};
-
-	status_intr = dw_read(dma, DW_INTR_STATUS);
-	if (!status_intr) {
-		trace_dwdma_error("dw-dma: %d IRQ with no status",
-				  dma->plat_data.id);
-	}
-
-	tracev_dwdma("dw-dma: %d IRQ status 0x%x", dma->plat_data.id,
-		     status_intr);
-
-	/* get the source of our IRQ. */
-	status_block = dw_read(dma, DW_STATUS_BLOCK);
-	status_tfr = dw_read(dma, DW_STATUS_TFR);
-
-	/* TODO: handle errors, just clear them atm */
-	status_err = dw_read(dma, DW_STATUS_ERR);
-	if (status_err) {
-		trace_dwdma("dw-dma: %d IRQ error 0x%", dma->plat_data.id,
-			    status_err);
-		dw_write(dma, DW_CLEAR_ERR, status_err & i);
-	}
-
-	mask = 0x1 << i;
-
-	/* clear interrupts for channel*/
-	dw_write(dma, DW_CLEAR_BLOCK, status_block & mask);
-	dw_write(dma, DW_CLEAR_TFR, status_tfr & mask);
-
-	/* skip if channel is not running */
-	if (p->chan[i].status != COMP_STATE_ACTIVE) {
-		trace_dwdma_error("dw-dma: %d channel %d not running",
-				  dma->plat_data.id, dma_id->channel);
-		return;
-	}
-
-#if CONFIG_HW_LLI
-	/* end of a LLI block */
-	if (status_block & mask &&
-	    p->chan[i].cb_type & DMA_CB_TYPE_LLI_BLOCK)
-		dw_dma_irq_callback(&p->chan[i], &next, DMA_CB_TYPE_LLI_BLOCK,
-				    &dw_dma_verify_block);
-#endif
-}
-
-static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
-{
-	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t irq = dma_irq(dma, cpu_get_id()) +
-		(channel << SOF_IRQ_BIT_SHIFT);
-	int ret;
-
-	trace_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register()");
-
-	if (p->chan[channel].irq_disabled) {
-		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register(): "
-			     "dma %d channel %d not working in irq mode",
-			     dma->plat_data.id, channel);
-		return 0;
-	}
-
-	ret = interrupt_register(irq, IRQ_AUTO_UNMASK, dw_dma_irq_handler,
-				 &p->chan[channel].id);
-	if (ret < 0) {
-		trace_dwdma_error("DWDMA failed to allocate IRQ");
-		return ret;
-	}
-
-	interrupt_enable(irq);
-	return 0;
-}
-
-static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
-{
-	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t irq = dma_irq(dma, cpu_get_id()) +
-		(channel << SOF_IRQ_BIT_SHIFT);
-
-	if (p->chan[channel].irq_disabled) {
-		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_unregister(): "
-			     "dma %d channel %d not working in irq mode",
-			     dma->plat_data.id, channel);
-		return;
-	}
-
-	interrupt_disable(irq);
-	interrupt_unregister(irq);
-}
-#else
 /* interrupt handler for DMA */
 static void dw_dma_irq_handler(void *data)
 {
 	struct dma *dma = data;
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t status_tfr;
-	uint32_t status_block;
-	uint32_t status_block_new;
-	uint32_t status_err;
 	uint32_t status_intr;
+	uint32_t status_err;
+	uint32_t status_src;
 	uint32_t mask;
-	uint32_t pmask;
 	int i;
 	struct dma_sg_elem next = {
 		.src = DMA_RELOAD_LLI,
@@ -1444,70 +1326,52 @@ static void dw_dma_irq_handler(void *data)
 	if (!status_intr)
 		return;
 
-	tracev_dwdma("dw-dma: %d IRQ status 0x%x", dma->plat_data.id,
-		     status_intr);
+	tracev_dwdma("dw_dma_irq_handler(): dma %d IRQ status 0x%x",
+		     dma->plat_data.id, status_intr);
 
-	/* get the source of our IRQ. */
-	status_block = dw_read(dma, DW_STATUS_BLOCK);
-	status_tfr = dw_read(dma, DW_STATUS_TFR);
-
-	/* clear interrupts */
-	dw_write(dma, DW_CLEAR_BLOCK, status_block);
-	dw_write(dma, DW_CLEAR_TFR, status_tfr);
+	/* get the source of our IRQ and clear it */
+#if CONFIG_HW_LLI
+	status_src = dw_read(dma, DW_STATUS_BLOCK);
+	dw_write(dma, DW_CLEAR_BLOCK, status_src);
+#else
+	status_src = dw_read(dma, DW_STATUS_TFR);
+	dw_write(dma, DW_CLEAR_TFR, status_src);
+#endif
 
 	/* TODO: handle errors, just clear them atm */
 	status_err = dw_read(dma, DW_STATUS_ERR);
-	dw_write(dma, DW_CLEAR_ERR, status_err);
-	if (status_err)
-		trace_dwdma_error("dw-dma: %d error 0x%x", dma->plat_data.id,
-				  status_err);
-
-	/* clear platform and DSP interrupt */
-	pmask = status_block | status_tfr | status_err;
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()), pmask);
-
-	/* confirm IRQ cleared */
-	status_block_new = dw_read(dma, DW_STATUS_BLOCK);
-	if (status_block_new) {
-		trace_dwdma_error("dw-dma: %d status block 0x%x not cleared",
-				  dma->plat_data.id, status_block_new);
+	if (status_err) {
+		trace_dwdma_error("dw_dma_irq_handler() error: dma %d status "
+				  "error 0x%x", dma->plat_data.id, status_err);
+		dw_write(dma, DW_CLEAR_ERR, status_err);
 	}
 
-	for (i = 0; i < dma->plat_data.channels; i++) {
+	/* clear platform and DSP interrupt */
+	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
+				 status_src | status_err);
 
+	for (i = 0; i < dma->plat_data.channels; i++) {
 		/* skip if channel is not running */
 		if (p->chan[i].status != COMP_STATE_ACTIVE)
 			continue;
 
 		mask = 0x1 << i;
 
-#if CONFIG_HW_LLI
-		/* end of a LLI block */
-		if (status_block & mask &&
-		    p->chan[i].cb_type & DMA_CB_TYPE_LLI_BLOCK)
-			dw_dma_irq_callback(&p->chan[i], &next,
-					    DMA_CB_TYPE_LLI_BLOCK,
-					    &dw_dma_verify_block);
-#endif
-		/* end of a transfer */
-		if (status_tfr & mask &&
-		    p->chan[i].cb_type & DMA_CB_TYPE_LLI_TRANSFER)
-			dw_dma_irq_callback(&p->chan[i], &next,
-					    DMA_CB_TYPE_LLI_TRANSFER,
-					    &dw_dma_verify_transfer);
+		if (status_src & mask)
+			dw_dma_irq_callback(dma, i, &next, DMA_CB_TYPE_IRQ);
 	}
 }
 
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t irq = dma_irq(dma, cpu_get_id());
+	uint32_t irq = dma_chan_irq(dma, cpu_get_id(), channel);
 	int ret;
 
 	if (p->chan[channel].irq_disabled) {
-		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_register(): "
-			     "dma %d channel %d not working in irq mode",
-			     dma->plat_data.id, channel);
+		tracev_dwdma("dw_dma_interrupt_register(): dma %d channel %d "
+			     "not working in irq mode", dma->plat_data.id,
+			     channel);
 		return 0;
 	}
 
@@ -1517,7 +1381,10 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 		ret = interrupt_register(irq, IRQ_AUTO_UNMASK,
 					 dw_dma_irq_handler, dma);
 		if (ret < 0) {
-			trace_dwdma_error("DWDMA failed to allocate IRQ");
+			trace_dwdma_error("dw_dma_interrupt_register() error: "
+					  "dma %d channel %d failed to "
+					  "allocate IRQ", dma->plat_data.id,
+					  channel);
 			return ret;
 		}
 
@@ -1525,7 +1392,7 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 #if CONFIG_DMA_AGGREGATED_IRQ
 	}
 
-	dma->mask_irq_channels = dma->mask_irq_channels | BIT(channel);
+	dma->mask_irq_channels |= BIT(channel);
 #endif
 
 	return 0;
@@ -1534,17 +1401,17 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-	uint32_t irq = dma_irq(dma, cpu_get_id());
+	uint32_t irq = dma_chan_irq(dma, cpu_get_id(), channel);
 
 	if (p->chan[channel].irq_disabled) {
-		tracev_event(TRACE_CLASS_DMA, "dw_dma_interrupt_unregister(): "
-			     "dma %d channel %d not working in irq mode",
-			     dma->plat_data.id, channel);
+		tracev_dwdma("dw_dma_interrupt_unregister(): dma %d channel %d"
+			     " not working in irq mode", dma->plat_data.id,
+			     channel);
 		return;
 	}
 
 #if CONFIG_DMA_AGGREGATED_IRQ
-	dma->mask_irq_channels = dma->mask_irq_channels & ~BIT(channel);
+	dma->mask_irq_channels &= ~BIT(channel);
 
 	if (!dma->mask_irq_channels) {
 #endif
@@ -1554,12 +1421,12 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 	}
 #endif
 }
-#endif
 
 static int dw_dma_probe(struct dma *dma)
 {
 	struct dma_pdata *dw_pdata;
-	int i, ret;
+	int ret;
+	int i;
 
 	if (dma_get_drvdata(dma))
 		return -EEXIST; /* already created */
@@ -1584,11 +1451,8 @@ static int dw_dma_probe(struct dma *dma)
 		return ret;
 
 	/* init work */
-	for (i = 0; i < dma->plat_data.channels; i++) {
-		dw_pdata->chan[i].id.dma = dma;
-		dw_pdata->chan[i].id.channel = i;
+	for (i = 0; i < dma->plat_data.channels; i++)
 		dw_pdata->chan[i].status = COMP_STATE_INIT;
-	}
 
 	/* init number of channels draining */
 	atomic_init(&dma->num_channels_busy, 0);
@@ -1605,10 +1469,12 @@ static int dw_dma_remove(struct dma *dma)
 	return 0;
 }
 
-static int dw_dma_avail_data_size(struct dma_chan_data *chan)
+static int dw_dma_avail_data_size(struct dma *dma, int channel)
 {
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = &p->chan[channel];
 	int32_t read_ptr = chan->ptr_data.current_ptr;
-	int32_t write_ptr = dw_read(chan->id.dma, DW_DAR(chan->id.channel));
+	int32_t write_ptr = dw_read(dma, DW_DAR(channel));
 	int size;
 
 	size = write_ptr - read_ptr;
@@ -1618,9 +1484,11 @@ static int dw_dma_avail_data_size(struct dma_chan_data *chan)
 	return size;
 }
 
-static int dw_dma_free_data_size(struct dma_chan_data *chan)
+static int dw_dma_free_data_size(struct dma *dma, int channel)
 {
-	int32_t read_ptr = dw_read(chan->id.dma, DW_SAR(chan->id.channel));
+	struct dma_pdata *p = dma_get_drvdata(dma);
+	struct dma_chan_data *chan = &p->chan[channel];
+	int32_t read_ptr = dw_read(dma, DW_SAR(channel));
 	int32_t write_ptr = chan->ptr_data.current_ptr;
 	int size;
 
@@ -1645,9 +1513,9 @@ static int dw_dma_get_data_size(struct dma *dma, int channel, uint32_t *avail,
 
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    chan->direction == DMA_DIR_DEV_TO_MEM)
-		*avail = dw_dma_avail_data_size(chan);
+		*avail = dw_dma_avail_data_size(dma, channel);
 	else
-		*free = dw_dma_free_data_size(chan);
+		*free = dw_dma_free_data_size(dma, channel);
 
 	spin_unlock_irq(&dma->lock, flags);
 
