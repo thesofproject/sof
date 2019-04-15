@@ -371,7 +371,7 @@ static inline void insert_task_to_queue(struct task *w,
 	/* works are adding to queue in order */
 	list_for_item(wlist, q_list) {
 		ll_task = container_of(wlist, struct task, list);
-		if (w->priority >= ll_task->priority) {
+		if (w->priority <= ll_task->priority) {
 			list_item_append(&w->list, &ll_task->list);
 			return;
 		}
