@@ -573,7 +573,7 @@ static void src_free(struct comp_dev *dev)
 	trace_src("src_free()");
 
 	/* Free dynamically reserved buffers for SRC algorithm */
-	if (!cd->delay_lines)
+	if (cd->delay_lines)
 		rfree(cd->delay_lines);
 
 	rfree(cd);
@@ -639,7 +639,7 @@ static int src_params(struct comp_dev *dev)
 	}
 
 	/* free any existing delay lines. TODO reuse if same size */
-	if (!cd->delay_lines)
+	if (cd->delay_lines)
 		rfree(cd->delay_lines);
 
 	cd->delay_lines = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
