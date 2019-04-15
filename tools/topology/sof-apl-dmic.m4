@@ -18,7 +18,7 @@ include(`platform/intel/bxt.m4')
 include(`platform/intel/dmic.m4')
 
 define(DMIC_PDM_CONFIG, ifelse(CHANNELS, `4', ``FOUR_CH_PDM0_PDM1'',
-	ifelse(CHANNELS, `2', ``STEREO_PDM0'', `')))
+	`ifelse(CHANNELS, `2', ``STEREO_PDM0'', `')'))
 
 #
 # Define the pipelines
