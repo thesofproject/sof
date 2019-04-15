@@ -216,7 +216,8 @@
 /* HP & LP SRAM Power Gating */
 #define SHIM_HSPGCTL		0x80
 #define SHIM_LSPGCTL		0x84
-#define SHIM_SPSREQ		    0xa0
+#define SHIM_SPSREQ		0xa0
+#define LSPGCTL			SHIM_LSPGCTL
 
 #define SHIM_SPSREQ_RVNNP	(0x1 << 0)
 
@@ -233,6 +234,7 @@
 
 #define SHIM_HSPGISTS		0xb0
 #define SHIM_LSPGISTS		0xb4
+#define LSPGISTS		(SHIM_BASE + SHIM_LSPGISTS)
 
 
 #define SHIM_LPSCTL_FDSPRUN	(0X1 << 9)
