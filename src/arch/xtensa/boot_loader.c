@@ -218,14 +218,24 @@ static uint32_t hp_sram_init(void)
 
 #endif
 
-#if defined(CONFIG_ICELAKE)
+#if defined(CONFIG_APOLLOLAKE)
 static int32_t lp_sram_init(void)
 {
-	int status;
-	unsigned int timeout_counter, delay_count = 256;
+	uint32_t status;
+	uint32_t lspgctl_value;
+	uint32_t timeout_counter, delay_count = 256;
 	timeout_counter = delay_count;
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_LPSRAM_LDO_ON);
+
+	/* add some delay before writing power registers */
+	idelay(delay_count);
+
+	lspgctl_value = shim_read(LSPGCTL);
+	shim_write(LSPGCTL, lspgctl_value & !LPSRAM_MASK(0));
+
+	/* add some delay before checking the status */
+	idelay(delay_count);
 
 	/* query the power status of first part of LP memory */
 	/* to check whether it has been powered up. A few    */
@@ -236,11 +246,10 @@ static int32_t lp_sram_init(void)
 			platform_panic(SOF_IPC_PANIC_MEM);
 			break;
 		}
+		idelay(delay_count);
 		status = io_reg_read(LSPGISTS);
 	}
 
-	/* add some extra delay before touch power register */
-	idelay(delay_count);
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_LPSRAM_LDO_BYPASS);
 
 	return status;
@@ -263,7 +272,7 @@ void boot_master_core(void)
 		return;
 	}
 
-#if defined(CONFIG_ICELAKE)
+#if defined(CONFIG_APOLLOLAKE)
 	/* init the LPSRAM */
 	platform_trace_point(TRACE_BOOT_LDR_LPSRAM);
 
