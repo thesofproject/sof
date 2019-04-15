@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 {
 	struct convert_config config;
 	unsigned int baud = 0;
-	bool do_snapshot = false;
+	const char *snapshot_file = 0;
 	int opt, ret = 0;
 
 	config.trace = 0;
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 			config.clock = atof(optarg);
 			break;
 		case 's':
-			do_snapshot = true;
+			snapshot_file = optarg;
 			break;
 		case 'l':
 			config.ldc_file = optarg;
@@ -199,9 +199,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (do_snapshot)
-		return baud ? EINVAL : -snapshot(optarg);
-	
+	if (snapshot_file)
+		return baud ? EINVAL : -snapshot(snapshot_file);
+
 	if (!config.ldc_file) {
 		fprintf(stderr, "error: Missing ldc file\n");
 		usage();
