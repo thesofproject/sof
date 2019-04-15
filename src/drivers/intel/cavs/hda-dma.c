@@ -312,7 +312,7 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
 	};
 
 	if (chan->cb) {
-		chan->cb(chan->cb_data, DMA_CB_TYPE_PROCESS, &next);
+		chan->cb(chan->cb_data, DMA_CB_TYPE_COPY, &next);
 		if (next.size == DMA_RELOAD_END)
 			/* disable channel, finished */
 			hda_dma_stop(dma, chan->index);

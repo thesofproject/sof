@@ -484,9 +484,9 @@ int spi_probe(struct spi *spi)
 	spi->ipc_status = IPC_READ;
 
 	dma_set_cb(spi->dma[SPI_DIR_RX], spi->chan[SPI_DIR_RX],
-		   DMA_CB_TYPE_LLI_BLOCK, spi_dma_complete, spi);
+		   DMA_CB_TYPE_IRQ, spi_dma_complete, spi);
 	dma_set_cb(spi->dma[SPI_DIR_TX], spi->chan[SPI_DIR_TX],
-		   DMA_CB_TYPE_LLI_BLOCK, spi_dma_complete, spi);
+		   DMA_CB_TYPE_IRQ, spi_dma_complete, spi);
 
 	return spi_slave_init(spi);
 }

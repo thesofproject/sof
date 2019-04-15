@@ -56,6 +56,8 @@
 #define DMA_HANDSHAKE_OBFF_10		14
 #define DMA_HANDSHAKE_OBFF_11		15
 
+#define dma_chan_irq(dma, cpu, chan) dma_irq(dma, cpu)
+
 int dmac_init(void);
 
 #endif
