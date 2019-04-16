@@ -12,3 +12,13 @@ SectionTLV."vtlv_m90s3" {
 		mute "1"
 	}
 }
+
+SectionTLV."vtlv_m50s1" {
+	Comment "-50dB step 1dB"
+
+	scale {
+		min "-5000"
+		step "100"
+		mute "1"
+	}
+}
