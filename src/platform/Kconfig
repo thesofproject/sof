@@ -10,6 +10,7 @@ config BAYTRAIL
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select DMA_AGGREGATED_IRQ
+	select DMA_SUSPEND_DRAIN
 	help
 	  Select if your target platform is Baytrail-compatible
 
@@ -19,6 +20,7 @@ config CHERRYTRAIL
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select DMA_AGGREGATED_IRQ
+	select DMA_SUSPEND_DRAIN
 	help
 	  Select if your target platform is Cherrytrail-compatible
 

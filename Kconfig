@@ -67,6 +67,19 @@ config DMA_AGGREGATED_IRQ
 	  Any platforms with DMA aggregated interrupts support
 	  should set this.
 
+config DMA_SUSPEND_DRAIN
+	bool
+	default n
+	help
+	  Some platforms cannot just simple disable DMA
+	  channel during the transfer, because it will
+	  hang the whole DMA controller. Instead we can
+	  suspend the channel and drain the FIFO in order
+	  to stop the channel as soon as possible.
+
+	  Any platforms without the ability to disable
+	  the DMA channel right away should set this.
+
 source "src/Kconfig"
 
 menu "Debug"

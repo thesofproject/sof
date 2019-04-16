@@ -610,13 +610,18 @@ out:
 	return 0;
 }
 
-#if CONFIG_BAYTRAIL || CONFIG_CHERRYTRAIL
 static int dw_dma_stop(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dma_chan_data *chan = p->chan + channel;
-	int ret;
 	uint32_t flags;
+#if CONFIG_HW_LLI
+	int i;
+	struct dw_lli2 *lli;
+#endif
+#if CONFIG_DMA_SUSPEND_DRAIN
+	int ret;
+#endif
 
 	if (channel >= dma->plat_data.channels || channel == DMA_CHAN_INVALID) {
 		trace_dwdma_error("dw-dma: %d invalid channel %d",
@@ -624,10 +629,12 @@ static int dw_dma_stop(struct dma *dma, int channel)
 		return -EINVAL;
 	}
 
-	trace_dwdma("dw-dma: %d channel %d stop", dma->plat_data.id, channel);
+	trace_dwdma_atomic("dw-dma: %d channel %d stop", dma->plat_data.id,
+			   channel);
 
 	spin_lock_irq(&dma->lock, flags);
 
+#if CONFIG_DMA_SUSPEND_DRAIN
 	/* channel cannot be disabled right away, so first we need to
 	 * suspend it and drain the FIFO
 	 */
@@ -642,41 +649,12 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	if (ret < 0)
 		trace_dwdma_error("dw-dma: %d channel %d timeout",
 				  dma->plat_data.id, channel);
-
-	/* channel can be disabled */
-	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
-
-	if (!chan->irq_disabled)
-		dw_write(dma, DW_CLEAR_BLOCK, 0x1 << channel);
-
-	chan->status = COMP_STATE_PREPARE;
-
-	spin_unlock_irq(&dma->lock, flags);
-	return ret;
-}
-#else
-static int dw_dma_stop(struct dma *dma, int channel)
-{
-	struct dma_pdata *p = dma_get_drvdata(dma);
-	struct dma_chan_data *chan = p->chan + channel;
-	uint32_t flags;
-#if CONFIG_HW_LLI
-	int i;
-	struct dw_lli2 *lli;
 #endif
 
-	if (channel >= dma->plat_data.channels || channel == DMA_CHAN_INVALID) {
-		trace_dwdma_error("dw-dma: %d invalid channel %d",
-				  dma->plat_data.id, channel);
-		return -EINVAL;
-	}
-
-	trace_dwdma_atomic("dw-dma: %d channel %d stop", dma->plat_data.id,
-			   channel);
-
-	spin_lock_irq(&dma->lock, flags);
-
 	dw_write(dma, DW_DMA_CHAN_EN, CHAN_DISABLE(channel));
+
+	/* disable interrupt */
+	dw_dma_interrupt_unregister(dma, channel);
 
 #if CONFIG_HW_LLI
 	lli = chan->lli;
@@ -688,8 +666,6 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	dcache_writeback_region(chan->lli,
 			sizeof(struct dw_lli2) * chan->desc_count);
 #endif
-	/* disable interrupt */
-	dw_dma_interrupt_unregister(dma, channel);
 
 	chan->status = COMP_STATE_PREPARE;
 
@@ -697,7 +673,6 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	return 0;
 }
-#endif
 
 /* fill in "status" with current DMA channel state and position */
 static int dw_dma_status(struct dma *dma, int channel,
