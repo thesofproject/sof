@@ -62,17 +62,6 @@ enum kpb_state {
 	KPB_DRAINING_ON_DEMAND,
 };
 
-enum kpb_sink_state {
-	KPB_SINK_BUSY = 0,
-	KPB_SINK_READY,
-};
-
-struct kpb_sink {
-	uint32_t *data_ptr;
-	uint32_t data_size;
-	enum kpb_sink_state state;
-};
-
 enum kpb_event {
 	KPB_EVENT_REGISTER_CLIENT = 0,
 	KPB_EVENT_UPDATE_PARAMS,
@@ -130,16 +119,6 @@ struct dd {
 	size_t history_depth;
 	uint8_t is_draining_active;
 	enum kpb_state *state;
-};
-
-struct history_buffer {
-	enum kpb_id id;
-	enum buffer_state state;
-	void *w_ptr; /**< buffer write pointer */
-	void *r_ptr; /**< buffer read pointer */
-	void *sta_addr;
-	void *end_addr; /**< buffer end address */
-
 };
 
 /** \brief kpb component configuration data. */
