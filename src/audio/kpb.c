@@ -744,8 +744,14 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.history_buffer = buff;
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.state = &kpb->state;
+
 		/* Pause selector copy. */
 		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
+
+		/* Set host-sink copy mode to blocking */
+		comp_set_attribute(kpb->cli_sink->sink,
+				   COMP_ATTR_COPY_BLOCKING, 1);
+
 		/* TODO: schedule draining task */
 	}
 }
@@ -805,6 +811,10 @@ static uint64_t kpb_draining_task(void *arg)
 	 * to client's sink
 	 */
 	*draining_data->state = KPB_DRAINING_ON_DEMAND;
+
+	/* Reset host-sink copy mode back to unblocking */
+	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
+
 	trace_kpb("kpb_draining_task(), done.");
 
 	return 0;
