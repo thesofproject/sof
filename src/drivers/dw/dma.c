@@ -1178,11 +1178,6 @@ static int dw_dma_setup(struct dma *dma)
 	for (i = 0; i < DW_MAX_CHAN; i++)
 		dw_read(dma, DW_DMA_CHAN_EN);
 
-#ifdef HAVE_HDDA
-	/* enable HDDA before DMAC */
-	shim_write(SHIM_HMDC, SHIM_HMDC_HDDA_ALLCH);
-#endif
-
 	/* enable the DMA controller */
 	dw_write(dma, DW_DMA_CFG, 1);
 
