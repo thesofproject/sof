@@ -3,7 +3,7 @@
 # Common TLV control ranges
 #
 
-SectionTLV."vtlv_m90s3" {
+SectionTLV."vtlv_m64s2" {
 	Comment "-64dB step 2dB"
 
 	scale {
