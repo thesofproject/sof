@@ -58,8 +58,8 @@
 #define KPB_NO_OF_MEM_POOLS 3
 
 enum kpb_state {
-	KPB_BUFFERING = 0,
-	KPB_DRAINING_ON_DEMAND,
+	KPB_STATE_BUFFERING = 0,
+	KPB_STATE_DRAINING_ON_DEMAND,
 };
 
 enum kpb_event {

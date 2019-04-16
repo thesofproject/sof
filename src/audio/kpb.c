@@ -146,7 +146,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	cd->kpb_no_of_clients = 0;
 
 	/* Set initial state as buffering */
-	cd->state = KPB_BUFFERING;
+	cd->state = KPB_STATE_BUFFERING;
 
 	/* Allocate history buffer */
 	allocated_size = kpb_allocate_history_buffer(cd);
@@ -446,7 +446,8 @@ static int kpb_copy(struct comp_dev *dev)
 	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = (kpb->state == KPB_BUFFERING) ? kpb->rt_sink : kpb->cli_sink;
+	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->rt_sink
+	       : kpb->cli_sink;
 
 	/* Process source data */
 	/* Check if there are valid pointers */
@@ -810,7 +811,7 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Draining is done. Now switch KPB to copy real time stream
 	 * to client's sink
 	 */
-	*draining_data->state = KPB_DRAINING_ON_DEMAND;
+	*draining_data->state = KPB_STATE_DRAINING_ON_DEMAND;
 
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
