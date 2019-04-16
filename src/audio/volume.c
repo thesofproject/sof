@@ -108,7 +108,7 @@ static uint64_t vol_work(void *data)
 			vol += VOL_RAMP_STEP;
 
 			/* ramp completed ? */
-			if (vol >= cd->tvolume[i] || vol >= cd->max_volume) {
+			if (vol >= cd->tvolume[i] || vol >= VOL_MAX) {
 				vol_update(cd, i);
 			} else {
 				cd->volume[i] = vol;
@@ -123,7 +123,7 @@ static uint64_t vol_work(void *data)
 			} else {
 				/* ramp completed ? */
 				if (new_vol <= cd->tvolume[i] ||
-				    new_vol <= cd->min_volume) {
+				    new_vol <= VOL_MIN) {
 					vol_update(cd, i);
 				} else {
 					cd->volume[i] = new_vol;
@@ -141,23 +141,6 @@ static uint64_t vol_work(void *data)
 		return VOL_RAMP_US;
 	else
 		return 0;
-}
-
-/**
- * \brief Validates and sets minimum and maximum volume levels.
- * \details If max_vol < min_vol or it's equals 0 then set max_vol = VOL_MAX
- * \param[in,out] cd Volume component private data.
- * \param[in] min_vol Minimum volume level
- * \param[in] max_vol Maximum volume level
- */
-static void vol_set_min_max_levels(struct comp_data *cd,
-				   uint32_t min_vol, uint32_t max_vol)
-{
-	if (max_vol < min_vol || max_vol == 0)
-		cd->max_volume = VOL_ZERO_DB;
-	else
-		cd->max_volume = max_vol;
-	cd->min_volume = min_vol;
 }
 
 /**
@@ -205,13 +188,10 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	comp_set_drvdata(dev, cd);
 	schedule_task_init(&cd->volwork, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
 			   vol_work, dev, 0, 0);
-	/* set volume min/max levels */
-	vol_set_min_max_levels(cd, ipc_vol->min_value, ipc_vol->max_value);
 
 	/* set the default volumes */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		cd->volume[i]  =  MAX(MIN(cd->max_volume,
-					  VOL_ZERO_DB), cd->min_volume);
+		cd->volume[i]  =  MAX(MIN(VOL_MAX, VOL_ZERO_DB), VOL_MIN);
 		cd->tvolume[i] =  cd->volume[i];
 	}
 
@@ -263,11 +243,11 @@ static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */
-	if (v <= cd->min_volume)
-		v = cd->min_volume;
+	if (v <= VOL_MIN)
+		v = VOL_MIN;
 
-	if (v > cd->max_volume)
-		v = cd->max_volume;
+	if (v > VOL_MAX)
+		v = VOL_MAX;
 
 	cd->tvolume[chan] = v;
 }

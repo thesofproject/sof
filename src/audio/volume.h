@@ -65,7 +65,7 @@
 #define trace_volume_error(__e, ...)	trace_error(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
 
 //** \brief Volume gain Qx.y integer x number of bits including sign bit. */
-#define VOL_QXY_X 2
+#define VOL_QXY_X 8
 
 //** \brief Volume gain Qx.y fractional y number of bits. */
 #define VOL_QXY_Y 16
@@ -91,10 +91,10 @@
  * TODO: This should be 1 << (VOL_QX_BITS + VOL_QY_BITS - 1) - 1 but
  * the current volume code cannot handle the full Q1.16 range correctly.
  */
-#define VOL_MAX		(1 << VOL_QXY_Y)
+#define VOL_MAX		((1 << (VOL_QXY_X + VOL_QXY_Y - 1)) - 1)
 
 /** \brief Volume 0dB value. */
-#define VOL_ZERO_DB	(1 << 16)
+#define VOL_ZERO_DB	(1 << VOL_QXY_Y)
 
 /** \brief Volume minimum value. */
 #define VOL_MIN		0
@@ -107,11 +107,9 @@
 struct comp_data {
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
-	uint32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
-	uint32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
-	uint32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
-	uint32_t min_volume;			/**< minimum volume level */
-	uint32_t max_volume;			/**< maximum volume level */
+	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
+	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
+	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
 	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 		struct comp_buffer *source, uint32_t frames);
