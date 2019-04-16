@@ -36,7 +36,14 @@
 #include <sof/audio/component.h>
 #include "volume.h"
 
-#define VOL_SCALE (uint32_t)((double)INT32_MAX / VOL_MAX)
+/* Add macro for a volume test level. The levels to test with this code
+ * are:
+ *
+ * VOL_MAX		+42 dB is maximum for Q8.16 format
+ * VOL_ZERO_DB		  0 dB is the unity gain gain and default volume
+ * VOL_MINUS_80dB	-80 dB is a low gain or large attenuation test
+ */
+#define VOL_MINUS_80DB (VOL_ZERO_DB / 10000)
 
 struct vol_test_state {
 	struct comp_dev *dev;
@@ -47,7 +54,7 @@ struct vol_test_state {
 };
 
 struct vol_test_parameters {
-	uint32_t volume;
+	int32_t volume;
 	uint32_t channels;
 	uint32_t frames;
 	uint32_t buffer_size_ms;
@@ -57,7 +64,7 @@ struct vol_test_parameters {
 		       struct comp_buffer *source);
 };
 
-static void set_volume(uint32_t *vol, uint32_t value, uint32_t channels)
+static void set_volume(int32_t *vol, int32_t value, uint32_t channels)
 {
 	int i;
 
@@ -152,19 +159,27 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			      struct comp_buffer *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const uint16_t *src = (uint16_t *)source->r_ptr;
-	const uint16_t *dst = (uint16_t *)sink->w_ptr;
+	const int16_t *src = (int16_t *)source->r_ptr;
+	const int16_t *dst = (int16_t *)sink->w_ptr;
+	double processed;
 	int channels = dev->params.channels;
 	int channel;
 	int i;
-	double processed;
+	int16_t sample;
 
 	for (i = 0; i < sink->size / sizeof(uint16_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = src[i + channel] *
-				((double)cd->volume[channel] *
-				(double)VOL_SCALE / INT32_MAX);
-			assert_int_equal(dst[i + channel], processed + 0.5);
+				(double)cd->volume[channel] /
+				(double)VOL_ZERO_DB + 0.5;
+			if (processed > INT16_MAX)
+				processed = INT16_MAX;
+
+			if (processed < INT16_MIN)
+				processed = INT16_MIN;
+
+			sample = (int16_t)processed;
+			assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -173,27 +188,34 @@ static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			     struct comp_buffer *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const uint16_t *src = (uint16_t *)source->r_ptr;
-	const uint32_t *dst = (uint32_t *)sink->w_ptr;
+	const int16_t *src = (int16_t *)source->r_ptr;
+	const int32_t *dst = (int32_t *)sink->w_ptr;
+	double processed;
+	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
 	int i;
-	double processed;
 	int shift = 0;
 
 	/* get shift value */
 	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
 		shift = 8;
 	else if (cd->sink_format == SOF_IPC_FRAME_S32_LE)
-		shift = 16;
+		shift = 0;
 
 	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
-			processed = src[i + channel] *
-				((double)cd->volume[channel] *
-				(double)VOL_SCALE / INT32_MAX);
-			assert_int_equal(dst[i + channel],
-					 (uint32_t)(processed + 0.5) << shift);
+			processed = 65536.0 * (double)src[i + channel] *
+				(double)cd->volume[channel] /
+				(double)VOL_ZERO_DB + 0.5 * (1 << shift);
+			if (processed > INT32_MAX)
+				processed = INT32_MAX;
+
+			if (processed < INT32_MIN)
+				processed = INT32_MIN;
+
+			sample = ((int32_t)processed) >> shift;
+			assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -202,13 +224,14 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			     struct comp_buffer *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const uint32_t *src = (uint32_t *)source->r_ptr;
-	const uint16_t *dst = (uint16_t *)sink->w_ptr;
+	const int32_t *src = (int32_t *)source->r_ptr;
+	const int16_t *dst = (int16_t *)sink->w_ptr;
+	double processed;
 	int channels = dev->params.channels;
 	int channel;
 	int i;
-	double processed;
 	int shift = 0;
+	int16_t sample;
 
 	/* get shift value */
 	if (cd->source_format == SOF_IPC_FRAME_S24_4LE)
@@ -216,11 +239,18 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 
 	for (i = 0; i < sink->size / sizeof(uint16_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
-			processed = (src[i + channel] << shift) *
-				((double)cd->volume[channel] *
-				(double)VOL_SCALE / INT32_MAX);
-			assert_int_equal(dst[i + channel],
-					 (uint32_t)(processed + 0.5) >> 16);
+			processed = (double)(src[i + channel] << shift) *
+				(double)cd->volume[channel] /
+				(double)VOL_ZERO_DB;
+			processed = processed / 65536.0 + 0.5;
+			if (processed > INT16_MAX)
+				processed = INT16_MAX;
+
+			if (processed < INT16_MIN)
+				processed = INT16_MIN;
+
+			sample = (int16_t)processed;
+			assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -230,25 +260,32 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 				  struct comp_buffer *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const uint32_t *src = (uint32_t *)source->r_ptr;
-	const uint32_t *dst = (uint32_t *)sink->w_ptr;
+	const int32_t *src = (int32_t *)source->r_ptr;
+	const int32_t *dst = (int32_t *)sink->w_ptr;
+	double processed;
+	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
 	int i;
-	double processed;
 	int shift = 0;
 
 	/* get shift value */
-	if (cd->sink_format == SOF_IPC_FRAME_S32_LE)
+	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
 		shift = 8;
 
 	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = (src[i + channel] << 8) *
-				((double)cd->volume[channel] *
-				(double)VOL_SCALE / INT32_MAX);
-			assert_int_equal(dst[i + channel],
-					 ((uint32_t)(processed + 0.5) >> 8) << shift);
+				(double)cd->volume[channel] /
+				(double)VOL_ZERO_DB + 0.5 * (1 << shift);
+			if (processed > INT32_MAX)
+				processed = INT32_MAX;
+
+			if (processed < INT32_MIN)
+				processed = INT32_MIN;
+
+			sample = ((int32_t)processed) >> shift;
+			assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -258,12 +295,13 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 				  struct comp_buffer *source)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	const uint32_t *src = (uint32_t *)source->r_ptr;
-	const uint32_t *dst = (uint32_t *)sink->w_ptr;
+	double processed;
+	const int32_t *src = (int32_t *)source->r_ptr;
+	const int32_t *dst = (int32_t *)sink->w_ptr;
+	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
 	int i;
-	double processed;
 	int shift = 0;
 
 	/* get shift value */
@@ -273,10 +311,16 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 	for (i = 0; i < sink->size / sizeof(uint32_t); i += channels) {
 		for (channel = 0; channel < channels; channel++) {
 			processed = src[i + channel] *
-				    ((double)cd->volume[channel] *
-				    (double)VOL_SCALE / INT32_MAX);
-			assert_int_equal(dst[i + channel],
-					 (uint32_t)(processed + 0.5) >> shift);
+				    (double)cd->volume[channel] /
+				    (double)VOL_ZERO_DB + 0.5 * (1 << shift);
+			if (processed > INT32_MAX)
+				processed = INT32_MAX;
+
+			if (processed < INT32_MIN)
+				processed = INT32_MIN;
+
+			sample = ((int32_t)processed) >> shift;
+			assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -304,35 +348,62 @@ static void test_audio_vol(void **state)
 }
 
 static struct vol_test_parameters parameters[] = {
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S16_LE, SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
 
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S24_4LE, SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
 
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
-	{ VOL_MAX,     2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
-	{ VOL_MAX / 2, 2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
-	{ VOL_MAX / 3, 2, 48, 1, SOF_IPC_FRAME_S32_LE, SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
+	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
+	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
+	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
 };
 
 int main(void)

@@ -40,9 +40,6 @@
 
 #include <xtensa/tie/xt_hifi3.h>
 
-/** \brief Volume scale ratio. */
-#define VOL_SCALE (uint32_t)((double)INT32_MAX / VOL_MAX)
-
 /**
  * \brief Sets buffer to be circular using HiFi3 functions.
  * \param[in,out] buffer Circular buffer.
@@ -64,19 +61,14 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			   struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
+	ae_f64 mult;
 	ae_f32x2 volume;
-	ae_f32x2 mult;
 	ae_f32x2 out_sample;
 	ae_f16x4 in_sample = AE_ZERO16();
 	size_t channel;
 	int i;
 	ae_int16 *in = (ae_int16 *)source->r_ptr;
 	ae_int16 *out = (ae_int16 *)sink->w_ptr;
-
-	/* Scale to VOL_MAX */
-	for (channel = 0; channel < dev->params.channels; channel++)
-		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -88,20 +80,23 @@ static void vol_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Load the input sample */
 			AE_L16_XC(in_sample, in, sizeof(ae_int16));
 
-			/* Get gain coefficients */
-			volume = *((ae_f32 *)&vol_scaled[channel]);
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
 
 			/* Multiply the input sample */
-			mult = AE_MULFP32X16X2RS_L(volume, in_sample);
+			mult = AE_MULF32X16_L0(volume, in_sample);
 
-			/* Shift right and round to get 16 in 32 bits */
-			out_sample = AE_SRAA32RS(mult, 16);
+			/* Multiply of Q1.31 x Q1.15 gives Q1.47. Multiply of
+			 * Q8.16 x Q1.15 gives Q8.32, so need to shift left
+			 * by 31 to get Q1.63. Sample is Q1.31.
+			 */
+			out_sample = AE_ROUND32F64SSYM(AE_SLAI64S(mult, 31));
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
 
-			/* Store the output sample */
-			AE_S16_0_XC(AE_MOVF16X4_FROMF32X2(out_sample),
+			/* Round to Q1.15 and store the output sample */
+			AE_S16_0_XC(AE_ROUND16X4F32SSYM(out_sample, out_sample),
 				    out, sizeof(ae_int16));
 		}
 	}
@@ -118,26 +113,19 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
-	ae_f32x2 volume;
-	ae_f32x2 mult;
+	ae_f64 mult;
 	ae_f32x2 out_sample;
+	ae_f32x2 volume;
 	ae_f16x4 in_sample = AE_ZERO16();
 	size_t channel;
-	uint8_t shift_left = 0;
 	int i;
+	int shift_right = 0;
 	ae_int16 *in = (ae_int16 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
 	/* Get value of shift left */
 	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift_left = 8;
-	else if (cd->sink_format == SOF_IPC_FRAME_S32_LE)
-		shift_left = 16;
-
-	/* Scale to VOL_MAX */
-	for (channel = 0; channel < dev->params.channels; channel++)
-		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
+		shift_right = 8;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -149,17 +137,20 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Load the input sample */
 			AE_L16_XC(in_sample, in, sizeof(ae_int16));
 
-			/* Get gain coefficients */
-			volume = *((ae_f32 *)&vol_scaled[channel]);
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
 
 			/* Multiply the input sample */
-			mult = AE_MULFP32X16X2RS_L(volume, in_sample);
+			mult = AE_MULF32X16_L0(volume, in_sample);
 
-			/* Shift right and round to get 16 in 32 bits */
-			out_sample = AE_SRAA32RS(mult, 16);
+			/* Multiply of Q31 x Q15 gives Q47. Multiply of
+			 * Q16 x Q15 gives Q32, so need to shift left by 15
+			 * to get Q47. Out_sample is Q31.
+			 */
+			out_sample = AE_ROUND32F48SSYM(AE_SLAI64S(mult, 15));
 
 			/* Shift left to get the right alignment */
-			out_sample = AE_SLAA32(out_sample, shift_left);
+			out_sample = AE_SRAA32RS(out_sample, shift_right);
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
@@ -181,24 +172,19 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
+	ae_f64 mult;
 	ae_f32x2 volume;
-	ae_f32x2 mult;
 	ae_f32x2 in_sample = AE_ZERO32();
-	ae_f16x4 out_sample;
+	ae_f32x2 out_sample;
 	size_t channel;
-	uint8_t shift_left = 0;
 	int i;
+	int shift_left = 0;
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int16 *out = (ae_int16 *)sink->w_ptr;
 
 	/* Get value of shift left */
 	if (cd->source_format == SOF_IPC_FRAME_S24_4LE)
 		shift_left = 8;
-
-	/* Scale to VOL_MAX */
-	for (channel = 0; channel < dev->params.channels; channel++)
-		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -213,21 +199,25 @@ static void vol_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Shift left to get the right alignment */
 			in_sample = AE_SLAA32(in_sample, shift_left);
 
-			/* Get gain coefficients */
-			volume = *((ae_f32 *)&vol_scaled[channel]);
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
 
 			/* Multiply the input sample */
-			mult = AE_MULFP32X2RS(volume, in_sample);
+			mult = AE_MULF32S_LL(volume, in_sample);
 
-			/* Shift right to get 16 in 32 bits */
-			out_sample = AE_MOVF16X4_FROMF32X2
-					(AE_SRLA32(mult, 16));
+			/* Multiplication of Q1.31 x Q1.31 gives Q1.63.
+			 * Now multiplication is Q8.16 x Q1.31, the result
+			 * is Q9.48. Need to shift left by 15 to get Q1.63
+			 * compatible format for round. Sample is Q1.31.
+			 */
+			out_sample = AE_ROUND32F64SSYM(AE_SLAI64S(mult, 15));
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
 
-			/* Store the output sample */
-			AE_S16_0_XC(out_sample, out, sizeof(ae_int16));
+			/* Round to Q1.15 and store the output sample */
+			AE_S16_0_XC(AE_ROUND16X4F32SSYM(out_sample, out_sample),
+				    out, sizeof(ae_int16));
 		}
 	}
 }
@@ -243,24 +233,19 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
-	ae_f32x2 volume;
+	ae_f64 mult;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample;
-	ae_f32x2 mult;
+	ae_f32x2 volume;
 	size_t channel;
-	uint8_t shift_left = 0;
 	int i;
+	int shift_right = 0;
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
 	/* Get value of shift left */
-	if (cd->sink_format == SOF_IPC_FRAME_S32_LE)
-		shift_left = 8;
-
-	/* Scale to VOL_MAX */
-	for (channel = 0; channel < dev->params.channels; channel++)
-		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
+	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
+		shift_right = 8;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -272,17 +257,21 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Load the input sample */
 			AE_L32_XC(in_sample, in, sizeof(ae_int32));
 
-			/* Get gain coefficients */
-			volume = *((ae_f32 *)&vol_scaled[channel]);
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
 
 			/* Multiply the input sample */
-			mult = AE_MULFP32X2RS(volume, AE_SLAA32(in_sample, 8));
+			mult = AE_MULF32S_LL(volume, AE_SLAA32(in_sample, 8));
 
-			/* Shift right to get 24 in 32 bits (LSB) */
-			out_sample = AE_SRLA32(mult, 8);
+			/* Multiplication of Q1.31 x Q1.31 gives Q1.63.
+			 * Now multiplication is Q8.16 x Q1.31, the result
+			 * is Q9.48. Need to shift right by one to get Q17.47
+			 * compatible format for round.
+			 */
+			out_sample = AE_ROUND32F48SSYM(AE_SRAI64(mult, 1));
 
-			/* Shift left to get the right alignment */
-			out_sample = AE_SLAA32(out_sample, shift_left);
+			/* Shift for S24_LE */
+			out_sample = AE_SRAA32S(out_sample, shift_right);
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
@@ -304,13 +293,12 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			       struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t vol_scaled[SOF_IPC_MAX_CHANNELS];
-	ae_f32x2 volume;
+	ae_f64 mult;
 	ae_f32x2 in_sample = AE_ZERO32();
 	ae_f32x2 out_sample;
-	ae_f32x2 mult;
+	ae_f32x2 volume;
 	size_t channel;
-	uint8_t shift_right = 0;
+	int shift_right = 0;
 	int i;
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
@@ -318,10 +306,6 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	/* Get value of shift right */
 	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
 		shift_right = 8;
-
-	/* Scale to VOL_MAX */
-	for (channel = 0; channel < dev->params.channels; channel++)
-		vol_scaled[channel] = cd->volume[channel] * VOL_SCALE;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -333,14 +317,21 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			/* Load the input sample */
 			AE_L32_XC(in_sample, in, sizeof(ae_int32));
 
-			/* Get gain coefficients */
-			volume = *((ae_f32 *)&vol_scaled[channel]);
+			/* Load volume */
+			volume = (ae_f32x2)cd->volume[channel];
 
 			/* Multiply the input sample */
-			mult = AE_MULFP32X2RS(volume, in_sample);
+			mult = AE_MULF32S_LL(volume, in_sample);
 
-			/* Shift right to get the right alignment */
-			out_sample = AE_SRLA32(mult, shift_right);
+			/* Multiplication of Q1.31 x Q1.31 gives Q1.63.
+			 * Now multiplication is Q8.16 x Q1.31, the result
+			 * is Q9.48. Need to shift right by one to get Q17.47
+			 * compatible format for round.
+			 */
+			out_sample = AE_ROUND32F48SSYM(AE_SRAI64(mult, 1));
+
+			/* Shift for S24_LE */
+			out_sample = AE_SRAA32RS(out_sample, shift_right);
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
