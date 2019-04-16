@@ -80,6 +80,16 @@ config DMA_SUSPEND_DRAIN
 	  Any platforms without the ability to disable
 	  the DMA channel right away should set this.
 
+config DMA_FIFO_PARTITION
+	bool
+	default n
+	help
+	  Some platforms require to manually set DMA
+	  FIFO partitions before starting any transfer.
+
+	  Any platforms without automatic FIFO partitions
+	  should set this.
+
 source "src/Kconfig"
 
 menu "Debug"
