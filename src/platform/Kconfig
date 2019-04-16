@@ -11,6 +11,7 @@ config BAYTRAIL
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
+	select DMA_FIFO_PARTITION
 	help
 	  Select if your target platform is Baytrail-compatible
 
@@ -21,6 +22,7 @@ config CHERRYTRAIL
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
+	select DMA_FIFO_PARTITION
 	help
 	  Select if your target platform is Cherrytrail-compatible
 
@@ -49,6 +51,7 @@ config APOLLOLAKE
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
+	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_1_5
 	help
@@ -64,6 +67,7 @@ config CANNONLAKE
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
 	select DMA_AGGREGATED_IRQ
+	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_1_8
 	help
@@ -80,6 +84,7 @@ config SUECREEK
 	select DW_GPIO
 	select HW_LLI
 	select DMA_AGGREGATED_IRQ
+	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
 	help
@@ -95,6 +100,7 @@ config ICELAKE
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
 	select DMA_AGGREGATED_IRQ
+	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
 	help

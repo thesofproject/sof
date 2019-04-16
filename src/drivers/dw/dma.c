@@ -191,7 +191,6 @@
 #define DW_CFGH_DST_PER(x)		((x) << 4)
 
 /* FIFO Partition */
-#define DW_FIFO_PARTITION
 #define DW_FIFO_PART0_LO		0x0400
 #define DW_FIFO_PART0_HI		0x0404
 #define DW_FIFO_PART1_LO		0x0408
@@ -231,7 +230,6 @@
 #endif
 
 /* FIFO Partition */
-#define DW_FIFO_PARTITION
 #define DW_FIFO_PART0_LO		0x0400
 #define DW_FIFO_PART0_HI		0x0404
 #define DW_FIFO_PART1_LO		0x0408
@@ -1163,7 +1161,7 @@ static int dw_dma_setup(struct dma *dma)
 	dw_write(dma, DW_MASK_DST_TRAN, INT_MASK_ALL);
 	dw_write(dma, DW_MASK_ERR, INT_MASK_ALL);
 
-#ifdef DW_FIFO_PARTITION
+#if CONFIG_DMA_FIFO_PARTITION
 	/* TODO: we cannot config DMA FIFOs if DMAC has been already */
 	/* allocate FIFO partitions, 128 bytes for each ch */
 	dw_write(dma, DW_FIFO_PART1_LO, 0x100080);
