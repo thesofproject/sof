@@ -19,9 +19,9 @@ include(`pipeline.m4')
 # Volume Mixer control with max value of 32
 C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
-	CONTROLMIXER_MAX(, 32),
+	CONTROLMIXER_MAX(, 80),
 	false,
-	CONTROLMIXER_TLV(TLV 32 steps from -90dB to +6dB for 3dB, vtlv_m90s3),
+	CONTROLMIXER_TLV(TLV 80 steps from -50dB to +30dB for 1dB, vtlv_m50s1),
 	Channel register and shift for Front Left/Right,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 

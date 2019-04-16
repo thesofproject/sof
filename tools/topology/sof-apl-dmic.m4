@@ -33,14 +33,14 @@ dnl     frames, deadline, priority, core)
 
 # Passthrough capture pipeline 6 on PCM 6 using max channels defined by CHANNELS.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	6, 6, CHANNELS, s32le,
 	48, 1000, 0, 0)
 
 # Passthrough capture pipeline 7 on PCM 7 using max channels defined by CHANNELS.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
-	7, 7, CHANNELS, s16le,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+	7, 7, CHANNELS, s32le,
 	48, 1000, 0, 0)
 
 #
