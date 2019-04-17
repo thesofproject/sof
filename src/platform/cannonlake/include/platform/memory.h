@@ -173,7 +173,6 @@
 /* HP SRAM */
 #define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
-#define HP_SRAM_SIZE		0x002F0000
 #define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM Base */
@@ -297,10 +296,8 @@
 /* Stack configuration */
 #define SOF_STACK_SIZE		ARCH_STACK_SIZE
 #define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
-/* SOF_STACK_OFFSET defines how much memory can be power gated */
-#define SOF_STACK_OFFSET	0x150000
-/* SOF_STACK_BASE is moved from end of physical memory by offset */
-#define SOF_STACK_BASE	(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_STACK_OFFSET)
+
+#define SOF_STACK_BASE	(HP_SRAM_BASE + HP_SRAM_SIZE)
 #define SOF_STACK_END	(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
 #define HEAP_BUFFER_BASE	(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
@@ -334,7 +331,6 @@
 
 /* LP SRAM */
 #define LP_SRAM_BASE		0xBE800000
-#define LP_SRAM_SIZE		0x00020000
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_LP_COUNT8			0

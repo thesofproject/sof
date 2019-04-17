@@ -194,7 +194,6 @@
 /* HP SRAM */
 #define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
-#define HP_SRAM_SIZE		0x002F0000 /* Should be 48 * 64 - 0x300000 ?? */
 #define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM Base */
@@ -341,7 +340,6 @@
 
 /* LP SRAM */
 #define LP_SRAM_BASE		0xBE800000
-#define LP_SRAM_SIZE		0x00010000
 
 /* Heap section sizes for module pool */
 #define HEAP_RT_LP_COUNT8			0
