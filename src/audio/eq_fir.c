@@ -849,4 +849,4 @@ static void sys_comp_eq_fir_init(void)
 	comp_register(&comp_eq_fir);
 }
 
-DECLARE_COMPONENT(sys_comp_eq_fir_init);
+DECLARE_MODULE(sys_comp_eq_fir_init);

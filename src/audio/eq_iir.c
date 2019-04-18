@@ -936,4 +936,4 @@ static void sys_comp_eq_iir_init(void)
 	comp_register(&comp_eq_iir);
 }
 
-DECLARE_COMPONENT(sys_comp_eq_iir_init);
+DECLARE_MODULE(sys_comp_eq_iir_init);

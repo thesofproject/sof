@@ -825,4 +825,4 @@ static void sys_comp_dai_init(void)
 	comp_register(&comp_dai);
 }
 
-DECLARE_COMPONENT(sys_comp_dai_init);
+DECLARE_MODULE(sys_comp_dai_init);

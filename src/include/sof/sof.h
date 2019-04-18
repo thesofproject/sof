@@ -57,6 +57,22 @@ struct sa;
 	__attribute__((unused))		\
 	typedef char META_CONCAT(assertion_failed_, MESSAGE)[(COND) ? 1 : -1]
 
+/** \name Declare module macro
+ *  \brief Usage at the end of an independent module file:
+ *         DECLARE_MODULE(sys_*_init);
+ *  @{
+ */
+#ifdef UNIT_TEST
+#define DECLARE_MODULE(init)
+#elif CONFIG_HOST
+/* In case of shared libs components are initialised in dlopen */
+#define DECLARE_MODULE(init) __attribute__((constructor)) \
+	static void _module_init(void) { init(); }
+#else
+#define DECLARE_MODULE(init) __attribute__((__used__)) \
+	__attribute__((section(".module_init"))) static void(*f)(void) = init
+#endif
+
 /* general firmware context */
 struct sof {
 	/* init data */
