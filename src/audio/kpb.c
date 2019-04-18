@@ -559,4 +559,4 @@ UT_STATIC void sys_comp_kpb_init(void)
 	comp_register(&comp_kpb);
 }
 
-DECLARE_COMPONENT(sys_comp_kpb_init);
+DECLARE_MODULE(sys_comp_kpb_init);

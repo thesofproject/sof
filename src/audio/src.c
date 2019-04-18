@@ -986,4 +986,4 @@ static void sys_comp_src_init(void)
 	comp_register(&comp_src);
 }
 
-DECLARE_COMPONENT(sys_comp_src_init);
+DECLARE_MODULE(sys_comp_src_init);

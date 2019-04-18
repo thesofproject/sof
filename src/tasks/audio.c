@@ -48,12 +48,24 @@
 #include <stdlib.h>
 #include <errno.h>
 
+static void sys_module_init(void)
+{
+	extern intptr_t _module_init_start, _module_init_end;
+	intptr_t *module_init = (intptr_t *)(&_module_init_start);
+
+	for (; module_init < (intptr_t *)&_module_init_end; ++module_init)
+		((void(*)(void))(*module_init))();
+}
+
 int do_task_master_core(struct sof *sof)
 {
 	int ret;
 
 	/* init default audio components */
 	sys_comp_init();
+
+	/* init self-registered modules */
+	sys_module_init();
 
 #if STATIC_PIPE
 	/* init static pipeline */

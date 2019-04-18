@@ -102,4 +102,4 @@ static void sys_comp_switch_init(void)
 	comp_register(&comp_switch);
 }
 
-DECLARE_COMPONENT(sys_comp_switch_init);
+DECLARE_MODULE(sys_comp_switch_init);

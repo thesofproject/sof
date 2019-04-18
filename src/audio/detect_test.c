@@ -661,4 +661,4 @@ static void sys_comp_keyword_init(void)
 	comp_register(&comp_keyword);
 }
 
-DECLARE_COMPONENT(sys_comp_keyword_init);
+DECLARE_MODULE(sys_comp_keyword_init);

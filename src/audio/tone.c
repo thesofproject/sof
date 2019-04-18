@@ -770,4 +770,4 @@ static void sys_comp_tone_init(void)
 	comp_register(&comp_tone);
 }
 
-DECLARE_COMPONENT(sys_comp_tone_init);
+DECLARE_MODULE(sys_comp_tone_init);

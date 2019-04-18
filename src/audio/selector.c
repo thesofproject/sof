@@ -525,4 +525,4 @@ static void sys_comp_selector_init(void)
 	comp_register(&comp_selector);
 }
 
-DECLARE_COMPONENT(sys_comp_selector_init);
+DECLARE_MODULE(sys_comp_selector_init);

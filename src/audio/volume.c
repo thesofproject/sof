@@ -658,4 +658,4 @@ static void sys_comp_volume_init(void)
 	comp_register(&comp_volume);
 }
 
-DECLARE_COMPONENT(sys_comp_volume_init);
+DECLARE_MODULE(sys_comp_volume_init);
