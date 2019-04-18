@@ -106,18 +106,20 @@ void eq_fir_2x_s32_hifi3(struct fir_state_32x16 fir[],
 			 int frames, int nch)
 {
 	struct fir_state_32x16 *f;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int32_t *x0;
-	int32_t *y0;
-	int32_t *x1;
-	int32_t *y1;
+	ae_int32x2 d0 = 0;
+	ae_int32x2 d1 = 0;
+	ae_int32 *src = (ae_int32 *)source->r_ptr;
+	ae_int32 *snk = (ae_int32 *)sink->w_ptr;
+	ae_int32 *x;
+	ae_int32 *y0;
+	ae_int32 *y1;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
-	int inc = nch << 1;
+	int inc_2nch_s = 2 * nch * sizeof(int32_t);
+	int inc_nch_s = nch * sizeof(int32_t);
 
 	for (ch = 0; ch < nch; ch++) {
 		/* Get FIR instance and get shifts.
@@ -126,17 +128,34 @@ void eq_fir_2x_s32_hifi3(struct fir_state_32x16 fir[],
 		fir_get_lrshifts(f, &lshift, &rshift);
 		shift = lshift - rshift;
 
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifi3_setup_circular(f);
+		/* Copy src to x and advance src with dummy load */
+		fir_comp_setup_circular(source);
+		x = src;
+		AE_L32_XC(d0, src, sizeof(int32_t));
 
-		x0 = src++;
-		y0 = snk++;
-		for (i = 0; i < (frames >> 1); i++) {
-			x1 = x0 + nch;
-			y1 = y0 + nch;
-			fir_32x16_2x_hifi3(f, *x0, *x1, y0, y1, shift);
-			x0 += inc;
-			y0 += inc;
+		/* Copy snk to y0 and advance snk with dummy load. Pointer
+		 * y1 is set to be ahead of y0 with one frame.
+		 */
+		fir_comp_setup_circular(sink);
+		y0 = snk;
+		y1 = snk;
+		AE_L32_XC(d0, snk, sizeof(int32_t));
+		AE_L32_XC(d1, y0, inc_nch_s);
+
+		for (i = 0; i < frames; i++) {
+			/* Load two input samples via input pointer x */
+			fir_comp_setup_circular(source);
+			AE_L32_XC(d0, x, inc_nch_s);
+			AE_L32_XC(d1, x, inc_nch_s);
+
+			/* Compute FIR */
+			fir_core_setup_circular(f);
+			fir_32x16_2x_hifi3(f, d0, d1, y0, y1, shift);
+
+			/* Update output pointers y0 and y1 with dummy loads */
+			fir_comp_setup_circular(sink);
+			AE_L32_XC(d0, y0, inc_2nch_s);
+			AE_L32_XC(d1, y1, inc_2nch_s);
 		}
 	}
 }
@@ -146,20 +165,22 @@ void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
 			 int frames, int nch)
 {
 	struct fir_state_32x16 *f;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int32_t *x0;
-	int32_t *y0;
-	int32_t *x1;
-	int32_t *y1;
-	int32_t z0;
-	int32_t z1;
+	ae_int32x2 d0 = 0;
+	ae_int32x2 d1 = 0;
+	ae_int32 z0;
+	ae_int32 z1;
+	ae_int32 *src = (ae_int32 *)source->r_ptr;
+	ae_int32 *snk = (ae_int32 *)sink->w_ptr;
+	ae_int32 *x;
+	ae_int32 *y0;
+	ae_int32 *y1;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
-	int inc = nch << 1;
+	int inc_2nch_s = 2 * nch * sizeof(int32_t);
+	int inc_nch_s = nch * sizeof(int32_t);
 
 	for (ch = 0; ch < nch; ch++) {
 		/* Get FIR instance and get shifts.
@@ -168,21 +189,44 @@ void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
 		fir_get_lrshifts(f, &lshift, &rshift);
 		shift = lshift - rshift;
 
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifi3_setup_circular(f);
+		/* Copy src to x and advance src with dummy load */
+		fir_comp_setup_circular(source);
+		x = src;
+		AE_L32_XC(d0, src, sizeof(int32_t));
 
-		x0 = src++;
-		y0 = snk++;
-		for (i = 0; i < (frames >> 1); i++) {
-			x1 = x0 + nch;
-			y1 = y0 + nch;
-			fir_32x16_2x_hifi3(f, *x0 << 8, *x1 << 8,
-					   &z0, &z1, shift);
-			*y0 = sat_int24(Q_SHIFT_RND(z0, 31, 23));
-			*y1 = sat_int24(Q_SHIFT_RND(z1, 31, 23));
-			x0 += inc;
-			y0 += inc;
+		/* Copy snk to y0 and advance snk with dummy load. Pointer
+		 * y1 is set to be ahead of y0 with one frame.
+		 */
+		fir_comp_setup_circular(sink);
+		y0 = snk;
+		y1 = snk;
+		AE_L32_XC(d0, snk, sizeof(int32_t));
+		AE_L32_XC(d1, y0, inc_nch_s);
+
+		for (i = 0; i < frames; i++) {
+			/* Load two input samples via input pointer x */
+			fir_comp_setup_circular(source);
+			AE_L32_XC(d0, x, inc_nch_s);
+			AE_L32_XC(d1, x, inc_nch_s);
+
+			/* Convert Q1.23 to Q1.31 compatible format */
+			d0 = AE_SLAA32(d0, 8);
+			d1 = AE_SLAA32(d1, 8);
+
+			/* Compute FIR */
+			fir_core_setup_circular(f);
+			fir_32x16_2x_hifi3(f, d0, d1, &z0, &z1, shift);
+
+			/* Shift and round to Q1.23 format */
+			d0 = AE_SRAI32R(z0, 8);
+			d1 = AE_SRAI32R(z1, 8);
+
+			/* Store output and update output pointers */
+			fir_comp_setup_circular(sink);
+			AE_S32_L_XC(d0, y0, inc_2nch_s);
+			AE_S32_L_XC(d1, y1, inc_2nch_s);
 		}
+
 	}
 }
 
@@ -191,20 +235,24 @@ void eq_fir_2x_s16_hifi3(struct fir_state_32x16 fir[],
 			 int frames, int nch)
 {
 	struct fir_state_32x16 *f;
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
-	int16_t *x0;
-	int16_t *y0;
-	int16_t *x1;
-	int16_t *y1;
-	int32_t z0;
-	int32_t z1;
+	ae_int16x4 d0 = AE_ZERO16();
+	ae_int16x4 d1 = AE_ZERO16();
+	ae_int32 z0;
+	ae_int32 z1;
+	ae_int32 x0;
+	ae_int32 x1;
+	ae_int16 *src = (ae_int16 *)source->r_ptr;
+	ae_int16 *snk = (ae_int16 *)sink->w_ptr;
+	ae_int16 *x;
+	ae_int16 *y0;
+	ae_int16 *y1;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
-	int inc = nch << 1;
+	int inc_2nch_s = 2 * nch * sizeof(int16_t);
+	int inc_nch_s = nch * sizeof(int16_t);
 
 	for (ch = 0; ch < nch; ch++) {
 		/* Get FIR instance and get shifts.
@@ -213,20 +261,44 @@ void eq_fir_2x_s16_hifi3(struct fir_state_32x16 fir[],
 		fir_get_lrshifts(f, &lshift, &rshift);
 		shift = lshift - rshift;
 
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifi3_setup_circular(f);
+		/* Copy src to x and advance src to next channel with
+		 * dummy load.
+		 */
+		fir_comp_setup_circular(source);
+		x = src;
+		AE_L16_XC(d0, src, sizeof(int16_t));
 
-		x0 = src++;
-		y0 = snk++;
-		for (i = 0; i < (frames >> 1); i++) {
-			x1 = x0 + nch;
-			y1 = y0 + nch;
-			fir_32x16_2x_hifi3(f, *x0 << 16, *x1 << 16,
-					   &z0, &z1, shift);
-			*y0 = sat_int16(Q_SHIFT_RND(z0, 31, 15));
-			*y1 = sat_int16(Q_SHIFT_RND(z1, 31, 15));
-			x0 += inc;
-			y0 += inc;
+		/* Copy pointer snk to y0 and advance snk with dummy load.
+		 * Pointer y1 is set to be ahead of y0 with one frame.
+		 */
+		fir_comp_setup_circular(sink);
+		y0 = snk;
+		y1 = snk;
+		AE_L16_XC(d0, snk, sizeof(int16_t));
+		AE_L16_XC(d1, y0, inc_nch_s);
+
+		for (i = 0; i < frames; i++) {
+			/* Load two input samples via input pointer x */
+			fir_comp_setup_circular(source);
+			AE_L16_XC(d0, x, inc_nch_s);
+			AE_L16_XC(d1, x, inc_nch_s);
+
+			/* Convert Q1.15 to Q1.31 compatible format */
+			x0 = AE_CVT32X2F16_32(d0);
+			x1 = AE_CVT32X2F16_32(d1);
+
+			/* Compute FIR */
+			fir_core_setup_circular(f);
+			fir_32x16_2x_hifi3(f, x0, x1, &z0, &z1, shift);
+
+			/* Round to Q1.15 format */
+			d0 = AE_ROUND16X4F32SSYM(z0, z0);
+			d1 = AE_ROUND16X4F32SSYM(z1, z1);
+
+			/* Store output and update output pointers */
+			fir_comp_setup_circular(sink);
+			AE_S16_0_XC(d0, y0, inc_2nch_s);
+			AE_S16_0_XC(d1, y1, inc_2nch_s);
 		}
 	}
 }
@@ -236,15 +308,18 @@ void eq_fir_s32_hifi3(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		      struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int32_t *x;
-	int32_t *y;
+	ae_int32x2 in = 0;
+	ae_int32 out;
+	ae_int32 *x;
+	ae_int32 *y;
+	ae_int32 *src = (ae_int32 *)source->r_ptr;
+	ae_int32 *snk = (ae_int32 *)sink->w_ptr;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
+	int inc = nch * sizeof(int32_t);
 
 	for (ch = 0; ch < nch; ch++) {
 		/* Get FIR instance and get shifts to e.g. apply mute
@@ -254,15 +329,32 @@ void eq_fir_s32_hifi3(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		fir_get_lrshifts(f, &lshift, &rshift);
 		shift = lshift - rshift;
 
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifi3_setup_circular(f);
+		/* Copy src to x and advance src to next channel with
+		 * dummy load.
+		 */
+		fir_comp_setup_circular(source);
+		x = src;
+		AE_L32_XC(in, src, sizeof(int32_t));
 
-		x = src++;
-		y = snk++;
+		/* Copy snk to y and advance snk to next channel with
+		 * dummy load.
+		 */
+		fir_comp_setup_circular(sink);
+		y = snk;
+		AE_L32_XC(in, snk, sizeof(int32_t));
+
 		for (i = 0; i < frames; i++) {
-			fir_32x16_hifi3(f, *x, y, shift);
-			x += nch;
-			y += nch;
+			/* Load input sample */
+			fir_comp_setup_circular(source);
+			AE_L32_XC(in, x, inc);
+
+			/* Compute FIR */
+			fir_core_setup_circular(f);
+			fir_32x16_hifi3(f, in, &out, shift);
+
+			/* Store output sample */
+			fir_comp_setup_circular(sink);
+			AE_S32_L_XC((ae_int32x2)out, y, inc);
 		}
 	}
 }
@@ -271,16 +363,19 @@ void eq_fir_s24_hifi3(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		      struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
-	int32_t *src = (int32_t *)source->r_ptr;
-	int32_t *snk = (int32_t *)sink->w_ptr;
-	int32_t *x;
-	int32_t *y;
-	int32_t z;
+	ae_int32 in;
+	ae_int32 out;
+	ae_int32x2 d = 0;
+	ae_int32 *x;
+	ae_int32 *y;
+	ae_int32 *src = (ae_int32 *)source->r_ptr;
+	ae_int32 *snk = (ae_int32 *)sink->w_ptr;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
+	int inc = nch * sizeof(int32_t);
 
 	for (ch = 0; ch < nch; ch++) {
 		/* Get FIR instance and get shifts to e.g. apply mute
@@ -290,16 +385,36 @@ void eq_fir_s24_hifi3(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		fir_get_lrshifts(f, &lshift, &rshift);
 		shift = lshift - rshift;
 
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifi3_setup_circular(f);
+		/* Copy src to x and advance src to next channel with
+		 * dummy load.
+		 */
+		fir_comp_setup_circular(source);
+		x = src;
+		AE_L32_XC(d, src, sizeof(int32_t));
 
-		x = src++;
-		y = snk++;
+		/* Copy snk to y and advance snk to next channel with
+		 * dummy load.
+		 */
+		fir_comp_setup_circular(sink);
+		y = snk;
+		AE_L32_XC(d, snk, sizeof(int32_t));
+
 		for (i = 0; i < frames; i++) {
-			fir_32x16_hifi3(f, *x << 8, &z, shift);
-			*y = sat_int24(Q_SHIFT_RND(z, 31, 23));
-			x += nch;
-			y += nch;
+			/* Load input sample and convert with shift left
+			 * to Q1.31 compatible format.
+			 */
+			fir_comp_setup_circular(source);
+			AE_L32_XC(d, x, inc);
+			in = AE_SLAA32(d, 8);
+
+			/* Compute FIR */
+			fir_core_setup_circular(f);
+			fir_32x16_hifi3(f, in, &out, shift);
+
+			/* Round to Q1.23 and store output sample */
+			fir_comp_setup_circular(sink);
+			d = AE_SRAI32R(out, 8);
+			AE_S32_L_XC(d, y, inc);
 		}
 	}
 }
@@ -308,16 +423,19 @@ void eq_fir_s16_hifi3(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		      struct comp_buffer *sink, int frames, int nch)
 {
 	struct fir_state_32x16 *f;
-	int16_t *src = (int16_t *)source->r_ptr;
-	int16_t *snk = (int16_t *)sink->w_ptr;
-	int16_t *x;
-	int16_t *y;
-	int32_t z;
+	ae_f16x4 d = AE_ZERO16();
+	ae_int32 in;
+	ae_int32 out;
+	ae_int16 *x;
+	ae_int16 *y;
+	ae_int16 *src = (ae_int16 *)source->r_ptr;
+	ae_int16 *snk = (ae_int16 *)sink->w_ptr;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
+	int inc = nch * sizeof(int16_t);
 
 	for (ch = 0; ch < nch; ch++) {
 		/* Get FIR instance and get shifts to e.g. apply mute
@@ -327,16 +445,34 @@ void eq_fir_s16_hifi3(struct fir_state_32x16 fir[], struct comp_buffer *source,
 		fir_get_lrshifts(f, &lshift, &rshift);
 		shift = lshift - rshift;
 
-		/* Setup circular buffer for FIR input data delay */
-		fir_hifi3_setup_circular(f);
+		/* Copy src to x and advance src to next channel with
+		 * dummy load.
+		 */
+		fir_comp_setup_circular(source);
+		x = src;
+		AE_L16_XC(d, src, sizeof(int16_t));
 
-		x = src++;
-		y = snk++;
+		/* Copy snk to y and advance snk to next channel with
+		 * dummy load.
+		 */
+		fir_comp_setup_circular(sink);
+		y = snk;
+		AE_L16_XC(d, snk, sizeof(int16_t));
+
 		for (i = 0; i < frames; i++) {
-			fir_32x16_hifi3(f, *x << 16, &z, shift);
-			*y = sat_int16(Q_SHIFT_RND(z, 31, 15));
-			x += nch;
-			y += nch;
+			/* Load input sample and convert to Q1.31 */
+			fir_comp_setup_circular(source);
+			AE_L16_XC(d, x, inc);
+			in = AE_CVT32X2F16_32(d);
+
+			/* Compute FIR */
+			fir_core_setup_circular(f);
+			fir_32x16_hifi3(f, in, &out, shift);
+
+			/* Round to Q1.15 and store output sample */
+			fir_comp_setup_circular(sink);
+			d = AE_ROUND16X4F32SSYM(out, out);
+			AE_S16_0_XC(d, y, inc);
 		}
 	}
 }

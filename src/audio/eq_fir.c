@@ -687,15 +687,31 @@ static int eq_fir_copy(struct comp_dev *dev)
 		return ret;
 	}
 
-	/* Run EQ function */
-	if (cl.frames & 1)
-		cd->eq_fir_func(fir, cl.source, cl.sink, cl.frames, nch);
-	else
+	/* Check if number of frames to process if it is odd. The
+	 * optimized FIR function to process even number of frames
+	 * is lower load than generic version. In that case process
+	 * one frame with generic FIR and the rest with even frames
+	 * number FIR version.
+	 */
+	if (cl.frames & 0x1) {
+		cl.frames--;
+		cl.source_bytes -= cl.source_frame_bytes;
+		cl.sink_bytes -= cl.sink_frame_bytes;
+
+		/* Run EQ for one frame and update pointers */
+		cd->eq_fir_func(fir, cl.source, cl.sink, 1, nch);
+		comp_update_buffer_consume(cl.source, cl.source_frame_bytes);
+		comp_update_buffer_produce(cl.sink, cl.sink_frame_bytes);
+	}
+
+	if (cl.frames > 1) {
+		/* Run EQ function */
 		cd->eq_fir_func_even(fir, cl.source, cl.sink, cl.frames, nch);
 
-	/* calc new free and available */
-	comp_update_buffer_consume(cl.source, cl.source_bytes);
-	comp_update_buffer_produce(cl.sink, cl.sink_bytes);
+		/* calc new free and available */
+		comp_update_buffer_consume(cl.source, cl.source_bytes);
+		comp_update_buffer_produce(cl.sink, cl.sink_bytes);
+	}
 
 	return 0;
 }
