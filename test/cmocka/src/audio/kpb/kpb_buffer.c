@@ -134,6 +134,11 @@ static int buffering_test_setup(void **state)
 	source = mock_comp_buffer(state, KPB_SOURCE_BUFFER);
 	sink = mock_comp_buffer(state, KPB_SINK_BUFFER);
 
+	/* Fiil source buffer with test data */
+	r_ptr = (unsigned char *)source->r_ptr;
+	for (i = 0; i < test_case_data->history_buffer_size; i++)
+		(*r_ptr++) = pattern;
+
 	return 0;
 }
 
