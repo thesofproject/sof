@@ -53,11 +53,9 @@ enum kpb_test_buff_type {
 
 /*! Parameters for test case */
 struct test_case {
-	int no_buffers;
-	int lp_buff_size;
-	int hp_buff_size;
-	int source_period_bytes;
-	int sink_period_bytes;
+	size_t period_bytes;
+	size_t history_buffer_size;
+
 };
 
 /* Dummy IPC structure, used to create KPB component */
@@ -87,14 +85,19 @@ struct comp_buffer *sink;
 /* Dummy memory buffers and data pointers */
 void *source_data;
 void *sink_data;
-void *his_buf_lp;
-void *his_buf_hp;
+
+/* Local function declarations */
+static struct comp_buffer *mock_comp_buffer(void **state,
+					    enum kpb_test_buff_type buff_type);
 
 /* Initialize KPB for test */
 static int buffering_test_setup(void **state)
 {
-	(void)state;
 
+	struct test_case *test_case_data = (struct test_case *)*state;
+	unsigned char *r_ptr;
+	int i;
+	char pattern = 0xAB;
 	/* Dummy IPC structue to create new KPB component */
 	struct sof_ipc_comp_kpb_mock kpb = {
 	.comp = {
@@ -124,11 +127,44 @@ static int buffering_test_setup(void **state)
 			 kpb_dev_mock->private)->config.sampling_freq,
 			 KPB_SAMPLNG_FREQUENCY);
 
+	/* Create source and sink buffers */
+	source_data = test_malloc(test_case_data->history_buffer_size);
+	sink_data = test_malloc(test_case_data->history_buffer_size);
+
+	source = mock_comp_buffer(state, KPB_SOURCE_BUFFER);
+	sink = mock_comp_buffer(state, KPB_SINK_BUFFER);
+
 	return 0;
 }
 
+static struct comp_buffer *mock_comp_buffer(void **state,
+					    enum kpb_test_buff_type buff_type)
+{
+	struct test_case *test_case_data = (struct test_case *)*state;
+	struct comp_buffer *buffer = test_malloc(sizeof(struct comp_buffer));
+
+	switch (buff_type) {
+	case KPB_SOURCE_BUFFER:
+		buffer->avail = test_case_data->period_bytes;
+		buffer->r_ptr = source_data;
+		break;
+	case KPB_SINK_BUFFER:
+		buffer->free = test_case_data->period_bytes;
+		buffer->w_ptr = sink_data;
+		break;
+	}
+
+	buffer->cb = NULL;
+
+	return buffer;
+}
 static int buffering_test_teardown(void **state)
 {
+	test_free(source_data);
+	test_free(sink_data);
+	test_free(source);
+	test_free(sink);
+
 	return 0;
 }
 
@@ -168,11 +204,8 @@ int main(void)
 {
 	struct CMUnitTest tests[2];
 	struct test_case internal_buffering = {
-		.no_buffers = 2,
-		.lp_buff_size = 100,
-		.hp_buff_size = 20,
-		.source_period_bytes = 120,
-		.sink_period_bytes = 120,
+		.period_bytes = 100,
+		.history_buffer_size = KPB_MAX_BUFFER_SIZE,
 	};
 
 	tests[0].name = "Dummy, always successful test";
