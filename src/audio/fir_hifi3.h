@@ -79,10 +79,17 @@ void eq_fir_2x_s32_hifi3(struct fir_state_32x16 *fir,
 			 int frames, int nch);
 
 /* Setup circular buffer for FIR input data delay */
-static inline void fir_hifi3_setup_circular(struct fir_state_32x16 *fir)
+static inline void fir_core_setup_circular(struct fir_state_32x16 *fir)
 {
 	AE_SETCBEGIN0(fir->delay);
 	AE_SETCEND0(fir->delay_end);
+}
+
+/* Setup circular for component buffer */
+static inline void fir_comp_setup_circular(struct comp_buffer *buffer)
+{
+	AE_SETCBEGIN0(buffer->addr);
+	AE_SETCEND0(buffer->end_addr);
 }
 
 void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
@@ -95,8 +102,8 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, int32_t x,
-				   int32_t *y, int shift)
+static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x,
+				   ae_int32 *y, int shift)
 {
 	/* This function uses
 	 * 1x 56 bit registers Q,
@@ -173,8 +180,8 @@ static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, int32_t x,
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, int32_t x0,
-				      int32_t x1, int32_t *y0, int32_t *y1,
+static inline void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, ae_int32 x0,
+				      ae_int32 x1, ae_int32 *y0, ae_int32 *y1,
 				      int shift)
 {
 	/* This function uses

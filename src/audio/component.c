@@ -271,8 +271,10 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
 	}
 
 	cl->frames = comp_avail_frames(cl->source, cl->sink);
-	cl->source_bytes = cl->frames * comp_frame_bytes(cl->source->source);
-	cl->sink_bytes = cl->frames * comp_frame_bytes(cl->sink->sink);
+	cl->source_frame_bytes = comp_frame_bytes(cl->source->source);
+	cl->sink_frame_bytes = comp_frame_bytes(cl->sink->sink);
+	cl->source_bytes = cl->frames * cl->source_frame_bytes;
+	cl->sink_bytes = cl->frames * cl->sink_frame_bytes;
 
 	return 0;
 }

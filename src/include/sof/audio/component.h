@@ -282,6 +282,8 @@ struct comp_copy_limits {
 	int frames;
 	int source_bytes;
 	int sink_bytes;
+	int source_frame_bytes;
+	int sink_frame_bytes;
 };
 
 /** \brief Computes size of the component device including ipc config. */
