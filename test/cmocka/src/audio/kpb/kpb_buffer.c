@@ -228,6 +228,8 @@ static void kpb_test_buffer_real_time_stream(void **state)
 {
 	struct comp_buffer *source_test;
 	struct comp_buffer *sink_test;
+	int ret;
+	struct test_case *test_case_data = (struct test_case *)*state;
 
 	source_test = list_first_item(&kpb_dev_mock->bsource_list,
 				      struct comp_buffer,
@@ -235,9 +237,20 @@ static void kpb_test_buffer_real_time_stream(void **state)
 	sink_test = list_first_item(&kpb_dev_mock->bsink_list,
 				    struct comp_buffer,
 				    source_list);
-	/*Verify if we fetched proper sink and source */
+
+	/* Verify if we fetched proper sink and source */
 	assert_ptr_equal(source, source_test);
 	assert_ptr_equal(sink, sink_test);
+
+	/* Perform kpb_copy test */
+	ret = kpb_drv_mock.ops.copy(kpb_dev_mock);
+
+	assert_int_equal(ret, 0);
+
+	/* Verify if source was copied to sink */
+	assert_memory_equal(source_data,
+			    sink_data,
+			    test_case_data->period_bytes);
 
 }
 
