@@ -391,7 +391,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_process *ipc_fir
 		= (struct sof_ipc_comp_process *)comp;
 	size_t bs = ipc_fir->size;
-	int i, err;
+	int i;
 
 	trace_eq("eq_fir_new()");
 
@@ -415,8 +415,8 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	fir = (struct sof_ipc_comp_process *)&dev->comp;
-	err = memcpy_s(fir, sizeof(*fir),
-		       ipc_fir, sizeof(struct sof_ipc_comp_process));
+	assert(!memcpy_s(fir, sizeof(*fir),
+		       ipc_fir, sizeof(struct sof_ipc_comp_process)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -441,13 +441,7 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 			return NULL;
 		}
 
-		err = memcpy_s(cd->config, bs, ipc_fir->data, bs);
-	}
-
-	if (err) {
-		rfree(dev);
-		rfree(cd);
-		return NULL;
+		assert(!memcpy_s(cd->config, bs, ipc_fir->data, bs));
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)

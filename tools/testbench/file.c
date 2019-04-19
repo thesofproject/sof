@@ -427,7 +427,6 @@ static struct comp_dev *file_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_file *ipc_file =
 		(struct sof_ipc_comp_file *)comp;
 	struct file_comp_data *cd;
-	int err;
 
 	if (IPC_IS_SIZE_INVALID(ipc_file->config)) {
 		fprintf(stderr, "error: file_new() Invalid IPC size.\n");
@@ -440,13 +439,8 @@ static struct comp_dev *file_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	file = (struct sof_ipc_comp_file *)&dev->comp;
-	err = memcpy_s(file, sizeof(*file), ipc_file,
-		       sizeof(struct sof_ipc_comp_file));
-	if (err) {
-		fprintf(stderr, "error: file_new() could not copy data\n");
-		rfree(dev);
-		return NULL;
-	}
+	assert(!memcpy_s(file, sizeof(*file), ipc_file,
+		       sizeof(struct sof_ipc_comp_file)));
 
 	/* allocate  memory for file comp data */
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));

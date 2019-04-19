@@ -61,4 +61,12 @@ void rfree(void *ptr)
 {
 	free(ptr);
 }
+
+void __panic(uint32_t p, char *filename, uint32_t linenum)
+{
+	(void)p;
+	(void)filename;
+	(void)linenum;
+}
+
 #endif

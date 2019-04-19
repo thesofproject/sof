@@ -60,3 +60,10 @@ void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
 		   uint32_t flags)
 {
 }
+
+void __panic(uint32_t p, char *filename, uint32_t linenum)
+{
+	(void)p;
+	(void)filename;
+	(void)linenum;
+}
