@@ -46,6 +46,28 @@
 #include <sof/list.h>
 
 /*! Local data types */
+
+/* KPB private data, runtime data
+ * NOTE! We use it here only to be able to dereference
+ * private comp_data of the device.
+ */
+struct comp_data {
+	enum kpb_state state; /**< current state of KPB component */
+	uint32_t kpb_no_of_clients; /**< number of registered clients */
+	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
+	struct notifier kpb_events; /**< KPB events object */
+	struct task draining_task;
+	uint32_t source_period_bytes; /**< source number of period bytes */
+	uint32_t sink_period_bytes; /**< sink number of period bytes */
+	struct sof_kpb_config config;   /**< component configuration data */
+	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
+	struct comp_buffer *cli_sink; /**< draining sink (client) */
+	struct hb *history_buffer;
+	bool is_internal_buffer_full;
+	size_t buffered_data;
+	struct dd draining_task_data;
+};
+
 enum kpb_test_buff_type {
 	KPB_SOURCE_BUFFER = 0,
 	KPB_SINK_BUFFER,
@@ -139,6 +161,15 @@ static int buffering_test_setup(void **state)
 	for (i = 0; i < test_case_data->history_buffer_size; i++)
 		(*r_ptr++) = pattern;
 
+	/* Create KPB private data */
+	/* Mount coponents for test */
+	source->source = kpb_dev_mock;
+	source->sink = kpb_dev_mock;
+	kpb_dev_mock->bsource_list.next = &source->sink_list;
+	kpb_dev_mock->bsink_list.next = &sink->source_list;
+	/* Mock adding sinks for the component */
+	((struct comp_data *)kpb_dev_mock->private)->rt_sink = sink;
+
 	return 0;
 }
 
@@ -195,7 +226,19 @@ int comp_register(struct comp_driver *drv)
  */
 static void kpb_test_buffer_real_time_stream(void **state)
 {
-	/*TODO: Perform copy from source to sink */
+	struct comp_buffer *source_test;
+	struct comp_buffer *sink_test;
+
+	source_test = list_first_item(&kpb_dev_mock->bsource_list,
+				      struct comp_buffer,
+				      sink_list);
+	sink_test = list_first_item(&kpb_dev_mock->bsink_list,
+				    struct comp_buffer,
+				    source_list);
+	/*Verify if we fetched proper sink and source */
+	assert_ptr_equal(source, source_test);
+	assert_ptr_equal(sink, sink_test);
+
 }
 
 /* Always successful test */
