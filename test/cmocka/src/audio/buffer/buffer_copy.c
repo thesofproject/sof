@@ -40,6 +40,8 @@
 #include <stdint.h>
 #include <cmocka.h>
 
+#define __panic(...)
+
 static void test_audio_buffer_copy_underrun(void **state)
 {
 	(void)state;

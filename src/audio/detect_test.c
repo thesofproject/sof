@@ -221,8 +221,8 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	keyword = (struct sof_ipc_comp_process *)&dev->comp;
-	memcpy_s(keyword, sizeof(*keyword), ipc_keyword,
-		 sizeof(struct sof_ipc_comp_process));
+	assert(!memcpy_s(keyword, sizeof(*keyword), ipc_keyword,
+		 sizeof(struct sof_ipc_comp_process)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 
@@ -312,7 +312,7 @@ static int test_keyword_set_config(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	memcpy_s(&cd->config, sizeof(cd->config), cdata->data->data, bs);
+	assert(!memcpy_s(&cd->config, sizeof(cd->config), cdata->data->data, bs));
 
 	if (!cd->config.activation_shift)
 		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
@@ -357,9 +357,9 @@ static int test_keyword_set_model(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
-	memcpy_s(cd->load_memory + cd->buf_copy_pos,
+	assert(!memcpy_s(cd->load_memory + cd->buf_copy_pos,
 		 cd->config.load_memory_size - cd->buf_copy_pos,
-		 cdata->data->data, cdata->data->size);
+		 cdata->data->data, cdata->data->size));
 
 	cd->buf_copy_pos += cdata->data->size;
 
@@ -446,7 +446,7 @@ static int test_keyword_get_config(struct comp_dev *dev,
 	if (bs == 0 || bs > size)
 		return -EINVAL;
 
-	memcpy_s(cdata->data->data, size, &cd->config, bs);
+	assert(!memcpy_s(cdata->data->data, size, &cd->config, bs));
 	cdata->data->abi = SOF_ABI_VERSION;
 	cdata->data->size = bs;
 
@@ -477,7 +477,7 @@ static int test_keyword_get_model(struct comp_dev *dev,
 
 		trace_keyword("test_keyword_get_model() crc: 0x%X", crc);
 
-		memcpy_s(cdata->data->data, size, &crc, bs);
+		assert(!memcpy_s(cdata->data->data, size, &crc, bs));
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = bs;
 	} else {

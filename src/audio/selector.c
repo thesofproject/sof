@@ -238,9 +238,9 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 		trace_selector("selector_ctrl_get_data(), SOF_CTRL_CMD_BINARY");
 
 		/* Copy back to user space */
-		ret = memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
+		assert(!memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
 			      (cdata->data))->size, &(cd->config),
-			      sizeof(cd->config));
+			      sizeof(cd->config)));
 		if (ret < 0)
 			return ret;
 

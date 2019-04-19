@@ -72,3 +72,10 @@ int comp_set_state(struct comp_dev *dev, int cmd)
 {
 	return 0;
 }
+
+void __panic(uint32_t p, char *filename, uint32_t linenum)
+{
+	(void)p;
+	(void)filename;
+	(void)linenum;
+}

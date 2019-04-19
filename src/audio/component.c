@@ -74,7 +74,6 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 {
 	struct comp_dev *cdev;
 	struct comp_driver *drv;
-	int err;
 
 	/* find the driver for our new component */
 	drv = get_drv(comp->type);
@@ -93,14 +92,8 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 	}
 
 	/* init component */
-	err = memcpy_s(&cdev->comp, sizeof(cdev->comp),
-		comp, sizeof(*comp));
-	if (err) {
-		trace_comp_error("comp_new() error: 0x%x "
-				 "unable to copy data",
-				 err);
-		return NULL;
-	}
+	assert(!memcpy_s(&cdev->comp, sizeof(cdev->comp),
+		comp, sizeof(*comp)));
 
 	cdev->drv = drv;
 	spinlock_init(&cdev->lock);
