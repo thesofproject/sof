@@ -230,6 +230,8 @@ static void kpb_test_buffer_real_time_stream(void **state)
 	struct comp_buffer *sink_test;
 	int ret;
 	struct test_case *test_case_data = (struct test_case *)*state;
+	struct hb *f_buff; /*! First history buffer to check */
+	struct hb *c_buff; /*! Current history buffer */
 
 	source_test = list_first_item(&kpb_dev_mock->bsource_list,
 				      struct comp_buffer,
@@ -252,6 +254,16 @@ static void kpb_test_buffer_real_time_stream(void **state)
 			    sink_data,
 			    test_case_data->period_bytes);
 
+	/* Verify if history buffer was filled properly */
+	f_buff = ((struct comp_data *)kpb_dev_mock->private)->history_buffer;
+	c_buff = f_buff;
+	do {
+		assert_memory_equal(source_data, c_buff->start_addr,
+				    ((uint32_t)c_buff->end_addr -
+				    (uint32_t)c_buff->start_addr));
+		c_buff = c_buff->next;
+	} while (c_buff != f_buff);
+
 }
 
 /* Always successful test */
@@ -265,7 +277,7 @@ int main(void)
 {
 	struct CMUnitTest tests[2];
 	struct test_case internal_buffering = {
-		.period_bytes = 100,
+		.period_bytes = KPB_MAX_BUFFER_SIZE,
 		.history_buffer_size = KPB_MAX_BUFFER_SIZE,
 	};
 
