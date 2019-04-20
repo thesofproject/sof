@@ -45,6 +45,13 @@
 #include <cavs/version.h>
 
 /*
+ * Number of status reload tries before warning the user we are in an IRQ
+ * storm where some device(s) are repeatedly interrupting and cannot be
+ * cleared.
+ */
+#define LVL2_MAX_TRIES		1000
+
+/*
  * The level2 handler attempts to try and fairly service interrupt sources by
  * servicing on first come first served basis. If two or more IRQs arrive at the
  * same time then they are serviced in order of ascending status bit.
@@ -57,6 +64,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 	struct list_item *clist;
 	uint32_t status;
 	uint32_t i = 0;
+	uint32_t tries = LVL2_MAX_TRIES;
 
 	/* read active interrupt status */
 	status = irq_read(ilxsd);
@@ -69,6 +77,15 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 			/* yes, so reload the new status and service again */
 			status = irq_read(ilxsd);
 			i = 0;
+			tries--;
+		}
+
+		/* any devices continually interrupting / can't be cleared ? */
+		if (!tries) {
+			tries = LVL2_MAX_TRIES;
+			trace_irq_error("irq_lvl2_handler() error: "
+					"IRQ storm at level %d status %08X",
+					level, irq_read(ilxsd));
 		}
 
 		/* any IRQ for this child bit ? */
