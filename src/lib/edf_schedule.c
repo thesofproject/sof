@@ -263,34 +263,35 @@ static int schedule_edf_task_cancel(struct task *task)
 	return ret;
 }
 
-static int _sch_edf_task(struct task *task, uint64_t start,
-			 uint64_t deadline)
+static void schedule_edf_task(struct task *task, uint64_t start,
+			      uint64_t deadline, uint32_t flags)
 {
 	struct edf_schedule_data *sch =
 		(*arch_schedule_get_data())->edf_sch_data;
-	uint32_t flags;
 	uint64_t current;
 	uint64_t ticks_per_ms;
 	struct edf_task_pdata *edf_pdata;
+	uint32_t lock_flags;
+	bool need_sched;
 
 	edf_pdata = edf_sch_get_pdata(task);
 
-	tracev_edf_sch("_schedule_edf_task()");
+	tracev_edf_sch("schedule_edf_task()");
 
-	spin_lock_irq(&sch->lock, flags);
+	spin_lock_irq(&sch->lock, lock_flags);
 
 	/* is task already pending ? - not enough MIPS to complete ? */
 	if (task->state == SOF_TASK_STATE_PENDING) {
-		trace_edf_sch("_schedule_edf_task(), task already pending");
-		spin_unlock_irq(&sch->lock, flags);
-		return 0;
+		trace_edf_sch("schedule_edf_task(), task already pending");
+		spin_unlock_irq(&sch->lock, lock_flags);
+		return;
 	}
 
 	/* is task already queued ? - not enough MIPS to complete ? */
 	if (task->state == SOF_TASK_STATE_QUEUED) {
-		trace_edf_sch("_schedule_edf_task(), task already queued");
-		spin_unlock_irq(&sch->lock, flags);
-		return 0;
+		trace_edf_sch("schedule_edf_task(), task already queued");
+		spin_unlock_irq(&sch->lock, lock_flags);
+		return;
 	}
 
 	/* get the current time */
@@ -308,55 +309,22 @@ static int _sch_edf_task(struct task *task, uint64_t start,
 	/* calculate deadline - TODO: include MIPS */
 	edf_pdata->deadline = task->start + ticks_per_ms * deadline / 1000;
 
-	/* add task to list */
-	list_item_append(&task->list, &sch->list);
+	/* add task to the proper list */
+	if (flags & SOF_SCHEDULE_FLAG_IDLE) {
+		/*TODO: add idle task here*/
+		need_sched = false;
+	} else {
+		list_item_append(&task->list, &sch->list);
+		need_sched = true;
+	}
+
 	task->state = SOF_TASK_STATE_QUEUED;
-	spin_unlock_irq(&sch->lock, flags);
+	spin_unlock_irq(&sch->lock, lock_flags);
 
-	return 1;
-}
-
-/*
- * Add a new task to the scheduler to be run and define a scheduling
- * deadline in time for the task to be ran. Do not invoke the scheduler
- * immediately to run task, but wait intil schedule is next called.
- *
- * deadline is in microseconds relative to start.
- */
-static void schedule_edf_task_idle(struct task *task, uint64_t deadline)
-{
-	_sch_edf_task(task, 0, deadline);
-}
-
-/*
- * Add a new task to the scheduler to be run and define a scheduling
- * window in time for the task to be ran. i.e. task will run between start and
- * deadline times.
- *
- * start is in microseconds relative to last task start time.
- * deadline is in microseconds relative to start.
- */
-static void schedule_edf_task_normal(struct task *task, uint64_t start,
-				     uint64_t deadline)
-{
-	int need_sched;
-
-	need_sched = _sch_edf_task(task, start, deadline);
-
-	/* need to run scheduler if task not already running */
 	if (need_sched) {
 		/* rerun scheduler */
 		schedule_edf();
 	}
-}
-
-static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t deadline, uint32_t flags)
-{
-	if (flags & SOF_SCHEDULE_FLAG_IDLE)
-		schedule_edf_task_idle(task, deadline);
-	else
-		schedule_edf_task_normal(task, start, deadline);
 }
 
 /* Remove a task from the scheduler when complete */
