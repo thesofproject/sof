@@ -49,6 +49,7 @@
 struct edf_schedule_data {
 	spinlock_t lock;
 	struct list_item list;	/* list of tasks in priority queue */
+	struct list_item idle_list; /* list of queued idle tasks */
 	uint32_t clock;
 };
 
@@ -311,7 +312,7 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 
 	/* add task to the proper list */
 	if (flags & SOF_SCHEDULE_FLAG_IDLE) {
-		/*TODO: add idle task here*/
+		list_item_append(&task->list, &sch->idle_list);
 		need_sched = false;
 	} else {
 		list_item_append(&task->list, &sch->list);
@@ -436,6 +437,7 @@ static int edf_scheduler_init(void)
 	sch = sch_data->edf_sch_data;
 
 	list_init(&sch->list);
+	list_init(&sch->idle_list);
 	spinlock_init(&sch->lock);
 	sch->clock = PLATFORM_SCHED_CLOCK;
 
@@ -467,6 +469,7 @@ static void edf_scheduler_free(void)
 	arch_free_tasks();
 
 	list_item_del(&sch->list);
+	list_item_del(&sch->idle_list);
 
 	spin_unlock_irq(&sch->lock, flags);
 }
