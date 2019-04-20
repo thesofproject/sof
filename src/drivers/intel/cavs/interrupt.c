@@ -44,6 +44,11 @@
 #include <stdlib.h>
 #include <cavs/version.h>
 
+/*
+ * The level2 handler attempts to try and fairly service interrupt sources by
+ * servicing on first come first served basis. If two or more IRQs arrive at the
+ * same time then they are serviced in order of ascending status bit.
+ */
 static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				    uint32_t ilxmsd, uint32_t ilxmcd)
 {
@@ -52,17 +57,20 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 	struct list_item *clist;
 	uint32_t status;
 	uint32_t i = 0;
-	uint32_t unmask = 0;
 
-	/* mask the parent IRQ */
-	arch_interrupt_disable_mask(1 << level);
-
-	/* mask all child interrupts */
+	/* read active interrupt status */
 	status = irq_read(ilxsd);
-	irq_write(ilxmsd, status);
 
 	/* handle each child */
-	while (status) {
+	while (irq_read(ilxsd)) {
+
+		/* are all IRQs serviced from last status ? */
+		if (status == 0x0) {
+			/* yes, so reload the new status and service again */
+			status = irq_read(ilxsd);
+			i = 0;
+		}
+
 		/* any IRQ for this child bit ? */
 		if ((status & 0x1) == 0)
 			goto next;
@@ -73,26 +81,20 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 
 			if (child && child->handler) {
 				child->handler(child->handler_arg);
-				unmask = child->unmask;
 			} else {
 				/* nobody cared ? */
 				trace_irq_error("irq_lvl2_handler() error: "
-						"nbc");
+						"nobody cared level %d bit %d",
+						level, i);
+				/* now mask it */
+				irq_write(ilxmcd, 0x1 << i);
 			}
 		}
-
-		/* unmask this bit i interrupt */
-		if (unmask)
-			irq_write(ilxmcd, 0x1 << i);
 
 next:
 		status >>= 1;
 		i++;
 	}
-
-	/* clear parent and unmask */
-	arch_interrupt_clear(level);
-	arch_interrupt_enable_mask(1 << level);
 }
 
 #define IRQ_LVL2_HANDLER(n) int core = cpu_get_id(); \
