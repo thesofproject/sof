@@ -33,6 +33,7 @@
 
 #include <config.h>
 
+#define SOF_IRQ_PASSIVE_LEVEL	0
 #define SOF_IRQ_ID_SHIFT	29
 #define SOF_IRQ_BIT_SHIFT	24
 #define SOF_IRQ_LEVEL_SHIFT	16

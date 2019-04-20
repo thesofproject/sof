@@ -65,6 +65,7 @@ static int schedule_edf_task_init(struct task *task, uint32_t xflags);
 static void schedule_edf_task_free(struct task *task);
 static int edf_scheduler_init(void);
 static void edf_scheduler_free(void);
+static void edf_schedule_idle(void);
 
 /*
  * Simple rescheduler to calculate tasks new start time and deadline if
@@ -390,8 +391,8 @@ static void schedule_edf(void)
 		(*arch_schedule_get_data())->edf_sch_data;
 	struct list_item *tlist;
 	struct task *edf_task;
-
 	uint32_t flags;
+	uint64_t current;
 
 	tracev_edf_sch("schedule_edf()");
 
@@ -402,8 +403,12 @@ static void schedule_edf(void)
 	list_for_item(tlist, &sch->list) {
 		edf_task = container_of(tlist, struct task, list);
 
-		/* schedule if we find any queued tasks */
-		if (edf_task->state == SOF_TASK_STATE_QUEUED) {
+		/* schedule if we find any queued tasks
+		 * which reached its deadline
+		 */
+		current = platform_timer_get(platform_timer);
+		if (edf_task->state == SOF_TASK_STATE_QUEUED &&
+		    edf_task->start <= current) {
 			spin_unlock_irq(&sch->lock, flags);
 			goto schedule;
 		}
@@ -411,6 +416,11 @@ static void schedule_edf(void)
 
 	/* no task to schedule */
 	spin_unlock_irq(&sch->lock, flags);
+
+	/* There is no prioritized task to handle at the moment.
+	 * Let's check if we have any idle task awaiting for execution.
+	 */
+	edf_schedule_idle();
 	return;
 
 schedule:
@@ -504,6 +514,34 @@ static void schedule_edf_task_free(struct task *task)
 
 	rfree(edf_sch_get_pdata(task));
 	edf_sch_set_pdata(task, NULL);
+}
+
+/* scheduler of idle tasks (non prioritized) */
+static void edf_schedule_idle(void)
+{
+	struct edf_schedule_data *sch =
+		(*arch_schedule_get_data())->edf_sch_data;
+	struct list_item *tlist;
+	struct list_item *clist;
+	struct task *task;
+
+	/* Are we on passive level? */
+	if (arch_interrupt_get_level() != SOF_IRQ_PASSIVE_LEVEL)
+		return;
+
+	/* invoke unprioritized/idle tasks right away */
+	list_for_item_safe(clist, tlist, &sch->idle_list) {
+		task = container_of(clist, struct task, list);
+
+		/* run task if we find any queued */
+		if (task->state == SOF_TASK_STATE_QUEUED) {
+			task->func(task->data);
+			task->state = SOF_TASK_STATE_COMPLETED;
+
+			/* task done, remove it from the list */
+			list_item_del(clist);
+		}
+	}
 }
 
 struct scheduler_ops schedule_edf_ops = {
