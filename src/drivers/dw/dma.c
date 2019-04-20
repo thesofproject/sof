@@ -480,6 +480,9 @@ static int dw_dma_stop(struct dma *dma, int channel)
 	dw_dma_interrupt_unregister(dma, channel);
 
 #if CONFIG_HW_LLI
+	/* clear block interrupt */
+	dw_write(dma, DW_CLEAR_BLOCK, DW_CHAN(channel));
+
 	for (i = 0; i < chan->desc_count; i++) {
 		lli->ctrl_hi &= ~DW_CTLH_DONE(1);
 		lli++;
@@ -487,6 +490,9 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	dcache_writeback_region(chan->lli,
 				sizeof(struct dw_lli) * chan->desc_count);
+#else
+	/* clear transfer interrupt */
+	dw_write(dma, DW_CLEAR_TFR, DW_CHAN(channel));
 #endif
 
 	chan->status = COMP_STATE_PREPARE;
