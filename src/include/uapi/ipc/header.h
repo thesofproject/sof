@@ -93,6 +93,7 @@
 #define SOF_IPC_GLB_DAI_MSG			SOF_GLB_TYPE(0x8U)
 #define SOF_IPC_GLB_TRACE_MSG			SOF_GLB_TYPE(0x9U)
 #define SOF_IPC_GLB_GDB_DEBUG                   SOF_GLB_TYPE(0xAU)
+#define SOF_IPC_GLB_TEST			SOF_GLB_TYPE(0xBU)
 
 /** @} */
 
@@ -169,6 +170,14 @@
 
 #define SOF_IPC_TRACE_DMA_PARAMS		SOF_CMD_TYPE(0x001)
 #define SOF_IPC_TRACE_DMA_POSITION		SOF_CMD_TYPE(0x002)
+
+/** @} */
+
+/** \name DSP Command: Test - Debug build only
+ *  @{
+ */
+
+#define SOF_IPC_TEST_IPC_FLOOD			SOF_CMD_TYPE(0x001)
 
 /** @} */
 

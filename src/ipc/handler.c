@@ -1094,6 +1094,21 @@ static int ipc_glb_tplg_message(uint32_t header)
 	}
 }
 
+#ifdef CONFIG_DEBUG
+static int ipc_glb_test_message(uint32_t header)
+{
+	uint32_t cmd = iCS(header);
+
+	switch (cmd) {
+	case SOF_IPC_TEST_IPC_FLOOD:
+		return 0; /* just return so next IPC can be sent */
+	default:
+		trace_ipc_error("ipc: unknown test header 0x%x", header);
+		return -EINVAL;
+	}
+}
+#endif
+
 /*
  * Global IPC Operations.
  */
@@ -1130,6 +1145,10 @@ int ipc_cmd(void)
 		return ipc_glb_debug_message(hdr->cmd);
 	case SOF_IPC_GLB_GDB_DEBUG:
 		return ipc_glb_gdb_debug(hdr->cmd);
+#ifdef CONFIG_DEBUG
+	case SOF_IPC_GLB_TEST:
+		return ipc_glb_test_message(hdr->cmd);
+#endif
 	default:
 		trace_ipc_error("ipc: unknown command type %u", type);
 		return -EINVAL;
