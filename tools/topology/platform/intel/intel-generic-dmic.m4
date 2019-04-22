@@ -25,7 +25,7 @@ ifelse(CHANNELS, 4, `',
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture-16khz.m4,
 	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, CHANNELS, s16le,
 	48, 1000, 0, 0)
 
