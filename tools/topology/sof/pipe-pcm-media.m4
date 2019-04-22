@@ -86,7 +86,9 @@ indir(`define', concat(`PIPELINE_SOURCE_', PIPELINE_ID), N_BUFFER(2))
 # Pipeline Configuration.
 #
 
-W_PIPELINE(N_SRC(0), SCHEDULE_PERIOD, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, SCHEDULE_TIME_DOMAIN, pipe_media_schedule_plat)
+W_PIPELINE(SCHED_COMP, SCHEDULE_PERIOD, SCHEDULE_PRIORITY, SCHEDULE_FRAMES, SCHEDULE_CORE, SCHEDULE_TIME_DOMAIN, pipe_media_schedule_plat)
+
+indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Media Playback PCM_ID)
 
 #
 # PCM Configuration
