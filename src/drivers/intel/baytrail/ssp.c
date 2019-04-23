@@ -574,22 +574,9 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-/* clear IRQ sources atm */
-static void ssp_irq_handler(void *data)
-{
-	struct dai *dai = data;
-
-	trace_ssp("ssp_irq_handler(), IRQ = %u", ssp_read(dai, SSSR));
-
-	/* clear IRQ */
-	ssp_write(dai, SSSR, ssp_read(dai, SSSR));
-	platform_interrupt_clear(ssp_irq(dai), 1);
-}
-
 static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
-	int ret;
 
 	/* allocate private data */
 	ssp = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
@@ -600,30 +587,6 @@ static int ssp_probe(struct dai *dai)
 
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
-
-#if defined CONFIG_CHERRYTRAIL
-	/* register our IRQ handler
-	 * - CHT shares SSP 0,1,2 IRQs with SSP 3,4,5
-	 */
-	if (ssp_irq(dai) >= IRQ_CHT_SSP_OFFSET)
-		ret = interrupt_register(ssp_irq(dai) - IRQ_CHT_SSP_OFFSET,
-					 IRQ_AUTO_UNMASK, ssp_irq_handler, dai);
-	else
-		ret = interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK,
-					 ssp_irq_handler, dai);
-#else
-	/* register our IRQ handler */
-	ret = interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
-				 dai);
-#endif
-	if (ret < 0) {
-		trace_ssp_error("SSP failed to allocate IRQ");
-		rfree(ssp);
-		return ret;
-	}
-
-	platform_interrupt_unmask(ssp_irq(dai), 1);
-	interrupt_enable(ssp_irq(dai));
 
 	ssp_empty_rx_fifo(dai);
 	return 0;
