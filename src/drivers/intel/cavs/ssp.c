@@ -839,22 +839,9 @@ static int ssp_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
-/* clear IRQ sources atm */
-static void ssp_irq_handler(void *data)
-{
-	struct dai *dai = data;
-
-	trace_ssp("ssp_irq_handler(), IRQ = 0x%08x", ssp_read(dai, SSSR));
-
-	/* clear IRQ */
-	ssp_write(dai, SSSR, ssp_read(dai, SSSR));
-	platform_interrupt_clear(ssp_irq(dai), 1);
-}
-
 static int ssp_probe(struct dai *dai)
 {
 	struct ssp_pdata *ssp;
-	int ret;
 
 	if (dai_get_drvdata(dai))
 		return -EEXIST; /* already created */
@@ -872,20 +859,8 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
-	/* register our IRQ handler */
-	ret = interrupt_register(ssp_irq(dai), IRQ_AUTO_UNMASK, ssp_irq_handler,
-				 dai);
-	if (ret < 0) {
-		trace_ssp_error("SSP failed to allocate IRQ %d", ssp_irq(dai));
-		rfree(ssp);
-		return ret;
-	}
-
 	/* Disable dynamic clock gating before touching any register */
 	pm_runtime_get_sync(SSP_CLK, dai->index);
-
-	platform_interrupt_unmask(ssp_irq(dai), 1);
-	interrupt_enable(ssp_irq(dai));
 
 	ssp_empty_rx_fifo(dai);
 
@@ -894,10 +869,6 @@ static int ssp_probe(struct dai *dai)
 
 static int ssp_remove(struct dai *dai)
 {
-	interrupt_disable(ssp_irq(dai));
-	platform_interrupt_mask(ssp_irq(dai), 0);
-	interrupt_unregister(ssp_irq(dai));
-
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
 	rfree(dma_get_drvdata(dai));
