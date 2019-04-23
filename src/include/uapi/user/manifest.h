@@ -138,7 +138,7 @@ struct sof_man_mod_config {
 #define SOF_MAN_FW_HDR_ID		{'$', 'A', 'M', '1'}
 #define SOF_MAN_FW_HDR_NAME		"ADSPFW"
 #define SOF_MAN_FW_HDR_FLAGS		0x0
-#define SOF_MAN_FW_HDR_FEATURES		0xff
+#define SOF_MAN_FW_HDR_FEATURES		0x1ff
 
 /*
  * The firmware has a standard header that is checked by the ROM on firmware
