@@ -67,9 +67,9 @@ static void edf_scheduler_free(void);
 
 /*
  * Simple rescheduler to calculate tasks new start time and deadline if
- * prevoius deadline was missed. Tries to align at first with current task
+ * previous deadline was missed. Tries to align at first with current task
  * timing, but will just add onto current if too far behind current.
- * XRUNs will be propagated upto the host if we have to reschedule.
+ * XRUNs will be propagated up to the host if we have to reschedule.
  */
 static inline void edf_reschedule(struct task *task, uint64_t current)
 {
@@ -158,7 +158,7 @@ static inline struct task *edf_get_next(uint64_t current, struct task *ignore)
 			trace_edf_sch("edf_get_next(), "
 				   "missed scheduling - will be rescheduled");
 
-			/* have we already tried to rescheule ? */
+			/* have we already tried to reschedule ? */
 			if (!reschedule) {
 				reschedule++;
 				trace_edf_sch("edf_get_next(), "

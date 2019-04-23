@@ -84,7 +84,7 @@ int do_task_master_core(struct sof *sof)
 		sa_enter_idle(sof);
 		wait_for_interrupt(0);
 
-		/* now process any IPC messages from host */
+		/* now process any IPC messages to host */
 		ipc_process_msg_queue();
 
 		/* schedule any idle tasks */
