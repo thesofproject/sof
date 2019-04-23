@@ -43,22 +43,6 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	2, 0, 2, s32le,
 	48, 1000, 0, 0)
 
-# PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# Schedule 192 frames per 4000us deadline on core 0 with priority 1
-PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	3, 1, 2, s32le,
-	192, 4000, 1, 0)
-
-# Connect pipelines together
-SectionGraph."PIPE_NAME" {
-	index "0"
-
-	lines [
-		# media 0
-		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_3)
-	]
-}
-
 #
 # DAI configuration
 #
@@ -71,6 +55,22 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 2, NoCodec-2,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
+
+# PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
+# Schedule 192 frames per 4000us deadline on core 0 with priority 1
+PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
+	3, 1, 2, s32le,
+	192, 4000, 1, 0, 0, PIPELINE_PLAYBACK_SCHED_COMP_1)
+
+# Connect pipelines together
+SectionGraph."media-pipe" {
+	index "0"
+
+	lines [
+		# media 0
+		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_3)
+	]
+}
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0

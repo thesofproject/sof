@@ -40,7 +40,7 @@ dnl     frames, deadline, priority, core)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s16le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1, 0, 2, s16le,
 	48, 1000, 0, 0)
 
@@ -131,6 +131,22 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 0, NoCodec-0,
 	PIPELINE_SOURCE_1, 2, s16le,
 	48, 1000, 0, 0)
+
+# Media playback pipeline 14 on PCM 7 using max 2 channels of s16le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
+	14, 7, 2, s16le,
+	48, 1000, 0, 0, 0, PIPELINE_PLAYBACK_SCHED_COMP_1)
+
+# Connect pipelines together
+SectionGraph."media-pipeline" {
+	index "0"
+
+	lines [
+		# media 0
+		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_14)
+	]
+}
 
 # capture DAI is SSP0 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
