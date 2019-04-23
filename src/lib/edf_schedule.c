@@ -168,6 +168,8 @@ static inline struct task *edf_get_next(uint64_t current, struct task *ignore)
 				/* reschedule failed */
 				list_item_del(&edf_task->list);
 				edf_task->state = SOF_TASK_STATE_CANCEL;
+				trace_edf_sch_error("edf_get_next(), "
+						     "task cancelled");
 			}
 		}
 	}
@@ -222,8 +224,7 @@ static struct task *sch_edf(void)
 
 			/* now run task at correct run level */
 			if (run_task(task) < 0) {
-				trace_error(TRACE_CLASS_EDF,
-					    "sch_edf() error");
+				trace_edf_sch_error("sch_edf() error");
 				break;
 			}
 		} else {
