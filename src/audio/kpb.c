@@ -835,7 +835,7 @@ static void kpb_clear_history_buffer(struct hb *buff)
 
 	do {
 		start_addr = buff->start_addr;
-		size = start_addr - buff->end_addr;
+		size = (uint32_t)buff->end_addr - (uint32_t)start_addr;
 
 		bzero(start_addr, size);
 
