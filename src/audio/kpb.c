@@ -359,8 +359,13 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* TODO: this init will be reworked completely once
 	 * PR with scheduling for idle tasks is done.
 	 */
-	schedule_task_init(&cd->draining_task, 0, 0, kpb_draining_task,
-			   &cd->draining_task_data, 0, 0);
+	schedule_task_init(&cd->draining_task, /* task structure */
+			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
+			   0, /* priority doesn't matter for IDLE tasks */
+			   kpb_draining_task, /* task function */
+			   &cd->draining_task_data, /* task private data */
+			   0, /* core on which we should run */
+			   0); /* not used flags */
 
 	/* search for the channel selector sink.
 	 * NOTE! We assume here that channel selector component device
@@ -753,7 +758,9 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		comp_set_attribute(kpb->cli_sink->sink,
 				   COMP_ATTR_COPY_BLOCKING, 1);
 
-		/* TODO: schedule draining task */
+		/* Schedule draining task */
+		schedule_task(&kpb->draining_task, 0, 0,
+			      SOF_SCHEDULE_FLAG_IDLE);
 	}
 }
 
