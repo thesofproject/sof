@@ -39,7 +39,6 @@
 #include <sof/agent.h>
 #include <platform/idc.h>
 #include <platform/interrupt.h>
-#include <platform/shim.h>
 #include <sof/audio/pipeline.h>
 #include <sof/schedule.h>
 #include <sof/debug.h>

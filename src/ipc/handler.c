@@ -50,7 +50,6 @@
 #include <sof/math/numbers.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
-#include <platform/shim.h>
 #include <platform/dma.h>
 #include <platform/timer.h>
 #include <platform/idc.h>
