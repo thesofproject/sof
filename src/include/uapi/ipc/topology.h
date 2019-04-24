@@ -165,21 +165,6 @@ struct sof_ipc_comp_volume {
 	uint32_t initial_ramp;	/**< ramp space in ms */
 } __attribute__((packed));
 
-/* generic selector component */
-struct sof_ipc_comp_selector {
-	struct sof_ipc_comp comp;
-	struct sof_ipc_comp_config config;
-
-	/* selector supports 1 input and 1 output */
-	uint32_t input_channels_count;	/**< accepted values 2 or 4 */
-	uint32_t output_channels_count;	/**< accepted values 1 or 2 or 4 */
-
-	/* note: if 2 or 4 output channels selected, the component works
-	 * in a bypass mode
-	 */
-	uint32_t selected_channel;	/**< 0..3 */
-} __attribute__((packed));
-
 /* generic SRC component */
 struct sof_ipc_comp_src {
 	struct sof_ipc_comp comp;
@@ -210,14 +195,6 @@ struct sof_ipc_comp_tone {
 	int32_t repeats;
 	int32_t ramp_step;
 } __attribute__((packed));
-
-/** \brief Types of processing components */
-enum sof_ipc_process_type {
-	SOF_PROCESS_NONE = 0,		/**< None */
-	SOF_PROCESS_EQFIR,		/**< Intel FIR */
-	SOF_PROCESS_EQIIR,		/**< Intel IIR */
-	SOF_PROCESS_KEYWORD_DETECT,     /**< Keyword Detection */
-};
 
 /* generic "effect", "codec" or proprietary processing component */
 struct sof_ipc_comp_process {
@@ -287,18 +264,6 @@ struct sof_ipc_pipe_comp_connect {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t source_id;
 	uint32_t sink_id;
-} __attribute__((packed));
-
-/* create new component kpb - SOF_IPC_TPLG_KPB_NEW */
-struct sof_ipc_comp_kpb {
-	struct sof_ipc_comp comp;
-	struct sof_ipc_comp_config config;
-	uint32_t size; /**< kpb size in bytes */
-	uint32_t caps; /**< SOF_MEM_CAPS_ */
-	uint8_t no_channels; /**< no of channels */
-	uint32_t history_depth; /**< time of buffering in milliseconds */
-	uint32_t sampling_freq; /**< frequency in hertz */
-	uint8_t sampling_width; /**< number of bits */
 } __attribute__((packed));
 
 #endif
