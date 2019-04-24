@@ -94,13 +94,14 @@ struct dai_data {
 static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
+	struct dma_sg_config *config = &dd->config;
 	uint32_t bytes = next->size;
 	void *buffer_ptr;
 
 	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
-	/* lli already reloaded */
-	next->size = DMA_RELOAD_IGNORE;
+	/* lli needs to be reloaded if irq is disabled */
+	next->size = config->irq_disabled ? DMA_RELOAD_LLI : DMA_RELOAD_IGNORE;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
