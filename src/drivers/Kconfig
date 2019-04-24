@@ -110,6 +110,12 @@ config CAVS_SOUNDWIRE
 	help
 	  Select this to enable Intel cAVS SoundWire driver.
 
+config DW_DMA
+	bool "Designware DMA driver"
+	default n
+	help
+	  Select this to enable support for the Designware DMA controller.
+
 endmenu # "Drivers"
 
 config CAVS_VERSION_1_5

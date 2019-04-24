@@ -12,6 +12,7 @@ config BAYTRAIL
 	select DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
+	select DW_DMA
 	help
 	  Select if your target platform is Baytrail-compatible
 
@@ -23,6 +24,7 @@ config CHERRYTRAIL
 	select DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
+	select DW_DMA
 	help
 	  Select if your target platform is Cherrytrail-compatible
 
@@ -31,6 +33,7 @@ config HASWELL
 	select HOST_PTABLE
 	select TASK_HAVE_PRIORITY_LOW
 	select DMA_AGGREGATED_IRQ
+	select DW_DMA
 	help
 	  Select if your target platform is Haswell-compatible
 
@@ -39,6 +42,7 @@ config BROADWELL
 	select HOST_PTABLE
 	select TASK_HAVE_PRIORITY_LOW
 	select DMA_AGGREGATED_IRQ
+	select DW_DMA
 	help
 	  Select if your target platform is Broadwell-compatible
 
@@ -47,6 +51,7 @@ config APOLLOLAKE
 	select BOOT_LOADER
 	select IRQ_MAP
 	select DMA_GW
+	select DW_DMA
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
@@ -62,6 +67,7 @@ config CANNONLAKE
 	select BOOT_LOADER
 	select IRQ_MAP
 	select DMA_GW
+	select DW_DMA
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
@@ -77,6 +83,7 @@ config SUECREEK
 	bool "Build for Suecreek"
 	select BOOT_LOADER
 	select IRQ_MAP
+	select DW_DMA
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
 	select DW_SPI
@@ -95,6 +102,7 @@ config ICELAKE
 	select BOOT_LOADER
 	select IRQ_MAP
 	select DMA_GW
+	select DW_DMA
 	select MEM_WND
 	select TASK_HAVE_PRIORITY_LOW
 	select TASK_HAVE_PRIORITY_MEDIUM
