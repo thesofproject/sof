@@ -127,9 +127,10 @@ dump_special_registers:
 	s32i a6, a2, REG_OFFSET_EPC5
 	rsr  a6, EPC6
 	s32i a6, a2, REG_OFFSET_EPC6
+#if XCHAL_INTLEVEL7_MASK
 	rsr  a6, EPC7
 	s32i a6, a2, REG_OFFSET_EPC7
-
+#endif
 	rsr a6, EPS2
 	s32i a6, a2, REG_OFFSET_EPS2
 	rsr a6, EPS3
@@ -140,9 +141,10 @@ dump_special_registers:
 	s32i a6, a2, REG_OFFSET_EPS5
 	rsr a6, EPS6
 	s32i a6, a2, REG_OFFSET_EPS6
+#if XCHAL_INTLEVEL7_MASK
 	rsr a6, EPS7
 	s32i a6, a2, REG_OFFSET_EPS7
-
+#endif
 	rsr  a6, DEPC
 	s32i a6, a2, REG_OFFSET_DEPC
 	rsr  a6, DEBUGCAUSE
