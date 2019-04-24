@@ -36,6 +36,7 @@
 #include <arch/sof.h>
 #include <sof/panic.h>
 #include <sof/preproc.h>
+#include <config.h>
 
 struct ipc;
 struct sa;
