@@ -59,12 +59,16 @@ void timer_64_handler(void *arg)
 	case TIMER0:
 		ccompare = xthal_get_ccompare(0);
 		break;
+#if XCHAL_NUM_TIMERS > 1
 	case TIMER1:
 		ccompare = xthal_get_ccompare(1);
 		break;
+#endif
+#if XCHAL_NUM_TIMERS > 2
 	case TIMER2:
 		ccompare = xthal_get_ccompare(2);
 		break;
+#endif
 	default:
 		return;
 	}
@@ -92,12 +96,16 @@ void timer_64_handler(void *arg)
 	case TIMER0:
 		xthal_set_ccompare(0, ccompare);
 		break;
+#if XCHAL_NUM_TIMERS > 1
 	case TIMER1:
 		xthal_set_ccompare(1, ccompare);
 		break;
+#endif
+#if XCHAL_NUM_TIMERS > 2
 	case TIMER2:
 		xthal_set_ccompare(2, ccompare);
 		break;
+#endif
 	default:
 		return;
 	}
@@ -111,12 +119,16 @@ int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 	case TIMER0:
 		tdata = &xtimer[0];
 		break;
+#if XCHAL_NUM_TIMERS > 1
 	case TIMER1:
 		tdata = &xtimer[1];
 		break;
+#endif
+#if XCHAL_NUM_TIMERS > 2
 	case TIMER2:
 		tdata = &xtimer[2];
 		break;
+#endif
 	default:
 		return -EINVAL;
 	}
@@ -141,12 +153,16 @@ uint64_t arch_timer_get_system(struct timer *timer)
 	case TIMER0:
 		ccompare = xthal_get_ccompare(0);
 		break;
+#if XCHAL_NUM_TIMERS > 1
 	case TIMER1:
 		ccompare = xthal_get_ccompare(1);
 		break;
+#endif
+#if XCHAL_NUM_TIMERS > 2
 	case TIMER2:
 		ccompare = xthal_get_ccompare(2);
 		break;
+#endif
 	default:
 		return 0;
 	}
@@ -200,12 +216,16 @@ int arch_timer_set(struct timer *timer, uint64_t ticks)
 	case TIMER0:
 		xthal_set_ccompare(0, time);
 		break;
+#if XCHAL_NUM_TIMERS > 1
 	case TIMER1:
 		xthal_set_ccompare(1, time);
 		break;
+#endif
+#if XCHAL_NUM_TIMERS > 2
 	case TIMER2:
 		xthal_set_ccompare(2, time);
 		break;
+#endif
 	default:
 		return -EINVAL;
 	}
