@@ -219,7 +219,7 @@ int platform_init(struct sof *sof)
 
 	/* set SSP clock to 25M */
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
-	clock_set_freq(CLK_SSP, 25000000);
+	clock_set_freq(CLK_I2S, 25000000);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);

@@ -42,7 +42,7 @@ static const struct freq_table cpu_freq[] = {
 /* IMPORTANT: array should be filled in increasing order
  * (regarding to .freq field)
  */
-static const struct freq_table ssp_freq[] = {
+static const struct freq_table i2s_freq[] = {
 	{ 19200000, 19200, CLOCK_SSP_XTAL_OSCILLATOR },
 	{ 24576000, 24576, CLOCK_SSP_AUDIO_CARDINAL },
 	{ 96000000, 96000, CLOCK_SSP_PLL_FIXED },

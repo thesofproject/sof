@@ -38,10 +38,10 @@
 #include <platform/shim.h>
 
 #define CLK_CPU(x)	(x)
-#define CLK_SSP		4
+#define CLK_I2S		4
 
 #define CPU_DEFAULT_IDX		1
-#define SSP_DEFAULT_IDX		1
+#define I2S_DEFAULT_IDX		1
 
 #define CLK_DEFAULT_CPU_HZ	120000000
 #define CLK_MAX_CPU_HZ		400000000
@@ -58,7 +58,7 @@ static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
 	return 0;
 }
 
-static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
+static inline int clock_platform_set_i2s_freq(uint32_t ssp_freq_enc)
 {
 	return 0;
 }

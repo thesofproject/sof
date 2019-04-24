@@ -143,7 +143,7 @@ struct timesource_data platform_generic_queue[] = {
 		.irq = IRQ_NUM_EXT_TIMER,
 	},
 	.clk		= PLATFORM_WORKQ_CLOCK,
-	.notifier	= NOTIFIER_ID_SSP_FREQ,
+	.notifier	= NOTIFIER_ID_I2S_FREQ,
 	.timer_set	= platform_timer_set,
 	.timer_clear	= platform_timer_clear,
 	.timer_get	= platform_timer_get,
@@ -231,7 +231,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
 
 	/* set SSP clock to 19.2M */
-	clock_set_freq(CLK_SSP, 19200000);
+	clock_set_freq(CLK_I2S, 19200000);
 
 	/* init DMACs */
 	trace_point(TRACE_BOOT_PLATFORM_DMA);

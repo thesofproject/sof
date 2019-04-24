@@ -36,14 +36,14 @@
 #include <platform/shim.h>
 
 #define CLK_CPU(x)	(x)
-#define CLK_SSP		1
+#define CLK_I2S		1
 
 #define CPU_DEFAULT_IDX		3
 
 #if defined CONFIG_BAYTRAIL
-#define SSP_DEFAULT_IDX		1
+#define I2S_DEFAULT_IDX		1
 #elif defined CONFIG_CHERRYTRAIL
-#define SSP_DEFAULT_IDX		0
+#define I2S_DEFAULT_IDX		0
 #endif
 
 #define CLK_DEFAULT_CPU_HZ	50000000
@@ -61,7 +61,7 @@ static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
 	return ipc_pmc_send_msg(PMC_SET_LPECLK);
 }
 
-static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
+static inline int clock_platform_set_i2s_freq(uint32_t ssp_freq_enc)
 {
 	/* send SSP freq request to SC */
 	return ipc_pmc_send_msg(ssp_freq_enc);

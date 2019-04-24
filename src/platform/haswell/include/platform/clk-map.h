@@ -42,7 +42,7 @@ static const struct freq_table cpu_freq[] = {
 	{160000000, 160000, 0x5},
 };
 
-static const struct freq_table ssp_freq[] = {
+static const struct freq_table i2s_freq[] = {
 	{24000000, 24000, 0}, /* default */
 };
 

@@ -59,7 +59,7 @@ struct sof;
  *  xtensa core, and ssp clock which is provided by external HW IP.
  *  The choice depends on HW features on different platform
  */
-#define PLATFORM_DEFAULT_CLOCK CLK_SSP
+#define PLATFORM_DEFAULT_CLOCK CLK_I2S
 
 /*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
  *  \brief work queue default timeout in microseconds

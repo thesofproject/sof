@@ -43,7 +43,7 @@ struct sof;
 
 enum notify_id {
 	NOTIFIER_ID_CPU_FREQ = 0,
-	NOTIFIER_ID_SSP_FREQ,
+	NOTIFIER_ID_I2S_FREQ,
 	NOTIFIER_ID_KPB_CLIENT_EVT,
 };
 

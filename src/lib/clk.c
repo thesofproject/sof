@@ -112,11 +112,11 @@ void clock_set_freq(int clock, uint32_t hz)
 		notify_data.target_core_mask =
 			NOTIFIER_TARGET_CORE_MASK(cpu_get_id());
 		break;
-	case CLK_SSP:
-		set_freq = &clock_platform_set_ssp_freq;
-		freq_table = ssp_freq;
-		freq_table_size = ARRAY_SIZE(ssp_freq);
-		notify_data.id = NOTIFIER_ID_SSP_FREQ;
+	case CLK_I2S:
+		set_freq = &clock_platform_set_i2s_freq;
+		freq_table = i2s_freq;
+		freq_table_size = ARRAY_SIZE(i2s_freq);
+		notify_data.id = NOTIFIER_ID_I2S_FREQ;
 		notify_data.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
 		break;
 	default:
@@ -167,8 +167,8 @@ void clock_init(void)
 		spinlock_init(&clk_pdata->clk[i].lock);
 	}
 
-	clk_pdata->clk[CLK_SSP].freq = ssp_freq[SSP_DEFAULT_IDX].freq;
-	clk_pdata->clk[CLK_SSP].ticks_per_msec =
-			ssp_freq[SSP_DEFAULT_IDX].ticks_per_msec;
-	spinlock_init(&clk_pdata->clk[CLK_SSP].lock);
+	clk_pdata->clk[CLK_I2S].freq = i2s_freq[I2S_DEFAULT_IDX].freq;
+	clk_pdata->clk[CLK_I2S].ticks_per_msec =
+			i2s_freq[I2S_DEFAULT_IDX].ticks_per_msec;
+	spinlock_init(&clk_pdata->clk[CLK_I2S].lock);
 }

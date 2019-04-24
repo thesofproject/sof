@@ -63,7 +63,7 @@ struct sof;
  *  xtensa core, and ssp clock which is provided by external HW IP.
  *  The choice depends on HW features on different platform
  */
-#define PLATFORM_DEFAULT_CLOCK CLK_SSP
+#define PLATFORM_DEFAULT_CLOCK CLK_I2S
 
 /* DGMBS align value */
 #define PLATFORM_HDA_BUFFER_ALIGNMENT	0x20
