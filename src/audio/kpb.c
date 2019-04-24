@@ -183,6 +183,8 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 	int i = 0;
 	size_t allocated_size = 0;
 
+	trace_kpb("kpb_allocate_history_buffer()");
+
 	/* Initialize history buffer */
 	kpb->history_buffer = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 				      sizeof(struct hb));
@@ -253,6 +255,9 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 		}
 	}
 
+	trace_kpb("kpb_allocate_history_buffer(): allocated %d bytes",
+		  allocated_size);
+
 	return allocated_size;
 }
 
@@ -265,6 +270,8 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 static void kpb_free_history_buffer(struct hb *buff)
 {
 	struct hb *_buff;
+
+	trace_kpb("kpb_free_history_buffer()");
 
 	/* Free history buffer/s */
 	while (buff) {
@@ -590,6 +597,9 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
 	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
 
+	trace_kpb("kpb_event_handler(): received event with ID: %d ",
+		  evd->event_id);
+
 	switch (evd->event_id) {
 	case KPB_EVENT_REGISTER_CLIENT:
 		kpb_register_client(kpb, cli);
@@ -675,6 +685,8 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t buffered = 0;
 	size_t local_buffered = 0;
 
+	trace_kpb("kpb_init_draining()");
+
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong client id");
@@ -745,7 +757,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 
 		} while (buff != first_buff);
 
-		trace_kpb("kpb_init_draining(), schedule draining r_ptr");
+		trace_kpb("kpb_init_draining(), schedule draining task");
 
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->cli_sink;
@@ -841,6 +853,8 @@ static void kpb_clear_history_buffer(struct hb *buff)
 	struct hb *first_buff = buff;
 	void *start_addr;
 	size_t size;
+
+	trace_kpb("kpb_init_draining()");
 
 	do {
 		start_addr = buff->start_addr;
