@@ -347,31 +347,28 @@ static int kpb_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
-	/* init private data */
+	/* Init private data */
 	cd->kpb_no_of_clients = 0;
 	cd->buffered_data = 0;
 
-	/* init history buffer */
+	/* Init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
 
-	/* initialize clients data */
+	/* Initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
 		cd->clients[i].state = KPB_CLIENT_UNREGISTERED;
 		cd->clients[i].r_ptr = NULL;
 	}
 
-	/* initialize KPB events */
+	/* Initialize KPB events */
 	cd->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
 	cd->kpb_events.cb_data = cd;
 	cd->kpb_events.cb = kpb_event_handler;
 
-	/* register KPB for async notification */
+	/* Register KPB for async notification */
 	notifier_register(&cd->kpb_events);
 
-	/* initialize draining task */
-	/* TODO: this init will be reworked completely once
-	 * PR with scheduling for idle tasks is done.
-	 */
+	/* Initialize draining task */
 	schedule_task_init(&cd->draining_task, /* task structure */
 			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
 			   0, /* priority doesn't matter for IDLE tasks */
@@ -380,7 +377,7 @@ static int kpb_prepare(struct comp_dev *dev)
 			   0, /* core on which we should run */
 			   0); /* not used flags */
 
-	/* search for KPB related sinks.
+	/* Search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
 	 * is connected to the KPB sinks as well as host device.
 	 */
@@ -392,10 +389,10 @@ static int kpb_prepare(struct comp_dev *dev)
 			break;
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
-			/* we found proper real time sink */
+			/* We found proper real time sink */
 			cd->rt_sink = sink;
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
-			/* we found proper host sink */
+			/* We found proper host sink */
 			cd->cli_sink = sink;
 		}
 	}
@@ -661,7 +658,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
 				cli->id);
 		ret = -EINVAL;
 	} else {
-		/* client accepted, let's store his data */
+		/* Client accepted, let's store his data */
 		kpb->clients[cli->id].id  = cli->id;
 		kpb->clients[cli->id].history_depth = cli->history_depth;
 		kpb->clients[cli->id].sink = cli->sink;
