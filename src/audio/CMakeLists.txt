@@ -75,16 +75,11 @@ if(NOT BUILD_HOST)
 	return()
 endif()
 
-add_library(sof_audio_core SHARED "")
-target_link_libraries(sof_audio_core PRIVATE sof_options)
-target_link_libraries(sof_audio_core PRIVATE -Wl,--export-dynamic)
-add_local_sources(sof_audio_core
+add_local_sources(sof
 	pipeline.c
 	component.c
 	buffer.c
 )
-
-install(TARGETS sof_audio_core DESTINATION lib)
 
 # Audio Modules with various optimizaitons
 
