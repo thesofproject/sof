@@ -270,19 +270,23 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 static void kpb_free_history_buffer(struct hb *buff)
 {
 	struct hb *_buff;
+	struct hb *first_buff = buff;
 
 	trace_kpb("kpb_free_history_buffer()");
 
+	if (!buff)
+		return;
+
 	/* Free history buffer/s */
-	while (buff) {
-		/* first reclaim HB internal memory, then HB itself. */
+	do {
+		/* First reclaim HB internal memory, then HB itself */
 		if (buff->start_addr)
 			rfree(buff->start_addr);
 
 		_buff = buff->next;
 		rfree(buff);
 		buff = _buff;
-	}
+	} while (buff != first_buff);
 }
 
 /**
