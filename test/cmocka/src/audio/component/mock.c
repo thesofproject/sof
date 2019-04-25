@@ -39,7 +39,7 @@
 
 TRACE_IMPL()
 
-#if !CONFIG_HOST
+#if !CONFIG_LIBRARY
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {

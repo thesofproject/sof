@@ -72,7 +72,7 @@ static inline int arch_memcpy_s(void *dest, size_t dest_size,
 		return -EINVAL;
 
 	/* can't be use until full context switch will be supported */
-/* #if __XCC__ && !CONFIG_HOST
+/* #if __XCC__ && !CONFIG_LIBRARY
  *	__vec_memcpy(dest, src, src_size);
  * #else
  */
@@ -91,7 +91,7 @@ static inline int arch_memset_s(void *dest, size_t dest_size,
 	if (count > dest_size)
 		return -EINVAL;
 
-#if __XCC__ && !CONFIG_HOST
+#if __XCC__ && !CONFIG_LIBRARY
 	if (!__vec_memset(dest, data, count))
 		return -ENOMEM;
 #else

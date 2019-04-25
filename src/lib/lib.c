@@ -59,7 +59,7 @@ void cmemcpy(void *dest, void *src, size_t size)
 }
 #endif
 
-#if !CONFIG_HOST
+#if !CONFIG_LIBRARY
 /* used by gcc - but uses arch_memcpy internally */
 void *memcpy(void *dest, const void *src, size_t n)
 {
