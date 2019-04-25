@@ -114,6 +114,14 @@ config ICELAKE
 	help
 		Select if your target platform is Icelake-compatible
 
+config LIBRARY
+	bool "Build Library"
+	help
+	  Select if you want to build a library.
+	  It is generic/mock configuration not tied to some specific platform.
+	  Library builds are not intended to be run on DSP, but to be used by
+	  user-space applications.
+
 endchoice
 
 config CAVS
