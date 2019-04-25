@@ -5,11 +5,14 @@ add_executable(testbench "")
 add_local_sources(testbench testbench.c)
 
 add_library(tb_common STATIC "")
+
 target_link_libraries(testbench PRIVATE -ldl -lm)
 target_link_libraries(testbench PRIVATE sof_ipc sof_audio_core tb_common)
 
-
 target_link_libraries(tb_common sof_options)
+
+target_include_directories(tb_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 add_local_sources(tb_common
 	alloc.c
 	common_test.c
