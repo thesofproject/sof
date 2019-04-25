@@ -118,10 +118,11 @@ int slave_core_init(struct sof *sof)
 	trace_point(TRACE_BOOT_SYS_NOTE);
 	init_system_notify(sof);
 
+	/* interrupts need to be initialized before any usage */
+	platform_interrupt_init();
+
 	trace_point(TRACE_BOOT_SYS_SCHED);
 	scheduler_init();
-
-	platform_interrupt_init();
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
