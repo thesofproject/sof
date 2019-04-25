@@ -7,8 +7,7 @@ target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platf
 target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
 
 # TODO: add Kconfig support also for testbench when it'll be decoupled from fw
-set(CONFIG_HOST 1)
-set(CONFIG_LIB 1)
+set(CONFIG_LIBRARY 1)
 set(CONFIG_COMP_VOLUME 1)
 set(CONFIG_COMP_SRC 1)
 set(CONFIG_COMP_FIR 1)

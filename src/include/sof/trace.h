@@ -116,7 +116,7 @@
 #define TRACE_CLASS_SOUNDWIRE	(32 << 24)
 #define TRACE_CLASS_KEYWORD	(33 << 24)
 
-#ifdef CONFIG_HOST
+#ifdef CONFIG_LIBRARY
 extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);
 #define _log_message(mbox, atomic, level, comp_class, id_0, id_1,	\
@@ -301,7 +301,7 @@ void trace_init(struct sof *sof);
 #define trace_error_value_atomic(x) trace_value_atomic(x)
 #endif
 
-#ifndef CONFIG_HOST
+#ifndef CONFIG_LIBRARY
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params, ids)\
 	__attribute__((section(".static_log." #lvl)))		\
 	static const struct {					\
