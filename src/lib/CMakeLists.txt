@@ -1,5 +1,5 @@
 if(BUILD_HOST)
-	add_local_sources(tb_common lib.c )
+	add_local_sources(sof lib.c )
 	return()
 endif()
 

@@ -7,7 +7,7 @@ add_local_sources(testbench testbench.c)
 add_library(tb_common STATIC "")
 
 target_link_libraries(testbench PRIVATE -ldl -lm)
-target_link_libraries(testbench PRIVATE sof_ipc sof_audio_core tb_common)
+target_link_libraries(testbench PRIVATE sof sof_audio_core tb_common)
 
 target_link_libraries(tb_common sof_options)
 

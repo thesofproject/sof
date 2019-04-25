@@ -108,6 +108,10 @@ add_dependencies(sof_options genconfig check_version_h)
 target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
 
 if(BUILD_HOST)
+	add_library(sof SHARED "")
+	target_link_libraries(sof PRIVATE sof_options)
+	install(TARGETS sof DESTINATION lib)
+
 	add_subdirectory(src)
 	# rest of this file is not needed for host build
 	return()
