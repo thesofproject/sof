@@ -1,19 +1,8 @@
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_executable(testbench "")
-add_local_sources(testbench testbench.c)
-
-add_library(tb_common STATIC "")
-
-target_link_libraries(testbench PRIVATE -ldl -lm)
-target_link_libraries(testbench PRIVATE sof tb_common)
-
-target_link_libraries(tb_common sof_options)
-
-target_include_directories(tb_common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-add_local_sources(tb_common
+add_executable(testbench
+	testbench.c
 	alloc.c
 	common_test.c
 	file.c
@@ -25,5 +14,10 @@ add_local_sources(tb_common
 	topology.c
 	trace.c
 )
+
+target_include_directories(testbench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+target_link_libraries(testbench PRIVATE -ldl -lm)
+target_link_libraries(testbench PRIVATE sof sof_options)
 
 install(TARGETS testbench DESTINATION bin)
