@@ -21,16 +21,10 @@ mkdir build && cd build
 
 2. Run configuration for your toolchain:
 
-Baytrail:
+Baytrail / Cherrytrail:
 
 ```
 cmake -DTOOLCHAIN=xtensa-byt-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-byt-elf ..
-```
-
-Cherrytrail:
-
-```
-cmake -DTOOLCHAIN=xtensa-cht-elf -DROOT_DIR=`pwd`/../../xtensa-root/xtensa-cht-elf ..
 ```
 
 Haswell / Broadwell:
