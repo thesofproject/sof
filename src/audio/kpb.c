@@ -376,20 +376,23 @@ static int kpb_prepare(struct comp_dev *dev)
 			   0, /* core on which we should run */
 			   0); /* not used flags */
 
-	/* search for the channel selector sink.
+	/* search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
-	 * is connected to the KPB sinks
+	 * is connected to the KPB sinks as well as host device.
 	 */
 	list_for_item(blist, &dev->bsink_list) {
 		sink = container_of(blist, struct comp_buffer, source_list);
+
 		if (!sink->sink) {
 			ret = -EINVAL;
 			break;
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
-			/* we found proper sink */
+			/* we found proper real time sink */
 			cd->rt_sink = sink;
-			break;
+		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
+			/* we found proper host sink */
+			cd->cli_sink = sink;
 		}
 	}
 
