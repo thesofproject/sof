@@ -336,7 +336,9 @@ static int kpb_prepare(struct comp_dev *dev)
 	if (ret == COMP_STATUS_STATE_ALREADY_SET)
 		return PPL_STATUS_PATH_STOP;
 
+	/* init private data */
 	cd->kpb_no_of_clients = 0;
+	cd->buffered_data = 0;
 
 	/* init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
