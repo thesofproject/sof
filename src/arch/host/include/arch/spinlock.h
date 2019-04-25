@@ -34,7 +34,6 @@
 
 #include <stdint.h>
 #include <errno.h>
-#include <pthread.h>
 
 typedef struct {
 } spinlock_t;
