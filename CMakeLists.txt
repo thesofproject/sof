@@ -54,12 +54,6 @@ add_library(sof_options INTERFACE)
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
 
-if(BUILD_HOST)
-	add_subdirectory(src)
-	# rest of this file is not needed for host build
-	return()
-endif()
-
 # get compiler name and version
 execute_process(
 	COMMAND ${CMAKE_C_COMPILER} --version
@@ -112,6 +106,12 @@ include(scripts/cmake/kconfig.cmake)
 
 add_dependencies(sof_options genconfig check_version_h)
 target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
+
+if(BUILD_HOST)
+	add_subdirectory(src)
+	# rest of this file is not needed for host build
+	return()
+endif()
 
 if(BUILD_UNIT_TESTS)
 	enable_testing()

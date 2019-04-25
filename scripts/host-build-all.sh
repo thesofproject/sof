@@ -13,5 +13,6 @@ cmake -DBUILD_HOST=ON \
 	-DCMAKE_VERBOSE_MAKEFILE=ON \
 	..
 
+make library_defconfig
 make -j$(nproc --all)
 make install
