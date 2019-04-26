@@ -372,7 +372,7 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
 		trace_volume_error("volume_ctrl_get_cmd() error: "
-				   "invalid cdata->num_elems",
+				   "invalid cdata->num_elems %u",
 				   cdata->num_elems);
 		return -EINVAL;
 	}
@@ -385,13 +385,13 @@ static int volume_ctrl_get_cmd(struct comp_dev *dev,
 		for (j = 0; j < cdata->num_elems; j++) {
 			cdata->chanv[j].channel = j;
 			cdata->chanv[j].value = cd->tvolume[j];
-			trace_volume("volume_ctrl_set_cmd(), "
+			trace_volume("volume_ctrl_get_cmd(), "
 				     "channel = %u, value = %u",
 				     cdata->chanv[j].channel,
 				     cdata->chanv[j].value);
 		}
 	} else {
-		trace_volume_error("volume_ctrl_set_cmd() error: "
+		trace_volume_error("volume_ctrl_get_cmd() error: "
 				   "invalid cdata->cmd");
 		return -EINVAL;
 	}
