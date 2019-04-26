@@ -141,7 +141,7 @@ static inline struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	}
 
 	/* read rest of component data */
-	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE,
+	mailbox_hostbox_read(hdr + 1, SOF_IPC_MSG_MAX_SIZE - sizeof(*hdr),
 			     sizeof(*hdr), hdr->size - sizeof(*hdr));
 
 	dcache_writeback_region(hdr, hdr->size);
