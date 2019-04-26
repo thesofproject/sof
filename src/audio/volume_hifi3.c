@@ -119,13 +119,13 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 	ae_f16x4 in_sample = AE_ZERO16();
 	size_t channel;
 	int i;
-	int shift_right = 0;
+	int shift = 0;
 	ae_int16 *in = (ae_int16 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
 	/* Get value of shift left */
 	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift_right = 8;
+		shift = 8;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -149,8 +149,10 @@ static void vol_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 			 */
 			out_sample = AE_ROUND32F48SSYM(AE_SLAI64S(mult, 15));
 
-			/* Shift left to get the right alignment */
-			out_sample = AE_SRAA32RS(out_sample, shift_right);
+			/* Shift for S24_LE */
+			out_sample = AE_SRAA32RS(out_sample, shift);
+			out_sample = AE_SLAA32S(out_sample, shift);
+			out_sample = AE_SRAA32(out_sample, shift);
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
@@ -239,13 +241,13 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	ae_f32x2 volume;
 	size_t channel;
 	int i;
-	int shift_right = 0;
+	int shift = 0;
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
 	/* Get value of shift left */
 	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift_right = 8;
+		shift = 8;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -271,7 +273,9 @@ static void vol_s24_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			out_sample = AE_ROUND32F48SSYM(AE_SRAI64(mult, 1));
 
 			/* Shift for S24_LE */
-			out_sample = AE_SRAA32S(out_sample, shift_right);
+			out_sample = AE_SRAA32RS(out_sample, shift);
+			out_sample = AE_SLAA32S(out_sample, shift);
+			out_sample = AE_SRAA32(out_sample, shift);
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
@@ -298,14 +302,14 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 	ae_f32x2 out_sample;
 	ae_f32x2 volume;
 	size_t channel;
-	int shift_right = 0;
+	int shift = 0;
 	int i;
 	ae_int32 *in = (ae_int32 *)source->r_ptr;
 	ae_int32 *out = (ae_int32 *)sink->w_ptr;
 
 	/* Get value of shift right */
 	if (cd->sink_format == SOF_IPC_FRAME_S24_4LE)
-		shift_right = 8;
+		shift = 8;
 
 	/* Main processing loop */
 	for (i = 0; i < frames; i++) {
@@ -331,7 +335,9 @@ static void vol_s32_to_s24_s32(struct comp_dev *dev, struct comp_buffer *sink,
 			out_sample = AE_ROUND32F48SSYM(AE_SRAI64(mult, 1));
 
 			/* Shift for S24_LE */
-			out_sample = AE_SRAA32RS(out_sample, shift_right);
+			out_sample = AE_SRAA32RS(out_sample, shift);
+			out_sample = AE_SLAA32S(out_sample, shift);
+			out_sample = AE_SRAA32(out_sample, shift);
 
 			/* Set sink as circular buffer */
 			vol_setup_circular(sink);
