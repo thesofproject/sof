@@ -518,7 +518,7 @@ int platform_init(struct sof *sof)
 
 #if defined(CONFIG_DW_SPI)
 	/* initialize the SPI slave */
-	spi_init();
+	spi_init(sof);
 	ret = spi_install(&spi, 1);
 	if (ret < 0)
 		return ret;

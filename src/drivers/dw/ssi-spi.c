@@ -151,7 +151,8 @@ struct spi {
 #define spi_reg_write(spi, reg, val) \
 			io_reg_write(spi->plat_data->base + reg, val)
 
-extern struct ipc *_ipc;
+/* deprecated - will be passed by callers, used by IPC only */
+struct sof *_sof;
 
 static void spi_start(struct spi *spi, int direction)
 {
@@ -323,8 +324,8 @@ static uint64_t spi_completion_work(void *data)
 		dcache_invalidate_region(spi->rx_buffer, SPI_BUFFER_SIZE);
 		mailbox_hostbox_write(0, spi->rx_buffer, hdr->size);
 
-		_ipc->host_pending = 1;
-		ipc_schedule_process(_ipc);
+		_sof->ipc->host_pending = 1;
+		ipc_schedule_process(_sof);
 
 		break;
 	case IPC_WRITE:	/* DSP -> HOST */
@@ -549,7 +550,8 @@ unlock:
 	return ret;
 }
 
-void spi_init(void)
+void spi_init(struct sof *sof)
 {
+	_sof = sof;
 	spinlock_init(&spi_lock);
 }

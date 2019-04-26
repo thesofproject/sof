@@ -135,12 +135,12 @@ struct ipc {
 
 
 int ipc_init(struct sof *sof);
-int platform_ipc_init(struct ipc *ipc);
+int platform_ipc_init(struct sof *sof);
 void ipc_free(struct ipc *ipc);
 
-int ipc_process_msg_queue(void);
+int ipc_process_msg_queue(struct sof *sof);
 uint64_t ipc_process_task(void *data);
-void ipc_schedule_process(struct ipc *ipc);
+void ipc_schedule_process(struct sof *sof);
 
 int ipc_stream_send_position(struct comp_dev *cdev,
 		struct sof_ipc_stream_posn *posn);
@@ -152,8 +152,8 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 			   size_t tx_bytes, uint32_t replace);
 
-void ipc_platform_do_cmd(struct ipc *ipc);
-void ipc_platform_send_msg(struct ipc *ipc);
+void ipc_platform_do_cmd(struct sof *sof);
+void ipc_platform_send_msg(struct sof *sof);
 
 /* create a SG page table eme list from a compressed page table */
 int ipc_parse_page_descriptors(uint8_t *page_table,
@@ -214,6 +214,6 @@ struct ipc_data {
 	int pm_prepare_D3;	/* do we need to prepare for D3 */
 };
 
-int ipc_cmd(void);
+int ipc_cmd(struct ipc *ipc);
 
 #endif

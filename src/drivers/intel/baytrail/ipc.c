@@ -30,18 +30,12 @@
  */
 
 #include <sof/debug.h>
-#include <sof/timer.h>
 #include <sof/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/sof.h>
-#include <sof/stream.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
 #include <sof/alloc.h>
-#include <sof/wait.h>
 #include <sof/trace.h>
-#include <sof/ssp.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -51,6 +45,7 @@
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc/header.h>
 
+/* deprecated - will be passed by callers */
 extern struct ipc *_ipc;
 
 static void do_notify(void)
@@ -88,6 +83,7 @@ out:
 
 static void irq_handler(void *arg)
 {
+	struct sof *sof = arg;
 	uint32_t isr;
 	uint32_t imrd;
 
@@ -122,20 +118,21 @@ static void irq_handler(void *arg)
 					shim_read(SHIM_IPCXH));
 		} else {
 			_ipc->host_pending = 1;
-			ipc_schedule_process(_ipc);
+			ipc_schedule_process(sof);
 		}
 	}
 }
 
-void ipc_platform_do_cmd(struct ipc *ipc)
+void ipc_platform_do_cmd(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
 	struct sof_ipc_reply reply;
 	uint32_t ipcxh;
 	int32_t err;
 
 	/* perform command and return any error */
-	err = ipc_cmd();
+	err = ipc_cmd(ipc);
 	if (err > 0) {
 		goto done; /* reply created and copied by cmd() */
 	} else {
@@ -169,8 +166,9 @@ done:
 	}
 }
 
-void ipc_platform_send_msg(struct ipc *ipc)
+void ipc_platform_send_msg(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_msg *msg;
 	uint32_t flags;
 
@@ -204,8 +202,9 @@ out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
 
-int platform_ipc_init(struct ipc *ipc)
+int platform_ipc_init(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_data *iipc;
 	uint32_t imrd, dir, caps, dev;
 
@@ -218,7 +217,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, _ipc, 0, 0);
+			   ipc_process_task, sof, 0, 0);
 
 #ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
@@ -239,7 +238,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   irq_handler, NULL);
+			   irq_handler, sof);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT);
 
 	/* Unmask Busy and Done interrupts */

@@ -33,6 +33,8 @@
 
 #include <stdint.h>
 
+struct sof;
+
 enum spi_type {
 	SOF_SPI_INTEL_SLAVE,
 	SOF_SPI_INTEL_MASTER,
@@ -60,6 +62,6 @@ int spi_push(struct spi *spi, const void *data, size_t size);
 int spi_probe(struct spi *spi);
 struct spi *spi_get(enum spi_type type);
 int spi_install(const struct spi_platform_data *plat, size_t n);
-void spi_init(void);
+void spi_init(struct sof *sof);
 
 #endif

@@ -31,19 +31,13 @@
  */
 
 #include <sof/debug.h>
-#include <sof/timer.h>
 #include <sof/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/sof.h>
-#include <sof/stream.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
 #include <sof/alloc.h>
-#include <sof/wait.h>
 #include <sof/trace.h>
 #include <sof/spi.h>
-#include <sof/ssp.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -53,16 +47,18 @@
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc/header.h>
 
+/* deprecated - will be passed by callers */
 extern struct ipc *_ipc;
 
-void ipc_platform_do_cmd(struct ipc *ipc)
+void ipc_platform_do_cmd(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
 	struct sof_ipc_reply reply;
 	int32_t err;
 
 	/* perform command and return any error */
-	err = ipc_cmd();
+	err = ipc_cmd(ipc);
 	if (err > 0) {
 		mailbox_hostbox_read(&reply, SOF_IPC_MSG_MAX_SIZE,
 				     0, sizeof(reply));
@@ -92,8 +88,9 @@ done:
 	}
 }
 
-void ipc_platform_send_msg(struct ipc *ipc)
+void ipc_platform_send_msg(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_msg *msg;
 	uint32_t flags;
 
@@ -121,8 +118,9 @@ out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
 
-int platform_ipc_init(struct ipc *ipc)
+int platform_ipc_init(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_data *iipc;
 
 	_ipc = ipc;
@@ -134,7 +132,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_MED,
-			   ipc_process_task, _ipc, 0, 0);
+			   ipc_process_task, sof, 0, 0);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;

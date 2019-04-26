@@ -31,18 +31,12 @@
  */
 
 #include <sof/debug.h>
-#include <sof/timer.h>
 #include <sof/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/sof.h>
-#include <sof/stream.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
 #include <sof/alloc.h>
-#include <sof/wait.h>
 #include <sof/trace.h>
-#include <sof/ssp.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -59,6 +53,7 @@ extern struct ipc *_ipc;
 /* test code to check working IRQ */
 static void ipc_irq_handler(void *arg)
 {
+	struct sof *sof = arg;
 	uint32_t dipcctl;
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -107,7 +102,7 @@ static void ipc_irq_handler(void *arg)
 #endif
 		} else {
 			_ipc->host_pending = 1;
-			ipc_schedule_process(_ipc);
+			ipc_schedule_process(sof);
 		}
 	}
 
@@ -137,14 +132,15 @@ static void ipc_irq_handler(void *arg)
 	}
 }
 
-void ipc_platform_do_cmd(struct ipc *ipc)
+void ipc_platform_do_cmd(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_data *iipc = ipc_get_drvdata(ipc);
 	struct sof_ipc_reply reply;
 	int32_t err;
 
 	/* perform command and return any error */
-	err = ipc_cmd();
+	err = ipc_cmd(ipc);
 
 	/* if err > 0, reply created and copied by cmd() */
 	if (err <= 0) {
@@ -186,8 +182,9 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 #endif
 }
 
-void ipc_platform_send_msg(struct ipc *ipc)
+void ipc_platform_send_msg(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_msg *msg;
 	uint32_t flags;
 
@@ -230,8 +227,9 @@ out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
 
-int platform_ipc_init(struct ipc *ipc)
+int platform_ipc_init(struct sof *sof)
 {
+	struct ipc *ipc = sof->ipc;
 	struct ipc_data *iipc;
 
 	_ipc = ipc;
@@ -243,14 +241,14 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, _ipc, 0, 0);
+			   ipc_process_task, sof, 0, 0);
 
 	/* PM */
 	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   ipc_irq_handler, NULL);
+			   ipc_irq_handler, sof);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT);
 
 	/* enable IPC interrupts from host */
