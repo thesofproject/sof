@@ -127,6 +127,60 @@
 /* IPC context - shared with platform IPC driver */
 struct ipc *_ipc;
 
+/*
+ * function to build a memory structure based on limited amount of data passed
+ * using IPC registers:
+ * Assumptions for data format in the IPC registers
+ * reg0:
+ * 0xRFFFGCCC
+ * - R is reserved (1 bit)
+ * - F is for flags (like a fragmented message etc.)
+ * - G is global cmd type (4 bits) - as defined in header.h
+ * - C is command type (12 bits) - as defined in header.h
+ *
+ * reg1:
+ * 0xRDDDDDDD
+ * - R is reserved (2 bit) for compatibility with cAVS 1.5 HW
+ * - D is for message data (30 bits)
+ *
+ * Specifically for PM_STATE_SET command data in reg1 is defined as
+ * 0xRFFFFSPC
+ * - R is reserved (2 bit) for compatibility with cAVS 1.5 HW
+ * - F is reserved for future use (18 bits)
+ * - S is power state SOF_PM_STATE_D.. (4 bits)
+ * - P is power gating SOF_PM_PG_.... (4 bits)
+ * - C is clock gating SOF_PM_CG_... (4 bits)
+ */
+static inline struct sof_ipc_cmd_hdr *mailbox_validate_register(void)
+{
+	struct sof_ipc_cmd_hdr *hdr = _ipc->comp_data;
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
+
+	/* TODO: This is a snippet to illustrate the idea of building
+	 * a message from data stored in registers
+	 */
+
+	/* #1 retrieve global/command data from reg0 */
+
+	/* Assumption is that the ID number (16 bits)
+	 * monotonic and overflows is set to 0
+	 */
+	hdr->cmd = (iipc->reg1 << 16);
+
+	/* #2 validated the command value */
+
+	/* Assumption is that at the first stage the only message supported over
+	 * registers will be PM_STATE_SET D0 from D0ix
+	 */
+
+	/* #3 create structure sof_ipc_pm_state  */
+
+	/* #4 fill the structure fields using values from reg0 & reg1 */
+
+	/* #5 copy the structure to address pointed by hdr */
+	return hdr;
+}
+
 static inline struct sof_ipc_cmd_hdr *mailbox_validate(void)
 {
 	struct sof_ipc_cmd_hdr *hdr = _ipc->comp_data;
@@ -1147,8 +1201,13 @@ int ipc_cmd(void)
 {
 	struct sof_ipc_cmd_hdr *hdr;
 	uint32_t type;
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 
-	hdr = mailbox_validate();
+	if (iipc->ipc_payload == SOF_IPC_PAYLOAD_REGISTER)
+		hdr = mailbox_validate_register();
+	else
+		hdr = mailbox_validate();
+
 	if (hdr == NULL) {
 		trace_ipc_error("ipc: invalid IPC header.");
 		return -EINVAL;

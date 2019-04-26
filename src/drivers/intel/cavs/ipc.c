@@ -60,27 +60,33 @@ extern struct ipc *_ipc;
 static void ipc_irq_handler(void *arg)
 {
 	uint32_t dipcctl;
+	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	uint32_t dipct;
 	uint32_t dipcie;
+	uint32_t dipcte;
 
 	dipct = ipc_read(IPC_DIPCT);
 	dipcie = ipc_read(IPC_DIPCIE);
 	dipcctl = ipc_read(IPC_DIPCCTL);
+	dipcte = ipc_read(IPC_DIPCCTE);
 
-	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x", dipct,
-		   dipcie, dipcctl);
+	tracev_ipc("ipc: irq dipct 0x%x dipcie 0x%x dipcctl 0x%x dipcte 0x%x",
+		   dipct, dipcie, dipcctl, dipcte);
 #else
 	uint32_t dipctdr;
 	uint32_t dipcida;
+	uint32_t dipctdd;
 
 	dipctdr = ipc_read(IPC_DIPCTDR);
 	dipcida = ipc_read(IPC_DIPCIDA);
 	dipcctl = ipc_read(IPC_DIPCCTL);
+	dipctdd = ipc_read(IPC_DIPCTDD);
 
-	tracev_ipc("ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x", dipctdr,
-		   dipcida, dipcctl);
+	tracev_ipc("ipc: irq dipctdr 0x%x dipcida 0x%x dipcctl 0x%x",
+		   dipctdr, dipcida, dipcctl);
+	tracev_ipc("ipc: irq dipctdd 0x%x", dipctdd);
 #endif
 
 	/* new message from host */
@@ -106,6 +112,22 @@ static void ipc_irq_handler(void *arg)
 					ipc_read(IPC_DIPCCTL));
 #endif
 		} else {
+#if CAVS_VERSION == CAVS_VERSION_1_5
+			if (dipct & IPC_DIPCT_MSG_MASK) {
+#else
+			if (dipctdr & IPC_DIPCTDR_MSG_MASK) {
+#endif
+				iipc->ipc_payload = SOF_IPC_PAYLOAD_REGISTER;
+#if CAVS_VERSION == CAVS_VERSION_1_5
+				iipc->reg1 = dipct;
+				iipc->reg2 = dipcte;
+#else
+				iipc->reg1 = dipctdr;
+				iipc->reg2 = dipctdd;
+#endif
+			} else {
+				iipc->ipc_payload = SOF_IPC_PAYLOAD_MEMORY;
+			}
 			_ipc->host_pending = 1;
 			ipc_schedule_process(_ipc);
 		}
@@ -145,7 +167,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 
 	/* perform command and return any error */
 	err = ipc_cmd();
-
 	/* if err > 0, reply created and copied by cmd() */
 	if (err <= 0) {
 		/* send std error/ok reply */

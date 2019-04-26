@@ -205,6 +205,11 @@ int ipc_dma_trace_send_position(void);
 /* get posn offset by pipeline. */
 int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe);
 
+enum ipc_payload_location {
+	SOF_IPC_PAYLOAD_MEMORY = 0,
+	SOF_IPC_PAYLOAD_REGISTER
+};
+
 /* private data for IPC */
 struct ipc_data {
 	/* DMA */
@@ -213,6 +218,11 @@ struct ipc_data {
 
 	/* PM */
 	uint32_t pm_target_state;	/* SOF_PM_STATE_D.. */
+
+	/* register based communication */
+	uint32_t ipc_payload;		/* SOF_IPC_PAYLOAD_... */
+	uint32_t reg1;
+	uint32_t reg2;
 };
 
 int ipc_cmd(void);
