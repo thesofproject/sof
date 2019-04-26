@@ -70,11 +70,15 @@ static inline int arch_memcpy_s(void *dest, size_t dest_size,
 
 	if (src_size > dest_size)
 		return -EINVAL;
-#if __XCC__ && !CONFIG_HOST
-	__vec_memcpy(dest, src, src_size);
-#else
+
+	/* can't be use until full context switch will be supported */
+/* #if __XCC__ && !CONFIG_HOST
+ *	__vec_memcpy(dest, src, src_size);
+ * #else
+ */
 	memcpy(dest, src, src_size);
-#endif
+/* #endif */
+
 	return 0;
 }
 
