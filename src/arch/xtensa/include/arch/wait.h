@@ -43,11 +43,11 @@ static inline void arch_wait_for_interrupt(int level)
 {
 	int i;
 
-	/* can only eneter WFI when at runlevel 0 i.e. not IRQ level */
+	/* can only enter WFI when at run level 0 i.e. not IRQ level */
 	if (arch_interrupt_get_level() > 0)
 		panic(SOF_IPC_PANIC_WFI);
 
-	/* this sequnce must be atomic on LX6 */
+	/* this sequence must be atomic on LX6 */
 	XTOS_SET_INTLEVEL(5);
 
 	/* LX6 needs a delay */
@@ -66,7 +66,7 @@ static inline void arch_wait_for_interrupt(int level)
 
 static inline void arch_wait_for_interrupt(int level)
 {
-	/* can only eneter WFI when at runlevel 0 i.e. not IRQ level */
+	/* can only enter WFI when at run level 0 i.e. not IRQ level */
 	if (arch_interrupt_get_level() > 0)
 		panic(SOF_IPC_PANIC_WFI);
 
