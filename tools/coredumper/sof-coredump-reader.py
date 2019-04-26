@@ -50,13 +50,13 @@ VALID_ARCHS = {}
 ]
 
 # Exception casues:
-# CODE: [Exception cause, excvaddr loaded]
+# CODE: [Exception cause, EXCVADDR loaded]
 EXCCAUSE_CODE = {
 	0: ["IllegalInstructionCause: Illegal instruction", False],
 	1: ["SyscallCause: SYSCALL instruction", True],
 	2: ["InstructionFetchErrorCause: Processor internal physical address or data error during instruction fetch", True],
 	3: ["LoadStoreErrorCause: Processor internal physical address or data error during load or store", True],
-	4: ["Level1InterruptCause: Level-1 interrupt as indicated by set level-1 bits in the INTERRUPT register", False],
+	4: ["Level1InterruptCause: Level-1 INTERRUPT as indicated by set level-1 bits in the INTERRUPT register", False],
 	5: ["AllocaCause: MOVSP instruction, if caller's registers are not in the register file", False],
 	6: ["IntegerDivideByZeroCause: QUOS, QUOU, REMS, or REMU divisor operand is zero", False],
 	8: ["PrivilegedCause: Attempt to execute a privileged operation when CRING ? 0", False],
@@ -475,24 +475,24 @@ def CoreDumpFactory(dsp_arch):
 					"stackoffset",
 					"stackptr",
 					# }
-					"exccause",
-					"excvaddr",
-					"ps"
+					"EXCCAUSE",
+					"EXCVADDR",
+					"PS"
 				]
-				+ ["epc" + str(x) for x in range(1,7+1)]
-				+ ["eps" + str(x) for x in range(2,7+1)]
+				+ ["EPC" + str(x) for x in range(1,7+1)]
+				+ ["EPS" + str(x) for x in range(2,7+1)]
 				+ [
-					"depc",
-					"intenable",
-					"interrupt",
-					"sar",
-					"debugcause",
-					"windowbase",
-					"windowstart",
-					"excsave1" # to
+					"DEPC",
+					"INTENABLE",
+					"INTERRUPT",
+					"SAR",
+					"DEBUGCAUSE",
+					"WINDOWBASE",
+					"WINDOWSTART",
+					"EXCSAVE1" # to
 				]
 			] + [
-				("a", dsp_arch.bitness * c_uint32)
+				("A", dsp_arch.bitness * c_uint32)
 			] + [
 				("stack", c_uint32)
 			]
@@ -500,7 +500,7 @@ def CoreDumpFactory(dsp_arch):
 		def __init__(self, columncount):
 			self.dsp_arch = dsp_arch
 			self._fields_
-			self.ar_regex = re.compile(r'ar[0-9]+')
+			self.ar_regex = re.compile(r'AR[0-9]+')
 			# below: smart column count
 			self._longest_field = len(max([x[0] for x in self._fields_], key=len))
 			if columncount is not None:
@@ -516,7 +516,7 @@ def CoreDumpFactory(dsp_arch):
 			)
 
 		def __windowbase_shift(self, iter, direction):
-			return (iter + self.windowbase * AR_WINDOW_WIDTH * direction)\
+			return (iter + self.WINDOWBASE * AR_WINDOW_WIDTH * direction)\
 				% self.dsp_arch.bitness
 		def windowbase_shift_left(self, iter):
 			return self.__windowbase_shift(iter, -1)
@@ -525,19 +525,19 @@ def CoreDumpFactory(dsp_arch):
 
 		def reg_from_string(self, string):
 			if self.ar_regex.fullmatch(string):
-				return self.a[self.windowbase_shift_left(int(string[2:]))]
+				return self.A[self.windowbase_shift_left(int(string[2:]))]
 			else:
 				return self.__getattribute__(string)
 
 		def __str__(self):
 			string = ""
-			string += "exccause"
+			string += "EXCCAUSE"
 			return string
 
 		def to_string(self, is_gdb):
-			# in case windowbase in dump has invalid value
+			# in case WINDOWBASE in dump has invalid value
 			windowbase_shift = min(
-				self.windowbase * AR_WINDOW_WIDTH,
+				self.WINDOWBASE * AR_WINDOW_WIDTH,
 				self.dsp_arch.bitness
 			)
 			# flatten + chunk enable to smartly print in N columns
@@ -555,15 +555,15 @@ def CoreDumpFactory(dsp_arch):
 			string += ''.join([self.fmt(is_gdb, x)
 				for x in flaten(
 					[chunks(word, self.columncount) for word in [
-						["exccause", "excvaddr", "ps"],
-						["epc" + str(x) for x in range(1,7+1)],
-						["eps" + str(x) for x in range(2,7+1)],
-						["depc", "intenable", "interrupt", "sar", "debugcause"],
-						["windowbase", "windowstart"],
-						["excsave1"],
+						["EXCCAUSE", "EXCVADDR", "PS"],
+						["EPC" + str(x) for x in range(1,7+1)],
+						["EPS" + str(x) for x in range(2,7+1)],
+						["DEPC", "INTENABLE", "INTERRUPT", "SAR", "DEBUGCAUSE"],
+						["WINDOWBASE", "WINDOWSTART"],
+						["EXCSAVE1"],
 					]] +
 					[chunks(word, self.columncount_ar) for word in [
-						["ar" + str(x) for x in itertools.chain(
+						["AR" + str(x) for x in itertools.chain(
 							range(   windowbase_shift, self.dsp_arch.bitness),
 							range(0, windowbase_shift),
 						)]
@@ -605,8 +605,8 @@ def CoreDumpFactory(dsp_arch):
 
 		def windowstart_process(self):
 			string = ""
-			binary = "{0:b}".format(self.windowstart)
-			bit_start = len(binary)-1-self.windowbase
+			binary = "{0:b}".format(self.WINDOWSTART)
+			bit_start = len(binary)-1-self.WINDOWBASE
 			fnc_num = 0
 			header = ""
 
@@ -622,19 +622,19 @@ def CoreDumpFactory(dsp_arch):
 					fnc_num += 1
 				else:
 					header += " "
-			header = header[self.windowbase+1:]+ header[:self.windowbase+1]
+			header = header[self.WINDOWBASE+1:]+ header[:self.WINDOWBASE+1]
 
-			string += "# windowbase: {:0X}\n".format(self.windowbase)
+			string += "# WINDOWBASE: {:0X}\n".format(self.WINDOWBASE)
 			string += "#               {0}\n".format(header)
-			string += "# windowstart: b{0}\n\n".format(binary)
+			string += "# WINDOWSTART: b{0}\n\n".format(binary)
 			string += "#      reg         a0         a1\n"
 			string += "#                  (return)   (sptr)\n"
 			string += "#      ---         --------   -------\n"
 			fnc_num = 0
 			for iter, digit in enumerate(binary[bit_start:]):
 				if (digit == '1'):
-					reg = "ar{0}".format(AR_WINDOW_WIDTH * (self.windowbase - iter))
-					reg1 = "ar{0}".format(AR_WINDOW_WIDTH * (self.windowbase - iter) + 1)
+					reg = "AR{0}".format(AR_WINDOW_WIDTH * (self.WINDOWBASE - iter))
+					reg1 = "AR{0}".format(AR_WINDOW_WIDTH * (self.WINDOWBASE - iter) + 1)
 					string += "# {0:2d} ".format(++fnc_num)
 					string += self.fmt_pretty_auto(reg).format(
 						reg, self.reg_from_string(reg)
@@ -642,8 +642,8 @@ def CoreDumpFactory(dsp_arch):
 					fnc_num += 1
 			for iter, digit in enumerate(binary[:bit_start]):
 				if (digit == '1'):
-					reg = "ar{0}".format(AR_WINDOW_WIDTH * (len(binary) - 1 - iter))
-					reg1 = "ar{0}".format(AR_WINDOW_WIDTH * (len(binary) - 1 - iter) + 1)
+					reg = "AR{0}".format(AR_WINDOW_WIDTH * (len(binary) - 1 - iter))
+					reg1 = "AR{0}".format(AR_WINDOW_WIDTH * (len(binary) - 1 - iter) + 1)
 					string += "# {0:2d} ".format(++fnc_num)
 					string += self.fmt_pretty_auto(reg).format(
 						reg, self.reg_from_string(reg)
@@ -724,16 +724,16 @@ class CoreDumpReader(object):
 			stdoutPrint("set *0x{:08x}=0x{:08x}\n"
 				.format(addr, dw))
 
-		if self.core_dump.exccause:
+		if self.core_dump.EXCCAUSE:
 			verbosePrint("\n# *EXCEPTION*\n")
-			verbosePrint("# exccause: " + EXCCAUSE_CODE[self.core_dump.exccause][0])
-			if EXCCAUSE_CODE[self.core_dump.exccause][1]:
-				verbosePrint("# excvaddr: " + str(self.core_dump.excvaddr))
+			verbosePrint("# EXCCAUSE: " + EXCCAUSE_CODE[self.core_dump.EXCCAUSE][0])
+			if EXCCAUSE_CODE[self.core_dump.EXCCAUSE][1]:
+				verbosePrint("# EXCVADDR: " + str(self.core_dump.EXCVADDR))
 			stdoutPrint('p "Exception location:"\nlist *$epc1\n');
 		else:
 			verbosePrint("# Location: " + str(self.file_info));
 
-		# TODO: if excsave1 is not empty, pc should be set to that value
+		# TODO: if EXCSAVE1 is not empty, pc should be set to that value
 		# (exception mode, not forced panic mode)
 		stdoutPrint('set $pc=&arch_dump_regs_a\np "backtrace"\nbacktrace\n')
 		stdoutClose()
