@@ -350,6 +350,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* Init private data */
 	cd->kpb_no_of_clients = 0;
 	cd->buffered_data = 0;
+	cd->state = KPB_STATE_BUFFERING;
 
 	/* Init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
@@ -436,11 +437,15 @@ static int kpb_reset(struct comp_dev *dev)
 	/* Reset history buffer */
 	kpb->is_internal_buffer_full = false;
 	kpb_clear_history_buffer(kpb->history_buffer);
+
 	/* Reset amount of buffered data */
 	kpb->buffered_data = 0;
 
 	/* Unregister KPB for async notification */
 	notifier_unregister(&kpb->kpb_events);
+
+	/* Reset KPB state to initial buffering state */
+	kpb->state = KPB_STATE_BUFFERING;
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -471,6 +476,15 @@ static int kpb_copy(struct comp_dev *dev)
 				 sink_list);
 	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->rt_sink
 	       : kpb->cli_sink;
+
+	/* Pause selector copy during draining and/or draining on demand.
+	 * We keep selector in this "paused" state as long as draining
+	 * is going and later during direct copy to client's/host sink,
+	 * in so called "draining on demand" state. In order to rearm
+	 * detection algorithm kpb_reset is needed.
+	 */
+	if (kpb->state != KPB_STATE_BUFFERING)
+		return PPL_STATUS_PATH_STOP;
 
 	/* Process source data */
 	/* Check if there are valid pointers */
