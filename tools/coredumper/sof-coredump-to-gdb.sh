@@ -6,10 +6,11 @@
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 elf="${1}"
 dump="${2}"
+arch="${3}"
 
 reader_name="sof-coredump-reader.py" # in case it is changed
-reader_output="$(${THIS_SCRIPT_DIR}/${reader_name} -vc -i ${dump} -l 4 \
-		-o reader-output.txt)"
+reader_output="$(${THIS_SCRIPT_DIR}/${reader_name} -a ${arch} -vc -i ${dump} \
+		-l 4 -o reader-output.txt)"
 reader_result="$?" # if $reader_name script fails, running xt-gdb is pointless
 if [[ ${reader_result} -ne 0 ]] ; then
 	echo "${reader_name} failed!"
