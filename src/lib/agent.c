@@ -46,8 +46,10 @@
 #include <platform/clk.h>
 #include <sof/drivers/timer.h>
 
-#define trace_sa(__e, ...)	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
-#define trace_sa_value(__e, ...)	trace_value_atomic(__e, ##__VA_ARGS__)
+#define trace_sa(__e, ...) \
+	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
+#define trace_sa_value(__e, ...) \
+	trace_value_atomic(__e, ##__VA_ARGS__)
 
 /*
  * Notify the SA that we are about to enter idle state (WFI).
@@ -57,6 +59,38 @@ void sa_enter_idle(struct sof *sof)
 	struct sa *sa = sof->sa;
 
 	sa->last_idle = platform_timer_get(platform_timer);
+}
+
+/*
+ * Notify the SA that we have pending IPC from host.
+ */
+void sa_ipc_pending(struct sof *sof)
+{
+	struct sa *sa = sof->sa;
+
+	sa->last_ipc = platform_timer_get(platform_timer);
+}
+
+/*
+ * Notify the SA that we have completed last IPC from host.
+ */
+void sa_ipc_done(struct sof *sof)
+{
+	struct sa *sa = sof->sa;
+
+	sa->last_ipc = 0;
+}
+
+/*
+ * Set the panic callback for IPC failure. This has to be platform specific
+ * like panic(), since IPC regs can be clobbered prior to state dump.
+ */
+void sa_ipc_set_panic_cb(struct sof *sof, void (*cb)(void *), void *data)
+{
+	struct sa *sa = sof->sa;
+
+	sa->ipc_panic_cb = cb;
+	sa->ipc_panic_data = data;
 }
 
 static uint64_t validate(void *data)
@@ -73,6 +107,19 @@ static uint64_t validate(void *data)
 		trace_sa("validate(), idle longer than timeout, delta = %u",
 			delta);
 		panic(SOF_IPC_PANIC_IDLE);
+	}
+
+	delta = current - sa->last_ipc;
+
+	/* IPC still pending longer than timeout */
+	if (sa->last_ipc && delta > sa->ticks) {
+		trace_sa("validate(), IPC longer than timeout, delta = %u",
+			 delta);
+		if (sa->ipc_panic_cb)
+			sa->ipc_panic_cb(sa->ipc_panic_data);
+
+		/* TODO: at this point we could invoke GDB */
+		panic(SOF_IPC_PANIC_IPC);
 	}
 
 	return PLATFORM_IDLE_TIME;

@@ -37,6 +37,7 @@
 #include <sof/sof.h>
 #include <sof/alloc.h>
 #include <sof/trace.h>
+#include <sof/agent.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -102,6 +103,7 @@ static void ipc_irq_handler(void *arg)
 #endif
 		} else {
 			_ipc->host_pending = 1;
+			sa_ipc_pending(sof);
 			ipc_schedule_process(sof);
 		}
 	}
@@ -172,6 +174,9 @@ void ipc_platform_do_cmd(struct sof *sof)
 
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
+
+	/* tell agent were done */
+	sa_ipc_done(sof);
 
 #if CAVS_VERSION == CAVS_VERSION_2_0
 	if (iipc->pm_prepare_D3) {

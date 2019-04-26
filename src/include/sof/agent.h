@@ -40,11 +40,17 @@ struct sof;
 /* simple agent */
 struct sa {
 	uint64_t last_idle;	/* time of last idle */
+	uint64_t last_ipc;	/* time of last pending IPC or 0 for DONE */
 	uint64_t ticks;
+	void (*ipc_panic_cb)(void *data);	/* IPC panic callback */
+	void *ipc_panic_data;
 	struct task work;
 };
 
 void sa_enter_idle(struct sof *sof);
+void sa_ipc_pending(struct sof *sof);
+void sa_ipc_done(struct sof *sof);
+void sa_ipc_set_panic_cb(struct sof *sof, void (*cb)(void *), void *data);
 void sa_init(struct sof *sof);
 
 #endif

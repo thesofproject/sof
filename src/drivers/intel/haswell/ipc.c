@@ -35,6 +35,7 @@
 #include <sof/sof.h>
 #include <sof/alloc.h>
 #include <sof/trace.h>
+#include <sof/agent.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
 #include <platform/shim.h>
@@ -113,6 +114,7 @@ static void irq_handler(void *arg)
 					shim_read(SHIM_IPCX));
 		} else {
 			_ipc->host_pending = 1;
+			sa_ipc_pending(sof);
 			ipc_schedule_process(sof);
 		}
 	}
@@ -147,6 +149,9 @@ done:
 
 	/* unmask busy interrupt */
 	shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_BUSY);
+
+	/* tell agent were done */
+	sa_ipc_done(sof);
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
