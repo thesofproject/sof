@@ -71,7 +71,7 @@ static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 	header.id_0 = id_0 & TRACE_ID_MASK;
 	header.id_1 = id_1 & TRACE_ID_MASK;
 	header.core_id = cpu_get_id();
-	header.timestamp = timestamp;
+	header.timestamp = timestamp + platform_timer->delta;
 	header.log_entry_address = entry;
 
 	memcpy(dst, &header, sizeof(header));

@@ -719,11 +719,17 @@ static int ipc_dma_trace_config(uint32_t header)
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 #endif
-	struct sof_ipc_dma_trace_params params;
+	struct sof_ipc_dma_trace_params_ext params;
 	int err;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(params, _ipc->comp_data);
+
+	if (iCS(header) == SOF_IPC_TRACE_DMA_PARAMS_EXT)
+		platform_timer->delta = params.timestamp -
+					platform_timer_get(platform_timer);
+	else
+		platform_timer->delta = 0;
 
 #ifdef CONFIG_SUECREEK
 	return 0;
@@ -806,6 +812,7 @@ static int ipc_glb_debug_message(uint32_t header)
 
 	switch (cmd) {
 	case SOF_IPC_TRACE_DMA_PARAMS:
+	case SOF_IPC_TRACE_DMA_PARAMS_EXT:
 		return ipc_dma_trace_config(header);
 	default:
 		trace_ipc_error("ipc: unknown debug cmd 0x%x", cmd);
