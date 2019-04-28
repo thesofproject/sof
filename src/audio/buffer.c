@@ -90,7 +90,6 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 
 	buffer->size = desc->size;
 	buffer->alloc_size = desc->size;
-	buffer->ipc_buffer = *desc;
 	buffer->w_ptr = buffer->addr;
 	buffer->r_ptr = buffer->addr;
 	buffer->end_addr = buffer->addr + buffer->ipc_buffer.size;
