@@ -1,7 +1,7 @@
 add_subdirectory(platform)
 add_subdirectory(arch)
 
-if(BUILD_HOST)
+if(BUILD_LIBRARY)
 	add_subdirectory(ipc)
 	add_subdirectory(audio)
 	add_subdirectory(lib)
