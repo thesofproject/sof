@@ -189,15 +189,22 @@ static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 	return 0;
 }
 
-static void test_keyword_set_default_config(struct comp_dev *dev)
+static int test_keyword_apply_config(struct comp_dev *dev,
+				     struct sof_detect_test_config *cfg)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	memset(&cd->config, 0, sizeof(cd->config));
+	assert(!memcpy_s(&cd->config, sizeof(cd->config), cfg,
+			 sizeof(struct sof_detect_test_config)));
 
-	cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
-	cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
-	cd->config.activation_threshold = ACTIVATION_DEFAULT_THRESHOLD_S16;
+	if (!cd->config.activation_shift)
+		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
+
+	if (!cd->config.activation_threshold)
+		cd->config.activation_threshold =
+			ACTIVATION_DEFAULT_THRESHOLD_S16;
+
+	return alloc_mem_load(cd, cd->config.load_memory_size);
 }
 
 static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
@@ -207,6 +214,8 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_process *ipc_keyword =
 		(struct sof_ipc_comp_process *)comp;
 	struct comp_data *cd;
+	struct sof_detect_test_config *cfg;
+	size_t bs;
 
 	trace_keyword("test_keyword_new()");
 
@@ -226,20 +235,39 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 
-	if (!cd) {
-		rfree(dev);
-		return NULL;
-	}
+	if (!cd)
+		goto fail;
 
 	/* using default processing function */
 	cd->detect_func = default_detect_test;
 
 	comp_set_drvdata(dev, cd);
 
-	test_keyword_set_default_config(dev);
+	cfg = (struct sof_detect_test_config *)ipc_keyword->data;
+	bs = ipc_keyword->size;
+
+	if (bs > 0) {
+		if (bs != sizeof(struct sof_detect_test_config)) {
+			trace_keyword_error("test_keyword_new() "
+					"error: invalid data size");
+			goto fail;
+		}
+
+		if (test_keyword_apply_config(dev, cfg)) {
+			trace_keyword_error("test_keyword_new() "
+					"error: failed to apply config");
+			goto fail;
+		}
+	}
 
 	dev->state = COMP_STATE_READY;
 	return dev;
+
+fail:
+	if (cd)
+		rfree(cd);
+	rfree(dev);
+	return NULL;
 }
 
 static void test_keyword_free(struct comp_dev *dev)
@@ -295,7 +323,6 @@ static int test_keyword_params(struct comp_dev *dev)
 static int test_keyword_set_config(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
 	struct sof_detect_test_config *cfg;
 	size_t bs;
 
@@ -306,22 +333,13 @@ static int test_keyword_set_config(struct comp_dev *dev,
 	trace_keyword("test_keyword_set_config(), blob size = %u",
 		      bs);
 
-	if (bs > SOF_DETECT_TEST_MAX_CFG_SIZE || bs == 0) {
+	if (bs != sizeof(struct sof_detect_test_config)) {
 		trace_keyword_error("test_keyword_set_config() "
 				    "error: invalid blob size");
 		return -EINVAL;
 	}
 
-	assert(!memcpy_s(&cd->config, sizeof(cd->config), cdata->data->data, bs));
-
-	if (!cd->config.activation_shift)
-		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
-
-	if (!cd->config.activation_threshold)
-		cd->config.activation_threshold =
-			ACTIVATION_DEFAULT_THRESHOLD_S16;
-
-	return alloc_mem_load(cd, cd->config.load_memory_size);
+	return test_keyword_apply_config(dev, cfg);
 }
 
 static int test_keyword_set_model(struct comp_dev *dev,
