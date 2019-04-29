@@ -35,8 +35,8 @@
 #include <sof/task.h>
 #include <stdint.h>
 #include <sof/wait.h>
-#include "host/edf_schedule.h"
-#include "host/ll_schedule.h"
+#include "testbench/edf_schedule.h"
+#include "testbench/ll_schedule.h"
 
 static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
 	&schedule_edf_ops,              /* SOF_SCHEDULE_EDF */

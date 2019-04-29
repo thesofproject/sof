@@ -32,8 +32,8 @@
  */
 
 #include <stdint.h>
-#include "host/common_test.h"
-#include "host/trace.h"
+#include "testbench/common_test.h"
+#include "testbench/trace.h"
 
 /* enable trace by default in testbench */
 int test_bench_trace = 1;

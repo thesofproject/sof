@@ -48,8 +48,8 @@
 #include <sof/wait.h>
 #include <sof/ipc.h>
 #include <sof/audio/pipeline.h>
-#include "host/common_test.h"
-#include "host/topology.h"
+#include "testbench/common_test.h"
+#include "testbench/topology.h"
 
 /* testbench helper functions for pipeline setup and trigger */
 
