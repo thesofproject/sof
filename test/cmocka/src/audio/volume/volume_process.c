@@ -45,6 +45,12 @@
  */
 #define VOL_MINUS_80DB (VOL_ZERO_DB / 10000)
 
+/* Max S24_4LE format value */
+#define INT24_MAX 8388607
+
+/* Min S24_4LE format value */
+#define INT24_MIN -8388608
+
 struct vol_test_state {
 	struct comp_dev *dev;
 	struct comp_buffer *sink;
@@ -139,20 +145,47 @@ static int teardown(void **state)
 
 static void fill_source_s16(struct vol_test_state *vol_state)
 {
+	int64_t val;
 	int16_t *src = (int16_t *)vol_state->source->r_ptr;
 	int i;
+	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int16_t); i++)
-		src[i] = i;
+	for (i = 0; i < vol_state->source->size / sizeof(int16_t); i++) {
+		val = (INT16_MIN + (i >> 1)) * sign;
+		val = (val > INT16_MAX) ? INT16_MAX : val;
+		src[i] = (int16_t)val;
+		sign = -sign;
+	}
+}
+
+static void fill_source_s24(struct vol_test_state *vol_state)
+{
+	int64_t val;
+	int32_t *src = (int32_t *)vol_state->source->r_ptr;
+	int i;
+	int sign = 1;
+
+	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+		val = (INT24_MIN + (i >> 1)) * sign;
+		val = (val > INT24_MAX) ? INT24_MAX : val;
+		src[i] = (int32_t)val;
+		sign = -sign;
+	}
 }
 
 static void fill_source_s32(struct vol_test_state *vol_state)
 {
+	int64_t val;
 	int32_t *src = (int32_t *)vol_state->source->r_ptr;
 	int i;
+	int sign = 1;
 
-	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++)
-		src[i] = i << 16;
+	for (i = 0; i < vol_state->source->size / sizeof(int32_t); i++) {
+		val = (INT32_MIN + (i >> 1)) * sign;
+		val = (val > INT32_MAX) ? INT32_MAX : val;
+		src[i] = (int32_t)val;
+		sign = -sign;
+	}
 }
 
 static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
@@ -164,6 +197,7 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	double processed;
 	int channels = dev->params.channels;
 	int channel;
+	int delta;
 	int i;
 	int16_t sample;
 
@@ -179,7 +213,9 @@ static void verify_s16_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 				processed = INT16_MIN;
 
 			sample = (int16_t)processed;
-			assert_int_equal(dst[i + channel], sample);
+			delta = dst[i + channel] - sample;
+			if (delta > 1 || delta < -1)
+				assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -194,6 +230,7 @@ static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
+	int delta;
 	int i;
 	int shift = 0;
 
@@ -215,7 +252,9 @@ static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 				processed = INT32_MIN;
 
 			sample = ((int32_t)processed) >> shift;
-			assert_int_equal(dst[i + channel], sample);
+			delta = dst[i + channel] - sample;
+			if (delta > 1 || delta < -1)
+				assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -229,6 +268,7 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 	double processed;
 	int channels = dev->params.channels;
 	int channel;
+	int delta;
 	int i;
 	int shift = 0;
 	int16_t sample;
@@ -250,7 +290,9 @@ static void verify_sX_to_s16(struct comp_dev *dev, struct comp_buffer *sink,
 				processed = INT16_MIN;
 
 			sample = (int16_t)processed;
-			assert_int_equal(dst[i + channel], sample);
+			delta = dst[i + channel] - sample;
+			if (delta > 1 || delta < -1)
+				assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -266,6 +308,7 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
+	int delta;
 	int i;
 	int shift = 0;
 
@@ -285,7 +328,9 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 				processed = INT32_MIN;
 
 			sample = ((int32_t)processed) >> shift;
-			assert_int_equal(dst[i + channel], sample);
+			delta = dst[i + channel] - sample;
+			if (delta > 1 || delta < -1)
+				assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -301,6 +346,7 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
+	int delta;
 	int i;
 	int shift = 0;
 
@@ -320,7 +366,9 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 				processed = INT32_MIN;
 
 			sample = ((int32_t)processed) >> shift;
-			assert_int_equal(dst[i + channel], sample);
+			delta = dst[i + channel] - sample;
+			if (delta > 1 || delta < -1)
+				assert_int_equal(dst[i + channel], sample);
 		}
 	}
 }
@@ -335,6 +383,8 @@ static void test_audio_vol(void **state)
 		fill_source_s16(vol_state);
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
+		fill_source_s24(vol_state);
+		break;
 	case SOF_IPC_FRAME_S32_LE:
 	case SOF_IPC_FRAME_FLOAT:
 		fill_source_s32(vol_state);
@@ -349,61 +399,61 @@ static void test_audio_vol(void **state)
 
 static struct vol_test_parameters parameters[] = {
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
+		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 1 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
+		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 2 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 },
+		SOF_IPC_FRAME_S16_LE,   verify_s16_to_s16 }, /* 3 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 4 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 5 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX },
+		SOF_IPC_FRAME_S24_4LE,  verify_s16_to_sX }, /* 6 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 7 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 8 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S16_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX },
+		SOF_IPC_FRAME_S32_LE,   verify_s16_to_sX }, /* 9 */
 
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
+		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 10 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
+		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 11 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 },
+		SOF_IPC_FRAME_S16_LE,  verify_sX_to_s16 }, /* 12 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 13 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 14 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 },
+		SOF_IPC_FRAME_S24_4LE, verify_s24_to_s24_s32 }, /* 15 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 16 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 17 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S24_4LE,
-		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 },
+		SOF_IPC_FRAME_S32_LE,  verify_s24_to_s24_s32 }, /* 18 */
 
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
+		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 19 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
+		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 20 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 },
+		SOF_IPC_FRAME_S16_LE,   verify_sX_to_s16 }, /* 21 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 22 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 23 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 },
+		SOF_IPC_FRAME_S24_4LE,  verify_s32_to_s24_s32 }, /* 24 */
 	{ VOL_MAX,        2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 25 */
 	{ VOL_ZERO_DB,    2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 26 */
 	{ VOL_MINUS_80DB, 2, 48, 1, SOF_IPC_FRAME_S32_LE,
-		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 },
+		SOF_IPC_FRAME_S32_LE,   verify_s32_to_s24_s32 }, /* 27 */
 };
 
 int main(void)
