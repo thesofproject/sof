@@ -114,6 +114,13 @@ function(sof_add_ld_script binary_name script_name)
 		list(APPEND glob_predicates "${d}/*.h")
 	endforeach()
 
+	get_target_property(incdirs sof_public_headers INTERFACE_INCLUDE_DIRECTORIES)
+
+	foreach(d ${incdirs})
+		list(APPEND iflags "-I${d}")
+		list(APPEND glob_predicates "${d}/*.h")
+	endforeach()
+
 	file(GLOB lds_headers ${glob_predicates})
 
 	add_custom_command(OUTPUT ${lds_out}

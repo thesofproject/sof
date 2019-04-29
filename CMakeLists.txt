@@ -48,11 +48,17 @@ include(scripts/cmake/git-hooks.cmake)
 # most of other options are set on per-arch and per-target basis
 set(CMAKE_ASM_FLAGS -DASSEMBLY)
 
+# interface library that is used only as container for sof public header files
+# that may be exported / installed
+add_library(sof_public_headers INTERFACE)
+
+target_include_directories(sof_public_headers INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
+
 # interface library that is used only as container for sof binary options
 # other targets can use it to build with the same options
 add_library(sof_options INTERFACE)
 
-target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/include)
+target_link_libraries(sof_options INTERFACE sof_public_headers)
 
 # get compiler name and version
 execute_process(
@@ -104,8 +110,8 @@ endif()
 
 include(scripts/cmake/kconfig.cmake)
 
-add_dependencies(sof_options genconfig check_version_h)
-target_include_directories(sof_options INTERFACE ${GENERATED_DIRECTORY}/include)
+add_dependencies(sof_public_headers genconfig check_version_h)
+target_include_directories(sof_public_headers INTERFACE ${GENERATED_DIRECTORY}/include)
 
 if(BUILD_HOST)
 	add_library(sof SHARED "")
@@ -113,6 +119,22 @@ if(BUILD_HOST)
 	install(TARGETS sof DESTINATION lib)
 
 	add_subdirectory(src)
+
+	get_target_property(incdirs sof_public_headers INTERFACE_INCLUDE_DIRECTORIES)
+
+	# we append slash at the end to make CMake copy contents of directories
+	# instead of directories
+	set(incdirs_for_install "")
+
+	foreach(d ${incdirs})
+		list(APPEND incdirs_for_install "${d}/")
+	endforeach()
+
+	install(DIRECTORY ${incdirs_for_install}
+		DESTINATION include
+		PATTERN "*.h"
+	)
+
 	# rest of this file is not needed for host build
 	return()
 endif()
