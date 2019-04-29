@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <sof/alloc.h>
-#include "host/common_test.h"
+#include "testbench/common_test.h"
 
 /* testbench mem alloc definition */
 

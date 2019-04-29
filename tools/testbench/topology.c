@@ -39,8 +39,8 @@
 #include <sof/string.h>
 #include <dlfcn.h>
 #include <sof/audio/component.h>
-#include "host/topology.h"
-#include "host/file.h"
+#include "testbench/topology.h"
+#include "testbench/file.h"
 
 FILE *file;
 char pipeline_string[DEBUG_MSG_LEN];

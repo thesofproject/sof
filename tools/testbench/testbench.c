@@ -33,10 +33,10 @@
 #include <sof/list.h>
 #include <getopt.h>
 #include <dlfcn.h>
-#include "host/common_test.h"
-#include "host/topology.h"
-#include "host/trace.h"
-#include "host/file.h"
+#include "testbench/common_test.h"
+#include "testbench/topology.h"
+#include "testbench/trace.h"
+#include "testbench/file.h"
 
 #define TESTBENCH_NCH 2 /* Stereo */
 

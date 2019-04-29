@@ -46,8 +46,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <uapi/ipc/stream.h>
-#include "host/common_test.h"
-#include "host/file.h"
+#include "testbench/common_test.h"
+#include "testbench/file.h"
 
 static inline void buffer_check_wrap_32(int32_t **ptr, int32_t *end,
 					size_t size)
