@@ -1,4 +1,4 @@
-if(BUILD_HOST)
+if(BUILD_LIBRARY)
 	add_local_sources(sof lib.c )
 	return()
 endif()

@@ -1,4 +1,4 @@
-if(NOT BUILD_HOST)
+if(NOT BUILD_LIBRARY)
 	add_local_sources(sof
 		host.c
 		pipeline.c

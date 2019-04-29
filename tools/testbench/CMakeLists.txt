@@ -35,7 +35,7 @@ ExternalProject_Add(sof_ep
 	SOURCE_DIR "${sof_source_directory}"
 	PREFIX "${PROJECT_BINARY_DIR}/sof_ep"
 	BINARY_DIR "${sof_binary_directory}"
-	CMAKE_ARGS -DBUILD_HOST=ON
+	CMAKE_ARGS -DBUILD_LIBRARY=ON
 		-DCMAKE_INSTALL_PREFIX=${sof_install_directory}
 		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
 	BUILD_ALWAYS 1

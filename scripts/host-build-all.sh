@@ -8,7 +8,7 @@ rm -rf build_host
 mkdir build_host
 cd build_host
 
-cmake -DBUILD_HOST=ON \
+cmake -DBUILD_LIBRARY=ON \
 	-DCMAKE_INSTALL_PREFIX=install \
 	-DCMAKE_VERBOSE_MAKEFILE=ON \
 	..
