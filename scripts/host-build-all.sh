@@ -3,16 +3,17 @@
 # fail on any errors
 set -e
 
-rm -rf build_host
+cd tools
+cd testbench
 
-mkdir build_host
-cd build_host
+rm -rf build_testbench
 
-cmake -DBUILD_LIBRARY=ON \
-	-DCMAKE_INSTALL_PREFIX=install \
+mkdir build_testbench
+cd build_testbench
+
+cmake -DCMAKE_INSTALL_PREFIX=install \
 	-DCMAKE_VERBOSE_MAKEFILE=ON \
 	..
 
-make library_defconfig
 make -j$(nproc --all)
 make install
