@@ -230,25 +230,12 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	}
 
 	/* request GP LP DMA with shared access privilege */
-	/* TODO: hda: retrieve req'ed caps from the dai,
-	 * dmas are not cross-compatible.
-	 */
-	switch (dai->type) {
-	case SOF_DAI_INTEL_HDA:
-		dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
-				DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
-		caps = DMA_CAP_HDA;
-		dma_dev = DMA_DEV_HDA;
-		break;
-	case SOF_DAI_INTEL_SSP:
-	case SOF_DAI_INTEL_DMIC:
-	case SOF_DAI_INTEL_SOUNDWIRE:
-	default:
-		dir = DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM;
-		caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP;
-		dma_dev = DMA_DEV_SSP | DMA_DEV_DMIC | DMA_DEV_SOUNDWIRE;
-		break;
-	}
+	dir = dai->direction == SOF_IPC_STREAM_PLAYBACK ?
+			DMA_DIR_MEM_TO_DEV : DMA_DIR_DEV_TO_MEM;
+
+	caps = dai_get_info(dd->dai, DAI_INFO_DMA_CAPS);
+	dma_dev = dai_get_info(dd->dai, DAI_INFO_DMA_DEV);
+
 	dd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
 	if (!dd->dma) {
 		trace_dai_error("dai_new() error: dma_get() failed to get "
@@ -353,7 +340,7 @@ static int dai_capture_params(struct comp_dev *dev)
 	config->src_dev = dd->dai->plat_data.fifo[1].handshake;
 
 	/* TODO: Make this code platform-specific or move it driver callback */
-	if (dd->dai->type == SOF_DAI_INTEL_DMIC) {
+	if (dai_get_info(dd->dai, DAI_INFO_TYPE) == SOF_DAI_INTEL_DMIC) {
 		/* For DMIC the DMA src and dest widths should always be 4 bytes
 		 * due to 32 bit FIFO packer. Setting width to 2 bytes for
 		 * 16 bit format would result in recording at double rate.

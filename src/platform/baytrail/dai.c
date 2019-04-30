@@ -43,7 +43,6 @@
 
 static struct dai ssp[] = {
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 0,
 	.plat_data = {
 		.base		= SSP0_BASE,
@@ -57,10 +56,9 @@ static struct dai ssp[] = {
 			.handshake	= DMA_HANDSHAKE_SSP0_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 },
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 1,
 	.plat_data = {
 		.base		= SSP1_BASE,
@@ -74,10 +72,9 @@ static struct dai ssp[] = {
 			.handshake	= DMA_HANDSHAKE_SSP1_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 },
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 2,
 	.plat_data = {
 		.base		= SSP2_BASE,
@@ -91,11 +88,10 @@ static struct dai ssp[] = {
 			.handshake	= DMA_HANDSHAKE_SSP2_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 },
 #if defined CONFIG_CHERRYTRAIL
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 3,
 	.plat_data = {
 		.base		= SSP3_BASE,
@@ -109,10 +105,9 @@ static struct dai ssp[] = {
 			.handshake	= DMA_HANDSHAKE_SSP3_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 },
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 4,
 	.plat_data = {
 		.base		= SSP4_BASE,
@@ -126,10 +121,9 @@ static struct dai ssp[] = {
 			.handshake	= DMA_HANDSHAKE_SSP4_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 },
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 5,
 	.plat_data = {
 		.base		= SSP5_BASE,
@@ -143,7 +137,7 @@ static struct dai ssp[] = {
 			.handshake	= DMA_HANDSHAKE_SSP5_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 },
 #endif
 };

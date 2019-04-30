@@ -33,7 +33,7 @@
 
 #include <sof/dai.h>
 
-extern const struct dai_ops hda_ops;
+extern const struct dai_driver hda_driver;
 
 #endif /* __INCLUDE_HDA__ */
 

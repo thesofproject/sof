@@ -62,7 +62,6 @@ static struct dai dmic[2] = {
 
 	/* Primary FIFO A */
 	{
-		.type = SOF_DAI_INTEL_DMIC,
 		.index = 0,
 		.plat_data = {
 			.base = DMIC_BASE,
@@ -76,11 +75,10 @@ static struct dai dmic[2] = {
 				.handshake = DMA_HANDSHAKE_DMIC_CH0,
 			}
 		},
-		.ops = &dmic_ops,
+		.drv = &dmic_driver,
 	},
 	/* Secondary FIFO B */
 	{
-		.type = SOF_DAI_INTEL_DMIC,
 		.index = 1,
 		.plat_data = {
 			.base = DMIC_BASE,
@@ -94,7 +92,7 @@ static struct dai dmic[2] = {
 				.handshake = DMA_HANDSHAKE_DMIC_CH1,
 			}
 		},
-		.ops = &dmic_ops,
+		.drv = &dmic_driver,
 	}
 };
 
@@ -130,9 +128,8 @@ int dai_init(void)
 #if CONFIG_CAVS_SSP
 	/* init ssp */
 	for (i = 0; i < ARRAY_SIZE(ssp); i++) {
-		ssp[i].type = SOF_DAI_INTEL_SSP;
 		ssp[i].index = i;
-		ssp[i].ops = &ssp_ops;
+		ssp[i].drv = &ssp_driver;
 		ssp[i].plat_data.base = SSP_BASE(i);
 		ssp[i].plat_data.irq = IRQ_EXT_SSPx_LVL5(i, 0);
 		ssp[i].plat_data.fifo[SOF_IPC_STREAM_PLAYBACK].offset =
@@ -149,9 +146,8 @@ int dai_init(void)
 #endif
 	/* init hd/a, note that size depends on the platform caps */
 	for (i = 0; i < ARRAY_SIZE(hda); i++) {
-		hda[i].type = SOF_DAI_INTEL_HDA;
 		hda[i].index = i;
-		hda[i].ops = &hda_ops;
+		hda[i].drv = &hda_driver;
 		spinlock_init(&hda[i].lock);
 	}
 

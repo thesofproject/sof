@@ -1579,13 +1579,18 @@ static int dmic_remove(struct dai *dai)
 	return 0;
 }
 
-const struct dai_ops dmic_ops = {
-	.trigger		= dmic_trigger,
-	.set_config		= dmic_set_config,
-	.pm_context_store	= dmic_context_store,
-	.pm_context_restore	= dmic_context_restore,
-	.probe			= dmic_probe,
-	.remove			= dmic_remove,
+const struct dai_driver dmic_driver = {
+	.type = SOF_DAI_INTEL_DMIC,
+	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
+	.dma_dev = DMA_DEV_DMIC,
+	.ops = {
+		.trigger		= dmic_trigger,
+		.set_config		= dmic_set_config,
+		.pm_context_store	= dmic_context_store,
+		.pm_context_restore	= dmic_context_restore,
+		.probe			= dmic_probe,
+		.remove			= dmic_remove,
+	},
 };
 
 #endif

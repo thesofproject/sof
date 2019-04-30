@@ -43,7 +43,6 @@
 
 static struct dai ssp[2] = {
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 0,
 	.plat_data = {
 		.base		= SSP0_BASE,
@@ -57,10 +56,9 @@ static struct dai ssp[2] = {
 			.handshake	= DMA_HANDSHAKE_SSP0_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 },
 {
-	.type = SOF_DAI_INTEL_SSP,
 	.index = 1,
 	.plat_data = {
 		.base		= SSP1_BASE,
@@ -74,7 +72,7 @@ static struct dai ssp[2] = {
 			.handshake	= DMA_HANDSHAKE_SSP1_RX,
 		}
 	},
-	.ops		= &ssp_ops,
+	.drv		= &ssp_driver,
 }};
 
 static struct dai_type_info dti[] = {

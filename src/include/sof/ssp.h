@@ -66,7 +66,7 @@
 #define SSCR5		0x78
 #endif
 
-extern const struct dai_ops ssp_ops;
+extern const struct dai_driver ssp_driver;
 
 /* SSCR0 bits */
 #define SSCR0_DSS_MASK	(0x0000000f)
