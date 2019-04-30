@@ -841,4 +841,6 @@ void init_heap(struct sof *sof)
 	write_pattern((struct mm_heap *)&memmap.runtime, PLATFORM_HEAP_RUNTIME,
 				  DEBUG_BLOCK_FREE_VALUE);
 #endif
+
+	dcache_writeback_invalidate_region(&memmap, sizeof(memmap));
 }
