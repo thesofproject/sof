@@ -38,23 +38,34 @@ static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
 static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
 static struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
 
-/* Heap memory for system runtime for master core */
-static struct block_map sys_rt_0_heap_map[] = {
-	BLOCK_DEF(64, HEAP_SYS_RT_0_COUNT64, sys_rt_0_block64),
-	BLOCK_DEF(512, HEAP_SYS_RT_0_COUNT512, sys_rt_0_block512),
-	BLOCK_DEF(1024, HEAP_SYS_RT_0_COUNT1024, sys_rt_0_block1024),
-};
-
 /* Heap blocks for system runtime for slave core */
-static struct block_hdr sys_rt_x_block64[HEAP_SYS_RT_X_COUNT64];
-static struct block_hdr sys_rt_x_block512[HEAP_SYS_RT_X_COUNT512];
-static struct block_hdr sys_rt_x_block1024[HEAP_SYS_RT_X_COUNT1024];
+static struct block_hdr
+	sys_rt_x_block64[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64];
+static struct block_hdr
+	sys_rt_x_block512[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT512];
+static struct block_hdr
+	sys_rt_x_block1024[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT1024];
 
-/* Heap memory for system runtime for slave core */
-static struct block_map sys_rt_x_heap_map[] = {
-	BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64, sys_rt_x_block64),
-	BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512, sys_rt_x_block512),
-	BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024, sys_rt_x_block1024),
+/* Heap memory for system runtime */
+static struct block_map sys_rt_heap_map[PLATFORM_CORE_COUNT][3] = {
+	{ BLOCK_DEF(64, HEAP_SYS_RT_0_COUNT64, sys_rt_0_block64),
+	  BLOCK_DEF(512, HEAP_SYS_RT_0_COUNT512, sys_rt_0_block512),
+	  BLOCK_DEF(1024, HEAP_SYS_RT_0_COUNT1024, sys_rt_0_block1024), },
+#if PLATFORM_CORE_COUNT > 1
+	{ BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64, sys_rt_x_block64[0]),
+	  BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512, sys_rt_x_block512[0]),
+	  BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024, sys_rt_x_block1024[0]), },
+#endif
+#if PLATFORM_CORE_COUNT > 2
+	{ BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64, sys_rt_x_block64[1]),
+	  BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512, sys_rt_x_block512[1]),
+	  BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024, sys_rt_x_block1024[1]), },
+#endif
+#if PLATFORM_CORE_COUNT > 3
+	{ BLOCK_DEF(64, HEAP_SYS_RT_X_COUNT64, sys_rt_x_block64[2]),
+	  BLOCK_DEF(512, HEAP_SYS_RT_X_COUNT512, sys_rt_x_block512[2]),
+	  BLOCK_DEF(1024, HEAP_SYS_RT_X_COUNT1024, sys_rt_x_block1024[2]), },
+#endif
 };
 
 /* Heap blocks for modules */
@@ -107,8 +118,8 @@ void platform_init_memmap(void)
 		SOF_MEM_CAPS_CACHE;
 
 	/* .system_runtime slave core initialization */
-	memmap.system_runtime[0].blocks = ARRAY_SIZE(sys_rt_0_heap_map);
-	memmap.system_runtime[0].map = sys_rt_0_heap_map;
+	memmap.system_runtime[0].blocks = ARRAY_SIZE(sys_rt_heap_map[0]);
+	memmap.system_runtime[0].map = sys_rt_heap_map[0];
 	memmap.system_runtime[0].heap = HEAP_SYS_RUNTIME_0_BASE;
 	memmap.system_runtime[0].size = HEAP_SYS_RUNTIME_M_SIZE;
 	memmap.system_runtime[0].info.free = HEAP_SYS_RUNTIME_M_SIZE;
@@ -127,8 +138,9 @@ void platform_init_memmap(void)
 			SOF_MEM_CAPS_CACHE;
 
 		/* .system_runtime init */
-		memmap.system_runtime[i].blocks = ARRAY_SIZE(sys_rt_x_heap_map);
-		memmap.system_runtime[i].map = sys_rt_x_heap_map;
+		memmap.system_runtime[i].blocks =
+			ARRAY_SIZE(sys_rt_heap_map[i]);
+		memmap.system_runtime[i].map = sys_rt_heap_map[i];
 		memmap.system_runtime[i].heap = HEAP_SYS_RUNTIME_0_BASE +
 			HEAP_SYS_RUNTIME_M_SIZE + ((i - 1) *
 			HEAP_SYS_RUNTIME_S_SIZE);
