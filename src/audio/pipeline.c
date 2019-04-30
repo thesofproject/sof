@@ -404,6 +404,10 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	struct pipeline_data data;
 	uint32_t flags;
 
+	/* pipeline needs to be invalidated before usage */
+	if (cmd == CACHE_INVALIDATE)
+		dcache_invalidate_region(p, sizeof(*p));
+
 	trace_pipe_with_ids(p, "pipeline_cache()");
 
 	data.start = dev;
@@ -414,11 +418,9 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	/* execute cache operation on components and buffers */
 	pipeline_comp_cache(dev, &data, dev->params.direction);
 
-	/* execute cache operation on pipeline itself */
+	/* pipeline needs to be flushed after usage */
 	if (cmd == CACHE_WRITEBACK_INV)
 		dcache_writeback_invalidate_region(p, sizeof(*p));
-	else if (cmd == CACHE_INVALIDATE)
-		dcache_invalidate_region(p, sizeof(*p));
 
 	spin_unlock_irq(&p->lock, flags);
 }
