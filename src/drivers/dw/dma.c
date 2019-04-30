@@ -102,6 +102,10 @@ struct dw_dma_chan_data {
 /* private data for DW DMA engine */
 struct dma_pdata {
 	struct dw_dma_chan_data chan[DW_MAX_CHAN];
+#if CONFIG_DMA_AGGREGATED_IRQ
+	/**< bitmask of channels with registered IRQs per core */
+	uint32_t mask_irq_channels[PLATFORM_CORE_COUNT];
+#endif
 };
 
 /* use array to get burst_elems for specific slot number setting.
@@ -1066,13 +1070,11 @@ static void dw_dma_irq_handler(void *data)
 	tracev_dwdma("dw_dma_irq_handler(): dma %d IRQ status 0x%x",
 		     dma->plat_data.id, status_intr);
 
-	/* get the source of our IRQ and clear it */
+	/* get the source of our IRQ */
 #if CONFIG_HW_LLI
 	status_src = dw_read(dma, DW_STATUS_BLOCK);
-	dw_write(dma, DW_CLEAR_BLOCK, status_src);
 #else
 	status_src = dw_read(dma, DW_STATUS_TFR);
-	dw_write(dma, DW_CLEAR_TFR, status_src);
 #endif
 
 	/* TODO: handle errors, just clear them atm */
@@ -1083,10 +1085,6 @@ static void dw_dma_irq_handler(void *data)
 		dw_write(dma, DW_CLEAR_ERR, status_err);
 	}
 
-	/* clear platform and DSP interrupt */
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
-				 status_src | status_err);
-
 	for (i = 0; i < dma->plat_data.channels; i++) {
 		/* skip if channel is not running */
 		if (p->chan[i].status != COMP_STATE_ACTIVE)
@@ -1094,15 +1092,35 @@ static void dw_dma_irq_handler(void *data)
 
 		mask = 0x1 << i;
 
-		if (status_src & mask)
+#if CONFIG_DMA_AGGREGATED_IRQ
+		/* skip if channel is not registered on this core */
+		if (!(p->mask_irq_channels[cpu_get_id()] & mask))
+			continue;
+#endif
+
+		if (status_src & mask) {
+			/* clear the source of our IRQ */
+#if CONFIG_HW_LLI
+			dw_write(dma, DW_CLEAR_BLOCK, status_src & mask);
+#else
+			dw_write(dma, DW_CLEAR_TFR, status_src & mask);
+#endif
 			dw_dma_irq_callback(dma, i, &next, DMA_CB_TYPE_IRQ);
+		}
 	}
+
+	/* clear platform and DSP interrupt */
+	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
+				 status_src | status_err);
 }
 
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_chan_irq(dma, cpu_get_id(), channel);
+#if CONFIG_DMA_AGGREGATED_IRQ
+	int cpu = cpu_get_id();
+#endif
 	int ret;
 
 	if (p->chan[channel].irq_disabled) {
@@ -1113,7 +1131,7 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 	}
 
 #if CONFIG_DMA_AGGREGATED_IRQ
-	if (!dma->mask_irq_channels) {
+	if (!p->mask_irq_channels[cpu]) {
 #endif
 		ret = interrupt_register(irq, IRQ_AUTO_UNMASK,
 					 dw_dma_irq_handler, dma);
@@ -1129,7 +1147,7 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 #if CONFIG_DMA_AGGREGATED_IRQ
 	}
 
-	dma->mask_irq_channels |= BIT(channel);
+	p->mask_irq_channels[cpu] |= BIT(channel);
 #endif
 
 	return 0;
@@ -1139,6 +1157,9 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_chan_irq(dma, cpu_get_id(), channel);
+#if CONFIG_DMA_AGGREGATED_IRQ
+	int cpu = cpu_get_id();
+#endif
 
 	if (p->chan[channel].irq_disabled) {
 		tracev_dwdma("dw_dma_interrupt_unregister(): dma %d channel %d"
@@ -1148,9 +1169,9 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
 	}
 
 #if CONFIG_DMA_AGGREGATED_IRQ
-	dma->mask_irq_channels &= ~BIT(channel);
+	p->mask_irq_channels[cpu] &= ~BIT(channel);
 
-	if (!dma->mask_irq_channels) {
+	if (!p->mask_irq_channels[cpu]) {
 #endif
 		interrupt_disable(irq);
 		interrupt_unregister(irq);
