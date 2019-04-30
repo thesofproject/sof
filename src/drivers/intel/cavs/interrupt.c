@@ -173,7 +173,7 @@ void interrupt_unmask(uint32_t irq)
 
 static void irq_mask(struct irq_desc *desc, uint32_t irq)
 {
-	int core = SOF_IRQ_CPU(irq);
+	int core = cpu_get_id();
 
 	/* mask external interrupt bit */
 	switch (desc->irq) {
@@ -193,7 +193,7 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq)
 
 static void irq_unmask(struct irq_desc *desc, uint32_t irq)
 {
-	int core = SOF_IRQ_CPU(irq);
+	int core = cpu_get_id();
 
 	/* unmask external interrupt bit */
 	switch (desc->irq) {
