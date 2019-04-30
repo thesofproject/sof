@@ -492,7 +492,9 @@ int platform_init(struct sof *sof)
 	io_reg_write(GPDMA_CLKCTL(1), GPDMA_FDCGB);
 
 	/* prevent DSP Common power gating */
-	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSP0PG);
+	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSPPG(0) |
+		     SHIM_PWRCTL_TCPDSPPG(1) | SHIM_PWRCTL_TCPDSPPG(2) |
+		     SHIM_PWRCTL_TCPDSPPG(3));
 #endif
 
 	/* init DMACs */

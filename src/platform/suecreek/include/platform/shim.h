@@ -161,7 +161,7 @@
 
 #define SHIM_PWRCTL		0x90
 #define SHIM_PWRSTS		0x92
-#define SHIM_PWRCTL_TCPDSP0PG	(0x1 << 0)
+#define SHIM_PWRCTL_TCPDSPPG(x)	BIT(x)
 
 /* LP GPDMA Force Dynamic Clock Gating bits, 0--enable */
 #define SHIM_CLKCTL_LPGPDMAFDCGB(x)	(0x1 << (26 + x))
