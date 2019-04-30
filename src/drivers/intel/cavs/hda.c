@@ -47,11 +47,16 @@ static int hda_dummy(struct dai *dai)
 	return 0;
 }
 
-const struct dai_ops hda_ops = {
-	.trigger		= hda_trigger,
-	.set_config		= hda_set_config,
-	.pm_context_store	= hda_dummy,
-	.pm_context_restore	= hda_dummy,
-	.probe			= hda_dummy,
-	.remove			= hda_dummy,
+const struct dai_driver hda_driver = {
+	.type = SOF_DAI_INTEL_HDA,
+	.dma_caps = DMA_CAP_HDA,
+	.dma_dev = DMA_DEV_HDA,
+	.ops = {
+		.trigger		= hda_trigger,
+		.set_config		= hda_set_config,
+		.pm_context_store	= hda_dummy,
+		.pm_context_restore	= hda_dummy,
+		.probe			= hda_dummy,
+		.remove			= hda_dummy,
+	},
 };

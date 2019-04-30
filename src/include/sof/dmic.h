@@ -335,7 +335,7 @@ struct dmic_pdata {
 	int32_t gain;
 };
 
-extern const struct dai_ops dmic_ops;
+extern const struct dai_driver dmic_driver;
 
 #endif /* DMIC_HW_VERSION  */
 #endif /* __INCLUDE_DMIC__ */

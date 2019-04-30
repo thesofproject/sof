@@ -89,11 +89,16 @@ static int soundwire_remove(struct dai *dai)
 	return 0;
 }
 
-const struct dai_ops soundwire_ops = {
-	.trigger		= soundwire_trigger,
-	.set_config		= soundwire_set_config,
-	.pm_context_store	= soundwire_context_store,
-	.pm_context_restore	= soundwire_context_restore,
-	.probe			= soundwire_probe,
-	.remove			= soundwire_remove,
+const struct dai_driver soundwire_driver = {
+	.type = SOF_DAI_INTEL_SOUNDWIRE,
+	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
+	.dma_dev = DMA_DEV_SOUNDWIRE,
+	.ops = {
+		.trigger		= soundwire_trigger,
+		.set_config		= soundwire_set_config,
+		.pm_context_store	= soundwire_context_store,
+		.pm_context_restore	= soundwire_context_restore,
+		.probe			= soundwire_probe,
+		.remove			= soundwire_remove,
+	},
 };

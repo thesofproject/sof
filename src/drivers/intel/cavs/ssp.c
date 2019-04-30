@@ -877,11 +877,16 @@ static int ssp_remove(struct dai *dai)
 	return 0;
 }
 
-const struct dai_ops ssp_ops = {
-	.trigger		= ssp_trigger,
-	.set_config		= ssp_set_config,
-	.pm_context_store	= ssp_context_store,
-	.pm_context_restore	= ssp_context_restore,
-	.probe			= ssp_probe,
-	.remove			= ssp_remove,
+const struct dai_driver ssp_driver = {
+	.type = SOF_DAI_INTEL_SSP,
+	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
+	.dma_dev = DMA_DEV_SSP,
+	.ops = {
+		.trigger		= ssp_trigger,
+		.set_config		= ssp_set_config,
+		.pm_context_store	= ssp_context_store,
+		.pm_context_restore	= ssp_context_restore,
+		.probe			= ssp_probe,
+		.remove			= ssp_remove,
+	},
 };

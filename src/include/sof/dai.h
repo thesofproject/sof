@@ -62,6 +62,10 @@
 
 #define DAI_NUM_SLOT_MAPS	8
 
+#define DAI_INFO_TYPE		0
+#define DAI_INFO_DMA_CAPS	1
+#define DAI_INFO_DMA_DEV	2
+
 /* DAI flags */
 
 /** \brief IRQ used for copy() timer */
@@ -84,6 +88,13 @@ struct dai_ops {
 	int (*pm_context_store)(struct dai *dai);
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
+};
+
+struct dai_driver {
+	uint32_t type;	/**< type, one of SOF_DAI_... */
+	uint32_t dma_caps;
+	uint32_t dma_dev;
+	struct dai_ops ops;
 };
 
 /**
@@ -113,12 +124,11 @@ struct dai_plat_data {
 };
 
 struct dai {
-	uint32_t type;		/**< type, one of SOF_DAI_... */
 	uint32_t index;		/**< index */
 	spinlock_t lock;
 	int sref;		/**< simple ref counter, guarded by lock */
 	struct dai_plat_data plat_data;
-	const struct dai_ops *ops;
+	const struct dai_driver *drv;
 	void *private;
 };
 
@@ -174,7 +184,7 @@ void dai_put(struct dai *dai);
 static inline int dai_set_config(struct dai *dai,
 				 struct sof_ipc_dai_config *config)
 {
-	return dai->ops->set_config(dai, config);
+	return dai->drv->ops.set_config(dai, config);
 }
 
 /**
@@ -182,7 +192,7 @@ static inline int dai_set_config(struct dai *dai,
  */
 static inline int dai_trigger(struct dai *dai, int cmd, int direction)
 {
-	return dai->ops->trigger(dai, cmd, direction);
+	return dai->drv->ops.trigger(dai, cmd, direction);
 }
 
 /**
@@ -190,7 +200,7 @@ static inline int dai_trigger(struct dai *dai, int cmd, int direction)
  */
 static inline int dai_pm_context_store(struct dai *dai)
 {
-	return dai->ops->pm_context_store(dai);
+	return dai->drv->ops.pm_context_store(dai);
 }
 
 /**
@@ -198,7 +208,7 @@ static inline int dai_pm_context_store(struct dai *dai)
  */
 static inline int dai_pm_context_restore(struct dai *dai)
 {
-	return dai->ops->pm_context_restore(dai);
+	return dai->drv->ops.pm_context_restore(dai);
 }
 
 /**
@@ -206,7 +216,7 @@ static inline int dai_pm_context_restore(struct dai *dai)
  */
 static inline int dai_probe(struct dai *dai)
 {
-	return dai->ops->probe(dai);
+	return dai->drv->ops.probe(dai);
 }
 
 /**
@@ -214,7 +224,32 @@ static inline int dai_probe(struct dai *dai)
  */
 static inline int dai_remove(struct dai *dai)
 {
-	return dai->ops->remove(dai);
+	return dai->drv->ops.remove(dai);
+}
+
+/**
+ * \brief Get driver specific DAI information
+ */
+static inline int dai_get_info(struct dai *dai, int info)
+{
+	int ret;
+
+	switch (info) {
+	case DAI_INFO_TYPE:
+		ret = dai->drv->type;
+		break;
+	case DAI_INFO_DMA_CAPS:
+		ret = dai->drv->dma_caps;
+		break;
+	case DAI_INFO_DMA_DEV:
+		ret = dai->drv->dma_dev;
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
 
 /** @}*/
