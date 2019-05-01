@@ -2,9 +2,9 @@
  * Xtensa Special Register symbolic names
  */
 
-/* $Id: //depot/rel/Eaglenest/Xtensa/SWConfig/hal/specreg.h.tpp#1 $ */
+/* $Id: //depot/rel/Foxhill/dot.8/Xtensa/SWConfig/hal/specreg.h.tpp#1 $ */
 
-/* Customer ID=4313; Build=0x5483b; Copyright (c) 1998-2002 Tensilica Inc.
+/* Copyright (c) 1998-2002 Tensilica Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -41,11 +41,18 @@
 #define SAR		3
 #define BR		4
 #define SCOMPARE1	12
+#define PREFCTL		40
 #define WINDOWBASE	72
 #define WINDOWSTART	73
 #define IBREAKENABLE	96
 #define ATOMCTL		99
 #define DDR		104
+#define MEPC		106
+#define MEPS		107
+#define MESAVE		108
+#define MESR		109
+#define MECR		110
+#define MEVADDR		111
 #define IBREAKA_0	128
 #define IBREAKA_1	129
 #define DBREAKA_0	144
@@ -88,8 +95,6 @@
 #define CCOMPARE_0	240
 #define CCOMPARE_1	241
 #define CCOMPARE_2	242
-#define MISC_REG_0	244
-#define MISC_REG_1	245
 
 /*  Special cases (bases of special register series):  */
 #define IBREAKA		128
@@ -99,11 +104,6 @@
 #define EPS		192
 #define EXCSAVE		208
 #define CCOMPARE	240
-
-/*  Special names for read-only and write-only interrupt registers:  */
-#define INTREAD		226
-#define INTSET		226
-#define INTCLEAR	227
 
 #endif /* XTENSA_SPECREG_H */
 

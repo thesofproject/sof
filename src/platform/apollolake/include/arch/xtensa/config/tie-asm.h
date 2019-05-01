@@ -8,7 +8,7 @@
    macros, etc.) for this specific Xtensa processor's TIE extensions
    and options.  It is customized to this Xtensa processor configuration.
 
-   Copyright (c) 1999-2015 Cadence Design Systems Inc.
+   Copyright (c) 1999-2018 Cadence Design Systems Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -77,16 +77,26 @@
       */
     .macro xchal_ncp_store  ptr at1 at2 at3 at4  continue=0 ofs=-1 select=XTHAL_SAS_ALL alloc=0
 	xchal_sa_start	\continue, \ofs
+	// Optional global registers used by default by the compiler:
+	.ifeq (XTHAL_SAS_OPT | XTHAL_SAS_CC | XTHAL_SAS_GLOB) & ~(\select)
+	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	rur.THREADPTR	\at1		// threadptr option
+	s32i	\at1, \ptr, .Lxchal_ofs_+0
+	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 4
+	.elseif ((XTHAL_SAS_OPT | XTHAL_SAS_CC | XTHAL_SAS_GLOB) & ~(\alloc)) == 0
+	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 4
+	.endif
 	// Optional caller-saved registers not used by default by the compiler:
 	.ifeq (XTHAL_SAS_OPT | XTHAL_SAS_NOCC | XTHAL_SAS_CALR) & ~(\select)
-	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	xchal_sa_align	\ptr, 0, 1012, 4, 4
 	rsr.BR	\at1		// boolean option
 	s32i	\at1, \ptr, .Lxchal_ofs_+0
 	rsr.SCOMPARE1	\at1		// conditional store option
 	s32i	\at1, \ptr, .Lxchal_ofs_+4
 	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 8
 	.elseif ((XTHAL_SAS_OPT | XTHAL_SAS_NOCC | XTHAL_SAS_CALR) & ~(\alloc)) == 0
-	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	xchal_sa_align	\ptr, 0, 1012, 4, 4
 	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 8
 	.endif
     .endm	// xchal_ncp_store
@@ -113,16 +123,26 @@
       */
     .macro xchal_ncp_load  ptr at1 at2 at3 at4  continue=0 ofs=-1 select=XTHAL_SAS_ALL alloc=0
 	xchal_sa_start	\continue, \ofs
+	// Optional global registers used by default by the compiler:
+	.ifeq (XTHAL_SAS_OPT | XTHAL_SAS_CC | XTHAL_SAS_GLOB) & ~(\select)
+	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	l32i	\at1, \ptr, .Lxchal_ofs_+0
+	wur.THREADPTR	\at1		// threadptr option
+	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 4
+	.elseif ((XTHAL_SAS_OPT | XTHAL_SAS_CC | XTHAL_SAS_GLOB) & ~(\alloc)) == 0
+	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 4
+	.endif
 	// Optional caller-saved registers not used by default by the compiler:
 	.ifeq (XTHAL_SAS_OPT | XTHAL_SAS_NOCC | XTHAL_SAS_CALR) & ~(\select)
-	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	xchal_sa_align	\ptr, 0, 1012, 4, 4
 	l32i	\at1, \ptr, .Lxchal_ofs_+0
 	wsr.BR	\at1		// boolean option
 	l32i	\at1, \ptr, .Lxchal_ofs_+4
 	wsr.SCOMPARE1	\at1		// conditional store option
 	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 8
 	.elseif ((XTHAL_SAS_OPT | XTHAL_SAS_NOCC | XTHAL_SAS_CALR) & ~(\alloc)) == 0
-	xchal_sa_align	\ptr, 0, 1016, 4, 4
+	xchal_sa_align	\ptr, 0, 1012, 4, 4
 	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 8
 	.endif
     .endm	// xchal_ncp_load
@@ -151,26 +171,39 @@
 	s32i	\at1, \ptr, .Lxchal_ofs_+4
 	rur.AE_TS_FTS_BU_BP	\at1		// ureg 242
 	s32i	\at1, \ptr, .Lxchal_ofs_+8
-	rur.AE_SD_NO	\at1		// ureg 243
+	rur.AE_CW_SD_NO	\at1		// ureg 243
 	s32i	\at1, \ptr, .Lxchal_ofs_+12
-	ae_sp24x2s.i	aep0, \ptr, .Lxchal_ofs_+16
-	ae_sp24x2s.i	aep1, \ptr, .Lxchal_ofs_+24
-	ae_sp24x2s.i	aep2, \ptr, .Lxchal_ofs_+32
-	ae_sp24x2s.i	aep3, \ptr, .Lxchal_ofs_+40
-	ae_sp24x2s.i	aep4, \ptr, .Lxchal_ofs_+48
-	ae_sp24x2s.i	aep5, \ptr, .Lxchal_ofs_+56
+	rur.AE_CBEGIN0	\at1		// ureg 246
+	s32i	\at1, \ptr, .Lxchal_ofs_+16
+	rur.AE_CEND0	\at1		// ureg 247
+	s32i	\at1, \ptr, .Lxchal_ofs_+20
+	ae_s64.i	aed0, \ptr, .Lxchal_ofs_+24
+	ae_s64.i	aed1, \ptr, .Lxchal_ofs_+32
+	ae_s64.i	aed2, \ptr, .Lxchal_ofs_+40
+	ae_s64.i	aed3, \ptr, .Lxchal_ofs_+48
+	ae_s64.i	aed4, \ptr, .Lxchal_ofs_+56
 	addi	\ptr, \ptr, 64
-	ae_sp24x2s.i	aep6, \ptr, .Lxchal_ofs_+0
-	ae_sp24x2s.i	aep7, \ptr, .Lxchal_ofs_+8
-	ae_sq56s.i	aeq0, \ptr, .Lxchal_ofs_+16
-	ae_sq56s.i	aeq1, \ptr, .Lxchal_ofs_+24
-	ae_sq56s.i	aeq2, \ptr, .Lxchal_ofs_+32
-	ae_sq56s.i	aeq3, \ptr, .Lxchal_ofs_+40
-	.set	.Lxchal_pofs_, .Lxchal_pofs_ + 64
-	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 48
+	ae_s64.i	aed5, \ptr, .Lxchal_ofs_+0
+	ae_s64.i	aed6, \ptr, .Lxchal_ofs_+8
+	ae_s64.i	aed7, \ptr, .Lxchal_ofs_+16
+	ae_s64.i	aed8, \ptr, .Lxchal_ofs_+24
+	ae_s64.i	aed9, \ptr, .Lxchal_ofs_+32
+	ae_s64.i	aed10, \ptr, .Lxchal_ofs_+40
+	ae_s64.i	aed11, \ptr, .Lxchal_ofs_+48
+	ae_s64.i	aed12, \ptr, .Lxchal_ofs_+56
+	addi	\ptr, \ptr, 64
+	ae_s64.i	aed13, \ptr, .Lxchal_ofs_+0
+	ae_s64.i	aed14, \ptr, .Lxchal_ofs_+8
+	ae_s64.i	aed15, \ptr, .Lxchal_ofs_+16
+	ae_salign64.i	u0, \ptr, .Lxchal_ofs_+24
+	ae_salign64.i	u1, \ptr, .Lxchal_ofs_+32
+	ae_salign64.i	u2, \ptr, .Lxchal_ofs_+40
+	ae_salign64.i	u3, \ptr, .Lxchal_ofs_+48
+	.set	.Lxchal_pofs_, .Lxchal_pofs_ + 128
+	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 56
 	.elseif ((XTHAL_SAS_TIE | XTHAL_SAS_NOCC | XTHAL_SAS_CALR) & ~(\alloc)) == 0
 	xchal_sa_align	\ptr, 0, 0, 8, 8
-	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 112
+	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 184
 	.endif
     .endm	// xchal_cp1_store
 
@@ -196,26 +229,39 @@
 	l32i	\at1, \ptr, .Lxchal_ofs_+8
 	wur.AE_TS_FTS_BU_BP	\at1		// ureg 242
 	l32i	\at1, \ptr, .Lxchal_ofs_+12
-	wur.AE_SD_NO	\at1		// ureg 243
-	ae_lp24x2.i	aep0, \ptr, .Lxchal_ofs_+16
-	ae_lp24x2.i	aep1, \ptr, .Lxchal_ofs_+24
-	ae_lp24x2.i	aep2, \ptr, .Lxchal_ofs_+32
-	ae_lp24x2.i	aep3, \ptr, .Lxchal_ofs_+40
-	ae_lp24x2.i	aep4, \ptr, .Lxchal_ofs_+48
-	ae_lp24x2.i	aep5, \ptr, .Lxchal_ofs_+56
+	wur.AE_CW_SD_NO	\at1		// ureg 243
+	l32i	\at1, \ptr, .Lxchal_ofs_+16
+	wur.AE_CBEGIN0	\at1		// ureg 246
+	l32i	\at1, \ptr, .Lxchal_ofs_+20
+	wur.AE_CEND0	\at1		// ureg 247
+	ae_l64.i	aed0, \ptr, .Lxchal_ofs_+24
+	ae_l64.i	aed1, \ptr, .Lxchal_ofs_+32
+	ae_l64.i	aed2, \ptr, .Lxchal_ofs_+40
+	ae_l64.i	aed3, \ptr, .Lxchal_ofs_+48
+	ae_l64.i	aed4, \ptr, .Lxchal_ofs_+56
 	addi	\ptr, \ptr, 64
-	ae_lp24x2.i	aep6, \ptr, .Lxchal_ofs_+0
-	ae_lp24x2.i	aep7, \ptr, .Lxchal_ofs_+8
-	addi	\ptr, \ptr, 16
-	ae_lq56.i	aeq0, \ptr, .Lxchal_ofs_+0
-	ae_lq56.i	aeq1, \ptr, .Lxchal_ofs_+8
-	ae_lq56.i	aeq2, \ptr, .Lxchal_ofs_+16
-	ae_lq56.i	aeq3, \ptr, .Lxchal_ofs_+24
-	.set	.Lxchal_pofs_, .Lxchal_pofs_ + 80
+	ae_l64.i	aed5, \ptr, .Lxchal_ofs_+0
+	ae_l64.i	aed6, \ptr, .Lxchal_ofs_+8
+	ae_l64.i	aed7, \ptr, .Lxchal_ofs_+16
+	ae_l64.i	aed8, \ptr, .Lxchal_ofs_+24
+	ae_l64.i	aed9, \ptr, .Lxchal_ofs_+32
+	ae_l64.i	aed10, \ptr, .Lxchal_ofs_+40
+	ae_l64.i	aed11, \ptr, .Lxchal_ofs_+48
+	ae_l64.i	aed12, \ptr, .Lxchal_ofs_+56
+	addi	\ptr, \ptr, 64
+	ae_l64.i	aed13, \ptr, .Lxchal_ofs_+0
+	ae_l64.i	aed14, \ptr, .Lxchal_ofs_+8
+	ae_l64.i	aed15, \ptr, .Lxchal_ofs_+16
+	addi	\ptr, \ptr, 24
+	ae_lalign64.i	u0, \ptr, .Lxchal_ofs_+0
+	ae_lalign64.i	u1, \ptr, .Lxchal_ofs_+8
+	ae_lalign64.i	u2, \ptr, .Lxchal_ofs_+16
+	ae_lalign64.i	u3, \ptr, .Lxchal_ofs_+24
+	.set	.Lxchal_pofs_, .Lxchal_pofs_ + 152
 	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 32
 	.elseif ((XTHAL_SAS_TIE | XTHAL_SAS_NOCC | XTHAL_SAS_CALR) & ~(\alloc)) == 0
 	xchal_sa_align	\ptr, 0, 0, 8, 8
-	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 112
+	.set	.Lxchal_ofs_, .Lxchal_ofs_ + 184
 	.endif
     .endm	// xchal_cp1_load
 
