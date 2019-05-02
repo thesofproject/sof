@@ -50,9 +50,9 @@
 #define DW_CFGH_DST_PER(x)		SET_BITS(7, 4, x)
 #define DW_CFGH_SRC_PER(x)		SET_BITS(3, 0, x)
 #define DW_CFGH_DST(x) \
-	(DW_CFGH_DST_PER_EXT((x) & 0x30) | DW_CFGH_DST_PER((x) & 0xF))
+	(DW_CFGH_DST_PER_EXT((x) >> 4) | DW_CFGH_DST_PER(x))
 #define DW_CFGH_SRC(x) \
-	(DW_CFGH_SRC_PER_EXT((x) & 0x30) | DW_CFGH_SRC_PER((x) & 0xF))
+	(DW_CFGH_SRC_PER_EXT((x) >> 4) | DW_CFGH_SRC_PER(x))
 
 /* default initial setup register values */
 #define DW_CFG_LOW_DEF		0x3
