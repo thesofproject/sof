@@ -61,7 +61,7 @@ struct sof_ipc_dma_trace_params_ext {
 	struct sof_ipc_cmd_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
 	uint32_t stream_tag;
-	uint64_t timestamp;
+	uint64_t timestamp_ns; /* in nanosecnd */
 	uint32_t reserved[8];
 } __attribute__((packed));
 

@@ -40,6 +40,7 @@
 #include <platform/clk.h>
 #include <platform/clk-map.h>
 #include <platform/platform.h>
+#include <sof/drivers/timer.h>
 #include <config.h>
 #include <stdint.h>
 #include <limits.h>
@@ -150,6 +151,15 @@ out:
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 {
 	return clk_pdata->clk[clock].ticks_per_msec * ms;
+}
+
+void platform_timer_set_delta(struct timer *timer, uint64_t ns)
+{
+	uint64_t ticks;
+
+	ticks = clk_pdata->clk[PLATFORM_DEFAULT_CLOCK].ticks_per_msec /
+		1000 * ns / 1000;
+	timer->delta = ticks - platform_timer_get(timer);
 }
 
 void clock_init(void)
