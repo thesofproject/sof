@@ -32,6 +32,7 @@
 #define __INCLUDE_CLOCK__
 
 #include <stdint.h>
+#include <arch/timer.h>
 
 #define CLOCK_NOTIFY_PRE	0
 #define CLOCK_NOTIFY_POST	1
@@ -58,6 +59,8 @@ uint32_t clock_get_freq(int clock);
 void clock_set_freq(int clock, uint32_t hz);
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
+
+void platform_timer_set_delta(struct timer *timer, uint64_t ns);
 
 void clock_init(void);
 

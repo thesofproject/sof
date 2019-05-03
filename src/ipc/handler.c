@@ -47,6 +47,7 @@
 #include <sof/alloc.h>
 #include <sof/wait.h>
 #include <sof/trace.h>
+#include <sof/clk.h>
 #include <sof/math/numbers.h>
 #include <platform/interrupt.h>
 #include <platform/mailbox.h>
@@ -726,8 +727,7 @@ static int ipc_dma_trace_config(uint32_t header)
 	IPC_COPY_CMD(params, _ipc->comp_data);
 
 	if (iCS(header) == SOF_IPC_TRACE_DMA_PARAMS_EXT)
-		platform_timer->delta = params.timestamp -
-					platform_timer_get(platform_timer);
+		platform_timer_set_delta(platform_timer, params.timestamp_ns);
 	else
 		platform_timer->delta = 0;
 
