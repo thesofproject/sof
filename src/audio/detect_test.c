@@ -604,7 +604,13 @@ static int test_keyword_copy(struct comp_dev *dev)
 
 static int test_keyword_reset(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+
 	trace_keyword("test_keyword_reset()");
+
+	cd->activation = 0;
+	cd->detect_preamble = 0;
+	cd->detected = 0;
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
