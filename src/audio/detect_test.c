@@ -234,9 +234,10 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 	/* using default processing function */
 	cd->detect_func = default_detect_test;
 
+	comp_set_drvdata(dev, cd);
+
 	test_keyword_set_default_config(dev);
 
-	comp_set_drvdata(dev, cd);
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
