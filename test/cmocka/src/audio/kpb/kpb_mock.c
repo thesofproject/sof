@@ -45,6 +45,10 @@ void notifier_register(struct notifier *notifier)
 {
 }
 
+void notifier_unregister(struct notifier *notifier)
+{
+}
+
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
 		       uint32_t xflags)
