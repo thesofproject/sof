@@ -183,7 +183,7 @@ static int selector_params(struct comp_dev *dev)
 	else
 		dev->params.channels = cd->config.in_channels_count;
 
-	return 0;
+	return PPL_STATUS_PATH_STOP;
 }
 
 
@@ -303,9 +303,11 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
  */
 static int selector_trigger(struct comp_dev *dev, int cmd)
 {
+	int ret;
 	trace_selector("selector_trigger()");
 
-	return comp_set_state(dev, cmd);
+	ret = comp_set_state(dev, cmd);
+	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
 }
 
 
@@ -454,7 +456,7 @@ static int selector_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	return 0;
+	return PPL_STATUS_PATH_STOP;
 
 err:
 	comp_set_state(dev, COMP_TRIGGER_RESET);
@@ -468,9 +470,11 @@ err:
  */
 static int selector_reset(struct comp_dev *dev)
 {
+	int ret;
 	trace_selector("selector_reset()");
 
-	return comp_set_state(dev, COMP_TRIGGER_RESET);
+	ret = comp_set_state(dev, COMP_TRIGGER_RESET);
+	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
 }
 
 /**
