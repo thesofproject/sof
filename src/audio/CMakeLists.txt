@@ -5,7 +5,6 @@ if(NOT BUILD_HOST)
 		pipeline_static.c
 		component.c
 		buffer.c
-		kpb.c
 	)
 	if(CONFIG_COMP_VOLUME)
 		add_local_sources(sof
@@ -59,6 +58,11 @@ if(NOT BUILD_HOST)
 	if(CONFIG_COMP_DAI)
 		add_local_sources(sof
 			dai.c
+		)
+	endif()
+	if(CONFIG_COMP_KPB)
+		add_local_sources(sof
+			kpb.c
 		)
 	endif()
 	if(CONFIG_COMP_SEL)
