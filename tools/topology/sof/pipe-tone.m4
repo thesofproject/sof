@@ -38,6 +38,16 @@ C_CONTROLMIXER(Tone Switch, PIPELINE_ID,
 	LIST(`	', KCONTROL_CHANNEL(FL, 2, 0), KCONTROL_CHANNEL(FR, 2, 1)))
 
 #
+# Volume configuration
+#
+
+W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+
+W_DATA(playback_pga_conf, playback_pga_tokens)
+
+#
 # Components and Buffers
 #
 
@@ -45,7 +55,7 @@ C_CONTROLMIXER(Tone Switch, PIPELINE_ID,
 W_TONE(0, PIPELINE_FORMAT, 2, 0, LIST(`		', "PIPELINE_ID Tone Switch"))
 
 # "Tone Volume" has 2 sink period and 2 source periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID Tone Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Tone Volume"))
 
 # Low Latency Buffers
 W_BUFFER(0,COMP_BUFFER_SIZE(2,

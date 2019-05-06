@@ -33,9 +33,10 @@ define(`W_PGA',
 `	data ['
 `		"'N_PGA($1)`_data_w"'
 `		"'N_PGA($1)`_data_str"'
+`		"'$5`"'
 `	]'
 `	mixer ['
-		$5
+		$6
 `	]'
 
 `}')
