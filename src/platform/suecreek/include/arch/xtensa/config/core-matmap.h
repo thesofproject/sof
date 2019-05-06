@@ -22,7 +22,7 @@
  *	XCHAL_HW_VERSION_MINOR
  */
 
-/* Customer ID=4313; Build=0x5483b; Copyright (c) 1999-2015 Tensilica Inc.
+/* Copyright (c) 1999-2018 Tensilica Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -52,6 +52,7 @@
 /*----------------------------------------------------------------------
 			CACHE (MEMORY ACCESS) ATTRIBUTES
   ----------------------------------------------------------------------*/
+
 
 
 /*  Cache Attribute encodings -- lists of access modes for each cache attribute:  */
@@ -104,6 +105,10 @@
 				XTHAL_SAM_ISOLATE	XCHAL_SEP \
 				XTHAL_SAM_EXCEPTION
 
+#define XCHAL_CA_R   (0xC0 | 0x40000000)
+#define XCHAL_CA_RX  (0xD0 | 0x40000000)
+#define XCHAL_CA_RW  (0xE0 | 0x40000000)
+#define XCHAL_CA_RWX (0xF0 | 0x40000000)
 
 /*
  *  Specific encoded cache attribute values of general interest.
@@ -111,15 +116,14 @@
  *  one is returned instead (eg. writethru instead of writeback,
  *  bypass instead of writethru).
  */
-#define XCHAL_CA_BYPASS			2	/* cache disabled (bypassed) mode */
-#define XCHAL_CA_BYPASSBUF		6	/* cache disabled (bypassed) bufferable mode */
+#define XCHAL_CA_BYPASS  		2	/* cache disabled (bypassed) mode */
+#define XCHAL_CA_BYPASSBUF  		6	/* cache disabled (bypassed) bufferable mode */
 #define XCHAL_CA_WRITETHRU		1	/* cache enabled (write-through) mode */
 #define XCHAL_CA_WRITEBACK		4	/* cache enabled (write-back) mode */
 #define XCHAL_HAVE_CA_WRITEBACK_NOALLOC	1	/* write-back no-allocate availability */
 #define XCHAL_CA_WRITEBACK_NOALLOC	5	/* cache enabled (write-back no-allocate) mode */
 #define XCHAL_CA_ILLEGAL		15	/* no access allowed (all cause exceptions) mode */
 #define XCHAL_CA_ISOLATE		14	/* cache isolate (accesses go to cache not memory) mode */
-
 
 /*----------------------------------------------------------------------
 				MMU
@@ -148,7 +152,7 @@
  *		from the page table and storing it in one of the auto-refill ways;
  *		if this PTE load also misses, a miss exception is posted for s/w.
  *	min-wired = a "min-wired" way can be used to map a single (minimum-sized)
- *		page arbitrarily under program control; it has a single entry,
+ * 		page arbitrarily under program control; it has a single entry,
  *		is non-auto-refill (some other way(s) must be auto-refill),
  *		all its fields (VPN, PPN, ASID, CA) are all writable, and it
  *		supports the XCHAL_MMU_MIN_PTE_PAGE_SIZE page size (a current
@@ -165,14 +169,14 @@
  *	  ways have independent lists of supported page sizes sharing a
  *	  common encoding with PTE entries; the encoding is the index into
  *	  this list; unsupported sizes for a given way are zero in the list;
- *	  selecting unsupported sizes results in undefined hardware behaviour;
+ *	  selecting unsupported sizes results in undefine hardware behaviour;
  *	- is only possible for ways 0 thru 7 (due to ITLBCFG/DTLBCFG definition).
  */
 
 #define XCHAL_MMU_ASID_INVALID		0	/* ASID value indicating invalid address space */
 #define XCHAL_MMU_ASID_KERNEL		0	/* ASID value indicating kernel (ring 0) address space */
 #define XCHAL_MMU_SR_BITS		0	/* number of size-restriction bits supported */
-#define XCHAL_MMU_CA_BITS		4	/* number of bits needed to hold cache attribute encoding */
+#define XCHAL_MMU_CA_BITS		4	 /* number of bits needed to hold cache attribute encoding */
 #define XCHAL_MMU_MAX_PTE_PAGE_SIZE	29	/* max page size in a PTE structure (log2) */
 #define XCHAL_MMU_MIN_PTE_PAGE_SIZE	29	/* min page size in a PTE structure (log2) */
 
