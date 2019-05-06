@@ -8,7 +8,7 @@
    that extend basic Xtensa core functionality.  It is customized to this
    Xtensa processor configuration.
 
-   Copyright (c) 1999-2015 Cadence Design Systems Inc.
+   Copyright (c) 1999-2018 Cadence Design Systems Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -34,21 +34,24 @@
 #ifndef _XTENSA_CORE_TIE_H
 #define _XTENSA_CORE_TIE_H
 
-#define XCHAL_CP_NUM			1	/* number of coprocessors */
+#define XCHAL_CP_NUM			2	/* number of coprocessors */
 #define XCHAL_CP_MAX			2	/* max CP ID + 1 (0 if none) */
-#define XCHAL_CP_MASK			0x02	/* bitmask of all CPs by ID */
+#define XCHAL_CP_MASK			0x03	/* bitmask of all CPs by ID */
 #define XCHAL_CP_PORT_MASK		0x00	/* bitmask of only port CPs */
 
 /*  Basic parameters of each coprocessor:  */
+#define XCHAL_CP0_NAME			"FPU"
+#define XCHAL_CP0_IDENT			FPU
+#define XCHAL_CP0_SA_SIZE		72	/* size of state save area */
+#define XCHAL_CP0_SA_ALIGN		4	/* min alignment of save area */
+#define XCHAL_CP_ID_FPU             	0	/* coprocessor ID (0..7) */
 #define XCHAL_CP1_NAME			"AudioEngineLX"
 #define XCHAL_CP1_IDENT			AudioEngineLX
-#define XCHAL_CP1_SA_SIZE		112	/* size of state save area */
+#define XCHAL_CP1_SA_SIZE		184	/* size of state save area */
 #define XCHAL_CP1_SA_ALIGN		8	/* min alignment of save area */
-#define XCHAL_CP_ID_AUDIOENGINELX	1	/* coprocessor ID (0..7) */
+#define XCHAL_CP_ID_AUDIOENGINELX   	1	/* coprocessor ID (0..7) */
 
 /*  Filler info for unassigned coprocessors, to simplify arrays etc:  */
-#define XCHAL_CP0_SA_SIZE		0
-#define XCHAL_CP0_SA_ALIGN		1
 #define XCHAL_CP2_SA_SIZE		0
 #define XCHAL_CP2_SA_ALIGN		1
 #define XCHAL_CP3_SA_SIZE		0
@@ -63,11 +66,11 @@
 #define XCHAL_CP7_SA_ALIGN		1
 
 /*  Save area for non-coprocessor optional and custom (TIE) state:  */
-#define XCHAL_NCP_SA_SIZE		8
+#define XCHAL_NCP_SA_SIZE		12
 #define XCHAL_NCP_SA_ALIGN		4
 
 /*  Total save area for optional and custom state (NCP + CPn):  */
-#define XCHAL_TOTAL_SA_SIZE		128	/* with 16-byte align padding */
+#define XCHAL_TOTAL_SA_SIZE		272	/* with 16-byte align padding */
 #define XCHAL_TOTAL_SA_ALIGN		8	/* actual minimum alignment */
 
 /*
@@ -110,32 +113,61 @@
  *		...what you want to expand...
  */
 
-#define XCHAL_NCP_SA_NUM	2
+#define XCHAL_NCP_SA_NUM	3
 #define XCHAL_NCP_SA_LIST(s)	\
+ XCHAL_SA_REG(s,1,2,1,1,      threadptr, 4, 4, 4,0x03E7,  ur,231, 32,0,0,0) \
  XCHAL_SA_REG(s,0,0,0,1,             br, 4, 4, 4,0x0204,  sr,4  , 16,0,0,0) \
  XCHAL_SA_REG(s,0,0,0,1,      scompare1, 4, 4, 4,0x020C,  sr,12 , 32,0,0,0)
 
-#define XCHAL_CP0_SA_NUM	0
-#define XCHAL_CP0_SA_LIST(s)	/* empty */
+#define XCHAL_CP0_SA_NUM	18
+#define XCHAL_CP0_SA_LIST(s)	\
+ XCHAL_SA_REG(s,0,0,1,0,            fcr, 4, 4, 4,0x03E8,  ur,232, 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,1,0,            fsr, 4, 4, 4,0x03E9,  ur,233, 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f0, 4, 4, 4,0x0030,   f,0  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f1, 4, 4, 4,0x0031,   f,1  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f2, 4, 4, 4,0x0032,   f,2  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f3, 4, 4, 4,0x0033,   f,3  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f4, 4, 4, 4,0x0034,   f,4  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f5, 4, 4, 4,0x0035,   f,5  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f6, 4, 4, 4,0x0036,   f,6  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f7, 4, 4, 4,0x0037,   f,7  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f8, 4, 4, 4,0x0038,   f,8  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             f9, 4, 4, 4,0x0039,   f,9  , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,            f10, 4, 4, 4,0x003A,   f,10 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,            f11, 4, 4, 4,0x003B,   f,11 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,            f12, 4, 4, 4,0x003C,   f,12 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,            f13, 4, 4, 4,0x003D,   f,13 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,            f14, 4, 4, 4,0x003E,   f,14 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,            f15, 4, 4, 4,0x003F,   f,15 , 32,0,0,0)
 
-#define XCHAL_CP1_SA_NUM	16
+#define XCHAL_CP1_SA_NUM	26
 #define XCHAL_CP1_SA_LIST(s)	\
- XCHAL_SA_REG(s,0,0,1,0,     ae_ovf_sar, 8, 4, 4,0x03F0,  ur,240,  7,0,0,0) \
+ XCHAL_SA_REG(s,0,0,1,0,     ae_ovf_sar, 8, 4, 4,0x03F0,  ur,240,  8,0,0,0) \
  XCHAL_SA_REG(s,0,0,1,0,     ae_bithead, 4, 4, 4,0x03F1,  ur,241, 32,0,0,0) \
  XCHAL_SA_REG(s,0,0,1,0,ae_ts_fts_bu_bp, 4, 4, 4,0x03F2,  ur,242, 16,0,0,0) \
- XCHAL_SA_REG(s,0,0,1,0,       ae_sd_no, 4, 4, 4,0x03F3,  ur,243, 28,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep0, 8, 8, 8,0x0060, aep,0  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep1, 8, 8, 8,0x0061, aep,1  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep2, 8, 8, 8,0x0062, aep,2  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep3, 8, 8, 8,0x0063, aep,3  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep4, 8, 8, 8,0x0064, aep,4  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep5, 8, 8, 8,0x0065, aep,5  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep6, 8, 8, 8,0x0066, aep,6  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aep7, 8, 8, 8,0x0067, aep,7  , 48,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aeq0, 8, 8, 8,0x0068, aeq,0  , 56,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aeq1, 8, 8, 8,0x0069, aeq,1  , 56,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aeq2, 8, 8, 8,0x006A, aeq,2  , 56,0,0,0) \
- XCHAL_SA_REG(s,0,0,2,0,           aeq3, 8, 8, 8,0x006B, aeq,3  , 56,0,0,0)
+ XCHAL_SA_REG(s,0,0,1,0,    ae_cw_sd_no, 4, 4, 4,0x03F3,  ur,243, 29,0,0,0) \
+ XCHAL_SA_REG(s,0,0,1,0,     ae_cbegin0, 4, 4, 4,0x03F6,  ur,246, 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,1,0,       ae_cend0, 4, 4, 4,0x03F7,  ur,247, 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed0, 8, 8, 8,0x1000, aed,0  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed1, 8, 8, 8,0x1001, aed,1  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed2, 8, 8, 8,0x1002, aed,2  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed3, 8, 8, 8,0x1003, aed,3  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed4, 8, 8, 8,0x1004, aed,4  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed5, 8, 8, 8,0x1005, aed,5  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed6, 8, 8, 8,0x1006, aed,6  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed7, 8, 8, 8,0x1007, aed,7  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed8, 8, 8, 8,0x1008, aed,8  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,           aed9, 8, 8, 8,0x1009, aed,9  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,          aed10, 8, 8, 8,0x100A, aed,10 , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,          aed11, 8, 8, 8,0x100B, aed,11 , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,          aed12, 8, 8, 8,0x100C, aed,12 , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,          aed13, 8, 8, 8,0x100D, aed,13 , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,          aed14, 8, 8, 8,0x100E, aed,14 , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,          aed15, 8, 8, 8,0x100F, aed,15 , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             u0, 8, 8, 8,0x1010,   u,0  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             u1, 8, 8, 8,0x1011,   u,1  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             u2, 8, 8, 8,0x1012,   u,2  , 64,0,0,0) \
+ XCHAL_SA_REG(s,0,0,2,0,             u3, 8, 8, 8,0x1013,   u,3  , 64,0,0,0)
 
 #define XCHAL_CP2_SA_NUM	0
 #define XCHAL_CP2_SA_LIST(s)	/* empty */
@@ -156,17 +188,17 @@
 #define XCHAL_CP7_SA_LIST(s)	/* empty */
 
 /* Byte length of instruction from its first nibble (op0 field), per FLIX.  */
-#define XCHAL_OP0_FORMAT_LENGTHS	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8
+#define XCHAL_OP0_FORMAT_LENGTHS	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8
 /* Byte length of instruction from its first byte, per FLIX.  */
 #define XCHAL_BYTE0_FORMAT_LENGTHS	\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8,\
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8,\
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8,\
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8,\
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8,\
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8,\
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8,\
+	3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,8,8
 
 #endif /*_XTENSA_CORE_TIE_H*/
 
