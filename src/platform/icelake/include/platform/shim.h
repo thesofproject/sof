@@ -219,7 +219,7 @@
 
 #define DSP_INIT_IOPO	0x71A68
 #define IOPO_DMIC_FLAG		(1 << 0)
-#define IOPO_I2S_FLAG		(7 << 8)
+#define IOPO_I2S_FLAG		MASK(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT + 7, 8)
 
 #define DSP_INIT_GENO	0x71A6C
 #define GENO_MDIVOSEL		(1 << 1)
