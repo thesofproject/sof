@@ -74,17 +74,17 @@
  * \brief Volume ramp update rate in microseconds.
  * Update volume gain value every 1 ms.
  */
-#define VOL_RAMP_US 1000
+#define VOL_RAMP_UPDATE_US 1000
 
 /**
- * \brief Volume linear ramp length in milliseconds.
- * Use linear ramp length of 250 ms from mute to unity gain. The linear ramp
- * step in Q1.16 to use in vol_work function  is computed from the length.
+ * \brief Macro for volume linear gain ramp step computation
+ * Volume gain ramp step as Q1.16 is computed with equation
+ * step = VOL_RAMP_STEP_CONST/ SOF_TKN_VOLUME_RAMP_STEP_MS. This
+ * macro defines as Q1.16 value the constant term
+ * (1000 / VOL_RAMP_UPDATE) for step calculation.
  */
-#define VOL_RAMP_LENGTH_MS 250
-#define VOL_RAMP_STEP Q_CONVERT_FLOAT(1.0 / 1000 * \
-				      VOL_RAMP_US / VOL_RAMP_LENGTH_MS, \
-				      VOL_QXY_Y)
+#define VOL_RAMP_STEP_CONST \
+	Q_CONVERT_FLOAT(1000.0 / VOL_RAMP_UPDATE_US, VOL_QXY_Y)
 
 /**
  * \brief Volume maximum value.
@@ -115,6 +115,7 @@ struct comp_data {
 		struct comp_buffer *source, uint32_t frames);
 	struct task volwork;	/**< volume scheduled work function */
 	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
+	int32_t ramp_increment[SOF_IPC_MAX_CHANNELS];	/**< for linear ramp */
 };
 
 /** \brief Volume processing functions map. */
