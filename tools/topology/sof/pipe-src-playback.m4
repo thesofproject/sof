@@ -45,8 +45,19 @@ W_DATA(media_src_conf, media_src_tokens)
 # "SRC" has 3 source and 3 sink periods
 W_SRC(0, PIPELINE_FORMAT, 3, 3, media_src_conf)
 
+#
+# Volume Configuration
+#
+
+W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+
+
+W_DATA(playback_pga_conf, playback_pga_tokens)
+
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Playback Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(3,

@@ -24,6 +24,16 @@ C_CONTROLMIXER(PCM PCM_ID Capture Volume, PIPELINE_ID,
 	LIST(`	', KCONTROL_CHANNEL(FL, 0, 0), KCONTROL_CHANNEL(FR, 0, 1)))
 
 #
+# Volume configuration
+#
+
+W_VENDORTUPLES(capture_pga_tokens, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+
+W_DATA(capture_pga_conf, capture_pga_tokens)
+
+#
 # Components and Buffers
 #
 
@@ -32,7 +42,7 @@ C_CONTROLMIXER(PCM PCM_ID Capture Volume, PIPELINE_ID,
 W_PCM_CAPTURE(PCM_ID, Low Latency Capture, 0, 2)
 
 # "Capture Volume" has 2 sink and source periods for host and DAI ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID PCM PCM_ID Capture Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, capture_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Capture Volume"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,

@@ -29,6 +29,16 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
 
+#
+# Volume configuration
+#
+
+W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+
+W_DATA(playback_pga_conf, playback_pga_tokens)
+
 # Use coefficients for flat frequency response
 include(`eq_iir_coef_flat.m4')
 
@@ -62,7 +72,7 @@ C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR"))
