@@ -45,6 +45,10 @@
 	typeof(b) __b = (b);	\
 	__a < __b ? __b : __a;	\
 })
+#define ABS(a) ({		\
+	typeof(a) __a = (a);	\
+	__a < 0 ? -__a : __a;	\
+})
 
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
 

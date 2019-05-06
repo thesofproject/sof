@@ -90,9 +90,9 @@ static uint64_t vol_work(void *data)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t vol;
+	int32_t vol;
 	int again = 0;
-	int i, new_vol;
+	int i;
 
 	/* inc/dec each volume if it's not at target */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
@@ -101,13 +101,13 @@ static uint64_t vol_work(void *data)
 		if (cd->volume[i] == cd->tvolume[i])
 			continue;
 
+		/* Update volume gain with ramp. Linear ramp increment is
+		 * in compatible Q1.16 format with volume.
+		 */
 		vol = cd->volume[i];
-
+		vol += cd->ramp_increment[i];
 		if (cd->volume[i] < cd->tvolume[i]) {
-			/* ramp up */
-			vol += VOL_RAMP_STEP;
-
-			/* ramp completed ? */
+			/* ramp up, check if ramp completed */
 			if (vol >= cd->tvolume[i] || vol >= VOL_MAX) {
 				vol_update(cd, i);
 			} else {
@@ -116,17 +116,15 @@ static uint64_t vol_work(void *data)
 			}
 		} else {
 			/* ramp down */
-			new_vol = vol - VOL_RAMP_STEP;
-			if (new_vol <= 0) {
+			if (vol <= 0) {
 				/* cannot ramp down below 0 */
 				vol_update(cd, i);
 			} else {
 				/* ramp completed ? */
-				if (new_vol <= cd->tvolume[i] ||
-				    new_vol <= VOL_MIN) {
+				if (vol <= cd->tvolume[i] || vol <= VOL_MIN) {
 					vol_update(cd, i);
 				} else {
-					cd->volume[i] = new_vol;
+					cd->volume[i] = vol;
 					again = 1;
 				}
 			}
@@ -138,7 +136,7 @@ static uint64_t vol_work(void *data)
 
 	/* do we need to continue ramping */
 	if (again)
-		return VOL_RAMP_US;
+		return VOL_RAMP_UPDATE_US;
 	else
 		return 0;
 }
@@ -195,6 +193,9 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 		cd->tvolume[i] =  cd->volume[i];
 	}
 
+	trace_volume("vol->initial_ramp = %d, vol->ramp = %d",
+		     vol->initial_ramp, vol->ramp);
+
 	dev->state = COMP_STATE_READY;
 	return dev;
 }
@@ -233,10 +234,16 @@ static int volume_params(struct comp_dev *dev)
  * \param[in] chan Channel number.
  * \param[in] vol Target volume.
  */
-static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
+static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t v = vol;
+	struct sof_ipc_comp_volume *pga =
+		COMP_GET_IPC(dev, sof_ipc_comp_volume);
+	int32_t v = vol;
+	int32_t delta;
+	int32_t delta_abs;
+	int32_t inc;
+	int32_t t_us;
 
 	/* Limit received volume gain to MIN..MAX range before applying it.
 	 * MAX is needed for now for the generic C gain arithmetics to prevent
@@ -250,6 +257,52 @@ static inline void volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 		v = VOL_MAX;
 
 	cd->tvolume[chan] = v;
+
+	/* Check ramp type */
+	switch (pga->ramp) {
+	case SOF_VOLUME_LINEAR:
+
+		/* Assume the ramp length (initial_ramp [ms]) describes
+		 * time of mute to 0 dB ramp. The actual volume scale min/max
+		 * is not known. If initial_ramp is zero (or negative) use
+		 * step size that reaches 0 dB gain in one step (VOL_ZERO_DB).
+		 */
+		if (pga->initial_ramp > 0)
+			inc = MAX(VOL_RAMP_STEP_CONST / pga->initial_ramp, 1);
+		else
+			inc = VOL_ZERO_DB;
+
+		delta = cd->tvolume[chan] - cd->volume[chan];
+		delta_abs = ABS(delta);
+
+		/* If the ramp completion would take longer than initial_ramp
+		 * increase the step size to make this ramp complete at
+		 * initial_ramp time. Calculate estimated ramp length [us].
+		 */
+		t_us = delta_abs * VOL_RAMP_UPDATE_US / inc;
+		if (t_us > pga->initial_ramp * 1000) {
+			inc = (int32_t)((int64_t)inc * delta_abs / VOL_ZERO_DB);
+			inc = MAX(inc, 1);
+		}
+
+		/* Invert sign for volume down ramp step */
+		if (delta < 0)
+			inc = -inc;
+
+		cd->ramp_increment[chan] = inc;
+		tracev_volume("cd->ramp_increment[%d] = %d", chan,
+			      cd->ramp_increment[chan]);
+		break;
+	case SOF_VOLUME_LOG:
+	case SOF_VOLUME_LINEAR_ZC:
+	case SOF_VOLUME_LOG_ZC:
+	default:
+		trace_volume_error("volume_set_chan() error: "
+				   "invalid ramp type %d", pga->ramp);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 /**
@@ -293,6 +346,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
 	int j;
+	int ret = 0;
 
 	/* validate */
 	if (cdata->num_elems == 0 || cdata->num_elems > SOF_IPC_MAX_CHANNELS) {
@@ -312,15 +366,20 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				     cdata->chanv[j].channel, cdata->chanv[j].value);
 			i = cdata->chanv[j].channel;
 			if ((i >= 0) && (i < SOF_IPC_MAX_CHANNELS)) {
-				volume_set_chan(dev, i, cdata->chanv[j].value);
+				ret = volume_set_chan(dev, i,
+						      cdata->chanv[j].value);
 			} else {
 				trace_volume_error("volume_ctrl_set_cmd() "
 						   "error: "
 						   "SOF_CTRL_CMD_VOLUME, "
 						   "invalid i = %u", i);
 			}
+			if (ret)
+				return ret;
+
 		}
-		schedule_task(&cd->volwork, VOL_RAMP_US, 0, 0);
+
+		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US, 0, 0);
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
@@ -345,7 +404,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 						   "invalid i = %u", i);
 			}
 		}
-		schedule_task(&cd->volwork, VOL_RAMP_US, 0, 0);
+		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US, 0, 0);
 		break;
 
 	default:
