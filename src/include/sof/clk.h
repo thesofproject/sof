@@ -53,6 +53,8 @@ struct freq_table {
 	uint32_t enc;
 };
 
+uint32_t clock_get_freq(int clock);
+
 void clock_set_freq(int clock, uint32_t hz);
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
