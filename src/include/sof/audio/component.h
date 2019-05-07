@@ -164,6 +164,13 @@
 #define tracev_comp(__e, ...)	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 /** @}*/
 
+/* \brief Type of endpoint this component is connected to in a pipeline */
+enum comp_endpoint_type {
+	COMP_ENDPOINT_HOST,
+	COMP_ENDPOINT_DAI,
+	COMP_ENDPOINT_NODE
+};
+
 struct comp_dev;
 struct comp_buffer;
 struct dai_config;
@@ -682,6 +689,19 @@ static inline int comp_get_requested_state(int cmd)
 	}
 
 	return state;
+}
+
+/* \brief Returns comp_endpoint_type of given component */
+static inline int comp_get_endpoint_type(struct comp_dev *dev)
+{
+	switch (dev->comp.type) {
+	case SOF_COMP_HOST:
+		return COMP_ENDPOINT_HOST;
+	case SOF_COMP_DAI:
+		return COMP_ENDPOINT_DAI;
+	default:
+		return COMP_ENDPOINT_NODE;
+	}
 }
 
 /** @}*/

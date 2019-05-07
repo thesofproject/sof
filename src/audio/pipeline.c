@@ -275,10 +275,34 @@ int pipeline_free(struct pipeline *p)
 static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 {
 	struct pipeline_data *ppl_data = data;
+	int stream_direction = ppl_data->params->params.direction;
+	int end_type;
 	int err = 0;
 
 	tracev_pipe("pipeline_comp_params(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
+
+	if (!comp_is_single_pipeline(current, ppl_data->start)) {
+		/* If pipeline connected to the starting one is in improper
+		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
+		 * stop propagation of parameters not to override their config.
+		 * Direction param of the pipeline can not be trusted at this
+		 * point, as it might not be configured yet, hence checking
+		 * for endpoint component type.
+		 */
+		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
+		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+			if (end_type == COMP_ENDPOINT_HOST ||
+			    end_type == COMP_ENDPOINT_NODE)
+				return 0;
+		}
+
+		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
+			if (end_type == COMP_ENDPOINT_DAI ||
+			    end_type == COMP_ENDPOINT_NODE)
+				return 0;
+		}
+	}
 
 	/* don't do any params if current is running */
 	if (current->state == COMP_STATE_ACTIVE)
@@ -320,6 +344,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	trace_pipe_with_ids(p, "pipeline_params()");
 
 	data.params = params;
+	data.start = host;
 
 	spin_lock_irq(&p->lock, flags);
 
@@ -337,9 +362,33 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 {
 	int err = 0;
+	struct pipeline_data *ppl_data = data;
+	int stream_direction = ppl_data->start->params.direction;
+	int end_type;
 
 	tracev_pipe("pipeline_comp_prepare(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
+
+	if (!comp_is_single_pipeline(current, ppl_data->start)) {
+		/* If pipeline connected to the starting one is in improper
+		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
+		 * stop propagation. Direction param of the pipeline can not be
+		 * trusted at this point, as it might not be configured yet,
+		 * hence checking for endpoint component type.
+		 */
+		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
+		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+			if (end_type == COMP_ENDPOINT_HOST ||
+			    end_type == COMP_ENDPOINT_NODE)
+				return 0;
+		}
+
+		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
+			if (end_type == COMP_ENDPOINT_DAI ||
+			    end_type == COMP_ENDPOINT_NODE)
+				return 0;
+		}
+	}
 
 	err = comp_prepare(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
@@ -352,14 +401,17 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 /* prepare the pipeline for usage - preload host buffers here */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
+	struct pipeline_data ppl_data;
 	int ret = 0;
 	uint32_t flags;
 
 	trace_pipe_with_ids(p, "pipeline_prepare()");
 
+	ppl_data.start = dev;
+
 	spin_lock_irq(&p->lock, flags);
 
-	ret = pipeline_comp_prepare(dev, NULL, dev->params.direction);
+	ret = pipeline_comp_prepare(dev, &ppl_data, dev->params.direction);
 	if (ret < 0) {
 		trace_pipe_error("pipeline_prepare() error: ret = %d,"
 				 "dev->comp.id = %u", ret, dev->comp.id);
@@ -618,10 +670,34 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 static int pipeline_comp_reset(struct comp_dev *current, void *data, int dir)
 {
+	struct pipeline *p = data;
+	int stream_direction = p->source_comp->params.direction;
+	int end_type;
 	int err = 0;
 
 	tracev_pipe("pipeline_comp_reset(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
+
+	if (!comp_is_single_pipeline(current, p->source_comp)) {
+		/* If pipeline connected to the starting one is in improper
+		 * direction (CAPTURE towards DAI, PLAYBACK towards HOST),
+		 * stop propagation. Direction param of the pipeline can not be
+		 * trusted at this point, as it might not be configured yet,
+		 * hence checking for endpoint component type.
+		 */
+		end_type = comp_get_endpoint_type(current->pipeline->sink_comp);
+		if (stream_direction == SOF_IPC_STREAM_PLAYBACK) {
+			if (end_type == COMP_ENDPOINT_HOST ||
+			    end_type == COMP_ENDPOINT_NODE)
+				return 0;
+		}
+
+		if (stream_direction == SOF_IPC_STREAM_CAPTURE) {
+			if (end_type == COMP_ENDPOINT_DAI ||
+			    end_type == COMP_ENDPOINT_NODE)
+				return 0;
+		}
+	}
 
 	err = comp_reset(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
@@ -641,7 +717,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	spin_lock_irq(&p->lock, flags);
 
-	ret = pipeline_comp_reset(host, NULL, host->params.direction);
+	ret = pipeline_comp_reset(host, p, host->params.direction);
 	if (ret < 0) {
 		trace_ipc_error("pipeline_reset() error: ret = %d, host->comp."
 				"id = %u", ret, host->comp.id);
