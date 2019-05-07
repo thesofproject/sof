@@ -780,6 +780,9 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	data.posn = posn;
 
 	pipeline_comp_timestamp(host, &data, host->params.direction);
+
+	/* set timestamp resolution */
+	posn->timestamp_ns = p->ipc_pipe.period * 1000;
 }
 
 static int pipeline_comp_xrun(struct comp_dev *current, void *data, int dir)
