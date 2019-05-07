@@ -35,6 +35,7 @@
 #include <platform/interrupt.h>
 #include <sof/debug.h>
 #include <sof/audio/component.h>
+#include <sof/clk.h>
 #include <sof/drivers/timer.h>
 #include <stdint.h>
 
@@ -189,6 +190,7 @@ void platform_dai_timestamp(struct comp_dev *dai,
 
 	/* get SSP wallclock - DAI sets this to stream start value */
 	posn->wallclock = platform_timer_get(platform_timer) - posn->wallclock;
+	posn->wallclock_hz = clock_get_freq(PLATFORM_DEFAULT_CLOCK);
 	posn->flags |= SOF_TIME_WALL_VALID | SOF_TIME_WALL_64;
 }
 
