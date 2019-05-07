@@ -83,6 +83,11 @@ static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
 	return size - 1;
 }
 
+uint32_t clock_get_freq(int clock)
+{
+	return clk_pdata->clk[clock].freq;
+}
+
 void clock_set_freq(int clock, uint32_t hz)
 {
 	struct notify_data notify_data;
