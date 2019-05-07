@@ -31,6 +31,7 @@
 #include <xtensa/config/specreg.h>
 #include <xtensa/xtruntime-core-state.h>
 #include "xtos-internal.h"
+#include <config.h>
 
 
 	.text
@@ -496,7 +497,7 @@ _xtos_core_save_common:
 	/*  TIE state  */
 	addi	a4, a3, CS_SA_ncp
 	xchal_ncp_store	a4, a5,a6,a7,a8		// save non-coprocessor state
-#if XCHAL_HAVE_CP
+#if XCHAL_HAVE_CP && (!CONFIG_APOLLOLAKE || defined(XCC))
 	rsr	a5, CPENABLE
 	s32i	a5, a3, CS_SA_cpenable
 	movi	a6, -1
