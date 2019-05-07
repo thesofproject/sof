@@ -32,6 +32,7 @@
 #include <xtensa/xtruntime-core-state.h>
 #include "xtos-internal.h"
 #include <xtensa/idmaasm.h>
+#include <config.h>
 
 	.text
 
@@ -232,7 +233,7 @@ _xtos_core_restore_nw:
 	/*  TIE state  */
 	addi	a4, a3, CS_SA_ncp
 	xchal_ncp_load	a4, a5,a6,a7,a8		// restore non-coprocessor state
-#if XCHAL_HAVE_CP
+#if XCHAL_HAVE_CP && (!CONFIG_APOLLOLAKE || defined(XCC))
 	movi	a6, -1
 	wsr.cpenable	a6			// enable all coprocessors
 	rsync
