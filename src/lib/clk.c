@@ -68,14 +68,14 @@ struct clk_pdata {
 
 static struct clk_pdata *clk_pdata;
 
-static inline uint32_t clock_get_freq(const struct freq_table *table,
-				      uint32_t size, uint32_t hz)
+static inline uint32_t clock_get_nearest_freq_idx(const struct freq_table *tab,
+						  uint32_t size, uint32_t hz)
 {
 	uint32_t i;
 
 	/* find lowest available frequency that is >= requested hz */
 	for (i = 0; i < size; i++) {
-		if (hz <= table[i].freq)
+		if (hz <= tab[i].freq)
 			return i;
 	}
 
@@ -125,7 +125,7 @@ void clock_set_freq(int clock, uint32_t hz)
 	}
 
 	/* get nearest frequency that is >= requested Hz */
-	idx = clock_get_freq(freq_table, freq_table_size, hz);
+	idx = clock_get_nearest_freq_idx(freq_table, freq_table_size, hz);
 	clk_notify_data.freq = freq_table[idx].freq;
 
 	/* tell anyone interested we are about to change freq */
