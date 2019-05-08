@@ -443,52 +443,29 @@ static int volume_trigger(struct comp_dev *dev, int cmd)
  */
 static int volume_copy(struct comp_dev *dev)
 {
+	struct comp_copy_limits c;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	struct comp_buffer *sink;
-	struct comp_buffer *source;
-	uint32_t frames;
-	uint32_t source_bytes;
-	uint32_t sink_bytes;
+	int ret;
 
 	tracev_volume("volume_copy()");
 
-	/* volume component will only ever have 1 source and 1 sink buffer */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
-			       source_list);
-
-	/* check for underrun */
-	if (source->avail == 0) {
-		trace_volume_error("volume_copy() error: "
-				   "source component buffer"
-				   " has not enough data available");
-		comp_underrun(dev, source, 0, 0);
-		return -EIO;
+	/* Get source, sink, number of frames etc. to process. */
+	ret = comp_get_copy_limits(dev, &c);
+	if (ret < 0) {
+		trace_volume_error("volume_copy(): "
+				   "Failed comp_get_copy_limits()");
+		return ret;
 	}
-
-	/* check for overrun */
-	if (sink->free == 0) {
-		trace_volume_error("volume_copy() error: "
-				   "sink component buffer"
-				   " has not enough free bytes for copy");
-		comp_overrun(dev, sink, 0, 0);
-		return -EIO;
-	}
-
-	frames = comp_avail_frames(source, sink);
-	source_bytes = frames * comp_frame_bytes(source->source);
-	sink_bytes = frames * comp_frame_bytes(sink->sink);
 
 	tracev_volume("volume_copy(), source_bytes = 0x%x, sink_bytes = 0x%x",
-		      source_bytes, sink_bytes);
+		      c.source_bytes, c.sink_bytes);
 
 	/* copy and scale volume */
-	cd->scale_vol(dev, sink, source, frames);
+	cd->scale_vol(dev, c.sink, c.source, c.frames);
 
 	/* calculate new free and available */
-	comp_update_buffer_produce(sink, sink_bytes);
-	comp_update_buffer_consume(source, source_bytes);
+	comp_update_buffer_produce(c.sink, c.sink_bytes);
+	comp_update_buffer_consume(c.source, c.source_bytes);
 
 	return 0;
 }
