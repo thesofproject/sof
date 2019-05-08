@@ -645,8 +645,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 		for (i = heap->blocks - 1; i >= 0; i--) {
 			map = &heap->map[i];
 
-			/* allocate if block size is smaller than request */
-			if (heap->size >= bytes && map->block_size < bytes) {
+			/* does whole heap have enough space? */
+			if (heap->size >= bytes) {
 				ptr = alloc_cont_blocks(heap, i, caps, bytes);
 				if (ptr)
 					break;
