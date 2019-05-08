@@ -324,13 +324,11 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
 					  uint32_t caps)
 {
-	uint32_t mask;
 	int i;
 
 	/* find first heap that support type */
 	for (i = 0; i < count; i++) {
-		mask = heap[i].caps & caps;
-		if (mask == caps)
+		if (heap[i].caps & caps)
 			return &heap[i];
 	}
 
