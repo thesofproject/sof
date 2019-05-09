@@ -44,6 +44,11 @@
 #define STRUCT_END(sname)	} sname;
 #endif /*_ASMLANGUAGE||__ASSEMBLER__*/
 
+/* Coprocessors masks.
+ * NOTE: currently only 2 supported.
+ */
+#define CP0_MASK	(1 << 0)
+#define CP1_MASK	(1 << 1)
 
 /*
  *  Kernel vector mode exception stack frame.
@@ -99,8 +104,8 @@ STRUCT_FIELD (long,4,UEXC_,a11)
 STRUCT_FIELD (long,4,UEXC_,a12)
 STRUCT_FIELD (long,4,UEXC_,a13)
 STRUCT_FIELD (long,4,UEXC_,a14)
-STRUCT_FIELD (long,4,UEXC_,a15)
 #endif
+STRUCT_FIELD (long,4,UEXC_,a15)
 STRUCT_FIELD (long,4,UEXC_,exccause)	/* NOTE: can probably rid of this one (pass direct) */
 #if XCHAL_HAVE_LOOPS
 STRUCT_FIELD (long,4,UEXC_,lcount)
@@ -112,13 +117,25 @@ STRUCT_FIELD (long,4,UEXC_,acclo)
 STRUCT_FIELD (long,4,UEXC_,acchi)
 STRUCT_AFIELD(long,4,UEXC_,mr, 4)
 #endif
+#if (XCHAL_CP_MASK & CP0_MASK)
+#define HAVE_CP0	1
+STRUCT_AFIELD_A(long,4,XCHAL_CP0_SA_ALIGN,UEXC_,cp0, XCHAL_CP0_SA_SIZE / 4)
+#else
+#define HAVE_CP0	0
+#endif
+#if (XCHAL_CP_MASK & CP1_MASK)
+#define HAVE_CP1	1
+STRUCT_AFIELD_A(long,4,XCHAL_CP1_SA_ALIGN,UEXC_,cp1, XCHAL_CP1_SA_SIZE / 4)
+#else
+#define HAVE_CP1	0
+#endif
 /* ALIGNPAD is the 16-byte alignment padding. */
 #ifdef __XTENSA_CALL0_ABI__
 # define CALL0_ABI	1
 #else
 # define CALL0_ABI	0
 #endif
-#define ALIGNPAD  ((3 + XCHAL_HAVE_LOOPS*1 + XCHAL_HAVE_MAC16*2 + CALL0_ABI*1) & 3)
+#define ALIGNPAD  ((2 + XCHAL_HAVE_LOOPS*1 + XCHAL_HAVE_MAC16*2 + HAVE_CP0*2 + HAVE_CP1*1 + CALL0_ABI*2) & 3)
 #if ALIGNPAD
 STRUCT_AFIELD(long,4,UEXC_,pad, ALIGNPAD)	/* 16-byte alignment padding */
 #endif

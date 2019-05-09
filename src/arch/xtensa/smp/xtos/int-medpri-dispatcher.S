@@ -73,6 +73,8 @@ LABEL(_Level,FromVector):
 	movi	a2, PS_WOECALL4_ABI|PS_UM|PS_INTLEVEL(XCHAL_EXCM_LEVEL)
 	s32i	a4, a1, UEXC_a4
 	s32i	a5, a1, UEXC_a5
+/* Save also a15 (becomes a11 after _entry) to store coprocessors. */
+	s32i	a15, a1, UEXC_a15
 	wsr.ps	a2
 	rsync
 
@@ -88,7 +90,6 @@ LABEL(_Level,FromVector):
 	s32i	a12, a1, UEXC_a12
 	s32i	a13, a1, UEXC_a13
 	s32i	a14, a1, UEXC_a14
-	s32i	a15, a1, UEXC_a15
 	movi	a0, 0			/* terminate stack frames */
 #  if XTOS_DEBUG_PC
 	// TODO: setup return PC for call traceback through interrupt dispatch
@@ -117,8 +118,21 @@ LABEL(_Level,FromVector):
 
 #if SINGLE_INTERRUPT  /* if only one interrupt at this priority level... */
 
-/* Preserve the SAR, loop, and MAC16 regs.  Also, clear the interrupt. */
+/* Preserve the SAR, loop, MAC16 regs and coprocessors.  Also, clear the interrupt. */
 
+/* TODO: remove this constraint after GCC toolchain update */
+#if __XCC__
+#if (XCHAL_CP_MASK & CP0_MASK)
+	mov	a11, a1
+	addi	a11, a11, UEXC_cp0
+	xchal_cp0_store	a11, a12, a13, a14, a15
+#endif
+#if (XCHAL_CP_MASK & CP1_MASK)
+	mov	a11, a1
+	addi	a11, a11, UEXC_cp1
+	xchal_cp1_store a11, a12, a13, a14, a15
+#endif
+#endif
 	rsr.sar	a14
 	movi	a12, INTERRUPT_MASK
 	s32i	a14, a1, UEXC_sar
@@ -147,8 +161,21 @@ LABEL(_Level,FromVector):
  * If bit list is empty, interrupt is spurious (can happen if a
  * genuine interrupt brings control this direction, but the interrupt
  * goes away before we read the INTERRUPT register).  Also save off
- * sar, loops, and mac16 registers. */
+ * sar, loops, mac16 registers and coprocessors. */
 
+ /* TODO: remove this constraint after GCC toolchain update */
+#if __XCC__
+#if (XCHAL_CP_MASK & CP0_MASK)
+	mov	a11, a1
+	addi	a11, a11, UEXC_cp0
+	xchal_cp0_store	a11, a12, a13, a14, a15
+#endif
+#if (XCHAL_CP_MASK & CP1_MASK)
+	mov	a11, a1
+	addi	a11, a11, UEXC_cp1
+	xchal_cp1_store a11, a12, a13, a14, a15
+#endif
+#endif
 	rsr.interrupt	a15
 	rsr.intenable	a12
 	movi	a13, INTERRUPT_MASK
@@ -190,6 +217,19 @@ LABEL(.L1,_loop0):
 
 /* Restore everything, and return. */
 
+/* TODO: remove this constraint after GCC toolchain update */
+#if __XCC__
+#if (XCHAL_CP_MASK & CP0_MASK)
+	mov	a11, a1
+	addi	a11, a11, UEXC_cp0
+	xchal_cp0_load	a11, a12, a13, a14, a15
+#endif
+#if (XCHAL_CP_MASK & CP1_MASK)
+	mov	a11, a1
+	addi	a11, a11, UEXC_cp1
+	xchal_cp1_load	a11, a12, a13, a14, a15
+#endif
+#endif
 	restore_loops_mac16	a1, a13, a14, a15
 	l32i	a14, a1, UEXC_sar
 LABEL(spurious,int):
@@ -241,6 +281,7 @@ LABEL(return,from_exc):
 # endif
 	l32i	a2, a5, UEXC_a2
 	l32i	a4, a5, UEXC_a4
+	l32i	a15, a5, UEXC_a15
 	l32i	a5, a5, UEXC_a5
 	rfi	_INTERRUPT_LEVEL
 #endif /* windowed ABI */
