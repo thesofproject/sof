@@ -37,6 +37,9 @@
 #include <platform/dma.h>
 #include <platform/dai.h>
 #include <platform/clk.h>
+#if defined(CONFIG_ICELAKE) || defined(CONFIG_SUECREEK)
+#include <platform/clk-map.h>
+#endif
 #include <platform/timer.h>
 #include <platform/interrupt.h>
 #include <platform/idc.h>
