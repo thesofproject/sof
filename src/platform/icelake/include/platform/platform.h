@@ -114,7 +114,7 @@ struct sof;
 #define PLATFORM_DMA_TIMEOUT	1333
 
 /* DMA host transfer timeouts in microseconds */
-#define PLATFORM_HOST_DMA_TIMEOUT	200
+#define PLATFORM_HOST_DMA_TIMEOUT	250
 
 /* DMA link transfer timeouts in microseconds
  * TODO: timeout should be reduced
