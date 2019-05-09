@@ -63,12 +63,12 @@
 #define SOF_TKN_DAI_DIRECTION			156
 
 /* scheduling */
-#define SOF_TKN_SCHED_DEADLINE			200
+#define SOF_TKN_SCHED_PERIOD			200
 #define SOF_TKN_SCHED_PRIORITY			201
 #define SOF_TKN_SCHED_MIPS			202
 #define SOF_TKN_SCHED_CORE			203
 #define SOF_TKN_SCHED_FRAMES			204
-#define SOF_TKN_SCHED_TIMER			205
+#define SOF_TKN_SCHED_TIME_DOMAIN		205
 
 /* volume */
 #define SOF_TKN_VOLUME_RAMP_STEP_TYPE		250
@@ -119,6 +119,10 @@
 /* Tone */
 #define SOF_TKN_TONE_SAMPLE_RATE		800
 
-#define SOF_TKN_EFFECT_TYPE                     900
+/* Processing Components */
+#define SOF_TKN_PROCESS_TYPE                    900
+
+/* for backward compatibility */
+#define SOF_TKN_EFFECT_TYPE	SOF_TKN_PROCESS_TYPE
 
 #endif
