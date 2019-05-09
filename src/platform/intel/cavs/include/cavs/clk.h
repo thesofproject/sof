@@ -25,43 +25,52 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
+ * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
+ *         Rander Wang <rander.wang@intel.com>
  */
 
-#ifndef __INCLUDE_CAVS_MEM_MAP__
-#define __INCLUDE_CAVS_MEM_MAP__
+/**
+ * \file cavs/clk.h
+ * \brief Clk parameters for run-time clock data, common for cAVS platforms.
+ */
 
-#include <config.h>
+#ifndef __INCLUDE_CAVS_CLK__
+#define __INCLUDE_CAVS_CLK__
+
+#include <sof/cpu.h>
+#include <sof/io.h>
+#include <platform/shim.h>
+#include <cavs/version.h>
 #include <cavs/cpu.h>
 
-#define SRAM_BANK_SIZE			(64 * 1024)
+/** \brief Core(s) settings, up to PLATFORM_CORE_COUNT */
+#define CLK_CPU(x)	(x)
 
-#define EBB_BANKS_IN_SEGMENT		32
+/** \brief SSP clock r-t settings are after the core(s) settings */
+#define CLK_SSP		PLATFORM_CORE_COUNT
 
-#define EBB_SEGMENT_SIZE		EBB_BANKS_IN_SEGMENT
+/* SSP clock run-time data is the last one, so total number is ssp idx +1 */
 
-#define PLATFORM_LPSRAM_EBB_COUNT	CONFIG_LP_MEMORY_BANKS
+/** \brief Total number of clocks */
+#define NUM_CLOCKS	(CLK_SSP + 1)
 
-#define PLATFORM_HPSRAM_EBB_COUNT	CONFIG_HP_MEMORY_BANKS
-
-#define MAX_MEMORY_SEGMENTS		PLATFORM_HPSRAM_SEGMENTS
-
-#define LP_SRAM_SIZE			(CONFIG_LP_MEMORY_BANKS * SRAM_BANK_SIZE)
-
-#define HP_SRAM_SIZE			(CONFIG_HP_MEMORY_BANKS * SRAM_BANK_SIZE)
-
-#define PLATFORM_HPSRAM_SEGMENTS	((PLATFORM_HPSRAM_EBB_COUNT \
-	+ EBB_BANKS_IN_SEGMENT - 1) / EBB_BANKS_IN_SEGMENT)
-
-#define LPSRAM_MASK(ignored)	((1 << PLATFORM_LPSRAM_EBB_COUNT) - 1)
-
-#define HPSRAM_MASK(seg_idx)	((1 << (PLATFORM_HPSRAM_EBB_COUNT \
-	- EBB_BANKS_IN_SEGMENT * seg_idx)) - 1)
-
-#define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * SRAM_BANK_SIZE)
-
-#if !defined(__ASSEMBLER__) && !defined(LINKER)
-void platform_init_memmap(void);
+static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
+{
+	/* set CPU frequency request for CCU */
+#if CAVS_VERSION == CAVS_VERSION_1_5
+	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL, SHIM_CLKCTL_HDCS, 0);
 #endif
+	io_reg_update_bits(SHIM_BASE + SHIM_CLKCTL,
+			   SHIM_CLKCTL_DPCS_MASK(cpu_get_id()),
+			   cpu_freq_enc);
+
+	return 0;
+}
+
+static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
+{
+	return 0;
+}
 
 #endif
