@@ -226,7 +226,8 @@ _xtos_core_restore_nw:
 	/*  TIE state  */
 	addi	a4, a3, CS_SA_ncp
 	xchal_ncp_load	a4, a5,a6,a7,a8		// restore non-coprocessor state
-#if XCHAL_HAVE_CP && (!CONFIG_APOLLOLAKE || defined(XCC))
+/* TODO: remove this constraint after GCC toolchain update */
+#if XCHAL_HAVE_CP && (__XCC__ || !CONFIG_APOLLOLAKE)
 	movi	a6, -1
 	wsr	a6, CPENABLE			// enable all coprocessors
 	rsync
