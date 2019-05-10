@@ -37,7 +37,7 @@ dnl     frames, deadline, priority, core)
 
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-src-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-src-volume-playback.m4,
 	1, 0, 2, s24le,
 	48, 1000, 0, 0)
 
