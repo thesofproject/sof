@@ -126,6 +126,7 @@ do {									\
 		char *msg = "%s " format;				\
 		fprintf(stderr, msg, get_trace_class(comp_class),	\
 			##__VA_ARGS__);					\
+		fprintf(stderr, "\n");					\
 	}								\
 } while (0)
 #endif
