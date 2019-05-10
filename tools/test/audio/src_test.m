@@ -72,7 +72,9 @@ end
 %  meet THD+N requirement.
 t.g_db_tol = 0.1;
 t.thdnf_db_max = -80;
+t.thdnf_db_16b = -60;
 t.dr_db_min = 100;
+t.dr_db_16b = 79;
 t.aap_db_max = -60;
 t.aip_db_max = -60;
 
@@ -90,7 +92,7 @@ t.full_test = 1;       % 0 is quick check only, 1 is full set
 %  visibility set to to 0 only console text is seen. The plots are
 %  exported into plots directory in png format and can be viewed from
 %  there.
-t.close_plot_windows = 0;  % Workaround for visible windows if Octave hangs
+t.close_plot_windows = 1;  % Workaround for visible windows if Octave hangs
 t.visible = 'off';         % Use off for batch tests and on for interactive
 t.delete = 1;              % Set to 0 to inspect the audio data files
 
@@ -214,7 +216,11 @@ test = test_defaults_src(t);
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 test.fu = prm.c_pb*min(t.fs1,t.fs2);
 test.g_db_tol = t.g_db_tol;
-test.g_db_expect = 0;
+if test.fs1 == test.fs2
+	test.g_db_expect = 0;
+else
+	test.g_db_expect = prm.gain;
+end
 
 %% Create input file
 test = g_test_input(test);
@@ -242,8 +248,8 @@ prm = src_param(t.fs1, t.fs2, test.coef_bits);
 
 test.rp_max = prm.rp_tot;      % Max. ripple +/- dB allowed
 test.f_lo = 20;                % For response reporting, measure from 20 Hz
-test.f_hi = min(t.fs1,t.fs2)*prm.c_pb;   % to designed filter upper frequency
-test.f_max = min(t.fs1/2, t.fs2/2); % Measure up to Nyquist frequency
+test.f_hi = 0.99 * min(t.fs1,t.fs2)*prm.c_pb; % to designed filter upper frequency
+test.f_max = 0.99 * min(t.fs1/2, t.fs2/2); % Measure up to Nyquist frequency
 
 %% Create input file
 test = fr_test_input(test);
@@ -271,6 +277,11 @@ function [fail, thdnf] = thdnf_test(t)
 
 %% Reference: AES17 6.3.2 THD+N ratio vs. frequency
 test = test_defaults_src(t);
+if test.bits_in > 16
+	test.thdnf_max = t.thdnf_db_max;
+else
+	test.thdnf_max = t.thdnf_db_16b;
+end
 
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 test.f_start = 20;
@@ -287,7 +298,6 @@ test = test_run_src(test, t);
 
 %% Measure
 test.fs = t.fs2;
-test.thdnf_max = t.thdnf_db_max;
 test = thdnf_test_measure(test);
 thdnf = max(max(test.thdnf));
 fail = test.fail;
@@ -303,7 +313,11 @@ function [fail, dr_db] = dr_test(t)
 
 %% Reference: AES17 6.4.1 Dynamic range
 test = test_defaults_src(t);
-test.dr_db_min = t.dr_db_min;
+if test.bits_in > 16
+	test.dr_db_min = t.dr_db_min;
+else
+	test.dr_db_min = t.dr_db_16b;
+end
 
 %% Create input file
 test = dr_test_input(test);
