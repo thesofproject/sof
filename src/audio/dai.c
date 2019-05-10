@@ -718,6 +718,20 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 */
 		dev->frame_bytes = 4;
 		channel = config->hda.link_dma_ch;
+		trace_dai_with_ids(dev, "dai_config(), channel = %d",
+				   channel);
+
+		/*
+		 * For HDA DAIs, the driver sends the DAI_CONFIG IPC
+		 * during every link hw_params and hw_free, apart from the
+		 * the first DAI_CONFIG IPC sent during topology parsing.
+		 * Free the channel that is currently in use before
+		 * assigning the new one.
+		 */
+		if (dd->chan != DMA_CHAN_INVALID) {
+			dma_channel_put(dd->dma, dd->chan);
+			dd->chan = DMA_CHAN_INVALID;
+		}
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -735,21 +749,24 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		return -EINVAL;
 	}
 
-	if (dd->chan == DMA_CHAN_INVALID)
-		/* get dma channel at first config only */
-		dd->chan = dma_channel_get(dd->dma, channel);
+	if (channel != DMA_CHAN_INVALID) {
+		if (dd->chan == DMA_CHAN_INVALID)
+			/* get dma channel at first config only */
+			dd->chan = dma_channel_get(dd->dma, channel);
 
-	if (dd->chan < 0) {
-		trace_dai_error_with_ids(dev, "dai_config() error: "
-					 "dma_channel_get() failed");
-		return -EIO;
+		if (dd->chan < 0) {
+			trace_dai_error_with_ids(dev, "dai_config() error: "
+						 "dma_channel_get() failed");
+			dd->chan = DMA_CHAN_INVALID;
+			return -EIO;
+		}
+
+		/* set up callback */
+		dma_set_cb(dd->dma, dd->chan,
+			   DMA_CB_TYPE_IRQ | DMA_CB_TYPE_COPY,
+			   dai_dma_cb, dev);
+		dev->is_dma_connected = 1;
 	}
-
-	/* set up callback */
-	dma_set_cb(dd->dma, dd->chan, DMA_CB_TYPE_IRQ | DMA_CB_TYPE_COPY,
-		   dai_dma_cb, dev);
-
-	dev->is_dma_connected = 1;
 
 	return 0;
 }
