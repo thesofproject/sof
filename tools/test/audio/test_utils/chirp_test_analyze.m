@@ -53,7 +53,7 @@ tz = sz(1)/test.fs;
 et = abs(test.cl-tz)/test.cl;
 rms_db = 10*log10(mean(z.^2)) + 20*log10(sqrt(2));
 offs_db = 20*log10(abs(mean(z)));
-sum_max_db = 20*log10(max(abs(s)));
+sum_rms_db = 10*log10(mean(s.^2))
 % Check for proper ratio of out/in samples, minimum level, maximum offset
 % and maximum of sum of channels. The input is such that the channels should
 % sum to zero. A phase difference in channels would cause non-zero output
@@ -68,7 +68,7 @@ else if (min(rms_db) < -3) && (test.fs2 + 1 > test.fs1)
      else if max(offs_db) > -40
 		  fail = 1;
 		  fprintf('Failed output chirp DC offset.\n');
-	  else if (sum_max_db > -100) && (mod(test.nch, 2) == 0)
+	  else if (sum_rms_db > -80) && (mod(test.nch, 2) == 0)
 		       fail = 1;
 		       fprintf('Failed output chirp channels phase.\n');
 	       else
