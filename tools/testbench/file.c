@@ -580,6 +580,8 @@ static int file_copy(struct comp_dev *dev)
 	struct comp_buffer *buffer;
 	struct file_comp_data *cd = comp_get_drvdata(dev);
 	int ret = 0, bytes;
+	int snk_frames;
+	int src_frames;
 
 	switch (cd->fs.mode) {
 	case FILE_READ:
@@ -588,9 +590,10 @@ static int file_copy(struct comp_dev *dev)
 					 source_list);
 
 		/* test sink has enough free frames */
-		if (buffer->free >= cd->period_bytes && !cd->fs.reached_eof) {
+		snk_frames = buffer->free / comp_frame_bytes(buffer->sink);
+		if (snk_frames > 0 && !cd->fs.reached_eof) {
 			/* read PCM samples from file */
-			ret = cd->file_func(dev, buffer, NULL, dev->frames);
+			ret = cd->file_func(dev, buffer, NULL, snk_frames);
 
 			/* update sink buffer pointers */
 			bytes = dev->params.sample_container_bytes;
@@ -605,9 +608,10 @@ static int file_copy(struct comp_dev *dev)
 					 struct comp_buffer, sink_list);
 
 		/* test source has enough free frames */
-		if (buffer->avail >= cd->period_bytes) {
+		src_frames = buffer->avail / comp_frame_bytes(buffer->source);
+		if (src_frames > 0) {
 			/* write PCM samples into file */
-			ret = cd->file_func(dev, NULL, buffer, dev->frames);
+			ret = cd->file_func(dev, NULL, buffer, src_frames);
 
 			/* update source buffer pointers */
 			bytes = dev->params.sample_container_bytes;
