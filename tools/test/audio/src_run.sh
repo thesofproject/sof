@@ -10,7 +10,7 @@ FN_IN=$5
 FN_OUT=$6
 
 # The HOST_ROOT path need to be retrived from SOFT .configure command
-HOST_ROOT=../../../build_host/install/
+HOST_ROOT=../../../tools/testbench/build_testbench/install
 HOST_EXE=$HOST_ROOT/bin/testbench
 HOST_LIB=$HOST_ROOT/lib
 
@@ -18,13 +18,14 @@ HOST_LIB=$HOST_ROOT/lib
 INFMT=s${BITS_IN}le
 OUTFMT=s${BITS_IN}le
 MCLK=24576k
-tplg1=../../build_tools/test/topology/test-playback-ssp2-mclk-0-I2S-
+tplg1=../../test/topology/test-playback-ssp2-mclk-0-I2S-
 tplg2=${COMP}-${INFMT}-${OUTFMT}-48k-${MCLK}-nocodec.tplg
 TPLG=${tplg1}${tplg2}
 
 # Alternatively use platform specific topologies
-# though currently test fails with this.
-#TPLG=../../topology/sof-apl-src-pcm512x.tplg
+# though currently test works only with s24 data due
+# to not fully set volume component in the pipeline.
+#TPLG=../../build_tools/topology/sof-apl-src-pcm512x.tplg
 
 # If binary test vectors
 if [ ${FN_IN: -4} == ".raw" ]; then
