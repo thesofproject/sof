@@ -55,8 +55,11 @@ int memset_s(void *dest, size_t dest_size,
 	     int data, size_t count);
 int memcpy_s(void *dest, size_t dest_size,
 	     const void *src, size_t src_size);
+
+#if __XCC__ && !CONFIG_LIBRARY
 void *__vec_memcpy(void *dst, const void *src, size_t len);
 void *__vec_memset(void *dest, int data, size_t src_size);
+#endif
 
 static inline int arch_memcpy_s(void *dest, size_t dest_size,
 				const void *src, size_t src_size)
@@ -71,13 +74,11 @@ static inline int arch_memcpy_s(void *dest, size_t dest_size,
 	if (src_size > dest_size)
 		return -EINVAL;
 
-	/* can't be use until full context switch will be supported */
-/* #if __XCC__ && !CONFIG_LIBRARY
- *	__vec_memcpy(dest, src, src_size);
- * #else
- */
+#if __XCC__ && !CONFIG_LIBRARY
+	__vec_memcpy(dest, src, src_size);
+#else
 	memcpy(dest, src, src_size);
-/* #endif */
+#endif
 
 	return 0;
 }
