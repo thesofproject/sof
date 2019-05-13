@@ -339,13 +339,20 @@ if(MEU_PATH)
 		set(MEU_OPENSSL "/usr/bin/openssl")
 	endif()
 
+	if(NOT DEFINED MEU_FLAGS)
+		set(MEU_FLAGS
+			-f ${MEU_PATH}/generic_meu_conf.xml
+			-mnver 0.0.0.0
+			-key ${MEU_PRIVATE_KEY}
+			-stp ${MEU_OPENSSL}
+		)
+	endif()
+
 	add_custom_target(
 		run_meu
 		COMMAND ${MEU_PATH}/meu -w ./ -s sof-${fw_name}
-			-key ${MEU_PRIVATE_KEY}
-			-stp ${MEU_OPENSSL}
-			-f ${MEU_PATH}/generic_meu_conf.xml
-			-mnver 0.0.0.0 -o sof-${fw_name}.ri
+			${MEU_FLAGS}
+			-o sof-${fw_name}.ri
 		DEPENDS run_rimage
 		VERBATIM
 		USES_TERMINAL
