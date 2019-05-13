@@ -134,6 +134,9 @@ static void ipc_irq_handler(void *arg)
 		/* unmask Done interrupt */
 		ipc_write(IPC_DIPCCTL,
 			  ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCIDIE);
+
+		/* send next message to host */
+		ipc_process_msg_queue();
 	}
 }
 
