@@ -146,6 +146,12 @@ if(BUILD_UNIT_TESTS)
 	return()
 endif()
 
+# for FW just install uapi folder
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/include/uapi
+	DESTINATION include
+	PATTERN "*.h"
+)
+
 add_library(sof_ld_flags INTERFACE)
 add_library(sof_ld_scripts INTERFACE)
 

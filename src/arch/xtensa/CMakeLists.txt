@@ -367,12 +367,18 @@ else()
 endif()
 
 add_custom_target(
-	bin
+	bin ALL
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ri ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
 	COMMAND ${CMAKE_COMMAND} -E copy sof-${fw_name}.ldc ${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
 	DEPENDS run_meu
 	VERBATIM
 	USES_TERMINAL
+)
+
+install(
+	FILES ${PROJECT_BINARY_DIR}/sof-${fw_name}.ri
+		${PROJECT_BINARY_DIR}/sof-${fw_name}.ldc
+	DESTINATION bin
 )
 
 if(CONFIG_BUILD_VM_ROM)
