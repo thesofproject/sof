@@ -275,6 +275,11 @@ static int hda_dma_wait_for_buffer_full(struct dma *dma,
 
 	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF)) {
 		if (deadline < platform_timer_get(platform_timer)) {
+			/* safe check in case we've got preempted after read */
+			if (host_dma_reg_read(dma, chan->index, DGCS) &
+			    DGCS_BF)
+				return 0;
+
 			trace_hddma_error("hda-dmac: %d wait for buffer full "
 					  "timeout", dma->plat_data.id);
 			return -ETIME;
@@ -293,6 +298,11 @@ static int hda_dma_wait_for_buffer_empty(struct dma *dma,
 
 	while (host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BNE) {
 		if (deadline < platform_timer_get(platform_timer)) {
+			/* safe check in case we've got preempted after read */
+			if (!(host_dma_reg_read(dma, chan->index, DGCS) &
+			    DGCS_BNE))
+				return 0;
+
 			trace_hddma_error("hda-dmac: %d wait for buffer empty "
 					  "timeout", dma->plat_data.id);
 			return -ETIME;
