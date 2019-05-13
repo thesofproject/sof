@@ -343,6 +343,7 @@ if(MEU_PATH)
 			-mnver 0.0.0.0
 			-key ${MEU_PRIVATE_KEY}
 			-stp ${MEU_OPENSSL}
+			${MEU_EXTRA_FLAGS}
 		)
 	endif()
 
