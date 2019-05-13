@@ -155,7 +155,7 @@ struct sof;
 #define PLATFORM_DEFAULT_DELAY	12
 
 /* minimal L1 exit time in cycles */
-#define PLATFORM_FORCE_L1_EXIT_TIME	585
+#define PLATFORM_FORCE_L1_EXIT_TIME	800
 
 /* the SSP port fifo depth */
 #define SSP_FIFO_DEPTH		16
