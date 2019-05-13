@@ -50,15 +50,13 @@
 
 #ifdef CONFIG_DEBUG
 
-#define DEBUG_SET_FW_READY_FLAGS	\
-{					\
-	.bits = {			\
-		.build = 1,		\
-		.locks = DEBUG_LOCKS,	\
-		.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
-		.gdb = DEBUG_GDB,	\
-	},				\
-}
+#define DEBUG_SET_FW_READY_FLAGS				\
+(								\
+	SOF_IPC_INFO_BUILD |					\
+	(DEBUG_LOCKS ? SOF_IPC_INFO_LOCKS : 0) |		\
+	(DEBUG_LOCKS_VERBOSE ? SOF_IPC_INFO_LOCKSV : 0) |	\
+	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)			\
+)
 
 /* dump file and line to start of mailbox or shared memory */
 #define dbg() \
@@ -140,15 +138,12 @@
 
 #else
 
-#define DEBUG_SET_FW_READY_FLAGS	\
-{					\
-	.bits = {			\
-		.build = 0,		\
-		.locks = DEBUG_LOCKS,	\
-		.locks_verbose = DEBUG_LOCKS_VERBOSE,	\
-		.gdb = DEBUG_GDB,	\
-	},				\
-}
+#define DEBUG_SET_FW_READY_FLAGS				\
+(								\
+	(DEBUG_LOCKS ? SOF_IPC_INFO_LOCKS : 0) |		\
+	(DEBUG_LOCKS_VERBOSE ? SOF_IPC_INFO_LOCKSV : 0) |	\
+	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)			\
+)
 
 #define dbg()
 #define dbg_at(__x)

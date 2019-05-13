@@ -78,7 +78,7 @@ static const struct sof_ipc_fw_ready ready
 		.tag = SOF_TAG,
 		.abi_version = SOF_ABI_VERSION,
 	},
-	.debug = DEBUG_SET_FW_READY_FLAGS
+	.flags = DEBUG_SET_FW_READY_FLAGS
 };
 
 #define NUM_BYT_WINDOWS		6
