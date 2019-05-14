@@ -641,7 +641,7 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 
 	/* if first module is executable then write before manifest */
 	if (image->adsp->exec_boot_ldr) {
-		man_module = sof_man_get_module(desc, 0);
+		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(0);
 		module = &image->module[0];
 
 		fprintf(stdout, "Module: %s used as executable header\n",
@@ -661,7 +661,7 @@ static int man_create_modules(struct image *image, struct sof_man_fw_desc *desc,
 	}
 
 	for (; i < image->num_modules; i++) {
-		man_module = sof_man_get_module(desc, i - offset);
+		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i - offset);
 		module = &image->module[i];
 
 		if (i == 0)
@@ -688,7 +688,7 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 	int i;
 
 	for (i = 0; i < image->num_modules; i++) {
-		man_module = sof_man_get_module(desc, i);
+		man_module = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
 
 		if (image->adsp->exec_boot_ldr && i == 0) {
 			fprintf(stdout, " module: no need to hash %s\n as its exec header\n",
