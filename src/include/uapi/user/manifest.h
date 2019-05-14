@@ -215,19 +215,11 @@ struct sof_man_module_manifest {
 	uint32_t text_size;
 };
 
-/**
- * \brief Utility to get module pointer from position.
- * \param [in,out] desc FW descriptor in manifest.
- * \param [in] index Index of the module.
- * \return Pointer to module descriptor.
- *
- * Note that index is not verified against OOB.
+/*
+ * Module offset in manifest.
  */
-static inline struct sof_man_module *sof_man_get_module(
-	struct sof_man_fw_desc *desc, int index)
-{
-	return (void *)desc + sizeof(struct sof_man_fw_header) +
-			index * sizeof(struct sof_man_module);
-}
+#define SOF_MAN_MODULE_OFFSET(index) \
+	(sizeof(struct sof_man_fw_header) + \
+		(index) * sizeof(struct sof_man_module))
 
 #endif
