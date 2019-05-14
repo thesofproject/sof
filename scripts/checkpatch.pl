@@ -5683,6 +5683,19 @@ sub process {
 			}
 		}
 
+# check for memcpy uses that should be memcpy_s
+		if ($line =~ /memcpy\s*\(.*/) {
+			my $fmt = get_quoted_string($line, $rawline);
+			$fmt =~ s/%%//g;
+			if ($fmt !~ /%/) {
+				if (WARN("PREFER_MEMCPY_S",
+					 "Use safe version of memcpy - memcpy_s whenever possible\n" . $herecurr) &&
+				    $fix) {
+					$fixed[$fixlinenr] =~ s/memcpy\b/memcpy_s/;
+				}
+			}
+		}
+
 		# check for vsprintf extension %p<foo> misuses
 		if ($^V && $^V ge 5.10.0 &&
 		    defined $stat &&
