@@ -493,8 +493,6 @@ def CoreDumpFactory(dsp_arch):
 				]
 			] + [
 				("a", dsp_arch.bitness * c_uint32)
-			] + [
-				("stack", c_uint32)
 			]
 
 		def __init__(self, columncount):
