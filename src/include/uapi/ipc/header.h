@@ -237,11 +237,17 @@ struct sof_ipc_compound_hdr {
 	uint32_t count;		/**< count of 0 means end of compound sequence */
 } __attribute__((packed));
 
+/**
+ * OOPS header architecture specific data.
+ */
 struct sof_ipc_dsp_oops_arch_hdr {
 	uint32_t arch;		/* Identifier of architecture */
 	uint32_t totalsize;	/* Total size of oops message */
 } __attribute__((packed));
 
+/**
+ * OOPS header platform specific data.
+ */
 struct sof_ipc_dsp_oops_plat_hdr {
 	uint32_t configidhi;	/* ConfigID hi 32bits */
 	uint32_t configidlo;	/* ConfigID lo 32bits */
