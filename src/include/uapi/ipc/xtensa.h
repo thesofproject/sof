@@ -73,7 +73,7 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t interrupt;
 	uint32_t sar;
 	uint32_t debugcause;
-	uint32_t widnowbase;
+	uint32_t windowbase;
 	uint32_t windowstart;
 	uint32_t excsave1;
 	uint32_t ar[];
