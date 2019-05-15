@@ -55,7 +55,7 @@ set(TPLGS
 	"sof-cml-rt5682\;sof-whl-rt5682\;-DPLATFORM=whl"
 	"sof-cml-rt5682\;sof-icl-rt5682\;-DPLATFORM=icl"
 	"sof-cml-src-rt5682\;sof-cml-src-rt5682"
-	"sof-cml-demux-rt5682\;sof-cml-demux-rt5682"
+	"sof-cml-demux-rt5682\;sof-cml-demux-rt5682\;-DPLATFORM=whl"
 	"sof-cnl-nocodec\;sof-cnl-nocodec"
 	"sof-cml-rt5682-max98357a\;sof-cml-rt5682-max98357a\;-DPLATFORM=cml"
 )
