@@ -45,10 +45,6 @@
 #include <sof/audio/eq_iir/iir.h>
 #include <uapi/user/eq.h>
 
-#ifdef MODULE_TEST
-#include <stdio.h>
-#endif
-
 #define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 #define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 #define trace_eq_error(__e, ...) \

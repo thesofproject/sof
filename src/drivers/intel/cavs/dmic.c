@@ -39,10 +39,6 @@
 
 #include <sof/audio/coefficients/pdm_decim/pdm_decim_table.h>
 
-#if defined MODULE_TEST
-#include <stdio.h>
-#endif
-
 #define DMIC_MAX_MODES 50
 
 /* HW FIR pipeline needs 5 additional cycles per channel for internal
@@ -149,42 +145,6 @@ static const uint32_t coef_base_b[4] = {PDM0_COEFFICIENT_B, PDM1_COEFFICIENT_B,
 static struct sof_ipc_dai_dmic_params *dmic_prm[DMIC_HW_FIFOS];
 static int dmic_active_fifos;
 
-#if defined MODULE_TEST
-#define IO_BYTES_GLOBAL  (PDM0 - OUTCONTROL0)
-#define IO_BYTES_MIDDLE  (PDM1 - PDM0)
-#define IO_BYTES_LAST    (PDM0_COEFFICIENT_B + PDM_COEF_RAM_B_LENGTH - PDM0)
-#define IO_BYTES  (((DMIC_HW_CONTROLLERS) - 1) * (IO_BYTES_MIDDLE) \
-				+ (IO_BYTES_LAST) + (IO_BYTES_GLOBAL))
-#define IO_LENGTH ((IO_BYTES) >> 2)
-
-static uint32_t dmic_io[IO_LENGTH];
-
-static void dmic_write(struct dai *dai, uint32_t reg, uint32_t value)
-{
-	printf("W %04x %08x\n", reg, value);
-	dmic_io[reg >> 2] = value;
-}
-
-static uint32_t dmic_read(struct dai *dai, uint32_t reg)
-{
-	uint32_t value = dmic_io[reg >> 2];
-
-	printf("R %04x %08x\n", reg, value);
-	return value;
-}
-
-static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
-			     uint32_t value)
-{
-	uint32_t new_value;
-	uint32_t old_value = dmic_io[reg >> 2];
-
-	new_value = (old_value & (~mask)) | value;
-	dmic_io[reg >> 2] = new_value;
-	printf("W %04x %08x\n", reg, new_value);
-}
-#else
-
 static void dmic_write(struct dai *dai, uint32_t reg, uint32_t value)
 {
 	io_reg_write(dai_base(dai) + reg, value);
@@ -200,7 +160,6 @@ static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 {
 	io_reg_update_bits(dai_base(dai) + reg, mask, value);
 }
-#endif
 
 /* this ramps volume changes over time */
 static uint64_t dmic_work(void *data)
@@ -406,10 +365,6 @@ static void find_modes(struct decim_modes *modes, uint32_t fs, int di)
 	}
 
 	modes->num_of_modes = i;
-
-#if defined MODULE_TEST
-	printf("# Found %d modes\n", i);
-#endif
 }
 
 /* The previous raw modes list contains sane configuration possibilities. When
@@ -568,20 +523,6 @@ static int fir_coef_scale(int32_t *fir_scale, int *fir_shift, int add_shift,
 		*fir_scale = (fir_gain << -shift);
 	else
 		*fir_scale = (fir_gain >> shift);
-
-#if defined MODULE_TEST
-	printf("# FIR gain need Q28 = %d (%f)\n", fir_gain,
-	       Q_CONVERT_QTOF(fir_gain, 28));
-	printf("# FIR max coef no gain Q31 = %d (%f)\n", amax,
-	       Q_CONVERT_QTOF(amax, 31));
-	printf("# FIR max coef with gain Q28 = %d (%f)\n", new_amax,
-	       Q_CONVERT_QTOF(new_amax, 28));
-	printf("# FIR coef norm rshift = %d\n", shift);
-	printf("# FIR coef old rshift = %d\n", add_shift);
-	printf("# FIR coef new rshift = %d\n", *fir_shift);
-	printf("# FIR coef scaler Q28 = %d (%f)\n", *fir_scale,
-	       Q_CONVERT_QTOF(*fir_scale, 28));
-#endif
 
 	return 0;
 }
@@ -890,13 +831,6 @@ static int configure_registers(struct dai *dai,
 	int source[OUTCONTROLX_IPM_NUMSOURCES];
 #endif
 
-#if defined MODULE_TEST
-		int32_t fir_a_max = 0;
-		int32_t fir_a_min = 0;
-		int32_t fir_b_max = 0;
-		int32_t fir_b_min = 0;
-#endif
-
 	/* pdata is set by dmic_probe(), error if it has not been set */
 	if (!pdata) {
 		trace_dmic_error("configure_registers() error: pdata not set");
@@ -1096,10 +1030,6 @@ static int configure_registers(struct dai *dai,
 			cu = FIR_COEF_A(ci);
 			dmic_write(dai, coef_base_a[i]
 				   + ((length - j - 1) << 2), cu);
-#if defined MODULE_TEST
-			fir_a_max = MAX(fir_a_max, ci);
-			fir_a_min = MIN(fir_a_min, ci);
-#endif
 		}
 
 		/* Write coef RAM B with scaled coefficient in reverse order */
@@ -1111,23 +1041,8 @@ static int configure_registers(struct dai *dai,
 			cu = FIR_COEF_B(ci);
 			dmic_write(dai, coef_base_b[i]
 				   + ((length - j - 1) << 2), cu);
-#if defined MODULE_TEST
-			fir_b_max = MAX(fir_b_max, ci);
-			fir_b_min = MIN(fir_b_min, ci);
-#endif
 		}
 	}
-
-#if defined MODULE_TEST
-	printf("# FIR A max Q19 = %d (%f)\n", fir_a_max,
-	       Q_CONVERT_QTOF(fir_a_max, 19));
-	printf("# FIR A min Q19 = %d (%f)\n", fir_a_min,
-	       Q_CONVERT_QTOF(fir_a_min, 19));
-	printf("# FIR B max Q19 = %d (%f)\n", fir_b_max,
-	       Q_CONVERT_QTOF(fir_b_max, 19));
-	printf("# FIR B min Q19 = %d (%f)\n", fir_b_min,
-	       Q_CONVERT_QTOF(fir_b_min, 19));
-#endif
 
 	return 0;
 }
