@@ -32,7 +32,7 @@
  * \file audio/selector.c
  * \brief Audio channel selection component. In case 1 output channel is
  * \brief selected in topology the component provides the selected channel on
- * \brief ouput. In case 2 or 4 channels are selected on output the component
+ * \brief output. In case 2 or 4 channels are selected on output the component
  * \brief works in a passthrough mode.
  * \authors Lech Betlej <lech.betlej@linux.intel.com>
  */
@@ -186,7 +186,6 @@ static int selector_params(struct comp_dev *dev)
 	return PPL_STATUS_PATH_STOP;
 }
 
-
 /**
  * \brief Sets selector control command.
  * \param[in,out] dev Selector base component device.
@@ -201,13 +200,14 @@ static int selector_ctrl_set_data(struct comp_dev *dev,
 	int ret = 0;
 
 	switch (cdata->cmd) {
-		case SOF_CTRL_CMD_BINARY:
+	case SOF_CTRL_CMD_BINARY:
 		trace_selector("selector_ctrl_set_data(), SOF_CTRL_CMD_BINARY");
 
 		cfg = (struct sof_sel_config *)cdata->data->data;
 		/* Just copy the configuration & verify input params.*/
 		ret = sel_set_channel_values(cd, cfg->in_channels_count,
-				  cfg->out_channels_count, cfg->sel_channel);
+					     cfg->out_channels_count,
+					     cfg->sel_channel);
 		break;
 	default:
 		trace_selector_error("selector_ctrl_set_cmd() error: "
@@ -239,10 +239,8 @@ static int selector_ctrl_get_data(struct comp_dev *dev,
 
 		/* Copy back to user space */
 		assert(!memcpy_s(cdata->data->data, ((struct sof_abi_hdr *)
-			      (cdata->data))->size, &(cd->config),
-			      sizeof(cd->config)));
-		if (ret < 0)
-			return ret;
+				 (cdata->data))->size, &cd->config,
+				 sizeof(cd->config)));
 
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = sizeof(cd->config);
@@ -309,7 +307,6 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	ret = comp_set_state(dev, cmd);
 	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
 }
-
 
 /**
  * \brief Copies and processes stream data.

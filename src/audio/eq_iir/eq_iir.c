@@ -509,8 +509,8 @@ static struct comp_dev *eq_iir_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	iir = (struct sof_ipc_comp_process *)&dev->comp;
-	assert(!memcpy_s(iir, sizeof(*iir),
-		       ipc_iir, sizeof(struct sof_ipc_comp_process)));
+	assert(!memcpy_s(iir, sizeof(*iir), ipc_iir,
+			 sizeof(struct sof_ipc_comp_process)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -588,8 +588,9 @@ static int iir_cmd_get_data(struct comp_dev *dev,
 			    bs > max_size)
 				return -EINVAL;
 			assert(!memcpy_s(cdata->data->data,
-			   ((struct sof_abi_hdr *)
-			   (cdata->data))->size, cd->config, bs));
+					 ((struct sof_abi_hdr *)
+					 (cdata->data))->size, cd->config,
+					 bs));
 
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
@@ -922,7 +923,6 @@ struct comp_driver comp_eq_iir = {
 		.cache = eq_iir_cache,
 	},
 };
-
 
 static void sys_comp_eq_iir_init(void)
 {

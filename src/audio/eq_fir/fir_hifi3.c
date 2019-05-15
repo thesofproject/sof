@@ -226,7 +226,6 @@ void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
 			AE_S32_L_XC(d0, y0, inc_2nch_s);
 			AE_S32_L_XC(d1, y1, inc_2nch_s);
 		}
-
 	}
 }
 

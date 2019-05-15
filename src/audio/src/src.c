@@ -60,9 +60,12 @@
 #include <stdio.h>
 #endif
 
-#define trace_src(__e, ...) trace_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define tracev_src(__e, ...) tracev_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
-#define trace_src_error(__e, ...) trace_error(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
+#define trace_src(__e, ...) \
+	trace_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
+#define tracev_src(__e, ...) \
+	tracev_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
+#define trace_src_error(__e, ...) \
+	trace_error(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
 
 /* The FIR maximum lengths are per channel so need to multiply them */
 #define MAX_FIR_DELAY_SIZE_XNCH (PLATFORM_MAX_CHANNELS * MAX_FIR_DELAY_SIZE)
@@ -539,7 +542,7 @@ static struct comp_dev *src_new(struct sof_ipc_comp *comp)
 	src = (struct sof_ipc_comp_src *)&dev->comp;
 
 	assert(!memcpy_s(src, sizeof(*src), ipc_src,
-	    sizeof(struct sof_ipc_comp_src)));
+			 sizeof(struct sof_ipc_comp_src)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -616,8 +619,8 @@ static int src_params(struct comp_dev *dev)
 	err = src_buffer_lengths(&cd->param, cd->source_rate, cd->sink_rate,
 				 params->channels, cd->source_frames);
 	if (err < 0) {
-		trace_src_error(
-			"src_params() error: src_buffer_lengths() failed");
+		trace_src_error("src_params() error: src_buffer_lengths() "
+				"failed");
 		return err;
 	}
 
@@ -844,9 +847,8 @@ static int src_prepare(struct comp_dev *dev)
 		 * data. Change it to 16 bit version here if source and sink
 		 * rates are equal.
 		 */
-		if (cd->source_rate == cd->sink_rate) {
+		if (cd->source_rate == cd->sink_rate)
 			cd->src_func = src_copy_s16;
-		}
 		break;
 	case SOF_IPC_FRAME_S24_4LE:
 		cd->data_shift = 8;

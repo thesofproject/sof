@@ -356,9 +356,8 @@ static int eq_fir_setup(struct comp_data *cd, int nch)
 	fir_delay = cd->fir_delay;
 	for (i = 0; i < nch; i++) {
 		resp = assign_response[i];
-		if (resp >= 0) {
+		if (resp >= 0)
 			fir_init_delay(&fir[i], &fir_delay);
-		}
 	}
 
 	return 0;
@@ -415,8 +414,8 @@ static struct comp_dev *eq_fir_new(struct sof_ipc_comp *comp)
 		return NULL;
 
 	fir = (struct sof_ipc_comp_process *)&dev->comp;
-	assert(!memcpy_s(fir, sizeof(*fir),
-		       ipc_fir, sizeof(struct sof_ipc_comp_process)));
+	assert(!memcpy_s(fir, sizeof(*fir), ipc_fir,
+			 sizeof(struct sof_ipc_comp_process)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {

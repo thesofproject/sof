@@ -36,7 +36,7 @@
 
 #include <sof/audio/selector.h>
 
-/** 
+/**
  * \brief Channel selection for 16 bit, 1 channel data format.
  * \param[in,out] dev Selector base component device.
  * \param[in,out] sink Destination buffer.
@@ -60,7 +60,7 @@ static void sel_s16le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/** 
+/**
  * \brief Channel selection for 32 bit, 1 channel data format.
  * \param[in,out] dev Selector base component device.
  * \param[in,out] sink Destination buffer.
@@ -84,7 +84,7 @@ static void sel_s32le_1ch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/** 
+/**
  * \brief Channel selection for 16 bit, at least 2 channels data format.
  * \param[in,out] dev Selector base component device.
  * \param[in,out] sink Destination buffer.
@@ -102,7 +102,8 @@ static void sel_s16le_nch(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t channel;
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < cd->config.in_channels_count; channel++) {
+		for (channel = 0; channel < cd->config.in_channels_count;
+		     channel++) {
 			src = buffer_read_frag_s16(source, j);
 			dest = buffer_write_frag_s16(sink, j);
 			*dest = *src;
@@ -111,7 +112,7 @@ static void sel_s16le_nch(struct comp_dev *dev, struct comp_buffer *sink,
 	}
 }
 
-/** 
+/**
  * \brief Channel selection for 32 bit, at least 2 channels data format.
  * \param[in,out] dev Selector base component device.
  * \param[in,out] sink Destination buffer.
@@ -129,7 +130,8 @@ static void sel_s32le_nch(struct comp_dev *dev, struct comp_buffer *sink,
 	uint32_t channel;
 
 	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < cd->config.in_channels_count; channel++) {
+		for (channel = 0; channel < cd->config.in_channels_count;
+		     channel++) {
 			src = buffer_read_frag_s32(source, j);
 			dest = buffer_write_frag_s32(sink, j);
 			*dest = *src;
