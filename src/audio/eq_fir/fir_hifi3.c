@@ -32,15 +32,15 @@
 #include <stddef.h>
 #include <errno.h>
 #include <sof/audio/component.h>
+#include <sof/audio/eq_fir/fir_config.h>
 #include <sof/audio/format.h>
 #include <uapi/user/eq.h>
-#include "fir_config.h"
 
 #if FIR_HIFI3
 
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>
-#include "fir_hifi3.h"
+#include <sof/audio/eq_fir/fir_hifi3.h>
 
 /*
  * EQ FIR algorithm code

@@ -28,22 +28,22 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef FIR_HIFI3_H
-#define FIR_HIFI3_H
+#ifndef FIR_HIFI2EP_H
+#define FIR_HIFI2EP_H
 
-#include "fir_config.h"
+#include <sof/audio/eq_fir/fir_config.h>
 
-#if FIR_HIFI3
+#if FIR_HIFIEP
 
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
 #include <sof/audio/format.h>
 
 struct fir_state_32x16 {
-	ae_int32 *rwp; /* Circular read and write pointer */
-	ae_int32 *delay; /* Pointer to FIR delay line */
-	ae_int32 *delay_end; /* Pointer to FIR delay line end */
-	ae_f16x4 *coef; /* Pointer to FIR coefficients */
+	ae_p24x2f *rwp; /* Circular read and write pointer */
+	ae_p24f *delay; /* Pointer to FIR delay line */
+	ae_p24f *delay_end; /* Pointer to FIR delay line end */
+	ae_p16x2s *coef; /* Pointer to FIR coefficients */
 	int taps; /* Number of FIR taps */
 	int length; /* Number of FIR taps plus input length (even) */
 	int in_shift; /* Amount of right shifts at input */
@@ -57,39 +57,35 @@ size_t fir_init_coef(struct fir_state_32x16 *fir,
 
 void fir_init_delay(struct fir_state_32x16 *fir, int32_t **data);
 
-void eq_fir_s16_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch);
+void eq_fir_s16_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		       struct comp_buffer *sink, int frames, int nch);
 
-void eq_fir_s24_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch);
+void eq_fir_s24_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		       struct comp_buffer *sink, int frames, int nch);
 
-void eq_fir_s32_hifi3(struct fir_state_32x16 *fir, struct comp_buffer *source,
-		      struct comp_buffer *sink, int frames, int nch);
+void eq_fir_s32_hifiep(struct fir_state_32x16 fir[], struct comp_buffer *source,
+		       struct comp_buffer *sink, int frames, int nch);
 
-void eq_fir_2x_s16_hifi3(struct fir_state_32x16 *fir,
-			 struct comp_buffer *source, struct comp_buffer *sink,
-			 int frames, int nch);
+void eq_fir_2x_s16_hifiep(struct fir_state_32x16 fir[],
+			  struct comp_buffer *source,
+			  struct comp_buffer *sink,
+			  int frames, int nch);
 
-void eq_fir_2x_s24_hifi3(struct fir_state_32x16 *fir,
-			 struct comp_buffer *source, struct comp_buffer *sink,
-			 int frames, int nch);
+void eq_fir_2x_s24_hifiep(struct fir_state_32x16 fir[],
+			  struct comp_buffer *source,
+			  struct comp_buffer *sink,
+			  int frames, int nch);
 
-void eq_fir_2x_s32_hifi3(struct fir_state_32x16 *fir,
-			 struct comp_buffer *source, struct comp_buffer *sink,
-			 int frames, int nch);
+void eq_fir_2x_s32_hifiep(struct fir_state_32x16 fir[],
+			  struct comp_buffer *source,
+			  struct comp_buffer *sink,
+			  int frames, int nch);
 
 /* Setup circular buffer for FIR input data delay */
-static inline void fir_core_setup_circular(struct fir_state_32x16 *fir)
+static inline void fir_hifiep_setup_circular(struct fir_state_32x16 *fir)
 {
 	AE_SETCBEGIN0(fir->delay);
 	AE_SETCEND0(fir->delay_end);
-}
-
-/* Setup circular for component buffer */
-static inline void fir_comp_setup_circular(struct comp_buffer *buffer)
-{
-	AE_SETCBEGIN0(buffer->addr);
-	AE_SETCEND0(buffer->end_addr);
 }
 
 void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
@@ -102,8 +98,8 @@ void fir_get_lrshifts(struct fir_state_32x16 *fir, int *lshift,
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x,
-				   ae_int32 *y, int shift)
+static inline void fir_32x16_hifiep(struct fir_state_32x16 *fir, int32_t x,
+				    int32_t *y, int lshift, int rshift)
 {
 	/* This function uses
 	 * 1x 56 bit registers Q,
@@ -111,15 +107,14 @@ static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x,
 	 * 3x integers
 	 * 2x address pointers,
 	 */
-	ae_f64 a;
-	ae_valign u;
-	ae_f32x2 data2;
-	ae_f16x4 coefs;
-	ae_f32x2 d0;
-	ae_f32x2 d1;
+	ae_q56s a;
+	ae_p24x2f data2;
+	ae_p24x2f coef2;
+	ae_p24x2f d0;
+	ae_p24x2f d1;
 	int i;
-	ae_int32 *dp = fir->rwp;
-	ae_int16x4 *coefp = (ae_int16x4 *)fir->coef;
+	ae_p24x2f *dp = fir->rwp;
+	ae_p16x2s *coefp = fir->coef;
 	const int taps_div_4 = fir->taps >> 2;
 	const int inc = sizeof(int32_t);
 
@@ -130,10 +125,8 @@ static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x,
 	}
 
 	/* Write sample to delay */
-	AE_S32_L_XC(x, fir->rwp, -sizeof(int32_t));
-
-	/* Prime the coefficients stream */
-	u = AE_LA64_PP(coefp);
+	a = AE_CVTQ48A32S(x);
+	AE_SQ32F_C(a, (ae_q32s *)fir->rwp, -sizeof(int32_t));
 
 	/* Note: If the next function is converted to handle two samples
 	 * per call the data load can be done with single instruction
@@ -141,38 +134,37 @@ static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x,
 	 */
 	a = AE_ZEROQ56();
 	for (i = 0; i < taps_div_4; i++) {
-		/* Load four coefficients. Coef_3 contains tap h[n],
-		 * coef_2 contains h[n+1], coef_1 contains h[n+2], and
-		 * coef_0 contains h[n+3];
+		/* Load two coefficients. Coef2_h contains tap coefp[n]
+		 * and coef2_l contains coef[n+1].
 		 */
-		AE_LA16X4_IP(coefs, u, coefp);
+		coef2 = AE_LP16X2F_I(coefp, 0);
 
 		/* Load two data samples and pack to d0 to data2_h and
 		 * d1 to data2_l.
 		 */
-		AE_L32_XC(d0, dp, inc);
-		AE_L32_XC(d1, dp, inc);
-		data2 = AE_SEL32_LL(d0, d1);
+		AE_LP24F_C(d0, dp, inc);
+		AE_LP24F_C(d1, dp, inc);
+		data2 = AE_SELP24_LL(d0, d1);
 
 		/* Accumulate
-		 * a += data2_h * coefs_3 + data2_l * coefs_2. The Q1.31
+		 * data2_h * coef2_h + data2_l * coef2_l. The Q1.31
 		 * data and Q1.15 coefficients are used as 24 bits as
 		 * Q1.23 values.
 		 */
-		AE_MULAAFD32X16_H3_L2(a, data2, coefs);
+		AE_MULAAFP24S_HH_LL(a, data2, coef2);
 
-		/* Repeat the same for next two taps and increase coefp.
-		 * a += data2_h * coefs_1 + data2_l * coefs_0.
-		 */
-		AE_L32_XC(d0, dp, inc);
-		AE_L32_XC(d1, dp, inc);
-		data2 = AE_SEL32_LL(d0, d1);
-		AE_MULAAFD32X16_H1_L0(a, data2, coefs);
+		/* Repeat the same for next two taps and increase coefp. */
+		coef2 = AE_LP16X2F_I(coefp, sizeof(ae_p16x2s));
+		AE_LP24F_C(d0, dp, inc);
+		AE_LP24F_C(d1, dp, inc);
+		data2 = AE_SELP24_LL(d0, d1);
+		AE_MULAAFP24S_HH_LL(a, data2, coef2);
+		coefp += 2;
 	}
 
 	/* Do scaling shifts and store sample. */
-	a = AE_SLAA64S(a, shift);
-	AE_S32_L_I(AE_ROUND32F48SSYM(a), (ae_int32 *)y, 0);
+	a = AE_SRAAQ56(AE_SLLASQ56S(a, lshift), rshift);
+	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y, 0);
 }
 
 /* HiFi EP has the follow number of reqisters that should not be exceeded
@@ -180,9 +172,9 @@ static inline void fir_32x16_hifi3(struct fir_state_32x16 *fir, ae_int32 x,
  * 8x 48 bit registers in register file P
  */
 
-static inline void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, ae_int32 x0,
-				      ae_int32 x1, ae_int32 *y0, ae_int32 *y1,
-				      int shift)
+static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0,
+				       int32_t x1, int32_t *y0, int32_t *y1,
+				       int lshift, int rshift)
 {
 	/* This function uses
 	 * 2x 56 bit registers Q,
@@ -190,15 +182,15 @@ static inline void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, ae_int32 x0,
 	 * 3x integers
 	 * 2x address pointers,
 	 */
-	ae_f64 a;
-	ae_f64 b;
-	ae_valign u;
-	ae_f32x2 d0;
-	ae_f32x2 d1;
-	ae_f16x4 coefs;
+	ae_q56s a;
+	ae_q56s b;
+	ae_p24x2f d0;
+	ae_p24x2f d1;
+	ae_p24x2f d3;
+	ae_p24x2f coefs;
 	int i;
-	ae_f32x2 *dp;
-	ae_f16x4 *coefp = fir->coef;
+	ae_p24x2f *dp;
+	ae_p16x2s *coefp = fir->coef;
 	const int taps_div_4 = fir->taps >> 2;
 	const int inc = 2 * sizeof(int32_t);
 
@@ -210,59 +202,63 @@ static inline void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, ae_int32 x0,
 	}
 
 	/* Write samples to delay */
-	AE_S32_L_XC(x0, fir->rwp, -sizeof(int32_t));
-	dp = (ae_f32x2 *)fir->rwp;
-	AE_S32_L_XC(x1, fir->rwp, -sizeof(int32_t));
+	a = AE_CVTQ48A32S(x0);
+	AE_SQ32F_C(a, (ae_q32s *)fir->rwp, -sizeof(int32_t));
+	a = AE_CVTQ48A32S(x1);
+	dp = fir->rwp;
+	AE_SQ32F_C(a, (ae_q32s *)fir->rwp, -sizeof(int32_t));
 
 	/* Note: If the next function is converted to handle two samples
 	 * per call the data load can be done with single instruction
 	 * AE_LP24X2F_C(data2, dp, sizeof(ae_p24x2f));
 	 */
-	a = AE_ZERO64();
-	b = AE_ZERO64();
-
-	/* Prime the coefficients stream */
-	u = AE_LA64_PP(coefp);
-
+	a = AE_ZEROQ56();
+	b = AE_ZEROQ56();
 	/* Load two data samples and pack to d0 to data2_h and
 	 * d1 to data2_l.
 	 */
-	AE_L32X2_XC(d0, dp, inc);
+	AE_LP24X2F_C(d0, dp, inc);
 	for (i = 0; i < taps_div_4; i++) {
-		/* Load four coefficients. Coef_3 contains tap h[n],
-		 * coef_2 contains h[n+1], coef_1 contains h[n+2], and
-		 * coef_0 contains h[n+3];
+		/* Load two coefficients. Coef2_h contains tap coefp[n]
+		 * and coef2_l contains coef[n+1].
 		 */
-		AE_LA16X4_IP(coefs, u, coefp);
+		coefs = AE_LP16X2F_I(coefp, 0);
 
 		/* Load two data samples. Upper part d1_h is x[n+1] and
 		 * lower part d1_l is x[n].
 		 */
-		AE_L32X2_XC(d1, dp, inc);
+		AE_LP24X2F_C(d1, dp, inc);
 
-		/* Quad MAC (HH)
-		 * b += d0_h * coefs_3 + d0_l * coefs_2
-		 * a += d0_l * coefs_3 + d1_h * coefs_2
+		/* Accumulate
+		 * b += d0_h * coefs_h + d0_l * coefs_l. The Q1.31 data
+		 * and Q1.15 coefficients are converted to 24 bits as
+		 * Q1.23 values.
 		 */
-		AE_MULAFD32X16X2_FIR_HH(b, a, d0, d1, coefs);
+		AE_MULAAFP24S_HH_LL(b, d0, coefs);
+
+		/* Pack d0_l and d1_h to d3. Then accumulate
+		 * a += d3_h * coefs_h + d3_l * coefs_l. Pass d1 to d1 for
+		 * next unrolled iteration.
+		 */
+		d3 = AE_SELP24_LH(d0, d1);
+		AE_MULAAFP24S_HH_LL(a, d3, coefs);
 		d0 = d1;
 
 		/* Repeat the same for next two taps and increase coefp. */
-		AE_L32X2_XC(d1, dp, inc);
-
-		/* Quad MAC (HL)
-		 * b += d0_h * coefs_1 + d0_l * coefs_0
-		 * a += d0_l * coefs_1 + d1_h * coefs_0
-		 */
-		AE_MULAFD32X16X2_FIR_HL(b, a, d0, d1, coefs);
+		coefs = AE_LP16X2F_I(coefp, sizeof(ae_p16x2s));
+		AE_LP24X2F_C(d1, dp, inc);
+		AE_MULAAFP24S_HH_LL(b, d0, coefs);
+		d3 = AE_SELP24_LH(d0, d1);
+		AE_MULAAFP24S_HH_LL(a, d3, coefs);
 		d0 = d1;
+		coefp += 2;
 	}
 
 	/* Do scaling shifts and store sample. */
-	b = AE_SLAA64S(b, shift);
-	a = AE_SLAA64S(a, shift);
-	AE_S32_L_I(AE_ROUND32F48SSYM(b), (ae_int32 *)y1, 0);
-	AE_S32_L_I(AE_ROUND32F48SSYM(a), (ae_int32 *)y0, 0);
+	b = AE_SRAAQ56(AE_SLLASQ56S(b, lshift), rshift);
+	a = AE_SRAAQ56(AE_SLLASQ56S(a, lshift), rshift);
+	AE_SQ32F_I(AE_ROUNDSQ32SYM(b), (ae_q32s *)y1, 0);
+	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y0, 0);
 }
 
 #endif

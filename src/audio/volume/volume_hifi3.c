@@ -34,7 +34,7 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include "volume.h"
+#include <sof/audio/volume.h>
 
 #if defined(__XCC__) && XCHAL_HAVE_HIFI3
 

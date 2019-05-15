@@ -40,10 +40,10 @@
 #include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
+#include <sof/audio/eq_iir/eq_iir.h>
 #include <sof/audio/format.h>
+#include <sof/audio/eq_iir/iir.h>
 #include <uapi/user/eq.h>
-#include "eq_iir.h"
-#include "iir.h"
 
 #ifdef MODULE_TEST
 #include <stdio.h>

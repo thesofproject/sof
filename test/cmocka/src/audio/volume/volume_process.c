@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 #include <sof/audio/component.h>
-#include "volume.h"
+#include <sof/audio/volume.h>
 
 /* Add macro for a volume test level. The levels to test with this code
  * are:

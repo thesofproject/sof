@@ -46,7 +46,7 @@
 #include <sof/alloc.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
-#include "selector.h"
+#include <sof/audio/selector.h>
 #include <sof/math/numbers.h>
 
 /**
