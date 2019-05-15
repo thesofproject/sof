@@ -140,4 +140,12 @@ config BUILD_VM_ROM
 	help
 	  Select if you want to build VM ROM
 
+config DEBUG_IPC_COUNTERS
+	bool "IPC counters"
+	depends on CAVS
+	depends on DEBUG
+	default n
+	help
+	  Select for enabling tracing IPC counter in SRAM_REG mailbox
+
 endmenu
