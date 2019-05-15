@@ -74,7 +74,6 @@ struct sof_sel_config {
 	uint32_t sel_channel;	/**< 0..3 */
 };
 
-
 /** \brief Selector component private data. */
 struct comp_data {
 	uint32_t source_period_bytes;	/**< source number of period bytes */
@@ -84,7 +83,7 @@ struct comp_data {
 	struct sof_sel_config config;	/**< component configuration data */
 	/**< channel selector processing function */
 	void (*sel_func)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source, uint32_t frames);
+			 struct comp_buffer *source, uint32_t frames);
 };
 
 /** \brief Selector processing functions map. */

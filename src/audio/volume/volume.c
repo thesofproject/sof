@@ -96,7 +96,6 @@ static uint64_t vol_work(void *data)
 
 	/* inc/dec each volume if it's not at target */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-
 		/* skip if target reached */
 		if (cd->volume[i] == cd->tvolume[i])
 			continue;
@@ -164,13 +163,13 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	}
 
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
-		COMP_SIZE(struct sof_ipc_comp_volume));
+		      COMP_SIZE(struct sof_ipc_comp_volume));
 	if (!dev)
 		return NULL;
 
 	vol = (struct sof_ipc_comp_volume *)&dev->comp;
 	assert(!memcpy_s(vol, sizeof(*vol), ipc_vol,
-		sizeof(struct sof_ipc_comp_volume)));
+			 sizeof(struct sof_ipc_comp_volume)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -358,9 +357,10 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			trace_volume("volume_ctrl_set_cmd(), "
 				     "SOF_CTRL_CMD_VOLUME, "
 				     "channel = %u, value = %u",
-				     cdata->chanv[j].channel, cdata->chanv[j].value);
+				     cdata->chanv[j].channel,
+				     cdata->chanv[j].value);
 			i = cdata->chanv[j].channel;
-			if ((i >= 0) && (i < SOF_IPC_MAX_CHANNELS)) {
+			if (i >= 0 && i < SOF_IPC_MAX_CHANNELS) {
 				ret = volume_set_chan(dev, i,
 						      cdata->chanv[j].value);
 			} else {
@@ -371,7 +371,6 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			}
 			if (ret)
 				return ret;
-
 		}
 
 		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US, 0, 0);
@@ -387,7 +386,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				     cdata->chanv[j].channel,
 				     cdata->chanv[j].value);
 			i = cdata->chanv[j].channel;
-			if ((i >= 0) && (i < SOF_IPC_MAX_CHANNELS)) {
+			if (i >= 0 && i < SOF_IPC_MAX_CHANNELS) {
 				if (cdata->chanv[j].value)
 					volume_set_chan_unmute(dev, i);
 				else
@@ -399,6 +398,7 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 						   "invalid i = %u", i);
 			}
 		}
+
 		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US, 0, 0);
 		break;
 

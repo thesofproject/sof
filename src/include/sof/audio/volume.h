@@ -56,13 +56,16 @@
 #endif
 
 /** \brief Volume trace function. */
-#define trace_volume(__e, ...)	trace_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
+#define trace_volume(__e, ...) \
+	trace_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
 
 /** \brief Volume trace value function. */
-#define tracev_volume(__e, ...)	tracev_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
+#define tracev_volume(__e, ...) \
+	tracev_event(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
 
 /** \brief Volume trace error function. */
-#define trace_volume_error(__e, ...)	trace_error(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
+#define trace_volume_error(__e, ...) \
+	trace_error(TRACE_CLASS_VOLUME, __e, ##__VA_ARGS__)
 
 //** \brief Volume gain Qx.y integer x number of bits including sign bit. */
 #define VOL_QXY_X 8
@@ -94,7 +97,7 @@
 #define VOL_MAX		((1 << (VOL_QXY_X + VOL_QXY_Y - 1)) - 1)
 
 /** \brief Volume 0dB value. */
-#define VOL_ZERO_DB	(1 << VOL_QXY_Y)
+#define VOL_ZERO_DB	BIT(VOL_QXY_Y)
 
 /** \brief Volume minimum value. */
 #define VOL_MIN		0
@@ -112,7 +115,7 @@ struct comp_data {
 	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
 	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source, uint32_t frames);
+			  struct comp_buffer *source, uint32_t frames);
 	struct task volwork;	/**< volume scheduled work function */
 	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 	int32_t ramp_increment[SOF_IPC_MAX_CHANNELS];	/**< for linear ramp */
@@ -124,7 +127,7 @@ struct comp_func_map {
 	uint16_t sink;				/**< sink frame format */
 	/**< volume processing function */
 	void (*func)(struct comp_dev *dev, struct comp_buffer *sink,
-		struct comp_buffer *source, uint32_t frames);
+		     struct comp_buffer *source, uint32_t frames);
 };
 
 /** \brief Map of formats with dedicated processing functions. */
@@ -140,7 +143,7 @@ typedef void (*scale_vol)(struct comp_dev *, struct comp_buffer *,
  * \brief Retrievies volume processing function.
  * \param[in,out] dev Volume base component device.
  */
-inline static scale_vol vol_get_processing_function(struct comp_dev *dev)
+static inline scale_vol vol_get_processing_function(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;

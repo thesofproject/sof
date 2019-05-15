@@ -139,7 +139,6 @@ static void vol_s16_to_s32(struct comp_dev *dev, struct comp_buffer *sink,
 				(*src << 8, cd->volume[channel],
 				 Q_SHIFT_BITS_64(23, 16, 31));
 
-
 			buff_frag++;
 		}
 	}
