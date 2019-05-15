@@ -788,6 +788,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		trace_dai_with_ids(dev, "dai_config(), channel = %d",
 				   channel);
 		break;
+	case SOF_DAI_IMX_ESAI:
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		trace_dai_error_with_ids(dev, "dai_config() error: Handling of "
