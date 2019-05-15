@@ -56,6 +56,24 @@
 
 extern struct ipc *_ipc;
 
+#if CONFIG_DEBUG_IPC_COUNTERS
+static inline void increment_ipc_received_counter(void)
+{
+	static uint32_t ipc_received_counter;
+
+	mailbox_sw_reg_write(SRAM_REG_FW_IPC_RECEIVED_COUNT,
+			     ipc_received_counter++);
+}
+
+static inline void increment_ipc_processed_counter(void)
+{
+	static uint32_t ipc_processed_counter;
+
+	mailbox_sw_reg_write(SRAM_REG_FW_IPC_PROCESSED_COUNT,
+			     ipc_processed_counter++);
+}
+#endif
+
 /* test code to check working IRQ */
 static void ipc_irq_handler(void *arg)
 {
@@ -92,6 +110,10 @@ static void ipc_irq_handler(void *arg)
 	{
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
+
+#if CONFIG_DEBUG_IPC_COUNTERS
+		increment_ipc_received_counter();
+#endif
 
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
@@ -172,6 +194,10 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 #else
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
 	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_BUSY);
+#endif
+
+#if CONFIG_DEBUG_IPC_COUNTERS
+	increment_ipc_processed_counter();
 #endif
 
 	/* unmask Busy interrupt */
