@@ -49,10 +49,6 @@
 #include <uapi/ipc/topology.h>
 #include <uapi/user/tone.h>
 
-#ifdef MODULE_TEST
-#include <stdio.h>
-#endif
-
 #define trace_tone(__e, ...) trace_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
 #define tracev_tone(__e, ...) tracev_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
 #define trace_tone_error(__e, ...) trace_error(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
@@ -324,11 +320,6 @@ static void tonegen_update_f(struct tone_state *sg, int32_t f)
 	w_tmp = q_multsr_32x32(sg->f, sg->c, Q_SHIFT_BITS_64(16, 31, 28));
 	w_tmp = (w_tmp > PI_Q4_28) ? PI_Q4_28 : w_tmp; /* Limit to pi Q4.28 */
 	sg->w_step = (int32_t)w_tmp;
-
-#ifdef MODULE_TEST
-	printf("Fs=%d, f_max=%d, f_new=%.3f\n",
-	       sg->fs, (int32_t)(f_max >> 16), sg->f / 65536.0);
-#endif
 }
 
 static void tonegen_reset(struct tone_state *sg)

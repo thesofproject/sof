@@ -33,11 +33,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
-
-#ifdef MODULE_TEST
-#include <stdio.h>
-#endif
-
 #include <sof/audio/format.h>
 #include <sof/audio/eq_iir/iir.h>
 #include <uapi/user/eq.h>

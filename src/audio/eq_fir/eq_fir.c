@@ -49,10 +49,6 @@
 #include <sof/audio/eq_fir/fir_hifi3.h>
 #endif
 
-#ifdef MODULE_TEST
-#include <stdio.h>
-#endif
-
 #define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
 #define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
 #define trace_eq_error(__e, ...) \

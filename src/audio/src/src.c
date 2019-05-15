@@ -56,10 +56,6 @@
 #include <sof/audio/coefficients/src/src_std_int32_table.h>
 #endif
 
-#ifdef MODULE_TEST
-#include <stdio.h>
-#endif
-
 #define trace_src(__e, ...) \
 	trace_event(TRACE_CLASS_SRC, __e, ##__VA_ARGS__)
 #define tracev_src(__e, ...) \
