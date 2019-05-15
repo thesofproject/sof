@@ -34,7 +34,7 @@
 #include <stdint.h>
 #include <cmocka.h>
 #include <sof/audio/component.h>
-#include "selector.h"
+#include <sof/audio/selector.h>
 
 
 struct sel_test_state {

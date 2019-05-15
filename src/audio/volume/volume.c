@@ -48,7 +48,7 @@
 #include <sof/schedule.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
-#include "volume.h"
+#include <sof/audio/volume.h>
 #include <sof/math/numbers.h>
 
 /**

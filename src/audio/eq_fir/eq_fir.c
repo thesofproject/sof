@@ -33,20 +33,20 @@
 #include <stdbool.h>
 #include <sof/sof.h>
 #include <sof/audio/component.h>
+#include <sof/audio/eq_fir/fir_config.h>
 #include <sof/ipc.h>
 #include <uapi/user/eq.h>
-#include "fir_config.h"
 
 #if FIR_GENERIC
-#include "fir.h"
+#include <sof/audio/eq_fir/fir.h>
 #endif
 
 #if FIR_HIFIEP
-#include "fir_hifi2ep.h"
+#include <sof/audio/eq_fir/fir_hifi2ep.h>
 #endif
 
 #if FIR_HIFI3
-#include "fir_hifi3.h"
+#include <sof/audio/eq_fir/fir_hifi3.h>
 #endif
 
 #ifdef MODULE_TEST

@@ -43,11 +43,10 @@
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/audio/src/src_config.h>
+#include <sof/audio/src/src.h>
 #include <sof/math/numbers.h>
 #include <uapi/ipc/topology.h>
-
-#include "src_config.h"
-#include "src.h"
 
 #if SRC_SHORT
 #include <sof/audio/coefficients/src/src_tiny_int16_define.h>

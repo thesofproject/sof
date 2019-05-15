@@ -33,7 +33,7 @@
 #ifndef FIR_H
 #define FIR_H
 
-#include "fir_config.h"
+#include <sof/audio/eq_fir/fir_config.h>
 
 #if FIR_GENERIC
 

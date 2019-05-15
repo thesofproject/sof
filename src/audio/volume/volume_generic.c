@@ -38,7 +38,7 @@
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include "volume.h"
+#include <sof/audio/volume.h>
 
 #ifdef CONFIG_GENERIC
 

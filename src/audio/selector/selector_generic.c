@@ -34,7 +34,7 @@
  * \authors Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#include "selector.h"
+#include <sof/audio/selector.h>
 
 /** 
  * \brief Channel selection for 16 bit, 1 channel data format.

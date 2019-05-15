@@ -7,33 +7,16 @@ if(NOT BUILD_LIBRARY)
 		buffer.c
 	)
 	if(CONFIG_COMP_VOLUME)
-		add_local_sources(sof
-			volume.c
-			volume_generic.c
-			volume_hifi3.c
-		)
+		add_subdirectory(volume)
 	endif()
 	if(CONFIG_COMP_SRC)
-		add_local_sources(sof
-			src.c
-			src_generic.c
-			src_hifi2ep.c
-			src_hifi3.c
-		)
+		add_subdirectory(src)
 	endif()
 	if(CONFIG_COMP_FIR)
-		add_local_sources(sof
-			eq_fir.c
-			fir.c
-			fir_hifi2ep.c
-			fir_hifi3.c
-		)
+		add_subdirectory(eq_fir)
 	endif()
 	if(CONFIG_COMP_IIR)
-		add_local_sources(sof
-			eq_iir.c
-			iir.c
-		)
+		add_subdirectory(eq_iir)
 	endif()
 	if(CONFIG_COMP_TONE)
 		add_local_sources(sof
@@ -66,10 +49,7 @@ if(NOT BUILD_LIBRARY)
 		)
 	endif()
 	if(CONFIG_COMP_SEL)
-		add_local_sources(sof
-		selector.c
-		selector_generic.c
-		)
+		add_subdirectory(selector)
 	endif()
 	if(CONFIG_COMP_TEST_KEYPHRASE)
 		add_local_sources(sof
@@ -121,8 +101,8 @@ check_optimization(hifi3 -mhifi3 -DOPS_HIFI3)
 set(sof_audio_modules volume src)
 
 # sources for each module
-set(volume_sources volume.c volume_generic.c)
-set(src_sources src.c src_generic.c)
+set(volume_sources volume/volume.c volume/volume_generic.c)
+set(src_sources src/src.c src/src_generic.c)
 
 foreach(audio_module ${sof_audio_modules})
 	# first compile with no optimizations

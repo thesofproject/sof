@@ -34,13 +34,13 @@
 #include <stddef.h>
 #include <errno.h>
 #include <sof/audio/component.h>
+#include <sof/audio/eq_fir/fir_config.h>
 #include <sof/audio/format.h>
 #include <uapi/user/eq.h>
-#include "fir_config.h"
 
 #if FIR_GENERIC
 
-#include "fir.h"
+#include <sof/audio/eq_fir/fir.h>
 
 /*
  * EQ FIR algorithm code
