@@ -78,6 +78,7 @@ set(TPLGS
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
 	"sof-tgl-rt1308\;sof-tgl-rt1308"
 	"sof-tgl-rt1308-nohdmi\;sof-tgl-rt1308-nohdmi"
+	"sof-imx8-nocodec\;sof-imx8-nocodec\;-DPLATFORM=imx8"
 )
 
 add_custom_target(topologies ALL)

@@ -92,3 +92,12 @@ SectionVendorTokens."sof_tone_tokens" {
 SectionVendorTokens."sof_process_tokens" {
 	SOF_TKN_PROCESS_TYPE			"900"
 }
+
+SectionVendorTokens."sof_sai_tokens" {
+	SOF_TKN_INTEL_SAI_CLKS_CONTROL		"1500"
+	SOF_TKN_INTEL_SAI_MCLK_ID		"1501"
+	SOF_TKN_INTEL_SAI_SAMPLE_BITS		"1502"
+	SOF_TKN_INTEL_SAI_FRAME_PULSE_WIDTH 	"1503"
+	SOF_TKN_INTEL_SAI_QUIRKS		"1504"
+	SOF_TKN_INTEL_SAI_TDM_PADDING_PER_SLOT  "1505"
+}

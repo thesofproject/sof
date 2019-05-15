@@ -131,7 +131,7 @@ define(`DO_DAI_CONFIG',
 `'
 `	id		"'$3`"'
 `'
-`	ifelse($1, `SSP', $5, `}')'
+`	ifelse($1, `SAI', $5, `}')'
 `ifelse($1, `DMIC', $5, `')'
 `SectionVendorTuples."'N_DAI_CONFIG($1$2)`_tuples_common" {'
 `	tokens "sof_dai_tokens"'
