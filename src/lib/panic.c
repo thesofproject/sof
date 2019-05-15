@@ -62,8 +62,7 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	/* disable all IRQs */
 	oldps = interrupt_global_disable();
 
-	ext_offset = (void *)mailbox_get_exception_base() +
-			sizeof(struct sof_ipc_dsp_oops_xtensa);
+	ext_offset = (void *)mailbox_get_exception_base() + ARCH_OOPS_SIZE;
 
 	/* dump panic info, filename ane linenum */
 	dump_panicinfo(ext_offset, panic_info);
