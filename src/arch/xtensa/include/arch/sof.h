@@ -69,7 +69,8 @@ static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
 	oops->plat_hdr.configidlo = 0;
 #endif
 	oops->plat_hdr.numaregs = XCHAL_NUM_AREGS;
-	oops->plat_hdr.stackoffset = ((void *)&oops->stack) - (void *)oops;
+	oops->plat_hdr.stackoffset = oops->arch_hdr.totalsize
+				     + sizeof(struct sof_ipc_panic_info);
 	oops->plat_hdr.stackptr = stack_ptr;
 
 	oops->epc1 = *epc1;
