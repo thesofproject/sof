@@ -26,6 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  *
  */
 
@@ -40,6 +41,10 @@
 
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32
+
+/* xtensa core specific oops size */
+#define ARCH_OOPS_SIZE (sizeof(struct sof_ipc_dsp_oops_xtensa) \
+			+ (XCHAL_NUM_AREGS * sizeof(uint32_t)))
 
 void arch_dump_regs_a(void *dump_buf, uint32_t ps);
 
@@ -60,7 +65,7 @@ static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
 				  uintptr_t *epc1)
 {
 	oops->arch_hdr.arch = ARCHITECTURE_ID;
-	oops->arch_hdr.totalsize = sizeof(*oops);
+	oops->arch_hdr.totalsize = ARCH_OOPS_SIZE;
 #if XCHAL_HW_CONFIGID_RELIABLE
 	oops->plat_hdr.configidhi = XCHAL_HW_CONFIGID0;
 	oops->plat_hdr.configidlo = XCHAL_HW_CONFIGID1;
@@ -85,7 +90,7 @@ static inline void arch_dump_regs(uint32_t ps, uintptr_t stack_ptr,
 
 	fill_core_dump(buf, ps, stack_ptr, epc1);
 
-	dcache_writeback_region(buf, sizeof(struct sof_ipc_dsp_oops_xtensa));
+	dcache_writeback_region(buf, ARCH_OOPS_SIZE);
 }
 
 #endif
