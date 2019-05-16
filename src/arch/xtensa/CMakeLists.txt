@@ -258,7 +258,7 @@ if(build_bootloader)
 		COMMAND ${CMAKE_OBJCOPY} -O binary ${PROJECT_BINARY_DIR}/src/platform/${platform_folder}/boot_module mod-boot-${fw_name}.bin
 		COMMAND ${CMAKE_OBJCOPY} --add-section .module=mod-boot-${fw_name}.bin --set-section-flags .module=load,readonly bootloader-${fw_name}
 		COMMAND ${CMAKE_OBJCOPY} -O binary bootloader bootloader-${fw_name}.bin
-		COMMAND ${CMAKE_OBJDUMP} -h -D bootloader > bootloader-${fw_name}.map
+		COMMAND ${CMAKE_OBJDUMP} -h -D bootloader > bootloader-${fw_name}.lmap
 		COMMAND ${CMAKE_OBJDUMP} -S bootloader > bootloader-${fw_name}.lst
 		COMMAND ${CMAKE_OBJDUMP} -D bootloader > bootloader-${fw_name}.dis
 		DEPENDS bootloader boot_module
@@ -285,7 +285,7 @@ endif()
 add_custom_target(
 	sof_dump
 	COMMAND ${CMAKE_OBJDUMP} -S sof-${fw_name} > sof-${fw_name}.lst
-	COMMAND ${CMAKE_OBJDUMP} -h sof-${fw_name} > sof-${fw_name}.map
+	COMMAND ${CMAKE_OBJDUMP} -h sof-${fw_name} > sof-${fw_name}.lmap
 	COMMAND ${CMAKE_OBJDUMP} -D sof-${fw_name} > sof-${fw_name}.dis
 	DEPENDS process_base_module
 	VERBATIM
@@ -404,7 +404,7 @@ if(CONFIG_BUILD_VM_ROM)
 		rom_dump
 		COMMAND ${CMAKE_COMMAND} -E copy rom rom-${fw_name}
 		COMMAND ${CMAKE_OBJCOPY} -O binary rom rom-${fw_name}.bin
-		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom-${fw_name}.map
+		COMMAND ${CMAKE_OBJDUMP} -h -D rom > rom-${fw_name}.lmap
 		COMMAND ${CMAKE_OBJDUMP} -S rom > rom-${fw_name}.lst
 		COMMAND ${CMAKE_OBJDUMP} -D rom > rom-${fw_name}.dis
 		DEPENDS rom
