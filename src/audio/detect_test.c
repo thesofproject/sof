@@ -282,12 +282,6 @@ static int test_keyword_params(struct comp_dev *dev)
 
 	/* calculate the length of the preamble */
 	if (cd->config.preamble_time) {
-		if (cd->config.preamble_time > KPB_MAX_BUFF_TIME) {
-			trace_keyword_error("test_keyword_params() "
-					    "error: kp length too long");
-			return -EINVAL;
-		}
-
 		cd->keyphrase_samples = cd->config.preamble_time *
 					(dev->params.rate / 1000);
 	} else {
