@@ -815,6 +815,7 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t size_to_read;
 	size_t size_to_copy;
 	bool move_buffer = false;
+	static uint32_t drained;
 
 	trace_kpb("kpb_draining_task(), start.");
 
@@ -839,6 +840,7 @@ static uint64_t kpb_draining_task(void *arg)
 		memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
+		drained += size_to_copy;
 
 		if (move_buffer) {
 			buff->r_ptr = buff->start_addr;
@@ -857,7 +859,7 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
 
-	trace_kpb("kpb_draining_task(), done.");
+	trace_kpb("kpb_draining_task(), done. %u drained.", drained);
 
 	return 0;
 }
