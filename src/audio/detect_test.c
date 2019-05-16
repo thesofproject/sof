@@ -29,8 +29,8 @@
 #define ACTIVATION_DEFAULT_THRESHOLD_S16 \
 	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_THRESHOLD)))
 
-/* number of samples to be treated as a full keyphrase */
-#define KEYPHRASE_DEFAULT_PREAMBLE_LENGTH (30 * 1024)
+/* default number of samples before detection is activated  */
+#define KEYPHRASE_DEFAULT_PREAMBLE_LENGTH 0
 
 struct comp_data {
 	struct sof_detect_test_config config;
