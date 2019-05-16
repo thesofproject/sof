@@ -595,7 +595,7 @@ static int test_keyword_copy(struct comp_dev *dev)
 
 	/* copy and perform detection */
 	cd->detect_func(dev, source,
-			source->avail / comp_frame_bytes(source->source));
+			source->avail / comp_frame_bytes(dev));
 
 	/* calc new available */
 	comp_update_buffer_consume(source, source->avail);
