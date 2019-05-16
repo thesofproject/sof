@@ -56,6 +56,40 @@
 
 extern struct ipc *_ipc;
 
+static uint64_t ipc_rx_ticks;
+static uint64_t ipc_proc_ticks;
+
+static inline void increment_ipc_received_counter(void)
+{
+	static uint32_t ipc_received_counter;
+
+	ipc_received_counter++;
+
+	ipc_rx_ticks = platform_timer_get(platform_timer);
+
+	mailbox_sw_reg_write(SRAM_REG_ROM_STATUS, 0);
+	mailbox_sw_reg_write(SRAM_REG_FW_STATUS, ipc_received_counter);
+}
+
+static inline void increment_ipc_processed_counter(void)
+{
+	static uint32_t ipc_processed_counter;
+	uint64_t delta_in_ticks;
+	uint64_t delta_in_us;
+
+	ipc_processed_counter++;
+
+	ipc_proc_ticks = platform_timer_get(platform_timer);
+
+	delta_in_ticks = ipc_proc_ticks - ipc_rx_ticks;
+
+	delta_in_us = delta_in_ticks * 1000 /
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+
+	mailbox_sw_reg_write(SRAM_REG_ROM_STATUS, (uint32_t)delta_in_us);
+	mailbox_sw_reg_write(SRAM_REG_FW_TRACEP, ipc_processed_counter);
+}
+
 /* test code to check working IRQ */
 static void ipc_irq_handler(void *arg)
 {
@@ -92,6 +126,8 @@ static void ipc_irq_handler(void *arg)
 	{
 		/* mask Busy interrupt */
 		ipc_write(IPC_DIPCCTL, dipcctl & ~IPC_DIPCCTL_IPCTBIE);
+
+		increment_ipc_received_counter();
 
 		/* TODO: place message in Q and process later */
 		/* It's not Q ATM, may overwrite */
@@ -176,6 +212,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	ipc_write(IPC_DIPCTDR, ipc_read(IPC_DIPCTDR) | IPC_DIPCTDR_BUSY);
 	ipc_write(IPC_DIPCTDA, ipc_read(IPC_DIPCTDA) | IPC_DIPCTDA_BUSY);
 #endif
+	increment_ipc_processed_counter();
 
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
