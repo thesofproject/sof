@@ -351,6 +351,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	cd->kpb_no_of_clients = 0;
 	cd->buffered_data = 0;
 
+	cd->state = KPB_STATE_BUFFERING;
+
 	/* Init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
 
@@ -696,6 +698,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t history_depth = cli->history_depth * kpb->config.no_channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (kpb->config.sampling_width / 8);
+
 	struct hb *buff = kpb->history_buffer;
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
@@ -783,7 +786,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 
 		/* Pause selector copy. */
 		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
-
+		kpb->state = KPB_STATE_DRAINING_ON_DEMAND;
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->cli_sink->sink,
 				   COMP_ATTR_COPY_BLOCKING, 1);
@@ -849,7 +852,7 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Draining is done. Now switch KPB to copy real time stream
 	 * to client's sink
 	 */
-	*draining_data->state = KPB_STATE_REALTIME;
+	*draining_data->state = KPB_STATE_DRAINING;
 
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
