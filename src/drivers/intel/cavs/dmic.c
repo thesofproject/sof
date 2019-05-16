@@ -744,38 +744,24 @@ static int select_mode(struct dmic_configuration *cfg,
  * value to use.
  */
 
-static inline void ipm_helper1(int *ipm, int stereo[], int swap[], int di)
+static inline void ipm_helper1(int *ipm, int di)
 {
-	int pdm[DMIC_HW_CONTROLLERS] = {0};
-	int cnt;
+	int pdm[DMIC_HW_CONTROLLERS];
 	int i;
 
 	/* Loop number of PDM controllers in the configuration. If mic A
-	 * or B is enabled then a pdm controller is marked as active. Also it
-	 * is checked whether the controller should operate as stereo or mono
-	 * left (A) or mono right (B) mode. Mono right mode is setup as channel
-	 * swapped mono left.
+	 * or B is enabled then a pdm controller is marked as active for
+	 * this DAI.
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		cnt = 0;
-		if (dmic_prm[di]->pdm[i].enable_mic_a > 0)
-			cnt++;
-
-		if (dmic_prm[di]->pdm[i].enable_mic_b > 0)
-			cnt++;
-
-		/* A PDM controller is used if at least one mic was enabled. */
-		pdm[i] = !!cnt;
-
-		/* Set stereo mode if both mic A anc B are enabled. */
-		cnt >>= 1;
-		stereo[i] = cnt;
-
-		/* Swap channels if only mic B is used for mono processing. */
-		swap[i] = dmic_prm[di]->pdm[i].enable_mic_b & !cnt;
+		if (dmic_prm[di]->pdm[i].enable_mic_a ||
+		    dmic_prm[di]->pdm[i].enable_mic_b)
+			pdm[i] = 1;
+		else
+			pdm[i] = 0;
 	}
 
-	/* IPM indicates active pdm controllers. */
+	/* Set IPM to match active pdm controllers. */
 	*ipm = 0;
 
 	if (pdm[0] == 0 && pdm[1] > 0)
@@ -787,41 +773,28 @@ static inline void ipm_helper1(int *ipm, int stereo[], int swap[], int di)
 
 #if DMIC_HW_VERSION == 2
 
-static inline void ipm_helper2(int source[], int *ipm, int stereo[],
-			       int swap[], int di)
+static inline void ipm_helper2(int source[], int *ipm, int di)
 {
 	int pdm[DMIC_HW_CONTROLLERS];
 	int i;
 	int n = 0;
 
+	for (i = 0; i < OUTCONTROLX_IPM_NUMSOURCES; i++)
+		source[i] = 0;
+
 	/* Loop number of PDM controllers in the configuration. If mic A
-	 * or B is enabled then a pdm controller is marked as active. Also it
-	 * is checked whether the controller should operate as stereo or mono
-	 * left (A) or mono right (B) mode. Mono right mode is setup as channel
-	 * swapped mono left. The function returns also in array source[] the
-	 * indice of enabled pdm controllers to be used for IPM configuration.
+	 * or B is enabled then a pdm controller is marked as active.
+	 * The function returns in array source[] the indice of enabled
+	 * pdm controllers to be used for IPM configuration.
 	 */
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
-		if (dmic_prm[di]->pdm[i].enable_mic_a > 0 ||
-		    dmic_prm[di]->pdm[i].enable_mic_b > 0) {
+		if (dmic_prm[di]->pdm[i].enable_mic_a ||
+		    dmic_prm[di]->pdm[i].enable_mic_b) {
 			pdm[i] = 1;
 			source[n] = i;
 			n++;
 		} else {
 			pdm[i] = 0;
-			swap[i] = 0;
-		}
-
-		if (dmic_prm[di]->pdm[i].enable_mic_a > 0 &&
-		    dmic_prm[di]->pdm[i].enable_mic_b > 0) {
-			stereo[i] = 1;
-			swap[i] = 0;
-		} else {
-			stereo[i] = 0;
-			if (dmic_prm[di]->pdm[i].enable_mic_a == 0)
-				swap[i] = 1;
-			else
-				swap[i] = 0;
 		}
 	}
 
@@ -831,6 +804,46 @@ static inline void ipm_helper2(int source[], int *ipm, int stereo[],
 		*ipm += pdm[i];
 }
 #endif
+
+/* Loop number of PDM controllers in the configuration. The function
+ * checks if the controller should operate as stereo or mono left (A)
+ * or mono right (B) mode. Mono right mode is setup as channel
+ * swapped mono left.
+ */
+static int stereo_helper(int stereo[], int swap[])
+{
+	int cnt;
+	int i;
+	int swap_check;
+	int ret = 0;
+
+	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
+		cnt = 0;
+		if (dmic_prm[0]->pdm[i].enable_mic_a ||
+		    dmic_prm[1]->pdm[i].enable_mic_a)
+			cnt++;
+
+		if (dmic_prm[0]->pdm[i].enable_mic_b ||
+		    dmic_prm[1]->pdm[i].enable_mic_b)
+			cnt++;
+
+		/* Set stereo mode if both mic A anc B are enabled. */
+		cnt >>= 1;
+		stereo[i] = cnt;
+
+		/* Swap channels if only mic B is used for mono processing. */
+		swap[i] = (dmic_prm[0]->pdm[i].enable_mic_b ||
+			dmic_prm[1]->pdm[i].enable_mic_b) && !cnt;
+
+		/* Check that swap does not conflict with other DAI request */
+		swap_check = dmic_prm[1]->pdm[i].enable_mic_a ||
+			dmic_prm[0]->pdm[i].enable_mic_a;
+
+		if (swap_check && swap[i])
+			ret = -EINVAL;
+	}
+	return ret;
+}
 
 static int configure_registers(struct dai *dai,
 			       struct dmic_configuration *cfg)
@@ -855,6 +868,7 @@ static int configure_registers(struct dai *dai,
 	int soft_reset;
 	int i;
 	int j;
+	int ret;
 	int di = dai->index;
 	struct dmic_pdata *pdata = dai_get_drvdata(dai);
 	int array_a = 0;
@@ -872,8 +886,8 @@ static int configure_registers(struct dai *dai,
 	fir_start_a = 0;
 	fir_start_b = 0;
 
-#if DMIC_HW_VERSION == 2
-	int source[4] = {0, 0, 0, 0};
+#if DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
+	int source[OUTCONTROLX_IPM_NUMSOURCES];
 #endif
 
 #if defined MODULE_TEST
@@ -899,7 +913,7 @@ static int configure_registers(struct dai *dai,
 #endif
 
 #if DMIC_HW_VERSION == 1 || (DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS <= 2)
-	ipm_helper1(&ipm, stereo, swap, di);
+	ipm_helper1(&ipm, 0);
 	val = OUTCONTROL0_TIE(0) |
 		OUTCONTROL0_SIP(0) |
 		OUTCONTROL0_FINIT(1) |
@@ -911,6 +925,7 @@ static int configure_registers(struct dai *dai,
 	dmic_write(dai, OUTCONTROL0, val);
 	trace_dmic("configure_registers(), OUTCONTROL0 = %u", val);
 
+	ipm_helper1(&ipm, 1);
 	val = OUTCONTROL1_TIE(0) |
 		OUTCONTROL1_SIP(0) |
 		OUTCONTROL1_FINIT(1) |
@@ -924,7 +939,7 @@ static int configure_registers(struct dai *dai,
 #endif
 
 #if DMIC_HW_VERSION == 2 && DMIC_HW_CONTROLLERS > 2
-	ipm_helper2(source, &ipm, stereo, swap, di);
+	ipm_helper2(source, &ipm, 0);
 	val = OUTCONTROL0_TIE(0) |
 		OUTCONTROL0_SIP(0) |
 		OUTCONTROL0_FINIT(1) |
@@ -940,6 +955,7 @@ static int configure_registers(struct dai *dai,
 	dmic_write(dai, OUTCONTROL0, val);
 	trace_dmic("configure_registers(), OUTCONTROL0 = %u", val);
 
+	ipm_helper2(source, &ipm, 1);
 	val = OUTCONTROL1_TIE(0) |
 		OUTCONTROL1_SIP(0) |
 		OUTCONTROL1_FINIT(1) |
@@ -962,6 +978,12 @@ static int configure_registers(struct dai *dai,
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
 		pdata->enable[i] = (dmic_prm[di]->pdm[i].enable_mic_b << 1) |
 			dmic_prm[di]->pdm[i].enable_mic_a;
+	}
+
+	ret = stereo_helper(stereo, swap);
+	if (ret < 0) {
+		trace_dmic_error("configure_registers(): Mic enable conflict");
+		return ret;
 	}
 
 	for (i = 0; i < DMIC_HW_CONTROLLERS; i++) {
@@ -1322,16 +1344,37 @@ static void dmic_start(struct dai *dai)
 			   "mic_a = %u, mic_b = %u, fir_a = %u, fir_b = %u",
 			   mic_a, mic_b, fir_a, fir_b);
 
-		dmic_update_bits(dai, base[i] + CIC_CONTROL,
-				 CIC_CONTROL_CIC_START_A_BIT |
-				 CIC_CONTROL_CIC_START_B_BIT,
-				 CIC_CONTROL_CIC_START_A(mic_a) |
-				 CIC_CONTROL_CIC_START_B(mic_b));
-		dmic_update_bits(dai, base[i] + MIC_CONTROL,
-				 MIC_CONTROL_PDM_EN_A_BIT |
-				 MIC_CONTROL_PDM_EN_B_BIT,
-				 MIC_CONTROL_PDM_EN_A(mic_a) |
-				 MIC_CONTROL_PDM_EN_B(mic_b));
+		/* If both microphones are needed start them simultaneously
+		 * to start them in sync. The reset may be cleared for another
+		 * FIFO already. If only one mic, start them independently.
+		 * This makes sure we do not clear start/en for another DAI.
+		 */
+		if (mic_a && mic_b) {
+			dmic_update_bits(dai, base[i] + CIC_CONTROL,
+					 CIC_CONTROL_CIC_START_A_BIT |
+					 CIC_CONTROL_CIC_START_B_BIT,
+					 CIC_CONTROL_CIC_START_A(1) |
+					 CIC_CONTROL_CIC_START_B(1));
+			dmic_update_bits(dai, base[i] + MIC_CONTROL,
+					 MIC_CONTROL_PDM_EN_A_BIT |
+					 MIC_CONTROL_PDM_EN_B_BIT,
+					 MIC_CONTROL_PDM_EN_A(1) |
+					 MIC_CONTROL_PDM_EN_B(1));
+		} else if (mic_a) {
+			dmic_update_bits(dai, base[i] + CIC_CONTROL,
+					 CIC_CONTROL_CIC_START_A_BIT,
+					 CIC_CONTROL_CIC_START_A(1));
+			dmic_update_bits(dai, base[i] + MIC_CONTROL,
+					 MIC_CONTROL_PDM_EN_A_BIT,
+					 MIC_CONTROL_PDM_EN_A(1));
+		} else if (mic_b) {
+			dmic_update_bits(dai, base[i] + CIC_CONTROL,
+					 CIC_CONTROL_CIC_START_B_BIT,
+					 CIC_CONTROL_CIC_START_B(1));
+			dmic_update_bits(dai, base[i] + MIC_CONTROL,
+					 MIC_CONTROL_PDM_EN_B_BIT,
+					 MIC_CONTROL_PDM_EN_B(1));
+		}
 
 		switch (dai->index) {
 		case 0:

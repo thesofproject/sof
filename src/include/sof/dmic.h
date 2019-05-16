@@ -208,6 +208,9 @@
 #define OUTCONTROL1_IPM_SOURCE_3(x)		SET_BITS(10, 9, x)
 #define OUTCONTROL1_IPM_SOURCE_4(x)		SET_BITS(8, 7, x)
 #define OUTCONTROL1_TH(x)			SET_BITS(5, 0, x)
+
+#define OUTCONTROLX_IPM_NUMSOURCES		4
+
 #endif
 
 /* OUTSTAT0 bits */
