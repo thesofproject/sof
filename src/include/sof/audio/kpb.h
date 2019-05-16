@@ -35,7 +35,8 @@
 
 enum kpb_state {
 	KPB_STATE_BUFFERING = 0,
-	KPB_STATE_DRAINING_ON_DEMAND,
+	KPB_STATE_DRAINING,
+	KPB_STATE_HOST_COPY,
 };
 
 enum kpb_event {
