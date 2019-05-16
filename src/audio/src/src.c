@@ -466,7 +466,8 @@ static void src_copy_s32(struct comp_dev *dev,
 		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
 			n_wrap_src : n_wrap_snk;
 		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		memcpy(snk, src, n_copy * sizeof(int32_t));
+		assert(!memcpy_s(snk, n_copy * sizeof(int32_t), src,
+				 n_copy * sizeof(int32_t)));
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;
@@ -500,7 +501,8 @@ static void src_copy_s16(struct comp_dev *dev,
 		n_wrap_min = (n_wrap_src < n_wrap_snk) ?
 			n_wrap_src : n_wrap_snk;
 		n_copy = (n < n_wrap_min) ? n : n_wrap_min;
-		memcpy(snk, src, n_copy * sizeof(int16_t));
+		assert(!memcpy_s(snk, n_copy * sizeof(int16_t), src,
+				 n_copy * sizeof(int16_t)));
 
 		/* Update and check both source and destination for wrap */
 		n -= n_copy;

@@ -507,7 +507,9 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 			trace_eq("fir_cmd_get_data(), blob size %zu "
 				 "msg index %u max size %u offset %zu", bs,
 				 cdata->msg_index, max_size, offset);
-			memcpy(dst, src + offset, bs);
+			assert(!memcpy_s(dst, ((struct sof_abi_hdr *)
+					 (cdata->data))->size, src + offset,
+					 bs));
 			cdata->data->abi = SOF_ABI_VERSION;
 			cdata->data->size = bs;
 		} else {
@@ -612,7 +614,9 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 		/* Just copy the configuration. The EQ will be initialized in
 		 * prepare().
 		 */
-		memcpy(dst + offset, src, cdata->num_elems);
+		assert(!memcpy_s(dst + offset, cdata->num_elems +
+				 cdata->elems_remaining - offset, src,
+				 cdata->num_elems));
 
 		/* we can check data when elems_remaining == 0 */
 		break;

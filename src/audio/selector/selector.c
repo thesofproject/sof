@@ -124,7 +124,8 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
+	assert(!memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process), comp,
+			 sizeof(struct sof_ipc_comp_process)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -134,7 +135,8 @@ static struct comp_dev *selector_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	memcpy(&cd->config, ipc_process->data, bs);
+	assert(!memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data,
+			 bs));
 
 	/* verification of initial parameters */
 	ret = sel_set_channel_values(cd, cd->config.in_channels_count,
