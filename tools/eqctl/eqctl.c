@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
 		user_data[1] = n * sizeof(unsigned int);
 		ret = snd_ctl_elem_tlv_write(ctl, id, user_data);
 		if (ret) {
-			fprintf(stderr, "Error: failed TLV write.\n");
+			fprintf(stderr, "Error: failed TLV write (%d).\n", ret);
 			free(user_data);
 			exit(ret);
 		}
