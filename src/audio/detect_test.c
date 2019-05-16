@@ -40,6 +40,7 @@ struct comp_data {
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
 	uint32_t keyphrase_samples; /**< keyphrase length in samples */
 	uint32_t buf_copy_pos; /**< current copy position for incoming data */
+	uint32_t history_depth; /** defines draining size in bytes. */
 
 	struct notify_data event;
 	struct kpb_event_data event_data;
@@ -73,9 +74,9 @@ static void notify_kpb(struct comp_dev *dev)
 	cd->client_data.history_end = 0; /**< keyphrase end, 0 is now */
 	cd->client_data.history_begin = cd->detect_preamble;
 	/* time in milliseconds */
-	cd->client_data.history_depth = cd->detect_preamble /
-					(dev->params.rate / 1000);
-
+	cd->client_data.history_depth = (cd->history_depth != 0) ?
+					 cd->history_depth :
+					 cd->config.history_depth;
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
 
@@ -118,6 +119,12 @@ static void default_detect_test(struct comp_dev *dev,
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
 			if (cd->activation >= cd->config.activation_threshold) {
+				/* The algorithm shall use cd->history_depth
+				 * to specify its draining size request.
+				 * Zero value means default config value
+				 * will be used.
+				 */
+				cd->history_depth = 0;
 				detect_test_notify(dev);
 				cd->detected = 1;
 			}
@@ -280,14 +287,14 @@ static int test_keyword_params(struct comp_dev *dev)
 	dev->frame_bytes = comp_frame_bytes(dev);
 
 	/* calculate the length of the preamble */
-	if (cd->config.keyphrase_length) {
-		if (cd->config.keyphrase_length > KPB_MAX_BUFF_TIME) {
+	if (cd->config.preamble_time) {
+		if (cd->config.preamble_time > KPB_MAX_BUFF_TIME) {
 			trace_keyword_error("test_keyword_params() "
 					    "error: kp length too long");
 			return -EINVAL;
 		}
 
-		cd->keyphrase_samples = cd->config.keyphrase_length *
+		cd->keyphrase_samples = cd->config.preamble_time *
 					(dev->params.rate / 1000);
 	} else {
 		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;

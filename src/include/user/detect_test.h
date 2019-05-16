@@ -18,9 +18,8 @@ struct sof_detect_test_config {
 	/** synthetic system load settings */
 	uint32_t load_mips;
 	uint32_t load_memory_size;
-
-	/** length of the keyphrase in milliseconds */
-	uint32_t keyphrase_length;
+	/** time in ms after which detection is activated */
+	uint32_t preamble_time;
 
 	/** activation right shift, determines the speed of activation */
 	uint16_t activation_shift;
@@ -28,8 +27,11 @@ struct sof_detect_test_config {
 	/** activation threshold */
 	int16_t activation_threshold;
 
+	/** default draining size in bytes */
+	uint32_t history_depth;
+
 	/** reserved for future use */
-	uint32_t reserved[3];
+	uint32_t reserved[2];
 } __attribute__((packed));
 
 /** used for binary blob size sanity checks */
