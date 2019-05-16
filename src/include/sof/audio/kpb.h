@@ -62,8 +62,6 @@ enum kpb_client_state {
 struct kpb_client {
 	uint8_t id; /**< id associated with output sink */
 	uint32_t history_depth; /**< normalized value of buffered bytes */
-	uint32_t history_begin; /**< place where key phrase begins */
-	uint32_t history_end; /**< place where key phrase ends */
 	enum kpb_client_state state; /**< current state of a client */
 	void *r_ptr; /**< current read position */
 	struct comp_buffer *sink; /**< client's sink */
