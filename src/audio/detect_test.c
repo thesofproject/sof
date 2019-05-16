@@ -95,8 +95,6 @@ static void notify_kpb(struct comp_dev *dev)
 	cd->client_data.r_ptr = NULL;
 	cd->client_data.sink = NULL;
 	cd->client_data.id = 0; /**< TODO: acquire proper id from kpb */
-	cd->client_data.history_end = 0; /**< keyphrase end, 0 is now */
-	cd->client_data.history_begin = cd->detect_preamble;
 	/* time in milliseconds */
 	cd->client_data.history_depth = (cd->history_depth != 0) ?
 					 cd->history_depth :
