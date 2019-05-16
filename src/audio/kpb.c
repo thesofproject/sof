@@ -22,6 +22,7 @@
 #include <sof/list.h>
 #include <sof/audio/buffer.h>
 #include <sof/ut.h>
+#include <sof/clk.h>
 
 /* KPB private data, runtime data */
 struct comp_data {
@@ -803,8 +804,13 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t size_to_read;
 	size_t size_to_copy;
 	bool move_buffer = false;
+	uint32_t drained = 0;
+	uint64_t time_start;
+	uint64_t time_end;
 
 	trace_kpb("kpb_draining_task(), start.");
+
+	time_start = platform_timer_get(platform_timer);
 
 	while (history_depth > 0) {
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
@@ -827,6 +833,7 @@ static uint64_t kpb_draining_task(void *arg)
 				 size_to_copy));
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
+		drained += size_to_copy;
 
 		if (move_buffer) {
 			buff->r_ptr = buff->start_addr;
@@ -837,6 +844,8 @@ static uint64_t kpb_draining_task(void *arg)
 			comp_update_buffer_produce(sink, size_to_copy);
 	}
 
+	time_end =  platform_timer_get(platform_timer);
+
 	/* Draining is done. Now switch KPB to copy real time stream
 	 * to client's sink. This state is called "draining on demand"
 	 */
@@ -845,7 +854,10 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
 
-	trace_kpb("kpb_draining_task(), done.");
+	trace_kpb("kpb_draining_task(), done. %u drained in %d ms.",
+		   drained,
+		   (time_end - time_start)
+		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
 
 	return 0;
 }
