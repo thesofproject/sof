@@ -75,6 +75,7 @@ static void kpb_clear_history_buffer(struct hb *buff);
 static void kpb_free_history_buffer(struct hb *buff);
 static bool kpb_has_enough_history_data(struct comp_data *kpb,
 					    struct hb *buff, size_t his_req);
+static void kpb_drain_data(void *source, struct comp_buffer *sink, size_t size);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -787,11 +788,13 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		/* Pause selector copy. */
 		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
 		kpb->state = KPB_STATE_DRAINING_ON_DEMAND;
+
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->cli_sink->sink,
 				   COMP_ATTR_COPY_BLOCKING, 1);
 
 		kpb->state = KPB_STATE_DRAINING_ON_DEMAND;
+
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0,
 			      SOF_SCHEDULE_FLAG_IDLE);
@@ -837,7 +840,8 @@ static uint64_t kpb_draining_task(void *arg)
 			}
 		}
 
-		memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
+		kpb_drain_data(buff->r_ptr, sink, size_to_copy);
+
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
 		drained += size_to_copy;
@@ -862,6 +866,26 @@ static uint64_t kpb_draining_task(void *arg)
 	trace_kpb("kpb_draining_task(), done. %u drained.", drained);
 
 	return 0;
+}
+
+void kpb_drain_data(void *source, struct comp_buffer *sink, size_t size)
+{
+	int16_t *dest;
+	int16_t *src = (int16_t *)source;
+	uint32_t i;
+	uint32_t j = 0;
+	uint32_t channel;
+	uint32_t frames = (size / ((KPB_SAMPLE_CONTAINER_SIZE/8) *
+			   KPB_NR_OF_CHANNELS));
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+			dest = buffer_write_frag_s16(sink, j);
+			*dest = *src;
+			src++;
+			j++;
+		}
+	}
 }
 
 /**
