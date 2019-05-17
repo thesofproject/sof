@@ -471,15 +471,15 @@ static int kpb_copy(struct comp_dev *dev)
 
 	tracev_kpb("kpb_copy()");
 
+	/* Get source and sink buffers */
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+				 sink_list);
+
 	/* Stop copying downstream if in draining mode */
 	if (kpb->state == KPB_STATE_DRAINING_ON_DEMAND) {
 		comp_update_buffer_consume(source, source->avail);
 		return PPL_STATUS_PATH_STOP;
 	}
-
-	/* Get source and sink buffers */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
 
 	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->sel_sink
 	       : kpb->host_sink;
