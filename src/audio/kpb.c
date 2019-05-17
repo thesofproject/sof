@@ -55,8 +55,8 @@ struct comp_data {
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	struct sof_kpb_config config;   /**< component configuration data */
-	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
-	struct comp_buffer *cli_sink; /**< draining sink (client) */
+	struct comp_buffer *sel_sink; /**< real time sink (channel selector ) */
+	struct comp_buffer *host_sink; /**< draining sink (client) */
 	struct hb *history_buffer;
 	bool is_internal_buffer_full;
 	size_t buffered_data;
@@ -393,10 +393,10 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
 			/* We found proper real time sink */
-			cd->rt_sink = sink;
+			cd->sel_sink = sink;
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
 			/* We found proper host sink */
-			cd->cli_sink = sink;
+			cd->host_sink = sink;
 		}
 	}
 
@@ -436,9 +436,11 @@ static int kpb_reset(struct comp_dev *dev)
 
 	/* Reset state to be buffering */
 	kpb->state = KPB_STATE_BUFFERING;
+
 	/* Reset history buffer */
 	kpb->is_internal_buffer_full = false;
 	kpb_clear_history_buffer(kpb->history_buffer);
+
 	/* Reset amount of buffered data */
 	kpb->buffered_data = 0;
 
@@ -469,18 +471,18 @@ static int kpb_copy(struct comp_dev *dev)
 
 	tracev_kpb("kpb_copy()");
 
-	/* Get source and sink buffers */
-	source = list_first_item(&dev->bsource_list, struct comp_buffer,
-				 sink_list);
-
-	/* Stop copying downstream if in draining */
+	/* Stop copying downstream if in draining mode */
 	if (kpb->state == KPB_STATE_DRAINING_ON_DEMAND) {
 		comp_update_buffer_consume(source, source->avail);
 		return PPL_STATUS_PATH_STOP;
 	}
 
-	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->rt_sink
-	       : kpb->cli_sink;
+	/* Get source and sink buffers */
+	source = list_first_item(&dev->bsource_list, struct comp_buffer,
+				 sink_list);
+
+	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->sel_sink
+	       : kpb->host_sink;
 
 	/* Process source data */
 	/* Check if there are valid pointers */
@@ -695,7 +697,7 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
  */
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 {
-	bool is_sink_ready = (kpb->cli_sink->sink->state == COMP_STATE_ACTIVE);
+	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
 	size_t history_depth = cli->history_depth * kpb->config.no_channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (kpb->config.sampling_width / 8);
@@ -780,17 +782,17 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		trace_kpb("kpb_init_draining(), schedule draining task");
 
 		/* Add one-time draining task into the scheduler. */
-		kpb->draining_task_data.sink = kpb->cli_sink;
+		kpb->draining_task_data.sink = kpb->host_sink;
 		kpb->draining_task_data.history_buffer = buff;
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.state = &kpb->state;
 
 		/* Pause selector copy. */
-		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
+		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
 		kpb->state = KPB_STATE_DRAINING_ON_DEMAND;
 
 		/* Set host-sink copy mode to blocking */
-		comp_set_attribute(kpb->cli_sink->sink,
+		comp_set_attribute(kpb->host_sink->sink,
 				   COMP_ATTR_COPY_BLOCKING, 1);
 
 		kpb->state = KPB_STATE_DRAINING_ON_DEMAND;
