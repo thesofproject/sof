@@ -32,6 +32,9 @@
 #define KPB_NO_OF_HISTORY_BUFFERS 2 /**< no of internal buffers */
 #define KPB_ALLOCATION_STEP 0x100
 #define KPB_NO_OF_MEM_POOLS 3
+#define KPB_BYTES_TO_FRAMES(bytes, sample_width) \
+	(bytes / ((KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) * \
+	KPB_NR_OF_CHANNELS))
 
 enum kpb_state {
 	KPB_STATE_BUFFERING = 0,
@@ -94,6 +97,7 @@ struct dd {
 	size_t history_depth;
 	uint8_t is_draining_active;
 	enum kpb_state *state;
+	size_t sample_width;
 };
 
 /** \brief kpb component configuration data. */
