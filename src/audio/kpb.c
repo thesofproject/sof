@@ -54,9 +54,13 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
 static void kpb_free_history_buffer(struct hb *buff);
 static bool kpb_has_enough_history_data(struct comp_data *kpb,
-					    struct hb *buff, size_t his_req);
+					struct hb *buff, size_t his_req);
 static inline bool kpb_is_sample_width_supported(uint32_t sampling_width);
-
+static void kpb_copy_samples(struct comp_buffer *sink,
+			     struct comp_buffer *source, size_t size,
+			     size_t sample_width);
+static void kpb_drain_samples(void *source, struct comp_buffer *sink,
+			      size_t size, size_t sample_width);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -498,7 +502,8 @@ static int kpb_copy(struct comp_dev *dev)
 
 	/* Sink and source are both ready and have space */
 	copy_bytes = MIN(sink->free, source->avail);
-	assert(!memcpy_s(sink->w_ptr, copy_bytes, source->r_ptr, copy_bytes));
+	kpb_copy_samples(sink, source, copy_bytes,
+			 kpb->config.sampling_width);
 
 	/* Buffer source data internally in history buffer for future
 	 * use by clients.
@@ -687,10 +692,11 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
  */
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 {
-	bool is_sink_ready = (kpb->cli_sink->sink->state == COMP_STATE_ACTIVE);
+	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
+	size_t sample_width = kpb->config.sampling_width;
 	size_t history_depth = cli->history_depth * kpb->config.no_channels *
 			       (kpb->config.sampling_freq / 1000) *
-			       (kpb->config.sampling_width / 8);
+			       (sample_width / 8);
 
 	struct hb *buff = kpb->history_buffer;
 	struct hb *first_buff = buff;
@@ -772,6 +778,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.history_buffer = buff;
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.state = &kpb->state;
+		kpb->draining_task_data.sample_width = sample_width;
 
 		/* Pause selector copy. */
 		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
@@ -801,6 +808,7 @@ static uint64_t kpb_draining_task(void *arg)
 	struct comp_buffer *sink = draining_data->sink;
 	struct hb *buff = draining_data->history_buffer;
 	size_t history_depth = draining_data->history_depth;
+	size_t sample_width = draining_data->sample_width;
 	size_t size_to_read;
 	size_t size_to_copy;
 	bool move_buffer = false;
@@ -829,8 +837,9 @@ static uint64_t kpb_draining_task(void *arg)
 			}
 		}
 
-		assert(!memcpy_s(sink->w_ptr, size_to_copy, buff->r_ptr,
-				 size_to_copy));
+		kpb_drain_samples(buff->r_ptr, sink, size_to_copy,
+				  sample_width);
+
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
 		drained += size_to_copy;
@@ -860,6 +869,36 @@ static uint64_t kpb_draining_task(void *arg)
 		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
 
 	return 0;
+}
+
+/**
+ * \brief Drain data samples safe, according to configuration.
+ *
+ * \param[in] dev - kpb component device pointer
+ * \param[in] sink - pointer to sink buffer.
+ * \param[in] source - pointer to source buffer.
+ * \param[in] size - requested copy size in bytes.
+ *
+ * \return none.
+ */
+static void kpb_drain_samples(void *source, struct comp_buffer *sink,
+			       size_t size, size_t sample_width)
+{
+	int16_t *dest;
+	int16_t *src = (int16_t *)source;
+	uint32_t i;
+	uint32_t j = 0;
+	uint32_t channel;
+	uint32_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+			dest = buffer_write_frag_s16(sink, j);
+			*dest = *src;
+			src++;
+			j++;
+		}
+	}
 }
 
 /**
@@ -950,6 +989,37 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 	}
 
 	return ret;
+}
+
+/**
+ * \brief Copy data samples safe, according to configuration.
+ *
+ * \param[in] dev - kpb component device pointer
+ * \param[in] sink - pointer to sink buffer.
+ * \param[in] source - pointer to source buffer.
+ * \param[in] size - requested copy size in bytes.
+ *
+ * \return none.
+ */
+static void kpb_copy_samples(struct comp_buffer *sink,
+			     struct comp_buffer *source, size_t size,
+			     size_t sample_width)
+{
+	int16_t *src;
+	int16_t *dest;
+	uint32_t i;
+	uint32_t j = 0;
+	uint32_t channel;
+	uint32_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+			src = buffer_read_frag_s16(source, j);
+			dest = buffer_write_frag_s16(sink, j);
+			*dest = *src;
+			j++;
+		}
+	}
 }
 
 struct comp_driver comp_kpb = {
