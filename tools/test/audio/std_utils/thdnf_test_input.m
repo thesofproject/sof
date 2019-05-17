@@ -26,35 +26,9 @@ function test = thdnf_test_input(test)
 % t.mark_a_db - amplitude max of marker tone (dB)
 %
 
-%%
-% Copyright (c) 2016, Intel Corporation
-% All rights reserved.
-%
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
-%
+% SPDX-License-Identifier: BSD-3-Clause
+% Copyright(c) 2016 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
 
 %% Reference: AES17 6.3.2 THD+N ratio vs frequency
 %  http://www.aes.org/publications/standards/
@@ -68,14 +42,16 @@ if test.ch == 0
         test.ch = 1+round(rand(1,1)*(test.nch-1)); % Test random channel 1..Nch
 end
 
-fprintf('Using parameters Fstart=%.0f Hz, Fend=%.0f Hz, Fs=%.1f Hz, bits_in=%d, ch=%d, Nch=%d\n', ...
-        test.f_start, test.f_end, test.fs/1e3, test.bits_in, test.ch, test.nch );
+for ch = test.ch
+    fprintf('Using parameters Fstart=%.0f Hz, Fend=%.0f Hz, Fs=%.1f Hz, bits_in=%d, ch=%d, Nch=%d\n', ...
+        test.f_start, test.f_end, test.fs/1e3, test.bits_in, ch, test.nch );
+end
 
-test.fn_in = sprintf('thdnf_test_in.%s', test.fmt);
-test.fn_out = sprintf('thdnf_test_out.%s', test.fmt);
+pid = getpid();
+test.fn_in = sprintf('thdnf_test_in_%d.%s', pid, test.fmt);
+test.fn_out = sprintf('thdnf_test_out_%d.%s', pid, test.fmt);
 noct = ceil(log(test.f_end/test.f_start)/log(2)); % Max 1 octave steps
 test.f = logspace(log10(test.f_start),log10(test.f_end), noct);
-
 
 %% Tone sweep parameters
 test.is = 20e-3; % Ignore signal from tone start
