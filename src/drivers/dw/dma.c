@@ -494,9 +494,6 @@ static int dw_dma_stop(struct dma *dma, int channel)
 
 	dcache_writeback_region(chan->lli,
 				sizeof(struct dw_lli) * chan->desc_count);
-#else
-	/* clear transfer interrupt */
-	dw_write(dma, DW_CLEAR_TFR, DW_CHAN(channel));
 #endif
 
 	chan->status = COMP_STATE_PREPARE;
@@ -1070,11 +1067,20 @@ static void dw_dma_irq_handler(void *data)
 	tracev_dwdma("dw_dma_irq_handler(): dma %d IRQ status 0x%x",
 		     dma->plat_data.id, status_intr);
 
-	/* get the source of our IRQ */
+	/* get the source of our IRQ and clear it */
 #if CONFIG_HW_LLI
-	status_src = dw_read(dma, DW_STATUS_BLOCK);
+#if CONFIG_DMA_AGGREGATED_IRQ
+	/* skip if channel is not registered on this core */
+	mask = p->mask_irq_channels[cpu_get_id()];
+#else
+	mask = ~0;
+#endif
+
+	status_src = dw_read(dma, DW_STATUS_BLOCK) & mask;
+	dw_write(dma, DW_CLEAR_BLOCK, status_src);
 #else
 	status_src = dw_read(dma, DW_STATUS_TFR);
+	dw_write(dma, DW_CLEAR_TFR, status_src);
 #endif
 
 	/* TODO: handle errors, just clear them atm */
@@ -1085,6 +1091,10 @@ static void dw_dma_irq_handler(void *data)
 		dw_write(dma, DW_CLEAR_ERR, status_err);
 	}
 
+	/* clear platform and DSP interrupt */
+	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
+				 status_src | status_err);
+
 	for (i = 0; i < dma->plat_data.channels; i++) {
 		/* skip if channel is not running */
 		if (p->chan[i].status != COMP_STATE_ACTIVE)
@@ -1092,26 +1102,9 @@ static void dw_dma_irq_handler(void *data)
 
 		mask = 0x1 << i;
 
-#if CONFIG_DMA_AGGREGATED_IRQ
-		/* skip if channel is not registered on this core */
-		if (!(p->mask_irq_channels[cpu_get_id()] & mask))
-			continue;
-#endif
-
-		if (status_src & mask) {
-			/* clear the source of our IRQ */
-#if CONFIG_HW_LLI
-			dw_write(dma, DW_CLEAR_BLOCK, status_src & mask);
-#else
-			dw_write(dma, DW_CLEAR_TFR, status_src & mask);
-#endif
+		if (status_src & mask)
 			dw_dma_irq_callback(dma, i, &next, DMA_CB_TYPE_IRQ);
-		}
 	}
-
-	/* clear platform and DSP interrupt */
-	platform_interrupt_clear(dma_irq(dma, cpu_get_id()),
-				 status_src | status_err);
 }
 
 static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
