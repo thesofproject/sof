@@ -78,7 +78,7 @@ else if (min(rms_db) < -3) && (test.fs2 + 1 > test.fs1)
      end
 end
 
-test.fh = figure('visible', test.visible);
+test.fh = figure('visible', test.plot_visible);
 ns = 1024;
 no = round(0.9*ns);
 specgram(y(:,1), ns, test.fs, kaiser(ns,27), no);

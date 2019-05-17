@@ -1,41 +1,37 @@
-function [d, nt, nt_use, nt_skip] = find_test_signal(x, test)
+function [d, nt, nt_use, nt_skip] = find_test_signal(x0, test)
 
-%%
-% Copyright (c) 2017, Intel Corporation
-% All rights reserved.
+%% [d, nt, nt_use, nt_skip] = find_test_signal(x, test)
 %
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
+% Inputs
+% x    - input signal
+% test - test definitions
 %
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% Outputs
+% d       - delay to fist test tone start
+% nt      - number of samples in test tone
+% nt_use  - number of samples to use
+% nt_skip - number of samples to skip
 %
+
+% SPDX-License-Identifier: BSD-3-Clause
+% Copyright(c) 2017 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
+
+d = [];
+nt = [];
+nt_use = [];
+nt_skip = [];
+
+%% Use channel with strongest signal
+ch = select_channel(x0);
+x = x0(:, ch);
 
 %% Find start marker
 fprintf('Finding test start marker...\n');
 s = sync_chirp(test.fs, 'up');
 nx = length(x);
 n_seek = round(test.fs*(test.idle_t + test.mark_t));
-n = min(round(test.fs*test.sm), n_seek);
+n = min(max(round(test.fs*test.sm), n_seek), nx);
 y = x(1:n);
 [r, lags] = xcorr(y, s);
 [r_max, idx] = max(r);
@@ -44,8 +40,8 @@ d_start = lags(idx);
 %% Find end marker
 fprintf('Finding test end marker...\n');
 s = sync_chirp(test.fs, 'down');
-n_seek = round(test.fs*(2*test.idle_t + test.mark_t));
-n = min(round(test.fs*test.em),n_seek);
+n_seek = round(test.fs*(test.idle_t + test.mark_t));
+n = min(max(round(test.fs*test.em),n_seek), nx);
 y = x(end-n+1:end);
 [r, lags] = xcorr(y, s);
 [r_max, idx] = max(r);
@@ -56,21 +52,42 @@ len = d_end-d_start;
 len_s = len/test.fs;
 ref_s = test.mark_t+test.nf*test.na*test.tl;
 if abs(len_s-ref_s) > test.mt
-        len_s
-        ref_s
-        error('Start and end markers were not found. Test play or capture quality may be poor');
+        fprintf(1, 'Start and end markers were not found. Signal quality may be poor.\n');
+	return
 end
 
 %% Delay to first tone, length of tone in samples
 d = d_start + round(test.mark_t*test.fs);
 if (d < 0)
-	error('Invalid negative delay seen. Test play or capture quality may be poor');
+	fprintf(1, 'Invalid delay value. Signal quality may be poor.\n');
+	return
+	d = [];
 end
 nt = round(test.tl*test.fs);
 nt_use = nt -round(test.is*test.fs) -round(test.ie*test.fs);
 if nt_use < 0
-        error('Test signal length parameters must be wrong!');
+        fprintf(1, 'Test signal ignore start/end mismatch.\n');
+	d = [];
+	nt = [];
+	nt_use = [];
+	return
 end
 nt_skip = round(test.is*test.fs);
 
+end
+
+%% Select channel function
+function ch = select_channel(x)
+	rms = get_rms(x);
+	[~, ch] = max(rms);
+end
+
+%% RMS level in decibels
+function rms_db = get_rms(x)
+	s = size(x);
+	nch = s(2);
+	rms_db = zeros(1, nch);
+	for i = 1:nch
+		rms_db(i) = 20*log10(sqrt(mean(x(:,i).^2)));
+	end
 end

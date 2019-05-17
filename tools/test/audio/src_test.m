@@ -14,35 +14,9 @@ function [n_fail, n_pass, n_na] = src_test(bits_in, bits_out, fs_in_list, fs_out
 % paremeters are omitted.
 %
 
-%%
-% Copyright (c) 2016, Intel Corporation
-% All rights reserved.
-%
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
-%
+% SPDX-License-Identifier: BSD-3-Clause
+% Copyright(c) 2016 Intel Corporation. All rights reserved.
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
 
 addpath('std_utils');
 addpath('test_utils');
@@ -92,9 +66,9 @@ t.full_test = 1;       % 0 is quick check only, 1 is full set
 %  visibility set to to 0 only console text is seen. The plots are
 %  exported into plots directory in png format and can be viewed from
 %  there.
-t.close_plot_windows = 1;  % Workaround for visible windows if Octave hangs
-t.visible = 'off';         % Use off for batch tests and on for interactive
-t.delete = 1;              % Set to 0 to inspect the audio data files
+t.plot_close_windows = 1;  % Workaround for visible windows if Octave hangs
+t.plot_visible = 'off';    % Use off for batch tests and on for interactive
+t.files_delete = 1;        % Set to 0 to inspect the audio data files
 
 %% Init for test loop
 n_test = 7; % We have next seven test cases for SRC
@@ -235,8 +209,8 @@ test = g_test_measure(test);
 %% Get output parameters
 fail = test.fail;
 g_db = test.g_db;
-delete_check(t.delete, test.fn_in);
-delete_check(t.delete, test.fn_out);
+delete_check(t.files_delete, test.fn_in);
+delete_check(t.files_delete, test.fn_out);
 
 end
 
@@ -246,8 +220,8 @@ function [fail, pm_range_db, range_hz, fr3db_hz] = fr_test(t)
 test = test_defaults_src(t);
 prm = src_param(t.fs1, t.fs2, test.coef_bits);
 
-test.rp_max = prm.rp_tot;      % Max. ripple +/- dB allowed
-test.f_lo = 20;                % For response reporting, measure from 20 Hz
+test.fr_rp_max_db = prm.rp_tot; % Max. ripple +/- dB allowed
+test.f_lo = 20;                 % For response reporting, measure from 20 Hz
 test.f_hi = 0.99 * min(t.fs1,t.fs2)*prm.c_pb; % to designed filter upper frequency
 test.f_max = 0.99 * min(t.fs1/2, t.fs2/2); % Measure up to Nyquist frequency
 
@@ -265,8 +239,8 @@ fail = test.fail;
 pm_range_db = test.rp;
 range_hz = [test.f_lo test.f_hi];
 fr3db_hz = test.fr3db_hz;
-delete_check(t.delete, test.fn_in);
-delete_check(t.delete, test.fn_out);
+delete_check(t.files_delete, test.fn_in);
+delete_check(t.files_delete, test.fn_out);
 
 %% Print
 src_test_result_print(t, 'Frequency response', 'FR', test.ph);
@@ -301,8 +275,8 @@ test.fs = t.fs2;
 test = thdnf_test_measure(test);
 thdnf = max(max(test.thdnf));
 fail = test.fail;
-delete_check(t.delete, test.fn_in);
-delete_check(t.delete, test.fn_out);
+delete_check(t.files_delete, test.fn_in);
+delete_check(t.files_delete, test.fn_out);
 
 %% Print
 src_test_result_print(t, 'THD+N ratio vs. frequency', 'THDNF');
@@ -332,8 +306,8 @@ test = dr_test_measure(test);
 %% Get output parameters
 fail = test.fail;
 dr_db = test.dr_db;
-delete_check(t.delete, test.fn_in);
-delete_check(t.delete, test.fn_out);
+delete_check(t.files_delete, test.fn_in);
+delete_check(t.files_delete, test.fn_out);
 
 end
 
@@ -365,8 +339,8 @@ test.fs = t.fs2;
 test = aap_test_measure(test);
 aap_db = test.aap;
 fail = test.fail;
-delete_check(t.delete, test.fn_in);
-delete_check(t.delete, test.fn_out);
+delete_check(t.files_delete, test.fn_in);
+delete_check(t.files_delete, test.fn_out);
 
 %% Print
 src_test_result_print(t, 'Attenuation of alias products', 'AAP');
@@ -398,8 +372,8 @@ test.fs = t.fs2;
 test = aip_test_measure(test);
 aip_db = test.aip;
 fail = test.fail;
-delete_check(t.delete, test.fn_in);
-delete_check(t.delete, test.fn_out);
+delete_check(t.files_delete, test.fn_in);
+delete_check(t.files_delete, test.fn_out);
 
 %% Print
 src_test_result_print(t, 'Attenuation of image products', 'AIP');
@@ -429,8 +403,8 @@ test = chirp_test_analyze(test);
 src_test_result_print(t, 'Chirp', 'chirpf');
 
 % Delete files unless e.g. debugging and need data to run
-delete_check(t.delete, test.fn_in);
-delete_check(t.delete, test.fn_out);
+delete_check(t.files_delete, test.fn_in);
+delete_check(t.files_delete, test.fn_out);
 
 fail = test.fail;
 end
@@ -448,11 +422,17 @@ test.ch = t.ch;
 test.fs = t.fs1;
 test.fs1 = t.fs1;
 test.fs2 = t.fs2;
-test.mask_f = [];
-test.mask_lo = [];
-test.mask_hi = [];
+test.fr_mask_f = [];
+test.fr_mask_lo = [];
+test.fr_mask_hi = [];
 test.coef_bits = 24; % No need to use actual word length in test
-test.visible = t.visible;
+test.att_rec_db = 0; % Not used in simulation test
+test.quick = 0;      % Test speed is no issue in simulation
+test.plot_visible = t.plot_visible;
+test.plot_channels_combine = 0;
+test.plot_passband_zoom = 1;
+test.plot_fr_axis = [10 100e3 -4 1];
+test.plot_thdn_axis = [10 100e3 -140 -60];
 end
 
 function test = test_run_src(test, t)
@@ -473,7 +453,7 @@ pfn = sprintf('plots/%s_src_%d_%d.png', testacronym, t.fs1, t.fs2);
 % The print command caused a strange error with __osmesa_print__
 % so disable it for now until solved.
 %print(pfn, '-dpng');
-if t.close_plot_windows
+if t.plot_close_windows
 	close all;
 end
 end
