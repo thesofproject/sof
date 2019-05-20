@@ -74,7 +74,7 @@ static void put_header(uint32_t *dst, uint32_t id_0, uint32_t id_1,
 	header.timestamp = timestamp + platform_timer->delta;
 	header.log_entry_address = entry;
 
-	memcpy(dst, &header, sizeof(header));
+	assert(!memcpy_s(dst, sizeof(header), &header, sizeof(header)));
 }
 
 static void mtrace_event(const char *data, uint32_t length)

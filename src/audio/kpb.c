@@ -104,7 +104,8 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	if (!dev)
 		return NULL;
 
-	memcpy(&dev->comp, comp, sizeof(struct sof_ipc_comp_process));
+	assert(!memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
+			 comp, sizeof(struct sof_ipc_comp_process)));
 
 	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	if (!cd) {
@@ -114,7 +115,8 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
-	memcpy(&cd->config, ipc_process->data, bs);
+	assert(!memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data,
+			 bs));
 
 	if (cd->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
 		trace_kpb_error("kpb_new() error: "
@@ -512,7 +514,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 	/* Sink and source are both ready and have space */
 	copy_bytes = MIN(sink->free, source->avail);
-	memcpy(sink->w_ptr, source->r_ptr, copy_bytes);
+	assert(!memcpy_s(sink->w_ptr, copy_bytes, source->r_ptr, copy_bytes));
 
 	/* Buffer source data internally in history buffer for future
 	 * use by clients.
@@ -560,7 +562,8 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			 * in this buffer, copy what's available and continue
 			 * with next buffer.
 			 */
-			memcpy(buff->w_ptr, read_ptr, space_avail);
+			assert(!memcpy_s(buff->w_ptr, space_avail, read_ptr,
+					 space_avail));
 			/* Update write pointer & requested copy size */
 			buff->w_ptr += space_avail;
 			size_to_copy = size_to_copy - space_avail;
@@ -573,7 +576,8 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			 * available in this buffer. In this scenario simply
 			 * copy what was requested.
 			 */
-			memcpy(buff->w_ptr, read_ptr, size_to_copy);
+			assert(!memcpy_s(buff->w_ptr, size_to_copy, read_ptr,
+					 size_to_copy));
 			/* Update write pointer & requested copy size */
 			buff->w_ptr += size_to_copy;
 			/* Reset requested copy size */
@@ -839,7 +843,8 @@ static uint64_t kpb_draining_task(void *arg)
 			}
 		}
 
-		memcpy(sink->w_ptr, buff->r_ptr, size_to_copy);
+		assert(!memcpy_s(sink->w_ptr, size_to_copy, buff->r_ptr,
+				 size_to_copy));
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
 

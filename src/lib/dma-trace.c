@@ -361,12 +361,12 @@ void dma_trace_flush(void *t)
 	/* check for buffer wrap */
 	if (buffer->w_ptr - size < buffer->addr) {
 		wrap_count = buffer->w_ptr - buffer->addr;
-		memcpy(t, buffer->end_addr - (size - wrap_count),
-		       size - wrap_count);
-		memcpy(t + (size - wrap_count), buffer->addr,
-		       wrap_count);
+		assert(!memcpy_s(t, size - wrap_count, buffer->end_addr -
+				 (size - wrap_count), size - wrap_count));
+		assert(!memcpy_s(t + (size - wrap_count), wrap_count,
+				 buffer->addr, wrap_count));
 	} else {
-		memcpy(t, buffer->w_ptr - size, size);
+		assert(!memcpy_s(t, size, buffer->w_ptr - size, size));
 	}
 
 	/* writeback trace data */
@@ -432,18 +432,19 @@ static void dtrace_add_event(const char *e, uint32_t length)
 		/* check for buffer wrap */
 		if (margin > length) {
 			/* no wrap */
-			memcpy(buffer->w_ptr, e, length);
+			assert(!memcpy_s(buffer->w_ptr, length, e, length));
 			dcache_writeback_invalidate_region(buffer->w_ptr,
 							   length);
 			buffer->w_ptr += length;
 		} else {
 			/* data is bigger than remaining margin so we wrap */
-			memcpy(buffer->w_ptr, e, margin);
+			assert(!memcpy_s(buffer->w_ptr, margin, e, margin));
 			dcache_writeback_invalidate_region(buffer->w_ptr,
 							   margin);
 			buffer->w_ptr = buffer->addr;
 
-			memcpy(buffer->w_ptr, e + margin, length - margin);
+			assert(!memcpy_s(buffer->w_ptr, length - margin,
+					 e + margin, length - margin));
 			dcache_writeback_invalidate_region(buffer->w_ptr,
 							   length - margin);
 			buffer->w_ptr += length - margin;
