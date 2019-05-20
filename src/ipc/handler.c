@@ -1300,5 +1300,5 @@ enum task_state ipc_process_task(void *data)
 
 void ipc_schedule_process(struct ipc *ipc)
 {
-	schedule_task(&ipc->ipc_task, 0, 100);
+	schedule_task(&ipc->ipc_task, 0, 50000);
 }
