@@ -48,9 +48,12 @@
 #include <arch/cache.h>
 #include <uapi/ipc/dai.h>
 
-#define trace_host(__e, ...)	trace_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
-#define tracev_host(__e, ...)	tracev_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
-#define trace_host_error(__e, ...)	trace_error(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
+#define trace_host(__e, ...) \
+	trace_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
+#define tracev_host(__e, ...) \
+	tracev_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
+#define trace_host_error(__e, ...) \
+	trace_error(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
 
 /**
  * \brief Host buffer info.

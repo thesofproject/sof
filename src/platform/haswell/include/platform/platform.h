@@ -93,7 +93,9 @@ struct sof;
 /* clock source used by scheduler for deadline calculations */
 #define PLATFORM_SCHED_CLOCK	PLATFORM_DEFAULT_CLOCK
 
-/* DMA channel drain timeout in microseconds - TODO: caclulate based on topology */
+/* DMA channel drain timeout in microseconds
+ * TODO: calculate based on topology
+ */
 #define PLATFORM_DMA_TIMEOUT	1333
 
 /* DMA host transfer timeouts in microseconds */
@@ -147,6 +149,9 @@ static inline void platform_panic(uint32_t p)
 	shim_write(SHIM_IPCX, ((__x) & 0x3fffffff))
 
 extern struct timer *platform_timer;
+
+extern intptr_t _module_init_start;
+extern intptr_t _module_init_end;
 
 #endif
 #endif

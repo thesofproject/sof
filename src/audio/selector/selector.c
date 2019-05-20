@@ -304,6 +304,7 @@ static int selector_cmd(struct comp_dev *dev, int cmd, void *data,
 static int selector_trigger(struct comp_dev *dev, int cmd)
 {
 	int ret;
+
 	trace_selector("selector_trigger()");
 
 	ret = comp_set_state(dev, cmd);
@@ -470,6 +471,7 @@ err:
 static int selector_reset(struct comp_dev *dev)
 {
 	int ret;
+
 	trace_selector("selector_reset()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_RESET);

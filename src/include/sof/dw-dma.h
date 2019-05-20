@@ -177,7 +177,7 @@ struct dw_lli {
 	 * in case of more than two items
 	 */
 	uint32_t reserved;
-} __attribute__ ((packed));
+} __packed;
 
 extern const struct dma_ops dw_dma_ops;
 

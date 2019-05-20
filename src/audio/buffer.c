@@ -152,7 +152,8 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 
 	/* check for pointer wrap */
 	if (buffer->w_ptr >= buffer->end_addr)
-		buffer->w_ptr = buffer->addr + (buffer->w_ptr - buffer->end_addr);
+		buffer->w_ptr = buffer->addr +
+			(buffer->w_ptr - buffer->end_addr);
 
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)

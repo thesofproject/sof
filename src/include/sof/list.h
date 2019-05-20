@@ -91,7 +91,7 @@ static inline int list_item_is_last(struct list_item *item,
 
 /* is list empty ? */
 #define list_is_empty(item) \
-       ((item)->next == item)
+	((item)->next == item)
 
 #define __list_object(item, type, offset) \
 	((type *)((char *)(item) - (offset)))

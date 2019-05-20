@@ -110,15 +110,19 @@
 #define IRQ_EXT_CODE_DMA_LVL3(xcpu) \
 	SOF_IRQ(IRQ_BIT_LVL3_CODE_LOADER, 3, xcpu, IRQ_NUM_EXT_LEVEL3)
 #define IRQ_EXT_HOST_DMA_IN_LVL3(xcpu, channel) \
-	SOF_IRQ(IRQ_BIT_LVL3_HOST_STREAM_IN(channel), 3, xcpu, IRQ_NUM_EXT_LEVEL3)
+	SOF_IRQ(IRQ_BIT_LVL3_HOST_STREAM_IN(channel), 3, xcpu, \
+		IRQ_NUM_EXT_LEVEL3)
 #define IRQ_EXT_HOST_DMA_OUT_LVL3(xcpu, channel) \
-	SOF_IRQ(IRQ_BIT_LVL3_HOST_STREAM_OUT(channel), 3, xcpu, IRQ_NUM_EXT_LEVEL3)
+	SOF_IRQ(IRQ_BIT_LVL3_HOST_STREAM_OUT(channel), 3, xcpu, \
+		IRQ_NUM_EXT_LEVEL3)
 
 /* Priority 4 Peripheral IRQ mappings */
 #define IRQ_EXT_LINK_DMA_IN_LVL4(xcpu, channel) \
-	SOF_IRQ(IRQ_BIT_LVL4_LINK_STREAM_IN(channel), 4, xcpu, IRQ_NUM_EXT_LEVEL4)
+	SOF_IRQ(IRQ_BIT_LVL4_LINK_STREAM_IN(channel), 4, xcpu, \
+		IRQ_NUM_EXT_LEVEL4)
 #define IRQ_EXT_LINK_DMA_OUT_LVL4(xcpu, channel) \
-	SOF_IRQ(IRQ_BIT_LVL4_LINK_STREAM_OUT(channel), 4, xcpu, IRQ_NUM_EXT_LEVEL4)
+	SOF_IRQ(IRQ_BIT_LVL4_LINK_STREAM_OUT(channel), 4, xcpu, \
+		IRQ_NUM_EXT_LEVEL4)
 
 /* Priority 5 Peripheral IRQ mappings */
 #define IRQ_EXT_LP_GPDMA0_LVL5(xcpu, channel) \

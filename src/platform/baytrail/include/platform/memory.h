@@ -163,7 +163,8 @@ void platform_init_memmap(void);
 /* Vector and literal sizes - not in core-isa.h */
 #define SOF_MEM_VECT_LIT_SIZE		0x4
 #define SOF_MEM_VECT_TEXT_SIZE		0x1c
-#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + SOF_MEM_VECT_LIT_SIZE)
+#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + \
+					SOF_MEM_VECT_LIT_SIZE)
 
 #define SOF_MEM_RESET_TEXT_SIZE	0x2e0
 #define SOF_MEM_RESET_LIT_SIZE		0x120

@@ -87,9 +87,9 @@ struct ipc_comp_dev {
 struct ipc_msg {
 	uint32_t header;	/* specific to platform */
 	uint32_t tx_size;	/* payload size in bytes */
-	uint8_t tx_data[SOF_IPC_MSG_MAX_SIZE];		/* pointer to payload data */
+	uint8_t tx_data[SOF_IPC_MSG_MAX_SIZE];	/* pointer to payload data */
 	uint32_t rx_size;	/* payload size in bytes */
-	uint8_t rx_data[SOF_IPC_MSG_MAX_SIZE];		/* pointer to payload data */
+	uint8_t rx_data[SOF_IPC_MSG_MAX_SIZE];	/* pointer to payload data */
 	struct list_item list;
 	void (*cb)(void *cb_data, void *mailbox_data);
 	void *cb_data;
@@ -129,9 +129,9 @@ struct ipc {
 };
 
 #define ipc_set_drvdata(ipc, data) \
-	(ipc)->private = data
+	((ipc)->private = data)
 #define ipc_get_drvdata(ipc) \
-	(ipc)->private
+	((ipc)->private)
 
 
 int ipc_init(struct sof *sof);

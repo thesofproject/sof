@@ -47,11 +47,12 @@ struct timer {
 };
 
 /* internal API calls */
-int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg);
+int timer64_register(struct timer *timer, void (*handler)(void *arg),
+		     void *arg);
 void timer_64_handler(void *arg);
 
 static inline int arch_timer_register(struct timer *timer,
-	void(*handler)(void *arg), void *arg)
+	void (*handler)(void *arg), void *arg)
 {
 	uint32_t flags;
 	int ret;

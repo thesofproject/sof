@@ -69,8 +69,9 @@ static inline void alloc_core_context(int core)
 					   sizeof(core_ctx_ptr));
 
 	/* writeback bss region to share static pointers */
-	dcache_writeback_region((void *)&_bss_start, \
-		(unsigned int)&_bss_end - (unsigned int)&_bss_start);
+	dcache_writeback_region((void *)&_bss_start,
+				(unsigned int)&_bss_end -
+				(unsigned int)&_bss_start);
 }
 
 #endif

@@ -53,7 +53,7 @@ static void do_cmd(void)
 {
 	uint32_t ipcsc;
 	uint32_t status = 0;
-	
+
 	trace_ipc("pmc: tx -> 0x%x", _pmc->msg_l);
 
 	_pmc->pending = 0;
@@ -65,7 +65,8 @@ static void do_cmd(void)
 	shim_write(SHIM_IPCSCH, ipcsc);
 
 	/* unmask busy interrupt */
-	shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) & ~SHIM_IMRLPESC_BUSY);
+	shim_write(SHIM_IMRLPESC,
+		   shim_read(SHIM_IMRLPESC) & ~SHIM_IMRLPESC_BUSY);
 }
 
 /* process current message */
@@ -81,10 +82,12 @@ static void do_notify(void)
 	trace_ipc("pmc: not rx");
 
 	/* clear DONE bit  */
-	shim_write(SHIM_IPCLPESCH, shim_read(SHIM_IPCLPESCH) & ~SHIM_IPCLPESCH_DONE);
+	shim_write(SHIM_IPCLPESCH,
+		   shim_read(SHIM_IPCLPESCH) & ~SHIM_IPCLPESCH_DONE);
 
 	/* unmask Done interrupt */
-	shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) & ~SHIM_IMRLPESC_DONE);
+	shim_write(SHIM_IMRLPESC,
+		   shim_read(SHIM_IMRLPESC) & ~SHIM_IMRLPESC_DONE);
 }
 
 static void irq_handler(void *arg)
@@ -97,16 +100,17 @@ static void irq_handler(void *arg)
 	tracev_ipc("pmc: irq isrlpesc 0x%x", isrlpesc);
 
 	if (isrlpesc & SHIM_ISRLPESC_DONE) {
-
 		/* Mask Done interrupt before return */
-		shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) | SHIM_IMRLPESC_DONE);
+		shim_write(SHIM_IMRLPESC,
+			   shim_read(SHIM_IMRLPESC) | SHIM_IMRLPESC_DONE);
 		interrupt_clear(IRQ_NUM_EXT_PMC);
 		do_notify();
 	}
 
 	if (isrlpesc & SHIM_ISRLPESC_BUSY) {
 		/* Mask Busy interrupt before return */
-		shim_write(SHIM_IMRLPESC, shim_read(SHIM_IMRLPESC) | SHIM_IMRLPESC_BUSY);
+		shim_write(SHIM_IMRLPESC,
+			   shim_read(SHIM_IMRLPESC) | SHIM_IMRLPESC_BUSY);
 		interrupt_clear(IRQ_NUM_EXT_PMC);
 
 		/* place message in Q and process later */

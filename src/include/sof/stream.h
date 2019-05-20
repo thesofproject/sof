@@ -41,8 +41,7 @@ enum stream_type {
 	STREAM_TYPE_VORBIS	= 1,
 };
 
-struct stream_params
-{
+struct stream_params {
 	enum stream_type type;
 	union {
 		struct sof_ipc_pcm_params *pcm;

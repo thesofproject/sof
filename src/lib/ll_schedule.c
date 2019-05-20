@@ -327,9 +327,8 @@ static void queue_run(void *data)
 	spin_lock_irq(&queue->lock, flags);
 
 	/* run work if there is any pending */
-	if (is_ll_pending(queue)) {
+	if (is_ll_pending(queue))
 		run_ll(queue, &flags);
-	}
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
@@ -381,7 +380,6 @@ static inline void insert_task_to_queue(struct task *w,
 	 * priority in queue and it should be added at the end of the list
 	 */
 	list_item_append(&w->list, q_list);
-	return;
 }
 
 static void ll_schedule(struct ll_schedule_data *queue, struct task *w,

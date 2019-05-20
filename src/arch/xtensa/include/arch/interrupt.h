@@ -39,7 +39,7 @@
 #include <stdlib.h>
 
 static inline int arch_interrupt_register(int irq,
-	void(*handler)(void *arg), void *arg)
+	void (*handler)(void *arg), void *arg)
 {
 	irq = SOF_IRQ_NUMBER(irq);
 	xthal_set_intclear(0x1 << irq);

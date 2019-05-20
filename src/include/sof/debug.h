@@ -72,7 +72,8 @@
 /* dump file and line to offset in mailbox or shared memory */
 #define dbg_at(__x) \
 	do { \
-		volatile uint32_t *__m = (uint32_t *)mailbox_get_debug_base() + __x; \
+		volatile uint32_t *__m = \
+			(uint32_t *)mailbox_get_debug_base() + __x; \
 		*(__m++) = (__FILE__[0] << 24) + (__FILE__[1] << 16) +\
 			 (__FILE__[2] << 8) + (__FILE__[3]); \
 		*(__m++) = (__func__[0] << 24) + (__func__[1] << 16) + \
@@ -109,7 +110,8 @@
 /* dump data area at addr and size count at mailbox offset or shared memory */
 #define dump_at(addr, count, offset) \
 	do { \
-		volatile uint32_t *__m = (uint32_t *)mailbox_get_debug_base() + offset; \
+		volatile uint32_t *__m = \
+			(uint32_t *)mailbox_get_debug_base() + offset; \
 		volatile uint32_t *__a = (uint32_t *)addr; \
 		volatile int __c = count; \
 		while (__c--) \
@@ -178,7 +180,8 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 		size = limit;
 
 	/* copy stack contents and writeback */
-	assert(!memcpy_s(addr, limit, (void *)stack_top, size - sizeof(void *)));
+	assert(!memcpy_s(addr, limit,
+			 (void *)stack_top, size - sizeof(void *)));
 	dcache_writeback_region(addr, size - sizeof(void *));
 
 	return p;

@@ -46,7 +46,7 @@
 
 #if DEBUG_LOCKS
 /** \brief Debug lock. */
-uint32_t lock_dbg_atomic = 0;
+uint32_t lock_dbg_atomic
 
 /** \brief Debug locks per user. */
 uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};

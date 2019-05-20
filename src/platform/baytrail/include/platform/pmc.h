@@ -41,13 +41,19 @@
 
 #ifdef CONFIG_BAYTRAIL
 
-#define PMC_SET_SSP_19M2	0xc5	/* LPE req SSP clock to 19.2MHz w/ PLL*/
-#define PMC_SET_SSP_25M		0xc6	/* LPE req SSP clock to 25MHz w/ XTAL */
+/* LPE req SSP clock to 19.2MHz w/ PLL*/
+#define PMC_SET_SSP_19M2	0xc5
+
+/* LPE req SSP clock to 25MHz w/ XTAL */
+#define PMC_SET_SSP_25M		0xc6
 
 #elif CONFIG_CHERRYTRAIL
 
-#define PMC_SET_SSP_25M		0xc5	/* LPE req SSP clock to 25MHz w/ PLL */
-#define PMC_SET_SSP_19M2	0xc6	/* LPE req SSP clock to 19.2MHz w/ XTAL*/
+/* LPE req SSP clock to 25MHz w/ PLL */
+#define PMC_SET_SSP_25M		0xc5
+
+/* LPE req SSP clock to 19.2MHz w/ XTAL */
+#define PMC_SET_SSP_19M2	0xc6
 #endif
 
 int platform_ipc_pmc_init(void);

@@ -29,6 +29,7 @@
  */
 
 #include <arch/cache.h>
+#include <arch/sof.h>
 #include <arch/wait.h>
 #include <sof/trace.h>
 #include <sof/io.h>
@@ -41,11 +42,6 @@
 #else
 #define MANIFEST_BASE	IMR_BOOT_LDR_MANIFEST_BASE
 #endif
-
-/* entry point to main firmware */
-extern void _ResetVector(void);
-
-void boot_master_core(void);
 
 #if defined(CONFIG_BOOT_LOADER)
 
@@ -93,12 +89,14 @@ static void parse_module(struct sof_man_fw_header *hdr,
 			/* copy from IMR to SRAM */
 			bmemcpy((void *)mod->segment[i].v_base_addr,
 				(void *)((int)hdr + bias),
-				mod->segment[i].flags.r.length * HOST_PAGE_SIZE);
+				mod->segment[i].flags.r.length *
+				HOST_PAGE_SIZE);
 			break;
 		case SOF_MAN_SEGMENT_BSS:
 			/* copy from IMR to SRAM */
-			bbzero((void*)mod->segment[i].v_base_addr,
-				mod->segment[i].flags.r.length * HOST_PAGE_SIZE);
+			bbzero((void *)mod->segment[i].v_base_addr,
+			       mod->segment[i].flags.r.length *
+			       HOST_PAGE_SIZE);
 			break;
 		default:
 			/* ignore */
@@ -224,6 +222,7 @@ static int32_t lp_sram_init(void)
 	uint32_t status;
 	uint32_t lspgctl_value;
 	uint32_t timeout_counter, delay_count = 256;
+
 	timeout_counter = delay_count;
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_LPSRAM_LDO_ON);

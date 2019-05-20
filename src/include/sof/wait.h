@@ -61,7 +61,7 @@ static inline void wait_for_interrupt(int level)
 
 static uint64_t _wait_cb(void *data)
 {
-	volatile completion_t *wc = (volatile completion_t*)data;
+	volatile completion_t *wc = (volatile completion_t *)data;
 
 	wc->timeout = 1;
 	return 0;

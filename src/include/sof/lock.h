@@ -72,7 +72,7 @@
  * Deadlock can be confirmed in rmbox :-
  *
  * Debug log:
- * debug: 0x0 (00) = 	0xdead0007 	(-559087609) 	|....|
+ * debug: 0x0 (00) =	0xdead0007	(-559087609)	|....|
  *  ....
  * Error log:
  * using 19.20MHz timestamp clock
@@ -101,8 +101,10 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
 /* all SMP spinlocks need init, nothing todo on UP */
 #define spinlock_init(lock) \
-	arch_spinlock_init(lock); \
-	(lock)->user = __LINE__;
+	do { \
+		arch_spinlock_init(lock); \
+		(lock)->user = __LINE__; \
+	} while (0)
 
 /* panic on deadlock */
 #define spin_try_lock_dbg(lock) \
@@ -118,30 +120,36 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 			trace_lock_value((lock)->user); \
 			panic(SOF_IPC_PANIC_DEADLOCK); /* lock not acquired */ \
 		} \
-	} while (0);
+	} while (0)
 
 #if DEBUG_LOCKS_VERBOSE
 #define spin_lock_log(lock) \
-	if (lock_dbg_atomic) { \
-		int __i = 0; \
-		int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
-			? DBG_LOCK_USERS : lock_dbg_atomic; \
-		trace_lock_error("eal"); \
-		trace_lock_value(__LINE__); \
-		trace_lock_value(lock_dbg_atomic); \
-		for (__i = 0; __i < __count; __i++) { \
-			trace_lock_value((lock_dbg_atomic << 24) | \
-				lock_dbg_user[__i]); \
+	do { \
+		if (lock_dbg_atomic) { \
+			int __i = 0; \
+			int  __count = lock_dbg_atomic >= DBG_LOCK_USERS \
+				? DBG_LOCK_USERS : lock_dbg_atomic; \
+			trace_lock_error("eal"); \
+			trace_lock_value(__LINE__); \
+			trace_lock_value(lock_dbg_atomic); \
+			for (__i = 0; __i < __count; __i++) { \
+				trace_lock_value((lock_dbg_atomic << 24) | \
+					lock_dbg_user[__i]); \
+			} \
 		} \
-	}
+	} while (0)
 
 #define spin_lock_dbg() \
-	trace_lock("LcE"); \
-	trace_lock_value(__LINE__);
+	do { \
+		trace_lock("LcE"); \
+		trace_lock_value(__LINE__); \
+	} while (0)
 
 #define spin_unlock_dbg() \
-	trace_lock("LcX"); \
-	trace_lock_value(__LINE__);
+	do { \
+		trace_lock("LcX"); \
+		trace_lock_value(__LINE__); \
+	} while (0)
 
 #else
 #define spin_lock_log(lock)
@@ -151,27 +159,35 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
 /* does nothing on UP systems */
 #define spin_lock(lock) \
-	spin_lock_dbg(); \
-	spin_lock_log(lock); \
-	spin_try_lock_dbg(lock);
+	do { \
+		spin_lock_dbg(); \
+		spin_lock_log(lock); \
+		spin_try_lock_dbg(lock); \
+	} while (0)
 
 #define spin_unlock(lock) \
-	arch_spin_unlock(lock); \
-	spin_unlock_dbg();
+	do { \
+		arch_spin_unlock(lock); \
+		spin_unlock_dbg(); \
+	} while (0)
 
 /* disables all IRQ sources and takes lock - enter atomic context */
 #define spin_lock_irq(lock, flags) \
-	flags = interrupt_global_disable(); \
-	lock_dbg_atomic++; \
-	spin_lock(lock); \
-	if (lock_dbg_atomic < DBG_LOCK_USERS) \
-		lock_dbg_user[lock_dbg_atomic - 1] = (lock)->user;
+	do { \
+		flags = interrupt_global_disable(); \
+		lock_dbg_atomic++; \
+		spin_lock(lock); \
+		if (lock_dbg_atomic < DBG_LOCK_USERS) \
+			lock_dbg_user[lock_dbg_atomic - 1] = (lock)->user; \
+	} while (0)
 
 /* re-enables current IRQ sources and releases lock - leave atomic context */
 #define spin_unlock_irq(lock, flags) \
-	spin_unlock(lock); \
-	lock_dbg_atomic--; \
-	interrupt_global_enable(flags);
+	do { \
+		spin_unlock(lock); \
+		lock_dbg_atomic--; \
+		interrupt_global_enable(flags); \
+	} while (0)
 
 #else
 
@@ -187,26 +203,36 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
 /* does nothing on UP systems */
 #define spin_lock(lock) \
-	spin_lock_dbg(); \
-	arch_spin_lock(lock);
+	do { \
+		spin_lock_dbg(); \
+		arch_spin_lock(lock); \
+	} while (0)
 
 #define spin_try_lock(lock) \
-	spin_lock_dbg(); \
-	arch_try_lock(lock);
+	do { \
+		spin_lock_dbg(); \
+		arch_try_lock(lock); \
+	} while (0)
 
 #define spin_unlock(lock) \
-	arch_spin_unlock(lock); \
-	spin_unlock_dbg();
+	do { \
+		arch_spin_unlock(lock); \
+		spin_unlock_dbg(); \
+	} while (0)
 
 /* disables all IRQ sources and takes lock - enter atomic context */
 #define spin_lock_irq(lock, flags) \
-	flags = interrupt_global_disable(); \
-	spin_lock(lock);
+	do { \
+		flags = interrupt_global_disable(); \
+		spin_lock(lock); \
+	} while (0)
 
 /* re-enables current IRQ sources and releases lock - leave atomic context */
 #define spin_unlock_irq(lock, flags) \
-	spin_unlock(lock); \
-	interrupt_global_enable(flags);
+	do { \
+		spin_unlock(lock); \
+		interrupt_global_enable(flags); \
+	} while (0)
 
 #endif
 

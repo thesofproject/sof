@@ -56,13 +56,13 @@
 #define PLAT_HOST_PERIODS	2	/* give enough latency for DMA refill */
 
 /* Platform Dev DMA buffer config - these should align with DMA engine */
-#define PLAT_DAI_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
-#define PLAT_DAI_PERIODS	2	/* give enough latency for DMA refill */
+#define PLAT_DAI_PERIOD_FRAMES	48 /* Must be multiple of DMA+DEV burst size */
+#define PLAT_DAI_PERIODS	2 /* give enough latency for DMA refill */
 #define PLAT_DAI_SCHED		1000 /* scheduling time in usecs */
 
 /* Platform internal buffer config - these should align with DMA engine */
-#define PLAT_INT_PERIOD_FRAMES	48	/* must be multiple of DMA+DEV burst size */
-#define PLAT_INT_PERIODS	2	/* give enough latency for DMA refill */
+#define PLAT_INT_PERIOD_FRAMES	48 /* must be multiple of DMA+DEV burst size */
+#define PLAT_INT_PERIODS	2 /* give enough latency for DMA refill */
 
 /* default static pipeline SSP port - not used for dynamic pipes */
 #define PLATFORM_SSP_PORT	2
@@ -113,7 +113,8 @@ struct scomps {
 };
 
 #define SCOMP(ccomps) \
-	{.comps = (struct sof_ipc_comp *)(ccomps), .num_comps = ARRAY_SIZE(ccomps)}
+	{.comps = (struct sof_ipc_comp *)(ccomps), \
+	.num_comps = ARRAY_SIZE(ccomps)}
 
 struct spipe {
 	struct scomps *scomps;
@@ -134,16 +135,27 @@ struct spipe {
  */
 
 static struct sof_ipc_comp_host host_p0[] = {
-	SPIPE_HOST(SPIPE_COMP(0, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 1, 0),	/* ID = 0 */
-	SPIPE_HOST(SPIPE_COMP(2, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 2, 0),	/* ID = 2 */
-	SPIPE_HOST(SPIPE_COMP(9, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 3, 0),	/* ID = 9 */
+	/* ID = 0 */
+	SPIPE_HOST(SPIPE_COMP(0, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 1, 0),
+	/* ID = 2 */
+	SPIPE_HOST(SPIPE_COMP(2, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 2, 0),
+	/* ID = 9 */
+	SPIPE_HOST(SPIPE_COMP(9, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 3, 0),
 };
 
 static struct sof_ipc_comp_volume volume_p0[] = {
-	SPIPE_VOL(SPIPE_COMP(1, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 1 */
-	SPIPE_VOL(SPIPE_COMP(3, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 3 */
-	SPIPE_VOL(SPIPE_COMP(5, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 5 */
-	SPIPE_VOL(SPIPE_COMP(8, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 8 */
+	/* ID = 1 */
+	SPIPE_VOL(SPIPE_COMP(1, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0,
+		  0xffffffff),
+	/* ID = 3 */
+	SPIPE_VOL(SPIPE_COMP(3, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0,
+		  0xffffffff),
+	/* ID = 5 */
+	SPIPE_VOL(SPIPE_COMP(5, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0,
+		  0xffffffff),
+	/* ID = 8 */
+	SPIPE_VOL(SPIPE_COMP(8, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0,
+		  0xffffffff),
 };
 
 static struct sof_ipc_comp_dai dai_p0[] = {
@@ -154,7 +166,8 @@ static struct sof_ipc_comp_dai dai_p0[] = {
 };
 
 static struct sof_ipc_comp_mixer mixer_p0[] = {
-	SPIPE_MIX(SPIPE_COMP(4, SOF_COMP_MIXER, sof_ipc_comp_mixer)),				/* ID = 4 */
+	/* ID = 4 */
+	SPIPE_MIX(SPIPE_COMP(4, SOF_COMP_MIXER, sof_ipc_comp_mixer)),
 };
 
 static struct scomps pipe0_scomps[] = {
@@ -169,15 +182,20 @@ static struct scomps pipe0_scomps[] = {
  */
 
 static struct sof_ipc_comp_host host_p1[] = {
-	SPIPE_HOST(SPIPE_COMP(10, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 4, 0),	/* ID = 10 */
+		/* ID = 10 */
+	SPIPE_HOST(SPIPE_COMP(10, SOF_COMP_HOST, sof_ipc_comp_host), 0, 0, 4,
+		   0),
 };
 
 static struct sof_ipc_comp_volume volume_p1[] = {
-	SPIPE_VOL(SPIPE_COMP(12, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 12 */
+	/* ID = 12 */
+	SPIPE_VOL(SPIPE_COMP(12, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0,
+		  0xffffffff),
 };
 
 static struct sof_ipc_comp_src src_p1[] = {
-	SPIPE_SRC(SPIPE_COMP(11, SOF_COMP_SRC, sof_ipc_comp_src)),	/* ID = 11 */
+	/* ID = 11 */
+	SPIPE_SRC(SPIPE_COMP(11, SOF_COMP_SRC, sof_ipc_comp_src)),
 };
 
 static struct scomps pipe1_scomps[] = {
@@ -191,15 +209,19 @@ static struct scomps pipe1_scomps[] = {
  */
 
 static struct sof_ipc_comp_tone tone_p2[] = {
-	SPIPE_TONE(SPIPE_COMP(13, SOF_COMP_HOST, sof_ipc_comp_tone)),	/* ID = 13 */
+	/* ID = 13 */
+	SPIPE_TONE(SPIPE_COMP(13, SOF_COMP_HOST, sof_ipc_comp_tone)),
 };
 
 static struct sof_ipc_comp_volume volume_p2[] = {
-	SPIPE_VOL(SPIPE_COMP(15, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0, 0xffffffff),/* ID = 15 */
+	/* ID = 15 */
+	SPIPE_VOL(SPIPE_COMP(15, SOF_COMP_VOLUME, sof_ipc_comp_volume), 0,
+		  0xffffffff),
 };
 
 static struct sof_ipc_comp_src src_p2[] = {
-	SPIPE_SRC(SPIPE_COMP(14, SOF_COMP_SRC, sof_ipc_comp_src)),	/* ID = 14 */
+	/* ID = 14 */
+	SPIPE_SRC(SPIPE_COMP(14, SOF_COMP_SRC, sof_ipc_comp_src)),
 };
 
 static struct scomps pipe2_scomps[] = {
@@ -282,13 +304,13 @@ static struct sof_ipc_buffer buffer2[] = {
  *
  * Two Low Latency PCMs mixed into single SSP output.
  *
- * host PCM0(0) --B0--> volume(1) --B2--+
- *                                      |--mixer(4) --B4--> volume(5) --B5--> SSPx(6)
- * host PCM1(2) --B1--> volume(3) --B3--+
- *                                      |
- *                     pipeline 1 >-----+
- *                                      |
- *                     pipeline 2 >-----+
+ * host PCM0(0)-B0->volume(1)-B2--+
+ *                                |--mixer(4) --B4--> volume(5) --B5--> SSPx(6)
+ * host PCM1(2)-B1->volume(3)-B3--+
+ *                                |
+ *               pipeline 1 >-----+
+ *                                |
+ *               pipeline 2 >-----+
  *
  * host PCM0(9) <--B7-- volume(8) <--B6-- SSPx(7)
  *
@@ -333,8 +355,10 @@ static struct sof_ipc_pipe_comp_connect c_connect2[] = {
 
 /* pipeline connections to other pipelines */
 //static struct sof_ipc_pipe_pipe_connect p_connect[] = {
-//	SPIPE_PIPE_CONNECT(1, 12, 10, 0, 4), /* p1 volume12 -> B10 -> p0 Mixer4 */
-//	SPIPE_PIPE_CONNECT(2, 15, 13, 0, 4), /* p2 Volume15 -> B13 -> p0 Mixer4 */
+//	/* p1 volume12 -> B10 -> p0 Mixer4 */
+//	SPIPE_PIPE_CONNECT(1, 12, 10, 0, 4),
+//	/* p2 Volume15 -> B13 -> p0 Mixer4 */
+//	SPIPE_PIPE_CONNECT(2, 15, 13, 0, 4),
 //};
 
 /* the static pipelines */
@@ -425,7 +449,8 @@ error:
 		for (j = 0; j < spipe[i].num_scomps; j++) {
 			sc = spipe[i].scomps;
 			for (k = 0; k < sc->num_comps; k++)
-				ipc_comp_free(ipc, spipe[i].scomps[j].comps[k].id);
+				ipc_comp_free(ipc,
+					      spipe[i].scomps[j].comps[k].id);
 		}
 
 		/* free buffers */

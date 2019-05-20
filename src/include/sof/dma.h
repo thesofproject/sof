@@ -218,7 +218,7 @@ struct dma *dma_get(uint32_t dir, uint32_t caps, uint32_t dev, uint32_t flags);
 void dma_put(struct dma *dma);
 
 #define dma_set_drvdata(dma, data) \
-	do { dma->private = data; } while (0)
+	(dma->private = data)
 #define dma_get_drvdata(dma) \
 	dma->private
 #define dma_base(dma) \
@@ -253,7 +253,8 @@ static inline void dma_channel_put(struct dma *dma, int channel)
 }
 
 static inline int dma_set_cb(struct dma *dma, int channel, int type,
-	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next), void *data)
+	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
+	void *data)
 {
 	return dma->ops->set_cb(dma, channel, type, cb, data);
 }
@@ -386,8 +387,10 @@ static inline void dma_copy_free(struct dma_copy *dc)
 /* DMA copy data from host to DSP */
 int dma_copy_from_host(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int32_t host_offset, void *local_ptr, int32_t size);
-int dma_copy_from_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
-	int32_t host_offset, void *local_ptr, int32_t size);
+int dma_copy_from_host_nowait(struct dma_copy *dc,
+			      struct dma_sg_config *host_sg,
+			      int32_t host_offset, void *local_ptr,
+			      int32_t size);
 
 /* DMA copy data from DSP to host */
 int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,

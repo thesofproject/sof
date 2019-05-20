@@ -41,9 +41,12 @@
 #include <config.h>
 
 /* tracing */
-#define trace_ssp(__e, ...)	trace_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-#define trace_ssp_error(__e, ...)	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
-#define tracev_ssp(__e, ...)	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
+#define trace_ssp(__e, ...) \
+	trace_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
+#define trace_ssp_error(__e, ...) \
+	trace_error(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
+#define tracev_ssp(__e, ...) \
+	tracev_event(TRACE_CLASS_SSP, __e, ##__VA_ARGS__)
 
 /* FIXME: move this to a helper and optimize */
 static int hweight_32(uint32_t mask)
@@ -444,8 +447,8 @@ static inline int ssp_set_config(struct dai *dai,
 	/* must be enough BCLKs for data */
 	bdiv = config->ssp.bclk_rate / config->ssp.fsync_rate;
 	if (bdiv < config->ssp.tdm_slot_width * config->ssp.tdm_slots) {
-		trace_ssp_error("ssp_set_config() error: not enough BCLKs need %d",
-				config->ssp.tdm_slot_width *
+		trace_ssp_error("ssp_set_config() error: not enough BCLKs "
+				"need %d", config->ssp.tdm_slot_width *
 				config->ssp.tdm_slots);
 		ret = -EINVAL;
 		goto out;
@@ -453,17 +456,18 @@ static inline int ssp_set_config(struct dai *dai,
 
 	/* tdm_slot_width must be <= 38 for SSP */
 	if (config->ssp.tdm_slot_width > 38) {
-		trace_ssp_error("ssp_set_config() error: tdm_slot_width %d > 38",
-				config->ssp.tdm_slot_width);
+		trace_ssp_error("ssp_set_config() error: tdm_slot_width %d > "
+				"38", config->ssp.tdm_slot_width);
 		ret = -EINVAL;
 		goto out;
 	}
 
-	bdiv_min = config->ssp.tdm_slots * (config->ssp.tdm_per_slot_padding_flag ?
-		   config->ssp.tdm_slot_width : config->ssp.sample_valid_bits);
+	bdiv_min = config->ssp.tdm_slots *
+		   (config->ssp.tdm_per_slot_padding_flag ?
+		    config->ssp.tdm_slot_width : config->ssp.sample_valid_bits);
 	if (bdiv < bdiv_min) {
-		trace_ssp_error("ssp_set_config() error: bdiv(%d) < bdiv_min(%d)",
-				bdiv < bdiv_min);
+		trace_ssp_error("ssp_set_config() error: bdiv(%d) < "
+				"bdiv_min(%d)", bdiv < bdiv_min);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -612,9 +616,10 @@ static inline int ssp_set_config(struct dai *dai,
 		/* frame_pulse_width must less or equal 38 */
 		if (ssp->params.frame_pulse_width >
 			SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX) {
-			trace_ssp_error("ssp_set_config() error: "
-					"frame_pulse_width > %d",
-					SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX);
+			trace_ssp_error
+				("ssp_set_config() error: "
+				"frame_pulse_width > %d",
+				SOF_DAI_INTEL_SSP_FRAME_PULSE_WIDTH_MAX);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -643,9 +648,10 @@ static inline int ssp_set_config(struct dai *dai,
 
 			if (slot_end_padding >
 				SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX) {
-				trace_ssp_error("ssp_set_config() error: "
-						"slot_end_padding > %d",
-						SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX);
+				trace_ssp_error
+					("ssp_set_config() error: "
+					"slot_end_padding > %d",
+					SOF_DAI_INTEL_SSP_SLOT_PADDING_MAX);
 				ret = -EINVAL;
 				goto out;
 			}
@@ -716,12 +722,13 @@ static inline int ssp_set_config(struct dai *dai,
 	ssp_write(dai, SSTSA, sstsa);
 	ssp_write(dai, SSRSA, ssrsa);
 
-	trace_ssp("ssp_set_config(), sscr0 = 0x%08x, sscr1 = 0x%08x, ssto = 0x%08x, "
-		  "sspsp = 0x%0x", sscr0, sscr1, ssto, sspsp);
-	trace_ssp("ssp_set_config(), sscr2 = 0x%08x, sspsp2 = 0x%08x, sscr3 = 0x%08x, "
-		  "ssioc = 0x%08x",
-		  sscr2, sspsp2, sscr3, ssioc);
-	trace_ssp("ssp_set_config(), ssrsa = 0x%08x, sstsa = 0x%08x", ssrsa, sstsa);
+	trace_ssp("ssp_set_config(), sscr0 = 0x%08x, sscr1 = 0x%08x, "
+		  "ssto = 0x%08x, sspsp = 0x%0x", sscr0, sscr1, ssto, sspsp);
+	trace_ssp("ssp_set_config(), sscr2 = 0x%08x, sspsp2 = 0x%08x, "
+		  "sscr3 = 0x%08x, ssioc = 0x%08x", sscr2, sspsp2, sscr3,
+		  ssioc);
+	trace_ssp("ssp_set_config(), ssrsa = 0x%08x, sstsa = 0x%08x", ssrsa,
+		  sstsa);
 
 	/* TODO: move this into M/N driver */
 	mn_reg_write(0x0, mdivc);

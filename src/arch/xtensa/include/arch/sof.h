@@ -46,6 +46,11 @@
 #define ARCH_OOPS_SIZE (sizeof(struct sof_ipc_dsp_oops_xtensa) \
 			+ (XCHAL_NUM_AREGS * sizeof(uint32_t)))
 
+/* entry point to main firmware */
+void _ResetVector(void);
+
+void boot_master_core(void);
+
 void arch_dump_regs_a(void *dump_buf, uint32_t ps);
 
 static inline void *arch_get_stack_ptr(void)

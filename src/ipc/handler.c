@@ -889,11 +889,11 @@ static int ipc_comp_value(uint32_t header, uint32_t cmd)
 
 	/* get the component */
 	comp_dev = ipc_get_comp(_ipc, data.comp_id);
-	if (comp_dev == NULL){
+	if (!comp_dev) {
 		trace_ipc_error("ipc: comp %d not found", data.comp_id);
 		return -ENODEV;
 	}
-	
+
 	/* get component values */
 	ret = ipc_comp_cmd(comp_dev->cd, cmd, _data, SOF_IPC_MSG_MAX_SIZE);
 	if (ret < 0) {
@@ -1193,7 +1193,8 @@ static inline struct ipc_msg *ipc_glb_stream_message_find(struct ipc *ipc,
 		list_for_item(plist, &ipc->shared_ctx->msg_list) {
 			msg = container_of(plist, struct ipc_msg, list);
 			if (msg->header == posn->rhdr.hdr.cmd) {
-				old_posn = (struct sof_ipc_stream_posn *)msg->tx_data;
+				old_posn = (struct sof_ipc_stream_posn *)
+					   msg->tx_data;
 				if (old_posn->comp_id == posn->comp_id)
 					return msg;
 			}
@@ -1287,7 +1288,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 
 	/* copy mailbox data to message */
 	if (tx_bytes > 0 && tx_bytes < SOF_IPC_MSG_MAX_SIZE)
-		assert(!memcpy_s(msg->tx_data, msg->tx_size, tx_data, tx_bytes));
+		assert(!memcpy_s(msg->tx_data, msg->tx_size, tx_data,
+				 tx_bytes));
 
 	if (!found) {
 		/* now queue the message */

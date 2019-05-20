@@ -159,9 +159,12 @@
 /** \name Trace macros
  *  @{
  */
-#define trace_comp(__e, ...)	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define trace_comp_error(__e, ...)	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
-#define tracev_comp(__e, ...)	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define trace_comp(__e, ...) \
+	trace_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define trace_comp_error(__e, ...) \
+	trace_error(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
+#define tracev_comp(__e, ...) \
+	tracev_event(TRACE_CLASS_COMP, __e, ##__VA_ARGS__)
 /** @}*/
 
 struct comp_dev;
@@ -300,11 +303,12 @@ struct comp_copy_limits {
 
 /** \brief Retrieves component device config data. */
 #define COMP_GET_CONFIG(dev) \
-	(struct sof_ipc_comp_config *)((void*)&dev->comp + sizeof(struct sof_ipc_comp))
+	(struct sof_ipc_comp_config *)((void *)&dev->comp + \
+	sizeof(struct sof_ipc_comp))
 
 /** \brief Sets the driver private data. */
 #define comp_set_drvdata(c, data) \
-	c->private = data
+	(c->private = data)
 
 /** \brief Retrieves the driver private data. */
 #define comp_get_drvdata(c) \
@@ -697,8 +701,9 @@ static inline int comp_get_requested_state(int cmd)
  * @param copy_bytes Requested size of data to be available.
  * @param min_bytes
  */
-static inline void comp_underrun(struct comp_dev *dev, struct comp_buffer *source,
-	uint32_t copy_bytes, uint32_t min_bytes)
+static inline void comp_underrun(struct comp_dev *dev,
+				 struct comp_buffer *source,
+				 uint32_t copy_bytes, uint32_t min_bytes)
 {
 	trace_comp("comp_underrun(), ((dev->comp.id << 16) | source->avail) ="
 		   " %u, ((min_bytes << 16) | copy_bytes) = %u",

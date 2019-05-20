@@ -44,7 +44,7 @@ struct timesource_data {
 };
 
 int timer_register(struct timer *timer,
-	void(*handler)(void *arg), void *arg);
+	void (*handler)(void *arg), void *arg);
 void timer_unregister(struct timer *timer);
 void timer_enable(struct timer *timer);
 void timer_disable(struct timer *timer);

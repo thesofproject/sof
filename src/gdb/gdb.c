@@ -406,7 +406,7 @@ static int hex_to_int(unsigned char **ptr, int *int_value)
 	int hex_value;
 
 	*int_value = 0;
-	if (NULL == ptr)
+	if (!ptr)
 		return 0;
 
 	while (**ptr) {
