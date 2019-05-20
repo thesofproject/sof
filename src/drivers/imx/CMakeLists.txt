@@ -6,5 +6,7 @@ add_local_sources(sof
 	esai.c
 	interrupt.c
 	ipc.c
+	peripheral.c
+	printf.c
 	timer.c
 )
