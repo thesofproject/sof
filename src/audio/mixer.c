@@ -188,7 +188,8 @@ static int mixer_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	sink = list_first_item(&dev->bsink_list, struct comp_buffer, source_list);
+	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
+			       source_list);
 
 	/* set downstream buffer size */
 	ret = buffer_set_size(sink, period_bytes * config->periods_sink);
@@ -354,7 +355,8 @@ static int mixer_reset(struct comp_dev *dev)
 		source = container_of(blist, struct comp_buffer, sink_list);
 		/* only mix the sources with the same state with mixer*/
 		if (source->source->state > COMP_STATE_READY)
-			return 1; /* should not reset the downstream components */
+			/* should not reset the downstream components */
+			return 1;
 	}
 
 	comp_set_state(dev, COMP_TRIGGER_RESET);

@@ -46,8 +46,10 @@
 #include <platform/clk.h>
 #include <sof/drivers/timer.h>
 
-#define trace_sa(__e, ...)	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
-#define trace_sa_value(__e, ...)	trace_value_atomic(__e, ##__VA_ARGS__)
+#define trace_sa(__e, ...) \
+	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)
+#define trace_sa_value(__e, ...) \
+	trace_value_atomic(__e, ##__VA_ARGS__)
 
 /*
  * Notify the SA that we are about to enter idle state (WFI).

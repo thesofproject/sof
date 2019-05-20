@@ -51,7 +51,7 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 	struct dma_sg_elem *host_sg_elem;
 	int i;
 	int32_t _offset = *offset;
- 
+
 	/* find host element with host_offset */
 	for (i = 0; i < host_sg->elem_array.count; i++) {
 

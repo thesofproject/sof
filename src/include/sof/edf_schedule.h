@@ -57,7 +57,7 @@ struct sof;
 #define SCHEDULE_TASK_MAX_TIME_SLICE	5000
 
 #define edf_sch_set_pdata(task, data) \
-	task->private = data
+	(task->private = data)
 
 #define edf_sch_get_pdata(task) task->private
 

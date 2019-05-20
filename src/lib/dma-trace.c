@@ -41,7 +41,7 @@
 #include <sof/cpu.h>
 #include <stdint.h>
 
-static struct dma_trace_data *trace_data = NULL;
+static struct dma_trace_data *trace_data;
 
 /* amount of dropped entries */
 static uint32_t dropped_entries;

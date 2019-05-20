@@ -39,6 +39,7 @@
 #include <sof/agent.h>
 #include <platform/idc.h>
 #include <platform/interrupt.h>
+#include <platform/platform.h>
 #include <sof/audio/pipeline.h>
 #include <sof/schedule.h>
 #include <sof/debug.h>
@@ -49,7 +50,6 @@
 
 static void sys_module_init(void)
 {
-	extern intptr_t _module_init_start, _module_init_end;
 	intptr_t *module_init = (intptr_t *)(&_module_init_start);
 
 	for (; module_init < (intptr_t *)&_module_init_end; ++module_init)

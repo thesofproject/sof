@@ -130,9 +130,12 @@ struct pdm_controllers_configuration {
 #define LOGRAMP_GM 16959 /* Gives 300 ms ramp for -90..0 dB, Q2.14 */
 
 /* tracing */
-#define trace_dmic(__e, ...) trace_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
-#define trace_dmic_error(__e, ...) trace_error(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
-#define tracev_dmic(__e, ...) tracev_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
+#define trace_dmic(__e, ...) \
+	trace_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
+#define trace_dmic_error(__e, ...) \
+	trace_error(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
+#define tracev_dmic(__e, ...) \
+	tracev_event(TRACE_CLASS_DMIC, __e, ##__VA_ARGS__)
 
 /* Base addresses (in PDM scope) of 2ch PDM controllers and coefficient RAM. */
 static const uint32_t base[4] = {PDM0, PDM1, PDM2, PDM3};
@@ -1011,7 +1014,8 @@ static int configure_registers(struct dai *dai,
 
 		val = DC_OFFSET_RIGHT_B_DC_OFFS(DCCOMP_TC0);
 		dmic_write(dai, base[i] + DC_OFFSET_RIGHT_B, val);
-		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_B = %u", val);
+		trace_dmic("configure_registers(), DC_OFFSET_RIGHT_B = %u",
+			   val);
 
 		val = OUT_GAIN_LEFT_B_GAIN(0);
 		dmic_write(dai, base[i] + OUT_GAIN_LEFT_B, val);
@@ -1335,7 +1339,7 @@ static void dmic_stop(struct dai *dai)
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
 	int i;
 
-	trace_dmic("dmic_stop()")
+	trace_dmic("dmic_stop()");
 	spin_lock(&dai->lock);
 	dmic->state = COMP_STATE_PREPARE;
 

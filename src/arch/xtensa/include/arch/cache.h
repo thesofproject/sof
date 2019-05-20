@@ -45,7 +45,7 @@ static inline void dcache_writeback_region(void *addr, size_t size)
 #endif
 }
 
-static inline void dcache_writeback_all()
+static inline void dcache_writeback_all(void)
 {
 #if XCHAL_DCACHE_SIZE > 0
 	xthal_dcache_all_writeback();
@@ -59,7 +59,7 @@ static inline void dcache_invalidate_region(void *addr, size_t size)
 #endif
 }
 
-static inline void dcache_invalidate_all()
+static inline void dcache_invalidate_all(void)
 {
 #if XCHAL_DCACHE_SIZE > 0
 	xthal_dcache_all_invalidate();
@@ -73,7 +73,7 @@ static inline void icache_invalidate_region(void *addr, size_t size)
 #endif
 }
 
-static inline void icache_invalidate_all()
+static inline void icache_invalidate_all(void)
 {
 #if XCHAL_ICACHE_SIZE > 0
 	xthal_icache_all_invalidate();
@@ -87,7 +87,7 @@ static inline void dcache_writeback_invalidate_region(void *addr, size_t size)
 #endif
 }
 
-static inline void dcache_writeback_invalidate_all()
+static inline void dcache_writeback_invalidate_all(void)
 {
 #if XCHAL_DCACHE_SIZE > 0
 	xthal_dcache_all_writeback_inv();

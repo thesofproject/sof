@@ -120,9 +120,8 @@ static inline struct task *edf_get_next(uint64_t current, struct task *ignore)
 	struct edf_task_pdata *edf_pdata;
 
 	/* any tasks in the scheduler ? */
-	if (list_is_empty(&sch->list)) {
+	if (list_is_empty(&sch->list))
 		return NULL;
-	}
 
 	/* check every queued or running task in list */
 	list_for_item_safe(clist, tlist, &sch->list) {
@@ -400,7 +399,8 @@ static void schedule_edf(void)
 	spin_lock_irq(&sch->lock, flags);
 
 	/* make sure we have a queued task in the list first before we
-	   start scheduling as contexts switches are not free. */
+	 * start scheduling as contexts switches are not free.
+	 */
 	list_for_item(tlist, &sch->list) {
 		edf_task = container_of(tlist, struct task, list);
 

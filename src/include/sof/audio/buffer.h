@@ -44,9 +44,12 @@
 #include <uapi/ipc/topology.h>
 
 /* pipeline tracing */
-#define trace_buffer(__e, ...)	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define trace_buffer_error(__e, ...)	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
-#define tracev_buffer(__e, ...)	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define trace_buffer(__e, ...) \
+	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define trace_buffer_error(__e, ...) \
+	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define tracev_buffer(__e, ...) \
+	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 
 /* buffer callback types */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
@@ -56,7 +59,7 @@
 struct comp_buffer {
 
 	/* runtime data */
-	uint32_t size;		/* runtime buffer size in bytes (period multiple) */
+	uint32_t size;	/* runtime buffer size in bytes (period multiple) */
 	uint32_t alloc_size;	/* allocated size in bytes */
 	uint32_t avail;		/* available bytes for reading */
 	uint32_t free;		/* free bytes for writing */

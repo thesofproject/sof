@@ -163,9 +163,8 @@ done:
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (iipc->pm_prepare_D3) {
-		while (1) {
+		while (1)
 			wait_for_interrupt(0);
-		}
 	}
 }
 

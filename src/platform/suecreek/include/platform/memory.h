@@ -109,7 +109,7 @@
 
 /* DW SPI slave/master */
 #define DW_SPI_SLAVE_BASE	0x80000
-#define DW_SPI_SLAVE_SIZE 	0x400
+#define DW_SPI_SLAVE_SIZE	0x400
 #define DW_SPI_MASTER_BASE	0xE000
 #define DW_SPI_MASTER_SIZE	0x400
 
@@ -185,9 +185,9 @@
  * +---------------------+----------------+-----------------------------------+
  * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_END      | Stack          |  SOF_STACK_SIZE                  |
+ * | SOF_STACK_END       | Stack          |  SOF_STACK_SIZE                   |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_BASE      |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -322,19 +322,19 @@
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
  * +---------------------+----------------+-----------------------------------+
- * | LP_SRAM_BASE        | RO Data        |  SOF_LP_DATA_SIZE                |
+ * | LP_SRAM_BASE        | RO Data        |  SOF_LP_DATA_SIZE                 |
  * |                     | Data           |                                   |
  * |                     | BSS            |                                   |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_SYSTEM_BASE | System Heap    |  HEAP_LP_SYSTEM_SIZE                 |
+ * | HEAP_LP_SYSTEM_BASE | System Heap    |  HEAP_LP_SYSTEM_SIZE              |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_RUNTIME_BASE| Runtime Heap   |  HEAP_LP_RUNTIME_SIZE                |
+ * | HEAP_LP_RUNTIME_BASE| Runtime Heap   |  HEAP_LP_RUNTIME_SIZE             |
  * +---------------------+----------------+-----------------------------------+
- * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE                 |
+ * | HEAP_LP_BUFFER_BASE | Module Buffers |  HEAP_LP_BUFFER_SIZE              |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_LP_STACK_END   | Stack          |  SOF_LP_STACK_SIZE                  |
+ * | SOF_LP_STACK_END    | Stack          |  SOF_LP_STACK_SIZE                |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_BASE      |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -357,19 +357,22 @@
 #define HEAP_LP_SYSTEM_BASE		(LP_SRAM_BASE + SOF_LP_DATA_SIZE)
 #define HEAP_LP_SYSTEM_SIZE		0x1000
 
-#define HEAP_LP_RUNTIME_BASE		(HEAP_LP_SYSTEM_BASE + HEAP_LP_SYSTEM_SIZE)
+#define HEAP_LP_RUNTIME_BASE \
+	(HEAP_LP_SYSTEM_BASE + HEAP_LP_SYSTEM_SIZE)
 #define HEAP_LP_RUNTIME_SIZE \
 	(HEAP_RT_LP_COUNT8 * 8 + HEAP_RT_LP_COUNT16 * 16 + \
 	HEAP_RT_LP_COUNT32 * 32 + HEAP_RT_LP_COUNT64 * 64 + \
 	HEAP_RT_LP_COUNT128 * 128 + HEAP_RT_LP_COUNT256 * 256 + \
 	HEAP_RT_LP_COUNT512 * 512 + HEAP_RT_LP_COUNT1024 * 1024)
 
-#define HEAP_LP_BUFFER_BASE		(HEAP_LP_RUNTIME_BASE + HEAP_LP_RUNTIME_SIZE)
-#define HEAP_LP_BUFFER_SIZE	\
-    (LP_SRAM_SIZE - HEAP_LP_RUNTIME_SIZE - SOF_LP_STACK_SIZE - HEAP_LP_SYSTEM_SIZE)
+#define HEAP_LP_BUFFER_BASE	(HEAP_LP_RUNTIME_BASE + HEAP_LP_RUNTIME_SIZE)
+#define HEAP_LP_BUFFER_SIZE \
+	(LP_SRAM_SIZE - HEAP_LP_RUNTIME_SIZE - SOF_LP_STACK_SIZE - \
+	HEAP_LP_SYSTEM_SIZE)
 
 #define HEAP_LP_BUFFER_BLOCK_SIZE		0x180
-#define HEAP_LP_BUFFER_COUNT	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
+#define HEAP_LP_BUFFER_COUNT \
+	(HEAP_LP_BUFFER_SIZE / HEAP_LP_BUFFER_BLOCK_SIZE)
 
 
 #define PLATFORM_HEAP_SYSTEM		PLATFORM_CORE_COUNT /* one per core */
@@ -378,16 +381,17 @@
 #define PLATFORM_HEAP_BUFFER		3
 
 /* Stack configuration */
-#define SOF_LP_STACK_SIZE			0x1000
-#define SOF_LP_STACK_BASE			(LP_SRAM_BASE + LP_SRAM_SIZE)
-#define SOF_LP_STACK_END			(SOF_LP_STACK_BASE - SOF_LP_STACK_SIZE)
+#define SOF_LP_STACK_SIZE		0x1000
+#define SOF_LP_STACK_BASE		(LP_SRAM_BASE + LP_SRAM_SIZE)
+#define SOF_LP_STACK_END		(SOF_LP_STACK_BASE - SOF_LP_STACK_SIZE)
 
 
 /* Vector and literal sizes - do not use core-isa.h */
 #define SOF_MEM_VECBASE			HP_SRAM_VECBASE_RESET
 #define SOF_MEM_VECT_LIT_SIZE		0x8
 #define SOF_MEM_VECT_TEXT_SIZE		0x38
-#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + SOF_MEM_VECT_LIT_SIZE)
+#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + \
+					SOF_MEM_VECT_LIT_SIZE)
 
 #define SOF_MEM_ERROR_TEXT_SIZE	0x180
 #define SOF_MEM_ERROR_LIT_SIZE		0x8
@@ -405,13 +409,16 @@
 /* code loader */
 #define BOOT_LDR_TEXT_ENTRY_BASE	0xBE066000
 #define BOOT_LDR_TEXT_ENTRY_SIZE	0x400
-#define BOOT_LDR_LIT_BASE		(BOOT_LDR_TEXT_ENTRY_BASE + BOOT_LDR_TEXT_ENTRY_SIZE)
+#define BOOT_LDR_LIT_BASE		(BOOT_LDR_TEXT_ENTRY_BASE + \
+					BOOT_LDR_TEXT_ENTRY_SIZE)
 #define BOOT_LDR_LIT_SIZE		0x400
 #define BOOT_LDR_TEXT_BASE		(BOOT_LDR_LIT_BASE + BOOT_LDR_LIT_SIZE)
 #define BOOT_LDR_TEXT_SIZE		0x800
-#define BOOT_LDR_DATA_BASE		(BOOT_LDR_TEXT_BASE + BOOT_LDR_TEXT_SIZE)
+#define BOOT_LDR_DATA_BASE		(BOOT_LDR_TEXT_BASE + \
+					BOOT_LDR_TEXT_SIZE)
 #define BOOT_LDR_DATA_SIZE		0x1000
-#define BOOT_LDR_BSS_BASE		(BOOT_LDR_DATA_BASE + BOOT_LDR_DATA_SIZE)
+#define BOOT_LDR_BSS_BASE		(BOOT_LDR_DATA_BASE + \
+					BOOT_LDR_DATA_SIZE)
 #define BOOT_LDR_BSS_SIZE		0x100
 
 /* TODO: set this value */

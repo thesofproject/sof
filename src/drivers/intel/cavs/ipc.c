@@ -101,8 +101,8 @@ static void ipc_irq_handler(void *arg)
 			trace_ipc_error(" dipct 0x%x dipcie 0x%x dipcctl 0x%x",
 					dipct, dipcie, ipc_read(IPC_DIPCCTL));
 #else
-			trace_ipc_error(" dipctdr 0x%x dipcida 0x%x dipcctl 0x%x",
-					dipctdr, dipcida,
+			trace_ipc_error(" dipctdr 0x%x dipcida 0x%x "
+					"dipcctl 0x%x", dipctdr, dipcida,
 					ipc_read(IPC_DIPCCTL));
 #endif
 		} else {

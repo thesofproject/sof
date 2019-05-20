@@ -112,9 +112,8 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	uint32_t size = sizeof(struct mm_heap);
 	int i;
 
-	for (i = 0; i < heap->blocks; i++) {
+	for (i = 0; i < heap->blocks; i++)
 		size += block_get_size(&heap->map[i]);
-	}
 
 	return size;
 }
@@ -481,8 +480,8 @@ void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes)
 	} while (heap);
 
 	if (count == 0)
-		trace_mem_error("heap: none found for zone %d caps 0x%x, bytes 0x%x",
-				zone, caps, bytes);
+		trace_mem_error("heap: none found for zone %d caps 0x%x, "
+				"bytes 0x%x", zone, caps, bytes);
 }
 
 void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
@@ -504,8 +503,8 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
 	} while (heap);
 
 	if (count == 0)
-		trace_mem_error("heap: none found for zone %d caps 0x%x, bytes 0x%x",
-				zone, caps, bytes);
+		trace_mem_error("heap: none found for zone %d caps 0x%x, "
+				"bytes 0x%x", zone, caps, bytes);
 }
 
 #endif
@@ -595,9 +594,8 @@ void *_zalloc(int zone, uint32_t caps, size_t bytes)
 	void *ptr;
 
 	ptr = _malloc(zone, caps, bytes);
-	if (ptr != NULL) {
+	if (ptr)
 		bzero(ptr, bytes);
-	}
 
 	return ptr;
 }
@@ -679,7 +677,8 @@ void *_balloc(int zone, uint32_t caps, size_t bytes)
 
 	for (i = 0, n = PLATFORM_HEAP_BUFFER, heap = memmap.buffer;
 	     i < PLATFORM_HEAP_BUFFER;
-	     i = heap - memmap.buffer + 1, n = PLATFORM_HEAP_BUFFER - i, heap++) {
+	     i = heap - memmap.buffer + 1, n = PLATFORM_HEAP_BUFFER - i,
+	     heap++) {
 		heap = get_heap_from_caps(heap, n, caps);
 		if (!heap)
 			break;
@@ -735,9 +734,9 @@ uint32_t mm_pm_context_size(void)
 }
 
 /*
- * Save the DSP memories that are in use the system and modules. All pipeline and modules
- * must be disabled before calling this functions. No allocations are permitted after
- * calling this and before calling restore.
+ * Save the DSP memories that are in use the system and modules.
+ * All pipeline and modules must be disabled before calling this functions.
+ * No allocations are permitted after calling this and before calling restore.
  */
 int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
 {
@@ -745,8 +744,8 @@ int mm_pm_context_save(struct dma_copy *dc, struct dma_sg_config *sg)
 }
 
 /*
- * Restore the DSP memories to modules and the system. This must be called immediately
- * after booting before any pipeline work.
+ * Restore the DSP memories to modules and the system.
+ * This must be called immediately after booting before any pipeline work.
  */
 int mm_pm_context_restore(struct dma_copy *dc, struct dma_sg_config *sg)
 {

@@ -83,7 +83,7 @@ struct mm_info {
 struct block_hdr {
 	uint16_t size;		/* size in blocks for continuous allocation */
 	uint16_t used;		/* usage flags for page */
-} __attribute__ ((packed));
+} __packed;
 
 struct block_map {
 	uint16_t block_size;	/* size of block in bytes */
@@ -92,7 +92,7 @@ struct block_map {
 	uint16_t first_free;	/* index of first free block */
 	struct block_hdr *block;	/* base block header */
 	uint32_t base;		/* base address of space */
-} __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
+} __aligned(PLATFORM_DCACHE_ALIGN);
 
 #define BLOCK_DEF(sz, cnt, hdr) \
 	{.block_size = sz, .count = cnt, .free_count = cnt, .block = hdr, \
@@ -105,7 +105,7 @@ struct mm_heap {
 	uint32_t size;
 	uint32_t caps;
 	struct mm_info info;
-} __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
+} __aligned(PLATFORM_DCACHE_ALIGN);
 
 /* heap block memory map */
 struct mm {
@@ -121,7 +121,7 @@ struct mm {
 	struct mm_info total;
 	uint32_t heap_trace_updated;	/* updates that can be presented */
 	spinlock_t lock;	/* all allocs and frees are atomic */
-} __attribute__ ((__aligned__(PLATFORM_DCACHE_ALIGN)));
+} __aligned(PLATFORM_DCACHE_ALIGN);
 
 /* heap allocation and free */
 void *_malloc(int zone, uint32_t caps, size_t bytes);

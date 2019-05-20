@@ -84,8 +84,9 @@ void mailbox_dspbox_read(void *dest, size_t dest_size,
 {
 	dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset),
 				 bytes);
-	assert(!memcpy_s(dest, dest_size, (void *)(MAILBOX_DSPBOX_BASE + offset),
-		 bytes));
+	assert(!memcpy_s(dest, dest_size,
+			 (void *)(MAILBOX_DSPBOX_BASE + offset),
+			 bytes));
 }
 
 static inline
@@ -102,8 +103,9 @@ void mailbox_hostbox_read(void *dest, size_t dest_size,
 {
 	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE + offset),
 				 bytes);
-	assert(!memcpy_s(dest, dest_size, (void *)(MAILBOX_HOSTBOX_BASE + offset),
-		 bytes));
+	assert(!memcpy_s(dest, dest_size,
+			 (void *)(MAILBOX_HOSTBOX_BASE + offset),
+			 bytes));
 }
 
 static inline

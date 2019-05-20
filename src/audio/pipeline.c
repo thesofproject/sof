@@ -582,8 +582,8 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	if (p->xrun_bytes) {
 		ret = pipeline_xrun_handle_trigger(p, cmd);
 		if (ret < 0) {
-			trace_pipe_error_with_ids(p, "xrun handle error: ret = %d",
-						  ret);
+			trace_pipe_error_with_ids(p, "xrun handle error: "
+						  "ret = %d", ret);
 			return ret;
 		} else if (ret == PPL_STATUS_PATH_STOP)
 			/* no further action needed*/
@@ -815,8 +815,9 @@ void pipeline_xrun(struct pipeline *p, struct comp_dev *dev,
 	/* notify all pipeline comps we are in XRUN, and stop copying */
 	ret = pipeline_trigger(p, p->source_comp, COMP_TRIGGER_XRUN);
 	if (ret < 0)
-		trace_pipe_error_with_ids(p, "pipeline_xrun() error: Pipelines notification about XRUN failed, ret = %d",
-					  ret);
+		trace_pipe_error_with_ids(p, "pipeline_xrun() error: "
+					  "Pipelines notification about XRUN "
+					  "failed, ret = %d", ret);
 
 	memset(&posn, 0, sizeof(posn));
 	p->xrun_bytes = bytes;
@@ -916,7 +917,9 @@ static uint64_t pipeline_task(void *arg)
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0) {
-			trace_pipe_error_with_ids(p, "pipeline_task(): xrun recover failed! pipeline will be stopped!");
+			trace_pipe_error_with_ids(p, "pipeline_task(): xrun "
+						  "recover failed! pipeline "
+						  "will be stopped!");
 			return 0; /* failed - host will stop this pipeline */
 		}
 	}

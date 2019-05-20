@@ -561,9 +561,9 @@ static int hda_dma_start(struct dma *dma, int channel)
 	if (p->chan[channel].status != COMP_STATE_PREPARE ||
 	    (dgcs & DGCS_GEN)) {
 		ret = -EBUSY;
-		trace_hddma_error("hda-dmac: %d channel %d busy. dgcs 0x%x status %d",
-				  dma->plat_data.id, channel, dgcs,
-				  p->chan[channel].status);
+		trace_hddma_error("hda-dmac: %d channel %d busy. "
+				  "dgcs 0x%x status %d", dma->plat_data.id,
+				  channel, dgcs, p->chan[channel].status);
 		goto out;
 	}
 
@@ -615,7 +615,8 @@ static int hda_dma_pause(struct dma *dma, int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
-	trace_hddma("hda-dmac: %d channel %d -> pause", dma->plat_data.id, channel);
+	trace_hddma("hda-dmac: %d channel %d -> pause", dma->plat_data.id,
+		    channel);
 
 	if (p->chan[channel].status != COMP_STATE_ACTIVE)
 		goto out;
@@ -738,7 +739,8 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 		/* make sure elem is continuous */
 		if (buffer_addr && (buffer_addr + buffer_bytes) != addr) {
-			trace_hddma_error("hda-dmac: %d chan %d - non continuous elem",
+			trace_hddma_error("hda-dmac: %d chan %d - "
+					  "non continuous elem",
 					  dma->plat_data.id, channel);
 			trace_hddma_error(" addr 0x%x buffer 0x%x size 0x%x",
 					  addr, buffer_addr, buffer_bytes);
@@ -748,9 +750,9 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 		/* make sure period_bytes are constant */
 		if (period_bytes && period_bytes != sg_elem->size) {
-			trace_hddma_error("hda-dmac: %d chan %d - period size not constant %d",
-					  dma->plat_data.id, channel,
-					  period_bytes);
+			trace_hddma_error("hda-dmac: %d chan %d - period size "
+					  "not constant %d", dma->plat_data.id,
+					  channel, period_bytes);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -765,8 +767,9 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 
 	/* buffer size must be multiple of hda dma burst size */
 	if (buffer_bytes % PLATFORM_HDA_BUFFER_ALIGNMENT) {
-		trace_hddma_error("hda-dmac: %d chan %d - buffer not DMA aligned 0x%x",
-				  dma->plat_data.id, channel, buffer_bytes);
+		trace_hddma_error("hda-dmac: %d chan %d - buffer not DMA "
+				  "aligned 0x%x", dma->plat_data.id, channel,
+				  buffer_bytes);
 		ret = -EINVAL;
 		goto out;
 	}

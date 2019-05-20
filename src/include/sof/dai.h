@@ -168,7 +168,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags);
 void dai_put(struct dai *dai);
 
 #define dai_set_drvdata(dai, data) \
-	dai->private = data
+	(dai->private = data)
 #define dai_get_drvdata(dai) \
 	dai->private
 #define dai_base(dai) \

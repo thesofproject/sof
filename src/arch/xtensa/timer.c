@@ -205,12 +205,12 @@ int arch_timer_set(struct timer *timer, uint64_t ticks)
 		/* cant be in the past */
 		arch_interrupt_global_enable(flags);
 		return -EINVAL;
-	} else {
-		/* set for checking at next timeout */
-		time = ticks;
-		timer->hitimeout = hitimeout;
-		timer->lowtimeout = ticks;
 	}
+
+	/* set for checking at next timeout */
+	time = ticks;
+	timer->hitimeout = hitimeout;
+	timer->lowtimeout = ticks;
 
 	switch (timer->id) {
 	case TIMER0:

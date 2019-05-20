@@ -49,9 +49,12 @@
 #include <uapi/ipc/topology.h>
 #include <uapi/user/tone.h>
 
-#define trace_tone(__e, ...) trace_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
-#define tracev_tone(__e, ...) tracev_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
-#define trace_tone_error(__e, ...) trace_error(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
+#define trace_tone(__e, ...) \
+	trace_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
+#define tracev_tone(__e, ...) \
+	tracev_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
+#define trace_tone_error(__e, ...) \
+	trace_error(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)
 
 /* Convert float frequency in Hz to Q16.16 fractional format */
 #define TONE_FREQ(f) Q_CONVERT_FLOAT(f, 16)

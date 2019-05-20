@@ -52,7 +52,7 @@
 
 #if DEBUG_LOCKS
 /** \brief Debug lock. */
-uint32_t lock_dbg_atomic = 0;
+uint32_t lock_dbg_atomic;
 
 /** \brief Debug locks per user. */
 uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
@@ -77,6 +77,7 @@ static void initialize_pointers_per_core(void)
 {
 	int core = arch_cpu_get_id();
 	struct xtos_core_data *core_data = core_data_ptr[core];
+	xtos_structures_pointers *p;
 
 	if (core == PLATFORM_MASTER_CORE_ID) {
 		master_core_data.thread_data_ptr = &master_core_ctx.td;
@@ -85,11 +86,13 @@ static void initialize_pointers_per_core(void)
 
 	cpu_write_threadptr((int)core_ctx_ptr[core]);
 
-	xtos_structures_pointers *p = &core_data->thread_data_ptr->xtos_ptrs;
+	p = &core_data->thread_data_ptr->xtos_ptrs;
 	p->xtos_enabled = &core_data->xtos_int_data.xtos_enabled;
 	p->xtos_intstruct = &core_data->xtos_int_data;
-	p->xtos_interrupt_table = &core_data->xtos_int_data.xtos_interrupt_table.array[0];
-	p->xtos_interrupt_mask_table = &core_data->xtos_int_data.xtos_interrupt_mask_table[0];
+	p->xtos_interrupt_table =
+		&core_data->xtos_int_data.xtos_interrupt_table.array[0];
+	p->xtos_interrupt_mask_table =
+		&core_data->xtos_int_data.xtos_interrupt_mask_table[0];
 }
 
 /**

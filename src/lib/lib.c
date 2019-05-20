@@ -52,8 +52,8 @@ void cmemcpy(void *dest, void *src, size_t size)
 		d32[i] = s32[i];
 
 	/* copy remaining bytes */
-	d8 = (uint8_t*) d32[i];
-	s8 = (uint8_t*) s32[i];
+	d8 = (uint8_t *)d32[i];
+	s8 = (uint8_t *)s32[i];
 	for (i = 0; i <	r; i++)
 		d8[i] = s8[i];
 }
@@ -97,7 +97,8 @@ int rstrlen(const char *s)
 {
 	const char *p = s;
 
-	while(*p++ != 0);
+	while (*p++ != 0)
+		;
 	return (p - s) - 1;
 }
 

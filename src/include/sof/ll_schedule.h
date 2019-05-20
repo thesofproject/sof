@@ -54,7 +54,7 @@ struct work_queue;
 	tracev_event(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
 
 #define ll_sch_set_pdata(task, data) \
-	task->private = data
+	(task->private = data)
 
 #define ll_sch_get_pdata(task) task->private
 

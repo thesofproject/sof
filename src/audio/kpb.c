@@ -152,7 +152,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	allocated_size = kpb_allocate_history_buffer(cd);
 
 	/* Have we allocated what we requested? */
-	if (KPB_MAX_BUFFER_SIZE > allocated_size) {
+	if (allocated_size < KPB_MAX_BUFFER_SIZE) {
 		trace_kpb_error("Failed to allocate space for "
 				"KPB buffer/s");
 		return NULL;
@@ -713,17 +713,13 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong client id");
-		return;
 	/* TODO: check also if client is registered */
 	} else if (!is_sink_ready) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"sink not ready for draining");
-		return;
 	} else if (!kpb_has_enough_history_data(kpb, buff, history_depth)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
-
-		return;
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
@@ -825,11 +821,10 @@ static uint64_t kpb_draining_task(void *arg)
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
 
 		if (size_to_read > sink->free) {
-			if (sink->free >= history_depth) {
+			if (sink->free >= history_depth)
 				size_to_copy = history_depth;
-			} else {
+			else
 				size_to_copy = sink->free;
-			}
 		} else {
 			if (size_to_read >= history_depth) {
 				size_to_copy = history_depth;

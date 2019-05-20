@@ -427,8 +427,10 @@ int ipc_comp_dai_config(struct ipc *ipc, struct sof_ipc_dai_config *config)
 				    dai->type == config->type) {
 					ret = comp_dai_config(dev, config);
 					if (ret < 0) {
-						trace_ipc_error("ipc_comp_dai_config() error: "
-								"comp_dai_config() failed");
+						trace_ipc_error
+						("ipc_comp_dai_config() "
+						"error: comp_dai_config() "
+						"failed");
 						return ret;
 					}
 				}
@@ -590,6 +592,7 @@ out:
 int ipc_init(struct sof *sof)
 {
 	int i;
+
 	trace_ipc("ipc_init()");
 
 	/* init ipc data */

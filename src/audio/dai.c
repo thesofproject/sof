@@ -87,7 +87,9 @@ struct dai_data {
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
-	volatile uint64_t *dai_pos; /* host can read back this value without IPC */
+	/* host can read back this value without IPC */
+	uint64_t *dai_pos;
+
 	uint64_t wallclock;	/* wall clock at stream start */
 };
 
@@ -390,7 +392,7 @@ static int dai_params(struct comp_dev *dev)
 
 	/* check if already configured */
 	if (dev->state == COMP_STATE_PREPARE) {
-		trace_dai_with_ids(dev, "dai_params() component has been"
+		trace_dai_with_ids(dev, "dai_params() component has been "
 				   "already configured.");
 		return 0;
 	}
@@ -667,7 +669,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		/* The frame bytes setting follows only FIFO A setting in
 		 * this DMIC driver version.
 		 */
-		trace_dai_with_ids(dev, "dai_config(), config->type = SOF_DAI_INTEL_DMIC");
+		trace_dai_with_ids(dev, "dai_config(), config->type = "
+				   "SOF_DAI_INTEL_DMIC");
 
 		/* We can use always the largest burst length. */
 		dd->config.burst_elems = 8;

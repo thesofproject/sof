@@ -51,6 +51,7 @@ void dai_install(struct dai_type_info *dai_type_array, size_t num_dai_types)
 static inline struct dai_type_info *dai_find_type(uint32_t type)
 {
 	struct dai_type_info *dti;
+
 	for (dti = lib_dai.dai_type_array;
 	     dti < lib_dai.dai_type_array + lib_dai.num_dai_types; dti++) {
 		if (dti->type == type)

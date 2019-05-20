@@ -73,7 +73,8 @@ static struct dai ssp[2] = {
 		}
 	},
 	.drv		= &ssp_driver,
-}};
+},
+};
 
 static struct dai_type_info dti[] = {
 	{

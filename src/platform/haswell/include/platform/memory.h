@@ -82,7 +82,7 @@ void platform_init_memmap(void);
  * +--------------------------------------------------------------------------+
  * | Offset              | Region         |  Size                             |
  * +---------------------+----------------+-----------------------------------+
- * | DRAM0_BASE          | RO Data        |  SOF_DATA_SIZE                   |
+ * | DRAM0_BASE          | RO Data        |  SOF_DATA_SIZE                    |
  * |                     | Data           |                                   |
  * |                     | BSS            |                                   |
  * +---------------------+----------------+-----------------------------------+
@@ -94,9 +94,9 @@ void platform_init_memmap(void);
  * +---------------------+----------------+-----------------------------------+
  * | MAILBOX_BASE        | Mailbox        |  MAILBOX_SIZE                     |
  * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_END      | Stack          |  SOF_STACK_SIZE                  |
- * +---------------------+----------------+-----------------------------------+ 
- * | SOF_STACK_BASE     |                |                                   |
+ * | SOF_STACK_END       | Stack          |  SOF_STACK_SIZE                   |
+ * +---------------------+----------------+-----------------------------------+
+ * | SOF_STACK_BASE      |                |                                   |
  * +---------------------+----------------+-----------------------------------+
  */
 
@@ -143,7 +143,8 @@ void platform_init_memmap(void);
 	 MAILBOX_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
-#define HEAP_BUFFER_COUNT		(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+#define HEAP_BUFFER_COUNT \
+	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 #define PLATFORM_HEAP_SYSTEM		1 /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	1 /* one per core */
@@ -161,7 +162,8 @@ void platform_init_memmap(void);
 /* Vector and literal sizes - not in core-isa.h */
 #define SOF_MEM_VECT_LIT_SIZE		0x4
 #define SOF_MEM_VECT_TEXT_SIZE		0x1c
-#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + SOF_MEM_VECT_LIT_SIZE)
+#define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + \
+					SOF_MEM_VECT_LIT_SIZE)
 
 #define SOF_MEM_RESET_TEXT_SIZE	0x2e0
 #define SOF_MEM_RESET_LIT_SIZE		0x120
