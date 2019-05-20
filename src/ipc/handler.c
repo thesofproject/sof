@@ -532,6 +532,8 @@ static int ipc_dai_config(uint32_t header)
 	trace_ipc("ipc: dai %d,%d -> config ", config.type,
 		  config.dai_index);
 
+	return 0;
+
 	/* get DAI */
 	dai = dai_get(config.type, config.dai_index, 0 /* existing only */);
 	if (dai == NULL) {

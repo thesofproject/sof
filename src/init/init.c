@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
 {
 	int err;
 
+	enable_log(&err);
 	trace_point(TRACE_BOOT_START);
 
 	/* setup context */

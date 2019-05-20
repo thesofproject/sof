@@ -179,6 +179,8 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, dd);
 
+	return dev;
+
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (!dd->dai) {
 		trace_dai_error("dai_new() error: dai_get() failed to create "
