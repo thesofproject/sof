@@ -34,8 +34,8 @@ struct comp_data {
 	uint32_t source_period_bytes; /**< source number of period bytes */
 	uint32_t sink_period_bytes; /**< sink number of period bytes */
 	struct sof_kpb_config config;   /**< component configuration data */
-	struct comp_buffer *rt_sink; /**< real time sink (channel selector ) */
-	struct comp_buffer *cli_sink; /**< draining sink (client) */
+	struct comp_buffer *sel_sink; /**< real time sink (channel selector ) */
+	struct comp_buffer *host_sink; /**< draining sink (client) */
 	struct hb *history_buffer;
 	bool is_internal_buffer_full;
 	size_t buffered_data;
@@ -384,10 +384,10 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
 			/* We found proper real time sink */
-			cd->rt_sink = sink;
+			cd->sel_sink = sink;
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
 			/* We found proper host sink */
-			cd->cli_sink = sink;
+			cd->host_sink = sink;
 		}
 	}
 
@@ -467,8 +467,8 @@ static int kpb_copy(struct comp_dev *dev)
 	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->rt_sink
-	       : kpb->cli_sink;
+	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->sel_sink
+	       : kpb->host_sink;
 
 	/* Stop copying downstream if in draining mode */
 	if (kpb->state == KPB_STATE_DRAINING) {
@@ -697,7 +697,6 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t history_depth = cli->history_depth * kpb->config.no_channels *
 			       (kpb->config.sampling_freq / 1000) *
 			       (sample_width / 8);
-
 	struct hb *buff = kpb->history_buffer;
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
@@ -774,18 +773,18 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		trace_kpb("kpb_init_draining(), schedule draining task");
 
 		/* Add one-time draining task into the scheduler. */
-		kpb->draining_task_data.sink = kpb->cli_sink;
+		kpb->draining_task_data.sink = kpb->host_sink;
 		kpb->draining_task_data.history_buffer = buff;
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.state = &kpb->state;
 		kpb->draining_task_data.sample_width = sample_width;
 
 		/* Pause selector copy. */
-		kpb->rt_sink->sink->state = COMP_STATE_PAUSED;
+		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
 		kpb->state = KPB_STATE_DRAINING;
 
 		/* Set host-sink copy mode to blocking */
-		comp_set_attribute(kpb->cli_sink->sink,
+		comp_set_attribute(kpb->host_sink->sink,
 				   COMP_ATTR_COPY_BLOCKING, 1);
 
 		/* Schedule draining task */
