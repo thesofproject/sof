@@ -51,6 +51,7 @@ remove_module snd_soc_pcm512x
 remove_module snd_soc_rt274
 remove_module snd_soc_rt286
 remove_module snd_soc_rt298
+remove_module snd_soc_rt700
 remove_module snd_soc_rt5640
 remove_module snd_soc_rt5645
 remove_module snd_soc_rt5651
@@ -72,6 +73,12 @@ remove_module snd_soc_dmic
 
 remove_module snd_soc_acpi
 remove_module snd_hda_ext_core
+
+remove_module soundwire_intel_init
+remove_module soundwire_intel
+remove_module soundwire_cadence
+remove_module regmap_sdw
+remove_module soundwire_bus
 
 remove_module snd_soc_core
 remove_module snd_hda_codec
