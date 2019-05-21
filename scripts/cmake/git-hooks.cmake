@@ -5,7 +5,16 @@ if(NOT EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")
 endif()
 
 if(NOT CMAKE_HOST_UNIX)
-	return()
+	execute_process(
+		COMMAND sh -c echo
+		RESULT_VARIABLE sh_result
+		OUTPUT_QUIET
+		ERROR_QUIET
+	)
+
+	if(NOT (sh_result STREQUAL "0"))
+		return()
+	endif()
 endif()
 
 set(pre_commit_hook "${SOF_ROOT_SOURCE_DIRECTORY}/.git/hooks/pre-commit")
