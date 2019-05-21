@@ -15,6 +15,7 @@
 #define __INCLUDE_SOF_PLATFORM_H__
 
 #include <sof/sof.h>
+#include <sof/timer.h>
 
 /** \addtogroup platform_api Platform API
  *  Platform API specification.
@@ -45,6 +46,8 @@ int platform_boot_complete(uint32_t boot_message);
  * \return 0 if successful, error code otherwise.
  */
 int platform_init(struct sof *sof);
+
+extern struct timesource_data platform_internal_timers[];
 
 /** @}*/
 

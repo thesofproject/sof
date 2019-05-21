@@ -18,6 +18,7 @@
 #include <sof/trace.h>
 #include <sof/schedule.h>
 #include <ipc/topology.h>
+#include <sof/perfcount.h>
 
 /*
  * This flag disables firmware-side xrun recovery.

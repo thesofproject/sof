@@ -356,7 +356,8 @@ static int kpb_prepare(struct comp_dev *dev)
 			   kpb_draining_task, /* task function */
 			   &cd->draining_task_data, /* task private data */
 			   0, /* core on which we should run */
-			   0); /* not used flags */
+			   0, /* not used flags */
+			   task_id(TASK_CLASS_KPB, dev->comp.id));
 
 	/* Search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device

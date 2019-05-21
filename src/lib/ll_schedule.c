@@ -191,7 +191,10 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 		if (ll_task->state == SOF_TASK_STATE_PENDING) {
 			/* work can run in non atomic context */
 			spin_unlock_irq(&queue->lock, *flags);
+			perfcount_begin(ll_task->perfcount);
 			reschedule_usecs = ll_task->func(ll_task->data);
+			perfcount_end(ll_task->perfcount);
+			perfcount_trace(ll_task->perfcount);
 			spin_lock_irq(&queue->lock, *flags);
 
 			/* do we need reschedule this work ? */

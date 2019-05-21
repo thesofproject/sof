@@ -94,6 +94,7 @@
 #define TRACE_CLASS_SCHEDULE_LL	(31 << 24)
 #define TRACE_CLASS_SOUNDWIRE	(32 << 24)
 #define TRACE_CLASS_KEYWORD	(33 << 24)
+#define TRACE_CLASS_PERFCOUNT	(34 << 24)
 
 #ifdef CONFIG_LIBRARY
 extern int test_bench_trace;

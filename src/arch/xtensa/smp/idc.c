@@ -322,7 +322,8 @@ int arch_idc_init(void)
 
 	/* process task */
 	schedule_task_init(&(*idc)->idc_task, SOF_SCHEDULE_EDF,
-			   SOF_TASK_PRI_IDC, idc_do_cmd, *idc, core, 0);
+			   SOF_TASK_PRI_IDC, idc_do_cmd, *idc, core, 0,
+			   task_id(TASK_CLASS_IDC, core));
 
 	/* configure interrupt */
 	ret = interrupt_register(PLATFORM_IDC_INTERRUPT(core), IRQ_AUTO_UNMASK,

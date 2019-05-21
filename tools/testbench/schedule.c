@@ -11,6 +11,7 @@
 #include <sof/task.h>
 #include <stdint.h>
 #include <sof/wait.h>
+#include <sof/perfcount.h>
 #include "testbench/edf_schedule.h"
 #include "testbench/ll_schedule.h"
 
@@ -22,7 +23,7 @@ static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
 /* testbench work definition */
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
-		       uint32_t xflags)
+		       uint32_t xflags, uint32_t id)
 {
 	task->type = type;
 	task->priority = priority;
@@ -30,6 +31,8 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->state = SOF_TASK_STATE_INIT;
 	task->func = func;
 	task->data = data;
+
+	task->perfcount = perfcount_init(id);
 
 	if (schedulers[task->type]->schedule_task_init)
 		return schedulers[task->type]->schedule_task_init(task, xflags);
@@ -40,6 +43,8 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
 		   uint32_t flags)
 {
+	perfcount_free(&task->perfcount);
+
 	if (schedulers[task->type]->schedule_task)
 		schedulers[task->type]->schedule_task(task, start, deadline,
 			flags);

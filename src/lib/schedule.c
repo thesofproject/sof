@@ -16,7 +16,7 @@ static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
-		       uint32_t xflags)
+		       uint32_t xflags, uint32_t id)
 {
 	int ret = 0;
 
@@ -34,6 +34,7 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->func = func;
 	task->data = data;
 	task->ops = schedulers[task->type];
+	task->perfcount = perfcount_init(id);
 
 	if (task->ops->schedule_task_init)
 		ret = task->ops->schedule_task_init(task, xflags);
@@ -43,6 +44,8 @@ out:
 
 void schedule_task_free(struct task *task)
 {
+	perfcount_free(&task->perfcount);
+
 	if (task->ops->schedule_task_free)
 		task->ops->schedule_task_free(task);
 }

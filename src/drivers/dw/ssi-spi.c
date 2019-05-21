@@ -410,7 +410,8 @@ static int spi_slave_init(struct spi *spi)
 
 	spi->completion.private = NULL;
 	return schedule_task_init(&spi->completion, SOF_SCHEDULE_EDF,
-			SOF_TASK_PRI_MED, spi_completion_work, spi, 0, 0);
+			SOF_TASK_PRI_MED, spi_completion_work, spi, 0, 0,
+			task_id(TASK_CLASS_SPI, 0));
 }
 
 int spi_probe(struct spi *spi)

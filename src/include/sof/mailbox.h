@@ -23,6 +23,12 @@
 /* 4k should be enough for everyone ..... */
 #define IPC_MAX_MAILBOX_BYTES 0x1000
 
+#define mailbox_get_perfcount_base() \
+	MAILBOX_PERFCOUNT_BASE
+
+#define mailbox_get_perfcount_size() \
+	MAILBOX_PERFCOUNT_SIZE
+
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE
 

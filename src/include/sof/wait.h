@@ -60,14 +60,14 @@ static inline void wait_completed(completion_t *comp)
 	c->complete = 1;
 }
 
-static inline void wait_init(completion_t *comp)
+static inline void wait_init(completion_t *comp, uint32_t task_id)
 {
 	volatile completion_t *c = (volatile completion_t *)comp;
 
 	c->complete = 0;
 
 	schedule_task_init(&comp->work, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
-			   _wait_cb, comp, 0, 0);
+			   _wait_cb, comp, 0, 0, task_id);
 }
 
 static inline void wait_clear(completion_t *comp)

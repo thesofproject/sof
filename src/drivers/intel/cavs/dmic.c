@@ -1043,7 +1043,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	/* Initialize start sequence handler */
 	schedule_task_init(&dmic->dmicwork, SOF_SCHEDULE_LL,
 			   SOF_TASK_PRI_MED, dmic_work, dai, 0,
-			   SOF_SCHEDULE_FLAG_ASYNC);
+			   SOF_SCHEDULE_FLAG_ASYNC,
+			   task_id(TASK_CLASS_DMIC, dai->index));
 
 
 	if (config->dmic.driver_ipc_version != DMIC_IPC_VERSION) {

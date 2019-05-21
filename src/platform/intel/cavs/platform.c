@@ -178,6 +178,46 @@ struct timesource_data platform_generic_queue[] = {
 #endif
 };
 
+struct timesource_data platform_internal_timers[] = {
+{
+	.timer = {
+		.id  = TIMER0, /* internal timer */
+		.irq = IRQ_NUM_TIMER1,
+	},
+	.clk         = CLK_CPU(0),
+	.notifier    = NOTIFIER_ID_CPU_FREQ,
+	.timer_set   = arch_timer_set,
+	.timer_clear = arch_timer_clear,
+	.timer_get   = arch_timer_get_system,
+},
+#if XCHAL_NUM_TIMERS > 1
+{
+	.timer = {
+		.id  = TIMER1, /* internal timer */
+		.irq = IRQ_NUM_TIMER2,
+	},
+	.clk         = CLK_CPU(0),
+	.notifier    = NOTIFIER_ID_CPU_FREQ,
+	.timer_set   = arch_timer_set,
+	.timer_clear = arch_timer_clear,
+	.timer_get   = arch_timer_get_system,
+},
+#endif
+#if XCHAL_NUM_TIMERS > 2
+{
+	.timer = {
+		.id  = TIMER2, /* internal timer */
+		.irq = IRQ_NUM_TIMER3,
+	},
+	.clk         = CLK_CPU(0),
+	.notifier    = NOTIFIER_ID_CPU_FREQ,
+	.timer_set   = arch_timer_set,
+	.timer_clear = arch_timer_clear,
+	.timer_get   = arch_timer_get_system,
+},
+#endif
+};
+
 #if defined(CONFIG_IOMUX)
 #include <sof/iomux.h>
 #endif

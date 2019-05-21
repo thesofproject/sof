@@ -27,3 +27,7 @@ if (CONFIG_TRACE)
 		dma-trace.c
 		trace.c)
 endif()
+
+if (CONFIG_PERFCOUNT)
+	add_local_sources(sof perfcount.c)
+endif()

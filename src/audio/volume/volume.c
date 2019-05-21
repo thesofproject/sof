@@ -155,7 +155,8 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 	schedule_task_init(&cd->volwork, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
-			   vol_work, dev, 0, 0);
+			   vol_work, dev, 0, 0,
+			   task_id(TASK_CLASS_VOLUME, dev->comp.id));
 
 	/* set the default volumes */
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {

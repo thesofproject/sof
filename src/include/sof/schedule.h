@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <sof/list.h>
 #include <sof/trace.h>
+#include <sof/perfcount.h>
 
 /* schedule tracing */
 #define trace_schedule(format, ...) \
@@ -55,6 +56,23 @@ enum {
 #define SOF_SCHEDULE_FLAG_SYNC	(1 << 0) /* task scheduled synchronously */
 #define SOF_SCHEDULE_FLAG_IDLE  (2 << 0)
 
+#define TASK_CLASS_SHIFT 24
+#define TASK_ID_MASK (~(0xFF << TASK_CLASS_SHIFT))
+
+#define TASK_CLASS_OTHER	0
+#define TASK_CLASS_IDC		1
+#define TASK_CLASS_KPB		2
+#define TASK_CLASS_PIPELINE	3
+#define TASK_CLASS_VOLUME	4
+#define TASK_CLASS_SPI		5
+#define TASK_CLASS_IPC		6
+#define TASK_CLASS_DMIC		7
+#define TASK_CLASS_AGENT	8
+#define TASK_CLASS_TRACE	9
+
+#define task_id(class, id) (((class) << TASK_CLASS_SHIFT) | \
+			    ((id) & TASK_ID_MASK))
+
 struct task;
 
 struct scheduler_ops {
@@ -77,11 +95,13 @@ struct task {
 	uint16_t priority;
 	uint16_t state;
 	uint16_t core;
+	uint32_t id;
 	void *data;
 	uint64_t (*func)(void *data);
 	struct list_item list;
 	struct list_item irq_list;	/* list for assigned irq level */
 	const struct scheduler_ops *ops;
+	struct perfcount_context *perfcount;
 	void *private;
 };
 
@@ -97,7 +117,7 @@ struct schedule_data **arch_schedule_get_data(void);
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
-		       uint32_t xflags);
+		       uint32_t xflags, uint32_t task_id);
 
 void schedule_task_running(struct task *task);
 

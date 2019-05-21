@@ -166,4 +166,29 @@ config DEBUG_IPC_COUNTERS
 	help
 	  Select for enabling tracing IPC counter in SRAM_REG mailbox
 
+menu "Performance measurement"
+
+config PERFCOUNT
+	bool "Enable performance measurement"
+	depends on CAVS
+	depends on TRACE
+	default n
+	help
+	  Select for performance measurment of FW components.
+
+config PERFCOUNT_HISTORY_LOG2
+	int "Running average history length"
+	default 4
+	help
+	  History length for the computation of running average,
+	  in the form of a power of 2: log2(steps).
+
+config PERFCOUNT_INTERVAL
+	int "Trace inverval"
+	default 1000
+	help
+	  Interval of measurement reports in milliseconds.
+
+endmenu
+
 endmenu

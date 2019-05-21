@@ -122,8 +122,12 @@ static void _irq_task(void *arg)
 		/* run task without holding task lock */
 		spin_unlock_irq(&irq_task->lock, flags);
 
-		if (run_task)
+		if (run_task) {
+			perfcount_begin(task->perfcount);
 			task->func(task->data);
+			perfcount_end(task->perfcount);
+			perfcount_trace(task->perfcount);
+		}
 
 		spin_lock_irq(&irq_task->lock, flags);
 		schedule_task_complete(task);

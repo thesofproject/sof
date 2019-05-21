@@ -136,7 +136,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	/* set up callback */
 	dma_set_cb(dmac, chan, DMA_CB_TYPE_IRQ, dma_complete, &complete);
 
-	wait_init(&complete);
+	wait_init(&complete, task_id(TASK_CLASS_IPC, 1));
 
 	/* start the copy of page table to DSP */
 	ret = dma_start(dmac, chan);
