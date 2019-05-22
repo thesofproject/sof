@@ -1,2 +1,6 @@
+if(CONFIG_IMX8)
+add_subdirectory(imx)
+else()
 add_subdirectory(intel)
 add_subdirectory(dw)
+endif()
