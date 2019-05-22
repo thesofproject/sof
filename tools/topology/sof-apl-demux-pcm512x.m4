@@ -34,7 +34,7 @@ dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 # Demux pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-demux-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
 	1, 0, 2, s32le,
 	48, 1000, 0, 0)
 
