@@ -182,9 +182,16 @@ struct sof_ipc_comp_process {
 	struct sof_ipc_comp_config config;
 	uint32_t size;	/**< size of bespoke data section in bytes */
 	uint32_t type;	/**< sof_ipc_effect_type */
+	uint32_t min_sink_bytes;   /**< min sink buffer size measured in
+				     *  bytes required to run module
+				     */
+	uint32_t min_source_bytes; /**< amount of data measured in
+				     *  bytes available at source buffer
+				     *  required to run module
+				     */
 
 	/* reserved for future use */
-	uint32_t reserved[7];
+	uint32_t reserved[5];
 
 	unsigned char data[0];
 } __attribute__((packed));
