@@ -116,6 +116,12 @@ source "src/Kconfig"
 
 menu "Debug"
 
+config DEBUG
+	bool "Enable debug build"
+	default n
+	help
+	  Select for debug build
+
 config GDB_DEBUG
 	bool "GDB Stub"
 	default n
@@ -127,12 +133,6 @@ config DEBUG_HEAP
 	default n
 	help
 	  Select for enable heap alloc debugging
-
-config DEBUG
-	bool "Debug build"
-	default n
-	help
-	  Select for debug build
 
 config BUILD_VM_ROM
 	bool "Build VM ROM"
