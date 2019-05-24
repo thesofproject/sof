@@ -40,9 +40,10 @@
 #include <stdint.h>
 
 /* debug to set memory value on every allocation */
-#define DEBUG_BLOCK_FREE 0
+#if CONFIG_DEBUG_BLOCK_FREE
 #define DEBUG_BLOCK_FREE_VALUE_8BIT ((uint8_t) 0xa5)
 #define DEBUG_BLOCK_FREE_VALUE_32BIT ((uint32_t) 0xa5a5a5a5)
+#endif
 
 #define trace_mem_error(__e, ...) \
 	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
@@ -63,7 +64,7 @@ extern struct mm memmap;
  *    module removal or calls to rfree(). Saved as part of PM context.
  */
 
-#if DEBUG_BLOCK_FREE
+#if CONFIG_DEBUG_BLOCK_FREE
 /* Check whole memory region for debug pattern to find if memory was freed
  * second time
  */
@@ -117,7 +118,7 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 	return size;
 }
 
-#if DEBUG_BLOCK_FREE
+#if CONFIG_DEBUG_BLOCK_FREE
 static void write_pattern(struct mm_heap *heap_map, int heap_depth,
 						  uint8_t pattern)
 {
@@ -425,7 +426,7 @@ static void free_block(void *ptr)
 	if (block < block_map->first_free)
 		block_map->first_free = block;
 
-#if DEBUG_BLOCK_FREE
+#if CONFIG_DEBUG_BLOCK_FREE
 	/* memset the whole block in case of unaligned ptr */
 	validate_memory(
 		(void *)(block_map->base + block_map->block_size * block),
@@ -577,7 +578,7 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 		break;
 	}
 
-#if DEBUG_BLOCK_FREE
+#if CONFIG_DEBUG_BLOCK_FREE
 	if (ptr)
 		bzero(ptr, bytes);
 #endif
@@ -656,7 +657,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 	if (ptr && ((zone & RZONE_FLAG_MASK) == RZONE_FLAG_UNCACHED))
 		ptr = cache_to_uncache(ptr);
 
-#if DEBUG_BLOCK_FREE
+#if CONFIG_DEBUG_BLOCK_FREE
 	if (ptr)
 		bzero(ptr, bytes);
 #endif
@@ -833,7 +834,7 @@ void init_heap(struct sof *sof)
 
 	init_heap_map(memmap.buffer, PLATFORM_HEAP_BUFFER);
 
-#if DEBUG_BLOCK_FREE
+#if CONFIG_DEBUG_BLOCK_FREE
 	write_pattern((struct mm_heap *)&memmap.buffer, PLATFORM_HEAP_BUFFER,
 				  DEBUG_BLOCK_FREE_VALUE_8BIT);
 	write_pattern((struct mm_heap *)&memmap.runtime, PLATFORM_HEAP_RUNTIME,
