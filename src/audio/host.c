@@ -711,7 +711,6 @@ static int host_reset(struct comp_dev *dev)
 #endif
 
 #if CONFIG_DMA_GW
-	dma_stop(hd->dma, hd->chan);
 	dma_channel_put(hd->dma, hd->chan);
 
 	/* free array for hda-dma only, do not free single one for dw-dma */
