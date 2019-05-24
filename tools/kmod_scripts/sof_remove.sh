@@ -71,6 +71,9 @@ remove_module snd_soc_hdac_hda
 remove_module snd_soc_hdac_hdmi
 remove_module snd_soc_dmic
 
+remove_module snd_hda_codec_realtek
+remove_module snd_hda_codec_generic
+
 remove_module snd_soc_acpi
 remove_module snd_hda_ext_core
 
