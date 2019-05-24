@@ -41,9 +41,8 @@
 
 /* debug to set memory value on every allocation */
 #define DEBUG_BLOCK_FREE 0
-#define DEBUG_BLOCK_FREE_VALUE 0xa5
-#define DEBUG_BLOCK_FREE_VALUE_32 0xa5a5a5a5
-
+#define DEBUG_BLOCK_FREE_VALUE_8BIT ((uint8_t) 0xa5)
+#define DEBUG_BLOCK_FREE_VALUE_32BIT ((uint32_t) 0xa5a5a5a5)
 
 #define trace_mem_error(__e, ...) \
 	trace_error(TRACE_CLASS_MEM, __e, ##__VA_ARGS__)
@@ -74,7 +73,7 @@ static void validate_memory(void *ptr, size_t size)
 	int i, not_matching = 0;
 
 	for (i = 0; i < size/4; i++) {
-		if (ptr_32[i] != DEBUG_BLOCK_FREE_VALUE_32)
+		if (ptr_32[i] != DEBUG_BLOCK_FREE_VALUE_32BIT)
 			not_matching = 1;
 	}
 
@@ -427,13 +426,13 @@ static void free_block(void *ptr)
 		block_map->first_free = block;
 
 #if DEBUG_BLOCK_FREE
-	/* memset the whole block incase some not aligned ptr */
+	/* memset the whole block in case of unaligned ptr */
 	validate_memory(
 		(void *)(block_map->base + block_map->block_size * block),
 		block_map->block_size * (i - block));
 	memset(
 		(void *)(block_map->base + block_map->block_size * block),
-		DEBUG_BLOCK_FREE_VALUE, block_map->block_size *
+		DEBUG_BLOCK_FREE_VALUE_8BIT, block_map->block_size *
 		(i - block));
 #endif
 }
@@ -836,9 +835,9 @@ void init_heap(struct sof *sof)
 
 #if DEBUG_BLOCK_FREE
 	write_pattern((struct mm_heap *)&memmap.buffer, PLATFORM_HEAP_BUFFER,
-				  DEBUG_BLOCK_FREE_VALUE);
+				  DEBUG_BLOCK_FREE_VALUE_8BIT);
 	write_pattern((struct mm_heap *)&memmap.runtime, PLATFORM_HEAP_RUNTIME,
-				  DEBUG_BLOCK_FREE_VALUE);
+				  DEBUG_BLOCK_FREE_VALUE_8BIT);
 #endif
 
 	dcache_writeback_invalidate_region(&memmap, sizeof(memmap));
