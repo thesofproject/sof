@@ -134,6 +134,15 @@ config DEBUG_HEAP
 	help
 	  Select for enable heap alloc debugging
 
+config DEBUG_BLOCK_FREE
+	bool "Blocks freeing debug"
+	default n
+	help
+	  It enables checking if free was called multiple times on
+	  already freed block of memory. Enabling this feature increases
+	  number of memory writes and reads, due to checks for memory patterns
+	  that may be performed on allocation and deallocation.
+
 config BUILD_VM_ROM
 	bool "Build VM ROM"
 	default n
