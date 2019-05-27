@@ -13,6 +13,7 @@ config BAYTRAIL
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
 	select DW_DMA
+	select HAVE_RESET_VECTOR_ROM
 	help
 	  Select if your target platform is Baytrail-compatible
 
@@ -25,6 +26,7 @@ config CHERRYTRAIL
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
 	select DW_DMA
+	select HAVE_RESET_VECTOR_ROM
 	help
 	  Select if your target platform is Cherrytrail-compatible
 
@@ -34,6 +36,7 @@ config HASWELL
 	select TASK_HAVE_PRIORITY_LOW
 	select DMA_AGGREGATED_IRQ
 	select DW_DMA
+	select HAVE_RESET_VECTOR_ROM
 	help
 	  Select if your target platform is Haswell-compatible
 
@@ -43,6 +46,7 @@ config BROADWELL
 	select TASK_HAVE_PRIORITY_LOW
 	select DMA_AGGREGATED_IRQ
 	select DW_DMA
+	select HAVE_RESET_VECTOR_ROM
 	help
 	  Select if your target platform is Broadwell-compatible
 
@@ -124,6 +128,7 @@ config LIBRARY
 
 config IMX8
 	bool "Build for NXP i.MX8"
+	select HAVE_RESET_VECTOR_ROM
 	help
 	  Select if your target platform is imx8-compatible
 

@@ -40,6 +40,13 @@ config BOOT_LOADER
 	bool
 	default n
 
+config HAVE_RESET_VECTOR_ROM
+	bool
+	default n
+	help
+	  Select if your platform has the reset vector
+	  in ROM.
+
 config IRQ_MAP
 	bool
 	default n
