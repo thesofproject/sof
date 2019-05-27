@@ -222,9 +222,13 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	spin_unlock_irq(&buffer->lock, flags);
 
-	tracev_buffer("comp_update_buffer_consume(), %u, %u, %u",
+	tracev_buffer("comp_update_buffer_consume(), "
+		      "(buffer->avail << 16) | buffer->free = %08x, "
+		      "(buffer->ipc_buffer.comp.id << 16) | buffer->size = "
+		      " %08x, (buffer->r_ptr - buffer->addr) << 16 | "
+		      "(buffer->w_ptr - buffer->addr)) = %08x",
 		      (buffer->avail << 16) | buffer->free,
-		     (buffer->ipc_buffer.comp.id << 16) | buffer->size,
-		     (buffer->r_ptr - buffer->addr) << 16 |
-		     (buffer->w_ptr - buffer->addr));
+		      (buffer->ipc_buffer.comp.id << 16) | buffer->size,
+		      (buffer->r_ptr - buffer->addr) << 16 |
+		      (buffer->w_ptr - buffer->addr));
 }
