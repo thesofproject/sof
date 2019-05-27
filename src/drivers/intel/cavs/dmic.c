@@ -122,12 +122,12 @@ struct pdm_controllers_configuration {
 /* Hardwired log ramp parameters. The first value is the initial logarithmic
  * gain and the second value is the multiplier for gain to achieve the linear
  * decibels change over time. Currently the coefficient GM needs to be
- * calculated manually. The 300 ms ramp should ensure clean sounding start with
- * any microphone. However it is likely unnecessarily long for machine hearing.
+ * calculated manually. The 400 ms ramp should ensure clean sounding start
+ * with any microphone.
  * TODO: Add ramp characteristic passing via topology.
  */
 #define LOGRAMP_GI 33954 /* -90 dB, Q2.30*/
-#define LOGRAMP_GM 16959 /* Gives 300 ms ramp for -90..0 dB, Q2.14 */
+#define LOGRAMP_GM 16814 /* Gives 400 ms ramp for -90..0 dB, Q2.14 */
 
 /* tracing */
 #define trace_dmic(__e, ...) \
