@@ -150,22 +150,28 @@
 /*
  * The HP SRAM Region on Sue Creek is organised like this :-
  * +--------------------------------------------------------------------------+
- * | Offset              | Region         |  Size                             |
- * +---------------------+----------------+-----------------------------------+
- * | HP_SRAM_BASE        | RO Data        |  REEF_DATA_SIZE                   |
- * |                     | Data           |                                   |
- * |                     | BSS            |                                   |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_SYSTEM_BASE    | System Heap    |  HEAP_SYSTEM_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_RUNTIME_BASE   | Runtime Heap   |  HEAP_RUNTIME_SIZE                |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_END       | Stack          |  SOF_STACK_SIZE                   |
- * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_BASE      |                |                                   |
- * +---------------------+----------------+-----------------------------------+
+ * | Offset           | Region                  |  Size                       |
+ * +------------------+-------------------------+-----------------------------+
+ * | SOF_FW_START     | text                    |                             |
+ * |                  | data                    |                             |
+ * |                  | ----------------------- |                             |
+ * |                  ||BSS:                   ||                             |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Runtime Heap           ||  HEAP_RUNTIME_SIZE          |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Module Buffers         ||  HEAP_BUFFER_SIZE           |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Master core Sys Heap   ||  HEAP_SYSTEM_M_SIZE         |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Master Sys Runtime Heap||  HEAP_SYS_RUNTIME_M_SIZE    |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Master core Stack      ||  SOF_STACK_SIZE             |
+ * |                  ||-----------------------++-----------------------------+
+ * |                  ||Slave core Sys Heap    ||  SOF_CORE_S_T_SIZE          |
+ * |                  ||Slave Sys Runtime Heap ||                             |
+ * |                  ||Slave core Stack       ||                             |
+ * |                  | ----------------------- |                             |
+ * +------------------+-------------------------+-----------------------------+
  */
 
 /* HP SRAM */
@@ -174,7 +180,7 @@
 #define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM Base */
-#define HP_SRAM_VECBASE_RESET	(HP_SRAM_BASE + 0x40000)
+#define HP_SRAM_VECBASE_RESET	SRAM_VECBASE_RESET
 
 /* Heap section sizes for system runtime heap for master core */
 #define HEAP_SYS_RT_0_COUNT64		64
@@ -195,24 +201,8 @@
 
 #define L2_VECTOR_SIZE		0x2000
 
-#define SOF_TEXT_START		(HP_SRAM_BASE + L2_VECTOR_SIZE)
-#define SOF_TEXT_START_SIZE	0x400
-#define SOF_TEXT_BASE		(SOF_TEXT_START + SOF_TEXT_START_SIZE)
-#define SOF_TEXT_SIZE		(0x40000 - SOF_TEXT_START_SIZE + 0x1000)
-
-/* initialized data */
-#if CONFIG_CAVS_DMIC
-#define SOF_DATA_SIZE		0x1b000
-#else
-#define SOF_DATA_SIZE		0x19000
-#endif
-
-/* bss data */
-#define SOF_BSS_DATA_SIZE		0x10900
-
 /* Mailbox configuration */
-#define SRAM_OUTBOX_BASE	(SOF_TEXT_BASE + SOF_TEXT_SIZE \
-				+ SOF_DATA_SIZE + SOF_BSS_DATA_SIZE)
+#define SRAM_OUTBOX_BASE	HP_SRAM_BASE
 #define SRAM_OUTBOX_SIZE	0x1000
 
 #define SRAM_INBOX_BASE		(SRAM_OUTBOX_BASE + SRAM_OUTBOX_SIZE)
@@ -242,18 +232,23 @@
 				+ SRAM_DEBUG_SIZE + SRAM_EXCEPT_SIZE \
 				+ SRAM_STREAM_SIZE + SRAM_TRACE_SIZE)
 
+#define SOF_TEXT_START_SIZE	0x400
+
+/* text and data share the same HP L2 SRAM on Suecreek */
+#define SOF_FW_START		(HP_SRAM_VECBASE_RESET + SOF_TEXT_START_SIZE)
+#define SOF_FW_BASE		(SOF_FW_START)
+
+#define SOF_TEXT_START		(SOF_FW_START)
+#define SOF_TEXT_BASE		(SOF_FW_START)
+
+/* max size for all var-size sections (text/rodata/bss) */
+#define SOF_FW_MAX_SIZE		(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_FW_BASE)
+
 /* Heap configuration */
-#define HEAP_SYSTEM_0_BASE \
-	(SOF_TEXT_BASE + SOF_TEXT_SIZE +\
-	SOF_DATA_SIZE + SOF_BSS_DATA_SIZE + SOF_MAILBOX_SIZE)
 #define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
 #define HEAP_SYSTEM_S_SIZE		0x5000	/* heap slave core size */
 #define HEAP_SYSTEM_T_SIZE \
 	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
-
-#define HEAP_SYS_RUNTIME_0_BASE \
-	(HEAP_SYSTEM_0_BASE + HEAP_SYSTEM_M_SIZE + \
-	((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
 
 #define HEAP_SYS_RUNTIME_M_SIZE \
 	(HEAP_SYS_RT_0_COUNT64 * 64 + HEAP_SYS_RT_0_COUNT512 * 512 + \
@@ -267,10 +262,6 @@
 	(HEAP_SYS_RUNTIME_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * \
 	HEAP_SYS_RUNTIME_S_SIZE))
 
-#define HEAP_RUNTIME_BASE \
-	(HEAP_SYS_RUNTIME_0_BASE + HEAP_SYS_RUNTIME_M_SIZE + \
-	((PLATFORM_CORE_COUNT - 1) * HEAP_SYS_RUNTIME_S_SIZE))
-
 #define HEAP_RUNTIME_SIZE \
 	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
 	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
@@ -279,11 +270,14 @@
 /* Stack configuration */
 #define SOF_STACK_SIZE		ARCH_STACK_SIZE
 #define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
-#define SOF_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE)
-#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
-#define HEAP_BUFFER_BASE	(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
-#define HEAP_BUFFER_SIZE	(SOF_STACK_END - HEAP_BUFFER_BASE)
+/* SOF Core S configuration */
+#define SOF_CORE_S_SIZE \
+	ALIGN((HEAP_SYSTEM_S_SIZE + HEAP_SYS_RUNTIME_S_SIZE + SOF_STACK_SIZE),\
+	SRAM_BANK_SIZE)
+#define SOF_CORE_S_T_SIZE ((PLATFORM_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
+
+#define HEAP_BUFFER_SIZE	0xF000
 #define HEAP_BUFFER_BLOCK_SIZE	0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
@@ -383,8 +377,13 @@
 #define ROM_RESET_TEXT_SIZE	0x400
 #define ROM_RESET_LIT_SIZE	0x200
 
+/* boot loader */
+#define BOOT_LDR_MANIFEST_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
+#define BOOT_LDR_MANIFEST_SIZE		0x6000
+
 /* code loader */
-#define BOOT_LDR_TEXT_ENTRY_BASE	0xBE066000
+#define BOOT_LDR_TEXT_ENTRY_BASE	(BOOT_LDR_MANIFEST_BASE + \
+					BOOT_LDR_MANIFEST_SIZE)
 #define BOOT_LDR_TEXT_ENTRY_SIZE	0x400
 #define BOOT_LDR_LIT_BASE		(BOOT_LDR_TEXT_ENTRY_BASE + \
 					BOOT_LDR_TEXT_ENTRY_SIZE)
@@ -398,8 +397,9 @@
 					BOOT_LDR_DATA_SIZE)
 #define BOOT_LDR_BSS_SIZE		0x100
 
-/* TODO: set this value */
-#define BOOT_LDR_MANIFEST_BASE		(BOOT_LDR_TEXT_ENTRY_BASE + 0x2000)
+/* Temporary stack place for boot_ldr */
+#define BOOT_LDR_STACK_BASE		HEAP_HP_BUFFER_BASE
+#define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
 /* code loader entry point for base fw */
 #define SRAM_VECBASE_RESET	(BOOT_LDR_BSS_BASE + BOOT_LDR_BSS_SIZE)

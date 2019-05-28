@@ -231,7 +231,7 @@ xtos_per_core_init_interrupt_mask:
 
 	// Assign stack ptr before PS is initialized to avoid any debugger
 	// side effects and prevent from double exception.
-	xtos_stack_addr_percore_basic sp, a3, _stack_sentry, ARCH_STACK_SIZE
+	xtos_stack_addr_percore sp, a3, _stack_sentry, _sof_core_s_start, SOF_STACK_SIZE
 
 	/*
 	 *  Now that sp (a1) is set, we can set PS as per the application

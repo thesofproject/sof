@@ -284,6 +284,8 @@ static void test_lib_alloc_immediate_free(struct test_case *tc)
 
 static void test_lib_rballoc_filling_preceding_heaps(struct test_case *tc)
 {
+	extern unsigned int _buffer_heap;
+
 	size_t first_heap_size = HEAP_BUFFER_SIZE - tc->alloc_size * 8;
 	size_t second_heap_size = HEAP_HP_BUFFER_SIZE - tc->alloc_size;
 	size_t third_heap_size = 2048;
@@ -294,7 +296,7 @@ static void test_lib_rballoc_filling_preceding_heaps(struct test_case *tc)
 	int *third_mem = rballoc(tc->alloc_zone, SOF_MEM_CAPS_RAM,
 				 third_heap_size);
 
-	assert_ptr_equal(first_mem, HEAP_BUFFER_BASE);
+	assert_ptr_equal(first_mem, (unsigned int)&_buffer_heap);
 	assert_ptr_equal(second_mem, HEAP_HP_BUFFER_BASE);
 	assert_ptr_equal(third_mem, HEAP_LP_BUFFER_BASE);
 

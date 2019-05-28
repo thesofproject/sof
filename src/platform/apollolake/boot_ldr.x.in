@@ -28,11 +28,11 @@ MEMORY
         org = IMR_BOOT_LDR_DATA_BASE,
         len = IMR_BOOT_LDR_DATA_SIZE
   sof_bss_data :
-	org = IMR_BOOT_LDR_BSS_BASE,
+        org = IMR_BOOT_LDR_BSS_BASE,
         len = IMR_BOOT_LDR_BSS_SIZE
   sof_stack :
-        org = SOF_STACK_END,
-        len = SOF_STACK_BASE - SOF_STACK_END
+        org = BOOT_LDR_STACK_BASE,
+        len = BOOT_LDR_STACK_SIZE
   wnd0 :
         org = HP_SRAM_WIN0_BASE,
         len = HP_SRAM_WIN0_SIZE
@@ -180,7 +180,7 @@ SECTIONS
   _memmap_cacheattr_wbna_trapnull = 0xFF42FFF2;
   PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
-  __stack = SOF_STACK_BASE;
+  __stack = BOOT_LDR_STACK_BASE + BOOT_LDR_STACK_SIZE;
   __wnd0 = HP_SRAM_WIN0_BASE;
   __wnd0_size = HP_SRAM_WIN0_SIZE;
 

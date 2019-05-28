@@ -120,34 +120,42 @@
 /*
  * The HP SRAM Region on Icelake is organised like this :-
  * +--------------------------------------------------------------------------+
- * | Offset              | Region         |  Size                             |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_SW_REG_BASE    | SW Registers W0|  SRAM_SW_REG_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_OUTBOX_BASE    | Outbox W0      |  SRAM_MAILBOX_SIZE                |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_INBOX_BASE     | Inbox  W1      |  SRAM_INBOX_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_DEBUG_BASE     | Debug data  W2 |  SRAM_DEBUG_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_EXCEPT_BASE    | Debug data  W2 |  SRAM_EXCEPT_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_STREAM_BASE    | Stream data W2 |  SRAM_STREAM_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | SRAM_TRACE_BASE     | Trace Buffer W3|  SRAM_TRACE_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | HP_SRAM_BASE        | DMA            |  HEAP_HP_BUFFER_SIZE              |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_SYSTEM_BASE    | System Heap    |  HEAP_SYSTEM_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_RUNTIME_BASE   | Runtime Heap   |  HEAP_RUNTIME_SIZE                |
- * +---------------------+----------------+-----------------------------------+
- * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
- * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_END      | Stack          |  SOF_STACK_SIZE                  |
- * +---------------------+----------------+-----------------------------------+
- * | SOF_STACK_BASE     |                |                                   |
- * +---------------------+----------------+-----------------------------------+
+ * | Offset           | Region                  |  Size                       |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_SW_REG_BASE | SW Registers W0         |  SRAM_SW_REG_SIZE           |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_OUTBOX_BASE | Outbox W0               |  SRAM_MAILBOX_SIZE          |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_INBOX_BASE  | Inbox  W1               |  SRAM_INBOX_SIZE            |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_DEBUG_BASE  | Debug data  W2          |  SRAM_DEBUG_SIZE            |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_EXCEPT_BASE | Debug data  W2          |  SRAM_EXCEPT_SIZE           |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_STREAM_BASE | Stream data W2          |  SRAM_STREAM_SIZE           |
+ * +------------------+-------------------------+-----------------------------+
+ * | SRAM_TRACE_BASE  | Trace Buffer W3         |  SRAM_TRACE_SIZE            |
+ * +------------------+-------------------------+-----------------------------+
+ * | HP_SRAM_BASE     | DMA                     |  HEAP_HP_BUFFER_SIZE        |
+ * +------------------+-------------------------+-----------------------------+
+ * | SOF_FW_START     | text                    |                             |
+ * |                  | data                    |                             |
+ * |                  | BSS                     |                             |
+ * +------------------+-------------------------+-----------------------------+
+ * |                  | Runtime Heap            |  HEAP_RUNTIME_SIZE          |
+ * +------------------+-------------------------+-----------------------------+
+ * |                  | Module Buffers          |  HEAP_BUFFER_SIZE           |
+ * +------------------+-------------------------+-----------------------------+
+ * |                  | Master core Sys Heap    |  HEAP_SYSTEM_M_SIZE         |
+ * +------------------+-------------------------+-----------------------------+
+ * |                  | Master Sys Runtime Heap |  HEAP_SYS_RUNTIME_M_SIZE    |
+ * +------------------+-------------------------+-----------------------------+
+ * |                  | Master core Stack       |  SOF_STACK_SIZE             |
+ * +------------------+-------------------------+-----------------------------+
+ * |                  | Slave core Sys Heap     |  SOF_CORE_S_T_SIZE          |
+ * |                  | Slave Sys Runtime Heap  |                             |
+ * |                  | Slave core Stack        |                             |
+ * +------------------+-------------------------+-----------------------------+
  */
 
 /* HP SRAM */
@@ -156,7 +164,7 @@
 #define HP_SRAM_MASK		0xFF000000
 
 /* HP SRAM Base */
-#define HP_SRAM_VECBASE_RESET	(HP_SRAM_BASE + 0x40000)
+#define HP_SRAM_VECBASE_RESET	(HEAP_HP_BUFFER_BASE + HEAP_HP_BUFFER_SIZE)
 
 /* Heap section sizes for system runtime heap for master core */
 #define HEAP_SYS_RT_0_COUNT64		64
@@ -231,11 +239,11 @@
 			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
 /* text and data share the same HP L2 SRAM on Icelake */
-#define SOF_FW_START		0xBE040400
+#define SOF_FW_START		(HP_SRAM_VECBASE_RESET + 0x400)
 #define SOF_FW_BASE		(SOF_FW_START)
 
 /* max size for all var-size sections (text/rodata/bss) */
-#define SOF_FW_MAX_SIZE		(0x4A900 - 0x400)
+#define SOF_FW_MAX_SIZE		(HP_SRAM_BASE + HP_SRAM_SIZE - SOF_FW_BASE)
 
 #define SOF_TEXT_START		(SOF_FW_START)
 #define SOF_TEXT_BASE		(SOF_FW_START)
@@ -247,10 +255,6 @@
 #define HEAP_SYSTEM_S_SIZE		0x5000	/* heap slave core size */
 #define HEAP_SYSTEM_T_SIZE \
 	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
-
-#define HEAP_SYS_RUNTIME_0_BASE \
-	(HEAP_SYSTEM_0_BASE + HEAP_SYSTEM_M_SIZE + \
-	((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
 
 #define HEAP_SYS_RUNTIME_M_SIZE \
 	(HEAP_SYS_RT_0_COUNT64 * 64 + HEAP_SYS_RT_0_COUNT512 * 512 + \
@@ -264,10 +268,6 @@
 	(HEAP_SYS_RUNTIME_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * \
 	HEAP_SYS_RUNTIME_S_SIZE))
 
-#define HEAP_RUNTIME_BASE \
-	(HEAP_SYS_RUNTIME_0_BASE + HEAP_SYS_RUNTIME_M_SIZE + \
-	((PLATFORM_CORE_COUNT - 1) * HEAP_SYS_RUNTIME_S_SIZE))
-
 #define HEAP_RUNTIME_SIZE \
 	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
 	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
@@ -276,16 +276,16 @@
 /* Stack configuration */
 #define SOF_STACK_SIZE		ARCH_STACK_SIZE
 #define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
-#define SOF_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE)
-#define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
-#define HEAP_BUFFER_BASE	(HEAP_RUNTIME_BASE + HEAP_RUNTIME_SIZE)
-#define HEAP_BUFFER_SIZE	\
-	(SOF_STACK_END - HEAP_BUFFER_BASE)
+/* SOF Core S configuration */
+#define SOF_CORE_S_SIZE \
+	ALIGN((HEAP_SYSTEM_S_SIZE + HEAP_SYS_RUNTIME_S_SIZE + SOF_STACK_SIZE),\
+	SRAM_BANK_SIZE)
+#define SOF_CORE_S_T_SIZE ((PLATFORM_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
+
+#define HEAP_BUFFER_SIZE	0xF000
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
-
-#define SOF_MEMORY_SIZE		(SOF_STACK_BASE - HP_SRAM_BASE)
 
 /*
  * The LP SRAM Heap and Stack on Icelake are organised like this :-
@@ -393,6 +393,10 @@
 #define IMR_BOOT_LDR_DATA_SIZE		0x1000
 #define IMR_BOOT_LDR_BSS_BASE		0xB0100000
 #define IMR_BOOT_LDR_BSS_SIZE		0x10000
+
+/* Temporary stack place for boot_ldr */
+#define BOOT_LDR_STACK_BASE		HEAP_HP_BUFFER_BASE
+#define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
 #define uncache_to_cache(address) \
 	((__typeof__((address)))((uint32_t)((address)) + SRAM_ALIAS_OFFSET))

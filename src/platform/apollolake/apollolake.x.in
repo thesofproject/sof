@@ -90,21 +90,6 @@ MEMORY
   sof_fw :
         org = SOF_FW_BASE,
         len = SOF_FW_MAX_SIZE
-  system_heap :
-        org = HEAP_SYSTEM_0_BASE,
-        len = HEAP_SYSTEM_T_SIZE
-  system_runtime_heap :
-        org = HEAP_SYS_RUNTIME_0_BASE,
-        len = HEAP_SYS_RUNTIME_T_SIZE
-  runtime_heap :
-        org = HEAP_RUNTIME_BASE,
-        len = HEAP_RUNTIME_SIZE
-  buffer_heap :
-        org = HEAP_BUFFER_BASE,
-        len = HEAP_BUFFER_SIZE
-  sof_stack :
-        org = SOF_STACK_END,
-        len = SOF_STACK_BASE - SOF_STACK_END
   buffer_hp_heap :
         org = HEAP_HP_BUFFER_BASE,
         len = HEAP_HP_BUFFER_SIZE
@@ -152,11 +137,6 @@ PHDRS
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
   sof_fw_phdr PT_LOAD;
-  system_heap_phdr PT_LOAD;
-  system_runtime_heap_phdr PT_LOAD;
-  runtime_heap_phdr PT_LOAD;
-  buffer_heap_phdr PT_LOAD;
-  sof_stack_phdr PT_LOAD;
   buffer_hp_heap_phdr PT_LOAD;
   wnd0_phdr PT_LOAD;
   wnd1_phdr PT_LOAD;
@@ -495,28 +475,61 @@ SECTIONS
     *(.bss.*)
     *(.gnu.linkonce.b.*)
     *(COMMON)
-    . = ALIGN (8);
+
+    . = ALIGN (SRAM_BANK_SIZE);
+    _runtime_heap_start = ABSOLUTE(.);
+    . = . + HEAP_RUNTIME_SIZE;
+    _runtime_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (32);
+    _buffer_heap_start = ABSOLUTE(.);
+    . = . + HEAP_BUFFER_SIZE;
+    _buffer_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (SRAM_BANK_SIZE);
+    _system_heap_start = ABSOLUTE(.);
+    . = . + HEAP_SYSTEM_M_SIZE;
+    _system_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (32);
+    _system_runtime_heap_start = ABSOLUTE(.);
+    . = . + HEAP_SYS_RUNTIME_M_SIZE;
+    _system_runtime_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (4096);
+    _sof_stack_start = ABSOLUTE(.);
+    . = . + SOF_STACK_SIZE;
+    _sof_stack_end = ABSOLUTE(.);
+
+    . = ALIGN (SRAM_BANK_SIZE);
+    _sof_core_s_start = ABSOLUTE(.);
+    . = . + SOF_CORE_S_T_SIZE;
+    _sof_core_s_end = ABSOLUTE(.);
+
     _bss_end = ABSOLUTE(.);
   } >sof_fw :sof_fw_phdr
 
   /* stack */
-  _end = SOF_STACK_END;
-  PROVIDE(end = SOF_STACK_END);
-  _stack_sentry = SOF_STACK_END;
-  __stack = SOF_STACK_BASE;
+  _end = _sof_stack_start;
+  PROVIDE(end = _sof_stack_start);
+  _stack_sentry = _sof_stack_start;
+  __stack = _sof_stack_end;
+
+  /* Slave core size */
+  _core_s_size = SOF_CORE_S_SIZE;
 
   /* System Heap */
-  _system_heap = HEAP_SYSTEM_0_BASE;
+  _system_heap = _system_heap_start;
 
   /* system runtime heap */
-  _system_runtime_heap = HEAP_SYS_RUNTIME_0_BASE;
+  _system_runtime_heap = _system_runtime_heap_start;
 
   /* module heap */
-  _module_heap = HEAP_RUNTIME_BASE;
+  _module_heap = _runtime_heap_start;
 
   /* buffer heap */
-  _buffer_heap = HEAP_BUFFER_BASE;
-  _buffer_heap_end = _stack_sentry;
+  _buffer_heap = _buffer_heap_start;
+  _buffer_heap_end = _buffer_heap_end;
 
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }
@@ -568,46 +581,6 @@ SECTIONS
     KEEP (*(.xt.profile_files))
     KEEP (*(.gnu.linkonce.xt.profile_files.*))
   }
-
-  .system_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _system_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYSTEM_T_SIZE;
-    _system_heap_end = ABSOLUTE(.);
-  } >system_heap :system_heap_phdr
-
-  .system_runtime_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _system_runtime_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYS_RUNTIME_T_SIZE;
-    _system_runtime_heap_end = ABSOLUTE(.);
-  } >system_runtime_heap :system_runtime_heap_phdr
-
-  .runtime_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _runtime_heap_start = ABSOLUTE(.);
-    . = . + HEAP_RUNTIME_SIZE;
-    _runtime_heap_end = ABSOLUTE(.);
-  } >runtime_heap :runtime_heap_phdr
-
-  .buffer_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _buffer_heap_start = ABSOLUTE(.);
-    . = . + HEAP_BUFFER_SIZE;
-    _buffer_heap_end = ABSOLUTE(.);
-  } >buffer_heap :buffer_heap_phdr
-
-  .sof_stack (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (4096);
-    _sof_stack_start = ABSOLUTE(.);
-    . = . + SOF_STACK_TOTAL_SIZE;
-    _sof_stack_end = ABSOLUTE(.);
-  } >sof_stack :sof_stack_phdr
 
   .static_log_entries (COPY) : ALIGN(1024)
   {

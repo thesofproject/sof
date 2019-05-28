@@ -28,11 +28,11 @@ MEMORY
         org = BOOT_LDR_DATA_BASE,
         len = BOOT_LDR_DATA_SIZE
   sof_bss_data :
-	org = BOOT_LDR_BSS_BASE,
+        org = BOOT_LDR_BSS_BASE,
         len = BOOT_LDR_BSS_SIZE
   sof_stack :
-        org = SOF_STACK_END,
-        len = SOF_STACK_BASE - SOF_STACK_END
+        org = BOOT_LDR_STACK_BASE,
+        len = BOOT_LDR_STACK_SIZE
 }
 
 PHDRS
@@ -176,7 +176,7 @@ SECTIONS
   _memmap_cacheattr_wbna_trapnull = 0xFF42FFF2;
   PROVIDE(_memmap_cacheattr_reset = _memmap_cacheattr_wbna_trapnull);
 
-  __stack = SOF_STACK_BASE;
+  __stack = BOOT_LDR_STACK_BASE + BOOT_LDR_STACK_SIZE;
 
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }

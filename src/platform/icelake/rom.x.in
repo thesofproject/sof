@@ -82,8 +82,8 @@ MEMORY
 	org = ROM_BASE + 0x800,
         len = ROM_SIZE,
   sof_stack :
-        org = SOF_STACK_END,
-        len = SOF_STACK_BASE - SOF_STACK_END
+        org = BOOT_LDR_STACK_BASE,
+        len = BOOT_LDR_STACK_SIZE
 }
 
 PHDRS
@@ -288,10 +288,10 @@ SECTIONS
   } >sof_text :sof_text_phdr
 
   /* stack */
-  _end = SOF_STACK_END;
-  PROVIDE(end = SOF_STACK_END);
-  _stack_sentry = SOF_STACK_END;
-  __stack = SOF_STACK_BASE;
+  _end = BOOT_LDR_STACK_BASE;
+  PROVIDE(end = BOOT_LDR_STACK_BASE);
+  _stack_sentry = BOOT_LDR_STACK_BASE;
+  __stack = BOOT_LDR_STACK_BASE + BOOT_LDR_STACK_SIZE;
 
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }
