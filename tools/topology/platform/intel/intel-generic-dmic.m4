@@ -18,10 +18,9 @@ dnl     frames, deadline, priority, core)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
-ifelse(CHANNELS, 4, `',
-`PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC_DAI_LINK_48k_ID, CHANNELS, s32le,
-	48, 1000, 0, 0)')
+	48, 1000, 0, 0)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
 # Schedule 48 frames per 1000us deadline on core 0 with priority 0
@@ -40,11 +39,10 @@ dnl     frames, deadline, priority, core)
 
 # capture DAI is DMIC 0 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
-ifelse(CHANNELS, 4, `',
-`DAI_ADD(sof/pipe-dai-capture.m4,
+DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC, 0, dmic01,
 	concat(`PIPELINE_SINK_', DMIC_PIPELINE_48k_ID), 2, s32le,
-	48, 1000, 0, 0)')
+	48, 1000, 0, 0)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
@@ -56,8 +54,7 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
-ifelse(CHANNELS, 4, `',
-`PCM_CAPTURE_ADD(DMIC32, DMIC_DAI_LINK_48k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_48k_ID))')
+PCM_CAPTURE_ADD(DMIC32, DMIC_DAI_LINK_48k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_48k_ID))
 PCM_CAPTURE_ADD(DMIC16, DMIC_DAI_LINK_16k_ID, concat(`PIPELINE_PCM_', DMIC_PIPELINE_16k_ID))
 
 #
@@ -66,7 +63,11 @@ PCM_CAPTURE_ADD(DMIC16, DMIC_DAI_LINK_16k_ID, concat(`PIPELINE_PCM_', DMIC_PIPEL
 
 dnl DAI_CONFIG(type, dai_index, link_id, name, ssp_config/dmic_config)
 ifelse(CHANNELS, 4,
-`', `DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, dmic01,
+`DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, dmic01,
+	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
+		DMIC_WORD_LENGTH(s32le), DMIC, 0,
+		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))',
+`DAI_CONFIG(DMIC, 0, DMIC_DAI_LINK_48k_ID, dmic01,
            DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
                 DMIC_WORD_LENGTH(s32le), DMIC, 0,
                 PDM_CONFIG(DMIC, 0, STEREO_PDM0)))')
