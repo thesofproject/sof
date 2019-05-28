@@ -9,6 +9,9 @@
 #include <sof/trace.h>
 #include <cavs/memory.h>
 
+extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
+extern uintptr_t _buffer_heap, _sof_core_s_start;
+
 /* Heap blocks for system runtime for master core */
 static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
 static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
@@ -87,16 +90,16 @@ void platform_init_memmap(void)
 	int i;
 
 	/* .system master core initialization */
-	memmap.system[0].heap = HEAP_SYSTEM_0_BASE;
+	memmap.system[0].heap = (uintptr_t)&_system_heap;
 	memmap.system[0].size = HEAP_SYSTEM_M_SIZE;
 	memmap.system[0].info.free = HEAP_SYSTEM_M_SIZE;
 	memmap.system[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
 		SOF_MEM_CAPS_CACHE;
 
-	/* .system_runtime slave core initialization */
+	/* .system_runtime master core initialization */
 	memmap.system_runtime[0].blocks = ARRAY_SIZE(sys_rt_heap_map[0]);
 	memmap.system_runtime[0].map = sys_rt_heap_map[0];
-	memmap.system_runtime[0].heap = HEAP_SYS_RUNTIME_0_BASE;
+	memmap.system_runtime[0].heap = (uintptr_t)&_system_runtime_heap;
 	memmap.system_runtime[0].size = HEAP_SYS_RUNTIME_M_SIZE;
 	memmap.system_runtime[0].info.free = HEAP_SYS_RUNTIME_M_SIZE;
 	memmap.system_runtime[0].caps = SOF_MEM_CAPS_RAM |
@@ -106,8 +109,8 @@ void platform_init_memmap(void)
 	/* .system and .system_runtime  slave core initialization */
 	for (i = 1; i < PLATFORM_CORE_COUNT; i++) {
 		/* .system init */
-		memmap.system[i].heap = HEAP_SYSTEM_0_BASE +
-			HEAP_SYSTEM_M_SIZE + ((i - 1) * HEAP_SYSTEM_S_SIZE);
+		memmap.system[i].heap = (uintptr_t)&_sof_core_s_start +
+					((i - 1) * SOF_CORE_S_SIZE);
 		memmap.system[i].size = HEAP_SYSTEM_S_SIZE;
 		memmap.system[i].info.free = HEAP_SYSTEM_S_SIZE;
 		memmap.system[i].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
@@ -117,9 +120,8 @@ void platform_init_memmap(void)
 		memmap.system_runtime[i].blocks =
 			ARRAY_SIZE(sys_rt_heap_map[i]);
 		memmap.system_runtime[i].map = sys_rt_heap_map[i];
-		memmap.system_runtime[i].heap = HEAP_SYS_RUNTIME_0_BASE +
-			HEAP_SYS_RUNTIME_M_SIZE + ((i - 1) *
-			HEAP_SYS_RUNTIME_S_SIZE);
+		memmap.system_runtime[i].heap = (uintptr_t)&_sof_core_s_start +
+			((i - 1) * SOF_CORE_S_SIZE) + HEAP_SYSTEM_S_SIZE;
 		memmap.system_runtime[i].size = HEAP_SYS_RUNTIME_S_SIZE;
 		memmap.system_runtime[i].info.free = HEAP_SYS_RUNTIME_S_SIZE;
 		memmap.system_runtime[i].caps = SOF_MEM_CAPS_RAM |
@@ -130,7 +132,7 @@ void platform_init_memmap(void)
 	/* .runtime init*/
 	memmap.runtime[0].blocks = ARRAY_SIZE(rt_heap_map);
 	memmap.runtime[0].map = rt_heap_map;
-	memmap.runtime[0].heap = HEAP_RUNTIME_BASE;
+	memmap.runtime[0].heap = (uintptr_t)&_module_heap;
 	memmap.runtime[0].size = HEAP_RUNTIME_SIZE;
 	memmap.runtime[0].info.free = HEAP_RUNTIME_SIZE;
 	memmap.runtime[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
@@ -139,7 +141,7 @@ void platform_init_memmap(void)
 	/* heap buffer init */
 	memmap.buffer[0].blocks = ARRAY_SIZE(buf_heap_map);
 	memmap.buffer[0].map = buf_heap_map;
-	memmap.buffer[0].heap = HEAP_BUFFER_BASE;
+	memmap.buffer[0].heap = (uintptr_t)&_buffer_heap;
 	memmap.buffer[0].size = HEAP_BUFFER_SIZE;
 	memmap.buffer[0].info.free = HEAP_BUFFER_SIZE;
 	memmap.buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |

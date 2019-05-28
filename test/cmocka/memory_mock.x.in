@@ -1,3 +1,5 @@
+#include "include/mock_memory.h"
+
 SECTIONS
 {
 
@@ -8,5 +10,11 @@ SECTIONS
 
     _comp_init_start = .;
     _comp_init_end = .;
+    _module_heap = HEAP_RUNTIME_BASE;
+    _buffer_heap = HEAP_BUFFER_BASE;
+    _system_heap = HEAP_SYSTEM_0_BASE;
+    _system_heap_start = HEAP_SYSTEM_0_BASE;
+    _system_runtime_heap = HEAP_SYS_RUNTIME_0_BASE;
+    _sof_core_s_start = SOF_CORE_S_START;
 }
 INSERT AFTER .text;

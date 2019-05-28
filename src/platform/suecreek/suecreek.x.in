@@ -84,33 +84,9 @@ MEMORY
   vector_double_text :
         org = SOF_MEM_VECBASE + XCHAL_DOUBLEEXC_VECOFS,
         len = SOF_MEM_VECT_TEXT_SIZE
-  sof_text_start :
-       	org = SOF_TEXT_START,
-        len = SOF_TEXT_START_SIZE,
-  sof_text :
-        org = SOF_TEXT_BASE,
-        len = SOF_TEXT_SIZE,
-  sof_data :
-        org = SOF_TEXT_BASE + SOF_TEXT_SIZE,
-        len = SOF_DATA_SIZE
-  sof_bss_data :
-        org = SOF_TEXT_BASE + SOF_TEXT_SIZE + SOF_DATA_SIZE,
-        len = SOF_BSS_DATA_SIZE
-  system_heap :
-        org = HEAP_SYSTEM_0_BASE,
-        len = HEAP_SYSTEM_T_SIZE
-  system_runtime_heap :
-        org = HEAP_SYS_RUNTIME_0_BASE,
-        len = HEAP_SYS_RUNTIME_T_SIZE
-  runtime_heap :
-        org = HEAP_RUNTIME_BASE,
-        len = HEAP_RUNTIME_SIZE
-  buffer_heap :
-        org = HEAP_BUFFER_BASE,
-        len = HEAP_BUFFER_SIZE
-  sof_stack :
-        org = SOF_STACK_END,
-        len = SOF_STACK_BASE - SOF_STACK_END
+  sof_fw :
+       	org = SOF_FW_BASE,
+        len = SOF_FW_MAX_SIZE,
   buffer_hp_heap :
         org = HEAP_HP_BUFFER_BASE,
         len = HEAP_HP_BUFFER_SIZE
@@ -144,15 +120,7 @@ PHDRS
   vector_user_text_phdr PT_LOAD;
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
-  sof_text_start_phdr PT_LOAD;
-  sof_text_phdr PT_LOAD;
-  sof_data_phdr PT_LOAD;
-  sof_bss_data_phdr PT_LOAD;
-  system_heap_phdr PT_LOAD;
-  system_runtime_heap_phdr PT_LOAD;
-  runtime_heap_phdr PT_LOAD;
-  buffer_heap_phdr PT_LOAD;
-  sof_stack_phdr PT_LOAD;
+  sof_fw_phdr PT_LOAD;
   buffer_hp_heap_phdr PT_LOAD;
   static_log_entries_phdr PT_NOTE;
 }
@@ -351,7 +319,7 @@ SECTIONS
     _ResetHandler_text_start = ABSOLUTE(.);
     KEEP (*(.ResetHandler.text))
     _ResetHandler_text_end = ABSOLUTE(.);
-  } >sof_text_start :sof_text_start_phdr
+  } >sof_fw :sof_fw_phdr
 
   .text : ALIGN(4)
   {
@@ -368,9 +336,9 @@ SECTIONS
     KEEP (*(.ResetHandler.text))
     _text_end = ABSOLUTE(.);
     _etext = .;
-  } >sof_text :sof_text_phdr
+  } >sof_fw :sof_fw_phdr
 
-  .rodata : ALIGN(4)
+  .rodata : ALIGN(SRAM_BANK_SIZE) /* TODO: it should be 4096 */
   {
     _rodata_start = ABSOLUTE(.);
     *(.rodata)
@@ -406,14 +374,14 @@ SECTIONS
     LONG(_bss_end)
     _bss_table_end = ABSOLUTE(.);
     _rodata_end = ABSOLUTE(.);
-  } >sof_data :sof_data_phdr
+  } >sof_fw :sof_fw_phdr
 
   .module_init : ALIGN(4)
   {
     _module_init_start = ABSOLUTE(.);
     *(*.module_init)
     _module_init_end = ABSOLUTE(.);
-  } >sof_data :sof_data_phdr
+  } >sof_fw :sof_fw_phdr
 
   .data : ALIGN(4)
   {
@@ -431,7 +399,7 @@ SECTIONS
     *(.gnu.linkonce.s2.*)
     KEEP(*(.jcr))
     _data_end = ABSOLUTE(.);
-  } >sof_data :sof_data_phdr
+  } >sof_fw :sof_fw_phdr
 
   .lit4 : ALIGN(4)
   {
@@ -440,9 +408,14 @@ SECTIONS
     *(.lit4.*)
     *(.gnu.linkonce.lit4.*)
     _lit4_end = ABSOLUTE(.);
-  } >sof_data :sof_data_phdr
+  } >sof_fw :sof_fw_phdr
 
-  .bss (NOLOAD) : ALIGN(8)
+  .fw_ready : ALIGN(4)
+  {
+    KEEP (*(.fw_ready))
+  } >sof_fw :sof_fw_phdr
+
+  .bss (NOLOAD) : ALIGN(4096)
   {
     . = ALIGN (8);
     _bss_start = ABSOLUTE(.);
@@ -459,28 +432,61 @@ SECTIONS
     *(.bss.*)
     *(.gnu.linkonce.b.*)
     *(COMMON)
-    . = ALIGN (8);
+
+	. = ALIGN (SRAM_BANK_SIZE);
+    _runtime_heap_start = ABSOLUTE(.);
+    . = . + HEAP_RUNTIME_SIZE;
+    _runtime_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (32);
+    _buffer_heap_start = ABSOLUTE(.);
+    . = . + HEAP_BUFFER_SIZE;
+    _buffer_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (SRAM_BANK_SIZE);
+    _system_heap_start = ABSOLUTE(.);
+    . = . + HEAP_SYSTEM_M_SIZE;
+    _system_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (32);
+    _system_runtime_heap_start = ABSOLUTE(.);
+    . = . + HEAP_SYS_RUNTIME_M_SIZE;
+    _system_runtime_heap_end = ABSOLUTE(.);
+
+    . = ALIGN (4096);
+    _sof_stack_start = ABSOLUTE(.);
+    . = . + SOF_STACK_SIZE;
+    _sof_stack_end = ABSOLUTE(.);
+
+    . = ALIGN (SRAM_BANK_SIZE);
+    _sof_core_s_start = ABSOLUTE(.);
+    . = . + SOF_CORE_S_T_SIZE;
+    _sof_core_s_end = ABSOLUTE(.);
+
     _bss_end = ABSOLUTE(.);
-  } >sof_bss_data :sof_bss_data_phdr
+  } >sof_fw :sof_fw_phdr
 
   /* stack */
-  _end = SOF_STACK_END;
-  PROVIDE(end = SOF_STACK_END);
-  _stack_sentry = SOF_STACK_END;
-  __stack = SOF_STACK_BASE;
+  _end = _sof_stack_start;
+  PROVIDE(end = _sof_stack_start);
+  _stack_sentry = _sof_stack_start;
+  __stack = _sof_stack_end;
+
+  /* Slave core size */
+  _core_s_size = SOF_CORE_S_SIZE;
 
   /* System Heap */
-  _system_heap = HEAP_SYSTEM_0_BASE;
+  _system_heap = _system_heap_start;
 
   /* system runtime heap */
-  _system_runtime_heap = HEAP_SYS_RUNTIME_0_BASE;
+  _system_runtime_heap = _system_runtime_heap_start;
 
   /* module heap */
-  _module_heap = HEAP_RUNTIME_BASE;
+  _module_heap = _runtime_heap_start;
 
   /* buffer heap */
-  _buffer_heap = HEAP_BUFFER_BASE;
-  _buffer_heap_end = _stack_sentry;
+  _buffer_heap = _buffer_heap_start;
+  _buffer_heap_end = _buffer_heap_end;
 
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }
@@ -533,53 +539,8 @@ SECTIONS
     KEEP (*(.gnu.linkonce.xt.profile_files.*))
   }
 
-  .system_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _system_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYSTEM_T_SIZE;
-    _system_heap_end = ABSOLUTE(.);
-  } >system_heap :system_heap_phdr
-
-  .system_runtime_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _system_runtime_heap_start = ABSOLUTE(.);
-    . = . + HEAP_SYS_RUNTIME_T_SIZE;
-    _system_runtime_heap_end = ABSOLUTE(.);
-  } >system_runtime_heap :system_runtime_heap_phdr
-
-  .runtime_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _runtime_heap_start = ABSOLUTE(.);
-    . = . + HEAP_RUNTIME_SIZE;
-    _runtime_heap_end = ABSOLUTE(.);
-  } >runtime_heap :runtime_heap_phdr
-
-  .buffer_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _buffer_heap_start = ABSOLUTE(.);
-    . = . + HEAP_BUFFER_SIZE;
-    _buffer_heap_end = ABSOLUTE(.);
-  } >buffer_heap :buffer_heap_phdr
-
-  .sof_stack (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (4096);
-    _sof_stack_start = ABSOLUTE(.);
-    . = . + SOF_STACK_TOTAL_SIZE;
-    _sof_stack_end = ABSOLUTE(.);
-  } >sof_stack :sof_stack_phdr
-
   .static_log_entries (COPY) : ALIGN(1024)
   {
     *(*.static_log*)
   } > static_log_entries_seg :static_log_entries_phdr
-
-  .fw_ready : ALIGN(4)
-  {
-    KEEP (*(.fw_ready))
-  } >sof_data :sof_data_phdr
 }
