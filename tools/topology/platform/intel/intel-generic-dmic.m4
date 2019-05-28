@@ -23,10 +23,10 @@ PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	48, 1000, 0, 0)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
+# Schedule 16 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-capture-16khz.m4,
-	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, CHANNELS, s16le,
-	48, 1000, 0, 0)
+	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, CHANNELS, s32le,
+	16, 1000, 0, 0)
 
 #
 # DAIs configuration
@@ -45,11 +45,11 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	48, 1000, 0, 0)
 
 # capture DAI is DMIC 1 using 2 periods
-# Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
+# Buffers use s32le format, with 16 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	DMIC_PIPELINE_16k_ID, DMIC, 1, dmic16k,
-	concat(`PIPELINE_SINK_', DMIC_PIPELINE_16k_ID), 2, s16le,
-	48, 1000, 0, 0)
+	concat(`PIPELINE_SINK_', DMIC_PIPELINE_16k_ID), 2, s32le,
+	16, 1000, 0, 0)
 
 
 dnl PCM_DUPLEX_ADD(name, pcm_id, playback, capture)
@@ -75,9 +75,9 @@ ifelse(CHANNELS, 4,
 ifelse(CHANNELS, 4,
 `DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, dmic16k,
 	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
-		DMIC_WORD_LENGTH(s16le), DMIC, 1,
+		DMIC_WORD_LENGTH(s32le), DMIC, 1,
 		PDM_CONFIG(DMIC, 1, FOUR_CH_PDM0_PDM1)))',
 `DAI_CONFIG(DMIC, 1, DMIC_DAI_LINK_16k_ID, dmic16k,
            DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
-                DMIC_WORD_LENGTH(s16le), DMIC, 1,
+                DMIC_WORD_LENGTH(s32le), DMIC, 1,
                 PDM_CONFIG(DMIC, 1, STEREO_PDM0)))')
