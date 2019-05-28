@@ -3,7 +3,7 @@ name: Bug report
 about: Create a report to help us improve
 title: "[BUG]"
 labels: bug
-assignees:
+assignees: ''
 
 ---
 
@@ -14,6 +14,10 @@ Please also read https://thesofproject.github.io/latest/howtos/process/bug-track
 
 **To Reproduce**
 Steps to reproduce the behavior: (e.g. list commands or actions used to reproduce the bug) 
+
+**Reproduction Rate**
+How often does the issue happen ? i.e. 1/10 (once in ten attempts), 1/1000 or all the time.
+Does the reproduction rate vary with any other configuration or user action, if so please describe and show the new reproduction rate.
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
