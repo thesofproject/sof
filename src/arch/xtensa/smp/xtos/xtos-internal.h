@@ -2,6 +2,7 @@
  * xtos-internal.h  --  internal definitions for single-threaded run-time
  *
  * Copyright (c) 2003-2010 Tensilica Inc.
+ * Copyright (c) 2019 Intel Corporation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -31,6 +32,7 @@
 #include <xtensa/xtruntime-frames.h>
 #include <xtensa/xtensa-versions.h>
 #include <platform/platform.h>
+#include <platform/memory.h>
 #ifndef XTOS_PARAMS_H	/* this to allow indirect inclusion of this header from the outside */
 #include "xtos-params.h"
 #endif
@@ -330,6 +332,27 @@ XTOS_PENDING_OFS:	.space	4	/* _xtos_pending variable */
 	movi		\ay, \stack_size
 	mull		\ax, \ax, \ay
 	movi		\ay, \stack_name
+	add		\ax, \ax, \ay
+	.endm
+
+	// xtos_stack_addr_percore ax, ay, stack_master, stack_slave, stack_size
+	// Retrieves address of end of stack buffer for certain core to register ax.
+	.macro	xtos_stack_addr_percore ax, ay, stack_master_addr, mem_blk_slave_addr, stack_size
+	get_prid	\ax
+	bnei		\ax, PLATFORM_MASTER_CORE_ID, core_s
+	movi		\ax, \stack_master_addr
+	j		exit
+core_s:
+	addi		\ax, \ax, -1
+	movi		\ay, _core_s_size
+	mull		\ax, \ax, \ay
+	movi		\ay, (HEAP_SYSTEM_S_SIZE + HEAP_SYS_RUNTIME_S_SIZE)
+	add		\ax, \ax, \ay
+	movi		\ay, \mem_blk_slave_addr
+	add		\ax, \ax, \ay
+	j		exit
+exit:
+	movi		\ay, \stack_size
 	add		\ax, \ax, \ay
 	.endm
 
