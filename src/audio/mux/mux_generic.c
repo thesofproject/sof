@@ -32,7 +32,7 @@
 
 #if CONFIG_COMP_MUX
 
-#include "mux.h"
+#include <sof/audio/mux.h>
 
 /*
  * \brief Fetch 16b samples from source buffer and perform routing operations

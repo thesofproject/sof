@@ -29,10 +29,7 @@ if(NOT BUILD_LIBRARY)
 		)
 	endif()
 	if(CONFIG_COMP_MUX)
-		add_local_sources(sof
-			mux.c
-			mux_generic.c
-		)
+		add_subdirectory(mux)
 	endif()
 	if(CONFIG_COMP_SWITCH)
 		add_local_sources(sof
