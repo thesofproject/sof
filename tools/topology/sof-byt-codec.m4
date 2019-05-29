@@ -62,11 +62,11 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
 
-# PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
-# Schedule 192 frames per 4000us deadline on core 0 with priority 1
+# PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s16le.
+# Schedule 48 frames per 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
-	3, 1, 2, s32le,
-	192, 4000, 1, 0, 0, PIPELINE_PLAYBACK_SCHED_COMP_1)
+	3, 1, 2, s16le,
+	48, 1000, 0, 0, 0, PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
 SectionGraph."PIPE_NAME" {
