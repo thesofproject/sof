@@ -40,7 +40,7 @@
 #include <sof/stream.h>
 #include <sof/audio/component.h>
 #include <sof/ipc.h>
-#include "mux.h"
+#include <sof/audio/mux.h>
 
 static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 {

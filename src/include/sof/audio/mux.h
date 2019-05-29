@@ -29,7 +29,7 @@
  */
 
 /**
- * \file audio/mux.h
+ * \file include/sof/audio/mux.h
  * \brief Multiplexer component header file
  * \authors Artur Kloniecki <arturx.kloniecki@linux.intel.com>
  */
