@@ -93,7 +93,7 @@ RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newl
 		--prefix=/home/sof/work/xtensa-root && \
 		make && \
 		make install && \
-		make distclean; \
+		rm -rf etc/config.cache; \
 	done && \
 	cd /home/sof/ && rm -rf newlib-xtensa.git
 
