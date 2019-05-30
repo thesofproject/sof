@@ -116,6 +116,9 @@ struct ipc {
 	/* DMA for Trace*/
 	struct dma_trace_data *dmat;
 
+	/* PM */
+	int pm_prepare_D3;	/* do we need to prepare for D3 */
+
 	/* mmap for posn_offset */
 	struct pipeline *posn_map[PLATFORM_MAX_STREAMS];
 
@@ -209,9 +212,6 @@ struct ipc_data {
 	/* DMA */
 	struct dma *dmac;
 	uint8_t *page_table;
-
-	/* PM */
-	int pm_prepare_D3;	/* do we need to prepare for D3 */
 };
 
 int ipc_cmd(void);

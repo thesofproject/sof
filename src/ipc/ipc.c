@@ -601,6 +601,9 @@ int ipc_init(struct sof *sof)
 				      SOF_IPC_MSG_MAX_SIZE);
 	sof->ipc->dmat = sof->dmat;
 
+	/* PM */
+	sof->ipc->pm_prepare_D3 = 0;
+
 	for (i = 0; i < PLATFORM_MAX_STREAMS; i++)
 		sof->ipc->posn_map[i] = NULL;
 

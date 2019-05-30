@@ -51,9 +51,6 @@ int platform_ipc_init(struct ipc *ipc)
 	if (iipc->page_table)
 		bzero(iipc->page_table, HOST_PAGE_SIZE);
 
-	/* PM */
-	iipc->pm_prepare_D3 = 0;
-
 	return 0;
 }
 
