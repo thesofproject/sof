@@ -618,7 +618,6 @@ static int ipc_pm_context_size(uint32_t header)
 static int ipc_pm_context_save(uint32_t header)
 {
 	//struct sof_ipc_pm_ctx *pm_ctx = _ipc->comp_data;
-	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 
 	trace_ipc("ipc: pm -> save");
 
@@ -647,7 +646,7 @@ static int ipc_pm_context_save(uint32_t header)
 	/* write the context to the host driver */
 	//mailbox_hostbox_write(0, pm_ctx, sizeof(*pm_ctx));
 
-	iipc->pm_prepare_D3 = 1;
+	_ipc->pm_prepare_D3 = 1;
 
 	return 0;
 }

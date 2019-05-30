@@ -107,7 +107,7 @@ static void irq_handler(void *arg)
 
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
-	struct ipc_data *iipc = ipc_get_drvdata(ipc);
+	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
 	struct sof_ipc_reply reply;
 	int32_t err;
 
@@ -136,7 +136,7 @@ done:
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
-	if (iipc->pm_prepare_D3) {
+	if (ipc->pm_prepare_D3) {
 		while (1)
 			wait_for_interrupt(0);
 	}
@@ -197,9 +197,6 @@ int platform_ipc_init(struct ipc *ipc)
 	if (iipc->page_table)
 		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
 #endif
-
-	/* PM */
-	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,

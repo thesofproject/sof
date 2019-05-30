@@ -57,7 +57,7 @@ extern struct ipc *_ipc;
 
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
-	struct ipc_data *iipc = ipc_get_drvdata(ipc);
+	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
 	struct sof_ipc_reply reply;
 	int32_t err;
 
@@ -86,7 +86,7 @@ done:
 
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
-	if (iipc->pm_prepare_D3) {
+	if (ipc->pm_prepare_D3) {
 		while (1)
 			wait_for_interrupt(0);
 	}
@@ -135,9 +135,6 @@ int platform_ipc_init(struct ipc *ipc)
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_MED,
 			   ipc_process_task, _ipc, 0, 0);
-
-	/* PM */
-	iipc->pm_prepare_D3 = 0;
 
 	return 0;
 }

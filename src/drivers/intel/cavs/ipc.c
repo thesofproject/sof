@@ -164,7 +164,7 @@ static void ipc_irq_handler(void *arg)
 
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
-	struct ipc_data *iipc = ipc_get_drvdata(ipc);
+	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
 	struct sof_ipc_reply reply;
 	int32_t err;
 
@@ -185,7 +185,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 
 	/* are we about to enter D3 ? */
 #if CAVS_VERSION < CAVS_VERSION_2_0
-	if (iipc->pm_prepare_D3) {
+	if (ipc->pm_prepare_D3) {
 		/* no return - memory will be powered off and IPC sent */
 		platform_pm_runtime_power_off();
 	}
@@ -207,7 +207,7 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 
 #if CAVS_VERSION == CAVS_VERSION_2_0
-	if (iipc->pm_prepare_D3) {
+	if (ipc->pm_prepare_D3) {
 		//TODO: add support for Icelake
 		while (1)
 			wait_for_interrupt(5);
@@ -273,9 +273,6 @@ int platform_ipc_init(struct ipc *ipc)
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
 			   ipc_process_task, _ipc, 0, 0);
-
-	/* PM */
-	iipc->pm_prepare_D3 = 0;
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
