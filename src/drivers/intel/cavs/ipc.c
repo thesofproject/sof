@@ -56,6 +56,8 @@
 
 extern struct ipc *_ipc;
 
+/* No private data for IPC */
+
 #if CONFIG_DEBUG_IPC_COUNTERS
 static inline void increment_ipc_received_counter(void)
 {
@@ -164,7 +166,6 @@ static void ipc_irq_handler(void *arg)
 
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
-	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
 	struct sof_ipc_reply reply;
 	int32_t err;
 
@@ -261,14 +262,9 @@ out:
 
 int platform_ipc_init(struct ipc *ipc)
 {
-	struct ipc_data *iipc;
-
 	_ipc = ipc;
 
-	/* init ipc data */
-	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-		       sizeof(struct ipc_data));
-	ipc_set_drvdata(_ipc, iipc);
+	ipc_set_drvdata(_ipc, NULL);
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,

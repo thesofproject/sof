@@ -53,6 +53,11 @@
 
 extern struct ipc *_ipc;
 
+/* private data for IPC */
+struct ipc_data {
+	struct ipc_data_host_buffer dh_buffer;
+};
+
 static void do_notify(void)
 {
 	uint32_t flags;
@@ -203,6 +208,13 @@ out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
 
+struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
+{
+	struct ipc_data *iipc = ipc_get_drvdata(ipc);
+
+	return &iipc->dh_buffer;
+}
+
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct ipc_data *iipc;
@@ -221,17 +233,17 @@ int platform_ipc_init(struct ipc *ipc)
 
 #ifdef CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
-	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
-				   PLATFORM_PAGE_TABLE_SIZE);
-	if (iipc->page_table)
-		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
+	iipc->dh_buffer.page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+					     PLATFORM_PAGE_TABLE_SIZE);
+	if (iipc->dh_buffer.page_table)
+		bzero(iipc->dh_buffer.page_table, PLATFORM_PAGE_TABLE_SIZE);
 #endif
 
 	/* request HDA DMA with shared access privilege */
 	caps = 0;
 	dir = DMA_DIR_HMEM_TO_LMEM;
 	dev = DMA_DEV_HOST;
-	iipc->dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
+	iipc->dh_buffer.dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
