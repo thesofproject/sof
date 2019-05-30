@@ -46,6 +46,9 @@ jobs:
       name: "ICL Build"
       script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l icl
     - stage: compile
+      name: "IMX8 Build"
+      script: ./scripts/docker-run.sh ./scripts/xtensa-build-all.sh -l imx8
+    - stage: compile
       name: "Host Build"
       script: ./scripts/docker-run.sh ./scripts/host-build-all.sh -l
     - stage: test
