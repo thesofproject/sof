@@ -71,7 +71,7 @@ RUN cd /home/sof && git clone https://github.com/thesofproject/xtensa-overlay.gi
 	mkdir -p /home/sof/work/ && \
 	cd crosstool-ng && git checkout sof-gcc8.1 && \
 	./bootstrap && ./configure --prefix=`pwd` && make && make install && \
-	for arch in byt hsw apl cnl; do \
+	for arch in byt hsw apl cnl imx; do \
 		cp config-${arch}-gcc8.1-gdb8.1 .config && \
 # replace the build dist to save space
 		sed -i 's#${CT_TOP_DIR}\/builds#\/home\/sof\/work#g' .config && \
@@ -85,10 +85,11 @@ ENV PATH="/home/sof/work/xtensa-byt-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-hsw-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-apl-elf/bin:${PATH}"
 ENV PATH="/home/sof/work/xtensa-cnl-elf/bin:${PATH}"
+ENV PATH="/home/sof/work/xtensa-imx-elf/bin:${PATH}"
 
 RUN cd /home/sof && git clone https://github.com/jcmvbkbc/newlib-xtensa.git newlib-xtensa.git && \
 	cd newlib-xtensa.git && git checkout -b xtensa origin/xtensa && \
-	for arch in byt hsw apl cnl; do \
+	for arch in byt hsw apl cnl imx; do \
 		./configure --target=xtensa-${arch}-elf \
 		--prefix=/home/sof/work/xtensa-root && \
 		make && \
