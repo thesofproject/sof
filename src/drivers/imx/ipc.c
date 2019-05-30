@@ -28,6 +28,8 @@
 
 extern struct ipc *_ipc;
 
+/* No private data for IPC */
+
 static void do_notify(void)
 {
 	uint32_t flags;
@@ -178,13 +180,9 @@ out:
 
 int platform_ipc_init(struct ipc *ipc)
 {
-	struct ipc_data *iipc;
-
 	_ipc = ipc;
 
-	/* init ipc data */
-	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(struct ipc_data));
-	ipc_set_drvdata(_ipc, iipc);
+	ipc_set_drvdata(_ipc, NULL);
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,

@@ -148,6 +148,10 @@ static inline struct sof_ipc_cmd_hdr *mailbox_validate(void)
 	return hdr;
 }
 
+/*
+ * Stream IPC Operations.
+ */
+
 #ifdef CONFIG_HOST_PTABLE
 /* check if a pipeline is hostless when walking downstream */
 static bool is_hostless_downstream(struct comp_dev *current)
@@ -215,15 +219,10 @@ static bool is_hostless_upstream(struct comp_dev *current)
 }
 #endif
 
-/*
- * Stream IPC Operations.
- */
-
 /* allocate a new stream */
 static int ipc_stream_pcm_params(uint32_t stream)
 {
 #ifdef CONFIG_HOST_PTABLE
-	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct sof_ipc_comp_host *host = NULL;
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
@@ -262,7 +261,6 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	cd->params = pcm_params.params;
 
 #ifdef CONFIG_HOST_PTABLE
-	dma_sg_init(&elem_array);
 
 	/*
 	 * walk in both directions to check if the pipeline is hostless
@@ -271,15 +269,6 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	if (is_hostless_downstream(cd) && is_hostless_upstream(cd))
 		goto pipe_params;
 
-	/* use DMA to read in compressed page table ringbuffer from host */
-	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
-				       &pcm_params.params.buffer);
-	if (err < 0) {
-		trace_ipc_error("ipc: comp %d get descriptors failed %d",
-				pcm_params.comp_id, err);
-		goto error;
-	}
-
 	/* Parse host tables */
 	host = (struct sof_ipc_comp_host *)&cd->comp;
 	if (IPC_IS_SIZE_INVALID(host->config)) {
@@ -287,16 +276,12 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		goto error;
 	}
 
-	ring_size = pcm_params.params.buffer.size;
-
-	err = ipc_parse_page_descriptors(iipc->page_table,
-					 &pcm_params.params.buffer,
-					 &elem_array, host->direction);
-	if (err < 0) {
-		trace_ipc_error("ipc: comp %d parse descriptors failed %d",
-				pcm_params.comp_id, err);
+	err = ipc_process_host_buffer(_ipc, &pcm_params.params.buffer,
+				      host->direction,
+				      &elem_array,
+				      &ring_size);
+	if (err < 0)
 		goto error;
-	}
 
 	err = comp_host_buffer(cd, &elem_array, ring_size);
 	if (err < 0) {
@@ -344,10 +329,6 @@ pipe_params:
 	return 1;
 
 error:
-#ifdef CONFIG_HOST_PTABLE
-	dma_sg_free(&elem_array);
-#endif
-
 	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
 	if (err < 0)
 		trace_ipc_error("ipc: pipe %d comp %d reset failed %d",
@@ -714,7 +695,6 @@ static int ipc_glb_pm_message(uint32_t header)
 static int ipc_dma_trace_config(uint32_t header)
 {
 #ifdef CONFIG_HOST_PTABLE
-	struct ipc_data *iipc = ipc_get_drvdata(_ipc);
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 #endif
@@ -735,27 +715,12 @@ static int ipc_dma_trace_config(uint32_t header)
 #endif
 
 #ifdef CONFIG_HOST_PTABLE
-
-	dma_sg_init(&elem_array);
-
-	/* use DMA to read in compressed page table ringbuffer from host */
-	err = ipc_get_page_descriptors(iipc->dmac, iipc->page_table,
-				       &params.buffer);
-	if (err < 0) {
-		trace_ipc_error("ipc: trace failed to get descriptors %u", err);
+	err = ipc_process_host_buffer(_ipc, &params.buffer,
+				      SOF_IPC_STREAM_CAPTURE,
+				      &elem_array,
+				      &ring_size);
+	if (err < 0)
 		goto error;
-	}
-
-	/* Parse host tables */
-	ring_size = params.buffer.size;
-
-	err = ipc_parse_page_descriptors(iipc->page_table, &params.buffer,
-					 &elem_array, SOF_IPC_STREAM_CAPTURE);
-	if (err < 0) {
-		trace_ipc_error("ipc: trace failed to parse descriptors %d",
-				err);
-		goto error;
-	}
 
 	err = dma_trace_host_buffer(_ipc->dmat, &elem_array, ring_size);
 	if (err < 0) {
@@ -763,7 +728,6 @@ static int ipc_dma_trace_config(uint32_t header)
 				err);
 		goto error;
 	}
-
 #else
 	/* stream tag of capture stream for DMA trace */
 	_ipc->dmat->stream_tag = params.stream_tag;
@@ -781,10 +745,6 @@ static int ipc_dma_trace_config(uint32_t header)
 	return 0;
 
 error:
-#ifdef CONFIG_HOST_PTABLE
-	dma_sg_free(&elem_array);
-#endif
-
 	return -EINVAL;
 }
 

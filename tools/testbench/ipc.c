@@ -36,6 +36,11 @@
 /* testbench ipc */
 struct ipc *_ipc;
 
+/* private data for IPC */
+struct ipc_data {
+	struct ipc_data_host_buffer dh_buffer;
+};
+
 int platform_ipc_init(struct ipc *ipc)
 {
 	struct ipc_data *iipc;
@@ -47,9 +52,9 @@ int platform_ipc_init(struct ipc *ipc)
 	ipc_set_drvdata(_ipc, iipc);
 
 	/* allocate page table buffer */
-	iipc->page_table = malloc(HOST_PAGE_SIZE);
-	if (iipc->page_table)
-		bzero(iipc->page_table, HOST_PAGE_SIZE);
+	iipc->dh_buffer.page_table = malloc(HOST_PAGE_SIZE);
+	if (iipc->dh_buffer.page_table)
+		bzero(iipc->dh_buffer.page_table, HOST_PAGE_SIZE);
 
 	return 0;
 }

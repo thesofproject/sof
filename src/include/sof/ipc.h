@@ -138,7 +138,23 @@ struct ipc {
 
 
 int ipc_init(struct sof *sof);
+
+/**
+ * \brief Provides platform specific IPC initialization.
+ * @param ipc Global IPC context
+ * @return 0 if succeeded, error code otherwise.
+ *
+ * This function must be implemented by the platform. It is called from the
+ * main IPC code, at the end of ipc_init().
+ *
+ * If the platform requires any private data to be associated with the IPC
+ * context, it may allocate it here and attach to the global context using
+ * ipc_set_drvdata(). Other platform specific IPC functions, like
+ * ipc_platform_do_cmd(), may obtain it later from the context using
+ * ipc_get_drvdata().
+ */
 int platform_ipc_init(struct ipc *ipc);
+
 void ipc_free(struct ipc *ipc);
 
 int ipc_process_msg_queue(void);
@@ -158,13 +174,41 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 void ipc_platform_do_cmd(struct ipc *ipc);
 void ipc_platform_send_msg(struct ipc *ipc);
 
-/* create a SG page table eme list from a compressed page table */
-int ipc_parse_page_descriptors(uint8_t *page_table,
-			       struct sof_ipc_host_buffer *ring,
-			       struct dma_sg_elem_array *elem_array,
-			       uint32_t direction);
-int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
-			     struct sof_ipc_host_buffer *ring);
+/**
+ * \brief Data provided by the platform which use ipc...page_descriptors().
+ *
+ * Note: this should be made private for ipc-host-ptable.c and ipc
+ * drivers for platforms that use ptables.
+ */
+struct ipc_data_host_buffer {
+	/* DMA */
+	struct dma *dmac;
+	uint8_t *page_table;
+};
+
+/**
+ * \brief Retrieves the ipc_data_host_buffer allocated by the platform ipc.
+ * @return Pointer to the data.
+ *
+ * This function must be implemented by platforms which use
+ * ipc...page_descriptors() while processing host page tables.
+ */
+struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc);
+
+/**
+ * \brief Processes page tables for the host buffer.
+ * @param[in] ipc Ipc
+ * @param[in] ring Ring description sent via Ipc
+ * @param[in] direction Direction (playback/capture)
+ * @param[out] elem_array Array of SG elements
+ * @param[out] ring_size Size of the ring
+ * @return Status, 0 if successful, error code otherwise.
+ */
+int ipc_process_host_buffer(struct ipc *ipc,
+			    struct sof_ipc_host_buffer *ring,
+			    uint32_t direction,
+			    struct dma_sg_elem_array *elem_array,
+			    uint32_t *ring_size);
 
 /*
  * IPC Component creation and destruction.
@@ -206,13 +250,6 @@ int ipc_dma_trace_send_position(void);
 
 /* get posn offset by pipeline. */
 int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe);
-
-/* private data for IPC */
-struct ipc_data {
-	/* DMA */
-	struct dma *dmac;
-	uint8_t *page_table;
-};
 
 int ipc_cmd(void);
 
