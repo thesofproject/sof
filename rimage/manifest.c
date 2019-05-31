@@ -23,7 +23,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include <uapi/user/manifest.h>
+#include <user/manifest.h>
 
 #include "rimage.h"
 #include "file_format.h"
