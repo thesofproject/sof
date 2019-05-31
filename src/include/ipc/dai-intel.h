@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/dai-intel.h
+ * \file include/ipc/dai-intel.h
  * \brief IPC definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -39,7 +39,7 @@
 #ifndef __INCLUDE_UAPI_IPC_DAI_INTEL_H__
 #define __INCLUDE_UAPI_IPC_DAI_INTEL_H__
 
-#include <uapi/ipc/header.h>
+#include <ipc/header.h>
 
  /* ssc1: TINTE */
 #define SOF_DAI_INTEL_SSP_QUIRK_TINTE		(1 << 0)

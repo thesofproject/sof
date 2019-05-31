@@ -28,7 +28,7 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <uapi/user/manifest.h>
+#include <user/manifest.h>
 #include <platform/memory.h>
 
 /*

@@ -31,7 +31,7 @@
 #ifndef __INCLUDE_UAPI_USER_EQ_H__
 #define __INCLUDE_UAPI_USER_EQ_H__
 
-#include <uapi/user/header.h>
+#include <kernel/header.h>
 
 /* FIR EQ type */
 

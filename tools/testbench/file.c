@@ -45,7 +45,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
-#include <uapi/ipc/stream.h>
+#include <ipc/stream.h>
 #include "testbench/common_test.h"
 #include "testbench/file.h"
 

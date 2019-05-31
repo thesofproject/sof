@@ -39,7 +39,7 @@
 #include <sof/platform.h>
 #include <platform/platform.h>
 #include <arch/spinlock.h>
-#include <uapi/ipc/topology.h>
+#include <ipc/topology.h>
 struct sof;
 
 /* Heap Memory Zones

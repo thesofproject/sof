@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/header.h
+ * \file include/ipc/header.h
  * \brief IPC command header
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -39,7 +39,7 @@
 #ifndef __INCLUDE_UAPI_IPC_HEADER_H__
 #define __INCLUDE_UAPI_IPC_HEADER_H__
 
-#include <uapi/abi.h>
+#include <kernel/abi.h>
 
 /** \addtogroup sof_uapi uAPI
  *  SOF uAPI specification.

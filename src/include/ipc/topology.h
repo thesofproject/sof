@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/topology.h
+ * \file include/ipc/topology.h
  * \brief IPC definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -39,7 +39,7 @@
 #ifndef __INCLUDE_UAPI_IPC_TOPOLOGY_H__
 #define __INCLUDE_UAPI_IPC_TOPOLOGY_H__
 
-#include <uapi/ipc/header.h>
+#include <ipc/header.h>
 
 /*
  * Component

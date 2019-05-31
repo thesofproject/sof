@@ -46,8 +46,8 @@
 #include <sof/audio/format.h>
 #include <sof/audio/pipeline.h>
 #include <sof/math/trig.h>
-#include <uapi/ipc/topology.h>
-#include <uapi/user/tone.h>
+#include <ipc/topology.h>
+#include <user/tone.h>
 
 #define trace_tone(__e, ...) \
 	trace_event(TRACE_CLASS_TONE, __e, ##__VA_ARGS__)

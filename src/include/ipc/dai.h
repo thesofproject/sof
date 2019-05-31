@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/dai.h
+ * \file include/ipc/dai.h
  * \brief IPC DAI definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -39,8 +39,8 @@
 #ifndef __INCLUDE_UAPI_IPC_DAI_H__
 #define __INCLUDE_UAPI_IPC_DAI_H__
 
-#include <uapi/ipc/header.h>
-#include <uapi/ipc/dai-intel.h>
+#include <ipc/header.h>
+#include <ipc/dai-intel.h>
 
 /*
  * DAI Configuration.

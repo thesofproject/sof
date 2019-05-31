@@ -5,7 +5,7 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/alloc.h>
-#include <uapi/ipc/header.h>
+#include <ipc/header.h>
 
 /* Heap blocks for system runtime */
 static struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];

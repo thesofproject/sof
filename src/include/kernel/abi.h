@@ -29,7 +29,7 @@
  */
 
 /**
- * \file include/uapi/abi.h
+ * \file include/kernel/abi.h
  * \brief ABI definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *

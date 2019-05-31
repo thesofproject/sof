@@ -32,7 +32,7 @@
 #define __INCLUDE_SOF_IPC_PANIC__
 
 #include <stdint.h>
-#include <uapi/ipc/trace.h>
+#include <ipc/trace.h>
 
 struct sof_ipc_panic_info;
 

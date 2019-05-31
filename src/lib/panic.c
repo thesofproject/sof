@@ -37,7 +37,7 @@
 
 #include <platform/platform.h>
 
-#include <uapi/ipc/trace.h>
+#include <ipc/trace.h>
 
 #include <stdint.h>
 #include <stdlib.h>

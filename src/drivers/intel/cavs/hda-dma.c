@@ -52,7 +52,7 @@
 #include <platform/platform.h>
 #include <arch/cache.h>
 #include <arch/wait.h>
-#include <uapi/ipc/topology.h>
+#include <ipc/topology.h>
 #include <sof/schedule.h>
 
 #define trace_hddma(__e, ...) \

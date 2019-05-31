@@ -36,7 +36,7 @@
 #include <platform/clk.h>
 #include <platform/timer.h>
 #include <platform/platform.h>
-#include <uapi/ipc/info.h>
+#include <ipc/info.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>
 #include <sof/dma.h>

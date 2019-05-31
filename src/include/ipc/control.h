@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/control.h
+ * \file include/ipc/control.h
  * \brief IPC control commands
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -39,8 +39,8 @@
 #ifndef __INCLUDE_UAPI_IPC_CONTROL_H__
 #define __INCLUDE_UAPI_IPC_CONTROL_H__
 
-#include <uapi/user/header.h>
-#include <uapi/ipc/header.h>
+#include <kernel/header.h>
+#include <ipc/header.h>
 
 /** \addtogroup sof_uapi_control uAPI Control
  *  SOF uAPI specification - component controls.

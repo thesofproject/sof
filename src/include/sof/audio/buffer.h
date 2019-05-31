@@ -41,7 +41,7 @@
 #include <sof/trace.h>
 #include <sof/schedule.h>
 #include <sof/cache.h>
-#include <uapi/ipc/topology.h>
+#include <ipc/topology.h>
 
 /* pipeline tracing */
 #define trace_buffer(__e, ...) \

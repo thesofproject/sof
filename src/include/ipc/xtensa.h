@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/xtensa.h
+ * \file include/ipc/xtensa.h
  * \brief IPC definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -40,7 +40,7 @@
 #define __INCLUDE_UAPI_IPC_XTENSA_H__
 
 #include <arch/offset-defs.h>
-#include <uapi/ipc/header.h>
+#include <ipc/header.h>
 
 /*
  * Architecture specific debug

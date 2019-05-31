@@ -35,7 +35,7 @@
 #include <errno.h>
 #include <sof/audio/format.h>
 #include <sof/audio/eq_iir/iir.h>
-#include <uapi/user/eq.h>
+#include <user/eq.h>
 
 /*
  * Direct form II transposed second order filter block (biquad)

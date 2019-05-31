@@ -13,8 +13,8 @@
 * more details.
 */
 #include <stdio.h>
-#include <uapi/user/trace.h>
-#include <uapi/ipc/info.h>
+#include <user/trace.h>
+#include <ipc/info.h>
 #include <rimage/file_format.h>
 
 #define KNRM	"\x1B[0m"

@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/stream.h
+ * \file include/ipc/stream.h
  * \brief IPC definitions for streams.
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -39,7 +39,7 @@
 #ifndef __INCLUDE_UAPI_IPC_STREAM_H__
 #define __INCLUDE_UAPI_IPC_STREAM_H__
 
-#include <uapi/ipc/header.h>
+#include <ipc/header.h>
 
 /*
  * Stream configuration.

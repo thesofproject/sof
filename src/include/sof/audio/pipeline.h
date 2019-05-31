@@ -40,7 +40,7 @@
 #include <sof/audio/component.h>
 #include <sof/trace.h>
 #include <sof/schedule.h>
-#include <uapi/ipc/topology.h>
+#include <ipc/topology.h>
 
 /*
  * This flag disables firmware-side xrun recovery.

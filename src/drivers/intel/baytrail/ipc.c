@@ -49,7 +49,7 @@
 #include <platform/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <uapi/ipc/header.h>
+#include <ipc/header.h>
 
 extern struct ipc *_ipc;
 

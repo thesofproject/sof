@@ -11,7 +11,9 @@
 # include files
 src/include/sof/dmic.h			@singalsu
 src/include/host/*			@ranj063
-src/include/uapi/**			@thesofproject/steering-committee
+src/include/ipc/**			@thesofproject/steering-committee
+src/include/kernel/**			@thesofproject/steering-committee
+src/include/user/**			@thesofproject/steering-committee
 src/include/gdb/*			@mrajwa
 src/include/audio/kpb.h			@mrajwa
 src/include/audio/mux.h			@akloniex
