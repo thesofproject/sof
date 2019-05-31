@@ -19,9 +19,6 @@
 
 static struct dma_trace_data *trace_data;
 
-/* amount of dropped entries */
-static uint32_t dropped_entries;
-
 static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
@@ -380,14 +377,15 @@ static void dtrace_add_event(const char *e, uint32_t length)
 	overflow = dtrace_calc_buf_overflow(buffer, length);
 
 	/* tracing dropped entries */
-	if (dropped_entries) {
+	if (trace_data->dropped_entries) {
 		if (!overflow) {
 			/*
 			 * if any dropped entries have appeared and there
 			 * is not any overflow, their amount will be logged
 			 */
-			uint32_t tmp_dropped_entries = dropped_entries;
-			dropped_entries = 0;
+			uint32_t tmp_dropped_entries =
+				trace_data->dropped_entries;
+			trace_data->dropped_entries = 0;
 			/*
 			 * this trace_error invocation causes recursion,
 			 * so after it we have to recalculate margin and
@@ -428,7 +426,7 @@ static void dtrace_add_event(const char *e, uint32_t length)
 		trace_data->messages++;
 	} else {
 		/* if there is not enough memory for new log, we drop it */
-		dropped_entries++;
+		trace_data->dropped_entries++;
 	}
 }
 
