@@ -35,7 +35,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/eq_fir/fir_config.h>
 #include <sof/ipc.h>
-#include <uapi/user/eq.h>
+#include <user/eq.h>
 
 #if FIR_GENERIC
 #include <sof/audio/eq_fir/fir.h>

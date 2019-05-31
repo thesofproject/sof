@@ -37,7 +37,7 @@
 #include <sof/notifier.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>
-#include <uapi/user/detect_test.h>
+#include <user/detect_test.h>
 
 /* tracing */
 #define trace_keyword(__e, ...) \

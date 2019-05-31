@@ -3049,7 +3049,7 @@ sub process {
 		}
 
 # UAPI ABI version
-		if ($realfile =~ m@^(src/include/uapi/|uapi/)@ &&
+		if ($realfile =~ m@^(src/include/ipc/|src/include/kernel/|src/include/user/)@ &&
 		    $rawline =~ /^\+/ &&
 		    !$reported_abi_update) {
 			WARN("ABI update ??",

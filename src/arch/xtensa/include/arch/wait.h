@@ -35,7 +35,7 @@
 #include <arch/interrupt.h>
 #include <sof/panic.h>
 
-#include <uapi/ipc/trace.h>
+#include <ipc/trace.h>
 
 #if defined(PLATFORM_WAITI_DELAY)
 

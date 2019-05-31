@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/ipc/trace.h
+ * \file include/ipc/trace.h
  * \brief IPC definitions
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>
@@ -39,8 +39,8 @@
 #ifndef __INCLUDE_UAPI_IPC_TRACE_H__
 #define __INCLUDE_UAPI_IPC_TRACE_H__
 
-#include <uapi/ipc/header.h>
-#include <uapi/ipc/stream.h>
+#include <ipc/header.h>
+#include <ipc/stream.h>
 
 /*
  * DMA for Trace

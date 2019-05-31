@@ -29,7 +29,7 @@
  */
 
 #include <sof/alloc.h>
-#include <uapi/ipc/header.h>
+#include <ipc/header.h>
 #include <platform/memory.h>
 
 /* Heap blocks for system runtime */

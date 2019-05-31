@@ -51,10 +51,10 @@
 #include <sof/audio/pipeline.h>
 #include <sof/cache.h>
 #include <sof/math/numbers.h>
-#include <uapi/ipc/control.h>
-#include <uapi/ipc/stream.h>
-#include <uapi/ipc/topology.h>
-#include <uapi/ipc/dai.h>
+#include <ipc/control.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <ipc/dai.h>
 
 /** \addtogroup component_api Component API
  *  Component API specification.

@@ -33,7 +33,7 @@
 #ifndef IIR_H
 #define IIR_H
 
-#include <uapi/user/eq.h>
+#include <user/eq.h>
 
 #define IIR_DF2T_NUM_DELAYS 2
 

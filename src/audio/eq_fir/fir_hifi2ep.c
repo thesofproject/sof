@@ -34,7 +34,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/eq_fir/fir_config.h>
 #include <sof/audio/format.h>
-#include <uapi/user/eq.h>
+#include <user/eq.h>
 
 #if FIR_HIFIEP
 

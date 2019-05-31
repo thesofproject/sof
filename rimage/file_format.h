@@ -63,8 +63,8 @@
 #ifndef __INCLUDE_FILE_FORMAT_H__
 #define __INCLUDE_FILE_FORMAT_H__
 
-#include <uapi/ipc/info.h>
-#include <uapi/user/fw.h>
+#include <ipc/info.h>
+#include <kernel/fw.h>
 
 #define SND_SOF_LOGS_SIG_SIZE	4
 #define SND_SOF_LOGS_SIG	"Logs"

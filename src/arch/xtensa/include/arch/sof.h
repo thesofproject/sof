@@ -36,7 +36,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <sof/mailbox.h>
-#include <uapi/ipc/xtensa.h>
+#include <ipc/xtensa.h>
 #include <arch/offset-defs.h>
 
 /* architecture specific stack frames to dump */

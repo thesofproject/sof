@@ -30,7 +30,7 @@
  */
 
 /**
- * \file include/uapi/user/header.h
+ * \file include/kernel/header.h
  * \brief Non IPC command header
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  * \author Keyon Jie <yang.jie@linux.intel.com>

@@ -37,7 +37,7 @@
  */
 
 #include <stdint.h>
-#include <uapi/ipc/topology.h>
+#include <ipc/topology.h>
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>

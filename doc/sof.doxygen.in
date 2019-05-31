@@ -6,8 +6,9 @@ GENERATE_MAN     = NO
 GENERATE_XML	 = YES
 
 CASE_SENSE_NAMES = NO
-INPUT            = @top_srcdir@/src/include/uapi \
-                   @top_srcdir@/src/include/uapi/ipc \
+INPUT            = @top_srcdir@/src/include/ipc \
+                   @top_srcdir@/src/include/kernel \
+		   @top_srcdir@/src/include/user \
                    @top_srcdir@/src/include/sof
 EXCLUDE		 =
 RECURSIVE	 = YES
