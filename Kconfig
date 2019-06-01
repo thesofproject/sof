@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 mainmenu "SOF $(PROJECTVERSION) Configuration"
 
 comment "Compiler: $(CC_VERSION_TEXT)"
