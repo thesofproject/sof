@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 if(CONFIG_DW_DMA)
 	add_local_sources(sof dma.c)
 endif()

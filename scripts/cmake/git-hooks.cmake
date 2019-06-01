@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Links git hooks, if there are no other hooks already
 
 if(NOT EXISTS "${SOF_ROOT_SOURCE_DIRECTORY}/.git")

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 cmocka_test(kpb
 	${PROJECT_SOURCE_DIR}/src/audio/kpb.c
 	kpb_buffer.c

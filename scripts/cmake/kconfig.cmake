@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Kconfig targets
 
 include(${CMAKE_CURRENT_LIST_DIR}/defconfigs.cmake)

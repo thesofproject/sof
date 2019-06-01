@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 cmocka_test(gcd
 	gcd.c
 	${PROJECT_SOURCE_DIR}/src/math/numbers.c

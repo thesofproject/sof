@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 set(STATE_DEFS
 	-D__SPLIT__extra_size
 	-D__SPLIT__extra_align

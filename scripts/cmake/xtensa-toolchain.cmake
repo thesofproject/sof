@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 message(STATUS "Preparing Xtensa toolchain")
 
 set(CMAKE_USER_MAKE_RULES_OVERRIDE "${CMAKE_CURRENT_LIST_DIR}/xtensa-platform.cmake")

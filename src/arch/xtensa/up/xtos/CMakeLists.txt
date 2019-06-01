@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 set(VECTOR_DEFS
 	-D__SPLIT__vector
 	-D__SPLIT__handler

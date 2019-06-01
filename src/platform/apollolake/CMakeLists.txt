@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 add_local_sources(sof power_down.S)
 
 add_executable(boot_module boot_module.c)

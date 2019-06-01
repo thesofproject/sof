@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 message(STATUS "Preparing Xtensa toolchain")
 
 set(CMAKE_SYSTEM_NAME Generic)

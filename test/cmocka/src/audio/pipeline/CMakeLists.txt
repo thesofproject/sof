@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 if(CONFIG_SMP)
 	SET(arch_src ${PROJECT_SOURCE_DIR}/src/arch/xtensa/smp/idc.c)
 
