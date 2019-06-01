@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2018, Ulf Magnusson
 # SPDX-License-Identifier: ISC
+# Copyright (c) 2018, Ulf Magnusson
 
 # Works like 'make alldefconfig'. Verified by the test suite to generate
 # identical output to 'make alldefconfig' for all ARCHes.

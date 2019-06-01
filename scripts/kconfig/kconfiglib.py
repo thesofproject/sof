@@ -1,5 +1,5 @@
-# Copyright (c) 2011-2018, Ulf Magnusson
 # SPDX-License-Identifier: ISC
+# Copyright (c) 2011-2018, Ulf Magnusson
 
 """
 Overview
