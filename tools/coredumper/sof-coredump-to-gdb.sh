@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
+
 # Exemplatory usage of sof-coredump-reader.py ($reader_name)
 # We read from dump file into sof-coredump-reader.py, then we pipe its output
 # to xt-gdb, which operates on given elf-file.

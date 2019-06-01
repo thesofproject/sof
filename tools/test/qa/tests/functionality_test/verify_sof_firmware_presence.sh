@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 MOD_VER=`lscpu |grep "Model name" |awk -F " " '{print $6}'`
 if [ $MOD_VER == "E3826" ] || [ $MOD_VER == "E3845" ]; then

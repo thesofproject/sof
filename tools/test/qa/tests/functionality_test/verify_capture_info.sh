@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 #diff test_scripts/pcm0cinfo /proc/asound/card0/pcm0c/info > /tmp/capinfdiff.log
 cat /proc/asound/sofbytcrrt5651/pcm0c/info |grep "stream: CAPTURE" > /dev/null

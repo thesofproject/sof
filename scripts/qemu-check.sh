@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl icl skl kbl cnl)
 READY_MSG="6c 00 00 00 00 00 00 70"

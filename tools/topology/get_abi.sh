@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2019 Intel Corporation. All rights reserved.
+
 MAJOR=`grep '#define SOF_ABI_MAJOR ' $1/src/include/kernel/abi.h | grep -E ".[[:digit:]]$" -o`
 MINOR=`grep '#define SOF_ABI_MINOR ' $1/src/include/kernel/abi.h | grep -E ".[[:digit:]]$" -o`
 PATCH=`grep '#define SOF_ABI_PATCH ' $1/src/include/kernel/abi.h | grep -E ".[[:digit:]]$" -o`

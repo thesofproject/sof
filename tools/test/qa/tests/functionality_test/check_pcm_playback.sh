@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 # Check playback function
 FREQ=("17" "31" "67" "131" "257" "521" "997" "1033" "2069" "4139" "8273" "16547")
