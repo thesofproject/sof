@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Implements build counter and adds it as post-build action for sof
 
 cmake_minimum_required(VERSION 3.10)

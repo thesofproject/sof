@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 add_executable(sof-logger
 	logger.c
 	convert.c

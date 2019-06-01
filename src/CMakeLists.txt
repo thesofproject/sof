@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 add_subdirectory(platform)
 add_subdirectory(arch)
 

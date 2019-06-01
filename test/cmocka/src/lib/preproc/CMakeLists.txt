@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 cmocka_test(preproc_varargs_count
 	varargs_count.c
 )

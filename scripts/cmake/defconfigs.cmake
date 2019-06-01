@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Looks for defconfig files in arch directory
 set(DEFCONFIGS_DIRECTORY "${PROJECT_SOURCE_DIR}/src/arch/${ARCH}/configs/*_defconfig")
 file(GLOB DEFCONFIG_PATHS ${DEFCONFIGS_DIRECTORY})

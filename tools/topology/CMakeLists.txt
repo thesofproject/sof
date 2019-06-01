@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 file(GLOB TPLG_DEPS
 	platform/intel/*.m4
 	platform/common/*.m4

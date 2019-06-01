@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 cmocka_test(mixer
 	mixer_test.c
 	mock.c

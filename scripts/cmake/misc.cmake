@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Reads configs from kconfig file and set them as cmake variables.
 # Each config is in format CONFIG_<NAME>=<VALUE>.
 # Configs are added to parent scope with CONFIG_ prefix (as written in file).

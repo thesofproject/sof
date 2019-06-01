@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 if(NOT BUILD_LIBRARY)
 	add_local_sources(sof
 		host.c

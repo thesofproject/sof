@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 # depends on version.cmake
 # Adds dist target
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 cmocka_test(buffer_copy
 	buffer_copy.c
 	mock.c

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 if(CONFIG_BAYTRAIL OR CONFIG_CHERRYTRAIL)
 	add_local_sources(sof pmc-ipc.c)
 	add_subdirectory(baytrail)

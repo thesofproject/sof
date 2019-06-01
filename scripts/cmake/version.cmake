@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
 # Generates header for which version is taken from (in order of precedence):
 # 	1) .tarball-version file
 #	2) git
