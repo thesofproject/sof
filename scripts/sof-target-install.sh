@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2019 Intel Corporation. All rights reserved.
+
 # usage: ./scripts/sof-target-install.sh up2-hostname ip
 
 for host in $@

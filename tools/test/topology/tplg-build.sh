@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 # Utility script to pre-process and compile topology sources into topology test
 # binaries. Currently supports simple PCM <-> component <-> SSP style tests

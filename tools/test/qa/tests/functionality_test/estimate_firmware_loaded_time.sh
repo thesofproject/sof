@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 # Estimate firmware loaded time
 t2=`dmesg | grep "firmware boot complete" | awk -F"[" '{print $2}' | awk -F"]" '{print $1}'`

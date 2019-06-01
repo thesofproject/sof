@@ -1,4 +1,6 @@
 #!/bin/sh
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 # Runs a given script in the docker container you can generate from the
 # docker_build directory.

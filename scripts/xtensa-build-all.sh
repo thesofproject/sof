@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2018 Intel Corporation. All rights reserved.
 
 SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl imx8)
 BUILD_ROM=no
