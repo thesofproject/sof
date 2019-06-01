@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
+ *
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ */
+
 /* SRC constants */
 #define MAX_FIR_DELAY_SIZE 592
 #define MAX_OUT_DELAY_SIZE 577

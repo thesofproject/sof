@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
+ *
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ */
+
 /* SRC conversions */
 #include <sof/audio/coefficients/src/src_tiny_int16_1_3_1814_5000.h>
 #include <sof/audio/coefficients/src/src_tiny_int16_1_6_1814_5000.h>

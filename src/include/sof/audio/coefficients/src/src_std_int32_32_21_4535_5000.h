@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
+ *
+ * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
+ */
+
 const int32_t src_int32_32_21_4535_5000_fir[2816] = {
 	-70924,
 	93303,
