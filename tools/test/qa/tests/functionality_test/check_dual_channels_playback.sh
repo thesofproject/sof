@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # Check two channel playabck function
 rm -rf playback.result
