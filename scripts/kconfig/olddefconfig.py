@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2018, Ulf Magnusson
 # SPDX-License-Identifier: ISC
+# Copyright (c) 2018, Ulf Magnusson
 
 # Works like 'make olddefconfig', updating an old .config file or creating a
 # new one by filing in default values for all new symbols. This is the same as

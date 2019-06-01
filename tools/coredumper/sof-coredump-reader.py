@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2019, Intel Corporation. All rights reserved.
+#
+# Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
+#         Adrian Bonislawski <adrian.bonislawski@linux.intel.com>
+
 # Tool for processing FW stack dumps.
 # For more detailed useage, use --help option.
 
