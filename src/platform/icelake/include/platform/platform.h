@@ -55,6 +55,9 @@ struct sof;
 /* DGMBS align value */
 #define PLATFORM_HDA_BUFFER_ALIGNMENT	0x20
 
+/* HD-DMA single burst size */
+#define PLATFORM_HDA_BURST_SIZE	32
+
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
