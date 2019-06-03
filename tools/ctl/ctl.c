@@ -14,24 +14,17 @@
 
 static void usage(char *name)
 {
-	fprintf(stdout, "Usage %s <option(s)>\n", name);
-	fprintf(stdout, "Set example %s -Dhw:0 ", name);
-	fprintf(stdout, "-c \"numid=22,name=\\\"EQIIR1.0 EQIIR\\\"\" -s ");
-	fprintf(stdout, "iir.txt\n");
-	fprintf(stdout, "Set example %s -Dhw:0 -n 22 -s iir.txt\n", name);
-	fprintf(stdout, "Get example %s -Dhw:0 -n 22\n", name);
-	fprintf(stdout, "%s:\t \t\tControl SOF equalizers\n", name);
-	fprintf(stdout, "%s:\t -D <dev>\tUse device <dev>, defaults to hw:0\n",
-		name);
-	fprintf(stdout, "%s:\t -c <name>\tGet configuration for EQ <name>\n",
-		name);
-	fprintf(stdout, "%s:\t -n <number>\tGet configuration for ", name);
-	fprintf(stdout, "given numid\n");
-	fprintf(stdout, "%s:\t -s <file>\tSetup equalizer with data", name);
-	fprintf(stdout, "in <file>.\n");
-	fprintf(stdout, "\t\t\t\tThe ASCII text file must contain comma\n");
-	fprintf(stdout, "\t\t\t\tseparated unsigned integers.\n");
-	exit(0);
+	fprintf(stdout, "Usage:\t %s [-D <device>] [-c <control name>]", name);
+	fprintf(stdout, " [-s <data>]\n");
+	fprintf(stdout, "\t %s [-D <device>] [-n <control id>]", name);
+	fprintf(stdout, " [-s <data>]\n");
+	fprintf(stdout, "\t %s -h\n", name);
+	fprintf(stdout, "\nWhere:\n");
+	fprintf(stdout, " -D device name (default is hw:0)\n");
+	fprintf(stdout, " -c control name e.g.");
+	fprintf(stdout, " numid=22,name=\\\"EQIIR1.0 EQIIR\\\"\"\n");
+	fprintf(stdout, " -n control id e.g. 22\n");
+	fprintf(stdout, " -s set data using ASCII CSV input file\n");
 }
 
 static int read_setup(unsigned int *data, char setup[], size_t smax)
