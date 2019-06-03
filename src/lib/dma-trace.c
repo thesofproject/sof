@@ -153,7 +153,7 @@ static int dma_trace_buffer_init(struct dma_trace_data *d)
 	}
 
 	bzero(buffer->addr, DMA_TRACE_LOCAL_SIZE);
-	dcache_writeback_invalidate_region(buffer->addr, DMA_TRACE_LOCAL_SIZE);
+	dcache_writeback_region(buffer->addr, DMA_TRACE_LOCAL_SIZE);
 
 	/* initialise the DMA buffer */
 	buffer->size = DMA_TRACE_LOCAL_SIZE;
@@ -208,8 +208,6 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail)
 {
-	int size;
-
 	/* there isn't DMA completion callback in GW DMA copying.
 	 * so we send previous position always before the next copying
 	 * for guaranteeing previous DMA copying is finished.
@@ -219,20 +217,6 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 	if (d->old_host_offset != d->host_offset) {
 		ipc_dma_trace_send_position();
 		d->old_host_offset = d->host_offset;
-	}
-
-	if (avail == 0)
-		return 0;
-
-	/* writeback trace data */
-	if (buffer->r_ptr + avail <= buffer->end_addr) {
-		dcache_writeback_invalidate_region(buffer->r_ptr, avail);
-	} else {
-		size = buffer->end_addr - buffer->r_ptr + 1;
-
-		/* wrap case, flush tail and head of trace buffer */
-		dcache_writeback_invalidate_region(buffer->r_ptr, size);
-		dcache_writeback_invalidate_region(buffer->addr, avail - size);
 	}
 
 	return avail;
@@ -266,9 +250,6 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 		size = hsize;
 	else
 		size = lsize;
-
-	/* writeback trace data */
-	dcache_writeback_invalidate_region(buffer->r_ptr, size);
 
 	return size;
 }
@@ -331,6 +312,9 @@ void dma_trace_flush(void *t)
 				buffer->w_ptr - buffer->addr;
 	}
 
+	/* invalidate trace data */
+	dcache_invalidate_region((void *)t, size);
+
 	/* check for buffer wrap */
 	if (buffer->w_ptr - size < buffer->addr) {
 		wrap_count = buffer->w_ptr - buffer->addr;
@@ -343,7 +327,7 @@ void dma_trace_flush(void *t)
 	}
 
 	/* writeback trace data */
-	dcache_writeback_invalidate_region((void *)t, size);
+	dcache_writeback_region((void *)t, size);
 }
 
 static int dtrace_calc_buf_overflow(struct dma_trace_buf *buffer,
@@ -404,21 +388,23 @@ static void dtrace_add_event(const char *e, uint32_t length)
 		/* check for buffer wrap */
 		if (margin > length) {
 			/* no wrap */
+			dcache_invalidate_region(buffer->w_ptr, length);
 			assert(!memcpy_s(buffer->w_ptr, length, e, length));
-			dcache_writeback_invalidate_region(buffer->w_ptr,
-							   length);
+			dcache_writeback_region(buffer->w_ptr, length);
 			buffer->w_ptr += length;
 		} else {
 			/* data is bigger than remaining margin so we wrap */
+			dcache_invalidate_region(buffer->w_ptr, margin);
 			assert(!memcpy_s(buffer->w_ptr, margin, e, margin));
-			dcache_writeback_invalidate_region(buffer->w_ptr,
-							   margin);
+			dcache_writeback_region(buffer->w_ptr, margin);
 			buffer->w_ptr = buffer->addr;
 
+			dcache_invalidate_region(buffer->w_ptr,
+						 length - margin);
 			assert(!memcpy_s(buffer->w_ptr, length - margin,
 					 e + margin, length - margin));
-			dcache_writeback_invalidate_region(buffer->w_ptr,
-							   length - margin);
+			dcache_writeback_region(buffer->w_ptr,
+						length - margin);
 			buffer->w_ptr += length - margin;
 		}
 
