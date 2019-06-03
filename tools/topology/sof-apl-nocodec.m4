@@ -293,11 +293,10 @@ DAI_CONFIG(SSP, 5, 5, NoCodec-5,
 
 DAI_CONFIG(DMIC, 0, 6, NoCodec-6,
 	   dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
-	   dnl		   sample_rate,
-	   dnl		   fifo word length, type, dai_index, pdm controller config)
+	   dnl		   sample_rate, fifo word length, unmute time, type,
+	   dnl		   dai_index, pdm controller config)
 	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		dnl DMIC_WORD_LENGTH(frame_format)
-		DMIC_WORD_LENGTH(s32le), DMIC, 0,
+		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
 		dnl PDM_CONFIG(type, dai_index, num pdm active, pdm tuples list)
 		dnl STEREO_PDM0 is a pre-defined pdm config for stereo capture
 		PDM_CONFIG(DMIC, 0, STEREO_PDM0)))

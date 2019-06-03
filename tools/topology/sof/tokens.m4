@@ -71,6 +71,7 @@ SectionVendorTokens."sof_dmic_tokens" {
 	SOF_TKN_INTEL_DMIC_NUM_PDM_ACTIVE	"605"
 	SOF_TKN_INTEL_DMIC_SAMPLE_RATE		"608"
 	SOF_TKN_INTEL_DMIC_FIFO_WORD_LENGTH	"609"
+	SOF_TKN_INTEL_DMIC_UNMUTE_RAMP_TIME_MS	"610"
 }
 
 SectionVendorTokens."sof_dmic_pdm_tokens" {
