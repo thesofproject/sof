@@ -914,6 +914,8 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 	dw_write(dma, DW_SAR(channel), sar);
 	dw_write(dma, DW_DAR(channel), dar);
 
+	lli->ctrl_hi = 0;
+
 	/* set channel class */
 	platform_dw_dma_set_class(chan, lli, class);
 
