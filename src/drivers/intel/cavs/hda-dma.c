@@ -150,7 +150,7 @@ struct dma_pdata {
 	struct hda_chan_data chan[HDA_DMA_MAX_CHANS];
 };
 
-static int hda_dma_stop(struct dma *dma, int channel);
+static int hda_dma_stop(struct dma *dma, unsigned int channel);
 
 static inline uint32_t host_dma_reg_read(struct dma *dma, uint32_t chan,
 					 uint32_t reg)
@@ -363,15 +363,9 @@ static int hda_dma_link_copy_ch(struct dma *dma, struct hda_chan_data *chan,
 }
 
 /* lock should be held by caller */
-static void hda_dma_enable_unlock(struct dma *dma, int channel)
+static void hda_dma_enable_unlock(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-
-	if (channel >= HDA_DMA_MAX_CHANS) {
-		trace_hddma_error("hda-dmac: %d invalid channel %d",
-				  dma->plat_data.id, channel);
-		return;
-	}
 
 	trace_hddma("hda-dmac: %d channel %d -> enable", dma->plat_data.id,
 		    channel);
@@ -403,17 +397,23 @@ static void hda_dma_enable_unlock(struct dma *dma, int channel)
 }
 
 /* notify DMA to copy bytes */
-static int hda_dma_link_copy(struct dma *dma, int channel, int bytes,
+static int hda_dma_link_copy(struct dma *dma, unsigned int channel, int bytes,
 			     uint32_t flags)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct hda_chan_data *chan = p->chan + channel;
 
+	if (channel >= HDA_DMA_MAX_CHANS) {
+		trace_hddma_error("hda-dmac: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
+
 	return hda_dma_link_copy_ch(dma, chan, bytes);
 }
 
 /* notify DMA to copy bytes */
-static int hda_dma_host_copy(struct dma *dma, int channel, int bytes,
+static int hda_dma_host_copy(struct dma *dma, unsigned int channel, int bytes,
 			     uint32_t flags)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -455,7 +455,7 @@ static int hda_dma_host_copy(struct dma *dma, int channel, int bytes,
 }
 
 /* acquire the specific DMA channel */
-static int hda_dma_channel_get(struct dma *dma, int channel)
+static int hda_dma_channel_get(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
@@ -490,15 +490,9 @@ static int hda_dma_channel_get(struct dma *dma, int channel)
 }
 
 /* channel must not be running when this is called */
-static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
+static void hda_dma_channel_put_unlocked(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
-
-	if (channel >= HDA_DMA_MAX_CHANS) {
-		trace_hddma_error("hda-dmac: %d invalid channel %d",
-				  dma->plat_data.id, channel);
-		return;
-	}
 
 	/* set new state */
 	p->chan[channel].status = COMP_STATE_INIT;
@@ -511,9 +505,15 @@ static void hda_dma_channel_put_unlocked(struct dma *dma, int channel)
 }
 
 /* channel must not be running when this is called */
-static void hda_dma_channel_put(struct dma *dma, int channel)
+static void hda_dma_channel_put(struct dma *dma, unsigned int channel)
 {
 	uint32_t flags;
+
+	if (channel >= HDA_DMA_MAX_CHANS) {
+		trace_hddma_error("hda-dmac: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return;
+	}
 
 	spin_lock_irq(&dma->lock, flags);
 	hda_dma_channel_put_unlocked(dma, channel);
@@ -522,7 +522,7 @@ static void hda_dma_channel_put(struct dma *dma, int channel)
 	atomic_sub(&dma->num_channels_busy, 1);
 }
 
-static int hda_dma_start(struct dma *dma, int channel)
+static int hda_dma_start(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
@@ -561,7 +561,7 @@ out:
 	return ret;
 }
 
-static int hda_dma_release(struct dma *dma, int channel)
+static int hda_dma_release(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -588,7 +588,7 @@ static int hda_dma_release(struct dma *dma, int channel)
 	return 0;
 }
 
-static int hda_dma_pause(struct dma *dma, int channel)
+static int hda_dma_pause(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
@@ -615,12 +615,12 @@ out:
 	return 0;
 }
 
-static int hda_dma_stop(struct dma *dma, int channel)
+static int hda_dma_stop(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
 
-	if (channel >= HDA_DMA_MAX_CHANS || channel < 0) {
+	if (channel >= HDA_DMA_MAX_CHANS) {
 		trace_hddma_error("hda-dmac: %d invalid channel %d",
 				  dma->plat_data.id, channel);
 		return -EINVAL;
@@ -648,7 +648,7 @@ static int hda_dma_stop(struct dma *dma, int channel)
 }
 
 /* fill in "status" with current DMA channel state and position */
-static int hda_dma_status(struct dma *dma, int channel,
+static int hda_dma_status(struct dma *dma, unsigned int channel,
 			  struct dma_chan_status *status, uint8_t direction)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -668,7 +668,7 @@ static int hda_dma_status(struct dma *dma, int channel,
 }
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
-static int hda_dma_set_config(struct dma *dma, int channel,
+static int hda_dma_set_config(struct dma *dma, unsigned int channel,
 			      struct dma_sg_config *config)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -808,12 +808,18 @@ static int hda_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static int hda_dma_set_cb(struct dma *dma, int channel, int type,
+static int hda_dma_set_cb(struct dma *dma, unsigned int channel, int type,
 	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 	void *data)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
+
+	if (channel >= HDA_DMA_MAX_CHANS) {
+		trace_hddma_error("hda-dmac: %d invalid channel %d",
+				  dma->plat_data.id, channel);
+		return -EINVAL;
+	}
 
 	spin_lock_irq(&dma->lock, flags);
 	p->chan[channel].cb = cb;
@@ -919,8 +925,8 @@ static int hda_dma_free_data_size(struct hda_chan_data *chan)
 	return size;
 }
 
-static int hda_dma_data_size(struct dma *dma, int channel, uint32_t *avail,
-			     uint32_t *free)
+static int hda_dma_data_size(struct dma *dma, unsigned int channel,
+			     uint32_t *avail, uint32_t *free)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct hda_chan_data *chan = &p->chan[channel];

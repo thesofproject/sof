@@ -92,14 +92,19 @@ struct dma_pdata {
 static const uint32_t burst_elems[] = {1, 2, 4, 8};
 
 #if !CONFIG_HW_LLI
-static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel);
-static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
+static inline void dw_dma_chan_reload_lli(struct dma *dma,
+					  unsigned int channel);
+static inline void dw_dma_chan_reload_next(struct dma *dma,
+					   unsigned int channel,
 					   struct dma_sg_elem *next,
 					   int direction);
 #endif
-static inline int dw_dma_interrupt_register(struct dma *dma, int channel);
-static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel);
-static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags);
+static inline int dw_dma_interrupt_register(struct dma *dma,
+					    unsigned int channel);
+static inline void dw_dma_interrupt_unregister(struct dma *dma,
+					       unsigned int channel);
+static int dw_dma_copy(struct dma *dma, unsigned int channel, int bytes,
+		       uint32_t flags);
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
 {
@@ -111,7 +116,7 @@ static inline uint32_t dw_read(struct dma *dma, uint32_t reg)
 	return io_reg_read(dma_base(dma) + reg);
 }
 
-static void dw_dma_interrupt_mask(struct dma *dma, int channel)
+static void dw_dma_interrupt_mask(struct dma *dma, unsigned int channel)
 {
 	const struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -128,7 +133,7 @@ static void dw_dma_interrupt_mask(struct dma *dma, int channel)
 	dw_write(dma, DW_MASK_ERR, DW_CHAN_MASK(channel));
 }
 
-static void dw_dma_interrupt_unmask(struct dma *dma, int channel)
+static void dw_dma_interrupt_unmask(struct dma *dma, unsigned int channel)
 {
 	const struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -148,7 +153,7 @@ static void dw_dma_interrupt_unmask(struct dma *dma, int channel)
 	dw_write(dma, DW_MASK_ERR, DW_CHAN_UNMASK(channel));
 }
 
-static void dw_dma_interrupt_clear(struct dma *dma, int channel)
+static void dw_dma_interrupt_clear(struct dma *dma, unsigned int channel)
 {
 	const struct dma_pdata *p = dma_get_drvdata(dma);
 
@@ -172,7 +177,7 @@ static void dw_dma_interrupt_clear(struct dma *dma, int channel)
 }
 
 /* allocate next free DMA channel */
-static int dw_dma_channel_get(struct dma *dma, int req_chan)
+static int dw_dma_channel_get(struct dma *dma, unsigned int req_chan)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t flags;
@@ -208,7 +213,7 @@ static int dw_dma_channel_get(struct dma *dma, int req_chan)
 }
 
 /* channel must not be running when this is called */
-static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
+static void dw_dma_channel_put_unlocked(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -241,7 +246,7 @@ static void dw_dma_channel_put_unlocked(struct dma *dma, int channel)
 }
 
 /* channel must not be running when this is called */
-static void dw_dma_channel_put(struct dma *dma, int channel)
+static void dw_dma_channel_put(struct dma *dma, unsigned int channel)
 {
 	uint32_t flags;
 
@@ -253,7 +258,7 @@ static void dw_dma_channel_put(struct dma *dma, int channel)
 	spin_unlock_irq(&dma->lock, flags);
 }
 
-static int dw_dma_start(struct dma *dma, int channel)
+static int dw_dma_start(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -343,7 +348,7 @@ out:
 	return ret;
 }
 
-static int dw_dma_release(struct dma *dma, int channel)
+static int dw_dma_release(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -383,7 +388,7 @@ static int dw_dma_release(struct dma *dma, int channel)
 	return 0;
 }
 
-static int dw_dma_pause(struct dma *dma, int channel)
+static int dw_dma_pause(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -413,7 +418,7 @@ out:
 	return 0;
 }
 
-static int dw_dma_stop(struct dma *dma, int channel)
+static int dw_dma_stop(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -481,7 +486,7 @@ static int dw_dma_stop(struct dma *dma, int channel)
 }
 
 /* fill in "status" with current DMA channel state and position */
-static int dw_dma_status(struct dma *dma, int channel,
+static int dw_dma_status(struct dma *dma, unsigned int channel,
 			 struct dma_chan_status *status,
 			 uint8_t direction)
 {
@@ -532,7 +537,7 @@ static void dw_dma_mask_address(struct dma_sg_elem *sg_elem, uint32_t *sar,
 }
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
-static int dw_dma_set_config(struct dma *dma, int channel,
+static int dw_dma_set_config(struct dma *dma, unsigned int channel,
 			     struct dma_sg_config *config)
 {
 	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
@@ -843,7 +848,7 @@ static int dw_dma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static int dw_dma_set_cb(struct dma *dma, int channel, int type,
+static int dw_dma_set_cb(struct dma *dma, unsigned int channel, int type,
 			 void (*cb)(void *data, uint32_t type,
 				    struct dma_sg_elem *next),
 			 void *data)
@@ -851,6 +856,13 @@ static int dw_dma_set_cb(struct dma *dma, int channel, int type,
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
 	uint32_t flags;
+
+	if (channel >= dma->plat_data.channels ||
+	    channel == DMA_CHAN_INVALID) {
+		trace_dwdma_error("dw_dma_set_config() error: dma %d invalid "
+				  "channel %d", dma->plat_data.id, channel);
+		return -EINVAL;
+	}
 
 	spin_lock_irq(&dma->lock, flags);
 	chan->cb = cb;
@@ -863,7 +875,7 @@ static int dw_dma_set_cb(struct dma *dma, int channel, int type,
 
 #if !CONFIG_HW_LLI
 /* reload using LLI data */
-static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel)
+static inline void dw_dma_chan_reload_lli(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -896,7 +908,8 @@ static inline void dw_dma_chan_reload_lli(struct dma *dma, int channel)
 }
 
 /* reload using callback data */
-static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
+static inline void dw_dma_chan_reload_next(struct dma *dma,
+					   unsigned int channel,
 					   struct dma_sg_elem *next,
 					   int direction)
 {
@@ -935,7 +948,7 @@ static inline void dw_dma_chan_reload_next(struct dma *dma, int channel,
 }
 #endif
 
-static void dw_dma_verify_transfer(struct dma *dma, int channel,
+static void dw_dma_verify_transfer(struct dma *dma, unsigned int channel,
 				   struct dma_sg_elem *next)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -979,7 +992,7 @@ static void dw_dma_verify_transfer(struct dma *dma, int channel,
 #endif
 }
 
-static void dw_dma_irq_callback(struct dma *dma, int channel,
+static void dw_dma_irq_callback(struct dma *dma, unsigned int channel,
 				struct dma_sg_elem *next, uint32_t type)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -999,7 +1012,8 @@ static void dw_dma_irq_callback(struct dma *dma, int channel,
 		dw_dma_verify_transfer(dma, channel, next);
 }
 
-static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
+static int dw_dma_copy(struct dma *dma, unsigned int channel, int bytes,
+		       uint32_t flags)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -1008,6 +1022,13 @@ static int dw_dma_copy(struct dma *dma, int channel, int bytes, uint32_t flags)
 		.dest = DMA_RELOAD_LLI,
 		.size = bytes
 	};
+
+	if (channel >= dma->plat_data.channels ||
+	    channel == DMA_CHAN_INVALID) {
+		trace_dwdma_error("dw_dma_irq_callback() error: dma %d invalid"
+				  " channel %d", dma->plat_data.id, channel);
+		return -EINVAL;
+	}
 
 	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
 		     dma->plat_data.id, channel);
@@ -1086,7 +1107,8 @@ static void dw_dma_irq_handler(void *data)
 	}
 }
 
-static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
+static inline int dw_dma_interrupt_register(struct dma *dma,
+					    unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_chan_irq(dma, cpu_get_id(), channel);
@@ -1125,7 +1147,8 @@ static inline int dw_dma_interrupt_register(struct dma *dma, int channel)
 	return 0;
 }
 
-static inline void dw_dma_interrupt_unregister(struct dma *dma, int channel)
+static inline void dw_dma_interrupt_unregister(struct dma *dma,
+					       unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	uint32_t irq = dma_chan_irq(dma, cpu_get_id(), channel);
@@ -1248,7 +1271,7 @@ static int dw_dma_remove(struct dma *dma)
 	return 0;
 }
 
-static int dw_dma_avail_data_size(struct dma *dma, int channel)
+static int dw_dma_avail_data_size(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -1263,7 +1286,7 @@ static int dw_dma_avail_data_size(struct dma *dma, int channel)
 	return size;
 }
 
-static int dw_dma_free_data_size(struct dma *dma, int channel)
+static int dw_dma_free_data_size(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -1278,12 +1301,19 @@ static int dw_dma_free_data_size(struct dma *dma, int channel)
 	return size;
 }
 
-static int dw_dma_get_data_size(struct dma *dma, int channel, uint32_t *avail,
-				uint32_t *free)
+static int dw_dma_get_data_size(struct dma *dma, unsigned int channel,
+				uint32_t *avail, uint32_t *free)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
 	uint32_t flags;
+
+	if (channel >= dma->plat_data.channels ||
+	    channel == DMA_CHAN_INVALID) {
+		trace_dwdma_error("dw_dma_set_config() error: dma %d invalid "
+				  "channel %d", dma->plat_data.id, channel);
+		return -EINVAL;
+	}
 
 	tracev_dwdma("dw_dma_get_data_size(): dma %d channel %d get data size",
 		     dma->plat_data.id, channel);
