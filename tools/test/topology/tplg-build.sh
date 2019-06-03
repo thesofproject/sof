@@ -72,6 +72,7 @@ function simple_test {
 				-DTEST_DMIC_DUTY_MAX=${12} \
 				-DTEST_DMIC_SAMPLE_RATE=${13} \
 				-DTEST_DMIC_PDM_CONFIG=${14} \
+				-DTEST_DMIC_UNMUTE_TIME=400 \
 				$i.m4 > "$BUILD_OUTPUT/${TFILE}.conf"
 			echo "Compiling test $i -> $BUILD_OUTPUT/${TFILE}.tplg"
 			alsatplg -v 1 -c "$BUILD_OUTPUT/${TFILE}.conf" -o "$BUILD_OUTPUT/${TFILE}.tplg"

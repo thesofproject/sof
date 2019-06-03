@@ -33,10 +33,10 @@ define(`DMIC_WORD_LENGTH',
 `ifelse($1, `s16le', 16, $1, `s32le', 32, `')')
 
 dnl DMIC_CONFIG(driver_version, clk_min, clk_mac, duty_min, duty_max,
-dnl		sample_rate,
-dnl		fifo word length, type, idx, pdm controller config)
+dnl		sample_rate, fifo word length, ramp_time,
+dnl		type, idx, pdm controller config)
 define(`DMIC_CONFIG',
-`SectionVendorTuples."'N_DAI_CONFIG($8$9)`_dmic_tuples" {'
+`SectionVendorTuples."'N_DAI_CONFIG($9$10)`_dmic_tuples" {'
 `	tokens "sof_dmic_tokens"'
 `	tuples."word" {'
 `		SOF_TKN_INTEL_DMIC_DRIVER_VERSION'	STR($1)
@@ -46,13 +46,15 @@ define(`DMIC_CONFIG',
 `		SOF_TKN_INTEL_DMIC_DUTY_MAX'		STR($5)
 `		SOF_TKN_INTEL_DMIC_SAMPLE_RATE'		STR($6)
 `		SOF_TKN_INTEL_DMIC_FIFO_WORD_LENGTH'	STR($7)
+`		SOF_TKN_INTEL_DMIC_UNMUTE_RAMP_TIME_MS'	STR($8)
+
 dnl PDM config for the number of active PDM controllers
-$10
-`SectionData."'N_DAI_CONFIG($8$9)`_pdm_data" {'
-`	tuples "'N_DAI_CONFIG($8$9)`_pdm_tuples"'
+$11
+`SectionData."'N_DAI_CONFIG($9$10)`_pdm_data" {'
+`	tuples "'N_DAI_CONFIG($9$10)`_pdm_tuples"'
 `}'
-`SectionData."'N_DAI_CONFIG($8$9)`_data" {'
-`	tuples "'N_DAI_CONFIG($8$9)`_dmic_tuples"'
+`SectionData."'N_DAI_CONFIG($9$10)`_data" {'
+`	tuples "'N_DAI_CONFIG($9$10)`_dmic_tuples"'
 
 `}'
 )

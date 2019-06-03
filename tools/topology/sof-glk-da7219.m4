@@ -158,8 +158,7 @@ DAI_CONFIG(SSP, 2, 1, SSP2-Codec,
 # dmic01 (id: 2)
 DAI_CONFIG(DMIC, 0, 2, dmic01,
 	DMIC_CONFIG(1, 500000, 4800000, 40, 60, 48000,
-		DMIC_WORD_LENGTH(s16le), DMIC, 0,
-		# FIXME: what is the right configuration
+		DMIC_WORD_LENGTH(s16le), 400, DMIC, 0,
 		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
 
 # 3 HDMI/DP outputs (ID: 3,4,5)
