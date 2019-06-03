@@ -313,6 +313,7 @@ struct dmic_pdata {
 	struct task dmicwork;
 	int32_t startcount;
 	int32_t gain;
+	int32_t gain_coef;
 };
 
 extern const struct dai_driver dmic_driver;
