@@ -10,6 +10,8 @@
 #ifndef AUDIO_FORMAT_H
 #define AUDIO_FORMAT_H
 
+#include <stdint.h>
+
 /* Maximum and minimum values for 24 bit */
 #define INT24_MAXVALUE  8388607
 #define INT24_MINVALUE -8388608
