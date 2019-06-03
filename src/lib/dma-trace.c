@@ -15,6 +15,7 @@
 #include <platform/platform.h>
 #include <sof/lock.h>
 #include <sof/cpu.h>
+#include <sof/audio/format.h>
 #include <stdint.h>
 
 static struct dma_trace_data *trace_data;
@@ -219,7 +220,8 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 		d->old_host_offset = d->host_offset;
 	}
 
-	return avail;
+	/* align data to HD-DMA burst size */
+	return ALIGN_DOWN(avail, PLATFORM_HDA_BURST_SIZE);
 }
 #else
 static int dma_trace_get_avail_data(struct dma_trace_data *d,
