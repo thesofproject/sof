@@ -119,21 +119,22 @@ struct dma_chan_status {
 /* DMA operations */
 struct dma_ops {
 
-	int (*channel_get)(struct dma *dma, int req_channel);
-	void (*channel_put)(struct dma *dma, int channel);
+	int (*channel_get)(struct dma *dma, unsigned int req_channel);
+	void (*channel_put)(struct dma *dma, unsigned int channel);
 
-	int (*start)(struct dma *dma, int channel);
-	int (*stop)(struct dma *dma, int channel);
-	int (*copy)(struct dma *dma, int channel, int bytes, uint32_t flags);
-	int (*pause)(struct dma *dma, int channel);
-	int (*release)(struct dma *dma, int channel);
-	int (*status)(struct dma *dma, int channel,
+	int (*start)(struct dma *dma, unsigned int channel);
+	int (*stop)(struct dma *dma, unsigned int channel);
+	int (*copy)(struct dma *dma, unsigned int channel, int bytes,
+		    uint32_t flags);
+	int (*pause)(struct dma *dma, unsigned int channel);
+	int (*release)(struct dma *dma, unsigned int channel);
+	int (*status)(struct dma *dma, unsigned int channel,
 		struct dma_chan_status *status, uint8_t direction);
 
-	int (*set_config)(struct dma *dma, int channel,
+	int (*set_config)(struct dma *dma, unsigned int channel,
 		struct dma_sg_config *config);
 
-	int (*set_cb)(struct dma *dma, int channel, int type,
+	int (*set_cb)(struct dma *dma, unsigned int channel, int type,
 		void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
 		void *data);
 
@@ -143,8 +144,8 @@ struct dma_ops {
 	int (*probe)(struct dma *dma);
 	int (*remove)(struct dma *dma);
 
-	int (*get_data_size)(struct dma *dma, int channel, uint32_t *avail,
-			     uint32_t *free);
+	int (*get_data_size)(struct dma *dma, unsigned int channel,
+			     uint32_t *avail, uint32_t *free);
 };
 
 /* DMA platform data */
