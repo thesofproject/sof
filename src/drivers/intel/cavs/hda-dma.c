@@ -754,8 +754,8 @@ static int hda_dma_set_config(struct dma *dma, int channel,
 	p->chan[channel].buffer_bytes = buffer_bytes;
 
 	/* init channel in HW */
-	host_dma_reg_write(dma, channel, DGBBA,  buffer_addr);
-	host_dma_reg_write(dma, channel, DGBS,  buffer_bytes);
+	host_dma_reg_write(dma, channel, DGBBA, buffer_addr);
+	host_dma_reg_write(dma, channel, DGBS, buffer_bytes);
 
 	if (config->direction == DMA_DIR_LMEM_TO_HMEM ||
 	    config->direction == DMA_DIR_HMEM_TO_LMEM)
