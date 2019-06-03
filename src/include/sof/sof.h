@@ -24,7 +24,12 @@ struct sa;
 	({const typeof(((type *)0)->member)*__memberptr = (ptr); \
 	(type *)((char *)__memberptr - offsetof(type, member)); })
 
-#define ALIGN(size, align) (((size) + (align) - 1) & ~((align) - 1))
+/* Align the number to the nearest alignment value */
+#define ALIGN_UP(size, alignment) \
+	(((size) % (alignment) == 0) ? (size) : \
+	((size) - ((size) % (alignment)) + (alignment)))
+#define ALIGN_DOWN(size, alignment) \
+	((size) - ((size) % (alignment)))
 
 #define __packed __attribute__((packed))
 

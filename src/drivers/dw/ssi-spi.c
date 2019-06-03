@@ -314,7 +314,7 @@ static uint64_t spi_completion_work(void *data)
 		/* configure to receive next header */
 		spi->ipc_status = IPC_READ;
 		config = spi->config + SPI_DIR_RX;
-		config->transfer_len = ALIGN(sizeof(*hdr), 16);
+		config->transfer_len = ALIGN_UP(sizeof(*hdr), 16);
 		spi_set_config(spi, config);
 		spi_trigger(spi, SPI_TRIGGER_START, SPI_DIR_RX);
 
@@ -349,7 +349,7 @@ int spi_push(struct spi *spi, const void *data, size_t size)
 		return ret;
 
 	/* configure transmit path of SPI-slave */
-	config->transfer_len = ALIGN(size, 16);
+	config->transfer_len = ALIGN_UP(size, 16);
 	ret = spi_set_config(spi, config);
 	if (ret < 0)
 		return ret;
@@ -391,7 +391,7 @@ static int spi_slave_init(struct spi *spi)
 	/* configure receive path of SPI-slave */
 	config->dir = SPI_DIR_RX;
 	config->dest_buf = spi->rx_buffer;
-	config->transfer_len = ALIGN(sizeof(struct sof_ipc_hdr), 16);
+	config->transfer_len = ALIGN_UP(sizeof(struct sof_ipc_hdr), 16);
 
 	ret = spi_set_config(spi, config);
 	if (ret < 0)
