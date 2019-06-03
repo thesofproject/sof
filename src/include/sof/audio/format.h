@@ -45,9 +45,11 @@
 	 (qx + qy - qz) : INT32_MIN) : INT32_MAX)
 
 /* Convert a float number to fractional Qnx.ny format. Note that there is no
- * check for nx+ny number of bits to fit the word length of int.
+ * check for nx+ny number of bits to fit the word length of int. The parameter
+ * qy must be 31 or less.
  */
-#define Q_CONVERT_FLOAT(f, qy)  ((int)((f) * (1 << qy) + 0.5)) /* f is float */
+#define Q_CONVERT_FLOAT(f, qy) \
+	((int32_t)(((const double)f) * ((int64_t)1 << (const int)qy) + 0.5))
 
 /* Convert fractional Qnx.ny number x to float */
 #define Q_CONVERT_QTOF(x, ny) ((float)(x) / ((int64_t)1 << (ny)))
