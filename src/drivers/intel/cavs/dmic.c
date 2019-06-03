@@ -9,6 +9,7 @@
 #include <sof/interrupt.h>
 #include <sof/pm_runtime.h>
 #include <sof/math/numbers.h>
+#include <sof/math/decibels.h>
 #include <sof/audio/format.h>
 
 #if defined DMIC_HW_VERSION
@@ -95,15 +96,23 @@ struct pdm_controllers_configuration {
 /* Used in unmute ramp values calculation */
 #define DMIC_HW_FIR_GAIN_MAX ((1 << (DMIC_HW_BITS_FIR_GAIN - 1)) - 1)
 
-/* Hardwired log ramp parameters. The first value is the initial logarithmic
- * gain and the second value is the multiplier for gain to achieve the linear
- * decibels change over time. Currently the coefficient GM needs to be
- * calculated manually. The 400 ms ramp should ensure clean sounding start
- * with any microphone.
- * TODO: Add ramp characteristic passing via topology.
+/* Hardwired log ramp parameters. The first value is the initial gain in
+ * decibels. The second value is the default ramp time.
  */
-#define LOGRAMP_GI 33954 /* -90 dB, Q2.30*/
-#define LOGRAMP_GM 16814 /* Gives 400 ms ramp for -90..0 dB, Q2.14 */
+#define LOGRAMP_START_DB Q_CONVERT_FLOAT(-90, DB2LIN_FIXED_INPUT_QY)
+#define LOGRAMP_TIME_MS 400 /* Default ramp time in milliseconds */
+
+/* Limits for ramp time from topology */
+#define LOGRAMP_TIME_MIN_MS 10 /* Min. 10 ms */
+#define LOGRAMP_TIME_MAX_MS 1000 /* Max. 1s */
+
+/* Simplify log ramp step calculation equation with this constant term */
+#define LOGRAMP_CONST_TERM ((int32_t) \
+	((int64_t)-LOGRAMP_START_DB * DMIC_UNMUTE_RAMP_US / 1000))
+
+/* Fractional shift for gain update. Gain format is Q2.30. */
+#define Q_SHIFT_GAIN_X_GAIN_COEF \
+	(Q_SHIFT_BITS_32(30, DB2LIN_FIXED_OUTPUT_QY, 30))
 
 /* tracing */
 #define trace_dmic(__e, ...) \
@@ -152,12 +161,12 @@ static uint64_t dmic_work(void *data)
 	tracev_dmic("dmic_work()");
 	spin_lock(&dai->lock);
 
-	/* Increment gain with logaritmic step.
-	 * Gain is Q2.30 and gain modifier is Q2.14.
+	/* Increment gain with logarithmic step.
+	 * Gain is Q2.30 and gain modifier is Q12.20.
 	 */
 	dmic->startcount++;
-	dmic->gain = Q_MULTSR_32X32((int64_t)dmic->gain,
-				    LOGRAMP_GM, 30, 14, 30);
+	dmic->gain = q_multsr_sat_32x32(dmic->gain, dmic->gain_coef,
+					Q_SHIFT_GAIN_X_GAIN_COEF);
 
 	/* Gain is stored as Q2.30, while HW register is Q1.19 so shift
 	 * the value right by 11.
@@ -1034,6 +1043,8 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	struct dmic_configuration cfg;
 	struct decim_modes modes_a;
 	struct decim_modes modes_b;
+	int32_t unmute_ramp_time_ms;
+	int32_t step_db;
 	size_t size;
 	int i, j, ret = 0;
 	int di = dai->index;
@@ -1050,6 +1061,26 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 		trace_dmic_error("dmic_set_config() error: wrong ipc version");
 		return -EINVAL;
 	}
+
+	/* Compute unmute ramp gain update coefficient. Use the value from
+	 * topology if it is non-zero, otherwise use default length.
+	 */
+	if (config->dmic.unmute_ramp_time)
+		unmute_ramp_time_ms = config->dmic.unmute_ramp_time;
+	else
+		unmute_ramp_time_ms = LOGRAMP_TIME_MS;
+
+	if (unmute_ramp_time_ms < LOGRAMP_TIME_MIN_MS ||
+	    unmute_ramp_time_ms > LOGRAMP_TIME_MAX_MS) {
+		trace_dmic_error("dmic_set_config(): Illegal ramp time = %d",
+				 unmute_ramp_time_ms);
+		return -EINVAL;
+	}
+
+	step_db = LOGRAMP_CONST_TERM / unmute_ramp_time_ms;
+	dmic->gain_coef = db2lin_fixed(step_db);
+	trace_dmic("dmic_set_config(): unmute_ramp_time_ms = %d",
+		   unmute_ramp_time_ms);
 
 	/*
 	 * "config" might contain pdm controller params for only
@@ -1197,7 +1228,9 @@ static void dmic_start(struct dai *dai)
 	trace_dmic("dmic_start()");
 	dmic->state = COMP_STATE_ACTIVE;
 	dmic->startcount = 0;
-	dmic->gain = LOGRAMP_GI; /* Initial gain value */
+
+	/* Initial gain value, convert Q12.20 to Q2.30 */
+	dmic->gain = Q_SHIFT_LEFT(db2lin_fixed(LOGRAMP_START_DB), 20, 30);
 
 	switch (dai->index) {
 	case 0:
