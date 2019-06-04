@@ -16,8 +16,13 @@
 #include <sof/lock.h>
 #include <sof/notifier.h>
 #include <xtos-structs.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 extern struct ipc *_ipc;
+
+/** \brief Indicates if core has processed received message. */
+static bool msg_processed[PLATFORM_CORE_COUNT];
 
 /**
  * \brief Returns IDC data.
@@ -97,6 +102,8 @@ static void idc_irq_handler(void *arg)
 
 				idc_write(IPC_IDCIETC(i), core,
 					  idcietc | IPC_IDCIETC_DONE);
+
+				msg_processed[i] = true;
 			}
 		}
 	}
@@ -110,14 +117,12 @@ static void idc_irq_handler(void *arg)
  */
 int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
-	struct idc *idc = *idc_get();
 	int core = arch_cpu_get_id();
 	uint64_t deadline;
-	uint32_t flags;
 
 	tracev_idc("arch_idc_send_msg()");
 
-	spin_lock_irq(&idc->lock, flags);
+	msg_processed[msg->core] = false;
 
 	idc_write(IPC_IDCIETC(msg->core), core, msg->extension);
 	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
@@ -127,18 +132,20 @@ int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 			IDC_TIMEOUT / 1000;
 
-		while (!(idc_read(IPC_IDCIETC(msg->core), core) &
-			 IPC_IDCIETC_DONE)) {
+		while (!msg_processed[msg->core]) {
 			if (deadline < platform_timer_get(platform_timer)) {
+				/* safe check in case we've got preempted
+				 * after read
+				 */
+				if (msg_processed[msg->core])
+					return 0;
+
 				trace_idc_error("arch_idc_send_msg() error: "
 						"timeout");
-				spin_unlock_irq(&idc->lock, flags);
 				return -ETIME;
 			}
 		}
 	}
-
-	spin_unlock_irq(&idc->lock, flags);
 
 	return 0;
 }
@@ -324,7 +331,6 @@ int arch_idc_init(void)
 	/* initialize idc data */
 	struct idc **idc = idc_get();
 	*idc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**idc));
-	spinlock_init(&((*idc)->lock));
 	(*idc)->busy_bit_mask = idc_get_busy_bit_mask(core);
 	(*idc)->done_bit_mask = idc_get_done_bit_mask(core);
 
