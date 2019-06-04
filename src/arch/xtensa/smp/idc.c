@@ -4,18 +4,18 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <xtos-structs.h>
 #include <arch/cpu.h>
+#include <arch/idc.h>
 #include <platform/interrupt.h>
 #include <platform/platform.h>
 #include <sof/alloc.h>
 #include <sof/cache.h>
+#include <sof/clk.h>
 #include <sof/idc.h>
 #include <sof/ipc.h>
 #include <sof/lock.h>
 #include <sof/notifier.h>
-
-#include <arch/idc.h>
+#include <xtos-structs.h>
 
 extern struct ipc *_ipc;
 
@@ -112,9 +112,7 @@ int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	struct idc *idc = *idc_get();
 	int core = arch_cpu_get_id();
-	int ret = 0;
-	uint32_t timeout = 0;
-	uint32_t idcietc;
+	uint64_t deadline;
 	uint32_t flags;
 
 	tracev_idc("arch_idc_send_msg()");
@@ -125,22 +123,24 @@ int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 	idc_write(IPC_IDCITC(msg->core), core, msg->header | IPC_IDCITC_BUSY);
 
 	if (mode == IDC_BLOCKING) {
-		do {
-			idelay(PLATFORM_DEFAULT_DELAY);
-			timeout += PLATFORM_DEFAULT_DELAY;
-			idcietc = idc_read(IPC_IDCIETC(msg->core), core);
-		} while (!(idcietc & IPC_IDCIETC_DONE) &&
-			 timeout < IDC_TIMEOUT);
+		deadline = platform_timer_get(platform_timer) +
+			clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+			IDC_TIMEOUT / 1000;
 
-		if (timeout >= IDC_TIMEOUT) {
-			trace_idc_error("arch_idc_send_msg() error: timeout");
-			ret = -ETIME;
+		while (!(idc_read(IPC_IDCIETC(msg->core), core) &
+			 IPC_IDCIETC_DONE)) {
+			if (deadline < platform_timer_get(platform_timer)) {
+				trace_idc_error("arch_idc_send_msg() error: "
+						"timeout");
+				spin_unlock_irq(&idc->lock, flags);
+				return -ETIME;
+			}
 		}
 	}
 
 	spin_unlock_irq(&idc->lock, flags);
 
-	return ret;
+	return 0;
 }
 
 /**

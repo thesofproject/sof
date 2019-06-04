@@ -11,6 +11,7 @@
 TRACE_IMPL()
 
 struct ipc *_ipc;
+struct timer *platform_timer;
 
 void platform_dai_timestamp(struct comp_dev *dai,
 	struct sof_ipc_stream_posn *posn)
@@ -102,4 +103,19 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 	(void)p;
 	(void)filename;
 	(void)linenum;
+}
+
+uint64_t platform_timer_get(struct timer *timer)
+{
+	(void)timer;
+
+	return 0;
+}
+
+uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
+{
+	(void)clock;
+	(void)ms;
+
+	return 0;
 }

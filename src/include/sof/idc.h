@@ -36,8 +36,8 @@
 /** \brief IDC send non-blocking flag. */
 #define IDC_NON_BLOCKING	1
 
-/** \brief IDC send timeout in cycles. */
-#define IDC_TIMEOUT	800000
+/** \brief IDC send timeout in microseconds. */
+#define IDC_TIMEOUT	10000
 
 /** \brief IDC task deadline. */
 #define IDC_DEADLINE	100
