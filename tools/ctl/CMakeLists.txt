@@ -8,4 +8,9 @@ target_link_libraries(sof-ctl PRIVATE
 	"-lasound"
 )
 
+target_include_directories(sof-ctl PRIVATE
+	"${SOF_ROOT_SOURCE_DIRECTORY}/src/include"
+	"${SOF_ROOT_SOURCE_DIRECTORY}"
+)
+
 install(TARGETS sof-ctl DESTINATION bin)
