@@ -143,8 +143,8 @@ struct sof;
 /* the watermark for the SSP fifo depth setting */
 #define SSP_FIFO_WATERMARK	8
 
-/* minimal SSP port stop delay in cycles */
-#define PLATFORM_SSP_STOP_DELAY	3000
+/* minimal SSP port delay in cycles */
+#define PLATFORM_SSP_DELAY	3000
 
 /* timer driven scheduling start offset in microseconds */
 #define PLATFORM_TIMER_START_OFFSET	100

@@ -743,6 +743,9 @@ static void ssp_start(struct dai *dai, int direction)
 		ssp_update_bits(dai, SSRSA, 0x1 << 8, 0x1 << 8);
 	}
 
+	/* wait to get valid fifo status */
+	wait_delay(PLATFORM_SSP_DELAY);
+
 	spin_unlock(&dai->lock);
 }
 
@@ -754,7 +757,7 @@ static void ssp_stop(struct dai *dai, int direction)
 	spin_lock(&dai->lock);
 
 	/* wait to get valid fifo status */
-	wait_delay(PLATFORM_SSP_STOP_DELAY);
+	wait_delay(PLATFORM_SSP_DELAY);
 
 	/* stop Rx if neeed */
 	if (direction == DAI_DIR_CAPTURE &&
