@@ -91,7 +91,6 @@ struct idc_msg {
 
 /** \brief IDC data. */
 struct idc {
-	spinlock_t lock;		/**< lock mechanism */
 	uint32_t busy_bit_mask;		/**< busy interrupt mask */
 	uint32_t done_bit_mask;		/**< done interrupt mask */
 	struct idc_msg received_msg;	/**< received message */
