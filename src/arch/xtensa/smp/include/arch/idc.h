@@ -14,6 +14,8 @@
 #ifndef __ARCH_IDC_H__
 #define __ARCH_IDC_H__
 
+#include <stdint.h>
+
 struct idc_msg;
 
 void cpu_power_down_core(void);

@@ -16,6 +16,7 @@
 
 #include <sof/schedule.h>
 #include <sof/trace.h>
+#include <stdint.h>
 
 /** \brief IDC trace function. */
 #define trace_idc(__e) \
