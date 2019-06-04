@@ -20,7 +20,10 @@
  * \brief Header for all non IPC ABI data.
  *
  * Identifies data type, size and ABI.
- * Used by any bespoke component data structures or binary blobs.
+ * Data header used for all component data structures and binary blobs sent to
+ * firmware as runtime data. This data is typically sent by userspace
+ * applications and tunnelled through any OS kernel (via binary kcontrol on
+ * Linux) to the firmware.
  */
 struct sof_abi_hdr {
 	uint32_t magic;		/**< 'S', 'O', 'F', '\0' */
