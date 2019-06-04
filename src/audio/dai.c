@@ -502,10 +502,10 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		 */
 		if (dd->xrun == 0 && !pipeline_is_preload(dev->pipeline)) {
 			/* start the DAI */
+			dai_trigger(dd->dai, cmd, dev->params.direction);
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
 				return ret;
-			dai_trigger(dd->dai, cmd, dev->params.direction);
 		} else {
 			dd->xrun = 0;
 		}
@@ -529,10 +529,10 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 				return ret;
 
 			/* start the DAI */
+			dai_trigger(dd->dai, cmd, dev->params.direction);
 			ret = dma_start(dd->dma, dd->chan);
 			if (ret < 0)
 				return ret;
-			dai_trigger(dd->dai, cmd, dev->params.direction);
 		} else {
 			dd->xrun = 0;
 		}
@@ -572,11 +572,11 @@ static int dai_copy(struct comp_dev *dev)
 	/* start DMA on preload */
 	if (pipeline_is_preload(dev->pipeline)) {
 		/* start the DAI */
+		dai_trigger(dd->dai, COMP_TRIGGER_START,
+			    dev->params.direction);
 		ret = dma_start(dd->dma, dd->chan);
 		if (ret < 0)
 			return ret;
-		dai_trigger(dd->dai, COMP_TRIGGER_START,
-			    dev->params.direction);
 		platform_dai_wallclock(dev, &dd->wallclock);
 
 		/* let's not copy further */
