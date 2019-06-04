@@ -19,8 +19,8 @@
 #include <stdint.h>
 
 /** \brief IDC trace function. */
-#define trace_idc(__e) \
-	trace_event(TRACE_CLASS_IDC, __e)
+#define trace_idc(__e, ...) \
+	trace_event(TRACE_CLASS_IDC, __e, ##__VA_ARGS__)
 
 /** \brief IDC trace value function. */
 #define tracev_idc(__e, ...) \
