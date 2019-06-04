@@ -9,8 +9,10 @@
 #include <stdint.h>
 #include <errno.h>
 #include <alsa/asoundlib.h>
-
-#define SOF_CTRL_CMD_BINARY 3 /* TODO: From uapi ipc */
+#include "kernel/abi.h"
+#include "kernel/header.h"
+#include "ipc/stream.h"
+#include "ipc/control.h"
 
 static void usage(char *name)
 {
@@ -66,6 +68,17 @@ static int read_setup(unsigned int *data, char setup[], size_t smax)
 
 	fclose(fh);
 	return n;
+}
+
+static void header_dump(struct sof_abi_hdr *hdr)
+{
+	fprintf(stdout, "hdr: magic 0x%8.8x\n", hdr->magic);
+	fprintf(stdout, "hdr: type %d", hdr->type);
+	fprintf(stdout, "hdr: size %d bytes\n", hdr->size);
+	fprintf(stdout, "hdr: abi %d:%d:%d\n",
+		SOF_ABI_VERSION_MAJOR(hdr->abi),
+		SOF_ABI_VERSION_MINOR(hdr->abi),
+		SOF_ABI_VERSION_PATCH(hdr->abi));
 }
 
 int main(int argc, char *argv[])
@@ -195,6 +208,9 @@ int main(int argc, char *argv[])
 			free(user_data);
 			exit(EXIT_FAILURE);
 		}
+
+		header_dump((struct sof_abi_hdr *)&user_data[2]);
+
 		user_data[1] = n * sizeof(unsigned int);
 		ret = snd_ctl_elem_tlv_write(ctl, id, user_data);
 		if (ret) {
@@ -216,6 +232,8 @@ int main(int argc, char *argv[])
 			exit(ret);
 		}
 		fprintf(stdout, "Success.\n");
+
+		header_dump((struct sof_abi_hdr *)&user_data[2]);
 
 		/* Print the read EQ configuration data with similar syntax
 		 * as the input file format.
