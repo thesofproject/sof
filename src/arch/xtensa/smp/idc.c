@@ -58,6 +58,10 @@ static void idc_irq_handler(void *arg)
 	tracev_idc("idc_irq_handler()");
 
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		/* skip current core */
+		if (core == i)
+			continue;
+
 		idctfc = idc_read(IPC_IDCTFC(i), core);
 
 		if (idctfc & IPC_IDCTFC_BUSY) {
@@ -75,21 +79,25 @@ static void idc_irq_handler(void *arg)
 					idctefc & IPC_IDCTEFC_MSG_MASK;
 
 			schedule_task(&idc->idc_task, 0, IDC_DEADLINE, 0);
-
-			break;
 		}
 	}
 
-	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-		idcietc = idc_read(IPC_IDCIETC(i), core);
+	/* DONE interrupt only enabled by master core */
+	if (core == PLATFORM_MASTER_CORE_ID) {
+		for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+			/* skip current core */
+			if (core == i)
+				continue;
 
-		if (idcietc & IPC_IDCIETC_DONE) {
-			tracev_idc("idc_irq_handler(), IPC_IDCIETC_DONE");
+			idcietc = idc_read(IPC_IDCIETC(i), core);
 
-			idc_write(IPC_IDCIETC(i), core,
-				  idcietc | IPC_IDCIETC_DONE);
+			if (idcietc & IPC_IDCIETC_DONE) {
+				tracev_idc("idc_irq_handler(), "
+					   "IPC_IDCIETC_DONE");
 
-			break;
+				idc_write(IPC_IDCIETC(i), core,
+					  idcietc | IPC_IDCIETC_DONE);
+			}
 		}
 	}
 }
@@ -254,7 +262,7 @@ static uint64_t idc_do_cmd(void *data)
 		  idc_read(IPC_IDCTFC(initiator), core) | IPC_IDCTFC_BUSY);
 
 	/* enable BUSY interrupt */
-	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask | idc->done_bit_mask);
+	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask);
 
 	return 0;
 }
