@@ -7,6 +7,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/clk.h>
 #include <sof/edf_schedule.h>
 #include <stdarg.h>
 #include <stddef.h>
