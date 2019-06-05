@@ -195,6 +195,7 @@ int platform_init(struct sof *sof)
 	scheduler_init();
 
 	/* init the system agent */
+	trace_point(TRACE_BOOT_PLATFORM_AGENT);
 	sa_init(sof);
 
 	/* Set CPU to default frequency for booting */
@@ -215,6 +216,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(sof);
 
+	trace_point(TRACE_BOOT_PLATFORM_DAI);
 	ret = dai_init();
 	if (ret < 0)
 		return -ENODEV;
@@ -263,6 +265,7 @@ int platform_init(struct sof *sof)
 
 #if CONFIG_TRACE
 	/* Initialize DMA for Trace*/
+	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
 	dma_trace_init_complete(sof->dmat);
 #endif
 

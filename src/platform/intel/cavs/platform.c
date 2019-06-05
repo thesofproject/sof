@@ -387,6 +387,7 @@ int platform_init(struct sof *sof)
 	platform_init_hw();
 #endif
 
+	trace_point(TRACE_BOOT_PLATFORM_IRQ);
 	platform_interrupt_init();
 
 #if defined(CONFIG_MEM_WND)
@@ -405,6 +406,7 @@ int platform_init(struct sof *sof)
 	scheduler_init();
 
 	/* init the system agent */
+	trace_point(TRACE_BOOT_PLATFORM_AGENT);
 	sa_init(sof);
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
@@ -487,12 +489,14 @@ int platform_init(struct sof *sof)
 		return ret;
 
 	/* init DAIs */
+	trace_point(TRACE_BOOT_PLATFORM_DAI);
 	ret = dai_init();
 	if (ret < 0)
 		return ret;
 
 #if defined(CONFIG_DW_SPI)
 	/* initialize the SPI slave */
+	trace_point(TRACE_BOOT_PLATFORM_SPI);
 	spi_init();
 	ret = spi_install(&spi, 1);
 	if (ret < 0)
@@ -508,6 +512,7 @@ int platform_init(struct sof *sof)
 		return ret;
 #elif CONFIG_TRACE
 	/* Initialize DMA for Trace*/
+	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
 	dma_trace_init_complete(sof->dmat);
 #endif
 
