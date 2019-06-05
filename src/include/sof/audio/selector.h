@@ -18,6 +18,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/format.h>
+#include <user/selector.h>
 
 /** \brief Selector trace function. */
 #define trace_selector(__e, ...) \
@@ -39,17 +40,6 @@
 #define SEL_SINK_1CH 1
 #define SEL_SINK_2CH 2
 #define SEL_SINK_4CH 4
-
-/** \brief Selector component configuration data. */
-struct sof_sel_config {
-	/* selector supports 1 input and 1 output */
-	uint32_t in_channels_count;	/**< accepted values 2 or 4 */
-	uint32_t out_channels_count;	/**< accepted values 1 or 2 or 4 */
-	/* note: if 2 or 4 output channels selected the component works in
-	 * a passthrough mode
-	 */
-	uint32_t sel_channel;	/**< 0..3 */
-};
 
 /** \brief Selector component private data. */
 struct comp_data {
