@@ -168,29 +168,28 @@ int platform_init(struct sof *sof)
 	struct dai *ssp1;
 	int ret;
 
-	trace_point(TRACE_BOOT_PLATFORM_MBOX);
-
 	/* clear mailbox for early trace and debug */
+	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 	bzero((void *)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
 	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 	platform_init_shim();
 
+	/* init timers, clocks and schedulers */
+	trace_point(TRACE_BOOT_PLATFORM_TIMER);
+	platform_timer_start(platform_timer);
+
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	clock_init();
 
-	/* init scheduler and clocks */
-	trace_point(TRACE_BOOT_SYS_SCHED);
+	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init();
-
-	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(platform_timer);
 
 	/* init the system agent */
 	sa_init(sof);
 
 	/* Set CPU to default frequency for booting */
-	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
+	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	/* set SSP clock to 25M */

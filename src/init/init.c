@@ -47,7 +47,7 @@ int master_core_init(struct sof *sof)
 	trace_init(sof);
 #endif
 
-	trace_point(TRACE_BOOT_SYS_NOTE);
+	trace_point(TRACE_BOOT_SYS_NOTIFIER);
 	init_system_notify(sof);
 
 	trace_point(TRACE_BOOT_SYS_POWER);
