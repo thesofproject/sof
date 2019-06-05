@@ -85,17 +85,20 @@
  * Gain amplitude value is between 0 (mute) ... 2^16 (0dB) ... 2^24 (~+48dB).
  */
 struct comp_data {
-	enum sof_ipc_frame source_format;	/**< source frame format */
-	enum sof_ipc_frame sink_format;		/**< sink frame format */
+	struct task volwork;		/**< volume scheduled work function */
+	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
 	int32_t volume[SOF_IPC_MAX_CHANNELS];	/**< current volume */
 	int32_t tvolume[SOF_IPC_MAX_CHANNELS];	/**< target volume */
 	int32_t mvolume[SOF_IPC_MAX_CHANNELS];	/**< mute volume */
+	int32_t ramp_increment[SOF_IPC_MAX_CHANNELS]; /**< for linear ramp */
+	int32_t vol_min;			/**< minimum volume */
+	int32_t vol_max;			/**< maximum volume */
+	int32_t	vol_ramp_range;			/**< max ramp transition */
+	enum sof_ipc_frame source_format;	/**< source frame format */
+	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	/**< volume processing function */
 	void (*scale_vol)(struct comp_dev *dev, struct comp_buffer *sink,
 			  struct comp_buffer *source, uint32_t frames);
-	struct task volwork;	/**< volume scheduled work function */
-	struct sof_ipc_ctrl_value_chan *hvol;	/**< host volume readback */
-	int32_t ramp_increment[SOF_IPC_MAX_CHANNELS];	/**< for linear ramp */
 };
 
 /** \brief Volume processing functions map. */
