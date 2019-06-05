@@ -44,6 +44,7 @@ int master_core_init(struct sof *sof)
 	init_heap(sof);
 
 #if CONFIG_TRACE
+	trace_point(TRACE_BOOT_SYS_TRACES);
 	trace_init(sof);
 #endif
 

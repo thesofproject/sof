@@ -98,6 +98,7 @@ int slave_core_init(struct sof *sof)
 	init_system_notify(sof);
 
 	/* interrupts need to be initialized before any usage */
+	trace_point(TRACE_BOOT_PLATFORM_IRQ);
 	platform_interrupt_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
