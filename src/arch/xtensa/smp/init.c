@@ -94,13 +94,13 @@ int slave_core_init(struct sof *sof)
 	if (err < 0)
 		panic(SOF_IPC_PANIC_ARCH);
 
-	trace_point(TRACE_BOOT_SYS_NOTE);
+	trace_point(TRACE_BOOT_SYS_NOTIFIER);
 	init_system_notify(sof);
 
 	/* interrupts need to be initialized before any usage */
 	platform_interrupt_init();
 
-	trace_point(TRACE_BOOT_SYS_SCHED);
+	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init();
 
 	/* initialize IDC mechanism */

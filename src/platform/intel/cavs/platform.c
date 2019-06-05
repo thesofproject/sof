@@ -389,28 +389,26 @@ int platform_init(struct sof *sof)
 
 	platform_interrupt_init();
 
-	trace_point(TRACE_BOOT_PLATFORM_MBOX);
-
 #if defined(CONFIG_MEM_WND)
+	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 	platform_memory_windows_init();
 #endif
-	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 
-	/* init work queues and clocks */
+	/* init timers, clocks and schedulers */
 	trace_point(TRACE_BOOT_PLATFORM_TIMER);
 	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	clock_init();
 
-	trace_point(TRACE_BOOT_SYS_SCHED);
+	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init();
 
 	/* init the system agent */
 	sa_init(sof);
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
-	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
+	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
 #if defined(CONFIG_APOLLOLAKE)
 	/* initialize PM for boot */
 
@@ -482,14 +480,14 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_IPC);
 	ipc_init(sof);
 
-	/* init DAIs */
-	ret = dai_init();
-	if (ret < 0)
-		return ret;
-
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
 	ret = idc_init();
+	if (ret < 0)
+		return ret;
+
+	/* init DAIs */
+	ret = dai_init();
 	if (ret < 0)
 		return ret;
 

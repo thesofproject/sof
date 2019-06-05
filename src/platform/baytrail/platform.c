@@ -168,45 +168,41 @@ int platform_init(struct sof *sof)
 #endif
 	int ret;
 
-	trace_point(TRACE_BOOT_PLATFORM_MBOX);
-
 	/* clear mailbox for early trace and debug */
+	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 	bzero((void *)MAILBOX_BASE, IPC_MAX_MAILBOX_BYTES);
 
-	trace_point(TRACE_BOOT_PLATFORM_SHIM);
-
 	/* configure the shim */
+	trace_point(TRACE_BOOT_PLATFORM_SHIM);
 #if defined CONFIG_BAYTRAIL
 	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x0000000e);
 #elif defined CONFIG_CHERRYTRAIL
 	shim_write(SHIM_MISC, shim_read(SHIM_MISC) | 0x00000e0e);
 #endif
 
-	trace_point(TRACE_BOOT_PLATFORM_PMC);
-
 	/* init PMC IPC */
+	trace_point(TRACE_BOOT_PLATFORM_PMC);
 	platform_ipc_pmc_init();
+
+	/* init timers, clocks and schedulers */
+	trace_point(TRACE_BOOT_PLATFORM_TIMER);
+	platform_timer_start(platform_timer);
 
 	trace_point(TRACE_BOOT_PLATFORM_CLOCK);
 	clock_init();
 
-	/* init scheduler and clocks */
-	trace_point(TRACE_BOOT_SYS_SCHED);
+	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init();
-
-	trace_point(TRACE_BOOT_PLATFORM_TIMER);
-	platform_timer_start(platform_timer);
 
 	/* init the system agent */
 	sa_init(sof);
 
 	/* Set CPU to default frequency for booting */
-	trace_point(TRACE_BOOT_SYS_CPU_FREQ);
+	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
-	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
-
 	/* set SSP clock to 19.2M */
+	trace_point(TRACE_BOOT_PLATFORM_SSP_FREQ);
 	clock_set_freq(CLK_SSP, 19200000);
 
 	/* init DMACs */
