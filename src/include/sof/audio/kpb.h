@@ -12,6 +12,7 @@
 #include <sof/notifier.h>
 #include <sof/trace.h>
 #include <sof/schedule.h>
+#include <user/kpb.h>
 
 /* KPB tracing */
 #define trace_kpb(__e, ...) trace_event(TRACE_CLASS_KPB, __e, ##__VA_ARGS__)
@@ -95,16 +96,6 @@ struct dd {
 	size_t history_depth;
 	uint8_t is_draining_active;
 	enum kpb_state *state;
-};
-
-/** \brief kpb component configuration data. */
-struct sof_kpb_config {
-	uint32_t size; /**< kpb size in bytes */
-	uint32_t caps; /**< SOF_MEM_CAPS_ */
-	uint32_t no_channels; /**< no of channels */
-	uint32_t history_depth; /**< time of buffering in milliseconds */
-	uint32_t sampling_freq; /**< frequency in hertz */
-	uint32_t sampling_width; /**< number of bits */
 };
 
 #ifdef UNIT_TEST
