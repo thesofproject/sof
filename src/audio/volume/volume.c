@@ -83,7 +83,7 @@ static uint64_t vol_work(void *data)
 		vol += cd->ramp_increment[i];
 		if (cd->volume[i] < cd->tvolume[i]) {
 			/* ramp up, check if ramp completed */
-			if (vol >= cd->tvolume[i] || vol >= VOL_MAX) {
+			if (vol >= cd->tvolume[i] || vol >= cd->vol_max) {
 				vol_update(cd, i);
 			} else {
 				cd->volume[i] = vol;
@@ -96,7 +96,8 @@ static uint64_t vol_work(void *data)
 				vol_update(cd, i);
 			} else {
 				/* ramp completed ? */
-				if (vol <= cd->tvolume[i] || vol <= VOL_MIN) {
+				if (vol <= cd->tvolume[i] ||
+				    vol <= cd->vol_min) {
 					vol_update(cd, i);
 				} else {
 					cd->volume[i] = vol;
@@ -157,14 +158,53 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 	schedule_task_init(&cd->volwork, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
 			   vol_work, dev, 0, 0);
 
-	/* set the default volumes */
+	/* Set the default volumes. If IPC sets min_value or max_value to
+	 * not-zero, use them. Otherwise set to internal limits and notify
+	 * ramp step calculation about assumed range with the range set to
+	 * zero.
+	 */
+	if (vol->min_value || vol->max_value) {
+		if (vol->min_value < VOL_MIN) {
+			/* Use VOL_MIN instead, no need to stop new(). */
+			cd->vol_min = VOL_MIN;
+			trace_volume_error("volume_new(): vol->min_value "
+					   "was limited to VOL_MIN.");
+		} else {
+			cd->vol_min = vol->min_value;
+		}
+
+		if (vol->max_value > VOL_MAX) {
+			/* Use VOL_MAX instead, no need to stop new(). */
+			cd->vol_max = VOL_MAX;
+			trace_volume_error("volume_new(): vol->max_value "
+					   "was limited to VOL_MAX.");
+		} else {
+			cd->vol_max = vol->max_value;
+		}
+
+		cd->vol_ramp_range = vol->max_value - vol->min_value;
+	} else {
+		/* Legacy mode, set the limits to firmware capability where
+		 * VOL_MAX is a very large gain to avoid restricting valid
+		 * requests. The default ramp rate will be computed based
+		 * on 0 - 1.0 gain range assumption when vol_ramp_range
+		 * is set to 0.
+		 */
+		cd->vol_min = VOL_MIN;
+		cd->vol_max = VOL_MAX;
+		cd->vol_ramp_range = 0;
+	}
+
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++) {
-		cd->volume[i]  =  MAX(MIN(VOL_MAX, VOL_ZERO_DB), VOL_MIN);
+		cd->volume[i]  =  MAX(MIN(cd->vol_max, VOL_ZERO_DB),
+				      cd->vol_min);
 		cd->tvolume[i] =  cd->volume[i];
 	}
 
-	trace_volume("vol->initial_ramp = %d, vol->ramp = %d",
-		     vol->initial_ramp, vol->ramp);
+	trace_volume("vol->initial_ramp = %d, vol->ramp = %d, "
+		     "vol->min_value = %d, vol->max_value = %d",
+		     vol->initial_ramp, vol->ramp,
+		     vol->min_value, vol->max_value);
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -220,11 +260,19 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 	 * multiplication overflow with the 32 bit value. Non-zero MIN option
 	 * can be useful to prevent totally muted small volume gain.
 	 */
-	if (v <= VOL_MIN)
+	if (v <= VOL_MIN) {
+		/* No need to fail, just trace the event. */
+		trace_volume_error("volume_set_chan: Limited request %d to "
+				   "VOL_MIN.", v);
 		v = VOL_MIN;
+	}
 
-	if (v > VOL_MAX)
+	if (v > VOL_MAX) {
+		/* No need to fail, just trace the event. */
+		trace_volume_error("volume_set_chan: Limited request %d to "
+				   "VOL_MAX.", v);
 		v = VOL_MAX;
+	}
 
 	cd->tvolume[chan] = v;
 
@@ -241,6 +289,15 @@ static inline int volume_set_chan(struct comp_dev *dev, int chan, uint32_t vol)
 			inc = MAX(VOL_RAMP_STEP_CONST / pga->initial_ramp, 1);
 		else
 			inc = VOL_ZERO_DB;
+
+		/* Scale the increment with actual volume range if it was
+		 * passed via IPC.
+		 */
+		if (cd->vol_ramp_range)
+			inc = q_multsr_32x32(inc, cd->vol_ramp_range,
+					     Q_SHIFT_BITS_32(VOL_QXY_Y,
+							     VOL_QXY_Y,
+							     VOL_QXY_Y));
 
 		delta = cd->tvolume[chan] - cd->volume[chan];
 		delta_abs = ABS(delta);
