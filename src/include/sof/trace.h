@@ -35,7 +35,7 @@
  * when main trace is not available
  */
 #define TRACE_BOOT_START		0x1000
-#define TRACE_BOOT_ARCH		0x2000
+#define TRACE_BOOT_ARCH			0x2000
 #define TRACE_BOOT_SYS			0x3000
 #define TRACE_BOOT_PLATFORM		0x4000
 
