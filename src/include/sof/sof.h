@@ -30,6 +30,7 @@ struct sa;
 	((size) - ((size) % (alignment)) + (alignment)))
 #define ALIGN_DOWN(size, alignment) \
 	((size) - ((size) % (alignment)))
+#define ALIGN ALIGN_UP
 
 #define __packed __attribute__((packed))
 
