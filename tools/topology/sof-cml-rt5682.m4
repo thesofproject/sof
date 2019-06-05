@@ -14,18 +14,28 @@ include(`common/tlv.m4')
 # Include Token library
 include(`sof/tokens.m4')
 
-# Include Cannonlake DSP configuration
-include(`platform/intel/cnl.m4')
+# Include Cannonlake or Icelake DSP configuration
+ifelse(PLATFORM, `icl', include(`platform/intel/icl.m4'),
+	ifelse(PLATFORM, `whl', include(`platform/intel/cnl.m4'),
+		ifelse(PLATFORM, `cml', include(`platform/intel/cnl.m4'), `')))
 include(`platform/intel/dmic.m4')
 
 DEBUG_START
 
 undefine(`SSP_INDEX')
-define(`SSP_INDEX', ifelse(PLATFORM, `whl', `1',
-	ifelse(PLATFORM, `cml', `0', `')))
+define(`SSP_INDEX', ifelse(PLATFORM, `icl', `0',
+	ifelse(PLATFORM, `whl', `1',
+		ifelse(PLATFORM, `cml', `0', `'))))
+
 undefine(`SSP_NAME')
-define(`SSP_NAME', ifelse(PLATFORM, `whl', `SSP1-Codec',
-	ifelse(PLATFORM, `cml', `SSP0-Codec', `')))
+define(`SSP_NAME', ifelse(PLATFORM, `icl', `SSP0-Codec',
+	ifelse(PLATFORM, `whl', `SSP1-Codec',
+		ifelse(PLATFORM, `cml', `SSP0-Codec', `'))))
+
+undefine(`SSP_MCLK_RATE')
+define(`SSP_MCLK_RATE', ifelse(PLATFORM, `icl', `19200000',
+	ifelse(PLATFORM, `whl', `24000000',
+		ifelse(PLATFORM, `cml', `24000000', `'))))
 
 #
 # Define the pipelines
@@ -142,7 +152,7 @@ PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_6)
 
 #SSP SSP_INDEX (ID: 0)
 DAI_CONFIG(SSP, SSP_INDEX, 0, SSP_NAME,
-	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
+	SSP_CONFIG(I2S, SSP_CLOCK(mclk, SSP_MCLK_RATE, codec_mclk_in),
 		      SSP_CLOCK(bclk, 2400000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 25, 3, 3),
