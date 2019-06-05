@@ -1,4 +1,5 @@
 #
+ifelse(CODEC, `RT5682', `# Topology for generic Baytrail board with RT5682.', `')
 ifelse(CODEC, `RT5651', `# Topology for generic Baytrail board with RT5651.', `')
 ifelse(CODEC, `RT5640', `# Topology for generic Baytrail board with RT5640.', `')
 ifelse(CODEC, `RT5645', `# Topology for generic Baytrail board with RT5645.', `')
@@ -20,10 +21,11 @@ include(`sof/tokens.m4')
 # Include Baytrail DSP configuration
 include(`platform/intel/byt.m4')
 
-define(PIPE_NAME, ifelse(CODEC, `RT5651', pipe-byt-rt5651,
-	ifelse(CODEC, `RT5640', pipe-byt-rt5640,
-		ifelse(CODEC, `RT5645', pipe-byt-rt5645,
-			ifelse(CODEC, `DA7213', pip-byt-da7213, `')))))
+define(PIPE_NAME, ifelse(CODEC, `RT5682', pipe-byt-rt5682,
+	ifelse(CODEC, `RT5651', pipe-byt-rt5651,
+		ifelse(CODEC, `RT5640', pipe-byt-rt5640,
+			ifelse(CODEC, `RT5645', pipe-byt-rt5645,
+				ifelse(CODEC, `DA7213', pip-byt-da7213, `'))))))
 
 #
 # Define the pipelines
