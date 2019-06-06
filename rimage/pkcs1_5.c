@@ -84,10 +84,12 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 		return -ENOMEM;
 
 	/* load in RSA private key from PEM file */
-	if (!image->key_name)
-		sprintf(path, "%s/otc_private_key.pem", PEM_KEY_PREFIX);
-	else
+	if (!image->key_name) {
+		snprintf(path, sizeof(path), "%s/otc_private_key.pem", PEM_KEY_PREFIX);
+	} else {
+		memset(path, 0, sizeof(path));
 		strncpy(path, image->key_name, sizeof(path) - 1);
+	}
 
 	fprintf(stdout, " pkcs: signing with key %s\n", path);
 	fp = fopen(path, "rb");
@@ -176,10 +178,12 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 		return -ENOMEM;
 
 	/* load in RSA private key from PEM file */
-	if (!image->key_name)
-		sprintf(path, "%s/otc_private_key.pem", PEM_KEY_PREFIX);
-	else
-		strcpy(path, image->key_name);
+	if (!image->key_name) {
+		snprintf(path, sizeof(path), "%s/otc_private_key.pem", PEM_KEY_PREFIX);
+	} else {
+		memset(path, 0, sizeof(path));
+		strncpy(path, image->key_name, sizeof(path) - 1);
+	}
 
 	fprintf(stdout, " pkcs: signing with key %s\n", path);
 	fp = fopen(path, "rb");
