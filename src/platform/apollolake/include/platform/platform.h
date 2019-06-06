@@ -146,7 +146,7 @@ struct sof;
 #define SSP_FIFO_WATERMARK	8
 
 /* minimal SSP port delay in cycles */
-#define PLATFORM_SSP_DELAY	2400
+#define PLATFORM_SSP_DELAY	800
 
 /* timer driven scheduling start offset in microseconds */
 #define PLATFORM_TIMER_START_OFFSET	100
