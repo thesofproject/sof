@@ -493,12 +493,19 @@ static int host_params(struct comp_dev *dev)
 	uint32_t buffer_count;
 	uint32_t buffer_single_size;
 	uint32_t period_count;
+	uint32_t align;
 	int err;
 
 	trace_event(TRACE_CLASS_HOST, "host_params()");
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = dev->params.buffer.size;
+
+	err = dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
+	if (err < 0) {
+		trace_host_error("could not get dma buffer alignment");
+		return err;
+	}
 
 	/* determine source and sink buffer elems */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
@@ -510,10 +517,13 @@ static int host_params(struct comp_dev *dev)
 			      BUFF_CB_TYPE_CONSUME);
 
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
+
 		period_count = cconfig->periods_sink;
 
 		buffer_count = hd->host.elem_array.count ? 1 : period_count;
-		buffer_single_size = dev->frames * comp_frame_bytes(dev);
+		buffer_single_size = ALIGN_UP(dev->frames *
+					      comp_frame_bytes(dev),
+					      align);
 
 		if (hd->host.elem_array.count)
 			buffer_single_size *= period_count;
@@ -529,9 +539,12 @@ static int host_params(struct comp_dev *dev)
 			      BUFF_CB_TYPE_PRODUCE);
 
 		config->direction = DMA_DIR_LMEM_TO_HMEM;
+
 		period_count = cconfig->periods_source;
 		buffer_count = period_count;
-		buffer_single_size = dev->frames * comp_frame_bytes(dev);
+		buffer_single_size = ALIGN_UP(dev->frames *
+					      comp_frame_bytes(dev),
+					      align);
 
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
@@ -543,8 +556,8 @@ static int host_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	/* calculate period size based on config */
-	hd->period_bytes = dev->frames * comp_frame_bytes(dev);
+	hd->period_bytes = ALIGN_UP(dev->frames * comp_frame_bytes(dev), align);
+
 	if (hd->period_bytes == 0) {
 		trace_host_error("host_params() error: invalid period_bytes");
 		return -EINVAL;
