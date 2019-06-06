@@ -1333,6 +1333,23 @@ static int dw_dma_get_data_size(struct dma *dma, unsigned int channel,
 	return 0;
 }
 
+static int dw_dma_get_attribute(struct dma *dma, uint32_t type,
+				uint32_t *value)
+{
+	int ret = 0;
+
+	switch (type) {
+	case DMA_ATTR_BUFFER_ALIGNMENT:
+		*value = DW_DMA_BUFFER_ALIGNMENT;
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 const struct dma_ops dw_dma_ops = {
 	.channel_get		= dw_dma_channel_get,
 	.channel_put		= dw_dma_channel_put,
@@ -1349,4 +1366,5 @@ const struct dma_ops dw_dma_ops = {
 	.probe			= dw_dma_probe,
 	.remove			= dw_dma_remove,
 	.get_data_size		= dw_dma_get_data_size,
+	.get_attribute		= dw_dma_get_attribute,
 };
