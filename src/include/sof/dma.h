@@ -79,6 +79,9 @@ enum dma_cb_status {
 
 #define DMA_CHAN_INVALID	0xFFFFFFFF
 
+/* DMA attributes */
+#define DMA_ATTR_BUFFER_ALIGNMENT	0
+
 struct dma;
 
 /**
@@ -158,6 +161,8 @@ struct dma_ops {
 
 	int (*get_data_size)(struct dma *dma, unsigned int channel,
 			     uint32_t *avail, uint32_t *free);
+
+	int (*get_attribute)(struct dma *dma, uint32_t type, uint32_t *value);
 };
 
 /* DMA platform data */
@@ -313,6 +318,12 @@ static inline int dma_get_data_size(struct dma *dma, int channel,
 				    uint32_t *avail, uint32_t *free)
 {
 	return dma->ops->get_data_size(dma, channel, avail, free);
+}
+
+static inline int dma_get_attribute(struct dma *dma, uint32_t type,
+				    uint32_t *value)
+{
+	return dma->ops->get_attribute(dma, type, value);
 }
 
 static inline void dma_sg_init(struct dma_sg_elem_array *ea)
