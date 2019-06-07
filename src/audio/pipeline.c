@@ -388,11 +388,8 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		goto out;
 	}
 
-	/* pipeline preload needed only for playback streams and capture
-	 * streams scheduled with timer
-	 */
-	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ||
-		pipeline_is_timer_driven(p);
+	/* pipeline preload needed only for playback streams */
+	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK;
 	p->status = COMP_STATE_PREPARE;
 
 out:
