@@ -24,6 +24,7 @@ static const char *debugfs[] = {
 	"dmac0", "dmac1", "ssp0", "ssp1",
 	"ssp2", "iram", "dram", "shim",
 	"mbox", "etrace",
+	"hda", "pp", "dsp",
 };
 
 static void usage(void)
