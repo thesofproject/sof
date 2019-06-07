@@ -10,6 +10,7 @@
 #define __INCLUDE_ALLOC__
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sof/string.h>
 #include <stdint.h>
 #include <sof/bit.h>
@@ -104,6 +105,8 @@ struct mm {
 void *_malloc(int zone, uint32_t caps, size_t bytes);
 void *_zalloc(int zone, uint32_t caps, size_t bytes);
 void *_balloc(int zone, uint32_t caps, size_t bytes);
+void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes);
+void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes);
 void rfree(void *ptr);
 
 #if CONFIG_DEBUG_HEAP
@@ -147,6 +150,32 @@ void rfree(void *ptr);
 	} while (0);					\
 	_ptr; })
 
+#define rrealloc(ptr, zone, caps, bytes)		\
+	({void *_ptr;					\
+	do {						\
+		_ptr = _realloc(ptr, zone, caps, bytes);	\
+		if (!_ptr) {				\
+			trace_error(TRACE_CLASS_MEM,	\
+				   "failed to alloc 0x%x bytes caps 0x%x", \
+				   bytes, caps);	\
+			alloc_trace_buffer_heap(zone, caps, bytes);	\
+		}					\
+	} while (0);					\
+	_ptr; })
+
+#define rbrealloc(ptr, zone, caps, bytes)		\
+	({void *_ptr;					\
+	do {						\
+		_ptr = _brealloc(ptr, zone, caps, bytes);	\
+		if (!_ptr) {				\
+			trace_error(TRACE_CLASS_MEM,	\
+				   "failed to alloc 0x%x bytes caps 0x%x", \
+				   bytes, caps);	\
+			alloc_trace_buffer_heap(zone, caps, bytes);	\
+		}					\
+	} while (0);					\
+	_ptr; })
+
 void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes);
 void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes);
 
@@ -155,6 +184,10 @@ void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes);
 #define rmalloc(zone, caps, bytes)	_malloc(zone, caps, bytes)
 #define rzalloc(zone, caps, bytes)	_zalloc(zone, caps, bytes)
 #define rballoc(zone, caps, bytes)	_balloc(zone, caps, bytes)
+#define rrealloc(ptr, zone, caps, bytes)	\
+	_realloc(ptr, zone, caps, bytes)
+#define rbrealloc(ptr, zone, caps, bytes)	\
+	_brealloc(ptr, zone, caps, bytes)
 
 #endif
 

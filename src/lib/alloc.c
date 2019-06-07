@@ -530,13 +530,9 @@ static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 	return get_ptr_from_heap(heap, zone, caps, bytes);
 }
 
-/* allocates memory - not for direct use, clients use rmalloc() */
-void *_malloc(int zone, uint32_t caps, size_t bytes)
+static void *_malloc_unlocked(int zone, uint32_t caps, size_t bytes)
 {
-	uint32_t flags;
 	void *ptr = NULL;
-
-	spin_lock_irq(&memmap.lock, flags);
 
 	switch (zone & RZONE_TYPE_MASK) {
 	case RZONE_SYS:
@@ -559,8 +555,22 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 		bzero(ptr, bytes);
 #endif
 
-	spin_unlock_irq(&memmap.lock, flags);
 	memmap.heap_trace_updated = 1;
+	return ptr;
+}
+
+/* allocates memory - not for direct use, clients use rmalloc() */
+void *_malloc(int zone, uint32_t caps, size_t bytes)
+{
+	uint32_t flags;
+	void *ptr = NULL;
+
+	spin_lock_irq(&memmap.lock, flags);
+
+	ptr = _malloc_unlocked(zone, caps, bytes);
+
+	spin_unlock_irq(&memmap.lock, flags);
+
 	return ptr;
 }
 
@@ -641,15 +651,11 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 	return ptr;
 }
 
-/* allocates continuous buffers - not for direct use, clients use rballoc() */
-void *_balloc(int zone, uint32_t caps, size_t bytes)
+static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes)
 {
 	struct mm_heap *heap;
 	unsigned int i, n;
 	void *ptr = NULL;
-	uint32_t flags;
-
-	spin_lock_irq(&memmap.lock, flags);
 
 	for (i = 0, n = PLATFORM_HEAP_BUFFER, heap = memmap.buffer;
 	     i < PLATFORM_HEAP_BUFFER;
@@ -666,15 +672,27 @@ void *_balloc(int zone, uint32_t caps, size_t bytes)
 		/* Continue from the next heap */
 	}
 
+	return ptr;
+}
+
+/* allocates continuous buffers - not for direct use, clients use rballoc() */
+void *_balloc(int zone, uint32_t caps, size_t bytes)
+{
+	void *ptr = NULL;
+	uint32_t flags;
+
+	spin_lock_irq(&memmap.lock, flags);
+
+	ptr = _balloc_unlocked(zone, caps, bytes);
+
 	spin_unlock_irq(&memmap.lock, flags);
 
 	return ptr;
 }
 
-void rfree(void *ptr)
+static void _rfree_unlocked(void *ptr)
 {
 	struct mm_heap *cpu_heap;
-	uint32_t flags;
 
 	/* sanity check - NULL ptrs are fine */
 	if (!ptr)
@@ -697,10 +715,63 @@ void rfree(void *ptr)
 	}
 
 	/* free the block */
-	spin_lock_irq(&memmap.lock, flags);
 	free_block(ptr);
-	spin_unlock_irq(&memmap.lock, flags);
 	memmap.heap_trace_updated = 1;
+}
+
+void rfree(void *ptr)
+{
+	uint32_t flags;
+
+	spin_lock_irq(&memmap.lock, flags);
+	_rfree_unlocked(ptr);
+	spin_unlock_irq(&memmap.lock, flags);
+}
+
+void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+{
+	void *new_ptr = NULL;
+	uint32_t flags;
+
+	if (!bytes)
+		return new_ptr;
+
+	spin_lock_irq(&memmap.lock, flags);
+
+	new_ptr = _malloc_unlocked(zone, caps, bytes);
+
+	if (new_ptr && ptr)
+		memcpy_s(new_ptr, bytes, ptr, bytes);
+
+	if (new_ptr)
+		_rfree_unlocked(ptr);
+
+	spin_unlock_irq(&memmap.lock, flags);
+
+	return new_ptr;
+}
+
+void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+{
+	void *new_ptr = NULL;
+	uint32_t flags;
+
+	if (!bytes)
+		return new_ptr;
+
+	spin_lock_irq(&memmap.lock, flags);
+
+	new_ptr = _balloc_unlocked(zone, caps, bytes);
+
+	if (new_ptr && ptr)
+		memcpy_s(new_ptr, bytes, ptr, bytes);
+
+	if (new_ptr)
+		_rfree_unlocked(ptr);
+
+	spin_unlock_irq(&memmap.lock, flags);
+
+	return new_ptr;
 }
 
 /* TODO: all mm_pm_...() routines to be implemented for IMR storage */
