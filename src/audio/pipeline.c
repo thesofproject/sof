@@ -728,7 +728,7 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 
 	err = pipeline_for_each_comp(current, &pipeline_comp_copy,
 				     data, NULL, dir);
-	if (err < 0)
+	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
 
 	if (dir == PPL_DIR_UPSTREAM)
