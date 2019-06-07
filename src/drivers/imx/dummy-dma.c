@@ -70,7 +70,7 @@ static int dummy_dma_pm_context_store(struct dma *dma)
 }
 
 static int dummy_dma_set_cb(struct dma *dma, unsigned int channel, int type,
-		void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
+		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 		void *data)
 {
 	return 0;

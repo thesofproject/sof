@@ -325,11 +325,11 @@ static uint64_t spi_completion_work(void *data)
 }
 
 static void spi_dma_complete(void *data, uint32_t type,
-			     struct dma_sg_elem *next)
+			     struct dma_cb_data *next)
 {
 	struct spi *spi = data;
 
-	next->size = DMA_RELOAD_END;
+	next->status = DMA_CB_STATUS_END;
 
 	schedule_task(&spi->completion, 0, 100, 0);
 }

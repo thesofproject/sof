@@ -69,7 +69,7 @@ struct dw_dma_chan_data {
 	struct dw_dma_ptr_data ptr_data;
 
 	/* client callback function */
-	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next);
+	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next);
 	/* client callback data */
 	void *cb_data;
 	/* callback type */
@@ -850,7 +850,7 @@ static int dw_dma_pm_context_store(struct dma *dma)
 
 static int dw_dma_set_cb(struct dma *dma, unsigned int channel, int type,
 			 void (*cb)(void *data, uint32_t type,
-				    struct dma_sg_elem *next),
+				    struct dma_cb_data *next),
 			 void *data)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
@@ -949,15 +949,15 @@ static inline void dw_dma_chan_reload_next(struct dma *dma,
 #endif
 
 static void dw_dma_verify_transfer(struct dma *dma, unsigned int channel,
-				   struct dma_sg_elem *next)
+				   struct dma_cb_data *next)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
 #if CONFIG_HW_LLI
 	struct dw_lli *ll_uncached = cache_to_uncache(chan->lli_current);
 
-	switch (next->size) {
-	case DMA_RELOAD_END:
+	switch (next->status) {
+	case DMA_CB_STATUS_END:
 		chan->status = COMP_STATE_PREPARE;
 		dw_write(dma, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel));
 		/* fallthrough */
@@ -971,29 +971,28 @@ static void dw_dma_verify_transfer(struct dma *dma, unsigned int channel,
 	}
 #else
 	/* check for reload channel:
-	 * next.size is DMA_RELOAD_END, stop this dma copy;
-	 * next.size > 0 but not DMA_RELOAD_LLI, use next
-	 * element for next copy;
-	 * if we are waiting for pause, pause it;
+	 * next->status is DMA_CB_STATUS_END, stop this dma copy;
+	 * next->status is DMA_CB_STATUS_SPLIT, use next element for next copy;
 	 * otherwise, reload lli
 	 */
-	switch (next->size) {
-	case DMA_RELOAD_END:
+	switch (next->status) {
+	case DMA_CB_STATUS_END:
 		chan->status = COMP_STATE_PREPARE;
 		chan->lli_current = (struct dw_lli *)chan->lli_current->llp;
 		break;
-	case DMA_RELOAD_LLI:
-		dw_dma_chan_reload_lli(dma, channel);
+	case DMA_CB_STATUS_SPLIT:
+		dw_dma_chan_reload_next(dma, channel, &next->elem,
+					chan->direction);
 		break;
 	default:
-		dw_dma_chan_reload_next(dma, channel, next, chan->direction);
+		dw_dma_chan_reload_lli(dma, channel);
 		break;
 	}
 #endif
 }
 
 static void dw_dma_irq_callback(struct dma *dma, unsigned int channel,
-				struct dma_sg_elem *next, uint32_t type)
+				struct dma_cb_data *next, uint32_t type)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
@@ -1008,7 +1007,7 @@ static void dw_dma_irq_callback(struct dma *dma, unsigned int channel,
 	if (chan->cb && chan->cb_type & type)
 		chan->cb(chan->cb_data, type, next);
 
-	if (next->size != DMA_RELOAD_IGNORE)
+	if (next->status != DMA_CB_STATUS_IGNORE)
 		dw_dma_verify_transfer(dma, channel, next);
 }
 
@@ -1017,10 +1016,9 @@ static int dw_dma_copy(struct dma *dma, unsigned int channel, int bytes,
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
-	struct dma_sg_elem next = {
-		.src = DMA_RELOAD_LLI,
-		.dest = DMA_RELOAD_LLI,
-		.size = bytes
+	struct dma_cb_data next = {
+		.elem = { .size = bytes },
+		.status = DMA_CB_STATUS_RELOAD
 	};
 
 	if (channel >= dma->plat_data.channels ||
@@ -1054,11 +1052,7 @@ static void dw_dma_irq_handler(void *data)
 	uint32_t status_src;
 	uint32_t mask;
 	int i;
-	struct dma_sg_elem next = {
-		.src = DMA_RELOAD_LLI,
-		.dest = DMA_RELOAD_LLI,
-		.size = DMA_RELOAD_LLI
-	};
+	struct dma_cb_data next = { .status = DMA_CB_STATUS_RELOAD };
 
 	status_intr = dw_read(dma, DW_INTR_STATUS);
 	if (!status_intr)

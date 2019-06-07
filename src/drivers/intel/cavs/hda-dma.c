@@ -137,9 +137,8 @@ struct hda_chan_data {
 #if HDA_DMA_PTR_DBG
 	struct hda_dbg_data dbg_data;
 #endif
-
-	void (*cb)(void *data, uint32_t type,
-		   struct dma_sg_elem *next); /* client callback */
+	/* client callback */
+	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next);
 	void *cb_data;		/* client callback data */
 	int cb_type;		/* callback type */
 };
@@ -313,15 +312,11 @@ static int hda_dma_wait_for_buffer_empty(struct dma *dma,
 static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
 			      int bytes)
 {
-	struct dma_sg_elem next = {
-			.src = DMA_RELOAD_LLI,
-			.dest = DMA_RELOAD_LLI,
-			.size = bytes
-	};
+	struct dma_cb_data next = { .elem = { .size = bytes } };
 
 	if (chan->cb) {
 		chan->cb(chan->cb_data, DMA_CB_TYPE_COPY, &next);
-		if (next.size == DMA_RELOAD_END)
+		if (next.status == DMA_CB_STATUS_END)
 			/* disable channel, finished */
 			hda_dma_stop(dma, chan->index);
 	}
@@ -809,7 +804,7 @@ static int hda_dma_pm_context_store(struct dma *dma)
 }
 
 static int hda_dma_set_cb(struct dma *dma, unsigned int channel, int type,
-	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
+	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 	void *data)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);

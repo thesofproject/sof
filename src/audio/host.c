@@ -106,12 +106,12 @@ static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
  * overflow host period/buffer/page boundaries on each transfer and split the
  * DMA transfer if we do overflow.
  */
-static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
+static void host_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
 #if CONFIG_DMA_GW
-	uint32_t bytes = next->size;
+	uint32_t bytes = next->elem.size;
 #else
 	struct dma_sg_elem *local_elem;
 	struct dma_sg_elem *source_elem;
@@ -206,13 +206,14 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	/* schedule immediate split transfer if needed */
 	if (need_copy) {
-		next->src = local_elem->src;
-		next->dest = local_elem->dest;
-		next->size = local_elem->size;
+		next->elem.src = local_elem->src;
+		next->elem.dest = local_elem->dest;
+		next->elem.size = local_elem->size;
+		next->status = DMA_CB_STATUS_SPLIT;
 		return;
 	}
 
-	next->size = DMA_RELOAD_END;
+	next->status = DMA_CB_STATUS_END;
 #endif
 }
 

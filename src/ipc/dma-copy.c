@@ -51,7 +51,7 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 
 #if !CONFIG_DMA_GW
 
-static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
+static void dma_complete(void *data, uint32_t type, struct dma_cb_data *next)
 {
 	completion_t *comp = (completion_t *)data;
 
@@ -60,7 +60,7 @@ static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
 
 	ipc_dma_trace_send_position();
 
-	next->size = DMA_RELOAD_END;
+	next->status = DMA_CB_STATUS_END;
 }
 
 #endif
