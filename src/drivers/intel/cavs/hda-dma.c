@@ -242,6 +242,18 @@ static void hda_dma_get_dbg_vals(struct hda_chan_data *chan,
 #define hda_dma_ptr_trace(...)
 #endif
 
+static inline int hda_dma_is_buffer_full(struct dma *dma,
+					 struct hda_chan_data *chan)
+{
+	return host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF;
+}
+
+static inline int hda_dma_is_buffer_empty(struct dma *dma,
+					  struct hda_chan_data *chan)
+{
+	return !(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BNE);
+}
+
 static int hda_dma_wait_for_buffer_full(struct dma *dma,
 					struct hda_chan_data *chan)
 {
@@ -251,11 +263,10 @@ static int hda_dma_wait_for_buffer_full(struct dma *dma,
 	uint32_t rp;
 	uint32_t wp;
 
-	while (!(host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BF)) {
+	while (!hda_dma_is_buffer_full(dma, chan)) {
 		if (deadline < platform_timer_get(platform_timer)) {
 			/* safe check in case we've got preempted after read */
-			if (host_dma_reg_read(dma, chan->index, DGCS) &
-			    DGCS_BF)
+			if (hda_dma_is_buffer_full(dma, chan))
 				return 0;
 
 			rp = host_dma_reg_read(dma, chan->index, DGBRP);
@@ -280,11 +291,10 @@ static int hda_dma_wait_for_buffer_empty(struct dma *dma,
 	uint32_t rp;
 	uint32_t wp;
 
-	while (host_dma_reg_read(dma, chan->index, DGCS) & DGCS_BNE) {
+	while (!hda_dma_is_buffer_empty(dma, chan)) {
 		if (deadline < platform_timer_get(platform_timer)) {
 			/* safe check in case we've got preempted after read */
-			if (!(host_dma_reg_read(dma, chan->index, DGCS) &
-			    DGCS_BNE))
+			if (hda_dma_is_buffer_empty(dma, chan))
 				return 0;
 
 			rp = host_dma_reg_read(dma, chan->index, DGBRP);
