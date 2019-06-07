@@ -590,8 +590,7 @@ static int dai_copy(struct comp_dev *dev)
 			return ret;
 		platform_dai_wallclock(dev, &dd->wallclock);
 
-		/* let's not copy further */
-		return 1;
+		return 0;
 	}
 
 	/* get data sizes from DMA */
