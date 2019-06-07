@@ -314,12 +314,8 @@ static void hda_dma_post_copy(struct dma *dma, struct hda_chan_data *chan,
 {
 	struct dma_cb_data next = { .elem = { .size = bytes } };
 
-	if (chan->cb) {
+	if (chan->cb)
 		chan->cb(chan->cb_data, DMA_CB_TYPE_COPY, &next);
-		if (next.status == DMA_CB_STATUS_END)
-			/* disable channel, finished */
-			hda_dma_stop(dma, chan->index);
-	}
 
 	/* Force Host DMA to exit L1 */
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
