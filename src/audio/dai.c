@@ -101,29 +101,11 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 	}
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		/* make sure there are available bytes for next period */
-		if (dd->dma_buffer->avail < bytes) {
-			trace_dai_error_with_ids(dev, "dai_buffer_process() "
-						 "error: Insufficient bytes for"
-						 " next period. "
-						 "comp_underrun()");
-			comp_underrun(dev, dd->dma_buffer, bytes, 0);
-		}
-
 		/* recalc available buffer space */
 		comp_update_buffer_consume(dd->dma_buffer, bytes);
 
 		buffer_ptr = dd->dma_buffer->r_ptr;
 	} else {
-		/* make sure there are free bytes for next period */
-		if (dd->dma_buffer->free < bytes) {
-			trace_dai_error_with_ids(dev, "dai_buffer_process() "
-						 "error: Insufficient free "
-						 "bytes for next period. "
-						 "comp_overrun()");
-			comp_overrun(dev, dd->dma_buffer, bytes, 0);
-		}
-
 		/* recalc available buffer space */
 		comp_update_buffer_produce(dd->dma_buffer, bytes);
 
@@ -558,6 +540,35 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+/* check if xrun occurred */
+static int dai_check_for_xrun(struct comp_dev *dev, uint32_t copy_bytes)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+
+	/* data available for copy */
+	if (copy_bytes)
+		return 0;
+
+	/* no data yet, we're just starting */
+	if (!dev->position)
+		return PPL_STATUS_PATH_STOP;
+
+	/* xrun occurred */
+	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
+		trace_dai_error_with_ids(dev, "dai_check_for_xrun() "
+					 "error: underrun due to no data "
+					 "available");
+		comp_underrun(dev, dd->dma_buffer, copy_bytes, 0);
+	} else {
+		trace_dai_error_with_ids(dev, "dai_check_for_xrun() "
+					 "error: overrun due to no data "
+					 "available");
+		comp_overrun(dev, dd->dma_buffer, copy_bytes, 0);
+	}
+
+	return -ENODATA;
+}
+
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
@@ -594,6 +605,11 @@ static int dai_copy(struct comp_dev *dev)
 		MIN(avail_bytes, dd->dma_buffer->free);
 
 	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
+
+	/* check for underrun or overrun */
+	ret = dai_check_for_xrun(dev, copy_bytes);
+	if (ret < 0 || ret == PPL_STATUS_PATH_STOP)
+		return ret;
 
 	ret = dma_copy(dd->dma, dd->chan, copy_bytes, 0);
 	if (ret < 0)
