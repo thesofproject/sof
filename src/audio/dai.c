@@ -69,17 +69,18 @@ struct dai_data {
 	uint64_t wallclock;	/* wall clock at stream start */
 };
 
-static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
+static void dai_buffer_process(struct comp_dev *dev, struct dma_cb_data *next)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	uint32_t bytes = next->size;
+	uint32_t bytes = next->elem.size;
 	void *buffer_ptr;
 
 	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
 	/* lli needs to be reloaded if irq is disabled */
-	next->size = config->irq_disabled ? DMA_RELOAD_LLI : DMA_RELOAD_IGNORE;
+	next->status = config->irq_disabled ? DMA_CB_STATUS_RELOAD :
+		DMA_CB_STATUS_IGNORE;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -87,7 +88,7 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
 
 		/* tell DMA not to reload */
-		next->size = DMA_RELOAD_END;
+		next->status = DMA_CB_STATUS_END;
 	}
 
 	/* is our pipeline handling an XRUN ? */
@@ -122,7 +123,7 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 }
 
 /* this is called by DMA driver every time descriptor has completed */
-static void dai_dma_cb(void *data, uint32_t type, struct dma_sg_elem *next)
+static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 

@@ -66,12 +66,15 @@
 #define DMA_COPY_PRELOAD	BIT(0)
 #define DMA_COPY_BLOCKING	BIT(1)
 
-/* We will use this macro in cb handler to inform dma that
- * we need to stop the reload for special purpose
+/* We will use this enum in cb handler to inform dma what
+ * action we need to perform.
  */
-#define DMA_RELOAD_END		0
-#define DMA_RELOAD_IGNORE	0xFFFFFFFE
-#define DMA_RELOAD_LLI		0xFFFFFFFF
+enum dma_cb_status {
+	DMA_CB_STATUS_RELOAD = 0,
+	DMA_CB_STATUS_SPLIT,
+	DMA_CB_STATUS_IGNORE,
+	DMA_CB_STATUS_END,
+};
 
 #define DMA_CHAN_INVALID	0xFFFFFFFF
 
@@ -84,6 +87,14 @@ struct dma_sg_elem {
 	uint32_t src;	/**< source address */
 	uint32_t dest;	/**< destination address */
 	uint32_t size;	/**< size (in bytes) */
+};
+
+/**
+ *  \brief Data used in DMA callbacks.
+ */
+struct dma_cb_data {
+	struct dma_sg_elem elem;
+	enum dma_cb_status status;
 };
 
 /**
@@ -135,7 +146,7 @@ struct dma_ops {
 		struct dma_sg_config *config);
 
 	int (*set_cb)(struct dma *dma, unsigned int channel, int type,
-		void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
+		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 		void *data);
 
 	int (*pm_context_restore)(struct dma *dma);
@@ -233,7 +244,7 @@ static inline void dma_channel_put(struct dma *dma, int channel)
 }
 
 static inline int dma_set_cb(struct dma *dma, int channel, int type,
-	void (*cb)(void *data, uint32_t type, struct dma_sg_elem *next),
+	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 	void *data)
 {
 	return dma->ops->set_cb(dma, channel, type, cb, data);

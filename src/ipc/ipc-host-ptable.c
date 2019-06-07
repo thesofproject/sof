@@ -81,7 +81,7 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	return 0;
 }
 
-static void dma_complete(void *data, uint32_t type, struct dma_sg_elem *next)
+static void dma_complete(void *data, uint32_t type, struct dma_cb_data *next)
 {
 	completion_t *complete = data;
 
