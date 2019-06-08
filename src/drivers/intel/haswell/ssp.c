@@ -154,6 +154,46 @@ static inline int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
+	/* Additional hardware settings */
+
+	/* Receiver Time-out Interrupt Disabled/Enabled */
+	sscr1 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_TINTE) ?
+		SSCR1_TINTE : 0;
+
+	/* Peripheral Trailing Byte Interrupts Disable/Enable */
+	sscr1 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PINTE) ?
+		SSCR1_PINTE : 0;
+
+	/* Enable/disable internal loopback. Output of transmit serial
+	 * shifter connected to input of receive serial shifter, internally.
+	 */
+	sscr1 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_LBM) ?
+		SSCR1_LBM : 0;
+
+	/* Transmit data are driven at the same/opposite clock edge specified
+	 * in SSPSP.SCMODE[1:0]
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_SMTATF) ?
+		SSCR2_SMTATF : 0;
+
+	/* Receive data are sampled at the same/opposite clock edge specified
+	 * in SSPSP.SCMODE[1:0]
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_MMRATF) ?
+		SSCR2_MMRATF : 0;
+
+	/* Enable/disable the fix for PSP slave mode TXD wait for frame
+	 * de-assertion before starting the second channel
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSTWFDFD) ?
+		SSCR2_PSPSTWFDFD : 0;
+
+	/* Enable/disable the fix for PSP master mode FSRT with dummy stop &
+	 * frame end padding capability
+	 */
+	sscr2 |= (ssp->params.quirks & SOF_DAI_INTEL_SSP_QUIRK_PSPSRWFDFD) ?
+		SSCR2_PSPSRWFDFD : 0;
+
 	/* BCLK is generated from MCLK - must be divisable */
 	if (config->ssp.mclk_rate % config->ssp.bclk_rate) {
 		trace_ssp_error("ssp_set_config() error: "
