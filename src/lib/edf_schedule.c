@@ -501,6 +501,7 @@ static void edf_schedule_idle(void)
 	struct list_item *tlist;
 	struct list_item *clist;
 	struct task *task;
+	uint64_t ret;
 
 	/* Are we on passive level? */
 	if (arch_interrupt_get_level() != SOF_IRQ_PASSIVE_LEVEL)
@@ -512,11 +513,13 @@ static void edf_schedule_idle(void)
 
 		/* run task if we find any queued */
 		if (task->state == SOF_TASK_STATE_QUEUED) {
-			task->func(task->data);
-			task->state = SOF_TASK_STATE_COMPLETED;
+			ret = task->func(task->data);
 
-			/* task done, remove it from the list */
-			list_item_del(clist);
+			if (ret == 0) {
+				/* task done, remove it from the list */
+				task->state = SOF_TASK_STATE_COMPLETED;
+				list_item_del(clist);
+			}
 		}
 	}
 }
