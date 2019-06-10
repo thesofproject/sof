@@ -977,5 +977,5 @@ static uint64_t pipeline_task(void *arg)
 	}
 
 	tracev_pipe("pipeline_task() sched");
-	return p->ipc_pipe.period;
+	return pipeline_is_timer_driven(p) ? p->ipc_pipe.period : 0;
 }
