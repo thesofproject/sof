@@ -130,7 +130,7 @@ config ICELAKE
 	select CAVS
 	select CAVS_VERSION_2_0
 	help
-		Select if your target platform is Icelake-compatible
+	  Select if your target platform is Icelake-compatible
 
 config LIBRARY
 	bool "Build Library"
