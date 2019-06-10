@@ -11,14 +11,14 @@
 #include "cse.h"
 #include "manifest.h"
 
-static int elf_read_sections(struct image *image, struct module *module)
+static int elf_read_sections(struct image *image, struct module *module,
+			     int module_index)
 {
 	Elf32_Ehdr *hdr = &module->hdr;
 	Elf32_Shdr *section = module->section;
 	size_t count;
 	int i, ret;
 	uint32_t valid = (SHF_WRITE | SHF_ALLOC | SHF_EXECINSTR);
-	int man_section_idx;
 
 	/* read in section header */
 	ret = fseek(module->fd, hdr->shoff, SEEK_SET);
@@ -65,28 +65,42 @@ static int elf_read_sections(struct image *image, struct module *module)
 		return -errno;
 	}
 
-	/* find manifest module data */
-	man_section_idx = elf_find_section(image, module, ".bss");
-	if (man_section_idx < 0) {
-		/* no bss - it is OK for boot_ldr */
+	if (image->num_modules > 1 && module_index == 0) {
+		/* In case of multiple modules first one should be bootloader,
+		 * that should not have these sections.
+		 */
+		fprintf(stdout, "info: ignore .bss"
+			" section for bootloader module\n");
+
 		module->bss_start = 0;
 		module->bss_end = 0;
+
+		fprintf(stdout, "info: ignore .static_log_entries"
+			" section for bootloader module\n");
+
+		module->logs_index = -EINVAL;
+
+		fprintf(stdout, "info: ignore .fw_ready"
+			" section for bootloader module\n");
+
+		module->fw_ready_index = -EINVAL;
 	} else {
-		module->bss_index = man_section_idx;
+		/* find manifest module data */
+		module->bss_index = elf_find_section(image, module, ".bss");
+		if (module->bss_index < 0)
+			return module->bss_index;
+
+		/* find log entries and fw ready sections */
+		module->logs_index = elf_find_section(image, module,
+						      ".static_log_entries");
+		if (module->logs_index < 0)
+			return module->logs_index;
+
+		module->fw_ready_index = elf_find_section(image, module,
+							  ".fw_ready");
+		if (module->fw_ready_index < 0)
+			return module->fw_ready_index;
 	}
-
-	fprintf(stdout, " BSS module metadata section at index %d\n",
-		man_section_idx);
-
-	/* find log entries and fw ready sections */
-	module->logs_index = elf_find_section(image, module,
-					      ".static_log_entries");
-	fprintf(stdout, " static log entries section at index %d\n",
-		module->logs_index);
-	module->fw_ready_index = elf_find_section(image, module,
-						  ".fw_ready");
-	fprintf(stdout, " fw ready section at index %d\n",
-		module->fw_ready_index);
 
 	/* parse each section */
 	for (i = 0; i < hdr->shnum; i++) {
@@ -567,7 +581,7 @@ int elf_parse_module(struct image *image, int module_index, const char *name)
 	}
 
 	/* read sections */
-	ret = elf_read_sections(image, module);
+	ret = elf_read_sections(image, module, module_index);
 	if (ret < 0) {
 		fprintf(stderr, "error: failed to read base sections %d\n",
 			ret);
