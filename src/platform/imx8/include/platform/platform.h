@@ -10,6 +10,7 @@
 
 #include <sof/platform.h>
 #include <platform/interrupt.h>
+#include <platform/clk.h>
 
 struct sof;
 
