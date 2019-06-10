@@ -2,7 +2,9 @@
 
 if(CONFIG_IMX8)
 	add_subdirectory(imx)
-else()
+endif()
+
+if(CONFIG_INTEL)
 	add_subdirectory(intel)
 endif()
 

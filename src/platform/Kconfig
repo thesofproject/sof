@@ -17,6 +17,7 @@ config BAYTRAIL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTEL
 	help
 	  Select if your target platform is Baytrail-compatible
 
@@ -31,6 +32,7 @@ config CHERRYTRAIL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTEL
 	help
 	  Select if your target platform is Cherrytrail-compatible
 
@@ -42,6 +44,7 @@ config HASWELL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTEL
 	help
 	  Select if your target platform is Haswell-compatible
 
@@ -53,6 +56,7 @@ config BROADWELL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTEL
 	help
 	  Select if your target platform is Broadwell-compatible
 
@@ -144,9 +148,17 @@ config IMX8
 
 endchoice
 
+config INTEL
+	bool
+	default n
+	help
+	  This has to be selected for every Intel platform.
+	  It enables Intel platforms-specific features.
+
 config CAVS
 	bool
 	default n
+	select INTEL
 
 config CAVS_VERSION_1_5
 	depends on CAVS
