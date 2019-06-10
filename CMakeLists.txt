@@ -148,9 +148,13 @@ if(BUILD_UNIT_TESTS)
 	return()
 endif()
 
-# for FW just install uapi folder
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/src/include/uapi
-	DESTINATION include
+# for FW just install api folders
+install(
+	DIRECTORY
+		${PROJECT_SOURCE_DIR}/src/include/ipc
+		${PROJECT_SOURCE_DIR}/src/include/kernel
+		${PROJECT_SOURCE_DIR}/src/include/user
+	DESTINATION include/sof
 	PATTERN "*.h"
 )
 
