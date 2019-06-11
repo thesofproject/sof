@@ -422,11 +422,19 @@ static int hda_dma_host_copy(struct dma *dma, unsigned int channel, int bytes,
 
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_HOST);
 
-	if (!(flags & DMA_COPY_PRELOAD))
+	if (flags & DMA_COPY_PRELOAD) {
+		/* report lack of data if preload is not yet finished */
+		ret = chan->direction == DMA_DIR_HMEM_TO_LMEM ?
+			hda_dma_is_buffer_full(dma, chan) :
+			hda_dma_is_buffer_empty(dma, chan);
+		if (!ret)
+			return -ENODATA;
+	} else {
 		/* set BFPI to let host gateway know we have read size,
 		 * which will trigger next copy start.
 		 */
 		hda_dma_inc_fp(dma, chan->index, bytes);
+	}
 
 	/* blocking mode copy */
 	if (flags & DMA_COPY_BLOCKING) {

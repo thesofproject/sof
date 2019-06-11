@@ -763,10 +763,17 @@ static int host_copy(struct comp_dev *dev)
 	/* here only do preload, further copies happen
 	 * in host_buffer_cb()
 	 */
-	if (pipeline_is_preload(dev->pipeline)) {
+	if (pipeline_is_preload(dev->pipeline) && !dev->position) {
 		ret = dma_copy(hd->dma, hd->chan, hd->dma_buffer->size,
-			       DMA_COPY_PRELOAD | DMA_COPY_BLOCKING);
+			       DMA_COPY_PRELOAD);
 		if (ret < 0) {
+			if (ret == -ENODATA) {
+				/* preload not finished, so stop processing */
+				trace_host("host_copy(), preload not yet "
+					   "finished");
+				return PPL_STATUS_PATH_STOP;
+			}
+
 			trace_host_error("host_copy() error: dma_copy() "
 					 "failed, ret = %u", ret);
 			return ret;
