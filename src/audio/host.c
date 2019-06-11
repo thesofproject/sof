@@ -730,31 +730,15 @@ static int host_copy_one_shot(struct comp_dev *dev)
 /* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
 {
+#if CONFIG_DMA_GW
 	struct host_data *hd = comp_get_drvdata(dev);
-	struct dma_sg_elem *local_elem;
+#endif
 	int ret = 0;
 
 	tracev_host("host_copy()");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
-
-	local_elem = hd->config.elem_array.elems;
-
-	/* enough free or avail to copy ? */
-	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
-		if (hd->dma_buffer->free < local_elem->size) {
-			/* buffer is enough avail, just return. */
-			tracev_host("host_copy(), buffer is enough avail");
-			return 0;
-		}
-	} else {
-		if (hd->dma_buffer->avail < local_elem->size) {
-			/* buffer is enough empty, just return. */
-			tracev_host("host_copy(), buffer is enough empty");
-			return 0;
-		}
-	}
 
 	/* TODO: this could be run-time if() based on the same attribute
 	 * as in the host_trigger().
