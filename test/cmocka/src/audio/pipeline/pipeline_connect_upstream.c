@@ -84,11 +84,8 @@ static void test_audio_pipeline_complete_connect_downstream_variable_set
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);
 
-	assert_int_equal
-	(
-	result.sched_comp->frames, test_data->p.ipc_pipe.frames_per_sched
-	);
 	assert_ptr_equal(result.sched_comp->pipeline, &result);
+	assert_ptr_equal(test_data->first->pipeline, &result);
 }
 
 /*Test going downstream ignoring sink from other pipeline*/
@@ -171,10 +168,8 @@ static void test_audio_pipeline_complete_connect_downstream_full(void **state)
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);
 
-	assert_int_equal(test_data->first->frames,
-					 result.ipc_pipe.frames_per_sched);
-	assert_int_equal(test_data->second->frames,
-					 result.ipc_pipe.frames_per_sched);
+	assert_ptr_equal(test_data->first->pipeline, &result);
+	assert_ptr_equal(test_data->second->pipeline, &result);
 }
 
 /*Test going upstream all the way*/
@@ -195,10 +190,8 @@ static void test_audio_pipeline_complete_connect_upstream_full(void **state)
 	/*Testing component*/
 	pipeline_complete(&result, test_data->first, test_data->second);
 
-	assert_int_equal(test_data->first->frames,
-					 result.ipc_pipe.frames_per_sched);
-	assert_int_equal(test_data->second->frames,
-					 result.ipc_pipe.frames_per_sched);
+	assert_ptr_equal(test_data->first->pipeline, &result);
+	assert_ptr_equal(test_data->second->pipeline, &result);
 }
 
 /*Test going upstream all the way*/
