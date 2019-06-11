@@ -18,12 +18,14 @@ static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
 static struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
 
 /* Heap blocks for system runtime for slave core */
+#if PLATFORM_CORE_COUNT > 1
 static struct block_hdr
 	sys_rt_x_block64[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64];
 static struct block_hdr
 	sys_rt_x_block512[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT512];
 static struct block_hdr
 	sys_rt_x_block1024[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT1024];
+#endif
 
 /* Heap memory for system runtime */
 static struct block_map sys_rt_heap_map[PLATFORM_CORE_COUNT][3] = {
