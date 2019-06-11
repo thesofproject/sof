@@ -11,7 +11,7 @@ config SMP
 	  Build SMP instead of UP
 
 config CORE_COUNT
-	int "Number of cores"
+	int "Number of cores" if SMP
 	default 1
 	help
 	  Number of used cores
