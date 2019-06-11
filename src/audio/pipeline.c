@@ -780,7 +780,9 @@ static int pipeline_copy(struct pipeline *p)
 				 "->comp.id = %u, dir = %u", ret,
 				 start->comp.id, dir);
 
-	p->preload = false;
+	/* stop preload only after full walkthrough */
+	if (ret != PPL_STATUS_PATH_STOP)
+		p->preload = false;
 
 	return ret;
 }
@@ -974,5 +976,8 @@ static uint64_t pipeline_task(void *arg)
 	}
 
 	tracev_pipe("pipeline_task() sched");
-	return pipeline_is_timer_driven(p) ? p->ipc_pipe.period : 0;
+
+	/* automatically reschedule for timer or not finished preload */
+	return (pipeline_is_timer_driven(p) || p->preload) ?
+		p->ipc_pipe.period : 0;
 }
