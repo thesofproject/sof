@@ -14,6 +14,7 @@
 #include <sof/notifier.h>
 #include <sof/audio/component.h>
 #include <mock_trace.h>
+#include <sof/clk.h>
 
 TRACE_IMPL()
 
@@ -72,4 +73,19 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 	(void)p;
 	(void)filename;
 	(void)linenum;
+}
+
+uint64_t platform_timer_get(struct timer *timer)
+{
+	(void)timer;
+
+	return 0;
+}
+
+uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
+{
+	(void)clock;
+	(void)ms;
+
+	return 0;
 }
