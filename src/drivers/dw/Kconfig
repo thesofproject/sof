@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+config DW
+	bool
+	default n
+	help
+	  This has to be selected if platform supports Designware features.
+
+if DW
+
+config DW_DMA
+	bool "Designware DMA driver"
+	default n
+	help
+	  Select this to enable support for the Designware DMA controller.
+
+config DW_SPI
+	bool
+	default n
+
+config DW_GPIO
+	bool
+	default n
+
+endif # DW

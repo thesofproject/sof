@@ -4,17 +4,6 @@ menu "Drivers"
 
 source "src/drivers/intel/cavs/Kconfig"
 
-config DW
-	bool
-	default n
-	help
-	  This has to be selected if platform supports Designware features.
-
-config DW_DMA
-	bool "Designware DMA driver"
-	depends on DW
-	default n
-	help
-	  Select this to enable support for the Designware DMA controller.
+source "src/drivers/dw/Kconfig"
 
 endmenu # "Drivers"
