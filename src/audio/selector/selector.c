@@ -373,12 +373,13 @@ static int selector_prepare(struct comp_dev *dev)
 				source_list);
 
 	/* get source data format and period bytes */
-	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
-			      &cd->source_period_bytes);
+	cd->source_format = comp_frame_fmt(sourceb->source);
+	cd->source_period_bytes = comp_period_bytes(sourceb->source,
+						    dev->frames);
 
 	/* get sink data format and period bytes */
-	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
-			      &cd->sink_period_bytes);
+	cd->sink_format = comp_frame_fmt(sinkb->sink);
+	cd->sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
 
 	/* There is an assumption that sink component will report out
 	 * proper number of channels [1] for selector to actually

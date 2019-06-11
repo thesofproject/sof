@@ -363,16 +363,6 @@ static inline void comp_free(struct comp_dev *dev)
 int comp_set_state(struct comp_dev *dev, int cmd);
 
 /**
- * Component set period bytes
- * @param dev Component device.
- * @param frames Number of frames.
- * @param format Frame format.
- * @param period_bytes Size of a single period in bytes.
- */
-void comp_set_period_bytes(struct comp_dev *dev, uint32_t frames,
-			   enum sof_ipc_frame *format, uint32_t *period_bytes);
-
-/**
  * Component parameter init.
  * @param dev Component device.
  * @return 0 if succeeded, error code otherwise.
@@ -631,6 +621,17 @@ static inline uint32_t comp_sample_bytes(struct comp_dev *dev)
 	}
 }
 
+/**
+ * Calculates period size in bytes based on component device's parameters.
+ * @param dev Component device.
+ * @param frames Number of processing frames.
+ * @return Period size in bytes.
+ */
+static inline uint32_t comp_period_bytes(struct comp_dev *dev, uint32_t frames)
+{
+	return frames * comp_frame_bytes(dev);
+}
+
 static inline uint32_t comp_avail_frames(struct comp_buffer *source,
 					 struct comp_buffer *sink)
 {
@@ -638,6 +639,32 @@ static inline uint32_t comp_avail_frames(struct comp_buffer *source,
 	uint32_t sink_frames = sink->free / comp_frame_bytes(sink->sink);
 
 	return MIN(src_frames, sink_frames);
+}
+
+/**
+ * Returns frame format based on component device's type.
+ * @param dev Component device.
+ * @return Frame format.
+ */
+static inline enum sof_ipc_frame comp_frame_fmt(struct comp_dev *dev)
+{
+	struct sof_ipc_comp_config *sconfig;
+	enum sof_ipc_frame frame_fmt;
+
+	switch (dev->comp.type) {
+	case SOF_COMP_DAI:
+	case SOF_COMP_SG_DAI:
+		/* format comes from DAI/comp config */
+		sconfig = COMP_GET_CONFIG(dev);
+		frame_fmt = sconfig->frame_fmt;
+		break;
+	default:
+		/* format comes from IPC params */
+		frame_fmt = dev->params.frame_fmt;
+		break;
+	}
+
+	return frame_fmt;
 }
 
 /**

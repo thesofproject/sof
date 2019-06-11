@@ -691,7 +691,6 @@ static int eq_fir_prepare(struct comp_dev *dev)
 	struct sof_ipc_comp_config *config = COMP_GET_CONFIG(dev);
 	struct comp_buffer *sourceb;
 	struct comp_buffer *sinkb;
-	uint32_t source_period_bytes;
 	uint32_t sink_period_bytes;
 	int ret;
 
@@ -711,12 +710,11 @@ static int eq_fir_prepare(struct comp_dev *dev)
 				struct comp_buffer, source_list);
 
 	/* get source data format */
-	comp_set_period_bytes(sourceb->source, dev->frames, &cd->source_format,
-			      &source_period_bytes);
+	cd->source_format = comp_frame_fmt(sourceb->source);
 
-	/* get sink data format */
-	comp_set_period_bytes(sinkb->sink, dev->frames, &cd->sink_format,
-			      &sink_period_bytes);
+	/* get sink data format and period bytes */
+	cd->sink_format = comp_frame_fmt(sinkb->sink);
+	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
 
 	/* Rewrite params format for this component to match the host side. */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
