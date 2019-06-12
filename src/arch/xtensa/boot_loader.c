@@ -236,7 +236,6 @@ void boot_master_core(void)
 {
 	int32_t result;
 
-	/* TODO: platform trace should write to HW IPC regs on CNL */
 	platform_trace_point(TRACE_BOOT_LDR_ENTRY);
 
 	/* init the HPSRAM */
