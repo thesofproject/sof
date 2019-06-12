@@ -192,7 +192,7 @@ static uint32_t hp_sram_init(void)
 
 #endif
 
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_LP_SRAM)
 static int32_t lp_sram_init(void)
 {
 	uint32_t status;
@@ -206,8 +206,8 @@ static int32_t lp_sram_init(void)
 	/* add some delay before writing power registers */
 	idelay(delay_count);
 
-	lspgctl_value = shim_read(LSPGCTL);
-	shim_write(LSPGCTL, lspgctl_value & !LPSRAM_MASK(0));
+	lspgctl_value = shim_read(SHIM_LSPGCTL);
+	shim_write(SHIM_LSPGCTL, lspgctl_value & !LPSRAM_MASK(0));
 
 	/* add some delay before checking the status */
 	idelay(delay_count);
@@ -246,7 +246,7 @@ void boot_master_core(void)
 		return;
 	}
 
-#if defined(CONFIG_APOLLOLAKE)
+#if defined(CONFIG_LP_SRAM)
 	/* init the LPSRAM */
 	platform_trace_point(TRACE_BOOT_LDR_LPSRAM);
 
