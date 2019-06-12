@@ -40,11 +40,12 @@ define(`SSP_MCLK_RATE', ifelse(PLATFORM, `icl', `19200000',
 #
 # Define the pipelines
 #
-# PCM0 <---> volume <----> SSP(SSP_INDEX)
-# PCM1 ----> volume -----> DMIC01 (dmic0 capture)
-# PCM2 ----> volume -----> iDisp1
-# PCM3 ----> volume -----> iDisp2
-# PCM4 ----> volume -----> iDisp3
+# PCM0 <---> volume <----> SSP(SSP_INDEX, BE link 0)
+# PCM1 <------------------ DMIC01 (dmic0 capture, , BE link 1)
+# PCM2 ----> volume -----> iDisp1 (HDMI/DP playback, BE link 3)
+# PCM3 ----> volume -----> iDisp2 (HDMI/DP playback, BE link 4)
+# PCM4 ----> volume -----> iDisp3 (HDMI/DP playback, BE link 5)
+# PCM5 <------------------ DMIC16k (dmic16k, BE link 2)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -86,6 +87,12 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 	6, 4, 2, s32le,
 	48, 1000, 0, 0)
+
+# Passthrough capture pipeline 7 on PCM 5 using max 2 channels.
+# Schedule 16 frames per 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-passthrough-capture.m4,
+	7, 5, 2, s16le,
+	16, 1000, 0, 0)
 
 #
 # DAIs configuration
@@ -138,6 +145,14 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 	PIPELINE_SOURCE_6, 2, s32le,
 	48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+# capture DAI is DMIC16k using 2 periods
+# Buffers use s16le format, with 16 frame per 1000us on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-capture.m4,
+	7, DMIC, 1, dmic16k,
+	PIPELINE_SINK_7, 2, s16le,
+	16, 1000, 0, 0)
+
+
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_DUPLEX_ADD(Port1, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
@@ -145,6 +160,7 @@ PCM_CAPTURE_ADD(DMIC01, 1, PIPELINE_PCM_3)
 PCM_PLAYBACK_ADD(HDMI1, 2, PIPELINE_PCM_4)
 PCM_PLAYBACK_ADD(HDMI2, 3, PIPELINE_PCM_5)
 PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_6)
+PCM_CAPTURE_ADD(DMIC16k, 5, PIPELINE_PCM_7)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -164,10 +180,15 @@ DAI_CONFIG(DMIC, 0, 1, dmic01,
 		DMIC_WORD_LENGTH(s32le), 400, DMIC, 0,
 		PDM_CONFIG(DMIC, 0, FOUR_CH_PDM0_PDM1)))
 
-# 3 HDMI/DP outputs (ID: 2,3,4)
-DAI_CONFIG(HDA, 0, 2, iDisp1)
-DAI_CONFIG(HDA, 1, 3, iDisp2)
-DAI_CONFIG(HDA, 2, 4, iDisp3)
+# dmic16k (ID: 2)
+DAI_CONFIG(DMIC, 1, 2, dmic16k,
+	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
+		DMIC_WORD_LENGTH(s16le), 400, DMIC, 1,
+		PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
 
+# 3 HDMI/DP outputs (ID: 3,4,5)
+DAI_CONFIG(HDA, 0, 3, iDisp1)
+DAI_CONFIG(HDA, 1, 4, iDisp2)
+DAI_CONFIG(HDA, 2, 5, iDisp3)
 
 DEBUG_END
