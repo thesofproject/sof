@@ -178,6 +178,7 @@
 
 #define SHIM_PWRSTS		0x92
 #define SHIM_LPSCTL		0x94
+#define SHIM_LSPGCTL		0x50
 
 /** \brief GPDMA shim registers Control */
 #define SHIM_GPDMA_BASE_OFFSET	0x6500
