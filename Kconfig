@@ -5,10 +5,10 @@ mainmenu "SOF $(PROJECTVERSION) Configuration"
 comment "Compiler: $(CC_VERSION_TEXT)"
 
 menu "CAVS"
+	depends on CAVS
 
 config HP_MEMORY_BANKS
 	int "HP memory banks count"
-	depends on CAVS
 	default 8
 	help
 	  Available memory banks count for High Performance memory
@@ -20,7 +20,6 @@ config HP_MEMORY_BANKS
 config LP_MEMORY_BANKS
 	int "LP memory banks count"
 	default 1
-	depends on CAVS
 	help
 	  Available memory banks count for Low Power memory
 
