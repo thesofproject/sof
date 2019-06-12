@@ -20,8 +20,17 @@ config HP_MEMORY_BANKS
 config LP_MEMORY_BANKS
 	int "LP memory banks count"
 	default 1
+	depends on CAVS
+	depends on LP_SRAM
 	help
 	  Available memory banks count for Low Power memory
+
+config LP_SRAM
+	bool "Enable LPSRAM memory"
+	default n
+	depends on CAVS
+	help
+	  Turn ON/OFF LPSRAM bank/s
 
 endmenu
 
