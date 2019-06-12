@@ -433,11 +433,8 @@ static int tone_params(struct comp_dev *dev)
 
 	dev->params.frame_fmt = config->frame_fmt;
 
-	/* Need to compute this in non-host endpoint */
-	dev->frame_bytes = comp_frame_bytes(dev);
-
 	/* calculate period size based on config */
-	cd->period_bytes = dev->frames * dev->frame_bytes;
+	cd->period_bytes = dev->frames * comp_frame_bytes(dev);
 
 	return 0;
 }

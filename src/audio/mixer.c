@@ -150,15 +150,8 @@ static int mixer_params(struct comp_dev *dev)
 
 	trace_mixer("mixer_params()");
 
-	/* calculate frame size based on config */
-	dev->frame_bytes = comp_frame_bytes(dev);
-	if (dev->frame_bytes == 0) {
-		trace_mixer_error("mixer_params() error: frame_bytes = 0");
-		return -EINVAL;
-	}
-
 	/* calculate period size based on config */
-	period_bytes = dev->frames * dev->frame_bytes;
+	period_bytes = dev->frames * comp_frame_bytes(dev);
 	if (period_bytes == 0) {
 		trace_mixer_error("mixer_params() error: period_bytes = 0");
 		return -EINVAL;

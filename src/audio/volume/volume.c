@@ -617,17 +617,14 @@ static int volume_prepare(struct comp_dev *dev)
 	if (!sink_period_bytes) {
 		trace_volume_error("volume_prepare() error: "
 				   "sink_period_bytes = 0, dev->frames ="
-				   " %u, sinkb->sink->frame_bytes = %u",
-				   dev->frames, sinkb->sink->frame_bytes);
+				   " %u", dev->frames);
 		ret = -EINVAL;
 		goto err;
 	}
 	if (!source_period_bytes) {
 		trace_volume_error("volume_prepare() error: "
 				   "source_period_bytes = 0, "
-				   "dev->frames = %u, "
-				   "sourceb->source->frame_bytes = %u",
-				   dev->frames, sourceb->source->frame_bytes);
+				   "dev->frames = %u", dev->frames);
 		ret = -EINVAL;
 		goto err;
 	}

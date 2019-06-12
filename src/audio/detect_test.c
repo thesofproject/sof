@@ -282,8 +282,6 @@ static int test_keyword_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	dev->frame_bytes = comp_frame_bytes(dev);
-
 	/* calculate the length of the preamble */
 	if (cd->config.preamble_time) {
 		cd->keyphrase_samples = cd->config.preamble_time *

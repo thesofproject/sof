@@ -500,12 +500,9 @@ static int file_params(struct comp_dev *dev)
 			dev->params.sample_container_bytes = 4;
 	}
 
-	/* Need to compute this in non-host endpoint */
-	dev->frame_bytes =
-		dev->params.sample_container_bytes * dev->params.channels;
-
 	/* calculate period size based on config */
-	cd->period_bytes = dev->frames * dev->frame_bytes;
+	cd->period_bytes = dev->frames * dev->params.sample_container_bytes *
+		dev->params.channels;
 
 	/* File to sink supports only S32_LE/S16_LE/S24_4LE PCM formats */
 	if (config->frame_fmt != SOF_IPC_FRAME_S32_LE &&
