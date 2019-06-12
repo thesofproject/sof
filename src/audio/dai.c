@@ -560,12 +560,12 @@ static int dai_check_for_xrun(struct comp_dev *dev, uint32_t copy_bytes)
 		trace_dai_error_with_ids(dev, "dai_check_for_xrun() "
 					 "error: underrun due to no data "
 					 "available");
-		comp_underrun(dev, dd->dma_buffer, copy_bytes, 0);
+		comp_underrun(dev, dd->dma_buffer, copy_bytes);
 	} else {
 		trace_dai_error_with_ids(dev, "dai_check_for_xrun() "
 					 "error: overrun due to no data "
 					 "available");
-		comp_overrun(dev, dd->dma_buffer, copy_bytes, 0);
+		comp_overrun(dev, dd->dma_buffer, copy_bytes);
 	}
 
 	return -ENODATA;
