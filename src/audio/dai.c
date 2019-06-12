@@ -58,7 +58,6 @@ struct dai_data {
 
 	struct dai *dai;
 	struct dma *dma;
-	uint32_t period_bytes;
 	int xrun;		/* true if we are doing xrun recovery */
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
@@ -225,7 +224,7 @@ static void dai_free(struct comp_dev *dev)
 }
 
 /* set component audio SSP and DMA configuration */
-static int dai_playback_params(struct comp_dev *dev)
+static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
@@ -243,7 +242,7 @@ static int dai_playback_params(struct comp_dev *dev)
 
 	/* set up local and host DMA elems to reset values */
 	source_config = COMP_GET_CONFIG(dd->dma_buffer->source);
-	buffer_size = source_config->periods_sink * dd->period_bytes;
+	buffer_size = source_config->periods_sink * period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dd->dma_buffer, buffer_size);
@@ -251,11 +250,11 @@ static int dai_playback_params(struct comp_dev *dev)
 		trace_dai_error_with_ids(dev, "dai_playback_params() error: "
 					 "buffer_set_size() failed to resize "
 					 "buffer. source_config->periods_sink ="
-					 " %u; dd->period_bytes = %u; "
+					 " %u; period_bytes = %u; "
 					 "buffer_size = %u; "
 					 "dd->dma_buffer->alloc_size = %u",
 					 source_config->periods_sink,
-					 dd->period_bytes, buffer_size,
+					 period_bytes, buffer_size,
 					 dd->dma_buffer->alloc_size);
 		return err;
 	}
@@ -264,7 +263,7 @@ static int dai_playback_params(struct comp_dev *dev)
 		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
 				   config->direction,
 				   source_config->periods_sink,
-				   dd->period_bytes,
+				   period_bytes,
 				   (uintptr_t)(dd->dma_buffer->r_ptr),
 				   dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK));
 		if (err < 0) {
@@ -278,7 +277,7 @@ static int dai_playback_params(struct comp_dev *dev)
 	return 0;
 }
 
-static int dai_capture_params(struct comp_dev *dev)
+static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
@@ -307,7 +306,7 @@ static int dai_capture_params(struct comp_dev *dev)
 
 	/* set up local and host DMA elems to reset values */
 	sink_config = COMP_GET_CONFIG(dd->dma_buffer->sink);
-	buffer_size = sink_config->periods_source * dd->period_bytes;
+	buffer_size = sink_config->periods_source * period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dd->dma_buffer, buffer_size);
@@ -315,11 +314,11 @@ static int dai_capture_params(struct comp_dev *dev)
 		trace_dai_error_with_ids(dev, "dai_capture_params() error: "
 					 "buffer_set_size() failed to resize "
 					 "buffer. sink_config->periods_sink = "
-					 "%u; dd->period_bytes = %u; "
+					 "%u; period_bytes = %u; "
 					 "buffer_size = %u; "
 					 "dd->dma_buffer->alloc_size = %u",
 					 sink_config->periods_sink,
-					 dd->period_bytes, buffer_size,
+					 period_bytes, buffer_size,
 					 dd->dma_buffer->alloc_size);
 		return err;
 	}
@@ -328,7 +327,7 @@ static int dai_capture_params(struct comp_dev *dev)
 		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
 				   config->direction,
 				   sink_config->periods_source,
-				   dd->period_bytes,
+				   period_bytes,
 				   (uintptr_t)(dd->dma_buffer->w_ptr),
 				   dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE));
 		if (err < 0) {
@@ -346,6 +345,7 @@ static int dai_params(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
+	uint32_t period_bytes;
 
 	trace_dai_with_ids(dev, "dai_params()");
 
@@ -374,8 +374,8 @@ static int dai_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	dd->period_bytes = dev->frames * dev->frame_bytes;
-	if (dd->period_bytes == 0) {
+	period_bytes = dev->frames * dev->frame_bytes;
+	if (!period_bytes) {
 		trace_dai_error_with_ids(dev, "dai_params() error: device has "
 					 "no bytes (no frames to copy to sink).");
 		return -EINVAL;
@@ -387,14 +387,14 @@ static int dai_params(struct comp_dev *dev)
 						 sink_list);
 		dd->dma_buffer->r_ptr = dd->dma_buffer->addr;
 
-		return dai_playback_params(dev);
+		return dai_playback_params(dev, period_bytes);
 	}
 
 	dd->dma_buffer = list_first_item(&dev->bsink_list,
 					 struct comp_buffer, source_list);
 	dd->dma_buffer->w_ptr = dd->dma_buffer->addr;
 
-	return dai_capture_params(dev);
+	return dai_capture_params(dev, period_bytes);
 
 }
 
