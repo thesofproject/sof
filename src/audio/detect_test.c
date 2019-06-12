@@ -573,17 +573,6 @@ static int test_keyword_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list,
 				 struct comp_buffer, sink_list);
 
-	/* make sure source component buffer has enough data available for copy
-	 * Also check for XRUNs
-	 */
-	if (!source->avail) {
-		trace_keyword_error("test_keyword_copy() error: "
-				   "source component buffer"
-				   " has not enough data available");
-		comp_underrun(dev, source, 1, 0);
-		return -EIO;	/* xrun */
-	}
-
 	/* copy and perform detection */
 	cd->detect_func(dev, source,
 			source->avail / comp_frame_bytes(dev));

@@ -270,26 +270,9 @@ static int mixer_copy(struct comp_dev *dev)
 	if (num_mix_sources == 0)
 		return 0;
 
-	/* check for overrun */
-	if (sink->free == 0) {
-		trace_mixer_error("mixer_copy() error: sink component buffer "
-				  "has not enough free bytes for copy");
-		comp_overrun(dev, sink, 0, 0);
-		return -EIO;
-	}
-
 	/* check for underruns */
-	for (i = 0; i < num_mix_sources; i++) {
-		if (sources[i]->avail == 0) {
-			trace_mixer_error("mixer_copy() error: source %u "
-					  "component buffer has not enough "
-					  "data available", i);
-			comp_underrun(dev, sources[i], 0, 0);
-			return -EIO;
-		}
-
+	for (i = 0; i < num_mix_sources; i++)
 		frames = MIN(frames, comp_avail_frames(sources[i], sink));
-	}
 
 	/* Every source has the same format, so calculate bytes based
 	 * on the first one.

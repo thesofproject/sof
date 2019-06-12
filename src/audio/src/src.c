@@ -749,20 +749,6 @@ static int src_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	/* check for underrun */
-	if (source->avail == 0) {
-		trace_src_error("src_copy() error: Empty source buffer.");
-		comp_underrun(dev, source, 0, 0);
-		return -EIO;
-	}
-
-	/* check for overrun */
-	if (sink->free == 0) {
-		trace_src_error("src_copy() error: Full sink buffer.");
-		comp_overrun(dev, sink, 0, 0);
-		return -EIO;
-	}
-
 	/* Get from buffers and SRC conversion specific block constraints
 	 * how many frames can be processed. If sufficient number of samples
 	 * is not available the processing is omitted.

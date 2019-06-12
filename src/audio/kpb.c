@@ -482,23 +482,6 @@ static int kpb_copy(struct comp_dev *dev)
 		return -EIO;
 	if (!source->r_ptr || !sink->w_ptr)
 		return -EINVAL;
-	/* Check if there is enough free/available space */
-	if (sink->free == 0) {
-		trace_kpb_error("kpb_copy() error: "
-				"sink component buffer"
-				" has not enough free bytes for copy");
-		comp_overrun(dev, sink, sink->free, 0);
-		/* xrun */
-		return -EIO;
-	}
-	if (source->avail == 0) {
-		trace_kpb_error("kpb_copy() error: "
-				"source component buffer"
-				" has not enough data available");
-		comp_underrun(dev, source, source->avail, 0);
-		/* xrun */
-		return -EIO;
-	}
 
 	/* Sink and source are both ready and have space */
 	copy_bytes = MIN(sink->free, source->avail);
