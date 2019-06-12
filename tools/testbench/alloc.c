@@ -36,6 +36,16 @@ void *rballoc(int zone, uint32_t caps, size_t bytes)
 	return malloc(bytes);
 }
 
+void *rrealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+{
+	return realloc(ptr, bytes);
+}
+
+void *rbrealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+{
+	return realloc(ptr, bytes);
+}
+
 void heap_trace(struct mm_heap *heap, int size)
 {
 	malloc_info(0, stdout);
