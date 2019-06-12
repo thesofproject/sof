@@ -20,8 +20,17 @@ config HP_MEMORY_BANKS
 config LP_MEMORY_BANKS
 	int "LP memory banks count"
 	default 1
+	depends on LP_SRAM
 	help
 	  Available memory banks count for Low Power memory
+
+config LP_SRAM
+	bool "Enable LPSRAM memory"
+	default n
+	help
+	  Turn ON/OFF LPSRAM bank/s. This provides an option to enable an LPSRAM
+	  memory for specific platform. Until this options is enabled firmware will
+	  not enable any of LPSRAM memory banks.
 
 endmenu
 
