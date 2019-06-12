@@ -630,11 +630,7 @@ static int tone_copy(struct comp_dev *dev)
 		return dev->frames;
 	}
 
-	/* XRUN */
-	trace_tone_error("tone_copy() error: "
-			 "sink has not enough free frames");
-	comp_overrun(dev, sink, cd->period_bytes, sink->free);
-	return -EIO;
+	return 0;
 }
 
 static int tone_prepare(struct comp_dev *dev)

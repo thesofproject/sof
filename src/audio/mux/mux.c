@@ -234,14 +234,6 @@ static int demux_copy(struct comp_dev *dev)
 	if (source->source->state != dev->state)
 		return 0;
 
-	/* check for underrun */
-	if (source->avail == 0) {
-		trace_mux_error("demux_copy() error: source component buffer "
-				"has not enough data avaialble.");
-		comp_underrun(dev, source, 0, 0);
-		return -EIO;
-	}
-
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
@@ -310,27 +302,6 @@ static int mux_copy(struct comp_dev *dev)
 	/* check if sink is active */
 	if (sink->sink->state != dev->state)
 		return 0;
-
-	/* check for underrun */
-	for (i = 0; i < MUX_MAX_STREAMS; i++) {
-		if (!sources[i])
-			continue;
-		if (sources[i]->avail == 0) {
-			trace_mux_error("mux_copy() error: source "
-					"component buffer has not enough data "
-					"avaialble.");
-			comp_underrun(dev, sources[i], 0, 0);
-			return -EIO;
-		}
-	}
-
-	/* check for overrun */
-	if (sink->free == 0) {
-		trace_mux_error("mux_copy() error: sink component "
-				"buffer has not enough free bytes.");
-		comp_overrun(dev, sink, 0, 0);
-		return -EIO;
-	}
 
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sources[i])

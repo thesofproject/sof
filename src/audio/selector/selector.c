@@ -309,24 +309,6 @@ static int selector_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
-	/* check for underrun */
-	if (source->avail == 0) {
-		trace_selector_error("selector_copy() error: "
-				     "source component buffer has not enough "
-				     "data available");
-		comp_underrun(dev, source, 0, 0);
-		return -EIO;
-	}
-
-	/* check for overrun */
-	if (sink->free == 0) {
-		trace_selector_error("selector_copy() error: "
-				     "sink component buffer has not enough "
-				     "free bytes for copy");
-		comp_overrun(dev, sink, 0, 0);
-		return -EIO;
-	}
-
 	frames = comp_avail_frames(source, sink);
 	source_bytes = frames * comp_frame_bytes(source->source);
 	sink_bytes = frames * comp_frame_bytes(sink->sink);
