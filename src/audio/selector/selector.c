@@ -403,8 +403,7 @@ static int selector_prepare(struct comp_dev *dev)
 	if (cd->sink_period_bytes == 0) {
 		trace_selector_error("selector_prepare() error: "
 				     "cd->sink_period_bytes = 0, dev->frames ="
-				     " %u, sinkb->sink->frame_bytes = %u",
-				     dev->frames, sinkb->sink->frame_bytes);
+				     " %u", dev->frames);
 		ret = -EINVAL;
 		goto err;
 	}
@@ -412,10 +411,7 @@ static int selector_prepare(struct comp_dev *dev)
 	if (cd->source_period_bytes == 0) {
 		trace_selector_error("selector_prepare() error: "
 				     "cd->source_period_bytes = 0, "
-				     "dev->frames = %u, "
-				     "sourceb->source->frame_bytes = %u",
-				     dev->frames,
-				     sourceb->source->frame_bytes);
+				     "dev->frames = %u", dev->frames);
 		ret = -EINVAL;
 		goto err;
 	}

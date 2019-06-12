@@ -58,6 +58,7 @@ struct dai_data {
 
 	struct dai *dai;
 	struct dma *dma;
+	uint32_t frame_bytes;
 	int xrun;		/* true if we are doing xrun recovery */
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
@@ -367,14 +368,14 @@ static int dai_params(struct comp_dev *dev)
 	dev->params.frame_fmt = dconfig->frame_fmt;
 
 	/* calculate period size based on config */
-	dev->frame_bytes = comp_frame_bytes(dev);
-	if (dev->frame_bytes == 0) {
+	dd->frame_bytes = comp_frame_bytes(dev);
+	if (!dd->frame_bytes) {
 		trace_dai_error_with_ids(dev, "dai_params() error: "
 					 "comp_frame_bytes() returned 0.");
 		return -EINVAL;
 	}
 
-	period_bytes = dev->frames * dev->frame_bytes;
+	period_bytes = dev->frames * dd->frame_bytes;
 	if (!period_bytes) {
 		trace_dai_error_with_ids(dev, "dai_params() error: device has "
 					 "no bytes (no frames to copy to sink).");
@@ -648,10 +649,10 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		/* calc frame bytes */
 		switch (config->ssp.sample_valid_bits) {
 		case 16:
-			dev->frame_bytes = 2 * config->ssp.tdm_slots;
+			dd->frame_bytes = 2 * config->ssp.tdm_slots;
 			break;
 		case 17 ... 32:
-			dev->frame_bytes = 4 * config->ssp.tdm_slots;
+			dd->frame_bytes = 4 * config->ssp.tdm_slots;
 			break;
 		default:
 			break;
@@ -676,7 +677,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				   "config->dmic.num_pdm_active = %u;",
 				   config->dmic.fifo_bits,
 				   config->dmic.num_pdm_active);
-		dev->frame_bytes = 0;
+		dd->frame_bytes = 0;
 		for (i = 0; i < config->dmic.num_pdm_active; i++) {
 			trace_dai_with_ids(dev, "dai_config, "
 				"config->dmic.pdm[%u].enable_mic_a = %u; ",
@@ -686,7 +687,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				"config->dmic.pdm[%u].enable_mic_b = %u; ",
 				config->dmic.pdm[i].id,
 				config->dmic.pdm[i].enable_mic_b);
-			dev->frame_bytes += (config->dmic.fifo_bits >> 3) *
+			dd->frame_bytes += (config->dmic.fifo_bits >> 3) *
 				(config->dmic.pdm[i].enable_mic_a +
 				 config->dmic.pdm[i].enable_mic_b);
 		}
@@ -696,19 +697,19 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 * channels.
 		 */
 		if (config->dmic.num_pdm_active > 1) {
-			dev->frame_bytes = 2 * config->dmic.num_pdm_active *
+			dd->frame_bytes = 2 * config->dmic.num_pdm_active *
 				(config->dmic.fifo_bits >> 3);
 		}
 
-		trace_dai_with_ids(dev, "dai_config(), dev->frame_bytes = %u",
-				   dev->frame_bytes);
+		trace_dai_with_ids(dev, "dai_config(), dd->frame_bytes = %u",
+				   dd->frame_bytes);
 		break;
 	case SOF_DAI_INTEL_HDA:
 		/* set to some non-zero value to satisfy the condition below,
 		 * it is recalculated in dai_params() later
 		 * this is temp until dai/hda model is changed.
 		 */
-		dev->frame_bytes = 4;
+		dd->frame_bytes = 4;
 		channel = config->hda.link_dma_ch;
 		trace_dai_with_ids(dev, "dai_config(), channel = %d",
 				   channel);
@@ -735,9 +736,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	}
 
-	if (dev->frame_bytes == 0) {
+	if (!dd->frame_bytes) {
 		trace_dai_error_with_ids(dev, "dai_config() error: "
-					 "dev->frame_bytes == 0");
+					 "dd->frame_bytes == 0");
 		return -EINVAL;
 	}
 
