@@ -722,16 +722,14 @@ static inline int comp_get_endpoint_type(struct comp_dev *dev)
  * @param dev Component device.
  * @param source Source buffer.
  * @param copy_bytes Requested size of data to be available.
- * @param min_bytes
  */
 static inline void comp_underrun(struct comp_dev *dev,
 				 struct comp_buffer *source,
-				 uint32_t copy_bytes, uint32_t min_bytes)
+				 uint32_t copy_bytes)
 {
-	trace_comp("comp_underrun(), ((dev->comp.id << 16) | source->avail) ="
-		   " %u, ((min_bytes << 16) | copy_bytes) = %u",
-		  (dev->comp.id << 16) | source->avail,
-		  (min_bytes << 16) | copy_bytes);
+	trace_comp_error("comp_underrun() error: dev->comp.id = %u, "
+			 "source->avail = %u, copy_bytes = %u", dev->comp.id,
+			 source->avail, copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)source->avail - copy_bytes);
 }
@@ -741,15 +739,13 @@ static inline void comp_underrun(struct comp_dev *dev,
  * @param dev Component device.
  * @param sink Sink buffer.
  * @param copy_bytes Requested size of free space to be available.
- * @param min_bytes
  */
 static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
-	uint32_t copy_bytes, uint32_t min_bytes)
+				uint32_t copy_bytes)
 {
-	trace_comp("comp_overrun(), ((dev->comp.id << 16) | sink->free) = %u, "
-		   "((min_bytes << 16) | copy_bytes) = %u",
-		  (dev->comp.id << 16) | sink->free,
-		  (min_bytes << 16) | copy_bytes);
+	trace_comp_error("comp_overrun() error: dev->comp.id = %u, sink->free "
+			 "= %u, copy_bytes = %u", dev->comp.id, sink->free,
+			 copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
 }
