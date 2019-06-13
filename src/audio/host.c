@@ -68,8 +68,8 @@ struct host_data {
 	uint32_t copy_blocking;	/**< True for copy in blocking mode */
 
 	/* local and host DMA buffer info */
-#if !CONFIG_DMA_GW
 	struct hc_buf host;
+#if !CONFIG_DMA_GW
 	struct hc_buf local;
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
@@ -659,19 +659,6 @@ static int host_position(struct comp_dev *dev,
 	return 0;
 }
 
-#if !CONFIG_DMA_GW
-static int host_buffer(struct comp_dev *dev,
-		       struct dma_sg_elem_array *elem_array,
-		       uint32_t host_size)
-{
-	struct host_data *hd = comp_get_drvdata(dev);
-
-	hd->host.elem_array = *elem_array;
-
-	return 0;
-}
-#endif
-
 static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -803,13 +790,16 @@ static void host_cache(struct comp_dev *dev, int cmd)
 }
 
 static int host_set_attribute(struct comp_dev *dev, uint32_t type,
-			      uint32_t value)
+			      void *value)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	switch (type) {
 	case COMP_ATTR_COPY_BLOCKING:
-		hd->copy_blocking = value;
+		hd->copy_blocking = *(uint32_t *)value;
+		break;
+	case COMP_ATTR_HOST_BUFFER:
+		hd->host.elem_array = *(struct dma_sg_elem_array *)value;
 		break;
 	default:
 		return -EINVAL;
@@ -828,9 +818,6 @@ struct comp_driver comp_host = {
 		.trigger	= host_trigger,
 		.copy		= host_copy,
 		.prepare	= host_prepare,
-#if !CONFIG_DMA_GW
-		.host_buffer	= host_buffer,
-#endif
 		.position	= host_position,
 		.cache		= host_cache,
 		.set_attribute	= host_set_attribute,
