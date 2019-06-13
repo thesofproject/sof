@@ -34,6 +34,9 @@
 #if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_8
 #include "pdm_decim_int32_08_4156_5380_010_090.h"
 #endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_12
+#include "pdm_decim_int32_12_4156_6018_010_090.h"
+#endif
 
 /* Note: Higher spec filter must be before lower spec filter
  * if there are multiple filters for a decimation factor. The naming
@@ -60,6 +63,9 @@ struct pdm_decim *fir_list[] = {
 #endif
 #if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_8
 	&pdm_decim_int32_08_4156_5380_010_090,
+#endif
+#if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_12
+	&pdm_decim_int32_12_4156_6018_010_090,
 #endif
 	NULL, /* This marks the end of coefficients */
 };
