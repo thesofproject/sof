@@ -551,8 +551,8 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			 * in this buffer, copy what's available and continue
 			 * with next buffer.
 			 */
-			assert(!memcpy_s(buff->w_ptr, space_avail, read_ptr,
-					 space_avail));
+			memcpy_s(buff->w_ptr, space_avail, read_ptr,
+				 space_avail);
 			/* Update write pointer & requested copy size */
 			buff->w_ptr += space_avail;
 			size_to_copy = size_to_copy - space_avail;
@@ -565,8 +565,8 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			 * available in this buffer. In this scenario simply
 			 * copy what was requested.
 			 */
-			assert(!memcpy_s(buff->w_ptr, size_to_copy, read_ptr,
-					 size_to_copy));
+			memcpy_s(buff->w_ptr, size_to_copy, read_ptr,
+				 size_to_copy);
 			/* Update write pointer & requested copy size */
 			buff->w_ptr += size_to_copy;
 			/* Reset requested copy size */
