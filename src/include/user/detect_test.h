@@ -8,16 +8,15 @@
 #ifndef __INCLUDE_UAPI_USER_DETECT_TEST_H__
 #define __INCLUDE_UAPI_USER_DETECT_TEST_H__
 
-/** IPC blob types */
-#define SOF_DETECT_TEST_CONFIG	0
-#define SOF_DETECT_TEST_MODEL	1
-
 struct sof_detect_test_config {
-	uint32_t size;
+	uint32_t size; /**< size of the entire structure including data */
 
 	/** synthetic system load settings */
 	uint32_t load_mips;
-	uint32_t load_memory_size;
+
+	/** size of the data */
+	uint32_t model_size;
+
 	/** time in ms after which detection is activated */
 	uint32_t preamble_time;
 
@@ -32,9 +31,9 @@ struct sof_detect_test_config {
 
 	/** reserved for future use */
 	uint32_t reserved[2];
-} __attribute__((packed));
 
-/** used for binary blob size sanity checks */
-#define SOF_DETECT_TEST_MAX_CFG_SIZE sizeof(struct sof_detect_test_config)
+	/* detection model (serves no purpose in the testing component) */
+	uint32_t model[0];
+} __attribute__((packed));
 
 #endif
