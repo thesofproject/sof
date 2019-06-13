@@ -687,6 +687,9 @@ static int hda_dma_set_config(struct dma *dma, unsigned int channel,
 		return -EINVAL;
 	}
 
+	if (p->chan[channel].status == COMP_STATE_ACTIVE)
+		return 0;
+
 	spin_lock_irq(&dma->lock, flags);
 
 	trace_hddma("hda-dmac: %d channel %d -> config", dma->plat_data.id,
