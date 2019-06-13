@@ -891,7 +891,9 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			dest = buffer_write_frag_s16(sink, j);
+			dest = (sample_width == 16) ?
+				buffer_write_frag_s16(sink, j) :
+				buffer_write_frag_s32(sink, j);
 			*dest = *src;
 			src++;
 			j++;
@@ -1012,8 +1014,13 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			src = buffer_read_frag_s16(source, j);
-			dest = buffer_write_frag_s16(sink, j);
+			src = (sample_width == 16) ?
+			       buffer_read_frag_s16(source, j) :
+			       buffer_read_frag_s32(source, j);
+
+			dest = (sample_width == 16) ?
+				buffer_write_frag_s16(sink, j) :
+				buffer_write_frag_s32(sink, j);
 			*dest = *src;
 			j++;
 		}

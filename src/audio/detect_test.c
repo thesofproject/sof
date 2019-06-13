@@ -101,6 +101,7 @@ static void default_detect_test(struct comp_dev *dev,
 	int16_t step;
 	uint32_t count = frames; /**< Assuming single channel */
 	uint32_t sample;
+	uint32_t sample_width = dev->params.sample_container_bytes;
 
 	/* synthetic load */
 	if (cd->config.load_mips)
@@ -108,7 +109,9 @@ static void default_detect_test(struct comp_dev *dev,
 
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
-		src = buffer_read_frag_s16(source, sample);
+		src = (sample_width == 16) ?
+		       buffer_read_frag_s16(source, sample) :
+		       buffer_read_frag_s32(source, sample);
 		diff = abs(*src) - cd->activation;
 		step = diff >> cd->config.activation_shift;
 
