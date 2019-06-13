@@ -78,6 +78,7 @@ set(TPLGS
 	"sof-apl-dmic-a2ch-b2ch\;sof-apl-dmic-a2ch-b2ch"
 	"sof-apl-dmic-a4ch-b2ch\;sof-apl-dmic-a4ch-b2ch"
 	"sof-apl-dmic-a2ch-b4ch\;sof-apl-dmic-a2ch-b4ch"
+	"sof-apl-dmic-a96k-b16k\;sof-apl-dmic-a96k-b16k"
 	"sof-apl-dmic\;sof-apl-dmic-4ch\;-DCHANNELS=4"
 	"sof-apl-dmic\;sof-apl-dmic-2ch\;-DCHANNELS=2"
 	"sof-apl-src-50khz-pcm512x\;sof-apl-src-50khz-pcm512x"
