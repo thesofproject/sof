@@ -65,6 +65,7 @@
 /* DMA copy flags */
 #define DMA_COPY_PRELOAD	BIT(0)
 #define DMA_COPY_BLOCKING	BIT(1)
+#define DMA_COPY_ONE_SHOT	BIT(2)
 
 /* We will use this enum in cb handler to inform dma what
  * action we need to perform.
