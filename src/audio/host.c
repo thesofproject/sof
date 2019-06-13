@@ -5,24 +5,23 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/lock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
+#include <arch/cache.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <sof/alloc.h>
-#include <sof/trace.h>
-#include <sof/dma.h>
-#include <sof/ipc.h>
-#include <sof/wait.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <platform/dma.h>
-#include <arch/cache.h>
-#include <ipc/dai.h>
+#include <sof/dma.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/math/numbers.h>
+#include <sof/sof.h>
+#include <sof/trace.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define trace_host(__e, ...) \
 	trace_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
