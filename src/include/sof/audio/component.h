@@ -131,6 +131,7 @@
  *  @{
  */
 #define COMP_ATTR_COPY_BLOCKING	0	/**< Comp blocking copy attribute */
+#define COMP_ATTR_HOST_BUFFER	1	/**< Comp host buffer attribute */
 /** @}*/
 
 /** \name Trace macros
@@ -192,11 +193,6 @@ struct comp_ops {
 	/** copy and process stream data from source to sink buffers */
 	int (*copy)(struct comp_dev *dev);
 
-	/** host buffer config */
-	int (*host_buffer)(struct comp_dev *dev,
-			   struct dma_sg_elem_array *elem_array,
-			   uint32_t host_size);
-
 	/** position */
 	int (*position)(struct comp_dev *dev,
 		struct sof_ipc_stream_posn *posn);
@@ -206,7 +202,7 @@ struct comp_ops {
 
 	/** set attribute in component */
 	int (*set_attribute)(struct comp_dev *dev, uint32_t type,
-			     uint32_t value);
+			     void *value);
 };
 
 
@@ -374,22 +370,6 @@ static inline int comp_params(struct comp_dev *dev)
 }
 
 /**
- * Component host buffer config.
- * Mandatory for host components, optional for the others.
- * @param dev Component device.
- * @param elem_array SG element array.
- * @param host_size Host ring buffer size.
- * @return 0 if succeeded, error code otherwise.
- */
-static inline int comp_host_buffer(struct comp_dev *dev,
-		struct dma_sg_elem_array *elem_array, uint32_t host_size)
-{
-	if (dev->drv->ops.host_buffer)
-		return dev->drv->ops.host_buffer(dev, elem_array, host_size);
-	return 0;
-}
-
-/**
  * Send component command.
  * @param dev Component device.
  * @param cmd Command.
@@ -508,11 +488,11 @@ static inline void comp_cache(struct comp_dev *dev, int cmd)
  * Sets component attribute.
  * @param dev Component device.
  * @param type Attribute type.
- * @param type Attribute value.
+ * @param value Attribute value.
  * @return 0 if succeeded, error code otherwise.
  */
 static inline int comp_set_attribute(struct comp_dev *dev, uint32_t type,
-				     uint32_t value)
+				     void *value)
 {
 	if (dev->drv->ops.set_attribute)
 		return dev->drv->ops.set_attribute(dev, type, value);

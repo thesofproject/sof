@@ -262,7 +262,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	if (err < 0)
 		goto error;
 
-	err = comp_host_buffer(cd, &elem_array, ring_size);
+	err = comp_set_attribute(cd, COMP_ATTR_HOST_BUFFER, &elem_array);
 	if (err < 0) {
 		trace_ipc_error("ipc: comp %d host buffer failed %d",
 				pcm_params.comp_id, err);
