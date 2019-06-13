@@ -894,7 +894,7 @@ static void kpb_clear_history_buffer(struct hb *buff)
 	void *start_addr;
 	size_t size;
 
-	trace_kpb("kpb_init_draining()");
+	trace_kpb("kpb_clear_history_buffer()");
 
 	do {
 		start_addr = buff->start_addr;
