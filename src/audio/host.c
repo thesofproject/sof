@@ -54,9 +54,7 @@ struct host_data {
 	int chan;
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
-
 	uint32_t period_bytes;	/**< Size of a single period (in bytes) */
-	uint32_t period_count;	/**< Number of periods */
 
 	/* host position reporting related */
 	uint32_t host_size;	/**< Host buffer size (in bytes) */
@@ -488,6 +486,7 @@ static int host_params(struct comp_dev *dev)
 	uint32_t buffer_size;
 	uint32_t buffer_count;
 	uint32_t buffer_single_size;
+	uint32_t period_count;
 	int err;
 
 	trace_event(TRACE_CLASS_HOST, "host_params()");
@@ -505,13 +504,13 @@ static int host_params(struct comp_dev *dev)
 			      BUFF_CB_TYPE_CONSUME);
 
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
-		hd->period_count = cconfig->periods_sink;
+		period_count = cconfig->periods_sink;
 #if CONFIG_DMA_GW
-		buffer_count = hd->period_count;
+		buffer_count = period_count;
 		buffer_single_size = dev->frames * comp_frame_bytes(dev);
 #else
 		buffer_count = 1;
-		buffer_single_size = hd->period_count * dev->frames *
+		buffer_single_size = period_count * dev->frames *
 			comp_frame_bytes(dev);
 
 		hd->source = &hd->host;
@@ -526,8 +525,8 @@ static int host_params(struct comp_dev *dev)
 			      BUFF_CB_TYPE_PRODUCE);
 
 		config->direction = DMA_DIR_LMEM_TO_HMEM;
-		hd->period_count = cconfig->periods_source;
-		buffer_count = hd->period_count;
+		period_count = cconfig->periods_source;
+		buffer_count = period_count;
 		buffer_single_size = dev->frames * comp_frame_bytes(dev);
 
 #if !CONFIG_DMA_GW
@@ -537,7 +536,7 @@ static int host_params(struct comp_dev *dev)
 	}
 
 	/* validate period count */
-	if (hd->period_count == 0) {
+	if (!period_count) {
 		trace_host_error("host_params() error: invalid period_count");
 		return -EINVAL;
 	}
@@ -550,7 +549,7 @@ static int host_params(struct comp_dev *dev)
 	}
 
 	/* resize the buffer if space is available to align with period size */
-	buffer_size = hd->period_count * hd->period_bytes;
+	buffer_size = period_count * hd->period_bytes;
 	err = buffer_set_size(hd->dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_host_error("host_params() error:"
