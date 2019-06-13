@@ -330,15 +330,18 @@ void dma_sg_free(struct dma_sg_elem_array *ea);
 
 static inline void dma_sg_cache_wb_inv(struct dma_sg_elem_array *ea)
 {
-	dcache_writeback_invalidate_region(ea->elems,
-					   ea->count *
-					   sizeof(struct dma_sg_elem));
+	if (ea->elems)
+		dcache_writeback_invalidate_region(ea->elems,
+						   ea->count *
+						   sizeof(struct dma_sg_elem));
 }
 
 static inline void dma_sg_cache_inv(struct dma_sg_elem_array *ea)
 {
-	dcache_invalidate_region(ea->elems,
-				 ea->count * sizeof(struct dma_sg_elem));
+	if (ea->elems)
+		dcache_invalidate_region(ea->elems,
+					 ea->count *
+					 sizeof(struct dma_sg_elem));
 }
 
 /**
