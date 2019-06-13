@@ -1028,6 +1028,10 @@ static int dw_dma_copy(struct dma *dma, unsigned int channel, int bytes,
 		return -EINVAL;
 	}
 
+	/* do nothing on preload */
+	if (flags & DMA_COPY_PRELOAD)
+		return 0;
+
 	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
 		     dma->plat_data.id, channel);
 
