@@ -730,9 +730,7 @@ static int host_copy_one_shot(struct comp_dev *dev)
 /* copy and process stream data from source to sink buffers */
 static int host_copy(struct comp_dev *dev)
 {
-#if CONFIG_DMA_GW
 	struct host_data *hd = comp_get_drvdata(dev);
-#endif
 	int ret = 0;
 
 	tracev_host("host_copy()");
@@ -740,10 +738,6 @@ static int host_copy(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
 
-	/* TODO: this could be run-time if() based on the same attribute
-	 * as in the host_trigger().
-	 */
-#if CONFIG_DMA_GW
 	/* here only do preload, further copies happen
 	 * in host_buffer_cb()
 	 */
@@ -763,10 +757,6 @@ static int host_copy(struct comp_dev *dev)
 			return ret;
 		}
 	}
-#endif
-	/* For !CONFIG_DMA_GW preload happens in host_trigger() and
-	 * further copies happen in host_buffer_cb()
-	 */
 
 	return ret;
 }
