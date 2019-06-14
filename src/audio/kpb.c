@@ -40,7 +40,10 @@ struct comp_data {
 	bool is_internal_buffer_full;
 	size_t buffered_data;
 	struct dd draining_task_data;
-	size_t buffer_size;
+	size_t kpb_buffer_size;
+	size_t host_buffer_size;
+	size_t period_size;
+
 };
 
 /*! KPB private functions */
@@ -113,7 +116,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	/* Sampling width accepted. Lets calculate and store
 	 * its derivatives for quick lookup in runtime.
 	 */
-	cd->buffer_size = KPB_MAX_BUFFER_SIZE(cd->config.sampling_width);
+	cd->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(cd->config.sampling_width);
 
 	if (cd->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
 		trace_kpb_error("kpb_new() error: "
@@ -121,7 +124,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	if (cd->config.history_depth > cd->buffer_size) {
+	if (cd->config.history_depth > cd->kpb_buffer_size) {
 		trace_kpb_error("kpb_new() error: "
 		"history depth exceeded the limit");
 		return NULL;
@@ -145,7 +148,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	allocated_size = kpb_allocate_history_buffer(cd);
 
 	/* Have we allocated what we requested? */
-	if (allocated_size < cd->buffer_size) {
+	if (allocated_size < cd->kpb_buffer_size) {
 		trace_kpb_error("Failed to allocate space for "
 				"KPB buffer/s");
 		return NULL;
@@ -165,7 +168,7 @@ static size_t kpb_allocate_history_buffer(struct comp_data *kpb)
 	struct hb *history_buffer;
 	struct hb *new_hb = NULL;
 	/*! Total allocation size */
-	size_t hb_size = kpb->buffer_size;
+	size_t hb_size = kpb->kpb_buffer_size;
 	/*! Current allocation size */
 	size_t ca_size = hb_size;
 	/*! Memory caps priorites for history buffer */
@@ -344,6 +347,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	cd->kpb_no_of_clients = 0;
 	cd->buffered_data = 0;
 	cd->state = KPB_STATE_BUFFERING;
+	cd->host_buffer_size = dev->params.buffer.size;
+	cd->period_size = dev->params.host_period_bytes;
 
 	/* Init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
@@ -491,10 +496,10 @@ static int kpb_copy(struct comp_dev *dev)
 	/* Buffer source data internally in history buffer for future
 	 * use by clients.
 	 */
-	if (source->avail <= kpb->buffer_size) {
+	if (source->avail <= kpb->kpb_buffer_size) {
 		kpb_buffer_data(kpb, source, copy_bytes);
 
-		if (kpb->buffered_data < kpb->buffer_size)
+		if (kpb->buffered_data < kpb->kpb_buffer_size)
 			kpb->buffered_data += copy_bytes;
 		else
 			kpb->is_internal_buffer_full = true;
@@ -926,7 +931,7 @@ static bool kpb_has_enough_history_data(struct comp_data *kpb,
 
 	/* Quick check if we've already filled internal buffer */
 	if (kpb->is_internal_buffer_full)
-		return his_req <= kpb->buffer_size;
+		return his_req <= kpb->kpb_buffer_size;
 
 	/* Internal buffer isn't full yet. Verify if what already buffered
 	 * is sufficient for draining request.
