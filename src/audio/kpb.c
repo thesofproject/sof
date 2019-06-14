@@ -819,13 +819,24 @@ static uint64_t kpb_draining_task(void *arg)
 	uint32_t drained = 0;
 	uint64_t time_start;
 	uint64_t time_end;
+	uint64_t period_interval = draining_data->period_interval;
+	uint64_t next_copy_time = 0;
+	uint64_t current_time = 0;
+	size_t period_bytes = 0;
+	size_t period_bytes_limit = draining_data->period_bytes_limit;
 
 	trace_kpb("kpb_draining_task(), start.");
 
 	time_start = platform_timer_get(platform_timer);
 
 	while (history_depth > 0) {
-		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
+		if (next_copy_time > platform_timer_get(platform_timer)) {
+			period_bytes = 0;
+			continue;
+		}
+
+		size_to_read = (uint32_t)buff->end_addr -
+			       (uint32_t)buff->r_ptr;
 
 		if (size_to_read > sink->free) {
 			if (sink->free >= history_depth)
@@ -847,6 +858,7 @@ static uint64_t kpb_draining_task(void *arg)
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
 		drained += size_to_copy;
+		period_bytes += size_to_copy;
 
 		if (move_buffer) {
 			buff->r_ptr = buff->start_addr;
@@ -855,6 +867,11 @@ static uint64_t kpb_draining_task(void *arg)
 		}
 		if (size_to_copy)
 			comp_update_buffer_produce(sink, size_to_copy);
+
+		if (period_bytes >= period_bytes_limit) {
+			current_time = platform_timer_get(platform_timer);
+			next_copy_time = current_time + period_interval;
+		}
 	}
 
 	time_end =  platform_timer_get(platform_timer);
