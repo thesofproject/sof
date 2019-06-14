@@ -443,7 +443,7 @@ SECTIONS
     . = . + HEAP_RUNTIME_SIZE;
     _runtime_heap_end = ABSOLUTE(.);
 
-    . = ALIGN (32);
+    . = ALIGN (HEAP_BUF_ALIGNMENT);
     _buffer_heap_start = ABSOLUTE(.);
     . = . + HEAP_BUFFER_SIZE;
     _buffer_heap_end = ABSOLUTE(.);
@@ -453,7 +453,7 @@ SECTIONS
     . = . + HEAP_SYSTEM_M_SIZE;
     _system_heap_end = ABSOLUTE(.);
 
-    . = ALIGN (32);
+    . = ALIGN (HEAP_BUF_ALIGNMENT);
     _system_runtime_heap_start = ABSOLUTE(.);
     . = . + HEAP_SYS_RUNTIME_M_SIZE;
     _system_runtime_heap_end = ABSOLUTE(.);
