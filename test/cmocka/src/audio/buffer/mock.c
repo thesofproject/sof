@@ -38,6 +38,14 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
+void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+{
+	(void)zone;
+	(void)caps;
+
+	return realloc(ptr, bytes);
+}
+
 void __panic(uint32_t p, char *filename, uint32_t linenum)
 {
 	(void)p;

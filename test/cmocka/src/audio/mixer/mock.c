@@ -40,6 +40,14 @@ void rfree(void *ptr)
 	free(ptr);
 }
 
+void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+{
+	(void)zone;
+	(void)caps;
+
+	return realloc(ptr, bytes);
+}
+
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }
