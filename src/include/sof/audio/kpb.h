@@ -99,6 +99,9 @@ struct dd {
 	uint8_t is_draining_active;
 	enum kpb_state *state;
 	size_t sample_width;
+	size_t period_interval;
+	size_t period_bytes_limit;
+
 };
 
 #ifdef UNIT_TEST

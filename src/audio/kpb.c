@@ -689,8 +689,14 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
 	size_t local_buffered = 0;
+	size_t period_interval = 0;
+	size_t frame_size = (kpb->config.sampling_width / 8) *
+			     kpb->config.no_channels; /* in bytes */
+	size_t period_size = kpb->period_size;
+	size_t host_buffer_size = kpb->host_buffer_size;
+	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
-	trace_kpb("kpb_init_draining()");
+	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",host_buffer_size, period_size, ticks_per_ms);
 
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
@@ -758,7 +764,19 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 
 		} while (buff != first_buff);
 
-		trace_kpb("kpb_init_draining(), schedule draining task");
+		/* Calculate time in clock ticks each draining event shall
+		 * take place. This time will be used to synchronize us with
+		 * an end application interrupts.
+		 */
+		period_interval = ((host_buffer_size/2)/(period_size*frame_size))*
+		                    ticks_per_ms+ticks_per_ms;
+
+
+		kpb->draining_task_data.period_interval = period_interval;
+		kpb->draining_task_data.period_bytes_limit = host_buffer_size/2;
+
+		trace_kpb_error("kpb_init_draining(), period_limit: %d [bytes] and interval %d [uS] %d ticks ",
+			   host_buffer_size/2, ((period_interval * 1000) / ticks_per_ms), period_interval);
 
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->host_sink;
