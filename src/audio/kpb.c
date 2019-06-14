@@ -790,7 +790,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->host_sink->sink,
-				   COMP_ATTR_COPY_BLOCKING, 1);
+				   COMP_ATTR_COPY_BLOCKING, 0);
 
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0,
