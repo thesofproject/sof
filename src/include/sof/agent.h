@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <sof/schedule.h>
+#include <stdbool.h>
 
 struct sof;
 
@@ -19,9 +20,12 @@ struct sa {
 	uint64_t last_idle;	/* time of last idle */
 	uint64_t ticks;
 	struct task work;
+	bool is_active;
 };
 
 void sa_enter_idle(struct sof *sof);
 void sa_init(struct sof *sof);
+void sa_disable(void);
+void sa_enable(void);
 
 #endif

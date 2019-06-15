@@ -23,6 +23,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/ut.h>
 #include <sof/clk.h>
+#include <sof/agent.h>
 
 /* KPB private data, runtime data */
 struct comp_data {
@@ -913,6 +914,7 @@ static uint64_t kpb_draining_task(void *arg)
 		   drained,
 		   (time_end - time_start)
 		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+
 
 	return 0;
 }
