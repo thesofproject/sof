@@ -477,6 +477,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 	/* Stop copying downstream if in draining mode */
 	if (kpb->state == KPB_STATE_DRAINING) {
+		kpb_buffer_data(kpb, source, source->avail);
 		comp_update_buffer_consume(source, source->avail);
 		return PPL_STATUS_PATH_STOP;
 	}
