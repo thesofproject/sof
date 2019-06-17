@@ -50,6 +50,24 @@ struct comp_data {
 			    struct comp_buffer *source, uint32_t frames);
 };
 
+static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
+{
+	bool ret;
+
+	switch (sf) {
+	case SOF_IPC_FRAME_S16_LE:
+	/* FALLTHRU */
+	case SOF_IPC_FRAME_S24_4LE:
+		ret = true;
+		break;
+	default:
+		ret = false;
+		break;
+	}
+
+	return ret;
+}
+
 static void notify_host(struct comp_dev *dev)
 {
 	struct sof_ipc_comp_event event;
@@ -253,7 +271,7 @@ static int test_keyword_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->params.frame_fmt != SOF_IPC_FRAME_S16_LE) {
+	if (!detector_is_sample_width_supported(dev->params.frame_fmt)) {
 		trace_keyword_error("test_keyword_params() "
 				    "error: only 16-bit format supported");
 		return -EINVAL;
