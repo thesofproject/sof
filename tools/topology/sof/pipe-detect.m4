@@ -49,7 +49,7 @@ C_CONTROLBYTES(DETECTOR, PIPELINE_ID,
         CONTROLBYTES_OPS(bytes, 258 binds the mixer control to bytes get/put handlers, 258, 258),
         CONTROLBYTES_EXTOPS(258 binds the mixer control to bytes get/put handlers, 258, 258),
         , , ,
-        CONTROLBYTES_MAX(, 304),
+        CONTROLBYTES_MAX(, 300000),
         ,
         DETECTOR_priv)
 
