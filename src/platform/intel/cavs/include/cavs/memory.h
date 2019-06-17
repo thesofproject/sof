@@ -39,6 +39,8 @@
 
 #define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * SRAM_BANK_SIZE)
 
+#define HEAP_BUF_ALIGNMENT		XCHAL_DCACHE_LINESIZE
+
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 void platform_init_memmap(void);
 #endif
