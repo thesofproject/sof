@@ -195,6 +195,8 @@ static int dma_trace_start(struct dma_trace_data *d)
 	err = dma_sg_alloc(&config.elem_array, RZONE_SYS,
 			   config.direction,
 			   elem_num, elem_size, elem_addr, 0);
+	if (err < 0)
+		return err;
 
 	err = dma_set_config(d->dc.dmac, d->dc.chan, &config);
 	if (err < 0)
