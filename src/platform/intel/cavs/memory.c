@@ -12,6 +12,10 @@
 extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
 extern uintptr_t _buffer_heap, _sof_core_s_start;
 
+/* Check if heap buffers alignment is valid */
+STATIC_ASSERT(0 == (HEAP_BUF_ALIGNMENT % PLATFORM_DCACHE_ALIGN),
+	      invalid_heap_buf_alignment);
+
 /* Heap blocks for system runtime for master core */
 static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
 static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
