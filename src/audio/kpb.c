@@ -821,7 +821,8 @@ static uint64_t kpb_draining_task(void *arg)
 	uint64_t time_start;
 	uint64_t time_end;
 	uint64_t period_interval = draining_data->period_interval;
-	uint64_t next_copy_time = 0;
+	uint64_t next_copy_time = period_interval * 2 +
+				  platform_timer_get(platform_timer);
 	uint64_t current_time = 0;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
