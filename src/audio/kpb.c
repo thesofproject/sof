@@ -784,6 +784,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.state = &kpb->state;
 		kpb->draining_task_data.sample_width = sample_width;
+		kpb->draining_task_data.hb_w_ptr = kpb->history_buffer->w_ptr;
 
 		/* Change KPB internal state to DRAINING */
 		kpb->state = KPB_STATE_DRAINING;
@@ -824,6 +825,7 @@ static uint64_t kpb_draining_task(void *arg)
 	uint64_t current_time = 0;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
+	void *hb_w_ptr = draining_data->hb_w_ptr;
 
 	trace_kpb("kpb_draining_task(), start.");
 
@@ -871,6 +873,27 @@ static uint64_t kpb_draining_task(void *arg)
 		if (period_bytes >= period_bytes_limit) {
 			current_time = platform_timer_get(platform_timer);
 			next_copy_time = current_time + period_interval;
+		}
+
+		if (history_depth == 0) {
+			/* Requested history was drained but we have to check
+			 * if there was any real time stream while we were
+			 * draining. If so we need to continue draining until
+			 * we catch up real time.
+			 */
+			if (hb_w_ptr != buff->w_ptr) {
+				if (buff->w_ptr == buff->start_addr) {
+					history_depth += ((uint32_t)buff->end_addr -
+							 (uint32_t)hb_w_ptr) +
+							 ((uint32_t)buff->next->w_ptr -
+							 (uint32_t)buff->next->start_addr);
+				hb_w_ptr = buff->next->w_ptr;
+				} else {
+					history_depth += ((uint32_t)buff->w_ptr -
+							 (uint32_t)hb_w_ptr);
+				hb_w_ptr = buff->w_ptr;
+				}
+			}
 		}
 	}
 
