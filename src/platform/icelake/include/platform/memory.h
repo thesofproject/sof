@@ -114,6 +114,8 @@
 #define ROM_BASE		0xBEFE0000
 #define ROM_SIZE		0x00002000
 
+#define L2_VECTOR_SIZE		0x1000
+
 #define LOG_ENTRY_ELF_BASE	0x20000000
 #define LOG_ENTRY_ELF_SIZE	0x2000000
 
@@ -162,28 +164,6 @@
 #define SRAM_ALIAS_OFFSET	0x20000000
 #define HP_SRAM_BASE		0xBE000000
 #define HP_SRAM_MASK		0xFF000000
-
-/* HP SRAM Base */
-#define HP_SRAM_VECBASE_RESET	(HEAP_HP_BUFFER_BASE + HEAP_HP_BUFFER_SIZE)
-
-/* Heap section sizes for system runtime heap for master core */
-#define HEAP_SYS_RT_0_COUNT64		64
-#define HEAP_SYS_RT_0_COUNT512		16
-#define HEAP_SYS_RT_0_COUNT1024		4
-
-/* Heap section sizes for system runtime heap for slave core */
-#define HEAP_SYS_RT_X_COUNT64		32
-#define HEAP_SYS_RT_X_COUNT512		8
-#define HEAP_SYS_RT_X_COUNT1024		4
-
-/* Heap section sizes for module pool */
-#define HEAP_RT_COUNT64			128
-#define HEAP_RT_COUNT128		64
-#define HEAP_RT_COUNT256		128
-#define HEAP_RT_COUNT512		8
-#define HEAP_RT_COUNT1024		4
-
-#define L2_VECTOR_SIZE		0x1000
 
 /* HP SRAM windows */
 /* window 0 */
@@ -238,6 +218,9 @@
 #define HEAP_HP_BUFFER_COUNT \
 			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
+/* HP SRAM Base */
+#define HP_SRAM_VECBASE_RESET	(HEAP_HP_BUFFER_BASE + HEAP_HP_BUFFER_SIZE)
+
 /* text and data share the same HP L2 SRAM on Icelake */
 #define SOF_FW_START		(HP_SRAM_VECBASE_RESET + 0x400)
 #define SOF_FW_BASE		(SOF_FW_START)
@@ -248,7 +231,33 @@
 #define SOF_TEXT_START		(SOF_FW_START)
 #define SOF_TEXT_BASE		(SOF_FW_START)
 
+/* Heap section sizes for system runtime heap for master core */
+#define HEAP_SYS_RT_0_COUNT64		64
+#define HEAP_SYS_RT_0_COUNT512		16
+#define HEAP_SYS_RT_0_COUNT1024		4
+
+/* Heap section sizes for system runtime heap for slave core */
+#define HEAP_SYS_RT_X_COUNT64		32
+#define HEAP_SYS_RT_X_COUNT512		8
+#define HEAP_SYS_RT_X_COUNT1024		4
+
+/* Heap section sizes for module pool */
+#define HEAP_RT_COUNT64			128
+#define HEAP_RT_COUNT128		64
+#define HEAP_RT_COUNT256		128
+#define HEAP_RT_COUNT512		8
+#define HEAP_RT_COUNT1024		4
+
 /* Heap configuration */
+#define HEAP_RUNTIME_SIZE \
+	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
+	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
+	HEAP_RT_COUNT1024 * 1024)
+
+#define HEAP_BUFFER_SIZE	0xF000
+#define HEAP_BUFFER_BLOCK_SIZE		0x180
+#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+
 #define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
 #define HEAP_SYSTEM_S_SIZE		0x5000	/* heap slave core size */
 #define HEAP_SYSTEM_T_SIZE \
@@ -266,11 +275,6 @@
 	(HEAP_SYS_RUNTIME_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * \
 	HEAP_SYS_RUNTIME_S_SIZE))
 
-#define HEAP_RUNTIME_SIZE \
-	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
-	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
-	HEAP_RT_COUNT1024 * 1024)
-
 /* Stack configuration */
 #define SOF_STACK_SIZE		ARCH_STACK_SIZE
 #define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
@@ -280,10 +284,6 @@
 	ALIGN((HEAP_SYSTEM_S_SIZE + HEAP_SYS_RUNTIME_S_SIZE + SOF_STACK_SIZE),\
 	SRAM_BANK_SIZE)
 #define SOF_CORE_S_T_SIZE ((PLATFORM_CORE_COUNT - 1) * SOF_CORE_S_SIZE)
-
-#define HEAP_BUFFER_SIZE	0xF000
-#define HEAP_BUFFER_BLOCK_SIZE		0x180
-#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 /*
  * The LP SRAM Heap and Stack on Icelake are organised like this :-
