@@ -788,6 +788,9 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.hb_w_ptr = kpb->history_buffer->w_ptr;
 
+		/* Disable system agent */
+		sa_disable();
+
 		/* Change KPB internal state to DRAINING */
 		kpb->state = KPB_STATE_DRAINING;
 
@@ -915,6 +918,8 @@ static uint64_t kpb_draining_task(void *arg)
 		   (time_end - time_start)
 		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
 
+	/* Enable system agent back */
+	sa_enable();
 
 	return 0;
 }
