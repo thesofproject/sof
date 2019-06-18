@@ -249,8 +249,6 @@
 #define SOF_TEXT_BASE		(SOF_FW_START)
 
 /* Heap configuration */
-#define HEAP_SYSTEM_0_BASE	(SOF_FW_BASE + SOF_FW_MAX_SIZE)
-
 #define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
 #define HEAP_SYSTEM_S_SIZE		0x5000	/* heap slave core size */
 #define HEAP_SYSTEM_T_SIZE \
