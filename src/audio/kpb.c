@@ -788,6 +788,9 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.hb_w_ptr = kpb->history_buffer->w_ptr;
 
+		/* Pause selector copy. */
+		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
+
 		/* Disable system agent */
 		sa_disable();
 
