@@ -13,8 +13,8 @@ int memcpy_s(void *dest, size_t dest_size,
 	if (!dest || !src)
 		return -EINVAL;
 
-	if ((dest + dest_size >= src && dest + dest_size <= src + src_size) ||
-		(src + src_size >= dest && src + src_size <= dest + dest_size))
+	if ((dest >= src && dest < (src + src_size)) ||
+	    (src >= dest && src < (dest + dest_size)))
 		return -EINVAL;
 
 	if (src_size > dest_size)
