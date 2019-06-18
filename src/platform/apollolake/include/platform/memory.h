@@ -109,51 +109,7 @@
 #define L2_SRAM_BASE		0xA000A000
 #define L2_SRAM_SIZE		0x00056000
 
-/* Heap section sizes for system runtime heap for master core */
-#define HEAP_SYS_RT_0_COUNT64		64
-#define HEAP_SYS_RT_0_COUNT512		16
-#define HEAP_SYS_RT_0_COUNT1024		4
-
-/* Heap section sizes for system runtime heap for slave core */
-#define HEAP_SYS_RT_X_COUNT64		32
-#define HEAP_SYS_RT_X_COUNT512		8
-#define HEAP_SYS_RT_X_COUNT1024		4
-
-/* Heap section sizes for module pool */
-#define HEAP_RT_COUNT64			128
-#define HEAP_RT_COUNT128		64
-#define HEAP_RT_COUNT256		128
-#define HEAP_RT_COUNT512		8
-#define HEAP_RT_COUNT1024		4
-
 #define L2_VECTOR_SIZE			0x1000
-
-/* Heap configuration */
-#define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
-#define HEAP_SYSTEM_S_SIZE		0x5000	/* heap slave core size */
-#define HEAP_SYSTEM_T_SIZE \
-	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
-
-#define HEAP_SYS_RUNTIME_M_SIZE \
-	(HEAP_SYS_RT_0_COUNT64 * 64 + HEAP_SYS_RT_0_COUNT512 * 512 + \
-	HEAP_SYS_RT_0_COUNT1024 * 1024)
-
-#define HEAP_SYS_RUNTIME_S_SIZE \
-	(HEAP_SYS_RT_X_COUNT64 * 64 + HEAP_SYS_RT_X_COUNT512 * 512 + \
-	HEAP_SYS_RT_X_COUNT1024 * 1024)
-
-#define HEAP_SYS_RUNTIME_T_SIZE \
-	(HEAP_SYS_RUNTIME_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * \
-	HEAP_SYS_RUNTIME_S_SIZE))
-
-#define HEAP_RUNTIME_SIZE \
-	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
-	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
-	HEAP_RT_COUNT1024 * 1024)
-
-#define HEAP_BUFFER_SIZE	0x2000
-#define HEAP_BUFFER_BLOCK_SIZE	0x180
-#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 #define LOG_ENTRY_ELF_BASE	0x20000000
 #define LOG_ENTRY_ELF_SIZE	0x2000000
@@ -301,6 +257,50 @@
 
 #define SOF_TEXT_START		(SOF_FW_START)
 #define SOF_TEXT_BASE		(SOF_FW_START)
+
+/* Heap section sizes for system runtime heap for master core */
+#define HEAP_SYS_RT_0_COUNT64		64
+#define HEAP_SYS_RT_0_COUNT512		16
+#define HEAP_SYS_RT_0_COUNT1024		4
+
+/* Heap section sizes for system runtime heap for slave core */
+#define HEAP_SYS_RT_X_COUNT64		32
+#define HEAP_SYS_RT_X_COUNT512		8
+#define HEAP_SYS_RT_X_COUNT1024		4
+
+/* Heap section sizes for module pool */
+#define HEAP_RT_COUNT64			128
+#define HEAP_RT_COUNT128		64
+#define HEAP_RT_COUNT256		128
+#define HEAP_RT_COUNT512		8
+#define HEAP_RT_COUNT1024		4
+
+/* Heap configuration */
+#define HEAP_RUNTIME_SIZE \
+	(HEAP_RT_COUNT64 * 64 + HEAP_RT_COUNT128 * 128 + \
+	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
+	HEAP_RT_COUNT1024 * 1024)
+
+#define HEAP_BUFFER_SIZE	0x2000
+#define HEAP_BUFFER_BLOCK_SIZE	0x180
+#define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
+
+#define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
+#define HEAP_SYSTEM_S_SIZE		0x5000	/* heap slave core size */
+#define HEAP_SYSTEM_T_SIZE \
+	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
+
+#define HEAP_SYS_RUNTIME_M_SIZE \
+	(HEAP_SYS_RT_0_COUNT64 * 64 + HEAP_SYS_RT_0_COUNT512 * 512 + \
+	HEAP_SYS_RT_0_COUNT1024 * 1024)
+
+#define HEAP_SYS_RUNTIME_S_SIZE \
+	(HEAP_SYS_RT_X_COUNT64 * 64 + HEAP_SYS_RT_X_COUNT512 * 512 + \
+	HEAP_SYS_RT_X_COUNT1024 * 1024)
+
+#define HEAP_SYS_RUNTIME_T_SIZE \
+	(HEAP_SYS_RUNTIME_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * \
+	HEAP_SYS_RUNTIME_S_SIZE))
 
 /* Stack configuration */
 #define SOF_STACK_SIZE		ARCH_STACK_SIZE
