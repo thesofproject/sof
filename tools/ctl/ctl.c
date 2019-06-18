@@ -73,7 +73,7 @@ static int read_setup(unsigned int *data, char setup[], size_t smax)
 static void header_dump(struct sof_abi_hdr *hdr)
 {
 	fprintf(stdout, "hdr: magic 0x%8.8x\n", hdr->magic);
-	fprintf(stdout, "hdr: type %d", hdr->type);
+	fprintf(stdout, "hdr: type %d\n", hdr->type);
 	fprintf(stdout, "hdr: size %d bytes\n", hdr->size);
 	fprintf(stdout, "hdr: abi %d:%d:%d\n",
 		SOF_ABI_VERSION_MAJOR(hdr->abi),
