@@ -34,6 +34,11 @@
 /** \brief Number of HD/A Link Inputs */
 #define DAI_NUM_HDA_IN		7
 
+/* ALH */
+
+/** \brief Number of ALH bi-directional links */
+#define DAI_NUM_ALH_BI_DIR_LINKS	16
+
 int dai_init(void);
 
 #endif /* __PLATFORM_LIB_DAI_H__ */

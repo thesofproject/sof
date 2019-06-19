@@ -77,6 +77,13 @@ static struct dai dmic[2] = {
 
 #endif
 
+#if CONFIG_CAVS_ALH
+
+#include <sof/drivers/alh.h>
+
+static struct dai alh[DAI_NUM_ALH_BI_DIR_LINKS];
+#endif
+
 static struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
 
 static struct dai_type_info dti[] = {
@@ -98,7 +105,14 @@ static struct dai_type_info dti[] = {
 		.type = SOF_DAI_INTEL_HDA,
 		.dai_array = hda,
 		.num_dais = ARRAY_SIZE(hda)
+	},
+#if CONFIG_CAVS_ALH
+	{
+		.type = SOF_DAI_INTEL_ALH,
+		.dai_array = alh,
+		.num_dais = ARRAY_SIZE(alh)
 	}
+#endif
 };
 
 int dai_init(void)
@@ -136,6 +150,15 @@ int dai_init(void)
 	for (i = 0; i < ARRAY_SIZE(dmic); i++)
 		spinlock_init(&dmic[i].lock);
 #endif
+
+#if CONFIG_CAVS_ALH
+	for (i = 0; i < ARRAY_SIZE(alh); i++) {
+		alh[i].index = i;
+		alh[i].drv = &alh_driver;
+		spinlock_init(&alh[i].lock);
+	}
+#endif
+
 	dai_install(dti, ARRAY_SIZE(dti));
 	return 0;
 }
