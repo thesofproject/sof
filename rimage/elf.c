@@ -524,7 +524,7 @@ int elf_find_section(struct image *image, struct module *module,
 		}
 	}
 
-	fprintf(stderr, "error: can't find section %s in module %s\n", name,
+	fprintf(stderr, "warning: can't find section %s in module %s\n", name,
 		module->elf_file);
 	ret = -EINVAL;
 
