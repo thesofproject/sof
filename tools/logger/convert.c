@@ -98,7 +98,7 @@ static const char * get_component_name(uint32_t component_id) {
 		CASE(SELECTOR);
 		CASE(SCHEDULE);
 		CASE(SCHEDULE_LL);
-		CASE(SOUNDWIRE);
+		CASE(ALH);
 		CASE(KEYWORD);
 	default: return "unknown";
 	}
