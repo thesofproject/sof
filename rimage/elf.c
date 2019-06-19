@@ -93,8 +93,6 @@ static int elf_read_sections(struct image *image, struct module *module,
 		/* find log entries and fw ready sections */
 		module->logs_index = elf_find_section(image, module,
 						      ".static_log_entries");
-		if (module->logs_index < 0)
-			return module->logs_index;
 
 		module->fw_ready_index = elf_find_section(image, module,
 							  ".fw_ready");
