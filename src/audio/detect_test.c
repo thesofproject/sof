@@ -11,7 +11,6 @@
 #include <sof/stream.h>
 #include <sof/ipc.h>
 #include <sof/notifier.h>
-#include <sof/ut.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>
 #include <user/detect_test.h>
@@ -34,7 +33,8 @@
 #define KEYPHRASE_DEFAULT_PREAMBLE_LENGTH 0
 
 struct comp_data {
-	struct sof_detect_test_config *config;
+	struct sof_detect_test_config config;
+	void *load_memory;	/**< synthetic memory load */
 	int16_t activation;
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
@@ -92,7 +92,7 @@ static void notify_kpb(struct comp_dev *dev)
 	/* time in milliseconds */
 	cd->client_data.history_depth = (cd->history_depth != 0) ?
 					 cd->history_depth :
-					 cd->config->history_depth;
+					 cd->config.history_depth;
 	cd->event_data.event_id = KPB_EVENT_BEGIN_DRAINING;
 	cd->event_data.client_data = &cd->client_data;
 
@@ -121,7 +121,9 @@ static void default_detect_test(struct comp_dev *dev,
 	uint32_t sample;
 	uint32_t sample_width = dev->params.sample_container_bytes;
 
-	/* TODO: synthetic load */
+	/* synthetic load */
+	if (cd->config.load_mips)
+		idelay(cd->config.load_mips * 1000000);
 
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
@@ -129,14 +131,13 @@ static void default_detect_test(struct comp_dev *dev,
 		       buffer_read_frag_s16(source, sample) :
 		       buffer_read_frag_s32(source, sample);
 		diff = abs(*src) - cd->activation;
-		step = diff >> cd->config->activation_shift;
+		step = diff >> cd->config.activation_shift;
 
 		/* prevent taking 0 steps when the diff is too low */
 		cd->activation += !step ? diff : step;
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
-			if (cd->activation >=
-			    cd->config->activation_threshold) {
+			if (cd->activation >= cd->config.activation_threshold) {
 				/* The algorithm shall use cd->history_depth
 				 * to specify its draining size request.
 				 * Zero value means default config value
@@ -152,54 +153,60 @@ static void default_detect_test(struct comp_dev *dev,
 	}
 }
 
-static void free_config(struct comp_data *cd)
+static void free_mem_load(struct comp_data *cd)
 {
 	if (!cd) {
-		trace_keyword_error("free_config() error: invalid cd");
+		trace_keyword_error("free_mem_load() error: invalid cd");
 		return;
 	}
 
-	if (cd->config) {
-		rfree(cd->config);
-		cd->config = NULL;
+	if (cd->load_memory) {
+		rfree(cd->load_memory);
+		cd->load_memory = NULL;
 	}
 }
 
-static int alloc_config(struct comp_data *cd, uint32_t size)
+static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 {
 	if (!cd) {
-		trace_keyword_error("alloc_config() error: invalid cd");
+		trace_keyword_error("alloc_mem_load() error: invalid cd");
 		return -EINVAL;
 	}
 
-	free_config(cd);
+	free_mem_load(cd);
 
 	if (!size)
 		return 0;
 
-	cd->config = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
+	cd->load_memory = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
 
-	if (!cd->config) {
-		trace_keyword_error("alloc_config() alloc failed");
+	if (!cd->load_memory) {
+		trace_keyword_error("alloc_mem_load() alloc failed");
 		return -ENOMEM;
 	}
 
-	bzero(cd->config, size);
+	bzero(cd->load_memory, size);
 	cd->buf_copy_pos = 0;
 
 	return 0;
 }
 
-static void test_keyword_check_defconfig(struct comp_dev *dev)
+static int test_keyword_apply_config(struct comp_dev *dev,
+				     struct sof_detect_test_config *cfg)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	if (!cd->config->activation_shift)
-		cd->config->activation_shift = ACTIVATION_DEFAULT_SHIFT;
+	assert(!memcpy_s(&cd->config, sizeof(cd->config), cfg,
+			 sizeof(struct sof_detect_test_config)));
 
-	if (!cd->config->activation_threshold)
-		cd->config->activation_threshold =
+	if (!cd->config.activation_shift)
+		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
+
+	if (!cd->config.activation_threshold)
+		cd->config.activation_threshold =
 			ACTIVATION_DEFAULT_THRESHOLD_S16;
+
+	return alloc_mem_load(cd, cd->config.load_memory_size);
 }
 
 static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
@@ -209,6 +216,8 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_process *ipc_keyword =
 		(struct sof_ipc_comp_process *)comp;
 	struct comp_data *cd;
+	struct sof_detect_test_config *cfg;
+	size_t bs;
 
 	trace_keyword("test_keyword_new()");
 
@@ -236,6 +245,23 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 
+	cfg = (struct sof_detect_test_config *)ipc_keyword->data;
+	bs = ipc_keyword->size;
+
+	if (bs > 0) {
+		if (bs != sizeof(struct sof_detect_test_config)) {
+			trace_keyword_error("test_keyword_new() "
+					"error: invalid data size");
+			goto fail;
+		}
+
+		if (test_keyword_apply_config(dev, cfg)) {
+			trace_keyword_error("test_keyword_new() "
+					"error: failed to apply config");
+			goto fail;
+		}
+	}
+
 	dev->state = COMP_STATE_READY;
 	return dev;
 
@@ -252,7 +278,7 @@ static void test_keyword_free(struct comp_dev *dev)
 
 	trace_keyword("test_keyword_free()");
 
-	free_config(cd);
+	free_mem_load(cd);
 	rfree(cd);
 	rfree(dev);
 }
@@ -278,8 +304,8 @@ static int test_keyword_params(struct comp_dev *dev)
 	}
 
 	/* calculate the length of the preamble */
-	if (cd->config->preamble_time) {
-		cd->keyphrase_samples = cd->config->preamble_time *
+	if (cd->config.preamble_time) {
+		cd->keyphrase_samples = cd->config.preamble_time *
 					(dev->params.rate / 1000);
 	} else {
 		cd->keyphrase_samples = KEYPHRASE_DEFAULT_PREAMBLE_LENGTH;
@@ -291,8 +317,71 @@ static int test_keyword_params(struct comp_dev *dev)
 static int test_keyword_set_config(struct comp_dev *dev,
 				   struct sof_ipc_ctrl_data *cdata)
 {
+	struct sof_detect_test_config *cfg;
+	size_t bs;
+
+	/* Copy new config, find size from header */
+	cfg = (struct sof_detect_test_config *)cdata->data->data;
+	bs = cfg->size;
+
+	trace_keyword("test_keyword_set_config(), blob size = %u",
+		      bs);
+
+	if (bs != sizeof(struct sof_detect_test_config)) {
+		trace_keyword_error("test_keyword_set_config() "
+				    "error: invalid blob size");
+		return -EINVAL;
+	}
+
+	return test_keyword_apply_config(dev, cfg);
+}
+
+static int test_keyword_set_model(struct comp_dev *dev,
+				  struct sof_ipc_ctrl_data *cdata)
+{
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint32_t dst_size = 0;
+
+	if (!cd->load_memory) {
+		trace_keyword_error("keyword_ctrl_set_model() error: "
+				   "buffer not allocated");
+		return -EINVAL;
+	}
+
+	if (!cdata->elems_remaining) {
+		if (cdata->data->size + cd->buf_copy_pos <
+		    cd->config.load_memory_size) {
+			trace_keyword_error("keyword_ctrl_set_model() error: "
+					   "not enough data to fill the buffer");
+
+			/* TODO: anything to do in such a situation? */
+
+			return -EINVAL;
+		}
+
+		trace_keyword("test_keyword_set_model() "
+			      "final packet received");
+	}
+
+	if (cdata->data->size >
+	    cd->config.load_memory_size - cd->buf_copy_pos) {
+		trace_keyword_error("keyword_ctrl_set_model() error: "
+				   "too much data");
+		return -EINVAL;
+	}
+
+	assert(!memcpy_s(cd->load_memory + cd->buf_copy_pos,
+		 cd->config.load_memory_size - cd->buf_copy_pos,
+		 cdata->data->data, cdata->data->size));
+
+	cd->buf_copy_pos += cdata->data->size;
+
+	return 0;
+}
+
+static int test_keyword_ctrl_set_bin_data(struct comp_dev *dev,
+					  struct sof_ipc_ctrl_data *cdata)
+{
+	int ret = 0;
 
 	if (dev->state != COMP_STATE_READY) {
 		/* It is a valid request but currently this is not
@@ -301,54 +390,25 @@ static int test_keyword_set_config(struct comp_dev *dev,
 		 * configuration will be used when playback/capture
 		 * starts.
 		 */
-		trace_keyword_error("test_keyword_set_config() error: "
+		trace_keyword_error("keyword_ctrl_set_bin_data() error: "
 				   "driver is busy");
 		return -EBUSY;
 	}
 
-	if (!cdata->msg_index) {
-		dst_size = cdata->num_elems + cdata->elems_remaining;
-		alloc_config(cd, cdata->num_elems + cdata->elems_remaining);
-
-		if (!cd->config) {
-			trace_keyword_error("test_keyword_set_config() error: "
-					    "buffer allocation failed");
-
-			return -EINVAL;
-		}
-
-		/* fallback to defaults if we have unset values */
-		test_keyword_check_defconfig(dev);
-	} else {
-		dst_size = cd->config->size;
-		if (!cdata->elems_remaining) {
-			if (cdata->num_elems + cd->buf_copy_pos <
-			    cd->config->size) {
-				trace_keyword_error("test_keyword_set_config() "
-						    "error: "
-						    "not enough data to fill "
-						    "the buffer");
-				/* TODO: anything to do in such a situation? */
-				return -EINVAL;
-			}
-
-			if (cdata->num_elems + cd->buf_copy_pos >
-			    cd->config->size) {
-				trace_keyword_error("test_keyword_set_config() "
-						    "warning: too much data");
-			}
-
-			trace_keyword("test_keyword_set_config() "
-				      "final packet received");
-		}
+	switch (cdata->data->type) {
+	case SOF_DETECT_TEST_CONFIG:
+		ret = test_keyword_set_config(dev, cdata);
+		break;
+	case SOF_DETECT_TEST_MODEL:
+		ret = test_keyword_set_model(dev, cdata);
+		break;
+	default:
+		trace_keyword_error("keyword_ctrl_set_bin_data() error: "
+				   "unknown binary data type");
+		break;
 	}
 
-	assert(!memcpy_s(((void *)cd->config) + cd->buf_copy_pos,
-			 dst_size, cdata->data->data, cdata->num_elems));
-
-	cd->buf_copy_pos += cdata->num_elems;
-
-	return 0;
+	return ret;
 }
 
 static int test_keyword_ctrl_set_data(struct comp_dev *dev,
@@ -370,7 +430,7 @@ static int test_keyword_ctrl_set_data(struct comp_dev *dev,
 	case SOF_CTRL_CMD_BINARY:
 		trace_keyword("test_keyword_cmd_set_data(), "
 			      "SOF_CTRL_CMD_BINARY");
-		ret = test_keyword_set_config(dev, cdata);
+		ret = test_keyword_ctrl_set_bin_data(dev, cdata);
 		break;
 	default:
 		trace_keyword_error("test_keyword_cmd_set_data() "
@@ -391,26 +451,74 @@ static int test_keyword_get_config(struct comp_dev *dev,
 
 	trace_keyword("test_keyword_get_config()");
 
-	if (!cd->config)
-		return -EINVAL;
-
-	/* Copy back to user space, without the model */
-	bs = sizeof(struct sof_detect_test_config);
+	/* Copy back to user space */
+	bs = cd->config.size;
 	trace_value(bs);
 
-	if (bs == 0 || bs + sizeof(uint32_t) > size)
+	if (bs == 0 || bs > size)
 		return -EINVAL;
 
-	struct sof_detect_test_config *cfg =
-		(struct sof_detect_test_config *)cdata->data->data;
-	uint32_t crc = crc32(cd->config->model, cd->config->model_size);
-
-	assert(!memcpy_s(cfg, size, &cd->config, bs));
-	cfg->model[0] = crc;
-
-	/* bs (config size) + uint32_t for crc */
-	cdata->data->size = bs + sizeof(uint32_t);
+	assert(!memcpy_s(cdata->data->data, size, &cd->config, bs));
 	cdata->data->abi = SOF_ABI_VERSION;
+	cdata->data->size = bs;
+
+	return ret;
+}
+
+static int test_keyword_get_model(struct comp_dev *dev,
+				  struct sof_ipc_ctrl_data *cdata, int size)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	size_t bs;
+	uint32_t crc;
+	int ret = 0;
+
+	trace_keyword("test_keyword_get_model()");
+
+	/* Copy back to user space */
+	if (cd->load_memory) {
+		bs = sizeof(uint32_t);
+
+		if (bs > size) {
+			trace_keyword_error("test_keyword_get_model() error: "
+					    "invalid size %d", bs);
+			return -EINVAL;
+		}
+
+		crc = crc32(cd->load_memory, cd->config.load_memory_size);
+
+		trace_keyword("test_keyword_get_model() crc: 0x%X", crc);
+
+		assert(!memcpy_s(cdata->data->data, size, &crc, bs));
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = bs;
+	} else {
+		trace_keyword_error("test_keyword_get_model() "
+				    "error: invalid cd->config");
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static int test_keyword_ctrl_get_bin_data(struct comp_dev *dev,
+					  struct sof_ipc_ctrl_data *cdata,
+					  int size)
+{
+	int ret = 0;
+
+	switch (cdata->data->type) {
+	case SOF_DETECT_TEST_CONFIG:
+		ret = test_keyword_get_config(dev, cdata, size);
+		break;
+	case SOF_DETECT_TEST_MODEL:
+		ret = test_keyword_get_model(dev, cdata, size);
+		break;
+	default:
+		trace_keyword_error("test_keyword_ctrl_get_bin_data() error: "
+				   "unknown binary data type");
+		break;
+	}
 
 	return ret;
 }
@@ -424,7 +532,7 @@ static int test_keyword_ctrl_get_data(struct comp_dev *dev,
 
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
-		ret = test_keyword_get_config(dev, cdata, size);
+		ret = test_keyword_ctrl_get_bin_data(dev, cdata, size);
 		break;
 	default:
 		trace_keyword_error("test_keyword_ctrl_get_data() error: "
@@ -556,7 +664,7 @@ struct comp_driver comp_keyword = {
 	},
 };
 
-UT_STATIC void sys_comp_keyword_init(void)
+static void sys_comp_keyword_init(void)
 {
 	comp_register(&comp_keyword);
 }
