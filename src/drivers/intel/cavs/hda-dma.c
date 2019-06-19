@@ -259,8 +259,6 @@ static int hda_dma_wait_for_buffer_full(struct dma *dma,
 	uint64_t deadline = platform_timer_get(platform_timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		PLATFORM_HOST_DMA_TIMEOUT / 1000;
-	uint32_t rp;
-	uint32_t wp;
 
 	while (!hda_dma_is_buffer_full(dma, chan)) {
 		if (deadline < platform_timer_get(platform_timer)) {
@@ -268,12 +266,11 @@ static int hda_dma_wait_for_buffer_full(struct dma *dma,
 			if (hda_dma_is_buffer_full(dma, chan))
 				return 0;
 
-			rp = host_dma_reg_read(dma, chan->index, DGBRP);
-			wp = host_dma_reg_read(dma, chan->index, DGBWP);
-
 			trace_hddma_error("hda-dmac: %d wait for buffer full "
 					  "timeout rp 0x%x wp 0x%x",
-					  dma->plat_data.id, rp, wp);
+				dma->plat_data.id,
+				host_dma_reg_read(dma, chan->index, DGBRP),
+				host_dma_reg_read(dma, chan->index, DGBWP));
 			return -ETIME;
 		}
 	}
@@ -287,8 +284,6 @@ static int hda_dma_wait_for_buffer_empty(struct dma *dma,
 	uint64_t deadline = platform_timer_get(platform_timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		PLATFORM_HOST_DMA_TIMEOUT / 1000;
-	uint32_t rp;
-	uint32_t wp;
 
 	while (!hda_dma_is_buffer_empty(dma, chan)) {
 		if (deadline < platform_timer_get(platform_timer)) {
@@ -296,12 +291,11 @@ static int hda_dma_wait_for_buffer_empty(struct dma *dma,
 			if (hda_dma_is_buffer_empty(dma, chan))
 				return 0;
 
-			rp = host_dma_reg_read(dma, chan->index, DGBRP);
-			wp = host_dma_reg_read(dma, chan->index, DGBWP);
-
 			trace_hddma_error("hda-dmac: %d wait for buffer empty "
 					  "timeout rp 0x%x wp 0x%x",
-					  dma->plat_data.id, rp, wp);
+				dma->plat_data.id,
+				host_dma_reg_read(dma, chan->index, DGBRP),
+				host_dma_reg_read(dma, chan->index, DGBWP));
 			return -ETIME;
 		}
 	}
