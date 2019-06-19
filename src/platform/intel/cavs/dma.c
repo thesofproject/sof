@@ -161,7 +161,7 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
 		.caps		= DMA_CAP_GP_LP,
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC |
-				  DMA_DEV_SOUNDWIRE,
+				  DMA_DEV_ALH,
 		.base		= LP_GP_DMA_BASE(0),
 		.channels	= 8,
 		.irq		= IRQ_EXT_LP_GPDMA0_LVL5(0, 0),
@@ -176,7 +176,7 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 				  DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
 		.caps		= DMA_CAP_GP_LP,
 		.devs		= DMA_DEV_SSP | DMA_DEV_DMIC |
-				  DMA_DEV_SOUNDWIRE,
+				  DMA_DEV_ALH,
 		.base		= LP_GP_DMA_BASE(1),
 		.channels	= 8,
 		.irq		= IRQ_EXT_LP_GPDMA1_LVL5(0, 0),

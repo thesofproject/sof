@@ -25,6 +25,6 @@ if(CONFIG_CAVS_SSP)
 	add_local_sources(sof ssp.c)
 endif()
 
-if(CONFIG_CAVS_SOUNDWIRE)
-	add_local_sources(sof soundwire.c)
+if(CONFIG_CAVS_ALH)
+	add_local_sources(sof alh.c)
 endif()
