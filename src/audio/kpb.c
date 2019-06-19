@@ -883,6 +883,7 @@ static uint64_t kpb_draining_task(void *arg)
 		if (period_bytes >= period_bytes_limit) {
 			current_time = platform_timer_get(platform_timer);
 			next_copy_time = current_time + period_interval;
+			ipc_process_msg_queue();
 		}
 
 		if (history_depth == 0) {
