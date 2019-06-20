@@ -161,6 +161,8 @@
 #define cache_to_uncache(address)	address
 #define is_uncached(address)		0
 
+#define HEAP_BUF_ALIGNMENT		XCHAL_DCACHE_LINESIZE
+
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 void platform_init_memmap(void);
 #endif
