@@ -48,8 +48,8 @@ static int ssp_context_restore(struct dai *dai)
 }
 
 /* Digital Audio interface formatting */
-static inline int ssp_set_config(struct dai *dai,
-				 struct sof_ipc_dai_config *config)
+static int ssp_set_config(struct dai *dai,
+			  struct sof_ipc_dai_config *config)
 {
 	struct ssp_pdata *ssp = dai_get_drvdata(dai);
 	uint32_t sscr0;
