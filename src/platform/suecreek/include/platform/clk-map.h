@@ -19,8 +19,8 @@ static const struct freq_table cpu_freq[] = {
  * (regarding to .freq field)
  */
 static const struct freq_table ssp_freq[] = {
-	{ 38400000, 38400, CLOCK_SSP_XTAL_OSCILLATOR },
-	{ 96000000, 96000, CLOCK_SSP_PLL_FIXED },
+	{ 19200000, 19200, CLOCK_SSP_XTAL_OSCILLATOR },
+	{ 24000000, 24000, CLOCK_SSP_PLL_FIXED },
 };
 
 #endif
