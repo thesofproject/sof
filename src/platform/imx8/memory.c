@@ -7,6 +7,9 @@
 #include <sof/alloc.h>
 #include <ipc/header.h>
 
+STATIC_ASSERT(0 == (HEAP_BUF_ALIGNMENT % PLATFORM_DCACHE_ALIGN),
+	      invalid_heap_buf_alignment);
+
 /* Heap blocks for system runtime */
 static struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
 static struct block_hdr sys_rt_block512[HEAP_SYS_RT_COUNT512];
