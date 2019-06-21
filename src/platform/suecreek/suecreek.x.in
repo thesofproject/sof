@@ -87,9 +87,6 @@ MEMORY
   sof_fw :
        	org = SOF_FW_BASE,
         len = SOF_FW_MAX_SIZE,
-  buffer_hp_heap :
-        org = HEAP_HP_BUFFER_BASE,
-        len = HEAP_HP_BUFFER_SIZE
   static_log_entries_seg (!ari) :
         org = LOG_ENTRY_ELF_BASE,
         len = LOG_ENTRY_ELF_SIZE
@@ -121,7 +118,6 @@ PHDRS
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
   sof_fw_phdr PT_LOAD;
-  buffer_hp_heap_phdr PT_LOAD;
   static_log_entries_phdr PT_NOTE;
 }
 

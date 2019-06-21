@@ -121,8 +121,6 @@
  * +--------------------------------------------------------------------------+
  * | Offset           | Region                  |  Size                       |
  * +------------------+-------------------------+-----------------------------+
- * | HP_SRAM_BASE     | DMA                     |  HEAP_HP_BUFFER_SIZE        |
- * +------------------+-------------------------+-----------------------------+
  * | SRAM_SW_REG_BASE | SW Registers W0         |  SRAM_SW_REG_SIZE           |
  * +------------------+-------------------------+-----------------------------+
  * | SRAM_OUTBOX_BASE | Outbox W0               |  SRAM_MAILBOX_SIZE          |
@@ -163,14 +161,6 @@
 
 #define HP_SRAM_BASE		0xBE000000
 #define HP_SRAM_MASK		0xFF000000
-
-/* HP SRAM Heap */
-#define HEAP_HP_BUFFER_BASE	HP_SRAM_BASE
-#define HEAP_HP_BUFFER_SIZE	0xA000
-
-#define HEAP_HP_BUFFER_BLOCK_SIZE	0x180
-#define HEAP_HP_BUFFER_COUNT \
-	(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
 
 /* HP SRAM windows */
 
@@ -226,7 +216,7 @@
 
 #define SRAM_ALIAS_OFFSET	0x20000000
 
-#define SRAM_WND_BASE		(HEAP_HP_BUFFER_BASE + HEAP_HP_BUFFER_SIZE)
+#define SRAM_WND_BASE		(HP_SRAM_BASE)
 
 #define HP_SRAM_VECBASE_RESET	(HP_SRAM_WIN0_BASE + HP_SRAM_WIN0_SIZE)
 #define HP_SRAM_VECBASE_OFFSET	0x0
@@ -282,7 +272,8 @@
 	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
 	HEAP_RT_COUNT1024 * 1024)
 
-#define HEAP_BUFFER_SIZE	0x8000
+#define HEAP_BUFFER_SIZE	0x10000
+
 #define HEAP_BUFFER_BLOCK_SIZE	0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
@@ -377,7 +368,7 @@
 #define PLATFORM_HEAP_SYSTEM		PLATFORM_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	PLATFORM_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_BUFFER		3
+#define PLATFORM_HEAP_BUFFER		2
 
 /* Stack configuration */
 #define SOF_LP_STACK_SIZE		0x1000
@@ -428,7 +419,8 @@
 #define IMR_BOOT_LDR_BSS_SIZE		0x10000
 
 /* Temporary stack place for boot_ldr */
-#define BOOT_LDR_STACK_BASE		HEAP_HP_BUFFER_BASE
+#define BOOT_LDR_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE - \
+					SOF_STACK_TOTAL_SIZE)
 #define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
 /** \brief Manifest base address in IMR - used by boot loader copy procedure. */

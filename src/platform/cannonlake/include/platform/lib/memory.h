@@ -143,8 +143,6 @@
  * +------------------+-------------------------+-----------------------------+
  * | SRAM_TRACE_BASE  | Trace Buffer W3         |  SRAM_TRACE_SIZE            |
  * +------------------+-------------------------+-----------------------------+
- * | HP_SRAM_BASE     | DMA                     |  HEAP_HP_BUFFER_SIZE        |
- * +------------------+-------------------------+-----------------------------+
  * | SOF_FW_START     | text                    |                             |
  * |                  | data                    |                             |
  * |                  | ----------------------- |                             |
@@ -220,18 +218,8 @@
 #define HP_SRAM_WIN3_BASE	SRAM_TRACE_BASE
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
-#define HEAP_HP_BUFFER_BASE		(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
-#if CONFIG_COMP_KPB
-#define HEAP_HP_BUFFER_SIZE		0x40000
-#else
-#define HEAP_HP_BUFFER_SIZE		0x20000
-#endif
-#define HEAP_HP_BUFFER_BLOCK_SIZE	0x100
-#define HEAP_HP_BUFFER_COUNT \
-			(HEAP_HP_BUFFER_SIZE / HEAP_HP_BUFFER_BLOCK_SIZE)
-
 /* HP SRAM Base */
-#define HP_SRAM_VECBASE_RESET	(HEAP_HP_BUFFER_BASE + HEAP_HP_BUFFER_SIZE)
+#define HP_SRAM_VECBASE_RESET	(SRAM_TRACE_BASE + SRAM_TRACE_SIZE)
 
 /* text and data share the same HP L2 SRAM on Cannonlake */
 #define SOF_FW_START		(HP_SRAM_VECBASE_RESET + 0x400)
@@ -266,7 +254,7 @@
 	HEAP_RT_COUNT256 * 256 + HEAP_RT_COUNT512 * 512 + \
 	HEAP_RT_COUNT1024 * 1024)
 
-#define HEAP_BUFFER_SIZE	0xF000
+#define HEAP_BUFFER_SIZE	0x50000
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
@@ -374,7 +362,7 @@
 #define PLATFORM_HEAP_SYSTEM		PLATFORM_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	PLATFORM_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_BUFFER		3
+#define PLATFORM_HEAP_BUFFER		2
 
 /* Stack configuration */
 #define SOF_LP_STACK_SIZE		0x1000
@@ -420,7 +408,8 @@
 #define IMR_BOOT_LDR_BSS_SIZE		0x10000
 
 /* Temporary stack place for boot_ldr */
-#define BOOT_LDR_STACK_BASE		HEAP_HP_BUFFER_BASE
+#define BOOT_LDR_STACK_BASE		(HP_SRAM_BASE + HP_SRAM_SIZE - \
+					SOF_STACK_TOTAL_SIZE)
 #define BOOT_LDR_STACK_SIZE		SOF_STACK_TOTAL_SIZE
 
 #define uncache_to_cache(address) \
