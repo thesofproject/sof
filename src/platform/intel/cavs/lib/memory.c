@@ -85,18 +85,11 @@ static struct block_map rt_heap_map[] = {
 static struct block_hdr
 	buf_block[HEAP_BUFFER_COUNT] __aligned(PLATFORM_DCACHE_ALIGN);
 static struct block_hdr
-	hp_buf_block[HEAP_HP_BUFFER_COUNT] __aligned(PLATFORM_DCACHE_ALIGN);
-static struct block_hdr
 	lp_buf_block[HEAP_LP_BUFFER_COUNT] __aligned(PLATFORM_DCACHE_ALIGN);
 
 /* Heap memory map for buffers */
 static struct block_map buf_heap_map[] = {
 	BLOCK_DEF(HEAP_BUFFER_BLOCK_SIZE, HEAP_BUFFER_COUNT, buf_block),
-};
-
-static struct block_map hp_buf_heap_map[] = {
-	BLOCK_DEF(HEAP_HP_BUFFER_BLOCK_SIZE, HEAP_HP_BUFFER_COUNT,
-		hp_buf_block),
 };
 
 static struct block_map lp_buf_heap_map[] = {
@@ -165,29 +158,20 @@ void platform_init_memmap(void)
 	memmap.buffer[0].heap = (uintptr_t)&_buffer_heap;
 	memmap.buffer[0].size = HEAP_BUFFER_SIZE;
 	memmap.buffer[0].info.free = HEAP_BUFFER_SIZE;
-	memmap.buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_EXT |
-		SOF_MEM_CAPS_CACHE;
-
-	/* heap hp buffer init */
-	memmap.buffer[1].blocks = ARRAY_SIZE(hp_buf_heap_map);
-	memmap.buffer[1].map = hp_buf_heap_map;
-	memmap.buffer[1].heap = HEAP_HP_BUFFER_BASE;
-	memmap.buffer[1].size = HEAP_HP_BUFFER_SIZE;
-	memmap.buffer[1].info.free = HEAP_HP_BUFFER_SIZE;
-	memmap.buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
+	memmap.buffer[0].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_HP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
 	/* heap lp buffer init */
-	memmap.buffer[2].blocks = ARRAY_SIZE(lp_buf_heap_map);
-	memmap.buffer[2].map = lp_buf_heap_map;
-	memmap.buffer[2].heap = HEAP_LP_BUFFER_BASE;
-	memmap.buffer[2].size = HEAP_LP_BUFFER_SIZE;
-	memmap.buffer[2].info.free = HEAP_LP_BUFFER_SIZE;
-	memmap.buffer[2].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
+	memmap.buffer[1].blocks = ARRAY_SIZE(lp_buf_heap_map);
+	memmap.buffer[1].map = lp_buf_heap_map;
+	memmap.buffer[1].heap = HEAP_LP_BUFFER_BASE;
+	memmap.buffer[1].size = HEAP_LP_BUFFER_SIZE;
+	memmap.buffer[1].info.free = HEAP_LP_BUFFER_SIZE;
+	memmap.buffer[1].caps = SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_LP |
 		SOF_MEM_CAPS_CACHE | SOF_MEM_CAPS_DMA;
 
 	/* .total init */
 	memmap.total.free = HEAP_SYSTEM_T_SIZE + HEAP_SYS_RUNTIME_T_SIZE +
-		HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE + HEAP_HP_BUFFER_SIZE +
+		HEAP_RUNTIME_SIZE + HEAP_BUFFER_SIZE +
 		HEAP_LP_BUFFER_SIZE;
 }
