@@ -89,9 +89,6 @@ MEMORY
   sof_fw :
         org = SOF_FW_BASE,
         len = SOF_FW_MAX_SIZE
-  buffer_hp_heap :
-        org = HEAP_HP_BUFFER_BASE,
-        len = HEAP_HP_BUFFER_SIZE
   wnd0 :
         org = HP_SRAM_WIN0_BASE,
         len = HP_SRAM_WIN0_SIZE
@@ -136,7 +133,6 @@ PHDRS
   vector_double_lit_phdr PT_LOAD;
   vector_double_text_phdr PT_LOAD;
   sof_fw_phdr PT_LOAD;
-  buffer_hp_heap_phdr PT_LOAD;
   wnd0_phdr PT_LOAD;
   wnd1_phdr PT_LOAD;
   wnd2_phdr PT_LOAD;
@@ -173,14 +169,6 @@ SECTIONS
     KEEP (*(.MemoryExceptionVector.text))
     _MemoryExceptionVector_text_end = ABSOLUTE(.);
   } >vector_memory_text :vector_memory_text_phdr
-
-  .buffer_hp_heap (NOLOAD) : ALIGN(8)
-  {
-    . = ALIGN (32);
-    _buffer_hp_heap_start = ABSOLUTE(.);
-    . = . + HEAP_HP_BUFFER_SIZE;
-    _buffer_hp_heap_end = ABSOLUTE(.);
-  } >buffer_hp_heap :buffer_hp_heap_phdr
 
   .wnd0 (NOLOAD) : ALIGN(8)
   {

@@ -357,7 +357,7 @@
 #define PLATFORM_HEAP_SYSTEM		PLATFORM_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_SYSTEM_RUNTIME	PLATFORM_CORE_COUNT /* one per core */
 #define PLATFORM_HEAP_RUNTIME		1
-#define PLATFORM_HEAP_BUFFER		3
+#define PLATFORM_HEAP_BUFFER		2
 
 /* Stack configuration */
 #define SOF_LP_STACK_SIZE		0x1000
