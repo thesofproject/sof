@@ -185,7 +185,7 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 		cd->config.activation_threshold =
 			ACTIVATION_DEFAULT_THRESHOLD_S16;
 
-	return alloc_mem_load(cd, cd->config.load_memory_size);
+	return 0;
 }
 
 static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
@@ -318,7 +318,14 @@ static int test_keyword_set_config(struct comp_dev *dev,
 static int test_keyword_set_model(struct comp_dev *dev,
 				  struct sof_ipc_ctrl_data *cdata)
 {
+	int ret = 0;
 	struct comp_data *cd = comp_get_drvdata(dev);
+
+	if (!cdata->msg_index) {
+		ret = alloc_mem_load(cd, cdata->num_elems);
+		if (ret < 0)
+			return ret;
+	}
 
 	if (!cd->load_memory) {
 		trace_keyword_error("keyword_ctrl_set_model() error: "
