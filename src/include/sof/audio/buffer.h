@@ -35,7 +35,10 @@ struct comp_dev;
 
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
-
+	uint32_t id;
+	uint32_t last_produce;
+	uint32_t last_consume;
+	void *last_r_ptr;
 	/* runtime data */
 	uint32_t size;	/* runtime buffer size in bytes (period multiple) */
 	uint32_t alloc_size;	/* allocated size in bytes */

@@ -56,6 +56,7 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	assert(!memcpy_s(&buffer->ipc_buffer, sizeof(buffer->ipc_buffer),
 		       desc, sizeof(*desc)));
 
+	buffer->id = 0;
 	buffer->size = desc->size;
 	buffer->alloc_size = desc->size;
 	buffer->w_ptr = buffer->addr;
@@ -87,15 +88,29 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	uint32_t flags;
 	uint32_t head = bytes;
 	uint32_t tail = 0;
+	static size_t produced_total;
 
+	spin_lock_irq(&buffer->lock, flags);
+
+	if (bytes == 0xFEED) {
+		bytes = (buffer->last_produce - buffer->last_consume);
+		trace_buffer("RAJWA: buffer we try to retransmit %d last consumed %d",
+			bytes, buffer->last_consume);
+		buffer->r_ptr = buffer->last_r_ptr;
+		goto retransmit;
+	}
+
+	if (buffer->id == 99) {
+		produced_total += bytes;
+		trace_buffer("RAJWA: buffer PRODUCE of %d bytes in total %d", bytes,
+			      produced_total);
+	}
 	/* return if no bytes */
 	if (!bytes) {
 		trace_buffer("comp_update_buffer_produce(), "
 			     "no bytes to produce");
 		return;
 	}
-
-	spin_lock_irq(&buffer->lock, flags);
 
 	/* calculate head and tail size for dcache circular wrap ops */
 	if (buffer->w_ptr + bytes > buffer->end_addr) {
@@ -142,6 +157,8 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
+retransmit:
+	buffer->last_produce = bytes;
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_PRODUCE)
 		buffer->cb(buffer->cb_data, bytes);
 
@@ -161,11 +178,25 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 {
 	uint32_t flags;
+	static size_t consumed_total;
+	buffer->last_consume = bytes;
 
+	if (buffer->id == 99 && (bytes != buffer->last_produce)) {
+		trace_buffer_error("RAJWA: transmition failed! produced %d but consumed %d",
+			buffer->last_produce, bytes);
+		//return;
+	}
+	if (buffer->id == 99) {
+		consumed_total += bytes;
+		trace_buffer("RAJWA: buffer CONSUME of %d bytes in total %d", bytes,
+			      consumed_total);
+	}
 	/* return if no bytes */
 	if (!bytes) {
 		trace_buffer("comp_update_buffer_consume(), "
 			     "no bytes to consume");
+		buffer->last_r_ptr = buffer->r_ptr;
+
 		return;
 	}
 
@@ -195,6 +226,8 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
 		buffer->cb(buffer->cb_data, bytes);
+
+	buffer->last_r_ptr = buffer->r_ptr;
 
 	spin_unlock_irq(&buffer->lock, flags);
 

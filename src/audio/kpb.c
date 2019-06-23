@@ -394,6 +394,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
 			/* We found proper host sink */
 			cd->host_sink = sink;
+			cd->host_sink->id = 101;
 		}
 	}
 
@@ -478,6 +479,9 @@ static int kpb_copy(struct comp_dev *dev)
 
 	/* Stop copying downstream if in draining mode */
 	if (kpb->state == KPB_STATE_DRAINING) {
+		trace_kpb("RAJWA: upd_hdepth source stats: w_ptr %p, r_ptr %p, avail %d, ho_sink free %d",
+			 (uint32_t)source->w_ptr, (uint32_t)source->r_ptr, source->avail, sink->free);
+		trace_kpb("RAJWA: sink addres %p", (uint32_t)sink->addr);
 		kpb_buffer_data(kpb, source, source->avail);
 		comp_update_buffer_consume(source, source->avail);
 		return PPL_STATUS_PATH_STOP;
@@ -507,9 +511,20 @@ static int kpb_copy(struct comp_dev *dev)
 			kpb->is_internal_buffer_full = true;
 	}
 
+	if (kpb->state == KPB_STATE_HOST_COPY) {
+		trace_kpb("RAJWA: host BEFORE cpy: source avail %d host free %d source r_ptr %p",
+			   source->avail, sink->free, (uint32_t)source->r_ptr);
+		//copy_bytes = source->avail;
+	}
+
 	comp_update_buffer_produce(sink, copy_bytes);
 	comp_update_buffer_consume(source, copy_bytes);
 
+	if (kpb->state == KPB_STATE_HOST_COPY) {
+		trace_kpb("RAJWA: host AFTER cpy: source avail %d host free %d source r_ptr %p",
+			   source->avail, sink->free, (uint32_t)source->r_ptr);
+		//copy_bytes = source->avail;
+	}
 	return ret;
 }
 
@@ -697,7 +712,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t period_size = kpb->period_size;
 	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
-
+	trace_kpb("RAJWA: init draining, ho sink free %d", kpb->host_sink->free);
 	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",host_buffer_size, period_size, ticks_per_ms);
 
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
@@ -835,16 +850,46 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
 	void *hb_w_ptr = draining_data->hb_w_ptr;
+	uint64_t deadline;
+	uint32_t attempts = 0;
+	trace_kpb("RAJWA: start draining");
 
 	trace_kpb("kpb_draining_task(), start.");
 
 	time_start = platform_timer_get(platform_timer);
-
+	sink->last_consume = 0;
+	sink->last_produce = 0;
+	sink->id = 99;
 	while (history_depth > 0) {
 		if (next_copy_time > platform_timer_get(platform_timer)) {
 			period_bytes = 0;
 			continue;
 		}
+		deadline = platform_timer_get(platform_timer) +
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+		PLATFORM_HOST_DMA_TIMEOUT*2 / 1000;
+
+		while (sink->free && (sink->last_produce != sink->last_consume)) {
+			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
+				sink->last_produce, sink->last_consume);
+			if (deadline < platform_timer_get(platform_timer)) {
+				attempts++;
+				if (attempts > 3) {
+					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
+					attempts = 0;
+					comp_update_buffer_consume(sink, sink->last_produce);
+					break;
+				}
+				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
+					sink->last_produce-sink->last_consume);
+				//comp_update_buffer_consume(sink, sink->last_produce);
+				comp_update_buffer_produce(sink, 0xFEED);
+				deadline = platform_timer_get(platform_timer) +
+				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+				PLATFORM_HOST_DMA_TIMEOUT*2 / 1000;
+			}
+		}
+
 
 		size_to_read = (uint32_t)buff->end_addr -
 			       (uint32_t)buff->r_ptr;
@@ -882,7 +927,9 @@ static uint64_t kpb_draining_task(void *arg)
 		if (period_bytes >= period_bytes_limit) {
 			current_time = platform_timer_get(platform_timer);
 			next_copy_time = current_time + period_interval;
+			/* now process any IPC messages to host */
 			ipc_process_msg_queue();
+
 		}
 
 		if (history_depth == 0) {
@@ -907,7 +954,7 @@ static uint64_t kpb_draining_task(void *arg)
 		}
 	}
 
-	time_end =  platform_timer_get(platform_timer);
+	time_end = platform_timer_get(platform_timer);
 
 	/* Draining is done. Now switch KPB to copy real time stream
 	 * to client's sink. This state is called "draining on demand"
@@ -917,14 +964,14 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
 
-	trace_kpb("kpb_draining_task(), done. %u drained in %d ms.",
+	trace_kpb("RAJWA: kpb_draining_task(), done. %u drained in %d ms. last copy size %d",
 		   drained,
 		   (time_end - time_start)
-		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1),
+		   size_to_copy);
 
 	/* Enable system agent back */
 	sa_enable();
-
 	return 0;
 }
 

@@ -604,13 +604,19 @@ static int dai_copy(struct comp_dev *dev)
 	copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
 		MIN(dd->dma_buffer->avail, free_bytes) :
 		MIN(avail_bytes, dd->dma_buffer->free);
-
+	if(avail_bytes != dd->dma_buffer->free) {
+		trace_dai("RAJWA: dd-dma address %p, avail %d free %d",
+			 (uint32_t)dd->dma_buffer->addr,avail_bytes, dd->dma_buffer->free);
+	}
 	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
 	/* check for underrun or overrun */
 	ret = dai_check_for_xrun(dev, copy_bytes);
-	if (ret < 0 || ret == PPL_STATUS_PATH_STOP)
+	if (ret < 0 || ret == PPL_STATUS_PATH_STOP) {
+		trace_dai_error("RAJWA: error: we spotted xrun! ret: %d, avail %d, dma_free: %d",
+		ret, avail_bytes, dd->dma_buffer->free);
 		return ret;
+	}
 
 	ret = dma_copy(dd->dma, dd->chan, copy_bytes, 0);
 	if (ret < 0)

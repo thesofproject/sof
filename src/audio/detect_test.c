@@ -84,6 +84,7 @@ static void notify_kpb(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
+	trace_kpb("RAJWA: notify_kpb()");
 	trace_keyword("notify_kpb(), preamble: %u", cd->detect_preamble);
 
 	cd->client_data.r_ptr = NULL;

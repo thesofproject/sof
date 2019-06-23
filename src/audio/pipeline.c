@@ -44,7 +44,6 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	struct pipeline *p;
 	uint32_t type;
 
-	trace_pipe("pipeline_new()");
 
 	/* allocate new pipeline */
 	p = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*p));
@@ -53,6 +52,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 		return NULL;
 	}
 
+
 	/* init pipeline */
 	p->sched_comp = cd;
 	p->status = COMP_STATE_INIT;
@@ -60,10 +60,18 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	spinlock_init(&p->lock);
 	assert(!memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
 	   pipe_desc, sizeof(*pipe_desc)));
+	trace_pipe("pipeline_new() pip_id %d, comp: %d",
+		    pipe_desc->pipeline_id, pipe_desc->comp_id);
+	trace_pipe_error("pipeline_new() error: RAJWA period %d",
+		p->ipc_pipe.period);
+	//p->ipc_pipe.period = 4;
 
 	/* get pipeline task type */
 	type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :
 		SOF_SCHEDULE_EDF;
+	//type = (pipe_desc->pipeline_id == 8) ? SOF_SCHEDULE_LL : type;
+	trace_pipe_error("pipeline_new() type of task: RAJWA task %d",
+		type);
 	schedule_task_init(&p->pipe_task, type, pipe_desc->priority,
 			   pipeline_task, p, pipe_desc->core, 0);
 
@@ -113,6 +121,11 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 		/* don't go further if this component is not connected */
 		if (!buffer_comp)
 			continue;
+	/*	else {
+trace_pipe("RAJWA: for each, processing component type %d",
+	    buffer_comp->comp.type);
+		}*/
+
 
 		/* continue further */
 		if (func) {
@@ -702,8 +715,8 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 		pipeline_is_same_sched_comp(current->pipeline, ppl_data->p);
 	int err = 0;
 
-	tracev_pipe("pipeline_comp_copy(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
+	tracev_pipe("pipeline_comp_copy(), current->comp.id = %u, dir = %u type %d",
+		    current->comp.id, dir, current->comp.type);
 
 	if (!is_single_ppl && !is_same_sched) {
 		tracev_pipe("pipeline_comp_copy(), current is from another "
@@ -719,14 +732,20 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	/* copy to downstream immediately */
 	if (dir == PPL_DIR_DOWNSTREAM) {
 		err = comp_copy(current);
-		if (err < 0 || err == PPL_STATUS_PATH_STOP)
+		if (err < 0 || err == PPL_STATUS_PATH_STOP) {
+			trace_pipe("RAJWA, copy to downstream failed with err %d comp: %d",
+				    err, current->comp.type);
 			return err;
+		}
 	}
 
 	err = pipeline_for_each_comp(current, &pipeline_comp_copy,
 				     data, NULL, dir);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
+	if (err < 0 || err == PPL_STATUS_PATH_STOP) {
+		trace_pipe("RAJWA, pipeline_for_each_comp() failed with err %d comp: %d",
+				    err, current->comp.type);
 		return err;
+	}
 
 	if (dir == PPL_DIR_UPSTREAM)
 		err = comp_copy(current);

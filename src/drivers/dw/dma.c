@@ -1035,9 +1035,15 @@ static int dw_dma_copy(struct dma *dma, unsigned int channel, int bytes,
 
 	/* change current pointer */
 	chan->ptr_data.current_ptr += bytes;
-	if (chan->ptr_data.current_ptr >= chan->ptr_data.end_ptr)
+	if (chan->ptr_data.current_ptr == chan->ptr_data.end_ptr) {
 		chan->ptr_data.current_ptr = chan->ptr_data.start_ptr +
 			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
+	} else if (chan->ptr_data.current_ptr > chan->ptr_data.end_ptr) {
+		trace_dwdma_error("RAJWA: DW-DMA OVERRUN! buff start_ptr %p end_ptr %p",
+	          (uint32_t)chan->ptr_data.start_ptr, (uint32_t)chan->ptr_data.end_ptr);
+		chan->ptr_data.current_ptr = chan->ptr_data.start_ptr +
+			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
+	}
 
 	return 0;
 }
@@ -1272,10 +1278,14 @@ static int dw_dma_avail_data_size(struct dma *dma, unsigned int channel)
 	int32_t read_ptr = chan->ptr_data.current_ptr;
 	int32_t write_ptr = dw_read(dma, DW_DAR(channel));
 	int size;
-
 	size = write_ptr - read_ptr;
-	if (size < 0)
+	trace_dwdma("RAJWA: avail size calc -> w_ptr %p, r_ptr %p, size %d",
+		     (uint32_t)write_ptr, (uint32_t)read_ptr, size);
+	if (size < 0) {
 		size += chan->ptr_data.buffer_bytes;
+		trace_dwdma("RAJWA: we got negative size!! lets add  %d and size is now %d",
+			     chan->ptr_data.buffer_bytes, size);
+	}
 
 	return size;
 }
