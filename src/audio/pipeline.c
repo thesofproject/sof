@@ -24,7 +24,7 @@
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <platform/idc.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 
 /* generic pipeline data used by pipeline_comp_* functions */
 struct pipeline_data {

@@ -15,7 +15,7 @@
 #include <sof/lock.h>
 #include <sof/list.h>
 #include <sof/wait.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/alloc.h>
 
 /* schedule tracing */

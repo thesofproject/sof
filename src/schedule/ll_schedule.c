@@ -5,8 +5,8 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/ll_schedule.h>
-#include <sof/schedule.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/timer.h>
 #include <sof/list.h>
 #include <sof/clk.h>

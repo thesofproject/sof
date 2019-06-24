@@ -15,7 +15,7 @@
 #include <sof/ipc.h>
 #include <sof/dai.h>
 #include <sof/dma.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/wait.h>
 #include <sof/ipc.h>
 #include <sof/audio/pipeline.h>

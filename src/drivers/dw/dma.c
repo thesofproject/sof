@@ -37,7 +37,7 @@
 #include <sof/io.h>
 #include <sof/lock.h>
 #include <sof/pm_runtime.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/sof.h>
 #include <sof/stream.h>
 #include <sof/timer.h>

@@ -17,7 +17,7 @@
 #include <sof/list.h>
 #include <sof/timer.h>
 #include <sof/alloc.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/trace.h>
 
 struct work_queue;

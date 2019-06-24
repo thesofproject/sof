@@ -16,7 +16,7 @@
 #include <sof/panic.h>
 #include <sof/alloc.h>
 #include <sof/notifier.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/trace.h>
 #include <sof/dma-trace.h>
 #include <sof/pm_runtime.h>

@@ -7,7 +7,7 @@
 #include <sof/audio/component.h>
 #include <sof/task.h>
 #include <stdint.h>
-#include <sof/edf_schedule.h>
+#include <sof/schedule/edf_schedule.h>
 #include <sof/wait.h>
 
  /* scheduler testbench definition */

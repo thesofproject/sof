@@ -18,7 +18,7 @@
 
 #include <sof/lock.h>
 #include <sof/trace.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/drivers/timer.h>
 
 typedef struct {

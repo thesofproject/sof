@@ -13,7 +13,7 @@
 #include <sof/alloc.h>
 #include <sof/debug.h>
 #include <sof/interrupt.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <platform/platform.h>
 #include <arch/task.h>
 

@@ -19,7 +19,7 @@
 #include <platform/interrupt.h>
 #include <platform/platform.h>
 #include <sof/audio/pipeline.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/debug.h>
 #include <sof/trace.h>
 #include <stdint.h>

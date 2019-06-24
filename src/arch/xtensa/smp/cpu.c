@@ -18,7 +18,7 @@
 #include <sof/idc.h>
 #include <sof/lock.h>
 #include <sof/notifier.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 
 /* cpu tracing */
 #define trace_cpu(__e) trace_event(TRACE_CLASS_CPU, __e)

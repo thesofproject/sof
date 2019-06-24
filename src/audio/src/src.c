@@ -14,7 +14,7 @@
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
