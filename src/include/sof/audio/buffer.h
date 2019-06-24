@@ -15,7 +15,7 @@
 #include <sof/stream.h>
 #include <sof/dma.h>
 #include <sof/trace.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/cache.h>
 #include <ipc/topology.h>
 

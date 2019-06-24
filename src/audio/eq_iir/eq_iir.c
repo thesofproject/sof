@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <sof/sof.h>
 #include <sof/alloc.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>
 #include <sof/audio/component.h>

@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 
 struct sof;
 

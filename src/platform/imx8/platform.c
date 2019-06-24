@@ -18,7 +18,7 @@
 #include <sof/interrupt.h>
 #include <sof/sof.h>
 #include <sof/clk.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/ipc.h>
 #include <sof/trace.h>
 #include <sof/agent.h>

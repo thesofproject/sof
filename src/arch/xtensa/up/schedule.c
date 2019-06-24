@@ -10,7 +10,7 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 
 /** \brief Schedule data pointer */
 static struct schedule_data *sch;

@@ -11,7 +11,7 @@
 #include <platform/platform.h>
 #include <sof/notifier.h>
 #include <sof/trace.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <user/kpb.h>
 
 /* KPB tracing */

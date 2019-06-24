@@ -14,8 +14,8 @@
 #include <sof/alloc.h>
 #include <sof/debug.h>
 #include <sof/clk.h>
-#include <sof/edf_schedule.h>
-#include <sof/ll_schedule.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <platform/timer.h>
 #include <platform/clk.h>
 #include <sof/audio/component.h>

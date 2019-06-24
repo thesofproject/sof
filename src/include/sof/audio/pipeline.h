@@ -16,7 +16,7 @@
 #include <sof/dma.h>
 #include <sof/audio/component.h>
 #include <sof/trace.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <ipc/topology.h>
 
 /*

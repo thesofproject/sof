@@ -16,7 +16,7 @@
 #include <sof/debug.h>
 #include <sof/timer.h>
 #include <sof/dma.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <platform/platform.h>
 #include <platform/timer.h>
 

@@ -14,7 +14,7 @@
 #include <sof/io.h>
 #include <sof/debug.h>
 #include <sof/wait.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/timer.h>
 #include <sof/interrupt.h>
 #include <sof/trace.h>

@@ -29,7 +29,7 @@
 #include <arch/cache.h>
 #include <arch/wait.h>
 #include <ipc/topology.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 
 #define trace_hddma(__e, ...) \
 	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)

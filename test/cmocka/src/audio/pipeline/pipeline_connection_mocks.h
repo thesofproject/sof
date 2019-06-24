@@ -7,7 +7,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/edf_schedule.h>
+#include <sof/schedule/edf_schedule.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>

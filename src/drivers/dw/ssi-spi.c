@@ -16,7 +16,7 @@
 #include <sof/lock.h>
 #include <sof/sof.h>
 #include <sof/spi.h>
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 
 #include <platform/dma.h>
 #include <platform/memory.h>

@@ -8,10 +8,7 @@ endif()
 add_local_sources(sof
 	lib.c
 	alloc.c
-	ll_schedule.c
 	notifier.c
-	edf_schedule.c
-	schedule.c
 	agent.c
 	interrupt.c
 	pm_runtime.c

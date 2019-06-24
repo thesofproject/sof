@@ -14,7 +14,7 @@
 #ifndef __INCLUDE_IDC_H__
 #define __INCLUDE_IDC_H__
 
-#include <sof/schedule.h>
+#include <sof/schedule/schedule.h>
 #include <sof/trace.h>
 #include <stdint.h>
 
