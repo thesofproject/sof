@@ -60,6 +60,7 @@ set(TPLGS
 	"sof-apl-dmic\;sof-apl-dmic-2ch\;-DCHANNELS=2"
 	"sof-apl-src-50khz-pcm512x\;sof-apl-src-50khz-pcm512x"
 	"sof-icl-dmic-4ch\;sof-icl-dmic-4ch"
+	"sof-icl-rt700\;sof-icl-rt700\;-DPLATFORM=icl"
 	"sof-apl-src-pcm512x\;sof-apl-src-pcm512x"
 	"sof-cml-rt5682\;sof-cml-rt5682\;-DPLATFORM=cml"
 	"sof-cml-rt5682\;sof-whl-rt5682\;-DPLATFORM=whl"
