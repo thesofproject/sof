@@ -92,8 +92,10 @@ struct sof_ipc_stream_params {
 
 	/* for notifying host period has completed - 0 means no period IRQ */
 	uint32_t host_period_bytes;
+	uint16_t period_irq;
 
-	uint32_t reserved[2];
+	uint16_t not_used;
+	uint32_t reserved[1];
 	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 } __attribute__((packed));
 
