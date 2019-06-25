@@ -73,6 +73,10 @@ struct host_data {
 	struct hc_buf *sink;
 	uint32_t split_remaining;
 
+	uint32_t dma_copy_align; /**< Minmal chunk of data possible to be
+				   *  copied by dma connected to host
+				   */
+
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 };
@@ -447,6 +451,11 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 		MIN(avail_bytes, hd->dma_buffer->free) :
 		MIN(hd->dma_buffer->avail, free_bytes);
 
+	/* copy_bytes should be aligned to minimum possible chunk of data to be
+	 * copied by dma.
+	 */
+	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+
 	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
 
 	if (hd->copy_blocking)
@@ -575,6 +584,15 @@ static int host_params(struct comp_dev *dev)
 				 "dma_set_config() failed");
 		dma_channel_put(hd->dma, hd->chan);
 		hd->chan = DMA_CHAN_INVALID;
+		return err;
+	}
+
+	err = dma_get_attribute(hd->dma, DMA_ATTR_COPY_ALIGNMENT,
+				&hd->dma_copy_align);
+
+	if (err < 0) {
+		trace_host_error("host_params() error: dma_get_attribute()");
+
 		return err;
 	}
 
