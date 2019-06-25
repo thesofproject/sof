@@ -81,6 +81,7 @@ enum dma_cb_status {
 
 /* DMA attributes */
 #define DMA_ATTR_BUFFER_ALIGNMENT	0
+#define DMA_ATTR_COPY_ALIGNMENT		1
 
 struct dma;
 

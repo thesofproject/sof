@@ -959,6 +959,9 @@ static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 	case DMA_ATTR_BUFFER_ALIGNMENT:
 		*value = PLATFORM_HDA_BUFFER_ALIGNMENT;
 		break;
+	case DMA_ATTR_COPY_ALIGNMENT:
+		*value = PLATFORM_HDA_COPY_ALIGNMENT;
+		break;
 	default:
 		ret = -EINVAL;
 		break;

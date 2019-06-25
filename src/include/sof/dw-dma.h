@@ -131,6 +131,7 @@
 	trace_error(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)
 
 #define DW_DMA_BUFFER_ALIGNMENT 0x20
+#define DW_DMA_COPY_ALIGNMENT	0x20
 
 /* TODO: add FIFO sizes */
 struct dw_chan_data {
