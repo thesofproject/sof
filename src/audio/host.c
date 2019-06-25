@@ -447,8 +447,6 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 		MIN(avail_bytes, hd->dma_buffer->free) :
 		MIN(hd->dma_buffer->avail, free_bytes);
 
-	copy_bytes = MIN(copy_bytes, bytes);
-
 	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
 
 	if (hd->copy_blocking)
