@@ -33,6 +33,9 @@ insert_module snd_soc_max98357a
 insert_module snd_soc_max98090
 
 insert_module snd_soc_rt700
+insert_module snd_soc_rt711
+insert_module snd_soc_rt1308_sdw
+insert_module snd_soc_rt715
 
 insert_module sof_acpi_dev
 insert_module sof_pci_dev
