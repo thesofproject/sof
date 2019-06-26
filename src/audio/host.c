@@ -146,8 +146,8 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	if (hd->local_pos >= hd->host_size)
 		hd->local_pos = 0;
 
-	/* NO_IRQ mode if host_period_size == 0 */
-	if (dev->params.period_irq != 0) {
+	/* NO_IRQ mode if no_period_irq == 1 */
+	if (!dev->params.no_period_irq) {
 		hd->report_pos += bytes;
 
 		/* send IPC message to driver if needed */
