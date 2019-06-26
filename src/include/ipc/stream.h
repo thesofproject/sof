@@ -90,13 +90,12 @@ struct sof_ipc_stream_params {
 	uint16_t sample_valid_bytes;
 	uint16_t sample_container_bytes;
 
-	/* for notifying host period has completed - 0 means no period IRQ */
 	uint32_t host_period_bytes;
-	uint16_t period_irq;
+	uint16_t no_period_irq; /* 1 means period IRQ mode OFF */
 
-	uint16_t not_used;
-	uint32_t reserved[1];
-	uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
+	uint16_t reserved[3];
+
+uint16_t chmap[SOF_IPC_MAX_CHANNELS];	/**< channel map - SOF_CHMAP_ */
 } __attribute__((packed));
 
 /* PCM params info - SOF_IPC_STREAM_PCM_PARAMS */
