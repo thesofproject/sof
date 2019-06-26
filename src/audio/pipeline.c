@@ -388,8 +388,11 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		goto out;
 	}
 
-	/* pipeline preload needed only for playback streams */
-	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK;
+	/* pipeline preload needed only for playback streams without active
+	 * sink component (it can be active for e.g. mixer pipelines)
+	 */
+	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
+		p->sink_comp->state != COMP_STATE_ACTIVE;
 	p->status = COMP_STATE_PREPARE;
 
 out:
