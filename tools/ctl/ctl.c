@@ -66,6 +66,16 @@ static void usage(char *name)
 	fprintf(stdout, " -b set/get control in binary mode(e.g. for set, use binary input file, for get, dump out in hex format)\n");
 }
 
+static void header_init(struct ctl_data *ctl_data)
+{
+	struct sof_abi_hdr *hdr =
+		(struct sof_abi_hdr *)&ctl_data->buffer[2];
+
+	hdr->magic = SOF_ABI_MAGIC;
+	hdr->type = 0;
+	hdr->abi = SOF_ABI_VERSION;
+}
+
 static int read_setup(struct ctl_data *ctl_data)
 {
 	FILE *fh;
