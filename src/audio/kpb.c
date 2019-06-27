@@ -684,7 +684,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
 	size_t local_buffered = 0;
-	uint32_t attr = 1;
+	enum comp_copy_type copy_type = COMP_COPY_BLOCKING;
 
 	trace_kpb("kpb_init_draining()");
 
@@ -767,8 +767,8 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->state = KPB_STATE_DRAINING;
 
 		/* Set host-sink copy mode to blocking */
-		comp_set_attribute(kpb->host_sink->sink,
-				   COMP_ATTR_COPY_BLOCKING, &attr);
+		comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
+				   &copy_type);
 
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0,
@@ -796,7 +796,7 @@ static uint64_t kpb_draining_task(void *arg)
 	bool move_buffer = false;
 	uint32_t drained = 0;
 	uint64_t time;
-	uint32_t attr = 0;
+	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
 
 	trace_kpb("kpb_draining_task(), start.");
 
@@ -843,7 +843,7 @@ static uint64_t kpb_draining_task(void *arg)
 	*draining_data->state = KPB_STATE_HOST_COPY;
 
 	/* Reset host-sink copy mode back to unblocking */
-	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, &attr);
+	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE, &copy_type);
 
 	trace_kpb("kpb_draining_task(), done. %u drained in %d ms.",
 		   drained,
