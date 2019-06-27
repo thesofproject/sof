@@ -64,16 +64,16 @@ static void usage(char *name)
 	fprintf(stdout, " -s set data using ASCII CSV input file\n");
 }
 
-static int read_setup(unsigned int *data, char setup[], size_t smax)
+static int read_setup(struct ctl_data *ctl_data)
 {
 	FILE *fh;
 	unsigned int x;
 	int n = 0;
-	int n_max = smax / sizeof(unsigned int);
+	int n_max = ctl_data->ctrl_size / sizeof(unsigned int);
 	int separator;
 
 	/* open input file */
-	fh = fopen(setup, "r");
+	fh = fopen(ctl_data->input_file, "r");
 	if (!fh) {
 		fprintf(stderr, "error: %s\n", strerror(errno));
 		return -errno;
@@ -81,7 +81,7 @@ static int read_setup(unsigned int *data, char setup[], size_t smax)
 
 	while (fscanf(fh, "%u", &x) != EOF) {
 		if (n < n_max)
-			data[n] = x;
+			ctl_data->buffer[2 + n] = x;
 
 		if (n > 0)
 			fprintf(stdout, ",");
@@ -105,8 +105,11 @@ static int read_setup(unsigned int *data, char setup[], size_t smax)
 	return n;
 }
 
-static void header_dump(struct sof_abi_hdr *hdr)
+static void header_dump(struct ctl_data *ctl_data)
 {
+	struct sof_abi_hdr *hdr =
+		(struct sof_abi_hdr *)&ctl_data->buffer[2];
+
 	fprintf(stdout, "hdr: magic 0x%8.8x\n", hdr->magic);
 	fprintf(stdout, "hdr: type %d\n", hdr->type);
 	fprintf(stdout, "hdr: size %d bytes\n", hdr->size);
@@ -118,43 +121,43 @@ static void header_dump(struct sof_abi_hdr *hdr)
 
 int main(int argc, char *argv[])
 {
-	snd_ctl_t *ctl;
-	snd_ctl_elem_id_t *id;
-	snd_ctl_elem_info_t *info;
-	snd_ctl_elem_value_t *value;
 	uint32_t *config;
-	unsigned int *user_data;
 	char nname[256];
 	int ret;
-	int ctrl_size;
 	int read;
 	int write;
 	int type;
 	int i;
 	char opt;
+	char *input_file = NULL;
+	struct ctl_data *ctl_data;
 	int n;
-	int buffer_size;
-	int mode = SND_CTL_NONBLOCK;
-	char *dev = "hw:0";
-	char *cname = NULL;
-	char *setup = NULL;
-	int set = 0;
+
+	ctl_data = calloc(1, sizeof(struct ctl_data));
+	if (!ctl_data) {
+		fprintf(stderr,
+			"Error: Failed to allocate buffer for ctl_data\n");
+		return -ENOMEM;
+	}
+
+	ctl_data->dev = "hw:0";
 
 	while ((opt = getopt(argc, argv, "hD:c:s:n:")) != -1) {
 		switch (opt) {
 		case 'D':
-			dev = optarg;
+			ctl_data->dev = optarg;
 			break;
 		case 'c':
-			cname = optarg;
+			ctl_data->cname = optarg;
 			break;
 		case 'n':
 			sprintf(nname, "numid=%d", atoi(optarg));
-			cname = nname;
+			ctl_data->cname = nname;
 			break;
 		case 's':
-			setup = optarg;
-			set = 1;
+			input_file = optarg;
+			ctl_data->input_file = input_file;
+			ctl_data->set = true;
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -167,47 +170,47 @@ int main(int argc, char *argv[])
 	}
 
 	/* The control need to be defined. */
-	if (!cname) {
+	if (!ctl_data->cname) {
 		fprintf(stderr, "Error: No control was requested.\n");
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
 
 	}
 
-	/* Open the device, mixer control and get read/write/type properties.
-	 */
-	ret = snd_ctl_open(&ctl, dev, mode);
+	/* Open the mixer control and get read/write/type properties. */
+	ret = snd_ctl_open(&ctl_data->ctl, ctl_data->dev, SND_CTL_NONBLOCK);
 	if (ret) {
-		fprintf(stderr, "Error: Could not open device %s.\n", dev);
+		fprintf(stderr, "Error: Could not open device %s.\n",
+			ctl_data->dev);
 		exit(ret);
 	}
 
 	/* Allocate buffers for pointers info, id, and value. */
-	snd_ctl_elem_info_alloca(&info);
-	snd_ctl_elem_id_alloca(&id);
-	snd_ctl_elem_value_alloca(&value);
+	snd_ctl_elem_info_alloca(&ctl_data->info);
+	snd_ctl_elem_id_alloca(&ctl_data->id);
+	snd_ctl_elem_value_alloca(&ctl_data->value);
 
 	/* Get handle id for the ascii control name. */
-	ret = snd_ctl_ascii_elem_id_parse(id, cname);
+	ret = snd_ctl_ascii_elem_id_parse(ctl_data->id, ctl_data->cname);
 	if (ret) {
-		fprintf(stderr, "Error: Can't find %s.\n", cname);
+		fprintf(stderr, "Error: Can't find %s.\n", ctl_data->cname);
 		exit(ret);
 	}
 
 	/* Get handle info from id. */
-	snd_ctl_elem_info_set_id(info, id);
-	ret = snd_ctl_elem_info(ctl, info);
+	snd_ctl_elem_info_set_id(ctl_data->info, ctl_data->id);
+	ret = snd_ctl_elem_info(ctl_data->ctl, ctl_data->info);
 	if (ret) {
 		fprintf(stderr, "Error: Could not get elem info.\n");
 		exit(ret);
 	}
 
 	/* Get control attributes from info. */
-	ctrl_size = snd_ctl_elem_info_get_count(info);
-	fprintf(stderr, "Control size is %d.\n", ctrl_size);
-	read = snd_ctl_elem_info_is_tlv_readable(info);
-	write = snd_ctl_elem_info_is_tlv_writable(info);
-	type = snd_ctl_elem_info_get_type(info);
+	ctl_data->ctrl_size = snd_ctl_elem_info_get_count(ctl_data->info);
+	fprintf(stderr, "Control size is %d.\n", ctl_data->ctrl_size);
+	read = snd_ctl_elem_info_is_tlv_readable(ctl_data->info);
+	write = snd_ctl_elem_info_is_tlv_writable(ctl_data->info);
+	type = snd_ctl_elem_info_get_type(ctl_data->info);
 	if (!read) {
 		fprintf(stderr, "Error: No read capability.\n");
 		exit(EXIT_FAILURE);
@@ -224,57 +227,63 @@ int main(int argc, char *argv[])
 	/* Next allocate buffer for tlv write/read. The buffer needs a two
 	 * words header with tag (SOF_CTRL_CMD_BINARY) and size in bytes.
 	 */
-	buffer_size = ctrl_size + 2 * sizeof(unsigned int);
-	user_data = calloc(1, buffer_size);
-	if (!user_data) {
+	ctl_data->buffer_size = ctl_data->ctrl_size +
+				2 * sizeof(unsigned int);
+	ctl_data->buffer = calloc(1, ctl_data->buffer_size);
+	if (!ctl_data->buffer) {
 		fprintf(stderr,
 			"Error: Failed to allocate buffer for user data.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	user_data[0] = SOF_CTRL_CMD_BINARY;
-	if (set) {
-		fprintf(stdout, "Applying configuration \"%s\" ", setup);
-		fprintf(stdout, "into device %s control %s.\n", dev, cname);
-		n = read_setup(&user_data[2], setup, ctrl_size);
+	ctl_data->buffer[0] = SOF_CTRL_CMD_BINARY;
+	if (ctl_data->set) {
+		fprintf(stdout, "Applying configuration \"%s\" ",
+			ctl_data->input_file);
+		fprintf(stdout, "into device %s control %s.\n",
+			ctl_data->dev, ctl_data->cname);
+		n = read_setup(ctl_data);
 		if (n < 1) {
 			fprintf(stderr, "Error: failed data read from %s.\n",
-				setup);
-			free(user_data);
+				ctl_data->input_file);
+			free(ctl_data->buffer);
 			exit(EXIT_FAILURE);
 		}
 
-		header_dump((struct sof_abi_hdr *)&user_data[2]);
+		header_dump(ctl_data);
 
-		user_data[1] = n * sizeof(unsigned int);
-		ret = snd_ctl_elem_tlv_write(ctl, id, user_data);
+		ctl_data->buffer[1] = n * sizeof(unsigned int);
+		ret = snd_ctl_elem_tlv_write(ctl_data->ctl, ctl_data->id,
+					     ctl_data->buffer);
 		if (ret) {
 			fprintf(stderr, "Error: failed TLV write (%d).\n", ret);
-			free(user_data);
+			free(ctl_data->buffer);
 			exit(ret);
 		}
 		fprintf(stdout, "Success.\n");
 
 	} else {
 		fprintf(stdout, "Retrieving configuration for ");
-		fprintf(stdout, "device %s control %s.\n", dev, cname);
-		user_data[1] = ctrl_size;
-		ret = snd_ctl_elem_tlv_read(ctl, id,
-			user_data, buffer_size);
+		fprintf(stdout, "device %s control %s.\n",
+			ctl_data->dev, ctl_data->cname);
+		ctl_data->buffer[1] = ctl_data->ctrl_size;
+		ret = snd_ctl_elem_tlv_read(ctl_data->ctl, ctl_data->id,
+					    ctl_data->buffer,
+					    ctl_data->buffer_size);
 		if (ret) {
 			fprintf(stderr, "Error: failed TLV read.\n");
-			free(user_data);
+			free(ctl_data->buffer);
 			exit(ret);
 		}
 		fprintf(stdout, "Success.\n");
 
-		header_dump((struct sof_abi_hdr *)&user_data[2]);
+		header_dump(ctl_data);
 
 		/* Print the read EQ configuration data with similar syntax
 		 * as the input file format.
 		 */
-		config = (uint32_t *) (user_data + 2);
-		n = user_data[1] / sizeof(uint32_t);
+		config = (uint32_t *)(ctl_data->buffer + 2);
+		n = ctl_data->buffer[1] / sizeof(uint32_t);
 		for (i = 0; i < n; i++) {
 			if (i == n - 1)
 				fprintf(stdout, "%u\n", config[i]);
@@ -282,6 +291,6 @@ int main(int argc, char *argv[])
 				fprintf(stdout, "%u,", config[i]);
 		}
 	}
-	free(user_data);
+	free(ctl_data->buffer);
 	return 0;
 }
