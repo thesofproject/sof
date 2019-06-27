@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <alsa/asoundlib.h>
 #include "kernel/abi.h"
@@ -145,6 +146,19 @@ static void csv_data_dump(struct ctl_data *ctl_data)
 static void data_dump(struct ctl_data *ctl_data)
 {
 	csv_data_dump(ctl_data);
+}
+
+static int get_file_size(int fd)
+{
+	struct stat st;
+	int ret;
+
+	if (fstat(fd, &st) == -1)
+		ret = -EINVAL;
+	else
+		ret = st.st_size;
+
+	return ret;
 }
 
 int main(int argc, char *argv[])
