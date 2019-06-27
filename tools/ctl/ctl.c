@@ -119,15 +119,41 @@ static void header_dump(struct ctl_data *ctl_data)
 		SOF_ABI_VERSION_PATCH(hdr->abi));
 }
 
-int main(int argc, char *argv[])
+/* dump binary data out with CSV txt format */
+static void csv_data_dump(struct ctl_data *ctl_data)
 {
 	uint32_t *config;
+	int n;
+	int i;
+
+	config = &ctl_data->buffer[2];
+	n = ctl_data->buffer[1] / sizeof(uint32_t);
+
+	/* Print out in CSV txt formal */
+	for (i = 0; i < n; i++) {
+		if (i == n - 1)
+			fprintf(stdout, "%u\n", config[i]);
+		else
+			fprintf(stdout, "%u,", config[i]);
+	}
+}
+
+/*
+ * Print the read kcontrol configuration data with either
+ * 16bit Hex binary format or ASCII CSV format.
+ */
+static void data_dump(struct ctl_data *ctl_data)
+{
+	csv_data_dump(ctl_data);
+}
+
+int main(int argc, char *argv[])
+{
 	char nname[256];
 	int ret;
 	int read;
 	int write;
 	int type;
-	int i;
 	char opt;
 	char *input_file = NULL;
 	struct ctl_data *ctl_data;
@@ -279,17 +305,7 @@ int main(int argc, char *argv[])
 
 		header_dump(ctl_data);
 
-		/* Print the read EQ configuration data with similar syntax
-		 * as the input file format.
-		 */
-		config = (uint32_t *)(ctl_data->buffer + 2);
-		n = ctl_data->buffer[1] / sizeof(uint32_t);
-		for (i = 0; i < n; i++) {
-			if (i == n - 1)
-				fprintf(stdout, "%u\n", config[i]);
-			else
-				fprintf(stdout, "%u,", config[i]);
-		}
+		data_dump(ctl_data);
 	}
 	free(ctl_data->buffer);
 	return 0;
