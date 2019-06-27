@@ -63,6 +63,7 @@ static void usage(char *name)
 	fprintf(stdout, " numid=22,name=\\\"EQIIR1.0 EQIIR\\\"\"\n");
 	fprintf(stdout, " -n control id e.g. 22\n");
 	fprintf(stdout, " -s set data using ASCII CSV input file\n");
+	fprintf(stdout, " -b input file is in binary mode\n");
 }
 
 static int read_setup(struct ctl_data *ctl_data)
@@ -71,13 +72,19 @@ static int read_setup(struct ctl_data *ctl_data)
 	unsigned int x;
 	int n = 0;
 	int n_max = ctl_data->ctrl_size / sizeof(unsigned int);
+	char *mode = ctl_data->binary ? "rb" : "r";
 	int separator;
 
 	/* open input file */
-	fh = fopen(ctl_data->input_file, "r");
+	fh = fdopen(ctl_data->in_fd, mode);
 	if (!fh) {
 		fprintf(stderr, "error: %s\n", strerror(errno));
 		return -errno;
+	}
+
+	if (ctl_data->binary) {
+		n = fread(&ctl_data->buffer[2], sizeof(int), n_max, fh);
+		goto read_done;
 	}
 
 	while (fscanf(fh, "%u", &x) != EOF) {
@@ -96,6 +103,7 @@ static int read_setup(struct ctl_data *ctl_data)
 	}
 	fprintf(stdout, "\n");
 
+read_done:
 	if (n > n_max) {
 		fprintf(stderr, "Warning: Read of %d exceeded control size. ",
 			4 * n);
@@ -182,7 +190,7 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "hD:c:s:n:b")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -198,6 +206,9 @@ int main(int argc, char *argv[])
 			input_file = optarg;
 			ctl_data->input_file = input_file;
 			ctl_data->set = true;
+			break;
+		case 'b':
+			ctl_data->binary = true;
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -215,6 +226,15 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 		exit(EXIT_FAILURE);
 
+	}
+
+	/* open input file */
+	if (input_file) {
+		ctl_data->in_fd = open(input_file, O_RDONLY);
+		if (ctl_data->in_fd <= 0) {
+			fprintf(stderr, "error: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	/* Open the mixer control and get read/write/type properties. */
@@ -245,8 +265,19 @@ int main(int argc, char *argv[])
 		exit(ret);
 	}
 
-	/* Get control attributes from info. */
-	ctl_data->ctrl_size = snd_ctl_elem_info_get_count(ctl_data->info);
+	if (ctl_data->binary && ctl_data->set) {
+		/* set ctrl_size to file size */
+		ctl_data->ctrl_size = get_file_size(ctl_data->in_fd);
+		if (ctl_data->ctrl_size <= 0) {
+			fprintf(stderr, "Error: Input file unavailable.\n");
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		/* Get control attributes from info. */
+		ctl_data->ctrl_size =
+			snd_ctl_elem_info_get_count(ctl_data->info);
+	}
+
 	fprintf(stderr, "Control size is %d.\n", ctl_data->ctrl_size);
 	read = snd_ctl_elem_info_is_tlv_readable(ctl_data->info);
 	write = snd_ctl_elem_info_is_tlv_writable(ctl_data->info);
