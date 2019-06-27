@@ -16,6 +16,10 @@
 #include "ipc/stream.h"
 #include "ipc/control.h"
 
+#define BUFFER_TAG_OFFSET	0
+#define BUFFER_SIZE_OFFSET	1
+#define BUFFER_ABI_OFFSET	2
+
 struct ctl_data {
 	/* the input file name */
 	char *input_file;
@@ -70,7 +74,7 @@ static void usage(char *name)
 static void header_init(struct ctl_data *ctl_data)
 {
 	struct sof_abi_hdr *hdr =
-		(struct sof_abi_hdr *)&ctl_data->buffer[2];
+		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 
 	hdr->magic = SOF_ABI_MAGIC;
 	hdr->type = 0;
@@ -83,7 +87,7 @@ static int read_setup(struct ctl_data *ctl_data)
 	unsigned int x;
 	int n = 0;
 	struct sof_abi_hdr *hdr =
-		(struct sof_abi_hdr *)&ctl_data->buffer[2];
+		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 	int n_max = ctl_data->ctrl_size / sizeof(unsigned int);
 	char *mode = ctl_data->binary ? "rb" : "r";
 	int abi_size = 0;
@@ -103,7 +107,7 @@ static int read_setup(struct ctl_data *ctl_data)
 			abi_size = sizeof(struct sof_abi_hdr) / sizeof(int);
 		}
 
-		n = fread(&ctl_data->buffer[2 + abi_size],
+		n = fread(&ctl_data->buffer[BUFFER_ABI_OFFSET + abi_size],
 			  sizeof(int), n_max - abi_size, fh);
 
 		if (ctl_data->no_abi) {
@@ -117,7 +121,7 @@ static int read_setup(struct ctl_data *ctl_data)
 	/* reading for ASCII CSV txt */
 	while (fscanf(fh, "%u", &x) != EOF) {
 		if (n < n_max)
-			ctl_data->buffer[2 + n] = x;
+			ctl_data->buffer[BUFFER_ABI_OFFSET + n] = x;
 
 		if (n > 0)
 			fprintf(stdout, ",");
@@ -145,7 +149,7 @@ read_done:
 static void header_dump(struct ctl_data *ctl_data)
 {
 	struct sof_abi_hdr *hdr =
-		(struct sof_abi_hdr *)&ctl_data->buffer[2];
+		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 
 	fprintf(stdout, "hdr: magic 0x%8.8x\n", hdr->magic);
 	fprintf(stdout, "hdr: type %d\n", hdr->type);
@@ -165,7 +169,7 @@ static void binary_data_dump(struct ctl_data *ctl_data)
 	int i;
 
 	/* calculate the dumping units */
-	n = ctl_data->buffer[1] / sizeof(uint16_t);
+	n = ctl_data->buffer[BUFFER_SIZE_OFFSET] / sizeof(uint16_t);
 
 	/* exclude the type and size header */
 	int_offset = 2;
@@ -200,8 +204,8 @@ static void csv_data_dump(struct ctl_data *ctl_data)
 	int n;
 	int i;
 
-	config = &ctl_data->buffer[2];
-	n = ctl_data->buffer[1] / sizeof(uint32_t);
+	config = &ctl_data->buffer[BUFFER_ABI_OFFSET];
+	n = ctl_data->buffer[BUFFER_SIZE_OFFSET] / sizeof(uint32_t);
 
 	/* Print out in CSV txt formal */
 	for (i = 0; i < n; i++) {
