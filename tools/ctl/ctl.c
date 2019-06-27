@@ -70,6 +70,7 @@ static void usage(char *name)
 	fprintf(stdout, " -b set/get control in binary mode(e.g. for set, use binary input file, for get, dump out in hex format)\n");
 	fprintf(stdout, " -r no abi header for the input file, or not dumping abi header for get.\n");
 	fprintf(stdout, " -o specify the output file.\n");
+	fprintf(stdout, " -t specify the component specified type.\n");
 }
 
 static void header_init(struct ctl_data *ctl_data)
@@ -78,7 +79,7 @@ static void header_init(struct ctl_data *ctl_data)
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 
 	hdr->magic = SOF_ABI_MAGIC;
-	hdr->type = 0;
+	hdr->type = ctl_data->type;
 	hdr->abi = SOF_ABI_VERSION;
 }
 
@@ -376,7 +377,7 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:o:br")) != -1) {
+	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:br")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -402,6 +403,8 @@ int main(int argc, char *argv[])
 		case 'r':
 			ctl_data->no_abi = true;
 			break;
+		case 't':
+			ctl_data->type = atoi(optarg);
 			break;
 		case 'h':
 		/* pass through */
