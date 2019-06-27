@@ -62,7 +62,7 @@ struct host_data {
 	uint32_t local_pos;	/**< Local position in host buffer */
 
 	/* host component attributes */
-	uint32_t copy_blocking;	/**< True for copy in blocking mode */
+	enum comp_copy_type copy_type;	/**< Current host copy type */
 
 	/* local and host DMA buffer info */
 	struct hc_buf host;
@@ -373,7 +373,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	dma_sg_init(&hd->local.elem_array);
 
 	hd->chan = DMA_CHAN_INVALID;
-	hd->copy_blocking = 0;
+	hd->copy_type = COMP_COPY_NORMAL;
 	hd->posn.comp_id = comp->id;
 	dev->state = COMP_STATE_READY;
 	dev->is_dma_connected = 1;
@@ -458,7 +458,7 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 
 	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
 
-	if (hd->copy_blocking)
+	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;
 
 	if (!hd->config.cyclic)
@@ -665,7 +665,7 @@ static int host_reset(struct comp_dev *dev)
 	hd->chan = DMA_CHAN_INVALID;
 
 	host_pointer_reset(dev);
-	hd->copy_blocking = 0;
+	hd->copy_type = COMP_COPY_NORMAL;
 	hd->source = NULL;
 	hd->sink = NULL;
 	dev->state = COMP_STATE_READY;
@@ -749,8 +749,8 @@ static int host_set_attribute(struct comp_dev *dev, uint32_t type,
 	struct host_data *hd = comp_get_drvdata(dev);
 
 	switch (type) {
-	case COMP_ATTR_COPY_BLOCKING:
-		hd->copy_blocking = *(uint32_t *)value;
+	case COMP_ATTR_COPY_TYPE:
+		hd->copy_type = *(enum comp_copy_type *)value;
 		break;
 	case COMP_ATTR_HOST_BUFFER:
 		hd->host.elem_array = *(struct dma_sg_elem_array *)value;

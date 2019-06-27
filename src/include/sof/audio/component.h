@@ -130,7 +130,7 @@
 /** \name Component attribute types
  *  @{
  */
-#define COMP_ATTR_COPY_BLOCKING	0	/**< Comp blocking copy attribute */
+#define COMP_ATTR_COPY_TYPE	0	/**< Comp copy type attribute */
 #define COMP_ATTR_HOST_BUFFER	1	/**< Comp host buffer attribute */
 /** @}*/
 
@@ -150,6 +150,12 @@ enum comp_endpoint_type {
 	COMP_ENDPOINT_HOST,
 	COMP_ENDPOINT_DAI,
 	COMP_ENDPOINT_NODE
+};
+
+ /* \brief Type of component copy, which can be changed on runtime */
+enum comp_copy_type {
+	COMP_COPY_NORMAL = 0,
+	COMP_COPY_BLOCKING,
 };
 
 struct comp_dev;
