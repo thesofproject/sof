@@ -379,7 +379,7 @@ static void platform_init_hw(void)
 		IOPO_DMIC_FLAG | IOPO_I2S_FLAG);
 
 	io_reg_write(DSP_INIT_ALHO,
-		ALHO_ASO_FLAG | ALHO_CSO_FLAG | ALHO_CFO_FLAG);
+		ALHO_ASO_FLAG | ALHO_CSO_FLAG);
 
 	io_reg_write(DSP_INIT_LPGPDMA(0),
 		LPGPDMA_CHOSEL_FLAG | LPGPDMA_CTLOSEL_FLAG);
