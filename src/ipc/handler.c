@@ -205,6 +205,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_comp_host *host = NULL;
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
+	enum comp_copy_type copy_type = COMP_COPY_ONE_SHOT;
 #endif
 	struct sof_ipc_pcm_params pcm_params;
 	struct sof_ipc_pcm_params_reply reply;
@@ -265,6 +266,14 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	err = comp_set_attribute(cd, COMP_ATTR_HOST_BUFFER, &elem_array);
 	if (err < 0) {
 		trace_ipc_error("ipc: comp %d host buffer failed %d",
+				pcm_params.comp_id, err);
+		goto error;
+	}
+
+	/* TODO: should be extracted to platform specific code */
+	err = comp_set_attribute(cd, COMP_ATTR_COPY_TYPE, &copy_type);
+	if (err < 0) {
+		trace_ipc_error("ipc: comp %d setting copy type failed %d",
 				pcm_params.comp_id, err);
 		goto error;
 	}
