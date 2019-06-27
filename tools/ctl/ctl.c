@@ -64,6 +64,7 @@ static void usage(char *name)
 	fprintf(stdout, " -n control id e.g. 22\n");
 	fprintf(stdout, " -s set data using ASCII CSV input file\n");
 	fprintf(stdout, " -b set/get control in binary mode(e.g. for set, use binary input file, for get, dump out in hex format)\n");
+	fprintf(stdout, " -r no abi header for the input file, or not dumping abi header for get.\n");
 }
 
 static void header_init(struct ctl_data *ctl_data)
@@ -81,8 +82,11 @@ static int read_setup(struct ctl_data *ctl_data)
 	FILE *fh;
 	unsigned int x;
 	int n = 0;
+	struct sof_abi_hdr *hdr =
+		(struct sof_abi_hdr *)&ctl_data->buffer[2];
 	int n_max = ctl_data->ctrl_size / sizeof(unsigned int);
 	char *mode = ctl_data->binary ? "rb" : "r";
+	int abi_size = 0;
 	int separator;
 
 	/* open input file */
@@ -93,10 +97,24 @@ static int read_setup(struct ctl_data *ctl_data)
 	}
 
 	if (ctl_data->binary) {
-		n = fread(&ctl_data->buffer[2], sizeof(int), n_max, fh);
+		/* create abi header*/
+		if (ctl_data->no_abi) {
+			header_init(ctl_data);
+			abi_size = sizeof(struct sof_abi_hdr) / sizeof(int);
+		}
+
+		n = fread(&ctl_data->buffer[2 + abi_size],
+			  sizeof(int), n_max - abi_size, fh);
+
+		if (ctl_data->no_abi) {
+			hdr->size = n * sizeof(int);
+			n += abi_size;
+		}
+
 		goto read_done;
 	}
 
+	/* reading for ASCII CSV txt */
 	while (fscanf(fh, "%u", &x) != EOF) {
 		if (n < n_max)
 			ctl_data->buffer[2 + n] = x;
@@ -151,6 +169,14 @@ static void binary_data_dump(struct ctl_data *ctl_data)
 
 	/* exclude the type and size header */
 	int_offset = 2;
+
+	/* exclude abi header if '-r' specified */
+	if (ctl_data->no_abi) {
+		int_offset += sizeof(struct sof_abi_hdr) /
+			      sizeof(uint32_t);
+		n -= sizeof(struct sof_abi_hdr) /
+		     sizeof(uint16_t);
+	}
 
 	/* get the dumping start address */
 	config = (uint16_t *)&ctl_data->buffer[int_offset];
@@ -232,7 +258,7 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:b")) != -1) {
+	while ((opt = getopt(argc, argv, "hD:c:s:n:br")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -251,6 +277,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'b':
 			ctl_data->binary = true;
+			break;
+		case 'r':
+			ctl_data->no_abi = true;
 			break;
 		case 'h':
 			usage(argv[0]);
@@ -314,6 +343,10 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Error: Input file unavailable.\n");
 			exit(EXIT_FAILURE);
 		}
+
+		/* need more space for raw data file(no header in the file) */
+		if (ctl_data->no_abi)
+			ctl_data->ctrl_size += sizeof(struct sof_abi_hdr);
 	} else {
 		/* Get control attributes from info. */
 		ctl_data->ctrl_size =
