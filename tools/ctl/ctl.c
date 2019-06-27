@@ -63,7 +63,7 @@ static void usage(char *name)
 	fprintf(stdout, " numid=22,name=\\\"EQIIR1.0 EQIIR\\\"\"\n");
 	fprintf(stdout, " -n control id e.g. 22\n");
 	fprintf(stdout, " -s set data using ASCII CSV input file\n");
-	fprintf(stdout, " -b input file is in binary mode\n");
+	fprintf(stdout, " -b set/get control in binary mode(e.g. for set, use binary input file, for get, dump out in hex format)\n");
 }
 
 static int read_setup(struct ctl_data *ctl_data)
@@ -128,6 +128,35 @@ static void header_dump(struct ctl_data *ctl_data)
 		SOF_ABI_VERSION_PATCH(hdr->abi));
 }
 
+/* dump binary data out with 16bit hex format */
+static void binary_data_dump(struct ctl_data *ctl_data)
+{
+	unsigned int int_offset;
+	uint16_t *config;
+	int n;
+	int i;
+
+	/* calculate the dumping units */
+	n = ctl_data->buffer[1] / sizeof(uint16_t);
+
+	/* exclude the type and size header */
+	int_offset = 2;
+
+	/* get the dumping start address */
+	config = (uint16_t *)&ctl_data->buffer[int_offset];
+
+	/* Print out in 16bit hex format */
+	for (i = 0; i < n; i++) {
+		if (!(i % 8))
+			fprintf(stdout, "%08lx ",
+				i * sizeof(uint16_t));
+		fprintf(stdout, "%04x ", config[i]);
+		if ((i % 8) == 7)
+			fprintf(stdout, "\n");
+	}
+	fprintf(stdout, "\n");
+}
+
 /* dump binary data out with CSV txt format */
 static void csv_data_dump(struct ctl_data *ctl_data)
 {
@@ -153,7 +182,10 @@ static void csv_data_dump(struct ctl_data *ctl_data)
  */
 static void data_dump(struct ctl_data *ctl_data)
 {
-	csv_data_dump(ctl_data);
+	if (ctl_data->binary)
+		binary_data_dump(ctl_data);
+	else
+		csv_data_dump(ctl_data);
 }
 
 static int get_file_size(int fd)
