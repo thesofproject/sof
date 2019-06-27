@@ -37,6 +37,55 @@ static int hweight_32(uint32_t mask)
 	return count;
 }
 
+/**
+ * \brief Finds valid M/(N * SCR) values for given frequencies.
+ * \param[in] freq SSP clock frequency.
+ * \param[in] bclk Bit clock frequency.
+ * \param[out] out_scr_div SCR divisor.
+ * \param[out] out_m M value of M/N divider.
+ * \param[out] out_n N value of M/N divider.
+ * \return true if found suitable values, false otherwise.
+ */
+static bool find_mn(uint32_t freq, uint32_t bclk,
+		    uint32_t *out_scr_div, uint32_t *out_m, uint32_t *out_n)
+{
+	uint32_t m, n, mn_div;
+	uint32_t scr_div;
+
+	/* M/(N * scr_div) has to be less than 1/2 */
+	if ((bclk * 2) >= freq)
+		return false;
+
+	scr_div = freq / bclk;
+
+	/* odd SCR gives lower duty cycle */
+	if (scr_div > 1 && scr_div % 2 != 0)
+		--scr_div;
+
+	/* clamp to valid SCR range */
+	scr_div = MIN(scr_div, (SSCR0_SCR_MASK >> 8) + 1);
+
+	/* find highest even divisor */
+	while (scr_div > 1 && freq % scr_div != 0)
+		scr_div -= 2;
+
+	/* compute M/N with smallest dividend and divisor */
+	mn_div = gcd(bclk, freq / scr_div);
+
+	m = bclk / mn_div;
+	n = freq / scr_div / mn_div;
+
+	/* M/N values can be up to 24 bits */
+	if (n & (~0xffffff))
+		return false;
+
+	*out_scr_div = scr_div;
+	*out_m = m;
+	*out_n = n;
+
+	return true;
+}
+
 /* empty SSP transmit FIFO */
 static void ssp_empty_tx_fifo(struct dai *dai)
 {
@@ -365,12 +414,29 @@ static int ssp_set_config(struct dai *dai,
 		if (ssp_freq[clk_index].enc != CLOCK_SSP_XTAL_OSCILLATOR)
 			sscr0 |= SSCR0_ECS;
 	} else {
-		trace_ssp_error("ssp_set_config() error: BCLK %d",
-				config->ssp.bclk_rate);
-		ret = -EINVAL;
-		goto out;
-	}
+		/* check if we can get target BCLK with M/N */
+		for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++) {
+			if (find_mn(ssp_freq[i].freq, config->ssp.bclk_rate,
+				    &mdiv, &i2s_m, &i2s_n)) {
+				clk_index = i;
+				break;
+			}
+		}
 
+		if (clk_index < 0) {
+			trace_ssp_error("ssp_set_config() error: BCLK %d",
+					config->ssp.bclk_rate);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		trace_ssp("ssp_set_config(), M = %d, N = %d", i2s_m, i2s_n);
+
+		mdivc |= MNDSS(ssp_freq[clk_index].enc);
+
+		/* M/N requires external clock to be selected */
+		sscr0 |= SSCR0_ECS;
+	}
 
 	switch (mdivr_val) {
 	case 1:
