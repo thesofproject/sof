@@ -294,6 +294,12 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 	}
 
+	/* we should ignore any trigger commands when doing one shot,
+	 * because transfers will start in copy and stop automatically
+	 */
+	if (hd->copy_type == COMP_COPY_ONE_SHOT)
+		return ret;
+
 	if (hd->chan < 0) {
 		trace_host_error("host_trigger() error: no dma channel "
 				 "configured");
@@ -460,8 +466,7 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 
 	if (hd->copy_type == COMP_COPY_BLOCKING)
 		flags |= DMA_COPY_BLOCKING;
-
-	if (!hd->config.cyclic)
+	else if (hd->copy_type == COMP_COPY_ONE_SHOT)
 		flags |= DMA_COPY_ONE_SHOT;
 
 	/* reconfigure transfer */
