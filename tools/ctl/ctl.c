@@ -69,6 +69,7 @@ static void usage(char *name)
 	fprintf(stdout, " -s set data using ASCII CSV input file\n");
 	fprintf(stdout, " -b set/get control in binary mode(e.g. for set, use binary input file, for get, dump out in hex format)\n");
 	fprintf(stdout, " -r no abi header for the input file, or not dumping abi header for get.\n");
+	fprintf(stdout, " -o specify the output file.\n");
 }
 
 static void header_init(struct ctl_data *ctl_data)
@@ -270,6 +271,42 @@ static void buffer_free(struct ctl_data *ctl_data)
 	ctl_data->buffer_size = 0;
 }
 
+static void ctl_dump(struct ctl_data *ctl_data)
+{
+	FILE *fh;
+	int offset = 0;
+	size_t n;/* in bytes */
+
+	if (ctl_data->out_fd > 0) {
+		/* output ctl_data(exclude the header)to file */
+		/* open input file */
+		fh = fdopen(ctl_data->out_fd, "wb");
+		if (!fh) {
+			fprintf(stderr, "error: %s\n", strerror(errno));
+			return;
+		}
+
+		if (ctl_data->binary) {
+			if (ctl_data->no_abi)
+				offset = BUFFER_ABI_OFFSET +
+					 sizeof(struct sof_abi_hdr) /
+					 sizeof(int);
+			n = ctl_data->buffer[BUFFER_SIZE_OFFSET] -
+			    sizeof(struct sof_abi_hdr);
+
+			n = fwrite(&ctl_data->buffer[offset],
+				   1, n, fh);
+		}
+
+		fprintf(stdout, "%ld bytes written to file.\n", n);
+		fclose(fh);
+	} else {
+		/* dump to stdout */
+		header_dump(ctl_data);
+		data_dump(ctl_data);
+	}
+}
+
 static int ctl_set_get(struct ctl_data *ctl_data)
 {
 	int ret;
@@ -326,6 +363,7 @@ int main(int argc, char *argv[])
 	int type;
 	char opt;
 	char *input_file = NULL;
+	char *output_file = NULL;
 	struct ctl_data *ctl_data;
 	int n;
 
@@ -338,7 +376,7 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:br")) != -1) {
+	while ((opt = getopt(argc, argv, "hD:c:s:n:o:br")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -354,6 +392,9 @@ int main(int argc, char *argv[])
 			input_file = optarg;
 			ctl_data->input_file = input_file;
 			ctl_data->set = true;
+			break;
+		case 'o':
+			output_file = optarg;
 			break;
 		case 'b':
 			ctl_data->binary = true;
@@ -383,6 +424,15 @@ int main(int argc, char *argv[])
 	if (input_file) {
 		ctl_data->in_fd = open(input_file, O_RDONLY);
 		if (ctl_data->in_fd <= 0) {
+			fprintf(stderr, "error: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	/* open output file */
+	if (output_file) {
+		ctl_data->out_fd = open(output_file, O_CREAT | O_RDWR);
+		if (ctl_data->out_fd <= 0) {
 			fprintf(stderr, "error: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
 		}
@@ -466,11 +516,15 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	header_dump(ctl_data);
-
-	data_dump(ctl_data);
+	/* dump the tlv buffer to a file or stdout */
+	ctl_dump(ctl_data);
 
 	buffer_free(ctl_data);
+
+	if (ctl_data->out_fd)
+		close(ctl_data->out_fd);
+	if (ctl_data->in_fd)
+		close(ctl_data->in_fd);
 
 	free(ctl_data->buffer);
 	return 0;
