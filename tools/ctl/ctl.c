@@ -84,15 +84,15 @@ static void header_init(struct ctl_data *ctl_data)
 
 static int read_setup(struct ctl_data *ctl_data)
 {
-	FILE *fh;
-	unsigned int x;
-	int n = 0;
 	struct sof_abi_hdr *hdr =
 		(struct sof_abi_hdr *)&ctl_data->buffer[BUFFER_ABI_OFFSET];
 	int n_max = ctl_data->ctrl_size / sizeof(unsigned int);
 	char *mode = ctl_data->binary ? "rb" : "r";
 	int abi_size = 0;
+	unsigned int x;
 	int separator;
+	int n = 0;
+	FILE *fh;
 
 	/* open input file */
 	fh = fdopen(ctl_data->in_fd, mode);
@@ -356,16 +356,16 @@ static int ctl_set_get(struct ctl_data *ctl_data)
 
 int main(int argc, char *argv[])
 {
+	char *input_file = NULL;
+	char *output_file = NULL;
+	struct ctl_data *ctl_data;
 	char nname[256];
-	int ret;
+	int ret = 0;
+	int n = 0;
 	int read;
 	int write;
 	int type;
 	char opt;
-	char *input_file = NULL;
-	char *output_file = NULL;
-	struct ctl_data *ctl_data;
-	int n;
 
 	ctl_data = calloc(1, sizeof(struct ctl_data));
 	if (!ctl_data) {
@@ -402,13 +402,12 @@ int main(int argc, char *argv[])
 		case 'r':
 			ctl_data->no_abi = true;
 			break;
-		case 'h':
-			usage(argv[0]);
-			exit(0);
 			break;
+		case 'h':
+		/* pass through */
 		default:
 			usage(argv[0]);
-			exit(EXIT_FAILURE);
+			goto ctl_data_free;
 		}
 	}
 
@@ -416,7 +415,7 @@ int main(int argc, char *argv[])
 	if (!ctl_data->cname) {
 		fprintf(stderr, "Error: No control was requested.\n");
 		usage(argv[0]);
-		exit(EXIT_FAILURE);
+		goto ctl_data_free;
 
 	}
 
@@ -425,7 +424,7 @@ int main(int argc, char *argv[])
 		ctl_data->in_fd = open(input_file, O_RDONLY);
 		if (ctl_data->in_fd <= 0) {
 			fprintf(stderr, "error: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
+			goto ctl_data_free;
 		}
 	}
 
@@ -434,7 +433,7 @@ int main(int argc, char *argv[])
 		ctl_data->out_fd = open(output_file, O_CREAT | O_RDWR);
 		if (ctl_data->out_fd <= 0) {
 			fprintf(stderr, "error: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
+			goto in_fd_close;
 		}
 	}
 
@@ -443,7 +442,7 @@ int main(int argc, char *argv[])
 	if (ret) {
 		fprintf(stderr, "Error: Could not open device %s.\n",
 			ctl_data->dev);
-		exit(ret);
+		goto out_fd_close;
 	}
 
 	/* Allocate buffers for pointers info, id, and value. */
@@ -455,7 +454,7 @@ int main(int argc, char *argv[])
 	ret = snd_ctl_ascii_elem_id_parse(ctl_data->id, ctl_data->cname);
 	if (ret) {
 		fprintf(stderr, "Error: Can't find %s.\n", ctl_data->cname);
-		exit(ret);
+		goto ctl_close;
 	}
 
 	/* Get handle info from id. */
@@ -463,7 +462,7 @@ int main(int argc, char *argv[])
 	ret = snd_ctl_elem_info(ctl_data->ctl, ctl_data->info);
 	if (ret) {
 		fprintf(stderr, "Error: Could not get elem info.\n");
-		exit(ret);
+		goto ctl_close;
 	}
 
 	if (ctl_data->binary && ctl_data->set) {
@@ -471,7 +470,7 @@ int main(int argc, char *argv[])
 		ctl_data->ctrl_size = get_file_size(ctl_data->in_fd);
 		if (ctl_data->ctrl_size <= 0) {
 			fprintf(stderr, "Error: Input file unavailable.\n");
-			exit(EXIT_FAILURE);
+			goto ctl_close;
 		}
 
 		/* need more space for raw data file(no header in the file) */
@@ -483,21 +482,21 @@ int main(int argc, char *argv[])
 			snd_ctl_elem_info_get_count(ctl_data->info);
 	}
 
-	fprintf(stderr, "Control size is %d.\n", ctl_data->ctrl_size);
+	fprintf(stdout, "Control size is %d.\n", ctl_data->ctrl_size);
 	read = snd_ctl_elem_info_is_tlv_readable(ctl_data->info);
 	write = snd_ctl_elem_info_is_tlv_writable(ctl_data->info);
 	type = snd_ctl_elem_info_get_type(ctl_data->info);
 	if (!read) {
 		fprintf(stderr, "Error: No read capability.\n");
-		exit(EXIT_FAILURE);
+		goto ctl_close;
 	}
 	if (!write) {
 		fprintf(stderr, "Error: No write capability.\n");
-		exit(EXIT_FAILURE);
+		goto ctl_close;
 	}
 	if (type != SND_CTL_ELEM_TYPE_BYTES) {
 		fprintf(stderr, "Error: control type has no bytes support.\n");
-		exit(EXIT_FAILURE);
+		goto ctl_close;
 	}
 
 	/* allocate buffer for tlv data */
@@ -505,7 +504,7 @@ int main(int argc, char *argv[])
 	if (ret < 0) {
 		fprintf(stderr, "Error: Could not allocate buffer, ret:%d\n",
 			ret);
-		exit(EXIT_FAILURE);
+		goto ctl_close;
 	}
 
 	/* set/get the tlv bytes kcontrol */
@@ -513,19 +512,24 @@ int main(int argc, char *argv[])
 	if (ret < 0) {
 		fprintf(stderr, "Error: Could not %s control, ret:%d\n",
 			ctl_data->set ? "set" : "get", ret);
-		exit(EXIT_FAILURE);
+		goto buff_free;
 	}
 
 	/* dump the tlv buffer to a file or stdout */
 	ctl_dump(ctl_data);
 
+buff_free:
 	buffer_free(ctl_data);
-
+ctl_close:
+	ret = snd_ctl_close(ctl_data->ctl);
+out_fd_close:
 	if (ctl_data->out_fd)
 		close(ctl_data->out_fd);
+in_fd_close:
 	if (ctl_data->in_fd)
 		close(ctl_data->in_fd);
+ctl_data_free:
+	free(ctl_data);
 
-	free(ctl_data->buffer);
-	return 0;
+	return ret;
 }
