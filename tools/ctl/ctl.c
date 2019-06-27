@@ -241,6 +241,35 @@ static int get_file_size(int fd)
 	return ret;
 }
 
+static int buffer_alloc(struct ctl_data *ctl_data)
+{
+	int buffer_size;
+
+	/*
+	 * Allocate buffer for tlv write/read. The buffer needs a two
+	 * words header with tag (SOF_CTRL_CMD_BINARY) and size in bytes.
+	 */
+	buffer_size = ctl_data->ctrl_size + 2 * sizeof(unsigned int);
+	ctl_data->buffer = calloc(1, buffer_size);
+	if (!ctl_data->buffer) {
+		fprintf(stderr,
+			"Error: Failed to allocate buffer for user data.\n");
+		return -EINVAL;
+	}
+
+	ctl_data->buffer[BUFFER_TAG_OFFSET] = SOF_CTRL_CMD_BINARY;
+
+	ctl_data->buffer_size = buffer_size;
+
+	return 0;
+}
+
+static void buffer_free(struct ctl_data *ctl_data)
+{
+	free(ctl_data->buffer);
+	ctl_data->buffer_size = 0;
+}
+
 int main(int argc, char *argv[])
 {
 	char nname[256];
@@ -374,19 +403,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* Next allocate buffer for tlv write/read. The buffer needs a two
-	 * words header with tag (SOF_CTRL_CMD_BINARY) and size in bytes.
-	 */
-	ctl_data->buffer_size = ctl_data->ctrl_size +
-				2 * sizeof(unsigned int);
-	ctl_data->buffer = calloc(1, ctl_data->buffer_size);
-	if (!ctl_data->buffer) {
-		fprintf(stderr,
-			"Error: Failed to allocate buffer for user data.\n");
+	/* allocate buffer for tlv data */
+	ret = buffer_alloc(ctl_data);
+	if (ret < 0) {
+		fprintf(stderr, "Error: Could not allocate buffer, ret:%d\n",
+			ret);
 		exit(EXIT_FAILURE);
 	}
 
-	ctl_data->buffer[0] = SOF_CTRL_CMD_BINARY;
 	if (ctl_data->set) {
 		fprintf(stdout, "Applying configuration \"%s\" ",
 			ctl_data->input_file);
@@ -431,6 +455,9 @@ int main(int argc, char *argv[])
 
 		data_dump(ctl_data);
 	}
+
+	buffer_free(ctl_data);
+
 	free(ctl_data->buffer);
 	return 0;
 }
