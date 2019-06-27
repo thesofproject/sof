@@ -7,12 +7,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <alsa/asoundlib.h>
 #include "kernel/abi.h"
 #include "kernel/header.h"
 #include "ipc/stream.h"
 #include "ipc/control.h"
+
+struct ctl_data {
+	/* the input file name */
+	char *input_file;
+
+	/* the input file descriptor */
+	int in_fd;
+	/* the output file descriptor */
+	int out_fd;
+
+	/* cached buffer for input/output */
+	unsigned int *buffer;
+	int buffer_size;
+	int ctrl_size;
+
+	/* flag for input/output format, binary or CSV */
+	bool binary;
+	/* flag for input/output format, with or without abi header */
+	bool no_abi;
+	/* component specific type, default 0 */
+	uint32_t type;
+	/* set or get control value */
+	bool set;
+
+	/* name of sound card device */
+	char *dev;
+	char *cname;
+
+	/* alsa ctl_elem pointers */
+	snd_ctl_t *ctl;
+	snd_ctl_elem_id_t *id;
+	snd_ctl_elem_info_t *info;
+	snd_ctl_elem_value_t *value;
+};
 
 static void usage(char *name)
 {
