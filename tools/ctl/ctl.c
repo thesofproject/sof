@@ -270,6 +270,53 @@ static void buffer_free(struct ctl_data *ctl_data)
 	ctl_data->buffer_size = 0;
 }
 
+static int ctl_set_get(struct ctl_data *ctl_data)
+{
+	int ret;
+	size_t n;
+
+	if (!ctl_data->buffer) {
+		fprintf(stderr, "Error: No buffer for set/get!\n");
+		return -EINVAL;
+	}
+
+	if (ctl_data->set) {
+		fprintf(stdout, "Applying configuration \"%s\" ",
+			ctl_data->input_file);
+		fprintf(stdout, "into device %s control %s.\n",
+			ctl_data->dev, ctl_data->cname);
+		n = read_setup(ctl_data);
+		if (n < 1) {
+			fprintf(stderr, "Error: failed data read from %s.\n",
+				ctl_data->input_file);
+			return -EINVAL;
+		}
+
+		ctl_data->buffer[BUFFER_SIZE_OFFSET] = n * sizeof(unsigned int);
+		ret = snd_ctl_elem_tlv_write(ctl_data->ctl, ctl_data->id,
+					     ctl_data->buffer);
+		if (ret < 0) {
+			fprintf(stderr, "Error: failed TLV write (%d)\n", ret);
+			return ret;
+		}
+		fprintf(stdout, "Success.\n");
+
+	} else {
+		fprintf(stdout, "Retrieving configuration for ");
+		fprintf(stdout, "device %s control %s.\n",
+			ctl_data->dev, ctl_data->cname);
+		ctl_data->buffer[BUFFER_SIZE_OFFSET] = ctl_data->ctrl_size;
+		ret = snd_ctl_elem_tlv_read(ctl_data->ctl, ctl_data->id,
+					    ctl_data->buffer,
+					    ctl_data->buffer_size);
+		if (ret < 0) {
+			fprintf(stderr, "Error: failed TLV read.\n");
+			return ret;
+		}
+		fprintf(stdout, "Success.\n");
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	char nname[256];
@@ -411,50 +458,17 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (ctl_data->set) {
-		fprintf(stdout, "Applying configuration \"%s\" ",
-			ctl_data->input_file);
-		fprintf(stdout, "into device %s control %s.\n",
-			ctl_data->dev, ctl_data->cname);
-		n = read_setup(ctl_data);
-		if (n < 1) {
-			fprintf(stderr, "Error: failed data read from %s.\n",
-				ctl_data->input_file);
-			free(ctl_data->buffer);
-			exit(EXIT_FAILURE);
-		}
-
-		header_dump(ctl_data);
-
-		ctl_data->buffer[1] = n * sizeof(unsigned int);
-		ret = snd_ctl_elem_tlv_write(ctl_data->ctl, ctl_data->id,
-					     ctl_data->buffer);
-		if (ret) {
-			fprintf(stderr, "Error: failed TLV write (%d).\n", ret);
-			free(ctl_data->buffer);
-			exit(ret);
-		}
-		fprintf(stdout, "Success.\n");
-
-	} else {
-		fprintf(stdout, "Retrieving configuration for ");
-		fprintf(stdout, "device %s control %s.\n",
-			ctl_data->dev, ctl_data->cname);
-		ctl_data->buffer[1] = ctl_data->ctrl_size;
-		ret = snd_ctl_elem_tlv_read(ctl_data->ctl, ctl_data->id,
-					    ctl_data->buffer,
-					    ctl_data->buffer_size);
-		if (ret) {
-			fprintf(stderr, "Error: failed TLV read.\n");
-			free(ctl_data->buffer);
-			exit(ret);
-		}
-		fprintf(stdout, "Success.\n");
-
-		header_dump(ctl_data);
-
-		data_dump(ctl_data);
+	/* set/get the tlv bytes kcontrol */
+	ret = ctl_set_get(ctl_data);
+	if (ret < 0) {
+		fprintf(stderr, "Error: Could not %s control, ret:%d\n",
+			ctl_data->set ? "set" : "get", ret);
+		exit(EXIT_FAILURE);
 	}
+
+	header_dump(ctl_data);
+
+	data_dump(ctl_data);
 
 	buffer_free(ctl_data);
 
