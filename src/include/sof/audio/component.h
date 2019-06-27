@@ -156,6 +156,7 @@ enum comp_endpoint_type {
 enum comp_copy_type {
 	COMP_COPY_NORMAL = 0,
 	COMP_COPY_BLOCKING,
+	COMP_COPY_ONE_SHOT,
 };
 
 struct comp_dev;
