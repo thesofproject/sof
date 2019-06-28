@@ -507,8 +507,10 @@ static int kpb_copy(struct comp_dev *dev)
 
 		if (kpb->buffered_data < kpb->kpb_buffer_size)
 			kpb->buffered_data += copy_bytes;
-		else
+		else {
+			kpb->buffered_data += copy_bytes;
 			kpb->is_internal_buffer_full = true;
+		}
 	}
 
 	if (kpb->state == KPB_STATE_HOST_COPY) {
@@ -543,8 +545,12 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 	size_t space_avail;
 	struct hb *buff = kpb->history_buffer;
 	void *read_ptr = source->r_ptr;
+	struct dd *draining_data = &kpb->draining_task_data;
 
 	tracev_kpb("kpb_buffer_data()");
+
+	if (kpb->state == KPB_STATE_DRAINING)
+		draining_data->buffered_while_draining += size_to_copy;
 
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
@@ -712,7 +718,8 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	trace_kpb("RAJWA: init draining, ho sink free %d", kpb->host_sink->free);
 	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",host_buffer_size, period_size, ticks_per_ms);
-
+	trace_kpb("RAJWA: current w_ptr %p buffered %d ",
+			(uint32_t)kpb->history_buffer->w_ptr, kpb->buffered_data);
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong client id");
@@ -799,7 +806,10 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.state = &kpb->state;
 		kpb->draining_task_data.sample_width = sample_width;
-		kpb->draining_task_data.hb_w_ptr = kpb->history_buffer->w_ptr;
+		kpb->draining_task_data.buffered_while_draining = 0;
+
+		trace_kpb("RAJWA: current w_ptr %p buffered %d ",
+			(uint32_t)kpb->history_buffer->w_ptr, kpb->buffered_data);
 
 		/* Pause selector copy. */
 		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
@@ -847,12 +857,12 @@ static uint64_t kpb_draining_task(void *arg)
 	uint64_t current_time = 0;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
-	void *hb_w_ptr = draining_data->hb_w_ptr;
 	uint64_t deadline;
 	uint32_t attempts = 0;
-	trace_kpb("RAJWA: start draining");
+	size_t *buffered_while_draining = &draining_data->buffered_while_draining;
 
-	trace_kpb("kpb_draining_task(), start.");
+	trace_kpb("kpb_draining_task(), start buff %p, end buff %p",
+		(uint32_t)buff->start_addr, (uint32_t)buff->end_addr);
 
 	time_start = platform_timer_get(platform_timer);
 	sink->last_consume = 0;
@@ -898,7 +908,7 @@ static uint64_t kpb_draining_task(void *arg)
 			else
 				size_to_copy = sink->free;
 		} else {
-			if (size_to_read >= history_depth) {
+			if (size_to_read > history_depth) {
 				size_to_copy = history_depth;
 			} else {
 				size_to_copy = size_to_read;
@@ -911,6 +921,9 @@ static uint64_t kpb_draining_task(void *arg)
 
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
+		/* In theory we should put critical section here */
+		history_depth += *buffered_while_draining;
+		*buffered_while_draining = 0;
 		drained += size_to_copy;
 		period_bytes += size_to_copy;
 
@@ -936,22 +949,11 @@ static uint64_t kpb_draining_task(void *arg)
 			 * draining. If so we need to continue draining until
 			 * we catch up real time.
 			 */
-			if (hb_w_ptr != buff->w_ptr) {
-				if (buff->w_ptr == buff->start_addr) {
-					history_depth += ((uint32_t)buff->end_addr -
-							 (uint32_t)hb_w_ptr) +
-							 ((uint32_t)buff->next->w_ptr -
-							 (uint32_t)buff->next->start_addr);
-				hb_w_ptr = buff->next->w_ptr;
-				} else {
-					history_depth += ((uint32_t)buff->w_ptr -
-							 (uint32_t)hb_w_ptr);
-				hb_w_ptr = buff->w_ptr;
-				}
+			if (*buffered_while_draining) {
+				trace_kpb_error("RAJWA: UPDATE of history_depth by %d, w_ptr %p",
+				*buffered_while_draining, (uint32_t)buff->w_ptr);
 			}
 		}
-		trace_kpb_error("RAJWA: UPDATE of history_depth by %d",
-				history_depth);
 	}
 
 	time_end = platform_timer_get(platform_timer);
@@ -964,11 +966,11 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
 
-	trace_kpb("RAJWA: kpb_draining_task(), done. %u drained in %d ms. last copy size %d",
+	trace_kpb("RAJWA: kpb_draining_task(), done. %u drained in %d ms, r_ptr %p",
 		   drained,
 		   (time_end - time_start)
 		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1),
-		   size_to_copy);
+		   (uint32_t)buff->r_ptr);
 
 	/* Enable system agent back */
 	sa_enable();

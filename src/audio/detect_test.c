@@ -106,8 +106,8 @@ static void notify_kpb(struct comp_dev *dev)
 
 static void detect_test_notify(struct comp_dev *dev)
 {
-	notify_host(dev);
 	notify_kpb(dev);
+	notify_host(dev);
 }
 
 static void default_detect_test(struct comp_dev *dev,
@@ -138,13 +138,15 @@ static void default_detect_test(struct comp_dev *dev,
 		cd->activation += !step ? diff : step;
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
-			if (cd->activation >= cd->config.activation_threshold) {
+			if (cd->activation >= cd->config.activation_threshold || 1) {
 				/* The algorithm shall use cd->history_depth
 				 * to specify its draining size request.
 				 * Zero value means default config value
 				 * will be used.
 				 */
-				cd->history_depth = 0;
+				trace_keyword("RAJWA: detect_preamble: %d",cd->detect_preamble);
+				trace_keyword("RAJWA: config history_depth: %d", cd->config.history_depth);
+				cd->history_depth = 2100;
 				detect_test_notify(dev);
 				cd->detected = 1;
 			}
