@@ -1120,6 +1120,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	switch (dmic_prm[di]->fifo_bits) {
 	case 0:
 	case 16:
+	case 24:
 	case 32:
 		break;
 	default:
