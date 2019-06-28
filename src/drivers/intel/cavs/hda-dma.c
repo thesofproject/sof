@@ -19,6 +19,7 @@
 #include <sof/dma.h>
 #include <sof/io.h>
 #include <sof/ipc.h>
+#include <sof/hda-dma.h>
 #include <sof/pm_runtime.h>
 #include <sof/wait.h>
 #include <sof/audio/format.h>
@@ -69,6 +70,10 @@
 #define HDA_DMA_MAX_CHANS		9
 
 #define HDA_STATE_RELEASE	BIT(0)
+
+/* DGMBS align value */
+#define HDA_DMA_BUFFER_ALIGNMENT	0x20
+#define HDA_DMA_COPY_ALIGNMENT		0x20
 
 /*
  * DMA Pointer Trace
@@ -748,7 +753,7 @@ static int hda_dma_set_config(struct dma *dma, unsigned int channel,
 	}
 
 	/* buffer size must be multiple of hda dma burst size */
-	if (buffer_bytes % PLATFORM_HDA_BUFFER_ALIGNMENT) {
+	if (buffer_bytes % HDA_DMA_BUFFER_ALIGNMENT) {
 		trace_hddma_error("hda-dmac: %d chan %d - buffer not DMA "
 				  "aligned 0x%x", dma->plat_data.id, channel,
 				  buffer_bytes);
@@ -767,7 +772,7 @@ static int hda_dma_set_config(struct dma *dma, unsigned int channel,
 	    config->direction == DMA_DIR_HMEM_TO_LMEM)
 		host_dma_reg_write(dma, channel, DGMBS,
 				   ALIGN_UP(buffer_bytes,
-					    PLATFORM_HDA_BUFFER_ALIGNMENT));
+					    HDA_DMA_BUFFER_ALIGNMENT));
 
 	/* firmware control buffer */
 	dgcs = DGCS_FWCB;
@@ -957,10 +962,10 @@ static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 
 	switch (type) {
 	case DMA_ATTR_BUFFER_ALIGNMENT:
-		*value = PLATFORM_HDA_BUFFER_ALIGNMENT;
+		*value = HDA_DMA_BUFFER_ALIGNMENT;
 		break;
 	case DMA_ATTR_COPY_ALIGNMENT:
-		*value = PLATFORM_HDA_COPY_ALIGNMENT;
+		*value = HDA_DMA_COPY_ALIGNMENT;
 		break;
 	default:
 		ret = -EINVAL;
