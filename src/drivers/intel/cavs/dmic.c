@@ -845,10 +845,12 @@ static int configure_registers(struct dai *dai,
 	}
 
 	/* OUTCONTROL0 and OUTCONTROL1 */
-	of0 = (dmic_prm[0]->fifo_bits == 32) ? 2 : 0;
+	of0 = ((dmic_prm[0]->fifo_bits == 32) ||
+		(dmic_prm[0]->fifo_bits == 24))  ? 2 : 0;
 
 #if DMIC_HW_FIFOS > 1
-	of1 = (dmic_prm[1]->fifo_bits == 32) ? 2 : 0;
+	of1 = ((dmic_prm[1]->fifo_bits == 32) ||
+	 (dmic_prm[1]->fifo_bits == 24)) ? 2 : 0;
 #else
 	of1 = 0;
 #endif
@@ -1170,6 +1172,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 	switch (dmic_prm[di]->fifo_bits) {
 	case 0:
 	case 16:
+	case 24:
 	case 32:
 		break;
 	default:
