@@ -1285,6 +1285,11 @@ static int dw_dma_avail_data_size(struct dma *dma, unsigned int channel)
 	if (size < 0)
 		size += chan->ptr_data.buffer_bytes;
 
+	if (!size)
+		trace_dwdma("dw_dma_avail_data_size() "
+			    "size is 0! Channel enable = %d.",
+			    (dw_read(dma, DW_DMA_CHAN_EN) &
+			     DW_CHAN(channel)) ? 1 : 0);
 	return size;
 }
 
@@ -1300,6 +1305,11 @@ static int dw_dma_free_data_size(struct dma *dma, unsigned int channel)
 	if (size < 0)
 		size += chan->ptr_data.buffer_bytes;
 
+	if (!size)
+		trace_dwdma("dw_dma_free_data_size() "
+			    "size is 0! Channel enable = %d.",
+			    (dw_read(dma, DW_DMA_CHAN_EN) &
+			     DW_CHAN(channel)) ? 1 : 0);
 	return size;
 }
 
