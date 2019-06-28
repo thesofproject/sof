@@ -32,14 +32,20 @@
 /* default number of samples before detection is activated  */
 #define KEYPHRASE_DEFAULT_PREAMBLE_LENGTH 0
 
+struct model_data {
+	uint32_t data_size;
+	void *data;
+	uint32_t crc;
+	uint32_t data_pos; /**< current copy position for model data */
+};
+
 struct comp_data {
 	struct sof_detect_test_config config;
-	void *load_memory;	/**< synthetic memory load */
+	struct model_data model;
 	int16_t activation;
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
 	uint32_t keyphrase_samples; /**< keyphrase length in samples */
-	uint32_t buf_copy_pos; /**< current copy position for incoming data */
 	uint32_t history_depth; /** defines draining size in bytes. */
 
 	struct notify_data event;
@@ -162,9 +168,12 @@ static void free_mem_load(struct comp_data *cd)
 		return;
 	}
 
-	if (cd->load_memory) {
-		rfree(cd->load_memory);
-		cd->load_memory = NULL;
+	if (cd->model.data) {
+		rfree(cd->model.data);
+		cd->model.data = NULL;
+		cd->model.data_size = 0;
+		cd->model.crc = 0;
+		cd->model.data_pos = 0;
 	}
 }
 
@@ -180,15 +189,16 @@ static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 	if (!size)
 		return 0;
 
-	cd->load_memory = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
+	cd->model.data = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
 
-	if (!cd->load_memory) {
+	if (!cd->model.data) {
 		trace_keyword_error("alloc_mem_load() alloc failed");
 		return -ENOMEM;
 	}
 
-	bzero(cd->load_memory, size);
-	cd->buf_copy_pos = 0;
+	bzero(cd->model.data, size);
+	cd->model.data_size = size;
+	cd->model.data_pos = 0;
 
 	return 0;
 }
@@ -208,7 +218,7 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 		cd->config.activation_threshold =
 			ACTIVATION_DEFAULT_THRESHOLD_S16;
 
-	return alloc_mem_load(cd, cd->config.load_memory_size);
+	return 0;
 }
 
 static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
@@ -342,16 +352,29 @@ static int test_keyword_set_model(struct comp_dev *dev,
 				  struct sof_ipc_ctrl_data *cdata)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	int ret = 0;
+	bool done = false;
 
-	if (!cd->load_memory) {
+	tracev_keyword("keyword_ctrl_set_model() "
+		       "msg_index = %d, num_elems = %d, remaining = %d ",
+		       cdata->msg_index, cdata->num_elems,
+		       cdata->elems_remaining);
+
+	if (!cdata->msg_index) {
+		ret = alloc_mem_load(cd, cdata->data->size);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (!cd->model.data) {
 		trace_keyword_error("keyword_ctrl_set_model() error: "
 				   "buffer not allocated");
 		return -EINVAL;
 	}
 
 	if (!cdata->elems_remaining) {
-		if (cdata->data->size + cd->buf_copy_pos <
-		    cd->config.load_memory_size) {
+		if (cdata->num_elems + cd->model.data_pos <
+		    cd->model.data_size) {
 			trace_keyword_error("keyword_ctrl_set_model() error: "
 					   "not enough data to fill the buffer");
 
@@ -360,23 +383,31 @@ static int test_keyword_set_model(struct comp_dev *dev,
 			return -EINVAL;
 		}
 
+		done = true;
 		trace_keyword("test_keyword_set_model() "
 			      "final packet received");
 	}
 
-	if (cdata->data->size >
-	    cd->config.load_memory_size - cd->buf_copy_pos) {
+	if (cdata->num_elems >
+	    cd->model.data_size - cd->model.data_pos) {
 		trace_keyword_error("keyword_ctrl_set_model() error: "
 				   "too much data");
 		return -EINVAL;
 	}
 
-	assert(!memcpy_s(cd->load_memory + cd->buf_copy_pos,
-		 cd->config.load_memory_size - cd->buf_copy_pos,
-		 cdata->data->data, cdata->data->size));
+	assert(!memcpy_s(cd->model.data + cd->model.data_pos,
+			 cd->model.data_size - cd->model.data_pos,
+			 cdata->data->data, cdata->num_elems));
 
-	cd->buf_copy_pos += cdata->data->size;
+	cd->model.data_pos += cdata->num_elems;
 
+	if (done) {
+		/* Set model data done, update crc value */
+		cd->model.crc = crc32(cd->model.data, cd->model.data_size);
+		trace_keyword("keyword_ctrl_set_model() "
+			      "done, memory_size = 0x%x, crc = 0x%08x",
+			      cd->model.data_size, cd->model.crc);
+	}
 	return 0;
 }
 
@@ -472,28 +503,36 @@ static int test_keyword_get_model(struct comp_dev *dev,
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	size_t bs;
-	uint32_t crc;
 	int ret = 0;
 
-	trace_keyword("test_keyword_get_model()");
+	tracev_keyword("test_keyword_get_model() "
+		       "msg_index = %d, num_elems = %d, remaining = %d ",
+		       cdata->msg_index, cdata->num_elems,
+		       cdata->elems_remaining);
 
 	/* Copy back to user space */
-	if (cd->load_memory) {
-		bs = sizeof(uint32_t);
+	if (cd->model.data) {
+		if (!cdata->msg_index) {
+			/* reset copy offset */
+			cd->model.data_pos = 0;
+			trace_keyword("test_keyword_get_model() "
+				      "model data_size = 0x%x, crc = 0x%08x",
+				      cd->model.data_size, cd->model.crc);
+		}
 
+		bs = cdata->num_elems;
 		if (bs > size) {
 			trace_keyword_error("test_keyword_get_model() error: "
 					    "invalid size %d", bs);
 			return -EINVAL;
 		}
 
-		crc = crc32(cd->load_memory, cd->config.load_memory_size);
-
-		trace_keyword("test_keyword_get_model() crc: 0x%X", crc);
-
-		assert(!memcpy_s(cdata->data->data, size, &crc, bs));
+		assert(!memcpy_s(cdata->data->data, size,
+				 cd->model.data + cd->model.data_pos, bs));
 		cdata->data->abi = SOF_ABI_VERSION;
-		cdata->data->size = bs;
+		cdata->data->size = cd->model.data_size;
+		cd->model.data_pos += bs;
+
 	} else {
 		trace_keyword_error("test_keyword_get_model() "
 				    "error: invalid cd->config");
