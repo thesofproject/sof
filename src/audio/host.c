@@ -73,7 +73,7 @@ struct host_data {
 	struct hc_buf *sink;
 	uint32_t split_remaining;
 
-	uint32_t dma_copy_align; /**< Minmal chunk of data possible to be
+	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
 				   *  copied by dma connected to host
 				   */
 
