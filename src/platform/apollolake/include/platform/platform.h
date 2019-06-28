@@ -42,10 +42,6 @@ struct sof;
  */
 #define PLATFORM_DEFAULT_CLOCK CLK_SSP
 
-/* DGMBS align value */
-#define PLATFORM_HDA_BUFFER_ALIGNMENT	0x20
-#define PLATFORM_HDA_COPY_ALIGNMENT	0x20
-
 /* HD-DMA single burst size */
 #define PLATFORM_HDA_BURST_SIZE	32
 
