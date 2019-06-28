@@ -399,8 +399,10 @@ static int ssp_set_config(struct dai *dai,
 		goto out;
 	}
 
-	/* divisor must be within SCR range */
+	/* clock divisor is SCR + 1 */
 	mdiv -= 1;
+
+	/* divisor must be within SCR range */
 	if (mdiv > (SSCR0_SCR_MASK >> 8)) {
 		trace_ssp_error("ssp_set_config() error: "
 				"divisor %d is not within SCR range", mdiv);
