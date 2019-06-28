@@ -121,6 +121,16 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		return ret;
 	}
 
+	ret = dma_get_attribute(d->dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
+				&d->dma_copy_align);
+
+	if (ret < 0) {
+		trace_buffer("dma_trace_init_complete() "
+			     "error: dma_get_attribute()");
+
+		return ret;
+	}
+
 	schedule_task_init(&d->dmat_work, SOF_SCHEDULE_LL,
 			   SOF_TASK_PRI_MED, trace_work, d, 0, 0);
 
@@ -223,7 +233,7 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 	}
 
 	/* align data to HD-DMA burst size */
-	return ALIGN_DOWN(avail, PLATFORM_HDA_BURST_SIZE);
+	return ALIGN_DOWN(avail, d->dma_copy_align);
 }
 #else
 static int dma_trace_get_avail_data(struct dma_trace_data *d,
