@@ -950,6 +950,8 @@ static uint64_t kpb_draining_task(void *arg)
 				}
 			}
 		}
+		trace_kpb_error("RAJWA: UPDATE of history_depth by %d",
+				history_depth);
 	}
 
 	time_end = platform_timer_get(platform_timer);
