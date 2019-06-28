@@ -58,6 +58,7 @@ static inline bool detector_is_sample_width_supported(enum sof_ipc_frame sf)
 	case SOF_IPC_FRAME_S16_LE:
 	/* FALLTHRU */
 	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
 		ret = true;
 		break;
 	default:
