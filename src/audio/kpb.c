@@ -978,38 +978,6 @@ static uint64_t kpb_draining_task(void *arg)
 }
 
 /**
- * \brief Drain data samples safe, according to configuration.
- *
- * \param[in] dev - kpb component device pointer
- * \param[in] sink - pointer to sink buffer.
- * \param[in] source - pointer to source buffer.
- * \param[in] size - requested copy size in bytes.
- *
- * \return none.
- */
-static void kpb_drain_samples(void *source, struct comp_buffer *sink,
-			       size_t size, size_t sample_width)
-{
-	int16_t *dest;
-	int16_t *src = (int16_t *)source;
-	uint32_t i;
-	uint32_t j = 0;
-	uint32_t channel;
-	uint32_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
-
-	for (i = 0; i < frames; i++) {
-		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			dest = (sample_width == 16) ?
-				buffer_write_frag_s16(sink, j) :
-				buffer_write_frag_s32(sink, j);
-			*dest = *src;
-			src++;
-			j++;
-		}
-	}
-}
-
-/**
  * \brief Initialize history buffer by zeroing its memory.
  * \param[in] buff - pointer to current history buffer.
  *
@@ -1089,6 +1057,7 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 	case 16:
 	/* FALLTHRU */
 	case 24:
+	case 32:
 		ret = true;
 		break;
 	default:
@@ -1097,6 +1066,51 @@ static inline bool kpb_is_sample_width_supported(uint32_t sampling_width)
 	}
 
 	return ret;
+}
+
+/**
+ * \brief Drain data samples safe, according to configuration.
+ *
+ * \param[in] dev - kpb component device pointer
+ * \param[in] sink - pointer to sink buffer.
+ * \param[in] source - pointer to source buffer.
+ * \param[in] size - requested copy size in bytes.
+ *
+ * \return none.
+ */
+static void kpb_drain_samples(void *source, struct comp_buffer *sink,
+			       size_t size, size_t sample_width)
+{
+	void *dst;
+	void *src = source;
+	size_t i;
+	size_t j = 0;
+	size_t channel;
+	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
+			if (sample_width == 16) {
+				dst = buffer_write_frag_s16(sink, j);
+				*((int16_t *)dst) = *((int16_t *)src);
+				src = ((int16_t *)src) + 1;
+			} else if (sample_width == 24) {
+				dst = buffer_write_frag_s32(sink, j);
+				*((int32_t *)dst) = *(int32_t *)src >> 8 &
+						    0x00FFFFFF;
+				src = ((int32_t *)src) + 1;
+			} else if (sample_width == 32) {
+				dst = buffer_write_frag_s32(sink, j);
+				*((int32_t *)dst) = *((int32_t *)src);
+				src = ((int32_t *)src) + 1;
+			} else {
+				trace_kpb_error("KPB: An attempt to copy"
+				                "not supported format!");
+				return;
+			}
+			j++;
+		}
+	}
 }
 
 /**
@@ -1113,23 +1127,36 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			     struct comp_buffer *source, size_t size,
 			     size_t sample_width)
 {
-	int16_t *src;
-	int16_t *dest;
-	uint32_t i;
-	uint32_t j = 0;
-	uint32_t channel;
-	uint32_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+	void *dst;
+	void *src;
+	size_t i;
+	size_t j = 0;
+	size_t channel;
+	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			src = (sample_width == 16) ?
-			       buffer_read_frag_s16(source, j) :
-			       buffer_read_frag_s32(source, j);
-
-			dest = (sample_width == 16) ?
-				buffer_write_frag_s16(sink, j) :
-				buffer_write_frag_s32(sink, j);
-			*dest = *src;
+			if (sample_width == 16) {
+				dst = buffer_write_frag_s16(sink, j);
+				src = buffer_read_frag_s16(source, j);
+				*((int16_t *)dst) = *((int16_t *)src);
+				//src = ((int16_t *)src) + 1;
+			} else if (sample_width == 24) {
+				dst = buffer_write_frag_s32(sink, j);
+				src = buffer_read_frag_s32(source, j);
+				*((int32_t *)dst) = *(int32_t *)src >> 8 &
+						    0x00FFFFFF;
+				//src = ((int32_t *)src) + 1;
+			} else if (sample_width == 32) {
+				dst = buffer_write_frag_s32(sink, j);
+				src = buffer_read_frag_s32(source, j);
+				*((int32_t *)dst) = *((int32_t *)src);
+				//src = ((int32_t *)src) + 1;
+			} else {
+				trace_kpb_error("KPB: An attempt to copy"
+				                "not supported format!");
+				return;
+			}
 			j++;
 		}
 	}
