@@ -42,6 +42,9 @@ struct dma_trace_data {
 	uint32_t enabled;
 	uint32_t copy_in_progress;
 	uint32_t stream_tag;
+	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
+				   *  copied by dma connected to host
+				   */
 	uint32_t dropped_entries; /* amount of dropped entries */
 	spinlock_t lock; /* dma trace lock */
 };

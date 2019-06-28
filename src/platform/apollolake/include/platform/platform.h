@@ -42,9 +42,6 @@ struct sof;
  */
 #define PLATFORM_DEFAULT_CLOCK CLK_SSP
 
-/* HD-DMA single burst size */
-#define PLATFORM_HDA_BURST_SIZE	32
-
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
 #define PLATFORM_PAGE_TABLE_SIZE	256
