@@ -1028,12 +1028,8 @@ static int dw_dma_copy(struct dma *dma, unsigned int channel, int bytes,
 		return -EINVAL;
 	}
 
-	/* do nothing on preload */
-	if (flags & DMA_COPY_PRELOAD)
-		return 0;
-
-	/* for one shot copy just start DMA */
-	if (flags & DMA_COPY_ONE_SHOT)
+	/* for preload or one shot copy just start DMA */
+	if (flags & (DMA_COPY_PRELOAD | DMA_COPY_ONE_SHOT))
 		return dw_dma_start(dma, channel);
 
 	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
