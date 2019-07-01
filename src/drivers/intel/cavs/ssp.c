@@ -802,6 +802,14 @@ static void ssp_start(struct dai *dai, int direction)
 
 	trace_ssp("ssp_start()");
 
+	if (ssp->params.bclk_delay) {
+		/* drive BCLK early for guaranteed time,
+		 * before first FSYNC, it is required by some codecs
+		 */
+		wait_delay(clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK,
+					     ssp->params.bclk_delay));
+	}
+
 	/* enable DMA */
 	if (direction == DAI_DIR_PLAYBACK) {
 		ssp_update_bits(dai, SSCR1, SSCR1_TSRE, SSCR1_TSRE);
