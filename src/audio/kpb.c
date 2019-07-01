@@ -796,7 +796,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		 * an end application interrupts.
 		 */
 		period_interval = ((host_buffer_size/2)/period_size)*
-		                    ticks_per_ms+(ticks_per_ms*2);
+		                    ticks_per_ms+(ticks_per_ms*3);
 
 
 		kpb->draining_task_data.period_interval = period_interval;
