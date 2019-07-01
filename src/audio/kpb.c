@@ -468,6 +468,7 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	size_t copy_bytes = 0;
+	int *debug = (void *)0x9e008000;
 
 	tracev_kpb("kpb_copy()");
 
@@ -504,6 +505,10 @@ static int kpb_copy(struct comp_dev *dev)
 	 */
 	if (source->avail <= kpb->kpb_buffer_size) {
 		kpb_buffer_data(kpb, source, copy_bytes);
+		*(debug) = 0xFEED01;
+		*(debug+1) = kpb->buffered_data;
+		*(debug+2) = kpb->config.sampling_width;
+		*(debug+3) = kpb->kpb_buffer_size;
 
 		if (kpb->buffered_data < kpb->kpb_buffer_size)
 			kpb->buffered_data += copy_bytes;
@@ -707,7 +712,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t sample_width = kpb->config.sampling_width;
 	size_t history_depth = cli->history_depth * kpb->config.no_channels *
 			       (kpb->config.sampling_freq / 1000) *
-			       (sample_width / 8);
+			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
 	struct hb *buff = kpb->history_buffer;
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
@@ -716,7 +721,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t period_size = kpb->period_size;
 	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
-	trace_kpb("RAJWA: init draining, ho sink free %d", kpb->host_sink->free);
+	trace_kpb("RAJWA: init draining, history_depth %d", history_depth);
 	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",host_buffer_size, period_size, ticks_per_ms);
 	trace_kpb("RAJWA: current w_ptr %p buffered %d ",
 			(uint32_t)kpb->history_buffer->w_ptr, kpb->buffered_data);
