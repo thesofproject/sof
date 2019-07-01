@@ -272,6 +272,131 @@ static void buffer_free(struct ctl_data *ctl_data)
 	ctl_data->buffer_size = 0;
 }
 
+static int ctl_setup(struct ctl_data *ctl_data)
+{
+	int mode = SND_CTL_NONBLOCK;
+	int ctrl_size;
+	int buffer_size;
+	int read;
+	int write;
+	int type;
+	char opt;
+	int ret;
+
+	/* Open the device, mixer control and get read/write/type properties.
+	 */
+	ret = snd_ctl_open(&ctl_data->ctl, ctl_data->dev, mode);
+	if (ret) {
+		fprintf(stderr, "Error: Could not open device %s.\n",
+			ctl_data->dev);
+		return ret;
+	}
+
+	/* Allocate buffers for pointers info, id, and value. */
+	ret = snd_ctl_elem_info_malloc(&ctl_data->info);
+	if (ret) {
+		fprintf(stderr, "Error: Could not malloc elem_info!\n");
+		goto ctl_close;
+	}
+	ret = snd_ctl_elem_id_malloc(&ctl_data->id);
+	if (ret) {
+		fprintf(stderr, "Error: Could not malloc elem_id!\n");
+		goto info_free;
+	}
+	ret = snd_ctl_elem_value_malloc(&ctl_data->value);
+	if (ret) {
+		fprintf(stderr, "Error: Could not malloc elem_value!\n");
+		goto id_free;
+	}
+
+	/* Get handle id for the ascii control name. */
+	ret = snd_ctl_ascii_elem_id_parse(ctl_data->id, ctl_data->cname);
+	if (ret) {
+		fprintf(stderr, "Error: Can't find %s.\n", ctl_data->cname);
+		goto value_free;
+	}
+
+	/* Get handle info from id. */
+	snd_ctl_elem_info_set_id(ctl_data->info, ctl_data->id);
+	ret = snd_ctl_elem_info(ctl_data->ctl, ctl_data->info);
+	if (ret) {
+		fprintf(stderr, "Error: Could not get elem info.\n");
+		goto value_free;
+	}
+
+	if (ctl_data->binary && ctl_data->set) {
+		/* set ctrl_size to file size */
+		ctrl_size = get_file_size(ctl_data->in_fd);
+		if (ctrl_size <= 0) {
+			fprintf(stderr, "Error: Input file unavailable.\n");
+			goto value_free;
+		}
+
+		/* need more space for raw data file(no header in the file) */
+		if (ctl_data->no_abi)
+			ctrl_size += sizeof(struct sof_abi_hdr);
+	} else {
+		/* Get control attributes from info. */
+		ctrl_size = snd_ctl_elem_info_get_count(ctl_data->info);
+	}
+
+	fprintf(stderr, "Control size is %d.\n", ctrl_size);
+	read = snd_ctl_elem_info_is_tlv_readable(ctl_data->info);
+	write = snd_ctl_elem_info_is_tlv_writable(ctl_data->info);
+	type = snd_ctl_elem_info_get_type(ctl_data->info);
+	if (!read) {
+		fprintf(stderr, "Error: No read capability.\n");
+		goto value_free;
+	}
+	if (!write) {
+		fprintf(stderr, "Error: No write capability.\n");
+		goto value_free;
+	}
+	if (type != SND_CTL_ELEM_TYPE_BYTES) {
+		fprintf(stderr, "Error: control type has no bytes support.\n");
+		goto value_free;
+	}
+
+	ctl_data->ctrl_size = ctrl_size;
+
+	/* allocate buffer for tlv data */
+	ret = buffer_alloc(ctl_data);
+	if (ret < 0) {
+		fprintf(stderr, "Error: Could not allocate buffer, ret:%d\n",
+			ret);
+		goto value_free;
+	}
+
+	return ret;
+buff_free:
+	buffer_free(ctl_data);
+
+value_free:
+	snd_ctl_elem_value_free(ctl_data->value);
+id_free:
+	snd_ctl_elem_id_free(ctl_data->id);
+info_free:
+	snd_ctl_elem_info_free(ctl_data->info);
+ctl_close:
+	ret |= snd_ctl_close(ctl_data->ctl);
+	return ret;
+}
+
+static int ctl_free(struct ctl_data *ctl_data)
+{
+	int ret;
+
+	buffer_free(ctl_data);
+
+	snd_ctl_elem_value_free(ctl_data->value);
+	snd_ctl_elem_id_free(ctl_data->id);
+	snd_ctl_elem_info_free(ctl_data->info);
+
+	ret = snd_ctl_close(ctl_data->ctl);
+
+	return ret;
+}
+
 static void ctl_dump(struct ctl_data *ctl_data)
 {
 	FILE *fh;
@@ -410,7 +535,7 @@ int main(int argc, char *argv[])
 		/* pass through */
 		default:
 			usage(argv[0]);
-			goto ctl_data_free;
+			goto struct_free;
 		}
 	}
 
@@ -418,7 +543,7 @@ int main(int argc, char *argv[])
 	if (!ctl_data->cname) {
 		fprintf(stderr, "Error: No control was requested.\n");
 		usage(argv[0]);
-		goto ctl_data_free;
+		goto data_free;
 
 	}
 
@@ -427,7 +552,7 @@ int main(int argc, char *argv[])
 		ctl_data->in_fd = open(input_file, O_RDONLY);
 		if (ctl_data->in_fd <= 0) {
 			fprintf(stderr, "error: %s\n", strerror(errno));
-			goto ctl_data_free;
+			goto struct_free;
 		}
 	}
 
@@ -440,74 +565,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* Open the mixer control and get read/write/type properties. */
-	ret = snd_ctl_open(&ctl_data->ctl, ctl_data->dev, SND_CTL_NONBLOCK);
-	if (ret) {
-		fprintf(stderr, "Error: Could not open device %s.\n",
-			ctl_data->dev);
-		goto out_fd_close;
-	}
-
-	/* Allocate buffers for pointers info, id, and value. */
-	snd_ctl_elem_info_alloca(&ctl_data->info);
-	snd_ctl_elem_id_alloca(&ctl_data->id);
-	snd_ctl_elem_value_alloca(&ctl_data->value);
-
-	/* Get handle id for the ascii control name. */
-	ret = snd_ctl_ascii_elem_id_parse(ctl_data->id, ctl_data->cname);
-	if (ret) {
-		fprintf(stderr, "Error: Can't find %s.\n", ctl_data->cname);
-		goto ctl_close;
-	}
-
-	/* Get handle info from id. */
-	snd_ctl_elem_info_set_id(ctl_data->info, ctl_data->id);
-	ret = snd_ctl_elem_info(ctl_data->ctl, ctl_data->info);
-	if (ret) {
-		fprintf(stderr, "Error: Could not get elem info.\n");
-		goto ctl_close;
-	}
-
-	if (ctl_data->binary && ctl_data->set) {
-		/* set ctrl_size to file size */
-		ctl_data->ctrl_size = get_file_size(ctl_data->in_fd);
-		if (ctl_data->ctrl_size <= 0) {
-			fprintf(stderr, "Error: Input file unavailable.\n");
-			goto ctl_close;
-		}
-
-		/* need more space for raw data file(no header in the file) */
-		if (ctl_data->no_abi)
-			ctl_data->ctrl_size += sizeof(struct sof_abi_hdr);
-	} else {
-		/* Get control attributes from info. */
-		ctl_data->ctrl_size =
-			snd_ctl_elem_info_get_count(ctl_data->info);
-	}
-
-	fprintf(stdout, "Control size is %d.\n", ctl_data->ctrl_size);
-	read = snd_ctl_elem_info_is_tlv_readable(ctl_data->info);
-	write = snd_ctl_elem_info_is_tlv_writable(ctl_data->info);
-	type = snd_ctl_elem_info_get_type(ctl_data->info);
-	if (!read) {
-		fprintf(stderr, "Error: No read capability.\n");
-		goto ctl_close;
-	}
-	if (!write) {
-		fprintf(stderr, "Error: No write capability.\n");
-		goto ctl_close;
-	}
-	if (type != SND_CTL_ELEM_TYPE_BYTES) {
-		fprintf(stderr, "Error: control type has no bytes support.\n");
-		goto ctl_close;
-	}
-
-	/* allocate buffer for tlv data */
-	ret = buffer_alloc(ctl_data);
+	/* set up ctl_elem, allocate buffers */
+	ret = ctl_setup(ctl_data);
 	if (ret < 0) {
-		fprintf(stderr, "Error: Could not allocate buffer, ret:%d\n",
-			ret);
-		goto ctl_close;
+		fprintf(stderr, "Error: ctl_data setup failed, ret:%d", ret);
+		goto out_fd_close;
 	}
 
 	/* set/get the tlv bytes kcontrol */
@@ -515,23 +577,21 @@ int main(int argc, char *argv[])
 	if (ret < 0) {
 		fprintf(stderr, "Error: Could not %s control, ret:%d\n",
 			ctl_data->set ? "set" : "get", ret);
-		goto buff_free;
+		goto data_free;
 	}
 
 	/* dump the tlv buffer to a file or stdout */
 	ctl_dump(ctl_data);
 
-buff_free:
-	buffer_free(ctl_data);
-ctl_close:
-	ret = snd_ctl_close(ctl_data->ctl);
+data_free:
+	ret = ctl_free(ctl_data);
 out_fd_close:
 	if (ctl_data->out_fd)
 		close(ctl_data->out_fd);
 in_fd_close:
 	if (ctl_data->in_fd)
 		close(ctl_data->in_fd);
-ctl_data_free:
+struct_free:
 	free(ctl_data);
 
 	return ret;
