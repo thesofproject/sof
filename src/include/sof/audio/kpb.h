@@ -101,7 +101,7 @@ struct dd {
 	size_t sample_width;
 	size_t period_interval;
 	size_t period_bytes_limit;
-	void *hb_w_ptr;
+	size_t buffered_while_draining;
 };
 
 #ifdef UNIT_TEST
