@@ -91,7 +91,11 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	/* return if no bytes */
 	if (!bytes) {
 		trace_buffer("comp_update_buffer_produce(), "
-			     "no bytes to produce");
+			     "no bytes to produce, source->comp.id = %u, "
+			     "source->comp.type = %u, sink->comp.id = %u, "
+			     "sink->comp.type = %u", buffer->source->comp.id,
+			     buffer->source->comp.type, buffer->sink->comp.id,
+			     buffer->sink->comp.type);
 		return;
 	}
 
@@ -165,7 +169,11 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	/* return if no bytes */
 	if (!bytes) {
 		trace_buffer("comp_update_buffer_consume(), "
-			     "no bytes to consume");
+			     "no bytes to consume, source->comp.id = %u, "
+			     "source->comp.type = %u, sink->comp.id = %u, "
+			     "sink->comp.type = %u", buffer->source->comp.id,
+			     buffer->source->comp.type, buffer->sink->comp.id,
+			     buffer->sink->comp.type);
 		return;
 	}
 
