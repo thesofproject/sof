@@ -796,7 +796,7 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		 * an end application interrupts.
 		 */
 		period_interval = ((host_buffer_size/2)/period_size)*
-		                    ticks_per_ms+(ticks_per_ms*3);
+		                    ticks_per_ms+(ticks_per_ms*5);
 
 
 		kpb->draining_task_data.period_interval = period_interval;
@@ -899,7 +899,7 @@ static uint64_t kpb_draining_task(void *arg)
 				comp_update_buffer_produce(sink, 0xFEED);
 				deadline = platform_timer_get(platform_timer) +
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-				PLATFORM_HOST_DMA_TIMEOUT*2 / 1000;
+				PLATFORM_HOST_DMA_TIMEOUT / 1000;
 			}
 		}
 
@@ -927,8 +927,7 @@ static uint64_t kpb_draining_task(void *arg)
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
 		/* In theory we should put critical section here */
-		history_depth += *buffered_while_draining;
-		*buffered_while_draining = 0;
+
 		drained += size_to_copy;
 		period_bytes += size_to_copy;
 
@@ -949,6 +948,9 @@ static uint64_t kpb_draining_task(void *arg)
 		}
 
 		if (history_depth == 0) {
+		trace_kpb("RAJWA: update history_depth by %d",*buffered_while_draining );
+		history_depth += *buffered_while_draining;
+		*buffered_while_draining = 0;
 		deadline = platform_timer_get(platform_timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		PLATFORM_HOST_DMA_TIMEOUT / 1000;
@@ -970,7 +972,7 @@ static uint64_t kpb_draining_task(void *arg)
 				comp_update_buffer_produce(sink, 0xFEED);
 				deadline = platform_timer_get(platform_timer) +
 				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-				PLATFORM_HOST_DMA_TIMEOUT*2 / 1000;
+				PLATFORM_HOST_DMA_TIMEOUT / 1000;
 			}
 		}
 		}
