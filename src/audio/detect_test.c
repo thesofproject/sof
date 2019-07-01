@@ -29,6 +29,8 @@
 #define ACTIVATION_DEFAULT_THRESHOLD_S16 \
 	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_THRESHOLD)))
 
+#define INITIAL_MODEL_DATA_SIZE 64
+
 /* default number of samples before detection is activated  */
 #define KEYPHRASE_DEFAULT_PREAMBLE_LENGTH 0
 
@@ -181,15 +183,15 @@ static void free_mem_load(struct comp_data *cd)
 
 static int alloc_mem_load(struct comp_data *cd, uint32_t size)
 {
+	if (!size)
+		return 0;
+
 	if (!cd) {
 		trace_keyword_error("alloc_mem_load() error: invalid cd");
 		return -EINVAL;
 	}
 
 	free_mem_load(cd);
-
-	if (!size)
-		return 0;
 
 	cd->model.data = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM, size);
 
@@ -231,6 +233,7 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 		(struct sof_ipc_comp_process *)comp;
 	struct comp_data *cd;
 	struct sof_detect_test_config *cfg;
+	int ret = 0;
 	size_t bs;
 
 	trace_keyword("test_keyword_new()");
@@ -263,7 +266,7 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 	bs = ipc_keyword->size;
 
 	if (bs > 0) {
-		if (bs != sizeof(struct sof_detect_test_config)) {
+		if (bs < sizeof(struct sof_detect_test_config)) {
 			trace_keyword_error("test_keyword_new() "
 					"error: invalid data size");
 			goto fail;
@@ -274,6 +277,13 @@ static struct comp_dev *test_keyword_new(struct sof_ipc_comp *comp)
 					"error: failed to apply config");
 			goto fail;
 		}
+	}
+
+	ret = alloc_mem_load(cd, INITIAL_MODEL_DATA_SIZE);
+	if (ret < 0) {
+		trace_keyword_error("test_keyword_new() "
+				    "error: model data initial failed");
+		goto fail;
 	}
 
 	dev->state = COMP_STATE_READY;
