@@ -880,7 +880,7 @@ static uint64_t kpb_draining_task(void *arg)
 		}
 		deadline = platform_timer_get(platform_timer) +
 		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_HOST_DMA_TIMEOUT*2 / 1000;
+		PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
 		while (sink->free && (sink->last_produce != sink->last_consume)) {
 			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
@@ -949,15 +949,30 @@ static uint64_t kpb_draining_task(void *arg)
 		}
 
 		if (history_depth == 0) {
-			/* Requested history was drained but we have to check
-			 * if there was any real time stream while we were
-			 * draining. If so we need to continue draining until
-			 * we catch up real time.
-			 */
-			if (*buffered_while_draining) {
-				trace_kpb_error("RAJWA: UPDATE of history_depth by %d, w_ptr %p",
-				*buffered_while_draining, (uint32_t)buff->w_ptr);
+		deadline = platform_timer_get(platform_timer) +
+		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+		PLATFORM_HOST_DMA_TIMEOUT / 1000;
+
+		while (sink->free && (sink->last_produce != sink->last_consume)) {
+			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
+				sink->last_produce, sink->last_consume);
+			if (deadline < platform_timer_get(platform_timer)) {
+				attempts++;
+				if (attempts > 3) {
+					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
+					attempts = 0;
+					comp_update_buffer_consume(sink, sink->last_produce);
+					break;
+				}
+				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
+					sink->last_produce-sink->last_consume);
+				//comp_update_buffer_consume(sink, sink->last_produce);
+				comp_update_buffer_produce(sink, 0xFEED);
+				deadline = platform_timer_get(platform_timer) +
+				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+				PLATFORM_HOST_DMA_TIMEOUT*2 / 1000;
 			}
+		}
 		}
 	}
 
