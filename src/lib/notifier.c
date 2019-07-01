@@ -39,9 +39,9 @@ void notifier_notify(void)
 	struct notifier *n;
 
 	if (!list_is_empty(&notify->list)) {
-		//dcache_invalidate_region(&_notify_data, sizeof(_notify_data));
-		//dcache_invalidate_region(_notify_data.data,
-		//			 _notify_data.data_size);
+		dcache_invalidate_region(&_notify_data, sizeof(_notify_data));
+		dcache_invalidate_region(_notify_data.data,
+					 _notify_data.data_size);
 
 		/* iterate through notifiers and send event to
 		 * interested clients
@@ -64,13 +64,13 @@ void notifier_event(struct notify_data *notify_data)
 	spin_lock(&notify->lock);
 
 	_notify_data = *notify_data;
-	//dcache_writeback_region(_notify_data.data, _notify_data.data_size);
-	//dcache_writeback_region(&_notify_data, sizeof(_notify_data));
+	dcache_writeback_region(_notify_data.data, _notify_data.data_size);
+	dcache_writeback_region(&_notify_data, sizeof(_notify_data));
 
 	/* notify selected targets */
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
 		if (_notify_data.target_core_mask & (1 << i)) {
-			if (i == cpu_get_id() || 1) {
+			if (i == cpu_get_id()) {
 				notifier_notify();
 			} else if (cpu_is_core_enabled(i)) {
 				notify_msg.core = i;
