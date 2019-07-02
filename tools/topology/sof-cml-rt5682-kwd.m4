@@ -151,16 +151,16 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # Passthrough capture pipeline 7 on PCM 7 using max 2 channels.
 # Schedule 320 frames per 20000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
-	8, 8, 2, s16le,
+	8, 8, 2, s24le,
 	KWD_PERIOD_FRAMES,
 	KWD_PIPE_SCH_DEADLINE_US,
 	0, 0)
 
 # capture DAI is DMIC 1 using 2 periods
-# Buffers use s16le format, with 320 frame per 20000us on core 0 with priority 0
+# Buffers use s32le format, with 320 frame per 20000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	8, DMIC, 1, dmic16k,
-	PIPELINE_SINK_8, 2, s16le,
+	PIPELINE_SINK_8, 2, s32le,
 	KWD_PERIOD_FRAMES,
 	KWD_PIPE_SCH_DEADLINE_US,
 	0, 0)
@@ -178,7 +178,7 @@ PCM_PLAYBACK_ADD(HDMI3, 4, PIPELINE_PCM_6)
 dnl PIPELINE_ADD(pipeline,
 dnl     pipe id, max channels, format,
 dnl     frames, deadline, priority, core)
-PIPELINE_ADD(sof/pipe-detect.m4, 9, 2, s16le,
+PIPELINE_ADD(sof/pipe-detect.m4, 9, 2, s24le,
 	KWD_PERIOD_FRAMES,
 	KWD_PIPE_SCH_DEADLINE_US,
 	0, 0, PIPELINE_SCHED_COMP_8)
@@ -215,7 +215,7 @@ DAI_CONFIG(DMIC, 0, 1, dmic01,
 # dmic16k (ID: 2)
 DAI_CONFIG(DMIC, 1, 2, dmic16k,
 	   DMIC_CONFIG(1, 500000, 4800000, 40, 60, 16000,
-		DMIC_WORD_LENGTH(s16le), DMIC, 1,
+		DMIC_WORD_LENGTH(s32le), DMIC, 1,
 		PDM_CONFIG(DMIC, 1, STEREO_PDM0)))
 
 # 3 HDMI/DP outputs (ID: 3,4,5)
