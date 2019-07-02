@@ -24,7 +24,7 @@
  * It should remain enabled in the situation when the
  * recovery is delegated to the outside of firmware.
  */
-#define NO_XRUN_RECOVERY 0
+#define NO_XRUN_RECOVERY 1
 
 /* pipeline tracing */
 #define trace_pipe(format, ...) \
