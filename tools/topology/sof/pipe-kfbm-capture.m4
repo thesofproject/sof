@@ -2,7 +2,7 @@
 #
 # Pipeline Endpoints for connection are :-
 #
-#  host PCM_C <-+- KPBM 0 <-- B0 <-- source DAI0
+#  host PCM_C <-+- KPBM 0 <-- B1 <-- Volume 0 <-- B0 <-- source DAI0
 #               |
 #  Others    <--+
 
@@ -10,6 +10,7 @@
 include(`utils.m4')
 include(`buffer.m4')
 include(`pcm.m4')
+include(`pga.m4')
 include(`dai.m4')
 include(`kpbm.m4')
 include(`mixercontrol.m4')
@@ -43,6 +44,25 @@ C_CONTROLBYTES(KPB, PIPELINE_ID,
 	,
 	KPB_priv)
 
+# Volume Mixer control with max value of 80
+C_CONTROLMIXER(KWD Capture Volume, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 256 binds the mixer control to volume get/put handlers, 256, 256),
+	CONTROLMIXER_MAX(, 80),
+	false,
+	CONTROLMIXER_TLV(TLV 80 steps from -50dB to +30dB for 1dB, vtlv_m50s1),
+	Channel register and shift for Front Left/Right,
+	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
+
+#
+# Volume configuration
+#
+
+W_VENDORTUPLES(capture_pga_tokens, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+
+W_DATA(capture_pga_conf, capture_pga_tokens)
+
 #
 # Components and Buffers
 #
@@ -50,6 +70,9 @@ C_CONTROLBYTES(KPB, PIPELINE_ID,
 # Host "Passthrough Capture" PCM
 # with 0 sink and 2 source periods
 W_PCM_CAPTURE(PCM_ID, Sound Trigger Capture, 0, 2, 2)
+
+# "Volume" has 2 source and 2 sink periods
+W_PGA(0, PIPELINE_FORMAT, 2, 2, capture_pga_conf, LIST(`		', "PIPELINE_ID KWD Capture Volume"))
 
 # "KPBM" has 2 source and 2 sink periods
 W_KPBM(0, PIPELINE_FORMAT, 2, 2, PIPELINE_ID, LIST(`             ', "KPB"))
@@ -62,19 +85,25 @@ W_BUFFER(0, COMP_BUFFER_SIZE(2,
 W_BUFFER(1, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
 	PLATFORM_HOST_MEM_CAP)
+# Capture Buffers
+W_BUFFER(2, COMP_BUFFER_SIZE(2,
+	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, SCHEDULE_FRAMES),
+	PLATFORM_HOST_MEM_CAP)
 
 #
 # Pipeline Graph
 #
-#  host PCM_C <-- B1 <--+- KPBM 0 <-- B0 <-- source DAI0
+#  host PCM_C <-- B2 <--+- KPBM 0 <-- B1 <-- volume 0 <-- B0 <-- source DAI0
 #                	|
 #            Others  <--
 
 P_GRAPH(pipe-kpbm-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
-	`dapm(N_PCMC(PCM_ID), N_BUFFER(1))',
-	`dapm(N_BUFFER(1), N_KPBM(0, PIPELINE_ID))',
-	`dapm(N_KPBM(0, PIPELINE_ID), N_BUFFER(0))'))
+	`dapm(N_PCMC(PCM_ID), N_BUFFER(2))',
+	`dapm(N_BUFFER(2), N_KPBM(0, PIPELINE_ID))',
+	`dapm(N_KPBM(0, PIPELINE_ID), N_BUFFER(1))',
+	`dapm(N_BUFFER(1), N_PGA(0, PIPELINE_ID))',
+	`dapm(N_PGA(0, PIPELINE_ID), N_BUFFER(0))'))
 
 #
 # Pipeline Source and Sinks
@@ -89,5 +118,5 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), N_PCMC(PCM_ID))
 dnl PCM_CAPTURE_ADD(name, pipeline, capture)
 PCM_CAPTURE_ADD(DMIC16k, PIPELINE_ID, N_STS(PCM_ID))
 
-PCM_CAPABILITIES(N_STS(PCM_ID), `S16_LE', 16000, 16000, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(N_STS(PCM_ID), `S32_LE,S24_LE,S16_LE', 16000, 16000, 2, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
 
