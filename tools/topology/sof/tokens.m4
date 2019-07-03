@@ -60,6 +60,7 @@ SectionVendorTokens."sof_ssp_tokens" {
 	SOF_TKN_INTEL_SSP_FRAME_PULSE_WIDTH 	"503"
 	SOF_TKN_INTEL_SSP_QUIRKS		"504"
 	SOF_TKN_INTEL_SSP_TDM_PADDING_PER_SLOT  "505"
+	SOF_TKN_INTEL_SSP_BCLK_DELAY		"506"
 }
 
 SectionVendorTokens."sof_dmic_tokens" {
