@@ -333,7 +333,9 @@ static int mux_copy(struct comp_dev *dev)
 
 static int mux_reset(struct comp_dev *dev)
 {
-	return 0;
+	trace_mux("mux_reset()");
+
+	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
 
 static int mux_prepare(struct comp_dev *dev)
