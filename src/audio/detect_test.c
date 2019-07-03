@@ -126,7 +126,6 @@ static void default_detect_test(struct comp_dev *dev,
 
 	int16_t *src;
 	int16_t diff;
-	int16_t step;
 	uint32_t count = frames; /**< Assuming single channel */
 	uint32_t sample;
 	uint32_t sample_width = dev->params.sample_container_bytes;
@@ -140,11 +139,10 @@ static void default_detect_test(struct comp_dev *dev,
 		src = (sample_width == 16) ?
 		       buffer_read_frag_s16(source, sample) :
 		       buffer_read_frag_s32(source, sample);
-		diff = abs(*src) - cd->activation;
-		step = diff >> cd->config.activation_shift;
+		diff = abs(*src) - abs(cd->activation);
+		diff >>= cd->config.activation_shift;
 
-		/* prevent taking 0 steps when the diff is too low */
-		cd->activation += !step ? diff : step;
+		cd->activation += diff;
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
 			if (cd->activation >= cd->config.activation_threshold) {
