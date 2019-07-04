@@ -390,7 +390,6 @@ static int kpb_prepare(struct comp_dev *dev)
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
 			/* We found proper host sink */
 			cd->host_sink = sink;
-			cd->host_sink->id = 101;
 		}
 	}
 
@@ -467,7 +466,6 @@ static int kpb_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	size_t copy_bytes = 0;
-	int *debug = (void *)0x9e008000;
 
 	tracev_kpb("kpb_copy()");
 
@@ -504,10 +502,6 @@ static int kpb_copy(struct comp_dev *dev)
 	 */
 	if (source->avail <= kpb->kpb_buffer_size) {
 		kpb_buffer_data(kpb, source, copy_bytes);
-		*(debug) = 0xFEED01;
-		*(debug+1) = kpb->buffered_data;
-		*(debug+2) = kpb->config.sampling_width;
-		*(debug+3) = kpb->kpb_buffer_size;
 
 		if (kpb->buffered_data < kpb->kpb_buffer_size)
 			kpb->buffered_data += copy_bytes;
@@ -871,37 +865,43 @@ static uint64_t kpb_draining_task(void *arg)
 	time_start = platform_timer_get(platform_timer);
 	sink->last_consume = 0;
 	sink->last_produce = 0;
-	sink->id = 99;
+	sink->secure = true;
+
 	while (history_depth > 0) {
 		if (next_copy_time > platform_timer_get(platform_timer)) {
 			period_bytes = 0;
 			continue;
 		}
-		deadline = platform_timer_get(platform_timer) +
-		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
-		while (sink->free && (sink->last_produce != sink->last_consume)) {
-			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
-				sink->last_produce, sink->last_consume);
+		/* TODO: This is temporary code, will be reworked soon. */
+		/* Deadline in case of failed copy to host. */
+		deadline = platform_timer_get(platform_timer) +
+			   clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+			   PLATFORM_HOST_DMA_TIMEOUT / 1000;
+
+		while (sink->last_produce != sink->last_consume) {
 			if (deadline < platform_timer_get(platform_timer)) {
 				attempts++;
-				if (attempts > 3) {
-					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
+				if (attempts > 5) {
+					trace_kpb_error("We failed to retransmit"
+							"for 5 times now skip it.");
 					attempts = 0;
-					comp_update_buffer_consume(sink, sink->last_produce);
+					comp_update_buffer_consume(sink,
+								   sink->last_produce -
+								   sink->last_consume);
 					break;
 				}
-				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
-					sink->last_produce-sink->last_consume);
-				//comp_update_buffer_consume(sink, sink->last_produce);
-				comp_update_buffer_produce(sink, 0xFEED);
+
+				comp_update_buffer_produce(sink, BUFF_RETRANSMIT);
+
 				deadline = platform_timer_get(platform_timer) +
-				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-				PLATFORM_HOST_DMA_TIMEOUT / 1000;
+					   clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+				           PLATFORM_HOST_DMA_TIMEOUT / 1000;
 			}
 		}
 
+		attempts = 0;
+		/* End of temporrary code. */
 
 		size_to_read = (uint32_t)buff->end_addr -
 			       (uint32_t)buff->r_ptr;
@@ -947,34 +947,43 @@ static uint64_t kpb_draining_task(void *arg)
 		}
 
 		if (history_depth == 0) {
-		trace_kpb("RAJWA: update history_depth by %d",*buffered_while_draining );
+
+		trace_kpb("kpb: update history_depth by %d", *buffered_while_draining );
 		history_depth += *buffered_while_draining;
 		*buffered_while_draining = 0;
-		deadline = platform_timer_get(platform_timer) +
-		clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_HOST_DMA_TIMEOUT / 1000;
 
-		while (sink->free && (sink->last_produce != sink->last_consume)) {
-			trace_kpb_error("RAJWA: kpb dma copy failed last produce %d last consume %d",
-				sink->last_produce, sink->last_consume);
-			if (deadline < platform_timer_get(platform_timer)) {
-				attempts++;
-				if (attempts > 3) {
-					trace_kpb_error("We failed to retransmit for 3 times, now skip it.");
-					attempts = 0;
-					comp_update_buffer_consume(sink, sink->last_produce);
-					break;
-				}
-				trace_kpb_error("RAJWA: attempt to retransmit %d bytes",
-					sink->last_produce-sink->last_consume);
-				//comp_update_buffer_consume(sink, sink->last_produce);
-				comp_update_buffer_produce(sink, 0xFEED);
+			/* No update? So let's switch to real time copy */
+			if (history_depth == 0)
+				/* TODO: This is temporary code, will be reworked soon. */
+				/* Deadline in case of failed copy to host. */
 				deadline = platform_timer_get(platform_timer) +
-				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-				PLATFORM_HOST_DMA_TIMEOUT / 1000;
+					   clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+					   PLATFORM_HOST_DMA_TIMEOUT / 1000;
+
+				while (sink->last_produce != sink->last_consume) {
+					if (deadline < platform_timer_get(platform_timer)) {
+						attempts++;
+						if (attempts > 5) {
+							trace_kpb_error("We failed to retransmit"
+									"for 5 times now skip it.");
+							attempts = 0;
+							comp_update_buffer_consume(sink,
+										   sink->last_produce -
+										   sink->last_consume);
+							break;
+						}
+
+						comp_update_buffer_produce(sink, BUFF_RETRANSMIT);
+
+						deadline = platform_timer_get(platform_timer) +
+							   clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
+						           PLATFORM_HOST_DMA_TIMEOUT / 1000;
+					}
+				}
+
+				attempts = 0;
+				/* End of temporrary code. */
 			}
-		}
-		}
 	}
 
 	time_end = platform_timer_get(platform_timer);

@@ -32,10 +32,10 @@ struct comp_dev;
 /* buffer callback types */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
 #define BUFF_CB_TYPE_CONSUME	BIT(1)
-
+#define BUFF_RETRANSMIT		-1
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
-	uint32_t id;
+	bool secure;
 	uint32_t last_produce;
 	uint32_t last_consume;
 	void *last_r_ptr;
