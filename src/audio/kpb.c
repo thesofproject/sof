@@ -335,8 +335,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	cd->state = KPB_STATE_BUFFERING;
 	cd->host_buffer_size = dev->params.buffer.size;
 	cd->period_size = dev->params.host_period_bytes;
-
-	cd->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(dev->params.sample_container_bytes * 8);
+	cd->config.sampling_width = dev->params.sample_container_bytes * 8;
+	cd->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(cd->config.sampling_width);
 
 	/* Allocate history buffer */
 	allocated_size = kpb_allocate_history_buffer(cd);
