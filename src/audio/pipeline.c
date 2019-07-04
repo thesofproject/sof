@@ -62,16 +62,11 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	   pipe_desc, sizeof(*pipe_desc)));
 	trace_pipe("pipeline_new() pip_id %d, comp: %d",
 		    pipe_desc->pipeline_id, pipe_desc->comp_id);
-	trace_pipe_error("pipeline_new() error: RAJWA period %d",
-		p->ipc_pipe.period);
-	//p->ipc_pipe.period = 4;
 
 	/* get pipeline task type */
 	type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :
 		SOF_SCHEDULE_EDF;
-	//type = (pipe_desc->pipeline_id == 8) ? SOF_SCHEDULE_LL : type;
-	trace_pipe_error("pipeline_new() type of task: RAJWA task %d",
-		type);
+
 	schedule_task_init(&p->pipe_task, type, pipe_desc->priority,
 			   pipeline_task, p, pipe_desc->core, 0);
 
@@ -121,11 +116,6 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 		/* don't go further if this component is not connected */
 		if (!buffer_comp)
 			continue;
-	/*	else {
-trace_pipe("RAJWA: for each, processing component type %d",
-	    buffer_comp->comp.type);
-		}*/
-
 
 		/* continue further */
 		if (func) {
@@ -732,20 +722,14 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	/* copy to downstream immediately */
 	if (dir == PPL_DIR_DOWNSTREAM) {
 		err = comp_copy(current);
-		if (err < 0 || err == PPL_STATUS_PATH_STOP) {
-			trace_pipe("RAJWA, copy to downstream failed with err %d comp: %d",
-				    err, current->comp.type);
+		if (err < 0 || err == PPL_STATUS_PATH_STOP)
 			return err;
-		}
 	}
 
 	err = pipeline_for_each_comp(current, &pipeline_comp_copy,
 				     data, NULL, dir);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP) {
-		trace_pipe("RAJWA, pipeline_for_each_comp() failed with err %d comp: %d",
-				    err, current->comp.type);
+	if (err < 0 || err == PPL_STATUS_PATH_STOP)
 		return err;
-	}
 
 	if (dir == PPL_DIR_UPSTREAM)
 		err = comp_copy(current);

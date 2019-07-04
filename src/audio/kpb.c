@@ -477,9 +477,6 @@ static int kpb_copy(struct comp_dev *dev)
 
 	/* Stop copying downstream if in draining mode */
 	if (kpb->state == KPB_STATE_DRAINING) {
-		trace_kpb("RAJWA: upd_hdepth source stats: w_ptr %p, r_ptr %p, avail %d, ho_sink free %d",
-			 (uint32_t)source->w_ptr, (uint32_t)source->r_ptr, source->avail, sink->free);
-		trace_kpb("RAJWA: sink addres %p", (uint32_t)sink->addr);
 		kpb_buffer_data(kpb, source, source->avail);
 		comp_update_buffer_consume(source, source->avail);
 		return PPL_STATUS_PATH_STOP;
@@ -511,20 +508,9 @@ static int kpb_copy(struct comp_dev *dev)
 		}
 	}
 
-	if (kpb->state == KPB_STATE_HOST_COPY) {
-		trace_kpb("RAJWA: host BEFORE cpy: source avail %d host free %d source r_ptr %p",
-			   source->avail, sink->free, (uint32_t)source->r_ptr);
-		//copy_bytes = source->avail;
-	}
-
 	comp_update_buffer_produce(sink, copy_bytes);
 	comp_update_buffer_consume(source, copy_bytes);
 
-	if (kpb->state == KPB_STATE_HOST_COPY) {
-		trace_kpb("RAJWA: host AFTER cpy: source avail %d host free %d source r_ptr %p",
-			   source->avail, sink->free, (uint32_t)source->r_ptr);
-		//copy_bytes = source->avail;
-	}
 	return ret;
 }
 
@@ -714,10 +700,10 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t period_size = kpb->period_size;
 	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
-	trace_kpb("RAJWA: init draining, history_depth %d", history_depth);
-	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",host_buffer_size, period_size, ticks_per_ms);
-	trace_kpb("RAJWA: current w_ptr %p buffered %d ",
-			(uint32_t)kpb->history_buffer->w_ptr, kpb->buffered_data);
+
+	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",
+		   host_buffer_size, period_size, ticks_per_ms);
+
 	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong client id");
@@ -805,9 +791,6 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		kpb->draining_task_data.state = &kpb->state;
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.buffered_while_draining = 0;
-
-		trace_kpb("RAJWA: current w_ptr %p buffered %d ",
-			(uint32_t)kpb->history_buffer->w_ptr, kpb->buffered_data);
 
 		/* Pause selector copy. */
 		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
@@ -996,11 +979,10 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
 
-	trace_kpb("RAJWA: kpb_draining_task(), done. %u drained in %d ms, r_ptr %p",
+	trace_kpb("KPB: kpb_draining_task(), done. %u drained in %d ms",
 		   drained,
 		   (time_end - time_start)
-		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1),
-		   (uint32_t)buff->r_ptr);
+		   / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
 
 	/* Enable system agent back */
 	sa_enable();

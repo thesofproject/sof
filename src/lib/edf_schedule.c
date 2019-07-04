@@ -514,8 +514,7 @@ static void edf_schedule_idle(void)
 		/* run task if we find any queued */
 		if (task->state == SOF_TASK_STATE_QUEUED) {
 			ret = task->func(task->data);
-			trace_edf_sch_error("RAJWA: idle task with data %p",
-				(uint32_t)task->data);
+
 			if (ret == 0) {
 				/* task done, remove it from the list */
 				task->state = SOF_TASK_STATE_COMPLETED;

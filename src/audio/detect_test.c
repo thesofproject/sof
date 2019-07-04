@@ -93,7 +93,6 @@ static void notify_kpb(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 
-	trace_kpb("RAJWA: notify_kpb()");
 	trace_keyword("notify_kpb(), preamble: %u", cd->detect_preamble);
 
 	cd->client_data.r_ptr = NULL;
@@ -159,8 +158,6 @@ static void default_detect_test(struct comp_dev *dev,
 				 * Zero value means default config value
 				 * will be used.
 				 */
-				trace_keyword("RAJWA: detect_preamble: %d",cd->detect_preamble);
-				trace_keyword("RAJWA: config history_depth: %d", cd->config.history_depth);
 				cd->history_depth = 2100;
 				detect_test_notify(dev);
 				cd->detected = 1;
