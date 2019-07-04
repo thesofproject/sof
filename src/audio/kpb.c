@@ -116,17 +116,10 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	/* Sampling width accepted. Lets calculate and store
 	 * its derivatives for quick lookup in runtime.
 	 */
-	cd->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(cd->config.sampling_width);
 
 	if (cd->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
 		trace_kpb_error("kpb_new() error: "
 		"no of channels exceeded the limit");
-		return NULL;
-	}
-
-	if (cd->config.history_depth > cd->kpb_buffer_size) {
-		trace_kpb_error("kpb_new() error: "
-		"history depth exceeded the limit");
 		return NULL;
 	}
 
@@ -343,6 +336,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	cd->host_buffer_size = dev->params.buffer.size;
 	cd->period_size = dev->params.host_period_bytes;
 
+	cd->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(dev->params.sample_container_bytes * 8);
+
 	/* Allocate history buffer */
 	allocated_size = kpb_allocate_history_buffer(cd);
 
@@ -350,7 +345,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	if (allocated_size < cd->kpb_buffer_size) {
 		trace_kpb_error("Failed to allocate space for "
 				"KPB buffer/s");
-		return NULL;
+		return -EINVAL;
 	}
 	/* Init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
