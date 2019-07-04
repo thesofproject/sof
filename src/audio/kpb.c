@@ -840,14 +840,15 @@ static uint64_t kpb_draining_task(void *arg)
 	uint64_t time_start;
 	uint64_t time_end;
 	uint64_t period_interval = draining_data->period_interval;
-	uint64_t next_copy_time = period_interval * 2 +
-				  platform_timer_get(platform_timer);
+	uint64_t next_copy_time = 0;
 	uint64_t current_time = 0;
 	size_t period_bytes = 0;
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
 	uint64_t deadline;
 	uint32_t attempts = 0;
 	size_t *buffered_while_draining = &draining_data->buffered_while_draining;
+	size_t period_copy_start = platform_timer_get(platform_timer);
+	size_t time_taken = 0;
 
 	trace_kpb("kpb_draining_task(), start buff %p, end buff %p",
 		(uint32_t)buff->start_addr, (uint32_t)buff->end_addr);
@@ -860,7 +861,11 @@ static uint64_t kpb_draining_task(void *arg)
 	while (history_depth > 0) {
 		if (next_copy_time > platform_timer_get(platform_timer)) {
 			period_bytes = 0;
+			period_copy_start = platform_timer_get(platform_timer);
 			continue;
+		} else if (next_copy_time == 0) {
+			next_copy_time = platform_timer_get(platform_timer);
+			period_copy_start = next_copy_time;
 		}
 
 		/* TODO: This is temporary code, will be reworked soon. */
@@ -930,10 +935,8 @@ static uint64_t kpb_draining_task(void *arg)
 
 		if (period_bytes >= period_bytes_limit) {
 			current_time = platform_timer_get(platform_timer);
-			next_copy_time = current_time + period_interval;
-			/* now process any IPC messages to host */
-			ipc_process_msg_queue();
-
+			time_taken = current_time - period_copy_start;
+			next_copy_time = current_time + period_interval - time_taken;
 		}
 
 		if (history_depth == 0) {
