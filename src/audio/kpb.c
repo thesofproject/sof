@@ -79,7 +79,6 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
 	struct comp_data *cd;
-	size_t allocated_size;
 
 	trace_kpb("kpb_new()");
 
@@ -145,15 +144,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	/* Set initial state as buffering */
 	cd->state = KPB_STATE_BUFFERING;
 
-	/* Allocate history buffer */
-	allocated_size = kpb_allocate_history_buffer(cd);
 
-	/* Have we allocated what we requested? */
-	if (allocated_size < cd->kpb_buffer_size) {
-		trace_kpb_error("Failed to allocate space for "
-				"KPB buffer/s");
-		return NULL;
-	}
 
 	return dev;
 }
@@ -334,6 +325,7 @@ static int kpb_prepare(struct comp_dev *dev)
 	int i;
 	struct list_item *blist;
 	struct comp_buffer *sink;
+	size_t allocated_size;
 
 	trace_kpb("kpb_prepare()");
 
@@ -351,6 +343,15 @@ static int kpb_prepare(struct comp_dev *dev)
 	cd->host_buffer_size = dev->params.buffer.size;
 	cd->period_size = dev->params.host_period_bytes;
 
+	/* Allocate history buffer */
+	allocated_size = kpb_allocate_history_buffer(cd);
+
+	/* Have we allocated what we requested? */
+	if (allocated_size < cd->kpb_buffer_size) {
+		trace_kpb_error("Failed to allocate space for "
+				"KPB buffer/s");
+		return NULL;
+	}
 	/* Init history buffer */
 	kpb_clear_history_buffer(cd->history_buffer);
 
@@ -436,7 +437,10 @@ static int kpb_reset(struct comp_dev *dev)
 	kpb->state = KPB_STATE_BUFFERING;
 	/* Reset history buffer */
 	kpb->is_internal_buffer_full = false;
-	kpb_clear_history_buffer(kpb->history_buffer);
+	//kpb_clear_history_buffer(kpb->history_buffer);
+
+	/* Reclaim memory occupied by history buffer */
+	kpb_free_history_buffer(kpb->history_buffer);
 
 	/* Reset amount of buffered data */
 	kpb->buffered_data = 0;
