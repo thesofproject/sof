@@ -65,6 +65,9 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			     size_t sample_width);
 static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 			      size_t size, size_t sample_width);
+static inline size_t validate_period_size(size_t period_interval,
+                                        size_t host_buffer_size,
+                                        size_t bytes_per_ms);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -700,6 +703,9 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	size_t period_size = kpb->period_size;
 	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+        size_t bytes_per_ms = KPB_SAMPLING_WIDTH *
+        		      (KPB_SAMPLE_CONTAINER_SIZE(sample_width)/8) *
+			      kpb->config.no_channels;
 
 	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",
 		   host_buffer_size, period_size, ticks_per_ms);
@@ -774,15 +780,16 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		 * take place. This time will be used to synchronize us with
 		 * an end application interrupts.
 		 */
-		period_interval = ((host_buffer_size/2)/period_size)*
-		                    ticks_per_ms+(ticks_per_ms*5);
-
+		period_interval = (period_size / bytes_per_ms) * ticks_per_ms;
+		period_interval = validate_period_size(period_interval,
+			                               host_buffer_size,
+			                               bytes_per_ms);
 
 		kpb->draining_task_data.period_interval = period_interval;
-		kpb->draining_task_data.period_bytes_limit = host_buffer_size/2;
+		kpb->draining_task_data.period_bytes_limit = host_buffer_size / 2;
 
-		trace_kpb_error("kpb_init_draining(), period_limit: %d [bytes] and interval %d [uS] %d ticks ",
-			   host_buffer_size/2, ((period_interval * 1000) / ticks_per_ms), period_interval);
+		trace_kpb_error("kpb_init_draining(), period_limit: %d [bytes] and interval %d [ms] %d ticks ",
+			   host_buffer_size/2, (period_interval / ticks_per_ms), period_interval);
 
 		/* Add one-time draining task into the scheduler. */
 		kpb->draining_task_data.sink = kpb->host_sink;
@@ -1162,6 +1169,29 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 		}
 	}
 }
+
+static inline size_t validate_period_size(size_t period_interval,
+                                        size_t host_buffer_size,
+                                        size_t bytes_per_ms)
+{
+	/* The formula is like this:
+         * number_of_ms_copied_every_interval - interval_time > period_time * (interval_time/period_time)
+         * this simplifies to
+         * number_of_ms_copied_every_interval  > 2*interval_time
+         * interval_time < number_of_ms_copied_every_interval / 2
+         */
+
+         size_t ms_drained_per_interval = (host_buffer_size / 2) / bytes_per_ms;
+         size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+
+         if ((period_interval / ticks_per_ms) > (ms_drained_per_interval / 2)) {
+         	period_interval = (ms_drained_per_interval / 2) * ticks_per_ms;
+		trace_kpb_error("KPB: requested period_size is too big."
+				"It may cause glitches in drained data!");
+         }
+
+         return period_interval;
+ }
 
 struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
