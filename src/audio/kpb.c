@@ -1115,12 +1115,7 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 				dst = buffer_write_frag_s16(sink, j);
 				*((int16_t *)dst) = *((int16_t *)src);
 				src = ((int16_t *)src) + 1;
-			} else if (sample_width == 24) {
-				dst = buffer_write_frag_s32(sink, j);
-				*((int32_t *)dst) = *(int32_t *)src >> 8 &
-						    0x00FFFFFF;
-				src = ((int32_t *)src) + 1;
-			} else if (sample_width == 32) {
+			} else if (sample_width == 32 || sample_width == 24) {
 				dst = buffer_write_frag_s32(sink, j);
 				*((int32_t *)dst) = *((int32_t *)src);
 				src = ((int32_t *)src) + 1;
@@ -1162,13 +1157,7 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 				src = buffer_read_frag_s16(source, j);
 				*((int16_t *)dst) = *((int16_t *)src);
 				//src = ((int16_t *)src) + 1;
-			} else if (sample_width == 24) {
-				dst = buffer_write_frag_s32(sink, j);
-				src = buffer_read_frag_s32(source, j);
-				*((int32_t *)dst) = *(int32_t *)src >> 8 &
-						    0x00FFFFFF;
-				//src = ((int32_t *)src) + 1;
-			} else if (sample_width == 32) {
+			} else if (sample_width == 32 || sample_width == 24) {
 				dst = buffer_write_frag_s32(sink, j);
 				src = buffer_read_frag_s32(source, j);
 				*((int32_t *)dst) = *((int32_t *)src);
