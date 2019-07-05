@@ -846,6 +846,7 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t period_bytes_limit = draining_data->period_bytes_limit;
 	uint64_t deadline;
 	uint32_t attempts = 0;
+	uint32_t attempts_total = 0;
 	size_t *buffered_while_draining = &draining_data->buffered_while_draining;
 	size_t period_copy_start = platform_timer_get(platform_timer);
 	size_t time_taken = 0;
@@ -877,6 +878,7 @@ static uint64_t kpb_draining_task(void *arg)
 		while (sink->last_produce != sink->last_consume) {
 			if (deadline < platform_timer_get(platform_timer)) {
 				attempts++;
+				attempts_total++;
 				if (attempts > 5) {
 					trace_kpb_error("We failed to retransmit"
 							"for 5 times now skip it.");
@@ -885,6 +887,10 @@ static uint64_t kpb_draining_task(void *arg)
 								   sink->last_produce -
 								   sink->last_consume);
 					break;
+				}
+
+				if (attempts_total > 100) {
+					goto out;
 				}
 
 				comp_update_buffer_produce(sink, BUFF_RETRANSMIT);
@@ -956,6 +962,7 @@ static uint64_t kpb_draining_task(void *arg)
 				while (sink->last_produce != sink->last_consume) {
 					if (deadline < platform_timer_get(platform_timer)) {
 						attempts++;
+						attempts_total++;
 						if (attempts > 5) {
 							trace_kpb_error("We failed to retransmit"
 									"for 5 times now skip it.");
@@ -964,6 +971,10 @@ static uint64_t kpb_draining_task(void *arg)
 										   sink->last_produce -
 										   sink->last_consume);
 							break;
+						}
+
+						if (attempts_total > 100) {
+							goto out;
 						}
 
 						comp_update_buffer_produce(sink, BUFF_RETRANSMIT);
@@ -978,7 +989,7 @@ static uint64_t kpb_draining_task(void *arg)
 				/* End of temporrary code. */
 			}
 	}
-
+out:
 	time_end = platform_timer_get(platform_timer);
 
 	/* Draining is done. Now switch KPB to copy real time stream
