@@ -1188,7 +1188,6 @@ static inline size_t validate_period_size(size_t period_interval,
          size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
          if ((period_interval / ticks_per_ms) > (ms_drained_per_interval / 2)) {
-         	period_interval = (ms_drained_per_interval / 2) * ticks_per_ms;
 		trace_kpb_error("KPB: requested period_size is too big."
 				"It may cause glitches in drained data!");
          }
