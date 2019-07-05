@@ -125,10 +125,10 @@ static void default_detect_test(struct comp_dev *dev,
 
 	void *src;
 	int16_t diff;
-	int16_t step;
 	uint32_t count = frames; /**< Assuming single channel */
 	uint32_t sample;
-	uint32_t valid_bytes = dev->params.sample_valid_bytes;
+	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
+	uint16_t shift_bits;
 
 	/* synthetic load */
 	if (cd->config.load_mips)
@@ -136,20 +136,20 @@ static void default_detect_test(struct comp_dev *dev,
 
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
-		if (valid_bytes == 2 || valid_bytes == 4) {
-			src = buffer_read_frag_s16(source, sample);
-			diff = abs(*((int16_t *)src)) - cd->activation;
-
-		} else if (valid_bytes == 3) {
-			src = buffer_read_frag_s32(source, sample);
-			diff = abs((*(int32_t *)src >> 8 &
-			       0x00FFFFF)) - cd->activation;
+		src = (valid_bits == 16) ?
+		      buffer_read_frag_s16(source, sample) :
+		      buffer_read_frag_s32(source, sample);
+		if (valid_bits == 16) {
+			shift_bits = valid_bits - 16;
+			diff = abs((int16_t)(((*(int32_t *)src) >>
+					      shift_bits) & 0x0000FFFF)) -
+			       abs(cd->activation);
+		} else {
+			diff = abs(*(int16_t *)src) - abs(cd->activation);
 		}
 
-		step = diff >> cd->config.activation_shift;
-
-		/* prevent taking 0 steps when the diff is too low */
-		cd->activation += !step ? diff : step;
+		diff >>= cd->config.activation_shift;
+		cd->activation += diff;
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
 			if (cd->activation >= cd->config.activation_threshold) {
