@@ -191,9 +191,44 @@ static void *rmalloc_sys(int zone, int caps, int core, size_t bytes)
 	return ptr;
 }
 
+static void *align_buffer_ptr(struct mm_heap *heap, uint32_t alignment,
+			      void *ptr)
+{
+	struct alignment_hdr *a_hdr;
+	void *aligned_ptr = ptr;
+	int i, mod_align;
+
+	/* Only allow alignment as a power of 2 */
+	if ((alignment & (alignment - 1)) != 0)
+		panic(SOF_IPC_PANIC_MEM);
+
+	/* Checking alignment for buffer heap only */
+	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
+		if (heap == &memmap.buffer[i]) {
+			/* add hdr to a ptr */
+			ptr = ptr + sizeof(*a_hdr);
+			/* calculate alignment shift for headered ptr */
+			if (alignment == 0)
+				mod_align = 0;
+			else
+				mod_align = alignment
+				- (uintptr_t)(ptr) % alignment;
+			/* calculate aligned pointer with header */
+			aligned_ptr = ptr + mod_align;
+
+			/* calculate header position */
+			a_hdr = aligned_ptr - sizeof(*a_hdr);
+			/* save alignment shift to the header */
+			a_hdr->alignment_shift = mod_align + sizeof(*a_hdr);
+			break;
+		}
+	}
+	return aligned_ptr;
+}
+
 /* allocate single block */
 static void *alloc_block(struct mm_heap *heap, int level,
-	uint32_t caps)
+	uint32_t caps, uint32_t alignment)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr = &map->block[map->first_free];
@@ -202,6 +237,9 @@ static void *alloc_block(struct mm_heap *heap, int level,
 
 	map->free_count--;
 	ptr = (void *)(map->base + map->first_free * map->block_size);
+
+	ptr = align_buffer_ptr(heap, alignment, ptr);
+
 	hdr->size = 1;
 	hdr->used = 1;
 	heap->info.used += map->block_size;
@@ -223,7 +261,7 @@ static void *alloc_block(struct mm_heap *heap, int level,
 
 /* allocates continuous blocks */
 static void *alloc_cont_blocks(struct mm_heap *heap, int level,
-	uint32_t caps, size_t bytes)
+	uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
@@ -259,6 +297,9 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	/* we found enough space, let's allocate it */
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
+
+	ptr = align_buffer_ptr(heap, alignment, ptr);
+
 	hdr = &map->block[start];
 	hdr->size = count;
 	heap->info.used += count * map->block_size;
@@ -323,7 +364,7 @@ static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
 }
 
 static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
-			       size_t bytes)
+			       size_t bytes, uint32_t alignment)
 {
 	struct block_map *map;
 	int i;
@@ -341,7 +382,7 @@ static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
 			continue;
 
 		/* free block space exists */
-		ptr = alloc_block(heap, i, caps);
+		ptr = alloc_block(heap, i, caps, alignment);
 
 		break;
 	}
@@ -358,6 +399,7 @@ static void free_block(void *ptr)
 	struct mm_heap *heap;
 	struct block_map *block_map;
 	struct block_hdr *hdr;
+	struct alignment_hdr *a_hdr;
 	int i;
 	int block;
 	int used_blocks;
@@ -368,6 +410,17 @@ static void free_block(void *ptr)
 			    "heap = %p, cpu = %d",
 			    (uintptr_t)ptr, cpu_get_id());
 		return;
+	}
+
+	/* recover original block pointer if it was assigned from
+	 * buffer heap since it has alignment header
+	 */
+	for (i = 0;  i < PLATFORM_HEAP_BUFFER;  i++) {
+		if (heap == &memmap.buffer[i]) {
+			a_hdr = ptr - sizeof(*a_hdr);
+			ptr -= a_hdr->alignment_shift;
+			break;
+		}
 	}
 
 	/* find block that ptr belongs to */
@@ -504,7 +557,7 @@ static void *rmalloc_sys_runtime(int zone, int caps, int core, size_t bytes)
 	if ((cpu_heap->caps & caps) != caps)
 		panic(SOF_IPC_PANIC_MEM);
 
-	ptr = get_ptr_from_heap(cpu_heap, zone, caps, bytes);
+	ptr = get_ptr_from_heap(cpu_heap, zone, caps, bytes, 0);
 
 	/* other core should have the latest value */
 	if (core != cpu_get_id())
@@ -535,7 +588,7 @@ static void *rmalloc_runtime(int zone, uint32_t caps, size_t bytes)
 		}
 	}
 
-	return get_ptr_from_heap(heap, zone, caps, bytes);
+	return get_ptr_from_heap(heap, zone, caps, bytes, 0);
 }
 
 static void *_malloc_unlocked(int zone, uint32_t caps, size_t bytes)
@@ -612,11 +665,16 @@ void *rzalloc_core_sys(int core, size_t bytes)
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
 static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
-			       size_t bytes)
+			       size_t bytes, uint32_t alignment)
 {
 	struct block_map *map;
 	int i;
 	void *ptr = NULL;
+
+	/* size of requested buffer is adjusted for alignment purposes
+	 * have to expect worst case scenario
+	 */
+	bytes += alignment + sizeof(struct alignment_hdr);
 
 	/* will request fit in single block */
 	for (i = 0; i < heap->blocks; i++) {
@@ -625,7 +683,7 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 		/* Check if blocks are big enough and at least one is free */
 		if (map->block_size >= bytes && map->free_count) {
 			/* found: grab a block */
-			ptr = alloc_block(heap, i, caps);
+			ptr = alloc_block(heap, i, caps, alignment);
 			break;
 		}
 	}
@@ -640,8 +698,10 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 			map = &heap->map[i];
 
 			/* allocate if block size is smaller than request */
-			if (heap->size >= bytes && map->block_size < bytes) {
-				ptr = alloc_cont_blocks(heap, i, caps, bytes);
+			if (heap->size >= bytes
+				&& map->block_size < bytes) {
+				ptr = alloc_cont_blocks(heap, i, caps, bytes,
+					alignment);
 				if (ptr)
 					break;
 			}
@@ -659,7 +719,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 	return ptr;
 }
 
-static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes)
+static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes,
+	uint32_t alignment)
 {
 	struct mm_heap *heap;
 	unsigned int i, n;
@@ -673,7 +734,7 @@ static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes)
 		if (!heap)
 			break;
 
-		ptr = alloc_heap_buffer(heap, zone, caps, bytes);
+		ptr = alloc_heap_buffer(heap, zone, caps, bytes, alignment);
 		if (ptr)
 			break;
 
@@ -684,14 +745,14 @@ static void *_balloc_unlocked(int zone, uint32_t caps, size_t bytes)
 }
 
 /* allocates continuous buffers - not for direct use, clients use rballoc() */
-void *_balloc(int zone, uint32_t caps, size_t bytes)
+void *_balloc(int zone, uint32_t caps, size_t bytes, uint32_t alignment)
 {
 	void *ptr = NULL;
 	uint32_t flags;
 
 	spin_lock_irq(&memmap.lock, flags);
 
-	ptr = _balloc_unlocked(zone, caps, bytes);
+	ptr = _balloc_unlocked(zone, caps, bytes, alignment);
 
 	spin_unlock_irq(&memmap.lock, flags);
 
@@ -759,7 +820,8 @@ void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 	return new_ptr;
 }
 
-void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
+void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes,
+		uint32_t alignment)
 {
 	void *new_ptr = NULL;
 	uint32_t flags;
@@ -769,7 +831,7 @@ void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 
 	spin_lock_irq(&memmap.lock, flags);
 
-	new_ptr = _balloc_unlocked(zone, caps, bytes);
+	new_ptr = _balloc_unlocked(zone, caps, bytes, alignment);
 
 	if (new_ptr && ptr)
 		memcpy_s(new_ptr, bytes, ptr, bytes);
