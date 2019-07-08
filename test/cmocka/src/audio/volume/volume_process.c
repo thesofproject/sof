@@ -203,6 +203,7 @@ static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 	const int16_t *src = (int16_t *)source->r_ptr;
 	const int32_t *dst = (int32_t *)sink->w_ptr;
 	double processed;
+	int32_t dst_sample;
 	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
@@ -228,9 +229,14 @@ static void verify_s16_to_sX(struct comp_dev *dev, struct comp_buffer *sink,
 				processed = INT32_MIN;
 
 			sample = ((int32_t)processed) >> shift;
-			delta = dst[i + channel] - sample;
+			dst_sample = dst[i + channel];
+			delta = dst_sample - sample;
 			if (delta > 1 || delta < -1)
-				assert_int_equal(dst[i + channel], sample);
+				assert_int_equal(dst_sample, sample);
+
+			if (shift && (dst_sample < INT24_MIN ||
+				      dst_sample > INT24_MAX))
+				assert_int_equal(dst_sample, sample);
 		}
 	}
 }
@@ -281,6 +287,7 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 	const int32_t *src = (int32_t *)source->r_ptr;
 	const int32_t *dst = (int32_t *)sink->w_ptr;
 	double processed;
+	int32_t dst_sample;
 	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
@@ -304,9 +311,14 @@ static void verify_s24_to_s24_s32(struct comp_dev *dev,
 				processed = INT32_MIN;
 
 			sample = ((int32_t)processed) >> shift;
-			delta = dst[i + channel] - sample;
+			dst_sample = dst[i + channel];
+			delta = dst_sample - sample;
 			if (delta > 1 || delta < -1)
-				assert_int_equal(dst[i + channel], sample);
+				assert_int_equal(dst_sample, sample);
+
+			if (shift && (dst_sample < INT24_MIN ||
+				      dst_sample > INT24_MAX))
+				assert_int_equal(dst_sample, sample);
 		}
 	}
 }
@@ -319,6 +331,7 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 	double processed;
 	const int32_t *src = (int32_t *)source->r_ptr;
 	const int32_t *dst = (int32_t *)sink->w_ptr;
+	int32_t dst_sample;
 	int32_t sample;
 	int channels = dev->params.channels;
 	int channel;
@@ -342,9 +355,14 @@ static void verify_s32_to_s24_s32(struct comp_dev *dev,
 				processed = INT32_MIN;
 
 			sample = ((int32_t)processed) >> shift;
-			delta = dst[i + channel] - sample;
+			dst_sample = dst[i + channel];
+			delta = dst_sample - sample;
 			if (delta > 1 || delta < -1)
-				assert_int_equal(dst[i + channel], sample);
+				assert_int_equal(dst_sample, sample);
+
+			if (shift && (dst_sample < INT24_MIN ||
+				      dst_sample > INT24_MAX))
+				assert_int_equal(dst_sample, sample);
 		}
 	}
 }
