@@ -44,6 +44,16 @@ config COMP_MIXER
 	help
 	  Select for Mixer component
 
+config COMP_MODULE
+	bool "Loadable module component"
+	default n
+	help
+	  This component supports replacing functionality at runtime without
+	  reloading the topology or affecting other pipelines. The actual
+	  modules could be statically or dynamically linked/loaded (for some
+	  architectures with limited instruction RAM dynamic loading is
+	  required).
+
 config COMP_MUX
 	bool "MUX component"
 	default y

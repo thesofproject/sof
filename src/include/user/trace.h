@@ -58,6 +58,8 @@ struct system_time {
 #define TRACE_CLASS_SELECTOR	(29 << 24)
 #define TRACE_CLASS_SCHEDULE	(30 << 24)
 #define TRACE_CLASS_SCHEDULE_LL	(31 << 24)
+/* 32 and 33 missing, trace classes should match between user and sof */
+#define TRACE_CLASS_MODULE	(34 << 24)
 
 #define LOG_ENABLE		1  /* Enable logging */
 #define LOG_DISABLE		0  /* Disable logging */
