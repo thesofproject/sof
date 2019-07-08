@@ -139,7 +139,7 @@ static void default_detect_test(struct comp_dev *dev,
 		src = (valid_bits == 16) ?
 		      buffer_read_frag_s16(source, sample) :
 		      buffer_read_frag_s32(source, sample);
-		if (valid_bits == 16) {
+		if (valid_bits > 16) {
 			shift_bits = valid_bits - 16;
 			diff = abs((int16_t)(((*(int32_t *)src) >>
 					      shift_bits) & 0x0000FFFF)) -
