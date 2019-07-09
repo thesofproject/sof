@@ -9,7 +9,6 @@
 #define __PLATFORM_MEMORY_H__
 
 #include <config.h>
-#include <arch/memory.h>
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 void platform_init_memmap(void);
@@ -129,8 +128,8 @@ void platform_init_memmap(void);
 #define PLATFORM_HEAP_BUFFER		1
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		ARCH_STACK_SIZE
-#define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
+#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_TOTAL_SIZE	SOF_STACK_SIZE
 #define SOF_STACK_BASE		(DRAM0_BASE + DRAM0_SIZE)
 #define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 

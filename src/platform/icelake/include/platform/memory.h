@@ -11,7 +11,6 @@
 #define __PLATFORM_MEMORY_H__
 
 #include <config.h>
-#include <arch/memory.h>
 #include <platform/cpu.h>
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
@@ -277,8 +276,8 @@
 	HEAP_SYS_RUNTIME_S_SIZE))
 
 /* Stack configuration */
-#define SOF_STACK_SIZE		ARCH_STACK_SIZE
-#define SOF_STACK_TOTAL_SIZE	ARCH_STACK_TOTAL_SIZE
+#define SOF_STACK_SIZE		0x1000
+#define SOF_STACK_TOTAL_SIZE	(PLATFORM_CORE_COUNT * SOF_STACK_SIZE)
 
 /* SOF Core S configuration */
 #define SOF_CORE_S_SIZE \
