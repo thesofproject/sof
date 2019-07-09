@@ -76,11 +76,6 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 	return 0;
 }
 
-int arch_cpu_is_core_enabled(int id)
-{
-	return 1;
-}
-
 void cpu_power_down_core(void) { }
 
 void notifier_notify(void) { }

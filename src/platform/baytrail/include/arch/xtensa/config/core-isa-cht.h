@@ -418,9 +418,9 @@
 #define XCHAL_NMI_INTERRUPT		20	/* non-maskable interrupt */
 
 /*  Interrupt numbers for levels at which only one interrupt is configured:  */
-//#define XCHAL_INTLEVEL2_NUM		8
-//#define XCHAL_INTLEVEL4_NUM		12
-//#define XCHAL_INTLEVEL5_NUM		13
+#define XCHAL_INTLEVEL2_NUM		8
+#define XCHAL_INTLEVEL4_NUM		12
+#define XCHAL_INTLEVEL5_NUM		13
 #define XCHAL_INTLEVEL7_NUM		20
 /*  (There are many interrupts each at level(s) 1, 3.)  */
 

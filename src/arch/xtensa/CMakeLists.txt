@@ -38,19 +38,10 @@ set(platform_bootldr_ld_script boot_ldr.x)
 
 # includes
 
-target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/arch/xtensa/include)
-
-if(CONFIG_SMP)
-	target_include_directories(sof_options INTERFACE
-		${PROJECT_SOURCE_DIR}/src/arch/xtensa/smp/include
-		${PROJECT_SOURCE_DIR}/src/arch/xtensa/smp/xtos
-	)
-else()
-	target_include_directories(sof_options INTERFACE
-		${PROJECT_SOURCE_DIR}/src/arch/xtensa/up/include
-		${PROJECT_SOURCE_DIR}/src/arch/xtensa/up/xtos
-	)
-endif()
+target_include_directories(sof_options INTERFACE
+	${PROJECT_SOURCE_DIR}/src/arch/xtensa/include
+	${PROJECT_SOURCE_DIR}/src/arch/xtensa/xtos
+)
 
 target_include_directories(sof_options INTERFACE ${PROJECT_SOURCE_DIR}/src/platform/${platform_folder}/include)
 
@@ -149,47 +140,27 @@ add_library(reset STATIC "")
 target_link_libraries(reset sof_options)
 target_compile_options(reset PRIVATE -mtext-section-literals)
 
-if(CONFIG_SMP)
-	add_local_sources(reset
-		smp/xtos/memctl_default.S
-		smp/xtos/reset-vector.S
-	)
-else()
-	add_local_sources(reset
-		up/xtos/reset-vector.S
-	)
-endif()
-
-add_local_sources(sof task.c timer.c exc-dump.S)
-
 if(CONFIG_GDB_DEBUG)
 	add_subdirectory(gdb)
 endif()
+add_subdirectory(hal)
+add_subdirectory(xtos)
+
+add_local_sources(reset xtos/memctl_default.S xtos/reset-vector.S)
+
+add_local_sources(sof
+	xtos/crt1-boards.S
+	xtos/_vectors.S
+	init.c
+	notifier.c
+	schedule.c
+	task.c
+	timer.c
+	exc-dump.S
+)
 
 if(CONFIG_SMP)
-# TODO it should be handled in subdir
-	add_subdirectory(smp)
-	add_local_sources(sof
-		smp/xtos/crt1-boards.S
-		smp/xtos/_vectors.S
-		smp/cpu.c
-		smp/idc.c
-		smp/init.c
-		smp/notifier.c
-		smp/schedule.c
-		smp/task.c
-	)
-else()
-	add_subdirectory(up)
-	add_local_sources(sof
-		up/xtos/crt1-boards.S
-		up/xtos/_vectors.S
-		up/cpu.c
-		up/init.c
-		up/notifier.c
-		up/schedule.c
-		up/task.c
-	)
+	add_local_sources(sof cpu.c idc.c)
 endif()
 
 add_library(sof_lib INTERFACE)
@@ -243,18 +214,12 @@ add_custom_target(
 if(build_bootloader)
 	add_executable(bootloader "")
 	target_link_libraries(bootloader PRIVATE sof_options)
-	add_local_sources(bootloader boot_entry.S boot_loader.c)
+	add_local_sources(bootloader xtos/_vectors.S boot_entry.S boot_loader.c)
 	target_link_libraries(bootloader PRIVATE reset)
 	target_link_libraries(bootloader PRIVATE hal)
 	target_link_libraries(bootloader PRIVATE "-lgcc")
 	target_link_libraries(bootloader PRIVATE "-T${PROJECT_BINARY_DIR}/${platform_bootldr_ld_script}")
 	sof_add_ld_script(bootloader ${platform_bootldr_ld_script})
-
-	if(CONFIG_SMP)
-		add_local_sources(bootloader smp/xtos/_vectors.S)
-	else()
-		add_local_sources(bootloader up/xtos/_vectors.S)
-	endif()
 
 	add_custom_target(
 		bootloader_dump
@@ -404,19 +369,11 @@ if(CONFIG_BUILD_VM_ROM)
 	# are reused for other objects with different flags.
 	target_compile_definitions(rom PRIVATE -DCONFIG_VM_ROM)
 
-	if(CONFIG_SMP)
-		# SMP ROM uses UP CRT1
-		add_local_sources(rom
-			smp/xtos/memctl_default.S
-			smp/xtos/reset-vector.S
-			up/xtos/crt1-boards.S
-		)
-	else()
-		add_local_sources(rom
-			up/xtos/reset-vector.S
-			up/xtos/crt1-boards.S
-		)
-	endif()
+	add_local_sources(rom
+		xtos/crt1-boards-rom.S
+		xtos/memctl_default.S
+		xtos/reset-vector.S
+	)
 
 	add_custom_target(
 		rom_dump

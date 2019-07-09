@@ -53,7 +53,7 @@ add_custom_command(OUTPUT ${memory_mock_lds_out}
 )
 
 add_custom_target(ld_script_memory_mock DEPENDS ${memory_mock_lds_out})
-SET(arch_src ${PROJECT_SOURCE_DIR}/src/arch/xtensa/smp/idc.c)
+SET(arch_src ${PROJECT_SOURCE_DIR}/src/arch/xtensa/idc.c)
 add_library(universal_mock STATIC ${PROJECT_SOURCE_DIR}/test/cmocka/src/universal_mocks.c)
 target_link_libraries(universal_mock PRIVATE sof_options)
 link_libraries(universal_mock)
