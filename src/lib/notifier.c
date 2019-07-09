@@ -11,6 +11,7 @@
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <platform/idc.h>
+#include <platform/cpu.h>
 
 static struct notify_data _notify_data;
 

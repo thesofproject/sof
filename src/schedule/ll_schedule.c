@@ -18,6 +18,7 @@
 #include <sof/cpu.h>
 #include <sof/atomic.h>
 #include <platform/clk.h>
+#include <platform/cpu.h>
 #include <platform/platform.h>
 #include <limits.h>
 

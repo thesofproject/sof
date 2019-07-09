@@ -13,6 +13,7 @@
 #include <sof/lock.h>
 #include <sof/cpu.h>
 #include <platform/memory.h>
+#include <platform/cpu.h>
 #include <stdint.h>
 
 /* debug to set memory value on every allocation */

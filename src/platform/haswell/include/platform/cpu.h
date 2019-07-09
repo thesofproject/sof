@@ -2,19 +2,22 @@
  *
  * Copyright(c) 2019 Intel Corporation. All rights reserved.
  *
- * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
 /**
- * \file cavs/cpu.h
- * \brief DSP parameters, common for cAVS platforms.
+ * \file platform/cpu.h
+ * \brief DSP core parameters.
  */
 
-#ifndef __INCLUDE_CAVS_CPU__
-#define __INCLUDE_CAVS_CPU__
+#ifndef __INCLUDE_PLATFORM_CPU__
+#define __INCLUDE_PLATFORM_CPU__
 
 /** \brief Number of available DSP cores (conf. by kconfig) */
 #define PLATFORM_CORE_COUNT	CONFIG_CORE_COUNT
+
+/** \brief Maximum allowed number of DSP cores */
+#define MAX_CORE_COUNT	1
 
 /** \brief Id of master DSP core */
 #define PLATFORM_MASTER_CORE_ID	0

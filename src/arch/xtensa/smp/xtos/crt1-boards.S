@@ -34,6 +34,7 @@
 #include "xtos-internal.h"
 #include <config.h>
 #include <arch/memory.h>
+#include <platform/cpu.h>
 
 
 // Exports

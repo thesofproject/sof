@@ -15,6 +15,11 @@
 #define __SOF_CPU_H__
 
 #include <arch/cpu.h>
+#include <platform/cpu.h>
+
+#if PLATFORM_CORE_COUNT > MAX_CORE_COUNT
+#error "Invalid core count - exceeding core limit"
+#endif
 
 static inline int cpu_get_id(void)
 {

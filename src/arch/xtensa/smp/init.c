@@ -24,6 +24,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/task.h>
 #include <platform/idc.h>
+#include <platform/cpu.h>
 #include <stdint.h>
 
 #if DEBUG_LOCKS

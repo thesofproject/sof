@@ -12,6 +12,7 @@
 
 #include <config.h>
 #include <arch/memory.h>
+#include <platform/cpu.h>
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <cavs/memory.h>

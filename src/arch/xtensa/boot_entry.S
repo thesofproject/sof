@@ -13,6 +13,7 @@
  */
 
 #include <config.h>
+#include <platform/cpu.h>
 #include <platform/shim.h>
 #include <platform/platform.h>
 #include <xtensa/corebits.h>
