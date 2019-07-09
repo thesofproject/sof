@@ -11,8 +11,6 @@
 #include <config.h>
 #include <arch/memory.h>
 
-#define PLATFORM_CORE_COUNT             1
-
 /* physical DSP addresses */
 
 #define IRAM_BASE	0x596f8000

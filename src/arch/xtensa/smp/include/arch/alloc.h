@@ -15,6 +15,7 @@
 #define __ARCH_ALLOC_H__
 
 #include <xtos-structs.h>
+#include <platform/cpu.h>
 #include <sof/alloc.h>
 
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];

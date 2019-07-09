@@ -16,6 +16,7 @@
 #include <platform/clk.h>
 #include <platform/clk-map.h>
 #include <platform/platform.h>
+#include <platform/cpu.h>
 #include <sof/drivers/timer.h>
 #include <config.h>
 #include <stdint.h>

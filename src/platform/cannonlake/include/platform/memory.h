@@ -13,6 +13,7 @@
 #include <config.h>
 #include <arch/memory.h>
 #include <cavs/memory.h>
+#include <platform/cpu.h>
 
 /* physical DSP addresses */
 

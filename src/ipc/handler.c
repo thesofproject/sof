@@ -32,6 +32,7 @@
 #include <platform/dma.h>
 #include <platform/timer.h>
 #include <platform/idc.h>
+#include <platform/cpu.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/drivers/timer.h>

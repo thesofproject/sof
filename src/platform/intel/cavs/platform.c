@@ -19,6 +19,7 @@
 #include <platform/timer.h>
 #include <platform/interrupt.h>
 #include <platform/idc.h>
+#include <platform/cpu.h>
 #include <ipc/info.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>

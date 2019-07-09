@@ -17,6 +17,7 @@
 #include <platform/shim.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <cavs/cpu.h>
 #include <cavs/version.h>
 
 /*

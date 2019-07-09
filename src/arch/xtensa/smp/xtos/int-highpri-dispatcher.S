@@ -36,6 +36,7 @@
 
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
+#include <platform/cpu.h>
 #include <platform/platform.h>
 
 

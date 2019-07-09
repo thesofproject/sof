@@ -22,6 +22,7 @@
 
 #include <config.h>
 #include <errno.h>
+#include <platform/cpu.h>
 #include <platform/dma.h>
 #include <platform/dw-dma.h>
 #include <platform/interrupt.h>

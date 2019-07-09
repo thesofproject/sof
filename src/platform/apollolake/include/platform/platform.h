@@ -16,14 +16,6 @@
 
 #define PLATFORM_DISABLE_L2CACHE_AT_BOOT	1
 
-#define PLATFORM_MASTER_CORE_ID			0
-
-#define MAX_CORE_COUNT				2
-
-#if PLATFORM_CORE_COUNT > MAX_CORE_COUNT
-#error "Invalid core count - exceeding core limit"
-#endif
-
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
 #include <sof/platform.h>

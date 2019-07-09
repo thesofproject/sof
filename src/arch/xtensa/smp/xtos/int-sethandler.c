@@ -26,6 +26,7 @@
 
 #include "xtos-structs.h"
 #include <arch/cpu.h>
+#include <platform/cpu.h>
 
 extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 

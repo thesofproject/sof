@@ -8,6 +8,7 @@
 #include <arch/idc.h>
 #include <platform/interrupt.h>
 #include <platform/platform.h>
+#include <platform/cpu.h>
 #include <sof/alloc.h>
 #include <sof/cache.h>
 #include <sof/clk.h>

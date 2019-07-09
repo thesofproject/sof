@@ -8,6 +8,7 @@
 #ifndef __INCLUDE_ARCH_CPU__
 #define __INCLUDE_ARCH_CPU__
 
+#include <platform/cpu.h>
 #include <xtensa/config/core.h>
 
 void arch_cpu_enable_core(int id);
