@@ -4,16 +4,17 @@
 
 menu "Xtensa Architecture"
 
-config SMP
-	bool "SMP build"
-	default n
-	help
-	  Build SMP instead of UP
-
 config CORE_COUNT
-	int "Number of cores" if SMP
+	int "Number of cores"
 	default 1
 	help
 	  Number of used cores
 	  Lowering available core count could result in lower power consumption
+
+config SMP
+	bool
+	default CORE_COUNT > 1
+	help
+	  Indicates that architecture uses multiple cores
+
 endmenu

@@ -147,7 +147,7 @@ STRUCT_END(UserFrame)
  * each processor individually.
  *
  * To access the core specific structure from ASM (after threadptr is set):
- * xtos_addr_percore a13, _xtos_interrupt_table
+ * xtos_addr_percore a13, xtos_interrupt_table
  *
  * Access to the core specific structure from C is not supported!
  */

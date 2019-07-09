@@ -8,6 +8,7 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <sof/platform.h>
 #include <platform/interrupt.h>
 #include <platform/clk.h>
@@ -93,5 +94,6 @@ extern struct timer *platform_timer;
 
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;
+#endif
 
 #endif

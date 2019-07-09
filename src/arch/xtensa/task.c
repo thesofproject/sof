@@ -16,6 +16,28 @@
 #include <sof/schedule/schedule.h>
 #include <platform/platform.h>
 #include <arch/task.h>
+#include <xtos-structs.h>
+
+struct irq_task **task_irq_low_get(void)
+{
+	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
+
+	return &ctx->irq_low_task;
+}
+
+struct irq_task **task_irq_med_get(void)
+{
+	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
+
+	return &ctx->irq_med_task;
+}
+
+struct irq_task **task_irq_high_get(void)
+{
+	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
+
+	return &ctx->irq_high_task;
+}
 
 /**
  * \brief Retrieves task IRQ level.
