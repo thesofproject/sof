@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_INTERRUPT_H
-#define __ARCH_INTERRUPT_H
+#ifndef __ARCH_INTERRUPT_H__
+#define __ARCH_INTERRUPT_H__
 
 #include <sof/interrupt-map.h>
 #include <stdint.h>
@@ -29,4 +29,4 @@ static inline uint32_t arch_interrupt_global_disable(void) {return 0; }
 static inline void arch_interrupt_global_enable(uint32_t flags) {}
 static inline int arch_interrupt_init(void) {return 0; }
 
-#endif
+#endif /* __ARCH_INTERRUPT_H__ */

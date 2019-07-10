@@ -11,8 +11,8 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_TASK_H_
-#define __ARCH_TASK_H_
+#ifndef __ARCH_TASK_H__
+#define __ARCH_TASK_H__
 
 #include <sof/list.h>
 
@@ -66,4 +66,4 @@ void arch_free_tasks(void);
  */
 int arch_assign_tasks(void);
 
-#endif
+#endif /* __ARCH_TASK_H__ */

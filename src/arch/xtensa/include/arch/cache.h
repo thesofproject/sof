@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ARCH_CACHE__
-#define __INCLUDE_ARCH_CACHE__
+#ifndef __ARCH_CACHE_H__
+#define __ARCH_CACHE_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -71,4 +71,4 @@ static inline void dcache_writeback_invalidate_all(void)
 #endif
 }
 
-#endif
+#endif /* __ARCH_CACHE_H__ */

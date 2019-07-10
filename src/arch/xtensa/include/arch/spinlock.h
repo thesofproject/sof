@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_SPINLOCK_H_
-#define __ARCH_SPINLOCK_H_
+#ifndef __ARCH_SPINLOCK_H__
+#define __ARCH_SPINLOCK_H__
 
 #include <stdint.h>
 #include <errno.h>
@@ -68,4 +68,4 @@ static inline void arch_spin_unlock(spinlock_t *lock)
 		: "memory");
 }
 
-#endif
+#endif /* __ARCH_SPINLOCK_H__ */

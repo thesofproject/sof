@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_ATOMIC_H_
-#define __ARCH_ATOMIC_H_
+#ifndef __ARCH_ATOMIC_H__
+#define __ARCH_ATOMIC_H__
 
 #include <stdint.h>
 #include <errno.h>
@@ -64,4 +64,4 @@ static inline int32_t arch_atomic_sub(atomic_t *a, int32_t value)
 	return (*(volatile int32_t *)&a->value);
 }
 
-#endif
+#endif /* __ARCH_ATOMIC_H__ */

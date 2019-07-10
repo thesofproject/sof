@@ -9,8 +9,8 @@
  * Header file for xtensa specific defs for GDB.
  */
 
-#ifndef XTENSA_DEFS_H
-#define XTENSA_DEFS_H
+#ifndef __ARCH_GDB_XTENSA_DEFS_H__
+#define __ARCH_GDB_XTENSA_DEFS_H__
 
 #include <xtensa/specreg.h>
 #include <xtensa/config/core-isa.h>
@@ -24,4 +24,4 @@
 #define DEBUG_EXCSAVE	(EXCSAVE + XCHAL_DEBUGLEVEL)
 #define DEBUG_PS	(EPS + XCHAL_DEBUGLEVEL)
 
-#endif /* XTENSA_DEFS_H */
+#endif /* __ARCH_GDB_XTENSA_DEFS_H__ */

@@ -56,4 +56,4 @@ static inline void alloc_core_context(int core)
 }
 #endif
 
-#endif
+#endif /* __ARCH_ALLOC_H__ */

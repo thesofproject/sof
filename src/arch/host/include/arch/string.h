@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ARCH_STRING_SOF__
-#define __INCLUDE_ARCH_STRING_SOF__
+#ifndef __ARCH_STRING_H__
+#define __ARCH_STRING_H__
 
 #include <errno.h>
 #include <string.h>
@@ -59,4 +59,4 @@ static inline int arch_memset_s(void *dest, size_t dest_size,
 	return 0;
 }
 
-#endif
+#endif /* __ARCH_STRING_H__ */

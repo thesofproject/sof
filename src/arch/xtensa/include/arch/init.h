@@ -121,4 +121,4 @@ static inline void register_exceptions(void)
  */
 static inline void __memmap_init(void) { }
 
-#endif
+#endif /* __ARCH_INIT_H__ */

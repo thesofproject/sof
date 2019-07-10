@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_TIMER_H_
-#define __ARCH_TIMER_H_
+#ifndef __ARCH_TIMER_H__
+#define __ARCH_TIMER_H__
 
 #include <arch/interrupt.h>
 #include <stdint.h>
@@ -25,4 +25,4 @@ static inline int arch_timer_set(struct timer *timer,
 	uint64_t ticks) {return 0; }
 static inline void arch_timer_clear(struct timer *timer) {}
 
-#endif
+#endif /* __ARCH_TIMER_H__ */

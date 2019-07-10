@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ARCH_SOF__
-#define __INCLUDE_ARCH_SOF__
+#ifndef __ARCH_SOF_H__
+#define __ARCH_SOF_H__
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -51,4 +51,4 @@ static inline void *arch_dump_regs(void)
 	return NULL;
 }
 
-#endif
+#endif /* __ARCH_SOF_H__ */

@@ -11,8 +11,8 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_TASK_H_
-#define __ARCH_TASK_H_
+#ifndef __ARCH_TASK_H__
+#define __ARCH_TASK_H__
 
 #include <sof/schedule/schedule.h>
 
@@ -33,4 +33,4 @@ static inline int arch_run_task(struct task *task)
 	return 0;
 }
 
-#endif
+#endif /* __ARCH_TASK_H__ */

@@ -5,11 +5,11 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#ifndef __XTOS_XTOS_STRUCTS_H__
+#define __XTOS_XTOS_STRUCTS_H__
+
 #include "xtos-internal.h"
 #include <config.h>
-
-#ifndef __XTOS_STRUCTS_H__
-#define __XTOS_STRUCTS_H__
 
 struct idc;
 struct irq_task;
@@ -41,4 +41,4 @@ struct core_context {
 
 void _xtos_initialize_pointers_per_core(void);
 
-#endif /* __XTOS_STRUCTS_H__ */
+#endif /* __XTOS_XTOS_STRUCTS_H__ */

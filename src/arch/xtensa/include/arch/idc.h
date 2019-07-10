@@ -35,4 +35,4 @@ static inline int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 static inline int arch_idc_init(void) { return 0; }
 #endif
 
-#endif
+#endif /* __ARCH_IDC_H__ */
