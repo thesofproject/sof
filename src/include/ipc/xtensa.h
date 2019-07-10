@@ -18,6 +18,7 @@
 
 #include <arch/offset-defs.h>
 #include <ipc/header.h>
+#include <sof/common.h>
 
 /*
  * Architecture specific debug
@@ -54,6 +55,6 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t windowstart;
 	uint32_t excsave1;
 	uint32_t ar[];
-} __attribute__((packed));
+} __packed;
 
 #endif

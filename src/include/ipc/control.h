@@ -18,6 +18,7 @@
 
 #include <kernel/header.h>
 #include <ipc/header.h>
+#include <sof/common.h>
 
 /** \addtogroup sof_uapi_control uAPI Control
  *  SOF uAPI specification - component controls.
@@ -99,7 +100,7 @@ enum sof_ipc_ctrl_cmd {
 struct sof_ipc_ctrl_value_chan {
 	uint32_t channel;	/**< channel map - enum sof_ipc_chmap */
 	uint32_t value;
-} __attribute__((packed));
+} __packed;
 
 /**
  * Generic component mapped value data.
@@ -110,7 +111,7 @@ struct sof_ipc_ctrl_value_comp {
 		uint32_t uvalue;
 		int32_t svalue;
 	};
-} __attribute__((packed));
+} __packed;
 
 /**
  * Generic control data.
@@ -143,7 +144,7 @@ struct sof_ipc_ctrl_data {
 		/* data can be used by binary controls */
 		struct sof_abi_hdr data[0];
 	};
-} __attribute__((packed));
+} __packed;
 
 /** Event type */
 enum sof_ipc_ctrl_event_type {
@@ -173,7 +174,7 @@ struct sof_ipc_comp_event {
 		/* event specific values */
 		uint32_t event_value;
 	};
-} __attribute__((packed));
+} __packed;
 
 /** @}*/
 

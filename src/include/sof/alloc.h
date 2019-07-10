@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <sof/bit.h>
 #include <sof/platform.h>
+#include <sof/common.h>
 #include <platform/platform.h>
 #include <arch/spinlock.h>
 #include <ipc/topology.h>
