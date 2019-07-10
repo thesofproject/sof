@@ -3,6 +3,9 @@
  * Copyright(c) 2019 Intel Corporation. All rights reserved.
  */
 
+#ifndef __ARCH_OFFSET_DEFS_H__
+#define __ARCH_OFFSET_DEFS_H__
+
 #include <xtensa/config/core-isa.h>
 
 #define REG_OFFSET_EXCCAUSE     0x0
@@ -31,3 +34,5 @@
 #define REG_OFFSET_EXCSAVE1     0x5c
 #define REG_OFFSET_AR_BEGIN     0x60
 #define REG_OFFSET_AR_END       (REG_OFFSET_AR_BEGIN + 4 * XCHAL_NUM_AREGS)
+
+#endif /* __ARCH_OFFSET_DEFS_H__ */

@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_WAIT_H_
-#define __ARCH_WAIT_H_
+#ifndef __ARCH_WAIT_H__
+#define __ARCH_WAIT_H__
 
 #include <xtensa/xtruntime.h>
 #include <arch/interrupt.h>
@@ -58,4 +58,4 @@ static inline void idelay(int n)
 		asm volatile("nop");
 }
 
-#endif
+#endif /* __ARCH_WAIT_H__ */

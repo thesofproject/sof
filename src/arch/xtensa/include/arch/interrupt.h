@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __ARCH_INTERRUPT_H
-#define __ARCH_INTERRUPT_H
+#ifndef __ARCH_INTERRUPT_H__
+#define __ARCH_INTERRUPT_H__
 
 #include <xtensa/xtruntime.h>
 #include <xtensa/hal.h>
@@ -86,4 +86,4 @@ static inline void arch_interrupt_global_enable(uint32_t flags)
 		     :: "a" (flags) : "memory");
 }
 
-#endif
+#endif /* __ARCH_INTERRUPT_H__ */

@@ -5,8 +5,8 @@
  * Author: Rander Wang <rander.wang@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ARCH_CPU__
-#define __INCLUDE_ARCH_CPU__
+#ifndef __ARCH_CPU_H__
+#define __ARCH_CPU_H__
 
 static inline void arch_cpu_enable_core(int id)
 {
@@ -35,4 +35,4 @@ static inline int cpu_read_threadptr(void)
 	return 0;
 }
 
-#endif
+#endif /* __ARCH_CPU_H__ */

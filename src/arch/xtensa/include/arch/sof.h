@@ -6,8 +6,8 @@
  *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ARCH_SOF__
-#define __INCLUDE_ARCH_SOF__
+#ifndef __ARCH_SOF_H__
+#define __ARCH_SOF_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -74,4 +74,4 @@ static inline void arch_dump_regs(uint32_t ps, uintptr_t stack_ptr,
 	dcache_writeback_region(buf, ARCH_OOPS_SIZE);
 }
 
-#endif
+#endif /* __ARCH_SOF_H__ */

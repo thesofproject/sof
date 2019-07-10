@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ARCH_CACHE__
-#define __INCLUDE_ARCH_CACHE__
+#ifndef __ARCH_CACHE_H__
+#define __ARCH_CACHE_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -17,4 +17,4 @@ static inline void icache_invalidate_region(void *addr, size_t size) {}
 static inline void dcache_writeback_invalidate_region(void *addr,
 	size_t size) {}
 
-#endif
+#endif /* __ARCH_CACHE_H__ */
