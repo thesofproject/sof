@@ -5,6 +5,8 @@
  * Author: Lech Betlej <lech.betlej@linux.intel.com>
  */
 
+#ifdef __PLATFORM_POWER_DOWN_H__
+
 #ifndef __CAVS_POWER_DOWN_H__
 #define __CAVS_POWER_DOWN_H__
 
@@ -20,3 +22,9 @@
 void power_down(bool disable_lpsram, uint32_t *hpsram_pwrgating_mask);
 
 #endif /* __CAVS_POWER_DOWN_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of platform/power_down.h"
+
+#endif /* __PLATFORM_POWER_DOWN_H__ */

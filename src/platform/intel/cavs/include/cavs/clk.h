@@ -12,6 +12,8 @@
  * \brief Clk parameters for run-time clock data, common for cAVS platforms.
  */
 
+#ifdef __PLATFORM_CLK_H__
+
 #ifndef __CAVS_CLK_H__
 #define __CAVS_CLK_H__
 
@@ -19,7 +21,7 @@
 #include <sof/io.h>
 #include <platform/shim.h>
 #include <cavs/version.h>
-#include <cavs/cpu.h>
+#include <platform/cpu.h>
 
 /** \brief Core(s) settings, up to PLATFORM_CORE_COUNT */
 #define CLK_CPU(x)	(x)
@@ -51,3 +53,9 @@ static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
 }
 
 #endif /* __CAVS_CLK_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of platform/clk.h"
+
+#endif /* __PLATFORM_CLK_H__ */

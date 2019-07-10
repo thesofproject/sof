@@ -5,6 +5,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#ifdef __PLATFORM_DW_DMA_H__
+
 #ifndef __CAVS_DW_DMA_H__
 #define __CAVS_DW_DMA_H__
 
@@ -42,3 +44,9 @@
 	(lli->ctrl_hi |= (size & DW_CTLH_BLOCK_TS_MASK))
 
 #endif /* __CAVS_DW_DMA_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of platform/dw-dma.h"
+
+#endif /* __PLATFORM_DW_DMA_H__ */
