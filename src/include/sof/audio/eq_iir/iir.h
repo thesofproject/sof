@@ -15,6 +15,41 @@
 
 struct sof_eq_iir_header_df2t;
 
+/* Get platforms configuration */
+#include <config.h>
+
+/* If next defines are set to 1 the EQ is configured automatically. Setting
+ * to zero temporarily is useful is for testing needs.
+ * Setting EQ_FIR_AUTOARCH to 0 allows to manually set the code variant.
+ */
+#define IIR_AUTOARCH    1
+
+/* Force manually some code variant when IIR_AUTOARCH is set to zero. These
+ * are useful in code debugging.
+ */
+#if IIR_AUTOARCH == 0
+#define IIR_GENERIC	1
+#define IIR_HIFI3	0
+#endif
+
+/* Select optimized code variant when xt-xcc compiler is used */
+#if IIR_AUTOARCH == 1
+#if defined __XCC__
+#include <xtensa/config/core-isa.h>
+#if XCHAL_HAVE_HIFI3 == 1
+#define IIR_GENERIC	0
+#define IIR_HIFI3	1
+#else
+#define IIR_GENERIC	1
+#define IIR_HIFI3	0
+#endif /* XCHAL_HAVE_HIFI3 */
+#else
+/* GCC */
+#define IIR_GENERIC	1
+#define IIR_HIFI3	0
+#endif /* __XCC__ */
+#endif /* IIR_AUTOARCH */
+
 #define IIR_DF2T_NUM_DELAYS 2
 
 struct iir_state_df2t {

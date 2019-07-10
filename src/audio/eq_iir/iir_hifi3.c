@@ -6,14 +6,16 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/eq_iir/iir.h>
-#include <sof/audio/format.h>
-#include <user/eq.h>
-#include <errno.h>
-#include <stddef.h>
 #include <stdint.h>
+#include <stddef.h>
+#include <errno.h>
+#include <sof/audio/format.h>
+#include <sof/audio/eq_iir/iir.h>
+#include <user/eq.h>
 
-#if IIR_GENERIC
+#if IIR_HIFI3
+
+#include <xtensa/tie/xt_hifi3.h>
 
 /*
  * Direct form II transposed second order filter block (biquad)
@@ -46,60 +48,85 @@
 
 int32_t iir_df2t(struct iir_state_df2t *iir, int32_t x)
 {
-	int32_t in;
-	int32_t tmp;
-	int64_t acc;
-	int32_t out = 0;
+	ae_f64 acc;
+	ae_valign align;
+	ae_f32x2 coef_a2a1;
+	ae_f32x2 coef_b2b1;
+	ae_f32x2 coef_b0shift;
+	ae_f32x2 gain;
+	ae_f32 in;
+	ae_f32 tmp;
+	ae_f32x2 *coefp;
+	ae_f64 *delayp;
+	ae_f32 out = 0;
 	int i;
 	int j;
-	int d = 0; /* Index to delays */
-	int c = 0; /* Index to coefficient a2 */
+	int shift;
+	int nseries = iir->biquads_in_series;
 
 	/* Bypass is set with number of biquads set to zero. */
 	if (!iir->biquads)
 		return x;
 
 	/* Coefficients order in coef[] is {a2, a1, b2, b1, b0, shift, gain} */
+	coefp = (ae_f32x2 *)&iir->coef[0];
+	delayp = (ae_f64 *)&iir->delay[0];
 	in = x;
-	for (j = 0; j < iir->biquads; j += iir->biquads_in_series) {
-		for (i = 0; i < iir->biquads_in_series; i++) {
-			/* Compute output: Delay is Q3.61
-			 * Q2.30 x Q1.31 -> Q3.61
-			 * Shift Q3.61 to Q3.31 with rounding
+	for (j = 0; j < iir->biquads; j += nseries) {
+		for (i = 0; i < nseries; i++) {
+			/* Compute output: Delay is kept Q17.47 while multiply
+			 * instruction gives Q2.30 x Q1.31 -> Q18.46. Need to
+			 * shift delay line values right by one for same align
+			 * as MAC. Store to delay line need to be shifted left
+			 * by one similarly.
 			 */
-			acc = ((int64_t)iir->coef[c + 4]) * in + iir->delay[d];
-			tmp = (int32_t)Q_SHIFT_RND(acc, 61, 31);
+			align = AE_LA64_PP(coefp);
+			AE_LA32X2_IP(coef_a2a1, align, coefp);
+			AE_LA32X2_IP(coef_b2b1, align, coefp);
+			AE_LA32X2_IP(coef_b0shift, align, coefp);
+			AE_LA32X2_IP(gain, align, coefp);
 
-			/* Compute 1st delay */
-			acc = iir->delay[d + 1];
-			acc += ((int64_t)iir->coef[c + 3]) * in; /* Coef  b1 */
-			acc += ((int64_t)iir->coef[c + 1]) * tmp; /* Coef a1 */
-			iir->delay[d] = acc;
+			acc = AE_SRAI64(*delayp, 1); /* Convert d0 to Q18.46 */
+			delayp++; /* Point to d1 */
+			AE_MULAF32R_HH(acc, coef_b0shift, in); /* Coef b0 */
+			acc = AE_SLAI64S(acc, 1); /* Convert to Q17.47 */
+			tmp = AE_ROUND32F48SSYM(acc); /* Rount to Q1.31 */
 
-			/* Compute 2nd delay */
-			acc = ((int64_t)iir->coef[c + 2]) * in; /* Coef  b2 */
-			acc += ((int64_t)iir->coef[c]) * tmp; /* Coef a2 */
-			iir->delay[d + 1] = acc;
+			/* Compute 1st delay d0 */
+			acc = AE_SRAI64(*delayp, 1); /* Convert d1 to Q18.46 */
+			delayp--; /* Point to d0 */
+			AE_MULAF32R_LL(acc, coef_b2b1, in); /* Coef b1 */
+			AE_MULAF32R_LL(acc, coef_a2a1, tmp); /* Coef a1 */
+			acc = AE_SLAI64S(acc, 1); /* Convert to Q17.47 */
+			*delayp = acc; /* Store d0 */
+			delayp++; /* Point to d1 */
 
-			/* Apply gain Q2.14 x Q1.31 -> Q3.45 */
-			acc = ((int64_t)iir->coef[c + 6]) * tmp; /* Gain */
+			/* Compute delay d1 */
+			acc = AE_MULF32R_HH(coef_b2b1, in); /* Coef b2 */
+			AE_MULAF32R_HH(acc, coef_a2a1, tmp); /* Coef a2 */
+			acc = AE_SLAI64S(acc, 1); /* Convert to Q17.47 */
+			*delayp = acc; /* Store d1 */
 
-			/* Apply biquad output shift right parameter
-			 * simultaneously with Q3.45 to Q3.31 conversion. Then
-			 * saturate to 32 bits Q1.31 and prepare for next
-			 * biquad.
+			/* Apply gain Q18.14 x Q1.31 -> Q34.30 */
+			acc = AE_MULF32R_HH(gain, tmp); /* Gain */
+			acc = AE_SLAI64S(acc, 17); /* Convert to Q17.47 */
+
+			/* Apply biquad output shift right parameter and then
+			 * round and saturate to 32 bits Q1.31.
 			 */
-			acc = Q_SHIFT_RND(acc, 45 + iir->coef[c + 5], 31);
-			in = sat_int32(acc);
+			shift = AE_SEL32_LL(coef_b0shift, coef_b0shift);
+			acc = AE_SRAA64(acc, shift);
+			in = AE_ROUND32F48SSYM(acc);
 
 			/* Proceed to next biquad coefficients and delay
-			 * lines.
+			 * lines. The coefp needs rewind by one int32_t
+			 * due to odd number of words in coefficient block.
 			 */
-			c += SOF_EQ_IIR_NBIQUAD_DF2T;
-			d += IIR_DF2T_NUM_DELAYS;
+			delayp++;
+			coefp = (ae_f32x2 *)((int32_t *)coefp - 1);
 		}
 		/* Output of previous section is in variable in */
-		out = sat_int32((int64_t)out + in);
+		out = AE_F32_ADDS_F32(out, in);
 	}
 	return out;
 }
@@ -143,4 +170,3 @@ void iir_reset_df2t(struct iir_state_df2t *iir)
 }
 
 #endif
-
