@@ -8,6 +8,8 @@
 #ifndef __USER_SELECTOR_H__
 #define __USER_SELECTOR_H__
 
+#include <stdint.h>
+
 /** \brief Selector component configuration data. */
 struct sof_sel_config {
 	/* selector supports 1 input and 1 output */

@@ -18,6 +18,7 @@
 
 #include <ipc/header.h>
 #include <sof/common.h>
+#include <stdint.h>
 
  /* ssc1: TINTE */
 #define SOF_DAI_INTEL_SSP_QUIRK_TINTE		(1 << 0)

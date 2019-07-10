@@ -19,6 +19,7 @@
 #include <ipc/header.h>
 #include <ipc/stream.h>
 #include <sof/common.h>
+#include <stdint.h>
 
 /*
  * DMA for Trace

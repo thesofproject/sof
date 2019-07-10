@@ -32,6 +32,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc/dai.h>
+#include <kernel/abi.h>
 
 /** \addtogroup component_api Component API
  *  Component API specification.

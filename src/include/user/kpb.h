@@ -8,6 +8,8 @@
 #ifndef __USER_KPB_H__
 #define __USER_KPB_H__
 
+#include <stdint.h>
+
 /** \brief kpb component configuration data. */
 struct sof_kpb_config {
 	uint32_t size; /**< kpb size in bytes */
