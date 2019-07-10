@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIB_PLATFORM_HOST_MAILBOX__
-#define __INCLUDE_LIB_PLATFORM_HOST_MAILBOX__
+#ifndef __PLATFORM_MAILBOX_H__
+#define __PLATFORM_MAILBOX_H__
 
 #include <platform/memory.h>
 
@@ -46,4 +46,4 @@
 #define MAILBOX_TRACE_BASE \
 	(MAILBOX_BASE + MAILBOX_TRACE_OFFSET)
 
-#endif
+#endif /* __PLATFORM_MAILBOX_H__ */

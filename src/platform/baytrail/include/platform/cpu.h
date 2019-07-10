@@ -10,8 +10,8 @@
  * \brief DSP core parameters.
  */
 
-#ifndef __INCLUDE_PLATFORM_CPU__
-#define __INCLUDE_PLATFORM_CPU__
+#ifndef __PLATFORM_CPU_H__
+#define __PLATFORM_CPU_H__
 
 /** \brief Number of available DSP cores (conf. by kconfig) */
 #define PLATFORM_CORE_COUNT	CONFIG_CORE_COUNT
@@ -22,4 +22,4 @@
 /** \brief Id of master DSP core */
 #define PLATFORM_MASTER_CORE_ID	0
 
-#endif
+#endif /* __PLATFORM_CPU_H__ */

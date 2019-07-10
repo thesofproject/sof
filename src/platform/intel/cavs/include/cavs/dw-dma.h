@@ -5,8 +5,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CAVS_DW_DMA_H__
-#define __INCLUDE_CAVS_DW_DMA_H__
+#ifndef __CAVS_DW_DMA_H__
+#define __CAVS_DW_DMA_H__
 
 #include <sof/bit.h>
 
@@ -41,4 +41,4 @@
 #define platform_dw_dma_set_transfer_size(chan, lli, size) \
 	(lli->ctrl_hi |= (size & DW_CTLH_BLOCK_TS_MASK))
 
-#endif
+#endif /* __CAVS_DW_DMA_H__ */

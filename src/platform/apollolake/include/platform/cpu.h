@@ -10,12 +10,12 @@
  * \brief DSP core parameters.
  */
 
-#ifndef __INCLUDE_PLATFORM_CPU__
-#define __INCLUDE_PLATFORM_CPU__
+#ifndef __PLATFORM_CPU_H__
+#define __PLATFORM_CPU_H__
 
 #include <cavs/cpu.h>
 
 /** \brief Maximum allowed number of DSP cores */
 #define MAX_CORE_COUNT	2
 
-#endif
+#endif /* __PLATFORM_CPU_H__ */

@@ -5,6 +5,9 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
+#ifndef __PLATFORM_MU_H__
+#define __PLATFORM_MU_H__
+
 /* Transmit Register */
 #define IMX_MU_xTRn(x)		(0x00 + 4 * (x))
 /* Receive Register */
@@ -61,3 +64,4 @@ static inline uint32_t imx_mu_xsr_rmw(uint32_t set, uint32_t clr)
 	return val;
 }
 
+#endif /* __PLATFORM_MU_H__ */

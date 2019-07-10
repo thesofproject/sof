@@ -137,4 +137,4 @@ static inline void shim_write(uint32_t reg, uint32_t val)
 	*((volatile uint32_t*)(SHIM_BASE + reg)) = val;
 }
 
-#endif
+#endif /* __PLATFORM_SHIM_H__ */

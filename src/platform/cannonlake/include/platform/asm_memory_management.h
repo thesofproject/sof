@@ -11,8 +11,9 @@
  * \(CannonLake)
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
-#ifndef ASM_MEMORY_MANAGEMENT_H
-#define ASM_MEMORY_MANAGEMENT_H
+
+#ifndef __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
+#define __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
 
 #ifndef ASSEMBLY
 #warning "ASSEMBLY macro not defined. Header can't be inluded in C files"
@@ -74,4 +75,4 @@
 	bnez \ax, 1b
 .endm
 
-#endif /* ASM_MEMORY_MANAGEMENT_H */
+#endif /* __PLATFORM_ASM_MEMORY_MANAGEMENT_H__ */

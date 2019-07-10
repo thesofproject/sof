@@ -151,4 +151,4 @@ void platform_init_memmap(void);
 #define cache_to_uncache(address)	address
 #define is_uncached(address)		0
 
-#endif
+#endif /* __PLATFORM_MEMORY_H__ */

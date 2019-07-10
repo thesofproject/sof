@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIB_PLATFORM_HOST_INTERRUPT__
-#define __INCLUDE_LIB_PLATFORM_HOST_INTERRUPT__
+#ifndef __PLATFORM_INTERRUPT_H__
+#define __PLATFORM_INTERRUPT_H__
 
 #include <stdint.h>
 #include <sof/interrupt-map.h>
@@ -52,4 +52,4 @@
 #define IRQ_MASK_EXT_SSP1	(1 << IRQ_NUM_EXT_SSP1)
 #define IRQ_MASK_EXT_SSP2	(1 << IRQ_NUM_EXT_SSP2)
 
-#endif
+#endif /* __PLATFORM_INTERRUPT_H__ */

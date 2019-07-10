@@ -407,4 +407,4 @@
 #define is_uncached(address) \
 	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
 
-#endif
+#endif /* __PLATFORM_MEMORY_H__ */

@@ -164,4 +164,4 @@
 void platform_init_memmap(void);
 #endif
 
-#endif
+#endif /* __PLATFORM_MEMORY_H__ */

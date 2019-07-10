@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIB_PLATFORM_PLATFORM_H__
-#define __INCLUDE_LIB_PLATFORM_PLATFORM_H__
+#ifndef __PLATFORM_PLATFORM_H__
+#define __PLATFORM_PLATFORM_H__
 
 #include <platform/shim.h>
 #include <platform/interrupt.h>
@@ -48,4 +48,4 @@ static inline void platform_panic(uint32_t p) {}
 
 extern struct timer *platform_timer;
 
-#endif
+#endif /* __PLATFORM_PLATFORM_H__ */

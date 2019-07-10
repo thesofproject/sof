@@ -10,8 +10,9 @@
  * \brief Macros for power gating memory banks specific for Apollolake
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
-#ifndef ASM_MEMORY_MANAGEMENT_H
-#define ASM_MEMORY_MANAGEMENT_H
+
+#ifndef __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
+#define __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
 
 #ifndef ASSEMBLY
 #warning "ASSEMBLY macro not defined."
@@ -67,4 +68,4 @@
 	bne \ax, \ay, 1b
 	.endm
 
-#endif /* ASM_MEMORY_MANAGEMENT_H */
+#endif /* __PLATFORM_ASM_MEMORY_MANAGEMENT_H__ */

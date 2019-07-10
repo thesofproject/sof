@@ -7,8 +7,8 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_INTERRUPT__
-#define __INCLUDE_PLATFORM_INTERRUPT__
+#ifndef __PLATFORM_INTERRUPT_H__
+#define __PLATFORM_INTERRUPT_H__
 
 #include <stdint.h>
 #include <sof/interrupt-map.h>
@@ -180,4 +180,4 @@
 #define SUE_DW_ICTL_IRQ_FIQ_FINALSTATUS	(0xD4 + SUE_DW_ICTL_BASE_ADDR)
 #define SUE_DW_ICTL_IRQ_FIQ_PLEVEL	(0xD8 + SUE_DW_ICTL_BASE_ADDR)
 #define SUE_DW_ICTL_PR_N(x)		(0xE8 + x * 4 + SUE_DW_ICTL_BASE_ADDR)
-#endif
+#endif /* __PLATFORM_INTERRUPT_H__ */

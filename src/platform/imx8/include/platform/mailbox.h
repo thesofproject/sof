@@ -5,8 +5,8 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_MAILBOX__
-#define __INCLUDE_PLATFORM_MAILBOX__
+#ifndef __PLATFORM_MAILBOX_H__
+#define __PLATFORM_MAILBOX_H__
 
 #include <platform/memory.h>
 
@@ -49,4 +49,4 @@
 #define MAILBOX_STREAM_BASE		SRAM_STREAM_BASE
 #define MAILBOX_STREAM_OFFSET		SRAM_STREAM_OFFSET
 
-#endif
+#endif /* __PLATFORM_MAILBOX_H__ */

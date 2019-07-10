@@ -5,8 +5,8 @@
  * Author: Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CAVS_POWER_DOWN__
-#define __INCLUDE_CAVS_POWER_DOWN__
+#ifndef __CAVS_POWER_DOWN_H__
+#define __CAVS_POWER_DOWN_H__
 
 #include <stdbool.h>
 /**
@@ -19,4 +19,4 @@
  */
 void power_down(bool disable_lpsram, uint32_t *hpsram_pwrgating_mask);
 
-#endif /* __INCLUDE_PLATFORM_POWER_DOWN__ */
+#endif /* __CAVS_POWER_DOWN_H__ */

@@ -12,8 +12,8 @@
  * \brief Clk parameters for run-time clock data, common for cAVS platforms.
  */
 
-#ifndef __INCLUDE_CAVS_CLK__
-#define __INCLUDE_CAVS_CLK__
+#ifndef __CAVS_CLK_H__
+#define __CAVS_CLK_H__
 
 #include <sof/cpu.h>
 #include <sof/io.h>
@@ -50,4 +50,4 @@ static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
 	return 0;
 }
 
-#endif
+#endif /* __CAVS_CLK_H__ */

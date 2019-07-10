@@ -5,8 +5,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CAVS_IDC__
-#define __INCLUDE_CAVS_IDC__
+#ifndef __CAVS_IDC_H__
+#define __CAVS_IDC_H__
 
 #include <arch/idc.h>
 
@@ -20,4 +20,4 @@ static inline int idc_init(void)
 	return arch_idc_init();
 }
 
-#endif
+#endif /* __CAVS_IDC_H__ */

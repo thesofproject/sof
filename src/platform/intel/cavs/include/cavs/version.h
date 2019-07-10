@@ -5,8 +5,8 @@
  * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CAVS_VERSION_H__
-#define __INCLUDE_CAVS_VERSION_H__
+#ifndef __CAVS_VERSION_H__
+#define __CAVS_VERSION_H__
 
 #define CAVS_VERSION_1_5 0x10500
 #define CAVS_VERSION_1_8 0x10800
@@ -21,4 +21,4 @@
 #define CAVS_VERSION CAVS_VERSION_2_0
 #endif
 
-#endif
+#endif /* __CAVS_VERSION_H__ */

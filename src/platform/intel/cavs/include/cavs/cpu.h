@@ -10,8 +10,8 @@
  * \brief DSP parameters, common for cAVS platforms.
  */
 
-#ifndef __INCLUDE_CAVS_CPU__
-#define __INCLUDE_CAVS_CPU__
+#ifndef __CAVS_CPU_H__
+#define __CAVS_CPU_H__
 
 /** \brief Number of available DSP cores (conf. by kconfig) */
 #define PLATFORM_CORE_COUNT	CONFIG_CORE_COUNT
@@ -19,4 +19,4 @@
 /** \brief Id of master DSP core */
 #define PLATFORM_MASTER_CORE_ID	0
 
-#endif
+#endif /* __CAVS_CPU_H__ */

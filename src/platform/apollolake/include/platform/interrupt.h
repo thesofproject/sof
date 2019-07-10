@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_INTERRUPT__
-#define __INCLUDE_PLATFORM_INTERRUPT__
+#ifndef __PLATFORM_INTERRUPT_H__
+#define __PLATFORM_INTERRUPT_H__
 
 #include <stdint.h>
 #include <sof/interrupt-map.h>
@@ -135,4 +135,4 @@
 #define IRQ_MASK_EXT_LEVEL7	(1 << IRQ_NUM_EXT_LEVEL7)
 #define IRQ_MASK_SOFTWARE9	(1 << IRQ_NUM_SOFTWARE9)
 
-#endif
+#endif /* __PLATFORM_INTERRUPT_H__ */

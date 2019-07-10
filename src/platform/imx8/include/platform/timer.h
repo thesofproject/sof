@@ -18,4 +18,4 @@
 #define TIMER0		IRQ_NUM_TIMER0
 #define TIMER1		IRQ_NUM_TIMER1
 
-#endif
+#endif /* __PLATFORM_TIMER_H__ */
