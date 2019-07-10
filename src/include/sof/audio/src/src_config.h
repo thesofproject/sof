@@ -5,8 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef SRC_CONFIG_H
-#define SRC_CONFIG_H
+#ifndef __SOF_AUDIO_SRC_SRC_CONFIG_H__
+#define __SOF_AUDIO_SRC_SRC_CONFIG_H__
 
 #include <config.h>
 
@@ -53,4 +53,4 @@
 #endif
 #endif
 
-#endif
+#endif /* __SOF_AUDIO_SRC_SRC_CONFIG_H__ */

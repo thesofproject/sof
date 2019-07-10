@@ -5,8 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef SRC_H
-#define SRC_H
+#ifndef __SOF_AUDIO_SRC_SRC_H__
+#define __SOF_AUDIO_SRC_SRC_H__
 
 struct src_param {
 	int fir_s1;
@@ -113,4 +113,4 @@ int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
 
-#endif
+#endif /* __SOF_AUDIO_SRC_SRC_H__ */

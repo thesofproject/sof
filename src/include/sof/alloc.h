@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ALLOC__
-#define __INCLUDE_ALLOC__
+#ifndef __SOF_ALLOC_H__
+#define __SOF_ALLOC_H__
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -217,4 +217,4 @@ void free_heap(int zone);
 void heap_trace_all(int force);
 void heap_trace(struct mm_heap *heap, int size);
 
-#endif
+#endif /* __SOF_ALLOC_H__ */

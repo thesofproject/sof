@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SSP__
-#define __INCLUDE_SSP__
+#ifndef __SOF_SSP_H__
+#define __SOF_SSP_H__
 
 #include <sof/dai.h>
 #include <sof/io.h>
@@ -248,4 +248,4 @@ static inline void ssp_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 }
 
 
-#endif
+#endif /* __SOF_SSP_H__ */

@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_DAI_H__
-#define __INCLUDE_UAPI_IPC_DAI_H__
+#ifndef __IPC_DAI_H__
+#define __IPC_DAI_H__
 
 #include <ipc/header.h>
 #include <ipc/dai-intel.h>
@@ -83,4 +83,4 @@ struct sof_ipc_dai_config {
 	};
 } __packed;
 
-#endif
+#endif /* __IPC_DAI_H__ */

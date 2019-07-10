@@ -5,8 +5,8 @@
  * Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_IOMUX__
-#define __INCLUDE_IOMUX__
+#ifndef __SOF_IOMUX_H__
+#define __SOF_IOMUX_H__
 
 #define IOMUX_PIN_NUM 32
 
@@ -31,4 +31,4 @@ int iomux_configure(struct iomux *iomux, const struct iomux_pin_config *cfg);
 struct iomux *iomux_get(unsigned int id);
 int iomux_probe(struct iomux *iomux);
 
-#endif
+#endif /* __SOF_IOMUX_H__ */

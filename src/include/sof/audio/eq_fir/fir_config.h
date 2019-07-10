@@ -7,7 +7,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef FIR_CONFIG_H
+#ifndef __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__
+#define __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__
 
 /* Get platforms configuration */
 #include <config.h>
@@ -49,6 +50,4 @@
 #endif
 #endif
 
-#define FIR_CONFIG_H
-
-#endif
+#endif /* __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__ */

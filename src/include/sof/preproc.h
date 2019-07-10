@@ -5,8 +5,8 @@
  * Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@intel.com>
  */
 
-#ifndef __INCLUDE_MACRO_METAPROGRAMMING__
-#define __INCLUDE_MACRO_METAPROGRAMMING__
+#ifndef __SOF_PREPROC_H__
+#define __SOF_PREPROC_H__
 
 /* Macros in this file are to be invoked directly from code.
  * In order to work, they require a number of other macros that are
@@ -156,4 +156,4 @@
 #define META_FUNC_WITH_VARARGS(prefix, postfix, return_t, args)\
 		return_t META_CONCAT(prefix, postfix) (args)
 
-#endif // __INCLUDE_MACRO_METAPROGRAMMING__
+#endif /* __SOF_PREPROC_H__ */

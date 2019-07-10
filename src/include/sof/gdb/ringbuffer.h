@@ -5,8 +5,8 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#ifndef RINGBUFFER_H
-#define RINGBUFFER_H
+#ifndef __SOF_GDB_RINGBUFFER_H__
+#define __SOF_GDB_RINGBUFFER_H__
 
 #define RING_SIZE 128
 #define DEBUG_RX_BASE (mailbox_get_debug_base())
@@ -44,4 +44,4 @@ static inline int ring_have_data(const volatile struct ring *ring)
 	return ring->head != ring->tail;
 }
 
-#endif /* RINGBUFFER_H */
+#endif /* __SOF_GDB_RINGBUFFER_H__ */

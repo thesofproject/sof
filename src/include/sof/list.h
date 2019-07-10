@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIST__
-#define __INCLUDE_LIST__
+#ifndef __SOF_LIST_H__
+#define __SOF_LIST_H__
 
 /* Really simple list manipulation */
 
@@ -98,4 +98,4 @@ static inline int list_item_is_last(struct list_item *item,
 	for (item = (list)->next, tmp = item->next;\
 		item != (list); \
 		item = tmp, tmp = item->next)
-#endif
+#endif /* __SOF_LIST_H__ */

@@ -41,4 +41,4 @@ static inline int cpu_is_core_enabled(int id)
 	return arch_cpu_is_core_enabled(id);
 }
 
-#endif
+#endif /* __SOF_CPU_H__ */

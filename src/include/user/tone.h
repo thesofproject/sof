@@ -5,8 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_USER_TONE_H__
-#define __INCLUDE_UAPI_USER_TONE_H__
+#ifndef __USER_TONE_H__
+#define __USER_TONE_H__
 
 #define SOF_TONE_IDX_FREQUENCY		0
 #define SOF_TONE_IDX_AMPLITUDE		1
@@ -17,4 +17,4 @@
 #define SOF_TONE_IDX_REPEATS		6
 #define SOF_TONE_IDX_LIN_RAMP_STEP	7
 
-#endif /* __INCLUDE_UAPI_USER_TONE_H__ */
+#endif /* __USER_TONE_H__ */

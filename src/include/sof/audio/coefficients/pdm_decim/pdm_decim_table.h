@@ -7,6 +7,9 @@
 
 /* PDM decimation FIR filters */
 
+#ifndef __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_TABLE_H__
+#define __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_TABLE_H__
+
 #include "pdm_decim_fir.h"
 
 #if CONFIG_CAVS_DMIC_FIR_DECIMATE_BY_2
@@ -58,3 +61,5 @@ struct pdm_decim *fir_list[] = {
 #endif
 	NULL, /* This marks the end of coefficients */
 };
+
+#endif /* __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_TABLE_H__ */

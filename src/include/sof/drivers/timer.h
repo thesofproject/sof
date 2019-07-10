@@ -5,8 +5,8 @@
  * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_DRIVERS_TIMER__
-#define __INCLUDE_DRIVERS_TIMER__
+#ifndef __SOF_DRIVERS_TIMER_H__
+#define __SOF_DRIVERS_TIMER_H__
 
 #include <sof/timer.h>
 
@@ -30,4 +30,4 @@ void platform_dai_timestamp(struct comp_dev *dai,
 /* get current wallclock for componnent */
 void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock);
 
-#endif
+#endif /* __SOF_DRIVERS_TIMER_H__ */

@@ -13,8 +13,8 @@
   * \author Keyon Jie <yang.jie@linux.intel.com>
   */
 
-#ifndef __INCLUDE_AUDIO_COMPONENT_H__
-#define __INCLUDE_AUDIO_COMPONENT_H__
+#ifndef __SOF_AUDIO_COMPONENT_H__
+#define __SOF_AUDIO_COMPONENT_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -748,4 +748,4 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl);
 
 /** @}*/
 
-#endif
+#endif /* __SOF_AUDIO_COMPONENT_H__ */

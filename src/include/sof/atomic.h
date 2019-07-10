@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_ATOMIC_H_
-#define __INCLUDE_ATOMIC_H_
+#ifndef __SOF_ATOMIC_H__
+#define __SOF_ATOMIC_H__
 
 #include <stdint.h>
 #include <arch/atomic.h>
@@ -36,4 +36,4 @@ static inline int32_t atomic_sub(atomic_t *a, int32_t value)
 	return arch_atomic_sub(a, value);
 }
 
-#endif
+#endif /* __SOF_ATOMIC_H__ */

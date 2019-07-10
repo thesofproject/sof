@@ -5,8 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_USER_EQ_H__
-#define __INCLUDE_UAPI_USER_EQ_H__
+#ifndef __USER_EQ_H__
+#define __USER_EQ_H__
 
 #include <kernel/header.h>
 #include <sof/common.h>
@@ -171,4 +171,4 @@ struct sof_eq_iir_biquad_df2t {
 #define SOF_EQ_IIR_NBIQUAD_DF2T \
 	(sizeof(struct sof_eq_iir_biquad_df2t) / sizeof(int32_t))
 
-#endif /* __INCLUDE_UAPI_USER_EQ_H__ */
+#endif /* __USER_EQ_H__ */

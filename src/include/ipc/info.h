@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_INFO_H__
-#define __INCLUDE_UAPI_IPC_INFO_H__
+#ifndef __IPC_INFO_H__
+#define __IPC_INFO_H__
 
 #include <ipc/header.h>
 #include <ipc/stream.h>
@@ -123,4 +123,4 @@ struct sof_ipc_window {
 	struct sof_ipc_window_elem window[];
 } __packed;
 
-#endif
+#endif /* __IPC_INFO_H__ */

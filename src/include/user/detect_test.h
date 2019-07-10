@@ -5,8 +5,8 @@
  * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_USER_DETECT_TEST_H__
-#define __INCLUDE_UAPI_USER_DETECT_TEST_H__
+#ifndef __USER_DETECT_TEST_H__
+#define __USER_DETECT_TEST_H__
 
 #include <sof/common.h>
 
@@ -39,4 +39,4 @@ struct sof_detect_test_config {
 /** used for binary blob size sanity checks */
 #define SOF_DETECT_TEST_MAX_CFG_SIZE sizeof(struct sof_detect_test_config)
 
-#endif
+#endif /* __USER_DETECT_TEST_H__ */

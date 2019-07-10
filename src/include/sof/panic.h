@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_IPC_PANIC__
-#define __INCLUDE_SOF_IPC_PANIC__
+#ifndef __SOF_PANIC_H__
+#define __SOF_PANIC_H__
 
 #include <stdint.h>
 #include <ipc/trace.h>
@@ -24,4 +24,4 @@ void __panic(uint32_t p, char *filename, uint32_t linenum);
 /* runtime assertion */
 #define assert(cond) (void)((cond) || (panic(SOF_IPC_PANIC_ASSERT), 0))
 
-#endif
+#endif /* __SOF_PANIC_H__ */

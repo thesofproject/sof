@@ -7,8 +7,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef AUDIO_FORMAT_H
-#define AUDIO_FORMAT_H
+#ifndef __SOF_AUDIO_FORMAT_H__
+#define __SOF_AUDIO_FORMAT_H__
 
 #include <stdint.h>
 
@@ -160,4 +160,4 @@ static inline int32_t sign_extend_s24(int32_t x)
 	return (x << 8) >> 8;
 }
 
-#endif
+#endif /* __SOF_AUDIO_FORMAT_H__ */

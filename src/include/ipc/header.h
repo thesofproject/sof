@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_HEADER_H__
-#define __INCLUDE_UAPI_IPC_HEADER_H__
+#ifndef __IPC_HEADER_H__
+#define __IPC_HEADER_H__
 
 #include <kernel/abi.h>
 #include <sof/common.h>
@@ -238,4 +238,4 @@ struct sof_ipc_dsp_oops_plat_hdr {
 
 /** @}*/
 
-#endif
+#endif /* __IPC_HEADER_H__ */

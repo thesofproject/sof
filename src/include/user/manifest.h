@@ -11,8 +11,8 @@
  * \author Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_USER_MANIFEST_H__
-#define __INCLUDE_UAPI_USER_MANIFEST_H__
+#ifndef __USER_MANIFEST_H__
+#define __USER_MANIFEST_H__
 
 #include <sof/common.h>
 #include <stdint.h>
@@ -200,4 +200,4 @@ struct sof_man_module_manifest {
 	(sizeof(struct sof_man_fw_header) + \
 		(index) * sizeof(struct sof_man_module))
 
-#endif
+#endif /* __USER_MANIFEST_H__ */

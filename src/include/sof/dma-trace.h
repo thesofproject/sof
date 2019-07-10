@@ -5,8 +5,8 @@
  * Author: Yan Wang <yan.wang@linux.intel.com>
  */
 
-#ifndef __INCLUDE_DMA_TRACE__
-#define __INCLUDE_DMA_TRACE__
+#ifndef __SOF_DMA_TRACE_H__
+#define __SOF_DMA_TRACE_H__
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -65,4 +65,4 @@ static inline uint32_t dtrace_calc_buf_margin(struct dma_trace_buf *buffer)
 	return buffer->end_addr - buffer->w_ptr;
 }
 
-#endif
+#endif /* __SOF_DMA_TRACE_H__ */

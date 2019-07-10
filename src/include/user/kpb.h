@@ -5,8 +5,8 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#ifndef __INCLUDE_USER_KPB_H__
-#define __INCLUDE_USER_KPB_H__
+#ifndef __USER_KPB_H__
+#define __USER_KPB_H__
 
 /** \brief kpb component configuration data. */
 struct sof_kpb_config {
@@ -18,4 +18,4 @@ struct sof_kpb_config {
 	uint32_t sampling_width; /**< number of bits */
 };
 
-#endif
+#endif /* __USER_KPB_H__ */

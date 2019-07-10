@@ -5,8 +5,8 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#ifndef GDB_H
-#define GDB_H
+#ifndef __SOF_GDB_GDB_H__
+#define __SOF_GDB_GDB_H__
 
 #define GDB_BUFMAX 256
 #define GDB_NUMBER_OF_REGISTERS 64
@@ -27,4 +27,4 @@ void gdb_debug_info(unsigned char *str);
 void gdb_init_debug_exception(void);
 void gdb_init(void);
 
-#endif /* GDB_H */
+#endif /* __SOF_GDB_GDB_H__ */

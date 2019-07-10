@@ -5,6 +5,9 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
+#ifndef __SOF_AUDIO_COEFFICIENTS_SRC_SRC_STD_INT32_DEFINE_H__
+#define __SOF_AUDIO_COEFFICIENTS_SRC_SRC_STD_INT32_DEFINE_H__
+
 /* SRC constants */
 #define MAX_FIR_DELAY_SIZE 698
 #define MAX_OUT_DELAY_SIZE 900
@@ -16,3 +19,5 @@
 #define STAGE2_TIMES_MAX 32
 #define STAGE_BUF_SIZE 224
 #define NUM_ALL_COEFFICIENTS 20076
+
+#endif /* __SOF_AUDIO_COEFFICIENTS_SRC_SRC_STD_INT32_DEFINE_H__ */

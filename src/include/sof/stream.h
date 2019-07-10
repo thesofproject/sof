@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_STREAM__
-#define __INCLUDE_SOF_STREAM__
+#ifndef __SOF_STREAM_H__
+#define __SOF_STREAM_H__
 
 #include <stdint.h>
 #include <platform/platform.h>
@@ -26,4 +26,4 @@ struct stream_params {
 	};
 };
 
-#endif
+#endif /* __SOF_STREAM_H__ */

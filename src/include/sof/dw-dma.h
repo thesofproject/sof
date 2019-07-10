@@ -162,4 +162,4 @@ struct dw_lli {
 
 extern const struct dma_ops dw_dma_ops;
 
-#endif
+#endif /* __SOF_DW_DMA_H__ */

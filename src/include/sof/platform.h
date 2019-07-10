@@ -11,8 +11,8 @@
   * \author Marcin Maka <marcin.maka@linux.intel.com>
   */
 
-#ifndef __INCLUDE_SOF_PLATFORM_H__
-#define __INCLUDE_SOF_PLATFORM_H__
+#ifndef __SOF_PLATFORM_H__
+#define __SOF_PLATFORM_H__
 
 #include <sof/sof.h>
 
@@ -48,4 +48,4 @@ int platform_init(struct sof *sof);
 
 /** @}*/
 
-#endif
+#endif /* __SOF_PLATFORM_H__ */

@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_INIT_H__
-#define __INCLUDE_INIT_H__
+#ifndef __SOF_INIT_H__
+#define __SOF_INIT_H__
 
 #include <platform/platform.h>
 
@@ -21,4 +21,4 @@ int slave_core_init(struct sof *sof);
 
 int arch_init(struct sof *sof);
 
-#endif
+#endif /* __SOF_INIT_H__ */

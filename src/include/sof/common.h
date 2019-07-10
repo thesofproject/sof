@@ -5,8 +5,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_COMMON_H__
-#define __INCLUDE_COMMON_H__
+#ifndef __SOF_COMMON_H__
+#define __SOF_COMMON_H__
 
 /* use same syntax as Linux for simplicity */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
@@ -51,4 +51,4 @@
 	__attribute__((section(".module_init"))) static void(*f)(void) = init
 #endif
 
-#endif
+#endif /* __SOF_COMMON_H__ */

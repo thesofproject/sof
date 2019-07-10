@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_AUDIO_BUFFER_H__
-#define __INCLUDE_AUDIO_BUFFER_H__
+#ifndef __SOF_AUDIO_BUFFER_H__
+#define __SOF_AUDIO_BUFFER_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -222,4 +222,4 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size)
 	buffer->avail = 0;
 	buffer_zero(buffer);
 }
-#endif
+#endif /* __SOF_AUDIO_BUFFER_H__ */

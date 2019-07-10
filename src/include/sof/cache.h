@@ -20,4 +20,4 @@
 /* invalidate data */
 #define CACHE_INVALIDATE	1
 
-#endif
+#endif /* __SOF_CACHE_H__ */

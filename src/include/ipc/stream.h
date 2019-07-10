@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_STREAM_H__
-#define __INCLUDE_UAPI_IPC_STREAM_H__
+#ifndef __IPC_STREAM_H__
+#define __IPC_STREAM_H__
 
 #include <ipc/header.h>
 #include <sof/common.h>
@@ -153,4 +153,4 @@ struct sof_ipc_stream_posn {
 	int32_t xrun_size;	/**< XRUN size in bytes */
 } __packed;
 
-#endif
+#endif /* __IPC_STREAM_H__ */
