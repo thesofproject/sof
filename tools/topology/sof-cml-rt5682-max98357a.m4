@@ -6,7 +6,7 @@
 
 # Include SOF CML RT5682 Topology
 # This includes topology for RT5682, DMIC and 3 HDMI Pass through pipeline
-include(`sof-cml-rt5682.m4')
+include(`sof-cml-rt5682-kwd.m4')
 
 DEBUG_START
 #
