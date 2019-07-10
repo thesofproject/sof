@@ -16,6 +16,8 @@
 #ifndef __INCLUDE_UAPI_USER_HEADER_H__
 #define __INCLUDE_UAPI_USER_HEADER_H__
 
+#include <sof/common.h>
+
 /**
  * \brief Header for all non IPC ABI data.
  *
@@ -32,6 +34,6 @@ struct sof_abi_hdr {
 	uint32_t abi;		/**< SOF ABI version */
 	uint32_t reserved[4];	/**< reserved for future use */
 	uint32_t data[0];	/**< Component data - opaque to core */
-} __attribute__((packed));
+} __packed;
 
 #endif

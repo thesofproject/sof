@@ -17,6 +17,7 @@
 #define __INCLUDE_UAPI_IPC_PM_H__
 
 #include <ipc/header.h>
+#include <sof/common.h>
 
 /*
  * PM
@@ -28,7 +29,7 @@ struct sof_ipc_pm_ctx_elem {
 	uint32_t type;
 	uint32_t size;
 	uint64_t addr;
-} __attribute__((packed));
+} __packed;
 
 /*
  * PM context - SOF_IPC_PM_CTX_SAVE, SOF_IPC_PM_CTX_RESTORE,
@@ -44,12 +45,12 @@ struct sof_ipc_pm_ctx {
 	uint32_t reserved[8];
 
 	struct sof_ipc_pm_ctx_elem elems[];
-} __attribute__((packed));
+} __packed;
 
 /* enable or disable cores - SOF_IPC_PM_CORE_ENABLE */
 struct sof_ipc_pm_core_config {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t enable_mask;
-} __attribute__((packed));
+} __packed;
 
 #endif

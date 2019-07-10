@@ -18,7 +18,9 @@
 
 #define APP_NAME "sof-logger"
 
+#ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#endif
 
 static const char *debugfs[] = {
 	"dmac0", "dmac1", "ssp0", "ssp1",

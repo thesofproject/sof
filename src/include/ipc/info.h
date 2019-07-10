@@ -18,6 +18,7 @@
 
 #include <ipc/header.h>
 #include <ipc/stream.h>
+#include <sof/common.h>
 
 /*
  * Firmware boot and version
@@ -53,7 +54,7 @@ struct sof_ipc_fw_version {
 
 	/* reserved for future use */
 	uint32_t reserved[4];
-} __attribute__((packed));
+} __packed;
 
 /* FW ready Message - sent by firmware when boot has completed */
 struct sof_ipc_fw_ready {
@@ -69,7 +70,7 @@ struct sof_ipc_fw_ready {
 
 	/* reserved for future use */
 	uint32_t reserved[4];
-} __attribute__((packed));
+} __packed;
 
 /*
  * Extended Firmware data. All optional, depends on platform/arch.
@@ -87,14 +88,14 @@ enum sof_ipc_region {
 struct sof_ipc_ext_data_hdr {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t type;		/**< SOF_IPC_EXT_ */
-} __attribute__((packed));
+} __packed;
 
 struct sof_ipc_dma_buffer_elem {
 	struct sof_ipc_hdr hdr;
 	uint32_t type;		/**< SOF_IPC_REGION_ */
 	uint32_t id;		/**< platform specific - used to map to host memory */
 	struct sof_ipc_host_buffer buffer;
-} __attribute__((packed));
+} __packed;
 
 /* extended data DMA buffers for IPC, trace and debug */
 struct sof_ipc_dma_buffer_data {
@@ -103,7 +104,7 @@ struct sof_ipc_dma_buffer_data {
 
 	/* host files in buffer[n].buffer */
 	struct sof_ipc_dma_buffer_elem buffer[];
-} __attribute__((packed));
+} __packed;
 
 struct sof_ipc_window_elem {
 	struct sof_ipc_hdr hdr;
@@ -113,13 +114,13 @@ struct sof_ipc_window_elem {
 	uint32_t size;		/**< size of region in bytes */
 	/* offset in window region as windows can be partitioned */
 	uint32_t offset;
-} __attribute__((packed));
+} __packed;
 
 /* extended data memory windows for IPC, trace and debug */
 struct sof_ipc_window {
 	struct sof_ipc_ext_data_hdr ext_hdr;
 	uint32_t num_windows;
 	struct sof_ipc_window_elem window[];
-} __attribute__((packed));
+} __packed;
 
 #endif
