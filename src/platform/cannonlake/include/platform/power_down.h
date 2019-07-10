@@ -5,9 +5,9 @@
  * Author: Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_POWER_DOWN__
-#define __INCLUDE_PLATFORM_POWER_DOWN__
+#ifndef __PLATFORM_POWER_DOWN_H__
+#define __PLATFORM_POWER_DOWN_H__
 
 #include <cavs/power_down.h>
 
-#endif /* __INCLUDE_PLATFORM_POWER_DOWN__ */
+#endif /* __PLATFORM_POWER_DOWN_H__ */

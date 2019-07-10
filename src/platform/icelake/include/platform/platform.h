@@ -165,4 +165,4 @@ int platform_ssp_set_mn(uint32_t ssp_port, uint32_t source, uint32_t rate,
 void platform_ssp_disable_mn(uint32_t ssp_port);
 
 #endif
-#endif
+#endif /* __PLATFORM_PLATFORM_H__ */

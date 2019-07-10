@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CAVS_MAILBOX__
-#define __INCLUDE_CAVS_MAILBOX__
+#ifndef __CAVS_MAILBOX_H__
+#define __CAVS_MAILBOX_H__
 
 #include <platform/memory.h>
 
@@ -58,4 +58,4 @@
 #define MAILBOX_SW_REG_SIZE	SRAM_SW_REG_SIZE
 #define MAILBOX_SW_REG_BASE	SRAM_SW_REG_BASE
 
-#endif
+#endif /* __CAVS_MAILBOX_H__ */

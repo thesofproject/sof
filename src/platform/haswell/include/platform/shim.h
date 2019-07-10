@@ -112,4 +112,4 @@ static inline void shim_update_bits(uint32_t reg, uint32_t mask,
 	io_reg_update_bits(SHIM_BASE + reg, mask, value);
 }
 
-#endif
+#endif /* __PLATFORM_SHIM_H__ */

@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIB_PLATFORM_TIMER_H__
-#define __INCLUDE_LIB_PLATFORM_TIMER_H__
+#ifndef __PLATFORM_TIMER_H__
+#define __PLATFORM_TIMER_H__
 
 #include <stdint.h>
 #include <sof/timer.h>
@@ -35,4 +35,4 @@ static inline void platform_dai_timestamp(struct comp_dev *dai,
 static inline void platform_dai_wallclock(struct comp_dev *dai,
 	uint64_t *wallclock) {}
 
-#endif
+#endif /* __PLATFORM_TIMER_H__ */

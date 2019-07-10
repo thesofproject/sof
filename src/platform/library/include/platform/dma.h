@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIB_PLATFORM_HOST_DMA_H__
-#define __INCLUDE_LIB_PLATFORM_HOST_DMA_H__
+#ifndef __PLATFORM_DMA_H__
+#define __PLATFORM_DMA_H__
 
 #include <stdint.h>
 
@@ -16,4 +16,4 @@
 #define DMA_DEV_PCM			0
 #define DMA_DEV_WAV			1
 
-#endif
+#endif /* __PLATFORM_DMA_H__ */

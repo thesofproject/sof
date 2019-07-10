@@ -5,9 +5,9 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_IDC_H__
-#define __INCLUDE_PLATFORM_IDC_H__
+#ifndef __PLATFORM_IDC_H__
+#define __PLATFORM_IDC_H__
 
 #include <cavs/idc.h>
 
-#endif
+#endif /* __PLATFORM_IDC_H__ */

@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIB_PLATFORM_MEMORY_H__
-#define __INCLUDE_LIB_PLATFORM_MEMORY_H__
+#ifndef __PLATFORM_MEMORY_H__
+#define __PLATFORM_MEMORY_H__
 
 #include <config.h>
 
@@ -24,4 +24,4 @@
 #define MAILBOX_BASE		0
 #define MAILBOX_BASE_SIZE	0x400
 
-#endif
+#endif /* __PLATFORM_MEMORY_H__ */

@@ -32,4 +32,4 @@
 
 int dai_init(void);
 
-#endif
+#endif /* __PLATFORM_DAI_H__ */

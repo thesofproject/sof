@@ -5,9 +5,9 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_DW_DMA_H__
-#define __INCLUDE_PLATFORM_DW_DMA_H__
+#ifndef __PLATFORM_DW_DMA_H__
+#define __PLATFORM_DW_DMA_H__
 
 #include <cavs/dw-dma.h>
 
-#endif
+#endif /* __PLATFORM_DW_DMA_H__ */

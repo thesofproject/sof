@@ -308,4 +308,4 @@ static inline void idc_write(uint32_t reg, uint32_t core_id, uint32_t val)
 }
 #endif
 
-#endif
+#endif /* __PLATFORM_SHIM_H__ */

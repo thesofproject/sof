@@ -7,9 +7,9 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_MAILBOX__
-#define __INCLUDE_PLATFORM_MAILBOX__
+#ifndef __PLATFORM_MAILBOX_H__
+#define __PLATFORM_MAILBOX_H__
 
 #include <cavs/mailbox.h>
 
-#endif
+#endif /* __PLATFORM_MAILBOX_H__ */

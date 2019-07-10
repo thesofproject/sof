@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __PLATFORM_CLOCK__
-#define __PLATFORM_CLOCK__
+#ifndef __PLATFORM_CLK_H__
+#define __PLATFORM_CLK_H__
 
 #include <sof/io.h>
 #include <platform/shim.h>
@@ -36,4 +36,4 @@ static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
 	return 0;
 }
 
-#endif
+#endif /* __PLATFORM_CLK_H__ */

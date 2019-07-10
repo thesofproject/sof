@@ -5,8 +5,8 @@
  * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CAVS_MEM_MAP__
-#define __INCLUDE_CAVS_MEM_MAP__
+#ifndef __CAVS_MEMORY_H__
+#define __CAVS_MEMORY_H__
 
 #include <config.h>
 #include <cavs/cpu.h>
@@ -45,4 +45,4 @@
 void platform_init_memmap(void);
 #endif
 
-#endif
+#endif /* __CAVS_MEMORY_H__ */

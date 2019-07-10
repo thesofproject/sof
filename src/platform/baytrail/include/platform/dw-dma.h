@@ -5,8 +5,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_DW_DMA_H__
-#define __INCLUDE_PLATFORM_DW_DMA_H__
+#ifndef __PLATFORM_DW_DMA_H__
+#define __PLATFORM_DW_DMA_H__
 
 #include <sof/bit.h>
 
@@ -32,4 +32,4 @@
 #define platform_dw_dma_set_transfer_size(chan, lli, size) \
 	(lli->ctrl_hi |= (size & DW_CTLH_BLOCK_TS_MASK))
 
-#endif
+#endif /* __PLATFORM_DW_DMA_H__ */

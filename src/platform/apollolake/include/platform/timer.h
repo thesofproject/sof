@@ -22,4 +22,4 @@
 #define TIMER3		IRQ_EXT_TSTAMP0_LVL2(0)
 #define TIMER4		IRQ_EXT_TSTAMP1_LVL2(0)
 
-#endif
+#endif /* __PLATFORM_TIMER_H__ */

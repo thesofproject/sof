@@ -41,4 +41,4 @@
 
 int dmac_init(void);
 
-#endif
+#endif /* __PLATFORM_DMA_H__ */

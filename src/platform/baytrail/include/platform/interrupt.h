@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_INTERRUPT__
-#define __INCLUDE_PLATFORM_INTERRUPT__
+#ifndef __PLATFORM_INTERRUPT_H__
+#define __PLATFORM_INTERRUPT_H__
 
 #include <stdint.h>
 #include <sof/string.h>
@@ -68,4 +68,4 @@
 /* no nested interrupts */
 #define PLATFORM_IRQ_CHILDREN	0
 
-#endif
+#endif /* __PLATFORM_INTERRUPT_H__ */

@@ -37,4 +37,4 @@ int platform_ipc_pmc_init(void);
 int ipc_pmc_send_msg(uint32_t message);
 int pmc_process_msg_queue(void);
 
-#endif
+#endif /* __PLATFORM_PMC_H__ */

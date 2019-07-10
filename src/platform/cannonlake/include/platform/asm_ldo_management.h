@@ -10,8 +10,9 @@
  * \brief Macros for controlling LDO state specific for cAVS 1.5
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
-#ifndef ASM_LDO_MANAGEMENT_H
-#define ASM_LDO_MANAGEMENT_H
+
+#ifndef __PLATFORM_ASM_LDO_MANAGEMENT_H__
+#define __PLATFORM_ASM_LDO_MANAGEMENT_H__
 
 #ifndef ASSEMBLY
 #warning "Header can only be used by assembly sources."
@@ -105,4 +106,4 @@ s32i \ax, \ay, 0
 l32i \ax, \ay, 0
 .endm
 
-#endif /* ASM_LDO_MANAGEMENT_H */
+#endif /* __PLATFORM_ASM_LDO_MANAGEMENT_H__ */

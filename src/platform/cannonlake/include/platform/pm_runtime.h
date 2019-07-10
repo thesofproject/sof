@@ -11,8 +11,8 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_PM_RUNTIME__
-#define __INCLUDE_PLATFORM_PM_RUNTIME__
+#ifndef __PLATFORM_PM_RUNTIME_H__
+#define __PLATFORM_PM_RUNTIME_H__
 
 #include <sof/pm_runtime.h>
 
@@ -52,4 +52,4 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
  */
 void platform_pm_runtime_power_off(void);
 
-#endif /* __INCLUDE_PLATFORM_PM_RUNTIME__ */
+#endif /* __PLATFORM_PM_RUNTIME_H__ */

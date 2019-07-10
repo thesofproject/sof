@@ -5,8 +5,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CLOCK_MAP__
-#define __INCLUDE_CLOCK_MAP__
+#ifndef __PLATFORM_CLK_MAP_H__
+#define __PLATFORM_CLK_MAP_H__
 
 #include <sof/clk.h>
 
@@ -31,4 +31,4 @@ static const struct freq_table ssp_freq[] = {
 
 #define SSP_DEFAULT_IDX	0
 
-#endif
+#endif /* __PLATFORM_CLK_MAP_H__ */

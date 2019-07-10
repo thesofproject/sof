@@ -6,9 +6,9 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __PLATFORM_CLOCK__
-#define __PLATFORM_CLOCK__
+#ifndef __PLATFORM_CLK_H__
+#define __PLATFORM_CLK_H__
 
 #include <cavs/clk.h>
 
-#endif
+#endif /* __PLATFORM_CLK_H__ */

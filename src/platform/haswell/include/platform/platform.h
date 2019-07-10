@@ -125,4 +125,4 @@ extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;
 
 #endif
-#endif
+#endif /* __PLATFORM_PLATFORM_H__ */

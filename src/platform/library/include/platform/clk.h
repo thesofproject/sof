@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_LIB_PLATFORM_HOST_CLOCK__
-#define __INCLUDE_LIB_PLATFORM_HOST_CLOCK__
+#ifndef __PLATFORM_CLK_H__
+#define __PLATFORM_CLK_H__
 
 #define CLK_CPU(x)	x
 #define CLK_SSP		1
@@ -16,4 +16,4 @@
 
 #define NUM_CLOCKS	2
 
-#endif
+#endif /* __PLATFORM_CLK_H__ */

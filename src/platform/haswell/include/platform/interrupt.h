@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_INTERRUPT__
-#define __INCLUDE_PLATFORM_INTERRUPT__
+#ifndef __PLATFORM_INTERRUPT_H__
+#define __PLATFORM_INTERRUPT_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -43,4 +43,4 @@
 #define IRQ_MASK_EXT_PARITY	(1 << IRQ_NUM_EXT_PARITY)
 #define IRQ_MASK_TIMER3		(1 << IRQ_NUM_TIMER3)
 
-#endif
+#endif /* __PLATFORM_INTERRUPT_H__ */
