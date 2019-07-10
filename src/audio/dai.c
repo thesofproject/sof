@@ -227,7 +227,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct sof_ipc_comp_config *source_config;
+	struct sof_ipc_comp_config *dai_config;
 	int err;
 	uint32_t buffer_size;
 
@@ -240,19 +240,19 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 	config->dest_dev = dd->dai->plat_data.fifo[0].handshake;
 
 	/* set up local and host DMA elems to reset values */
-	source_config = COMP_GET_CONFIG(dd->dma_buffer->source);
-	buffer_size = source_config->periods_sink * period_bytes;
+	dai_config = COMP_GET_CONFIG(dev);
+	buffer_size = dai_config->periods_source * period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dd->dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_dai_error_with_ids(dev, "dai_playback_params() error: "
 					 "buffer_set_size() failed to resize "
-					 "buffer. source_config->periods_sink ="
+					 "buffer. dai_config->periods_source ="
 					 " %u; period_bytes = %u; "
 					 "buffer_size = %u; "
 					 "dd->dma_buffer->alloc_size = %u",
-					 source_config->periods_sink,
+					 dai_config->periods_source,
 					 period_bytes, buffer_size,
 					 dd->dma_buffer->alloc_size);
 		return err;
@@ -261,7 +261,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 	if (!config->elem_array.elems) {
 		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
 				   config->direction,
-				   source_config->periods_sink,
+				   dai_config->periods_source,
 				   period_bytes,
 				   (uintptr_t)(dd->dma_buffer->r_ptr),
 				   dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK));
@@ -280,7 +280,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
-	struct sof_ipc_comp_config *sink_config;
+	struct sof_ipc_comp_config *dai_config;
 	int err;
 	uint32_t buffer_size;
 
@@ -304,19 +304,19 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes)
 	}
 
 	/* set up local and host DMA elems to reset values */
-	sink_config = COMP_GET_CONFIG(dd->dma_buffer->sink);
-	buffer_size = sink_config->periods_source * period_bytes;
+	dai_config = COMP_GET_CONFIG(dev);
+	buffer_size = dai_config->periods_sink * period_bytes;
 
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dd->dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_dai_error_with_ids(dev, "dai_capture_params() error: "
 					 "buffer_set_size() failed to resize "
-					 "buffer. sink_config->periods_sink = "
+					 "buffer. dai_config->periods_sink = "
 					 "%u; period_bytes = %u; "
 					 "buffer_size = %u; "
 					 "dd->dma_buffer->alloc_size = %u",
-					 sink_config->periods_sink,
+					 dai_config->periods_sink,
 					 period_bytes, buffer_size,
 					 dd->dma_buffer->alloc_size);
 		return err;
@@ -325,7 +325,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes)
 	if (!config->elem_array.elems) {
 		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
 				   config->direction,
-				   sink_config->periods_source,
+				   dai_config->periods_sink,
 				   period_bytes,
 				   (uintptr_t)(dd->dma_buffer->w_ptr),
 				   dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE));
