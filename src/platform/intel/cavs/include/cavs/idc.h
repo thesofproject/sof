@@ -5,6 +5,8 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#ifdef __PLATFORM_IDC_H__
+
 #ifndef __CAVS_IDC_H__
 #define __CAVS_IDC_H__
 
@@ -21,3 +23,9 @@ static inline int idc_init(void)
 }
 
 #endif /* __CAVS_IDC_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of platform/idc.h"
+
+#endif /* __PLATFORM_IDC_H__ */

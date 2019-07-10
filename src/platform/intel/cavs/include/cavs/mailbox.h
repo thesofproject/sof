@@ -6,6 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+#ifdef __PLATFORM_MAILBOX_H__
+
 #ifndef __CAVS_MAILBOX_H__
 #define __CAVS_MAILBOX_H__
 
@@ -59,3 +61,9 @@
 #define MAILBOX_SW_REG_BASE	SRAM_SW_REG_BASE
 
 #endif /* __CAVS_MAILBOX_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of platform/mailbox.h"
+
+#endif /* __PLATFORM_MAILBOX_H__ */

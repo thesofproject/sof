@@ -5,11 +5,13 @@
  * Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
  */
 
+#ifdef __PLATFORM_MEMORY_H__
+
 #ifndef __CAVS_MEMORY_H__
 #define __CAVS_MEMORY_H__
 
 #include <config.h>
-#include <cavs/cpu.h>
+#include <platform/cpu.h>
 
 #define SRAM_BANK_SIZE			(64 * 1024)
 
@@ -46,3 +48,9 @@ void platform_init_memmap(void);
 #endif
 
 #endif /* __CAVS_MEMORY_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of platform/memory.h"
+
+#endif /* __PLATFORM_MEMORY_H__ */
