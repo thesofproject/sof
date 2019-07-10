@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_SOF__
-#define __INCLUDE_SOF_SOF__
+#ifndef __SOF_SOF_H__
+#define __SOF_SOF_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -35,4 +35,4 @@ struct sof {
 	struct dma_trace_data *dmat;
 };
 
-#endif
+#endif /* __SOF_SOF_H__ */

@@ -11,8 +11,8 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PM_RUNTIME__
-#define __INCLUDE_PM_RUNTIME__
+#ifndef __SOF_PM_RUNTIME_H__
+#define __SOF_PM_RUNTIME_H__
 
 #include <sof/lock.h>
 #include <sof/trace.h>
@@ -90,4 +90,4 @@ void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index);
 
 /** @}*/
 
-#endif /* __INCLUDE_PM_RUNTIME__ */
+#endif /* __SOF_PM_RUNTIME_H__ */

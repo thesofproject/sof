@@ -5,8 +5,8 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
-#ifndef _ESAI_H
-#define _ESAI_H
+#ifndef __SOF_ESAI_H__
+#define __SOF_ESAI_H__
 
 #include <sof/dai.h>
 #include <sof/io.h>
@@ -51,4 +51,4 @@
 #define REG_ESAI_PCRC           0xFC
 
 extern const struct dai_driver esai_driver;
-#endif
+#endif /* __SOF_ESAI_H__ */

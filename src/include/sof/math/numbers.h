@@ -7,8 +7,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef NUMBERS_H
-#define NUMBERS_H
+#ifndef __SOF_MATH_NUMBERS_H__
+#define __SOF_MATH_NUMBERS_H__
 
 #include <stdint.h>
 
@@ -76,4 +76,4 @@ uint32_t crc32(const void *data, uint32_t bytes);
 #define merge_4b4b(high, low) (((uint8_t)(high) << 4) | \
 			       ((low) & 0xF))
 
-#endif /* NUMBERS_H */
+#endif /* __SOF_MATH_NUMBERS_H__ */

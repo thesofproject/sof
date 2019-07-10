@@ -12,8 +12,8 @@
  * ** MUST BE ALIGNED WITH TOPOLOGY CONFIGURATION TOKEN VALUES **
  */
 
-#ifndef __INCLUDE_UAPI_USER_TOKENS_H__
-#define __INCLUDE_UAPI_USER_TOKENS_H__
+#ifndef __KERNEL_TOKENS_H__
+#define __KERNEL_TOKENS_H__
 
 /*
  * Kcontrol IDs
@@ -103,4 +103,4 @@
 /* for backward compatibility */
 #define SOF_TKN_EFFECT_TYPE	SOF_TKN_PROCESS_TYPE
 
-#endif
+#endif /* __KERNEL_TOKENS_H__ */

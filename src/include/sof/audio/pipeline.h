@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_AUDIO_PIPELINE_H__
-#define __INCLUDE_AUDIO_PIPELINE_H__
+#ifndef __SOF_AUDIO_PIPELINE_H__
+#define __SOF_AUDIO_PIPELINE_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -166,4 +166,4 @@ void pipeline_schedule(void *arg);
 /* notify host that we have XRUN */
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes);
 
-#endif
+#endif /* __SOF_AUDIO_PIPELINE_H__ */

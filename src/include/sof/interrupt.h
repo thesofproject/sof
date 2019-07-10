@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_INTERRUPT__
-#define __INCLUDE_INTERRUPT__
+#ifndef __SOF_INTERRUPT_H__
+#define __SOF_INTERRUPT_H__
 
 #include <stdint.h>
 #include <arch/interrupt.h>
@@ -73,4 +73,4 @@ static inline void interrupt_global_enable(uint32_t flags)
 	arch_interrupt_global_enable(flags);
 }
 
-#endif
+#endif /* __SOF_INTERRUPT_H__ */

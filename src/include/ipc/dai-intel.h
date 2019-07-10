@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_DAI_INTEL_H__
-#define __INCLUDE_UAPI_IPC_DAI_INTEL_H__
+#ifndef __IPC_DAI_INTEL_H__
+#define __IPC_DAI_INTEL_H__
 
 #include <ipc/header.h>
 #include <sof/common.h>
@@ -187,4 +187,4 @@ struct sof_ipc_dai_dmic_params {
 	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __packed;
 
-#endif
+#endif /* __IPC_DAI_INTEL_H__ */

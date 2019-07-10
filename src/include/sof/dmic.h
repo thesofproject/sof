@@ -5,8 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef __INCLUDE_DMIC__
-#define __INCLUDE_DMIC__
+#ifndef __SOF_DMIC_H__
+#define __SOF_DMIC_H__
 
 #include <config.h>
 #include <sof/dai.h>
@@ -319,4 +319,4 @@ struct dmic_pdata {
 extern const struct dai_driver dmic_driver;
 
 #endif /* DMIC_HW_VERSION  */
-#endif /* __INCLUDE_DMIC__ */
+#endif /* __SOF_DMIC_H__ */

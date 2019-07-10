@@ -24,8 +24,8 @@
  * 3) Increment PATCH version if you add backwards compatible bug fixes.
  */
 
-#ifndef __INCLUDE_UAPI_ABI_H__
-#define __INCLUDE_UAPI_ABI_H__
+#ifndef __KERNEL_ABI_H__
+#define __KERNEL_ABI_H__
 
 /** \brief SOF ABI version major, minor and patch numbers */
 #define SOF_ABI_MAJOR 3
@@ -62,4 +62,4 @@
 /** \brief SOF ABI magic number "SOF\0". */
 #define SOF_ABI_MAGIC		0x00464F53
 
-#endif
+#endif /* __KERNEL_ABI_H__ */

@@ -7,6 +7,9 @@
 
 /* Format for generated coefficients tables */
 
+#ifndef __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_FIR_H__
+#define __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_FIR_H__
+
 struct pdm_decim {
 	int decim_factor;
 	int length;
@@ -17,3 +20,5 @@ struct pdm_decim {
 	int stopband_ripple;
 	const int32_t *coef;
 };
+
+#endif /* __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_FIR_H__ */

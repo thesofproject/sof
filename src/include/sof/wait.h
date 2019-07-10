@@ -9,8 +9,8 @@
  * Simple wait for event completion and signaling with timeouts.
  */
 
-#ifndef __INCLUDE_WAIT__
-#define __INCLUDE_WAIT__
+#ifndef __SOF_WAIT_H__
+#define __SOF_WAIT_H__
 
 #include <stdint.h>
 
@@ -102,4 +102,4 @@ int poll_for_completion_delay(completion_t *comp, uint64_t us);
 int poll_for_register_delay(uint32_t reg, uint32_t mask,
 			    uint32_t val, uint64_t us);
 
-#endif
+#endif /* __SOF_WAIT_H__ */

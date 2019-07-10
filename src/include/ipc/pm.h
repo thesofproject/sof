@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_PM_H__
-#define __INCLUDE_UAPI_IPC_PM_H__
+#ifndef __IPC_PM_H__
+#define __IPC_PM_H__
 
 #include <ipc/header.h>
 #include <sof/common.h>
@@ -53,4 +53,4 @@ struct sof_ipc_pm_core_config {
 	uint32_t enable_mask;
 } __packed;
 
-#endif
+#endif /* __IPC_PM_H__ */

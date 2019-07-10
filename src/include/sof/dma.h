@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_DMA_H__
-#define __INCLUDE_DMA_H__
+#ifndef __SOF_DMA_H__
+#define __SOF_DMA_H__
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -407,4 +407,4 @@ int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag);
 
 /** @}*/
 
-#endif
+#endif /* __SOF_DMA_H__ */

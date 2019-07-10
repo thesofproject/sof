@@ -5,6 +5,9 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
+#ifndef __SOF_AUDIO_COEFFICIENTS_SRC_SRC_STD_INT32_TABLE_H__
+#define __SOF_AUDIO_COEFFICIENTS_SRC_SRC_STD_INT32_TABLE_H__
+
 /* SRC conversions */
 #include <sof/audio/coefficients/src/src_std_int32_1_2_2268_5000.h>
 #include <sof/audio/coefficients/src/src_std_int32_1_2_4535_5000.h>
@@ -218,3 +221,5 @@ struct src_stage *src_table2[10][15] = {
 	 &src_int32_0_0_0_0, &src_int32_0_0_0_0
 	}
 };
+
+#endif /* __SOF_AUDIO_COEFFICIENTS_SRC_SRC_STD_INT32_TABLE_H__ */

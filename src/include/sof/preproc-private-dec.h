@@ -7,17 +7,17 @@
 
 /* THIS FILE SHOULD NOT BE INCLUDED DIRECTLY */
 
-#ifdef __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE__
+#ifdef __SOF_PREPROC_PRIVATE_H__
 /* Macros defined in this file are only helpers for the macros that are
  * defined in header file containing "namespace"
- *     __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE__ .
+ *     __SOF_PREPROC_PRIVATE_H__ .
  * This combination of #ifdef and #ifndef should sufficently narrow
  * the "include-ability" of this dependent header file.
  * If you wish to use macros from this file directly, be *V E R Y* careful!
  * HIC SUNT DRACONES
  */
-#ifndef __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE_DEC__
-#define __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE_DEC__
+#ifndef __SOF_PREPROC_PRIVATE_DEC_H__
+#define __SOF_PREPROC_PRIVATE_DEC_H__
 
 /* The only sane way I found to decrement values in cpreproc */
 /* for instance META_DEC(3) will be tokenized to DEC_3
@@ -89,10 +89,10 @@
 #define _META_DEC_63  62
 #define _META_DEC_64  63
 
-#endif // __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE_DEC__
+#endif /* __SOF_PREPROC_PRIVATE_DEC_H__ */
 #else
 	#error \
 		Illegal use of header file: \
 		can only be included from context of \
 		__INCLUDE_MACRO_METAPROGRAMMING_PRIVATE__
-#endif // __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE__
+#endif /* __SOF_PREPROC_PRIVATE_H__ */

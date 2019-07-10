@@ -7,8 +7,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef IIR_H
-#define IIR_H
+#ifndef __SOF_AUDIO_EQ_IIR_IIR_H__
+#define __SOF_AUDIO_EQ_IIR_IIR_H__
 
 #include <user/eq.h>
 
@@ -36,4 +36,4 @@ void iir_unmute_df2t(struct iir_state_df2t *iir);
 
 void iir_reset_df2t(struct iir_state_df2t *iir);
 
-#endif
+#endif /* __SOF_AUDIO_EQ_IIR_IIR_H__ */

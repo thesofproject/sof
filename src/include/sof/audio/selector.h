@@ -11,8 +11,8 @@
  * \authors Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#ifndef SELECTOR_H
-#define SELECTOR_H
+#ifndef __SOF_AUDIO_SELECTOR_H__
+#define __SOF_AUDIO_SELECTOR_H__
 
 #include <stdint.h>
 #include <sof/audio/component.h>
@@ -74,4 +74,4 @@ typedef void (*sel_func)(struct comp_dev *, struct comp_buffer *,
  */
 sel_func sel_get_processing_function(struct comp_dev *dev);
 
-#endif /* SELECTOR_H */
+#endif /* __SOF_AUDIO_SELECTOR_H__ */

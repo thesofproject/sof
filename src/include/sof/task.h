@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_TASK_H__
-#define __INCLUDE_TASK_H__
+#ifndef __SOF_TASK_H__
+#define __SOF_TASK_H__
 
 #include <arch/task.h>
 
@@ -27,4 +27,4 @@ static inline int run_task(struct task *task)
 	return arch_run_task(task);
 }
 
-#endif
+#endif /* __SOF_TASK_H__ */

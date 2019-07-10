@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_TIMER__
-#define __INCLUDE_TIMER__
+#ifndef __SOF_TIMER_H__
+#define __SOF_TIMER_H__
 
 #include <arch/timer.h>
 #include <stdint.h>
@@ -47,4 +47,4 @@ static inline uint64_t timer_get_system(struct timer *timer)
 	return arch_timer_get_system(timer);
 }
 
-#endif
+#endif /* __SOF_TIMER_H__ */

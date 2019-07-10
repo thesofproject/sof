@@ -7,8 +7,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef TRIG_H
-#define TRIG_H
+#ifndef __SOF_MATH_TRIG_H__
+#define __SOF_MATH_TRIG_H__
 
 #define PI_DIV2_Q4_28 421657428
 #define PI_Q4_28      843314857
@@ -16,4 +16,4 @@
 
 int32_t sin_fixed(int32_t w); /* Input is Q4.28, output is Q1.31 */
 
-#endif
+#endif /* __SOF_MATH_TRIG_H__ */

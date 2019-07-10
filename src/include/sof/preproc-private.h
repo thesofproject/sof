@@ -7,17 +7,17 @@
 
 /* THIS FILE SHOULD NOT BE INCLUDED DIRECTLY */
 
-#ifdef __INCLUDE_MACRO_METAPROGRAMMING__
+#ifdef __SOF_PREPROC_H__
 /* Macros defined in this file are only helpers for the macros that are
  * defined in header file containing "namespace"
- *     __INCLUDE_MACRO_METAPROGRAMMING__ .
+ *     __SOF_PREPROC_H__ .
  * This combination of #ifdef and #ifndef should sufficently narrow
  * the "include-ability" of this dependent header file.
  * If you wish to use macros from this file directly, be *V E R Y* careful!
  * HIC SUNT DRACONES
  */
-#ifndef __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE__
-#define __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE__
+#ifndef __SOF_PREPROC_PRIVATE_H__
+#define __SOF_PREPROC_PRIVATE_H__
 
 /* Include
  * #define _META_DEC_0   0
@@ -234,10 +234,10 @@
 #define _META_CONCAT_DELIM(delim, x, y) META_CONCAT(META_CONCAT(x, delim),y)
 #define _META_CONCAT_DELIM_(x, y) _META_CONCAT_DELIM(_, x, y)
 
-#endif // __INCLUDE_MACRO_METAPROGRAMMING_PRIVATE__
+#endif /* __SOF_PREPROC_PRIVATE_H__ */
 #else
 	#error \
 		Illegal use of header file: \
 		can only be included from context of \
 		__INCLUDE_MACRO_METAPROGRAMMING__
-#endif // __INCLUDE_MACRO_METAPROGRAMMING__
+#endif /* __SOF_PREPROC_H__ */

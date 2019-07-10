@@ -6,8 +6,8 @@
  *         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_USER_TRACE_H__
-#define __INCLUDE_UAPI_USER_TRACE_H__
+#ifndef __USER_TRACE_H__
+#define __USER_TRACE_H__
 
 #include <sof/common.h>
 #include <stdint.h>
@@ -98,4 +98,4 @@ struct log_entry_header {
 	uint32_t log_entry_address;	/* Address of log entry in ELF */
 } __packed;
 
-#endif //#ifndef __INCLUDE_LOGGING__
+#endif /* __USER_TRACE_H__ */

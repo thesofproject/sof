@@ -5,8 +5,8 @@
  * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_UT__
-#define __INCLUDE_SOF_UT__
+#ifndef __SOF_UT_H__
+#define __SOF_UT_H__
 
 /* UT_STATIC makes function unit-testable (non-static) when built for unit tests
  */
@@ -16,4 +16,4 @@
 #define UT_STATIC static
 #endif
 
-#endif
+#endif /* __SOF_UT_H__ */

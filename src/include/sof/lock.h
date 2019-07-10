@@ -10,8 +10,8 @@
  * Simple spinlock implementation for SOF.
  */
 
-#ifndef __INCLUDE_LOCK__
-#define __INCLUDE_LOCK__
+#ifndef __SOF_LOCK_H__
+#define __SOF_LOCK_H__
 
 #define DEBUG_LOCKS	0
 #define DEBUG_LOCKS_VERBOSE	0
@@ -215,4 +215,4 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
 #endif
 
-#endif
+#endif /* __SOF_LOCK_H__ */

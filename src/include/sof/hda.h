@@ -5,11 +5,11 @@
  * Author: Marcin Maka <marcin.maka@linux.intel.com>
  */
 
-#ifndef __INCLUDE_HDA__
-#define __INCLUDE_HDA__
+#ifndef __SOF_HDA_H__
+#define __SOF_HDA_H__
 
 #include <sof/dai.h>
 
 extern const struct dai_driver hda_driver;
 
-#endif /* __INCLUDE_HDA__ */
+#endif /* __SOF_HDA_H__ */

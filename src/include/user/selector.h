@@ -5,8 +5,8 @@
  * Author: Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#ifndef __INCLUDE_USER_SELECTOR_H__
-#define __INCLUDE_USER_SELECTOR_H__
+#ifndef __USER_SELECTOR_H__
+#define __USER_SELECTOR_H__
 
 /** \brief Selector component configuration data. */
 struct sof_sel_config {
@@ -19,4 +19,4 @@ struct sof_sel_config {
 	uint32_t sel_channel;	/**< 0..3 */
 };
 
-#endif
+#endif /* __USER_SELECTOR_H__ */

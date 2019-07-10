@@ -5,8 +5,8 @@
  * Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_GPIO__
-#define __INCLUDE_GPIO__
+#ifndef __SOF_GPIO_H__
+#define __SOF_GPIO_H__
 
 #include <stdint.h>
 
@@ -44,4 +44,4 @@ int gpio_configure(const struct gpio *gpio, unsigned int port,
 const struct gpio *gpio_get(unsigned int id);
 int gpio_probe(const struct gpio *gpio);
 
-#endif
+#endif /* __SOF_GPIO_H__ */

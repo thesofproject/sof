@@ -13,8 +13,8 @@
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef VOLUME_H
-#define VOLUME_H
+#ifndef __SOF_AUDIO_VOLUME_H__
+#define __SOF_AUDIO_VOLUME_H__
 
 #include <stdint.h>
 #include <sof/audio/component.h>
@@ -141,4 +141,4 @@ static inline scale_vol vol_get_processing_function(struct comp_dev *dev)
 	return NULL;
 }
 
-#endif /* VOLUME_H */
+#endif /* __SOF_AUDIO_VOLUME_H__ */

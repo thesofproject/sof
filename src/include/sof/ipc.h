@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_IPC_H__
-#define __INCLUDE_IPC_H__
+#ifndef __SOF_IPC_H__
+#define __SOF_IPC_H__
 
 #include <stdint.h>
 #include <sof/trace.h>
@@ -230,4 +230,4 @@ int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe);
 
 int ipc_cmd(void);
 
-#endif
+#endif /* __SOF_IPC_H__ */

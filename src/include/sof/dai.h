@@ -13,8 +13,8 @@
   * \author Keyon Jie <yang.jie@linux.intel.com>
   */
 
-#ifndef __INCLUDE_DAI_H__
-#define __INCLUDE_DAI_H__
+#ifndef __SOF_DAI_H__
+#define __SOF_DAI_H__
 
 #include <stdint.h>
 #include <sof/audio/component.h>
@@ -231,4 +231,4 @@ static inline int dai_get_info(struct dai *dai, int info)
 
 /** @}*/
 
-#endif
+#endif /* __SOF_DAI_H__ */

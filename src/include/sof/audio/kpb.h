@@ -5,8 +5,8 @@
  * Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#ifndef __INCLUDE_AUDIO_KPB_H__
-#define __INCLUDE_AUDIO_KPB_H__
+#ifndef __SOF_AUDIO_KPB_H__
+#define __SOF_AUDIO_KPB_H__
 
 #include <platform/platform.h>
 #include <sof/notifier.h>
@@ -105,4 +105,4 @@ struct dd {
 void sys_comp_kpb_init(void);
 #endif
 
-#endif
+#endif /* __SOF_AUDIO_KPB_H__ */

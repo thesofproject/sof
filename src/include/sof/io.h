@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_IO__
-#define __INCLUDE_IO__
+#ifndef __SOF_IO_H__
+#define __SOF_IO_H__
 
 #include <stdint.h>
 #include <config.h>
@@ -51,4 +51,4 @@ static inline void io_reg_write16(uint32_t reg, uint16_t val)
 
 #endif
 
-#endif
+#endif /* __SOF_IO_H__ */

@@ -6,8 +6,8 @@
  *         Xiuli Pan <xiuli.pan@linux.intel.com>
  */
 
-#ifndef __INCLUDE_MAILBOX__
-#define __INCLUDE_MAILBOX__
+#ifndef __SOF_MAILBOX_H__
+#define __SOF_MAILBOX_H__
 
 #include <platform/mailbox.h>
 #include <arch/cache.h>
@@ -102,4 +102,4 @@ void mailbox_sw_reg_write(size_t offset, uint32_t src)
 				sizeof(src));
 }
 
-#endif
+#endif /* __SOF_MAILBOX_H__ */

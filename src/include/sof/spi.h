@@ -5,8 +5,8 @@
  * Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SPI_H__
-#define __INCLUDE_SPI_H__
+#ifndef __SOF_SPI_H__
+#define __SOF_SPI_H__
 
 #include <stdint.h>
 
@@ -39,4 +39,4 @@ struct spi *spi_get(enum spi_type type);
 int spi_install(const struct spi_platform_data *plat, size_t n);
 void spi_init(void);
 
-#endif
+#endif /* __SOF_SPI_H__ */

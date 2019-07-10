@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_AGENT__
-#define __INCLUDE_SOF_AGENT__
+#ifndef __SOF_AGENT_H__
+#define __SOF_AGENT_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -24,4 +24,4 @@ struct sa {
 void sa_enter_idle(struct sof *sof);
 void sa_init(struct sof *sof);
 
-#endif
+#endif /* __SOF_AGENT_H__ */

@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_CLOCK__
-#define __INCLUDE_CLOCK__
+#ifndef __SOF_CLK_H__
+#define __SOF_CLK_H__
 
 #include <stdint.h>
 #include <arch/timer.h>
@@ -41,4 +41,4 @@ void platform_timer_set_delta(struct timer *timer, uint64_t ns);
 
 void clock_init(void);
 
-#endif
+#endif /* __SOF_CLK_H__ */

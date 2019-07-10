@@ -5,8 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef FIR_HIFI3_H
-#define FIR_HIFI3_H
+#ifndef __SOF_AUDIO_EQ_FIR_FIR_HIFI3_H__
+#define __SOF_AUDIO_EQ_FIR_FIR_HIFI3_H__
 
 #include <sof/audio/eq_fir/fir_config.h>
 
@@ -243,4 +243,4 @@ static inline void fir_32x16_2x_hifi3(struct fir_state_32x16 *fir, ae_int32 x0,
 }
 
 #endif
-#endif
+#endif /* __SOF_AUDIO_EQ_FIR_FIR_HIFI3_H__ */

@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_INTERRUPT_MAP__
-#define __INCLUDE_INTERRUPT_MAP__
+#ifndef __SOF_INTERRUPT_MAP_H__
+#define __SOF_INTERRUPT_MAP_H__
 
 #include <config.h>
 
@@ -70,4 +70,4 @@
 #define SOF_IRQ_ID(_bit)	0
 #endif
 
-#endif
+#endif /* __SOF_INTERRUPT_MAP_H__ */

@@ -6,8 +6,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_DEBUG__
-#define __INCLUDE_DEBUG__
+#ifndef __SOF_DEBUG_H__
+#define __SOF_DEBUG_H__
 
 #include <sof/sof.h>
 #include <config.h>
@@ -164,4 +164,4 @@ static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 	return p;
 }
 
-#endif
+#endif /* __SOF_DEBUG_H__ */

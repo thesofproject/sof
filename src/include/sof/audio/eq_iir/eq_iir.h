@@ -7,8 +7,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef EQ_IIR_H
-#define EQ_IIR_H
+#ifndef __SOF_AUDIO_EQ_IIR_EQ_IIR_H__
+#define __SOF_AUDIO_EQ_IIR_EQ_IIR_H__
 
 /** \brief IIR EQ processing functions map item. */
 struct eq_iir_func_map {
@@ -26,4 +26,4 @@ typedef void (*eq_iir_func)(struct comp_dev *dev,
 			    struct comp_buffer *sink,
 			    uint32_t frames);
 
-#endif
+#endif /* __SOF_AUDIO_EQ_IIR_EQ_IIR_H__ */

@@ -11,8 +11,8 @@
  * \authors Artur Kloniecki <arturx.kloniecki@linux.intel.com>
  */
 
-#ifndef MUX_H
-#define MUX_H
+#ifndef __SOF_AUDIO_MUX_H__
+#define __SOF_AUDIO_MUX_H__
 
 #include <config.h>
 
@@ -84,4 +84,4 @@ demux_func demux_get_processing_function(struct comp_dev *dev);
 
 #endif /* CONFIG_COMP_MUX */
 
-#endif /* MUX_H */
+#endif /* __SOF_AUDIO_MUX_H__ */

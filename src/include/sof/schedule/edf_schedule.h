@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_SOF_EDF_SCHEDULE_H__
-#define __INCLUDE_SOF_EDF_SCHEDULE_H__
+#ifndef __SOF_SCHEDULE_EDF_SCHEDULE_H__
+#define __SOF_SCHEDULE_EDF_SCHEDULE_H__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -44,4 +44,4 @@ struct edf_task_pdata {
 
 extern struct scheduler_ops schedule_edf_ops;
 
-#endif /* __INCLUDE_SOF_EDF_SCHEDULE_H__ */
+#endif /* __SOF_SCHEDULE_EDF_SCHEDULE_H__ */

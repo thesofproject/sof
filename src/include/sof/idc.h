@@ -11,8 +11,8 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#ifndef __INCLUDE_IDC_H__
-#define __INCLUDE_IDC_H__
+#ifndef __SOF_IDC_H__
+#define __SOF_IDC_H__
 
 #include <sof/schedule/schedule.h>
 #include <sof/trace.h>
@@ -97,4 +97,4 @@ struct idc {
 	struct task idc_task;		/**< IDC processing task */
 };
 
-#endif
+#endif /* __SOF_IDC_H__ */

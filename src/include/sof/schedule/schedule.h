@@ -6,8 +6,8 @@
  */
 
 /* Generic schedule api header */
-#ifndef __INCLUDE_SOF_SCHEDULER_H__
-#define __INCLUDE_SOF_SCHEDULER_H__
+#ifndef __SOF_SCHEDULE_SCHEDULE_H__
+#define __SOF_SCHEDULE_SCHEDULE_H__
 
 #include <stdint.h>
 #include <sof/list.h>
@@ -118,4 +118,4 @@ int schedule_task_cancel(struct task *task);
 
 void schedule_task_free(struct task *task);
 
-#endif /* __INCLUDE_SOF_SCHEDULER_H__ */
+#endif /* __SOF_SCHEDULE_SCHEDULE_H__ */

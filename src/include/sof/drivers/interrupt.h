@@ -5,8 +5,8 @@
  * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_DRIVERS_INTERRUPT__
-#define __INCLUDE_DRIVERS_INTERRUPT__
+#ifndef __SOF_DRIVERS_INTERRUPT_H__
+#define __SOF_DRIVERS_INTERRUPT_H__
 
 #include <sof/interrupt.h>
 
@@ -19,4 +19,4 @@ uint32_t platform_interrupt_get_enabled(void);
 void platform_interrupt_mask(uint32_t irq, uint32_t mask);
 void platform_interrupt_unmask(uint32_t irq, uint32_t mask);
 
-#endif
+#endif /* __SOF_DRIVERS_INTERRUPT_H__ */

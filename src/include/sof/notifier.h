@@ -5,8 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifndef __INCLUDE_NOTIFIER__
-#define __INCLUDE_NOTIFIER__
+#ifndef __SOF_NOTIFIER_H__
+#define __SOF_NOTIFIER_H__
 
 #include <stdint.h>
 #include <sof/list.h>
@@ -56,4 +56,4 @@ void init_system_notify(struct sof *sof);
 
 void free_system_notify(void);
 
-#endif
+#endif /* __SOF_NOTIFIER_H__ */

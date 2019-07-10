@@ -5,11 +5,11 @@
  * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __INCLUDE_AUDIO_MIXER_H__
-#define __INCLUDE_AUDIO_MIXER_H__
+#ifndef __SOF_AUDIO_MIXER_H__
+#define __SOF_AUDIO_MIXER_H__
 
 #ifdef UNIT_TEST
 void sys_comp_mixer_init(void);
 #endif
 
-#endif
+#endif /* __SOF_AUDIO_MIXER_H__ */

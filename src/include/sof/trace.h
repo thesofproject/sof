@@ -7,8 +7,8 @@
  *         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
  */
 
-#ifndef __INCLUDE_TRACE__
-#define __INCLUDE_TRACE__
+#ifndef __SOF_TRACE_H__
+#define __SOF_TRACE_H__
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -393,4 +393,4 @@ do {									\
 
 #endif
 
-#endif
+#endif /* __SOF_TRACE_H__ */

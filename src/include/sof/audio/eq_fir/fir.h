@@ -7,8 +7,8 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef FIR_H
-#define FIR_H
+#ifndef __SOF_AUDIO_EQ_FIR_FIR_H__
+#define __SOF_AUDIO_EQ_FIR_FIR_H__
 
 #include <sof/audio/eq_fir/fir_config.h>
 
@@ -101,4 +101,4 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 }
 
 #endif
-#endif
+#endif /* __SOF_AUDIO_EQ_FIR_FIR_H__ */

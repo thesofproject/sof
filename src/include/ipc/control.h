@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_CONTROL_H__
-#define __INCLUDE_UAPI_IPC_CONTROL_H__
+#ifndef __IPC_CONTROL_H__
+#define __IPC_CONTROL_H__
 
 #include <kernel/header.h>
 #include <ipc/header.h>
@@ -180,4 +180,4 @@ struct sof_ipc_comp_event {
 
 /** @}*/
 
-#endif
+#endif /* __IPC_CONTROL_H__ */

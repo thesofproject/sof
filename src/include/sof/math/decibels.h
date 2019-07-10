@@ -6,8 +6,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef DECIBELS_H
-#define DECIBELS_H
+#ifndef __SOF_MATH_DECIBELS_H__
+#define __SOF_MATH_DECIBELS_H__
 
 #include <stdint.h>
 
@@ -19,4 +19,4 @@
 int32_t exp_fixed(int32_t x); /* Input is Q5.27, output is Q12.20 */
 int32_t db2lin_fixed(int32_t x); /* Input is Q8.24, output is Q12.20 */
 
-#endif
+#endif /* __SOF_MATH_DECIBELS_H__ */

@@ -5,8 +5,8 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
-#ifndef _EDMA_H
-#define _EDMA_H
+#ifndef __SOF_EDMA_H__
+#define __SOF_EDMA_H__
 
 #include <stdint.h>
 
@@ -31,4 +31,4 @@
 
 int edma_init(void);
 
-#endif
+#endif /* __SOF_EDMA_H__ */

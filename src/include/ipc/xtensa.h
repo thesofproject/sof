@@ -13,8 +13,8 @@
  * \author Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_UAPI_IPC_XTENSA_H__
-#define __INCLUDE_UAPI_IPC_XTENSA_H__
+#ifndef __IPC_XTENSA_H__
+#define __IPC_XTENSA_H__
 
 #include <arch/offset-defs.h>
 #include <ipc/header.h>
@@ -57,4 +57,4 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t ar[];
 } __packed;
 
-#endif
+#endif /* __IPC_XTENSA_H__ */
