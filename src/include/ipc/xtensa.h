@@ -16,9 +16,9 @@
 #ifndef __IPC_XTENSA_H__
 #define __IPC_XTENSA_H__
 
-#include <arch/offset-defs.h>
 #include <ipc/header.h>
 #include <sof/common.h>
+#include <stdint.h>
 
 /*
  * Architecture specific debug

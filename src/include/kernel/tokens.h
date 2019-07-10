@@ -98,7 +98,7 @@
 #define SOF_TKN_TONE_SAMPLE_RATE		800
 
 /* Processing Components */
-#define SOF_TKN_PROCESS_TYPE                    900
+#define SOF_TKN_PROCESS_TYPE			900
 
 /* for backward compatibility */
 #define SOF_TKN_EFFECT_TYPE	SOF_TKN_PROCESS_TYPE

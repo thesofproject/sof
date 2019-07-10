@@ -9,6 +9,7 @@
 #define __USER_DETECT_TEST_H__
 
 #include <sof/common.h>
+#include <stdint.h>
 
 /** IPC blob types */
 #define SOF_DETECT_TEST_CONFIG	0

@@ -16,9 +16,11 @@
 #ifndef __IPC_CONTROL_H__
 #define __IPC_CONTROL_H__
 
-#include <kernel/header.h>
 #include <ipc/header.h>
+#include <ipc/stream.h>
+#include <kernel/header.h>
 #include <sof/common.h>
+#include <stdint.h>
 
 /** \addtogroup sof_uapi_control uAPI Control
  *  SOF uAPI specification - component controls.

@@ -16,8 +16,8 @@
 #ifndef __IPC_HEADER_H__
 #define __IPC_HEADER_H__
 
-#include <kernel/abi.h>
 #include <sof/common.h>
+#include <stdint.h>
 
 /** \addtogroup sof_uapi uAPI
  *  SOF uAPI specification.

@@ -18,6 +18,7 @@
 
 #include <ipc/header.h>
 #include <sof/common.h>
+#include <stdint.h>
 
 /*
  * Component

@@ -14,6 +14,7 @@
 #define __KERNEL_FW_H__
 
 #include <sof/common.h>
+#include <stdint.h>
 
 #define SND_SOF_FW_SIG_SIZE	4
 #define SND_SOF_FW_ABI		1

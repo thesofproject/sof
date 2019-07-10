@@ -17,6 +17,7 @@
 #define __KERNEL_HEADER_H__
 
 #include <sof/common.h>
+#include <stdint.h>
 
 /**
  * \brief Header for all non IPC ABI data.

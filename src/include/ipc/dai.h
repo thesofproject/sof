@@ -16,9 +16,10 @@
 #ifndef __IPC_DAI_H__
 #define __IPC_DAI_H__
 
-#include <ipc/header.h>
 #include <ipc/dai-intel.h>
+#include <ipc/header.h>
 #include <sof/common.h>
+#include <stdint.h>
 
 /*
  * DAI Configuration.

@@ -8,8 +8,8 @@
 #ifndef __USER_EQ_H__
 #define __USER_EQ_H__
 
-#include <kernel/header.h>
 #include <sof/common.h>
+#include <stdint.h>
 
 /* FIR EQ type */
 
