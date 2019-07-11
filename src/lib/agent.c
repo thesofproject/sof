@@ -19,9 +19,7 @@
 #include <sof/alloc.h>
 #include <sof/clk.h>
 #include <sof/trace.h>
-#include <platform/timer.h>
-#include <platform/platform.h>
-#include <platform/clk.h>
+#include <sof/platform.h>
 #include <sof/drivers/timer.h>
 
 #define trace_sa(__e, ...) \

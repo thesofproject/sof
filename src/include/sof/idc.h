@@ -14,6 +14,8 @@
 #ifndef __SOF_IDC_H__
 #define __SOF_IDC_H__
 
+#include <arch/idc.h>
+#include <platform/idc.h>
 #include <sof/schedule/schedule.h>
 #include <sof/trace.h>
 #include <stdint.h>

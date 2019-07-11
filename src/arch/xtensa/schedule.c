@@ -11,7 +11,7 @@
  */
 
 #include <xtos-structs.h>
-#include <arch/cpu.h>
+#include <sof/cpu.h>
 #include <sof/schedule/schedule.h>
 
 struct schedule_data **arch_schedule_get_data(void)

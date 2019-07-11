@@ -7,7 +7,6 @@
 #include <sof/dma.h>
 #include <sof/atomic.h>
 #include <sof/alloc.h>
-#include <platform/dma.h>
 
 struct dma_info {
 	struct dma *dma_array;

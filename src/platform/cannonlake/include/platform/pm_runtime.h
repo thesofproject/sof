@@ -11,10 +11,14 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#ifdef __SOF_PM_RUNTIME_H__
+
 #ifndef __PLATFORM_PM_RUNTIME_H__
 #define __PLATFORM_PM_RUNTIME_H__
 
-#include <sof/pm_runtime.h>
+#include <stdint.h>
+
+struct pm_runtime_data;
 
 /** \brief Platform specific runtime power management data. */
 struct platform_pm_runtime_data {
@@ -34,8 +38,7 @@ void platform_pm_runtime_init(struct pm_runtime_data *prd);
  * \param[in] index Index of the device.
  * \param[in] flags Flags, set of RPM_...
  */
-void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
-			     uint32_t flags);
+void platform_pm_runtime_get(uint32_t context, uint32_t index, uint32_t flags);
 
 /**
  * \brief Releases platform specific power management resource.
@@ -44,8 +47,7 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
  * \param[in] index Index of the device.
  * \param[in] flags Flags, set of RPM_...
  */
-void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
-			     uint32_t flags);
+void platform_pm_runtime_put(uint32_t context, uint32_t index, uint32_t flags);
 
 /**
  * \brief Power gates platform specific hardware resources.
@@ -53,3 +55,9 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 void platform_pm_runtime_power_off(void);
 
 #endif /* __PLATFORM_PM_RUNTIME_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/pm_runtime.h"
+
+#endif /* __SOF_PM_RUNTIME_H__ */

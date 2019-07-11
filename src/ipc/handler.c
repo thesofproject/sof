@@ -14,8 +14,7 @@
 
 #include <stdbool.h>
 #include <sof/debug.h>
-#include <sof/timer.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/sof.h>
@@ -27,12 +26,6 @@
 #include <sof/trace.h>
 #include <sof/clk.h>
 #include <sof/math/numbers.h>
-#include <platform/interrupt.h>
-#include <platform/mailbox.h>
-#include <platform/dma.h>
-#include <platform/timer.h>
-#include <platform/idc.h>
-#include <platform/cpu.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/drivers/timer.h>

@@ -13,10 +13,7 @@
 #include <sof/lock.h>
 #include <sof/notifier.h>
 #include <sof/cpu.h>
-#include <platform/clk.h>
-#include <platform/clk-map.h>
-#include <platform/platform.h>
-#include <platform/cpu.h>
+#include <sof/platform.h>
 #include <sof/drivers/timer.h>
 #include <config.h>
 #include <stdint.h>
@@ -90,7 +87,7 @@ void clock_set_freq(int clock, uint32_t hz)
 	case CLK_CPU(0) ... CLK_CPU(PLATFORM_CORE_COUNT - 1):
 		set_freq = &clock_platform_set_cpu_freq;
 		freq_table = cpu_freq;
-		freq_table_size = ARRAY_SIZE(cpu_freq);
+		freq_table_size = NUM_CPU_FREQ;
 		notify_data.id = NOTIFIER_ID_CPU_FREQ;
 		notify_data.target_core_mask =
 			NOTIFIER_TARGET_CORE_MASK(cpu_get_id());
@@ -98,7 +95,7 @@ void clock_set_freq(int clock, uint32_t hz)
 	case CLK_SSP:
 		set_freq = &clock_platform_set_ssp_freq;
 		freq_table = ssp_freq;
-		freq_table_size = ARRAY_SIZE(ssp_freq);
+		freq_table_size = NUM_SSP_FREQ;
 		notify_data.id = NOTIFIER_ID_SSP_FREQ;
 		notify_data.target_core_mask = NOTIFIER_TARGET_CORE_ALL_MASK;
 		break;

@@ -5,13 +5,15 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
+#ifdef __SOF_PLATFORM_H__
+
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <sof/platform.h>
-#include <platform/interrupt.h>
-#include <platform/clk.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/clk.h>
 
 struct sof;
 
@@ -97,3 +99,9 @@ extern intptr_t _module_init_end;
 #endif
 
 #endif /* __PLATFORM_PLATFORM_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/platform.h"
+
+#endif /* __SOF_PLATFORM_H__ */

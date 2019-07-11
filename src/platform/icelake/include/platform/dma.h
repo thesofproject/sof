@@ -7,10 +7,10 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
+#ifdef __SOF_DMA_H__
+
 #ifndef __PLATFORM_DMA_H__
 #define __PLATFORM_DMA_H__
-
-#include <sof/dma.h>
 
 /* available DMACs */
 #define DMA_GP_LP_DMAC0		0
@@ -53,3 +53,9 @@
 int dmac_init(void);
 
 #endif /* __PLATFORM_DMA_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/dma.h"
+
+#endif /* __SOF_DMA_H__ */

@@ -11,13 +11,12 @@
 #include <sof/task.h>
 #include <sof/wait.h>
 #include <sof/debug.h>
-#include <sof/timer.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/timer.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/agent.h>
-#include <platform/idc.h>
-#include <platform/interrupt.h>
-#include <platform/platform.h>
+#include <sof/idc.h>
+#include <sof/platform.h>
 #include <sof/audio/pipeline.h>
 #include <sof/schedule/schedule.h>
 #include <sof/debug.h>

@@ -15,15 +15,12 @@
 #include <sof/debug.h>
 #include <sof/wait.h>
 #include <sof/schedule/schedule.h>
-#include <sof/timer.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/trace.h>
 #include <sof/lock.h>
 #include <sof/clk.h>
-#include <platform/clk.h>
-#include <platform/interrupt.h>
 #include <sof/drivers/timer.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 
 #define DEFAULT_TRY_TIMES 8
 

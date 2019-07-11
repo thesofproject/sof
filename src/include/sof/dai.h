@@ -16,8 +16,9 @@
 #ifndef __SOF_DAI_H__
 #define __SOF_DAI_H__
 
-#include <stdint.h>
+#include <platform/dai.h>
 #include <sof/audio/component.h>
+#include <stdint.h>
 
 /** \addtogroup sof_dai_drivers DAI Drivers
  *  DAI Drivers API specification.

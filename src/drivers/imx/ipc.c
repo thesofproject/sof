@@ -5,8 +5,8 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/debug.h>
-#include <sof/timer.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/timer.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/sof.h>
@@ -16,12 +16,8 @@
 #include <sof/alloc.h>
 #include <sof/wait.h>
 #include <sof/trace.h>
-
-#include <platform/interrupt.h>
-#include <platform/mailbox.h>
-#include <platform/dma.h>
-#include <platform/platform.h>
-#include <platform/mu.h>
+#include <sof/platform.h>
+#include <sof/mu.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <ipc/header.h>

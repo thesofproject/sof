@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_MEMORY_H__
+
 #ifndef __PLATFORM_MEMORY_H__
 #define __PLATFORM_MEMORY_H__
 
@@ -153,3 +155,9 @@ void platform_init_memmap(void);
 #define is_uncached(address)		0
 
 #endif /* __PLATFORM_MEMORY_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/memory.h"
+
+#endif /* __SOF_MEMORY_H__ */

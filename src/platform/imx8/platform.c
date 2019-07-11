@@ -4,19 +4,16 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <platform/memory.h>
-#include <platform/mailbox.h>
+#include <sof/memory.h>
+#include <sof/mailbox.h>
 #include <sof/edma.h>
-#include <platform/dma.h>
-#include <platform/dai.h>
-#include <platform/clk.h>
-#include <platform/timer.h>
-#include <platform/mu.h>
-#include <platform/cpu.h>
+#include <sof/dma.h>
+#include <sof/drivers/timer.h>
+#include <sof/mu.h>
 #include <ipc/info.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/sof.h>
 #include <sof/clk.h>
 #include <sof/schedule/schedule.h>

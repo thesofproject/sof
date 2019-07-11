@@ -11,9 +11,8 @@
 #include <sof/gpio.h>
 #include <sof/io.h>
 #include <sof/iomux.h>
-
-#include <platform/memory.h>
-#include <platform/platform.h>
+#include <sof/memory.h>
+#include <sof/platform.h>
 
 #define PORTA_DAT_REG	0x00
 #define PORTA_DIR_REG	0x04

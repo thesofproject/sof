@@ -15,10 +15,7 @@
 #include <sof/sof.h>
 #include <sof/mailbox.h>
 #include <sof/debug.h>
-#include <sof/timer.h>
 #include <sof/preproc.h>
-#include <platform/platform.h>
-#include <platform/timer.h>
 #include <user/trace.h>
 
 /* bootloader trace values */

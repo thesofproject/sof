@@ -6,14 +6,11 @@
 
 #include <xtensa/xtruntime.h>
 #include <xtensa/hal.h>
-#include <arch/timer.h>
-#include <platform/memory.h>
-#include <platform/interrupt.h>
-#include <platform/timer.h>
+#include <sof/memory.h>
 #include <sof/mailbox.h>
 #include <sof/debug.h>
-#include <sof/timer.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/timer.h>
+#include <sof/drivers/interrupt.h>
 #include <stdint.h>
 #include <errno.h>
 

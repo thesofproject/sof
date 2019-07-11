@@ -20,8 +20,8 @@
 #warning "The file is intended to be includded in assembly files only."
 #endif
 
-#include <platform/shim.h>
-#include <platform/platform.h>
+#include <sof/shim.h>
+#include <sof/platform.h>
 
 /**
  * powers down entire hpsram. on entry lirerals and code for section from

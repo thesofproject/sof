@@ -8,7 +8,7 @@
 #ifndef __SOF_AUDIO_KPB_H__
 #define __SOF_AUDIO_KPB_H__
 
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <sof/notifier.h>
 #include <sof/trace.h>
 #include <sof/schedule/schedule.h>

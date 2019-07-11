@@ -11,7 +11,7 @@
  */
 
 #include <xtos-structs.h>
-#include <arch/cpu.h>
+#include <sof/cpu.h>
 #include <sof/notifier.h>
 
 struct notify **arch_notify_get(void)

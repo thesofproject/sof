@@ -5,14 +5,10 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_MEMORY_H__
+
 #ifndef __PLATFORM_MEMORY_H__
 #define __PLATFORM_MEMORY_H__
-
-#include <config.h>
-
-#if CONFIG_HT_BAYTRAIL
-#include <baytrail/include/platform/memory.h>
-#endif
 
 #define HEAP_BUFFER_SIZE	(1024 * 128)
 #define SOF_STACK_SIZE		0x1000
@@ -25,3 +21,9 @@
 #define MAILBOX_BASE_SIZE	0x400
 
 #endif /* __PLATFORM_MEMORY_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/memory.h"
+
+#endif /* __SOF_MEMORY_H__ */

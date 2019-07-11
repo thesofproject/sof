@@ -10,8 +10,7 @@
 
 #include <sof/io.h>
 #include <sof/iomux.h>
-
-#include <platform/memory.h>
+#include <sof/memory.h>
 
 #define IOMUX_PIN_UNCONFIGURED 0
 

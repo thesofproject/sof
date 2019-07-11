@@ -7,15 +7,14 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
+#ifdef __SOF_MEMORY_H__
+
 #ifndef __PLATFORM_MEMORY_H__
 #define __PLATFORM_MEMORY_H__
 
 #include <config.h>
-#include <platform/cpu.h>
-
-#if !defined(__ASSEMBLER__) && !defined(LINKER)
 #include <cavs/memory.h>
-#endif
+#include <sof/cpu.h>
 
 /* physical DSP addresses */
 
@@ -404,3 +403,9 @@
 	(((uint32_t)(address) & HP_SRAM_MASK) != HP_SRAM_BASE)
 
 #endif /* __PLATFORM_MEMORY_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/memory.h"
+
+#endif /* __SOF_MEMORY_H__ */

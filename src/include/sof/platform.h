@@ -14,6 +14,10 @@
 #ifndef __SOF_PLATFORM_H__
 #define __SOF_PLATFORM_H__
 
+#include <platform/platform.h>
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+
 #include <sof/sof.h>
 
 /** \addtogroup platform_api Platform API
@@ -47,5 +51,7 @@ int platform_boot_complete(uint32_t boot_message);
 int platform_init(struct sof *sof);
 
 /** @}*/
+
+#endif
 
 #endif /* __SOF_PLATFORM_H__ */

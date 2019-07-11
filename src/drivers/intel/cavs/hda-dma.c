@@ -25,8 +25,7 @@
 #include <sof/audio/format.h>
 #include <sof/drivers/timer.h>
 #include <sof/math/numbers.h>
-#include <platform/dma.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <arch/cache.h>
 #include <arch/wait.h>
 #include <ipc/topology.h>

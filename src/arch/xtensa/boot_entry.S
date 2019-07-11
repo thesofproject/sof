@@ -13,9 +13,9 @@
  */
 
 #include <config.h>
-#include <platform/cpu.h>
-#include <platform/shim.h>
-#include <platform/platform.h>
+#include <sof/cpu.h>
+#include <sof/shim.h>
+#include <sof/platform.h>
 #include <xtensa/corebits.h>
 #include <xtensa/config/core-isa.h>
 

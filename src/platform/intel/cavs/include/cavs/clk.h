@@ -19,9 +19,8 @@
 
 #include <sof/cpu.h>
 #include <sof/io.h>
-#include <platform/shim.h>
+#include <sof/shim.h>
 #include <cavs/version.h>
-#include <platform/cpu.h>
 
 /** \brief Core(s) settings, up to PLATFORM_CORE_COUNT */
 #define CLK_CPU(x)	(x)

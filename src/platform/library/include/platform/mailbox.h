@@ -5,10 +5,12 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_MAILBOX_H__
+
 #ifndef __PLATFORM_MAILBOX_H__
 #define __PLATFORM_MAILBOX_H__
 
-#include <platform/memory.h>
+#include <sof/memory.h>
 
 #define MAILBOX_HOST_OFFSET	0x144000
 
@@ -47,3 +49,9 @@
 	(MAILBOX_BASE + MAILBOX_TRACE_OFFSET)
 
 #endif /* __PLATFORM_MAILBOX_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/mailbox.h"
+
+#endif /* __SOF_MAILBOX_H__ */

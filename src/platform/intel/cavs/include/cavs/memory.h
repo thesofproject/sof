@@ -11,7 +11,7 @@
 #define __CAVS_MEMORY_H__
 
 #include <config.h>
-#include <platform/cpu.h>
+#include <sof/cpu.h>
 
 #define SRAM_BANK_SIZE			(64 * 1024)
 

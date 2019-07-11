@@ -26,8 +26,7 @@
 
 #include <config.h>
 #include "xtos-structs.h"
-#include <arch/cpu.h>
-#include <platform/cpu.h>
+#include <sof/cpu.h>
 
 #if XCHAL_HAVE_INTERRUPTS
 #if CONFIG_SMP

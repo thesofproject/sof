@@ -7,6 +7,8 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
+#ifdef __SOF_DRIVERS_INTERRUPT_H__
+
 #ifndef __PLATFORM_INTERRUPT_H__
 #define __PLATFORM_INTERRUPT_H__
 
@@ -181,3 +183,9 @@
 #define SUE_DW_ICTL_IRQ_FIQ_PLEVEL	(0xD8 + SUE_DW_ICTL_BASE_ADDR)
 #define SUE_DW_ICTL_PR_N(x)		(0xE8 + x * 4 + SUE_DW_ICTL_BASE_ADDR)
 #endif /* __PLATFORM_INTERRUPT_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/interrupt.h"
+
+#endif /* __SOF_DRIVERS_INTERRUPT_H__ */

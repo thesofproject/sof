@@ -18,7 +18,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <xtensa/xtruntime.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 
 /* local functions */
 static int get_hex(unsigned char ch);

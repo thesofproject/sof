@@ -10,8 +10,8 @@
 #include <sof/trace.h>
 #include <sof/io.h>
 #include <user/manifest.h>
-#include <platform/platform.h>
-#include <platform/memory.h>
+#include <sof/platform.h>
+#include <sof/memory.h>
 
 #if CONFIG_SUECREEK
 #define MANIFEST_BASE	BOOT_LDR_MANIFEST_BASE

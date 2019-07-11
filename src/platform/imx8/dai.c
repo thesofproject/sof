@@ -7,7 +7,6 @@
 #include <sof/sof.h>
 #include <sof/dai.h>
 #include <sof/esai.h>
-#include <platform/dai.h>
 
 static struct dai esai[] = {
 {

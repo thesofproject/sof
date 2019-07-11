@@ -7,8 +7,7 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <platform/timer.h>
-#include <platform/shim.h>
+#include <sof/shim.h>
 #include <sof/debug.h>
 #include <sof/audio/component.h>
 #include <sof/clk.h>

@@ -17,10 +17,8 @@
 #include <sof/sof.h>
 #include <sof/spi.h>
 #include <sof/schedule/schedule.h>
-
-#include <platform/dma.h>
-#include <platform/memory.h>
-#include <platform/platform.h>
+#include <sof/memory.h>
+#include <sof/platform.h>
 
 #define	SPI_REG_CTRLR0		0x00
 #define	SPI_REG_CTRLR1		0x04

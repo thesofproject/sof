@@ -10,6 +10,8 @@
  * \brief DSP core parameters.
  */
 
+#ifdef __SOF_CPU_H__
+
 #ifndef __PLATFORM_CPU_H__
 #define __PLATFORM_CPU_H__
 
@@ -23,3 +25,9 @@
 #define PLATFORM_MASTER_CORE_ID	0
 
 #endif /* __PLATFORM_CPU_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/cpu.h"
+
+#endif /* __SOF_CPU_H__ */

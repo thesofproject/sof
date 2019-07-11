@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 #include <sof/list.h>
-#include <sof/timer.h>
+#include <sof/drivers/timer.h>
 #include <sof/alloc.h>
 #include <sof/schedule/schedule.h>
 #include <sof/trace.h>

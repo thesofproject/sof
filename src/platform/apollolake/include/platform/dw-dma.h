@@ -5,9 +5,17 @@
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#ifdef __SOF_DW_DMA_H__
+
 #ifndef __PLATFORM_DW_DMA_H__
 #define __PLATFORM_DW_DMA_H__
 
 #include <cavs/dw-dma.h>
 
 #endif /* __PLATFORM_DW_DMA_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/dw-dma.h"
+
+#endif /* __SOF_DW_DMA_H__ */

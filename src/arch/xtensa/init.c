@@ -12,11 +12,9 @@
 
 #include <config.h>
 #include <xtos-structs.h>
-#include <platform/memory.h>
-#include <sof/interrupt.h>
-#include <platform/interrupt.h>
+#include <sof/memory.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/mailbox.h>
-#include <arch/cpu.h>
 #include <arch/init.h>
 #include <sof/init.h>
 #include <sof/lock.h>
@@ -24,8 +22,8 @@
 #include <sof/panic.h>
 #include <sof/schedule/schedule.h>
 #include <sof/task.h>
-#include <platform/idc.h>
-#include <platform/cpu.h>
+#include <sof/idc.h>
+#include <sof/cpu.h>
 #include <stdint.h>
 
 #if DEBUG_LOCKS

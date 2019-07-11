@@ -9,7 +9,8 @@
 #define __SOF_CLK_H__
 
 #include <stdint.h>
-#include <arch/timer.h>
+#include <sof/drivers/timer.h>
+#include <platform/clk.h>
 
 #define CLOCK_NOTIFY_PRE	0
 #define CLOCK_NOTIFY_POST	1
@@ -30,6 +31,10 @@ struct freq_table {
 	uint32_t ticks_per_msec;
 	uint32_t enc;
 };
+
+extern struct freq_table *cpu_freq;
+
+extern struct freq_table *ssp_freq;
 
 uint32_t clock_get_freq(int clock);
 

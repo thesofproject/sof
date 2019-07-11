@@ -13,7 +13,7 @@
 #include <sof/trace.h>
 #include <sof/dai.h>
 #include <sof/lock.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <ipc/topology.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/component.h>

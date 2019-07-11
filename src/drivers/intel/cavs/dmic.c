@@ -6,7 +6,7 @@
 
 #include <sof/stream.h>
 #include <sof/dmic.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/pm_runtime.h>
 #include <sof/math/numbers.h>
 #include <sof/math/decibels.h>

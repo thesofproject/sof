@@ -8,7 +8,7 @@
 #ifndef __SOF_INIT_H__
 #define __SOF_INIT_H__
 
-#include <platform/platform.h>
+#include <sof/platform.h>
 
 struct sof;
 

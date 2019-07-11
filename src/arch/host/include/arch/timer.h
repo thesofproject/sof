@@ -8,7 +8,7 @@
 #ifndef __ARCH_TIMER_H__
 #define __ARCH_TIMER_H__
 
-#include <arch/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <stdint.h>
 #include <errno.h>
 

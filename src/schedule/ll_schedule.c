@@ -7,7 +7,7 @@
 
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
-#include <sof/timer.h>
+#include <sof/drivers/timer.h>
 #include <sof/list.h>
 #include <sof/clk.h>
 #include <sof/alloc.h>
@@ -17,9 +17,7 @@
 #include <sof/debug.h>
 #include <sof/cpu.h>
 #include <sof/atomic.h>
-#include <platform/clk.h>
-#include <platform/cpu.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <limits.h>
 
 /*

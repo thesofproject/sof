@@ -22,11 +22,7 @@
 
 #include <config.h>
 #include <errno.h>
-#include <platform/cpu.h>
-#include <platform/dma.h>
-#include <platform/dw-dma.h>
-#include <platform/interrupt.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <sof/alloc.h>
 #include <sof/audio/component.h>
 #include <sof/atomic.h>
@@ -34,14 +30,14 @@
 #include <sof/debug.h>
 #include <sof/dma.h>
 #include <sof/dw-dma.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/io.h>
 #include <sof/lock.h>
 #include <sof/pm_runtime.h>
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>
 #include <sof/stream.h>
-#include <sof/timer.h>
+#include <sof/drivers/timer.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
 #include <sof/string.h>

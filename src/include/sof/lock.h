@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 #include <arch/spinlock.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/trace.h>
 
 /*

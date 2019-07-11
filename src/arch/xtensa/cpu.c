@@ -12,9 +12,8 @@
 
 #include <arch/alloc.h>
 #include <arch/atomic.h>
-#include <arch/cpu.h>
-#include <arch/idc.h>
-#include <platform/platform.h>
+#include <sof/cpu.h>
+#include <sof/platform.h>
 #include <sof/idc.h>
 #include <sof/lock.h>
 #include <sof/notifier.h>

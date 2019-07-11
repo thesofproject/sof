@@ -7,7 +7,8 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/sof.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/shim.h>
 
 void platform_interrupt_init(void) {}
 

@@ -19,9 +19,7 @@
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <platform/dma.h>
 #include <arch/cache.h>
-
 #include <sof/drivers/timer.h>
 
 /* tracing */

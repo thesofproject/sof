@@ -13,9 +13,8 @@
 #define __SOF_WAIT_H__
 
 #include <stdint.h>
-
 #include <arch/wait.h>
-
+#include <sof/platform.h>
 #include <sof/lock.h>
 #include <sof/trace.h>
 #include <sof/schedule/schedule.h>

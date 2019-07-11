@@ -6,9 +6,8 @@
 
 #include <sof/dma.h>
 #include <sof/dw-dma.h>
-#include <platform/memory.h>
-#include <platform/interrupt.h>
-#include <platform/dma.h>
+#include <sof/memory.h>
+#include <sof/drivers/interrupt.h>
 #include <stdint.h>
 #include <sof/string.h>
 

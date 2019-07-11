@@ -5,11 +5,9 @@
 // Author: Keyon Jie <yang.jie@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/interrupt-map.h>
 #include <sof/alloc.h>
-#include <arch/interrupt.h>
-#include <platform/interrupt.h>
 #include <stdint.h>
 #include <stdlib.h>
 

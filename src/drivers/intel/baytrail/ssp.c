@@ -10,7 +10,7 @@
 #include <sof/stream.h>
 #include <sof/ssp.h>
 #include <sof/alloc.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 
 /* tracing */
 #define trace_ssp(__e, ...) \

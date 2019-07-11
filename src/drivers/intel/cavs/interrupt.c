@@ -8,16 +8,13 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/sof.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/interrupt-map.h>
 #include <sof/cpu.h>
-#include <arch/interrupt.h>
-#include <platform/interrupt.h>
-#include <platform/platform.h>
-#include <platform/shim.h>
+#include <sof/platform.h>
+#include <sof/shim.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <cavs/cpu.h>
 #include <cavs/version.h>
 
 /*

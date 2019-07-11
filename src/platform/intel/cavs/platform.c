@@ -7,19 +7,10 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <platform/memory.h>
-#include <platform/mailbox.h>
-#include <platform/shim.h>
-#include <platform/dma.h>
-#include <platform/dai.h>
-#include <platform/clk.h>
-#if defined(CONFIG_ICELAKE) || defined(CONFIG_SUECREEK)
-#include <platform/clk-map.h>
-#endif
-#include <platform/timer.h>
-#include <platform/interrupt.h>
-#include <platform/idc.h>
-#include <platform/cpu.h>
+#include <sof/memory.h>
+#include <sof/shim.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/idc.h>
 #include <ipc/info.h>
 #include <sof/mailbox.h>
 #include <sof/dai.h>

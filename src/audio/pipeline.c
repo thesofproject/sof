@@ -16,14 +16,12 @@
 #include <sof/debug.h>
 #include <sof/ipc.h>
 #include <sof/lock.h>
-#include <platform/timer.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/drivers/timer.h>
 #include <sof/cpu.h>
 #include <sof/idc.h>
-#include <platform/idc.h>
 #include <sof/schedule/schedule.h>
 
 /* generic pipeline data used by pipeline_comp_* functions */
