@@ -27,12 +27,18 @@ C_CONTROLMIXER(Master Playback Volume, PIPELINE_ID,
 	Channel register and shift for Front Left/Right,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
+#
+# Volume configuration
+#
+
+W_VENDORTUPLES(playback_pga_tokens, sof_volume_tokens,
+LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
+     `		', `SOF_TKN_VOLUME_RAMP_STEP_MS		"250"'))
+
+W_DATA(playback_pga_conf, playback_pga_tokens)
+
 # EQ initial parameters, in this case flat response
-CONTROLBYTES_PRIV(EQFIR_priv,
-`	bytes "0x18,0x00,0x00,0x00,0x02,0x00,0x01,0x00,'
-`	0x00,0x00,0x00,0x00,0x04,0x00,0xff,0xff,'
-`	0x00,0x40,0x00,0x00,0x00,0x00,0x00,0x00"'
-)
+include(`eq_fir_coef_flat.m4')
 
 # EQ Bytes control with max value of 255
 C_CONTROLBYTES(EQFIR, PIPELINE_ID,
@@ -52,7 +58,7 @@ C_CONTROLBYTES(EQFIR, PIPELINE_ID,
 W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
 
 # "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_FIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQFIR"))
