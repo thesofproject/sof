@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <sof/list.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 
 struct sof;
 

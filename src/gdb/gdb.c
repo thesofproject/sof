@@ -12,8 +12,6 @@
 
 #include <sof/gdb/gdb.h>
 #include <sof/gdb/ringbuffer.h>
-#include <arch/gdb/xtensa-defs.h>
-#include <arch/gdb/utilities.h>
 #include <sof/string.h>
 #include <signal.h>
 #include <stdint.h>

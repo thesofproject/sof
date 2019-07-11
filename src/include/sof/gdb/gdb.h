@@ -8,6 +8,9 @@
 #ifndef __SOF_GDB_GDB_H__
 #define __SOF_GDB_GDB_H__
 
+#include <arch/gdb/init.h>
+#include <arch/gdb/utilities.h>
+
 #define GDB_BUFMAX 256
 #define GDB_NUMBER_OF_REGISTERS 64
 #define GDB_DISABLE_LOWER_INTERRUPTS_MASK ~0x1F

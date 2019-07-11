@@ -5,13 +5,14 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_WAIT_H__
+
 #ifndef __ARCH_WAIT_H__
 #define __ARCH_WAIT_H__
 
 #include <xtensa/xtruntime.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/panic.h>
-
 #include <ipc/trace.h>
 
 #if defined(PLATFORM_WAITI_DELAY)
@@ -59,3 +60,9 @@ static inline void idelay(int n)
 }
 
 #endif /* __ARCH_WAIT_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/wait.h"
+
+#endif /* __SOF_WAIT_H__ */

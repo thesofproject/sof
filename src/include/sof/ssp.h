@@ -10,7 +10,7 @@
 
 #include <sof/dai.h>
 #include <sof/io.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/schedule/schedule.h>
 #include <sof/trace.h>
 #include <sof/wait.h>

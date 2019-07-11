@@ -9,13 +9,12 @@
 #include <stddef.h>
 #include <errno.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/alloc.h>
 #include <sof/debug.h>
 #include <sof/ipc.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>

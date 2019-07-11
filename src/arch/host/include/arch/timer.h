@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_DRIVERS_TIMER_H__
+
 #ifndef __ARCH_TIMER_H__
 #define __ARCH_TIMER_H__
 
@@ -26,3 +28,9 @@ static inline int arch_timer_set(struct timer *timer,
 static inline void arch_timer_clear(struct timer *timer) {}
 
 #endif /* __ARCH_TIMER_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/timer.h"
+
+#endif /* __SOF_DRIVERS_TIMER_H__ */

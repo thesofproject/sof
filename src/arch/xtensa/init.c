@@ -15,9 +15,9 @@
 #include <sof/memory.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/mailbox.h>
-#include <arch/init.h>
 #include <sof/init.h>
-#include <sof/lock.h>
+#include <sof/init.h>
+#include <sof/spinlock.h>
 #include <sof/notifier.h>
 #include <sof/panic.h>
 #include <sof/schedule/schedule.h>

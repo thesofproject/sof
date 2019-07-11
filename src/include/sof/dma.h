@@ -19,11 +19,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sof/list.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/sof.h>
 #include <sof/wait.h>
 #include <sof/bit.h>
-#include <arch/atomic.h>
+#include <sof/atomic.h>
 #include <platform/dma.h>
 
 /** \addtogroup sof_dma_drivers DMA Drivers

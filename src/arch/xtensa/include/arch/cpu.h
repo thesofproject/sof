@@ -14,17 +14,23 @@
 #include <xtensa/config/core.h>
 
 #if CONFIG_SMP
+
+void cpu_alloc_core_context(int id);
+
 void arch_cpu_enable_core(int id);
 
 void arch_cpu_disable_core(int id);
 
 int arch_cpu_is_core_enabled(int id);
+
 #else
+
 static inline void arch_cpu_enable_core(int id) { }
 
 static inline void arch_cpu_disable_core(int id) { }
 
 static inline int arch_cpu_is_core_enabled(int id) { return 1; }
+
 #endif
 
 static inline int arch_cpu_get_id(void)

@@ -10,7 +10,7 @@
 #include <sof/clk.h>
 #include <sof/list.h>
 #include <sof/alloc.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/notifier.h>
 #include <sof/cpu.h>
 #include <sof/platform.h>

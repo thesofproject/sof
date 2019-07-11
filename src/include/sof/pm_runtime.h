@@ -15,7 +15,7 @@
 #define __SOF_PM_RUNTIME_H__
 
 #include <platform/pm_runtime.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
 

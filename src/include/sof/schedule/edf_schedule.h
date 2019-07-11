@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <sof/wait.h>
 #include <sof/schedule/schedule.h>

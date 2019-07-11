@@ -8,8 +8,8 @@
 #include <sof/trace.h>
 #include <sof/sof.h>
 #include <sof/alloc.h>
-#include <arch/cache.h>
-#include <sof/lock.h>
+#include <sof/cache.h>
+#include <sof/spinlock.h>
 #include <sof/dma-trace.h>
 #include <sof/cpu.h>
 #include <sof/preproc.h>

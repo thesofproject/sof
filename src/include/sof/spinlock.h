@@ -10,8 +10,8 @@
  * Simple spinlock implementation for SOF.
  */
 
-#ifndef __SOF_LOCK_H__
-#define __SOF_LOCK_H__
+#ifndef __SOF_SPINLOCK_H__
+#define __SOF_SPINLOCK_H__
 
 #define DEBUG_LOCKS	0
 #define DEBUG_LOCKS_VERBOSE	0
@@ -31,7 +31,7 @@
  * 0xda0 [41.306413]	delta [0.000002]	value 0x0000000001000348
  *
  * "eal" indicates we are holding a lock with interrupts OFF. The next value
- * is the line number of where the lock was aquired. The second number is the
+ * is the line number of where the lock was acquired. The second number is the
  * number of other locks held whilst this lock is held and the subsequent
  * numbers list each lock and the line number of it's holder. e.g. to find
  * the locks :-
@@ -215,4 +215,4 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 
 #endif
 
-#endif /* __SOF_LOCK_H__ */
+#endif /* __SOF_SPINLOCK_H__ */

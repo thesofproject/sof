@@ -5,6 +5,8 @@
  * Author: Rander Wang <rander.wang@linux.intel.com>
  */
 
+#ifdef __SOF_CPU_H__
+
 #ifndef __ARCH_CPU_H__
 #define __ARCH_CPU_H__
 
@@ -36,3 +38,9 @@ static inline int cpu_read_threadptr(void)
 }
 
 #endif /* __ARCH_CPU_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/cpu.h"
+
+#endif /* __SOF_CPU_H__ */

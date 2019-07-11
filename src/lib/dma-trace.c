@@ -9,11 +9,11 @@
 #include <sof/ipc.h>
 #include <sof/sof.h>
 #include <sof/alloc.h>
-#include <arch/cache.h>
+#include <sof/cache.h>
 #include <sof/drivers/timer.h>
 #include <sof/dma.h>
 #include <sof/platform.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/cpu.h>
 #include <sof/audio/format.h>
 #include <stdint.h>

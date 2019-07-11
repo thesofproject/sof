@@ -18,7 +18,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <sof/sof.h>
 #include <sof/alloc.h>

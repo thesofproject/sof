@@ -11,12 +11,13 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_TASK_H__
+
 #ifndef __ARCH_TASK_H__
 #define __ARCH_TASK_H__
 
 #include <sof/list.h>
-
-#include <arch/spinlock.h>
+#include <sof/spinlock.h>
 
 /** \brief IRQ task data. */
 struct irq_task {
@@ -67,3 +68,9 @@ void arch_free_tasks(void);
 int arch_assign_tasks(void);
 
 #endif /* __ARCH_TASK_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/task.h"
+
+#endif /* __SOF_TASK_H__ */

@@ -10,7 +10,7 @@
 #include <sof/debug.h>
 #include <sof/panic.h>
 #include <sof/trace.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/cpu.h>
 #include <sof/memory.h>
 #include <stdint.h>

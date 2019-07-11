@@ -11,6 +11,8 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_TASK_H__
+
 #ifndef __ARCH_TASK_H__
 #define __ARCH_TASK_H__
 
@@ -34,3 +36,9 @@ static inline int arch_run_task(struct task *task)
 }
 
 #endif /* __ARCH_TASK_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/task.h"
+
+#endif /* __SOF_TASK_H__ */

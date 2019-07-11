@@ -6,6 +6,8 @@
  *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
+#ifdef __SOF_SOF_H__
+
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__
 
@@ -13,7 +15,6 @@
 #include <stddef.h>
 #include <sof/mailbox.h>
 #include <ipc/xtensa.h>
-#include <arch/offset-defs.h>
 
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32
@@ -75,3 +76,9 @@ static inline void arch_dump_regs(uint32_t ps, uintptr_t stack_ptr,
 }
 
 #endif /* __ARCH_SOF_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/sof.h"
+
+#endif /* __SOF_SOF_H__ */

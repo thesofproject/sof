@@ -13,7 +13,7 @@
 #include <sof/gpio.h>
 #include <sof/io.h>
 #include <sof/ipc.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/sof.h>
 #include <sof/spi.h>
 #include <sof/schedule/schedule.h>

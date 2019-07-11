@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_DRIVERS_INTERRUPT_H__
+
 #ifndef __ARCH_INTERRUPT_H__
 #define __ARCH_INTERRUPT_H__
 
@@ -30,3 +32,9 @@ static inline void arch_interrupt_global_enable(uint32_t flags) {}
 static inline int arch_interrupt_init(void) {return 0; }
 
 #endif /* __ARCH_INTERRUPT_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/interrupt.h"
+
+#endif /* __SOF_INTERRUPT_H__ */

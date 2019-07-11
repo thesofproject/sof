@@ -12,6 +12,8 @@
 #ifndef __ARCH_GDB_UTILITIES_H__
 #define __ARCH_GDB_UTILITIES_H__
 
+#include <arch/gdb/xtensa-defs.h>
+
 void arch_gdb_read_sr(int sr);
 void arch_gdb_write_sr(int sr, int *sregs);
 unsigned char arch_gdb_load_from_memory(void *mem);

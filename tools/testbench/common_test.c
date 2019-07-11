@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <sof/string.h>
 #include <math.h>
-#include <arch/sof.h>
+#include <sof/sof.h>
 #include <sof/task.h>
 #include <sof/alloc.h>
 #include <sof/ipc.h>

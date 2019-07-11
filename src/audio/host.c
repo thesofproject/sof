@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <arch/cache.h>
+#include <sof/cache.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <sof/alloc.h>
