@@ -15,7 +15,6 @@
 #include <sof/string.h>
 #include <signal.h>
 #include <stdint.h>
-#include <xtensa/xtruntime.h>
 #include <sof/drivers/interrupt.h>
 
 /* local functions */
@@ -139,7 +138,7 @@ static inline int gdb_parser(void)
 	unsigned int i;
 	int addr;
 	int length;
-	unsigned int windowbase = (4 * sregs[WINDOWBASE]);
+	unsigned int windowbase = (4 * sregs[DEBUG_WINDOWBASE]);
 
 	request = get_packet();
 	/* Log any exception caused by debug exception */
@@ -173,27 +172,33 @@ static inline int gdb_parser(void)
 			if (*request++ == ',' && hex_to_int(&request, &addr) &&
 			    *request++ == ',' && hex_to_int(&request, &length)
 			    && *request == 0) {
-				for (i = 0; i < XCHAL_NUM_IBREAK; ++i) {
-					if (!(sregs[IBREAKENABLE] & (1 << i)) ||
-					sregs[IBREAKA + i] == addr) {
-						sregs[IBREAKA + i] = addr;
-						sregs[IBREAKENABLE] |= (1 << i);
-						arch_gdb_write_sr((IBREAKA+i),
-								  sregs);
-						arch_gdb_write_sr(IBREAKENABLE,
-								  sregs);
+				for (i = 0; i < DEBUG_NUM_IBREAK; ++i) {
+					if (!(sregs[DEBUG_IBREAKENABLE] &
+					    (1 << i)) ||
+					    sregs[DEBUG_IBREAKA + i] == addr) {
+						sregs[DEBUG_IBREAKA + i] =
+							addr;
+						sregs[DEBUG_IBREAKENABLE] |=
+							(1 << i);
+						arch_gdb_write_sr(
+							(DEBUG_IBREAKA + i),
+							sregs);
+						arch_gdb_write_sr(
+							DEBUG_IBREAKENABLE,
+							sregs);
 						break;
 					}
 				}
 
-				if (i == XCHAL_NUM_IBREAK) {
-					strcpy((char *) remcom_out_buffer,
-					 "E02");
+				if (i == DEBUG_NUM_IBREAK) {
+					strcpy((char *)remcom_out_buffer,
+					       "E02");
 				} else {
 					strcpy((char *)remcom_out_buffer, "OK");
-					sregs[INTENABLE]  &=
+					sregs[DEBUG_INTENABLE] &=
 					GDB_DISABLE_LOWER_INTERRUPTS_MASK;
-					arch_gdb_write_sr(INTENABLE, sregs);
+					arch_gdb_write_sr(DEBUG_INTENABLE,
+							  sregs);
 				}
 			} else {
 				strcpy((char *)remcom_out_buffer, "E01");
@@ -219,17 +224,19 @@ static inline int gdb_parser(void)
 		case '1':
 			if (*request++ == ',' && hex_to_int(&request, &addr) &&
 			*request++ == ',' && hex_to_int(&request, &length)) {
-				for (i = 0; i < XCHAL_NUM_IBREAK; ++i) {
-					if (sregs[IBREAKENABLE] & (1 << i) &&
-					    sregs[IBREAKA + i] == addr) {
-						sregs[IBREAKENABLE]
+				for (i = 0; i < DEBUG_NUM_IBREAK; ++i) {
+					if (sregs[DEBUG_IBREAKENABLE] &
+					    (1 << i) &&
+					    sregs[DEBUG_IBREAKA + i] == addr) {
+						sregs[DEBUG_IBREAKENABLE]
 						&= ~(1 << i);
-						arch_gdb_write_sr(IBREAKENABLE,
-								  sregs);
+						arch_gdb_write_sr(
+							DEBUG_IBREAKENABLE,
+							sregs);
 						break;
 					}
 				}
-				if (i == XCHAL_NUM_IBREAK)
+				if (i == DEBUG_NUM_IBREAK)
 					strcpy((char *)remcom_out_buffer,
 					"E02");
 				else
@@ -274,7 +281,7 @@ static inline int gdb_parser(void)
 				mem_to_hex(sregs + DEBUG_PC,
 					remcom_out_buffer, 4);
 			} else if (addr >= GDB_AREG_RANGE &&
-				   addr < (GDB_AREG_RANGE + XCHAL_NUM_AREGS)) {
+				   addr < (GDB_AREG_RANGE + DEBUG_NUM_AREGS)) {
 				mem_to_hex(aregs + ((addr - windowbase) &
 					   GDB_REGISTER_MASK),
 					   remcom_out_buffer, 4);
@@ -308,7 +315,7 @@ static inline int gdb_parser(void)
 			} else if (addr == GDB_PC_REG_ID) {
 				hex_to_mem(request, sregs + DEBUG_PC, 4);
 			} else if (addr >= GDB_AREG_RANGE && addr <
-				   GDB_AREG_RANGE + XCHAL_NUM_AREGS) {
+				   GDB_AREG_RANGE + DEBUG_NUM_AREGS) {
 				hex_to_mem(request, aregs +
 				((addr - windowbase) &	GDB_REGISTER_MASK), 4);
 			} else if (addr >= GDB_SPEC_REG_RANGE_START &&
