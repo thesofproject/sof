@@ -4,7 +4,7 @@ zephyr_interface_library_named(SOF)
 # include redefines incompatible things on src/include
 target_include_directories(SOF INTERFACE
 	include
-	../src/arch/host/include
+	#../src/arch/host/include
 	../src/include)
 
 zephyr_library()
