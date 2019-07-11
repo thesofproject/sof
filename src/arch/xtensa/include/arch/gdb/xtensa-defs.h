@@ -12,16 +12,22 @@
 #ifndef __ARCH_GDB_XTENSA_DEFS_H__
 #define __ARCH_GDB_XTENSA_DEFS_H__
 
+#include <config.h>
 #include <xtensa/specreg.h>
 #include <xtensa/config/core-isa.h>
 #include <xtensa/corebits.h>
-#include <config.h>
 
-#define _AREG0		256
+#define _AREG0			256
 
-#define STACK_SIZE	1024
-#define DEBUG_PC	(EPC + XCHAL_DEBUGLEVEL)
-#define DEBUG_EXCSAVE	(EXCSAVE + XCHAL_DEBUGLEVEL)
-#define DEBUG_PS	(EPS + XCHAL_DEBUGLEVEL)
+#define STACK_SIZE		1024
+#define DEBUG_PC		(EPC + XCHAL_DEBUGLEVEL)
+#define DEBUG_EXCSAVE		(EXCSAVE + XCHAL_DEBUGLEVEL)
+#define DEBUG_PS		(EPS + XCHAL_DEBUGLEVEL)
+#define DEBUG_WINDOWBASE	WINDOWBASE
+#define DEBUG_NUM_IBREAK	XCHAL_NUM_IBREAK
+#define DEBUG_IBREAKENABLE	IBREAKENABLE
+#define DEBUG_IBREAKA		IBREAKA
+#define DEBUG_INTENABLE		INTENABLE
+#define DEBUG_NUM_AREGS		XCHAL_NUM_AREGS
 
 #endif /* __ARCH_GDB_XTENSA_DEFS_H__ */
