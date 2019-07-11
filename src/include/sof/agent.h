@@ -8,9 +8,8 @@
 #ifndef __SOF_AGENT_H__
 #define __SOF_AGENT_H__
 
-#include <stdint.h>
-#include <stddef.h>
 #include <sof/schedule/schedule.h>
+#include <stdint.h>
 
 struct sof;
 

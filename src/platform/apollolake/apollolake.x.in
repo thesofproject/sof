@@ -7,8 +7,8 @@
  * Use spaces for formatting as cpp ignore tab sizes.
  */
 
-#include <platform/memory.h>
-#include <platform/platform.h>
+#include <sof/memory.h>
+#include <sof/platform.h>
 #include <xtensa/config/core-isa.h>
 #include <config.h>
 

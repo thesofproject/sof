@@ -5,10 +5,10 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_DMA_H__
+
 #ifndef __PLATFORM_DMA_H__
 #define __PLATFORM_DMA_H__
-
-#include <stdint.h>
 
 #define DMA_ID_DMAC0	0
 #define DMA_ID_DMAC1	1
@@ -17,3 +17,9 @@
 #define DMA_DEV_WAV			1
 
 #endif /* __PLATFORM_DMA_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/dma.h"
+
+#endif /* __SOF_DMA_H__ */

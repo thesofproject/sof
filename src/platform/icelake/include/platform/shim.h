@@ -7,10 +7,12 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
+#ifdef __SOF_SHIM_H__
+
 #ifndef __PLATFORM_SHIM_H__
 #define __PLATFORM_SHIM_H__
 
-#include <platform/memory.h>
+#include <sof/memory.h>
 
 #ifndef ASSEMBLY
 #include <stdint.h>
@@ -309,3 +311,9 @@ static inline void idc_write(uint32_t reg, uint32_t core_id, uint32_t val)
 #endif
 
 #endif /* __PLATFORM_SHIM_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/shim.h"
+
+#endif /* __SOF_SHIM_H__ */

@@ -6,10 +6,8 @@
 
 #include <sof/dma.h>
 #include <sof/edma.h>
-
-#include <platform/memory.h>
-#include <platform/interrupt.h>
-#include <platform/dma.h>
+#include <sof/memory.h>
+#include <sof/drivers/interrupt.h>
 
 extern struct dma_ops dummy_dma_ops;
 extern struct dma_ops edma_ops;

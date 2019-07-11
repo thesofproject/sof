@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
+add_local_sources(sof clk.c)
+
 add_executable(boot_module boot_module.c)
 add_executable(base_module base_module.c)
 

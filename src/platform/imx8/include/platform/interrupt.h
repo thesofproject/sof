@@ -5,11 +5,12 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
+#ifdef __SOF_DRIVERS_INTERRUPT_H__
+
 #ifndef __PLATFORM_INTERRUPT_H__
 #define __PLATFORM_INTERRUPT_H__
 
 #include <stdint.h>
-#include <string.h>
 #include <sof/interrupt-map.h>
 
 /* IRQ numbers */
@@ -46,3 +47,9 @@
 #define PLATFORM_IRQ_CHILDREN	0
 
 #endif /* __PLATFORM_INTERRUPT_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/interrupt.h"
+
+#endif /* __SOF_DRIVERS_INTERRUPT_H__ */

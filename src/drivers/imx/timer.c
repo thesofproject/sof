@@ -4,8 +4,7 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <platform/timer.h>
-#include <platform/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/debug.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>

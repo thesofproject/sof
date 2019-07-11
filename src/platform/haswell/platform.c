@@ -4,20 +4,16 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <platform/memory.h>
-#include <platform/mailbox.h>
-#include <platform/shim.h>
-#include <platform/dma.h>
-#include <platform/dai.h>
-#include <platform/clk.h>
-#include <platform/timer.h>
-#include <platform/platform.h>
-#include <platform/cpu.h>
-#include <ipc/info.h>
+#include <sof/memory.h>
 #include <sof/mailbox.h>
+#include <sof/shim.h>
+#include <sof/dma.h>
+#include <sof/dai.h>
+#include <sof/platform.h>
+#include <ipc/info.h>
 #include <sof/dai.h>
 #include <sof/dma.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/sof.h>
 #include <sof/clk.h>
 #include <sof/ipc.h>

@@ -30,7 +30,7 @@
 
 #include <xtensa/coreasm.h>
 #include <config.h>
-#include <platform/memory.h>
+#include <sof/memory.h>
 
 // Exports
 .global _start

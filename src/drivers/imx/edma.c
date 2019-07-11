@@ -6,7 +6,6 @@
 
 #include <sof/dma.h>
 #include <sof/io.h>
-#include <platform/dma.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>

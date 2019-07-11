@@ -21,10 +21,9 @@
 #include <sof/dma-trace.h>
 #include <sof/pm_runtime.h>
 #include <sof/cpu.h>
-#include <platform/cpu.h>
-#include <platform/idc.h>
-#include <platform/platform.h>
-#include <platform/memory.h>
+#include <sof/idc.h>
+#include <sof/platform.h>
+#include <sof/memory.h>
 
 /* main firmware context */
 static struct sof sof;

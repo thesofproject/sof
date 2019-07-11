@@ -8,9 +8,8 @@
  * Baytrail external timer control.
  */
 
-#include <platform/timer.h>
-#include <platform/shim.h>
-#include <platform/interrupt.h>
+#include <sof/shim.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/debug.h>
 #include <sof/audio/component.h>
 #include <sof/clk.h>

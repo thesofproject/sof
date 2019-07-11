@@ -14,11 +14,10 @@
 #include <sof/list.h>
 #include <sof/mailbox.h>
 #include <sof/debug.h>
-#include <sof/timer.h>
+#include <sof/drivers/timer.h>
 #include <sof/dma.h>
 #include <sof/schedule/schedule.h>
-#include <platform/platform.h>
-#include <platform/timer.h>
+#include <sof/platform.h>
 
 struct dma_trace_buf {
 	void *w_ptr;		/* buffer write pointer */

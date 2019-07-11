@@ -9,7 +9,7 @@
 #define __ARCH_WAIT_H__
 
 #include <xtensa/xtruntime.h>
-#include <arch/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/panic.h>
 
 #include <ipc/trace.h>

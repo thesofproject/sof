@@ -32,9 +32,9 @@
 #include <xtensa/xtruntime.h>
 #include <xtensa/xtruntime-frames.h>
 #include <xtensa/xtensa-versions.h>
-#include <platform/platform.h>
-#include <platform/memory.h>
-#include <platform/cpu.h>
+#include <sof/platform.h>
+#include <sof/memory.h>
+#include <sof/cpu.h>
 #ifndef XTOS_PARAMS_H	/* this to allow indirect inclusion of this header from the outside */
 #include "xtos-params.h"
 #endif

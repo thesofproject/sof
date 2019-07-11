@@ -9,6 +9,7 @@
 #ifndef __SOF_DW_DMA_H__
 #define __SOF_DW_DMA_H__
 
+#include <platform/dw-dma.h>
 #include <sof/bit.h>
 #include <sof/common.h>
 #include <sof/trace.h>

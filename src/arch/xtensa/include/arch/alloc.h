@@ -18,7 +18,7 @@
 
 #if CONFIG_SMP
 #include <xtos-structs.h>
-#include <platform/cpu.h>
+#include <sof/cpu.h>
 #include <sof/alloc.h>
 
 extern struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];

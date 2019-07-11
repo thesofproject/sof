@@ -5,12 +5,13 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_DRIVERS_TIMER_H__
+
 #ifndef __PLATFORM_TIMER_H__
 #define __PLATFORM_TIMER_H__
 
 #include <stdint.h>
-#include <sof/timer.h>
-#include <platform/interrupt.h>
+#include <sof/drivers/interrupt.h>
 
 struct comp_dev;
 struct sof_ipc_stream_posn;
@@ -36,3 +37,9 @@ static inline void platform_dai_wallclock(struct comp_dev *dai,
 	uint64_t *wallclock) {}
 
 #endif /* __PLATFORM_TIMER_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/timer.h"
+
+#endif /* __SOF_DRIVERS_TIMER_H__ */

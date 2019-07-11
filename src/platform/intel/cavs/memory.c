@@ -7,8 +7,8 @@
 
 #include <sof/alloc.h>
 #include <sof/trace.h>
-#include <cavs/memory.h>
-#include <platform/cpu.h>
+#include <sof/memory.h>
+#include <sof/cpu.h>
 
 extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
 extern uintptr_t _buffer_heap, _sof_core_s_start;

@@ -6,12 +6,13 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+#ifdef __SOF_DRIVERS_TIMER_H__
+
 #ifndef __PLATFORM_TIMER_H__
 #define __PLATFORM_TIMER_H__
 
 #include <stdint.h>
-#include <sof/timer.h>
-#include <platform/interrupt.h>
+#include <sof/drivers/interrupt.h>
 
 #define TIMER_COUNT	5
 
@@ -23,3 +24,9 @@
 #define TIMER4		IRQ_EXT_TSTAMP1_LVL2(0)
 
 #endif /* __PLATFORM_TIMER_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/timer.h"
+
+#endif /* __SOF_DRIVERS_TIMER_H__ */

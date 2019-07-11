@@ -15,8 +15,8 @@
 #include <sof/alloc.h>
 #include <sof/debug.h>
 #include <sof/ipc.h>
-#include <platform/timer.h>
-#include <platform/platform.h>
+#include <sof/drivers/timer.h>
+#include <sof/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>

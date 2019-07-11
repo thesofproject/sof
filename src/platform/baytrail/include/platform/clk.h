@@ -5,12 +5,14 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_CLK_H__
+
 #ifndef __PLATFORM_CLK_H__
 #define __PLATFORM_CLK_H__
 
-#include <platform/pmc.h>
+#include <sof/drivers/pmc.h>
 #include <sof/io.h>
-#include <platform/shim.h>
+#include <sof/shim.h>
 
 #define CLK_CPU(x)	(x)
 #define CLK_SSP		1
@@ -27,6 +29,9 @@
 #define CLK_MAX_CPU_HZ		343000000
 
 #define NUM_CLOCKS	2
+
+#define NUM_CPU_FREQ	8
+#define NUM_SSP_FREQ	2
 
 static inline int clock_platform_set_cpu_freq(uint32_t cpu_freq_enc)
 {
@@ -45,3 +50,9 @@ static inline int clock_platform_set_ssp_freq(uint32_t ssp_freq_enc)
 }
 
 #endif /* __PLATFORM_CLK_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/clk.h"
+
+#endif /* __SOF_CLK_H__ */

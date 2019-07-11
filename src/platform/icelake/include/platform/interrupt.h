@@ -7,6 +7,8 @@
  *         Rander Wang <rander.wang@intel.com>
  */
 
+#ifdef __SOF_DRIVERS_INTERRUPT_H__
+
 #ifndef __PLATFORM_INTERRUPT_H__
 #define __PLATFORM_INTERRUPT_H__
 
@@ -137,3 +139,9 @@
 #define IRQ_MASK_SOFTWARE9	(1 << IRQ_NUM_SOFTWARE9)
 
 #endif /* __PLATFORM_INTERRUPT_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/interrupt.h"
+
+#endif /* __SOF_DRIVERS_INTERRUPT_H__ */

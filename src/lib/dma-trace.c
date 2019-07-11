@@ -10,10 +10,9 @@
 #include <sof/sof.h>
 #include <sof/alloc.h>
 #include <arch/cache.h>
-#include <platform/timer.h>
-#include <platform/dma.h>
-#include <platform/platform.h>
-#include <platform/cpu.h>
+#include <sof/drivers/timer.h>
+#include <sof/dma.h>
+#include <sof/platform.h>
 #include <sof/lock.h>
 #include <sof/cpu.h>
 #include <sof/audio/format.h>

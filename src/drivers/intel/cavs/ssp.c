@@ -11,7 +11,7 @@
 #include <sof/stream.h>
 #include <sof/ssp.h>
 #include <sof/alloc.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/pm_runtime.h>
 #include <sof/math/numbers.h>
 #include <config.h>

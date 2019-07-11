@@ -7,8 +7,8 @@
 //         Rander Wang <rander.wang@intel.com>
 
 #include <sof/debug.h>
-#include <sof/timer.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/timer.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/ipc.h>
 #include <sof/mailbox.h>
 #include <sof/sof.h>
@@ -19,15 +19,12 @@
 #include <sof/wait.h>
 #include <sof/trace.h>
 #include <sof/ssp.h>
-#include <platform/interrupt.h>
-#include <platform/mailbox.h>
-#include <platform/shim.h>
-#include <platform/dma.h>
-#include <platform/platform.h>
+#include <sof/shim.h>
+#include <sof/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <ipc/header.h>
-#include <platform/pm_runtime.h>
+#include <sof/pm_runtime.h>
 #include <cavs/version.h>
 
 extern struct ipc *_ipc;

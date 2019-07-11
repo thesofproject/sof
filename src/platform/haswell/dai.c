@@ -9,10 +9,9 @@
 #include <sof/ssp.h>
 #include <sof/stream.h>
 #include <sof/audio/component.h>
-#include <platform/memory.h>
-#include <platform/interrupt.h>
-#include <platform/dma.h>
-#include <platform/dai.h>
+#include <sof/memory.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/dma.h>
 #include <stdint.h>
 #include <sof/string.h>
 #include <config.h>

@@ -24,6 +24,7 @@
 #include <sof/wait.h>
 #include <sof/bit.h>
 #include <arch/atomic.h>
+#include <platform/dma.h>
 
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.

@@ -14,8 +14,7 @@
 #include <sof/mailbox.h>
 #include <sof/cpu.h>
 #include <ipc/trace.h>
-#include <platform/platform.h>
-#include <platform/memory.h>
+#include <sof/memory.h>
 #include <stdint.h>
 #include <stdlib.h>
 

@@ -15,7 +15,7 @@
 #include <sof/alloc.h>
 #include <sof/ipc.h>
 #include <sof/debug.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>

@@ -9,7 +9,6 @@
 #include <sof/sof.h>
 #include <sof/alloc.h>
 #include <arch/cache.h>
-#include <platform/timer.h>
 #include <sof/lock.h>
 #include <sof/dma-trace.h>
 #include <sof/cpu.h>

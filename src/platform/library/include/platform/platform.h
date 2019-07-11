@@ -6,11 +6,13 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
+#ifdef __SOF_PLATFORM_H__
+
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
-#include <platform/shim.h>
-#include <platform/interrupt.h>
+#include <sof/shim.h>
+#include <sof/drivers/interrupt.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -49,3 +51,9 @@ static inline void platform_panic(uint32_t p) {}
 extern struct timer *platform_timer;
 
 #endif /* __PLATFORM_PLATFORM_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/platform.h"
+
+#endif /* __SOF_PLATFORM_H__ */

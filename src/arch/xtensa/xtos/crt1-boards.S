@@ -33,7 +33,7 @@
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
 #include <config.h>
-#include <platform/cpu.h>
+#include <sof/cpu.h>
 
 
 // Exports

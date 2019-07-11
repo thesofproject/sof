@@ -5,13 +5,12 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/alloc.h>
-#include <sof/interrupt.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/mailbox.h>
 #include <sof/panic.h>
 #include <sof/sof.h>
 #include <sof/trace.h>
-
-#include <platform/platform.h>
+#include <sof/platform.h>
 
 #include <ipc/trace.h>
 

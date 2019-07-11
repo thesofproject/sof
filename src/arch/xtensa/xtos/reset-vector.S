@@ -33,7 +33,7 @@
 #include "xtos-internal.h"
 #include <config.h>
 #if CONFIG_BOOT_LOADER
-#include <platform/memory.h>
+#include <sof/memory.h>
 #endif
 
 // The following reset vector avoids initializing certain registers already

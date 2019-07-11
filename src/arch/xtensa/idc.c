@@ -4,11 +4,9 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <arch/cpu.h>
-#include <arch/idc.h>
-#include <platform/interrupt.h>
-#include <platform/platform.h>
-#include <platform/cpu.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/platform.h>
+#include <sof/cpu.h>
 #include <sof/alloc.h>
 #include <sof/cache.h>
 #include <sof/clk.h>

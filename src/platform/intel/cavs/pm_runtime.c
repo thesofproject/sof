@@ -12,9 +12,9 @@
  */
 
 #include <sof/alloc.h>
-#include <platform/platform.h>
-#include <platform/pm_runtime.h>
-#include <platform/dai.h>
+#include <sof/platform.h>
+#include <sof/pm_runtime.h>
+#include <sof/dai.h>
 
 #define trace_power(format, ...)	\
 	trace_event(TRACE_CLASS_POWER, format, ##__VA_ARGS__)

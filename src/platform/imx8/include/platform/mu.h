@@ -5,6 +5,8 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
+#ifdef __SOF_MU_H__
+
 #ifndef __PLATFORM_MU_H__
 #define __PLATFORM_MU_H__
 
@@ -65,3 +67,9 @@ static inline uint32_t imx_mu_xsr_rmw(uint32_t set, uint32_t clr)
 }
 
 #endif /* __PLATFORM_MU_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/mu.h"
+
+#endif /* __SOF_MU_H__ */

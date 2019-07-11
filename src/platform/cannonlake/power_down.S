@@ -11,7 +11,8 @@
  *  with cAVS 1.8 (i.e. CannonLake) and cAVS 2.0 (i.e. IceLake)
   * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
-#include <platform/shim.h>
+
+#include <sof/shim.h>
 #include <platform/asm_memory_management.h>
 #include <platform/asm_ldo_management.h>
 

@@ -5,10 +5,12 @@
  * Author: Daniel Baluta <daniel.baluta@nxp.com>
  */
 
+#ifdef __SOF_MAILBOX_H__
+
 #ifndef __PLATFORM_MAILBOX_H__
 #define __PLATFORM_MAILBOX_H__
 
-#include <platform/memory.h>
+#include <sof/memory.h>
 
 /*
  * The Window Region on i.MX8 SRAM is organised like this :-
@@ -50,3 +52,9 @@
 #define MAILBOX_STREAM_OFFSET		SRAM_STREAM_OFFSET
 
 #endif /* __PLATFORM_MAILBOX_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/mailbox.h"
+
+#endif /* __SOF_MAILBOX_H__ */

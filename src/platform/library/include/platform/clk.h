@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_CLK_H__
+
 #ifndef __PLATFORM_CLK_H__
 #define __PLATFORM_CLK_H__
 
@@ -17,3 +19,9 @@
 #define NUM_CLOCKS	2
 
 #endif /* __PLATFORM_CLK_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/clk.h"
+
+#endif /* __SOF_CLK_H__ */

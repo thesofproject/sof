@@ -14,8 +14,11 @@
 #ifndef __SOF_CPU_H__
 #define __SOF_CPU_H__
 
-#include <arch/cpu.h>
 #include <platform/cpu.h>
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+
+#include <arch/cpu.h>
 
 #if PLATFORM_CORE_COUNT > MAX_CORE_COUNT
 #error "Invalid core count - exceeding core limit"
@@ -40,5 +43,7 @@ static inline int cpu_is_core_enabled(int id)
 {
 	return arch_cpu_is_core_enabled(id);
 }
+
+#endif
 
 #endif /* __SOF_CPU_H__ */

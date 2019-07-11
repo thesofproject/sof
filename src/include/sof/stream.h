@@ -10,7 +10,7 @@
 #define __SOF_STREAM_H__
 
 #include <stdint.h>
-#include <platform/platform.h>
+#include <sof/platform.h>
 #include <ipc/stream.h>
 
 enum stream_type {

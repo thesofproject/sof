@@ -16,8 +16,6 @@
 #include <sof/clk.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
-#include <platform/timer.h>
-#include <platform/clk.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>
 #include <sof/task.h>

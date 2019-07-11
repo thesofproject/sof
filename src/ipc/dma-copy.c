@@ -13,7 +13,6 @@
 #include <sof/ipc.h>
 #include <sof/dma.h>
 #include <sof/wait.h>
-#include <platform/dma.h>
 
 /* tracing */
 #define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)

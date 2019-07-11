@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_DRIVERS_INTERRUPT_H__
+
 #ifndef __PLATFORM_INTERRUPT_H__
 #define __PLATFORM_INTERRUPT_H__
 
@@ -53,3 +55,9 @@
 #define IRQ_MASK_EXT_SSP2	(1 << IRQ_NUM_EXT_SSP2)
 
 #endif /* __PLATFORM_INTERRUPT_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/drivers/interrupt.h"
+
+#endif /* __SOF_DRIVERS_INTERRUPT_H__ */
