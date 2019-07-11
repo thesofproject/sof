@@ -10,14 +10,13 @@
 
 #include <stdint.h>
 #include <errno.h>
-#include <arch/wait.h>
+#include <sof/wait.h>
 #include <sof/io.h>
 #include <sof/debug.h>
-#include <sof/wait.h>
 #include <sof/schedule/schedule.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/trace.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/clk.h>
 #include <sof/drivers/timer.h>
 #include <sof/platform.h>

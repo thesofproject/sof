@@ -11,6 +11,8 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_INIT_H__
+
 #ifndef __ARCH_INIT_H__
 #define __ARCH_INIT_H__
 
@@ -122,3 +124,9 @@ static inline void register_exceptions(void)
 static inline void __memmap_init(void) { }
 
 #endif /* __ARCH_INIT_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/init.h"
+
+#endif /* __SOF_INIT_H__ */

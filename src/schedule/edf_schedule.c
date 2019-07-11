@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/alloc.h>

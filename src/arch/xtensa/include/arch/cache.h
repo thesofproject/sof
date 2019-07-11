@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_CACHE_H__
+
 #ifndef __ARCH_CACHE_H__
 #define __ARCH_CACHE_H__
 
@@ -72,3 +74,9 @@ static inline void dcache_writeback_invalidate_all(void)
 }
 
 #endif /* __ARCH_CACHE_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/cache.h"
+
+#endif /* __SOF_CACHE_H__ */

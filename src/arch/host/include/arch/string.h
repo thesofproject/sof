@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_STRING_H__
+
 #ifndef __ARCH_STRING_H__
 #define __ARCH_STRING_H__
 
@@ -60,3 +62,9 @@ static inline int arch_memset_s(void *dest, size_t dest_size,
 }
 
 #endif /* __ARCH_STRING_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/string.h"
+
+#endif /* __SOF_STRING_H__ */

@@ -15,7 +15,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/schedule/schedule.h>
 #include <sof/platform.h>
-#include <arch/task.h>
+#include <sof/task.h>
 #include <xtos-structs.h>
 
 struct irq_task **task_irq_low_get(void)

@@ -16,7 +16,7 @@
 #include <sof/bit.h>
 #include <sof/platform.h>
 #include <sof/common.h>
-#include <arch/spinlock.h>
+#include <sof/spinlock.h>
 #include <ipc/topology.h>
 struct sof;
 

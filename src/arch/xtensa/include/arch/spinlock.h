@@ -5,6 +5,8 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#ifdef __SOF_SPINLOCK_H__
+
 #ifndef __ARCH_SPINLOCK_H__
 #define __ARCH_SPINLOCK_H__
 
@@ -69,3 +71,9 @@ static inline void arch_spin_unlock(spinlock_t *lock)
 }
 
 #endif /* __ARCH_SPINLOCK_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/spinlock.h"
+
+#endif /* __SOF_SPINLOCK_H__ */

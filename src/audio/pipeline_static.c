@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/dai.h>

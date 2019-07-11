@@ -14,6 +14,8 @@
 #ifndef __SOF_CACHE_H__
 #define __SOF_CACHE_H__
 
+#include <arch/cache.h>
+
 /* writeback and invalidate data */
 #define CACHE_WRITEBACK_INV	0
 

@@ -39,7 +39,6 @@
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <config.h>
-#include <arch/gdb/init.h>
 #include <sof/gdb/gdb.h>
 
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)

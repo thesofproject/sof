@@ -12,7 +12,7 @@
 #include <platform/interrupt.h>
 #include <sof/trace.h>
 #include <sof/debug.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <stdint.h>
 

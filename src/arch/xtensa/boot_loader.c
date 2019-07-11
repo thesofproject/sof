@@ -4,9 +4,9 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <arch/cache.h>
-#include <arch/sof.h>
-#include <arch/wait.h>
+#include <sof/cache.h>
+#include <sof/sof.h>
+#include <sof/wait.h>
 #include <sof/trace.h>
 #include <sof/io.h>
 #include <user/manifest.h>

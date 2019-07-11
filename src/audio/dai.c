@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <errno.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <sof/dai.h>
 #include <sof/alloc.h>
@@ -19,7 +19,7 @@
 #include <sof/ipc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <arch/cache.h>
+#include <sof/cache.h>
 #include <sof/drivers/timer.h>
 
 /* tracing */

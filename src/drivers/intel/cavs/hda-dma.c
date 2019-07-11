@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <sof/clk.h>
 #include <sof/sof.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <sof/stream.h>
 #include <sof/alloc.h>
@@ -26,8 +26,8 @@
 #include <sof/drivers/timer.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <arch/cache.h>
-#include <arch/wait.h>
+#include <sof/cache.h>
+#include <sof/wait.h>
 #include <ipc/topology.h>
 #include <sof/schedule/schedule.h>
 

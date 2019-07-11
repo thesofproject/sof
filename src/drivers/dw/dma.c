@@ -32,7 +32,7 @@
 #include <sof/dw-dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/io.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/pm_runtime.h>
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>

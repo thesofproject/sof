@@ -10,7 +10,7 @@
 #define __SOF_MAILBOX_H__
 
 #include <platform/mailbox.h>
-#include <arch/cache.h>
+#include <sof/cache.h>
 #include <stdint.h>
 #include <sof/string.h>
 #include <sof/panic.h>

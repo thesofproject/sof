@@ -12,7 +12,7 @@
 #include <sof/clk.h>
 #include <sof/idc.h>
 #include <sof/ipc.h>
-#include <sof/lock.h>
+#include <sof/spinlock.h>
 #include <sof/notifier.h>
 #include <xtos-structs.h>
 #include <stdbool.h>
