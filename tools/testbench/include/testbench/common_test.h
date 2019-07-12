@@ -68,4 +68,8 @@ int get_index_by_name(char *comp_name,
 
 int get_index_by_type(uint32_t comp_type,
 		      struct shared_lib_table *lib_table);
+
+int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
+		   struct testbench_prm *tp, int *fr_id, int *fw_id,
+		   int *sched_id, char *pipeline_msg);
 #endif

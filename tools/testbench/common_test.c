@@ -19,7 +19,7 @@
 #include <sof/lib/wait.h>
 #include <sof/audio/pipeline.h>
 #include "testbench/common_test.h"
-#include "testbench/topology.h"
+#include <tplg_parser/topology.h>
 
 /* testbench helper functions for pipeline setup and trigger */
 

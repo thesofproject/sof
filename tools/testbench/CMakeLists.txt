@@ -56,8 +56,31 @@ add_library(sof_library SHARED IMPORTED)
 set_target_properties(sof_library PROPERTIES IMPORTED_LOCATION "${sof_install_directory}/lib/libsof.so")
 add_dependencies(sof_library sof_ep)
 
+set(parser_source_directory "${PROJECT_SOURCE_DIR}/../tplg_parser")
+set(parser_install_dir "${PROJECT_BINARY_DIR}/sof_parser/install")
+
+#External project for topology parser
+ExternalProject_Add(parser_ep
+	SOURCE_DIR "${parser_source_directory}"
+	PREFIX "${PROJECT_BINARY_DIR}/sof_parser"
+	BINARY_DIR "${PROJECT_BINARY_DIR}/sof_parser/build"
+	CMAKE_ARGS -DBUILD_LIBRARY=ON
+		-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/sof_parser/install
+		-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}
+	BUILD_COMMAND make
+	BUILD_ALWAYS 1
+	BUILD_BYPRODUCTS "${parser_install_dir}/lib/libsof_tplg_parser.so"
+)
+
+add_library(sof_parser_lib SHARED IMPORTED)
+set_target_properties(sof_parser_lib PROPERTIES IMPORTED_LOCATION "${parser_install_dir}/lib/libsof_tplg_parser.so")
+add_dependencies(sof_parser_lib parser_ep)
+
+add_dependencies(testbench sof_parser_lib)
 target_link_libraries(testbench PRIVATE sof_library)
+target_link_libraries(testbench PRIVATE sof_parser_lib)
 target_include_directories(testbench PRIVATE ${sof_install_directory}/include)
+target_include_directories(testbench PRIVATE ${parser_install_dir}/include)
 
 set_target_properties(testbench
 	PROPERTIES
