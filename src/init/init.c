@@ -9,21 +9,18 @@
  * initialisation functions.
  */
 
-#include <stddef.h>
-#include <sof/init.h>
-#include <sof/task.h>
-#include <sof/debug.h>
-#include <sof/panic.h>
 #include <sof/alloc.h>
-#include <sof/notifier.h>
-#include <sof/schedule/schedule.h>
-#include <sof/trace.h>
-#include <sof/dma-trace.h>
-#include <sof/pm_runtime.h>
 #include <sof/cpu.h>
-#include <sof/idc.h>
-#include <sof/platform.h>
+#include <sof/init.h>
 #include <sof/memory.h>
+#include <sof/notifier.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/pm_runtime.h>
+#include <sof/sof.h>
+#include <sof/task.h>
+#include <sof/trace.h>
+#include <ipc/trace.h>
 
 /* main firmware context */
 static struct sof sof;
