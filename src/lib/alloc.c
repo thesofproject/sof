@@ -443,50 +443,48 @@ static void trace_heap_blocks(struct mm_heap *heap)
 	}
 }
 
-void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes)
+static void alloc_trace_heap(int zone, uint32_t caps, size_t bytes,
+			     struct mm_heap *heap_base,
+			     unsigned int heap_count)
 {
-	struct mm_heap *heap;
-	struct mm_heap *current = NULL;
+	struct mm_heap *heap = heap_base;
+	unsigned int n = heap_count;
+	unsigned int i = 0;
 	int count = 0;
 
-	/* check runtime heap for capabilities */
-	trace_mem_error("heap: using runtime");
-	do {
-		heap = get_heap_from_caps(memmap.runtime, PLATFORM_HEAP_RUNTIME,
-					  caps);
-		if (heap) {
-			trace_heap_blocks(heap);
-			count++;
-		}
-		current = heap;
-	} while (heap);
+	while (i < heap_count) {
+		heap = get_heap_from_caps(heap, n, caps);
+		if (!heap)
+			break;
+
+		trace_heap_blocks(heap);
+		count++;
+		i = heap - heap_base + 1;
+		n = heap_count - i;
+		heap++;
+	}
 
 	if (count == 0)
 		trace_mem_error("heap: none found for zone %d caps 0x%x, "
 				"bytes 0x%x", zone, caps, bytes);
 }
 
+void alloc_trace_runtime_heap(int zone, uint32_t caps, size_t bytes)
+{
+	/* check runtime heap for capabilities */
+	trace_mem_init("heap: using runtime");
+
+	alloc_trace_heap(zone, caps, bytes, memmap.runtime,
+			 PLATFORM_HEAP_RUNTIME);
+}
+
 void alloc_trace_buffer_heap(int zone, uint32_t caps, size_t bytes)
 {
-	struct mm_heap *heap;
-	struct mm_heap *current = NULL;
-	int count = 0;
-
 	/* check buffer heap for capabilities */
-	trace_mem_error("heap: using buffer");
-	do {
-		heap = get_heap_from_caps(memmap.buffer, PLATFORM_HEAP_BUFFER,
-					  caps);
-		if (heap) {
-			trace_heap_blocks(heap);
-			count++;
-		}
-		current = heap;
-	} while (heap);
+	trace_mem_init("heap: using buffer");
 
-	if (count == 0)
-		trace_mem_error("heap: none found for zone %d caps 0x%x, "
-				"bytes 0x%x", zone, caps, bytes);
+	alloc_trace_heap(zone, caps, bytes, memmap.buffer,
+			 PLATFORM_HEAP_BUFFER);
 }
 
 #endif
