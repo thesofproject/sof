@@ -5,12 +5,15 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 /* Generic scheduler */
+
+#include <sof/alloc.h>
 #include <sof/schedule/schedule.h>
-#include <sof/schedule/edf_schedule.h>
-#include <sof/schedule/ll_schedule.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stdint.h>
 
 static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
-	&schedule_edf_ops,              /* SOF_SCHEDULE_EDF */
+	&schedule_edf_ops,		/* SOF_SCHEDULE_EDF */
 	&schedule_ll_ops		/* SOF_SCHEDULE_LL */
 };
 

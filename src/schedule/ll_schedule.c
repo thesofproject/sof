@@ -5,21 +5,6 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/schedule/ll_schedule.h>
-#include <sof/schedule/schedule.h>
-#include <sof/drivers/timer.h>
-#include <sof/list.h>
-#include <sof/clk.h>
-#include <sof/alloc.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/notifier.h>
-#include <sof/debug.h>
-#include <sof/cpu.h>
-#include <sof/atomic.h>
-#include <sof/platform.h>
-#include <limits.h>
-
 /*
  * Generic delayed work queue support.
  *
@@ -36,6 +21,23 @@
  * any CPU clock changes. i.e. timeouts will remain constant regardless of CPU
  * frequency changes.
  */
+
+#include <sof/alloc.h>
+#include <sof/atomic.h>
+#include <sof/clk.h>
+#include <sof/common.h>
+#include <sof/cpu.h>
+#include <sof/drivers/timer.h>
+#include <sof/list.h>
+#include <sof/notifier.h>
+#include <sof/platform.h>
+#include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
@@ -140,7 +142,7 @@ static int is_ll_pending(struct ll_schedule_data *queue)
 			/* mark pending work */
 			if ((ll_task->start <= win_end ||
 				(ll_task->start >= win_start &&
-				ll_task->start < ULONG_LONG_MAX))) {
+				ll_task->start < UINT64_MAX))) {
 				ll_task->state =
 					SOF_TASK_STATE_PENDING;
 				pending_count++;
@@ -212,7 +214,7 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 
 static inline uint64_t calc_delta_ticks(uint64_t current, uint64_t work)
 {
-	uint64_t max = ULONG_LONG_MAX;
+	uint64_t max = UINT64_MAX;
 
 	/* does work run in next cycle ? */
 	if (work < current) {

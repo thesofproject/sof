@@ -43,6 +43,4 @@ struct ll_task_pdata {
 
 extern struct timesource_data platform_generic_queue[];
 
-extern struct scheduler_ops schedule_ll_ops;
-
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */
