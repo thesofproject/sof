@@ -4,17 +4,17 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
 #include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
+#include <sof/common.h>
+#include <sof/list.h>
+#include <sof/panic.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
 #include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct comp_data {
 	struct list_item list;		/* list of components */

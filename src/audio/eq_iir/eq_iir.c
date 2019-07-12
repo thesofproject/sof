@@ -6,20 +6,28 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <stdbool.h>
-#include <sof/sof.h>
 #include <sof/alloc.h>
-#include <sof/schedule/schedule.h>
-#include <sof/clk.h>
-#include <sof/ipc.h>
 #include <sof/audio/component.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/eq_iir/eq_iir.h>
-#include <sof/audio/format.h>
 #include <sof/audio/eq_iir/iir.h>
+#include <sof/audio/format.h>
+#include <sof/audio/pipeline.h>
+#include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/control.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <user/eq.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)
 #define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_IIR, __e, ##__VA_ARGS__)

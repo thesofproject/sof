@@ -10,17 +10,14 @@
  * definition if no pipeline is specified by driver topology.
  */
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
-#include <sof/dai.h>
-#include <sof/ipc.h>
-#include <sof/platform.h>
-#include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/common.h>
+#include <sof/ipc.h>
+#include <sof/trace.h>
+#include <ipc/dai.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <stdint.h>
 
 /* 2 * 32 bit*/
 #define PLATFORM_INT_FRAME_SIZE		8

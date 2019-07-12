@@ -18,6 +18,14 @@
 
 #ifdef CONFIG_GENERIC
 
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/format.h>
+#include <sof/common.h>
+#include <ipc/stream.h>
+#include <stddef.h>
+#include <stdint.h>
+
 /**
  * \brief Volume gain function
  * \param[in] x   input sample.

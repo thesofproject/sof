@@ -5,21 +5,19 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/debug.h>
-#include <sof/ipc.h>
-#include <sof/drivers/timer.h>
-#include <sof/platform.h>
-#include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
 #include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/cache.h>
+#include <sof/list.h>
+#include <sof/memory.h>
+#include <sof/panic.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* create a new component in the pipeline */
 struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)

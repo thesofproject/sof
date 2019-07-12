@@ -4,12 +4,11 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/audio/component.h>
+#include <sof/common.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <stddef.h>
 
 /* tracing */
 #define trace_switch(__e) trace_event(TRACE_CLASS_SWITCH, __e)

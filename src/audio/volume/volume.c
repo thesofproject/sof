@@ -14,18 +14,27 @@
  *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/schedule/schedule.h>
-#include <sof/clk.h>
-#include <sof/ipc.h>
+#include <sof/audio/component.h>
+#include <sof/audio/format.h>
+#include <sof/audio/pipeline.h>
 #include <sof/audio/volume.h>
+#include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
 #include <sof/math/numbers.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/control.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /**
  * \brief Synchronize host mmap() volume with real value.

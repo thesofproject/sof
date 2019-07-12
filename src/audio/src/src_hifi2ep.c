@@ -6,17 +6,15 @@
 
 /* HiFi EP optimized code parts for SRC */
 
-#include <stdint.h>
-#include <sof/alloc.h>
-#include <sof/audio/format.h>
 #include <sof/audio/src/src_config.h>
-#include <sof/audio/src/src.h>
-#include <sof/math/numbers.h>
 
 #if SRC_HIFIEP
 
+#include <sof/audio/src/src.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* HiFi EP has
  * 4x 56 bit registers in register file Q

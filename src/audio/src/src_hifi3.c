@@ -6,17 +6,15 @@
 
 /* HiFi3 optimized code parts for SRC */
 
-#include <stdint.h>
-#include <sof/alloc.h>
-#include <sof/audio/format.h>
 #include <sof/audio/src/src_config.h>
-#include <sof/audio/src/src.h>
-#include <sof/math/numbers.h>
 
 #if SRC_HIFI3
 
+#include <sof/audio/src/src.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* HiFi3 has
  * 16x 64 bit registers in register file AE_DR
