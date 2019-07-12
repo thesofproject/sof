@@ -32,9 +32,25 @@ struct comp_dev;
 #define trace_buffer_error_atomic(__e, ...) \
 	trace_error_atomic(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 
-/* buffer callback types */
+/* buffer callback types
+ * Data pointer passed via callback has different meanings, depending on type
+ * of the callback.
+ *
+ * BUFF_CB_TYPE_PRODUCE - uint32_t* pointing to amount of bytes produced
+ * BUFF_CB_TYPE_CONSUME - uint32_t* pointing to amount of bytes consumed
+ * BUFF_CB_TYPE_FREE_COMP - struct comp_buffer* pointing to buffer component
+ *			    being freed
+ */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
 #define BUFF_CB_TYPE_CONSUME	BIT(1)
+#define BUFF_CB_TYPE_FREE_COMP	BIT(2)
+
+struct buffer_callback {
+	void (*cb)(void *arg, int type, void *data);
+	void *cb_arg;		/* self pointer returned for callee */
+	int cb_type;		/* type of callback */
+	struct list_item list;	/* item in list of callbacks */
+};
 
 /* audio component buffer - connects 2 audio components together in pipeline */
 struct comp_buffer {
@@ -60,10 +76,7 @@ struct comp_buffer {
 	struct list_item source_list;	/* list in comp buffers */
 	struct list_item sink_list;	/* list in comp buffers */
 
-	/* callbacks */
-	void (*cb)(void *data, uint32_t bytes);
-	void *cb_data;
-	int cb_type;
+	struct list_item callback_list; /* list of callbacks */
 
 	spinlock_t lock; /* component buffer spinlock */
 };
@@ -225,4 +238,11 @@ static inline void buffer_init(struct comp_buffer *buffer, uint32_t size)
 	buffer->avail = 0;
 	buffer_zero(buffer);
 }
+
+static inline void buffer_add_callback(struct comp_buffer *buffer,
+				       struct buffer_callback *cb)
+{
+	list_item_append(&cb->list, &buffer->callback_list);
+}
+
 #endif /* __SOF_AUDIO_BUFFER_H__ */

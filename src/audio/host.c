@@ -80,6 +80,8 @@ struct host_data {
 				   *  copied by dma connected to host
 				   */
 
+	struct buffer_callback buffer_cb;
+
 	/* stream info */
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 };
@@ -330,6 +332,8 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	return ret;
 }
 
+static void host_buffer_cb(void *data, int type, void *value_ptr);
+
 static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 {
 	struct sof_ipc_comp_host *ipc_host = (struct sof_ipc_comp_host *)comp;
@@ -382,6 +386,11 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	dma_sg_init(&hd->local.elem_array);
 
 	hd->chan = DMA_CHAN_INVALID;
+
+	hd->buffer_cb.cb = &host_buffer_cb;
+	hd->buffer_cb.cb_arg = dev;
+	list_init(&hd->buffer_cb.list);
+
 	hd->copy_type = COMP_COPY_NORMAL;
 	hd->posn.comp_id = comp->id;
 	dev->state = COMP_STATE_READY;
@@ -437,7 +446,7 @@ static int host_elements_reset(struct comp_dev *dev)
 	return 0;
 }
 
-static void host_buffer_cb(void *data, uint32_t bytes)
+static void host_buffer_cb(void *data, int type, void *value_ptr)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
@@ -516,8 +525,8 @@ static int host_params(struct comp_dev *dev)
 			struct comp_buffer, source_list);
 
 		/* set callback on buffer consume */
-		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
-			      BUFF_CB_TYPE_CONSUME);
+		hd->buffer_cb.cb_type = BUFF_CB_TYPE_CONSUME;
+		buffer_add_callback(hd->dma_buffer, &hd->buffer_cb);
 
 		config->direction = DMA_DIR_HMEM_TO_LMEM;
 
@@ -538,8 +547,8 @@ static int host_params(struct comp_dev *dev)
 			struct comp_buffer, sink_list);
 
 		/* set callback on buffer produce */
-		buffer_set_cb(hd->dma_buffer, &host_buffer_cb, dev,
-			      BUFF_CB_TYPE_PRODUCE);
+		hd->buffer_cb.cb_type = BUFF_CB_TYPE_PRODUCE;
+		buffer_add_callback(hd->dma_buffer, &hd->buffer_cb);
 
 		config->direction = DMA_DIR_LMEM_TO_HMEM;
 

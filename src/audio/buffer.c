@@ -56,6 +56,8 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 
 	buffer_init(buffer, desc->size);
 
+	list_init(&buffer->callback_list);
+
 	spinlock_init(&buffer->lock);
 
 	return buffer;
@@ -101,13 +103,29 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	return 0;
 }
 
+static inline void buffer_call_cb(struct comp_buffer *buffer, int cb_type,
+				  void *data)
+{
+	struct list_item *item;
+	struct buffer_callback *cb;
+
+	list_for_item(item, &buffer->callback_list) {
+		cb = list_item(item, struct buffer_callback, list);
+		if (cb->cb_type & cb_type)
+			cb->cb(cb->cb_arg, cb_type, data);
+	}
+}
+
 /* free component in the pipeline */
 void buffer_free(struct comp_buffer *buffer)
 {
 	trace_buffer("buffer_free()");
 
+	buffer_call_cb(buffer, BUFF_CB_TYPE_FREE_COMP, buffer);
+
 	list_item_del(&buffer->source_list);
 	list_item_del(&buffer->sink_list);
+	list_item_del(&buffer->callback_list);
 	rfree(buffer->addr);
 	rfree(buffer);
 }
@@ -176,8 +194,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	/* calculate free bytes */
 	buffer->free = buffer->size - buffer->avail;
 
-	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_PRODUCE)
-		buffer->cb(buffer->cb_data, bytes);
+	buffer_call_cb(buffer, BUFF_CB_TYPE_PRODUCE, &bytes);
 
 	spin_unlock_irq(&buffer->lock, flags);
 
@@ -231,8 +248,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	    !buffer->source->is_dma_connected)
 		dcache_writeback_region(buffer->r_ptr, bytes);
 
-	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
-		buffer->cb(buffer->cb_data, bytes);
+	buffer_call_cb(buffer, BUFF_CB_TYPE_CONSUME, &bytes);
 
 	spin_unlock_irq(&buffer->lock, flags);
 
