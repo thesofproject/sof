@@ -6,13 +6,19 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/alloc.h>
-#include <sof/sof.h>
-#include <sof/debug.h>
-#include <sof/panic.h>
-#include <sof/trace.h>
-#include <sof/spinlock.h>
+#include <sof/cache.h>
 #include <sof/cpu.h>
+#include <sof/dma.h>
 #include <sof/memory.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/trace.h>
+#include <config.h>
+#include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /* debug to set memory value on every allocation */

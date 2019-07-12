@@ -5,15 +5,20 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 
-#include <sof/trace.h>
-#include <sof/sof.h>
 #include <sof/alloc.h>
 #include <sof/cache.h>
-#include <sof/spinlock.h>
-#include <sof/dma-trace.h>
 #include <sof/cpu.h>
-#include <sof/preproc.h>
+#include <sof/dma-trace.h>
 #include <sof/drivers/timer.h>
+#include <sof/mailbox.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/preproc.h>
+#include <sof/string.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 struct trace {

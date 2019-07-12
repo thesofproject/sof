@@ -5,11 +5,16 @@
 // Author: Keyon Jie <yang.jie@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#include <sof/alloc.h>
+#include <sof/common.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/interrupt-map.h>
-#include <sof/alloc.h>
+#include <sof/list.h>
+#include <sof/spinlock.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 static int irq_register_child(struct irq_desc *parent, int irq, int unmask,
 			      void (*handler)(void *arg), void *arg)

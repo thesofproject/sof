@@ -4,18 +4,25 @@
 //
 // Author: Yan Wang <yan.wang@linux.intel.com>
 
-#include <sof/trace.h>
+#include <sof/alloc.h>
+#include <sof/audio/buffer.h>
+#include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/cpu.h>
+#include <sof/dma.h>
 #include <sof/dma-trace.h>
 #include <sof/ipc.h>
-#include <sof/sof.h>
-#include <sof/alloc.h>
-#include <sof/cache.h>
-#include <sof/drivers/timer.h>
-#include <sof/dma.h>
+#include <sof/panic.h>
 #include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
-#include <sof/cpu.h>
-#include <sof/audio/format.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <config.h>
+#include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
 
 static struct dma_trace_data *trace_data;

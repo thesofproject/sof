@@ -4,12 +4,15 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/notifier.h>
-#include <sof/sof.h>
-#include <sof/list.h>
 #include <sof/alloc.h>
+#include <sof/cache.h>
+#include <sof/common.h>
 #include <sof/cpu.h>
 #include <sof/idc.h>
+#include <sof/list.h>
+#include <sof/notifier.h>
+#include <sof/spinlock.h>
+#include <ipc/topology.h>
 
 static struct notify_data _notify_data;
 

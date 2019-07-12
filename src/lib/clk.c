@@ -7,17 +7,17 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/clk.h>
-#include <sof/list.h>
 #include <sof/alloc.h>
-#include <sof/spinlock.h>
-#include <sof/notifier.h>
+#include <sof/clk.h>
 #include <sof/cpu.h>
-#include <sof/platform.h>
 #include <sof/drivers/timer.h>
-#include <config.h>
+#include <sof/notifier.h>
+#include <sof/platform.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <limits.h>
 
 /* clock tracing */
 #define trace_clk(__e, ...) \

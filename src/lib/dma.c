@@ -4,9 +4,15 @@
 //
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/dma.h>
-#include <sof/atomic.h>
 #include <sof/alloc.h>
+#include <sof/atomic.h>
+#include <sof/dma.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct dma_info {
 	struct dma *dma_array;
