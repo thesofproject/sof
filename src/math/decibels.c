@@ -6,7 +6,6 @@
 
 #include <sof/audio/format.h>
 #include <sof/math/decibels.h>
-
 #include <stdint.h>
 
 #define ONE_Q20         Q_CONVERT_FLOAT(1.0, 20)	  /* Use Q12.20 */
