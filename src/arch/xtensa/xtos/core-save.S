@@ -552,8 +552,7 @@ _xtos_core_save_common:
 	/*  TIE state  */
 	addi	a4, a3, CS_SA_ncp
 	xchal_ncp_store	a4, a5,a6,a7,a8		// save non-coprocessor state
-/* TODO: remove this constraint after GCC toolchain update */
-#if XCHAL_HAVE_CP && (__XCC__ || !CONFIG_APOLLOLAKE)
+#if XCHAL_HAVE_CP
 	rsr.cpenable	a5
 	s32i	a5, a3, CS_SA_cpenable
 	movi	a6, -1

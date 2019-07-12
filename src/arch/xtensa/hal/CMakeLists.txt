@@ -44,32 +44,6 @@ set(STATE_DEFS
 	-D__SPLIT__set_cpenable
 )
 
-set(STATE_DEFS_APL_GCC
-	-D__SPLIT__extra_size
-	-D__SPLIT__extra_align
-	-D__SPLIT__cpregs_size
-	-D__SPLIT__cpregs_align
-	-D__SPLIT__cp_names
-	-D__SPLIT__all_extra_size
-	-D__SPLIT__all_extra_align
-	-D__SPLIT__num_coprocessors
-	-D__SPLIT__cp_num
-	-D__SPLIT__cp_max
-	-D__SPLIT__cp_mask
-	-D__SPLIT__cp_id_mappings
-	-D__SPLIT__cp_mask_mappings
-	-D__SPLIT__init_mem_extra
-	-D__SPLIT__init_mem_cp
-	-D__SPLIT__save_extra
-	-D__SPLIT__restore_extra
-	-D__SPLIT__cpregs_save_fn
-	-D__SPLIT__cpregs_restore_fn
-	-D__SPLIT__validate_cp
-	-D__SPLIT__invalidate_cp
-	-D__SPLIT__get_cpenable
-	-D__SPLIT__set_cpenable
-)
-
 set(DISASS_DEFS
 	-D__SPLIT__op0_format_lengths
 	-D__SPLIT__byte0_format_lengths
@@ -147,10 +121,6 @@ set(CACHE_DEFS
 	-D__SPLIT__release_major
 	-D__SPLIT__release_minor
 )
-
-if(CONFIG_APOLLOLAKE AND NOT XCC)
-	set(STATE_DEFS ${STATE_DEFS_APL_GCC})
-endif()
 
 add_library(hal STATIC "")
 target_link_libraries(hal sof_options)
