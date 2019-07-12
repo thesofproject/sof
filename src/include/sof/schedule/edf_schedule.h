@@ -42,6 +42,4 @@ struct edf_task_pdata {
 	uint64_t deadline;
 };
 
-extern struct scheduler_ops schedule_edf_ops;
-
 #endif /* __SOF_SCHEDULE_EDF_SCHEDULE_H__ */

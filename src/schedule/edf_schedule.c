@@ -4,21 +4,24 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/debug.h>
 #include <sof/clk.h>
-#include <sof/schedule/edf_schedule.h>
-#include <sof/schedule/ll_schedule.h>
-#include <sof/audio/component.h>
+#include <sof/common.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
+#include <sof/interrupt-map.h>
+#include <sof/list.h>
+#include <sof/platform.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
 #include <sof/task.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct edf_schedule_data {
 	spinlock_t lock;

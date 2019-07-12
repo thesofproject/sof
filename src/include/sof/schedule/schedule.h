@@ -93,6 +93,9 @@ struct schedule_data {
 	struct edf_schedule_data *edf_sch_data;
 };
 
+extern struct scheduler_ops schedule_edf_ops;
+extern struct scheduler_ops schedule_ll_ops;
+
 struct schedule_data **arch_schedule_get_data(void);
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
