@@ -10,12 +10,10 @@
  *
  */
 
+#include <sof/cache.h>
 #include <sof/gdb/gdb.h>
 #include <sof/gdb/ringbuffer.h>
-#include <sof/string.h>
-#include <signal.h>
-#include <stdint.h>
-#include <sof/drivers/interrupt.h>
+#include <string.h>
 
 /* local functions */
 static int get_hex(unsigned char ch);
