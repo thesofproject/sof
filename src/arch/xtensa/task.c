@@ -11,12 +11,20 @@
  */
 
 #include <sof/alloc.h>
-#include <sof/debug.h>
+#include <sof/cpu.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/schedule/schedule.h>
+#include <sof/list.h>
 #include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
 #include <sof/task.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <config.h>
 #include <xtos-structs.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct irq_task **task_irq_low_get(void)
 {

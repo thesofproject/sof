@@ -18,6 +18,7 @@
 
 #include <sof/list.h>
 #include <sof/spinlock.h>
+#include <stdint.h>
 
 /** \brief IRQ task data. */
 struct irq_task {

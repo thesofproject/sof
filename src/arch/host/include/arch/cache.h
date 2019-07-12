@@ -10,7 +10,6 @@
 #ifndef __ARCH_CACHE_H__
 #define __ARCH_CACHE_H__
 
-#include <stdint.h>
 #include <stddef.h>
 
 static inline void dcache_writeback_region(void *addr, size_t size) {}

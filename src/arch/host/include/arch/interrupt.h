@@ -10,10 +10,7 @@
 #ifndef __ARCH_INTERRUPT_H__
 #define __ARCH_INTERRUPT_H__
 
-#include <sof/interrupt-map.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #define PLATFORM_IRQ_CHILDREN 0
 

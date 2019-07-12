@@ -4,14 +4,19 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#include <sof/bit.h>
 #include <sof/cache.h>
-#include <sof/sof.h>
-#include <sof/wait.h>
-#include <sof/trace.h>
 #include <sof/io.h>
-#include <user/manifest.h>
-#include <sof/platform.h>
 #include <sof/memory.h>
+#include <sof/platform.h>
+#include <sof/shim.h>
+#include <sof/sof.h>
+#include <sof/trace.h>
+#include <sof/wait.h>
+#include <user/manifest.h>
+#include <config.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #if CONFIG_SUECREEK
 #define MANIFEST_BASE	BOOT_LDR_MANIFEST_BASE

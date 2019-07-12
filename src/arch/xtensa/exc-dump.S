@@ -4,6 +4,7 @@
  */
 
 #include <arch/offset-defs.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/corebits.h>
 
 	.section .text, "ax"

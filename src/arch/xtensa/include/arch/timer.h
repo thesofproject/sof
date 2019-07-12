@@ -12,7 +12,6 @@
 
 #include <sof/drivers/interrupt.h>
 #include <stdint.h>
-#include <errno.h>
 
 struct timer {
 	uint32_t id;

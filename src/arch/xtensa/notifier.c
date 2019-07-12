@@ -10,9 +10,9 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <xtos-structs.h>
 #include <sof/cpu.h>
 #include <sof/notifier.h>
+#include <xtos-structs.h>
 
 struct notify **arch_notify_get(void)
 {

@@ -11,7 +11,8 @@
 #define GDB_DISABLE_LOWER_INTERRUPTS_MASK ~0x1F
 
 #include <arch/gdb/utilities.h>
-#include <arch/gdb/xtensa-defs.h>
+#include <xtensa/config/core-isa.h>
+#include <xtensa/specreg.h>
 
 void arch_gdb_read_sr(int sr)
 {

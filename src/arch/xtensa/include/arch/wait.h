@@ -10,10 +10,11 @@
 #ifndef __ARCH_WAIT_H__
 #define __ARCH_WAIT_H__
 
-#include <xtensa/xtruntime.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/panic.h>
+#include <sof/platform.h>
 #include <ipc/trace.h>
+#include <xtensa/xtruntime.h>
 
 #if defined(PLATFORM_WAITI_DELAY)
 

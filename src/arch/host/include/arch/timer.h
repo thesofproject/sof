@@ -10,9 +10,7 @@
 #ifndef __ARCH_TIMER_H__
 #define __ARCH_TIMER_H__
 
-#include <sof/drivers/interrupt.h>
 #include <stdint.h>
-#include <errno.h>
 
 struct timer {
 };
