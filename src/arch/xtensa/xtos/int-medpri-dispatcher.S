@@ -120,7 +120,6 @@ LABEL(_Level,FromVector):
 
 /* Preserve the SAR, loop, MAC16 regs and coprocessors.  Also, clear the interrupt. */
 
-/* TODO: remove this constraint after GCC toolchain update */
 #if __XCC__
 #if (XCHAL_CP_MASK & CP0_MASK)
 	mov	a11, a1
@@ -167,7 +166,6 @@ LABEL(_Level,FromVector):
  * goes away before we read the INTERRUPT register).  Also save off
  * sar, loops, mac16 registers and coprocessors. */
 
- /* TODO: remove this constraint after GCC toolchain update */
 #if __XCC__
 #if (XCHAL_CP_MASK & CP0_MASK)
 	mov	a11, a1
@@ -225,7 +223,6 @@ LABEL(.L1,_loop0):
 
 /* Restore everything, and return. */
 
-/* TODO: remove this constraint after GCC toolchain update */
 #if __XCC__
 #if (XCHAL_CP_MASK & CP0_MASK)
 	mov	a11, a1
