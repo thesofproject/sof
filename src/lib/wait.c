@@ -8,18 +8,14 @@
  * Simple wait for event completion and signaling with timeouts.
  */
 
-#include <stdint.h>
-#include <errno.h>
-#include <sof/wait.h>
-#include <sof/io.h>
-#include <sof/debug.h>
-#include <sof/schedule/schedule.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/trace.h>
-#include <sof/spinlock.h>
 #include <sof/clk.h>
-#include <sof/drivers/timer.h>
+#include <sof/io.h>
 #include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/trace.h>
+#include <sof/wait.h>
+#include <errno.h>
+#include <stdint.h>
 
 #define DEFAULT_TRY_TIMES 8
 

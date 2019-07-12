@@ -12,15 +12,18 @@
  * continuously then the SA will emit trace and panic().
  */
 
-#include <sof/sof.h>
 #include <sof/agent.h>
-#include <sof/debug.h>
-#include <sof/panic.h>
 #include <sof/alloc.h>
 #include <sof/clk.h>
-#include <sof/trace.h>
-#include <sof/platform.h>
 #include <sof/drivers/timer.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/sof.h>
+#include <sof/trace.h>
+#include <ipc/topology.h>
+#include <ipc/trace.h>
+#include <stdint.h>
 
 #define trace_sa(__e, ...) \
 	trace_event_atomic(TRACE_CLASS_SA, __e, ##__VA_ARGS__)

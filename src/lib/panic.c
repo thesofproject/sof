@@ -4,18 +4,19 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
+#include <sof/cache.h>
+#include <sof/debug.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/mailbox.h>
 #include <sof/panic.h>
-#include <sof/sof.h>
-#include <sof/trace.h>
 #include <sof/platform.h>
-
+#include <sof/sof.h>
+#include <sof/string.h>
+#include <sof/trace.h>
 #include <ipc/trace.h>
-
+#include <config.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info)
 {

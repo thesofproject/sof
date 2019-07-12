@@ -5,6 +5,11 @@
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
 #include <sof/dai.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define trace_dai(__e, ...) trace_event(TRACE_CLASS_DAI, __e, ##__VA_ARGS__)
 

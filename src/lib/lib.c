@@ -4,10 +4,10 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#include <sof/string.h>
+#include <config.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <sof/sof.h>
-#include <sof/alloc.h>
 
 #if 0 // TODO: only compile if no arch memcpy is available.
 

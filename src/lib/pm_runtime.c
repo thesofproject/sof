@@ -10,8 +10,11 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/pm_runtime.h>
 #include <sof/alloc.h>
+#include <sof/pm_runtime.h>
+#include <sof/spinlock.h>
+#include <ipc/topology.h>
+#include <stdint.h>
 
 /** \brief Runtime power management data pointer. */
 static struct pm_runtime_data *prd;
