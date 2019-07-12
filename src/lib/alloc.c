@@ -228,7 +228,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	struct block_map *map = &heap->map[level];
 	struct block_hdr *hdr;
 	void *ptr;
-	unsigned int start;
+	unsigned int start = map->first_free;
 	unsigned int current;
 	unsigned int count = bytes / map->block_size;
 	unsigned int remaining = 0;
@@ -239,11 +239,14 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	/* check if we have enough consecutive blocks for requested
 	 * allocation size.
 	 */
-	for (current = map->first_free; current < map->count; current++) {
+	for (current = map->first_free; current < map->count &&
+	     remaining < count; current++) {
 		hdr = &map->block[current];
 
-		if (!hdr->used)
-			remaining++;
+		if (hdr->used)
+			remaining = 0;/* used, not suitable, reset */
+		else if (!remaining++)
+			start = current;/* new start */
 	}
 
 	if (count > map->count || remaining < count) {
@@ -254,14 +257,15 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	}
 
 	/* we found enough space, let's allocate it */
-	start = map->first_free;
 	map->free_count -= count;
 	ptr = (void *)(map->base + start * map->block_size);
 	hdr = &map->block[start];
 	hdr->size = count;
 	heap->info.used += count * map->block_size;
 	heap->info.free -= count * map->block_size;
-	map->first_free = map->first_free + count;
+	/* update first_free if needed */
+	if (map->first_free == start)
+		map->first_free += count;
 
 	/* update each block */
 	for (current = start; current < count; current++) {
