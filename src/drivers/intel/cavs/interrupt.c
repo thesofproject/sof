@@ -30,7 +30,7 @@
  * same time then they are serviced in order of ascending status bit.
  */
 static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
-				    uint32_t ilxmsd, uint32_t ilxmcd)
+				    uint32_t ilxmsd)
 {
 	struct irq_desc *parent = data;
 	struct irq_cascade_desc *cascade = container_of(parent,
@@ -68,7 +68,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 					"nobody cared level %d bit %d",
 					level, bit);
 			/* now mask it */
-			irq_write(ilxmcd, 0x1 << bit);
+			irq_write(ilxmsd, 0x1 << bit);
 		}
 
 		/* are all IRQs serviced from last status ? */
@@ -94,8 +94,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				irq_lvl2_handler(data, \
 				 IRQ_NUM_EXT_LEVEL##n, \
 				 REG_IRQ_IL##n##SD(core), \
-				 REG_IRQ_IL##n##MSD(core), \
-				 REG_IRQ_IL##n##MCD(core))
+				 REG_IRQ_IL##n##MSD(core))
 
 static void irq_lvl2_level2_handler(void *data)
 {
