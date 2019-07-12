@@ -170,7 +170,7 @@ static struct comp_buffer *mock_comp_buffer(void **state,
 		break;
 	}
 
-	buffer->cb = NULL;
+	list_init(&buffer->callback_list);
 
 	return buffer;
 }
