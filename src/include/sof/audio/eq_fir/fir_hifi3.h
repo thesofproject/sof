@@ -14,8 +14,7 @@
 
 #include <sof/audio/buffer.h>
 #include <xtensa/config/defs.h>
-#include <xtensa/tie/xt_hifi2.h>
-#include <stdint.h>
+#include <xtensa/tie/xt_hifi3.h>
 
 struct sof_eq_fir_coef_data;
 

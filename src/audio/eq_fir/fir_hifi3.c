@@ -93,8 +93,8 @@ void eq_fir_2x_s32_hifi3(struct fir_state_32x16 fir[],
 	int rshift;
 	int lshift;
 	int shift;
-	int inc_2nch_s = 2 * nch * sizeof(int32_t);
 	int inc_nch_s = nch * sizeof(int32_t);
+	int inc_2nch_s = 2 * inc_nch_s;
 
 	for (ch = 0; ch < nch; ch++) {
 		/* Get FIR instance and get shifts.
@@ -115,9 +115,9 @@ void eq_fir_2x_s32_hifi3(struct fir_state_32x16 fir[],
 		y0 = snk;
 		y1 = snk;
 		AE_L32_XC(d0, snk, sizeof(int32_t));
-		AE_L32_XC(d1, y0, inc_nch_s);
+		AE_L32_XC(d1, y1, inc_nch_s);
 
-		for (i = 0; i < frames; i++) {
+		for (i = 0; i < (frames >> 1); i++) {
 			/* Load two input samples via input pointer x */
 			fir_comp_setup_circular(source);
 			AE_L32_XC(d0, x, inc_nch_s);
@@ -147,14 +147,12 @@ void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
 	ae_int32 *src = (ae_int32 *)source->r_ptr;
 	ae_int32 *snk = (ae_int32 *)sink->w_ptr;
 	ae_int32 *x;
-	ae_int32 *y0;
-	ae_int32 *y1;
+	ae_int32 *y;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
-	int inc_2nch_s = 2 * nch * sizeof(int32_t);
 	int inc_nch_s = nch * sizeof(int32_t);
 
 	for (ch = 0; ch < nch; ch++) {
@@ -173,12 +171,10 @@ void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
 		 * y1 is set to be ahead of y0 with one frame.
 		 */
 		fir_comp_setup_circular(sink);
-		y0 = snk;
-		y1 = snk;
+		y = snk;
 		AE_L32_XC(d0, snk, sizeof(int32_t));
-		AE_L32_XC(d1, y0, inc_nch_s);
 
-		for (i = 0; i < frames; i++) {
+		for (i = 0; i < (frames >> 1); i++) {
 			/* Load two input samples via input pointer x */
 			fir_comp_setup_circular(source);
 			AE_L32_XC(d0, x, inc_nch_s);
@@ -198,8 +194,8 @@ void eq_fir_2x_s24_hifi3(struct fir_state_32x16 fir[],
 
 			/* Store output and update output pointers */
 			fir_comp_setup_circular(sink);
-			AE_S32_L_XC(d0, y0, inc_2nch_s);
-			AE_S32_L_XC(d1, y1, inc_2nch_s);
+			AE_S32_L_XC(d0, y, inc_nch_s);
+			AE_S32_L_XC(d1, y, inc_nch_s);
 		}
 	}
 }
@@ -218,14 +214,12 @@ void eq_fir_2x_s16_hifi3(struct fir_state_32x16 fir[],
 	ae_int16 *src = (ae_int16 *)source->r_ptr;
 	ae_int16 *snk = (ae_int16 *)sink->w_ptr;
 	ae_int16 *x;
-	ae_int16 *y0;
-	ae_int16 *y1;
+	ae_int16 *y;
 	int ch;
 	int i;
 	int rshift;
 	int lshift;
 	int shift;
-	int inc_2nch_s = 2 * nch * sizeof(int16_t);
 	int inc_nch_s = nch * sizeof(int16_t);
 
 	for (ch = 0; ch < nch; ch++) {
@@ -246,12 +240,10 @@ void eq_fir_2x_s16_hifi3(struct fir_state_32x16 fir[],
 		 * Pointer y1 is set to be ahead of y0 with one frame.
 		 */
 		fir_comp_setup_circular(sink);
-		y0 = snk;
-		y1 = snk;
+		y = snk;
 		AE_L16_XC(d0, snk, sizeof(int16_t));
-		AE_L16_XC(d1, y0, inc_nch_s);
 
-		for (i = 0; i < frames; i++) {
+		for (i = 0; i < (frames >> 1); i++) {
 			/* Load two input samples via input pointer x */
 			fir_comp_setup_circular(source);
 			AE_L16_XC(d0, x, inc_nch_s);
@@ -271,8 +263,8 @@ void eq_fir_2x_s16_hifi3(struct fir_state_32x16 fir[],
 
 			/* Store output and update output pointers */
 			fir_comp_setup_circular(sink);
-			AE_S16_0_XC(d0, y0, inc_2nch_s);
-			AE_S16_0_XC(d1, y1, inc_2nch_s);
+			AE_S16_0_XC(d0, y, inc_nch_s);
+			AE_S16_0_XC(d1, y, inc_nch_s);
 		}
 	}
 }

@@ -659,18 +659,13 @@ static int eq_fir_copy(struct comp_dev *dev)
 {
 	struct comp_copy_limits cl;
 	struct comp_data *cd = comp_get_drvdata(dev);
-	int ret;
 	struct fir_state_32x16 *fir = cd->fir;
 	int nch = dev->params.channels;
 
 	tracev_comp("eq_fir_copy()");
 
 	/* Get source, sink, number of frames etc. to process. */
-	ret = comp_get_copy_limits(dev, &cl);
-	if (ret < 0) {
-		trace_eq_error("eq_fir_copy(): Failed comp_get_copy_limits()");
-		return ret;
-	}
+	comp_get_copy_limits(dev, &cl);
 
 	/* Check if number of frames to process if it is odd. The
 	 * optimized FIR function to process even number of frames
