@@ -6,10 +6,9 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
 #include <sof/audio/format.h>
 #include <sof/math/trig.h>
-
+#include <stdint.h>
 
 #define SINE_C_Q20 341782638 /* 2*SINE_NQUART/pi in Q12.20 */
 #define SINE_NQUART 512 /* Must be 2^N */

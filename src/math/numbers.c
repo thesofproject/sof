@@ -11,8 +11,9 @@
  * https://en.wikipedia.org/wiki/Euclidean_algorithm#Implementations
  */
 
-#include <sof/math/numbers.h>
 #include <sof/audio/format.h>
+#include <sof/math/numbers.h>
+#include <stdint.h>
 
 int gcd(int a, int b)
 {
