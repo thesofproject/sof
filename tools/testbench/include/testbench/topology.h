@@ -21,6 +21,14 @@
 #define SOF_TKN_BUF_SIZE                        100
 #define SOF_TKN_BUF_CAPS                        101
 
+/* DAI */
+/* Token retired with ABI 3.2, do not use for new capabilities
+ * #define      SOF_TKN_DAI_DMAC_CONFIG                 153
+ */
+#define SOF_TKN_DAI_TYPE                        154
+#define SOF_TKN_DAI_INDEX                       155
+#define SOF_TKN_DAI_DIRECTION                   156
+
 /* scheduling */
 #define SOF_TKN_SCHED_PERIOD                    200
 #define SOF_TKN_SCHED_PRIORITY                  201
@@ -36,6 +44,9 @@
 /* SRC */
 #define SOF_TKN_SRC_RATE_IN                     300
 #define SOF_TKN_SRC_RATE_OUT                    301
+
+/* PCM */
+#define SOF_TKN_PCM_DMAC_CONFIG                 353
 
 /* Generic components */
 #define SOF_TKN_COMP_PERIOD_SINK_COUNT          400
@@ -79,6 +90,11 @@ struct sof_topology_token {
 	uint32_t size;
 };
 
+struct sof_dai_types {
+	const char *name;
+	enum sof_ipc_dai_type type;
+};
+
 enum sof_ipc_frame find_format(const char *name);
 
 int get_token_uint32_t(void *elem, void *object, uint32_t offset,
@@ -86,6 +102,11 @@ int get_token_uint32_t(void *elem, void *object, uint32_t offset,
 
 int get_token_comp_format(void *elem, void *object, uint32_t offset,
 			  uint32_t size);
+
+enum sof_ipc_dai_type find_dai(const char *name);
+
+int get_token_dai_type(void *elem, void *object, uint32_t offset,
+		       uint32_t size);
 
 /* Buffers */
 static const struct sof_topology_token buffer_tokens[] = {
@@ -152,6 +173,24 @@ static const struct sof_topology_token comp_tokens[] = {
 	{SOF_TKN_COMP_FORMAT,
 		SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_comp_format,
 		offsetof(struct sof_ipc_comp_config, frame_fmt), 0},
+};
+
+/* PCM */
+static const struct sof_topology_token pcm_tokens[] = {
+	{SOF_TKN_PCM_DMAC_CONFIG, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+	 get_token_uint32_t,
+	 offsetof(struct sof_ipc_comp_host, dmac_config), 0},
+};
+
+/* DAI */
+static const struct sof_topology_token dai_tokens[] = {
+	{SOF_TKN_DAI_TYPE, SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_dai_type,
+		offsetof(struct sof_ipc_comp_dai, type), 0},
+	{SOF_TKN_DAI_INDEX, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_dai, dai_index), 0},
+	{SOF_TKN_DAI_DIRECTION, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+	get_token_uint32_t,
+	offsetof(struct sof_ipc_comp_dai, direction), 0},
 };
 
 int sof_parse_tokens(void *object,
