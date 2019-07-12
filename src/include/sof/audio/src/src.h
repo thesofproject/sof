@@ -8,6 +8,9 @@
 #ifndef __SOF_AUDIO_SRC_SRC_H__
 #define __SOF_AUDIO_SRC_SRC_H__
 
+#include <stddef.h>
+#include <stdint.h>
+
 struct src_param {
 	int fir_s1;
 	int fir_s2;

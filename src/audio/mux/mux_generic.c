@@ -8,7 +8,15 @@
 
 #if CONFIG_COMP_MUX
 
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
+#include <sof/audio/format.h>
 #include <sof/audio/mux.h>
+#include <sof/bit.h>
+#include <sof/common.h>
+#include <ipc/stream.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /*
  * \brief Fetch 16b samples from source buffer and perform routing operations

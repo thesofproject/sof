@@ -10,7 +10,13 @@
  * \authors Lech Betlej <lech.betlej@linux.intel.com>
  */
 
+#include <sof/audio/buffer.h>
+#include <sof/audio/component.h>
 #include <sof/audio/selector.h>
+#include <sof/common.h>
+#include <ipc/stream.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /**
  * \brief Channel selection for 16 bit, 1 channel data format.

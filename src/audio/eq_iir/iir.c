@@ -6,12 +6,12 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/audio/format.h>
 #include <sof/audio/eq_iir/iir.h>
+#include <sof/audio/format.h>
 #include <user/eq.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /*
  * Direct form II transposed second order filter block (biquad)

@@ -6,17 +6,17 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/audio/component.h>
 #include <sof/audio/eq_fir/fir_config.h>
-#include <sof/audio/format.h>
-#include <user/eq.h>
 
 #if FIR_GENERIC
 
+#include <sof/audio/buffer.h>
 #include <sof/audio/eq_fir/fir.h>
+#include <sof/audio/format.h>
+#include <user/eq.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /*
  * EQ FIR algorithm code

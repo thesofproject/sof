@@ -5,23 +5,25 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/debug.h>
-#include <sof/ipc.h>
-#include <sof/spinlock.h>
-#include <sof/platform.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/drivers/timer.h>
+#include <sof/cache.h>
 #include <sof/cpu.h>
+#include <sof/drivers/timer.h>
 #include <sof/idc.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/panic.h>
 #include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* generic pipeline data used by pipeline_comp_* functions */
 struct pipeline_data {

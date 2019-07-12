@@ -9,14 +9,22 @@
 
 #if CONFIG_COMP_MUX
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
+#include <sof/alloc.h>
 #include <sof/audio/component.h>
-#include <sof/ipc.h>
 #include <sof/audio/mux.h>
+#include <sof/common.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/math/numbers.h>
+#include <sof/platform.h>
+#include <sof/preproc.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/control.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 static int mux_set_values(struct comp_data *cd, struct sof_mux_config *cfg)
 {

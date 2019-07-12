@@ -14,15 +14,29 @@
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#include <stdint.h>
-#include <ipc/topology.h>
-#include <sof/ipc.h>
-#include <sof/audio/component.h>
-#include <sof/audio/kpb.h>
-#include <sof/list.h>
+#include <sof/alloc.h>
 #include <sof/audio/buffer.h>
-#include <sof/ut.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
+#include <sof/audio/kpb.h>
 #include <sof/clk.h>
+#include <sof/common.h>
+#include <sof/drivers/timer.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/math/numbers.h>
+#include <sof/notifier.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/string.h>
+#include <sof/ut.h>
+#include <ipc/topology.h>
+#include <user/kpb.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* KPB private data, runtime data */
 struct comp_data {

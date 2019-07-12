@@ -4,19 +4,19 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/audio/component.h>
 #include <sof/audio/eq_fir/fir_config.h>
-#include <sof/audio/format.h>
-#include <user/eq.h>
 
 #if FIR_HIFIEP
 
+#include <sof/audio/buffer.h>
+#include <sof/audio/eq_fir/fir_hifi2ep.h>
+#include <sof/audio/format.h>
+#include <user/eq.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
-#include <sof/audio/eq_fir/fir_hifi2ep.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /*
  * EQ FIR algorithm code

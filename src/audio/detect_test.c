@@ -4,16 +4,29 @@
 //
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
-#include <sof/ipc.h>
-#include <sof/notifier.h>
+#include <kernel/abi.h>
+#include <sof/alloc.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>
+#include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/math/numbers.h>
+#include <sof/notifier.h>
+#include <sof/panic.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <sof/wait.h>
+#include <ipc/control.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <user/detect_test.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 /* tracing */
 #define trace_keyword(__e, ...) \

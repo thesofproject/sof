@@ -5,19 +5,21 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/cache.h>
-#include <ipc/stream.h>
-#include <ipc/topology.h>
 #include <sof/alloc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/cache.h>
+#include <sof/common.h>
 #include <sof/dma.h>
 #include <sof/ipc.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/sof.h>
+#include <sof/panic.h>
+#include <sof/string.h>
 #include <sof/trace.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>

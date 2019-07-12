@@ -6,12 +6,27 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdbool.h>
-#include <sof/sof.h>
+#include <sof/alloc.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/eq_fir/fir_config.h>
+#include <sof/audio/pipeline.h>
+#include <sof/cache.h>
+#include <sof/common.h>
 #include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/control.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <kernel/abi.h>
 #include <user/eq.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #if FIR_GENERIC
 #include <sof/audio/eq_fir/fir.h>
