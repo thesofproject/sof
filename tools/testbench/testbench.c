@@ -10,7 +10,7 @@
 #include <getopt.h>
 #include <dlfcn.h>
 #include "testbench/common_test.h"
-#include "testbench/topology.h"
+#include <tplg_parser/topology.h>
 #include "testbench/trace.h"
 #include "testbench/file.h"
 

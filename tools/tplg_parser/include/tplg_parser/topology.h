@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: BSD-3-Clause
+/*
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright(c) 2018 Intel Corporation. All rights reserved.
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  *         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
@@ -10,40 +11,11 @@
 #define _COMMON_TPLG_H
 
 #include <sound/asoc.h>
-#include "common_test.h"
+#include <ipc/dai.h>
+#include <kernel/tokens.h>
 
-/*
- * TODO: include these token from kernel uapi header
- * Tokens - must match values in topology configurations
- */
-
-/* buffers */
-#define SOF_TKN_BUF_SIZE                        100
-#define SOF_TKN_BUF_CAPS                        101
-
-/* scheduling */
-#define SOF_TKN_SCHED_PERIOD                    200
-#define SOF_TKN_SCHED_PRIORITY                  201
-#define SOF_TKN_SCHED_MIPS                      202
-#define SOF_TKN_SCHED_CORE                      203
-#define SOF_TKN_SCHED_FRAMES                    204
-#define SOF_TKN_SCHED_TIME_DOMAIN               205
-
-/* volume */
-#define SOF_TKN_VOLUME_RAMP_STEP_TYPE           250
-#define SOF_TKN_VOLUME_RAMP_STEP_MS             251
-
-/* SRC */
-#define SOF_TKN_SRC_RATE_IN                     300
-#define SOF_TKN_SRC_RATE_OUT                    301
-
-/* Generic components */
-#define SOF_TKN_COMP_PERIOD_SINK_COUNT          400
-#define SOF_TKN_COMP_PERIOD_SOURCE_COUNT        401
-#define SOF_TKN_COMP_FORMAT                     402
-/* Token retired with ABI 3.2, do not use for new capabilities
- * #define SOF_TKN_COMP_PRELOAD_COUNT              403
- */
+#define SOF_DEV 1
+#define FUZZER_DEV 2
 
 struct comp_info {
 	char *name;
@@ -154,6 +126,33 @@ static const struct sof_topology_token comp_tokens[] = {
 		offsetof(struct sof_ipc_comp_config, frame_fmt), 0},
 };
 
+/* PCM */
+static const struct sof_topology_token pcm_tokens[] = {
+	{SOF_TKN_PCM_DMAC_CONFIG, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+	 get_token_uint32_t,
+	 offsetof(struct sof_ipc_comp_host, dmac_config), 0},
+};
+
+/* DAI */
+enum sof_ipc_dai_type find_dai(const char *name);
+
+int get_token_dai_type(void *elem, void *object, uint32_t offset,
+		       uint32_t size);
+static const struct sof_topology_token dai_tokens[] = {
+	{SOF_TKN_DAI_TYPE, SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_dai_type,
+		offsetof(struct sof_ipc_comp_dai, type), 0},
+	{SOF_TKN_DAI_INDEX, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_dai, dai_index), 0},
+	{SOF_TKN_DAI_DIRECTION, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+	get_token_uint32_t,
+	offsetof(struct sof_ipc_comp_dai, direction), 0},
+};
+
+struct sof_dai_types {
+	const char *name;
+	enum sof_ipc_dai_type type;
+};
+
 int sof_parse_tokens(void *object,
 		     const struct sof_topology_token *tokens,
 		     int count, struct snd_soc_tplg_vendor_array *array,
@@ -170,9 +169,44 @@ void sof_parse_word_tokens(void *object,
 			   const struct sof_topology_token *tokens,
 			   int count,
 			   struct snd_soc_tplg_vendor_array *array);
+int get_token_dai_type(void *elem, void *object, uint32_t offset,
+		       uint32_t size);
+enum sof_ipc_dai_type find_dai(const char *name);
 
-int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
-		   struct testbench_prm *tp, int *fr_id, int *fw_id,
-		   int *sched_id, char *pipeline_msg);
+int tplg_read_array(struct snd_soc_tplg_vendor_array *array, FILE *file);
+int tplg_load_buffer(int comp_id, int pipeline_id, int size,
+		     struct sof_ipc_buffer *buffer, FILE *file);
+int tplg_load_pcm(int comp_id, int pipeline_id, int size, int dir,
+		  struct sof_ipc_comp_host *host, FILE *file);
+int tplg_load_dai(int comp_id, int pipeline_id, int size,
+		  struct sof_ipc_comp_dai *comp_dai, FILE *file);
+int tplg_load_pga(int comp_id, int pipeline_id, int size,
+		  struct sof_ipc_comp_volume *volume, FILE *file);
+int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
+		       struct sof_ipc_pipe_new *pipeline, FILE *file);
+int tplg_load_controls(int num_kcontrols, FILE *file);
+int tplg_load_src(int comp_id, int pipeline_id, int size,
+		  struct sof_ipc_comp_src *src, FILE *file);
+int tplg_load_mixer(int comp_id, int pipeline_id, int size,
+		    struct sof_ipc_comp_mixer *mixer, FILE *file);
+int tplg_load_graph(int num_comps, int pipeline_id,
+		    struct comp_info *temp_comp_list, char *pipeline_string,
+		    struct sof_ipc_pipe_comp_connect *connection, FILE *file,
+		    int route_num, int count);
 
+int load_pga(void *dev, int comp_id, int pipeline_id, int size);
+int load_aif_in_out(void *dev, int comp_id, int pipeline_id,
+		    int size, int *fr_id, int *sched_id, void *tp, int dir);
+int load_dai_in_out(void *dev, int comp_id, int pipeline_id,
+		    int size, int *fw_id, void *tp);
+int load_buffer(void *dev, int comp_id, int pipeline_id, int size);
+int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
+		  int *sched_id);
+int load_src(void *dev, int comp_id, int pipeline_id, int size, void *params);
+int load_mixer(void *dev, int comp_id, int pipeline_id, int size);
+int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
+		int comp_id, int comp_index, int pipeline_id,
+		void *tp, int *fr_id, int *fw_id, int *sched_id, FILE *file);
+void register_comp(int comp_type);
+int find_widget(struct comp_info *temp_comp_list, int count, char *name);
 #endif
