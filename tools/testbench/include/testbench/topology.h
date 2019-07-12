@@ -10,7 +10,9 @@
 #define _COMMON_TPLG_H
 
 #include <sound/asoc.h>
+#ifdef BUILD_TESTBENCH
 #include "common_test.h"
+#endif
 
 /*
  * TODO: include these token from kernel uapi header
@@ -210,8 +212,10 @@ void sof_parse_word_tokens(void *object,
 			   int count,
 			   struct snd_soc_tplg_vendor_array *array);
 
+#ifdef BUILD_TESTBENCH
 int parse_topology(struct sof *sof, struct shared_lib_table *library_table,
 		   struct testbench_prm *tp, int *fr_id, int *fw_id,
 		   int *sched_id, char *pipeline_msg);
+#endif
 
 #endif

@@ -18,6 +18,8 @@ add_executable(testbench
 	trace.c
 )
 
+target_compile_definitions(testbench PRIVATE -DBUILD_TESTBENCH=1)
+
 target_include_directories(testbench PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_compile_options(testbench PRIVATE -g -O3 -Wall -Werror -Wl,-EL -Wmissing-prototypes -Wimplicit-fallthrough=3)
