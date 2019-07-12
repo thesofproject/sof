@@ -12,34 +12,42 @@
  *
  */
 
-#include <stdbool.h>
-#include <sof/debug.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/ipc.h>
-#include <sof/mailbox.h>
-#include <sof/sof.h>
-#include <sof/stream.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
 #include <sof/alloc.h>
-#include <sof/wait.h>
-#include <sof/trace.h>
-#include <sof/clk.h>
-#include <sof/math/numbers.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
+#include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/cpu.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <sof/dma-trace.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
+#include <sof/gdb/gdb.h>
+#include <sof/idc.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/mailbox.h>
+#include <sof/math/numbers.h>
+#include <sof/panic.h>
+#include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/control.h>
+#include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/pm.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-#include <ipc/pm.h>
-#include <ipc/control.h>
-#include <sof/dma-trace.h>
-#include <sof/cpu.h>
-#include <sof/idc.h>
+#include <ipc/trace.h>
 #include <config.h>
-#include <sof/gdb/gdb.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)

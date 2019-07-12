@@ -5,20 +5,24 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/ipc.h>
-#include <sof/debug.h>
-#include <sof/platform.h>
+#include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/buffer.h>
+#include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/ipc.h>
+#include <sof/list.h>
+#include <sof/platform.h>
+#include <sof/sof.h>
+#include <sof/spinlock.h>
+#include <ipc/dai.h>
+#include <ipc/header.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* Returns pipeline source component */
 #define ipc_get_ppl_src_comp(ipc, ppl_id) \

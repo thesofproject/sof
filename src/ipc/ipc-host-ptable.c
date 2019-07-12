@@ -5,20 +5,15 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
+#include <sof/dma.h>
 #include <sof/ipc.h>
-#include <sof/debug.h>
 #include <sof/platform.h>
-#include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
-#include <sof/audio/buffer.h>
+#include <sof/wait.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stdint.h>
 
 /*
  * Parse the host page tables and create the audio DMA SG configuration

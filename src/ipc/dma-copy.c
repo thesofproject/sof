@@ -5,14 +5,15 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <stdint.h>
-#include <ipc/trace.h>
-#include <sof/sof.h>
-#include <sof/debug.h>
-#include <sof/trace.h>
-#include <sof/ipc.h>
 #include <sof/dma.h>
+#include <sof/ipc.h>
+#include <sof/platform.h>
+#include <sof/trace.h>
 #include <sof/wait.h>
+#include <config.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* tracing */
 #define trace_dma(__e)	trace_event(TRACE_CLASS_DMA, __e)
