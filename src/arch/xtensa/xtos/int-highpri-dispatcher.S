@@ -34,10 +34,11 @@
 // to be the interrupt priority level of the vector, then include this file.
 
 #include <config.h>
+#if CONFIG_SMP
+#include <sof/cpu.h>
+#endif
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
-#include <sof/cpu.h>
-#include <sof/platform.h>
 
 
 #if XCHAL_HAVE_INTERRUPTS && (XCHAL_HAVE_XEA1 || XCHAL_HAVE_XEA2)

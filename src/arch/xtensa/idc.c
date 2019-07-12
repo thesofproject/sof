@@ -4,17 +4,25 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <sof/drivers/interrupt.h>
-#include <sof/platform.h>
-#include <sof/cpu.h>
 #include <sof/alloc.h>
+#include <sof/audio/component.h>
+#include <sof/audio/pipeline.h>
 #include <sof/cache.h>
 #include <sof/clk.h>
+#include <sof/cpu.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/drivers/timer.h>
 #include <sof/idc.h>
 #include <sof/ipc.h>
-#include <sof/spinlock.h>
 #include <sof/notifier.h>
+#include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/shim.h>
+#include <ipc/control.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <xtos-structs.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 

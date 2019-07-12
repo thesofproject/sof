@@ -24,7 +24,7 @@ gdb_init_debug_exception:
 
 	/* enable breakpoints */
 	movi a3, 1
-	wsr  a3, IBREAKENABLE
+	wsr  a3, DEBUG_IBREAKENABLE
 
 	isync
 	rsync

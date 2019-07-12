@@ -12,12 +12,13 @@
  * 2) Stack is in first HPSRAM bank.
  */
 
-#include <config.h>
 #include <sof/cpu.h>
-#include <sof/shim.h>
+#include <sof/memory.h>
 #include <sof/platform.h>
-#include <xtensa/corebits.h>
+#include <sof/shim.h>
+#include <config.h>
 #include <xtensa/config/core-isa.h>
+#include <xtensa/corebits.h>
 
 	.type   boot_master_core, @function
 

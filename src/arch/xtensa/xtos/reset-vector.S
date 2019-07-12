@@ -22,6 +22,10 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#include <config.h>
+#if CONFIG_BOOT_LOADER && !CONFIG_VM_ROM
+#include <sof/memory.h>
+#endif
 #include <xtensa/coreasm.h>
 #include <xtensa/corebits.h>
 #include <xtensa/cacheasm.h>
@@ -31,10 +35,6 @@
 #include <xtensa/config/system.h>	/* for XSHAL_USE_ABSOLUTE_LITERALS only */
 #include <xtensa/xtruntime-core-state.h>
 #include "xtos-internal.h"
-#include <config.h>
-#if CONFIG_BOOT_LOADER
-#include <sof/memory.h>
-#endif
 
 // The following reset vector avoids initializing certain registers already
 // initialized by processor reset.  But it does initialize some of them

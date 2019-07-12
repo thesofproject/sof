@@ -8,8 +8,11 @@
 #ifndef __XTOS_XTOS_STRUCTS_H__
 #define __XTOS_XTOS_STRUCTS_H__
 
-#include "xtos-internal.h"
 #include <config.h>
+
+#if CONFIG_SMP
+#include "xtos-internal.h"
+#endif
 
 struct idc;
 struct irq_task;
@@ -38,7 +41,5 @@ struct core_context {
 	struct notify *notify;
 	struct idc *idc;
 };
-
-void _xtos_initialize_pointers_per_core(void);
 
 #endif /* __XTOS_XTOS_STRUCTS_H__ */

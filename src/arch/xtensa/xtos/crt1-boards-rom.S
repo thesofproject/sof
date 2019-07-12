@@ -28,9 +28,9 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include <xtensa/coreasm.h>
-#include <config.h>
 #include <sof/memory.h>
+#include <config.h>
+#include <xtensa/coreasm.h>
 
 // Exports
 .global _start

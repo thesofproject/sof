@@ -4,15 +4,12 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <xtensa/xtruntime.h>
-#include <xtensa/hal.h>
-#include <sof/memory.h>
-#include <sof/mailbox.h>
-#include <sof/debug.h>
-#include <sof/drivers/timer.h>
 #include <sof/drivers/interrupt.h>
-#include <stdint.h>
+#include <sof/drivers/timer.h>
+#include <xtensa/config/core-isa.h>
+#include <xtensa/hal.h>
 #include <errno.h>
+#include <stdint.h>
 
 struct timer_data {
 	void (*handler2)(void *arg);

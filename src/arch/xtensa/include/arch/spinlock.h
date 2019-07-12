@@ -11,7 +11,6 @@
 #define __ARCH_SPINLOCK_H__
 
 #include <stdint.h>
-#include <errno.h>
 
 typedef struct {
 	volatile uint32_t lock;

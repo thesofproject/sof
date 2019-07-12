@@ -10,9 +10,9 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <xtos-structs.h>
 #include <sof/cpu.h>
 #include <sof/schedule/schedule.h>
+#include <xtos-structs.h>
 
 struct schedule_data **arch_schedule_get_data(void)
 {

@@ -28,13 +28,14 @@
 #define XTOS_INTERNAL_H
 
 #include <config.h>
+#if CONFIG_SMP
+#include <sof/cpu.h>
+#include <sof/memory.h>
+#endif
 #include <xtensa/config/core.h>
 #include <xtensa/xtruntime.h>
 #include <xtensa/xtruntime-frames.h>
 #include <xtensa/xtensa-versions.h>
-#include <sof/platform.h>
-#include <sof/memory.h>
-#include <sof/cpu.h>
 #ifndef XTOS_PARAMS_H	/* this to allow indirect inclusion of this header from the outside */
 #include "xtos-params.h"
 #endif

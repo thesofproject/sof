@@ -22,13 +22,13 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#include <arch/gdb/xtensa-defs.h>
 #include <xtensa/xtensa-versions.h>
 #include <xtensa/coreasm.h>
 #include <xtensa/config/specreg.h>
 #ifdef SIMULATOR
 #include <xtensa/simcall.h>
 #endif
-#include <arch/gdb/xtensa-defs.h>
 
 #if XCHAL_HAVE_DEBUG && XCHAL_HAVE_EXCEPTIONS
 

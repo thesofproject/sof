@@ -10,10 +10,10 @@
 #ifndef __ARCH_CACHE_H__
 #define __ARCH_CACHE_H__
 
-#include <stdint.h>
-#include <stddef.h>
-#include <xtensa/config/core.h>
+#include <xtensa/config/core-isa.h>
 #include <xtensa/hal.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define DCACHE_LINE_SIZE	XCHAL_DCACHE_LINESIZE
 

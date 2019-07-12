@@ -16,7 +16,7 @@
 #ifndef __ARCH_TASK_H__
 #define __ARCH_TASK_H__
 
-#include <sof/schedule/schedule.h>
+struct task;
 
 /**
  * \brief Allocates IRQ tasks.

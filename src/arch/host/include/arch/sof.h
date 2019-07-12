@@ -10,12 +10,10 @@
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <sof/string.h>
-#include <stdio.h>
 #include <execinfo.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32

@@ -10,11 +10,11 @@
 #ifndef __ARCH_INTERRUPT_H__
 #define __ARCH_INTERRUPT_H__
 
-#include <xtensa/xtruntime.h>
-#include <xtensa/hal.h>
 #include <sof/interrupt-map.h>
+#include <xtensa/hal.h>
+#include <xtensa/xtruntime.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg)

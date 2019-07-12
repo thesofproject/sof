@@ -12,6 +12,7 @@
 #ifndef __ARCH_GDB_UTILITIES_H__
 #define __ARCH_GDB_UTILITIES_H__
 
+/* Implicit inclusion from sof/gdb/gdb.h */
 #include <arch/gdb/xtensa-defs.h>
 
 void arch_gdb_read_sr(int sr);

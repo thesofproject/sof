@@ -24,9 +24,10 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <config.h>
+#include "xtos-internal.h"
 #include "xtos-structs.h"
 #include <sof/cpu.h>
+#include <config.h>
 
 #if XCHAL_HAVE_INTERRUPTS
 #if CONFIG_SMP

@@ -16,9 +16,12 @@
 #ifndef __ARCH_INIT_H__
 #define __ARCH_INIT_H__
 
-#include <xtensa/hal.h>
-#include <xtensa/xtruntime.h>
 #include <sof/panic.h>
+#include <ipc/trace.h>
+#include <xtensa/corebits.h>
+#include <xtensa/xtruntime.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /**
  * \brief Called in the case of exception.

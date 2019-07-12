@@ -11,6 +11,9 @@
  */
 
 #include <arch/gdb/xtensa-defs.h>
+#include <xtensa/config/core-isa.h>
+#include <xtensa/specreg.h>
+
 #define DENSITY_BREAK_INS_IDENT 0x40
 #define NEXT_INST_OFFSET 0x03
 #define PS_EXCM_EXCEPTION_MODE 0x10

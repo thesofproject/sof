@@ -11,10 +11,11 @@
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__
 
-#include <stdint.h>
-#include <stddef.h>
+#include <sof/cache.h>
 #include <sof/mailbox.h>
 #include <ipc/xtensa.h>
+#include <xtensa/config/core-isa.h>
+#include <stdint.h>
 
 /* architecture specific stack frames to dump */
 #define ARCH_STACK_DUMP_FRAMES		32

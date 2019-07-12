@@ -11,7 +11,7 @@
 #define __ARCH_CPU_H__
 
 #include <config.h>
-#include <xtensa/config/core.h>
+#include <xtensa/config/core-isa.h>
 
 #if CONFIG_SMP
 

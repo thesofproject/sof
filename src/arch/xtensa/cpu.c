@@ -11,14 +11,16 @@
  */
 
 #include <sof/alloc.h>
-#include <sof/atomic.h>
+#include <sof/cache.h>
 #include <sof/cpu.h>
-#include <sof/platform.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/idc.h>
-#include <sof/spinlock.h>
 #include <sof/notifier.h>
 #include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
 #include <xtos-structs.h>
+#include <stdint.h>
 
 /* cpu tracing */
 #define trace_cpu(__e) trace_event(TRACE_CLASS_CPU, __e)

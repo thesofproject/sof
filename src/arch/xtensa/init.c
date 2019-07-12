@@ -10,20 +10,20 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <config.h>
-#include <xtos-structs.h>
-#include <sof/memory.h>
+#include <sof/cpu.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/mailbox.h>
+#include <sof/idc.h>
 #include <sof/init.h>
-#include <sof/init.h>
-#include <sof/spinlock.h>
 #include <sof/notifier.h>
 #include <sof/panic.h>
 #include <sof/schedule/schedule.h>
+#include <sof/sof.h>
+#include <sof/spinlock.h>
 #include <sof/task.h>
-#include <sof/idc.h>
-#include <sof/cpu.h>
+#include <sof/trace.h>
+#include <ipc/trace.h>
+#include <config.h>
+#include <xtos-structs.h>
 #include <stdint.h>
 
 #if DEBUG_LOCKS

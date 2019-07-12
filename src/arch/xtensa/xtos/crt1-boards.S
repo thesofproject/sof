@@ -28,12 +28,15 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#include <config.h>
+#if CONFIG_SMP
+#include <sof/cpu.h>
+#include <sof/memory.h>
+#endif
 #include <xtensa/cacheasm.h>
 #include <xtensa/cacheattrasm.h>
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
-#include <config.h>
-#include <sof/cpu.h>
 
 
 // Exports

@@ -12,7 +12,6 @@
 #define __ARCH_ATOMIC_H__
 
 #include <stdint.h>
-#include <errno.h>
 
 typedef struct {
 	volatile int32_t value;

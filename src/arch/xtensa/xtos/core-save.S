@@ -22,6 +22,7 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+#include <config.h>
 #include <xtensa/coreasm.h>
 #include <xtensa/corebits.h>
 #include <xtensa/cacheasm.h>
@@ -30,7 +31,6 @@
 #include <xtensa/xtruntime-core-state.h>
 #include <xtensa/mpuasm.h>
 #include "xtos-internal.h"
-#include <config.h>
 
 .weak	_idma_pso_save
 //.type	xtos_C_core_save, @function

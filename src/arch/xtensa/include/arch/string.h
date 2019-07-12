@@ -10,8 +10,10 @@
 #ifndef __ARCH_STRING_H__
 #define __ARCH_STRING_H__
 
+#include <config.h>
+#include <xtensa/hal.h>
 #include <errno.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 
 #define arch_memcpy(dest, src, size) \
