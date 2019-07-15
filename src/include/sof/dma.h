@@ -16,15 +16,16 @@
 #ifndef __SOF_DMA_H__
 #define __SOF_DMA_H__
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <sof/list.h>
-#include <sof/spinlock.h>
-#include <sof/sof.h>
-#include <sof/wait.h>
-#include <sof/bit.h>
-#include <sof/atomic.h>
 #include <platform/dma.h>
+#include <sof/atomic.h>
+#include <sof/bit.h>
+#include <sof/cache.h>
+#include <sof/interrupt-map.h>
+#include <sof/spinlock.h>
+#include <sof/wait.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /** \addtogroup sof_dma_drivers DMA Drivers
  *  DMA Drivers API specification.

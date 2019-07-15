@@ -18,10 +18,13 @@
 
 #if CONFIG_COMP_MUX
 
+#include <sof/common.h>
+#include <sof/platform.h>
+#include <sof/trace.h>
 #include <stdint.h>
-#include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
-#include <sof/audio/format.h>
+
+struct comp_buffer;
+struct comp_dev;
 
  /* tracing */
 #define trace_mux(__e, ...) trace_event(TRACE_CLASS_MUX, __e, ##__VA_ARGS__)

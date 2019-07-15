@@ -9,7 +9,6 @@
 #define __SOF_ESAI_H__
 
 #include <sof/dai.h>
-#include <sof/io.h>
 
 /* ESAI Register Map */
 #define REG_ESAI_ETDR           0x00

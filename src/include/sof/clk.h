@@ -8,9 +8,10 @@
 #ifndef __SOF_CLK_H__
 #define __SOF_CLK_H__
 
-#include <stdint.h>
-#include <sof/drivers/timer.h>
 #include <platform/clk.h>
+#include <stdint.h>
+
+struct timer;
 
 #define CLOCK_NOTIFY_PRE	0
 #define CLOCK_NOTIFY_POST	1

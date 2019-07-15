@@ -22,6 +22,8 @@
 #include <sof/audio/buffer.h>
 #include "kpb_mock.h"
 #include <sof/list.h>
+#include <sof/notifier.h>
+#include <user/kpb.h>
 
 /*! Local data types */
 

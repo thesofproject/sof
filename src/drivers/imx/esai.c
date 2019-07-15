@@ -4,9 +4,10 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <errno.h>
-#include <stdbool.h>
 #include <sof/esai.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <ipc/dai.h>
 
 static int esai_context_store(struct dai *dai)
 {

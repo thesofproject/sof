@@ -9,9 +9,13 @@
 #ifndef __SOF_SCHEDULE_SCHEDULE_H__
 #define __SOF_SCHEDULE_SCHEDULE_H__
 
-#include <stdint.h>
 #include <sof/list.h>
 #include <sof/trace.h>
+#include <stdint.h>
+
+struct edf_schedule_data;
+struct ll_schedule_data;
+struct task;
 
 /* schedule tracing */
 #define trace_schedule(format, ...) \
@@ -55,8 +59,6 @@ enum {
 #define SOF_SCHEDULE_FLAG_SYNC	(1 << 0) /* task scheduled synchronously */
 #define SOF_SCHEDULE_FLAG_IDLE  (2 << 0)
 
-struct task;
-
 struct scheduler_ops {
 	void (*schedule_task)(struct task *w, uint64_t start,
 			      uint64_t deadline, uint32_t flags);
@@ -84,9 +86,6 @@ struct task {
 	const struct scheduler_ops *ops;
 	void *private;
 };
-
-struct edf_schedule_data;
-struct ll_schedule_data;
 
 struct schedule_data {
 	struct ll_schedule_data *ll_sch_data;

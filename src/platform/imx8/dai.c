@@ -4,9 +4,11 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/sof.h>
+#include <sof/common.h>
 #include <sof/dai.h>
 #include <sof/esai.h>
+#include <sof/memory.h>
+#include <ipc/dai.h>
 
 static struct dai esai[] = {
 {

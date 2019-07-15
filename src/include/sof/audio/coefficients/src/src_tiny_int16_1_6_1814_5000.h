@@ -5,6 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
+#include <stdint.h>
+
 const int16_t src_int16_1_6_1814_5000_fir[92] = {
 	-4,
 	0,

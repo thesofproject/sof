@@ -92,3 +92,11 @@ int poll_for_register_delay(uint32_t reg, uint32_t mask,
 	}
 	return 0;
 }
+
+void wait_delay(uint64_t number_of_clks)
+{
+	uint64_t current = platform_timer_get(platform_timer);
+
+	while ((platform_timer_get(platform_timer) - current) < number_of_clks)
+		idelay(PLATFORM_DEFAULT_DELAY);
+}

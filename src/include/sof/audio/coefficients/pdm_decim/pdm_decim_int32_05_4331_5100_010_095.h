@@ -5,6 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
+#include <stdint.h>
+
 const int32_t fir_int32_05_4331_5100_010_095[251] = {
 	-250963,
 	-530472,

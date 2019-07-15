@@ -8,16 +8,16 @@
 #ifndef __SOF_AUDIO_BUFFER_H__
 #define __SOF_AUDIO_BUFFER_H__
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
-#include <sof/dma.h>
-#include <sof/trace.h>
-#include <sof/schedule/schedule.h>
+#include <sof/alloc.h>
+#include <sof/audio/pipeline.h>
 #include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/list.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
 #include <ipc/topology.h>
+#include <stddef.h>
+#include <stdint.h>
 
 struct comp_dev;
 

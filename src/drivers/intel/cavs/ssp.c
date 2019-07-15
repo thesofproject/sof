@@ -6,15 +6,25 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Rander Wang <rander.wang@linux.intel.com>
 
+#include <sof/alloc.h>
+#include <sof/audio/component.h>
+#include <sof/clk.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <sof/math/numbers.h>
+#include <sof/platform.h>
+#include <sof/pm_runtime.h>
+#include <sof/spinlock.h>
+#include <sof/ssp.h>
+#include <sof/trace.h>
+#include <sof/wait.h>
+#include <ipc/dai.h>
+#include <ipc/dai-intel.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <sof/stream.h>
-#include <sof/ssp.h>
-#include <sof/alloc.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/pm_runtime.h>
-#include <sof/math/numbers.h>
-#include <config.h>
+#include <stdint.h>
 
 /* tracing */
 #define trace_ssp(__e, ...) \

@@ -8,6 +8,8 @@
 #ifndef __SOF_GDB_RINGBUFFER_H__
 #define __SOF_GDB_RINGBUFFER_H__
 
+#include <sof/mailbox.h>
+
 #define RING_SIZE 128
 #define DEBUG_RX_BASE (mailbox_get_debug_base())
 #define DEBUG_TX_BASE (mailbox_get_debug_base() + 0x100)

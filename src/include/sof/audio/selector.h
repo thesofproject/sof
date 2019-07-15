@@ -14,11 +14,13 @@
 #ifndef __SOF_AUDIO_SELECTOR_H__
 #define __SOF_AUDIO_SELECTOR_H__
 
-#include <stdint.h>
-#include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
-#include <sof/audio/format.h>
+#include <sof/trace.h>
+#include <ipc/stream.h>
 #include <user/selector.h>
+#include <stdint.h>
+
+struct comp_buffer;
+struct comp_dev;
 
 /** \brief Selector trace function. */
 #define trace_selector(__e, ...) \

@@ -5,12 +5,21 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
+#include <sof/alloc.h>
+#include <sof/audio/component.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <sof/shim.h>
+#include <sof/spinlock.h>
+#include <sof/ssp.h>
+#include <sof/trace.h>
+#include <ipc/dai.h>
+#include <ipc/dai-intel.h>
+#include <ipc/stream.h>
+#include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <sof/stream.h>
-#include <sof/ssp.h>
-#include <sof/alloc.h>
-#include <sof/drivers/interrupt.h>
+#include <stdint.h>
 
 /* tracing */
 #define trace_ssp(__e, ...) \

@@ -11,6 +11,7 @@
 #define __PLATFORM_MAILBOX_H__
 
 #include <sof/memory.h>
+#include <config.h>
 
 #define MAILBOX_HOST_OFFSET	0x144000
 

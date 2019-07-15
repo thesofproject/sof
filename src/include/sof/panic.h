@@ -8,10 +8,8 @@
 #ifndef __SOF_PANIC_H__
 #define __SOF_PANIC_H__
 
-#include <stdint.h>
 #include <ipc/trace.h>
-
-struct sof_ipc_panic_info;
+#include <stdint.h>
 
 void dump_panicinfo(void *addr, struct sof_ipc_panic_info *panic_info);
 void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,

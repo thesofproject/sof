@@ -5,31 +5,23 @@
 // Author: Keyon Jie <yang.jie@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/atomic.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/clk.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
 #include <sof/alloc.h>
-#include <sof/trace.h>
+#include <sof/atomic.h>
+#include <sof/audio/component.h>
+#include <sof/bit.h>
+#include <sof/clk.h>
 #include <sof/dma.h>
-#include <sof/io.h>
-#include <sof/ipc.h>
-#include <sof/hda-dma.h>
-#include <sof/pm_runtime.h>
-#include <sof/wait.h>
-#include <sof/audio/format.h>
 #include <sof/drivers/timer.h>
-#include <sof/math/numbers.h>
+#include <sof/hda-dma.h>
+#include <sof/io.h>
 #include <sof/platform.h>
-#include <sof/cache.h>
-#include <sof/wait.h>
+#include <sof/pm_runtime.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
 #include <ipc/topology.h>
-#include <sof/schedule/schedule.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define trace_hddma(__e, ...) \
 	trace_event(TRACE_CLASS_DMA, __e, ##__VA_ARGS__)

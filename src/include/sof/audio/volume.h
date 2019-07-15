@@ -16,10 +16,16 @@
 #ifndef __SOF_AUDIO_VOLUME_H__
 #define __SOF_AUDIO_VOLUME_H__
 
-#include <stdint.h>
 #include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
-#include <sof/audio/format.h>
+#include <sof/bit.h>
+#include <sof/schedule/schedule.h>
+#include <sof/trace.h>
+#include <ipc/stream.h>
+#include <stddef.h>
+#include <stdint.h>
+
+struct comp_buffer;
+struct sof_ipc_ctrl_value_chan;
 
 #define CONFIG_GENERIC
 

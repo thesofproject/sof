@@ -4,9 +4,9 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <config.h>
 #include <sof/clk.h>
 #include <sof/common.h>
+#include <config.h>
 
 #if CONFIG_BAYTRAIL
 static struct freq_table platform_cpu_freq[] = {

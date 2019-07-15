@@ -10,11 +10,13 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <malloc.h>
 #include <cmocka.h>
 
 #include <sof/preproc.h>
 #include <sof/sof.h>
 #include <sof/trace.h>
+#include <user/trace.h>
 
 #define CAPTURE(aggr, ...)\
 	META_RECURSE(META_MAP(1, META_QUOTE, aggr, __VA_ARGS__))
@@ -47,7 +49,7 @@ static void test_debugability_macros_declare_log_entry(void **state)
 			"(6 << 24)"
 			"1"
 			"1"
-			"30"
+			"32"
 			"sizeof(\"" __FILE__ "\")"
 			"sizeof(\"Message\")"
 			"\"" __FILE__ "\""

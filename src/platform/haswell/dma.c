@@ -4,12 +4,14 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
+#include <sof/common.h>
 #include <sof/dma.h>
-#include <sof/dw-dma.h>
-#include <sof/memory.h>
 #include <sof/drivers/interrupt.h>
-#include <stdint.h>
-#include <sof/string.h>
+#include <sof/dw-dma.h>
+#include <sof/io.h>
+#include <sof/memory.h>
+#include <sof/shim.h>
+#include <sof/spinlock.h>
 
 static struct dw_drv_plat_data dmac0 = {
 	.chan[0] = {

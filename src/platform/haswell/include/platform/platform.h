@@ -16,12 +16,13 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <sof/platform.h>
 #include <sof/clk.h>
-#include <sof/shim.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/mailbox.h>
+#include <sof/shim.h>
+#include <stdint.h>
 
-struct sof;
+struct timer;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
  *  \brief clock source for audio pipeline

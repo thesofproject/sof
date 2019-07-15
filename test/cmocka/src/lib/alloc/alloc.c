@@ -14,6 +14,7 @@
 #include <sof/sof.h>
 #include <sof/alloc.h>
 #include <ipc/header.h>
+#include <ipc/topology.h>
 
 extern struct mm memmap;
 

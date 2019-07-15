@@ -8,9 +8,8 @@
 #ifndef __SOF_IO_H__
 #define __SOF_IO_H__
 
-#include <stdint.h>
 #include <config.h>
-#include <sof/bit.h>
+#include <stdint.h>
 
 #if CONFIG_LIBRARY
 

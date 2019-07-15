@@ -12,6 +12,7 @@
 #ifndef __PLATFORM_SHIM_H__
 #define __PLATFORM_SHIM_H__
 
+#include <sof/bit.h>
 #include <sof/memory.h>
 
 #ifndef ASSEMBLY

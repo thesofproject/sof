@@ -17,8 +17,14 @@
 #define __SOF_DAI_H__
 
 #include <platform/dai.h>
-#include <sof/audio/component.h>
+#include <sof/bit.h>
+#include <sof/spinlock.h>
+#include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
+
+struct dai;
+struct sof_ipc_dai_config;
 
 /** \addtogroup sof_dai_drivers DAI Drivers
  *  DAI Drivers API specification.
@@ -53,8 +59,6 @@
 
 /** \brief If the device does not exist it will be created */
 #define DAI_CREAT		BIT(0)
-
-struct dai;
 
 /**
  * \brief DAI operations - all optional

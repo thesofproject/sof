@@ -7,26 +7,28 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/sof.h>
+#include <sof/common.h>
 #include <sof/dai.h>
-#include <sof/ssp.h>
-#include <sof/dmic.h>
-#include <sof/hda.h>
-#include <sof/stream.h>
-#include <sof/audio/component.h>
-#include <sof/platform.h>
-#include <sof/memory.h>
-#include <sof/drivers/interrupt.h>
 #include <sof/dma.h>
-#include <stdint.h>
-#include <sof/string.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/hda.h>
+#include <sof/memory.h>
+#include <sof/spinlock.h>
+#include <ipc/dai.h>
+#include <ipc/stream.h>
 #include <config.h>
 
 #if CONFIG_CAVS_SSP
+
+#include <sof/ssp.h>
+
 static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
+
 #endif
 
 #if CONFIG_CAVS_DMIC
+
+#include <sof/dmic.h>
 
 static struct dai dmic[2] = {
 	/* Testing idea if DMIC FIFOs A and B to access the same microphones

@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <malloc.h>
 #include <cmocka.h>
 
 static void test_audio_pipeline_pipeline_new_memory_allocation(

@@ -4,15 +4,10 @@
 //
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
-#include <errno.h>
-#include <stdbool.h>
-#include <sof/stream.h>
 #include <sof/dai.h>
-#include <sof/alloc.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/pm_runtime.h>
-#include <sof/math/numbers.h>
-#include <config.h>
+#include <sof/dma.h>
+#include <sof/trace.h>
+#include <ipc/dai.h>
 
 #define trace_soundwire(__e, ...) \
 	trace_event(TRACE_CLASS_SOUNDWIRE, __e, ##__VA_ARGS__)

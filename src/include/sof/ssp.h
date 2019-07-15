@@ -8,13 +8,15 @@
 #ifndef __SOF_SSP_H__
 #define __SOF_SSP_H__
 
+#include <sof/bit.h>
 #include <sof/dai.h>
 #include <sof/io.h>
-#include <sof/spinlock.h>
-#include <sof/schedule/schedule.h>
 #include <sof/trace.h>
 #include <sof/wait.h>
-#include <sof/clk.h>
+#include <ipc/dai.h>
+#include <ipc/dai-intel.h>
+#include <config.h>
+#include <stdint.h>
 
 #define SSP_CLK_AUDIO	0
 #define SSP_CLK_NET_PLL	1
@@ -204,8 +206,12 @@ extern const struct dai_driver ssp_driver;
 #endif
 
 #if CONFIG_CAVS
+
+#include <sof/clk.h>
+
 /* max possible index in ssp_freq array */
 #define MAX_SSP_FREQ_INDEX	(NUM_SSP_FREQ - 1)
+
 #endif
 
 /* tracing */

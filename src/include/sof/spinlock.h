@@ -13,13 +13,11 @@
 #ifndef __SOF_SPINLOCK_H__
 #define __SOF_SPINLOCK_H__
 
-#define DEBUG_LOCKS	0
-#define DEBUG_LOCKS_VERBOSE	0
-
-#include <stdint.h>
 #include <arch/spinlock.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/trace.h>
+
+#define DEBUG_LOCKS	0
+#define DEBUG_LOCKS_VERBOSE	0
 
 /*
  * Lock debugging provides a simple interface to debug deadlocks. The rmbox
@@ -66,6 +64,11 @@
  */
 
 #if DEBUG_LOCKS
+
+#include <ipc/trace.h>
+#include <sof/panic.h>
+#include <sof/trace.h>
+#include <stdint.h>
 
 #define DBG_LOCK_USERS		8
 #define DBG_LOCK_TRIES		10000

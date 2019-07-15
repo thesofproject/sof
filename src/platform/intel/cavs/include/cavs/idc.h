@@ -10,6 +10,10 @@
 #ifndef __CAVS_IDC_H__
 #define __CAVS_IDC_H__
 
+#include <stdint.h>
+
+struct idc_msg;
+
 static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	return arch_idc_send_msg(msg, mode);

@@ -10,8 +10,8 @@
 #ifndef __PLATFORM_PMC_H__
 #define __PLATFORM_PMC_H__
 
-#include <stdint.h>
 #include <config.h>
+#include <stdint.h>
 
 /* messages */
 #define PMC_DDR_LINK_UP		0xc0	/* LPE req path to DRAM is up */

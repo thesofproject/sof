@@ -12,13 +12,12 @@
 #ifndef __SOF_WAIT_H__
 #define __SOF_WAIT_H__
 
-#include <stdint.h>
 #include <arch/wait.h>
-#include <sof/platform.h>
+#include <sof/drivers/timer.h>
+#include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
 #include <sof/trace.h>
-#include <sof/schedule/schedule.h>
-#include <sof/drivers/timer.h>
+#include <stdint.h>
 
 typedef struct {
 	uint32_t complete;
@@ -88,13 +87,7 @@ static inline void wait_for_completion(completion_t *comp)
  * \brief Waits at least passed number of clocks.
  * \param[in] number_of_clks Minimum number of clocks to wait.
  */
-static inline void wait_delay(uint64_t number_of_clks)
-{
-	uint64_t current = platform_timer_get(platform_timer);
-
-	while ((platform_timer_get(platform_timer) - current) < number_of_clks)
-		idelay(PLATFORM_DEFAULT_DELAY);
-}
+void wait_delay(uint64_t number_of_clks);
 
 int wait_for_completion_timeout(completion_t *comp);
 int poll_for_completion_delay(completion_t *comp, uint64_t us);

@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <malloc.h>
 #include <cmocka.h>
 
 #define PIPELINE_ID_SAME 3

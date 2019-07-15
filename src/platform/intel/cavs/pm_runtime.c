@@ -12,9 +12,17 @@
  */
 
 #include <sof/alloc.h>
+#include <sof/dai.h>
+#include <sof/io.h>
 #include <sof/platform.h>
 #include <sof/pm_runtime.h>
-#include <sof/dai.h>
+#include <sof/shim.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
+#include <sof/wait.h>
+#include <ipc/topology.h>
+#include <config.h>
+#include <stdint.h>
 
 #define trace_power(format, ...)	\
 	trace_event(TRACE_CLASS_POWER, format, ##__VA_ARGS__)

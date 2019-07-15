@@ -11,10 +11,10 @@
 #define __PLATFORM_TIMER_H__
 
 #include <stdint.h>
-#include <sof/drivers/interrupt.h>
 
 struct comp_dev;
 struct sof_ipc_stream_posn;
+struct timer;
 
 int platform_timer_set(struct timer *timer, uint64_t ticks);
 void platform_timer_clear(struct timer *timer);

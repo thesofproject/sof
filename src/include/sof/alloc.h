@@ -9,15 +9,18 @@
 #ifndef __SOF_ALLOC_H__
 #define __SOF_ALLOC_H__
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include <sof/string.h>
-#include <stdint.h>
 #include <sof/bit.h>
-#include <sof/platform.h>
 #include <sof/common.h>
+#include <sof/memory.h>
+#include <sof/platform.h>
 #include <sof/spinlock.h>
-#include <ipc/topology.h>
+#include <sof/string.h>
+#include <config.h>
+#include <stddef.h>
+#include <stdint.h>
+
+struct dma_copy;
+struct dma_sg_config;
 struct sof;
 
 /* Heap Memory Zones
@@ -49,9 +52,6 @@ struct sof;
 
 #define RZONE_TYPE_MASK	0xf
 #define RZONE_FLAG_MASK	0xf0
-
-struct dma_copy;
-struct dma_sg_config;
 
 struct mm_info {
 	uint32_t used;
@@ -110,6 +110,8 @@ void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes);
 void rfree(void *ptr);
 
 #if CONFIG_DEBUG_HEAP
+
+#include <sof/trace.h>
 
 #define rmalloc(zone, caps, bytes)			\
 	({void *_ptr;					\

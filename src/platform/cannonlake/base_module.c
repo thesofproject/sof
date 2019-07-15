@@ -4,8 +4,8 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <user/manifest.h>
 #include <sof/memory.h>
+#include <user/manifest.h>
 
 /*
  * Each module has an entry in the FW manifest header. This is NOT part of

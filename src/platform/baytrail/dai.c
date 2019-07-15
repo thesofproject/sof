@@ -4,16 +4,14 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/sof.h>
+#include <sof/common.h>
 #include <sof/dai.h>
-#include <sof/ssp.h>
-#include <sof/stream.h>
-#include <sof/audio/component.h>
-#include <sof/memory.h>
-#include <sof/drivers/interrupt.h>
 #include <sof/dma.h>
-#include <stdint.h>
-#include <sof/string.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/memory.h>
+#include <sof/ssp.h>
+#include <ipc/dai.h>
+#include <ipc/stream.h>
 #include <config.h>
 
 static struct dai ssp[] = {

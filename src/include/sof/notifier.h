@@ -8,9 +8,9 @@
 #ifndef __SOF_NOTIFIER_H__
 #define __SOF_NOTIFIER_H__
 
-#include <stdint.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
+#include <stdint.h>
 
 struct sof;
 

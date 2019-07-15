@@ -4,29 +4,29 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/memory.h>
-#include <sof/mailbox.h>
-#include <sof/edma.h>
-#include <sof/dma.h>
-#include <sof/drivers/timer.h>
-#include <sof/mu.h>
-#include <ipc/info.h>
-#include <sof/mailbox.h>
-#include <sof/dai.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/sof.h>
-#include <sof/clk.h>
-#include <sof/schedule/schedule.h>
-#include <sof/ipc.h>
-#include <sof/trace.h>
 #include <sof/agent.h>
-#include <sof/dma-trace.h>
-#include <sof/audio/component.h>
+#include <sof/clk.h>
 #include <sof/cpu.h>
-#include <sof/notifier.h>
-#include <config.h>
-#include <string.h>
+#include <sof/dai.h>
+#include <sof/debug.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/drivers/timer.h>
+#include <sof/edma.h>
+#include <sof/ipc.h>
+#include <sof/mailbox.h>
+#include <sof/mu.h>
+#include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/sof.h>
+#include <ipc/dai.h>
+#include <ipc/header.h>
+#include <ipc/info.h>
+#include <kernel/abi.h>
 #include <version.h>
+#include <errno.h>
+#include <stdint.h>
+
+struct sof;
 
 static const struct sof_ipc_fw_ready ready
 	__attribute__((section(".fw_ready"))) = {

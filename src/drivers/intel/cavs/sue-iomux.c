@@ -4,13 +4,10 @@
 //
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
-#include <errno.h>
-#include <stddef.h>
-#include <stdint.h>
-
 #include <sof/io.h>
 #include <sof/iomux.h>
-#include <sof/memory.h>
+#include <errno.h>
+#include <stddef.h>
 
 #define IOMUX_PIN_UNCONFIGURED 0
 

@@ -10,6 +10,9 @@
 #ifndef __PLATFORM_MU_H__
 #define __PLATFORM_MU_H__
 
+#include <sof/bit.h>
+#include <stdint.h>
+
 /* Transmit Register */
 #define IMX_MU_xTRn(x)		(0x00 + 4 * (x))
 /* Receive Register */

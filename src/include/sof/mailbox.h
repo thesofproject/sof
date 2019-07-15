@@ -11,9 +11,10 @@
 
 #include <platform/mailbox.h>
 #include <sof/cache.h>
-#include <stdint.h>
-#include <sof/string.h>
 #include <sof/panic.h>
+#include <sof/string.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* For those platform did not have SW_REG window, use DEBUG at now */
 #ifndef MAILBOX_SW_REG_BASE

@@ -10,6 +10,8 @@
 #ifndef __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_FIR_H__
 #define __SOF_AUDIO_COEFFICIENTS_PDM_DECIM_PDM_DECIM_FIR_H__
 
+#include <stdint.h>
+
 struct pdm_decim {
 	int decim_factor;
 	int length;

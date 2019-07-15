@@ -8,16 +8,12 @@
 #ifndef __SOF_DMA_TRACE_H__
 #define __SOF_DMA_TRACE_H__
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <sof/sof.h>
-#include <sof/list.h>
-#include <sof/mailbox.h>
-#include <sof/debug.h>
-#include <sof/drivers/timer.h>
 #include <sof/dma.h>
 #include <sof/schedule/schedule.h>
-#include <sof/platform.h>
+#include <sof/spinlock.h>
+#include <stdint.h>
+
+struct sof;
 
 struct dma_trace_buf {
 	void *w_ptr;		/* buffer write pointer */

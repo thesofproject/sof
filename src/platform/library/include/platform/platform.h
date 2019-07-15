@@ -11,10 +11,10 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
-#include <sof/shim.h>
-#include <sof/drivers/interrupt.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <sof/clk.h>
+#include <stdint.h>
+
+struct timer;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
  *  \brief clock source for audio pipeline

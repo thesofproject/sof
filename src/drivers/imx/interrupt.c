@@ -4,8 +4,9 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/sof.h>
 #include <sof/drivers/interrupt.h>
+#include <stddef.h>
+#include <stdint.h>
 
 void platform_interrupt_init(void) {}
 
