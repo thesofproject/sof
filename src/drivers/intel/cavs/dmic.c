@@ -1579,6 +1579,16 @@ static int dmic_remove(struct dai *dai)
 	return 0;
 }
 
+static int dmic_get_handshake(struct dai *dai, int direction, int stream_id)
+{
+	return dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].handshake;
+}
+
+static int dmic_get_fifo(struct dai *dai, int direction, int stream_id)
+{
+	return dai->plat_data.fifo[SOF_IPC_STREAM_CAPTURE].offset;
+}
+
 const struct dai_driver dmic_driver = {
 	.type = SOF_DAI_INTEL_DMIC,
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
@@ -1588,6 +1598,8 @@ const struct dai_driver dmic_driver = {
 		.set_config		= dmic_set_config,
 		.pm_context_store	= dmic_context_store,
 		.pm_context_restore	= dmic_context_restore,
+		.get_handshake		= dmic_get_handshake,
+		.get_fifo		= dmic_get_fifo,
 		.probe			= dmic_probe,
 		.remove			= dmic_remove,
 	},
