@@ -62,6 +62,8 @@ struct dai_ops {
 	int (*trigger)(struct dai *dai, int cmd, int direction);
 	int (*pm_context_restore)(struct dai *dai);
 	int (*pm_context_store)(struct dai *dai);
+	int (*get_handshake)(struct dai *dai, int direction, int stream_id);
+	int (*get_fifo)(struct dai *dai, int direction, int stream_id);
 	int (*probe)(struct dai *dai);
 	int (*remove)(struct dai *dai);
 };
@@ -186,6 +188,24 @@ static inline int dai_pm_context_store(struct dai *dai)
 static inline int dai_pm_context_restore(struct dai *dai)
 {
 	return dai->drv->ops.pm_context_restore(dai);
+}
+
+/**
+ * \brief Get Digital Audio interface DMA Handshake
+ */
+static inline int dai_get_handshake(struct dai *dai, int direction,
+				    int stream_id)
+{
+	return dai->drv->ops.get_handshake(dai, direction, stream_id);
+}
+
+/**
+ * \brief Get Digital Audio interface FIFO address
+ */
+static inline int dai_get_fifo(struct dai *dai, int direction,
+			       int stream_id)
+{
+	return dai->drv->ops.get_fifo(dai, direction, stream_id);
 }
 
 /**

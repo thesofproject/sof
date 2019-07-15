@@ -25,6 +25,16 @@ static int hda_dummy(struct dai *dai)
 	return 0;
 }
 
+static int hda_get_handshake(struct dai *dai, int direction, int stream_id)
+{
+	return 0;
+}
+
+static int hda_get_fifo(struct dai *dai, int direction, int stream_id)
+{
+	return 0;
+}
+
 const struct dai_driver hda_driver = {
 	.type = SOF_DAI_INTEL_HDA,
 	.dma_caps = DMA_CAP_HDA,
@@ -34,6 +44,8 @@ const struct dai_driver hda_driver = {
 		.set_config		= hda_set_config,
 		.pm_context_store	= hda_dummy,
 		.pm_context_restore	= hda_dummy,
+		.get_handshake		= hda_get_handshake,
+		.get_fifo		= hda_get_fifo,
 		.probe			= hda_dummy,
 		.remove			= hda_dummy,
 	},

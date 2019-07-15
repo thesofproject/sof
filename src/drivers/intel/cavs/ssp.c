@@ -948,6 +948,16 @@ static int ssp_remove(struct dai *dai)
 	return 0;
 }
 
+static int ssp_get_handshake(struct dai *dai, int direction, int stream_id)
+{
+	return dai->plat_data.fifo[direction].handshake;
+}
+
+static int ssp_get_fifo(struct dai *dai, int direction, int stream_id)
+{
+	return dai->plat_data.fifo[direction].offset;
+}
+
 const struct dai_driver ssp_driver = {
 	.type = SOF_DAI_INTEL_SSP,
 	.dma_caps = DMA_CAP_GP_LP | DMA_CAP_GP_HP,
@@ -957,6 +967,8 @@ const struct dai_driver ssp_driver = {
 		.set_config		= ssp_set_config,
 		.pm_context_store	= ssp_context_store,
 		.pm_context_restore	= ssp_context_restore,
+		.get_handshake		= ssp_get_handshake,
+		.get_fifo		= ssp_get_fifo,
 		.probe			= ssp_probe,
 		.remove			= ssp_remove,
 	},
