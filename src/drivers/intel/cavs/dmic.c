@@ -4,17 +4,33 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-#include <sof/stream.h>
 #include <sof/dmic.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/pm_runtime.h>
-#include <sof/math/numbers.h>
-#include <sof/math/decibels.h>
-#include <sof/audio/format.h>
 
 #if defined DMIC_HW_VERSION
 
+#include <sof/alloc.h>
+#include <sof/audio/coefficients/pdm_decim/pdm_decim_fir.h>
 #include <sof/audio/coefficients/pdm_decim/pdm_decim_table.h>
+#include <sof/audio/component.h>
+#include <sof/audio/format.h>
+#include <sof/dai.h>
+#include <sof/dma.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/io.h>
+#include <sof/math/decibels.h>
+#include <sof/math/numbers.h>
+#include <sof/panic.h>
+#include <sof/pm_runtime.h>
+#include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <sof/trace.h>
+#include <ipc/dai.h>
+#include <ipc/dai-intel.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define DMIC_MAX_MODES 50
 

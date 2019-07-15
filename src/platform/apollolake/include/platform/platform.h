@@ -12,8 +12,6 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
-#include <sof/memory.h>
-
 #define PLATFORM_RESET_MHE_AT_BOOT		1
 
 #define PLATFORM_DISABLE_L2CACHE_AT_BOOT	1
@@ -21,10 +19,11 @@
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
 #include <sof/clk.h>
-#include <sof/shim.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/mailbox.h>
+#include <stdint.h>
 
-struct sof;
+struct timer;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
  *  \brief clock source for audio pipeline

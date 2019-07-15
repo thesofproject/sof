@@ -8,16 +8,19 @@
 #ifndef __SOF_AUDIO_PIPELINE_H__
 #define __SOF_AUDIO_PIPELINE_H__
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/stream.h>
-#include <sof/dma.h>
-#include <sof/audio/component.h>
-#include <sof/trace.h>
 #include <sof/schedule/schedule.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
 #include <ipc/topology.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+struct comp_buffer;
+struct comp_dev;
+struct sof_ipc_buffer;
+struct sof_ipc_pcm_params;
+struct sof_ipc_stream_posn;
+struct ipc;
 
 /*
  * This flag disables firmware-side xrun recovery.
@@ -50,9 +53,6 @@
 			     pipe_ptr->ipc_pipe.pipeline_id,	\
 			     pipe_ptr->ipc_pipe.comp_id,	\
 			     format, ##__VA_ARGS__)
-
-struct ipc_pipeline_dev;
-struct ipc;
 
 /* Pipeline status to stop execution of current path */
 #define PPL_STATUS_PATH_STOP	1

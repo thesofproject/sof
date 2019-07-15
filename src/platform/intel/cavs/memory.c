@@ -6,9 +6,12 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/alloc.h>
-#include <sof/trace.h>
-#include <sof/memory.h>
+#include <sof/common.h>
 #include <sof/cpu.h>
+#include <sof/memory.h>
+#include <sof/platform.h>
+#include <ipc/topology.h>
+#include <stdint.h>
 
 extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
 extern uintptr_t _buffer_heap, _sof_core_s_start;

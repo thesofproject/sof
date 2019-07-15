@@ -11,6 +11,8 @@
 #ifndef __PLATFORM_DMA_H__
 #define __PLATFORM_DMA_H__
 
+#include <sof/interrupt-map.h>
+
 /* available DMACs */
 #define DMA_GP_LP_DMAC0		0
 #define DMA_GP_LP_DMAC1		1

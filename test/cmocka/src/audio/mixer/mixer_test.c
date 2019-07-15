@@ -9,6 +9,7 @@
 #include <math.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <malloc.h>
 #include <cmocka.h>
 
 #include <sof/list.h>

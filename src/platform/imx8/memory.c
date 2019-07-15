@@ -5,7 +5,10 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/alloc.h>
-#include <ipc/header.h>
+#include <sof/common.h>
+#include <sof/memory.h>
+#include <sof/platform.h>
+#include <ipc/topology.h>
 
 STATIC_ASSERT(0 == (HEAP_BUF_ALIGNMENT % PLATFORM_DCACHE_ALIGN),
 	      invalid_heap_buf_alignment);

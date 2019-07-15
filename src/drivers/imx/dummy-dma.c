@@ -5,10 +5,7 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/dma.h>
-#include <errno.h>
 #include <stdint.h>
-#include <sof/string.h>
-#include <config.h>
 
 /* allocate next free DMA channel */
 static int dummy_dma_channel_get(struct dma *dma, unsigned int req_chan)

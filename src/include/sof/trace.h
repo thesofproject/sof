@@ -10,13 +10,11 @@
 #ifndef __SOF_TRACE_H__
 #define __SOF_TRACE_H__
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <sof/sof.h>
-#include <sof/mailbox.h>
-#include <sof/debug.h>
 #include <sof/preproc.h>
-#include <user/trace.h>
+#include <config.h>
+#include <stdint.h>
+
+struct sof;
 
 /* bootloader trace values */
 #define TRACE_BOOT_LDR_ENTRY		0x100
@@ -98,6 +96,9 @@
 #define TRACE_CLASS_KEYWORD	(33 << 24)
 
 #ifdef CONFIG_LIBRARY
+
+#include <stdio.h>
+
 extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);
 #define _log_message(mbox, atomic, level, comp_class, id_0, id_1,	\
@@ -110,6 +111,7 @@ do {									\
 		fprintf(stderr, "\n");					\
 	}								\
 } while (0)
+
 #endif
 
 #define _TRACE_EVENT_NTH_PARAMS(id_count, param_count)			\
@@ -192,6 +194,9 @@ void trace_off(void);
 void trace_init(struct sof *sof);
 
 #if CONFIG_TRACE
+
+#include <user/trace.h>
+#include <sof/platform.h>
 /*
  * trace_event macro definition
  *
@@ -284,6 +289,9 @@ void trace_init(struct sof *sof);
 #endif
 
 #ifndef CONFIG_LIBRARY
+
+#include <sof/common.h>
+
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params, ids)\
 	__attribute__((section(".static_log." #lvl)))		\
 	static const struct {					\

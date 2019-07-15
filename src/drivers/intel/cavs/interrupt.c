@@ -7,15 +7,14 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/sof.h>
+#include <sof/common.h>
+#include <sof/cpu.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/interrupt-map.h>
-#include <sof/cpu.h>
-#include <sof/platform.h>
-#include <sof/shim.h>
+#include <sof/list.h>
+#include <sof/spinlock.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <cavs/version.h>
 
 /*
  * Number of status reload tries before warning the user we are in an IRQ

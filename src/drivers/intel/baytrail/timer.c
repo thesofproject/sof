@@ -8,12 +8,14 @@
  * Baytrail external timer control.
  */
 
-#include <sof/shim.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/debug.h>
 #include <sof/audio/component.h>
 #include <sof/clk.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
+#include <sof/platform.h>
+#include <sof/shim.h>
+#include <ipc/stream.h>
+#include <errno.h>
 #include <stdint.h>
 
 struct timer_data {

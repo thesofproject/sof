@@ -9,8 +9,6 @@
 #define __SOF_DMIC_H__
 
 #include <config.h>
-#include <sof/dai.h>
-#include <sof/io.h>
 
 #if CONFIG_CAVS_DMIC
 
@@ -53,6 +51,13 @@
 #endif
 
 #if DMIC_HW_VERSION
+
+#include <sof/audio/format.h>
+#include <sof/bit.h>
+#include <sof/dai.h>
+#include <sof/schedule/schedule.h>
+#include <sof/wait.h>
+#include <stdint.h>
 
 /* Parameters used in modes computation */
 #define DMIC_HW_BITS_CIC		26

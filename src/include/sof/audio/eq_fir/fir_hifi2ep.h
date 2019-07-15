@@ -14,7 +14,10 @@
 
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
-#include <sof/audio/format.h>
+#include <stdint.h>
+
+struct comp_buffer;
+struct sof_eq_fir_coef_data;
 
 struct fir_state_32x16 {
 	ae_p24x2f *rwp; /* Circular read and write pointer */

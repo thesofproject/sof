@@ -10,8 +10,10 @@
 #ifndef __SOF_AUDIO_EQ_IIR_IIR_H__
 #define __SOF_AUDIO_EQ_IIR_IIR_H__
 
-#include <user/eq.h>
 #include <stddef.h>
+#include <stdint.h>
+
+struct sof_eq_iir_header_df2t;
 
 #define IIR_DF2T_NUM_DELAYS 2
 

@@ -12,9 +12,9 @@
 #ifndef __PLATFORM_MEMORY_H__
 #define __PLATFORM_MEMORY_H__
 
-#include <config.h>
 #include <cavs/memory.h>
 #include <sof/cpu.h>
+#include <config.h>
 
 /* physical DSP addresses */
 

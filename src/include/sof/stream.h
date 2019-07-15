@@ -9,9 +9,8 @@
 #ifndef __SOF_STREAM_H__
 #define __SOF_STREAM_H__
 
-#include <stdint.h>
-#include <sof/platform.h>
-#include <ipc/stream.h>
+struct sof_ipc_pcm_params;
+struct sof_ipc_vorbis_params;
 
 enum stream_type {
 	STREAM_TYPE_PCM		= 0,

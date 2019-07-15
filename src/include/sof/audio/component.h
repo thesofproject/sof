@@ -16,23 +16,24 @@
 #ifndef __SOF_AUDIO_COMPONENT_H__
 #define __SOF_AUDIO_COMPONENT_H__
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/sof.h>
-#include <sof/alloc.h>
-#include <sof/dma.h>
-#include <sof/stream.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/pipeline.h>
-#include <sof/cache.h>
+#include <sof/list.h>
 #include <sof/math/numbers.h>
+#include <sof/panic.h>
+#include <sof/spinlock.h>
+#include <sof/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
-#include <ipc/dai.h>
 #include <kernel/abi.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+
+struct comp_dev;
+struct sof_ipc_dai_config;
+struct sof_ipc_stream_posn;
 
 /** \addtogroup component_api Component API
  *  Component API specification.
@@ -159,11 +160,6 @@ enum comp_copy_type {
 	COMP_COPY_BLOCKING,
 	COMP_COPY_ONE_SHOT,
 };
-
-struct comp_dev;
-struct comp_buffer;
-struct dai_config;
-struct pipeline;
 
 /**
  * Audio component operations - all mandatory.

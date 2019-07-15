@@ -11,11 +11,13 @@
 #define __PLATFORM_PLATFORM_H__
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
-#include <sof/platform.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/clk.h>
 
-struct sof;
+#include <sof/clk.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/mailbox.h>
+#include <stdint.h>
+
+struct timer;
 
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
 #define LPSRAM_SIZE 16384

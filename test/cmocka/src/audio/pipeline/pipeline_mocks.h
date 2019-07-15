@@ -26,6 +26,14 @@ struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
 
 void notifier_notify(void);
 
+void platform_dai_timestamp(struct comp_dev *dai,
+	struct sof_ipc_stream_posn *posn);
+
+void platform_host_timestamp(struct comp_dev *host,
+	struct sof_ipc_stream_posn *posn);
+
+uint64_t platform_timer_get(struct timer *timer);
+
 struct pipeline_new_setup_data {
 	struct sof_ipc_pipe_new ipc_data;
 	struct comp_dev *comp_data;

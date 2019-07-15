@@ -20,27 +20,27 @@
  *    used to construct the DMA configuration for the host client 1 above.
  */
 
+#include <sof/alloc.h>
+#include <sof/atomic.h>
+#include <sof/audio/component.h>
+#include <sof/cache.h>
+#include <sof/common.h>
+#include <sof/cpu.h>
+#include <sof/dma.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/drivers/timer.h>
+#include <sof/dw-dma.h>
+#include <sof/io.h>
+#include <sof/memory.h>
+#include <sof/platform.h>
+#include <sof/pm_runtime.h>
+#include <sof/spinlock.h>
+#include <sof/wait.h>
+#include <ipc/topology.h>
 #include <config.h>
 #include <errno.h>
-#include <sof/platform.h>
-#include <sof/alloc.h>
-#include <sof/audio/component.h>
-#include <sof/atomic.h>
-#include <sof/cpu.h>
-#include <sof/debug.h>
-#include <sof/dma.h>
-#include <sof/dw-dma.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/io.h>
-#include <sof/spinlock.h>
-#include <sof/pm_runtime.h>
-#include <sof/schedule/schedule.h>
-#include <sof/sof.h>
-#include <sof/stream.h>
-#include <sof/drivers/timer.h>
-#include <sof/trace.h>
-#include <sof/wait.h>
-#include <sof/string.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /* pointer data for DW DMA buffer */

@@ -10,10 +10,6 @@
 #ifndef __PLATFORM_INTERRUPT_H__
 #define __PLATFORM_INTERRUPT_H__
 
-#include <stdint.h>
-#include <stddef.h>
-#include <sof/interrupt-map.h>
-
 #define PLATFORM_IRQ_CHILDREN	0
 
 /* IRQ numbers */

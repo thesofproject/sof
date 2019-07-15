@@ -10,9 +10,6 @@
 #ifndef __PLATFORM_INTERRUPT_H__
 #define __PLATFORM_INTERRUPT_H__
 
-#include <stdint.h>
-#include <sof/interrupt-map.h>
-
 /* IRQ numbers */
 #define IRQ_NUM_TIMER0		2	/* Level 2 */
 #define IRQ_NUM_TIMER1		3	/* Level 3 */

@@ -5,8 +5,9 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/alloc.h>
-#include <ipc/header.h>
+#include <sof/common.h>
 #include <sof/memory.h>
+#include <ipc/topology.h>
 
 /* Heap blocks for system runtime */
 static struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];

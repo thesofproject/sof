@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <malloc.h>
 #include <cmocka.h>
 
 #include <sof/alloc.h>

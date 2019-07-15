@@ -4,21 +4,27 @@
 //
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
-#include <errno.h>
-#include <stdbool.h>
-#include <stdint.h>
-
+#include <sof/alloc.h>
+#include <sof/cache.h>
 #include <sof/clk.h>
+#include <sof/common.h>
 #include <sof/dma.h>
-#include <sof/gpio.h>
 #include <sof/io.h>
 #include <sof/ipc.h>
-#include <sof/spinlock.h>
-#include <sof/sof.h>
-#include <sof/spi.h>
-#include <sof/schedule/schedule.h>
+#include <sof/gpio.h>
+#include <sof/mailbox.h>
 #include <sof/memory.h>
+#include <sof/panic.h>
 #include <sof/platform.h>
+#include <sof/schedule/schedule.h>
+#include <sof/spi.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <sof/wait.h>
+#include <ipc/header.h>
+#include <ipc/topology.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define	SPI_REG_CTRLR0		0x00
 #define	SPI_REG_CTRLR1		0x04

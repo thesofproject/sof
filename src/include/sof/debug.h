@@ -9,14 +9,18 @@
 #ifndef __SOF_DEBUG_H__
 #define __SOF_DEBUG_H__
 
-#include <sof/sof.h>
-#include <config.h>
-#include <sof/mailbox.h>
+#include <sof/cache.h>
 #include <sof/cpu.h>
-#include <ipc/trace.h>
 #include <sof/memory.h>
+#include <sof/panic.h>
+#include <sof/sof.h>
+#include <sof/spinlock.h>
+#include <sof/string.h>
+#include <ipc/info.h>
+#include <ipc/trace.h>
+#include <config.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 #if CONFIG_GDB_DEBUG
 #define DEBUG_GDB	1
@@ -25,6 +29,8 @@
 #endif
 
 #ifdef CONFIG_DEBUG
+
+#include <sof/mailbox.h>
 
 #define DEBUG_SET_FW_READY_FLAGS				\
 (								\

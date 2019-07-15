@@ -11,6 +11,8 @@
 #define __CAVS_POWER_DOWN_H__
 
 #include <stdbool.h>
+#include <stdint.h>
+
 /**
  * Power down procedure.
  * Locks its code in L1 cache and shuts down memories.

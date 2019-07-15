@@ -8,9 +8,9 @@
 #ifndef __SOF_GPIO_H__
 #define __SOF_GPIO_H__
 
-#include <stdint.h>
-
 #include <sof/iomux.h>
+
+struct gpio;
 
 enum gpio_direction {
 	GPIO_DIRECTION_INPUT,
@@ -30,8 +30,6 @@ struct gpio_pin_config {
 	unsigned int mux_id;
 	struct iomux_pin_config mux_config;
 };
-
-struct gpio;
 
 extern const struct gpio_pin_config gpio_data[];
 extern const int n_gpios;

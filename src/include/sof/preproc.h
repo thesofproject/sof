@@ -17,6 +17,7 @@
  * see file specified below.
  */
 #include <sof/preproc-private.h>
+#include <stdint.h>
 
 /* count number of var args - during preprocesing
  * works for predefined number of args

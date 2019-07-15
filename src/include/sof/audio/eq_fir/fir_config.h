@@ -10,9 +10,6 @@
 #ifndef __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__
 #define __SOF_AUDIO_EQ_FIR_FIR_CONFIG_H__
 
-/* Get platforms configuration */
-#include <config.h>
-
 /* If next defines are set to 1 the EQ is configured automatically. Setting
  * to zero temporarily is useful is for testing needs.
  * Setting EQ_FIR_AUTOARCH to 0 allows to manually set the code variant.

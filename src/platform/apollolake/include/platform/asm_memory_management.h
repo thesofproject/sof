@@ -18,9 +18,8 @@
 #warning "ASSEMBLY macro not defined."
 #endif
 
-#include <sof/bit.h>
+#include <sof/memory.h>
 #include <sof/shim.h>
-#include <sof/platform.h>
 
 	/* Macro powers down entire hpsram. on entry literals and code for
 	 * section from where this code is executed needs to be placed in

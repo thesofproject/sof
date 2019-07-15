@@ -10,8 +10,6 @@
 #ifndef __PLATFORM_MEMORY_H__
 #define __PLATFORM_MEMORY_H__
 
-#include <config.h>
-
 /* physical DSP addresses */
 
 #define IRAM_BASE	0x596f8000

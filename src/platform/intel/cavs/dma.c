@@ -7,13 +7,14 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
+#include <sof/common.h>
 #include <sof/dma.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/dw-dma.h>
 #include <sof/hda-dma.h>
 #include <sof/memory.h>
-#include <sof/drivers/interrupt.h>
-#include <stdint.h>
-#include <sof/string.h>
+#include <sof/spinlock.h>
+#include <config.h>
 
 #if defined(CONFIG_APOLLOLAKE)
 #define DMAC0_CLASS 1

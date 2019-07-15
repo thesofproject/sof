@@ -4,10 +4,12 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
+#include <sof/common.h>
 #include <sof/dma.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/edma.h>
 #include <sof/memory.h>
-#include <sof/drivers/interrupt.h>
+#include <sof/spinlock.h>
 
 extern struct dma_ops dummy_dma_ops;
 extern struct dma_ops edma_ops;

@@ -7,29 +7,34 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/memory.h>
-#include <sof/shim.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/idc.h>
-#include <ipc/info.h>
-#include <sof/mailbox.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
-#include <sof/sof.h>
-#include <sof/agent.h>
-#include <sof/clk.h>
-#include <sof/ipc.h>
-#include <sof/io.h>
-#include <sof/trace.h>
-#include <sof/audio/component.h>
-#include <sof/drivers/timer.h>
-#include <sof/cpu.h>
-#include <sof/notifier.h>
-#include <sof/spi.h>
-#include <config.h>
-#include <sof/string.h>
-#include <version.h>
 #include <cavs/version.h>
+#include <sof/agent.h>
+#include <sof/alloc.h>
+#include <sof/cache.h>
+#include <sof/clk.h>
+#include <sof/common.h>
+#include <sof/cpu.h>
+#include <sof/dai.h>
+#include <sof/debug.h>
+#include <sof/dma.h>
+#include <sof/dma-trace.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/drivers/timer.h>
+#include <sof/io.h>
+#include <sof/idc.h>
+#include <sof/ipc.h>
+#include <sof/mailbox.h>
+#include <sof/memory.h>
+#include <sof/notifier.h>
+#include <sof/schedule/schedule.h>
+#include <sof/trace.h>
+#include <ipc/header.h>
+#include <ipc/info.h>
+#include <kernel/abi.h>
+#include <config.h>
+#include <version.h>
+#include <errno.h>
+#include <stdint.h>
 
 static const struct sof_ipc_fw_ready ready
 	__attribute__((section(".fw_ready"))) = {
@@ -170,11 +175,8 @@ struct timesource_data platform_generic_queue[] = {
 #endif
 };
 
-#if defined(CONFIG_IOMUX)
-#include <sof/iomux.h>
-#endif
+#if CONFIG_DW_GPIO
 
-#if defined(CONFIG_DW_GPIO)
 #include <sof/gpio.h>
 
 const struct gpio_pin_config gpio_data[] = {
@@ -261,6 +263,10 @@ const struct gpio_pin_config gpio_data[] = {
 
 const int n_gpios = ARRAY_SIZE(gpio_data);
 
+#if CONFIG_INTEL_IOMUX
+
+#include <sof/iomux.h>
+
 struct iomux iomux_data[] = {
 	{.base = EXT_CTRL_BASE + 0x30,},
 	{.base = EXT_CTRL_BASE + 0x34,},
@@ -268,6 +274,17 @@ struct iomux iomux_data[] = {
 };
 
 const int n_iomux = ARRAY_SIZE(iomux_data);
+
+#endif
+
+#endif
+
+struct timer *platform_timer =
+	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
+
+#if defined(CONFIG_DW_SPI)
+
+#include <sof/spi.h>
 
 static struct spi_platform_data spi = {
 	.base		= DW_SPI_SLAVE_BASE,
@@ -280,17 +297,14 @@ static struct spi_platform_data spi = {
 		.handshake	= DMA_HANDSHAKE_SSI_TX,
 	}
 };
-#endif
 
-struct timer *platform_timer =
-	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
-
-#if defined(CONFIG_DW_SPI)
 int platform_boot_complete(uint32_t boot_message)
 {
 	return spi_push(spi_get(SOF_SPI_INTEL_SLAVE), &ready, sizeof(ready));
 }
+
 #else
+
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
@@ -309,6 +323,7 @@ int platform_boot_complete(uint32_t boot_message)
 #endif
 	return 0;
 }
+
 #endif
 
 #if defined(CONFIG_MEM_WND)

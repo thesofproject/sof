@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <malloc.h>
 #include <cmocka.h>
 
 void *_zalloc(int zone, uint32_t caps, size_t bytes)

@@ -8,6 +8,8 @@
 #ifndef __SOF_IOMUX_H__
 #define __SOF_IOMUX_H__
 
+#include <stdint.h>
+
 #define IOMUX_PIN_NUM 32
 
 struct iomux {
@@ -21,8 +23,6 @@ struct iomux_pin_config {
 	uint32_t mask;
 	uint32_t fn;
 };
-
-struct iomux;
 
 extern struct iomux iomux_data[];
 extern const int n_iomux;

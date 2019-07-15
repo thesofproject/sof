@@ -5,6 +5,8 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
+#include <stdint.h>
+
 const int32_t src_int32_20_7_2976_5000_fir[480] = {
 	-256723,
 	1344746,

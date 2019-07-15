@@ -8,8 +8,8 @@
 #ifndef __SOF_ATOMIC_H__
 #define __SOF_ATOMIC_H__
 
-#include <stdint.h>
 #include <arch/atomic.h>
+#include <stdint.h>
 
 static inline void atomic_init(atomic_t *a, int32_t value)
 {

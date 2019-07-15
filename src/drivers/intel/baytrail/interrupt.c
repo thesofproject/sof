@@ -6,9 +6,10 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/sof.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/shim.h>
+#include <stddef.h>
+#include <stdint.h>
 
 void platform_interrupt_init(void) {}
 

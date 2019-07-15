@@ -8,14 +8,9 @@
 #ifndef __SOF_SOF_H__
 #define __SOF_SOF_H__
 
-#include <stdint.h>
-#include <stddef.h>
 #include <arch/sof.h>
-#include <sof/common.h>
-#include <sof/panic.h>
-#include <sof/preproc.h>
-#include <config.h>
 
+struct dma_trace_data;
 struct ipc;
 struct sa;
 

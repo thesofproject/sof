@@ -10,8 +10,8 @@
 #ifndef __PLATFORM_SHIM_H__
 #define __PLATFORM_SHIM_H__
 
-#include <sof/memory.h>
 #include <sof/io.h>
+#include <sof/memory.h>
 #include <stdint.h>
 
 #define SHIM_CSR		0x00

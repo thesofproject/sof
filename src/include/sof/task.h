@@ -11,7 +11,7 @@
 #include <arch/task.h>
 
 struct sof;
-struct edf_task;
+struct task;
 
 int do_task_master_core(struct sof *sof);
 

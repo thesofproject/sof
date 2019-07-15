@@ -12,10 +12,12 @@
 
 #if FIR_HIFI3
 
+#include <sof/audio/buffer.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
-#include <sof/audio/format.h>
-#include <user/eq.h>
+#include <stdint.h>
+
+struct sof_eq_fir_coef_data;
 
 struct fir_state_32x16 {
 	ae_int32 *rwp; /* Circular read and write pointer */

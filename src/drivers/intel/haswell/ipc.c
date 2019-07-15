@@ -4,25 +4,21 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/debug.h>
-#include <sof/drivers/timer.h>
+#include <sof/alloc.h>
+#include <sof/dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/ipc.h>
+#include <sof/list.h>
 #include <sof/mailbox.h>
-#include <sof/sof.h>
-#include <sof/stream.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
-#include <sof/alloc.h>
-#include <sof/wait.h>
-#include <sof/trace.h>
-#include <sof/ssp.h>
-#include <sof/shim.h>
 #include <sof/platform.h>
-#include <sof/audio/component.h>
-#include <sof/audio/pipeline.h>
-#include <sof/panic.h>
+#include <sof/schedule/schedule.h>
+#include <sof/shim.h>
+#include <sof/spinlock.h>
+#include <sof/wait.h>
 #include <ipc/header.h>
+#include <ipc/topology.h>
+#include <stddef.h>
+#include <stdint.h>
 
 extern struct ipc *_ipc;
 

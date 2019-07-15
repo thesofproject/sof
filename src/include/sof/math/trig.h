@@ -10,6 +10,8 @@
 #ifndef __SOF_MATH_TRIG_H__
 #define __SOF_MATH_TRIG_H__
 
+#include <stdint.h>
+
 #define PI_DIV2_Q4_28 421657428
 #define PI_Q4_28      843314857
 #define PI_MUL2_Q4_28     1686629713

@@ -4,16 +4,17 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/debug.h>
-#include <sof/drivers/timer.h>
-#include <sof/drivers/interrupt.h>
-#include <sof/ipc.h>
-#include <sof/sof.h>
 #include <sof/alloc.h>
-#include <sof/wait.h>
-#include <sof/trace.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/pmc.h>
+#include <sof/ipc.h>
+#include <sof/platform.h>
 #include <sof/shim.h>
+#include <sof/wait.h>
+#include <ipc/topology.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /* private data for IPC */
 struct intel_ipc_pmc_data {

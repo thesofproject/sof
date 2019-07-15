@@ -10,6 +10,8 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <malloc.h>
 #include <cmocka.h>
 
 #include <test_group_generator.h>

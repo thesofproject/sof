@@ -9,7 +9,6 @@
 #define __SOF_INIT_H__
 
 #include <arch/init.h>
-#include <sof/platform.h>
 
 struct sof;
 

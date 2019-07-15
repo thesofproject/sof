@@ -12,6 +12,7 @@
 #include <platform/dw-dma.h>
 #include <sof/bit.h>
 #include <sof/common.h>
+#include <sof/dma.h>
 #include <sof/trace.h>
 #include <stdint.h>
 

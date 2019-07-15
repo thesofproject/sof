@@ -8,15 +8,8 @@
 #ifndef __SOF_SCHEDULE_EDF_SCHEDULE_H__
 #define __SOF_SCHEDULE_EDF_SCHEDULE_H__
 
+#include <sof/trace.h>
 #include <stdint.h>
-#include <stddef.h>
-#include <errno.h>
-#include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/list.h>
-#include <sof/wait.h>
-#include <sof/schedule/schedule.h>
-#include <sof/alloc.h>
 
 /* schedule tracing */
 #define trace_edf_sch(format, ...) \
@@ -27,8 +20,6 @@
 
 #define tracev_edf_sch(format, ...) \
 	tracev_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
-
-struct sof;
 
 /* maximun task time slice in microseconds */
 #define SCHEDULE_TASK_MAX_TIME_SLICE	5000

@@ -4,21 +4,17 @@
 //
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
-#include <errno.h>
-#include <stddef.h>
-#include <stdint.h>
-
 #include <sof/gpio.h>
 #include <sof/io.h>
 #include <sof/iomux.h>
 #include <sof/memory.h>
-#include <sof/platform.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #define PORTA_DAT_REG	0x00
 #define PORTA_DIR_REG	0x04
 #define PORTA_CTL_REG	0x08
-
-struct iomux;
 
 struct gpio {
 	uint32_t base;

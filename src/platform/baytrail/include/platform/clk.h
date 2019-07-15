@@ -13,6 +13,7 @@
 #include <sof/drivers/pmc.h>
 #include <sof/io.h>
 #include <sof/shim.h>
+#include <stdint.h>
 
 #define CLK_CPU(x)	(x)
 #define CLK_SSP		1

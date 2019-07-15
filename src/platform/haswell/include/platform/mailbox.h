@@ -11,6 +11,7 @@
 #define __PLATFORM_MAILBOX_H__
 
 #include <sof/memory.h>
+#include <config.h>
 
 #if CONFIG_BROADWELL
 #define MAILBOX_HOST_OFFSET	0x0009E000

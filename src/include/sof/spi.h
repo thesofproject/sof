@@ -8,6 +8,7 @@
 #ifndef __SOF_SPI_H__
 #define __SOF_SPI_H__
 
+#include <stddef.h>
 #include <stdint.h>
 
 enum spi_type {

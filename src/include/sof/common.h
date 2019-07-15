@@ -9,6 +9,7 @@
 #define __SOF_COMMON_H__
 
 #include <sof/preproc.h>
+#include <config.h>
 
 /* use same syntax as Linux for simplicity */
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))

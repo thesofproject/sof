@@ -12,9 +12,10 @@
   * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#include <sof/shim.h>
-#include <platform/asm_memory_management.h>
 #include <platform/asm_ldo_management.h>
+#include <platform/asm_memory_management.h>
+#include <sof/memory.h>
+#include <sof/shim.h>
 
 	.section .text, "ax"
 	.align 64

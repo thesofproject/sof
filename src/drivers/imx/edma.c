@@ -4,12 +4,10 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
+#include <sof/edma.h>
 #include <sof/dma.h>
 #include <sof/io.h>
-#include <errno.h>
 #include <stdint.h>
-#include <string.h>
-#include <config.h>
 
 static inline void edma_write(struct dma *dma, uint32_t reg, uint32_t value)
 {

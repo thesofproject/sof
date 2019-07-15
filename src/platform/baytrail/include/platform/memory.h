@@ -10,8 +10,6 @@
 #ifndef __PLATFORM_MEMORY_H__
 #define __PLATFORM_MEMORY_H__
 
-#include <config.h>
-
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 void platform_init_memmap(void);
 #endif

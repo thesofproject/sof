@@ -9,6 +9,7 @@
 #define __SOF_STRING_H__
 
 #include <arch/string.h>
+#include <stddef.h>
 
 /* C memcpy for arch that don't have arch_memcpy() */
 void cmemcpy(void *dest, void *src, size_t size);

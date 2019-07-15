@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/wait.h>
+#include <stdlib.h>
 
  /* scheduler testbench definition */
 

@@ -10,6 +10,8 @@
 #ifndef __PLATFORM_CLK_H__
 #define __PLATFORM_CLK_H__
 
+#include <stdint.h>
+
 #define CLK_CPU(x)	(x)
 #define CLK_SSP		1
 

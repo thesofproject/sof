@@ -13,14 +13,9 @@
 #ifndef __SOF_SCHEDULE_LL_SCHEDULE_H__
 #define __SOF_SCHEDULE_LL_SCHEDULE_H__
 
-#include <stdint.h>
-#include <sof/list.h>
 #include <sof/drivers/timer.h>
-#include <sof/alloc.h>
-#include <sof/schedule/schedule.h>
 #include <sof/trace.h>
-
-struct work_queue;
+#include <stdint.h>
 
 /* ll tracing */
 #define trace_ll(format, ...) \

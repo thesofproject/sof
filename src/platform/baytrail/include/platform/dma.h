@@ -11,7 +11,7 @@
 #ifndef __PLATFORM_DMA_H__
 #define __PLATFORM_DMA_H__
 
-#include <stdint.h>
+#include <config.h>
 
 #if defined CONFIG_CHERRYTRAIL
 #define PLATFORM_NUM_DMACS	3
