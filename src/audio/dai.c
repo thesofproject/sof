@@ -768,10 +768,25 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			dd->chan = DMA_CHAN_INVALID;
 		}
 		break;
+	case SOF_DAI_INTEL_ALH:
+		/* set to some non-zero value to satisfy the condition below,
+		 * it is recalculated in dai_params() later
+		 */
+		dd->frame_bytes = 4;
+
+		/* As with HDA, the DMA channel is assigned in runtime,
+		 * not during topology parsing.
+		 */
+		channel = config->alh.stream_id;
+		dd->stream_id = config->alh.stream_id;
+		trace_dai_with_ids(dev, "dai_config(), channel = %d",
+				   channel);
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		trace_dai_error_with_ids(dev, "dai_config() error: Handling of "
 					 "DAIs other than SOF_DAI_INTEL_SSP, "
+					 "SOF_DAI_INTEL_ALH, "
 					 "SOF_DAI_INTEL_DMIC or "
 					 "SOF_DAI_INTEL_HDA is not handled for "
 					 "now.");
