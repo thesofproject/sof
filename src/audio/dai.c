@@ -56,7 +56,6 @@
 struct dai_data {
 	/* local DMA config */
 	struct dma_chan_data *chan;
-	int chan;
 	uint32_t stream_id;
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
@@ -677,6 +676,7 @@ static int dai_position(struct comp_dev *dev, struct sof_ipc_stream_posn *posn)
 
 static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 {
+	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel = 0;
 	int i;
@@ -769,10 +769,30 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			dd->chan = NULL;
 		}
 		break;
+	case SOF_DAI_INTEL_ALH:
+		/* set to some non-zero value to satisfy the condition below,
+		 * it is recalculated in dai_params() later
+		 */
+		dd->frame_bytes = 4;
+
+		/* SDW HW FIFO always requires 32bit MSB aligned sample data for
+		 * all formats, such as 8/16/24/32 bits.
+		 */
+		dconfig->frame_fmt = SOF_IPC_FRAME_S32_LE;
+
+		/* As with HDA, the DMA channel is assigned in runtime,
+		 * not during topology parsing.
+		 */
+		channel = config->alh.stream_id;
+		dd->stream_id = config->alh.stream_id;
+		trace_dai_with_ids(dev, "dai_config(), channel = %d",
+				   channel);
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		trace_dai_error_with_ids(dev, "dai_config() error: Handling of "
 					 "DAIs other than SOF_DAI_INTEL_SSP, "
+					 "SOF_DAI_INTEL_ALH, "
 					 "SOF_DAI_INTEL_DMIC or "
 					 "SOF_DAI_INTEL_HDA is not handled for "
 					 "now.");

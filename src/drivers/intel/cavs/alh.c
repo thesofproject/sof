@@ -9,6 +9,7 @@
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
 #include <sof/trace/trace.h>
+#include <sof/common.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 #include <user/trace.h>
@@ -64,6 +65,13 @@ static int alh_remove(struct dai *dai)
 
 static int alh_get_handshake(struct dai *dai, int direction, int stream_id)
 {
+	if (stream_id >= ARRAY_SIZE(alh_handshake_map)) {
+		trace_alh_error("alh_get_handshake() error: "
+				"stream_id %d out of range", stream_id);
+
+		return -1;
+	}
+
 	return alh_handshake_map[stream_id];
 }
 
