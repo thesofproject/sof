@@ -23,11 +23,17 @@
 #define tracev_keyword(__e, ...) \
 	tracev_event(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 
+#define INT24_MAX 0xFFFFFF
 #define ACTIVATION_DEFAULT_SHIFT 3
-#define ACTIVATION_DEFAULT_THRESHOLD 0.5
+#define ACTIVATION_DEFAULT_DIVIDER_S16 0.5
+#define ACTIVATION_DEFAULT_DIVIDER_S24 0.05
+#define MAX_VALUE_S16 (INT16_MAX / 2)
+#define MAX_VALUE_S24 (INT24_MAX / 2)
 
 #define ACTIVATION_DEFAULT_THRESHOLD_S16 \
-	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_THRESHOLD)))
+	((int16_t)((MAX_VALUE_S16) * (ACTIVATION_DEFAULT_DIVIDER_S16)))
+#define ACTIVATION_DEFAULT_THRESHOLD_S24 \
+	((int32_t)((MAX_VALUE_S24) * (ACTIVATION_DEFAULT_DIVIDER_S24)))
 
 #define INITIAL_MODEL_DATA_SIZE 64
 
@@ -44,7 +50,7 @@ struct model_data {
 struct comp_data {
 	struct sof_detect_test_config config;
 	struct model_data model;
-	int16_t activation;
+	int32_t activation;
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
 	uint32_t keyphrase_samples; /**< keyphrase length in samples */
@@ -122,14 +128,14 @@ static void default_detect_test(struct comp_dev *dev,
 				struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-
+	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
 	void *src;
-	int16_t diff;
+	int32_t diff;
 	uint32_t count = frames; /**< Assuming single channel */
 	uint32_t sample;
-	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
-	uint16_t shift_bits;
-
+	int32_t activation_threshold = (valid_bits > 16) ?
+					ACTIVATION_DEFAULT_THRESHOLD_S24 :
+					ACTIVATION_DEFAULT_THRESHOLD_S16;
 	/* synthetic load */
 	if (cd->config.load_mips)
 		idelay(cd->config.load_mips * 1000000);
@@ -140,19 +146,17 @@ static void default_detect_test(struct comp_dev *dev,
 		      buffer_read_frag_s16(source, sample) :
 		      buffer_read_frag_s32(source, sample);
 		if (valid_bits > 16) {
-			shift_bits = valid_bits - 16;
-			diff = abs((int16_t)(((*(int32_t *)src) >>
-					      shift_bits) & 0x0000FFFF)) -
-			       abs(cd->activation);
+			diff = abs(*(int32_t *)src) - abs(cd->activation);
 		} else {
-			diff = abs(*(int16_t *)src) - abs(cd->activation);
+			diff = abs(*(int16_t *)src) -
+			       abs((int16_t)cd->activation);
 		}
 
 		diff >>= cd->config.activation_shift;
 		cd->activation += diff;
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
-			if (cd->activation >= cd->config.activation_threshold) {
+			if (cd->activation >= activation_threshold) {
 				/* The algorithm shall use cd->history_depth
 				 * to specify its draining size request.
 				 * Zero value means default config value
@@ -220,10 +224,6 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 
 	if (!cd->config.activation_shift)
 		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
-
-	if (!cd->config.activation_threshold)
-		cd->config.activation_threshold =
-			ACTIVATION_DEFAULT_THRESHOLD_S16;
 
 	return 0;
 }
