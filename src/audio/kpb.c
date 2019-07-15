@@ -886,6 +886,8 @@ static uint64_t kpb_draining_task(void *arg)
 					comp_update_buffer_consume(sink,
 								   sink->last_produce -
 								   sink->last_consume);
+					sink->last_produce = 0;
+					sink->last_consume = 0;
 					break;
 				}
 
@@ -970,6 +972,8 @@ static uint64_t kpb_draining_task(void *arg)
 							comp_update_buffer_consume(sink,
 										   sink->last_produce -
 										   sink->last_consume);
+							sink->last_produce = 0;
+							sink->last_consume = 0;
 							break;
 						}
 
@@ -990,6 +994,7 @@ static uint64_t kpb_draining_task(void *arg)
 			}
 	}
 out:
+
 	time_end = platform_timer_get(platform_timer);
 
 	/* Draining is done. Now switch KPB to copy real time stream
