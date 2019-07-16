@@ -413,13 +413,14 @@ static void ctl_dump(struct ctl_data *ctl_data)
 		}
 
 		if (ctl_data->binary) {
-			if (ctl_data->no_abi)
-				offset = BUFFER_ABI_OFFSET +
-					 sizeof(struct sof_abi_hdr) /
-					 sizeof(int);
-			n = ctl_data->buffer[BUFFER_SIZE_OFFSET] -
-			    sizeof(struct sof_abi_hdr);
+			offset = BUFFER_ABI_OFFSET;
+			n = ctl_data->buffer[BUFFER_SIZE_OFFSET];
 
+			if (ctl_data->no_abi) {
+				offset += sizeof(struct sof_abi_hdr) /
+					  sizeof(int);
+				n -= sizeof(struct sof_abi_hdr);
+			}
 			n = fwrite(&ctl_data->buffer[offset],
 				   1, n, fh);
 		}
