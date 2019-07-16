@@ -23,17 +23,15 @@
 #define tracev_keyword(__e, ...) \
 	tracev_event(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 
-#define INT24_MAX 0xFFFFFF
+#define INT24_MAX (0xFFFFFF / 2)
 #define ACTIVATION_DEFAULT_SHIFT 3
 #define ACTIVATION_DEFAULT_DIVIDER_S16 0.5
 #define ACTIVATION_DEFAULT_DIVIDER_S24 0.05
-#define MAX_VALUE_S16 (INT16_MAX / 2)
-#define MAX_VALUE_S24 (INT24_MAX / 2)
 
 #define ACTIVATION_DEFAULT_THRESHOLD_S16 \
-	((int16_t)((MAX_VALUE_S16) * (ACTIVATION_DEFAULT_DIVIDER_S16)))
+	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_DIVIDER_S16)))
 #define ACTIVATION_DEFAULT_THRESHOLD_S24 \
-	((int32_t)((MAX_VALUE_S24) * (ACTIVATION_DEFAULT_DIVIDER_S24)))
+	((int32_t)((INT24_MAX) * (ACTIVATION_DEFAULT_DIVIDER_S24)))
 
 #define INITIAL_MODEL_DATA_SIZE 64
 
@@ -128,14 +126,13 @@ static void default_detect_test(struct comp_dev *dev,
 				struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
 	void *src;
 	int32_t diff;
 	uint32_t count = frames; /**< Assuming single channel */
 	uint32_t sample;
-	int32_t activation_threshold = (valid_bits > 16) ?
-					ACTIVATION_DEFAULT_THRESHOLD_S24 :
-					ACTIVATION_DEFAULT_THRESHOLD_S16;
+	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
+	int32_t activation_threshold = cd->config.activation_threshold;
+
 	/* synthetic load */
 	if (cd->config.load_mips)
 		idelay(cd->config.load_mips * 1000000);
@@ -218,12 +215,21 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 				     struct sof_detect_test_config *cfg)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	uint16_t sample_width;
 
 	assert(!memcpy_s(&cd->config, sizeof(cd->config), cfg,
 			 sizeof(struct sof_detect_test_config)));
 
+	sample_width = cd->config.sample_width;
+
 	if (!cd->config.activation_shift)
 		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
+
+	if (!cd->config.activation_threshold) {
+		cd->config.activation_threshold = (sample_width > 16U) ?
+			ACTIVATION_DEFAULT_THRESHOLD_S24 :
+			ACTIVATION_DEFAULT_THRESHOLD_S16;
+	}
 
 	return 0;
 }
