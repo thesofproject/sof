@@ -10,9 +10,9 @@
  *
  */
 
-#include <sof/cache.h>
-#include <sof/gdb/gdb.h>
-#include <sof/gdb/ringbuffer.h>
+#include <sof/debug/gdb/gdb.h>
+#include <sof/debug/gdb/ringbuffer.h>
+#include <sof/lib/cache.h>
 #include <string.h>
 
 /* local functions */

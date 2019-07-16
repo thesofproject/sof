@@ -8,12 +8,12 @@
 #ifndef __SOF_DRIVERS_INTERRUPT_H__
 #define __SOF_DRIVERS_INTERRUPT_H__
 
-#include <arch/interrupt.h>
-#include <platform/interrupt.h>
-#include <sof/interrupt-map.h>
+#include <arch/drivers/interrupt.h>
+#include <platform/drivers/interrupt.h>
+#include <sof/drivers/interrupt-map.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <stdint.h>
 
 #define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)

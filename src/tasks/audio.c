@@ -8,20 +8,20 @@
  * Generic audio task.
  */
 
-#include <sof/agent.h>
 #include <sof/audio/component.h>
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/agent.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/sof.h>
-#include <sof/task.h>
-#include <sof/wait.h>
 #include <errno.h>
 #include <stdint.h>
 
 #if STATIC_PIPE
 #include <sof/audio/pipeline.h>
-#include <sof/panic.h>
+#include <sof/debug/panic.h>
 #include <ipc/trace.h>
 #endif
 

@@ -11,12 +11,12 @@
 #include <malloc.h>
 #include <cmocka.h>
 
-#include <sof/alloc.h>
-#include <sof/notifier.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/notifier.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>
 #include <mock_trace.h>
-#include <sof/clk.h>
+#include <sof/lib/clk.h>
 
 TRACE_IMPL()
 

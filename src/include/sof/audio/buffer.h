@@ -8,13 +8,13 @@
 #ifndef __SOF_AUDIO_BUFFER_H__
 #define __SOF_AUDIO_BUFFER_H__
 
-#include <sof/alloc.h>
 #include <sof/audio/pipeline.h>
-#include <sof/cache.h>
 #include <sof/common.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <stddef.h>
 #include <stdint.h>

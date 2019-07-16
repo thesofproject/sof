@@ -5,20 +5,20 @@
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
 #include <kernel/abi.h>
-#include <sof/alloc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>
-#include <sof/cache.h>
 #include <sof/common.h>
-#include <sof/ipc.h>
+#include <sof/debug/panic.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/notifier.h>
+#include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/notifier.h>
-#include <sof/panic.h>
 #include <sof/string.h>
-#include <sof/trace.h>
-#include <sof/wait.h>
+#include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

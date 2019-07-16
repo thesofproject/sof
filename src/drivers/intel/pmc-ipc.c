@@ -4,13 +4,13 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/ipc.h>
 #include <sof/drivers/pmc.h>
-#include <sof/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/shim.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
-#include <sof/shim.h>
-#include <sof/wait.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>

@@ -4,8 +4,8 @@
 //
 // Author: Marcin Rajwa <marcin.rajwa@linux.intel.com>
 
-#include <sof/gdb/ringbuffer.h>
-#include <sof/memory.h>
+#include <sof/debug/gdb/ringbuffer.h>
+#include <sof/lib/memory.h>
 
 #define BUFFER_OFFSET 0x120
 

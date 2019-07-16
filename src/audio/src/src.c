@@ -6,21 +6,21 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/cache.h>
 #include <sof/common.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/src/src.h>
 #include <sof/audio/src/src_config.h>
-#include <sof/ipc.h>
+#include <sof/debug/panic.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/panic.h>
 #include <sof/platform.h>
 #include <sof/string.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

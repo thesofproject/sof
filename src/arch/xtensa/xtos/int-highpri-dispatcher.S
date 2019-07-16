@@ -35,7 +35,7 @@
 
 #include <config.h>
 #if CONFIG_SMP
-#include <sof/cpu.h>
+#include <sof/lib/cpu.h>
 #endif
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"

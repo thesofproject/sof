@@ -18,11 +18,11 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/pipeline.h>
+#include <sof/debug/panic.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/panic.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

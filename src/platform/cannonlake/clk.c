@@ -4,8 +4,8 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <sof/clk.h>
 #include <sof/common.h>
+#include <sof/lib/clk.h>
 
 static struct freq_table platform_cpu_freq[] = {
 	{ 120000000, 120000, 0x0 },

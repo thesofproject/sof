@@ -30,8 +30,8 @@
 
 #include <config.h>
 #if CONFIG_SMP
-#include <sof/cpu.h>
-#include <sof/memory.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #endif
 #include <xtensa/cacheasm.h>
 #include <xtensa/cacheattrasm.h>

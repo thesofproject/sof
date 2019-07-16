@@ -7,14 +7,14 @@
 //         Rander Wang <rander.wang@intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/clk.h>
-#include <sof/cpu.h>
 #include <sof/drivers/timer.h>
-#include <sof/notifier.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/notifier.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <stddef.h>
 #include <stdint.h>

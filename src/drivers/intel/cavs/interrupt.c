@@ -8,9 +8,9 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/cpu.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/interrupt-map.h>
+#include <sof/drivers/interrupt-map.h>
+#include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <stddef.h>

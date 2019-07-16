@@ -6,7 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
 
 #include <stdio.h>
 #include <stdarg.h>

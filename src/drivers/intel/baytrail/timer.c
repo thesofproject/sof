@@ -9,11 +9,11 @@
  */
 
 #include <sof/audio/component.h>
-#include <sof/clk.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/shim.h>
 #include <sof/platform.h>
-#include <sof/shim.h>
 #include <ipc/stream.h>
 #include <errno.h>
 #include <stdint.h>

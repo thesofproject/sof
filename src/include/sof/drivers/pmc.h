@@ -8,6 +8,6 @@
 #ifndef __SOF_DRIVERS_PMC_H__
 #define __SOF_DRIVERS_PMC_H__
 
-#include <platform/pmc.h>
+#include <platform/drivers/pmc.h>
 
 #endif /* __SOF_DRIVERS_PMC_H__ */

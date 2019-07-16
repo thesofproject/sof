@@ -14,8 +14,8 @@
 
 #include <platform/asm_ldo_management.h>
 #include <platform/asm_memory_management.h>
-#include <sof/memory.h>
-#include <sof/shim.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/shim.h>
 
 	.section .text, "ax"
 	.align 64

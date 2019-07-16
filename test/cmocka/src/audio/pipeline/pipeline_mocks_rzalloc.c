@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <cmocka.h>
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 
 void *rzalloc(int zone, uint32_t caps, size_t bytes)
 {

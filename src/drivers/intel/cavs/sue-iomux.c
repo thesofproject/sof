@@ -4,8 +4,8 @@
 //
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
-#include <sof/io.h>
-#include <sof/iomux.h>
+#include <sof/drivers/iomux.h>
+#include <sof/lib/io.h>
 #include <errno.h>
 #include <stddef.h>
 

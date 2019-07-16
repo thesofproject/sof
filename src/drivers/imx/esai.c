@@ -4,9 +4,9 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/esai.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
+#include <sof/drivers/esai.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
 #include <ipc/dai.h>
 
 static int esai_context_store(struct dai *dai)

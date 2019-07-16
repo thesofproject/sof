@@ -5,19 +5,19 @@
 // Author: Keyon Jie <yang.jie@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/atomic.h>
 #include <sof/audio/component.h>
 #include <sof/bit.h>
-#include <sof/clk.h>
-#include <sof/dma.h>
+#include <sof/drivers/hda-dma.h>
 #include <sof/drivers/timer.h>
-#include <sof/hda-dma.h>
-#include <sof/io.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/platform.h>
-#include <sof/pm_runtime.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>

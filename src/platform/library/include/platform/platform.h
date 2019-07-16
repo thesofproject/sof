@@ -11,7 +11,7 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
-#include <sof/clk.h>
+#include <sof/lib/clk.h>
 #include <stdint.h>
 
 struct timer;

@@ -5,10 +5,10 @@
 // Author: Keyon Jie <yang.jie@linux.intel.com>
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/interrupt-map.h>
+#include <sof/drivers/interrupt-map.h>
+#include <sof/lib/alloc.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>

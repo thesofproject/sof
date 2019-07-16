@@ -12,7 +12,7 @@
 #include <cmocka.h>
 
 #include <sof/sof.h>
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
 

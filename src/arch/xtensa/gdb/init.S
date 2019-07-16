@@ -10,7 +10,7 @@
  *
  */
 
-#include <arch/gdb/xtensa-defs.h>
+#include <arch/debug/gdb/xtensa-defs.h>
 
 .text
 .global gdb_init_debug_exception

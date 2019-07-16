@@ -8,7 +8,7 @@
 #ifndef __SOF_SCHEDULE_EDF_SCHEDULE_H__
 #define __SOF_SCHEDULE_EDF_SCHEDULE_H__
 
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <stdint.h>
 
 /* schedule tracing */

@@ -18,7 +18,7 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <sof/cache.h>
+#include <sof/lib/cache.h>
 #include <stdint.h>
 
 struct sof;

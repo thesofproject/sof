@@ -7,8 +7,8 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/drivers/ipc.h>
 #include <stdlib.h>
 
 /* testbench ipc */

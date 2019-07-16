@@ -9,7 +9,7 @@
 #include <malloc.h>
 #include <sof/spinlock.h>
 #include <sof/list.h>
-#include <sof/stream.h>
+#include <sof/audio/stream.h>
 #include <sof/audio/component.h>
 
 #include "comp_mock.h"

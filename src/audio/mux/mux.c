@@ -9,17 +9,17 @@
 
 #if CONFIG_COMP_MUX
 
-#include <sof/alloc.h>
 #include <sof/audio/component.h>
 #include <sof/audio/mux.h>
 #include <sof/common.h>
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/alloc.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <sof/preproc.h>
 #include <sof/string.h>
-#include <sof/trace.h>
+#include <sof/trace/preproc.h>
+#include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/topology.h>
 #include <errno.h>

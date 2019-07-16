@@ -3,7 +3,7 @@
  * Copyright(c) 2018 Intel Corporation. All rights reserved.
  */
 
-#include <arch/offset-defs.h>
+#include <arch/debug/offset-defs.h>
 #include <xtensa/config/core-isa.h>
 #include <xtensa/corebits.h>
 

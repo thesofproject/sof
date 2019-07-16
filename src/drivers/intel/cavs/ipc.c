@@ -8,15 +8,15 @@
 
 #include <cavs/version.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/pm_runtime.h>
+#include <sof/lib/wait.h>
 #include <sof/list.h>
-#include <sof/mailbox.h>
-#include <sof/memory.h>
 #include <sof/platform.h>
-#include <sof/pm_runtime.h>
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
-#include <sof/wait.h>
 #include <ipc/header.h>
 #include <config.h>
 #include <stddef.h>

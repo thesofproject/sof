@@ -4,17 +4,17 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/agent.h>
-#include <sof/clk.h>
-#include <sof/cpu.h>
-#include <sof/dai.h>
-#include <sof/debug.h>
+#include <sof/debug/debug.h>
+#include <sof/drivers/edma.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/ipc.h>
+#include <sof/drivers/mu.h>
 #include <sof/drivers/timer.h>
-#include <sof/edma.h>
-#include <sof/ipc.h>
-#include <sof/mailbox.h>
-#include <sof/mu.h>
+#include <sof/lib/agent.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>

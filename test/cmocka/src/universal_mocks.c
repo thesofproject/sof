@@ -5,7 +5,7 @@
 // Author: Jakub Dabek <jakub.dabek@linux.intel.com>
 
 #include <errno.h>
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 
 int memcpy_s(void *dest, size_t dest_size,
 	     const void *src, size_t src_size)

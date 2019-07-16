@@ -10,15 +10,15 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/alloc.h>
-#include <sof/cache.h>
-#include <sof/cpu.h>
+#include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/idc.h>
-#include <sof/notifier.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/notifier.h>
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <xtos-structs.h>
 #include <stdint.h>
 

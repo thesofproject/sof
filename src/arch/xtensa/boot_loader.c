@@ -5,14 +5,14 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/bit.h>
-#include <sof/cache.h>
-#include <sof/io.h>
-#include <sof/memory.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/io.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/shim.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
-#include <sof/shim.h>
 #include <sof/sof.h>
-#include <sof/trace.h>
-#include <sof/wait.h>
+#include <sof/trace/trace.h>
 #include <user/manifest.h>
 #include <config.h>
 #include <stddef.h>

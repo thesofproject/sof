@@ -4,9 +4,9 @@
 //
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
-#include <sof/dai.h>
-#include <sof/dma.h>
-#include <sof/hda.h>
+#include <sof/drivers/hda.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
 #include <ipc/dai.h>
 
 static int hda_trigger(struct dai *dai, int cmd, int direction)

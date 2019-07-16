@@ -7,7 +7,7 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/drivers/interrupt.h>
-#include <sof/shim.h>
+#include <sof/lib/shim.h>
 #include <stddef.h>
 #include <stdint.h>
 

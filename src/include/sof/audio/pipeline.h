@@ -10,7 +10,7 @@
 
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <stdbool.h>
 #include <stdint.h>

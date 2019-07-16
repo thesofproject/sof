@@ -12,15 +12,15 @@
  * continuously then the SA will emit trace and panic().
  */
 
-#include <sof/agent.h>
-#include <sof/alloc.h>
-#include <sof/clk.h>
 #include <sof/drivers/timer.h>
-#include <sof/panic.h>
+#include <sof/lib/agent.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
+#include <sof/debug/panic.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <stdint.h>

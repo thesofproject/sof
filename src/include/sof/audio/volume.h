@@ -19,7 +19,7 @@
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/schedule/schedule.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <stddef.h>
 #include <stdint.h>

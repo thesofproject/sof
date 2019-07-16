@@ -8,7 +8,7 @@
 #ifndef __SOF_AUDIO_KPB_H__
 #define __SOF_AUDIO_KPB_H__
 
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <stdint.h>
 
 struct comp_buffer;

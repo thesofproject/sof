@@ -5,10 +5,10 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 #include <sof/audio/component.h>
-#include <sof/task.h>
+#include <sof/schedule/task.h>
 #include <stdint.h>
 #include <sof/schedule/edf_schedule.h>
-#include <sof/wait.h>
+#include <sof/lib/wait.h>
 #include <stdlib.h>
 
  /* scheduler testbench definition */

@@ -5,17 +5,17 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/cache.h>
-#include <sof/cpu.h>
+#include <sof/debug/panic.h>
+#include <sof/drivers/idc.h>
+#include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
-#include <sof/idc.h>
-#include <sof/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
 #include <sof/list.h>
-#include <sof/panic.h>
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>

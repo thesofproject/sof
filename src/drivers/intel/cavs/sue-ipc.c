@@ -6,13 +6,13 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Rander Wang <rander.wang@intel.com>
 
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
+#include <sof/drivers/spi.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/wait.h>
 #include <sof/list.h>
-#include <sof/mailbox.h>
 #include <sof/schedule/schedule.h>
-#include <sof/spi.h>
 #include <sof/spinlock.h>
-#include <sof/wait.h>
 #include <ipc/header.h>
 #include <stddef.h>
 #include <stdint.h>

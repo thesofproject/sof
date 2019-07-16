@@ -4,10 +4,10 @@
 //
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
-#include <sof/gpio.h>
-#include <sof/io.h>
-#include <sof/iomux.h>
-#include <sof/memory.h>
+#include <sof/drivers/gpio.h>
+#include <sof/drivers/iomux.h>
+#include <sof/lib/io.h>
+#include <sof/lib/memory.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -16,13 +16,13 @@
 #include <stddef.h>
 
 #include <sof/sof.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <sof/audio/kpb.h>
 #include <sof/audio/component.h>
 #include <sof/audio/buffer.h>
 #include "kpb_mock.h"
 #include <sof/list.h>
-#include <sof/notifier.h>
+#include <sof/lib/notifier.h>
 #include <user/kpb.h>
 
 /*! Local data types */
