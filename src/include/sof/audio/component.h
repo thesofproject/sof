@@ -27,6 +27,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <kernel/abi.h>
+#include <config.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -301,6 +302,22 @@ struct comp_copy_limits {
 #define comp_buffer_list(comp, dir) \
 	((dir) == PPL_DIR_DOWNSTREAM ? &comp->bsink_list : \
 	 &comp->bsource_list)
+
+/** \name Declare module macro
+ *  \brief Usage at the end of an independent module file:
+ *         DECLARE_MODULE(sys_*_init);
+ *  @{
+ */
+#ifdef UNIT_TEST
+#define DECLARE_MODULE(init)
+#elif CONFIG_LIBRARY
+/* In case of shared libs components are initialised in dlopen */
+#define DECLARE_MODULE(init) __attribute__((constructor)) \
+	static void _module_init(void) { init(); }
+#else
+#define DECLARE_MODULE(init) __attribute__((__used__)) \
+	__attribute__((section(".module_init"))) static void(*f)(void) = init
+#endif
 
 /** @}*/
 
