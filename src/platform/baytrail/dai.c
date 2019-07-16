@@ -5,11 +5,11 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/memory.h>
-#include <sof/ssp.h>
+#include <sof/drivers/ssp.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 #include <config.h>

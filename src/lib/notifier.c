@@ -4,13 +4,13 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/cache.h>
 #include <sof/common.h>
-#include <sof/cpu.h>
-#include <sof/idc.h>
+#include <sof/drivers/idc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/notifier.h>
 #include <sof/list.h>
-#include <sof/notifier.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
 

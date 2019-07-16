@@ -18,7 +18,7 @@
 #warning "Header can only be used by assembly sources."
 #endif
 
-#include <sof/shim.h>
+#include <sof/lib/shim.h>
 
 .macro m_cavs_set_ldo_state state, ax
 movi \ax, (SHIM_BASE + SHIM_LDOCTL)

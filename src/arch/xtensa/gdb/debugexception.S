@@ -10,7 +10,7 @@
  *
  */
 
-#include <arch/gdb/xtensa-defs.h>
+#include <arch/debug/gdb/xtensa-defs.h>
 #include <xtensa/config/core-isa.h>
 #include <xtensa/specreg.h>
 

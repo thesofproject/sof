@@ -4,11 +4,11 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/audio/component.h>
 #include <sof/common.h>
+#include <sof/debug/panic.h>
+#include <sof/lib/alloc.h>
 #include <sof/list.h>
-#include <sof/panic.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/topology.h>

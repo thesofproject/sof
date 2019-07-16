@@ -20,8 +20,8 @@
 #warning "The file is intended to be includded in assembly files only."
 #endif
 
-#include <sof/memory.h>
-#include <sof/shim.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/shim.h>
 
 /**
  * powers down entire hpsram. on entry lirerals and code for section from

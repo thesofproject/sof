@@ -16,7 +16,7 @@
 #ifndef __ARCH_INIT_H__
 #define __ARCH_INIT_H__
 
-#include <sof/panic.h>
+#include <sof/debug/panic.h>
 #include <ipc/trace.h>
 #include <xtensa/corebits.h>
 #include <xtensa/xtruntime.h>

@@ -20,22 +20,22 @@
  *    used to construct the DMA configuration for the host client 1 above.
  */
 
-#include <sof/alloc.h>
 #include <sof/atomic.h>
 #include <sof/audio/component.h>
-#include <sof/cache.h>
 #include <sof/common.h>
-#include <sof/cpu.h>
-#include <sof/dma.h>
+#include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
-#include <sof/dw-dma.h>
-#include <sof/io.h>
-#include <sof/memory.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/pm_runtime.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
-#include <sof/pm_runtime.h>
 #include <sof/spinlock.h>
-#include <sof/wait.h>
 #include <ipc/topology.h>
 #include <config.h>
 #include <errno.h>

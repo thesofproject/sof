@@ -4,9 +4,9 @@
 //
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
-#include <sof/dai.h>
-#include <sof/dma.h>
-#include <sof/trace.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/trace/trace.h>
 #include <ipc/dai.h>
 
 #define trace_soundwire(__e, ...) \

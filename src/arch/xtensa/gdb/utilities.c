@@ -10,7 +10,7 @@
  */
 #define GDB_DISABLE_LOWER_INTERRUPTS_MASK ~0x1F
 
-#include <arch/gdb/utilities.h>
+#include <arch/debug/gdb/utilities.h>
 #include <xtensa/config/core-isa.h>
 #include <xtensa/specreg.h>
 

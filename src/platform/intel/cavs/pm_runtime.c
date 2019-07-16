@@ -11,15 +11,15 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/alloc.h>
-#include <sof/dai.h>
-#include <sof/io.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/io.h>
+#include <sof/lib/pm_runtime.h>
+#include <sof/lib/shim.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
-#include <sof/pm_runtime.h>
-#include <sof/shim.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
-#include <sof/wait.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <config.h>
 #include <stdint.h>

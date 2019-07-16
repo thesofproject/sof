@@ -8,9 +8,9 @@
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
 #include <sof/audio/component.h>
-#include <sof/task.h>
+#include <sof/schedule/task.h>
 #include <stdint.h>
-#include <sof/wait.h>
+#include <sof/lib/wait.h>
 #include "testbench/edf_schedule.h"
 #include "testbench/ll_schedule.h"
 

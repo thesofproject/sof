@@ -8,11 +8,11 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/dma.h>
+#include <sof/drivers/dw-dma.h>
+#include <sof/drivers/hda-dma.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/dw-dma.h>
-#include <sof/hda-dma.h>
-#include <sof/memory.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <config.h>
 

@@ -4,11 +4,11 @@
 //
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/atomic.h>
-#include <sof/dma.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/dma.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stddef.h>

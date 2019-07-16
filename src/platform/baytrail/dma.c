@@ -5,9 +5,9 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/dma.h>
+#include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/dw-dma.h>
+#include <sof/lib/dma.h>
 #include <sof/spinlock.h>
 #include <config.h>
 

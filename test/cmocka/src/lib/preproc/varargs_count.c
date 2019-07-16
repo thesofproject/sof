@@ -6,13 +6,13 @@
 
 #include <test_simple_macro.h>
 
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <stdint.h>
 #include <cmocka.h>
 
-#include <sof/preproc.h>
+#include <sof/trace/preproc.h>
 #include <sof/sof.h>
 
 #define TEST_PREFIX test_lib_preproc

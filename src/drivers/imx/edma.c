@@ -4,9 +4,9 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/edma.h>
-#include <sof/dma.h>
-#include <sof/io.h>
+#include <sof/drivers/edma.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
 #include <stdint.h>
 
 static inline void edma_write(struct dma *dma, uint32_t reg, uint32_t value)

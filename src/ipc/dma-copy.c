@@ -5,11 +5,11 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/dma.h>
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
-#include <sof/trace.h>
-#include <sof/wait.h>
+#include <sof/trace/trace.h>
 #include <config.h>
 #include <errno.h>
 #include <stddef.h>

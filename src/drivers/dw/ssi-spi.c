@@ -4,23 +4,23 @@
 //
 // Author: Guennadi Liakhovetski <guennadi.liakhovetski@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/cache.h>
-#include <sof/clk.h>
 #include <sof/common.h>
-#include <sof/dma.h>
-#include <sof/io.h>
-#include <sof/ipc.h>
-#include <sof/gpio.h>
-#include <sof/mailbox.h>
-#include <sof/memory.h>
-#include <sof/panic.h>
+#include <sof/debug/panic.h>
+#include <sof/drivers/gpio.h>
+#include <sof/drivers/ipc.h>
+#include <sof/drivers/spi.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
-#include <sof/spi.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
-#include <sof/wait.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
 #include <stddef.h>

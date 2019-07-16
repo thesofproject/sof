@@ -4,7 +4,7 @@
 //
 // Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
 
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -13,9 +13,9 @@
 #include <malloc.h>
 #include <cmocka.h>
 
-#include <sof/preproc.h>
+#include <sof/trace/preproc.h>
 #include <sof/sof.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <user/trace.h>
 
 #define CAPTURE(aggr, ...)\

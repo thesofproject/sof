@@ -12,30 +12,30 @@
  *
  */
 
-#include <sof/alloc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/cache.h>
 #include <sof/common.h>
-#include <sof/cpu.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
-#include <sof/dma-trace.h>
+#include <sof/debug/gdb/gdb.h>
+#include <sof/debug/panic.h>
+#include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
-#include <sof/gdb/gdb.h>
-#include <sof/idc.h>
-#include <sof/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/mailbox.h>
 #include <sof/list.h>
-#include <sof/mailbox.h>
 #include <sof/math/numbers.h>
-#include <sof/panic.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
-#include <sof/trace.h>
+#include <sof/trace/dma-trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
@@ -783,8 +783,9 @@ static int ipc_glb_gdb_debug(uint32_t header)
 #ifdef CONFIG_GDB_DEBUG
 	gdb_init_debug_exception();
 	gdb_init();
-	/* TODO: this asm should be in arch/include/debug.h with a generic */
-	/* name and trigger debug exception */
+	/* TODO: this asm should be in arch/include/debug/debug.h
+	 * with a generic name and trigger debug exception
+	 */
 	asm volatile("_break 0, 0");
 	return 0;
 #else

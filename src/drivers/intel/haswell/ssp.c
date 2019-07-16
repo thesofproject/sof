@@ -5,14 +5,14 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/audio/component.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
-#include <sof/shim.h>
+#include <sof/drivers/ssp.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/shim.h>
 #include <sof/spinlock.h>
-#include <sof/ssp.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>
 #include <ipc/stream.h>

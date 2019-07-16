@@ -22,7 +22,7 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include <arch/gdb/xtensa-defs.h>
+#include <arch/debug/gdb/xtensa-defs.h>
 #include <xtensa/xtensa-versions.h>
 #include <xtensa/coreasm.h>
 #include <xtensa/config/specreg.h>

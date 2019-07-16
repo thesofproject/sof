@@ -5,16 +5,16 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/cache.h>
-#include <sof/cpu.h>
-#include <sof/dma.h>
-#include <sof/memory.h>
-#include <sof/panic.h>
+#include <sof/debug/panic.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/trace.h>
 #include <config.h>
 #include <errno.h>

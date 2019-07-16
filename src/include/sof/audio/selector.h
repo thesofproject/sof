@@ -14,7 +14,7 @@
 #ifndef __SOF_AUDIO_SELECTOR_H__
 #define __SOF_AUDIO_SELECTOR_H__
 
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <user/selector.h>
 #include <stdint.h>

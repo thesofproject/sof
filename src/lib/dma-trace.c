@@ -4,21 +4,21 @@
 //
 // Author: Yan Wang <yan.wang@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/audio/buffer.h>
-#include <sof/cache.h>
 #include <sof/common.h>
-#include <sof/cpu.h>
-#include <sof/dma.h>
-#include <sof/dma-trace.h>
-#include <sof/ipc.h>
-#include <sof/panic.h>
+#include <sof/debug/panic.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dma.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
-#include <sof/trace.h>
+#include <sof/trace/dma-trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <config.h>
 #include <errno.h>

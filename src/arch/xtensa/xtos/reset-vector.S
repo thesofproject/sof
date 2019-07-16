@@ -24,7 +24,7 @@
 
 #include <config.h>
 #if CONFIG_BOOT_LOADER && !CONFIG_VM_ROM
-#include <sof/memory.h>
+#include <sof/lib/memory.h>
 #endif
 #include <xtensa/coreasm.h>
 #include <xtensa/corebits.h>

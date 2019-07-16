@@ -13,7 +13,7 @@
 #include <cmocka.h>
 
 #include <sof/list.h>
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>

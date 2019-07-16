@@ -10,8 +10,8 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/alloc.h>
-#include <sof/pm_runtime.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
 #include <stdint.h>

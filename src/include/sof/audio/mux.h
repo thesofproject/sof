@@ -20,7 +20,7 @@
 
 #include <sof/common.h>
 #include <sof/platform.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <stdint.h>
 
 struct comp_buffer;

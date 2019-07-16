@@ -8,8 +8,8 @@
 #ifndef __SOF_DRIVERS_TIMER_H__
 #define __SOF_DRIVERS_TIMER_H__
 
-#include <arch/timer.h>
-#include <platform/timer.h>
+#include <arch/drivers/timer.h>
+#include <platform/drivers/timer.h>
 #include <stdint.h>
 
 struct comp_dev;

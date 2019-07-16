@@ -5,12 +5,12 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/dma.h>
+#include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/dw-dma.h>
-#include <sof/io.h>
-#include <sof/memory.h>
-#include <sof/shim.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/shim.h>
 #include <sof/spinlock.h>
 
 static struct dw_drv_plat_data dmac0 = {

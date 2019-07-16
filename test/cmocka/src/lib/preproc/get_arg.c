@@ -4,14 +4,14 @@
 //
 // Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
 
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 
 #include <stdarg.h>
 #include <setjmp.h>
 #include <stdint.h>
 #include <cmocka.h>
 
-#include <sof/preproc.h>
+#include <sof/trace/preproc.h>
 #include <sof/sof.h>
 
 static void test_lib_preproc_get_arg_1(void **state)

@@ -12,8 +12,8 @@
 
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
-#include <sof/ipc.h>
-#include <sof/trace.h>
+#include <sof/drivers/ipc.h>
+#include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

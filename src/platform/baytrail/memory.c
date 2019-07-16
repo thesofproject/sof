@@ -4,9 +4,9 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/common.h>
-#include <sof/memory.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/memory.h>
 #include <ipc/topology.h>
 
 /* Heap blocks for system runtime */

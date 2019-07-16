@@ -4,7 +4,7 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
-#include <sof/dma.h>
+#include <sof/lib/dma.h>
 #include <stdint.h>
 
 /* allocate next free DMA channel */

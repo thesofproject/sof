@@ -8,26 +8,26 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <cavs/version.h>
-#include <sof/agent.h>
-#include <sof/alloc.h>
-#include <sof/cache.h>
-#include <sof/clk.h>
 #include <sof/common.h>
-#include <sof/cpu.h>
-#include <sof/dai.h>
-#include <sof/debug.h>
-#include <sof/dma.h>
-#include <sof/dma-trace.h>
+#include <sof/debug/debug.h>
+#include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
-#include <sof/io.h>
-#include <sof/idc.h>
-#include <sof/ipc.h>
-#include <sof/mailbox.h>
-#include <sof/memory.h>
-#include <sof/notifier.h>
+#include <sof/lib/agent.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/notifier.h>
 #include <sof/schedule/schedule.h>
-#include <sof/trace.h>
+#include <sof/trace/dma-trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/header.h>
 #include <ipc/info.h>
 #include <kernel/abi.h>
@@ -177,7 +177,7 @@ struct timesource_data platform_generic_queue[] = {
 
 #if CONFIG_DW_GPIO
 
-#include <sof/gpio.h>
+#include <sof/drivers/gpio.h>
 
 const struct gpio_pin_config gpio_data[] = {
 	{	/* GPIO0 */
@@ -265,7 +265,7 @@ const int n_gpios = ARRAY_SIZE(gpio_data);
 
 #if CONFIG_INTEL_IOMUX
 
-#include <sof/iomux.h>
+#include <sof/drivers/iomux.h>
 
 struct iomux iomux_data[] = {
 	{.base = EXT_CTRL_BASE + 0x30,},
@@ -284,7 +284,7 @@ struct timer *platform_timer =
 
 #if defined(CONFIG_DW_SPI)
 
-#include <sof/spi.h>
+#include <sof/drivers/spi.h>
 
 static struct spi_platform_data spi = {
 	.base		= DW_SPI_SLAVE_BASE,

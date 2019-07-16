@@ -28,7 +28,7 @@
 // TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include <sof/memory.h>
+#include <sof/lib/memory.h>
 #include <config.h>
 #include <xtensa/coreasm.h>
 

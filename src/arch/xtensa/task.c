@@ -10,15 +10,15 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#include <sof/alloc.h>
-#include <sof/cpu.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
-#include <sof/task.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <config.h>
 #include <xtos-structs.h>

@@ -6,7 +6,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/common.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <stddef.h>
 

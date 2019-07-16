@@ -4,15 +4,15 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/cache.h>
-#include <sof/debug.h>
+#include <sof/debug/debug.h>
+#include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/mailbox.h>
-#include <sof/panic.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/mailbox.h>
 #include <sof/platform.h>
 #include <sof/sof.h>
 #include <sof/string.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/trace.h>
 #include <config.h>
 #include <stddef.h>

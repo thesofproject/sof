@@ -5,18 +5,18 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Artur Kloniecki <arturx.kloniecki@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/cache.h>
-#include <sof/cpu.h>
-#include <sof/dma-trace.h>
+#include <sof/debug/panic.h>
 #include <sof/drivers/timer.h>
-#include <sof/mailbox.h>
-#include <sof/panic.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/mailbox.h>
 #include <sof/platform.h>
-#include <sof/preproc.h>
 #include <sof/string.h>
 #include <sof/spinlock.h>
-#include <sof/trace.h>
+#include <sof/trace/dma-trace.h>
+#include <sof/trace/preproc.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <stdint.h>

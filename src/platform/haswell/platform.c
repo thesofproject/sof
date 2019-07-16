@@ -4,24 +4,24 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/agent.h>
-#include <sof/alloc.h>
-#include <sof/clk.h>
-#include <sof/cpu.h>
-#include <sof/dai.h>
-#include <sof/debug.h>
-#include <sof/dma.h>
-#include <sof/dma-trace.h>
+#include <sof/debug/debug.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
-#include <sof/io.h>
-#include <sof/ipc.h>
-#include <sof/mailbox.h>
-#include <sof/notifier.h>
+#include <sof/lib/agent.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/notifier.h>
+#include <sof/lib/shim.h>
 #include <sof/schedule/schedule.h>
-#include <sof/shim.h>
 #include <sof/sof.h>
-#include <sof/trace.h>
+#include <sof/trace/dma-trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
 #include <ipc/info.h>

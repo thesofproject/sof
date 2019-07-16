@@ -5,13 +5,13 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/cache.h>
 #include <sof/common.h>
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/sof.h>

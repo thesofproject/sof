@@ -8,11 +8,11 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <sof/common.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
+#include <sof/drivers/hda.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/hda.h>
-#include <sof/memory.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>
@@ -20,7 +20,7 @@
 
 #if CONFIG_CAVS_SSP
 
-#include <sof/ssp.h>
+#include <sof/drivers/ssp.h>
 
 static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 
@@ -28,7 +28,7 @@ static struct dai ssp[(DAI_NUM_SSP_BASE + DAI_NUM_SSP_EXT)];
 
 #if CONFIG_CAVS_DMIC
 
-#include <sof/dmic.h>
+#include <sof/drivers/dmic.h>
 
 static struct dai dmic[2] = {
 	/* Testing idea if DMIC FIFOs A and B to access the same microphones

@@ -10,7 +10,7 @@
  * \authors Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/cpu.h>
+#include <sof/lib/cpu.h>
 #include <sof/schedule/schedule.h>
 #include <xtos-structs.h>
 

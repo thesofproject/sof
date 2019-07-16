@@ -10,7 +10,7 @@
  * and set up components and pipeline
  */
 
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
 #include <stdio.h>
 #include <sof/string.h>
 #include <dlfcn.h>

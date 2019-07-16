@@ -6,9 +6,9 @@
  */
 
 #include <test_simple_macro.h>
-#include <sof/preproc.h>
+#include <sof/trace/preproc.h>
 #include <sof/sof.h>
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 
 /* CMOCKA SETUP */
 #define setup_alloc(ptr, type, size, offset) do {\

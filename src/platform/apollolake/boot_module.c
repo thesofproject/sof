@@ -4,7 +4,7 @@
 //
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
-#include <sof/memory.h>
+#include <sof/lib/memory.h>
 #include <user/manifest.h>
 
 /*

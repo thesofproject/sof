@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <malloc.h>
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 #include "testbench/common_test.h"
 
 /* testbench mem alloc definition */

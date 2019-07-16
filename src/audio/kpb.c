@@ -14,19 +14,19 @@
  * \author Marcin Rajwa <marcin.rajwa@linux.intel.com>
  */
 
-#include <sof/alloc.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/audio/kpb.h>
-#include <sof/clk.h>
 #include <sof/common.h>
+#include <sof/debug/panic.h>
+#include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
-#include <sof/ipc.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/notifier.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/notifier.h>
-#include <sof/panic.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/string.h>

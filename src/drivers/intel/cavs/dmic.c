@@ -4,27 +4,27 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-#include <sof/dmic.h>
+#include <sof/drivers/dmic.h>
 
 #if defined DMIC_HW_VERSION
 
-#include <sof/alloc.h>
 #include <sof/audio/coefficients/pdm_decim/pdm_decim_fir.h>
 #include <sof/audio/coefficients/pdm_decim/pdm_decim_table.h>
 #include <sof/audio/component.h>
 #include <sof/audio/format.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
+#include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/io.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/io.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
-#include <sof/panic.h>
-#include <sof/pm_runtime.h>
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>
 #include <ipc/topology.h>

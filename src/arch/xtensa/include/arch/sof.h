@@ -11,8 +11,8 @@
 #ifndef __ARCH_SOF_H__
 #define __ARCH_SOF_H__
 
-#include <sof/cache.h>
-#include <sof/mailbox.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/mailbox.h>
 #include <ipc/xtensa.h>
 #include <xtensa/config/core-isa.h>
 #include <stdint.h>

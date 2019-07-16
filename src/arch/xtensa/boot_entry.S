@@ -12,10 +12,10 @@
  * 2) Stack is in first HPSRAM bank.
  */
 
-#include <sof/cpu.h>
-#include <sof/memory.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/shim.h>
 #include <sof/platform.h>
-#include <sof/shim.h>
 #include <config.h>
 #include <xtensa/config/core-isa.h>
 #include <xtensa/corebits.h>

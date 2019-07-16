@@ -5,10 +5,10 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/common.h>
-#include <sof/cpu.h>
-#include <sof/memory.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <ipc/topology.h>
 #include <stdint.h>

@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <sof/alloc.h>
-#include <sof/trace.h>
+#include <sof/lib/alloc.h>
+#include <sof/trace/trace.h>
 #include <sof/audio/component.h>
 
 #include <mock_trace.h>

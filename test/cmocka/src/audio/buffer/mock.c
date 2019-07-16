@@ -8,8 +8,8 @@
 #include <stdlib.h>
 
 #include <config.h>
-#include <sof/alloc.h>
-#include <sof/trace.h>
+#include <sof/lib/alloc.h>
+#include <sof/trace/trace.h>
 
 #include <mock_trace.h>
 

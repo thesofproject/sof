@@ -18,9 +18,9 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <sof/clk.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/mailbox.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/mailbox.h>
 #include <stdint.h>
 
 struct timer;

@@ -6,18 +6,18 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Rander Wang <rander.wang@linux.intel.com>
 
-#include <sof/alloc.h>
 #include <sof/audio/component.h>
-#include <sof/clk.h>
-#include <sof/dai.h>
-#include <sof/dma.h>
+#include <sof/drivers/ssp.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/dma.h>
+#include <sof/lib/pm_runtime.h>
+#include <sof/lib/wait.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
-#include <sof/pm_runtime.h>
 #include <sof/spinlock.h>
-#include <sof/ssp.h>
-#include <sof/trace.h>
-#include <sof/wait.h>
+#include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>
 #include <ipc/stream.h>

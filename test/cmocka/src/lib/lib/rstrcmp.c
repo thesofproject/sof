@@ -4,7 +4,7 @@
 //
 // Author: Michal Jerzy Wierzbicki <michalx.wierzbicki@linux.intel.com>
 
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 
 #include <stdarg.h>
 #include <setjmp.h>

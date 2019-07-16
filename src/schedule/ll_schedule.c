@@ -22,14 +22,14 @@
  * frequency changes.
  */
 
-#include <sof/alloc.h>
 #include <sof/atomic.h>
-#include <sof/clk.h>
 #include <sof/common.h>
-#include <sof/cpu.h>
 #include <sof/drivers/timer.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/cpu.h>
+#include <sof/lib/notifier.h>
 #include <sof/list.h>
-#include <sof/notifier.h>
 #include <sof/platform.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>

@@ -5,9 +5,9 @@
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
 #include <sof/common.h>
-#include <sof/dai.h>
-#include <sof/esai.h>
-#include <sof/memory.h>
+#include <sof/drivers/esai.h>
+#include <sof/lib/dai.h>
+#include <sof/lib/memory.h>
 #include <ipc/dai.h>
 
 static struct dai esai[] = {

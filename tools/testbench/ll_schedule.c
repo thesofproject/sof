@@ -5,9 +5,9 @@
 // Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
 #include <sof/audio/component.h>
-#include <sof/task.h>
+#include <sof/schedule/task.h>
 #include <stdint.h>
-#include <sof/wait.h>
+#include <sof/lib/wait.h>
 
 /* TODO: Make host ll ops implementation */
 struct scheduler_ops schedule_ll_ops = {

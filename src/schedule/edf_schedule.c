@@ -4,19 +4,19 @@
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 
-#include <sof/alloc.h>
-#include <sof/clk.h>
 #include <sof/common.h>
 #include <sof/drivers/interrupt.h>
+#include <sof/drivers/interrupt-map.h>
 #include <sof/drivers/timer.h>
-#include <sof/interrupt-map.h>
+#include <sof/lib/alloc.h>
+#include <sof/lib/clk.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
-#include <sof/task.h>
-#include <sof/trace.h>
+#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>

@@ -6,7 +6,7 @@
 
 /* Generic scheduler */
 
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 #include <sof/schedule/schedule.h>
 #include <ipc/topology.h>
 #include <errno.h>

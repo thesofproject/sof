@@ -20,10 +20,10 @@
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
-#include <sof/clk.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/mailbox.h>
-#include <sof/shim.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/mailbox.h>
+#include <sof/lib/shim.h>
 #include <stdint.h>
 
 struct timer;

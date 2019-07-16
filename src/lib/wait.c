@@ -8,12 +8,12 @@
  * Simple wait for event completion and signaling with timeouts.
  */
 
-#include <sof/clk.h>
-#include <sof/io.h>
+#include <sof/lib/clk.h>
+#include <sof/lib/io.h>
+#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
-#include <sof/trace.h>
-#include <sof/wait.h>
+#include <sof/trace/trace.h>
 #include <errno.h>
 #include <stdint.h>
 

@@ -5,7 +5,7 @@
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <sof/ipc.h>
+#include <sof/drivers/ipc.h>
 #include <sof/list.h>
 #include <getopt.h>
 #include <dlfcn.h>

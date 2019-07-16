@@ -11,7 +11,7 @@
 #include <malloc.h>
 #include <cmocka.h>
 
-#include <sof/alloc.h>
+#include <sof/lib/alloc.h>
 #include <sof/audio/component.h>
 
 #include "comp_mock.h"

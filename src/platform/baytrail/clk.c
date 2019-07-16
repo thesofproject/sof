@@ -4,8 +4,8 @@
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
-#include <sof/clk.h>
 #include <sof/common.h>
+#include <sof/lib/clk.h>
 #include <config.h>
 
 #if CONFIG_BAYTRAIL
