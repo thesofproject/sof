@@ -65,9 +65,9 @@
 
 #if DEBUG_LOCKS
 
-#include <ipc/trace.h>
 #include <sof/debug/panic.h>
 #include <sof/trace/trace.h>
+#include <ipc/trace.h>
 #include <stdint.h>
 
 #define DBG_LOCK_USERS		8
