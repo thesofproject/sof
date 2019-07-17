@@ -159,7 +159,7 @@ static void default_detect_test(struct comp_dev *dev,
 				 * Zero value means default config value
 				 * will be used.
 				 */
-				cd->history_depth = 2100;
+				cd->history_depth = 0;
 				detect_test_notify(dev);
 				cd->detected = 1;
 			}
