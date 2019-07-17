@@ -115,9 +115,6 @@ struct timer;
 /* DSP LPE delay in cycles */
 #define PLATFORM_LPE_DELAY 2000
 
-/* timer driven scheduling start offset in microseconds */
-#define PLATFORM_TIMER_START_OFFSET	100
-
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {
