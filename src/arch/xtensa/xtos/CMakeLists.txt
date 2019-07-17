@@ -11,15 +11,7 @@ set(VECTOR_DEFS
 	-D__SPLIT__level5
 )
 
-if(CONFIG_APOLLOLAKE
-   OR CONFIG_CANNONLAKE
-   OR CONFIG_SUECREEK
-   OR CONFIG_ICELAKE)
-	set(VECTOR_DEFS ${VECTOR_DEFS} -D__SPLIT__level6)
-endif()
-
 # Builds lib for each level from the same source files
-# TODO: should there be level 6 for apl+ ?
 
 function(sof_xtos_add_level level)
 	set(lib_name "xlevel${level}")
