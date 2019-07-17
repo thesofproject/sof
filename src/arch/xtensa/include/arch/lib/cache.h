@@ -11,11 +11,14 @@
 #define __ARCH_LIB_CACHE_H__
 
 #include <xtensa/config/core-isa.h>
+
+#define DCACHE_LINE_SIZE	XCHAL_DCACHE_LINESIZE
+
+#if !defined(__ASSEMBLER__) && !defined(LINKER)
+
 #include <xtensa/hal.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#define DCACHE_LINE_SIZE	XCHAL_DCACHE_LINESIZE
 
 static inline void dcache_writeback_region(void *addr, size_t size)
 {
@@ -72,6 +75,8 @@ static inline void dcache_writeback_invalidate_all(void)
 	xthal_dcache_all_writeback_inv();
 #endif
 }
+
+#endif /* !defined(__ASSEMBLER__) && !defined(LINKER) */
 
 #endif /* __ARCH_LIB_CACHE_H__ */
 

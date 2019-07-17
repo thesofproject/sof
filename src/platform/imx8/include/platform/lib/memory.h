@@ -10,6 +10,8 @@
 #ifndef __PLATFORM_LIB_MEMORY_H__
 #define __PLATFORM_LIB_MEMORY_H__
 
+#include <sof/lib/cache.h>
+
 /* physical DSP addresses */
 
 #define IRAM_BASE	0x596f8000
@@ -158,7 +160,7 @@
 #define cache_to_uncache(address)	address
 #define is_uncached(address)		0
 
-#define HEAP_BUF_ALIGNMENT		XCHAL_DCACHE_LINESIZE
+#define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 void platform_init_memmap(void);
