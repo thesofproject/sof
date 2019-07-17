@@ -191,7 +191,7 @@ int platform_ipc_init(struct ipc *ipc)
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
 			   ipc_process_task, _ipc, 0, 0);
 
-#ifdef CONFIG_HOST_PTABLE
+#if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
 	iipc->dh_buffer.page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 					     PLATFORM_PAGE_TABLE_SIZE);

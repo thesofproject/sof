@@ -47,7 +47,7 @@ static const struct sof_ipc_fw_ready ready
 		.micro = SOF_MICRO,
 		.minor = SOF_MINOR,
 		.major = SOF_MAJOR,
-#ifdef CONFIG_DEBUG
+#if CONFIG_DEBUG
 		/* only added in debug for reproducability in releases */
 		.build = SOF_BUILD,
 		.date = __DATE__,
@@ -59,7 +59,7 @@ static const struct sof_ipc_fw_ready ready
 	.flags = DEBUG_SET_FW_READY_FLAGS,
 };
 
-#if defined(CONFIG_MEM_WND)
+#if CONFIG_MEM_WND
 #define SRAM_WINDOW_HOST_OFFSET(x) (0x80000 + x * 0x20000)
 
 #define NUM_WINDOWS 7
@@ -282,7 +282,7 @@ const int n_iomux = ARRAY_SIZE(iomux_data);
 struct timer *platform_timer =
 	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
-#if defined(CONFIG_DW_SPI)
+#if CONFIG_DW_SPI
 
 #include <sof/drivers/spi.h>
 
@@ -308,10 +308,10 @@ int platform_boot_complete(uint32_t boot_message)
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
-#if defined(CONFIG_MEM_WND)
+#if CONFIG_MEM_WND
 	mailbox_dspbox_write(sizeof(ready), &sram_window,
 		sram_window.ext_hdr.hdr.size);
-#endif // defined(CONFIG_MEM_WND)
+#endif
 
 	/* tell host we are ready */
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -326,7 +326,7 @@ int platform_boot_complete(uint32_t boot_message)
 
 #endif
 
-#if defined(CONFIG_MEM_WND)
+#if CONFIG_MEM_WND
 static void platform_memory_windows_init(void)
 {
 	/* window0, for fw status & outbox/uplink mbox */
@@ -383,13 +383,12 @@ static void platform_init_hw(void)
 
 int platform_init(struct sof *sof)
 {
-#if defined(CONFIG_DW_SPI)
+#if CONFIG_DW_SPI
 	struct spi *spi_dev;
 #endif
 	int ret;
 
-#if defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE) \
-	|| defined(CONFIG_SUECREEK)
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
 #endif
@@ -397,7 +396,7 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_IRQ);
 	platform_interrupt_init();
 
-#if defined(CONFIG_MEM_WND)
+#if CONFIG_MEM_WND
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
 	platform_memory_windows_init();
 #endif
@@ -418,7 +417,7 @@ int platform_init(struct sof *sof)
 
 	/* Set CPU to max frequency for booting (single shim_write below) */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);
-#if defined(CONFIG_APOLLOLAKE)
+#if CONFIG_APOLLOLAKE
 	/* initialize PM for boot */
 
 	/* TODO: there are two clk freqs CRO & CRO/4
@@ -437,7 +436,7 @@ int platform_init(struct sof *sof)
 
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
 
-#elif defined(CONFIG_CANNONLAKE)
+#elif CONFIG_CANNONLAKE
 
 	/* initialize PM for boot */
 	shim_write(SHIM_CLKCTL,
@@ -461,7 +460,7 @@ int platform_init(struct sof *sof)
 		     SHIM_PWRCTL_TCPDSPPG(1) | SHIM_PWRCTL_TCPDSPPG(2) |
 		     SHIM_PWRCTL_TCPDSPPG(3));
 
-#elif defined(CONFIG_ICELAKE) || defined(CONFIG_SUECREEK)
+#elif CONFIG_ICELAKE || CONFIG_SUECREEK
 	/* TODO: need to merge as for APL */
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
@@ -501,7 +500,7 @@ int platform_init(struct sof *sof)
 	if (ret < 0)
 		return ret;
 
-#if defined(CONFIG_DW_SPI)
+#if CONFIG_DW_SPI
 	/* initialize the SPI slave */
 	trace_point(TRACE_BOOT_PLATFORM_SPI);
 	spi_init();

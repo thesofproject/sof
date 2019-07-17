@@ -43,13 +43,13 @@ _DebugExceptionVector:
 	isync_erratum453
 #if ((defined(SIMULATOR) || \
     (XCHAL_HW_MIN_VERSION >= XTENSA_HWVERSION_RE_2013_2)) \
-    && !defined(CONFIG_GDB_DEBUG)) /* SIMCALL is NOP in hw? */
+    && !CONFIG_GDB_DEBUG) /* SIMCALL is NOP in hw? */
 	//  In the simulator (ISS), let the debugger (if any is attached)
 	//  handle the debug exception, else simply stop the simulation:
 	//
 	simcall	// have ISS handle the debug exception
 # endif
-# if (!defined(SIMULATOR) && !defined(CONFIG_GDB_DEBUG))
+# if (!defined(SIMULATOR) && !CONFIG_GDB_DEBUG)
 	//  For hardware, this code does not handle debug exceptions.
 	//  To implement a target-side debug monitor, replace this
 	//  vector with a real one that uses target-specific facilities
@@ -61,7 +61,7 @@ _DebugExceptionVector:
 	j	1b		// infinite loop - unexpected debug exception
 # endif /*!SIMULATOR && !CONFIG_GDB_DEBUG*/
 
-#if defined(CONFIG_GDB_DEBUG)
+#if CONFIG_GDB_DEBUG
 	xsr	a2, DEBUG_EXCSAVE
 	jx	a2
 #endif

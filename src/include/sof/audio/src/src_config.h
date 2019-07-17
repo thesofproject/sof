@@ -42,7 +42,7 @@
 #endif
 #else
 /* GCC */
-#if defined(CONFIG_LIBRARY)
+#if CONFIG_LIBRARY
 #define SRC_SHORT	0  /* Use high quality 32 bit filter coefficients */
 #else
 #define SRC_SHORT	1  /* Use 16 bit filter coefficients for speed */

@@ -28,7 +28,7 @@
 #define DEBUG_GDB	0
 #endif
 
-#ifdef CONFIG_DEBUG
+#if CONFIG_DEBUG
 
 #include <sof/lib/mailbox.h>
 

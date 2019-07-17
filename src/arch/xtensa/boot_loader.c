@@ -24,7 +24,7 @@
 #define MANIFEST_BASE	IMR_BOOT_LDR_MANIFEST_BASE
 #endif
 
-#if defined(CONFIG_BOOT_LOADER)
+#if CONFIG_BOOT_LOADER
 
 /* memcopy used by boot loader */
 static inline void bmemcpy(void *dest, void *src, size_t bytes)
@@ -87,7 +87,7 @@ static void parse_module(struct sof_man_fw_header *hdr,
 }
 
 /* On Sue Creek the boot loader is attached separately, no need to skip it */
-#ifdef CONFIG_SUECREEK
+#if CONFIG_SUECREEK
 #define MAN_SKIP_ENTRIES 0
 #else
 #define MAN_SKIP_ENTRIES 1
@@ -113,7 +113,7 @@ static void parse_manifest(void)
 #endif
 
 /* power off unused HPSRAM */
-#if defined(CONFIG_CANNONLAKE)
+#if CONFIG_CANNONLAKE
 
 static int32_t hp_sram_init(void)
 {
@@ -197,7 +197,7 @@ static uint32_t hp_sram_init(void)
 
 #endif
 
-#if defined(CONFIG_APOLLOLAKE)
+#if CONFIG_APOLLOLAKE
 static int32_t lp_sram_init(void)
 {
 	uint32_t status;
@@ -251,7 +251,7 @@ void boot_master_core(void)
 		return;
 	}
 
-#if defined(CONFIG_APOLLOLAKE)
+#if CONFIG_APOLLOLAKE
 	/* init the LPSRAM */
 	platform_trace_point(TRACE_BOOT_LDR_LPSRAM);
 
@@ -262,7 +262,7 @@ void boot_master_core(void)
 	}
 #endif
 
-#if defined(CONFIG_BOOT_LOADER)
+#if CONFIG_BOOT_LOADER
 	/* parse manifest and copy modules */
 	platform_trace_point(TRACE_BOOT_LDR_MANIFEST);
 	parse_manifest();

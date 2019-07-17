@@ -16,21 +16,21 @@
 #include <sof/spinlock.h>
 #include <config.h>
 
-#if defined(CONFIG_APOLLOLAKE)
+#if CONFIG_APOLLOLAKE
 #define DMAC0_CLASS 1
 #define DMAC1_CLASS 2
 #define DMAC_HOST_OUT_CHANNELS_COUNT 6
 #define DMAC_LINK_IN_CHANNELS_COUNT 8
 #define DMAC_LINK_OUT_CHANNELS_COUNT 8
 #define CAVS_PLATFORM_NUM_DMACS		6
-#elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
+#elif CONFIG_CANNONLAKE || CONFIG_ICELAKE
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
 #define DMAC_HOST_OUT_CHANNELS_COUNT 9
 #define DMAC_LINK_IN_CHANNELS_COUNT 9
 #define DMAC_LINK_OUT_CHANNELS_COUNT 7
 #define CAVS_PLATFORM_NUM_DMACS		6
-#elif defined(CONFIG_SUECREEK)
+#elif CONFIG_SUECREEK
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
 #define CAVS_PLATFORM_NUM_DMACS		3
@@ -106,7 +106,7 @@ static struct dw_drv_plat_data dmac1 = {
 	},
 };
 
-#if defined(CONFIG_SUECREEK)
+#if CONFIG_SUECREEK
 struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 {	/* LP GP DMAC 0 */
 	.plat_data = {

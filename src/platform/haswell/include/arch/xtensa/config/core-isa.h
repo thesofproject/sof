@@ -1,6 +1,6 @@
 #include <config.h>
 
-#ifdef CONFIG_HASWELL
+#if CONFIG_HASWELL
 #include <xtensa/config/core-isa-hsw.h>
 #elif CONFIG_BROADWELL
 #include <xtensa/config/core-isa-bdw.h>

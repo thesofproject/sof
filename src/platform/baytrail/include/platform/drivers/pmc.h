@@ -18,7 +18,7 @@
 #define PMC_DDR_LINK_DOWN	0xc1	/* LPE req path to DRAM is down */
 #define PMC_SET_LPECLK		0xc2	/* LPE req clock change to FR_LAT_REQ */
 
-#ifdef CONFIG_BAYTRAIL
+#if CONFIG_BAYTRAIL
 
 /* LPE req SSP clock to 19.2MHz w/ PLL*/
 #define PMC_SET_SSP_19M2	0xc5
