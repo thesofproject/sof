@@ -24,10 +24,7 @@ endif()
 
 set(fw_name ${CONFIG_FIRMWARE_SHORT_NAME})
 
-if(CONFIG_APOLLOLAKE
-   OR CONFIG_CANNONLAKE
-   OR CONFIG_SUECREEK
-   OR CONFIG_ICELAKE)
+if(CONFIG_BOOT_LOADER)
 	set(build_bootloader y)
 	set(build_module y)
 endif()
