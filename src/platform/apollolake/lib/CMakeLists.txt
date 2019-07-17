@@ -1,3 +1,3 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
-add_local_sources(sof audio.c)
+add_local_sources(sof clk.c)

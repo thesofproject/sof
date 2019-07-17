@@ -140,10 +140,11 @@ add_library(reset STATIC "")
 target_link_libraries(reset sof_options)
 target_compile_options(reset PRIVATE -mtext-section-literals)
 
-if(CONFIG_GDB_DEBUG)
-	add_subdirectory(gdb)
-endif()
+add_subdirectory(debug)
+add_subdirectory(drivers)
 add_subdirectory(hal)
+add_subdirectory(lib)
+add_subdirectory(schedule)
 add_subdirectory(xtos)
 
 add_local_sources(reset xtos/memctl_default.S xtos/reset-vector.S)
@@ -152,16 +153,8 @@ add_local_sources(sof
 	xtos/crt1-boards.S
 	xtos/_vectors.S
 	init.c
-	notifier.c
-	schedule.c
-	task.c
-	timer.c
 	exc-dump.S
 )
-
-if(CONFIG_SMP)
-	add_local_sources(sof cpu.c idc.c)
-endif()
 
 add_library(sof_lib INTERFACE)
 target_link_libraries(sof_lib INTERFACE sof_options)
