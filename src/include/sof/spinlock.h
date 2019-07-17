@@ -15,9 +15,7 @@
 
 #include <arch/spinlock.h>
 #include <sof/drivers/interrupt.h>
-
-#define DEBUG_LOCKS	0
-#define DEBUG_LOCKS_VERBOSE	0
+#include <config.h>
 
 /*
  * Lock debugging provides a simple interface to debug deadlocks. The rmbox
@@ -63,7 +61,7 @@
  * like above.
  */
 
-#if DEBUG_LOCKS
+#if CONFIG_DEBUG_LOCKS
 
 #include <sof/debug/panic.h>
 #include <sof/trace/trace.h>
@@ -104,7 +102,7 @@ extern uint32_t lock_dbg_user[DBG_LOCK_USERS];
 		} \
 	} while (0)
 
-#if DEBUG_LOCKS_VERBOSE
+#if CONFIG_DEBUG_LOCKS_VERBOSE
 #define spin_lock_log(lock) \
 	do { \
 		if (lock_dbg_atomic) { \

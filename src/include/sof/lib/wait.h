@@ -16,8 +16,8 @@
 #include <sof/drivers/timer.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <config.h>
 #include <stdint.h>
 
 typedef struct {
@@ -29,7 +29,7 @@ typedef struct {
 static inline void wait_for_interrupt(int level)
 {
 	tracev_event(TRACE_CLASS_WAIT, "WFE");
-#if DEBUG_LOCKS
+#if CONFIG_DEBUG_LOCKS
 	if (lock_dbg_atomic)
 		trace_error_atomic(TRACE_CLASS_WAIT, "atm");
 #endif

@@ -26,7 +26,7 @@
 #include <xtos-structs.h>
 #include <stdint.h>
 
-#if DEBUG_LOCKS
+#if CONFIG_DEBUG_LOCKS
 /** \brief Debug lock. */
 uint32_t lock_dbg_atomic;
 
