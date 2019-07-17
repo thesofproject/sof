@@ -19,7 +19,6 @@
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/dma-trace.h>
-#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <config.h>
 #include <errno.h>
@@ -298,8 +297,8 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* validate DMA context */
 	if (d->dc.dmac == NULL || d->dc.chan < 0) {
-		trace_error_atomic(TRACE_CLASS_BUFFER, "dma_trace_enable() "
-				   "error: not valid");
+		trace_buffer_error_atomic("dma_trace_enable() error: not "
+					  "valid");
 		return -ENODEV;
 	}
 

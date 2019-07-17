@@ -21,13 +21,15 @@
 
 struct comp_dev;
 
-/* pipeline tracing */
+/* buffer tracing */
 #define trace_buffer(__e, ...) \
 	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define trace_buffer_error(__e, ...) \
 	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define tracev_buffer(__e, ...) \
 	tracev_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define trace_buffer_error_atomic(__e, ...) \
+	trace_error_atomic(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 
 /* buffer callback types */
 #define BUFF_CB_TYPE_PRODUCE	BIT(0)
