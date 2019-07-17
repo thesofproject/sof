@@ -10,11 +10,12 @@
 #ifndef __ARCH_SPINLOCK_H__
 #define __ARCH_SPINLOCK_H__
 
+#include <config.h>
 #include <stdint.h>
 
 typedef struct {
 	volatile uint32_t lock;
-#if DEBUG_LOCKS
+#if CONFIG_DEBUG_LOCKS
 	uint32_t user;
 #endif
 } spinlock_t;

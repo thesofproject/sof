@@ -9,12 +9,12 @@
 #ifndef __SOF_DEBUG_DEBUG_H__
 #define __SOF_DEBUG_DEBUG_H__
 
+#include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/info.h>
 #include <ipc/trace.h>
@@ -32,12 +32,12 @@
 
 #include <sof/lib/mailbox.h>
 
-#define DEBUG_SET_FW_READY_FLAGS				\
-(								\
-	SOF_IPC_INFO_BUILD |					\
-	(DEBUG_LOCKS ? SOF_IPC_INFO_LOCKS : 0) |		\
-	(DEBUG_LOCKS_VERBOSE ? SOF_IPC_INFO_LOCKSV : 0) |	\
-	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)			\
+#define DEBUG_SET_FW_READY_FLAGS					\
+(									\
+	SOF_IPC_INFO_BUILD |						\
+	(IS_ENABLED(CONFIG_DEBUG_LOCKS) ? SOF_IPC_INFO_LOCKS : 0) |	\
+	(IS_ENABLED(CONFIG_DEBUG_LOCKS_VERBOSE) ? SOF_IPC_INFO_LOCKSV : 0) | \
+	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)				\
 )
 
 /* dump file and line to start of mailbox or shared memory */
@@ -122,11 +122,11 @@
 
 #else
 
-#define DEBUG_SET_FW_READY_FLAGS				\
-(								\
-	(DEBUG_LOCKS ? SOF_IPC_INFO_LOCKS : 0) |		\
-	(DEBUG_LOCKS_VERBOSE ? SOF_IPC_INFO_LOCKSV : 0) |	\
-	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)			\
+#define DEBUG_SET_FW_READY_FLAGS					\
+(									\
+	(IS_ENABLED(CONFIG_DEBUG_LOCKS) ? SOF_IPC_INFO_LOCKS : 0) |	\
+	(IS_ENABLED(CONFIG_DEBUG_LOCKS_VERBOSE) ? SOF_IPC_INFO_LOCKSV : 0) | \
+	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)				\
 )
 
 #define dbg()
