@@ -16,7 +16,6 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
-#include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -331,9 +330,8 @@ static void schedule_edf_task_complete(struct task *task)
 		/* nothing to do here, high priority IRQ has scheduled us */
 		break;
 	default:
-		trace_error(TRACE_CLASS_EDF, "unexpected task state %d "
-			"at edf_task completion",
-			task->state);
+		trace_edf_sch_error("unexpected task state %d at edf_task "
+				    "completion", task->state);
 		task->state = SOF_TASK_STATE_COMPLETED;
 		break;
 	}
