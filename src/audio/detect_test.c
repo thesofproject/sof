@@ -4,7 +4,6 @@
 //
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
-#include <kernel/abi.h>
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/kpb.h>
@@ -22,6 +21,7 @@
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <kernel/abi.h>
 #include <user/detect_test.h>
 #include <errno.h>
 #include <stddef.h>
