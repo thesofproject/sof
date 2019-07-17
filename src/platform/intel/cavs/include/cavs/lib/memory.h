@@ -10,6 +10,7 @@
 #ifndef __CAVS_LIB_MEMORY_H__
 #define __CAVS_LIB_MEMORY_H__
 
+#include <sof/lib/cache.h>
 #include <config.h>
 
 #define SRAM_BANK_SIZE			(64 * 1024)
@@ -40,7 +41,7 @@
 
 #define LPSRAM_SIZE (PLATFORM_LPSRAM_EBB_COUNT * SRAM_BANK_SIZE)
 
-#define HEAP_BUF_ALIGNMENT		XCHAL_DCACHE_LINESIZE
+#define HEAP_BUF_ALIGNMENT		PLATFORM_DCACHE_ALIGN
 
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 void platform_init_memmap(void);
