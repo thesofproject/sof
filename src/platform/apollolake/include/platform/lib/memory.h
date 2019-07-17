@@ -222,8 +222,7 @@
 #define HP_SRAM_WIN3_SIZE	SRAM_TRACE_SIZE
 
 /* Apollolake HP-SRAM config */
-#if defined(CONFIG_APOLLOLAKE) \
-	&& !(defined(CONFIG_KABYLAKE) || defined(CONFIG_SKYLAKE))
+#if CONFIG_APOLLOLAKE && !(CONFIG_KABYLAKE || CONFIG_SKYLAKE)
 
 #define SRAM_ALIAS_OFFSET	0x20000000
 
@@ -236,7 +235,7 @@
 #define SOF_FW_BASE		(SOF_FW_START)
 
 /* Skylake or kabylake HP-SRAM config */
-#elif defined(CONFIG_KABYLAKE) || defined(CONFIG_SKYLAKE)
+#elif CONFIG_KABYLAKE || CONFIG_SKYLAKE
 
 #define SRAM_ALIAS_OFFSET	0x00000000
 
@@ -400,10 +399,9 @@
 #define ROM_RESET_LIT_SIZE	0x200
 
 /* boot loader in IMR - APL uses manifest v1.8 and SKL/KBL use v1.5 */
-#if defined(CONFIG_APOLLOLAKE) \
-	&& !(defined(CONFIG_KABYLAKE) || defined(CONFIG_SKYLAKE))
+#if CONFIG_APOLLOLAKE && !(CONFIG_KABYLAKE || CONFIG_SKYLAKE)
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xB000A000
-#elif defined(CONFIG_KABYLAKE) || defined(CONFIG_SKYLAKE)
+#elif CONFIG_KABYLAKE || CONFIG_SKYLAKE
 #define IMR_BOOT_LDR_TEXT_ENTRY_BASE	0xBE0A0000
 #else
 #error Platform not specified

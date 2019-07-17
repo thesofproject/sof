@@ -95,7 +95,7 @@ struct sof;
 #define TRACE_CLASS_SOUNDWIRE	(32 << 24)
 #define TRACE_CLASS_KEYWORD	(33 << 24)
 
-#ifdef CONFIG_LIBRARY
+#if CONFIG_LIBRARY
 
 #include <stdio.h>
 

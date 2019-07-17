@@ -132,7 +132,7 @@ static inline struct sof_ipc_cmd_hdr *mailbox_validate(void)
  * Stream IPC Operations.
  */
 
-#ifdef CONFIG_HOST_PTABLE
+#if CONFIG_HOST_PTABLE
 /* check if a pipeline is hostless when walking downstream */
 static bool is_hostless_downstream(struct comp_dev *current)
 {
@@ -202,7 +202,7 @@ static bool is_hostless_upstream(struct comp_dev *current)
 /* allocate a new stream */
 static int ipc_stream_pcm_params(uint32_t stream)
 {
-#ifdef CONFIG_HOST_PTABLE
+#if CONFIG_HOST_PTABLE
 	struct sof_ipc_comp_host *host = NULL;
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
@@ -241,7 +241,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	}
 	cd->params = pcm_params.params;
 
-#ifdef CONFIG_HOST_PTABLE
+#if CONFIG_HOST_PTABLE
 
 	/*
 	 * walk in both directions to check if the pipeline is hostless
@@ -683,7 +683,7 @@ static int ipc_glb_pm_message(uint32_t header)
  */
 static int ipc_dma_trace_config(uint32_t header)
 {
-#ifdef CONFIG_HOST_PTABLE
+#if CONFIG_HOST_PTABLE
 	struct dma_sg_elem_array elem_array;
 	uint32_t ring_size;
 #endif
@@ -698,11 +698,11 @@ static int ipc_dma_trace_config(uint32_t header)
 	else
 		platform_timer->delta = 0;
 
-#ifdef CONFIG_SUECREEK
+#if CONFIG_SUECREEK
 	return 0;
 #endif
 
-#ifdef CONFIG_HOST_PTABLE
+#if CONFIG_HOST_PTABLE
 	err = ipc_process_host_buffer(_ipc, &params.buffer,
 				      SOF_IPC_STREAM_CAPTURE,
 				      &elem_array,
@@ -780,7 +780,7 @@ static int ipc_glb_gdb_debug(uint32_t header)
 	/* no furher information needs to be extracted form header */
 	(void) header;
 
-#ifdef CONFIG_GDB_DEBUG
+#if CONFIG_GDB_DEBUG
 	gdb_init_debug_exception();
 	gdb_init();
 	/* TODO: this asm should be in arch/include/debug/debug.h
@@ -1047,7 +1047,7 @@ static int ipc_glb_tplg_message(uint32_t header)
 	}
 }
 
-#ifdef CONFIG_DEBUG
+#if CONFIG_DEBUG
 static int ipc_glb_test_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
@@ -1110,7 +1110,7 @@ int ipc_cmd(void)
 	case SOF_IPC_GLB_GDB_DEBUG:
 		ret = ipc_glb_gdb_debug(hdr->cmd);
 		break;
-#ifdef CONFIG_DEBUG
+#if CONFIG_DEBUG
 	case SOF_IPC_GLB_TEST:
 		ret = ipc_glb_test_message(hdr->cmd);
 		break;
