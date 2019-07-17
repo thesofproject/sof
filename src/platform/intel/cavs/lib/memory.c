@@ -7,6 +7,7 @@
 
 #include <sof/common.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
