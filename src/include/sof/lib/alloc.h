@@ -11,8 +11,8 @@
 
 #include <sof/bit.h>
 #include <sof/common.h>
+#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
-#include <sof/platform.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <config.h>
