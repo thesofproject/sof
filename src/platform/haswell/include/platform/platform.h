@@ -108,9 +108,6 @@ struct timer;
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 
-/* timer driven scheduling start offset in microseconds */
-#define PLATFORM_TIMER_START_OFFSET	100
-
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {

@@ -134,9 +134,6 @@ struct timer;
 /* minimal SSP port delay in cycles */
 #define PLATFORM_SSP_DELAY	800
 
-/* timer driven scheduling start offset in microseconds */
-#define PLATFORM_TIMER_START_OFFSET	100
-
 /* Platform defined panic code */
 static inline void platform_panic(uint32_t p)
 {

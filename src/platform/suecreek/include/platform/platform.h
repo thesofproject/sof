@@ -138,9 +138,6 @@ struct timer;
 /* minimal SSP port delay in cycles */
 #define PLATFORM_SSP_DELAY	1000
 
-/* timer driven scheduling start offset in microseconds */
-#define PLATFORM_TIMER_START_OFFSET	100
-
 /* SSI / SPI GPIO bindings */
 #define PLATFORM_SPI_GPIO_ID	0
 #define PLATFORM_SPI_GPIO_IRQ	14
