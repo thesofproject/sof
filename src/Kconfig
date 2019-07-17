@@ -8,4 +8,4 @@ source "src/drivers/Kconfig"
 
 source "src/audio/Kconfig"
 
-source "src/lib/Kconfig"
+source "src/trace/Kconfig"
