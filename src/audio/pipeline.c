@@ -688,8 +688,8 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	ret = pipeline_comp_reset(host, p, host->params.direction);
 	if (ret < 0) {
-		trace_ipc_error("pipeline_reset() error: ret = %d, host->comp."
-				"id = %u", ret, host->comp.id);
+		trace_pipe_error("pipeline_reset() error: ret = %d, host->comp."
+				 "id = %u", ret, host->comp.id);
 	}
 
 	spin_unlock_irq(&p->lock, flags);
