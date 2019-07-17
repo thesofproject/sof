@@ -23,6 +23,7 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <arch/debug/gdb/xtensa-defs.h>
+#include <config.h>
 #include <xtensa/xtensa-versions.h>
 #include <xtensa/coreasm.h>
 #include <xtensa/config/specreg.h>
