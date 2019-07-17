@@ -17,7 +17,6 @@
 #define __IPC_TOPOLOGY_H__
 
 #include <ipc/header.h>
-#include <sof/common.h>
 #include <stdint.h>
 
 /*
@@ -64,7 +63,7 @@ struct sof_ipc_comp {
 
 	/* reserved for future use */
 	uint32_t reserved[2];
-} __packed;
+} __attribute__((packed));
 
 /*
  * Component Buffers
@@ -87,7 +86,7 @@ struct sof_ipc_buffer {
 	struct sof_ipc_comp comp;
 	uint32_t size;		/**< buffer size in bytes */
 	uint32_t caps;		/**< SOF_MEM_CAPS_ */
-} __packed;
+} __attribute__((packed));
 
 /* generic component config data - must always be after struct sof_ipc_comp */
 struct sof_ipc_comp_config {
@@ -100,7 +99,7 @@ struct sof_ipc_comp_config {
 
 	/* reserved for future use */
 	uint32_t reserved[2];
-} __packed;
+} __attribute__((packed));
 
 /* generic host component */
 struct sof_ipc_comp_host {
@@ -109,7 +108,7 @@ struct sof_ipc_comp_host {
 	uint32_t direction;	/**< SOF_IPC_STREAM_ */
 	uint32_t no_irq;	/**< don't send periodic IRQ to host/DSP */
 	uint32_t dmac_config; /**< DMA engine specific */
-} __packed;
+} __attribute__((packed));
 
 /* generic DAI component */
 struct sof_ipc_comp_dai {
@@ -119,13 +118,13 @@ struct sof_ipc_comp_dai {
 	uint32_t dai_index;	/**< index of this type dai */
 	uint32_t type;		/**< DAI type - SOF_DAI_ */
 	uint32_t reserved;	/**< reserved */
-} __packed;
+} __attribute__((packed));
 
 /* generic mixer component */
 struct sof_ipc_comp_mixer {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
-} __packed;
+} __attribute__((packed));
 
 /* volume ramping types */
 enum sof_volume_ramp {
@@ -144,7 +143,7 @@ struct sof_ipc_comp_volume {
 	uint32_t max_value;
 	uint32_t ramp;		/**< SOF_VOLUME_ */
 	uint32_t initial_ramp;	/**< ramp space in ms */
-} __packed;
+} __attribute__((packed));
 
 /* generic SRC component */
 struct sof_ipc_comp_src {
@@ -154,13 +153,13 @@ struct sof_ipc_comp_src {
 	uint32_t source_rate;	/**< source rate or 0 for variable */
 	uint32_t sink_rate;	/**< sink rate or 0 for variable */
 	uint32_t rate_mask;	/**< SOF_RATE_ supported rates */
-} __packed;
+} __attribute__((packed));
 
 /* generic MUX component */
 struct sof_ipc_comp_mux {
 	struct sof_ipc_comp comp;
 	struct sof_ipc_comp_config config;
-} __packed;
+} __attribute__((packed));
 
 /* generic tone generator component */
 struct sof_ipc_comp_tone {
@@ -175,7 +174,7 @@ struct sof_ipc_comp_tone {
 	int32_t period;
 	int32_t repeats;
 	int32_t ramp_step;
-} __packed;
+} __attribute__((packed));
 
 /* generic "effect", "codec" or proprietary processing component */
 struct sof_ipc_comp_process {
@@ -188,7 +187,7 @@ struct sof_ipc_comp_process {
 	uint32_t reserved[7];
 
 	unsigned char data[0];
-} __packed;
+} __attribute__((packed));
 
 /* frees components, buffers and pipelines
  * SOF_IPC_TPLG_COMP_FREE, SOF_IPC_TPLG_PIPE_FREE, SOF_IPC_TPLG_BUFFER_FREE
@@ -196,13 +195,13 @@ struct sof_ipc_comp_process {
 struct sof_ipc_free {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t id;
-} __packed;
+} __attribute__((packed));
 
 struct sof_ipc_comp_reply {
 	struct sof_ipc_reply rhdr;
 	uint32_t id;
 	uint32_t offset;
-} __packed;
+} __attribute__((packed));
 
 /*
  * Pipeline
@@ -227,24 +226,24 @@ struct sof_ipc_pipe_new {
 	uint32_t frames_per_sched;/**< output frames of pipeline, 0 is variable */
 	uint32_t xrun_limit_usecs; /**< report xruns greater than limit */
 	uint32_t time_domain;	/**< scheduling time domain */
-} __packed;
+} __attribute__((packed));
 
 /* pipeline construction complete - SOF_IPC_TPLG_PIPE_COMPLETE */
 struct sof_ipc_pipe_ready {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t comp_id;
-} __packed;
+} __attribute__((packed));
 
 struct sof_ipc_pipe_free {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t comp_id;
-} __packed;
+} __attribute__((packed));
 
 /* connect two components in pipeline - SOF_IPC_TPLG_COMP_CONNECT */
 struct sof_ipc_pipe_comp_connect {
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t source_id;
 	uint32_t sink_id;
-} __packed;
+} __attribute__((packed));
 
 #endif /* __IPC_TOPOLOGY_H__ */

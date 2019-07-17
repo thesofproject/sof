@@ -14,7 +14,6 @@
 #ifndef __USER_MANIFEST_H__
 #define __USER_MANIFEST_H__
 
-#include <sof/common.h>
 #include <stdint.h>
 
 /* start offset for base FW module */
@@ -56,7 +55,7 @@ union sof_man_segment_flags {
 		uint32_t _rsvd1:4;
 		uint32_t length:16;	/* of segment in pages */
 	} r;
-} __packed;
+} __attribute__((packed));
 
 /*
  * Module segment descriptor. Used by ROM - Immutable.
@@ -65,7 +64,7 @@ struct sof_man_segment_desc {
 	union sof_man_segment_flags flags;
 	uint32_t v_base_addr;
 	uint32_t file_offset;
-} __packed;
+} __attribute__((packed));
 
 /*
  * The firmware binary can be split into several modules.
@@ -92,7 +91,7 @@ struct sof_man_module {
 	uint16_t instance_max_count;	/* max number of instances */
 	uint16_t instance_bss_size;	/* instance (pages) */
 	struct sof_man_segment_desc segment[3];
-} __packed;
+} __attribute__((packed));
 
 /*
  * Each module has a configuration in the FW header. Used by ROM - Immutable.
@@ -106,7 +105,7 @@ struct sof_man_mod_config {
 	uint32_t module_flags;	/* flags, reserved for future use */
 	uint32_t cpc;		/* cycles per single run */
 	uint32_t obls;		/* output block size, reserved for future use */
-} __packed;
+} __attribute__((packed));
 
 /*
  * FW Manifest Header
@@ -141,7 +140,7 @@ struct sof_man_fw_header {
 	uint32_t hw_buf_length;
 	/* target address for binary loading as offset in IMR - must be == base offset */
 	uint32_t load_offset;
-} __packed;
+} __attribute__((packed));
 
 /*
  * Firmware manifest descriptor. This can contain N modules and N module
@@ -160,7 +159,7 @@ struct sof_man_fw_desc {
 	 * struct sof_man_mod_config mod_config[];
 	 */
 
-} __packed;
+} __attribute__((packed));
 
 /*
  * Component Descriptor. Used by ROM - Immutable.
@@ -172,7 +171,7 @@ struct sof_man_component_desc {
 	uint32_t base_offset;
 	uint32_t limit_offset;
 	uint32_t attributes[4];
-} __packed;
+} __attribute__((packed));
 
 /*
  * Audio DSP extended metadata. Used by ROM - Immutable.
@@ -183,7 +182,7 @@ struct sof_man_adsp_meta_file_ext {
 	uint32_t imr_type;
 	uint8_t reserved[16];	/* all 0 */
 	struct sof_man_component_desc comp_desc[1];
-} __packed;
+} __attribute__((packed));
 
 /*
  * Module Manifest for rimage module metadata. Not used by ROM.

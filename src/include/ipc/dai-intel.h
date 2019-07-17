@@ -17,7 +17,6 @@
 #define __IPC_DAI_INTEL_H__
 
 #include <ipc/header.h>
-#include <sof/common.h>
 #include <stdint.h>
 
  /* ssc1: TINTE */
@@ -88,13 +87,13 @@ struct sof_ipc_dai_ssp_params {
 	uint32_t bclk_delay;	/* guaranteed time (ms) for which BCLK
 				 * will be driven, before sending data
 				 */
-} __packed;
+} __attribute__((packed));
 
 /* HDA Configuration Request - SOF_IPC_DAI_HDA_CONFIG */
 struct sof_ipc_dai_hda_params {
 	struct sof_ipc_hdr hdr;
 	uint32_t link_dma_ch;
-} __packed;
+} __attribute__((packed));
 
 /* DMIC Configuration Request - SOF_IPC_DAI_DMIC_CONFIG */
 
@@ -129,7 +128,7 @@ struct sof_ipc_dai_dmic_pdm_ctrl {
 	uint16_t skew;		/**< Adjust PDM data sampling vs. clock (0..15) */
 
 	uint16_t reserved[3];	/**< Make sure the total size is 4 bytes aligned */
-} __packed;
+} __attribute__((packed));
 
 /* This struct contains the global settings for all 2ch PDM controllers. The
  * version number used in configuration data is checked vs. version used by
@@ -186,6 +185,6 @@ struct sof_ipc_dai_dmic_params {
 
 	/**< variable number of pdm controller config */
 	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
-} __packed;
+} __attribute__((packed));
 
 #endif /* __IPC_DAI_INTEL_H__ */

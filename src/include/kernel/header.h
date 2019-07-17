@@ -16,7 +16,6 @@
 #ifndef __KERNEL_HEADER_H__
 #define __KERNEL_HEADER_H__
 
-#include <sof/common.h>
 #include <stdint.h>
 
 /**
@@ -35,6 +34,6 @@ struct sof_abi_hdr {
 	uint32_t abi;		/**< SOF ABI version */
 	uint32_t reserved[4];	/**< reserved for future use */
 	uint32_t data[0];	/**< Component data - opaque to core */
-} __packed;
+} __attribute__((packed));
 
 #endif /* __KERNEL_HEADER_H__ */

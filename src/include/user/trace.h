@@ -9,7 +9,6 @@
 #ifndef __USER_TRACE_H__
 #define __USER_TRACE_H__
 
-#include <sof/common.h>
 #include <stdint.h>
 
 /*
@@ -25,7 +24,7 @@
 struct system_time {
 	uint32_t val_l;  /* Lower dword of current host time value */
 	uint32_t val_u;  /* Upper dword of current host time value */
-} __packed;
+} __attribute__((packed));
 
 /* trace event classes - high 8 bits*/
 #define TRACE_CLASS_IRQ		(1 << 24)
@@ -72,14 +71,14 @@ struct log_buffer_layout {
 	uint32_t read_ptr;  /*read pointer */
 	uint32_t write_ptr; /* write pointer */
 	uint32_t buffer[0]; /* buffer */
-} __packed;
+} __attribute__((packed));
 
 /*
  * Log buffer status reported by FW.
  */
 struct log_buffer_status {
 	uint32_t core_id;  /* ID of core that logged to other half */
-} __packed;
+} __attribute__((packed));
 
 #define TRACE_ID_LENGTH 12
 
@@ -96,6 +95,6 @@ struct log_entry_header {
 
 	uint64_t timestamp;		/* Timestamp (in dsp ticks) */
 	uint32_t log_entry_address;	/* Address of log entry in ELF */
-} __packed;
+} __attribute__((packed));
 
 #endif /* __USER_TRACE_H__ */

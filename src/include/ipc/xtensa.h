@@ -17,7 +17,6 @@
 #define __IPC_XTENSA_H__
 
 #include <ipc/header.h>
-#include <sof/common.h>
 #include <stdint.h>
 
 /*
@@ -55,6 +54,6 @@ struct sof_ipc_dsp_oops_xtensa {
 	uint32_t windowstart;
 	uint32_t excsave1;
 	uint32_t ar[];
-} __packed;
+} __attribute__((packed));
 
 #endif /* __IPC_XTENSA_H__ */
