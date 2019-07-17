@@ -8,7 +8,6 @@
 #ifndef __USER_DETECT_TEST_H__
 #define __USER_DETECT_TEST_H__
 
-#include <sof/common.h>
 #include <stdint.h>
 
 /** IPC blob types */
@@ -35,7 +34,7 @@ struct sof_detect_test_config {
 
 	/** reserved for future use */
 	uint32_t reserved[2];
-} __packed;
+} __attribute__((packed));
 
 /** used for binary blob size sanity checks */
 #define SOF_DETECT_TEST_MAX_CFG_SIZE sizeof(struct sof_detect_test_config)

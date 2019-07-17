@@ -8,7 +8,6 @@
 #ifndef __USER_EQ_H__
 #define __USER_EQ_H__
 
-#include <sof/common.h>
 #include <stdint.h>
 
 /* FIR EQ type */
@@ -61,7 +60,7 @@ struct sof_eq_fir_config {
 	uint32_t reserved[4];
 
 	int16_t data[];
-} __packed;
+} __attribute__((packed));
 
 struct sof_eq_fir_coef_data {
 	int16_t length; /* Number of FIR taps */
@@ -71,7 +70,7 @@ struct sof_eq_fir_coef_data {
 	uint32_t reserved[4];
 
 	int16_t coef[]; /* FIR coefficients */
-} __packed;
+} __attribute__((packed));
 
 /* In the struct above there's two 16 bit words (length, shift) and four
  * reserved 32 bit words before the actual FIR coefficients. This information
@@ -132,7 +131,7 @@ struct sof_eq_iir_config {
 	uint32_t reserved[4];
 
 	int32_t data[]; /* eq_assign[channels], eq 0, eq 1, ... */
-} __packed;
+} __attribute__((packed));
 
 struct sof_eq_iir_header_df2t {
 	uint32_t num_sections;
@@ -142,7 +141,7 @@ struct sof_eq_iir_header_df2t {
 	uint32_t reserved[4];
 
 	int32_t biquads[]; /* Repeated biquad coefficients */
-} __packed;
+} __attribute__((packed));
 
 struct sof_eq_iir_biquad_df2t {
 	int32_t a2; /* Q2.30 */
@@ -152,7 +151,7 @@ struct sof_eq_iir_biquad_df2t {
 	int32_t b0; /* Q2.30 */
 	int32_t output_shift; /* Number of right shifts */
 	int32_t output_gain;  /* Q2.14 */
-} __packed;
+} __attribute__((packed));
 
 /* A full 22th order equalizer with 11 biquads cover octave bands 1-11 in
  * in the 0 - 20 kHz bandwidth.
