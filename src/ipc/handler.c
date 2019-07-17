@@ -1069,42 +1069,60 @@ int ipc_cmd(void)
 {
 	struct sof_ipc_cmd_hdr *hdr;
 	uint32_t type;
+	int ret;
 
 	hdr = mailbox_validate();
+
 	if (hdr == NULL) {
 		trace_ipc_error("ipc: invalid IPC header.");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	type = iGS(hdr->cmd);
 
 	switch (type) {
 	case SOF_IPC_GLB_REPLY:
-		return 0;
+		ret = 0;
+		break;
 	case SOF_IPC_GLB_COMPOUND:
-		return -EINVAL;	/* TODO */
+		ret = -EINVAL;	/* TODO */
+		break;
 	case SOF_IPC_GLB_TPLG_MSG:
-		return ipc_glb_tplg_message(hdr->cmd);
+		ret = ipc_glb_tplg_message(hdr->cmd);
+		break;
 	case SOF_IPC_GLB_PM_MSG:
-		return ipc_glb_pm_message(hdr->cmd);
+		ret = ipc_glb_pm_message(hdr->cmd);
+		break;
 	case SOF_IPC_GLB_COMP_MSG:
-		return ipc_glb_comp_message(hdr->cmd);
+		ret = ipc_glb_comp_message(hdr->cmd);
+		break;
 	case SOF_IPC_GLB_STREAM_MSG:
-		return ipc_glb_stream_message(hdr->cmd);
+		ret = ipc_glb_stream_message(hdr->cmd);
+		break;
 	case SOF_IPC_GLB_DAI_MSG:
-		return ipc_glb_dai_message(hdr->cmd);
+		ret = ipc_glb_dai_message(hdr->cmd);
+		break;
 	case SOF_IPC_GLB_TRACE_MSG:
-		return ipc_glb_debug_message(hdr->cmd);
+		ret = ipc_glb_debug_message(hdr->cmd);
+		break;
 	case SOF_IPC_GLB_GDB_DEBUG:
-		return ipc_glb_gdb_debug(hdr->cmd);
+		ret = ipc_glb_gdb_debug(hdr->cmd);
+		break;
 #ifdef CONFIG_DEBUG
 	case SOF_IPC_GLB_TEST:
-		return ipc_glb_test_message(hdr->cmd);
+		ret = ipc_glb_test_message(hdr->cmd);
+		break;
 #endif
 	default:
 		trace_ipc_error("ipc: unknown command type %u", type);
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
+out:
+	tracev_ipc("ipc: last request %d returned %d", type, ret);
+
+	return ret;
 }
 
 /* locks held by caller */
