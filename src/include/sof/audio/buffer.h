@@ -25,6 +25,11 @@ struct comp_dev;
 /* buffer tracing */
 #define trace_buffer(__e, ...) \
 	trace_event(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
+#define trace_buffer_with_ids(buff_ptr, format, ...) \
+	trace_event_with_ids(TRACE_CLASS_BUFFER,			\
+			     buff_ptr->ipc_buffer.comp.pipeline_id,	\
+			     buff_ptr->ipc_buffer.comp.id,		\
+			     format, ##__VA_ARGS__)
 #define trace_buffer_error(__e, ...) \
 	trace_error(TRACE_CLASS_BUFFER, __e, ##__VA_ARGS__)
 #define tracev_buffer(__e, ...) \

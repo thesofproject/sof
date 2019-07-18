@@ -60,6 +60,7 @@ struct system_time {
 #define TRACE_CLASS_SCHEDULE_LL	(31 << 24)
 #define TRACE_CLASS_SOUNDWIRE	(32 << 24)
 #define TRACE_CLASS_KEYWORD	(33 << 24)
+#define TRACE_CLASS_ERS		(34 << 24)
 
 #define LOG_ENABLE		1  /* Enable logging */
 #define LOG_DISABLE		0  /* Disable logging */

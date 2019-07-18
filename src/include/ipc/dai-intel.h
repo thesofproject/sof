@@ -187,4 +187,9 @@ struct sof_ipc_dai_dmic_params {
 	struct sof_ipc_dai_dmic_pdm_ctrl pdm[0];
 } __attribute__((packed));
 
+/* Echo Reference Signal Configuration Request - SOF_IPC_DAI_ERS_CONFIG */
+struct sof_ipc_dai_ers_params {
+	struct sof_ipc_hdr hdr;
+	uint32_t source_buffer_id;
+} __attribute__((packed));
 #endif /* __IPC_DAI_INTEL_H__ */

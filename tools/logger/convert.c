@@ -65,7 +65,8 @@ static inline void print_table_header(FILE *out_fd)
 #define CASE(x) \
 	case(TRACE_CLASS_##x): return #x
 
-static const char * get_component_name(uint32_t component_id) {
+static const char *get_component_name(uint32_t component_id)
+{
 	switch (component_id) {
 		CASE(IRQ);
 		CASE(IPC);
@@ -100,6 +101,7 @@ static const char * get_component_name(uint32_t component_id) {
 		CASE(SCHEDULE_LL);
 		CASE(SOUNDWIRE);
 		CASE(KEYWORD);
+		CASE(ERS);
 	default: return "unknown";
 	}
 }

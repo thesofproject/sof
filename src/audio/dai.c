@@ -739,13 +739,25 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			dd->chan = DMA_CHAN_INVALID;
 		}
 		break;
+	case SOF_DAI_INTEL_ERS:
+		/* set to some non-zero value to satisfy the condition below.
+		 */
+		dd->frame_bytes = 4;
+		channel = 0;
+		if (dd->chan != DMA_CHAN_INVALID) {
+			dma_channel_put(dd->dma, dd->chan);
+			dd->chan = DMA_CHAN_INVALID;
+		}
+
+		break;
+
 	default:
 		/* other types of DAIs not handled for now */
 		trace_dai_error_with_ids(dev, "dai_config() error: Handling of "
 					 "DAIs other than SOF_DAI_INTEL_SSP, "
-					 "SOF_DAI_INTEL_DMIC or "
-					 "SOF_DAI_INTEL_HDA is not handled for "
-					 "now.");
+					 "SOF_DAI_INTEL_DMIC, SOF_DAI_INTEL_HDA"
+					 " or SOF_DAI_INTEL_ERS is not handled "
+					 "for now.");
 		break;
 	}
 

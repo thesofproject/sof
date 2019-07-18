@@ -21,6 +21,7 @@
 #define DMA_HOST_OUT_DMAC	5
 #define DMA_LINK_IN_DMAC	6
 #define DMA_LINK_OUT_DMAC	7
+#define DMA_ERS_DMAC		8
 
 /* mappings - TODO improve API to get type */
 #define DMA_ID_DMAC0	DMA_HOST_IN_DMAC
@@ -31,6 +32,7 @@
 #define DMA_ID_DMAC5	DMA_GP_HP_DMAC1
 #define DMA_ID_DMAC6	DMA_LINK_IN_DMAC
 #define DMA_ID_DMAC7	DMA_LINK_OUT_DMAC
+#define DMA_ID_DMAC8	DMA_ERS_DMAC
 
 /* handshakes */
 #define DMA_HANDSHAKE_DMIC_CH0	0

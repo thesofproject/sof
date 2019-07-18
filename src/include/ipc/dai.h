@@ -58,8 +58,9 @@ enum sof_ipc_dai_type {
 	SOF_DAI_INTEL_DMIC,		/**< Intel DMIC */
 	SOF_DAI_INTEL_HDA,		/**< Intel HD/A */
 	SOF_DAI_INTEL_SOUNDWIRE,	/**< Intel SoundWire */
-	SOF_DAI_IMX_SAI,                /**< i.MX SAI */
-	SOF_DAI_IMX_ESAI,               /**< i.MX ESAI */
+	SOF_DAI_IMX_SAI,		/**< i.MX SAI */
+	SOF_DAI_IMX_ESAI,		/**< i.MX ESAI */
+	SOF_DAI_INTEL_ERS,		/**< Intel Echo Reference Signal */
 };
 
 /* general purpose DAI configuration */
@@ -80,6 +81,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_ssp_params ssp;
 		struct sof_ipc_dai_dmic_params dmic;
 		struct sof_ipc_dai_hda_params hda;
+		struct sof_ipc_dai_ers_params ers;
 	};
 } __attribute__((packed));
 
