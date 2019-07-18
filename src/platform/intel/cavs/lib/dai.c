@@ -9,6 +9,7 @@
 
 #include <sof/common.h>
 #include <sof/drivers/hda.h>
+#include <sof/drivers/ers.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
@@ -77,6 +78,8 @@ static struct dai dmic[2] = {
 
 static struct dai hda[(DAI_NUM_HDA_OUT + DAI_NUM_HDA_IN)];
 
+static struct dai ers[DAI_NUM_ERS];
+
 static struct dai_type_info dti[] = {
 #if CONFIG_CAVS_SSP
 	{
@@ -96,6 +99,11 @@ static struct dai_type_info dti[] = {
 		.type = SOF_DAI_INTEL_HDA,
 		.dai_array = hda,
 		.num_dais = ARRAY_SIZE(hda)
+	},
+	{
+		.type = SOF_DAI_INTEL_ERS,
+		.dai_array = ers,
+		.num_dais = ARRAY_SIZE(ers)
 	}
 };
 
@@ -133,6 +141,14 @@ int dai_init(void)
 	for (i = 0; i < ARRAY_SIZE(dmic); i++)
 		spinlock_init(&dmic[i].lock);
 #endif
+
+	/* init ers */
+	for (i = 0; i < ARRAY_SIZE(ers); i++) {
+		ers[i].index = i;
+		ers[i].drv = &ers_driver;
+		spinlock_init(&ers[i].lock);
+	}
+
 	dai_install(dti, ARRAY_SIZE(dti));
 	return 0;
 }

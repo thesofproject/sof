@@ -226,6 +226,7 @@ int ipc_comp_connect(struct ipc *ipc,
 /*
  * Get component by ID.
  */
+struct ipc_comp_dev *ipc_glb_get_comp(uint32_t comp_id);
 struct ipc_comp_dev *ipc_get_comp(struct ipc *ipc, uint32_t id);
 
 /*

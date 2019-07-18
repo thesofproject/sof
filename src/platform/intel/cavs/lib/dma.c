@@ -10,6 +10,7 @@
 #include <sof/common.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/hda-dma.h>
+#include <sof/drivers/ers-dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
@@ -22,14 +23,16 @@
 #define DMAC_HOST_OUT_CHANNELS_COUNT 6
 #define DMAC_LINK_IN_CHANNELS_COUNT 8
 #define DMAC_LINK_OUT_CHANNELS_COUNT 8
-#define CAVS_PLATFORM_NUM_DMACS		6
+#define DMAC_ERS_CHANNELS_COUNT		1
+#define CAVS_PLATFORM_NUM_DMACS		7
 #elif defined(CONFIG_CANNONLAKE) || defined(CONFIG_ICELAKE)
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
 #define DMAC_HOST_OUT_CHANNELS_COUNT 9
 #define DMAC_LINK_IN_CHANNELS_COUNT 9
 #define DMAC_LINK_OUT_CHANNELS_COUNT 7
-#define CAVS_PLATFORM_NUM_DMACS		6
+#define DMAC_ERS_CHANNELS_COUNT		1
+#define CAVS_PLATFORM_NUM_DMACS		7
 #elif defined(CONFIG_SUECREEK)
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
@@ -235,7 +238,20 @@ struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 		.chan_size	= GTW_LINK_OUT_STREAM_SIZE,
 	},
 	.ops		= &hda_link_dma_ops,
-},};
+},
+{	/* Echo Reference Signal DMAC */
+	.plat_data = {
+		.id		= DMA_ERS_DMAC,
+		.dir		= DMA_DIR_DEV_TO_MEM,
+		.caps		= DMA_CAP_BUF_CP,
+		.devs		= DMA_DEV_BUF,
+		.base		= 0,
+		.channels	= DMAC_ERS_CHANNELS_COUNT,
+		.irq		= 0,
+		.chan_size	= 0,
+	},
+	.ops = &ers_dma_ops,
+}, };
 #endif
 
 /* Initialize all platform DMAC's */

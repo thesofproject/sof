@@ -3,6 +3,8 @@
 add_local_sources(sof
 	hda-dma.c
 	hda.c
+	ers.c
+	ers-dma.c
 	interrupt.c
 	timer.c
 )

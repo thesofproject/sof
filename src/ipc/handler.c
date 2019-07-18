@@ -1287,3 +1287,14 @@ void ipc_schedule_process(struct ipc *ipc)
 {
 	schedule_task(&ipc->ipc_task, 0, 100, 0);
 }
+
+struct ipc_comp_dev *ipc_glb_get_comp(uint32_t comp_id)
+{
+	struct ipc_comp_dev *comp;
+
+	comp = ipc_get_comp(_ipc, comp_id);
+	if (!comp)
+		trace_ipc_error("ipc: comp %d not found", comp_id);
+
+	return comp;
+}

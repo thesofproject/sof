@@ -32,6 +32,9 @@
 /** \brief Number of HD/A Link Inputs */
 #define DAI_NUM_HDA_IN		7
 
+/** \brief Number of Echo Reference Signal outputs */
+#define DAI_NUM_ERS		1
+
 int dai_init(void);
 
 #endif /* __PLATFORM_LIB_DAI_H__ */
