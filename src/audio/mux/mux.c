@@ -405,9 +405,16 @@ err:
 
 static int mux_trigger(struct comp_dev *dev, int cmd)
 {
+	int ret = 0;
+
 	trace_mux("mux_trigger(), command = %u", cmd);
 
-	return comp_set_state(dev, cmd);
+	ret = comp_set_state(dev, cmd);
+
+	if (ret == COMP_STATUS_STATE_ALREADY_SET)
+		ret = PPL_STATUS_PATH_STOP;
+
+	return ret;
 }
 
 struct comp_driver comp_mux = {
