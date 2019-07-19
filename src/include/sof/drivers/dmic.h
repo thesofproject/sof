@@ -56,7 +56,7 @@
 #include <sof/bit.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/wait.h>
-#include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <stdint.h>
 
 /* Parameters used in modes computation */

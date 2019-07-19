@@ -18,6 +18,7 @@
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>

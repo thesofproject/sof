@@ -22,6 +22,7 @@
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>

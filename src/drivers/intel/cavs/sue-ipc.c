@@ -12,6 +12,7 @@
 #include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <ipc/header.h>
 #include <stddef.h>

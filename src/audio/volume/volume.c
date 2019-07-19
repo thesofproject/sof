@@ -27,6 +27,7 @@
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>

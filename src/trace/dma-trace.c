@@ -14,6 +14,7 @@
 #include <sof/lib/dma.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
