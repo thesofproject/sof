@@ -15,6 +15,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>
+#include <sof/schedule/schedule.h>
 #include <mock_trace.h>
 #include <sof/lib/clk.h>
 

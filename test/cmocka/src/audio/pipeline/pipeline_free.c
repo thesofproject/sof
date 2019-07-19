@@ -8,6 +8,7 @@
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
 #include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/task.h>
 #include "pipeline_mocks.h"
 #include "pipeline_connection_mocks.h"
 #include <stdarg.h>

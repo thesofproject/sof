@@ -16,7 +16,7 @@
 
 #include <arch/drivers/idc.h>
 #include <platform/drivers/idc.h>
-#include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <stdint.h>
 

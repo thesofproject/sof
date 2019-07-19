@@ -8,7 +8,7 @@
 #ifndef __SOF_LIB_AGENT_H__
 #define __SOF_LIB_AGENT_H__
 
-#include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <stdint.h>
 
 struct sof;

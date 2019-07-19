@@ -14,6 +14,7 @@
 #define __SOF_SCHEDULE_LL_SCHEDULE_H__
 
 #include <sof/drivers/timer.h>
+#include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <stdint.h>
 

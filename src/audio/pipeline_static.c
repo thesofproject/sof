@@ -13,6 +13,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/drivers/ipc.h>
+#include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/stream.h>

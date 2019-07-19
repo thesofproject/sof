@@ -9,7 +9,7 @@
 #define __SOF_TRACE_DMA_TRACE_H__
 
 #include <sof/lib/dma.h>
-#include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <stdint.h>
 

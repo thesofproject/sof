@@ -16,6 +16,7 @@
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <ipc/header.h>
 #include <config.h>

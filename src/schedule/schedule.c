@@ -8,6 +8,7 @@
 
 #include <sof/lib/alloc.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>

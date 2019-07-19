@@ -15,6 +15,7 @@
 #include <arch/lib/wait.h>
 #include <sof/drivers/timer.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <stdint.h>
