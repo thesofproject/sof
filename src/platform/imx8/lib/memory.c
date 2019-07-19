@@ -6,13 +6,9 @@
 
 #include <sof/common.h>
 #include <sof/lib/alloc.h>
-#include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
 #include <ipc/topology.h>
-
-STATIC_ASSERT(0 == (HEAP_BUF_ALIGNMENT % PLATFORM_DCACHE_ALIGN),
-	      invalid_heap_buf_alignment);
 
 /* Heap blocks for system runtime */
 static struct block_hdr sys_rt_block64[HEAP_SYS_RT_COUNT64];
