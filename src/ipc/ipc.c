@@ -170,6 +170,19 @@ int ipc_comp_free(struct ipc *ipc, uint32_t comp_id)
 
 	/* free component and remove from list */
 	comp_free(icd->cd);
+
+	/* set pipeline sink/source/sched pointers to NULL if needed */
+	if (icd->cd->pipeline) {
+		if (icd->cd == icd->cd->pipeline->source_comp)
+			icd->cd->pipeline->source_comp = NULL;
+		if (icd->cd == icd->cd->pipeline->sink_comp)
+			icd->cd->pipeline->sink_comp = NULL;
+		if (icd->cd == icd->cd->pipeline->sched_comp)
+			icd->cd->pipeline->sched_comp = NULL;
+	}
+
+	icd->cd = NULL;
+
 	list_item_del(&icd->list);
 	rfree(icd);
 
@@ -343,7 +356,7 @@ int ipc_pipeline_free(struct ipc *ipc, uint32_t comp_id)
 				"pipeline_free() failed");
 		return ret;
 	}
-
+	ipc_pipe->pipeline = NULL;
 	list_item_del(&ipc_pipe->list);
 	rfree(ipc_pipe);
 

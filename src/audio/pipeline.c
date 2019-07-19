@@ -216,21 +216,23 @@ int pipeline_free(struct pipeline *p)
 	trace_pipe_with_ids(p, "pipeline_free()");
 
 	/* make sure we are not in use */
-	if (p->source_comp->state > COMP_STATE_READY) {
-		trace_pipe_error_with_ids(p, "pipeline_free() error: Pipeline"
-					  " in use, %u, %u",
-					  p->source_comp->comp.id,
-					  p->source_comp->state);
-		return -EBUSY;
+	if (p->source_comp) {
+		if (p->source_comp->state > COMP_STATE_READY) {
+			trace_pipe_error_with_ids(p, "pipeline_free() error: "
+						  "Pipeline in use, %u, %u",
+						  p->source_comp->comp.id,
+						  p->source_comp->state);
+			return -EBUSY;
+		}
+
+		data.start = p->source_comp;
+
+		/* disconnect components */
+		pipeline_comp_free(p->source_comp, &data, PPL_DIR_DOWNSTREAM);
 	}
 
 	/* remove from any scheduling */
 	schedule_task_free(&p->pipe_task);
-
-	data.start = p->source_comp;
-
-	/* disconnect components */
-	pipeline_comp_free(p->source_comp, &data, PPL_DIR_DOWNSTREAM);
 
 	/* now free the pipeline */
 	rfree(p);
