@@ -22,12 +22,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if CONFIG_GDB_DEBUG
-#define DEBUG_GDB	1
-#else
-#define DEBUG_GDB	0
-#endif
-
 #if CONFIG_DEBUG
 
 #include <sof/lib/mailbox.h>
@@ -37,7 +31,7 @@
 	SOF_IPC_INFO_BUILD |						\
 	(IS_ENABLED(CONFIG_DEBUG_LOCKS) ? SOF_IPC_INFO_LOCKS : 0) |	\
 	(IS_ENABLED(CONFIG_DEBUG_LOCKS_VERBOSE) ? SOF_IPC_INFO_LOCKSV : 0) | \
-	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)				\
+	(IS_ENABLED(CONFIG_GDB_DEBUG) ? SOF_IPC_INFO_GDB : 0)		\
 )
 
 /* dump file and line to start of mailbox or shared memory */
@@ -126,7 +120,7 @@
 (									\
 	(IS_ENABLED(CONFIG_DEBUG_LOCKS) ? SOF_IPC_INFO_LOCKS : 0) |	\
 	(IS_ENABLED(CONFIG_DEBUG_LOCKS_VERBOSE) ? SOF_IPC_INFO_LOCKSV : 0) | \
-	(DEBUG_GDB ? SOF_IPC_INFO_GDB : 0)				\
+	(IS_ENABLED(CONFIG_GDB_DEBUG) ? SOF_IPC_INFO_GDB : 0)		\
 )
 
 #define dbg()
