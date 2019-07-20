@@ -10,6 +10,7 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#include <sof/common.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
@@ -23,8 +24,12 @@
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
 #include <config.h>
+#include <xtensa/xtruntime-frames.h>
 #include <xtos-structs.h>
 #include <stdint.h>
+
+/* UserFrame's size needs to be 16 bytes aligned */
+STATIC_ASSERT((sizeof(UserFrame) % 16) == 0, invalid_UserFrame_alignment);
 
 #if CONFIG_DEBUG_LOCKS
 /** \brief Debug lock. */
