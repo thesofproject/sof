@@ -25,6 +25,14 @@ void *rzalloc(int zone, uint32_t caps, size_t bytes)
 	return calloc(bytes, 1);
 }
 
+int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
+{
+	(void)buffer;
+	(void)size;
+
+	return 0;
+}
+
 void pipeline_xrun(struct pipeline *p, struct comp_dev *dev, int32_t bytes)
 {
 }

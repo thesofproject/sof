@@ -380,11 +380,11 @@ static int selector_prepare(struct comp_dev *dev)
 		       sinkb->sink->params.channels);
 
 	/* set downstream buffer size */
-	ret = buffer_set_size(sinkb, cd->sink_period_bytes *
-			      config->periods_sink);
+	ret = comp_set_sink_buffer(dev, cd->sink_period_bytes,
+				   config->periods_sink);
 	if (ret < 0) {
 		trace_selector_error("selector_prepare() error: "
-				     "buffer_set_size() failed");
+				     "comp_set_sink_buffer() failed");
 		goto err;
 	}
 
