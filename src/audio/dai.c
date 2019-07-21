@@ -349,6 +349,8 @@ static int dai_params(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct sof_ipc_comp_config *dconfig = COMP_GET_CONFIG(dev);
 	uint32_t period_bytes;
+	uint32_t align;
+	int err;
 
 	trace_dai_with_ids(dev, "dai_params()");
 
@@ -377,7 +379,15 @@ static int dai_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
-	period_bytes = dev->frames * dd->frame_bytes;
+	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
+	if (err < 0) {
+		trace_dai_error("dai_params(): could not get dma buffer "
+				"alignment");
+		return err;
+	}
+
+	period_bytes = ALIGN_UP(dev->frames * dd->frame_bytes, align);
+
 	if (!period_bytes) {
 		trace_dai_error_with_ids(dev, "dai_params() error: device has "
 					 "no bytes (no frames to copy to sink).");
