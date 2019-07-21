@@ -739,11 +739,11 @@ static int eq_fir_prepare(struct comp_dev *dev)
 		dev->params.frame_fmt = cd->sink_format;
 
 	/* set downstream buffer size */
-	ret = buffer_set_size(sinkb,
-			      sink_period_bytes * config->periods_sink);
+	ret = comp_set_sink_buffer(dev, sink_period_bytes,
+				   config->periods_sink);
 	if (ret < 0) {
 		trace_eq_error("eq_fir_prepare() error: "
-			       "buffer_set_size() failed");
+			       "comp_set_sink_buffer() failed");
 		goto err;
 	}
 
