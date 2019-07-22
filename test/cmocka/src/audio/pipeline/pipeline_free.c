@@ -36,8 +36,8 @@ static void test_audio_pipeline_free_comp_busy(void **state)
 
 	cleanup_test_data(test_data);
 
-	result.source_comp = test_data->first;
-	result.sched_comp->state = 3;
+	result.sink_comp = test_data->second;
+	result.sink_comp->state = 3;
 
 	/*Testing component*/
 	int err = pipeline_free(&result);
@@ -52,8 +52,8 @@ static void test_audio_pipeline_free_return_value(void **state)
 
 	cleanup_test_data(test_data);
 
-	result.source_comp = test_data->first;
-	result.sched_comp->state = COMP_STATE_READY;
+	result.sink_comp = test_data->first;
+	result.sink_comp->state = COMP_STATE_READY;
 
 	/*Testing component*/
 	int err = pipeline_free(&result);
@@ -85,16 +85,34 @@ static void test_audio_pipeline_free_disconnect_full(void **state)
 
 	cleanup_test_data(test_data);
 
+	print_message("test_audio_pipeline_free_disconnect_full\n");
+
 	/*Set pipeline to check that is null later*/
 	result.source_comp = test_data->first;
+	result.sink_comp = test_data->second;
+	result.sink_comp->state = 1;
+
 	test_data->first->pipeline = &result;
 	test_data->second->pipeline = &result;
 	test_data->second->comp.pipeline_id = PIPELINE_ID_SAME;
 	test_data->first->comp.pipeline_id = PIPELINE_ID_SAME;
+
 	test_data->b1->source = test_data->first;
-	list_item_append(&result.sched_comp->bsink_list,
-					 &test_data->b1->source_list);
 	test_data->b1->sink = test_data->second;
+	test_data->b2->source = test_data->second;
+	test_data->b2->sink = NULL;
+
+	/* connecting source_comp to b1 buffer (as sink) */
+	list_item_append(&result.source_comp->bsink_list,
+			 &test_data->b1->source_list);
+
+	/* connecting source_comp to b1 buffer (as source) */
+	list_item_append(&result.sink_comp->bsource_list,
+			 &test_data->b1->sink_list);
+
+	/* connecting sink_comp to b2 buffer (as sink) */
+	list_item_append(&result.sink_comp->bsink_list,
+			 &test_data->b2->source_list);
 
 	/*Testing component*/
 	pipeline_free(&result);
@@ -112,9 +130,24 @@ static void test_audio_pipeline_free_disconnect_list_del
 	cleanup_test_data(test_data);
 
 	result.source_comp = test_data->first;
+	result.sink_comp = test_data->second;
+
 	test_data->b1->source = test_data->first;
-	list_item_append(&result.sched_comp->bsink_list,
-					 &test_data->b1->source_list);
+	test_data->b1->sink = test_data->second;
+	test_data->b2->source = test_data->second;
+	test_data->b2->sink = NULL;
+
+	/* connecting source_comp to b1 buffer (as sink) */
+	list_item_append(&result.source_comp->bsink_list,
+			 &test_data->b1->source_list);
+
+	/* connecting source_comp to b1 buffer (as source) */
+	list_item_append(&result.sink_comp->bsource_list,
+			 &test_data->b1->sink_list);
+
+	/* connecting sink_comp to b2 buffer (as sink) */
+	list_item_append(&result.sink_comp->bsink_list,
+			 &test_data->b2->source_list);
 	test_data->b1->sink = test_data->second;
 
 	/*Testing component*/
