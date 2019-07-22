@@ -23,6 +23,7 @@
 #include <sof/ut.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
 

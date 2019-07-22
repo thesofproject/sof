@@ -8,6 +8,7 @@
 #include <sof/lib/dma.h>
 #include <sof/trace/trace.h>
 #include <ipc/dai.h>
+#include <user/trace.h>
 
 #define trace_soundwire(__e, ...) \
 	trace_event(TRACE_CLASS_SOUNDWIRE, __e, ##__VA_ARGS__)

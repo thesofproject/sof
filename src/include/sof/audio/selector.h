@@ -17,6 +17,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
 #include <user/selector.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 struct comp_buffer;

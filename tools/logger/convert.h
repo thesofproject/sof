@@ -11,7 +11,6 @@
  */
 
 #include <stdio.h>
-#include <user/trace.h>
 #include <ipc/info.h>
 #include <rimage/file_format.h>
 

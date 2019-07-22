@@ -17,6 +17,7 @@
 #include <platform/lib/pm_runtime.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 /** \addtogroup pm_runtime PM Runtime

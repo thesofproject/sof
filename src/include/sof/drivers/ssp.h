@@ -15,6 +15,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>
+#include <user/trace.h>
 #include <config.h>
 #include <stdint.h>
 

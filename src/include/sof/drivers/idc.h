@@ -18,6 +18,7 @@
 #include <platform/drivers/idc.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 /** \brief IDC trace function. */

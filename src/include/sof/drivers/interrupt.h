@@ -14,6 +14,7 @@
 #include <sof/list.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 #define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
