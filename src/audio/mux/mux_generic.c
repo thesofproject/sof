@@ -84,9 +84,9 @@ static inline int32_t calc_sample_s24le(struct comp_buffer *source,
  * \param[in] offset Offset in source buffer.
  * \param[in] mask Routing bitmask for calculating output sample.
  */
-static inline int64_t calc_sample_s32le(struct comp_buffer *source,
-					uint8_t num_ch, uint32_t offset,
-					uint8_t mask)
+UT_STATIC inline int64_t calc_sample_s32le(struct comp_buffer *source,
+					   uint8_t num_ch, uint32_t offset,
+					   uint8_t mask)
 {
 	int64_t sample = 0;
 	int32_t *src;
