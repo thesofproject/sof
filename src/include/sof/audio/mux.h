@@ -90,6 +90,9 @@ demux_func demux_get_processing_function(struct comp_dev *dev);
 #ifdef UNIT_TEST
 void sys_comp_mux_init(void);
 
+int32_t calc_sample_s16le(struct comp_buffer *source,
+			  uint8_t num_ch, uint32_t offset,
+			  uint8_t mask);
 int32_t calc_sample_s24le(struct comp_buffer *source,
 			  uint8_t num_ch, uint32_t offset,
 			  uint8_t mask);
