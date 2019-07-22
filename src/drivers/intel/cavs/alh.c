@@ -4,6 +4,7 @@
 //
 // Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
 
+#include <sof/drivers/alh.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/memory.h>
@@ -63,14 +64,15 @@ static int alh_remove(struct dai *dai)
 
 static int alh_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	/* TODO */
-	return 0;
+	return alh_handshake_map[stream_id];
 }
 
 static int alh_get_fifo(struct dai *dai, int direction, int stream_id)
 {
-	/* TODO */
-	return 0;
+	uint32_t offset = direction == SOF_IPC_STREAM_PLAYBACK ?
+		ALH_TXDA_OFFSET : ALH_RXDA_OFFSET;
+
+	return ALH_BASE + offset + ALH_STREAM_OFFSET * stream_id;
 }
 
 const struct dai_driver alh_driver = {

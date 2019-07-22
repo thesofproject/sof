@@ -7,6 +7,7 @@
 #ifndef __SOF_DRIVERS_ALH__
 #define __SOF_DRIVERS_ALH__
 
+#include <platform/drivers/alh.h>
 #include <sof/lib/dai.h>
 
 extern const struct dai_driver alh_driver;
