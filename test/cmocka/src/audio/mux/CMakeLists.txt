@@ -23,3 +23,9 @@ cmocka_test(
 	mux_copy.c
 	mock.c
 )
+
+cmocka_test(
+	demux_copy
+	demux_copy.c
+	mock.c
+)
