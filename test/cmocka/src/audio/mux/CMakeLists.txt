@@ -19,6 +19,12 @@ target_link_libraries(audio_mux PRIVATE sof_options)
 link_libraries(audio_mux)
 
 cmocka_test(
+	mux_prepare
+	mux_prepare.c
+	mock.c
+)
+
+cmocka_test(
 	mux_copy
 	mux_copy.c
 	mock.c
