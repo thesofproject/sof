@@ -87,14 +87,12 @@ STRUCT_FIELD (long,4,UEXC_,pc)
 STRUCT_FIELD (long,4,UEXC_,ps)
 STRUCT_FIELD (long,4,UEXC_,sar)
 STRUCT_FIELD (long,4,UEXC_,vpri)
-#ifdef __XTENSA_CALL0_ABI__
 STRUCT_FIELD (long,4,UEXC_,a0)
-#endif
+STRUCT_FIELD (long,4,UEXC_,a1)
 STRUCT_FIELD (long,4,UEXC_,a2)
 STRUCT_FIELD (long,4,UEXC_,a3)
 STRUCT_FIELD (long,4,UEXC_,a4)
 STRUCT_FIELD (long,4,UEXC_,a5)
-#ifdef __XTENSA_CALL0_ABI__
 STRUCT_FIELD (long,4,UEXC_,a6)
 STRUCT_FIELD (long,4,UEXC_,a7)
 STRUCT_FIELD (long,4,UEXC_,a8)
@@ -104,13 +102,14 @@ STRUCT_FIELD (long,4,UEXC_,a11)
 STRUCT_FIELD (long,4,UEXC_,a12)
 STRUCT_FIELD (long,4,UEXC_,a13)
 STRUCT_FIELD (long,4,UEXC_,a14)
-#endif
 STRUCT_FIELD (long,4,UEXC_,a15)
 STRUCT_FIELD (long,4,UEXC_,exccause)	/* NOTE: can probably rid of this one (pass direct) */
+STRUCT_FIELD (long,4,UEXC_,align1)	/* alignment to 8 bytes */
 #if XCHAL_HAVE_LOOPS
 STRUCT_FIELD (long,4,UEXC_,lcount)
 STRUCT_FIELD (long,4,UEXC_,lbeg)
 STRUCT_FIELD (long,4,UEXC_,lend)
+STRUCT_FIELD (long,4,UEXC_,align2)	/* alignment to 8 bytes */
 #endif
 #if XCHAL_HAVE_MAC16
 STRUCT_FIELD (long,4,UEXC_,acclo)
@@ -118,24 +117,13 @@ STRUCT_FIELD (long,4,UEXC_,acchi)
 STRUCT_AFIELD(long,4,UEXC_,mr, 4)
 #endif
 #if (XCHAL_CP_MASK & CP0_MASK)
-#define HAVE_CP0	1
-STRUCT_AFIELD_A(long,4,XCHAL_CP0_SA_ALIGN,UEXC_,cp0, XCHAL_CP0_SA_SIZE / 4)
-#else
-#define HAVE_CP0	0
+STRUCT_AFIELD (long,4,UEXC_,cp0, XCHAL_CP0_SA_SIZE / 4)
 #endif
 #if (XCHAL_CP_MASK & CP1_MASK)
-#define HAVE_CP1	1
-STRUCT_AFIELD_A(long,4,XCHAL_CP1_SA_ALIGN,UEXC_,cp1, XCHAL_CP1_SA_SIZE / 4)
-#else
-#define HAVE_CP1	0
+STRUCT_AFIELD (long,4,UEXC_,cp1, XCHAL_CP1_SA_SIZE / 4)
 #endif
 /* ALIGNPAD is the 16-byte alignment padding. */
-#ifdef __XTENSA_CALL0_ABI__
-# define CALL0_ABI	1
-#else
-# define CALL0_ABI	0
-#endif
-#define ALIGNPAD  ((2 + XCHAL_HAVE_LOOPS*1 + XCHAL_HAVE_MAC16*2 + HAVE_CP0*2 + HAVE_CP1*1 + CALL0_ABI*2) & 3)
+#define ALIGNPAD  ((2 + XCHAL_HAVE_MAC16*2 + ((XCHAL_CP0_SA_SIZE%16)/4) + ((XCHAL_CP1_SA_SIZE%16)/4)) & 3)
 #if ALIGNPAD
 STRUCT_AFIELD(long,4,UEXC_,pad, ALIGNPAD)	/* 16-byte alignment padding */
 #endif
