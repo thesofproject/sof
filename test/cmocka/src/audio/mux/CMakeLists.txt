@@ -37,6 +37,12 @@ cmocka_test(
 )
 
 cmocka_test(
+	mux_generic_calc_sample_s24le
+	mux_generic_calc_sample_s24le.c
+	mock.c
+)
+
+cmocka_test(
 	mux_generic_calc_sample_s32le
 	mux_generic_calc_sample_s32le.c
 	mock.c
