@@ -21,6 +21,7 @@
 #include <sof/common.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <user/trace.h>
 #include <stdint.h>
 
@@ -85,6 +86,10 @@ extern const struct comp_func_map mux_func_map[];
 
 mux_func mux_get_processing_function(struct comp_dev *dev);
 demux_func demux_get_processing_function(struct comp_dev *dev);
+
+#ifdef UNIT_TEST
+void sys_comp_mux_init(void);
+#endif /* UNIT_TEST */
 
 #endif /* CONFIG_COMP_MUX */
 
