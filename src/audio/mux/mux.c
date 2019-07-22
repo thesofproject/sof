@@ -20,6 +20,7 @@
 #include <sof/string.h>
 #include <sof/trace/preproc.h>
 #include <sof/trace/trace.h>
+#include <sof/ut.h>
 #include <ipc/control.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -446,7 +447,7 @@ struct comp_driver comp_demux = {
 	},
 };
 
-static void sys_comp_mux_init(void)
+UT_STATIC void sys_comp_mux_init(void)
 {
 	comp_register(&comp_mux);
 	comp_register(&comp_demux);
