@@ -24,6 +24,7 @@
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 #define trace_sa(__e, ...) \

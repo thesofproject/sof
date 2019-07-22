@@ -17,6 +17,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <config.h>
 #include <stdint.h>
 

@@ -15,6 +15,7 @@
 #include <sof/lib/memory.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
+#include <user/trace.h>
 #include <config.h>
 #include <stddef.h>
 #include <stdint.h>

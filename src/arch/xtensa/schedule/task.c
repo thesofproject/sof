@@ -20,6 +20,7 @@
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
+#include <user/trace.h>
 #include <config.h>
 #include <xtos-structs.h>
 #include <errno.h>

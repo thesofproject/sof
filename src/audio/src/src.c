@@ -24,6 +24,7 @@
 #include <ipc/control.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
+#include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>

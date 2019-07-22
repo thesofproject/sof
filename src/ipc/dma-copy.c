@@ -10,6 +10,7 @@
 #include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <config.h>
 #include <errno.h>
 #include <stddef.h>

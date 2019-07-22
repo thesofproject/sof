@@ -29,6 +29,7 @@
 #include <ipc/dai.h>
 #include <ipc/dai-intel.h>
 #include <ipc/topology.h>
+#include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -11,6 +11,7 @@
 
 #include <sof/list.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 struct edf_schedule_data;

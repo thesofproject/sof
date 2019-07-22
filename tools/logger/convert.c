@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <kernel/abi.h>
+#include <user/trace.h>
 #include "convert.h"
 
 #define CEIL(a, b) ((a+b-1)/b)

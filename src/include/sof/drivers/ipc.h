@@ -16,6 +16,7 @@
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 struct comp_buffer;

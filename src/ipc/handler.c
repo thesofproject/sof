@@ -43,6 +43,7 @@
 #include <ipc/stream.h>
 #include <ipc/topology.h>
 #include <ipc/trace.h>
+#include <user/trace.h>
 #include <config.h>
 #include <errno.h>
 #include <stdbool.h>

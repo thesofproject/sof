@@ -7,6 +7,7 @@
 #include <sof/lib/dai.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>

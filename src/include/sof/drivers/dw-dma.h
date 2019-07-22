@@ -14,6 +14,7 @@
 #include <sof/common.h>
 #include <sof/lib/dma.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <stdint.h>
 
 /* channel registers */

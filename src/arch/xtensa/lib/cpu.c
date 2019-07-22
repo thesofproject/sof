@@ -19,6 +19,7 @@
 #include <sof/schedule/schedule.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <xtos-structs.h>
 #include <stdint.h>
 

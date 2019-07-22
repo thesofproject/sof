@@ -14,6 +14,7 @@
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/trace/trace.h>
+#include <user/trace.h>
 #include <errno.h>
 #include <stdint.h>
 

@@ -21,6 +21,7 @@
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <ipc/stream.h>
+#include <user/trace.h>
 #include <stddef.h>
 #include <stdint.h>
 
