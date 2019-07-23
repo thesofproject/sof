@@ -83,6 +83,7 @@ set(TPLGS
 	"sof-tgl-rt1308-nohdmi\;sof-tgl-rt1308-nohdmi"
 	"sof-imx8qxp-nocodec\;sof-imx8qxp-nocodec"
 	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
+	"sof-cml-da7219-max98357a\;sof-cml-da7219-max98357a"
 )
 
 add_custom_target(topologies ALL)
