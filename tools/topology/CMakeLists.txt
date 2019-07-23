@@ -116,6 +116,7 @@ set(TPLGS
 	"sof-imx8qxp-wm8960\;sof-imx8qxp-wm8960"
 	"sof-tgl-max98357a-rt5682\;sof-tgl-max98357a-rt5682"
 	"sof-jsl-da7219\;sof-jsl-da7219"
+	"sof-cml-da7219-max98357a\;sof-cml-da7219-max98357a"
 )
 
 add_custom_target(topologies ALL)
