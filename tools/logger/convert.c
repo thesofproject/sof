@@ -90,11 +90,16 @@ static const char * get_component_name(uint32_t component_id) {
 		CASE(SA);
 		CASE(DMIC);
 		CASE(POWER);
+		CASE(IDC);
+		CASE(CPU);
+		CASE(CLK);
 		CASE(EDF);
 		CASE(KPB);
 		CASE(SELECTOR);
 		CASE(SCHEDULE);
 		CASE(SCHEDULE_LL);
+		CASE(SOUNDWIRE);
+		CASE(KEYWORD);
 	default: return "unknown";
 	}
 }
