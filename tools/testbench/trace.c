@@ -44,6 +44,16 @@ char *get_trace_class(uint32_t trace_class)
 		CASE(SA);
 		CASE(DMIC);
 		CASE(POWER);
+		CASE(IDC);
+		CASE(CPU);
+		CASE(CLK);
+		CASE(EDF);
+		CASE(KPB);
+		CASE(SELECTOR);
+		CASE(SCHEDULE);
+		CASE(SCHEDULE_LL);
+		CASE(SOUNDWIRE);
+		CASE(KEYWORD);
 	default: return "unknown";
 	}
 }
