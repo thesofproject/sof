@@ -138,8 +138,8 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	/* Zero number of clients */
 	cd->kpb_no_of_clients = 0;
 
-	/* Set initial state as buffering */
-	cd->state = KPB_STATE_BUFFERING;
+	/* Kpb has been created successfully */
+	cd->state = KPB_STATE_CREATED;
 
 
 
@@ -302,8 +302,24 @@ static void kpb_free(struct comp_dev *dev)
  */
 static int kpb_trigger(struct comp_dev *dev, int cmd)
 {
+	struct comp_data *kpb = comp_get_drvdata(dev);
+
 	trace_kpb("kpb_trigger()");
 
+	switch (cmd) {
+	case COMP_TRIGGER_START:
+		kpb->state = KPB_STATE_BUFFERING;
+		break;
+	/* Fallthrough. */
+	case COMP_TRIGGER_STOP:
+	case COMP_TRIGGER_RESET:
+	case COMP_TRIGGER_XRUN:
+		kpb->state = KPB_STATE_RESETTING;
+		break;
+	default:
+		/* No state change needed. */
+		break;
+	}
 	return comp_set_state(dev, cmd);
 }
 
@@ -336,7 +352,6 @@ static int kpb_prepare(struct comp_dev *dev)
 	/* Init private data */
 	cd->kpb_no_of_clients = 0;
 	cd->buffered_data = 0;
-	cd->state = KPB_STATE_BUFFERING;
 	cd->host_buffer_size = dev->params.buffer.size;
 	cd->period_size = dev->params.host_period_bytes;
 	cd->config.sampling_width = dev->params.sample_container_bytes * 8;
@@ -397,6 +412,8 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 	}
 
+	cd->state = KPB_STATE_PREPARED;
+
 	return ret;
 }
 
@@ -431,23 +448,32 @@ static int kpb_reset(struct comp_dev *dev)
 
 	trace_kpb("kpb_reset()");
 
-	/* Reset state to be buffering */
-	kpb->state = KPB_STATE_BUFFERING;
-	/* Reset history buffer */
-	kpb->is_internal_buffer_full = false;
-	//kpb_clear_history_buffer(kpb->history_buffer);
+	/* Change KPB state to RESET. If there is any ongoing job it will
+	 * shut itself gracefully first.
+	 */
+	if (kpb->state > KPB_STATE_PREPARED) {
+		/* KPB is performing some task now,
+		 * terminate it gently.
+		 */
+		kpb->state = KPB_STATE_RESETTING;
+		return -EBUSY;
+	} else if (kpb->state == KPB_STATE_RESET_FINISH) {
+		/* Reset history buffer - zero its data reset pointers
+		 * and states.
+		 */
+		kpb->buffered_data = 0;
+		kpb->is_internal_buffer_full = false;
+		kpb_clear_history_buffer(kpb->history_buffer);
+		kpb_reset_history_buffer(kpb->history_buffer);
 
-	/* Reset history buffer */
-	kpb_reset_history_buffer(kpb->history_buffer);
+		/* Unregister KPB from async notification */
+		notifier_unregister(&kpb->kpb_events);
 
-	/* Reset amount of buffered data */
-	kpb->buffered_data = 0;
+		/* Finally KPB is ready after reset */
+		kpb->state = KPB_STATE_PREPARED;
 
-	/* Unregister KPB for async notification */
-	notifier_unregister(&kpb->kpb_events);
-
-	/* Reset KPB state to initial buffering state */
-	kpb->state = KPB_STATE_BUFFERING;
+		return comp_set_state(dev, COMP_TRIGGER_RESET);
+	}
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
