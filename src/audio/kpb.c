@@ -68,6 +68,7 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 static inline size_t validate_period_size(size_t period_interval,
                                         size_t host_buffer_size,
                                         size_t bytes_per_ms);
+static void kpb_reset_history_buffer(struct hb *buff);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -436,8 +437,8 @@ static int kpb_reset(struct comp_dev *dev)
 	kpb->is_internal_buffer_full = false;
 	//kpb_clear_history_buffer(kpb->history_buffer);
 
-	/* Reclaim memory occupied by history buffer */
-	kpb_free_history_buffer(kpb->history_buffer);
+	/* Reset history buffer */
+	kpb_reset_history_buffer(kpb->history_buffer);
 
 	/* Reset amount of buffered data */
 	kpb->buffered_data = 0;
@@ -449,6 +450,34 @@ static int kpb_reset(struct comp_dev *dev)
 	kpb->state = KPB_STATE_BUFFERING;
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
+}
+
+/**
+ * \brief Reset history buffer.
+ * \param[in] buff - pointer to current history buffer.
+ *
+ * \return none.
+ */
+static void kpb_reset_history_buffer(struct hb *buff)
+{
+	struct hb *first_buff = buff;
+
+	trace_kpb("kpb_reset_history_buffer()");
+
+	if (!buff)
+		return;
+
+	kpb_clear_history_buffer(buff);
+
+	do {
+		buff->w_ptr = buff->start_addr;
+		buff->r_ptr = buff->start_addr;
+		buff->state = KPB_BUFFER_FREE;
+
+		buff = buff->next;
+
+	} while (buff != first_buff);
+
 }
 
 /**
