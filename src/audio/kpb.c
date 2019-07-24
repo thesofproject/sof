@@ -527,6 +527,18 @@ static int kpb_copy(struct comp_dev *dev)
 
 	tracev_kpb("kpb_copy()");
 
+	if (kpb->state == KPB_STATE_RESETTING) {
+		/* kpb_copy() stopped at secure point
+		 * now we can finish requested reset.
+		 */
+		kpb->state = KPB_STATE_RESET_FINISH;
+		kpb_reset(dev);
+		return PPL_STATUS_PATH_STOP;
+	} else if (kpb->state <= KPB_STATE_PREPARED) {
+		trace_kpb_error("kpb_copy(): wrong state - copy forbidden!");
+		return PPL_STATUS_PATH_STOP;
+	}
+
 	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
