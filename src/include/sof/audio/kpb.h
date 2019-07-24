@@ -107,6 +107,7 @@ struct dd {
 	size_t period_interval;
 	size_t period_bytes_limit;
 	size_t buffered_while_draining;
+	struct comp_dev *dev;
 };
 
 #ifdef UNIT_TEST
