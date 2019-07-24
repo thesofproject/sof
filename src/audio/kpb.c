@@ -52,7 +52,7 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
 static uint64_t kpb_draining_task(void *arg);
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
+static int32_t kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			    size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
@@ -69,6 +69,7 @@ static inline size_t validate_period_size(size_t period_interval,
                                         size_t host_buffer_size,
                                         size_t bytes_per_ms);
 static void kpb_reset_history_buffer(struct hb *buff);
+static int kpb_reset(struct comp_dev *dev);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -82,7 +83,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 					(struct sof_ipc_comp_process *)comp;
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
-	struct comp_data *cd;
+	struct comp_data *kpb;
 
 	trace_kpb("kpb_new()");
 
@@ -100,48 +101,43 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	assert(!memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
 			 comp, sizeof(struct sof_ipc_comp_process)));
 
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
+	kpb = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*kpb));
+	if (!kpb) {
 		rfree(dev);
 		return NULL;
 	}
 
-	comp_set_drvdata(dev, cd);
+	comp_set_drvdata(dev, kpb);
 
-	assert(!memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data,
+	assert(!memcpy_s(&kpb->config, sizeof(kpb->config), ipc_process->data,
 			 bs));
 
-	if (!kpb_is_sample_width_supported(cd->config.sampling_width)) {
+	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
 		trace_kpb_error("kpb_new() error: "
 		"requested sampling width not supported");
 		return NULL;
 	}
 
-	/* Sampling width accepted. Lets calculate and store
-	 * its derivatives for quick lookup in runtime.
-	 */
-
-	if (cd->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
+	if (kpb->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
 		trace_kpb_error("kpb_new() error: "
 		"no of channels exceeded the limit");
 		return NULL;
 	}
 
-	if (cd->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
+	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
 		trace_kpb_error("kpb_new() error: "
 		"requested sampling frequency not supported");
 		return NULL;
 	}
 
 	dev->state = COMP_STATE_READY;
+	kpb->history_buffer = NULL;
 
 	/* Zero number of clients */
-	cd->kpb_no_of_clients = 0;
-
+	kpb->kpb_no_of_clients = 0;
+	kpb->dev = dev;
 	/* Kpb has been created successfully */
-	cd->state = KPB_STATE_CREATED;
-
-
+	kpb->state = KPB_STATE_CREATED;
 
 	return dev;
 }
@@ -286,8 +282,12 @@ static void kpb_free(struct comp_dev *dev)
 
 	trace_kpb("kpb_free()");
 
+	/* Unregister KPB from async notification */
+	notifier_unregister(&kpb->kpb_events);
+
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->history_buffer);
+	kpb->history_buffer = NULL;
 
 	/* Free KPB */
 	rfree(kpb);
@@ -302,24 +302,8 @@ static void kpb_free(struct comp_dev *dev)
  */
 static int kpb_trigger(struct comp_dev *dev, int cmd)
 {
-	struct comp_data *kpb = comp_get_drvdata(dev);
-
 	trace_kpb("kpb_trigger()");
 
-	switch (cmd) {
-	case COMP_TRIGGER_START:
-		kpb->state = KPB_STATE_BUFFERING;
-		break;
-	/* Fallthrough. */
-	case COMP_TRIGGER_STOP:
-	case COMP_TRIGGER_RESET:
-	case COMP_TRIGGER_XRUN:
-		kpb->state = KPB_STATE_RESETTING;
-		break;
-	default:
-		/* No state change needed. */
-		break;
-	}
 	return comp_set_state(dev, cmd);
 }
 
@@ -333,7 +317,7 @@ static int kpb_trigger(struct comp_dev *dev, int cmd)
  */
 static int kpb_prepare(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret = 0;
 	int i;
 	struct list_item *blist;
@@ -341,6 +325,13 @@ static int kpb_prepare(struct comp_dev *dev)
 	size_t allocated_size;
 
 	trace_kpb("kpb_prepare()");
+
+
+	if (kpb->state == KPB_STATE_RESETTING ||
+	    kpb->state == KPB_STATE_RESET_FINISH)
+	{
+		return -EBUSY;
+	}
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -350,45 +341,50 @@ static int kpb_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	/* Init private data */
-	cd->kpb_no_of_clients = 0;
-	cd->buffered_data = 0;
-	cd->host_buffer_size = dev->params.buffer.size;
-	cd->period_size = dev->params.host_period_bytes;
-	cd->config.sampling_width = dev->params.sample_container_bytes * 8;
-	cd->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(cd->config.sampling_width);
+	kpb->state = KPB_STATE_PREPARING;
+	kpb->kpb_no_of_clients = 0;
+	kpb->buffered_data = 0;
+	kpb->host_buffer_size = dev->params.buffer.size;
+	kpb->period_size = dev->params.host_period_bytes;
+	kpb->config.sampling_width = dev->params.sample_container_bytes * 8;
+	kpb->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
 
-	/* Allocate history buffer */
-	allocated_size = kpb_allocate_history_buffer(cd);
+	if (!kpb->history_buffer) {
+		/* Allocate history buffer */
+		allocated_size = kpb_allocate_history_buffer(kpb);
 
-	/* Have we allocated what we requested? */
-	if (allocated_size < cd->kpb_buffer_size) {
-		trace_kpb_error("Failed to allocate space for "
-				"KPB buffer/s");
-		return -EINVAL;
+		/* Have we allocated what we requested? */
+		if (allocated_size < kpb->kpb_buffer_size) {
+			trace_kpb_error("Failed to allocate space for "
+					"KPB buffer/s");
+			kpb_free_history_buffer(kpb->history_buffer);
+			kpb->history_buffer = NULL;
+			return -EINVAL;
+		}
 	}
 	/* Init history buffer */
-	kpb_clear_history_buffer(cd->history_buffer);
+	kpb_clear_history_buffer(kpb->history_buffer);
 
 	/* Initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
-		cd->clients[i].state = KPB_CLIENT_UNREGISTERED;
-		cd->clients[i].r_ptr = NULL;
+		kpb->clients[i].state = KPB_CLIENT_UNREGISTERED;
+		kpb->clients[i].r_ptr = NULL;
 	}
 
 	/* Initialize KPB events */
-	cd->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
-	cd->kpb_events.cb_data = cd;
-	cd->kpb_events.cb = kpb_event_handler;
+	kpb->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
+	kpb->kpb_events.cb_data = kpb;
+	kpb->kpb_events.cb = kpb_event_handler;
 
 	/* Register KPB for async notification */
-	notifier_register(&cd->kpb_events);
+	notifier_register(&kpb->kpb_events);
 
 	/* Initialize draining task */
-	schedule_task_init(&cd->draining_task, /* task structure */
+	schedule_task_init(&kpb->draining_task, /* task structure */
 			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
 			   0, /* priority doesn't matter for IDLE tasks */
 			   kpb_draining_task, /* task function */
-			   &cd->draining_task_data, /* task private data */
+			   &kpb->draining_task_data, /* task private data */
 			   0, /* core on which we should run */
 			   0); /* not used flags */
 
@@ -405,18 +401,18 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
 			/* We found proper real time sink */
-			cd->sel_sink = sink;
+			kpb->sel_sink = sink;
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
 			/* We found proper host sink */
-			cd->host_sink = sink;
+			kpb->host_sink = sink;
 		}
 	}
 
-	cd->state = KPB_STATE_PREPARED;
+	kpb->state = KPB_STATE_RUN;
 
 	return ret;
-}
 
+}
 /**
  * \brief Used to pass standard and bespoke commands (with data) to component.
  * \param[in,out] dev - Volume base component device.
@@ -448,34 +444,37 @@ static int kpb_reset(struct comp_dev *dev)
 
 	trace_kpb("kpb_reset()");
 
+	kpb->buffered_data = 0;
+	kpb->is_internal_buffer_full = false;
+
 	/* Change KPB state to RESET. If there is any ongoing job it will
 	 * shut itself gracefully first.
 	 */
-	if (kpb->state > KPB_STATE_PREPARED) {
+	if (kpb->state == KPB_STATE_BUFFERING ||
+	    kpb->state == KPB_STATE_DRAINING) {
 		/* KPB is performing some task now,
 		 * terminate it gently.
 		 */
 		kpb->state = KPB_STATE_RESETTING;
 		return -EBUSY;
-	} else if (kpb->state == KPB_STATE_RESET_FINISH) {
+	}
+
+	if (kpb->history_buffer) {
 		/* Reset history buffer - zero its data reset pointers
 		 * and states.
 		 */
-		kpb->buffered_data = 0;
-		kpb->is_internal_buffer_full = false;
 		kpb_clear_history_buffer(kpb->history_buffer);
 		kpb_reset_history_buffer(kpb->history_buffer);
-
-		/* Unregister KPB from async notification */
-		notifier_unregister(&kpb->kpb_events);
-
-		/* Finally KPB is ready after reset */
-		kpb->state = KPB_STATE_PREPARED;
-
-		return comp_set_state(dev, COMP_TRIGGER_RESET);
 	}
 
+	/* Unregister KPB for async notification */
+	notifier_unregister(&kpb->kpb_events);
+
+	/* Finally KPB is ready after reset */
+	kpb->state = KPB_STATE_PREPARING;
+
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
+
 }
 
 /**
@@ -527,14 +526,7 @@ static int kpb_copy(struct comp_dev *dev)
 
 	tracev_kpb("kpb_copy()");
 
-	if (kpb->state == KPB_STATE_RESETTING) {
-		/* kpb_copy() stopped at secure point
-		 * now we can finish requested reset.
-		 */
-		kpb->state = KPB_STATE_RESET_FINISH;
-		kpb_reset(dev);
-		return PPL_STATUS_PATH_STOP;
-	} else if (kpb->state <= KPB_STATE_PREPARED) {
+	if (kpb->state < KPB_STATE_RUN || kpb->state == KPB_STATE_RESETTING) {
 		trace_kpb_error("kpb_copy(): wrong state - copy forbidden!");
 		return PPL_STATUS_PATH_STOP;
 	}
@@ -542,7 +534,7 @@ static int kpb_copy(struct comp_dev *dev)
 	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->sel_sink
+	sink = (kpb->state == KPB_STATE_RUN) ? kpb->sel_sink
 	       : kpb->host_sink;
 
 	/* Stop copying downstream if in draining mode */
@@ -568,7 +560,9 @@ static int kpb_copy(struct comp_dev *dev)
 	 * use by clients.
 	 */
 	if (source->avail <= kpb->kpb_buffer_size) {
-		kpb_buffer_data(kpb, source, copy_bytes);
+		ret = kpb_buffer_data(kpb, source, copy_bytes);
+		if (ret)
+			return ret;
 
 		if (kpb->buffered_data < kpb->kpb_buffer_size)
 			kpb->buffered_data += copy_bytes;
@@ -592,7 +586,7 @@ static int kpb_copy(struct comp_dev *dev)
  * \param[in] source pointer to the buffer source.
  *
  */
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
+static int32_t kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			    size_t size)
 {
 	size_t size_to_copy = size;
@@ -602,8 +596,15 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 	struct dd *draining_data = &kpb->draining_task_data;
 	size_t timeout = platform_timer_get(platform_timer) +
 			 clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	int32_t ret = 0;
+	enum kpb_state state_preserved = kpb->state;
 
 	tracev_kpb("kpb_buffer_data()");
+
+	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_HOST_COPY)
+		return PPL_STATUS_PATH_STOP;
+	else
+		kpb->state = KPB_STATE_BUFFERING;
 
 	if (kpb->state == KPB_STATE_DRAINING)
 		draining_data->buffered_while_draining += size_to_copy;
@@ -613,14 +614,14 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 		if (kpb->state == KPB_STATE_RESETTING) {
 			kpb->state = KPB_STATE_RESET_FINISH;
 			kpb_reset(kpb->dev);
-			return;
+			return PPL_STATUS_PATH_STOP;
 		}
 
 		/* Are we stuck in buffering? */
 		if (timeout < platform_timer_get(platform_timer)) {
 			trace_kpb_error("kpb_buffer_data(): hanged.");
 			kpb_reset(kpb->dev);
-			return;
+			return PPL_STATUS_PATH_STOP;
 		}
 		/* Check how much space there is in current write buffer */
 		space_avail = (uint32_t)buff->end_addr - (uint32_t)buff->w_ptr;
@@ -676,6 +677,9 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			buff->state = KPB_BUFFER_FREE;
 		}
 	}
+
+	kpb->state = state_preserved;
+	return ret;
 }
 
 /**
@@ -791,7 +795,10 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 	trace_kpb("kpb_init_draining() host buff size: %d period size %d, ticks_per_ms %d",
 		   host_buffer_size, period_size, ticks_per_ms);
 
-	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
+	if (kpb->state != KPB_STATE_RUN) {
+		trace_kpb_error("kpb_init_draining() error: "
+				"wrong KPB state");
+	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong client id");
 	/* TODO: check also if client is registered */
@@ -887,9 +894,6 @@ static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
 		/* Disable system agent */
 		sa_disable();
 
-		/* Change KPB internal state to DRAINING */
-		kpb->state = KPB_STATE_DRAINING;
-
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->host_sink->sink,
 				   COMP_ATTR_COPY_BLOCKING, 0);
@@ -932,6 +936,8 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t *buffered_while_draining = &draining_data->buffered_while_draining;
 	size_t period_copy_start = platform_timer_get(platform_timer);
 	size_t time_taken = 0;
+
+	*draining_data->state = KPB_STATE_DRAINING;
 
 	trace_kpb("kpb_draining_task(), start buff %p, end buff %p",
 		(uint32_t)buff->start_addr, (uint32_t)buff->end_addr);
@@ -1089,7 +1095,7 @@ out:
 	 * to client's sink. This state is called "draining on demand"
 	 */
 	*draining_data->state = (*draining_data->state == KPB_STATE_DRAINING) ?
-				KPB_STATE_HOST_COPY : KPB_STATE_BUFFERING;
+				KPB_STATE_HOST_COPY : *draining_data->state;
 
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_BLOCKING, 0);
