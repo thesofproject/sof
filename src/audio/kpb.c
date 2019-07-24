@@ -44,7 +44,7 @@ struct comp_data {
 	size_t kpb_buffer_size;
 	size_t host_buffer_size;
 	size_t period_size;
-
+	struct comp_dev *dev;
 };
 
 /*! KPB private functions */
@@ -600,6 +600,8 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 	struct hb *buff = kpb->history_buffer;
 	void *read_ptr = source->r_ptr;
 	struct dd *draining_data = &kpb->draining_task_data;
+	size_t timeout = platform_timer_get(platform_timer) +
+			 clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
 	tracev_kpb("kpb_buffer_data()");
 
@@ -608,6 +610,12 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
+		/* Are we stuck in buffering? */
+		if (timeout < platform_timer_get(platform_timer)) {
+			trace_kpb_error("kpb_buffer_data(): hanged.");
+			kpb_reset(kpb->dev);
+			return;
+		}
 		/* Check how much space there is in current write buffer */
 		space_avail = (uint32_t)buff->end_addr - (uint32_t)buff->w_ptr;
 
