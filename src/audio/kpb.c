@@ -610,6 +610,12 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
+		if (kpb->state == KPB_STATE_RESETTING) {
+			kpb->state = KPB_STATE_RESET_FINISH;
+			kpb_reset(kpb->dev);
+			return;
+		}
+
 		/* Are we stuck in buffering? */
 		if (timeout < platform_timer_get(platform_timer)) {
 			trace_kpb_error("kpb_buffer_data(): hanged.");
