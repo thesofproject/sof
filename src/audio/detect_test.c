@@ -6,6 +6,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
+#include <sof/audio/format.h>
 #include <sof/audio/kpb.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -38,10 +39,13 @@
 	tracev_event(TRACE_CLASS_KEYWORD, __e, ##__VA_ARGS__)
 
 #define ACTIVATION_DEFAULT_SHIFT 3
-#define ACTIVATION_DEFAULT_THRESHOLD 0.5
+#define ACTIVATION_DEFAULT_DIVIDER_S16 0.5
+#define ACTIVATION_DEFAULT_DIVIDER_S24 0.05
 
 #define ACTIVATION_DEFAULT_THRESHOLD_S16 \
-	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_THRESHOLD)))
+	((int16_t)((INT16_MAX) * (ACTIVATION_DEFAULT_DIVIDER_S16)))
+#define ACTIVATION_DEFAULT_THRESHOLD_S24 \
+	((int32_t)((INT24_MAXVALUE) * (ACTIVATION_DEFAULT_DIVIDER_S24)))
 
 #define INITIAL_MODEL_DATA_SIZE 64
 
