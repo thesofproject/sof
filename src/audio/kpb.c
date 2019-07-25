@@ -626,6 +626,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	size_t timeout = platform_timer_get(platform_timer) +
 			 clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	enum kpb_state state_preserved = kpb->state;
+	struct dd *draining_data = &kpb->draining_task_data;
 
 	tracev_kpb("kpb_buffer_data()");
 
@@ -633,6 +634,9 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 		return PPL_STATUS_PATH_STOP;
 
 	kpb->state = KPB_STATE_BUFFERING;
+
+	if (kpb->state == KPB_STATE_DRAINING)
+		draining_data->buffered_while_draining += size_to_copy;
 
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
