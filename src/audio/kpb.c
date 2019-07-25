@@ -500,51 +500,99 @@ static int kpb_copy(struct comp_dev *dev)
 {
 	int ret = 0;
 	struct comp_data *kpb = comp_get_drvdata(dev);
-	struct comp_buffer *source;
-	struct comp_buffer *sink;
+	struct comp_buffer *source = NULL;
+	struct comp_buffer *sink = NULL;
 	size_t copy_bytes = 0;
+	size_t sample_width = kpb->config.sampling_width;
 
 	tracev_kpb("kpb_copy()");
 
 	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
-	sink = (kpb->state == KPB_STATE_BUFFERING) ? kpb->sel_sink
-	       : kpb->host_sink;
 
-	/* Stop copying downstream if in draining mode */
-	if (kpb->state == KPB_STATE_DRAINING) {
-		comp_update_buffer_consume(source, source->avail);
-		return PPL_STATUS_PATH_STOP;
+	/* Validate source */
+	if (!source || !source->r_ptr) {
+		trace_kpb_error("kpb_copy(): invalid source pointers.");
+		ret = -EINVAL;
+		goto out;
 	}
 
-	/* Process source data */
-	/* Check if there are valid pointers */
-	if (!source || !sink)
-		return -EIO;
-	if (!source->r_ptr || !sink->w_ptr)
-		return -EINVAL;
+	switch (kpb->state) {
+	case KPB_STATE_RUN:
+		/* In normal RUN state we simply copy to our sink. */
+		sink = kpb->sel_sink;
 
-	/* Sink and source are both ready and have space */
-	copy_bytes = MIN(sink->free, source->avail);
-	kpb_copy_samples(sink, source, copy_bytes,
-			 kpb->config.sampling_width);
+		/* Validate sink */
+		if (!sink || !sink->w_ptr) {
+			trace_kpb_error("kpb_copy(): invalid selector "
+					"sink pointers.");
+			ret = -EINVAL;
+			goto out;
+		}
 
-	/* Buffer source data internally in history buffer for future
-	 * use by clients.
-	 */
-	if (source->avail <= kpb->kpb_buffer_size) {
-		kpb_buffer_data(kpb, source, copy_bytes);
+		copy_bytes = MIN(sink->free, source->avail);
+		kpb_copy_samples(sink, source, copy_bytes, sample_width);
 
-		if (kpb->buffered_data < kpb->kpb_buffer_size)
-			kpb->buffered_data += copy_bytes;
-		else
-			kpb->is_internal_buffer_full = true;
+		/* Buffer source data internally in history buffer for future
+		 * use by clients.
+		 */
+		if (source->avail <= kpb->kpb_buffer_size) {
+			kpb_buffer_data(kpb, source, copy_bytes);
+
+			if (kpb->buffered_data < kpb->kpb_buffer_size)
+				kpb->buffered_data += copy_bytes;
+			else
+				kpb->is_internal_buffer_full = true;
+		} else {
+			trace_kpb_error("kpb_copy(): too much data to buffer.");
+		}
+
+		comp_update_buffer_produce(sink, copy_bytes);
+		comp_update_buffer_consume(source, copy_bytes);
+
+		ret = 0;
+		break;
+	case KPB_STATE_HOST_COPY:
+		/* In host copy state we only copy to host buffer. */
+		sink = kpb->host_sink;
+
+		/* Validate sink */
+		if (!sink || !sink->w_ptr) {
+			trace_kpb_error("kpb_copy(): invalid host "
+					"sink pointers.");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		copy_bytes = MIN(sink->free, source->avail);
+		kpb_copy_samples(sink, source, copy_bytes, sample_width);
+
+		comp_update_buffer_produce(sink, copy_bytes);
+		comp_update_buffer_consume(source, copy_bytes);
+
+		ret = 0;
+		break;
+	case KPB_STATE_DRAINING:
+		/* In draining state we only buffer data in internal,
+		 * history buffer.
+		 */
+		if (source->avail <= kpb->kpb_buffer_size) {
+			kpb_buffer_data(kpb, source, source->avail);
+			comp_update_buffer_consume(source, source->avail);
+		} else {
+			trace_kpb_error("kpb_copy(): too much data to buffer.");
+		}
+
+		ret = PPL_STATUS_PATH_STOP;
+		break;
+	default:
+		trace_kpb_error("kpb_copy(): wrong state! Copy forbidden.");
+		ret = PPL_STATUS_PATH_STOP;
+		break;
 	}
 
-	comp_update_buffer_produce(sink, copy_bytes);
-	comp_update_buffer_consume(source, copy_bytes);
-
+out:
 	return ret;
 }
 
