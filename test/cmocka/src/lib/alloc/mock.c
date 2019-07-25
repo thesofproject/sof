@@ -18,10 +18,9 @@ TRACE_IMPL()
 struct dma_copy;
 struct dma_sg_config;
 
-void arch_dump_regs_a(void *dump_buf, uint32_t ps)
+void arch_dump_regs_a(void *dump_buf)
 {
 	(void)dump_buf;
-	(void)ps;
 }
 
 int rstrlen(const char *s)
