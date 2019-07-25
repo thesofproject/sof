@@ -66,8 +66,8 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static uint64_t kpb_draining_task(void *arg);
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
-			    size_t size);
+static int kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
+			   size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
 static void kpb_clear_history_buffer(struct hb *buff);
 static void kpb_free_history_buffer(struct hb *buff);
@@ -538,8 +538,12 @@ static int kpb_copy(struct comp_dev *dev)
 		 * use by clients.
 		 */
 		if (source->avail <= kpb->kpb_buffer_size) {
-			kpb_buffer_data(kpb, source, copy_bytes);
-
+			ret = kpb_buffer_data(kpb, source, copy_bytes);
+			if (ret) {
+				trace_kpb_error("kpb_copy(): internal "
+						"buffering failed.");
+				goto out;
+			}
 			if (kpb->buffered_data < kpb->kpb_buffer_size)
 				kpb->buffered_data += copy_bytes;
 			else
@@ -578,7 +582,13 @@ static int kpb_copy(struct comp_dev *dev)
 		 * history buffer.
 		 */
 		if (source->avail <= kpb->kpb_buffer_size) {
-			kpb_buffer_data(kpb, source, source->avail);
+			ret = kpb_buffer_data(kpb, source, copy_bytes);
+			if (ret) {
+				trace_kpb_error("kpb_copy(): internal "
+						"buffering failed.");
+				goto out;
+			}
+
 			comp_update_buffer_consume(source, source->avail);
 		} else {
 			trace_kpb_error("kpb_copy(): too much data to buffer.");
@@ -604,18 +614,27 @@ out:
  * \param[in] source pointer to the buffer source.
  *
  */
-static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
-			    size_t size)
+static int kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
+			   size_t size)
 {
+	int ret = 0;
 	size_t size_to_copy = size;
 	size_t space_avail;
 	struct hb *buff = kpb->history_buffer;
 	void *read_ptr = source->r_ptr;
+	size_t timeout = platform_timer_get(platform_timer) +
+			 clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 
 	tracev_kpb("kpb_buffer_data()");
 
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
+		/* Are we stuck in buffering? */
+		if (timeout < platform_timer_get(platform_timer)) {
+			trace_kpb_error("kpb_buffer_data(): timeout.");
+			return -ETIME;
+		}
+
 		/* Check how much space there is in current write buffer */
 		space_avail = (uint32_t)buff->end_addr - (uint32_t)buff->w_ptr;
 
@@ -670,6 +689,7 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			buff->state = KPB_BUFFER_FREE;
 		}
 	}
+	return ret;
 }
 
 /**
