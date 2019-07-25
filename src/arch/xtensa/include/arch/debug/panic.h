@@ -40,7 +40,8 @@ static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
 				     + sizeof(struct sof_ipc_panic_info);
 	oops->plat_hdr.stackptr = stack_ptr;
 
-	oops->epc1 = *epc1;
+	if (epc1)
+		oops->epc1 = *epc1;
 
 	arch_dump_regs_a((void *)&oops->exccause, ps);
 }
