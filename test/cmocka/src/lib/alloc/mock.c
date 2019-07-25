@@ -9,7 +9,7 @@
 
 #include <sof/lib/alloc.h>
 #include <sof/trace/trace.h>
-#include <sof/sof.h>
+#include <sof/debug/panic.h>
 
 #include <mock_trace.h>
 

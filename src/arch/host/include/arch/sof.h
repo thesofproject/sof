@@ -38,11 +38,6 @@ static inline void *arch_get_stack_ptr(void)
 	return NULL;
 }
 
-static inline void *arch_dump_regs(void)
-{
-	return NULL;
-}
-
 #endif /* __ARCH_SOF_H__ */
 
 #else
