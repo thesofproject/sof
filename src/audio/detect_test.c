@@ -668,7 +668,20 @@ static int test_keyword_reset(struct comp_dev *dev)
 
 static int test_keyword_prepare(struct comp_dev *dev)
 {
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
+	uint16_t sample_width = cd->config.sample_width;
+
 	trace_keyword("test_keyword_prepare()");
+
+	if (valid_bits != sample_width) {
+		/* Default threshold value has to be changed
+		 * according to host new format.
+		 */
+		cd->config.activation_threshold = (valid_bits > 16U) ?
+					ACTIVATION_DEFAULT_THRESHOLD_S24 :
+					ACTIVATION_DEFAULT_THRESHOLD_S16;
+	}
 
 	return comp_set_state(dev, COMP_TRIGGER_PREPARE);
 }
