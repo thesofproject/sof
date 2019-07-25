@@ -10,7 +10,6 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/mailbox.h>
 #include <sof/platform.h>
-#include <sof/sof.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
 #include <ipc/trace.h>
@@ -59,7 +58,8 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	/* dump DSP core registers
 	 * after arch_dump_regs() use only inline funcs if needed
 	 */
-	arch_dump_regs(oldps, stack_ptr, data);
+	arch_dump_regs((void *)mailbox_get_exception_base(), oldps, stack_ptr,
+		       data);
 
 	/* panic - send IPC oops message to host */
 	platform_panic(p);

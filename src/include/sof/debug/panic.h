@@ -8,6 +8,7 @@
 #ifndef __SOF_DEBUG_PANIC_H__
 #define __SOF_DEBUG_PANIC_H__
 
+#include <arch/debug/panic.h>
 #include <ipc/trace.h>
 #include <stdint.h>
 
