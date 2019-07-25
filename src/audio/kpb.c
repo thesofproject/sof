@@ -337,6 +337,13 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	trace_kpb("kpb_prepare()");
 
+	if (kpb->state == KPB_STATE_RESETTING ||
+	    kpb->state == KPB_STATE_RESET_FINISHING) {
+		trace_kpb_error("kpb_prepare() error: can not prepare KPB "
+				"due to ongoing reset.");
+		return -EBUSY;
+	}
+
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
 		return ret;
