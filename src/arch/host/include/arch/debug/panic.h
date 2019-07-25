@@ -12,8 +12,8 @@
 
 #include <stdint.h>
 
-static inline void arch_dump_regs(void *dump_buf, uint32_t ps,
-				  uintptr_t stack_ptr, uintptr_t *epc1) { }
+static inline void arch_dump_regs(void *dump_buf, uintptr_t stack_ptr,
+				  uintptr_t *epc1) { }
 
 #endif /* __ARCH_DEBUG_PANIC_H__ */
 

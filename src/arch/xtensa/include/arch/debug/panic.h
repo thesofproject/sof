@@ -20,11 +20,10 @@
 #define ARCH_OOPS_SIZE (sizeof(struct sof_ipc_dsp_oops_xtensa) \
 			+ (XCHAL_NUM_AREGS * sizeof(uint32_t)))
 
-void arch_dump_regs_a(void *dump_buf, uint32_t ps);
+void arch_dump_regs_a(void *dump_buf);
 
 static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
-				  uint32_t ps, uintptr_t stack_ptr,
-				  uintptr_t *epc1)
+				  uintptr_t stack_ptr, uintptr_t *epc1)
 {
 	oops->arch_hdr.arch = ARCHITECTURE_ID;
 	oops->arch_hdr.totalsize = ARCH_OOPS_SIZE;
@@ -43,13 +42,13 @@ static inline void fill_core_dump(struct sof_ipc_dsp_oops_xtensa *oops,
 	if (epc1)
 		oops->epc1 = *epc1;
 
-	arch_dump_regs_a((void *)&oops->exccause, ps);
+	arch_dump_regs_a((void *)&oops->exccause);
 }
 
-static inline void arch_dump_regs(void *dump_buf, uint32_t ps,
-				  uintptr_t stack_ptr, uintptr_t *epc1)
+static inline void arch_dump_regs(void *dump_buf, uintptr_t stack_ptr,
+				  uintptr_t *epc1)
 {
-	fill_core_dump(dump_buf, ps, stack_ptr, epc1);
+	fill_core_dump(dump_buf, stack_ptr, epc1);
 
 	dcache_writeback_region(dump_buf, ARCH_OOPS_SIZE);
 }

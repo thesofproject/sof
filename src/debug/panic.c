@@ -32,11 +32,10 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 {
 	void *ext_offset;
 	size_t count;
-	uint32_t oldps;
 	uintptr_t stack_ptr;
 
 	/* disable all IRQs */
-	oldps = interrupt_global_disable();
+	interrupt_global_disable();
 
 	ext_offset = (void *)mailbox_get_exception_base() + ARCH_OOPS_SIZE;
 
@@ -58,8 +57,7 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	/* dump DSP core registers
 	 * after arch_dump_regs() use only inline funcs if needed
 	 */
-	arch_dump_regs((void *)mailbox_get_exception_base(), oldps, stack_ptr,
-		       data);
+	arch_dump_regs((void *)mailbox_get_exception_base(), stack_ptr, data);
 
 	/* panic - send IPC oops message to host */
 	platform_panic(p);
