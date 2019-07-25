@@ -63,7 +63,7 @@ struct model_data {
 struct comp_data {
 	struct sof_detect_test_config config;
 	struct model_data model;
-	int16_t activation;
+	int32_t activation;
 	uint32_t detected;
 	uint32_t detect_preamble; /**< current keyphrase preamble length */
 	uint32_t keyphrase_samples; /**< keyphrase length in samples */
@@ -142,11 +142,12 @@ static void default_detect_test(struct comp_dev *dev,
 				struct comp_buffer *source, uint32_t frames)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
-
-	int16_t *src;
-	int16_t diff;
+	void *src;
+	int32_t diff;
 	uint32_t count = frames; /**< Assuming single channel */
 	uint32_t sample;
+	uint16_t valid_bits = dev->params.sample_valid_bytes * 8;
+	const int32_t activation_threshold = cd->config.activation_threshold;
 
 	/* synthetic load */
 	if (cd->config.load_mips)
@@ -154,14 +155,21 @@ static void default_detect_test(struct comp_dev *dev,
 
 	/* perform detection within current period */
 	for (sample = 0; sample < count && !cd->detected; ++sample) {
-		src = buffer_read_frag_s16(source, sample);
-		diff = abs(*src) - abs(cd->activation);
-		diff >>= cd->config.activation_shift;
+		src = (valid_bits == 16U) ?
+		      buffer_read_frag_s16(source, sample) :
+		      buffer_read_frag_s32(source, sample);
+		if (valid_bits > 16U) {
+			diff = abs(*(int32_t *)src) - abs(cd->activation);
+		} else {
+			diff = abs(*(int16_t *)src) -
+			       abs((int16_t)cd->activation);
+		}
 
+		diff >>= cd->config.activation_shift;
 		cd->activation += diff;
 
 		if (cd->detect_preamble >= cd->keyphrase_samples) {
-			if (cd->activation >= cd->config.activation_threshold) {
+			if (cd->activation >= activation_threshold) {
 				/* The algorithm shall use cd->history_depth
 				 * to specify its draining size request.
 				 * Zero value means default config value
