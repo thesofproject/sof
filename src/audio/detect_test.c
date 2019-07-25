@@ -202,16 +202,21 @@ static int test_keyword_apply_config(struct comp_dev *dev,
 				     struct sof_detect_test_config *cfg)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
+	uint16_t sample_width;
 
 	assert(!memcpy_s(&cd->config, sizeof(cd->config), cfg,
 			 sizeof(struct sof_detect_test_config)));
 
+	sample_width = cd->config.sample_width;
+
 	if (!cd->config.activation_shift)
 		cd->config.activation_shift = ACTIVATION_DEFAULT_SHIFT;
 
-	if (!cd->config.activation_threshold)
-		cd->config.activation_threshold =
+	if (!cd->config.activation_threshold) {
+		cd->config.activation_threshold = (sample_width > 16U) ?
+			ACTIVATION_DEFAULT_THRESHOLD_S24 :
 			ACTIVATION_DEFAULT_THRESHOLD_S16;
+	}
 
 	return 0;
 }
