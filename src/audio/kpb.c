@@ -79,6 +79,8 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			     size_t sample_width);
 static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 			      size_t size, size_t sample_width);
+static void kpb_reset_history_buffer(struct hb *buff);
+
 
 /**
  * \brief Create a key phrase buffer component.
@@ -464,7 +466,7 @@ static int kpb_reset(struct comp_dev *dev)
 		/* Reset history buffer - zero its data reset pointers
 		 * and states.
 		 */
-		kpb_clear_history_buffer(kpb->history_buffer);
+		kpb_reset_history_buffer(kpb->history_buffer);
 	}
 
 	/* Unregister KPB for async notification */
@@ -1036,6 +1038,33 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 			j++;
 		}
 	}
+}
+
+/**
+ * \brief Reset history buffer.
+ * \param[in] buff - pointer to current history buffer.
+ *
+ * \return none.
+ */
+static void kpb_reset_history_buffer(struct hb *buff)
+{
+	struct hb *first_buff = buff;
+
+	trace_kpb("kpb_reset_history_buffer()");
+
+	if (!buff)
+		return;
+
+	kpb_clear_history_buffer(buff);
+
+	do {
+		buff->w_ptr = buff->start_addr;
+		buff->r_ptr = buff->start_addr;
+		buff->state = KPB_BUFFER_FREE;
+
+		buff = buff->next;
+
+	} while (buff != first_buff);
 }
 
 struct comp_driver comp_kpb = {
