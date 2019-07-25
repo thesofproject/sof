@@ -268,7 +268,7 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 		map->first_free += count;
 
 	/* update each block */
-	for (current = start; current < count; current++) {
+	for (current = start; current < start + count; current++) {
 		hdr = &map->block[current];
 		hdr->used = 1;
 	}
