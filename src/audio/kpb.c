@@ -288,8 +288,12 @@ static void kpb_free(struct comp_dev *dev)
 
 	trace_kpb("kpb_free()");
 
+	/* Unregister KPB from async notification */
+	notifier_unregister(&kpb->kpb_events);
+
 	/* Reclaim memory occupied by history buffer */
 	kpb_free_history_buffer(kpb->history_buffer);
+	kpb->history_buffer = NULL;
 
 	/* Free KPB */
 	rfree(kpb);
