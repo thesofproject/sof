@@ -445,20 +445,33 @@ static int kpb_reset(struct comp_dev *dev)
 
 	trace_kpb("kpb_reset()");
 
-	/* Reset state to be buffering */
-	kpb->state = KPB_STATE_BUFFERING;
-	/* Reset history buffer */
-	kpb->is_internal_buffer_full = false;
-	kpb_clear_history_buffer(kpb->history_buffer);
-
-	/* Reset amount of buffered data */
 	kpb->buffered_data = 0;
+	kpb->is_internal_buffer_full = false;
+
+	/* Change KPB state to RESET. If there is any ongoing job it will
+	 * shut itself gracefully first.
+	 */
+	if (kpb->state == KPB_STATE_BUFFERING ||
+	    kpb->state == KPB_STATE_DRAINING) {
+		/* KPB is performing some task now,
+		 * terminate it gently.
+		 */
+		kpb->state = KPB_STATE_RESETTING;
+		return -EBUSY;
+	}
+
+	if (kpb->history_buffer) {
+		/* Reset history buffer - zero its data reset pointers
+		 * and states.
+		 */
+		kpb_clear_history_buffer(kpb->history_buffer);
+	}
 
 	/* Unregister KPB for async notification */
 	notifier_unregister(&kpb->kpb_events);
 
-	/* Reset KPB state to initial buffering state */
-	kpb->state = KPB_STATE_BUFFERING;
+	/* Finally KPB is ready after reset */
+	kpb->state = KPB_STATE_PREPARING;
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
