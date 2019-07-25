@@ -139,11 +139,14 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 		return NULL;
 	}
 
-	dev->state = COMP_STATE_READY;
-	kpb->history_buffer = NULL;
 
-	/* Zero number of clients */
+	/* Init basic component data */
+	kpb->history_buffer = NULL;
 	kpb->kpb_no_of_clients = 0;
+
+	/* Kpb has been created successfully */
+	dev->state = COMP_STATE_READY;
+	kpb->state = KPB_STATE_CREATED;
 
 	return dev;
 }
