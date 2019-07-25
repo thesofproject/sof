@@ -90,7 +90,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 					(struct sof_ipc_comp_process *)comp;
 	size_t bs = ipc_process->size;
 	struct comp_dev *dev;
-	struct comp_data *cd;
+	struct comp_data *kpb;
 	size_t allocated_size;
 
 	trace_kpb("kpb_new()");
@@ -109,18 +109,18 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	assert(!memcpy_s(&dev->comp, sizeof(struct sof_ipc_comp_process),
 			 comp, sizeof(struct sof_ipc_comp_process)));
 
-	cd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*cd));
-	if (!cd) {
+	kpb = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*kpb));
+	if (!kpb) {
 		rfree(dev);
 		return NULL;
 	}
 
-	comp_set_drvdata(dev, cd);
+	comp_set_drvdata(dev, kpb);
 
-	assert(!memcpy_s(&cd->config, sizeof(cd->config), ipc_process->data,
+	assert(!memcpy_s(&kpb->config, sizeof(kpb->config), ipc_process->data,
 			 bs));
 
-	if (!kpb_is_sample_width_supported(cd->config.sampling_width)) {
+	if (!kpb_is_sample_width_supported(kpb->config.sampling_width)) {
 		trace_kpb_error("kpb_new() error: "
 		"requested sampling width not supported");
 		return NULL;
@@ -129,21 +129,21 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	/* Sampling width accepted. Lets calculate and store
 	 * its derivatives for quick lookup in runtime.
 	 */
-	cd->buffer_size = KPB_MAX_BUFFER_SIZE(cd->config.sampling_width);
+	kpb->buffer_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
 
-	if (cd->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
+	if (kpb->config.no_channels > KPB_MAX_SUPPORTED_CHANNELS) {
 		trace_kpb_error("kpb_new() error: "
 		"no of channels exceeded the limit");
 		return NULL;
 	}
 
-	if (cd->config.history_depth > cd->buffer_size) {
+	if (kpb->config.history_depth > kpb->buffer_size) {
 		trace_kpb_error("kpb_new() error: "
 		"history depth exceeded the limit");
 		return NULL;
 	}
 
-	if (cd->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
+	if (kpb->config.sampling_freq != KPB_SAMPLNG_FREQUENCY) {
 		trace_kpb_error("kpb_new() error: "
 		"requested sampling frequency not supported");
 		return NULL;
@@ -152,16 +152,16 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	dev->state = COMP_STATE_READY;
 
 	/* Zero number of clients */
-	cd->kpb_no_of_clients = 0;
+	kpb->kpb_no_of_clients = 0;
 
 	/* Set initial state as buffering */
-	cd->state = KPB_STATE_BUFFERING;
+	kpb->state = KPB_STATE_BUFFERING;
 
 	/* Allocate history buffer */
-	allocated_size = kpb_allocate_history_buffer(cd);
+	allocated_size = kpb_allocate_history_buffer(kpb);
 
 	/* Have we allocated what we requested? */
-	if (allocated_size < cd->buffer_size) {
+	if (allocated_size < kpb->buffer_size) {
 		trace_kpb_error("Failed to allocate space for "
 				"KPB buffer/s");
 		return NULL;
@@ -341,7 +341,7 @@ static int kpb_trigger(struct comp_dev *dev, int cmd)
  */
 static int kpb_prepare(struct comp_dev *dev)
 {
-	struct comp_data *cd = comp_get_drvdata(dev);
+	struct comp_data *kpb = comp_get_drvdata(dev);
 	int ret = 0;
 	int i;
 	struct list_item *blist;
@@ -357,33 +357,33 @@ static int kpb_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	/* Init private data */
-	cd->kpb_no_of_clients = 0;
-	cd->buffered_data = 0;
-	cd->state = KPB_STATE_BUFFERING;
+	kpb->kpb_no_of_clients = 0;
+	kpb->buffered_data = 0;
+	kpb->state = KPB_STATE_BUFFERING;
 
 	/* Init history buffer */
-	kpb_clear_history_buffer(cd->history_buffer);
+	kpb_clear_history_buffer(kpb->history_buffer);
 
 	/* Initialize clients data */
 	for (i = 0; i < KPB_MAX_NO_OF_CLIENTS; i++) {
-		cd->clients[i].state = KPB_CLIENT_UNREGISTERED;
-		cd->clients[i].r_ptr = NULL;
+		kpb->clients[i].state = KPB_CLIENT_UNREGISTERED;
+		kpb->clients[i].r_ptr = NULL;
 	}
 
 	/* Initialize KPB events */
-	cd->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
-	cd->kpb_events.cb_data = cd;
-	cd->kpb_events.cb = kpb_event_handler;
+	kpb->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
+	kpb->kpb_events.cb_data = kpb;
+	kpb->kpb_events.cb = kpb_event_handler;
 
 	/* Register KPB for async notification */
-	notifier_register(&cd->kpb_events);
+	notifier_register(&kpb->kpb_events);
 
 	/* Initialize draining task */
-	schedule_task_init(&cd->draining_task, /* task structure */
+	schedule_task_init(&kpb->draining_task, /* task structure */
 			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
 			   0, /* priority doesn't matter for IDLE tasks */
 			   kpb_draining_task, /* task function */
-			   &cd->draining_task_data, /* task private data */
+			   &kpb->draining_task_data, /* task private data */
 			   0, /* core on which we should run */
 			   0); /* not used flags */
 
@@ -400,10 +400,10 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 		if (sink->sink->comp.type == SOF_COMP_SELECTOR) {
 			/* We found proper real time sink */
-			cd->sel_sink = sink;
+			kpb->sel_sink = sink;
 		} else if (sink->sink->comp.type == SOF_COMP_HOST) {
 			/* We found proper host sink */
-			cd->host_sink = sink;
+			kpb->host_sink = sink;
 		}
 	}
 
