@@ -26,14 +26,17 @@ struct sof_detect_test_config {
 	/** activation right shift, determines the speed of activation */
 	uint16_t activation_shift;
 
+	/** sample width in bits */
+	int16_t sample_width;
+
 	/** activation threshold */
-	int16_t activation_threshold;
+	int32_t activation_threshold;
 
 	/** default draining size in bytes */
 	uint32_t history_depth;
 
 	/** reserved for future use */
-	uint32_t reserved[2];
+	uint32_t reserved[1];
 } __attribute__((packed));
 
 /** used for binary blob size sanity checks */
