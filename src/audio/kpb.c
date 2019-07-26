@@ -62,7 +62,7 @@ struct comp_data {
 /*! KPB private functions */
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
-static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli);
+static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
 static uint64_t kpb_draining_task(void *arg);
 static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 			    size_t size);
@@ -372,7 +372,7 @@ static int kpb_prepare(struct comp_dev *dev)
 
 	/* Initialize KPB events */
 	kpb->kpb_events.id = NOTIFIER_ID_KPB_CLIENT_EVT;
-	kpb->kpb_events.cb_data = kpb;
+	kpb->kpb_events.cb_data = dev;
 	kpb->kpb_events.cb = kpb_event_handler;
 
 	/* Register KPB for async notification */
@@ -608,7 +608,8 @@ static void kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source,
 static void kpb_event_handler(int message, void *cb_data, void *event_data)
 {
 	(void)message;
-	struct comp_data *kpb = (struct comp_data *)cb_data;
+	struct comp_dev *dev = (struct comp_dev *)cb_data;
+	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct kpb_event_data *evd = (struct kpb_event_data *)event_data;
 	struct kpb_client *cli = (struct kpb_client *)evd->client_data;
 
@@ -623,7 +624,7 @@ static void kpb_event_handler(int message, void *cb_data, void *event_data)
 		/*TODO*/
 		break;
 	case KPB_EVENT_BEGIN_DRAINING:
-		kpb_init_draining(kpb, cli);
+		kpb_init_draining(dev, cli);
 		break;
 	case KPB_EVENT_STOP_DRAINING:
 		/*TODO*/
@@ -689,8 +690,9 @@ static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli)
  * \param[in] cli - client's data.
  *
  */
-static void kpb_init_draining(struct comp_data *kpb, struct kpb_client *cli)
+static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 {
+	struct comp_data *kpb = comp_get_drvdata(dev);
 	bool is_sink_ready = (kpb->host_sink->sink->state == COMP_STATE_ACTIVE);
 	size_t sample_width = kpb->config.sampling_width;
 	size_t history_depth = cli->history_depth * kpb->config.no_channels *
