@@ -818,7 +818,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
 	size_t local_buffered = 0;
-	enum comp_copy_type copy_type = COMP_COPY_BLOCKING;
+	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
 
 	trace_kpb("kpb_init_draining()");
 
