@@ -822,7 +822,10 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 	trace_kpb("kpb_init_draining()");
 
-	if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
+	if (kpb->state != KPB_STATE_RUN) {
+		trace_kpb_error("kpb_init_draining() error: "
+				"wrong KPB state");
+	} else if (cli->id > KPB_MAX_NO_OF_CLIENTS) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"wrong client id");
 	/* TODO: check also if client is registered */
