@@ -813,7 +813,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t sample_width = kpb->config.sampling_width;
 	size_t history_depth = cli->history_depth * kpb->config.no_channels *
 			       (kpb->config.sampling_freq / 1000) *
-			       (sample_width / 8);
+			       (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8);
 	struct hb *buff = kpb->history_buffer;
 	struct hb *first_buff = buff;
 	size_t buffered = 0;
