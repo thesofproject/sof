@@ -132,7 +132,6 @@ sel_func sel_get_processing_function(struct comp_dev *dev)
 {
 	struct comp_data *cd = comp_get_drvdata(dev);
 	int i;
-	int *debug = (void *)0x9e008000;
 	/* map the channel selection function for source and sink buffers */
 	for (i = 0; i < ARRAY_SIZE(func_table); i++) {
 		if (cd->source_format != func_table[i].source)
@@ -141,8 +140,6 @@ sel_func sel_get_processing_function(struct comp_dev *dev)
 			continue;
 
 		/* TODO: add additional criteria as needed */
-		*debug = 0xFEED;
-		*(debug+1) = func_table[i].out_channels;
 		return func_table[i].sel_func;
 	}
 
