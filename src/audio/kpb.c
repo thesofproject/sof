@@ -526,16 +526,17 @@ static int kpb_copy(struct comp_dev *dev)
 
 	tracev_kpb("kpb_copy()");
 
-	if (kpb->state < KPB_STATE_RUN || kpb->state == KPB_STATE_RESETTING) {
-		trace_kpb_error("kpb_copy(): wrong state - copy forbidden!");
-		return PPL_STATUS_PATH_STOP;
-	}
-
 	/* Get source and sink buffers */
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
 	sink = (kpb->state == KPB_STATE_RUN) ? kpb->sel_sink
 	       : kpb->host_sink;
+
+	if (kpb->state < KPB_STATE_RUN || kpb->state == KPB_STATE_RESETTING) {
+		trace_kpb_error("kpb_copy(): wrong state - copy forbidden!");
+		comp_update_buffer_consume(source, source->avail);
+		return PPL_STATUS_PATH_STOP;
+	}
 
 	/* Stop copying downstream if in draining mode */
 	if (kpb->state == KPB_STATE_DRAINING) {
@@ -562,16 +563,13 @@ static int kpb_copy(struct comp_dev *dev)
 	if (source->avail <= kpb->kpb_buffer_size) {
 		ret = kpb_buffer_data(kpb, source, copy_bytes);
 		if (ret)
-			return ret;
-
+			goto out;
 		if (kpb->buffered_data < kpb->kpb_buffer_size)
 			kpb->buffered_data += copy_bytes;
-		else {
-			kpb->buffered_data += copy_bytes;
+		else
 			kpb->is_internal_buffer_full = true;
-		}
 	}
-
+out:
 	comp_update_buffer_produce(sink, copy_bytes);
 	comp_update_buffer_consume(source, copy_bytes);
 
@@ -619,9 +617,16 @@ static int32_t kpb_buffer_data(struct comp_data *kpb, struct comp_buffer *source
 
 		/* Are we stuck in buffering? */
 		if (timeout < platform_timer_get(platform_timer)) {
-			trace_kpb_error("kpb_buffer_data(): hanged.");
-			kpb_reset(kpb->dev);
-			return PPL_STATUS_PATH_STOP;
+			trace_kpb_error("kpb_buffer_data(): error "
+					"- buffering timeout.");
+
+			if (kpb->state == KPB_STATE_RESETTING) {
+				kpb->state = KPB_STATE_RESET_FINISH;
+				kpb_reset(kpb->dev);
+				return PPL_STATUS_PATH_STOP;
+			}
+			kpb->state = state_preserved;
+			return ret;
 		}
 		/* Check how much space there is in current write buffer */
 		space_avail = (uint32_t)buff->end_addr - (uint32_t)buff->w_ptr;
