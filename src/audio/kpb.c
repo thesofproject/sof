@@ -80,7 +80,8 @@ static void kpb_copy_samples(struct comp_buffer *sink,
 static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 			      size_t size, size_t sample_width);
 static void kpb_reset_history_buffer(struct hb *buff);
-
+static inline bool validate_host_params(size_t host_period_size,
+					size_t host_buffer_size);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -820,7 +821,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t local_buffered = 0;
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
 	size_t drain_interval = 0;
-	size_t period_size = kpb->host_period_size;
+	size_t host_period_size = kpb->host_period_size;
 	size_t host_buffer_size = kpb->host_buffer_size;
 	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	size_t bytes_per_ms = KPB_SAMPLING_WIDTH *
@@ -844,6 +845,10 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	} else if (!kpb_has_enough_history_data(kpb, buff, history_depth)) {
 		trace_kpb_error("kpb_init_draining() error: "
 				"not enough data in history buffer");
+	} else if (!validate_host_params(host_period_size,
+					 host_buffer_size)) {
+		trace_kpb_error("kpb_init_draining() error: "
+				"wrong host params.");
 	} else {
 		/* Draining accepted, find proper buffer to start reading
 		 * At this point we are guaranteed that there is enough data
@@ -1189,6 +1194,27 @@ static void kpb_reset_history_buffer(struct hb *buff)
 	} while (buff != first_buff);
 }
 
+static inline bool validate_host_params(size_t host_period_size,
+					size_t host_buffer_size)
+{
+	size_t drained_per_interval;
+
+	if (host_period_size == 0 || host_buffer_size == 0)
+		return false;
+
+	drained_per_interval = host_buffer_size / 2;
+
+	/* Check host period size sanity.
+	 * Here we check if host period size (which defines interval
+	 * time) will allow us to drain more data then the interval
+	 * takes - as only such condition guarantees draining will end.
+	 * The formula:
+	 *	drained_data_in_one_interval_ms > interval_break_ms
+	 * more
+	 */
+
+	return (drained_per_interval > host_period_size) ? true : false;
+}
 struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.ops = {
