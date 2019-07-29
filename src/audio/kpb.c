@@ -926,6 +926,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.drain_interval = drain_interval;
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
+		kpb->draining_task_data.dev = dev;
 
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
@@ -970,6 +971,13 @@ static uint64_t kpb_draining_task(void *arg)
 	time = platform_timer_get(platform_timer);
 
 	while (history_depth > 0) {
+		/* Have we received reset request? */
+		if (*draining_data->state == KPB_STATE_RESETTING) {
+			*draining_data->state = KPB_STATE_RESET_FINISHING;
+			kpb_reset(draining_data->dev);
+			goto out;
+		}
+
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
 
 		if (size_to_read > sink->free) {
@@ -1001,13 +1009,16 @@ static uint64_t kpb_draining_task(void *arg)
 		if (size_to_copy)
 			comp_update_buffer_produce(sink, size_to_copy);
 	}
-
+out:
 	time =  platform_timer_get(platform_timer) - time;
 
 	/* Draining is done. Now switch KPB to copy real time stream
 	 * to client's sink. This state is called "draining on demand"
+	 * Note! If KPB state changed during draining due to i.e reset request
+	 * we should not change that state.
 	 */
-	*draining_data->state = KPB_STATE_HOST_COPY;
+	*draining_data->state = (*draining_data->state == KPB_STATE_DRAINING) ?
+				KPB_STATE_HOST_COPY : *draining_data->state;
 
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE, &copy_type);
