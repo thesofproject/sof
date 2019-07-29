@@ -927,9 +927,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.drain_interval = drain_interval;
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
 
-		/* Change KPB internal state to DRAINING */
-		kpb->state = KPB_STATE_DRAINING;
-
 		/* Set host-sink copy mode to blocking */
 		comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
 				   &copy_type);
@@ -963,6 +960,9 @@ static uint64_t kpb_draining_task(void *arg)
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
 
 	trace_kpb("kpb_draining_task(), start.");
+
+	/* Change KPB internal state to DRAINING */
+	*draining_data->state = KPB_STATE_DRAINING;
 
 	time = platform_timer_get(platform_timer);
 
