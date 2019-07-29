@@ -963,6 +963,13 @@ static uint64_t kpb_draining_task(void *arg)
 	uint64_t draining_time_start = 0;
 	uint64_t draining_time_end = 0;
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
+	uint64_t drain_interval = draining_data->drain_interval;
+	uint64_t next_copy_time = 0;
+	uint64_t current_time = 0;
+	size_t period_bytes = 0;
+	size_t period_bytes_limit = draining_data->pb_limit;
+	size_t period_copy_start = platform_timer_get(platform_timer);
+	size_t time_taken = 0;
 
 	trace_kpb("kpb_draining_task(), start.");
 
@@ -977,6 +984,16 @@ static uint64_t kpb_draining_task(void *arg)
 			*draining_data->state = KPB_STATE_RESET_FINISHING;
 			kpb_reset(draining_data->dev);
 			goto out;
+		}
+		/* Are we ready to drain further or host still need some time
+		 * to read the data already provided?
+		 */
+		if (next_copy_time > platform_timer_get(platform_timer)) {
+			period_bytes = 0;
+			period_copy_start = platform_timer_get(platform_timer);
+			continue;
+		} else if (next_copy_time == 0) {
+			period_copy_start = platform_timer_get(platform_timer);
 		}
 
 		size_to_read = (uint32_t)buff->end_addr - (uint32_t)buff->r_ptr;
@@ -1001,14 +1018,23 @@ static uint64_t kpb_draining_task(void *arg)
 		buff->r_ptr += (uint32_t)size_to_copy;
 		history_depth -= size_to_copy;
 		drained += size_to_copy;
+		period_bytes += size_to_copy;
 
 		if (move_buffer) {
 			buff->r_ptr = buff->start_addr;
 			buff = buff->next;
 			move_buffer = false;
 		}
+
 		if (size_to_copy)
 			comp_update_buffer_produce(sink, size_to_copy);
+
+		if (period_bytes >= period_bytes_limit) {
+			current_time = platform_timer_get(platform_timer);
+			time_taken = current_time - period_copy_start;
+			next_copy_time = current_time + drain_interval -
+					 time_taken;
+		}
 	}
 out:
 	draining_time_end = platform_timer_get(platform_timer);
