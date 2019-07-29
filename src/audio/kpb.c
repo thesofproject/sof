@@ -970,6 +970,7 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t period_bytes_limit = draining_data->pb_limit;
 	size_t period_copy_start = platform_timer_get(platform_timer);
 	size_t time_taken = 0;
+	size_t *rt_stream_update = &draining_data->buffered_while_draining;
 
 	trace_kpb("kpb_draining_task(), start.");
 
@@ -1034,6 +1035,17 @@ static uint64_t kpb_draining_task(void *arg)
 			time_taken = current_time - period_copy_start;
 			next_copy_time = current_time + drain_interval -
 					 time_taken;
+		}
+
+		if (history_depth == 0) {
+		/* We have finished draining of requested data however
+		 * while we were draining real time stream could provided
+		 * new data which needs to be copy to host.
+		 */
+			trace_kpb("kpb: update history_depth by %d",
+				  *rt_stream_update);
+			history_depth += *rt_stream_update;
+			*rt_stream_update = 0;
 		}
 	}
 out:
