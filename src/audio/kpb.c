@@ -819,6 +819,14 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 	size_t buffered = 0;
 	size_t local_buffered = 0;
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
+	size_t drain_interval = 0;
+	size_t period_size = kpb->host_period_size;
+	size_t host_buffer_size = kpb->host_buffer_size;
+	size_t ticks_per_ms = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	size_t bytes_per_ms = KPB_SAMPLING_WIDTH *
+			      (KPB_SAMPLE_CONTAINER_SIZE(sample_width) / 8) *
+			      kpb->config.no_channels;
+	size_t period_bytes_limit = 0;
 
 	trace_kpb("kpb_init_draining()");
 
@@ -891,6 +899,17 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 
 		} while (buff != first_buff);
 
+		/* Calculate time in clock ticks each draining event shall
+		 * take place. This time will be used to synchronize us with
+		 * an end application interrupts.
+		 */
+		drain_interval = (host_period_size / bytes_per_ms) *
+				 ticks_per_ms;
+		/* In draining intervals we fill only half of host buffer.
+		 * This was we are safe to not overflow it.
+		 */
+		period_bytes_limit = host_buffer_size / 2;
+
 		trace_kpb("kpb_init_draining(), schedule draining task");
 
 		/* Add one-time draining task into the scheduler. */
@@ -899,6 +918,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.history_depth = history_depth;
 		kpb->draining_task_data.state = &kpb->state;
 		kpb->draining_task_data.sample_width = sample_width;
+		kpb->draining_task_data.drain_interval = drain_interval;
+		kpb->draining_task_data.pb_limit = period_bytes_limit;
 
 		/* Change KPB internal state to DRAINING */
 		kpb->state = KPB_STATE_DRAINING;
