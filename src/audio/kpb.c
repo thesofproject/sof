@@ -960,7 +960,8 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t size_to_copy;
 	bool move_buffer = false;
 	uint32_t drained = 0;
-	uint64_t time;
+	uint64_t draining_time_start = 0;
+	uint64_t draining_time_end = 0;
 	enum comp_copy_type copy_type = COMP_COPY_NORMAL;
 
 	trace_kpb("kpb_draining_task(), start.");
@@ -968,7 +969,7 @@ static uint64_t kpb_draining_task(void *arg)
 	/* Change KPB internal state to DRAINING */
 	*draining_data->state = KPB_STATE_DRAINING;
 
-	time = platform_timer_get(platform_timer);
+	draining_time_start = platform_timer_get(platform_timer);
 
 	while (history_depth > 0) {
 		/* Have we received reset request? */
@@ -1010,7 +1011,7 @@ static uint64_t kpb_draining_task(void *arg)
 			comp_update_buffer_produce(sink, size_to_copy);
 	}
 out:
-	time =  platform_timer_get(platform_timer) - time;
+	draining_time_end = platform_timer_get(platform_timer);
 
 	/* Draining is done. Now switch KPB to copy real time stream
 	 * to client's sink. This state is called "draining on demand"
@@ -1023,9 +1024,10 @@ out:
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE, &copy_type);
 
-	trace_kpb("kpb_draining_task(), done. %u drained in %d ms.",
-		   drained,
-		   time / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+	trace_kpb("KPB: kpb_draining_task(), done. %u drained in %d ms",
+		  drained,
+		  (draining_time_end - draining_time_start)
+		  / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
 
 	return 0;
 }
