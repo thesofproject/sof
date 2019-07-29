@@ -108,7 +108,7 @@ struct dd {
 	size_t buffered_while_draining;
 	size_t drain_interval;
 	size_t pb_limit; /**< Period bytes limit */
-
+	struct comp_dev *dev;
 };
 
 #ifdef UNIT_TEST
