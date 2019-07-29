@@ -931,6 +931,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		comp_set_attribute(kpb->host_sink->sink, COMP_ATTR_COPY_TYPE,
 				   &copy_type);
 
+		/* Pause selector copy. */
+		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
+
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0,
 			      SOF_SCHEDULE_FLAG_IDLE);
