@@ -1004,7 +1004,7 @@ static uint64_t kpb_draining_task(void *arg)
 			else
 				size_to_copy = sink->free;
 		} else {
-			if (size_to_read >= history_depth) {
+			if (size_to_read > history_depth) {
 				size_to_copy = history_depth;
 			} else {
 				size_to_copy = size_to_read;
