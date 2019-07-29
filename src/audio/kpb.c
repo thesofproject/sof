@@ -1083,18 +1083,28 @@ out:
 static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 			       size_t size, size_t sample_width)
 {
-	int16_t *dest;
-	int16_t *src = (int16_t *)source;
-	uint32_t i;
-	uint32_t j = 0;
-	uint32_t channel;
-	uint32_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
+	void *dst;
+	void *src = source;
+	size_t i;
+	size_t j = 0;
+	size_t channel;
+	size_t frames = KPB_BYTES_TO_FRAMES(size, sample_width);
 
 	for (i = 0; i < frames; i++) {
 		for (channel = 0; channel < KPB_NR_OF_CHANNELS; channel++) {
-			dest = buffer_write_frag_s16(sink, j);
-			*dest = *src;
-			src++;
+			if (sample_width == 16) {
+				dst = buffer_write_frag_s16(sink, j);
+				*((int16_t *)dst) = *((int16_t *)src);
+				src = ((int16_t *)src) + 1;
+			} else if (sample_width == 32 || sample_width == 24) {
+				dst = buffer_write_frag_s32(sink, j);
+				*((int32_t *)dst) = *((int32_t *)src);
+				src = ((int32_t *)src) + 1;
+			} else {
+				trace_kpb_error("KPB: An attempt to copy "
+						"not supported format!");
+				return;
+			}
 			j++;
 		}
 	}
