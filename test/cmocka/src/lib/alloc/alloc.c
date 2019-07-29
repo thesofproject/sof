@@ -290,6 +290,7 @@ static void test_lib_rballoc_filling_preceding_heaps(struct test_case *tc)
 	size_t first_heap_size = HEAP_BUFFER_SIZE - tc->alloc_size * 8;
 	size_t second_heap_size = HEAP_HP_BUFFER_SIZE - tc->alloc_size;
 	size_t third_heap_size = 2048;
+
 	int *first_mem = rballoc(tc->alloc_zone, SOF_MEM_CAPS_RAM,
 				 first_heap_size);
 	int *second_mem = rballoc(tc->alloc_zone, SOF_MEM_CAPS_RAM,
@@ -299,8 +300,9 @@ static void test_lib_rballoc_filling_preceding_heaps(struct test_case *tc)
 
 	assert_ptr_equal(first_mem, (unsigned int)&_buffer_heap);
 	assert_ptr_equal(second_mem, HEAP_HP_BUFFER_BASE);
+#if CONFIG_LP_SRAM
 	assert_ptr_equal(third_mem, HEAP_LP_BUFFER_BASE);
-
+#endif
 	rfree(first_mem);
 	rfree(second_mem);
 	rfree(third_mem);
