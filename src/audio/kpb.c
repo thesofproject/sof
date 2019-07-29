@@ -828,7 +828,8 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 			      kpb->config.no_channels;
 	size_t period_bytes_limit = 0;
 
-	trace_kpb("kpb_init_draining()");
+	trace_kpb("kpb_init_draining(): requested draining of %d [ms] from "
+		  "history buffer", cli->history_depth);
 
 	if (kpb->state != KPB_STATE_RUN) {
 		trace_kpb_error("kpb_init_draining() error: "
