@@ -106,6 +106,9 @@ struct dd {
 	enum kpb_state *state;
 	size_t sample_width;
 	size_t buffered_while_draining;
+	size_t drain_interval;
+	size_t pb_limit; /**< Period bytes limit */
+
 };
 
 #ifdef UNIT_TEST
