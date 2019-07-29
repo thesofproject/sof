@@ -22,7 +22,7 @@
  *	XCHAL_HW_VERSION_MINOR
  */
 
-/* Customer ID=4313; Build=0x5483b; Copyright (c) 1999-2015 Tensilica Inc.
+/* Customer ID=11430; Build=0x668e9; Copyright (c) 1999-2017 Tensilica Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -60,7 +60,7 @@
 				XTHAL_FAM_CACHED	XCHAL_SEP \
 				XTHAL_FAM_CACHED	XCHAL_SEP \
 				XTHAL_FAM_CACHED	XCHAL_SEP \
-				XTHAL_FAM_BYPASS	XCHAL_SEP \
+				XTHAL_FAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_FAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_FAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_FAM_EXCEPTION	XCHAL_SEP \
@@ -76,7 +76,7 @@
 				XTHAL_LAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_LAM_CACHED	XCHAL_SEP \
 				XTHAL_LAM_CACHED	XCHAL_SEP \
-				XTHAL_LAM_BYPASSG	XCHAL_SEP \
+				XTHAL_LAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_LAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_LAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_LAM_EXCEPTION	XCHAL_SEP \
@@ -92,7 +92,7 @@
 				XTHAL_SAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_SAM_WRITEBACK	XCHAL_SEP \
 				XTHAL_SAM_WRITEBACK_NOALLOC	XCHAL_SEP \
-				XTHAL_SAM_BYPASS	XCHAL_SEP \
+				XTHAL_SAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_SAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_SAM_EXCEPTION	XCHAL_SEP \
 				XTHAL_SAM_EXCEPTION	XCHAL_SEP \
@@ -111,7 +111,6 @@
  *  bypass instead of writethru).
  */
 #define XCHAL_CA_BYPASS  		2	/* cache disabled (bypassed) mode */
-#define XCHAL_CA_BYPASSBUF  		6	/* cache disabled (bypassed) bufferable mode */
 #define XCHAL_CA_WRITETHRU		1	/* cache enabled (write-through) mode */
 #define XCHAL_CA_WRITEBACK		4	/* cache enabled (write-back) mode */
 #define XCHAL_HAVE_CA_WRITEBACK_NOALLOC	1	/* write-back no-allocate availability */
@@ -207,11 +206,11 @@
 							   2^PAGESZ_BITS entries in list, unsupported entries are zero */
 #define XCHAL_ITLB_SET0_ASID_CONSTMASK		0	/* constant ASID bits; 0 if all writable */
 #define XCHAL_ITLB_SET0_VPN_CONSTMASK		0x00000000	/* constant VPN bits, not including entry index bits; 0 if all writable */
-#define XCHAL_ITLB_SET0_PPN_CONSTMASK		0xE0000000	/* constant PPN bits, including entry index bits; 0 if all writable */
+#define XCHAL_ITLB_SET0_PPN_CONSTMASK		0	/* constant PPN bits, including entry index bits; 0 if all writable */
 #define XCHAL_ITLB_SET0_CA_CONSTMASK		0	/* constant CA bits; 0 if all writable */
 #define XCHAL_ITLB_SET0_ASID_RESET		0	/* 1 if ASID reset values defined (and all writable); 0 otherwise */
 #define XCHAL_ITLB_SET0_VPN_RESET		0	/* 1 if VPN reset values defined (and all writable); 0 otherwise */
-#define XCHAL_ITLB_SET0_PPN_RESET		0	/* 1 if PPN reset values defined (and all writable); 0 otherwise */
+#define XCHAL_ITLB_SET0_PPN_RESET		1	/* 1 if PPN reset values defined (and all writable); 0 otherwise */
 #define XCHAL_ITLB_SET0_CA_RESET		1	/* 1 if CA reset values defined (and all writable); 0 otherwise */
 /*  Constant VPN values for each entry of ITLB way set 0 (because VPN_CONSTMASK is non-zero):  */
 #define XCHAL_ITLB_SET0_E0_VPN_CONST		0x00000000
@@ -222,15 +221,15 @@
 #define XCHAL_ITLB_SET0_E5_VPN_CONST		0xA0000000
 #define XCHAL_ITLB_SET0_E6_VPN_CONST		0xC0000000
 #define XCHAL_ITLB_SET0_E7_VPN_CONST		0xE0000000
-/*  Constant PPN values for each entry of ITLB way set 0 (because PPN_CONSTMASK is non-zero):  */
-#define XCHAL_ITLB_SET0_E0_PPN_CONST		0x00000000
-#define XCHAL_ITLB_SET0_E1_PPN_CONST		0x20000000
-#define XCHAL_ITLB_SET0_E2_PPN_CONST		0x40000000
-#define XCHAL_ITLB_SET0_E3_PPN_CONST		0x60000000
-#define XCHAL_ITLB_SET0_E4_PPN_CONST		0x80000000
-#define XCHAL_ITLB_SET0_E5_PPN_CONST		0xA0000000
-#define XCHAL_ITLB_SET0_E6_PPN_CONST		0xC0000000
-#define XCHAL_ITLB_SET0_E7_PPN_CONST		0xE0000000
+/*  Reset PPN values for each entry of ITLB way set 0 (because SET0_PPN_RESET is non-zero):  */
+#define XCHAL_ITLB_SET0_E0_PPN_RESET		0x00000000
+#define XCHAL_ITLB_SET0_E1_PPN_RESET		0x20000000
+#define XCHAL_ITLB_SET0_E2_PPN_RESET		0x40000000
+#define XCHAL_ITLB_SET0_E3_PPN_RESET		0x60000000
+#define XCHAL_ITLB_SET0_E4_PPN_RESET		0x80000000
+#define XCHAL_ITLB_SET0_E5_PPN_RESET		0xA0000000
+#define XCHAL_ITLB_SET0_E6_PPN_RESET		0xC0000000
+#define XCHAL_ITLB_SET0_E7_PPN_RESET		0xE0000000
 /*  Reset CA values for each entry of ITLB way set 0 (because SET0_CA_RESET is non-zero):  */
 #define XCHAL_ITLB_SET0_E0_CA_RESET		0x02
 #define XCHAL_ITLB_SET0_E1_CA_RESET		0x02
@@ -273,11 +272,11 @@
 							   2^PAGESZ_BITS entries in list, unsupported entries are zero */
 #define XCHAL_DTLB_SET0_ASID_CONSTMASK		0	/* constant ASID bits; 0 if all writable */
 #define XCHAL_DTLB_SET0_VPN_CONSTMASK		0x00000000	/* constant VPN bits, not including entry index bits; 0 if all writable */
-#define XCHAL_DTLB_SET0_PPN_CONSTMASK		0xE0000000	/* constant PPN bits, including entry index bits; 0 if all writable */
+#define XCHAL_DTLB_SET0_PPN_CONSTMASK		0	/* constant PPN bits, including entry index bits; 0 if all writable */
 #define XCHAL_DTLB_SET0_CA_CONSTMASK		0	/* constant CA bits; 0 if all writable */
 #define XCHAL_DTLB_SET0_ASID_RESET		0	/* 1 if ASID reset values defined (and all writable); 0 otherwise */
 #define XCHAL_DTLB_SET0_VPN_RESET		0	/* 1 if VPN reset values defined (and all writable); 0 otherwise */
-#define XCHAL_DTLB_SET0_PPN_RESET		0	/* 1 if PPN reset values defined (and all writable); 0 otherwise */
+#define XCHAL_DTLB_SET0_PPN_RESET		1	/* 1 if PPN reset values defined (and all writable); 0 otherwise */
 #define XCHAL_DTLB_SET0_CA_RESET		1	/* 1 if CA reset values defined (and all writable); 0 otherwise */
 /*  Constant VPN values for each entry of DTLB way set 0 (because VPN_CONSTMASK is non-zero):  */
 #define XCHAL_DTLB_SET0_E0_VPN_CONST		0x00000000
@@ -288,15 +287,15 @@
 #define XCHAL_DTLB_SET0_E5_VPN_CONST		0xA0000000
 #define XCHAL_DTLB_SET0_E6_VPN_CONST		0xC0000000
 #define XCHAL_DTLB_SET0_E7_VPN_CONST		0xE0000000
-/*  Constant PPN values for each entry of DTLB way set 0 (because PPN_CONSTMASK is non-zero):  */
-#define XCHAL_DTLB_SET0_E0_PPN_CONST		0x00000000
-#define XCHAL_DTLB_SET0_E1_PPN_CONST		0x20000000
-#define XCHAL_DTLB_SET0_E2_PPN_CONST		0x40000000
-#define XCHAL_DTLB_SET0_E3_PPN_CONST		0x60000000
-#define XCHAL_DTLB_SET0_E4_PPN_CONST		0x80000000
-#define XCHAL_DTLB_SET0_E5_PPN_CONST		0xA0000000
-#define XCHAL_DTLB_SET0_E6_PPN_CONST		0xC0000000
-#define XCHAL_DTLB_SET0_E7_PPN_CONST		0xE0000000
+/*  Reset PPN values for each entry of DTLB way set 0 (because SET0_PPN_RESET is non-zero):  */
+#define XCHAL_DTLB_SET0_E0_PPN_RESET		0x00000000
+#define XCHAL_DTLB_SET0_E1_PPN_RESET		0x20000000
+#define XCHAL_DTLB_SET0_E2_PPN_RESET		0x40000000
+#define XCHAL_DTLB_SET0_E3_PPN_RESET		0x60000000
+#define XCHAL_DTLB_SET0_E4_PPN_RESET		0x80000000
+#define XCHAL_DTLB_SET0_E5_PPN_RESET		0xA0000000
+#define XCHAL_DTLB_SET0_E6_PPN_RESET		0xC0000000
+#define XCHAL_DTLB_SET0_E7_PPN_RESET		0xE0000000
 /*  Reset CA values for each entry of DTLB way set 0 (because SET0_CA_RESET is non-zero):  */
 #define XCHAL_DTLB_SET0_E0_CA_RESET		0x02
 #define XCHAL_DTLB_SET0_E1_CA_RESET		0x02
@@ -311,4 +310,3 @@
 
 
 #endif /*XTENSA_CONFIG_CORE_MATMAP_H*/
-

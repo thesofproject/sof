@@ -10,7 +10,7 @@
  *  core-specific but system independent.
  */
 
-/* Customer ID=4313; Build=0x5483b; Copyright (c) 2000-2010 Tensilica Inc.
+/* Customer ID=11430; Build=0x668e9; Copyright (c) 2000-2010 Tensilica Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -46,7 +46,7 @@
 #define XSHAL_USE_ABSOLUTE_LITERALS	0	/* (sw-only option, whether software uses absolute literals) */
 #define XSHAL_HAVE_TEXT_SECTION_LITERALS 1 /* Set if there is some memory that allows both code and literals.  */
 
-#define XSHAL_ABI			XTHAL_ABI_CALL0	/* (sw-only option, selected ABI) */
+#define XSHAL_ABI			XTHAL_ABI_WINDOWED	/* (sw-only option, selected ABI) */
 /*  The above maps to one of the following constants:  */
 #define XTHAL_ABI_WINDOWED		0
 #define XTHAL_ABI_CALL0			1
@@ -66,8 +66,6 @@
 
 #define XSHAL_USE_FLOATING_POINT	1
 
-#define XSHAL_FLOATING_POINT_ABI        0
-
 /*----------------------------------------------------------------------
 				DEVICE ADDRESSES
   ----------------------------------------------------------------------*/
@@ -84,27 +82,24 @@
 #define XSHAL_IOBLOCK_CACHED_PADDR	0x70000000
 #define XSHAL_IOBLOCK_CACHED_SIZE	0x0E000000
 
-#define XSHAL_IOBLOCK_BYPASS_VADDR	0x90000000
-#define XSHAL_IOBLOCK_BYPASS_PADDR	0x90000000
+#define XSHAL_IOBLOCK_BYPASS_VADDR	0x50000000
+#define XSHAL_IOBLOCK_BYPASS_PADDR	0x50000000
 #define XSHAL_IOBLOCK_BYPASS_SIZE	0x0E000000
 
 /*  System ROM:  */
-#define XSHAL_ROM_VADDR		0x50000000
-#define XSHAL_ROM_PADDR		0x50000000
-#define XSHAL_ROM_SIZE		0x01000000
-/*  Largest available area (free of vectors):  */
-#define XSHAL_ROM_AVAIL_VADDR	0x50000300
-#define XSHAL_ROM_AVAIL_VSIZE	0x00FFFD00
+/*#define XSHAL_ROM_[VP]ADDR		...not configured...*/
+/*#define XSHAL_ROM_SIZE		...not configured...*/
+/*#define XSHAL_ROM_AVAIL_V{ADDR,SIZE}	...not configured...*/
 
 /*  System RAM:  */
-#define XSHAL_RAM_VADDR		0x60000000
-#define XSHAL_RAM_PADDR		0x60000000
-#define XSHAL_RAM_VSIZE		0x04000000
-#define XSHAL_RAM_PSIZE		0x04000000
+#define XSHAL_RAM_VADDR		0x00100000
+#define XSHAL_RAM_PADDR		0x00100000
+#define XSHAL_RAM_VSIZE		0x80000000
+#define XSHAL_RAM_PSIZE		0x80000000
 #define XSHAL_RAM_SIZE		XSHAL_RAM_PSIZE
 /*  Largest available area (free of vectors):  */
-#define XSHAL_RAM_AVAIL_VADDR	0x60000400
-#define XSHAL_RAM_AVAIL_VSIZE	0x03FFFC00
+#define XSHAL_RAM_AVAIL_VADDR	0x00100698
+#define XSHAL_RAM_AVAIL_VSIZE	0x7FFFF968
 
 /*
  *  Shadow system RAM (same device as system RAM, at different address).
@@ -117,7 +112,7 @@
  */
 #define XSHAL_RAM_BYPASS_VADDR		0xA0000000
 #define XSHAL_RAM_BYPASS_PADDR		0xA0000000
-#define XSHAL_RAM_BYPASS_PSIZE		0x04000000
+#define XSHAL_RAM_BYPASS_PSIZE		0x20000000
 
 /*  Alternate system RAM (different device than system RAM):  */
 /*#define XSHAL_ALTRAM_[VP]ADDR		...not configured...*/
@@ -131,9 +126,14 @@
 
 
 /*----------------------------------------------------------------------
- *  For use by reference testbench exit and diagnostic routines.
+ *  For use by reference testbench exit routines.
  */
-#define XSHAL_MAGIC_EXIT		0x0
+
+#define XSHAL_MAGIC_LOCAL_EXIT		0xc0000000
+#define XSHAL_MAGIC_EXIT	XSHAL_SIMIO_BYPASS_VADDR	/* (have PIF) */
+
+
+
 
 /*----------------------------------------------------------------------
  *			DEVICE-ADDRESS DEPENDENT...
@@ -162,26 +162,26 @@
  *  system (PIF) ROM, local memory, or XLMI.  */
 
 /*  These set any unused 512MB region to cache-BYPASS attribute:  */
-#define XSHAL_ALLVALID_CACHEATTR_WRITEBACK	0x22224442	/* enable caches in write-back mode */
-#define XSHAL_ALLVALID_CACHEATTR_WRITEALLOC	0x22221112	/* enable caches in write-allocate mode */
-#define XSHAL_ALLVALID_CACHEATTR_WRITETHRU	0x22221112	/* enable caches in write-through mode */
+#define XSHAL_ALLVALID_CACHEATTR_WRITEBACK	0x42244444	/* enable caches in write-back mode */
+#define XSHAL_ALLVALID_CACHEATTR_WRITEALLOC	0x12211111	/* enable caches in write-allocate mode */
+#define XSHAL_ALLVALID_CACHEATTR_WRITETHRU	0x12211111	/* enable caches in write-through mode */
 #define XSHAL_ALLVALID_CACHEATTR_BYPASS		0x22222222	/* disable caches in bypass mode */
 #define XSHAL_ALLVALID_CACHEATTR_DEFAULT	XSHAL_ALLVALID_CACHEATTR_WRITEBACK	/* default setting to enable caches */
 
 /*  These set any unused 512MB region to ILLEGAL attribute:  */
-#define XSHAL_STRICT_CACHEATTR_WRITEBACK	0xFFFF444F	/* enable caches in write-back mode */
-#define XSHAL_STRICT_CACHEATTR_WRITEALLOC	0xFFFF111F	/* enable caches in write-allocate mode */
-#define XSHAL_STRICT_CACHEATTR_WRITETHRU	0xFFFF111F	/* enable caches in write-through mode */
-#define XSHAL_STRICT_CACHEATTR_BYPASS		0xFFFF222F	/* disable caches in bypass mode */
+#define XSHAL_STRICT_CACHEATTR_WRITEBACK	0x4FF44444	/* enable caches in write-back mode */
+#define XSHAL_STRICT_CACHEATTR_WRITEALLOC	0x1FF11111	/* enable caches in write-allocate mode */
+#define XSHAL_STRICT_CACHEATTR_WRITETHRU	0x1FF11111	/* enable caches in write-through mode */
+#define XSHAL_STRICT_CACHEATTR_BYPASS		0x2FF22222	/* disable caches in bypass mode */
 #define XSHAL_STRICT_CACHEATTR_DEFAULT		XSHAL_STRICT_CACHEATTR_WRITEBACK	/* default setting to enable caches */
 
 /*  These set the first 512MB, if unused, to ILLEGAL attribute to help catch
  *  NULL-pointer dereference bugs; all other unused 512MB regions are set
  *  to cache-BYPASS attribute:  */
-#define XSHAL_TRAPNULL_CACHEATTR_WRITEBACK	0x2222444F	/* enable caches in write-back mode */
-#define XSHAL_TRAPNULL_CACHEATTR_WRITEALLOC	0x2222111F	/* enable caches in write-allocate mode */
-#define XSHAL_TRAPNULL_CACHEATTR_WRITETHRU	0x2222111F	/* enable caches in write-through mode */
-#define XSHAL_TRAPNULL_CACHEATTR_BYPASS		0x2222222F	/* disable caches in bypass mode */
+#define XSHAL_TRAPNULL_CACHEATTR_WRITEBACK	0x42244444	/* enable caches in write-back mode */
+#define XSHAL_TRAPNULL_CACHEATTR_WRITEALLOC	0x12211111	/* enable caches in write-allocate mode */
+#define XSHAL_TRAPNULL_CACHEATTR_WRITETHRU	0x12211111	/* enable caches in write-through mode */
+#define XSHAL_TRAPNULL_CACHEATTR_BYPASS		0x22222222	/* disable caches in bypass mode */
 #define XSHAL_TRAPNULL_CACHEATTR_DEFAULT	XSHAL_TRAPNULL_CACHEATTR_WRITEBACK	/* default setting to enable caches */
 
 /*----------------------------------------------------------------------
@@ -209,14 +209,14 @@
  *  of whether the macro is _WRITEBACK vs. _BYPASS etc.  */
 
 /*  These set any 512MB region unused on the XT2000 to ILLEGAL attribute:  */
-#define XSHAL_XT2000_CACHEATTR_WRITEBACK	0xFF22444F	/* enable caches in write-back mode */
-#define XSHAL_XT2000_CACHEATTR_WRITEALLOC	0xFF22111F	/* enable caches in write-allocate mode */
-#define XSHAL_XT2000_CACHEATTR_WRITETHRU	0xFF22111F	/* enable caches in write-through mode */
-#define XSHAL_XT2000_CACHEATTR_BYPASS		0xFF22222F	/* disable caches in bypass mode */
+#define XSHAL_XT2000_CACHEATTR_WRITEBACK	0x4F244244	/* enable caches in write-back mode */
+#define XSHAL_XT2000_CACHEATTR_WRITEALLOC	0x1F211211	/* enable caches in write-allocate mode */
+#define XSHAL_XT2000_CACHEATTR_WRITETHRU	0x1F211211	/* enable caches in write-through mode */
+#define XSHAL_XT2000_CACHEATTR_BYPASS		0x2F222222	/* disable caches in bypass mode */
 #define XSHAL_XT2000_CACHEATTR_DEFAULT		XSHAL_XT2000_CACHEATTR_WRITEBACK	/* default setting to enable caches */
 
 #define XSHAL_XT2000_PIPE_REGIONS	0x00000000	/* BusInt pipeline regions */
-#define XSHAL_XT2000_SDRAM_REGIONS	0x00000440	/* BusInt SDRAM regions */
+#define XSHAL_XT2000_SDRAM_REGIONS	0x00000401	/* BusInt SDRAM regions */
 
 
 /*----------------------------------------------------------------------
@@ -225,8 +225,8 @@
 
 #define XSHAL_VECTORS_PACKED		0
 #define XSHAL_STATIC_VECTOR_SELECT	0
-#define XSHAL_RESET_VECTOR_VADDR	0x50000000
-#define XSHAL_RESET_VECTOR_PADDR	0x50000000
+#define XSHAL_RESET_VECTOR_VADDR	0x00100000
+#define XSHAL_RESET_VECTOR_PADDR	0x00100000
 
 /*
  *  Sizes allocated to vectors by the system (memory map) configuration.
@@ -237,36 +237,35 @@
  *  Whether or not each vector happens to be in a system ROM is also
  *  a system configuration matter, sometimes useful, included here also:
  */
-#define XSHAL_RESET_VECTOR_SIZE	0x00000300
-#define XSHAL_RESET_VECTOR_ISROM	1
-#define XSHAL_USER_VECTOR_SIZE	0x00000038
+#define XSHAL_RESET_VECTOR_SIZE	0x000002E0
+#define XSHAL_RESET_VECTOR_ISROM	0
+#define XSHAL_USER_VECTOR_SIZE	0x0000001C
 #define XSHAL_USER_VECTOR_ISROM	0
 #define XSHAL_PROGRAMEXC_VECTOR_SIZE	XSHAL_USER_VECTOR_SIZE	/* for backward compatibility */
 #define XSHAL_USEREXC_VECTOR_SIZE	XSHAL_USER_VECTOR_SIZE	/* for backward compatibility */
-#define XSHAL_KERNEL_VECTOR_SIZE	0x00000038
+#define XSHAL_KERNEL_VECTOR_SIZE	0x0000001C
 #define XSHAL_KERNEL_VECTOR_ISROM	0
 #define XSHAL_STACKEDEXC_VECTOR_SIZE	XSHAL_KERNEL_VECTOR_SIZE	/* for backward compatibility */
 #define XSHAL_KERNELEXC_VECTOR_SIZE	XSHAL_KERNEL_VECTOR_SIZE	/* for backward compatibility */
-#define XSHAL_DOUBLEEXC_VECTOR_SIZE	0x00000040
+#define XSHAL_DOUBLEEXC_VECTOR_SIZE	0x0000001C
 #define XSHAL_DOUBLEEXC_VECTOR_ISROM	0
 #define XSHAL_WINDOW_VECTORS_SIZE	0x00000178
 #define XSHAL_WINDOW_VECTORS_ISROM	0
-#define XSHAL_INTLEVEL2_VECTOR_SIZE	0x00000038
+#define XSHAL_INTLEVEL2_VECTOR_SIZE	0x0000001C
 #define XSHAL_INTLEVEL2_VECTOR_ISROM	0
-#define XSHAL_INTLEVEL3_VECTOR_SIZE	0x00000038
+#define XSHAL_INTLEVEL3_VECTOR_SIZE	0x0000001C
 #define XSHAL_INTLEVEL3_VECTOR_ISROM	0
-#define XSHAL_INTLEVEL4_VECTOR_SIZE	0x00000038
+#define XSHAL_INTLEVEL4_VECTOR_SIZE	0x0000001C
 #define XSHAL_INTLEVEL4_VECTOR_ISROM	0
-#define XSHAL_INTLEVEL5_VECTOR_SIZE	0x00000038
+#define XSHAL_INTLEVEL5_VECTOR_SIZE	0x0000001C
 #define XSHAL_INTLEVEL5_VECTOR_ISROM	0
-#define XSHAL_INTLEVEL6_VECTOR_SIZE	0x00000038
+#define XSHAL_INTLEVEL6_VECTOR_SIZE	0x0000001C
 #define XSHAL_INTLEVEL6_VECTOR_ISROM	0
 #define XSHAL_DEBUG_VECTOR_SIZE		XSHAL_INTLEVEL6_VECTOR_SIZE
 #define XSHAL_DEBUG_VECTOR_ISROM	XSHAL_INTLEVEL6_VECTOR_ISROM
-#define XSHAL_NMI_VECTOR_SIZE	0x00000038
+#define XSHAL_NMI_VECTOR_SIZE	0x0000001C
 #define XSHAL_NMI_VECTOR_ISROM	0
 #define XSHAL_INTLEVEL7_VECTOR_SIZE	XSHAL_NMI_VECTOR_SIZE
 
 
 #endif /*XTENSA_CONFIG_SYSTEM_H*/
-

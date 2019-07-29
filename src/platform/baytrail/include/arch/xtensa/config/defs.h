@@ -1,6 +1,6 @@
 /* Definitions for Xtensa instructions, types, and protos. */
 
-/* Customer ID=4313; Build=0x5483b; Copyright (c) 2003-2004 Tensilica Inc.
+/* Customer ID=11430; Build=0x668e9; Copyright (c) 2003-2004 Tensilica Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the

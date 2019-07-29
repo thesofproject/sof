@@ -8,7 +8,7 @@
    that extend basic Xtensa core functionality.  It is customized to this
    Xtensa processor configuration.
 
-   Copyright (c) 1999-2015 Cadence Design Systems Inc.
+   Customer ID=11430; Build=0x668e9; Copyright (c) 1999-2017 Tensilica Inc.
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -40,9 +40,9 @@
 /*  Basic parameters of each coprocessor:  */
 #define XCHAL_CP1_NAME			"AudioEngineLX"
 #define XCHAL_CP1_IDENT			AudioEngineLX
-#define XCHAL_CP1_SA_SIZE		112	/* size of state save area */
+#define XCHAL_CP1_SA_SIZE		120	/* size of state save area */
 #define XCHAL_CP1_SA_ALIGN		8	/* min alignment of save area */
-#define XCHAL_CP_ID_AUDIOENGINELX   	1	/* coprocessor ID (0..7) */
+#define XCHAL_CP_ID_AUDIOENGINELX	1	/* coprocessor ID (0..7) */
 
 /*  Filler info for unassigned coprocessors, to simplify arrays etc:  */
 #define XCHAL_CP0_SA_SIZE		0
@@ -61,11 +61,11 @@
 #define XCHAL_CP7_SA_ALIGN		1
 
 /*  Save area for non-coprocessor optional and custom (TIE) state:  */
-#define XCHAL_NCP_SA_SIZE		8
+#define XCHAL_NCP_SA_SIZE		36
 #define XCHAL_NCP_SA_ALIGN		4
 
 /*  Total save area for optional and custom state (NCP + CPn):  */
-#define XCHAL_TOTAL_SA_SIZE		128	/* with 16-byte align padding */
+#define XCHAL_TOTAL_SA_SIZE		176	/* with 16-byte align padding */
 #define XCHAL_TOTAL_SA_ALIGN		8	/* actual minimum alignment */
 
 /*
@@ -108,20 +108,29 @@
  *		...what you want to expand...
  */
 
-#define XCHAL_NCP_SA_NUM	2
+#define XCHAL_NCP_SA_NUM	9
 #define XCHAL_NCP_SA_LIST(s)	\
+ XCHAL_SA_REG(s,1,2,1,1,      threadptr, 4, 4, 4,0x03E7,  ur,231, 32,0,0,0) \
+ XCHAL_SA_REG(s,1,0,0,1,          acclo, 4, 4, 4,0x0210,  sr,16 , 32,0,0,0) \
+ XCHAL_SA_REG(s,1,0,0,1,          acchi, 4, 4, 4,0x0211,  sr,17 ,  8,0,0,0) \
+ XCHAL_SA_REG(s,0,0,0,1,             m0, 4, 4, 4,0x0220,  sr,32 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,0,1,             m1, 4, 4, 4,0x0221,  sr,33 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,0,1,             m2, 4, 4, 4,0x0222,  sr,34 , 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,0,1,             m3, 4, 4, 4,0x0223,  sr,35 , 32,0,0,0) \
  XCHAL_SA_REG(s,0,0,0,1,             br, 4, 4, 4,0x0204,  sr,4  , 16,0,0,0) \
  XCHAL_SA_REG(s,0,0,0,1,      scompare1, 4, 4, 4,0x020C,  sr,12 , 32,0,0,0)
 
 #define XCHAL_CP0_SA_NUM	0
 #define XCHAL_CP0_SA_LIST(s)	/* empty */
 
-#define XCHAL_CP1_SA_NUM	16
+#define XCHAL_CP1_SA_NUM	18
 #define XCHAL_CP1_SA_LIST(s)	\
  XCHAL_SA_REG(s,0,0,1,0,     ae_ovf_sar, 8, 4, 4,0x03F0,  ur,240,  7,0,0,0) \
  XCHAL_SA_REG(s,0,0,1,0,     ae_bithead, 4, 4, 4,0x03F1,  ur,241, 32,0,0,0) \
  XCHAL_SA_REG(s,0,0,1,0,ae_ts_fts_bu_bp, 4, 4, 4,0x03F2,  ur,242, 16,0,0,0) \
  XCHAL_SA_REG(s,0,0,1,0,       ae_sd_no, 4, 4, 4,0x03F3,  ur,243, 28,0,0,0) \
+ XCHAL_SA_REG(s,0,0,1,0,     ae_cbegin0, 4, 4, 4,0x03F6,  ur,246, 32,0,0,0) \
+ XCHAL_SA_REG(s,0,0,1,0,       ae_cend0, 4, 4, 4,0x03F7,  ur,247, 32,0,0,0) \
  XCHAL_SA_REG(s,0,0,2,0,           aep0, 8, 8, 8,0x0060, aep,0  , 48,0,0,0) \
  XCHAL_SA_REG(s,0,0,2,0,           aep1, 8, 8, 8,0x0061, aep,1  , 48,0,0,0) \
  XCHAL_SA_REG(s,0,0,2,0,           aep2, 8, 8, 8,0x0062, aep,2  , 48,0,0,0) \
@@ -155,16 +164,5 @@
 
 /* Byte length of instruction from its first nibble (op0 field), per FLIX.  */
 #define XCHAL_OP0_FORMAT_LENGTHS	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8
-/* Byte length of instruction from its first byte, per FLIX.  */
-#define XCHAL_BYTE0_FORMAT_LENGTHS	\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8,\
-	3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8, 3,3,3,3,3,3,3,3,2,2,2,2,2,2,3,8
 
 #endif /*_XTENSA_CORE_TIE_H*/
-
