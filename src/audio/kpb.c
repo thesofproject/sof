@@ -598,7 +598,8 @@ static int kpb_copy(struct comp_dev *dev)
 		ret = PPL_STATUS_PATH_STOP;
 		break;
 	default:
-		trace_kpb_error("kpb_copy(): wrong state! Copy forbidden.");
+		trace_kpb_error("kpb_copy(): wrong state - %d! "
+				" Copy forbidden.", kpb->state);
 		ret = -EIO;
 		break;
 	}
