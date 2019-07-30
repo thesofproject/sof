@@ -624,8 +624,8 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	struct comp_data *kpb = comp_get_drvdata(dev);
 	struct hb *buff = kpb->history_buffer;
 	void *read_ptr = source->r_ptr;
-	size_t timeout = platform_timer_get(platform_timer) +
-			 clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+	uint64_t timeout = 0;
+	uint64_t current_time = 0;
 	enum kpb_state state_preserved = kpb->state;
 	struct dd *draining_data = &kpb->draining_task_data;
 
@@ -639,6 +639,8 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	if (kpb->state == KPB_STATE_DRAINING)
 		draining_data->buffered_while_draining += size_to_copy;
 
+	timeout = platform_timer_get(platform_timer) +
+		  clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
 	/* Let's store audio stream data in internal history buffer */
 	while (size_to_copy) {
 		/* Reset was requested, it's time to stop buffering and finish
@@ -651,8 +653,10 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 		}
 
 		/* Are we stuck in buffering? */
-		if (timeout < platform_timer_get(platform_timer)) {
-			trace_kpb_error("kpb_buffer_data(): timeout.");
+		current_time = platform_timer_get(platform_timer);
+		if (timeout < current_time) {
+			trace_kpb_error("kpb_buffer_data(): timeout of %d [ms]",
+					(current_time - timeout));
 			return -ETIME;
 		}
 
