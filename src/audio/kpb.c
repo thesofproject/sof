@@ -22,6 +22,7 @@
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
+#include <sof/lib/agent.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
@@ -934,6 +935,9 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		/* Pause selector copy. */
 		kpb->sel_sink->sink->state = COMP_STATE_PAUSED;
 
+		/* Disable system agent during draining */
+		sa_disable();
+
 		/* Schedule draining task */
 		schedule_task(&kpb->draining_task, 0, 0,
 			      SOF_SCHEDULE_FLAG_IDLE);
@@ -1065,6 +1069,9 @@ out:
 		  drained,
 		  (draining_time_end - draining_time_start)
 		  / clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1));
+
+	/* Enable system agent back */
+	sa_enable();
 
 	return 0;
 }
