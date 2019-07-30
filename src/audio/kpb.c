@@ -352,6 +352,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	/* Init private data */
+	kpb->state = KPB_STATE_PREPARING;
 	kpb->kpb_no_of_clients = 0;
 	kpb->buffered_data = 0;
 	kpb->host_buffer_size = dev->params.buffer.size;
@@ -418,7 +419,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 	}
 
-	kpb->state = KPB_STATE_BUFFERING;
+	kpb->state = KPB_STATE_RUN;
 
 	return ret;
 }
