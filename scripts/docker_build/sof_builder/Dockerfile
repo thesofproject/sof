@@ -47,7 +47,8 @@ RUN apt-get -y update && \
 		wget \
 		unzip \
 		cmake \
-		python3
+		python3 \
+		libglib2.0-dev
 
 
 # Use ToT alsa utils for the latest topology patches.
