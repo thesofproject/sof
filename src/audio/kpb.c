@@ -453,7 +453,7 @@ static int kpb_reset(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 
-	trace_kpb("kpb_reset()");
+	trace_kpb("kpb_reset(): resetting from state %d", kpb->state);
 
 	kpb->buffered_data = 0;
 	kpb->is_internal_buffer_full = false;
