@@ -43,6 +43,7 @@
 
 /* KPB private data, runtime data */
 struct comp_data {
+	uint64_t state_log;
 	enum kpb_state state; /**< current state of KPB component */
 	uint32_t kpb_no_of_clients; /**< number of registered clients */
 	struct kpb_client clients[KPB_MAX_NO_OF_CLIENTS];
@@ -81,6 +82,8 @@ static void kpb_drain_samples(void *source, struct comp_buffer *sink,
 static void kpb_reset_history_buffer(struct hb *buff);
 static inline bool validate_host_params(size_t host_period_size,
 					size_t host_buffer_size);
+static inline void kpb_change_state(struct comp_data *kpb,
+				    enum kpb_state state);
 
 /**
  * \brief Create a key phrase buffer component.
@@ -145,6 +148,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 	/* Init basic component data */
 	kpb->history_buffer = NULL;
 	kpb->kpb_no_of_clients = 0;
+	kpb->state_log = 0;
 
 	/* Kpb has been created successfully */
 	dev->state = COMP_STATE_READY;
@@ -1253,6 +1257,23 @@ static inline bool validate_host_params(size_t host_period_size,
 
 	return (drained_per_interval > host_period_size) ? true : false;
 }
+
+/**
+ * \brief Change KPB state and log this change internaly.
+ * \param[in] kpb - KPB component data pointer.
+ * \param[in] state - current KPB state.
+ *
+ * \return none.
+ */
+static inline void kpb_change_state(struct comp_data *kpb,
+				    enum kpb_state state)
+{
+	trace_kpb("kpb_change_state(): from %d to %d",
+		  kpb->state, state);
+	kpb->state = state;
+	kpb->state_log = (kpb->state_log << 4) | state;
+}
+
 struct comp_driver comp_kpb = {
 	.type = SOF_COMP_KPB,
 	.ops = {
