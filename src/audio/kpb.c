@@ -344,7 +344,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	if (kpb->state == KPB_STATE_RESETTING ||
 	    kpb->state == KPB_STATE_RESET_FINISHING) {
 		trace_kpb_error("kpb_prepare() error: can not prepare KPB "
-				"due to ongoing reset.");
+				"due to ongoing reset. state log %d",
+				kpb->state_log);
 		return -EBUSY;
 	}
 
@@ -457,7 +458,8 @@ static int kpb_reset(struct comp_dev *dev)
 {
 	struct comp_data *kpb = comp_get_drvdata(dev);
 
-	trace_kpb("kpb_reset(): resetting from state %d", kpb->state);
+	trace_kpb("kpb_reset(): resetting from state %d, state log %d",
+		  kpb->state, kpb->state_log);
 
 	kpb->buffered_data = 0;
 	kpb->is_internal_buffer_full = false;
@@ -602,8 +604,9 @@ static int kpb_copy(struct comp_dev *dev)
 		ret = PPL_STATUS_PATH_STOP;
 		break;
 	default:
-		trace_kpb_error("kpb_copy(): wrong state - %d! "
-				" Copy forbidden.", kpb->state);
+		trace_kpb_error("kpb_copy(): wrong state, copy forbidden. "
+				"(state %d, state log %d) ",
+				kpb->state, kpb->state_log);
 		ret = -EIO;
 		break;
 	}
@@ -660,8 +663,10 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 		/* Are we stuck in buffering? */
 		current_time = platform_timer_get(platform_timer);
 		if (timeout < current_time) {
-			trace_kpb_error("kpb_buffer_data(): timeout of %d [ms]",
-					(current_time - timeout));
+			trace_kpb_error("kpb_buffer_data(): timeout of %d [ms] "
+					"(current state %d, state log %d)",
+					(current_time - timeout), kpb->state,
+					kpb->state_log);
 			return -ETIME;
 		}
 
