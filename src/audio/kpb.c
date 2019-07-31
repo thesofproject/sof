@@ -364,6 +364,8 @@ static int kpb_prepare(struct comp_dev *dev)
 	kpb->host_period_size = dev->params.host_period_bytes;
 	kpb->config.sampling_width = dev->params.sample_container_bytes * 8;
 	kpb->kpb_buffer_size = KPB_MAX_BUFFER_SIZE(kpb->config.sampling_width);
+	kpb->sel_sink = NULL;
+	kpb->host_sink = NULL;
 
 	if (!kpb->history_buffer) {
 		/* Allocate history buffer */
@@ -422,6 +424,13 @@ static int kpb_prepare(struct comp_dev *dev)
 			/* We found proper host sink */
 			kpb->host_sink = sink;
 		}
+	}
+
+	if (!kpb->sel_sink || !kpb->host_sink) {
+		trace_kpb("kpb_prepare() error: could not find "
+			  "sinks: sel_sink %d host_sink %d",
+			  (uint32_t)kpb->sel_sink, (uint32_t)kpb->host_sink);
+		ret = -EIO;
 	}
 
 	kpb_change_state(kpb, KPB_STATE_RUN);
