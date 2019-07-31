@@ -36,6 +36,9 @@
 	.global	xtos_c_handler_table
 	.align 4
 xtos_c_handler_table:
+	.rept	XCHAL_EXCCAUSE_NUM
+	.word	xtos_p_none
+	.endr
 
 	/*
 	 *  Default/empty exception C handler.
