@@ -152,7 +152,7 @@ static struct comp_dev *kpb_new(struct sof_ipc_comp *comp)
 
 	/* Kpb has been created successfully */
 	dev->state = COMP_STATE_READY;
-	kpb->state = KPB_STATE_CREATED;
+	kpb_change_state(kpb, KPB_STATE_CREATED);
 
 	return dev;
 }
@@ -356,7 +356,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	/* Init private data */
-	kpb->state = KPB_STATE_PREPARING;
+	kpb_change_state(kpb, KPB_STATE_PREPARING);
 	kpb->kpb_no_of_clients = 0;
 	kpb->buffered_data = 0;
 	kpb->host_buffer_size = dev->params.buffer.size;
@@ -423,7 +423,7 @@ static int kpb_prepare(struct comp_dev *dev)
 		}
 	}
 
-	kpb->state = KPB_STATE_RUN;
+	kpb_change_state(kpb, KPB_STATE_RUN);
 
 	return ret;
 }
@@ -470,7 +470,7 @@ static int kpb_reset(struct comp_dev *dev)
 		/* KPB is performing some task now,
 		 * terminate it gently.
 		 */
-		kpb->state = KPB_STATE_RESETTING;
+		kpb_change_state(kpb, KPB_STATE_RESETTING);
 		return -EBUSY;
 	}
 
@@ -485,7 +485,7 @@ static int kpb_reset(struct comp_dev *dev)
 	notifier_unregister(&kpb->kpb_events);
 
 	/* Finally KPB is ready after reset */
-	kpb->state = KPB_STATE_PREPARING;
+	kpb_change_state(kpb, KPB_STATE_PREPARING);
 
 	return comp_set_state(dev, COMP_TRIGGER_RESET);
 }
@@ -639,7 +639,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING)
 		return PPL_STATUS_PATH_STOP;
 
-	kpb->state = KPB_STATE_BUFFERING;
+	kpb_change_state(kpb, KPB_STATE_BUFFERING);
 
 	if (kpb->state == KPB_STATE_DRAINING)
 		draining_data->buffered_while_draining += size_to_copy;
@@ -652,7 +652,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 		 * KPB reset.
 		 */
 		if (kpb->state == KPB_STATE_RESETTING) {
-			kpb->state = KPB_STATE_RESET_FINISHING;
+			kpb_change_state(kpb, KPB_STATE_RESET_FINISHING);
 			kpb_reset(dev);
 			return PPL_STATUS_PATH_STOP;
 		}
@@ -720,7 +720,7 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 		}
 	}
 
-	kpb->state = state_preserved;
+	kpb_change_state(kpb, state_preserved);
 	return ret;
 }
 
@@ -932,7 +932,6 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		kpb->draining_task_data.sink = kpb->host_sink;
 		kpb->draining_task_data.history_buffer = buff;
 		kpb->draining_task_data.history_depth = history_depth;
-		kpb->draining_task_data.state = &kpb->state;
 		kpb->draining_task_data.sample_width = sample_width;
 		kpb->draining_task_data.drain_interval = drain_interval;
 		kpb->draining_task_data.pb_limit = period_bytes_limit;
@@ -984,18 +983,19 @@ static uint64_t kpb_draining_task(void *arg)
 	size_t period_copy_start = platform_timer_get(platform_timer);
 	size_t time_taken = 0;
 	size_t *rt_stream_update = &draining_data->buffered_while_draining;
+	struct comp_data *kpb = comp_get_drvdata(draining_data->dev);
 
 	trace_kpb("kpb_draining_task(), start.");
 
 	/* Change KPB internal state to DRAINING */
-	*draining_data->state = KPB_STATE_DRAINING;
+	kpb_change_state(kpb, KPB_STATE_DRAINING);
 
 	draining_time_start = platform_timer_get(platform_timer);
 
 	while (history_depth > 0) {
 		/* Have we received reset request? */
-		if (*draining_data->state == KPB_STATE_RESETTING) {
-			*draining_data->state = KPB_STATE_RESET_FINISHING;
+		if (kpb->state == KPB_STATE_RESETTING) {
+			kpb_change_state(kpb, KPB_STATE_RESET_FINISHING);
 			kpb_reset(draining_data->dev);
 			goto out;
 		}
@@ -1069,8 +1069,8 @@ out:
 	 * Note! If KPB state changed during draining due to i.e reset request
 	 * we should not change that state.
 	 */
-	*draining_data->state = (*draining_data->state == KPB_STATE_DRAINING) ?
-				KPB_STATE_HOST_COPY : *draining_data->state;
+	if (kpb->state == KPB_STATE_DRAINING)
+		kpb_change_state(kpb, KPB_STATE_HOST_COPY);
 
 	/* Reset host-sink copy mode back to unblocking */
 	comp_set_attribute(sink->sink, COMP_ATTR_COPY_TYPE, &copy_type);
