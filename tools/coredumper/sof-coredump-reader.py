@@ -729,7 +729,9 @@ class CoreDumpReader(object):
 			stdoutPrint("set *0x{:08x}=0x{:08x}\n"
 				.format(addr, dw))
 
-		if self.core_dump.exccause:
+                # Exccause 63 is reserved for panics; the other causes come
+                # from actual exceptions
+		if self.core_dump.exccause != 63:
 			verbosePrint("\n# *EXCEPTION*\n")
 			verbosePrint("# exccause: " + EXCCAUSE_CODE[self.core_dump.exccause][0])
 			if EXCCAUSE_CODE[self.core_dump.exccause][1]:
