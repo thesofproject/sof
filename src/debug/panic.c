@@ -88,5 +88,14 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 				 filename, strlen + 1));
 	}
 
+	/* To distinguish regular panic() calls from exceptions, we will
+	 * set a reserved value for the exception cause (63) so the
+	 * coredumper tool could distinguish between the situations.
+	 */
+	__asm__ __volatile__("movi a3, 63\n\t"
+			     "wsr.exccause a3\n\t"
+			     "esync" : : :
+			     "a3", "memory");
+
 	panic_rewind(p, 0, &panicinfo, NULL);
 }
