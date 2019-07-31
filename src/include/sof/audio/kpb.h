@@ -103,7 +103,6 @@ struct dd {
 	struct hb *history_buffer;
 	size_t history_depth;
 	uint8_t is_draining_active;
-	enum kpb_state *state;
 	size_t sample_width;
 	size_t buffered_while_draining;
 	size_t drain_interval;
