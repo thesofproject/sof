@@ -97,6 +97,11 @@ SectionVendorTokens."sof_esai_tokens" {
 	SOF_TKN_IMX_ESAI_MCLK_ID		"1100"
 }
 
+SectionVendorTokens."sof_stream_tokens" {
+	SOF_TKN_STREAM_PLAYBACK_COMPATIBLE_D0I3		"1200"
+	SOF_TKN_STREAM_CAPTURE_COMPATIBLE_D0I3		"1201"
+}
+
 SectionVendorTokens."sof_led_tokens" {
 	SOF_TKN_MUTE_LED_USE			"1300"
 	SOF_TKN_MUTE_LED_DIRECTION		"1301"
