@@ -1356,7 +1356,8 @@ static void dmic_start(struct dai *dai)
 	 * is not suppressed by gain ramp somewhere in the capture pipe.
 	 */
 
-	schedule_task(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US, 0, 0);
+	schedule_task(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US,
+		      DMIC_UNMUTE_RAMP_US, 0);
 
 	trace_dmic("dmic_start(), done");
 }

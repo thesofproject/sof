@@ -43,7 +43,7 @@ enum {
 
 struct scheduler_ops {
 	void (*schedule_task)(struct task *w, uint64_t start,
-			      uint64_t deadline, uint32_t flags);
+			      uint64_t period, uint32_t flags);
 	int (*schedule_task_init)(struct task *task, uint32_t xflags);
 	void (*schedule_task_running)(struct task *task);
 	void (*schedule_task_complete)(struct task *task);
@@ -73,7 +73,7 @@ void schedule_task_running(struct task *task);
 
 void schedule_task_complete(struct task *task);
 
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
+void schedule_task(struct task *task, uint64_t start, uint64_t period,
 		   uint32_t flags);
 
 void reschedule_task(struct task *task, uint64_t start);

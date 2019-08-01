@@ -35,6 +35,7 @@
 
 struct ll_task_pdata {
 	uint32_t flags;
+	uint64_t period;
 };
 
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */

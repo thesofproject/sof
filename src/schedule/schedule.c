@@ -54,11 +54,11 @@ void schedule_task_free(struct task *task)
 		task->ops->schedule_task_free(task);
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
+void schedule_task(struct task *task, uint64_t start, uint64_t period,
 		   uint32_t flags)
 {
 	if (task->ops->schedule_task)
-		task->ops->schedule_task(task, start, deadline, flags);
+		task->ops->schedule_task(task, start, period, flags);
 }
 
 void reschedule_task(struct task *task, uint64_t start)
