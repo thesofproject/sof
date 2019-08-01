@@ -361,15 +361,17 @@ static inline void insert_task_to_queue(struct task *w,
 	list_item_append(&w->list, q_list);
 }
 
-static void ll_schedule(struct ll_schedule_data *queue, struct task *w,
-			uint64_t start)
+static void schedule_ll_task(struct task *w, uint64_t start, uint64_t deadline,
+			     uint32_t flags)
 {
-	struct ll_task_pdata *ll_pdata;
+	struct ll_schedule_data *queue =
+		(*arch_schedule_get_data())->ll_sch_data;
 	struct task *ll_task;
+	struct ll_task_pdata *ll_pdata;
 	struct list_item *wlist;
-	uint32_t flags;
+	uint32_t lock_flags;
 
-	spin_lock_irq(&queue->lock, flags);
+	spin_lock_irq(&queue->lock, lock_flags);
 
 	/* check to see if we are already scheduled ? */
 	list_for_item(wlist, &queue->tasks) {
@@ -399,30 +401,34 @@ static void ll_schedule(struct ll_schedule_data *queue, struct task *w,
 	ll_set_timer(queue);
 
 out:
-	spin_unlock_irq(&queue->lock, flags);
+	spin_unlock_irq(&queue->lock, lock_flags);
 }
 
-static void schedule_ll_task(struct task *w, uint64_t start, uint64_t deadline,
-			     uint32_t flags)
+static void reschedule_ll_task(struct task *w, uint64_t start)
 {
-	(void)deadline;
-	(void)flags;
-	ll_schedule((*arch_schedule_get_data())->ll_sch_data, w, start);
-}
-
-static void reschedule(struct ll_schedule_data *queue, struct task *w,
-		       uint64_t time)
-{
+	struct ll_schedule_data *queue =
+		(*arch_schedule_get_data())->ll_sch_data;
+	struct ll_task_pdata *ll_pdata;
 	struct task *ll_task;
 	struct list_item *wlist;
 	uint32_t flags;
+	uint64_t time;
+
+	time = queue->ticks_per_msec * start / 1000;
+
+	ll_pdata = ll_sch_get_pdata(w);
+
+	/* convert start micro seconds to CPU clock ticks */
+	if (ll_pdata->flags & SOF_SCHEDULE_FLAG_SYNC)
+		time += ll_get_timer(queue);
+	else
+		time += ll_shared_ctx->last_tick;
 
 	spin_lock_irq(&queue->lock, flags);
 
 	/* check to see if we are already scheduled */
 	list_for_item(wlist, &queue->tasks) {
 		ll_task = container_of(wlist, struct task, list);
-
 		/* found it */
 		if (ll_task == w)
 			goto found;
@@ -437,26 +443,6 @@ found:
 	w->start = time;
 
 	spin_unlock_irq(&queue->lock, flags);
-}
-
-static void reschedule_ll_task(struct task *w, uint64_t start)
-{
-	struct ll_schedule_data *queue =
-		(*arch_schedule_get_data())->ll_sch_data;
-	uint64_t time;
-	struct ll_task_pdata *ll_pdata;
-
-	ll_pdata = ll_sch_get_pdata(w);
-
-	time = queue->ticks_per_msec * start / 1000;
-
-	/* convert start micro seconds to CPU clock ticks */
-	if (ll_pdata->flags & SOF_SCHEDULE_FLAG_SYNC)
-		time += ll_get_timer(queue);
-	else
-		time += ll_shared_ctx->last_tick;
-
-	reschedule(queue, w, time);
 }
 
 static int schedule_ll_task_cancel(struct task *w)
