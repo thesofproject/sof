@@ -136,7 +136,19 @@ void platform_init_memmap(void);
 #define SOF_STACK_BASE		(DRAM0_BASE + DRAM0_SIZE)
 #define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
-/* Vector and literal sizes - not in core-isa.h */
+/* Vector and literal addresses and sizes - do not use core-isa.h */
+#define SOF_MEM_RESET_VECT		0xff2c0000
+#define SOF_MEM_VECBASE			0xff2c0400
+#define SOF_MEM_INTLEVEL2_VECT		0xff2c057c
+#define SOF_MEM_INTLEVEL3_VECT		0xff2c059c
+#define SOF_MEM_INTLEVEL4_VECT		0xff2c05bc
+#define SOF_MEM_INTLEVEL5_VECT		0xff2c05dc
+#define SOF_MEM_INTLEVEL6_VECT		0xff2c05fc
+#define SOF_MEM_INTLEVEL7_VECT		0xff2c061c
+#define SOF_MEM_KERNEL_VECT		0xff2c063c
+#define SOF_MEM_USER_VECT		0xff2c065c
+#define SOF_MEM_DOUBLEEXC_VECT		0xff2c067c
+
 #define SOF_MEM_VECT_LIT_SIZE		0x4
 #define SOF_MEM_VECT_TEXT_SIZE		0x1c
 #define SOF_MEM_VECT_SIZE		(SOF_MEM_VECT_TEXT_SIZE + \
