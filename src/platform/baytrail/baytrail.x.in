@@ -8,78 +8,77 @@
  */
 
 #include <sof/lib/memory.h>
-#include <xtensa/config/core-isa.h>
 
 OUTPUT_ARCH(xtensa)
 
 MEMORY
 {
   vector_reset_text :
-        org = XCHAL_RESET_VECTOR0_PADDR,
+        org = SOF_MEM_RESET_VECT,
         len = SOF_MEM_RESET_TEXT_SIZE
   vector_reset_lit :
-        org = XCHAL_RESET_VECTOR0_PADDR + SOF_MEM_RESET_TEXT_SIZE,
+        org = SOF_MEM_RESET_VECT + SOF_MEM_RESET_TEXT_SIZE,
         len = SOF_MEM_RESET_LIT_SIZE
   vector_base_text :
-        org = XCHAL_VECBASE_RESET_PADDR,
+        org = SOF_MEM_VECBASE,
         len = SOF_MEM_VECBASE_LIT_SIZE
   vector_int2_lit :
-        org = XCHAL_INTLEVEL2_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_INTLEVEL2_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int2_text :
-        org = XCHAL_INTLEVEL2_VECTOR_PADDR,
+        org = SOF_MEM_INTLEVEL2_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int3_lit :
-        org = XCHAL_INTLEVEL3_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_INTLEVEL3_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int3_text :
-        org = XCHAL_INTLEVEL3_VECTOR_PADDR,
+        org = SOF_MEM_INTLEVEL3_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int4_lit :
-        org = XCHAL_INTLEVEL4_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_INTLEVEL4_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int4_text :
-        org = XCHAL_INTLEVEL4_VECTOR_PADDR,
+        org = SOF_MEM_INTLEVEL4_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int5_lit :
-        org = XCHAL_INTLEVEL5_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_INTLEVEL5_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int5_text :
-        org = XCHAL_INTLEVEL5_VECTOR_PADDR,
+        org = SOF_MEM_INTLEVEL5_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int6_lit :
-        org = XCHAL_INTLEVEL6_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_INTLEVEL6_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int6_text :
-        org = XCHAL_INTLEVEL6_VECTOR_PADDR,
+        org = SOF_MEM_INTLEVEL6_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_int7_lit :
-        org = XCHAL_INTLEVEL7_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_INTLEVEL7_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_int7_text :
-        org = XCHAL_INTLEVEL7_VECTOR_PADDR,
+        org = SOF_MEM_INTLEVEL7_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_kernel_lit :
-        org = XCHAL_KERNEL_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_KERNEL_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_kernel_text :
-        org = XCHAL_KERNEL_VECTOR_PADDR,
+        org = SOF_MEM_KERNEL_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_user_lit :
-        org = XCHAL_USER_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_USER_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_user_text :
-        org = XCHAL_USER_VECTOR_PADDR,
+        org = SOF_MEM_USER_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   vector_double_lit :
-        org = XCHAL_DOUBLEEXC_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
+        org = SOF_MEM_DOUBLEEXC_VECT - SOF_MEM_VECT_LIT_SIZE,
         len = SOF_MEM_VECT_LIT_SIZE
   vector_double_text :
-        org = XCHAL_DOUBLEEXC_VECTOR_PADDR,
+        org = SOF_MEM_DOUBLEEXC_VECT,
         len = SOF_MEM_VECT_TEXT_SIZE
   sof_text_start :
-        org = XCHAL_DOUBLEEXC_VECTOR_PADDR + SOF_MEM_VECT_SIZE,
-        len = (IRAM_BASE + IRAM_SIZE) - (XCHAL_DOUBLEEXC_VECTOR_PADDR + SOF_MEM_VECT_SIZE)
+        org = SOF_MEM_DOUBLEEXC_VECT + SOF_MEM_VECT_SIZE,
+        len = (IRAM_BASE + IRAM_SIZE) - (SOF_MEM_DOUBLEEXC_VECT + SOF_MEM_VECT_SIZE)
   sof_data_ro :
         org = DRAM0_BASE,
         len = SOF_MEM_RO_SIZE
@@ -147,7 +146,7 @@ ENTRY(_ResetVector)
 _rom_store_table = 0;
 
 /* ABI0 does not use Window base */
-PROVIDE(_memmap_vecbase_reset = XCHAL_VECBASE_RESET_PADDR);
+PROVIDE(_memmap_vecbase_reset = SOF_MEM_VECBASE);
 
 /* Various memory-map dependent cache attribute settings: */
 _memmap_cacheattr_wb_base = 0x44024000;
