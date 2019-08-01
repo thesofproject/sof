@@ -105,11 +105,8 @@ static inline void ll_clear_timer(struct ll_schedule_data *queue)
 	if (!atomic_sub(&ll_shared_ctx->total_num_work, 1))
 		queue->ts->timer_clear(&queue->ts->timer);
 
-	if (!atomic_sub(&queue->num_ll, 1)) {
-		timer_disable(&queue->ts->timer);
-		atomic_sub(&ll_shared_ctx->timer_clients, 1);
+	if (!atomic_sub(&queue->num_ll, 1))
 		ll_shared_ctx->timers[cpu_get_id()] = NULL;
-	}
 }
 
 /* is there any work pending in the current time window ? */
