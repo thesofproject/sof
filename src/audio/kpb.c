@@ -607,7 +607,7 @@ static int kpb_copy(struct comp_dev *dev)
 		 * history buffer.
 		 */
 		if (source->avail <= kpb->kpb_buffer_size) {
-			ret = kpb_buffer_data(dev, source, copy_bytes);
+			ret = kpb_buffer_data(dev, source, source->avail);
 			if (ret) {
 				trace_kpb_error("kpb_copy(): internal "
 						"buffering failed.");
