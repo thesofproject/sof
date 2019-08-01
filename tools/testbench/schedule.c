@@ -37,11 +37,11 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		return -ENOENT;
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
+void schedule_task(struct task *task, uint64_t start, uint64_t period,
 		   uint32_t flags)
 {
 	if (schedulers[task->type]->schedule_task)
-		schedulers[task->type]->schedule_task(task, start, deadline,
+		schedulers[task->type]->schedule_task(task, start, period,
 			flags);
 }
 

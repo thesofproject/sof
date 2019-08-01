@@ -34,7 +34,7 @@ struct edf_schedule_data {
 
 static void schedule_edf(void);
 static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t deadline, uint32_t flags);
+			      uint64_t period, uint32_t flags);
 static int schedule_edf_task_cancel(struct task *task);
 static void schedule_edf_task_complete(struct task *task);
 static void schedule_edf_task_running(struct task *task);
@@ -243,7 +243,7 @@ static int schedule_edf_task_cancel(struct task *task)
 }
 
 static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t deadline, uint32_t flags)
+			      uint64_t period, uint32_t flags)
 {
 	struct edf_schedule_data *sch =
 		(*arch_schedule_get_data())->edf_sch_data;
@@ -290,7 +290,7 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 			PLATFORM_SCHEDULE_COST;
 
 	/* calculate deadline - TODO: include MIPS */
-	edf_pdata->deadline = task->start + ticks_per_ms * deadline / 1000;
+	edf_pdata->deadline = task->start + ticks_per_ms * period / 1000;
 
 	/* add task to the proper list */
 	if (flags & SOF_SCHEDULE_FLAG_IDLE) {

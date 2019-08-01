@@ -39,9 +39,9 @@ static void schedule_edf_task_complete(struct task *task)
 
 /* schedule task */
 static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t deadline, uint32_t flags)
+			      uint64_t period, uint32_t flags)
 {
-	(void)deadline;
+	(void)period;
 	list_item_prepend(&task->list, &sch->list);
 	task->state = SOF_TASK_STATE_QUEUED;
 

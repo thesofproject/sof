@@ -417,7 +417,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 				return ret;
 		}
 
-		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US, 0, 0);
+		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+			      VOL_RAMP_UPDATE_US, 0);
 		break;
 
 	case SOF_CTRL_CMD_SWITCH:
@@ -443,7 +444,8 @@ static int volume_ctrl_set_cmd(struct comp_dev *dev,
 			}
 		}
 
-		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US, 0, 0);
+		schedule_task(&cd->volwork, VOL_RAMP_UPDATE_US,
+			      VOL_RAMP_UPDATE_US, 0);
 		break;
 
 	default:

@@ -64,7 +64,7 @@ struct ll_queue_shared_context {
 static struct ll_queue_shared_context *ll_shared_ctx;
 
 static void reschedule_ll_task(struct task *w, uint64_t start);
-static void schedule_ll_task(struct task *w, uint64_t start, uint64_t deadline,
+static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period,
 			     uint32_t flags);
 static int schedule_ll_task_cancel(struct task *w);
 static void schedule_ll_task_free(struct task *w);
@@ -158,16 +158,13 @@ static int is_ll_pending(struct ll_schedule_data *queue)
 }
 
 static inline void ll_next_timeout(struct ll_schedule_data *queue,
-				   struct task *work,
-				   uint64_t reschedule_usecs)
+				   struct task *work)
 {
 	/* reschedule work */
+	struct ll_task_pdata *ll_task_pdata = ll_sch_get_pdata(work);
 	uint64_t next_d = 0;
-	struct ll_task_pdata *ll_task_pdata;
 
-	ll_task_pdata = ll_sch_get_pdata(work);
-
-	next_d = queue->ticks_per_msec * reschedule_usecs / 1000;
+	next_d = queue->ticks_per_msec * ll_task_pdata->period / 1000;
 
 	if (ll_task_pdata->flags & SOF_SCHEDULE_FLAG_SYNC) {
 		work->start += next_d;
@@ -207,8 +204,7 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 					ll_shared_ctx->timers[cpu] = NULL;
 			} else {
 				/* get next work timeout */
-				ll_next_timeout(queue, ll_task,
-						reschedule_usecs);
+				ll_next_timeout(queue, ll_task);
 			}
 		}
 	}
@@ -361,13 +357,13 @@ static inline void insert_task_to_queue(struct task *w,
 	list_item_append(&w->list, q_list);
 }
 
-static void schedule_ll_task(struct task *w, uint64_t start, uint64_t deadline,
+static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period,
 			     uint32_t flags)
 {
 	struct ll_schedule_data *queue =
 		(*arch_schedule_get_data())->ll_sch_data;
-	struct task *ll_task;
 	struct ll_task_pdata *ll_pdata;
+	struct task *ll_task;
 	struct list_item *wlist;
 	uint32_t lock_flags;
 
@@ -394,6 +390,8 @@ static void schedule_ll_task(struct task *w, uint64_t start, uint64_t deadline,
 		w->start += ll_get_timer(queue);
 	else
 		w->start += ll_shared_ctx->last_tick;
+
+	ll_pdata->period = period;
 
 	/* insert work into list */
 	insert_task_to_queue(w, &queue->tasks);
