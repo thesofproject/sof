@@ -356,9 +356,6 @@ static int kpb_prepare(struct comp_dev *dev)
 	if (ret < 0)
 		return ret;
 
-	if (ret == COMP_STATUS_STATE_ALREADY_SET)
-		return PPL_STATUS_PATH_STOP;
-
 	/* Init private data */
 	kpb_change_state(kpb, KPB_STATE_PREPARING);
 	kpb->kpb_no_of_clients = 0;
