@@ -179,14 +179,18 @@ static int idc_pipeline_trigger(uint32_t cmd)
 	if (!pcm_dev)
 		return -ENODEV;
 
+	/* invalidate pipeline on start */
+	if (cmd == COMP_TRIGGER_START) {
+		/* invalidate cd before accessing it */
+		dcache_invalidate_region(pcm_dev->cd, sizeof(*pcm_dev->cd));
+
+		pipeline_cache(pcm_dev->cd->pipeline,
+			       pcm_dev->cd, CACHE_INVALIDATE);
+	}
+
 	/* check whether we are executing from the right core */
 	if (arch_cpu_get_id() != pcm_dev->cd->pipeline->ipc_pipe.core)
 		return -EINVAL;
-
-	/* invalidate pipeline on start */
-	if (cmd == COMP_TRIGGER_START)
-		pipeline_cache(pcm_dev->cd->pipeline,
-			       pcm_dev->cd, CACHE_INVALIDATE);
 
 	/* trigger pipeline */
 	ret = pipeline_trigger(pcm_dev->cd->pipeline, pcm_dev->cd, cmd);
@@ -219,6 +223,10 @@ static int idc_component_command(uint32_t cmd)
 	comp_dev = ipc_get_comp(_ipc, data->comp_id);
 	if (!comp_dev)
 		return -ENODEV;
+
+	/* If we're here, then the pipeline is already running on this core.
+	 * No need to invalidate any data.
+	 */
 
 	/* check whether we are executing from the right core */
 	if (arch_cpu_get_id() != comp_dev->cd->pipeline->ipc_pipe.core)
