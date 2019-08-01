@@ -255,6 +255,10 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 
 	edf_pdata = edf_sch_get_pdata(task);
 
+	/* invalidate if slave core */
+	if (cpu_is_slave(task->core))
+		dcache_invalidate_region(edf_pdata, sizeof(*edf_pdata));
+
 	tracev_edf_sch("schedule_edf_task()");
 
 	spin_lock_irq(&sch->lock, lock_flags);
@@ -472,14 +476,19 @@ static int schedule_edf_task_init(struct task *task, uint32_t xflags)
 	if (edf_sch_get_pdata(task))
 		return -EEXIST;
 
-	edf_pdata = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
-			    SOF_MEM_CAPS_RAM, sizeof(*edf_pdata));
+	edf_pdata = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
+			    sizeof(*edf_pdata));
 
 	if (!edf_pdata) {
 		trace_edf_sch_error("schedule_edf_task_init() error:"
 				    "alloc failed");
 		return -ENOMEM;
 	}
+
+	/* flush for slave core */
+	if (cpu_is_slave(task->core))
+		dcache_writeback_invalidate_region(edf_pdata,
+						   sizeof(*edf_pdata));
 
 	edf_sch_set_pdata(task, edf_pdata);
 

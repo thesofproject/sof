@@ -7,6 +7,8 @@
 /* Generic scheduler */
 
 #include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
+#include <sof/lib/cpu.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <ipc/topology.h>
@@ -41,6 +43,7 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 
 	if (task->ops->schedule_task_init)
 		ret = task->ops->schedule_task_init(task, xflags);
+
 out:
 	return ret;
 }
