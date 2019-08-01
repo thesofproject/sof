@@ -14,6 +14,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
 #include <sof/lib/shim.h>
 #include <sof/platform.h>
@@ -167,7 +168,8 @@ int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
  */
 static int idc_pipeline_trigger(uint32_t cmd)
 {
-	struct sof_ipc_stream *data = _ipc->comp_data;
+	struct ipc *ipc = cache_to_uncache(_ipc);
+	struct sof_ipc_stream *data = ipc->comp_data;
 	struct ipc_comp_dev *pcm_dev;
 	int ret;
 
@@ -175,7 +177,7 @@ static int idc_pipeline_trigger(uint32_t cmd)
 	dcache_invalidate_region(data, sizeof(*data));
 
 	/* check whether component exists */
-	pcm_dev = ipc_get_comp(_ipc, data->comp_id);
+	pcm_dev = ipc_get_comp(ipc, data->comp_id);
 	if (!pcm_dev)
 		return -ENODEV;
 
@@ -210,7 +212,8 @@ static int idc_pipeline_trigger(uint32_t cmd)
  */
 static int idc_component_command(uint32_t cmd)
 {
-	struct sof_ipc_ctrl_data *data = _ipc->comp_data;
+	struct ipc *ipc = cache_to_uncache(_ipc);
+	struct sof_ipc_ctrl_data *data = ipc->comp_data;
 	struct ipc_comp_dev *comp_dev;
 	int ret;
 
@@ -220,7 +223,7 @@ static int idc_component_command(uint32_t cmd)
 				 data->rhdr.hdr.size - sizeof(*data));
 
 	/* check whether component exists */
-	comp_dev = ipc_get_comp(_ipc, data->comp_id);
+	comp_dev = ipc_get_comp(ipc, data->comp_id);
 	if (!comp_dev)
 		return -ENODEV;
 
