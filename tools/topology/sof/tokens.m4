@@ -96,3 +96,8 @@ SectionVendorTokens."sof_process_tokens" {
 SectionVendorTokens."sof_esai_tokens" {
 	SOF_TKN_IMX_ESAI_MCLK_ID		"1100"
 }
+
+SectionVendorTokens."sof_stream_tokens" {
+	SOF_TKN_STREAM_PLAYBACK_COMPATIBLE_D0I3		"1200"
+	SOF_TKN_STREAM_CAPTURE_COMPATIBLE_D0I3		"1201"
+}
