@@ -452,6 +452,9 @@ static int dw_dma_stop(struct dma *dma, unsigned int channel)
 
 	spin_lock_irq(&dma->lock, flags);
 
+	if (chan->status != COMP_STATE_ACTIVE)
+		goto out;
+
 #if CONFIG_DMA_SUSPEND_DRAIN
 	/* channel cannot be disabled right away, so first we need to
 	 * suspend it and drain the FIFO
@@ -489,6 +492,7 @@ static int dw_dma_stop(struct dma *dma, unsigned int channel)
 
 	chan->status = COMP_STATE_PREPARE;
 
+out:
 	spin_unlock_irq(&dma->lock, flags);
 
 	return 0;
