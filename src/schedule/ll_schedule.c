@@ -380,6 +380,10 @@ static void ll_schedule(struct ll_schedule_data *queue, struct task *w,
 	w->start = queue->ticks_per_msec * start / 1000;
 	ll_pdata = ll_sch_get_pdata(w);
 
+	/* invalidate if slave core */
+	if (cpu_is_slave(w->core))
+		dcache_invalidate_region(ll_pdata, sizeof(*ll_pdata));
+
 	/* convert start micro seconds to CPU clock ticks */
 	if (ll_pdata->flags & SOF_SCHEDULE_FLAG_SYNC)
 		w->start += ll_get_timer(queue);
@@ -573,8 +577,8 @@ static int schedule_ll_task_init(struct task *w, uint32_t xflags)
 	if (ll_sch_get_pdata(w))
 		return -EEXIST;
 
-	ll_pdata = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
-			   SOF_MEM_CAPS_RAM, sizeof(*ll_pdata));
+	ll_pdata = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
+			   sizeof(*ll_pdata));
 
 	if (!ll_pdata) {
 		trace_ll_error("schedule_ll_task_init() error: alloc failed");
@@ -584,6 +588,11 @@ static int schedule_ll_task_init(struct task *w, uint32_t xflags)
 	ll_sch_set_pdata(w, ll_pdata);
 
 	ll_pdata->flags = xflags;
+
+	/* flush for slave core */
+	if (cpu_is_slave(w->core))
+		dcache_writeback_invalidate_region(ll_pdata,
+						   sizeof(*ll_pdata));
 
 	return 0;
 }
