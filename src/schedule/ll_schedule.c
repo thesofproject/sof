@@ -509,7 +509,7 @@ static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
 	struct ll_schedule_data *queue;
 
 	/* init work queue */
-	queue = rmalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*queue));
+	queue = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*queue));
 	list_init(&queue->tasks);
 
 	spinlock_init(&queue->lock);
