@@ -607,6 +607,10 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	trace_pipe_with_ids(p, "pipeline_trigger()");
 
+	/* if current core is different than requested */
+	if (p->ipc_pipe.core != cpu_get_id())
+		return pipeline_trigger_on_core(p, host, cmd);
+
 	/* handle pipeline global checks before going into each components */
 	if (p->xrun_bytes) {
 		ret = pipeline_xrun_handle_trigger(p, cmd);
@@ -618,10 +622,6 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 			/* no further action needed*/
 			return 0;
 	}
-
-	/* if current core is different than requested */
-	if (p->ipc_pipe.core != cpu_get_id())
-		return pipeline_trigger_on_core(p, host, cmd);
 
 	data.start = host;
 	data.cmd = cmd;
