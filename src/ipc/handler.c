@@ -28,6 +28,7 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/mailbox.h>
+#include <sof/lib/memory.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -1229,6 +1230,8 @@ int ipc_queue_host_message(struct ipc *ipc, uint32_t header, void *tx_data,
 	struct ipc_msg *msg = NULL;
 	uint32_t flags, found = 0;
 	int ret = 0;
+
+	ipc = cache_to_uncache(ipc);
 
 	spin_lock_irq(&ipc->lock, flags);
 
