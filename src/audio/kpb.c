@@ -317,9 +317,12 @@ static void kpb_free(struct comp_dev *dev)
  */
 static int kpb_trigger(struct comp_dev *dev, int cmd)
 {
+	int ret;
 	trace_kpb("kpb_trigger()");
 
-	return comp_set_state(dev, cmd);
+	ret = comp_set_state(dev, cmd);
+	return ret == COMP_STATUS_STATE_ALREADY_SET ?
+		      PPL_STATUS_PATH_STOP : ret;
 }
 
 /**

@@ -529,9 +529,12 @@ static int volume_cmd(struct comp_dev *dev, int cmd, void *data,
  */
 static int volume_trigger(struct comp_dev *dev, int cmd)
 {
+	int ret;
 	trace_volume("volume_trigger()");
 
-	return comp_set_state(dev, cmd);
+	ret = comp_set_state(dev, cmd);
+	return ret == COMP_STATUS_STATE_ALREADY_SET ?
+		      PPL_STATUS_PATH_STOP : ret;
 }
 
 /**

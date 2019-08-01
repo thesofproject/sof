@@ -292,7 +292,8 @@ static int selector_trigger(struct comp_dev *dev, int cmd)
 	trace_selector("selector_trigger()");
 
 	ret = comp_set_state(dev, cmd);
-	return ret == 0 ? PPL_STATUS_PATH_STOP : ret;
+	return ret == COMP_STATUS_STATE_ALREADY_SET ?
+		      PPL_STATUS_PATH_STOP : ret;
 }
 
 /**
