@@ -555,6 +555,14 @@ static int kpb_copy(struct comp_dev *dev)
 		}
 
 		copy_bytes = MIN(sink->free, source->avail);
+		if (!copy_bytes) {
+			trace_kpb_error("kpb_copy() error: nothing to copy "
+					"sink->free %d source->avail %d",
+					sink->free, source->avail);
+			ret = PPL_STATUS_PATH_STOP;
+			goto out;
+		}
+
 		kpb_copy_samples(sink, source, copy_bytes, sample_width);
 
 		/* Buffer source data internally in history buffer for future
@@ -593,12 +601,20 @@ static int kpb_copy(struct comp_dev *dev)
 		}
 
 		copy_bytes = MIN(sink->free, source->avail);
+		if (!copy_bytes) {
+			trace_kpb_error("kpb_copy() error: nothing to copy "
+					"sink->free %d source->avail %d",
+					sink->free, source->avail);
+			ret = PPL_STATUS_PATH_STOP;
+			goto out;
+		}
+
 		kpb_copy_samples(sink, source, copy_bytes, sample_width);
 
 		comp_update_buffer_produce(sink, copy_bytes);
 		comp_update_buffer_consume(source, copy_bytes);
 
-		ret = 0;
+		ret = PPL_STATUS_PATH_STOP;
 		break;
 	case KPB_STATE_DRAINING:
 		/* In draining state we only buffer data in internal,
