@@ -17,12 +17,10 @@
 #define __ARCH_SCHEDULE_TASK_H__
 
 #include <sof/list.h>
-#include <sof/spinlock.h>
 #include <config.h>
 
 /** \brief IRQ task data. */
 struct irq_task {
-	spinlock_t lock;	/**< lock */
 	struct list_item list;	/**< list of tasks */
 	int irq;		/**< IRQ level */
 };

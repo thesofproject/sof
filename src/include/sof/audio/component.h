@@ -21,7 +21,6 @@
 #include <sof/debug/panic.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
-#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/control.h>
 #include <ipc/stream.h>
@@ -234,7 +233,6 @@ struct comp_dev {
 	/* runtime */
 	uint16_t state;		   /**< COMP_STATE_ */
 	uint16_t is_dma_connected; /**< component is connected to DMA */
-	spinlock_t lock;	   /**< lock for this component */
 	uint64_t position;	   /**< component rendering position */
 	uint32_t frames;	   /**< number of frames we copy to sink */
 	struct pipeline *pipeline; /**< pipeline we belong to */

@@ -15,7 +15,6 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/spinlock.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -23,7 +22,6 @@
 #include <stdint.h>
 
 struct edf_schedule_data {
-	spinlock_t lock;
 	struct list_item list;	/* list of tasks in priority queue */
 	struct list_item idle_list; /* list of queued idle tasks */
 	uint32_t clock;
@@ -167,14 +165,14 @@ static struct task *sch_edf(void)
 	interrupt_clear(sch->irq);
 
 	while (!list_is_empty(&sch->list)) {
-		spin_lock_irq(&sch->lock, flags);
+		irq_local_disable(flags);
 
 		/* get the current time */
 		current = platform_timer_get(platform_timer);
 
 		/* get next task to be scheduled */
 		task = edf_get_next(current, NULL);
-		spin_unlock_irq(&sch->lock, flags);
+		irq_local_enable(flags);
 
 		/* any tasks ? */
 		if (!task)
@@ -186,10 +184,10 @@ static struct task *sch_edf(void)
 			task->start = current;
 
 			/* init task for running */
-			spin_lock_irq(&sch->lock, flags);
+			irq_local_disable(flags);
 			task->state = SOF_TASK_STATE_PENDING;
 			list_item_del(&task->list);
-			spin_unlock_irq(&sch->lock, flags);
+			irq_local_enable(flags);
 
 			/* now run task at correct run level */
 			if (run_task(task) < 0) {
@@ -210,14 +208,12 @@ static struct task *sch_edf(void)
 /* cancel and delete task from scheduler - won't stop it if already running */
 static int schedule_edf_task_cancel(struct task *task)
 {
-	struct edf_schedule_data *sch =
-		(*arch_schedule_get_data())->edf_sch_data;
 	uint32_t flags;
 	int ret = 0;
 
 	tracev_edf_sch("schedule_edf_task_cancel()");
 
-	spin_lock_irq(&sch->lock, flags);
+	irq_local_disable(flags);
 
 	/* check current task state, delete it if it is queued
 	 * if it is already running, nothing we can do about it atm
@@ -228,7 +224,7 @@ static int schedule_edf_task_cancel(struct task *task)
 		list_item_del(&task->list);
 	}
 
-	spin_unlock_irq(&sch->lock, flags);
+	irq_local_enable(flags);
 
 	return ret;
 }
@@ -252,19 +248,19 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 
 	tracev_edf_sch("schedule_edf_task()");
 
-	spin_lock_irq(&sch->lock, flags);
+	irq_local_disable(flags);
 
 	/* is task already pending ? - not enough MIPS to complete ? */
 	if (task->state == SOF_TASK_STATE_PENDING) {
 		trace_edf_sch("schedule_edf_task(), task already pending");
-		spin_unlock_irq(&sch->lock, flags);
+		irq_local_enable(flags);
 		return;
 	}
 
 	/* is task already queued ? - not enough MIPS to complete ? */
 	if (task->state == SOF_TASK_STATE_QUEUED) {
 		trace_edf_sch("schedule_edf_task(), task already queued");
-		spin_unlock_irq(&sch->lock, flags);
+		irq_local_enable(flags);
 		return;
 	}
 
@@ -294,7 +290,7 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 	}
 
 	task->state = SOF_TASK_STATE_QUEUED;
-	spin_unlock_irq(&sch->lock, flags);
+	irq_local_enable(flags);
 
 	if (need_sched) {
 		/* rerun scheduler */
@@ -305,13 +301,11 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 /* Remove a task from the scheduler when complete */
 static void schedule_edf_task_complete(struct task *task)
 {
-	struct edf_schedule_data *sch =
-		(*arch_schedule_get_data())->edf_sch_data;
 	uint32_t flags;
 
 	tracev_edf_sch("schedule_edf_task_complete()");
 
-	spin_lock_irq(&sch->lock, flags);
+	irq_local_disable(flags);
 
 	/* Some high priority HW based IRQ handlers can reschedule tasks
 	 * immediately. i.e. before the task context can change task state
@@ -332,21 +326,19 @@ static void schedule_edf_task_complete(struct task *task)
 		task->state = SOF_TASK_STATE_COMPLETED;
 		break;
 	}
-	spin_unlock_irq(&sch->lock, flags);
+	irq_local_enable(flags);
 }
 
 /* Update task state to running */
 static void schedule_edf_task_running(struct task *task)
 {
-	struct edf_schedule_data *sch =
-		(*arch_schedule_get_data())->edf_sch_data;
 	uint32_t flags;
 
 	tracev_edf_sch("schedule_edf_task_running()");
 
-	spin_lock_irq(&sch->lock, flags);
+	irq_local_disable(flags);
 	task->state = SOF_TASK_STATE_RUNNING;
-	spin_unlock_irq(&sch->lock, flags);
+	irq_local_enable(flags);
 }
 
 static void edf_scheduler_run(void *unused)
@@ -368,7 +360,7 @@ static void schedule_edf(void)
 
 	tracev_edf_sch("schedule_edf()");
 
-	spin_lock_irq(&sch->lock, flags);
+	irq_local_disable(flags);
 
 	/* make sure we have a queued task in the list first before we
 	 * start scheduling as contexts switches are not free.
@@ -382,13 +374,13 @@ static void schedule_edf(void)
 		current = platform_timer_get(platform_timer);
 		if (edf_task->state == SOF_TASK_STATE_QUEUED &&
 		    edf_task->start <= current) {
-			spin_unlock_irq(&sch->lock, flags);
+			irq_local_enable(flags);
 			goto schedule;
 		}
 	}
 
 	/* no task to schedule */
-	spin_unlock_irq(&sch->lock, flags);
+	irq_local_enable(flags);
 
 	/* There is no prioritized task to handle at the moment.
 	 * Let's check if we have any idle task awaiting for execution.
@@ -421,7 +413,6 @@ static int edf_scheduler_init(void)
 
 	list_init(&sch->list);
 	list_init(&sch->idle_list);
-	spinlock_init(&sch->lock);
 	sch->clock = PLATFORM_SCHED_CLOCK;
 
 	/* configure scheduler interrupt */
@@ -445,7 +436,7 @@ static void edf_scheduler_free(void)
 		(*arch_schedule_get_data())->edf_sch_data;
 	uint32_t flags;
 
-	spin_lock_irq(&sch->lock, flags);
+	irq_local_disable(flags);
 
 	/* disable and unregister scheduler interrupt */
 	interrupt_disable(sch->irq, sch);
@@ -457,7 +448,7 @@ static void edf_scheduler_free(void)
 	list_item_del(&sch->list);
 	list_item_del(&sch->idle_list);
 
-	spin_unlock_irq(&sch->lock, flags);
+	irq_local_enable(flags);
 }
 
 static int schedule_edf_task_init(struct task *task)

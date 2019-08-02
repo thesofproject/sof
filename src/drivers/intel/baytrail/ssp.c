@@ -49,8 +49,6 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 	uint32_t entries;
 	uint32_t i;
 
-	spin_lock(&dai->lock);
-
 	sssr = ssp_read(dai, SSSR);
 
 	/* clear interrupt */
@@ -63,8 +61,6 @@ static void ssp_empty_rx_fifo(struct dai *dai)
 		for (i = 0; i < entries + 1; i++)
 			ssp_read(dai, SSDR);
 	}
-
-	spin_unlock(&dai->lock);
 }
 
 /* save SSP context prior to entering D3 */

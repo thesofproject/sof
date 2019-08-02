@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <malloc.h>
-#include <sof/spinlock.h>
 #include <sof/list.h>
 #include <sof/audio/stream.h>
 #include <sof/audio/component.h>

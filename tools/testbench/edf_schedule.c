@@ -14,7 +14,6 @@
  /* scheduler testbench definition */
 
 struct edf_schedule_data {
-	spinlock_t lock; /* schedule lock */
 	struct list_item list; /* list of tasks in priority queue */
 	uint32_t clock;
 };
@@ -67,7 +66,6 @@ static int edf_scheduler_init(void)
 	trace_edf_sch("edf_scheduler_init()");
 	sch = malloc(sizeof(*sch));
 	list_init(&sch->list);
-	spinlock_init(&sch->lock);
 
 	return 0;
 }

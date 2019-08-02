@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/idc.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
@@ -57,7 +58,6 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	p->sched_comp = cd;
 	p->status = COMP_STATE_INIT;
 
-	spinlock_init(&p->lock);
 	assert(!memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
 	   pipe_desc, sizeof(*pipe_desc)));
 
@@ -73,14 +73,16 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 int pipeline_connect(struct comp_dev *comp, struct comp_buffer *buffer,
 		     int dir)
 {
+	uint32_t flags;
+
 	trace_pipe("pipeline: connect comp %d and buffer %d",
 		   comp->comp.id, buffer->ipc_buffer.comp.id);
 
-	spin_lock(&comp->lock);
+	irq_local_disable(flags);
 	list_item_prepend(buffer_comp_list(buffer, dir),
 			  comp_buffer_list(comp, dir));
 	buffer_set_comp(buffer, comp, dir);
-	spin_unlock(&comp->lock);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -185,6 +187,7 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 static int pipeline_comp_free(struct comp_dev *current, void *data, int dir)
 {
 	struct pipeline_data *ppl_data = data;
+	uint32_t flags;
 
 	tracev_pipe("pipeline_comp_free(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
@@ -202,9 +205,9 @@ static int pipeline_comp_free(struct comp_dev *current, void *data, int dir)
 			       NULL, dir);
 
 	/* disconnect source from buffer */
-	spin_lock(&current->lock);
+	irq_local_disable(flags);
 	list_item_del(comp_buffer_list(current, dir));
-	spin_unlock(&current->lock);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -318,7 +321,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 	data.params = params;
 	data.start = host;
 
-	spin_lock_irq(&p->lock, flags);
+	irq_local_disable(flags);
 
 	ret = pipeline_comp_params(host, &data, host->params.direction);
 	if (ret < 0) {
@@ -326,7 +329,7 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 				 "comp.id = %u", ret, host->comp.id);
 	}
 
-	spin_unlock_irq(&p->lock, flags);
+	irq_local_enable(flags);
 
 	return ret;
 }
@@ -381,7 +384,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	ppl_data.start = dev;
 
-	spin_lock_irq(&p->lock, flags);
+	irq_local_disable(flags);
 
 	ret = pipeline_comp_prepare(dev, &ppl_data, dev->params.direction);
 	if (ret < 0) {
@@ -398,7 +401,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	p->status = COMP_STATE_PREPARE;
 
 out:
-	spin_unlock_irq(&p->lock, flags);
+	irq_local_enable(flags);
 	return ret;
 }
 
@@ -437,7 +440,7 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	data.start = dev;
 	data.cmd = cmd;
 
-	spin_lock_irq(&p->lock, flags);
+	irq_local_disable(flags);
 
 	/* execute cache operation on components and buffers */
 	pipeline_comp_cache(dev, &data, dev->params.direction);
@@ -446,7 +449,7 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	if (cmd == CACHE_WRITEBACK_INV)
 		dcache_writeback_invalidate_region(p, sizeof(*p));
 
-	spin_unlock_irq(&p->lock, flags);
+	irq_local_enable(flags);
 }
 
 static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
@@ -627,7 +630,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	data.start = host;
 	data.cmd = cmd;
 
-	spin_lock_irq(&p->lock, flags);
+	irq_local_disable(flags);
 
 	ret = pipeline_comp_trigger(host, &data, host->params.direction);
 	if (ret < 0) {
@@ -636,7 +639,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 				cmd);
 	}
 
-	spin_unlock_irq(&p->lock, flags);
+	irq_local_enable(flags);
 	return ret;
 }
 
@@ -687,7 +690,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	trace_pipe_with_ids(p, "pipeline_reset()");
 
-	spin_lock_irq(&p->lock, flags);
+	irq_local_disable(flags);
 
 	ret = pipeline_comp_reset(host, p, host->params.direction);
 	if (ret < 0) {
@@ -695,7 +698,7 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 				 "id = %u", ret, host->comp.id);
 	}
 
-	spin_unlock_irq(&p->lock, flags);
+	irq_local_enable(flags);
 	return ret;
 }
 

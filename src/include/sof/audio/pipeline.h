@@ -10,7 +10,6 @@
 
 #include <sof/lib/cpu.h>
 #include <sof/schedule/task.h>
-#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -71,7 +70,6 @@ struct ipc;
  * Audio pipeline.
  */
 struct pipeline {
-	spinlock_t lock; /* pipeline lock */
 	struct sof_ipc_pipe_new ipc_pipe;
 
 	/* runtime status */
