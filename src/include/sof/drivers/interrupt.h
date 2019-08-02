@@ -163,4 +163,12 @@ static inline void interrupt_global_enable(uint32_t flags)
 	arch_interrupt_global_enable(flags);
 }
 
+/* disables all IRQ sources on current core */
+#define irq_local_disable(flags) \
+	(flags = interrupt_global_disable())
+
+/* re-enables IRQ sources on current core */
+#define irq_local_enable(flags) \
+	interrupt_global_enable(flags)
+
 #endif /* __SOF_DRIVERS_INTERRUPT_H__ */
