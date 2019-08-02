@@ -33,15 +33,6 @@ struct edf_schedule_data {
 #define SLOT_ALIGN_TRIES	10
 
 static void schedule_edf(void);
-static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t period);
-static int schedule_edf_task_cancel(struct task *task);
-static void schedule_edf_task_complete(struct task *task);
-static void schedule_edf_task_running(struct task *task);
-static int schedule_edf_task_init(struct task *task);
-static void schedule_edf_task_free(struct task *task);
-static int edf_scheduler_init(void);
-static void edf_scheduler_free(void);
 static void edf_schedule_idle(void);
 
 /*

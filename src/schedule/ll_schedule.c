@@ -63,14 +63,6 @@ struct ll_queue_shared_context {
 
 static struct ll_queue_shared_context *ll_shared_ctx;
 
-static void reschedule_ll_task(struct task *w, uint64_t start);
-static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period);
-static int schedule_ll_task_cancel(struct task *w);
-static void schedule_ll_task_free(struct task *w);
-static int ll_scheduler_init(void);
-static int schedule_ll_task_init(struct task *w);
-static void ll_scheduler_free(void);
-
 /* calculate next timeout */
 static inline uint64_t queue_calc_next_timeout(struct ll_schedule_data *queue,
 					       uint64_t start)
