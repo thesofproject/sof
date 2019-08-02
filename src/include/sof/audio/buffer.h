@@ -13,7 +13,6 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -64,8 +63,6 @@ struct comp_buffer {
 	void (*cb)(void *data, uint32_t bytes);
 	void *cb_data;
 	int cb_type;
-
-	spinlock_t lock; /* component buffer spinlock */
 };
 
 #define buffer_comp_list(buffer, dir) \

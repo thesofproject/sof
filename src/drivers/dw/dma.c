@@ -284,7 +284,7 @@ static int dw_dma_start(struct dma *dma, unsigned int channel)
 	tracev_dwdma("dw_dma_start(): dma %d channel %d start",
 		     dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	/* check if channel idle, disabled and ready */
 	if (chan->status != COMP_STATE_PREPARE ||
@@ -348,7 +348,7 @@ static int dw_dma_start(struct dma *dma, unsigned int channel)
 	}
 
 out:
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return ret;
 }
@@ -373,7 +373,7 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 	trace_dwdma("dw_dma_release(): dma %d channel %d release",
 		    dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	/* get next lli for proper release */
 	chan->lli_current = (struct dw_lli *)chan->lli_current->llp;
@@ -392,7 +392,7 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 	dw_dma_copy(dma, channel, bytes_left, 0);
 #endif
 
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -413,7 +413,7 @@ static int dw_dma_pause(struct dma *dma, unsigned int channel)
 	trace_dwdma("dw_dma_pause(): dma %d channel %d pause",
 		    dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	if (chan->status != COMP_STATE_ACTIVE)
 		goto out;
@@ -422,7 +422,7 @@ static int dw_dma_pause(struct dma *dma, unsigned int channel)
 	chan->status = COMP_STATE_PAUSED;
 
 out:
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -450,7 +450,7 @@ static int dw_dma_stop(struct dma *dma, unsigned int channel)
 	trace_dwdma("dw_dma_stop(): dma %d channel %d stop",
 		    dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	if (chan->status != COMP_STATE_ACTIVE)
 		goto out;
@@ -493,7 +493,7 @@ static int dw_dma_stop(struct dma *dma, unsigned int channel)
 	chan->status = COMP_STATE_PREPARE;
 
 out:
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -576,7 +576,7 @@ static int dw_dma_set_config(struct dma *dma, unsigned int channel,
 	tracev_dwdma("dw_dma_set_config(): dma %d channel %d config",
 		     dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	chan_class = dp->chan[channel].class;
 
@@ -841,7 +841,7 @@ static int dw_dma_set_config(struct dma *dma, unsigned int channel,
 	chan->ptr_data.current_ptr = chan->ptr_data.start_ptr;
 
 out:
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return ret;
 }
@@ -877,11 +877,11 @@ static int dw_dma_set_cb(struct dma *dma, unsigned int channel, int type,
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 	chan->cb = cb;
 	chan->cb_data = data;
 	chan->cb_type = type;
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -1339,7 +1339,7 @@ static int dw_dma_get_data_size(struct dma *dma, unsigned int channel,
 	tracev_dwdma("dw_dma_get_data_size(): dma %d channel %d get data size",
 		     dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    chan->direction == DMA_DIR_DEV_TO_MEM)
@@ -1347,7 +1347,7 @@ static int dw_dma_get_data_size(struct dma *dma, unsigned int channel,
 	else
 		*free = dw_dma_free_data_size(dma, channel);
 
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }

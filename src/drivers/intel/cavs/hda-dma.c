@@ -9,6 +9,7 @@
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/drivers/hda-dma.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
@@ -525,7 +526,7 @@ static int hda_dma_start(struct dma *dma, unsigned int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	trace_hddma("hda-dmac: %d channel %d -> start", dma->plat_data.id,
 		    channel);
@@ -547,7 +548,7 @@ static int hda_dma_start(struct dma *dma, unsigned int channel)
 
 	p->chan[channel].status = COMP_STATE_ACTIVE;
 out:
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 	return ret;
 }
 
@@ -563,7 +564,7 @@ static int hda_dma_release(struct dma *dma, unsigned int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	trace_hddma("hda-dmac: %d channel %d -> release", dma->plat_data.id,
 		    channel);
@@ -574,7 +575,7 @@ static int hda_dma_release(struct dma *dma, unsigned int channel)
 	 */
 	p->chan[channel].state |= HDA_STATE_RELEASE;
 
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 	return 0;
 }
 
@@ -589,7 +590,7 @@ static int hda_dma_pause(struct dma *dma, unsigned int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	trace_hddma("hda-dmac: %d channel %d -> pause", dma->plat_data.id,
 		    channel);
@@ -601,7 +602,7 @@ static int hda_dma_pause(struct dma *dma, unsigned int channel)
 	p->chan[channel].status = COMP_STATE_PAUSED;
 
 out:
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 	return 0;
 }
 
@@ -616,7 +617,7 @@ static int hda_dma_stop(struct dma *dma, unsigned int channel)
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	hda_dma_dbg_count_reset(&p->chan[channel]);
 	hda_dma_ptr_trace(&p->chan[channel], "last-copy", HDA_DBG_BOTH);
@@ -633,7 +634,7 @@ static int hda_dma_stop(struct dma *dma, unsigned int channel)
 	hda_dma_get_dbg_vals(&p->chan[channel], HDA_DBG_POST, HDA_DBG_BOTH);
 	hda_dma_ptr_trace(&p->chan[channel], "stop", HDA_DBG_BOTH);
 
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 	return 0;
 }
 
@@ -681,7 +682,7 @@ static int hda_dma_set_config(struct dma *dma, unsigned int channel,
 	if (p->chan[channel].status == COMP_STATE_ACTIVE)
 		return 0;
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	trace_hddma("hda-dmac: %d channel %d -> config", dma->plat_data.id,
 		    channel);
@@ -785,7 +786,7 @@ static int hda_dma_set_config(struct dma *dma, unsigned int channel,
 
 	p->chan[channel].status = COMP_STATE_PREPARE;
 out:
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 	return ret;
 }
 
@@ -814,11 +815,11 @@ static int hda_dma_set_cb(struct dma *dma, unsigned int channel, int type,
 		return -EINVAL;
 	}
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 	p->chan[channel].cb = cb;
 	p->chan[channel].cb_data = data;
 	p->chan[channel].cb_type = type;
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -934,7 +935,7 @@ static int hda_dma_data_size(struct dma *dma, unsigned int channel,
 	tracev_hddma("hda-dmac: %d channel %d -> get_data_size",
 		     dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	irq_local_disable(flags);
 
 	if (chan->direction == DMA_DIR_HMEM_TO_LMEM ||
 	    chan->direction == DMA_DIR_DEV_TO_MEM)
@@ -942,7 +943,7 @@ static int hda_dma_data_size(struct dma *dma, unsigned int channel,
 	else
 		*free = hda_dma_free_data_size(chan);
 
-	spin_unlock_irq(&dma->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }

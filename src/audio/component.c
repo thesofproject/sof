@@ -7,9 +7,9 @@
 #include <sof/audio/component.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/topology.h>
 #include <errno.h>
@@ -18,7 +18,6 @@
 
 struct comp_data {
 	struct list_item list;		/* list of components */
-	spinlock_t lock;
 };
 
 static struct comp_data *cd;
@@ -27,8 +26,9 @@ static struct comp_driver *get_drv(uint32_t type)
 {
 	struct list_item *clist;
 	struct comp_driver *drv = NULL;
+	uint32_t flags;
 
-	spin_lock(&cd->lock);
+	irq_local_disable(flags);
 
 	/* search driver list for driver type */
 	list_for_item(clist, &cd->list) {
@@ -42,7 +42,7 @@ static struct comp_driver *get_drv(uint32_t type)
 	drv = NULL;
 
 out:
-	spin_unlock(&cd->lock);
+	irq_local_enable(flags);
 	return drv;
 }
 
@@ -81,18 +81,22 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 
 int comp_register(struct comp_driver *drv)
 {
-	spin_lock(&cd->lock);
+	uint32_t flags;
+
+	irq_local_disable(flags);
 	list_item_prepend(&drv->list, &cd->list);
-	spin_unlock(&cd->lock);
+	irq_local_enable(flags);
 
 	return 0;
 }
 
 void comp_unregister(struct comp_driver *drv)
 {
-	spin_lock(&cd->lock);
+	uint32_t flags;
+
+	irq_local_disable(flags);
 	list_item_del(&drv->list);
-	spin_unlock(&cd->lock);
+	irq_local_enable(flags);
 }
 
 int comp_set_sink_buffer(struct comp_dev *dev, uint32_t period_bytes,
@@ -212,7 +216,6 @@ void sys_comp_init(void)
 {
 	cd = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*cd));
 	list_init(&cd->list);
-	spinlock_init(&cd->lock);
 }
 
 int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)

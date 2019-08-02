@@ -104,7 +104,6 @@ static struct comp_dev *create_comp(struct sof_ipc_comp *comp,
 
 	memcpy(&cd->comp, comp, sizeof(*comp));
 	cd->drv = drv;
-	spinlock_init(&cd->lock);
 	list_init(&cd->bsource_list);
 	list_init(&cd->bsink_list);
 

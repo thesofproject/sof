@@ -18,7 +18,6 @@
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <ipc/topology.h>
 #include <user/trace.h>
@@ -110,9 +109,9 @@ static int task_set_data(struct task *task)
 		return -EINVAL;
 
 	dst = &irq_task->list;
-	spin_lock_irq(&irq_task->lock, flags);
+	irq_local_disable(flags);
 	list_item_append(&task->irq_list, dst);
-	spin_unlock_irq(&irq_task->lock, flags);
+	irq_local_enable(flags);
 
 	return 0;
 }
@@ -130,7 +129,7 @@ static void _irq_task(void *arg)
 	uint32_t flags;
 	int run_task = 0;
 
-	spin_lock_irq(&irq_task->lock, flags);
+	irq_local_disable(flags);
 
 	interrupt_clear(irq_task->irq);
 
@@ -147,16 +146,16 @@ static void _irq_task(void *arg)
 		}
 
 		/* run task without holding task lock */
-		spin_unlock_irq(&irq_task->lock, flags);
+		irq_local_enable(flags);
 
 		if (run_task)
 			task->func(task->data);
 
-		spin_lock_irq(&irq_task->lock, flags);
+		irq_local_disable(flags);
 		schedule_task_complete(task);
 	}
 
-	spin_unlock_irq(&irq_task->lock, flags);
+	irq_local_enable(flags);
 }
 
 int arch_run_task(struct task *task)
@@ -187,7 +186,6 @@ int arch_allocate_tasks(void)
 	*low = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**low));
 
 	list_init(&((*low)->list));
-	spinlock_init(&((*low)->lock));
 	(*low)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_LOW,
 					PLATFORM_IRQ_TASK_LOW_NAME);
 	if ((*low)->irq < 0)
@@ -205,7 +203,6 @@ int arch_allocate_tasks(void)
 	*med = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**med));
 
 	list_init(&((*med)->list));
-	spinlock_init(&((*med)->lock));
 	(*med)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_MED,
 					PLATFORM_IRQ_TASK_MED_NAME);
 	if ((*med)->irq < 0)
@@ -222,7 +219,6 @@ int arch_allocate_tasks(void)
 	*high = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**high));
 
 	list_init(&((*high)->list));
-	spinlock_init(&((*high)->lock));
 	(*high)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_HIGH,
 					 PLATFORM_IRQ_TASK_HIGH_NAME);
 	if ((*high)->irq < 0)
@@ -246,30 +242,30 @@ void arch_free_tasks(void)
 	/* free IRQ low task */
 	struct irq_task **low = task_irq_low_get();
 
-	spin_lock_irq(&(*low)->lock, flags);
+	irq_local_disable(flags);
 	interrupt_disable((*low)->irq, low);
 	interrupt_unregister((*low)->irq, low);
 	list_item_del(&(*low)->list);
-	spin_unlock_irq(&(*low)->lock, flags);
+	irq_local_enable(flags);
 #endif
 
 #if CONFIG_TASK_HAVE_PRIORITY_MEDIUM
 	/* free IRQ medium task */
 	struct irq_task **med = task_irq_med_get();
 
-	spin_lock_irq(&(*med)->lock, flags);
+	irq_local_disable(flags);
 	interrupt_disable((*med)->irq, med);
 	interrupt_unregister((*med)->irq, med);
 	list_item_del(&(*med)->list);
-	spin_unlock_irq(&(*med)->lock, flags);
+	irq_local_enable(flags);
 #endif
 
 	/* free IRQ high task */
 	struct irq_task **high = task_irq_high_get();
 
-	spin_lock_irq(&(*high)->lock, flags);
+	irq_local_disable(flags);
 	interrupt_disable((*high)->irq, high);
 	interrupt_unregister((*high)->irq, high);
 	list_item_del(&(*high)->list);
-	spin_unlock_irq(&(*high)->lock, flags);
+	irq_local_enable(flags);
 }

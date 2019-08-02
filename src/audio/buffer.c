@@ -8,11 +8,11 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/debug/panic.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/memory.h>
 #include <sof/list.h>
-#include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/topology.h>
 #include <errno.h>
@@ -55,8 +55,6 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 		       desc, sizeof(*desc)));
 
 	buffer_init(buffer, desc->size);
-
-	spinlock_init(&buffer->lock);
 
 	return buffer;
 }
@@ -129,7 +127,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	spin_lock_irq(&buffer->lock, flags);
+	irq_local_disable(flags);
 
 	/* calculate head and tail size for dcache circular wrap ops */
 	if (buffer->w_ptr + bytes > buffer->end_addr) {
@@ -179,7 +177,7 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_PRODUCE)
 		buffer->cb(buffer->cb_data, bytes);
 
-	spin_unlock_irq(&buffer->lock, flags);
+	irq_local_enable(flags);
 
 	tracev_buffer("comp_update_buffer_produce(), ((buffer->avail << 16) | "
 		      "buffer->free) = %08x, ((buffer->ipc_buffer.comp.id << "
@@ -207,7 +205,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		return;
 	}
 
-	spin_lock_irq(&buffer->lock, flags);
+	irq_local_disable(flags);
 
 	buffer->r_ptr += bytes;
 
@@ -234,7 +232,7 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
 		buffer->cb(buffer->cb_data, bytes);
 
-	spin_unlock_irq(&buffer->lock, flags);
+	irq_local_enable(flags);
 
 	tracev_buffer("comp_update_buffer_consume(), "
 		      "(buffer->avail << 16) | buffer->free = %08x, "

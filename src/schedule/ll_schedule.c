@@ -44,7 +44,6 @@ struct ll_schedule_data {
 	struct list_item tasks;			/* list of ll tasks */
 	uint64_t timeout;			/* timeout for next queue run */
 	uint32_t window_size;			/* window size for pending ll */
-	spinlock_t lock;
 	struct notifier notifier;		/* notify CPU freq changes */
 	struct timesource_data *ts;		/* time source for work queue */
 	uint32_t ticks_per_msec;		/* ticks per msec */
@@ -52,6 +51,7 @@ struct ll_schedule_data {
 };
 
 struct ll_queue_shared_context {
+	spinlock_t lock;		/* lock to synchronize many cores */
 	atomic_t total_num_work;	/* number of total queued ll items */
 	atomic_t timer_clients;		/* number of timer clients */
 	uint64_t last_tick;		/* time of last tick */
@@ -79,6 +79,8 @@ static inline void ll_set_timer(struct ll_schedule_data *queue)
 {
 	uint64_t ticks;
 
+	spin_lock(&ll_shared_ctx->lock);
+
 	if (atomic_add(&queue->num_ll, 1) == 1)
 		ll_shared_ctx->timers[cpu_get_id()] = &queue->ts->timer;
 
@@ -89,15 +91,21 @@ static inline void ll_set_timer(struct ll_schedule_data *queue)
 		atomic_add(&ll_shared_ctx->timer_clients, 1);
 		timer_enable(&queue->ts->timer);
 	}
+
+	spin_unlock(&ll_shared_ctx->lock);
 }
 
 static inline void ll_clear_timer(struct ll_schedule_data *queue)
 {
+	spin_lock(&ll_shared_ctx->lock);
+
 	if (!atomic_sub(&ll_shared_ctx->total_num_work, 1))
 		queue->ts->timer_clear(&queue->ts->timer);
 
 	if (!atomic_sub(&queue->num_ll, 1))
 		ll_shared_ctx->timers[cpu_get_id()] = NULL;
+
+	spin_unlock(&ll_shared_ctx->lock);
 }
 
 /* is there any work pending in the current time window ? */
@@ -177,9 +185,9 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 		/* run work if its pending and remove from the queue */
 		if (ll_task->state == SOF_TASK_STATE_PENDING) {
 			/* work can run in non atomic context */
-			spin_unlock_irq(&queue->lock, *flags);
+			irq_local_enable(*flags);
 			ll_task->state = ll_task->func(ll_task->data);
-			spin_lock_irq(&queue->lock, *flags);
+			irq_local_disable(*flags);
 
 			/* do we need reschedule this work ? */
 			if (ll_task->state == SOF_TASK_STATE_COMPLETED) {
@@ -286,16 +294,20 @@ static void queue_run(void *data)
 
 	timer_disable(&queue->ts->timer);
 
-	spin_lock_irq(&queue->lock, flags);
+	irq_local_disable(flags);
 
 	/* run work if there is any pending */
 	if (is_ll_pending(queue))
 		run_ll(queue, &flags);
 
+	spin_lock(&ll_shared_ctx->lock);
+
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock_irq(&queue->lock, flags);
+	spin_unlock(&ll_shared_ctx->lock);
+
+	irq_local_enable(flags);
 }
 
 /* notification of CPU frequency changes - atomic PRE and POST sequence */
@@ -306,7 +318,7 @@ static void ll_notify(int message, void *data, void *event_data)
 		(struct clock_notify_data *)event_data;
 	uint32_t flags;
 
-	spin_lock_irq(&queue->lock, flags);
+	irq_local_disable(flags);
 
 	/* we need to re-calculate timer when CPU frequency changes */
 	if (message == CLOCK_NOTIFY_POST) {
@@ -320,7 +332,7 @@ static void ll_notify(int message, void *data, void *event_data)
 		/* CPU frequency update pending */
 	}
 
-	spin_unlock_irq(&queue->lock, flags);
+	irq_local_enable(flags);
 }
 
 static inline void insert_task_to_queue(struct task *w,
@@ -351,9 +363,9 @@ static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period)
 	struct ll_task_pdata *ll_pdata;
 	struct task *ll_task;
 	struct list_item *wlist;
-	uint32_t lock_flags;
+	uint32_t flags;
 
-	spin_lock_irq(&queue->lock, lock_flags);
+	irq_local_disable(flags);
 
 	/* check to see if we are already scheduled ? */
 	list_for_item(wlist, &queue->tasks) {
@@ -386,7 +398,7 @@ static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period)
 	ll_set_timer(queue);
 
 out:
-	spin_unlock_irq(&queue->lock, lock_flags);
+	irq_local_enable(flags);
 }
 
 static void reschedule_ll_task(struct task *w, uint64_t start)
@@ -406,7 +418,7 @@ static void reschedule_ll_task(struct task *w, uint64_t start)
 	else
 		time += ll_shared_ctx->last_tick;
 
-	spin_lock_irq(&queue->lock, flags);
+	irq_local_disable(flags);
 
 	/* check to see if we are already scheduled */
 	list_for_item(wlist, &queue->tasks) {
@@ -424,7 +436,7 @@ found:
 	/* re-calc timer and re-arm */
 	w->start = time;
 
-	spin_unlock_irq(&queue->lock, flags);
+	irq_local_enable(flags);
 }
 
 static int schedule_ll_task_cancel(struct task *w)
@@ -436,7 +448,7 @@ static int schedule_ll_task_cancel(struct task *w)
 	uint32_t flags;
 	int ret = 0;
 
-	spin_lock_irq(&queue->lock, flags);
+	irq_local_disable(flags);
 
 	/* check to see if we are scheduled */
 	list_for_item(wlist, &queue->tasks) {
@@ -453,19 +465,17 @@ static int schedule_ll_task_cancel(struct task *w)
 	w->state = SOF_TASK_STATE_CANCEL;
 	list_item_del(&w->list);
 
-	spin_unlock_irq(&queue->lock, flags);
+	irq_local_enable(flags);
 
 	return ret;
 }
 
 static void schedule_ll_task_free(struct task *w)
 {
-	struct ll_schedule_data *queue =
-		(*arch_schedule_get_data())->ll_sch_data;
 	uint32_t flags;
 	struct ll_task_pdata *ll_pdata;
 
-	spin_lock_irq(&queue->lock, flags);
+	irq_local_disable(flags);
 
 	/* release the resources */
 	w->state = SOF_TASK_STATE_FREE;
@@ -473,7 +483,7 @@ static void schedule_ll_task_free(struct task *w)
 	rfree(ll_pdata);
 	ll_sch_set_pdata(w, NULL);
 
-	spin_unlock_irq(&queue->lock, flags);
+	irq_local_enable(flags);
 }
 
 static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
@@ -484,7 +494,6 @@ static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
 	queue = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*queue));
 	list_init(&queue->tasks);
 
-	spinlock_init(&queue->lock);
 	atomic_init(&queue->num_ll, 0);
 	queue->ts = ts;
 	queue->ticks_per_msec = clock_ms_to_ticks(queue->ts->clk, 1);
@@ -529,6 +538,7 @@ static int ll_scheduler_init(void)
 						sizeof(ts->timer.tirq));
 		}
 
+		spinlock_init(&ll_shared_ctx->lock);
 		atomic_init(&ll_shared_ctx->total_num_work, 0);
 		atomic_init(&ll_shared_ctx->timer_clients, 0);
 	}
@@ -572,7 +582,7 @@ static void ll_scheduler_free(void)
 		(*arch_schedule_get_data())->ll_sch_data;
 	uint32_t flags;
 
-	spin_lock_irq(&queue->lock, flags);
+	irq_local_disable(flags);
 
 	timer_unregister(&queue->ts->timer);
 
@@ -580,7 +590,7 @@ static void ll_scheduler_free(void)
 
 	list_item_del(&queue->tasks);
 
-	spin_unlock_irq(&queue->lock, flags);
+	irq_local_enable(flags);
 }
 
 struct scheduler_ops schedule_ll_ops = {

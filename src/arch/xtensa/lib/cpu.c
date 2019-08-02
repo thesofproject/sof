@@ -17,7 +17,6 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/notifier.h>
 #include <sof/schedule/schedule.h>
-#include <sof/spinlock.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <xtos-structs.h>
@@ -33,7 +32,6 @@ extern struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
 extern unsigned int _bss_start, _bss_end;
 
 static uint32_t active_cores_mask = 0x1;
-static spinlock_t lock = { 0 };
 
 void arch_cpu_enable_core(int id)
 {
@@ -41,7 +39,7 @@ void arch_cpu_enable_core(int id)
 		IDC_MSG_POWER_UP, IDC_MSG_POWER_UP_EXT, id };
 	uint32_t flags;
 
-	spin_lock_irq(&lock, flags);
+	irq_local_disable(flags);
 
 	if (!arch_cpu_is_core_enabled(id)) {
 		/* allocate resources for core */
@@ -56,7 +54,7 @@ void arch_cpu_enable_core(int id)
 		active_cores_mask |= (1 << id);
 	}
 
-	spin_unlock_irq(&lock, flags);
+	irq_local_enable(flags);
 }
 
 void arch_cpu_disable_core(int id)
@@ -65,7 +63,7 @@ void arch_cpu_disable_core(int id)
 		IDC_MSG_POWER_DOWN, IDC_MSG_POWER_DOWN_EXT, id };
 	uint32_t flags;
 
-	spin_lock_irq(&lock, flags);
+	irq_local_disable(flags);
 
 	if (arch_cpu_is_core_enabled(id)) {
 		arch_idc_send_msg(&power_down, IDC_NON_BLOCKING);
@@ -73,7 +71,7 @@ void arch_cpu_disable_core(int id)
 		active_cores_mask ^= (1 << id);
 	}
 
-	spin_unlock_irq(&lock, flags);
+	irq_local_enable(flags);
 }
 
 int arch_cpu_is_core_enabled(int id)
