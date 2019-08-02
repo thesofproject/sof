@@ -25,20 +25,22 @@ struct sof;
 #define SOF_TASK_PRI_IDC	SOF_TASK_PRI_LOW
 
 /* task states */
-#define SOF_TASK_STATE_INIT		0
-#define SOF_TASK_STATE_QUEUED		1
-#define SOF_TASK_STATE_PENDING		2
-#define SOF_TASK_STATE_RUNNING		3
-#define SOF_TASK_STATE_PREEMPTED	4
-#define SOF_TASK_STATE_COMPLETED	5
-#define SOF_TASK_STATE_FREE		6
-#define SOF_TASK_STATE_CANCEL		7
+enum task_state {
+	SOF_TASK_STATE_INIT = 0,
+	SOF_TASK_STATE_QUEUED,
+	SOF_TASK_STATE_PENDING,
+	SOF_TASK_STATE_RUNNING,
+	SOF_TASK_STATE_PREEMPTED,
+	SOF_TASK_STATE_COMPLETED,
+	SOF_TASK_STATE_FREE,
+	SOF_TASK_STATE_CANCEL,
+};
 
 struct task {
 	uint16_t type;
 	uint64_t start;
 	uint16_t priority;
-	uint16_t state;
+	enum task_state state;
 	uint16_t core;
 	uint32_t flags;
 	void *data;
