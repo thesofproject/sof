@@ -13,7 +13,19 @@ mkdir build_tools
 cd build_tools
 cmake ..
 make -j$(nproc)
-if [[ "$1" == "-t" ]]; then
-	make tests -j$(nproc)
-fi
-cd ../../
+for args in $@
+do
+	#build test topologies
+	if [[ "$args" == "-t" ]]; then
+		make tests -j$(nproc)
+	fi
+	#build fuzzer
+	if [[ "$args" == "-f" ]]; then
+		rm -rf fuzzer
+		mkdir fuzzer
+		cd fuzzer
+		cmake ../../fuzzer
+		make -j$(nproc)
+		cd ../
+	fi
+done
