@@ -17,6 +17,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <ipc/stream.h>
@@ -34,7 +35,7 @@ struct pipeline_data {
 	int cmd;
 };
 
-static uint64_t pipeline_task(void *arg);
+static enum task_state pipeline_task(void *arg);
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
@@ -953,7 +954,7 @@ void pipeline_schedule_cancel(struct pipeline *p)
 					  "failed, err = %d", err);
 }
 
-static uint64_t pipeline_task(void *arg)
+static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
 	int err;
@@ -984,5 +985,5 @@ static uint64_t pipeline_task(void *arg)
 
 	/* automatically reschedule for timer or not finished preload */
 	return (pipeline_is_timer_driven(p) || p->preload) ?
-		p->ipc_pipe.period : 0;
+		SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
 }

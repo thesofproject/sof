@@ -73,7 +73,7 @@ static void vol_update(struct comp_data *cd, uint32_t chan)
  * \param[in] delay Update time.
  * \return Time until next work.
  */
-static uint64_t vol_work(void *data)
+static enum task_state vol_work(void *data)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct comp_data *cd = comp_get_drvdata(dev);
@@ -122,10 +122,7 @@ static uint64_t vol_work(void *data)
 	}
 
 	/* do we need to continue ramping */
-	if (again)
-		return VOL_RAMP_UPDATE_US;
-	else
-		return 0;
+	return again ? SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
 }
 
 /**

@@ -38,12 +38,13 @@ static inline void wait_for_interrupt(int level)
 	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }
 
-static uint64_t _wait_cb(void *data)
+static enum task_state _wait_cb(void *data)
 {
 	volatile completion_t *wc = (volatile completion_t *)data;
 
 	wc->timeout = 1;
-	return 0;
+
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 static inline uint32_t wait_is_completed(completion_t *comp)

@@ -264,7 +264,7 @@ static void idc_cmd(struct idc_msg *msg)
  * \brief Handles received IDC message.
  * \param[in,out] data Pointer to IDC data.
  */
-static uint64_t idc_do_cmd(void *data)
+static enum task_state idc_do_cmd(void *data)
 {
 	struct idc *idc = data;
 	int core = arch_cpu_get_id();
@@ -281,7 +281,7 @@ static uint64_t idc_do_cmd(void *data)
 	/* enable BUSY interrupt */
 	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask);
 
-	return 0;
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 /**
