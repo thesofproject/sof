@@ -134,7 +134,7 @@ static int is_ll_pending(struct ll_schedule_data *queue)
 					SOF_TASK_STATE_PENDING;
 				pending_count++;
 			} else {
-				ll_task->state = 0;
+				ll_task->state = SOF_TASK_STATE_INIT;
 			}
 		} else {
 			/* mark pending work */
@@ -145,7 +145,7 @@ static int is_ll_pending(struct ll_schedule_data *queue)
 					SOF_TASK_STATE_PENDING;
 				pending_count++;
 			} else {
-				ll_task->state = 0;
+				ll_task->state = SOF_TASK_STATE_INIT;
 			}
 		}
 	}
