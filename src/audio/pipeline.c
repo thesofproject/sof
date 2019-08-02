@@ -927,7 +927,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
 	if (p->sched_comp->state == COMP_STATE_ACTIVE)
-		schedule_task(&p->pipe_task, start, p->ipc_pipe.period, 0);
+		schedule_task(&p->pipe_task, start, p->ipc_pipe.period);
 }
 
 /* notify pipeline that this component requires buffers emptied/filled
@@ -936,8 +936,9 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
  */
 void pipeline_schedule_copy_idle(struct pipeline *p)
 {
-	schedule_task(&p->pipe_task, 0, p->ipc_pipe.period,
-		      SOF_SCHEDULE_FLAG_IDLE);
+	/* TODO: temporary until new EDF scheduler */
+	p->pipe_task.flags |= SOF_SCHEDULE_FLAG_IDLE;
+	schedule_task(&p->pipe_task, 0, p->ipc_pipe.period);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)

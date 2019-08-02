@@ -22,7 +22,7 @@ static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
 /* testbench work definition */
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
-		       uint32_t xflags)
+		       uint32_t flags)
 {
 	task->type = type;
 	task->priority = priority;
@@ -32,17 +32,15 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->data = data;
 
 	if (schedulers[task->type]->schedule_task_init)
-		return schedulers[task->type]->schedule_task_init(task, xflags);
+		return schedulers[task->type]->schedule_task_init(task);
 	else
 		return -ENOENT;
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t period,
-		   uint32_t flags)
+void schedule_task(struct task *task, uint64_t start, uint64_t period)
 {
 	if (schedulers[task->type]->schedule_task)
-		schedulers[task->type]->schedule_task(task, start, period,
-			flags);
+		schedulers[task->type]->schedule_task(task, start, period);
 }
 
 void schedule_task_free(struct task *task)

@@ -43,8 +43,8 @@ enum {
 
 struct scheduler_ops {
 	void (*schedule_task)(struct task *w, uint64_t start,
-			      uint64_t period, uint32_t flags);
-	int (*schedule_task_init)(struct task *task, uint32_t xflags);
+			      uint64_t period);
+	int (*schedule_task_init)(struct task *task);
 	void (*schedule_task_running)(struct task *task);
 	void (*schedule_task_complete)(struct task *task);
 	void (*reschedule_task)(struct task *task, uint64_t start);
@@ -67,14 +67,13 @@ struct schedule_data **arch_schedule_get_data(void);
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
-		       uint32_t xflags);
+		       uint32_t flags);
 
 void schedule_task_running(struct task *task);
 
 void schedule_task_complete(struct task *task);
 
-void schedule_task(struct task *task, uint64_t start, uint64_t period,
-		   uint32_t flags);
+void schedule_task(struct task *task, uint64_t start, uint64_t period);
 
 void reschedule_task(struct task *task, uint64_t start);
 

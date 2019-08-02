@@ -34,11 +34,11 @@ struct edf_schedule_data {
 
 static void schedule_edf(void);
 static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t period, uint32_t flags);
+			      uint64_t period);
 static int schedule_edf_task_cancel(struct task *task);
 static void schedule_edf_task_complete(struct task *task);
 static void schedule_edf_task_running(struct task *task);
-static int schedule_edf_task_init(struct task *task, uint32_t xflags);
+static int schedule_edf_task_init(struct task *task);
 static void schedule_edf_task_free(struct task *task);
 static int edf_scheduler_init(void);
 static void edf_scheduler_free(void);
@@ -243,14 +243,14 @@ static int schedule_edf_task_cancel(struct task *task)
 }
 
 static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t period, uint32_t flags)
+			      uint64_t period)
 {
 	struct edf_schedule_data *sch =
 		(*arch_schedule_get_data())->edf_sch_data;
 	uint64_t current;
 	uint64_t ticks_per_ms;
 	struct edf_task_pdata *edf_pdata;
-	uint32_t lock_flags;
+	uint32_t flags;
 	bool need_sched;
 
 	edf_pdata = edf_sch_get_pdata(task);
@@ -261,19 +261,19 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 
 	tracev_edf_sch("schedule_edf_task()");
 
-	spin_lock_irq(&sch->lock, lock_flags);
+	spin_lock_irq(&sch->lock, flags);
 
 	/* is task already pending ? - not enough MIPS to complete ? */
 	if (task->state == SOF_TASK_STATE_PENDING) {
 		trace_edf_sch("schedule_edf_task(), task already pending");
-		spin_unlock_irq(&sch->lock, lock_flags);
+		spin_unlock_irq(&sch->lock, flags);
 		return;
 	}
 
 	/* is task already queued ? - not enough MIPS to complete ? */
 	if (task->state == SOF_TASK_STATE_QUEUED) {
 		trace_edf_sch("schedule_edf_task(), task already queued");
-		spin_unlock_irq(&sch->lock, lock_flags);
+		spin_unlock_irq(&sch->lock, flags);
 		return;
 	}
 
@@ -293,16 +293,17 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 	edf_pdata->deadline = task->start + ticks_per_ms * period / 1000;
 
 	/* add task to the proper list */
-	if (flags & SOF_SCHEDULE_FLAG_IDLE) {
+	if (task->flags & SOF_SCHEDULE_FLAG_IDLE) {
 		list_item_append(&task->list, &sch->idle_list);
 		need_sched = false;
+		task->flags &= ~SOF_SCHEDULE_FLAG_IDLE;
 	} else {
 		list_item_append(&task->list, &sch->list);
 		need_sched = true;
 	}
 
 	task->state = SOF_TASK_STATE_QUEUED;
-	spin_unlock_irq(&sch->lock, lock_flags);
+	spin_unlock_irq(&sch->lock, flags);
 
 	if (need_sched) {
 		/* rerun scheduler */
@@ -468,10 +469,9 @@ static void edf_scheduler_free(void)
 	spin_unlock_irq(&sch->lock, flags);
 }
 
-static int schedule_edf_task_init(struct task *task, uint32_t xflags)
+static int schedule_edf_task_init(struct task *task)
 {
 	struct edf_task_pdata *edf_pdata;
-	(void)xflags;
 
 	if (edf_sch_get_pdata(task))
 		return -EEXIST;

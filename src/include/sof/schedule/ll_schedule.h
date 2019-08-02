@@ -34,7 +34,6 @@
 #define ll_sch_get_pdata(task) task->private
 
 struct ll_task_pdata {
-	uint32_t flags;
 	uint64_t period;
 };
 

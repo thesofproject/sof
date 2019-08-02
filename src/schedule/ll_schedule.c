@@ -64,12 +64,11 @@ struct ll_queue_shared_context {
 static struct ll_queue_shared_context *ll_shared_ctx;
 
 static void reschedule_ll_task(struct task *w, uint64_t start);
-static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period,
-			     uint32_t flags);
+static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period);
 static int schedule_ll_task_cancel(struct task *w);
 static void schedule_ll_task_free(struct task *w);
 static int ll_scheduler_init(void);
-static int schedule_ll_task_init(struct task *w, uint32_t xflags);
+static int schedule_ll_task_init(struct task *w);
 static void ll_scheduler_free(void);
 
 /* calculate next timeout */
@@ -166,7 +165,7 @@ static inline void ll_next_timeout(struct ll_schedule_data *queue,
 
 	next_d = queue->ticks_per_msec * ll_task_pdata->period / 1000;
 
-	if (ll_task_pdata->flags & SOF_SCHEDULE_FLAG_SYNC) {
+	if (work->flags & SOF_SCHEDULE_FLAG_SYNC) {
 		work->start += next_d;
 	} else {
 		/* calc next run based on work request */
@@ -357,8 +356,7 @@ static inline void insert_task_to_queue(struct task *w,
 	list_item_append(&w->list, q_list);
 }
 
-static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period,
-			     uint32_t flags)
+static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period)
 {
 	struct ll_schedule_data *queue =
 		(*arch_schedule_get_data())->ll_sch_data;
@@ -379,17 +377,18 @@ static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period,
 	}
 
 	w->start = queue->ticks_per_msec * start / 1000;
+
+	/* convert start micro seconds to CPU clock ticks */
+	if (w->flags & SOF_SCHEDULE_FLAG_SYNC)
+		w->start += ll_get_timer(queue);
+	else
+		w->start += ll_shared_ctx->last_tick;
+
 	ll_pdata = ll_sch_get_pdata(w);
 
 	/* invalidate if slave core */
 	if (cpu_is_slave(w->core))
 		dcache_invalidate_region(ll_pdata, sizeof(*ll_pdata));
-
-	/* convert start micro seconds to CPU clock ticks */
-	if (ll_pdata->flags & SOF_SCHEDULE_FLAG_SYNC)
-		w->start += ll_get_timer(queue);
-	else
-		w->start += ll_shared_ctx->last_tick;
 
 	ll_pdata->period = period;
 
@@ -406,7 +405,6 @@ static void reschedule_ll_task(struct task *w, uint64_t start)
 {
 	struct ll_schedule_data *queue =
 		(*arch_schedule_get_data())->ll_sch_data;
-	struct ll_task_pdata *ll_pdata;
 	struct task *ll_task;
 	struct list_item *wlist;
 	uint32_t flags;
@@ -414,10 +412,8 @@ static void reschedule_ll_task(struct task *w, uint64_t start)
 
 	time = queue->ticks_per_msec * start / 1000;
 
-	ll_pdata = ll_sch_get_pdata(w);
-
 	/* convert start micro seconds to CPU clock ticks */
-	if (ll_pdata->flags & SOF_SCHEDULE_FLAG_SYNC)
+	if (w->flags & SOF_SCHEDULE_FLAG_SYNC)
 		time += ll_get_timer(queue);
 	else
 		time += ll_shared_ctx->last_tick;
@@ -557,7 +553,7 @@ static int ll_scheduler_init(void)
 }
 
 /* initialise our work */
-static int schedule_ll_task_init(struct task *w, uint32_t xflags)
+static int schedule_ll_task_init(struct task *w)
 {
 	struct ll_task_pdata *ll_pdata;
 
@@ -572,14 +568,12 @@ static int schedule_ll_task_init(struct task *w, uint32_t xflags)
 		return -ENOMEM;
 	}
 
-	ll_sch_set_pdata(w, ll_pdata);
-
-	ll_pdata->flags = xflags;
-
 	/* flush for slave core */
 	if (cpu_is_slave(w->core))
 		dcache_writeback_invalidate_region(ll_pdata,
 						   sizeof(*ll_pdata));
+
+	ll_sch_set_pdata(w, ll_pdata);
 
 	return 0;
 }

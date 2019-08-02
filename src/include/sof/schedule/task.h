@@ -40,6 +40,7 @@ struct task {
 	uint16_t priority;
 	uint16_t state;
 	uint16_t core;
+	uint32_t flags;
 	void *data;
 	uint64_t (*func)(void *data);
 	struct list_item list;

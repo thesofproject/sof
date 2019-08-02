@@ -303,7 +303,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 	}
 
 	d->enabled = 1;
-	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, DMA_TRACE_PERIOD, 0);
+	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, DMA_TRACE_PERIOD);
 
 	return 0;
 }

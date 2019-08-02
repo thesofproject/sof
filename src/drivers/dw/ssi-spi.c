@@ -336,7 +336,7 @@ static void spi_dma_complete(void *data, uint32_t type,
 
 	next->status = DMA_CB_STATUS_END;
 
-	schedule_task(&spi->completion, 0, 100, 0);
+	schedule_task(&spi->completion, 0, 100);
 }
 
 int spi_push(struct spi *spi, const void *data, size_t size)

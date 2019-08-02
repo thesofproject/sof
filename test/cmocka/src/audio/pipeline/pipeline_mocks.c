@@ -28,13 +28,11 @@ void schedule_task_free(struct task *task)
 	task->data = NULL;
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t period,
-		   uint32_t flags)
+void schedule_task(struct task *task, uint64_t start, uint64_t period)
 {
 	(void)task;
 	(void)start;
 	(void)period;
-	(void)flags;
 }
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,

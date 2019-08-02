@@ -74,8 +74,7 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	return 0;
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t period,
-		   uint32_t flags)
+void schedule_task(struct task *task, uint64_t start, uint64_t period)
 {
 }
 
