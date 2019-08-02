@@ -13,6 +13,7 @@
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cpu.h>
+#include <sof/lib/wait.h>
 #include <sof/list.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
@@ -26,6 +27,25 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#if CONFIG_SMP
+
+int do_task_slave_core(struct sof *sof)
+{
+	/* main audio IDC processing loop */
+	while (1) {
+		/* sleep until next IDC */
+		wait_for_interrupt(0);
+
+		/* schedule any idle tasks */
+		schedule();
+	}
+
+	/* something bad happened */
+	return -EIO;
+}
+
+#endif
 
 struct irq_task **task_irq_low_get(void)
 {

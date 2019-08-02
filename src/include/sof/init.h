@@ -17,8 +17,6 @@ int main(int argc, char *argv[]);
 
 int master_core_init(struct sof *sof);
 
-int slave_core_init(struct sof *sof);
-
 int arch_init(struct sof *sof);
 
 #endif /* __SOF_INIT_H__ */

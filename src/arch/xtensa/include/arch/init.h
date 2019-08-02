@@ -18,10 +18,13 @@
 
 #include <sof/debug/panic.h>
 #include <ipc/trace.h>
+#include <config.h>
 #include <xtensa/corebits.h>
 #include <xtensa/xtruntime.h>
 #include <stddef.h>
 #include <stdint.h>
+
+struct sof;
 
 /**
  * \brief Called in the case of exception.
@@ -125,6 +128,16 @@ static inline void register_exceptions(void)
  * \brief Called from assembler context with no return or parameters.
  */
 static inline void __memmap_init(void) { }
+
+#if CONFIG_SMP
+
+int slave_core_init(struct sof *sof);
+
+#else
+
+static inline int slave_core_init(struct sof *sof) { return 0; }
+
+#endif /* CONFIG_SMP */
 
 #endif /* __ARCH_INIT_H__ */
 

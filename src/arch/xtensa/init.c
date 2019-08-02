@@ -11,18 +11,9 @@
  */
 
 #include <sof/common.h>
-#include <sof/debug/panic.h>
-#include <sof/drivers/idc.h>
-#include <sof/drivers/interrupt.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/notifier.h>
-#include <sof/schedule/schedule.h>
-#include <sof/schedule/task.h>
 #include <sof/sof.h>
-#include <sof/spinlock.h>
-#include <sof/trace/trace.h>
-#include <ipc/trace.h>
 #include <config.h>
 #include <xtensa/xtruntime-frames.h>
 #include <xtos-structs.h>
@@ -95,6 +86,18 @@ int arch_init(struct sof *sof)
 	return 0;
 }
 
+#if CONFIG_SMP
+
+#include <sof/debug/panic.h>
+#include <sof/drivers/idc.h>
+#include <sof/drivers/interrupt.h>
+#include <sof/lib/notifier.h>
+#include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
+#include <sof/spinlock.h>
+#include <sof/trace/trace.h>
+#include <ipc/trace.h>
+
 int slave_core_init(struct sof *sof)
 {
 	int err;
@@ -128,3 +131,5 @@ int slave_core_init(struct sof *sof)
 
 	return err;
 }
+
+#endif

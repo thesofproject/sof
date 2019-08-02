@@ -70,18 +70,3 @@ int do_task_master_core(struct sof *sof)
 	/* something bad happened */
 	return -EIO;
 }
-
-int do_task_slave_core(struct sof *sof)
-{
-	/* main audio IDC processing loop */
-	while (1) {
-		/* sleep until next IDC */
-		wait_for_interrupt(0);
-
-		/* schedule any idle tasks */
-		schedule();
-	}
-
-	/* something bad happened */
-	return -EIO;
-}
