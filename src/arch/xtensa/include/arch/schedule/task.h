@@ -18,6 +18,7 @@
 
 #include <sof/list.h>
 #include <sof/spinlock.h>
+#include <config.h>
 
 /** \brief IRQ task data. */
 struct irq_task {
@@ -26,7 +27,19 @@ struct irq_task {
 	int irq;		/**< IRQ level */
 };
 
+struct sof;
 struct task;
+
+#if CONFIG_SMP
+
+/**
+ * \brief Starts slave core main task.
+ * \param[in,out] sof Main context.
+ * \return Error code.
+ */
+int do_task_slave_core(struct sof *sof);
+
+#endif
 
 /**
  * \brief Returns IRQ low task data.

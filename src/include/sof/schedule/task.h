@@ -50,8 +50,6 @@ struct task {
 
 int do_task_master_core(struct sof *sof);
 
-int do_task_slave_core(struct sof *sof);
-
 static inline int allocate_tasks(void)
 {
 	return arch_allocate_tasks();
