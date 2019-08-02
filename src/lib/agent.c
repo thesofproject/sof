@@ -44,7 +44,7 @@ void sa_enter_idle(struct sof *sof)
 	sa->last_idle = platform_timer_get(platform_timer);
 }
 
-static uint64_t validate(void *data)
+static enum task_state validate(void *data)
 {
 	struct sa *sa = data;
 	uint64_t current;
@@ -61,7 +61,7 @@ static uint64_t validate(void *data)
 		panic(SOF_IPC_PANIC_IDLE);
 	}
 
-	return PLATFORM_IDLE_TIME;
+	return SOF_TASK_STATE_RESCHEDULE;
 }
 
 void sa_init(struct sof *sof)

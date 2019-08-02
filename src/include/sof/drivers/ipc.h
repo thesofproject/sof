@@ -147,7 +147,7 @@ int platform_ipc_init(struct ipc *ipc);
 void ipc_free(struct ipc *ipc);
 
 int ipc_process_msg_queue(void);
-uint64_t ipc_process_task(void *data);
+enum task_state ipc_process_task(void *data);
 void ipc_schedule_process(struct ipc *ipc);
 
 int ipc_stream_send_position(struct comp_dev *cdev,

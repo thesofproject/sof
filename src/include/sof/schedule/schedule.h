@@ -10,13 +10,13 @@
 #define __SOF_SCHEDULE_SCHEDULE_H__
 
 #include <sof/list.h>
+#include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
 
 struct edf_schedule_data;
 struct ll_schedule_data;
-struct task;
 
 /* schedule tracing */
 #define trace_schedule(format, ...) \
@@ -66,8 +66,8 @@ extern struct scheduler_ops schedule_ll_ops;
 struct schedule_data **arch_schedule_get_data(void);
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
-		       uint64_t (*func)(void *data), void *data, uint16_t core,
-		       uint32_t flags);
+		       enum task_state (*func)(void *data), void *data,
+		       uint16_t core, uint32_t flags);
 
 void schedule_task_running(struct task *task);
 

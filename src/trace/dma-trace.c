@@ -31,7 +31,7 @@ static int dma_trace_get_avail_data(struct dma_trace_data *d,
 				    struct dma_trace_buf *buffer,
 				    int avail);
 
-static uint64_t trace_work(void *data)
+static enum task_state trace_work(void *data)
 {
 	struct dma_trace_data *d = (struct dma_trace_data *)data;
 	struct dma_trace_buf *buffer = &d->dmatb;
@@ -56,7 +56,7 @@ static uint64_t trace_work(void *data)
 
 	/* any data to copy ? */
 	if (size == 0)
-		return DMA_TRACE_PERIOD;
+		return SOF_TASK_STATE_RESCHEDULE;
 
 	d->overflow = overflow;
 
@@ -99,7 +99,7 @@ out:
 	spin_unlock_irq(&d->lock, flags);
 
 	/* reschedule the trace copying work */
-	return DMA_TRACE_PERIOD;
+	return SOF_TASK_STATE_RESCHEDULE;
 }
 
 int dma_trace_init_early(struct sof *sof)

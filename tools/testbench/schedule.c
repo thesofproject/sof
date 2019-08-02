@@ -21,8 +21,8 @@ static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
 
 /* testbench work definition */
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
-		       uint64_t (*func)(void *data), void *data, uint16_t core,
-		       uint32_t flags)
+		       enum task_state (*func)(void *data), void *data,
+		       uint16_t core, uint32_t flags)
 {
 	task->type = type;
 	task->priority = priority;

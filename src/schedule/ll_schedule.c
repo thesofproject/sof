@@ -176,7 +176,6 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 	struct list_item *wlist;
 	struct list_item *tlist;
 	struct task *ll_task;
-	uint64_t reschedule_usecs;
 	int cpu = cpu_get_id();
 
 	/* check each work item in queue for pending */
@@ -187,11 +186,11 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 		if (ll_task->state == SOF_TASK_STATE_PENDING) {
 			/* work can run in non atomic context */
 			spin_unlock_irq(&queue->lock, *flags);
-			reschedule_usecs = ll_task->func(ll_task->data);
+			ll_task->state = ll_task->func(ll_task->data);
 			spin_lock_irq(&queue->lock, *flags);
 
 			/* do we need reschedule this work ? */
-			if (reschedule_usecs == 0) {
+			if (ll_task->state == SOF_TASK_STATE_COMPLETED) {
 				list_item_del(&ll_task->list);
 				atomic_sub(&ll_shared_ctx->total_num_work, 1);
 

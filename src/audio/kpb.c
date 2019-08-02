@@ -66,7 +66,7 @@ struct comp_data {
 static void kpb_event_handler(int message, void *cb_data, void *event_data);
 static int kpb_register_client(struct comp_data *kpb, struct kpb_client *cli);
 static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli);
-static uint64_t kpb_draining_task(void *arg);
+static enum task_state kpb_draining_task(void *arg);
 static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 			   size_t size);
 static size_t kpb_allocate_history_buffer(struct comp_data *kpb);
@@ -952,7 +952,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
  *
  * \return none.
  */
-static uint64_t kpb_draining_task(void *arg)
+static enum task_state kpb_draining_task(void *arg)
 {
 	struct dd *draining_data = (struct dd *)arg;
 	struct comp_buffer *sink = draining_data->sink;
@@ -1073,7 +1073,7 @@ out:
 	/* Enable system agent back */
 	sa_enable();
 
-	return 0;
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 /**

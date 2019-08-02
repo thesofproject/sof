@@ -34,6 +34,7 @@ enum task_state {
 	SOF_TASK_STATE_COMPLETED,
 	SOF_TASK_STATE_FREE,
 	SOF_TASK_STATE_CANCEL,
+	SOF_TASK_STATE_RESCHEDULE,
 };
 
 struct task {
@@ -44,7 +45,7 @@ struct task {
 	uint16_t flags;
 	enum task_state state;
 	void *data;
-	uint64_t (*func)(void *data);
+	enum task_state (*func)(void *data);
 	struct list_item list;
 	struct list_item irq_list;	/* list for assigned irq level */
 	const struct scheduler_ops *ops;

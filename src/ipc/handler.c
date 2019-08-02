@@ -33,6 +33,7 @@
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
 #include <sof/schedule/schedule.h>
+#include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/dma-trace.h>
@@ -1280,11 +1281,12 @@ int ipc_process_msg_queue(void)
 	return 0;
 }
 
-uint64_t ipc_process_task(void *data)
+enum task_state ipc_process_task(void *data)
 {
 	if (_ipc->host_pending)
 		ipc_platform_do_cmd(_ipc);
-	return 0;
+
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 void ipc_schedule_process(struct ipc *ipc)

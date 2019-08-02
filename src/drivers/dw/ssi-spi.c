@@ -291,7 +291,7 @@ static int spi_set_config(struct spi *spi,
 	return spi_slave_dma_set_config(spi, spi_cfg);
 }
 
-static uint64_t spi_completion_work(void *data)
+static enum task_state spi_completion_work(void *data)
 {
 	struct spi *spi = data;
 	struct sof_ipc_hdr *hdr;
@@ -326,7 +326,7 @@ static uint64_t spi_completion_work(void *data)
 		break;
 	}
 
-	return 0;
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 static void spi_dma_complete(void *data, uint32_t type,

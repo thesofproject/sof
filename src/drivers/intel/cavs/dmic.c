@@ -169,7 +169,7 @@ static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 }
 
 /* this ramps volume changes over time */
-static uint64_t dmic_work(void *data)
+static enum task_state dmic_work(void *data)
 {
 	struct dai *dai = (struct dai *)data;
 	struct dmic_pdata *dmic = dai_get_drvdata(dai);
@@ -235,10 +235,7 @@ static uint64_t dmic_work(void *data)
 	}
 	spin_unlock(&dai->lock);
 
-	if (gval)
-		return DMIC_UNMUTE_RAMP_US;
-	else
-		return 0;
+	return gval ? SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
 }
 
 /* This function returns a raw list of potential microphone clock and decimation
