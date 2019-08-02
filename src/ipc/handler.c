@@ -1289,5 +1289,5 @@ uint64_t ipc_process_task(void *data)
 
 void ipc_schedule_process(struct ipc *ipc)
 {
-	schedule_task(&ipc->ipc_task, 0, 100, 0);
+	schedule_task(&ipc->ipc_task, 0, 100);
 }

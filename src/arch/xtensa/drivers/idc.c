@@ -94,7 +94,7 @@ static void idc_irq_handler(void *arg)
 			idc->received_msg.extension =
 					idctefc & IPC_IDCTEFC_MSG_MASK;
 
-			schedule_task(&idc->idc_task, 0, IDC_DEADLINE, 0);
+			schedule_task(&idc->idc_task, 0, IDC_DEADLINE);
 		}
 	}
 

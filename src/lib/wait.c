@@ -25,7 +25,7 @@ int wait_for_completion_timeout(completion_t *comp)
 {
 	volatile completion_t *c = (volatile completion_t *)comp;
 
-	schedule_task(&comp->work, comp->timeout, comp->timeout, 0);
+	schedule_task(&comp->work, comp->timeout, comp->timeout);
 	comp->timeout = 0;
 
 	/* check for completion after every wake from IRQ */

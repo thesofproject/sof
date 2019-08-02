@@ -1357,7 +1357,7 @@ static void dmic_start(struct dai *dai)
 	 */
 
 	schedule_task(&dmic->dmicwork, DMIC_UNMUTE_RAMP_US,
-		      DMIC_UNMUTE_RAMP_US, 0);
+		      DMIC_UNMUTE_RAMP_US);
 
 	trace_dmic("dmic_start(), done");
 }

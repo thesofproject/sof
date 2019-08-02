@@ -23,8 +23,8 @@ static struct edf_schedule_data *sch;
 
 static void schedule_edf_task_complete(struct task *task);
 static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t deadline, uint32_t flags);
-static int schedule_edf_task_init(struct task *task, uint32_t xflags);
+			      uint64_t deadline);
+static int schedule_edf_task_init(struct task *task);
 static int edf_scheduler_init(void);
 static void edf_scheduler_free(void);
 static void schedule_edf(void);
@@ -39,7 +39,7 @@ static void schedule_edf_task_complete(struct task *task)
 
 /* schedule task */
 static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t period, uint32_t flags)
+			      uint64_t period)
 {
 	(void)period;
 	list_item_prepend(&task->list, &sch->list);
@@ -51,10 +51,9 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 	schedule_edf_task_complete(task);
 }
 
-static int schedule_edf_task_init(struct task *task, uint32_t xflags)
+static int schedule_edf_task_init(struct task *task)
 {
 	struct edf_task_pdata *edf_pdata;
-	(void)xflags;
 
 	edf_pdata = malloc(sizeof(*edf_pdata));
 	edf_sch_set_pdata(task, edf_pdata);

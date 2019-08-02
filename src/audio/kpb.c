@@ -397,7 +397,7 @@ static int kpb_prepare(struct comp_dev *dev)
 			   kpb_draining_task, /* task function */
 			   &kpb->draining_task_data, /* task private data */
 			   0, /* core on which we should run */
-			   0); /* not used flags */
+			   SOF_SCHEDULE_FLAG_IDLE);
 
 	/* Search for KPB related sinks.
 	 * NOTE! We assume here that channel selector component device
@@ -940,8 +940,7 @@ static void kpb_init_draining(struct comp_dev *dev, struct kpb_client *cli)
 		sa_disable();
 
 		/* Schedule draining task */
-		schedule_task(&kpb->draining_task, 0, 0,
-			      SOF_SCHEDULE_FLAG_IDLE);
+		schedule_task(&kpb->draining_task, 0, 0);
 	}
 }
 
