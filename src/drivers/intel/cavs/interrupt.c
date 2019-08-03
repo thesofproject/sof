@@ -58,7 +58,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 
 		status &= ~(1 << bit);
 
-		spin_lock(&cascade->lock);
+		spin_lock(cascade->lock);
 
 		/* get child if any and run handler */
 		list_for_item(clist, &cascade->child[bit].list) {
@@ -70,7 +70,7 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 			}
 		}
 
-		spin_unlock(&cascade->lock);
+		spin_unlock(cascade->lock);
 
 		if (!handled) {
 			/* nobody cared ? */

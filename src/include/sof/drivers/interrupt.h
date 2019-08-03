@@ -88,7 +88,7 @@ struct irq_cascade_desc {
 							  * cannot mask input
 							  * interrupts per core
 							  */
-	spinlock_t lock;				/**< protect child
+	spinlock_t *lock;				/**< protect child
 							  * lists, enable and
 							  * child counters
 							  */

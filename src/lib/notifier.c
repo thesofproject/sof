@@ -20,18 +20,18 @@ void notifier_register(struct notifier *notifier)
 {
 	struct notify *notify = *arch_notify_get();
 
-	spin_lock(&notify->lock);
+	spin_lock(notify->lock);
 	list_item_prepend(&notifier->list, &notify->list);
-	spin_unlock(&notify->lock);
+	spin_unlock(notify->lock);
 }
 
 void notifier_unregister(struct notifier *notifier)
 {
 	struct notify *notify = *arch_notify_get();
 
-	spin_lock(&notify->lock);
+	spin_lock(notify->lock);
 	list_item_del(&notifier->list);
-	spin_unlock(&notify->lock);
+	spin_unlock(notify->lock);
 }
 
 void notifier_notify(void)
@@ -63,7 +63,7 @@ void notifier_event(struct notify_data *notify_data)
 	struct idc_msg notify_msg = { IDC_MSG_NOTIFY, IDC_MSG_NOTIFY_EXT };
 	int i = 0;
 
-	spin_lock(&notify->lock);
+	spin_lock(notify->lock);
 
 	_notify_data = *notify_data;
 	dcache_writeback_region(_notify_data.data, _notify_data.data_size);
@@ -81,7 +81,7 @@ void notifier_event(struct notify_data *notify_data)
 		}
 	}
 
-	spin_unlock(&notify->lock);
+	spin_unlock(notify->lock);
 }
 
 void init_system_notify(struct sof *sof)
@@ -97,7 +97,7 @@ void free_system_notify(void)
 {
 	struct notify *notify = *arch_notify_get();
 
-	spin_lock(&notify->lock);
+	spin_lock(notify->lock);
 	list_item_del(&notify->list);
-	spin_unlock(&notify->lock);
+	spin_unlock(notify->lock);
 }

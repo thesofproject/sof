@@ -108,7 +108,7 @@ struct dai_plat_data {
 
 struct dai {
 	uint32_t index;		/**< index */
-	spinlock_t lock;
+	spinlock_t *lock;	/**< locking mechanism */
 	int sref;		/**< simple ref counter, guarded by lock */
 	struct dai_plat_data plat_data;
 	const struct dai_driver *drv;

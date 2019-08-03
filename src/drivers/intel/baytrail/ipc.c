@@ -32,7 +32,7 @@ static void do_notify(void)
 	uint32_t flags;
 	struct ipc_msg *msg;
 
-	spin_lock_irq(&_ipc->lock, flags);
+	spin_lock_irq(_ipc->lock, flags);
 	msg = _ipc->shared_ctx->dsp_msg;
 	if (!msg)
 		goto out;
@@ -51,7 +51,7 @@ static void do_notify(void)
 	list_item_append(&msg->list, &_ipc->shared_ctx->empty_list);
 
 out:
-	spin_unlock_irq(&_ipc->lock, flags);
+	spin_unlock_irq(_ipc->lock, flags);
 
 	/* clear DONE bit - tell Host we have completed */
 	shim_write(SHIM_IPCDH, shim_read(SHIM_IPCDH) & ~SHIM_IPCDH_DONE);
@@ -147,7 +147,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	struct ipc_msg *msg;
 	uint32_t flags;
 
-	spin_lock_irq(&ipc->lock, flags);
+	spin_lock_irq(ipc->lock, flags);
 
 	/* any messages to send ? */
 	if (list_is_empty(&ipc->shared_ctx->msg_list)) {
@@ -174,7 +174,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
 out:
-	spin_unlock_irq(&ipc->lock, flags);
+	spin_unlock_irq(ipc->lock, flags);
 }
 
 struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)

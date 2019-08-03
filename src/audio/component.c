@@ -72,7 +72,6 @@ struct comp_dev *comp_new(struct sof_ipc_comp *comp)
 		comp, sizeof(*comp)));
 
 	cdev->drv = drv;
-	spinlock_init(&cdev->lock);
 	list_init(&cdev->bsource_list);
 	list_init(&cdev->bsink_list);
 

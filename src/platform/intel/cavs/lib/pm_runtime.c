@@ -43,7 +43,7 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 {
 	uint32_t flags;
 
-	spin_lock_irq(&_prd->lock, flags);
+	spin_lock_irq(_prd->lock, flags);
 
 	if (!(shim_read(SHIM_SVCFG) & SHIM_SVCFG_FORCE_L1_EXIT)) {
 		shim_write(SHIM_SVCFG,
@@ -55,7 +55,7 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 			   shim_read(SHIM_SVCFG) & ~(SHIM_SVCFG_FORCE_L1_EXIT));
 	}
 
-	spin_unlock_irq(&_prd->lock, flags);
+	spin_unlock_irq(_prd->lock, flags);
 }
 
 #if CONFIG_CAVS_SSP

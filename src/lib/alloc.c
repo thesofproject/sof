@@ -14,6 +14,7 @@
 #include <sof/spinlock.h>
 #include <sof/string.h>
 #include <sof/trace/trace.h>
+#include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
 #include <config.h>
@@ -610,11 +611,11 @@ void *_malloc(int zone, uint32_t caps, size_t bytes)
 	uint32_t flags;
 	void *ptr = NULL;
 
-	spin_lock_irq(&memmap.lock, flags);
+	spin_lock_irq(memmap.lock, flags);
 
 	ptr = _malloc_unlocked(zone, caps, bytes);
 
-	spin_unlock_irq(&memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, flags);
 
 	return ptr;
 }
@@ -636,13 +637,13 @@ void *rzalloc_core_sys(int core, size_t bytes)
 	uint32_t flags;
 	void *ptr = NULL;
 
-	spin_lock_irq(&memmap.lock, flags);
+	spin_lock_irq(memmap.lock, flags);
 
 	ptr = rmalloc_sys(RZONE_SYS, 0, core, bytes);
 	if (ptr)
 		bzero(ptr, bytes);
 
-	spin_unlock_irq(&memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, flags);
 
 	return ptr;
 }
@@ -730,11 +731,11 @@ void *_balloc(int zone, uint32_t caps, size_t bytes)
 	void *ptr = NULL;
 	uint32_t flags;
 
-	spin_lock_irq(&memmap.lock, flags);
+	spin_lock_irq(memmap.lock, flags);
 
 	ptr = _balloc_unlocked(zone, caps, bytes);
 
-	spin_unlock_irq(&memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, flags);
 
 	return ptr;
 }
@@ -773,9 +774,9 @@ void rfree(void *ptr)
 {
 	uint32_t flags;
 
-	spin_lock_irq(&memmap.lock, flags);
+	spin_lock_irq(memmap.lock, flags);
 	_rfree_unlocked(ptr);
-	spin_unlock_irq(&memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, flags);
 }
 
 void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
@@ -786,7 +787,7 @@ void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(&memmap.lock, flags);
+	spin_lock_irq(memmap.lock, flags);
 
 	new_ptr = _malloc_unlocked(zone, caps, bytes);
 
@@ -796,7 +797,7 @@ void *_realloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(&memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, flags);
 
 	return new_ptr;
 }
@@ -809,7 +810,7 @@ void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 	if (!bytes)
 		return new_ptr;
 
-	spin_lock_irq(&memmap.lock, flags);
+	spin_lock_irq(memmap.lock, flags);
 
 	new_ptr = _balloc_unlocked(zone, caps, bytes);
 
@@ -819,7 +820,7 @@ void *_brealloc(void *ptr, int zone, uint32_t caps, size_t bytes)
 	if (new_ptr)
 		_rfree_unlocked(ptr);
 
-	spin_unlock_irq(&memmap.lock, flags);
+	spin_unlock_irq(memmap.lock, flags);
 
 	return new_ptr;
 }
@@ -934,8 +935,6 @@ void init_heap(struct sof *sof)
 	if (memmap.system[0].heap != (uintptr_t)&_system_heap_start)
 		panic(SOF_IPC_PANIC_MEM);
 
-	spinlock_init(&memmap.lock);
-
 	init_heap_map(memmap.system_runtime, PLATFORM_HEAP_SYSTEM_RUNTIME);
 
 	init_heap_map(memmap.runtime, PLATFORM_HEAP_RUNTIME);
@@ -948,6 +947,14 @@ void init_heap(struct sof *sof)
 	write_pattern((struct mm_heap *)&memmap.runtime, PLATFORM_HEAP_RUNTIME,
 				  DEBUG_BLOCK_FREE_VALUE_8BIT);
 #endif
+
+	/* alloc manually to avoid deadlock */
+	memmap.lock = _malloc_unlocked(RZONE_SYS | RZONE_FLAG_UNCACHED,
+				       SOF_MEM_CAPS_RAM, sizeof(*memmap.lock));
+	if (!memmap.lock)
+		panic(SOF_IPC_PANIC_MEM);
+
+	bzero(memmap.lock, sizeof(*memmap.lock));
 
 	dcache_writeback_region(&memmap, sizeof(memmap));
 }
