@@ -49,7 +49,7 @@ enum pm_runtime_context {
 
 /** \brief Runtime power management data. */
 struct pm_runtime_data {
-	spinlock_t lock;	/**< lock mechanism */
+	spinlock_t *lock;	/**< lock mechanism */
 	void *platform_data;	/**< platform specific data */
 };
 

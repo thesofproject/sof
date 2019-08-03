@@ -62,7 +62,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	struct ipc_msg *msg;
 	uint32_t flags;
 
-	spin_lock_irq(&ipc->lock, flags);
+	spin_lock_irq(ipc->lock, flags);
 
 	/* any messages to send ? */
 	if (list_is_empty(&ipc->shared_ctx->msg_list)) {
@@ -83,7 +83,7 @@ void ipc_platform_send_msg(struct ipc *ipc)
 	list_item_append(&msg->list, &ipc->shared_ctx->empty_list);
 
 out:
-	spin_unlock_irq(&ipc->lock, flags);
+	spin_unlock_irq(ipc->lock, flags);
 }
 
 int platform_ipc_init(struct ipc *ipc)

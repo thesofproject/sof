@@ -51,7 +51,7 @@ struct ll_schedule_data {
 };
 
 struct ll_queue_shared_context {
-	spinlock_t lock;		/* lock to synchronize many cores */
+	spinlock_t *lock;		/* lock to synchronize many cores */
 	atomic_t total_num_work;	/* number of total queued ll items */
 	atomic_t timer_clients;		/* number of timer clients */
 	uint64_t last_tick;		/* time of last tick */
@@ -79,7 +79,7 @@ static inline void ll_set_timer(struct ll_schedule_data *queue)
 {
 	uint64_t ticks;
 
-	spin_lock(&ll_shared_ctx->lock);
+	spin_lock(ll_shared_ctx->lock);
 
 	if (atomic_add(&queue->num_ll, 1) == 1)
 		ll_shared_ctx->timers[cpu_get_id()] = &queue->ts->timer;
@@ -92,12 +92,12 @@ static inline void ll_set_timer(struct ll_schedule_data *queue)
 		timer_enable(&queue->ts->timer);
 	}
 
-	spin_unlock(&ll_shared_ctx->lock);
+	spin_unlock(ll_shared_ctx->lock);
 }
 
 static inline void ll_clear_timer(struct ll_schedule_data *queue)
 {
-	spin_lock(&ll_shared_ctx->lock);
+	spin_lock(ll_shared_ctx->lock);
 
 	if (!atomic_sub(&ll_shared_ctx->total_num_work, 1))
 		queue->ts->timer_clear(&queue->ts->timer);
@@ -105,7 +105,7 @@ static inline void ll_clear_timer(struct ll_schedule_data *queue)
 	if (!atomic_sub(&queue->num_ll, 1))
 		ll_shared_ctx->timers[cpu_get_id()] = NULL;
 
-	spin_unlock(&ll_shared_ctx->lock);
+	spin_unlock(ll_shared_ctx->lock);
 }
 
 /* is there any work pending in the current time window ? */
@@ -300,12 +300,12 @@ static void queue_run(void *data)
 	if (is_ll_pending(queue))
 		run_ll(queue, &flags);
 
-	spin_lock(&ll_shared_ctx->lock);
+	spin_lock(ll_shared_ctx->lock);
 
 	/* re-calc timer and re-arm */
 	queue_reschedule(queue);
 
-	spin_unlock(&ll_shared_ctx->lock);
+	spin_unlock(ll_shared_ctx->lock);
 
 	irq_local_enable(flags);
 }

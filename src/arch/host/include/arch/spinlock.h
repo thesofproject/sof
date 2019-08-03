@@ -13,7 +13,7 @@
 typedef struct {
 } spinlock_t;
 
-static inline void arch_spinlock_init(spinlock_t *lock) {}
+static inline void arch_spinlock_init(spinlock_t **lock) {}
 static inline void arch_spin_lock(spinlock_t *lock) {}
 static inline void arch_spin_unlock(spinlock_t *lock) {}
 

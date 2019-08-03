@@ -178,7 +178,7 @@ static enum task_state dmic_work(void *data)
 	int i;
 
 	tracev_dmic("dmic_work()");
-	spin_lock(&dai->lock);
+	spin_lock(dai->lock);
 
 	/* Increment gain with logarithmic step.
 	 * Gain is Q2.30 and gain modifier is Q12.20.
@@ -233,7 +233,7 @@ static enum task_state dmic_work(void *data)
 			break;
 		}
 	}
-	spin_unlock(&dai->lock);
+	spin_unlock(dai->lock);
 
 	return gval ? SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
 }
@@ -1240,7 +1240,7 @@ static void dmic_start(struct dai *dai)
 	int fir_b;
 
 	/* enable port */
-	spin_lock(&dai->lock);
+	spin_lock(dai->lock);
 	trace_dmic("dmic_start()");
 	dmic->state = COMP_STATE_ACTIVE;
 	dmic->startcount = 0;
@@ -1345,7 +1345,7 @@ static void dmic_start(struct dai *dai)
 	dmic_active_fifos++;
 	trace_dmic("dmic_start(), dmic_active_fifos = %d", dmic_active_fifos);
 
-	spin_unlock(&dai->lock);
+	spin_unlock(dai->lock);
 
 	/* Currently there's no DMIC HW internal mutings and wait times
 	 * applied into this start sequence. It can be implemented here if
@@ -1366,7 +1366,7 @@ static void dmic_stop(struct dai *dai)
 	int i;
 
 	trace_dmic("dmic_stop()");
-	spin_lock(&dai->lock);
+	spin_lock(dai->lock);
 	dmic->state = COMP_STATE_PREPARE;
 
 	/* Stop FIFO packers and set FIFO initialize bits */
@@ -1412,7 +1412,7 @@ static void dmic_stop(struct dai *dai)
 
 	dmic_active_fifos--;
 
-	spin_unlock(&dai->lock);
+	spin_unlock(dai->lock);
 }
 
 /* save DMIC context prior to entering D3 */

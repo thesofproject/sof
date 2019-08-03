@@ -34,8 +34,7 @@ struct clk_data {
 	uint32_t freq;
 	uint32_t ticks_per_msec;
 
-	/* for synchronizing freq set for each clock */
-	spinlock_t lock;
+	spinlock_t *lock;	/* for synchronizing freq set for each clock */
 };
 
 struct clk_pdata {
@@ -82,7 +81,7 @@ void clock_set_freq(int clock, uint32_t hz)
 		clk_pdata->clk[clock].ticks_per_msec;
 
 	/* atomic context for changing clocks */
-	spin_lock_irq(&clk_pdata->clk[clock].lock, flags);
+	spin_lock_irq(clk_pdata->clk[clock].lock, flags);
 
 	switch (clock) {
 	case CLK_CPU(0) ... CLK_CPU(PLATFORM_CORE_COUNT - 1):
@@ -125,7 +124,7 @@ void clock_set_freq(int clock, uint32_t hz)
 	notifier_event(&notify_data);
 
 out:
-	spin_unlock_irq(&clk_pdata->clk[clock].lock, flags);
+	spin_unlock_irq(clk_pdata->clk[clock].lock, flags);
 }
 
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms)

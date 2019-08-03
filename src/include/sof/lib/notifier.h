@@ -25,7 +25,7 @@ enum notify_id {
 };
 
 struct notify {
-	spinlock_t lock;	/* notifier lock */
+	spinlock_t *lock;	/* notifier lock */
 	struct list_item list;	/* list of notifiers */
 };
 

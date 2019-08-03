@@ -20,11 +20,6 @@ typedef struct {
 #endif
 } spinlock_t;
 
-static inline void arch_spinlock_init(spinlock_t *lock)
-{
-	lock->lock = 0;
-}
-
 static inline void arch_spin_lock(spinlock_t *lock)
 {
 	uint32_t result, current;
@@ -69,6 +64,8 @@ static inline void arch_spin_unlock(spinlock_t *lock)
 		: "a" (&lock->lock)
 		: "memory");
 }
+
+void arch_spinlock_init(spinlock_t **lock);
 
 #endif /* __ARCH_SPINLOCK_H__ */
 

@@ -24,7 +24,7 @@
 struct trace {
 	uint32_t pos ;	/* trace position */
 	uint32_t enable;
-	spinlock_t lock;
+	spinlock_t *lock; /* locking mechanism */
 };
 
 static struct trace *trace;
@@ -119,11 +119,11 @@ META_IF_ELSE(is_atomic)(_atomic)()					\
 	META_IF_ELSE(is_mbox)						\
 	(								\
 		META_IF_ELSE(is_atomic)()(				\
-			spin_lock_irq(&trace->lock, flags);		\
+			spin_lock_irq(trace->lock, flags);		\
 		)							\
 		mtrace_event((const char *)dt, MESSAGE_SIZE(arg_count));\
 									\
-		META_IF_ELSE(is_atomic)()(spin_unlock_irq(&trace->lock,	\
+		META_IF_ELSE(is_atomic)()(spin_unlock_irq(trace->lock,	\
 							  flags);)	\
 	)()								\
 }

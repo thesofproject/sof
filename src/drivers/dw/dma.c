@@ -191,7 +191,7 @@ static int dw_dma_channel_get(struct dma *dma, unsigned int req_chan)
 	trace_dwdma("dw_dma_channel_get(): dma %d request channel %d",
 		    dma->plat_data.id, req_chan);
 
-	spin_lock_irq(&dma->lock, flags);
+	spin_lock_irq(dma->lock, flags);
 
 	/* find first free non draining channel */
 	for (i = 0; i < DW_MAX_CHAN; i++) {
@@ -205,12 +205,12 @@ static int dw_dma_channel_get(struct dma *dma, unsigned int req_chan)
 		atomic_add(&dma->num_channels_busy, 1);
 
 		/* return channel */
-		spin_unlock_irq(&dma->lock, flags);
+		spin_unlock_irq(dma->lock, flags);
 		return i;
 	}
 
 	/* DMA controller has no free channels */
-	spin_unlock_irq(&dma->lock, flags);
+	spin_unlock_irq(dma->lock, flags);
 	trace_dwdma_error("dw_dma_channel_get() error: dma %d "
 			  "no free channels", dma->plat_data.id);
 
@@ -258,9 +258,9 @@ static void dw_dma_channel_put(struct dma *dma, unsigned int channel)
 	trace_dwdma("dw_dma_channel_put(): dma %d channel %d put",
 		    dma->plat_data.id, channel);
 
-	spin_lock_irq(&dma->lock, flags);
+	spin_lock_irq(dma->lock, flags);
 	dw_dma_channel_put_unlocked(dma, channel);
-	spin_unlock_irq(&dma->lock, flags);
+	spin_unlock_irq(dma->lock, flags);
 }
 
 static int dw_dma_start(struct dma *dma, unsigned int channel)
