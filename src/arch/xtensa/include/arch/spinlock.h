@@ -22,35 +22,34 @@ typedef struct {
 
 static inline void arch_spin_lock(spinlock_t *lock)
 {
-	uint32_t result, current;
+	uint32_t result;
 
 	__asm__ __volatile__(
-		"1:     l32i    %1, %2, 0\n"
-		"       wsr     %1, scompare1\n"
-		"       movi    %0, 1\n"
-		"       s32c1i  %0, %2, 0\n"
-		"       bne     %0, %1, 1b\n"
-		: "=&a" (result), "=&a" (current)
+		"       movi    %0, 0\n"
+		"       wsr     %0, scompare1\n"
+		"1:     movi    %0, 1\n"
+		"       s32c1i  %0, %1, 0\n"
+		"       bnez    %0, 1b\n"
+		: "=&a" (result)
 		: "a" (&lock->lock)
 		: "memory");
 }
 
 static inline int arch_try_lock(spinlock_t *lock)
 {
-	uint32_t result, current;
+	uint32_t result;
 
 	__asm__ __volatile__(
-		"       l32i    %1, %2, 0\n"
-		"       wsr     %1, scompare1\n"
+		"       movi    %0, 0\n"
+		"       wsr     %0, scompare1\n"
 		"       movi    %0, 1\n"
-		"       s32c1i  %0, %2, 0\n"
-		: "=&a" (result), "=&a" (current)
+		"       s32c1i  %0, %1, 0\n"
+		: "=&a" (result)
 		: "a" (&lock->lock)
 		: "memory");
 
-	if (result)
-		return 0; /* lock failed */
-	return 1; /* lock acquired */
+	/* return 0 for failed lock, 1 otherwise */
+	return result ? 0 : 1;
 }
 
 static inline void arch_spin_unlock(spinlock_t *lock)
