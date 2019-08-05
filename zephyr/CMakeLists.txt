@@ -16,7 +16,6 @@ zephyr_library_sources(
 	schedule.c
 	panic.c
 	ipc.c
-	pipeline_static.c
 	# SOF src/audio
 	../src/audio/host.c
 	../src/audio/pipeline.c
@@ -46,6 +45,7 @@ zephyr_library_sources(
 	../src/math/trig.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_SOF_STATIC_PIPELINE pipeline_static.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_DAI ../src/audio/dai.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_TONE ../src/audio/tone.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_MIXER ../src/audio/mixer.c)
