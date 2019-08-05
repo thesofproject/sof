@@ -6,6 +6,10 @@
 
 #include "pipeline_connection_mocks.h"
 
+struct scheduler_ops schedule_mock_ops = {
+	.schedule_task_free	= &schedule_task_mock_free,
+};
+
 void cleanup_test_data(struct pipeline_connect_data *data)
 {
 	list_init(&data->first->bsource_list);
@@ -31,6 +35,7 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	pipe->ipc_pipe = pipe_desc;
 	pipe->status = COMP_STATE_INIT;
+	pipe->pipe_task.ops = &schedule_mock_ops;
 
 	struct comp_dev *first = calloc(sizeof(struct comp_dev), 1);
 

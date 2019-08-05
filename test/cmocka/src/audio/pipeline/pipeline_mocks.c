@@ -20,21 +20,6 @@ void platform_dai_timestamp(struct comp_dev *dai,
 	(void)posn;
 }
 
-void schedule_task_free(struct task *task)
-{
-	(void)task;
-	task->state = SOF_TASK_STATE_FREE;
-	task->func = NULL;
-	task->data = NULL;
-}
-
-void schedule_task(struct task *task, uint64_t start, uint64_t period)
-{
-	(void)task;
-	(void)start;
-	(void)period;
-}
-
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       enum task_state (*func)(void *data), void *data,
 		       uint16_t core, uint32_t xflags)
@@ -47,12 +32,6 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	(void)core;
 	(void)xflags;
 
-	return 0;
-}
-
-int schedule_task_cancel(struct task *task)
-{
-	(void)task;
 	return 0;
 }
 

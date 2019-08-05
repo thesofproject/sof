@@ -37,34 +37,6 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		return -ENOENT;
 }
 
-void schedule_task(struct task *task, uint64_t start, uint64_t period)
-{
-	if (schedulers[task->type]->schedule_task)
-		schedulers[task->type]->schedule_task(task, start, period);
-}
-
-void schedule_task_free(struct task *task)
-{
-	if (schedulers[task->type]->schedule_task_free)
-		schedulers[task->type]->schedule_task_free(task);
-}
-
-void reschedule_task(struct task *task, uint64_t start)
-{
-	if (schedulers[task->type]->reschedule_task)
-		schedulers[task->type]->reschedule_task(task, start);
-}
-
-int schedule_task_cancel(struct task *task)
-{
-	int ret = 0;
-
-	if (schedulers[task->type]->schedule_task_cancel)
-		ret = schedulers[task->type]->schedule_task_cancel(task);
-
-	return ret;
-}
-
 int scheduler_init(void)
 {
 	int i = 0;

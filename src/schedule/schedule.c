@@ -49,43 +49,6 @@ out:
 	return ret;
 }
 
-void schedule_task_free(struct task *task)
-{
-	if (task->ops->schedule_task_free)
-		task->ops->schedule_task_free(task);
-}
-
-void schedule_task(struct task *task, uint64_t start, uint64_t period)
-{
-	if (task->ops->schedule_task)
-		task->ops->schedule_task(task, start, period);
-}
-
-void reschedule_task(struct task *task, uint64_t start)
-{
-	if (task->ops->reschedule_task)
-		task->ops->reschedule_task(task, start);
-}
-
-int schedule_task_cancel(struct task *task)
-{
-	if (task->ops->schedule_task_cancel)
-		return task->ops->schedule_task_cancel(task);
-	return 0;
-}
-
-void schedule_task_running(struct task *task)
-{
-	if (task->ops->schedule_task_running)
-		task->ops->schedule_task_running(task);
-}
-
-void schedule_task_complete(struct task *task)
-{
-	if (task->ops->schedule_task_complete)
-		task->ops->schedule_task_complete(task);
-}
-
 int scheduler_init(void)
 {
 	struct schedule_data **sch = arch_schedule_get_data();
