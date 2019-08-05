@@ -608,7 +608,7 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	trace_pipe_with_ids(p, "pipeline_trigger()");
 
 	/* if current core is different than requested */
-	if (p->ipc_pipe.core != cpu_get_id())
+	if (!pipeline_is_this_cpu(p))
 		return pipeline_trigger_on_core(p, host, cmd);
 
 	/* handle pipeline global checks before going into each components */

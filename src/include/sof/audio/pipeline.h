@@ -8,6 +8,7 @@
 #ifndef __SOF_AUDIO_PIPELINE_H__
 #define __SOF_AUDIO_PIPELINE_H__
 
+#include <sof/lib/cpu.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <sof/trace/trace.h>
@@ -112,6 +113,12 @@ static inline bool pipeline_is_preload(struct pipeline *p)
 static inline bool pipeline_is_timer_driven(struct pipeline *p)
 {
 	return p->ipc_pipe.time_domain == SOF_TIME_DOMAIN_TIMER;
+}
+
+/* checks if pipeline is scheduled on this core */
+static inline bool pipeline_is_this_cpu(struct pipeline *p)
+{
+	return p->ipc_pipe.core == cpu_get_id();
 }
 
 /* pipeline creation and destruction */
