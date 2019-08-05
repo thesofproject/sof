@@ -139,6 +139,7 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 		tirq->irq_arg = arg;
 		break;
 	case TIMER3:
+	case TIMER4:
 		ret = platform_timer_register(timer, handler, arg);
 		if (ret < 0)
 			return ret;
@@ -172,6 +173,7 @@ void timer_unregister(struct timer *timer)
 		interrupt_unregister(tirq->logical_irq, tirq->irq_arg);
 		break;
 	case TIMER3:
+	case TIMER4:
 		platform_timer_unregister(timer);
 		break;
 	}
@@ -188,6 +190,7 @@ void timer_enable(struct timer *timer)
 		interrupt_enable(tirq->logical_irq, tirq->irq_arg);
 		break;
 	case TIMER3:
+	case TIMER4:
 		interrupt_unmask(tirq->logical_irq, timer->core);
 		break;
 	}
@@ -204,6 +207,7 @@ void timer_disable(struct timer *timer)
 		interrupt_disable(tirq->logical_irq, tirq->irq_arg);
 		break;
 	case TIMER3:
+	case TIMER4:
 		interrupt_mask(tirq->logical_irq, timer->core);
 		break;
 	}
