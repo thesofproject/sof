@@ -30,8 +30,6 @@ int master_core_init(struct sof *sof)
 {
 	int err;
 
-	interrupt_init();
-
 	/* init architecture */
 	trace_point(TRACE_BOOT_ARCH);
 	err = arch_init(sof);
@@ -42,6 +40,8 @@ int master_core_init(struct sof *sof)
 	trace_point(TRACE_BOOT_SYS_HEAP);
 	platform_init_memmap();
 	init_heap(sof);
+
+	interrupt_init();
 
 #if CONFIG_TRACE
 	trace_point(TRACE_BOOT_SYS_TRACES);
