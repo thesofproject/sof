@@ -37,12 +37,12 @@ enum task_state {
 };
 
 struct task {
-	uint16_t type;
 	uint64_t start;
+	uint16_t type;
 	uint16_t priority;
-	enum task_state state;
 	uint16_t core;
-	uint32_t flags;
+	uint16_t flags;
+	enum task_state state;
 	void *data;
 	uint64_t (*func)(void *data);
 	struct list_item list;
