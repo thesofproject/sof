@@ -608,8 +608,6 @@ static int ssp_probe(struct dai *dai)
 		      sizeof(*ssp));
 	dai_set_drvdata(dai, ssp);
 
-	spinlock_init(&dai->lock);
-
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
