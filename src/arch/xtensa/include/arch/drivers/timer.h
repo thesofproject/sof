@@ -13,6 +13,8 @@
 #include <sof/drivers/interrupt.h>
 #include <stdint.h>
 
+#define ARCH_TIMER_COUNT	3
+
 struct timer_irq {
 	int logical_irq;
 	void *irq_arg;
@@ -44,7 +46,7 @@ static inline int arch_timer_register(struct timer *timer,
 
 	flags = arch_interrupt_global_disable();
 	timer64_register(timer, handler, arg);
-	ret = arch_interrupt_register(timer->id, timer_64_handler, timer);
+	ret = arch_interrupt_register(timer->irq, timer_64_handler, timer);
 	arch_interrupt_global_enable(flags);
 
 	return ret;
@@ -52,7 +54,7 @@ static inline int arch_timer_register(struct timer *timer,
 
 static inline void arch_timer_unregister(struct timer *timer)
 {
-	arch_interrupt_unregister(timer->id);
+	arch_interrupt_unregister(timer->irq);
 }
 
 static inline void arch_timer_enable(struct timer *timer)

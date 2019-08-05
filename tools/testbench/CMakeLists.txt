@@ -14,6 +14,7 @@ add_executable(testbench
 	edf_schedule.c
 	ll_schedule.c
 	panic.c
+	timer.c
 	topology.c
 	trace.c
 )
