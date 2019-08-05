@@ -9,11 +9,16 @@
 #define __SOF_DRIVERS_TIMER_H__
 
 #include <arch/drivers/timer.h>
-#include <platform/drivers/timer.h>
 #include <stdint.h>
 
 struct comp_dev;
 struct sof_ipc_stream_posn;
+
+#define TIMER0	0
+#define TIMER1	1
+#define TIMER2	2
+#define TIMER3	3
+#define TIMER4	4
 
 struct timesource_data {
 	struct timer timer;

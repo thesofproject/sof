@@ -16,7 +16,7 @@ struct timer_data {
 	void *arg2;
 };
 
-static struct timer_data xtimer[3] = {};
+static struct timer_data xtimer[ARCH_TIMER_COUNT] = {};
 
 void timer_64_handler(void *arg)
 {
@@ -24,24 +24,11 @@ void timer_64_handler(void *arg)
 	struct timer_data *tdata = timer->timer_data;
 	uint32_t ccompare;
 
-	/* get comparator value - will tell us timeout reason */
-	switch (timer->id) {
-	case TIMER0:
-		ccompare = xthal_get_ccompare(0);
-		break;
-#if XCHAL_NUM_TIMERS > 1
-	case TIMER1:
-		ccompare = xthal_get_ccompare(1);
-		break;
-#endif
-#if XCHAL_NUM_TIMERS > 2
-	case TIMER2:
-		ccompare = xthal_get_ccompare(2);
-		break;
-#endif
-	default:
+	if (timer->id >= ARCH_TIMER_COUNT)
 		return;
-	}
+
+	/* get comparator value - will tell us timeout reason */
+	ccompare = xthal_get_ccompare(timer->id);
 
 	/* is this a 32 bit rollover ? */
 	if (ccompare == 1) {
@@ -62,46 +49,17 @@ void timer_64_handler(void *arg)
 		ccompare = 1;
 	}
 
-	switch (timer->id) {
-	case TIMER0:
-		xthal_set_ccompare(0, ccompare);
-		break;
-#if XCHAL_NUM_TIMERS > 1
-	case TIMER1:
-		xthal_set_ccompare(1, ccompare);
-		break;
-#endif
-#if XCHAL_NUM_TIMERS > 2
-	case TIMER2:
-		xthal_set_ccompare(2, ccompare);
-		break;
-#endif
-	default:
-		return;
-	}
+	xthal_set_ccompare(timer->id, ccompare);
 }
 
 int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
 	struct timer_data *tdata;
 
-	switch (timer->id) {
-	case TIMER0:
-		tdata = &xtimer[0];
-		break;
-#if XCHAL_NUM_TIMERS > 1
-	case TIMER1:
-		tdata = &xtimer[1];
-		break;
-#endif
-#if XCHAL_NUM_TIMERS > 2
-	case TIMER2:
-		tdata = &xtimer[2];
-		break;
-#endif
-	default:
+	if (timer->id >= ARCH_TIMER_COUNT)
 		return -EINVAL;
-	}
+
+	tdata = &xtimer[timer->id];
 
 	tdata->handler2 = handler;
 	tdata->arg2 = arg;
@@ -119,23 +77,10 @@ uint64_t arch_timer_get_system(struct timer *timer)
 	uint32_t high;
 	uint32_t ccompare;
 
-	switch (timer->id) {
-	case TIMER0:
-		ccompare = xthal_get_ccompare(0);
-		break;
-#if XCHAL_NUM_TIMERS > 1
-	case TIMER1:
-		ccompare = xthal_get_ccompare(1);
-		break;
-#endif
-#if XCHAL_NUM_TIMERS > 2
-	case TIMER2:
-		ccompare = xthal_get_ccompare(2);
-		break;
-#endif
-	default:
+	if (timer->id >= ARCH_TIMER_COUNT)
 		return 0;
-	}
+
+	ccompare = xthal_get_ccompare(timer->id);
 
 	flags = arch_interrupt_global_disable();
 
@@ -164,6 +109,9 @@ int arch_timer_set(struct timer *timer, uint64_t ticks)
 	uint32_t hitimeout = ticks >> 32;
 	uint32_t flags;
 
+	if (timer->id >= ARCH_TIMER_COUNT)
+		return -EINVAL;
+
 	/* value of 1 represents rollover */
 	if ((ticks & 0xffffffff) == 0x1)
 		ticks++;
@@ -182,23 +130,7 @@ int arch_timer_set(struct timer *timer, uint64_t ticks)
 	timer->hitimeout = hitimeout;
 	timer->lowtimeout = ticks;
 
-	switch (timer->id) {
-	case TIMER0:
-		xthal_set_ccompare(0, time);
-		break;
-#if XCHAL_NUM_TIMERS > 1
-	case TIMER1:
-		xthal_set_ccompare(1, time);
-		break;
-#endif
-#if XCHAL_NUM_TIMERS > 2
-	case TIMER2:
-		xthal_set_ccompare(2, time);
-		break;
-#endif
-	default:
-		return -EINVAL;
-	}
+	xthal_set_ccompare(timer->id, time);
 
 	arch_interrupt_global_enable(flags);
 	return 0;

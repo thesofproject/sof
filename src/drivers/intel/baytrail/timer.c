@@ -193,7 +193,7 @@ static int platform_timer_register(struct timer *timer,
 	timer->timer_data = tdata;
 	timer->hitime = 0;
 	timer->hitimeout = 0;
-	ret = arch_interrupt_register(timer->id,
+	ret = arch_interrupt_register(timer->irq,
 				      platform_timer_64_handler, timer);
 	arch_interrupt_global_enable(flags);
 
