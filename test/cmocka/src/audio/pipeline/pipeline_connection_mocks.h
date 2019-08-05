@@ -7,7 +7,7 @@
 
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/schedule.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -29,3 +29,10 @@ struct pipeline_connect_data {
 struct pipeline_connect_data *get_standard_connect_objects(void);
 
 void cleanup_test_data(struct pipeline_connect_data *data);
+
+static inline void schedule_task_mock_free(struct task *task)
+{
+	task->state = SOF_TASK_STATE_FREE;
+	task->func = NULL;
+	task->data = NULL;
+}

@@ -63,28 +63,54 @@ struct schedule_data {
 extern struct scheduler_ops schedule_edf_ops;
 extern struct scheduler_ops schedule_ll_ops;
 
+static inline void schedule_task_running(struct task *task)
+{
+	if (task->ops->schedule_task_running)
+		task->ops->schedule_task_running(task);
+}
+
+static inline void schedule_task_complete(struct task *task)
+{
+	if (task->ops->schedule_task_complete)
+		task->ops->schedule_task_complete(task);
+}
+
+static inline void schedule_task(struct task *task, uint64_t start,
+				 uint64_t period)
+{
+	if (task->ops->schedule_task)
+		task->ops->schedule_task(task, start, period);
+}
+
+static inline void reschedule_task(struct task *task, uint64_t start)
+{
+	if (task->ops->reschedule_task)
+		task->ops->reschedule_task(task, start);
+}
+
+static inline int schedule_task_cancel(struct task *task)
+{
+	if (task->ops->schedule_task_cancel)
+		return task->ops->schedule_task_cancel(task);
+	return 0;
+}
+
+static inline void schedule_task_free(struct task *task)
+{
+	if (task->ops->schedule_task_free)
+		task->ops->schedule_task_free(task);
+}
+
 struct schedule_data **arch_schedule_get_data(void);
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       enum task_state (*func)(void *data), void *data,
 		       uint16_t core, uint32_t flags);
 
-void schedule_task_running(struct task *task);
-
-void schedule_task_complete(struct task *task);
-
-void schedule_task(struct task *task, uint64_t start, uint64_t period);
-
-void reschedule_task(struct task *task, uint64_t start);
-
 void schedule_free(void);
 
 void schedule(void);
 
 int scheduler_init(void);
-
-int schedule_task_cancel(struct task *task);
-
-void schedule_task_free(struct task *task);
 
 #endif /* __SOF_SCHEDULE_SCHEDULE_H__ */
