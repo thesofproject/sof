@@ -19,6 +19,7 @@
 #if !defined(__ASSEMBLER__) && !defined(LINKER)
 
 #include <arch/lib/cpu.h>
+#include <stdbool.h>
 
 #if PLATFORM_CORE_COUNT > MAX_CORE_COUNT
 #error "Invalid core count - exceeding core limit"
@@ -27,6 +28,11 @@
 static inline int cpu_get_id(void)
 {
 	return arch_cpu_get_id();
+}
+
+static inline bool cpu_is_slave(int id)
+{
+	return id != PLATFORM_MASTER_CORE_ID;
 }
 
 static inline void cpu_enable_core(int id)
