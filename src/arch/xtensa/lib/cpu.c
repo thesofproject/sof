@@ -48,7 +48,7 @@ void arch_cpu_enable_core(int id)
 		cpu_alloc_core_context(id);
 
 		/* enable IDC interrupt for the the slave core */
-		idc_enable_interrupts(id, arch_cpu_get_id());
+		idc_enable_interrupts(id, cpu_get_id());
 
 		/* send IDC power up message */
 		arch_idc_send_msg(&power_up, IDC_NON_BLOCKING);

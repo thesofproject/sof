@@ -59,7 +59,7 @@ _xtos_handler _xtos_set_interrupt_handler_arg( int n, _xtos_handler f, void *arg
     }
     else {
 #if CONFIG_SMP
-        entry = &(core_data_ptr[arch_cpu_get_id()]->xtos_int_data.xtos_interrupt_table.array[MAPINT(n)]);
+        entry = &(core_data_ptr[cpu_get_id()]->xtos_int_data.xtos_interrupt_table.array[MAPINT(n)]);
 #else
         entry = xtos_interrupt_table + MAPINT(n);
 #endif
