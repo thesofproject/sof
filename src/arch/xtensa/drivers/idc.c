@@ -65,7 +65,7 @@ void idc_enable_interrupts(int target_core, int source_core)
 static void idc_irq_handler(void *arg)
 {
 	struct idc *idc = arg;
-	int core = arch_cpu_get_id();
+	int core = cpu_get_id();
 	uint32_t idctfc;
 	uint32_t idctefc;
 	uint32_t idcietc;
@@ -128,7 +128,7 @@ static void idc_irq_handler(void *arg)
  */
 int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
-	int core = arch_cpu_get_id();
+	int core = cpu_get_id();
 	uint64_t deadline;
 
 	tracev_idc("arch_idc_send_msg()");
@@ -278,7 +278,7 @@ static void idc_cmd(struct idc_msg *msg)
 static uint64_t idc_do_cmd(void *data)
 {
 	struct idc *idc = data;
-	int core = arch_cpu_get_id();
+	int core = cpu_get_id();
 	int initiator = idc->received_msg.core;
 
 	trace_idc("idc_do_cmd()");
@@ -344,7 +344,7 @@ static uint32_t idc_get_done_bit_mask(int core)
  */
 int arch_idc_init(void)
 {
-	int core = arch_cpu_get_id();
+	int core = cpu_get_id();
 	int ret;
 
 	trace_idc("arch_idc_init()");
@@ -383,7 +383,7 @@ int arch_idc_init(void)
 void idc_free(void)
 {
 	struct idc *idc = *idc_get();
-	int core = arch_cpu_get_id();
+	int core = cpu_get_id();
 	int i = 0;
 	uint32_t idctfc;
 
