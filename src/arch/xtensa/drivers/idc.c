@@ -191,7 +191,7 @@ static int idc_pipeline_trigger(uint32_t cmd)
 	}
 
 	/* check whether we are executing from the right core */
-	if (arch_cpu_get_id() != pcm_dev->cd->pipeline->ipc_pipe.core)
+	if (!pipeline_is_this_cpu(pcm_dev->cd->pipeline))
 		return -EINVAL;
 
 	/* trigger pipeline */
@@ -232,7 +232,7 @@ static int idc_component_command(uint32_t cmd)
 	 */
 
 	/* check whether we are executing from the right core */
-	if (arch_cpu_get_id() != comp_dev->cd->pipeline->ipc_pipe.core)
+	if (!pipeline_is_this_cpu(comp_dev->cd->pipeline))
 		return -EINVAL;
 
 	/* execute component command */
