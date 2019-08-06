@@ -45,8 +45,10 @@
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <config.h>
+#ifdef CONFIG_GDB_DEBUG
 #include <arch/gdb/init.h>
 #include <sof/gdb/gdb.h>
+#endif
 
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)

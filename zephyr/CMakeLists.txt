@@ -4,6 +4,7 @@ zephyr_interface_library_named(SOF)
 # include redefines incompatible things on src/include
 target_include_directories(SOF INTERFACE
 	include
+	include/platform
 	#../src/arch/host/include
 	../src/include)
 
@@ -24,7 +25,7 @@ zephyr_library_sources(
 	../src/audio/buffer.c
 	# SOF src/ipc
 	../src/ipc/ipc.c
-	#../src/ipc/handler.c
+	../src/ipc/handler.c
 	# SOF src/lib
 	#../src/lib/lib.c
 	#../src/lib/alloc.c

@@ -460,5 +460,4 @@ int ipc_init(struct sof *sof)
 		list_item_prepend(&sof->ipc->shared_ctx->message[i].list,
 				  &sof->ipc->shared_ctx->empty_list);
 
-	return platform_ipc_init(sof->ipc);
 }

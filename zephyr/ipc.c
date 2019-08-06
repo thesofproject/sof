@@ -10,7 +10,7 @@
 #include <sof/ipc.h>
 
 /* testbench ipc */
-struct ipc *_ipc;
+extern struct ipc *_ipc;
 
 /* private data for IPC */
 struct ipc_data {
@@ -30,11 +30,14 @@ int platform_ipc_init(struct ipc *ipc)
 	/* allocate page table buffer */
 	iipc->dh_buffer.page_table = k_calloc(HOST_PAGE_SIZE, 1);
 
+	/* schedule */
+	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
+			   ipc_process_task, _ipc, 0, 0);
 	return 0;
 }
 
 /* The following definitions are to satisfy libsof linker errors */
-
+#if 0
 int ipc_stream_send_position(struct comp_dev *cdev,
 			     struct sof_ipc_stream_posn *posn)
 {
@@ -46,3 +49,4 @@ int ipc_stream_send_xrun(struct comp_dev *cdev,
 {
 	return 0;
 }
+#endif
