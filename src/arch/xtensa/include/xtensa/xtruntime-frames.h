@@ -136,15 +136,29 @@ STRUCT_END(UserFrame)
  *
  * To access the core specific structure from ASM (after threadptr is set):
  * xtos_addr_percore a13, xtos_interrupt_table
- *
- * Access to the core specific structure from C is not supported!
  */
 STRUCT_BEGIN
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_enabled)
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_intstruct)
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_interrupt_table)
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_interrupt_mask_table)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_1)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_2)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_3)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_4)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_5)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_saved_sp)
 STRUCT_END(xtos_structures_pointers)
+
+/*
+ * xtos_task_context contains information about currently
+ * executed task
+ */
+STRUCT_BEGIN
+STRUCT_FIELD (UserFrame*,4,TC_,stack_pointer)
+STRUCT_FIELD (void*,4,TC_,stack_base)
+STRUCT_FIELD (long,4,TC_,stack_size)
+STRUCT_END(xtos_task_context)
 
 #if defined(_ASMLANGUAGE) || defined(__ASSEMBLER__)
 

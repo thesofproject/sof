@@ -54,10 +54,8 @@
 
 .type	main, @function
 
-#if CONFIG_SMP
 .type	master_core_data, @object
 .type	core_data_ptr, @object
-#endif
 
 // Macros to abstract away ABI differences
 
@@ -114,12 +112,12 @@ _start:
 #include "reset-unneeded.S"
 #endif
 
-#if CONFIG_SMP
 	// Init xtos struct ptr
 	movi	a2, master_core_data
 	movi	a3, core_data_ptr
 	s32i	a2, a3, 0
 
+#if CONFIG_SMP
 	// Initialize the stack pointer.
 	// See the "ABI and Software Conventions" chapter in the
 	// Xtensa ISA Reference manual for details.

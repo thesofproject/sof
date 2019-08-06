@@ -8,32 +8,37 @@
 #ifndef __XTOS_XTOS_STRUCTS_H__
 #define __XTOS_XTOS_STRUCTS_H__
 
-#include <config.h>
-
-#if CONFIG_SMP
 #include "xtos-internal.h"
-#endif
+#include <sof/lib/memory.h>
+#include <config.h>
+#include <xtensa/xtruntime-frames.h>
+#include <stdint.h>
 
 struct idc;
 struct irq_task;
 struct notify;
 struct schedule_data;
 
-#if CONFIG_SMP
 struct thread_data {
 	xtos_structures_pointers xtos_ptrs;
+	volatile xtos_task_context *xtos_active_task;
 };
 
 struct xtos_core_data {
+#if CONFIG_SMP
 	struct XtosInterruptStructure xtos_int_data;
+#endif
+	uint8_t xtos_stack_for_interrupt_1[SOF_STACK_SIZE];
+	uint8_t xtos_stack_for_interrupt_2[SOF_STACK_SIZE];
+	uint8_t xtos_stack_for_interrupt_3[SOF_STACK_SIZE];
+	uint8_t xtos_stack_for_interrupt_4[SOF_STACK_SIZE];
+	uint8_t xtos_stack_for_interrupt_5[SOF_STACK_SIZE];
+	uintptr_t xtos_saved_sp;
 	struct thread_data *thread_data_ptr;
 };
-#endif
 
 struct core_context {
-#if CONFIG_SMP
 	struct thread_data td;
-#endif
 	struct irq_task *irq_low_task;
 	struct irq_task *irq_med_task;
 	struct irq_task *irq_high_task;

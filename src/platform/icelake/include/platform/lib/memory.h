@@ -258,7 +258,7 @@
 #define HEAP_BUFFER_COUNT	(HEAP_BUFFER_SIZE / HEAP_BUFFER_BLOCK_SIZE)
 
 #define HEAP_SYSTEM_M_SIZE		0x8000	/* heap master core size */
-#define HEAP_SYSTEM_S_SIZE		0x5000	/* heap slave core size */
+#define HEAP_SYSTEM_S_SIZE		0x6000	/* heap slave core size */
 #define HEAP_SYSTEM_T_SIZE \
 	(HEAP_SYSTEM_M_SIZE + ((PLATFORM_CORE_COUNT - 1) * HEAP_SYSTEM_S_SIZE))
 

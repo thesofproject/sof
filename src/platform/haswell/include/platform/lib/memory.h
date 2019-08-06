@@ -93,7 +93,7 @@ void platform_init_memmap(void);
 #define HEAP_SYS_RT_COUNT1024	4
 
 /* Heap configuration */
-#define SOF_DATA_SIZE			0xa000
+#define SOF_DATA_SIZE			0xC000
 
 #define HEAP_SYSTEM_BASE		(DRAM0_BASE + SOF_DATA_SIZE)
 #define HEAP_SYSTEM_SIZE		0x3000
