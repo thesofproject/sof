@@ -11,4 +11,6 @@
 #define HEAP_BUFFER_SIZE	(1024 * 128)
 #define SOF_STACK_SIZE		0x1000
 
+#define SRAM_INBOX_SIZE		0x2000
+
 #endif
