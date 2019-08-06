@@ -315,6 +315,7 @@ XTOS_PENDING_OFS:	.space	4	/* _xtos_pending variable */
 #  define IFNSA(a,b)	b
 # endif
 
+#define XTOS_TASK_CONTEXT_OFFSET	40
 
 	// get_prid ax
 	// Extracts core id.
@@ -384,17 +385,6 @@ core_3:
 exit:
 	.endm
 
-	// xtos_addr_percore ax, structure_name
-	// Pointer to structure per core.
-	.macro	xtos_addr_percore ax, structure_name
-#if XCHAL_HAVE_THREADPTR
-	rur.threadptr	\ax
-	l32i		\ax, \ax, XTOS_PTR_TO_\structure_name
-#else
-#error "This architecture requires core support for XCHAL_HAVE_THREADPTR"
-#endif
-	.endm
-
 	// xtos_addr_percore_add ax, symbol, offset
 	// Pointer to structure per core + offset.
 	.macro	xtos_addr_percore_add ax, symbol, offset
@@ -409,6 +399,39 @@ exit:
 	addi			\ax, \ax, -\offset
 	.endm
 #endif /* CONFIG_SMP */
+
+	// xtos_addr_percore ax, structure_name
+	// Pointer to structure per core.
+	.macro	xtos_addr_percore ax, structure_name
+#if XCHAL_HAVE_THREADPTR
+	rur.threadptr	\ax
+	l32i		\ax, \ax, XTOS_PTR_TO_\structure_name
+#else
+#error "SOF for Xtensa requires THREADPTR option"
+#endif
+	.endm
+
+	// xtos_int_stack_addr_percore ax, int_level, stack_name
+	// Pointer to dedicated interrupt stack.
+	.macro	xtos_int_stack_addr_percore ax, int_level, stack_name
+#if XCHAL_HAVE_THREADPTR
+	rur.threadptr	\ax
+	l32i		\ax, \ax, XTOS_PTR_TO_\stack_name\()_&int_level
+#else
+#error "SOF for Xtensa requires THREADPTR option"
+#endif
+	.endm
+
+	// xtos_task_ctx_percore ax
+	// Pointer to structure per core.
+	.macro	xtos_task_ctx_percore ax
+#if XCHAL_HAVE_THREADPTR
+	rur.threadptr	\ax
+	l32i		\ax, \ax, XTOS_TASK_CONTEXT_OFFSET
+#else
+#error "SOF for Xtensa requires THREADPTR option"
+#endif
+	.endm
 
 #else /* !_ASMLANGUAGE && !__ASSEMBLER__ */
 

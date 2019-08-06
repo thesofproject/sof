@@ -34,43 +34,47 @@ uint32_t lock_dbg_user[DBG_LOCK_USERS] = {0};
 static struct core_context master_core_ctx;
 
 /** \brief Core context pointers for all the cores. */
-struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT];
+struct core_context *core_ctx_ptr[PLATFORM_CORE_COUNT] = { 0 };
 
-#if CONFIG_SMP
 /** \brief Xtos core data for master core. */
 struct xtos_core_data master_core_data;
 
 /** \brief Xtos core data pointers for all the cores. */
-struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT];
-#endif
+struct xtos_core_data *core_data_ptr[PLATFORM_CORE_COUNT] = { 0 };
 
 /**
  * \brief Initializes core specific data.
  */
 static void initialize_pointers_per_core(void)
 {
-#if CONFIG_SMP
 	int core = cpu_get_id();
-	struct xtos_core_data *core_data = core_data_ptr[core];
+	struct xtos_core_data *core_data;
 	xtos_structures_pointers *p;
 
 	if (core == PLATFORM_MASTER_CORE_ID) {
 		master_core_data.thread_data_ptr = &master_core_ctx.td;
 		core_ctx_ptr[PLATFORM_MASTER_CORE_ID] = &master_core_ctx;
+		core_data_ptr[PLATFORM_MASTER_CORE_ID] = &master_core_data;
 	}
 
 	cpu_write_threadptr((int)core_ctx_ptr[core]);
 
+	core_data = core_data_ptr[core];
+
 	p = &core_data->thread_data_ptr->xtos_ptrs;
+	p->xtos_saved_sp = &core_data->xtos_saved_sp;
+	p->xtos_stack_for_interrupt_1 = core_data->xtos_stack_for_interrupt_1;
+	p->xtos_stack_for_interrupt_2 = core_data->xtos_stack_for_interrupt_2;
+	p->xtos_stack_for_interrupt_3 = core_data->xtos_stack_for_interrupt_3;
+	p->xtos_stack_for_interrupt_4 = core_data->xtos_stack_for_interrupt_4;
+	p->xtos_stack_for_interrupt_5 = core_data->xtos_stack_for_interrupt_5;
+#if CONFIG_SMP
 	p->xtos_enabled = &core_data->xtos_int_data.xtos_enabled;
 	p->xtos_intstruct = &core_data->xtos_int_data;
 	p->xtos_interrupt_table =
 		&core_data->xtos_int_data.xtos_interrupt_table.array[0];
 	p->xtos_interrupt_mask_table =
 		&core_data->xtos_int_data.xtos_interrupt_mask_table[0];
-#else
-	core_ctx_ptr[PLATFORM_MASTER_CORE_ID] = &master_core_ctx;
-	cpu_write_threadptr((int)core_ctx_ptr[PLATFORM_MASTER_CORE_ID]);
 #endif
 }
 
