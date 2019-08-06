@@ -74,16 +74,23 @@ static void validate_memory(void *ptr, size_t size)
 #endif
 
 /* flush block map from cache to sram */
-static inline void flush_block_map(struct block_map *map)
+static inline void writeback_block_map(struct block_map *map)
 {
-	dcache_writeback_invalidate_region(map->block,
-					   sizeof(*map->block) * map->count);
-	dcache_writeback_invalidate_region(map, sizeof(*map));
+	dcache_writeback_region(map->block, sizeof(*map->block) * map->count);
+	dcache_writeback_region(map, sizeof(*map));
+}
+
+/* invalidate blocks of block map */
+static inline void invalidate_blocks(struct block_map *map)
+{
+	dcache_invalidate_region(map->block, sizeof(*map->block) * map->count);
 }
 
 /* total size of block */
 static inline uint32_t block_get_size(struct block_map *map)
 {
+	dcache_invalidate_region(map, sizeof(*map));
+
 	return sizeof(*map) + map->count *
 		(map->block_size + sizeof(struct block_hdr));
 }
@@ -93,6 +100,8 @@ static inline uint32_t heap_get_size(struct mm_heap *heap)
 {
 	uint32_t size = sizeof(struct mm_heap);
 	int i;
+
+	dcache_invalidate_region(heap, sizeof(*heap));
 
 	for (i = 0; i < heap->blocks; i++)
 		size += block_get_size(&heap->map[i]);
@@ -132,7 +141,7 @@ static void init_heap_map(struct mm_heap *heap, int count)
 		/* init the map[0] */
 		current_map = &heap[i].map[0];
 		current_map->base = heap[i].heap;
-		flush_block_map(current_map);
+		writeback_block_map(current_map);
 
 		/* map[j]'s base is calculated based on map[j-1] */
 		for (j = 1; j < heap[i].blocks; j++) {
@@ -141,10 +150,10 @@ static void init_heap_map(struct mm_heap *heap, int count)
 				current_map->block_size *
 				current_map->count;
 			current_map = &heap[i].map[j];
-			flush_block_map(current_map);
+			writeback_block_map(current_map);
 		}
 
-		dcache_writeback_invalidate_region(&heap[i], sizeof(heap[i]));
+		dcache_writeback_region(&heap[i], sizeof(heap[i]));
 	}
 }
 
@@ -196,9 +205,13 @@ static void *alloc_block(struct mm_heap *heap, int level,
 	uint32_t caps)
 {
 	struct block_map *map = &heap->map[level];
-	struct block_hdr *hdr = &map->block[map->first_free];
+	struct block_hdr *hdr;
 	void *ptr;
 	int i;
+
+	invalidate_blocks(map);
+
+	hdr = &map->block[map->first_free];
 
 	map->free_count--;
 	ptr = (void *)(map->base + map->first_free * map->block_size);
@@ -209,7 +222,6 @@ static void *alloc_block(struct mm_heap *heap, int level,
 
 	/* find next free */
 	for (i = map->first_free; i < map->count; ++i) {
-
 		hdr = &map->block[i];
 
 		if (hdr->used == 0) {
@@ -217,6 +229,9 @@ static void *alloc_block(struct mm_heap *heap, int level,
 			break;
 		}
 	}
+
+	writeback_block_map(map);
+	dcache_writeback_region(heap, sizeof(*heap));
 
 	return ptr;
 }
@@ -235,6 +250,8 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 
 	if (bytes % map->block_size)
 		count++;
+
+	invalidate_blocks(map);
 
 	/* check if we have enough consecutive blocks for requested
 	 * allocation size.
@@ -273,6 +290,9 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 		hdr->used = 1;
 	}
 
+	writeback_block_map(map);
+	dcache_writeback_region(heap, sizeof(*heap));
+
 	return ptr;
 }
 
@@ -290,6 +310,8 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 	for (i = 0; i < PLATFORM_HEAP_RUNTIME; i++) {
 		heap = &memmap.runtime[i];
 
+		dcache_invalidate_region(heap, sizeof(*heap));
+
 		if ((uint32_t)ptr >= heap->heap &&
 		    (uint32_t)ptr < heap->heap + heap->size)
 			return heap;
@@ -297,6 +319,8 @@ static struct mm_heap *get_heap_from_ptr(void *ptr)
 
 	for (i = 0; i < PLATFORM_HEAP_BUFFER; i++) {
 		heap = &memmap.buffer[i];
+
+		dcache_invalidate_region(heap, sizeof(*heap));
 
 		if ((uint32_t)ptr >= heap->heap &&
 		    (uint32_t)ptr < heap->heap + heap->size)
@@ -314,6 +338,7 @@ static struct mm_heap *get_heap_from_caps(struct mm_heap *heap, int count,
 
 	/* find first heap that support type */
 	for (i = 0; i < count; i++) {
+		dcache_invalidate_region(&heap[i], sizeof(heap[i]));
 		mask = heap[i].caps & caps;
 		if (mask == caps)
 			return &heap[i];
@@ -331,6 +356,8 @@ static void *get_ptr_from_heap(struct mm_heap *heap, int zone, uint32_t caps,
 
 	for (i = 0; i < heap->blocks; i++) {
 		map = &heap->map[i];
+
+		dcache_invalidate_region(map, sizeof(*map));
 
 		/* is block big enough */
 		if (map->block_size < bytes)
@@ -374,6 +401,8 @@ static void free_block(void *ptr)
 	for (i = 0; i < heap->blocks; i++) {
 		block_map = &heap->map[i];
 
+		dcache_invalidate_region(block_map, sizeof(*block_map));
+
 		/* is ptr in this block */
 		if ((uint32_t)ptr < (block_map->base +
 		    (block_map->block_size * block_map->count)))
@@ -390,11 +419,14 @@ static void free_block(void *ptr)
 
 	/* calculate block header */
 	block = ((uint32_t)ptr - block_map->base) / block_map->block_size;
-	hdr = &block_map->block[block];
 
-	/* report a error if prt is not aligned to block */
+	/* report an error if ptr is not aligned to block */
 	if (block_map->base + block_map->block_size * block != (uint32_t)ptr)
 		panic(SOF_IPC_PANIC_MEM);
+
+	invalidate_blocks(block_map);
+
+	hdr = &block_map->block[block];
 
 	/* free block header and continuous blocks */
 	used_blocks = block + hdr->size;
@@ -411,6 +443,9 @@ static void free_block(void *ptr)
 	/* set first free block */
 	if (block < block_map->first_free)
 		block_map->first_free = block;
+
+	writeback_block_map(block_map);
+	dcache_writeback_region(heap, sizeof(*heap));
 
 #if CONFIG_DEBUG_BLOCK_FREE
 	/* memset the whole block in case of unaligned ptr */
@@ -564,6 +599,8 @@ static void *_malloc_unlocked(int zone, uint32_t caps, size_t bytes)
 #endif
 
 	memmap.heap_trace_updated = 1;
+	dcache_writeback_region(&memmap, sizeof(memmap));
+
 	return ptr;
 }
 
@@ -622,6 +659,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 	for (i = 0; i < heap->blocks; i++) {
 		map = &heap->map[i];
 
+		dcache_invalidate_region(map, sizeof(*map));
+
 		/* Check if blocks are big enough and at least one is free */
 		if (map->block_size >= bytes && map->free_count) {
 			/* found: grab a block */
@@ -638,6 +677,8 @@ static void *alloc_heap_buffer(struct mm_heap *heap, int zone, uint32_t caps,
 		 */
 		for (i = heap->blocks - 1; i >= 0; i--) {
 			map = &heap->map[i];
+
+			dcache_invalidate_region(map, sizeof(*map));
 
 			/* allocate if block size is smaller than request */
 			if (heap->size >= bytes && map->block_size < bytes) {
@@ -725,6 +766,7 @@ static void _rfree_unlocked(void *ptr)
 	/* free the block */
 	free_block(ptr);
 	memmap.heap_trace_updated = 1;
+	dcache_writeback_region(&memmap, sizeof(memmap));
 }
 
 void rfree(void *ptr)
@@ -834,6 +876,8 @@ void heap_trace(struct mm_heap *heap, int size)
 	int i;
 	int j;
 
+	dcache_invalidate_region(heap, sizeof(*heap));
+
 	for (i = 0; i < size; i++) {
 
 		trace_mem_init(" heap: 0x%x size %d blocks %d caps 0x%x",
@@ -845,6 +889,9 @@ void heap_trace(struct mm_heap *heap, int size)
 		/* map[j]'s base is calculated based on map[j-1] */
 		for (j = 1; j < heap->blocks; j++) {
 			current_map = &heap->map[j];
+
+			dcache_invalidate_region(current_map,
+						 sizeof(*current_map));
 
 			trace_mem_init("  block %d base 0x%x size %d",
 				       j, current_map->base,
@@ -860,6 +907,8 @@ void heap_trace(struct mm_heap *heap, int size)
 
 void heap_trace_all(int force)
 {
+	dcache_invalidate_region(&memmap, sizeof(memmap));
+
 	/* has heap changed since last shown */
 	if (memmap.heap_trace_updated || force) {
 		trace_mem_init("heap: buffer status");
@@ -867,7 +916,9 @@ void heap_trace_all(int force)
 		trace_mem_init("heap: runtime status");
 		heap_trace(memmap.runtime, PLATFORM_HEAP_RUNTIME);
 	}
+
 	memmap.heap_trace_updated = 0;
+	dcache_writeback_region(&memmap, sizeof(memmap));
 }
 #else
 void heap_trace_all(int force) { }
@@ -898,5 +949,5 @@ void init_heap(struct sof *sof)
 				  DEBUG_BLOCK_FREE_VALUE_8BIT);
 #endif
 
-	dcache_writeback_invalidate_region(&memmap, sizeof(memmap));
+	dcache_writeback_region(&memmap, sizeof(memmap));
 }
