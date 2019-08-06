@@ -7,6 +7,7 @@
 
 #include <sof/common.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/memory.h>
 #include <sof/platform.h>
@@ -17,18 +18,24 @@ extern uintptr_t _system_heap, _system_runtime_heap, _module_heap;
 extern uintptr_t _buffer_heap, _sof_core_s_start;
 
 /* Heap blocks for system runtime for master core */
-static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64];
-static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512];
-static struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024];
+static struct block_hdr sys_rt_0_block64[HEAP_SYS_RT_0_COUNT64]
+	__aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr sys_rt_0_block512[HEAP_SYS_RT_0_COUNT512]
+	__aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr sys_rt_0_block1024[HEAP_SYS_RT_0_COUNT1024]
+	__aligned(PLATFORM_DCACHE_ALIGN);
 
 /* Heap blocks for system runtime for slave core */
 #if PLATFORM_CORE_COUNT > 1
 static struct block_hdr
-	sys_rt_x_block64[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64];
+	sys_rt_x_block64[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT64]
+	__aligned(PLATFORM_DCACHE_ALIGN);
 static struct block_hdr
-	sys_rt_x_block512[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT512];
+	sys_rt_x_block512[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT512]
+	__aligned(PLATFORM_DCACHE_ALIGN);
 static struct block_hdr
-	sys_rt_x_block1024[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT1024];
+	sys_rt_x_block1024[PLATFORM_CORE_COUNT - 1][HEAP_SYS_RT_X_COUNT1024]
+	__aligned(PLATFORM_DCACHE_ALIGN);
 #endif
 
 /* Heap memory for system runtime */
@@ -54,11 +61,16 @@ static struct block_map sys_rt_heap_map[PLATFORM_CORE_COUNT][3] = {
 };
 
 /* Heap blocks for modules */
-static struct block_hdr mod_block64[HEAP_RT_COUNT64];
-static struct block_hdr mod_block128[HEAP_RT_COUNT128];
-static struct block_hdr mod_block256[HEAP_RT_COUNT256];
-static struct block_hdr mod_block512[HEAP_RT_COUNT512];
-static struct block_hdr mod_block1024[HEAP_RT_COUNT1024];
+static struct block_hdr
+	mod_block64[HEAP_RT_COUNT64] __aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr
+	mod_block128[HEAP_RT_COUNT128] __aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr
+	mod_block256[HEAP_RT_COUNT256] __aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr
+	mod_block512[HEAP_RT_COUNT512] __aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr
+	mod_block1024[HEAP_RT_COUNT1024] __aligned(PLATFORM_DCACHE_ALIGN);
 
 /* Heap memory map for modules */
 static struct block_map rt_heap_map[] = {
@@ -70,9 +82,12 @@ static struct block_map rt_heap_map[] = {
 };
 
 /* Heap blocks for buffers */
-static struct block_hdr buf_block[HEAP_BUFFER_COUNT];
-static struct block_hdr hp_buf_block[HEAP_HP_BUFFER_COUNT];
-static struct block_hdr lp_buf_block[HEAP_LP_BUFFER_COUNT];
+static struct block_hdr
+	buf_block[HEAP_BUFFER_COUNT] __aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr
+	hp_buf_block[HEAP_HP_BUFFER_COUNT] __aligned(PLATFORM_DCACHE_ALIGN);
+static struct block_hdr
+	lp_buf_block[HEAP_LP_BUFFER_COUNT] __aligned(PLATFORM_DCACHE_ALIGN);
 
 /* Heap memory map for buffers */
 static struct block_map buf_heap_map[] = {
