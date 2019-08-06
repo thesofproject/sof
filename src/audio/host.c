@@ -28,10 +28,30 @@
 
 #define trace_host(__e, ...) \
 	trace_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
+
+#define trace_host_with_ids(comp_ptr, format, ...)	\
+	trace_event_with_ids(TRACE_CLASS_HOST,		\
+			     comp_ptr->comp.pipeline_id,\
+			     comp_ptr->comp.id,		\
+			     format, ##__VA_ARGS__)
+
 #define tracev_host(__e, ...) \
 	tracev_event(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
+
+#define tracev_host_with_ids(comp_ptr, format, ...)	\
+	tracev_event_with_ids(TRACE_CLASS_HOST,		\
+			     comp_ptr->comp.pipeline_id,\
+			     comp_ptr->comp.id,		\
+			     format, ##__VA_ARGS__)
+
 #define trace_host_error(__e, ...) \
 	trace_error(TRACE_CLASS_HOST, __e, ##__VA_ARGS__)
+
+#define trace_host_error_with_ids(comp_ptr, format, ...)	\
+	trace_error_with_ids(TRACE_CLASS_HOST,		\
+			     comp_ptr->comp.pipeline_id,\
+			     comp_ptr->comp.id,		\
+			     format, ##__VA_ARGS__)
 
 /**
  * \brief Host buffer info.
@@ -252,8 +272,9 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 		err = dma_sg_alloc(&hd->config.elem_array, RZONE_RUNTIME,
 				   dir, 1, 0, 0, 0);
 		if (err < 0) {
-			trace_host_error("create_local_elems() error: "
-					 "dma_sg_alloc() failed");
+			trace_host_error_with_ids(dev, "create_local_elems() "
+						  "error: dma_sg_alloc() "
+						  "failed");
 			return err;
 		}
 	} else {
@@ -263,8 +284,8 @@ static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
 	err = dma_sg_alloc(elem_array, RZONE_RUNTIME, dir, buffer_count,
 			   buffer_bytes, (uintptr_t)(hd->dma_buffer->addr), 0);
 	if (err < 0) {
-		trace_host_error("create_local_elems() error: "
-				 "dma_sg_alloc() failed");
+		trace_host_error_with_ids(dev, "create_local_elems() error: "
+					  "dma_sg_alloc() failed");
 		return err;
 	}
 
@@ -286,7 +307,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	trace_host("host_trigger()");
+	trace_host_with_ids(dev, "host_trigger()");
 
 	ret = comp_set_state(dev, cmd);
 	if (ret < 0)
@@ -304,8 +325,8 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		return ret;
 
 	if (hd->chan < 0) {
-		trace_host_error("host_trigger() error: no dma channel "
-				 "configured");
+		trace_host_error_with_ids(dev, "host_trigger() error: no dma "
+					  "channel configured");
 		return -EINVAL;
 	}
 
@@ -313,15 +334,16 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_START:
 		ret = dma_start(hd->dma, hd->chan);
 		if (ret < 0)
-			trace_host_error("host_trigger() error: "
-					 "dma_start() failed, ret = %u", ret);
+			trace_host_error_with_ids(dev, "host_trigger() error: "
+						  "dma_start() failed, "
+						  "ret = %u", ret);
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
 		ret = dma_stop(hd->dma, hd->chan);
 		if (ret < 0)
-			trace_host_error("host_trigger(): dma stop failed: %d",
-					 ret);
+			trace_host_error_with_ids(dev, "host_trigger(): dma "
+						  "stop failed: %d", ret);
 		break;
 	default:
 		break;
@@ -394,7 +416,7 @@ static void host_free(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	trace_host("host_free()");
+	trace_host_with_ids(dev, "host_free()");
 
 	dma_put(hd->dma);
 
@@ -499,14 +521,15 @@ static int host_params(struct comp_dev *dev)
 	uint32_t align;
 	int err;
 
-	trace_event(TRACE_CLASS_HOST, "host_params()");
+	trace_host_with_ids(dev, "host_params()");
 
 	/* host params always installed by pipeline IPC */
 	hd->host_size = dev->params.buffer.size;
 
 	err = dma_get_attribute(hd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
 	if (err < 0) {
-		trace_host_error("could not get dma buffer alignment");
+		trace_host_error_with_ids(dev, "could not get dma buffer "
+					  "alignment");
 		return err;
 	}
 
@@ -555,14 +578,16 @@ static int host_params(struct comp_dev *dev)
 
 	/* validate period count */
 	if (!period_count) {
-		trace_host_error("host_params() error: invalid period_count");
+		trace_host_error_with_ids(dev, "host_params() error: invalid "
+					  "period_count");
 		return -EINVAL;
 	}
 
 	hd->period_bytes = ALIGN_UP(dev->frames * comp_frame_bytes(dev), align);
 
 	if (hd->period_bytes == 0) {
-		trace_host_error("host_params() error: invalid period_bytes");
+		trace_host_error_with_ids(dev, "host_params() error: invalid "
+					  "period_bytes");
 		return -EINVAL;
 	}
 
@@ -570,9 +595,9 @@ static int host_params(struct comp_dev *dev)
 	buffer_size = period_count * hd->period_bytes;
 	err = buffer_set_size(hd->dma_buffer, buffer_size);
 	if (err < 0) {
-		trace_host_error("host_params() error:"
-				 "buffer_set_size() failed, buffer_size = %u",
-				 buffer_size);
+		trace_host_error_with_ids(dev, "host_params() error:"
+					  "buffer_set_size() failed, "
+					  "buffer_size = %u", buffer_size);
 		return err;
 	}
 
@@ -595,14 +620,15 @@ static int host_params(struct comp_dev *dev)
 	 */
 	hd->chan = dma_channel_get(hd->dma, dev->params.stream_tag);
 	if (hd->chan < 0) {
-		trace_host_error("host_params() error: hd->chan < 0");
+		trace_host_error_with_ids(dev, "host_params() error: "
+					  "hd->chan < 0");
 		return -ENODEV;
 	}
 
 	err = dma_set_config(hd->dma, hd->chan, &hd->config);
 	if (err < 0) {
-		trace_host_error("host_params() error: "
-				 "dma_set_config() failed");
+		trace_host_error_with_ids(dev, "host_params() error: "
+					  "dma_set_config() failed");
 		dma_channel_put(hd->dma, hd->chan);
 		hd->chan = DMA_CHAN_INVALID;
 		return err;
@@ -612,7 +638,8 @@ static int host_params(struct comp_dev *dev)
 				&hd->dma_copy_align);
 
 	if (err < 0) {
-		trace_host_error("host_params() error: dma_get_attribute()");
+		trace_host_error_with_ids(dev, "host_params() error: "
+					  "dma_get_attribute()");
 
 		return err;
 	}
@@ -629,7 +656,7 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
-	trace_host("host_prepare()");
+	trace_host_with_ids(dev, "host_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -673,7 +700,7 @@ static int host_reset(struct comp_dev *dev)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 
-	trace_host("host_reset()");
+	trace_host_with_ids(dev, "host_reset()");
 
 	dma_channel_put(hd->dma, hd->chan);
 
@@ -700,7 +727,7 @@ static int host_copy(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	tracev_host("host_copy()");
+	tracev_host_with_ids(dev, "host_copy()");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;
@@ -715,13 +742,14 @@ static int host_copy(struct comp_dev *dev)
 		if (ret < 0) {
 			if (ret == -ENODATA) {
 				/* preload not finished, so stop processing */
-				trace_host("host_copy(), preload not yet "
-					   "finished");
+				trace_host_with_ids(dev, "host_copy(), preload"
+						    " not yet finished");
 				return PPL_STATUS_PATH_STOP;
 			}
 
-			trace_host_error("host_copy() error: dma_copy() "
-					 "failed, ret = %u", ret);
+			trace_host_error_with_ids(dev, "host_copy() error: "
+						  "dma_copy() failed, "
+						  "ret = %u", ret);
 			return ret;
 		}
 	}
@@ -733,11 +761,11 @@ static void host_cache(struct comp_dev *dev, int cmd)
 {
 	struct host_data *hd;
 
-	trace_event(TRACE_CLASS_HOST, "host_cache(), cmd = %d", cmd);
+	trace_host_with_ids(dev, "host_cache(), cmd = %d", cmd);
 
 	switch (cmd) {
 	case CACHE_WRITEBACK_INV:
-		trace_host("host_cache(), CACHE_WRITEBACK_INV");
+		trace_host_with_ids(dev, "host_cache(), CACHE_WRITEBACK_INV");
 
 		hd = comp_get_drvdata(dev);
 
@@ -750,7 +778,7 @@ static void host_cache(struct comp_dev *dev, int cmd)
 		break;
 
 	case CACHE_INVALIDATE:
-		trace_host("host_cache(), CACHE_INVALIDATE");
+		trace_host_with_ids(dev, "host_cache(), CACHE_INVALIDATE");
 
 		dcache_invalidate_region(dev, sizeof(*dev));
 
