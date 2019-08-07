@@ -416,7 +416,7 @@ int platform_init(struct sof *sof)
 	clock_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
-	scheduler_init();
+	scheduler_init(sof);
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

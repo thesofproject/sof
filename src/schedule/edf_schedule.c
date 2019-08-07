@@ -15,6 +15,7 @@
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
+#include <sof/sof.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -399,7 +400,7 @@ schedule:
 }
 
 /* Initialise the scheduler */
-static int edf_scheduler_init(void)
+static int edf_scheduler_init(struct sof *sof)
 {
 	trace_edf_sch("edf_scheduler_init()");
 

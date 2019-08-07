@@ -11,6 +11,7 @@
 #include <sof/lib/cpu.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
+#include <sof/sof.h>
 #include <ipc/topology.h>
 #include <errno.h>
 #include <stdint.h>
@@ -49,7 +50,7 @@ out:
 	return ret;
 }
 
-int scheduler_init(void)
+int scheduler_init(struct sof *sof)
 {
 	struct schedule_data **sch = arch_schedule_get_data();
 	int i = 0;
@@ -60,7 +61,7 @@ int scheduler_init(void)
 
 	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
 		if (schedulers[i]->scheduler_init) {
-			ret = schedulers[i]->scheduler_init();
+			ret = schedulers[i]->scheduler_init(sof);
 			if (ret < 0)
 				goto out;
 		}

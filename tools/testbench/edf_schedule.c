@@ -24,7 +24,7 @@ static void schedule_edf_task_complete(struct task *task);
 static void schedule_edf_task(struct task *task, uint64_t start,
 			      uint64_t deadline);
 static int schedule_edf_task_init(struct task *task);
-static int edf_scheduler_init(void);
+static int edf_scheduler_init(struct sof *sof);
 static void edf_scheduler_free(void);
 static void schedule_edf(void);
 static int schedule_edf_task_cancel(struct task *task);
@@ -61,7 +61,7 @@ static int schedule_edf_task_init(struct task *task)
 }
 
 /* initialize scheduler */
-static int edf_scheduler_init(void)
+static int edf_scheduler_init(struct sof *sof)
 {
 	trace_edf_sch("edf_scheduler_init()");
 	sch = malloc(sizeof(*sch));

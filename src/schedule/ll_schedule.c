@@ -34,6 +34,7 @@
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
+#include <sof/sof.h>
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
 #include <errno.h>
@@ -512,7 +513,7 @@ static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
 	return queue;
 }
 
-static int ll_scheduler_init(void)
+static int ll_scheduler_init(struct sof *sof)
 {
 	int ret = 0;
 	int cpu;

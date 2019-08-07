@@ -120,7 +120,7 @@ int slave_core_init(struct sof *sof)
 	platform_interrupt_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
-	scheduler_init();
+	scheduler_init(sof);
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
