@@ -149,7 +149,7 @@ int platform_init(struct sof *sof)
 	struct dai *esai;
 
 	clock_init();
-	scheduler_init();
+	scheduler_init(sof);
 
 	platform_timer_start(platform_timer);
 	sa_init(sof);

@@ -17,6 +17,7 @@
 
 struct edf_schedule_data;
 struct ll_schedule_data;
+struct sof;
 
 /* schedule tracing */
 #define trace_schedule(format, ...) \
@@ -50,7 +51,7 @@ struct scheduler_ops {
 	void (*reschedule_task)(struct task *task, uint64_t start);
 	int (*schedule_task_cancel)(struct task *task);
 	void (*schedule_task_free)(struct task *task);
-	int (*scheduler_init)(void);
+	int (*scheduler_init)(struct sof *sof);
 	void (*scheduler_free)(void);
 	void (*scheduler_run)(void);
 };
@@ -111,6 +112,6 @@ void schedule_free(void);
 
 void schedule(void);
 
-int scheduler_init(void);
+int scheduler_init(struct sof *sof);
 
 #endif /* __SOF_SCHEDULE_SCHEDULE_H__ */

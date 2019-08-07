@@ -37,14 +37,14 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		return -ENOENT;
 }
 
-int scheduler_init(void)
+int scheduler_init(struct sof *sof)
 {
 	int i = 0;
 	int ret = 0;
 
 	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
 		if (schedulers[i]->scheduler_init) {
-			ret = schedulers[i]->scheduler_init();
+			ret = schedulers[i]->scheduler_init(sof);
 			if (ret < 0)
 				goto out;
 		}
