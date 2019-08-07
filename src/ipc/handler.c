@@ -597,7 +597,8 @@ static int ipc_pm_context_save(uint32_t header)
 	/* TODO: clear any outstanding platform IRQs - TODO refine */
 
 	/* TODO: stop ALL timers */
-	platform_timer_stop(platform_timer);
+	/* Ignore for now */
+	// platform_timer_stop(platform_timer);
 
 	/* TODO: disable SSP and DMA HW */
 
