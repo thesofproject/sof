@@ -67,6 +67,8 @@ remove_module snd_soc_rl6347a
 remove_module snd_soc_wm8804_i2c
 remove_module snd_soc_wm8804
 
+remove_module snd_soc_max98090
+remove_module snd_soc_ts3a227e
 remove_module snd_soc_max98357a
 
 remove_module snd_soc_hdac_hda
