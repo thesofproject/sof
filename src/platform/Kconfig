@@ -9,8 +9,6 @@ choice
 config BAYTRAIL
 	bool "Build for Baytrail"
 	select HOST_PTABLE
-	select TASK_HAVE_PRIORITY_LOW
-	select TASK_HAVE_PRIORITY_MEDIUM
 	select DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
@@ -24,8 +22,6 @@ config BAYTRAIL
 config CHERRYTRAIL
 	bool "Build for Cherrytrail"
 	select HOST_PTABLE
-	select TASK_HAVE_PRIORITY_LOW
-	select TASK_HAVE_PRIORITY_MEDIUM
 	select DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
@@ -39,7 +35,6 @@ config CHERRYTRAIL
 config HASWELL
 	bool "Build for Haswell"
 	select HOST_PTABLE
-	select TASK_HAVE_PRIORITY_LOW
 	select DMA_AGGREGATED_IRQ
 	select DW
 	select DW_DMA
@@ -51,7 +46,6 @@ config HASWELL
 config BROADWELL
 	bool "Build for Broadwell"
 	select HOST_PTABLE
-	select TASK_HAVE_PRIORITY_LOW
 	select DMA_AGGREGATED_IRQ
 	select DW
 	select DW_DMA
@@ -68,8 +62,6 @@ config APOLLOLAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select TASK_HAVE_PRIORITY_LOW
-	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
 	select DMA_FIFO_PARTITION
 	select CAVS
@@ -85,8 +77,6 @@ config CANNONLAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select TASK_HAVE_PRIORITY_LOW
-	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
 	select DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
@@ -101,8 +91,6 @@ config SUECREEK
 	select IRQ_MAP
 	select DW
 	select DW_DMA
-	select TASK_HAVE_PRIORITY_LOW
-	select TASK_HAVE_PRIORITY_MEDIUM
 	select DW_SPI
 	select INTEL_IOMUX
 	select DW_GPIO
@@ -122,8 +110,6 @@ config ICELAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select TASK_HAVE_PRIORITY_LOW
-	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
 	select DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION

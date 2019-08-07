@@ -67,7 +67,7 @@ int master_core_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM);
 
 	/* should not return */
-	err = do_task_master_core(sof);
+	err = task_main_start(sof);
 
 	return err;
 }

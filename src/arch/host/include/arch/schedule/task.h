@@ -16,25 +16,6 @@
 #ifndef __ARCH_SCHEDULE_TASK_H__
 #define __ARCH_SCHEDULE_TASK_H__
 
-struct task;
-
-/**
- * \brief Allocates IRQ tasks.
- */
-static inline int arch_allocate_tasks(void)
-{
-	return 0;
-}
-
-/**
- * \brief Runs task.
- * \param[in,out] task Task data.
- */
-static inline int arch_run_task(struct task *task)
-{
-	return 0;
-}
-
 #endif /* __ARCH_SCHEDULE_TASK_H__ */
 
 #else

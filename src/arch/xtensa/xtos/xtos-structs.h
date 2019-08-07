@@ -15,9 +15,9 @@
 #include <stdint.h>
 
 struct idc;
-struct irq_task;
 struct notify;
 struct schedule_data;
+struct task;
 
 struct thread_data {
 	xtos_structures_pointers xtos_ptrs;
@@ -39,9 +39,7 @@ struct xtos_core_data {
 
 struct core_context {
 	struct thread_data td;
-	struct irq_task *irq_low_task;
-	struct irq_task *irq_med_task;
-	struct irq_task *irq_high_task;
+	struct task *main_task;
 	struct schedule_data *sch_data;
 	struct notify *notify;
 	struct idc *idc;

@@ -13,7 +13,6 @@
 #include <sof/debug/panic.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
-#include <sof/lib/memory.h>
 #include <sof/sof.h>
 #include <sof/string.h>
 #include <ipc/info.h>
@@ -136,10 +135,9 @@
 static inline uint32_t dump_stack(uint32_t p, void *addr, size_t offset,
 				  size_t limit, uintptr_t *stack_ptr)
 {
-	extern void *_stack_sentry;
-	uintptr_t stack_limit = (uintptr_t)&_stack_sentry +
-		(cpu_get_id() * SOF_STACK_SIZE);
-	uintptr_t stack_bottom = stack_limit + SOF_STACK_SIZE - sizeof(void *);
+	uintptr_t stack_limit = (uintptr_t)arch_get_stack_entry();
+	uintptr_t stack_bottom = stack_limit + arch_get_stack_size() -
+		sizeof(void *);
 	uintptr_t stack_top = (uintptr_t)arch_get_stack_ptr() + offset;
 	size_t size = stack_bottom - stack_top;
 	*stack_ptr = stack_top;

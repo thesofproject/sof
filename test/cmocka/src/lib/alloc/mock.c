@@ -10,6 +10,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/trace/trace.h>
 #include <sof/debug/panic.h>
+#include <sof/schedule/task.h>
 
 #include <mock_trace.h>
 
@@ -32,4 +33,9 @@ int rstrlen(const char *s)
 
 void trace_flush(void)
 {
+}
+
+volatile void *task_context_get(void)
+{
+	return NULL;
 }

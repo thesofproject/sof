@@ -30,6 +30,7 @@
 // To use this template file, define a macro called _INTERRUPT_LEVEL
 // to be the interrupt priority level of the vector, then include this file.
 
+#include <sof/lib/memory.h>
 #include <config.h>
 #include <xtensa/coreasm.h>
 #include "xtos-internal.h"
@@ -73,12 +74,16 @@ LABEL(_Level,FromVector):
 	movi	a2, PS_WOECALL4_ABI|PS_UM|PS_INTLEVEL(XCHAL_EXCM_LEVEL)
 	s32i	a4, a1, UEXC_a4
 	s32i	a5, a1, UEXC_a5
-/* Save also a15 (becomes a11 after _entry) to store coprocessors. */
-	s32i	a15, a1, UEXC_a15
 	wsr.ps	a2
 	rsync
 
-#ifdef __XTENSA_CALL0_ABI__
+	/* store ps and pc */
+	readsr	eps, _INTERRUPT_LEVEL a2
+	s32i	a2, a1, UEXC_ps
+	readsr	epc, _INTERRUPT_LEVEL a2
+	s32i	a2, a1, UEXC_pc
+
+	/* store rest of the registers */
 	s32i	a0, a1, UEXC_a0
 	s32i	a3, a1, UEXC_a3
 	s32i	a6, a1, UEXC_a6
@@ -90,11 +95,18 @@ LABEL(_Level,FromVector):
 	s32i	a12, a1, UEXC_a12
 	s32i	a13, a1, UEXC_a13
 	s32i	a14, a1, UEXC_a14
-	movi	a0, 0			/* terminate stack frames */
-#  if XTOS_DEBUG_PC
-	// TODO: setup return PC for call traceback through interrupt dispatch
-#  endif
-#else
+	s32i	a15, a1, UEXC_a15
+
+	/* store current sp */
+	xtos_addr_percore	a2, xtos_saved_sp
+	s32i	a1, a2, 0
+
+	/* store current task sp if context exists (not first irq) */
+	xtos_task_ctx_percore	a2
+	beqz	a2, no_context
+	s32i	a1, a2, TC_stack_pointer
+
+no_context:
 #  if XTOS_CNEST
 	l32i	a2, a1, ESF_TOTALSIZE-20	// save nested-C-func call-chain ptr
 #  endif
@@ -108,13 +120,10 @@ LABEL(_Level,FromVector):
 	movi	a4, 0			/* terminate stack frames, overflow check */
 #  endif
 	_entry	a1, ESF_TOTALSIZE
-#endif
 
-/* Reset the interrupt level to mask all interrupts at the current
- * priority level and lower.  Note the current priority level may be
- * less than or equal to EXCM_LEVEL. */
+/* Reset the interrupt level to xtos locklevel (lvl 6 on most systems) */
 
-	rsil	a15, _INTERRUPT_LEVEL
+	rsil	a15, XTOS_LOCKLEVEL
 
 #if SINGLE_INTERRUPT  /* if only one interrupt at this priority level... */
 
@@ -138,6 +147,11 @@ LABEL(_Level,FromVector):
 	wsr.intclear	a12	// clear if edge-trig or s/w or wr/err (else no effect)
 	save_loops_mac16	a1, a13, a14
 
+	/* switch to interrupt stack */
+	xtos_int_stack_addr_percore a13, _INTERRUPT_LEVEL, xtos_stack_for_interrupt
+	s32i	a1, a13, 0
+	addi	a1, a13, SOF_STACK_SIZE
+
 /* Load the handler from the table, initialize two args (interrupt
  * number and exception stack frame), then call the interrupt handler.
  * Note: The callx12 preserves the original user task's a4..a15.*/
@@ -148,15 +162,9 @@ LABEL(_Level,FromVector):
 	movi	a12, xtos_interrupt_table + (MAPINT(SINGLE_INT_NUM) * XIE_SIZE)
 #endif
 	l32i	a13, a12, XIE_HANDLER
-# ifdef __XTENSA_CALL0_ABI__
-	l32i	a2, a12, XIE_ARG
-	mov	a3, a1
-	callx0	a13
-# else
 	l32i	a14, a12, XIE_ARG
 	mov	a15, a1
 	callx12	a13
-# endif
 
 #else /* > 1 interrupts at this priority level */
 
@@ -190,6 +198,11 @@ LABEL(_Level,FromVector):
 
 /* Loop to handle all pending interrupts. */
 
+	/* switch to interrupt stack */
+	xtos_int_stack_addr_percore a13, _INTERRUPT_LEVEL, xtos_stack_for_interrupt
+	s32i	a1, a13, 0
+	addi	a1, a13, SOF_STACK_SIZE
+
 LABEL(.L1,_loop0):
 	neg	a12, a15
 	and	a12, a12, a15
@@ -203,15 +216,10 @@ LABEL(.L1,_loop0):
 	mapint	a15
 	addx8	a12, a15, a13
 	l32i	a13, a12, XIE_HANDLER
-# ifdef __XTENSA_CALL0_ABI__
-	l32i	a2, a12, XIE_ARG
-	mov	a3, a1
-	callx0	a13
-# else
 	l32i	a14, a12, XIE_ARG
 	mov	a15, a1
 	callx12	a13
-# endif
+
 	rsr.interrupt	a15
 	rsr.intenable	a12
 	movi	a13, INTERRUPT_MASK
@@ -225,16 +233,22 @@ LABEL(.L1,_loop0):
 
 #if __XCC__
 #if (XCHAL_CP_MASK & CP0_MASK)
-	mov	a11, a1
+	xtos_task_ctx_percore	a11
+	beqz	a11, no_context_2
+	l32i	a11, a11, TC_stack_pointer
 	addi	a11, a11, UEXC_cp0
 	xchal_cp0_load	a11, a12, a13, a14, a15
 #endif
 #if (XCHAL_CP_MASK & CP1_MASK)
-	mov	a11, a1
+	xtos_task_ctx_percore	a11
+	beqz	a11, no_context_2
+	l32i	a11, a11, TC_stack_pointer
 	addi	a11, a11, UEXC_cp1
 	xchal_cp1_load	a11, a12, a13, a14, a15
 #endif
 #endif
+
+no_context_2:
 	restore_loops_mac16	a1, a13, a14, a15
 	l32i	a14, a1, UEXC_sar
 LABEL(spurious,int):
@@ -243,28 +257,6 @@ LABEL(spurious,int):
 	// Clear exclusive monitors.
 	clrex
 #endif
-
-#ifdef __XTENSA_CALL0_ABI__
-	wsr.sar	a14
-	l32i	a0, a1, UEXC_a0
-	l32i	a2, a1, UEXC_a2
-	l32i	a3, a1, UEXC_a3
-	l32i	a4, a1, UEXC_a4
-	l32i	a5, a1, UEXC_a5
-	l32i	a6, a1, UEXC_a6
-	l32i	a7, a1, UEXC_a7
-	l32i	a8, a1, UEXC_a8
-	l32i	a9, a1, UEXC_a9
-	l32i	a10, a1, UEXC_a10
-	l32i	a11, a1, UEXC_a11
-	l32i	a12, a1, UEXC_a12
-	l32i	a13, a1, UEXC_a13
-	l32i	a14, a1, UEXC_a14
-	l32i	a15, a1, UEXC_a15
-	addi	a1, a1, ESF_TOTALSIZE	// restore sp
-	rfi	_INTERRUPT_LEVEL
-
-#else /* windowed ABI: */
 
 	movi	a0, LABEL(return,from_exc)
 	movi	a13, 0xC0000000
@@ -280,16 +272,85 @@ LABEL(spurious,int):
 # endif
 	retw
 LABEL(return,from_exc):
+	/* a5 contains interrupt stack pointer */
+	addi	a5, a5, -SOF_STACK_SIZE
+	l32i	a5, a5, 0
 
 # if XTOS_CNEST
 	s32i	a2, a5, ESF_TOTALSIZE-20	// restore nested-C-func call-chain ptr
 # endif
-	l32i	a2, a5, UEXC_a2
+
+	/* store sp after returning from handler */
+	s32i	a1, a5, UEXC_a1
+
+restore:
+	/* load registers for window spill */
 	l32i	a4, a5, UEXC_a4
+	l32i	a6, a5, UEXC_a6
+	l32i	a7, a5, UEXC_a7
+	l32i	a8, a5, UEXC_a8
+	l32i	a9, a5, UEXC_a9
+	l32i	a10, a5, UEXC_a10
+	l32i	a11, a5, UEXC_a11
+	l32i	a12, a5, UEXC_a12
+	l32i	a13, a5, UEXC_a13
+	l32i	a14, a5, UEXC_a14
+
+	/* check if switch is needed */
+	xtos_addr_percore	a2, xtos_saved_sp
+	xtos_task_ctx_percore	a1
+	beqz	a1, noSwitch
+	l32i	a1, a1, TC_stack_pointer
+	l32i	a0, a2, 0
+	beq	a0, a1, noSwitch
+
+doSwitch:
+	/* store new task sp */
+	s32i	a1, a2, 0
+
+	/* restore sp of task being preempted */
+	l32i	a1, a5, UEXC_a1
+
+	/* spill register windows to the stack */
+	rsr.ps	a2
+	movi	a3, PS_WOE_MASK
+	xor	a2, a2, a3
+	wsr.ps	a2
+
+	call0	xthal_window_spill_nw
+
+	/* restore previous ps */
+	rsr.ps	a2
+	movi	a3, PS_WOE_MASK
+	or	a2, a2, a3
+	wsr.ps	a2
+
+	/* change stack */
+	xtos_addr_percore	a5, xtos_saved_sp
+	l32i	a5, a5, 0
+	j restore
+
+noSwitch:
+	/* restore ps and pc */
+	l32i	a0, a5, UEXC_ps
+	writesr	eps _INTERRUPT_LEVEL a0
+	rsync
+	l32i	a0, a5, UEXC_pc
+	writesr	epc _INTERRUPT_LEVEL a0
+
+	/* restore sar, loops and mac16 registers */
+	l32i	a0, a5, UEXC_sar
+	wsr.sar	a0
+	restore_loops_mac16	a5, a0, a1, a2
+
+	/* restore rest of the registers */
+	l32i	a0, a5, UEXC_a0
+	l32i	a1, a5, UEXC_a1
+	l32i	a2, a5, UEXC_a2
+	l32i	a3, a5, UEXC_a3
 	l32i	a15, a5, UEXC_a15
 	l32i	a5, a5, UEXC_a5
 	rfi	_INTERRUPT_LEVEL
-#endif /* windowed ABI */
 
 	.size	LABEL(_Level,FromVector), . - LABEL(_Level,FromVector)
 
@@ -299,4 +360,3 @@ LABEL(return,from_exc):
 	.set LABEL(_Level,HandlerLabel), 0
 
 #endif /* XCHAL_HAVE_INTERRUPT */
-
