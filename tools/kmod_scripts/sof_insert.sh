@@ -30,6 +30,7 @@ insert_module snd_soc_rt5682
 insert_module snd_soc_pcm512x_i2c
 insert_module snd_soc_wm8804_i2c
 insert_module snd_soc_max98357a
+insert_module snd_soc_max98090
 
 insert_module sof_acpi_dev
 insert_module sof_pci_dev
