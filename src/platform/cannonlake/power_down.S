@@ -125,7 +125,7 @@ beqz pu32_hpsram_mask, _PD_SEND_IPC
 _PD_SEND_IPC:
 /* Send IPC to host informing of PD completion - Clear BUSY
  * bit by writing IPC_DIPCTDR_BUSY to IPC_DIPCTDR
- * and writing IPC_DIPCTDA_BUSY to IPC_DIPCTDA
+ * and writing IPC_DIPCTDA_DONE to IPC_DIPCTDA
  */
 	movi temp_reg0, IPC_HOST_BASE
 	l32i temp_reg1, temp_reg0, IPC_DIPCTDR
@@ -134,7 +134,7 @@ _PD_SEND_IPC:
 	s32i temp_reg1, temp_reg0, IPC_DIPCTDR
 
 	l32i temp_reg1, temp_reg0, IPC_DIPCTDA
-	movi temp_reg2, IPC_DIPCTDA_BUSY
+	movi temp_reg2, IPC_DIPCTDA_DONE
 	or temp_reg1, temp_reg1, temp_reg2
 	s32i temp_reg1, temp_reg0, IPC_DIPCTDA
 
