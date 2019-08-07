@@ -12,6 +12,7 @@
 #ifndef __PLATFORM_LIB_SHIM_H__
 #define __PLATFORM_LIB_SHIM_H__
 
+#include <cavs/drivers/sideband-ipc.h>
 #include <sof/bit.h>
 #include <sof/lib/memory.h>
 
@@ -27,33 +28,6 @@
 #define IPC_DIPCIDA		0x14
 #define IPC_DIPCIDD		0x18
 #define IPC_DIPCCTL		0x28
-
-
-/* DIPCTDR */
-#define IPC_DIPCTDR_BUSY	(1 << 31)
-#define IPC_DIPCTDR_MSG_MASK	0x7FFFFFFF
-
-/* DIPCTDA */
-#define IPC_DIPCTDA_BUSY	(1 << 31)
-#define IPC_DIPCTDA_MSG_MASK	0x7FFFFFFF
-
-/* DIPCTE */
-#define IPC_DIPCTE_MSG_MASK	0x3FFFFFFF
-
-/* DIPCIDA*/
-#define IPC_DIPCIDA_DONE	(1 << 31)
-
-/* DIPCIDR */
-#define IPC_DIPCIDR_BUSY	(1 << 31)
-#define IPC_DIPCIDR_MSG_MASK	0x7FFFFFFF
-
-/* DIPCIE */
-#define IPC_DIPCIE_DONE		(1 << 31)
-#define IPC_DIPCIE_MSG_MASK	0x3FFFFFFF
-
-/* DIPCCTL */
-#define IPC_DIPCCTL_IPCIDIE	(1 << 1)
-#define IPC_DIPCCTL_IPCTBIE	(1 << 0)
 
 #define IPC_DSP_OFFSET		0x10
 
