@@ -8,5 +8,8 @@
 #ifndef __INCLUDE_PLATFORM_INTERRUPT__
 #define __INCLUDE_PLATFORM_INTERRUPT__
 
+
+#define IRQ_NUM_EXT_IA		10	/* Level 4 */
+
 #endif
 
