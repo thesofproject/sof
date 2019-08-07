@@ -16,6 +16,9 @@ remove_module() {
 
 remove_module sof_pci_dev
 remove_module sof_acpi_dev
+remove_module snd_sof_pci
+remove_module snd_sof_acpi
+
 remove_module snd_sof_intel_byt
 remove_module snd_sof_intel_bdw
 remove_module snd_sof_intel_hda_common
