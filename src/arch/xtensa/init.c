@@ -130,8 +130,8 @@ int slave_core_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM);
 
-	/* should not return */
-	err = do_task_slave_core(sof);
+	/* task initialized in edf_scheduler_init */
+	schedule_task(*task_main_get(), 0, UINT64_MAX);
 
 	return err;
 }

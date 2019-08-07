@@ -498,8 +498,8 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 		 */
 		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK ||
 		    pipeline_is_timer_driven(p)) {
-			/* schedule initial pipeline fill when next idle */
-			pipeline_schedule_copy_idle(p);
+			/* schedule initial pipeline fill */
+			pipeline_schedule_copy(p, 0);
 		}
 		p->status = COMP_STATE_ACTIVE;
 		break;
@@ -954,17 +954,6 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
 	if (p->sched_comp->state == COMP_STATE_ACTIVE)
 		schedule_task(&p->pipe_task, start, p->ipc_pipe.period);
-}
-
-/* notify pipeline that this component requires buffers emptied/filled
- * when DSP is next idle. This is intended to be used to preload pipeline
- * buffers prior to trigger start.
- */
-void pipeline_schedule_copy_idle(struct pipeline *p)
-{
-	/* TODO: temporary until new EDF scheduler */
-	p->pipe_task.flags |= SOF_SCHEDULE_FLAG_IDLE;
-	schedule_task(&p->pipe_task, 0, p->ipc_pipe.period);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)

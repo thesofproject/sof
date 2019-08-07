@@ -18,11 +18,14 @@ struct sof;
 #define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
 #define SOF_TASK_PRI_MED	4	/* priority level 4 - medium */
 #define SOF_TASK_PRI_LOW	9	/* priority level 9 - low */
-
-#define SOF_TASK_PRI_COUNT	10	/* range of priorities (0-9) */
+#define SOF_TASK_PRI_IDLE	INT16_MAX	/* lowest possible priority */
+#define SOF_TASK_PRI_ALMOST_IDLE	(SOF_TASK_PRI_IDLE - 1)
 
 #define SOF_TASK_PRI_IPC	SOF_TASK_PRI_LOW
 #define SOF_TASK_PRI_IDC	SOF_TASK_PRI_LOW
+
+/* task default stack size in bytes */
+#define SOF_TASK_DEFAULT_STACK_SIZE	2048
 
 /* task states */
 enum task_state {
@@ -47,21 +50,18 @@ struct task {
 	void *data;
 	enum task_state (*func)(void *data);
 	struct list_item list;
-	struct list_item irq_list;	/* list for assigned irq level */
 	const struct scheduler_ops *ops;
 	void *private;
 };
 
-int do_task_master_core(struct sof *sof);
+enum task_state task_main_master_core(void *data);
 
-static inline int allocate_tasks(void)
-{
-	return arch_allocate_tasks();
-}
+enum task_state task_main_slave_core(void *data);
 
-static inline int run_task(struct task *task)
-{
-	return arch_run_task(task);
-}
+void task_main_init(struct sof *sof);
+
+void task_main_free(void);
+
+int task_main_start(struct sof *sof);
 
 #endif /* __SOF_SCHEDULE_TASK_H__ */

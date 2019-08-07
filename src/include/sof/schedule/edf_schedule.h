@@ -23,9 +23,6 @@
 #define tracev_edf_sch(format, ...) \
 	tracev_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
 
-/* maximun task time slice in microseconds */
-#define SCHEDULE_TASK_MAX_TIME_SLICE	5000
-
 #define edf_sch_set_pdata(task, data) \
 	(task->private = data)
 
@@ -33,6 +30,7 @@
 
 struct edf_task_pdata {
 	uint64_t deadline;
+	void *ctx;
 };
 
 #endif /* __SOF_SCHEDULE_EDF_SCHEDULE_H__ */

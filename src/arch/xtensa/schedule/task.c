@@ -3,269 +3,140 @@
 // Copyright(c) 2017 Intel Corporation. All rights reserved.
 //
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+//         Tomasz Lauda <tomasz.lauda@linux.intel.com>
 
 /**
  * \file arch/xtensa/task.c
  * \brief Arch task implementation file
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *          Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
-#include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
+#include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/wait.h>
-#include <sof/list.h>
-#include <sof/platform.h>
+#include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
-#include <sof/trace/trace.h>
 #include <ipc/topology.h>
-#include <user/trace.h>
 #include <config.h>
+#include <xtensa/corebits.h>
+#include <xtensa/xtruntime-frames.h>
 #include <xtos-structs.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 
+enum task_state task_main_slave_core(void *data)
+{
 #if CONFIG_SMP
-
-int do_task_slave_core(struct sof *sof)
-{
-	/* main audio IDC processing loop */
+	/* main audio processing loop */
 	while (1) {
-		/* sleep until next IDC */
+		/* sleep until next IDC or DMA */
 		wait_for_interrupt(0);
-
-		/* schedule any idle tasks */
-		schedule();
 	}
-
-	/* something bad happened */
-	return -EIO;
-}
-
 #endif
 
-struct irq_task **task_irq_low_get(void)
+	return SOF_TASK_STATE_COMPLETED;
+}
+
+struct task **task_main_get(void)
 {
 	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
 
-	return &ctx->irq_low_task;
+	return &ctx->main_task;
 }
 
-struct irq_task **task_irq_med_get(void)
+volatile void *task_context_get(void)
 {
 	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
 
-	return &ctx->irq_med_task;
+	return ctx->td.xtos_active_task;
 }
 
-struct irq_task **task_irq_high_get(void)
+void task_context_set(void *task_ctx)
 {
 	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
 
-	return &ctx->irq_high_task;
+	ctx->td.xtos_active_task = task_ctx;
 }
 
-static struct irq_task *task_get_irq_task(struct task *task)
+int task_context_init(struct task *task, void *entry)
 {
-	switch (task->priority) {
-#ifdef CONFIG_TASK_HAVE_PRIORITY_MEDIUM
-	case SOF_TASK_PRI_MED + 1 ... SOF_TASK_PRI_LOW:
-		return *task_irq_low_get();
-	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
-		return *task_irq_high_get();
-	case SOF_TASK_PRI_MED:
-		return *task_irq_med_get();
-#elif CONFIG_TASK_HAVE_PRIORITY_LOW
-	case  SOF_TASK_PRI_MED ... SOF_TASK_PRI_LOW:
-		return *task_irq_low_get();
-	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_MED - 1:
-		return *task_irq_high_get();
-#else
-	case SOF_TASK_PRI_HIGH ... SOF_TASK_PRI_LOW:
-		return *task_irq_high_get();
-#endif
-	default:
-		trace_error(TRACE_CLASS_IRQ,
-			    "task_get_irq_task() error: task priority %d",
-			    task->priority);
-	}
+	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
+	xtos_task_context *ctx;
+	UserFrame *sp;
 
-	return NULL;
-}
+	/* allocate task context */
+	ctx = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*ctx));
+	if (!ctx)
+		return -ENOMEM;
 
-/**
- * \brief Adds task to the list per IRQ level.
- * \param[in,out] task Task data.
- */
-static int task_set_data(struct task *task)
-{
-	struct irq_task *irq_task = task_get_irq_task(task);
-	struct list_item *dst;
-	unsigned long flags;
+	/* allocate stack */
+	ctx->stack_base = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
+				  SOF_TASK_DEFAULT_STACK_SIZE);
+	if (!ctx->stack_base)
+		return -ENOMEM;
 
-	if (!irq_task)
-		return -EINVAL;
+	ctx->stack_size = SOF_TASK_DEFAULT_STACK_SIZE;
 
-	dst = &irq_task->list;
-	irq_local_disable(flags);
-	list_item_append(&task->irq_list, dst);
-	irq_local_enable(flags);
+	bzero(ctx->stack_base, ctx->stack_size);
+
+	/* set initial stack pointer */
+	sp = ctx->stack_base + ctx->stack_size - sizeof(UserFrame);
+
+	/* entry point */
+	sp->pc = (uint32_t)entry;
+
+	/* a1 is pointer to stack */
+	sp->a1 = (uint32_t)sp;
+
+	/* PS_WOECALL4_ABI - window overflow and increment enable
+	 * PS_UM - user vector mode enable
+	 */
+	sp->ps = PS_WOECALL4_ABI | PS_UM;
+
+	/* a6 is first parameter */
+	sp->a6 = (uint32_t)task;
+
+	ctx->stack_pointer = sp;
+
+	/* flush for slave core */
+	if (cpu_is_slave(task->core))
+		task_context_cache(ctx, CACHE_WRITEBACK_INV);
+
+	edf_pdata->ctx = ctx;
 
 	return 0;
 }
 
-/**
- * \brief Interrupt handler for the IRQ task.
- * \param[in,out] arg IRQ task data.
- */
-static void _irq_task(void *arg)
+void task_context_free(struct task *task)
 {
-	struct irq_task *irq_task = *(struct irq_task **)arg;
-	struct list_item *tlist;
-	struct list_item *clist;
-	struct task *task;
-	uint32_t flags;
-	int run_task = 0;
+	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
+	xtos_task_context *ctx = edf_pdata->ctx;
 
-	irq_local_disable(flags);
+	rfree(ctx->stack_base);
+	ctx->stack_size = 0;
+	ctx->stack_pointer = NULL;
 
-	interrupt_clear(irq_task->irq);
+	rfree(ctx);
+	edf_pdata->ctx = NULL;
+}
 
-	list_for_item_safe(clist, tlist, &irq_task->list) {
-		task = container_of(clist, struct task, irq_list);
-		list_item_del(clist);
+void task_context_cache(void *task_ctx, int cmd)
+{
+	xtos_task_context *ctx = task_ctx;
 
-		if (task->func &&
-		    task->state == SOF_TASK_STATE_PENDING) {
-			schedule_task_running(task);
-			run_task = 1;
-		} else {
-			run_task = 0;
-		}
-
-		/* run task without holding task lock */
-		irq_local_enable(flags);
-
-		if (run_task)
-			task->func(task->data);
-
-		irq_local_disable(flags);
-		schedule_task_complete(task);
+	switch (cmd) {
+	case CACHE_WRITEBACK_INV:
+		dcache_writeback_invalidate_region(ctx->stack_base,
+						   ctx->stack_size);
+		dcache_writeback_invalidate_region(ctx, sizeof(*ctx));
+		break;
+	case CACHE_INVALIDATE:
+		dcache_invalidate_region(ctx, sizeof(*ctx));
+		dcache_invalidate_region(ctx->stack_base, ctx->stack_size);
+		break;
 	}
-
-	irq_local_enable(flags);
-}
-
-int arch_run_task(struct task *task)
-{
-	struct irq_task *irq_task = task_get_irq_task(task);
-	int ret;
-
-	if (!irq_task)
-		return -EINVAL;
-
-	ret = task_set_data(task);
-
-	if (ret < 0)
-		return ret;
-
-	interrupt_set(irq_task->irq);
-
-	return 0;
-}
-
-int arch_allocate_tasks(void)
-{
-	int ret;
-
-#if CONFIG_TASK_HAVE_PRIORITY_LOW
-	/* irq low */
-	struct irq_task **low = task_irq_low_get();
-	*low = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**low));
-
-	list_init(&((*low)->list));
-	(*low)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_LOW,
-					PLATFORM_IRQ_TASK_LOW_NAME);
-	if ((*low)->irq < 0)
-		return (*low)->irq;
-
-	ret = interrupt_register((*low)->irq, IRQ_AUTO_UNMASK, _irq_task, low);
-	if (ret < 0)
-		return ret;
-	interrupt_enable((*low)->irq, low);
-#endif
-
-#if CONFIG_TASK_HAVE_PRIORITY_MEDIUM
-	/* irq medium */
-	struct irq_task **med = task_irq_med_get();
-	*med = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**med));
-
-	list_init(&((*med)->list));
-	(*med)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_MED,
-					PLATFORM_IRQ_TASK_MED_NAME);
-	if ((*med)->irq < 0)
-		return (*med)->irq;
-
-	ret = interrupt_register((*med)->irq, IRQ_AUTO_UNMASK, _irq_task, med);
-	if (ret < 0)
-		return ret;
-	interrupt_enable((*med)->irq, med);
-#endif
-
-	/* irq high */
-	struct irq_task **high = task_irq_high_get();
-	*high = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**high));
-
-	list_init(&((*high)->list));
-	(*high)->irq = interrupt_get_irq(PLATFORM_IRQ_TASK_HIGH,
-					 PLATFORM_IRQ_TASK_HIGH_NAME);
-	if ((*high)->irq < 0)
-		return (*high)->irq;
-
-	ret = interrupt_register((*high)->irq, IRQ_AUTO_UNMASK, _irq_task,
-				 high);
-	if (ret < 0)
-		return ret;
-	interrupt_enable((*high)->irq, high);
-
-	return 0;
-}
-
-void arch_free_tasks(void)
-{
-	uint32_t flags;
-/* TODO: do not want to free the tasks, just the entire heap */
-
-#if CONFIG_TASK_HAVE_PRIORITY_LOW
-	/* free IRQ low task */
-	struct irq_task **low = task_irq_low_get();
-
-	irq_local_disable(flags);
-	interrupt_disable((*low)->irq, low);
-	interrupt_unregister((*low)->irq, low);
-	list_item_del(&(*low)->list);
-	irq_local_enable(flags);
-#endif
-
-#if CONFIG_TASK_HAVE_PRIORITY_MEDIUM
-	/* free IRQ medium task */
-	struct irq_task **med = task_irq_med_get();
-
-	irq_local_disable(flags);
-	interrupt_disable((*med)->irq, med);
-	interrupt_unregister((*med)->irq, med);
-	list_item_del(&(*med)->list);
-	irq_local_enable(flags);
-#endif
-
-	/* free IRQ high task */
-	struct irq_task **high = task_irq_high_get();
-
-	irq_local_disable(flags);
-	interrupt_disable((*high)->irq, high);
-	interrupt_unregister((*high)->irq, high);
-	list_item_del(&(*high)->list);
-	irq_local_enable(flags);
 }
