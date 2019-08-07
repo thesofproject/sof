@@ -240,6 +240,15 @@ int ipc_dma_trace_send_position(void);
 /* get posn offset by pipeline. */
 int ipc_get_posn_offset(struct ipc *ipc, struct pipeline *pipe);
 
-int ipc_cmd(void);
+struct sof_ipc_cmd_hdr *mailbox_validate(void);
+
+/**
+ * Generic IPC command handler. Expects that IPC command (the header plus
+ * any optional payload) is deserialized from the IPC HW by the platform
+ * specific method.
+ *
+ * @param hdr Points to the IPC command header.
+ */
+void ipc_cmd(struct sof_ipc_cmd_hdr *hdr);
 
 #endif /* __SOF_DRIVERS_IPC_H__ */

@@ -23,28 +23,15 @@ extern struct ipc *_ipc;
 /* No private data for IPC */
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
+	struct sof_ipc_cmd_hdr *hdr;
 	struct sof_ipc_reply reply;
-	int32_t err;
 
-	/* perform command and return any error */
-	err = ipc_cmd();
-	if (err > 0) {
-		mailbox_hostbox_read(&reply, SOF_IPC_MSG_MAX_SIZE,
-				     0, sizeof(reply));
-		goto done; /* reply created and copied by cmd() */
-	} else if (err < 0) {
-		/* send std error reply */
-		reply.error = err;
-	} else if (err == 0) {
-		/* send std reply */
-		reply.error = 0;
-	}
+	/* perform command */
+	hdr = mailbox_validate();
+	ipc_cmd(hdr);
 
-	/* send std error/ok reply */
-	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-	reply.hdr.size = sizeof(reply);
-
-done:
+	mailbox_hostbox_read(&reply, SOF_IPC_MSG_MAX_SIZE,
+			     0, sizeof(reply));
 	spi_push(spi_get(SOF_SPI_INTEL_SLAVE), &reply, sizeof(reply));
 
 	ipc->host_pending = 0;
