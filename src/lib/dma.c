@@ -33,8 +33,8 @@ void dma_install(struct dma *dma_array, size_t num_dmas)
 
 struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 {
-	int ch_count, ret;
-	int min_ch_count = INT32_MAX;
+	int users, ret;
+	int min_users = INT32_MAX;
 	struct dma *d = NULL, *dmin = NULL;
 
 	if (!lib_dma.num_dmas) {
@@ -64,19 +64,19 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 
 		/* if exclusive access is requested */
 		if (flags & DMA_ACCESS_EXCLUSIVE) {
-
-			/* ret DMA with no channels draining */
-			if (!atomic_read(&d->num_channels_busy))
-				return d;
-		} else {
-
-			/* get number of channels draining in this DMAC*/
-			ch_count = atomic_read(&d->num_channels_busy);
-
-			/* pick DMAC with the least num of channels draining */
-			if (ch_count < min_ch_count) {
+			/* ret DMA with no users */
+			if (!d->sref) {
 				dmin = d;
-				min_ch_count = ch_count;
+				break;
+			}
+		} else {
+			/* get number of users for this DMAC*/
+			users = d->sref;
+
+			/* pick DMAC with the least num of users */
+			if (users < min_users) {
+				dmin = d;
+				min_users = users;
 			}
 		}
 	}
@@ -109,7 +109,7 @@ struct dma *dma_get(uint32_t dir, uint32_t cap, uint32_t dev, uint32_t flags)
 	spin_lock(dmin->lock);
 
 	ret = 0;
-	if (dmin->sref == 0) {
+	if (!dmin->sref) {
 		ret = dma_probe(dmin);
 		if (ret < 0) {
 			trace_error(TRACE_CLASS_DMA,
