@@ -109,7 +109,7 @@
 /* IPC context - shared with platform IPC driver */
 struct ipc *_ipc;
 
-static inline struct sof_ipc_cmd_hdr *mailbox_validate(void)
+struct sof_ipc_cmd_hdr *mailbox_validate(void)
 {
 	struct sof_ipc_cmd_hdr *hdr = _ipc->comp_data;
 
@@ -1069,13 +1069,11 @@ static int ipc_glb_test_message(uint32_t header)
  * Global IPC Operations.
  */
 
-int ipc_cmd(void)
+void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 {
-	struct sof_ipc_cmd_hdr *hdr;
+	struct sof_ipc_reply reply;
 	uint32_t type;
 	int ret;
-
-	hdr = mailbox_validate();
 
 	if (hdr == NULL) {
 		trace_ipc_error("ipc: invalid IPC header.");
@@ -1126,7 +1124,15 @@ int ipc_cmd(void)
 out:
 	tracev_ipc("ipc: last request %d returned %d", type, ret);
 
-	return ret;
+	/* if ret > 0, reply created and copied by cmd() */
+	if (ret <= 0) {
+		/* send std error/ok reply */
+		reply.error = ret;
+
+		reply.hdr.cmd = SOF_IPC_GLB_REPLY;
+		reply.hdr.size = sizeof(reply);
+		mailbox_hostbox_write(0, &reply, sizeof(reply));
+	}
 }
 
 /* locks held by caller */

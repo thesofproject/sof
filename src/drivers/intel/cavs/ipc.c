@@ -135,21 +135,12 @@ static void ipc_irq_handler(void *arg)
 
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
-	struct sof_ipc_reply reply;
-	int32_t err;
+	struct sof_ipc_cmd_hdr *hdr;
 
-	/* perform command and return any error */
-	err = ipc_cmd();
+	hdr = mailbox_validate();
 
-	/* if err > 0, reply created and copied by cmd() */
-	if (err <= 0) {
-		/* send std error/ok reply */
-		reply.error = err;
-
-		reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-		reply.hdr.size = sizeof(reply);
-		mailbox_hostbox_write(0, &reply, sizeof(reply));
-	}
+	/* perform command */
+	ipc_cmd(hdr);
 
 	ipc->host_pending = 0;
 

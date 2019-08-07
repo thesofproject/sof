@@ -98,25 +98,13 @@ static void irq_handler(void *arg)
 
 void ipc_platform_do_cmd(struct ipc *ipc)
 {
+	struct sof_ipc_cmd_hdr *hdr;
 	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
-	struct sof_ipc_reply reply;
-	int32_t err;
 
-	/* perform command and return any error */
-	err = ipc_cmd();
-	if (err > 0) {
-		goto done; /* reply created and copied by cmd() */
-	} else {
-		/* send std error reply */
-		reply.error = err;
-	}
+	/* perform command */
+	hdr = mailbox_validate();
+	ipc_cmd(hdr);
 
-	/* send std error/ok reply */
-	reply.hdr.cmd = SOF_IPC_GLB_REPLY;
-	reply.hdr.size = sizeof(reply);
-	mailbox_hostbox_write(0, &reply, sizeof(reply));
-
-done:
 	ipc->host_pending = 0;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
