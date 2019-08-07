@@ -37,4 +37,6 @@ insert_module snd_soc_rt700
 insert_module sof_acpi_dev
 insert_module sof_pci_dev
 
+insert_module snd_sof_acpi
+insert_module snd_sof_pci
 
