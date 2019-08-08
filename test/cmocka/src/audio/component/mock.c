@@ -17,7 +17,7 @@ TRACE_IMPL()
 
 #if !CONFIG_LIBRARY
 
-void *rzalloc(int zone, uint32_t caps, size_t bytes)
+void *_zalloc(int zone, uint32_t caps, size_t bytes)
 {
 	(void)zone;
 	(void)caps;

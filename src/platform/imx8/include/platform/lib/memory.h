@@ -13,6 +13,9 @@
 #include <sof/lib/cache.h>
 #include <config.h>
 
+/* data cache line alignment */
+#define PLATFORM_DCACHE_ALIGN	DCACHE_LINE_SIZE
+
 /* physical DSP addresses */
 
 #define IRAM_BASE	0x596f8000

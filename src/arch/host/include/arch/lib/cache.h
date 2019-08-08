@@ -12,6 +12,8 @@
 
 #include <stddef.h>
 
+#define PLATFORM_DCACHE_ALIGN	sizeof(void *)
+
 static inline void dcache_writeback_region(void *addr, size_t size) {}
 static inline void dcache_invalidate_region(void *addr, size_t size) {}
 static inline void icache_invalidate_region(void *addr, size_t size) {}
