@@ -163,12 +163,12 @@ add_library(sof_ld_scripts INTERFACE)
 
 # declare target with no sources to let cmake know about it
 add_executable(sof "")
-target_link_libraries(sof sof_options)
-target_link_libraries(sof sof_ld_scripts)
-target_link_libraries(sof sof_ld_flags)
+target_link_libraries(sof PRIVATE sof_options)
+target_link_libraries(sof PRIVATE sof_ld_scripts)
+target_link_libraries(sof PRIVATE sof_ld_flags)
 
 sof_add_build_counter_rule()
 
 add_subdirectory(src)
 
-target_link_libraries(sof sof_lib)
+target_link_libraries(sof PRIVATE sof_lib)
