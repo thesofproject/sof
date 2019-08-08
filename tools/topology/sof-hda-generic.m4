@@ -16,12 +16,17 @@ include(`sof/tokens.m4')
 # Include bxt DSP configuration
 include(`platform/intel/bxt.m4')
 
-# Define pipline id for intel-generic-dmic.m4
+# Define pipeline id for intel-generic-dmic.m4
 # to generate dmic setting
+
+ifelse(CHANNELS, `0', ,
+`
 define(DMIC_PIPELINE_48k_ID, `10')
 define(DMIC_PIPELINE_16k_ID, `11')
 
 include(`platform/intel/intel-generic-dmic.m4')
+'
+)
 
 #
 # Define the pipelines
