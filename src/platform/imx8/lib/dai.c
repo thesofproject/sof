@@ -30,6 +30,12 @@ static struct dai_type_info dti[] = {
 
 int dai_init(void)
 {
+	int i;
+
+	 /* initialize spin locks early to enable ref counting */
+	for (i = 0; i < ARRAY_SIZE(esai); i++)
+		spinlock_init(&esai[i].lock);
+
 	dai_install(dti, ARRAY_SIZE(dti));
 	return 0;
 }
