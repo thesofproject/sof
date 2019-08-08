@@ -357,8 +357,8 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
-#if CONFIG_HW_LLI
 	uint32_t next_ptr;
+#if CONFIG_HW_LLI
 	uint32_t bytes_left;
 #endif
 	uint32_t flags;
@@ -378,9 +378,9 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 	/* get next lli for proper release */
 	chan->lli_current = (struct dw_lli *)chan->lli_current->llp;
 
-#if CONFIG_HW_LLI
 	/* copy leftover data between current and last lli */
 	next_ptr = DW_DMA_LLI_ADDRESS(chan->lli_current, chan->direction);
+#if CONFIG_HW_LLI
 	if (next_ptr >= chan->ptr_data.current_ptr)
 		bytes_left = next_ptr - chan->ptr_data.current_ptr;
 	else
@@ -390,6 +390,8 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 			(next_ptr - chan->ptr_data.start_ptr);
 
 	dw_dma_copy(dma, channel, bytes_left, 0);
+#else
+	chan->ptr_data.current_ptr = next_ptr;
 #endif
 
 	irq_local_enable(flags);
