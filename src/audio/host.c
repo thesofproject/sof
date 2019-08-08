@@ -469,18 +469,22 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 	uint32_t flags = 0;
 	int ret;
 
-	/* get data sizes from DMA */
-	ret = dma_get_data_size(hd->dma, hd->chan, &avail_bytes, &free_bytes);
-	if (ret < 0) {
-		trace_host_error("host_buffer_cb() error: dma_get_data_size() "
-				 "failed, ret = %u", ret);
-		return;
-	}
+	if (hd->copy_type != COMP_COPY_ONE_SHOT) {
+		/* get data sizes from DMA */
+		ret = dma_get_data_size(hd->dma, hd->chan, &avail_bytes,
+					&free_bytes);
+		if (ret < 0) {
+			trace_host_error("host_buffer_cb() error: "
+					 "dma_get_data_size() failed, ret = %u",
+					 ret);
+			return;
+		}
 
-	/* calculate minimum size to copy */
-	copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
-		MIN(avail_bytes, hd->dma_buffer->free) :
-		MIN(hd->dma_buffer->avail, free_bytes);
+		/* calculate minimum size to copy */
+		copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+			MIN(avail_bytes, hd->dma_buffer->free) :
+			MIN(hd->dma_buffer->avail, free_bytes);
+	}
 
 	/* copy_bytes should be aligned to minimum possible chunk of data to be
 	 * copied by dma.
