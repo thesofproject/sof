@@ -16,6 +16,8 @@
 void platform_init_memmap(void);
 #endif
 
+#define PLATFORM_DCACHE_ALIGN	sizeof(void *)
+
 /* physical DSP addresses */
 
 #define SHIM_BASE	0xFF340000
