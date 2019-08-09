@@ -61,6 +61,10 @@ add_library(sof_options INTERFACE)
 
 target_link_libraries(sof_options INTERFACE sof_public_headers)
 
+# interface library that is used only as container for sof statically
+# linked libraries
+add_library(sof_static_libraries INTERFACE)
+
 # get compiler name and version
 execute_process(
 	COMMAND ${CMAKE_C_COMPILER} --version
@@ -117,6 +121,7 @@ target_include_directories(sof_public_headers INTERFACE ${GENERATED_DIRECTORY}/i
 if(BUILD_LIBRARY)
 	add_library(sof SHARED "")
 	target_link_libraries(sof PRIVATE sof_options)
+	target_link_libraries(sof PRIVATE sof_static_libraries)
 	install(TARGETS sof DESTINATION lib)
 
 	add_subdirectory(src)
@@ -166,9 +171,8 @@ add_executable(sof "")
 target_link_libraries(sof PRIVATE sof_options)
 target_link_libraries(sof PRIVATE sof_ld_scripts)
 target_link_libraries(sof PRIVATE sof_ld_flags)
+target_link_libraries(sof PRIVATE sof_static_libraries)
 
 sof_add_build_counter_rule()
 
 add_subdirectory(src)
-
-target_link_libraries(sof PRIVATE sof_lib)
