@@ -979,7 +979,8 @@ static enum task_state pipeline_task(void *arg)
 		/* try to recover */
 		err = pipeline_xrun_recover(p);
 		if (err < 0)
-			return 0;/* skip copy if still in xrun */
+			/* skip copy if still in xrun */
+			return SOF_TASK_STATE_COMPLETED;
 	}
 
 	err = pipeline_copy(p);
@@ -990,7 +991,8 @@ static enum task_state pipeline_task(void *arg)
 			trace_pipe_error_with_ids(p, "pipeline_task(): xrun "
 						  "recover failed! pipeline "
 						  "will be stopped!");
-			return 0; /* failed - host will stop this pipeline */
+			/* failed - host will stop this pipeline */
+			return SOF_TASK_STATE_COMPLETED;
 		}
 	}
 
