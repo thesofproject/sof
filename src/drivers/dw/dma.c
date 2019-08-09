@@ -181,6 +181,14 @@ static void dw_dma_interrupt_clear(struct dma *dma, unsigned int channel)
 #endif
 }
 
+static void dw_dma_increment_pointer(struct dw_dma_chan_data *chan, int bytes)
+{
+	chan->ptr_data.current_ptr += bytes;
+	if (chan->ptr_data.current_ptr >= chan->ptr_data.end_ptr)
+		chan->ptr_data.current_ptr = chan->ptr_data.start_ptr +
+			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
+}
+
 /* allocate next free DMA channel */
 static int dw_dma_channel_get(struct dma *dma, unsigned int req_chan)
 {
@@ -357,10 +365,9 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 {
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
-#if CONFIG_HW_LLI
+	struct dma_cb_data next = { .status = DMA_CB_STATUS_RELOAD };
 	uint32_t next_ptr;
 	uint32_t bytes_left;
-#endif
 	uint32_t flags;
 
 	if (channel >= dma->plat_data.channels ||
@@ -378,7 +385,6 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 	/* get next lli for proper release */
 	chan->lli_current = (struct dw_lli *)chan->lli_current->llp;
 
-#if CONFIG_HW_LLI
 	/* copy leftover data between current and last lli */
 	next_ptr = DW_DMA_LLI_ADDRESS(chan->lli_current, chan->direction);
 	if (next_ptr >= chan->ptr_data.current_ptr)
@@ -389,8 +395,14 @@ static int dw_dma_release(struct dma *dma, unsigned int channel)
 			(chan->ptr_data.end_ptr - chan->ptr_data.current_ptr) +
 			(next_ptr - chan->ptr_data.start_ptr);
 
-	dw_dma_copy(dma, channel, bytes_left, 0);
-#endif
+	/* perform copy if callback exists */
+	if (chan->cb && chan->cb_type & DMA_CB_TYPE_COPY) {
+		next.elem.size = bytes_left;
+		chan->cb(chan->cb_data, DMA_CB_TYPE_COPY, &next);
+	}
+
+	/* increment pointer */
+	dw_dma_increment_pointer(chan, bytes_left);
 
 	irq_local_enable(flags);
 
@@ -1050,11 +1062,8 @@ static int dw_dma_copy(struct dma *dma, unsigned int channel, int bytes,
 
 	dw_dma_irq_callback(dma, channel, &next, DMA_CB_TYPE_COPY);
 
-	/* change current pointer */
-	chan->ptr_data.current_ptr += bytes;
-	if (chan->ptr_data.current_ptr >= chan->ptr_data.end_ptr)
-		chan->ptr_data.current_ptr = chan->ptr_data.start_ptr +
-			(chan->ptr_data.current_ptr - chan->ptr_data.end_ptr);
+	/* increment current pointer */
+	dw_dma_increment_pointer(chan, bytes);
 
 	return 0;
 }
