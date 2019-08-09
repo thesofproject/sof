@@ -166,7 +166,7 @@
 
 /* HP SRAM Heap */
 #define HEAP_HP_BUFFER_BASE	HP_SRAM_BASE
-#define HEAP_HP_BUFFER_SIZE	0x8000
+#define HEAP_HP_BUFFER_SIZE	0xA000
 
 #define HEAP_HP_BUFFER_BLOCK_SIZE	0x180
 #define HEAP_HP_BUFFER_COUNT \
@@ -260,7 +260,7 @@
 #define SOF_TEXT_BASE		(SOF_FW_START)
 
 /* Heap section sizes for system runtime heap for master core */
-#define HEAP_SYS_RT_0_COUNT64		64
+#define HEAP_SYS_RT_0_COUNT64		72
 #define HEAP_SYS_RT_0_COUNT512		16
 #define HEAP_SYS_RT_0_COUNT1024		4
 
