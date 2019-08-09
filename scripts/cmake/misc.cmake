@@ -43,3 +43,19 @@ function(add_local_sources target)
 		target_sources(${target} PRIVATE ${path})
 	endforeach()
 endfunction()
+
+# Declares new static lib with given name and path that will be linked
+# to sof binary.
+function(sof_add_static_library lib_name lib_path)
+	# we need libs to be visible in the root CMakeLists, so use GLOBAL
+	add_library(${lib_name} STATIC IMPORTED GLOBAL)
+
+	if(IS_ABSOLUTE ${lib_path})
+		set(lib_abs_path ${lib_path})
+	else()
+		set(lib_abs_path ${CMAKE_CURRENT_SOURCE_DIR}/${lib_path})
+	endif()
+
+	set_target_properties(${lib_name} PROPERTIES IMPORTED_LOCATION ${lib_abs_path})
+	target_link_libraries(sof_static_libraries INTERFACE ${lib_name})
+endfunction()
