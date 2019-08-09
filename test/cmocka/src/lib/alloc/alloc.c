@@ -23,8 +23,7 @@ static struct sof *sof;
 enum test_type {
 	TEST_BULK = 0,
 	TEST_ZERO,
-	TEST_IMMEDIATE_FREE,
-	TEST_FILLING_PRECEDING_HEAPS
+	TEST_IMMEDIATE_FREE
 };
 
 struct test_case {
@@ -193,13 +192,6 @@ static struct test_case test_cases[] = {
 		  TEST_BULK, "rballoc_dma"),
 	TEST_CASE(2048, RZONE_BUFFER, SOF_MEM_CAPS_RAM | SOF_MEM_CAPS_DMA, 100,
 		  TEST_IMMEDIATE_FREE, "rballoc_dma"),
-
-	TEST_CASE(128, RZONE_BUFFER, SOF_MEM_CAPS_RAM, 1,
-		  TEST_FILLING_PRECEDING_HEAPS,
-		  "rballoc_filling_preceding_heaps"),
-	TEST_CASE(256, RZONE_BUFFER, SOF_MEM_CAPS_RAM, 1,
-		  TEST_FILLING_PRECEDING_HEAPS,
-		  "rballoc_filling_preceding_heaps"),
 };
 
 static int setup(void **state)
@@ -283,31 +275,6 @@ static void test_lib_alloc_immediate_free(struct test_case *tc)
 	}
 }
 
-static void test_lib_rballoc_filling_preceding_heaps(struct test_case *tc)
-{
-	extern unsigned int _buffer_heap;
-
-	size_t first_heap_size = HEAP_BUFFER_SIZE - tc->alloc_size * 8;
-	size_t second_heap_size = HEAP_HP_BUFFER_SIZE - tc->alloc_size;
-	size_t third_heap_size = 2048;
-
-	int *first_mem = rballoc(tc->alloc_zone, SOF_MEM_CAPS_RAM,
-				 first_heap_size);
-	int *second_mem = rballoc(tc->alloc_zone, SOF_MEM_CAPS_RAM,
-				  second_heap_size);
-	int *third_mem = rballoc(tc->alloc_zone, SOF_MEM_CAPS_RAM,
-				 third_heap_size);
-
-	assert_ptr_equal(first_mem, (unsigned int)&_buffer_heap);
-	assert_ptr_equal(second_mem, HEAP_HP_BUFFER_BASE);
-#if CONFIG_LP_SRAM
-	assert_ptr_equal(third_mem, HEAP_LP_BUFFER_BASE);
-#endif
-	rfree(first_mem);
-	rfree(second_mem);
-	rfree(third_mem);
-}
-
 static void test_lib_alloc_zero(struct test_case *tc)
 {
 	void **all_mem = malloc(sizeof(void *) * tc->alloc_num);
@@ -345,10 +312,6 @@ static void test_lib_alloc(void **state)
 
 	case TEST_IMMEDIATE_FREE:
 		test_lib_alloc_immediate_free(tc);
-		break;
-
-	case TEST_FILLING_PRECEDING_HEAPS:
-		test_lib_rballoc_filling_preceding_heaps(tc);
 		break;
 	}
 }
