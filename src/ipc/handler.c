@@ -45,8 +45,10 @@
 #include <sof/cpu.h>
 #include <sof/idc.h>
 #include <config.h>
+#ifdef CONFIG_GDB_DEBUG
 #include <arch/gdb/init.h>
 #include <sof/gdb/gdb.h>
+#endif
 
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)
@@ -595,7 +597,8 @@ static int ipc_pm_context_save(uint32_t header)
 	/* TODO: clear any outstanding platform IRQs - TODO refine */
 
 	/* TODO: stop ALL timers */
-	platform_timer_stop(platform_timer);
+	/* Ignore for now */
+	// platform_timer_stop(platform_timer);
 
 	/* TODO: disable SSP and DMA HW */
 

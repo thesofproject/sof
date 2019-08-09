@@ -4,6 +4,7 @@ zephyr_interface_library_named(SOF)
 # include redefines incompatible things on src/include
 target_include_directories(SOF INTERFACE
 	include
+	include/platform
 	#../src/arch/host/include
 	../src/include)
 
@@ -16,6 +17,8 @@ zephyr_library_sources(
 	schedule.c
 	panic.c
 	ipc.c
+	timer.c
+	interrupt.c
 	# SOF src/audio
 	../src/audio/host.c
 	../src/audio/pipeline.c
@@ -24,7 +27,7 @@ zephyr_library_sources(
 	../src/audio/buffer.c
 	# SOF src/ipc
 	../src/ipc/ipc.c
-	#../src/ipc/handler.c
+	../src/ipc/handler.c
 	# SOF src/lib
 	#../src/lib/lib.c
 	#../src/lib/alloc.c
@@ -33,7 +36,7 @@ zephyr_library_sources(
 	#../src/lib/edf_schedule.c
 	#../src/lib/schedule.c
 	#../src/lib/agent.c
-	#../src/lib/interrupt.c
+	../src/lib/interrupt.c
 	#../src/lib/pm_runtime.c
 	#../src/lib/clk.c
 	#../src/lib/dma.c

@@ -23,6 +23,29 @@
 #define IRQ_MANUAL_UNMASK	0
 #define IRQ_AUTO_UNMASK		1
 
+struct irq_desc {
+	/* irq must be first for constructor */
+	int irq;        /* logical IRQ number */
+
+	/* handler is optional for constructor */
+	void (*handler)(void *arg);
+	void *handler_arg;
+
+	/* whether irq should be automatically unmasked */
+	int unmask;
+
+	/* to identify interrupt with the same IRQ */
+	int id;
+	spinlock_t lock;
+	uint32_t enabled_count;
+
+	/* to link to other irq_desc */
+	struct list_item irq_list;
+
+	uint32_t num_children;
+	struct list_item child[PLATFORM_IRQ_CHILDREN];
+};
+
 int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
 		       void *arg);
 void interrupt_unregister(uint32_t irq);

@@ -3,13 +3,13 @@
  * Copyright(c) 2016 Intel Corporation. All rights reserved.
  *
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __INCLUDE_PLATFORM_INTERRUPT__
-#define __INCLUDE_PLATFORM_INTERRUPT__
+#ifndef __INCLUDE_PLATFORM_MAILBOX__
+#define __INCLUDE_PLATFORM_MAILBOX__
 
-
-#define IRQ_NUM_EXT_IA		10	/* Level 4 */
+#include <cavs/mailbox.h>
 
 #endif
 
