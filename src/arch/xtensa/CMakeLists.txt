@@ -154,24 +154,21 @@ add_local_sources(sof
 	exc-dump.S
 )
 
-add_library(sof_lib INTERFACE)
-target_link_libraries(sof_lib INTERFACE sof_options)
-
 # TODO: order of these libraries does matter, what is bad,
 # we should switch to building with thin archives without symbols index
 # and made it before final link so dependencies won't matter
-target_link_libraries(sof_lib INTERFACE xtos)
-target_link_libraries(sof_lib INTERFACE hal)
+target_link_libraries(sof_static_libraries INTERFACE xtos)
+target_link_libraries(sof_static_libraries INTERFACE hal)
 
-target_link_libraries(sof_lib INTERFACE xlevel2)
-target_link_libraries(sof_lib INTERFACE xlevel3)
-target_link_libraries(sof_lib INTERFACE xlevel4)
-target_link_libraries(sof_lib INTERFACE xlevel5)
+target_link_libraries(sof_static_libraries INTERFACE xlevel2)
+target_link_libraries(sof_static_libraries INTERFACE xlevel3)
+target_link_libraries(sof_static_libraries INTERFACE xlevel4)
+target_link_libraries(sof_static_libraries INTERFACE xlevel5)
 
 if(build_bootloader)
 	add_local_sources(sof main-entry.S)
 else()
-	target_link_libraries(sof_lib INTERFACE reset)
+	target_link_libraries(sof_static_libraries INTERFACE reset)
 endif()
 
 target_link_libraries(sof_ld_flags INTERFACE "-lgcc")
