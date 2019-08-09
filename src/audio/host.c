@@ -94,7 +94,10 @@ struct host_data {
 	/* pointers set during params to host or local above */
 	struct hc_buf *source;
 	struct hc_buf *sink;
-	uint32_t split_remaining;
+
+	/* helpers used in split transactions */
+	uint32_t split_value;
+	uint32_t last_split_value;
 
 	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
 				   *  copied by dma connected to host
@@ -112,6 +115,24 @@ static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 	if (++hc->current == hc->elem_array.count)
 		hc->current = 0;
 	return hc->elem_array.elems + hc->current;
+}
+
+static uint32_t host_dma_get_split(struct host_data *hd, uint32_t bytes)
+{
+	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	uint32_t split_src = 0;
+	uint32_t split_dst = 0;
+
+	if (local_elem->src + bytes > hd->source->current_end)
+		split_src = bytes -
+			(hd->source->current_end - local_elem->src);
+
+	if (local_elem->dest + bytes > hd->sink->current_end)
+		split_dst = bytes -
+			(hd->sink->current_end - local_elem->dest);
+
+	/* get max split, so the current copy will be minimum */
+	return MAX(split_src, split_dst);
 }
 
 static void host_update_position(struct comp_dev *dev, uint32_t bytes)
@@ -162,10 +183,10 @@ static void host_dma_cb_irq(struct comp_dev *dev, struct dma_cb_data *next)
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
-	uint32_t period_bytes = hd->period_bytes;
-	uint32_t bytes = local_elem->size;
-	bool need_copy = false;
-	uint32_t next_size;
+	uint32_t curr_split_value = 0;
+	uint32_t next_bytes = 0;
+	uint32_t bytes = hd->last_split_value ? hd->last_split_value :
+		local_elem->size;
 
 	tracev_host("host_dma_cb_irq()");
 
@@ -196,36 +217,28 @@ static void host_dma_cb_irq(struct comp_dev *dev, struct dma_cb_data *next)
 		}
 	}
 
-	/* calculate size of next transfer */
-	next_size = period_bytes;
-	if (local_elem->src + next_size > hd->source->current_end)
-		next_size = hd->source->current_end - local_elem->src;
-	if (local_elem->dest + next_size > hd->sink->current_end)
-		next_size = hd->sink->current_end - local_elem->dest;
+	/* we need to perform split transfer */
+	if (hd->split_value) {
+		/* check for possible double split */
+		curr_split_value = host_dma_get_split(hd, hd->split_value);
+		if (curr_split_value) {
+			next_bytes = hd->split_value - curr_split_value;
+			hd->split_value = curr_split_value;
+		} else {
+			next_bytes = hd->split_value;
+			hd->split_value = 0;
+		}
 
-	/* are we dealing with a split transfer? */
-	if (!hd->split_remaining) {
-		/* no, is next transfer split? */
-		if (next_size != period_bytes)
-			hd->split_remaining = period_bytes - next_size;
-	} else {
-		/* yes, then calculate transfer size */
-		need_copy = true;
-		next_size = next_size < hd->split_remaining ?
-			next_size : hd->split_remaining;
-		hd->split_remaining -= next_size;
-	}
+		hd->last_split_value = next_bytes;
 
-	local_elem->size = next_size;
-
-	/* schedule immediate split transfer if needed */
-	if (need_copy) {
 		next->elem.src = local_elem->src;
 		next->elem.dest = local_elem->dest;
-		next->elem.size = local_elem->size;
+		next->elem.size = next_bytes;
 		next->status = DMA_CB_STATUS_SPLIT;
 		return;
 	}
+
+	hd->last_split_value = 0;
 
 	next->status = DMA_CB_STATUS_END;
 }
@@ -459,33 +472,62 @@ static int host_elements_reset(struct comp_dev *dev)
 	return 0;
 }
 
+static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
+{
+	struct host_data *hd = comp_get_drvdata(dev);
+	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
+	uint32_t avail_bytes = 0;
+	uint32_t free_bytes = 0;
+	uint32_t copy_bytes = 0;
+	int ret;
+
+	if (hd->copy_type == COMP_COPY_ONE_SHOT) {
+		/* calculate minimum size to copy */
+		copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+			hd->dma_buffer->free : hd->dma_buffer->avail;
+
+		/* copy_bytes should be aligned to minimum possible chunk of
+		 * data to be copied by dma.
+		 */
+		copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+
+		hd->split_value = host_dma_get_split(hd, copy_bytes);
+		if (hd->split_value)
+			copy_bytes -= hd->split_value;
+
+		local_elem->size = copy_bytes;
+	} else {
+		/* get data sizes from DMA */
+		ret = dma_get_data_size(hd->dma, hd->chan, &avail_bytes,
+					&free_bytes);
+		if (ret < 0) {
+			trace_host_error("host_buffer_get_copy_bytes() error: "
+					 "dma_get_data_size() failed, ret = %u",
+					 ret);
+			return 0;
+		}
+
+		/* calculate minimum size to copy */
+		copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
+			MIN(avail_bytes, hd->dma_buffer->free) :
+			MIN(hd->dma_buffer->avail, free_bytes);
+
+		/* copy_bytes should be aligned to minimum possible chunk of
+		 * data to be copied by dma.
+		 */
+		copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
+	}
+
+	return copy_bytes;
+}
+
 static void host_buffer_cb(void *data, uint32_t bytes)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t avail_bytes = 0;
-	uint32_t free_bytes = 0;
-	uint32_t copy_bytes = 0;
+	uint32_t copy_bytes = host_buffer_get_copy_bytes(dev);
 	uint32_t flags = 0;
 	int ret;
-
-	/* get data sizes from DMA */
-	ret = dma_get_data_size(hd->dma, hd->chan, &avail_bytes, &free_bytes);
-	if (ret < 0) {
-		trace_host_error("host_buffer_cb() error: dma_get_data_size() "
-				 "failed, ret = %u", ret);
-		return;
-	}
-
-	/* calculate minimum size to copy */
-	copy_bytes = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ?
-		MIN(avail_bytes, hd->dma_buffer->free) :
-		MIN(hd->dma_buffer->avail, free_bytes);
-
-	/* copy_bytes should be aligned to minimum possible chunk of data to be
-	 * copied by dma.
-	 */
-	copy_bytes = ALIGN_DOWN(copy_bytes, hd->dma_copy_align);
 
 	tracev_host("host_buffer_cb(), copy_bytes = 0x%x", copy_bytes);
 
@@ -567,10 +609,14 @@ static int host_params(struct comp_dev *dev)
 		config->direction = DMA_DIR_LMEM_TO_HMEM;
 
 		period_count = cconfig->periods_source;
-		buffer_count = period_count;
+
+		buffer_count = hd->host.elem_array.count ? 1 : period_count;
 		buffer_single_size = ALIGN_UP(dev->frames *
 					      comp_frame_bytes(dev),
 					      align);
+
+		if (hd->host.elem_array.count)
+			buffer_single_size *= period_count;
 
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
@@ -667,7 +713,8 @@ static int host_prepare(struct comp_dev *dev)
 
 	hd->local_pos = 0;
 	hd->report_pos = 0;
-	hd->split_remaining = 0;
+	hd->split_value = 0;
+	hd->last_split_value = 0;
 	dev->position = 0;
 
 	return 0;
