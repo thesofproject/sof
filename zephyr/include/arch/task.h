@@ -14,23 +14,56 @@
 #ifndef __ARCH_TASK_H_
 #define __ARCH_TASK_H_
 
-#include <sof/schedule.h>
+#include <sof/list.h>
+
+#include <arch/spinlock.h>
+
+/** \brief IRQ task data. */
+struct irq_task {
+	spinlock_t lock;	/**< lock */
+	struct list_item list;	/**< list of tasks */
+	uint32_t irq;		/**< IRQ level */
+};
+
+struct task;
 
 /**
- * \brief Allocates IRQ tasks.
+ * \brief Returns IRQ low task data.
+ * \return Pointer to pointer of IRQ low task data.
  */
-static inline int arch_allocate_tasks(void)
-{
-	return 0;
-}
+struct irq_task **task_irq_low_get(void);
+
+/**
+ * \brief Returns IRQ medium task data.
+ * \return Pointer to pointer of IRQ medium task data.
+ */
+struct irq_task **task_irq_med_get(void);
+
+/**
+ * \brief Returns IRQ high task data.
+ * \return Pointer to pointer of IRQ high task data.
+ */
+struct irq_task **task_irq_high_get(void);
 
 /**
  * \brief Runs task.
  * \param[in,out] task Task data.
  */
-static inline int arch_run_task(struct task *task)
-{
-	return 0;
-}
+int arch_run_task(struct task *task);
+
+/**
+ * \brief Allocates IRQ tasks.
+ */
+int arch_allocate_tasks(void);
+
+/**
+ * \brief Frees IRQ tasks.
+ */
+void arch_free_tasks(void);
+
+/**
+ * \brief Assigns IRQ tasks to interrupts.
+ */
+int arch_assign_tasks(void);
 
 #endif

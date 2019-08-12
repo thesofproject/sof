@@ -11,6 +11,13 @@
 #include <kernel.h>
 
 struct timer {
+	uint32_t id;
+	uint32_t irq;
+	void *timer_data;	/* used by core */
+	uint32_t hitime;	/* high end of 64bit timer */
+	uint32_t hitimeout;
+	uint32_t lowtimeout;
+	uint64_t delta;
 };
 
 static inline int arch_timer_register(struct timer *timer,
@@ -24,4 +31,3 @@ static inline int arch_timer_set(struct timer *timer,
 static inline void arch_timer_clear(struct timer *timer) {}
 
 #endif
-

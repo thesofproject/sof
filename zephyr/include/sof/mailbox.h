@@ -9,6 +9,8 @@
 #ifndef __INCLUDE_MAILBOX__
 #define __INCLUDE_MAILBOX__
 
+#include <platform/mailbox.h>
+#include <arch/cache.h>
 #include <stdint.h>
 #include <sof/string.h>
 #include <sof/panic.h>
@@ -48,34 +50,56 @@
 static inline
 void mailbox_dspbox_write(size_t offset, const void *src, size_t bytes)
 {
+	assert(!memcpy_s((void *)(MAILBOX_DSPBOX_BASE + offset),
+			 MAILBOX_DSPBOX_SIZE - offset, src, bytes));
+	dcache_writeback_region((void *)(MAILBOX_DSPBOX_BASE + offset), bytes);
 }
 
 static inline
 void mailbox_dspbox_read(void *dest, size_t dest_size,
 			 size_t offset, size_t bytes)
 {
+	dcache_invalidate_region((void *)(MAILBOX_DSPBOX_BASE + offset),
+				 bytes);
+	assert(!memcpy_s(dest, dest_size,
+			 (void *)(MAILBOX_DSPBOX_BASE + offset),
+			 bytes));
 }
 
 static inline
 void mailbox_hostbox_write(size_t offset, const void *src, size_t bytes)
 {
+	assert(!memcpy_s((void *)(MAILBOX_HOSTBOX_BASE + offset),
+			 MAILBOX_HOSTBOX_SIZE - offset, src, bytes));
+	dcache_writeback_region((void *)(MAILBOX_HOSTBOX_BASE + offset), bytes);
 }
 
 static inline
 void mailbox_hostbox_read(void *dest, size_t dest_size,
 			  size_t offset, size_t bytes)
 {
+	dcache_invalidate_region((void *)(MAILBOX_HOSTBOX_BASE + offset),
+				 bytes);
+	assert(!memcpy_s(dest, dest_size,
+			 (void *)(MAILBOX_HOSTBOX_BASE + offset),
+			 bytes));
 }
 
 static inline
 void mailbox_stream_write(size_t offset, const void *src, size_t bytes)
 {
+	assert(!memcpy_s((void *)(MAILBOX_STREAM_BASE + offset),
+			 MAILBOX_STREAM_SIZE - offset, src, bytes));
+	dcache_writeback_region((void *)(MAILBOX_STREAM_BASE + offset),
+				bytes);
 }
 
 static inline
 void mailbox_sw_reg_write(size_t offset, uint32_t src)
 {
+	*((volatile uint32_t*)(MAILBOX_SW_REG_BASE + offset)) = src;
+	dcache_writeback_region((void *)(MAILBOX_SW_REG_BASE + offset),
+				sizeof(src));
 }
 
 #endif
-
