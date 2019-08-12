@@ -280,6 +280,7 @@ const char *get_component_name(const struct snd_sof_uids_header *uids_dict,
 		CASE(NOTIFIER);
 		CASE(MN);
 		CASE(PROBE);
+		CASE(SMART_AMP);
 	default: return "unknown";
 	}
 }
