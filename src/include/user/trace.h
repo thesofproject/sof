@@ -65,6 +65,7 @@ struct system_time {
 #define TRACE_CLASS_NOTIFIER	(36 << 24)
 #define TRACE_CLASS_MN		(37 << 24)
 #define TRACE_CLASS_PROBE	(38 << 24)
+#define TRACE_CLASS_SMART_AMP	(39 << 24)
 
 #define LOG_ENABLE		1  /* Enable logging */
 #define LOG_DISABLE		0  /* Disable logging */

@@ -73,6 +73,12 @@ config COMP_SEL
 	help
 	  Select for SEL component
 
+config COMP_SMART_AMP
+	bool "Smart amplifier component"
+	default y
+	help
+	  Select for smart amplifier component
+
 config COMP_TEST_KEYPHRASE
 	bool "KEYPHRASE_TEST component"
 	default y
