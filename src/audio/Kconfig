@@ -79,6 +79,12 @@ config COMP_DCBLOCK
 	help
 	  Select for DC Blocking Filter component. This component filters out
 	  the DC offset which often originates from a microphone's output.
+	  
+config COMP_SMART_AMP
+	bool "Smart amplifier component"
+	default y
+	help
+	  Select for smart amplifier component
 
 config COMP_TEST_KEYPHRASE
 	bool "KEYPHRASE_TEST component"
