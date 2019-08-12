@@ -1,17 +1,28 @@
 if(CONFIG_SOF)
 zephyr_interface_library_named(SOF)
 
+# Includes needed by headers under SoC's include/platform
+zephyr_include_directories(../src/platform/intel/cavs/include)
+
 # include redefines incompatible things on src/include
 target_include_directories(SOF INTERFACE
 	include
-	include/platform
 	#../src/arch/host/include
+	../src/platform/intel/cavs/include
 	../src/include)
 
+if(CONFIG_SMP)
+target_include_directories(SOF INTERFACE ../src/arch/xtensa/smp/include)
+else()
+target_include_directories(SOF INTERFACE ../src/arch/xtensa/up/include)
+endif()
+
 zephyr_library()
+zephyr_library_compile_definitions(CONFIG_LIBRARY=1)
 zephyr_library_sources(
 	# Dummy version, might move these to Zephyr
 	alloc.c
+	dma-trace.c
 	ll_schedule.c
 	edf_schedule.c
 	schedule.c
@@ -29,7 +40,7 @@ zephyr_library_sources(
 	../src/ipc/ipc.c
 	../src/ipc/handler.c
 	# SOF src/lib
-	#../src/lib/lib.c
+	../src/lib/lib.c
 	#../src/lib/alloc.c
 	#../src/lib/ll_schedule.c
 	#../src/lib/notifier.c
@@ -38,7 +49,7 @@ zephyr_library_sources(
 	#../src/lib/agent.c
 	../src/lib/interrupt.c
 	#../src/lib/pm_runtime.c
-	#../src/lib/clk.c
+	../src/lib/clk.c
 	#../src/lib/dma.c
 	#../src/lib/dai.c
 	#../src/lib/panic.c
@@ -52,7 +63,7 @@ zephyr_library_sources_ifdef(CONFIG_SOF_STATIC_PIPELINE pipeline_static.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_DAI ../src/audio/dai.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_TONE ../src/audio/tone.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_MIXER ../src/audio/mixer.c)
-zephyr_library_sources_ifdef(CONFIG_SOF_COMP_MUX ../src/audio/mux/mux.c)
+zephyr_library_sources_ifdef(CONFIG_SOF_COMP_MUX ../src/audio/mux/mux.c ../src/audio/mux/mux_generic.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_SWITCH ../src/audio/switch.c)
 #zephyr_library_sources_ifdef(CONFIG_SOF_COMP_KPB ../src/audio/kpb.c)
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_TEST_KEYPHRASE

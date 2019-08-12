@@ -12,8 +12,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define PLATFORM_IRQ_CHILDREN 0
-
 static inline int arch_interrupt_register(int irq,
 	void (*handler)(void *arg), void *arg) {return 0; }
 static inline void arch_interrupt_unregister(int irq) {}
