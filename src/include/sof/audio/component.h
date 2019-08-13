@@ -287,7 +287,7 @@ struct comp_copy_limits {
 
 /** \brief Retrieves component device config data. */
 #define COMP_GET_CONFIG(dev) \
-	(struct sof_ipc_comp_config *)((void *)&dev->comp + \
+	(struct sof_ipc_comp_config *)((uint8_t *)&dev->comp + \
 	sizeof(struct sof_ipc_comp))
 
 /** \brief Sets the driver private data. */
