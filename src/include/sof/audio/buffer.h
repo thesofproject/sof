@@ -40,10 +40,10 @@ struct comp_buffer {
 	uint32_t alloc_size;	/* allocated size in bytes */
 	uint32_t avail;		/* available bytes for reading */
 	uint32_t free;		/* free bytes for writing */
-	void *w_ptr;		/* buffer write pointer */
-	void *r_ptr;		/* buffer read position */
-	void *addr;		/* buffer base address */
-	void *end_addr;		/* buffer end address */
+	uint8_t *w_ptr;		/* buffer write pointer */
+	uint8_t *r_ptr;		/* buffer read position */
+	uint8_t *addr;		/* buffer base address */
+	uint8_t *end_addr;	/* buffer end address */
 
 	/* IPC configuration */
 	struct sof_ipc_buffer ipc_buffer;
@@ -211,10 +211,10 @@ static inline int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	return 0;
 }
 
-static inline void *buffer_get_frag(struct comp_buffer *buffer, void *ptr,
+static inline void *buffer_get_frag(struct comp_buffer *buffer, uint8_t *ptr,
 				    uint32_t idx, uint32_t size)
 {
-	void *current = ptr + (idx * size);
+	uint8_t *current = ptr + (idx * size);
 
 	/* check for pointer wrap */
 	if (current >= buffer->end_addr)

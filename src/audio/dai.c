@@ -74,7 +74,7 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_sg_elem *next)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	struct dma_sg_config *config = &dd->config;
 	uint32_t bytes = next->size;
-	void *buffer_ptr;
+	uint8_t *buffer_ptr;
 
 	tracev_dai_with_ids(dev, "dai_buffer_process()");
 
