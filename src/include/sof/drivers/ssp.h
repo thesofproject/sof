@@ -10,7 +10,6 @@
 
 #include <sof/bit.h>
 #include <sof/lib/dai.h>
-#include <sof/lib/io.h>
 #include <sof/lib/wait.h>
 #include <sof/trace/trace.h>
 #include <ipc/dai.h>
@@ -240,19 +239,18 @@ struct ssp_pdata {
 
 static inline void ssp_write(struct dai *dai, uint32_t reg, uint32_t value)
 {
-	io_reg_write(dai_base(dai) + reg, value);
+	dai_write(dai, reg, value);
 }
 
 static inline uint32_t ssp_read(struct dai *dai, uint32_t reg)
 {
-	return io_reg_read(dai_base(dai) + reg);
+	return dai_read(dai, reg);
 }
 
 static inline void ssp_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 	uint32_t value)
 {
-	io_reg_update_bits(dai_base(dai) + reg, mask, value);
+	dai_update_bits(dai, reg, mask, value);
 }
-
 
 #endif /* __SOF_DRIVERS_SSP_H__ */
