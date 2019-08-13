@@ -57,6 +57,8 @@ zephyr_library_sources(
 	# SOF src/math
 	#../src/math/numbers.c
 	../src/math/trig.c
+	# SOF src/drivers
+	../src/drivers/intel/cavs/ssp.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SOF_STATIC_PIPELINE pipeline_static.c)
