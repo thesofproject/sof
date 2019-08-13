@@ -18,7 +18,6 @@
 #include <sof/lib/cpu.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/io.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/math/decibels.h>
 #include <sof/math/numbers.h>
@@ -154,18 +153,18 @@ static int dmic_active_fifos;
 
 static void dmic_write(struct dai *dai, uint32_t reg, uint32_t value)
 {
-	io_reg_write(dai_base(dai) + reg, value);
+	dai_write(dai, reg, value);
 }
 
 static uint32_t dmic_read(struct dai *dai, uint32_t reg)
 {
-	return io_reg_read(dai_base(dai) + reg);
+	return dai_read(dai, reg);
 }
 
 static void dmic_update_bits(struct dai *dai, uint32_t reg, uint32_t mask,
 			     uint32_t value)
 {
-	io_reg_update_bits(dai_base(dai) + reg, mask, value);
+	dai_update_bits(dai, reg, mask, value);
 }
 
 /* this ramps volume changes over time */
