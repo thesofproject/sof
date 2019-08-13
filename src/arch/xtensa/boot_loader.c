@@ -25,6 +25,31 @@
 #endif
 
 #if CONFIG_BOOT_LOADER
+#define MANIFEST_SEGMENT_COUNT 3
+
+/* generic string compare cloned into the bootloader to
+ * compact code and make it more readable
+ */
+int strcmp(const char *s1, const char *s2)
+{
+	while (*s1 != 0 && *s2 != 0) {
+		if (*s1 < *s2)
+			return -1;
+		if (*s1 > *s2)
+			return 1;
+		s1++;
+		s2++;
+	}
+
+	/* did both string end */
+	if (*s1 != 0)
+		return 1;
+	if (*s2 != 0)
+		return -1;
+
+	/* match */
+	return 0;
+}
 
 /* memcopy used by boot loader */
 static inline void bmemcpy(void *dest, void *src, size_t bytes)
@@ -58,7 +83,7 @@ static void parse_module(struct sof_man_fw_header *hdr,
 	uint32_t bias;
 
 	/* each module has 3 segments */
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < MANIFEST_SEGMENT_COUNT; i++) {
 
 		platform_trace_point(TRACE_BOOT_LDR_PARSE_SEGMENT + i);
 		switch (mod->segment[i].flags.r.type) {
@@ -93,6 +118,35 @@ static void parse_module(struct sof_man_fw_header *hdr,
 #define MAN_SKIP_ENTRIES 1
 #endif
 
+static uint32_t get_fw_size_in_use(void)
+{
+	struct sof_man_fw_desc *desc =
+		(struct sof_man_fw_desc *)MANIFEST_BASE;
+	struct sof_man_fw_header *hdr = &desc->header;
+	struct sof_man_module *mod;
+	uint32_t fw_size_in_use = 0xffffffff;
+	int i;
+
+	/* Calculate fw size passed in BASEFW module in MANIFEST */
+	for (i = MAN_SKIP_ENTRIES; i < hdr->num_module_entries; i++) {
+		platform_trace_point(TRACE_BOOT_LDR_PARSE_MODULE + i);
+		mod = (void *)desc + SOF_MAN_MODULE_OFFSET(i);
+		if (strcmp((char *)mod->name, "BASEFW"))
+			continue;
+		for (i = 0; i < MANIFEST_SEGMENT_COUNT; i++) {
+			if (mod->segment[i].flags.r.type
+				== SOF_MAN_SEGMENT_BSS) {
+				fw_size_in_use = mod->segment[i].v_base_addr
+				- HP_SRAM_BASE
+				+ (mod->segment[i].flags.r.length
+				* HOST_PAGE_SIZE);
+			}
+		}
+	}
+
+	return fw_size_in_use;
+}
+
 /* parse FW manifest and copy modules */
 static void parse_manifest(void)
 {
@@ -115,24 +169,16 @@ static void parse_manifest(void)
 /* power off unused HPSRAM */
 #if CONFIG_CANNONLAKE
 
-static int32_t hp_sram_init(void)
+static int32_t hp_sram_pm_banks(uint32_t banks)
 {
 	int delay_count = 256;
 	uint32_t status;
-	uint32_t ebb_in_use;
 	uint32_t ebb_mask0, ebb_mask1, ebb_avail_mask0, ebb_avail_mask1;
 
 	shim_write(SHIM_LDOCTL, SHIM_LDOCTL_HPSRAM_LDO_ON);
 
 	/* add some delay before touch power register */
 	idelay(delay_count);
-
-	/* calculate total number of used SRAM banks (EBB)
-	 * to power up only ncecesary banks
-	 */
-	ebb_in_use = ((SOF_MEMORY_SIZE % SRAM_BANK_SIZE) == 0) ?
-	(SOF_MEMORY_SIZE / SRAM_BANK_SIZE) :
-	(SOF_MEMORY_SIZE / SRAM_BANK_SIZE) + 1;
 
 	/* bit masks reflect total number of available EBB (banks) in each
 	 * segment; current implementation supports 2 segments 0,1
@@ -148,13 +194,13 @@ static int32_t hp_sram_init(void)
 	}
 
 	/* bit masks of banks that have to be powered up in each segment */
-	if (ebb_in_use > EBB_SEGMENT_SIZE) {
+	if (banks > EBB_SEGMENT_SIZE) {
 		ebb_mask0 = (uint32_t)MASK(EBB_SEGMENT_SIZE - 1, 0);
-		ebb_mask1 = (uint32_t)MASK(ebb_in_use - EBB_SEGMENT_SIZE - 1,
+		ebb_mask1 = (uint32_t)MASK(banks - EBB_SEGMENT_SIZE - 1,
 		0);
 	} else{
 		/* assumption that ebb_in_use is > 0 */
-		ebb_mask0 = (uint32_t)MASK(ebb_in_use - 1, 0);
+		ebb_mask0 = (uint32_t)MASK(banks - 1, 0);
 		ebb_mask1 = 0;
 	}
 
@@ -188,7 +234,36 @@ static int32_t hp_sram_init(void)
 	return 0;
 }
 
+static uint32_t hp_sram_power_off_memory(uint32_t memory_size)
+{
+	uint32_t ebb_in_use;
+
+	/* calculate total number of used SRAM banks (EBB)
+	 * to power up only necessary banks
+	 */
+	ebb_in_use = (!(memory_size % SRAM_BANK_SIZE)) ?
+	(memory_size / SRAM_BANK_SIZE) :
+	(memory_size / SRAM_BANK_SIZE) + 1;
+
+	return hp_sram_pm_banks(ebb_in_use);
+}
+
+static int32_t hp_sram_power_off_unused_banks(uint32_t memory_size)
+{
+	return hp_sram_power_off_memory(memory_size);
+}
+
+static int32_t hp_sram_init(void)
+{
+	return hp_sram_power_off_memory(SOF_MEMORY_SIZE);
+}
+
 #else
+
+static int32_t hp_sram_power_off_unused_banks(uint32_t memory_size)
+{
+	return 0;
+}
 
 static uint32_t hp_sram_init(void)
 {
@@ -266,8 +341,9 @@ void boot_master_core(void)
 	/* parse manifest and copy modules */
 	platform_trace_point(TRACE_BOOT_LDR_MANIFEST);
 	parse_manifest();
-#endif
 
+	hp_sram_power_off_unused_banks(get_fw_size_in_use());
+#endif
 	/* now call SOF entry */
 	platform_trace_point(TRACE_BOOT_LDR_JUMP);
 	_ResetVector();
