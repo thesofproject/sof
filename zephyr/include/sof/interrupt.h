@@ -16,9 +16,10 @@
 #include <sof/lock.h>
 #include <sof/list.h>
 
-#define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
-#define trace_irq_error(__e, ...) \
-	trace_error(TRACE_CLASS_IRQ,  __e, ##__VA_ARGS__)
+#define trace_irq(format, ...) \
+	trace_event(TRACE_CLASS_IRQ, format, ##__VA_ARGS__)
+#define trace_irq_error(format, ...) \
+	trace_error(TRACE_CLASS_IRQ, format, ##__VA_ARGS__)
 
 #define IRQ_MANUAL_UNMASK	0
 #define IRQ_AUTO_UNMASK		1
