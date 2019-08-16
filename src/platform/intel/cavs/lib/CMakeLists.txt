@@ -5,4 +5,5 @@ add_local_sources(sof
 	dma.c
 	memory.c
 	pm_runtime.c
+	pm_memory.c
 )
