@@ -153,7 +153,8 @@ int dai_init(void)
 
 #if CONFIG_CAVS_ALH
 	for (i = 0; i < ARRAY_SIZE(alh); i++) {
-		alh[i].index = i;
+		alh[i].index = (i / DAI_NUM_ALH_BI_DIR_LINKS_GROUP) << 8 |
+			(i % DAI_NUM_ALH_BI_DIR_LINKS_GROUP);
 		alh[i].drv = &alh_driver;
 		spinlock_init(&alh[i].lock);
 	}
