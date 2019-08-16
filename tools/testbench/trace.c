@@ -52,7 +52,7 @@ char *get_trace_class(uint32_t trace_class)
 		CASE(SELECTOR);
 		CASE(SCHEDULE);
 		CASE(SCHEDULE_LL);
-		CASE(SOUNDWIRE);
+		CASE(ALH);
 		CASE(KEYWORD);
 	default: return "unknown";
 	}
