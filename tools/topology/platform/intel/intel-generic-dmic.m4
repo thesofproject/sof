@@ -17,14 +17,14 @@ dnl     pipe id, pcm, max channels, format,
 dnl     frames, deadline, priority, core)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
-# Schedule 48 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-eq-capture.m4,
 	DMIC_PIPELINE_48k_ID, DMIC_DAI_LINK_48k_ID, CHANNELS, s32le,
 	48, 1000, 0, 0)
 
 # Passthrough capture pipeline using max channels defined by CHANNELS.
-# Schedule 16 frames per 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture-16khz.m4,
+# Schedule with 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_ADD(sof/pipe-eq-capture-16khz.m4,
 	DMIC_PIPELINE_16k_ID, DMIC_DAI_LINK_16k_ID, CHANNELS, s32le,
 	16, 1000, 0, 0)
 
