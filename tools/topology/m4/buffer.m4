@@ -29,4 +29,7 @@ define(`W_BUFFER',
 dnl COMP_BUFFER_SIZE( num_periods, sample_size, channels, fmames)
 define(`COMP_BUFFER_SIZE', `eval(`$1 * $2 * $3 * $4')')
 
+dnl COMP_PERIOD_FRAMES( sample_rate, period_us)
+define(`COMP_PERIOD_FRAMES', `eval(`($1 * $2) / 1000000')')
+
 divert(0)dnl
