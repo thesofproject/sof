@@ -23,7 +23,7 @@ DEBUG_START
 #
 # Define the pipelines
 #
-# PCM0 <---> volume <----> ALH 0 BE link 0
+# PCM0 <---> volume <----> ALH 2 BE link 0
 # PCM1 <------------------ DMIC01 (dmic0 capture, , BE link 1)
 # PCM2 <------------------ DMIC16k (dmic16k, BE link 2)
 #
@@ -65,17 +65,17 @@ dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     frames, deadline, priority, core)
 
-# playback DAI is ALH(SDW0 PIN0) using 2 periods
+# playback DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	1, ALH, 0, SDW0-Codec,
+	1, ALH, 2, SDW0-Codec,
 	PIPELINE_SOURCE_1, 2, s24le,
 	48, 1000, 0, 0)
 
-# capture DAI is ALH(SDW0 PIN0) using 2 periods
+# capture DAI is ALH(SDW0 PIN2) using 2 periods
 # Buffers use s24le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
-	2, ALH, 0, SDW0-Codec,
+	2, ALH, 2, SDW0-Codec,
 	PIPELINE_SINK_2, 2, s24le,
 	48, 1000, 0, 0)
 
@@ -104,8 +104,8 @@ PCM_CAPTURE_ADD(DMIC16k, 2, PIPELINE_PCM_4)
 # BE configurations - overrides config in ACPI if present
 #
 
-#ALH SDW0 Pin0 (ID: 0)
-DAI_CONFIG(ALH, 0, 0, SDW0-Codec)
+#ALH SDW0 Pin2 (ID: 0)
+DAI_CONFIG(ALH, 2, 0, SDW0-Codec)
 
 # dmic01 (ID: 1)
 DAI_CONFIG(DMIC, 0, 1, dmic01,
