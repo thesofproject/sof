@@ -1,4 +1,4 @@
-# Capture EQ Pipeline and PCM, 48 kHz
+# Capture EQ Pipeline and PCM, 16 kHz
 #
 # Pipeline Endpoints for connection are :-
 #
@@ -12,7 +12,6 @@ include(`pga.m4')
 include(`dai.m4')
 include(`pipeline.m4')
 include(`bytecontrol.m4')
-include(`mixercontrol.m4')
 include(`eq_iir.m4')
 
 #
@@ -38,10 +37,10 @@ LIST(`		', `SOF_TKN_VOLUME_RAMP_STEP_TYPE	"0"'
 W_DATA(capture_pga_conf, capture_pga_tokens)
 
 # Use 50 Hz highpass response with +20 dB gain
-include(`eq_iir_coef_highpass_50hz_20db_48khz.m4')
+include(`eq_iir_coef_highpass_50hz_20db_16khz.m4')
 
 # EQ Bytes control with max value of 255
-C_CONTROLBYTES(EQIIR_C48, PIPELINE_ID,
+C_CONTROLBYTES(EQIIR_C16, PIPELINE_ID,
 	CONTROLBYTES_OPS(bytes,
 		258 binds the mixer control to bytes get/put handlers,
 		258, 258),
@@ -51,7 +50,7 @@ C_CONTROLBYTES(EQIIR_C48, PIPELINE_ID,
 	, , ,
 	CONTROLBYTES_MAX(, 304),
 	,
-	EQIIR_HP50HZ20dB48K_priv)
+	EQIIR_HP50HZ20dB16K_priv)
 
 #
 # Components and Buffers
@@ -67,7 +66,7 @@ W_PGA(0, PIPELINE_FORMAT, 2, 2,
 		"PIPELINE_ID Master Capture Volume"))
 
 # "EQ 0" has 2 sink period and 2 source periods
-W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR_C48"))
+W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR_C16"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
@@ -105,6 +104,5 @@ indir(`define', concat(`PIPELINE_PCM_', PIPELINE_ID), Highpass Capture PCM_ID)
 # PCM Configuration
 #
 
-PCM_CAPABILITIES(Highpass Capture PCM_ID, `S32_LE,S24_LE,S16_LE', PCM_MIN_RATE,
-	PCM_MAX_RATE, PIPELINE_CHANNELS, PIPELINE_CHANNELS,
-	2, 16, 192, 16384, 65536, 65536)
+PCM_CAPABILITIES(Highpass Capture PCM_ID, `S32_LE,S24_LE,S16_LE', 16000, 16000,
+	PIPELINE_CHANNELS, PIPELINE_CHANNELS, 2, 16, 192, 16384, 65536, 65536)
