@@ -47,7 +47,7 @@ zephyr_library_sources(
 	#../src/lib/edf_schedule.c
 	#../src/lib/schedule.c
 	#../src/lib/agent.c
-	../src/lib/interrupt.c
+	#../src/lib/interrupt.c
 	#../src/lib/pm_runtime.c
 	../src/lib/clk.c
 	#../src/lib/dma.c
