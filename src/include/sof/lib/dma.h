@@ -187,6 +187,25 @@ struct dma {
 	int sref;		/**< simple ref counter, guarded by lock */
 	const struct dma_ops *ops;
 	atomic_t num_channels_busy; /* number of busy channels */
+	struct dma_chan_data *chan; /* channels array */
+	void *private;
+};
+
+struct dma_chan_data {
+	struct dma *dma;
+
+	uint32_t status;
+	uint32_t direction;
+	uint32_t desc_count;
+	uint32_t index;
+
+	/* client callback function */
+	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next);
+	/* client callback data */
+	void *cb_data;
+	/* callback type */
+	int cb_type;
+
 	void *private;
 };
 
@@ -231,6 +250,10 @@ void dma_put(struct dma *dma);
 	dma->plat_data.chan_size
 #define dma_chan_base(dma, chan) \
 	(dma->plat_data.base + chan * dma->plat_data.chan_size)
+#define dma_chan_get_data(chan)	\
+	((chan)->private)
+#define dma_chan_set_data(chan, data) \
+	((chan)->private = data)
 
 /* DMA API
  * Programming flow is :-
