@@ -47,11 +47,8 @@ struct sa;
  */
 #ifdef UNIT_TEST
 #define DECLARE_MODULE(init)
-#elif CONFIG_LIBRARY
-/* In case of shared libs components are initialised in dlopen */
-#define DECLARE_MODULE(init) __attribute__((constructor)) \
-	static void _module_init(void) { init(); }
 #else
+
 struct _sof_module {
 	void (*init)(void);
 };
