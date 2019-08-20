@@ -27,6 +27,7 @@ zephyr_library_sources(
 	edf_schedule.c
 	schedule.c
 	panic.c
+	pm.c
 	ipc.c
 	timer.c
 	interrupt.c
