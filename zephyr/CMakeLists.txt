@@ -56,10 +56,15 @@ zephyr_library_sources(
 	#../src/lib/panic.c
 	#../src/lib/wait.c
 	# SOF src/math
-	#../src/math/numbers.c
+	../src/math/numbers.c
 	../src/math/trig.c
 	# SOF src/drivers
 	../src/drivers/intel/cavs/ssp.c
+	../src/drivers/intel/cavs/hda.c
+	../src/drivers/intel/cavs/dmic.c
+	# Platform code
+	#../src/platform/intel/cavs/dai.c
+	#../src/platform/intel/cavs/pm_runtime.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SOF_STATIC_PIPELINE pipeline_static.c)
