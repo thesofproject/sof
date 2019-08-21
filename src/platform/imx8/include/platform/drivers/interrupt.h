@@ -17,13 +17,13 @@
 #define IRQ_NUM_SOFTWARE0	8	/* Level 1 */
 #define IRQ_NUM_SOFTWARE1	9	/* Level 2 */
 #define IRQ_NUM_IRQSTR_DSP0	19	/* Level 2 */
-#define IRQ_NUM_IRQSTR_DSP1	19	/* Level 2 */
-#define IRQ_NUM_IRQSTR_DSP2	20	/* Level 2 */
-#define IRQ_NUM_IRQSTR_DSP3	21	/* Level 2 */
-#define IRQ_NUM_IRQSTR_DSP4	22	/* Level 2 */
-#define IRQ_NUM_IRQSTR_DSP5	23	/* Level 2 */
-#define IRQ_NUM_IRQSTR_DSP6	24	/* Level 2 */
-#define IRQ_NUM_IRQSTR_DSP7	25	/* Level 2 */
+#define IRQ_NUM_IRQSTR_DSP1	20	/* Level 2 */
+#define IRQ_NUM_IRQSTR_DSP2	21	/* Level 2 */
+#define IRQ_NUM_IRQSTR_DSP3	22	/* Level 2 */
+#define IRQ_NUM_IRQSTR_DSP4	23	/* Level 2 */
+#define IRQ_NUM_IRQSTR_DSP5	24	/* Level 2 */
+#define IRQ_NUM_IRQSTR_DSP6	25	/* Level 2 */
+#define IRQ_NUM_IRQSTR_DSP7	26	/* Level 2 */
 
 /* IRQ Masks */
 #define IRQ_MASK_TIMER0		(1 << IRQ_NUM_TIMER0)
