@@ -60,8 +60,7 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 		if (!ret)
 			d->sref++;
 
-		trace_dai("dai_get(), d = %p, sref = %d",
-			  (uintptr_t)d, d->sref);
+		trace_dai("dai_get(), d = %p, sref = %d", d, d->sref);
 
 		spin_unlock(&d->lock);
 
@@ -86,6 +85,6 @@ void dai_put(struct dai *dai)
 		}
 	}
 	trace_event(TRACE_CLASS_DAI, "dai_put(), dai = %p, sref = %d",
-		    (uintptr_t)dai, dai->sref);
+		    dai, dai->sref);
 	spin_unlock(&dai->lock);
 }
