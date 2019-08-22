@@ -434,14 +434,15 @@ static int hda_dma_host_copy(struct dma *dma, unsigned int channel, int bytes,
 }
 
 /* acquire the specific DMA channel */
-static int hda_dma_channel_get(struct dma *dma, unsigned int channel)
+static struct dma_chan_data *hda_dma_channel_get(struct dma *dma,
+						 unsigned int channel)
 {
 	uint32_t flags;
 
 	if (channel >= dma->plat_data.channels) {
 		trace_hddma_error("hda-dmac: %d invalid channel %d",
 				  dma->plat_data.id, channel);
-		return -EINVAL;
+		return NULL;
 	}
 
 	spin_lock_irq(dma->lock, flags);
@@ -457,14 +458,14 @@ static int hda_dma_channel_get(struct dma *dma, unsigned int channel)
 
 		/* return channel */
 		spin_unlock_irq(dma->lock, flags);
-		return channel;
+		return &dma->chan[channel];
 	}
 
 	/* DMAC has no free channels */
 	spin_unlock_irq(dma->lock, flags);
 	trace_hddma_error("hda-dmac: %d no free channel %d", dma->plat_data.id,
 			  channel);
-	return -ENODEV;
+	return NULL;
 }
 
 /* channel must not be running when this is called */

@@ -55,7 +55,7 @@
 
 struct dai_data {
 	/* local DMA config */
-	int chan;
+	struct dma_chan_data *chan;
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
 
@@ -203,7 +203,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
-	dd->chan = DMA_CHAN_INVALID;
+	dd->chan = NULL;
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -218,7 +218,7 @@ static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	dma_channel_put(dd->dma, dd->chan);
+	dma_channel_put(dd->dma, dd->chan->index);
 	dma_put(dd->dma);
 
 	dai_put(dd->dai);
@@ -446,7 +446,7 @@ static int dai_prepare(struct comp_dev *dev)
 		return ret;
 	}
 
-	ret = dma_set_config(dd->dma, dd->chan, &dd->config);
+	ret = dma_set_config(dd->dma, dd->chan->index, &dd->config);
 	if (ret < 0)
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 
@@ -500,7 +500,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		if (dd->xrun == 0 && !pipeline_is_preload(dev->pipeline)) {
 			/* start the DAI */
 			dai_trigger(dd->dai, cmd, dev->params.direction);
-			ret = dma_start(dd->dma, dd->chan);
+			ret = dma_start(dd->dma, dd->chan->index);
 			if (ret < 0)
 				return ret;
 		} else {
@@ -521,13 +521,13 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		/* only start the DAI if we are not XRUN handling */
 		if (dd->xrun == 0) {
 			/* recover valid start position */
-			ret = dma_release(dd->dma, dd->chan);
+			ret = dma_release(dd->dma, dd->chan->index);
 			if (ret < 0)
 				return ret;
 
 			/* start the DAI */
 			dai_trigger(dd->dai, cmd, dev->params.direction);
-			ret = dma_start(dd->dma, dd->chan);
+			ret = dma_start(dd->dma, dd->chan->index);
 			if (ret < 0)
 				return ret;
 		} else {
@@ -545,7 +545,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), PAUSE/STOP");
-		ret = dma_stop(dd->dma, dd->chan);
+		ret = dma_stop(dd->dma, dd->chan->index);
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
 		break;
 	default:
@@ -600,7 +600,7 @@ static int dai_copy(struct comp_dev *dev)
 		/* start the DAI */
 		dai_trigger(dd->dai, COMP_TRIGGER_START,
 			    dev->params.direction);
-		ret = dma_start(dd->dma, dd->chan);
+		ret = dma_start(dd->dma, dd->chan->index);
 		if (ret < 0)
 			return ret;
 		platform_dai_wallclock(dev, &dd->wallclock);
@@ -609,7 +609,8 @@ static int dai_copy(struct comp_dev *dev)
 	}
 
 	/* get data sizes from DMA */
-	ret = dma_get_data_size(dd->dma, dd->chan, &avail_bytes, &free_bytes);
+	ret = dma_get_data_size(dd->dma, dd->chan->index, &avail_bytes,
+				&free_bytes);
 	if (ret < 0)
 		return ret;
 
@@ -625,7 +626,7 @@ static int dai_copy(struct comp_dev *dev)
 	if (ret < 0 || ret == PPL_STATUS_PATH_STOP)
 		return ret;
 
-	ret = dma_copy(dd->dma, dd->chan, copy_bytes, 0);
+	ret = dma_copy(dd->dma, dd->chan->index, copy_bytes, 0);
 	if (ret < 0)
 		trace_dai_error("dai_copy() error: ret = %u", ret);
 
@@ -734,9 +735,9 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		 * Free the channel that is currently in use before
 		 * assigning the new one.
 		 */
-		if (dd->chan != DMA_CHAN_INVALID) {
-			dma_channel_put(dd->dma, dd->chan);
-			dd->chan = DMA_CHAN_INVALID;
+		if (dd->chan) {
+			dma_channel_put(dd->dma, dd->chan->index);
+			dd->chan = NULL;
 		}
 		break;
 	default:
@@ -756,19 +757,19 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	}
 
 	if (channel != DMA_CHAN_INVALID) {
-		if (dd->chan == DMA_CHAN_INVALID)
+		if (!dd->chan)
 			/* get dma channel at first config only */
 			dd->chan = dma_channel_get(dd->dma, channel);
 
-		if (dd->chan < 0) {
+		if (!dd->chan) {
 			trace_dai_error_with_ids(dev, "dai_config() error: "
 						 "dma_channel_get() failed");
-			dd->chan = DMA_CHAN_INVALID;
+			dd->chan = NULL;
 			return -EIO;
 		}
 
 		/* set up callback */
-		dma_set_cb(dd->dma, dd->chan,
+		dma_set_cb(dd->dma, dd->chan->index,
 			   DMA_CB_TYPE_IRQ | DMA_CB_TYPE_COPY,
 			   dai_dma_cb, dev);
 		dev->is_dma_connected = 1;

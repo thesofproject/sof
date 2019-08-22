@@ -8,9 +8,10 @@
 #include <stdint.h>
 
 /* allocate next free DMA channel */
-static int dummy_dma_channel_get(struct dma *dma, unsigned int req_chan)
+static struct dma_chan_data *dummy_dma_channel_get(struct dma *dma,
+						   unsigned int req_chan)
 {
-	return 0;
+	return NULL;
 }
 
 /* channel must not be running when this is called */

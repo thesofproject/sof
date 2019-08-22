@@ -215,11 +215,11 @@ static int dma_trace_start(struct dma_trace_data *d)
 	if (err < 0)
 		return err;
 
-	err = dma_set_config(d->dc.dmac, d->dc.chan, &config);
+	err = dma_set_config(d->dc.dmac, d->dc.chan->index, &config);
 	if (err < 0)
 		return err;
 
-	err = dma_start(d->dc.dmac, d->dc.chan);
+	err = dma_start(d->dc.dmac, d->dc.chan->index);
 
 	return err;
 }
@@ -296,7 +296,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 #endif
 
 	/* validate DMA context */
-	if (d->dc.dmac == NULL || d->dc.chan < 0) {
+	if (!d->dc.dmac || !d->dc.chan) {
 		trace_buffer_error_atomic("dma_trace_enable() error: not "
 					  "valid");
 		return -ENODEV;
