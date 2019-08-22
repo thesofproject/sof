@@ -4,7 +4,6 @@
 //
 // Author: Marcin Maka <marcin.maka@linux.intel.com>
 
-#include <errno.h>
 #include <sof/hda.h>
 
 static int hda_trigger(struct dai *dai, int cmd, int direction)
