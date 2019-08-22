@@ -989,10 +989,11 @@ static void dw_dma_verify_transfer(struct dma *dma, unsigned int channel,
 		dw_write(dma, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel));
 		/* fallthrough */
 	default:
-		if (ll_uncached->ctrl_hi & DW_CTLH_DONE(1)) {
+		while (ll_uncached->ctrl_hi & DW_CTLH_DONE(1)) {
 			ll_uncached->ctrl_hi &= ~DW_CTLH_DONE(1);
 			chan->lli_current =
 				(struct dw_lli *)chan->lli_current->llp;
+			ll_uncached = cache_to_uncache(chan->lli_current);
 		}
 		break;
 	}
