@@ -95,24 +95,21 @@ static void idc_irq_handler(void *arg)
 		}
 	}
 
-	/* DONE interrupt only enabled by master core */
-	if (core == PLATFORM_MASTER_CORE_ID) {
-		for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-			/* skip current core */
-			if (core == i)
-				continue;
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		/* skip current core */
+		if (core == i)
+			continue;
 
-			idcietc = idc_read(IPC_IDCIETC(i), core);
+		idcietc = idc_read(IPC_IDCIETC(i), core);
 
-			if (idcietc & IPC_IDCIETC_DONE) {
-				tracev_idc("idc_irq_handler(), "
-					   "IPC_IDCIETC_DONE");
+		if (idcietc & IPC_IDCIETC_DONE) {
+			tracev_idc("idc_irq_handler(), "
+				   "IPC_IDCIETC_DONE");
 
-				idc_write(IPC_IDCIETC(i), core,
-					  idcietc | IPC_IDCIETC_DONE);
+			idc_write(IPC_IDCIETC(i), core,
+				  idcietc | IPC_IDCIETC_DONE);
 
-				idc->msg_processed[i] = true;
-			}
+			idc->msg_processed[i] = true;
 		}
 	}
 }
@@ -288,7 +285,7 @@ static enum task_state idc_do_cmd(void *data)
 		  idc_read(IPC_IDCTFC(initiator), core) | IPC_IDCTFC_BUSY);
 
 	/* enable BUSY interrupt */
-	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask);
+	idc_write(IPC_IDCCTL, core, idc->busy_bit_mask | idc->done_bit_mask);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
@@ -303,13 +300,9 @@ static uint32_t idc_get_busy_bit_mask(int core)
 	uint32_t busy_mask = 0;
 	int i;
 
-	if (core == PLATFORM_MASTER_CORE_ID) {
-		for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-			if (i != PLATFORM_MASTER_CORE_ID)
-				busy_mask |= IPC_IDCCTL_IDCTBIE(i);
-		}
-	} else {
-		busy_mask = IPC_IDCCTL_IDCTBIE(PLATFORM_MASTER_CORE_ID);
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		if (i != core)
+			busy_mask |= IPC_IDCCTL_IDCTBIE(i);
 	}
 
 	return busy_mask;
@@ -325,13 +318,9 @@ static uint32_t idc_get_done_bit_mask(int core)
 	uint32_t done_mask = 0;
 	int i;
 
-	if (core == PLATFORM_MASTER_CORE_ID) {
-		for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
-			if (i != PLATFORM_MASTER_CORE_ID)
-				done_mask |= IPC_IDCCTL_IDCIDIE(i);
-		}
-	} else {
-		done_mask = 0;
+	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
+		if (i != core)
+			done_mask |= IPC_IDCCTL_IDCIDIE(i);
 	}
 
 	return done_mask;
@@ -368,7 +357,7 @@ int arch_idc_init(void)
 		return ret;
 	interrupt_enable((*idc)->irq, *idc);
 
-	/* enable BUSY and DONE (only for master core) interrupts */
+	/* enable BUSY and DONE interrupts */
 	idc_write(IPC_IDCCTL, core,
 		  (*idc)->busy_bit_mask | (*idc)->done_bit_mask);
 
