@@ -16,9 +16,11 @@
 
 #include <arch/drivers/idc.h>
 #include <platform/drivers/idc.h>
+#include <sof/lib/cpu.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 /** \brief IDC trace function. */
@@ -98,6 +100,7 @@ struct idc {
 	uint32_t done_bit_mask;		/**< done interrupt mask */
 	struct idc_msg received_msg;	/**< received message */
 	struct task idc_task;		/**< IDC processing task */
+	bool msg_processed[PLATFORM_CORE_COUNT];
 	int irq;
 };
 
