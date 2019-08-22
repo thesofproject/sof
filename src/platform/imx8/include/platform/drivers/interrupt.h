@@ -40,9 +40,9 @@
 #define IRQ_MASK_IRQSTR_DSP6	(1 << IRQ_NUM_IRQSTR_DSP6)
 #define IRQ_MASK_IRQSTR_DSP7	(1 << IRQ_NUM_IRQSTR_DSP7)
 
-/* no nested interrupts */
+/* 32 HW interrupts + 8 IRQ_STEER lines each with 64 interrupts */
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
-#define PLATFORM_IRQ_CHILDREN	0
+#define PLATFORM_IRQ_CHILDREN	64
 
 #endif /* __PLATFORM_DRIVERS_INTERRUPT_H__ */
 
