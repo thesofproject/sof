@@ -136,7 +136,8 @@ struct dma_chan_status {
 /* DMA operations */
 struct dma_ops {
 
-	int (*channel_get)(struct dma *dma, unsigned int req_channel);
+	struct dma_chan_data *(*channel_get)(struct dma *dma,
+					     unsigned int req_channel);
 	void (*channel_put)(struct dma *dma, unsigned int channel);
 
 	int (*start)(struct dma *dma, unsigned int channel);
@@ -267,7 +268,8 @@ void dma_put(struct dma *dma);
  * 6) dma_channel_put()
  */
 
-static inline int dma_channel_get(struct dma *dma, int req_channel)
+static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
+						    int req_channel)
 {
 	return dma->ops->channel_get(dma, req_channel);
 }
@@ -404,7 +406,7 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
 /* generic DMA DSP <-> Host copier */
 
 struct dma_copy {
-	int chan;
+	struct dma_chan_data *chan;
 	struct dma *dmac;
 	completion_t complete;
 };
@@ -415,7 +417,7 @@ int dma_copy_new(struct dma_copy *dc);
 /* free dma copy context resources */
 static inline void dma_copy_free(struct dma_copy *dc)
 {
-	dma_channel_put(dc->dmac, dc->chan);
+	dma_channel_put(dc->dmac, dc->chan->index);
 }
 
 /* DMA copy data from host to DSP */

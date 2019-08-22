@@ -78,7 +78,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int ret;
 
 	/* tell gateway to copy */
-	ret = dma_copy(dc->dmac, dc->chan, size, 0);
+	ret = dma_copy(dc->dmac, dc->chan->index, size, 0);
 	if (ret < 0)
 		return ret;
 
@@ -125,11 +125,11 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	config.elem_array.count = 1;
 
 	/* start the DMA */
-	err = dma_set_config(dc->dmac, dc->chan, &config);
+	err = dma_set_config(dc->dmac, dc->chan->index, &config);
 	if (err < 0)
 		return err;
 
-	err = dma_start(dc->dmac, dc->chan);
+	err = dma_start(dc->dmac, dc->chan->index);
 	if (err < 0)
 		return err;
 
@@ -156,13 +156,13 @@ int dma_copy_new(struct dma_copy *dc)
 #if !CONFIG_DMA_GW
 	/* get DMA channel from DMAC0 */
 	dc->chan = dma_channel_get(dc->dmac, 0);
-	if (dc->chan < 0) {
-		trace_dma_error("dma_copy_new() error: dc->chan < 0");
-		return dc->chan;
+	if (!dc->chan) {
+		trace_dma_error("dma_copy_new() error: dc->chan is NULL");
+		return -ENODEV;
 	}
 
 	dc->complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
-	dma_set_cb(dc->dmac, dc->chan, DMA_CB_TYPE_IRQ, dma_complete,
+	dma_set_cb(dc->dmac, dc->chan->index, DMA_CB_TYPE_IRQ, dma_complete,
 		   &dc->complete);
 #endif
 
@@ -175,9 +175,9 @@ int dma_copy_set_stream_tag(struct dma_copy *dc, uint32_t stream_tag)
 {
 	/* get DMA channel from DMAC */
 	dc->chan = dma_channel_get(dc->dmac, stream_tag - 1);
-	if (dc->chan < 0) {
+	if (!dc->chan) {
 		trace_dma_error("dma_copy_set_stream_tag() error: "
-				"dc->chan < 0");
+				"dc->chan is NULL");
 		return -EINVAL;
 	}
 

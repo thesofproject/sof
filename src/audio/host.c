@@ -74,7 +74,7 @@ struct hc_buf {
 struct host_data {
 	/* local DMA config */
 	struct dma *dma;
-	int chan;
+	struct dma_chan_data *chan;
 	struct dma_sg_config config;
 	struct comp_buffer *dma_buffer;
 	uint32_t period_bytes;	/**< Size of a single period (in bytes) */
@@ -337,7 +337,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
 		return ret;
 
-	if (hd->chan < 0) {
+	if (!hd->chan) {
 		trace_host_error_with_ids(dev, "host_trigger() error: no dma "
 					  "channel configured");
 		return -EINVAL;
@@ -345,7 +345,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 
 	switch (cmd) {
 	case COMP_TRIGGER_START:
-		ret = dma_start(hd->dma, hd->chan);
+		ret = dma_start(hd->dma, hd->chan->index);
 		if (ret < 0)
 			trace_host_error_with_ids(dev, "host_trigger() error: "
 						  "dma_start() failed, "
@@ -353,7 +353,7 @@ static int host_trigger(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_STOP:
 	case COMP_TRIGGER_XRUN:
-		ret = dma_stop(hd->dma, hd->chan);
+		ret = dma_stop(hd->dma, hd->chan->index);
 		if (ret < 0)
 			trace_host_error_with_ids(dev, "host_trigger(): dma "
 						  "stop failed: %d", ret);
@@ -416,7 +416,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	dma_sg_init(&hd->host.elem_array);
 	dma_sg_init(&hd->local.elem_array);
 
-	hd->chan = DMA_CHAN_INVALID;
+	hd->chan = NULL;
 	hd->copy_type = COMP_COPY_NORMAL;
 	hd->posn.comp_id = comp->id;
 	dev->state = COMP_STATE_READY;
@@ -498,10 +498,10 @@ static uint32_t host_buffer_get_copy_bytes(struct comp_dev *dev)
 		local_elem->size = copy_bytes;
 	} else {
 		/* get data sizes from DMA */
-		ret = dma_get_data_size(hd->dma, hd->chan, &avail_bytes,
+		ret = dma_get_data_size(hd->dma, hd->chan->index, &avail_bytes,
 					&free_bytes);
 		if (ret < 0) {
-			trace_host_error("host_buffer_get_copy_bytes() error: "
+			trace_host_error("host_buffer_cb() error: "
 					 "dma_get_data_size() failed, ret = %u",
 					 ret);
 			return 0;
@@ -537,14 +537,14 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 		flags |= DMA_COPY_ONE_SHOT;
 
 	/* reconfigure transfer */
-	ret = dma_set_config(hd->dma, hd->chan, &hd->config);
+	ret = dma_set_config(hd->dma, hd->chan->index, &hd->config);
 	if (ret < 0) {
 		trace_host_error("host_buffer_cb() error: dma_set_config() "
 				 "failed, ret = %u", ret);
 		return;
 	}
 
-	ret = dma_copy(hd->dma, hd->chan, copy_bytes, flags);
+	ret = dma_copy(hd->dma, hd->chan->index, copy_bytes, flags);
 	if (ret < 0)
 		trace_host_error("host_buffer_cb() error: dma_copy() failed, "
 				 "ret = %u", ret);
@@ -665,18 +665,18 @@ static int host_params(struct comp_dev *dev)
 	 * note: stream_tag is ignored by dw-dma
 	 */
 	hd->chan = dma_channel_get(hd->dma, dev->params.stream_tag);
-	if (hd->chan < 0) {
+	if (!hd->chan) {
 		trace_host_error_with_ids(dev, "host_params() error: "
-					  "hd->chan < 0");
+					  "hd->chan is NULL");
 		return -ENODEV;
 	}
 
-	err = dma_set_config(hd->dma, hd->chan, &hd->config);
+	err = dma_set_config(hd->dma, hd->chan->index, &hd->config);
 	if (err < 0) {
 		trace_host_error_with_ids(dev, "host_params() error: "
 					  "dma_set_config() failed");
-		dma_channel_put(hd->dma, hd->chan);
-		hd->chan = DMA_CHAN_INVALID;
+		dma_channel_put(hd->dma, hd->chan->index);
+		hd->chan = NULL;
 		return err;
 	}
 
@@ -691,7 +691,7 @@ static int host_params(struct comp_dev *dev)
 	}
 
 	/* set up callback */
-	dma_set_cb(hd->dma, hd->chan, DMA_CB_TYPE_IRQ |
+	dma_set_cb(hd->dma, hd->chan->index, DMA_CB_TYPE_IRQ |
 		   DMA_CB_TYPE_COPY, host_dma_cb, dev);
 
 	return 0;
@@ -749,7 +749,7 @@ static int host_reset(struct comp_dev *dev)
 
 	trace_host_with_ids(dev, "host_reset()");
 
-	dma_channel_put(hd->dma, hd->chan);
+	dma_channel_put(hd->dma, hd->chan->index);
 
 	/* free all DMA elements */
 	dma_sg_free(&hd->host.elem_array);
@@ -757,7 +757,7 @@ static int host_reset(struct comp_dev *dev)
 	dma_sg_free(&hd->config.elem_array);
 
 	/* reset dma channel as we have put it */
-	hd->chan = DMA_CHAN_INVALID;
+	hd->chan = NULL;
 
 	host_pointer_reset(dev);
 	hd->copy_type = COMP_COPY_NORMAL;
@@ -784,7 +784,7 @@ static int host_copy(struct comp_dev *dev)
 	 */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
 	    !dev->position) {
-		ret = dma_copy(hd->dma, hd->chan, hd->dma_buffer->size,
+		ret = dma_copy(hd->dma, hd->chan->index, hd->dma_buffer->size,
 			       DMA_COPY_PRELOAD);
 		if (ret < 0) {
 			if (ret == -ENODATA) {

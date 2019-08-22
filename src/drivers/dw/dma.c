@@ -184,7 +184,8 @@ static void dw_dma_increment_pointer(struct dw_dma_chan_data *chan, int bytes)
 }
 
 /* allocate next free DMA channel */
-static int dw_dma_channel_get(struct dma *dma, unsigned int req_chan)
+static struct dma_chan_data *dw_dma_channel_get(struct dma *dma,
+						unsigned int req_chan)
 {
 	uint32_t flags;
 	int i;
@@ -207,7 +208,7 @@ static int dw_dma_channel_get(struct dma *dma, unsigned int req_chan)
 
 		/* return channel */
 		spin_unlock_irq(dma->lock, flags);
-		return i;
+		return &dma->chan[i];
 	}
 
 	/* DMA controller has no free channels */
@@ -215,7 +216,7 @@ static int dw_dma_channel_get(struct dma *dma, unsigned int req_chan)
 	trace_dwdma_error("dw_dma_channel_get() error: dma %d "
 			  "no free channels", dma->plat_data.id);
 
-	return -ENODEV;
+	return NULL;
 }
 
 /* channel must not be running when this is called */

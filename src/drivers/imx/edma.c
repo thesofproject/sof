@@ -36,9 +36,10 @@ static inline void edma_update_bits(struct dma *dma, uint32_t reg,
 }
 
 /* acquire the specific DMA channel */
-static int edma_channel_get(struct dma *dma, unsigned int req_chan)
+static struct dma_chan_data *edma_channel_get(struct dma *dma,
+					      unsigned int req_chan)
 {
-	return 0;
+	return NULL;
 }
 
 /* channel must not be running when this is called */
