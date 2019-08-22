@@ -64,6 +64,7 @@
 #define IRQ_MASK_EXT_DMAC2	(1 << IRQ_NUM_EXT_DMAC2)
 
 /* no nested interrupts */
+#define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
 #define PLATFORM_IRQ_CHILDREN	0
 
 #endif /* __PLATFORM_DRIVERS_INTERRUPT_H__ */

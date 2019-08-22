@@ -14,6 +14,7 @@
 
 #include <sof/drivers/interrupt-map.h>
 
+#define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
 #define PLATFORM_IRQ_CHILDREN	32
 
 /* IRQ numbers - wrt Tensilica DSP */
