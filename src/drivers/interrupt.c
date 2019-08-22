@@ -121,7 +121,7 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 	struct irq_cascade_desc *cascade, *c = NULL;
 	unsigned long flags;
 
-	if (irq < PLATFORM_IRQ_CHILDREN)
+	if (irq < PLATFORM_IRQ_HW_NUM)
 		return NULL;
 
 	spin_lock_irq(cascade_lock, flags);
@@ -142,7 +142,7 @@ struct irq_cascade_desc *interrupt_get_parent(uint32_t irq)
 
 void interrupt_init(void)
 {
-	cascade_root.last_irq = PLATFORM_IRQ_CHILDREN - 1;
+	cascade_root.last_irq = PLATFORM_IRQ_HW_NUM - 1;
 	dcache_writeback_region(&cascade_root, sizeof(cascade_root));
 	spinlock_init(&cascade_lock);
 }

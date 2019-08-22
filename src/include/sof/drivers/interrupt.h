@@ -128,10 +128,10 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu);
 
 /*
  * On platforms, supporting cascading interrupts cascaded interrupt numbers
- * are greater than or equal to PLATFORM_IRQ_CHILDREN
+ * are greater than or equal to PLATFORM_IRQ_HW_NUM
  */
 #define interrupt_is_dsp_direct(irq) (!PLATFORM_IRQ_CHILDREN || \
-					irq < PLATFORM_IRQ_CHILDREN)
+					irq < PLATFORM_IRQ_HW_NUM)
 
 void interrupt_init(void);
 int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl);

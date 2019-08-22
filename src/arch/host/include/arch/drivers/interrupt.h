@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 
+#define PLATFORM_IRQ_HW_NUM   0
 #define PLATFORM_IRQ_CHILDREN 0
 
 static inline int arch_interrupt_register(int irq,
