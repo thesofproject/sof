@@ -443,7 +443,7 @@ static inline int ssp_set_config(struct dai *dai,
 		    config->ssp.tdm_slot_width : config->ssp.sample_valid_bits);
 	if (bdiv < bdiv_min) {
 		trace_ssp_error("ssp_set_config() error: bdiv(%d) < "
-				"bdiv_min(%d)", bdiv < bdiv_min);
+				"bdiv_min(%d)", bdiv, bdiv_min);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -644,7 +644,7 @@ static inline int ssp_set_config(struct dai *dai,
 		break;
 	default:
 		trace_ssp_error("ssp_set_config() error: "
-				"invalid format 0x%04", config->format);
+				"invalid format 0x%04x", config->format);
 		ret = -EINVAL;
 		goto out;
 	}
