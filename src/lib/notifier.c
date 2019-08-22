@@ -14,7 +14,7 @@
 #include <sof/spinlock.h>
 #include <ipc/topology.h>
 
-static struct notify_data _notify_data;
+static struct notify_data _notify_data __aligned(PLATFORM_DCACHE_ALIGN);
 
 void notifier_register(struct notifier *notifier)
 {
