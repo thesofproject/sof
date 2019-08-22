@@ -76,7 +76,7 @@ void notifier_event(struct notify_data *notify_data)
 				notifier_notify();
 			} else if (cpu_is_core_enabled(i)) {
 				notify_msg.core = i;
-				idc_send_msg(&notify_msg, IDC_BLOCKING);
+				idc_send_msg(&notify_msg, IDC_NON_BLOCKING);
 			}
 		}
 	}
