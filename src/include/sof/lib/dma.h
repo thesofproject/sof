@@ -138,21 +138,20 @@ struct dma_ops {
 
 	struct dma_chan_data *(*channel_get)(struct dma *dma,
 					     unsigned int req_channel);
-	void (*channel_put)(struct dma *dma, unsigned int channel);
+	void (*channel_put)(struct dma_chan_data *channel);
 
-	int (*start)(struct dma *dma, unsigned int channel);
-	int (*stop)(struct dma *dma, unsigned int channel);
-	int (*copy)(struct dma *dma, unsigned int channel, int bytes,
-		    uint32_t flags);
-	int (*pause)(struct dma *dma, unsigned int channel);
-	int (*release)(struct dma *dma, unsigned int channel);
-	int (*status)(struct dma *dma, unsigned int channel,
-		struct dma_chan_status *status, uint8_t direction);
+	int (*start)(struct dma_chan_data *channel);
+	int (*stop)(struct dma_chan_data *channel);
+	int (*copy)(struct dma_chan_data *channel, int bytes, uint32_t flags);
+	int (*pause)(struct dma_chan_data *channel);
+	int (*release)(struct dma_chan_data *channel);
+	int (*status)(struct dma_chan_data *channel,
+		      struct dma_chan_status *status, uint8_t direction);
 
-	int (*set_config)(struct dma *dma, unsigned int channel,
-		struct dma_sg_config *config);
+	int (*set_config)(struct dma_chan_data *channel,
+			  struct dma_sg_config *config);
 
-	int (*set_cb)(struct dma *dma, unsigned int channel, int type,
+	int (*set_cb)(struct dma_chan_data *channel, int type,
 		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 		void *data);
 
@@ -162,8 +161,8 @@ struct dma_ops {
 	int (*probe)(struct dma *dma);
 	int (*remove)(struct dma *dma);
 
-	int (*get_data_size)(struct dma *dma, unsigned int channel,
-			     uint32_t *avail, uint32_t *free);
+	int (*get_data_size)(struct dma_chan_data *channel, uint32_t *avail,
+			     uint32_t *free);
 
 	int (*get_attribute)(struct dma *dma, uint32_t type, uint32_t *value);
 };
@@ -274,54 +273,54 @@ static inline struct dma_chan_data *dma_channel_get(struct dma *dma,
 	return dma->ops->channel_get(dma, req_channel);
 }
 
-static inline void dma_channel_put(struct dma *dma, int channel)
+static inline void dma_channel_put(struct dma_chan_data *channel)
 {
-	dma->ops->channel_put(dma, channel);
+	channel->dma->ops->channel_put(channel);
 }
 
-static inline int dma_set_cb(struct dma *dma, int channel, int type,
+static inline int dma_set_cb(struct dma_chan_data *channel, int type,
 	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 	void *data)
 {
-	return dma->ops->set_cb(dma, channel, type, cb, data);
+	return channel->dma->ops->set_cb(channel, type, cb, data);
 }
 
-static inline int dma_start(struct dma *dma, int channel)
+static inline int dma_start(struct dma_chan_data *channel)
 {
-	return dma->ops->start(dma, channel);
+	return channel->dma->ops->start(channel);
 }
 
-static inline int dma_stop(struct dma *dma, int channel)
+static inline int dma_stop(struct dma_chan_data *channel)
 {
-	return dma->ops->stop(dma, channel);
+	return channel->dma->ops->stop(channel);
 }
 
-static inline int dma_copy(struct dma *dma, int channel, int bytes,
+static inline int dma_copy(struct dma_chan_data *channel, int bytes,
 			   uint32_t flags)
 {
-	return dma->ops->copy(dma, channel, bytes, flags);
+	return channel->dma->ops->copy(channel, bytes, flags);
 }
 
-static inline int dma_pause(struct dma *dma, int channel)
+static inline int dma_pause(struct dma_chan_data *channel)
 {
-	return dma->ops->pause(dma, channel);
+	return channel->dma->ops->pause(channel);
 }
 
-static inline int dma_release(struct dma *dma, int channel)
+static inline int dma_release(struct dma_chan_data *channel)
 {
-	return dma->ops->release(dma, channel);
+	return channel->dma->ops->release(channel);
 }
 
-static inline int dma_status(struct dma *dma, int channel,
-	struct dma_chan_status *status, uint8_t direction)
+static inline int dma_status(struct dma_chan_data *channel,
+			     struct dma_chan_status *status, uint8_t direction)
 {
-	return dma->ops->status(dma, channel, status, direction);
+	return channel->dma->ops->status(channel, status, direction);
 }
 
-static inline int dma_set_config(struct dma *dma, int channel,
-	struct dma_sg_config *config)
+static inline int dma_set_config(struct dma_chan_data *channel,
+				 struct dma_sg_config *config)
 {
-	return dma->ops->set_config(dma, channel, config);
+	return channel->dma->ops->set_config(channel, config);
 }
 
 static inline int dma_pm_context_restore(struct dma *dma)
@@ -344,10 +343,10 @@ static inline int dma_remove(struct dma *dma)
 	return dma->ops->remove(dma);
 }
 
-static inline int dma_get_data_size(struct dma *dma, int channel,
+static inline int dma_get_data_size(struct dma_chan_data *channel,
 				    uint32_t *avail, uint32_t *free)
 {
-	return dma->ops->get_data_size(dma, channel, avail, free);
+	return channel->dma->ops->get_data_size(channel, avail, free);
 }
 
 static inline int dma_get_attribute(struct dma *dma, uint32_t type,
@@ -417,7 +416,7 @@ int dma_copy_new(struct dma_copy *dc);
 /* free dma copy context resources */
 static inline void dma_copy_free(struct dma_copy *dc)
 {
-	dma_channel_put(dc->dmac, dc->chan->index);
+	dma_channel_put(dc->chan);
 }
 
 /* DMA copy data from host to DSP */

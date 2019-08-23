@@ -43,39 +43,39 @@ static struct dma_chan_data *edma_channel_get(struct dma *dma,
 }
 
 /* channel must not be running when this is called */
-static void edma_channel_put(struct dma *dma, unsigned int channel)
+static void edma_channel_put(struct dma_chan_data *channel)
 {
 }
 
-static int edma_start(struct dma *dma, unsigned int channel)
-{
-	return 0;
-}
-
-static int edma_release(struct dma *dma, unsigned int channel)
+static int edma_start(struct dma_chan_data *channel)
 {
 	return 0;
 }
 
-static int edma_pause(struct dma *dma, unsigned int channel)
+static int edma_release(struct dma_chan_data *channel)
 {
 	return 0;
 }
 
-static int edma_stop(struct dma *dma, unsigned int channel)
+static int edma_pause(struct dma_chan_data *channel)
 {
 	return 0;
 }
 
-static int edma_status(struct dma *dma, unsigned int channel,
+static int edma_stop(struct dma_chan_data *channel)
+{
+	return 0;
+}
+
+static int edma_status(struct dma_chan_data *channel,
 		       struct dma_chan_status *status, uint8_t direction)
 {
 	return 0;
 }
 
 /* set the DMA channel configuration, source/target address, buffer sizes */
-static int edma_set_config(struct dma *dma, unsigned int channel,
-			     struct dma_sg_config *config)
+static int edma_set_config(struct dma_chan_data *channel,
+			   struct dma_sg_config *config)
 {
 	return 0;
 }
@@ -93,7 +93,7 @@ static int edma_pm_context_store(struct dma *dma)
 	return 0;
 }
 
-static int edma_set_cb(struct dma *dma, unsigned int channel, int type,
+static int edma_set_cb(struct dma_chan_data *channel, int type,
 		void (*cb)(void *data, uint32_t type, struct dma_cb_data *next),
 		void *data)
 {

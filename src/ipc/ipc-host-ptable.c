@@ -122,7 +122,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	config.elem_array.elems = &elem;
 	config.elem_array.count = 1;
 
-	ret = dma_set_config(dmac, chan, &config);
+	ret = dma_set_config(chan, &config);
 	if (ret < 0) {
 		trace_ipc_error("ipc_get_page_descriptors() error: "
 				"dma_set_config() failed");
@@ -130,12 +130,12 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	}
 
 	/* set up callback */
-	dma_set_cb(dmac, chan->index, DMA_CB_TYPE_IRQ, dma_complete, &complete);
+	dma_set_cb(chan, DMA_CB_TYPE_IRQ, dma_complete, &complete);
 
 	wait_init(&complete);
 
 	/* start the copy of page table to DSP */
-	ret = dma_start(dmac, chan->index);
+	ret = dma_start(chan);
 	if (ret < 0) {
 		trace_ipc_error("ipc_get_page_descriptors() error: "
 				"dma_start() failed");
@@ -150,7 +150,7 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:
-	dma_channel_put(dmac, chan->index);
+	dma_channel_put(chan);
 	return ret;
 }
 
