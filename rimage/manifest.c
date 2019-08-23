@@ -240,7 +240,7 @@ static int man_get_module_manifest(struct image *image, struct module *module,
 	/* module built using xcc has preceding bytes */
 	if (section->size > sizeof(sof_mod))
 		ret = fseek(module->fd,
-			    section->off + XCC_MOD_OFFSET, SEEK_SET);
+			    section->off + image->xcc_mod_offset, SEEK_SET);
 	else
 		ret = fseek(module->fd, section->off, SEEK_SET);
 
