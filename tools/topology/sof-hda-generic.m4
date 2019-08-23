@@ -32,6 +32,11 @@ include(`platform/intel/intel-generic-dmic.m4')
 #
 # PCM0  <---> volume (pipe 1,2) <----> HDA Analog (HDA Analog playback/capture)
 # PCM1  <---> volume (pipe 3,4) <----> HDA Digital (HDA Digital playback/capture)
+
+include(`sof-hda-generic-idisp.m4')
+#
+# Include the pipelines
+#
 # PCM3  ----> volume (pipe 7)   -----> iDisp1 (HDMI/DP playback, BE link 3)
 # PCM4  ----> Volume (pipe 8)   -----> iDisp2 (HDMI/DP playback, BE link 4)
 # PCM5  ----> volume (pipe 9)   -----> iDisp3 (HDMI/DP playback, BE link 5)
@@ -63,27 +68,6 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
 	4, 1, 2, s24le,
 	1000, 0, 0,
-	48000, 48000, 48000)
-
-# Low Latency playback pipeline 7 on PCM 3 using max 2 channels of s24le.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-        7, 3, 2, s24le,
-        1000, 0, 0,
-	48000, 48000, 48000)
-
-# Low Latency playback pipeline 8 on PCM 4 using max 2 channels of s24le.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-        8, 4, 2, s24le,
-        1000, 0, 0,
-	48000, 48000, 48000)
-
-# Low Latency playback pipeline 9 on PCM 5 using max 2 channels of s24le.
-# 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-        9, 5, 2, s24le,
-        1000, 0, 0,
 	48000, 48000, 48000)
 
 #
@@ -118,32 +102,8 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	PIPELINE_SINK_4, 2, s32le,
 	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
-# playback DAI is iDisp1 using 2 periods
-# Dai buffers use s32le format, 1000us deadline on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-        7, HDA, 4, iDisp1,
-        PIPELINE_SOURCE_7, 2, s32le,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
-# playback DAI is iDisp2 using 2 periods
-# Dai buffers use s32le format, 1000us deadline on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-        8, HDA, 5, iDisp2,
-        PIPELINE_SOURCE_8, 2, s32le,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
-# playback DAI is iDisp3 using 2 periods
-# Dai buffers use s32le format, 1000us deadline on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-        9, HDA, 6, iDisp3,
-        PIPELINE_SOURCE_9, 2, s32le,
-        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
-
 PCM_DUPLEX_ADD(HDA Analog, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 PCM_DUPLEX_ADD(HDA Digital, 1, PIPELINE_PCM_3, PIPELINE_PCM_4)
-PCM_PLAYBACK_ADD(HDMI1, 3, PIPELINE_PCM_7)
-PCM_PLAYBACK_ADD(HDMI2, 4, PIPELINE_PCM_8)
-PCM_PLAYBACK_ADD(HDMI3, 5, PIPELINE_PCM_9)
 
 #
 # BE configurations - overrides config in ACPI if present
@@ -152,11 +112,6 @@ PCM_PLAYBACK_ADD(HDMI3, 5, PIPELINE_PCM_9)
 # HDA outputs
 DAI_CONFIG(HDA, 0, 4, Analog Playback and Capture)
 DAI_CONFIG(HDA, 1, 5, Digital Playback and Capture)
-# 3 HDMI/DP outputs (ID: 3,4,5)
-DAI_CONFIG(HDA, 4, 1, iDisp1)
-DAI_CONFIG(HDA, 5, 2, iDisp2)
-DAI_CONFIG(HDA, 6, 3, iDisp3)
-
 
 VIRTUAL_DAPM_ROUTE_IN(codec0_in, HDA, 1, IN, 1)
 VIRTUAL_DAPM_ROUTE_IN(codec1_in, HDA, 3, IN, 2)
@@ -168,13 +123,6 @@ VIRTUAL_DAPM_ROUTE_OUT(codec1_out, HDA, 2, OUT, 4)
 VIRTUAL_DAPM_ROUTE_IN(codec2_in, HDA, 3, IN, 5)
 VIRTUAL_DAPM_ROUTE_OUT(codec2_out, HDA, 2, OUT, 6)
 
-VIRTUAL_DAPM_ROUTE_OUT(iDisp1_out, HDA, 4, OUT, 7)
-VIRTUAL_DAPM_ROUTE_OUT(iDisp2_out, HDA, 5, OUT, 8)
-VIRTUAL_DAPM_ROUTE_OUT(iDisp3_out, HDA, 6, OUT, 9)
-
-VIRTUAL_WIDGET(iDisp3 Tx, out_drv, 0)
-VIRTUAL_WIDGET(iDisp2 Tx, out_drv, 1)
-VIRTUAL_WIDGET(iDisp1 Tx, out_drv, 2)
 VIRTUAL_WIDGET(Analog CPU Playback, out_drv, 3)
 VIRTUAL_WIDGET(Digital CPU Playback, out_drv, 4)
 VIRTUAL_WIDGET(Alt Analog CPU Playback, out_drv, 5)
