@@ -21,11 +21,12 @@ DEBUG_START
 
 #
 # Define the pipelines
+# note: iDisp PCM mappings follow legacy HDA numbering
 #
 # PCM0 ----> volume -----> SSP5 (pcm512x)
-# PCM1 ----> volume -----> iDisp1
-# PCM2 ----> volume -----> iDisp2
-# PCM3 ----> volume -----> iDisp3
+# PCM3 ----> volume -----> iDisp1
+# PCM7 ----> volume -----> iDisp2
+# PCM8 ----> volume -----> iDisp3
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -41,24 +42,24 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-playback.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
+# Low Latency playback pipeline 2 on PCM 3 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	2, 1, 2, s32le,
+	2, 3, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
+# Low Latency playback pipeline 3 on PCM 7 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	3, 2, 2, s32le,
+	3, 7, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
+# Low Latency playback pipeline 4 on PCM 8 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	4, 3, 2, s32le,
+	4, 8, 2, s32le,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
@@ -119,9 +120,9 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
 PCM_PLAYBACK_ADD(Port5, 0, PIPELINE_PCM_1)
-PCM_PLAYBACK_ADD(HDMI1, 1, PIPELINE_PCM_2)
-PCM_PLAYBACK_ADD(HDMI2, 2, PIPELINE_PCM_3)
-PCM_PLAYBACK_ADD(HDMI3, 3, PIPELINE_PCM_4)
+PCM_PLAYBACK_ADD(HDMI1, 3, PIPELINE_PCM_2)
+PCM_PLAYBACK_ADD(HDMI2, 7, PIPELINE_PCM_3)
+PCM_PLAYBACK_ADD(HDMI3, 8, PIPELINE_PCM_4)
 
 #
 # BE configurations - overrides config in ACPI if present
