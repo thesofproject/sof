@@ -936,7 +936,7 @@ static int ssp_remove(struct dai *dai)
 {
 	pm_runtime_put_sync(SSP_CLK, dai->index);
 
-	rfree(dma_get_drvdata(dai));
+	rfree(dai_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);
 
 	return 0;
