@@ -42,25 +42,25 @@ dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
 
-# Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
+# Low Latency playback pipeline 7 on PCM 3 using max 2 channels of s24le.
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	2, 1, 2, s32le,
-	1000, 0, 0,
+	7, 3, 2, s24le,
+        1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 3 on PCM 2 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
+# Low Latency playback pipeline 8 on PCM 4 using max 2 channels of s24le.
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	3, 2, 2, s32le,
-	1000, 0, 0,
+        8, 4, 2, s24le,
+        1000, 0, 0,
 	48000, 48000, 48000)
 
-# Low Latency playback pipeline 4 on PCM 3 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
+# Low Latency playback pipeline 9 on PCM 5 using max 2 channels of s24le.
+# 1000us deadline on core 0 with priority 0
 PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
-	4, 3, 2, s32le,
-	1000, 0, 0,
+        9, 5, 2, s24le,
+        1000, 0, 0,
 	48000, 48000, 48000)
 
 #
@@ -71,42 +71,48 @@ dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
 dnl     deadline, priority, core)
-
 # playback DAI is iDisp1 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Dai buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	2, HDA, 0, iDisp1,
-	PIPELINE_SOURCE_2, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        7, HDA, 4, iDisp1,
+        PIPELINE_SOURCE_7, 2, s32le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp2 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Dai buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	3, HDA, 1, iDisp2,
-	PIPELINE_SOURCE_3, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        8, HDA, 5, iDisp2,
+        PIPELINE_SOURCE_8, 2, s32le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp3 using 2 periods
-# Buffers use s32le format, 1000us deadline on core 0 with priority 0
+# Dai buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
-	4, HDA, 2, iDisp3,
-	PIPELINE_SOURCE_4, 2, s32le,
-	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+        9, HDA, 6, iDisp3,
+        PIPELINE_SOURCE_9, 2, s32le,
+        1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
+#
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
-PCM_PLAYBACK_ADD(HDMI1, 1, PIPELINE_PCM_2)
-PCM_PLAYBACK_ADD(HDMI2, 2, PIPELINE_PCM_3)
-PCM_PLAYBACK_ADD(HDMI3, 3, PIPELINE_PCM_4)
+
+PCM_PLAYBACK_ADD(HDMI1, 3, PIPELINE_PCM_7)
+PCM_PLAYBACK_ADD(HDMI2, 4, PIPELINE_PCM_8)
+PCM_PLAYBACK_ADD(HDMI3, 5, PIPELINE_PCM_9)
 
 #
 # BE configurations - overrides config in ACPI if present
 #
 
-# 3 HDMI/DP outputs (ID: 1,2,3)
-DAI_CONFIG(HDA, 0, 1, iDisp1)
-DAI_CONFIG(HDA, 1, 2, iDisp2)
-DAI_CONFIG(HDA, 2, 3, iDisp3)
+
+# 3 HDMI/DP outputs (ID: 3,4,5)
+DAI_CONFIG(HDA, 4, 1, iDisp1)
+DAI_CONFIG(HDA, 5, 2, iDisp2)
+DAI_CONFIG(HDA, 6, 3, iDisp3)
+
+VIRTUAL_DAPM_ROUTE_OUT(iDisp1_out, HDA, 4, OUT, 7)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp2_out, HDA, 5, OUT, 8)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp3_out, HDA, 6, OUT, 9)
 
 VIRTUAL_WIDGET(iDisp3 Tx, out_drv, 0)
 VIRTUAL_WIDGET(iDisp2 Tx, out_drv, 1)
