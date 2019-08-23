@@ -104,6 +104,7 @@ struct image {
 	struct module module[MAX_MODULES];
 	uint32_t image_end;/* module end, equal to output image size */
 	int meu_offset;
+	int xcc_mod_offset;
 
 	/* SHA 256 */
 	const char *key_name;

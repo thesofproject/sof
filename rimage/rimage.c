@@ -36,6 +36,7 @@ static void usage(char *name)
 	fprintf(stdout, "\t -s MEU signing offset\n");
 	fprintf(stdout, "\t -p log dictionary outfile\n");
 	fprintf(stdout, "\t -i set IMR type\n");
+	fprintf(stdout, "\t -x set xcc module offset\n");
 	exit(0);
 }
 
@@ -48,7 +49,9 @@ int main(int argc, char *argv[])
 
 	memset(&image, 0, sizeof(image));
 
-	while ((opt = getopt(argc, argv, "ho:p:m:vba:s:k:l:ri:")) != -1) {
+	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
+
+	while ((opt = getopt(argc, argv, "ho:p:m:vba:s:k:l:ri:x:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -76,6 +79,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			imr_type = atoi(optarg);
+			break;
+		case 'x':
+			image.xcc_mod_offset = atoi(optarg);
 			break;
 		case 'h':
 			usage(argv[0]);
