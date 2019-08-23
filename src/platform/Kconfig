@@ -132,6 +132,24 @@ config ICELAKE
 	help
 	  Select if your target platform is Icelake-compatible
 
+config TIGERLAKE
+	bool "Build for Tigerlake"
+	select BOOT_LOADER
+	select IRQ_MAP
+	select DMA_GW
+	select DW
+	select DW_DMA
+	select MEM_WND
+	select TASK_HAVE_PRIORITY_LOW
+	select TASK_HAVE_PRIORITY_MEDIUM
+	select HW_LLI
+	select DMA_AGGREGATED_IRQ
+	select DMA_FIFO_PARTITION
+	select CAVS
+	select CAVS_VERSION_2_5
+	help
+	  Select if your target platform is Tigerlake-compatible
+
 config LIBRARY
 	bool "Build Library"
 	help
@@ -196,6 +214,7 @@ config FIRMWARE_SHORT_NAME
 	default "cnl" if CANNONLAKE
 	default "sue" if SUECREEK
 	default "icl" if ICELAKE
+	default "tgl" if TIGERLAKE
 	default "imx8" if IMX8
 	default ""
 	help
