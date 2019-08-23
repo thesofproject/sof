@@ -106,7 +106,7 @@ static inline void cavs_pm_runtime_dis_dmic_clk_gating(uint32_t index)
 	trace_power("dis-dmic-clk-gating index %d CLKCTL %08x", index,
 		    shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Disable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMIC_DCGD));
@@ -125,7 +125,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 
 	trace_power("en-dmic-clk-gating index %d CLKCTL %08x", index, shim_reg);
 #endif
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Enable DMIC clock gating */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & ~DMIC_DCGD));
@@ -134,7 +134,7 @@ static inline void cavs_pm_runtime_en_dmic_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Enable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) | DMICLCTL_SPA));
@@ -143,7 +143,7 @@ static inline void cavs_pm_runtime_en_dmic_power(uint32_t index)
 static inline void cavs_pm_runtime_dis_dmic_power(uint32_t index)
 {
 	(void) index;
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* Disable DMIC power */
 	io_reg_write(DMICLCTL,
 		    (io_reg_read(DMICLCTL) & (~DMICLCTL_SPA)));
