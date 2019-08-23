@@ -1569,7 +1569,7 @@ static int dmic_remove(struct dai *dai)
 	/* Disable DMIC power */
 	pm_runtime_put_sync(DMIC_POW, dai->index);
 
-	rfree(dma_get_drvdata(dai));
+	rfree(dai_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);
 
 	rfree(dmic_prm[0]);
