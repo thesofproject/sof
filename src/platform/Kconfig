@@ -178,6 +178,13 @@ config CAVS_VERSION_2_0
 	help
 	  Select for CAVS version 2.0
 
+config CAVS_VERSION_2_5
+	depends on CAVS && !CAVS_VERSION_1_5 && !CAVS_VERSION_1_8 \
+			&& !CAVS_VERSION_2_0
+	bool
+	help
+	  Select for CAVS version 2.5
+
 # TODO: it should just take manifest version and offsets
 config FIRMWARE_SHORT_NAME
 	string "Rimage firmware name"
