@@ -14,10 +14,11 @@
 #ifndef __SOF_CPU_H__
 #define __SOF_CPU_H__
 
+#include "../arch/cpu.h"
 
 static inline int cpu_get_id(void)
 {
-	return 0;
+	return arch_cpu_get_id();
 }
 
 static inline void cpu_enable_core(int id)

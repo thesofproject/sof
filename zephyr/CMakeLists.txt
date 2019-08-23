@@ -31,6 +31,8 @@ zephyr_library_sources(
 	ipc.c
 	timer.c
 	interrupt.c
+	# Modified drivers from SOF
+	drivers/intel/cavs/interrupt.c
 	# SOF src/audio
 	../src/audio/host.c
 	../src/audio/pipeline.c
