@@ -18,6 +18,11 @@ elseif(CONFIG_SUECREEK)
 	set(platform_folder suecreek)
 elseif(CONFIG_ICELAKE)
 	set(platform_folder icelake)
+elseif(CONFIG_TIGERLAKE)
+	set(platform_folder tigerlake)
+	if(XCC)
+		set(RIMAGE_MOD_OFFSET_FLAG -x 24)
+	endif()
 elseif(CONFIG_IMX8)
 	set(platform_folder imx8)
 endif()
@@ -283,6 +288,7 @@ if(MEU_PATH)
 			-s ${MEU_OFFSET}
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
+			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
@@ -322,6 +328,7 @@ else()
 			-m ${fw_name}
 			-k ${RIMAGE_PRIVATE_KEY}
 			-i ${RIMAGE_IMR_TYPE}
+			${RIMAGE_MOD_OFFSET_FLAG}
 			${bootloader_binary_path}
 			sof-${fw_name}
 		DEPENDS sof_dump
