@@ -78,7 +78,7 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	int ret;
 
 	/* tell gateway to copy */
-	ret = dma_copy(dc->dmac, dc->chan->index, size, 0);
+	ret = dma_copy(dc->chan, size, 0);
 	if (ret < 0)
 		return ret;
 
@@ -125,11 +125,11 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	config.elem_array.count = 1;
 
 	/* start the DMA */
-	err = dma_set_config(dc->dmac, dc->chan->index, &config);
+	err = dma_set_config(dc->chan, &config);
 	if (err < 0)
 		return err;
 
-	err = dma_start(dc->dmac, dc->chan->index);
+	err = dma_start(dc->chan);
 	if (err < 0)
 		return err;
 
@@ -162,8 +162,7 @@ int dma_copy_new(struct dma_copy *dc)
 	}
 
 	dc->complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
-	dma_set_cb(dc->dmac, dc->chan->index, DMA_CB_TYPE_IRQ, dma_complete,
-		   &dc->complete);
+	dma_set_cb(dc->chan, DMA_CB_TYPE_IRQ, dma_complete, &dc->complete);
 #endif
 
 	return 0;

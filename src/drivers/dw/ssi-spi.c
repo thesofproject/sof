@@ -114,7 +114,7 @@ struct spi_reg_list {
 struct spi {
 	const struct gpio *gpio;
 	uint32_t index;
-	uint32_t chan[2];	/* spi-slave rx/tx dma */
+	struct dma_chan_data *chan[2];	/* spi-slave rx/tx dma */
 	uint32_t buffer_size;
 	uint8_t *rx_buffer;
 	uint8_t *tx_buffer;
@@ -177,7 +177,7 @@ static int spi_trigger(struct spi *spi, int cmd, int direction)
 	switch (cmd) {
 	case SPI_TRIGGER_START:
 		/* trigger the SPI-Slave + DMA + INT + Receiving */
-		ret = dma_start(spi->dma[direction], spi->chan[direction]);
+		ret = dma_start(spi->chan[direction]);
 		if (ret < 0)
 			return ret;
 
@@ -193,7 +193,7 @@ static int spi_trigger(struct spi *spi, int cmd, int direction)
 	case SPI_TRIGGER_STOP:
 		/* Stop the SPI-Slave */
 		spi_stop(spi);
-		dma_stop(spi->dma[direction], spi->chan[direction]);
+		dma_stop(spi->chan[direction]);
 
 		break;
 	default:
@@ -241,8 +241,7 @@ static int spi_slave_dma_set_config(struct spi *spi,
 		.dest_width = 4,
 	};
 	struct dma_sg_elem local_sg_elem;
-	struct dma *dma = spi->dma[spi_cfg->dir];
-	uint32_t chan = spi->chan[spi_cfg->dir];
+	struct dma_chan_data *chan = spi->chan[spi_cfg->dir];
 
 	/* dma config */
 
@@ -278,7 +277,7 @@ static int spi_slave_dma_set_config(struct spi *spi,
 	config.elem_array.count = 1;
 	config.elem_array.elems = &local_sg_elem;
 
-	return dma_set_config(dma, chan, &config);
+	return dma_set_config(chan, &config);
 }
 
 static int spi_set_config(struct spi *spi,
@@ -433,12 +432,12 @@ int spi_probe(struct spi *spi)
 		return -ENODEV;
 
 	spi->chan[SPI_DIR_RX] = dma_channel_get(spi->dma[SPI_DIR_RX], 0);
-	if (spi->chan[SPI_DIR_RX] < 0)
-		return spi->chan[SPI_DIR_RX];
+	if (!spi->chan[SPI_DIR_RX])
+		return -ENODEV;
 
 	spi->chan[SPI_DIR_TX] = dma_channel_get(spi->dma[SPI_DIR_TX], 0);
-	if (spi->chan[SPI_DIR_TX] < 0)
-		return spi->chan[SPI_DIR_TX];
+	if (!spi->chan[SPI_DIR_TX])
+		return -ENODEV;
 
 	spi->gpio = gpio_get(PLATFORM_SPI_GPIO_ID);
 	if (!spi->gpio)
@@ -469,10 +468,10 @@ int spi_probe(struct spi *spi)
 
 	spi->ipc_status = IPC_READ;
 
-	dma_set_cb(spi->dma[SPI_DIR_RX], spi->chan[SPI_DIR_RX],
-		   DMA_CB_TYPE_IRQ, spi_dma_complete, spi);
-	dma_set_cb(spi->dma[SPI_DIR_TX], spi->chan[SPI_DIR_TX],
-		   DMA_CB_TYPE_IRQ, spi_dma_complete, spi);
+	dma_set_cb(spi->chan[SPI_DIR_RX], DMA_CB_TYPE_IRQ, spi_dma_complete,
+		   spi);
+	dma_set_cb(spi->chan[SPI_DIR_TX], DMA_CB_TYPE_IRQ, spi_dma_complete,
+		   spi);
 
 	return spi_slave_init(spi);
 }

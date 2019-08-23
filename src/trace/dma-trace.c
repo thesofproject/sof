@@ -215,11 +215,11 @@ static int dma_trace_start(struct dma_trace_data *d)
 	if (err < 0)
 		return err;
 
-	err = dma_set_config(d->dc.dmac, d->dc.chan->index, &config);
+	err = dma_set_config(d->dc.chan, &config);
 	if (err < 0)
 		return err;
 
-	err = dma_start(d->dc.dmac, d->dc.chan->index);
+	err = dma_start(d->dc.chan);
 
 	return err;
 }
