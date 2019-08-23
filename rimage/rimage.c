@@ -21,6 +21,7 @@ static const struct adsp *machine[] = {
 	&machine_apl,
 	&machine_cnl,
 	&machine_icl,
+	&machine_tgl,
 	&machine_sue,
 	&machine_kbl,
 	&machine_skl,
