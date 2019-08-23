@@ -395,7 +395,7 @@ int platform_init(struct sof *sof)
 #endif
 	int ret;
 
-#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK
+#if CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	trace_point(TRACE_BOOT_PLATFORM_ENTRY);
 	platform_init_hw();
 #endif
@@ -467,7 +467,7 @@ int platform_init(struct sof *sof)
 		     SHIM_PWRCTL_TCPDSPPG(1) | SHIM_PWRCTL_TCPDSPPG(2) |
 		     SHIM_PWRCTL_TCPDSPPG(3));
 
-#elif CONFIG_ICELAKE || CONFIG_SUECREEK
+#elif CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* TODO: need to merge as for APL */
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
