@@ -445,8 +445,8 @@ static void src_copy_s32(struct comp_dev *dev,
 		n -= n_copy;
 		src += n_copy;
 		snk += n_copy;
-		src_inc_wrap(&src, source->end_addr, source->size);
-		src_inc_wrap(&snk, sink->end_addr, sink->size);
+		src_inc_wrap(&src, (int32_t *)source->end_addr, source->size);
+		src_inc_wrap(&snk, (int32_t *)sink->end_addr, sink->size);
 	}
 	*n_read = frames;
 	*n_written = frames;
@@ -480,8 +480,8 @@ static void src_copy_s16(struct comp_dev *dev,
 		n -= n_copy;
 		src += n_copy;
 		snk += n_copy;
-		src_inc_wrap_s16(&src, source->end_addr, source->size);
-		src_inc_wrap_s16(&snk, sink->end_addr, sink->size);
+		src_inc_wrap_s16(&src, (int16_t *)source->end_addr, source->size);
+		src_inc_wrap_s16(&snk, (int16_t *)sink->end_addr, sink->size);
 	}
 	*n_read = frames;
 	*n_written = frames;
