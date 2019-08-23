@@ -126,7 +126,7 @@ static void tone_s32_default(struct comp_dev *dev, struct comp_buffer *sink,
 				dest++;
 			}
 		}
-		tone_circ_inc_wrap(&dest, sink->end_addr, sink->size);
+		tone_circ_inc_wrap(&dest, (int32_t *)sink->end_addr, sink->size);
 	}
 }
 
