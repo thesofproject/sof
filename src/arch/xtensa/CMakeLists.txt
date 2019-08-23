@@ -275,8 +275,10 @@ if(MEU_PATH)
 
 	if(MEU_VERSION VERSION_LESS 12.0.0.1035)
 		set(MEU_OFFSET 1152)
-	else()
+	elseif(MEU_VERSION VERSION_LESS 15.0.0.7041)
 		set(MEU_OFFSET 1088)
+	else()
+		set(MEU_OFFSET 1344)
 	endif()
 
 	add_custom_target(
