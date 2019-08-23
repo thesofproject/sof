@@ -3,6 +3,7 @@
  * Copyright(c) 2018 Intel Corporation. All rights reserved.
  *
  * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ *         Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
 /**
@@ -42,6 +43,7 @@
 enum pm_runtime_context {
 	PM_RUNTIME_HOST_DMA_L1 = 0,	/**< Host DMA L1 Exit */
 	SSP_CLK,			/**< SSP Clock */
+	SSP_POW,			/**< SSP Power */
 	DMIC_CLK,			/**< DMIC Clock */
 	DMIC_POW,			/**< DMIC Power */
 	DW_DMAC_CLK			/**< DW DMAC Clock */

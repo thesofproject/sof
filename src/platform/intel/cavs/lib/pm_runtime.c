@@ -3,6 +3,7 @@
 // Copyright(c) 2018 Intel Corporation. All rights reserved.
 //
 // Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+//         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 /**
  * \file platform/intel/cavs/pm_runtime.c
@@ -88,6 +89,34 @@ static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 	shim_write(SHIM_CLKCTL, shim_reg);
 
 	trace_power("en-ssp-clk-gating index %d CLKCTL %08x", index, shim_reg);
+#endif
+}
+
+static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
+{
+#if CONFIG_TIGERLAKE
+	trace_power("en_ssp_power index %d", index);
+
+	io_reg_write(I2SLCTL, io_reg_read(I2SLCTL) | I2SLCTL_SPA(index));
+
+	/* TODO: Check if powered on.
+	 * Should read CPA, but it's not getting set right after SPA is written,
+	 * need to check if there are other HW dependencies.
+	 */
+#endif
+}
+
+static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
+{
+#if CONFIG_TIGERLAKE
+	trace_power("dis_ssp_power index %d", index);
+
+	io_reg_write(I2SLCTL, io_reg_read(I2SLCTL) & (~I2SLCTL_SPA(index)));
+
+	/* TODO: Check if powered off.
+	 * Should read CPA, but it's not getting set right after SPA is written,
+	 * need to check if there are other HW dependencies.
+	 */
 #endif
 }
 #endif
@@ -218,6 +247,9 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	case SSP_CLK:
 		cavs_pm_runtime_dis_ssp_clk_gating(index);
 		break;
+	case SSP_POW:
+		cavs_pm_runtime_en_ssp_power(index);
+		break;
 #endif
 #if CONFIG_CAVS_DMIC
 	case DMIC_CLK:
@@ -245,6 +277,9 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 #if CONFIG_CAVS_SSP
 	case SSP_CLK:
 		cavs_pm_runtime_en_ssp_clk_gating(index);
+		break;
+	case SSP_POW:
+		cavs_pm_runtime_dis_ssp_power(index);
 		break;
 #endif
 #if CONFIG_CAVS_DMIC
