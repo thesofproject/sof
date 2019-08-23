@@ -139,6 +139,15 @@
 #define GPDMA_CLKCTL(x)		(0x78404 + x*0x100)
 #define GPDMA_FDCGB		(0x1 << 0)
 
+/* I2S SHIM Registers */
+#define I2SLCTL			0x71C04
+
+/* SPA register should be set for each I2S port and DSP should
+ * wait for CPA to be set
+ */
+#define I2SLCTL_SPA(x)		BIT(0 + x)
+#define I2SLCTL_CPA(x)		BIT(8 + x)
+
 #define L2LMCAP			0x71D00
 #define L2MPAT			0x71D04
 

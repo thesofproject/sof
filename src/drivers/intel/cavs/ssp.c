@@ -924,6 +924,9 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
+	/* Enable SSP power */
+	pm_runtime_get_sync(SSP_POW, dai->index);
+
 	/* Disable dynamic clock gating before touching any register */
 	pm_runtime_get_sync(SSP_CLK, dai->index);
 
@@ -935,6 +938,9 @@ static int ssp_probe(struct dai *dai)
 static int ssp_remove(struct dai *dai)
 {
 	pm_runtime_put_sync(SSP_CLK, dai->index);
+
+	/* Disable SSP power */
+	pm_runtime_put_sync(SSP_POW, dai->index);
 
 	rfree(dai_get_drvdata(dai));
 	dai_set_drvdata(dai, NULL);
