@@ -29,7 +29,6 @@ zephyr_library_sources(
 	panic.c
 	pm.c
 	ipc.c
-	timer.c
 	interrupt.c
 	# Modified drivers from SOF
 	drivers/intel/cavs/interrupt.c
@@ -67,6 +66,7 @@ zephyr_library_sources(
 	# Platform code
 	#../src/platform/intel/cavs/dai.c
 	#../src/platform/intel/cavs/pm_runtime.c
+	../src/drivers/intel/cavs/timer.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SOF_STATIC_PIPELINE pipeline_static.c)
