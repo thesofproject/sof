@@ -38,11 +38,14 @@ zephyr_library_sources(
 	#../src/audio/pipeline_static.c
 	../src/audio/component.c
 	../src/audio/buffer.c
+	../src/audio/dai.c
 	# SOF src/ipc
 	../src/ipc/ipc.c
 	../src/ipc/handler.c
 	# SOF src/lib
 	../src/lib/lib.c
+	../src/lib/dai.c
+	../src/lib/dma.c
 	#../src/lib/alloc.c
 	#../src/lib/ll_schedule.c
 	#../src/lib/notifier.c
@@ -60,13 +63,17 @@ zephyr_library_sources(
 	../src/math/numbers.c
 	../src/math/trig.c
 	# SOF src/drivers
-	../src/drivers/intel/cavs/ssp.c
-	../src/drivers/intel/cavs/hda.c
+	../src/drivers/dw/dma.c
 	../src/drivers/intel/cavs/dmic.c
+	../src/drivers/intel/cavs/hda.c
+	../src/drivers/intel/cavs/hda-dma.c
+	../src/drivers/intel/cavs/ssp.c
 	# Platform code
-	#../src/platform/intel/cavs/dai.c
 	#../src/platform/intel/cavs/pm_runtime.c
 	../src/drivers/intel/cavs/timer.c
+	# SOF CAVS platform code
+	../src/platform/intel/cavs/dai.c
+	../src/platform/intel/cavs/dma.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_SOF_STATIC_PIPELINE pipeline_static.c)
