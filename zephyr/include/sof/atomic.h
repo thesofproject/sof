@@ -10,4 +10,7 @@
 
 #include <atomic.h>
 
+#define atomic_read	atomic_get
+#define atomic_init	atomic_set
+
 #endif
