@@ -108,6 +108,10 @@ DAI_CONFIG(HDA, 0, 1, iDisp1)
 DAI_CONFIG(HDA, 1, 2, iDisp2)
 DAI_CONFIG(HDA, 2, 3, iDisp3)
 
+VIRTUAL_DAPM_ROUTE_OUT(iDisp1_out, HDA, 0, OUT, 2)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp2_out, HDA, 1, OUT, 3)
+VIRTUAL_DAPM_ROUTE_OUT(iDisp3_out, HDA, 2, OUT, 4)
+
 VIRTUAL_WIDGET(iDisp3 Tx, out_drv, 0)
 VIRTUAL_WIDGET(iDisp2 Tx, out_drv, 1)
 VIRTUAL_WIDGET(iDisp1 Tx, out_drv, 2)
