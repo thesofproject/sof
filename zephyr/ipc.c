@@ -7,14 +7,10 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 //         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-#include <kernel.h>
-
 #include <sof/ipc.h>
 
 /* testbench ipc */
 extern struct ipc *_ipc;
-
-static struct k_work _ipc_work;
 
 /* private data for IPC */
 struct ipc_data {
@@ -51,7 +47,7 @@ static void ipc_irq_handler(void *arg)
 					dipct, dipcie, ipc_read(IPC_DIPCCTL));
 		} else {
 			_ipc->host_pending = 1;
-			k_work_submit(&_ipc_work);
+			ipc_schedule_process(_ipc);
 		}
 	}
 
@@ -136,19 +132,15 @@ out:
 	spin_unlock_irq(&ipc->lock, flags);
 }
 
-static void _ipc_work_handler(struct k_work *work)
-{
-	ipc_process_task(_ipc);
-}
-
 int platform_ipc_init(struct ipc *ipc)
 {
 	_ipc = ipc;
 
 	ipc_set_drvdata(_ipc, NULL);
 
-	/* init Zephyr work queue item for interrupt handling */
-	k_work_init(&_ipc_work, _ipc_work_handler);
+	/* schedule */
+	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
+			   ipc_process_task, _ipc, 0, 0);
 
 	/* configure interrupt */
 	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
