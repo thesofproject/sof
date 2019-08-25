@@ -1,70 +1,82 @@
 // SPDX-License-Identifier: BSD-3-Clause
 //
-// Copyright(c) 2018 Intel Corporation. All rights reserved.
+// Copyright(c) 2019 Intel Corporation. All rights reserved.
 //
-// Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-//         Liam Girdwood <liam.r.girdwood@linux.intel.com>
-//         Keyon Jie <yang.jie@linux.intel.com>
-//         Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
+// Author: Bartosz Kokoszko <bartoszx.kokoszko@linux.intel.com>
 
-#include <sof/audio/component.h>
-#include <sof/task.h>
-#include <stdint.h>
-#include <sof/wait.h>
+/* Generic scheduler */
+#include <sof/schedule.h>
 #include <sof/edf_schedule.h>
 #include <sof/ll_schedule.h>
 
 static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
 	&schedule_edf_ops,              /* SOF_SCHEDULE_EDF */
-	&schedule_ll_ops		/* SOF_LL_TASK */
+	&schedule_ll_ops		/* SOF_SCHEDULE_LL */
 };
 
-/* testbench work definition */
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
 		       uint32_t xflags)
 {
+	int ret = 0;
+
+	if (type >= SOF_SCHEDULE_COUNT) {
+		trace_schedule_error("schedule_task_init() error: "
+				     "invalid task type");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	task->type = type;
 	task->priority = priority;
 	task->core = core;
 	task->state = SOF_TASK_STATE_INIT;
 	task->func = func;
 	task->data = data;
+	task->ops = schedulers[task->type];
 
-	if (schedulers[task->type]->schedule_task_init)
-		return schedulers[task->type]->schedule_task_init(task, xflags);
-	else
-		return -ENOENT;
+	if (task->ops->schedule_task_init)
+		ret = task->ops->schedule_task_init(task, xflags);
+out:
+	return ret;
+}
+
+void schedule_task_free(struct task *task)
+{
+	if (task->ops->schedule_task_free)
+		task->ops->schedule_task_free(task);
 }
 
 void schedule_task(struct task *task, uint64_t start, uint64_t deadline,
 		   uint32_t flags)
 {
-	if (schedulers[task->type]->schedule_task)
-		schedulers[task->type]->schedule_task(task, start, deadline,
-			flags);
-}
-
-void schedule_task_free(struct task *task)
-{
-	if (schedulers[task->type]->schedule_task_free)
-		schedulers[task->type]->schedule_task_free(task);
+	if (task->ops->schedule_task)
+		task->ops->schedule_task(task, start, deadline, flags);
 }
 
 void reschedule_task(struct task *task, uint64_t start)
 {
-	if (schedulers[task->type]->reschedule_task)
-		schedulers[task->type]->reschedule_task(task, start);
+	if (task->ops->reschedule_task)
+		task->ops->reschedule_task(task, start);
 }
 
 int schedule_task_cancel(struct task *task)
 {
-	int ret = 0;
+	if (task->ops->schedule_task_cancel)
+		return task->ops->schedule_task_cancel(task);
+	return 0;
+}
 
-	if (schedulers[task->type]->schedule_task_cancel)
-		ret = schedulers[task->type]->schedule_task_cancel(task);
+void schedule_task_running(struct task *task)
+{
+	if (task->ops->schedule_task_running)
+		task->ops->schedule_task_running(task);
+}
 
-	return ret;
+void schedule_task_complete(struct task *task)
+{
+	if (task->ops->schedule_task_complete)
+		task->ops->schedule_task_complete(task);
 }
 
 int scheduler_init(void)
