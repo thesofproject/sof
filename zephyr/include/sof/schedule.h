@@ -9,6 +9,8 @@
 #ifndef __INCLUDE_SOF_SCHEDULER_H__
 #define __INCLUDE_SOF_SCHEDULER_H__
 
+#include <kernel.h>
+
 #include <stdint.h>
 #include <sof/list.h>
 #include <sof/trace.h>
@@ -79,21 +81,10 @@ struct task {
 	uint16_t core;
 	void *data;
 	uint64_t (*func)(void *data);
-	struct list_item list;
-	struct list_item irq_list;	/* list for assigned irq level */
 	const struct scheduler_ops *ops;
+	struct k_delayed_work z_delayed_work;
 	void *private;
 };
-
-struct edf_schedule_data;
-struct ll_schedule_data;
-
-struct schedule_data {
-	struct ll_schedule_data *ll_sch_data;
-	struct edf_schedule_data *edf_sch_data;
-};
-
-struct schedule_data **arch_schedule_get_data(void);
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       uint64_t (*func)(void *data), void *data, uint16_t core,
@@ -119,4 +110,3 @@ int schedule_task_cancel(struct task *task);
 void schedule_task_free(struct task *task);
 
 #endif /* __INCLUDE_SOF_SCHEDULER_H__ */
-
