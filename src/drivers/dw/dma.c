@@ -22,6 +22,7 @@
 
 #include <sof/atomic.h>
 #include <sof/audio/component.h>
+#include <sof/bit.h>
 #include <sof/common.h>
 #include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
@@ -82,6 +83,7 @@ struct dw_dma_chan_data {
 struct dma_pdata {
 	struct dw_dma_chan_data chan[DW_MAX_CHAN];
 #if CONFIG_DMA_AGGREGATED_IRQ
+	uint32_t mask_irq_channels[PLATFORM_CORE_COUNT];
 	int irq;
 #endif
 };
@@ -1136,6 +1138,9 @@ static inline int dw_dma_interrupt_register(struct dma *dma,
 	struct dw_dma_chan_data *chan = p->chan + channel;
 	uint32_t irq = dma_chan_irq(dma, channel);
 	int logical_irq = interrupt_get_irq(irq, dma_irq_name(dma));
+#if CONFIG_DMA_AGGREGATED_IRQ
+	int cpu = cpu_get_id();
+#endif
 	int ret;
 
 	if (chan->irq_disabled) {
@@ -1153,17 +1158,30 @@ static inline int dw_dma_interrupt_register(struct dma *dma,
 #else
 	chan->irq = logical_irq;
 #endif
-	ret = interrupt_register(logical_irq, IRQ_AUTO_UNMASK,
-				 dw_dma_irq_handler, chan);
-	if (ret < 0) {
-		trace_dwdma_error("dw_dma_interrupt_register() error: "
-				  "dma %d channel %d failed to "
-				  "allocate IRQ", dma->plat_data.id,
-				  channel);
-		return ret;
+
+#if !CONFIG_DMA_AGGREGATED_IRQ
+	chan->irq = logical_irq;
+#else
+	p->irq = logical_irq;
+
+	if (!p->mask_irq_channels[cpu]) {
+#endif
+		ret = interrupt_register(logical_irq, IRQ_AUTO_UNMASK,
+					 dw_dma_irq_handler, chan);
+		if (ret < 0) {
+			trace_dwdma_error("dw_dma_interrupt_register() error: "
+					  "dma %d channel %d failed to "
+					  "allocate IRQ", dma->plat_data.id,
+					  channel);
+			return ret;
+		}
+
+		interrupt_enable(logical_irq, chan);
+#if CONFIG_DMA_AGGREGATED_IRQ
 	}
 
-	interrupt_enable(logical_irq, chan);
+	p->mask_irq_channels[cpu] |= BIT(channel);
+#endif
 
 	return 0;
 }
@@ -1174,6 +1192,9 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma,
 	struct dma_pdata *p = dma_get_drvdata(dma);
 	struct dw_dma_chan_data *chan = p->chan + channel;
 	int logical_irq;
+#if CONFIG_DMA_AGGREGATED_IRQ
+	int cpu = cpu_get_id();
+#endif
 
 	if (chan->irq_disabled) {
 		tracev_dwdma("dw_dma_interrupt_unregister(): dma %d channel %d"
@@ -1182,13 +1203,20 @@ static inline void dw_dma_interrupt_unregister(struct dma *dma,
 		return;
 	}
 
-#if CONFIG_DMA_AGGREGATED_IRQ
-	logical_irq = p->irq;
-#else
+#if !CONFIG_DMA_AGGREGATED_IRQ
 	logical_irq = chan->irq;
+#else
+	logical_irq = p->irq;
+
+	p->mask_irq_channels[cpu] &= ~BIT(channel);
+
+	if (!p->mask_irq_channels[cpu]) {
 #endif
-	interrupt_disable(logical_irq, chan);
-	interrupt_unregister(logical_irq, chan);
+		interrupt_disable(logical_irq, chan);
+		interrupt_unregister(logical_irq, chan);
+#if CONFIG_DMA_AGGREGATED_IRQ
+	}
+#endif
 }
 
 static int dw_dma_setup(struct dma *dma)
