@@ -64,7 +64,6 @@ zephyr_library_sources(
 	../src/math/trig.c
 	# SOF src/drivers
 	../src/drivers/dw/dma.c
-	../src/drivers/intel/cavs/dmic.c
 	../src/drivers/intel/cavs/hda.c
 	../src/drivers/intel/cavs/hda-dma.c
 	../src/drivers/intel/cavs/ssp.c
@@ -105,6 +104,9 @@ zephyr_library_sources_ifdef(CONFIG_SOF_COMP_IIR
 zephyr_library_sources_ifdef(CONFIG_SOF_COMP_SEL
 	../src/audio/selector/selector_generic.c
 	../src/audio/selector/selector.c)
+zephyr_library_sources_ifdef(CONFIG_SOF_USE_DMIC
+	../src/drivers/intel/cavs/dmic.c
+	)
 
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
