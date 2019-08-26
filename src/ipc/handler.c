@@ -1072,7 +1072,7 @@ static int ipc_glb_test_message(uint32_t header)
 void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 {
 	struct sof_ipc_reply reply;
-	uint32_t type;
+	uint32_t type = 0;
 	int ret;
 
 	if (hdr == NULL) {
