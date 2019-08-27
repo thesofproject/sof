@@ -674,10 +674,10 @@ static int kpb_buffer_data(struct comp_dev *dev, struct comp_buffer *source,
 	if (kpb->state != KPB_STATE_RUN && kpb->state != KPB_STATE_DRAINING)
 		return PPL_STATUS_PATH_STOP;
 
-	kpb_change_state(kpb, KPB_STATE_BUFFERING);
-
 	if (kpb->state == KPB_STATE_DRAINING)
 		draining_data->buffered_while_draining += size_to_copy;
+
+	kpb_change_state(kpb, KPB_STATE_BUFFERING);
 
 	timeout = platform_timer_get(platform_timer) +
 		  clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
