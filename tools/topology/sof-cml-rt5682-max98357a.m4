@@ -41,7 +41,7 @@ dnl     deadline, priority, core)
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	7, SSP, 1, SSP1-Codec,
-	PIPELINE_SOURCE_7, 2, s16le,
+	PIPELINE_SOURCE_7, 2, s24le,
 	1000, 0, 0)
 
 # PCM Low Latency, id 0
@@ -55,9 +55,9 @@ PCM_PLAYBACK_ADD(Speakers, 5, PIPELINE_PCM_7)
 #SSP 1 (ID: 6)
 DAI_CONFIG(SSP, 1, 6, SSP1-Codec,
 	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 24000000, codec_mclk_in),
-		SSP_CLOCK(bclk, 1500000, codec_slave),
-		SSP_CLOCK(fsync, 46875, codec_slave),
-		SSP_TDM(2, 16, 3, 3),
-		SSP_CONFIG_DATA(SSP, 1, 16)))
+		SSP_CLOCK(bclk, 2304000, codec_slave),
+		SSP_CLOCK(fsync, 48000, codec_slave),
+		SSP_TDM(2, 24, 3, 3),
+		SSP_CONFIG_DATA(SSP, 1, 24)))
 
 DEBUG_END
