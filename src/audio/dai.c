@@ -788,6 +788,15 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		trace_dai_with_ids(dev, "dai_config(), channel = %d",
 				   channel);
 		break;
+	case SOF_DAI_IMX_ESAI:
+		/* TODO: Replace 6 and 7 with defines, for example 6 is
+		 * RX and 7 is TX */
+		channel = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ? 7 : 6;
+		trace_dai_with_ids(dev, "dai_config() has done ESAI specific channel selection");
+		dd->frame_bytes = 4; /* The ESAI works with 24 bit samples, padded to 32 bits */
+		if (dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE)
+			dd->frame_bytes = 2; /* The other formats have 4 bytes */
+		break;
 	default:
 		/* other types of DAIs not handled for now */
 		trace_dai_error_with_ids(dev, "dai_config() error: Handling of "

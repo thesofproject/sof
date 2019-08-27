@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sof/audio/component.h> /* COMP_TRIGGER_* macros */
 
 struct dai;
 struct sof_ipc_dai_config;
