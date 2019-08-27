@@ -1,5 +1,5 @@
 #
-# Topology for Cometlake with rt5682 codec.
+# Topology for Icelake with rt700 codec.
 #
 
 # Include topology builder
@@ -25,8 +25,8 @@ DEBUG_START
 #
 # PCM0 ---> volume ----> ALH 2 BE dailink 0
 # PCM1 <--- volume <---- ALH 3 BE dailink 1
-# PCM2 <------------------ DMIC01 (dmic0 capture, , BE link 2)
-# PCM3 <------------------ DMIC16k (dmic16k, BE link 3)
+# PCM2 <---------------- DMIC01 (dmic0 capture, BE dailink 2)
+# PCM3 <---------------- DMIC16k (dmic16k, BE dailink 3)
 #
 
 dnl PIPELINE_PCM_ADD(pipeline,
@@ -106,6 +106,7 @@ PCM_CAPTURE_ADD(DMIC16k, 3, PIPELINE_PCM_4)
 # BE configurations - overrides config in ACPI if present
 #
 
+#ALH dai index = ((link_id << 8) | PDI id)
 #ALH SDW0 Pin2 (ID: 0)
 DAI_CONFIG(ALH, 2, 0, SDW0-Playback)
 
