@@ -30,6 +30,8 @@
 #define __aligned(x) __attribute__((__aligned__(x)))
 
 #define ffs(i) __builtin_ffs(i)
+#define ffsl(i) __builtin_ffsl(i)
+#define ffsll(i) __builtin_ffsll(i)
 
 /* count number of var args */
 #define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
