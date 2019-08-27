@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+# Probe configs
+
+menu "Probe"
+
+config PROBE
+	bool "Probes enabled"
+	default n
+	help
+	  Select for enabling debug probes to extract/inject buffers
+
+config PROBE_POINTS_MAX
+	int "Maximum probe points"
+	depends on PROBE
+	default 16
+	help
+	  Define maximum number of probes, extraction and injection combined.
+
+config PROBE_DMA_MAX
+	int "Maximum injection probe DMAs attached"
+	depends on PROBE
+	default 4
+	help
+	  Define maximum number of injection DMAs.
+endmenu

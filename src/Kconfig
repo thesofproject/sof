@@ -9,3 +9,5 @@ source "src/drivers/Kconfig"
 source "src/audio/Kconfig"
 
 source "src/trace/Kconfig"
+
+source "src/probe/Kconfig"
