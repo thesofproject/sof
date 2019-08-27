@@ -15,6 +15,12 @@ static struct dai esai[] = {
 	.index = 0,
 	.plat_data = {
 		.base = ESAI_BASE,
+		.fifo[SOF_IPC_STREAM_PLAYBACK] = {
+			.offset		= ESAI_BASE + REG_ESAI_ETDR,
+		},
+		.fifo[SOF_IPC_STREAM_CAPTURE] = {
+			.offset		= ESAI_BASE + REG_ESAI_ERDR,
+		},
 	},
 	.drv = &esai_driver,
 },
