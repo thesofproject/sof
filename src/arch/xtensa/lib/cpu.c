@@ -16,6 +16,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/schedule/schedule.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -42,6 +43,9 @@ void arch_cpu_enable_core(int id)
 	irq_local_disable(flags);
 
 	if (!arch_cpu_is_core_enabled(id)) {
+		/* Turn on stack memory for core */
+		pm_runtime_get(CORE_MEMORY_POW, id);
+
 		/* allocate resources for core */
 		cpu_alloc_core_context(id);
 
@@ -119,6 +123,9 @@ void cpu_power_down_core(void)
 	free_heap(RZONE_SYS);
 
 	dcache_writeback_invalidate_all();
+
+	/* Turn off stack memory for core */
+	pm_runtime_put(CORE_MEMORY_POW, cpu_get_id());
 
 	/* arch_wait_for_interrupt() not used, because it will cause panic.
 	 * This code is executed on irq lvl > 0, which is expected.

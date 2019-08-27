@@ -46,7 +46,8 @@ enum pm_runtime_context {
 	SSP_POW,			/**< SSP Power */
 	DMIC_CLK,			/**< DMIC Clock */
 	DMIC_POW,			/**< DMIC Power */
-	DW_DMAC_CLK			/**< DW DMAC Clock */
+	DW_DMAC_CLK,			/**< DW DMAC Clock */
+	CORE_MEMORY_POW,		/**< Core Memory power */
 };
 
 /** \brief Runtime power management data. */
