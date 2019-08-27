@@ -72,6 +72,7 @@ set(TPLGS
 	"sof-cnl-nocodec\;sof-cnl-nocodec"
 	"sof-cml-rt5682-max98357a\;sof-cml-rt5682-max98357a\;-DPLATFORM=cml"
 	"sof-cml-demux-rt5682-max98357a\;sof-cml-demux-rt5682-max98357a\;-DPLATFORM=cml"
+	"sof-tgl-nocodec\;sof-tgl-nocodec"
 )
 
 add_custom_target(topologies ALL)
