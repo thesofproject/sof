@@ -603,8 +603,10 @@ static void edma_chan_irq(struct dma_chan_data *channel)
 		 * reloading */
 	}
 
-	tracev_edma("edma_chan_irq(%d) done", channel->index);
+	//tracev_edma("edma_chan_irq(%d) done", channel->index);
 }
+
+extern void dsp_putc(const char c);
 
 static void edma_irq(void *arg)
 {

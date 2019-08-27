@@ -159,13 +159,20 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	if (IPC_IS_SIZE_INVALID(ipc_dai->config)) {
 		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_DAI, ipc_dai->config);
+		trace_dai_error("dai_new(), IPC size invalid");
 		return NULL;
 	}
 
+	tracev_dai("dai_new() after ipc size check");
+
 	dev = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM,
 		COMP_SIZE(struct sof_ipc_comp_dai));
-	if (!dev)
+	if (!dev) {
+		trace_dai_error("dai_new(), unable to allocate dev");
 		return NULL;
+	}
+
+	tracev_dai("dai_new() after dev alloc");
 
 	dai = (struct sof_ipc_comp_dai *)&dev->comp;
 	assert(!memcpy_s(dai, sizeof(*dai), ipc_dai,
@@ -173,13 +180,18 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 
 	dd = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*dd));
 	if (!dd) {
+		trace_dai_error("dai_new(), unable to allocate dev data");
 		rfree(dev);
 		return NULL;
 	}
 
 	comp_set_drvdata(dev, dd);
 
-	return dev;
+	// return dev;
+	if (dai->type == SOF_DAI_IMX_SAI) {
+		trace_dai("dai_new() replace SAI by ESAI");
+		dai->type = SOF_DAI_IMX_ESAI;
+	}
 
 	dd->dai = dai_get(dai->type, dai->dai_index, DAI_CREAT);
 	if (!dd->dai) {
@@ -209,6 +221,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->chan = NULL;
 
 	dev->state = COMP_STATE_READY;
+	tracev_dai("dai_new() complete");
 	return dev;
 
 error:
@@ -258,6 +271,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 	/* set up local and host DMA elems to reset values */
 	dai_config = COMP_GET_CONFIG(dev);
 	buffer_size = dai_config->periods_source * period_bytes;
+	tracev_dai("dai_playback_params: buffer_size is %d", buffer_size);
 
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dd->dma_buffer, buffer_size);
@@ -397,9 +411,12 @@ static int dai_params(struct comp_dev *dev)
 	if (dev->state != COMP_STATE_READY) {
 		trace_dai_error_with_ids(dev, "dai_params() error: Component"
 					 " is not in init state.");
+		trace_dai_error_with_ids(dev, "dai_params() error: Expected %d actual %d",
+					 COMP_STATE_READY, dev->state);
 		return -EINVAL;
 	}
 
+	trace_dai_with_ids(dev, "dai_params() about to get frame_fmt");
 	/* for DAI, we should configure its frame_fmt from topology */
 	dev->params.frame_fmt = dconfig->frame_fmt;
 
@@ -411,6 +428,7 @@ static int dai_params(struct comp_dev *dev)
 		return -EINVAL;
 	}
 
+	trace_dai_with_ids(dev, "dai_params() about to get alignment");
 	err = dma_get_attribute(dd->dma, DMA_ATTR_BUFFER_ALIGNMENT, &align);
 	if (err < 0) {
 		trace_dai_error("dai_params(): could not get dma buffer "
@@ -425,6 +443,8 @@ static int dai_params(struct comp_dev *dev)
 					 "no bytes (no frames to copy to sink).");
 		return -EINVAL;
 	}
+
+	trace_dai_with_ids(dev, "dai_params() about to finish");
 
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK) {
 		dd->dma_buffer = list_first_item(&dev->bsource_list,
@@ -530,11 +550,13 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		 */
 		if (dd->xrun == 0 && !pipeline_is_preload(dev->pipeline)) {
 			/* start the DAI */
+			trace_dai_with_ids(dev, "dai_comp_trigger(), START (actually)");
 			dai_trigger(dd->dai, cmd, dev->params.direction);
 			ret = dma_start(dd->chan);
 			if (ret < 0)
 				return ret;
 		} else {
+			trace_dai_with_ids(dev, "dai_comp_trigger(), START, XRUN or PRELOAD");
 			dd->xrun = 0;
 		}
 
@@ -791,8 +813,13 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				   channel);
 		break;
 	case SOF_DAI_IMX_ESAI:
+		/* TODO: Replace 6 and 7 with defines, for example 6 is
+		 * RX and 7 is TX */
 		channel = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ? 7 : 6;
 		trace_dai_with_ids(dev, "dai_config() has done ESAI specific channel selection");
+		dd->frame_bytes = 4; /* The ESAI works with 24 bit samples, padded to 32 bits */
+		if (dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE)
+			dd->frame_bytes = 2; /* The other formats have 4 bytes */
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -805,6 +832,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		break;
 	}
 
+	trace_dai("dai_config() before check of frame_bytes");
+	trace_dai("dai_config() dd->frame_bytes = %d", dd->frame_bytes);
 	if (!dd->frame_bytes) {
 		trace_dai_error_with_ids(dev, "dai_config() error: "
 					 "dd->frame_bytes == 0");
@@ -829,6 +858,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 			   dai_dma_cb, dev);
 		dev->is_dma_connected = 1;
 	}
+
+	trace_dai("dai_config() about to return 0");
 
 	return 0;
 }

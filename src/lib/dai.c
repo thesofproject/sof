@@ -36,6 +36,7 @@ static inline struct dai_type_info *dai_find_type(uint32_t type)
 
 	for (dti = lib_dai.dai_type_array;
 	     dti < lib_dai.dai_type_array + lib_dai.num_dai_types; dti++) {
+		trace_dai("dai_find_type(): type %d exists", dti->type);
 		if (dti->type == type)
 			return dti;
 	}
@@ -49,8 +50,10 @@ struct dai *dai_get(uint32_t type, uint32_t index, uint32_t flags)
 	struct dai *d;
 
 	dti = dai_find_type(type);
-	if (!dti)
+	if (!dti) {
+		trace_dai("dai_get() Did not find type %d", type);
 		return NULL; /* type not found */
+	}
 
 	for (d = dti->dai_array; d < dti->dai_array + dti->num_dais; d++) {
 		if (d->index != index)

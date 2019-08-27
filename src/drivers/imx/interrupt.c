@@ -306,6 +306,11 @@ static inline void irq_handler(void *data, uint32_t line_index)
 			trace_irq_error("irq_handler(): IRQ storm, status "
 					PRIx64,
 					get_irqsteer_interrupts(line_index));
+			/* We won't lose interrupts; let's allow
+			 * non-IRQSTEER interrupts to run
+			 */
+
+			break;
 		}
 	}
 }
