@@ -47,6 +47,8 @@
 #include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
+#include <ipc/probe.h>
+#include <sof/probe/probe.h>
 #include <config.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -835,6 +837,195 @@ static int ipc_glb_gdb_debug(uint32_t header)
 
 }
 
+#if CONFIG_PROBE
+static inline int ipc_probe_init(uint32_t header)
+{
+	struct sof_ipc_probe_dma_add_params *params = ipc_get()->comp_data;
+	int dma_provided = params->num_elems;
+
+	tracev_ipc("ipc_probe_init()");
+
+	if (dma_provided > 1 || dma_provided < 0) {
+		trace_ipc_error("ipc_probe_init() error: Invalid amount of extraction DMAs specified = %d",
+				dma_provided);
+		return -EINVAL;
+	}
+
+	return probe_init(dma_provided ? params->probe_dma : NULL);
+}
+
+static inline int ipc_probe_deinit(uint32_t header)
+{
+	tracev_ipc("ipc_probe_deinit()");
+
+	return probe_deinit();
+}
+
+static inline int ipc_probe_dma_add(uint32_t header)
+{
+	struct sof_ipc_probe_dma_add_params *params = ipc_get()->comp_data;
+	int dmas_count = params->num_elems;
+
+	tracev_ipc("ipc_probe_dma_add()");
+
+	if (dmas_count > CONFIG_PROBE_DMA_MAX) {
+		trace_ipc_error("ipc_probe_dma_add() error: Invalid amount of injection DMAs specified = %d. Max is " META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
+				dmas_count);
+		return -EINVAL;
+	}
+
+	if (dmas_count <= 0) {
+		trace_ipc_error("ipc_probe_dma_add() error: Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+				dmas_count);
+		return -EINVAL;
+	}
+
+	return probe_dma_add(dmas_count, params->probe_dma);
+}
+
+static inline int ipc_probe_dma_remove(uint32_t header)
+{
+	struct sof_ipc_probe_dma_remove_params *params = ipc_get()->comp_data;
+	int tags_count = params->num_elems;
+
+	tracev_ipc("ipc_probe_dma_remove()");
+
+	if (tags_count > CONFIG_PROBE_DMA_MAX) {
+		trace_ipc_error("ipc_probe_dma_remove() error: Invalid amount of injection DMAs specified = %d. Max is " META_QUOTE(CONFIG_PROBE_DMA_MAX) ".",
+				tags_count);
+		return -EINVAL;
+	}
+
+	if (tags_count <= 0) {
+		trace_ipc_error("ipc_probe_dma_remove() error: Inferred amount of incjection DMAs in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+				tags_count);
+		return -EINVAL;
+	}
+
+	return probe_dma_remove(tags_count, params->stream_tag);
+}
+
+static inline int ipc_probe_point_add(uint32_t header)
+{
+	struct sof_ipc_probe_point_add_params *params = ipc_get()->comp_data;
+	int probes_count = params->num_elems;
+
+	tracev_ipc("ipc_probe_point_add()");
+
+	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
+		trace_ipc_error("ipc_probe_point_add() error: Invalid amount of Probe Points specified = %d. Max is " META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
+				probes_count);
+		return -EINVAL;
+	}
+
+	if (probes_count <= 0) {
+		trace_ipc_error("ipc_probe_point_add() error: Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+				probes_count);
+		return -EINVAL;
+	}
+
+	return probe_point_add(probes_count, params->probe_point);
+}
+
+static inline int ipc_probe_point_remove(uint32_t header)
+{
+	struct sof_ipc_probe_point_remove_params *params = ipc_get()->comp_data;
+	int probes_count = params->num_elems;
+
+	tracev_ipc("ipc_probe_point_remove()");
+
+	if (probes_count > CONFIG_PROBE_POINTS_MAX) {
+		trace_ipc_error("ipc_probe_point_remove() error: Invalid amount of Probe Points specified = %d. Max is " META_QUOTE(CONFIG_PROBE_POINT_MAX) ".",
+				probes_count);
+		return -EINVAL;
+	}
+
+	if (probes_count <= 0) {
+		trace_ipc_error("ipc_probe_point_remove() error: Inferred amount of Probe Points in payload is %d. This could indicate corrupt size reported in header or invalid IPC payload.",
+				probes_count);
+		return -EINVAL;
+	}
+	return probe_point_remove(probes_count, params->buffer_id);
+}
+
+static int ipc_probe_info(uint32_t header)
+{
+	uint32_t cmd = iCS(header);
+	struct sof_ipc_probe_info_params *params = ipc_get()->comp_data;
+	int ret;
+
+	tracev_ipc("ipc_probe_get_data()");
+
+	switch (cmd) {
+	case SOF_IPC_PROBE_DMA_INFO:
+		ret = probe_dma_info(params, SOF_IPC_MSG_MAX_SIZE);
+		break;
+	case SOF_IPC_PROBE_POINT_INFO:
+		ret = probe_point_info(params, SOF_IPC_MSG_MAX_SIZE);
+		break;
+	default:
+		trace_ipc_error("ipc_probe_info() error: Invalid probe INFO command = %u",
+				cmd);
+		ret = -EINVAL;
+	}
+
+	if (ret < 0) {
+		trace_ipc_error("ipc_probe_info() error: cmd %u failed", cmd);
+		return ret;
+	}
+
+	/* write data to the outbox */
+	if (params->rhdr.hdr.size <= MAILBOX_HOSTBOX_SIZE &&
+	    params->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
+		mailbox_hostbox_write(0, params, params->rhdr.hdr.size);
+		ret = 1;
+	} else {
+		trace_ipc_error("ipc_probe_get_data() error: probes module returned too much payload for cmd %u - returned %d bytes, max %d",
+				cmd, params->rhdr.hdr.size,
+				MIN(MAILBOX_HOSTBOX_SIZE,
+				    SOF_IPC_MSG_MAX_SIZE));
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static int ipc_glb_probe(uint32_t header)
+{
+	uint32_t cmd = iCS(header);
+
+	tracev_ipc("ipc: probe cmd 0x%x", cmd);
+
+	switch (cmd) {
+	case SOF_IPC_PROBE_INIT:
+		return ipc_probe_init(header);
+	case SOF_IPC_PROBE_DEINIT:
+		return ipc_probe_deinit(header);
+	case SOF_IPC_PROBE_DMA_ADD:
+		return ipc_probe_dma_add(header);
+	case SOF_IPC_PROBE_DMA_REMOVE:
+		return ipc_probe_dma_remove(header);
+	case SOF_IPC_PROBE_POINT_ADD:
+		return ipc_probe_point_add(header);
+	case SOF_IPC_PROBE_POINT_REMOVE:
+		return ipc_probe_point_remove(header);
+	case SOF_IPC_PROBE_DMA_INFO:
+	case SOF_IPC_PROBE_POINT_INFO:
+		return ipc_probe_info(header);
+	default:
+		trace_ipc_error("ipc: unknown probe cmd 0x%x", cmd);
+		return -EINVAL;
+	}
+}
+#else
+static inline int ipc_glb_probe(uint32_t header)
+{
+	trace_ipc_error("ipc_glb_probe() error: Probes not enabled by Kconfig.");
+
+	return -EINVAL;
+}
+#endif
+
 /*
  * Topology IPC Operations.
  */
@@ -1143,6 +1334,9 @@ void ipc_cmd(struct sof_ipc_cmd_hdr *hdr)
 		break;
 	case SOF_IPC_GLB_GDB_DEBUG:
 		ret = ipc_glb_gdb_debug(hdr->cmd);
+		break;
+	case SOF_IPC_GLB_PROBE:
+		ret = ipc_glb_probe(hdr->cmd);
 		break;
 #if CONFIG_DEBUG
 	case SOF_IPC_GLB_TEST:

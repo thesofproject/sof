@@ -23,4 +23,8 @@ if (CONFIG_TRACE)
 	add_subdirectory(trace)
 endif()
 
+if (CONFIG_PROBE)
+	add_subdirectory(probe)
+endif()
+
 add_local_sources(sof spinlock.c)
