@@ -74,6 +74,7 @@ set(TPLGS
 	"sof-cml-demux-rt5682-max98357a\;sof-cml-demux-rt5682-max98357a\;-DPLATFORM=cml"
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
 	"sof-tgl-rt1308\;sof-tgl-rt1308"
+	"sof-tgl-rt1308-nohdmi\;sof-tgl-rt1308-nohdmi"
 )
 
 add_custom_target(topologies ALL)
