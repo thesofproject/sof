@@ -34,13 +34,15 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 	size_t count;
 	uintptr_t stack_ptr;
 
+	trace_error(TRACE_CLASS_IPC, "panic_rewind()");
 	/* disable all IRQs */
 	interrupt_global_disable();
 
 	ext_offset = (void *)mailbox_get_exception_base() + ARCH_OOPS_SIZE;
 
-	/* dump panic info, filename ane linenum */
+	/* dump panic info, filename and linenum */
 	dump_panicinfo(ext_offset, panic_info);
+
 	ext_offset += sizeof(struct sof_ipc_panic_info);
 
 	count = MAILBOX_EXCEPTION_SIZE -
@@ -61,7 +63,7 @@ void panic_rewind(uint32_t p, uint32_t stack_rewind_frames,
 
 	/* panic - send IPC oops message to host */
 	platform_panic(p);
-
+	__dsp_printf("About to loop forever\n");
 	/* and loop forever */
 	while (1)
 		;
@@ -73,6 +75,11 @@ void __panic(uint32_t p, char *filename, uint32_t linenum)
 	int strlen;
 
 	strlen = rstrlen(filename);
+
+	//trace_event(TRACE_CLASS_IPC, "(panic) Filename: %s", filename);
+	__dsp_printf("(panic) Filename: %s\n", filename);
+	trace_event(TRACE_CLASS_IPC, "(panic) Filename length: %d", strlen);
+	trace_event(TRACE_CLASS_IPC, "(panic) Line number: %d", linenum);
 
 	if (strlen >= SOF_TRACE_FILENAME_SIZE) {
 		assert(!memcpy_s(panicinfo.filename,
