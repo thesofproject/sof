@@ -6,7 +6,6 @@
 include(`utils.m4')
 include(`dai.m4')
 include(`pipeline.m4')
-#include(`alh.m4')
 
 # Include TLV library
 include(`common/tlv.m4')
@@ -97,7 +96,6 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 1, dmic16k,
 	PIPELINE_SINK_4, 2, s16le,
 	16, 1000, 0, 0)
-
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
