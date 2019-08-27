@@ -14,6 +14,8 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/io.h>
+#include <sof/lib/memory.h>
+#include <sof/lib/pm_memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/shim.h>
 #include <sof/lib/wait.h>
@@ -23,6 +25,7 @@
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <config.h>
+#include <version.h>
 #include <stdint.h>
 
 #define trace_power(format, ...)	\
@@ -199,6 +202,42 @@ static inline void cavs_pm_runtime_en_dwdma_clk_gating(uint32_t index)
 #endif
 }
 
+static inline void cavs_pm_runtime_core_dis_memory(uint32_t index)
+{
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+	void *core_memory_ptr;
+	extern uintptr_t _sof_core_s_start;
+
+	/* Address is calculated for index (0 for the master core) minus one
+	 * since _sof_core_s_start is first slave core stack address
+	 */
+	core_memory_ptr = (void *)&_sof_core_s_start
+		+ (index - 1) * SOF_CORE_S_SIZE;
+
+	set_power_gate_for_memory_address_range(core_memory_ptr,
+						SOF_CORE_S_SIZE, 0);
+
+#endif
+}
+
+static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
+{
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+	void *core_memory_ptr;
+	extern uintptr_t _sof_core_s_start;
+
+	/* Address is calculated for index (0 for the master core) minus one
+	 * since _sof_core_s_start is first slave core stack address
+	 */
+	core_memory_ptr = (void *)&_sof_core_s_start
+		+ (index - 1) * SOF_CORE_S_SIZE;
+
+	set_power_gate_for_memory_address_range(core_memory_ptr,
+						SOF_CORE_S_SIZE, 1);
+
+#endif
+}
+
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
 	struct platform_pm_runtime_data *pprd;
@@ -230,6 +269,9 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	case DW_DMAC_CLK:
 		cavs_pm_runtime_dis_dwdma_clk_gating(index);
 		break;
+	case CORE_MEMORY_POW:
+		cavs_pm_runtime_core_en_memory(index);
+		break;
 	default:
 		break;
 	}
@@ -257,6 +299,9 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 #endif
 	case DW_DMAC_CLK:
 		cavs_pm_runtime_en_dwdma_clk_gating(index);
+		break;
+	case CORE_MEMORY_POW:
+		cavs_pm_runtime_core_dis_memory(index);
 		break;
 	default:
 		break;
