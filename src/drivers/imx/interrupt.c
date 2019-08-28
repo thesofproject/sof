@@ -241,7 +241,7 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 	while (status) {
 		bit = get_first_irq(status);
 		handled = false;
-		status &= ~(1 << bit); /* Release interrupt */
+		status &= ~(1ull << bit); /* Release interrupt */
 
 		spin_lock(cascade->lock);
 
