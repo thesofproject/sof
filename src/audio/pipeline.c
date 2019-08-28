@@ -17,6 +17,7 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/list.h>
+#include <sof/math/numbers.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
@@ -246,6 +247,25 @@ int pipeline_free(struct pipeline *p)
 	return 0;
 }
 
+static int pipeline_comp_period_frames(struct comp_dev *current)
+{
+	int samplerate;
+	int period;
+
+	period = current->pipeline->ipc_pipe.period;
+
+	if (current->output_rate)
+		samplerate = current->output_rate;
+	else
+		samplerate = current->params.rate;
+
+	/* Samplerate is in kHz and period in microseconds.
+	 * As we don't have floats use scale divider 1000000.
+	 * Also integer round up the result.
+	 */
+	return ceil_divide(samplerate * period, 1000000);
+}
+
 static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 {
 	struct pipeline_data *ppl_data = data;
@@ -285,16 +305,8 @@ static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 	/* send current params to the component */
 	current->params = ppl_data->params->params;
 
-	/* set frames from samplerate/period, but round integer up */
-	if (current->output_rate != 0) {
-		current->frames = (current->output_rate +
-				   current->pipeline->ipc_pipe.period - 1) /
-			current->pipeline->ipc_pipe.period;
-	} else {
-		current->frames = (current->params.rate +
-				   current->pipeline->ipc_pipe.period - 1) /
-			current->pipeline->ipc_pipe.period;
-	}
+	/* set frames from samplerate/period */
+	current->frames = pipeline_comp_period_frames(current);
 
 	err = comp_params(current);
 	if (err < 0 || err == PPL_STATUS_PATH_STOP)
