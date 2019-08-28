@@ -61,3 +61,6 @@ CMakeFiles
 doc/*.cmake
 doc/*.ninja
 doc/Makefile
+
+cscope.out
+cscope.*
