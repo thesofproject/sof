@@ -156,6 +156,8 @@ int platform_init(struct sof *sof)
 
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
+	platform_interrupt_init();
+
 	/* init DMA */
 	ret = edma_init();
 	if (ret < 0)
