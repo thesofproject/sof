@@ -96,7 +96,8 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 	/* If a name is specified, irq must be <= PLATFORM_IRQ_CHILDREN */
 	if (irq >= PLATFORM_IRQ_CHILDREN) {
 		trace_error(TRACE_CLASS_IRQ,
-			    "error: IRQ %d invalid as a child interrupt!");
+			    "error: IRQ %d invalid as a child interrupt!",
+			    irq);
 		return -EINVAL;
 	}
 
