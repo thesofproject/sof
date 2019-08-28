@@ -19,6 +19,8 @@
 #include <stdint.h>
 
 #define trace_irq(__e)	trace_event(TRACE_CLASS_IRQ, __e)
+#define tracev_irq(__e, ...) \
+	tracev_event(TRACE_CLASS_IRQ, __e, ##__VA_ARGS__)
 #define trace_irq_error(__e, ...) \
 	trace_error(TRACE_CLASS_IRQ,  __e, ##__VA_ARGS__)
 
