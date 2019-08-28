@@ -118,4 +118,20 @@ target_include_directories(sof_base_module PUBLIC
 	../src/include
 	${SOC_DIR}/${ARCH}/${SOC_PATH}/include
 	)
+
+set(sof_module ${PROJECT_SOURCE_DIR}/../modules/audio/sof)
+set(sof_rimage_keys ${PROJECT_SOURCE_DIR}/../modules/audio/sof/rimage/keys)
+set(sof_rimage_version ${sof_module}/zephyr/include/version.h)
+
+include(ExternalProject)
+ExternalProject_Add(rimage
+	DOWNLOAD_COMMAND ""
+	SOURCE_DIR "${sof_module}/rimage"
+	PREFIX "${PROJECT_BINARY_DIR}/rimage_ep"
+	BINARY_DIR "${PROJECT_BINARY_DIR}/rimage_ep/build"
+	BUILD_ALWAYS 1
+	CMAKE_ARGS -DPEM_KEY_PREFIX=${sof_rimage_keys} -DVERSION_H_PATH=${sof_rimage_version}
+	INSTALL_COMMAND ""
+)
+
 endif()
