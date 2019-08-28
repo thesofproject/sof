@@ -110,4 +110,12 @@ zephyr_library_sources_ifdef(CONFIG_SOF_USE_DMIC
 
 zephyr_library_link_libraries(SOF)
 target_link_libraries(SOF INTERFACE zephyr_interface)
+
+add_library(sof_base_module
+	../src/platform/apollolake/base_module.c
+	)
+target_include_directories(sof_base_module PUBLIC
+	../src/include
+	${SOC_DIR}/${ARCH}/${SOC_PATH}/include
+	)
 endif()
