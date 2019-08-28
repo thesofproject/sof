@@ -39,6 +39,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	unsigned int i;
 	int ret;
 
+	tracev_irq("interrupt_cascade_register()");
 	if (!tmpl->name || !tmpl->ops)
 		return -EINVAL;
 
@@ -74,6 +75,7 @@ int interrupt_cascade_register(const struct irq_cascade_tmpl *tmpl)
 	(*cascade)->desc.cpu_mask = 1 << cpu_get_id();
 
 	cascade_root.last_irq += ARRAY_SIZE((*cascade)->child);
+	tracev_irq("SOF IRQ: last_irq got bumped to %d", cascade_root.last_irq);
 	dcache_writeback_region(&cascade_root, sizeof(cascade_root));
 
 	ret = 0;
@@ -90,6 +92,8 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 	unsigned long flags;
 	int ret = -ENODEV;
 
+	tracev_irq("interrupt_get_irq(%d, %s)", irq, (uintptr_t)name);
+
 	if (!name || name[0] == '\0')
 		return irq;
 
@@ -105,12 +109,17 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 
 	dcache_invalidate_region(&cascade_root, sizeof(cascade_root));
 
-	for (cascade = cascade_root.list; cascade; cascade = cascade->next)
+	for (cascade = cascade_root.list; cascade; cascade = cascade->next) {
 		/* .name is non-volatile */
+		tracev_event(TRACE_CLASS_IRQ,
+			     "interrupt_get_irq() checking %s", (uintptr_t)cascade->name);
 		if (!rstrcmp(name, cascade->name)) {
+			tracev_event(TRACE_CLASS_IRQ,
+				     "interrupt_get_irq() Found the parent!");
 			ret = cascade->irq_base + irq;
 			break;
 		}
+	}
 
 	spin_unlock_irq(cascade_lock, flags);
 
@@ -159,8 +168,15 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 
 	hw_irq = irq - cascade->irq_base;
 
-	if (hw_irq < 0 || cascade->irq_base + PLATFORM_IRQ_CHILDREN <= irq)
+	tracev_irq("irq_register_child()");
+	if (hw_irq < 0 || cascade->irq_base + PLATFORM_IRQ_CHILDREN <= irq) {
+		trace_error(TRACE_CLASS_IRQ,
+			    "error: IRQ 0x%x out of child IRQ range!", irq);
 		return -EINVAL;
+	}
+
+	tracev_irq("irq_register_child() cascade %s bit %d",
+		   (uintptr_t)cascade->name, hw_irq);
 
 	head = &cascade->child[hw_irq].list;
 
@@ -187,8 +203,12 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		 */
 		child = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 				SOF_MEM_CAPS_RAM, sizeof(struct irq_desc));
-		if (!child)
+		if (!child) {
+			trace_error(TRACE_CLASS_IRQ,
+				    "error: IRQ 0x%x could not be registered due to OOM (unable to allocate descriptor)",
+				    irq);
 			return -ENOMEM;
+		}
 
 		child->handler = handler;
 		child->handler_arg = arg;
@@ -201,6 +221,7 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 	child->unmask = unmask;
 
 	list_item_append(&child->irq_list, head);
+	tracev_event(TRACE_CLASS_IRQ, "Added IRQ 0x%x to list", irq);
 
 	/* do we need to register parent on this CPU? */
 	if (!cascade->num_children[core])
@@ -255,6 +276,7 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 	struct list_item *list;
 	unsigned long flags;
 
+	tracev_irq("irq_enable_child(..., irq=%d, ...)", irq);
 	/*
 	 * Locking is child to parent: when called recursively we are already
 	 * holding the child's lock and then also taking the parent's lock. The
@@ -276,6 +298,8 @@ static uint32_t irq_enable_child(struct irq_cascade_desc *cascade, int irq,
 	}
 
 	if (!child->enable_count[child_idx]++) {
+		tracev_irq("irq_enable_child enabling parent interrupt");
+		tracev_irq("parent int %d child int %d", cascade->desc.irq, irq);
 		/* enable the parent interrupt */
 		if (!cascade->enable_count[core]++)
 			interrupt_enable(cascade->desc.irq,
@@ -349,6 +373,7 @@ static int interrupt_register_internal(uint32_t irq, int unmask,
 	unsigned long flags = 0;
 	int ret;
 
+	tracev_irq("interrupt_register(%d)", irq);
 	/* no parent means we are registering DSP internal IRQ */
 	cascade = interrupt_get_parent(irq);
 	if (!cascade)

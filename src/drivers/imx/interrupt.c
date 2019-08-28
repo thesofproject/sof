@@ -180,6 +180,14 @@ static void irqstr_unmask_int(uint32_t irq)
 	irqstr_update_bits(IRQSTR_CH_MASK(IRQSTR_INT_REG(irq)), mask, mask);
 }
 
+/* Hack, unmask ALL IRQ_STR interrupts */
+static void irqstr_unmask_all(void)
+{
+	uint32_t reg;
+	for (reg = IRQSTR_INT_REG(32); reg <= IRQSTR_INT_REG(511); reg++)
+		irqstr_write(IRQSTR_CH_MASK(reg), 0xFFFFFFFF);
+}
+
 /* SOF specific part of the driver */
 
 /* Quirk of the driver in SOF:
@@ -260,7 +268,7 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 		spin_unlock(cascade->lock);
 
 		if (!handled) {
-			trace_irq_error("irq_handler(): nobody cared, bit %d",
+			trace_irq_error("IRQ_STR: irq_handler(): nobody cared, bit %d",
 					bit);
 			/* Mask this interrupt so it won't happen again */
 			irqstr_mask_int(line_index * IRQSTR_IRQS_PER_LINE + bit);
@@ -383,6 +391,7 @@ void platform_interrupt_init(void)
 {
 	int i;
 
+	tracev_irq("platform_interrupt_init()");
 	/* Turn off the hardware so we don't have stray interrupts while
 	 * initializing
 	 */
@@ -395,6 +404,9 @@ void platform_interrupt_init(void)
 
 	for (i = 0; i < ARRAY_SIZE(dsp_irq); i++)
 		interrupt_cascade_register(dsp_irq + i);
+
+	/* Hack: unmask every interrupt */
+	irqstr_unmask_all();
 }
 
 void platform_interrupt_set(uint32_t irq)
