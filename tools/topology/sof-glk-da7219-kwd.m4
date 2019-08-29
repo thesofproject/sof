@@ -145,7 +145,7 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
 	8, 8, 2, s16le,
 	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
-	48000, 48000, 48000)
+	16000, 16000, 16000)
 
 # capture DAI is DMIC 1 using 2 periods
 # Buffers use s16le format, with 320 frame per 20000us on core 0 with priority 0
