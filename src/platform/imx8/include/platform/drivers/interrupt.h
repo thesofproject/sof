@@ -44,6 +44,19 @@
 #define PLATFORM_IRQ_HW_NUM	XCHAL_NUM_INTERRUPTS
 #define PLATFORM_IRQ_CHILDREN	64
 
+/* irqstr_get_sof_int() - Convert IRQ_STEER interrupt to SOF logical
+ * interrupt
+ * @irqstr_int Shared IRQ_STEER interrupt
+ *
+ * Get the SOF interrupt number for a shared IRQ_STEER interrupt number.
+ * The IRQ_STEER number is the one specified in the hardware description
+ * manuals, while the SOF interrupt number is the one usable with the
+ * interrupt_register and interrupt_enable functions.
+ *
+ * Return: SOF interrupt number
+ */
+int irqstr_get_sof_int(int irqstr_int);
+
 #endif /* __PLATFORM_DRIVERS_INTERRUPT_H__ */
 
 #else
