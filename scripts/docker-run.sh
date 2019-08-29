@@ -10,5 +10,5 @@
 #  To build topology:
 #  ./scripts/docker-run.sh ./scripts/build-tools.sh
 
-docker run -i -v `pwd`:/home/sof/work/sof.git \
+docker run -i -t -v `pwd`:/home/sof/work/sof.git \
 	   --user `id -u` sof $@
