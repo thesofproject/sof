@@ -11,6 +11,7 @@
 #include <sof/lib/io.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -105,6 +106,7 @@
 #define IRQSTR_RESERVED_IRQS_NUM	32
 #define IRQSTR_IRQS_NUM			512
 #define IRQSTR_IRQS_REGISTERS_NUM	16
+#define IRQSTR_IRQS_PER_LINE		64
 
 /* HW register access helper methods */
 
@@ -261,7 +263,7 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 			trace_irq_error("irq_handler(): nobody cared, bit %d",
 					bit);
 			/* Mask this interrupt so it won't happen again */
-			irqstr_mask_int(line_index * 64 + bit);
+			irqstr_mask_int(line_index * IRQSTR_IRQS_PER_LINE + bit);
 		}
 	}
 }
@@ -320,7 +322,7 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 	uint32_t irq_base = desc->irq - IRQ_NUM_IRQSTR_DSP0;
 
 	/* Compute the actual IRQ_STEER IRQ number */
-	irq_base *= 64;
+	irq_base *= IRQSTR_IRQS_PER_LINE;
 	irq += irq_base;
 
 	irqstr_mask_int(irq);
@@ -331,7 +333,7 @@ static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 	uint32_t irq_base = desc->irq - IRQ_NUM_IRQSTR_DSP0;
 
 	/* Compute the actual IRQ_STEER IRQ number */
-	irq_base *= 64;
+	irq_base *= IRQSTR_IRQS_PER_LINE;
 	irq += irq_base;
 
 	irqstr_unmask_int(irq);
@@ -362,6 +364,20 @@ static const struct irq_cascade_tmpl dsp_irq[] = {
 	IRQSTR_CASCADE_TMPL_DECL(6)
 	IRQSTR_CASCADE_TMPL_DECL(7)
 };
+
+int irqstr_get_sof_int(int irqstr_int)
+{
+	int line, irq;
+
+	/* Is it a valid interrupt? */
+	if (irqstr_int < 0 || irqstr_int >= IRQSTR_IRQS_NUM)
+		return -EINVAL;
+
+	line = irqstr_int / IRQSTR_IRQS_PER_LINE;
+	irq = irqstr_int % IRQSTR_IRQS_PER_LINE;
+
+	return interrupt_get_irq(irq, irq_name_irqsteer[line]);
+}
 
 void platform_interrupt_init(void)
 {
