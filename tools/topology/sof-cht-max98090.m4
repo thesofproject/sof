@@ -43,7 +43,8 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 # Schedule 192 frames per 4000us deadline on core 0 with priority 1
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
-	192, 4000, 1, 0)
+	192, 4000, 1, 0,
+	0, PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
 SectionGraph."pipe-cht-max98090" {
