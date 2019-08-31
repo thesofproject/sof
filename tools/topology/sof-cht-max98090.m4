@@ -46,7 +46,8 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
 	3, 1, 2, s32le,
 	4000, 1, 0,
-	8000, 96000, 48000)
+	8000, 96000, 48000,
+	0, PIPELINE_PLAYBACK_SCHED_COMP_1)
 
 # Connect pipelines together
 SectionGraph."pipe-cht-max98090" {
