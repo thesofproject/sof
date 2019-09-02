@@ -395,19 +395,16 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct pipeline_data ppl_data;
 	int ret = 0;
-	uint32_t flags;
 
 	trace_pipe_with_ids(p, "pipeline_prepare()");
 
 	ppl_data.start = dev;
 
-	irq_local_disable(flags);
-
 	ret = pipeline_comp_prepare(dev, &ppl_data, dev->params.direction);
 	if (ret < 0) {
 		trace_pipe_error("pipeline_prepare() error: ret = %d,"
 				 "dev->comp.id = %u", ret, dev->comp.id);
-		goto out;
+		return ret;
 	}
 
 	/* pipeline preload needed only for playback streams without active
@@ -417,8 +414,6 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		p->sink_comp->state != COMP_STATE_ACTIVE;
 	p->status = COMP_STATE_PREPARE;
 
-out:
-	irq_local_enable(flags);
 	return ret;
 }
 
