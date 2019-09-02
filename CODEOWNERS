@@ -48,6 +48,7 @@ src/ipc/*				@xiulipan @bardliao
 src/ipc/sue-ipc.c			@lyakh
 src/lib/*				@libinyang
 src/gdb/*				@mrajwa
+src/schedule				@tlauda @mrajwa
 
 # other helpers
 test/**					@jajanusz
