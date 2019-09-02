@@ -1,48 +1,28 @@
-function [magic, version] = eq_get_abi()
+function [bytes, nbytes] = eq_get_abi(setsize)
 
-%% Return current SOF magic and version values for ABI header
-% [magic, version] = eq_get_abi()
+%% Return current SOF ABI header
+%
+% [bytes, nbytes] = eq_get_abi(setsize)
+%
 
-%%
-% Copyright (c) 2018, Intel Corporation
-% All rights reserved.
+% SPDX-License-Identifier: BSD-3-Clause
 %
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% Copyright(c) 2018 Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
 
-%% These need to match kernel and FW ABI version
-sof_abi_major = 3;
-sof_abi_minor = 0;
-sof_abi_patch = 0;
-sof_abi_magic = '00464F53'; % 'SOF\0'
+%% Use sof-ctl to write ABI header into a file
+abifn = 'eq_get_abi.bin';
+cmd = sprintf('sof-ctl -g %d -b -o %s', setsize, abifn);
+system(cmd);
 
-%% Convert to integers
-version = uint32(bitshift(bitand(sof_abi_major, 255), 24) ...
-		 + bitshift(bitand(sof_abi_minor, 4095), 12) ...
-		 + bitshift(bitand(sof_abi_patch, 4095), 0));
-magic = uint32(hex2dec(sof_abi_magic));
+%% Read file and delete it
+fh = fopen(abifn, 'r');
+if fh < 0
+	error("Failed to get ABI header. Is sof-ctl installed?");
+end
+[bytes, nbytes] = fread(fh, inf, 'uint8');
+fclose(fh);
+delete(abifn);
 
 end
