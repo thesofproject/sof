@@ -7,35 +7,11 @@ function blob8 = eq_fir_blob_pack(bs, endian)
 % endian - optional, use 'little' or 'big'. Defaults to little.
 %
 
-%%
-% Copyright (c) 2016, Intel Corporation
-% All rights reserved.
+% SPDX-License-Identifier: BSD-3-Clause
 %
-% Redistribution and use in source and binary forms, with or without
-% modification, are permitted provided that the following conditions are met:
-%   * Redistributions of source code must retain the above copyright
-%     notice, this list of conditions and the following disclaimer.
-%   * Redistributions in binary form must reproduce the above copyright
-%     notice, this list of conditions and the following disclaimer in the
-%     documentation and/or other materials provided with the distribution.
-%   * Neither the name of the Intel Corporation nor the
-%     names of its contributors may be used to endorse or promote products
-%     derived from this software without specific prior written permission.
-%
-% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-% POSSIBILITY OF SUCH DAMAGE.
+% Copyright(c) 2016 Intel Corporation. All rights reserved.
 %
 % Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
-%
 
 if nargin < 2
 	endian = 'little';
@@ -107,24 +83,18 @@ blob16(1:nh16) = h16;
 blob16(nh16+1:nh16+nc16) = int16(bs.all_coefficients);
 
 %% Pack as 8 bits
-nbytes_abi = 8*4;
 nbytes_data = nb16 * 2;
+
+%% Get ABI information
+[abi_bytes, nbytes_abi] = eq_get_abi(nbytes_data);
+
+%% Initialize uint8 array with correct size
 nbytes = nbytes_abi + nbytes_data;
 blob8 = zeros(1, nbytes, 'uint8');
 
-%% Get ABI information
-[magic, abi] = eq_get_abi();
-
-%% ABI header
-j = 1;
-blob8(j:j+3) = w32b(magic, sh32); j=j+4;
-blob8(j:j+3) = w32b(0, sh32); j=j+4;
-blob8(j:j+3) = w32b(nbytes_data, sh32); j=j+4;
-blob8(j:j+3) = w32b(abi, sh32); j=j+4;
-blob8(j:j+3) = w32b(0, sh32); j=j+4;
-blob8(j:j+3) = w32b(0, sh32); j=j+4;
-blob8(j:j+3) = w32b(0, sh32); j=j+4;
-blob8(j:j+3) = w32b(0, sh32); j=j+4;
+%% Inset ABI header
+blob8(1:nbytes_abi) = abi_bytes;
+j = nbytes_abi + 1;
 
 %% Component data
 for i = 1:length(blob16)
