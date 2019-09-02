@@ -42,6 +42,9 @@ struct ctl_data {
 	uint32_t type;
 	/* set or get control value */
 	bool set;
+	/* print ABI header */
+	bool print_abi_header;
+	int print_abi_size;
 
 	/* name of sound card device */
 	char *dev;
@@ -60,9 +63,12 @@ static void usage(char *name)
 	fprintf(stdout, " [-s <data>]\n");
 	fprintf(stdout, "\t %s [-D <device>] [-n <control id>]", name);
 	fprintf(stdout, " [-s <data>]\n");
+	fprintf(stdout, "\t %s -g <size>\n", name);
 	fprintf(stdout, "\t %s -h\n", name);
 	fprintf(stdout, "\nWhere:\n");
 	fprintf(stdout, " -D device name (default is hw:0)\n");
+	fprintf(stdout, " -g <size> generates");
+	fprintf(stdout, " the current ABI header with given payload size\n");
 	fprintf(stdout, " -c control name e.g.");
 	fprintf(stdout, " numid=22,name=\\\"EQIIR1.0 EQIIR\\\"\"\n");
 	fprintf(stdout, " -n control id e.g. 22\n");
@@ -102,20 +108,15 @@ static int read_setup(struct ctl_data *ctl_data)
 		return -errno;
 	}
 
-	if (ctl_data->binary) {
-		/* create abi header*/
-		if (ctl_data->no_abi) {
-			header_init(ctl_data);
-			abi_size = sizeof(struct sof_abi_hdr) / sizeof(int);
-		}
+	/* create abi header*/
+	if (ctl_data->no_abi) {
+		header_init(ctl_data);
+		abi_size = sizeof(struct sof_abi_hdr) / sizeof(int);
+	}
 
+	if (ctl_data->binary) {
 		n = fread(&ctl_data->buffer[BUFFER_ABI_OFFSET + abi_size],
 			  sizeof(int), n_max - abi_size, fh);
-
-		if (ctl_data->no_abi) {
-			hdr->size = n * sizeof(int);
-			n += abi_size;
-		}
 
 		goto read_done;
 	}
@@ -123,7 +124,7 @@ static int read_setup(struct ctl_data *ctl_data)
 	/* reading for ASCII CSV txt */
 	while (fscanf(fh, "%u", &x) != EOF) {
 		if (n < n_max)
-			ctl_data->buffer[BUFFER_ABI_OFFSET + n] = x;
+			ctl_data->buffer[BUFFER_ABI_OFFSET + abi_size + n] = x;
 
 		if (n > 0)
 			fprintf(stdout, ",");
@@ -135,9 +136,15 @@ static int read_setup(struct ctl_data *ctl_data)
 
 		n++;
 	}
+
 	fprintf(stdout, "\n");
 
 read_done:
+	if (ctl_data->no_abi) {
+		hdr->size = n * sizeof(int);
+		n += abi_size;
+	}
+
 	if (n > n_max) {
 		fprintf(stderr, "Warning: Read of %d exceeded control size. ",
 			4 * n);
@@ -163,7 +170,7 @@ static void header_dump(struct ctl_data *ctl_data)
 }
 
 /* dump binary data out with 16bit hex format */
-static void binary_data_dump(struct ctl_data *ctl_data)
+static void hex_data_dump(struct ctl_data *ctl_data)
 {
 	unsigned int int_offset;
 	uint16_t *config;
@@ -200,21 +207,25 @@ static void binary_data_dump(struct ctl_data *ctl_data)
 }
 
 /* dump binary data out with CSV txt format */
-static void csv_data_dump(struct ctl_data *ctl_data)
+static void csv_data_dump(struct ctl_data *ctl_data, FILE *fh)
 {
 	uint32_t *config;
 	int n;
 	int i;
+	int s = 0;
 
 	config = &ctl_data->buffer[BUFFER_ABI_OFFSET];
 	n = ctl_data->buffer[BUFFER_SIZE_OFFSET] / sizeof(uint32_t);
 
+	if (ctl_data->no_abi)
+		s = sizeof(struct sof_abi_hdr) / sizeof(uint32_t);
+
 	/* Print out in CSV txt formal */
-	for (i = 0; i < n; i++) {
+	for (i = s; i < n; i++) {
 		if (i == n - 1)
-			fprintf(stdout, "%u\n", config[i]);
+			fprintf(fh, "%u\n", config[i]);
 		else
-			fprintf(stdout, "%u,", config[i]);
+			fprintf(fh, "%u,", config[i]);
 	}
 }
 
@@ -225,9 +236,9 @@ static void csv_data_dump(struct ctl_data *ctl_data)
 static void data_dump(struct ctl_data *ctl_data)
 {
 	if (ctl_data->binary)
-		binary_data_dump(ctl_data);
+		hex_data_dump(ctl_data);
 	else
-		csv_data_dump(ctl_data);
+		csv_data_dump(ctl_data, stdout);
 }
 
 static int get_file_size(int fd)
@@ -404,15 +415,15 @@ static void ctl_dump(struct ctl_data *ctl_data)
 	size_t n;/* in bytes */
 
 	if (ctl_data->out_fd > 0) {
-		/* output ctl_data(exclude the header)to file */
-		/* open input file */
-		fh = fdopen(ctl_data->out_fd, "wb");
-		if (!fh) {
-			fprintf(stderr, "error: %s\n", strerror(errno));
-			return;
-		}
-
 		if (ctl_data->binary) {
+			/* output ctl_data(exclude the header)to file */
+			/* open input file */
+			fh = fdopen(ctl_data->out_fd, "wb");
+			if (!fh) {
+				fprintf(stderr, "error: %s\n", strerror(errno));
+				return;
+			}
+
 			offset = BUFFER_ABI_OFFSET;
 			n = ctl_data->buffer[BUFFER_SIZE_OFFSET];
 
@@ -423,6 +434,13 @@ static void ctl_dump(struct ctl_data *ctl_data)
 			}
 			n = fwrite(&ctl_data->buffer[offset],
 				   1, n, fh);
+		} else {
+			fh = fdopen(ctl_data->out_fd, "w");
+			if (!fh) {
+				fprintf(stderr, "error: %s\n", strerror(errno));
+				return;
+			}
+			csv_data_dump(ctl_data, fh);
 		}
 
 		fprintf(stdout, "%ld bytes written to file.\n", n);
@@ -493,6 +511,7 @@ int main(int argc, char *argv[])
 	int write;
 	int type;
 	char opt;
+	struct sof_abi_hdr *hdr;
 
 	ctl_data = calloc(1, sizeof(struct ctl_data));
 	if (!ctl_data) {
@@ -503,7 +522,7 @@ int main(int argc, char *argv[])
 
 	ctl_data->dev = "hw:0";
 
-	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:br")) != -1) {
+	while ((opt = getopt(argc, argv, "hD:c:s:n:o:t:g:br")) != -1) {
 		switch (opt) {
 		case 'D':
 			ctl_data->dev = optarg;
@@ -532,6 +551,10 @@ int main(int argc, char *argv[])
 		case 't':
 			ctl_data->type = atoi(optarg);
 			break;
+		case 'g':
+			ctl_data->print_abi_header = true;
+			ctl_data->print_abi_size = atoi(optarg);
+			break;
 		case 'h':
 		/* pass through */
 		default:
@@ -540,11 +563,35 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/* open output file */
+	if (output_file) {
+		ctl_data->out_fd = open(output_file, O_CREAT | O_TRUNC | O_RDWR,
+					0600);
+		if (ctl_data->out_fd <= 0) {
+			fprintf(stderr, "error: %s\n", strerror(errno));
+			goto struct_free;
+		}
+	}
+
+	/* Just print the ABI header if requested */
+	if (ctl_data->print_abi_header) {
+		ctl_data->ctrl_size = sizeof(struct sof_abi_hdr);
+		buffer_alloc(ctl_data);
+		header_init(ctl_data);
+		hdr = (struct sof_abi_hdr *)
+			&ctl_data->buffer[BUFFER_ABI_OFFSET];
+		hdr->size = ctl_data->print_abi_size;
+		ctl_data->buffer[BUFFER_SIZE_OFFSET] = ctl_data->ctrl_size;
+		ctl_dump(ctl_data);
+		buffer_free(ctl_data);
+		goto out_fd_close;
+	}
+
 	/* The control need to be defined. */
 	if (!ctl_data->cname) {
 		fprintf(stderr, "Error: No control was requested.\n");
 		usage(argv[0]);
-		goto struct_free;
+		goto out_fd_close;
 
 	}
 
@@ -553,16 +600,7 @@ int main(int argc, char *argv[])
 		ctl_data->in_fd = open(input_file, O_RDONLY);
 		if (ctl_data->in_fd <= 0) {
 			fprintf(stderr, "error: %s\n", strerror(errno));
-			goto struct_free;
-		}
-	}
-
-	/* open output file */
-	if (output_file) {
-		ctl_data->out_fd = open(output_file, O_CREAT | O_RDWR);
-		if (ctl_data->out_fd <= 0) {
-			fprintf(stderr, "error: %s\n", strerror(errno));
-			goto in_fd_close;
+			goto out_fd_close;
 		}
 	}
 
@@ -570,7 +608,7 @@ int main(int argc, char *argv[])
 	ret = ctl_setup(ctl_data);
 	if (ret < 0) {
 		fprintf(stderr, "Error: ctl_data setup failed, ret:%d", ret);
-		goto out_fd_close;
+		goto in_fd_close;
 	}
 
 	/* set/get the tlv bytes kcontrol */
@@ -586,12 +624,15 @@ int main(int argc, char *argv[])
 
 data_free:
 	ret = ctl_free(ctl_data);
-out_fd_close:
+
+in_fd_close:
 	if (ctl_data->out_fd)
 		close(ctl_data->out_fd);
-in_fd_close:
+
+out_fd_close:
 	if (ctl_data->in_fd)
 		close(ctl_data->in_fd);
+
 struct_free:
 	free(ctl_data);
 
