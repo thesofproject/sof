@@ -336,22 +336,17 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 {
 	struct pipeline_data data;
 	int ret;
-	uint32_t flags;
 
 	trace_pipe_with_ids(p, "pipeline_params()");
 
 	data.params = params;
 	data.start = host;
 
-	irq_local_disable(flags);
-
 	ret = pipeline_comp_params(host, &data, host->params.direction);
 	if (ret < 0) {
 		trace_pipe_error("pipeline_params() error: ret = %d, host->"
 				 "comp.id = %u", ret, host->comp.id);
 	}
-
-	irq_local_enable(flags);
 
 	return ret;
 }
