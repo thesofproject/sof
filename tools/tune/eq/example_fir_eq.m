@@ -39,7 +39,7 @@ fs = 48e3;
 %% -------------------
 %% Example 1: Loudness
 %% -------------------
-ascii_blob_fn = '../../eqctl/eq_fir_loudness.txt';
+ascii_blob_fn = '../../ctl/eq_fir_loudness.txt';
 binary_blob_fn = 'example_fir_eq.blob';
 tplg_blob_fn = 'example_fir_eq.m4';
 
@@ -71,7 +71,7 @@ eq_tplg_write(tplg_blob_fn, bp, 'FIR');
 %% -------------------
 %% Example 2: Mid boost
 %% -------------------
-ascii_blob_fn = '../../eqctl/eq_fir_mid.txt';
+ascii_blob_fn = '../../ctl/eq_fir_mid.txt';
 
 %% Define mid frequencies boost EQ
 eq_mid = midboost_fir_eq(fs);
@@ -96,7 +96,7 @@ eq_alsactl_write(ascii_blob_fn, bp);
 %% Example 3: Flat EQ
 %% -------------------
 comment = 'Flat FIR EQ';
-ascii_blob_fn = '../../eqctl/eq_fir_flat.txt';
+ascii_blob_fn = '../../ctl/eq_fir_flat.txt';
 tplg_blob_fn = '../../topology/m4/eq_fir_coef_flat.m4';
 
 %% Define a passthru EQ with one tap
@@ -122,7 +122,7 @@ eq_tplg_write(tplg_blob_fn, bp, 'FIR', comment);
 %% --------------------------
 %% Example 4: Pass-through EQ
 %% --------------------------
-ascii_blob_fn = '../../eqctl/eq_fir_pass.txt';
+ascii_blob_fn = '../../ctl/eq_fir_pass.txt';
 
 %% Define a passthru EQ with one tap
 b_pass = 1;
