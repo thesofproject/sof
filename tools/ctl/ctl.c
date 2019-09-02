@@ -544,7 +544,7 @@ int main(int argc, char *argv[])
 	if (!ctl_data->cname) {
 		fprintf(stderr, "Error: No control was requested.\n");
 		usage(argv[0]);
-		goto data_free;
+		goto struct_free;
 
 	}
 
