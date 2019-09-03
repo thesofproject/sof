@@ -139,6 +139,14 @@ static inline void platform_panic(uint32_t p)
 {
 }
 #endif
+
+/**
+ * \brief Platform specific CPU entering idle.
+ * May be power-optimized using platform specific capabilities.
+ * @param level Interrupt level.
+ */
+void platform_wait_for_interrupt(int level);
+
 extern struct timer *platform_timer;
 
 extern struct ll_schedule_domain *platform_timer_domain;
