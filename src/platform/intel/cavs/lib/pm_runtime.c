@@ -277,7 +277,7 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
-	struct platform_pm_runtime_data *pprd;
+	struct cavs_pm_runtime_data *pprd;
 
 	_prd = prd;
 
