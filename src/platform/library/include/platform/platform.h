@@ -11,6 +11,7 @@
 #ifndef __PLATFORM_PLATFORM_H__
 #define __PLATFORM_PLATFORM_H__
 
+#include <arch/lib/wait.h>
 #include <sof/lib/clk.h>
 #include <stdint.h>
 
@@ -47,6 +48,16 @@ struct timer;
 #define PLATFORM_DEFAULT_DELAY	12
 
 static inline void platform_panic(uint32_t p) {}
+
+/**
+ * \brief Platform specific CPU entering idle.
+ * May be power-optimized using platform specific capabilities.
+ * @param level Interrupt level.
+ */
+static inline void platform_wait_for_interrupt(int level)
+{
+	arch_wait_for_interrupt(level);
+}
 
 extern struct timer *platform_timer;
 

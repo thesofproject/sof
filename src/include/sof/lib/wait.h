@@ -14,6 +14,7 @@
 
 #include <arch/lib/wait.h>
 #include <sof/drivers/timer.h>
+#include <sof/platform.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
@@ -34,7 +35,7 @@ static inline void wait_for_interrupt(int level)
 	if (lock_dbg_atomic)
 		trace_error_atomic(TRACE_CLASS_WAIT, "atm");
 #endif
-	arch_wait_for_interrupt(level);
+	platform_wait_for_interrupt(level);
 	tracev_event(TRACE_CLASS_WAIT, "WFX");
 }
 

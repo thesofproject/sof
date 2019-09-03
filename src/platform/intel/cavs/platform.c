@@ -492,3 +492,9 @@ int platform_init(struct sof *sof)
 
 	return 0;
 }
+
+void platform_wait_for_interrupt(int level)
+{
+	/* TODO: go to LPS flow if pm-runtime DSP_D0 is 0 */
+	arch_wait_for_interrupt(level);
+}
