@@ -12,6 +12,8 @@
  * \author Tomasz Lauda <tomasz.lauda@linux.intel.com>
  */
 
+#include <sof/debug/panic.h>
+#include <sof/drivers/interrupt.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/io.h>
@@ -60,6 +62,28 @@ static inline void cavs_pm_runtime_force_host_dma_l1_exit(void)
 	}
 
 	spin_unlock_irq(_prd->lock, flags);
+}
+
+static inline void cavs_pm_runtime_enable_dsp(bool enable)
+{
+	uint32_t flags;
+	struct cavs_pm_runtime_data *pprd = _prd->platform_data;
+
+	/* request is always run on dsp0 and applies to dsp0,
+	 * so no global lock is required.
+	 */
+	irq_local_disable(flags);
+
+	enable ? --pprd->dsp_d0_sref : ++pprd->dsp_d0_sref;
+
+	irq_local_enable(flags);
+}
+
+static inline bool cavs_pm_runtime_is_active_dsp(void)
+{
+	struct cavs_pm_runtime_data *pprd =
+			(struct cavs_pm_runtime_data *)_prd->platform_data;
+	return pprd->dsp_d0_sref > 0;
 }
 
 #if CONFIG_CAVS_SSP
@@ -354,6 +378,9 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 {
 	switch (context) {
+	case PM_RUNTIME_DSP:
+		cavs_pm_runtime_enable_dsp(true);
+		break;
 	default:
 		break;
 	}
@@ -362,6 +389,9 @@ void platform_pm_runtime_enable(uint32_t context, uint32_t index)
 void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 {
 	switch (context) {
+	case PM_RUNTIME_DSP:
+		cavs_pm_runtime_enable_dsp(false);
+		break;
 	default:
 		break;
 	}
@@ -369,7 +399,14 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index)
 
 bool platform_pm_runtime_is_active(uint32_t context, uint32_t index)
 {
-	return false;
+	switch (context) {
+	case PM_RUNTIME_DSP:
+		return cavs_pm_runtime_is_active_dsp();
+	default:
+		assert(false); /* unsupported query */
+		return false;
+	}
+
 }
 
 #if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
