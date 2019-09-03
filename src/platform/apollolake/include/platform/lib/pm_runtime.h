@@ -16,14 +16,8 @@
 #ifndef __PLATFORM_LIB_PM_RUNTIME_H__
 #define __PLATFORM_LIB_PM_RUNTIME_H__
 
+#include <cavs/lib/pm_runtime.h>
 #include <stdint.h>
-
-struct pm_runtime_data;
-
-/** \brief Platform specific runtime power management data. */
-struct platform_pm_runtime_data {
-	/* TBD */
-};
 
 /**
  * \brief Initializes platform specific runtime power management.
