@@ -924,6 +924,10 @@ static int ssp_probe(struct dai *dai)
 	ssp->state[DAI_DIR_PLAYBACK] = COMP_STATE_READY;
 	ssp->state[DAI_DIR_CAPTURE] = COMP_STATE_READY;
 
+	/* Reset M/N, power-gating functions need it */
+	mn_reg_write(0x100 + dai->index * 0x8 + 0x0, 1);
+	mn_reg_write(0x100 + dai->index * 0x8 + 0x4, 1);
+
 	/* Enable SSP power */
 	pm_runtime_get_sync(SSP_POW, dai->index);
 
