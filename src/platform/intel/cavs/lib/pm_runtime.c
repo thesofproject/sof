@@ -95,28 +95,36 @@ static inline void cavs_pm_runtime_en_ssp_clk_gating(uint32_t index)
 static inline void cavs_pm_runtime_en_ssp_power(uint32_t index)
 {
 #if CONFIG_TIGERLAKE
+	uint32_t reg;
+
 	trace_power("en_ssp_power index %d", index);
 
 	io_reg_write(I2SLCTL, io_reg_read(I2SLCTL) | I2SLCTL_SPA(index));
 
-	/* TODO: Check if powered on.
-	 * Should read CPA, but it's not getting set right after SPA is written,
-	 * need to check if there are other HW dependencies.
-	 */
+	/* Check if powered on. */
+	do {
+		reg = io_reg_read(I2SLCTL);
+	} while (!(reg & I2SLCTL_CPA(index)));
+
+	trace_power("en_ssp_power I2SLCTL %08x", reg);
 #endif
 }
 
 static inline void cavs_pm_runtime_dis_ssp_power(uint32_t index)
 {
 #if CONFIG_TIGERLAKE
+	uint32_t reg;
+
 	trace_power("dis_ssp_power index %d", index);
 
 	io_reg_write(I2SLCTL, io_reg_read(I2SLCTL) & (~I2SLCTL_SPA(index)));
 
-	/* TODO: Check if powered off.
-	 * Should read CPA, but it's not getting set right after SPA is written,
-	 * need to check if there are other HW dependencies.
-	 */
+	/* Check if powered off. */
+	do {
+		reg = io_reg_read(I2SLCTL);
+	} while (reg & I2SLCTL_CPA(index));
+
+	trace_power("dis_ssp_power I2SLCTL %08x", reg);
 #endif
 }
 #endif
