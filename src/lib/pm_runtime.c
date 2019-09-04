@@ -72,3 +72,35 @@ void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index)
 		break;
 	}
 }
+
+void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
+{
+	tracev_pm("pm_runtime_enable()");
+
+	switch (context) {
+	default:
+		platform_pm_runtime_enable(context, index);
+		break;
+	}
+}
+
+void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
+{
+	tracev_pm("pm_runtime_disable()");
+
+	switch (context) {
+	default:
+		platform_pm_runtime_disable(context, index);
+		break;
+	}
+}
+
+bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index)
+{
+	tracev_pm("pm_runtime_is_active()");
+
+	switch (context) {
+	default:
+		return platform_pm_runtime_is_active(context, index);
+	}
+}
