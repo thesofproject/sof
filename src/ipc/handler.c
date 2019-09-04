@@ -736,7 +736,7 @@ static int ipc_dma_trace_config(uint32_t header)
 	return 0;
 
 error:
-	return -EINVAL;
+	return err;
 }
 
 /* send DMA trace host buffer position to host */
