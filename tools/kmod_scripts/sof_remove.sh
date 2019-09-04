@@ -44,7 +44,8 @@ remove_module snd_soc_sst_cht_bsw_rt5645
 remove_module snd_soc_sst_cht_bsw_rt5672
 remove_module snd_soc_sst_glk_rt5682_max98357a
 remove_module snd_soc_skl_hda_dsp
-remove_module snd_soc_cnl_rt700
+remove_module snd_soc_sdw_rt700
+remove_module snd_soc_sdw_rt711_rt1308_rt715
 
 remove_module snd_sof
 remove_module snd_sof_nocodec
@@ -58,6 +59,9 @@ remove_module snd_soc_rt274
 remove_module snd_soc_rt286
 remove_module snd_soc_rt298
 remove_module snd_soc_rt700
+remove_module snd_soc_rt711
+remove_module snd_soc_rt1308_sdw
+remove_module snd_soc_rt715
 remove_module snd_soc_rt5640
 remove_module snd_soc_rt5645
 remove_module snd_soc_rt5651
