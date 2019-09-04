@@ -93,6 +93,32 @@ void pm_runtime_put(enum pm_runtime_context context, uint32_t index);
  */
 void pm_runtime_put_sync(enum pm_runtime_context context, uint32_t index);
 
+/**
+ * \brief Enables power management operations for the resource.
+ *
+ * \param[in] context Type of power management context.
+ * \param[in] index Index of the device.
+ */
+void pm_runtime_enable(enum pm_runtime_context context, uint32_t index);
+
+/**
+ * \brief Disables power management operations for the resource.
+ *
+ * \param[in] context Type of power management context.
+ * \param[in] index Index of the device.
+ */
+void pm_runtime_disable(enum pm_runtime_context context, uint32_t index);
+
+/**
+ * \brief Reports state of the power managed resource.
+ *
+ * @param context Type of power management context.
+ * @param index Index of the resource.
+ *
+ * @return true if the resource is active or pm disabled, false otherwise.
+ */
+bool pm_runtime_is_active(enum pm_runtime_context context, uint32_t index);
+
 /** @}*/
 
 #endif /* __SOF_LIB_PM_RUNTIME_H__ */

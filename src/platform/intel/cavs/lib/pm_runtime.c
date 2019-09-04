@@ -351,6 +351,27 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 	}
 }
 
+void platform_pm_runtime_enable(uint32_t context, uint32_t index)
+{
+	switch (context) {
+	default:
+		break;
+	}
+}
+
+void platform_pm_runtime_disable(uint32_t context, uint32_t index)
+{
+	switch (context) {
+	default:
+		break;
+	}
+}
+
+bool platform_pm_runtime_is_active(uint32_t context, uint32_t index)
+{
+	return false;
+}
+
 #if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
 void platform_pm_runtime_power_off(void)
 {

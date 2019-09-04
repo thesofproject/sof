@@ -46,6 +46,18 @@ static inline void platform_pm_runtime_get(uint32_t context, uint32_t index,
 static inline void platform_pm_runtime_put(uint32_t context, uint32_t index,
 					   uint32_t flags) { }
 
+static inline void platform_pm_runtime_enable(uint32_t context,
+					      uint32_t index) {}
+
+static inline void platform_pm_runtime_disable(uint32_t context,
+					       uint32_t index) {}
+
+static inline bool platform_pm_runtime_is_active(uint32_t context,
+						 uint32_t index)
+{
+	return false;
+}
+
 #endif /* __PLATFORM_LIB_PM_RUNTIME_H__ */
 
 #else
