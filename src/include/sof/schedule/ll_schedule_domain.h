@@ -22,6 +22,7 @@
 
 struct ll_schedule_domain;
 struct task;
+struct timer;
 
 struct ll_schedule_domain_ops {
 	int (*domain_register)(struct ll_schedule_domain *domain,
@@ -121,5 +122,8 @@ static inline bool domain_is_pending(struct ll_schedule_domain *domain,
 
 	return domain->ops->domain_is_pending(domain, task);
 }
+
+struct ll_schedule_domain *timer_domain_init(struct timer *timer, int clk,
+					     uint64_t timeout);
 
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_DOMAIN_H__ */
