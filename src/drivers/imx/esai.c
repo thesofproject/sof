@@ -364,9 +364,9 @@ static int esai_probe(struct dai *dai)
 	dai_write(dai, REG_ESAI_ECR, 1);
 
 	int irq = irqstr_get_sof_int(ESAI_IRQ);
-	int rc = interrupt_register(irq, IRQ_AUTO_UNMASK, &esai_irq, NULL);
+	int rc = interrupt_register(irq, IRQ_AUTO_UNMASK, &esai_irq, dai);
 	if (rc >= 0 || rc == -EEXIST)
-		interrupt_enable(irq, NULL);
+		interrupt_enable(irq, dai);
 
 	tracev_esai("ESAI_REGS_DUMP in esai_probe");
 	esai_regs_dump(dai);
