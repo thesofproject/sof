@@ -5,4 +5,5 @@ add_local_sources(sof
 	ll_schedule.c
 	schedule.c
 	task.c
+	timer_domain.c
 )
