@@ -180,7 +180,8 @@ static inline int esai_set_config(struct dai *dai,
 	}
 
 	/* Set networked mode; we only support 2 channels now, not 1 */
-	xcr |= ESAI_xMOD_NORMAL | ESAI_xMOD_NETWORKCH(2);
+	xcr |= ESAI_xCR_xMOD_NETWORK;
+	xccr |= ESAI_xCCR_xDC(2);
 
 	/* Word size */
 	xcr |= ESAI_xCR_xSWS(32, 16) | ESAI_xCR_PADC;
@@ -194,15 +195,28 @@ static inline int esai_set_config(struct dai *dai,
 	dai_update_bits(dai, REG_ESAI_ECR, ESAI_ECR_ETI, ESAI_ECR_ETI);
 
 	mask = ESAI_xCCR_xCKP | ESAI_xCCR_xHCKP | ESAI_xCCR_xFSP |
-		ESAI_xCCR_xFSD | ESAI_xCCR_xCKD | ESAI_xCCR_xHCKD;
+		ESAI_xCCR_xFSD | ESAI_xCCR_xCKD | ESAI_xCCR_xHCKD |
+		ESAI_xCCR_xDC_MASK;
 
 	xccr |= ESAI_xCCR_xHCKD; /* HACK, maybe doesn't even work? */
+
+	if (~mask & xccr) {
+		trace_esai_error("XCCR bits not caught by mask: 0x%08x",
+				 (~mask & xccr));
+		trace_esai_error("MASK 0x%08x XCCR 0x%08x", mask, xccr);
+	}
 
 	dai_update_bits(dai, REG_ESAI_xCCR(0), mask, xccr); /* rx */
 	dai_update_bits(dai, REG_ESAI_xCCR(1), mask, xccr); /* tx */
 
 	mask = ESAI_xCR_xFSL | ESAI_xCR_xFSR | ESAI_xCR_xWA |
-		ESAI_xMOD_MASK | ESAI_xCR_xSWS_MASK | ESAI_xCR_PADC_MASK;
+		ESAI_xCR_xMOD_MASK | ESAI_xCR_xSWS_MASK | ESAI_xCR_PADC;
+
+	if (~mask & xcr) {
+		trace_esai_error("XCR bits not caught by mask: 0x%08x",
+				 (~mask & xcr));
+		trace_esai_error("MASK 0x%08x XCR 0x%08x", mask, xcr);
+	}
 
 	dai_update_bits(dai, REG_ESAI_xCR(0), mask, xcr); /* rx */
 	dai_update_bits(dai, REG_ESAI_xCR(1), mask, xcr); /* tx */
@@ -213,8 +227,8 @@ static inline int esai_set_config(struct dai *dai,
 	dai_write(dai, REG_ESAI_RSMB, 0);
 
 	/* Program FIFOs */
-	dai_update_bits(dai, REG_ESAI_RFCR, 2, 2);
-	dai_update_bits(dai, REG_ESAI_RFCR, 2, 0);
+	dai_update_bits(dai, REG_ESAI_RFCR, ESAI_xFCR_xFR, ESAI_xFCR_xFR);
+	dai_update_bits(dai, REG_ESAI_RFCR, ESAI_xFCR_xFR, 0);
 	
 	/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
 	/* TODO use TFCR and RFCR */
@@ -268,10 +282,10 @@ static void esai_start(struct dai *dai, int direction)
 			ESAI_xSMA_xS(0x3));
 
 	/* enable regular interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE_MASK,
+	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE,
 			ESAI_xCR_xIE);
 	/* enable exception interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE_MASK,
+	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE,
 			ESAI_xCR_xEIE);
 	tracev_esai("ESAI_REGS_DUMP in esai_start");
 	esai_regs_dump(dai);
@@ -281,9 +295,9 @@ static void esai_stop(struct dai *dai, int direction)
 {
 	direction = direction == SOF_IPC_STREAM_PLAYBACK;
 	/* disable exception interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE_MASK, 0);
+	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE, 0);
 	/* disable regular interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE_MASK, 0);
+	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE, 0);
 
 	dai_update_bits(dai, REG_ESAI_xCR(direction),
 			direction ? ESAI_xCR_TE_MASK : ESAI_xCR_RE_MASK, 0);

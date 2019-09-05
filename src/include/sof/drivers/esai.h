@@ -50,121 +50,127 @@
 #define REG_ESAI_PCRC           0xFC
 
 #define ESAI_ECR_ETI		BIT(19)
+#define ESAI_ECR_ETO		BIT(18)
+#define ESAI_ECR_ERI		BIT(17)
+#define ESAI_ECR_ERO		BIT(16)
+#define ESAI_ECR_ERST		BIT(1)
+#define ESAI_ECR_ESAIEN		BIT(0)
+
+#define ESAI_ESR_TINIT		BIT(10)
+#define ESAI_ESR_RFF		BIT(9)
+#define ESAI_ESR_TFE		BIT(8)
+#define ESAI_ESR_TLS		BIT(7)
+#define ESAI_ESR_TDE		BIT(6)
+#define ESAI_ESR_TED		BIT(5)
+#define ESAI_ESR_TD		BIT(4)
+#define ESAI_ESR_RLS		BIT(3)
+#define ESAI_ESR_RDE		BIT(2)
+#define ESAI_ESR_RED		BIT(1)
+#define ESAI_ESR_RD		BIT(0)
 
 #define ESAI_xFCR_TIEN		BIT(19)
 #define ESAI_xFCR_xWA_SHIFT	16
 #define ESAI_xFCR_xWA_WIDTH	3
-#define ESAI_xFCR_xWA_MASK	(((1 << ESAI_xFCR_xWA_WIDTH) - 1) << ESAI_xFCR_xWA_SHIFT)
-#define ESAI_xFCR_xWA(v)	(((8 - ((v) >> 2)) << ESAI_xFCR_xWA_SHIFT) & ESAI_xFCR_xWA_MASK)
+#define ESAI_xFCR_xWA_MASK	MASK(18, 16)
+#define ESAI_xFCR_xWA(v)	SET_BITS(18, 16, 8 - ((v) >> 2))
 #define ESAI_xFCR_xFWM_SHIFT	8
 #define ESAI_xFCR_xFWM_WIDTH	8
-#define ESAI_xFCR_xFWM_MASK	(((1 << ESAI_xFCR_xFWM_WIDTH) - 1) << ESAI_xFCR_xFWM_SHIFT)
-#define ESAI_xFCR_xFWM(v)	((((v) - 1) << ESAI_xFCR_xFWM_SHIFT) & ESAI_xFCR_xFWM_MASK)
+#define ESAI_xFCR_xFWM_MASK	MASK(15, 8)
+#define ESAI_xFCR_xFWM(v)	SET_BITS(15, 8, (v) - 1) // Dubious, why -1?
 #define ESAI_xFCR_xE_SHIFT	2
 #define ESAI_xFCR_TE_WIDTH	6
 #define ESAI_xFCR_RE_WIDTH	4
-#define ESAI_xFCR_TE_MASK	(((1 << ESAI_xFCR_TE_WIDTH) - 1) << ESAI_xFCR_xE_SHIFT)
-#define ESAI_xFCR_RE_MASK	(((1 << ESAI_xFCR_RE_WIDTH) - 1) << ESAI_xFCR_xE_SHIFT)
-#define ESAI_xFCR_xFEN_SHIFT	0
-#define ESAI_xFCR_xFEN		(1 << ESAI_xFCR_xFEN_SHIFT)
-#define ESAI_xFCR_xFEN_MASK	ESAI_xFCR_xFEN
-#define ESAI_xFCR_xE_SHIFT	2
-#define ESAI_xFCR_TE_WIDTH	6
-#define ESAI_xFCR_RE_WIDTH	4
-#define ESAI_xFCR_TE_MASK	(((1 << ESAI_xFCR_TE_WIDTH) - 1) << ESAI_xFCR_xE_SHIFT)
-#define ESAI_xFCR_RE_MASK	(((1 << ESAI_xFCR_RE_WIDTH) - 1) << ESAI_xFCR_xE_SHIFT)
-#define ESAI_xFCR_TE(x)		((ESAI_xFCR_TE_MASK >> (ESAI_xFCR_TE_WIDTH - x)) & ESAI_xFCR_TE_MASK)
-#define ESAI_xFCR_RE(x)		((ESAI_xFCR_RE_MASK >> (ESAI_xFCR_RE_WIDTH - x)) & ESAI_xFCR_RE_MASK)
+#define ESAI_xFCR_TE_MASK	MASK(7, 2)
+#define ESAI_xFCR_RE_MASK	MASK(5, 2)
+#define ESAI_xFCR_TE(x)		SET_BITS(7, 2, MASK((x)-1, 0))
+#define ESAI_xFCR_RE(x)		SET_BITS(5, 2, MASK((x)-1, 0))
 #define ESAI_xFCR_xFR_SHIFT	1
-#define ESAI_xFCR_xFR_MASK	(1 << ESAI_xFCR_xFR_SHIFT)
-#define ESAI_xFCR_xFR		(1 << ESAI_xFCR_xFR_SHIFT)
+#define ESAI_xFCR_xFR_MASK	BIT(1)
+#define ESAI_xFCR_xFR		BIT(1)
+#define ESAI_xFCR_xFEN_SHIFT	0
+#define ESAI_xFCR_xFEN		BIT(0)
+#define ESAI_xFCR_xFEN_MASK	BIT(0)
 
-#define ESAI_xCR_xFSR_SHIFT	16
-#define ESAI_xCR_xFSR_MASK	(1 << ESAI_xCR_xFSR_SHIFT)
-#define ESAI_xCR_xFSR		(1 << ESAI_xCR_xFSR_SHIFT)
-#define ESAI_xCR_xE_SHIFT	0
-#define ESAI_xCR_TE_WIDTH	6
-#define ESAI_xCR_RE_WIDTH	4
-#define ESAI_xCR_TE_MASK	(((1 << ESAI_xCR_TE_WIDTH) - 1) << ESAI_xCR_xE_SHIFT)
-#define ESAI_xCR_RE_MASK	(((1 << ESAI_xCR_RE_WIDTH) - 1) << ESAI_xCR_xE_SHIFT)
-#define ESAI_xCR_TE(x)		((ESAI_xCR_TE_MASK >> (ESAI_xCR_TE_WIDTH - x)) & ESAI_xCR_TE_MASK)
-#define ESAI_xCR_RE(x)		((ESAI_xCR_RE_MASK >> (ESAI_xCR_RE_WIDTH - x)) & ESAI_xCR_RE_MASK)
+#define ESAI_xFSR_NTFO_MASK	MASK(14, 12)
+#define ESAI_xFSR_NTFI_MASK	MASK(10, 8)
+#define ESAI_xFSR_NRFO_MASK	MASK(9, 8)
+#define ESAI_xFSR_NRFI_MASK	MASK(13, 12)
+#define ESAI_xFSR_xFCNT_MASK	MASK(7, 0)
 
-#define ESAI_xSMA_xS_SHIFT	0
-#define ESAI_xSMA_xS_WIDTH	16
-#define ESAI_xSMA_xS_MASK	(((1 << ESAI_xSMA_xS_WIDTH) - 1) << ESAI_xSMA_xS_SHIFT)
-#define ESAI_xSMA_xS(v)		((v) & ESAI_xSMA_xS_MASK)
-#define ESAI_xSMB_xS_SHIFT	0
-#define ESAI_xSMB_xS_WIDTH	16
-#define ESAI_xSMB_xS_MASK	(((1 << ESAI_xSMB_xS_WIDTH) - 1) << ESAI_xSMB_xS_SHIFT)
-#define ESAI_xSMB_xS(v)		(((v) >> ESAI_xSMA_xS_WIDTH) & ESAI_xSMB_xS_MASK)
+#define ESAI_SAISR_TODFE	BIT(17)
+#define ESAI_SAISR_TEDE		BIT(16)
+#define ESAI_SAISR_TDE		BIT(15)
+#define ESAI_SAISR_TUE		BIT(14)
+#define ESAI_SAISR_TFS		BIT(13)
+#define ESAI_SAISR_RODF		BIT(10)
+#define ESAI_SAISR_REDF		BIT(9)
+#define ESAI_SAISR_RDF		BIT(8)
+#define ESAI_SAISR_ROE		BIT(7)
+#define ESAI_SAISR_RFS		BIT(6)
+#define ESAI_SAISR_IF2		BIT(2)
+#define ESAI_SAISR_IF1		BIT(1)
+#define ESAI_SAISR_IF0		BIT(0)
 
-#define ESAI_xCR_xIE_SHIFT	22
-#define ESAI_xCR_xIE_MASK	(1 << ESAI_xCR_xIE_SHIFT)
-#define ESAI_xCR_xIE		(1 << ESAI_xCR_xIE_SHIFT)
-#define ESAI_xCR_xEIE_SHIFT	20
-#define ESAI_xCR_xEIE_MASK	(1 << ESAI_xCR_xEIE_SHIFT)
-#define ESAI_xCR_xEIE		(1 << ESAI_xCR_xEIE_SHIFT)
-#define ESAI_xCR_PADC_SHIFT	17
-#define ESAI_xCR_PADC_MASK	(1 << ESAI_xCR_PADC_SHIFT)
-#define ESAI_xCR_PADC		(1 << ESAI_xCR_PADC_SHIFT)
-#define ESAI_xCR_xFSL_SHIFT	15
-#define ESAI_xCR_xFSL_MASK	(1 << ESAI_xCR_xFSL_SHIFT)
-#define ESAI_xCR_xFSL		(1 << ESAI_xCR_xFSL_SHIFT)
-#define ESAI_xCR_xSWS_SHIFT	10
-#define ESAI_xCR_xSWS_WIDTH	5
-#define ESAI_xCR_xSWS_MASK	(((1 << ESAI_xCR_xSWS_WIDTH) - 1) << ESAI_xCR_xSWS_SHIFT)
-#define ESAI_xCR_xSWS(s, w)	((w < 24 ? (s - w + ((w - 8) >> 2)) : (s < 32 ? 0x1e : 0x1f)) << ESAI_xCR_xSWS_SHIFT)
-#define ESAI_xCR_xWA_SHIFT	7
-#define ESAI_xCR_xWA_MASK	(1 << ESAI_xCR_xWA_SHIFT)
-#define ESAI_xCR_xWA		(1 << ESAI_xCR_xWA_SHIFT)
+#define ESAI_SAICR_ALC		BIT(8)
+#define ESAI_SAICR_TEBE		BIT(7)
+#define ESAI_SAICR_SYN		BIT(6)
+#define ESAI_SAICR_OF2		BIT(2)
+#define ESAI_SAICR_OF1		BIT(1)
+#define ESAI_SAICR_OF0		BIT(0)
 
-#define ESAI_xCCR_xHCKD_SHIFT	23
-#define ESAI_xCCR_xHCKD_MASK	BIT(23)
+#define ESAI_xCR_xLIE		BIT(23)
+#define ESAI_xCR_xIE		BIT(22)
+#define ESAI_xCR_xEDIE		BIT(21)
+#define ESAI_xCR_xEIE		BIT(20)
+#define ESAI_xCR_xPR		BIT(19)
+#define ESAI_xCR_PADC		BIT(17) // tx only
+#define ESAI_xCR_xFSR		BIT(16)
+#define ESAI_xCR_xFSL		BIT(15)
+#define ESAI_xCR_xSWS_MASK	MASK(14, 10)
+#define ESAI_xCR_xSWS_VAL(s, w)	((w) < 24 ? ((s) - (w) + (((w) - 8) >> 2)) : ((s) < 32 ? 0x1e : 0x1f))
+#define ESAI_xCR_xSWS(s, w)	SET_BITS(14, 10, ESAI_xCR_xSWS_VAL(s, w))
+#define ESAI_xCR_xMOD_MASK	MASK(9, 8)
+#define ESAI_xCR_xMOD_NORMAL	SET_BITS(9, 8, 0)
+#define ESAI_xCR_xMOD_NETWORK	SET_BITS(9, 8, 1)
+#define ESAI_xCR_xMOD_AC97	SET_BITS(9, 8, 3)
+#define ESAI_xCR_xWA		BIT(7)
+#define ESAI_xCR_xSHFD		BIT(6)
+#define ESAI_xCR_TE_MASK	MASK(5, 0)
+#define ESAI_xCR_TE_SET(v)	SET_BITS(5, 0, v)
+#define ESAI_xCR_TE(v)		ESAI_xCR_TE_SET(MASK((v) - 1, 0))
+#define ESAI_xCR_RE_MASK	MASK(3, 0)
+#define ESAI_xCR_RE_SET(v)	SET_BITS(3, 0, v)
+#define ESAI_xCR_RE(v)		ESAI_xCR_RE_SET(MASK((v) - 1, 0))
+
 #define ESAI_xCCR_xHCKD		BIT(23)
-#define ESAI_xCCR_xFSD_SHIFT	22
-#define ESAI_xCCR_xFSD_MASK	(1 << ESAI_xCCR_xFSD_SHIFT)
-#define ESAI_xCCR_xFSD		(1 << ESAI_xCCR_xFSD_SHIFT)
-#define ESAI_xCCR_xCKD_SHIFT	21
-#define ESAI_xCCR_xCKD_MASK	(1 << ESAI_xCCR_xCKD_SHIFT)
-#define ESAI_xCCR_xCKD		(1 << ESAI_xCCR_xCKD_SHIFT)
-#define ESAI_xCCR_xHCKP_SHIFT	20
-#define ESAI_xCCR_xHCKP_MASK	(1 << ESAI_xCCR_xHCKP_SHIFT)
-#define ESAI_xCCR_xHCKP		(1 << ESAI_xCCR_xHCKP_SHIFT)
-#define ESAI_xCCR_xFSP_SHIFT	19
-#define ESAI_xCCR_xFSP_MASK	(1 << ESAI_xCCR_xFSP_SHIFT)
-#define ESAI_xCCR_xFSP		(1 << ESAI_xCCR_xFSP_SHIFT)
-#define ESAI_xCCR_xCKP_SHIFT	18
-#define ESAI_xCCR_xCKP_MASK	(1 << ESAI_xCCR_xCKP_SHIFT)
-#define ESAI_xCCR_xCKP		(1 << ESAI_xCCR_xCKP_SHIFT)
-#define ESAI_xCCR_xDC_SHIFT	9
-#define ESAI_xCCR_xDC_WIDTH	5
-#define ESAI_xCCR_xDC_MASK	((BIT(5)-1) << 9)
-#define ESAI_xCCR_xDC(v)	((((v) - 1) << ESAI_xCCR_xDC_SHIFT) & ESAI_xCCR_xDC_MASK)
-#define ESAI_xCCR_xFP_SHIFT	14
-#define ESAI_xCCR_xFP_WIDTH	4
-#define ESAI_xCCR_xFP_MASK	(((1 << ESAI_xCCR_xFP_WIDTH) - 1) << ESAI_xCCR_xFP_SHIFT)
-#define ESAI_xCCR_xFP(v)	((((v) - 1) << ESAI_xCCR_xFP_SHIFT) & ESAI_xCCR_xFP_MASK)
-#define ESAI_xCCR_xPSR_SHIFT	8
-#define ESAI_xCCR_xPSR_MASK	(1 << ESAI_xCCR_xPSR_SHIFT)
-#define ESAI_xCCR_xPSR_BYPASS	(1 << ESAI_xCCR_xPSR_SHIFT)
-#define ESAI_xCCR_xPSR_DIV8	(0 << ESAI_xCCR_xPSR_SHIFT)
+#define ESAI_xCCR_xFSD		BIT(22)
+#define ESAI_xCCR_xCKD		BIT(21)
+#define ESAI_xCCR_xHCKP		BIT(20)
+#define ESAI_xCCR_xFSP		BIT(19)
+#define ESAI_xCCR_xCKP		BIT(18)
+#define ESAI_xCCR_xFP_MASK	MASK(17, 14)
+#define ESAI_xCCR_xFP(div)	SET_BITS(17, 14, (div) - 1)
+#define ESAI_xCCR_xDC_MASK	MASK(13, 9)
+#define ESAI_xCCR_xDC(v)	SET_BITS(13, 9, (v) - 1)
+#define ESAI_xCCR_xDC_AC97	SET_BITS(13, 9, 0x0C)
+#define ESAI_xCCR_xPSR_MASK	MASK(8, 8)
+#define ESAI_xCCR_xPSR_BYPASS	SET_BITS(8, 8, 1)
+#define ESAI_xCCR_xPSR_DIV8	SET_BITS(8, 8, 0)
+#define ESAI_xCCR_xPM_MASK	MASK(7, 0)
+#define ESAI_xCCR_xPM(v)	SET_BITS(7, 0, (v) - 1)
 
-#define ESAI_xMOD_MASK		((3 << 8) | (15 << 10))
-#define ESAI_xMOD_NORMAL	(1 << 8)
-#define ESAI_xMOD_NETWORKCH(channels) ((channels-1) << 10)
+#define ESAI_xSMA_xS_MASK	MASK(15, 0)
+#define ESAI_xSMA_xS(v)		SET_BITS(15, 0, v)
+#define ESAI_xSMB_xS_MASK	MASK(15, 0)
+#define ESAI_xSMB_xS(v)		SET_BITS(15, 0, (v) >> 16)
 
-#define ESAI_PRRC_PDC_SHIFT	0
-#define ESAI_PRRC_PDC_WIDTH	12
-#define ESAI_PRRC_PDC_MASK	(((1 << ESAI_PRRC_PDC_WIDTH) - 1) << ESAI_PRRC_PDC_SHIFT)
-#define ESAI_PRRC_PDC(v)	((v) & ESAI_PRRC_PDC_MASK)
+#define ESAI_PRRC_PDC_MASK	MASK(11, 0)
+#define ESAI_PRRC_PDC(v)	SET_BITS(11, 0, v)
 
-#define ESAI_PCRC_PC_SHIFT	0
-#define ESAI_PCRC_PC_WIDTH	12
-#define ESAI_PCRC_PC_MASK	(((1 << ESAI_PCRC_PC_WIDTH) - 1) << ESAI_PCRC_PC_SHIFT)
-#define ESAI_PCRC_PC(v)		((v) & ESAI_PCRC_PC_MASK)
+#define ESAI_PCRC_PC_MASK	MASK(11, 0)
+#define ESAI_PCRC_PC(v)		SET_BITS(11, 0, v)
 
-#define ESAI_GPIO		0xfff
+#define ESAI_GPIO		MASK(11, 0)
 
 #define ESAI_IRQ		441
 
