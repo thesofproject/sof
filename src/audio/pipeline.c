@@ -517,7 +517,7 @@ static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 	int is_same_sched =
 		pipeline_is_same_sched_comp(current->pipeline,
 					    ppl_data->start->pipeline);
-	int err = 0;
+	int err;
 
 	tracev_pipe("pipeline_comp_trigger(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
@@ -730,7 +730,7 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	int is_single_ppl = comp_is_single_pipeline(current, ppl_data->start);
 	int is_same_sched =
 		pipeline_is_same_sched_comp(current->pipeline, ppl_data->p);
-	int err = 0;
+	int err;
 
 	tracev_pipe("pipeline_comp_copy(), current->comp.id = %u, dir = %u",
 		    current->comp.id, dir);
@@ -738,12 +738,12 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 	if (!is_single_ppl && !is_same_sched) {
 		tracev_pipe("pipeline_comp_copy(), current is from another "
 			    "pipeline and can't be scheduled together");
-		return err;
+		return 0;
 	}
 
 	if (!comp_is_active(current)) {
 		tracev_pipe("pipeline_comp_copy(), current is not active");
-		return err;
+		return 0;
 	}
 
 	/* copy to downstream immediately */
