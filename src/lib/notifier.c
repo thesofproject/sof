@@ -61,7 +61,7 @@ void notifier_event(struct notify_data *notify_data)
 {
 	struct notify *notify = *arch_notify_get();
 	struct idc_msg notify_msg = { IDC_MSG_NOTIFY, IDC_MSG_NOTIFY_EXT };
-	int i = 0;
+	int i;
 
 	spin_lock(notify->lock);
 
