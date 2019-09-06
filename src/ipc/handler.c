@@ -216,7 +216,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct sof_ipc_pcm_params_reply reply;
 	struct ipc_comp_dev *pcm_dev;
 	struct comp_dev *cd;
-	int err, posn_offset;
+	int err, reset_err, posn_offset;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(pcm_params, _ipc->comp_data);
@@ -258,6 +258,7 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	host = (struct sof_ipc_comp_host *)&cd->comp;
 	if (IPC_IS_SIZE_INVALID(host->config)) {
 		IPC_SIZE_ERROR_TRACE(TRACE_CLASS_IPC, host->config);
+		err = -EINVAL;
 		goto error;
 	}
 
@@ -307,6 +308,7 @@ pipe_params:
 
 	posn_offset = ipc_get_posn_offset(_ipc, pcm_dev->cd->pipeline);
 	if (posn_offset < 0) {
+		err = posn_offset;
 		trace_ipc_error("ipc: pipe %d comp %d posn offset failed %d",
 				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
 				pcm_params.comp_id, err);
@@ -322,12 +324,12 @@ pipe_params:
 	return 1;
 
 error:
-	err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
-	if (err < 0)
+	reset_err = pipeline_reset(pcm_dev->cd->pipeline, pcm_dev->cd);
+	if (reset_err < 0)
 		trace_ipc_error("ipc: pipe %d comp %d reset failed %d",
 				pcm_dev->cd->pipeline->ipc_pipe.pipeline_id,
-				pcm_params.comp_id, err);
-	return -EINVAL;
+				pcm_params.comp_id, reset_err);
+	return err;
 }
 
 /* free stream resources */
