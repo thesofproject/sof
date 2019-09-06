@@ -59,7 +59,7 @@ struct ll_queue_shared_context {
 
 	/* registered timers */
 	struct timer *timers[PLATFORM_CORE_COUNT];
-	struct timer_irq tirq[PLATFORM_CORE_COUNT];
+	void *irq_arg[PLATFORM_CORE_COUNT];
 };
 
 static struct ll_queue_shared_context *ll_shared_ctx;
@@ -80,19 +80,21 @@ static uint64_t ll_get_timer(struct ll_schedule_data *queue)
 
 static void ll_set_timer(struct ll_schedule_data *queue)
 {
+	int core = cpu_get_id();
 	uint64_t ticks;
 
 	spin_lock(ll_shared_ctx->lock);
 
 	if (atomic_add(&queue->num_ll, 1) == 1)
-		ll_shared_ctx->timers[cpu_get_id()] = &queue->ts->timer;
+		ll_shared_ctx->timers[core] = &queue->ts->timer;
 
 	if (atomic_add(&ll_shared_ctx->total_num_work, 1) == 1) {
 		ticks = queue_calc_next_timeout(queue, ll_get_timer(queue));
 		ll_shared_ctx->last_tick = ticks;
 		queue->ts->timer_set(&queue->ts->timer, ticks);
 		atomic_add(&ll_shared_ctx->timer_clients, 1);
-		timer_enable(&queue->ts->timer);
+		timer_enable(&queue->ts->timer, ll_shared_ctx->irq_arg[core],
+			     core);
 	}
 
 	spin_unlock(ll_shared_ctx->lock);
@@ -255,7 +257,8 @@ static void queue_enable_registered_timers(void)
 	for (i = 0; i < PLATFORM_CORE_COUNT; i++) {
 		if (ll_shared_ctx->timers[i]) {
 			atomic_add(&ll_shared_ctx->timer_clients, 1);
-			timer_enable(ll_shared_ctx->timers[i]);
+			timer_enable(ll_shared_ctx->timers[i],
+				     ll_shared_ctx->irq_arg[i], i);
 		}
 	}
 }
@@ -288,9 +291,10 @@ static void queue_reschedule(struct ll_schedule_data *queue)
 static void queue_run(void *data)
 {
 	struct ll_schedule_data *queue = (struct ll_schedule_data *)data;
+	int core = cpu_get_id();
 	uint32_t flags;
 
-	timer_disable(&queue->ts->timer);
+	timer_disable(&queue->ts->timer, ll_shared_ctx->irq_arg[core], core);
 
 	irq_local_disable(flags);
 
@@ -517,19 +521,9 @@ int scheduler_init_ll(void)
 	scheduler_init(SOF_SCHEDULE_LL, &schedule_ll_ops, sch);
 
 	if (cpu == PLATFORM_MASTER_CORE_ID) {
-		unsigned int i;
-
 		ll_shared_ctx = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED,
 					SOF_MEM_CAPS_RAM,
 					sizeof(*ll_shared_ctx));
-
-		for (i = 0, ts = platform_generic_queue;
-		     i < PLATFORM_CORE_COUNT; i++, ts++) {
-			ts->timer.tirq = ll_shared_ctx->tirq + i;
-			dcache_writeback_region(&ts->timer.tirq,
-						sizeof(ts->timer.tirq));
-		}
-
 		spinlock_init(&ll_shared_ctx->lock);
 		atomic_init(&ll_shared_ctx->total_num_work, 0);
 		atomic_init(&ll_shared_ctx->timer_clients, 0);
@@ -537,6 +531,9 @@ int scheduler_init_ll(void)
 
 	/* register system timer */
 	timer_register(&platform_generic_queue[cpu].timer, queue_run, sch);
+
+	/* save interrupt argument */
+	ll_shared_ctx->irq_arg[cpu] = sch;
 
 	return 0;
 }
@@ -574,7 +571,8 @@ static void scheduler_free_ll(void *data)
 
 	irq_local_disable(flags);
 
-	timer_unregister(&sch->ts->timer);
+	timer_unregister(&sch->ts->timer,
+			 ll_shared_ctx->irq_arg[cpu_get_id()]);
 
 	notifier_unregister(&sch->notifier);
 

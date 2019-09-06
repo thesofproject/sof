@@ -31,11 +31,10 @@ struct timesource_data {
 
 extern struct timesource_data platform_generic_queue[];
 
-int timer_register(struct timer *timer,
-	void (*handler)(void *arg), void *arg);
-void timer_unregister(struct timer *timer);
-void timer_enable(struct timer *timer);
-void timer_disable(struct timer *timer);
+int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg);
+void timer_unregister(struct timer *timer, void *arg);
+void timer_enable(struct timer *timer, void *arg, int core);
+void timer_disable(struct timer *timer, void *arg, int core);
 
 static inline int timer_set(struct timer *timer, uint64_t ticks)
 {
