@@ -44,7 +44,7 @@ blob8_new(1:n_orig) = blob8;
 fh = fopen(fn, 'w');
 nl = 8;
 fprintf(fh, '# %s %s\n', comment, date());
-fprintf(fh, 'CONTROLBYTES_PRIV(EQ%s_priv,\n', upper(eqtype));
+fprintf(fh, 'CONTROLBYTES_PRIV(EQ%s_priv,\n', eqtype);
 fprintf(fh, '`       bytes "');
 for i = 1:nl:n_new
 	if i > 1
