@@ -95,9 +95,4 @@ void init_system_notify(struct sof *sof)
 
 void free_system_notify(void)
 {
-	struct notify *notify = *arch_notify_get();
-
-	spin_lock(notify->lock);
-	list_item_del(&notify->list);
-	spin_unlock(notify->lock);
 }
