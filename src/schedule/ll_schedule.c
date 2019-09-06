@@ -65,18 +65,18 @@ struct ll_queue_shared_context {
 static struct ll_queue_shared_context *ll_shared_ctx;
 
 /* calculate next timeout */
-static inline uint64_t queue_calc_next_timeout(struct ll_schedule_data *queue,
-					       uint64_t start)
+static uint64_t queue_calc_next_timeout(struct ll_schedule_data *queue,
+					uint64_t start)
 {
 	return queue->ticks_per_msec * queue->timeout / 1000 + start;
 }
 
-static inline uint64_t ll_get_timer(struct ll_schedule_data *queue)
+static uint64_t ll_get_timer(struct ll_schedule_data *queue)
 {
 	return queue->ts->timer_get(&queue->ts->timer);
 }
 
-static inline void ll_set_timer(struct ll_schedule_data *queue)
+static void ll_set_timer(struct ll_schedule_data *queue)
 {
 	uint64_t ticks;
 
@@ -96,7 +96,7 @@ static inline void ll_set_timer(struct ll_schedule_data *queue)
 	spin_unlock(ll_shared_ctx->lock);
 }
 
-static inline void ll_clear_timer(struct ll_schedule_data *queue)
+static void ll_clear_timer(struct ll_schedule_data *queue)
 {
 	spin_lock(ll_shared_ctx->lock);
 
@@ -154,12 +154,12 @@ static int is_ll_pending(struct ll_schedule_data *queue)
 	return pending_count;
 }
 
-static inline void ll_next_timeout(struct ll_schedule_data *queue,
-				   struct task *work)
+static void ll_next_timeout(struct ll_schedule_data *queue,
+			    struct task *work)
 {
 	/* reschedule work */
 	struct ll_task_pdata *ll_task_pdata = ll_sch_get_pdata(work);
-	uint64_t next_d = 0;
+	uint64_t next_d;
 
 	next_d = queue->ticks_per_msec * ll_task_pdata->period / 1000;
 
@@ -206,18 +206,13 @@ static void run_ll(struct ll_schedule_data *queue, uint32_t *flags)
 	}
 }
 
-static inline uint64_t calc_delta_ticks(uint64_t current, uint64_t work)
+static uint64_t calc_delta_ticks(uint64_t current, uint64_t work)
 {
-	uint64_t max = UINT64_MAX;
-
 	/* does work run in next cycle ? */
-	if (work < current) {
-		max -= current;
-		max += work;
-		return max;
-	} else {
+	if (work >= current)
 		return work - current;
-	}
+
+	return UINT64_MAX - current + work;
 }
 
 /* re calculate timers for queue after CPU frequency change */
@@ -336,8 +331,7 @@ static void ll_notify(int message, void *data, void *event_data)
 	irq_local_enable(flags);
 }
 
-static inline void insert_task_to_queue(struct task *w,
-					struct list_item *q_list)
+static void insert_task_to_queue(struct task *w, struct list_item *q_list)
 {
 	struct task *ll_task;
 	struct list_item *wlist;
@@ -515,7 +509,6 @@ static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
 
 static int ll_scheduler_init(struct sof *sof)
 {
-	int ret = 0;
 	int cpu;
 	struct schedule_data *sch_data = *arch_schedule_get_data();
 	struct timesource_data *ts;
@@ -548,7 +541,7 @@ static int ll_scheduler_init(struct sof *sof)
 	timer_register(&platform_generic_queue[cpu].timer, queue_run,
 		       sch_data->ll_sch_data);
 
-	return ret;
+	return 0;
 }
 
 /* initialise our work */
