@@ -29,9 +29,9 @@
 	tracev_event(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
 
 #define ll_sch_set_pdata(task, data) \
-	(task->private = data)
+	do { (task)->private = (data); } while (0)
 
-#define ll_sch_get_pdata(task) task->private
+#define ll_sch_get_pdata(task) ((task)->private)
 
 struct ll_task_pdata {
 	uint64_t period;
