@@ -74,35 +74,26 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 
 int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
-	struct timer_irq *tirq = timer->tirq;
-
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
-		tirq->irq_arg = arg;
 		return arch_timer_register(timer, handler, arg);
 	default:
 		return -EINVAL;
 	}
 }
 
-void timer_unregister(struct timer *timer)
+void timer_unregister(struct timer *timer, void *arg)
 {
-	struct timer_irq *tirq = timer->tirq;
-
-	interrupt_unregister(timer->irq, tirq->irq_arg);
+	interrupt_unregister(timer->irq, arg);
 }
 
-void timer_enable(struct timer *timer)
+void timer_enable(struct timer *timer, void *arg, int core)
 {
-	struct timer_irq *tirq = timer->tirq;
-
-	interrupt_enable(timer->irq, tirq->irq_arg);
+	interrupt_enable(timer->irq, arg);
 }
 
-void timer_disable(struct timer *timer)
+void timer_disable(struct timer *timer, void *arg, int core)
 {
-	struct timer_irq *tirq = timer->tirq;
-
-	interrupt_disable(timer->irq, tirq->irq_arg);
+	interrupt_disable(timer->irq, arg);
 }

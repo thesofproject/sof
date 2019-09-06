@@ -95,32 +95,29 @@ void platform_dai_wallclock(struct comp_dev *dai, uint64_t *wallclock)
 static int platform_timer_register(struct timer *timer,
 				   void (*handler)(void *arg), void *arg)
 {
-	struct timer_irq *tirq = timer->tirq;
 	int err;
 
 	/* register timer interrupt */
-	tirq->logical_irq = interrupt_get_irq(timer->irq, timer->irq_name);
-	if (tirq->logical_irq < 0)
-		return tirq->logical_irq;
-	err = interrupt_register(tirq->logical_irq, IRQ_MANUAL_UNMASK, handler,
+	timer->logical_irq = interrupt_get_irq(timer->irq, timer->irq_name);
+	if (timer->logical_irq < 0)
+		return timer->logical_irq;
+
+	err = interrupt_register(timer->logical_irq, IRQ_MANUAL_UNMASK, handler,
 				 arg);
 	if (err < 0)
 		return err;
 
-	tirq->irq_arg = arg;
-
 	/* enable timer interrupt */
-	interrupt_enable(tirq->logical_irq, arg);
+	interrupt_enable(timer->logical_irq, arg);
 
 	/* disable timer interrupt on core level */
-	timer_disable(timer);
+	timer_disable(timer, arg, cpu_get_id());
 
 	return err;
 }
 
-int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
+int timer_register(struct timer *timer, void (*handler)(void *arg), void *arg)
 {
-	struct timer_irq *tirq = timer->tirq;
 	int ret;
 
 	switch (timer->id) {
@@ -128,21 +125,10 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 	case TIMER1:
 	case TIMER2:
 		ret = arch_timer_register(timer, handler, arg);
-		if (ret < 0)
-			return ret;
-		/*
-		 * Actually this isn't needed for arch_interrupt_register(),
-		 * since arch_interrupt_unregister() doesn't support interrupt
-		 * sharing and thus doesn't need the handler argument to locate
-		 * the handler, do it just for uniformity
-		 */
-		tirq->irq_arg = arg;
 		break;
 	case TIMER3:
 	case TIMER4:
 		ret = platform_timer_register(timer, handler, arg);
-		if (ret < 0)
-			return ret;
 		break;
 	default:
 		return -EINVAL;
@@ -151,64 +137,56 @@ int timer_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 	return ret;
 }
 
-static void platform_timer_unregister(struct timer *timer)
+static void platform_timer_unregister(struct timer *timer, void *arg)
 {
-	struct timer_irq *tirq = timer->tirq;
-
 	/* disable timer interrupt */
-	interrupt_disable(tirq->logical_irq, tirq->irq_arg);
+	interrupt_disable(timer->logical_irq, arg);
 
 	/* unregister timer interrupt */
-	interrupt_unregister(tirq->logical_irq, tirq->irq_arg);
+	interrupt_unregister(timer->logical_irq, arg);
 }
 
-void timer_unregister(struct timer *timer)
+void timer_unregister(struct timer *timer, void *arg)
 {
-	struct timer_irq *tirq = timer->tirq;
-
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_unregister(tirq->logical_irq, tirq->irq_arg);
+		interrupt_unregister(timer->logical_irq, arg);
 		break;
 	case TIMER3:
 	case TIMER4:
-		platform_timer_unregister(timer);
+		platform_timer_unregister(timer, arg);
 		break;
 	}
 }
 
-void timer_enable(struct timer *timer)
+void timer_enable(struct timer *timer, void *arg, int core)
 {
-	struct timer_irq *tirq = timer->tirq;
-
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_enable(tirq->logical_irq, tirq->irq_arg);
+		interrupt_enable(timer->logical_irq, arg);
 		break;
 	case TIMER3:
 	case TIMER4:
-		interrupt_unmask(tirq->logical_irq, timer->core);
+		interrupt_unmask(timer->logical_irq, core);
 		break;
 	}
 }
 
-void timer_disable(struct timer *timer)
+void timer_disable(struct timer *timer, void *arg, int core)
 {
-	struct timer_irq *tirq = timer->tirq;
-
 	switch (timer->id) {
 	case TIMER0:
 	case TIMER1:
 	case TIMER2:
-		interrupt_disable(tirq->logical_irq, tirq->irq_arg);
+		interrupt_disable(timer->logical_irq, arg);
 		break;
 	case TIMER3:
 	case TIMER4:
-		interrupt_mask(tirq->logical_irq, timer->core);
+		interrupt_mask(timer->logical_irq, core);
 		break;
 	}
 }
