@@ -143,10 +143,28 @@ int platform_boot_complete(uint32_t boot_message)
 	return 0;
 }
 
+int can_start = 0;
+
+extern int __dsp_printf(char *format, ...);
+
+static void irq_handler(void *arg)
+{
+	if (!can_start)
+		return;
+	__dsp_printf("%p\n", arg);
+}
+
 int platform_init(struct sof *sof)
 {
 	int ret;
 	struct dai *esai;
+
+	for (int i = 0; i < 32; i++) {
+		if (i == 2) continue;
+		if (i == 3) continue;
+		arch_interrupt_register(i, irq_handler, (void *)i);
+		arch_interrupt_enable_mask(1 << i);
+	}
 
 	clock_init();
 	scheduler_init(sof);
@@ -181,6 +199,8 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
 	dma_trace_init_complete(sof->dmat);
 #endif
+
+	can_start = 1;
 
 	return 0;
 }

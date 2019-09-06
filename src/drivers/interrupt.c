@@ -164,10 +164,10 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 
 	hw_irq = irq - cascade->irq_base;
 
-	tracev_irq("irq_register_child()");
+	tracev_irq("irq_register_child(SOF irq %d offsetted %d)", irq, hw_irq);
 	if (hw_irq < 0 || cascade->irq_base + PLATFORM_IRQ_CHILDREN <= irq) {
 		trace_error(TRACE_CLASS_IRQ,
-			    "error: IRQ 0x%x out of child IRQ range!", irq);
+			    "error: IRQ %d out of child IRQ range!", irq);
 		return -EINVAL;
 	}
 
@@ -178,14 +178,14 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 
 		if (child->handler_arg == arg) {
 			trace_error(TRACE_CLASS_IRQ,
-				    "error: IRQ 0x%x handler argument re-used!",
+				    "error: IRQ %d handler argument re-used!",
 				    irq);
 			return -EEXIST;
 		}
 
 		if (child->unmask != unmask) {
 			trace_error(TRACE_CLASS_IRQ,
-				    "error: IRQ 0x%x flags differ!", irq);
+				    "error: IRQ %d flags differ!", irq);
 			return -EINVAL;
 		}
 	}
@@ -198,7 +198,7 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 				SOF_MEM_CAPS_RAM, sizeof(struct irq_desc));
 		if (!child) {
 			trace_error(TRACE_CLASS_IRQ,
-				    "error: IRQ 0x%x could not be registered due to OOM (unable to allocate descriptor)",
+				    "error: IRQ %d could not be registered due to OOM (unable to allocate descriptor)",
 				    irq);
 			return -ENOMEM;
 		}
@@ -214,7 +214,7 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 	child->unmask = unmask;
 
 	list_item_append(&child->irq_list, head);
-	tracev_event(TRACE_CLASS_IRQ, "Added IRQ 0x%x to list", irq);
+	tracev_event(TRACE_CLASS_IRQ, "Added IRQ %d to list", irq);
 
 	/* do we need to register parent on this CPU? */
 	if (!cascade->num_children[core])
@@ -369,8 +369,10 @@ static int interrupt_register_internal(uint32_t irq, int unmask,
 	tracev_irq("interrupt_register(%d)", irq);
 	/* no parent means we are registering DSP internal IRQ */
 	cascade = interrupt_get_parent(irq);
-	if (!cascade)
+	if (!cascade) {
+		tracev_irq("interrupt_register(native %d)", irq);
 		return arch_interrupt_register(irq, handler, arg);
+	}
 
 	spin_lock_irq(cascade->lock, flags);
 	ret = irq_register_child(cascade, irq, unmask, handler, arg, desc);

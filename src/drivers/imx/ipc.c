@@ -124,8 +124,10 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (ipc->pm_prepare_D3) {
-		while (1)
+		while (1) {
+			tracev_ipc("wait_for_interrupt in ipc->pm_prepare_D3 in ipc_platform_do_cmd");
 			wait_for_interrupt(0);
+		}
 	}
 }
 

@@ -181,6 +181,7 @@ static void irqstr_unmask_int(uint32_t irq)
 }
 
 /* Hack, unmask ALL IRQ_STR interrupts */
+__attribute__((unused))
 static void irqstr_unmask_all(void)
 {
 	uint32_t reg;
@@ -260,6 +261,10 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 			child = container_of(clist, struct irq_desc, irq_list);
 
 			if (child->handler && (child->cpu_mask & 1 << core)) {
+				tracev_irq("IRQ_STR: interrupt %d handler %p arg %p",
+					   line_index * 64 + bit,
+					   (uintptr_t)child->handler,
+					   (uintptr_t)child->handler_arg);
 				child->handler(child->handler_arg);
 				handled = true;
 			}
@@ -270,6 +275,8 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 		if (!handled) {
 			trace_irq_error("IRQ_STR: irq_handler(): nobody cared, interrupt %d",
 					line_index * 64 + bit);
+			panic(SOF_IPC_PANIC_EXCEPTION);
+			/* XXX UNREACHABLE */
 			/* Mask this interrupt so it won't happen again */
 			irqstr_mask_int(line_index * IRQSTR_IRQS_PER_LINE + bit);
 		}
@@ -283,6 +290,9 @@ static inline void irq_handler(void *data, uint32_t line_index)
 		container_of(parent, struct irq_cascade_desc, desc);
 	uint64_t status;
 	uint32_t tries = IRQ_MAX_TRIES;
+
+	tracev_irq("IRQ_STEER line %d got interrupt (means ints %d-%d)",
+		   line_index, line_index * 64, line_index * 64 + 63);
 
 	status = get_irqsteer_interrupts(line_index);
 
@@ -411,7 +421,7 @@ void platform_interrupt_init(void)
 		interrupt_cascade_register(dsp_irq + i);
 
 	/* Hack: unmask every interrupt */
-	irqstr_unmask_all();
+	//irqstr_unmask_all();
 }
 
 void platform_interrupt_set(uint32_t irq)

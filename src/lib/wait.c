@@ -29,8 +29,10 @@ int wait_for_completion_timeout(completion_t *comp)
 	comp->timeout = 0;
 
 	/* check for completion after every wake from IRQ */
-	while (!c->complete && !c->timeout)
+	while (!c->complete && !c->timeout) {
+		tracev_event(TRACE_CLASS_WAIT, "wait_for_completion_timeout");
 		wait_for_interrupt(0);
+	}
 
 	/* did we complete */
 	if (c->complete) {

@@ -34,6 +34,7 @@ enum task_state task_main_slave_core(void *data)
 	/* main audio processing loop */
 	while (1) {
 		/* sleep until next IDC or DMA */
+		trace_event(TRACE_CLASS_IRQ, "wait_for_interrupt in do_task_slave_core");
 		wait_for_interrupt(0);
 	}
 #endif

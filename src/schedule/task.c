@@ -38,6 +38,8 @@ static void sys_module_init(void)
 		((void(*)(void))(*module_init))();
 }
 
+extern int __dsp_printf(char *format, ...);
+
 enum task_state task_main_master_core(void *data)
 {
 	struct sof *sof = data;
@@ -46,6 +48,7 @@ enum task_state task_main_master_core(void *data)
 	while (1) {
 		/* sleep until next IPC or DMA */
 		sa_enter_idle(sof);
+		__dsp_printf("task_main_master_core() idle\n");
 		wait_for_interrupt(0);
 
 		/* now process any IPC messages to host */

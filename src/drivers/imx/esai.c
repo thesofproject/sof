@@ -190,8 +190,11 @@ static inline int esai_set_config(struct dai *dai,
 	 * probe() should be able to do it right
 	 */
 
-	esai_probe(dai);
+	//esai_probe(dai);
 
+	/* Remove "RESET" flag */
+	dai_update_bits(dai, REG_ESAI_ECR, ESAI_ECR_ERST, 0);
+	
 	dai_update_bits(dai, REG_ESAI_ECR, ESAI_ECR_ETI, ESAI_ECR_ETI);
 
 	mask = ESAI_xCCR_xCKP | ESAI_xCCR_xHCKP | ESAI_xCCR_xFSP |
@@ -210,7 +213,9 @@ static inline int esai_set_config(struct dai *dai,
 	dai_update_bits(dai, REG_ESAI_xCCR(1), mask, xccr); /* tx */
 
 	mask = ESAI_xCR_xFSL | ESAI_xCR_xFSR | ESAI_xCR_xWA |
-		ESAI_xCR_xMOD_MASK | ESAI_xCR_xSWS_MASK | ESAI_xCR_PADC;
+		ESAI_xCR_xMOD_MASK | ESAI_xCR_xSWS_MASK | ESAI_xCR_PADC |
+		ESAI_xCR_xPR;
+	xcr |= ESAI_xCR_xPR;
 
 	if (~mask & xcr) {
 		trace_esai_error("XCR bits not caught by mask: 0x%08x",
@@ -247,8 +252,11 @@ static inline int esai_set_config(struct dai *dai,
 
 
 	/* Remove ESAI personal reset */
-	//dai_update_bits(dai, REG_ESAI_PRRC, ESAI_PRRC_PDC_MASK,
-	//		ESAI_PRRC_PDC(ESAI_GPIO));
+	dai_update_bits(dai, REG_ESAI_xCR(0), ESAI_xCR_xPR, 0);
+	dai_update_bits(dai, REG_ESAI_xCR(1), ESAI_xCR_xPR, 0);
+
+	dai_update_bits(dai, REG_ESAI_PRRC, ESAI_PRRC_PDC_MASK,
+			ESAI_PRRC_PDC(ESAI_GPIO));
 	dai_update_bits(dai, REG_ESAI_PCRC, ESAI_PCRC_PC_MASK,
 			ESAI_PCRC_PC(ESAI_GPIO));
 
@@ -264,6 +272,24 @@ static void esai_start(struct dai *dai, int direction)
 	dai_update_bits(dai, REG_ESAI_xFCR(direction), ESAI_xFCR_xFEN_MASK,
 			ESAI_xFCR_xFEN);
 
+#if 1
+	/* enable regular interrupt */
+	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE,
+			ESAI_xCR_xIE);
+#endif
+#if 1
+	/* enable exception interrupt */
+	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE,
+			ESAI_xCR_xEIE);
+#endif
+#if 1
+	/* Write a few zero samples, one per channel, for initialization */
+	/* TODO determine the correct number of samples */
+	if (direction) {
+		for (int i = 0; i < 96; i++)
+			dai_write(dai, REG_ESAI_ETDR, 0);
+	}
+#endif
 	
 	dai_update_bits(dai, REG_ESAI_xCR(direction),
 			direction ? ESAI_xCR_TE_MASK : ESAI_xCR_RE_MASK,
@@ -275,12 +301,6 @@ static void esai_start(struct dai *dai, int direction)
 	dai_update_bits(dai, REG_ESAI_xSMA(direction), ESAI_xSMA_xS_MASK,
 			ESAI_xSMA_xS(0x3));
 
-	/* enable regular interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE,
-			ESAI_xCR_xIE);
-	/* enable exception interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE,
-			ESAI_xCR_xEIE);
 	tracev_esai("ESAI_REGS_DUMP in esai_start");
 	esai_regs_dump(dai);
 }
@@ -289,20 +309,21 @@ static void esai_stop(struct dai *dai, int direction)
 {
 	direction = direction == SOF_IPC_STREAM_PLAYBACK;
 	/* disable exception interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE, 0);
+	//dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xEIE, 0);
 	/* disable regular interrupt */
-	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE, 0);
+//	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE, 0);
 
-	dai_update_bits(dai, REG_ESAI_xCR(direction),
-			direction ? ESAI_xCR_TE_MASK : ESAI_xCR_RE_MASK, 0);
+//	dai_update_bits(dai, REG_ESAI_xCR(direction),
+//			direction ? ESAI_xCR_TE_MASK : ESAI_xCR_RE_MASK, 0);
 
-	dai_update_bits(dai, REG_ESAI_xSMA(direction), ESAI_xSMA_xS_MASK, 0);
-	dai_update_bits(dai, REG_ESAI_xSMB(direction), ESAI_xSMB_xS_MASK, 0);
+//	dai_update_bits(dai, REG_ESAI_xSMA(direction), ESAI_xSMA_xS_MASK, 0);
+//	dai_update_bits(dai, REG_ESAI_xSMB(direction), ESAI_xSMB_xS_MASK, 0);
 
 	/* disable and reset FIFO */
-	dai_update_bits(dai, REG_ESAI_xFCR(direction),
-			ESAI_xFCR_xFR | ESAI_xFCR_xFEN, ESAI_xFCR_xFR);
-	dai_update_bits(dai, REG_ESAI_xFCR(direction), ESAI_xFCR_xFR, 0);
+//	dai_update_bits(dai, REG_ESAI_xFCR(direction),
+//			ESAI_xFCR_xFR | ESAI_xFCR_xFEN, ESAI_xFCR_xFR);
+//	dai_update_bits(dai, REG_ESAI_xFCR(direction), ESAI_xFCR_xFR, 0);
+
 	tracev_esai("ESAI_REGS_DUMP in esai_stop");
 	esai_regs_dump(dai);
 }
@@ -350,9 +371,16 @@ static int esai_trigger(struct dai *dai, int cmd, int direction)
 	return 0;
 }
 
+__attribute__((used))
 static void esai_irq(void *ign)
 {
 	tracev_esai("ESAI: irq");
+}
+
+__attribute__((unused))
+static void esai_irq2(void *ign)
+{
+	tracev_esai("ESAI: irq2");
 }
 
 static int esai_probe(struct dai *dai)
@@ -361,6 +389,10 @@ static int esai_probe(struct dai *dai)
 	tracev_esai("ESAI: probe");
 	/* ESAI core reset */
 	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ERST | ESAI_ECR_ESAIEN);
+	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ESAIEN);
+	/* ESAI personal reset (should be default tho) */
+	dai_write(dai, REG_ESAI_PRRC, 0);
+	dai_write(dai, REG_ESAI_PCRC, 0);
 	/* We should do ESAI individual reset for the FIFOs */
 	dai_write(dai, REG_ESAI_TFCR, ESAI_xFCR_xFR);
 	dai_write(dai, REG_ESAI_RFCR, ESAI_xFCR_xFR);

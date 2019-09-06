@@ -18,11 +18,15 @@ struct timer_data {
 
 static struct timer_data xtimer[ARCH_TIMER_COUNT];
 
+extern int __dsp_printf(char *format, ...);
+
 void timer_64_handler(void *arg)
 {
 	struct timer *timer = arg;
 	struct timer_data *tdata = timer->timer_data;
 	uint32_t ccompare;
+
+	__dsp_printf("timer_64_handler()");
 
 	if (timer->id >= ARCH_TIMER_COUNT)
 		return;

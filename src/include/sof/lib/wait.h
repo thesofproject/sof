@@ -82,8 +82,10 @@ static inline void wait_clear(completion_t *comp)
 static inline void wait_for_completion(completion_t *comp)
 {
 	/* check for completion after every wake from IRQ */
-	while (comp->complete == 0)
+	while (comp->complete == 0) {
+		tracev_event(TRACE_CLASS_WAIT, "wait_for_completion");
 		wait_for_interrupt(0);
+	}
 }
 
 /**
