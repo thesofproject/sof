@@ -53,8 +53,8 @@ out:
 int scheduler_init(struct sof *sof)
 {
 	struct schedule_data **sch = arch_schedule_get_data();
-	int i = 0;
 	int ret = 0;
+	int i;
 
 	/* init scheduler_data */
 	*sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**sch));
@@ -82,7 +82,7 @@ void schedule_free(void)
 
 void schedule(void)
 {
-	int i = 0;
+	int i;
 
 	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
 		if (schedulers[i]->scheduler_run)
