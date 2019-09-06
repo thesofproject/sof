@@ -16,7 +16,7 @@ struct timer_data {
 	void *arg2;
 };
 
-static struct timer_data xtimer[ARCH_TIMER_COUNT] = {};
+static struct timer_data xtimer[ARCH_TIMER_COUNT];
 
 void timer_64_handler(void *arg)
 {
