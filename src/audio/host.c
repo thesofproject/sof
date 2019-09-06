@@ -371,8 +371,6 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	struct sof_ipc_comp_host *host;
 	struct comp_dev *dev;
 	struct host_data *hd;
-	uint32_t dma_dev = DMA_DEV_HOST;
-	uint32_t caps = 0;
 	uint32_t dir;
 
 	trace_host("host_new()");
@@ -403,7 +401,7 @@ static struct comp_dev *host_new(struct sof_ipc_comp *comp)
 	dir = ipc_host->direction == SOF_IPC_STREAM_PLAYBACK ?
 		DMA_DIR_HMEM_TO_LMEM : DMA_DIR_LMEM_TO_HMEM;
 
-	hd->dma = dma_get(dir, caps, dma_dev, DMA_ACCESS_SHARED);
+	hd->dma = dma_get(dir, 0, DMA_DEV_HOST, DMA_ACCESS_SHARED);
 	if (!hd->dma) {
 		trace_host_error("host_new() error: dma_get() returned NULL");
 		rfree(hd);
