@@ -218,6 +218,10 @@ static int ipc_stream_pcm_params(uint32_t stream)
 	struct comp_dev *cd;
 	int err, reset_err, posn_offset;
 
+#if !CONFIG_HOST_PTABLE
+	trace_ipc("ipc: NO HOST PTABLE, HOW ARE WE SUPPOSED TO HANDLE");	
+#endif
+
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(pcm_params, _ipc->comp_data);
 
@@ -262,12 +266,15 @@ static int ipc_stream_pcm_params(uint32_t stream)
 		goto error;
 	}
 
+	trace_ipc("ipc: about to process_host_buffer");
 	err = ipc_process_host_buffer(_ipc, &pcm_params.params.buffer,
 				      host->direction,
 				      &elem_array,
 				      &ring_size);
 	if (err < 0)
 		goto error;
+
+	trace_ipc("ipc: after process_host_buffer");
 
 	err = comp_set_attribute(cd, COMP_ATTR_HOST_BUFFER, &elem_array);
 	if (err < 0) {
@@ -532,9 +539,11 @@ static int ipc_dai_config(uint32_t header)
 	trace_ipc("ipc: dai %d,%d -> config ", config.type,
 		  config.dai_index);
 
-	return 0;
+	//return 0;
 
 	/* get DAI */
+	if (config.type == SOF_DAI_IMX_SAI)
+		config.type = SOF_DAI_IMX_ESAI;
 	dai = dai_get(config.type, config.dai_index, 0 /* existing only */);
 	if (dai == NULL) {
 		trace_ipc_error("ipc: dai %d,%d not found",
@@ -697,6 +706,12 @@ static int ipc_dma_trace_config(uint32_t header)
 #endif
 	struct sof_ipc_dma_trace_params_ext params;
 	int err;
+	uint32_t dir, cap, dev;
+
+	/* Maybe unused */
+	(void) dir;
+	(void) cap;
+	(void) dev;
 
 	/* copy message with ABI safe method */
 	IPC_COPY_CMD(params, _ipc->comp_data);
@@ -711,10 +726,12 @@ static int ipc_dma_trace_config(uint32_t header)
 #endif
 
 #if CONFIG_HOST_PTABLE
+	trace_ipc("INB4 process_host_buffer in ipc_dma_trace_config");
 	err = ipc_process_host_buffer(_ipc, &params.buffer,
 				      SOF_IPC_STREAM_CAPTURE,
 				      &elem_array,
 				      &ring_size);
+	trace_ipc("survived process_host_buffer in ipc_dma_trace_config");
 	if (err < 0)
 		goto error;
 
@@ -731,8 +748,19 @@ static int ipc_dma_trace_config(uint32_t header)
 	/* host buffer size for DMA trace */
 	_ipc->dmat->host_size = params.buffer.size;
 #endif
+	dir = DMA_DIR_LMEM_TO_HMEM;
+	dev = DMA_DEV_HOST;
+	cap = 0;
+	_ipc->dmat->dc.dmac = dma_get(dir, cap, dev, DMA_ACCESS_SHARED);
 
+	trace_ipc("ipc: dma_get for DMA trace finished");
+	if (_ipc->dmat->dc.dmac == NULL) {
+		trace_ipc_error("ipc: failed to get DMA trace, err %d", err);
+		goto error;
+	}
+	
 	err = dma_trace_enable(_ipc->dmat);
+	trace_ipc("ipc: dma_trace_enable finished");
 	if (err < 0) {
 		trace_ipc_error("ipc: failed to enable trace %d", err);
 		goto error;
@@ -741,6 +769,7 @@ static int ipc_dma_trace_config(uint32_t header)
 	return 0;
 
 error:
+	trace_ipc_error("ipc_dma_trace_config error");
 	return err;
 }
 

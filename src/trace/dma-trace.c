@@ -102,6 +102,8 @@ out:
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
+int __dsp_printf(char *format, ...);
+
 int dma_trace_init_early(struct sof *sof)
 {
 	trace_data = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
@@ -127,6 +129,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 				   "dma_copy_new() failed");
 		return ret;
 	}
+	trace_buffer("dma_trace_init_complete() got DMA copy context");
 
 	ret = dma_get_attribute(d->dc.dmac, DMA_ATTR_COPY_ALIGNMENT,
 				&d->dma_copy_align);
@@ -138,8 +141,12 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		return ret;
 	}
 
+	trace_buffer("dma_trace_init_complete() got DMA attribute");
+
 	schedule_task_init(&d->dmat_work, SOF_SCHEDULE_LL,
 			   SOF_TASK_PRI_MED, trace_work, d, 0, 0);
+
+	trace_buffer("dma_trace_init_complete() -> Task initialized");
 
 	return 0;
 }
@@ -282,6 +289,7 @@ int dma_trace_enable(struct dma_trace_data *d)
 
 	/* initialize dma trace buffer */
 	err = dma_trace_buffer_init(d);
+	trace_buffer("dma_trace_buffer_init returned %d", err);
 	if (err < 0)
 		return err;
 
@@ -303,7 +311,9 @@ int dma_trace_enable(struct dma_trace_data *d)
 	}
 
 	d->enabled = 1;
+	trace_buffer("About to schedule task for dma trace");
 	schedule_task(&d->dmat_work, DMA_TRACE_PERIOD, DMA_TRACE_PERIOD);
+	trace_buffer("Scheduled the task for dma trace");
 
 	return 0;
 }

@@ -147,6 +147,7 @@ config LIBRARY
 config IMX8
 	bool "Build for NXP i.MX8"
 	select HAVE_RESET_VECTOR_ROM
+	select HOST_PTABLE
 	help
 	  Select if your target platform is imx8-compatible
 

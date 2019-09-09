@@ -23,7 +23,9 @@
 
 extern struct ipc *_ipc;
 
-/* No private data for IPC */
+struct ipc_data {
+	struct ipc_data_host_buffer dh_buffer;
+};
 
 static void do_notify(void)
 {
@@ -161,11 +163,39 @@ out:
 	spin_unlock_irq(ipc->lock, flags);
 }
 
+#if CONFIG_HOST_PTABLE
+struct ipc_data_host_buffer *ipc_platform_get_host_buffer(struct ipc *ipc)
+{
+	struct ipc_data *iipc = ipc_get_drvdata(ipc);
+
+	return &iipc->dh_buffer;
+}
+#endif
+
 int platform_ipc_init(struct ipc *ipc)
 {
-	_ipc = ipc;
+#if CONFIG_HOST_PTABLE
+	struct ipc_data *iipc;
+	uint32_t dir, caps, dev;
+#endif
+	volatile int32_t *exc_base = (volatile int32_t *)(void *)mailbox_get_exception_base();
+	trace_ipc("platform_ipc_init()");
+	*exc_base = -1; /* Marker that we have no exception */
+	dcache_writeback_region((void *)exc_base, 4);
 
-	ipc_set_drvdata(_ipc, NULL);
+#if CONFIG_HOST_PTABLE
+	iipc = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*iipc));
+	if (!iipc) {
+		trace_ipc_error("Unable to allocate IPC private data");
+		return -ENOMEM;
+	}
+	ipc_set_drvdata(ipc, iipc);
+	trace_ipc("IPC private data got set; iipc is %p", (uint32_t)iipc);
+#else
+	ipc_set_drvdata(ipc, NULL);
+	trace_ipc_error("IPC private data missing (NO HOST_PTABLE!)");
+#endif
+	_ipc = ipc;
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
@@ -173,10 +203,18 @@ int platform_ipc_init(struct ipc *ipc)
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
-	iipc->page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
+	iipc->dh_buffer.page_table = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM,
 		PLATFORM_PAGE_TABLE_SIZE);
-	if (iipc->page_table)
-		bzero(iipc->page_table, PLATFORM_PAGE_TABLE_SIZE);
+	if (iipc->dh_buffer.page_table)
+		bzero(iipc->dh_buffer.page_table, PLATFORM_PAGE_TABLE_SIZE);
+	caps = 0;
+	dir = DMA_DIR_HMEM_TO_LMEM;
+	dev = DMA_DEV_HOST;
+	iipc->dh_buffer.dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
+	if (!iipc->dh_buffer.dmac) {
+		trace_ipc_error("Unable to find DMA for host page table");
+		panic(SOF_IPC_PANIC_IPC);
+	}
 #endif
 
 	/* configure interrupt */

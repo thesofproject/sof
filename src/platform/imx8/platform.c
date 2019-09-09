@@ -124,7 +124,6 @@ struct timesource_data platform_generic_queue[] = {
 struct timer *platform_timer =
 	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
-
 int platform_boot_complete(uint32_t boot_message)
 {
 	mailbox_dspbox_write(0, &ready, sizeof(ready));
@@ -132,6 +131,7 @@ int platform_boot_complete(uint32_t boot_message)
 			     sram_window.ext_hdr.hdr.size);
 
 	/* now interrupt host to tell it we are done booting */
+
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIRn(1), 0);
 
 	/* boot now complete so we can relax the CPU */
@@ -175,6 +175,12 @@ int platform_init(struct sof *sof)
 		return -ENODEV;
 
 	dai_probe(esai);
+
+#if CONFIG_TRACE
+	/* Initialize DMA for Trace */
+	trace_point(TRACE_BOOT_PLATFORM_DMA_TRACE);
+	dma_trace_init_complete(sof->dmat);
+#endif
 
 	return 0;
 }

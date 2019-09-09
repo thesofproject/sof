@@ -29,6 +29,7 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	uint32_t idx;
 	uint32_t phy_addr;
 	struct dma_sg_elem *e;
+	trace_ipc("ipc: ipc_parse_page_descriptors");
 
 	/* the ring size may be not multiple of the page size, the last
 	 * page may be not full used. The used size should be in range
@@ -58,6 +59,8 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 		else
 			phy_addr <<= 12;
 		phy_addr &= 0xfffff000;
+
+		trace_ipc("pfn i %i idx %d addr %p", i, idx, phy_addr);
 
 		e = elem_array->elems + i;
 
@@ -96,6 +99,8 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 	struct dma_chan_data *chan;
 	int ret = 0;
 
+	trace_ipc("ipc_get_page_descriptors");
+	trace_ipc("dmac is %p", (uintptr_t)(void *)dmac);
 	/* get DMA channel from DMAC */
 	chan = dma_channel_get(dmac, 0);
 	if (!chan) {
@@ -166,10 +171,15 @@ int ipc_process_host_buffer(struct ipc *ipc,
 	data_host_buffer = ipc_platform_get_host_buffer(ipc);
 	dma_sg_init(elem_array);
 
+	trace_ipc("data_host_buffer: %p", (uintptr_t)data_host_buffer);
+	trace_ipc("data_host_buffer->dmac: %p", (uintptr_t)data_host_buffer->dmac);
+	trace_ipc("data_host_buffer->page_table: %p", (uintptr_t)data_host_buffer->page_table);
+	trace_ipc("Getting page table descriptors");
 	/* use DMA to read in compressed page table ringbuffer from host */
 	err = ipc_get_page_descriptors(data_host_buffer->dmac,
 				       data_host_buffer->page_table,
 				       ring);
+	trace_ipc("Got 'em");
 	if (err < 0) {
 		trace_ipc_error("ipc: get descriptors failed %d", err);
 		goto error;
@@ -177,6 +187,7 @@ int ipc_process_host_buffer(struct ipc *ipc,
 
 	*ring_size = ring->size;
 
+	trace_ipc("Parsing page table descriptors");
 	err = ipc_parse_page_descriptors(data_host_buffer->page_table,
 					 ring,
 					 elem_array, direction);

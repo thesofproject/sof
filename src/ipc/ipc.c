@@ -370,6 +370,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	struct ipc_comp_dev *ipc_ppl_source;
 	struct ipc_comp_dev *ipc_ppl_sink;
 
+	trace_pipe("ipc_pipeline_complete");
 	/* check whether pipeline exists */
 	ipc_pipe = ipc_get_comp(ipc, comp_id);
 	if (!ipc_pipe)
@@ -387,6 +388,7 @@ int ipc_pipeline_complete(struct ipc *ipc, uint32_t comp_id)
 	if (!ipc_ppl_sink)
 		return -EINVAL;
 
+	trace_pipe("ipc_pipeline_complete about to call pipeline_complete");
 	return pipeline_complete(ipc_pipe->pipeline, ipc_ppl_source->cd,
 				 ipc_ppl_sink->cd);
 }
