@@ -92,8 +92,6 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 	unsigned long flags;
 	int ret = -ENODEV;
 
-	tracev_irq("interrupt_get_irq(%d, %s)", irq, (uintptr_t)name);
-
 	if (!name || name[0] == '\0')
 		return irq;
 
@@ -111,8 +109,6 @@ int interrupt_get_irq(unsigned int irq, const char *name)
 
 	for (cascade = cascade_root.list; cascade; cascade = cascade->next) {
 		/* .name is non-volatile */
-		tracev_event(TRACE_CLASS_IRQ,
-			     "interrupt_get_irq() checking %s", (uintptr_t)cascade->name);
 		if (!rstrcmp(name, cascade->name)) {
 			tracev_event(TRACE_CLASS_IRQ,
 				     "interrupt_get_irq() Found the parent!");
@@ -174,9 +170,6 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 			    "error: IRQ 0x%x out of child IRQ range!", irq);
 		return -EINVAL;
 	}
-
-	tracev_irq("irq_register_child() cascade %s bit %d",
-		   (uintptr_t)cascade->name, hw_irq);
 
 	head = &cascade->child[hw_irq].list;
 
