@@ -27,6 +27,7 @@
 #include <sof/lib/notifier.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
@@ -126,63 +127,6 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 #endif
-
-struct timesource_data platform_generic_queue[] = {
-{
-	.timer	 = {
-		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2,
-		.irq_name = irq_name_level2,
-		.core = 0,
-	},
-	.clk		= CLK_SSP,
-	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
-},
-{
-	.timer	 = {
-		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2,
-		.irq_name = irq_name_level2,
-		.core = 1,
-	},
-	.clk		= CLK_SSP,
-	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
-},
-#if CAVS_VERSION >= CAVS_VERSION_1_8
-{
-	.timer	 = {
-		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2,
-		.irq_name = irq_name_level2,
-		.core = 2,
-	},
-	.clk		= CLK_SSP,
-	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
-},
-{
-	.timer	 = {
-		.id = TIMER3, /* external timer */
-		.irq = IRQ_EXT_TSTAMP0_LVL2,
-		.irq_name = irq_name_level2,
-		.core = 3,
-	},
-	.clk		= CLK_SSP,
-	.notifier	= NOTIFIER_ID_SSP_FREQ,
-	.timer_set	= platform_timer_set,
-	.timer_clear	= platform_timer_clear,
-	.timer_get	= platform_timer_get,
-},
-#endif
-};
 
 #if CONFIG_DW_GPIO
 
@@ -288,8 +232,15 @@ const int n_iomux = ARRAY_SIZE(iomux_data);
 
 #endif
 
-struct timer *platform_timer =
-	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
+struct timer timer = {
+	.id = TIMER3, /* external timer */
+	.irq = IRQ_EXT_TSTAMP0_LVL2,
+	.irq_name = irq_name_level2,
+};
+
+struct timer *platform_timer = &timer;
+
+struct ll_schedule_domain *platform_timer_domain;
 
 #if CONFIG_DW_SPI
 
@@ -418,7 +369,12 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf(sof);
-	scheduler_init_ll();
+
+	/* init low latency domains and schedulers */
+	platform_timer_domain =
+		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
+				  PLATFORM_WORKQ_DEFAULT_TIMEOUT);
+	scheduler_init_ll(platform_timer_domain);
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);
