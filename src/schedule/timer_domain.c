@@ -24,6 +24,16 @@ struct timer_domain {
 
 struct ll_schedule_domain_ops timer_domain_ops;
 
+static inline void timer_report_delay(int id, uint64_t delay)
+{
+	uint32_t ll_delay_us = (delay * 1000) /
+				clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1);
+
+	trace_schedule_error("timer_report_delay(): timer %d "
+			     "delayed by %d uS %d ticks", id, ll_delay_us,
+			     delay);
+}
+
 static int timer_domain_register(struct ll_schedule_domain *domain,
 				 uint64_t period, struct task *task,
 				 void (*handler)(void *arg), void *arg)
@@ -72,12 +82,20 @@ static void timer_domain_disable(struct ll_schedule_domain *domain, int core)
 static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 {
 	struct timer_domain *timer_domain = ll_sch_domain_get_pdata(domain);
-	uint64_t ticks = domain->ticks_per_ms * timer_domain->timeout / 1000 +
-		start;
+	uint64_t ticks_req = domain->ticks_per_ms * timer_domain->timeout /
+			     1000 + start;
+	uint64_t ticks_set;
 
-	platform_timer_set(timer_domain->timer, ticks);
+	ticks_set = platform_timer_set(timer_domain->timer, ticks_req);
 
-	domain->last_tick = ticks;
+	/* Was timer set to the value we requested? If no it means some
+	 * delay occurred and we should report that in error log.
+	 */
+	if (ticks_req < ticks_set)
+		timer_report_delay(timer_domain->timer->id,
+				   ticks_set - ticks_req);
+
+	domain->last_tick = ticks_set;
 }
 
 static void timer_domain_clear(struct ll_schedule_domain *domain)
