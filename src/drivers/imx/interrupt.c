@@ -261,10 +261,10 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 			child = container_of(clist, struct irq_desc, irq_list);
 
 			if (child->handler && (child->cpu_mask & 1 << core)) {
-				tracev_irq("IRQ_STR: interrupt %d handler %p arg %p",
-					   line_index * 64 + bit,
-					   (uintptr_t)child->handler,
-					   (uintptr_t)child->handler_arg);
+				//tracev_irq("IRQ_STR: interrupt %d handler %p arg %p",
+				//	   line_index * 64 + bit,
+				//	   (uintptr_t)child->handler,
+				//	   (uintptr_t)child->handler_arg);
 				child->handler(child->handler_arg);
 				handled = true;
 			}
@@ -291,8 +291,8 @@ static inline void irq_handler(void *data, uint32_t line_index)
 	uint64_t status;
 	uint32_t tries = IRQ_MAX_TRIES;
 
-	tracev_irq("IRQ_STEER line %d got interrupt (means ints %d-%d)",
-		   line_index, line_index * 64, line_index * 64 + 63);
+	//tracev_irq("IRQ_STEER line %d got interrupt (means ints %d-%d)",
+	//	   line_index, line_index * 64, line_index * 64 + 63);
 
 	status = get_irqsteer_interrupts(line_index);
 

@@ -136,6 +136,8 @@ static inline void dump_tcd_offline(struct edma_tcd *tcd)
 
 static inline void dump_tcd(struct dma_chan_data *channel)
 {
+	// Disable the functionality
+	return;
 #define DUMP_REG32(REG) \
 	tracev_edma("EDMA_" #REG ": %08x", edma_chan_read(channel, EDMA_##REG))
 #define DUMP_REG16(REG) \
@@ -582,9 +584,9 @@ load_cached:
 
 static void edma_chan_irq(struct dma_chan_data *channel)
 {
-	tracev_edma("edma_chan_irq(%d) (TCD below)", channel->index);
+	//tracev_edma("edma_chan_irq(%d) (TCD below)", channel->index);
 
-	dump_tcd(channel);
+	//dump_tcd(channel);
 
 	if (!channel->cb)
 		return;
@@ -612,7 +614,7 @@ static void edma_irq(void *arg)
 {
 	struct dma_chan_data *channel = (struct dma_chan_data *)arg;
 
-	dsp_putc('#');
+	//dsp_putc('#');
 	//tracev_edma("EDMA IRQ");
 	/* We have to check the status for all the channels and clear
 	 * the interrupts
