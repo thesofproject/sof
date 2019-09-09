@@ -268,8 +268,8 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 		spin_unlock(cascade->lock);
 
 		if (!handled) {
-			trace_irq_error("IRQ_STR: irq_handler(): nobody cared, bit %d",
-					bit);
+			trace_irq_error("IRQ_STR: irq_handler(): nobody cared, interrupt %d",
+					line_index * 64 + bit);
 			/* Mask this interrupt so it won't happen again */
 			irqstr_mask_int(line_index * IRQSTR_IRQS_PER_LINE + bit);
 		}
