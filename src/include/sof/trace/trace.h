@@ -185,14 +185,16 @@ void trace_init(struct sof *sof);
  * for better debugging experience, without worrying about runtime performance.
  */
 
+#define DSP_PRINTF 1
+
 #define trace_event(class, format, ...) do {\
-	__dsp_printf(format "\n", ##__VA_ARGS__); \
+	if (IS_ENABLED(DSP_PRINTF)) __dsp_printf(format "\n", ##__VA_ARGS__); \
 	_trace_event_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__); } while(0)
 #define trace_event_atomic(class, format, ...) \
 	_trace_event_atomic_with_ids(class, -1, -1, 0, format, ##__VA_ARGS__)
 
 #define trace_event_with_ids(class, id_0, id_1, format, ...)	\
-	do { __dsp_printf(format "\n", ##__VA_ARGS__); \
+	do { if (IS_ENABLED(DSP_PRINTF)) __dsp_printf(format "\n", ##__VA_ARGS__); \
 	_trace_event_with_ids(class, id_0, id_1, 1, format, ##__VA_ARGS__); } while(0)
 
 #define trace_event_atomic_with_ids(class, id_0, id_1, format, ...)	\
