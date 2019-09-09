@@ -12,6 +12,12 @@ TRACE_IMPL()
 
 struct ipc *_ipc;
 struct timer *platform_timer;
+struct schedulers *schedulers;
+
+struct schedulers **arch_schedulers_get(void)
+{
+	return &schedulers;
+}
 
 void platform_dai_timestamp(struct comp_dev *dai,
 	struct sof_ipc_stream_posn *posn)

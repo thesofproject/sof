@@ -13,6 +13,8 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+struct sof;
+
 /* schedule tracing */
 #define trace_edf_sch(format, ...) \
 	trace_event(TRACE_CLASS_EDF, format, ##__VA_ARGS__)
@@ -32,5 +34,7 @@ struct edf_task_pdata {
 	uint64_t deadline;
 	void *ctx;
 };
+
+int scheduler_init_edf(struct sof *sof);
 
 #endif /* __SOF_SCHEDULE_EDF_SCHEDULE_H__ */

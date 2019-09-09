@@ -9,15 +9,12 @@
 #ifndef __SOF_SCHEDULE_SCHEDULE_H__
 #define __SOF_SCHEDULE_SCHEDULE_H__
 
+#include <sof/common.h>
 #include <sof/list.h>
 #include <sof/schedule/task.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <stdint.h>
-
-struct edf_schedule_data;
-struct ll_schedule_data;
-struct sof;
 
 /* schedule tracing */
 #define trace_schedule(format, ...) \
@@ -43,75 +40,140 @@ enum {
 #define SOF_SCHEDULE_FLAG_IDLE  (2 << 0)
 
 struct scheduler_ops {
-	void (*schedule_task)(struct task *w, uint64_t start,
+	void (*schedule_task)(void *data, struct task *task, uint64_t start,
 			      uint64_t period);
-	int (*schedule_task_init)(struct task *task);
-	void (*schedule_task_running)(struct task *task);
-	void (*schedule_task_complete)(struct task *task);
-	void (*reschedule_task)(struct task *task, uint64_t start);
-	int (*schedule_task_cancel)(struct task *task);
-	void (*schedule_task_free)(struct task *task);
-	int (*scheduler_init)(struct sof *sof);
-	void (*scheduler_free)(void);
-	void (*scheduler_run)(void);
+	int (*schedule_task_init)(void *data, struct task *task);
+	void (*schedule_task_running)(void *data, struct task *task);
+	void (*schedule_task_complete)(void *data, struct task *task);
+	void (*reschedule_task)(void *data, struct task *task, uint64_t start);
+	void (*schedule_task_cancel)(void *data, struct task *task);
+	void (*schedule_task_free)(void *data, struct task *task);
+	void (*scheduler_free)(void *data);
+	void (*scheduler_run)(void *data);
 };
 
 struct schedule_data {
-	struct ll_schedule_data *ll_sch_data;
-	struct edf_schedule_data *edf_sch_data;
+	struct list_item list;
+	int type;
+	const struct scheduler_ops *ops;
+	void *data;
 };
 
-extern struct scheduler_ops schedule_edf_ops;
-extern struct scheduler_ops schedule_ll_ops;
+struct schedulers {
+	struct list_item list;
+};
+
+struct schedulers **arch_schedulers_get(void);
 
 static inline void schedule_task_running(struct task *task)
 {
-	if (task->ops->schedule_task_running)
-		task->ops->schedule_task_running(task);
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type && sch->ops->schedule_task_running)
+			sch->ops->schedule_task_running(sch->data, task);
+	}
 }
 
 static inline void schedule_task_complete(struct task *task)
 {
-	if (task->ops->schedule_task_complete)
-		task->ops->schedule_task_complete(task);
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type && sch->ops->schedule_task_complete)
+			sch->ops->schedule_task_complete(sch->data, task);
+	}
 }
 
 static inline void schedule_task(struct task *task, uint64_t start,
 				 uint64_t period)
 {
-	if (task->ops->schedule_task)
-		task->ops->schedule_task(task, start, period);
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type && sch->ops->schedule_task)
+			sch->ops->schedule_task(sch->data, task, start, period);
+	}
 }
 
 static inline void reschedule_task(struct task *task, uint64_t start)
 {
-	if (task->ops->reschedule_task)
-		task->ops->reschedule_task(task, start);
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type && sch->ops->reschedule_task)
+			sch->ops->reschedule_task(sch->data, task, start);
+	}
 }
 
-static inline int schedule_task_cancel(struct task *task)
+static inline void schedule_task_cancel(struct task *task)
 {
-	if (task->ops->schedule_task_cancel)
-		return task->ops->schedule_task_cancel(task);
-	return 0;
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type && sch->ops->schedule_task_cancel)
+			sch->ops->schedule_task_cancel(sch->data, task);
+	}
 }
 
 static inline void schedule_task_free(struct task *task)
 {
-	if (task->ops->schedule_task_free)
-		task->ops->schedule_task_free(task);
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (task->type == sch->type && sch->ops->schedule_task_free)
+			sch->ops->schedule_task_free(sch->data, task);
+	}
 }
 
-struct schedule_data **arch_schedule_get_data(void);
+static inline void schedule_free(void)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (sch->ops->scheduler_free)
+			sch->ops->scheduler_free(sch->data);
+	}
+}
+
+static inline void schedule(void)
+{
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
+
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (sch->ops->scheduler_run)
+			sch->ops->scheduler_run(sch->data);
+	}
+}
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       enum task_state (*func)(void *data), void *data,
 		       uint16_t core, uint32_t flags);
 
-void schedule_free(void);
-
-void schedule(void);
-
-int scheduler_init(struct sof *sof);
+void scheduler_init(int type, const struct scheduler_ops *ops, void *data);
 
 #endif /* __SOF_SCHEDULE_SCHEDULE_H__ */

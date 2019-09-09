@@ -62,7 +62,7 @@ void task_context_set(void *task_ctx)
 	ctx->td.xtos_active_task = task_ctx;
 }
 
-int task_context_init(struct task *task, void *entry)
+int task_context_init(struct task *task, void *entry, void *data)
 {
 	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
 	xtos_task_context *ctx;
@@ -97,8 +97,9 @@ int task_context_init(struct task *task, void *entry)
 	 */
 	sp->ps = PS_WOECALL4_ABI | PS_UM;
 
-	/* a6 is first parameter */
+	/* a6 and a7 are the first parameters */
 	sp->a6 = (uint32_t)task;
+	sp->a7 = (uint32_t)data;
 
 	ctx->stack_pointer = sp;
 

@@ -12,7 +12,6 @@
 #include <sof/list.h>
 #include <stdint.h>
 
-struct scheduler_ops;
 struct sof;
 
 #define SOF_TASK_PRI_HIGH	0	/* priority level 0 - high */
@@ -50,7 +49,6 @@ struct task {
 	void *data;
 	enum task_state (*func)(void *data);
 	struct list_item list;
-	const struct scheduler_ops *ops;
 	void *private;
 };
 

@@ -41,8 +41,9 @@ void task_context_set(void *task_ctx);
  * \brief Initializes task context.
  * \param[in,out] task Task with context to be initialized.
  * \param[in,out] entry Entry point for task execution.
+ * \param[in,out] data Parameter data for entry point.
  */
-int task_context_init(struct task *task, void *entry);
+int task_context_init(struct task *task, void *entry, void *data);
 
 /**
  * \brief Frees task context.

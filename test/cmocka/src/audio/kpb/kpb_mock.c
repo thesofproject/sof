@@ -95,3 +95,8 @@ uint64_t clock_ms_to_ticks(int clock, uint64_t ms)
 
 	return 0;
 }
+
+struct schedulers **arch_schedulers_get(void)
+{
+	return NULL;
+}

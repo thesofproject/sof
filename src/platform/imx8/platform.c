@@ -16,7 +16,8 @@
 #include <sof/lib/dai.h>
 #include <sof/lib/mailbox.h>
 #include <sof/platform.h>
-#include <sof/schedule/schedule.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/sof.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
@@ -149,7 +150,8 @@ int platform_init(struct sof *sof)
 	struct dai *esai;
 
 	clock_init();
-	scheduler_init(sof);
+	scheduler_init_edf(sof);
+	scheduler_init_ll();
 
 	platform_timer_start(platform_timer);
 	sa_init(sof);
