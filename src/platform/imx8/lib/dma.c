@@ -18,9 +18,10 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 {
 	.plat_data = {
 		.id		= DMA_ID_EDMA0,
-		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM,
+		.dir		= DMA_DIR_MEM_TO_DEV | DMA_DIR_DEV_TO_MEM | DMA_DIR_DEV_TO_DEV,
 		.devs		= DMA_DEV_ESAI,
 		.base		= EDMA0_BASE,
+		.chan_size	= EDMA0_SIZE,
 		.channels	= 32,
 		.irq		= IRQ_NUM_IRQSTR_DSP6,
 	},

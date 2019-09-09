@@ -791,6 +791,8 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 				   channel);
 		break;
 	case SOF_DAI_IMX_ESAI:
+		channel = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ? 7 : 6;
+		trace_dai_with_ids(dev, "dai_config() has done ESAI specific channel selection");
 		break;
 	default:
 		/* other types of DAIs not handled for now */
@@ -809,6 +811,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		return -EINVAL;
 	}
 
+	trace_dai("dai_config() channel = %d", channel);
 	if (channel != DMA_CHAN_INVALID) {
 		if (!dd->chan)
 			/* get dma channel at first config only */
