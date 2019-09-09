@@ -25,7 +25,8 @@
 #include <sof/lib/mailbox.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/notifier.h>
-#include <sof/schedule/schedule.h>
+#include <sof/schedule/edf_schedule.h>
+#include <sof/schedule/ll_schedule.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
 #include <ipc/header.h>
@@ -416,7 +417,8 @@ int platform_init(struct sof *sof)
 	clock_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
-	scheduler_init(sof);
+	scheduler_init_edf(sof);
+	scheduler_init_ll();
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

@@ -12,7 +12,6 @@ add_executable(testbench
 	ipc.c
 	schedule.c
 	edf_schedule.c
-	ll_schedule.c
 	panic.c
 	timer.c
 	topology.c

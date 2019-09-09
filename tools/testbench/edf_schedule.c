@@ -18,17 +18,9 @@ struct edf_schedule_data {
 	uint32_t clock;
 };
 
-static struct edf_schedule_data *sch;
+struct scheduler_ops schedule_edf_ops;
 
-static void schedule_edf_task_complete(struct task *task);
-static void schedule_edf_task(struct task *task, uint64_t start,
-			      uint64_t deadline);
-static int schedule_edf_task_init(struct task *task);
-static int edf_scheduler_init(struct sof *sof);
-static void edf_scheduler_free(void);
-static void schedule_edf(void);
-static int schedule_edf_task_cancel(struct task *task);
-static void schedule_edf_task_free(struct task *task);
+static struct edf_schedule_data *sch;
 
 static void schedule_edf_task_complete(struct task *task)
 {
@@ -37,9 +29,10 @@ static void schedule_edf_task_complete(struct task *task)
 }
 
 /* schedule task */
-static void schedule_edf_task(struct task *task, uint64_t start,
+static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 			      uint64_t period)
 {
+	struct edf_schedule_data *sch = data;
 	(void)period;
 	list_item_prepend(&task->list, &sch->list);
 	task->state = SOF_TASK_STATE_QUEUED;
@@ -50,7 +43,7 @@ static void schedule_edf_task(struct task *task, uint64_t start,
 	schedule_edf_task_complete(task);
 }
 
-static int schedule_edf_task_init(struct task *task)
+static int schedule_edf_task_init(void *data, struct task *task)
 {
 	struct edf_task_pdata *edf_pdata;
 
@@ -61,37 +54,37 @@ static int schedule_edf_task_init(struct task *task)
 }
 
 /* initialize scheduler */
-static int edf_scheduler_init(struct sof *sof)
+int scheduler_init_edf(struct sof *sof)
 {
 	trace_edf_sch("edf_scheduler_init()");
 	sch = malloc(sizeof(*sch));
 	list_init(&sch->list);
 
+	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, sch);
+
 	return 0;
 }
 
-static void edf_scheduler_free(void)
+static void edf_scheduler_free(void *data)
 {
-	free(sch);
+	free(data);
 }
 
 /* The following definitions are to satisfy libsof linker errors */
-static void schedule_edf(void)
+static void schedule_edf(void *data)
 {
 }
 
-static int schedule_edf_task_cancel(struct task *task)
+static void schedule_edf_task_cancel(void *data, struct task *task)
 {
 	if (task->state == SOF_TASK_STATE_QUEUED) {
 		/* delete task */
 		task->state = SOF_TASK_STATE_CANCEL;
 		list_item_del(&task->list);
 	}
-
-	return 0;
 }
 
-static void schedule_edf_task_free(struct task *task)
+static void schedule_edf_task_free(void *data, struct task *task)
 {
 	task->state = SOF_TASK_STATE_FREE;
 	task->func = NULL;
@@ -109,7 +102,6 @@ struct scheduler_ops schedule_edf_ops = {
 	.reschedule_task	= NULL,
 	.schedule_task_cancel	= schedule_edf_task_cancel,
 	.schedule_task_free	= schedule_edf_task_free,
-	.scheduler_init		= edf_scheduler_init,
 	.scheduler_free		= edf_scheduler_free,
 	.scheduler_run		= schedule_edf
 };

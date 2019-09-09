@@ -64,6 +64,8 @@ struct ll_queue_shared_context {
 
 static struct ll_queue_shared_context *ll_shared_ctx;
 
+struct scheduler_ops schedule_ll_ops;
+
 /* calculate next timeout */
 static uint64_t queue_calc_next_timeout(struct ll_schedule_data *queue,
 					uint64_t start)
@@ -351,10 +353,10 @@ static void insert_task_to_queue(struct task *w, struct list_item *q_list)
 	list_item_append(&w->list, q_list);
 }
 
-static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period)
+static void schedule_ll_task(void *data, struct task *task, uint64_t start,
+			     uint64_t period)
 {
-	struct ll_schedule_data *queue =
-		(*arch_schedule_get_data())->ll_sch_data;
+	struct ll_schedule_data *sch = data;
 	struct ll_task_pdata *ll_pdata;
 	struct task *ll_task;
 	struct list_item *wlist;
@@ -363,120 +365,115 @@ static void schedule_ll_task(struct task *w, uint64_t start, uint64_t period)
 	irq_local_disable(flags);
 
 	/* check to see if we are already scheduled ? */
-	list_for_item(wlist, &queue->tasks) {
+	list_for_item(wlist, &sch->tasks) {
 		ll_task = container_of(wlist, struct task, list);
 
 		/* keep original start */
-		if (ll_task == w)
+		if (ll_task == task)
 			goto out;
 	}
 
-	w->start = queue->ticks_per_msec * start / 1000;
+	task->start = sch->ticks_per_msec * start / 1000;
 
 	/* convert start micro seconds to CPU clock ticks */
-	if (w->flags & SOF_SCHEDULE_FLAG_SYNC)
-		w->start += ll_get_timer(queue);
+	if (task->flags & SOF_SCHEDULE_FLAG_SYNC)
+		task->start += ll_get_timer(sch);
 	else
-		w->start += ll_shared_ctx->last_tick;
+		task->start += ll_shared_ctx->last_tick;
 
-	ll_pdata = ll_sch_get_pdata(w);
+	ll_pdata = ll_sch_get_pdata(task);
 
 	/* invalidate if slave core */
-	if (cpu_is_slave(w->core))
+	if (cpu_is_slave(task->core))
 		dcache_invalidate_region(ll_pdata, sizeof(*ll_pdata));
 
 	ll_pdata->period = period;
 
 	/* insert work into list */
-	insert_task_to_queue(w, &queue->tasks);
+	insert_task_to_queue(task, &sch->tasks);
 
-	ll_set_timer(queue);
+	ll_set_timer(sch);
 
 out:
 	irq_local_enable(flags);
 }
 
-static void reschedule_ll_task(struct task *w, uint64_t start)
+static void reschedule_ll_task(void *data, struct task *task, uint64_t start)
 {
-	struct ll_schedule_data *queue =
-		(*arch_schedule_get_data())->ll_sch_data;
+	struct ll_schedule_data *sch = data;
 	struct task *ll_task;
 	struct list_item *wlist;
 	uint32_t flags;
 	uint64_t time;
 
-	time = queue->ticks_per_msec * start / 1000;
+	time = sch->ticks_per_msec * start / 1000;
 
 	/* convert start micro seconds to CPU clock ticks */
-	if (w->flags & SOF_SCHEDULE_FLAG_SYNC)
-		time += ll_get_timer(queue);
+	if (task->flags & SOF_SCHEDULE_FLAG_SYNC)
+		time += ll_get_timer(sch);
 	else
 		time += ll_shared_ctx->last_tick;
 
 	irq_local_disable(flags);
 
 	/* check to see if we are already scheduled */
-	list_for_item(wlist, &queue->tasks) {
+	list_for_item(wlist, &sch->tasks) {
 		ll_task = container_of(wlist, struct task, list);
 		/* found it */
-		if (ll_task == w)
+		if (ll_task == task)
 			goto found;
 	}
 
-	insert_task_to_queue(w, &queue->tasks);
+	insert_task_to_queue(task, &sch->tasks);
 
-	ll_set_timer(queue);
+	ll_set_timer(sch);
 
 found:
 	/* re-calc timer and re-arm */
-	w->start = time;
+	task->start = time;
 
 	irq_local_enable(flags);
 }
 
-static int schedule_ll_task_cancel(struct task *w)
+static void schedule_ll_task_cancel(void *data, struct task *task)
 {
-	struct ll_schedule_data *queue =
-		(*arch_schedule_get_data())->ll_sch_data;
+	struct ll_schedule_data *sch = data;
 	struct task *ll_task;
 	struct list_item *wlist;
 	uint32_t flags;
-	int ret = 0;
 
 	irq_local_disable(flags);
 
 	/* check to see if we are scheduled */
-	list_for_item(wlist, &queue->tasks) {
+	list_for_item(wlist, &sch->tasks) {
 		ll_task = container_of(wlist, struct task, list);
 
 		/* found it */
-		if (ll_task == w) {
-			ll_clear_timer(queue);
+		if (ll_task == task) {
+			ll_clear_timer(sch);
 			break;
 		}
 	}
 
 	/* remove work from list */
-	w->state = SOF_TASK_STATE_CANCEL;
-	list_item_del(&w->list);
+	task->state = SOF_TASK_STATE_CANCEL;
+	list_item_del(&task->list);
 
 	irq_local_enable(flags);
-
-	return ret;
 }
 
-static void schedule_ll_task_free(struct task *w)
+static void schedule_ll_task_free(void *data, struct task *task)
 {
-	uint32_t flags;
 	struct ll_task_pdata *ll_pdata;
+	uint32_t flags;
 
 	irq_local_disable(flags);
 
 	/* release the resources */
-	w->state = SOF_TASK_STATE_FREE;
-	ll_pdata = ll_sch_get_pdata(w);
+	task->state = SOF_TASK_STATE_FREE;
+	ll_pdata = ll_sch_get_pdata(task);
 	rfree(ll_pdata);
-	ll_sch_set_pdata(w, NULL);
+	ll_sch_set_pdata(task, NULL);
 
 	irq_local_enable(flags);
 }
@@ -507,16 +504,17 @@ static struct ll_schedule_data *work_new_queue(struct timesource_data *ts)
 	return queue;
 }
 
-static int ll_scheduler_init(struct sof *sof)
+int scheduler_init_ll(void)
 {
-	int cpu;
-	struct schedule_data *sch_data = *arch_schedule_get_data();
+	struct ll_schedule_data *sch;
 	struct timesource_data *ts;
+	int cpu;
 
 	cpu = cpu_get_id();
 	ts = &platform_generic_queue[cpu];
 
-	sch_data->ll_sch_data = work_new_queue(ts);
+	sch = work_new_queue(ts);
+	scheduler_init(SOF_SCHEDULE_LL, &schedule_ll_ops, sch);
 
 	if (cpu == PLATFORM_MASTER_CORE_ID) {
 		unsigned int i;
@@ -538,18 +536,17 @@ static int ll_scheduler_init(struct sof *sof)
 	}
 
 	/* register system timer */
-	timer_register(&platform_generic_queue[cpu].timer, queue_run,
-		       sch_data->ll_sch_data);
+	timer_register(&platform_generic_queue[cpu].timer, queue_run, sch);
 
 	return 0;
 }
 
 /* initialise our work */
-static int schedule_ll_task_init(struct task *w)
+static int schedule_ll_task_init(void *data, struct task *task)
 {
 	struct ll_task_pdata *ll_pdata;
 
-	if (ll_sch_get_pdata(w))
+	if (ll_sch_get_pdata(task))
 		return -EEXIST;
 
 	ll_pdata = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
@@ -561,28 +558,27 @@ static int schedule_ll_task_init(struct task *w)
 	}
 
 	/* flush for slave core */
-	if (cpu_is_slave(w->core))
+	if (cpu_is_slave(task->core))
 		dcache_writeback_invalidate_region(ll_pdata,
 						   sizeof(*ll_pdata));
 
-	ll_sch_set_pdata(w, ll_pdata);
+	ll_sch_set_pdata(task, ll_pdata);
 
 	return 0;
 }
 
-static void ll_scheduler_free(void)
+static void scheduler_free_ll(void *data)
 {
-	struct ll_schedule_data *queue =
-		(*arch_schedule_get_data())->ll_sch_data;
+	struct ll_schedule_data *sch = data;
 	uint32_t flags;
 
 	irq_local_disable(flags);
 
-	timer_unregister(&queue->ts->timer);
+	timer_unregister(&sch->ts->timer);
 
-	notifier_unregister(&queue->notifier);
+	notifier_unregister(&sch->notifier);
 
-	list_item_del(&queue->tasks);
+	list_item_del(&sch->tasks);
 
 	irq_local_enable(flags);
 }
@@ -595,7 +591,6 @@ struct scheduler_ops schedule_ll_ops = {
 	.reschedule_task	= reschedule_ll_task,
 	.schedule_task_cancel	= schedule_ll_task_cancel,
 	.schedule_task_free	= schedule_ll_task_free,
-	.scheduler_init		= ll_scheduler_init,
-	.scheduler_free		= ll_scheduler_free,
+	.scheduler_free		= scheduler_free_ll,
 	.scheduler_run		= NULL
 };

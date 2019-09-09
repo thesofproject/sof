@@ -6,9 +6,11 @@
 
 /* Generic scheduler */
 
+#include <sof/common.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
+#include <sof/list.h>
 #include <sof/schedule/schedule.h>
 #include <sof/schedule/task.h>
 #include <sof/sof.h>
@@ -16,15 +18,13 @@
 #include <errno.h>
 #include <stdint.h>
 
-static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
-	&schedule_edf_ops,		/* SOF_SCHEDULE_EDF */
-	&schedule_ll_ops		/* SOF_SCHEDULE_LL */
-};
-
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 		       enum task_state (*func)(void *data), void *data,
 		       uint16_t core, uint32_t flags)
 {
+	struct schedulers *schedulers = *arch_schedulers_get();
+	struct schedule_data *sch;
+	struct list_item *slist;
 	int ret = 0;
 
 	if (type >= SOF_SCHEDULE_COUNT) {
@@ -41,51 +41,39 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->state = SOF_TASK_STATE_INIT;
 	task->func = func;
 	task->data = data;
-	task->ops = schedulers[task->type];
 
-	if (task->ops->schedule_task_init)
-		ret = task->ops->schedule_task_init(task);
+	list_for_item(slist, &schedulers->list) {
+		sch = container_of(slist, struct schedule_data, list);
+		if (type == sch->type && sch->ops->schedule_task_init)
+			return sch->ops->schedule_task_init(sch->data, task);
+	}
 
 out:
 	return ret;
 }
 
-int scheduler_init(struct sof *sof)
+static void scheduler_register(struct schedule_data *scheduler)
 {
-	struct schedule_data **sch = arch_schedule_get_data();
-	int ret = 0;
-	int i;
+	struct schedulers **sch = arch_schedulers_get();
 
-	/* init scheduler_data */
-	*sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**sch));
-
-	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
-		if (schedulers[i]->scheduler_init) {
-			ret = schedulers[i]->scheduler_init(sof);
-			if (ret < 0)
-				goto out;
-		}
+	if (!*sch) {
+		/* init schedulers list */
+		*sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**sch));
+		list_init(&(*sch)->list);
 	}
-out:
-	return ret;
+
+	list_item_append(&scheduler->list, &(*sch)->list);
 }
 
-void schedule_free(void)
+void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
-	int i;
+	struct schedule_data *sch;
 
-	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
-		if (schedulers[i]->scheduler_free)
-			schedulers[i]->scheduler_free();
-	}
-}
+	sch = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sch));
+	list_init(&sch->list);
+	sch->type = type;
+	sch->ops = ops;
+	sch->data = data;
 
-void schedule(void)
-{
-	int i;
-
-	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
-		if (schedulers[i]->scheduler_run)
-			schedulers[i]->scheduler_run();
-	}
+	scheduler_register(sch);
 }

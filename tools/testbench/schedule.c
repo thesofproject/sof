@@ -11,13 +11,14 @@
 #include <sof/schedule/task.h>
 #include <stdint.h>
 #include <sof/lib/wait.h>
-#include "testbench/edf_schedule.h"
-#include "testbench/ll_schedule.h"
+#include <stdlib.h>
 
-static const struct scheduler_ops *schedulers[SOF_SCHEDULE_COUNT] = {
-	&schedule_edf_ops,              /* SOF_SCHEDULE_EDF */
-	&schedule_ll_ops		/* SOF_LL_TASK */
-};
+static struct schedule_data *sch;
+
+struct schedulers **arch_schedulers_get(void)
+{
+	return NULL;
+}
 
 /* testbench work definition */
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
@@ -31,44 +32,17 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->func = func;
 	task->data = data;
 
-	if (schedulers[task->type]->schedule_task_init)
-		return schedulers[task->type]->schedule_task_init(task);
+	if (task->type == sch->type && sch->ops->schedule_task_init)
+		return sch->ops->schedule_task_init(sch->data, task);
 	else
 		return -ENOENT;
 }
 
-int scheduler_init(struct sof *sof)
+void scheduler_init(int type, const struct scheduler_ops *ops, void *data)
 {
-	int i = 0;
-	int ret = 0;
-
-	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
-		if (schedulers[i]->scheduler_init) {
-			ret = schedulers[i]->scheduler_init(sof);
-			if (ret < 0)
-				goto out;
-		}
-	}
-out:
-	return ret;
-}
-
-void schedule_free(void)
-{
-	int i;
-
-	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
-		if (schedulers[i]->scheduler_free)
-			schedulers[i]->scheduler_free();
-	}
-}
-
-void schedule(void)
-{
-	int i = 0;
-
-	for (i = 0; i < SOF_SCHEDULE_COUNT; i++) {
-		if (schedulers[i]->scheduler_run)
-			schedulers[i]->scheduler_run();
-	}
+	sch = malloc(sizeof(*sch));
+	list_init(&sch->list);
+	sch->type = type;
+	sch->ops = ops;
+	sch->data = data;
 }

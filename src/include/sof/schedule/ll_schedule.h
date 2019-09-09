@@ -37,4 +37,6 @@ struct ll_task_pdata {
 	uint64_t period;
 };
 
+int scheduler_init_ll(void);
+
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */

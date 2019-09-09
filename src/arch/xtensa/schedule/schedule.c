@@ -14,9 +14,9 @@
 #include <sof/schedule/schedule.h>
 #include <xtos-structs.h>
 
-struct schedule_data **arch_schedule_get_data(void)
+struct schedulers **arch_schedulers_get(void)
 {
 	struct core_context *ctx = (struct core_context *)cpu_read_threadptr();
 
-	return &ctx->sch_data;
+	return &ctx->schedulers;
 }

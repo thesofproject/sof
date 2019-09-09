@@ -16,7 +16,7 @@
 
 struct idc;
 struct notify;
-struct schedule_data;
+struct schedulers;
 struct task;
 
 struct thread_data {
@@ -40,7 +40,7 @@ struct xtos_core_data {
 struct core_context {
 	struct thread_data td;
 	struct task *main_task;
-	struct schedule_data *sch_data;
+	struct schedulers *schedulers;
 	struct notify *notify;
 	struct idc *idc;
 };

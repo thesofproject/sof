@@ -958,14 +958,7 @@ void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 
 void pipeline_schedule_cancel(struct pipeline *p)
 {
-	int err;
-
-	/* cancel and wait for pipeline to complete */
-	err = schedule_task_cancel(&p->pipe_task);
-	if (err < 0)
-		trace_pipe_error_with_ids(p, "pipeline_schedule_cancel() "
-					  "error: schedule_task_cancel() "
-					  "failed, err = %d", err);
+	schedule_task_cancel(&p->pipe_task);
 }
 
 static enum task_state pipeline_task(void *arg)

@@ -15,6 +15,7 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
+#include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/schedule.h>
 #include <sof/lib/wait.h>
 #include <sof/audio/pipeline.h>
@@ -35,8 +36,8 @@ int tb_pipeline_setup(struct sof *sof)
 	}
 
 	/* init scheduler */
-	if (scheduler_init(sof) < 0) {
-		fprintf(stderr, "error: scheduler init\n");
+	if (scheduler_init_edf(sof) < 0) {
+		fprintf(stderr, "error: edf scheduler init\n");
 		return -EINVAL;
 	}
 
