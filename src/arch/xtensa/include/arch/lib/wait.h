@@ -20,10 +20,11 @@ static inline void arch_wait_for_interrupt(int level)
 {
 	int i;
 
+#if !(CONFIG_CAVS_LPS)
 	/* need to make sure the interrupt level won't be lowered */
 	if (arch_interrupt_get_level() > level)
 		panic(SOF_IPC_PANIC_WFI);
-
+#endif
 	/* this sequence must be atomic on LX6 */
 	XTOS_SET_INTLEVEL(5);
 

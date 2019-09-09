@@ -39,6 +39,13 @@ config WAITI_DELAY
 	  Some cAVS platforms may require additional delay to flush loads
 	  and stores before entering WAITI.
 
+config CAVS_LPS
+	bool "Intel cAVS Low Power Sequencer for Power Management"
+	depends on CAVS
+	default n
+	help
+	  Select this to enable Intel cAVS Low Power Sequencer.
+
 endmenu
 
 config HOST_PTABLE

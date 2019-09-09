@@ -8,6 +8,10 @@
 //         Janusz Jankowski <janusz.jankowski@linux.intel.com>
 
 #include <cavs/version.h>
+#if (CONFIG_CAVS_LPS)
+#include <cavs/lp_wait.h>
+#endif
+#include <cavs/mem_wnd.h>
 #include <sof/common.h>
 #include <sof/debug/debug.h>
 #include <sof/drivers/dw-dma.h>
@@ -291,31 +295,37 @@ int platform_boot_complete(uint32_t boot_message)
 #endif
 
 #if CONFIG_MEM_WND
-static void platform_memory_windows_init(void)
+void platform_memory_windows_init(uint32_t flags)
 {
 	/* window0, for fw status & outbox/uplink mbox */
 	io_reg_write(DMWLO(0), HP_SRAM_WIN0_SIZE | 0x7);
 	io_reg_write(DMWBA(0), HP_SRAM_WIN0_BASE
 		| DMWBA_READONLY | DMWBA_ENABLE);
-	bzero((void *)(HP_SRAM_WIN0_BASE + SRAM_REG_FW_END),
-	      HP_SRAM_WIN0_SIZE - SRAM_REG_FW_END);
-	dcache_writeback_region((void *)(HP_SRAM_WIN0_BASE + SRAM_REG_FW_END),
-				HP_SRAM_WIN0_SIZE - SRAM_REG_FW_END);
-
+	if (flags & MEM_WND_INIT_CLEAR) {
+		bzero((void *)(HP_SRAM_WIN0_BASE + SRAM_REG_FW_END),
+		      HP_SRAM_WIN0_SIZE - SRAM_REG_FW_END);
+		dcache_writeback_region((void *)(HP_SRAM_WIN0_BASE +
+						 SRAM_REG_FW_END),
+					HP_SRAM_WIN0_SIZE - SRAM_REG_FW_END);
+	}
 	/* window1, for inbox/downlink mbox */
 	io_reg_write(DMWLO(1), HP_SRAM_WIN1_SIZE | 0x7);
 	io_reg_write(DMWBA(1), HP_SRAM_WIN1_BASE
 		| DMWBA_ENABLE);
-	bzero((void *)HP_SRAM_WIN1_BASE, HP_SRAM_WIN1_SIZE);
-	dcache_writeback_region((void *)HP_SRAM_WIN1_BASE, HP_SRAM_WIN1_SIZE);
-
+	if (flags & MEM_WND_INIT_CLEAR) {
+		bzero((void *)HP_SRAM_WIN1_BASE, HP_SRAM_WIN1_SIZE);
+		dcache_writeback_region((void *)HP_SRAM_WIN1_BASE,
+					HP_SRAM_WIN1_SIZE);
+	}
 	/* window2, for debug */
 	io_reg_write(DMWLO(2), HP_SRAM_WIN2_SIZE | 0x7);
 	io_reg_write(DMWBA(2), HP_SRAM_WIN2_BASE
 		| DMWBA_ENABLE);
-	bzero((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
-	dcache_writeback_region((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
-
+	if (flags & MEM_WND_INIT_CLEAR) {
+		bzero((void *)HP_SRAM_WIN2_BASE, HP_SRAM_WIN2_SIZE);
+		dcache_writeback_region((void *)HP_SRAM_WIN2_BASE,
+					HP_SRAM_WIN2_SIZE);
+	}
 	/* window3, for trace
 	 * zeroed by trace initialization
 	 */
@@ -367,7 +377,7 @@ int platform_init(struct sof *sof)
 
 #if CONFIG_MEM_WND
 	trace_point(TRACE_BOOT_PLATFORM_MBOX);
-	platform_memory_windows_init();
+	platform_memory_windows_init(MEM_WND_INIT_CLEAR);
 #endif
 
 	/* init timers, clocks and schedulers */
@@ -510,6 +520,12 @@ int platform_init(struct sof *sof)
 
 void platform_wait_for_interrupt(int level)
 {
-	/* TODO: go to LPS flow if pm-runtime is enabled for DSP */
+#if (CONFIG_CAVS_LPS)
+	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID))
+		arch_wait_for_interrupt(level);
+	else
+		lp_wait_for_interrupt(level);
+#else
 	arch_wait_for_interrupt(level);
+#endif
 }
