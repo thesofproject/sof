@@ -18,6 +18,7 @@
 #include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/sof.h>
 #include <ipc/dai.h>
 #include <ipc/header.h>
@@ -109,22 +110,14 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-
-struct timesource_data platform_generic_queue[] = {
-{
-	.timer = {
-		.id = TIMER0,
-		.irq = IRQ_NUM_TIMER0,
-	},
-	.clk = PLATFORM_WORKQ_CLOCK,
-	.timer_set = platform_timer_set,
-	.timer_clear = platform_timer_clear,
-	.timer_get = platform_timer_get,
-},
+struct timer timer = {
+	.id = TIMER0, /* internal timer */
+	.irq = IRQ_NUM_TIMER0,
 };
-struct timer *platform_timer =
-	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
 
+struct timer *platform_timer = &timer;
+
+struct ll_schedule_domain *platform_timer_domain;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -151,7 +144,12 @@ int platform_init(struct sof *sof)
 
 	clock_init();
 	scheduler_init_edf(sof);
-	scheduler_init_ll();
+
+	/* init low latency domains and schedulers */
+	platform_timer_domain =
+		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
+				  PLATFORM_WORKQ_DEFAULT_TIMEOUT);
+	scheduler_init_ll(platform_timer_domain);
 
 	platform_timer_start(platform_timer);
 	sa_init(sof);

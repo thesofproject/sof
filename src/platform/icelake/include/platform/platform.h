@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct ll_schedule_domain;
 struct timer;
 
 /*! \def PLATFORM_DEFAULT_CLOCK
@@ -148,6 +149,8 @@ static inline void platform_panic(uint32_t p)
 	mailbox_sw_reg_write(SRAM_REG_FW_TRACEP, (__x))
 
 extern struct timer *platform_timer;
+
+extern struct ll_schedule_domain *platform_timer_domain;
 
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;

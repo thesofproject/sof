@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct ll_schedule_domain;
 struct timer;
 
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
@@ -94,6 +95,8 @@ static inline void platform_panic(uint32_t p)
 #define platform_trace_point(__x)
 
 extern struct timer *platform_timer;
+
+extern struct ll_schedule_domain *platform_timer_domain;
 
 extern intptr_t _module_init_start;
 extern intptr_t _module_init_end;

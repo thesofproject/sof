@@ -18,6 +18,8 @@
 #include <user/trace.h>
 #include <stdint.h>
 
+struct ll_schedule_domain;
+
 /* ll tracing */
 #define trace_ll(format, ...) \
 	trace_event(TRACE_CLASS_SCHEDULE_LL, format, ##__VA_ARGS__)
@@ -37,6 +39,6 @@ struct ll_task_pdata {
 	uint64_t period;
 };
 
-int scheduler_init_ll(void);
+int scheduler_init_ll(struct ll_schedule_domain *domain);
 
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_H__ */

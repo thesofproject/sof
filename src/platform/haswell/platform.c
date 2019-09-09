@@ -20,6 +20,7 @@
 #include <sof/lib/shim.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
+#include <sof/schedule/ll_schedule_domain.h>
 #include <sof/sof.h>
 #include <sof/trace/dma-trace.h>
 #include <sof/trace/trace.h>
@@ -111,22 +112,14 @@ static const struct sof_ipc_window sram_window = {
 	},
 };
 
-struct timesource_data platform_generic_queue[] = {
-{
-	.timer	 = {
-		.id = TIMER1,	/* internal timer */
-		.irq = IRQ_NUM_TIMER2,
-	},
-	.clk		= CLK_CPU(0),
-	.notifier	= NOTIFIER_ID_CPU_FREQ,
-	.timer_set	= arch_timer_set,
-	.timer_clear	= arch_timer_clear,
-	.timer_get	= arch_timer_get_system,
-},
+struct timer timer = {
+	.id = TIMER1, /* internal timer */
+	.irq = IRQ_NUM_TIMER2,
 };
 
-struct timer *platform_timer =
-	&platform_generic_queue[PLATFORM_MASTER_CORE_ID].timer;
+struct timer *platform_timer = &timer;
+
+struct ll_schedule_domain *platform_timer_domain;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -184,7 +177,12 @@ int platform_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf(sof);
-	scheduler_init_ll();
+
+	/* init low latency domains and schedulers */
+	platform_timer_domain =
+		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
+				  PLATFORM_WORKQ_DEFAULT_TIMEOUT);
+	scheduler_init_ll(platform_timer_domain);
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

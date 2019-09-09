@@ -96,6 +96,7 @@ int arch_init(struct sof *sof)
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/notifier.h>
+#include <sof/platform.h>
 #include <sof/schedule/edf_schedule.h>
 #include <sof/schedule/ll_schedule.h>
 #include <sof/schedule/schedule.h>
@@ -123,7 +124,7 @@ int slave_core_init(struct sof *sof)
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf(sof);
-	scheduler_init_ll();
+	scheduler_init_ll(platform_timer_domain);
 
 	/* initialize IDC mechanism */
 	trace_point(TRACE_BOOT_PLATFORM_IDC);
