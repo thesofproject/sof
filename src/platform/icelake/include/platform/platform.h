@@ -85,12 +85,6 @@ struct timer;
 /* DMA host transfer timeouts in microseconds */
 #define PLATFORM_HOST_DMA_TIMEOUT	200
 
-/* DMA link transfer timeouts in microseconds
- * TODO: timeout should be reduced
- * (DMA might needs some further changes to do that)
- */
-#define PLATFORM_LINK_DMA_TIMEOUT	1000
-
 /* WorkQ window size in microseconds */
 #define PLATFORM_WORKQ_WINDOW	2000
 
