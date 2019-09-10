@@ -59,9 +59,6 @@ struct timer;
 /* DMA host transfer timeouts in microseconds */
 #define PLATFORM_HOST_DMA_TIMEOUT	50
 
-/* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	PLATFORM_DEFAULT_CLOCK
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	HOST_PAGE_SIZE
 
