@@ -107,7 +107,6 @@ struct host_data {
 	struct sof_ipc_stream_posn posn; /* TODO: update this */
 };
 
-
 static inline struct dma_sg_elem *next_buffer(struct hc_buf *hc)
 {
 	if (!hc->elem_array.elems || !hc->elem_array.count)
