@@ -131,8 +131,6 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 
-	tracev_dai_with_ids(dev, "dai_dma_cb()");
-
 	switch (type) {
 	case DMA_CB_TYPE_IRQ:
 		pipeline_schedule_copy(dev->pipeline, 0);
