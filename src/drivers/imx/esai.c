@@ -313,16 +313,16 @@ static void esai_stop(struct dai *dai, int direction)
 	/* disable regular interrupt */
 //	dai_update_bits(dai, REG_ESAI_xCR(direction), ESAI_xCR_xIE, 0);
 
-//	dai_update_bits(dai, REG_ESAI_xCR(direction),
-//			direction ? ESAI_xCR_TE_MASK : ESAI_xCR_RE_MASK, 0);
+	dai_update_bits(dai, REG_ESAI_xCR(direction),
+			direction ? ESAI_xCR_TE_MASK : ESAI_xCR_RE_MASK, 0);
 
-//	dai_update_bits(dai, REG_ESAI_xSMA(direction), ESAI_xSMA_xS_MASK, 0);
-//	dai_update_bits(dai, REG_ESAI_xSMB(direction), ESAI_xSMB_xS_MASK, 0);
+	dai_update_bits(dai, REG_ESAI_xSMA(direction), ESAI_xSMA_xS_MASK, 0);
+	dai_update_bits(dai, REG_ESAI_xSMB(direction), ESAI_xSMB_xS_MASK, 0);
 
 	/* disable and reset FIFO */
-//	dai_update_bits(dai, REG_ESAI_xFCR(direction),
-//			ESAI_xFCR_xFR | ESAI_xFCR_xFEN, ESAI_xFCR_xFR);
-//	dai_update_bits(dai, REG_ESAI_xFCR(direction), ESAI_xFCR_xFR, 0);
+	dai_update_bits(dai, REG_ESAI_xFCR(direction),
+			ESAI_xFCR_xFR | ESAI_xFCR_xFEN, ESAI_xFCR_xFR);
+	dai_update_bits(dai, REG_ESAI_xFCR(direction), ESAI_xFCR_xFR, 0);
 
 	tracev_esai("ESAI_REGS_DUMP in esai_stop");
 	esai_regs_dump(dai);
@@ -385,7 +385,6 @@ static void esai_irq2(void *ign)
 
 static int esai_probe(struct dai *dai)
 {
-	int irq, rc;
 	tracev_esai("ESAI: probe");
 	/* ESAI core reset */
 	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ERST | ESAI_ECR_ESAIEN);
@@ -404,10 +403,10 @@ static int esai_probe(struct dai *dai)
 
 	dai_write(dai, REG_ESAI_ECR, ESAI_ECR_ESAIEN);
 
-	irq = irqstr_get_sof_int(ESAI_IRQ);
-	rc = interrupt_register(irq, IRQ_AUTO_UNMASK, &esai_irq, dai);
-	if (rc >= 0 || rc == -EEXIST)
-		interrupt_enable(irq, dai);
+//	irq = irqstr_get_sof_int(ESAI_IRQ);
+//	rc = interrupt_register(irq, IRQ_AUTO_UNMASK, &esai_irq, dai);
+//	if (rc >= 0 || rc == -EEXIST)
+//		interrupt_enable(irq, dai);
 
 	tracev_esai("ESAI_REGS_DUMP in esai_probe");
 	esai_regs_dump(dai);
