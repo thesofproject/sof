@@ -75,8 +75,10 @@ struct timer;
 /* DMA host transfer timeouts in microseconds */
 #define PLATFORM_HOST_DMA_TIMEOUT	200
 
-/* work queue default timeout in microseconds */
-#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
+/*! \def PLATFORM_LL_DEFAULT_TIMEOUT
+ *  \brief low latency scheduler default timeout in microseconds
+ */
+#define PLATFORM_LL_DEFAULT_TIMEOUT	1000
 
 /* Host finish work schedule delay in microseconds */
 #define PLATFORM_HOST_FINISH_DELAY	100

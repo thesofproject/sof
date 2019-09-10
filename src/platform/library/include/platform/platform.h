@@ -25,10 +25,10 @@ struct timer;
  */
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
 
-/*! \def PLATFORM_WORKQ_DEFAULT_TIMEOUT
- *  \brief work queue default timeout in microseconds
+/*! \def PLATFORM_LL_DEFAULT_TIMEOUT
+ *  \brief low latency scheduler default timeout in microseconds
  */
-#define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
+#define PLATFORM_LL_DEFAULT_TIMEOUT	1000
 
 /* Host page size */
 #define HOST_PAGE_SIZE		4096
