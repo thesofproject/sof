@@ -10,6 +10,7 @@
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
+#include <sof/drivers/edma.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
@@ -702,6 +703,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int channel = 0;
 	int i;
+	int handshake = dai_get_handshake(dd->dai, dev->params.direction, dd->stream_id);
 
 	trace_dai("config comp %d pipe %d dai %d type %d", dev->comp.id,
 		  dev->comp.pipeline_id, config->dai_index, config->type);
@@ -813,7 +815,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	case SOF_DAI_IMX_ESAI:
 		/* TODO: Replace 6 and 7 with defines, for example 6 is
 		 * RX and 7 is TX */
-		channel = dev->params.direction == SOF_IPC_STREAM_PLAYBACK ? 7 : 6;
+		channel = EDMA_HS_GET_CHAN(handshake);
 		trace_dai_with_ids(dev, "dai_config() has done ESAI specific channel selection");
 		dd->frame_bytes = 4; /* The ESAI works with 24 bit samples, padded to 32 bits */
 		if (dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE)

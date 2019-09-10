@@ -4,6 +4,7 @@
 //
 // Author: Daniel Baluta <daniel.baluta@nxp.com>
 
+#include <sof/drivers/edma.h>
 #include <sof/drivers/esai.h>
 #include <sof/lib/dai.h>
 #include <sof/lib/dma.h>
@@ -415,8 +416,21 @@ static int esai_probe(struct dai *dai)
 
 static int esai_get_handshake(struct dai *dai, int direction, int stream_id)
 {
-	// TODO
-	return 0;
+	int channel, irq;
+
+	switch (direction) {
+	case DAI_DIR_PLAYBACK:
+		channel = 7;
+		break;
+	case DAI_DIR_CAPTURE:
+		channel = 6;
+		break;
+	default:
+		trace_esai_error("esai_get_handshake(): invalid direction");
+		return -EINVAL;
+	}
+	irq = irqstr_get_sof_int(EDMA_ESAI_IRQ);
+	return EDMA_HANDSHAKE(irq, channel);
 }
 
 static int esai_get_fifo(struct dai *dai, int direction, int stream_id)

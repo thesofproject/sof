@@ -11,21 +11,6 @@
 #include <sof/lib/io.h>
 #include <stdint.h>
 
-/*
- * This table contains the translation from channel number to interrupt
- * number.
- */
-static const int edma0_chan_to_irq[32] = {
-	// 0
-	-1, -1, -1, -1, -1, -1, 442, 442,
-	// 8
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	// 16
-	-1, -1, -1, -1, -1, -1, -1, -1,
-	// 24
-	-1, -1, -1, -1, -1, -1, -1, -1,
-};
-
 static inline void
 edma_chan_write(struct dma_chan_data *channel, uint32_t reg, uint32_t value)
 {
@@ -665,7 +650,20 @@ static void edma_irq(void *arg)
 static int edma_set_config(struct dma_chan_data *channel,
 			   struct dma_sg_config *config)
 {
+	int handshake;
+
 	tracev_edma("EDMA: set config");
+	switch (config->direction) {
+	case DMA_DIR_MEM_TO_DEV:
+		handshake = config->dest_dev;
+		break;
+	case DMA_DIR_DEV_TO_MEM:
+		handshake = config->src_dev;
+		break;
+	default:
+		trace_edma_error("edma_set_config() invalid config direction");
+		return -EINVAL;
+	}
 	tracev_edma("EDMA: source width %d dest width %d burst elems %d", config->src_width, config->dest_width, config->burst_elems);
 	switch (config->direction) {
 #define CASE(dir) case dir: tracev_edma("EDMA: direction = " #dir ); break;
@@ -713,14 +711,7 @@ static int edma_set_config(struct dma_chan_data *channel,
 	} else {
 		tracev_edma("EDMA: Registering IRQ");
 
-		int irq = irqstr_get_sof_int(edma0_chan_to_irq[channel->index]);
-
-		if (irq < 0) {
-			trace_edma_error("irqstr_get_sof_int failed for channel %d", channel->index);
-			trace_edma_error("in table it's %d",
-					 edma0_chan_to_irq[channel->index]);
-			return irq;
-		}
+		int irq = EDMA_HS_GET_IRQ(handshake);
 		int rc = interrupt_register(irq, IRQ_AUTO_UNMASK, &edma_irq, channel);
 
 		if (rc == -EEXIST) {

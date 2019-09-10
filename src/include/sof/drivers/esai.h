@@ -173,6 +173,7 @@
 #define ESAI_GPIO		MASK(11, 0)
 
 #define ESAI_IRQ		441
+#define EDMA_ESAI_IRQ		442
 
 #define trace_esai(format, ...) trace_event(TRACE_CLASS_DAI, format, ##__VA_ARGS__)
 #define tracev_esai(format, ...) tracev_event(TRACE_CLASS_DAI, format, ##__VA_ARGS__)

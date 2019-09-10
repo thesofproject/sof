@@ -63,6 +63,12 @@
 
 int edma_init(void);
 
+#define EDMA_HS_GET_IRQ(hs) (((hs) & MASK(8, 0)) >> 0)
+#define EDMA_HS_SET_IRQ(irq) SET_BITS(8, 0, irq)
+#define EDMA_HS_GET_CHAN(hs) (((hs) & MASK(13, 9)) >> 9)
+#define EDMA_HS_SET_CHAN(chan) SET_BITS(13, 9, chan)
+#define EDMA_HANDSHAKE(irq, channel) (EDMA_HS_SET_CHAN(channel) | EDMA_HS_SET_IRQ(irq))
+
 #define trace_edma(format, ...) trace_event(TRACE_CLASS_DMA, format, ##__VA_ARGS__)
 #define tracev_edma(format, ...) tracev_event(TRACE_CLASS_DMA, format, ##__VA_ARGS__)
 #define trace_edma_error(format, ...) trace_error(TRACE_CLASS_DMA, format, ##__VA_ARGS__)
