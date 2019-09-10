@@ -73,7 +73,7 @@ void sa_init(struct sof *sof)
 	sof->sa = sa;
 
 	/* set default tick timeout */
-	sa->ticks = clock_ms_to_ticks(PLATFORM_WORKQ_CLOCK, 1) *
+	sa->ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
 		PLATFORM_IDLE_TIME / 1000;
 
 	trace_sa("sa_init(), sa->ticks = %u", sa->ticks);
