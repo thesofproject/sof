@@ -92,9 +92,6 @@ struct timer;
 /* DMA host transfer timeouts in microseconds */
 #define PLATFORM_HOST_DMA_TIMEOUT	200
 
-/* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	PLATFORM_DEFAULT_CLOCK
-
 /* Host finish work schedule delay in microseconds */
 #define PLATFORM_HOST_FINISH_DELAY	100
 

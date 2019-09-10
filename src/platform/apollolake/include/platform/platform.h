@@ -75,9 +75,6 @@ struct timer;
 /* DMA host transfer timeouts in microseconds */
 #define PLATFORM_HOST_DMA_TIMEOUT	200
 
-/* platform WorkQ clock */
-#define PLATFORM_WORKQ_CLOCK	PLATFORM_DEFAULT_CLOCK
-
 /* work queue default timeout in microseconds */
 #define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
 
