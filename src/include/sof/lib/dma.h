@@ -79,6 +79,14 @@ enum dma_cb_status {
 	DMA_CB_STATUS_END,
 };
 
+/* DMA interrupt commands */
+enum dma_irq_cmd {
+	DMA_IRQ_STATUS_GET = 0,
+	DMA_IRQ_CLEAR,
+	DMA_IRQ_MASK,
+	DMA_IRQ_UNMASK
+};
+
 #define DMA_CHAN_INVALID	0xFFFFFFFF
 
 /* DMA attributes */
@@ -166,6 +174,8 @@ struct dma_ops {
 			     uint32_t *free);
 
 	int (*get_attribute)(struct dma *dma, uint32_t type, uint32_t *value);
+
+	int (*interrupt)(struct dma_chan_data *channel, enum dma_irq_cmd cmd);
 };
 
 /* DMA platform data */
@@ -354,6 +364,12 @@ static inline int dma_get_attribute(struct dma *dma, uint32_t type,
 				    uint32_t *value)
 {
 	return dma->ops->get_attribute(dma, type, value);
+}
+
+static inline int dma_interrupt(struct dma_chan_data *channel,
+				enum dma_irq_cmd cmd)
+{
+	return channel->dma->ops->interrupt(channel, cmd);
 }
 
 /* DMA hardware register operations */
