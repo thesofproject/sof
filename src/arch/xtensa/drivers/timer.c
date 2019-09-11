@@ -103,7 +103,7 @@ uint64_t arch_timer_get_system(struct timer *timer)
 	return time;
 }
 
-int arch_timer_set(struct timer *timer, uint64_t ticks)
+int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 {
 	uint32_t time = 1;
 	uint32_t hitimeout = ticks >> 32;

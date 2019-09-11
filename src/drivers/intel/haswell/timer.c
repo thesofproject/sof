@@ -23,7 +23,7 @@ void platform_timer_stop(struct timer *timer)
 	arch_timer_disable(timer);
 }
 
-int platform_timer_set(struct timer *timer, uint64_t ticks)
+int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 {
 	return arch_timer_set(timer, ticks);
 }

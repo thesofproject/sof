@@ -25,7 +25,7 @@ void timer_unregister(struct timer *timer, void *arg);
 void timer_enable(struct timer *timer, void *arg, int core);
 void timer_disable(struct timer *timer, void *arg, int core);
 
-static inline int timer_set(struct timer *timer, uint64_t ticks)
+static inline int64_t timer_set(struct timer *timer, uint64_t ticks)
 {
 	return arch_timer_set(timer, ticks);
 }
@@ -46,7 +46,7 @@ static inline uint64_t timer_get_system(struct timer *timer)
 	return arch_timer_get_system(timer);
 }
 
-int platform_timer_set(struct timer *timer, uint64_t ticks);
+int64_t platform_timer_set(struct timer *timer, uint64_t ticks);
 void platform_timer_clear(struct timer *timer);
 uint64_t platform_timer_get(struct timer *timer);
 void platform_timer_start(struct timer *timer);

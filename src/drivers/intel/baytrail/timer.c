@@ -75,7 +75,7 @@ void platform_timer_stop(struct timer *timer)
 	shim_write(SHIM_EXT_TIMER_CNTLH, SHIM_EXT_TIMER_CLEAR);
 }
 
-int platform_timer_set(struct timer *timer, uint64_t ticks)
+int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 {
 	uint32_t time = 1;
 	uint32_t hitimeout = ticks >> 32;
