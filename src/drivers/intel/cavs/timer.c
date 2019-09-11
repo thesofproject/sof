@@ -32,17 +32,22 @@ void platform_timer_stop(struct timer *timer)
 		   shim_read(SHIM_DSPWCTCS) & ~SHIM_DSPWCTCS_T0A);
 }
 
-int platform_timer_set(struct timer *timer, uint64_t ticks)
+int64_t platform_timer_set(struct timer *timer, uint64_t ticks)
 {
 	/* a tick value of 0 will not generate an IRQ */
 	if (ticks == 0)
 		ticks = 1;
 
-	/* set new value and run */
-	shim_write64(SHIM_DSPWCT0C, ticks);
+	/* Check if requested time is not past time */
+	if (ticks > shim_read64(SHIM_DSPWC))
+		shim_write64(SHIM_DSPWCT0C, ticks);
+	else
+		shim_write64(SHIM_DSPWCT0C, shim_read64(SHIM_DSPWC) + 1);
+
+	/* Enable IRQ */
 	shim_write(SHIM_DSPWCTCS, SHIM_DSPWCTCS_T0A);
 
-	return 0;
+	return shim_read64(SHIM_DSPWCT0C);
 }
 
 void platform_timer_clear(struct timer *timer)

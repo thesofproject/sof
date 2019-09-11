@@ -21,8 +21,8 @@ static inline void arch_timer_unregister(struct timer *timer) {}
 static inline void arch_timer_enable(struct timer *timer) {}
 static inline void arch_timer_disable(struct timer *timer) {}
 static inline uint32_t arch_timer_get_system(struct timer *timer) {return 0; }
-static inline int arch_timer_set(struct timer *timer,
-	uint64_t ticks) {return 0; }
+static inline int64_t arch_timer_set(struct timer *timer,
+				     uint64_t ticks) {return 0; }
 static inline void arch_timer_clear(struct timer *timer) {}
 
 #endif /* __ARCH_DRIVERS_TIMER_H__ */

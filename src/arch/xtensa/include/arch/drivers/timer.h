@@ -63,7 +63,7 @@ static inline void arch_timer_disable(struct timer *timer)
 
 uint64_t arch_timer_get_system(struct timer *timer);
 
-int arch_timer_set(struct timer *timer, uint64_t ticks);
+int64_t arch_timer_set(struct timer *timer, uint64_t ticks);
 
 static inline void arch_timer_clear(struct timer *timer)
 {
