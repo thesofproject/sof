@@ -96,6 +96,12 @@ static int dummy_dma_get_data_size(struct dma_chan_data *channel,
 	return 0;
 }
 
+static int dummy_dma_interrupt(struct dma_chan_data *channel,
+			       enum dma_irq_cmd cmd)
+{
+	return 0;
+}
+
 const struct dma_ops dummy_dma_ops = {
 	.channel_get	= dummy_dma_channel_get,
 	.channel_put	= dummy_dma_channel_put,
@@ -112,4 +118,5 @@ const struct dma_ops dummy_dma_ops = {
 	.probe		= dummy_dma_probe,
 	.remove		= dummy_dma_remove,
 	.get_data_size	= dummy_dma_get_data_size,
+	.interrupt	= dummy_dma_interrupt,
 };

@@ -161,6 +161,19 @@ static void dw_dma_interrupt_clear(struct dma_chan_data *channel)
 #endif
 }
 
+static uint32_t dw_dma_interrupt_status(struct dma_chan_data *channel)
+{
+	uint32_t status;
+
+#if CONFIG_HW_LLI
+	status = dma_reg_read(channel->dma, DW_STATUS_BLOCK);
+#else
+	status = dma_reg_read(channel->dma, DW_STATUS_TFR);
+#endif
+
+	return status & DW_CHAN(channel->index);
+}
+
 static void dw_dma_increment_pointer(struct dw_dma_chan_data *chan, int bytes)
 {
 	chan->ptr_data.current_ptr += bytes;
@@ -1353,6 +1366,31 @@ static int dw_dma_get_attribute(struct dma *dma, uint32_t type,
 	return ret;
 }
 
+static int dw_dma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
+{
+	int ret = 0;
+
+	switch (cmd) {
+	case DMA_IRQ_STATUS_GET:
+		ret = dw_dma_interrupt_status(channel);
+		break;
+	case DMA_IRQ_CLEAR:
+		dw_dma_interrupt_clear(channel);
+		break;
+	case DMA_IRQ_MASK:
+		dw_dma_interrupt_mask(channel);
+		break;
+	case DMA_IRQ_UNMASK:
+		dw_dma_interrupt_unmask(channel);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 const struct dma_ops dw_dma_ops = {
 	.channel_get		= dw_dma_channel_get,
 	.channel_put		= dw_dma_channel_put,
@@ -1370,4 +1408,5 @@ const struct dma_ops dw_dma_ops = {
 	.remove			= dw_dma_remove,
 	.get_data_size		= dw_dma_get_data_size,
 	.get_attribute		= dw_dma_get_attribute,
+	.interrupt		= dw_dma_interrupt,
 };

@@ -880,6 +880,13 @@ static int hda_dma_get_attribute(struct dma *dma, uint32_t type,
 	return ret;
 }
 
+static int hda_dma_interrupt(struct dma_chan_data *channel,
+			     enum dma_irq_cmd cmd)
+{
+	/* HDA-DMA doesn't support interrupts */
+	return -EINVAL;
+}
+
 const struct dma_ops hda_host_dma_ops = {
 	.channel_get		= hda_dma_channel_get,
 	.channel_put		= hda_dma_channel_put,
@@ -897,6 +904,7 @@ const struct dma_ops hda_host_dma_ops = {
 	.remove			= hda_dma_remove,
 	.get_data_size		= hda_dma_data_size,
 	.get_attribute		= hda_dma_get_attribute,
+	.interrupt		= hda_dma_interrupt,
 };
 
 const struct dma_ops hda_link_dma_ops = {
@@ -916,4 +924,5 @@ const struct dma_ops hda_link_dma_ops = {
 	.remove			= hda_dma_remove,
 	.get_data_size		= hda_dma_data_size,
 	.get_attribute		= hda_dma_get_attribute,
+	.interrupt		= hda_dma_interrupt,
 };
