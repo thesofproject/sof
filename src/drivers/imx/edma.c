@@ -110,6 +110,11 @@ static int edma_remove(struct dma *dma)
 	return 0;
 }
 
+static int edma_interrupt(struct dma_chan_data *channel, enum dma_irq_cmd cmd)
+{
+	return 0;
+}
+
 const struct dma_ops edma_ops = {
 	.channel_get	= edma_channel_get,
 	.channel_put	= edma_channel_put,
@@ -124,4 +129,5 @@ const struct dma_ops edma_ops = {
 	.pm_context_store	= edma_pm_context_store,
 	.probe		= edma_probe,
 	.remove		= edma_remove,
+	.interrupt	= edma_interrupt,
 };
