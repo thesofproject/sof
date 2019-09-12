@@ -5,7 +5,7 @@
 // Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
 // Author: Ranjani Sridharan <ranjani.sridharan@linux.intel.com>
 
-/* Core IA host SHIM support for Baytrail audio DSP. */
+/* Core IA host SHIM support for Haswell audio DSP. */
 
 #include <errno.h>
 #include <stdio.h>
@@ -23,33 +23,60 @@
 
 #define MBOX_OFFSET		0x144000
 
-/* Baytrail, Cherrytrail and Braswell - taken from qemu */
+/* taken from qemu value */
 #define ADSP_PCI_SIZE				0x00001000
-#define ADSP_BYT_PCI_BASE           0xF1200000
-#define ADSP_BYT_MMIO_BASE          0xF1400000
-#define ADSP_BYT_HOST_IRAM_OFFSET   0x000c0000
-#define ADSP_BYT_HOST_DRAM_OFFSET   0x00100000
-#define ADSP_BYT_HOST_IRAM_BASE     (ADSP_BYT_MMIO_BASE + ADSP_BYT_HOST_IRAM_OFFSET)
-#define ADSP_BYT_HOST_DRAM_BASE     (ADSP_BYT_MMIO_BASE + ADSP_BYT_HOST_DRAM_OFFSET)
-#define ADSP_BYT_HOST_SHIM_BASE     (ADSP_BYT_MMIO_BASE + 0x00140000)
-#define ADSP_BYT_HOST_MAILBOX_BASE  (ADSP_BYT_MMIO_BASE + 0x00144000)
 
-#define ADSP_CHT_PCI_BASE           0xF1600000
-#define ADSP_CHT_MMIO_BASE          0xF1800000
-#define ADSP_CHT_HOST_IRAM_BASE     (ADSP_CHT_MMIO_BASE + ADSP_BYT_HOST_IRAM_OFFSET)
-#define ADSP_CHT_HOST_DRAM_BASE     (ADSP_CHT_MMIO_BASE + ADSP_BYT_HOST_DRAM_OFFSET)
-#define ADSP_CHT_HOST_SHIM_BASE     (ADSP_CHT_MMIO_BASE + 0x00140000)
-#define ADSP_CHT_HOST_MAILBOX_BASE  (ADSP_CHT_MMIO_BASE + 0x00144000)
+/* Haswell and Broadwell */
+#define ADSP_HSW_PCI_BASE           0xF0200000
+#define ADSP_HSW_MMIO_BASE          0xF0400000
+#define ADSP_HSW_HOST_IRAM_OFFSET   0x00080000
+#define ADSP_HSW_HOST_DRAM_OFFSET   0x00000000
+#define ADSP_HSW_HOST_IRAM_BASE     \
+	(ADSP_HSW_MMIO_BASE + ADSP_HSW_HOST_IRAM_OFFSET)
+#define ADSP_HSW_HOST_DRAM_BASE     \
+	(ADSP_HSW_MMIO_BASE + ADSP_HSW_HOST_DRAM_OFFSET)
+#define ADSP_HSW_HOST_SHIM_BASE     \
+	(ADSP_HSW_MMIO_BASE + 0x000E7000)
+#define ADSP_HSW_HOST_MAILBOX_BASE  \
+	(ADSP_HSW_HOST_DRAM_BASE + 0x0007E000)
 
-#define ADSP_BYT_IRAM_SIZE          0x14000
-#define ADSP_BYT_DRAM_SIZE          0x28000
-#define ADSP_BYT_SHIM_SIZE          0x1000
-#define ADSP_MAILBOX_SIZE			0x1000
+#define ADSP_BDW_PCI_BASE           0xF0600000
+#define ADSP_BDW_MMIO_BASE          0xF0800000
+#define ADSP_BDW_HOST_IRAM_OFFSET   0x000A0000
+#define ADSP_BDW_HOST_DRAM_OFFSET   0x00000000
+#define ADSP_BDW_HOST_IRAM_BASE     \
+	(ADSP_BDW_MMIO_BASE + ADSP_BDW_HOST_IRAM_OFFSET)
+#define ADSP_BDW_HOST_DRAM_BASE     \
+	(ADSP_BDW_MMIO_BASE + ADSP_BDW_HOST_DRAM_OFFSET)
+#define ADSP_BDW_HOST_SHIM_BASE     \
+	(ADSP_BDW_MMIO_BASE + 0x000FB000)
+#define ADSP_BDW_HOST_MAILBOX_BASE  \
+	(ADSP_BDW_HOST_DRAM_BASE + 0x0009E000)
+
+#define ADSP_HSW_DSP_SHIM_BASE      0xFFFE7000
+#define ADSP_BDW_DSP_SHIM_BASE      0xFFFFB000
+#define ADSP_HSW_SHIM_SIZE          0x00001000
+
+#define ADSP_BDW_DSP_MAILBOX_BASE   (0x0049E000 - ADSP_HSW_DSP_DRAM_BASE)
+#define ADSP_HSW_DSP_MAILBOX_BASE   (0x0047E000 - ADSP_HSW_DSP_DRAM_BASE)
+
+#define ADSP_HSW_DSP_IRAM_BASE      0x00000000
+#define ADSP_HSW_DSP_DRAM_BASE      0x00400000
+
+#define ADSP_HSW_IRAM_SIZE          0x50000
+#define ADSP_HSW_DRAM_SIZE          0x80000
+
+#define ADSP_BDW_DSP_IRAM_BASE      0x00000000
+#define ADSP_BDW_DSP_DRAM_BASE      0x00400000
+#define ADSP_BDW_IRAM_SIZE          0x50000
+#define ADSP_BDW_DRAM_SIZE          0xA0000
+
+#define ADSP_MAILBOX_SIZE			0x980
 
 /* TODO get from driver. */
-#define BYT_PANIC_OFFSET(x)	(x)
+#define HSW_PANIC_OFFSET(x)	(x)
 
-struct byt_data {
+struct hsw_data {
 	void *bar[MAX_BAR_COUNT];
 	struct mailbox host_box;
 	struct mailbox dsp_box;
@@ -57,29 +84,37 @@ struct byt_data {
 	pthread_mutex_t mutex;
 };
 
-/* Platform host description taken from Qemu  - mapped to BAR 0, 1*/
-static struct fuzzer_mem_desc byt_mem[] = {
-	{.name = "iram", .base = ADSP_BYT_HOST_IRAM_BASE,
-	 .size = ADSP_BYT_IRAM_SIZE},
-	{.name = "dram", .base = ADSP_BYT_HOST_DRAM_BASE,
-	 .size = ADSP_BYT_DRAM_SIZE},
+static struct fuzzer_mem_desc hsw_mem[] = {
+	{.name = "iram", .base = ADSP_HSW_HOST_IRAM_BASE,
+		.size = ADSP_HSW_IRAM_SIZE},
+	{.name = "dram", .base = ADSP_HSW_HOST_DRAM_BASE,
+		.size = ADSP_HSW_DRAM_SIZE},
 };
 
-/* mapped to BAR 2, 3 */
-static struct fuzzer_reg_space byt_io[] = {
+static struct fuzzer_reg_space hsw_io[] = {
 	{ .name = "shim",
-	  .desc = {.base = ADSP_BYT_HOST_SHIM_BASE,
-		   .size = ADSP_BYT_SHIM_SIZE},},
-	{ .name = "mbox",
-	  .desc = {.base = ADSP_BYT_HOST_MAILBOX_BASE,
-		   .size = ADSP_MAILBOX_SIZE},},
+		.desc = {.base = ADSP_HSW_DSP_SHIM_BASE,
+				 .size = ADSP_HSW_SHIM_SIZE},},
 };
 
-#define BYT_DSP_BAR	2
-#define BYT_MBOX_BAR	3
+static struct fuzzer_mem_desc bdw_mem[] = {
+	{.name = "iram", .base = ADSP_BDW_HOST_IRAM_BASE,
+		.size = ADSP_BDW_IRAM_SIZE},
+	{.name = "dram", .base = ADSP_BDW_HOST_DRAM_BASE,
+		.size = ADSP_BDW_DRAM_SIZE},
+};
+
+static struct fuzzer_reg_space bdw_io[] = {
+	{ .name = "shim",
+		.desc = {.base = ADSP_BDW_DSP_SHIM_BASE,
+				 .size = ADSP_HSW_SHIM_SIZE},},
+};
+
+#define HSW_DSP_BAR	2
+#define HSW_MBOX_BAR	1
 
 /*
- * Platform support for BYT/CHT.
+ * Platform support for HSW/BDW.
  *
  * The IPC portions below are copied and pasted from the SOF driver with some
  * modification for data structure and printing.
@@ -96,40 +131,39 @@ static struct fuzzer_reg_space byt_io[] = {
  * "less -C" on /dev/shm/name and /dev/mqueue/name
  */
 
-static uint64_t dsp_read64(struct fuzz *fuzzer, unsigned int bar,
+static uint32_t dsp_read(struct fuzz *fuzzer, unsigned int bar,
 			   unsigned int reg)
 {
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
 
-	return *((uint64_t *)(data->bar[bar] + reg));
+	return *((uint32_t *)(data->bar[bar] + reg));
 }
 
-static void dsp_write64(struct fuzz *fuzzer, unsigned int bar,
-			unsigned int reg, uint64_t value)
+static void dsp_write(struct fuzz *fuzzer, unsigned int bar,
+			unsigned int reg, uint32_t value)
 {
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
 	struct qemu_io_msg_reg32 reg32;
 	struct qemu_io_msg_irq irq;
 	uint32_t active, isrd;
 
 	/* write value to SHM */
-	*((uint64_t *)(data->bar[bar] + reg)) = value;
+	*((uint32_t *)(data->bar[bar] + reg)) = value;
 
 	/* most IO is handled by SHM, but there are some exceptions */
 	switch (reg) {
 	case SHIM_IPCX:
-
 		/* now set/clear status bit */
-		isrd = dsp_read64(fuzzer, bar, SHIM_ISRD) &
+		isrd = dsp_read(fuzzer, bar, SHIM_ISRD) &
 			~(SHIM_ISRD_DONE | SHIM_ISRD_BUSY);
 		isrd |= value & SHIM_IPCX_BUSY ? SHIM_ISRD_BUSY : 0;
 		isrd |= value & SHIM_IPCX_DONE ? SHIM_ISRD_DONE : 0;
-		dsp_write64(fuzzer, bar, SHIM_ISRD, isrd);
+		dsp_write(fuzzer, bar, SHIM_ISRD, isrd);
 
 		/* do we need to send an IRQ ? */
 		if (value & SHIM_IPCX_BUSY) {
 
-			fprintf(stdout, "irq: send busy interrupt 0x%8.8lx\n",
+			fprintf(stdout, "irq: send busy interrupt 0x%8.8x\n",
 				value);
 
 			/* send IRQ to child */
@@ -142,18 +176,17 @@ static void dsp_write64(struct fuzz *fuzzer, unsigned int bar,
 		}
 		break;
 	case SHIM_IPCD:
-
 		/* set/clear status bit */
-		isrd = dsp_read64(fuzzer, bar, SHIM_ISRD) &
+		isrd = dsp_read(fuzzer, bar, SHIM_ISRD) &
 			~(SHIM_ISRD_DONE | SHIM_ISRD_BUSY);
 		isrd |= value & SHIM_IPCD_BUSY ? SHIM_ISRD_BUSY : 0;
 		isrd |= value & SHIM_IPCD_DONE ? SHIM_ISRD_DONE : 0;
-		dsp_write64(fuzzer, bar, SHIM_ISRD, isrd);
+		dsp_write(fuzzer, bar, SHIM_ISRD, isrd);
 
 		/* do we need to send an IRQ ? */
 		if (value & SHIM_IPCD_DONE) {
 
-			fprintf(stdout, "irq: send done interrupt 0x%8.8lx\n",
+			fprintf(stdout, "irq: send done interrupt 0x%8.8x\n",
 				value);
 
 			/* send IRQ to child */
@@ -166,28 +199,27 @@ static void dsp_write64(struct fuzz *fuzzer, unsigned int bar,
 		}
 		break;
 	case SHIM_IMRX:
+		active = dsp_read(fuzzer, bar, SHIM_ISRX) &
+			~(dsp_read(fuzzer, bar, SHIM_IMRX));
 
-		active = dsp_read64(fuzzer, bar, SHIM_ISRX) &
-			~(dsp_read64(fuzzer, bar, SHIM_IMRX));
-
-		fprintf(stdout, "irq: masking %lx mask %lx active %x\n",
-			dsp_read64(fuzzer, bar, SHIM_ISRD),
-			dsp_read64(fuzzer, bar, SHIM_IMRD), active);
+		fprintf(stdout, "irq: masking %x mask %x active %x\n",
+		       dsp_read(fuzzer, bar, SHIM_ISRD),
+		       dsp_read(fuzzer, bar, SHIM_IMRD), active);
 		break;
 	default:
 		break;
 	}
 }
 
-static uint64_t dsp_update_bits64_unlocked(struct fuzz *fuzzer,
+static uint64_t dsp_update_bits_unlocked(struct fuzz *fuzzer,
 					   unsigned int bar, uint32_t offset,
-					   uint64_t mask, uint64_t value)
+					   uint32_t mask, uint32_t value)
 {
-	struct byt_data *data = fuzzer->platform_data;
-	uint64_t old, new;
-	uint64_t ret;
+	struct hsw_data *data = fuzzer->platform_data;
+	uint32_t old, new;
+	uint32_t ret;
 
-	ret = dsp_read64(fuzzer, bar, offset);
+	ret = dsp_read(fuzzer, bar, offset);
 	old = ret;
 
 	new = (old & ~mask) | (value & mask);
@@ -195,45 +227,46 @@ static uint64_t dsp_update_bits64_unlocked(struct fuzz *fuzzer,
 	if (old == new)
 		return 0;
 
-	dsp_write64(fuzzer, bar, offset, new);
+	dsp_write(fuzzer, bar, offset, new);
 	return 1;
 }
 
 static void mailbox_read(struct fuzz *fuzzer, unsigned int offset,
 			 void *mbox_data, unsigned int size)
 {
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
+	int i, j = 1;
 
-	memcpy(mbox_data, (void *)(data->bar[BYT_MBOX_BAR] + offset), size);
+	memcpy(mbox_data, (void *)(data->bar[HSW_MBOX_BAR] + offset), size);
 }
 
 static void mailbox_write(struct fuzz *fuzzer, unsigned int offset,
 			  void *mbox_data, unsigned int size)
 {
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
 
-	memcpy((void *)(data->bar[BYT_MBOX_BAR] + offset), mbox_data, size);
+	memcpy((void *)(data->bar[HSW_MBOX_BAR] + offset), mbox_data, size);
 }
 
-static int byt_cmd_done(struct fuzz *fuzzer, int dir)
+static int hsw_cmd_done(struct fuzz *fuzzer, int dir)
 {
 	if (dir == SOF_IPC_HOST_REPLY) {
 		/* clear BUSY bit and set DONE bit - accept new messages */
-		dsp_update_bits64_unlocked(fuzzer, BYT_DSP_BAR, SHIM_IPCD,
-					   SHIM_BYT_IPCD_BUSY |
-					   SHIM_BYT_IPCD_DONE,
-					   SHIM_BYT_IPCD_DONE);
+		dsp_update_bits_unlocked(fuzzer, HSW_DSP_BAR, SHIM_IPCD,
+					   SHIM_IPCD_BUSY |
+					   SHIM_IPCD_DONE,
+					   SHIM_IPCD_DONE);
 
 		/* unmask busy interrupt */
-		dsp_update_bits64_unlocked(fuzzer, BYT_DSP_BAR, SHIM_IMRX,
+		dsp_update_bits_unlocked(fuzzer, HSW_DSP_BAR, SHIM_IMRX,
 					   SHIM_IMRX_BUSY, 0);
 	} else {
 		/* clear DONE bit - tell DSP we have completed */
-		dsp_update_bits64_unlocked(fuzzer, BYT_DSP_BAR, SHIM_IPCX,
-					   SHIM_BYT_IPCX_DONE, 0);
+		dsp_update_bits_unlocked(fuzzer, HSW_DSP_BAR, SHIM_IPCX,
+					   SHIM_IPCX_DONE, 0);
 
 		/* unmask Done interrupt */
-		dsp_update_bits64_unlocked(fuzzer, BYT_DSP_BAR, SHIM_IMRX,
+		dsp_update_bits_unlocked(fuzzer, HSW_DSP_BAR, SHIM_IMRX,
 					   SHIM_IMRX_DONE, 0);
 	}
 
@@ -244,35 +277,35 @@ static int byt_cmd_done(struct fuzz *fuzzer, int dir)
  * IPC Doorbell IRQ handler and thread.
  */
 
-static int byt_irq_handler(int irq, void *context)
+static int hsw_irq_handler(int irq, void *context)
 {
 	struct fuzz *fuzzer = (struct fuzz *)context;
-	uint64_t isr;
+	uint32_t isr;
 	int ret = IRQ_NONE;
 
 	/* Interrupt arrived, check src */
-	isr = dsp_read64(fuzzer, BYT_DSP_BAR, SHIM_ISRX);
+	isr = dsp_read(fuzzer, HSW_DSP_BAR, SHIM_ISRX);
 	if (isr & (SHIM_ISRX_DONE | SHIM_ISRX_BUSY))
 		ret = IRQ_WAKE_THREAD;
 
 	return ret;
 }
 
-static int byt_irq_thread(int irq, void *context)
+static int hsw_irq_thread(int irq, void *context)
 {
 	struct fuzz *fuzzer = (struct fuzz *)context;
-	struct byt_data *data = fuzzer->platform_data;
-	uint64_t ipcx, ipcd;
-	uint64_t imrx;
+	struct hsw_data *data = fuzzer->platform_data;
+	uint32_t ipcx, ipcd;
+	uint32_t imrx;
 
-	imrx = dsp_read64(fuzzer, BYT_DSP_BAR, SHIM_IMRX);
-	ipcx = dsp_read64(fuzzer, BYT_DSP_BAR, SHIM_IPCX);
+	imrx = dsp_read(fuzzer, HSW_DSP_BAR, SHIM_IMRX);
+	ipcx = dsp_read(fuzzer, HSW_DSP_BAR, SHIM_IPCX);
 
 	/* reply message from DSP */
-	if ((ipcx & SHIM_BYT_IPCX_DONE) &&
+	if ((ipcx & SHIM_IPCX_DONE) &&
 	    !(imrx & SHIM_IMRX_DONE)) {
 		/* Mask Done interrupt before first */
-		dsp_update_bits64_unlocked(fuzzer, BYT_DSP_BAR,
+		dsp_update_bits_unlocked(fuzzer, HSW_DSP_BAR,
 					   SHIM_IMRX,
 					   SHIM_IMRX_DONE,
 					   SHIM_IMRX_DONE);
@@ -285,17 +318,18 @@ static int byt_irq_thread(int irq, void *context)
 		 * because the done bit can't be set in cmd_done function
 		 * which is triggered by msg
 		 */
+
 		fuzzer_ipc_msg_reply(fuzzer, &data->host_box);
-		byt_cmd_done(fuzzer, SOF_IPC_DSP_REPLY);
+		hsw_cmd_done(fuzzer, SOF_IPC_DSP_REPLY);
 		return IRQ_HANDLED;
 	}
 
 	/* new message from DSP */
-	ipcd = dsp_read64(fuzzer, BYT_DSP_BAR, SHIM_IPCD);
-	if ((ipcd & SHIM_BYT_IPCD_BUSY) &&
+	ipcd = dsp_read(fuzzer, HSW_DSP_BAR, SHIM_IPCD);
+	if ((ipcd & SHIM_IPCD_BUSY) &&
 	    !(imrx & SHIM_IMRX_BUSY)) {
 		/* Mask Busy interrupt before return */
-		dsp_update_bits64_unlocked(fuzzer, BYT_DSP_BAR,
+		dsp_update_bits_unlocked(fuzzer, HSW_DSP_BAR,
 					   SHIM_IMRX,
 					   SHIM_IMRX_BUSY,
 					   SHIM_IMRX_BUSY);
@@ -303,14 +337,14 @@ static int byt_irq_thread(int irq, void *context)
 		/* read mailbox */
 		if ((ipcd & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
 			fuzzer_ipc_crash(fuzzer, &data->dsp_box,
-					BYT_PANIC_OFFSET(ipcd) + MBOX_OFFSET);
+					HSW_PANIC_OFFSET(ipcd) + MBOX_OFFSET);
 		} else {
 			fuzzer_ipc_msg_rx(fuzzer, &data->dsp_box);
 		}
 
 		if (!data->boot_complete && fuzzer->boot_complete) {
 			data->boot_complete = 1;
-			byt_cmd_done(fuzzer, SOF_IPC_HOST_REPLY);
+			hsw_cmd_done(fuzzer, SOF_IPC_HOST_REPLY);
 			pthread_cond_signal(&cond);
 			return IRQ_HANDLED;
 		}
@@ -319,26 +353,27 @@ static int byt_irq_thread(int irq, void *context)
 	return IRQ_HANDLED;
 }
 
-static int byt_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
+static int hsw_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
 	struct fuzz_platform *plat = fuzzer->platform;
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
 	struct sof_ipc_cmd_hdr *hdr = (struct sof_ipc_cmd_hdr *)msg->msg_data;
-	uint64_t cmd = msg->header;
+	uint32_t cmd = msg->header;
 
 	/* send the message */
 	fuzzer_mailbox_write(fuzzer, &data->host_box, 0, msg->msg_data,
 		      msg->msg_size);
-	dsp_write64(fuzzer, BYT_DSP_BAR, SHIM_IPCX,
-		    cmd | SHIM_BYT_IPCX_BUSY);
+
+	dsp_write(fuzzer, HSW_DSP_BAR, SHIM_IPCX,
+		    cmd | SHIM_IPCX_BUSY);
 
 	return 0;
 }
 
-static int byt_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
+static int hsw_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
 {
 	struct fuzz_platform *plat = fuzzer->platform;
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
 	struct sof_ipc_reply reply;
 	int ret = 0;
 	uint32_t size;
@@ -381,8 +416,8 @@ static int bridge_cb(void *data, struct qemu_io_msg *msg)
 	switch (msg->type) {
 	case QEMU_IO_TYPE_IRQ:
 		/* IRQ from DSP */
-		if (byt_irq_handler(0, fuzzer) != IRQ_NONE)
-			byt_irq_thread(0, fuzzer);
+		if (hsw_irq_handler(0, fuzzer) != IRQ_NONE)
+			hsw_irq_thread(0, fuzzer);
 		break;
 	default:
 		break;
@@ -391,11 +426,11 @@ static int bridge_cb(void *data, struct qemu_io_msg *msg)
 	return 0;
 }
 
-static int byt_platform_init(struct fuzz *fuzzer,
+static int hsw_platform_init(struct fuzz *fuzzer,
 			     struct fuzz_platform *platform)
 {
 	struct timespec timeout;
-	struct byt_data *data;
+	struct hsw_data *data;
 	struct timeval tp;
 	int i, bar;
 	int ret = 0;
@@ -407,11 +442,21 @@ static int byt_platform_init(struct fuzz *fuzzer,
 	fuzzer->platform_data = data;
 	fuzzer->platform = platform;
 
+	/*
+	 * Hardcode offsets.
+	 * TODO: read init host_box and dsp_box from fw_ready message
+	 */
+	data->host_box.offset = ADSP_BDW_DSP_MAILBOX_BASE + 0x400;
+	data->host_box.size = 0x400;
+	data->dsp_box.offset = ADSP_BDW_DSP_MAILBOX_BASE + 0x0;
+	data->dsp_box.size = 0x400;
+
 	/* create SHM for memories and register regions */
 	for (i = 0, bar = 0; i < platform->num_mem_regions; i++, bar++) {
 		data->bar[bar] = fuzzer_create_memory_region(fuzzer, bar, i);
 		if (!data->bar[bar]) {
-			fprintf(stderr, "error: failed to create mem region %s\n",
+			fprintf(stderr,
+				"error: failed to create mem region %s\n",
 				platform->mem_region[i].name);
 			return -ENOMEM;
 		}
@@ -420,7 +465,8 @@ static int byt_platform_init(struct fuzz *fuzzer,
 	for (i = 0; i < platform->num_reg_regions; i++, bar++) {
 		data->bar[bar] = fuzzer_create_io_region(fuzzer, bar, i);
 		if (!data->bar[bar]) {
-			fprintf(stderr, "error: failed to create mem region %s\n",
+			fprintf(stderr,
+				"error: failed to create mem region %s\n",
 				platform->reg_region[i].name);
 			return -ENOMEM;
 		}
@@ -450,70 +496,63 @@ static int byt_platform_init(struct fuzz *fuzzer,
 	return ret;
 }
 
-static void byt_platform_free(struct fuzz *fuzzer)
+static void hsw_platform_free(struct fuzz *fuzzer)
 {
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
 
 	fuzzer_free_regions(fuzzer);
 	free(data);
 }
 
-static void byt_fw_ready(struct fuzz *fuzzer)
+static void hsw_fw_ready(struct fuzz *fuzzer)
 {
-	struct byt_data *data = fuzzer->platform_data;
+	struct hsw_data *data = fuzzer->platform_data;
 	struct sof_ipc_fw_ready fw_ready;
 	struct sof_ipc_fw_version version;
-	uint32_t offset = MBOX_OFFSET;
 
 	/* read fw_ready data from mailbox */
 	fuzzer_mailbox_read(fuzzer, &data->dsp_box, 0,
 			    &fw_ready, sizeof(fw_ready));
 
-	/*
-	 * Hardcode offsets.
-	 * TODO: read init host_box and dsp_box from fw_ready message
-	 */
-	data->host_box.offset = 0x400;
-	data->host_box.size = 0x400;
-	data->dsp_box.offset = 0;
-	data->dsp_box.size = 0x400;
-
-	fprintf(stdout,
-		"ipc: host box 0x%x size 0x%x\n", data->host_box.offset,
+	/* TODO read from FW */
+	fprintf(stdout, "ipc: host box 0x%x size 0x%x\n",
+		data->host_box.offset,
 		data->host_box.size);
-	fprintf(stdout, "ipc: dsp box 0x%x size 0x%x\n", data->dsp_box.offset,
+	fprintf(stdout, "ipc: dsp box 0x%x size 0x%x\n",
+		data->dsp_box.offset,
 		data->dsp_box.size);
 
 	version = fw_ready.version;
 	fprintf(stdout, "ipc: FW version major: %d minor: %d tag: %s\n",
-		version.major, version.minor, version.tag);
+	       version.major, version.minor, version.tag);
 }
 
-struct fuzz_platform byt_platform = {
-	.name = "byt",
-	.send_msg = byt_send_msg,
-	.get_reply = byt_get_reply,
-	.init = byt_platform_init,
-	.free = byt_platform_free,
+struct fuzz_platform hsw_platform = {
+	.name = "hsw",
+	.send_msg = hsw_send_msg,
+	.get_reply = hsw_get_reply,
+	.init = hsw_platform_init,
+	.free = hsw_platform_free,
 	.mailbox_read = mailbox_read,
 	.mailbox_write = mailbox_write,
-	.fw_ready = byt_fw_ready,
-	.num_mem_regions = ARRAY_SIZE(byt_mem),
-	.mem_region = byt_mem,
-	.num_reg_regions = ARRAY_SIZE(byt_io),
-	.reg_region = byt_io,
+	.fw_ready = hsw_fw_ready,
+	.num_mem_regions = ARRAY_SIZE(hsw_mem),
+	.mem_region = hsw_mem,
+	.num_reg_regions = ARRAY_SIZE(hsw_io),
+	.reg_region = hsw_io,
 };
 
-struct fuzz_platform cht_platform = {
-	.name = "cht",
-	.send_msg = byt_send_msg,
-	.get_reply = byt_get_reply,
-	.init = byt_platform_init,
-	.free = byt_platform_free,
+struct fuzz_platform bdw_platform = {
+	.name = "bdw",
+	.send_msg = hsw_send_msg,
+	.get_reply = hsw_get_reply,
+	.init = hsw_platform_init,
+	.free = hsw_platform_free,
 	.mailbox_read = mailbox_read,
 	.mailbox_write = mailbox_write,
-	.num_mem_regions = ARRAY_SIZE(byt_mem),
-	.mem_region = byt_mem,
-	.num_reg_regions = ARRAY_SIZE(byt_io),
-	.reg_region = byt_io,
+	.fw_ready = hsw_fw_ready,
+	.num_mem_regions = ARRAY_SIZE(bdw_mem),
+	.mem_region = bdw_mem,
+	.num_reg_regions = ARRAY_SIZE(bdw_io),
+	.reg_region = bdw_io,
 };
