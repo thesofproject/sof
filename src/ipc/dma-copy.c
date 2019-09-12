@@ -7,7 +7,6 @@
 
 #include <sof/drivers/ipc.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
@@ -48,22 +47,6 @@ static struct dma_sg_elem *sg_get_elem_at(struct dma_sg_config *host_sg,
 			"host offset in beyond end of SG buffer");
 	return NULL;
 }
-#endif
-
-#if !CONFIG_DMA_GW
-
-static void dma_complete(void *data, uint32_t type, struct dma_cb_data *next)
-{
-	completion_t *comp = (completion_t *)data;
-
-	if (type == DMA_CB_TYPE_IRQ)
-		wait_completed(comp);
-
-	ipc_dma_trace_send_position();
-
-	next->status = DMA_CB_STATUS_END;
-}
-
 #endif
 
 /* Copy DSP memory to host memory.
@@ -129,9 +112,11 @@ int dma_copy_to_host_nowait(struct dma_copy *dc, struct dma_sg_config *host_sg,
 	if (err < 0)
 		return err;
 
-	err = dma_start(dc->chan);
+	err = dma_copy(dc->chan, local_sg_elem.size, DMA_COPY_ONE_SHOT);
 	if (err < 0)
 		return err;
+
+	ipc_dma_trace_send_position();
 
 	/* bytes copied */
 	return local_sg_elem.size;
@@ -160,9 +145,6 @@ int dma_copy_new(struct dma_copy *dc)
 		trace_dma_error("dma_copy_new() error: dc->chan is NULL");
 		return -ENODEV;
 	}
-
-	dc->complete.timeout = 100;	/* wait 100 usecs for DMA to finish */
-	dma_set_cb(dc->chan, DMA_CB_TYPE_IRQ, dma_complete, &dc->complete);
 #endif
 
 	return 0;

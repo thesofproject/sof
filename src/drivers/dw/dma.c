@@ -965,14 +965,25 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		       uint32_t flags)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
+	int ret = 0;
 	struct dma_cb_data next = {
 		.elem = { .size = bytes },
 		.status = DMA_CB_STATUS_RELOAD
 	};
 
-	/* for preload or one shot copy just start DMA */
-	if (flags & (DMA_COPY_PRELOAD | DMA_COPY_ONE_SHOT))
-		return dw_dma_start(channel);
+	/* for preload and one shot copy just start the DMA and wait */
+	if (flags & (DMA_COPY_PRELOAD | DMA_COPY_ONE_SHOT)) {
+		ret = dw_dma_start(channel);
+		if (ret < 0)
+			return ret;
+
+		ret = poll_for_register_delay(dma_base(channel->dma) +
+					      DW_DMA_CHAN_EN,
+					      DW_CHAN(channel->index), 0,
+					      PLATFORM_DMA_TIMEOUT);
+		if (ret < 0)
+			return ret;
+	}
 
 	tracev_dwdma("dw_dma_copy(): dma %d channel %d copy",
 		     channel->dma->plat_data.id, channel->index);
@@ -982,7 +993,7 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 	/* increment current pointer */
 	dw_dma_increment_pointer(dw_chan, bytes);
 
-	return 0;
+	return ret;
 }
 
 /* interrupt handler for DMA */
