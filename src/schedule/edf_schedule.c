@@ -155,7 +155,7 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 
 static int schedule_edf_task_init(void *data, struct task *task)
 {
-	struct edf_task_pdata *edf_pdata;
+	struct edf_task_pdata *edf_pdata = NULL;
 
 	if (edf_sch_get_pdata(task))
 		return -EEXIST;
@@ -170,20 +170,26 @@ static int schedule_edf_task_init(void *data, struct task *task)
 
 	edf_sch_set_pdata(task, edf_pdata);
 
-	if (task_context_init(task, &schedule_edf_task_run, data) < 0) {
-		trace_edf_sch_error("schedule_edf_task_init() error: init "
-				    "context failed");
-		rfree(edf_pdata);
-		edf_sch_set_pdata(task, NULL);
-		return -EINVAL;
-	}
+	if (task_context_alloc(&edf_pdata->ctx) < 0)
+		goto error;
+	if (task_context_init(edf_pdata->ctx, &schedule_edf_task_run,
+			      task, data, task->core) < 0)
+		goto error;
 
 	/* flush for slave core */
 	if (cpu_is_slave(task->core))
 		dcache_writeback_invalidate_region(edf_pdata,
 						   sizeof(*edf_pdata));
-
 	return 0;
+
+error:
+	trace_edf_sch_error("schedule_edf_task_init() error: init "
+			    "context failed");
+	if (edf_pdata->ctx)
+		task_context_free(edf_pdata->ctx);
+	rfree(edf_pdata);
+	edf_sch_set_pdata(task, NULL);
+	return -EINVAL;
 }
 
 static void schedule_edf_task_running(void *data, struct task *task)
@@ -241,7 +247,8 @@ static void schedule_edf_task_free(void *data, struct task *task)
 
 	task->state = SOF_TASK_STATE_FREE;
 
-	task_context_free(task);
+	task_context_free(edf_pdata->ctx);
+	edf_pdata->ctx = NULL;
 	rfree(edf_pdata);
 	edf_sch_set_pdata(task, NULL);
 

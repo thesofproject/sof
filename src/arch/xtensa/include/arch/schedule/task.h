@@ -18,8 +18,6 @@
 #ifndef __ARCH_SCHEDULE_TASK_H__
 #define __ARCH_SCHEDULE_TASK_H__
 
-struct task;
-
 /**
  * \brief Returns main task data.
  * \return Pointer to pointer of main task data.
@@ -33,23 +31,32 @@ volatile void *task_context_get(void);
 
 /**
  * \brief Switches system context.
- * \param[in,out] task Task context to be set.
+ * \param[in,out] task_ctx Task context to be set.
  */
 void task_context_set(void *task_ctx);
 
 /**
- * \brief Initializes task context.
- * \param[in,out] task Task with context to be initialized.
- * \param[in,out] entry Entry point for task execution.
- * \param[in,out] data Parameter data for entry point.
+ * \brief Allocates task context.
+ * \param[in,out] task_ctx Assigned to allocated structure on return.
  */
-int task_context_init(struct task *task, void *entry, void *data);
+int task_context_alloc(void **task_ctx);
+
+/**
+ * \brief Initializes task context.
+ * \param[in,out] task_ctx Task context to be initialized.
+ * \param[in] entry Entry point for task execution.
+ * \param[in] arg0 First argument to be passed to entry function.
+ * \param[in] arg1 Second argument to be passed to entry function.
+ * \param[in] task_core Id of the core that task will be executed on.
+ */
+int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
+		      int task_core);
 
 /**
  * \brief Frees task context.
- * \param[in,out] task Task with context to be freed.
+ * \param[in,out] task_ctx Task with context to be freed.
  */
-void task_context_free(struct task *task);
+void task_context_free(void *task_ctx);
 
 /**
  * \brief Performs cache operation on task's context.
