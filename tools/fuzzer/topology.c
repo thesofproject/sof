@@ -329,7 +329,7 @@ int parse_tplg(struct fuzz *fuzzer, char *tplg_filename)
 	if (!fuzzer->tplg_file) {
 		fprintf(stderr, "error: opening topology file %s\n",
 			tplg_filename);
-		return -EINVAL;
+		return -errno;
 	}
 
 	/* file size */
