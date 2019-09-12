@@ -21,9 +21,9 @@ do
 	fi
 	#build fuzzer
 	if [[ "$args" == "-f" ]]; then
-		rm -rf fuzzer
-		mkdir fuzzer
-		cd fuzzer
+		rm -rf build_fuzzer
+		mkdir build_fuzzer
+		cd build_fuzzer
 		cmake ../../fuzzer
 		make -j$(nproc)
 		cd ../
