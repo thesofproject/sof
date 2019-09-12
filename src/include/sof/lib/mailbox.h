@@ -21,9 +21,6 @@
 #define MAILBOX_SW_REG_BASE MAILBOX_DEBUG_BASE
 #endif  /* MAILBOX_SW_REG_BASE */
 
-/* 4k should be enough for everyone ..... */
-#define IPC_MAX_MAILBOX_BYTES 0x1000
-
 #define mailbox_get_exception_base() \
 	MAILBOX_EXCEPTION_BASE
 
