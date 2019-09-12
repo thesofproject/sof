@@ -7,7 +7,9 @@
  * Use spaces for formatting as cpp ignore tab sizes.
  */
 
+#include <config.h>
 #include <sof/lib/memory.h>
+#include <xtensa/config/core-isa.h>
 
 OUTPUT_ARCH(xtensa)
 
