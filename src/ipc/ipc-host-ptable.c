@@ -8,7 +8,6 @@
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/wait.h>
 #include <sof/platform.h>
 #include <ipc/stream.h>
 #include <ipc/topology.h>
@@ -76,14 +75,6 @@ static int ipc_parse_page_descriptors(uint8_t *page_table,
 	return 0;
 }
 
-static void dma_complete(void *data, uint32_t type, struct dma_cb_data *next)
-{
-	completion_t *complete = data;
-
-	if (type == DMA_CB_TYPE_IRQ)
-		wait_completed(complete);
-}
-
 /*
  * Copy the audio buffer page tables from the host to the DSP max of 4K.
  */
@@ -92,7 +83,6 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 {
 	struct dma_sg_config config;
 	struct dma_sg_elem elem;
-	completion_t complete;
 	struct dma_chan_data *chan;
 	int ret = 0;
 
@@ -129,24 +119,13 @@ static int ipc_get_page_descriptors(struct dma *dmac, uint8_t *page_table,
 		goto out;
 	}
 
-	/* set up callback */
-	dma_set_cb(chan, DMA_CB_TYPE_IRQ, dma_complete, &complete);
-
-	wait_init(&complete);
-
 	/* start the copy of page table to DSP */
-	ret = dma_start(chan);
+	ret = dma_copy(chan, elem.size, DMA_COPY_ONE_SHOT);
 	if (ret < 0) {
 		trace_ipc_error("ipc_get_page_descriptors() error: "
 				"dma_start() failed");
 		goto out;
 	}
-
-	/* wait for DMA to complete */
-	ret = poll_for_completion_delay(&complete, PLATFORM_DMA_TIMEOUT);
-	if (ret < 0)
-		trace_ipc_error("ipc_get_page_descriptors() error: "
-				"poll_for_completion_delay() failed");
 
 	/* compressed page tables now in buffer at _ipc->page_table */
 out:

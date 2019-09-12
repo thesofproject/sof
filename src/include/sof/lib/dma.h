@@ -21,7 +21,6 @@
 #include <sof/bit.h>
 #include <sof/lib/cache.h>
 #include <sof/lib/io.h>
-#include <sof/lib/wait.h>
 #include <sof/spinlock.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -485,7 +484,6 @@ static inline uint32_t dma_sg_get_size(struct dma_sg_elem_array *ea)
 struct dma_copy {
 	struct dma_chan_data *chan;
 	struct dma *dmac;
-	completion_t complete;
 };
 
 /* init dma copy context */

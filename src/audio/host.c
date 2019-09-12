@@ -95,9 +95,8 @@ struct host_data {
 	struct hc_buf *source;
 	struct hc_buf *sink;
 
-	/* helpers used in split transactions */
+	/* helper used in split transactions */
 	uint32_t split_value;
-	uint32_t last_split_value;
 
 	uint32_t dma_copy_align; /**< Minimal chunk of data possible to be
 				   *  copied by dma connected to host
@@ -176,21 +175,12 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
  * This means we must check we do not overflow host period/buffer/page
  * boundaries on each transfer and split the DMA transfer if we do overflow.
  */
-static void host_dma_cb_irq(struct comp_dev *dev, struct dma_cb_data *next)
+static void host_one_shot_cb(struct comp_dev *dev, uint32_t bytes)
 {
 	struct host_data *hd = comp_get_drvdata(dev);
 	struct dma_sg_elem *local_elem = hd->config.elem_array.elems;
 	struct dma_sg_elem *source_elem;
 	struct dma_sg_elem *sink_elem;
-	uint32_t curr_split_value = 0;
-	uint32_t next_bytes = 0;
-	uint32_t bytes = hd->last_split_value ? hd->last_split_value :
-		local_elem->size;
-
-	tracev_host("host_dma_cb_irq()");
-
-	/* update position */
-	host_update_position(dev, bytes);
 
 	/* update src and dest positions and check for overflow */
 	local_elem->src += bytes;
@@ -215,31 +205,6 @@ static void host_dma_cb_irq(struct comp_dev *dev, struct dma_cb_data *next)
 			local_elem->dest = sink_elem->dest;
 		}
 	}
-
-	/* we need to perform split transfer */
-	if (hd->split_value) {
-		/* check for possible double split */
-		curr_split_value = host_dma_get_split(hd, hd->split_value);
-		if (curr_split_value) {
-			next_bytes = hd->split_value - curr_split_value;
-			hd->split_value = curr_split_value;
-		} else {
-			next_bytes = hd->split_value;
-			hd->split_value = 0;
-		}
-
-		hd->last_split_value = next_bytes;
-
-		next->elem.src = local_elem->src;
-		next->elem.dest = local_elem->dest;
-		next->elem.size = next_bytes;
-		next->status = DMA_CB_STATUS_SPLIT;
-		return;
-	}
-
-	hd->last_split_value = 0;
-
-	next->status = DMA_CB_STATUS_END;
 }
 
 /* This is called by DMA driver every time when DMA completes its current
@@ -248,21 +213,19 @@ static void host_dma_cb_irq(struct comp_dev *dev, struct dma_cb_data *next)
 static void host_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
+	struct host_data *hd = comp_get_drvdata(dev);
+	uint32_t bytes = next->elem.size;
 
 	tracev_host("host_dma_cb()");
 
-	switch (type) {
-	case DMA_CB_TYPE_IRQ:
-		host_dma_cb_irq(dev, next);
-		break;
-	case DMA_CB_TYPE_COPY:
-		host_update_position(dev, next->elem.size);
-		break;
-	default:
-		trace_host_error("host_dma_cb() error: Wrong callback type "
-				 "= %u", type);
-		break;
-	}
+	/* update position */
+	host_update_position(dev, bytes);
+
+	/* callback for one shot copy */
+	if (hd->copy_type == COMP_COPY_ONE_SHOT)
+		host_one_shot_cb(dev, bytes);
+
+	next->status = DMA_CB_STATUS_END;
 }
 
 static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
@@ -522,7 +485,7 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 {
 	struct comp_dev *dev = (struct comp_dev *)data;
 	struct host_data *hd = comp_get_drvdata(dev);
-	uint32_t copy_bytes = host_buffer_get_copy_bytes(dev);
+	uint32_t copy_bytes = 0;
 	uint32_t flags = 0;
 	int ret;
 
@@ -533,18 +496,28 @@ static void host_buffer_cb(void *data, uint32_t bytes)
 	else if (hd->copy_type == COMP_COPY_ONE_SHOT)
 		flags |= DMA_COPY_ONE_SHOT;
 
-	/* reconfigure transfer */
-	ret = dma_set_config(hd->chan, &hd->config);
-	if (ret < 0) {
-		trace_host_error("host_buffer_cb() error: dma_set_config() "
-				 "failed, ret = %u", ret);
-		return;
-	}
+	/* copy including all split transfers */
+	do {
+		copy_bytes = host_buffer_get_copy_bytes(dev);
 
-	ret = dma_copy(hd->chan, copy_bytes, flags);
-	if (ret < 0)
-		trace_host_error("host_buffer_cb() error: dma_copy() failed, "
-				 "ret = %u", ret);
+		/* reconfigure transfer */
+		ret = dma_set_config(hd->chan, &hd->config);
+		if (ret < 0) {
+			trace_host_error("host_buffer_cb() error: "
+					 "dma_set_config() failed, ret = %u",
+					 ret);
+			hd->split_value = 0;
+			return;
+		}
+
+		ret = dma_copy(hd->chan, copy_bytes, flags);
+		if (ret < 0) {
+			trace_host_error("host_buffer_cb() error: dma_copy() "
+					 "failed, ret = %u", ret);
+			hd->split_value = 0;
+			return;
+		}
+	} while (hd->split_value);
 }
 
 /* configure the DMA params and descriptors for host buffer IO */
@@ -688,8 +661,7 @@ static int host_params(struct comp_dev *dev)
 	}
 
 	/* set up callback */
-	dma_set_cb(hd->chan, DMA_CB_TYPE_IRQ |
-		   DMA_CB_TYPE_COPY, host_dma_cb, dev);
+	dma_set_cb(hd->chan, DMA_CB_TYPE_COPY, host_dma_cb, dev);
 
 	return 0;
 }
@@ -711,7 +683,6 @@ static int host_prepare(struct comp_dev *dev)
 	hd->local_pos = 0;
 	hd->report_pos = 0;
 	hd->split_value = 0;
-	hd->last_split_value = 0;
 	dev->position = 0;
 
 	return 0;
