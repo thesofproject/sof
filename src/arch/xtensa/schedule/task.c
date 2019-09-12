@@ -62,23 +62,26 @@ void task_context_set(void *task_ctx)
 	ctx->td.xtos_active_task = task_ctx;
 }
 
-int task_context_init(struct task *task, void *entry, void *data)
+int task_context_alloc(void **task_ctx)
 {
-	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
-	xtos_task_context *ctx;
-	UserFrame *sp;
-
-	/* allocate task context */
-	ctx = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*ctx));
-	if (!ctx)
+	*task_ctx = rzalloc(RZONE_SYS_RUNTIME, SOF_MEM_CAPS_RAM,
+			    sizeof(xtos_task_context));
+	if (!*task_ctx)
 		return -ENOMEM;
+	return 0;
+}
+
+int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
+		      int task_core)
+{
+	xtos_task_context *ctx = task_ctx;
+	UserFrame *sp;
 
 	/* allocate stack */
 	ctx->stack_base = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
 				  SOF_TASK_DEFAULT_STACK_SIZE);
 	if (!ctx->stack_base)
 		return -ENOMEM;
-
 	ctx->stack_size = SOF_TASK_DEFAULT_STACK_SIZE;
 
 	bzero(ctx->stack_base, ctx->stack_size);
@@ -98,31 +101,27 @@ int task_context_init(struct task *task, void *entry, void *data)
 	sp->ps = PS_WOECALL4_ABI | PS_UM;
 
 	/* a6 and a7 are the first parameters */
-	sp->a6 = (uint32_t)task;
-	sp->a7 = (uint32_t)data;
+	sp->a6 = (uint32_t)arg0;
+	sp->a7 = (uint32_t)arg1;
 
 	ctx->stack_pointer = sp;
 
 	/* flush for slave core */
-	if (cpu_is_slave(task->core))
+	if (cpu_is_slave(task_core))
 		task_context_cache(ctx, CACHE_WRITEBACK_INV);
-
-	edf_pdata->ctx = ctx;
 
 	return 0;
 }
 
-void task_context_free(struct task *task)
+void task_context_free(void *task_ctx)
 {
-	struct edf_task_pdata *edf_pdata = edf_sch_get_pdata(task);
-	xtos_task_context *ctx = edf_pdata->ctx;
+	xtos_task_context *ctx = task_ctx;
 
 	rfree(ctx->stack_base);
 	ctx->stack_size = 0;
 	ctx->stack_pointer = NULL;
 
 	rfree(ctx);
-	edf_pdata->ctx = NULL;
 }
 
 void task_context_cache(void *task_ctx, int cmd)
