@@ -25,6 +25,7 @@ int enable_fuzzer;
 int ipc_reply_recd;
 pthread_cond_t ipc_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t ipc_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 /* tplg message types */
 uint32_t tplg_cmd_types[] = {SOF_IPC_TPLG_COMP_NEW,
@@ -70,7 +71,12 @@ uint32_t trace_cmd_types[] = {SOF_IPC_TRACE_DMA_PARAMS,
 			      SOF_IPC_TRACE_DMA_POSITION};
 
 /* list of supported target platforms */
-static struct fuzz_platform *platform[] = { &byt_platform, &cht_platform};
+static struct fuzz_platform *platform[] = {
+		&byt_platform,
+		&cht_platform,
+		&hsw_platform,
+		&bdw_platform
+};
 
 static void usage(char *name)
 {

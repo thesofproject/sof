@@ -37,6 +37,7 @@ add_executable(sof-fuzzer
 	qemu-bridge.c
 	topology.c
 	platform/byt-host.c
+	platform/hsw-host.c
 )
 
 target_link_libraries(sof-fuzzer PRIVATE sof_parser)
