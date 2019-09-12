@@ -11,6 +11,7 @@
 #define __PLATFORM_LIB_MEMORY_H__
 
 #include <sof/lib/cache.h>
+#include <config.h>
 
 /* physical DSP addresses */
 
