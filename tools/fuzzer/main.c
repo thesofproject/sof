@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
 	fuzzer.msg.reply_data = malloc(SOF_IPC_MSG_MAX_SIZE);
 
 	/* load topology */
-	ret = parse_tplg(&fuzzer, "../topology/sof-byt-rt5651.tplg");
+	ret = parse_tplg(&fuzzer, topology_file);
 	if (ret < 0)
 		exit(EXIT_FAILURE);
 
