@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+cmake_minimum_required(VERSION 3.10)
+
+add_executable(sof-probes
+	probes_main.c
+	../../src/math/numbers.c
+)
+
+target_compile_options(sof-probes PRIVATE
+	-Wall -Werror
+)
+
+target_include_directories(sof-probes PRIVATE
+	"../../src/include"
+)
+
+install(TARGETS sof-probes DESTINATION bin)
