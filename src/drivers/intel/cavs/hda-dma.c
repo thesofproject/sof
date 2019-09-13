@@ -60,8 +60,6 @@
 /* DGBS */
 #define DGBS_MASK	0xfffff0
 
-#define HDA_DMA_MAX_CHANS		9
-
 #define HDA_STATE_RELEASE	BIT(0)
 
 /* DGMBS align value */
@@ -783,7 +781,7 @@ static int hda_dma_remove(struct dma *dma)
 
 	trace_hddma("hda-dmac :%d -> remove", dma->plat_data.id);
 
-	for (i = 0; i < HDA_DMA_MAX_CHANS; i++)
+	for (i = 0; i < dma->plat_data.channels; i++)
 		rfree(dma_chan_get_data(&dma->chan[i]));
 
 	rfree(dma->chan);
