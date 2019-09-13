@@ -12,6 +12,9 @@
 #ifndef __PLATFORM_LIB_DMA_H__
 #define __PLATFORM_LIB_DMA_H__
 
+/* number of supported DMACs */
+#define PLATFORM_NUM_DMACS	6
+
 /* available DMACs */
 #define DMA_GP_LP_DMAC0		0
 #define DMA_GP_LP_DMAC1		1

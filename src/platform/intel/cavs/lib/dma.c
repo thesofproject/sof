@@ -22,18 +22,15 @@
 #define DMAC_HOST_OUT_CHANNELS_COUNT 6
 #define DMAC_LINK_IN_CHANNELS_COUNT 8
 #define DMAC_LINK_OUT_CHANNELS_COUNT 8
-#define CAVS_PLATFORM_NUM_DMACS		6
 #elif CONFIG_CANNONLAKE || CONFIG_ICELAKE || CONFIG_TIGERLAKE
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
 #define DMAC_HOST_OUT_CHANNELS_COUNT 9
 #define DMAC_LINK_IN_CHANNELS_COUNT 9
 #define DMAC_LINK_OUT_CHANNELS_COUNT 7
-#define CAVS_PLATFORM_NUM_DMACS		6
 #elif CONFIG_SUECREEK
 #define DMAC0_CLASS 6
 #define DMAC1_CLASS 7
-#define CAVS_PLATFORM_NUM_DMACS		3
 #endif
 
 static struct dw_drv_plat_data dmac0 = {
@@ -107,7 +104,7 @@ static struct dw_drv_plat_data dmac1 = {
 };
 
 #if CONFIG_SUECREEK
-static struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
+static struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* LP GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -156,7 +153,7 @@ static struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
 };
 
 #else
-static struct dma dma[CAVS_PLATFORM_NUM_DMACS] = {
+static struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
