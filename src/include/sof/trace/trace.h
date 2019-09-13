@@ -10,9 +10,16 @@
 #ifndef __SOF_TRACE_TRACE_H__
 #define __SOF_TRACE_TRACE_H__
 
+#if CONFIG_TRACE
+#include <platform/trace/trace.h>
+#endif
+#include <sof/common.h>
 #include <sof/trace/preproc.h>
 #include <config.h>
 #include <stdint.h>
+#if CONFIG_LIBRARY
+#include <stdio.h>
+#endif
 
 struct sof;
 
@@ -61,8 +68,6 @@ struct sof;
 #define TRACE_BOOT_PLATFORM_DMA_TRACE	(TRACE_BOOT_PLATFORM + 0x210)
 
 #if CONFIG_LIBRARY
-
-#include <stdio.h>
 
 extern int test_bench_trace;
 char *get_trace_class(uint32_t trace_class);
@@ -160,7 +165,6 @@ void trace_init(struct sof *sof);
 
 #if CONFIG_TRACE
 
-#include <sof/platform.h>
 /*
  * trace_event macro definition
  *
@@ -253,8 +257,6 @@ void trace_init(struct sof *sof);
 #endif
 
 #ifndef CONFIG_LIBRARY
-
-#include <sof/common.h>
 
 #define _DECLARE_LOG_ENTRY(lvl, format, comp_class, params, ids)\
 	__attribute__((section(".static_log." #lvl)))		\

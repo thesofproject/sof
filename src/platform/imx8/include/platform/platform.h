@@ -90,9 +90,6 @@ static inline void platform_panic(uint32_t p)
 {
 }
 
-/* Platform defined trace code */
-#define platform_trace_point(__x)
-
 extern struct timer *platform_timer;
 
 extern intptr_t _module_init_start;
