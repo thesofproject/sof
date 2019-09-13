@@ -28,8 +28,18 @@
 
 /* SOF_SCHEDULE_ type comes from topology */
 enum {
-	SOF_SCHEDULE_EDF = 0,	/* EDF scheduler */
-	SOF_SCHEDULE_LL_TIMER,	/* Low latency timer scheduler */
+	/* EDF scheduler - schedules based on task's deadline */
+	SOF_SCHEDULE_EDF = 0,
+
+	/* Low latency timer scheduler - schedules immediately on selected
+	 * timer's tick
+	 */
+	SOF_SCHEDULE_LL_TIMER,
+
+	/* Low latency DMA scheduler - schedules immediately on scheduling
+	 * component's DMA interrupt
+	 */
+	SOF_SCHEDULE_LL_DMA,
 	SOF_SCHEDULE_COUNT
 };
 
