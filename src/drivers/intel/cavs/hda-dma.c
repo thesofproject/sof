@@ -13,6 +13,7 @@
 #include <sof/drivers/timer.h>
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
+#include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/platform.h>
@@ -477,6 +478,8 @@ static int hda_dma_start(struct dma_chan_data *channel)
 	hda_dma_enable_unlock(channel);
 
 	channel->status = COMP_STATE_ACTIVE;
+	channel->core = cpu_get_id();
+
 out:
 	irq_local_enable(flags);
 	return ret;
@@ -743,6 +746,7 @@ static int hda_dma_probe(struct dma *dma)
 		chan->dma = dma;
 		chan->index = i;
 		chan->status = COMP_STATE_INIT;
+		chan->core = DMA_CORE_INVALID;
 
 		hda_chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 				   SOF_MEM_CAPS_RAM,

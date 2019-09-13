@@ -87,6 +87,7 @@ enum dma_irq_cmd {
 };
 
 #define DMA_CHAN_INVALID	0xFFFFFFFF
+#define DMA_CORE_INVALID	0xFFFFFFFF
 
 /* DMA attributes */
 #define DMA_ATTR_BUFFER_ALIGNMENT	0
@@ -208,6 +209,7 @@ struct dma_chan_data {
 	uint32_t direction;
 	uint32_t desc_count;
 	uint32_t index;
+	uint32_t core;
 
 	/* client callback function */
 	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next);
