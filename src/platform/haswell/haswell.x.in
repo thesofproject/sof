@@ -16,13 +16,13 @@ OUTPUT_ARCH(xtensa)
 MEMORY
 {
   vector_reset_text :
-        org = XCHAL_RESET_VECTOR0_PADDR,
+        org = XCHAL_RESET_VECTOR_PADDR,
         len = SOF_MEM_RESET_TEXT_SIZE
   vector_reset_lit :
-        org = XCHAL_RESET_VECTOR0_PADDR + SOF_MEM_RESET_TEXT_SIZE,
+        org = XCHAL_RESET_VECTOR_PADDR + SOF_MEM_RESET_TEXT_SIZE,
         len = SOF_MEM_RESET_LIT_SIZE
   vector_base_text :
-        org = XCHAL_VECBASE_RESET_PADDR,
+        org = SOF_MEM_VECBASE_TEXT_BASE,
         len = SOF_MEM_VECBASE_LIT_SIZE
   vector_int2_lit :
         org = XCHAL_INTLEVEL2_VECTOR_PADDR - SOF_MEM_VECT_LIT_SIZE,
@@ -102,6 +102,12 @@ MEMORY
   sof_stack :
         org = SOF_STACK_END,
         len = SOF_STACK_BASE - SOF_STACK_END
+  mailbox :
+        org = MAILBOX_BASE,
+        len = MAILBOX_SIZE
+  virtual_thread :
+        org = SOF_VIRTUAL_THREAD_BASE,
+        len = SOF_VIRTUAL_THREAD_SIZE
   static_log_entries_seg (!ari) :
         org = LOG_ENTRY_ELF_BASE,
         len = LOG_ENTRY_ELF_SIZE
@@ -139,6 +145,8 @@ PHDRS
   system_runtime_heap_phdr PT_LOAD;
   runtime_heap_phdr PT_LOAD;
   buffer_heap_phdr PT_LOAD;
+  mailbox_phdr PT_LOAD;
+  virtual_thread_phdr PT_LOAD;
   sof_stack_phdr PT_LOAD;
   static_log_entries_phdr PT_NOTE;
 }
@@ -437,6 +445,8 @@ SECTIONS
   _stack_sentry = SOF_STACK_END;
   __stack = SOF_STACK_BASE;
 
+  _virtual_thread_ptr = _virtual_thread_start;
+
   .debug  0 :  { *(.debug) }
   .line  0 :  { *(.line) }
   .debug_srcinfo  0 :  { *(.debug_srcinfo) }
@@ -519,6 +529,22 @@ SECTIONS
     . = . + HEAP_BUFFER_SIZE;
     _buffer_heap_end = ABSOLUTE(.);
   } >buffer_heap :buffer_heap_phdr
+
+  .mailbox (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _mailbox_start = ABSOLUTE(.);
+    . = . + MAILBOX_SIZE;
+    _mailbox_end = ABSOLUTE(.);
+  } >mailbox :mailbox_phdr
+
+   .virtual_thread (NOLOAD) : ALIGN(8)
+  {
+    . = ALIGN (32);
+    _virtual_thread_start = ABSOLUTE(.);
+    . = . + SOF_VIRTUAL_THREAD_SIZE;
+    _virtual_thread_end = ABSOLUTE(.);
+  } >virtual_thread :virtual_thread_phdr
 
   .sof_stack (NOLOAD) : ALIGN(8)
   {
