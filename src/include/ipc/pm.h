@@ -54,4 +54,26 @@ struct sof_ipc_pm_core_config {
 	uint32_t enable_mask;
 } __attribute__((packed));
 
+struct sof_ipc_pm_gate {
+	struct sof_ipc_cmd_hdr hdr;
+	uint32_t flags;
+
+	/* reserved for future use */
+	uint32_t reserved[5];
+} __attribute__((packed));
+
+#define SOF_PM_PG_RSVD		BIT(0)
+
+/** \brief Indicates whether streaming is active */
+#define SOF_PM_PG_STREAMING	BIT(1)
+
+/** \brief Prevent power gating (0 - deep power state transitions allowed) */
+#define SOF_PM_PPG		BIT(2)
+
+/** \brief Prevent clock gating (0 - cg allowed, 1 - DSP clock always on) */
+#define SOF_PM_PCG		BIT(3)
+
+/** \brief Disable DMA tracing (0 - keep tracing, 1 - to disable DMA trace) */
+#define SOF_PM_NO_TRACE		BIT(4)
+
 #endif /* __IPC_PM_H__ */
