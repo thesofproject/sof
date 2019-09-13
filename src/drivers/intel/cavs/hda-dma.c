@@ -607,6 +607,7 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	/* default channel config */
 	channel->direction = config->direction;
 	channel->desc_count = config->elem_array.count;
+	channel->is_scheduling_source = config->is_scheduling_source;
 
 	/* validate - HDA only supports continuous elems of same size  */
 	for (i = 0; i < config->elem_array.count; i++) {
