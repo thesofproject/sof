@@ -37,7 +37,9 @@ struct pipeline_connect_data *get_standard_connect_objects(void)
 
 	pipe->ipc_pipe = pipe_desc;
 	pipe->status = COMP_STATE_INIT;
-	pipe->pipe_task.type = SOF_SCHEDULE_EDF;
+
+	pipe->pipe_task = calloc(sizeof(struct task), 1);
+	pipe->pipe_task->type = SOF_SCHEDULE_EDF;
 
 	schedulers = calloc(sizeof(struct schedulers), 1);
 	list_init(&schedulers->list);

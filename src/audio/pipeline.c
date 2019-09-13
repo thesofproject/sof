@@ -44,7 +44,6 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 			      struct comp_dev *cd)
 {
 	struct pipeline *p;
-	uint32_t type;
 
 	trace_pipe("pipeline_new()");
 
@@ -61,12 +60,6 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 
 	assert(!memcpy_s(&p->ipc_pipe, sizeof(p->ipc_pipe),
 	   pipe_desc, sizeof(*pipe_desc)));
-
-	/* get pipeline task type */
-	type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :
-		SOF_SCHEDULE_EDF;
-	schedule_task_init(&p->pipe_task, type, pipe_desc->priority,
-			   pipeline_task, NULL, p, pipe_desc->core, 0);
 
 	return p;
 }
@@ -236,7 +229,8 @@ int pipeline_free(struct pipeline *p)
 	}
 
 	/* remove from any scheduling */
-	schedule_task_free(&p->pipe_task);
+	if (p->pipe_task)
+		schedule_task_free(p->pipe_task);
 
 	/* now free the pipeline */
 	rfree(p);
@@ -390,10 +384,25 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 				      &buffer_reset_pos, dir);
 }
 
+static struct task *pipeline_task_init(struct pipeline *p, uint32_t type,
+				       enum task_state (*func)(void *data))
+{
+	struct task *task = NULL;
+
+	task = rzalloc(RZONE_RUNTIME, SOF_MEM_CAPS_RAM, sizeof(*task));
+
+	if (task)
+		schedule_task_init(task, type, p->ipc_pipe.priority, func, NULL,
+				   p, p->ipc_pipe.core, 0);
+
+	return task;
+}
+
 /* prepare the pipeline for usage - preload host buffers here */
 int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 {
 	struct pipeline_data ppl_data;
+	uint32_t type;
 	int ret = 0;
 
 	trace_pipe_with_ids(p, "pipeline_prepare()");
@@ -412,6 +421,20 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	 */
 	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
 		p->sink_comp->state != COMP_STATE_ACTIVE;
+
+	/* initialize task if necessary */
+	if (!p->pipe_task) {
+		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :
+			SOF_SCHEDULE_EDF;
+
+		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
+		if (!p->pipe_task) {
+			trace_pipe_error("pipeline_prepare() error: task init "
+					 "failed");
+			return -ENOMEM;
+		}
+	}
+
 	p->status = COMP_STATE_PREPARE;
 
 	return ret;
@@ -444,8 +467,10 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	uint32_t flags;
 
 	/* pipeline needs to be invalidated before usage */
-	if (cmd == CACHE_INVALIDATE)
+	if (cmd == CACHE_INVALIDATE) {
 		dcache_invalidate_region(p, sizeof(*p));
+		dcache_invalidate_region(p->pipe_task, sizeof(*p->pipe_task));
+	}
 
 	trace_pipe_with_ids(p, "pipeline_cache()");
 
@@ -458,8 +483,11 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	pipeline_comp_cache(dev, &data, dev->params.direction);
 
 	/* pipeline needs to be flushed after usage */
-	if (cmd == CACHE_WRITEBACK_INV)
+	if (cmd == CACHE_WRITEBACK_INV) {
+		dcache_writeback_invalidate_region(p->pipe_task,
+						   sizeof(*p->pipe_task));
 		dcache_writeback_invalidate_region(p, sizeof(*p));
+	}
 
 	irq_local_enable(flags);
 }
@@ -943,12 +971,12 @@ static int pipeline_xrun_recover(struct pipeline *p)
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
 	if (p->sched_comp->state == COMP_STATE_ACTIVE)
-		schedule_task(&p->pipe_task, start, p->ipc_pipe.period);
+		schedule_task(p->pipe_task, start, p->ipc_pipe.period);
 }
 
 void pipeline_schedule_cancel(struct pipeline *p)
 {
-	schedule_task_cancel(&p->pipe_task);
+	schedule_task_cancel(p->pipe_task);
 }
 
 static enum task_state pipeline_task(void *arg)
