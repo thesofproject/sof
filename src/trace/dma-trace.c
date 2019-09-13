@@ -138,7 +138,7 @@ int dma_trace_init_complete(struct dma_trace_data *d)
 		return ret;
 	}
 
-	schedule_task_init(&d->dmat_work, SOF_SCHEDULE_LL,
+	schedule_task_init(&d->dmat_work, SOF_SCHEDULE_LL_TIMER,
 			   SOF_TASK_PRI_MED, trace_work, NULL, d, 0, 0);
 
 	return 0;

@@ -83,7 +83,7 @@ void sa_init(struct sof *sof)
 	sa->last_idle = platform_timer_get(platform_timer) + sa->ticks;
 	sa->is_active = true;
 
-	schedule_task_init(&sa->work, SOF_SCHEDULE_LL, SOF_TASK_PRI_HIGH,
+	schedule_task_init(&sa->work, SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
 			   validate, NULL, sa, 0, 0);
 
 	schedule_task(&sa->work, PLATFORM_IDLE_TIME, PLATFORM_IDLE_TIME);

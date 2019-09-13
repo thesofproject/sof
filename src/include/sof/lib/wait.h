@@ -69,7 +69,7 @@ static inline void wait_init(completion_t *comp)
 
 	c->complete = 0;
 
-	schedule_task_init(&comp->work, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
+	schedule_task_init(&comp->work, SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_MED,
 			   _wait_cb, NULL, comp, 0, 0);
 }
 
