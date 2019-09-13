@@ -147,17 +147,10 @@ static inline void platform_panic(uint32_t p)
 	ipc_write(IPC_DIPCIDD, MAILBOX_EXCEPTION_OFFSET + 2 * 0x20000);
 	ipc_write(IPC_DIPCIDR, 0x80000000 | (p & 0x3fffffff));
 }
-
-/* Platform defined trace code */
-#define platform_trace_point(__x) \
-	mailbox_sw_reg_write(SRAM_REG_FW_TRACEP, (__x))
 #else
 static inline void platform_panic(uint32_t p)
 {
 }
-
-/* Platform defined trace code */
-#define platform_trace_point(__x)
 #endif
 extern struct timer *platform_timer;
 

@@ -150,10 +150,6 @@ static inline void platform_panic(uint32_t p)
 	ipc_write(IPC_DIPCIDR, 0x80000000 | (p & 0x3fffffff));
 }
 
-/* Platform defined trace code */
-#define platform_trace_point(__x) \
-	mailbox_sw_reg_write(SRAM_REG_FW_TRACEP, (__x))
-
 extern struct timer *platform_timer;
 
 extern intptr_t _module_init_start;
