@@ -29,6 +29,7 @@
 #include <user/trace.h>
 #include <config.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -758,6 +759,16 @@ static inline void comp_overrun(struct comp_dev *dev, struct comp_buffer *sink,
 			 copy_bytes);
 
 	pipeline_xrun(dev->pipeline, dev, (int32_t)copy_bytes - sink->free);
+}
+
+/**
+ * Called to check whether component schedules its pipeline.
+ * @param dev Component device.
+ * @return True if this is scheduling component, false otherwise.
+ */
+static inline bool comp_is_scheduling_source(struct comp_dev *dev)
+{
+	return dev == dev->pipeline->sched_comp;
 }
 
 /**
