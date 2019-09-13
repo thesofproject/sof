@@ -283,7 +283,14 @@ static void *alloc_cont_blocks(struct mm_heap *heap, int level,
 	heap->info.free -= count * map->block_size;
 	/* update first_free if needed */
 	if (map->first_free == start)
-		map->first_free += count;
+		/* find first available free block */
+		for (map->first_free += count; map->first_free < map->count;
+			map->first_free++) {
+			hdr = &map->block[map->first_free];
+
+			if (!hdr->used)
+				break;
+		}
 
 	/* update each block */
 	for (current = start; current < start + count; current++) {
