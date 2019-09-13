@@ -328,6 +328,9 @@ static int dw_dma_start(struct dma_chan_data *channel)
 		ret = dw_dma_interrupt_register(channel);
 
 	if (!ret) {
+		/* assign core */
+		channel->core = cpu_get_id();
+
 		/* enable the channel */
 		channel->status = COMP_STATE_ACTIVE;
 		dma_reg_write(dma, DW_DMA_CHAN_EN,
@@ -1240,6 +1243,7 @@ static int dw_dma_probe(struct dma *dma)
 		chan->index = i;
 		chan->dma = dma;
 		chan->index = i;
+		chan->core = DMA_CORE_INVALID;
 
 		dw_chan = rzalloc(RZONE_SYS_RUNTIME | RZONE_FLAG_UNCACHED,
 				  SOF_MEM_CAPS_RAM, sizeof(*dw_chan));
