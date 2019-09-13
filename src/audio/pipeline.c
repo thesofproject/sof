@@ -38,6 +38,7 @@ struct pipeline_data {
 };
 
 static enum task_state pipeline_task(void *arg);
+static enum task_state pipeline_preload_task(void *arg);
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
@@ -231,6 +232,9 @@ int pipeline_free(struct pipeline *p)
 	/* remove from any scheduling */
 	if (p->pipe_task)
 		schedule_task_free(p->pipe_task);
+
+	if (p->preload_task)
+		schedule_task_free(p->preload_task);
 
 	/* now free the pipeline */
 	rfree(p);
@@ -435,6 +439,18 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 		}
 	}
 
+	/* initialize preload task if necessary */
+	if (p->preload && !p->preload_task) {
+		/* preload task is always EDF as it guarantees scheduling */
+		p->preload_task = pipeline_task_init(p, SOF_SCHEDULE_EDF,
+						     pipeline_preload_task);
+		if (!p->preload_task) {
+			trace_pipe_error("pipeline_prepare() error: preload "
+					 "task init failed");
+			return -ENOMEM;
+		}
+	}
+
 	p->status = COMP_STATE_PREPARE;
 
 	return ret;
@@ -470,6 +486,8 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	if (cmd == CACHE_INVALIDATE) {
 		dcache_invalidate_region(p, sizeof(*p));
 		dcache_invalidate_region(p->pipe_task, sizeof(*p->pipe_task));
+		dcache_invalidate_region(p->preload_task,
+					 sizeof(*p->preload_task));
 	}
 
 	trace_pipe_with_ids(p, "pipeline_cache()");
@@ -486,6 +504,8 @@ void pipeline_cache(struct pipeline *p, struct comp_dev *dev, int cmd)
 	if (cmd == CACHE_WRITEBACK_INV) {
 		dcache_writeback_invalidate_region(p->pipe_task,
 						   sizeof(*p->pipe_task));
+		dcache_writeback_invalidate_region(p->preload_task,
+						   sizeof(*p->preload_task));
 		dcache_writeback_invalidate_region(p, sizeof(*p));
 	}
 
@@ -1013,4 +1033,18 @@ static enum task_state pipeline_task(void *arg)
 	/* automatically reschedule for timer or not finished preload */
 	return (pipeline_is_timer_driven(p) || p->preload) ?
 		SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
+}
+
+static enum task_state pipeline_preload_task(void *arg)
+{
+	struct pipeline *p = arg;
+
+	if (pipeline_copy(p) < 0) {
+		trace_pipe_error_with_ids(p, "pipeline_preload_task(): preload "
+					  "has failed");
+		return SOF_TASK_STATE_COMPLETED;
+	}
+
+	return p->preload ? SOF_TASK_STATE_RESCHEDULE :
+		SOF_TASK_STATE_COMPLETED;
 }
