@@ -29,7 +29,7 @@
 /* SOF_SCHEDULE_ type comes from topology */
 enum {
 	SOF_SCHEDULE_EDF = 0,	/* EDF scheduler */
-	SOF_SCHEDULE_LL,	/* Low latency scheduler */
+	SOF_SCHEDULE_LL_TIMER,	/* Low latency timer scheduler */
 	SOF_SCHEDULE_COUNT
 };
 

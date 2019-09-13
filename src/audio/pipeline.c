@@ -428,7 +428,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	/* initialize task if necessary */
 	if (!p->pipe_task) {
-		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :
+		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL_TIMER :
 			SOF_SCHEDULE_EDF;
 
 		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
