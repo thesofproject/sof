@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation. All rights reserved.
 
-SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl imx8)
+SUPPORTED_PLATFORMS=(byt cht bdw hsw apl cnl sue icl skl kbl imx8 tgl)
 BUILD_ROM=no
 BUILD_DEBUG=no
 BUILD_FORCE_UP=no
@@ -218,6 +218,16 @@ do
 	if [ $j == "icl" ]
 	then
 		PLATFORM="icelake"
+		ARCH="xtensa-smp"
+		XTENSA_CORE="X6H3CNL_2016_4_linux"
+		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
+		HOST="xtensa-cnl-elf"
+		XTENSA_TOOLS_VERSION="RF-2016.4-linux"
+		HAVE_ROM='yes'
+	fi
+	if [ $j == "tgl" ]
+	then
+		PLATFORM="tigerlake"
 		ARCH="xtensa-smp"
 		XTENSA_CORE="X6H3CNL_2016_4_linux"
 		ROOT="$pwd/../xtensa-root/xtensa-cnl-elf"
