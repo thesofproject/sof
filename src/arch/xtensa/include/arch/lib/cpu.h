@@ -44,13 +44,19 @@ static inline int arch_cpu_get_id(void)
 	return prid;
 }
 
+#if !XCHAL_HAVE_THREADPTR
+extern unsigned int _virtual_thread_start;
+static unsigned int *virtual_thread_ptr =
+	(unsigned int *)&_virtual_thread_start;
+#endif
+
 static inline void cpu_write_threadptr(int threadptr)
 {
 #if XCHAL_HAVE_THREADPTR
 	__asm__ __volatile__(
 		"wur.threadptr %0" : : "a" (threadptr) : "memory");
 #else
-#error "Core support for XCHAL_HAVE_THREADPTR is required"
+	*virtual_thread_ptr = threadptr;
 #endif
 }
 
@@ -61,7 +67,7 @@ static inline int cpu_read_threadptr(void)
 	__asm__ __volatile__(
 		"rur.threadptr %0" : "=a"(threadptr));
 #else
-#error "Core support for XCHAL_HAVE_THREADPTR is required"
+	threadptr = *virtual_thread_ptr;
 #endif
 	return threadptr;
 }

@@ -25,7 +25,7 @@ void platform_init_memmap(void);
 #define DRAM0_BASE	0x00400000
 #define DRAM0_VBASE	0x00400000
 
-#define MAILBOX_SIZE	0x00001000
+#define MAILBOX_SIZE	(0x00001000 - SOF_VIRTUAL_THREAD_SIZE)
 #define DMA0_SIZE	0x00001000
 #define DMA1_SIZE	0x00001000
 #define SSP0_SIZE	0x00001000
@@ -69,6 +69,8 @@ void platform_init_memmap(void);
  * | HEAP_BUFFER_BASE    | Module Buffers |  HEAP_BUFFER_SIZE                 |
  * +---------------------+----------------+-----------------------------------+
  * | MAILBOX_BASE        | Mailbox        |  MAILBOX_SIZE                     |
+ * +---------------------+----------------+-----------------------------------+
+ * | VIRTUAL_THREAD_BASE | Vthread Ptr    | SOF_VIRTUAL_THREAD_SIZE           |
  * +---------------------+----------------+-----------------------------------+
  * | SOF_STACK_END       | Stack          |  SOF_STACK_SIZE                   |
  * +---------------------+----------------+-----------------------------------+
@@ -116,7 +118,7 @@ void platform_init_memmap(void);
 #define HEAP_BUFFER_SIZE \
 	(DRAM0_SIZE - HEAP_RUNTIME_SIZE - SOF_STACK_TOTAL_SIZE -\
 	 HEAP_SYS_RUNTIME_SIZE - HEAP_SYSTEM_SIZE - SOF_DATA_SIZE -\
-	 MAILBOX_SIZE)
+	 SOF_VIRTUAL_THREAD_SIZE - MAILBOX_SIZE)
 
 #define HEAP_BUFFER_BLOCK_SIZE		0x180
 #define HEAP_BUFFER_COUNT \
@@ -133,7 +135,11 @@ void platform_init_memmap(void);
 #define SOF_STACK_BASE		(DRAM0_BASE + DRAM0_SIZE)
 #define SOF_STACK_END		(SOF_STACK_BASE - SOF_STACK_TOTAL_SIZE)
 
-#define MAILBOX_BASE			(SOF_STACK_END - MAILBOX_SIZE)
+/* Virtual threadptr */
+#define SOF_VIRTUAL_THREAD_SIZE	0x20
+#define SOF_VIRTUAL_THREAD_BASE (SOF_STACK_END - SOF_VIRTUAL_THREAD_SIZE)
+
+#define MAILBOX_BASE			(SOF_VIRTUAL_THREAD_BASE - MAILBOX_SIZE)
 
 /* Vector and literal sizes - not in core-isa.h */
 #define SOF_MEM_VECT_LIT_SIZE		0x4
@@ -143,6 +149,7 @@ void platform_init_memmap(void);
 
 #define SOF_MEM_RESET_TEXT_SIZE	0x2e0
 #define SOF_MEM_RESET_LIT_SIZE		0x120
+#define SOF_MEM_VECBASE_TEXT_BASE	0x400
 #define SOF_MEM_VECBASE_LIT_SIZE	0x178
 
 #define SOF_MEM_RO_SIZE		0x8

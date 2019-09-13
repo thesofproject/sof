@@ -30,8 +30,8 @@
 #include <config.h>
 #if CONFIG_SMP
 #include <sof/lib/cpu.h>
-#include <sof/lib/memory.h>
 #endif
+#include <sof/lib/memory.h>
 #include <xtensa/config/core.h>
 #include <xtensa/xtruntime.h>
 #include <xtensa/xtruntime-frames.h>
@@ -405,10 +405,18 @@ exit:
 	.macro	xtos_addr_percore ax, structure_name
 #if XCHAL_HAVE_THREADPTR
 	rur.threadptr	\ax
-	l32i		\ax, \ax, XTOS_PTR_TO_\structure_name
 #else
-#error "SOF for Xtensa requires THREADPTR option"
+	j 1f
+	.align 4
+	.literal_position
+2:
+	.word SOF_VIRTUAL_THREAD_BASE
+1:
+	.align 4
+	l32r	\ax, 2b
+	l32i		\ax, \ax, 0
 #endif
+	l32i		\ax, \ax, XTOS_PTR_TO_\structure_name
 	.endm
 
 	// xtos_int_stack_addr_percore ax, int_level, stack_name
@@ -416,10 +424,18 @@ exit:
 	.macro	xtos_int_stack_addr_percore ax, int_level, stack_name
 #if XCHAL_HAVE_THREADPTR
 	rur.threadptr	\ax
-	l32i		\ax, \ax, XTOS_PTR_TO_\stack_name\()_&int_level
 #else
-#error "SOF for Xtensa requires THREADPTR option"
+	j 1f
+	.align 4
+	.literal_position
+2:
+	.word SOF_VIRTUAL_THREAD_BASE
+1:
+	.align 4
+	l32r	\ax, 2b
+	l32i		\ax, \ax, 0
 #endif
+	l32i		\ax, \ax, XTOS_PTR_TO_\stack_name\()_&int_level
 	.endm
 
 	// xtos_task_ctx_percore ax
@@ -427,10 +443,18 @@ exit:
 	.macro	xtos_task_ctx_percore ax
 #if XCHAL_HAVE_THREADPTR
 	rur.threadptr	\ax
-	l32i		\ax, \ax, XTOS_TASK_CONTEXT_OFFSET
 #else
-#error "SOF for Xtensa requires THREADPTR option"
+	j 1f
+	.align 4
+	.literal_position
+2:
+	.word SOF_VIRTUAL_THREAD_BASE
+1:
+	.align 4
+	l32r	\ax, 2b
+	l32i		\ax, \ax, 0
 #endif
+	l32i		\ax, \ax, XTOS_TASK_CONTEXT_OFFSET
 	.endm
 
 #else /* !_ASMLANGUAGE && !__ASSEMBLER__ */
