@@ -19,9 +19,19 @@
 #include <sof/schedule/task.h>
 #include <sof/spinlock.h>
 #include <ipc/header.h>
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+#include <ipc/header-intel-cavs.h>
+#include <ipc/pm.h>
+#endif
 #include <config.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+
+#define CAVS_IPC_TYPE_S(x)		((x) & CAVS_IPC_TYPE_MASK)
+
+#endif
 
 extern struct ipc *_ipc;
 
@@ -118,17 +128,68 @@ static void ipc_irq_handler(void *arg)
 	}
 }
 
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+static struct sof_ipc_cmd_hdr *ipc_cavs_read_set_d0ix(uint32_t dr, uint32_t dd)
+{
+	struct sof_ipc_pm_gate *cmd = _ipc->comp_data;
+
+	cmd->hdr.cmd = SOF_IPC_GLB_PM_MSG | SOF_IPC_PM_GATE;
+	cmd->hdr.size = sizeof(*cmd);
+	cmd->flags = dd & CAVS_IPC_MOD_SETD0IX_BIT_MASK;
+
+	return &cmd->hdr;
+}
+
+static struct sof_ipc_cmd_hdr *ipc_cavs_read_msg(void)
+{
+	struct sof_ipc_cmd_hdr *hdr;
+	uint32_t dr;
+	uint32_t dd;
+
+	dr = ipc_read(IPC_DIPCTDR);
+	dd = ipc_read(IPC_DIPCTDD);
+
+	/* if there is no cAVS module IPC in regs go the previous path */
+	if (!(dr & CAVS_IPC_MSG_TGT))
+		return mailbox_validate();
+
+	switch (CAVS_IPC_TYPE_S(dr)) {
+	case CAVS_IPC_MOD_SET_D0IX:
+		hdr = ipc_cavs_read_set_d0ix(dr, dd);
+		break;
+	default:
+		return NULL;
+	}
+
+	dcache_writeback_region(hdr, hdr->size);
+
+	return hdr;
+}
+#endif
+
 static enum task_state ipc_platform_do_cmd(void *data)
 {
 #if CAVS_VERSION < CAVS_VERSION_2_0
 	struct ipc *ipc = data;
 #endif
 	struct sof_ipc_cmd_hdr *hdr;
+	struct sof_ipc_reply reply;
 
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+	hdr = ipc_cavs_read_msg();
+#else
 	hdr = mailbox_validate();
-
+#endif
 	/* perform command */
-	ipc_cmd(hdr);
+	if (hdr)
+		ipc_cmd(hdr);
+	else {
+		/* send invalid command error in reply */
+		reply.error = -EINVAL;
+		reply.hdr.cmd = SOF_IPC_GLB_REPLY;
+		reply.hdr.size = sizeof(reply);
+		mailbox_hostbox_write(0, &reply, sizeof(reply));
+	}
 
 	/* are we about to enter D3 ? */
 #if CAVS_VERSION < CAVS_VERSION_2_0
