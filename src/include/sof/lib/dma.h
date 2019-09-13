@@ -132,6 +132,8 @@ struct dma_sg_config {
 	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
 	bool scatter;
 	bool irq_disabled;
+	/* true if configured DMA channel is the scheduling source */
+	bool is_scheduling_source;
 };
 
 struct dma_chan_status {
@@ -210,6 +212,8 @@ struct dma_chan_data {
 	uint32_t desc_count;
 	uint32_t index;
 	uint32_t core;
+	/* true if this DMA channel is the scheduling source */
+	bool is_scheduling_source;
 
 	/* client callback function */
 	void (*cb)(void *data, uint32_t type, struct dma_cb_data *next);
@@ -432,6 +436,11 @@ static inline void dma_chan_reg_update_bits(struct dma_chan_data *channel,
 {
 	io_reg_update_bits(dma_chan_base(channel->dma, channel->index) + reg,
 			   mask, value);
+}
+
+static inline bool dma_is_scheduling_source(struct dma_chan_data *channel)
+{
+	return channel->is_scheduling_source;
 }
 
 static inline void dma_sg_init(struct dma_sg_elem_array *ea)

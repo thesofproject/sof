@@ -627,6 +627,7 @@ static int host_params(struct comp_dev *dev)
 	config->dest_width = comp_sample_bytes(dev);
 	config->cyclic = 0;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
+	config->is_scheduling_source = comp_is_scheduling_source(dev);
 
 	host_elements_reset(dev);
 

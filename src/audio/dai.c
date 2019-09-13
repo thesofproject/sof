@@ -248,6 +248,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->dest_dev = dai_get_handshake(dd->dai, dev->params.direction,
 					     dd->stream_id);
+	config->is_scheduling_source = comp_is_scheduling_source(dev);
 
 	trace_dai_with_ids(dev, "dai_playback_params() "
 			   "dest_dev = %d stream_id = %d "
@@ -313,6 +314,7 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes)
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->src_dev = dai_get_handshake(dd->dai, dev->params.direction,
 					    dd->stream_id);
+	config->is_scheduling_source = comp_is_scheduling_source(dev);
 
 	/* TODO: Make this code platform-specific or move it driver callback */
 	if (dai_get_info(dd->dai, DAI_INFO_TYPE) == SOF_DAI_INTEL_DMIC) {
