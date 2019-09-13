@@ -661,6 +661,17 @@ static int ipc_pm_core_enable(uint32_t header)
 	return 0;
 }
 
+static int ipc_pm_gate(uint32_t header)
+{
+	struct sof_ipc_pm_gate pm_gate;
+
+	IPC_COPY_CMD(pm_gate, _ipc->comp_data);
+
+	/* TODO: handle the flags */
+
+	return 0;
+}
+
 static int ipc_glb_pm_message(uint32_t header)
 {
 	uint32_t cmd = iCS(header);
@@ -674,6 +685,8 @@ static int ipc_glb_pm_message(uint32_t header)
 		return ipc_pm_context_size(header);
 	case SOF_IPC_PM_CORE_ENABLE:
 		return ipc_pm_core_enable(header);
+	case SOF_IPC_PM_GATE:
+		return ipc_pm_gate(header);
 	case SOF_IPC_PM_CLK_SET:
 	case SOF_IPC_PM_CLK_GET:
 	case SOF_IPC_PM_CLK_REQ:
