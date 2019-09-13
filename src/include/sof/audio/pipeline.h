@@ -78,7 +78,7 @@ struct pipeline {
 	bool preload;			/* is pipeline preload needed */
 
 	/* scheduling */
-	struct task pipe_task;		/* pipeline processing task */
+	struct task *pipe_task;		/* pipeline processing task */
 
 	/* component that drives scheduling in this pipe */
 	struct comp_dev *sched_comp;
