@@ -520,6 +520,22 @@ struct fuzz_platform cht_platform = {
 	.free = byt_platform_free,
 	.mailbox_read = mailbox_read,
 	.mailbox_write = mailbox_write,
+	.fw_ready = byt_fw_ready,
+	.num_mem_regions = ARRAY_SIZE(byt_mem),
+	.mem_region = byt_mem,
+	.num_reg_regions = ARRAY_SIZE(byt_io),
+	.reg_region = byt_io,
+};
+
+struct fuzz_platform bsw_platform = {
+	.name = "bsw",
+	.send_msg = byt_send_msg,
+	.get_reply = byt_get_reply,
+	.init = byt_platform_init,
+	.free = byt_platform_free,
+	.mailbox_read = mailbox_read,
+	.mailbox_write = mailbox_write,
+	.fw_ready = byt_fw_ready,
 	.num_mem_regions = ARRAY_SIZE(byt_mem),
 	.mem_region = byt_mem,
 	.num_reg_regions = ARRAY_SIZE(byt_io),

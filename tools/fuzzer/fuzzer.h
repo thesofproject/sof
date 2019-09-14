@@ -158,6 +158,7 @@ static inline void fuzzer_fw_ready(struct fuzz *fuzzer)
 
 extern struct fuzz_platform byt_platform;
 extern struct fuzz_platform cht_platform;
+extern struct fuzz_platform bsw_platform;
 extern struct fuzz_platform hsw_platform;
 extern struct fuzz_platform bdw_platform;
 
