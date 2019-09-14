@@ -83,6 +83,7 @@ static void usage(char *name)
 	for (i = 0; i < ARRAY_SIZE(platform); i++)
 		fprintf(stdout, "%s ", platform[i]->name);
 	fprintf(stdout, "\n");
+	fprintf(stdout, "Qemu must be started before the fuzzer is run.\n");
 
 	exit(0);
 }
@@ -111,7 +112,7 @@ void *fuzzer_create_io_region(struct fuzz *fuzzer, int id, int idx)
 	space = &plat->reg_region[idx];
 
 	sprintf(shm_name, "%s-io", space->name);
-
+	fprintf(stdout, "registering %s\n", shm_name);
 	err = qemu_io_register_shm(shm_name, id, space->desc.size, &ptr);
 	if (err < 0)
 		fprintf(stderr, "error: can't allocate IO %s:%d SHM %d\n", shm_name,
@@ -132,6 +133,7 @@ void *fuzzer_create_memory_region(struct fuzz *fuzzer, int id, int idx)
 
 	/* shared via SHM (not shared on real HW) */
 	sprintf(shm_name, "%s-mem", desc->name);
+	fprintf(stdout, "registering %s\n", shm_name);
 	err = qemu_io_register_shm(shm_name, id, desc->size, &ptr);
 	if (err < 0)
 		fprintf(stderr, "error: can't allocate %s:%d SHM %d\n", shm_name,
@@ -210,7 +212,7 @@ void fuzzer_ipc_msg_reply(struct fuzz *fuzzer)
 void fuzzer_ipc_crash(struct fuzz *fuzzer, unsigned int offset)
 {
 	/* TODO: DSP FW has crashed. dump stack, regs, last IPC, log etc */
-	fprintf(stderr, "DSP FW crash\n");
+	fprintf(stderr, "error: DSP FW crash\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -318,6 +320,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* init plaform */
+	fprintf(stdout, "initialising platform %s\n", platform[i]->name);
 	ret = platform[i]->init(&fuzzer, platform[i]);
 	if (ret == ETIMEDOUT) {
 		fprintf(stderr, "error: platform %s failed to initialise\n",

@@ -46,7 +46,7 @@
 #define ADSP_BYT_SHIM_SIZE          0x1000
 #define ADSP_MAILBOX_SIZE			0x1000
 
-// TODO get from driver.
+/* TODO get from driver. */
 #define BYT_PANIC_OFFSET(x)	(x)
 
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -131,7 +131,8 @@ static void dsp_write64(struct fuzz *fuzzer, unsigned int bar,
 		/* do we need to send an IRQ ? */
 		if (value & SHIM_IPCX_BUSY) {
 
-			printf("irq: send busy interrupt 0x%8.8lx\n", value);
+			fprintf(stdout, "irq: send busy interrupt 0x%8.8lx\n",
+				value);
 
 			/* send IRQ to child */
 			irq.hdr.type = QEMU_IO_TYPE_IRQ;
@@ -154,7 +155,8 @@ static void dsp_write64(struct fuzz *fuzzer, unsigned int bar,
 		/* do we need to send an IRQ ? */
 		if (value & SHIM_IPCD_DONE) {
 
-			printf("irq: send done interrupt 0x%8.8lx\n", value);
+			fprintf(stdout, "irq: send done interrupt 0x%8.8lx\n",
+				value);
 
 			/* send IRQ to child */
 			irq.hdr.type = QEMU_IO_TYPE_IRQ;
@@ -170,9 +172,9 @@ static void dsp_write64(struct fuzz *fuzzer, unsigned int bar,
 		active = dsp_read64(fuzzer, bar, SHIM_ISRX) &
 			~(dsp_read64(fuzzer, bar, SHIM_IMRX));
 
-		printf("irq: masking %lx mask %lx active %x\n",
-		       dsp_read64(fuzzer, bar, SHIM_ISRD),
-		       dsp_read64(fuzzer, bar, SHIM_IMRD), active);
+		fprintf(stdout, "irq: masking %lx mask %lx active %x\n",
+			dsp_read64(fuzzer, bar, SHIM_ISRD),
+			dsp_read64(fuzzer, bar, SHIM_IMRD), active);
 		break;
 	default:
 		break;
@@ -277,7 +279,7 @@ static int byt_irq_thread(int irq, void *context)
 					   SHIM_IMRX_DONE,
 					   SHIM_IMRX_DONE);
 
-		printf("reply msg from DSP\n");
+		fprintf(stdout, "ipc: reply msg from DSP\n");
 		/*
 		 * handle immediate reply from DSP core. If the msg is
 		 * found, set done bit in cmd_done which is called at the
@@ -352,7 +354,8 @@ static int byt_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
 	} else {
 		/* reply correct size ? */
 		if (reply.hdr.size != msg->reply_size) {
-			printf("error: reply expected 0x%x got 0x%x bytes\n",
+			fprintf(stderr,
+				"error: reply expected 0x%x got 0x%x bytes\n",
 			       msg->reply_size, reply.hdr.size);
 			size = msg->reply_size;
 			ret = -EINVAL;
@@ -476,14 +479,15 @@ static void byt_fw_ready(struct fuzz *fuzzer)
 	data->dsp_box.offset = 0;
 	data->dsp_box.size = 0x400;
 
-	printf("host box 0x%x size 0x%x\n", data->host_box.offset,
-	       data->host_box.size);
-	printf("dsp box 0x%x size 0x%x\n", data->dsp_box.offset,
-	       data->dsp_box.size);
+	fprintf(stdout,
+		"ipc: host box 0x%x size 0x%x\n", data->host_box.offset,
+		data->host_box.size);
+	fprintf(stdout, "ipc: dsp box 0x%x size 0x%x\n", data->dsp_box.offset,
+		data->dsp_box.size);
 
 	version = fw_ready.version;
-	printf("FW version major: %d minor: %d tag: %s\n",
-	       version.major, version.minor, version.tag);
+	fprintf(stdout, "ipc: FW version major: %d minor: %d tag: %s\n",
+		version.major, version.minor, version.tag);
 }
 
 struct fuzz_platform byt_platform = {
