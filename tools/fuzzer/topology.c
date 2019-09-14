@@ -356,7 +356,7 @@ int parse_tplg(struct fuzz *fuzzer, char *tplg_filename)
 
 		sprintf(message, "type: %x, size: 0x%x count: %d index: %d\n",
 			hdr->type, hdr->payload_size, hdr->count, hdr->index);
-		fprintf(stdout, "debug %s\n", message);
+		fprintf(stdout, "debug %s", message);
 
 		/* parse header and load the next block based on type */
 		switch (hdr->type) {
