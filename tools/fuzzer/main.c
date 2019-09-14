@@ -158,14 +158,14 @@ void fuzzer_free_regions(struct fuzz *fuzzer)
 }
 
 /* called by platform when it receives IPC message */
-void fuzzer_ipc_msg_rx(struct fuzz *fuzzer)
+void fuzzer_ipc_msg_rx(struct fuzz *fuzzer, struct mailbox *mailbox)
 {
 	struct sof_ipc_comp_reply r;
 	struct sof_ipc_cmd_hdr hdr;
 	uint32_t cmd;
 
 	/* read mailbox */
-	fuzzer->platform->mailbox_read(fuzzer, 0, &hdr, sizeof(hdr));
+	fuzzer_mailbox_read(fuzzer, mailbox, 0, &hdr, sizeof(hdr));
 	cmd = hdr.cmd & SOF_GLB_TYPE_MASK;
 
 	/* check message type */
@@ -174,7 +174,7 @@ void fuzzer_ipc_msg_rx(struct fuzz *fuzzer)
 		fprintf(stderr, "error: ipc reply unknown\n");
 		break;
 	case SOF_IPC_FW_READY:
-		fuzzer->platform->fw_ready(fuzzer);
+		fuzzer_fw_ready(fuzzer);
 		fuzzer->boot_complete = 1;
 		break;
 	case SOF_IPC_GLB_COMPOUND:
@@ -183,16 +183,17 @@ void fuzzer_ipc_msg_rx(struct fuzz *fuzzer)
 	case SOF_IPC_GLB_COMP_MSG:
 	case SOF_IPC_GLB_STREAM_MSG:
 	case SOF_IPC_GLB_TRACE_MSG:
-		fuzzer->platform->mailbox_read(fuzzer, 0, &r, sizeof(r));
+		fuzzer_mailbox_read(fuzzer, mailbox, 0, &r, sizeof(r));
 		break;
 	default:
 		fprintf(stderr, "error: unknown DSP message 0x%x\n", cmd);
 		break;
 	}
+
 }
 
 /* called by platform when it receives IPC message reply */
-void fuzzer_ipc_msg_reply(struct fuzz *fuzzer)
+void fuzzer_ipc_msg_reply(struct fuzz *fuzzer, struct mailbox *mailbox)
 {
 	int ret;
 
@@ -209,7 +210,8 @@ void fuzzer_ipc_msg_reply(struct fuzz *fuzzer)
 }
 
 /* called by platform when FW crashses */
-void fuzzer_ipc_crash(struct fuzz *fuzzer, unsigned int offset)
+void fuzzer_ipc_crash(struct fuzz *fuzzer, struct mailbox *mailbox,
+		      unsigned int offset)
 {
 	/* TODO: DSP FW has crashed. dump stack, regs, last IPC, log etc */
 	fprintf(stderr, "error: DSP FW crash\n");
