@@ -74,6 +74,7 @@ uint32_t trace_cmd_types[] = {SOF_IPC_TRACE_DMA_PARAMS,
 static struct fuzz_platform *platform[] = {
 		&byt_platform,
 		&cht_platform,
+		&bsw_platform,
 		&hsw_platform,
 		&bdw_platform
 };
