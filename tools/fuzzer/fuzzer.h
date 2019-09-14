@@ -113,13 +113,14 @@ struct fuzz {
 };
 
 /* called by platform when it receives IPC message */
-void fuzzer_ipc_msg_rx(struct fuzz *fuzzer);
+void fuzzer_ipc_msg_rx(struct fuzz *fuzzer, struct mailbox *mailbox);
 
 /* called by platform when it receives IPC message reply */
-void fuzzer_ipc_msg_reply(struct fuzz *fuzzer);
+void fuzzer_ipc_msg_reply(struct fuzz *fuzzer, struct mailbox *mailbox);
 
 /* called by platform when FW crashses */
-void fuzzer_ipc_crash(struct fuzz *fuzzer, unsigned int offset);
+void fuzzer_ipc_crash(struct fuzz *fuzzer, struct mailbox *mailbox,
+		      unsigned int offset);
 
 /* called by platforms to allocate memory/register regions */
 void *fuzzer_create_memory_region(struct fuzz *fuzzer, int id, int idx);
@@ -131,6 +132,29 @@ int fuzzer_send_msg(struct fuzz *fuzzer);
 
 /* topology */
 int parse_tplg(struct fuzz *fuzzer, char *tplg_filename);
+
+/* Convenience platform ops */
+static inline void fuzzer_mailbox_read(struct fuzz *fuzzer,
+				       struct mailbox *mailbox, int offset,
+				       void *dest, size_t bytes)
+{
+	fuzzer->platform->mailbox_read(fuzzer, mailbox->offset + offset,
+				       dest, bytes);
+}
+
+static inline void fuzzer_mailbox_write(struct fuzz *fuzzer,
+				       struct mailbox *mailbox, int offset,
+				       void *src, size_t bytes)
+{
+	fuzzer->platform->mailbox_write(fuzzer, mailbox->offset + offset,
+				       src, bytes);
+}
+
+static inline void fuzzer_fw_ready(struct fuzz *fuzzer)
+{
+	fuzzer->platform->fw_ready(fuzzer);
+}
+
 
 extern struct fuzz_platform byt_platform;
 extern struct fuzz_platform cht_platform;

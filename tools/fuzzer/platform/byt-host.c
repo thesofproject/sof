@@ -287,7 +287,7 @@ static int byt_irq_thread(int irq, void *context)
 		 * because the done bit can't be set in cmd_done function
 		 * which is triggered by msg
 		 */
-		fuzzer_ipc_msg_reply(fuzzer);
+		fuzzer_ipc_msg_reply(fuzzer, &data->host_box);
 		byt_cmd_done(fuzzer, SOF_IPC_DSP_REPLY);
 		return IRQ_HANDLED;
 	}
@@ -304,10 +304,10 @@ static int byt_irq_thread(int irq, void *context)
 
 		/* read mailbox */
 		if ((ipcd & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC) {
-			fuzzer_ipc_crash(fuzzer, BYT_PANIC_OFFSET(ipcd) +
-					  MBOX_OFFSET);
+			fuzzer_ipc_crash(fuzzer, &data->dsp_box,
+					BYT_PANIC_OFFSET(ipcd) + MBOX_OFFSET);
 		} else {
-			fuzzer_ipc_msg_rx(fuzzer);
+			fuzzer_ipc_msg_rx(fuzzer, &data->dsp_box);
 		}
 
 		if (!data->boot_complete && fuzzer->boot_complete) {
@@ -329,7 +329,7 @@ static int byt_send_msg(struct fuzz *fuzzer, struct ipc_msg *msg)
 	uint64_t cmd = msg->header;
 
 	/* send the message */
-	mailbox_write(fuzzer, data->host_box.offset, msg->msg_data,
+	fuzzer_mailbox_write(fuzzer, &data->host_box, 0, msg->msg_data,
 		      msg->msg_size);
 	dsp_write64(fuzzer, BYT_DSP_BAR, SHIM_IPCX,
 		    cmd | SHIM_BYT_IPCX_BUSY);
@@ -346,7 +346,7 @@ static int byt_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
 	uint32_t size;
 
 	/* get reply */
-	mailbox_read(fuzzer, data->host_box.offset, &reply, sizeof(reply));
+	fuzzer_mailbox_read(fuzzer, &data->host_box, 0, &reply, sizeof(reply));
 
 	if (reply.error < 0) {
 		size = sizeof(reply);
@@ -366,8 +366,8 @@ static int byt_get_reply(struct fuzz *fuzzer, struct ipc_msg *msg)
 
 	/* read the message */
 	if (msg->msg_data && size > 0)
-		mailbox_read(fuzzer, data->host_box.offset, msg->reply_data,
-			     size);
+		fuzzer_mailbox_read(fuzzer, &data->host_box, 0,
+				    msg->reply_data, size);
 
 	return ret;
 }
@@ -468,7 +468,8 @@ static void byt_fw_ready(struct fuzz *fuzzer)
 	uint32_t offset = MBOX_OFFSET;
 
 	/* read fw_ready data from mailbox */
-	mailbox_read(fuzzer, 0, &fw_ready, sizeof(fw_ready));
+	fuzzer_mailbox_read(fuzzer, &data->dsp_box, 0,
+			    &fw_ready, sizeof(fw_ready));
 
 	/*
 	 * Hardcode offsets.
