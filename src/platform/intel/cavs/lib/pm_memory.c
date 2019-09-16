@@ -5,6 +5,7 @@
  * Author: Jakub Dabek <jakub.dabek@intel.com>
  */
 
+#include <cavs/version.h>
 #include <sof/bit.h>
 #include <sof/lib/io.h>
 #include <sof/lib/memory.h>
@@ -13,7 +14,6 @@
 #include <sof/lib/wait.h>
 #include <sof/trace/trace.h>
 #include <user/trace.h>
-#include <version.h>
 #include <stdint.h>
 
 #define trace_mem_pm(__e, ...) \
