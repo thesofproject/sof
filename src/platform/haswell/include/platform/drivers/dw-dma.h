@@ -12,6 +12,9 @@
 
 #include <sof/bit.h>
 
+/* number of supported DW-DMACs */
+#define PLATFORM_NUM_DW_DMACS	2
+
 /* CTL_HI */
 #define DW_CTLH_DONE(x)		SET_BIT(12, x)
 #define DW_CTLH_BLOCK_TS_MASK	MASK(11, 0)
