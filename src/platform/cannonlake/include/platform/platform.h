@@ -41,8 +41,6 @@ struct timer;
  */
 #define PLATFORM_WORKQ_DEFAULT_TIMEOUT	1000
 
-#define PLATFORM_WAITI_DELAY	1
-
 #define MAX_GPDMA_COUNT 2
 
 /* Host page size */

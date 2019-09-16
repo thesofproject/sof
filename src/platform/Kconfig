@@ -82,6 +82,7 @@ config CANNONLAKE
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_1_8
+	select WAITI_DELAY
 	help
 	  Select if your target platform is Cannonlake-compatible
 
@@ -99,6 +100,7 @@ config SUECREEK
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
+	select WAITI_DELAY
 	help
 	  Select if your target platform is Suecreek-compatible
 
@@ -115,6 +117,7 @@ config ICELAKE
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
+	select WAITI_DELAY
 	help
 	  Select if your target platform is Icelake-compatible
 
@@ -133,6 +136,7 @@ config TIGERLAKE
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_5
+	select WAITI_DELAY
 	help
 	  Select if your target platform is Tigerlake-compatible
 
