@@ -225,6 +225,8 @@ struct dma_chan_data {
 	void *private;
 };
 
+extern struct dma dma[];
+
 /**
  *  \brief Plugs platform specific DMA array once initialized into the lib.
  *

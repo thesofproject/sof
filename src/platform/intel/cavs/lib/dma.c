@@ -104,7 +104,7 @@ static struct dw_drv_plat_data dmac1 = {
 };
 
 #if CONFIG_SUECREEK
-static struct dma dma[PLATFORM_NUM_DMACS] = {
+struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* LP GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
@@ -153,7 +153,7 @@ static struct dma dma[PLATFORM_NUM_DMACS] = {
 };
 
 #else
-static struct dma dma[PLATFORM_NUM_DMACS] = {
+struct dma dma[PLATFORM_NUM_DMACS] = {
 {	/* Low Power GP DMAC 0 */
 	.plat_data = {
 		.id		= DMA_GP_LP_DMAC0,
