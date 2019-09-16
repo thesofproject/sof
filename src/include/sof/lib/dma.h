@@ -73,7 +73,6 @@
  */
 enum dma_cb_status {
 	DMA_CB_STATUS_RELOAD = 0,
-	DMA_CB_STATUS_SPLIT,
 	DMA_CB_STATUS_END,
 };
 
