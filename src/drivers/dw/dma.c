@@ -788,45 +788,6 @@ static inline void dw_dma_chan_reload_lli(struct dma_chan_data *channel)
 	/* enable the channel */
 	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
 }
-
-/* reload using callback data */
-static inline void dw_dma_chan_reload_next(struct dma_chan_data *channel,
-					   struct dma_sg_elem *next,
-					   int direction)
-{
-	struct dma *dma = channel->dma;
-	struct dw_drv_plat_data *dp = dma->plat_data.drv_plat_data;
-	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	uint16_t class = dp->chan[channel->index].class;
-	struct dw_lli *lli = dw_chan->lli_current;
-	uint32_t sar;
-	uint32_t dar;
-
-	dw_dma_mask_address(next, &sar, &dar, direction);
-
-	/* channel needs to start from scratch, so write SAR and DAR */
-	dma_reg_write(dma, DW_SAR(channel->index), sar);
-	dma_reg_write(dma, DW_DAR(channel->index), dar);
-
-	lli->ctrl_hi = 0;
-
-	/* set channel class */
-	platform_dw_dma_set_class(dw_chan, lli, class);
-
-	/* set transfer size of element */
-	platform_dw_dma_set_transfer_size(dw_chan, lli, next->size);
-
-	/* program CTL_LO and CTL_HI */
-	dma_reg_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
-	dma_reg_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
-
-	/* program CFG_LO and CFG_HI */
-	dma_reg_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
-	dma_reg_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
-
-	/* enable the channel */
-	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
-}
 #endif
 
 static void dw_dma_verify_transfer(struct dma_chan_data *channel,
@@ -854,7 +815,6 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 #else
 	/* check for reload channel:
 	 * next->status is DMA_CB_STATUS_END, stop this dma copy;
-	 * next->status is DMA_CB_STATUS_SPLIT, use next element for next copy;
 	 * otherwise, reload lli
 	 */
 	switch (next->status) {
@@ -862,10 +822,6 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 		channel->status = COMP_STATE_PREPARE;
 		dw_chan->lli_current =
 			(struct dw_lli *)dw_chan->lli_current->llp;
-		break;
-	case DMA_CB_STATUS_SPLIT:
-		dw_dma_chan_reload_next(channel, &next->elem,
-					channel->direction);
 		break;
 	default:
 		dw_dma_chan_reload_lli(channel);
