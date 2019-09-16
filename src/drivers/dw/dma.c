@@ -1216,7 +1216,6 @@ static int dw_dma_probe(struct dma *dma)
 	for (i = 0, chan = dma->chan; i < dma->plat_data.channels;
 	     i++, chan++) {
 		chan->status = COMP_STATE_INIT;
-		chan->index = i;
 		chan->dma = dma;
 		chan->index = i;
 		chan->core = DMA_CORE_INVALID;
