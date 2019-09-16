@@ -73,18 +73,17 @@ struct dai_data {
 	uint64_t wallclock;	/* wall clock at stream start */
 };
 
-static void dai_buffer_process(struct comp_dev *dev, struct dma_cb_data *next)
+/* this is called by DMA driver every time descriptor has completed */
+static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 {
+	struct comp_dev *dev = (struct comp_dev *)data;
 	struct dai_data *dd = comp_get_drvdata(dev);
-	struct dma_sg_config *config = &dd->config;
 	uint32_t bytes = next->elem.size;
 	void *buffer_ptr;
 
-	tracev_dai_with_ids(dev, "dai_buffer_process()");
+	tracev_dai_with_ids(dev, "dai_dma_cb()");
 
-	/* lli needs to be reloaded if irq is disabled */
-	next->status = config->irq_disabled ? DMA_CB_STATUS_RELOAD :
-		DMA_CB_STATUS_IGNORE;
+	next->status = DMA_CB_STATUS_RELOAD;
 
 	/* stop dma copy for pause/stop/xrun */
 	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
@@ -123,27 +122,6 @@ static void dai_buffer_process(struct comp_dev *dev, struct dma_cb_data *next)
 		dd->dai_pos_blks += bytes;
 		*dd->dai_pos = dd->dai_pos_blks +
 			buffer_ptr - dd->dma_buffer->addr;
-	}
-}
-
-/* this is called by DMA driver every time descriptor has completed */
-static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
-{
-	struct comp_dev *dev = (struct comp_dev *)data;
-
-	tracev_dai_with_ids(dev, "dai_dma_cb()");
-
-	switch (type) {
-	case DMA_CB_TYPE_IRQ:
-		pipeline_schedule_copy(dev->pipeline, 0);
-		break;
-	case DMA_CB_TYPE_COPY:
-		dai_buffer_process(dev, next);
-		break;
-	default:
-		trace_dai_error_with_ids(dev, "dai_dma_cb() error: Wrong "
-					 "callback type = %u", type);
-		break;
 	}
 }
 
@@ -822,8 +800,7 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 		}
 
 		/* set up callback */
-		dma_set_cb(dd->chan, DMA_CB_TYPE_IRQ | DMA_CB_TYPE_COPY,
-			   dai_dma_cb, dev);
+		dma_set_cb(dd->chan, DMA_CB_TYPE_COPY, dai_dma_cb, dev);
 		dev->is_dma_connected = 1;
 	}
 

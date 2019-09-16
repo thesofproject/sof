@@ -10,6 +10,7 @@
 #include <cavs/version.h>
 #include <sof/common.h>
 #include <sof/debug/debug.h>
+#include <sof/drivers/dw-dma.h>
 #include <sof/drivers/idc.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
@@ -244,6 +245,7 @@ struct timer timer = {
 struct timer *platform_timer = &timer;
 
 struct ll_schedule_domain *platform_timer_domain;
+struct ll_schedule_domain *platform_dma_domain;
 
 #if CONFIG_DW_SPI
 
@@ -378,11 +380,20 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf(sof);
 
-	/* init low latency domains and schedulers */
+	/* init low latency timer domain and scheduler */
 	platform_timer_domain =
 		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
 				  PLATFORM_LL_DEFAULT_TIMEOUT);
 	scheduler_init_ll(platform_timer_domain);
+
+	/* init low latency multi channel DW-DMA domain and scheduler */
+	platform_dma_domain =
+		dma_multi_chan_domain_init(
+				&dma[PLATFORM_DW_DMA_INDEX],
+				PLATFORM_NUM_DW_DMACS,
+				PLATFORM_DEFAULT_CLOCK,
+				IS_ENABLED(CONFIG_DW_DMA_AGGREGATED_IRQ));
+	scheduler_init_ll(platform_dma_domain);
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

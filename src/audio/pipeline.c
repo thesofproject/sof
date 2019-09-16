@@ -39,6 +39,7 @@ struct pipeline_data {
 
 static enum task_state pipeline_task(void *arg);
 static enum task_state pipeline_preload_task(void *arg);
+static void pipeline_schedule_preload(struct pipeline *p);
 
 /* create new pipeline - returns pipeline id or negative error */
 struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
@@ -428,8 +429,11 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	/* initialize task if necessary */
 	if (!p->pipe_task) {
+		/* right now we always consider pipeline as a low latency
+		 * component, but it may change in the future
+		 */
 		type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL_TIMER :
-			SOF_SCHEDULE_EDF;
+			SOF_SCHEDULE_LL_DMA;
 
 		p->pipe_task = pipeline_task_init(p, type, pipeline_task);
 		if (!p->pipe_task) {
@@ -530,15 +534,13 @@ static void pipeline_comp_trigger_sched_comp(struct pipeline *p,
 	case COMP_TRIGGER_START:
 		p->xrun_bytes = 0;
 
-		/* playback pipelines need to be scheduled now,
-		 * capture pipelines are scheduled only for
-		 * timer driven scheduling
-		 */
-		if (comp->params.direction == SOF_IPC_STREAM_PLAYBACK ||
-		    pipeline_is_timer_driven(p)) {
-			/* schedule initial pipeline fill */
+		/* schedule preload if pipeline is not timer driven */
+		if (p->preload && !pipeline_is_timer_driven(p))
+			/* schedule pipeline preload */
+			pipeline_schedule_preload(p);
+		else
 			pipeline_schedule_copy(p, 0);
-		}
+
 		p->status = COMP_STATE_ACTIVE;
 		break;
 	case COMP_TRIGGER_SUSPEND:
@@ -849,8 +851,10 @@ static int pipeline_copy(struct pipeline *p)
 				 start->comp.id, dir);
 
 	/* stop preload only after full walkthrough */
-	if (ret != PPL_STATUS_PATH_STOP)
+	if (ret != PPL_STATUS_PATH_STOP && p->preload) {
 		p->preload = false;
+		pipeline_schedule_copy(p, 0);
+	}
 
 	return ret;
 }
@@ -999,6 +1003,11 @@ void pipeline_schedule_cancel(struct pipeline *p)
 	schedule_task_cancel(p->pipe_task);
 }
 
+static void pipeline_schedule_preload(struct pipeline *p)
+{
+	schedule_task(p->preload_task, 0, p->ipc_pipe.period);
+}
+
 static enum task_state pipeline_task(void *arg)
 {
 	struct pipeline *p = arg;
@@ -1030,9 +1039,7 @@ static enum task_state pipeline_task(void *arg)
 
 	tracev_pipe("pipeline_task() sched");
 
-	/* automatically reschedule for timer or not finished preload */
-	return (pipeline_is_timer_driven(p) || p->preload) ?
-		SOF_TASK_STATE_RESCHEDULE : SOF_TASK_STATE_COMPLETED;
+	return SOF_TASK_STATE_RESCHEDULE;
 }
 
 static enum task_state pipeline_preload_task(void *arg)
