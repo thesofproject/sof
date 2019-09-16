@@ -762,8 +762,8 @@ static int src_copy(struct comp_dev *dev)
 	 */
 	ret = src_get_copy_limits(cd, source, sink);
 	if (ret) {
-		trace_src_error("No data to process.");
-		return ret;
+		trace_src("No data to process.");
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	cd->src_func(dev, source, sink, &consumed, &produced);
