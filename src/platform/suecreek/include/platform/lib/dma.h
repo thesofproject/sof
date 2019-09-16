@@ -15,6 +15,9 @@
 /* number of supported DMACs */
 #define PLATFORM_NUM_DMACS	3
 
+/* max number of supported DMA channels */
+#define PLATFORM_MAX_DMA_CHAN	8
+
 /* available DMACs */
 #define DMA_GP_LP_DMAC0		0
 #define DMA_GP_LP_DMAC1		1
