@@ -224,8 +224,6 @@ static void host_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	/* callback for one shot copy */
 	if (hd->copy_type == COMP_COPY_ONE_SHOT)
 		host_one_shot_cb(dev, bytes);
-
-	next->status = DMA_CB_STATUS_END;
 }
 
 static int create_local_elems(struct comp_dev *dev, uint32_t buffer_count,
