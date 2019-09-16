@@ -11,6 +11,14 @@
 #define __PLATFORM_DRIVERS_DW_DMA_H__
 
 #include <sof/bit.h>
+#include <config.h>
+
+/* number of supported DW-DMACs */
+#if CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
+#define PLATFORM_NUM_DW_DMACS	3
+#else
+#define PLATFORM_NUM_DW_DMACS	2
+#endif
 
 /* CTL_HI */
 #define DW_CTLH_CLASS(x)	SET_BITS(31, 29, x)
