@@ -12,11 +12,11 @@
 
 #include <sof/debug/panic.h>
 #include <sof/drivers/interrupt.h>
-#include <sof/platform.h>
 #include <ipc/trace.h>
+#include <config.h>
 #include <xtensa/xtruntime.h>
 
-#if defined(PLATFORM_WAITI_DELAY)
+#if (CONFIG_WAITI_DELAY)
 
 static inline void arch_wait_for_interrupt(int level)
 {

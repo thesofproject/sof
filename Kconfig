@@ -32,6 +32,13 @@ config LP_SRAM
 	  memory for specific platform. Until this options is enabled firmware will
 	  not enable any of LPSRAM memory banks.
 
+config WAITI_DELAY
+	bool "Enable delay before WAITI instruction"
+	default n
+	help
+	  Some cAVS platforms may require additional delay to flush loads
+	  and stores before entering WAITI.
+
 endmenu
 
 config HOST_PTABLE
