@@ -9,7 +9,7 @@ choice
 config BAYTRAIL
 	bool "Build for Baytrail"
 	select HOST_PTABLE
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
 	select DW
@@ -22,7 +22,7 @@ config BAYTRAIL
 config CHERRYTRAIL
 	bool "Build for Cherrytrail"
 	select HOST_PTABLE
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DMA_SUSPEND_DRAIN
 	select DMA_FIFO_PARTITION
 	select DW
@@ -35,7 +35,7 @@ config CHERRYTRAIL
 config HASWELL
 	bool "Build for Haswell"
 	select HOST_PTABLE
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
@@ -46,7 +46,7 @@ config HASWELL
 config BROADWELL
 	bool "Build for Broadwell"
 	select HOST_PTABLE
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
@@ -78,7 +78,7 @@ config CANNONLAKE
 	select DW_DMA
 	select MEM_WND
 	select HW_LLI
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_1_8
@@ -96,7 +96,7 @@ config SUECREEK
 	select INTEL_IOMUX
 	select DW_GPIO
 	select HW_LLI
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
@@ -113,7 +113,7 @@ config ICELAKE
 	select DW_DMA
 	select MEM_WND
 	select HW_LLI
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_0
@@ -130,7 +130,7 @@ config TIGERLAKE
 	select DW_DMA
 	select MEM_WND
 	select HW_LLI
-	select DMA_AGGREGATED_IRQ
+	select DW_DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
 	select CAVS
 	select CAVS_VERSION_2_5

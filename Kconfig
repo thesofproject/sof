@@ -85,16 +85,16 @@ config HW_LLI
 	  Any platforms with hardware linked list support
 	  should set this.
 
-config DMA_AGGREGATED_IRQ
+config DW_DMA_AGGREGATED_IRQ
 	bool
 	default n
 	help
-	  Some platforms cannot register interrupt per DMA channel
+	  Some platforms cannot register interrupt per DW-DMA channel
 	  and have the possibility only to register interrupts per
 	  DMA controller, which require manual handling of aggregated
 	  irq.
 
-	  Any platforms with DMA aggregated interrupts support
+	  Any platforms with DW-DMA aggregated interrupts support
 	  should set this.
 
 config DMA_SUSPEND_DRAIN
