@@ -192,9 +192,8 @@ static int idc_pipeline_trigger(uint32_t cmd)
 		 * Should be removed after changing memory management for
 		 * slave cores.
 		 */
-		if (pcm_dev->cd->pipeline->pipe_task->type ==
-		    SOF_SCHEDULE_EDF) {
-			task = pcm_dev->cd->pipeline->pipe_task;
+		if (pcm_dev->cd->pipeline->preload_task) {
+			task = pcm_dev->cd->pipeline->preload_task;
 			edf_pdata = edf_sch_get_pdata(task);
 			dcache_invalidate_region(edf_pdata, sizeof(*edf_pdata));
 			task_context_cache(edf_pdata->ctx, CACHE_INVALIDATE);
@@ -214,9 +213,8 @@ static int idc_pipeline_trigger(uint32_t cmd)
 		 * Should be removed after changing memory management for
 		 * slave cores.
 		 */
-		if (pcm_dev->cd->pipeline->pipe_task->type ==
-		    SOF_SCHEDULE_EDF) {
-			task = pcm_dev->cd->pipeline->pipe_task;
+		if (pcm_dev->cd->pipeline->preload_task) {
+			task = pcm_dev->cd->pipeline->preload_task;
 			edf_pdata = edf_sch_get_pdata(task);
 			task_context_cache(edf_pdata->ctx, CACHE_WRITEBACK_INV);
 			dcache_writeback_invalidate_region(edf_pdata,

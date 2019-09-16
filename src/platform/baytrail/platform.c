@@ -6,6 +6,7 @@
 //         Keyon Jie <yang.jie@linux.intel.com>
 
 #include <sof/debug/debug.h>
+#include <sof/drivers/dw-dma.h>
 #include <sof/drivers/interrupt.h>
 #include <sof/drivers/ipc.h>
 #include <sof/drivers/pmc.h>
@@ -33,6 +34,7 @@
 #include <config.h>
 #include <version.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -123,6 +125,7 @@ struct timer timer = {
 struct timer *platform_timer = &timer;
 
 struct ll_schedule_domain *platform_timer_domain;
+struct ll_schedule_domain *platform_dma_domain;
 
 int platform_boot_complete(uint32_t boot_message)
 {
@@ -189,11 +192,19 @@ int platform_init(struct sof *sof)
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
 	scheduler_init_edf(sof);
 
-	/* init low latency domains and schedulers */
+	/* init low latency timer domain and scheduler */
 	platform_timer_domain =
 		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
 				  PLATFORM_LL_DEFAULT_TIMEOUT);
 	scheduler_init_ll(platform_timer_domain);
+
+	/* init low latency multi channel DW-DMA domain and scheduler */
+	platform_dma_domain =
+		dma_multi_chan_domain_init(
+				&dma[PLATFORM_DW_DMA_INDEX],
+				PLATFORM_NUM_DW_DMACS,
+				PLATFORM_DEFAULT_CLOCK, true);
+	scheduler_init_ll(platform_dma_domain);
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);

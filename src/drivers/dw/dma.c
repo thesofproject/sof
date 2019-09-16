@@ -134,9 +134,6 @@ static void dw_dma_interrupt_unmask(struct dma_chan_data *channel)
 
 static void dw_dma_interrupt_clear(struct dma_chan_data *channel)
 {
-#if CONFIG_DW_DMA_AGGREGATED_IRQ
-	const struct dma_pdata *p = dma_get_drvdata(channel->dma);
-#endif
 	const struct dw_dma_chan_data *chan = dma_chan_get_data(channel);
 
 	if (chan->irq_disabled) {
@@ -152,13 +149,6 @@ static void dw_dma_interrupt_clear(struct dma_chan_data *channel)
 	dma_reg_write(channel->dma, DW_CLEAR_SRC_TRAN, DW_CHAN(channel->index));
 	dma_reg_write(channel->dma, DW_CLEAR_DST_TRAN, DW_CHAN(channel->index));
 	dma_reg_write(channel->dma, DW_CLEAR_ERR, DW_CHAN(channel->index));
-
-	/* clear platform interrupt */
-#if CONFIG_DW_DMA_AGGREGATED_IRQ
-	interrupt_clear_mask(p->irq, DW_CHAN(channel->index));
-#else
-	interrupt_clear_mask(chan->irq, DW_CHAN(channel->index));
-#endif
 }
 
 static uint32_t dw_dma_interrupt_status(struct dma_chan_data *channel)
@@ -292,8 +282,6 @@ static int dw_dma_start(struct dma_chan_data *channel)
 		goto out;
 	}
 
-	dw_dma_interrupt_clear(channel);
-
 #if CONFIG_HW_LLI
 	/* LLP mode - write LLP pointer unless in scatter mode */
 	dma_reg_write(dma, DW_LLP(channel->index), lli->ctrl_lo &
@@ -323,19 +311,12 @@ static int dw_dma_start(struct dma_chan_data *channel)
 	}
 #endif
 
-	/* enable interrupt only for the first start */
-	if (channel->status == COMP_STATE_PREPARE)
-		ret = dw_dma_interrupt_register(channel);
+	/* assign core */
+	channel->core = cpu_get_id();
 
-	if (!ret) {
-		/* assign core */
-		channel->core = cpu_get_id();
-
-		/* enable the channel */
-		channel->status = COMP_STATE_ACTIVE;
-		dma_reg_write(dma, DW_DMA_CHAN_EN,
-			      DW_CHAN_UNMASK(channel->index));
-	}
+	/* enable the channel */
+	channel->status = COMP_STATE_ACTIVE;
+	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
 
 out:
 	irq_local_enable(flags);
@@ -448,9 +429,6 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 #endif
 
 	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel->index));
-
-	/* disable interrupt */
-	dw_dma_interrupt_unregister(channel);
 
 #if CONFIG_HW_LLI
 	/* clear block interrupt */
@@ -599,8 +577,6 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 			}
 		}
 	}
-
-	dw_dma_interrupt_unmask(channel);
 
 	dw_chan->ptr_data.buffer_bytes = 0;
 
@@ -961,8 +937,7 @@ static void dw_dma_irq_callback(struct dma_chan_data *channel,
 	if (channel->cb && channel->cb_type & type)
 		channel->cb(channel->cb_data, type, next);
 
-	if (next->status != DMA_CB_STATUS_IGNORE)
-		dw_dma_verify_transfer(channel, next);
+	dw_dma_verify_transfer(channel, next);
 }
 
 static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
@@ -972,7 +947,7 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 	int ret = 0;
 	struct dma_cb_data next = {
 		.elem = { .size = bytes },
-		.status = DMA_CB_STATUS_RELOAD
+		.status = DMA_CB_STATUS_END
 	};
 
 	/* for preload and one shot copy just start the DMA and wait */
@@ -1307,7 +1282,11 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	int32_t read_ptr = dw_chan->ptr_data.current_ptr;
+#if CONFIG_HW_LLI
 	int32_t write_ptr = dma_reg_read(channel->dma, DW_DAR(channel->index));
+#else
+	int32_t write_ptr = ((struct dw_lli *)dw_chan->lli_current->llp)->dar;
+#endif
 	int size;
 
 	size = write_ptr - read_ptr;
@@ -1325,7 +1304,11 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 static int dw_dma_free_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
+#if CONFIG_HW_LLI
 	int32_t read_ptr = dma_reg_read(channel->dma, DW_SAR(channel->index));
+#else
+	int32_t read_ptr = ((struct dw_lli *)dw_chan->lli_current->llp)->sar;
+#endif
 	int32_t write_ptr = dw_chan->ptr_data.current_ptr;
 	int size;
 
