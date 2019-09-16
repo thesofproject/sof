@@ -20,6 +20,9 @@
 #define PLATFORM_NUM_DW_DMACS	2
 #endif
 
+/* index of the first DW-DMAC in the array */
+#define PLATFORM_DW_DMA_INDEX	0
+
 /* CTL_HI */
 #define DW_CTLH_CLASS(x)	SET_BITS(31, 29, x)
 #define DW_CTLH_WEIGHT(x)	SET_BITS(28, 18, x)

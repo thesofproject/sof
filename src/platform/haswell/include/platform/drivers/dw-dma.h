@@ -15,6 +15,9 @@
 /* number of supported DW-DMACs */
 #define PLATFORM_NUM_DW_DMACS	2
 
+/* index of the first DW-DMAC in the array */
+#define PLATFORM_DW_DMA_INDEX	0
+
 /* CTL_HI */
 #define DW_CTLH_DONE(x)		SET_BIT(12, x)
 #define DW_CTLH_BLOCK_TS_MASK	MASK(11, 0)
