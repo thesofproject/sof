@@ -5,8 +5,6 @@
  * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
-#ifdef __SOF_LIB_WAIT_H__
-
 #ifndef __ARCH_LIB_WAIT_H__
 #define __ARCH_LIB_WAIT_H__
 
@@ -15,9 +13,3 @@ static inline void arch_wait_for_interrupt(int level) {}
 static inline void idelay(int n) {}
 
 #endif /* __ARCH_LIB_WAIT_H__ */
-
-#else
-
-#error "This file shouldn't be included from outside of sof/lib/wait.h"
-
-#endif /* __SOF_LIB_WAIT_H__ */
