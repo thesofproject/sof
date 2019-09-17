@@ -131,4 +131,8 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 						      uint32_t num_dma, int clk,
 						      bool aggregated_irq);
 
+struct ll_schedule_domain *dma_single_chan_domain_init(struct dma *dma_array,
+						       uint32_t num_dma,
+						       int clk);
+
 #endif /* __SOF_SCHEDULE_LL_SCHEDULE_DOMAIN_H__ */
