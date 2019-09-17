@@ -12,9 +12,11 @@ FN_IN=$5
 FN_OUT=$6
 
 # The HOST_ROOT path need to be retrived from SOFT .configure command
-HOST_ROOT=../../../tools/testbench/build_testbench/install
-HOST_EXE=$HOST_ROOT/bin/testbench
-HOST_LIB=$HOST_ROOT/lib
+HOST_ROOT=../../testbench/build_testbench
+HOST_EXE=$HOST_ROOT/install/bin/testbench
+HOST_LIB=$HOST_ROOT/sof_ep/install/lib
+TPLG_LIB=$HOST_ROOT/sof_parser/install/lib
+export LD_LIBRARY_PATH=$HOST_LIB:$TPLG_LIB
 
 # Use topology from component test topologies
 INFMT=s${BITS_IN}le
@@ -42,9 +44,9 @@ arg1="-d -r $FS1 -R $FS2 -i $FN_IN -o $FN_OUT -t $TPLG"
 arg2="-a src=libsof_${COMP}.so $CMDFMT"
 CMD1="$arg1 $arg2"
 CMD="$CMD0 $CMD1"
-export LD_LIBRARY_PATH=$HOST_LIB
 
 # Run test bench
-echo "Command: $CMD0"
-echo "Arg:     $CMD1"
+echo "Command:     $CMD0"
+echo "Arg:         $CMD1"
+echo "Ld lib path: $LD_LIBRARY_PATH"
 $CMD
