@@ -187,9 +187,12 @@ int main(int argc, char **argv)
 	int n_in, n_out, ret;
 	int i;
 
-	/* initialize input and output sample rates */
+	/* initialize input and output sample rates, files, etc. */
 	tp.fs_in = 0;
 	tp.fs_out = 0;
+	tp.bits_in = 0;
+	tp.input_file = NULL;
+	tp.output_file = NULL;
 
 	/* command line arguments*/
 	parse_input_args(argc, argv, &tp);
