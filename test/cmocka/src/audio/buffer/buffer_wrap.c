@@ -45,12 +45,15 @@ static void test_audio_buffer_write_fill_10_bytes_and_write_5(void **state)
 	memcpy(buf->w_ptr, &more_bytes, 5);
 	comp_update_buffer_produce(buf, 5);
 
-	uint8_t ref[10] = {10, 11, 12, 13, 14, 5, 6, 7, 8, 9};
+	uint8_t ref_1[5] = {5, 6, 7, 8, 9};
+	uint8_t ref_2[5] = {10, 11, 12, 13, 14};
 
-	assert_int_equal(buf->avail, 5);
-	assert_int_equal(buf->free, 5);
-	assert_ptr_equal(buf->w_ptr, buf->r_ptr + 5);
-	assert_int_equal(memcmp(buf->r_ptr, &ref, 10), 0);
+	assert_int_equal(buf->avail, 10);
+	assert_int_equal(buf->free, 0);
+	assert_ptr_equal(buf->w_ptr, buf->r_ptr);
+	assert_int_equal(memcmp(buf->r_ptr, &ref_1, 5), 0);
+	comp_update_buffer_consume(buf, 5);
+	assert_int_equal(memcmp(buf->r_ptr, &ref_2, 5), 0);
 
 	buffer_free(buf);
 }
