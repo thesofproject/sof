@@ -192,16 +192,17 @@ no_context:
 	and	a15, a15, a12
 	and	a15, a15, a13
 	rsr.sar	a14
-	_beqz	a15, LABEL(spurious,int)
 	s32i	a14, a1, UEXC_sar
 	save_loops_mac16	a1, a13, a14
-
-/* Loop to handle all pending interrupts. */
 
 	/* switch to interrupt stack */
 	xtos_int_stack_addr_percore a13, _INTERRUPT_LEVEL, xtos_stack_for_interrupt
 	s32i	a1, a13, 0
 	addi	a1, a13, SOF_STACK_SIZE
+
+	_beqz	a15, LABEL(spurious,int)
+
+/* Loop to handle all pending interrupts. */
 
 LABEL(.L1,_loop0):
 	neg	a12, a15
