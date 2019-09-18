@@ -163,6 +163,10 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes)
 		buffer->w_ptr = buffer->addr +
 			(buffer->w_ptr - buffer->end_addr);
 
+	/* "overwrite" old data in circular wrap case */
+	if (bytes > buffer->free)
+		buffer->r_ptr = buffer->w_ptr;
+
 	/* calculate available bytes */
 	if (buffer->r_ptr < buffer->w_ptr)
 		buffer->avail = buffer->w_ptr - buffer->r_ptr;
