@@ -100,6 +100,7 @@ static const char * get_component_name(uint32_t component_id) {
 		CASE(SCHEDULE_LL);
 		CASE(ALH);
 		CASE(KEYWORD);
+		CASE(CHMAP);
 	default: return "unknown";
 	}
 }

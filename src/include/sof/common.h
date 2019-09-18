@@ -34,6 +34,8 @@
 #define ffsl(i) __builtin_ffsl(i)
 #define ffsll(i) __builtin_ffsll(i)
 
+#define popcount(x) __builtin_popcount(x)
+
 /* count number of var args */
 #define PP_NARG(...) (sizeof((unsigned int[]){0, ##__VA_ARGS__}) \
 	/ sizeof(unsigned int) - 1)
