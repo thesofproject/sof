@@ -88,3 +88,6 @@ DAI_CONFIG(SSP, 2, 0, SSP2-Codec,
 		      SSP_CLOCK(fsync, 48000, codec_slave),
 		      SSP_TDM(2, 20, 3, 3),
 		      SSP_CONFIG_DATA(SSP, 2, 16)))
+
+VIRTUAL_WIDGET(ssp2 Rx, out_drv, 1)
+VIRTUAL_WIDGET(ssp2 Tx, out_drv, 2)
