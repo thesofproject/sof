@@ -386,13 +386,12 @@ int platform_init(struct sof *sof)
 				  PLATFORM_LL_DEFAULT_TIMEOUT);
 	scheduler_init_ll(platform_timer_domain);
 
-	/* init low latency multi channel DW-DMA domain and scheduler */
+	/* init low latency single channel DW-DMA domain and scheduler */
 	platform_dma_domain =
-		dma_multi_chan_domain_init(
-				&dma[PLATFORM_DW_DMA_INDEX],
-				PLATFORM_NUM_DW_DMACS,
-				PLATFORM_DEFAULT_CLOCK,
-				IS_ENABLED(CONFIG_DW_DMA_AGGREGATED_IRQ));
+		dma_single_chan_domain_init
+			(&dma[PLATFORM_DW_DMA_INDEX],
+			 PLATFORM_NUM_DW_DMACS,
+			 PLATFORM_DEFAULT_CLOCK);
 	scheduler_init_ll(platform_dma_domain);
 
 	/* init the system agent */
