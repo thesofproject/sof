@@ -54,6 +54,7 @@ char *get_trace_class(uint32_t trace_class)
 		CASE(SCHEDULE_LL);
 		CASE(ALH);
 		CASE(KEYWORD);
+		CASE(CHMAP);
 	default: return "unknown";
 	}
 }

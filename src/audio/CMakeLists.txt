@@ -7,6 +7,7 @@ if(NOT BUILD_LIBRARY)
 		pipeline_static.c
 		component.c
 		buffer.c
+		channel_map.c
 	)
 	if(CONFIG_COMP_VOLUME)
 		add_subdirectory(volume)
