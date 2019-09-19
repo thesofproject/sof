@@ -21,6 +21,7 @@ set(TPLGS
 	"sof-cht-nocodec\;sof-byt-nocodec\;-DPLATFORM=byt"
 	"sof-cht-max98090\;sof-cht-max98090"
 	"sof-cht-rt5682\;sof-cht-rt5682"
+	"sof-cht-src-50khz-pcm512x\;sof-cht-src-50khz-pcm512x"
 	"sof-hda-generic\;sof-hda-generic\;-DCHANNELS=0"
 	"sof-hda-generic\;sof-hda-generic-2ch\;-DCHANNELS=2"
 	"sof-hda-generic\;sof-hda-generic-4ch\;-DCHANNELS=4"
