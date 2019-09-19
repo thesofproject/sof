@@ -13,7 +13,7 @@ What have you tried to diagnose or workaround this issue?
 Please also read https://thesofproject.github.io/latest/howtos/process/bug-tracking.html for further information on submitting bugs.
 
 **To Reproduce**
-Steps to reproduce the behavior: (e.g. list commands or actions used to reproduce the bug) 
+Steps to reproduce the behavior: (e.g. list commands or actions used to reproduce the bug)
 
 **Reproduction Rate**
 How often does the issue happen ? i.e. 1/10 (once in ten attempts), 1/1000 or all the time.
@@ -26,10 +26,13 @@ A clear and concise description of what you expected to happen.
 What impact does this issue have on your progress (e.g., annoyance, showstopper)
 
 **Environment**
-1) Branch name and commit hash of 3 repositories: sof (firmware), linux (kernel driver) and soft (tools & topology).
+1) Branch name and commit hash of the 2 repositories: sof (firmware/topology) and linux (kernel driver).
+    * Kernel: {SHA}
+    * SOF: {SHA}
 2) Name of the topology file
+    * Topology: {FILE}
 3) Name of the platform(s) on which the bug is observed.
-4) Reproducibility Rate. If you can only reproduce it randomly, it’s useful to report how many times the bug has been reproduced vs. the number of attempts it’s taken to reproduce the bug.
+    * Platform: {PLATFORM}
 
 **Screenshots or console output**
 If applicable, add a screenshot (drag-and-drop an image), or console logs
