@@ -41,6 +41,19 @@ PIPELINE_PCM_ADD(sof/pipe-low-latency-capture.m4,
 	1000, 0, 0,
 	48000, 48000, 48000)
 
+#
+# DAI configuration
+#
+# SSP port 2 is our only pipeline DAI
+#
+
+# playback DAI is SSP2 using 2 periods
+# Buffers use s16le format, 1000us deadline on core 0 with priority 0
+DAI_ADD(sof/pipe-dai-playback.m4,
+	1, SSP, 2, SSP2-Codec,
+	PIPELINE_SOURCE_1, 2, s16le,
+	1000, 0, 0)
+
 # PCM Media Playback pipeline 3 on PCM 1 using max 2 channels of s32le.
 # 4000us deadline on core 0 with priority 1
 PIPELINE_PCM_ADD(sof/pipe-pcm-media.m4,
@@ -58,19 +71,6 @@ SectionGraph."pipe-cht-max98090" {
 		dapm(PIPELINE_MIXER_1, PIPELINE_SOURCE_3)
 	]
 }
-
-#
-# DAI configuration
-#
-# SSP port 2 is our only pipeline DAI
-#
-
-# playback DAI is SSP2 using 2 periods
-# Buffers use s16le format, 1000us deadline on core 0 with priority 0
-DAI_ADD(sof/pipe-dai-playback.m4,
-	1, SSP, 2, SSP2-Codec,
-	PIPELINE_SOURCE_1, 2, s16le,
-	1000, 0, 0)
 
 # capture DAI is SSP2 using 2 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
