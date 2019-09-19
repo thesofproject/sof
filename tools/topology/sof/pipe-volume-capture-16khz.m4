@@ -46,14 +46,14 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 # with 0 sink and 2 source periods
 W_PCM_CAPTURE(PCM_ID, Passthrough Capture, 0, 2)
 
-# "Volume" has 2 source and 2 sink periods
-W_PGA(0, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Capture Volume"))
+# "Volume" has x source and 2 sink periods
+W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Capture Volume"))
 
 # Capture Buffers
 W_BUFFER(0, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_HOST_MEM_CAP)
-W_BUFFER(1, COMP_BUFFER_SIZE(2,
+W_BUFFER(1, COMP_BUFFER_SIZE(DAI_PERIODS,
 	COMP_SAMPLE_SIZE(DAI_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_DAI_MEM_CAP)
 

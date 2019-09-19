@@ -4,6 +4,9 @@ divert(-1)
 define(`SCHEDULE_TIME_DOMAIN_DMA', 0)
 define(`SCHEDULE_TIME_DOMAIN_TIMER', 1)
 
+# default number of DAI periods
+define(`DAI_DEFAULT_PERIODS', 2)
+
 dnl Define macro for pipeline widget
 
 dnl Pipeline name)
@@ -55,6 +58,7 @@ define(`PIPELINE_PCM_ADD',
 `undefine(`SCHEDULE_TIME_DOMAIN')'
 `undefine(`DAI_FORMAT')'
 `undefine(`SCHED_COMP')'
+`undefine(`DAI_PERIODS')'
 `define(`PIPELINE_ID', $2)'
 `define(`PCM_ID', $3)'
 `define(`PIPELINE_CHANNELS', $4)'
@@ -68,6 +72,7 @@ define(`PIPELINE_PCM_ADD',
 `define(`SCHEDULE_TIME_DOMAIN', $12)'
 `define(`DAI_FORMAT', $5)'
 `define(`SCHED_COMP', $13)'
+`define(`DAI_PERIODS', DAI_DEFAULT_PERIODS)'
 `include($1)'
 `DEBUG_PCM_ADD($1, $3)'
 ,`fatal_error(`Invalid parameters ($#) to PIPELINE_PCM_ADD')')'

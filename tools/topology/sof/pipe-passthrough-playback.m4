@@ -17,10 +17,10 @@ include(`pipeline.m4')
 
 # Host "Passthrough Playback" PCM
 # with 2 sink and 0 source periods
-W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, 2, 0)
+W_PCM_PLAYBACK(PCM_ID, Passthrough Playback, DAI_PERIODS, 0)
 
 # Playback Buffers
-W_BUFFER(0, COMP_BUFFER_SIZE(2,
+W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_PASS_MEM_CAP)
 
