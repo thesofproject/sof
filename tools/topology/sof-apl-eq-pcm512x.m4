@@ -23,22 +23,34 @@ include(`platform/intel/bxt.m4')
 # PCM0 ----> EQ IIR ----> EQ FIR ----> volume ----> SSP5 (pcm512x)
 #
 
+dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
+dnl     period, priority, core,
+dnl     dai type, dai_index, dai format,
+dnl     dai periods, pcm_min_rate, pcm_max_rate,
+dnl     pipeline_rate, time_domain)
+
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-eq-volume-playback.m4,
+PIPELINE_PCM_DAI_ADD(sof/pipe-eq-volume-playback.m4,
 	1, 0, 2, s32le,
-	1000, 0, 0,
+	1000, 0, 0, SSP, 5, s24le, 3,
 	48000, 48000, 48000)
 
 #
 # DAIs configuration
 #
 
-# playback DAI is SSP5 using 2 periods
+dnl DAI_ADD(pipeline,
+dnl     pipe id, dai type, dai_index, dai_be,
+dnl     buffer, periods, format,
+dnl     deadline, priority, core, time_domain)
+
+# playback DAI is SSP5 using 3 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
-	PIPELINE_SOURCE_1, 2, s24le,
+	PIPELINE_SOURCE_1, 3, s24le,
 	1000, 0, 0)
 
 # PCM Low Latency, id 0
