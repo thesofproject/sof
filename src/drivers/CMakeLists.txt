@@ -12,4 +12,6 @@ if(CONFIG_DW)
 	add_subdirectory(dw)
 endif()
 
+add_subdirectory(generic)
+
 add_local_sources(sof interrupt.c)
