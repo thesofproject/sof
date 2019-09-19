@@ -53,6 +53,7 @@ define(`PIPELINE_PCM_ADD',
 `undefine(`PCM_MAX_RATE')'
 `undefine(`PIPELINE_RATE')'
 `undefine(`SCHEDULE_TIME_DOMAIN')'
+`undefine(`DAI_FORMAT')'
 `undefine(`SCHED_COMP')'
 `define(`PIPELINE_ID', $2)'
 `define(`PCM_ID', $3)'
