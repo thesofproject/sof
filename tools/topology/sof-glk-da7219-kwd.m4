@@ -34,33 +34,46 @@ define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 # Detector <--- selector (pipe 9) <---+
 #
 
+dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
+dnl     period, priority, core,
+dnl     dai type, dai_index, dai format,
+dnl     dai periods, pcm_min_rate, pcm_max_rate,
+dnl     pipeline_rate, time_domain)
+
 # Low Latency playback pipeline 1 on PCM 0 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	1, 0, 2, s32le,
-	1000, 0, 0,
+	1000, 0, 0, SSP, 1, s16le, 3,
 	48000, 48000, 48000)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
 	2, 1, 2, s32le,
-	1000, 0, 0,
+	1000, 0, 0, SSP, 2, s16le, 3,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 3 on PCM 1 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	3, 1, 2, s32le,
-	1000, 0, 0,
+	1000, 0, 0, SSP, 2, s16le, 3,
 	48000, 48000, 48000)
 
 # Low Latency capture pipeline 4 on PCM 99 using max 4 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-capture.m4,
+PIPELINE_PCM_DAI_ADD(sof/pipe-volume-capture.m4,
 	4, 99, 4, s16le,
-	1000, 0, 0,
+	1000, 0, 0, DMIC, 0, s16le, 3,
 	48000, 48000, 48000)
+
+dnl PIPELINE_PCM_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
+dnl     period, priority, core,
+dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
+dnl     time_domain, sched_comp)
 
 # Low Latency playback pipeline 5 on PCM 5 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
@@ -87,32 +100,37 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 # DAIs configuration
 #
 
-# playback DAI is SSP1 using 2 periods
+dnl DAI_ADD(pipeline,
+dnl     pipe id, dai type, dai_index, dai_be,
+dnl     buffer, periods, format,
+dnl     deadline, priority, core, time_domain)
+
+# playback DAI is SSP1 using 3 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 1, SSP1-Codec,
-	PIPELINE_SOURCE_1, 2, s16le,
+	PIPELINE_SOURCE_1, 3, s16le,
 	1000, 0, 0)
 
-# playback DAI is SSP2 using 2 periods
+# playback DAI is SSP2 using 3 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	2, SSP, 2, SSP2-Codec,
-	PIPELINE_SOURCE_2, 2, s16le,
+	PIPELINE_SOURCE_2, 3, s16le,
 	1000, 0, 0)
 
-# capture DAI is SSP2 using 2 periods
+# capture DAI is SSP2 using 3 periods
 # Buffers use s16le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	3, SSP, 2, SSP2-Codec,
-	PIPELINE_SINK_3, 2, s16le,
+	PIPELINE_SINK_3, 3, s16le,
 	1000, 0, 0)
 
-# capture DAI is DMIC0 using 2 periods
+# capture DAI is DMIC0 using 3 periods
 # Buffers use s32le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	4, DMIC, 0, dmic01,
-	PIPELINE_SINK_4, 2, s16le,
+	PIPELINE_SINK_4, 3, s16le,
 	1000, 0, 0)
 
 # playback DAI is iDisp1 using 2 periods
@@ -142,16 +160,16 @@ DAI_ADD(sof/pipe-dai-playback.m4,
 
 # Passthrough capture pipeline 8 on PCM 8 using max 2 channels.
 # Schedule 20000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
+PIPELINE_PCM_DAI_ADD(sof/pipe-kfbm-capture.m4,
 	8, 8, 2, s16le,
-	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	KWD_PIPE_SCH_DEADLINE_US, 0, 0, DMIC, 1, s16le, 3,
 	16000, 16000, 16000)
 
-# capture DAI is DMIC 1 using 2 periods
+# capture DAI is DMIC 1 using 3 periods
 # Buffers use s16le format, with 320 frame per 20000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	8, DMIC, 1, dmic16k,
-	PIPELINE_SINK_8, 2, s16le,
+	PIPELINE_SINK_8, 3, s16le,
 	KWD_PIPE_SCH_DEADLINE_US, 0, 0)
 
 PCM_PLAYBACK_ADD(Speakers, 0, PIPELINE_PCM_1)

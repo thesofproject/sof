@@ -29,17 +29,25 @@ DEBUG_START
 # PCM4 <---- demux
 #
 
+dnl PIPELINE_PCM_DAI_ADD(pipeline,
+dnl     pipe id, pcm, max channels, format,
+dnl     period, priority, core,
+dnl     dai type, dai_index, dai format,
+dnl     dai periods, pcm_min_rate, pcm_max_rate,
+dnl     pipeline_rate, time_domain)
+
+# Demux pipeline 1 on PCM 0 using max 2 channels of s32le.
+# Set 1000us deadline on core 0 with priority 0
+PIPELINE_PCM_DAI_ADD(sof/pipe-volume-demux-playback.m4,
+	1, 0, 2, s32le,
+	1000, 0, 0, SSP, 5, s24le, 3,
+	48000, 48000, 48000)
+
 dnl PIPELINE_PCM_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
 dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
 dnl     time_domain, sched_comp)
-# Demux pipeline 1 on PCM 0 using max 2 channels of s32le.
-# Set 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-volume-demux-playback.m4,
-	1, 0, 2, s32le,
-	1000, 0, 0,
-	48000, 48000, 48000)
 
 # Low Latency playback pipeline 2 on PCM 1 using max 2 channels of s32le.
 # Set 1000us deadline on core 0 with priority 0
@@ -69,17 +77,17 @@ PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     deadline, priority, core)
+dnl     deadline, priority, core, time_domain)
 
-# playback DAI is SSP5 using 2 periods
+# playback DAI is SSP5 using 3 periods
 # Buffers use s24le format, 1000us deadline on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	1, SSP, 5, SSP5-Codec,
-	PIPELINE_SOURCE_1, 2, s24le,
+	PIPELINE_SOURCE_1, 3, s24le,
 	1000, 0, 0)
 
 # currently this dai is here as "virtual" capture backend
-W_DAI_IN(SSP, 5, SSP5-Codec, s24le, 2, 0, 0)
+W_DAI_IN(SSP, 5, SSP5-Codec, s24le, 3, 0)
 
 # Capture pipeline 5 from demux on PCM 5 using max 2 channels of s32le.
 PIPELINE_PCM_ADD(sof/pipe-passthrough-capture-sched.m4,

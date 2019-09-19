@@ -27,17 +27,18 @@ define(KWD_PIPE_SCH_DEADLINE_US, 20000)
 #               |
 # Keyword <-----+
 
-dnl PIPELINE_PCM_ADD(pipeline,
+dnl PIPELINE_PCM_DAI_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
-dnl     time_domain, sched_comp)
+dnl     dai type, dai_index, dai format,
+dnl     dai periods, pcm_min_rate, pcm_max_rate,
+dnl     pipeline_rate, time_domain)
 
 # Passthrough capture pipeline 1 on PCM 0 using max 2 channels.
 # Schedule 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
+PIPELINE_PCM_DAI_ADD(sof/pipe-kfbm-capture.m4,
 	1, 0, 2, s16le,
-	KWD_PIPE_SCH_DEADLINE_US, 0, 0,
+	KWD_PIPE_SCH_DEADLINE_US, 0, 0, DMIC, 1, s16le, 3,
 	16000, 16000, 16000)
 
 #
@@ -47,14 +48,14 @@ PIPELINE_PCM_ADD(sof/pipe-kfbm-capture.m4,
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     deadline, priority, core)
+dnl     deadline, priority, core, time_domain)
 
 
-# capture DAI is DMIC 0 using 2 periods
+# capture DAI is DMIC 0 using 3 periods
 # Buffers use s16le format, with 320 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-capture.m4,
 	1, DMIC, 1, NoCodec-6,
-	PIPELINE_SINK_1, 2, s16le,
+	PIPELINE_SINK_1, 3, s16le,
 	KWD_PIPE_SCH_DEADLINE_US,
 	0, 0)
 
