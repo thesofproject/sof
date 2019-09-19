@@ -127,6 +127,7 @@ struct dma_sg_config {
 	uint32_t src_dev;
 	uint32_t dest_dev;
 	uint32_t cyclic;			/* circular buffer */
+	uint64_t period;
 	struct dma_sg_elem_array elem_array;	/* array of dma_sg elems */
 	bool scatter;
 	bool irq_disabled;
@@ -210,6 +211,7 @@ struct dma_chan_data {
 	uint32_t desc_count;
 	uint32_t index;
 	uint32_t core;
+	uint64_t period;	/* DMA channel's transfer period */
 	/* true if this DMA channel is the scheduling source */
 	bool is_scheduling_source;
 

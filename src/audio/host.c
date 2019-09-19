@@ -626,6 +626,7 @@ static int host_params(struct comp_dev *dev)
 	config->cyclic = 0;
 	config->irq_disabled = pipeline_is_timer_driven(dev->pipeline);
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
+	config->period = dev->pipeline->ipc_pipe.period;
 
 	host_elements_reset(dev);
 
