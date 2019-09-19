@@ -61,8 +61,8 @@ W_DATA(playback_pga_conf, playback_pga_tokens)
 # with 2 sink and 0 source periods
 W_PCM_PLAYBACK(PCM_ID, Low Latency Playback, 2, 0)
 
-# "Master Playback Volume" has 2 source and 2 sink periods for DAI ping-pong
-W_PGA(1, PIPELINE_FORMAT, 2, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
+# "Master Playback Volume" has 2 source and x sink periods for DAI ping-pong
+W_PGA(1, PIPELINE_FORMAT, DAI_PERIODS, 2, playback_pga_conf, LIST(`		', "PIPELINE_ID Master Playback Volume"))
 
 # Mux 0 has 2 sink and source periods.
 W_MUXDEMUX(0, 1, PIPELINE_FORMAT, 2, 2, LIST(`         ', "DEMUX"))
@@ -74,7 +74,7 @@ W_BUFFER(0, COMP_BUFFER_SIZE(2,
 W_BUFFER(1, COMP_BUFFER_SIZE(2,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_COMP_MEM_CAP)
-W_BUFFER(2, COMP_BUFFER_SIZE(2,
+W_BUFFER(2, COMP_BUFFER_SIZE(DAI_PERIODS,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_COMP_MEM_CAP)
 

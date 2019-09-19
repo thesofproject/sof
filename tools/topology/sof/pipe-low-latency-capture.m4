@@ -41,11 +41,11 @@ W_DATA(capture_pga_conf, capture_pga_tokens)
 # with 0 sink and 2 source periods
 W_PCM_CAPTURE(PCM_ID, Low Latency Capture, 0, 2)
 
-# "Capture Volume" has 2 sink and source periods for host and DAI ping-pong
-W_PGA(0, PIPELINE_FORMAT, 2, 2, capture_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Capture Volume"))
+# "Capture Volume" has 2 sink and x source periods for host and DAI ping-pong
+W_PGA(0, PIPELINE_FORMAT, 2, DAI_PERIODS, capture_pga_conf, LIST(`		', "PIPELINE_ID PCM PCM_ID Capture Volume"))
 
 # Capture Buffers
-W_BUFFER(0, COMP_BUFFER_SIZE(2,
+W_BUFFER(0, COMP_BUFFER_SIZE(DAI_PERIODS,
 	COMP_SAMPLE_SIZE(PIPELINE_FORMAT), PIPELINE_CHANNELS, COMP_PERIOD_FRAMES(PCM_MAX_RATE, SCHEDULE_PERIOD)),
 	PLATFORM_DAI_MEM_CAP)
 W_BUFFER(1, COMP_BUFFER_SIZE(2,
