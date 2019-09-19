@@ -44,14 +44,16 @@ do
 	if [ $j == "bdw" ]
 	then
 		READY_IPC="00 3c 01 80"
+		OUTBOX_OFFSET="9e000"
 		SHM_IPC_REG=qemu-bridge-shim-io
-		SHM_MBOX=qemu-bridge-mbox-io
+		SHM_MBOX=qemu-bridge-dram-mem
 	fi
 	if [ $j == "hsw" ]
 	then
 		READY_IPC="00 fc 00 80"
+		OUTBOX_OFFSET="7e000"
 		SHM_IPC_REG=qemu-bridge-shim-io
-		SHM_MBOX=qemu-bridge-mbox-io
+		SHM_MBOX=qemu-bridge-dram-mem
 	fi
 	if [ $j == "apl" ]
 	then
