@@ -462,6 +462,7 @@ static int dw_dma_set_config(struct dma_chan_data *channel,
 	/* default channel config */
 	channel->direction = config->direction;
 	channel->is_scheduling_source = config->is_scheduling_source;
+	channel->period = config->period;
 	dw_chan->cfg_lo = DW_CFG_LOW_DEF;
 	dw_chan->cfg_hi = DW_CFG_HIGH_DEF;
 
