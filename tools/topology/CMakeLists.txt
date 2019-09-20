@@ -60,6 +60,8 @@ set(TPLGS
 	"sof-byt-codec\;sof-cht-es8316\;-DCODEC=ES8316\;-DPLATFORM=cht\;-DSSP_NUM=2"
 	"sof-cnl-rt274\;sof-cnl-rt274"
 	"sof-apl-tdf8532\;sof-apl-tdf8532"
+	"sof-apl-pcm512x-mix\;sof-apl-pcm512x-sos"
+	"sof-apl-pcm512x-uos\;sof-apl-pcm512x-uos"
 	"sof-apl-pcm512x\;sof-apl-pcm512x"
 	"sof-apl-pcm512x-nohdmi\;sof-apl-pcm512x-nohdmi"
 	"sof-apl-demux-pcm512x\;sof-apl-demux-pcm512x"
