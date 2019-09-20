@@ -128,21 +128,21 @@ DAI_ADD(sof/pipe-dai-capture.m4,
 DAI_ADD(sof/pipe-dai-playback.m4,
 	5, HDA, 0, iDisp1,
 	PIPELINE_SOURCE_5, 2, s32le,
-	48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp2 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	6, HDA, 1, iDisp2,
 	PIPELINE_SOURCE_6, 2, s32le,
-	48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # playback DAI is iDisp3 using 2 periods
 # Buffers use s32le format, with 48 frame per 1000us on core 0 with priority 0
 DAI_ADD(sof/pipe-dai-playback.m4,
 	7, HDA, 2, iDisp3,
 	PIPELINE_SOURCE_7, 2, s32le,
-	48, 1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
+	1000, 0, 0, SCHEDULE_TIME_DOMAIN_TIMER)
 
 # PCM Low Latency, id 0
 dnl PCM_PLAYBACK_ADD(name, pcm_id, playback)
@@ -150,9 +150,9 @@ PCM_PLAYBACK_ADD(SDW1-speakers, 0, PIPELINE_PCM_1)
 PCM_CAPTURE_ADD(SDW1-mics, 1, PIPELINE_PCM_2)
 PCM_CAPTURE_ADD(DMIC01, 2, PIPELINE_PCM_3)
 PCM_CAPTURE_ADD(DMIC16k, 3, PIPELINE_PCM_4)
-PCM_PLAYBACK_ADD(HDMI1, 4, PIPELINE_PCM_6)
-PCM_PLAYBACK_ADD(HDMI2, 5, PIPELINE_PCM_7)
-PCM_PLAYBACK_ADD(HDMI3, 6, PIPELINE_PCM_8)
+PCM_PLAYBACK_ADD(HDMI1, 4, PIPELINE_PCM_5)
+PCM_PLAYBACK_ADD(HDMI2, 5, PIPELINE_PCM_6)
+PCM_PLAYBACK_ADD(HDMI3, 6, PIPELINE_PCM_7)
 
 #
 # BE configurations - overrides config in ACPI if present
