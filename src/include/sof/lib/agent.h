@@ -16,14 +16,14 @@ struct sof;
 
 /* simple agent */
 struct sa {
-	uint64_t last_idle;	/* time of last idle */
-	uint64_t ticks;
+	uint64_t last_check;	/* time of last activity checking */
+	uint64_t panic_timeout;	/* threshold of panic */
+	uint64_t warn_timeout;	/* threshold of warning */
 	struct task work;
 	bool is_active;
 };
 
-void sa_enter_idle(struct sof *sof);
-void sa_init(struct sof *sof);
+void sa_init(struct sof *sof, uint64_t timeout);
 void sa_disable(void);
 void sa_enable(void);
 

@@ -208,7 +208,7 @@ int platform_init(struct sof *sof)
 
 	/* init the system agent */
 	trace_point(TRACE_BOOT_PLATFORM_AGENT);
-	sa_init(sof);
+	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	/* Set CPU to default frequency for booting */
 	trace_point(TRACE_BOOT_PLATFORM_CPU_FREQ);

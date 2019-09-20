@@ -41,12 +41,9 @@ static void sys_module_init(void)
 
 enum task_state task_main_master_core(void *data)
 {
-	struct sof *sof = data;
-
 	/* main audio processing loop */
 	while (1) {
 		/* sleep until next IPC or DMA */
-		sa_enter_idle(sof);
 		wait_for_interrupt(0);
 
 		/* now process any IPC messages to host */
