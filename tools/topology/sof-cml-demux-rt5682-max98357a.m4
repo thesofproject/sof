@@ -13,24 +13,25 @@ include(`sof-cml-demux-rt5682.m4')
 # PCM6  ----> volume (pipe 8) ----> SSP1 (speaker - maxim98357a, BE link 5)
 #
 
-dnl PIPELINE_PCM_ADD(pipeline,
+dnl PIPELINE_PCM_DAI_ADD(pipeline,
 dnl     pipe id, pcm, max channels, format,
 dnl     period, priority, core,
-dnl     pcm_min_rate, pcm_max_rate, pipeline_rate,
-dnl     time_domain, sched_comp)
+dnl     dai type, dai_index, dai format,
+dnl     dai periods, pcm_min_rate, pcm_max_rate,
+dnl     pipeline_rate, time_domain)
 
 # Low Latency playback pipeline 8 on PCM 6 using max 2 channels of s32le.
 # Schedule 1000us deadline on core 0 with priority 0
 # pipe-src pipeline is needed for older SSP config
 
 ifelse(SOF_ABI_VERSION_3_9_OR_GRT, `1',
-`PIPELINE_PCM_ADD(sof/pipe-volume-playback.m4,
+`PIPELINE_PCM_DAI_ADD(sof/pipe-volume-playback.m4,
         7, 5, 2, s32le,
-        1000, 0, 0,
+        1000, 0, 0, SSP, 1, s16le, 3,
         48000, 48000, 48000)',
-`PIPELINE_PCM_ADD(sof/pipe-src-volume-playback.m4,
+`PIPELINE_PCM_DAI_ADD(sof/pipe-src-volume-playback.m4,
         7, 5, 2, s32le,
-        1000, 0, 0,
+        1000, 0, 0, SSP, 1, s16le, 3,
         48000, 48000, 48000)')
 
 #
@@ -40,20 +41,20 @@ ifelse(SOF_ABI_VERSION_3_9_OR_GRT, `1',
 dnl DAI_ADD(pipeline,
 dnl     pipe id, dai type, dai_index, dai_be,
 dnl     buffer, periods, format,
-dnl     deadline, priority, core)
+dnl     deadline, priority, core, time_domain)
 
-# playback DAI is SSP1 using 2 periods
+# playback DAI is SSP1 using 3 periods
 # Buffers use s16le format, with 48 frame per 1000us on core 0 with priority 0
 #With m/n divider available we can support 24 bit playback
 
 ifelse(SOF_ABI_VERSION_3_9_OR_GRT, `1',
 `DAI_ADD(sof/pipe-dai-playback.m4,
         7, SSP, 1, SSP1-Codec,
-        PIPELINE_SOURCE_7, 2, s24le,
+        PIPELINE_SOURCE_7, 3, s24le,
         1000, 0, 0)',
 `DAI_ADD(sof/pipe-dai-playback.m4,
         7, SSP, 1, SSP1-Codec,
-        PIPELINE_SOURCE_7, 2, s16le,
+        PIPELINE_SOURCE_7, 3, s16le,
         1000, 0, 0)')
 
 # PCM Low Latency, id 0
