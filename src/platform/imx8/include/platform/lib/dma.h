@@ -18,6 +18,8 @@
 #define DMA_ID_EDMA0	0
 #define DMA_ID_HOST	1
 
+#define dma_chan_irq(dma, chan) (dma_irq(dma) + chan)
+
 int dmac_init(void);
 
 #endif /* __PLATFORM_LIB_DMA_H__ */
