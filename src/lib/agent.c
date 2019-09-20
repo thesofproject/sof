@@ -6,10 +6,11 @@
 
 /*
  * System Agent - Simple FW Monitor that can notify host drivers in the event
- * of any FW errors. The SA assumes that each core will enter the idle state
- * from time to time (within a period of PLATFORM_IDLE_TIME). If the core does
- * not enter the idle loop through looping forever or scheduling some work
- * continuously then the SA will emit trace and panic().
+ * of any FW errors. The SA checks if the DSP is still responsive and verifies
+ * the stability of the system by checking time elapsed between every timer
+ * tick. If the core exceeds the threshold by over 5% then the SA will emit
+ * error trace. However if it will be exceeded by over 100% the panic will be
+ * called.
  */
 
 #include <sof/drivers/timer.h>
@@ -37,58 +38,60 @@
 
 struct sa *sa;
 
-/*
- * Notify the SA that we are about to enter idle state (WFI).
- */
-void sa_enter_idle(struct sof *sof)
-{
-	struct sa *sa = sof->sa;
-
-	sa->last_idle = platform_timer_get(platform_timer);
-}
-
 static enum task_state validate(void *data)
 {
 	struct sa *sa = data;
 	uint64_t current;
 	uint64_t delta;
 
-	current = platform_timer_get(platform_timer);
-	delta = current - sa->last_idle;
+	if (sa->is_active) {
+		current = platform_timer_get(platform_timer);
+		delta = current - sa->last_check;
 
-	/* were we last idle longer than timeout */
+		/* panic timeout */
+		if (delta > sa->panic_timeout)
+			panic(SOF_IPC_PANIC_IDLE);
 
-	if (delta > sa->ticks && sa->is_active) {
-		trace_sa("validate(), idle longer than timeout, delta = %u",
-			delta);
-		panic(SOF_IPC_PANIC_IDLE);
+		/* warning timeout */
+		if (delta > sa->warn_timeout)
+			trace_sa_error("validate(), ll drift detected, delta = "
+				       "%u", delta);
+
+		/* update last_check to current */
+		sa->last_check = current;
 	}
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
 
-void sa_init(struct sof *sof)
+void sa_init(struct sof *sof, uint64_t timeout)
 {
+	uint64_t ticks;
 
-	trace_sa("sa_init()");
+	trace_sa("sa_init(), timeout = %u", timeout);
 
 	sa = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(*sa));
 	sof->sa = sa;
 
-	/* set default tick timeout */
-	sa->ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) *
-		PLATFORM_IDLE_TIME / 1000;
+	/* set default timeouts */
+	ticks = clock_ms_to_ticks(PLATFORM_DEFAULT_CLOCK, 1) * timeout / 1000;
 
-	trace_sa("sa_init(), sa->ticks = %u", sa->ticks);
+	/* TODO: change values after minimal drifts will be assured */
+	sa->panic_timeout = 2 * ticks;	/* 100% delay */
+	sa->warn_timeout = ticks + ticks / 20;	/* 5% delay */
 
-	/* set lst idle time to now to give time for boot completion */
-	sa->last_idle = platform_timer_get(platform_timer) + sa->ticks;
-	sa->is_active = true;
+	trace_sa("sa_init(), ticks = %u, sa->warn_timeout = %u, "
+		 "sa->panic_timeout = %u", ticks, sa->warn_timeout,
+		 sa->panic_timeout);
 
 	schedule_task_init(&sa->work, SOF_SCHEDULE_LL_TIMER, SOF_TASK_PRI_HIGH,
 			   validate, NULL, sa, 0, 0);
 
-	schedule_task(&sa->work, PLATFORM_IDLE_TIME, PLATFORM_IDLE_TIME);
+	schedule_task(&sa->work, 0, timeout);
+
+	/* set last check time to now to give time for boot completion */
+	sa->last_check = platform_timer_get(platform_timer);
+	sa->is_active = true;
 }
 
 void sa_disable(void)
@@ -99,5 +102,5 @@ void sa_disable(void)
 void sa_enable(void)
 {
 	sa->is_active = true;
-	sa->last_idle = platform_timer_get(platform_timer);
+	sa->last_check = platform_timer_get(platform_timer);
 }

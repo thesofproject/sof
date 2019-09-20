@@ -153,7 +153,7 @@ int platform_init(struct sof *sof)
 	scheduler_init_ll(platform_timer_domain);
 
 	platform_timer_start(platform_timer);
-	sa_init(sof);
+	sa_init(sof, CONFIG_SYSTICK_PERIOD);
 
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
