@@ -54,7 +54,7 @@ static int schedule_edf_task_init(void *data, struct task *task)
 }
 
 /* initialize scheduler */
-int scheduler_init_edf(struct sof *sof)
+int scheduler_init_edf(void)
 {
 	trace_edf_sch("edf_scheduler_init()");
 	sch = malloc(sizeof(*sch));

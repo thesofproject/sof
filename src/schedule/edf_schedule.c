@@ -259,7 +259,7 @@ static void schedule_edf_task_free(void *data, struct task *task)
 	irq_local_enable(flags);
 }
 
-int scheduler_init_edf(struct sof *sof)
+int scheduler_init_edf(void)
 {
 	struct edf_schedule_data *edf_sch;
 
@@ -272,7 +272,7 @@ int scheduler_init_edf(struct sof *sof)
 	scheduler_init(SOF_SCHEDULE_EDF, &schedule_edf_ops, edf_sch);
 
 	/* initialize main task context before enabling interrupt */
-	task_main_init(sof);
+	task_main_init();
 
 	/* configure EDF scheduler interrupt */
 	edf_sch->irq = interrupt_get_irq(PLATFORM_SCHEDULE_IRQ,
