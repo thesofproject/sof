@@ -48,9 +48,11 @@ int task_context_alloc(void **task_ctx);
  * \param[in] arg0 First argument to be passed to entry function.
  * \param[in] arg1 Second argument to be passed to entry function.
  * \param[in] task_core Id of the core that task will be executed on.
+ * \param[in] stack Address of the stack, if NULL then allocated internally.
+ * \param[in] stack_size Size of the stack, ignored if stack is NULL.
  */
 int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
-		      int task_core);
+		      int task_core, void *stack, int stack_size);
 
 /**
  * \brief Frees task context.

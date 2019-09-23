@@ -72,18 +72,23 @@ int task_context_alloc(void **task_ctx)
 }
 
 int task_context_init(void *task_ctx, void *entry, void *arg0, void *arg1,
-		      int task_core)
+		      int task_core, void *stack, int stack_size)
 {
 	xtos_task_context *ctx = task_ctx;
 	UserFrame *sp;
 
-	/* allocate stack */
-	ctx->stack_base = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
-				  SOF_TASK_DEFAULT_STACK_SIZE);
-	if (!ctx->stack_base)
-		return -ENOMEM;
-	ctx->stack_size = SOF_TASK_DEFAULT_STACK_SIZE;
-
+	/* allocate stack if not provided */
+	if (stack) {
+		ctx->stack_base = stack;
+		ctx->stack_size = stack_size;
+	} else {
+		ctx->stack_base = rballoc(RZONE_BUFFER, SOF_MEM_CAPS_RAM,
+					  SOF_TASK_DEFAULT_STACK_SIZE);
+		if (!ctx->stack_base)
+			return -ENOMEM;
+		ctx->stack_size = SOF_TASK_DEFAULT_STACK_SIZE;
+		ctx->flags |= XTOS_TASK_CONTEXT_OWN_STACK;
+	}
 	bzero(ctx->stack_base, ctx->stack_size);
 
 	/* set initial stack pointer */
@@ -117,7 +122,9 @@ void task_context_free(void *task_ctx)
 {
 	xtos_task_context *ctx = task_ctx;
 
-	rfree(ctx->stack_base);
+	if (ctx->flags & XTOS_TASK_CONTEXT_OWN_STACK)
+		rfree(ctx->stack_base);
+
 	ctx->stack_size = 0;
 	ctx->stack_pointer = NULL;
 

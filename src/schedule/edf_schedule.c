@@ -173,7 +173,7 @@ static int schedule_edf_task_init(void *data, struct task *task)
 	if (task_context_alloc(&edf_pdata->ctx) < 0)
 		goto error;
 	if (task_context_init(edf_pdata->ctx, &schedule_edf_task_run,
-			      task, data, task->core) < 0)
+			      task, data, task->core, NULL, 0) < 0)
 		goto error;
 
 	/* flush for slave core */

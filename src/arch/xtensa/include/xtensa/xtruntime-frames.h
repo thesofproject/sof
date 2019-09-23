@@ -154,10 +154,14 @@ STRUCT_END(xtos_structures_pointers)
  * xtos_task_context contains information about currently
  * executed task
  */
+
+#define XTOS_TASK_CONTEXT_OWN_STACK	1
+
 STRUCT_BEGIN
 STRUCT_FIELD (UserFrame*,4,TC_,stack_pointer)
 STRUCT_FIELD (void*,4,TC_,stack_base)
 STRUCT_FIELD (long,4,TC_,stack_size)
+STRUCT_FIELD (long,4,TC_,flags)
 STRUCT_END(xtos_task_context)
 
 #if defined(_ASMLANGUAGE) || defined(__ASSEMBLER__)
