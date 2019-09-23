@@ -439,9 +439,7 @@ int platform_init(struct sof *sof)
 	shim_write(SHIM_GPDMA_CLKCTL(1), SHIM_CLKCTL_LPGPDMAFDCGB);
 
 	/* prevent DSP Common power gating */
-	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSPPG(0) |
-		     SHIM_PWRCTL_TCPDSPPG(1) | SHIM_PWRCTL_TCPDSPPG(2) |
-		     SHIM_PWRCTL_TCPDSPPG(3));
+	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
 #elif CONFIG_ICELAKE || CONFIG_SUECREEK || CONFIG_TIGERLAKE
 	/* TODO: need to merge as for APL */
@@ -456,9 +454,7 @@ int platform_init(struct sof *sof)
 	io_reg_write(GPDMA_CLKCTL(1), GPDMA_FDCGB);
 
 	/* prevent DSP Common power gating */
-	shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPDSPPG(0) |
-		     SHIM_PWRCTL_TCPDSPPG(1) | SHIM_PWRCTL_TCPDSPPG(2) |
-		     SHIM_PWRCTL_TCPDSPPG(3));
+	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 #endif
 
 	/* init DMACs */
