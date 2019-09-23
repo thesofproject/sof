@@ -13,7 +13,7 @@
 
 #include <config.h>
 
-#if defined CONFIG_CHERRYTRAIL
+#if defined CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 #define PLATFORM_NUM_DMACS	3
 #else
 #define PLATFORM_NUM_DMACS	2
