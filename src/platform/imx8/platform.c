@@ -145,7 +145,7 @@ int platform_init(struct sof *sof)
 
 	platform_interrupt_init();
 	clock_init();
-	scheduler_init_edf(sof);
+	scheduler_init_edf();
 
 	/* init low latency domains and schedulers */
 	platform_timer_domain =

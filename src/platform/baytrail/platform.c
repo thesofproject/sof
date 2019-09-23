@@ -190,7 +190,7 @@ int platform_init(struct sof *sof)
 	clock_init();
 
 	trace_point(TRACE_BOOT_PLATFORM_SCHED);
-	scheduler_init_edf(sof);
+	scheduler_init_edf();
 
 	/* init low latency timer domain and scheduler */
 	platform_timer_domain =
