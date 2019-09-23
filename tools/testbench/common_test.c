@@ -36,7 +36,7 @@ int tb_pipeline_setup(struct sof *sof)
 	}
 
 	/* init scheduler */
-	if (scheduler_init_edf(sof) < 0) {
+	if (scheduler_init_edf() < 0) {
 		fprintf(stderr, "error: edf scheduler init\n");
 		return -EINVAL;
 	}
