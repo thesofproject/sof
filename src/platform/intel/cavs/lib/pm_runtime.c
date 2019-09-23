@@ -298,6 +298,52 @@ static inline void cavs_pm_runtime_core_en_memory(uint32_t index)
 #endif
 }
 
+static inline void cavs_pm_runtime_dis_dsp_pg(uint32_t index)
+{
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+	uint32_t lps_ctl;
+
+	if (index == PLATFORM_MASTER_CORE_ID) {
+		lps_ctl = shim_read(SHIM_LPSCTL);
+
+		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
+			     SHIM_PWRCTL_TCPDSPPG(index) |
+			     SHIM_PWRCTL_TCPCTLPG);
+
+		lps_ctl &= ~SHIM_LPSCTL_BID;
+		lps_ctl &= ~SHIM_LPSCTL_BATTR_0;
+		lps_ctl |= SHIM_LPSCTL_FDSPRUN;
+		shim_write(SHIM_LPSCTL, lps_ctl);
+	} else {
+		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) |
+			     SHIM_PWRCTL_TCPDSPPG(index));
+	}
+#endif
+}
+
+static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
+{
+#if CAVS_VERSION >= CAVS_VERSION_1_8
+	uint32_t lps_ctl;
+
+	if (index == PLATFORM_MASTER_CORE_ID) {
+		lps_ctl = shim_read(SHIM_LPSCTL);
+
+#if CONFIG_ICELAKE
+		shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPCTLPG);
+#else
+		shim_write16(SHIM_PWRCTL, 0);
+#endif
+		lps_ctl |= SHIM_LPSCTL_BID | SHIM_LPSCTL_BATTR_0;
+		lps_ctl &= ~SHIM_LPSCTL_FDSPRUN;
+		shim_write(SHIM_LPSCTL, lps_ctl);
+	} else {
+		shim_write16(SHIM_PWRCTL, shim_read16(SHIM_PWRCTL) &
+			     ~SHIM_PWRCTL_TCPDSPPG(index));
+	}
+#endif
+}
+
 void platform_pm_runtime_init(struct pm_runtime_data *prd)
 {
 	struct cavs_pm_runtime_data *pprd;
@@ -335,6 +381,9 @@ void platform_pm_runtime_get(enum pm_runtime_context context, uint32_t index,
 	case CORE_MEMORY_POW:
 		cavs_pm_runtime_core_en_memory(index);
 		break;
+	case PM_RUNTIME_DSP:
+		cavs_pm_runtime_dis_dsp_pg(index);
+		break;
 	default:
 		break;
 	}
@@ -368,6 +417,9 @@ void platform_pm_runtime_put(enum pm_runtime_context context, uint32_t index,
 		break;
 	case CORE_MEMORY_POW:
 		cavs_pm_runtime_core_dis_memory(index);
+		break;
+	case PM_RUNTIME_DSP:
+		cavs_pm_runtime_en_dsp_pg(index);
 		break;
 	default:
 		break;
