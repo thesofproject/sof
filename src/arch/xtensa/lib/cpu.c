@@ -43,6 +43,8 @@ void arch_cpu_enable_core(int id)
 	irq_local_disable(flags);
 
 	if (!arch_cpu_is_core_enabled(id)) {
+		pm_runtime_get(PM_RUNTIME_DSP, id);
+
 		/* Turn on stack memory for core */
 		pm_runtime_get(CORE_MEMORY_POW, id);
 
@@ -126,6 +128,8 @@ void cpu_power_down_core(void)
 
 	/* Turn off stack memory for core */
 	pm_runtime_put(CORE_MEMORY_POW, cpu_get_id());
+
+	pm_runtime_put(PM_RUNTIME_DSP, cpu_get_id());
 
 	/* arch_wait_for_interrupt() not used, because it will cause panic.
 	 * This code is executed on irq lvl > 0, which is expected.
