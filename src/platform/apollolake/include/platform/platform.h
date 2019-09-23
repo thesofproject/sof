@@ -71,9 +71,6 @@ struct timer;
  */
 #define DMA_TRACE_RESCHEDULE_TIME	500
 
-/* DSP should be idle in this time frame */
-#define PLATFORM_IDLE_TIME	750000
-
 /* platform has DMA memory type */
 #define PLATFORM_MEM_HAS_DMA
 

@@ -67,9 +67,6 @@ struct timer;
  */
 #define DMA_TRACE_RESCHEDULE_TIME	100
 
-/* DSP should be idle in this time frame */
-#define PLATFORM_IDLE_TIME	750000
-
 /* DSP default delay in cycles */
 #define PLATFORM_DEFAULT_DELAY	12
 

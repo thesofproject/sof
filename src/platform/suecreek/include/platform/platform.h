@@ -70,9 +70,6 @@ struct timer;
  */
 #define DMA_TRACE_RESCHEDULE_TIME	500
 
-/* DSP should be idle in this time frame */
-#define PLATFORM_IDLE_TIME	750000
-
 /* baud-rate used for uart port trace log */
 #define PATFORM_TRACE_UART_BAUDRATE		115200
 
