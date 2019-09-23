@@ -44,22 +44,20 @@ static enum task_state validate(void *data)
 	uint64_t current;
 	uint64_t delta;
 
-	if (sa->is_active) {
-		current = platform_timer_get(platform_timer);
-		delta = current - sa->last_check;
+	current = platform_timer_get(platform_timer);
+	delta = current - sa->last_check;
 
-		/* panic timeout */
-		if (delta > sa->panic_timeout)
-			panic(SOF_IPC_PANIC_IDLE);
+	/* panic timeout */
+	if (delta > sa->panic_timeout)
+		panic(SOF_IPC_PANIC_IDLE);
 
-		/* warning timeout */
-		if (delta > sa->warn_timeout)
-			trace_sa_error("validate(), ll drift detected, delta = "
-				       "%u", delta);
+	/* warning timeout */
+	if (delta > sa->warn_timeout)
+		trace_sa_error("validate(), ll drift detected, delta = "
+			       "%u", delta);
 
-		/* update last_check to current */
-		sa->last_check = current;
-	}
+	/* update last_check to current */
+	sa->last_check = current;
 
 	return SOF_TASK_STATE_RESCHEDULE;
 }
@@ -90,17 +88,5 @@ void sa_init(struct sof *sof, uint64_t timeout)
 	schedule_task(&sa->work, 0, timeout);
 
 	/* set last check time to now to give time for boot completion */
-	sa->last_check = platform_timer_get(platform_timer);
-	sa->is_active = true;
-}
-
-void sa_disable(void)
-{
-	sa->is_active = false;
-}
-
-void sa_enable(void)
-{
-	sa->is_active = true;
 	sa->last_check = platform_timer_get(platform_timer);
 }
