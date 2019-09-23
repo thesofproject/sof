@@ -76,6 +76,7 @@ set(TPLGS
 	"sof-cnl-nocodec\;sof-cnl-nocodec"
 	"sof-cml-rt5682-max98357a\;sof-cml-rt5682-max98357a\;-DPLATFORM=cml"
 	"sof-cml-demux-rt5682-max98357a\;sof-cml-demux-rt5682-max98357a\;-DPLATFORM=cml"
+	"sof-cml-rt1011-rt5682\;sof-cml-rt1011-rt5682\;-DPLATFORM=cml"
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
 	"sof-tgl-rt1308\;sof-tgl-rt1308"
 	"sof-tgl-rt1308-nohdmi\;sof-tgl-rt1308-nohdmi"
