@@ -149,9 +149,15 @@
 
 #define SHIM_PWRCTL		0x90
 #define SHIM_PWRCTL_TCPDSPPG(x)	BIT(x)
+#define SHIM_PWRCTL_TCPCTLPG	BIT(4)
 
 #define SHIM_PWRSTS		0x92
+
 #define SHIM_LPSCTL		0x94
+#define SHIM_LPSCTL_BID		BIT(7)
+#define SHIM_LPSCTL_FDSPRUN	BIT(9)
+#define SHIM_LPSCTL_BATTR_0	BIT(12)
+
 #define SHIM_LSPGCTL		0x50
 
 /** \brief GPDMA shim registers Control */
