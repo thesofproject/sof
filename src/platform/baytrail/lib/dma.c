@@ -81,7 +81,7 @@ static struct dw_drv_plat_data dmac1 = {
 	},
 };
 
-#if defined CONFIG_CHERRYTRAIL
+#if defined CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 static struct dw_drv_plat_data dmac2 = {
 	.chan[0] = {
 		.class	= 7,
@@ -149,7 +149,7 @@ struct dma dma[PLATFORM_NUM_DMACS] = {
 	},
 	.ops		= &dw_dma_ops,
 },
-#if defined CONFIG_CHERRYTRAIL
+#if defined CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
 {
 	.plat_data = {
 		.id		= DMA_ID_DMAC2,
