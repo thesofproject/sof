@@ -178,6 +178,14 @@ config CAVS_VERSION_2_0
 	help
 	  Select for CAVS version 2.0
 
+config CONFIG_CHERRYTRAIL_EXTRA_DW_DMA
+	bool "Support Cherrytrail 3rd DMAC"
+	default n if !CHERRYTRAIL
+	depends on CHERRYTRAIL
+	help
+	  Select if you need support for all 3 DMACs versus the default 2 used
+	  in baytrail.
+
 # TODO: it should just take manifest version and offsets
 config FIRMWARE_SHORT_NAME
 	string "Rimage firmware name"
