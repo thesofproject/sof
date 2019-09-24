@@ -10,6 +10,7 @@
  * \authors Liam Girdwood <liam.r.girdwood@linux.intel.com>
  */
 
+#include "xtos-internal.h"
 #include <sof/common.h>
 #include <sof/init.h>
 #include <sof/lib/cpu.h>
@@ -17,10 +18,15 @@
 #include <config.h>
 #include <xtensa/xtruntime-frames.h>
 #include <xtos-structs.h>
+#include <stddef.h>
 #include <stdint.h>
 
 /* UserFrame's size needs to be 16 bytes aligned */
 STATIC_ASSERT((sizeof(UserFrame) % 16) == 0, invalid_UserFrame_alignment);
+
+/* verify xtos_active_task offset */
+STATIC_ASSERT(offsetof(struct thread_data, xtos_active_task) ==
+	      XTOS_TASK_CONTEXT_OFFSET, invalid_xtos_active_task_offset);
 
 #if CONFIG_DEBUG_LOCKS
 /** \brief Debug lock. */
