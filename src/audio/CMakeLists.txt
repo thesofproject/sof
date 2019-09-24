@@ -58,6 +58,9 @@ if(NOT BUILD_LIBRARY)
 		)
 	endif()
 	add_subdirectory(pcm_converter)
+	if(CONFIG_COMP_ASRC)
+		add_subdirectory(asrc)
+	endif()
 	return()
 endif()
 
@@ -101,11 +104,12 @@ check_optimization(fma -mfma -DOPS_FMA)
 check_optimization(hifi2ep -mhifi2ep -DOPS_HIFI2EP)
 check_optimization(hifi3 -mhifi3 -DOPS_HIFI3)
 
-set(sof_audio_modules volume src)
+set(sof_audio_modules volume src asrc)
 
 # sources for each module
 set(volume_sources volume/volume.c volume/volume_generic.c)
 set(src_sources src/src.c src/src_generic.c)
+set(asrc_sources asrc/asrc.c asrc/asrc_farrow.c asrc/asrc_farrow_generic.c)
 
 foreach(audio_module ${sof_audio_modules})
 	# first compile with no optimizations
