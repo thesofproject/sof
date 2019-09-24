@@ -94,12 +94,12 @@ static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 
 static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
 {
-	io_reg_write(dma_base(dma) + reg, value);
+	dma_reg_write(dma, reg, value);
 }
 
 static inline uint32_t dw_read(struct dma *dma, uint32_t reg)
 {
-	return io_reg_read(dma_base(dma) + reg);
+	return dma_reg_read(dma, reg);
 }
 
 static void dw_dma_interrupt_mask(struct dma_chan_data *channel)
