@@ -403,6 +403,40 @@ int load_src(void *dev, int comp_id, int pipeline_id, int size,
 	return ret;
 }
 
+/* load asrc dapm widget */
+int load_asrc(void *dev, int comp_id, int pipeline_id, int size,
+	      void *params)
+{
+	struct testbench_prm *tp = (struct testbench_prm *)params;
+	struct sof *sof = (struct sof *)dev;
+	struct sof_ipc_comp_asrc asrc = {0};
+	int ret = 0;
+
+	ret = tplg_load_asrc(comp_id, pipeline_id, size, &asrc, file);
+	if (ret < 0)
+		return ret;
+
+	/* set testbench input and output sample rate from topology */
+	if (!tp->fs_out) {
+		tp->fs_out = asrc.sink_rate;
+
+		if (!tp->fs_in)
+			tp->fs_in = asrc.source_rate;
+		else
+			asrc.source_rate = tp->fs_in;
+	} else {
+		asrc.sink_rate = tp->fs_out;
+	}
+
+	/* load asrc component */
+	if (ipc_comp_new(sof->ipc, (struct sof_ipc_comp *)&asrc) < 0) {
+		fprintf(stderr, "error: new asrc comp\n");
+		return -EINVAL;
+	}
+
+	return ret;
+}
+
 /* load mixer dapm widget */
 int load_mixer(void *dev, int comp_id, int pipeline_id, int size)
 {

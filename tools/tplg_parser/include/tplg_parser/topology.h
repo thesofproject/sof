@@ -109,6 +109,21 @@ static const struct sof_topology_token src_tokens[] = {
 		offsetof(struct sof_ipc_comp_src, sink_rate), 0},
 };
 
+/* ASRC */
+static const struct sof_topology_token asrc_tokens[] = {
+	{SOF_TKN_ASRC_RATE_IN, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, source_rate), 0},
+	{SOF_TKN_ASRC_RATE_OUT, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, sink_rate), 0},
+	{SOF_TKN_ASRC_ASYNCHRONOUS_MODE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, asynchronous_mode), 0},
+	{SOF_TKN_ASRC_OPERATION_MODE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
+		get_token_uint32_t,
+		offsetof(struct sof_ipc_comp_asrc, operation_mode), 0},
+};
+
 /* Tone */
 static const struct sof_topology_token tone_tokens[] = {
 };
@@ -187,6 +202,8 @@ int tplg_load_pipeline(int comp_id, int pipeline_id, int size,
 int tplg_load_controls(int num_kcontrols, FILE *file);
 int tplg_load_src(int comp_id, int pipeline_id, int size,
 		  struct sof_ipc_comp_src *src, FILE *file);
+int tplg_load_asrc(int comp_id, int pipeline_id, int size,
+		   struct sof_ipc_comp_asrc *asrc, FILE *file);
 int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		    struct sof_ipc_comp_mixer *mixer, FILE *file);
 int tplg_load_graph(int num_comps, int pipeline_id,
@@ -203,6 +220,7 @@ int load_buffer(void *dev, int comp_id, int pipeline_id, int size);
 int load_pipeline(void *dev, int comp_id, int pipeline_id, int size,
 		  int *sched_id);
 int load_src(void *dev, int comp_id, int pipeline_id, int size, void *params);
+int load_asrc(void *dev, int comp_id, int pipeline_id, int size, void *params);
 int load_mixer(void *dev, int comp_id, int pipeline_id, int size);
 int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 		int comp_id, int comp_index, int pipeline_id,

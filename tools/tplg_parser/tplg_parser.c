@@ -535,6 +535,73 @@ int tplg_load_src(int comp_id, int pipeline_id, int size,
 	return 0;
 }
 
+/* load asrc dapm widget */
+int tplg_load_asrc(int comp_id, int pipeline_id, int size,
+		   struct sof_ipc_comp_asrc *asrc, FILE *file)
+{
+	struct snd_soc_tplg_vendor_array *array = NULL;
+	size_t total_array_size = 0, read_size;
+	int ret = 0;
+
+	/* allocate memory for vendor tuple array */
+	array = (struct snd_soc_tplg_vendor_array *)malloc(size);
+	if (!array) {
+		fprintf(stderr, "error: mem alloc for asrc vendor array\n");
+		return -EINVAL;
+	}
+
+	/* read vendor tokens */
+	while (total_array_size < size) {
+		read_size = sizeof(struct snd_soc_tplg_vendor_array);
+		ret = fread(array, read_size, 1, file);
+		if (ret != 1) {
+			free(array);
+			return -EINVAL;
+		}
+
+		tplg_read_array(array, file);
+
+		/* parse comp tokens */
+		ret = sof_parse_tokens(&asrc->config, comp_tokens,
+				       ARRAY_SIZE(comp_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse asrc comp_tokens %d\n",
+				size);
+			free(array);
+			return -EINVAL;
+		}
+
+		/* parse asrc tokens */
+		ret = sof_parse_tokens(asrc, asrc_tokens,
+				       ARRAY_SIZE(asrc_tokens), array,
+				       array->size);
+		if (ret != 0) {
+			fprintf(stderr, "error: parse asrc tokens %d\n", size);
+			free(array);
+			return -EINVAL;
+		}
+
+		total_array_size += array->size;
+
+		/* read next array */
+		array = (void *)array + array->size;
+	}
+
+	array = (void *)array - size;
+
+	/* configure asrc */
+	asrc->comp.hdr.cmd = SOF_IPC_GLB_TPLG_MSG | SOF_IPC_TPLG_COMP_NEW;
+	asrc->comp.id = comp_id;
+	asrc->comp.hdr.size = sizeof(struct sof_ipc_comp_asrc);
+	asrc->comp.type = SOF_COMP_ASRC;
+	asrc->comp.pipeline_id = pipeline_id;
+	asrc->config.hdr.size = sizeof(struct sof_ipc_comp_config);
+
+	free(array);
+	return 0;
+}
+
 /* load mixer dapm widget */
 int tplg_load_mixer(int comp_id, int pipeline_id, int size,
 		    struct sof_ipc_comp_mixer *mixer, FILE *file)
@@ -760,6 +827,13 @@ int load_widget(void *dev, int dev_type, struct comp_info *temp_comp_list,
 	case(SND_SOC_TPLG_DAPM_SRC):
 		if (load_src(dev, temp_comp_list[comp_index].id,
 			     pipeline_id, widget->priv.size, tp) < 0) {
+			fprintf(stderr, "error: load src\n");
+			return -EINVAL;
+		}
+		break;
+	case(SND_SOC_TPLG_DAPM_ASRC):
+		if (load_asrc(dev, temp_comp_list[comp_index].id,
+			      pipeline_id, widget->priv.size, tp) < 0) {
 			fprintf(stderr, "error: load src\n");
 			return -EINVAL;
 		}
