@@ -153,7 +153,7 @@ simple_test codec src "SSP2-Codec" s24le SSP 2 s24le 25 24 2400000 19200000 I2S 
 # for APL
 APL_PROTOCOL_TESTS=(I2S LEFT_J DSP_A DSP_B)
 APL_SSP_TESTS=(0 1 2 3 4 5)
-APL_MODE_TESTS=(volume src)
+APL_MODE_TESTS=(volume src asrc)
 APL_FORMAT_TESTS=(s16le s24le s32le)
 MCLK_IDS=(0 1)
 

@@ -41,6 +41,13 @@ SectionVendorTokens."sof_src_tokens" {
 	SOF_TKN_SRC_RATE_OUT			"301"
 }
 
+SectionVendorTokens."sof_asrc_tokens" {
+	SOF_TKN_ASRC_RATE_IN			"320"
+	SOF_TKN_ASRC_RATE_OUT			"321"
+	SOF_TKN_ASRC_ASYNCHRONOUS_MODE		"322"
+	SOF_TKN_ASRC_OPERATION_MODE		"323"
+}
+
 SectionVendorTokens."sof_pcm_tokens" {
 	SOF_TKN_PCM_DMAC_CONFIG			"353"
 }
