@@ -33,6 +33,7 @@ struct xtos_core_data {
 	uint8_t xtos_stack_for_interrupt_3[SOF_STACK_SIZE];
 	uint8_t xtos_stack_for_interrupt_4[SOF_STACK_SIZE];
 	uint8_t xtos_stack_for_interrupt_5[SOF_STACK_SIZE];
+	xtos_task_context xtos_interrupt_ctx;
 	uintptr_t xtos_saved_sp;
 	struct thread_data *thread_data_ptr;
 };

@@ -114,7 +114,7 @@
 # endif
 #endif
 
-#define XTOS_TASK_CONTEXT_OFFSET	40
+#define XTOS_TASK_CONTEXT_OFFSET	48
 
 #if defined(_ASMLANGUAGE) || defined(__ASSEMBLER__)
 /***********   Useful macros   ***********/

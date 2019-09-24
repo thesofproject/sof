@@ -152,6 +152,19 @@ no_context:
 	s32i	a1, a13, 0
 	addi	a1, a13, SOF_STACK_SIZE
 
+	/* set stack base and size for interrupt context */
+	xtos_addr_percore	a11, xtos_interrupt_ctx
+	s32i	a13, a11, TC_stack_base
+	movi	a13, SOF_STACK_SIZE
+	s32i	a13, a11, TC_stack_size
+
+	/* save task context */
+	xtos_task_ctx_percore	a13
+	xtos_store_percore	a13, a14, xtos_saved_ctx
+
+	/* set interrupt task context */
+	xtos_task_ctx_store_percore	a11, a14
+
 /* Load the handler from the table, initialize two args (interrupt
  * number and exception stack frame), then call the interrupt handler.
  * Note: The callx12 preserves the original user task's a4..a15.*/
@@ -202,6 +215,19 @@ no_context:
 
 	_beqz	a15, LABEL(spurious,int)
 
+	/* set stack base and size for interrupt context */
+	xtos_addr_percore	a11, xtos_interrupt_ctx
+	s32i	a13, a11, TC_stack_base
+	movi	a13, SOF_STACK_SIZE
+	s32i	a13, a11, TC_stack_size
+
+	/* save task context */
+	xtos_task_ctx_percore	a13
+	xtos_store_percore	a13, a14, xtos_saved_ctx
+
+	/* set interrupt task context */
+	xtos_task_ctx_store_percore	a11, a14
+
 /* Loop to handle all pending interrupts. */
 
 LABEL(.L1,_loop0):
@@ -232,6 +258,14 @@ LABEL(.L1,_loop0):
 
 /* Restore everything, and return. */
 
+	/* restore task context if needed */
+	xtos_task_ctx_percore	a11
+	xtos_addr_percore	a12, xtos_interrupt_ctx
+	bne	a11, a12, restore_cp
+	xtos_addr_percore	a12, xtos_saved_ctx
+	xtos_task_ctx_store_percore	a12, a11
+
+restore_cp:
 #if __XCC__
 #if (XCHAL_CP_MASK & CP0_MASK)
 	xtos_task_ctx_percore	a11

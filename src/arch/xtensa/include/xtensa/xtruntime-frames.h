@@ -147,6 +147,8 @@ STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_2)
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_3)
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_4)
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_stack_for_interrupt_5)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_interrupt_ctx)
+STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_saved_ctx)
 STRUCT_FIELD(void*,4,XTOS_PTR_TO_,xtos_saved_sp)
 STRUCT_END(xtos_structures_pointers)
 
