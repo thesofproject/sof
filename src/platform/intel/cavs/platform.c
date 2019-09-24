@@ -402,6 +402,7 @@ int platform_init(struct sof *sof)
 	shim_write(SHIM_LPSCTL, shim_read(SHIM_LPSCTL));
 
 #elif CONFIG_CANNONLAKE
+	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
 
 	/* initialize PM for boot */
 	shim_write(SHIM_CLKCTL,
