@@ -21,6 +21,7 @@ struct shared_lib_table lib_table[NUM_WIDGETS_SUPPORTED] = {
 	{"file", "", SND_SOC_TPLG_DAPM_AIF_IN, 0, NULL},
 	{"vol", "libsof_volume.so", SND_SOC_TPLG_DAPM_PGA, 0, NULL},
 	{"src", "libsof_src.so", SND_SOC_TPLG_DAPM_SRC, 0, NULL},
+	{"asrc", "libsof_asrc.so", SND_SOC_TPLG_DAPM_ASRC, 0, NULL},
 };
 
 /* main firmware context */
