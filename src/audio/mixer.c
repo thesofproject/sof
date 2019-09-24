@@ -206,6 +206,7 @@ static inline int mixer_sink_status(struct comp_dev *mixer)
 /* used to pass standard and bespoke commands (with data) to component */
 static int mixer_trigger(struct comp_dev *dev, int cmd)
 {
+	int dir = dev->pipeline->source_comp->params.direction;
 	int ret;
 
 	trace_mixer("mixer_trigger()");
@@ -220,14 +221,18 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	switch (cmd) {
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
-		if (mixer_sink_status(dev) == COMP_STATE_ACTIVE)
-			return 1; /* no need to go downstream */
+		if (dir == SOF_IPC_STREAM_PLAYBACK &&
+		    mixer_sink_status(dev) == COMP_STATE_ACTIVE)
+			/* no need to go downstream */
+			return PPL_STATUS_PATH_STOP;
 		break;
 	case COMP_TRIGGER_PAUSE:
 	case COMP_TRIGGER_STOP:
-		if (mixer_source_status_count(dev, COMP_STATE_ACTIVE) > 0) {
+		if (dir == SOF_IPC_STREAM_PLAYBACK &&
+		    mixer_source_status_count(dev, COMP_STATE_ACTIVE) > 0) {
 			dev->state = COMP_STATE_ACTIVE;
-			return 1; /* no need to go downstream */
+			/* no need to go downstream */
+			return PPL_STATUS_PATH_STOP;
 		}
 		break;
 	default:
