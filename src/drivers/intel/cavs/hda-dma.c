@@ -137,20 +137,19 @@ static int hda_dma_stop(struct dma_chan_data *channel);
 static inline uint32_t host_dma_reg_read(struct dma_chan_data *chan,
 					 uint32_t reg)
 {
-	return io_reg_read(dma_chan_base(chan->dma, chan->index) + reg);
+	return dma_chan_reg_read(chan, reg);
 }
 
 static inline void host_dma_reg_write(struct dma_chan_data *chan,
 				      uint32_t reg, uint32_t value)
 {
-	io_reg_write(dma_chan_base(chan->dma, chan->index) + reg, value);
+	dma_chan_reg_write(chan, reg, value);
 }
 
 static inline void hda_update_bits(struct dma_chan_data *chan,
 				   uint32_t reg, uint32_t mask, uint32_t value)
 {
-	io_reg_update_bits(dma_chan_base(chan->dma, chan->index) + reg,  mask,
-			   value);
+	dma_chan_reg_update_bits(chan, reg, mask, value);
 }
 
 static inline void hda_dma_inc_fp(struct dma_chan_data *chan,
