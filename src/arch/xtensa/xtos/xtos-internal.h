@@ -114,6 +114,7 @@
 # endif
 #endif
 
+#define XTOS_TASK_CONTEXT_OFFSET	40
 
 #if defined(_ASMLANGUAGE) || defined(__ASSEMBLER__)
 /***********   Useful macros   ***********/
@@ -314,8 +315,6 @@ XTOS_PENDING_OFS:	.space	4	/* _xtos_pending variable */
 # else
 #  define IFNSA(a,b)	b
 # endif
-
-#define XTOS_TASK_CONTEXT_OFFSET	40
 
 	// get_prid ax
 	// Extracts core id.
