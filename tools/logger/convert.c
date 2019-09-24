@@ -101,6 +101,7 @@ static const char * get_component_name(uint32_t component_id) {
 		CASE(ALH);
 		CASE(KEYWORD);
 		CASE(CHMAP);
+		CASE(ASRC);
 	default: return "unknown";
 	}
 }
@@ -128,7 +129,7 @@ static char *format_file_name(char *file_name_raw, int full_name)
 static void print_entry_params(FILE *out_fd,
 	const struct log_entry_header *dma_log, const struct ldc_entry *entry,
 	uint64_t last_timestamp, double clock, int use_colors, int raw_output)
-{	
+{
 	char ids[TRACE_MAX_IDS_STR];
 	float dt = to_usecs(dma_log->timestamp - last_timestamp, clock);
 	const char *entry_fmt = raw_output ?
@@ -137,7 +138,7 @@ static void print_entry_params(FILE *out_fd,
 
 	if (dt < 0 || dt > 1000.0 * 1000.0 * 1000.0)
 		dt = NAN;
-	
+
 	if (entry->header.has_ids)
 		sprintf(ids, "%d.%d", (dma_log->id_0 & TRACE_IDS_MASK),
 			(dma_log->id_1 & TRACE_IDS_MASK));
