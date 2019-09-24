@@ -20,6 +20,7 @@
 #include <sof/atomic.h>
 #include <sof/bit.h>
 #include <sof/lib/cache.h>
+#include <sof/lib/io.h>
 #include <sof/lib/wait.h>
 #include <sof/spinlock.h>
 #include <stdbool.h>
@@ -353,6 +354,67 @@ static inline int dma_get_attribute(struct dma *dma, uint32_t type,
 				    uint32_t *value)
 {
 	return dma->ops->get_attribute(dma, type, value);
+}
+
+/* DMA hardware register operations */
+static inline uint32_t dma_reg_read(struct dma *dma, uint32_t reg)
+{
+	return io_reg_read(dma_base(dma) + reg);
+}
+
+static inline uint16_t dma_reg_read16(struct dma *dma, uint32_t reg)
+{
+	return io_reg_read16(dma_base(dma) + reg);
+}
+
+static inline void dma_reg_write(struct dma *dma, uint32_t reg, uint32_t value)
+{
+	io_reg_write(dma_base(dma) + reg, value);
+}
+
+static inline void dma_reg_write16(struct dma *dma, uint32_t reg,
+				   uint16_t value)
+{
+	io_reg_write16(dma_base(dma) + reg, value);
+}
+
+static inline void dma_reg_update_bits(struct dma *dma, uint32_t reg,
+				       uint32_t mask, uint32_t value)
+{
+	io_reg_update_bits(dma_base(dma) + reg, mask, value);
+}
+
+static inline uint32_t dma_chan_reg_read(struct dma_chan_data *channel,
+					 uint32_t reg)
+{
+	return io_reg_read(dma_chan_base(channel->dma, channel->index) + reg);
+}
+
+static inline uint16_t dma_chan_reg_read16(struct dma_chan_data *channel,
+					   uint32_t reg)
+{
+	return io_reg_read16(dma_chan_base(channel->dma, channel->index) + reg);
+}
+
+static inline void dma_chan_reg_write(struct dma_chan_data *channel,
+				      uint32_t reg, uint32_t value)
+{
+	io_reg_write(dma_chan_base(channel->dma, channel->index) + reg, value);
+}
+
+static inline void dma_chan_reg_write16(struct dma_chan_data *channel,
+					uint32_t reg, uint16_t value)
+{
+	io_reg_write16(dma_chan_base(channel->dma, channel->index) + reg,
+		       value);
+}
+
+static inline void dma_chan_reg_update_bits(struct dma_chan_data *channel,
+					    uint32_t reg, uint32_t mask,
+					    uint32_t value)
+{
+	io_reg_update_bits(dma_chan_base(channel->dma, channel->index) + reg,
+			   mask, value);
 }
 
 static inline void dma_sg_init(struct dma_sg_elem_array *ea)
