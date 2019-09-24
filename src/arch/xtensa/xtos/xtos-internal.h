@@ -419,6 +419,25 @@ exit:
 	l32i		\ax, \ax, XTOS_PTR_TO_\structure_name
 	.endm
 
+	// xtos_store_percore ax, ay, structure_name
+	// Stores register value under the selected structure per core.
+	.macro	xtos_store_percore ax, ay, structure_name
+#if XCHAL_HAVE_THREADPTR
+	rur.threadptr	\ay
+#else
+	j 1f
+	.align 4
+	.literal_position
+2:
+	.word SOF_VIRTUAL_THREAD_BASE
+1:
+	.align 4
+	l32r	\ay, 2b
+	l32i	\ay, \ay, 0
+#endif
+	s32i		\ax, \ay, XTOS_PTR_TO_\structure_name
+	.endm
+
 	// xtos_int_stack_addr_percore ax, int_level, stack_name
 	// Pointer to dedicated interrupt stack.
 	.macro	xtos_int_stack_addr_percore ax, int_level, stack_name
@@ -455,6 +474,25 @@ exit:
 	l32i		\ax, \ax, 0
 #endif
 	l32i		\ax, \ax, XTOS_TASK_CONTEXT_OFFSET
+	.endm
+
+	// xtos_task_ctx_store_percore ax, ay
+	// Changes task context to point to the selected address.
+	.macro	xtos_task_ctx_store_percore ax, ay
+#if XCHAL_HAVE_THREADPTR
+	rur.threadptr	\ay
+#else
+	j 1f
+	.align 4
+	.literal_position
+2:
+	.word SOF_VIRTUAL_THREAD_BASE
+1:
+	.align 4
+	l32r	\ay, 2b
+	l32i	\ay, \ay, 0
+#endif
+	s32i		\ax, \ay, XTOS_TASK_CONTEXT_OFFSET
 	.endm
 
 #else /* !_ASMLANGUAGE && !__ASSEMBLER__ */
