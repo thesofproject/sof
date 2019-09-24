@@ -68,6 +68,7 @@ static void initialize_pointers_per_core(void)
 	core_data = core_data_ptr[core];
 
 	p = &core_data->thread_data_ptr->xtos_ptrs;
+	p->xtos_interrupt_ctx = &core_data->xtos_interrupt_ctx;
 	p->xtos_saved_sp = &core_data->xtos_saved_sp;
 	p->xtos_stack_for_interrupt_1 = core_data->xtos_stack_for_interrupt_1;
 	p->xtos_stack_for_interrupt_2 = core_data->xtos_stack_for_interrupt_2;
