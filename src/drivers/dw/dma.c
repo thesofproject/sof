@@ -31,7 +31,6 @@
 #include <sof/lib/cache.h>
 #include <sof/lib/cpu.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/io.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/lib/wait.h>
@@ -92,16 +91,6 @@ static inline void dw_dma_interrupt_unregister(struct dma_chan_data *channel);
 static int dw_dma_copy(struct dma_chan_data *channel, int bytes,
 		       uint32_t flags);
 
-static inline void dw_write(struct dma *dma, uint32_t reg, uint32_t value)
-{
-	dma_reg_write(dma, reg, value);
-}
-
-static inline uint32_t dw_read(struct dma *dma, uint32_t reg)
-{
-	return dma_reg_read(dma, reg);
-}
-
 static void dw_dma_interrupt_mask(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan_data = dma_chan_get_data(channel);
@@ -114,9 +103,10 @@ static void dw_dma_interrupt_mask(struct dma_chan_data *channel)
 	}
 
 	/* mask block, transfer and error interrupts for channel */
-	dw_write(channel->dma, DW_MASK_TFR, DW_CHAN_MASK(channel->index));
-	dw_write(channel->dma, DW_MASK_BLOCK, DW_CHAN_MASK(channel->index));
-	dw_write(channel->dma, DW_MASK_ERR, DW_CHAN_MASK(channel->index));
+	dma_reg_write(channel->dma, DW_MASK_TFR, DW_CHAN_MASK(channel->index));
+	dma_reg_write(channel->dma, DW_MASK_BLOCK,
+		      DW_CHAN_MASK(channel->index));
+	dma_reg_write(channel->dma, DW_MASK_ERR, DW_CHAN_MASK(channel->index));
 }
 
 static void dw_dma_interrupt_unmask(struct dma_chan_data *channel)
@@ -132,11 +122,14 @@ static void dw_dma_interrupt_unmask(struct dma_chan_data *channel)
 
 	/* unmask block, transfer and error interrupts for channel */
 #if CONFIG_HW_LLI
-	dw_write(channel->dma, DW_MASK_BLOCK, DW_CHAN_UNMASK(channel->index));
+	dma_reg_write(channel->dma, DW_MASK_BLOCK,
+		      DW_CHAN_UNMASK(channel->index));
 #else
-	dw_write(channel->dma, DW_MASK_TFR, DW_CHAN_UNMASK(channel->index));
+	dma_reg_write(channel->dma, DW_MASK_TFR,
+		      DW_CHAN_UNMASK(channel->index));
 #endif
-	dw_write(channel->dma, DW_MASK_ERR, DW_CHAN_UNMASK(channel->index));
+	dma_reg_write(channel->dma, DW_MASK_ERR,
+		      DW_CHAN_UNMASK(channel->index));
 }
 
 static void dw_dma_interrupt_clear(struct dma_chan_data *channel)
@@ -154,11 +147,11 @@ static void dw_dma_interrupt_clear(struct dma_chan_data *channel)
 	}
 
 	/* clear transfer, block, src, dst and error interrupts for channel */
-	dw_write(channel->dma, DW_CLEAR_TFR, DW_CHAN(channel->index));
-	dw_write(channel->dma, DW_CLEAR_BLOCK, DW_CHAN(channel->index));
-	dw_write(channel->dma, DW_CLEAR_SRC_TRAN, DW_CHAN(channel->index));
-	dw_write(channel->dma, DW_CLEAR_DST_TRAN, DW_CHAN(channel->index));
-	dw_write(channel->dma, DW_CLEAR_ERR, DW_CHAN(channel->index));
+	dma_reg_write(channel->dma, DW_CLEAR_TFR, DW_CHAN(channel->index));
+	dma_reg_write(channel->dma, DW_CLEAR_BLOCK, DW_CHAN(channel->index));
+	dma_reg_write(channel->dma, DW_CLEAR_SRC_TRAN, DW_CHAN(channel->index));
+	dma_reg_write(channel->dma, DW_CLEAR_DST_TRAN, DW_CHAN(channel->index));
+	dma_reg_write(channel->dma, DW_CLEAR_ERR, DW_CHAN(channel->index));
 
 	/* clear platform interrupt */
 #if CONFIG_DMA_AGGREGATED_IRQ
@@ -267,11 +260,11 @@ static int dw_dma_start(struct dma_chan_data *channel)
 
 	/* check if channel idle, disabled and ready */
 	if (channel->status != COMP_STATE_PREPARE ||
-	    (dw_read(dma, DW_DMA_CHAN_EN) & DW_CHAN(channel->index))) {
+	    (dma_reg_read(dma, DW_DMA_CHAN_EN) & DW_CHAN(channel->index))) {
 		trace_dwdma_error("dw_dma_start() error: dma %d channel %d "
 				  "not ready ena 0x%x status 0x%x",
 				  dma->plat_data.id, channel->index,
-				  dw_read(dma, DW_DMA_CHAN_EN),
+				  dma_reg_read(dma, DW_DMA_CHAN_EN),
 				  channel->status);
 		ret = -EBUSY;
 		goto out;
@@ -290,29 +283,30 @@ static int dw_dma_start(struct dma_chan_data *channel)
 
 #if CONFIG_HW_LLI
 	/* LLP mode - write LLP pointer unless in scatter mode */
-	dw_write(dma, DW_LLP(channel->index), lli->ctrl_lo &
-		 (DW_CTLL_LLP_D_EN | DW_CTLL_LLP_S_EN) ?
-		 (uint32_t)lli : 0);
+	dma_reg_write(dma, DW_LLP(channel->index), lli->ctrl_lo &
+		      (DW_CTLL_LLP_D_EN | DW_CTLL_LLP_S_EN) ?
+		      (uint32_t)lli : 0);
 #endif
 	/* channel needs to start from scratch, so write SAR and DAR */
-	dw_write(dma, DW_SAR(channel->index), lli->sar);
-	dw_write(dma, DW_DAR(channel->index), lli->dar);
+	dma_reg_write(dma, DW_SAR(channel->index), lli->sar);
+	dma_reg_write(dma, DW_DAR(channel->index), lli->dar);
 
 	/* program CTL_LO and CTL_HI */
-	dw_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
-	dw_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
+	dma_reg_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
+	dma_reg_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
 
 	/* program CFG_LO and CFG_HI */
-	dw_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
-	dw_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
+	dma_reg_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
+	dma_reg_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
 
 #if CONFIG_HW_LLI
 	if (lli->ctrl_lo & DW_CTLL_D_SCAT_EN) {
 		words_per_tfr = (lli->ctrl_hi & DW_CTLH_BLOCK_TS_MASK) >>
 			((lli->ctrl_lo & DW_CTLL_DST_WIDTH_MASK) >>
 			DW_CTLL_DST_WIDTH_SHIFT);
-		dw_write(dma, DW_DSR(channel->index),
-			 DW_DSR_DSC(words_per_tfr) | DW_DSR_DSI(words_per_tfr));
+		dma_reg_write(dma, DW_DSR(channel->index),
+			      DW_DSR_DSC(words_per_tfr) |
+			      DW_DSR_DSI(words_per_tfr));
 	}
 #endif
 
@@ -323,7 +317,8 @@ static int dw_dma_start(struct dma_chan_data *channel)
 	if (!ret) {
 		/* enable the channel */
 		channel->status = COMP_STATE_ACTIVE;
-		dw_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
+		dma_reg_write(dma, DW_DMA_CHAN_EN,
+			      DW_CHAN_UNMASK(channel->index));
 	}
 
 out:
@@ -422,8 +417,8 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 	/* channel cannot be disabled right away, so first we need to
 	 * suspend it and drain the FIFO
 	 */
-	dw_write(dma, DW_CFG_LOW(channel->index),
-		 dw_chan->cfg_lo | DW_CFGL_SUSPEND | DW_CFGL_DRAIN);
+	dma_reg_write(dma, DW_CFG_LOW(channel->index),
+		      dw_chan->cfg_lo | DW_CFGL_SUSPEND | DW_CFGL_DRAIN);
 
 	/* now we wait for FIFO to be empty */
 	ret = poll_for_register_delay(dma_base(dma) +
@@ -436,14 +431,14 @@ static int dw_dma_stop(struct dma_chan_data *channel)
 				  "timeout", dma->plat_data.id, channel->index);
 #endif
 
-	dw_write(dma, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel->index));
+	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_MASK(channel->index));
 
 	/* disable interrupt */
 	dw_dma_interrupt_unregister(channel);
 
 #if CONFIG_HW_LLI
 	/* clear block interrupt */
-	dw_write(dma, DW_CLEAR_BLOCK, DW_CHAN(channel->index));
+	dma_reg_write(dma, DW_CLEAR_BLOCK, DW_CHAN(channel->index));
 
 	for (i = 0; i < channel->desc_count; i++) {
 		lli->ctrl_hi &= ~DW_CTLH_DONE(1);
@@ -468,8 +463,8 @@ static int dw_dma_status(struct dma_chan_data *channel,
 			 uint8_t direction)
 {
 	status->state = channel->status;
-	status->r_pos = dw_read(channel->dma, DW_SAR(channel->index));
-	status->w_pos = dw_read(channel->dma, DW_DAR(channel->index));
+	status->r_pos = dma_reg_read(channel->dma, DW_SAR(channel->index));
+	status->w_pos = dma_reg_read(channel->dma, DW_DAR(channel->index));
 	status->timestamp = timer_get_system(platform_timer);
 
 	return 0;
@@ -803,7 +798,7 @@ static int dw_dma_pm_context_restore(struct dma *dma)
 static int dw_dma_pm_context_store(struct dma *dma)
 {
 	/* disable the DMA controller */
-	dw_write(dma, DW_DMA_CFG, 0);
+	dma_reg_write(dma, DW_DMA_CFG, 0);
 
 	return 0;
 }
@@ -843,19 +838,19 @@ static inline void dw_dma_chan_reload_lli(struct dma_chan_data *channel)
 	dw_chan->lli_current = lli;
 
 	/* channel needs to start from scratch, so write SAR and DAR */
-	dw_write(dma, DW_SAR(channel->index), lli->sar);
-	dw_write(dma, DW_DAR(channel->index), lli->dar);
+	dma_reg_write(dma, DW_SAR(channel->index), lli->sar);
+	dma_reg_write(dma, DW_DAR(channel->index), lli->dar);
 
 	/* program CTL_LO and CTL_HI */
-	dw_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
-	dw_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
+	dma_reg_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
+	dma_reg_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
 
 	/* program CFG_LO and CFG_HI */
-	dw_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
-	dw_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
+	dma_reg_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
+	dma_reg_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
 
 	/* enable the channel */
-	dw_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
+	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
 }
 
 /* reload using callback data */
@@ -874,8 +869,8 @@ static inline void dw_dma_chan_reload_next(struct dma_chan_data *channel,
 	dw_dma_mask_address(next, &sar, &dar, direction);
 
 	/* channel needs to start from scratch, so write SAR and DAR */
-	dw_write(dma, DW_SAR(channel->index), sar);
-	dw_write(dma, DW_DAR(channel->index), dar);
+	dma_reg_write(dma, DW_SAR(channel->index), sar);
+	dma_reg_write(dma, DW_DAR(channel->index), dar);
 
 	lli->ctrl_hi = 0;
 
@@ -886,15 +881,15 @@ static inline void dw_dma_chan_reload_next(struct dma_chan_data *channel,
 	platform_dw_dma_set_transfer_size(dw_chan, lli, next->size);
 
 	/* program CTL_LO and CTL_HI */
-	dw_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
-	dw_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
+	dma_reg_write(dma, DW_CTRL_LOW(channel->index), lli->ctrl_lo);
+	dma_reg_write(dma, DW_CTRL_HIGH(channel->index), lli->ctrl_hi);
 
 	/* program CFG_LO and CFG_HI */
-	dw_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
-	dw_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
+	dma_reg_write(dma, DW_CFG_LOW(channel->index), dw_chan->cfg_lo);
+	dma_reg_write(dma, DW_CFG_HIGH(channel->index), dw_chan->cfg_hi);
 
 	/* enable the channel */
-	dw_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
+	dma_reg_write(dma, DW_DMA_CHAN_EN, DW_CHAN_UNMASK(channel->index));
 }
 #endif
 
@@ -908,8 +903,8 @@ static void dw_dma_verify_transfer(struct dma_chan_data *channel,
 	switch (next->status) {
 	case DMA_CB_STATUS_END:
 		channel->status = COMP_STATE_PREPARE;
-		dw_write(channel->dma, DW_DMA_CHAN_EN,
-			 DW_CHAN_MASK(channel->index));
+		dma_reg_write(channel->dma, DW_DMA_CHAN_EN,
+			      DW_CHAN_MASK(channel->index));
 		/* fallthrough */
 	default:
 		while (ll_uncached->ctrl_hi & DW_CTLH_DONE(1)) {
@@ -992,7 +987,7 @@ static void dw_dma_irq_handler(void *data)
 	int i;
 	struct dma_cb_data next = { .status = DMA_CB_STATUS_RELOAD };
 
-	status_intr = dw_read(dma, DW_INTR_STATUS);
+	status_intr = dma_reg_read(dma, DW_INTR_STATUS);
 	if (!status_intr)
 		return;
 
@@ -1008,19 +1003,19 @@ static void dw_dma_irq_handler(void *data)
 	mask = ~0;
 #endif
 
-	status_src = dw_read(dma, DW_STATUS_BLOCK) & mask;
-	dw_write(dma, DW_CLEAR_BLOCK, status_src);
+	status_src = dma_reg_read(dma, DW_STATUS_BLOCK) & mask;
+	dma_reg_write(dma, DW_CLEAR_BLOCK, status_src);
 #else
-	status_src = dw_read(dma, DW_STATUS_TFR);
-	dw_write(dma, DW_CLEAR_TFR, status_src);
+	status_src = dma_reg_read(dma, DW_STATUS_TFR);
+	dma_reg_write(dma, DW_CLEAR_TFR, status_src);
 #endif
 
 	/* TODO: handle errors, just clear them atm */
-	status_err = dw_read(dma, DW_STATUS_ERR);
+	status_err = dma_reg_read(dma, DW_STATUS_ERR);
 	if (status_err) {
 		trace_dwdma_error("dw_dma_irq_handler() error: dma %d status "
 				  "error 0x%x", dma->plat_data.id, status_err);
-		dw_write(dma, DW_CLEAR_ERR, status_err);
+		dma_reg_write(dma, DW_CLEAR_ERR, status_err);
 	}
 
 #if CONFIG_DMA_AGGREGATED_IRQ
@@ -1126,12 +1121,12 @@ static int dw_dma_setup(struct dma *dma)
 	int i;
 
 	/* we cannot config DMAC if DMAC has been already enabled by host */
-	if (dw_read(dma, DW_DMA_CFG))
-		dw_write(dma, DW_DMA_CFG, 0);
+	if (dma_reg_read(dma, DW_DMA_CFG))
+		dma_reg_write(dma, DW_DMA_CFG, 0);
 
 	/* now check that it's 0 */
 	for (i = DW_DMA_CFG_TRIES; i > 0; i--)
-		if (!dw_read(dma, DW_DMA_CFG))
+		if (!dma_reg_read(dma, DW_DMA_CFG))
 			break;
 
 	if (!i) {
@@ -1141,29 +1136,29 @@ static int dw_dma_setup(struct dma *dma)
 	}
 
 	for (i = 0; i < dma->plat_data.channels; i++)
-		dw_read(dma, DW_DMA_CHAN_EN);
+		dma_reg_read(dma, DW_DMA_CHAN_EN);
 
 	/* enable the DMA controller */
-	dw_write(dma, DW_DMA_CFG, 1);
+	dma_reg_write(dma, DW_DMA_CFG, 1);
 
 	/* mask all interrupts for all channels */
-	dw_write(dma, DW_MASK_TFR, DW_CHAN_MASK_ALL);
-	dw_write(dma, DW_MASK_BLOCK, DW_CHAN_MASK_ALL);
-	dw_write(dma, DW_MASK_SRC_TRAN, DW_CHAN_MASK_ALL);
-	dw_write(dma, DW_MASK_DST_TRAN, DW_CHAN_MASK_ALL);
-	dw_write(dma, DW_MASK_ERR, DW_CHAN_MASK_ALL);
+	dma_reg_write(dma, DW_MASK_TFR, DW_CHAN_MASK_ALL);
+	dma_reg_write(dma, DW_MASK_BLOCK, DW_CHAN_MASK_ALL);
+	dma_reg_write(dma, DW_MASK_SRC_TRAN, DW_CHAN_MASK_ALL);
+	dma_reg_write(dma, DW_MASK_DST_TRAN, DW_CHAN_MASK_ALL);
+	dma_reg_write(dma, DW_MASK_ERR, DW_CHAN_MASK_ALL);
 
 #if CONFIG_DMA_FIFO_PARTITION
 	/* allocate FIFO partitions for each channel */
-	dw_write(dma, DW_FIFO_PART1_HI,
-		 DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE));
-	dw_write(dma, DW_FIFO_PART1_LO,
-		 DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE));
-	dw_write(dma, DW_FIFO_PART0_HI,
-		 DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE));
-	dw_write(dma, DW_FIFO_PART0_LO,
-		 DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE) |
-		 DW_FIFO_UPD);
+	dma_reg_write(dma, DW_FIFO_PART1_HI,
+		      DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE));
+	dma_reg_write(dma, DW_FIFO_PART1_LO,
+		      DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE));
+	dma_reg_write(dma, DW_FIFO_PART0_HI,
+		      DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE));
+	dma_reg_write(dma, DW_FIFO_PART0_LO,
+		      DW_FIFO_CHx(DW_FIFO_SIZE) | DW_FIFO_CHy(DW_FIFO_SIZE) |
+		      DW_FIFO_UPD);
 #endif
 
 	return 0;
@@ -1283,7 +1278,7 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
 	int32_t read_ptr = dw_chan->ptr_data.current_ptr;
-	int32_t write_ptr = dw_read(channel->dma, DW_DAR(channel->index));
+	int32_t write_ptr = dma_reg_read(channel->dma, DW_DAR(channel->index));
 	int size;
 
 	size = write_ptr - read_ptr;
@@ -1293,7 +1288,7 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 	if (!size)
 		trace_dwdma("dw_dma_avail_data_size() "
 			    "size is 0! Channel enable = %d.",
-			    (dw_read(channel->dma, DW_DMA_CHAN_EN) &
+			    (dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
 			     DW_CHAN(channel->index)) ? 1 : 0);
 	return size;
 }
@@ -1301,7 +1296,7 @@ static int dw_dma_avail_data_size(struct dma_chan_data *channel)
 static int dw_dma_free_data_size(struct dma_chan_data *channel)
 {
 	struct dw_dma_chan_data *dw_chan = dma_chan_get_data(channel);
-	int32_t read_ptr = dw_read(channel->dma, DW_SAR(channel->index));
+	int32_t read_ptr = dma_reg_read(channel->dma, DW_SAR(channel->index));
 	int32_t write_ptr = dw_chan->ptr_data.current_ptr;
 	int size;
 
@@ -1312,7 +1307,7 @@ static int dw_dma_free_data_size(struct dma_chan_data *channel)
 	if (!size)
 		trace_dwdma("dw_dma_free_data_size() "
 			    "size is 0! Channel enable = %d.",
-			    (dw_read(channel->dma, DW_DMA_CHAN_EN) &
+			    (dma_reg_read(channel->dma, DW_DMA_CHAN_EN) &
 			     DW_CHAN(channel->index)) ? 1 : 0);
 	return size;
 }
