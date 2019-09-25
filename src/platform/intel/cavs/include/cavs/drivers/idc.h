@@ -10,19 +10,24 @@
 #ifndef __CAVS_DRIVERS_IDC_H__
 #define __CAVS_DRIVERS_IDC_H__
 
+#include <config.h>
 #include <stdint.h>
 
 struct idc_msg;
 
-static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode)
-{
-	return arch_idc_send_msg(msg, mode);
-}
+#if CONFIG_SMP
 
-static inline int idc_init(void)
-{
-	return arch_idc_init();
-}
+int idc_send_msg(struct idc_msg *msg, uint32_t mode);
+
+int idc_init(void);
+
+#else
+
+static inline int idc_send_msg(struct idc_msg *msg, uint32_t mode) { return 0; }
+
+static inline int idc_init(void) { return 0; }
+
+#endif
 
 #endif /* __CAVS_DRIVERS_IDC_H__ */
 

@@ -14,7 +14,6 @@
 #ifndef __SOF_DRIVERS_IDC_H__
 #define __SOF_DRIVERS_IDC_H__
 
-#include <arch/drivers/idc.h>
 #include <platform/drivers/idc.h>
 #include <sof/lib/cpu.h>
 #include <sof/schedule/task.h>
@@ -103,5 +102,9 @@ struct idc {
 	bool msg_processed[PLATFORM_CORE_COUNT];
 	int irq;
 };
+
+void idc_enable_interrupts(int target_core, int source_core);
+
+void idc_free(void);
 
 #endif /* __SOF_DRIVERS_IDC_H__ */

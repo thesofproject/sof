@@ -15,6 +15,8 @@
 
 #if CONFIG_SMP
 
+void cpu_power_down_core(void);
+
 void cpu_alloc_core_context(int id);
 
 void arch_cpu_enable_core(int id);

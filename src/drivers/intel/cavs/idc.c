@@ -121,7 +121,7 @@ static void idc_irq_handler(void *arg)
  * \param[in] mode Is message blocking or not.
  * \return Error code.
  */
-int arch_idc_send_msg(struct idc_msg *msg, uint32_t mode)
+int idc_send_msg(struct idc_msg *msg, uint32_t mode)
 {
 	struct idc *idc = *idc_get();
 	int core = cpu_get_id();
@@ -356,7 +356,7 @@ static uint32_t idc_get_done_bit_mask(int core)
 /**
  * \brief Initializes IDC data and registers for interrupt.
  */
-int arch_idc_init(void)
+int idc_init(void)
 {
 	int core = cpu_get_id();
 	int ret;
