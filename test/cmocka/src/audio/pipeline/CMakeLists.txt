@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 if(CONFIG_SMP)
-	SET(arch_src ${PROJECT_SOURCE_DIR}/src/arch/xtensa/drivers/idc.c)
+	SET(arch_src ${PROJECT_SOURCE_DIR}/src/drivers/intel/cavs/idc.c)
 
 	# make small lib for stripping so we don't have to care
 	# about unused missing references
