@@ -165,6 +165,7 @@ config IMX8
 	select INTERRUPT_LEVEL_2
 	select INTERRUPT_LEVEL_3
 	select HOST_PTABLE
+	select DUMMY_DMA
 	help
 	  Select if your target platform is imx8-compatible
 
