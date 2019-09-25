@@ -14,7 +14,6 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/dma.h>
-#include <sof/lib/io.h>
 #include <sof/lib/pm_runtime.h>
 #include <sof/platform.h>
 #include <sof/spinlock.h>
@@ -134,39 +133,21 @@ struct hda_chan_data {
 
 static int hda_dma_stop(struct dma_chan_data *channel);
 
-static inline uint32_t host_dma_reg_read(struct dma_chan_data *chan,
-					 uint32_t reg)
-{
-	return dma_chan_reg_read(chan, reg);
-}
-
-static inline void host_dma_reg_write(struct dma_chan_data *chan,
-				      uint32_t reg, uint32_t value)
-{
-	dma_chan_reg_write(chan, reg, value);
-}
-
-static inline void hda_update_bits(struct dma_chan_data *chan,
-				   uint32_t reg, uint32_t mask, uint32_t value)
-{
-	dma_chan_reg_update_bits(chan, reg, mask, value);
-}
-
 static inline void hda_dma_inc_fp(struct dma_chan_data *chan,
 				  uint32_t value)
 {
-	host_dma_reg_write(chan, DGBFPI, value);
+	dma_chan_reg_write(chan, DGBFPI, value);
 	/* TODO: wp update, not rp should inc LLPI and LPIBI in the
 	 * coupled input DMA
 	 */
-	host_dma_reg_write(chan, DGLLPI, value);
-	host_dma_reg_write(chan, DGLPIBI, value);
+	dma_chan_reg_write(chan, DGLLPI, value);
+	dma_chan_reg_write(chan, DGLPIBI, value);
 }
 
 static inline void hda_dma_inc_link_fp(struct dma_chan_data *chan,
 				       uint32_t value)
 {
-	host_dma_reg_write(chan, DGBFPI, value);
+	dma_chan_reg_write(chan, DGBFPI, value);
 	/* TODO: wp update should inc LLPI and LPIBI in the input DMA */
 }
 
@@ -188,12 +169,9 @@ static void hda_dma_get_dbg_vals(struct dma_chan_data *chan,
 
 	if ((HDA_DBG_SRC == HDA_DBG_BOTH) || (src == HDA_DBG_BOTH) ||
 	    (src == HDA_DBG_SRC)) {
-		dbg_data->last_wp[sample] =
-			host_dma_reg_read(chan->dma, chan->index, DGBWP);
-		dbg_data->last_rp[sample] =
-			host_dma_reg_read(chan->dma, chan->index, DGBRP);
-		dbg_data->last_bne[sample] =
-			(host_dma_reg_read(chan->dma, chan->index, DGCS) &
+		dbg_data->last_wp[sample] = dma_chan_reg_read(chan, DGBWP);
+		dbg_data->last_rp[sample] = dma_chan_reg_read(chan, DGBRP);
+		dbg_data->last_bne[sample] = (dma_chan_reg_read(chan, DGCS) &
 				DGCS_BNE) ? 1 : 0;
 	}
 }
@@ -230,12 +208,12 @@ static void hda_dma_get_dbg_vals(struct dma_chan_data *chan,
 
 static inline int hda_dma_is_buffer_full(struct dma_chan_data *chan)
 {
-	return host_dma_reg_read(chan, DGCS) & DGCS_BF;
+	return dma_chan_reg_read(chan, DGCS) & DGCS_BF;
 }
 
 static inline int hda_dma_is_buffer_empty(struct dma_chan_data *chan)
 {
-	return !(host_dma_reg_read(chan, DGCS) & DGCS_BNE);
+	return !(dma_chan_reg_read(chan, DGCS) & DGCS_BNE);
 }
 
 static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
@@ -253,8 +231,8 @@ static int hda_dma_wait_for_buffer_full(struct dma_chan_data *chan)
 			trace_hddma_error("hda-dmac: %d wait for buffer full "
 					  "timeout rp 0x%x wp 0x%x",
 					  chan->dma->plat_data.id,
-					  host_dma_reg_read(chan, DGBRP),
-					  host_dma_reg_read(chan, DGBWP));
+					  dma_chan_reg_read(chan, DGBRP),
+					  dma_chan_reg_read(chan, DGBWP));
 			return -ETIME;
 		}
 	}
@@ -277,8 +255,8 @@ static int hda_dma_wait_for_buffer_empty(struct dma_chan_data *chan)
 			trace_hddma_error("hda-dmac: %d wait for buffer empty "
 					  "timeout rp 0x%x wp 0x%x",
 				chan->dma->plat_data.id,
-				host_dma_reg_read(chan, DGBRP),
-				host_dma_reg_read(chan, DGBWP));
+				dma_chan_reg_read(chan, DGBRP),
+				dma_chan_reg_read(chan, DGBWP));
 			return -ETIME;
 		}
 	}
@@ -310,9 +288,9 @@ static int hda_dma_link_copy_ch(struct dma_chan_data *chan, int bytes)
 	hda_dma_get_dbg_vals(chan, HDA_DBG_PRE, HDA_DBG_LINK);
 
 	/* clear link xruns */
-	dgcs = host_dma_reg_read(chan, DGCS);
+	dgcs = dma_chan_reg_read(chan, DGCS);
 	if (dgcs & DGCS_BOR)
-		hda_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
+		dma_chan_reg_update_bits(chan, DGCS, DGCS_BOR, DGCS_BOR);
 
 	/*
 	 * set BFPI to let link gateway know we have read size,
@@ -338,8 +316,8 @@ static void hda_dma_enable_unlock(struct dma_chan_data *channel)
 	hda_dma_get_dbg_vals(channel, HDA_DBG_PRE, HDA_DBG_BOTH);
 
 	/* enable the channel */
-	hda_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
-			DGCS_GEN | DGCS_FIFORDY);
+	dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY,
+				 DGCS_GEN | DGCS_FIFORDY);
 
 	/* full buffer is copied at startup */
 	hda_chan = dma_chan_get_data(channel);
@@ -487,7 +465,7 @@ static int hda_dma_start(struct dma_chan_data *channel)
 	hda_dma_dbg_count_reset(channel);
 
 	/* is channel idle, disabled and ready ? */
-	dgcs = host_dma_reg_read(channel, DGCS);
+	dgcs = dma_chan_reg_read(channel, DGCS);
 	if (channel->status != COMP_STATE_PREPARE || (dgcs & DGCS_GEN)) {
 		ret = -EBUSY;
 		trace_hddma_error("hda-dmac: %d channel %d busy. dgcs 0x%x "
@@ -559,7 +537,7 @@ static int hda_dma_stop(struct dma_chan_data *channel)
 		    channel->dma->plat_data.id, channel->index);
 
 	/* disable the channel */
-	hda_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
+	dma_chan_reg_update_bits(channel, DGCS, DGCS_GEN | DGCS_FIFORDY, 0);
 	channel->status = COMP_STATE_PREPARE;
 	hda_chan = dma_chan_get_data(channel);
 	hda_chan->state = 0;
@@ -576,8 +554,8 @@ static int hda_dma_status(struct dma_chan_data *channel,
 			  struct dma_chan_status *status, uint8_t direction)
 {
 	status->state = channel->status;
-	status->r_pos = host_dma_reg_read(channel, DGBRP);
-	status->w_pos = host_dma_reg_read(channel, DGBWP);
+	status->r_pos = dma_chan_reg_read(channel, DGBRP);
+	status->w_pos = dma_chan_reg_read(channel, DGBWP);
 	status->timestamp = timer_get_system(platform_timer);
 
 	return 0;
@@ -678,12 +656,12 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	hda_chan->buffer_bytes = buffer_bytes;
 
 	/* init channel in HW */
-	host_dma_reg_write(channel, DGBBA, buffer_addr);
-	host_dma_reg_write(channel, DGBS, buffer_bytes);
+	dma_chan_reg_write(channel, DGBBA, buffer_addr);
+	dma_chan_reg_write(channel, DGBS, buffer_bytes);
 
 	if (config->direction == DMA_DIR_LMEM_TO_HMEM ||
 	    config->direction == DMA_DIR_HMEM_TO_LMEM)
-		host_dma_reg_write(channel, DGMBS,
+		dma_chan_reg_write(channel, DGMBS,
 				   ALIGN_UP(buffer_bytes,
 					    HDA_DMA_BUFFER_ALIGNMENT));
 
@@ -702,7 +680,7 @@ static int hda_dma_set_config(struct dma_chan_data *channel,
 	    (!config->cyclic && config->direction == DMA_DIR_LMEM_TO_HMEM))
 		dgcs |= DGCS_FIFORDY;
 
-	host_dma_reg_write(channel, DGCS, dgcs);
+	dma_chan_reg_write(channel, DGCS, dgcs);
 
 	channel->status = COMP_STATE_PREPARE;
 out:
@@ -817,7 +795,7 @@ static int hda_dma_avail_data_size(struct dma_chan_data *chan)
 	int32_t write_ptr;
 	int size;
 
-	status = host_dma_reg_read(chan, DGCS);
+	status = dma_chan_reg_read(chan, DGCS);
 
 	if (status & DGCS_BF)
 		return hda_chan->buffer_bytes;
@@ -825,8 +803,8 @@ static int hda_dma_avail_data_size(struct dma_chan_data *chan)
 	if (!(status & DGCS_BNE))
 		return 0;
 
-	read_ptr = host_dma_reg_read(chan, DGBRP);
-	write_ptr = host_dma_reg_read(chan, DGBWP);
+	read_ptr = dma_chan_reg_read(chan, DGBRP);
+	write_ptr = dma_chan_reg_read(chan, DGBWP);
 
 	size = write_ptr - read_ptr;
 	if (size <= 0)
@@ -843,7 +821,7 @@ static int hda_dma_free_data_size(struct dma_chan_data *chan)
 	int32_t write_ptr;
 	int size;
 
-	status = host_dma_reg_read(chan, DGCS);
+	status = dma_chan_reg_read(chan, DGCS);
 
 	if (status & DGCS_BF)
 		return 0;
@@ -851,8 +829,8 @@ static int hda_dma_free_data_size(struct dma_chan_data *chan)
 	if (!(status & DGCS_BNE))
 		return hda_chan->buffer_bytes;
 
-	read_ptr = host_dma_reg_read(chan, DGBRP);
-	write_ptr = host_dma_reg_read(chan, DGBWP);
+	read_ptr = dma_chan_reg_read(chan, DGBRP);
+	write_ptr = dma_chan_reg_read(chan, DGBWP);
 
 	size = read_ptr - write_ptr;
 	if (size <= 0)
