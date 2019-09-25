@@ -1304,8 +1304,8 @@ static inline bool validate_host_params(size_t host_period_size,
 static inline void kpb_change_state(struct comp_data *kpb,
 				    enum kpb_state state)
 {
-	trace_kpb("kpb_change_state(): from %d to %d",
-		  kpb->state, state);
+	tracev_kpb("kpb_change_state(): from %d to %d",
+		   kpb->state, state);
 	kpb->state = state;
 	kpb->state_log = (kpb->state_log << 4) | state;
 }
