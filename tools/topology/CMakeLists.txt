@@ -80,8 +80,8 @@ set(TPLGS
 	"sof-cml-demux-rt5682-max98357a\;sof-cml-demux-rt5682-max98357a\;-DPLATFORM=cml"
 	"sof-cml-rt1011-rt5682\;sof-cml-rt1011-rt5682\;-DPLATFORM=cml"
 	"sof-tgl-nocodec\;sof-tgl-nocodec"
-	"sof-tgl-rt1308\;sof-tgl-rt1308"
-	"sof-tgl-rt1308-nohdmi\;sof-tgl-rt1308-nohdmi"
+	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308\;-DHDMI=1"
+	"sof-tgl-rt711-rt1308\;sof-tgl-rt711-rt1308-nohdmi"
 	"sof-imx8qxp-nocodec\;sof-imx8qxp-nocodec"
 	"sof-imx8qxp-cs42888\;sof-imx8qxp-cs42888"
 )
