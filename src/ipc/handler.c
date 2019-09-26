@@ -667,7 +667,10 @@ static int ipc_pm_gate(uint32_t header)
 
 	IPC_COPY_CMD(pm_gate, _ipc->comp_data);
 
-	/* TODO: handle the flags */
+	if (pm_gate.flags & SOF_PM_PPG)
+		pm_runtime_disable(PM_RUNTIME_DSP, 0);
+	else
+		pm_runtime_enable(PM_RUNTIME_DSP, 0);
 
 	return 0;
 }

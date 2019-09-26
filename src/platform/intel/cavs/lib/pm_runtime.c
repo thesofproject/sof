@@ -77,6 +77,8 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 	enable ? --pprd->dsp_d0_sref : ++pprd->dsp_d0_sref;
 
 	irq_local_enable(flags);
+
+	trace_power("pm_runtime_enable_dsp dsp_d0_sref %d", pprd->dsp_d0_sref);
 }
 
 static inline bool cavs_pm_runtime_is_active_dsp(void)
