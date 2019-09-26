@@ -70,8 +70,7 @@ static void schedule_ll_task_update_start(struct ll_schedule_data *sch,
 		task->start = next + sch->domain->last_tick;
 }
 
-static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
-				      uint32_t *flags)
+static void schedule_ll_tasks_execute(struct ll_schedule_data *sch)
 {
 	struct list_item *wlist;
 	struct list_item *tlist;
@@ -84,10 +83,7 @@ static void schedule_ll_tasks_execute(struct ll_schedule_data *sch,
 
 		/* run task if its pending and remove from the list */
 		if (task->state == SOF_TASK_STATE_PENDING) {
-			/* task can run in non atomic context */
-			irq_local_enable(*flags);
 			task->state = task->func(task->data);
-			irq_local_disable(*flags);
 
 			/* do we need to reschedule this task */
 			if (task->state == SOF_TASK_STATE_COMPLETED) {
@@ -140,7 +136,7 @@ static void schedule_ll_tasks_run(void *data)
 
 	/* run tasks if there are any pending */
 	if (schedule_ll_is_pending(sch))
-		schedule_ll_tasks_execute(sch, &flags);
+		schedule_ll_tasks_execute(sch);
 
 	spin_lock(sch->domain->lock);
 
