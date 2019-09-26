@@ -12,7 +12,7 @@
 
 #include <sof/audio/volume.h>
 
-#if defined(__XCC__) && XCHAL_HAVE_HIFI3
+#if CONFIG_VOLUME_ARCH
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>

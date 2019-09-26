@@ -1,0 +1,31 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
+ *
+ * Author: Tomasz Lauda <tomasz.lauda@linux.intel.com>
+ */
+
+#ifdef __SOF_AUDIO_VOLUME_H__
+
+#ifndef __ARCH_AUDIO_VOLUME_H__
+#define __ARCH_AUDIO_VOLUME_H__
+
+#if __XCC__
+
+#include <xtensa/config/core-isa.h>
+
+#if XCHAL_HAVE_HIFI3
+
+#define CONFIG_VOLUME_ARCH	1
+
+#endif /* XCHAL_HAVE_HIFI3 */
+
+#endif /* __XCC__ */
+
+#endif /* __ARCH_AUDIO_VOLUME_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of sof/audio/volume.h"
+
+#endif /* __SOF_AUDIO_VOLUME_H__ */

@@ -16,7 +16,7 @@
 
 #include <sof/audio/volume.h>
 
-#ifdef CONFIG_GENERIC
+#if !CONFIG_VOLUME_ARCH
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>

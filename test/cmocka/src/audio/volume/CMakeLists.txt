@@ -11,7 +11,7 @@ target_include_directories(volume_process PRIVATE ${PROJECT_SOURCE_DIR}/src/audi
 add_library(audio_for_volume STATIC
 	${PROJECT_SOURCE_DIR}/src/audio/volume/volume.c
 	${PROJECT_SOURCE_DIR}/src/audio/volume/volume_generic.c
-	${PROJECT_SOURCE_DIR}/src/audio/volume/volume_hifi3.c
+	${PROJECT_SOURCE_DIR}/src/arch/xtensa/audio/volume_hifi3.c
 )
 
 target_link_libraries(audio_for_volume PRIVATE sof_options)

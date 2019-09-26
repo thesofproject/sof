@@ -16,6 +16,7 @@
 #ifndef __SOF_AUDIO_VOLUME_H__
 #define __SOF_AUDIO_VOLUME_H__
 
+#include <arch/audio/volume.h>
 #include <sof/audio/component.h>
 #include <sof/bit.h>
 #include <sof/schedule/task.h>
@@ -27,17 +28,6 @@
 
 struct comp_buffer;
 struct sof_ipc_ctrl_value_chan;
-
-#define CONFIG_GENERIC
-
-#if defined(__XCC__)
-#include <xtensa/config/core-isa.h>
-
-#if XCHAL_HAVE_HIFI3
-#undef CONFIG_GENERIC
-#endif
-
-#endif
 
 /** \brief Volume trace function. */
 #define trace_volume(__e, ...) \

@@ -142,6 +142,7 @@ add_library(reset STATIC "")
 target_link_libraries(reset sof_options)
 target_compile_options(reset PRIVATE -mtext-section-literals)
 
+add_subdirectory(audio)
 add_subdirectory(debug)
 add_subdirectory(drivers)
 add_subdirectory(hal)
