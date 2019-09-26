@@ -210,13 +210,14 @@ static int dma_trace_start(struct dma_trace_data *d)
 	config.dest_width = sizeof(uint32_t);
 	config.cyclic = 0;
 
-	err = dma_sg_alloc(&config.elem_array, RZONE_SYS,
+	err = dma_sg_alloc(&config.elem_array, RZONE_RUNTIME,
 			   config.direction,
 			   elem_num, elem_size, elem_addr, 0);
 	if (err < 0)
 		return err;
 
 	err = dma_set_config(d->dc.chan, &config);
+	dma_sg_free(&config.elem_array);
 	if (err < 0)
 		return err;
 
