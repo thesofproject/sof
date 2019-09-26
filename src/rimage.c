@@ -102,6 +102,12 @@ int main(int argc, char *argv[])
 	if (!image.ldc_out_file)
 		image.ldc_out_file = "out.ldc";
 
+	/* requires private key */
+	if (!image.key_name) {
+		fprintf(stderr, "error: requires private key\n");
+		return -EINVAL;
+	}
+
 	/* find machine */
 	for (i = 0; i < ARRAY_SIZE(machine); i++) {
 		if (!strcmp(mach, machine[i]->name)) {

@@ -78,18 +78,19 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 		ptr1 - (void *)man, size1);
 #endif
 
+	/* requires private key */
+	if (!image->key_name) {
+		return -EINVAL;
+	}
+
 	/* create new key */
 	privkey = EVP_PKEY_new();
 	if (!privkey)
 		return -ENOMEM;
 
 	/* load in RSA private key from PEM file */
-	if (!image->key_name) {
-		snprintf(path, sizeof(path), "%s/otc_private_key.pem", PEM_KEY_PREFIX);
-	} else {
-		memset(path, 0, sizeof(path));
-		strncpy(path, image->key_name, sizeof(path) - 1);
-	}
+	memset(path, 0, sizeof(path));
+	strncpy(path, image->key_name, sizeof(path) - 1);
 
 	fprintf(stdout, " pkcs: signing with key %s\n", path);
 	fp = fopen(path, "rb");
@@ -172,18 +173,19 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 		ptr1 - (void *)man, size1, ptr2 - (void *)man, size2);
 #endif
 
+	/* require private key */
+	if (!image->key_name) {
+		return -EINVAL;
+	}
+
 	/* create new key */
 	privkey = EVP_PKEY_new();
 	if (!privkey)
 		return -ENOMEM;
 
 	/* load in RSA private key from PEM file */
-	if (!image->key_name) {
-		snprintf(path, sizeof(path), "%s/otc_private_key.pem", PEM_KEY_PREFIX);
-	} else {
-		memset(path, 0, sizeof(path));
-		strncpy(path, image->key_name, sizeof(path) - 1);
-	}
+	memset(path, 0, sizeof(path));
+	strncpy(path, image->key_name, sizeof(path) - 1);
 
 	fprintf(stdout, " pkcs: signing with key %s\n", path);
 	fp = fopen(path, "rb");
