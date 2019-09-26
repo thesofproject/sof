@@ -6,7 +6,6 @@
 #include "cse.h"
 #include "plat_auth.h"
 #include "manifest.h"
-#include <version.h>
 
 /*
  * TODO: check if all platform for 1.5 are the same base and length.

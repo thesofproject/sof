@@ -6,7 +6,6 @@
 #include "cse.h"
 #include "plat_auth.h"
 #include "manifest.h"
-#include <version.h>
 
 /* manifest template */
 struct fw_image_manifest_v2_5 tgl_manifest = {
