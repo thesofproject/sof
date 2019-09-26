@@ -65,7 +65,11 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 			child = container_of(clist, struct irq_desc, irq_list);
 
 			if (child->handler && (child->cpu_mask & 1 << core)) {
+				/* run handler in non atomic context */
+				spin_unlock(cascade->lock);
 				child->handler(child->handler_arg);
+				spin_lock(cascade->lock);
+
 				handled = true;
 			}
 		}
