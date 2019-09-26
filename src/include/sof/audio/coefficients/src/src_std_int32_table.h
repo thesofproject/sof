@@ -38,7 +38,7 @@
 #include <sof/audio/coefficients/src/src_std_int32_21_80_3968_5000.h>
 #include <sof/audio/coefficients/src/src_std_int32_32_21_4535_5000.h>
 #include <sof/audio/coefficients/src/src_std_int32_40_21_3968_5000.h>
-#include <sof/audio/src/src.h>
+#include <sof/audio/src.h>
 #include <stdint.h>
 
 /* SRC table */

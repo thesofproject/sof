@@ -5,9 +5,10 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef __SOF_AUDIO_SRC_SRC_H__
-#define __SOF_AUDIO_SRC_SRC_H__
+#ifndef __SOF_AUDIO_SRC_H__
+#define __SOF_AUDIO_SRC_H__
 
+#include <arch/audio/src.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -116,4 +117,4 @@ int32_t src_input_rates(void);
 
 int32_t src_output_rates(void);
 
-#endif /* __SOF_AUDIO_SRC_SRC_H__ */
+#endif /* __SOF_AUDIO_SRC_H__ */

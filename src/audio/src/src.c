@@ -10,8 +10,7 @@
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
 #include <sof/audio/pipeline.h>
-#include <sof/audio/src/src.h>
-#include <sof/audio/src/src_config.h>
+#include <sof/audio/src.h>
 #include <sof/debug/panic.h>
 #include <sof/drivers/ipc.h>
 #include <sof/lib/alloc.h>
@@ -29,7 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if SRC_SHORT
+#if CONFIG_SRC_SHORT_COEFF
 #include <sof/audio/coefficients/src/src_tiny_int16_define.h>
 #include <sof/audio/coefficients/src/src_tiny_int16_table.h>
 #else

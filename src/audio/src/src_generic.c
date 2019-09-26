@@ -8,16 +8,15 @@
  * architecture.
  */
 
-#include <sof/audio/src/src_config.h>
+#include <sof/audio/src.h>
 
-#if SRC_GENERIC
+#if !CONFIG_SRC_ARCH
 
 #include <sof/audio/format.h>
-#include <sof/audio/src/src.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#if SRC_SHORT /* 16 bit coefficients version */
+#if CONFIG_SRC_SHORT_COEFF /* 16 bit coefficients version */
 
 static inline void fir_filter_generic(int32_t *rp, const void *cp, int32_t *wp0,
 				      int32_t *fir_start, int32_t *fir_end,
@@ -255,7 +254,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	int32_t *x_end_addr = (int32_t *)s->x_end_addr;
 	int32_t *y_end_addr = (int32_t *)s->y_end_addr;
 
-#if SRC_SHORT
+#if CONFIG_SRC_SHORT_COEFF
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
 #else
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int32_t);
@@ -354,7 +353,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	int16_t *x_end_addr = (int16_t *)s->x_end_addr;
 	int16_t *y_end_addr = (int16_t *)s->y_end_addr;
 
-#if SRC_SHORT
+#if CONFIG_SRC_SHORT_COEFF
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
 #else
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int32_t);

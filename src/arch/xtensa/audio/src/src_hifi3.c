@@ -6,11 +6,10 @@
 
 /* HiFi3 optimized code parts for SRC */
 
-#include <sof/audio/src/src_config.h>
+#include <sof/audio/src.h>
 
-#if SRC_HIFI3
+#if CONFIG_SRC_ARCH_HIFI3
 
-#include <sof/audio/src/src.h>
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi3.h>
 #include <stddef.h>
@@ -20,7 +19,7 @@
  * 16x 64 bit registers in register file AE_DR
  */
 
-#if SRC_SHORT /* 16 bit coefficients version */
+#if CONFIG_SRC_SHORT_COEFF /* 16 bit coefficients version */
 
 static inline void fir_filter(ae_f32 *rp, const void *cp, ae_f32 *wp0,
 			      const int taps_div_4, const int shift,
@@ -335,7 +334,7 @@ void src_polyphase_stage_cir(struct src_stage_prm *s)
 	int32_t *x_end_addr = (int32_t *)s->x_end_addr;
 	int32_t *y_end_addr = (int32_t *)s->y_end_addr;
 
-#if SRC_SHORT
+#if CONFIG_SRC_SHORT_COEFF
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
 #else
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int32_t);
@@ -460,7 +459,7 @@ void src_polyphase_stage_cir_s16(struct src_stage_prm *s)
 	int16_t *x_end_addr = (int16_t *)s->x_end_addr;
 	int16_t *y_end_addr = (int16_t *)s->y_end_addr;
 
-#if SRC_SHORT
+#if CONFIG_SRC_SHORT_COEFF
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int16_t);
 #else
 	const size_t subfilter_size = cfg->subfilter_length * sizeof(int32_t);
