@@ -219,7 +219,9 @@ static void dai_free(struct comp_dev *dev)
 {
 	struct dai_data *dd = comp_get_drvdata(dev);
 
-	dma_channel_put(dd->chan);
+	if (dd->chan)
+		dma_channel_put(dd->chan);
+
 	dma_put(dd->dma);
 
 	dai_put(dd->dai);
