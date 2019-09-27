@@ -7,50 +7,34 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __SOF_AUDIO_EQ_IIR_IIR_H__
-#define __SOF_AUDIO_EQ_IIR_IIR_H__
+#ifndef __SOF_AUDIO_EQ_IIR_H__
+#define __SOF_AUDIO_EQ_IIR_H__
 
+#include <arch/audio/eq_iir.h>
 #include <stddef.h>
 #include <stdint.h>
 
+struct comp_buffer;
+struct comp_dev;
 struct sof_eq_iir_header_df2t;
 
-/* Get platforms configuration */
-#include <config.h>
-
-/* If next defines are set to 1 the EQ is configured automatically. Setting
- * to zero temporarily is useful is for testing needs.
- * Setting EQ_FIR_AUTOARCH to 0 allows to manually set the code variant.
- */
-#define IIR_AUTOARCH    1
-
-/* Force manually some code variant when IIR_AUTOARCH is set to zero. These
- * are useful in code debugging.
- */
-#if IIR_AUTOARCH == 0
-#define IIR_GENERIC	1
-#define IIR_HIFI3	0
-#endif
-
-/* Select optimized code variant when xt-xcc compiler is used */
-#if IIR_AUTOARCH == 1
-#if defined __XCC__
-#include <xtensa/config/core-isa.h>
-#if XCHAL_HAVE_HIFI3 == 1
-#define IIR_GENERIC	0
-#define IIR_HIFI3	1
-#else
-#define IIR_GENERIC	1
-#define IIR_HIFI3	0
-#endif /* XCHAL_HAVE_HIFI3 */
-#else
-/* GCC */
-#define IIR_GENERIC	1
-#define IIR_HIFI3	0
-#endif /* __XCC__ */
-#endif /* IIR_AUTOARCH */
-
 #define IIR_DF2T_NUM_DELAYS 2
+
+/** \brief IIR EQ processing functions map item. */
+struct eq_iir_func_map {
+	uint8_t source;				/**< source frame format */
+	uint8_t sink;				/**< sink frame format */
+	void (*func)(struct comp_dev *dev,	/**< EQ processing function */
+		     struct comp_buffer *source,
+		     struct comp_buffer *sink,
+		     uint32_t frames);
+};
+
+/** \brief Type definition for processing function select return value. */
+typedef void (*eq_iir_func)(struct comp_dev *dev,
+			    struct comp_buffer *source,
+			    struct comp_buffer *sink,
+			    uint32_t frames);
 
 struct iir_state_df2t {
 	unsigned int biquads; /* Number of IIR 2nd order sections total */
@@ -74,4 +58,4 @@ void iir_unmute_df2t(struct iir_state_df2t *iir);
 
 void iir_reset_df2t(struct iir_state_df2t *iir);
 
-#endif /* __SOF_AUDIO_EQ_IIR_IIR_H__ */
+#endif /* __SOF_AUDIO_EQ_IIR_H__ */
