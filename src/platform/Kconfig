@@ -236,4 +236,13 @@ config FIRMWARE_SHORT_NAME
 	  3-characters long firmware identifer
 	  used by rimage to decide how to build final binary
 
+config SYSTICK_PERIOD
+	int "System tick period in microseconds"
+	default 1000
+	help
+	  Defines platform system tick period. It is used to
+	  drive timer based low latency scheduler and also
+	  as a timeout check value for system agent.
+	  Value should be provided in microseconds.
+
 endmenu

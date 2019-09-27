@@ -150,7 +150,7 @@ int platform_init(struct sof *sof)
 	/* init low latency domains and schedulers */
 	platform_timer_domain =
 		timer_domain_init(platform_timer, PLATFORM_DEFAULT_CLOCK,
-				  PLATFORM_LL_DEFAULT_TIMEOUT);
+				  CONFIG_SYSTICK_PERIOD);
 	scheduler_init_ll(platform_timer_domain);
 
 	/* Init EDMA platform domain */
