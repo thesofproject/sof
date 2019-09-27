@@ -5,12 +5,10 @@
  * Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
  */
 
-#ifndef __SOF_AUDIO_EQ_FIR_FIR_HIFI2EP_H__
-#define __SOF_AUDIO_EQ_FIR_FIR_HIFI2EP_H__
+#ifdef __ARCH_AUDIO_EQ_FIR_EQ_FIR_H__
 
-#include <sof/audio/eq_fir/fir_config.h>
-
-#if FIR_HIFIEP
+#ifndef __ARCH_AUDIO_EQ_FIR_EQ_FIR_HIFI2EP_H__
+#define __ARCH_AUDIO_EQ_FIR_EQ_FIR_HIFI2EP_H__
 
 #include <xtensa/config/defs.h>
 #include <xtensa/tie/xt_hifi2.h>
@@ -241,5 +239,10 @@ static inline void fir_32x16_2x_hifiep(struct fir_state_32x16 *fir, int32_t x0,
 	AE_SQ32F_I(AE_ROUNDSQ32SYM(a), (ae_q32s *)y0, 0);
 }
 
-#endif
-#endif /* __SOF_AUDIO_EQ_FIR_FIR_HIFI2EP_H__ */
+#endif /* __ARCH_AUDIO_EQ_FIR_EQ_FIR_HIFI2EP_H__ */
+
+#else
+
+#error "This file shouldn't be included from outside of arch/audio/eq_fir/eq_fir.h"
+
+#endif /* __ARCH_AUDIO_EQ_FIR_EQ_FIR_H__ */

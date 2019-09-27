@@ -4,12 +4,11 @@
 //
 // Author: Seppo Ingalsuo <seppo.ingalsuo@linux.intel.com>
 
-#include <sof/audio/eq_fir/fir_config.h>
+#include <sof/audio/eq_fir.h>
 
-#if FIR_HIFIEP
+#if CONFIG_FIR_ARCH_HIFI2EP
 
 #include <sof/audio/buffer.h>
-#include <sof/audio/eq_fir/fir_hifi2ep.h>
 #include <sof/audio/format.h>
 #include <user/eq.h>
 #include <xtensa/config/defs.h>
@@ -17,6 +16,24 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+
+void set_s16_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s16_hifiep;
+	cd->eq_fir_func = eq_fir_s16_hifiep;
+}
+
+void set_s24_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s24_hifiep;
+	cd->eq_fir_func = eq_fir_s24_hifiep;
+}
+
+void set_s32_fir(struct comp_data *cd)
+{
+	cd->eq_fir_func_even = eq_fir_2x_s32_hifiep;
+	cd->eq_fir_func = eq_fir_s32_hifiep;
+}
 
 /*
  * EQ FIR algorithm code

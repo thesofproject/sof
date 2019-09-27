@@ -6,12 +6,11 @@
 //         Liam Girdwood <liam.r.girdwood@linux.intel.com>
 //         Keyon Jie <yang.jie@linux.intel.com>
 
-#include <sof/audio/eq_fir/fir_config.h>
+#include <sof/audio/eq_fir.h>
 
-#if FIR_GENERIC
+#if !CONFIG_FIR_ARCH
 
 #include <sof/audio/buffer.h>
-#include <sof/audio/eq_fir/fir.h>
 #include <sof/audio/format.h>
 #include <user/eq.h>
 #include <errno.h>

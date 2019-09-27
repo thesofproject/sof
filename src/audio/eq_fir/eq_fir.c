@@ -8,7 +8,7 @@
 
 #include <sof/audio/buffer.h>
 #include <sof/audio/component.h>
-#include <sof/audio/eq_fir/fir_config.h>
+#include <sof/audio/eq_fir.h>
 #include <sof/audio/pipeline.h>
 #include <sof/common.h>
 #include <sof/debug/panic.h>
@@ -29,102 +29,31 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if FIR_GENERIC
-#include <sof/audio/eq_fir/fir.h>
-#endif
-
-#if FIR_HIFIEP
-#include <sof/audio/eq_fir/fir_hifi2ep.h>
-#endif
-
-#if FIR_HIFI3
-#include <sof/audio/eq_fir/fir_hifi3.h>
-#endif
-
 #define trace_eq(__e, ...) trace_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
 #define tracev_eq(__e, ...) tracev_event(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
 #define trace_eq_error(__e, ...) \
 	trace_error(TRACE_CLASS_EQ_FIR, __e, ##__VA_ARGS__)
 
-/* src component private data */
-struct comp_data {
-	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct sof_eq_fir_config *config; /**< pointer to setup blob */
-	enum sof_ipc_frame source_format; /**< source frame format */
-	enum sof_ipc_frame sink_format;   /**< sink frame format */
-	int32_t *fir_delay;		  /**< pointer to allocated RAM */
-	size_t fir_delay_size;		  /**< allocated size */
-	void (*eq_fir_func_even)(struct fir_state_32x16 fir[],
-				 struct comp_buffer *source,
-				 struct comp_buffer *sink,
-				 int frames, int nch);
-	void (*eq_fir_func)(struct fir_state_32x16 fir[],
-			    struct comp_buffer *source,
-			    struct comp_buffer *sink,
-			    int frames, int nch);
-};
+#if !CONFIG_FIR_ARCH
 
-/* The optimized FIR functions variants need to be updated into function
- * set_fir_func. The cd->eq_fir_func is a function that can process any
- * number of samples. The cd->eq_fir_func_even is for optimized version
- * that is guaranteed to be called with even samples number.
- */
-
-#if FIR_HIFI3
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s16_hifi3;
-	cd->eq_fir_func = eq_fir_s16_hifi3;
-}
-
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s24_hifi3;
-	cd->eq_fir_func = eq_fir_s24_hifi3;
-}
-
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s32_hifi3;
-	cd->eq_fir_func = eq_fir_s32_hifi3;
-}
-#elif FIR_HIFIEP
-static inline void set_s16_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s16_hifiep;
-	cd->eq_fir_func = eq_fir_s16_hifiep;
-}
-
-static inline void set_s24_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s24_hifiep;
-	cd->eq_fir_func = eq_fir_s24_hifiep;
-}
-
-static inline void set_s32_fir(struct comp_data *cd)
-{
-	cd->eq_fir_func_even = eq_fir_2x_s32_hifiep;
-	cd->eq_fir_func = eq_fir_s32_hifiep;
-}
-#else
-/* FIR_GENERIC */
-static inline void set_s16_fir(struct comp_data *cd)
+void set_s16_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_s16;
 	cd->eq_fir_func = eq_fir_s16;
 }
 
-static inline void set_s24_fir(struct comp_data *cd)
+void set_s24_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_s24;
 	cd->eq_fir_func = eq_fir_s24;
 }
 
-static inline void set_s32_fir(struct comp_data *cd)
+void set_s32_fir(struct comp_data *cd)
 {
 	cd->eq_fir_func_even = eq_fir_s32;
 	cd->eq_fir_func = eq_fir_s32;
 }
+
 #endif
 
 static inline int set_fir_func(struct comp_dev *dev)

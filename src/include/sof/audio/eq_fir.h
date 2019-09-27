@@ -7,17 +7,29 @@
  *         Keyon Jie <yang.jie@linux.intel.com>
  */
 
-#ifndef __SOF_AUDIO_EQ_FIR_FIR_H__
-#define __SOF_AUDIO_EQ_FIR_FIR_H__
+#ifndef __SOF_AUDIO_EQ_FIR_H__
+#define __SOF_AUDIO_EQ_FIR_H__
 
-#include <sof/audio/eq_fir/fir_config.h>
+#include <arch/audio/eq_fir/eq_fir.h>
+#include <sof/platform.h>
+#include <ipc/stream.h>
+#include <stddef.h>
 
-#if FIR_GENERIC
+struct comp_buffer;
+struct comp_data;
+struct sof_eq_fir_config;
+
+void set_s16_fir(struct comp_data *cd);
+
+void set_s24_fir(struct comp_data *cd);
+
+void set_s32_fir(struct comp_data *cd);
+
+#if !CONFIG_FIR_ARCH
 
 #include <sof/audio/format.h>
 #include <stdint.h>
 
-struct comp_buffer;
 struct sof_eq_fir_coef_data;
 
 struct fir_state_32x16 {
@@ -105,4 +117,22 @@ static inline int32_t fir_32x16(struct fir_state_32x16 *fir, int32_t x)
 }
 
 #endif
-#endif /* __SOF_AUDIO_EQ_FIR_FIR_H__ */
+
+struct comp_data {
+	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
+	struct sof_eq_fir_config *config; /**< pointer to setup blob */
+	enum sof_ipc_frame source_format; /**< source frame format */
+	enum sof_ipc_frame sink_format;   /**< sink frame format */
+	int32_t *fir_delay;		  /**< pointer to allocated RAM */
+	size_t fir_delay_size;		  /**< allocated size */
+	void (*eq_fir_func_even)(struct fir_state_32x16 fir[],
+				 struct comp_buffer *source,
+				 struct comp_buffer *sink,
+				 int frames, int nch);
+	void (*eq_fir_func)(struct fir_state_32x16 fir[],
+			    struct comp_buffer *source,
+			    struct comp_buffer *sink,
+			    int frames, int nch);
+};
+
+#endif /* __SOF_AUDIO_EQ_FIR_H__ */
