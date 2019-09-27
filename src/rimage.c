@@ -40,6 +40,8 @@ static void usage(char *name)
 #endif /* HAS_FILE_FORMAT_H */
 	fprintf(stdout, "\t -i set IMR type\n");
 	fprintf(stdout, "\t -x set xcc module offset\n");
+	fprintf(stdout, "\t -f firmware version = x.y\n");
+	fprintf(stdout, "\t -b build version\n");
 	exit(0);
 }
 
@@ -54,7 +56,7 @@ int main(int argc, char *argv[])
 
 	image.xcc_mod_offset = DEFAULT_XCC_MOD_OFFSET;
 
-	while ((opt = getopt(argc, argv, "ho:p:m:vba:s:k:l:ri:x:")) != -1) {
+	while ((opt = getopt(argc, argv, "ho:p:m:va:s:k:l:ri:x:f:b:")) != -1) {
 		switch (opt) {
 		case 'o':
 			image.out_file = optarg;
@@ -92,6 +94,12 @@ int main(int argc, char *argv[])
 		case 'x':
 			image.xcc_mod_offset = atoi(optarg);
 			break;
+		case 'f':
+			image.fw_ver_string = optarg;
+			break;
+		case 'b':
+			image.fw_ver_build_string = optarg;
+			break;
 		case 'h':
 			usage(argv[0]);
 			break;
@@ -115,6 +123,30 @@ int main(int argc, char *argv[])
 	if (!image.key_name) {
 		fprintf(stderr, "error: requires private key\n");
 		return -EINVAL;
+	}
+
+	/* firmware version and build id */
+	if (image.fw_ver_string) {
+		ret = sscanf(image.fw_ver_string, "%hu.%hu",
+			     &image.fw_ver_major,
+			     &image.fw_ver_minor);
+
+		if (ret != 2) {
+			fprintf(stderr,
+				"error: cannot parse firmware version\n");
+			return -EINVAL;
+		}
+	}
+
+	if (image.fw_ver_build_string) {
+		ret = sscanf(image.fw_ver_build_string, "%hu",
+			     &image.fw_ver_build);
+
+		if (ret != 1) {
+			fprintf(stderr,
+				"error: cannot parse build version\n");
+			return -EINVAL;
+		}
 	}
 
 	/* find machine */

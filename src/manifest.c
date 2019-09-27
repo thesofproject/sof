@@ -727,6 +727,11 @@ static int man_write_fw_v1_5(struct image *image)
 	m = image->fw_image;
 	desc = image->fw_image + MAN_DESC_OFFSET_V1_5;
 
+	/* firmware and build version */
+	m->desc.header.major_version = image->fw_ver_major;
+	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.build_version = image->fw_ver_build;
+
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;
 	man_create_modules(image, desc, FILE_TEXT_OFFSET_V1_5);
@@ -791,6 +796,11 @@ static int man_write_fw_v1_5_sue(struct image *image)
 	/* create the module */
 	m = image->fw_image + MAN_DESC_OFFSET_V1_5_SUE;
 
+	/* firmware and build version */
+	m->desc.header.major_version = image->fw_ver_major;
+	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.build_version = image->fw_ver_build;
+
 	/* create each module - subtract the boot loader exec header */
 	m->desc.header.num_module_entries = image->num_modules - 1;
 	man_create_modules(image, &m->desc, FILE_TEXT_OFFSET_V1_5_SUE);
@@ -853,6 +863,14 @@ static int man_write_fw_v1_8(struct image *image)
 	/* create the module */
 	m = image->fw_image;
 	desc = image->fw_image + MAN_DESC_OFFSET_V1_8;
+
+	/* firmware and build version */
+	m->css.version.major_version = image->fw_ver_major;
+	m->css.version.minor_version = image->fw_ver_minor;
+	m->css.version.build_version = image->fw_ver_build;
+	m->desc.header.major_version = image->fw_ver_major;
+	m->desc.header.minor_version = image->fw_ver_minor;
+	m->desc.header.build_version = image->fw_ver_build;
 
 	/* create each module */
 	m->desc.header.num_module_entries = image->num_modules;

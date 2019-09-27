@@ -125,6 +125,13 @@ struct image {
 	char out_rom_file[256];
 	char out_man_file[256];
 	char out_unsigned_file[256];
+
+	/* fw version and build id */
+	char* fw_ver_string;
+	char* fw_ver_build_string;
+	uint16_t fw_ver_major;
+	uint16_t fw_ver_minor;
+	uint16_t fw_ver_build;
 };
 
 struct mem_zone {
