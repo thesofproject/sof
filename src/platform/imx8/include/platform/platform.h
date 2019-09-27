@@ -25,11 +25,6 @@ struct timer;
 #define PLATFORM_DEFAULT_CLOCK CLK_CPU(0)
 #define LPSRAM_SIZE 16384
 
-/*! \def PLATFORM_LL_DEFAULT_TIMEOUT
- *  \brief low latency scheduler default timeout in microseconds
- */
-#define PLATFORM_LL_DEFAULT_TIMEOUT	1000
-
 /* IPC Interrupt */
 #define PLATFORM_IPC_INTERRUPT		IRQ_NUM_MU
 #define PLATFORM_IPC_INTERRUPT_NAME	NULL
