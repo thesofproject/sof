@@ -31,6 +31,7 @@
 #ifndef __INCLUDE_CLOCK__
 #define __INCLUDE_CLOCK__
 
+#include <xtensa/config/core-isa.h>
 #include <stdint.h>
 
 #define CLOCK_NOTIFY_PRE	0
@@ -60,5 +61,9 @@ void clock_set_freq(int clock, uint32_t hz);
 uint64_t clock_ms_to_ticks(int clock, uint64_t ms);
 
 void clock_init(void);
+
+void clock_set_high_freq(void);
+
+void clock_set_low_freq(void);
 
 #endif

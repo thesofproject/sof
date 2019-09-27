@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Intel Corporation
+ * Copyright (c) 2019, Intel Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,67 +25,32 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Liam Girdwood <liam.r.girdwood@linux.intel.com>
+ * Author: Janusz Jankowski <janusz.jankowski@linux.intel.com>
  */
 
-#ifndef __ARCH_WAIT_H_
-#define __ARCH_WAIT_H_
-
-#include <xtensa/xtruntime.h>
 #include <arch/interrupt.h>
 #include <sof/clk.h>
-#include <sof/panic.h>
 
-#include <uapi/ipc/trace.h>
+static void (*handlers[XCHAL_NUM_INTERRUPTS])(void *arg);
+static void *handlers_args[XCHAL_NUM_INTERRUPTS];
 
-#if defined(PLATFORM_WAITI_DELAY)
-
-static inline void arch_wait_for_interrupt(int level)
+/* We set clock to 120mHz before waiti,
+ * so on interrupt we have to set it back to 400mHz,
+ * then invoke registered interrupt handler.
+ */
+static void proxy_handler(void *arg)
 {
-	int i;
+	void (*f)(void *) = handlers[(uint32_t)arg];
 
-	/* can only enter WFI when at run level 0 i.e. not IRQ level */
-	if (arch_interrupt_get_level() > 0)
-		panic(SOF_IPC_PANIC_WFI);
-
-	/* while in waiti FW should use 120mHz clock on CNL platform */
-	clock_set_low_freq();
-
-	/* this sequence must be atomic on LX6 */
-	XTOS_SET_INTLEVEL(5);
-
-	/* LX6 needs a delay */
-	for (i = 0; i < 128; i++)
-		asm volatile("nop");
-
-	/* and to flush all loads/stores prior to wait */
-	asm volatile("isync");
-	asm volatile("extw");
-
-	/* now wait */
-	asm volatile("waiti 0");
+	clock_set_high_freq();
+	if (f)
+		f(handlers_args[(uint32_t)arg]);
 }
 
-#else
-
-static inline void arch_wait_for_interrupt(int level)
+void arch_interrupt_set_proxy(int irq,
+	void (*handler)(void *arg), void *arg)
 {
-	/* can only enter WFI when at run level 0 i.e. not IRQ level */
-	if (arch_interrupt_get_level() > 0)
-		panic(SOF_IPC_PANIC_WFI);
-
-	/* while in waiti FW should use 120mHz clock on CNL platform */
-	clock_set_low_freq();
-
-	asm volatile("waiti 0");
+	handlers[irq] = handler;
+	handlers_args[irq] = arg;
+	_xtos_set_interrupt_handler_arg(irq, proxy_handler, (void *)irq);
 }
-
-#endif
-
-static inline void idelay(int n)
-{
-	while (n--)
-		asm volatile("nop");
-}
-
-#endif

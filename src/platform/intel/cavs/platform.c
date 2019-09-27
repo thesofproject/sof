@@ -459,6 +459,7 @@ int platform_init(struct sof *sof)
 	/* initialize PM for boot */
 	shim_write(SHIM_CLKCTL,
 		   SHIM_CLKCTL_RHROSCC | /* Request High Performance RING Osc */
+		   SHIM_CLTCTL_RLROSCC | /* Request Low Performance RING Osc */
 		   SHIM_CLKCTL_OCS_HP_RING | /* Select HP RING Oscillator Clk
 					      * for memory
 					      */
