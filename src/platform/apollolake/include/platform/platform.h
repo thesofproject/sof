@@ -56,11 +56,6 @@ struct timer;
 #define PLATFORM_MAX_CHANNELS	8
 #define PLATFORM_MAX_STREAMS	16
 
-/*! \def PLATFORM_LL_DEFAULT_TIMEOUT
- *  \brief low latency scheduler default timeout in microseconds
- */
-#define PLATFORM_LL_DEFAULT_TIMEOUT	1000
-
 /* local buffer size of DMA tracing */
 #define DMA_TRACE_LOCAL_SIZE	(HOST_PAGE_SIZE * 2)
 
