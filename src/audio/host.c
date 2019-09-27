@@ -746,7 +746,8 @@ static int host_reset(struct comp_dev *dev)
 
 	trace_host_with_ids(dev, "host_reset()");
 
-	dma_channel_put(hd->chan);
+	if (hd->chan)
+		dma_channel_put(hd->chan);
 
 	/* free all DMA elements */
 	dma_sg_free(&hd->host.elem_array);
