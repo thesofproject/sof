@@ -252,7 +252,11 @@ static inline void handle_irq_batch(struct irq_cascade_desc *cascade,
 			child = container_of(clist, struct irq_desc, irq_list);
 
 			if (child->handler && (child->cpu_mask & 1 << core)) {
+				/* run handler in non atomic context */
+				spin_unlock(cascade->lock);
 				child->handler(child->handler_arg);
+				spin_lock(cascade->lock);
+
 				handled = true;
 			}
 		}
