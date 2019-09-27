@@ -18,7 +18,6 @@
 #include <openssl/err.h>
 
 #include "rimage.h"
-#include "file_format.h"
 #include "manifest.h"
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L

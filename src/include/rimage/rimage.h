@@ -92,9 +92,13 @@ struct module {
 struct image {
 
 	const char *out_file;
-	const char *ldc_out_file;
 	FILE *out_fd;
+
+#ifdef HAS_FILE_FORMAT_H
+	const char *ldc_out_file;
 	FILE *ldc_out_fd;
+#endif /* HAS_FILE_FORMAT_H */
+
 	void *pos;
 
 	const struct adsp *adsp;
@@ -149,7 +153,9 @@ struct adsp {
 	int exec_boot_ldr;
 };
 
+#ifdef HAS_FILE_FORMAT_H
 int write_logs_dictionary(struct image *image);
+#endif /* HAS_FILE_FORMAT_H */
 
 void module_sha256_create(struct image *image);
 void module_sha_update(struct image *image, uint8_t *data, size_t bytes);

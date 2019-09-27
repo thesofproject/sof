@@ -17,7 +17,6 @@
 #include <user/manifest.h>
 
 #include "rimage.h"
-#include "file_format.h"
 #include "css.h"
 #include "cse.h"
 #include "plat_auth.h"

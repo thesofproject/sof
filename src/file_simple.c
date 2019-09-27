@@ -8,8 +8,11 @@
 #include <errno.h>
 #include <string.h>
 
+#ifdef HAS_FILE_FORMAT_H
+#include <sof/logs/file_format.h>
+#endif /* HAS_FILE_FORMAT_H */
+
 #include "rimage.h"
-#include "file_format.h"
 
 #define BYT_IRAM_BASE		0xff2c0000
 #define BYT_IRAM_HOST_OFFSET	0x0C0000
@@ -366,6 +369,7 @@ static int simple_write_firmware(struct image *image)
 	return 0;
 }
 
+#ifdef HAS_FILE_FORMAT_H
 int write_logs_dictionary(struct image *image)
 {
 	struct snd_sof_logs_header header;
@@ -455,6 +459,7 @@ out:
 
 	return ret;
 }
+#endif /* HAS_FILE_FORMAT_H */
 
 const struct adsp machine_byt = {
 	.name = "byt",
