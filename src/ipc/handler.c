@@ -1290,13 +1290,6 @@ int ipc_process_msg_queue(void)
 	return 0;
 }
 
-enum task_state ipc_process_task(void *data)
-{
-	ipc_platform_do_cmd(_ipc);
-
-	return SOF_TASK_STATE_COMPLETED;
-}
-
 void ipc_schedule_process(struct ipc *ipc)
 {
 	schedule_task(&ipc->ipc_task, 0, 100);

@@ -91,7 +91,7 @@ static void irq_handler(void *arg)
 	}
 }
 
-void ipc_platform_do_cmd(struct ipc *ipc)
+static enum task_state ipc_platform_do_cmd(void *data)
 {
 	struct sof_ipc_cmd_hdr *hdr;
 	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
@@ -99,6 +99,8 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	/* perform command */
 	hdr = mailbox_validate();
 	ipc_cmd(hdr);
+
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 static void ipc_platform_complete_cmd(void *data)
@@ -161,8 +163,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, ipc_platform_complete_cmd, _ipc, 0,
-			   0);
+			   ipc_platform_do_cmd, ipc_platform_complete_cmd, _ipc,
+			   0, 0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
