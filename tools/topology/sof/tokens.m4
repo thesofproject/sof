@@ -90,3 +90,9 @@ SectionVendorTokens."sof_tone_tokens" {
 SectionVendorTokens."sof_process_tokens" {
 	SOF_TKN_PROCESS_TYPE			"900"
 }
+
+SectionVendorTokens."sof_led_tokens" {
+	SOF_TKN_MUTE_LED_USE			"1300"
+	SOF_TKN_MUTE_LED_DIRECTION		"1301"
+}
+
