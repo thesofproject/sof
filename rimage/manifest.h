@@ -108,6 +108,8 @@ struct fw_image_manifest_v2_5 {
 	struct sof_man_fw_desc desc;	/* at offset MAN_DESC_OFFSET */
 } __attribute__((packed));
 
+extern struct fw_image_manifest_v2_5 tgl_manifest;
+
 /*
  * Firmware manifest header V1.8 used on APL onwards
  */
