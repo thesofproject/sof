@@ -402,6 +402,7 @@ static int kpb_prepare(struct comp_dev *dev)
 			   SOF_SCHEDULE_EDF, /* utilize EDF scheduler */
 			   SOF_TASK_PRI_ALMOST_IDLE, /* almost idle priority */
 			   kpb_draining_task, /* task function */
+			   NULL, /* no complete function */
 			   &kpb->draining_task_data, /* task private data */
 			   0, /* core on which we should run */
 			   SOF_SCHEDULE_FLAG_IDLE);

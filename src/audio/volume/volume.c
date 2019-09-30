@@ -164,7 +164,7 @@ static struct comp_dev *volume_new(struct sof_ipc_comp *comp)
 
 	comp_set_drvdata(dev, cd);
 	schedule_task_init(&cd->volwork, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
-			   vol_work, dev, 0, 0);
+			   vol_work, NULL, dev, 0, 0);
 
 	/* Set the default volumes. If IPC sets min_value or max_value to
 	 * not-zero, use them. Otherwise set to internal limits and notify

@@ -25,6 +25,7 @@
 #include <ipc/topology.h>
 #include <ipc/trace.h>
 #include <user/trace.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define trace_sa(__e, ...) \
@@ -83,7 +84,7 @@ void sa_init(struct sof *sof)
 	sa->is_active = true;
 
 	schedule_task_init(&sa->work, SOF_SCHEDULE_LL, SOF_TASK_PRI_HIGH,
-			   validate, sa, 0, 0);
+			   validate, NULL, sa, 0, 0);
 
 	schedule_task(&sa->work, PLATFORM_IDLE_TIME, PLATFORM_IDLE_TIME);
 }

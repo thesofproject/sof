@@ -81,7 +81,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_MED,
-			   ipc_process_task, _ipc, 0, 0);
+			   ipc_process_task, NULL, _ipc, 0, 0);
 
 	return 0;
 }

@@ -21,6 +21,7 @@
 #include <sof/sof.h>
 #include <ipc/topology.h>
 #include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #if STATIC_PIPE
@@ -65,7 +66,7 @@ void task_main_init(struct sof *sof)
 	*main_task = rzalloc(RZONE_SYS, SOF_MEM_CAPS_RAM, sizeof(**main_task));
 
 	assert(!schedule_task_init(*main_task, SOF_SCHEDULE_EDF,
-				   SOF_TASK_PRI_IDLE, main_main, sof, cpu,
+				   SOF_TASK_PRI_IDLE, main_main, NULL, sof, cpu,
 				   SOF_SCHEDULE_FLAG_IDLE));
 }
 

@@ -20,6 +20,7 @@
 #include <sof/trace/trace.h>
 #include <user/trace.h>
 #include <config.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct {
@@ -69,7 +70,7 @@ static inline void wait_init(completion_t *comp)
 	c->complete = 0;
 
 	schedule_task_init(&comp->work, SOF_SCHEDULE_LL, SOF_TASK_PRI_MED,
-			   _wait_cb, comp, 0, 0);
+			   _wait_cb, NULL, comp, 0, 0);
 }
 
 static inline void wait_clear(completion_t *comp)

@@ -48,6 +48,7 @@ struct task {
 	enum task_state state;
 	void *data;
 	enum task_state (*run)(void *data);
+	void (*complete)(void *data);
 	struct list_item list;
 	void *private;
 };

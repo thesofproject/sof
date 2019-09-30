@@ -18,6 +18,7 @@
 #include <sof/spinlock.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
+#include <stddef.h>
 #include <stdint.h>
 
 extern struct ipc *_ipc;
@@ -186,7 +187,7 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, _ipc, 0, 0);
+			   ipc_process_task, NULL, _ipc, 0, 0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
