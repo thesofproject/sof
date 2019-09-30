@@ -25,6 +25,7 @@ add_executable(rimage
 	man_cnl.c
 	man_kbl.c
 	man_sue.c
+	man_tgl.c
 	cse.c
 	css.c
 	plat_auth.c

@@ -1302,9 +1302,9 @@ const struct adsp machine_tgl = {
 	.image_size = 0x100000,
 	.dram_offset = 0,
 	.machine_id = MACHINE_TIGERLAKE,
-	.write_firmware = man_write_fw_v1_8,
+	.write_firmware = NULL, /* not yet implemented */
 	.write_firmware_meu = man_write_fw_meu_v2_5,
-	.man_v1_8 = &cnl_manifest, // use the same as CNL
+	.man_v2_5 = &tgl_manifest,
 };
 
 const struct adsp machine_sue = {
