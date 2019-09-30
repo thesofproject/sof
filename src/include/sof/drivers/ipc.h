@@ -95,7 +95,6 @@ struct ipc_shared_context {
 };
 
 struct ipc {
-	uint32_t host_pending;
 	spinlock_t *lock;	/* locking mechanism */
 	void *comp_data;
 

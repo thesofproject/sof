@@ -57,12 +57,9 @@ out:
 
 static void irq_handler(void *arg)
 {
-	uint32_t ctrl;
 	uint32_t status;
-	uint32_t msg = 0;
 
 	/* Interrupt arrived, check src */
-	ctrl = imx_mu_read(IMX_MU_xCR);
 	status = imx_mu_read(IMX_MU_xSR);
 
 	tracev_ipc("ipc: irq isr 0x%x", status);
@@ -89,16 +86,8 @@ static void irq_handler(void *arg)
 		imx_mu_xsr_rmw(IMX_MU_xSR_GIPn(0), 0);
 
 		interrupt_clear(PLATFORM_IPC_INTERRUPT);
-		/* TODO: place message in Q and process later */
-		/* It's not Q ATM, may overwrite */
-		if (_ipc->host_pending) {
-			trace_ipc_error("ipc: dropping msg 0x%x", msg);
-			trace_ipc_error(" isr 0x%x ctrl 0x%x ipcxh 0x%x",
-					status, ctrl);
-		} else {
-			_ipc->host_pending = 1;
-			ipc_schedule_process(_ipc);
-		}
+
+		ipc_schedule_process(_ipc);
 	}
 }
 
@@ -110,8 +99,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	/* perform command */
 	hdr = mailbox_validate();
 	ipc_cmd(hdr);
-
-	ipc->host_pending = 0;
 }
 
 static void ipc_platform_complete_cmd(void *data)

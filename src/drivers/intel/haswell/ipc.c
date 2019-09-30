@@ -82,17 +82,7 @@ static void irq_handler(void *arg)
 		/* Mask Busy interrupt before return */
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) | SHIM_IMRD_BUSY);
 
-		/* TODO: place message in Q and process later */
-		/* It's not Q ATM, may overwrite */
-		if (_ipc->host_pending) {
-			trace_ipc_error("ipc: dropping msg");
-			trace_ipc_error(" isr 0x%x imrd 0x%x ipcx 0x%x",
-					isr, shim_read(SHIM_IMRD),
-					shim_read(SHIM_IPCX));
-		} else {
-			_ipc->host_pending = 1;
-			ipc_schedule_process(_ipc);
-		}
+		ipc_schedule_process(_ipc);
 	}
 }
 
@@ -104,8 +94,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	/* perform command */
 	hdr = mailbox_validate();
 	ipc_cmd(hdr);
-
-	ipc->host_pending = 0;
 }
 
 static void ipc_platform_complete_cmd(void *data)

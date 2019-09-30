@@ -303,7 +303,6 @@ static enum task_state spi_completion_work(void *data)
 		dcache_invalidate_region(spi->rx_buffer, SPI_BUFFER_SIZE);
 		mailbox_hostbox_write(0, spi->rx_buffer, hdr->size);
 
-		_ipc->host_pending = 1;
 		ipc_schedule_process(_ipc);
 
 		break;

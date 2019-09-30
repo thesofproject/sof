@@ -1292,8 +1292,7 @@ int ipc_process_msg_queue(void)
 
 enum task_state ipc_process_task(void *data)
 {
-	if (_ipc->host_pending)
-		ipc_platform_do_cmd(_ipc);
+	ipc_platform_do_cmd(_ipc);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
