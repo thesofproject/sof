@@ -20,8 +20,8 @@ struct sof;
 #define SOF_TASK_PRI_IDLE	INT16_MAX	/* lowest possible priority */
 #define SOF_TASK_PRI_ALMOST_IDLE	(SOF_TASK_PRI_IDLE - 1)
 
-#define SOF_TASK_PRI_IPC	SOF_TASK_PRI_LOW
-#define SOF_TASK_PRI_IDC	SOF_TASK_PRI_LOW
+#define SOF_TASK_PRI_IPC	SOF_TASK_PRI_HIGH
+#define SOF_TASK_PRI_IDC	SOF_TASK_PRI_HIGH
 
 /* task default stack size in bytes */
 #define SOF_TASK_DEFAULT_STACK_SIZE	2048
