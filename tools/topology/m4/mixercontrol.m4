@@ -28,9 +28,24 @@ define(`CONTROLMIXER_OPS',
 `		put STR($4)'
 `	}')
 
-dnl C_CONTROLMIXER(name, index, ops, max, invert, tlv, KCONTROL_CHANNELS)
+
+define(`N_CONTROLMIXER', `CONTROLMIXER'PIPELINE_ID`.'$1)
+
+dnl C_CONTROLMIXER(name, index, ops, max, invert, tlv, comment, KCONTROL_CHANNELS, useleds, ledsdir)
 define(`C_CONTROLMIXER',
-`SectionControlMixer."$2 $1" {'
+`ifelse(`$#', `10',
+`SectionVendorTuples."'N_CONTROLMIXER($2)`_tuples_w" {'
+`	tokens "sof_led_tokens"'
+`	tuples."word" {'
+`		SOF_TKN_MUTE_LED_USE'		$9
+`		SOF_TKN_MUTE_LED_DIRECTION'	$10
+`	}'
+`}'
+`SectionData."'N_CONTROLMIXER($2)`_data_w" {'
+`	tuples "'N_CONTROLMIXER($2)`_tuples_w"'
+`}'
+,` ')'
+`SectionControlMixer."ifdef(`CONTROL_NAME', CONTROL_NAME, $2 $1)" {'
 `'
 `	# control belongs to this index group'
 `	index STR($2)'
@@ -43,7 +58,11 @@ define(`C_CONTROLMIXER',
 `	$4'
 `	invert STR($5)'
 `	$6'
-
+`ifelse(`$#', `10',
+`	data ['
+`		"'N_CONTROLMIXER($2)`_data_w"'
+`	]'
+,` ')'
 `}')
 
 divert(0)dnl
