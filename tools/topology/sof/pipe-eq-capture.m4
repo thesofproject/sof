@@ -15,8 +15,10 @@ include(`bytecontrol.m4')
 include(`mixercontrol.m4')
 include(`eq_iir.m4')
 
-define(`CONTROL_NAME', Capture Volume)
 define(`PGA_NAME', Dmic0)
+define(`CONTROL_NAME_VOLUME', Capture Volume)
+define(`CONTROL_NAME_SWITCH', Capture Switch)
+define(`CONTROL_NAME', `CONTROL_NAME_VOLUME')
 
 #
 # Controls
@@ -33,6 +35,17 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	Channel register and shift for Front Left/Right,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
 
+define(`CONTROL_NAME', `CONTROL_NAME_SWITCH')
+
+# Switch type Mixer Control with max value of 1
+C_CONTROLMIXER(Master Capture Switch, PIPELINE_ID,
+	CONTROLMIXER_OPS(volsw, 259 binds the mixer control to switch get/put handlers, 259, 259),
+	CONTROLMIXER_MAX(max 1 indicates switch type control, 1),
+	false,
+	,
+	Channel register and shift for Front Left/Right,
+	LIST(`	', KCONTROL_CHANNEL(FL, 2, 0), KCONTROL_CHANNEL(FR, 2, 1)),
+	"1", "1")
 
 # Volume Configuration
 W_VENDORTUPLES(capture_pga_tokens, sof_volume_tokens,
@@ -68,7 +81,7 @@ W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2)
 # "Volume" has 2 source and 2 sink periods
 W_PGA(0, PIPELINE_FORMAT, 2, 2,
 	 capture_pga_conf, LIST(`		',
-		"CONTROL_NAME"))
+		"CONTROL_NAME_VOLUME", "CONTROL_NAME_SWITCH"))
 
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR_C48"))
@@ -99,8 +112,10 @@ P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
 	`dapm(N_BUFFER(1), N_EQ_IIR(0))',
 	`dapm(N_EQ_IIR(0), N_BUFFER(2))'))
 
-undefine(`CONTROL_NAME')
 undefine(`PGA_NAME')
+undefine(`CONTROL_NAME')
+undefine(`CONTROL_NAME_VOLUME')
+undefine(`CONTROL_NAME_SWITCH')
 
 #
 # Pipeline Source and Sinks
