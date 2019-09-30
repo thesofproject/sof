@@ -27,6 +27,7 @@
 #include <xtos-structs.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 extern struct ipc *_ipc;
@@ -371,7 +372,7 @@ int idc_init(void)
 
 	/* process task */
 	schedule_task_init(&(*idc)->idc_task, SOF_SCHEDULE_EDF,
-			   SOF_TASK_PRI_IDC, idc_do_cmd, *idc, core, 0);
+			   SOF_TASK_PRI_IDC, idc_do_cmd, NULL, *idc, core, 0);
 
 	/* configure interrupt */
 	(*idc)->irq = interrupt_get_irq(PLATFORM_IDC_INTERRUPT,

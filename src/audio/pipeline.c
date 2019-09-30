@@ -66,7 +66,7 @@ struct pipeline *pipeline_new(struct sof_ipc_pipe_new *pipe_desc,
 	type = pipeline_is_timer_driven(p) ? SOF_SCHEDULE_LL :
 		SOF_SCHEDULE_EDF;
 	schedule_task_init(&p->pipe_task, type, pipe_desc->priority,
-			   pipeline_task, p, pipe_desc->core, 0);
+			   pipeline_task, NULL, p, pipe_desc->core, 0);
 
 	return p;
 }

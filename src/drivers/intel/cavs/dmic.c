@@ -1068,7 +1068,7 @@ static int dmic_set_config(struct dai *dai, struct sof_ipc_dai_config *config)
 
 	/* Initialize start sequence handler */
 	schedule_task_init(&dmic->dmicwork, SOF_SCHEDULE_LL,
-			   SOF_TASK_PRI_MED, dmic_work, dai, 0,
+			   SOF_TASK_PRI_MED, dmic_work, NULL, dai, 0,
 			   SOF_SCHEDULE_FLAG_ASYNC);
 
 

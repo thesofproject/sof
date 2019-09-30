@@ -215,6 +215,10 @@ static void schedule_edf_task_complete(void *data, struct task *task)
 
 	irq_local_disable(flags);
 
+	/* execute task complete function if exists */
+	if (task->complete)
+		task->complete(task->data);
+
 	task->state = SOF_TASK_STATE_COMPLETED;
 	list_item_del(&task->list);
 
