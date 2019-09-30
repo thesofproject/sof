@@ -78,8 +78,10 @@ struct partition_info_ext {
 	(sizeof(struct partition_info_ext) + \
 	sizeof(struct signed_pkg_info_ext))
 
-void ri_adsp_meta_data_create(struct image *image, int meta_start_offset,
-	int meta_end_offset);
+void ri_adsp_meta_data_create_v1_8(struct image *image, int meta_start_offset,
+				   int meta_end_offset);
+void ri_adsp_meta_data_create_v2_5(struct image *image, int meta_start_offset,
+				   int meta_end_offset);
 void ri_plat_ext_data_create(struct image *image);
 
 #endif
