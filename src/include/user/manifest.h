@@ -161,27 +161,53 @@ struct sof_man_fw_desc {
 
 } __attribute__((packed));
 
+#define SOF_MAN_COMP_SHA256_LEN		32
+#define SOF_MAN_COMP_SHA384_LEN		48
+
 /*
- * Component Descriptor. Used by ROM - Immutable.
+ * Component Descriptor for manifest v1.8. Used by ROM - Immutable.
  */
-struct sof_man_component_desc {
+struct sof_man_component_desc_v1_8 {
 	uint32_t reserved[2];	/* all 0 */
 	uint32_t version;
-	uint8_t hash[SOF_MAN_MOD_SHA256_LEN];
+	uint8_t hash[SOF_MAN_COMP_SHA256_LEN];
 	uint32_t base_offset;
 	uint32_t limit_offset;
 	uint32_t attributes[4];
 } __attribute__((packed));
 
 /*
- * Audio DSP extended metadata. Used by ROM - Immutable.
+ * Audio DSP extended metadata for manifest v1.8. Used by ROM - Immutable.
  */
-struct sof_man_adsp_meta_file_ext {
+struct sof_man_adsp_meta_file_ext_v1_8 {
 	uint32_t ext_type;	/* always 17 for ADSP extension */
 	uint32_t ext_len;
 	uint32_t imr_type;
 	uint8_t reserved[16];	/* all 0 */
-	struct sof_man_component_desc comp_desc[1];
+	struct sof_man_component_desc_v1_8 comp_desc[1];
+} __attribute__((packed));
+
+/*
+ * Component Descriptor for manifest v2.5. Used by ROM - Immutable.
+ */
+struct sof_man_component_desc_v2_5 {
+	uint32_t reserved[2];	/* all 0 */
+	uint32_t version;
+	uint8_t hash[SOF_MAN_COMP_SHA384_LEN];
+	uint32_t base_offset;
+	uint32_t limit_offset;
+	uint32_t attributes[4];
+} __attribute__((packed));
+
+/*
+ * Audio DSP extended metadata for manifest v2.5. Used by ROM - Immutable.
+ */
+struct sof_man_adsp_meta_file_ext_v2_5 {
+	uint32_t ext_type;	/* always 17 for ADSP extension */
+	uint32_t ext_len;
+	uint32_t imr_type;
+	uint8_t reserved[16];	/* all 0 */
+	struct sof_man_component_desc_v2_5 comp_desc[1];
 } __attribute__((packed));
 
 /*
