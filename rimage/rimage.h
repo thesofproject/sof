@@ -142,6 +142,7 @@ struct adsp {
 	enum machine_id machine_id;
 	int (*write_firmware)(struct image *image);
 	int (*write_firmware_meu)(struct image *image);
+	struct fw_image_manifest_v2_5 *man_v2_5;
 	struct fw_image_manifest_v1_8 *man_v1_8;
 	struct fw_image_manifest_v1_5 *man_v1_5;
 	struct fw_image_manifest_v1_5_sue *man_v1_5_sue;

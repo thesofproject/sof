@@ -41,6 +41,14 @@
 	sizeof(struct CsePartitionDirHeader) + \
 	MAN_CSE_PARTS * sizeof(struct CsePartitionDirEntry))
 
+#define MAN_FW_DESC_OFFSET_V2_5 \
+	(MAN_META_EXT_OFFSET_V1_8 + \
+	sizeof(struct sof_man_adsp_meta_file_ext_v2_5) + \
+	MAN_EXT_PADDING)
+
+#define MAN_DESC_PADDING_SIZE_V2_5	\
+	(MAN_DESC_OFFSET_V1_8 - MAN_FW_DESC_OFFSET_V2_5)
+
 #define MAN_SIG_PKG_OFFSET_V1_8 \
 	(MAN_CSS_HDR_OFFSET + \
 	sizeof(struct css_header_v1_8))
@@ -77,6 +85,28 @@
 	(MAN_META_EXT_OFFSET_V1_5 + \
 	sizeof(struct sof_man_adsp_meta_file_ext_v1_8) + \
 	MAN_EXT_PADDING)
+
+/*
+ * Firmware manifest header V2.5 used on TGL onwards
+ */
+struct fw_image_manifest_v2_5 {
+	/* MEU tool needs these sections to be 0s */
+	struct CsePartitionDirHeader cse_partition_dir_header;
+	struct CsePartitionDirEntry cse_partition_dir_entry[MAN_CSE_PARTS];
+	struct css_header_v1_8 css;
+	struct signed_pkg_info_ext signed_pkg;
+	struct partition_info_ext partition_info;
+	uint8_t cse_padding[MAN_CSE_PADDING_SIZE];
+	struct sof_man_adsp_meta_file_ext_v2_5 adsp_file_ext;
+
+	/* reserved / pading at end of ext data - all 0s*/
+	uint8_t reserved[MAN_EXT_PADDING];
+
+	/* start of the unsigned binary for MEU input must start at MAN_DESC_OFFSET */
+	uint8_t padding[MAN_DESC_PADDING_SIZE_V2_5];
+
+	struct sof_man_fw_desc desc;	/* at offset MAN_DESC_OFFSET */
+} __attribute__((packed));
 
 /*
  * Firmware manifest header V1.8 used on APL onwards
