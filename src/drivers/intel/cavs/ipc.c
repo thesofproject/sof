@@ -151,6 +151,13 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 		platform_pm_runtime_power_off();
 	}
 #endif
+}
+
+static void ipc_platform_complete_cmd(void *data)
+{
+#if CAVS_VERSION >= CAVS_VERSION_2_0
+	struct ipc *ipc = data;
+#endif
 
 	/* write 1 to clear busy, and trigger interrupt to host*/
 #if CAVS_VERSION == CAVS_VERSION_1_5
@@ -230,7 +237,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, NULL, _ipc, 0, 0);
+			   ipc_process_task, ipc_platform_complete_cmd, _ipc, 0,
+			   0);
 
 	/* configure interrupt */
 	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,

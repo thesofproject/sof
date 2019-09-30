@@ -18,7 +18,6 @@
 #include <sof/spinlock.h>
 #include <ipc/header.h>
 #include <ipc/topology.h>
-#include <stddef.h>
 #include <stdint.h>
 
 extern struct ipc *_ipc;
@@ -106,13 +105,18 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 {
 	struct sof_ipc_cmd_hdr *hdr;
 	/* Use struct ipc_data *iipc = ipc_get_drvdata(ipc); if needed */
-	uint32_t ipcxh;
 
 	/* perform command */
 	hdr = mailbox_validate();
 	ipc_cmd(hdr);
 
 	ipc->host_pending = 0;
+}
+
+static void ipc_platform_complete_cmd(void *data)
+{
+	struct ipc *ipc = data;
+	uint32_t ipcxh;
 
 	/* clear BUSY bit and set DONE bit - accept new messages */
 	ipcxh = shim_read(SHIM_IPCXH);
@@ -187,7 +191,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, NULL, _ipc, 0, 0);
+			   ipc_process_task, ipc_platform_complete_cmd, _ipc, 0,
+			   0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */

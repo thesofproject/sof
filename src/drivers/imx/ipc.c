@@ -112,6 +112,11 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 	ipc_cmd(hdr);
 
 	ipc->host_pending = 0;
+}
+
+static void ipc_platform_complete_cmd(void *data)
+{
+	struct ipc *ipc = data;
 
 	/* enable GP interrupt #0 - accept new messages */
 	imx_mu_xcr_rmw(IMX_MU_xCR_GIEn(0), 0);
@@ -169,7 +174,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, NULL, _ipc, 0, 0);
+			   ipc_process_task, ipc_platform_complete_cmd, _ipc, 0,
+			   0);
 
 #if CONFIG_HOST_PTABLE
 	/* allocate page table buffer */
