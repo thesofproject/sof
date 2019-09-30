@@ -86,22 +86,7 @@ static void ipc_irq_handler(void *arg)
 		increment_ipc_received_counter();
 #endif
 
-		/* TODO: place message in Q and process later */
-		/* It's not Q ATM, may overwrite */
-		if (_ipc->host_pending) {
-			trace_ipc_error("ipc: dropping msg");
-#if CAVS_VERSION == CAVS_VERSION_1_5
-			trace_ipc_error(" dipct 0x%x dipcie 0x%x dipcctl 0x%x",
-					dipct, dipcie, ipc_read(IPC_DIPCCTL));
-#else
-			trace_ipc_error(" dipctdr 0x%x dipcida 0x%x "
-					"dipcctl 0x%x", dipctdr, dipcida,
-					ipc_read(IPC_DIPCCTL));
-#endif
-		} else {
-			_ipc->host_pending = 1;
-			ipc_schedule_process(_ipc);
-		}
+		ipc_schedule_process(_ipc);
 	}
 
 	/* reply message(done) from host */
@@ -141,8 +126,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 
 	/* perform command */
 	ipc_cmd(hdr);
-
-	ipc->host_pending = 0;
 
 	/* are we about to enter D3 ? */
 #if CAVS_VERSION < CAVS_VERSION_2_0

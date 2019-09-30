@@ -34,8 +34,6 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 			     0, sizeof(reply));
 	spi_push(spi_get(SOF_SPI_INTEL_SLAVE), &reply, sizeof(reply));
 
-	ipc->host_pending = 0;
-
 	// TODO: signal audio work to enter D3 in normal context
 	/* are we about to enter D3 ? */
 	if (ipc->pm_prepare_D3) {
