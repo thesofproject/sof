@@ -151,8 +151,8 @@ struct adsp {
 int write_logs_dictionary(struct image *image);
 
 void module_sha256_create(struct image *image);
-void module_sha256_update(struct image *image, uint8_t *data, size_t bytes);
-void module_sha256_complete(struct image *image, uint8_t *hash);
+void module_sha_update(struct image *image, uint8_t *data, size_t bytes);
+void module_sha_complete(struct image *image, uint8_t *hash);
 int ri_manifest_sign_v1_5(struct image *image);
 int ri_manifest_sign_v1_8(struct image *image);
 void ri_sha256(struct image *image, unsigned int offset, unsigned int size,
