@@ -96,3 +96,8 @@ SectionVendorTokens."sof_process_tokens" {
 SectionVendorTokens."sof_esai_tokens" {
 	SOF_TKN_IMX_ESAI_MCLK_ID		"1100"
 }
+
+SectionVendorTokens."sof_led_tokens" {
+	SOF_TKN_MUTE_LED_USE			"1300"
+	SOF_TKN_MUTE_LED_DIRECTION		"1301"
+}
