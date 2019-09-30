@@ -20,8 +20,8 @@ static inline void arch_wait_for_interrupt(int level)
 {
 	int i;
 
-	/* can only enter WFI when at run level 0 i.e. not IRQ level */
-	if (arch_interrupt_get_level() > 0)
+	/* need to make sure the interrupt level won't be lowered */
+	if (arch_interrupt_get_level() > level)
 		panic(SOF_IPC_PANIC_WFI);
 
 	/* this sequence must be atomic on LX6 */
@@ -43,8 +43,8 @@ static inline void arch_wait_for_interrupt(int level)
 
 static inline void arch_wait_for_interrupt(int level)
 {
-	/* can only enter WFI when at run level 0 i.e. not IRQ level */
-	if (arch_interrupt_get_level() > 0)
+	/* need to make sure the interrupt level won't be lowered */
+	if (arch_interrupt_get_level() > level)
 		panic(SOF_IPC_PANIC_WFI);
 
 	asm volatile("waiti 0");
