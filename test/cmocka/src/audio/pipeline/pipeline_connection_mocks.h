@@ -33,6 +33,6 @@ void cleanup_test_data(struct pipeline_connect_data *data);
 static inline void schedule_task_mock_free(void *data, struct task *task)
 {
 	task->state = SOF_TASK_STATE_FREE;
-	task->func = NULL;
+	task->run = NULL;
 	task->data = NULL;
 }

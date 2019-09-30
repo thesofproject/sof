@@ -21,7 +21,7 @@ struct schedulers **arch_schedulers_get(void)
 }
 
 int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
-		       enum task_state (*func)(void *data), void *data,
+		       enum task_state (*run)(void *data), void *data,
 		       uint16_t core, uint32_t flags)
 {
 	struct schedulers *schedulers = *arch_schedulers_get();
@@ -39,7 +39,7 @@ int schedule_task_init(struct task *task, uint16_t type, uint16_t priority,
 	task->core = core;
 	task->flags = flags;
 	task->state = SOF_TASK_STATE_INIT;
-	task->func = func;
+	task->run = run;
 	task->data = data;
 
 	list_for_item(slist, &schedulers->list) {

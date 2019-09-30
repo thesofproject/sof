@@ -75,7 +75,7 @@ static void test_audio_pipeline_free_sheduler_task_free(void **state)
 
 	assert_int_equal(result.pipe_task.state, SOF_TASK_STATE_FREE);
 	assert_ptr_equal(NULL, result.pipe_task.data);
-	assert_ptr_equal(NULL, result.pipe_task.func);
+	assert_ptr_equal(NULL, result.pipe_task.run);
 }
 
 static void test_audio_pipeline_free_disconnect_full(void **state)

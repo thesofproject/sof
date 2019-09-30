@@ -47,7 +47,7 @@ struct task {
 	uint16_t flags;
 	enum task_state state;
 	void *data;
-	enum task_state (*func)(void *data);
+	enum task_state (*run)(void *data);
 	struct list_item list;
 	void *private;
 };

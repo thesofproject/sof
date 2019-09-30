@@ -37,10 +37,10 @@ static void schedule_edf(void *data);
 static void schedule_edf_task_run(struct task *task, void *data)
 {
 	while (1) {
-		/* execute task function and remove task from the list
+		/* execute task run function and remove task from the list
 		 * only if completed
 		 */
-		if (task->func(task->data) == SOF_TASK_STATE_COMPLETED)
+		if (task->run(task->data) == SOF_TASK_STATE_COMPLETED)
 			schedule_edf_task_complete(data, task);
 
 		/* find new task for execution */
