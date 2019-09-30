@@ -118,8 +118,11 @@ static void ipc_irq_handler(void *arg)
 	}
 }
 
-void ipc_platform_do_cmd(struct ipc *ipc)
+static enum task_state ipc_platform_do_cmd(void *data)
 {
+#if CAVS_VERSION < CAVS_VERSION_2_0
+	struct ipc *ipc = data;
+#endif
 	struct sof_ipc_cmd_hdr *hdr;
 
 	hdr = mailbox_validate();
@@ -134,6 +137,8 @@ void ipc_platform_do_cmd(struct ipc *ipc)
 		platform_pm_runtime_power_off();
 	}
 #endif
+
+	return SOF_TASK_STATE_COMPLETED;
 }
 
 static void ipc_platform_complete_cmd(void *data)
@@ -220,8 +225,8 @@ int platform_ipc_init(struct ipc *ipc)
 
 	/* schedule */
 	schedule_task_init(&_ipc->ipc_task, SOF_SCHEDULE_EDF, SOF_TASK_PRI_IPC,
-			   ipc_process_task, ipc_platform_complete_cmd, _ipc, 0,
-			   0);
+			   ipc_platform_do_cmd, ipc_platform_complete_cmd, _ipc,
+			   0, 0);
 
 	/* configure interrupt */
 	irq = interrupt_get_irq(PLATFORM_IPC_INTERRUPT,
