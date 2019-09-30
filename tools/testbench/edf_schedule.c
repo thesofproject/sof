@@ -37,8 +37,8 @@ static void schedule_edf_task(void *data, struct task *task, uint64_t start,
 	list_item_prepend(&task->list, &sch->list);
 	task->state = SOF_TASK_STATE_QUEUED;
 
-	if (task->func)
-		task->func(task->data);
+	if (task->run)
+		task->run(task->data);
 
 	schedule_edf_task_complete(task);
 }
@@ -87,7 +87,7 @@ static void schedule_edf_task_cancel(void *data, struct task *task)
 static void schedule_edf_task_free(void *data, struct task *task)
 {
 	task->state = SOF_TASK_STATE_FREE;
-	task->func = NULL;
+	task->run = NULL;
 	task->data = NULL;
 
 	free(edf_sch_get_pdata(task));
