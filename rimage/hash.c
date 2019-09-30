@@ -56,12 +56,12 @@ void module_sha256_create(struct image *image)
 	EVP_DigestInit_ex(image->mdctx, image->md, NULL);
 }
 
-void module_sha256_update(struct image *image, uint8_t *data, size_t bytes)
+void module_sha_update(struct image *image, uint8_t *data, size_t bytes)
 {
 	EVP_DigestUpdate(image->mdctx, data, bytes);
 }
 
-void module_sha256_complete(struct image *image, uint8_t *hash)
+void module_sha_complete(struct image *image, uint8_t *hash)
 {
 	unsigned char md_value[EVP_MAX_MD_SIZE];
 	unsigned int md_len;
@@ -84,6 +84,6 @@ void ri_sha256(struct image *image, unsigned int offset, unsigned int size,
 	       uint8_t *hash)
 {
 	module_sha256_create(image);
-	module_sha256_update(image, image->fw_image + offset, size);
-	module_sha256_complete(image, hash);
+	module_sha_update(image, image->fw_image + offset, size);
+	module_sha_complete(image, hash);
 }

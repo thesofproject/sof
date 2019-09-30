@@ -112,8 +112,8 @@ int pkcs_v1_5_sign_man_v1_5(struct image *image,
 
 	/* calculate the digest */
 	module_sha256_create(image);
-	module_sha256_update(image, ptr1, size1);
-	module_sha256_complete(image, digest);
+	module_sha_update(image, ptr1, size1);
+	module_sha_complete(image, digest);
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
 	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
@@ -206,9 +206,9 @@ int pkcs_v1_5_sign_man_v1_8(struct image *image,
 
 	/* calculate the digest */
 	module_sha256_create(image);
-	module_sha256_update(image, ptr1, size1);
-	module_sha256_update(image, ptr2, size2);
-	module_sha256_complete(image, digest);
+	module_sha_update(image, ptr1, size1);
+	module_sha_update(image, ptr2, size2);
+	module_sha_complete(image, digest);
 
 	fprintf(stdout, " pkcs: digest for manifest is ");
 	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
