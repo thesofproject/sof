@@ -687,11 +687,11 @@ static int man_hash_modules(struct image *image, struct sof_man_fw_desc *desc)
 			continue;
 		}
 
-		ri_hash(image,
-			man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset,
-			(man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length +
-			man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length) *
-			MAN_PAGE_SIZE, man_module->hash);
+		ri_sha256(image,
+			 man_module->segment[SOF_MAN_SEGMENT_TEXT].file_offset,
+			 (man_module->segment[SOF_MAN_SEGMENT_TEXT].flags.r.length +
+			 man_module->segment[SOF_MAN_SEGMENT_RODATA].flags.r.length) *
+			 MAN_PAGE_SIZE, man_module->hash);
 	}
 
 	return 0;
@@ -875,12 +875,13 @@ static int man_write_fw_v1_8(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension - 0x480 to end */
-	ri_hash(image, MAN_FW_DESC_OFFSET_V1_8, image->image_end
-		- MAN_FW_DESC_OFFSET_V1_8, m->adsp_file_ext.comp_desc[0].hash);
+	ri_sha256(image, MAN_FW_DESC_OFFSET_V1_8, image->image_end
+		  - MAN_FW_DESC_OFFSET_V1_8,
+		  m->adsp_file_ext.comp_desc[0].hash);
 
 	/* calculate hash for platform auth data - repeated in hash 2 and 4 */
-	ri_hash(image, MAN_META_EXT_OFFSET_V1_8,
-		sizeof(struct sof_man_adsp_meta_file_ext_v1_8), hash);
+	ri_sha256(image, MAN_META_EXT_OFFSET_V1_8,
+		  sizeof(struct sof_man_adsp_meta_file_ext_v1_8), hash);
 
 	/* hash values in reverse order */
 	for (i = 0; i < SOF_MAN_MOD_SHA256_LEN; i++) {
@@ -969,7 +970,7 @@ static int man_write_fw_meu_v1_5(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension */
-	ri_hash(image, image->meu_offset, image->image_end -
+	ri_sha256(image, image->meu_offset, image->image_end -
 		image->meu_offset, meta->comp_desc[0].hash);
 
 	/* write the unsigned files */
@@ -1042,7 +1043,7 @@ static int man_write_fw_meu_v1_8(struct image *image)
 	man_hash_modules(image, desc);
 
 	/* calculate hash for ADSP meta data extension */
-	ri_hash(image, image->meu_offset, image->image_end -
+	ri_sha256(image, image->meu_offset, image->image_end -
 		image->meu_offset, meta->comp_desc[0].hash);
 
 	/* write the unsigned files */

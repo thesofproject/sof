@@ -155,7 +155,8 @@ void module_sha256_update(struct image *image, uint8_t *data, size_t bytes);
 void module_sha256_complete(struct image *image, uint8_t *hash);
 int ri_manifest_sign_v1_5(struct image *image);
 int ri_manifest_sign_v1_8(struct image *image);
-void ri_hash(struct image *image, unsigned offset, unsigned size, uint8_t *hash);
+void ri_sha256(struct image *image, unsigned int offset, unsigned int size,
+	       uint8_t *hash);
 
 int pkcs_v1_5_sign_man_v1_5(struct image *image,
 			    struct fw_image_manifest_v1_5 *man,
