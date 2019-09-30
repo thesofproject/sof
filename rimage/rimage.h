@@ -107,7 +107,7 @@ struct image {
 	int meu_offset;
 	int xcc_mod_offset;
 
-	/* SHA 256 */
+	/* SHA 256 & 384 */
 	const char *key_name;
 	EVP_MD_CTX *mdctx;
 	const EVP_MD *md;
@@ -156,6 +156,8 @@ void module_sha_complete(struct image *image, uint8_t *hash);
 int ri_manifest_sign_v1_5(struct image *image);
 int ri_manifest_sign_v1_8(struct image *image);
 void ri_sha256(struct image *image, unsigned int offset, unsigned int size,
+	       uint8_t *hash);
+void ri_sha384(struct image *image, unsigned int offset, unsigned int size,
 	       uint8_t *hash);
 
 int pkcs_v1_5_sign_man_v1_5(struct image *image,
