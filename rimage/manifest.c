@@ -578,7 +578,7 @@ static int man_write_unsigned_mod(struct image *image, int meta_start_offset,
 
 	/* write metadata file for unsigned FW */
 	count = fwrite(image->fw_image + meta_start_offset,
-		       sizeof(struct sof_man_adsp_meta_file_ext), 1,
+		       sizeof(struct sof_man_adsp_meta_file_ext_v1_8), 1,
 		       image->out_man_fd);
 
 	/* did the metadata/manifest write succeed ? */
@@ -880,7 +880,7 @@ static int man_write_fw_v1_8(struct image *image)
 
 	/* calculate hash for platform auth data - repeated in hash 2 and 4 */
 	ri_hash(image, MAN_META_EXT_OFFSET_V1_8,
-		sizeof(struct sof_man_adsp_meta_file_ext), hash);
+		sizeof(struct sof_man_adsp_meta_file_ext_v1_8), hash);
 
 	/* hash values in reverse order */
 	for (i = 0; i < SOF_MAN_MOD_SHA256_LEN; i++) {
@@ -920,8 +920,8 @@ err:
 static int man_write_fw_meu_v1_5(struct image *image)
 {
 	const int meta_start_offset = image->meu_offset -
-		sizeof(struct sof_man_adsp_meta_file_ext) - MAN_EXT_PADDING;
-	struct sof_man_adsp_meta_file_ext *meta;
+		sizeof(struct sof_man_adsp_meta_file_ext_v1_8) - MAN_EXT_PADDING;
+	struct sof_man_adsp_meta_file_ext_v1_8 *meta;
 	struct sof_man_fw_desc *desc;
 	uint32_t preload_size;
 	int ret;
@@ -991,8 +991,8 @@ err:
 static int man_write_fw_meu_v1_8(struct image *image)
 {
 	const int meta_start_offset = image->meu_offset -
-		sizeof(struct sof_man_adsp_meta_file_ext) - MAN_EXT_PADDING;
-	struct sof_man_adsp_meta_file_ext *meta;
+		sizeof(struct sof_man_adsp_meta_file_ext_v1_8) - MAN_EXT_PADDING;
+	struct sof_man_adsp_meta_file_ext_v1_8 *meta;
 	struct sof_man_fw_desc *desc;
 	uint32_t preload_size;
 	int ret;
@@ -1020,7 +1020,7 @@ static int man_write_fw_meu_v1_8(struct image *image)
 
 	/* copy data */
 	memcpy(meta, &image->adsp->man_v1_8->adsp_file_ext,
-	       sizeof(struct sof_man_adsp_meta_file_ext));
+	       sizeof(struct sof_man_adsp_meta_file_ext_v1_8));
 	memcpy(desc, &image->adsp->man_v1_8->desc,
 	       sizeof(struct sof_man_fw_desc));
 
