@@ -57,7 +57,7 @@
 
 #define MAN_FW_DESC_OFFSET_V1_8 \
 	(MAN_META_EXT_OFFSET_V1_8 + \
-	sizeof(struct sof_man_adsp_meta_file_ext) + \
+	sizeof(struct sof_man_adsp_meta_file_ext_v1_8) + \
 	MAN_EXT_PADDING)
 
 #define MAN_DESC_PADDING_SIZE_V1_8	\
@@ -75,7 +75,7 @@
 
 #define MAN_FW_DESC_OFFSET_V1_5 \
 	(MAN_META_EXT_OFFSET_V1_5 + \
-	sizeof(struct sof_man_adsp_meta_file_ext) + \
+	sizeof(struct sof_man_adsp_meta_file_ext_v1_8) + \
 	MAN_EXT_PADDING)
 
 /*
@@ -89,7 +89,7 @@ struct fw_image_manifest_v1_8 {
 	struct signed_pkg_info_ext signed_pkg;
 	struct partition_info_ext partition_info;
 	uint8_t cse_padding[MAN_CSE_PADDING_SIZE];
-	struct sof_man_adsp_meta_file_ext adsp_file_ext;
+	struct sof_man_adsp_meta_file_ext_v1_8 adsp_file_ext;
 
 	/* reserved / pading at end of ext data - all 0s*/
 	uint8_t reserved[MAN_EXT_PADDING];
