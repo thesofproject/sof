@@ -24,6 +24,7 @@
 #include <ipc/topology.h>
 #include <user/trace.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -63,7 +64,7 @@ struct dai_data {
 	struct dai *dai;
 	struct dma *dma;
 	uint32_t frame_bytes;
-	int xrun;		/* true if we are doing xrun recovery */
+	bool xrun;		/* true if we are doing xrun recovery */
 
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
@@ -181,7 +182,7 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dma_sg_init(&dd->config.elem_array);
 	dd->dai_pos = NULL;
 	dd->dai_pos_blks = 0;
-	dd->xrun = 0;
+	dd->xrun = false;
 	dd->chan = NULL;
 
 	dev->state = COMP_STATE_READY;
@@ -453,7 +454,7 @@ static int dai_prepare(struct comp_dev *dev)
 	/* dma reconfig not required if XRUN handling */
 	if (dd->xrun) {
 		/* after prepare, we have recovered from xrun */
-		dd->xrun = 0;
+		dd->xrun = false;
 		return ret;
 	}
 
@@ -479,7 +480,7 @@ static int dai_reset(struct comp_dev *dev)
 	dd->dai_pos = NULL;
 	dd->wallclock = 0;
 	dev->position = 0;
-	dd->xrun = 0;
+	dd->xrun = false;
 	comp_set_state(dev, COMP_TRIGGER_RESET);
 
 	return 0;
@@ -508,14 +509,14 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		 * and the pipeline is not preloaded as in this
 		 * case start is deferred to the first copy call
 		 */
-		if (dd->xrun == 0 && !pipeline_is_preload(dev->pipeline)) {
+		if (!dd->xrun && !pipeline_is_preload(dev->pipeline)) {
 			/* start the DAI */
 			dai_trigger(dd->dai, cmd, dev->params.direction);
 			ret = dma_start(dd->chan);
 			if (ret < 0)
 				return ret;
 		} else {
-			dd->xrun = 0;
+			dd->xrun = false;
 		}
 
 		/* update starting wallclock */
@@ -530,7 +531,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 			buffer_zero(dd->dma_buffer);
 
 		/* only start the DAI if we are not XRUN handling */
-		if (dd->xrun == 0) {
+		if (!dd->xrun) {
 			/* recover valid start position */
 			ret = dma_release(dd->chan);
 			if (ret < 0)
@@ -542,7 +543,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 			if (ret < 0)
 				return ret;
 		} else {
-			dd->xrun = 0;
+			dd->xrun = false;
 		}
 
 		/* update starting wallclock */
@@ -550,7 +551,7 @@ static int dai_comp_trigger(struct comp_dev *dev, int cmd)
 		break;
 	case COMP_TRIGGER_XRUN:
 		trace_dai_with_ids(dev, "dai_comp_trigger(), XRUN");
-		dd->xrun = 1;
+		dd->xrun = true;
 
 		/* fallthrough */
 	case COMP_TRIGGER_PAUSE:
