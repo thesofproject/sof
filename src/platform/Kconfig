@@ -129,8 +129,6 @@ config TIGERLAKE
 	select DW
 	select DW_DMA
 	select MEM_WND
-	select TASK_HAVE_PRIORITY_LOW
-	select TASK_HAVE_PRIORITY_MEDIUM
 	select HW_LLI
 	select DMA_AGGREGATED_IRQ
 	select DMA_FIFO_PARTITION
