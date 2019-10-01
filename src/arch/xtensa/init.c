@@ -70,11 +70,21 @@ static void initialize_pointers_per_core(void)
 	p = &core_data->thread_data_ptr->xtos_ptrs;
 	p->xtos_interrupt_ctx = &core_data->xtos_interrupt_ctx;
 	p->xtos_saved_sp = &core_data->xtos_saved_sp;
+#if CONFIG_INTERRUPT_LEVEL_1
 	p->xtos_stack_for_interrupt_1 = core_data->xtos_stack_for_interrupt_1;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
 	p->xtos_stack_for_interrupt_2 = core_data->xtos_stack_for_interrupt_2;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 	p->xtos_stack_for_interrupt_3 = core_data->xtos_stack_for_interrupt_3;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
 	p->xtos_stack_for_interrupt_4 = core_data->xtos_stack_for_interrupt_4;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_5
 	p->xtos_stack_for_interrupt_5 = core_data->xtos_stack_for_interrupt_5;
+#endif
 #if CONFIG_SMP
 	p->xtos_enabled = &core_data->xtos_int_data.xtos_enabled;
 	p->xtos_intstruct = &core_data->xtos_int_data;

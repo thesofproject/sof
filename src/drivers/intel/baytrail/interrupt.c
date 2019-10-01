@@ -8,6 +8,7 @@
 
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/shim.h>
+#include <config.h>
 #include <stdint.h>
 
 void platform_interrupt_init(void) {}
@@ -21,14 +22,26 @@ void platform_interrupt_set(uint32_t irq)
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
-	case IRQ_NUM_EXT_PMC:
-	case IRQ_NUM_EXT_IA:
+#if CONFIG_INTERRUPT_LEVEL_1
 	case IRQ_NUM_SOFTWARE2:
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
 	case IRQ_NUM_SOFTWARE3:
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 	case IRQ_NUM_SOFTWARE4:
 	case IRQ_NUM_SOFTWARE5:
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
+	case IRQ_NUM_EXT_PMC:
+	case IRQ_NUM_EXT_IA:
+#endif
+#if CONFIG_INTERRUPT_LEVEL_1 || CONFIG_INTERRUPT_LEVEL_2 || \
+	CONFIG_INTERRUPT_LEVEL_3 || CONFIG_INTERRUPT_LEVEL_4
 		arch_interrupt_clear(irq);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_5
 	case IRQ_NUM_EXT_SSP0:
 		shim_write(SHIM_PISR, mask << 3);
 		arch_interrupt_clear(irq);
@@ -67,6 +80,7 @@ void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 		arch_interrupt_clear(irq);
 		break;
 #endif
+#endif
 	default:
 		break;
 	}
@@ -80,6 +94,7 @@ uint32_t platform_interrupt_get_enabled(void)
 
 void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
+#if CONFIG_INTERRUPT_LEVEL_5
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
 		shim_write(SHIM_PIMR, 1 << 3);
@@ -113,10 +128,12 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 	default:
 		break;
 	}
+#endif
 }
 
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
+#if CONFIG_INTERRUPT_LEVEL_5
 	switch (irq) {
 	case IRQ_NUM_EXT_SSP0:
 		shim_write(SHIM_PIMR, shim_read(SHIM_PIMR) & ~(1 << 3));
@@ -150,4 +167,5 @@ void interrupt_unmask(uint32_t irq, unsigned int cpu)
 	default:
 		break;
 	}
+#endif
 }

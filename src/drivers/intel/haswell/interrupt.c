@@ -8,6 +8,7 @@
 
 #include <sof/drivers/interrupt.h>
 #include <sof/lib/shim.h>
+#include <config.h>
 #include <stdint.h>
 
 void platform_interrupt_init(void) {}
@@ -21,15 +22,24 @@ void platform_interrupt_set(uint32_t irq)
 void platform_interrupt_clear(uint32_t irq, uint32_t mask)
 {
 	switch (irq) {
-	case IRQ_NUM_EXT_DMAC0:
-	case IRQ_NUM_EXT_DMAC1:
+#if CONFIG_INTERRUPT_LEVEL_1
 	case IRQ_NUM_EXT_SSP0:
 	case IRQ_NUM_EXT_SSP1:
 	case IRQ_NUM_EXT_IA:
 	case IRQ_NUM_SOFTWARE1:
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
+	case IRQ_NUM_EXT_DMAC0:
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
+	case IRQ_NUM_EXT_DMAC1:
 	case IRQ_NUM_SOFTWARE2:
+#endif
+#if CONFIG_INTERRUPT_LEVEL_1 || CONFIG_INTERRUPT_LEVEL_2 || \
+	CONFIG_INTERRUPT_LEVEL_3
 		arch_interrupt_clear(irq);
 		break;
+#endif
 	default:
 		break;
 	}
@@ -44,18 +54,24 @@ uint32_t platform_interrupt_get_enabled(void)
 void interrupt_mask(uint32_t irq, unsigned int cpu)
 {
 	switch (irq) {
+#if CONFIG_INTERRUPT_LEVEL_1
 	case IRQ_NUM_EXT_SSP0:
 		shim_write(SHIM_IMRD, SHIM_IMRD_SSP0);
 		break;
 	case IRQ_NUM_EXT_SSP1:
 		shim_write(SHIM_IMRD, SHIM_IMRD_SSP1);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
 	case IRQ_NUM_EXT_DMAC0:
 		shim_write(SHIM_IMRD, SHIM_IMRD_DMAC0);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 	case IRQ_NUM_EXT_DMAC1:
 		shim_write(SHIM_IMRD, SHIM_IMRD_DMAC1);
 		break;
+#endif
 	default:
 		break;
 	}
@@ -64,18 +80,24 @@ void interrupt_mask(uint32_t irq, unsigned int cpu)
 void interrupt_unmask(uint32_t irq, unsigned int cpu)
 {
 	switch (irq) {
+#if CONFIG_INTERRUPT_LEVEL_1
 	case IRQ_NUM_EXT_SSP0:
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_SSP0);
 		break;
 	case IRQ_NUM_EXT_SSP1:
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_SSP1);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
 	case IRQ_NUM_EXT_DMAC0:
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DMAC0);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 	case IRQ_NUM_EXT_DMAC1:
 		shim_write(SHIM_IMRD, shim_read(SHIM_IMRD) & ~SHIM_IMRD_DMAC1);
 		break;
+#endif
 	default:
 		break;
 	}
