@@ -120,6 +120,41 @@ config DMA_FIFO_PARTITION
 	  Any platforms without automatic FIFO partitions
 	  should set this.
 
+config INTERRUPT_LEVEL_1
+	bool
+	default y
+	help
+	  Select if the platform supports any interrupts of level 1.
+	  Disabling this option allows for less memory consumption.
+
+config INTERRUPT_LEVEL_2
+	bool
+	default y
+	help
+	  Select if the platform supports any interrupts of level 2.
+	  Disabling this option allows for less memory consumption.
+
+config INTERRUPT_LEVEL_3
+	bool
+	default y
+	help
+	  Select if the platform supports any interrupts of level 3.
+	  Disabling this option allows for less memory consumption.
+
+config INTERRUPT_LEVEL_4
+	bool
+	default y
+	help
+	  Select if the platform supports any interrupts of level 4.
+	  Disabling this option allows for less memory consumption.
+
+config INTERRUPT_LEVEL_5
+	bool
+	default y
+	help
+	  Select if the platform supports any interrupts of level 5.
+	  Disabling this option allows for less memory consumption.
+
 source "src/Kconfig"
 
 menu "Debug"
