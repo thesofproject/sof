@@ -15,6 +15,9 @@ config BAYTRAIL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTERRUPT_LEVEL_1
+	select INTERRUPT_LEVEL_4
+	select INTERRUPT_LEVEL_5
 	select INTEL
 	help
 	  Select if your target platform is Baytrail-compatible
@@ -28,6 +31,9 @@ config CHERRYTRAIL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTERRUPT_LEVEL_1
+	select INTERRUPT_LEVEL_4
+	select INTERRUPT_LEVEL_5
 	select INTEL
 	help
 	  Select if your target platform is Cherrytrail-compatible
@@ -39,6 +45,9 @@ config HASWELL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTERRUPT_LEVEL_1
+	select INTERRUPT_LEVEL_2
+	select INTERRUPT_LEVEL_3
 	select INTEL
 	help
 	  Select if your target platform is Haswell-compatible
@@ -50,6 +59,9 @@ config BROADWELL
 	select DW
 	select DW_DMA
 	select HAVE_RESET_VECTOR_ROM
+	select INTERRUPT_LEVEL_1
+	select INTERRUPT_LEVEL_2
+	select INTERRUPT_LEVEL_3
 	select INTEL
 	help
 	  Select if your target platform is Broadwell-compatible
@@ -149,6 +161,9 @@ config LIBRARY
 config IMX8
 	bool "Build for NXP i.MX8"
 	select HAVE_RESET_VECTOR_ROM
+	select INTERRUPT_LEVEL_1
+	select INTERRUPT_LEVEL_2
+	select INTERRUPT_LEVEL_3
 	help
 	  Select if your target platform is imx8-compatible
 
@@ -165,6 +180,8 @@ config CAVS
 	bool
 	default n
 	select INTEL
+	select INTERRUPT_LEVEL_2
+	select INTERRUPT_LEVEL_5
 
 config CAVS_VERSION_1_5
 	depends on CAVS
