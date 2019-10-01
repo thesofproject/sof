@@ -92,3 +92,7 @@ SectionVendorTokens."sof_tone_tokens" {
 SectionVendorTokens."sof_process_tokens" {
 	SOF_TKN_PROCESS_TYPE			"900"
 }
+
+SectionVendorTokens."sof_esai_tokens" {
+	SOF_TKN_IMX_ESAI_MCLK_ID		"1100"
+}
