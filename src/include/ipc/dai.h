@@ -17,6 +17,7 @@
 #define __IPC_DAI_H__
 
 #include <ipc/dai-intel.h>
+#include <ipc/dai-imx.h>
 #include <ipc/header.h>
 #include <stdint.h>
 
@@ -81,6 +82,7 @@ struct sof_ipc_dai_config {
 		struct sof_ipc_dai_dmic_params dmic;
 		struct sof_ipc_dai_hda_params hda;
 		struct sof_ipc_dai_alh_params alh;
+		struct sof_ipc_dai_esai_params esai;
 	};
 } __attribute__((packed));
 
