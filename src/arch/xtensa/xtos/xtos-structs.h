@@ -28,11 +28,21 @@ struct xtos_core_data {
 #if CONFIG_SMP
 	struct XtosInterruptStructure xtos_int_data;
 #endif
+#if CONFIG_INTERRUPT_LEVEL_1
 	uint8_t xtos_stack_for_interrupt_1[SOF_STACK_SIZE];
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
 	uint8_t xtos_stack_for_interrupt_2[SOF_STACK_SIZE];
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 	uint8_t xtos_stack_for_interrupt_3[SOF_STACK_SIZE];
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
 	uint8_t xtos_stack_for_interrupt_4[SOF_STACK_SIZE];
+#endif
+#if CONFIG_INTERRUPT_LEVEL_5
 	uint8_t xtos_stack_for_interrupt_5[SOF_STACK_SIZE];
+#endif
 	xtos_task_context xtos_interrupt_ctx;
 	uintptr_t xtos_saved_sp;
 	struct thread_data *thread_data_ptr;

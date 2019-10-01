@@ -165,10 +165,18 @@ add_local_sources(sof
 target_link_libraries(sof_static_libraries INTERFACE xtos)
 target_link_libraries(sof_static_libraries INTERFACE hal)
 
+if(CONFIG_INTERRUPT_LEVEL_2)
 target_link_libraries(sof_static_libraries INTERFACE xlevel2)
+endif()
+if(CONFIG_INTERRUPT_LEVEL_3)
 target_link_libraries(sof_static_libraries INTERFACE xlevel3)
+endif()
+if(CONFIG_INTERRUPT_LEVEL_4)
 target_link_libraries(sof_static_libraries INTERFACE xlevel4)
+endif()
+if(CONFIG_INTERRUPT_LEVEL_5)
 target_link_libraries(sof_static_libraries INTERFACE xlevel5)
+endif()
 
 if(build_bootloader)
 	add_local_sources(sof main-entry.S)

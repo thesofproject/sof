@@ -13,6 +13,7 @@
 #include <sof/lib/shim.h>
 #include <sof/list.h>
 #include <sof/spinlock.h>
+#include <config.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -24,10 +25,18 @@
  */
 #define LVL2_MAX_TRIES		1000
 
+#if CONFIG_INTERRUPT_LEVEL_2
 char irq_name_level2[] = "level2";
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 char irq_name_level3[] = "level3";
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
 char irq_name_level4[] = "level4";
+#endif
+#if CONFIG_INTERRUPT_LEVEL_5
 char irq_name_level5[] = "level5";
+#endif
 
 /*
  * The level2 handler attempts to try and fairly service interrupt sources by
@@ -110,25 +119,33 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 				 REG_IRQ_IL##n##SD(core), \
 				 REG_IRQ_IL##n##MSD(core))
 
+#if CONFIG_INTERRUPT_LEVEL_2
 static void irq_lvl2_level2_handler(void *data)
 {
 	IRQ_LVL2_HANDLER(2);
 }
+#endif
 
+#if CONFIG_INTERRUPT_LEVEL_3
 static void irq_lvl2_level3_handler(void *data)
 {
 	IRQ_LVL2_HANDLER(3);
 }
+#endif
 
+#if CONFIG_INTERRUPT_LEVEL_4
 static void irq_lvl2_level4_handler(void *data)
 {
 	IRQ_LVL2_HANDLER(4);
 }
+#endif
 
+#if CONFIG_INTERRUPT_LEVEL_5
 static void irq_lvl2_level5_handler(void *data)
 {
 	IRQ_LVL2_HANDLER(5);
 }
+#endif
 
 uint32_t platform_interrupt_get_enabled(void)
 {
@@ -157,18 +174,26 @@ static void irq_mask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 {
 	/* mask external interrupt bit */
 	switch (desc->irq) {
+#if CONFIG_INTERRUPT_LEVEL_5
 	case IRQ_NUM_EXT_LEVEL5:
 		irq_write(REG_IRQ_IL5MSD(core), 1 << irq);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
 	case IRQ_NUM_EXT_LEVEL4:
 		irq_write(REG_IRQ_IL4MSD(core), 1 << irq);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 	case IRQ_NUM_EXT_LEVEL3:
 		irq_write(REG_IRQ_IL3MSD(core), 1 << irq);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
 	case IRQ_NUM_EXT_LEVEL2:
 		irq_write(REG_IRQ_IL2MSD(core), 1 << irq);
 		break;
+#endif
 	}
 }
 
@@ -176,18 +201,26 @@ static void irq_unmask(struct irq_desc *desc, uint32_t irq, unsigned int core)
 {
 	/* unmask external interrupt bit */
 	switch (desc->irq) {
+#if CONFIG_INTERRUPT_LEVEL_5
 	case IRQ_NUM_EXT_LEVEL5:
 		irq_write(REG_IRQ_IL5MCD(core), 1 << irq);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
 	case IRQ_NUM_EXT_LEVEL4:
 		irq_write(REG_IRQ_IL4MCD(core), 1 << irq);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
 	case IRQ_NUM_EXT_LEVEL3:
 		irq_write(REG_IRQ_IL3MCD(core), 1 << irq);
 		break;
+#endif
+#if CONFIG_INTERRUPT_LEVEL_2
 	case IRQ_NUM_EXT_LEVEL2:
 		irq_write(REG_IRQ_IL2MCD(core), 1 << irq);
 		break;
+#endif
 	}
 }
 
@@ -198,31 +231,42 @@ static const struct irq_cascade_ops irq_ops = {
 
 /* DSP internal interrupts */
 static const struct irq_cascade_tmpl dsp_irq[] = {
+#if CONFIG_INTERRUPT_LEVEL_2
 	{
 		.name = irq_name_level2,
 		.irq = IRQ_NUM_EXT_LEVEL2,
 		.handler = irq_lvl2_level2_handler,
 		.ops = &irq_ops,
 		.global_mask = false,
-	}, {
+	},
+#endif
+#if CONFIG_INTERRUPT_LEVEL_3
+	{
 		.name = irq_name_level3,
 		.irq = IRQ_NUM_EXT_LEVEL3,
 		.handler = irq_lvl2_level3_handler,
 		.ops = &irq_ops,
 		.global_mask = false,
-	}, {
+	},
+#endif
+#if CONFIG_INTERRUPT_LEVEL_4
+	{
 		.name = irq_name_level4,
 		.irq = IRQ_NUM_EXT_LEVEL4,
 		.handler = irq_lvl2_level4_handler,
 		.ops = &irq_ops,
 		.global_mask = false,
-	}, {
+	},
+#endif
+#if CONFIG_INTERRUPT_LEVEL_5
+	{
 		.name = irq_name_level5,
 		.irq = IRQ_NUM_EXT_LEVEL5,
 		.handler = irq_lvl2_level5_handler,
 		.ops = &irq_ops,
 		.global_mask = false,
 	},
+#endif
 };
 
 void platform_interrupt_set(uint32_t irq)

@@ -4,11 +4,6 @@ set(VECTOR_DEFS
 	-D__SPLIT__vector
 	-D__SPLIT__handler
 	-D__SPLIT__user
-	-D__SPLIT__level1int
-	-D__SPLIT__level2
-	-D__SPLIT__level3
-	-D__SPLIT__level4
-	-D__SPLIT__level5
 )
 
 # Builds lib for each level from the same source files
@@ -28,7 +23,29 @@ function(sof_xtos_add_level level)
 	)
 endfunction()
 
-set(levels 2 3 4 5)
+if(CONFIG_INTERRUPT_LEVEL_1)
+	list(APPEND VECTOR_DEFS -D__SPLIT__level1int)
+endif()
+
+if(CONFIG_INTERRUPT_LEVEL_2)
+	list(APPEND VECTOR_DEFS -D__SPLIT__level2)
+	list(APPEND levels 2)
+endif()
+
+if(CONFIG_INTERRUPT_LEVEL_3)
+	list(APPEND VECTOR_DEFS -D__SPLIT__level3)
+	list(APPEND levels 3)
+endif()
+
+if(CONFIG_INTERRUPT_LEVEL_4)
+	list(APPEND VECTOR_DEFS -D__SPLIT__level4)
+	list(APPEND levels 4)
+endif()
+
+if(CONFIG_INTERRUPT_LEVEL_5)
+	list(APPEND VECTOR_DEFS -D__SPLIT__level5)
+	list(APPEND levels 5)
+endif()
 
 foreach(level ${levels})
 	sof_xtos_add_level(${level})
