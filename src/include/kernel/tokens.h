@@ -103,4 +103,7 @@
 /* for backward compatibility */
 #define SOF_TKN_EFFECT_TYPE	SOF_TKN_PROCESS_TYPE
 
+/* ESAI */
+#define SOF_TKN_IMX_ESAI_MCLK_ID		1100
+
 #endif /* __KERNEL_TOKENS_H__ */
