@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: BSD-3-Clause
-//
-// Copyright(c) 2019 Intel Corporation. All rights reserved.
-//
-// Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
+/* SPDX-License-Identifier: BSD-3-Clause
+ *
+ * Copyright(c) 2019 Intel Corporation. All rights reserved.
+ *
+ * Author: Slawomir Blauciak <slawomir.blauciak@linux.intel.com>
+ */
 
 #ifdef __SOF_DRIVERS_ALH__
 
