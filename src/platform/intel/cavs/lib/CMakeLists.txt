@@ -6,4 +6,5 @@ add_local_sources(sof
 	memory.c
 	pm_runtime.c
 	pm_memory.c
+	power_down.S
 )

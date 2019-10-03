@@ -6,13 +6,13 @@
  */
 
 /**
- * \file platform/apollolake/include/platform/asm_memory_management.h
+ * \file platform/apollolake/include/platform/lib/asm_memory_management.h
  * \brief Macros for power gating memory banks specific for Apollolake
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#ifndef __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
-#define __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
+#ifndef __PLATFORM_LIB_ASM_MEMORY_MANAGEMENT_H__
+#define __PLATFORM_LIB_ASM_MEMORY_MANAGEMENT_H__
 
 #ifndef ASSEMBLY
 #warning "ASSEMBLY macro not defined."
@@ -67,4 +67,4 @@
 	bne \ax, \ay, 1b
 	.endm
 
-#endif /* __PLATFORM_ASM_MEMORY_MANAGEMENT_H__ */
+#endif /* __PLATFORM_LIB_ASM_MEMORY_MANAGEMENT_H__ */

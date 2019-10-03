@@ -7,12 +7,12 @@
 
 /**
  * \file platform/apollolake/include/platform/asm_ldo_management.h
- * \brief Macros for controlling LDO state specific for cAVS 1.5
+ * \brief Macros for controlling LDO state specific for cAVS
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#ifndef __PLATFORM_ASM_LDO_MANAGEMENT_H__
-#define __PLATFORM_ASM_LDO_MANAGEMENT_H__
+#ifndef __CAVS_LIB_ASM_LDO_MANAGEMENT_H__
+#define __CAVS_LIB_ASM_LDO_MANAGEMENT_H__
 
 #ifndef ASSEMBLY
 #warning "Header can only be used by assembly sources."
@@ -106,4 +106,4 @@ s32i \ax, \ay, 0
 l32i \ax, \ay, 0
 .endm
 
-#endif /* __PLATFORM_ASM_LDO_MANAGEMENT_H__ */
+#endif /* __CAVS_LIB_ASM_LDO_MANAGEMENT_H__ */
