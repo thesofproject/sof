@@ -8,24 +8,25 @@
 /**
  * \file platform/cannonlake/include/platform/asm_memory_management.h
  * \brief Macros for power gating memory banks specific for cAVS 1.8
- * \(CannonLake)
+ * \(CannonLake) and cAVS 2.0 (IceLake)
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#ifndef __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
-#define __PLATFORM_ASM_MEMORY_MANAGEMENT_H__
+#ifndef __CAVS_LIB_ASM_MEMORY_MANAGEMENT_H__
+#define __CAVS_LIB_ASM_MEMORY_MANAGEMENT_H__
 
 #ifndef ASSEMBLY
-#warning "ASSEMBLY macro not defined. Header can't be inluded in C files"
-#warning "The file is intended to be includded in assembly files only."
+#warning "ASSEMBLY macro not defined. Header can't be included in C files"
+#warning "The file is intended to be included in assembly files only."
 #endif
 
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 /**
- * powers down entire hpsram. on entry lirerals and code for section from
- * where this code is executed needs to be placed in memory which is not
+ * Macro powers down entire HPSRAM. On entry literals and code for section from
+ * where this code is executed need to be placed in memory which is not
  * HPSRAM (in case when this code is located in HPSRAM, lock memory in L1$ or
  * L1 SRAM)
  */
@@ -75,4 +76,5 @@
 	bnez \ax, 1b
 .endm
 
-#endif /* __PLATFORM_ASM_MEMORY_MANAGEMENT_H__ */
+#endif /* CAVS_VERSION == CAVS_VERSION_1_8 */
+#endif /* __CAVS_LIB_ASM_MEMORY_MANAGEMENT_H__ */

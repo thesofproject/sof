@@ -2,8 +2,6 @@
 
 add_subdirectory(lib)
 
-add_local_sources(sof power_down.S)
-
 add_executable(boot_module boot_module.c)
 add_executable(base_module base_module.c)
 
