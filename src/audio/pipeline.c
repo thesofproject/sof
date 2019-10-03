@@ -819,7 +819,7 @@ static int pipeline_copy(struct pipeline *p)
 		start = p->sink_comp;
 
 		/* if not pipeline preload then copy sink comp first */
-		if (!p->preload) {
+		if (!p->preload && comp_is_active(start)) {
 			ret = comp_copy(start);
 			if (ret < 0) {
 				trace_pipe_error("pipeline_copy() error: "
