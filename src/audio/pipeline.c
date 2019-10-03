@@ -669,7 +669,6 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 {
 	struct pipeline_data data;
 	int ret;
-	uint32_t flags;
 
 	trace_pipe_with_ids(p, "pipeline_trigger()");
 
@@ -692,8 +691,6 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 	data.start = host;
 	data.cmd = cmd;
 
-	irq_local_disable(flags);
-
 	ret = pipeline_comp_trigger(host, &data, host->params.direction);
 	if (ret < 0) {
 		trace_ipc_error("pipeline_trigger() error: ret = %d, host->"
@@ -701,7 +698,6 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 				cmd);
 	}
 
-	irq_local_enable(flags);
 	return ret;
 }
 
