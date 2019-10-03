@@ -6,16 +6,20 @@
  */
 
 /**
- * \file platform/cannonlake/power_down.S
- * \brief Power gating memory banks - implementation specific for platfroms
+ * \file platform/intel/cavs/lib/power_down.S
+ * \brief Power gating memory banks - implementation specific for platforms
  *  with cAVS 1.8 (i.e. CannonLake) and cAVS 2.0 (i.e. IceLake)
   * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
 
-#include <platform/asm_ldo_management.h>
-#include <platform/asm_memory_management.h>
+
+#include <cavs/version.h>
+#include <cavs/lib/asm_ldo_management.h>
+#include <cavs/lib/asm_memory_management.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
+
+#if CAVS_VERSION >= CAVS_VERSION_1_8
 
 	.section .text, "ax"
 	.align 64
@@ -41,7 +45,6 @@ literals:
 #define temp_reg2                    a8
 #define temp_reg3                    a9
 #define pfl_reg                      a15
-
 
 power_down:
 	entry sp, 32
@@ -75,7 +78,7 @@ _PD_DISABLE_LPSRAM:
 _PD_DISABLE_HPSRAM:
  /* if value in memory pointed by pu32_hpsram_mask = 0
 	 (hpsram_pwrgating_mask) - do not disable hpsram. */
-beqz pu32_hpsram_mask, _PD_SEND_IPC
+	beqz pu32_hpsram_mask, _PD_SEND_IPC
 
 /* mandatory sequence for LDO ON - effectively executes:
  * m_cavs_s_set_ldo_hpsram_on_state();
@@ -156,4 +159,5 @@ loop:
 
 .size power_down , . - power_down
 
+#endif /* CAVS_VERSION >= CAVS_VERSION_1_8 */
 

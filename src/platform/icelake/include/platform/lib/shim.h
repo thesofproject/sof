@@ -172,6 +172,9 @@
 #define HSRMCTL0		0x71D14
 #define HSPGISTS0		0x71D18
 
+#define SHIM_HSPGCTL(x)		(HSPGCTL0 + 0x10 * (x))
+#define SHIM_HSPGISTS(x)	(HSPGISTS0 + 0x10 * (x))
+
 #define HSPGCTL1		0x71D20
 #define HSRMCTL1		0x71D24
 #define HSPGISTS1		0x71D28

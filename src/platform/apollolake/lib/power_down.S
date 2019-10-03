@@ -6,13 +6,12 @@
  */
 
 /**
- * \file platform/apollolake/power_down.S
+ * \file platform/apollolake/lib/power_down.S
  * \brief Power gating memory banks - implementation specific for Apollolake
  * \author Lech Betlej <lech.betlej@linux.intel.com>
  */
-
-#include <platform/asm_ldo_management.h>
-#include <platform/asm_memory_management.h>
+#include <platform/lib/asm_ldo_management.h>
+#include <platform/lib/asm_memory_management.h>
 #include <sof/lib/memory.h>
 #include <sof/lib/shim.h>
 
