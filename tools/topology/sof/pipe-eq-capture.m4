@@ -15,6 +15,9 @@ include(`bytecontrol.m4')
 include(`mixercontrol.m4')
 include(`eq_iir.m4')
 
+define(`CONTROL_NAME', Capture Volume)
+define(`PGA_NAME', Dmic0)
+
 #
 # Controls
 #
@@ -29,6 +32,7 @@ C_CONTROLMIXER(Master Capture Volume, PIPELINE_ID,
 	CONTROLMIXER_TLV(TLV 80 steps from -50dB to +20dB for 1dB, vtlv_m50s1),
 	Channel register and shift for Front Left/Right,
 	LIST(`	', KCONTROL_CHANNEL(FL, 1, 0), KCONTROL_CHANNEL(FR, 1, 1)))
+
 
 # Volume Configuration
 W_VENDORTUPLES(capture_pga_tokens, sof_volume_tokens,
@@ -64,7 +68,7 @@ W_PCM_CAPTURE(PCM_ID, Highpass Capture, 0, 2)
 # "Volume" has 2 source and 2 sink periods
 W_PGA(0, PIPELINE_FORMAT, 2, 2,
 	 capture_pga_conf, LIST(`		',
-		"PIPELINE_ID Master Capture Volume"))
+		"CONTROL_NAME"))
 
 # "EQ 0" has 2 sink period and 2 source periods
 W_EQ_IIR(0, PIPELINE_FORMAT, 2, 2, LIST(`		', "EQIIR_C48"))
@@ -90,10 +94,13 @@ W_BUFFER(2, COMP_BUFFER_SIZE(2,
 P_GRAPH(pipe-pass-capture-PIPELINE_ID, PIPELINE_ID,
 	LIST(`		',
 	`dapm(N_PCMC(PCM_ID), N_BUFFER(0))',
-	`dapm(N_BUFFER(0), N_PGA(0))',
-	`dapm(N_PGA(0), N_BUFFER(1))',
+	`dapm(N_BUFFER(0), PGA_NAME)',
+	`dapm(PGA_NAME, N_BUFFER(1))',
 	`dapm(N_BUFFER(1), N_EQ_IIR(0))',
 	`dapm(N_EQ_IIR(0), N_BUFFER(2))'))
+
+undefine(`CONTROL_NAME')
+undefine(`PGA_NAME')
 
 #
 # Pipeline Source and Sinks
