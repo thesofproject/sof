@@ -49,6 +49,11 @@ void platform_pm_runtime_disable(uint32_t context, uint32_t index);
 
 bool platform_pm_runtime_is_active(uint32_t context, uint32_t index);
 
+/**
+ * \brief Power gates platform specific hardware resources.
+ */
+void platform_pm_runtime_power_off(void);
+
 #endif /* __PLATFORM_LIB_PM_RUNTIME_H__ */
 
 #else

@@ -34,9 +34,8 @@
 #define trace_power(format, ...)	\
 	trace_event(TRACE_CLASS_POWER, format, ##__VA_ARGS__)
 
-#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
-//TODO: add support or at least stub api for Icelake based on Cannonlake
-#include <platform/power_down.h>
+#if !CONFIG_SUECREEK
+#include <cavs/lib/power_down.h>
 #endif
 
 /** \brief Runtime power management data pointer. */
@@ -409,13 +408,10 @@ bool platform_pm_runtime_is_active(uint32_t context, uint32_t index)
 
 }
 
-#if CONFIG_APOLLOLAKE || CONFIG_CANNONLAKE
+#if !CONFIG_SUECREEK
 void platform_pm_runtime_power_off(void)
 {
 	uint32_t hpsram_mask[PLATFORM_HPSRAM_SEGMENTS], i;
-	//TODO: add LDO control for LP SRAM - set LDO BYPASS & LDO ON
-	//TODO: hpsram_mask to be used in the future for run-time
-	//power management of SRAM banks i.e use. HPSRAM_MASK() macro
 	/* power down entire HPSRAM */
 	for (i = 0; i < PLATFORM_HPSRAM_SEGMENTS; i++)
 		hpsram_mask[i] = HPSRAM_MASK(i);

@@ -2,4 +2,5 @@
 
 add_local_sources(sof
 	clk.c
-	power_down.S)
+	power_down.S
+)

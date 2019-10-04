@@ -120,7 +120,7 @@ static void ipc_irq_handler(void *arg)
 
 static enum task_state ipc_platform_do_cmd(void *data)
 {
-#if CAVS_VERSION < CAVS_VERSION_2_0
+#if !CONFIG_SUECREEK
 	struct ipc *ipc = data;
 #endif
 	struct sof_ipc_cmd_hdr *hdr;
@@ -131,7 +131,7 @@ static enum task_state ipc_platform_do_cmd(void *data)
 	ipc_cmd(hdr);
 
 	/* are we about to enter D3 ? */
-#if CAVS_VERSION < CAVS_VERSION_2_0
+#if !CONFIG_SUECREEK
 	if (ipc->pm_prepare_D3) {
 		/* no return - memory will be powered off and IPC sent */
 		platform_pm_runtime_power_off();
@@ -143,7 +143,7 @@ static enum task_state ipc_platform_do_cmd(void *data)
 
 static void ipc_platform_complete_cmd(void *data)
 {
-#if CAVS_VERSION >= CAVS_VERSION_2_0
+#if CONFIG_SUECREEK
 	struct ipc *ipc = data;
 #endif
 
@@ -162,7 +162,7 @@ static void ipc_platform_complete_cmd(void *data)
 	/* unmask Busy interrupt */
 	ipc_write(IPC_DIPCCTL, ipc_read(IPC_DIPCCTL) | IPC_DIPCCTL_IPCTBIE);
 
-#if CAVS_VERSION >= CAVS_VERSION_2_0
+#if CONFIG_SUECREEK
 	if (ipc->pm_prepare_D3) {
 		//TODO: add support for Icelake
 		while (1)
