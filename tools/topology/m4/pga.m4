@@ -3,6 +3,7 @@ divert(-1)
 dnl Define macro for PGA widget
 
 dnl PGA name)
+
 define(`N_PGA', `PGA'PIPELINE_ID`.'$1)
 
 dnl W_PGA(name, format, periods_sink, periods_source, kcontrol0. kcontrol1...etc)
@@ -26,7 +27,7 @@ define(`W_PGA',
 `SectionData."'N_PGA($1)`_data_str" {'
 `	tuples "'N_PGA($1)`_tuples_str"'
 `}'
-`SectionWidget."'N_PGA($1)`" {'
+`SectionWidget.ifdef(`PGA_NAME', "`PGA_NAME'", "`N_PGA($1)'") {'
 `	index "'PIPELINE_ID`"'
 `	type "pga"'
 `	no_pm "true"'
