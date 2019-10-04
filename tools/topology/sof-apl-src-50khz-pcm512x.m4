@@ -34,7 +34,7 @@ dnl     time_domain, sched_comp)
 
 # Playback pipeline 1 on PCM 0 using max 2 channels of s24le.
 # Schedule 1000us deadline on core 0 with priority 0
-PIPELINE_PCM_ADD(sof/pipe-src-playback.m4,
+PIPELINE_PCM_ADD(sof/pipe-src-volume-playback.m4,
 	1, 0, 2, s24le,
 	1000, 0, 0,
 	48000, 50000, 50000)
