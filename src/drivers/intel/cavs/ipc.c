@@ -233,7 +233,7 @@ int platform_ipc_init(struct ipc *ipc)
 				PLATFORM_IPC_INTERRUPT_NAME);
 	if (irq < 0)
 		return irq;
-	interrupt_register(irq, IRQ_AUTO_UNMASK, ipc_irq_handler, ipc);
+	interrupt_register(irq, ipc_irq_handler, ipc);
 	interrupt_enable(irq, ipc);
 
 	/* enable IPC interrupts from host */

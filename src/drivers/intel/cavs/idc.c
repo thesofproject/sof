@@ -379,8 +379,7 @@ int idc_init(void)
 					PLATFORM_IDC_INTERRUPT_NAME);
 	if ((*idc)->irq < 0)
 		return (*idc)->irq;
-	ret = interrupt_register((*idc)->irq, IRQ_AUTO_UNMASK, idc_irq_handler,
-				 *idc);
+	ret = interrupt_register((*idc)->irq, idc_irq_handler, *idc);
 	if (ret < 0)
 		return ret;
 	interrupt_enable((*idc)->irq, *idc);

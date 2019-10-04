@@ -66,8 +66,8 @@ static int dma_multi_chan_domain_irq_register(struct dma_domain_data *data,
 	/* always go through dma_multi_chan_domain_irq_handler,
 	 * so we have different arg registered for every channel
 	 */
-	ret = interrupt_register(data->irq, IRQ_AUTO_UNMASK,
-				 dma_multi_chan_domain_irq_handler, data);
+	ret = interrupt_register(data->irq, dma_multi_chan_domain_irq_handler,
+				 data);
 	if (ret < 0)
 		return ret;
 
