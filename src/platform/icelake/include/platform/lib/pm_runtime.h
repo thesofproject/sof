@@ -49,6 +49,12 @@ void platform_pm_runtime_get(uint32_t context, uint32_t index, uint32_t flags);
  */
 void platform_pm_runtime_put(uint32_t context, uint32_t index, uint32_t flags);
 
+/**
+ * \brief Power gates platform specific hardware resources.
+ */
+void platform_pm_runtime_power_off(void);
+
+
 #endif /* __PLATFORM_LIB_PM_RUNTIME_H__ */
 
 #else
