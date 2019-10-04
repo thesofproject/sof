@@ -666,6 +666,13 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	trace_dai("config comp %d pipe %d dai %d type %d", dev->comp.id,
 		  dev->comp.pipeline_id, config->dai_index, config->type);
 
+	/* cannot configure DAI while active */
+	if (dev->state == COMP_STATE_ACTIVE) {
+		trace_dai_error_with_ids(dev, "dai_config() error: Component "
+					 "is in active state.");
+		return -EINVAL;
+	}
+
 	switch (config->type) {
 	case SOF_DAI_INTEL_SSP:
 		/* set dma burst elems to slot number */
