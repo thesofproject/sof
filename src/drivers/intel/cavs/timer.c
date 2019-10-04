@@ -107,8 +107,7 @@ static int platform_timer_register(struct timer *timer,
 	if (timer->logical_irq < 0)
 		return timer->logical_irq;
 
-	err = interrupt_register(timer->logical_irq, IRQ_MANUAL_UNMASK, handler,
-				 arg);
+	err = interrupt_register(timer->logical_irq, handler, arg);
 	if (err < 0)
 		return err;
 

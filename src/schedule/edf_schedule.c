@@ -280,8 +280,7 @@ int scheduler_init_edf(struct sof *sof)
 	if (edf_sch->irq < 0)
 		return edf_sch->irq;
 
-	interrupt_register(edf_sch->irq, IRQ_AUTO_UNMASK, edf_scheduler_run,
-			   edf_sch);
+	interrupt_register(edf_sch->irq, edf_scheduler_run, edf_sch);
 	interrupt_enable(edf_sch->irq, edf_sch);
 
 	return 0;

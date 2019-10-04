@@ -26,8 +26,7 @@ static union {
 	uint8_t bytes[PLATFORM_DCACHE_ALIGN];
 } cascade_root;
 
-static int interrupt_register_internal(uint32_t irq, int unmask,
-				       void (*handler)(void *arg),
+static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 				       void *arg, struct irq_desc *desc);
 static void interrupt_unregister_internal(uint32_t irq, const void *arg,
 					  struct irq_desc *desc);
@@ -149,7 +148,7 @@ void interrupt_init(void)
 }
 
 static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
-			      int unmask, void (*handler)(void *arg), void *arg,
+			      void (*handler)(void *arg), void *arg,
 			      struct irq_desc *desc)
 {
 	unsigned int core = cpu_get_id();
@@ -173,12 +172,6 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 				    irq);
 			return -EEXIST;
 		}
-
-		if (child->unmask != unmask) {
-			trace_error(TRACE_CLASS_IRQ,
-				    "error: IRQ 0x%x flags differ!", irq);
-			return -EINVAL;
-		}
 	}
 
 	if (!desc) {
@@ -198,15 +191,12 @@ static int irq_register_child(struct irq_cascade_desc *cascade, int irq,
 		child->cpu_mask = 0;
 	}
 
-	child->unmask = unmask;
-
 	list_item_append(&child->irq_list, head);
 
 	/* do we need to register parent on this CPU? */
 	if (!cascade->num_children[core])
-		ret = interrupt_register_internal(parent->irq, IRQ_AUTO_UNMASK,
-						  parent->handler, parent,
-						  parent);
+		ret = interrupt_register_internal(parent->irq, parent->handler,
+						  parent, parent);
 
 	/* increment number of children */
 	if (!ret)
@@ -334,14 +324,12 @@ static uint32_t irq_disable_child(struct irq_cascade_desc *cascade, int irq,
 	return 0;
 }
 
-int interrupt_register(uint32_t irq, int unmask, void (*handler)(void *arg),
-		       void *arg)
+int interrupt_register(uint32_t irq, void (*handler)(void *arg), void *arg)
 {
-	return interrupt_register_internal(irq, unmask, handler, arg, NULL);
+	return interrupt_register_internal(irq, handler, arg, NULL);
 }
 
-static int interrupt_register_internal(uint32_t irq, int unmask,
-				       void (*handler)(void *arg),
+static int interrupt_register_internal(uint32_t irq, void (*handler)(void *arg),
 				       void *arg, struct irq_desc *desc)
 {
 	struct irq_cascade_desc *cascade;
@@ -355,7 +343,7 @@ static int interrupt_register_internal(uint32_t irq, int unmask,
 		return arch_interrupt_register(irq, handler, arg);
 
 	spin_lock_irq(cascade->lock, flags);
-	ret = irq_register_child(cascade, irq, unmask, handler, arg, desc);
+	ret = irq_register_child(cascade, irq, handler, arg, desc);
 	spin_unlock_irq(cascade->lock, flags);
 
 	return ret;

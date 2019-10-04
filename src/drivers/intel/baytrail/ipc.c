@@ -199,8 +199,7 @@ int platform_ipc_init(struct ipc *ipc)
 	iipc->dh_buffer.dmac = dma_get(dir, caps, dev, DMA_ACCESS_SHARED);
 
 	/* configure interrupt */
-	interrupt_register(PLATFORM_IPC_INTERRUPT, IRQ_AUTO_UNMASK,
-			   irq_handler, ipc);
+	interrupt_register(PLATFORM_IPC_INTERRUPT, irq_handler, ipc);
 	interrupt_enable(PLATFORM_IPC_INTERRUPT, ipc);
 
 	/* Unmask Busy and Done interrupts */

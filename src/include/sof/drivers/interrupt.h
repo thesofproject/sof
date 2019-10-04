@@ -22,9 +22,6 @@
 #define trace_irq_error(__e, ...) \
 	trace_error(TRACE_CLASS_IRQ,  __e, ##__VA_ARGS__)
 
-#define IRQ_MANUAL_UNMASK	0
-#define IRQ_AUTO_UNMASK		1
-
 /**
  * \brief child IRQ descriptor for cascading IRQ controllers.
  */
@@ -42,9 +39,6 @@ struct irq_desc {
 	int irq;			/**< virtual IRQ number */
 	void (*handler)(void *arg);	/**< interrupt handler function */
 	void *handler_arg;		/**< interrupt handler argument */
-	int unmask;			/**< whether irq should be
-					  * automatically unmasked
-					  */
 	uint32_t cpu_mask;		/**< a mask of CPUs on which this
 					  * interrupt is enabled
 					  */
@@ -112,8 +106,7 @@ struct irq_cascade_tmpl {
 	bool global_mask;
 };
 
-int interrupt_register(uint32_t irq, int unmask, void(*handler)(void *arg),
-		       void *arg);
+int interrupt_register(uint32_t irq, void(*handler)(void *arg), void *arg);
 void interrupt_unregister(uint32_t irq, const void *arg);
 uint32_t interrupt_enable(uint32_t irq, void *arg);
 uint32_t interrupt_disable(uint32_t irq, void *arg);

@@ -1537,8 +1537,7 @@ static int dmic_probe(struct dai *dai)
 		return ret;
 	}
 
-	ret = interrupt_register(dmic->irq, IRQ_AUTO_UNMASK,
-				 dmic_irq_handler, dai);
+	ret = interrupt_register(dmic->irq, dmic_irq_handler, dai);
 	if (ret < 0) {
 		trace_dmic_error("dmic failed to allocate IRQ");
 		rfree(dmic);
