@@ -30,7 +30,7 @@ define(`CONTROLMIXER_OPS',
 
 dnl C_CONTROLMIXER(name, index, ops, max, invert, tlv, KCONTROL_CHANNELS)
 define(`C_CONTROLMIXER',
-`SectionControlMixer."$2 $1" {'
+`SectionControlMixer."ifdef(`CONTROL_NAME', CONTROL_NAME, $2 $1)" {'
 `'
 `	# control belongs to this index group'
 `	index STR($2)'
