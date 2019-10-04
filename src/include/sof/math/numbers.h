@@ -26,6 +26,11 @@
 	typeof(a) __a = (a);	\
 	__a < 0 ? -__a : __a;	\
 })
+#define SGN(a) ({		\
+	typeof(a) __a = (a);	\
+	__a < 0 ? -1 :		\
+	__a > 0 ? 1 : 0;	\
+})
 
 int gcd(int a, int b); /* Calculate greatest common divisor for a and b */
 
