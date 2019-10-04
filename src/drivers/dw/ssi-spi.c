@@ -324,17 +324,7 @@ static enum task_state spi_completion_work(void *data)
 		break;
 	}
 
-	return SOF_TASK_STATE_COMPLETED;
-}
-
-static void spi_dma_complete(void *data, uint32_t type,
-			     struct dma_cb_data *next)
-{
-	struct spi *spi = data;
-
-	next->status = DMA_CB_STATUS_END;
-
-	schedule_task(&spi->completion, 0, 100);
+	return SOF_TASK_STATE_RESCHEDULE;
 }
 
 int spi_push(struct spi *spi, const void *data, size_t size)
@@ -412,8 +402,16 @@ static int spi_slave_init(struct spi *spi)
 	config->buffer_size = spi->buffer_size;
 
 	spi->completion.private = NULL;
-	return schedule_task_init(&spi->completion, SOF_SCHEDULE_EDF,
-			SOF_TASK_PRI_MED, spi_completion_work, NULL, spi, 0, 0);
+
+	ret = schedule_task_init(&spi->completion, SOF_SCHEDULE_LL_DMA,
+				 SOF_TASK_PRI_MED, spi_completion_work, NULL,
+				 spi, 0, 0);
+	if (ret < 0)
+		return ret;
+
+	schedule_task(&spi->completion, 0, 100);
+
+	return 0;
 }
 
 int spi_probe(struct spi *spi)
@@ -466,11 +464,6 @@ int spi_probe(struct spi *spi)
 	}
 
 	spi->ipc_status = IPC_READ;
-
-	dma_set_cb(spi->chan[SPI_DIR_RX], DMA_CB_TYPE_IRQ, spi_dma_complete,
-		   spi);
-	dma_set_cb(spi->chan[SPI_DIR_TX], DMA_CB_TYPE_IRQ, spi_dma_complete,
-		   spi);
 
 	return spi_slave_init(spi);
 }
