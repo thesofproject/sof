@@ -18,9 +18,18 @@
 #define DMA_ID_EDMA0	0
 #define DMA_ID_HOST	1
 
-/* TODO fix IRQ numbers */
-#define dma_chan_irq(dma, chan) (dma_irq(dma) + chan)
-#define dma_chan_irq_name(dma, chan) dma_irq_name(dma)
+/*
+ * IRQ line 442 (ESAI0_DMA_INT) groups
+ *	- DMA#0 interrupt #6, ESAI0 receive channel
+ *	- DMA#0 interrupt #7, ESAI0 transmit channel
+ * Converting this to internal SOF irq representation we get
+ *	- irq = 442 % 64 = 58
+ *	- irq_name = irq_name_irqsteer[442 / 64] = "irqsteer6"
+ *
+ * TODO: Remove hardcoded values and add generic implementation
+ */
+#define dma_chan_irq(dma, chan) 58
+#define dma_chan_irq_name(dma, chan) "irqsteer6"
 
 int dmac_init(void);
 
