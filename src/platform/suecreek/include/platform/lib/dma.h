@@ -44,6 +44,7 @@
 #define DMA_HANDSHAKE_SSI_RX	27
 
 #define dma_chan_irq(dma, chan) dma_irq(dma)
+#define dma_chan_irq_name(dma, chan) dma_irq_name(dma)
 
 int dmac_init(void);
 

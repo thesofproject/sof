@@ -285,7 +285,8 @@ struct ll_schedule_domain *dma_multi_chan_domain_init(struct dma *dma_array,
 		dma = &dma_array[i];
 		for (j = 0; j < dma->plat_data.channels; ++j)
 			dma_domain->data[i][j].irq = interrupt_get_irq(
-				dma_chan_irq(dma, j), dma_irq_name(dma));
+				dma_chan_irq(dma, j),
+				dma_chan_irq_name(dma, j));
 	}
 
 	ll_sch_domain_set_pdata(domain, dma_domain);
