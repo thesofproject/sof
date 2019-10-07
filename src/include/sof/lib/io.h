@@ -19,6 +19,8 @@ static inline void io_reg_update_bits(uint32_t reg, uint32_t mask,
 				      uint32_t value) {}
 static inline uint16_t io_reg_read16(uint32_t reg) { return 0; }
 static inline void io_reg_write16(uint32_t reg, uint16_t val) {}
+static inline void io_reg_update_bits16(uint32_t reg, uint16_t mask,
+					uint16_t value) {}
 
 #else
 
@@ -46,6 +48,12 @@ static inline uint16_t io_reg_read16(uint32_t reg)
 static inline void io_reg_write16(uint32_t reg, uint16_t val)
 {
 	*((volatile uint16_t*)reg) = val;
+}
+
+static inline void io_reg_update_bits16(uint32_t reg, uint16_t mask,
+					uint16_t value)
+{
+	io_reg_write16(reg, (io_reg_read16(reg) & (~mask)) | (value & mask));
 }
 
 #endif
