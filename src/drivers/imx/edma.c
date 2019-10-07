@@ -9,32 +9,6 @@
 #include <sof/lib/io.h>
 #include <stdint.h>
 
-static inline void edma_write(struct dma *dma, uint32_t reg, uint32_t value)
-{
-	io_reg_write(dma_base(dma) + reg, value);
-}
-
-static inline uint32_t edma_read(struct dma *dma, uint32_t reg)
-{
-	return io_reg_read(dma_base(dma) + reg);
-}
-
-static inline void edma_write16(struct dma *dma, uint32_t reg, uint16_t value)
-{
-	io_reg_write16(dma_base(dma) + reg, value);
-}
-
-static inline uint16_t edma_read16(struct dma *dma, uint32_t reg)
-{
-	return io_reg_read16(dma_base(dma) + reg);
-}
-
-static inline void edma_update_bits(struct dma *dma, uint32_t reg,
-				    uint32_t mask, uint32_t value)
-{
-	io_reg_update_bits(dma_base(dma) + reg, mask, value);
-}
-
 /* acquire the specific DMA channel */
 static struct dma_chan_data *edma_channel_get(struct dma *dma,
 					      unsigned int req_chan)
