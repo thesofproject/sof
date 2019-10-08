@@ -13,6 +13,7 @@
 
 #include <sof/lib/alloc.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/audio/component.h>
 #include <sof/drivers/timer.h>
 #include <sof/schedule/edf_schedule.h>
@@ -109,3 +110,16 @@ struct schedulers **arch_schedulers_get(void)
 {
 	return NULL;
 }
+
+void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
+{
+	(void)context;
+	(void)index;
+}
+
+void pm_runtime_disable(enum pm_runtime_context context, uint32_t index)
+{
+	(void)context;
+	(void)index;
+}
+

@@ -25,6 +25,7 @@
 #include <sof/lib/alloc.h>
 #include <sof/lib/clk.h>
 #include <sof/lib/notifier.h>
+#include <sof/lib/pm_runtime.h>
 #include <sof/list.h>
 #include <sof/math/numbers.h>
 #include <sof/platform.h>
@@ -1071,6 +1072,8 @@ static enum task_state kpb_draining_task(void *arg)
 
 	trace_kpb("kpb_draining_task(), start.");
 
+	pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
+
 	/* Change KPB internal state to DRAINING */
 	kpb_change_state(kpb, KPB_STATE_DRAINING);
 
@@ -1170,6 +1173,8 @@ out:
 	 * variables.
 	 */
 	(void)(draining_time_end - draining_time_start);
+
+	pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_MASTER_CORE_ID);
 
 	return SOF_TASK_STATE_COMPLETED;
 }
