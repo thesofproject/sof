@@ -165,8 +165,12 @@ static void host_update_position(struct comp_dev *dev, uint32_t bytes)
 	if (!dev->params.no_stream_position) {
 		hd->report_pos += bytes;
 
-		/* send IPC message to driver if needed */
-		if (hd->report_pos >= dev->params.host_period_bytes) {
+		/* host_period_bytes is set to zero to disable position update
+		 * by IPC for FW version before 3.11, so send IPC message to
+		 * driver according to this condition and report_pos.
+		 */
+		if (dev->params.host_period_bytes != 0 &&
+		    hd->report_pos >= dev->params.host_period_bytes) {
 			hd->report_pos = 0;
 
 			/* send timestamped position to host
