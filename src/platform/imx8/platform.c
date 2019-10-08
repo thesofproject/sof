@@ -142,6 +142,7 @@ int platform_init(struct sof *sof)
 	int ret;
 	struct dai *esai;
 
+	platform_interrupt_init();
 	clock_init();
 	scheduler_init_edf(sof);
 
@@ -155,8 +156,6 @@ int platform_init(struct sof *sof)
 	sa_init(sof);
 
 	clock_set_freq(CLK_CPU(cpu_get_id()), CLK_MAX_CPU_HZ);
-
-	platform_interrupt_init();
 
 	/* init DMA */
 	ret = edma_init();
