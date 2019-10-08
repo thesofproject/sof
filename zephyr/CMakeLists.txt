@@ -119,6 +119,14 @@ target_include_directories(sof_base_module PUBLIC
 	${SOC_DIR}/${ARCH}/${SOC_PATH}/include
 	)
 
+add_library(sof_boot_module
+	../src/platform/apollolake/boot_module.c
+	)
+target_include_directories(sof_boot_module PUBLIC
+	../src/include
+	${SOC_DIR}/${ARCH}/${SOC_PATH}/include
+	)
+
 set(sof_module ${PROJECT_SOURCE_DIR}/../modules/audio/sof)
 set(sof_rimage_keys ${PROJECT_SOURCE_DIR}/../modules/audio/sof/rimage/keys)
 set(sof_rimage_version ${sof_module}/zephyr/include/version.h)
@@ -132,6 +140,37 @@ ExternalProject_Add(rimage
 	BUILD_ALWAYS 1
 	CMAKE_ARGS -DPEM_KEY_PREFIX=${sof_rimage_keys} -DVERSION_H_PATH=${sof_rimage_version}
 	INSTALL_COMMAND ""
-)
+	)
+
+#
+# Bootloader build
+#
+
+add_executable(bootloader
+	../src/arch/xtensa/up/xtos/_vectors.S
+	../src/arch/xtensa/boot_entry.S
+	../src/arch/xtensa/smp/xtos/memctl_default.S
+	../src/arch/xtensa/up/xtos/reset-vector.S
+	#../src/arch/xtensa/up/hal/cache_asm.S
+	../src/arch/xtensa/boot_loader.c
+	)
+target_include_directories(bootloader PUBLIC
+	../src/include
+	../src/arch/xtensa/include
+	../src/platform/apollolake/include/arch
+	${SOC_DIR}/${ARCH}/${SOC_PATH}/include
+	)
+
+set(xtensa_build_path $ENV{XTOOLS_TOOLCHAIN_PATH})
+
+set_source_files_properties(../src/arch/xtensa/up/xtos/_vectors.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+set_source_files_properties(../src/arch/xtensa/boot_entry.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+set_source_files_properties(../src/arch/xtensa/up/xtos/reset-vector.S PROPERTIES COMPILE_FLAGS -DASSEMBLY)
+
+target_compile_options(bootloader PUBLIC -fno-inline-functions -mlongcalls -mtext-section-literals -DCONFIG_BOOT_LOADER -DCONFIG_APOLLOLAKE -DCONFIG_BUILD_VM_ROM)
+
+target_link_libraries(bootloader PUBLIC -Wl,--no-check-sections -ucall_user_start -Wl,-static -nostdlib)
+target_link_libraries(bootloader PRIVATE -lhal -L${xtensa_build_path}/xtensa/intel_apl_adsp/xtensa-zephyr-elf/lib)
+target_link_libraries(bootloader PRIVATE -T${sof_module}/zephyr/boot_ldr.x)
 
 endif()
