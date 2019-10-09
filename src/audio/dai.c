@@ -87,7 +87,7 @@ static void dai_dma_cb(void *data, uint32_t type, struct dma_cb_data *next)
 	next->status = DMA_CB_STATUS_RELOAD;
 
 	/* stop dma copy for pause/stop/xrun */
-	if (dev->state != COMP_STATE_ACTIVE || dd->xrun) {
+	if (dev->state < COMP_STATE_STARTED || dd->xrun) {
 		/* stop the DAI */
 		dai_trigger(dd->dai, COMP_TRIGGER_STOP, dev->params.direction);
 
@@ -667,10 +667,10 @@ static int dai_config(struct comp_dev *dev, struct sof_ipc_dai_config *config)
 	trace_dai("config comp %d pipe %d dai %d type %d", dev->comp.id,
 		  dev->comp.pipeline_id, config->dai_index, config->type);
 
-	/* cannot configure DAI while active */
-	if (dev->state == COMP_STATE_ACTIVE) {
+	/* cannot configure DAI while running */
+	if (dev->state >= COMP_STATE_STARTED) {
 		trace_dai_error_with_ids(dev, "dai_config() error: Component "
-					 "is in active state.");
+					 "is running.");
 		return -EINVAL;
 	}
 

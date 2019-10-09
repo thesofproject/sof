@@ -222,7 +222,7 @@ static int mixer_trigger(struct comp_dev *dev, int cmd)
 	case COMP_TRIGGER_START:
 	case COMP_TRIGGER_RELEASE:
 		if (dir == SOF_IPC_STREAM_PLAYBACK &&
-		    mixer_sink_status(dev) == COMP_STATE_ACTIVE)
+		    mixer_sink_status(dev) >= COMP_STATE_STARTED)
 			/* no need to go downstream */
 			return PPL_STATUS_PATH_STOP;
 		break;
@@ -269,8 +269,8 @@ static int mixer_copy(struct comp_dev *dev)
 	list_for_item(blist, &dev->bsource_list) {
 		source = container_of(blist, struct comp_buffer, sink_list);
 
-		/* only mix the sources with the same state with mixer */
-		if (source->source->state == dev->state)
+		/* only mix already running sources */
+		if (source->source->state >= COMP_STATE_STARTED)
 			sources[num_mix_sources++] = source;
 
 		/* too many sources ? */
@@ -346,7 +346,7 @@ static int mixer_prepare(struct comp_dev *dev)
 	trace_mixer("mixer_prepare()");
 
 	/* does mixer already have active source streams ? */
-	if (dev->state != COMP_STATE_ACTIVE) {
+	if (dev->state < COMP_STATE_STARTED) {
 		/* currently inactive so setup mixer */
 		md->mix_func = dev->params.frame_fmt == SOF_IPC_FRAME_S16_LE ?
 			mix_n_s16 : mix_n_s32;
@@ -365,7 +365,7 @@ static int mixer_prepare(struct comp_dev *dev)
 
 		/* only prepare downstream if we have no active sources */
 		if (source->source->state == COMP_STATE_PAUSED ||
-		    source->source->state == COMP_STATE_ACTIVE) {
+		    source->source->state >= COMP_STATE_STARTED) {
 			downstream = 1;
 		}
 	}

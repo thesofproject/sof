@@ -464,9 +464,15 @@ static inline int comp_prepare(struct comp_dev *dev)
  */
 static inline int comp_copy(struct comp_dev *dev)
 {
+	int ret;
+
 	assert(dev->drv->ops.copy);
 
-	return dev->drv->ops.copy(dev);
+	ret = dev->drv->ops.copy(dev);
+	if (!ret)
+		dev->state = COMP_STATE_ACTIVE;
+
+	return ret;
 }
 
 /**
@@ -566,13 +572,13 @@ static inline int comp_is_single_pipeline(struct comp_dev *current,
 }
 
 /**
- * Checks if component device is active.
+ * Checks if component device has been started.
  * @param current Component device.
- * @return 1 if active, 0 otherwise.
+ * @return 1 if started, 0 otherwise.
  */
-static inline int comp_is_active(struct comp_dev *current)
+static inline int comp_is_started(struct comp_dev *current)
 {
-	return current->state == COMP_STATE_ACTIVE;
+	return current->state >= COMP_STATE_STARTED;
 }
 
 /**

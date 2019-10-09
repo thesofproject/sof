@@ -298,7 +298,7 @@ static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 	}
 
 	/* don't do any params if current is running */
-	if (current->state == COMP_STATE_ACTIVE)
+	if (current->state >= COMP_STATE_STARTED)
 		return 0;
 
 	/* send current params to the component */
@@ -425,7 +425,7 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 	 * sink component (it can be active for e.g. mixer pipelines)
 	 */
 	p->preload = dev->params.direction == SOF_IPC_STREAM_PLAYBACK &&
-		p->sink_comp->state != COMP_STATE_ACTIVE;
+		p->sink_comp->state < COMP_STATE_STARTED;
 
 	/* initialize task if necessary */
 	if (!p->pipe_task) {
@@ -781,8 +781,8 @@ static int pipeline_comp_copy(struct comp_dev *current, void *data, int dir)
 		return 0;
 	}
 
-	if (!comp_is_active(current)) {
-		tracev_pipe("pipeline_comp_copy(), current is not active");
+	if (!comp_is_started(current)) {
+		tracev_pipe("pipeline_comp_copy(), current is not started");
 		return 0;
 	}
 
@@ -867,9 +867,9 @@ static int pipeline_comp_timestamp(struct comp_dev *current, void *data,
 {
 	struct pipeline_data *ppl_data = data;
 
-	if (!comp_is_active(current)) {
+	if (!comp_is_started(current)) {
 		tracev_pipe("pipeline_comp_timestamp(), "
-			    "current is not active");
+			    "current is not started");
 		return 0;
 	}
 
@@ -994,7 +994,7 @@ static int pipeline_xrun_recover(struct pipeline *p)
 /* notify pipeline that this component requires buffers emptied/filled */
 void pipeline_schedule_copy(struct pipeline *p, uint64_t start)
 {
-	if (p->sched_comp->state == COMP_STATE_ACTIVE)
+	if (p->sched_comp->state >= COMP_STATE_STARTED)
 		schedule_task(p->pipe_task, start, p->ipc_pipe.period);
 }
 

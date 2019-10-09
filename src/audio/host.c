@@ -744,7 +744,7 @@ static int host_copy(struct comp_dev *dev)
 
 	tracev_host_with_ids(dev, "host_copy()");
 
-	if (dev->state != COMP_STATE_ACTIVE)
+	if (dev->state < COMP_STATE_STARTED)
 		return 0;
 
 	/* here only do preload, further copies happen

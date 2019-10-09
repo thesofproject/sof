@@ -810,7 +810,7 @@ static int ipc_comp_cmd(struct comp_dev *dev, int cmd,
 	struct idc_msg comp_cmd_msg;
 
 	/* pipeline running on other core */
-	if (dev->pipeline && dev->pipeline->status == COMP_STATE_ACTIVE &&
+	if (dev->pipeline && dev->pipeline->status >= COMP_STATE_STARTED &&
 	    cpu_get_id() != dev->pipeline->ipc_pipe.core) {
 
 		/* check if requested core is enabled */
