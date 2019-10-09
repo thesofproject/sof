@@ -577,7 +577,7 @@ static int dai_check_for_xrun(struct comp_dev *dev, uint32_t copy_bytes)
 		return 0;
 
 	/* no data yet, we're just starting */
-	if (!dev->position)
+	if (dev->state == COMP_STATE_STARTED)
 		return PPL_STATUS_PATH_STOP;
 
 	/* xrun occurred */
