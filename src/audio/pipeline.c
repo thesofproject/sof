@@ -298,7 +298,7 @@ static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 	}
 
 	/* don't do any params if current is running */
-	if (current->state >= COMP_STATE_STARTED)
+	if (comp_is_started(current))
 		return 0;
 
 	/* send current params to the component */
