@@ -58,7 +58,11 @@ struct sof_ipc_stream_posn;
  *              |             -------------               |   +---------+   |
  *              |                ^     ^                  |   |         |   |
  *              |                |     |                  |   |         |   |
- *              v                |     |                  v   |         |   |
+ *              |                |  -----------           |   |         |   |
+ *              |                |  |         |           |   |         |   |
+ *              |                |  | STARTED |           |   |         |   |
+ *              |                |  |         |           |   |         |   |
+ *              v                |  -----------           v   |         |   |
  *       -------------           |     |             -------------      |   |
  *       |           |   release |     |   start     |           |      |   |
  *       |   PAUSED  |-----------+     +-------------|  PREPARE  |<-----+   |
@@ -85,7 +89,8 @@ struct sof_ipc_stream_posn;
 #define COMP_STATE_SUSPEND	2       /**< Component suspended */
 #define COMP_STATE_PREPARE	3	/**< Component prepared */
 #define COMP_STATE_PAUSED	4	/**< Component paused */
-#define COMP_STATE_ACTIVE	5	/**< Component active */
+#define COMP_STATE_STARTED	5	/**< Component just started */
+#define COMP_STATE_ACTIVE	6	/**< Component active */
 /** @}*/
 
 /** \name Standard Component Stream Commands
