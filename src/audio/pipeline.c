@@ -748,11 +748,8 @@ static int pipeline_comp_reset(struct comp_dev *current, void *data, int dir)
 int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 {
 	int ret = 0;
-	uint32_t flags;
 
 	trace_pipe_with_ids(p, "pipeline_reset()");
-
-	irq_local_disable(flags);
 
 	ret = pipeline_comp_reset(host, p, host->params.direction);
 	if (ret < 0) {
@@ -760,7 +757,6 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 				 "id = %u", ret, host->comp.id);
 	}
 
-	irq_local_enable(flags);
 	return ret;
 }
 
